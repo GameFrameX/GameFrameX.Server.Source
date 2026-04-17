@@ -8,7 +8,7 @@
 [![Architecture](https://img.shields.io/badge/architecture-Actor%20Model-orange.svg)]()
 [![Version](https://img.shields.io/github/v/release/GameFrameX/GameFrameX.Server.Source?label=version&color=green)](https://github.com/GameFrameX/GameFrameX.Server.Source/releases)
 
-🌐 **언어**: [English](README_EN.md) | [简体中文](README.md) | [繁體中文](README.zh-TW.md) | [日本語](README.ja.md) | **한국어**
+🌐 **언어**: [English](README.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [日本語](README.ja.md) | **한국어**
 
 ## 목차
 
