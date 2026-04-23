@@ -83,7 +83,7 @@ internal static class AppExitHandler
     /// Indicates whether the application is being killed.
     /// </remarks>
     /// <value>如果应用程序正在被终止则为 <c>true</c>；否则为 <c>false</c> / <c>true</c> if the application is being killed; otherwise <c>false</c></value>
-    private static bool _isKill;
+    private static volatile bool _isKill;
 
     /// <summary>
     /// 致命异常退出处理器列表。
