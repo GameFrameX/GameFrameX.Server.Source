@@ -142,7 +142,7 @@ public abstract class BaseMessageHandler<TRequest> : IMessageHandler where TRequ
     /// </summary>
     /// <param name="message"></param>
     /// <returns>动作执行任务</returns>
-    protected async Task InnerActionAsync(TRequest message)
+    protected virtual async Task InnerActionAsync(TRequest message)
     {
         if (GlobalSettings.CurrentSetting.IsMonitorTimeOut)
         {

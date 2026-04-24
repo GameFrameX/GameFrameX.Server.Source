@@ -164,7 +164,7 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
     /// 记录执行时间并调用 <see cref="ActionAsync" />
     /// </summary>
     /// <returns>动作执行任务</returns>
-    internal async Task InnerActionAsync(TRequest request, TResponse response)
+    protected virtual async Task InnerActionAsync(TRequest request, TResponse response)
     {
         ArgumentNullException.ThrowIfNull(request, nameof(request));
         ArgumentNullException.ThrowIfNull(response, nameof(response));
