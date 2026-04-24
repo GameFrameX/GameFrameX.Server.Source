@@ -30,8 +30,11 @@
 using System.Diagnostics;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Core.Idempotency;
 using GameFrameX.NetWork;
 using GameFrameX.NetWork.Abstractions;
+using GameFrameX.NetWork.Messages;
+using GameFrameX.ProtoBuf.Net;
 using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Core.BaseHandler.RPC;
@@ -57,6 +60,8 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
     /// 网络频道
     /// </summary>
     public INetWorkChannel NetWorkChannel { get; private set; }
+
+    private const string DedupWindowKey = "__ConnectionDedupWindow";
 
     /// <summary>
     /// 消息对象
@@ -109,6 +114,12 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
                 return;
             }
 
+            // Layer 1: 连接级去重检查（RPC 路径：重复则重发缓存响应）
+            if (CheckConnectionDedupRpc(response, requestId))
+            {
+                return;
+            }
+
             var task = InnerActionAsync(RequestMessage, response);
 
             try
@@ -119,6 +130,9 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
                 // 业务逻辑执行成功后，设置响应ID并发送 / After successful execution, set response ID and send
                 response.SetUniqueId(requestId);
                 await NetWorkChannel.WriteAsync(response);
+
+                // Layer 1: 缓存 RPC 响应到连接级去重窗口
+                CacheRpcResponse(requestId, response);
             }
             catch (TimeoutException timeoutException)
             {
@@ -199,5 +213,47 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
     public Type GetResponseType()
     {
         return typeof(TResponse);
+    }
+
+    private ConnectionDedupWindow GetOrCreateDedupWindow()
+    {
+        var window = NetWorkChannel.GetData<ConnectionDedupWindow>(DedupWindowKey);
+        if (window == null)
+        {
+            window = new ConnectionDedupWindow();
+            NetWorkChannel.SetData(DedupWindowKey, window);
+        }
+
+        return window;
+    }
+
+    private bool CheckConnectionDedupRpc(TResponse response, int requestId)
+    {
+        var window = GetOrCreateDedupWindow();
+        var messageId = RequestMessage is MessageObject mo ? mo.MessageId : 0;
+
+        if (window.TryGetCachedResponse(messageId, requestId, out var cachedData))
+        {
+            response.SetUniqueId(requestId);
+            NetWorkChannel.WriteAsync(response).GetAwaiter().GetResult();
+            return true;
+        }
+
+        window.TryMarkSeen(messageId, requestId);
+        return false;
+    }
+
+    private void CacheRpcResponse(int requestId, TResponse response)
+    {
+        try
+        {
+            var window = GetOrCreateDedupWindow();
+            var data = ProtoBufSerializerHelper.Serialize(response);
+            window.CacheRpcResponse(RequestMessage is MessageObject msg ? msg.MessageId : 0, requestId, data);
+        }
+        catch (Exception e)
+        {
+            LogHelper.Warning("BaseRpcMessageHandler.CacheRpcResponse, Failed to cache RPC response: {message}", e.Message);
+        }
     }
 }

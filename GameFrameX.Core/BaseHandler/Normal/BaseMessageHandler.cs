@@ -29,7 +29,9 @@
 
 using System.Diagnostics;
 using GameFrameX.Foundation.Logger;
+using GameFrameX.Core.Idempotency;
 using GameFrameX.NetWork.Abstractions;
+using GameFrameX.NetWork.Messages;
 using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Core.BaseHandler.Normal;
@@ -54,6 +56,8 @@ public abstract class BaseMessageHandler<TRequest> : IMessageHandler where TRequ
     /// 网络频道
     /// </summary>
     public INetWorkChannel NetWorkChannel { get; private set; }
+
+    private const string DedupWindowKey = "__ConnectionDedupWindow";
 
     /// <summary>
     /// 消息对象
@@ -94,6 +98,12 @@ public abstract class BaseMessageHandler<TRequest> : IMessageHandler where TRequ
         if (_isInit == false)
         {
             throw new Exception("消息处理器未初始化,请调用先Init方法，如果已经子类实现了Init方法，请调用在子类Init中调用父类Init方法");
+        }
+
+        // Layer 1: 连接级去重检查
+        if (CheckConnectionDedup())
+        {
+            return;
         }
 
         try
@@ -177,5 +187,35 @@ public abstract class BaseMessageHandler<TRequest> : IMessageHandler where TRequ
     public Type GetResponseType()
     {
         return default;
+    }
+
+    /// <summary>
+    /// 获取或创建当前连接的去重窗口
+    /// </summary>
+    protected ConnectionDedupWindow GetOrCreateDedupWindow()
+    {
+        var window = NetWorkChannel.GetData<ConnectionDedupWindow>(DedupWindowKey);
+        if (window == null)
+        {
+            window = new ConnectionDedupWindow();
+            NetWorkChannel.SetData(DedupWindowKey, window);
+        }
+
+        return window;
+    }
+
+    /// <summary>
+    /// Layer 1 连接级去重检查（非 RPC）。返回 true 表示重复消息应跳过。
+    /// </summary>
+    protected virtual bool CheckConnectionDedup()
+    {
+        if (NetWorkChannel == null || Message == null)
+        {
+            return false;
+        }
+
+        var window = GetOrCreateDedupWindow();
+        var messageId = Message is MessageObject mo ? mo.MessageId : 0;
+        return window.TryMarkSeen(messageId, Message.UniqueId);
     }
 }
