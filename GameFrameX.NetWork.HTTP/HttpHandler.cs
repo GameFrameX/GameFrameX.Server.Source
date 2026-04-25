@@ -28,9 +28,11 @@
 //  ==========================================================================================
 
 
+using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Reflection;
+using System.Text;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Http.Normalization;
 using GameFrameX.Foundation.Json;
@@ -55,6 +57,32 @@ public static class HttpHandler
 {
     private const string JsonContentType = "application/json; charset=utf-8";
     private const string ProtoBufContentType = "application/x-protobuf";
+    private const string XRequestIdHeader = "X-Request-Id";
+
+    private static readonly ConcurrentDictionary<string, HttpDedupEntry> _dedupCache = new();
+    private static readonly TimeSpan _dedupTtl = TimeSpan.FromSeconds(60);
+
+    private sealed class HttpDedupEntry
+    {
+        public byte[] ResponseData { get; init; }
+        public bool IsProtoBuf { get; init; }
+        public DateTime CreatedAt { get; } = DateTime.UtcNow;
+        public bool IsExpired => DateTime.UtcNow - CreatedAt > _dedupTtl;
+    }
+
+    /// <summary>
+    /// 清理过期的 HTTP 去重缓存条目
+    /// </summary>
+    public static void CleanupExpiredDedup()
+    {
+        foreach (var kvp in _dedupCache)
+        {
+            if (kvp.Value.IsExpired)
+            {
+                _dedupCache.TryRemove(kvp.Key, out _);
+            }
+        }
+    }
 
     /// <summary>
     /// 处理 HTTP 请求。
@@ -200,6 +228,27 @@ public static class HttpHandler
                 return;
             }
 
+            // HTTP 幂等检查：提取 X-Request-Id，检查是否重复
+            string xRequestId = null;
+            if (context.Request.Headers.TryGetValue(XRequestIdHeader, out var headerValues))
+            {
+                xRequestId = headerValues.ToString();
+            }
+
+            if (!string.IsNullOrEmpty(xRequestId) && _dedupCache.TryGetValue(xRequestId, out var cachedEntry) && !cachedEntry.IsExpired)
+            {
+                if (cachedEntry.IsProtoBuf)
+                {
+                    context.Response.ContentLength = cachedEntry.ResponseData.Length;
+                    await context.Response.BodyWriter.WriteAsync(cachedEntry.ResponseData);
+                }
+                else
+                {
+                    await context.Response.WriteAsync(Encoding.UTF8.GetString(cachedEntry.ResponseData));
+                }
+
+                return;
+            }
 
             // 执行处理器逻辑
             if (isProtoBuf)
@@ -226,6 +275,12 @@ public static class HttpHandler
                         var resultResponse = ProtoBufSerializerHelper.Serialize(messageHttpObject);
                         context.Response.ContentLength = resultResponse.Length;
                         await context.Response.BodyWriter.WriteAsync(resultResponse);
+
+                        // 缓存 ProtoBuf 响应
+                        if (!string.IsNullOrEmpty(xRequestId))
+                        {
+                            _dedupCache[xRequestId] = new HttpDedupEntry { ResponseData = resultResponse, IsProtoBuf = true };
+                        }
                     }
                     catch (Exception e)
                     {
@@ -272,6 +327,12 @@ public static class HttpHandler
                         }
 
                         await context.Response.WriteAsync(result);
+
+                        // 缓存 JSON 响应
+                        if (!string.IsNullOrEmpty(xRequestId))
+                        {
+                            _dedupCache[xRequestId] = new HttpDedupEntry { ResponseData = Encoding.UTF8.GetBytes(result), IsProtoBuf = false };
+                        }
                     }
                     else
                     {
@@ -301,6 +362,12 @@ public static class HttpHandler
                     }
 
                     await context.Response.WriteAsync(result);
+
+                    // 缓存 JSON 响应
+                    if (!string.IsNullOrEmpty(xRequestId))
+                    {
+                        _dedupCache[xRequestId] = new HttpDedupEntry { ResponseData = Encoding.UTF8.GetBytes(result), IsProtoBuf = false };
+                    }
                 }
             }
         }
