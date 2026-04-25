@@ -30,7 +30,7 @@
 using System.Diagnostics;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Core.Idempotency;
+using GameFrameX.Idempotency;
 using GameFrameX.NetWork;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.NetWork.Messages;

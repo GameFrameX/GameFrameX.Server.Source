@@ -29,10 +29,8 @@
 
 using System.Reflection;
 using GameFrameX.Core.Abstractions.Agent;
-using GameFrameX.Core.Abstractions.Attribute;
-using GameFrameX.Core.Abstractions.Message;
 using GameFrameX.Core.BaseHandler.RPC;
-using GameFrameX.Core.Idempotency;
+using GameFrameX.Idempotency;
 using GameFrameX.Core.Utility;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.ProtoBuf.Net;

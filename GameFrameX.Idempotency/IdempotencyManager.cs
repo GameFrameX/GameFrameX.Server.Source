@@ -2,7 +2,7 @@
 //   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
 //   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
 //   均受中华人民共和国及相关国际法律法规保护。
-//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   are protected by relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
 //   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
@@ -30,12 +30,8 @@
 using System.Collections.Concurrent;
 using GameFrameX.Foundation.Logger;
 
-namespace GameFrameX.Core.Idempotency;
+namespace GameFrameX.Idempotency;
 
-/// <summary>
-/// 全局业务级幂等管理器。以 PlayerActorId + RequestId 为复合键进行 per-player 去重。
-/// 区分 RPC（请求-响应，缓存结果 + TCS 等待）和非 RPC（tell 模式，仅标记已处理）。
-/// </summary>
 public sealed class IdempotencyManager
 {
     private static readonly Lazy<IdempotencyManager> _instance = new(() => new IdempotencyManager());
@@ -53,10 +49,6 @@ public sealed class IdempotencyManager
         _options = options;
     }
 
-    /// <summary>
-    /// 检查非 RPC 请求是否已处理。若未处理则标记为处理中，由调用方在完成后调用 MarkCompleted。
-    /// </summary>
-    /// <returns>true 表示重复请求（应跳过），false 表示首次请求（应执行业务逻辑）</returns>
     public bool CheckOrMarkNonRpc(long playerActorId, string requestId, int ttlSeconds = 0)
     {
         var ttl = ttlSeconds > 0 ? ttlSeconds : _options.DefaultTtlSeconds;
@@ -75,9 +67,6 @@ public sealed class IdempotencyManager
         return false;
     }
 
-    /// <summary>
-    /// 标记非 RPC 请求已完成
-    /// </summary>
     public void MarkCompleted(long playerActorId, string requestId)
     {
         if (_storage.TryGet(playerActorId, requestId, out var record))
@@ -86,9 +75,6 @@ public sealed class IdempotencyManager
         }
     }
 
-    /// <summary>
-    /// 检查 RPC 请求的幂等状态。若已处理则返回缓存结果；若处理中则等待；若首次则标记并返回 IsHit=false。
-    /// </summary>
     public async Task<IdempotencyCheckResult> CheckOrWaitRpc(long playerActorId, string requestId, int ttlSeconds = 0, int timeoutMs = 30000)
     {
         var ttl = ttlSeconds > 0 ? ttlSeconds : _options.DefaultTtlSeconds;
@@ -127,9 +113,6 @@ public sealed class IdempotencyManager
         return new IdempotencyCheckResult { IsHit = false, Record = null };
     }
 
-    /// <summary>
-    /// 缓存 RPC 请求的成功结果并通知等待者
-    /// </summary>
     public void SetRpcResult(long playerActorId, string requestId, byte[] responseData)
     {
         if (_storage.TryGet(playerActorId, requestId, out var record))
@@ -144,9 +127,6 @@ public sealed class IdempotencyManager
         }
     }
 
-    /// <summary>
-    /// 缓存 RPC 请求的异常结果（根据 CachePolicy 决定是否缓存）并通知等待者
-    /// </summary>
     public void SetRpcError(long playerActorId, string requestId, string exceptionMessage, IdempotentCachePolicy cachePolicy)
     {
         if (cachePolicy == IdempotentCachePolicy.AllOutcomes)
@@ -170,27 +150,14 @@ public sealed class IdempotencyManager
         }
     }
 
-    /// <summary>
-    /// 清理所有过期的幂等记录。由全局清理定时器调用。
-    /// </summary>
     public int CleanupExpired()
     {
         return _storage.CleanupExpired();
     }
 }
 
-/// <summary>
-/// 幂等检查结果
-/// </summary>
 public sealed class IdempotencyCheckResult
 {
-    /// <summary>
-    /// 是否命中缓存（true 表示应返回缓存结果，false 表示首次请求应执行业务逻辑）
-    /// </summary>
     public bool IsHit { get; init; }
-
-    /// <summary>
-    /// 缓存的幂等记录（IsHit=true 时有值）
-    /// </summary>
     public IdempotencyRecord Record { get; init; }
 }

@@ -28,7 +28,6 @@
 //  ==========================================================================================
 
 
-using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Reflection;
@@ -36,6 +35,7 @@ using System.Text;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Http.Normalization;
 using GameFrameX.Foundation.Json;
+using GameFrameX.Idempotency;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.NetWork.Messages;
 using GameFrameX.ProtoBuf.Net;
@@ -58,31 +58,7 @@ public static class HttpHandler
     private const string JsonContentType = "application/json; charset=utf-8";
     private const string ProtoBufContentType = "application/x-protobuf";
     private const string XRequestIdHeader = "X-Request-Id";
-
-    private static readonly ConcurrentDictionary<string, HttpDedupEntry> _dedupCache = new();
-    private static readonly TimeSpan _dedupTtl = TimeSpan.FromSeconds(60);
-
-    private sealed class HttpDedupEntry
-    {
-        public byte[] ResponseData { get; init; }
-        public bool IsProtoBuf { get; init; }
-        public DateTime CreatedAt { get; } = DateTime.UtcNow;
-        public bool IsExpired => DateTime.UtcNow - CreatedAt > _dedupTtl;
-    }
-
-    /// <summary>
-    /// 清理过期的 HTTP 去重缓存条目
-    /// </summary>
-    public static void CleanupExpiredDedup()
-    {
-        foreach (var kvp in _dedupCache)
-        {
-            if (kvp.Value.IsExpired)
-            {
-                _dedupCache.TryRemove(kvp.Key, out _);
-            }
-        }
-    }
+    private const int HttpDedupActorId = 0;
 
     /// <summary>
     /// 处理 HTTP 请求。
@@ -235,19 +211,23 @@ public static class HttpHandler
                 xRequestId = headerValues.ToString();
             }
 
-            if (!string.IsNullOrEmpty(xRequestId) && _dedupCache.TryGetValue(xRequestId, out var cachedEntry) && !cachedEntry.IsExpired)
+            if (!string.IsNullOrEmpty(xRequestId))
             {
-                if (cachedEntry.IsProtoBuf)
+                var checkResult = await IdempotencyManager.Instance.CheckOrWaitRpc(HttpDedupActorId, xRequestId);
+                if (checkResult.IsHit && checkResult.Record?.ResponseData != null)
                 {
-                    context.Response.ContentLength = cachedEntry.ResponseData.Length;
-                    await context.Response.BodyWriter.WriteAsync(cachedEntry.ResponseData);
-                }
-                else
-                {
-                    await context.Response.WriteAsync(Encoding.UTF8.GetString(cachedEntry.ResponseData));
-                }
+                    if (isProtoBuf)
+                    {
+                        context.Response.ContentLength = checkResult.Record.ResponseData.Length;
+                        await context.Response.BodyWriter.WriteAsync(checkResult.Record.ResponseData);
+                    }
+                    else
+                    {
+                        await context.Response.WriteAsync(Encoding.UTF8.GetString(checkResult.Record.ResponseData));
+                    }
 
-                return;
+                    return;
+                }
             }
 
             // 执行处理器逻辑
@@ -279,7 +259,7 @@ public static class HttpHandler
                         // 缓存 ProtoBuf 响应
                         if (!string.IsNullOrEmpty(xRequestId))
                         {
-                            _dedupCache[xRequestId] = new HttpDedupEntry { ResponseData = resultResponse, IsProtoBuf = true };
+                            IdempotencyManager.Instance.SetRpcResult(HttpDedupActorId, xRequestId, resultResponse);
                         }
                     }
                     catch (Exception e)
@@ -331,7 +311,7 @@ public static class HttpHandler
                         // 缓存 JSON 响应
                         if (!string.IsNullOrEmpty(xRequestId))
                         {
-                            _dedupCache[xRequestId] = new HttpDedupEntry { ResponseData = Encoding.UTF8.GetBytes(result), IsProtoBuf = false };
+                            IdempotencyManager.Instance.SetRpcResult(HttpDedupActorId, xRequestId, Encoding.UTF8.GetBytes(result));
                         }
                     }
                     else
@@ -366,7 +346,7 @@ public static class HttpHandler
                     // 缓存 JSON 响应
                     if (!string.IsNullOrEmpty(xRequestId))
                     {
-                        _dedupCache[xRequestId] = new HttpDedupEntry { ResponseData = Encoding.UTF8.GetBytes(result), IsProtoBuf = false };
+                        IdempotencyManager.Instance.SetRpcResult(HttpDedupActorId, xRequestId, Encoding.UTF8.GetBytes(result));
                     }
                 }
             }

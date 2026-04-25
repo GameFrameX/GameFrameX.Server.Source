@@ -29,7 +29,7 @@
 
 using System.Diagnostics;
 using GameFrameX.Foundation.Logger;
-using GameFrameX.Core.Idempotency;
+using GameFrameX.Idempotency;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.NetWork.Messages;
 using GameFrameX.Utility.Setting;

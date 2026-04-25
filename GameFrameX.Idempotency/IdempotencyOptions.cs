@@ -2,7 +2,7 @@
 //   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
 //   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
 //   均受中华人民共和国及相关国际法律法规保护。
-//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   are protected by relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
 //   本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
@@ -27,20 +27,15 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Core.Idempotency;
+namespace GameFrameX.Idempotency;
 
-/// <summary>
-/// 幂等缓存策略，控制是否缓存异常结果
-/// </summary>
-public enum IdempotentCachePolicy
+public sealed class IdempotencyOptions
 {
-    /// <summary>
-    /// 仅缓存成功结果。异常不缓存，允许客户端重试重新执行业务逻辑
-    /// </summary>
-    SuccessOnly,
-
-    /// <summary>
-    /// 缓存所有结果（含异常）。客户端重试时返回缓存的错误（默认）
-    /// </summary>
-    AllOutcomes,
+    public bool EnableConnectionDedup { get; set; } = true;
+    public int ConnectionDedupMaxCapacity { get; set; } = 10000;
+    public int ConnectionDedupTtlSeconds { get; set; } = 30;
+    public bool EnableBusinessIdempotency { get; set; } = true;
+    public int DefaultTtlSeconds { get; set; } = 60;
+    public int CleanupIntervalSeconds { get; set; } = 60;
+    public int ConnectionDedupCleanupIntervalSeconds { get; set; } = 60;
 }
