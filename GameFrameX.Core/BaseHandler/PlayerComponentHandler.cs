@@ -27,7 +27,9 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using System.Reflection;
 using GameFrameX.Core.Abstractions.Agent;
+using GameFrameX.Idempotency;
 using GameFrameX.Core.BaseHandler.Normal;
 using GameFrameX.Core.Utility;
 using GameFrameX.NetWork.Abstractions;
@@ -63,6 +65,35 @@ public abstract class PlayerComponentHandler<TRequest> : BaseComponentHandler<TR
         }
 
         return Task.FromResult(true);
+    }
+
+    /// <summary>
+    /// Layer 2 业务级幂等检查（非 RPC tell 模式）
+    /// </summary>
+    protected override async Task InnerActionAsync(TRequest message)
+    {
+        var idempotentAttr = GetType().GetCustomAttribute<IdempotentAttribute>();
+        if (idempotentAttr != null && message is IIdempotentRequest idempotentRequest)
+        {
+            var requestId = idempotentRequest.RequestId;
+            if (IdempotencyManager.Instance.CheckOrMarkNonRpc(ActorId, requestId, idempotentAttr.TtlSeconds))
+            {
+                return;
+            }
+
+            try
+            {
+                await base.InnerActionAsync(message);
+            }
+            finally
+            {
+                IdempotencyManager.Instance.MarkCompleted(ActorId, requestId);
+            }
+
+            return;
+        }
+
+        await base.InnerActionAsync(message);
     }
 }
 

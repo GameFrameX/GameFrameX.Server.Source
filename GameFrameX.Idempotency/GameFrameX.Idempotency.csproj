@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="../Version.props" Label="版本号定义"/>
+    <PropertyGroup>
+        <Description>GameFrameX.Idempotency,GameFrameX 框架的请求幂等库.框架文档主页: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Lib,Idempotency,Server,GameServer</PackageTags>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\GameFrameX.NetWork.Abstractions\GameFrameX.NetWork.Abstractions.csproj"/>
+    </ItemGroup>
+</Project>

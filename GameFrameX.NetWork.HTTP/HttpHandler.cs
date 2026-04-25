@@ -31,9 +31,11 @@
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Reflection;
+using System.Text;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Http.Normalization;
 using GameFrameX.Foundation.Json;
+using GameFrameX.Idempotency;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.NetWork.Messages;
 using GameFrameX.ProtoBuf.Net;
@@ -55,6 +57,8 @@ public static class HttpHandler
 {
     private const string JsonContentType = "application/json; charset=utf-8";
     private const string ProtoBufContentType = "application/x-protobuf";
+    private const string XRequestIdHeader = "X-Request-Id";
+    private const int HttpDedupActorId = 0;
 
     /// <summary>
     /// 处理 HTTP 请求。
@@ -200,6 +204,31 @@ public static class HttpHandler
                 return;
             }
 
+            // HTTP 幂等检查：提取 X-Request-Id，检查是否重复
+            string xRequestId = null;
+            if (context.Request.Headers.TryGetValue(XRequestIdHeader, out var headerValues))
+            {
+                xRequestId = headerValues.ToString();
+            }
+
+            if (!string.IsNullOrEmpty(xRequestId))
+            {
+                var checkResult = await IdempotencyManager.Instance.CheckOrWaitRpc(HttpDedupActorId, xRequestId);
+                if (checkResult.IsHit && checkResult.Record?.ResponseData != null)
+                {
+                    if (isProtoBuf)
+                    {
+                        context.Response.ContentLength = checkResult.Record.ResponseData.Length;
+                        await context.Response.BodyWriter.WriteAsync(checkResult.Record.ResponseData);
+                    }
+                    else
+                    {
+                        await context.Response.WriteAsync(Encoding.UTF8.GetString(checkResult.Record.ResponseData));
+                    }
+
+                    return;
+                }
+            }
 
             // 执行处理器逻辑
             if (isProtoBuf)
@@ -226,6 +255,12 @@ public static class HttpHandler
                         var resultResponse = ProtoBufSerializerHelper.Serialize(messageHttpObject);
                         context.Response.ContentLength = resultResponse.Length;
                         await context.Response.BodyWriter.WriteAsync(resultResponse);
+
+                        // 缓存 ProtoBuf 响应
+                        if (!string.IsNullOrEmpty(xRequestId))
+                        {
+                            IdempotencyManager.Instance.SetRpcResult(HttpDedupActorId, xRequestId, resultResponse);
+                        }
                     }
                     catch (Exception e)
                     {
@@ -272,6 +307,12 @@ public static class HttpHandler
                         }
 
                         await context.Response.WriteAsync(result);
+
+                        // 缓存 JSON 响应
+                        if (!string.IsNullOrEmpty(xRequestId))
+                        {
+                            IdempotencyManager.Instance.SetRpcResult(HttpDedupActorId, xRequestId, Encoding.UTF8.GetBytes(result));
+                        }
                     }
                     else
                     {
@@ -301,6 +342,12 @@ public static class HttpHandler
                     }
 
                     await context.Response.WriteAsync(result);
+
+                    // 缓存 JSON 响应
+                    if (!string.IsNullOrEmpty(xRequestId))
+                    {
+                        IdempotencyManager.Instance.SetRpcResult(HttpDedupActorId, xRequestId, Encoding.UTF8.GetBytes(result));
+                    }
                 }
             }
         }

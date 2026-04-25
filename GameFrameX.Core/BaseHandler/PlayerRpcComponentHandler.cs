@@ -27,10 +27,13 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using System.Reflection;
 using GameFrameX.Core.Abstractions.Agent;
 using GameFrameX.Core.BaseHandler.RPC;
+using GameFrameX.Idempotency;
 using GameFrameX.Core.Utility;
 using GameFrameX.NetWork.Abstractions;
+using GameFrameX.ProtoBuf.Net;
 using GameFrameX.Utility;
 using GameFrameX.Utility.Setting;
 
@@ -66,6 +69,40 @@ public abstract class PlayerRpcComponentHandler<TRequest, TResponse> : BaseRpcCo
         }
 
         return Task.FromResult(true);
+    }
+
+    /// <summary>
+    /// Layer 2 业务级幂等检查（RPC 请求-响应模式）
+    /// </summary>
+    protected override async Task InnerActionAsync(TRequest request, TResponse response)
+    {
+        var idempotentAttr = GetType().GetCustomAttribute<IdempotentAttribute>();
+        if (idempotentAttr != null && request is IIdempotentRequest idempotentRequest)
+        {
+            var requestId = idempotentRequest.RequestId;
+            var checkResult = await IdempotencyManager.Instance.CheckOrWaitRpc(ActorId, requestId, idempotentAttr.TtlSeconds);
+            if (checkResult.IsHit && checkResult.Record?.ResponseData != null)
+            {
+                ProtoBufSerializerHelper.Deserialize(checkResult.Record.ResponseData, response);
+                return;
+            }
+
+            try
+            {
+                await base.InnerActionAsync(request, response);
+            }
+            catch (Exception ex)
+            {
+                IdempotencyManager.Instance.SetRpcError(ActorId, requestId, ex.Message, idempotentAttr.CachePolicy);
+                throw;
+            }
+
+            var data = ProtoBufSerializerHelper.Serialize(response);
+            IdempotencyManager.Instance.SetRpcResult(ActorId, requestId, data);
+            return;
+        }
+
+        await base.InnerActionAsync(request, response);
     }
 }
 
