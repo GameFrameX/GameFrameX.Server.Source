@@ -69,7 +69,13 @@ public class WorkerActor : IWorkerActor
     /// <summary>
     /// 当前调用链ID
     /// </summary>
-    internal long CurrentChainId { get; set; }
+    private long _currentChainId;
+
+    internal long CurrentChainId
+    {
+        get => Volatile.Read(ref _currentChainId);
+        set => Volatile.Write(ref _currentChainId, value);
+    }
 
     /// <summary>
     /// Actor的唯一标识
