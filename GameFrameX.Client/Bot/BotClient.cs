@@ -63,6 +63,11 @@ public sealed class BotClient
     private int _friendTargetResolveAttempts;
     private FriendScenarioStage _friendScenarioStage;
 
+    // Timing fields
+    private long _connectStartMs;
+    private long _authStartMs, _listStartMs, _createStartMs, _loginStartMs;
+    private long _connectMs = -1, _authMs = -1, _listMs = -1, _createMs = -1, _loginMs = -1, _totalMs = -1;
+
     /// <summary>
     /// 初始化机器人客户端
     /// </summary>
@@ -87,11 +92,13 @@ public sealed class BotClient
     {
         try
         {
+            _connectStartMs = Environment.TickCount64;
             await m_TcpClient.EntryAsync(cancellationToken);
         }
         catch (Exception e)
         {
             LogHelper.Info($"EntryAsync Error: {e.Message}| Thread ID:{Thread.CurrentThread.ManagedThreadId} ");
+            EmitMetrics();
         }
     }
 
@@ -134,6 +141,8 @@ public sealed class BotClient
     /// </summary>
     private void ClientConnectedCallback()
     {
+        _connectMs = Environment.TickCount64 - _connectStartMs;
+        _authStartMs = Environment.TickCount64;
         SendAccountLoginMessage();
     }
 
@@ -169,6 +178,11 @@ public sealed class BotClient
 
     #region 消息发送
 
+    private void EmitMetrics()
+    {
+        LogHelper.Info($"[METRICS] connect={_connectMs} auth={_authMs} list={_listMs} create={_createMs} login={_loginMs} total={_totalMs}");
+    }
+
     /// <summary>
     /// 发送登录消息并处理登录流程
     /// </summary>
@@ -200,10 +214,13 @@ public sealed class BotClient
         if (msg.ErrorCode != 0)
         {
             LogHelper.Error($"机器人-{m_BotName}账号登录失败，错误码:{msg.ErrorCode}");
+            EmitMetrics();
             return;
         }
 
         _accountId = msg.Id;
+        _authMs = Environment.TickCount64 - _authStartMs;
+        _listStartMs = Environment.TickCount64;
         LogHelper.Info($"机器人-{m_BotName}账号验证成功,id:{msg.Id}");
         m_TcpClient.SendToServer(new ReqPlayerList { Id = _accountId });
     }
@@ -213,12 +230,16 @@ public sealed class BotClient
         if (msg.ErrorCode != 0)
         {
             LogHelper.Error($"机器人-{m_BotName}请求角色列表失败，错误码:{msg.ErrorCode}");
+            EmitMetrics();
             return;
         }
+
+        _listMs = Environment.TickCount64 - _listStartMs;
 
         if (msg.PlayerList.Count <= 0)
         {
             LogHelper.Info($"机器人-{m_BotName}角色列表为空，开始创建角色。");
+            _createStartMs = Environment.TickCount64;
             m_TcpClient.SendToServer(new ReqPlayerCreate
             {
                 Id = _accountId,
@@ -229,6 +250,7 @@ public sealed class BotClient
 
         var player = msg.PlayerList[0];
         LogHelper.Info($"角色列表 Id:{player.Id}-昵称:{player.Name}-等级:{player.Level}-角色状态:{player.State}");
+        _loginStartMs = Environment.TickCount64;
         m_TcpClient.SendToServer(new ReqPlayerLogin { Id = player.Id });
     }
 
@@ -237,11 +259,14 @@ public sealed class BotClient
         if (msg.ErrorCode != 0)
         {
             LogHelper.Error($"机器人-{m_BotName}创建角色失败，错误码:{msg.ErrorCode}");
+            EmitMetrics();
             return;
         }
 
         var player = msg.PlayerInfo;
+        _createMs = Environment.TickCount64 - _createStartMs;
         LogHelper.Info($"创建角色 Id:{player.Id}-昵称:{player.Name}-等级:{player.Level}-角色状态:{player.State}");
+        _loginStartMs = Environment.TickCount64;
         m_TcpClient.SendToServer(new ReqPlayerLogin { Id = player.Id });
     }
 
@@ -252,8 +277,11 @@ public sealed class BotClient
     private void OnPlayerLoginSuccess(RespPlayerLogin msg)
     {
         _playerId = msg.PlayerInfo.Id;
+        _loginMs = Environment.TickCount64 - _loginStartMs;
+        _totalMs = Environment.TickCount64 - _connectStartMs;
         OnlinePlayerIds[m_BotName] = _playerId;
         LogHelper.Info($"机器人-{m_BotName}登录成功,id:{_playerId}");
+        EmitMetrics();
         if (_options.HasScenario("friend"))
         {
             StartFriendScenario();

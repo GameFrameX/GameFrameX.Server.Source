@@ -76,7 +76,7 @@ public sealed class BotTcpClient
 {
     private const int DelayTimes = 1000;
     private const int MaxRetryCount = 5;
-    private readonly AsyncTcpSession m_TcpClient;
+    private AsyncTcpSession m_TcpClient;
     private int m_RetryCount;
     private int m_RetryDelay = 5000;
     private readonly BotTcpClientEvent m_BotTcpClientEvent;
@@ -96,13 +96,19 @@ public sealed class BotTcpClient
         m_BotTcpClientEvent = clientEvent;
         _serverHost = serverHost;
         _serverPort = serverPort;
-        m_TcpClient = new AsyncTcpSession();
-        m_TcpClient.Connected += OnMTcpClientOnConnected;
-        m_TcpClient.Closed += OnMTcpClientOnClosed;
-        m_TcpClient.DataReceived += OnMTcpClientOnDataReceived;
-        m_TcpClient.Error += OnMTcpClientOnError;
+        m_TcpClient = CreateTcpSession();
         messageDecompressHandler = new DefaultMessageDecompressHandler();
         messageCompressHandler = new DefaultMessageCompressHandler();
+    }
+
+    private AsyncTcpSession CreateTcpSession()
+    {
+        var session = new AsyncTcpSession();
+        session.Connected += OnMTcpClientOnConnected;
+        session.Closed += OnMTcpClientOnClosed;
+        session.DataReceived += OnMTcpClientOnDataReceived;
+        session.Error += OnMTcpClientOnError;
+        return session;
     }
 
     /// <summary>
@@ -111,15 +117,60 @@ public sealed class BotTcpClient
     /// <returns>异步任务</returns>
     public async Task EntryAsync(CancellationToken cancellationToken = default)
     {
+        var connectingSince = (DateTime?)null;
+        const int connectingTimeoutMs = 15000;
+
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                if (!m_TcpClient.IsConnected && !m_TcpClient.IsInConnecting)
+                if (m_TcpClient.IsConnected)
                 {
+                    m_RetryCount = 0;
+                    connectingSince = null;
+                    SendHeartBeat();
+                    await Task.Delay(5000, cancellationToken);
+                }
+                else if (m_TcpClient.IsInConnecting)
+                {
+                    connectingSince ??= DateTime.UtcNow;
+                    if ((DateTime.UtcNow - connectingSince.Value).TotalMilliseconds > connectingTimeoutMs)
+                    {
+                        LogHelper.Warning("IsInConnecting timeout ({0}ms), recreating session", connectingTimeoutMs);
+                        m_TcpClient.Connected -= OnMTcpClientOnConnected;
+                        m_TcpClient.Closed -= OnMTcpClientOnClosed;
+                        m_TcpClient.DataReceived -= OnMTcpClientOnDataReceived;
+                        m_TcpClient.Error -= OnMTcpClientOnError;
+                        try { m_TcpClient.Close(); } catch { }
+
+                        m_TcpClient = CreateTcpSession();
+                        connectingSince = null;
+
+                        if (m_RetryCount < MaxRetryCount)
+                        {
+                            m_RetryCount++;
+                            LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.RetryConnect, m_RetryCount, MaxRetryCount));
+                            m_TcpClient.Connect(new IPEndPoint(IPAddress.Parse(_serverHost), _serverPort));
+                            await Task.Delay(DelayTimes, cancellationToken);
+                        }
+                        else
+                        {
+                            LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.MaxRetryReached));
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        await Task.Delay(1000, cancellationToken);
+                    }
+                }
+                else
+                {
+                    connectingSince = null;
                     LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.AttemptingToConnect));
                     m_TcpClient.Connect(new IPEndPoint(IPAddress.Parse(_serverHost), _serverPort));
                     await Task.Delay(DelayTimes, cancellationToken);
+
                     if (m_TcpClient.IsConnected || m_TcpClient.IsInConnecting)
                     {
                         continue;
@@ -127,9 +178,8 @@ public sealed class BotTcpClient
 
                     if (m_RetryCount < MaxRetryCount)
                     {
-                        LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.RetryConnect, m_RetryCount + 1, MaxRetryCount));
-                        m_TcpClient.Connect(new IPEndPoint(IPAddress.Parse(_serverHost), _serverPort));
                         m_RetryCount++;
+                        LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.RetryConnect, m_RetryCount, MaxRetryCount));
                         await Task.Delay(m_RetryDelay, cancellationToken);
                         m_RetryDelay *= 2;
                     }
@@ -138,12 +188,6 @@ public sealed class BotTcpClient
                         LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.MaxRetryReached));
                         break;
                     }
-                }
-                else
-                {
-                    m_RetryCount = 0;
-                    SendHeartBeat();
-                    await Task.Delay(5000, cancellationToken);
                 }
             }
         }
