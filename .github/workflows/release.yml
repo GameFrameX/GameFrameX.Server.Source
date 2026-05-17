@@ -2,7 +2,7 @@ name: Publish Release
 
 on:
   push:
-    branches: [src]
+    branches: [main]
 
 permissions:
   contents: write
