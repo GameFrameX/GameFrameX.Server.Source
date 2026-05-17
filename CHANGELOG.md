@@ -1,4 +1,18 @@
-## [1.7.2] - 2026-04-16
+## [1.7.3] - 2026-05-17
+
+* 重写 README 文档，更新项目架构和配置说明
+* 同步中英文 README 并统一头部格式和动态版本徽章
+* 添加繁體中文 README
+* 添加日本語 README
+* 添加 한국어 README
+* 重命名 README 文件，英文作为默认 README.md
+* 应用标准头部模板，添加居中布局和导航链接
+* WorkerActor.CurrentChainId 线程安全实现
+* 添加机器人连接耗时追踪
+* 修复 OnlineSet 并发访问线程安全问题
+* 修复无 AppHost 启动时 serverType 为空的兜底逻辑
+* 更改触发分支从 src 到 main
+* 更改触发分支从 src 到 main## [1.7.2] - 2026-04-16
 
 * 移除对GameFrameX.NetWork.Kcp的未使用项目引用## [1.7.1] - 2026-04-16
 
