@@ -360,7 +360,7 @@ public static class GameApp
 
         if (serverType.IsNullOrWhiteSpace())
         {
-            LogHelper.Error("ServerType 参数不能为空，请通过 --ServerType=xxx 指定服务类型。");
+            TryLaunchFirstAvailable(args, sortedStartUpTypes, appSettings);
             return;
         }
 

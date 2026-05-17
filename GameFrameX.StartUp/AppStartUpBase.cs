@@ -100,7 +100,6 @@ public abstract partial class AppStartUpBase : IAppStartUp
     /// <exception cref="ArgumentNullException">当 <paramref name="setting"/> 为 null 时抛出 / Thrown when <paramref name="setting"/> is null</exception>
     public bool Init(string serverType, AppSetting setting, string[] args = null)
     {
-        ArgumentNullException.ThrowIfNull(setting, nameof(setting));
         ServerType = serverType;
         Setting = setting;
         Init();
