@@ -429,10 +429,13 @@ public abstract partial class AppStartUpBase
             logging.ClearProviders();
             logging.AddSerilog(Log.Logger, true);
             logging.SetMinimumLevel(minimumLevelLogLevel);
-            logging.ConfigureOpenTelemetryLogger();
+            if (Setting.IsOpenTelemetry)
+            {
+                logging.ConfigureOpenTelemetryLogger();
+            }
         });
         // 配置监控和跟踪
-        multipleServerHostBuilder.ConfigureServices(services => { services.AddServiceDefaults(); });
+        multipleServerHostBuilder.ConfigureServices(services => { services.AddServiceDefaults(Setting.IsOpenTelemetry); });
 
         // 构建并启动服务器
         _gameServer = multipleServerHostBuilder.Build();

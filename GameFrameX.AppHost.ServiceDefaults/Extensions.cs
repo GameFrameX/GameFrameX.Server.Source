@@ -72,11 +72,15 @@ public static class Extensions
     /// </summary>
     /// <typeparam name="TBuilder">主机应用程序构建器类型</typeparam>
     /// <param name="builder">主机应用程序构建器实例</param>
+    /// <param name="isOpenTelemetry">是否启用OpenTelemetry</param>
     /// <returns>更新后的构建器实例</returns>
-    public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder, bool isOpenTelemetry = true) where TBuilder : IHostApplicationBuilder
     {
         // 配置OpenTelemetry以收集遥测数据
-        builder.ConfigureOpenTelemetry();
+        if (isOpenTelemetry)
+        {
+            builder.ConfigureOpenTelemetry();
+        }
 
         // 添加默认健康检查
         builder.AddDefaultHealthChecks();
@@ -110,11 +114,15 @@ public static class Extensions
     /// 为应用程序构建器添加默认服务，包括服务发现、弹性、健康检查和OpenTelemetry
     /// </summary>
     /// <param name="builder">主机应用程序构建器实例</param>
+    /// <param name="isOpenTelemetry">是否启用OpenTelemetry</param>
     /// <returns>更新后的构建器实例</returns>
-    public static IServiceCollection AddServiceDefaults(this IServiceCollection builder)
+    public static IServiceCollection AddServiceDefaults(this IServiceCollection builder, bool isOpenTelemetry = true)
     {
-        // 配置OpenTelemetry以收集遥测数据
-        builder.ConfigureOpenTelemetry();
+        if (isOpenTelemetry)
+        {
+            // 配置OpenTelemetry以收集遥测数据
+            builder.ConfigureOpenTelemetry();
+        }
 
         // 添加默认健康检查
         builder.AddDefaultHealthChecks();
@@ -147,16 +155,20 @@ public static class Extensions
     /// 配置OpenTelemetry服务以收集指标和追踪信息
     /// </summary>
     /// <param name="builder">主机应用程序构建器实例</param>
+    /// <param name="isOpenTelemetry">是否启用OpenTelemetry</param>
     /// <returns>更新后的构建器实例</returns>
-    public static ILoggingBuilder ConfigureOpenTelemetryLogger(this ILoggingBuilder builder)
+    public static ILoggingBuilder ConfigureOpenTelemetryLogger(this ILoggingBuilder builder, bool isOpenTelemetry = true)
     {
-        // 为日志添加OpenTelemetry支持
-        builder.AddOpenTelemetry(logging =>
+        if (isOpenTelemetry)
         {
-            logging.IncludeFormattedMessage = true;
-            logging.IncludeScopes = true;
-            logging.UseGrafana();
-        });
+            // 为日志添加OpenTelemetry支持
+            builder.AddOpenTelemetry(logging =>
+            {
+                logging.IncludeFormattedMessage = true;
+                logging.IncludeScopes = true;
+                logging.UseGrafana();
+            });
+        }
 
         return builder;
     }
@@ -166,14 +178,17 @@ public static class Extensions
     /// </summary>
     /// <typeparam name="TBuilder">主机应用程序构建器类型</typeparam>
     /// <param name="builder">主机应用程序构建器实例</param>
+    /// <param name="isOpenTelemetry">是否启用OpenTelemetry</param>
     /// <returns>更新后的构建器实例</returns>
-    public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder, bool isOpenTelemetry = true) where TBuilder : IHostApplicationBuilder
     {
         // 为日志添加OpenTelemetry支持
-        builder.Logging.ConfigureOpenTelemetryLogger();
-
-        // 添加并配置OpenTelemetry服务
-        builder.Services.ConfigureOpenTelemetry();
+        builder.Logging.ConfigureOpenTelemetryLogger(isOpenTelemetry);
+        if (isOpenTelemetry)
+        {
+            // 添加并配置OpenTelemetry服务
+            builder.Services.ConfigureOpenTelemetry();
+        }
 
         return builder;
     }
