@@ -73,6 +73,8 @@ public static class Extensions
     /// <typeparam name="TBuilder">主机应用程序构建器类型</typeparam>
     /// <param name="builder">主机应用程序构建器实例</param>
     /// <param name="isOpenTelemetry">是否启用OpenTelemetry</param>
+    /// <param name="isOpenTelemetryMetrics">是否启用OpenTelemetry指标</param>
+    /// <param name="isOpenTelemetryTracing">是否启用OpenTelemetry跟踪</param>
     /// <returns>更新后的构建器实例</returns>
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder, bool isOpenTelemetry = true, bool isOpenTelemetryMetrics = true, bool isOpenTelemetryTracing = true) where TBuilder : IHostApplicationBuilder
     {
@@ -115,6 +117,8 @@ public static class Extensions
     /// </summary>
     /// <param name="builder">主机应用程序构建器实例</param>
     /// <param name="isOpenTelemetry">是否启用OpenTelemetry</param>
+    /// <param name="isOpenTelemetryMetrics">是否启用OpenTelemetry指标</param>
+    /// <param name="isOpenTelemetryTracing">是否启用OpenTelemetry跟踪</param>
     /// <returns>更新后的构建器实例</returns>
     public static IServiceCollection AddServiceDefaults(this IServiceCollection builder, bool isOpenTelemetry = true, bool isOpenTelemetryMetrics = true, bool isOpenTelemetryTracing = true)
     {
@@ -179,6 +183,8 @@ public static class Extensions
     /// <typeparam name="TBuilder">主机应用程序构建器类型</typeparam>
     /// <param name="builder">主机应用程序构建器实例</param>
     /// <param name="isOpenTelemetry">是否启用OpenTelemetry</param>
+    /// <param name="isOpenTelemetryMetrics">是否启用OpenTelemetry指标</param>
+    /// <param name="isOpenTelemetryTracing">是否启用OpenTelemetry跟踪</param>
     /// <returns>更新后的构建器实例</returns>
     public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder, bool isOpenTelemetry = true, bool isOpenTelemetryMetrics = true, bool isOpenTelemetryTracing = true) where TBuilder : IHostApplicationBuilder
     {
