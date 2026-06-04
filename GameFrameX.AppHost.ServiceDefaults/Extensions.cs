@@ -74,12 +74,12 @@ public static class Extensions
     /// <param name="builder">主机应用程序构建器实例</param>
     /// <param name="isOpenTelemetry">是否启用OpenTelemetry</param>
     /// <returns>更新后的构建器实例</returns>
-    public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder, bool isOpenTelemetry = true) where TBuilder : IHostApplicationBuilder
+    public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder, bool isOpenTelemetry = true, bool isOpenTelemetryMetrics = true, bool isOpenTelemetryTracing = true) where TBuilder : IHostApplicationBuilder
     {
         // 配置OpenTelemetry以收集遥测数据
         if (isOpenTelemetry)
         {
-            builder.ConfigureOpenTelemetry();
+            builder.ConfigureOpenTelemetry(isOpenTelemetryMetrics, isOpenTelemetryTracing);
         }
 
         // 添加默认健康检查
@@ -116,12 +116,12 @@ public static class Extensions
     /// <param name="builder">主机应用程序构建器实例</param>
     /// <param name="isOpenTelemetry">是否启用OpenTelemetry</param>
     /// <returns>更新后的构建器实例</returns>
-    public static IServiceCollection AddServiceDefaults(this IServiceCollection builder, bool isOpenTelemetry = true)
+    public static IServiceCollection AddServiceDefaults(this IServiceCollection builder, bool isOpenTelemetry = true, bool isOpenTelemetryMetrics = true, bool isOpenTelemetryTracing = true)
     {
         if (isOpenTelemetry)
         {
             // 配置OpenTelemetry以收集遥测数据
-            builder.ConfigureOpenTelemetry();
+            builder.ConfigureOpenTelemetry(isOpenTelemetryMetrics, isOpenTelemetryTracing);
         }
 
         // 添加默认健康检查
@@ -180,14 +180,14 @@ public static class Extensions
     /// <param name="builder">主机应用程序构建器实例</param>
     /// <param name="isOpenTelemetry">是否启用OpenTelemetry</param>
     /// <returns>更新后的构建器实例</returns>
-    public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder, bool isOpenTelemetry = true) where TBuilder : IHostApplicationBuilder
+    public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder, bool isOpenTelemetry = true, bool isOpenTelemetryMetrics = true, bool isOpenTelemetryTracing = true) where TBuilder : IHostApplicationBuilder
     {
         // 为日志添加OpenTelemetry支持
         builder.Logging.ConfigureOpenTelemetryLogger(isOpenTelemetry);
         if (isOpenTelemetry)
         {
             // 添加并配置OpenTelemetry服务
-            builder.Services.ConfigureOpenTelemetry();
+            builder.Services.ConfigureOpenTelemetry(isOpenTelemetryMetrics, isOpenTelemetryTracing);
         }
 
         return builder;
@@ -197,14 +197,18 @@ public static class Extensions
     /// 配置OpenTelemetry服务以收集指标和追踪信息
     /// </summary>
     /// <param name="serviceCollection">主机应用程序构建器实例</param>
+    /// <param name="isOpenTelemetryMetrics">是否启用指标收集</param>
+    /// <param name="isOpenTelemetryTracing">是否启用链路追踪</param>
     /// <returns>更新后的构建器实例</returns>
-    public static IServiceCollection ConfigureOpenTelemetry(this IServiceCollection serviceCollection)
+    public static IServiceCollection ConfigureOpenTelemetry(this IServiceCollection serviceCollection, bool isOpenTelemetryMetrics = true, bool isOpenTelemetryTracing = true)
     {
-        // 为日志添加OpenTelemetry支持
+        if (!isOpenTelemetryMetrics && !isOpenTelemetryTracing)
+        {
+            return serviceCollection;
+        }
+
         var serviceName = Environment.GetEnvironmentVariable("ServerType") ?? AppDomain.CurrentDomain.FriendlyName;
-        // 添加并配置OpenTelemetry服务
         var openTelemetryBuilder = serviceCollection.AddOpenTelemetry()
-                                                    // 配置资源
                                                     .ConfigureResource(configure =>
                                                     {
                                                         if (!string.IsNullOrWhiteSpace(serviceName))
@@ -220,44 +224,52 @@ public static class Extensions
                                                         configure.AddHostDetector();
                                                         // 添加进程检测器以收集当前进程信息
                                                         configure.AddProcessDetector();
-                                                    })
-                                                    // 配置指标
-                                                    .WithMetrics(metrics =>
-                                                    {
-                                                        // 添加ASP.NET Core、HTTP客户端和运行时指标检测
-                                                        metrics.AddAspNetCoreInstrumentation()
-                                                               .AddHttpClientInstrumentation()
-                                                               .AddRuntimeInstrumentation();
-                                                        // Metrics provides by ASP.NET Core in .NET 8
-                                                        metrics.AddMeter("Microsoft.AspNetCore.Hosting");
-                                                        metrics.AddMeter("Microsoft.AspNetCore.Server.Kestrel");
+                                                    });
 
-                                                        // Metrics provided by System.Net libraries
-                                                        metrics.AddMeter("System.Net.Http");
-                                                        metrics.AddMeter("System.Net.NameResolution");
-                                                        metrics.AddMeter("GameFrameX.DataBase.Mongo");
-                                                        metrics.AddMeter("GameFrameX.RemoteMessaging");
-                                                    })
-                                                    // 配置追踪
-                                                    .WithTracing(tracing =>
-                                                    {
-                                                        // 添加追踪源并配置ASP.NET Core追踪
-                                                        tracing.AddSource(serviceName)
-                                                               .AddSource("GameFrameX.RemoteMessaging")
-                                                               .AddAspNetCoreInstrumentation(aspNetCoreTraceInstrumentationOptions =>
-                                                                                                 // 排除健康检查请求的追踪
-                                                                                             {
-                                                                                                 aspNetCoreTraceInstrumentationOptions.Filter = context => { return !context.Request.Path.StartsWithSegments(HealthEndpointPath) && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath); };
-                                                                                             })
-                                                               // 取消以下注释以启用gRPC检测（需要OpenTelemetry.Instrumentation.GrpcNetClient包）
-                                                               //.AddGrpcClientInstrumentation()
-                                                               .AddHttpClientInstrumentation();
-                                                        // 开发环境中增加控制台输出
-                                                        if (EnvironmentHelper.IsDevelopment())
-                                                        {
-                                                            tracing.AddConsoleExporter();
-                                                        }
-                                                    }).UseGrafana();
+        if (isOpenTelemetryMetrics)
+        {
+            openTelemetryBuilder = openTelemetryBuilder.WithMetrics(metrics =>
+            {
+                // 添加ASP.NET Core、HTTP客户端和运行时指标检测
+                metrics.AddAspNetCoreInstrumentation()
+                       .AddHttpClientInstrumentation()
+                       .AddRuntimeInstrumentation();
+                // Metrics provides by ASP.NET Core in .NET 8
+                metrics.AddMeter("Microsoft.AspNetCore.Hosting");
+                metrics.AddMeter("Microsoft.AspNetCore.Server.Kestrel");
+
+                // Metrics provided by System.Net libraries
+                metrics.AddMeter("System.Net.Http");
+                metrics.AddMeter("System.Net.NameResolution");
+                metrics.AddMeter("GameFrameX.DataBase.Mongo");
+                metrics.AddMeter("GameFrameX.RemoteMessaging");
+            });
+        }
+
+        if (isOpenTelemetryTracing)
+        {
+            openTelemetryBuilder = openTelemetryBuilder.WithTracing(tracing =>
+            {
+                // 添加追踪源并配置ASP.NET Core追踪
+                tracing.AddSource(serviceName)
+                       .AddSource("GameFrameX.RemoteMessaging")
+                       .AddAspNetCoreInstrumentation(aspNetCoreTraceInstrumentationOptions =>
+                                                                                         // 排除健康检查请求的追踪
+                                                                                     {
+                                                                                         aspNetCoreTraceInstrumentationOptions.Filter = context => { return !context.Request.Path.StartsWithSegments(HealthEndpointPath) && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath); };
+                                                                                     })
+                       // 取消以下注释以启用gRPC检测（需要OpenTelemetry.Instrumentation.GrpcNetClient包）
+                       //.AddGrpcClientInstrumentation()
+                       .AddHttpClientInstrumentation();
+                // 开发环境中增加控制台输出
+                if (EnvironmentHelper.IsDevelopment())
+                {
+                    tracing.AddConsoleExporter();
+                }
+            });
+        }
+
+        openTelemetryBuilder.UseGrafana();
 
         // 添加OpenTelemetry导出器
         // serviceCollection.AddOpenTelemetryExporters(openTelemetryBuilder);

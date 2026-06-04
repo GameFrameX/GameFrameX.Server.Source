@@ -149,7 +149,7 @@ public abstract partial class AppStartUpBase
                 logging.AddSerilog(Log.Logger);
                 logging.SetMinimumLevel(minimumLevelLogLevel);
             });
-            builder.AddServiceDefaults(Setting.IsOpenTelemetry);
+            builder.AddServiceDefaults(Setting.IsOpenTelemetry, Setting.IsOpenTelemetryMetrics, Setting.IsOpenTelemetryTracing);
             var app = builder.Build();
             app.MapDefaultEndpoints();
             var ipList = NetHelper.GetLocalIpList();
