@@ -31,6 +31,8 @@
 
 using GameFrameX.Core.Actors.Impl;
 using GameFrameX.Utility.Setting;
+using System.Reflection;
+using System.Threading.Tasks.Dataflow;
 
 namespace GameFrameX.Tests.Core.Actors;
 
@@ -51,6 +53,43 @@ public sealed class WorkerActorTests
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task.WaitAsync(TimeSpan.FromSeconds(1)));
         Assert.False(executed);
+    }
+
+    [Fact]
+    public async Task SendAsync_WhenQueueIsCompleted_ShouldCompleteAsRejected()
+    {
+        EnsureSettings();
+        var worker = new WorkerActor(2);
+        var executed = false;
+        var queue = GetQueue(worker);
+        queue.Complete();
+        await queue.Completion.WaitAsync(TimeSpan.FromSeconds(1));
+
+        var task = worker.SendAsync(() => executed = true);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => task.WaitAsync(TimeSpan.FromSeconds(1)));
+        Assert.False(executed);
+    }
+
+    [Fact]
+    public async Task SendAsync_ShouldRunAcceptedWorkInOrder()
+    {
+        EnsureSettings();
+        var worker = new WorkerActor(3);
+        var order = new List<int>();
+
+        var first = worker.SendAsync(() => order.Add(1), timeOut: 5000);
+        var second = worker.SendAsync(() => order.Add(2), timeOut: 5000);
+
+        await Task.WhenAll(first, second).WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(new[] { 1, 2 }, order);
+    }
+
+    private static IDataflowBlock GetQueue(WorkerActor worker)
+    {
+        var property = typeof(WorkerActor).GetProperty("ActionBlock", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(property);
+        return Assert.IsAssignableFrom<IDataflowBlock>(property!.GetValue(worker));
     }
 
     private static void EnsureSettings()
