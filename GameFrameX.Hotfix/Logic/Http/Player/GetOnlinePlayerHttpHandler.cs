@@ -38,6 +38,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Player;
 /// </summary>
 [HttpMessageMapping(typeof(GetOnlinePlayerHttpHandler))]
 [HttpMessageResponse(typeof(GetOnlinePlayerResponse))]
+[RequireHttpSignature]
 [Description("获取在线人数")]
 public sealed class GetOnlinePlayerHttpHandler : BaseHttpHandler
 {

@@ -76,12 +76,12 @@ public abstract class BaseHttpHandler : IHttpHandler
     /// 获取是否需要校验签名，默认为不需要校验。
     /// </summary>
     /// <remarks>
-    /// Gets whether signature validation is required, defaults to no validation.
+    /// Gets whether signature validation is required, defaults to no validation unless enabled globally or by attribute.
     /// </remarks>
     /// <value>如果需要校验签名则为 <c>true</c>；否则为 <c>false</c> / <c>true</c> if signature validation is required; otherwise <c>false</c></value>
     public virtual bool IsCheckSign
     {
-        get { return false; }
+        get { return GlobalSettings.CurrentSetting?.HttpRequireSign == true || Attribute.IsDefined(GetType(), typeof(RequireHttpSignatureAttribute), true); }
     }
 
 

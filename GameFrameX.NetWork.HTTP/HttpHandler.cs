@@ -208,6 +208,7 @@ public static class HttpHandler
             var isChecked = handler.CheckSign(paramMap, out var error);
             if (isChecked == false)
             {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 await context.Response.WriteAsync(error);
                 return;
             }

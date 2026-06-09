@@ -20,49 +20,22 @@
 //   GitHub 仓库：https://github.com/GameFrameX
 //   GitHub Repository: https://github.com/GameFrameX
 //   Gitee  仓库：https://gitee.com/GameFrameX
-//   Gitee Repository:  https://gitee.com/GameFrameX
+//   Gitee Repository: https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
-//   CNB Repository:  https://cnb.cool/GameFrameX
+//   CNB Repository: https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-using GameFrameX.Apps.Common.Session;
-
-namespace GameFrameX.Hotfix.Logic.Http.Player;
+namespace GameFrameX.NetWork.HTTP;
 
 /// <summary>
-/// 将指定角色的玩家从当前服务断开
-/// http://localhost:20001/game/api/KickOffLineByUserIdPlayer
+/// 标记必须进行 HTTP 签名校验的处理器。
 /// </summary>
-[HttpMessageMapping(typeof(KickOffLineByUserIdPlayerHttpHandler))]
-[HttpMessageRequest(typeof(KickOffLineByUserIdPlayerRequest))]
-[RequireHttpSignature]
-[Description("将指定角色的玩家从当前服务断开")]
-public sealed class KickOffLineByUserIdPlayerHttpHandler : BaseHttpHandler
+/// <remarks>
+/// Marks an HTTP handler as requiring signature validation.
+/// </remarks>
+[AttributeUsage(AttributeTargets.Class, Inherited = true)]
+public sealed class RequireHttpSignatureAttribute : Attribute
 {
-    /// <summary>
-    /// </summary>
-    /// <param name="ip"></param>
-    /// <param name="url"></param>
-    /// <param name="requestBase"></param>
-    /// <returns></returns>
-    public override Task<string> Action(string ip, string url, HttpMessageRequestBase requestBase)
-    {
-        var request = (KickOffLineByUserIdPlayerRequest)requestBase;
-        SessionManager.KickOffLineByUserId(request.RoleId);
-        return Task.FromResult(HttpJsonResult.SuccessString());
-    }
-}
-
-public sealed class KickOffLineByUserIdPlayerRequest : HttpMessageRequestBase
-{
-    /// <summary>
-    /// 角色Id
-    /// </summary>
-    [Description("角色Id")]
-    [Required]
-    [Range(1, long.MaxValue)]
-    public long RoleId { get; set; }
 }

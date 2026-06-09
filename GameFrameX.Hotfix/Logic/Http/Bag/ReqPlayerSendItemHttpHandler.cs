@@ -43,6 +43,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Bag;
 [HttpMessageMapping(typeof(ReqPlayerSendItemHttpHandler))]
 [HttpMessageRequest(typeof(ReqPlayerSendItemRequest))]
 [HttpMessageResponse(typeof(ReqPlayerSendItemResponse))]
+[RequireHttpSignature]
 [Description("请求给玩家发送道具")]
 public sealed class ReqPlayerSendItemHttpHandler : BaseHttpHandler
 {
