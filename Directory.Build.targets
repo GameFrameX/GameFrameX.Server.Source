@@ -1,0 +1,7 @@
+<Project>
+    <!-- 非打包项目不发布 API 文档，避免生成代码、热更程序集和测试项目产生 CS1591 噪音。 -->
+    <PropertyGroup Condition="'$(IsPackable)' == 'false' Or '$(IsTestProject)' == 'true'">
+        <GenerateDocumentationFile>false</GenerateDocumentationFile>
+        <DocumentationFile></DocumentationFile>
+    </PropertyGroup>
+</Project>
