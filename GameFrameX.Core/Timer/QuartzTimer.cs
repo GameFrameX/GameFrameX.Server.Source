@@ -63,7 +63,7 @@ public static class QuartzTimer
             return;
         }
 
-        _scheduler.DeleteJob(JobKey.Create(id.ToString()));
+        Scheduler.DeleteJob(JobKey.Create(id.ToString()));
     }
 
     /// <summary>
@@ -89,7 +89,7 @@ public static class QuartzTimer
             return;
         }
 
-        _scheduler.PauseJob(JobKey.Create(id.ToString()));
+        Scheduler.PauseJob(JobKey.Create(id.ToString()));
     }
 
     /// <summary>
@@ -115,7 +115,7 @@ public static class QuartzTimer
             return;
         }
 
-        _scheduler.ResumeJob(JobKey.Create(id.ToString()));
+        Scheduler.ResumeJob(JobKey.Create(id.ToString()));
     }
 
     /// <summary>
@@ -171,7 +171,7 @@ public static class QuartzTimer
             });
         }
 
-        _scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), builder.Build());
+        Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), builder.Build());
         return nextId;
     }
 
@@ -188,7 +188,7 @@ public static class QuartzTimer
         var nextId = NextId();
         var firstTimeOffset = DateTimeOffset.Now.Add(delay);
         var trigger = TriggerBuilder.Create().StartAt(firstTimeOffset).WithSimpleSchedule(x => x.WithMisfireHandlingInstructionNextWithRemainingCount()).Build();
-        _scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
+        Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
         return nextId;
     }
 
@@ -204,7 +204,7 @@ public static class QuartzTimer
     {
         var nextId = NextId();
         var trigger = TriggerBuilder.Create().StartNow().WithCronSchedule(cronExpression).Build();
-        _scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
+        Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
         return nextId;
     }
 
@@ -227,7 +227,7 @@ public static class QuartzTimer
 
         var nextId = NextId();
         var trigger = TriggerBuilder.Create().StartNow().WithSchedule(CronScheduleBuilder.DailyAtHourAndMinute(hour, minute)).Build();
-        _scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
+        Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
         return nextId;
     }
 
@@ -251,7 +251,7 @@ public static class QuartzTimer
 
         var nextId = NextId();
         var trigger = TriggerBuilder.Create().StartNow().WithSchedule(CronScheduleBuilder.AtHourAndMinuteOnGivenDaysOfWeek(hour, minute, dayOfWeeks)).Build();
-        _scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, gameEventArgs), trigger);
+        Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, gameEventArgs), trigger);
         return nextId;
     }
 
@@ -269,7 +269,7 @@ public static class QuartzTimer
     {
         var nextId = NextId();
         var trigger = TriggerBuilder.Create().StartNow().WithSchedule(CronScheduleBuilder.WeeklyOnDayAndHourAndMinute(dayOfWeek, hour, minute)).Build();
-        _scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, gameEventArgs), trigger);
+        Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, gameEventArgs), trigger);
         return nextId;
     }
 
@@ -293,7 +293,7 @@ public static class QuartzTimer
 
         var nextId = NextId();
         var trigger = TriggerBuilder.Create().StartNow().WithSchedule(CronScheduleBuilder.MonthlyOnDayAndHourAndMinute(dayOfMonth, hour, minute)).Build();
-        _scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, gameEventArgs), trigger);
+        Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, gameEventArgs), trigger);
         return nextId;
     }
 
@@ -455,16 +455,27 @@ public static class QuartzTimer
     /// <summary>
     /// Quartz调度器实例
     /// </summary>
+    private static readonly Lazy<Task<IScheduler>> SchedulerInitializer = new(CreateSchedulerAsync);
+
+    /// <summary>
+    /// Quartz调度器实例
+    /// </summary>
     private static IScheduler _scheduler;
 
     /// <summary>
-    /// 静态构造函数
-    /// 用于初始化调度器,确保只初始化一次
+    /// 已启动的 Quartz 调度器实例。
     /// </summary>
-    static QuartzTimer()
+    private static IScheduler Scheduler
     {
-        Init().Wait();
-        Start().Wait();
+        get
+        {
+            if (_scheduler == null)
+            {
+                throw new InvalidOperationException("QuartzTimer.Start must be awaited before using timer operations.");
+            }
+
+            return _scheduler;
+        }
     }
 
     /// <summary>
@@ -473,11 +484,11 @@ public static class QuartzTimer
     /// <remarks>
     /// 设置日志提供程序并创建调度器实例
     /// </remarks>
-    private static async Task Init()
+    private static async Task<IScheduler> CreateSchedulerAsync()
     {
         LogProvider.SetCurrentLogProvider(new ConsoleLogProvider());
         var factory = new StdSchedulerFactory();
-        _scheduler = await factory.GetScheduler();
+        return await factory.GetScheduler();
     }
 
     /// <summary>
@@ -489,7 +500,11 @@ public static class QuartzTimer
     /// </remarks>
     public static async Task Start()
     {
-        await _scheduler.Start();
+        _scheduler = await SchedulerInitializer.Value;
+        if (!_scheduler.IsStarted)
+        {
+            await _scheduler.Start();
+        }
     }
 
     /// <summary>
@@ -501,7 +516,21 @@ public static class QuartzTimer
     /// </remarks>
     public static Task Stop()
     {
-        return _scheduler.Shutdown();
+        if (!SchedulerInitializer.IsValueCreated && _scheduler == null)
+        {
+            return Task.CompletedTask;
+        }
+
+        return StopAsync();
+    }
+
+    private static async Task StopAsync()
+    {
+        var scheduler = _scheduler ?? await SchedulerInitializer.Value;
+        if (!scheduler.IsShutdown)
+        {
+            await scheduler.Shutdown();
+        }
     }
 
     /// <summary>
