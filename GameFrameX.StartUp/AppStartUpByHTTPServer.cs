@@ -108,16 +108,19 @@ public abstract partial class AppStartUpBase
 
             var openApiInfo = GetOpenApiInfo();
 
-            // 配置 CORS（跨域资源共享）- 允许所有来源
-            builder.Services.AddCors(options =>
+            var corsAllowedOrigins = ResolveHttpCorsAllowedOrigins(Setting.HttpCorsAllowedOrigins, development);
+            if (corsAllowedOrigins.Length > 0)
             {
-                options.AddDefaultPolicy(policy =>
+                builder.Services.AddCors(options =>
                 {
-                    policy.AllowAnyOrigin()
-                          .AllowAnyMethod()
-                          .AllowAnyHeader();
+                    options.AddDefaultPolicy(policy =>
+                    {
+                        policy.WithOrigins(corsAllowedOrigins)
+                              .AllowAnyMethod()
+                              .AllowAnyHeader();
+                    });
                 });
-            });
+            }
 
             // 在开发环境下配置Swagger
             if (development)
@@ -172,8 +175,10 @@ public abstract partial class AppStartUpBase
                 }
             }
 
-            // 启用 CORS 中间件
-            app.UseCors();
+            if (corsAllowedOrigins.Length > 0)
+            {
+                app.UseCors();
+            }
 
             // 配置全局异常处理
             app.UseExceptionHandler(ExceptionHandler);
@@ -261,6 +266,29 @@ public abstract partial class AppStartUpBase
             Description = LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.ApiDescription),
         };
         return openApiInfo;
+    }
+
+    private static string[] ResolveHttpCorsAllowedOrigins(string allowedOrigins, bool development)
+    {
+        if (!string.IsNullOrWhiteSpace(allowedOrigins))
+        {
+            return allowedOrigins.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                                 .Distinct(StringComparer.OrdinalIgnoreCase)
+                                 .ToArray();
+        }
+
+        if (!development)
+        {
+            return Array.Empty<string>();
+        }
+
+        return new[]
+        {
+            "http://localhost",
+            "https://localhost",
+            "http://127.0.0.1",
+            "https://127.0.0.1",
+        };
     }
 
     /// <summary>

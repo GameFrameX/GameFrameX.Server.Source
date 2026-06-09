@@ -604,6 +604,26 @@ public class StartupOptions
     public long HttpMaxProtoBodyBytes { get; set; } = 1024 * 1024;
 
     /// <summary>
+    /// HTTP 是否全局要求签名校验。
+    /// </summary>
+    /// <value>如果所有 HTTP handler 都要求签名则为 <c>true</c>；否则仅标记的 handler 要求签名 / <c>true</c> if all HTTP handlers require signatures; otherwise only marked handlers require signatures</value>
+    /// <remarks>
+    /// Defaults to false for local learning and migration compatibility. Production deployments can enable it to require signatures globally.
+    /// </remarks>
+    [Option(nameof(HttpRequireSign), DefaultValue = false, Description = "HTTP是否全局要求签名校验,默认false。生产环境可开启")]
+    public bool HttpRequireSign { get; set; }
+
+    /// <summary>
+    /// HTTP CORS 允许的 Origin 白名单。
+    /// </summary>
+    /// <value>HTTP CORS 允许的 Origin 白名单，多个值用逗号或分号分隔 / HTTP CORS allowed origin whitelist, separated by comma or semicolon</value>
+    /// <remarks>
+    /// Production CORS is disabled when this option is empty. Development mode allows localhost origins when this option is empty.
+    /// </remarks>
+    [Option(nameof(HttpCorsAllowedOrigins), DefaultValue = "", Description = "HTTP CORS允许的Origin白名单,多个值用逗号或分号分隔。生产环境空值时不启用CORS")]
+    public string HttpCorsAllowedOrigins { get; set; }
+
+    /// <summary>
     /// 是否启用 WebSocket 服务
     /// </summary>
     /// <value>如果启用 WebSocket 服务则为 <c>true</c>；否则为 <c>false</c>。默认值为 <c>false</c> / <c>true</c> if WebSocket service is enabled; otherwise, <c>false</c>. Default is <c>false</c></value>

@@ -546,6 +546,22 @@ public sealed class AppSetting
     public long HttpMaxProtoBodyBytes { get; set; } = 1024 * 1024;
 
     /// <summary>
+    /// HTTP 是否全局要求签名校验。
+    /// </summary>
+    /// <remarks>
+    /// Whether all HTTP handlers require signature validation globally.
+    /// </remarks>
+    public bool HttpRequireSign { get; set; }
+
+    /// <summary>
+    /// HTTP CORS 允许的 Origin 白名单，多个值用逗号或分号分隔。
+    /// </summary>
+    /// <remarks>
+    /// HTTP CORS allowed origin whitelist, separated by comma or semicolon.
+    /// </remarks>
+    public string HttpCorsAllowedOrigins { get; set; }
+
+    /// <summary>
     /// Prometheus指标端口（如果为0则使用HTTP端口）
     /// </summary>
     /// <remarks>
