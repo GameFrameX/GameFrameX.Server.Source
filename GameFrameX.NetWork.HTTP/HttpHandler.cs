@@ -31,6 +31,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Reflection;
+using System.Text;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Http.Normalization;
 using GameFrameX.Foundation.Json;
@@ -55,6 +56,7 @@ public static class HttpHandler
 {
     private const string JsonContentType = "application/json; charset=utf-8";
     private const string ProtoBufContentType = "application/x-protobuf";
+    private const int RequestBodyBufferSize = 81920;
 
     /// <summary>
     /// 处理 HTTP 请求。
@@ -111,16 +113,19 @@ public static class HttpHandler
             }
             else if (isProtoBuf)
             {
-                using (var memoryStream = new MemoryStream())
+                var maxBodyBytes = GetEffectiveRequestBodyLimit(GlobalSettings.CurrentSetting.HttpMaxProtoBodyBytes);
+                var readResult = await TryReadRequestBodyBytes(context, maxBodyBytes);
+                if (!readResult.Success)
                 {
-                    await context.Request.Body.CopyToAsync(memoryStream);
-                    var buffer = memoryStream.ToArray();
-                    var messageObjectHttp = ProtoBufSerializerHelper.Deserialize<MessageHttpObject>(buffer);
-                    var messageType = MessageProtoHelper.GetMessageTypeById(messageObjectHttp.Id);
-                    message = (MessageObject)ProtoBufSerializerHelper.Deserialize(messageObjectHttp.Body, messageType);
-                    message.SetMessageId(messageObjectHttp.Id);
-                    message.SetUniqueId(messageObjectHttp.UniqueId);
+                    return;
                 }
+
+                var buffer = readResult.Buffer;
+                var messageObjectHttp = ProtoBufSerializerHelper.Deserialize<MessageHttpObject>(buffer);
+                var messageType = MessageProtoHelper.GetMessageTypeById(messageObjectHttp.Id);
+                message = (MessageObject)ProtoBufSerializerHelper.Deserialize(messageObjectHttp.Body, messageType);
+                message.SetMessageId(messageObjectHttp.Id);
+                message.SetUniqueId(messageObjectHttp.UniqueId);
             }
             else
             {
@@ -128,8 +133,15 @@ public static class HttpHandler
 
                 if (isJson)
                 {
-                    using var streamReader = new StreamReader(context.Request.Body);
-                    jsonBody = await streamReader.ReadToEndAsync();
+                    var maxBodyBytes = GetEffectiveRequestBodyLimit(GlobalSettings.CurrentSetting.HttpMaxJsonBodyBytes);
+                    var readResult = await TryReadRequestBodyBytes(context, maxBodyBytes);
+                    if (!readResult.Success)
+                    {
+                        return;
+                    }
+
+                    var buffer = readResult.Buffer;
+                    jsonBody = Encoding.UTF8.GetString(buffer);
                     var jsonKv = JsonHelper.Deserialize<Dictionary<string, object>>(jsonBody);
                     foreach (var keyValuePair in jsonKv)
                     {
@@ -309,5 +321,54 @@ public static class HttpHandler
             LogHelper.Error("HTTP JSON ExceptionOccurred {logHeader} {message} {stackTrace}", logHeader, e.Message, e.StackTrace);
             await context.Response.WriteAsync(HttpJsonResult.FailString(e.Message));
         }
+    }
+
+    private static long GetEffectiveRequestBodyLimit(long contentTypeLimit)
+    {
+        var requestLimit = GlobalSettings.CurrentSetting.HttpMaxRequestBodyBytes;
+        if (requestLimit <= 0 || contentTypeLimit <= 0)
+        {
+            return 0;
+        }
+
+        return Math.Min(requestLimit, contentTypeLimit);
+    }
+
+    private static async Task<(bool Success, byte[] Buffer)> TryReadRequestBodyBytes(HttpContext context, long maxBodyBytes)
+    {
+        if (context.Request.ContentLength > maxBodyBytes)
+        {
+            await WriteRequestBodyTooLarge(context, maxBodyBytes);
+            return (false, null);
+        }
+
+        using var memoryStream = new MemoryStream();
+        var readBuffer = new byte[RequestBodyBufferSize];
+        long totalRead = 0;
+        while (true)
+        {
+            var read = await context.Request.Body.ReadAsync(readBuffer);
+            if (read == 0)
+            {
+                break;
+            }
+
+            totalRead += read;
+            if (totalRead > maxBodyBytes)
+            {
+                await WriteRequestBodyTooLarge(context, maxBodyBytes);
+                return (false, null);
+            }
+
+            memoryStream.Write(readBuffer, 0, read);
+        }
+
+        return (true, memoryStream.ToArray());
+    }
+
+    private static Task WriteRequestBodyTooLarge(HttpContext context, long maxBodyBytes)
+    {
+        context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
+        return context.Response.WriteAsync(HttpJsonResult.ErrorString(StatusCodes.Status413PayloadTooLarge, $"HTTP request body is too large. Max allowed bytes: {maxBodyBytes}."));
     }
 }

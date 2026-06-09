@@ -130,6 +130,22 @@ public sealed class RemoteMessagingBuilder
     }
 
     /// <summary>
+    /// 配置网络包和解码载荷大小限制。
+    /// </summary>
+    /// <remarks>
+    /// Configures packet and decoded payload size limits.
+    /// </remarks>
+    /// <param name="maxPacketSize">最大网络包大小（字节，包含包头） / Maximum packet size in bytes, including headers</param>
+    /// <param name="maxDecompressedSize">最大解码载荷大小（字节） / Maximum decoded payload size in bytes</param>
+    /// <returns>构建器实例 / The builder instance</returns>
+    public RemoteMessagingBuilder WithPacketLimits(int maxPacketSize, int maxDecompressedSize)
+    {
+        _options.MaxPacketSize = maxPacketSize;
+        _options.MaxDecompressedSize = maxDecompressedSize;
+        return this;
+    }
+
+    /// <summary>
     /// 配置传输协议适配器工厂。可用于切换 TCP/KCP/QUIC 等不同协议实现。
     /// </summary>
     /// <remarks>
@@ -199,7 +215,9 @@ public sealed class RemoteMessagingBuilder
         var messageCodec = new DefaultMessageCodec(
             compressionRegistry,
             _options.DefaultCompressionAlgorithmId,
-            _options.CompressionThreshold);
+            _options.CompressionThreshold,
+            _options.MaxPacketSize,
+            _options.MaxDecompressedSize);
         var requestResponseMatcher = new RequestResponseMatcher();
         var protocolVersionNegotiator = new DefaultProtocolVersionNegotiator();
 

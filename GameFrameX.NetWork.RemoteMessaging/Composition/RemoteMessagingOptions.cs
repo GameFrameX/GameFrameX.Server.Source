@@ -131,6 +131,24 @@ public sealed class RemoteMessagingOptions
     public int CompressionThreshold { get; set; } = 512;
 
     /// <summary>
+    /// 最大网络包大小（字节，包含包头）。默认 1MB。
+    /// </summary>
+    /// <remarks>
+    /// Maximum packet size in bytes, including headers. Defaults to 1 MB.
+    /// </remarks>
+    /// <value>最大网络包大小 / Maximum packet size in bytes</value>
+    public int MaxPacketSize { get; set; } = 1024 * 1024;
+
+    /// <summary>
+    /// 最大解码载荷大小（字节）。默认 1MB。
+    /// </summary>
+    /// <remarks>
+    /// Maximum decoded payload size in bytes. Defaults to 1 MB.
+    /// </remarks>
+    /// <value>最大解码载荷大小 / Maximum decoded payload size in bytes</value>
+    public int MaxDecompressedSize { get; set; } = 1024 * 1024;
+
+    /// <summary>
     /// 压缩算法注册表。为空时将使用默认注册表。
     /// </summary>
     /// <remarks>
@@ -186,6 +204,8 @@ public sealed class RemoteMessagingOptions
             CircuitBreakerOpenDurationMs = GetEnvInt("CircuitBreakerOpenDurationMs", 30000),
             DefaultCompressionAlgorithmId = GetEnvByte("DefaultCompressionAlgorithmId", DeflateMessageCompressionAlgorithm.Id),
             CompressionThreshold = GetEnvInt("CompressionThreshold", 512),
+            MaxPacketSize = GetEnvInt("MaxPacketSize", 1024 * 1024),
+            MaxDecompressedSize = GetEnvInt("MaxDecompressedSize", 1024 * 1024),
             EnableFaultInjection = GetEnvBool("EnableFaultInjection", false),
             FaultInjectionType = Environment.GetEnvironmentVariable("RemoteMessaging__FaultInjection__Type") ?? "None",
             FaultInjectionDelayMs = GetEnvInt("FaultInjectionDelayMs", 0),

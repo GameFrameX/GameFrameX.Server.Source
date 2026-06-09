@@ -234,6 +234,9 @@ public class AppSettingTests
         Assert.Equal(15, appSetting.ActorRecycleTime);
         Assert.Equal(30_000, appSetting.ActorQueueTimeOut);
         Assert.Equal(3000, appSetting.MaxClientCount);
+        Assert.Equal(1_048_576, appSetting.HttpMaxRequestBodyBytes);
+        Assert.Equal(1_048_576, appSetting.HttpMaxJsonBodyBytes);
+        Assert.Equal(1_048_576, appSetting.HttpMaxProtoBodyBytes);
     }
 
     /// <summary>
@@ -259,6 +262,9 @@ public class AppSettingTests
         appSetting.ActorRecycleTime = 30;
         appSetting.ActorQueueTimeOut = 60_000;
         appSetting.MaxClientCount = 5000;
+        appSetting.HttpMaxRequestBodyBytes = 2_097_152;
+        appSetting.HttpMaxJsonBodyBytes = 524_288;
+        appSetting.HttpMaxProtoBodyBytes = 786_432;
 
         // Assert
         Assert.True(appSetting.IsOpenTelemetryMetrics);
@@ -274,6 +280,9 @@ public class AppSettingTests
         Assert.Equal(30, appSetting.ActorRecycleTime);
         Assert.Equal(60_000, appSetting.ActorQueueTimeOut);
         Assert.Equal(5000, appSetting.MaxClientCount);
+        Assert.Equal(2_097_152, appSetting.HttpMaxRequestBodyBytes);
+        Assert.Equal(524_288, appSetting.HttpMaxJsonBodyBytes);
+        Assert.Equal(786_432, appSetting.HttpMaxProtoBodyBytes);
     }
 
     /// <summary>

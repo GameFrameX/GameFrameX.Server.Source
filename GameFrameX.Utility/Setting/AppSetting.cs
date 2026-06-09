@@ -522,6 +522,30 @@ public sealed class AppSetting
     public ushort HttpsPort { get; set; }
 
     /// <summary>
+    /// HTTP 请求体最大字节数。
+    /// </summary>
+    /// <remarks>
+    /// Maximum HTTP request body size in bytes.
+    /// </remarks>
+    public long HttpMaxRequestBodyBytes { get; set; } = 1024 * 1024;
+
+    /// <summary>
+    /// HTTP JSON 请求体最大字节数。
+    /// </summary>
+    /// <remarks>
+    /// Maximum HTTP JSON request body size in bytes.
+    /// </remarks>
+    public long HttpMaxJsonBodyBytes { get; set; } = 1024 * 1024;
+
+    /// <summary>
+    /// HTTP ProtoBuf 请求体最大字节数。
+    /// </summary>
+    /// <remarks>
+    /// Maximum HTTP ProtoBuf request body size in bytes.
+    /// </remarks>
+    public long HttpMaxProtoBodyBytes { get; set; } = 1024 * 1024;
+
+    /// <summary>
     /// Prometheus指标端口（如果为0则使用HTTP端口）
     /// </summary>
     /// <remarks>

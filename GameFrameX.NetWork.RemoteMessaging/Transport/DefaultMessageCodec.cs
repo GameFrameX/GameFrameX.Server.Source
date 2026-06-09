@@ -29,6 +29,7 @@
 
 using System.Buffers;
 using System.Buffers.Binary;
+using System.IO;
 using GameFrameX.ProtoBuf.Net;
 
 namespace GameFrameX.NetWork.RemoteMessaging.Transport;
@@ -46,7 +47,10 @@ internal sealed class DefaultMessageCodec : IMessageCodec
     /// 总包头含长度字段：4 + 10 = 14
     /// </summary>
     private const int InnerPackageHeaderLength = 14;
+    private const int DefaultMaxPacketSize = 1024 * 1024;
     private readonly int _compressThreshold;
+    private readonly int _maxPacketSize;
+    private readonly int _maxDecompressedSize;
     private readonly byte _defaultCompressionAlgorithmId;
     private readonly IMessageCompressionRegistry _compressionRegistry;
 
@@ -70,17 +74,31 @@ internal sealed class DefaultMessageCodec : IMessageCodec
     /// <param name="compressionRegistry">压缩算法注册表 / The compression algorithm registry</param>
     /// <param name="defaultCompressionAlgorithmId">默认压缩算法 ID（0 表示不压缩） / Default compression algorithm ID (0 means no compression)</param>
     /// <param name="compressThreshold">压缩阈值（字节），超过此值才压缩 / Compression threshold in bytes; compression is only attempted above this value</param>
+    /// <param name="maxPacketSize">最大网络包大小（字节，包含包头） / Maximum packet size in bytes, including headers</param>
+    /// <param name="maxDecompressedSize">最大解码载荷大小（字节） / Maximum decoded payload size in bytes</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="compressionRegistry"/> 为 null 时抛出 / Thrown when <paramref name="compressionRegistry"/> is null</exception>
-    /// <exception cref="ArgumentOutOfRangeException">当 <paramref name="compressThreshold"/> 为负数或 <paramref name="defaultCompressionAlgorithmId"/> 未注册时抛出 / Thrown when <paramref name="compressThreshold"/> is negative or <paramref name="defaultCompressionAlgorithmId"/> is not registered</exception>
+    /// <exception cref="ArgumentOutOfRangeException">当参数超出范围或 <paramref name="defaultCompressionAlgorithmId"/> 未注册时抛出 / Thrown when an argument is out of range or <paramref name="defaultCompressionAlgorithmId"/> is not registered</exception>
     public DefaultMessageCodec(
         IMessageCompressionRegistry compressionRegistry,
         byte defaultCompressionAlgorithmId,
-        int compressThreshold = 512)
+        int compressThreshold = 512,
+        int maxPacketSize = DefaultMaxPacketSize,
+        int maxDecompressedSize = DefaultMaxPacketSize)
     {
         ArgumentNullException.ThrowIfNull(compressionRegistry);
         if (compressThreshold < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(compressThreshold), "Compression threshold must be greater than or equal to 0.");
+        }
+
+        if (maxPacketSize < InnerPackageHeaderLength)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxPacketSize), $"Maximum packet size must be greater than or equal to {InnerPackageHeaderLength}.");
+        }
+
+        if (maxDecompressedSize < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxDecompressedSize), "Maximum decompressed size must be greater than or equal to 0.");
         }
 
         if (defaultCompressionAlgorithmId > 0 && !compressionRegistry.TryGet(defaultCompressionAlgorithmId, out _))
@@ -91,6 +109,8 @@ internal sealed class DefaultMessageCodec : IMessageCodec
         _compressionRegistry = compressionRegistry;
         _defaultCompressionAlgorithmId = defaultCompressionAlgorithmId;
         _compressThreshold = compressThreshold;
+        _maxPacketSize = maxPacketSize;
+        _maxDecompressedSize = maxDecompressedSize;
     }
 
     /// <summary>
@@ -144,10 +164,7 @@ internal sealed class DefaultMessageCodec : IMessageCodec
         {
             await ReadExactAsync(stream, lengthBuffer.AsMemory(0, 4), cancellationToken);
             var totalLength = BinaryPrimitives.ReadInt32BigEndian(lengthBuffer.AsSpan(0, 4));
-            if (totalLength < InnerPackageHeaderLength)
-            {
-                return null;
-            }
+            ValidatePacketLength(totalLength);
 
             var bodyLength = totalLength - 4;
             var bodyBuffer = ArrayPool<byte>.Shared.Rent(bodyLength);
@@ -161,6 +178,7 @@ internal sealed class DefaultMessageCodec : IMessageCodec
                 var payloadLength = totalLength - InnerPackageHeaderLength;
                 var messageData = new byte[payloadLength];
                 Buffer.BlockCopy(bodyBuffer, 10, messageData, 0, payloadLength);
+                ValidateDecodedPayloadLength(messageData.Length);
                 if (algorithmId > 0)
                 {
                     if (!_compressionRegistry.TryGet(algorithmId, out var compressionAlgorithm))
@@ -169,6 +187,7 @@ internal sealed class DefaultMessageCodec : IMessageCodec
                     }
 
                     messageData = compressionAlgorithm.Decompress(messageData);
+                    ValidateDecodedPayloadLength(messageData.Length);
                 }
 
                 var messageType = MessageProtoHelper.GetMessageTypeById(messageId);
@@ -212,6 +231,22 @@ internal sealed class DefaultMessageCodec : IMessageCodec
             }
 
             offset += readLength;
+        }
+    }
+
+    private void ValidatePacketLength(int totalLength)
+    {
+        if (totalLength < InnerPackageHeaderLength || totalLength > _maxPacketSize)
+        {
+            throw new InvalidDataException($"Invalid remote message packet length: {totalLength}. Allowed range: {InnerPackageHeaderLength}-{_maxPacketSize}.");
+        }
+    }
+
+    private void ValidateDecodedPayloadLength(int payloadLength)
+    {
+        if (payloadLength > _maxDecompressedSize)
+        {
+            throw new InvalidDataException($"Remote message payload length exceeds limit. Payload length: {payloadLength}, max: {_maxDecompressedSize}.");
         }
     }
 }

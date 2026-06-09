@@ -135,6 +135,7 @@ public abstract partial class AppStartUpBase
             // 配置Web主机
             var hostBuilder = builder.WebHost.UseKestrel(options =>
             {
+                options.Limits.MaxRequestBodySize = Setting.HttpMaxRequestBodyBytes;
                 options.ListenAnyIP(Setting.HttpPort);
 
                 if (Setting.HttpsPort > 0 && NetHelper.PortIsAvailable(Setting.HttpsPort))

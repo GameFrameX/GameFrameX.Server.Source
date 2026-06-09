@@ -574,6 +574,36 @@ public class StartupOptions
     public ushort HttpsPort { get; set; }
 
     /// <summary>
+    /// HTTP 请求体最大字节数。
+    /// </summary>
+    /// <value>HTTP 请求体最大字节数。默认值为 1MB / Maximum HTTP request body size in bytes. Default is 1 MB</value>
+    /// <remarks>
+    /// HTTP request body size limit in bytes. Applied at Kestrel level.
+    /// </remarks>
+    [Option(nameof(HttpMaxRequestBodyBytes), DefaultValue = 1048576L, Description = "HTTP 请求体最大字节数,默认 1MB")]
+    public long HttpMaxRequestBodyBytes { get; set; } = 1024 * 1024;
+
+    /// <summary>
+    /// HTTP JSON 请求体最大字节数。
+    /// </summary>
+    /// <value>HTTP JSON 请求体最大字节数。默认值为 1MB / Maximum HTTP JSON request body size in bytes. Default is 1 MB</value>
+    /// <remarks>
+    /// HTTP JSON request body size limit in bytes. Applied before reading the body into memory.
+    /// </remarks>
+    [Option(nameof(HttpMaxJsonBodyBytes), DefaultValue = 1048576L, Description = "HTTP JSON 请求体最大字节数,默认 1MB")]
+    public long HttpMaxJsonBodyBytes { get; set; } = 1024 * 1024;
+
+    /// <summary>
+    /// HTTP ProtoBuf 请求体最大字节数。
+    /// </summary>
+    /// <value>HTTP ProtoBuf 请求体最大字节数。默认值为 1MB / Maximum HTTP ProtoBuf request body size in bytes. Default is 1 MB</value>
+    /// <remarks>
+    /// HTTP ProtoBuf request body size limit in bytes. Applied before deserialization.
+    /// </remarks>
+    [Option(nameof(HttpMaxProtoBodyBytes), DefaultValue = 1048576L, Description = "HTTP ProtoBuf 请求体最大字节数,默认 1MB")]
+    public long HttpMaxProtoBodyBytes { get; set; } = 1024 * 1024;
+
+    /// <summary>
     /// 是否启用 WebSocket 服务
     /// </summary>
     /// <value>如果启用 WebSocket 服务则为 <c>true</c>；否则为 <c>false</c>。默认值为 <c>false</c> / <c>true</c> if WebSocket service is enabled; otherwise, <c>false</c>. Default is <c>false</c></value>
