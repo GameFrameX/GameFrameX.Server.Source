@@ -167,7 +167,7 @@ Server/
 
 ### 요구 사항
 
-- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)만 지원합니다. .NET 8/9는 지원하지 않습니다.
 - [MongoDB 4.x+](https://www.mongodb.com/try/download/community)
 - Visual Studio 2022 또는 JetBrains Rider(권장)
 

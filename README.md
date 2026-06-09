@@ -166,7 +166,7 @@ Server/
 
 ### Requirements
 
-- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) only. .NET 8/9 are not supported.
 - [MongoDB 4.x+](https://www.mongodb.com/try/download/community)
 - Visual Studio 2022 or JetBrains Rider (recommended)
 

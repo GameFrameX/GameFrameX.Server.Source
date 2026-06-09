@@ -166,7 +166,7 @@ Server/
 
 ### 环境要求
 
-- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- 仅支持 [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)，不支持 .NET 8/9。
 - [MongoDB 4.x+](https://www.mongodb.com/try/download/community)
 - Visual Studio 2022 或 JetBrains Rider（推荐）
 

@@ -167,7 +167,7 @@ Server/
 
 ### 前提条件
 
-- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) のみをサポートします。.NET 8/9 はサポート対象外です。
 - [MongoDB 4.x+](https://www.mongodb.com/try/download/community)
 - Visual Studio 2022 または JetBrains Rider（推奨）
 
