@@ -27,7 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace GameFrameX.NetWork.HTTP;
@@ -49,7 +49,7 @@ public sealed class PreservePropertyCasingSchemaFilter : ISchemaFilter
     /// </remarks>
     /// <param name="schema">要修改的 OpenAPI Schema / OpenAPI Schema to modify</param>
     /// <param name="context">Schema 过滤器上下文，包含类型信息 / Schema filter context containing type information</param>
-    public void Apply(OpenApiSchema schema, SchemaFilterContext context)
+    public void Apply(IOpenApiSchema schema, SchemaFilterContext context)
     {
         // 如果 schema 为空或没有属性，则直接返回
         if (schema?.Properties == null || schema.Properties.Count == 0)

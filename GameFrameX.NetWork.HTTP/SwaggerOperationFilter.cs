@@ -31,8 +31,8 @@
 using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Reflection;
-using Microsoft.OpenApi.Any;
-using Microsoft.OpenApi.Models;
+using System.Text.Json.Nodes;
+using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace GameFrameX.NetWork.HTTP;
@@ -168,7 +168,7 @@ public sealed class SwaggerOperationFilter : IOperationFilter
             if (requestSchema.Properties != null)
             {
                 var properties = requestAttr.MessageType.GetProperties();
-                var correctedProperties = new Dictionary<string, OpenApiSchema>();
+                var correctedProperties = new Dictionary<string, IOpenApiSchema>();
 
                 foreach (var property in properties)
                 {
@@ -209,7 +209,7 @@ public sealed class SwaggerOperationFilter : IOperationFilter
                 {
                     ["application/json"] = new()
                     {
-                        Schema = new OpenApiSchema { Type = "object", },
+                            Schema = new OpenApiSchema { Type = JsonSchemaType.Object, },
                     },
                 },
             };
@@ -218,20 +218,20 @@ public sealed class SwaggerOperationFilter : IOperationFilter
         // 设置成功响应体
         var successResponseSchema = new OpenApiSchema
         {
-            Type = "object",
-            Properties = new Dictionary<string, OpenApiSchema>
+            Type = JsonSchemaType.Object,
+            Properties = new Dictionary<string, IOpenApiSchema>
             {
-                ["code"] = new()
+                ["code"] = new OpenApiSchema
                 {
-                    Type = "integer",
+                    Type = JsonSchemaType.Integer,
                     Description = "响应状态码",
-                    Example = new OpenApiInteger(0),
+                    Example = JsonValue.Create(0),
                 },
-                ["message"] = new()
+                ["message"] = new OpenApiSchema
                 {
-                    Type = "string",
+                    Type = JsonSchemaType.String,
                     Description = "响应消息",
-                    Example = new OpenApiString("success"),
+                    Example = JsonValue.Create("success"),
                 },
             },
         };
@@ -243,7 +243,7 @@ public sealed class SwaggerOperationFilter : IOperationFilter
         }
         else
         {
-            successResponseSchema.Properties["data"] = new OpenApiSchema { Type = "object", };
+            successResponseSchema.Properties["data"] = new OpenApiSchema { Type = JsonSchemaType.Object, };
         }
 
         operation.Responses = new OpenApiResponses
@@ -288,63 +288,63 @@ public sealed class SwaggerOperationFilter : IOperationFilter
     /// </remarks>
     /// <param name="type">属性类型 / Property type</param>
     /// <returns>对应的 OpenAPI Schema / Corresponding OpenAPI Schema</returns>
-    private static OpenApiSchema GetSchemaForType(Type type)
+    private static IOpenApiSchema GetSchemaForType(Type type)
     {
         if (type == typeof(string))
         {
-            return new OpenApiSchema { Type = "string", };
+            return new OpenApiSchema { Type = JsonSchemaType.String, };
         }
 
         if (type == typeof(int) || type == typeof(int?))
         {
-            return new OpenApiSchema { Type = "integer", Format = "int32", };
+            return new OpenApiSchema { Type = JsonSchemaType.Integer, Format = "int32", };
         }
 
         if (type == typeof(long) || type == typeof(long?))
         {
-            return new OpenApiSchema { Type = "integer", Format = "int64", };
+            return new OpenApiSchema { Type = JsonSchemaType.Integer, Format = "int64", };
         }
 
         if (type == typeof(float) || type == typeof(float?))
         {
-            return new OpenApiSchema { Type = "number", Format = "float", };
+            return new OpenApiSchema { Type = JsonSchemaType.Number, Format = "float", };
         }
 
         if (type == typeof(double) || type == typeof(double?))
         {
-            return new OpenApiSchema { Type = "number", Format = "double", };
+            return new OpenApiSchema { Type = JsonSchemaType.Number, Format = "double", };
         }
 
         if (type == typeof(decimal) || type == typeof(decimal?))
         {
-            return new OpenApiSchema { Type = "number", Format = "decimal", };
+            return new OpenApiSchema { Type = JsonSchemaType.Number, Format = "decimal", };
         }
 
         if (type == typeof(bool) || type == typeof(bool?))
         {
-            return new OpenApiSchema { Type = "boolean", };
+            return new OpenApiSchema { Type = JsonSchemaType.Boolean, };
         }
 
         if (type == typeof(DateTime) || type == typeof(DateTime?))
         {
-            return new OpenApiSchema { Type = "string", Format = "date-time", };
+            return new OpenApiSchema { Type = JsonSchemaType.String, Format = "date-time", };
         }
 
         if (type == typeof(Guid) || type == typeof(Guid?))
         {
-            return new OpenApiSchema { Type = "string", Format = "uuid", };
+            return new OpenApiSchema { Type = JsonSchemaType.String, Format = "uuid", };
         }
 
         if (type == typeof(byte[]))
         {
-            return new OpenApiSchema { Type = "string", Format = "byte", };
+            return new OpenApiSchema { Type = JsonSchemaType.String, Format = "byte", };
         }
 
         if (type.IsArray || (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>)))
         {
-            return new OpenApiSchema { Type = "array", };
+            return new OpenApiSchema { Type = JsonSchemaType.Array, };
         }
 
-        return new OpenApiSchema { Type = "object", };
+        return new OpenApiSchema { Type = JsonSchemaType.Object, };
     }
 }
