@@ -237,6 +237,8 @@ public class AppSettingTests
         Assert.Equal(1_048_576, appSetting.HttpMaxRequestBodyBytes);
         Assert.Equal(1_048_576, appSetting.HttpMaxJsonBodyBytes);
         Assert.Equal(1_048_576, appSetting.HttpMaxProtoBodyBytes);
+        Assert.False(appSetting.HttpRequireSign);
+        Assert.Null(appSetting.HttpCorsAllowedOrigins);
     }
 
     /// <summary>
@@ -265,6 +267,8 @@ public class AppSettingTests
         appSetting.HttpMaxRequestBodyBytes = 2_097_152;
         appSetting.HttpMaxJsonBodyBytes = 524_288;
         appSetting.HttpMaxProtoBodyBytes = 786_432;
+        appSetting.HttpRequireSign = true;
+        appSetting.HttpCorsAllowedOrigins = "https://admin.example.com";
 
         // Assert
         Assert.True(appSetting.IsOpenTelemetryMetrics);
@@ -283,6 +287,8 @@ public class AppSettingTests
         Assert.Equal(2_097_152, appSetting.HttpMaxRequestBodyBytes);
         Assert.Equal(524_288, appSetting.HttpMaxJsonBodyBytes);
         Assert.Equal(786_432, appSetting.HttpMaxProtoBodyBytes);
+        Assert.True(appSetting.HttpRequireSign);
+        Assert.Equal("https://admin.example.com", appSetting.HttpCorsAllowedOrigins);
     }
 
     /// <summary>
