@@ -50,7 +50,7 @@ internal static class AppEnter
     /// Indicates whether the exit method has been called.
     /// </remarks>
     /// <value>如果已调用退出则为 <c>true</c>；否则为 <c>false</c> / <c>true</c> if exit has been called; otherwise <c>false</c></value>
-    private static volatile bool _exitCalled;
+    private static int _exitCalled;
 
     /// <summary>
     /// 主游戏循环任务。
@@ -60,6 +60,14 @@ internal static class AppEnter
     /// </remarks>
     /// <value>表示游戏循环执行的任务 / The task representing the game loop execution</value>
     private static volatile Task _gameLoopTask;
+
+    /// <summary>
+    /// 应用程序退出任务。
+    /// </summary>
+    /// <remarks>
+    /// Application exit task.
+    /// </remarks>
+    private static volatile Task _exitTask;
 
     /// <summary>
     /// 应用程序启动实例。
@@ -90,6 +98,10 @@ internal static class AppEnter
             AppExitHandler.Init(HandleExit, appStartUp.Setting);
             _gameLoopTask = appStartUp.StartAsync();
             await _gameLoopTask;
+            if (_exitTask != null)
+            {
+                await _exitTask;
+            }
         }
         catch (Exception e)
         {
@@ -117,19 +129,42 @@ internal static class AppEnter
     /// <param name="message">退出消息 / Exit message</param>
     private static void HandleExit(string message)
     {
-        if (_exitCalled)
+        if (Interlocked.Exchange(ref _exitCalled, 1) == 1)
         {
             return;
         }
 
-        
-        _exitCalled = true;
+        _exitTask = Task.Run(() => HandleExitAsync(message));
+    }
+
+    /// <summary>
+    /// 异步处理应用程序退出。
+    /// </summary>
+    /// <remarks>
+    /// Handles application exit asynchronously.
+    /// </remarks>
+    /// <param name="message">退出消息 / Exit message</param>
+    private static async Task HandleExitAsync(string message)
+    {
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Application.ListeningExitMessage));
-        GlobalSettings.IsAppRunning = false;
-        _appStartUp.StopAsync(message).Wait();
-        AppExitHandler.Kill();
-        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Application.ExecutingExitProcedure));
-        _gameLoopTask?.Wait();
-        LogHelper.FlushAndSave();
+        try
+        {
+            GlobalSettings.IsAppRunning = false;
+            if (_appStartUp != null)
+            {
+                await _appStartUp.StopAsync(message);
+            }
+
+            AppExitHandler.Kill();
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Application.ExecutingExitProcedure));
+            if (_gameLoopTask != null)
+            {
+                await _gameLoopTask;
+            }
+        }
+        finally
+        {
+            LogHelper.FlushAndSave();
+        }
     }
 }

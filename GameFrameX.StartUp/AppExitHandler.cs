@@ -125,7 +125,11 @@ internal static class AppExitHandler
         //Task异常监听
         TaskScheduler.UnobservedTaskException += (s, e) => { HandleFatalException("TaskScheduler.UnobservedTaskException", e.Exception); };
         //ctrl+c
-        Console.CancelKeyPress += (s, e) => { _exitCallBack?.Invoke("ctrl+c exit"); };
+        Console.CancelKeyPress += (s, e) =>
+        {
+            e.Cancel = true;
+            _exitCallBack?.Invoke("ctrl+c exit");
+        };
     }
 
     /// <summary>
@@ -138,6 +142,7 @@ internal static class AppExitHandler
     /// <param name="posixSignalContext">POSIX 信号上下文 / POSIX signal context</param>
     private static void ExitSignalRegistrationHandler(PosixSignalContext posixSignalContext)
     {
+        posixSignalContext.Cancel = true;
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Application.SigtermSignalReceived));
         _exitCallBack?.Invoke("SIGTERM exit");
     }
