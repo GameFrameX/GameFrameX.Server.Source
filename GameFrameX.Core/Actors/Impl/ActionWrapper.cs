@@ -43,7 +43,7 @@ public class ActionWrapper : WorkWrapper
     public ActionWrapper(Action work)
     {
         Work = work;
-        Tcs = new TaskCompletionSource<bool>();
+        Tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
     /// <summary>
@@ -96,5 +96,19 @@ public class ActionWrapper : WorkWrapper
     {
         ResetContext();
         Tcs.TrySetResult(false);
+    }
+
+    /// <inheritdoc />
+    public override void TrySetCanceled(CancellationToken cancellationToken)
+    {
+        ResetContext();
+        Tcs.TrySetCanceled(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public override void TrySetException(Exception exception)
+    {
+        ResetContext();
+        Tcs.TrySetException(exception);
     }
 }

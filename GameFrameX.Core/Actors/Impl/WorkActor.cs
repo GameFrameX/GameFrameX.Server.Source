@@ -124,6 +124,114 @@ public class WorkerActor : IWorkerActor
         }
     }
 
+    private static InvalidOperationException CreateQueueRejectedException(WorkWrapper wrapper)
+    {
+        return new InvalidOperationException($"WorkerActor queue rejected work. actorId: {wrapper.Owner?.Id}, trace: {GetTraceSafely(wrapper)}");
+    }
+
+    private static string GetTraceSafely(WorkWrapper wrapper)
+    {
+        try
+        {
+            return wrapper.GetTrace();
+        }
+        catch (Exception exception)
+        {
+            return $"trace unavailable: {exception.Message}";
+        }
+    }
+
+    private void SendToActionBlock(WorkWrapper wrapper, CancellationToken cancellationToken, bool completeOnFailure)
+    {
+        var sendTask = ActionBlock.SendAsync(wrapper, cancellationToken);
+        if (sendTask.IsCompleted)
+        {
+            CompleteSendResult(sendTask, wrapper, completeOnFailure);
+            return;
+        }
+
+        _ = CompleteSendResultAsync(sendTask, wrapper, completeOnFailure);
+    }
+
+    private static async Task CompleteSendResultAsync(Task<bool> sendTask, WorkWrapper wrapper, bool completeOnFailure)
+    {
+        try
+        {
+            var accepted = await sendTask.ConfigureAwait(false);
+            if (accepted)
+            {
+                return;
+            }
+
+            CompleteRejectedPost(wrapper, completeOnFailure);
+        }
+        catch (OperationCanceledException exception)
+        {
+            CompleteCanceledPost(wrapper, exception.CancellationToken, completeOnFailure);
+        }
+        catch (Exception exception)
+        {
+            CompleteFailedPost(wrapper, exception, completeOnFailure);
+        }
+    }
+
+    private static void CompleteSendResult(Task<bool> sendTask, WorkWrapper wrapper, bool completeOnFailure)
+    {
+        if (sendTask.IsCanceled)
+        {
+            CompleteCanceledPost(wrapper, CancellationToken.None, completeOnFailure);
+            return;
+        }
+
+        if (sendTask.IsFaulted)
+        {
+            CompleteFailedPost(wrapper, sendTask.Exception?.GetBaseException() ?? new InvalidOperationException("WorkerActor queue post failed."), completeOnFailure);
+            return;
+        }
+
+        if (!sendTask.Result)
+        {
+            CompleteRejectedPost(wrapper, completeOnFailure);
+        }
+    }
+
+    private static void CompleteRejectedPost(WorkWrapper wrapper, bool completeOnFailure)
+    {
+        var exception = CreateQueueRejectedException(wrapper);
+        if (completeOnFailure)
+        {
+            wrapper.TrySetException(exception);
+            return;
+        }
+
+        Log.Warning(exception, "WorkerActor queue rejected fire-and-forget work");
+        wrapper.ForceSetResult();
+    }
+
+    private static void CompleteCanceledPost(WorkWrapper wrapper, CancellationToken cancellationToken, bool completeOnFailure)
+    {
+        if (completeOnFailure)
+        {
+            wrapper.TrySetCanceled(cancellationToken);
+            return;
+        }
+
+        Log.Warning("WorkerActor queue post was cancelled. actorId: {ActorId}, trace: {Trace}", wrapper.Owner?.Id, GetTraceSafely(wrapper));
+        wrapper.ForceSetResult();
+    }
+
+    private static void CompleteFailedPost(WorkWrapper wrapper, Exception exception, bool completeOnFailure)
+    {
+        if (completeOnFailure)
+        {
+            wrapper.TrySetException(exception);
+            return;
+        }
+
+        Log.Warning(exception, "WorkerActor queue post failed. actorId: {ActorId}, trace: {Trace}", wrapper.Owner?.Id, GetTraceSafely(wrapper));
+        wrapper.ForceSetResult();
+    }
+
     /// <summary>
     /// 生成新的调用链ID
     /// </summary>
@@ -168,7 +276,7 @@ public class WorkerActor : IWorkerActor
             TimeOut = timeOut,
             CallChainId = callChainId,
         };
-        ActionBlock.SendAsync(at, cancellationToken);
+        SendToActionBlock(at, cancellationToken, true);
         return at.Tcs.Task;
     }
 
@@ -200,7 +308,7 @@ public class WorkerActor : IWorkerActor
             TimeOut = timeOut,
             CallChainId = callChainId,
         };
-        ActionBlock.SendAsync(at, cancellationToken);
+        SendToActionBlock(at, cancellationToken, true);
         return at.Tcs.Task;
     }
 
@@ -231,7 +339,7 @@ public class WorkerActor : IWorkerActor
             TimeOut = timeOut,
             CallChainId = callChainId,
         };
-        ActionBlock.SendAsync(at, cancellationToken);
+        SendToActionBlock(at, cancellationToken, true);
         return at.Tcs.Task;
     }
 
@@ -263,7 +371,7 @@ public class WorkerActor : IWorkerActor
             TimeOut = timeOut,
             CallChainId = callChainId,
         };
-        ActionBlock.SendAsync(at, cancellationToken);
+        SendToActionBlock(at, cancellationToken, true);
         return at.Tcs.Task;
     }
 
@@ -290,7 +398,7 @@ public class WorkerActor : IWorkerActor
             TimeOut = timeOut,
             CallChainId = NextChainId(),
         };
-        _ = ActionBlock.SendAsync(at, cancellationToken);
+        SendToActionBlock(at, cancellationToken, false);
     }
 
     /// <summary>
@@ -312,7 +420,7 @@ public class WorkerActor : IWorkerActor
             TimeOut = timeOut,
             CallChainId = NextChainId(),
         };
-        _ = ActionBlock.SendAsync(wrapper, cancellationToken);
+        SendToActionBlock(wrapper, cancellationToken, false);
     }
 
     /// <summary>
@@ -344,7 +452,7 @@ public class WorkerActor : IWorkerActor
                 TimeOut = timeOut,
                 CallChainId = chainId,
             };
-            ActionBlock.SendAsync(at, cancellationToken);
+            SendToActionBlock(at, cancellationToken, true);
             return at.Tcs.Task;
         }
 
@@ -381,7 +489,7 @@ public class WorkerActor : IWorkerActor
                 TimeOut = timeOut,
                 CallChainId = chainId,
             };
-            ActionBlock.SendAsync(at, cancellationToken);
+            SendToActionBlock(at, cancellationToken, true);
             return at.Tcs.Task;
         }
 
@@ -434,7 +542,7 @@ public class WorkerActor : IWorkerActor
                 TimeOut = timeOut,
                 CallChainId = chainId,
             };
-            ActionBlock.SendAsync(wrapper, cancellationToken);
+            SendToActionBlock(wrapper, cancellationToken, true);
             return wrapper.Tcs.Task;
         }
 
@@ -470,7 +578,7 @@ public class WorkerActor : IWorkerActor
                 TimeOut = timeOut,
                 CallChainId = chainId,
             };
-            ActionBlock.SendAsync(wrapper, cancellationToken);
+            SendToActionBlock(wrapper, cancellationToken, true);
             return wrapper.Tcs.Task;
         }
 

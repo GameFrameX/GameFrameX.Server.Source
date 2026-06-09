@@ -114,7 +114,7 @@ internal partial class AppStartUpHotfixGame
                 }
 
                 // 心跳消息回复
-                ReplyHeartBeat(netWorkChannel, (MessageObject)messagePackage.DeserializeMessageObject());
+                await ReplyHeartBeatAsync(netWorkChannel, (MessageObject)messagePackage.DeserializeMessageObject());
                 return;
             }
 

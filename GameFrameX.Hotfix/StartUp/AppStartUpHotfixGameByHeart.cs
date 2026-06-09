@@ -38,7 +38,7 @@ internal partial class AppStartUpHotfixGame
     /// </summary>
     /// <param name="netWorkChannel"></param>
     /// <param name="messageObject"></param>
-    private async void ReplyHeartBeat(INetWorkChannel netWorkChannel, MessageObject messageObject)
+    private async Task ReplyHeartBeatAsync(INetWorkChannel netWorkChannel, MessageObject messageObject)
     {
         if (messageObject is ReqHeartBeat req)
         {

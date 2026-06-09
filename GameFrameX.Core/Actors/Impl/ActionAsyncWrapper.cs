@@ -43,7 +43,7 @@ public class ActionAsyncWrapper : WorkWrapper
     public ActionAsyncWrapper(Func<Task> work)
     {
         Work = work;
-        Tcs = new TaskCompletionSource<bool>();
+        Tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
     /// <summary>
@@ -94,5 +94,19 @@ public class ActionAsyncWrapper : WorkWrapper
     {
         ResetContext();
         Tcs.TrySetResult(false);
+    }
+
+    /// <inheritdoc />
+    public override void TrySetCanceled(CancellationToken cancellationToken)
+    {
+        ResetContext();
+        Tcs.TrySetCanceled(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public override void TrySetException(Exception exception)
+    {
+        ResetContext();
+        Tcs.TrySetException(exception);
     }
 }

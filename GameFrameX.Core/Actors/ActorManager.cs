@@ -319,12 +319,12 @@ public static class ActorManager
             var taskList = new List<Task>();
             foreach (var actor in ActorMap.Values)
             {
-                async void Save()
+                async Task Save()
                 {
                     await actor.SaveAllState();
                 }
 
-                taskList.Add(actor.SendAsync(Save));
+                taskList.Add(actor.SendAsync((Func<Task>)Save, checkLock: true));
             }
 
             await Task.WhenAll(taskList);
@@ -357,12 +357,12 @@ public static class ActorManager
 
                 if (count < OnceSaveCount)
                 {
-                    async void Work()
+                    async Task Work()
                     {
                         await actor.SaveAllState();
                     }
 
-                    taskList.Add(actor.SendAsync(Work));
+                    taskList.Add(actor.SendAsync((Func<Task>)Work, checkLock: true));
                     count++;
                 }
                 else

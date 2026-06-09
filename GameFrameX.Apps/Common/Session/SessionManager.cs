@@ -213,7 +213,7 @@ public static class SessionManager
     /// <param name="sessionId">会话ID，用于标识当前会话</param>
     /// <param name="roleId">角色ID，表示当前会话所关联的角色</param>
     /// <param name="sign">签名，用于验证会话的唯一性</param>
-    public static async void UpdateSession(string sessionId, long roleId, string sign)
+    public static async Task UpdateSession(string sessionId, long roleId, string sign)
     {
         // 获取与角色ID关联的旧会话
         var oldSession = GetByRoleId(roleId);

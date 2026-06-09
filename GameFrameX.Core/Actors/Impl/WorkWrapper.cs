@@ -69,6 +69,18 @@ public abstract class WorkWrapper
     public abstract void ForceSetResult();
 
     /// <summary>
+    /// 尝试设置取消状态
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    public abstract void TrySetCanceled(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// 尝试设置异常状态
+    /// </summary>
+    /// <param name="exception">异常</param>
+    public abstract void TrySetException(Exception exception);
+
+    /// <summary>
     /// 设置上下文
     /// </summary>
     protected void SetContext()

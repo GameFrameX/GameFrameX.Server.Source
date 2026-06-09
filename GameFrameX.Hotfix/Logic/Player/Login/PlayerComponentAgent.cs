@@ -61,7 +61,7 @@ public class PlayerComponentAgent : StateComponentAgent<PlayerComponent, PlayerS
     public async Task OnPlayerLogin(INetWorkChannel workChannel, PlayerState playerState, RespPlayerLogin response)
     {
         // 更新连接会话数据
-        SessionManager.UpdateSession(workChannel.GameAppSession.SessionID, playerState.Id, playerState.Id.ToString());
+        await SessionManager.UpdateSession(workChannel.GameAppSession.SessionID, playerState.Id, playerState.Id.ToString());
         response.Code = playerState.State;
         response.CreateTime = playerState.CreatedTime;
         response.PlayerInfo = new PlayerInfo
