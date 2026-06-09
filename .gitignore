@@ -1,4 +1,4 @@
-﻿
+
 .vs/
 .idea
 /database
@@ -9,3 +9,13 @@ bin
 *.user
 docs/_site
 running
+
+# eo-project
+.eo-project/
+eo-doc/.sync-cursor
+eo-doc
+.eo-project.json
+.claude
+Blog
+AGENTS.md
+CLAUDE.md
