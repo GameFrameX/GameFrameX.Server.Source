@@ -134,12 +134,12 @@ public abstract class BaseMessageHandler<TRequest> : IMessageHandler where TRequ
     /// <returns>动作执行任务</returns>
     protected async Task InnerActionAsync(TRequest message)
     {
-        if (GlobalSettings.CurrentSetting.IsMonitorTimeOut)
+        if (GlobalSettings.CurrentSetting.IsMonitorMessageTimeOut)
         {
             _stopwatch.Restart();
             await ActionAsync(message);
             _stopwatch.Stop();
-            if (_stopwatch.Elapsed.Seconds >= GlobalSettings.CurrentSetting.MonitorTimeOutSeconds)
+            if (_stopwatch.Elapsed.Seconds >= GlobalSettings.CurrentSetting.MonitorMessageTimeOutSeconds)
             {
                 LogHelper.Warning("BaseMessageHandler.InnerActionAsync, Execution time warning, handler type: {handlerType}, message unique id: {messageUniqueId}, elapsed milliseconds: {elapsedMilliseconds}", GetType().Name, Message.UniqueId, _stopwatch.ElapsedMilliseconds);
             }

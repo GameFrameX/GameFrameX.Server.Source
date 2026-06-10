@@ -154,12 +154,12 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
     {
         ArgumentNullException.ThrowIfNull(request, nameof(request));
         ArgumentNullException.ThrowIfNull(response, nameof(response));
-        if (GlobalSettings.CurrentSetting.IsMonitorTimeOut)
+        if (GlobalSettings.CurrentSetting.IsMonitorMessageTimeOut)
         {
             _stopwatch.Restart();
             await ActionAsync(request, response);
             _stopwatch.Stop();
-            if (_stopwatch.Elapsed.Seconds >= GlobalSettings.CurrentSetting.MonitorTimeOutSeconds)
+            if (_stopwatch.Elapsed.Seconds >= GlobalSettings.CurrentSetting.MonitorMessageTimeOutSeconds)
             {
                 var fullName = GetType().FullName;
                 LogHelper.Warning("BaseRpcMessageHandler.InnerActionAsync, Handler: {handlerName} RequestMessage: {requestMessage} Message: {message}", fullName, RequestMessage, LocalizationService.GetString(Localization.Keys.Core.MessageHandler.ExecutionTimeWarning, GetType().Name, RequestMessage.UniqueId, _stopwatch.ElapsedMilliseconds));
