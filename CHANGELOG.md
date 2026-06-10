@@ -1,3 +1,14 @@
+## [1.9.2] - 2026-06-10
+
+### Refactor
+
+* 提取 GameAppRuntime 管理应用运行状态
+* StartupOptions 继承 AppSetting 并拆分日志配置
+* 恢复 IsMonitorMessageTimeOut 属性名称
+
+### Testing
+
+* 适配 GameAppRuntime 重构并新增测试
 ## [1.9.1] - 2026-06-10
 
 ### Documentation
