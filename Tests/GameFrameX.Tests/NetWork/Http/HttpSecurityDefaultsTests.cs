@@ -33,11 +33,14 @@ using System.Reflection;
 using System.Text;
 using GameFrameX.NetWork.HTTP;
 using GameFrameX.StartUp;
+using GameFrameX.Tests.Utility;
+using GameFrameX.Utility.Runtime;
 using GameFrameX.Utility.Setting;
 using Microsoft.AspNetCore.Http;
 
 namespace GameFrameX.Tests.NetWork.Http;
 
+[Collection(GameAppRuntimeCollection.Name)]
 public class HttpSecurityDefaultsTests
 {
     private static readonly object SettingsLock = new();
@@ -142,7 +145,7 @@ public class HttpSecurityDefaultsTests
     {
         if (GlobalSettings.CurrentSetting != null)
         {
-            GlobalSettings.IsAppRunning = true;
+            GameAppRuntime.MarkStarted(DateTime.UtcNow);
             return;
         }
 
@@ -154,7 +157,7 @@ public class HttpSecurityDefaultsTests
             }
         }
 
-        GlobalSettings.IsAppRunning = true;
+        GameAppRuntime.MarkStarted(DateTime.UtcNow);
     }
 
     private class SecureTestHttpHandler : BaseHttpHandler

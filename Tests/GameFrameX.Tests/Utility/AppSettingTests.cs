@@ -29,8 +29,6 @@
 //  Official Documentation: https://gameframex.doc.alianblank.com/
 // ==========================================================================================
 
-using System;
-using System.Threading.Tasks;
 using GameFrameX.Utility.Setting;
 using Xunit;
 
@@ -51,12 +49,6 @@ public class AppSettingTests
         var appSetting = new AppSetting();
 
         // Assert
-        Assert.NotNull(appSetting.AppExitSource);
-        Assert.NotNull(appSetting.AppExitToken);
-        Assert.False(appSetting.AppRunning);
-        Assert.True(appSetting.LaunchTime <= DateTime.UtcNow);
-        Assert.True(appSetting.LaunchTime > DateTime.UtcNow.AddMinutes(-1));
-
 #if DEBUG
         Assert.True(appSetting.IsDebug);
         Assert.True(appSetting.IsDebugReceive);
@@ -70,78 +62,6 @@ public class AppSettingTests
         Assert.False(appSetting.IsDebugSendHeartBeat);
         Assert.False(appSetting.IsDebugReceiveHeartBeat);
 #endif
-    }
-
-    /// <summary>
-    /// 测试AppExitToken属性
-    /// </summary>
-    [Fact]
-    public void AppExitToken_ShouldReturnTaskFromAppExitSource()
-    {
-        // Arrange
-        var appSetting = new AppSetting();
-
-        // Act
-        var token = appSetting.AppExitToken;
-
-        // Assert
-        Assert.NotNull(token);
-        Assert.Same(appSetting.AppExitSource.Task, token);
-        Assert.False(token.IsCompleted);
-    }
-
-    /// <summary>
-    /// 测试AppRunning属性设置为true
-    /// </summary>
-    [Fact]
-    public void AppRunning_SetToTrue_ShouldUpdateValue()
-    {
-        // Arrange
-        var appSetting = new AppSetting();
-
-        // Act
-        appSetting.AppRunning = true;
-
-        // Assert
-        Assert.True(appSetting.AppRunning);
-        Assert.False(appSetting.AppExitToken.IsCompleted);
-    }
-
-    /// <summary>
-    /// 测试AppRunning属性设置为false
-    /// </summary>
-    [Fact]
-    public void AppRunning_SetToFalse_ShouldCancelAppExitToken()
-    {
-        // Arrange
-        var appSetting = new AppSetting();
-        appSetting.AppRunning = true;
-
-        // Act
-        appSetting.AppRunning = false;
-
-        // Assert
-        Assert.False(appSetting.AppRunning);
-        Assert.True(appSetting.AppExitToken.IsCanceled);
-    }
-
-    /// <summary>
-    /// 测试AppRunning在已取消状态下设置为true
-    /// </summary>
-    [Fact]
-    public void AppRunning_SetToTrueAfterCanceled_ShouldRemainFalse()
-    {
-        // Arrange
-        var appSetting = new AppSetting();
-        appSetting.AppRunning = true;
-        appSetting.AppRunning = false; // 取消
-
-        // Act
-        appSetting.AppRunning = true; // 尝试重新设置为true
-
-        // Assert
-        Assert.False(appSetting.AppRunning);
-        Assert.True(appSetting.AppExitToken.IsCanceled);
     }
 
     /// <summary>
@@ -177,41 +97,6 @@ public class AppSettingTests
     }
 
     /// <summary>
-    /// 测试LaunchTime属性
-    /// </summary>
-    [Fact]
-    public void LaunchTime_ShouldBeSetToCurrentUtcTime()
-    {
-        // Arrange
-        var beforeCreation = DateTime.UtcNow;
-
-        // Act
-        var appSetting = new AppSetting();
-        var afterCreation = DateTime.UtcNow;
-
-        // Assert
-        Assert.True(appSetting.LaunchTime >= beforeCreation);
-        Assert.True(appSetting.LaunchTime <= afterCreation);
-    }
-
-    /// <summary>
-    /// 测试LaunchTime属性可以被设置
-    /// </summary>
-    [Fact]
-    public void LaunchTime_CanBeSet_ShouldUpdateValue()
-    {
-        // Arrange
-        var appSetting = new AppSetting();
-        var newTime = DateTime.UtcNow.AddHours(-1);
-
-        // Act
-        appSetting.LaunchTime = newTime;
-
-        // Assert
-        Assert.Equal(newTime, appSetting.LaunchTime);
-    }
-
-    /// <summary>
     /// 测试默认配置属性值
     /// </summary>
     [Fact]
@@ -224,10 +109,10 @@ public class AppSettingTests
         Assert.False(appSetting.IsOpenTelemetryMetrics);
         Assert.False(appSetting.IsOpenTelemetryTracing);
         Assert.False(appSetting.IsOpenTelemetry);
-        Assert.False(appSetting.IsMonitorTimeOut);
-        Assert.Equal(0, appSetting.MonitorTimeOutSeconds);
-        Assert.Equal(0, appSetting.NetWorkSendTimeOutSeconds);
-        Assert.Equal(300_000, appSetting.SaveDataInterval);
+        Assert.False(appSetting.IsMonitorMessageTimeOut);
+        Assert.Equal(1, appSetting.MonitorMessageTimeOutSeconds);
+        Assert.Equal(5, appSetting.NetWorkSendTimeOutSeconds);
+        Assert.Equal(30_000, appSetting.SaveDataInterval);
         Assert.Equal(500, appSetting.SaveDataBatchCount);
         Assert.Equal(30_000, appSetting.SaveDataBatchTimeOut);
         Assert.Equal(30_000, appSetting.ActorTimeOut);
@@ -254,8 +139,8 @@ public class AppSettingTests
         appSetting.IsOpenTelemetryMetrics = true;
         appSetting.IsOpenTelemetryTracing = true;
         appSetting.IsOpenTelemetry = true;
-        appSetting.IsMonitorTimeOut = true;
-        appSetting.MonitorTimeOutSeconds = 5;
+        appSetting.IsMonitorMessageTimeOut = true;
+        appSetting.MonitorMessageTimeOutSeconds = 5;
         appSetting.NetWorkSendTimeOutSeconds = 10;
         appSetting.SaveDataInterval = 600_000;
         appSetting.SaveDataBatchCount = 1000;
@@ -274,8 +159,8 @@ public class AppSettingTests
         Assert.True(appSetting.IsOpenTelemetryMetrics);
         Assert.True(appSetting.IsOpenTelemetryTracing);
         Assert.True(appSetting.IsOpenTelemetry);
-        Assert.True(appSetting.IsMonitorTimeOut);
-        Assert.Equal(5, appSetting.MonitorTimeOutSeconds);
+        Assert.True(appSetting.IsMonitorMessageTimeOut);
+        Assert.Equal(5, appSetting.MonitorMessageTimeOutSeconds);
         Assert.Equal(10, appSetting.NetWorkSendTimeOutSeconds);
         Assert.Equal(600_000, appSetting.SaveDataInterval);
         Assert.Equal(1000, appSetting.SaveDataBatchCount);
@@ -378,30 +263,6 @@ public class AppSettingTests
         Assert.Equal("Game Server", appSetting.Description);
         Assert.Equal("Main game logic server", appSetting.Note);
         Assert.Equal("game,logic", appSetting.Label);
-    }
-
-    /// <summary>
-    /// 测试多线程环境下AppRunning属性的线程安全性
-    /// </summary>
-    [Fact]
-    public async Task AppRunning_MultipleThreads_ShouldBeThreadSafe()
-    {
-        // Arrange
-        var appSetting = new AppSetting();
-        var tasks = new Task[10];
-
-        // Act
-        for (int i = 0; i < tasks.Length; i++)
-        {
-            int index = i;
-            tasks[i] = Task.Run(() => { appSetting.AppRunning = index % 2 == 0; });
-        }
-
-        await Task.WhenAll(tasks);
-
-        // Assert
-        // 验证最终状态是一致的
-        Assert.True(appSetting.AppExitToken.IsCanceled || !appSetting.AppExitToken.IsCompleted);
     }
 
     /// <summary>

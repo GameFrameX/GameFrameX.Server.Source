@@ -31,10 +31,12 @@
 
 using System.Reflection;
 using GameFrameX.StartUp.Abstractions;
+using GameFrameX.Tests.Utility;
 using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Tests.StartUp;
 
+[Collection(GameAppRuntimeCollection.Name)]
 public sealed class AppEnterExitTests
 {
     private const BindingFlags StaticNonPublic = BindingFlags.Static | BindingFlags.NonPublic;

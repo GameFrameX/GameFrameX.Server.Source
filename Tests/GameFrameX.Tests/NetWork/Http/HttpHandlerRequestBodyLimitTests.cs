@@ -31,11 +31,14 @@
 
 using System.Text;
 using GameFrameX.NetWork.HTTP;
+using GameFrameX.Tests.Utility;
+using GameFrameX.Utility.Runtime;
 using GameFrameX.Utility.Setting;
 using Microsoft.AspNetCore.Http;
 
 namespace GameFrameX.Tests.NetWork.Http;
 
+[Collection(GameAppRuntimeCollection.Name)]
 public class HttpHandlerRequestBodyLimitTests
 {
     private const int MaxBodyBytes = 1024 * 1024;
@@ -109,6 +112,7 @@ public class HttpHandlerRequestBodyLimitTests
     {
         if (GlobalSettings.CurrentSetting != null)
         {
+            GameAppRuntime.MarkStarted(DateTime.UtcNow);
             return;
         }
 
@@ -119,5 +123,7 @@ public class HttpHandlerRequestBodyLimitTests
                 GlobalSettings.SetCurrentSetting(new AppSetting { ServerId = 1 });
             }
         }
+
+        GameAppRuntime.MarkStarted(DateTime.UtcNow);
     }
 }
