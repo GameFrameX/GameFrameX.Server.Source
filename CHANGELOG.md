@@ -1,3 +1,39 @@
+## [1.9.0] - 2026-06-10
+
+### Bug Fixes
+
+* async void 改为 async Task
+* 收紧 CORS 策略为显式白名单
+
+### Documentation
+
+* 明确仅支持 .NET 10
+
+### Features
+
+* 添加请求体和网络包大小限制
+* 添加 HTTP 签名校验机制
+
+### Refactor
+
+* 重构 TimerSave 为批量处理模式并补充双语文档注释
+* 消除 QuartzTimer 和 GlobalTimer 中的同步阻塞调用
+* 重构退出流程为全异步并支持优雅关机
+* 适配 Swashbuckle v10 和 OpenAPI 接口变更
+
+### Testing
+
+* 添加 WorkerActor / HTTP 请求体限制 / 远程消息编解码单元测试
+* 添加签名校验和 CORS 配置测试
+* 添加 WorkerActor 队列和顺序执行测试
+
+### build
+
+* 更新注释和 .gitignore
+* 添加 SDK 版本和构建目标配置
+* LangVersion 升级为 latest 并统一构建配置
+* 升级全部 NuGet 包版本
+* 升级 NuGet 包版本
 ## [1.8.1] - 2026-06-05
 
 ### Documentation
