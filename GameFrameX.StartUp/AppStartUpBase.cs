@@ -31,6 +31,7 @@
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.StartUp.Abstractions;
+using GameFrameX.Utility.Runtime;
 using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.StartUp;
@@ -44,15 +45,6 @@ namespace GameFrameX.StartUp;
 /// </remarks>
 public abstract partial class AppStartUpBase : IAppStartUp
 {
-    /// <summary>
-    /// 应用程序退出任务完成源。
-    /// </summary>
-    /// <remarks>
-    /// Application exit task completion source.
-    /// Used to asynchronously wait for application exit signals.
-    /// </remarks>
-    protected readonly TaskCompletionSource<string> AppExitSource = new();
-
     /// <summary>
     /// 获取服务器类型标识符。
     /// </summary>
@@ -83,7 +75,7 @@ public abstract partial class AppStartUpBase : IAppStartUp
     /// <value>当应用程序应该退出时完成的任务 / Task that completes when the application should exit</value>
     public Task<string> AppExitToken
     {
-        get { return AppExitSource.Task; }
+        get { return GameAppRuntime.AppExitToken; }
     }
 
     /// <summary>
@@ -128,10 +120,16 @@ public abstract partial class AppStartUpBase : IAppStartUp
     /// <returns>表示异步停止操作的任务 / A task representing the asynchronous stop operation</returns>
     public virtual async Task StopAsync(string message = "")
     {
-        GlobalSettings.IsAppRunning = false;
+        GameAppRuntime.MarkStopping();
         LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.ServerStopped, Setting.ServerType, message, Setting.ToFormatString()));
-        await StopServerAsync();
-        AppExitSource?.TrySetResult(message);
+        try
+        {
+            await StopServerAsync();
+        }
+        finally
+        {
+            GameAppRuntime.MarkStopped(message);
+        }
     }
 
     /// <summary>

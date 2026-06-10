@@ -41,7 +41,6 @@ using GameFrameX.StartUp.Abstractions;
 using GameFrameX.StartUp.Options;
 using GameFrameX.Utility;
 using GameFrameX.Utility.Setting;
-using Mapster;
 
 namespace GameFrameX.StartUp;
 
@@ -394,7 +393,7 @@ public static class GameApp
         else
         {
             // LogHelper.Warning(LocalizationService.GetString(Keys.StartUp.NoConfigurationUseDefault, startKv.Value.ServerType));
-            appSetting = launcherOptions.Adapt<AppSetting>();
+            appSetting = launcherOptions;
         }
 
         Launcher(args, startKv, appSetting);

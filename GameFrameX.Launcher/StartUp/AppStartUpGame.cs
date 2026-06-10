@@ -31,6 +31,7 @@
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.Foundation.Utility;
 using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Utility.Runtime;
 
 namespace GameFrameX.Launcher.StartUp;
 
@@ -74,8 +75,7 @@ internal sealed class AppStartUpGame : AppStartUpBase
             LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.HotfixModuleLoadEnd));
 
             LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.EnterMainLoop));
-            GlobalSettings.LaunchTime = TimerHelper.GetNowWithUtc();
-            GlobalSettings.IsAppRunning = true;
+            GameAppRuntime.MarkStarted(TimerHelper.GetNowWithUtc());
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.ServerStartEnd, Setting.ServerType));
             exitMessage = await AppExitToken;
         }

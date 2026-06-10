@@ -38,6 +38,7 @@ using GameFrameX.NetWork.HTTP;
 using GameFrameX.NetWork.Message;
 using GameFrameX.SuperSocket.Connection;
 using GameFrameX.SuperSocket.Primitives;
+using GameFrameX.SuperSocket.ProtoBase;
 using GameFrameX.SuperSocket.Server;
 using GameFrameX.SuperSocket.Server.Abstractions;
 using GameFrameX.SuperSocket.Server.Abstractions.Session;
@@ -46,6 +47,7 @@ using GameFrameX.SuperSocket.Udp;
 using GameFrameX.SuperSocket.WebSocket;
 using GameFrameX.SuperSocket.WebSocket.Server;
 using GameFrameX.Utility;
+using GameFrameX.Utility.Runtime;
 using GameFrameX.Utility.Setting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -71,8 +73,8 @@ public abstract partial class AppStartUpBase
     /// Start server - simultaneously start TCP and WebSocket services.
     /// This method is responsible for initializing message encoders/decoders, starting various network services, and setting the global startup status.
     /// </remarks>
-    /// <typeparam name="TMessageDecoderHandler">消息解码处理器类型，必须实现 <see cref="IMessageDecoderHandler"/> 和 <see cref="IPackageDecoder"/> 接口 / Message decoder handler type, must implement IMessageDecoderHandler and IPackageDecoder interfaces</typeparam>
-    /// <typeparam name="TMessageEncoderHandler">消息编码处理器类型，必须实现 <see cref="IMessageEncoderHandler"/> 和 <see cref="IPackageEncoder"/> 接口 / Message encoder handler type, must implement IMessageEncoderHandler and IPackageEncoder interfaces</typeparam>
+    /// <typeparam name="TMessageDecoderHandler">消息解码处理器类型，必须实现 <see cref="IMessageDecoderHandler"/> 和 <see cref="IPackageDecoder{TPackageInfo}"/> 接口 / Message decoder handler type, must implement IMessageDecoderHandler and IPackageDecoder interfaces</typeparam>
+    /// <typeparam name="TMessageEncoderHandler">消息编码处理器类型，必须实现 <see cref="IMessageEncoderHandler"/> 和 <see cref="IPackageEncoder{TPackageInfo}"/> 接口 / Message encoder handler type, must implement IMessageEncoderHandler and IPackageEncoder interfaces</typeparam>
     /// <param name="messageCompressHandler">消息编码时使用的压缩处理器；如果为空则不处理压缩消息 / Compression handler used when encoding messages; no compression processing if null</param>
     /// <param name="messageDecompressHandler">消息解码时使用的解压处理器；如果为空则不处理压缩消息 / Decompression handler used when decoding messages; no decompression processing if null</param>
     /// <param name="baseHandler">HTTP 处理器列表，用于处理不同的 HTTP 请求 / HTTP handler list for processing different HTTP requests</param>
@@ -92,8 +94,7 @@ public abstract partial class AppStartUpBase
         // 启动服务器
         await StartServer(baseHandler, httpFactory, aopHandlerTypes, minimumLevelLogLevel);
         // 设置全局启动状态
-        GlobalSettings.LaunchTime = DateTime.UtcNow;
-        GlobalSettings.IsAppRunning = true;
+        GameAppRuntime.MarkStarted(DateTime.UtcNow);
     }
 
     /// <summary>
@@ -106,7 +107,7 @@ public abstract partial class AppStartUpBase
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     protected async Task StopServerAsync()
     {
-        GlobalSettings.IsAppRunning = false;
+        GameAppRuntime.MarkStopping();
 
         if (_gameServer != null)
         {

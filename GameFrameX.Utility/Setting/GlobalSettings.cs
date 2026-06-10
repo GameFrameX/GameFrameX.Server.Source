@@ -62,22 +62,6 @@ public static class GlobalSettings
     public static AppSetting CurrentSetting { get; private set; }
 
     /// <summary>
-    /// 是否运行中
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets whether the application is running.
-    /// </remarks>
-    public static bool IsAppRunning { get; set; }
-
-    /// <summary>
-    /// 启动时间
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets the application launch time.
-    /// </remarks>
-    public static DateTime LaunchTime { get; set; }
-
-    /// <summary>
     /// 加载启动配置
     /// </summary>
     /// <remarks>

@@ -39,6 +39,7 @@ using GameFrameX.NetWork.Abstractions;
 using GameFrameX.NetWork.Messages;
 using GameFrameX.ProtoBuf.Net;
 using GameFrameX.Foundation.Logger;
+using GameFrameX.Utility.Runtime;
 using GameFrameX.Utility.Setting;
 using Microsoft.AspNetCore.Http;
 using GameFrameX.Foundation.Localization.Core;
@@ -173,7 +174,7 @@ public static class HttpHandler
                 return;
             }
 
-            if (!GlobalSettings.IsAppRunning)
+            if (!GameAppRuntime.IsRunning)
             {
                 await context.Response.WriteAsync(HttpJsonResult.ErrorString(GameHttpStatusCode.ActionFailed, LocalizationService.GetString(Localization.Keys.NetWorkHttp.ServerStatusError)));
                 return;

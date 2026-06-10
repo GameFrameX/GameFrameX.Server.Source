@@ -31,6 +31,7 @@ using GameFrameX.StartUp.Abstractions;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Utility.Setting;
+using GameFrameX.Utility.Runtime;
 
 namespace GameFrameX.StartUp;
 
@@ -106,7 +107,7 @@ internal static class AppEnter
         catch (Exception e)
         {
             string error;
-            if (GlobalSettings.IsAppRunning)
+            if (GameAppRuntime.IsRunning)
             {
                 error = $"abnormal server runtime:{e}";
             }
@@ -149,7 +150,7 @@ internal static class AppEnter
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Application.ListeningExitMessage));
         try
         {
-            GlobalSettings.IsAppRunning = false;
+            GameAppRuntime.MarkStopping();
             if (_appStartUp != null)
             {
                 await _appStartUp.StopAsync(message);
