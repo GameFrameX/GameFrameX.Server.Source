@@ -1,3 +1,12 @@
+## [1.9.1] - 2026-06-10
+
+### Documentation
+
+* 修正 README 缩进格式
+
+### Refactor
+
+* 迁移至 IIncrementalGenerator
 ## [1.9.0] - 2026-06-10
 
 ### Bug Fixes
