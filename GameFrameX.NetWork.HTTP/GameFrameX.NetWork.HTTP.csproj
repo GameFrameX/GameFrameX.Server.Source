@@ -7,10 +7,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="GameFrameX.Foundation.Hash" Version="2.4.9"/>
-        <PackageReference Include="GameFrameX.Foundation.Http.Normalization" Version="2.4.9"/>
-        <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.10"/>
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8"/>
+        <PackageReference Include="GameFrameX.Foundation.Hash" Version="2.5.1"/>
+        <PackageReference Include="GameFrameX.Foundation.Http.Normalization" Version="2.5.1"/>
+        <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.11"/>
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9"/>
         <PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="10.2.1"/>
         <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.2.1"/>
     </ItemGroup>
