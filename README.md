@@ -209,8 +209,8 @@ Server/
    ```
 
 6. **Verify Startup**
-   - Health check: `http://localhost:28080/game/api/health`
-   - Check console logs to confirm successful startup
+    - Health check: `http://localhost:28080/game/api/health`
+    - Check console logs to confirm successful startup
 
 ---
 
@@ -220,87 +220,87 @@ GameFrameX uses command-line arguments (`--Key=Value`) for configuration. All co
 
 ### Server Configuration
 
-| Option | Description | Default | Example |
-|:------|:------------|:--------|:--------|
-| `ServerType` | Server type (required) | None | `Game`, `Social` |
-| `ServerId` | Unique server ID | None | `1000` |
-| `ServerInstanceId` | Server instance ID (distinguishes different instances of the same type) | `0` | `1001` |
-| `IsSingleMode` | Single process mode | `false` | `true` |
-| `MinModuleId` | Business module start ID (module sharding) | `0` | `100` |
-| `MaxModuleId` | Business module end ID (module sharding) | `0` | `1000` |
-| `TimeZone` | Server timezone | `Asia/Shanghai` | `UTC` |
-| `IsUseTimeZone` | Enable custom timezone | `false` | `true` |
-| `Language` | Language setting | None | `zh-CN` |
+| Option             | Description                                                             | Default         | Example          |
+|:-------------------|:------------------------------------------------------------------------|:----------------|:-----------------|
+| `ServerType`       | Server type (required)                                                  | None            | `Game`, `Social` |
+| `ServerId`         | Unique server ID                                                        | None            | `1000`           |
+| `ServerInstanceId` | Server instance ID (distinguishes different instances of the same type) | `0`             | `1001`           |
+| `IsSingleMode`     | Single process mode                                                     | `false`         | `true`           |
+| `MinModuleId`      | Business module start ID (module sharding)                              | `0`             | `100`            |
+| `MaxModuleId`      | Business module end ID (module sharding)                                | `0`             | `1000`           |
+| `TimeZone`         | Server timezone                                                         | `Asia/Shanghai` | `UTC`            |
+| `IsUseTimeZone`    | Enable custom timezone                                                  | `false`         | `true`           |
+| `Language`         | Language setting                                                        | None            | `zh-CN`          |
 
 ### Network Configuration
 
-| Option | Description | Default | Example |
-|:------|:------------|:--------|:--------|
-| `InnerHost` | Internal communication IP (inter-cluster) | `0.0.0.0` | `0.0.0.0` |
-| `InnerPort` | Internal communication port | `8888` | `29100` |
-| `OuterHost` | External communication IP (client-facing) | `0.0.0.0` | `0.0.0.0` |
-| `OuterPort` | External communication port | None | `29100` |
-| `IsEnableTcp` | Enable TCP service | `true` | `true` |
-| `IsEnableUdp` | Enable UDP service | `false` | `true` |
-| `IsEnableWebSocket` | Enable WebSocket | `false` | `true` |
-| `WsPort` | WebSocket port | `8889` | `29300` |
-| `IsEnableHttp` | Enable HTTP service | `true` | `true` |
-| `HttpPort` | HTTP service port | `8080` | `28080` |
-| `HttpsPort` | HTTPS service port | None | `443` |
-| `HttpUrl` | API root path | `/game/api/` | `/game/api/` |
-| `HttpIsDevelopment` | HTTP development mode (enables Swagger) | `false` | `true` |
+| Option              | Description                               | Default      | Example      |
+|:--------------------|:------------------------------------------|:-------------|:-------------|
+| `InnerHost`         | Internal communication IP (inter-cluster) | `0.0.0.0`    | `0.0.0.0`    |
+| `InnerPort`         | Internal communication port               | `8888`       | `29100`      |
+| `OuterHost`         | External communication IP (client-facing) | `0.0.0.0`    | `0.0.0.0`    |
+| `OuterPort`         | External communication port               | None         | `29100`      |
+| `IsEnableTcp`       | Enable TCP service                        | `true`       | `true`       |
+| `IsEnableUdp`       | Enable UDP service                        | `false`      | `true`       |
+| `IsEnableWebSocket` | Enable WebSocket                          | `false`      | `true`       |
+| `WsPort`            | WebSocket port                            | `8889`       | `29300`      |
+| `IsEnableHttp`      | Enable HTTP service                       | `true`       | `true`       |
+| `HttpPort`          | HTTP service port                         | `8080`       | `28080`      |
+| `HttpsPort`         | HTTPS service port                        | None         | `443`        |
+| `HttpUrl`           | API root path                             | `/game/api/` | `/game/api/` |
+| `HttpIsDevelopment` | HTTP development mode (enables Swagger)   | `false`      | `true`       |
 
 ### Database Configuration
 
-| Option | Description | Default | Example |
-|:------|:------------|:--------|:--------|
-| `DataBaseUrl` | MongoDB connection string | None | `mongodb://localhost:27017` |
-| `DataBaseName` | Database name | None | `gameframex` |
-| `DataBasePassword` | Database password | None | `your_password` |
+| Option             | Description               | Default | Example                     |
+|:-------------------|:--------------------------|:--------|:----------------------------|
+| `DataBaseUrl`      | MongoDB connection string | None    | `mongodb://localhost:27017` |
+| `DataBaseName`     | Database name             | None    | `gameframex`                |
+| `DataBasePassword` | Database password         | None    | `your_password`             |
 
 ### Actor Configuration
 
-| Option | Description | Default | Example |
-|:------|:------------|:--------|:--------|
-| `ActorTimeOut` | Actor task execution timeout (ms) | `30000` | `60000` |
-| `ActorQueueTimeOut` | Actor queue timeout (ms) | `30000` | `60000` |
-| `ActorRecycleTime` | Actor idle recycle time (minutes) | `15` | `30` |
-| `SaveDataInterval` | Data save interval (ms) | `30000` | `60000` |
-| `SaveDataBatchCount` | Batch save count | `500` | `1000` |
-| `SaveDataBatchTimeOut` | Batch save timeout (ms) | `30000` | `60000` |
+| Option                 | Description                       | Default | Example |
+|:-----------------------|:----------------------------------|:--------|:--------|
+| `ActorTimeOut`         | Actor task execution timeout (ms) | `30000` | `60000` |
+| `ActorQueueTimeOut`    | Actor queue timeout (ms)          | `30000` | `60000` |
+| `ActorRecycleTime`     | Actor idle recycle time (minutes) | `15`    | `30`    |
+| `SaveDataInterval`     | Data save interval (ms)           | `30000` | `60000` |
+| `SaveDataBatchCount`   | Batch save count                  | `500`   | `1000`  |
+| `SaveDataBatchTimeOut` | Batch save timeout (ms)           | `30000` | `60000` |
 
 ### Logging Configuration
 
-| Option | Description | Default | Example |
-|:------|:------------|:--------|:--------|
-| `IsDebug` | Debug logging master switch | `false` | `true` |
-| `LogIsConsole` | Output to console | `true` | `false` |
-| `LogIsWriteToFile` | Output to file | `true` | `false` |
-| `LogEventLevel` | Log level | `Debug` | `Information` |
-| `LogRollingInterval` | Log rolling interval | `Day` | `Hour` |
-| `LogIsFileSizeLimit` | Limit single file size | `true` | `false` |
-| `LogFileSizeLimitBytes` | File size limit | `104857600` (100MB) | `52428800` |
-| `LogRetainedFileCountLimit` | Retained file count | `31` | `90` |
-| `LogIsGrafanaLoki` | Output to Grafana Loki | `false` | `true` |
-| `LogGrafanaLokiUrl` | Grafana Loki URL | `http://localhost:3100` | — |
+| Option                      | Description                 | Default                 | Example       |
+|:----------------------------|:----------------------------|:------------------------|:--------------|
+| `IsDebug`                   | Debug logging master switch | `false`                 | `true`        |
+| `LogIsConsole`              | Output to console           | `true`                  | `false`       |
+| `LogIsWriteToFile`          | Output to file              | `true`                  | `false`       |
+| `LogEventLevel`             | Log level                   | `Debug`                 | `Information` |
+| `LogRollingInterval`        | Log rolling interval        | `Day`                   | `Hour`        |
+| `LogIsFileSizeLimit`        | Limit single file size      | `true`                  | `false`       |
+| `LogFileSizeLimitBytes`     | File size limit             | `104857600` (100MB)     | `52428800`    |
+| `LogRetainedFileCountLimit` | Retained file count         | `31`                    | `90`          |
+| `LogIsGrafanaLoki`          | Output to Grafana Loki      | `false`                 | `true`        |
+| `LogGrafanaLokiUrl`         | Grafana Loki URL            | `http://localhost:3100` | —             |
 
 ### Monitoring Configuration
 
-| Option | Description | Default | Example |
-|:------|:------------|:--------|:--------|
-| `IsOpenTelemetry` | Enable OpenTelemetry | `false` | `true` |
-| `IsOpenTelemetryMetrics` | Enable metrics collection | `false` | `true` |
-| `IsOpenTelemetryTracing` | Enable distributed tracing | `false` | `true` |
-| `MetricsPort` | Prometheus metrics port | `0` (reuses HTTP port) | `9090` |
-| `IsMonitorMessageTimeOut` | Monitor message processing timeout | `false` | `true` |
-| `MonitorMessageTimeOutSeconds` | Timeout threshold (seconds) | `1` | `5` |
+| Option                         | Description                        | Default                | Example |
+|:-------------------------------|:-----------------------------------|:-----------------------|:--------|
+| `IsOpenTelemetry`              | Enable OpenTelemetry               | `false`                | `true`  |
+| `IsOpenTelemetryMetrics`       | Enable metrics collection          | `false`                | `true`  |
+| `IsOpenTelemetryTracing`       | Enable distributed tracing         | `false`                | `true`  |
+| `MetricsPort`                  | Prometheus metrics port            | `0` (reuses HTTP port) | `9090`  |
+| `IsMonitorMessageTimeOut`      | Monitor message processing timeout | `false`                | `true`  |
+| `MonitorMessageTimeOutSeconds` | Timeout threshold (seconds)        | `1`                    | `5`     |
 
 ### ID Generation Configuration
 
-| Option | Description | Default | Example |
-|:------|:------------|:--------|:--------|
-| `WorkerId` | Snowflake ID worker node ID | `1` | `2` |
-| `DataCenterId` | Snowflake ID data center ID | `1` | `2` |
+| Option         | Description                 | Default | Example |
+|:---------------|:----------------------------|:--------|:--------|
+| `WorkerId`     | Snowflake ID worker node ID | `1`     | `2`     |
+| `DataCenterId` | Snowflake ID data center ID | `1`     | `2`     |
 
 ### Startup Command Examples
 
@@ -558,13 +558,13 @@ docker compose down
 
 Service port mapping:
 
-| Service | Container Port | Host Port | Description |
-|:--------|:--------------|:----------|:------------|
-| MongoDB | 27017 | 37017 | Database |
-| Game TCP | 29100 | 39100 | Game server |
-| Game HTTP | 28080 | 38080 | Game server HTTP API |
-| Social TCP | 29400 | 39400 | Social server |
-| Social HTTP | 28081 | 38081 | Social server HTTP API |
+| Service     | Container Port | Host Port | Description            |
+|:------------|:---------------|:----------|:-----------------------|
+| MongoDB     | 27017          | 37017     | Database               |
+| Game TCP    | 29100          | 39100     | Game server            |
+| Game HTTP   | 28080          | 38080     | Game server HTTP API   |
+| Social TCP  | 29400          | 39400     | Social server          |
+| Social HTTP | 28081          | 38081     | Social server HTTP API |
 
 ### Multi-Instance Deployment
 
@@ -583,11 +583,11 @@ docker compose -f docker-compose.multi.yml down
 
 Cluster topology:
 
-| Component | Instances | Description |
-|:----------|:----------|:------------|
-| MongoDB | 1 | Shared database |
-| Social | 2 | Social servers (social-1, social-2) |
-| Game | 10 | Game servers (game-1 ~ game-10) |
+| Component | Instances | Description                         |
+|:----------|:----------|:------------------------------------|
+| MongoDB   | 1         | Shared database                     |
+| Social    | 2         | Social servers (social-1, social-2) |
+| Game      | 10        | Game servers (game-1 ~ game-10)     |
 
 All instances use Aspire-style environment variables for service discovery:
 
@@ -632,6 +632,7 @@ docker compose -f docker-compose.multi.yml up -d --build
 ```
 
 Script verification:
+
 - `game-1` → `social` cross-process call
 - `game-2` → `social` cross-process call
 - Returns `code=0` and `FriendCount >= 1`
@@ -655,13 +656,13 @@ RUN_SECONDS=300 \
 
 Available environment variables:
 
-| Variable | Description | Default |
-|:---------|:------------|:--------|
-| `BOT_COUNT` | Number of bots | — |
-| `TCP_PORT` | TCP connection port | `49100` |
-| `LOGIN_URL` | Login API URL | `http://127.0.0.1:48080/game/api/` |
-| `DISCONNECT_AFTER_LOGIN_SECONDS` | Disconnect delay after login (seconds) | `20` |
-| `RUN_SECONDS` | Total run duration (seconds) | `300` |
+| Variable                         | Description                            | Default                            |
+|:---------------------------------|:---------------------------------------|:-----------------------------------|
+| `BOT_COUNT`                      | Number of bots                         | —                                  |
+| `TCP_PORT`                       | TCP connection port                    | `49100`                            |
+| `LOGIN_URL`                      | Login API URL                          | `http://127.0.0.1:48080/game/api/` |
+| `DISCONNECT_AFTER_LOGIN_SECONDS` | Disconnect delay after login (seconds) | `20`                               |
+| `RUN_SECONDS`                    | Total run duration (seconds)           | `300`                              |
 
 ### Common Troubleshooting Commands
 
@@ -682,10 +683,10 @@ docker compose -f docker-compose.multi.yml up -d --build
 
 ### Endpoints
 
-| Endpoint | Description |
-|:---------|:------------|
-| `http://<host>:<HttpPort>/game/api/health` | Health check |
-| `http://<host>:<MetricsPort>/metrics` | Prometheus metrics |
+| Endpoint                                   | Description        |
+|:-------------------------------------------|:-------------------|
+| `http://<host>:<HttpPort>/game/api/health` | Health check       |
+| `http://<host>:<MetricsPort>/metrics`      | Prometheus metrics |
 
 ### Metrics Categories
 
@@ -715,16 +716,16 @@ dotnet test --logger "console;verbosity=detailed"
 
 The test project is based on **xUnit**, covering the following modules:
 
-| Test Directory | Description |
-|:--------------|:------------|
-| `Utility/` | Math/fixed-point tests, compression, random, ID generation, singleton |
-| `NetWork/Kcp/` | KCP pipeline filter, session management, server integration tests |
-| `DataBase/` | MongoDB connection and query tests |
-| `ProtoBuff/` | Protobuf serialization and object pool tests |
-| `Localization/` | Localization key-value parsing tests |
-| `RemoteMessaging/` | Cross-process messaging tests |
-| `UnifiedMessaging/` | Unified cross-process messaging tests |
-| `StartUp/` | HTTP server route registration tests |
+| Test Directory      | Description                                                           |
+|:--------------------|:----------------------------------------------------------------------|
+| `Utility/`          | Math/fixed-point tests, compression, random, ID generation, singleton |
+| `NetWork/Kcp/`      | KCP pipeline filter, session management, server integration tests     |
+| `DataBase/`         | MongoDB connection and query tests                                    |
+| `ProtoBuff/`        | Protobuf serialization and object pool tests                          |
+| `Localization/`     | Localization key-value parsing tests                                  |
+| `RemoteMessaging/`  | Cross-process messaging tests                                         |
+| `UnifiedMessaging/` | Unified cross-process messaging tests                                 |
+| `StartUp/`          | HTTP server route registration tests                                  |
 
 ---
 
