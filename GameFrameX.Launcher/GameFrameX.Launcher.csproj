@@ -30,6 +30,7 @@
         <ProjectReference Include="..\GameFrameX.Config\GameFrameX.Config.csproj"/>
         <ProjectReference Include="..\GameFrameX.Core\GameFrameX.Core.csproj"/>
         <ProjectReference Include="..\GameFrameX.DataBase\GameFrameX.DataBase.csproj"/>
+        <ProjectReference Include="..\GameFrameX.Architecture.Analyzers\GameFrameX.Architecture.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
         <ProjectReference Include="..\GameFrameX.Localization\GameFrameX.Localization.csproj"/>
         <ProjectReference Include="..\GameFrameX.Monitor\GameFrameX.Monitor.csproj"/>
         <ProjectReference Include="..\GameFrameX.NetWork.Abstractions\GameFrameX.NetWork.Abstractions.csproj"/>
