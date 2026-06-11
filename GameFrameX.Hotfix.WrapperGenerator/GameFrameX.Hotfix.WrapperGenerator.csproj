@@ -4,13 +4,10 @@
 
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
-        <AssemblyName>GameFrameX.Hotfix.WrapperGenerator</AssemblyName>
-        <PackageId>GameFrameX.Hotfix.WrapperGenerator</PackageId>
-        <Description>GameFrameX.Hotfix.WrapperGenerator,GameFrameX 框架的 Hotfix Wrapper 源码生成器.框架文档主页: https://gameframex.doc.alianblank.com</Description>
-        <PackageTags>GameFrameX,Lib,Hotfix,WrapperGenerator,SourceGenerator,Analyzer,Server,GameServer</PackageTags>
-        <NoWarn>$(NoWarn);CS1591;NU5128;RS1036;RS1041;RS1042;RS2008</NoWarn>
+        <Description>GameFrameX.Hotfix.WrapperGenerator,GameFrameX 框架的 Hotfix Wrapper Roslyn 源码生成器模块. Hotfix Wrapper Roslyn source generator module for the GameFrameX framework. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Hotfix,WrapperGenerator,SourceGenerator,Roslyn,Analyzer,Server,GameServer</PackageTags>
+        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
         <IncludeBuildOutput>false</IncludeBuildOutput>
-        <IncludeSymbols>false</IncludeSymbols>
         <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
     </PropertyGroup>
 
@@ -26,6 +23,10 @@
 
     <ItemGroup>
         <None Include="$(OutputPath)\$(AssemblyName).dll"
+              Pack="true"
+              PackagePath="analyzers/dotnet/cs"
+              Visible="false" />
+        <None Include="$(OutputPath)\$(AssemblyName).pdb"
               Pack="true"
               PackagePath="analyzers/dotnet/cs"
               Visible="false" />
