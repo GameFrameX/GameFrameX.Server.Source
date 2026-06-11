@@ -2,6 +2,8 @@
 
     <PropertyGroup>
         <IsPackable>false</IsPackable>
+        <Description>GameFrameX.Architecture.Analyzers,GameFrameX 框架的 Roslyn 架构约束与编译期检查分析器模块. Roslyn architecture rules and compile-time diagnostics analyzer module for the GameFrameX framework. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Architecture,Analyzers,Roslyn,Diagnostics,CompileTime,Server,GameServer</PackageTags>
         <NoWarn>$(NoWarn);RS1036;RS1041;RS1042;RS2008</NoWarn>
     </PropertyGroup>
 

@@ -2,8 +2,8 @@
     <Import Project="../Version.props" Label="版本号定义"/>
 
     <PropertyGroup>
-        <Description>GameFrameX.NetWork.Abstractions,GameFrameX 框架的基础设施框架库.框架文档主页: https://gameframex.doc.alianblank.com</Description>
-        <PackageTags>GameFrameX,Lib,NetWork.Abstractions,Server,GameServer</PackageTags>
+        <Description>GameFrameX.NetWork.Abstractions,GameFrameX 框架的网络服务抽象与通信基础接口模块. Network service abstractions and communication foundation interfaces module for the GameFrameX framework. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,NetWork,Abstractions,Networking,SuperSocket,Server,GameServer</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>

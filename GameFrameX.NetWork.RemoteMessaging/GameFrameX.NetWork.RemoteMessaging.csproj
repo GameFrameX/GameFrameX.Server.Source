@@ -2,8 +2,8 @@
     <Import Project="../Version.props" Label="版本号定义"/>
 
     <PropertyGroup>
-        <Description>GameFrameX.NetWork.RemoteMessaging,GameFrameX 远程消息治理与调用编排能力库.</Description>
-        <PackageTags>GameFrameX,Lib,NetWork,RemoteMessaging,Server,GameServer</PackageTags>
+        <Description>GameFrameX.NetWork.RemoteMessaging,GameFrameX 框架的远程消息治理与调用编排模块. Remote messaging governance and call orchestration module for the GameFrameX framework. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,NetWork,RemoteMessaging,Messaging,RPC,Orchestration,Server,GameServer</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>

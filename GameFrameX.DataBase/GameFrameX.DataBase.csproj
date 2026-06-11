@@ -2,8 +2,8 @@
     <Import Project="../Version.props" Label="版本号定义"/>
 
     <PropertyGroup>
-        <Description>GameFrameX.DataBase,GameFrameX 框架的基础设施框架库,用于和数据库交互的接口.框架文档主页: https://gameframex.doc.alianblank.com</Description>
-        <PackageTags>GameFrameX,Lib,Database,Core,MongoDB,Server,GameServer</PackageTags>
+        <Description>GameFrameX.DataBase,GameFrameX 框架的数据访问抽象、实体与 ORM 基础模块. Data access abstractions, entities, and ORM foundation module for the GameFrameX framework. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,DataBase,Database,ORM,Persistence,Entity,Server,GameServer</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>

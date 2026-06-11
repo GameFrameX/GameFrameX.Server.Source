@@ -2,8 +2,8 @@
     <Import Project="../Version.props" Label="版本号定义"/>
 
     <PropertyGroup>
-        <Description>GameFrameX.NetWork.Message,GameFrameX 框架的基础设施框架库.框架文档主页: https://gameframex.doc.alianblank.com</Description>
-        <PackageTags>GameFrameX,Lib,NetWork.Message,Server,GameServer</PackageTags>
+        <Description>GameFrameX.NetWork.Message,GameFrameX 框架的网络消息编解码、压缩与管道过滤模块. Network message encoding, decoding, compression, and pipeline filtering module for the GameFrameX framework. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,NetWork,Message,Codec,Compression,Pipeline,Server,GameServer</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>

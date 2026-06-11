@@ -3,8 +3,8 @@
 
     <PropertyGroup>
         <Nullable>enable</Nullable>
-        <Description>GameFrameX.ProtoBuf.Net,GameFrameX 框架的基础设施框架库.框架文档主页: https://gameframex.doc.alianblank.com</Description>
-        <PackageTags>GameFrameX,Lib,ProtoBuf.Net,Server,GameServer</PackageTags>
+        <Description>GameFrameX.ProtoBuf.Net,GameFrameX 框架的 Protocol Buffers 序列化与运行时类型模型模块. Protocol Buffers serialization and runtime type model module for the GameFrameX framework. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,ProtoBuf,ProtocolBuffers,Serialization,RuntimeTypeModel,Server,GameServer</PackageTags>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)' == 'Debug'">

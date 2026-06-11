@@ -2,8 +2,8 @@
     <Import Project="../Version.props" Label="版本号定义"/>
 
     <PropertyGroup>
-        <Description>GameFrameX.AppHost.ServiceDefaults,GameFrameX 框架的基础设施框架库.框架文档主页: https://gameframex.doc.alianblank.com</Description>
-        <PackageTags>GameFrameX,Lib,AppHost.ServiceDefaults,Server,GameServer,ServiceDefaults</PackageTags>
+        <Description>GameFrameX.AppHost.ServiceDefaults,GameFrameX 框架的 Aspire 服务默认配置与可观测性集成模块. Aspire service defaults and observability integration module for the GameFrameX framework. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,AppHost,ServiceDefaults,Aspire,OpenTelemetry,ServiceDiscovery,Server,GameServer</PackageTags>
     </PropertyGroup>
     <PropertyGroup>
         <ImplicitUsings>enable</ImplicitUsings>

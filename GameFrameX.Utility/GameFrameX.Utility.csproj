@@ -2,8 +2,8 @@
     <Import Project="../Version.props" Label="版本号定义"/>
 
     <PropertyGroup>
-        <Description>GameFrameX.Utility,GameFrameX 框架的基础设施框架库.框架文档主页: https://gameframex.doc.alianblank.com</Description>
-        <PackageTags>GameFrameX,Lib,Utility,Server,GameServer</PackageTags>
+        <Description>GameFrameX.Utility,GameFrameX 框架的通用工具、扩展方法与基础辅助能力模块. Common utilities, extension methods, and foundational helper module for the GameFrameX framework. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Utility,Extensions,Helpers,Foundation,Server,GameServer</PackageTags>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)' == 'Debug'">

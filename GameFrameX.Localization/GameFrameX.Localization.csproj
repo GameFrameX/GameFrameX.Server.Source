@@ -2,8 +2,8 @@
     <Import Project="../Version.props" Label="版本号定义"/>
 
     <PropertyGroup>
-        <Description>GameFrameX.Setting,GameFrameX 框架的基础设施框架库.框架文档主页: https://gameframex.doc.alianblank.com</Description>
-        <PackageTags>GameFrameX,Lib,Setting,Server,GameServer</PackageTags>
+        <Description>GameFrameX.Localization,GameFrameX 框架的本地化资源与多语言消息管理模块. Localization resources and multilingual message management module for the GameFrameX framework. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Localization,I18N,Resources,Messages,Server,GameServer</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>

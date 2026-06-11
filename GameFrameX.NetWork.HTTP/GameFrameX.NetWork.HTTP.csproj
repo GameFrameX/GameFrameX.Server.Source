@@ -2,8 +2,8 @@
     <Import Project="../Version.props" Label="版本号定义"/>
 
     <PropertyGroup>
-        <Description>GameFrameX.NetWork.HTTP,GameFrameX 框架的基础设施框架库.框架文档主页: https://gameframex.doc.alianblank.com</Description>
-        <PackageTags>GameFrameX,Lib,NetWork.HTTP,Server,GameServer</PackageTags>
+        <Description>GameFrameX.NetWork.HTTP,GameFrameX 框架的 HTTP 服务、接口规范化与 OpenAPI 支持模块. HTTP services, API normalization, and OpenAPI support module for the GameFrameX framework. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,NetWork,HTTP,OpenAPI,Swagger,Normalization,Server,GameServer</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>

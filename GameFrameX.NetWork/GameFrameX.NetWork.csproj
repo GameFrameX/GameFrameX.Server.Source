@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <Import Project="../Version.props" Label="版本号定义"/>
     <PropertyGroup>
-        <Description>GameFrameX.NetWork,GameFrameX 框架的基础设施框架库.框架文档主页: https://gameframex.doc.alianblank.com</Description>
-        <PackageTags>GameFrameX,Lib,NetWork,Server,GameServer</PackageTags>
+        <Description>GameFrameX.NetWork,GameFrameX 框架的网络服务核心能力与 WebSocket 通信模块. Core network services and WebSocket communication module for the GameFrameX framework. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,NetWork,Networking,WebSocket,SuperSocket,Server,GameServer</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>
