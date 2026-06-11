@@ -1,3 +1,15 @@
+## [1.10.1] - 2026-06-11
+
+### Documentation
+
+* 补充版权持有人信息
+* 统一许可证为 Apache 2.0
+
+### build
+
+* 完善 NuGet 包描述与标签
+* 优化 WrapperGenerator 打包配置
+* 禁止 AppHost 项目打包
 ## [1.10.0] - 2026-06-11
 
 ### Documentation
