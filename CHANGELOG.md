@@ -1,3 +1,22 @@
+## [1.10.0] - 2026-06-11
+
+### Documentation
+
+* 更新多语言 README 目录结构
+
+### Features
+
+* 新增 Architecture.Analyzers 架构分析器
+
+### Miscellaneous Tasks
+
+* 更新 .gitignore 和项目配置
+
+### Refactor
+
+* 删除旧版 CodeGenerator 项目文件
+* 新增 Hotfix.WrapperGenerator 热更新包装器生成器
+* 更新解决方案和项目引用
 ## [1.9.2] - 2026-06-10
 
 ### Refactor
