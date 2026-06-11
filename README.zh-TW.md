@@ -6,7 +6,7 @@
 
 [![Version](https://img.shields.io/github/v/release/GameFrameX/GameFrameX.Server.Source?label=version&color=green)](https://github.com/GameFrameX/GameFrameX.Server.Source/releases)
 [![.NET](https://img.shields.io/badge/.NET-10.0-purple.svg)](https://dotnet.microsoft.com/download/dotnet/10.0)
-[![License](https://img.shields.io/badge/license-MIT%20%7C%20Apache%202.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Documentation](https://img.shields.io/badge/docs-gameframex.doc.alianblank.com-brightgreen.svg)](https://gameframex.doc.alianblank.com)
 
 **高效能、跨平臺的遊戲伺服器框架**
@@ -744,7 +744,7 @@ dotnet test --logger "console;verbosity=detailed"
 
 ## 許可證
 
-本專案採用 **MIT 許可證** 與 **Apache License 2.0** 雙許可證分發。詳見 [LICENSE](LICENSE) 檔案。
+本專案採用 **Apache License 2.0** 許可證。詳見 [LICENSE](LICENSE) 檔案。
 
 ---
 

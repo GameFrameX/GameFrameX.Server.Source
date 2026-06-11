@@ -6,7 +6,7 @@
 
 [![Version](https://img.shields.io/github/v/release/GameFrameX/GameFrameX.Server.Source?label=version&color=green)](https://github.com/GameFrameX/GameFrameX.Server.Source/releases)
 [![.NET](https://img.shields.io/badge/.NET-10.0-purple.svg)](https://dotnet.microsoft.com/download/dotnet/10.0)
-[![License](https://img.shields.io/badge/license-MIT%20%7C%20Apache%202.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Documentation](https://img.shields.io/badge/docs-gameframex.doc.alianblank.com-brightgreen.svg)](https://gameframex.doc.alianblank.com)
 
 **高性能・クロスプラットフォームのゲームサーバーフレームワーク**
@@ -746,7 +746,7 @@ dotnet test --logger "console;verbosity=detailed"
 
 ## ライセンス
 
-本プロジェクトは **MIT ライセンス** と **Apache License 2.0** のデュアルライセンスで配布されています。詳細は [LICENSE](LICENSE) ファイルを参照してください。
+本プロジェクトは **Apache License 2.0** の下でライセンスされています。詳細は [LICENSE](LICENSE) ファイルを参照してください。
 
 ---
 
