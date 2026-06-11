@@ -154,7 +154,8 @@ Server/
 ├── GameFrameX.Monitor/               # OpenTelemetry + Prometheus 메트릭 통합
 ├── GameFrameX.Utility/               # 유틸리티(로깅, 압축, 오브젝트 풀, Mapster, Harmony)
 ├── GameFrameX.Client/                # 테스트 클라이언트(TCP 연결)
-├── GameFrameX.CodeGenerator/         # Roslyn 소스 제너레이터(핫 업데이트 프록시 래퍼 클래스)
+├── GameFrameX.Architecture.Analyzers/         # Roslyn 아키텍처 분석기
+├── GameFrameX.Hotfix.WrapperGenerator/ # Roslyn 소스 제너레이터(핫 업데이트 프록시 래퍼 클래스)
 ├── GameFrameX.AppHost/               # .NET Aspire 애플리케이션 호스트
 ├── GameFrameX.AppHost.ServiceDefaults/ # Aspire 공유 기본 설정(OTel, 서비스 디스커버리)
 └── Tests/

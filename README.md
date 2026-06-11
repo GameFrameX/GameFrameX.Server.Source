@@ -153,7 +153,8 @@ Server/
 ├── GameFrameX.Monitor/               # OpenTelemetry + Prometheus metrics integration
 ├── GameFrameX.Utility/               # Utilities (logging, compression, object pool, Mapster, Harmony)
 ├── GameFrameX.Client/                # Test client (TCP connection)
-├── GameFrameX.CodeGenerator/         # Roslyn source generator (hot update proxy wrapper classes)
+├── GameFrameX.Architecture.Analyzers/         # Roslyn architecture analyzers
+├── GameFrameX.Hotfix.WrapperGenerator/ # Roslyn source generator (hot update proxy wrapper classes)
 ├── GameFrameX.AppHost/               # .NET Aspire application host
 ├── GameFrameX.AppHost.ServiceDefaults/ # Aspire shared defaults (OTel, service discovery)
 └── Tests/

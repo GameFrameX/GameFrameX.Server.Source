@@ -153,7 +153,8 @@ Server/
 ├── GameFrameX.Monitor/               # OpenTelemetry + Prometheus 指标集成
 ├── GameFrameX.Utility/               # 工具集（日志、压缩、对象池、Mapster、Harmony）
 ├── GameFrameX.Client/                # 测试客户端（TCP 连接）
-├── GameFrameX.CodeGenerator/         # Roslyn 源码生成器（热更新代理包装类）
+├── GameFrameX.Architecture.Analyzers/         # Roslyn 架构分析器
+├── GameFrameX.Hotfix.WrapperGenerator/ # Roslyn 源码生成器（热更新代理包装类）
 ├── GameFrameX.AppHost/               # .NET Aspire 应用主机
 ├── GameFrameX.AppHost.ServiceDefaults/ # Aspire 共享默认配置（OTel、服务发现）
 └── Tests/
