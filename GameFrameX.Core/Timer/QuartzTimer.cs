@@ -563,20 +563,22 @@ public static class QuartzTimer
             var handlerType = context.JobDetail.JobDataMap.GetString(TimerKey);
             try
             {
-                var eventArgs = context.JobDetail.JobDataMap.Get(ParamKey) as GameEventArgs;
-                var handler = HotfixManager.GetInstance<ITimerHandler>(handlerType);
-                if (handler != null)
+                if (context.JobDetail.JobDataMap.TryGetValue(ParamKey, out var param) && param is GameEventArgs eventArgs)
                 {
-                    var actorId = context.JobDetail.JobDataMap.GetLong(ActorIdKey);
-                    var baseType = handler.GetType().BaseType;
-                    if (baseType != null && baseType.GenericTypeArguments.Length > 0)
+                    var handler = HotfixManager.GetInstance<ITimerHandler>(handlerType);
+                    if (handler != null)
                     {
-                        var agentType = baseType.GenericTypeArguments[0];
-                        var componentAgent = await ActorManager.GetComponentAgent(actorId, agentType);
-                        if (componentAgent != null)
+                        var actorId = context.JobDetail.JobDataMap.GetLong(ActorIdKey);
+                        var baseType = handler.GetType().BaseType;
+                        if (baseType != null && baseType.GenericTypeArguments.Length > 0)
                         {
-                            componentAgent.Tell(() => handler.InnerHandleTimer(componentAgent, eventArgs));
-                            return;
+                            var agentType = baseType.GenericTypeArguments[0];
+                            var componentAgent = await ActorManager.GetComponentAgent(actorId, agentType);
+                            if (componentAgent != null)
+                            {
+                                componentAgent.Tell(() => handler.InnerHandleTimer(componentAgent, eventArgs));
+                                return;
+                            }
                         }
                     }
                 }
@@ -660,27 +662,29 @@ public static class QuartzTimer
         {
             return (level, func, exception, parameters) =>
             {
-                if (func != null)
+                if (func == null)
                 {
-                    if (level < LogLevel.Warn)
-                    {
-                        // if (level == LogLevel.Debug)
-                        // {
-                        //     LogHelper.Debug(func(), parameters);
-                        // }
-                        // else
-                        // {
-                        //     LogHelper.Info(func(), parameters);
-                        // }
-                    }
-                    else if (level == LogLevel.Warn)
-                    {
-                        LogHelper.Warning(func(), parameters);
-                    }
-                    else
-                    {
-                        LogHelper.Error(func(), parameters);
-                    }
+                    return true;
+                }
+
+                if (level < LogLevel.Warn)
+                {
+                    // if (level == LogLevel.Debug)
+                    // {
+                    //     LogHelper.Debug(func(), parameters);
+                    // }
+                    // else
+                    // {
+                    //     LogHelper.Info(func(), parameters);
+                    // }
+                }
+                else if (level == LogLevel.Warn)
+                {
+                    LogHelper.Warning(func(), parameters);
+                }
+                else
+                {
+                    LogHelper.Error(func(), parameters);
                 }
 
                 return true;
