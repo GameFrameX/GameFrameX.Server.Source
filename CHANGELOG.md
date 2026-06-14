@@ -1,3 +1,12 @@
+## [1.10.3] - 2026-06-14
+
+### Bug Fixes
+
+* 补启动流程缺失的 QuartzTimer.Start()
+
+### Refactor
+
+* QuartzTimer 内部改用 early return 减少嵌套
 ## [1.10.2] - 2026-06-11
 
 ### Styling
