@@ -60,6 +60,7 @@ internal partial class AppStartUpHotfixGame : AppStartUpBase, IHotfixBridge
 
         await RunServer();
         // 启动定时器
+        await QuartzTimer.Start();
         GlobalTimer.Start();
         await ComponentRegister.ActiveGlobalComponents();
         EventDispatcher.Dispatch(0, (int)EventId.ServiceOnline, new ServiceOnlineEventArgs(setting.ServerType, setting.ServerInstanceId, DateTime.UtcNow));
