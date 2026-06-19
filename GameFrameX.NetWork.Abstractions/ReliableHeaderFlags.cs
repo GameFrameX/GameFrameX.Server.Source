@@ -27,52 +27,51 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using System.Buffers;
-using GameFrameX.NetWork;
-using GameFrameX.NetWork.Abstractions;
-
-namespace GameFrameX.NetWork.Message;
+namespace GameFrameX.NetWork;
 
 /// <summary>
-/// 基础消息解码处理器
+/// 可靠包头标记。
 /// </summary>
-public abstract class BaseMessageDecoderHandler : IMessageDecoderHandler
+[Flags]
+public enum ReliableHeaderFlags : ushort
 {
     /// <summary>
-    /// 解压消息处理器
+    /// 协议版本 1。
     /// </summary>
-    protected IMessageDecompressHandler DecompressHandler { get; private set; }
+    ProtocolVersion1 = 0x0001,
 
     /// <summary>
-    /// 消息头长度（默认值，可被子类重写）
-    /// <para>默认结构: totalLength(4) + operationType(1) + zipFlag(1) + headerFlags(2) + uniqueId(4) + messageId(4) = 16 字节</para>
+    /// 包含可靠扩展头。
     /// </summary>
-    public virtual ushort PackageHeaderLength { get; } = PacketHeaderLayout.BaseHeaderLength;
+    Reliable = 0x0010,
 
     /// <summary>
-    /// 和客户端之间的消息 数据长度(2)+消息唯一ID(4)+消息ID(4)+消息内容
+    /// ACK 控制标记。
     /// </summary>
-    /// <param name="data"></param>
-    /// <returns></returns>
-    public IMessage Handler(byte[] data)
-    {
-        var sequence = new ReadOnlySequence<byte>(data);
-        return Handler(ref sequence);
-    }
+    Ack = 0x0020,
 
     /// <summary>
-    /// 消息解码
+    /// 控制包标记。
     /// </summary>
-    /// <param name="sequence"></param>
-    /// <returns></returns>
-    public abstract IMessage Handler(ref ReadOnlySequence<byte> sequence);
+    Control = 0x0040,
 
     /// <summary>
-    /// 设置解压消息处理器
+    /// Resume 控制标记。
     /// </summary>
-    /// <param name="decompressHandler">解压消息处理器</param>
-    public void SetDecompressionHandler(IMessageDecompressHandler decompressHandler = null)
-    {
-        DecompressHandler = decompressHandler;
-    }
+    Resume = 0x0080,
+
+    /// <summary>
+    /// 只保留最新包标记。
+    /// </summary>
+    LatestOnly = 0x0100,
+
+    /// <summary>
+    /// 不重试标记。
+    /// </summary>
+    NoRetry = 0x0200,
+
+    /// <summary>
+    /// 重复包标记。
+    /// </summary>
+    Duplicate = 0x0400,
 }

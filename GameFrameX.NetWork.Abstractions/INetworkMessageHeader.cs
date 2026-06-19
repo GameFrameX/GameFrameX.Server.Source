@@ -56,6 +56,62 @@ public interface INetworkMessageHeader : IMessageObject
     int UniqueId { get; set; }
 
     /// <summary>
+    /// 获取或设置头标记。
+    /// </summary>
+    /// <remarks>
+    /// Gets or sets the header flags.
+    /// </remarks>
+    ushort HeaderFlags { get; set; }
+
+    /// <summary>
+    /// 获取或设置协议版本。
+    /// </summary>
+    /// <remarks>
+    /// Gets or sets the protocol version.
+    /// </remarks>
+    byte ProtocolVersion { get; set; }
+
+    /// <summary>
+    /// 获取或设置会话ID。
+    /// </summary>
+    /// <remarks>
+    /// Gets or sets the reliable session identifier.
+    /// </remarks>
+    ulong SessionId { get; set; }
+
+    /// <summary>
+    /// 获取或设置可靠序列号。
+    /// </summary>
+    /// <remarks>
+    /// Gets or sets the reliable sequence number.
+    /// </remarks>
+    ulong ReliableSequence { get; set; }
+
+    /// <summary>
+    /// 获取或设置累计 ACK 序列号。
+    /// </summary>
+    /// <remarks>
+    /// Gets or sets the cumulative ACK sequence.
+    /// </remarks>
+    ulong AckSequence { get; set; }
+
+    /// <summary>
+    /// 获取是否包含可靠扩展。
+    /// </summary>
+    /// <remarks>
+    /// Gets whether the reliable extension header is present.
+    /// </remarks>
+    bool HasReliableExtension { get; }
+
+    /// <summary>
+    /// 获取是否为重复包。
+    /// </summary>
+    /// <remarks>
+    /// Gets whether the packet is marked as duplicate.
+    /// </remarks>
+    bool IsDuplicate { get; }
+
+    /// <summary>
     /// 获取或设置操作类型。
     /// </summary>
     /// <remarks>

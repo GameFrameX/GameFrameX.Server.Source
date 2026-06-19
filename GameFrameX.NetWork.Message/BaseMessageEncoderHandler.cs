@@ -27,6 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using GameFrameX.NetWork;
 using GameFrameX.NetWork.Abstractions;
 
 namespace GameFrameX.NetWork.Message;
@@ -48,9 +49,9 @@ public abstract class BaseMessageEncoderHandler : IMessageEncoderHandler
 
     /// <summary>
     /// 消息头长度（默认值，可被子类重写）
-    /// <para>默认结构: totalLength(4) + operationType(1) + zipFlag(1) + uniqueId(4) + messageId(4) = 14 字节</para>
+    /// <para>默认结构: totalLength(4) + operationType(1) + zipFlag(1) + headerFlags(2) + uniqueId(4) + messageId(4) = 16 字节</para>
     /// </summary>
-    public virtual ushort PackageHeaderLength { get; } = sizeof(uint) + sizeof(byte) + sizeof(byte) + sizeof(int) + sizeof(int);
+    public virtual ushort PackageHeaderLength { get; } = PacketHeaderLayout.BaseHeaderLength;
 
     /// <summary>
     /// 和客户端之间的消息 数据长度(2)+消息唯一ID(4)+消息ID(4)+消息内容

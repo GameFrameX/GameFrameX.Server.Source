@@ -134,7 +134,9 @@ public sealed class KcpNetWorkChannel : INetWorkChannel
         }
 
         var actorId = GetData<long>(GlobalConst.ActorIdKey);
+        ApplyReliableResponseHeader(msg);
         var messageData = MessageHelper.EncoderHandler.Handler(msg);
+        CacheReliableResponse(msg, messageData);
 
         if (Setting.IsDebug && Setting.IsDebugSend)
         {
@@ -171,6 +173,59 @@ public sealed class KcpNetWorkChannel : INetWorkChannel
                 LogHelper.Error("Send Message Error:{actorId} {message}", actorId, ex.Message);
             }
         }
+    }
+
+    public async Task WriteRawAsync(byte[] messageData)
+    {
+        ArgumentNullException.ThrowIfNull(messageData, nameof(messageData));
+
+        if (!KcpSession.IsConnected)
+        {
+            return;
+        }
+
+        SendBytesLength += (ulong)messageData.Length;
+        SendPacketLength++;
+        using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(Setting.NetWorkSendTimeOutSeconds)))
+        {
+            await KcpSession.SendAsync(messageData, cts.Token);
+        }
+    }
+
+    private void ApplyReliableResponseHeader(INetworkMessage msg)
+    {
+        if (msg is not IReliableNetworkMessage reliableMessage)
+        {
+            return;
+        }
+
+        var reliableState = GetData<ReliableSessionState>(ReliableSessionState.ChannelDataKey);
+        if (reliableState == null || reliableState.SessionId == 0)
+        {
+            return;
+        }
+
+        reliableMessage.SetReliableHeader(
+            (ushort)(ReliableHeaderFlags.ProtocolVersion1 | ReliableHeaderFlags.Reliable | ReliableHeaderFlags.Ack),
+            reliableState.SessionId,
+            default,
+            reliableState.LastAckedClientSequence);
+    }
+
+    private void CacheReliableResponse(INetworkMessage msg, byte[] messageData)
+    {
+        if (msg is not IReliableNetworkMessage reliableMessage)
+        {
+            return;
+        }
+
+        if (!PacketHeaderLayout.HasReliableExtension(reliableMessage.HeaderFlags) || reliableMessage.AckSequence == 0)
+        {
+            return;
+        }
+
+        var reliableState = GetData<ReliableSessionState>(ReliableSessionState.ChannelDataKey);
+        reliableState?.CacheResponse(reliableMessage.AckSequence, messageData);
     }
 
     /// <summary>

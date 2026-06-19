@@ -32,6 +32,7 @@ using System.Reflection;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.NetWork;
 
 namespace GameFrameX.NetWork.Abstractions;
 
@@ -146,6 +147,40 @@ public static class MessageProtoHelper
         ArgumentNullException.ThrowIfNull(message, nameof(message));
         var messageType = message.GetType();
         message.SetMessageId(GetMessageIdByType(messageType));
+    }
+
+    /// <summary>
+    /// 按可靠序列号对包进行分类。
+    /// </summary>
+    /// <remarks>
+    /// Classifies a reliable packet by comparing its sequence with the last processed sequence.
+    /// </remarks>
+    /// <param name="header">消息头 / Message header</param>
+    /// <param name="lastProcessedSequence">最后已处理序列 / Last processed sequence</param>
+    /// <returns>可靠包处理结果 / Reliable packet process result</returns>
+    public static ReliablePacketProcessResult ClassifyReliableSequence(INetworkMessageHeader header, ulong lastProcessedSequence)
+    {
+        ArgumentNullException.ThrowIfNull(header, nameof(header));
+
+        if (!header.HasReliableExtension)
+        {
+            return ReliablePacketProcessResult.Unsupported;
+        }
+
+        header.HeaderFlags = (ushort)(header.HeaderFlags & ~(ushort)ReliableHeaderFlags.Duplicate);
+
+        if (header.ReliableSequence == lastProcessedSequence + 1)
+        {
+            return ReliablePacketProcessResult.InOrder;
+        }
+
+        if (header.ReliableSequence <= lastProcessedSequence)
+        {
+            header.HeaderFlags = (ushort)(header.HeaderFlags | (ushort)ReliableHeaderFlags.Duplicate);
+            return ReliablePacketProcessResult.Duplicate;
+        }
+
+        return ReliablePacketProcessResult.Gap;
     }
 
     /// <summary>

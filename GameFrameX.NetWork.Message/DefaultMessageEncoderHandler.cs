@@ -28,7 +28,9 @@
 //  ==========================================================================================
 
 using System.Buffers;
+using System.Buffers.Binary;
 using GameFrameX.Foundation.Extensions;
+using GameFrameX.NetWork;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.NetWork.Messages;
 using GameFrameX.ProtoBuf.Net;
@@ -45,7 +47,7 @@ public sealed class DefaultMessageEncoderHandler : BaseMessageEncoderHandler
     /// <summary>
     /// 消息头长度
     /// </summary>
-    public override ushort PackageHeaderLength { get; } = sizeof(uint) + sizeof(byte) + sizeof(byte) + sizeof(int) + sizeof(int);
+    public override ushort PackageHeaderLength { get; } = PacketHeaderLayout.BaseHeaderLength;
 
     /// <summary>
     /// 和客户端之间的消息 数据长度(2)+消息唯一ID(4)+消息ID(4)+消息内容
@@ -63,7 +65,9 @@ public sealed class DefaultMessageEncoderHandler : BaseMessageEncoderHandler
                 var messageBodyData = ProtoBufSerializerHelper.Serialize(messageObject);
                 byte zipFlag = 0;
                 BytesCompressHandler(ref messageBodyData, ref zipFlag);
-                var totalLength = PackageHeaderLength + messageBodyData.Length;
+                var headerFlags = messageObject.HeaderFlags == 0 ? (ushort)ReliableHeaderFlags.ProtocolVersion1 : messageObject.HeaderFlags;
+                var headerLength = PacketHeaderLayout.GetHeaderLength(headerFlags);
+                var totalLength = headerLength + messageBodyData.Length;
                 var buffer = ArrayPool<byte>.Shared.Rent(totalLength);
                 var offset = 0;
                 // 总长度
@@ -72,10 +76,23 @@ public sealed class DefaultMessageEncoderHandler : BaseMessageEncoderHandler
                 buffer.WriteByteValue(messageObject.OperationType, ref offset);
                 // zipFlag 压缩标记
                 buffer.WriteByteValue(zipFlag, ref offset);
+                // headerFlags 头标记
+                BinaryPrimitives.WriteUInt16BigEndian(buffer.AsSpan(offset, sizeof(ushort)), headerFlags);
+                offset += sizeof(ushort);
                 // uniqueId 唯一ID
                 buffer.WriteIntBigEndianValue(messageObject.UniqueId, ref offset);
                 // MessageId 消息ID
                 buffer.WriteIntBigEndianValue(messageObject.MessageId, ref offset);
+                if (PacketHeaderLayout.HasReliableExtension(headerFlags))
+                {
+                    BinaryPrimitives.WriteUInt64BigEndian(buffer.AsSpan(offset, sizeof(ulong)), messageObject.SessionId);
+                    offset += sizeof(ulong);
+                    BinaryPrimitives.WriteUInt64BigEndian(buffer.AsSpan(offset, sizeof(ulong)), messageObject.ReliableSequence);
+                    offset += sizeof(ulong);
+                    BinaryPrimitives.WriteUInt64BigEndian(buffer.AsSpan(offset, sizeof(ulong)), messageObject.AckSequence);
+                    offset += sizeof(ulong);
+                }
+
                 // 消息内容
                 buffer.WriteBytesWithoutLengthBigEndian(messageBodyData, ref offset);
                 var result = buffer.AsSpan(0, totalLength).ToArray();

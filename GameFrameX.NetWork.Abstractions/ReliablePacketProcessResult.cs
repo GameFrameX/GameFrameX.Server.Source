@@ -27,52 +27,35 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using System.Buffers;
-using GameFrameX.NetWork;
-using GameFrameX.NetWork.Abstractions;
-
-namespace GameFrameX.NetWork.Message;
+namespace GameFrameX.NetWork;
 
 /// <summary>
-/// 基础消息解码处理器
+/// 可靠序列处理结果。
 /// </summary>
-public abstract class BaseMessageDecoderHandler : IMessageDecoderHandler
+public enum ReliablePacketProcessResult
 {
     /// <summary>
-    /// 解压消息处理器
+    /// 序列连续，可以处理。
     /// </summary>
-    protected IMessageDecompressHandler DecompressHandler { get; private set; }
+    InOrder,
 
     /// <summary>
-    /// 消息头长度（默认值，可被子类重写）
-    /// <para>默认结构: totalLength(4) + operationType(1) + zipFlag(1) + headerFlags(2) + uniqueId(4) + messageId(4) = 16 字节</para>
+    /// 重复序列，不应重复执行业务。
     /// </summary>
-    public virtual ushort PackageHeaderLength { get; } = PacketHeaderLayout.BaseHeaderLength;
+    Duplicate,
 
     /// <summary>
-    /// 和客户端之间的消息 数据长度(2)+消息唯一ID(4)+消息ID(4)+消息内容
+    /// 序列存在缺口。
     /// </summary>
-    /// <param name="data"></param>
-    /// <returns></returns>
-    public IMessage Handler(byte[] data)
-    {
-        var sequence = new ReadOnlySequence<byte>(data);
-        return Handler(ref sequence);
-    }
+    Gap,
 
     /// <summary>
-    /// 消息解码
+    /// 控制包，不进入业务 FIFO。
     /// </summary>
-    /// <param name="sequence"></param>
-    /// <returns></returns>
-    public abstract IMessage Handler(ref ReadOnlySequence<byte> sequence);
+    Control,
 
     /// <summary>
-    /// 设置解压消息处理器
+    /// 不包含可靠扩展。
     /// </summary>
-    /// <param name="decompressHandler">解压消息处理器</param>
-    public void SetDecompressionHandler(IMessageDecompressHandler decompressHandler = null)
-    {
-        DecompressHandler = decompressHandler;
-    }
+    Unsupported,
 }

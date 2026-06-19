@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 
+using GameFrameX.NetWork;
 using GameFrameX.NetWork.Abstractions;
 using ProtoBuf;
 
@@ -83,6 +84,73 @@ public class MessageObjectHeader : INetworkMessageHeader
     public int UniqueId { get; set; }
 
     /// <summary>
+    /// 获取或设置头标记。
+    /// </summary>
+    /// <remarks>
+    /// Gets or sets the header flags.
+    /// </remarks>
+    [ProtoMember(5)]
+    public ushort HeaderFlags { get; set; }
+
+    /// <summary>
+    /// 获取或设置会话ID。
+    /// </summary>
+    /// <remarks>
+    /// Gets or sets the reliable session identifier.
+    /// </remarks>
+    [ProtoMember(6)]
+    public ulong SessionId { get; set; }
+
+    /// <summary>
+    /// 获取或设置可靠序列号。
+    /// </summary>
+    /// <remarks>
+    /// Gets or sets the reliable sequence number.
+    /// </remarks>
+    [ProtoMember(7)]
+    public ulong ReliableSequence { get; set; }
+
+    /// <summary>
+    /// 获取或设置累计 ACK 序列号。
+    /// </summary>
+    /// <remarks>
+    /// Gets or sets the cumulative ACK sequence.
+    /// </remarks>
+    [ProtoMember(8)]
+    public ulong AckSequence { get; set; }
+
+    /// <summary>
+    /// 获取或设置协议版本。
+    /// </summary>
+    /// <remarks>
+    /// Gets or sets the protocol version.
+    /// </remarks>
+    [ProtoIgnore]
+    public byte ProtocolVersion
+    {
+        get => (byte)(HeaderFlags & PacketHeaderLayout.ProtocolVersionMask);
+        set => HeaderFlags = (ushort)((HeaderFlags & ~PacketHeaderLayout.ProtocolVersionMask) | (value & PacketHeaderLayout.ProtocolVersionMask));
+    }
+
+    /// <summary>
+    /// 获取是否包含可靠扩展。
+    /// </summary>
+    /// <remarks>
+    /// Gets whether the reliable extension header is present.
+    /// </remarks>
+    [ProtoIgnore]
+    public bool HasReliableExtension => PacketHeaderLayout.HasReliableExtension(HeaderFlags);
+
+    /// <summary>
+    /// 获取是否为重复包。
+    /// </summary>
+    /// <remarks>
+    /// Gets whether the packet is marked as duplicate.
+    /// </remarks>
+    [ProtoIgnore]
+    public bool IsDuplicate => (HeaderFlags & (ushort)ReliableHeaderFlags.Duplicate) != 0;
+
+    /// <summary>
     /// 清除消息内容。
     /// </summary>
     /// <remarks>
@@ -94,5 +162,9 @@ public class MessageObjectHeader : INetworkMessageHeader
         OperationType = default;
         ZipFlag = default;
         UniqueId = default;
+        HeaderFlags = default;
+        SessionId = default;
+        ReliableSequence = default;
+        AckSequence = default;
     }
 }

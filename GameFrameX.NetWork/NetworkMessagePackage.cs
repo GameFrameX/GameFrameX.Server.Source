@@ -30,6 +30,7 @@
 
 using System.Text.Json.Serialization;
 using GameFrameX.Foundation.Logger;
+using GameFrameX.NetWork;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.NetWork.Messages;
 using GameFrameX.ProtoBuf.Net;
@@ -79,12 +80,18 @@ public sealed class NetworkMessagePackage : INetworkMessagePackage
     /// <returns>反序列化后的消息对象 / The deserialized message object</returns>
     public INetworkMessage DeserializeMessageObject()
     {
+        if (MessageType == null)
+        {
+            return null;
+        }
+
         var message = (INetworkMessage)ProtoBufSerializerHelper.Deserialize(MessageData, MessageType);
         message.SetUniqueId(Header.UniqueId);
         MessageProtoHelper.SetMessageId(message);
         if (message is MessageObject messageObject)
         {
             messageObject.SetOperationType(Header.OperationType);
+            messageObject.SetReliableHeader(Header.HeaderFlags, Header.SessionId, Header.ReliableSequence, Header.AckSequence);
         }
 
         return message;
@@ -169,6 +176,15 @@ public sealed class NetworkMessagePackage : INetworkMessagePackage
         messageObjectHeader.OperationType = MessageProtoHelper.GetMessageOperationType(message);
         messageObjectHeader.MessageId = MessageProtoHelper.GetMessageIdByType(message);
         messageObjectHeader.UniqueId = message.UniqueId;
+        if (message is IReliableNetworkMessage reliableMessage)
+        {
+            messageObjectHeader.HeaderFlags = reliableMessage.HeaderFlags;
+            messageObjectHeader.SessionId = reliableMessage.SessionId;
+            messageObjectHeader.ReliableSequence = reliableMessage.ReliableSequence;
+            messageObjectHeader.AckSequence = reliableMessage.AckSequence;
+        }
+
+        messageObjectHeader.ProtocolVersion = 1;
         networkMessage.SetMessageType(message.GetType());
         try
         {
@@ -198,7 +214,6 @@ public sealed class NetworkMessagePackage : INetworkMessagePackage
     {
         ArgumentNullException.ThrowIfNull(messageObjectHeader, nameof(messageObjectHeader));
         ArgumentNullException.ThrowIfNull(messageData, nameof(messageData));
-        ArgumentNullException.ThrowIfNull(messageType, nameof(messageType));
         var networkMessagePackage = new NetworkMessagePackage();
         networkMessagePackage.SetMessageHeader(messageObjectHeader);
         networkMessagePackage.SetMessageData(messageData);

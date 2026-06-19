@@ -43,7 +43,7 @@ namespace GameFrameX.NetWork.Messages;
 /// Abstract base class for all network messages, providing common properties and methods.
 /// </remarks>
 [ProtoContract]
-public abstract class MessageObject : INetworkMessage
+public abstract class MessageObject : IReliableNetworkMessage
 {
     /// <summary>
     /// 初始化消息对象。
@@ -75,6 +75,30 @@ public abstract class MessageObject : INetworkMessage
     /// <value>消息业务类型 / The operation type</value>
     [JsonIgnore]
     public byte OperationType { get; private set; }
+
+    /// <summary>
+    /// 获取头标记。
+    /// </summary>
+    [JsonIgnore]
+    public ushort HeaderFlags { get; private set; } = (ushort)ReliableHeaderFlags.ProtocolVersion1;
+
+    /// <summary>
+    /// 获取会话ID。
+    /// </summary>
+    [JsonIgnore]
+    public ulong SessionId { get; private set; }
+
+    /// <summary>
+    /// 获取可靠序列号。
+    /// </summary>
+    [JsonIgnore]
+    public ulong ReliableSequence { get; private set; }
+
+    /// <summary>
+    /// 获取累计 ACK 序列号。
+    /// </summary>
+    [JsonIgnore]
+    public ulong AckSequence { get; private set; }
 
     /// <summary>
     /// 设置消息ID。
@@ -156,6 +180,21 @@ public abstract class MessageObject : INetworkMessage
     public void SetOperationType(byte messageOperationType)
     {
         OperationType = messageOperationType;
+    }
+
+    /// <summary>
+    /// 设置可靠协议元数据。
+    /// </summary>
+    /// <param name="headerFlags">头标记 / Header flags</param>
+    /// <param name="sessionId">会话ID / Session ID</param>
+    /// <param name="reliableSequence">可靠序列号 / Reliable sequence</param>
+    /// <param name="ackSequence">累计 ACK 序列号 / Cumulative ACK sequence</param>
+    public void SetReliableHeader(ushort headerFlags, ulong sessionId, ulong reliableSequence, ulong ackSequence)
+    {
+        HeaderFlags = (ushort)((headerFlags & ~PacketHeaderLayout.ProtocolVersionMask) | (ushort)ReliableHeaderFlags.ProtocolVersion1);
+        SessionId = sessionId;
+        ReliableSequence = reliableSequence;
+        AckSequence = ackSequence;
     }
 
     /// <summary>

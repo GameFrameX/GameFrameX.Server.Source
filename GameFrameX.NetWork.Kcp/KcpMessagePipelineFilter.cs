@@ -29,6 +29,7 @@
 
 
 using System.Buffers;
+using GameFrameX.NetWork;
 using GameFrameX.NetWork.Abstractions;
 
 namespace GameFrameX.NetWork.Kcp;
@@ -86,14 +87,14 @@ public sealed class KcpMessagePipelineFilter
     /// <returns>Parsed message or null / 解析的消息或 null</returns>
     public IMessage ParseMessage(ReadOnlySpan<byte> buffer)
     {
-        if (buffer.Length < sizeof(int))
+        if (buffer.Length < PacketHeaderLayout.BaseHeaderLength)
         {
             return null;
         }
 
         // Read total length (big-endian)
         var totalLength = ReadInt32BigEndian(buffer);
-        if (buffer.Length < totalLength)
+        if (totalLength < PacketHeaderLayout.BaseHeaderLength || buffer.Length < totalLength)
         {
             return null;
         }
@@ -115,13 +116,13 @@ public sealed class KcpMessagePipelineFilter
     {
         totalLength = 0;
 
-        if (buffer.Length < sizeof(int))
+        if (buffer.Length < PacketHeaderLayout.BaseHeaderLength)
         {
             return false;
         }
 
         totalLength = ReadInt32BigEndian(buffer);
-        return totalLength > 0;
+        return totalLength >= PacketHeaderLayout.BaseHeaderLength;
     }
 
     /// <summary>

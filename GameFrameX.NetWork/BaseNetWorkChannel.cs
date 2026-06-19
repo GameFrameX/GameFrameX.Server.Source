@@ -181,7 +181,9 @@ public abstract class BaseNetWorkChannel : INetWorkChannel
         }
 
         var actorId = GetData<long>(GlobalConst.ActorIdKey);
+        ApplyReliableResponseHeader(messageObject);
         var messageData = MessageHelper.EncoderHandler.Handler(messageObject);
+        CacheReliableResponse(messageObject, messageData);
         if (Setting.IsDebug && Setting.IsDebugSend)
         {
             // 判断是否是心跳消息
@@ -221,6 +223,64 @@ public abstract class BaseNetWorkChannel : INetWorkChannel
                 LogHelper.Error("Send Message Error:{actorId} {message}", actorId, e.Message);
             }
         }
+    }
+
+    /// <summary>
+    /// 异步写入已经编码好的消息数据。
+    /// </summary>
+    /// <param name="messageData">已经编码好的消息数据 / Pre-encoded message data</param>
+    /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
+    public virtual async Task WriteRawAsync(byte[] messageData)
+    {
+        ArgumentNullException.ThrowIfNull(messageData, nameof(messageData));
+
+        if (!GameAppSession.IsConnected)
+        {
+            return;
+        }
+
+        SendBytesLength += (ulong)messageData.Length;
+        SendPacketLength++;
+        using (var cancellationTokenSource = new CancellationTokenSource(NetWorkSendTimeOutSecondsTimeSpan))
+        {
+            await _sender.SendAsync(messageData, cancellationTokenSource.Token);
+        }
+    }
+
+    private void ApplyReliableResponseHeader(INetworkMessage messageObject)
+    {
+        if (messageObject is not IReliableNetworkMessage reliableMessage)
+        {
+            return;
+        }
+
+        var reliableState = GetData<ReliableSessionState>(ReliableSessionState.ChannelDataKey);
+        if (reliableState == null || reliableState.SessionId == 0)
+        {
+            return;
+        }
+
+        reliableMessage.SetReliableHeader(
+            (ushort)(ReliableHeaderFlags.ProtocolVersion1 | ReliableHeaderFlags.Reliable | ReliableHeaderFlags.Ack),
+            reliableState.SessionId,
+            default,
+            reliableState.LastAckedClientSequence);
+    }
+
+    private void CacheReliableResponse(INetworkMessage messageObject, byte[] messageData)
+    {
+        if (messageObject is not IReliableNetworkMessage reliableMessage)
+        {
+            return;
+        }
+
+        if (!PacketHeaderLayout.HasReliableExtension(reliableMessage.HeaderFlags) || reliableMessage.AckSequence == 0)
+        {
+            return;
+        }
+
+        var reliableState = GetData<ReliableSessionState>(ReliableSessionState.ChannelDataKey);
+        reliableState?.CacheResponse(reliableMessage.AckSequence, messageData);
     }
 
     /// <summary>

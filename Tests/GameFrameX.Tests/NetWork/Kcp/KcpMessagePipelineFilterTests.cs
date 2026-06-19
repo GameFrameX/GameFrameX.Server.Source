@@ -53,10 +53,9 @@ public class KcpMessagePipelineFilterTests
     /// 测试解析有效的消息头 / Test parsing valid message header
     /// </summary>
     [Theory]
-    [InlineData(4, new byte[] { 0x00, 0x00, 0x00, 0x04 })]
-    [InlineData(8, new byte[] { 0x00, 0x00, 0x00, 0x08 })]
-    [InlineData(100, new byte[] { 0x00, 0x00, 0x00, 0x64 })]
-    [InlineData(256, new byte[] { 0x00, 0x00, 0x01, 0x00 })]
+    [InlineData(16, new byte[] { 0x00, 0x00, 0x00, 0x10, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01 })]
+    [InlineData(100, new byte[] { 0x00, 0x00, 0x00, 0x64, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01 })]
+    [InlineData(256, new byte[] { 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01 })]
     public void TryParseHeader_ValidBuffer_ShouldReturnTrue(int expectedLength, byte[] headerBytes)
     {
         // Act
@@ -75,6 +74,9 @@ public class KcpMessagePipelineFilterTests
     [InlineData(new byte[] { 0x00 })]
     [InlineData(new byte[] { 0x00, 0x00 })]
     [InlineData(new byte[] { 0x00, 0x00, 0x00 })]
+    [InlineData(new byte[] { 0x00, 0x00, 0x00, 0x04 })]
+    [InlineData(new byte[] { 0x00, 0x00, 0x00, 0x08 })]
+    [InlineData(new byte[] { 0x00, 0x00, 0x00, 0x0F })]
     public void TryParseHeader_TooShortBuffer_ShouldReturnFalse(byte[] headerBytes)
     {
         // Act
@@ -172,14 +174,15 @@ public class KcpMessagePipelineFilterTests
     public void ReadInt32BigEndian_ShouldReadCorrectly()
     {
         // Arrange - 大端序表示 305419896 (0x12345678)
-        var buffer = new byte[] { 0x12, 0x34, 0x56, 0x78 };
+        var buffer = new byte[] { 0x12, 0x34, 0x56, 0x78, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01 };
+        var expected = 0x12345678;
 
         // Act
         var result = _filter.TryParseHeader(buffer, out var value);
 
         // Assert
         Assert.True(result);
-        Assert.Equal(0x12345678, value);
+        Assert.Equal(expected, value);
     }
 
     /// <summary>
@@ -189,14 +192,15 @@ public class KcpMessagePipelineFilterTests
     public void ReadInt32BigEndian_MaxValue_ShouldReadCorrectly()
     {
         // Arrange - 大端序表示 2147483647 (0x7FFFFFFF)
-        var buffer = new byte[] { 0x7F, 0xFF, 0xFF, 0xFF };
+        var buffer = new byte[] { 0x7F, 0xFF, 0xFF, 0xFF, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01 };
+        var expected = 2147483647;
 
         // Act
         var result = _filter.TryParseHeader(buffer, out var value);
 
         // Assert
         Assert.True(result);
-        Assert.Equal(2147483647, value);
+        Assert.Equal(expected, value);
     }
 
     #endregion

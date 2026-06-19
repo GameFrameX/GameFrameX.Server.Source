@@ -28,9 +28,10 @@
 //  ==========================================================================================
 
 using System.Buffers;
+using System.Buffers.Binary;
+using GameFrameX.NetWork;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.NetWork.Messages;
-using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Logger;
 
 namespace GameFrameX.NetWork.Message;
@@ -43,7 +44,7 @@ public class DefaultMessageDecoderHandler : BaseMessageDecoderHandler
     /// <summary>
     /// 消息头长度
     /// </summary>
-    public override ushort PackageHeaderLength { get; } = sizeof(uint) + sizeof(byte) + sizeof(byte) + sizeof(int) + sizeof(int);
+    public override ushort PackageHeaderLength { get; } = PacketHeaderLayout.BaseHeaderLength;
 
     /// <summary>
     /// 消息解码
@@ -52,19 +53,42 @@ public class DefaultMessageDecoderHandler : BaseMessageDecoderHandler
     /// <returns></returns>
     public override IMessage Handler(ref ReadOnlySequence<byte> sequence)
     {
-        var reader = new SequenceReader<byte>(sequence);
         try
         {
+            var data = sequence.ToArray();
+            if (data.Length < PacketHeaderLayout.BaseHeaderLength)
+            {
+                return null;
+            }
+
             // 消息总长度
-            reader.TryReadBigEndianValue(out uint totalLength);
+            var totalLength = BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(PacketHeaderLayout.PacketLengthOffset));
+            if (totalLength < PacketHeaderLayout.BaseHeaderLength || data.Length < totalLength)
+            {
+                return null;
+            }
+
             // 操作类型
-            reader.TryReadBigEndianValue(out byte operationType);
+            var operationType = data[PacketHeaderLayout.OperationTypeOffset];
             // 压缩标记
-            reader.TryReadBigEndianValue(out byte zipFlag);
+            var zipFlag = data[PacketHeaderLayout.ZipFlagOffset];
+            // 头标记
+            var headerFlags = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(PacketHeaderLayout.HeaderFlagsOffset));
+            if ((headerFlags & PacketHeaderLayout.ProtocolVersionMask) != (ushort)ReliableHeaderFlags.ProtocolVersion1)
+            {
+                return null;
+            }
+
             // 唯一ID
-            reader.TryReadBigEndianValue(out int uniqueId);
+            var uniqueId = BinaryPrimitives.ReadInt32BigEndian(data.AsSpan(PacketHeaderLayout.UniqueIdOffset));
             // 消息ID
-            reader.TryReadBigEndianValue(out int messageId);
+            var messageId = BinaryPrimitives.ReadInt32BigEndian(data.AsSpan(PacketHeaderLayout.MessageIdOffset));
+            var headerLength = PacketHeaderLayout.GetHeaderLength(headerFlags);
+            if (headerLength > totalLength)
+            {
+                return null;
+            }
+
             // 消息对象头
             var messageObjectHeader = new MessageObjectHeader
             {
@@ -72,9 +96,13 @@ public class DefaultMessageDecoderHandler : BaseMessageDecoderHandler
                 ZipFlag = zipFlag,
                 UniqueId = uniqueId,
                 MessageId = messageId,
+                HeaderFlags = headerFlags,
+                SessionId = headerLength >= PacketHeaderLayout.ReliableHeaderLength ? BinaryPrimitives.ReadUInt64BigEndian(data.AsSpan(PacketHeaderLayout.SessionIdOffset)) : default,
+                ReliableSequence = headerLength >= PacketHeaderLayout.ReliableHeaderLength ? BinaryPrimitives.ReadUInt64BigEndian(data.AsSpan(PacketHeaderLayout.ReliableSequenceOffset)) : default,
+                AckSequence = headerLength >= PacketHeaderLayout.ReliableHeaderLength ? BinaryPrimitives.ReadUInt64BigEndian(data.AsSpan(PacketHeaderLayout.AckSequenceOffset)) : default,
             };
             // 消息内容
-            reader.TryReadBytesValue((int)(totalLength - PackageHeaderLength), out var messageData);
+            var messageData = data.AsSpan(headerLength, (int)totalLength - headerLength).ToArray();
             if (messageObjectHeader.ZipFlag > 0)
             {
                 ArgumentNullException.ThrowIfNull(DecompressHandler, nameof(DecompressHandler));
@@ -82,6 +110,10 @@ public class DefaultMessageDecoderHandler : BaseMessageDecoderHandler
             }
 
             var messageType = MessageProtoHelper.GetMessageTypeById(messageObjectHeader.MessageId);
+            if (messageType == null && !PacketHeaderLayout.HasControlFlag(messageObjectHeader.HeaderFlags))
+            {
+                return null;
+            }
 
             if (messageObjectHeader.MessageId >= 0)
             {

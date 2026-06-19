@@ -27,52 +27,39 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using System.Buffers;
-using GameFrameX.NetWork;
-using GameFrameX.NetWork.Abstractions;
-
-namespace GameFrameX.NetWork.Message;
+namespace GameFrameX.NetWork.Abstractions;
 
 /// <summary>
-/// 基础消息解码处理器
+/// 可携带可靠协议元数据的网络消息。
 /// </summary>
-public abstract class BaseMessageDecoderHandler : IMessageDecoderHandler
+public interface IReliableNetworkMessage : INetworkMessage
 {
     /// <summary>
-    /// 解压消息处理器
+    /// 获取头标记。
     /// </summary>
-    protected IMessageDecompressHandler DecompressHandler { get; private set; }
+    ushort HeaderFlags { get; }
 
     /// <summary>
-    /// 消息头长度（默认值，可被子类重写）
-    /// <para>默认结构: totalLength(4) + operationType(1) + zipFlag(1) + headerFlags(2) + uniqueId(4) + messageId(4) = 16 字节</para>
+    /// 获取会话ID。
     /// </summary>
-    public virtual ushort PackageHeaderLength { get; } = PacketHeaderLayout.BaseHeaderLength;
+    ulong SessionId { get; }
 
     /// <summary>
-    /// 和客户端之间的消息 数据长度(2)+消息唯一ID(4)+消息ID(4)+消息内容
+    /// 获取可靠序列号。
     /// </summary>
-    /// <param name="data"></param>
-    /// <returns></returns>
-    public IMessage Handler(byte[] data)
-    {
-        var sequence = new ReadOnlySequence<byte>(data);
-        return Handler(ref sequence);
-    }
+    ulong ReliableSequence { get; }
 
     /// <summary>
-    /// 消息解码
+    /// 获取累计 ACK 序列号。
     /// </summary>
-    /// <param name="sequence"></param>
-    /// <returns></returns>
-    public abstract IMessage Handler(ref ReadOnlySequence<byte> sequence);
+    ulong AckSequence { get; }
 
     /// <summary>
-    /// 设置解压消息处理器
+    /// 设置可靠协议元数据。
     /// </summary>
-    /// <param name="decompressHandler">解压消息处理器</param>
-    public void SetDecompressionHandler(IMessageDecompressHandler decompressHandler = null)
-    {
-        DecompressHandler = decompressHandler;
-    }
+    /// <param name="headerFlags">头标记 / Header flags</param>
+    /// <param name="sessionId">会话ID / Session ID</param>
+    /// <param name="reliableSequence">可靠序列号 / Reliable sequence</param>
+    /// <param name="ackSequence">累计 ACK 序列号 / Cumulative ACK sequence</param>
+    void SetReliableHeader(ushort headerFlags, ulong sessionId, ulong reliableSequence, ulong ackSequence);
 }

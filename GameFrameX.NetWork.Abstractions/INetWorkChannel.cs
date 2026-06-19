@@ -108,6 +108,16 @@ public interface INetWorkChannel
     Task WriteAsync(INetworkMessage msg, int errorCode = 0);
 
     /// <summary>
+    /// 异步写入已经编码好的消息数据。
+    /// </summary>
+    /// <remarks>
+    /// Writes pre-encoded message data to the network channel.
+    /// </remarks>
+    /// <param name="messageData">已经编码好的消息数据 / Pre-encoded message data</param>
+    /// <returns>表示异步操作的Task对象 / A task representing the asynchronous operation</returns>
+    Task WriteRawAsync(byte[] messageData);
+
+    /// <summary>
     /// 关闭网络通道。
     /// </summary>
     /// <remarks>
