@@ -83,6 +83,12 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
         await base.PackageHandler(session, message);
         if (message is INetworkMessagePackage messageObject)
         {
+            var netWorkChannel = new DefaultNetWorkChannel(session, Setting);
+            if (!await ShouldDispatchReliableMessageAsync(netWorkChannel, messageObject))
+            {
+                return;
+            }
+
             if (Setting.IsDebug && Setting.IsDebugReceive)
             {
                 // 当需要打印心跳，或当前非心跳消息时才输出日志
@@ -94,7 +100,7 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
             }
 
             var handler = HotfixManager.GetTcpHandler(messageObject.Header.MessageId);
-            await InvokeMessageHandler(handler, messageObject.DeserializeMessageObject(), new DefaultNetWorkChannel(session, Setting));
+            await InvokeMessageHandler(handler, messageObject.DeserializeMessageObject(), netWorkChannel);
         }
     }
 

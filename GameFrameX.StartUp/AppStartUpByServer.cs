@@ -32,6 +32,7 @@ using System.Net;
 using GameFrameX.AppHost.ServiceDefaults;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.NetWork;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.NetWork.HTTP;
 // using GameFrameX.NetWork.Kcp;
@@ -215,6 +216,65 @@ public abstract partial class AppStartUpBase
         }
 
         return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// 判断可靠消息是否允许进入业务分发。
+    /// </summary>
+    /// <param name="netWorkChannel">网络通道 / Network channel</param>
+    /// <param name="messagePackage">消息包 / Message package</param>
+    /// <returns>允许分发返回 true / true if dispatch is allowed</returns>
+    protected async ValueTask<bool> ShouldDispatchReliableMessageAsync(INetWorkChannel netWorkChannel, INetworkMessagePackage messagePackage)
+    {
+        ArgumentNullException.ThrowIfNull(netWorkChannel, nameof(netWorkChannel));
+        ArgumentNullException.ThrowIfNull(messagePackage, nameof(messagePackage));
+
+        if (!messagePackage.Header.HasReliableExtension)
+        {
+            return true;
+        }
+
+        var state = netWorkChannel.GetData<ReliableSessionState>(ReliableSessionState.ChannelDataKey);
+        if (state == null)
+        {
+            state = new ReliableSessionState();
+            netWorkChannel.SetData(ReliableSessionState.ChannelDataKey, state);
+        }
+
+        var result = state.ProcessInbound(messagePackage.Header);
+        if (result == ReliablePacketProcessResult.InOrder)
+        {
+            return true;
+        }
+
+        if (result == ReliablePacketProcessResult.Control)
+        {
+            await netWorkChannel.WriteRawAsync(state.BuildAckPacket(messagePackage.Header));
+            LogHelper.Debug("Reliable control packet handled. SessionId:{sessionId} MessageId:{messageId} Sequence:{sequence} Ack:{ack} Flags:{flags}",
+                            messagePackage.Header.SessionId,
+                            messagePackage.Header.MessageId,
+                            messagePackage.Header.ReliableSequence,
+                            messagePackage.Header.AckSequence,
+                            messagePackage.Header.HeaderFlags);
+            return false;
+        }
+
+        if (result == ReliablePacketProcessResult.Duplicate && state.TryGetCachedResponse(messagePackage.Header.ReliableSequence, out var cachedResponse))
+        {
+            await netWorkChannel.WriteRawAsync(cachedResponse);
+        }
+        else
+        {
+            await netWorkChannel.WriteRawAsync(state.BuildAckPacket(messagePackage.Header));
+        }
+
+        LogHelper.Warning("Reliable message filtered. SessionId:{sessionId} MessageId:{messageId} Sequence:{sequence} LastAck:{ack} Result:{result}",
+                          messagePackage.Header.SessionId,
+                          messagePackage.Header.MessageId,
+                          messagePackage.Header.ReliableSequence,
+                          messagePackage.Header.AckSequence,
+                          result);
+        return false;
     }
 
     /// <summary>

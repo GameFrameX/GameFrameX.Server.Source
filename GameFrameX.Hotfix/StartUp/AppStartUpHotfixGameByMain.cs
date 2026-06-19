@@ -105,6 +105,11 @@ internal partial class AppStartUpHotfixGame
                 return;
             }
 
+            if (!await ShouldDispatchReliableMessageAsync(netWorkChannel, messagePackage))
+            {
+                return;
+            }
+
             var actorId = netWorkChannel.GetData<long>(GlobalConst.ActorIdKey);
             if (messagePackage.Header.OperationType == (byte)MessageOperationType.HeartBeat)
             {
