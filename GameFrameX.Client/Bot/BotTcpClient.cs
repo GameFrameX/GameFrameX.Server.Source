@@ -28,6 +28,8 @@
 //  ==========================================================================================
 
 using System.Net;
+using System.Buffers.Binary;
+using GameFrameX.NetWork;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.NetWork.Message;
 using GameFrameX.NetWork.Messages;
@@ -84,8 +86,6 @@ public sealed class BotTcpClient
     private readonly IMessageCompressHandler messageCompressHandler;
     private readonly string _serverHost;
     private readonly int _serverPort;
-
-    private const ushort InnerPackageHeaderLength = 14;
 
     /// <summary>
     /// 初始化机器人TCP客户端
@@ -284,12 +284,30 @@ public sealed class BotTcpClient
 
         // 消息总长度
         var totalLength = data.ReadIntBigEndianValue(ref offset);
+        if (totalLength < PacketHeaderLayout.BaseHeaderLength || data.Length < totalLength)
+        {
+            return;
+        }
+
         // 消息头长度
         var operationType = data.ReadByteValue(ref offset);
         var zipFlag = data.ReadByteValue(ref offset);
+        var headerFlags = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(offset, sizeof(ushort)));
+        offset += sizeof(ushort);
+        var headerLength = PacketHeaderLayout.GetHeaderLength(headerFlags);
+        if (headerLength > totalLength)
+        {
+            return;
+        }
+
         var uniqueId = data.ReadIntBigEndianValue(ref offset);
         var messageId = data.ReadIntBigEndianValue(ref offset);
-        var messageData = data.ReadBytesBigEndianValue(ref offset, totalLength - InnerPackageHeaderLength);
+        if (PacketHeaderLayout.HasReliableExtension(headerFlags))
+        {
+            offset += PacketHeaderLayout.ReliableExtensionLength;
+        }
+
+        var messageData = data.ReadBytesBigEndianValue(ref offset, totalLength - headerLength);
         var messageType = MessageProtoHelper.GetMessageTypeById(messageId);
         if (messageType != null)
         {
@@ -325,12 +343,14 @@ public sealed class BotTcpClient
             zipFlag = 1;
         }
 
-        var totalLength = messageData.Length + InnerPackageHeaderLength;
+        var totalLength = messageData.Length + PacketHeaderLayout.BaseHeaderLength;
         var buffer = new byte[totalLength];
         var offset = 0;
         buffer.WriteIntBigEndianValue(totalLength, ref offset);
         buffer.WriteByteValue((byte)message.OperationType, ref offset);
         buffer.WriteByteValue(zipFlag, ref offset);
+        BinaryPrimitives.WriteUInt16BigEndian(buffer.AsSpan(offset, sizeof(ushort)), (ushort)ReliableHeaderFlags.ProtocolVersion1);
+        offset += sizeof(ushort);
         buffer.WriteIntBigEndianValue(message.UniqueId, ref offset);
         buffer.WriteIntBigEndianValue(message.MessageId, ref offset);
         buffer.WriteBytesWithoutLengthBigEndian(messageData, ref offset);
