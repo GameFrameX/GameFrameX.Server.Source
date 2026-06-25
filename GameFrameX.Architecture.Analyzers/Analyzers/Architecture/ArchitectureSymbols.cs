@@ -30,6 +30,7 @@ public sealed class ArchitectureSymbols
         INamedTypeSymbol? baseCacheState,
         INamedTypeSymbol? cacheState,
         INamedTypeSymbol? stateComponent,
+        INamedTypeSymbol? stateComponentAgent,
         INamedTypeSymbol? baseHttpHandler,
         INamedTypeSymbol? hotfixBridge,
         INamedTypeSymbol? componentAgent,
@@ -41,6 +42,7 @@ public sealed class ArchitectureSymbols
         BaseCacheState = baseCacheState;
         CacheState = cacheState;
         StateComponent = stateComponent;
+        StateComponentAgent = stateComponentAgent;
         BaseHttpHandler = baseHttpHandler;
         HotfixBridge = hotfixBridge;
         ComponentAgent = componentAgent;
@@ -58,6 +60,9 @@ public sealed class ArchitectureSymbols
 
     /// <summary>GameFrameX.Core.Components.StateComponent`1 — 持有 CacheState 的状态组件基类。</summary>
     public INamedTypeSymbol? StateComponent { get; }
+
+    /// <summary>GameFrameX.Core.Hotfix.Agent.StateComponentAgent`2 — 状态组件代理基类。</summary>
+    public INamedTypeSymbol? StateComponentAgent { get; }
 
     /// <summary>GameFrameX.NetWork.HTTP.BaseHttpHandler — HTTP 请求处理器的基类。</summary>
     public INamedTypeSymbol? BaseHttpHandler { get; }
@@ -89,6 +94,7 @@ public sealed class ArchitectureSymbols
             compilation.GetTypeByMetadataName("GameFrameX.DataBase.BaseCacheState"),
             compilation.GetTypeByMetadataName("GameFrameX.DataBase.Mongo.CacheState"),
             compilation.GetTypeByMetadataName("GameFrameX.Core.Components.StateComponent`1"),
+            compilation.GetTypeByMetadataName("GameFrameX.Core.Hotfix.Agent.StateComponentAgent`2"),
             compilation.GetTypeByMetadataName("GameFrameX.NetWork.HTTP.BaseHttpHandler"),
             compilation.GetTypeByMetadataName("GameFrameX.Core.Hotfix.IHotfixBridge"),
             compilation.GetTypeByMetadataName("GameFrameX.Core.Abstractions.Agent.IComponentAgent"),
