@@ -1,3 +1,19 @@
+## [1.11.0] - 2026-06-25
+
+### Bug Fixes
+
+* 修正异步泛型方法的 await 判定
+
+### Features
+
+* 新增 StateComponentAgent sealed 分析器
+* 补充 StateComponentAgentSealedAnalyzer 单元测试
+* 启用 ImplicitUsings 跟随全局默认
+
+### build
+
+* 移除 LangVersion 12 显式限制
+* 清理与全局重复的编译属性声明
 ## [1.10.3] - 2026-06-14
 
 ### Bug Fixes
