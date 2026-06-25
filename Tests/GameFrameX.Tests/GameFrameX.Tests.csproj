@@ -16,6 +16,7 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.3.0" />
         <PackageReference Include="coverlet.collector" Version="10.0.1">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -40,6 +41,7 @@
       <ProjectReference Include="..\..\GameFrameX.NetWork.Kcp\GameFrameX.NetWork.Kcp.csproj" />
       <ProjectReference Include="..\..\GameFrameX.Hotfix\GameFrameX.Hotfix.csproj" />
       <ProjectReference Include="..\..\GameFrameX.NetWork\GameFrameX.NetWork.csproj" />
+      <ProjectReference Include="..\..\GameFrameX.Architecture.Analyzers\GameFrameX.Architecture.Analyzers.csproj" />
     </ItemGroup>
 
 </Project>
