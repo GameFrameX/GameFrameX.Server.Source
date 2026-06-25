@@ -6,7 +6,6 @@
         <PackageTags>GameFrameX,AppHost,ServiceDefaults,Aspire,OpenTelemetry,ServiceDiscovery,Server,GameServer</PackageTags>
     </PropertyGroup>
     <PropertyGroup>
-        <ImplicitUsings>enable</ImplicitUsings>
         <IsAspireSharedProject>true</IsAspireSharedProject>
     </PropertyGroup>
 
