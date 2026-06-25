@@ -91,12 +91,13 @@ public static class AgentTemplate
             }
             else
             {
+                var needAwait = infoMethod.IsAsync && infoMethod.ReturnType.Contains("<");
                 TemplateStringBuilder.AppendLine("\t\t\t(bool needEnqueue, long chainId)= base.Actor.WorkerActor.IsNeedEnqueue();");
                 TemplateStringBuilder.AppendLine("\t\t\tif (!needEnqueue)");
                 TemplateStringBuilder.AppendLine("\t\t\t{");
-                TemplateStringBuilder.AppendLine($"\t\t\t\treturn {(infoMethod.IsAsync ? "await " : string.Empty)} base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString});");
+                TemplateStringBuilder.AppendLine($"\t\t\t\treturn {(needAwait ? "await " : string.Empty)} base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString});");
                 TemplateStringBuilder.AppendLine("\t\t\t}");
-                TemplateStringBuilder.AppendLine($"\t\t\treturn {(infoMethod.IsAsync ? "await " : string.Empty)} base.Actor.WorkerActor.Enqueue(()=>base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), chainId, {(infoMethod.Discard ? "true" : "false")}, {infoMethod.TimeOut});");
+                TemplateStringBuilder.AppendLine($"\t\t\treturn {(needAwait ? "await " : string.Empty)} base.Actor.WorkerActor.Enqueue(()=>base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), chainId, {(infoMethod.Discard ? "true" : "false")}, {infoMethod.TimeOut});");
             }
 
             TemplateStringBuilder.AppendLine("\t\t}");
