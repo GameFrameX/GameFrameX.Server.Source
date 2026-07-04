@@ -6,7 +6,7 @@
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
-//   This project is licensed solely under the Apache License 2.0,
+//   This project is licensed solely under the Apache License 2.0,,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -27,35 +27,15 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Core.Abstractions.Events;
-using Quartz;
-
-namespace GameFrameX.Core.Timer.Handler;
+namespace GameFrameX.Core.Abstractions.Events;
 
 /// <summary>
-/// 非热更程序集的计时器处理器，不需要热更时间更新
+/// 空事件参数
 /// </summary>
-public abstract class NotHotfixTimerHandler : IJob
+public sealed class GameEmptyEventArgs : GameEventArgs
 {
     /// <summary>
-    /// 内部计时器处理器调用函数
+    /// 空事件参数实例
     /// </summary>
-    /// <param name="context">Quartz 作业执行上下文，包含作业执行所需的信息</param>
-    /// <returns>一个任务，表示异步操作的结果</returns>
-    public Task Execute(IJobExecutionContext context)
-    {
-        if (!context.JobDetail.JobDataMap.TryGetValue(QuartzTimer.ParamKey, out var value))
-        {
-            return Task.CompletedTask;
-        }
-
-        return HandleTimer(value as GameEventArgs);
-    }
-
-    /// <summary>
-    /// 计时器处理函数
-    /// </summary>
-    /// <param name="gameEventArgs">传递给处理器的参数</param>
-    /// <returns>一个任务，表示异步操作的结果</returns>
-    protected abstract Task HandleTimer(GameEventArgs gameEventArgs);
+    public static readonly GameEmptyEventArgs EmptyEventArgs = new GameEmptyEventArgs();
 }

@@ -563,7 +563,7 @@ public static class QuartzTimer
             var handlerType = context.JobDetail.JobDataMap.GetString(TimerKey);
             try
             {
-                if (context.JobDetail.JobDataMap.TryGetValue(ParamKey, out var param) && param is GameEventArgs eventArgs)
+                if (context.JobDetail.JobDataMap.TryGetValue(ParamKey, out var param))
                 {
                     var handler = HotfixManager.GetInstance<ITimerHandler>(handlerType);
                     if (handler != null)
@@ -576,6 +576,7 @@ public static class QuartzTimer
                             var componentAgent = await ActorManager.GetComponentAgent(actorId, agentType);
                             if (componentAgent != null)
                             {
+                                GameEventArgs eventArgs = param as GameEventArgs;
                                 componentAgent.Tell(() => handler.InnerHandleTimer(componentAgent, eventArgs));
                                 return;
                             }
@@ -626,6 +627,11 @@ public static class QuartzTimer
         }
 
         var job = JobBuilder.Create<TimerJobHelper>().WithIdentity(id + string.Empty).Build();
+        if (eventArgs == null)
+        {
+            eventArgs = GameEmptyEventArgs.EmptyEventArgs;
+        }
+
         job.JobDataMap.Add(ParamKey, eventArgs);
         job.JobDataMap.Add(ActorIdKey, actorId);
         job.JobDataMap.Add(TimerKey, handlerType.FullName);
@@ -643,6 +649,11 @@ public static class QuartzTimer
     {
         StatisticsTool.Count(typeof(T).FullName);
         var job = JobBuilder.Create<T>().WithIdentity(id + string.Empty).Build();
+        if (gameEventArgs == null)
+        {
+            gameEventArgs = GameEmptyEventArgs.EmptyEventArgs;
+        }
+
         job.JobDataMap.Add(ParamKey, gameEventArgs);
         return job;
     }
