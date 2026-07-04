@@ -75,7 +75,7 @@ public static class GlobalTimer
 
         while (IsWorking)
         {
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.NextSaveTime, nextSaveTime));
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.NextSaveTime, TimerHelper.TimestampSecondToDateTime(nextSaveTime).ToString("yyyy-MM-dd HH:mm:ss.fff K")));
             var currentTime = TimerHelper.UnixTimeMilliseconds();
             while (currentTime < nextSaveTime && IsWorking)
             {
@@ -89,15 +89,15 @@ public static class GlobalTimer
             }
 
             var startTime = TimerHelper.UnixTimeMilliseconds();
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.SaveStart, startTime));
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.SaveStart, TimerHelper.CurrentDateTimeWithTimeZoneFormat()));
             await StateComponent.TimerSave();
             var endTime = TimerHelper.UnixTimeMilliseconds();
             var cost = endTime - startTime;
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.SaveEnd, endTime, cost));
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.ActorRecycleStart, startTime));
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.SaveEnd, TimerHelper.CurrentDateTimeWithTimeZoneFormat(), cost));
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.ActorRecycleStart, TimerHelper.CurrentDateTimeWithTimeZoneFormat()));
             await ActorManager.CheckIdle();
             currentTime = TimerHelper.UnixTimeMilliseconds();
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.ActorRecycleEnd, currentTime));
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.ActorRecycleEnd, TimerHelper.CurrentDateTimeWithTimeZoneFormat()));
             do
             {
                 nextSaveTime = NextSaveTime();
