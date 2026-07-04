@@ -7,8 +7,8 @@
 //  使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
 // 
-//  本项目采用 Apache License 2.0 单协议分发，
-//  This project is licensed solely under the Apache License 2.0,
+//  本项目采用 MIT 许可证与 Apache License 2.0 双许可证分发，
+//  This project is dual-licensed under the MIT License and Apache License 2.0,
 //  完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //  please refer to the LICENSE file in the root directory of the source code for the full license text.
 // 
@@ -46,23 +46,15 @@ namespace GameFrameX.Proto.Proto
 	public sealed class ReqInnerFriendByAdd : MessageObject, IRequestMessage
 	{
 		/// <summary>
-		/// 目标玩家ID
+		/// 玩家ID
 		/// </summary>
 		[ProtoMember(1)]
-		[System.ComponentModel.Description("目标玩家ID")]
+		[System.ComponentModel.Description("玩家ID")]
 		public long PlayerId { get; set; }
-
-		/// <summary>
-		/// 源玩家ID（发起好友请求的玩家ID）
-		/// </summary>
-		[ProtoMember(2)]
-		[System.ComponentModel.Description("源玩家ID")]
-		public long SourcePlayerId { get; set; }
 
 		public override void Clear()
 		{
 			PlayerId = default;
-			SourcePlayerId = default;
 		}
 	}
 
@@ -126,23 +118,15 @@ namespace GameFrameX.Proto.Proto
 	public sealed class ReqInnerFriendByDelete : MessageObject, IRequestMessage
 	{
 		/// <summary>
-		/// 目标玩家ID（被删除的好友ID）
+		/// 玩家ID
 		/// </summary>
 		[ProtoMember(1)]
-		[System.ComponentModel.Description("目标玩家ID")]
+		[System.ComponentModel.Description("玩家ID")]
 		public long PlayerId { get; set; }
-
-		/// <summary>
-		/// 源玩家ID（发起删除请求的玩家ID）
-		/// </summary>
-		[ProtoMember(2)]
-		[System.ComponentModel.Description("源玩家ID")]
-		public long SourcePlayerId { get; set; }
 
 		public override void Clear()
 		{
 			PlayerId = default;
-			SourcePlayerId = default;
 		}
 	}
 
