@@ -1,3 +1,25 @@
+## [1.13.0] - 2026-07-04
+
+### Documentation
+
+* 协议头注释改为 MIT 与 Apache 2.0 双许可证
+
+### Features
+
+* 新增通用房间协议
+* 新增石头剪刀布游戏协议
+* 精简好友内部协议字段
+
+### build
+
+* 升级 OpenTelemetry 与 Grafana 观测性依赖
+* 升级 Aspire.Hosting 到 13.4.6
+* 升级 Microsoft.CodeAnalysis 到 5.6.0
+* 升级 Quartz 到 3.18.2
+* 升级 Swashbuckle 到 10.2.3
+* 升级 Mapster 到 10.0.10
+* 升级测试项目 SDK 与 Roslyn 依赖
+* 移除 Proto 空目录占位符
 ## [1.12.0] - 2026-07-04
 
 ### Bug Fixes
