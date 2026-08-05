@@ -1,3 +1,8 @@
+## [1.13.3] - 2026-08-05
+
+### Bug Fixes
+
+* 将 FPRandom.instance 收紧为 private 消除 Sonar S2223 (#163)
 ## [1.13.2] - 2026-08-05
 
 ### Bug Fixes
