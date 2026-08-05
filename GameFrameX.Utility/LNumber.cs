@@ -43,7 +43,7 @@ public struct LNumber : IComparable<LNumber>, IEquatable<LNumber>
     private const int INTEGER_BITS = sizeof(long) * 8 - FRACTION_BITS; // 整数位位数 50
 
     private const int FRACTION_MASK = (int)(uint.MaxValue >> INTEGER_BITS); // 2^14-1 = 16384-1 =16383 == 01111111111111
-    private const int INTEGER_MASK = -1 & ~FRACTION_MASK; // -16384
+    private const int INTEGER_MASK = ~FRACTION_MASK; // -16384
     private const int FRACTION_RANGE = FRACTION_MASK + 1; // 16384 == 10000000000000
 
     /// <summary>
