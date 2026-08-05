@@ -375,27 +375,21 @@ public sealed class IllegalWordDetection
         LogHelper.Info("IllegalWordDetection.Init {time} {activeNum}", (DateTime.UtcNow - startTime).TotalMilliseconds, activeNum);
     }
 
-    private static unsafe string OriginalToLower(string text)
+    private static string OriginalToLower(string text)
     {
-        fixed (char* newText = text)
+        var chars = text.ToCharArray();
+
+        for (int i = 0; i < chars.Length; i++)
         {
-            var ito = newText;
-            var end = newText + text.Length;
+            var c = chars[i];
 
-            while (ito < end)
+            if (c >= 'A' && c <= 'Z')
             {
-                var c = *ito;
-
-                if (c is >= 'A' and <= 'Z')
-                {
-                    *ito = (char)(c | 0x20);
-                }
-
-                ++ito;
+                chars[i] = (char)(c | 0x20);
             }
         }
 
-        return text;
+        return new string(chars);
     }
 
     private static unsafe bool EnsuranceLower(string text)
