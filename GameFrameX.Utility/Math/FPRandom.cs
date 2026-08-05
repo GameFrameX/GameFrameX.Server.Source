@@ -46,7 +46,7 @@ public sealed class FPRandom
     /// <summary>
     /// 使用种子 1 的 {@link TSRandom} 的静态实例。
     /// </summary>
-    public static FPRandom instance;
+    private static FPRandom instance;
 
     private readonly uint[] mag01 = { 0x0U, MATRIX_A, }; // 变换矩阵
     private readonly uint[] mt = new uint[N]; // 梅森旋转状态向量
