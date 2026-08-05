@@ -56,7 +56,7 @@ public struct FPVector3
 {
     private static FP ZeroEpsilonSq = FPMath.Epsilon;
     internal static FPVector3 InternalZero;
-    internal static FPVector3 Arbitrary;
+    internal static readonly FPVector3 Arbitrary;
 
     /// <summary>
     /// 向量的 X 组件。
