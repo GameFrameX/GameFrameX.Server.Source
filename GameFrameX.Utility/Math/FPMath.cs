@@ -66,7 +66,7 @@ public sealed class FPMath
     /// <summary>
     /// 一个小值，通常用于判断数值结果是否为零。
     /// </summary>
-    public static FP Epsilon = FP.Epsilon;
+    public static readonly FP Epsilon = FP.Epsilon;
 
     /// <summary>
     /// 角度转弧度的常量。
