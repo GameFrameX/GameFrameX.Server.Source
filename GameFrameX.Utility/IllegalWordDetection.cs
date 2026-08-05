@@ -318,44 +318,9 @@ public sealed class IllegalWordDetection
                 continue;
             }
 
-            var strBadWord = OriginalToLower(badWords[stringIndex]);
-            //求得单个的敏感词汇的长度
-            var wordLength = strBadWord.Length;
-            maxWordLength = System.Math.Max(wordLength, maxWordLength);
-
-            fixed (char* pWordStart = strBadWord)
+            if (RegisterBadWord(badWords[stringIndex], ref maxWordLength))
             {
-                for (var i = 0; i < wordLength; ++i)
-                {
-                    //准确记录8位以内的敏感词汇的某个词在词汇中的“位置”
-                    if (i < 7)
-                    {
-                        FastCheck[*(pWordStart + i)] |= (byte)(1 << i);
-                    }
-                    else //8位以外的敏感词汇的词直接限定在第8位
-                    {
-                        FastCheck[*(pWordStart + i)] |= 0x80; //0x80在内存中即为1000 0000，因为一个byte顶多标示8位，故超出8位的都位或上0x80，截断成第8位
-                    }
-                }
-
-                //缓存敏感词汇的长度
-                var cachedWordsLength = System.Math.Min(8, wordLength);
-                var firstWord = *pWordStart;
-                //记录敏感词汇的“大致长度（超出8个字的敏感词汇会被截取成8的长度）”，“key”值为敏感词汇的第一个词
-                FastLength[firstWord] |= (byte)(1 << (cachedWordsLength - 1));
-                //缓存出当前以badWord第一个字开头的一系列的敏感词汇的最长的长度
-                if (StartCache[firstWord] < cachedWordsLength)
-                {
-                    StartCache[firstWord] = (byte)cachedWordsLength;
-                }
-
-                //存好敏感词汇的最后一个词汇的“出现情况”
-                EndCache[*(pWordStart + wordLength - 1)] = true;
-                //将长度大于1的敏感词汇都压入到字典中
-                if (WordsSet.Add(strBadWord))
-                {
-                    activeNum++;
-                }
+                activeNum++;
             }
         }
 
@@ -373,6 +338,46 @@ public sealed class IllegalWordDetection
         }
 
         LogHelper.Info("IllegalWordDetection.Init {time} {activeNum}", (DateTime.UtcNow - startTime).TotalMilliseconds, activeNum);
+    }
+
+    private static unsafe bool RegisterBadWord(string badWord, ref int maxWordLength)
+    {
+        var strBadWord = OriginalToLower(badWord);
+        //求得单个的敏感词汇的长度
+        var wordLength = strBadWord.Length;
+        maxWordLength = System.Math.Max(wordLength, maxWordLength);
+
+        fixed (char* pWordStart = strBadWord)
+        {
+            for (var i = 0; i < wordLength; ++i)
+            {
+                //准确记录8位以内的敏感词汇的某个词在词汇中的“位置”
+                if (i < 7)
+                {
+                    FastCheck[*(pWordStart + i)] |= (byte)(1 << i);
+                }
+                else //8位以外的敏感词汇的词直接限定在第8位
+                {
+                    FastCheck[*(pWordStart + i)] |= 0x80; //0x80在内存中即为1000 0000，因为一个byte顶多标示8位，故超出8位的都位或上0x80，截断成第8位
+                }
+            }
+
+            //缓存敏感词汇的长度
+            var cachedWordsLength = System.Math.Min(8, wordLength);
+            var firstWord = *pWordStart;
+            //记录敏感词汇的“大致长度（超出8个字的敏感词汇会被截取成8的长度）”，“key”值为敏感词汇的第一个词
+            FastLength[firstWord] |= (byte)(1 << (cachedWordsLength - 1));
+            //缓存出当前以badWord第一个字开头的一系列的敏感词汇的最长的长度
+            if (StartCache[firstWord] < cachedWordsLength)
+            {
+                StartCache[firstWord] = (byte)cachedWordsLength;
+            }
+
+            //存好敏感词汇的最后一个词汇的“出现情况”
+            EndCache[*(pWordStart + wordLength - 1)] = true;
+            //将长度大于1的敏感词汇都压入到字典中
+            return WordsSet.Add(strBadWord);
+        }
     }
 
     private static unsafe string OriginalToLower(string text)
