@@ -1,3 +1,8 @@
+## [1.13.2] - 2026-08-05
+
+### Bug Fixes
+
+* 将 FPVector4.InternalZero 改为 readonly 消除 Sonar S2223 (#162)
 ## [1.13.1] - 2026-08-05
 
 ### build
