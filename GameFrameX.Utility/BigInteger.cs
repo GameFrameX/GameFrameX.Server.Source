@@ -2462,97 +2462,139 @@ public sealed class BigInteger
 
         // 计算 s 和 t 的值
         var p_sub1 = thisVal - new BigInteger(1);
-        var s = 0;
-
-        for (var index = 0; index < p_sub1.dataLength; index++)
-        {
-            uint mask = 0x01;
-
-            for (var i = 0; i < 32; i++)
-            {
-                if ((p_sub1.data[index] & mask) != 0)
-                {
-                    index = p_sub1.dataLength; // 退出外层循环
-                    break;
-                }
-
-                mask <<= 1;
-                s++;
-            }
-        }
-
+        var s = CountTrailingZeroBits(p_sub1);
         var t = p_sub1 >> s;
 
         var bits = thisVal.BitCount();
-        var a = new BigInteger();
         var rand = new Random();
 
         for (var round = 0; round < confidence; round++)
         {
-            var done = false;
-
-            while (!done) // 生成 a < n
-            {
-                var testBits = 0;
-
-                // 确保 "a" 至少有 2 位
-                while (testBits < 2)
-                {
-                    testBits = (int)(rand.NextDouble() * bits);
-                }
-
-                a.GenRandomBits(testBits, rand);
-
-                var byteLen = a.dataLength;
-
-                // 确保 "a" 不为 0
-                if (byteLen > 1 || (byteLen == 1 && a.data[0] != 1))
-                {
-                    done = true;
-                }
-            }
-
-            // 检查是否存在因子（修复版本 1.03）
-            var gcdTest = a.Gcd(thisVal);
-            if (gcdTest.dataLength == 1 && gcdTest.data[0] != 1)
-            {
-                return false;
-            }
-
-            var b = a.ModPow(t, thisVal);
-
-            /*
-        LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugA, a.ToString(10)));
-        LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugB, b.ToString(10)));
-        LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugT, t.ToString(10)));
-        LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugS, s));
-        */
-
-            var result = false;
-
-            if (b.dataLength == 1 && b.data[0] == 1) // a^t mod p = 1
-            {
-                result = true;
-            }
-
-            for (var j = 0; result == false && j < s; j++)
-            {
-                if (b == p_sub1) // a^((2^j)*t) mod p = p-1，对于某些 0 <= j <= s-1
-                {
-                    result = true;
-                    break;
-                }
-
-                b = b * b % thisVal;
-            }
-
-            if (result == false)
+            if (!PassesRabinMillerRound(thisVal, p_sub1, t, s, bits, rand))
             {
                 return false;
             }
         }
 
         return true;
+    }
+
+
+    //***********************************************************************
+    // 统计 value 二进制表示中低位连续 0 的个数（即分解 value = 2^s · t 所需的 s）。
+    // 外层按 dataLength 字、内层按 32 个 bit（mask 逐位左移）扫描，
+    // 命中首个置位 bit 即 return count，与原「index = p_sub1.dataLength; break;」退出外层循环等价。
+    //***********************************************************************
+
+    private static int CountTrailingZeroBits(BigInteger value)
+    {
+        var count = 0;
+
+        for (var index = 0; index < value.dataLength; index++)
+        {
+            uint mask = 0x01;
+
+            for (var i = 0; i < 32; i++)
+            {
+                if ((value.data[index] & mask) != 0)
+                {
+                    return count;
+                }
+
+                mask <<= 1;
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+
+    //***********************************************************************
+    // 生成满足拉宾-米勒测试要求的随机基数 a：a < n、至少 2 位、且不为 0/1。
+    // 循环随机取至少 2 位的 testBits，调用 GenRandomBits 填充 a，
+    // 直至 a 非零（dataLength > 1，或 dataLength == 1 且 data[0] != 1）。
+    // GenRandomBits 每次会完全重置 data 数组与 dataLength，
+    // 故此处新建 a 与原「方法级复用 a」在读取前已被完全重写，行为等价。
+    //***********************************************************************
+
+    private static BigInteger GenerateRabinMillerBase(int bits, Random rand)
+    {
+        var a = new BigInteger();
+        var done = false;
+
+        while (!done) // 生成 a < n
+        {
+            var testBits = 0;
+
+            // 确保 "a" 至少有 2 位
+            while (testBits < 2)
+            {
+                testBits = (int)(rand.NextDouble() * bits);
+            }
+
+            a.GenRandomBits(testBits, rand);
+
+            var byteLen = a.dataLength;
+
+            // 确保 "a" 不为 0
+            if (byteLen > 1 || (byteLen == 1 && a.data[0] != 1))
+            {
+                done = true;
+            }
+        }
+
+        return a;
+    }
+
+
+    //***********************************************************************
+    // 拉宾-米勒单轮见证检验：
+    // 1) 生成随机基数 a；
+    // 2) gcd(a, n) 存在非 1 因子 → n 为合数，返回 false；
+    // 3) b = a^t mod n；b == 1 通过；否则对 j = 0..s-1 平方并比较 b == n-1。
+    // 返回 true 表示本轮通过（未发现合数见证），false 表示找到合数见证。
+    //***********************************************************************
+
+    private static bool PassesRabinMillerRound(BigInteger thisVal, BigInteger p_sub1, BigInteger t, int s, int bits, Random rand)
+    {
+        var a = GenerateRabinMillerBase(bits, rand);
+
+        // 检查是否存在因子（修复版本 1.03）
+        var gcdTest = a.Gcd(thisVal);
+        if (gcdTest.dataLength == 1 && gcdTest.data[0] != 1)
+        {
+            return false;
+        }
+
+        var b = a.ModPow(t, thisVal);
+
+        /*
+    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugA, a.ToString(10)));
+    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugB, b.ToString(10)));
+    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugT, t.ToString(10)));
+    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugS, s));
+    */
+
+        var result = false;
+
+        if (b.dataLength == 1 && b.data[0] == 1) // a^t mod p = 1
+        {
+            result = true;
+        }
+
+        for (var j = 0; result == false && j < s; j++)
+        {
+            if (b == p_sub1) // a^((2^j)*t) mod p = p-1，对于某些 0 <= j <= s-1
+            {
+                result = true;
+                break;
+            }
+
+            b = b * b % thisVal;
+        }
+
+        return result;
     }
 
 
