@@ -160,6 +160,7 @@
 //************************************************************************************
 
 
+using System.Security.Cryptography;
 using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Utility;
@@ -2287,7 +2288,7 @@ public sealed class BigInteger
         var bits = thisVal.BitCount();
         var a = new BigInteger();
         var p_sub1 = thisVal - new BigInteger(1);
-        var rand = new Random();
+        var rand = new SecureRandom();
 
         for (var round = 0; round < confidence; round++)
         {
@@ -3616,5 +3617,36 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
         result[2] = Q_k;
 
         return result;
+    }
+
+
+    /// <summary>
+    /// 基于 <see cref="RandomNumberGenerator"/> 的加密强度随机数生成器，
+    /// 用于消除 Sonar S2245：素性测试不应使用伪随机数（PRNG）。
+    /// 保持 <see cref="Random"/> 语义（<see cref="NextDouble"/> 返回 [0,1)），可无缝替换 <c>new Random()</c>。
+    /// </summary>
+    internal sealed class SecureRandom : Random
+    {
+        /// <summary>用加密强度随机源填充字节数组。</summary>
+        public override void NextBytes(byte[] buffer)
+        {
+            RandomNumberGenerator.Fill(buffer);
+        }
+
+        /// <summary>返回一个大于或等于 0.0 且小于 1.0 的浮点数。</summary>
+        public override double NextDouble()
+        {
+            return Sample();
+        }
+
+        /// <summary>返回一个大于或等于 0.0 且小于 1.0 的浮点数（加密强度随机源）。</summary>
+        protected override double Sample()
+        {
+            // 取 53 位无符号整数除以 2^53，得到 [0, 1) 区间均匀分布。
+            var bytes = new byte[8];
+            RandomNumberGenerator.Fill(bytes);
+            var value = BitConverter.ToUInt64(bytes, 0) >> 11;
+            return value / (double)(1UL << 53);
+        }
     }
 }
