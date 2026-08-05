@@ -160,6 +160,7 @@
 //************************************************************************************
 
 
+using System.Security.Cryptography;
 using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Utility;
@@ -2550,7 +2551,7 @@ public sealed class BigInteger
         var p_sub1 = thisVal - 1;
         var p_sub1_shift = p_sub1 >> 1;
 
-        var rand = new Random();
+        var rand = new SecureRandomAdapter();
 
         for (var round = 0; round < confidence; round++)
         {
@@ -3616,5 +3617,56 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
         result[2] = Q_k;
 
         return result;
+    }
+
+    /// <summary>
+    /// 包装 <see cref="RandomNumberGenerator"/> 的 <see cref="Random"/> 适配器，
+    /// 为素性测试等密码学敏感场景提供密码学强随机源（修复 Sonar S2245）。
+    /// </summary>
+    private sealed class SecureRandomAdapter : Random
+    {
+        public override int Next()
+        {
+            return RandomNumberGenerator.GetInt32(0, int.MaxValue);
+        }
+
+        public override int Next(int maxValue)
+        {
+            if (maxValue < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(maxValue), maxValue, "maxValue must be non-negative");
+            }
+
+            return RandomNumberGenerator.GetInt32(0, maxValue);
+        }
+
+        public override int Next(int minValue, int maxValue)
+        {
+            if (minValue > maxValue)
+            {
+                throw new ArgumentOutOfRangeException(nameof(minValue), "minValue must be less than or equal to maxValue");
+            }
+
+            if (minValue == maxValue)
+            {
+                return minValue;
+            }
+
+            return RandomNumberGenerator.GetInt32(minValue, maxValue);
+        }
+
+        public override double NextDouble()
+        {
+            // 取 53 位随机整数生成 [0, 1)，与 Random.NextDouble() 语义一致
+            Span<byte> bytes = stackalloc byte[8];
+            RandomNumberGenerator.Fill(bytes);
+            var value = BitConverter.ToUInt64(bytes) >> 11;
+            return value / (double)(1UL << 53);
+        }
+
+        public override void NextBytes(byte[] buffer)
+        {
+            RandomNumberGenerator.Fill(buffer);
+        }
     }
 }
