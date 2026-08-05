@@ -90,9 +90,11 @@ public static class NetHelper
     {
         try
         {
+            // Sonar csharpsquid:S4036 要求 ProcessStartInfo.FileName 必须为绝对路径，
+            // 避免 PATH 注入。按 OS 选取 lsof 的默认绝对路径。
             var startInfo = new ProcessStartInfo
             {
-                FileName = "lsof",
+                FileName = OperatingSystem.IsMacOS() ? "/usr/sbin/lsof" : "/usr/bin/lsof",
                 Arguments = $"-nP -iTCP:{port} -sTCP:LISTEN",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
