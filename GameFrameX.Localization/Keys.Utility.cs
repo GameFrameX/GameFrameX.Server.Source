@@ -44,7 +44,7 @@ public static partial class Keys
         /// <summary>
         /// 异常消息资源键
         /// </summary>
-        public static class Exceptions
+        public static class ExceptionMessages
         {
             /// <summary>
             /// actorId小于最小服务器ID，最小服务器ID为{0}
