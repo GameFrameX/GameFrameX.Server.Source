@@ -357,20 +357,7 @@ public sealed class BigInteger
 
         for (var i = value.Length - 1; i >= limit; i--)
         {
-            int posVal = value[i];
-
-            if (posVal >= '0' && posVal <= '9')
-            {
-                posVal -= '0';
-            }
-            else if (posVal >= 'A' && posVal <= 'Z')
-            {
-                posVal = posVal - 'A' + 10;
-            }
-            else
-            {
-                posVal = 9999999; // arbitrary large
-            }
+            var posVal = DecodeDigit(value[i]);
 
             if (posVal >= radix)
             {
@@ -390,7 +377,49 @@ public sealed class BigInteger
             }
         }
 
-        if (value[0] == '-') // 处理负值
+        ValidateSign(value[0] == '-', result);
+
+        data = new uint[maxLength];
+        for (var i = 0; i < result.dataLength; i++)
+        {
+            data[i] = result.data[i];
+        }
+
+        dataLength = result.dataLength;
+    }
+
+
+    //***********************************************************************
+    // 把单个字符（以 int 传入）映射为指定基数的数位值：
+    // '0'-'9' -> 0-9、'A'-'Z' -> 10-35、其余 -> 9999999（哨兵，
+    // 由调用方 posVal >= radix 判定后抛 ConstructorInvalidString）。
+    //***********************************************************************
+
+    private static int DecodeDigit(int charValue)
+    {
+        if (charValue >= '0' && charValue <= '9')
+        {
+            return charValue - '0';
+        }
+
+        if (charValue >= 'A' && charValue <= 'Z')
+        {
+            return charValue - 'A' + 10;
+        }
+
+        return 9999999; // arbitrary large
+    }
+
+
+    //***********************************************************************
+    // 依据符号与 result 最高位（0x80000000）校验是否溢出/下溢：
+    // 负数但最高位未置位 -> ConstructorUnderflow；
+    // 非负但最高位置位 -> ConstructorOverflow。
+    //***********************************************************************
+
+    private static void ValidateSign(bool negative, BigInteger result)
+    {
+        if (negative) // 处理负值
         {
             if ((result.data[maxLength - 1] & 0x80000000) == 0)
             {
@@ -404,14 +433,6 @@ public sealed class BigInteger
                 throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.ConstructorOverflow));
             }
         }
-
-        data = new uint[maxLength];
-        for (var i = 0; i < result.dataLength; i++)
-        {
-            data[i] = result.data[i];
-        }
-
-        dataLength = result.dataLength;
     }
 
     /// <summary>
