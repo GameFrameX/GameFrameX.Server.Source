@@ -154,78 +154,53 @@ public sealed class Actor : IActor, IDisposable
     public async Task<IComponentAgent> GetComponentAgent(Type agentType, bool isNew = true)
     {
         var compType = agentType.BaseType.GetGenericArguments()[0];
-        IComponentAgent agent;
         BaseComponent component;
         if (isNew)
         {
             component = _componentsMap.GetOrAdd(compType, GetOrAddFactory);
-            agent = component.GetAgent(agentType);
-            if (!component.IsActive)
-            {
-                async Task Worker()
-                {
-                    try
-                    {
-                        await component.Active();
-                    }
-                    catch (Exception e)
-                    {
-                        LogHelper.Fatal(e, "Actor.GetComponentAgent, Active component failed, actorId: {actorId}, componentType: {componentType}", Id, compType.FullName);
-                    }
-
-                    try
-                    {
-                        await agent.BeforeActivation();
-                        await agent.Active();
-                        await agent.AfterActivation();
-                    }
-                    catch (Exception e)
-                    {
-                        LogHelper.Fatal(e, "Actor.GetComponentAgent, Active component failed, actorId: {actorId}, componentType: {componentType}", Id, compType.FullName);
-                    }
-                }
-
-                await SendAsyncWithoutCheck(Worker);
-            }
-
-            return agent;
         }
-
-        if (!_componentsMap.TryGetValue(compType, out component))
+        else if (!_componentsMap.TryGetValue(compType, out component))
         {
             return default;
         }
 
-        agent = component.GetAgent(agentType);
+        var agent = component.GetAgent(agentType);
         if (!component.IsActive)
         {
-            async Task Worker()
-            {
-                try
-                {
-                    await component.Active();
-                }
-                catch (Exception e)
-                {
-                    LogHelper.Fatal(e, "Actor.GetComponentAgent, Active component failed, actorId: {actorId}, componentType: {componentType}", Id, compType.FullName);
-                }
-
-                try
-                {
-                    await agent.BeforeActivation();
-                    await agent.Active();
-                    await agent.AfterActivation();
-                }
-                catch (Exception e)
-                {
-                    LogHelper.Fatal(e, "Actor.GetComponentAgent, Active component failed, actorId: {actorId}, componentType: {componentType}", Id, compType.FullName);
-                }
-            }
-
-            await SendAsyncWithoutCheck(Worker);
+            await SendAsyncWithoutCheck(() => ActivateComponentAsync(component, agent, compType));
         }
 
         return agent;
+    }
+
+    /// <summary>
+    /// 激活指定组件并依次调用其代理的激活生命周期方法
+    /// </summary>
+    /// <param name="component">要激活的组件实例</param>
+    /// <param name="agent">组件对应的代理实例</param>
+    /// <param name="compType">组件类型,用于日志记录</param>
+    /// <returns>表示异步操作的任务</returns>
+    private async Task ActivateComponentAsync(BaseComponent component, IComponentAgent agent, Type compType)
+    {
+        try
+        {
+            await component.Active();
+        }
+        catch (Exception e)
+        {
+            LogHelper.Fatal(e, "Actor.GetComponentAgent, Active component failed, actorId: {actorId}, componentType: {componentType}", Id, compType.FullName);
+        }
+
+        try
+        {
+            await agent.BeforeActivation();
+            await agent.Active();
+            await agent.AfterActivation();
+        }
+        catch (Exception e)
+        {
+            LogHelper.Fatal(e, "Actor.GetComponentAgent, Active component failed, actorId: {actorId}, componentType: {componentType}", Id, compType.FullName);
+        }
     }
 
     /// <summary>
