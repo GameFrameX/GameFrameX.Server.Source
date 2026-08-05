@@ -1,12 +1,15 @@
 name: Sonar Issues
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
   workflow_dispatch:
   schedule:
-    - cron: "0 1 * * *"
+    - cron: "0 */2 * * *"
 
 permissions:
   contents: read
@@ -25,6 +28,7 @@ jobs:
 
   sync:
     needs: analyze
+    if: ${{ always() && github.event_name != 'pull_request' }}
     uses: GameFrameX/public-github-actions/.github/workflows/sonar-issue-sync.yml@main
     with:
       sonar_project_key: ${{ github.event.repository.name }}
