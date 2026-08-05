@@ -258,7 +258,7 @@ public class WorkerActor : IWorkerActor
     /// <param name="timeOut">任务执行的超时时间(毫秒),默认为-1,将采用配置时间ActorQueueTimeOut</param>
     /// <param name="cancellationToken">用于取消任务的令牌</param>
     /// <returns>返回一个Task对象，表示异步操作的完成状态</returns>
-    public Task Enqueue(Action work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default)
+    public Task Enqueue(Action work, long callChainId, bool discard, int timeOut, CancellationToken cancellationToken)
     {
         if (!discard && GlobalSettings.CurrentSetting.IsDebug && !ActorLimit.AllowCall(Id))
         {
@@ -290,7 +290,7 @@ public class WorkerActor : IWorkerActor
     /// <param name="timeOut">任务执行的超时时间(毫秒),默认为-1,将采用配置时间ActorQueueTimeOut</param>
     /// <param name="cancellationToken">用于取消任务的令牌</param>
     /// <returns>返回一个Task<T/>对象，表示异步操作的完成状态和结果</returns>
-    public Task<T> Enqueue<T>(Func<T> work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default)
+    public Task<T> Enqueue<T>(Func<T> work, long callChainId, bool discard, int timeOut, CancellationToken cancellationToken)
     {
         if (!discard && GlobalSettings.CurrentSetting.IsDebug && !ActorLimit.AllowCall(Id))
         {
@@ -321,7 +321,7 @@ public class WorkerActor : IWorkerActor
     /// <param name="timeOut">任务执行的超时时间(毫秒),默认为-1,将采用配置时间ActorQueueTimeOut</param>
     /// <param name="cancellationToken">用于取消任务的令牌</param>
     /// <returns>返回一个Task对象，表示异步操作的完成状态</returns>
-    public Task Enqueue(Func<Task> work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default)
+    public Task Enqueue(Func<Task> work, long callChainId, bool discard, int timeOut, CancellationToken cancellationToken)
     {
         if (!discard && GlobalSettings.CurrentSetting.IsDebug && !ActorLimit.AllowCall(Id))
         {
@@ -353,7 +353,7 @@ public class WorkerActor : IWorkerActor
     /// <param name="timeOut">任务执行的超时时间(毫秒),默认为-1,将采用配置时间ActorQueueTimeOut</param>
     /// <param name="cancellationToken">用于取消任务的令牌</param>
     /// <returns>返回一个Task<T/>对象，表示异步操作的完成状态和结果</returns>
-    public Task<T> Enqueue<T>(Func<Task<T>> work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default)
+    public Task<T> Enqueue<T>(Func<Task<T>> work, long callChainId, bool discard, int timeOut, CancellationToken cancellationToken)
     {
         if (!discard && GlobalSettings.CurrentSetting.IsDebug && !ActorLimit.AllowCall(Id))
         {
