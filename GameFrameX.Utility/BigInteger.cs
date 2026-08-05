@@ -1210,11 +1210,11 @@ public sealed class BigInteger
     /// <summary>
     /// 重写 <see cref="object.Equals(object?)"/> 方法。
     /// </summary>
-    /// <param name="o">要比较的对象。</param>
-    /// <returns>如果当前实例与 <paramref name="o"/> 相等，则返回 true；否则返回 false。</returns>
-    public override bool Equals(object o)
+    /// <param name="obj">要比较的对象。</param>
+    /// <returns>如果当前实例与 <paramref name="obj"/> 相等，则返回 true；否则返回 false。</returns>
+    public override bool Equals(object obj)
     {
-        var bi = (BigInteger)o;
+        var bi = (BigInteger)obj;
 
         if (dataLength != bi.dataLength)
         {
