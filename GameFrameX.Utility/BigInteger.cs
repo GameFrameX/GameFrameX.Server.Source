@@ -2045,8 +2045,33 @@ public sealed class BigInteger
 
 
         // r2 = (q3 * n) mod b^(k+1)
-        // q3 和 n 的部分乘法
+        var r2 = ComputeBarrettR2(q3, n, kPlusOne);
 
+        r1 -= r2;
+        if ((r1.data[maxLength - 1] & 0x80000000) != 0) // 负数
+        {
+            var val = new BigInteger();
+            val.data[kPlusOne] = 0x00000001;
+            val.dataLength = kPlusOne + 1;
+            r1 += val;
+        }
+
+        while (r1 >= n)
+        {
+            r1 -= n; // 确保 r1 小于 n
+        }
+
+        return r1;
+    }
+
+
+    //***********************************************************************
+    // 计算 Barrett 减法中的 r2 = (q3 * n) mod b^(k+1)。
+    // 只保留最低 (k+1) 个字，使用 q3 和 n 的部分乘法。
+    //***********************************************************************
+
+    private static BigInteger ComputeBarrettR2(BigInteger q3, BigInteger n, int kPlusOne)
+    {
         var r2 = new BigInteger();
         for (var i = 0; i < q3.dataLength; i++)
         {
@@ -2079,21 +2104,7 @@ public sealed class BigInteger
             r2.dataLength--;
         }
 
-        r1 -= r2;
-        if ((r1.data[maxLength - 1] & 0x80000000) != 0) // 负数
-        {
-            var val = new BigInteger();
-            val.data[kPlusOne] = 0x00000001;
-            val.dataLength = kPlusOne + 1;
-            r1 += val;
-        }
-
-        while (r1 >= n)
-        {
-            r1 -= n; // 确保 r1 小于 n
-        }
-
-        return r1;
+        return r2;
     }
 
 
