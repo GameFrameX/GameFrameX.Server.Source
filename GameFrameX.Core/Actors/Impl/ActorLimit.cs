@@ -169,7 +169,7 @@ public static class ActorLimit
         /// </summary>
         /// <param name="target">目标</param>
         /// <returns>返回是否调用</returns>
-        public bool CanCall(long target)
+        bool IRule.CanCall(long target)
         {
             var actorId = RuntimeContext.CurrentActor;
             // 从IO线程抛到actor，不涉及入队行为
