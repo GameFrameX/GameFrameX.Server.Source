@@ -76,7 +76,7 @@ public sealed class FPMath
     /// <summary>
     /// 弧度转角度的常量。
     /// </summary>
-    public static FP Rad2Deg = FP.Rad2Deg;
+    public static readonly FP Rad2Deg = FP.Rad2Deg;
 
     /// <summary>
     /// FP 无穷大。
