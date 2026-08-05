@@ -1913,7 +1913,6 @@ public sealed class BigInteger
             throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.PositiveExponentsOnly)); // 仅支持正指数
         }
 
-        BigInteger resultNum = 1;
         BigInteger tempNum;
         var thisNegative = false;
 
@@ -1940,6 +1939,30 @@ public sealed class BigInteger
         constant.dataLength = i + 1;
 
         constant = constant / n;
+
+        // 执行平方和乘法指数运算，返回未做符号修正的结果
+        var resultNum = ModPowLoop(exp, n, tempNum, constant);
+
+        if (thisNegative && (exp.data[0] & 0x1) != 0) // 奇数指数
+        {
+            return -resultNum;
+        }
+
+        return resultNum;
+    }
+
+
+    /// <summary>
+    /// 执行模幂运算的平方和乘法主循环，返回未做符号修正的中间结果。
+    /// </summary>
+    /// <param name="exp">指数</param>
+    /// <param name="n">模数</param>
+    /// <param name="tempNum">底数取模后的中间值</param>
+    /// <param name="constant">Barrett 约减常量</param>
+    /// <returns>返回未做符号修正的模幂结果，由调用方按指数奇偶统一修正符号</returns>
+    private BigInteger ModPowLoop(BigInteger exp, BigInteger n, BigInteger tempNum, BigInteger constant)
+    {
+        BigInteger resultNum = 1;
         var totalBits = exp.BitCount();
         var count = 0;
 
@@ -1959,13 +1982,9 @@ public sealed class BigInteger
 
                 tempNum = BarrettReduction(tempNum * tempNum, n, constant);
 
+                // 当中间值归 1 时后续平方不会再变化，提前结束
                 if (tempNum.dataLength == 1 && tempNum.data[0] == 1)
                 {
-                    if (thisNegative && (exp.data[0] & 0x1) != 0) // 奇数指数
-                    {
-                        return -resultNum;
-                    }
-
                     return resultNum;
                 }
 
@@ -1975,11 +1994,6 @@ public sealed class BigInteger
                     break;
                 }
             }
-        }
-
-        if (thisNegative && (exp.data[0] & 0x1) != 0) // 奇数指数
-        {
-            return -resultNum;
         }
 
         return resultNum;
