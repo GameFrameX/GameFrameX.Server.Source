@@ -109,7 +109,7 @@ public static class ActorLimit
     {
         if (_rule != null)
         {
-            return _rule.AllowCall(target);
+            return _rule.CanCall(target);
         }
 
         return true;
@@ -117,7 +117,7 @@ public static class ActorLimit
 
     private interface IRule
     {
-        bool AllowCall(long target);
+        bool CanCall(long target);
     }
 
 
@@ -130,7 +130,7 @@ public static class ActorLimit
         /// </summary>
         /// <param name="target">目标</param>
         /// <returns></returns>
-        bool IRule.AllowCall(long target)
+        bool IRule.CanCall(long target)
         {
             var actorId = RuntimeContext.CurrentActor;
             // 从其他线程抛到actor，不涉及入队行为
@@ -169,7 +169,7 @@ public static class ActorLimit
         /// </summary>
         /// <param name="target">目标</param>
         /// <returns>返回是否调用</returns>
-        public bool AllowCall(long target)
+        public bool CanCall(long target)
         {
             var actorId = RuntimeContext.CurrentActor;
             // 从IO线程抛到actor，不涉及入队行为
@@ -179,10 +179,10 @@ public static class ActorLimit
             }
 
             // Actor会在入队成功之后进行设置，这种属于Actor入队
-            return AllowCall(actorId, target);
+            return CanCall(actorId, target);
         }
 
-        private bool AllowCall(long self, long target)
+        private bool CanCall(long self, long target)
         {
             // 自己入自己的队允许，会直接执行
             if (self == target)
