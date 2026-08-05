@@ -403,23 +403,15 @@ public sealed class IllegalWordDetection
         return text;
     }
 
-    private static unsafe bool EnsuranceLower(string text)
+    private static bool EnsuranceLower(string text)
     {
-        fixed (char* newText = text)
+        for (int i = 0; i < text.Length; i++)
         {
-            var itor = newText;
-            var end = newText + text.Length;
+            var c = text[i];
 
-            while (itor < end)
+            if (c >= 'A' && c <= 'Z')
             {
-                var c = *itor;
-
-                if (c is >= 'A' and <= 'Z')
-                {
-                    return true;
-                }
-
-                ++itor;
+                return true;
             }
         }
 
