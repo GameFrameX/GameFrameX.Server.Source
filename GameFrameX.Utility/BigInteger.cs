@@ -803,9 +803,52 @@ public sealed class BigInteger
     public static BigInteger operator *(BigInteger bi1, BigInteger bi2)
     {
         var lastPos = maxLength - 1;
-        bool bi1Neg = false, bi2Neg = false;
 
-        // 取输入的绝对值
+        // 取输入的绝对值，并记录原符号
+        TakeAbsoluteValues(ref bi1, ref bi2, lastPos, out bool bi1Neg, out bool bi2Neg);
+
+        // 乘以绝对值
+        var result = MultiplyAbsoluteValues(bi1, bi2);
+
+        // 规整 dataLength 并去前导零
+        NormalizeResultDataLength(result, bi1.dataLength + bi2.dataLength);
+
+        // 溢出检查（结果为负）
+        if ((result.data[lastPos] & 0x80000000) != 0)
+        {
+            // 仅当输入符号不同且结果恰为可表示的最小负数时才合法返回
+            if (IsLegitimateMostNegativeResult(result, bi1Neg, bi2Neg, lastPos))
+            {
+                return result;
+            }
+
+            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.MultiplicationOverflow));
+        }
+
+        // 如果输入符号不同，则结果为负
+        if (bi1Neg != bi2Neg)
+        {
+            return -result;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// 取两个操作数的绝对值，并记录各自的原符号。
+    /// </summary>
+    /// <param name="bi1">第一个操作数，可能被替换为其绝对值。</param>
+    /// <param name="bi2">第二个操作数，可能被替换为其绝对值。</param>
+    /// <param name="lastPos">最高字索引。</param>
+    /// <param name="bi1Neg">输出 <paramref name="bi1" /> 是否为负。</param>
+    /// <param name="bi2Neg">输出 <paramref name="bi2" /> 是否为负。</param>
+    /// <remarks>取负操作整体包裹在单个 try/catch 中：任一操作数取负抛异常则另一操作数不再处理，异常被吞掉（与原实现一致）。</remarks>
+    private static void TakeAbsoluteValues(ref BigInteger bi1, ref BigInteger bi2, int lastPos,
+        out bool bi1Neg, out bool bi2Neg)
+    {
+        bi1Neg = false;
+        bi2Neg = false;
+
         try
         {
             if ((bi1.data[lastPos] & 0x80000000) != 0) // bi1 为负
@@ -823,10 +866,19 @@ public sealed class BigInteger
         catch (Exception)
         {
         }
+    }
 
+    /// <summary>
+    /// 对两个绝对值操作数执行逐字乘法与进位累加。
+    /// </summary>
+    /// <param name="bi1">第一个绝对值操作数。</param>
+    /// <param name="bi2">第二个绝对值操作数。</param>
+    /// <returns>绝对值乘积。</returns>
+    /// <exception cref="ArithmeticException">当乘法越界（写溢出缓冲区）时引发。</exception>
+    private static BigInteger MultiplyAbsoluteValues(BigInteger bi1, BigInteger bi2)
+    {
         var result = new BigInteger();
 
-        // 乘以绝对值
         try
         {
             for (var i = 0; i < bi1.dataLength; i++)
@@ -858,8 +910,17 @@ public sealed class BigInteger
             throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.MultiplicationOverflow));
         }
 
+        return result;
+    }
 
-        result.dataLength = bi1.dataLength + bi2.dataLength;
+    /// <summary>
+    /// 规整乘积的 dataLength：置为两操作数 dataLength 之和、封顶到 maxLength、去前导零。
+    /// </summary>
+    /// <param name="result">乘积实例。</param>
+    /// <param name="sumDataLength">两操作数 dataLength 之和。</param>
+    private static void NormalizeResultDataLength(BigInteger result, int sumDataLength)
+    {
+        result.dataLength = sumDataLength;
         if (result.dataLength > maxLength)
         {
             result.dataLength = maxLength;
@@ -869,43 +930,40 @@ public sealed class BigInteger
         {
             result.dataLength--;
         }
+    }
 
-        // 溢出检查（结果为负）
-        if ((result.data[lastPos] & 0x80000000) != 0)
+    /// <summary>
+    /// 判定乘积是否为「输入符号不同且恰为可表示最小负数」的合法结果。
+    /// </summary>
+    /// <param name="result">乘积实例。</param>
+    /// <param name="bi1Neg">第一个操作数是否为负。</param>
+    /// <param name="bi2Neg">第二个操作数是否为负。</param>
+    /// <param name="lastPos">最高字索引。</param>
+    /// <returns>若结果为合法的可表示最小负数则返回 true。</returns>
+    private static bool IsLegitimateMostNegativeResult(BigInteger result, bool bi1Neg, bool bi2Neg, int lastPos)
+    {
+        // 仅当输入符号不同、且最高字恰为符号位 0x80000000 时才可能是最小负数
+        if (bi1Neg == bi2Neg || result.data[lastPos] != 0x80000000)
         {
-            if (bi1Neg != bi2Neg && result.data[lastPos] == 0x80000000) // 符号不同
+            return false;
+        }
+
+        // 单字特例：仅一个 32 位字且就是 0x80000000
+        if (result.dataLength == 1)
+        {
+            return true;
+        }
+
+        // 其余低字必须全为 0 才是最小负数
+        for (var i = 0; i < result.dataLength - 1; i++)
+        {
+            if (result.data[i] != 0)
             {
-                // 处理乘法产生最大负数的特殊情况
-                if (result.dataLength == 1)
-                {
-                    return result;
-                }
-
-                var isMaxNeg = true;
-                for (var i = 0; i < result.dataLength - 1 && isMaxNeg; i++)
-                {
-                    if (result.data[i] != 0)
-                    {
-                        isMaxNeg = false;
-                    }
-                }
-
-                if (isMaxNeg)
-                {
-                    return result;
-                }
+                return false;
             }
-
-            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.MultiplicationOverflow));
         }
 
-        // 如果输入符号不同，则结果为负
-        if (bi1Neg != bi2Neg)
-        {
-            return -result;
-        }
-
-        return result;
+        return true;
     }
 
 
