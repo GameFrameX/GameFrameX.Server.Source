@@ -206,8 +206,8 @@ public sealed class Actor : IActor, IDisposable
     /// <summary>
     /// 处理跨天逻辑,遍历所有组件并执行跨天操作
     /// </summary>
-    /// <param name="openServerDay">开服天数</param>
-    public async Task CrossDay(int openServerDay)
+    /// <param name="serverDay">开服天数</param>
+    public async Task CrossDay(int serverDay)
     {
         LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.Actor.CrossDay, Id, Type));
         foreach (var comp in _componentsMap.Values)
@@ -218,7 +218,7 @@ public sealed class Actor : IActor, IDisposable
                 // 使用try-catch缩小异常影响范围
                 try
                 {
-                    await crossDay.OnCrossDay(openServerDay);
+                    await crossDay.OnCrossDay(serverDay);
                 }
                 catch (Exception e)
                 {
