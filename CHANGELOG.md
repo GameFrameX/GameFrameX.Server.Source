@@ -1,3 +1,8 @@
+## [1.13.5] - 2026-08-05
+
+### Bug Fixes
+
+* 将 FPMath.PiOver2 改为 readonly 消除 Sonar S2223 (#167)
 ## [1.13.4] - 2026-08-05
 
 ### Bug Fixes
