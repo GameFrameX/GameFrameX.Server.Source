@@ -71,7 +71,7 @@ public sealed class FPMath
     /// <summary>
     /// 角度转弧度的常量。
     /// </summary>
-    public static FP Deg2Rad = FP.Deg2Rad;
+    public static readonly FP Deg2Rad = FP.Deg2Rad;
 
     /// <summary>
     /// 弧度转角度的常量。
