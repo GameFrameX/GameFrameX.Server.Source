@@ -1,3 +1,8 @@
+## [1.13.7] - 2026-08-05
+
+### Bug Fixes
+
+* 将 FPMath.Epsilon 改为 readonly 消除 Sonar S2223 (#169)
 ## [1.13.6] - 2026-08-05
 
 ### Bug Fixes
