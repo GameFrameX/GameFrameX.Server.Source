@@ -460,7 +460,7 @@ public sealed class Actor : IActor, IDisposable
     /// <param name="timeout">执行超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="cancellationToken">取消操作的令牌</param>
     /// <returns>返回表示异步操作的Task</returns>
-    public Task SendAsync(Action work, int timeout, CancellationToken cancellationToken = default)
+    public Task SendAsync(Action work, int timeout = -1, CancellationToken cancellationToken = default)
     {
         if (timeout <= 0)
         {
