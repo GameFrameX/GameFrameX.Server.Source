@@ -61,7 +61,7 @@ public sealed class FPMath
     /// <summary>
     /// PI 除以 2 的常量。
     /// </summary>
-    public static FP PiOver2 = FP.PiOver2;
+    public static readonly FP PiOver2 = FP.PiOver2;
 
     /// <summary>
     /// 一个小值，通常用于判断数值结果是否为零。
