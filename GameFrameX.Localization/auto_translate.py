@@ -523,6 +523,21 @@ def update_resx_file(resx_path, updates, is_chinese=False):
     return updated_count
 
 
+def build_translations(todo_keys, translations):
+    """为待翻译 key 搜索上下文并补充翻译规则，结果写回共享的 translations 字典。"""
+    for key in todo_keys:
+        if key in translations:
+            continue
+        context = search_key_usage(key)
+        info = analyze_key_context(key, context)
+        result = generate_translation(key, context, info)
+        if result:
+            translations[key] = result
+            print(f"   [OK] {key}")
+        else:
+            print(f"   [SKIP] {key} - 未找到翻译规则")
+
+
 def main():
     print("=" * 60)
     print("自动翻译脚本 - 分析代码并生成翻译")
@@ -538,17 +553,7 @@ def main():
     print(f"   找到 {len(todo_keys_en)} 个需要翻译的 key")
 
     if todo_keys_en:
-        for key in todo_keys_en:
-            if key not in translations:
-                context = search_key_usage(key)
-                info = analyze_key_context(key, context)
-                result = generate_translation(key, context, info)
-                if result:
-                    translations[key] = result
-                    print(f"   [OK] {key}")
-                else:
-                    print(f"   [SKIP] {key} - 未找到翻译规则")
-
+        build_translations(todo_keys_en, translations)
         if translations:
             updated_en = update_resx_file(RESX_DEFAULT, translations, is_chinese=False)
             print(f"   英文资源文件更新了 {updated_en} 条")
@@ -562,17 +567,7 @@ def main():
     print(f"   找到 {len(todo_keys_zh)} 个需要翻译的 key")
 
     if todo_keys_zh:
-        for key in todo_keys_zh:
-            if key not in translations:
-                context = search_key_usage(key)
-                info = analyze_key_context(key, context)
-                result = generate_translation(key, context, info)
-                if result:
-                    translations[key] = result
-                    print(f"   [OK] {key}")
-                else:
-                    print(f"   [SKIP] {key} - 未找到翻译规则")
-
+        build_translations(todo_keys_zh, translations)
         if translations:
             updated_zh = update_resx_file(RESX_ZH_CN, translations, is_chinese=True)
             print(f"   中文资源文件更新了 {updated_zh} 条")
