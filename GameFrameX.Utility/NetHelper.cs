@@ -138,7 +138,7 @@ public static class NetHelper
         {
             var startInfo = new ProcessStartInfo
             {
-                FileName = "netstat",
+                FileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "netstat.exe"),
                 Arguments = "-ano -p tcp",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
