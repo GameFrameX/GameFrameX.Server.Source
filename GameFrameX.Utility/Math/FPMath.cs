@@ -56,7 +56,7 @@ public sealed class FPMath
     /// <summary>
     /// PI 常量。
     /// </summary>
-    public static FP Pi = FP.Pi;
+    public static readonly FP Pi = FP.Pi;
 
     /// <summary>
     /// PI 除以 2 的常量。
