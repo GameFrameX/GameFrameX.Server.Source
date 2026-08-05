@@ -580,13 +580,7 @@ public sealed class IllegalWordDetection
             while (aitor < end)
             {
                 //如果text的第一个词不是敏感词汇或者当前遍历到了text第一个词的后面的词，则循环检测到text词汇的倒数第二个词，看看这一段子字符串中有没有敏感词汇
-                if ((FastCheck[*aitor] & 0x01) == 0)
-                {
-                    while (aitor < end - 1 && (FastCheck[*++aitor] & 0x01) == 0)
-                    {
-                        ;
-                    }
-                }
+                aitor = AdvanceToNextStartChar(aitor, end);
 
                 //如果有只有一个词的敏感词，且当前的字符串的“非第一个词”满足这个敏感词，则先加入已检测到的敏感词列表
                 if (StartCache[*aitor] != 0 && (FastLength[*aitor] & 0x01) > 0)
@@ -599,52 +593,11 @@ public sealed class IllegalWordDetection
                     }
                 }
 
-                var strIgor = detectedStrStart;
-                *strIgor++ = *aitor;
-                var remainLength = (int)(end - aitor - 1);
-                var skipCount = 0;
                 //此时已经检测到一个敏感词的“首词”了,记录下第一个检测到的敏感词的位置
                 //从当前的位置检测到字符串末尾
-                for (var i = 1; i <= remainLength; ++i)
+                if (TryScanForward(ref aitor, end, detectedStrStart, pText, returnWhenFindFirst, findResult))
                 {
-                    var subIto = aitor + i;
-                    // 跳过一些过滤的字符,比如空格特殊符号之类的
-                    if (SkipBitArray[*subIto])
-                    {
-                        ++skipCount;
-                        continue;
-                    }
-
-                    //如果检测到当前的词在所有敏感词中的位置信息中没有处在第i位的，则马上跳出遍历
-                    if (FastCheck[*subIto] >> System.Math.Min(i - skipCount, 7) == 0)
-                    {
-                        break;
-                    }
-
-                    *strIgor++ = *subIto;
-                    //如果有检测到敏感词的最后一个词，并且此时的“检测到的敏感词汇”的长度也符合要求，则才进一步查看检测到的敏感词汇是否是真的敏感
-                    if (FastLength[*aitor] >> System.Math.Min(i - 1 - skipCount, 7) > 0 && EndCache[*subIto])
-                    {
-                        //如果此子字符串在敏感词字典中存在，则记录。做此判断是避免敏感词中夹杂了其他敏感词的单词，而上面的算法无法剔除，故先用hash数组来剔除
-                        //上述算法是用于减少大部分的比较消耗
-                        if (WordsSet.Contains(new string(_dectectedBuffer, 0, (int)(strIgor - detectedStrStart))))
-                        {
-                            var curDetectedStartIndex = (int)(aitor - pText);
-                            findResult[curDetectedStartIndex] = i + 1;
-                            aitor = subIto;
-
-                            if (returnWhenFindFirst)
-                            {
-                                return true;
-                            }
-
-                            break;
-                        }
-                    }
-                    else if (i - skipCount > StartCache[*aitor] && StartCache[*aitor] < 0x80) //如果超过了以该词为首的一系列的敏感词汇的最大的长度，则不继续判断(前提是该词对应的所有敏感词汇没有超过8个词的)
-                    {
-                        break;
-                    }
+                    return true;
                 }
 
                 ++aitor;
@@ -652,5 +605,86 @@ public sealed class IllegalWordDetection
         }
 
         return findResult.Count > 0;
+    }
+
+    private static unsafe char* AdvanceToNextStartChar(char* aitor, char* end)
+    {
+        //跳过不可能作为敏感词首字符的字符（FastCheck 首位为 0）
+        if ((FastCheck[*aitor] & 0x01) == 0)
+        {
+            while (aitor < end - 1 && (FastCheck[*++aitor] & 0x01) == 0)
+            {
+                ;
+            }
+        }
+
+        return aitor;
+    }
+
+    private static unsafe bool TryScanForward(
+        ref char* aitor, char* end, char* detectedStrStart, char* pText,
+        bool returnWhenFindFirst, Dictionary<int, int> findResult)
+    {
+        var strIgor = detectedStrStart;
+        *strIgor++ = *aitor;
+        var remainLength = (int)(end - aitor - 1);
+        var skipCount = 0;
+        //此时已经检测到一个敏感词的“首词”了,记录下第一个检测到的敏感词的位置
+        //从当前的位置检测到字符串末尾
+        for (var i = 1; i <= remainLength; ++i)
+        {
+            var subIto = aitor + i;
+            // 跳过一些过滤的字符,比如空格特殊符号之类的
+            if (SkipBitArray[*subIto])
+            {
+                ++skipCount;
+                continue;
+            }
+
+            //如果检测到当前的词在所有敏感词中的位置信息中没有处在第i位的，则马上跳出遍历
+            if (FastCheck[*subIto] >> System.Math.Min(i - skipCount, 7) == 0)
+            {
+                return false;
+            }
+
+            *strIgor++ = *subIto;
+            //如果有检测到敏感词的最后一个词，并且此时的“检测到的敏感词汇”的长度也符合要求，则才进一步查看检测到的敏感词汇是否是真的敏感
+            var isPossibleEnd = IsPossibleWordEnd(aitor, subIto, i, skipCount);
+            if (isPossibleEnd)
+            {
+                //如果此子字符串在敏感词字典中存在，则记录。做此判断是避免敏感词中夹杂了其他敏感词的单词，而上面的算法无法剔除，故先用hash数组来剔除
+                //上述算法是用于减少大部分的比较消耗
+                if (TryRecordMatch(strIgor, detectedStrStart, aitor, pText, i, findResult))
+                {
+                    aitor = subIto;
+                    return returnWhenFindFirst;
+                }
+            }
+            else if (i - skipCount > StartCache[*aitor] && StartCache[*aitor] < 0x80) //如果超过了以该词为首的一系列的敏感词汇的最大的长度，则不继续判断(前提是该词对应的所有敏感词汇没有超过8个词的)
+            {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    private static unsafe bool IsPossibleWordEnd(char* aitor, char* subIto, int i, int skipCount)
+    {
+        return FastLength[*aitor] >> System.Math.Min(i - 1 - skipCount, 7) > 0 && EndCache[*subIto];
+    }
+
+    private static unsafe bool TryRecordMatch(
+        char* strIgor, char* detectedStrStart, char* aitor, char* pText,
+        int i, Dictionary<int, int> findResult)
+    {
+        if (WordsSet.Contains(new string(_dectectedBuffer, 0, (int)(strIgor - detectedStrStart))))
+        {
+            var curDetectedStartIndex = (int)(aitor - pText);
+            findResult[curDetectedStartIndex] = i + 1;
+            return true;
+        }
+
+        return false;
     }
 }
