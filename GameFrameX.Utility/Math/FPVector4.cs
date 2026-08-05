@@ -55,7 +55,7 @@ namespace GameFrameX.Utility.Math;
 public struct FPVector4
 {
     private static FP ZeroEpsilonSq = FPMath.Epsilon;
-    internal static FPVector4 InternalZero;
+    internal static readonly FPVector4 InternalZero;
 
     /// <summary>
     /// 向量的 X 组件。
