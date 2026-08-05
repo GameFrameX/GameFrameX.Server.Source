@@ -3071,26 +3071,56 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
             return -Jacobi(-a, b);
         }
 
-        var e = 0;
-        for (var index = 0; index < a.dataLength; index++)
+        var e = CountTrailingZeroBits(a);
+
+        var a1 = a >> e;
+
+        var s = JacobiReciprocitySign(e, b, a1);
+
+        if (a1.dataLength == 1 && a1.data[0] == 1)
+        {
+            return s;
+        }
+
+        return s * Jacobi(b % a1, a1);
+    }
+
+    /// <summary>
+    /// 计算指定值中末位连续 0 bit 的数量（即首个置位 bit 之前的 0 的个数）。
+    /// </summary>
+    /// <param name="value">待计算的大整数（须至少含一个置位 bit）</param>
+    /// <returns>末位连续 0 bit 的数量</returns>
+    private static int CountTrailingZeroBits(BigInteger value)
+    {
+        var count = 0;
+        for (var index = 0; index < value.dataLength; index++)
         {
             uint mask = 0x01;
 
             for (var i = 0; i < 32; i++)
             {
-                if ((a.data[index] & mask) != 0)
+                if ((value.data[index] & mask) != 0)
                 {
-                    index = a.dataLength; // 退出外层循环
-                    break;
+                    return count;
                 }
 
                 mask <<= 1;
-                e++;
+                count++;
             }
         }
 
-        var a1 = a >> e;
+        return count;
+    }
 
+    /// <summary>
+    /// 依据尾随零个数 e 与 b、a1 的低位模式计算雅可比符号的互反符号 s。
+    /// </summary>
+    /// <param name="e">a 的末位连续 0 bit 个数</param>
+    /// <param name="b">雅可比符号的第二个参数（奇数）</param>
+    /// <param name="a1">a 右移 e 位后的结果</param>
+    /// <returns>互反符号 s（1 或 -1）</returns>
+    private static int JacobiReciprocitySign(int e, BigInteger b, BigInteger a1)
+    {
         var s = 1;
         if ((e & 0x1) != 0 && ((b.data[0] & 0x7) == 3 || (b.data[0] & 0x7) == 5))
         {
@@ -3102,12 +3132,7 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
             s = -s;
         }
 
-        if (a1.dataLength == 1 && a1.data[0] == 1)
-        {
-            return s;
-        }
-
-        return s * Jacobi(b % a1, a1);
+        return s;
     }
 
     /// <summary>
