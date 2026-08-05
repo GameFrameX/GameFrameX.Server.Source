@@ -492,18 +492,18 @@ public sealed class Actor : IActor, IDisposable
     /// 发送带锁检查的异步工作指令
     /// </summary>
     /// <param name="work">要执行的异步工作内容</param>
-    /// <param name="timeout">执行超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="timeOut">执行超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="checkLock">是否检查锁,默认为true</param>
     /// <param name="cancellationToken">取消操作的令牌</param>
     /// <returns>返回表示异步操作的Task</returns>
-    public Task SendAsync(Func<Task> work, int timeout = -1, bool checkLock = true, CancellationToken cancellationToken = default)
+    public Task SendAsync(Func<Task> work, int timeOut = -1, bool checkLock = true, CancellationToken cancellationToken = default)
     {
-        if (timeout <= 0)
+        if (timeOut <= 0)
         {
-            timeout = GlobalSettings.CurrentSetting.ActorTimeOut;
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
         }
 
-        return WorkerActor.SendAsync(work, timeout, checkLock, cancellationToken);
+        return WorkerActor.SendAsync(work, timeOut, checkLock, cancellationToken);
     }
 
     /// <summary>
