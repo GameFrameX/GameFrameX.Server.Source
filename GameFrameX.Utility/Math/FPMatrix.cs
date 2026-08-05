@@ -98,7 +98,7 @@ public struct FPMatrix
     /// </summary>
     public FP M33;
 
-    internal static FPMatrix InternalIdentity;
+    internal static readonly FPMatrix InternalIdentity;
 
     /// <summary>
     /// 单位矩阵。
