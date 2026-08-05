@@ -1,3 +1,10 @@
+## [1.13.4] - 2026-08-05
+
+### Bug Fixes
+
+* 将 FPMatrix4x4.InternalIdentity 改为 readonly 消除 Sonar S2223 (#164)
+* 将 FPMath.Pi 改为 readonly 消除 Sonar S2223 (#165)
+* 将 FPMath.Rad2Deg 改为 readonly 消除 Sonar S2223 (#166)
 ## [1.13.3] - 2026-08-05
 
 ### Bug Fixes
