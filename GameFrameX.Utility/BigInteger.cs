@@ -2318,57 +2318,90 @@ public sealed class BigInteger
         }
 
         var bits = thisVal.BitCount();
-        var a = new BigInteger();
         var p_sub1 = thisVal - new BigInteger(1);
         var rand = new SecureRandom();
 
         for (var round = 0; round < confidence; round++)
         {
-            var done = false;
+            var a = GenerateFermatBase(bits, rand);
 
-            while (!done) // generate a < n
+            if (IsFermatBaseComposite(a, thisVal, p_sub1))
             {
-                var testBits = 0;
-
-                // make sure "a" has at least 2 bits
-                while (testBits < 2)
-                {
-                    testBits = (int)(rand.NextDouble() * bits);
-                }
-
-                a.GenRandomBits(testBits, rand);
-
-                var byteLen = a.dataLength;
-
-                // make sure "a" is not 0
-                if (byteLen > 1 || (byteLen == 1 && a.data[0] != 1))
-                {
-                    done = true;
-                }
-            }
-
-            // check whether a factor exists (fix for version 1.03)
-            var gcdTest = a.Gcd(thisVal);
-            if (gcdTest.dataLength == 1 && gcdTest.data[0] != 1)
-            {
-                return false;
-            }
-
-            // calculate a^(p-1) mod p
-            var expResult = a.ModPow(p_sub1, thisVal);
-
-            var resultLen = expResult.dataLength;
-
-            // is NOT prime is a^(p-1) mod p != 1
-
-            if (resultLen > 1 || (resultLen == 1 && expResult.data[0] != 1))
-            {
-                //LogHelper.Info("a = " + a.ToString());
                 return false;
             }
         }
 
         return true;
+    }
+
+
+    //***********************************************************************
+    // 生成费马测试的随机基数 a：
+    // 循环随机取至少 2 位的 testBits，调用 GenRandomBits 填充 a，
+    // 直至 a 非零（dataLength > 1，或 dataLength == 1 且 data[0] != 1）。
+    // GenRandomBits 每次会完全重置 data 数组与 dataLength，
+    // 故此处新建 a 与原「方法级复用 a」在读取前已被完全重写，行为等价。
+    //***********************************************************************
+
+    private static BigInteger GenerateFermatBase(int bits, SecureRandom rand)
+    {
+        var a = new BigInteger();
+        var done = false;
+
+        while (!done) // generate a < n
+        {
+            var testBits = 0;
+
+            // make sure "a" has at least 2 bits
+            while (testBits < 2)
+            {
+                testBits = (int)(rand.NextDouble() * bits);
+            }
+
+            a.GenRandomBits(testBits, rand);
+
+            var byteLen = a.dataLength;
+
+            // make sure "a" is not 0
+            if (byteLen > 1 || (byteLen == 1 && a.data[0] != 1))
+            {
+                done = true;
+            }
+        }
+
+        return a;
+    }
+
+
+    //***********************************************************************
+    // 费马测试单轮见证检验：
+    // 1) gcd(a, n) 存在非 1 因子 → n 为合数；
+    // 2) a^(p-1) mod p != 1 → n 为合数（费马小定理逆否）。
+    // 返回 true 表示该基数证明 n 为合数，调用方据此 return false。
+    //***********************************************************************
+
+    private static bool IsFermatBaseComposite(BigInteger a, BigInteger thisVal, BigInteger p_sub1)
+    {
+        // check whether a factor exists (fix for version 1.03)
+        var gcdTest = a.Gcd(thisVal);
+        if (gcdTest.dataLength == 1 && gcdTest.data[0] != 1)
+        {
+            return true;
+        }
+
+        // calculate a^(p-1) mod p
+        var expResult = a.ModPow(p_sub1, thisVal);
+
+        var resultLen = expResult.dataLength;
+
+        // is NOT prime is a^(p-1) mod p != 1
+        if (resultLen > 1 || (resultLen == 1 && expResult.data[0] != 1))
+        {
+            //LogHelper.Info("a = " + a.ToString());
+            return true;
+        }
+
+        return false;
     }
 
     //***********************************************************************
