@@ -160,6 +160,7 @@
 //************************************************************************************
 
 
+using System.Security.Cryptography;
 using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Utility;
@@ -2550,7 +2551,8 @@ public sealed class BigInteger
         var p_sub1 = thisVal - 1;
         var p_sub1_shift = p_sub1 >> 1;
 
-        var rand = new Random();
+        // 使用加密强度随机源（SecureRandom）消除 Sonar S2245
+        var rand = new SecureRandom();
 
         for (var round = 0; round < confidence; round++)
         {
@@ -3616,5 +3618,31 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
         result[2] = Q_k;
 
         return result;
+    }
+
+
+    /// <summary>
+    /// 基于 <see cref="RandomNumberGenerator"/> 的加密强度 <see cref="Random"/> 适配器。
+    /// 重写 <see cref="Random.NextBytes(byte[])"/> 与 <see cref="Random.Sample"/>，
+    /// 使经由基类委托的 <see cref="Random.NextDouble"/> 同样具备加密强度，
+    /// 保持 <see cref="Random"/> 语义（<see cref="Random.NextDouble"/> 返回 [0, 1)）。
+    /// 用于素性测试消除 Sonar S2245。
+    /// </summary>
+    internal sealed class SecureRandom : Random
+    {
+        /// <inheritdoc/>
+        public override void NextBytes(byte[] buffer)
+        {
+            RandomNumberGenerator.Fill(buffer);
+        }
+
+        /// <inheritdoc/>
+        protected override double Sample()
+        {
+            var bytes = new byte[8];
+            RandomNumberGenerator.Fill(bytes);
+            // 取高 53 位以保证 double 精度，映射到 [0, 1)
+            return (BitConverter.ToUInt64(bytes, 0) >> 11) * (1.0 / (1UL << 53));
+        }
     }
 }
