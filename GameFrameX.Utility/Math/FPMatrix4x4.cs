@@ -133,7 +133,7 @@ public struct FPMatrix4x4
     /// </summary>
     public FP M44;
 
-    internal static FPMatrix4x4 InternalIdentity;
+    internal static readonly FPMatrix4x4 InternalIdentity;
 
     /// <summary>
     /// 单位矩阵。
