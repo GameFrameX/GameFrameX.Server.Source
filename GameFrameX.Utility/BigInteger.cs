@@ -289,7 +289,7 @@ public sealed class BigInteger
 
         if (value != 0 || (data[maxLength - 1] & 0x80000000) != 0)
         {
-            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ConstructorOverflow));
+            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.ConstructorOverflow));
         }
 
         if (dataLength == 0)
