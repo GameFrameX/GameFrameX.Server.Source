@@ -81,7 +81,7 @@ public sealed class FPMath
     /// <summary>
     /// FP 无穷大。
     /// </summary>
-    public static FP Infinity = FP.MaxValue;
+    public static readonly FP Infinity = FP.MaxValue;
 
     /// <summary>
     /// 获取平方根。
