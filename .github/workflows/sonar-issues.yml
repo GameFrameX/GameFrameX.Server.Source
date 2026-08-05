@@ -24,7 +24,8 @@ jobs:
       sonar_project_key: ${{ github.event.repository.name }}
       sonar_host_url: ${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}
       sonar_organization: ${{ vars.SONAR_ORGANIZATION || 'gameframex' }}
-    secrets: inherit
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   sync:
     needs: analyze
@@ -35,4 +36,5 @@ jobs:
       sonar_organization: ${{ vars.SONAR_ORGANIZATION || 'gameframex' }}
       sonar_branch: main
       github_repository: ${{ github.repository }}
-    secrets: inherit
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
