@@ -2898,6 +2898,34 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
             thisVal = this;
         }
 
+        // 小数字 / 偶数 / 小素数整除快速排除。返回非 null 表示素性已确定，null 表示需继续后续测试。
+        var quick = CheckSmallPrimality(thisVal);
+        if (quick.HasValue)
+        {
+            return quick.Value;
+        }
+
+        // 基于 2 的强伪素数测试，通过后再做强卢卡斯测试
+        var result = IsStrongPseudoPrimeBase2(thisVal);
+        if (result)
+        {
+            result = LucasStrongTestHelper(thisVal);
+        }
+
+        return result;
+    }
+
+
+    /// <summary>
+    /// 对小数字、偶数以及能否被小于 2000 的素数整除进行快速判定。
+    /// </summary>
+    /// <param name="thisVal">待测的正数 BigInteger</param>
+    /// <returns>
+    /// 已确定素性时返回 <c>true</c>（2/3 等小素数）或 <c>false</c>（0/1/偶数/可被小素数整除）；
+    /// 需要继续 Rabin-Miller + Lucas 测试时返回 <c>null</c>。
+    /// </returns>
+    private static bool? CheckSmallPrimality(BigInteger thisVal)
+    {
         if (thisVal.dataLength == 1)
         {
             // 测试小数字
@@ -2937,8 +2965,17 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
             }
         }
 
-        // 执行基于 2 的拉宾-米勒测试
+        return null; // 继续 Rabin-Miller + Lucas 测试
+    }
 
+
+    /// <summary>
+    /// 执行基于 2 的拉宾-米勒强伪素数测试。
+    /// </summary>
+    /// <param name="thisVal">待测的正数 BigInteger</param>
+    /// <returns>通过基于 2 的强伪素数测试返回 true，否则返回 false</returns>
+    private static bool IsStrongPseudoPrimeBase2(BigInteger thisVal)
+    {
         // 计算 s 和 t 的值
         var p_sub1 = thisVal - new BigInteger(1);
         var s = 0;
@@ -2983,12 +3020,6 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
             }
 
             b = b * b % thisVal;
-        }
-
-        // 如果数字是基于 2 的强伪素数，则进行强卢卡斯测试
-        if (result)
-        {
-            result = LucasStrongTestHelper(thisVal);
         }
 
         return result;
