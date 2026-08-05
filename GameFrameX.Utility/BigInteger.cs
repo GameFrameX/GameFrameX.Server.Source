@@ -248,14 +248,14 @@ public sealed class BigInteger
         {
             if (value != 0 || (data[maxLength - 1] & 0x80000000) != 0)
             {
-                throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.ConstructorOverflow));
+                throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ConstructorOverflow));
             }
         }
         else if (tempVal < 0) // 负值下溢检查
         {
             if (value != -1 || (data[dataLength - 1] & 0x80000000) == 0)
             {
-                throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.ConstructorUnderflow));
+                throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ConstructorUnderflow));
             }
         }
 
@@ -289,7 +289,7 @@ public sealed class BigInteger
 
         if (value != 0 || (data[maxLength - 1] & 0x80000000) != 0)
         {
-            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.ConstructorOverflow));
+            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ConstructorOverflow));
         }
 
         if (dataLength == 0)
@@ -361,7 +361,7 @@ public sealed class BigInteger
 
             if (posVal >= radix)
             {
-                throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.ConstructorInvalidString));
+                throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ConstructorInvalidString));
             }
 
             if (value[0] == '-')
@@ -423,14 +423,14 @@ public sealed class BigInteger
         {
             if ((result.data[maxLength - 1] & 0x80000000) == 0)
             {
-                throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.ConstructorUnderflow));
+                throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ConstructorUnderflow));
             }
         }
         else // 处理正值
         {
             if ((result.data[maxLength - 1] & 0x80000000) != 0)
             {
-                throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.ConstructorOverflow));
+                throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ConstructorOverflow));
             }
         }
     }
@@ -698,7 +698,7 @@ public sealed class BigInteger
         if ((bi1.data[lastPos] & 0x80000000) == 0 &&
             (result.data[lastPos] & 0x80000000) != (bi1.data[lastPos] & 0x80000000))
         {
-            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.IncrementOverflow));
+            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.IncrementOverflow));
         }
 
         return result;
@@ -809,7 +809,7 @@ public sealed class BigInteger
         if ((bi1.data[lastPos] & 0x80000000) != 0 &&
             (result.data[lastPos] & 0x80000000) != (bi1.data[lastPos] & 0x80000000))
         {
-            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.DecrementUnderflow));
+            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.DecrementUnderflow));
         }
 
         return result;
@@ -877,7 +877,7 @@ public sealed class BigInteger
         }
         catch (Exception)
         {
-            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.MultiplicationOverflow));
+            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.MultiplicationOverflow));
         }
 
 
@@ -918,7 +918,7 @@ public sealed class BigInteger
                 }
             }
 
-            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.MultiplicationOverflow));
+            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.MultiplicationOverflow));
         }
 
         // 如果输入符号不同，则结果为负
@@ -1149,7 +1149,7 @@ public sealed class BigInteger
 
         if ((bi1.data[maxLength - 1] & 0x80000000) == (result.data[maxLength - 1] & 0x80000000))
         {
-            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.NegationOverflow));
+            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.NegationOverflow));
         }
 
         result.dataLength = maxLength;
@@ -1833,7 +1833,7 @@ public sealed class BigInteger
     {
         if (radix < 2 || radix > 36)
         {
-            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.RadixOutOfRange));
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.RadixOutOfRange));
         }
 
         var charSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -1932,7 +1932,7 @@ public sealed class BigInteger
     {
         if ((exp.data[maxLength - 1] & 0x80000000) != 0)
         {
-            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.PositiveExponentsOnly)); // 仅支持正指数
+            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.PositiveExponentsOnly)); // 仅支持正指数
         }
 
         BigInteger resultNum = 1;
@@ -2188,7 +2188,7 @@ public sealed class BigInteger
 
         if (dwords > maxLength)
         {
-            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.RequiredBitsExceedMaxLength)); // 超过最大长度
+            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.RequiredBitsExceedMaxLength)); // 超过最大长度
         }
 
         for (var i = 0; i < dwords; i++)
@@ -3109,7 +3109,7 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
         // 雅可比符号仅定义于奇数
         if ((b.data[0] & 0x1) == 0)
         {
-            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.JacobiSymbolDefinedForOddOnly));
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.JacobiSymbolDefinedForOddOnly));
         }
 
         if (a >= b)
@@ -3288,7 +3288,7 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
 
         if (r[0].dataLength > 1 || (r[0].dataLength == 1 && r[0].data[0] != 1))
         {
-            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.NoInverse));
+            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.NoInverse));
         }
 
         var result = (p[0] - p[1] * q[0]) % modulus;
@@ -3573,7 +3573,7 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
 
         if ((k.data[0] & 0x00000001) == 0)
         {
-            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.ParameterKMustBeOdd));
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ParameterKMustBeOdd));
         }
 
         var numbits = k.BitCount();
