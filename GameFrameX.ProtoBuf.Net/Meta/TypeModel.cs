@@ -105,33 +105,9 @@ public abstract partial class TypeModel
         // note the "ref type" here normalizes against proxies
         var wireType = GetWireType(typecode, format, ref type, out var modelKey);
 
-
         if (modelKey >= 0)
         {
-            // write the header, but defer to the model
-            if (Helpers.IsEnum(type))
-            {
-                // no header
-                Serialize(modelKey, value, writer);
-                return true;
-            }
-
-            ProtoWriter.WriteFieldHeader(tag, wireType, writer);
-            switch (wireType)
-            {
-                case WireType.None:
-                    throw ProtoWriter.CreateException(writer);
-                case WireType.StartGroup:
-                case WireType.String:
-                    // needs a wrapping length etc
-                    var token = ProtoWriter.StartSubItem(value, writer);
-                    Serialize(modelKey, value, writer);
-                    ProtoWriter.EndSubItem(token, writer);
-                    return true;
-                default:
-                    Serialize(modelKey, value, writer);
-                    return true;
-            }
+            return TrySerializeModelKeyField(tag, wireType, modelKey, type, value, writer);
         }
 
         if (wireType != WireType.None)
@@ -139,6 +115,54 @@ public abstract partial class TypeModel
             ProtoWriter.WriteFieldHeader(tag, wireType, writer);
         }
 
+        if (TrySerializePrimitiveValue(typecode, value, writer))
+        {
+            return true;
+        }
+
+        // by now, we should have covered all the simple cases; if we wrote a field-header, we have
+        // forgotten something!
+        Helpers.DebugAssert(wireType == WireType.None);
+
+        // now attempt to handle sequences (including arrays and lists)
+        if (value is IEnumerable sequence)
+        {
+            return TrySerializeSequence(format, tag, sequence, isInsideList, parentList, writer);
+        }
+
+        return false;
+    }
+
+    private bool TrySerializeModelKeyField(int tag, WireType wireType, int modelKey, Type type, object value, ProtoWriter writer)
+    {
+        // write the header, but defer to the model
+        if (Helpers.IsEnum(type))
+        {
+            // no header
+            Serialize(modelKey, value, writer);
+            return true;
+        }
+
+        ProtoWriter.WriteFieldHeader(tag, wireType, writer);
+        switch (wireType)
+        {
+            case WireType.None:
+                throw ProtoWriter.CreateException(writer);
+            case WireType.StartGroup:
+            case WireType.String:
+                // needs a wrapping length etc
+                var token = ProtoWriter.StartSubItem(value, writer);
+                Serialize(modelKey, value, writer);
+                ProtoWriter.EndSubItem(token, writer);
+                return true;
+            default:
+                Serialize(modelKey, value, writer);
+                return true;
+        }
+    }
+
+    private bool TrySerializePrimitiveValue(ProtoTypeCode typecode, object value, ProtoWriter writer)
+    {
         switch (typecode)
         {
             case ProtoTypeCode.Int16:
@@ -206,37 +230,32 @@ public abstract partial class TypeModel
             case ProtoTypeCode.Uri:
                 ProtoWriter.WriteString(((Uri)value).OriginalString, writer);
                 return true;
+            default:
+                return false;
         }
+    }
 
-        // by now, we should have covered all the simple cases; if we wrote a field-header, we have
-        // forgotten something!
-        Helpers.DebugAssert(wireType == WireType.None);
-
-        // now attempt to handle sequences (including arrays and lists)
-        if (value is IEnumerable sequence)
+    private bool TrySerializeSequence(DataFormat format, int tag, IEnumerable sequence, bool isInsideList, object parentList, ProtoWriter writer)
+    {
+        if (isInsideList)
         {
-            if (isInsideList)
-            {
-                throw CreateNestedListsNotSupported(parentList?.GetType());
-            }
-
-            foreach (var item in sequence)
-            {
-                if (item == null)
-                {
-                    throw new NullReferenceException();
-                }
-
-                if (!TrySerializeAuxiliaryType(writer, null, format, tag, item, true, sequence))
-                {
-                    ThrowUnexpectedType(item.GetType());
-                }
-            }
-
-            return true;
+            throw CreateNestedListsNotSupported(parentList?.GetType());
         }
 
-        return false;
+        foreach (var item in sequence)
+        {
+            if (item == null)
+            {
+                throw new NullReferenceException();
+            }
+
+            if (!TrySerializeAuxiliaryType(writer, null, format, tag, item, true, sequence))
+            {
+                ThrowUnexpectedType(item.GetType());
+            }
+        }
+
+        return true;
     }
 
     private void SerializeCore(ProtoWriter writer, object value)
@@ -389,47 +408,45 @@ public abstract partial class TypeModel
     private object DeserializeWithLengthPrefix(Stream source, object value, Type type, PrefixStyle style, int expectedField, Serializer.TypeResolver resolver, out long bytesRead, out bool haveObject, SerializationContext context)
     {
         haveObject = false;
-        bool skip;
-        long len;
         bytesRead = 0;
         if (type == null && (style != PrefixStyle.Base128 || resolver == null))
         {
             throw new InvalidOperationException("A type must be provided unless base-128 prefixing is being used in combination with a resolver");
         }
 
+        long len;
+        if (!TrySkipLengthPrefixRecords(source, ref type, style, expectedField, resolver, out len, ref bytesRead))
+        {
+            return value;
+        }
+
+        value = DeserializeLengthPrefixedReader(source, value, ref type, context, len, ref bytesRead);
+        haveObject = true;
+        return value;
+    }
+
+    // Reads (and optionally skips past) length-prefixed records until a non-skipped record is positioned.
+    // Returns false when the stream is exhausted (no bytes / negative length) so the caller can return early;
+    // returns true with `len` set to the positioned record's length.
+    private bool TrySkipLengthPrefixRecords(Stream source, ref Type type, PrefixStyle style, int expectedField, Serializer.TypeResolver resolver, out long len, ref long bytesRead)
+    {
+        bool skip;
         do
         {
             var expectPrefix = expectedField > 0 || resolver != null;
             len = ProtoReader.ReadLongLengthPrefix(source, expectPrefix, style, out var actualField, out var tmpBytesRead);
             if (tmpBytesRead == 0)
             {
-                return value;
+                return false;
             }
 
             bytesRead += tmpBytesRead;
             if (len < 0)
             {
-                return value;
+                return false;
             }
 
-            switch (style)
-            {
-                case PrefixStyle.Base128:
-                    if (expectPrefix && expectedField == 0 && type == null && resolver != null)
-                    {
-                        type = resolver(actualField);
-                        skip = type == null;
-                    }
-                    else
-                    {
-                        skip = expectedField != actualField;
-                    }
-
-                    break;
-                default:
-                    skip = false;
-                    break;
-            }
+            skip = ShouldSkipPrefixRecord(style, expectPrefix, expectedField, ref type, resolver, actualField);
 
             if (skip)
             {
@@ -443,6 +460,28 @@ public abstract partial class TypeModel
             }
         } while (skip);
 
+        return true;
+    }
+
+    private static bool ShouldSkipPrefixRecord(PrefixStyle style, bool expectPrefix, int expectedField, ref Type type, Serializer.TypeResolver resolver, int actualField)
+    {
+        switch (style)
+        {
+            case PrefixStyle.Base128:
+                if (expectPrefix && expectedField == 0 && type == null && resolver != null)
+                {
+                    type = resolver(actualField);
+                    return type == null;
+                }
+
+                return expectedField != actualField;
+            default:
+                return false;
+        }
+    }
+
+    private object DeserializeLengthPrefixedReader(Stream source, object value, ref Type type, SerializationContext context, long len, ref long bytesRead)
+    {
         ProtoReader reader = null;
         try
         {
@@ -461,7 +500,6 @@ public abstract partial class TypeModel
             }
 
             bytesRead += reader.LongPosition;
-            haveObject = true;
             return value;
         }
         finally
@@ -916,6 +954,33 @@ public abstract partial class TypeModel
         var add = Helpers.GetInstanceMethod(listTypeInfo, "Add", types);
 
 #if !NO_GENERICS
+        add = ResolveGenericListAdd(model, listType, types, add);
+#endif
+
+        if (add == null)
+        {
+            // fallback: look for a public list.Add(object) method
+            types[0] = model.MapType(typeof(object));
+            add = Helpers.GetInstanceMethod(listTypeInfo, "Add", types);
+        }
+
+        if (add == null && isList)
+        {
+            // fallback: look for IList's Add(object) method
+            add = Helpers.GetInstanceMethod(model.MapType(ilist), "Add", types);
+        }
+
+        return add;
+    }
+
+#if !NO_GENERICS
+    private static MethodInfo ResolveGenericListAdd(TypeModel model, Type listType, Type[] types, MethodInfo add)
+    {
+#if COREFX || PROFILE259
+			TypeInfo listTypeInfo = listType.GetTypeInfo();
+#else
+        var listTypeInfo = listType;
+#endif
         if (add == null)
         {
             // fallback: look for ICollection<T>'s Add(typedObject) method
@@ -940,42 +1005,42 @@ public abstract partial class TypeModel
 
         if (add == null)
         {
-#if COREFX || PROFILE259
-				foreach (Type tmpType in listTypeInfo.ImplementedInterfaces)
-#else
-            foreach (var interfaceType in listTypeInfo.GetInterfaces())
-#endif
-            {
-#if COREFX || PROFILE259
-					TypeInfo interfaceType = tmpType.GetTypeInfo();
-#endif
-                if (interfaceType.Name == "IProducerConsumerCollection`1" && interfaceType.IsGenericType && interfaceType.GetGenericTypeDefinition().FullName == "System.Collections.Concurrent.IProducerConsumerCollection`1")
-                {
-                    add = Helpers.GetInstanceMethod(interfaceType, "TryAdd", types);
-                    if (add != null)
-                    {
-                        break;
-                    }
-                }
-            }
-        }
-#endif
-
-        if (add == null)
-        {
-            // fallback: look for a public list.Add(object) method
-            types[0] = model.MapType(typeof(object));
-            add = Helpers.GetInstanceMethod(listTypeInfo, "Add", types);
-        }
-
-        if (add == null && isList)
-        {
-            // fallback: look for IList's Add(object) method
-            add = Helpers.GetInstanceMethod(model.MapType(ilist), "Add", types);
+            add = TryFindProducerConsumerAdd(listType, types);
         }
 
         return add;
     }
+
+    private static MethodInfo TryFindProducerConsumerAdd(Type listType, Type[] types)
+    {
+#if COREFX || PROFILE259
+			TypeInfo listTypeInfo = listType.GetTypeInfo();
+#else
+        var listTypeInfo = listType;
+#endif
+#if COREFX || PROFILE259
+				foreach (Type tmpType in listTypeInfo.ImplementedInterfaces)
+#else
+        foreach (var interfaceType in listTypeInfo.GetInterfaces())
+#endif
+        {
+#if COREFX || PROFILE259
+					TypeInfo interfaceType = tmpType.GetTypeInfo();
+#endif
+            if (interfaceType.Name == "IProducerConsumerCollection`1" && interfaceType.IsGenericType && interfaceType.GetGenericTypeDefinition().FullName == "System.Collections.Concurrent.IProducerConsumerCollection`1")
+            {
+                var add = Helpers.GetInstanceMethod(interfaceType, "TryAdd", types);
+                if (add != null)
+                {
+                    return add;
+                }
+            }
+        }
+
+        return null;
+    }
+#endif
+
 
     internal static Type GetListItemType(TypeModel model, Type listType)
     {
@@ -994,24 +1059,7 @@ public abstract partial class TypeModel
 #endif
 
         var candidates = new BasicList();
-#if PROFILE259
-			foreach (MethodInfo method in listType.GetRuntimeMethods())
-#else
-        foreach (var method in listType.GetMethods())
-#endif
-        {
-            if (method.IsStatic || method.Name != "Add")
-            {
-                continue;
-            }
-
-            var parameters = method.GetParameters();
-            Type paramType;
-            if (parameters.Length == 1 && !candidates.Contains(paramType = parameters[0].ParameterType))
-            {
-                candidates.Add(paramType);
-            }
-        }
+        CollectListAddParameterTypes(listType, candidates);
 
         var name = listType.Name;
         var isQueueStack = name != null && (name.IndexOf("Queue") >= 0 || name.IndexOf("Stack") >= 0);
@@ -1032,6 +1080,35 @@ public abstract partial class TypeModel
 #endif
         }
 
+        CollectListIndexerItemTypes(model, listType, candidates);
+
+        return ResolveCandidateListItemType(model, listType, candidates);
+    }
+
+    private static void CollectListAddParameterTypes(Type listType, BasicList candidates)
+    {
+#if PROFILE259
+			foreach (MethodInfo method in listType.GetRuntimeMethods())
+#else
+        foreach (var method in listType.GetMethods())
+#endif
+        {
+            if (method.IsStatic || method.Name != "Add")
+            {
+                continue;
+            }
+
+            var parameters = method.GetParameters();
+            Type paramType;
+            if (parameters.Length == 1 && !candidates.Contains(paramType = parameters[0].ParameterType))
+            {
+                candidates.Add(paramType);
+            }
+        }
+    }
+
+    private static void CollectListIndexerItemTypes(TypeModel model, Type listType, BasicList candidates)
+    {
 #if PROFILE259
 			// more convenient GetProperty overload not supported on all platforms
 			foreach (PropertyInfo indexer in listType.GetRuntimeProperties())
@@ -1061,7 +1138,10 @@ public abstract partial class TypeModel
             candidates.Add(indexer.PropertyType);
         }
 #endif
+    }
 
+    private static Type ResolveCandidateListItemType(TypeModel model, Type listType, BasicList candidates)
+    {
         switch (candidates.Count)
         {
             case 0:
@@ -1089,6 +1169,7 @@ public abstract partial class TypeModel
 
         return null;
     }
+
 
     private static void TestEnumerableListPatterns(TypeModel model, BasicList candidates, Type iType)
     {
@@ -1163,122 +1244,155 @@ public abstract partial class TypeModel
                 list = value as IList;
             }
 
-            if (list != null)
-            {
-                list.Add(nextItem);
-            }
-            else if (arraySurrogate != null)
-            {
-                arraySurrogate.Add(nextItem);
-            }
-            else
-            {
-                args[0] = nextItem;
-                addMethod.Invoke(value, args);
-            }
+            AppendListItem(list, arraySurrogate, args, addMethod, value, nextItem);
 
             nextItem = null;
         }
 
         if (arraySurrogate != null)
         {
-            Array newArray;
-            if (value != null)
-            {
-                if (arraySurrogate.Count == 0)
-                {
-                    // we'll stay with what we had, thanks
-                }
-                else
-                {
-                    var existing = (Array)value;
-                    newArray = Array.CreateInstance(itemType, existing.Length + arraySurrogate.Count);
-                    Array.Copy(existing, newArray, existing.Length);
-                    arraySurrogate.CopyTo(newArray, existing.Length);
-                    value = newArray;
-                }
-            }
-            else
-            {
-                newArray = Array.CreateInstance(itemType, arraySurrogate.Count);
-                arraySurrogate.CopyTo(newArray, 0);
-                value = newArray;
-            }
+            FinalizeArrayFromSurrogate(itemType, arraySurrogate, ref value);
         }
 
         return found;
     }
 
+    private static void AppendListItem(IList list, BasicList arraySurrogate, object[] args, MethodInfo addMethod, object value, object nextItem)
+    {
+        if (list != null)
+        {
+            list.Add(nextItem);
+        }
+        else if (arraySurrogate != null)
+        {
+            arraySurrogate.Add(nextItem);
+        }
+        else
+        {
+            args[0] = nextItem;
+            addMethod.Invoke(value, args);
+        }
+    }
+
+    private static void FinalizeArrayFromSurrogate(Type itemType, BasicList arraySurrogate, ref object value)
+    {
+        Array newArray;
+        if (value != null)
+        {
+            if (arraySurrogate.Count == 0)
+            {
+                // we'll stay with what we had, thanks
+                return;
+            }
+
+            var existing = (Array)value;
+            newArray = Array.CreateInstance(itemType, existing.Length + arraySurrogate.Count);
+            Array.Copy(existing, newArray, existing.Length);
+            arraySurrogate.CopyTo(newArray, existing.Length);
+        }
+        else
+        {
+            newArray = Array.CreateInstance(itemType, arraySurrogate.Count);
+            arraySurrogate.CopyTo(newArray, 0);
+        }
+
+        value = newArray;
+    }
+
+
     private static object CreateListInstance(Type listType, Type itemType)
     {
-        var concreteListType = listType;
-
         if (listType.IsArray)
         {
             return Array.CreateInstance(itemType, 0);
         }
 
-#if COREFX || PROFILE259
-			TypeInfo listTypeInfo = listType.GetTypeInfo();
-            if (!listTypeInfo.IsClass || listTypeInfo.IsAbstract ||
-                Helpers.GetConstructor(listTypeInfo, Helpers.EmptyTypes, true) == null)
-#else
-        if (!listType.IsClass || listType.IsAbstract ||
-            Helpers.GetConstructor(listType, Helpers.EmptyTypes, true) == null)
-#endif
-        {
-            string fullName;
-            var handled = false;
-#if COREFX || PROFILE259
-				if (listTypeInfo.IsInterface &&
-#else
-            if (listType.IsInterface &&
-#endif
-                (fullName = listType.FullName) != null && fullName.IndexOf("Dictionary") >= 0) // have to try to be frugal here...
-            {
-#if COREFX || PROFILE259
-					TypeInfo finalType = listType.GetTypeInfo();
-                    if (finalType.IsGenericType && finalType.GetGenericTypeDefinition() == typeof(System.Collections.Generic.IDictionary<,>))
-                    {
-                        Type[] genericTypes = listType.GenericTypeArguments;
-                        concreteListType = typeof(System.Collections.Generic.Dictionary<,>).MakeGenericType(genericTypes);
-                        handled = true;
-                    }
-#else
-                if (listType.IsGenericType && listType.GetGenericTypeDefinition() == typeof(IDictionary<,>))
-                {
-                    var genericTypes = listType.GetGenericArguments();
-                    concreteListType = typeof(Dictionary<,>).MakeGenericType(genericTypes);
-                    handled = true;
-                }
-#endif
-
-#if !PORTABLE && !COREFX && !PROFILE259
-                if (!handled && listType == typeof(IDictionary))
-                {
-                    concreteListType = typeof(Hashtable);
-                    handled = true;
-                }
-#endif
-            }
-
-            if (!handled)
-            {
-                concreteListType = typeof(List<>).MakeGenericType(itemType);
-                handled = true;
-            }
-
-#if !PORTABLE && !COREFX && !PROFILE259
-            if (!handled)
-            {
-                concreteListType = typeof(ArrayList);
-                handled = true;
-            }
-#endif
-        }
-
+        var concreteListType = ResolveConcreteListType(listType, itemType);
         return Activator.CreateInstance(concreteListType);
     }
+
+    private static Type ResolveConcreteListType(Type listType, Type itemType)
+    {
+#if COREFX || PROFILE259
+			TypeInfo listTypeInfo = listType.GetTypeInfo();
+            if (listTypeInfo.IsClass && !listTypeInfo.IsAbstract &&
+                Helpers.GetConstructor(listTypeInfo, Helpers.EmptyTypes, true) != null)
+#else
+        if (listType.IsClass && !listType.IsAbstract &&
+            Helpers.GetConstructor(listType, Helpers.EmptyTypes, true) != null)
+#endif
+        {
+            return listType;
+        }
+
+        var handled = false;
+        var concreteListType = TryResolveDictionaryListType(listType, out handled);
+
+        if (!handled)
+        {
+            concreteListType = typeof(List<>).MakeGenericType(itemType);
+            handled = true;
+        }
+
+#if !PORTABLE && !COREFX && !PROFILE259
+        if (!handled)
+        {
+            concreteListType = typeof(ArrayList);
+            handled = true;
+        }
+#endif
+
+        return concreteListType;
+    }
+
+    private static Type TryResolveDictionaryListType(Type listType, out bool handled)
+    {
+        handled = false;
+#if COREFX || PROFILE259
+			TypeInfo listTypeInfo = listType.GetTypeInfo();
+            if (listTypeInfo.IsInterface &&
+#else
+        if (listType.IsInterface &&
+#endif
+            listType.FullName != null && listType.FullName.IndexOf("Dictionary") >= 0)
+        {
+            return ResolveDictionaryConcreteType(listType, out handled);
+        }
+
+        return listType;
+    }
+
+    private static Type ResolveDictionaryConcreteType(Type listType, out bool handled)
+    {
+        handled = false;
+#if COREFX || PROFILE259
+			TypeInfo finalType = listType.GetTypeInfo();
+            if (finalType.IsGenericType && finalType.GetGenericTypeDefinition() == typeof(System.Collections.Generic.IDictionary<,>))
+            {
+                Type[] genericTypes = listType.GenericTypeArguments;
+                handled = true;
+                return typeof(System.Collections.Generic.Dictionary<,>).MakeGenericType(genericTypes);
+            }
+#else
+        if (listType.IsGenericType && listType.GetGenericTypeDefinition() == typeof(IDictionary<,>))
+        {
+            var genericTypes = listType.GetGenericArguments();
+            handled = true;
+            return typeof(Dictionary<,>).MakeGenericType(genericTypes);
+        }
+#endif
+
+#if !PORTABLE && !COREFX && !PROFILE259
+        if (listType == typeof(IDictionary))
+        {
+            handled = true;
+            return typeof(Hashtable);
+        }
+#endif
+
+        return listType;
+    }
+
 
     /// <summary>
     /// This is the more "complete" version of Deserialize, which handles single instances of mapped types.
@@ -1295,68 +1409,72 @@ public abstract partial class TypeModel
             throw new ArgumentNullException(nameof(type));
         }
 
-        Type itemType = null;
         var typecode = Helpers.GetTypeCode(type);
         var wiretype = GetWireType(typecode, format, ref type, out var modelKey);
 
-        var found = false;
         if (wiretype == WireType.None)
         {
-            itemType = GetListItemType(this, type);
-            if (itemType == null && type.IsArray && type.GetArrayRank() == 1 && type != typeof(byte[]))
-            {
-                itemType = type.GetElementType();
-            }
-
-            if (itemType != null)
-            {
-                if (insideList)
-                {
-                    throw CreateNestedListsNotSupported(parentListOrType as Type ?? parentListOrType?.GetType());
-                }
-
-                found = TryDeserializeList(this, reader, format, tag, type, itemType, ref value);
-                if (!found && autoCreate)
-                {
-                    value = CreateListInstance(type, itemType);
-                }
-
-                return found;
-            }
-
-            // otherwise, not a happy bunny...
-            ThrowUnexpectedType(type);
+            return TryDeserializeListField(reader, format, tag, type, ref value, autoCreate, insideList, parentListOrType);
         }
 
-        // to treat correctly, should read all values
+        var found = ReadAllFields(reader, tag, skipOtherFields, asListItem, modelKey, wiretype, typecode, ref value);
 
+        if (!found && !asListItem && autoCreate && type != typeof(string))
+        {
+            value = Activator.CreateInstance(type);
+        }
+
+        return found;
+    }
+
+    private bool TryDeserializeListField(ProtoReader reader, DataFormat format, int tag, Type type, ref object value, bool autoCreate, bool insideList, object parentListOrType)
+    {
+        var itemType = GetListItemType(this, type);
+        if (itemType == null && type.IsArray && type.GetArrayRank() == 1 && type != typeof(byte[]))
+        {
+            itemType = type.GetElementType();
+        }
+
+        if (itemType != null)
+        {
+            if (insideList)
+            {
+                throw CreateNestedListsNotSupported(parentListOrType as Type ?? parentListOrType?.GetType());
+            }
+
+            var found = TryDeserializeList(this, reader, format, tag, type, itemType, ref value);
+            if (!found && autoCreate)
+            {
+                value = CreateListInstance(type, itemType);
+            }
+
+            return found;
+        }
+
+        // otherwise, not a happy bunny...
+        ThrowUnexpectedType(type); // throws
+        return false; // unreachable; ThrowUnexpectedType always throws
+    }
+
+    private bool ReadAllFields(ProtoReader reader, int tag, bool skipOtherFields, bool asListItem, int modelKey, WireType wiretype, ProtoTypeCode typecode, ref object value)
+    {
+        var found = false;
         while (true)
         {
-            // for convenience (re complex exit conditions), additional exit test here:
-            // if we've got the value, are only looking for one, and we aren't a list - then exit
             if (found && asListItem)
             {
                 break;
             }
 
-
-            // read the next item
             var fieldNumber = reader.ReadFieldHeader();
             if (fieldNumber <= 0)
             {
                 break;
             }
 
-            if (fieldNumber != tag)
+            if (SkipMismatchedField(reader, tag, skipOtherFields, fieldNumber))
             {
-                if (skipOtherFields)
-                {
-                    reader.SkipField();
-                    continue;
-                }
-
-                throw ProtoReader.AddErrorData(new InvalidOperationException(
-                                                   "Expected field " + tag + ", but found " + fieldNumber), reader);
+                continue;
             }
 
             found = true;
@@ -1364,92 +1482,113 @@ public abstract partial class TypeModel
 
             if (modelKey >= 0)
             {
-                switch (wiretype)
-                {
-                    case WireType.String:
-                    case WireType.StartGroup:
-                        var token = ProtoReader.StartSubItem(reader);
-                        value = Deserialize(modelKey, value, reader);
-                        ProtoReader.EndSubItem(token, reader);
-                        continue;
-                    default:
-                        value = Deserialize(modelKey, value, reader);
-                        continue;
-                }
+                value = ReadModelKeyField(modelKey, wiretype, reader, value);
+                continue;
             }
 
-            switch (typecode)
-            {
-                case ProtoTypeCode.Int16:
-                    value = reader.ReadInt16();
-                    continue;
-                case ProtoTypeCode.Int32:
-                    value = reader.ReadInt32();
-                    continue;
-                case ProtoTypeCode.Int64:
-                    value = reader.ReadInt64();
-                    continue;
-                case ProtoTypeCode.UInt16:
-                    value = reader.ReadUInt16();
-                    continue;
-                case ProtoTypeCode.UInt32:
-                    value = reader.ReadUInt32();
-                    continue;
-                case ProtoTypeCode.UInt64:
-                    value = reader.ReadUInt64();
-                    continue;
-                case ProtoTypeCode.Boolean:
-                    value = reader.ReadBoolean();
-                    continue;
-                case ProtoTypeCode.SByte:
-                    value = reader.ReadSByte();
-                    continue;
-                case ProtoTypeCode.Byte:
-                    value = reader.ReadByte();
-                    continue;
-                case ProtoTypeCode.Char:
-                    value = (char)reader.ReadUInt16();
-                    continue;
-                case ProtoTypeCode.Double:
-                    value = reader.ReadDouble();
-                    continue;
-                case ProtoTypeCode.Single:
-                    value = reader.ReadSingle();
-                    continue;
-                case ProtoTypeCode.DateTime:
-                    value = BclHelpers.ReadDateTime(reader);
-                    continue;
-                case ProtoTypeCode.Decimal:
-                    value = BclHelpers.ReadDecimal(reader);
-                    continue;
-                case ProtoTypeCode.String:
-                    value = reader.ReadString();
-                    continue;
-                case ProtoTypeCode.ByteArray:
-                    value = ProtoReader.AppendBytes((byte[])value, reader);
-                    continue;
-                case ProtoTypeCode.TimeSpan:
-                    value = BclHelpers.ReadTimeSpan(reader);
-                    continue;
-                case ProtoTypeCode.Guid:
-                    value = BclHelpers.ReadGuid(reader);
-                    continue;
-                case ProtoTypeCode.Uri:
-                    value = new Uri(reader.ReadString(), UriKind.RelativeOrAbsolute);
-                    continue;
-            }
-        }
-
-        if (!found && !asListItem && autoCreate)
-        {
-            if (type != typeof(string))
-            {
-                value = Activator.CreateInstance(type);
-            }
+            ReadPrimitiveValue(typecode, reader, ref value);
         }
 
         return found;
     }
+
+    private static bool SkipMismatchedField(ProtoReader reader, int tag, bool skipOtherFields, int fieldNumber)
+    {
+        if (fieldNumber == tag)
+        {
+            return false;
+        }
+
+        if (!skipOtherFields)
+        {
+            throw ProtoReader.AddErrorData(new InvalidOperationException("Expected field " + tag + ", but found " + fieldNumber), reader);
+        }
+
+        reader.SkipField();
+        return true;
+    }
+
+    private object ReadModelKeyField(int modelKey, WireType wiretype, ProtoReader reader, object value)
+    {
+        switch (wiretype)
+        {
+            case WireType.String:
+            case WireType.StartGroup:
+                var token = ProtoReader.StartSubItem(reader);
+                value = Deserialize(modelKey, value, reader);
+                ProtoReader.EndSubItem(token, reader);
+                return value;
+            default:
+                return Deserialize(modelKey, value, reader);
+        }
+    }
+
+    private static bool ReadPrimitiveValue(ProtoTypeCode typecode, ProtoReader reader, ref object value)
+    {
+        switch (typecode)
+        {
+            case ProtoTypeCode.Int16:
+                value = reader.ReadInt16();
+                return true;
+            case ProtoTypeCode.Int32:
+                value = reader.ReadInt32();
+                return true;
+            case ProtoTypeCode.Int64:
+                value = reader.ReadInt64();
+                return true;
+            case ProtoTypeCode.UInt16:
+                value = reader.ReadUInt16();
+                return true;
+            case ProtoTypeCode.UInt32:
+                value = reader.ReadUInt32();
+                return true;
+            case ProtoTypeCode.UInt64:
+                value = reader.ReadUInt64();
+                return true;
+            case ProtoTypeCode.Boolean:
+                value = reader.ReadBoolean();
+                return true;
+            case ProtoTypeCode.SByte:
+                value = reader.ReadSByte();
+                return true;
+            case ProtoTypeCode.Byte:
+                value = reader.ReadByte();
+                return true;
+            case ProtoTypeCode.Char:
+                value = (char)reader.ReadUInt16();
+                return true;
+            case ProtoTypeCode.Double:
+                value = reader.ReadDouble();
+                return true;
+            case ProtoTypeCode.Single:
+                value = reader.ReadSingle();
+                return true;
+            case ProtoTypeCode.DateTime:
+                value = BclHelpers.ReadDateTime(reader);
+                return true;
+            case ProtoTypeCode.Decimal:
+                value = BclHelpers.ReadDecimal(reader);
+                return true;
+            case ProtoTypeCode.String:
+                value = reader.ReadString();
+                return true;
+            case ProtoTypeCode.ByteArray:
+                value = ProtoReader.AppendBytes((byte[])value, reader);
+                return true;
+            case ProtoTypeCode.TimeSpan:
+                value = BclHelpers.ReadTimeSpan(reader);
+                return true;
+            case ProtoTypeCode.Guid:
+                value = BclHelpers.ReadGuid(reader);
+                return true;
+            case ProtoTypeCode.Uri:
+                value = new Uri(reader.ReadString(), UriKind.RelativeOrAbsolute);
+                return true;
+            default:
+                return false;
+        }
+    }
+
 
 #if !NO_RUNTIME
     /// <summary>
