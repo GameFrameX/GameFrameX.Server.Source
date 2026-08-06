@@ -1404,24 +1404,7 @@ public sealed class BigInteger
             var q_hat = dividend / firstDivisorByte;
             var r_hat = dividend % firstDivisorByte;
 
-            var done = false;
-            while (!done)
-            {
-                done = true;
-
-                // 调整 q_hat 以确保不溢出
-                if (q_hat == 0x100000000 ||
-                    q_hat * secondDivisorByte > (r_hat << 32) + remainder[pos - 2])
-                {
-                    q_hat--;
-                    r_hat += firstDivisorByte;
-
-                    if (r_hat < 0x100000000)
-                    {
-                        done = false;
-                    }
-                }
-            }
+            q_hat = RefineQuotientEstimate(q_hat, r_hat, firstDivisorByte, secondDivisorByte, remainder, pos);
 
             for (var h = 0; h < divisorLen; h++)
             {
@@ -1451,6 +1434,43 @@ public sealed class BigInteger
             j--;
         }
 
+        WriteDivisionResults(outQuotient, outRemainder, result, resultPos, remainder, shift);
+    }
+
+
+    // 调整商的预估值 q_hat，确保其不溢出且满足 Knuth 多字节除法的收敛条件，
+    // 直到余数预估值 r_hat 越界或 q_hat 不再偏大为止。
+    private static ulong RefineQuotientEstimate(ulong q_hat, ulong r_hat,
+        ulong firstDivisorByte, ulong secondDivisorByte, uint[] remainder, int pos)
+    {
+        var done = false;
+        while (!done)
+        {
+            done = true;
+
+            // 调整 q_hat 以确保不溢出
+            if (q_hat == 0x100000000 ||
+                q_hat * secondDivisorByte > (r_hat << 32) + remainder[pos - 2])
+            {
+                q_hat--;
+                r_hat += firstDivisorByte;
+
+                if (r_hat < 0x100000000)
+                {
+                    done = false;
+                }
+            }
+        }
+
+        return q_hat;
+    }
+
+
+    // 把多字节除法的运算结果写回 outQuotient 与 outRemainder：
+    // 商由 result 反向拷贝并清理多余零；余数由 remainder 经右移还原后拷贝。
+    private static void WriteDivisionResults(BigInteger outQuotient, BigInteger outRemainder,
+        uint[] result, int resultPos, uint[] remainder, int shift)
+    {
         // 设置输出商的长度
         outQuotient.dataLength = resultPos;
         var y = 0;
