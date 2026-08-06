@@ -2786,77 +2786,16 @@ public sealed class BigInteger
 
     private bool LucasStrongTestHelper(BigInteger thisVal)
     {
-        // 执行测试（根据 Selfridge 选择 D）
-        // 设 D 为序列的第一个元素
-        // 5, -7, 9, -11, 13, ... 使得 J(D,n) = -1
-        // 设 P = 1, Q = (1-D) / 4
-
-        long D = 5, sign = -1, dCount = 0;
-        var done = false;
-
-        while (!done)
+        // 根据 Selfridge 选择 D（5, -7, 9, -11, ...）使 J(D, n) = -1，
+        // 设 P = 1, Q = (1-D) / 4；途中找到因子或命中完全平方数则判定合数。
+        if (!TrySelectLucasParameters(thisVal, out var Q))
         {
-            var Jresult = Jacobi(D, thisVal);
-
-            if (Jresult == -1)
-            {
-                done = true; // J(D, this) = 1
-            }
-            else
-            {
-                if (Jresult == 0 && System.Math.Abs(D) < thisVal) // 找到因子
-                {
-                    return false;
-                }
-
-                if (dCount == 20)
-                {
-                    // 检查是否为平方数
-                    var root = thisVal.Sqrt();
-                    if (root * root == thisVal)
-                    {
-                        return false;
-                    }
-                }
-
-                //LogHelper.Info(D);
-                D = (System.Math.Abs(D) + 2) * sign;
-                sign = -sign;
-            }
-
-            dCount++;
+            return false;
         }
 
-        var Q = (1 - D) >> 2;
-
-        /*
-    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugD, D));
-    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugQ, Q));
-    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugND, thisVal.gcd(D)));
-    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugNQ, thisVal.gcd(Q)));
-    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugJacobi, BigInteger.Jacobi(D, thisVal)));
-    */
-
+        // 分解 n+1 = 2^s * t
         var p_add1 = thisVal + 1;
-        var s = 0;
-
-        for (var index = 0; index < p_add1.dataLength; index++)
-        {
-            uint mask = 0x01;
-
-            for (var i = 0; i < 32; i++)
-            {
-                if ((p_add1.data[index] & mask) != 0)
-                {
-                    index = p_add1.dataLength; // 退出外层循环
-                    break;
-                }
-
-                mask <<= 1;
-                s++;
-            }
-        }
-
+        var s = CountTrailingZeroBits(p_add1);
         var t = p_add1 >> s;
 
         // 计算常数 = b^(2k) / m
@@ -2870,15 +2809,129 @@ public sealed class BigInteger
         constant = constant / thisVal;
 
         var lucas = LucasSequenceHelper(1, Q, t, thisVal, constant, 0);
-        var isPrime = false;
+        var isPrime = IsLucasSequenceZero(lucas);
+        isPrime = ApplyLucasSquaring(lucas, s, thisVal, constant, isPrime);
 
-        if ((lucas[0].dataLength == 1 && lucas[0].data[0] == 0) ||
-            (lucas[1].dataLength == 1 && lucas[1].data[0] == 0))
+        if (isPrime)
         {
-            // u(t) = 0 或 V(t) = 0
-            isPrime = true;
+            // 对合数的额外检查
+            isPrime = VerifyLucasCompositeness(lucas, thisVal, Q);
         }
 
+        return isPrime;
+    }
+
+
+    //***********************************************************************
+    // 根据 Selfridge 方法选择 Lucas 测试的参数 Q。
+    // 在序列 D = 5, -7, 9, -11, 13, ... 中找到第一个满足 J(D, n) = -1 的 D，
+    // 取 Q = (1 - D) / 4。
+    // 若 J(D, n) == 0 且 |D| < n 表示找到因子，或第 20 次迭代时 n 为完全平方数，
+    // 则 n 为合数，返回 false；否则返回 true 并通过 Q 输出参数。
+    //***********************************************************************
+
+    private static bool TrySelectLucasParameters(BigInteger thisVal, out long Q)
+    {
+        long D = 5, sign = -1, dCount = 0;
+        var done = false;
+
+        while (!done)
+        {
+            var Jresult = Jacobi(D, thisVal);
+
+            if (Jresult == -1)
+            {
+                done = true; // J(D, this) = -1
+            }
+            else
+            {
+                if (Jresult == 0 && System.Math.Abs(D) < thisVal) // 找到因子
+                {
+                    Q = 0;
+                    return false;
+                }
+
+                if (dCount == 20)
+                {
+                    // 检查是否为平方数
+                    var root = thisVal.Sqrt();
+                    if (root * root == thisVal)
+                    {
+                        Q = 0;
+                        return false;
+                    }
+                }
+
+                //LogHelper.Info(D);
+                D = (System.Math.Abs(D) + 2) * sign;
+                sign = -sign;
+            }
+
+            dCount++;
+        }
+
+        Q = (1 - D) >> 2;
+
+        /*
+    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugD, D));
+    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugQ, Q));
+    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugND, thisVal.gcd(D)));
+    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugNQ, thisVal.gcd(Q)));
+    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugJacobi, BigInteger.Jacobi(D, thisVal)));
+    */
+
+        return true;
+    }
+
+
+    //***********************************************************************
+    // 计算 value 尾随零比特数（即最低置位 bit 之前的 0 的个数）。
+    // 用于从 n+1 中分离出 2^s 因子。
+    //***********************************************************************
+
+    private static int CountTrailingZeroBits(BigInteger value)
+    {
+        var count = 0;
+
+        for (var index = 0; index < value.dataLength; index++)
+        {
+            uint mask = 0x01;
+
+            for (var i = 0; i < 32; i++)
+            {
+                if ((value.data[index] & mask) != 0)
+                {
+                    return count;
+                }
+
+                mask <<= 1;
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+
+    //***********************************************************************
+    // 判断 Lucas 序列结果是否出现 U(t) = 0 或 V(t) = 0。
+    //***********************************************************************
+
+    private static bool IsLucasSequenceZero(BigInteger[] lucas)
+    {
+        return (lucas[0].dataLength == 1 && lucas[0].data[0] == 0) ||
+               (lucas[1].dataLength == 1 && lucas[1].data[0] == 0);
+    }
+
+
+    //***********************************************************************
+    // 对 Lucas 序列做指数逐次加倍（共 s-1 次）：
+    // 未确认为伪素数时更新 V(2^i * t)，命中 0 则置伪素数；
+    // 每步同时平方 Q^t 分量。返回最终伪素数判定。
+    //***********************************************************************
+
+    private static bool ApplyLucasSquaring(BigInteger[] lucas, int s, BigInteger thisVal, BigInteger constant, bool isPrime)
+    {
         for (var i = 1; i < s; i++)
         {
             if (!isPrime)
@@ -2898,33 +2951,42 @@ public sealed class BigInteger
             lucas[2] = thisVal.BarrettReduction(lucas[2] * lucas[2], thisVal, constant); //Q^k
         }
 
-        if (isPrime) // 对合数的额外检查
+        return isPrime;
+    }
+
+
+    //***********************************************************************
+    // 对已通过 Lucas 测试的候选数做额外合数校验：
+    // 若 gcd(n, Q) == 1，则当 n 为素数时 Q^((n+1)/2) ≡ Q * J(Q, n) (mod n)，
+    // 据此校验 V 分量；不满足则返回 false（合数），否则返回 true（维持素数判定）。
+    //***********************************************************************
+
+    private static bool VerifyLucasCompositeness(BigInteger[] lucas, BigInteger thisVal, long Q)
+    {
+        // 如果 n 是素数且 gcd(n, Q) == 1，则
+        // Q^((n+1)/2) = Q * Q^((n-1)/2) 与 (Q * J(Q, n)) mod n 同余
+
+        var g = thisVal.Gcd(Q);
+        if (g.dataLength == 1 && g.data[0] == 1) // gcd(this, Q) == 1
         {
-            // 如果 n 是素数且 gcd(n, Q) == 1，则
-            // Q^((n+1)/2) = Q * Q^((n-1)/2) 与 (Q * J(Q, n)) mod n 同余
-
-            var g = thisVal.Gcd(Q);
-            if (g.dataLength == 1 && g.data[0] == 1) // gcd(this, Q) == 1
+            if ((lucas[2].data[maxLength - 1] & 0x80000000) != 0)
             {
-                if ((lucas[2].data[maxLength - 1] & 0x80000000) != 0)
-                {
-                    lucas[2] += thisVal;
-                }
+                lucas[2] += thisVal;
+            }
 
-                var temp = Q * Jacobi(Q, thisVal) % thisVal;
-                if ((temp.data[maxLength - 1] & 0x80000000) != 0)
-                {
-                    temp += thisVal;
-                }
+            var temp = Q * Jacobi(Q, thisVal) % thisVal;
+            if ((temp.data[maxLength - 1] & 0x80000000) != 0)
+            {
+                temp += thisVal;
+            }
 
-                if (lucas[2] != temp)
-                {
-                    isPrime = false;
-                }
+            if (lucas[2] != temp)
+            {
+                return false;
             }
         }
 
-        return isPrime;
+        return true;
     }
 
 
