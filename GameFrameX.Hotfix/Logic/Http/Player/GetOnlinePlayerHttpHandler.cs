@@ -46,9 +46,9 @@ public sealed class GetOnlinePlayerHttpHandler : BaseHttpHandler
     /// </summary>
     /// <param name="ip"></param>
     /// <param name="url"></param>
-    /// <param name="parameters"></param>
+    /// <param name="paramMap"></param>
     /// <returns></returns>
-    public override Task<string> Action(string ip, string url, Dictionary<string, object> parameters)
+    public override Task<string> Action(string ip, string url, Dictionary<string, object> paramMap)
     {
         var response = new GetOnlinePlayerResponse
         {
