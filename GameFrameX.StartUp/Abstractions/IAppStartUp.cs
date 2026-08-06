@@ -80,9 +80,9 @@ public interface IAppStartUp
     /// </remarks>
     /// <param name="serverType">服务器类型 / The type of server to initialize</param>
     /// <param name="setting">应用程序设置 / The application settings</param>
-    /// <param name="args">启动参数 / The startup arguments</param>
+    /// <param name="args">启动参数（可选，默认为 <c>null</c>）/ The startup arguments (optional, defaults to <c>null</c>)</param>
     /// <returns>如果初始化成功则返回 <c>true</c>；否则返回 <c>false</c> / <c>true</c> if initialization is successful; otherwise <c>false</c></returns>
-    bool Init(string serverType, AppSetting setting, string[] args);
+    bool Init(string serverType, AppSetting setting, string[] args = null);
 
     /// <summary>
     /// 异步启动应用程序。
