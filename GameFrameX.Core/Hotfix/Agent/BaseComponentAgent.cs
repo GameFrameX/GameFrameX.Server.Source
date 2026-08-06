@@ -276,16 +276,16 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// 发送异步工作指令到Actor
     /// </summary>
     /// <param name="work">要执行的异步工作内容，以 Func&lt;Task&gt; 委托形式传入</param>
-    /// <param name="timeout">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="timeOut">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="cancellationToken">取消令牌，用于取消正在执行的操作</param>
-    public void Tell(Func<Task> work, int timeout = -1, CancellationToken cancellationToken = default)
+    public void Tell(Func<Task> work, int timeOut = -1, CancellationToken cancellationToken = default)
     {
-        if (timeout <= 0)
+        if (timeOut <= 0)
         {
-            timeout = GlobalSettings.CurrentSetting.ActorTimeOut;
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
         }
 
-        Actor.Tell(work, timeout, cancellationToken);
+        Actor.Tell(work, timeOut, cancellationToken);
     }
 
     /// <summary>
