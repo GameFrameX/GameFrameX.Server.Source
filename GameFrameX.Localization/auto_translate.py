@@ -20,8 +20,11 @@ RESX_DIR = SCRIPT_DIR / "Localization" / "Messages"
 RESX_DEFAULT = RESX_DIR / "Resources.resx"
 RESX_ZH_CN = RESX_DIR / "Resources.zh-CN.resx"
 
+# 待翻译占位符
+TODO_PLACEHOLDER = '[TODO]'
 
-def get_todo_keys(resx_path, placeholder='[TODO]'):
+
+def get_todo_keys(resx_path, placeholder=TODO_PLACEHOLDER):
     """获取带指定占位符标记的 key"""
     keys = []
     with open(resx_path, 'r', encoding='utf-8') as f:
@@ -500,7 +503,7 @@ def update_resx_file(resx_path, updates, is_chinese=False):
 
     for key, (en_value, zh_value) in updates.items():
         value = zh_value if is_chinese else en_value
-        placeholder = '[待翻译]' if is_chinese else '[TODO]'
+        placeholder = '[待翻译]' if is_chinese else TODO_PLACEHOLDER
 
         # 使用正则表达式替换
         # 匹配 <data name="key"...><value>[TODO/待翻译] ...</value>
@@ -549,7 +552,7 @@ def main():
 
     # 1. 处理英文版
     print("1. 处理英文资源文件 (Resources.resx)...")
-    todo_keys_en = get_todo_keys(RESX_DEFAULT, '[TODO]')
+    todo_keys_en = get_todo_keys(RESX_DEFAULT, TODO_PLACEHOLDER)
     print(f"   找到 {len(todo_keys_en)} 个需要翻译的 key")
 
     if todo_keys_en:
