@@ -102,60 +102,56 @@ internal sealed class NetObjectCache
 
         var s = value as string;
         BasicList list = List;
-        int index;
-
-        if (s == null)
-        {
-#if CF || PORTABLE // CF has very limited proper object ref-tracking; so instead, we'll search it the hard way
-                index = list.IndexOfReference(value);
-#else
-            if (objectKeys == null)
-            {
-                objectKeys = new Dictionary<object, int>(ReferenceComparer.Default);
-                index = -1;
-            }
-            else
-            {
-                if (!objectKeys.TryGetValue(value, out index))
-                {
-                    index = -1;
-                }
-            }
-#endif
-        }
-        else
-        {
-            if (stringKeys == null)
-            {
-                stringKeys = new Dictionary<string, int>();
-                index = -1;
-            }
-            else
-            {
-                if (!stringKeys.TryGetValue(s, out index))
-                {
-                    index = -1;
-                }
-            }
-        }
+        int index = LookupExistingIndex(value, s);
 
         if (!(existing = index >= 0))
         {
             index = list.Add(value);
-
-            if (s == null)
-            {
-#if !CF && !PORTABLE // CF can't handle the object keys very well
-                objectKeys.Add(value, index);
-#endif
-            }
-            else
-            {
-                stringKeys.Add(s, index);
-            }
+            StoreKey(value, s, index);
         }
 
         return index + 1;
+    }
+
+    private int LookupExistingIndex(object value, string s)
+    {
+        int index;
+        if (s == null)
+        {
+#if CF || PORTABLE // CF has very limited proper object ref-tracking; so instead, we'll search it the hard way
+            return List.IndexOfReference(value);
+#else
+            if (objectKeys == null)
+            {
+                objectKeys = new Dictionary<object, int>(ReferenceComparer.Default);
+                return -1;
+            }
+
+            return objectKeys.TryGetValue(value, out index) ? index : -1;
+#endif
+        }
+
+        if (stringKeys == null)
+        {
+            stringKeys = new Dictionary<string, int>();
+            return -1;
+        }
+
+        return stringKeys.TryGetValue(s, out index) ? index : -1;
+    }
+
+    private void StoreKey(object value, string s, int index)
+    {
+        if (s == null)
+        {
+#if !CF && !PORTABLE // CF can't handle the object keys very well
+            objectKeys.Add(value, index);
+#endif
+        }
+        else
+        {
+            stringKeys.Add(s, index);
+        }
     }
     // to make it faster at seeking to find deferred-objects
 
