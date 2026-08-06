@@ -76,9 +76,11 @@ public sealed class BotTcpClient
 {
     private const int DelayTimes = 1000;
     private const int MaxRetryCount = 5;
+    private const int ConnectingTimeoutMs = 15000;
     private AsyncTcpSession m_TcpClient;
     private int m_RetryCount;
     private int m_RetryDelay = 5000;
+    private DateTime? _connectingSince;
     private readonly BotTcpClientEvent m_BotTcpClientEvent;
     private readonly IMessageDecompressHandler messageDecompressHandler;
     private readonly IMessageCompressHandler messageCompressHandler;
@@ -117,77 +119,13 @@ public sealed class BotTcpClient
     /// <returns>异步任务</returns>
     public async Task EntryAsync(CancellationToken cancellationToken = default)
     {
-        var connectingSince = (DateTime?)null;
-        const int connectingTimeoutMs = 15000;
-
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                if (m_TcpClient.IsConnected)
+                if (await HandleConnectionTickAsync(cancellationToken))
                 {
-                    m_RetryCount = 0;
-                    connectingSince = null;
-                    SendHeartBeat();
-                    await Task.Delay(5000, cancellationToken);
-                }
-                else if (m_TcpClient.IsInConnecting)
-                {
-                    connectingSince ??= DateTime.UtcNow;
-                    if ((DateTime.UtcNow - connectingSince.Value).TotalMilliseconds > connectingTimeoutMs)
-                    {
-                        LogHelper.Warning("IsInConnecting timeout ({0}ms), recreating session", connectingTimeoutMs);
-                        m_TcpClient.Connected -= OnMTcpClientOnConnected;
-                        m_TcpClient.Closed -= OnMTcpClientOnClosed;
-                        m_TcpClient.DataReceived -= OnMTcpClientOnDataReceived;
-                        m_TcpClient.Error -= OnMTcpClientOnError;
-                        try { m_TcpClient.Close(); } catch { }
-
-                        m_TcpClient = CreateTcpSession();
-                        connectingSince = null;
-
-                        if (m_RetryCount < MaxRetryCount)
-                        {
-                            m_RetryCount++;
-                            LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.RetryConnect, m_RetryCount, MaxRetryCount));
-                            m_TcpClient.Connect(new IPEndPoint(IPAddress.Parse(_serverHost), _serverPort));
-                            await Task.Delay(DelayTimes, cancellationToken);
-                        }
-                        else
-                        {
-                            LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.MaxRetryReached));
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        await Task.Delay(1000, cancellationToken);
-                    }
-                }
-                else
-                {
-                    connectingSince = null;
-                    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.AttemptingToConnect));
-                    m_TcpClient.Connect(new IPEndPoint(IPAddress.Parse(_serverHost), _serverPort));
-                    await Task.Delay(DelayTimes, cancellationToken);
-
-                    if (m_TcpClient.IsConnected || m_TcpClient.IsInConnecting)
-                    {
-                        continue;
-                    }
-
-                    if (m_RetryCount < MaxRetryCount)
-                    {
-                        m_RetryCount++;
-                        LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.RetryConnect, m_RetryCount, MaxRetryCount));
-                        await Task.Delay(m_RetryDelay, cancellationToken);
-                        m_RetryDelay *= 2;
-                    }
-                    else
-                    {
-                        LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.MaxRetryReached));
-                        break;
-                    }
+                    break;
                 }
             }
         }
@@ -197,6 +135,122 @@ public sealed class BotTcpClient
         }
 
         Disconnect();
+    }
+
+    /// <summary>
+    /// 按当前连接状态执行一次轮询,返回是否应终止重连循环
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>true 表示已达最大重试次数应退出循环;否则 false</returns>
+    private async Task<bool> HandleConnectionTickAsync(CancellationToken cancellationToken)
+    {
+        if (m_TcpClient.IsConnected)
+        {
+            return await HandleConnectedStateAsync(cancellationToken);
+        }
+
+        if (m_TcpClient.IsInConnecting)
+        {
+            return await HandleConnectingStateAsync(cancellationToken);
+        }
+
+        return await HandleDisconnectedStateAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// 处理已连接状态:重置重试计数、发送心跳并按节奏轮询
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>始终返回 false(已连接状态不终止循环)</returns>
+    private async Task<bool> HandleConnectedStateAsync(CancellationToken cancellationToken)
+    {
+        m_RetryCount = 0;
+        _connectingSince = null;
+        SendHeartBeat();
+        await Task.Delay(5000, cancellationToken);
+        return false;
+    }
+
+    /// <summary>
+    /// 处理连接中状态:判定是否卡死超时,超时则重建会话并重试或达上限终止
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>true 表示已达最大重试次数应退出循环;否则 false</returns>
+    private async Task<bool> HandleConnectingStateAsync(CancellationToken cancellationToken)
+    {
+        _connectingSince ??= DateTime.UtcNow;
+        if ((DateTime.UtcNow - _connectingSince.Value).TotalMilliseconds <= ConnectingTimeoutMs)
+        {
+            await Task.Delay(1000, cancellationToken);
+            return false;
+        }
+
+        LogHelper.Warning("IsInConnecting timeout ({0}ms), recreating session", ConnectingTimeoutMs);
+        RecreateTcpSession();
+        _connectingSince = null;
+
+        if (m_RetryCount >= MaxRetryCount)
+        {
+            LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.MaxRetryReached));
+            return true;
+        }
+
+        m_RetryCount++;
+        LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.RetryConnect, m_RetryCount, MaxRetryCount));
+        m_TcpClient.Connect(new IPEndPoint(IPAddress.Parse(_serverHost), _serverPort));
+        await Task.Delay(DelayTimes, cancellationToken);
+        return false;
+    }
+
+    /// <summary>
+    /// 重建底层 TCP 会话:退订事件、关闭旧会话后重新创建
+    /// </summary>
+    private void RecreateTcpSession()
+    {
+        m_TcpClient.Connected -= OnMTcpClientOnConnected;
+        m_TcpClient.Closed -= OnMTcpClientOnClosed;
+        m_TcpClient.DataReceived -= OnMTcpClientOnDataReceived;
+        m_TcpClient.Error -= OnMTcpClientOnError;
+        try
+        {
+            m_TcpClient.Close();
+        }
+        catch
+        {
+            // 重建期间关闭旧会话失败可忽略
+        }
+
+        m_TcpClient = CreateTcpSession();
+    }
+
+    /// <summary>
+    /// 处理断开状态:尝试连接服务器,失败则按退避策略重试或达上限终止
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>true 表示已达最大重试次数应退出循环;否则 false</returns>
+    private async Task<bool> HandleDisconnectedStateAsync(CancellationToken cancellationToken)
+    {
+        _connectingSince = null;
+        LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.AttemptingToConnect));
+        m_TcpClient.Connect(new IPEndPoint(IPAddress.Parse(_serverHost), _serverPort));
+        await Task.Delay(DelayTimes, cancellationToken);
+
+        if (m_TcpClient.IsConnected || m_TcpClient.IsInConnecting)
+        {
+            return false;
+        }
+
+        if (m_RetryCount >= MaxRetryCount)
+        {
+            LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.MaxRetryReached));
+            return true;
+        }
+
+        m_RetryCount++;
+        LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.RetryConnect, m_RetryCount, MaxRetryCount));
+        await Task.Delay(m_RetryDelay, cancellationToken);
+        m_RetryDelay *= 2;
+        return false;
     }
 
     /// <summary>
