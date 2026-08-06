@@ -27,10 +27,9 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-#define CPU_SUPPORT_MEMORY_NOT_ALIGN //CPU 是否支持读取非对齐内存
-
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace GameFrameX.Core.Config;
@@ -363,13 +362,13 @@ public sealed class ByteBuf : ICloneable, IEquatable<ByteBuf>
 
     private static int PropSize(int initSize, int needSize)
     {
-        for (var i = Math.Max(initSize, MinCapacity);; i <<= 1)
+        var i = Math.Max(initSize, MinCapacity);
+        while (i < needSize)
         {
-            if (i >= needSize)
-            {
-                return i;
-            }
+            i <<= 1;
         }
+
+        return i;
     }
 
     private void EnsureWrite0(int size)
@@ -568,19 +567,7 @@ public sealed class ByteBuf : ICloneable, IEquatable<ByteBuf>
     public short ReadFshort()
     {
         EnsureRead(2);
-        short x;
-#if CPU_SUPPORT_MEMORY_NOT_ALIGN
-                unsafe
-                {
-                    fixed (byte* b = &Bytes[ReaderIndex])
-                    {
-                        x = *(short*)b;
-                    }
-                }
-#else
-        x = (short)((Bytes[ReaderIndex + 1] << 8) | Bytes[ReaderIndex]);
-
-#endif
+        var x = MemoryMarshal.Read<short>(Bytes.AsSpan(ReaderIndex));
         ReaderIndex += 2;
         return x;
     }
@@ -595,18 +582,7 @@ public sealed class ByteBuf : ICloneable, IEquatable<ByteBuf>
     public void WriteFshort(short x)
     {
         EnsureWrite(2);
-#if CPU_SUPPORT_MEMORY_NOT_ALIGN
-                unsafe
-                {
-                    fixed (byte* b = &Bytes[WriterIndex])
-                    {
-                        *(short*)b = x;
-                    }
-                }
-#else
-        Bytes[WriterIndex] = (byte)x;
-        Bytes[WriterIndex + 1] = (byte)(x >> 8);
-#endif
+        MemoryMarshal.Write(Bytes.AsSpan(WriterIndex), in x);
         WriterIndex += 2;
     }
 
@@ -736,13 +712,13 @@ public sealed class ByteBuf : ICloneable, IEquatable<ByteBuf>
     }
 
     /// <summary>
-    /// 使用不安全代码写入无符号整型。
+    /// 使用低位标记前缀变长编码写入无符号整型。
     /// </summary>
     /// <remarks>
-    /// Writes an unsigned integer using unsafe code.
+    /// Writes an unsigned integer using a low-bit-marker prefix varint.
     /// </remarks>
     /// <param name="x">要写入的无符号整型值 / The unsigned integer value to write</param>
-    public unsafe void WriteUint_Unsafe(uint x)
+    public void WriteUint_Unsafe(uint x)
     {
         // 0 111 1111
         if (x < 0x80)
@@ -753,55 +729,51 @@ public sealed class ByteBuf : ICloneable, IEquatable<ByteBuf>
         else if (x < 0x4000) // 10 11 1111, -
         {
             EnsureWrite(2);
-
-            fixed (byte* wb = &Bytes[WriterIndex])
-            {
-                *(uint*)wb = (x << 2) | 0b01;
-            }
-
+            var v = (x << 2) | 0b01u;
+            Bytes[WriterIndex] = (byte)v;
+            Bytes[WriterIndex + 1] = (byte)(v >> 8);
             WriterIndex += 2;
         }
         else if (x < 0x200000) // 110 1 1111, -,-
         {
             EnsureWrite(3);
-
-            fixed (byte* wb = &Bytes[WriterIndex])
-            {
-                *(uint*)wb = (x << 3) | 0b011;
-            }
-
+            var v = (x << 3) | 0b011u;
+            Bytes[WriterIndex] = (byte)v;
+            Bytes[WriterIndex + 1] = (byte)(v >> 8);
+            Bytes[WriterIndex + 2] = (byte)(v >> 16);
             WriterIndex += 3;
         }
         else if (x < 0x10000000) // 1110 1111,-,-,-
         {
             EnsureWrite(4);
-            fixed (byte* wb = &Bytes[WriterIndex])
-            {
-                *(uint*)wb = (x << 4) | 0b0111;
-            }
-
+            var v = (x << 4) | 0b0111u;
+            Bytes[WriterIndex] = (byte)v;
+            Bytes[WriterIndex + 1] = (byte)(v >> 8);
+            Bytes[WriterIndex + 2] = (byte)(v >> 16);
+            Bytes[WriterIndex + 3] = (byte)(v >> 24);
             WriterIndex += 4;
         }
         else
         {
             EnsureWrite(5);
-            fixed (byte* wb = &Bytes[WriterIndex])
-            {
-                *(uint*)wb = (x << 5) | 0b01111;
-            }
-
+            var v = (x << 5) | 0b01111u;
+            Bytes[WriterIndex] = (byte)v;
+            Bytes[WriterIndex + 1] = (byte)(v >> 8);
+            Bytes[WriterIndex + 2] = (byte)(v >> 16);
+            Bytes[WriterIndex + 3] = (byte)(v >> 24);
+            Bytes[WriterIndex + 4] = (byte)(x >> 27);
             WriterIndex += 5;
         }
     }
 
     /// <summary>
-    /// 使用不安全代码读取无符号整型。
+    /// 使用低位标记前缀变长编码读取无符号整型。
     /// </summary>
     /// <remarks>
-    /// Reads an unsigned integer using unsafe code.
+    /// Reads an unsigned integer using a low-bit-marker prefix varint.
     /// </remarks>
     /// <returns>读取的无符号整型值 / The read unsigned integer value</returns>
-    public unsafe uint ReadUint_Unsafe()
+    public uint ReadUint_Unsafe()
     {
         // 警告！ 如有修改，记得调整 TryDeserializeInplaceOctets
         EnsureRead(1);
@@ -814,38 +786,31 @@ public sealed class ByteBuf : ICloneable, IEquatable<ByteBuf>
         else if ((h & 0b11) == 0b01)
         {
             EnsureRead(2);
-            fixed (byte* rb = &Bytes[ReaderIndex])
-            {
-                ReaderIndex += 2;
-                return *(uint*)rb >> 2;
-            }
+            var v = (uint)(Bytes[ReaderIndex] | (Bytes[ReaderIndex + 1] << 8));
+            ReaderIndex += 2;
+            return v >> 2;
         }
         else if ((h & 0b111) == 0b011)
         {
             EnsureRead(3);
-            fixed (byte* rb = &Bytes[ReaderIndex])
-            {
-                ReaderIndex += 3;
-                return *(uint*)rb >> 3;
-            }
+            var v = (uint)(Bytes[ReaderIndex] | (Bytes[ReaderIndex + 1] << 8) | (Bytes[ReaderIndex + 2] << 16));
+            ReaderIndex += 3;
+            return v >> 3;
         }
         else if ((h & 0b1111) == 0b0111)
         {
             EnsureRead(4);
-            fixed (byte* rb = &Bytes[ReaderIndex])
-            {
-                ReaderIndex += 4;
-                return *(uint*)rb >> 4;
-            }
+            var v = (uint)(Bytes[ReaderIndex] | (Bytes[ReaderIndex + 1] << 8) | (Bytes[ReaderIndex + 2] << 16) | (Bytes[ReaderIndex + 3] << 24));
+            ReaderIndex += 4;
+            return v >> 4;
         }
         else
         {
             EnsureRead(5);
-            fixed (byte* rb = &Bytes[ReaderIndex])
-            {
-                ReaderIndex += 5;
-                return *(uint*)rb >> 5;
-            }
+            var v = (uint)(Bytes[ReaderIndex] | (Bytes[ReaderIndex + 1] << 8) | (Bytes[ReaderIndex + 2] << 16) | (Bytes[ReaderIndex + 3] << 24));
+            var hi = (uint)Bytes[ReaderIndex + 4];
+            ReaderIndex += 5;
+            return (v >> 5) | (hi << 27);
         }
     }
 
@@ -859,19 +824,7 @@ public sealed class ByteBuf : ICloneable, IEquatable<ByteBuf>
     public int ReadFint()
     {
         EnsureRead(4);
-        int x;
-#if CPU_SUPPORT_MEMORY_NOT_ALIGN
-                unsafe
-                {
-                    fixed (byte* b = &Bytes[ReaderIndex])
-                    {
-                        x = *(int*)b;
-                    }
-                }
-#else
-        x = (Bytes[ReaderIndex + 3] << 24) | (Bytes[ReaderIndex + 2] << 16) | (Bytes[ReaderIndex + 1] << 8) | Bytes[ReaderIndex];
-
-#endif
+        var x = MemoryMarshal.Read<int>(Bytes.AsSpan(ReaderIndex));
         ReaderIndex += 4;
         return x;
     }
@@ -886,20 +839,7 @@ public sealed class ByteBuf : ICloneable, IEquatable<ByteBuf>
     public void WriteFint(int x)
     {
         EnsureWrite(4);
-#if CPU_SUPPORT_MEMORY_NOT_ALIGN
-                unsafe
-                {
-                    fixed (byte* b = &Bytes[WriterIndex])
-                    {
-                        *(int*)b = x;
-                    }
-                }
-#else
-        Bytes[WriterIndex] = (byte)x;
-        Bytes[WriterIndex + 1] = (byte)(x >> 8);
-        Bytes[WriterIndex + 2] = (byte)(x >> 16);
-        Bytes[WriterIndex + 3] = (byte)(x >> 24);
-#endif
+        MemoryMarshal.Write(Bytes.AsSpan(WriterIndex), in x);
         WriterIndex += 4;
     }
 
@@ -1169,25 +1109,7 @@ public sealed class ByteBuf : ICloneable, IEquatable<ByteBuf>
     public void WriteFlong(long x)
     {
         EnsureWrite(8);
-#if CPU_SUPPORT_MEMORY_NOT_ALIGN
-                unsafe
-                {
-                    fixed (byte* b = &Bytes[WriterIndex])
-                    {
-                        *(long*)b = x;
-                    }
-                }
-#else
-
-        Bytes[WriterIndex] = (byte)x;
-        Bytes[WriterIndex + 1] = (byte)(x >> 8);
-        Bytes[WriterIndex + 2] = (byte)(x >> 16);
-        Bytes[WriterIndex + 3] = (byte)(x >> 24);
-        Bytes[WriterIndex + 4] = (byte)(x >> 32);
-        Bytes[WriterIndex + 5] = (byte)(x >> 40);
-        Bytes[WriterIndex + 6] = (byte)(x >> 48);
-        Bytes[WriterIndex + 7] = (byte)(x >> 56);
-#endif
+        MemoryMarshal.Write(Bytes.AsSpan(WriterIndex), in x);
         WriterIndex += 8;
     }
 
@@ -1201,42 +1123,9 @@ public sealed class ByteBuf : ICloneable, IEquatable<ByteBuf>
     public long ReadFlong()
     {
         EnsureRead(8);
-        long x;
-#if CPU_SUPPORT_MEMORY_NOT_ALIGN
-                unsafe
-                {
-                    fixed (byte* b = &Bytes[ReaderIndex])
-                    {
-                        x = *(long*)b;
-                    }
-                }
-#else
-        var xl = (Bytes[ReaderIndex + 3] << 24) | (Bytes[ReaderIndex + 2] << 16) | (Bytes[ReaderIndex + 1] << 8) | Bytes[ReaderIndex];
-        var xh = (Bytes[ReaderIndex + 7] << 24) | (Bytes[ReaderIndex + 6] << 16) | (Bytes[ReaderIndex + 5] << 8) | Bytes[ReaderIndex + 4];
-        x = ((long)xh << 32) | (long)xl;
-#endif
+        var x = MemoryMarshal.Read<long>(Bytes.AsSpan(ReaderIndex));
         ReaderIndex += 8;
         return x;
-    }
-
-    private static unsafe void Copy8(byte* dst, byte* src)
-    {
-        dst[0] = src[0];
-        dst[1] = src[1];
-        dst[2] = src[2];
-        dst[3] = src[3];
-        dst[4] = src[4];
-        dst[5] = src[5];
-        dst[6] = src[6];
-        dst[7] = src[7];
-    }
-
-    private static unsafe void Copy4(byte* dst, byte* src)
-    {
-        dst[0] = src[0];
-        dst[1] = src[1];
-        dst[2] = src[2];
-        dst[3] = src[3];
     }
 
     /// <summary>
@@ -1249,29 +1138,7 @@ public sealed class ByteBuf : ICloneable, IEquatable<ByteBuf>
     public void WriteFloat(float x)
     {
         EnsureWrite(4);
-        unsafe
-        {
-            fixed (byte* b = &Bytes[WriterIndex])
-            {
-#if !CPU_SUPPORT_MEMORY_NOT_ALIGN
-                if ((long)b % 4 == 0)
-                {
-                    *(float*)b = x;
-                }
-                else
-                {
-                    Copy4(b, (byte*)&x);
-                }
-#else
-                        *(float*)b = x;
-#endif
-            }
-        }
-
-        //if (!BitConverter.IsLittleEndian)
-        //{
-        //    Array.Reverse(data, endPos, 4);
-        //}
+        MemoryMarshal.Write(Bytes.AsSpan(WriterIndex), in x);
         WriterIndex += 4;
     }
 
@@ -1285,30 +1152,7 @@ public sealed class ByteBuf : ICloneable, IEquatable<ByteBuf>
     public float ReadFloat()
     {
         EnsureRead(4);
-        //if (!BitConverter.IsLittleEndian)
-        //{
-        //    Array.Reverse(data, beginPos, 4);
-        //}
-        float x;
-        unsafe
-        {
-            fixed (byte* b = &Bytes[ReaderIndex])
-            {
-#if !CPU_SUPPORT_MEMORY_NOT_ALIGN
-                if ((long)b % 4 == 0)
-                {
-                    x = *(float*)b;
-                }
-                else
-                {
-                    *(int*)&x = b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24);
-                }
-#else
-                        x = *(float*)b;
-#endif
-            }
-        }
-
+        var x = MemoryMarshal.Read<float>(Bytes.AsSpan(ReaderIndex));
         ReaderIndex += 4;
         return x;
     }
@@ -1323,29 +1167,7 @@ public sealed class ByteBuf : ICloneable, IEquatable<ByteBuf>
     public void WriteDouble(double x)
     {
         EnsureWrite(8);
-        unsafe
-        {
-            fixed (byte* b = &Bytes[WriterIndex])
-            {
-#if !CPU_SUPPORT_MEMORY_NOT_ALIGN
-                if ((long)b % 8 == 0)
-                {
-                    *(double*)b = x;
-                }
-                else
-                {
-                    Copy8(b, (byte*)&x);
-                }
-#else
-                        *(double*)b = x;
-#endif
-            }
-            //if (!BitConverter.IsLittleEndian)
-            //{
-            //    Array.Reverse(data, endPos, 8);
-            //}
-        }
-
+        MemoryMarshal.Write(Bytes.AsSpan(WriterIndex), in x);
         WriterIndex += 8;
     }
 
@@ -1359,32 +1181,7 @@ public sealed class ByteBuf : ICloneable, IEquatable<ByteBuf>
     public double ReadDouble()
     {
         EnsureRead(8);
-        //if (!BitConverter.IsLittleEndian)
-        //{
-        //    Array.Reverse(data, beginPos, 8);
-        //}
-        double x;
-        unsafe
-        {
-            fixed (byte* b = &Bytes[ReaderIndex])
-            {
-#if !CPU_SUPPORT_MEMORY_NOT_ALIGN
-                if ((long)b % 8 == 0)
-                {
-                    x = *(double*)b;
-                }
-                else
-                {
-                    var low = b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24);
-                    var high = b[4] | (b[5] << 8) | (b[6] << 16) | (b[7] << 24);
-                    *(long*)&x = ((long)high << 32) | (uint)low;
-                }
-#else
-                        x = *(double*)b;
-#endif
-            }
-        }
-
+        var x = MemoryMarshal.Read<double>(Bytes.AsSpan(ReaderIndex));
         ReaderIndex += 8;
         return x;
     }
