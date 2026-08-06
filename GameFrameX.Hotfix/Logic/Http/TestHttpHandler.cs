@@ -45,11 +45,11 @@ public sealed class TestHttpHandler : BaseHttpHandler
     /// </summary>
     /// <param name="ip"></param>
     /// <param name="url"></param>
-    /// <param name="parameters"></param>
+    /// <param name="paramMap"></param>
     /// <returns></returns>
-    public override async Task<string> Action(string ip, string url, Dictionary<string, object> parameters)
+    public override async Task<string> Action(string ip, string url, Dictionary<string, object> paramMap)
     {
-        if (TryGetMode(parameters, out var mode) && string.Equals(mode, "cross-process-friend", StringComparison.OrdinalIgnoreCase))
+        if (TryGetMode(paramMap, out var mode) && string.Equals(mode, "cross-process-friend", StringComparison.OrdinalIgnoreCase))
         {
             var friendComponentAgent = await ActorManager.GetComponentAgent<FriendComponentAgent>();
             var friendResponse = new RespFriendList();
