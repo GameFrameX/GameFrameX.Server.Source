@@ -63,8 +63,8 @@ public interface ICacheState : ISafeDeletedFilter, ISafeCreatedFilter, ISafeUpda
     /// <remarks>
     /// Used to perform specific processing after the object is loaded from the database, such as initializing data or setting state.
     /// </remarks>
-    /// <param name="isNew">是否是新对象 / Whether it is a new object</param>
-    void LoadFromDbPostHandler(bool isNew);
+    /// <param name="isNew">是否是新对象，默认为 false / Whether it is a new object, defaults to false</param>
+    void LoadFromDbPostHandler(bool isNew = false);
 
     /// <summary>
     /// 在对象保存到数据库后调用的方法，可以进行一些后续处理。
