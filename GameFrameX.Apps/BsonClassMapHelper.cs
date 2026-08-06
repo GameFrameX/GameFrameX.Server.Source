@@ -56,45 +56,60 @@ public class EmptyContainerSerializeMethodConvention : ConventionBase, IMemberMa
 {
     public void Apply(BsonMemberMap memberMap)
     {
-        if (memberMap.MemberType.IsGenericType)
+        if (!memberMap.MemberType.IsGenericType)
         {
-            var genType = memberMap.MemberType.GetGenericTypeDefinition();
-            if (genType == typeof(List<>))
-            {
-                memberMap.SetShouldSerializeMethod(o =>
-                {
-                    var value = memberMap.Getter(o);
-                    if (value is IList list)
-                    {
-                        return list != null && list.Count > 0;
-                    }
-
-                    return true;
-                });
-            }
-
-            else if (genType == typeof(ConcurrentDictionary<,>) || genType == typeof(Dictionary<,>))
-            {
-                memberMap.SetShouldSerializeMethod(o =>
-                {
-                    if (o != null)
-                    {
-                        var value = memberMap.Getter(o);
-                        if (value != null)
-                        {
-                            var countProperty = value.GetType().GetProperty("Count");
-                            if (countProperty != null)
-                            {
-                                var count = (int)countProperty.GetValue(value, null);
-                                return count > 0;
-                            }
-                        }
-                    }
-
-                    return true;
-                });
-            }
+            return;
         }
+
+        var genType = memberMap.MemberType.GetGenericTypeDefinition();
+        if (genType == typeof(List<>))
+        {
+            SetListShouldSerializeWhenNonEmpty(memberMap);
+        }
+        else if (genType == typeof(ConcurrentDictionary<,>) || genType == typeof(Dictionary<,>))
+        {
+            SetDictionaryShouldSerializeWhenNonEmpty(memberMap);
+        }
+    }
+
+    private static void SetListShouldSerializeWhenNonEmpty(BsonMemberMap memberMap)
+    {
+        memberMap.SetShouldSerializeMethod(o =>
+        {
+            var value = memberMap.Getter(o);
+            if (value is IList list)
+            {
+                return list != null && list.Count > 0;
+            }
+
+            return true;
+        });
+    }
+
+    private static void SetDictionaryShouldSerializeWhenNonEmpty(BsonMemberMap memberMap)
+    {
+        memberMap.SetShouldSerializeMethod(o =>
+        {
+            if (o == null)
+            {
+                return true;
+            }
+
+            var value = memberMap.Getter(o);
+            if (value == null)
+            {
+                return true;
+            }
+
+            var countProperty = value.GetType().GetProperty("Count");
+            if (countProperty == null)
+            {
+                return true;
+            }
+
+            var count = (int)countProperty.GetValue(value, null);
+            return count > 0;
+        });
     }
 }
 
