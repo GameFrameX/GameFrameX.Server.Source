@@ -2572,7 +2572,7 @@ public sealed class BigInteger
         var t = p_sub1 >> s;
 
         var bits = thisVal.BitCount();
-        var rand = new Random();
+        var rand = new SecureRandom();
 
         for (var round = 0; round < confidence; round++)
         {
@@ -3987,7 +3987,7 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
     /// <summary>
     /// 基于 <see cref="RandomNumberGenerator"/> 的加密强度随机数生成器，
     /// 用于消除 Sonar S2245：素性测试不应使用伪随机数（PRNG）。
-    /// 保持 <see cref="Random"/> 语义（<see cref="NextDouble"/> 返回 [0,1)），可无缝替换 <c>new Random()</c>。
+    /// 保持 <see cref="NextDouble"/> 返回 [0,1) 的 <see cref="Random"/> 语义，可无缝替换 <c>new Random()</c>。
     /// </summary>
     internal sealed class SecureRandom : Random
     {
