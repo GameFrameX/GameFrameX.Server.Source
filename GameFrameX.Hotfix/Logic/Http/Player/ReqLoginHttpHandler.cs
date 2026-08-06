@@ -42,7 +42,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Player;
 [Description("账号登录,仅限前端调用")]
 public sealed class ReqLoginHttpHandler : BaseHttpHandler
 {
-    public override async Task<MessageObject> Action(string ip, string url, Dictionary<string, object> parameters, MessageObject messageObject)
+    public override async Task<MessageObject> Action(string ip, string url, Dictionary<string, object> paramMap, MessageObject messageObject)
     {
         var reqLogin = (ReqLogin)messageObject;
         var respLogin = new RespLogin();
