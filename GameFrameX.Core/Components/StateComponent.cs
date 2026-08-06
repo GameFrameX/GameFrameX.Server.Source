@@ -246,98 +246,151 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
     {
         var idList = new List<long>();
         var writeList = new List<ReplaceOneModel<BsonDocument>>();
+
         if (shutdown)
         {
-            foreach (var state in StateDic.Values)
-            {
-                if (state.IsModify())
-                {
-                    var bsonDoc = state.ToBsonDocument();
-                    lock (writeList)
-                    {
-                        var filter = Builders<BsonDocument>.Filter.Eq("_id", state.Id);
-                        writeList.Add(new ReplaceOneModel<BsonDocument>(filter, bsonDoc) { IsUpsert = true, });
-                        idList.Add(state.Id);
-                    }
-                }
-            }
+            CollectShutdownWrites(writeList, idList);
         }
         else
         {
-            var tasks = new List<Task>();
-
-            foreach (var state in StateDic.Values)
-            {
-                var actor = ActorManager.GetActor(state.Id);
-                if (actor != null)
-                {
-                    tasks.Add(actor.SendAsync(() =>
-                    {
-                        if (!force && !state.IsModify())
-                        {
-                            return;
-                        }
-
-                        var bsonDoc = state.ToBsonDocument();
-                        lock (writeList)
-                        {
-                            var filter = Builders<BsonDocument>.Filter.Eq("_id", state.Id);
-                            writeList.Add(new ReplaceOneModel<BsonDocument>(filter, bsonDoc) { IsUpsert = true, });
-                            idList.Add(state.Id);
-                        }
-                    }, GlobalSettings.CurrentSetting.SaveDataBatchTimeOut));
-                }
-            }
-
-            await Task.WhenAll(tasks);
+            await CollectActorWritesAsync(writeList, idList, force);
         }
 
         if (!writeList.IsNullOrEmpty())
         {
-            var stateName = typeof(TState).Name;
-            StateComponent.StatisticsTool.Count(stateName, writeList.Count);
-            LogHelper.Debug("StateComponent.StateSaveBack StateName: {stateName} , Count: {count}", stateName, writeList.Count);
-            var currentDatabase = GameDb.As<MongoDbService>().CurrentDatabase;
-            var collection = currentDatabase.GetCollection<BsonDocument>(stateName);
-            for (var idx = 0; idx < writeList.Count; idx += GlobalSettings.CurrentSetting.SaveDataBatchCount)
+            await ExecuteBatchWritesAsync(writeList, idList, shutdown);
+        }
+    }
+
+    /// <summary>
+    /// 关服保存：顺序遍历所有已修改的状态，生成批量写入模型
+    /// </summary>
+    /// <param name="writeList">批量写入模型列表</param>
+    /// <param name="idList">对应的状态 Id 列表</param>
+    private static void CollectShutdownWrites(List<ReplaceOneModel<BsonDocument>> writeList, List<long> idList)
+    {
+        foreach (var state in StateDic.Values)
+        {
+            if (!state.IsModify())
             {
-                var docs = writeList.GetRange(idx, Math.Min(GlobalSettings.CurrentSetting.SaveDataBatchCount, writeList.Count - idx));
-                var ids = idList.GetRange(idx, docs.Count);
+                continue;
+            }
 
-                var save = false;
-                try
+            AppendWrite(writeList, idList, state);
+        }
+    }
+
+    /// <summary>
+    /// 非关服保存：将各状态的写入操作派发到对应 Actor 上并发执行，回填批量写入模型
+    /// </summary>
+    /// <param name="writeList">批量写入模型列表</param>
+    /// <param name="idList">对应的状态 Id 列表</param>
+    /// <param name="force">是否强制保存</param>
+    /// <returns>异步任务</returns>
+    private static async Task CollectActorWritesAsync(List<ReplaceOneModel<BsonDocument>> writeList, List<long> idList, bool force)
+    {
+        var tasks = new List<Task>();
+
+        foreach (var state in StateDic.Values)
+        {
+            var actor = ActorManager.GetActor(state.Id);
+            if (actor == null)
+            {
+                continue;
+            }
+
+            tasks.Add(actor.SendAsync(() =>
+            {
+                if (!force && !state.IsModify())
                 {
-                    var result = await collection.BulkWriteAsync(docs, MongoDbService.BulkWriteOptions);
-                    if (result.IsAcknowledged)
-                    {
-                        foreach (var id in ids)
-                        {
-                            StateDic.TryGetValue(id, out var state);
-                            if (state == null)
-                            {
-                                continue;
-                            }
-
-                            state.SaveToDbPostHandler();
-                        }
-
-                        save = true;
-                    }
-                    else
-                    {
-                        LogHelper.Error("StateComponent.SaveDataFailed StateName: {stateName} , Message: {message}", stateName, LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveDataFailed, typeof(TState).FullName));
-                    }
+                    return;
                 }
-                catch (Exception ex)
+
+                AppendWrite(writeList, idList, state);
+            }, GlobalSettings.CurrentSetting.SaveDataBatchTimeOut));
+        }
+
+        await Task.WhenAll(tasks);
+    }
+
+    /// <summary>
+    /// 将单个状态追加到批量写入列表（线程安全，关服/非关服分支共用）
+    /// </summary>
+    /// <param name="writeList">批量写入模型列表</param>
+    /// <param name="idList">对应的状态 Id 列表</param>
+    /// <param name="state">要写入的状态</param>
+    private static void AppendWrite(List<ReplaceOneModel<BsonDocument>> writeList, List<long> idList, TState state)
+    {
+        var bsonDoc = state.ToBsonDocument();
+        lock (writeList)
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", state.Id);
+            writeList.Add(new ReplaceOneModel<BsonDocument>(filter, bsonDoc) { IsUpsert = true, });
+            idList.Add(state.Id);
+        }
+    }
+
+    /// <summary>
+    /// 按配置批量大小执行 Mongo 批量写入，并处理写入结果与异常
+    /// </summary>
+    /// <param name="writeList">批量写入模型列表</param>
+    /// <param name="idList">对应的状态 Id 列表</param>
+    /// <param name="shutdown">是否为关服保存</param>
+    /// <returns>异步任务</returns>
+    private static async Task ExecuteBatchWritesAsync(List<ReplaceOneModel<BsonDocument>> writeList, List<long> idList, bool shutdown)
+    {
+        var stateName = typeof(TState).Name;
+        StateComponent.StatisticsTool.Count(stateName, writeList.Count);
+        LogHelper.Debug("StateComponent.StateSaveBack StateName: {stateName} , Count: {count}", stateName, writeList.Count);
+        var currentDatabase = GameDb.As<MongoDbService>().CurrentDatabase;
+        var collection = currentDatabase.GetCollection<BsonDocument>(stateName);
+
+        for (var idx = 0; idx < writeList.Count; idx += GlobalSettings.CurrentSetting.SaveDataBatchCount)
+        {
+            var docs = writeList.GetRange(idx, Math.Min(GlobalSettings.CurrentSetting.SaveDataBatchCount, writeList.Count - idx));
+            var ids = idList.GetRange(idx, docs.Count);
+
+            var save = false;
+            try
+            {
+                var result = await collection.BulkWriteAsync(docs, MongoDbService.BulkWriteOptions);
+                if (result.IsAcknowledged)
                 {
-                    LogHelper.Error("StateComponent.SaveDataException StateName: {stateName} , Error: {error} , Message: {message}", stateName, ex, LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveDataException, typeof(TState).FullName, ex));
+                    NotifyBatchSaved(ids);
+                    save = true;
                 }
-
-                if (!save && shutdown)
+                else
                 {
                     LogHelper.Error("StateComponent.SaveDataFailed StateName: {stateName} , Message: {message}", stateName, LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveDataFailed, typeof(TState).FullName));
                 }
             }
+            catch (Exception ex)
+            {
+                LogHelper.Error("StateComponent.SaveDataException StateName: {stateName} , Error: {error} , Message: {message}", stateName, ex, LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveDataException, typeof(TState).FullName, ex));
+            }
+
+            if (!save && shutdown)
+            {
+                LogHelper.Error("StateComponent.SaveDataFailed StateName: {stateName} , Message: {message}", stateName, LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveDataFailed, typeof(TState).FullName));
+            }
+        }
+    }
+
+    /// <summary>
+    /// 通知一批已成功写入数据库的状态执行后置处理
+    /// </summary>
+    /// <param name="ids">已写入的状态 Id 列表</param>
+    private static void NotifyBatchSaved(List<long> ids)
+    {
+        foreach (var id in ids)
+        {
+            StateDic.TryGetValue(id, out var state);
+            if (state == null)
+            {
+                continue;
+            }
+
+            state.SaveToDbPostHandler();
         }
     }
 
