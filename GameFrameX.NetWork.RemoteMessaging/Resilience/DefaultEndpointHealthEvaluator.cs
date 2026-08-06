@@ -90,7 +90,7 @@ internal sealed class DefaultEndpointHealthEvaluator : IEndpointHealthEvaluator
         lock (tracker)
         {
             tracker.ConsecutiveFailures++;
-            tracker.LastFailureReason = reason;
+            tracker.LastFailureTick = Environment.TickCount;
         }
     }
 
@@ -108,14 +108,13 @@ internal sealed class DefaultEndpointHealthEvaluator : IEndpointHealthEvaluator
         {
             tracker.ConsecutiveFailures = 0;
             tracker.LastSuccessTick = Environment.TickCount;
-            tracker.LastFailureReason = null;
         }
     }
 
     private sealed class HealthTracker
     {
         public int ConsecutiveFailures;
-        public string LastFailureReason;
+        public int LastFailureTick;
         public int LastSuccessTick;
     }
 }
