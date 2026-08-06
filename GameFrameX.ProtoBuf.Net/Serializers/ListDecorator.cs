@@ -99,20 +99,7 @@ internal class ListDecorator : ProtoDecoratorBase
             options |= OPTIONS_SupportNull;
         }
 
-        if ((writePacked || packedWireType != WireType.None) && fieldNumber <= 0)
-        {
-            throw new ArgumentOutOfRangeException("fieldNumber");
-        }
-
-        if (!CanPack(packedWireType))
-        {
-            if (writePacked)
-            {
-                throw new InvalidOperationException("Only simple data-types can use packed encoding");
-            }
-
-            packedWireType = WireType.None;
-        }
+        packedWireType = ResolvePackedWireType(writePacked, packedWireType, fieldNumber);
 
         this.fieldNumber = fieldNumber;
         if (writePacked)
@@ -137,24 +124,54 @@ internal class ListDecorator : ProtoDecoratorBase
         // look for a public list.Add(typedObject) method
         if (RequireAdd)
         {
-            bool isList;
-            add = TypeModel.ResolveListAdd(model, declaredType, tail.ExpectedType, out isList);
-            if (isList)
+            add = ResolveAddMethod(model, declaredType, tail, out var optionsToAdd);
+            options |= optionsToAdd;
+        }
+    }
+
+    private WireType ResolvePackedWireType(bool writePacked, WireType packedWireType, int fieldNumber)
+    {
+        if ((writePacked || packedWireType != WireType.None) && fieldNumber <= 0)
+        {
+            throw new ArgumentOutOfRangeException("fieldNumber");
+        }
+
+        if (!CanPack(packedWireType))
+        {
+            if (writePacked)
             {
-                options |= OPTIONS_IsList;
-                var fullName = declaredType.FullName;
-                if (fullName != null && fullName.StartsWith("System.Data.Linq.EntitySet`1[["))
-                {
-                    // see http://stackoverflow.com/questions/6194639/entityset-is-there-a-sane-reason-that-ilist-add-doesnt-set-assigned
-                    options |= OPTIONS_SuppressIList;
-                }
+                throw new InvalidOperationException("Only simple data-types can use packed encoding");
             }
 
-            if (add == null)
+            packedWireType = WireType.None;
+        }
+
+        return packedWireType;
+    }
+
+    private MethodInfo ResolveAddMethod(TypeModel model, Type declaredType, IProtoSerializer tail, out byte optionsToAdd)
+    {
+        byte extra = 0;
+        bool isList;
+        var resolvedAdd = TypeModel.ResolveListAdd(model, declaredType, tail.ExpectedType, out isList);
+        if (isList)
+        {
+            extra |= OPTIONS_IsList;
+            var fullName = declaredType.FullName;
+            if (fullName != null && fullName.StartsWith("System.Data.Linq.EntitySet`1[["))
             {
-                throw new InvalidOperationException("Unable to resolve a suitable Add method for " + declaredType.FullName);
+                // see http://stackoverflow.com/questions/6194639/entityset-is-there-a-sane-reason-that-ilist-add-doesnt-set-assigned
+                extra |= OPTIONS_SuppressIList;
             }
         }
+
+        if (resolvedAdd == null)
+        {
+            throw new InvalidOperationException("Unable to resolve a suitable Add method for " + declaredType.FullName);
+        }
+
+        optionsToAdd = extra;
+        return resolvedAdd;
     }
 
     protected virtual bool RequireAdd
@@ -545,7 +562,7 @@ internal class ListDecorator : ProtoDecoratorBase
     {
         SubItemToken token;
         var writePacked = WritePacked;
-        var fixedSizePacked = writePacked & CanUsePackedPrefix(value) && value is ICollection;
+        var fixedSizePacked = writePacked && CanUsePackedPrefix(value) && value is ICollection;
         if (writePacked)
         {
             ProtoWriter.WriteFieldHeader(fieldNumber, WireType.String, dest);
@@ -610,45 +627,12 @@ internal class ListDecorator : ProtoDecoratorBase
             if (packedWireType != WireType.None && source.WireType == WireType.String)
             {
                 var token = ProtoReader.StartSubItem(source);
-                if (isList)
-                {
-                    var list = (IList)value;
-                    while (ProtoReader.HasSubValue(packedWireType, source))
-                    {
-                        list.Add(Tail.Read(null, source));
-                    }
-                }
-                else
-                {
-                    var args = new object[1];
-                    while (ProtoReader.HasSubValue(packedWireType, source))
-                    {
-                        args[0] = Tail.Read(null, source);
-                        add.Invoke(value, args);
-                    }
-                }
-
+                ReadPackedItems(value, source, isList);
                 ProtoReader.EndSubItem(token, source);
             }
             else
             {
-                if (isList)
-                {
-                    var list = (IList)value;
-                    do
-                    {
-                        list.Add(Tail.Read(null, source));
-                    } while (source.TryReadFieldHeader(field));
-                }
-                else
-                {
-                    var args = new object[1];
-                    do
-                    {
-                        args[0] = Tail.Read(null, source);
-                        add.Invoke(value, args);
-                    } while (source.TryReadFieldHeader(field));
-                }
+                ReadItems(value, source, isList, field);
             }
 
             return origValue == value ? null : value;
@@ -661,6 +645,48 @@ internal class ListDecorator : ProtoDecoratorBase
             }
 
             throw;
+        }
+    }
+
+    private void ReadPackedItems(object value, ProtoReader source, bool isList)
+    {
+        if (isList)
+        {
+            var list = (IList)value;
+            while (ProtoReader.HasSubValue(packedWireType, source))
+            {
+                list.Add(Tail.Read(null, source));
+            }
+        }
+        else
+        {
+            var args = new object[1];
+            while (ProtoReader.HasSubValue(packedWireType, source))
+            {
+                args[0] = Tail.Read(null, source);
+                add.Invoke(value, args);
+            }
+        }
+    }
+
+    private void ReadItems(object value, ProtoReader source, bool isList, int field)
+    {
+        if (isList)
+        {
+            var list = (IList)value;
+            do
+            {
+                list.Add(Tail.Read(null, source));
+            } while (source.TryReadFieldHeader(field));
+        }
+        else
+        {
+            var args = new object[1];
+            do
+            {
+                args[0] = Tail.Read(null, source);
+                add.Invoke(value, args);
+            } while (source.TryReadFieldHeader(field));
         }
     }
 }

@@ -260,49 +260,49 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// 发送无返回值的工作指令到Actor
     /// </summary>
     /// <param name="work">要执行的工作内容，以Action委托形式传入</param>
-    /// <param name="timeout">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="timeOut">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="cancellationToken">取消令牌，用于取消正在执行的操作</param>
-    public void Tell(Action work, int timeout = -1, CancellationToken cancellationToken = default)
+    public void Tell(Action work, int timeOut = -1, CancellationToken cancellationToken = default)
     {
-        if (timeout <= 0)
+        if (timeOut <= 0)
         {
-            timeout = GlobalSettings.CurrentSetting.ActorTimeOut;
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
         }
 
-        Actor.Tell(work, timeout, cancellationToken);
+        Actor.Tell(work, timeOut, cancellationToken);
     }
 
     /// <summary>
     /// 发送异步工作指令到Actor
     /// </summary>
     /// <param name="work">要执行的异步工作内容，以 Func&lt;Task&gt; 委托形式传入</param>
-    /// <param name="timeout">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="timeOut">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="cancellationToken">取消令牌，用于取消正在执行的操作</param>
-    public void Tell(Func<Task> work, int timeout = -1, CancellationToken cancellationToken = default)
+    public void Tell(Func<Task> work, int timeOut = -1, CancellationToken cancellationToken = default)
     {
-        if (timeout <= 0)
+        if (timeOut <= 0)
         {
-            timeout = GlobalSettings.CurrentSetting.ActorTimeOut;
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
         }
 
-        Actor.Tell(work, timeout, cancellationToken);
+        Actor.Tell(work, timeOut, cancellationToken);
     }
 
     /// <summary>
     /// 异步发送无返回值的工作指令到Actor
     /// </summary>
     /// <param name="work">要执行的工作内容，以Action委托形式传入</param>
-    /// <param name="timeout">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="timeOut">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="cancellationToken">取消令牌，用于取消正在执行的操作</param>
     /// <returns>表示异步操作的Task对象</returns>
-    public Task SendAsync(Action work, int timeout = -1, CancellationToken cancellationToken = default)
+    public Task SendAsync(Action work, int timeOut = -1, CancellationToken cancellationToken = default)
     {
-        if (timeout <= 0)
+        if (timeOut <= 0)
         {
-            timeout = GlobalSettings.CurrentSetting.ActorTimeOut;
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
         }
 
-        return Actor.SendAsync(work, timeout, cancellationToken);
+        return Actor.SendAsync(work, timeOut, cancellationToken);
     }
 
     /// <summary>
@@ -310,35 +310,35 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// </summary>
     /// <typeparam name="T">返回结果的类型</typeparam>
     /// <param name="work">要执行的工作内容，以Func&lt;T&gt;委托形式传入</param>
-    /// <param name="timeout">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="timeOut">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="cancellationToken">取消令牌，用于取消正在执行的操作</param>
     /// <returns>包含执行结果的 Task&lt;T&gt; 对象</returns>
-    public Task<T> SendAsync<T>(Func<T> work, int timeout = -1, CancellationToken cancellationToken = default)
+    public Task<T> SendAsync<T>(Func<T> work, int timeOut = -1, CancellationToken cancellationToken = default)
     {
-        if (timeout <= 0)
+        if (timeOut <= 0)
         {
-            timeout = GlobalSettings.CurrentSetting.ActorTimeOut;
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
         }
 
-        return Actor.SendAsync(work, timeout, cancellationToken);
+        return Actor.SendAsync(work, timeOut, cancellationToken);
     }
 
     /// <summary>
     /// 异步发送有返回值的工作指令到Actor，支持锁检查
     /// </summary>
     /// <param name="work">要执行的异步工作内容，以Func&lt;Task&gt;委托形式传入</param>
-    /// <param name="timeout">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="timeOut">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="checkLock">是否检查Actor的锁状态，默认为true</param>
     /// <param name="cancellationToken">取消令牌，用于取消正在执行的操作</param>
     /// <returns>表示异步操作的Task对象</returns>
-    public Task SendAsync(Func<Task> work, int timeout = -1, bool checkLock = true, CancellationToken cancellationToken = default)
+    public Task SendAsync(Func<Task> work, int timeOut = -1, bool checkLock = true, CancellationToken cancellationToken = default)
     {
-        if (timeout <= 0)
+        if (timeOut <= 0)
         {
-            timeout = GlobalSettings.CurrentSetting.ActorTimeOut;
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
         }
 
-        return Actor.SendAsync(work, timeout, checkLock, cancellationToken);
+        return Actor.SendAsync(work, timeOut, checkLock, cancellationToken);
     }
 
     /// <summary>

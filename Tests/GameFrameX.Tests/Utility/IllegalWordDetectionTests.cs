@@ -75,9 +75,12 @@ namespace GameFrameX.Tests.Utility
             // Arrange
             var badWords = new[] { "test1", "test2", "test3" };
 
-            // Act & Assert
-            // 不应该抛出异常
+            // Act
             IllegalWordDetection.Init(badWords, false);
+
+            // Assert
+            // 非空同步初始化后该词条应可被检测到，验证初始化真正生效
+            Assert.True(IllegalWordDetection.HasBlockWords("test1"));
         }
 
         /// <summary>
@@ -90,7 +93,9 @@ namespace GameFrameX.Tests.Utility
             var emptyArray = Array.Empty<string>();
 
             // Act & Assert
-            IllegalWordDetection.Init(emptyArray, false);
+            // 空数组初始化不应抛出异常
+            var exception = Record.Exception(() => IllegalWordDetection.Init(emptyArray, false));
+            Assert.Null(exception);
         }
 
         /// <summary>
@@ -100,7 +105,9 @@ namespace GameFrameX.Tests.Utility
         public void Init_WithNullArray_ShouldNotThrow()
         {
             // Act & Assert
-            IllegalWordDetection.Init((string[])null, false);
+            // null 数组初始化不应抛出异常
+            var exception = Record.Exception(() => IllegalWordDetection.Init((string[])null, false));
+            Assert.Null(exception);
         }
 
         /// <summary>

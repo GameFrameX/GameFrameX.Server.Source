@@ -64,16 +64,24 @@ public class ProtoBuffTest
         pbTest.Test.Add("8");
         pbTest.Test.Add("9");
 
+        byte[] serialized;
         try
         {
-            var xx = ProtoBufSerializerHelper.Serialize(pbTest);
-            Console.WriteLine(xx);
+            serialized = ProtoBufSerializerHelper.Serialize(pbTest);
+            Console.WriteLine(serialized);
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
             throw;
         }
+
+        // 验证序列化-反序列化往返结果一致 / Verify serialize/deserialize round-trip consistency
+        var deserialized = ProtoBufSerializerHelper.Deserialize<PbTest>(serialized);
+        Assert.NotNull(deserialized);
+        Assert.Equal(9, deserialized.Test.Count);
+        Assert.Equal("1", deserialized.Test[0]);
+        Assert.Equal("9", deserialized.Test[8]);
     }
 
     /// <summary>

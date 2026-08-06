@@ -29,8 +29,15 @@
 
 namespace GameFrameX.Core.Hotfix;
 
-internal class MultiAgentImpException : Exception
+/// <summary>
+/// 多 Agent 实现异常
+/// </summary>
+public class MultiAgentImpException : Exception
 {
+    /// <summary>
+    /// 构造
+    /// </summary>
+    /// <param name="message">错误信息</param>
     public MultiAgentImpException(string message) : base(message)
     {
     }
