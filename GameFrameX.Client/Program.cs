@@ -51,31 +51,33 @@ internal static class Program
             "Bot options: bot-count={botCount}, tcp={tcpHost}:{tcpPort}, scenario={scenario}, disconnect-loop={disconnectLoop}, disconnect-after-login-seconds={disconnectAfterLoginSeconds}, run-seconds={runSeconds}",
             options.BotCount, options.TcpHost, options.TcpPort, options.Scenario, options.EnableDisconnectLoop, options.DisconnectAfterLoginSeconds, options.RunSeconds);
 
-        var cts = new CancellationTokenSource();
-        var botTasks = new List<Task>(options.BotCount);
-        for (int k = 0; k < options.BotCount; k++)
+        using (var cts = new CancellationTokenSource())
         {
-            string botName = $"{options.BotNamePrefix}_{k + 1}";
-            var client = new BotClient(botName, options);
-            botTasks.Add(client.EntryAsync(cts.Token));
-            if (options.ConnectStaggerMilliseconds > 0)
+            var botTasks = new List<Task>(options.BotCount);
+            for (int k = 0; k < options.BotCount; k++)
             {
-                await Task.Delay(options.ConnectStaggerMilliseconds, cts.Token);
+                string botName = $"{options.BotNamePrefix}_{k + 1}";
+                var client = new BotClient(botName, options);
+                botTasks.Add(client.EntryAsync(cts.Token));
+                if (options.ConnectStaggerMilliseconds > 0)
+                {
+                    await Task.Delay(options.ConnectStaggerMilliseconds, cts.Token);
+                }
             }
-        }
 
-        if (options.RunSeconds > 0)
-        {
-            await Task.Delay(TimeSpan.FromSeconds(options.RunSeconds), cts.Token);
+            if (options.RunSeconds > 0)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(options.RunSeconds), cts.Token);
+                cts.Cancel();
+                await Task.WhenAll(botTasks);
+                return;
+            }
+
+            Console.WriteLine("机器人运行中，按回车结束...");
+            Console.ReadLine();
             cts.Cancel();
             await Task.WhenAll(botTasks);
-            return;
         }
-
-        Console.WriteLine("机器人运行中，按回车结束...");
-        Console.ReadLine();
-        cts.Cancel();
-        await Task.WhenAll(botTasks);
     }
 
     private static void WarmUpProtoSerializer()
