@@ -40,86 +40,11 @@ public static partial class Keys
     /// </summary>
     public static class Utility
     {
-        /// <summary>
-        /// actorId小于最小服务器ID，最小服务器ID为{0}
-        /// </summary>
-        /// <remarks>
-        /// 键名: Utility.Exceptions.ActorIdLessThanMinServerId
-        /// 用途: 当传入的ActorId小于最小服务器ID时使用
-        /// 参数: {0} - 最小服务器ID值
-        /// </remarks>
-        public const string ActorIdLessThanMinServerId = "Utility.Exceptions.ActorIdLessThanMinServerId";
-
-        /// <summary>
-        /// actorId：{0}小于最小服务器ID：{1}
-        /// </summary>
-        /// <remarks>
-        /// 键名: Utility.Exceptions.ActorIdLessThanMinServerIdDetail
-        /// 用途: 当传入的ActorId小于最小服务器ID时使用，包含具体的ActorId值
-        /// 参数: {0} - ActorId值, {1} - 最小服务器ID值
-        /// </remarks>
-        public const string ActorIdLessThanMinServerIdDetail = "Utility.Exceptions.ActorIdLessThanMinServerIdDetail";
-
-        /// <summary>
-        /// 输入Actor类型错误：{0}
-        /// </summary>
-        /// <remarks>
-        /// 键名: Utility.Exceptions.ActorTypeError
-        /// 用途: 当传入的Actor类型无效时使用
-        /// 参数: {0} - 错误的Actor类型值
-        /// </remarks>
-        public const string ActorTypeError = "Utility.Exceptions.ActorTypeError";
-
-        /// <summary>
-        /// 服务器ID为负数的错误消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Utility.Exceptions.ServerIdNegative
-        /// 用途: 当服务器ID为负数时使用
-        /// 参数: {0} - 负数的服务器ID值
-        /// </remarks>
-        public const string ServerIdNegative = "Utility.Exceptions.ServerIdNegative";
-
-        /// <summary>
-        /// 服务器ID小于等于0的错误消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Utility.Exceptions.ServerIdLessThanOrEqualZero
-        /// 用途: 当服务器ID小于等于0时使用
-        /// </remarks>
-        public const string ServerIdLessThanOrEqualZero = "Utility.Exceptions.ServerIdLessThanOrEqualZero";
-
-        /// <summary>
-        /// Actor类型无效的错误消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Utility.Exceptions.ActorTypeInvalid
-        /// 用途: 当Actor类型超出有效范围时使用
-        /// </remarks>
-        public const string ActorTypeInvalid = "Utility.Exceptions.ActorTypeInvalid";
-
-        /// <summary>
-        /// 模块ID无效的错误消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Utility.Exceptions.ModuleInvalid
-        /// 用途: 当模块ID超出有效范围时使用
-        /// </remarks>
-        public const string ModuleInvalid = "Utility.Exceptions.ModuleInvalid";
-
-        /// <summary>
-        /// 构造函数溢出的错误消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Utility.Exceptions.ConstructorOverflow
-        /// 用途: 当构造函数发生正溢出时使用
-        /// </remarks>
-        public const string ConstructorOverflow = "Utility.Exceptions.ConstructorOverflow";
 
         /// <summary>
         /// 异常消息资源键
         /// </summary>
-        public static class Exceptions
+        public static class ExceptionMessages
         {
             /// <summary>
             /// actorId小于最小服务器ID，最小服务器ID为{0}

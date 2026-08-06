@@ -548,10 +548,10 @@ public static class RandomHelper
     /// <exception cref="ArgumentNullException">当array为null时抛出此异常</exception>
     /// <exception cref="ArgumentException">当array为空数组，或不可重复选取且需求数量大于id数量时抛出此异常</exception>
     /// <exception cref="ArgumentOutOfRangeException">当num或weightIndex小于0时抛出此异常</exception>
-    private static List<int[]> RandomSelect(int[][] array, int num, int weightIndex, bool canRepeat = true)
+    private static List<int[]> RandomSelect(IReadOnlyList<int[]> array, int num, int weightIndex, bool canRepeat = true)
     {
         ArgumentNullException.ThrowIfNull(array, nameof(array));
-        ArgumentOutOfRangeException.ThrowIfZero(array.Length, nameof(array));
+        ArgumentOutOfRangeException.ThrowIfZero(array.Count, nameof(array));
         ArgumentOutOfRangeException.ThrowIfNegative(num, nameof(num));
         ArgumentOutOfRangeException.ThrowIfNegative(weightIndex, nameof(weightIndex));
 
@@ -562,9 +562,9 @@ public static class RandomHelper
         }
 
         // 不可重复，需求数量不应超过id数量
-        if (num > array.Length)
+        if (num > array.Count)
         {
-            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.RandomHelper.CantRepeatRandomArgError, num, array.Length));
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.RandomHelper.CantRepeatRandomArgError, num, array.Count));
         }
 
         return NoRepeatRandom(num, weightIndex, array);
@@ -577,14 +577,14 @@ public static class RandomHelper
     /// <param name="weightIndex">权重索引</param>
     /// <param name="array">权重数组，每个元素为[id, weight]</param>
     /// <returns>包含随机选取的结果数组列表</returns>
-    private static List<int[]> NoRepeatRandom(int num, int weightIndex, int[][] array)
+    private static List<int[]> NoRepeatRandom(int num, int weightIndex, IReadOnlyList<int[]> array)
     {
         var results = new List<int[]>();
         var idxSet = new HashSet<int>();
         for (var i = 0; i < num; i++)
         {
             var totalWeight = 0;
-            for (var j = 0; j < array.Length; j++)
+            for (var j = 0; j < array.Count; j++)
             {
                 if (!idxSet.Contains(j))
                 {
@@ -595,7 +595,7 @@ public static class RandomHelper
             var r = ConcurrentCryptoRandom.Next(totalWeight);
             var temp = 0;
             var idx = 0;
-            for (var j = 0; j < array.Length; j++)
+            for (var j = 0; j < array.Count; j++)
             {
                 if (!idxSet.Contains(j))
                 {
@@ -622,7 +622,7 @@ public static class RandomHelper
     /// <param name="num">需要选取的数量</param>
     /// <param name="weightIndex">权重索引</param>
     /// <returns>包含随机选取的结果数组列表</returns>
-    private static List<int[]> CanRepeatRandom(int[][] array, int num, int weightIndex)
+    private static List<int[]> CanRepeatRandom(IReadOnlyList<int[]> array, int num, int weightIndex)
     {
         var totalWeight = 0;
         foreach (var arr in array)
@@ -659,7 +659,7 @@ public static class RandomHelper
     /// <param name="totalWeight">总权重</param>
     /// <param name="weightIndex">权重索引</param>
     /// <returns>随机选取的结果数组</returns>
-    private static int[] SingleRandom(int[][] array, int totalWeight, int weightIndex)
+    private static int[] SingleRandom(IReadOnlyList<int[]> array, int totalWeight, int weightIndex)
     {
         var r = ConcurrentCryptoRandom.Next(totalWeight);
         var temp = 0;
@@ -711,10 +711,10 @@ public static class RandomHelper
     /// <exception cref="ArgumentNullException">当array为null时抛出此异常</exception>
     /// <exception cref="ArgumentException">当array为空数组时抛出此异常</exception>
     /// <exception cref="ArgumentOutOfRangeException">当weightIndex小于0时抛出此异常</exception>
-    public static int Idx(int[][] array, int weightIndex = 1)
+    public static int Idx(IReadOnlyList<int[]> array, int weightIndex = 1)
     {
         ArgumentNullException.ThrowIfNull(array, nameof(array));
-        ArgumentOutOfRangeException.ThrowIfZero(array.Length, nameof(array));
+        ArgumentOutOfRangeException.ThrowIfZero(array.Count, nameof(array));
         ArgumentOutOfRangeException.ThrowIfNegative(weightIndex, nameof(weightIndex));
 
         var totalWeight = 0;
@@ -725,7 +725,7 @@ public static class RandomHelper
 
         var r = ConcurrentCryptoRandom.Next(totalWeight);
         var temp = 0;
-        for (var i = 0; i < array.Length; i++)
+        for (var i = 0; i < array.Count; i++)
         {
             var arr = array[i];
             temp += arr[weightIndex];
@@ -748,13 +748,13 @@ public static class RandomHelper
     /// <exception cref="ArgumentNullException">当array为null时抛出此异常</exception>
     /// <exception cref="ArgumentException">当array为空数组时抛出此异常</exception>
     /// <exception cref="ArgumentOutOfRangeException">当num小于0时抛出此异常</exception>
-    public static List<int> Ids(int[][] array, int num, bool isCanRepeat = true)
+    public static List<int> Ids(IReadOnlyList<int[]> array, int num, bool isCanRepeat = true)
     {
         ArgumentNullException.ThrowIfNull(array, nameof(array));
-        ArgumentOutOfRangeException.ThrowIfZero(array.Length, nameof(array));
+        ArgumentOutOfRangeException.ThrowIfZero(array.Count, nameof(array));
         ArgumentOutOfRangeException.ThrowIfNegative(num, nameof(num));
 
-        return RandomSelect(array, num, 1, isCanRepeat).Select(t => t[0]).ToList();
+        return RandomSelect(array.ToArray(), num, 1, isCanRepeat).Select(t => t[0]).ToList();
     }
 
     /// <summary>
@@ -803,13 +803,13 @@ public static class RandomHelper
     /// <exception cref="ArgumentNullException">当array为null时抛出此异常</exception>
     /// <exception cref="ArgumentException">当array为空数组时抛出此异常</exception>
     /// <exception cref="ArgumentOutOfRangeException">当num小于0时抛出此异常</exception>
-    public static List<int[]> Items(int[][] array, int num, bool isCanRepeat = true)
+    public static List<int[]> Items(IReadOnlyList<int[]> array, int num, bool isCanRepeat = true)
     {
         ArgumentNullException.ThrowIfNull(array, nameof(array));
-        ArgumentOutOfRangeException.ThrowIfZero(array.Length, nameof(array));
+        ArgumentOutOfRangeException.ThrowIfZero(array.Count, nameof(array));
         ArgumentOutOfRangeException.ThrowIfNegative(num, nameof(num));
 
-        return RandomSelect(array, num, 2, isCanRepeat);
+        return RandomSelect(array.ToArray(), num, 2, isCanRepeat);
     }
 
     /// <summary>

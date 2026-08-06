@@ -305,132 +305,233 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
             stopwatch.Restart();
             _requestResponseMatcher?.CleanupExpired();
 
-            // 熔断检查
-            if (!_circuitBreaker.IsAllowed(context.ServiceName))
+            var preconditionFailure = CheckPreconditions<TResponse>(context, stopwatch);
+            if (preconditionFailure != null)
             {
-                return RemoteCallResult<TResponse>.Fail(
-                    RemoteStatusCode.CircuitOpen,
-                    $"Circuit breaker is open for service: {context.ServiceName}",
-                    stopwatch.ElapsedMilliseconds,
-                    context.TraceId);
+                return preconditionFailure;
             }
 
-            // 健康探测检查
-            var healthScore = _healthEvaluator.GetHealthScore(context.ServiceName);
-            if (healthScore <= 0)
+            var attempt = await ExecuteAttemptAsync<TResponse>(context, requestMessage, stopwatch, attemptCount);
+            if (attempt.ShouldRetry)
             {
-                return RemoteCallResult<TResponse>.Fail(
-                    RemoteStatusCode.ServiceUnavailable,
-                    $"Service health score is {healthScore}, considered unavailable: {context.ServiceName}",
-                    stopwatch.ElapsedMilliseconds,
-                    context.TraceId);
+                await Task.Delay(_retryPolicy.GetRetryDelayMs(attemptCount));
+                continue;
             }
 
-            try
-            {
-                await RunBeforeInterceptorsAsync(context, requestMessage);
+            return attempt.Result;
+        }
+    }
 
-                if (_protocolVersionNegotiator != null && !_protocolVersionNegotiator.IsCompatible(requestMessage.GetType()))
-                {
-                    return RemoteCallResult<TResponse>.Fail(
+    /// <summary>
+    /// 执行调用前置检查（熔断器、端点健康评分）。
+    /// </summary>
+    /// <remarks>
+    /// Performs pre-call checks (circuit breaker, endpoint health score). Returns a failure result, or null when the call may proceed.
+    /// </remarks>
+    /// <typeparam name="TResponse">响应消息类型 / The response message type</typeparam>
+    /// <param name="context">调用上下文 / The call context</param>
+    /// <param name="stopwatch">计时器 / The elapsed-time stopwatch</param>
+    /// <returns>失败结果；通过检查时返回 null / A failure result; null when the call may proceed</returns>
+    private RemoteCallResult<TResponse> CheckPreconditions<TResponse>(RemoteCallContext context, Stopwatch stopwatch)
+        where TResponse : class, IResponseMessage
+    {
+        // 熔断检查
+        if (!_circuitBreaker.IsAllowed(context.ServiceName))
+        {
+            return RemoteCallResult<TResponse>.Fail(
+                RemoteStatusCode.CircuitOpen,
+                $"Circuit breaker is open for service: {context.ServiceName}",
+                stopwatch.ElapsedMilliseconds,
+                context.TraceId);
+        }
+
+        // 健康探测检查
+        var healthScore = _healthEvaluator.GetHealthScore(context.ServiceName);
+        if (healthScore <= 0)
+        {
+            return RemoteCallResult<TResponse>.Fail(
+                RemoteStatusCode.ServiceUnavailable,
+                $"Service health score is {healthScore}, considered unavailable: {context.ServiceName}",
+                stopwatch.ElapsedMilliseconds,
+                context.TraceId);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 执行一次请求尝试（拦截器、协议检查、信号量临界区、编码写入与响应匹配），并返回是否应重试。
+    /// </summary>
+    /// <remarks>
+    /// Performs a single request attempt (interceptors, protocol check, semaphore critical section, encoding/write, response matching). Returns the result and whether the caller should retry.
+    /// </remarks>
+    /// <typeparam name="TResponse">响应消息类型 / The response message type</typeparam>
+    /// <param name="context">调用上下文 / The call context</param>
+    /// <param name="requestMessage">请求消息对象 / The request message object</param>
+    /// <param name="stopwatch">计时器 / The elapsed-time stopwatch</param>
+    /// <param name="attemptCount">当前尝试序号（从 1 起）/ The current attempt number (1-based)</param>
+    /// <returns>本次尝试的结果与是否应重试 / The attempt result and whether the caller should retry</returns>
+    private async Task<(RemoteCallResult<TResponse> Result, bool ShouldRetry)> ExecuteAttemptAsync<TResponse>(
+        RemoteCallContext context, MessageObject requestMessage, Stopwatch stopwatch, int attemptCount)
+        where TResponse : class, IResponseMessage
+    {
+        try
+        {
+            await RunBeforeInterceptorsAsync(context, requestMessage);
+
+            if (_protocolVersionNegotiator != null && !_protocolVersionNegotiator.IsCompatible(requestMessage.GetType()))
+            {
+                return (
+                    RemoteCallResult<TResponse>.Fail(
                         RemoteStatusCode.UnexpectedResponse,
                         $"Protocol version incompatible for message type: {requestMessage.GetType().Name}",
+                        stopwatch.ElapsedMilliseconds,
+                        context.TraceId),
+                    false);
+            }
+
+            await _callSemaphore.WaitAsync(context.CancellationToken);
+            try
+            {
+                var stream = await _transportProtocolAdapter.GetOrCreateStreamAsync(context.ServiceName, context.CancellationToken);
+                if (stream == null)
+                {
+                    RecordFailures(context.ServiceName, "Failed to create connection");
+                    return (
+                        RemoteCallResult<TResponse>.Fail(
+                            RemoteStatusCode.ConnectionFailed,
+                            "Failed to create connection",
+                            stopwatch.ElapsedMilliseconds,
+                            context.TraceId),
+                        false);
+                }
+
+                var requestUniqueId = _requestResponseMatcher?.RegisterPendingRequest(context.TimeoutMs) ?? IdGenerator.GetNextUniqueIntId();
+                PrepareRequestMessage(requestMessage, requestUniqueId);
+
+                using (var requestBuffer = _messageCodec.Encode(requestMessage))
+                {
+                    await stream.WriteAsync(requestBuffer.Memory, context.CancellationToken);
+                    return (await ReadMatchedResponseAsync<TResponse>(stream, context, requestMessage, stopwatch, attemptCount), false);
+                }
+            }
+            finally
+            {
+                _callSemaphore.Release();
+            }
+        }
+        catch (RemoteEndpointNotFoundException endpointNotFoundException)
+        {
+            stopwatch.Stop();
+            RecordFailures(context.ServiceName, endpointNotFoundException.Message);
+            await RunExceptionInterceptorsAsync(context, requestMessage, endpointNotFoundException, stopwatch.ElapsedMilliseconds);
+            return (
+                RemoteCallResult<TResponse>.Fail(
+                    RemoteStatusCode.EndpointNotFound,
+                    "Failed to resolve service endpoint",
+                    stopwatch.ElapsedMilliseconds,
+                    context.TraceId),
+                false);
+        }
+        catch (OperationCanceledException)
+        {
+            stopwatch.Stop();
+            var cancellation = ToCancellationOutcome(context);
+
+            RecordFailures(context.ServiceName, cancellation.errorMessage);
+            await RunExceptionInterceptorsAsync(context, requestMessage, new TimeoutException(cancellation.errorMessage), stopwatch.ElapsedMilliseconds);
+
+            return (
+                RemoteCallResult<TResponse>.Fail(cancellation.statusCode, cancellation.errorMessage, stopwatch.ElapsedMilliseconds, context.TraceId),
+                ShouldRetry(context, cancellation.statusCode, attemptCount));
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            _transportProtocolAdapter.Invalidate();
+
+            RecordFailures(context.ServiceName, ex.Message);
+            await RunExceptionInterceptorsAsync(context, requestMessage, ex, stopwatch.ElapsedMilliseconds);
+
+            var statusCode = IsConnectionException(ex) ? RemoteStatusCode.ConnectionFailed : RemoteStatusCode.UnknownError;
+            return (
+                RemoteCallResult<TResponse>.Fail(statusCode, ex.Message, stopwatch.ElapsedMilliseconds, context.TraceId),
+                ShouldRetry(context, statusCode, attemptCount));
+        }
+    }
+
+    /// <summary>
+    /// 在链接取消令牌的超时窗口内循环读取并匹配响应。
+    /// </summary>
+    /// <remarks>
+    /// Reads and matches the response within a linked-token timeout window.
+    /// </remarks>
+    /// <typeparam name="TResponse">响应消息类型 / The response message type</typeparam>
+    /// <param name="stream">传输流 / The transport stream</param>
+    /// <param name="context">调用上下文 / The call context</param>
+    /// <param name="requestMessage">请求消息对象 / The request message object</param>
+    /// <param name="stopwatch">计时器 / The elapsed-time stopwatch</param>
+    /// <param name="attemptCount">当前尝试序号（从 1 起）/ The current attempt number (1-based)</param>
+    /// <returns>匹配到的响应结果 / The matched response result</returns>
+    private async Task<RemoteCallResult<TResponse>> ReadMatchedResponseAsync<TResponse>(
+        Stream stream, RemoteCallContext context, MessageObject requestMessage, Stopwatch stopwatch, int attemptCount)
+        where TResponse : class, IResponseMessage
+    {
+        using (var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken))
+        {
+            timeoutCts.CancelAfter(context.TimeoutMs);
+            while (true)
+            {
+                var responseMessage = await _messageCodec.DecodeAsync(stream, timeoutCts.Token);
+                if (responseMessage == null)
+                {
+                    RecordFailures(context.ServiceName, "Connection closed during response");
+                    return RemoteCallResult<TResponse>.Fail(
+                        RemoteStatusCode.ConnectionClosed,
+                        "Connection closed during response",
                         stopwatch.ElapsedMilliseconds,
                         context.TraceId);
                 }
 
-                await _callSemaphore.WaitAsync(context.CancellationToken);
-                try
+                _requestResponseMatcher?.TryComplete(responseMessage.UniqueId, responseMessage);
+                if (responseMessage.UniqueId != requestMessage.UniqueId)
                 {
-                    var stream = await _transportProtocolAdapter.GetOrCreateStreamAsync(context.ServiceName, context.CancellationToken);
-                    if (stream == null)
-                    {
-                        RecordFailures(context.ServiceName, "Failed to create connection");
-                        return RemoteCallResult<TResponse>.Fail(RemoteStatusCode.ConnectionFailed, "Failed to create connection", stopwatch.ElapsedMilliseconds, context.TraceId);
-                    }
-
-                    var requestUniqueId = _requestResponseMatcher?.RegisterPendingRequest(context.TimeoutMs) ?? IdGenerator.GetNextUniqueIntId();
-                    PrepareRequestMessage(requestMessage, requestUniqueId);
-
-                    using var requestBuffer = _messageCodec.Encode(requestMessage);
-                    await stream.WriteAsync(requestBuffer.Memory, context.CancellationToken);
-
-                    using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
-                    timeoutCts.CancelAfter(context.TimeoutMs);
-                    while (true)
-                    {
-                        var responseMessage = await _messageCodec.DecodeAsync(stream, timeoutCts.Token);
-                        if (responseMessage == null)
-                        {
-                            RecordFailures(context.ServiceName, "Connection closed during response");
-                            return RemoteCallResult<TResponse>.Fail(RemoteStatusCode.ConnectionClosed, "Connection closed during response", stopwatch.ElapsedMilliseconds, context.TraceId);
-                        }
-
-                        _requestResponseMatcher?.TryComplete(responseMessage.UniqueId, responseMessage);
-                        if (responseMessage.UniqueId != requestMessage.UniqueId)
-                        {
-                            continue;
-                        }
-
-                        stopwatch.Stop();
-                        var matchedResponse = responseMessage;
-                        if (matchedResponse is TResponse typedResponse)
-                        {
-                            RecordSuccess(context.ServiceName);
-                            await RunAfterInterceptorsAsync(context, requestMessage, responseMessage, stopwatch.ElapsedMilliseconds);
-                            return RemoteCallResult<TResponse>.Ok(typedResponse, stopwatch.ElapsedMilliseconds, context.TraceId, attemptCount - 1);
-                        }
-
-                        return RemoteCallResult<TResponse>.Fail(RemoteStatusCode.UnexpectedResponse, "Response type mismatch", stopwatch.ElapsedMilliseconds, context.TraceId);
-                    }
-                }
-                finally
-                {
-                    _callSemaphore.Release();
-                }
-            }
-            catch (RemoteEndpointNotFoundException endpointNotFoundException)
-            {
-                stopwatch.Stop();
-                RecordFailures(context.ServiceName, endpointNotFoundException.Message);
-                await RunExceptionInterceptorsAsync(context, requestMessage, endpointNotFoundException, stopwatch.ElapsedMilliseconds);
-                return RemoteCallResult<TResponse>.Fail(RemoteStatusCode.EndpointNotFound, "Failed to resolve service endpoint", stopwatch.ElapsedMilliseconds, context.TraceId);
-            }
-            catch (OperationCanceledException)
-            {
-                stopwatch.Stop();
-                var statusCode = context.CancellationToken.IsCancellationRequested ? RemoteStatusCode.Cancelled : RemoteStatusCode.Timeout;
-                var errorMessage = statusCode == RemoteStatusCode.Cancelled ? "Request was cancelled" : $"Request timed out after {context.TimeoutMs}ms";
-
-                RecordFailures(context.ServiceName, errorMessage);
-                await RunExceptionInterceptorsAsync(context, requestMessage, new TimeoutException(errorMessage), stopwatch.ElapsedMilliseconds);
-
-                if (ShouldRetry(context, statusCode, attemptCount))
-                {
-                    await Task.Delay(_retryPolicy.GetRetryDelayMs(attemptCount));
                     continue;
                 }
 
-                return RemoteCallResult<TResponse>.Fail(statusCode, errorMessage, stopwatch.ElapsedMilliseconds, context.TraceId);
-            }
-            catch (Exception ex)
-            {
                 stopwatch.Stop();
-                _transportProtocolAdapter.Invalidate();
-
-                RecordFailures(context.ServiceName, ex.Message);
-                await RunExceptionInterceptorsAsync(context, requestMessage, ex, stopwatch.ElapsedMilliseconds);
-
-                var statusCode = IsConnectionException(ex) ? RemoteStatusCode.ConnectionFailed : RemoteStatusCode.UnknownError;
-                if (ShouldRetry(context, statusCode, attemptCount))
+                if (responseMessage is TResponse typedResponse)
                 {
-                    await Task.Delay(_retryPolicy.GetRetryDelayMs(attemptCount));
-                    continue;
+                    RecordSuccess(context.ServiceName);
+                    await RunAfterInterceptorsAsync(context, requestMessage, responseMessage, stopwatch.ElapsedMilliseconds);
+                    return RemoteCallResult<TResponse>.Ok(typedResponse, stopwatch.ElapsedMilliseconds, context.TraceId, attemptCount - 1);
                 }
 
-                return RemoteCallResult<TResponse>.Fail(statusCode, ex.Message, stopwatch.ElapsedMilliseconds, context.TraceId);
+                return RemoteCallResult<TResponse>.Fail(
+                    RemoteStatusCode.UnexpectedResponse,
+                    "Response type mismatch",
+                    stopwatch.ElapsedMilliseconds,
+                    context.TraceId);
             }
         }
+    }
+
+    /// <summary>
+    /// 将取消异常映射为状态码与错误消息（区分主动取消与超时）。
+    /// </summary>
+    /// <remarks>
+    /// Maps a cancellation exception to a status code and error message (distinguishing explicit cancellation from timeout).
+    /// </remarks>
+    /// <param name="context">调用上下文 / The call context</param>
+    /// <returns>状态码与错误消息 / The status code and error message</returns>
+    private static (RemoteStatusCode statusCode, string errorMessage) ToCancellationOutcome(RemoteCallContext context)
+    {
+        if (context.CancellationToken.IsCancellationRequested)
+        {
+            return (RemoteStatusCode.Cancelled, "Request was cancelled");
+        }
+
+        return (RemoteStatusCode.Timeout, $"Request timed out after {context.TimeoutMs}ms");
     }
 
     /// <summary>
