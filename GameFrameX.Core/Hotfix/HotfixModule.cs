@@ -187,8 +187,11 @@ internal sealed class HotfixModule
                     while (weak.IsAlive && tryCount++ < 10)
                     {
                         await Task.Delay(100);
+                        // 可回收 AssemblyLoadContext 卸载后需强制 GC 以回收可卸载程序集并判定其是否真正释放，是 .NET 官方推荐模式，故此处有意保留 GC.Collect
+#pragma warning disable S1215 // 垃圾回收器不应被显式调用
                         GC.Collect();
                         GC.WaitForPendingFinalizers();
+#pragma warning restore S1215
                     }
 
                     LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.Hotfix.DllUninstall, weak.IsAlive ? "failure" : "successful"));
