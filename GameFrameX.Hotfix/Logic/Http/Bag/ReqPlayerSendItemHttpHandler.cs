@@ -47,16 +47,16 @@ namespace GameFrameX.Hotfix.Logic.Http.Bag;
 [Description("请求给玩家发送道具")]
 public sealed class ReqPlayerSendItemHttpHandler : BaseHttpHandler
 {
-    public override async Task<string> Action(string ip, string url, HttpMessageRequestBase requestBase)
+    public override async Task<string> Action(string ip, string url, HttpMessageRequestBase request)
     {
-        var request = (ReqPlayerSendItemRequest)requestBase;
-        var playerSession = SessionManager.GetByRoleId(request.RoleId);
+        var sendItemRequest = (ReqPlayerSendItemRequest)request;
+        var playerSession = SessionManager.GetByRoleId(sendItemRequest.RoleId);
         Dictionary<int, long> itemDic = new Dictionary<int, long>();
 
         var tbItemConfig = ConfigComponent.Instance.GetConfig<TbItemConfig>();
         if (tbItemConfig != null)
         {
-            foreach (var item in request.Items)
+            foreach (var item in sendItemRequest.Items)
             {
                 if (!tbItemConfig.TryGet(item.Key, out var tbItemConfigItem))
                 {
@@ -68,72 +68,78 @@ public sealed class ReqPlayerSendItemHttpHandler : BaseHttpHandler
         }
 
         // 发送道具事件
-        var playerSendItemEventData = new PlayerSendItemEventArgs(request.RoleId, itemDic);
-        EventDispatcher.Dispatch(request.RoleId, (int)EventId.PlayerSendItem, playerSendItemEventData);
+        var playerSendItemEventData = new PlayerSendItemEventArgs(sendItemRequest.RoleId, itemDic);
+        EventDispatcher.Dispatch(sendItemRequest.RoleId, (int)EventId.PlayerSendItem, playerSendItemEventData);
         if (playerSession.IsNotNull())
         {
             // 玩家在线
-            var bagComponentAgent = await ActorManager.GetComponentAgent<BagComponentAgent>(request.RoleId);
+            var bagComponentAgent = await ActorManager.GetComponentAgent<BagComponentAgent>(sendItemRequest.RoleId);
             await bagComponentAgent.UpdateChanged(playerSession.WorkChannel, itemDic);
         }
         else
         {
             // 玩家不在线
-            var bagState = await GameDb.FindAsync<BagState>(request.RoleId);
-
-            foreach (var item in itemDic)
-            {
-                if (bagState.List.TryGetValue(item.Key, out var value))
-                {
-                    value.Count += item.Value;
-                    if (value.Count <= 0)
-                    {
-                        bagState.List.Remove(item.Key);
-                    }
-                }
-                else
-                {
-                    var bagItem = new BagItemState
-                    {
-                        Count = item.Value,
-                        ItemId = item.Key,
-                    };
-                    bagState.List[item.Key] = bagItem;
-                }
-            }
-
-            await GameDb.SaveOneAsync(bagState);
-
-            // 离线落库后尝试统一通知（若玩家刚上线可立即收到；仍离线则按策略丢弃）
-            var notifyBagInfoChanged = new NotifyBagInfoChanged();
-            foreach (var item in itemDic)
-            {
-                notifyBagInfoChanged.ItemDic[item.Key] = new NotifyBagItem
-                {
-                    ItemId = item.Key,
-                    Count = bagState.List.TryGetValue(item.Key, out var bagItemState) ? bagItemState.Count : 0,
-                    Value = item.Value,
-                };
-            }
-
-            var notifyOptions = PlayerSendOptions.Notification();
-            notifyOptions.OfflineStrategy = PlayerOfflineStrategy.Discard;
-            var notifyResult = await UnifiedMessageSenderHolder.Sender.SendToPlayerAsync(
-                request.RoleId,
-                notifyBagInfoChanged,
-                notifyOptions);
-            if (!notifyResult.IsSuccess && notifyResult.Status != PlayerDeliverStatus.Offline)
-            {
-                LogHelper.Warning(
-                    "ReqPlayerSendItemHttpHandler 离线通知发送失败, roleId: {roleId}, status: {status}, error: {error}, traceId: {traceId}",
-                    request.RoleId,
-                    notifyResult.Status,
-                    notifyResult.ErrorMessage,
-                    notifyResult.TraceId);
-            }
+            await UpdateOfflineBagAsync(sendItemRequest.RoleId, itemDic);
         }
 
         return HttpJsonResult.SuccessString(new ReqPlayerSendItemResponse { Items = itemDic, });
+    }
+
+    // 玩家不在线：直接落库并尝试发送道具变更通知（若玩家刚上线可立即收到；仍离线则按策略丢弃）
+    private static async Task UpdateOfflineBagAsync(long roleId, Dictionary<int, long> itemDic)
+    {
+        var bagState = await GameDb.FindAsync<BagState>(roleId);
+
+        foreach (var item in itemDic)
+        {
+            if (bagState.List.TryGetValue(item.Key, out var value))
+            {
+                value.Count += item.Value;
+                if (value.Count <= 0)
+                {
+                    bagState.List.Remove(item.Key);
+                }
+            }
+            else
+            {
+                var bagItem = new BagItemState
+                {
+                    Count = item.Value,
+                    ItemId = item.Key,
+                };
+                bagState.List[item.Key] = bagItem;
+            }
+        }
+
+        await GameDb.SaveOneAsync(bagState);
+
+        // 离线落库后尝试统一通知（若玩家刚上线可立即收到；仍离线则按策略丢弃）
+        var notifyBagInfoChanged = new NotifyBagInfoChanged();
+        foreach (var item in itemDic)
+        {
+            notifyBagInfoChanged.ItemDic[item.Key] = new NotifyBagItem
+            {
+                ItemId = item.Key,
+                Count = bagState.List.TryGetValue(item.Key, out var bagItemState) ? bagItemState.Count : 0,
+                Value = item.Value,
+            };
+        }
+
+        var notifyOptions = PlayerSendOptions.Notification();
+        notifyOptions.OfflineStrategy = PlayerOfflineStrategy.Discard;
+        var notifyResult = await UnifiedMessageSenderHolder.Sender.SendToPlayerAsync(
+            roleId,
+            notifyBagInfoChanged,
+            notifyOptions);
+        if (!notifyResult.IsSuccess && notifyResult.Status != PlayerDeliverStatus.Offline)
+        {
+            LogHelper.Warning(
+                "ReqPlayerSendItemHttpHandler 离线通知发送失败, roleId: {roleId}, status: {status}, error: {error}, traceId: {traceId}",
+                roleId,
+                notifyResult.Status,
+                notifyResult.ErrorMessage,
+                notifyResult.TraceId);
+        }
     }
 }
 
