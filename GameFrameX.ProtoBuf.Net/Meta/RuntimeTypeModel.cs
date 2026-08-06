@@ -168,86 +168,19 @@ public sealed class RuntimeTypeModel : TypeModel
         var requiredTypes = new BasicList();
         MetaType primaryType = null;
         var isInbuiltType = false;
+
         if (type == null)
         {
-            // generate for the entire model
-            foreach (MetaType meta in types)
-            {
-                var tmp = meta.GetSurrogateOrBaseOrSelf(false);
-                if (!requiredTypes.Contains(tmp))
-                {
-                    // ^^^ note that the type might have been added as a descendent
-                    requiredTypes.Add(tmp);
-                    CascadeDependents(requiredTypes, tmp);
-                }
-            }
+            CollectAllModelTypes(requiredTypes);
         }
         else
         {
-            var tmp = Helpers.GetUnderlyingType(type);
-            if (tmp != null)
-            {
-                type = tmp;
-            }
-
-            WireType defaultWireType;
-            isInbuiltType = ValueMember.TryGetCoreSerializer(this, DataFormat.Default, type, out defaultWireType, false, false, false, false) != null;
-            if (!isInbuiltType)
-            {
-                //Agenerate just relative to the supplied type
-                var index = FindOrAddAuto(type, false, false);
-                if (index < 0)
-                {
-                    throw new ArgumentException("The type specified is not a contract-type", "type");
-                }
-
-                // get the required types
-                primaryType = ((MetaType)types[index]).GetSurrogateOrBaseOrSelf(false);
-                requiredTypes.Add(primaryType);
-                CascadeDependents(requiredTypes, primaryType);
-            }
+            type = CollectSingleSchemaType(type, requiredTypes, out primaryType, out isInbuiltType);
         }
 
         // use the provided type's namespace for the "package"
         var headerBuilder = new StringBuilder();
-        string package = null;
-
-        if (!isInbuiltType)
-        {
-            IEnumerable typesForNamespace = primaryType == null ? types : requiredTypes;
-            foreach (MetaType meta in typesForNamespace)
-            {
-                if (meta.IsList)
-                {
-                    continue;
-                }
-
-                var tmp = meta.Type.Namespace;
-                if (!string.IsNullOrEmpty(tmp))
-                {
-                    if (tmp.StartsWith("System."))
-                    {
-                        continue;
-                    }
-
-                    if (package == null)
-                    {
-                        // haven't seen any suggestions yet
-                        package = tmp;
-                    }
-                    else if (package == tmp)
-                    {
-                        // that's fine; a repeat of the one we already saw
-                    }
-                    else
-                    {
-                        // something else; have confliucting suggestions; abort
-                        package = null;
-                        break;
-                    }
-                }
-            }
-        }
+        string package = ResolveSchemaPackage(primaryType, requiredTypes, isInbuiltType);
 
         switch (syntax)
         {
@@ -274,6 +207,112 @@ public sealed class RuntimeTypeModel : TypeModel
         requiredTypes.CopyTo(metaTypesArr, 0);
         Array.Sort(metaTypesArr, MetaType.Comparer.Default);
 
+        AppendSchemaBody(bodyBuilder, type, primaryType, isInbuiltType, metaTypesArr, syntax, ref imports);
+        AppendSchemaImports(headerBuilder, imports);
+
+        return Helpers.AppendLine(headerBuilder.Append(bodyBuilder)).ToString();
+    }
+
+    private void CollectAllModelTypes(BasicList requiredTypes)
+    {
+        // generate for the entire model
+        foreach (MetaType meta in types)
+        {
+            var tmp = meta.GetSurrogateOrBaseOrSelf(false);
+            if (!requiredTypes.Contains(tmp))
+            {
+                // ^^^ note that the type might have been added as a descendent
+                requiredTypes.Add(tmp);
+                CascadeDependents(requiredTypes, tmp);
+            }
+        }
+    }
+
+    private Type CollectSingleSchemaType(Type type, BasicList requiredTypes, out MetaType primaryType, out bool isInbuiltType)
+    {
+        primaryType = null;
+        isInbuiltType = false;
+
+        var tmp = Helpers.GetUnderlyingType(type);
+        if (tmp != null)
+        {
+            type = tmp;
+        }
+
+        WireType defaultWireType;
+        isInbuiltType = ValueMember.TryGetCoreSerializer(this, DataFormat.Default, type, out defaultWireType, false, false, false, false) != null;
+        if (!isInbuiltType)
+        {
+            //Agenerate just relative to the supplied type
+            var index = FindOrAddAuto(type, false, false);
+            if (index < 0)
+            {
+                throw new ArgumentException("The type specified is not a contract-type", "type");
+            }
+
+            // get the required types
+            primaryType = ((MetaType)types[index]).GetSurrogateOrBaseOrSelf(false);
+            requiredTypes.Add(primaryType);
+            CascadeDependents(requiredTypes, primaryType);
+        }
+
+        return type;
+    }
+
+    private string ResolveSchemaPackage(MetaType primaryType, BasicList requiredTypes, bool isInbuiltType)
+    {
+        if (isInbuiltType)
+        {
+            return null;
+        }
+
+        string package = null;
+        IEnumerable typesForNamespace = primaryType == null ? types : requiredTypes;
+        foreach (MetaType meta in typesForNamespace)
+        {
+            if (meta.IsList)
+            {
+                continue;
+            }
+
+            if (!MergeSchemaNamespace(meta.Type.Namespace, ref package))
+            {
+                // something else; have confliucting suggestions; abort
+                return null;
+            }
+        }
+
+        return package;
+    }
+
+    private static bool MergeSchemaNamespace(string ns, ref string package)
+    {
+        if (string.IsNullOrEmpty(ns))
+        {
+            return true;
+        }
+
+        if (ns.StartsWith("System."))
+        {
+            return true;
+        }
+
+        if (package == null)
+        {
+            // haven't seen any suggestions yet
+            package = ns;
+        }
+        else if (package != ns)
+        {
+            // that's fine; a repeat of the one we already saw
+            return false;
+        }
+
+        return true;
+    }
+
+    private void AppendSchemaBody(StringBuilder bodyBuilder, Type type, MetaType primaryType, bool isInbuiltType, MetaType[] metaTypesArr, ProtoSyntax syntax, ref CommonImports imports)
+    {
         // write the messages
         if (isInbuiltType)
         {
@@ -295,7 +334,10 @@ public sealed class RuntimeTypeModel : TypeModel
                 tmp.WriteSchema(bodyBuilder, 0, ref imports, syntax);
             }
         }
+    }
 
+    private static void AppendSchemaImports(StringBuilder headerBuilder, CommonImports imports)
+    {
         if ((imports & CommonImports.Bcl) != 0)
         {
             headerBuilder.Append("import \"protobuf-net/bcl.proto\"; // schema for protobuf-net's handling of core .NET types");
@@ -319,8 +361,6 @@ public sealed class RuntimeTypeModel : TypeModel
             headerBuilder.Append("import \"google/protobuf/duration.proto\";");
             Helpers.AppendLine(headerBuilder);
         }
-
-        return Helpers.AppendLine(headerBuilder.Append(bodyBuilder)).ToString();
     }
 
     [Flags]
@@ -335,83 +375,109 @@ public sealed class RuntimeTypeModel : TypeModel
 
     private void CascadeDependents(BasicList list, MetaType metaType)
     {
-        MetaType tmp;
         if (metaType.IsList)
         {
             var itemType = GetListItemType(this, metaType.Type);
             TryGetCoreSerializer(list, itemType);
+            return;
+        }
+
+        if (metaType.IsAutoTuple)
+        {
+            CascadeTupleDependents(list, metaType);
         }
         else
         {
-            if (metaType.IsAutoTuple)
-            {
-                MemberInfo[] mapping;
-                if (MetaType.ResolveTupleConstructor(metaType.Type, out mapping) != null)
-                {
-                    for (var i = 0; i < mapping.Length; i++)
-                    {
-                        Type type = null;
-                        if (mapping[i] is PropertyInfo)
-                        {
-                            type = ((PropertyInfo)mapping[i]).PropertyType;
-                        }
-                        else if (mapping[i] is FieldInfo)
-                        {
-                            type = ((FieldInfo)mapping[i]).FieldType;
-                        }
+            CascadeFieldDependents(list, metaType);
+        }
 
-                        TryGetCoreSerializer(list, type);
-                    }
+        CascadeGenericArguments(list, metaType);
+        CascadeSubtypes(list, metaType);
+        CascadeBaseType(list, metaType);
+    }
+
+    private void CascadeTupleDependents(BasicList list, MetaType metaType)
+    {
+        MemberInfo[] mapping;
+        if (MetaType.ResolveTupleConstructor(metaType.Type, out mapping) != null)
+        {
+            for (var i = 0; i < mapping.Length; i++)
+            {
+                TryGetCoreSerializer(list, GetTupleMemberType(mapping[i]));
+            }
+        }
+    }
+
+    private static Type GetTupleMemberType(MemberInfo member)
+    {
+        if (member is PropertyInfo)
+        {
+            return ((PropertyInfo)member).PropertyType;
+        }
+
+        if (member is FieldInfo)
+        {
+            return ((FieldInfo)member).FieldType;
+        }
+
+        return null;
+    }
+
+    private void CascadeFieldDependents(BasicList list, MetaType metaType)
+    {
+        foreach (ValueMember member in metaType.Fields)
+        {
+            var type = member.ItemType;
+            if (member.IsMap)
+            {
+                member.ResolveMapTypes(out _, out _, out type); // don't need key-type
+            }
+
+            if (type == null)
+            {
+                type = member.MemberType;
+            }
+
+            TryGetCoreSerializer(list, type);
+        }
+    }
+
+    private void CascadeGenericArguments(BasicList list, MetaType metaType)
+    {
+        foreach (var genericArgument in metaType.GetAllGenericArguments())
+        {
+            TryGetCoreSerializer(list, genericArgument);
+        }
+    }
+
+    private void CascadeSubtypes(BasicList list, MetaType metaType)
+    {
+        if (metaType.HasSubtypes)
+        {
+            foreach (var subType in metaType.GetSubtypes())
+            {
+                var tmp = subType.DerivedType.GetSurrogateOrSelf(); // note: exclude base-types!
+                if (!list.Contains(tmp))
+                {
+                    list.Add(tmp);
+                    CascadeDependents(list, tmp);
                 }
             }
-            else
-            {
-                foreach (ValueMember member in metaType.Fields)
-                {
-                    var type = member.ItemType;
-                    if (member.IsMap)
-                    {
-                        member.ResolveMapTypes(out _, out _, out type); // don't need key-type
-                    }
+        }
+    }
 
-                    if (type == null)
-                    {
-                        type = member.MemberType;
-                    }
+    private void CascadeBaseType(BasicList list, MetaType metaType)
+    {
+        var tmp = metaType.BaseType;
+        if (tmp != null)
+        {
+            tmp = tmp.GetSurrogateOrSelf(); // note: already walking base-types; exclude base
+        }
 
-                    TryGetCoreSerializer(list, type);
-                }
-            }
-
-            foreach (var genericArgument in metaType.GetAllGenericArguments())
-            {
-                TryGetCoreSerializer(list, genericArgument);
-            }
-
-            if (metaType.HasSubtypes)
-            {
-                foreach (var subType in metaType.GetSubtypes())
-                {
-                    tmp = subType.DerivedType.GetSurrogateOrSelf(); // note: exclude base-types!
-                    if (!list.Contains(tmp))
-                    {
-                        list.Add(tmp);
-                        CascadeDependents(list, tmp);
-                    }
-                }
-            }
-
-            tmp = metaType.BaseType;
-            if (tmp != null)
-            {
-                tmp = tmp.GetSurrogateOrSelf(); // note: already walking base-types; exclude base
-            }
-
-            if (tmp != null && !list.Contains(tmp))
-            {
-                list.Add(tmp);
-                CascadeDependents(list, tmp);
-            }
+        if (tmp != null && !list.Contains(tmp))
+        {
+            list.Add(tmp);
+            CascadeDependents(list, tmp);
         }
     }
 
@@ -641,69 +707,89 @@ public sealed class RuntimeTypeModel : TypeModel
 
         if (key < 0)
         {
-            var opaqueToken = 0;
-            var origType = type;
-            var weAdded = false;
-            try
-            {
-                TakeLock(ref opaqueToken);
-                // try to recognise a few familiar patterns...
-                if ((metaType = RecogniseCommonTypes(type)) == null)
-                {
-                    // otherwise, check if it is a contract
-                    var family = MetaType.GetContractFamily(this, type, null);
-                    if (family == MetaType.AttributeFamily.AutoTuple)
-                    {
-                        shouldAdd = addEvenIfAutoDisabled = true; // always add basic tuples, such as KeyValuePair
-                    }
-
-                    if (!shouldAdd || (
-                                          !Helpers.IsEnum(type) && addWithContractOnly && family == MetaType.AttributeFamily.None)
-                       )
-                    {
-                        if (demand)
-                        {
-                            ThrowUnexpectedType(type);
-                        }
-
-                        return key;
-                    }
-
-                    metaType = Create(type);
-                }
-
-                metaType.Pending = true;
-
-                // double-checked
-                var winner = types.IndexOf(MetaTypeFinder, type);
-                if (winner < 0)
-                {
-                    ThrowIfFrozen();
-                    key = types.Add(metaType);
-                    weAdded = true;
-                }
-                else
-                {
-                    key = winner;
-                }
-
-                if (weAdded)
-                {
-                    metaType.ApplyDefaultBehaviour();
-                    metaType.Pending = false;
-                }
-            }
-            finally
-            {
-                ReleaseLock(opaqueToken);
-                if (weAdded)
-                {
-                    ResetKeyCache();
-                }
-            }
+            key = ResolveNewMetaType(type, key, demand, addWithContractOnly, ref shouldAdd, ref addEvenIfAutoDisabled);
         }
 
         return key;
+    }
+
+    private int ResolveNewMetaType(Type type, int key, bool demand, bool addWithContractOnly, ref bool shouldAdd, ref bool addEvenIfAutoDisabled)
+    {
+        var opaqueToken = 0;
+        var origType = type;
+        var weAdded = false;
+        MetaType metaType;
+        try
+        {
+            TakeLock(ref opaqueToken);
+            if (!TryRecogniseOrCreate(type, demand, addWithContractOnly, ref shouldAdd, ref addEvenIfAutoDisabled, out metaType))
+            {
+                return key;
+            }
+
+            metaType.Pending = true;
+
+            // double-checked
+            var winner = types.IndexOf(MetaTypeFinder, type);
+            if (winner < 0)
+            {
+                ThrowIfFrozen();
+                key = types.Add(metaType);
+                weAdded = true;
+            }
+            else
+            {
+                key = winner;
+            }
+
+            if (weAdded)
+            {
+                metaType.ApplyDefaultBehaviour();
+                metaType.Pending = false;
+            }
+        }
+        finally
+        {
+            ReleaseLock(opaqueToken);
+            if (weAdded)
+            {
+                ResetKeyCache();
+            }
+        }
+        return key;
+    }
+
+    private bool TryRecogniseOrCreate(Type type, bool demand, bool addWithContractOnly, ref bool shouldAdd, ref bool addEvenIfAutoDisabled, out MetaType metaType)
+    {
+        // try to recognise a few familiar patterns...
+        metaType = RecogniseCommonTypes(type);
+        if (metaType != null)
+        {
+            return true;
+        }
+
+        // otherwise, check if it is a contract
+        var family = MetaType.GetContractFamily(this, type, null);
+        if (family == MetaType.AttributeFamily.AutoTuple)
+        {
+            shouldAdd = addEvenIfAutoDisabled = true; // always add basic tuples, such as KeyValuePair
+        }
+
+        if (!shouldAdd || (
+                              !Helpers.IsEnum(type) && addWithContractOnly && family == MetaType.AttributeFamily.None)
+           )
+        {
+            if (demand)
+            {
+                ThrowUnexpectedType(type);
+            }
+
+            metaType = null;
+            return false;
+        }
+
+        metaType = Create(type);
+        return true;
     }
 
     private MetaType RecogniseCommonTypes(Type type)
@@ -1946,20 +2032,7 @@ public sealed class RuntimeTypeModel : TypeModel
         // handle arrays
         if (type.IsArray)
         {
-            if (type.GetArrayRank() != 1)
-            {
-                throw new NotSupportedException("Multi-dimension arrays are supported");
-            }
-
-            itemType = type.GetElementType();
-            if (itemType == MapType(typeof(byte)))
-            {
-                defaultType = itemType = null;
-            }
-            else
-            {
-                defaultType = type;
-            }
+            ResolveArrayType(type, ref itemType, ref defaultType);
         }
         else
         {
@@ -1970,7 +2043,7 @@ public sealed class RuntimeTypeModel : TypeModel
             }
         }
 
-        // handle lists 
+        // handle lists
         if (itemType == null)
         {
             itemType = GetListItemType(this, type);
@@ -1989,47 +2062,70 @@ public sealed class RuntimeTypeModel : TypeModel
 
         if (itemType != null && defaultType == null)
         {
-#if COREFX || PROFILE259
-				TypeInfo typeInfo = IntrospectionExtensions.GetTypeInfo(type);
-                if (typeInfo.IsClass && !typeInfo.IsAbstract && Helpers.GetConstructor(typeInfo, Helpers.EmptyTypes, true) != null)
-#else
-            if (type.IsClass && !type.IsAbstract && Helpers.GetConstructor(type, Helpers.EmptyTypes, true) != null)
-#endif
-            {
-                defaultType = type;
-            }
+            ResolveDefaultListType(type, itemType, ref defaultType);
+        }
+    }
 
-            if (defaultType == null)
-            {
+    private void ResolveArrayType(Type type, ref Type itemType, ref Type defaultType)
+    {
+        if (type.GetArrayRank() != 1)
+        {
+            throw new NotSupportedException("Multi-dimension arrays are supported");
+        }
+
+        itemType = type.GetElementType();
+        if (itemType == MapType(typeof(byte)))
+        {
+            defaultType = itemType = null;
+        }
+        else
+        {
+            defaultType = type;
+        }
+    }
+
+    private void ResolveDefaultListType(Type type, Type itemType, ref Type defaultType)
+    {
+#if COREFX || PROFILE259
+				TypeInfo typeInfo = Introspection.Extensions.GetTypeInfo(type);
+            if (typeInfo.IsClass && !typeInfo.IsAbstract && Helpers.GetConstructor(typeInfo, Helpers.EmptyTypes, true) != null)
+#else
+        if (type.IsClass && !type.IsAbstract && Helpers.GetConstructor(type, Helpers.EmptyTypes, true) != null)
+#endif
+        {
+            defaultType = type;
+        }
+
+        if (defaultType == null)
+        {
 #if COREFX || PROFILE259
 					if (typeInfo.IsInterface)
 #else
-                if (type.IsInterface)
+            if (type.IsInterface)
+#endif
+            {
+                Type[] genArgs;
+#if COREFX || PROFILE259
+                    if (typeInfo.IsGenericType && typeInfo.GetGenericTypeDefinition() == typeof(System.Collections.Generic.IDictionary<,>)
+                        && itemType == typeof(System.Collections.Generic.KeyValuePair<,>).MakeGenericType(genArgs = typeInfo.GenericTypeArguments))
+#else
+                if (type.IsGenericType && type.GetGenericTypeDefinition() == MapType(typeof(IDictionary<,>))
+                                       && itemType == MapType(typeof(KeyValuePair<,>)).MakeGenericType(genArgs = type.GetGenericArguments()))
 #endif
                 {
-                    Type[] genArgs;
-#if COREFX || PROFILE259
-                        if (typeInfo.IsGenericType && typeInfo.GetGenericTypeDefinition() == typeof(System.Collections.Generic.IDictionary<,>)
-                            && itemType == typeof(System.Collections.Generic.KeyValuePair<,>).MakeGenericType(genArgs = typeInfo.GenericTypeArguments))
-#else
-                    if (type.IsGenericType && type.GetGenericTypeDefinition() == MapType(typeof(IDictionary<,>))
-                                           && itemType == MapType(typeof(KeyValuePair<,>)).MakeGenericType(genArgs = type.GetGenericArguments()))
-#endif
-                    {
-                        defaultType = MapType(typeof(Dictionary<,>)).MakeGenericType(genArgs);
-                    }
-                    else
-                    {
-                        defaultType = MapType(typeof(List<>)).MakeGenericType(itemType);
-                    }
+                    defaultType = MapType(typeof(Dictionary<,>)).MakeGenericType(genArgs);
+                }
+                else
+                {
+                    defaultType = MapType(typeof(List<>)).MakeGenericType(itemType);
                 }
             }
+        }
 
-            // verify that the default type is appropriate
-            if (defaultType != null && !Helpers.IsAssignableFrom(type, defaultType))
-            {
-                defaultType = null;
-            }
+        // verify that the default type is appropriate
+        if (defaultType != null && !Helpers.IsAssignableFrom(type, defaultType))
+        {
+            defaultType = null;
         }
     }
 
@@ -2070,6 +2166,11 @@ public sealed class RuntimeTypeModel : TypeModel
             return asReference ? ".bcl.NetObjectProxy" : "string";
         }
 
+        return GetCoreTypeSchemaName(effectiveType, dataFormat, asReference, ref imports);
+    }
+
+    private string GetCoreTypeSchemaName(Type effectiveType, DataFormat dataFormat, bool asReference, ref CommonImports imports)
+    {
         switch (Helpers.GetTypeCode(effectiveType))
         {
             case ProtoTypeCode.Boolean: return "bool";
@@ -2086,55 +2187,19 @@ public sealed class RuntimeTypeModel : TypeModel
             case ProtoTypeCode.Char:
             case ProtoTypeCode.UInt16:
             case ProtoTypeCode.UInt32:
-                switch (dataFormat)
-                {
-                    case DataFormat.FixedSize: return "fixed32";
-                    default:                   return "uint32";
-                }
+                return GetUnsignedInt32SchemaName(dataFormat);
             case ProtoTypeCode.SByte:
             case ProtoTypeCode.Int16:
             case ProtoTypeCode.Int32:
-                switch (dataFormat)
-                {
-                    case DataFormat.ZigZag:    return "sint32";
-                    case DataFormat.FixedSize: return "sfixed32";
-                    default:                   return "int32";
-                }
+                return GetSignedInt32SchemaName(dataFormat);
             case ProtoTypeCode.UInt64:
-                switch (dataFormat)
-                {
-                    case DataFormat.FixedSize: return "fixed64";
-                    default:                   return "uint64";
-                }
+                return GetUInt64SchemaName(dataFormat);
             case ProtoTypeCode.Int64:
-                switch (dataFormat)
-                {
-                    case DataFormat.ZigZag:    return "sint64";
-                    case DataFormat.FixedSize: return "sfixed64";
-                    default:                   return "int64";
-                }
+                return GetInt64SchemaName(dataFormat);
             case ProtoTypeCode.DateTime:
-                switch (dataFormat)
-                {
-                    case DataFormat.FixedSize: return "sint64";
-                    case DataFormat.WellKnown:
-                        imports |= CommonImports.Timestamp;
-                        return ".google.protobuf.Timestamp";
-                    default:
-                        imports |= CommonImports.Bcl;
-                        return ".bcl.DateTime";
-                }
+                return GetDateTimeSchemaName(dataFormat, ref imports);
             case ProtoTypeCode.TimeSpan:
-                switch (dataFormat)
-                {
-                    case DataFormat.FixedSize: return "sint64";
-                    case DataFormat.WellKnown:
-                        imports |= CommonImports.Duration;
-                        return ".google.protobuf.Duration";
-                    default:
-                        imports |= CommonImports.Bcl;
-                        return ".bcl.TimeSpan";
-                }
+                return GetTimeSpanSchemaName(dataFormat, ref imports);
             case ProtoTypeCode.Decimal:
                 imports |= CommonImports.Bcl;
                 return ".bcl.Decimal";
@@ -2143,6 +2208,72 @@ public sealed class RuntimeTypeModel : TypeModel
                 return ".bcl.Guid";
             case ProtoTypeCode.Type: return "string";
             default:                 throw new NotSupportedException("No .proto map found for: " + effectiveType.FullName);
+        }
+    }
+
+    private static string GetUnsignedInt32SchemaName(DataFormat dataFormat)
+    {
+        switch (dataFormat)
+        {
+            case DataFormat.FixedSize: return "fixed32";
+            default:                   return "uint32";
+        }
+    }
+
+    private static string GetSignedInt32SchemaName(DataFormat dataFormat)
+    {
+        switch (dataFormat)
+        {
+            case DataFormat.ZigZag:    return "sint32";
+            case DataFormat.FixedSize: return "sfixed32";
+            default:                   return "int32";
+        }
+    }
+
+    private static string GetUInt64SchemaName(DataFormat dataFormat)
+    {
+        switch (dataFormat)
+        {
+            case DataFormat.FixedSize: return "fixed64";
+            default:                   return "uint64";
+        }
+    }
+
+    private static string GetInt64SchemaName(DataFormat dataFormat)
+    {
+        switch (dataFormat)
+        {
+            case DataFormat.ZigZag:    return "sint64";
+            case DataFormat.FixedSize: return "sfixed64";
+            default:                   return "int64";
+        }
+    }
+
+    private static string GetDateTimeSchemaName(DataFormat dataFormat, ref CommonImports imports)
+    {
+        switch (dataFormat)
+        {
+            case DataFormat.FixedSize: return "sint64";
+            case DataFormat.WellKnown:
+                imports |= CommonImports.Timestamp;
+                return ".google.protobuf.Timestamp";
+            default:
+                imports |= CommonImports.Bcl;
+                return ".bcl.DateTime";
+        }
+    }
+
+    private static string GetTimeSpanSchemaName(DataFormat dataFormat, ref CommonImports imports)
+    {
+        switch (dataFormat)
+        {
+            case DataFormat.FixedSize: return "sint64";
+            case DataFormat.WellKnown:
+                imports |= CommonImports.Duration;
+                return ".google.protobuf.Duration";
+            default:
+                imports |= CommonImports.Bcl;
+                return ".bcl.TimeSpan";
         }
     }
 
