@@ -43,11 +43,11 @@ public sealed class ReloadHttpHandler : BaseHttpHandler
     /// </summary>
     /// <param name="ip"></param>
     /// <param name="url"></param>
-    /// <param name="parameters"></param>
+    /// <param name="paramMap"></param>
     /// <returns></returns>
-    public override async Task<string> Action(string ip, string url, Dictionary<string, object> parameters)
+    public override async Task<string> Action(string ip, string url, Dictionary<string, object> paramMap)
     {
-        if (parameters.TryGetValue("version", out var version))
+        if (paramMap.TryGetValue("version", out var version))
         {
             await HotfixManager.LoadHotfixModule(null, version.ToString());
             return Task.FromResult(HttpJsonResult.SuccessString(null)).Result;
