@@ -160,6 +160,7 @@
 //************************************************************************************
 
 
+using System.Security.Cryptography;
 using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Utility;
@@ -247,14 +248,14 @@ public sealed class BigInteger
         {
             if (value != 0 || (data[maxLength - 1] & 0x80000000) != 0)
             {
-                throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.ConstructorOverflow));
+                throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ConstructorOverflow));
             }
         }
         else if (tempVal < 0) // 负值下溢检查
         {
             if (value != -1 || (data[dataLength - 1] & 0x80000000) == 0)
             {
-                throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.ConstructorUnderflow));
+                throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ConstructorUnderflow));
             }
         }
 
@@ -288,7 +289,7 @@ public sealed class BigInteger
 
         if (value != 0 || (data[maxLength - 1] & 0x80000000) != 0)
         {
-            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ConstructorOverflow));
+            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ConstructorOverflow));
         }
 
         if (dataLength == 0)
@@ -356,24 +357,11 @@ public sealed class BigInteger
 
         for (var i = value.Length - 1; i >= limit; i--)
         {
-            int posVal = value[i];
-
-            if (posVal >= '0' && posVal <= '9')
-            {
-                posVal -= '0';
-            }
-            else if (posVal >= 'A' && posVal <= 'Z')
-            {
-                posVal = posVal - 'A' + 10;
-            }
-            else
-            {
-                posVal = 9999999; // arbitrary large
-            }
+            var posVal = DecodeDigit(value[i]);
 
             if (posVal >= radix)
             {
-                throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.ConstructorInvalidString));
+                throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ConstructorInvalidString));
             }
 
             if (value[0] == '-')
@@ -389,20 +377,7 @@ public sealed class BigInteger
             }
         }
 
-        if (value[0] == '-') // 处理负值
-        {
-            if ((result.data[maxLength - 1] & 0x80000000) == 0)
-            {
-                throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.ConstructorUnderflow));
-            }
-        }
-        else // 处理正值
-        {
-            if ((result.data[maxLength - 1] & 0x80000000) != 0)
-            {
-                throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.ConstructorOverflow));
-            }
-        }
+        ValidateSign(value[0] == '-', result);
 
         data = new uint[maxLength];
         for (var i = 0; i < result.dataLength; i++)
@@ -411,6 +386,53 @@ public sealed class BigInteger
         }
 
         dataLength = result.dataLength;
+    }
+
+
+    //***********************************************************************
+    // 把单个字符（以 int 传入）映射为指定基数的数位值：
+    // '0'-'9' -> 0-9、'A'-'Z' -> 10-35、其余 -> 9999999（哨兵，
+    // 由调用方 posVal >= radix 判定后抛 ConstructorInvalidString）。
+    //***********************************************************************
+
+    private static int DecodeDigit(int charValue)
+    {
+        if (charValue >= '0' && charValue <= '9')
+        {
+            return charValue - '0';
+        }
+
+        if (charValue >= 'A' && charValue <= 'Z')
+        {
+            return charValue - 'A' + 10;
+        }
+
+        return 9999999; // arbitrary large
+    }
+
+
+    //***********************************************************************
+    // 依据符号与 result 最高位（0x80000000）校验是否溢出/下溢：
+    // 负数但最高位未置位 -> ConstructorUnderflow；
+    // 非负但最高位置位 -> ConstructorOverflow。
+    //***********************************************************************
+
+    private static void ValidateSign(bool negative, BigInteger result)
+    {
+        if (negative) // 处理负值
+        {
+            if ((result.data[maxLength - 1] & 0x80000000) == 0)
+            {
+                throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ConstructorUnderflow));
+            }
+        }
+        else // 处理正值
+        {
+            if ((result.data[maxLength - 1] & 0x80000000) != 0)
+            {
+                throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ConstructorOverflow));
+            }
+        }
     }
 
     /// <summary>
@@ -676,7 +698,7 @@ public sealed class BigInteger
         if ((bi1.data[lastPos] & 0x80000000) == 0 &&
             (result.data[lastPos] & 0x80000000) != (bi1.data[lastPos] & 0x80000000))
         {
-            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.IncrementOverflow));
+            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.IncrementOverflow));
         }
 
         return result;
@@ -787,7 +809,7 @@ public sealed class BigInteger
         if ((bi1.data[lastPos] & 0x80000000) != 0 &&
             (result.data[lastPos] & 0x80000000) != (bi1.data[lastPos] & 0x80000000))
         {
-            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.DecrementUnderflow));
+            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.DecrementUnderflow));
         }
 
         return result;
@@ -855,7 +877,7 @@ public sealed class BigInteger
         }
         catch (Exception)
         {
-            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.MultiplicationOverflow));
+            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.MultiplicationOverflow));
         }
 
 
@@ -896,7 +918,7 @@ public sealed class BigInteger
                 }
             }
 
-            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.MultiplicationOverflow));
+            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.MultiplicationOverflow));
         }
 
         // 如果输入符号不同，则结果为负
@@ -1127,7 +1149,7 @@ public sealed class BigInteger
 
         if ((bi1.data[maxLength - 1] & 0x80000000) == (result.data[maxLength - 1] & 0x80000000))
         {
-            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.NegationOverflow));
+            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.NegationOverflow));
         }
 
         result.dataLength = maxLength;
@@ -1188,11 +1210,11 @@ public sealed class BigInteger
     /// <summary>
     /// 重写 <see cref="object.Equals(object?)"/> 方法。
     /// </summary>
-    /// <param name="o">要比较的对象。</param>
-    /// <returns>如果当前实例与 <paramref name="o"/> 相等，则返回 true；否则返回 false。</returns>
-    public override bool Equals(object o)
+    /// <param name="obj">要比较的对象。</param>
+    /// <returns>如果当前实例与 <paramref name="obj"/> 相等，则返回 true；否则返回 false。</returns>
+    public override bool Equals(object obj)
     {
-        var bi = (BigInteger)o;
+        var bi = (BigInteger)obj;
 
         if (dataLength != bi.dataLength)
         {
@@ -1382,24 +1404,7 @@ public sealed class BigInteger
             var q_hat = dividend / firstDivisorByte;
             var r_hat = dividend % firstDivisorByte;
 
-            var done = false;
-            while (!done)
-            {
-                done = true;
-
-                // 调整 q_hat 以确保不溢出
-                if (q_hat == 0x100000000 ||
-                    q_hat * secondDivisorByte > (r_hat << 32) + remainder[pos - 2])
-                {
-                    q_hat--;
-                    r_hat += firstDivisorByte;
-
-                    if (r_hat < 0x100000000)
-                    {
-                        done = false;
-                    }
-                }
-            }
+            q_hat = RefineQuotientEstimate(q_hat, r_hat, firstDivisorByte, secondDivisorByte, remainder, pos);
 
             for (var h = 0; h < divisorLen; h++)
             {
@@ -1429,6 +1434,43 @@ public sealed class BigInteger
             j--;
         }
 
+        WriteDivisionResults(outQuotient, outRemainder, result, resultPos, remainder, shift);
+    }
+
+
+    // 调整商的预估值 q_hat，确保其不溢出且满足 Knuth 多字节除法的收敛条件，
+    // 直到余数预估值 r_hat 越界或 q_hat 不再偏大为止。
+    private static ulong RefineQuotientEstimate(ulong q_hat, ulong r_hat,
+        ulong firstDivisorByte, ulong secondDivisorByte, uint[] remainder, int pos)
+    {
+        var done = false;
+        while (!done)
+        {
+            done = true;
+
+            // 调整 q_hat 以确保不溢出
+            if (q_hat == 0x100000000 ||
+                q_hat * secondDivisorByte > (r_hat << 32) + remainder[pos - 2])
+            {
+                q_hat--;
+                r_hat += firstDivisorByte;
+
+                if (r_hat < 0x100000000)
+                {
+                    done = false;
+                }
+            }
+        }
+
+        return q_hat;
+    }
+
+
+    // 把多字节除法的运算结果写回 outQuotient 与 outRemainder：
+    // 商由 result 反向拷贝并清理多余零；余数由 remainder 经右移还原后拷贝。
+    private static void WriteDivisionResults(BigInteger outQuotient, BigInteger outRemainder,
+        uint[] result, int resultPos, uint[] remainder, int shift)
+    {
         // 设置输出商的长度
         outQuotient.dataLength = resultPos;
         var y = 0;
@@ -1811,7 +1853,7 @@ public sealed class BigInteger
     {
         if (radix < 2 || radix > 36)
         {
-            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.RadixOutOfRange));
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.RadixOutOfRange));
         }
 
         var charSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -1832,36 +1874,50 @@ public sealed class BigInteger
             }
         }
 
-        var quotient = new BigInteger();
-        var remainder = new BigInteger();
-        var biRadix = new BigInteger(radix);
-
         if (a.dataLength == 1 && a.data[0] == 0)
         {
             result = "0"; // 如果值为0，返回"0"
         }
         else
         {
-            while (a.dataLength > 1 || (a.dataLength == 1 && a.data[0] != 0))
-            {
-                SingleByteDivide(a, biRadix, quotient, remainder);
-
-                if (remainder.data[0] < 10)
-                {
-                    result = remainder.data[0] + result; // 处理小于10的余数
-                }
-                else
-                {
-                    result = charSet[(int)remainder.data[0] - 10] + result; // 处理大于等于10的余数
-                }
-
-                a = quotient; // 更新被除数
-            }
+            result = BuildRadixMagnitude(a, radix, charSet);
 
             if (negative)
             {
                 result = "-" + result; // 如果是负数，添加负号
             }
+        }
+
+        return result;
+    }
+
+
+    //***********************************************************************
+    // 把非负 BigInteger 转换为指定基数下的数字字符串（不含符号），供 ToString(int) 使用。
+    //***********************************************************************
+
+    private static string BuildRadixMagnitude(BigInteger value, int radix, string charSet)
+    {
+        var result = "";
+        var quotient = new BigInteger();
+        var remainder = new BigInteger();
+        var biRadix = new BigInteger(radix);
+        var a = value;
+
+        while (a.dataLength > 1 || (a.dataLength == 1 && a.data[0] != 0))
+        {
+            SingleByteDivide(a, biRadix, quotient, remainder);
+
+            if (remainder.data[0] < 10)
+            {
+                result = remainder.data[0] + result; // 处理小于10的余数
+            }
+            else
+            {
+                result = charSet[(int)remainder.data[0] - 10] + result; // 处理大于等于10的余数
+            }
+
+            a = quotient; // 更新被除数
         }
 
         return result;
@@ -1910,10 +1966,9 @@ public sealed class BigInteger
     {
         if ((exp.data[maxLength - 1] & 0x80000000) != 0)
         {
-            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.PositiveExponentsOnly)); // 仅支持正指数
+            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.PositiveExponentsOnly)); // 仅支持正指数
         }
 
-        BigInteger resultNum = 1;
         BigInteger tempNum;
         var thisNegative = false;
 
@@ -1940,6 +1995,30 @@ public sealed class BigInteger
         constant.dataLength = i + 1;
 
         constant = constant / n;
+
+        // 执行平方和乘法指数运算，返回未做符号修正的结果
+        var resultNum = ModPowLoop(exp, n, tempNum, constant);
+
+        if (thisNegative && (exp.data[0] & 0x1) != 0) // 奇数指数
+        {
+            return -resultNum;
+        }
+
+        return resultNum;
+    }
+
+
+    /// <summary>
+    /// 执行模幂运算的平方和乘法主循环，返回未做符号修正的中间结果。
+    /// </summary>
+    /// <param name="exp">指数</param>
+    /// <param name="n">模数</param>
+    /// <param name="tempNum">底数取模后的中间值</param>
+    /// <param name="constant">Barrett 约减常量</param>
+    /// <returns>返回未做符号修正的模幂结果，由调用方按指数奇偶统一修正符号</returns>
+    private BigInteger ModPowLoop(BigInteger exp, BigInteger n, BigInteger tempNum, BigInteger constant)
+    {
+        BigInteger resultNum = 1;
         var totalBits = exp.BitCount();
         var count = 0;
 
@@ -1959,13 +2038,9 @@ public sealed class BigInteger
 
                 tempNum = BarrettReduction(tempNum * tempNum, n, constant);
 
+                // 当中间值归 1 时后续平方不会再变化，提前结束
                 if (tempNum.dataLength == 1 && tempNum.data[0] == 1)
                 {
-                    if (thisNegative && (exp.data[0] & 0x1) != 0) // 奇数指数
-                    {
-                        return -resultNum;
-                    }
-
                     return resultNum;
                 }
 
@@ -1975,11 +2050,6 @@ public sealed class BigInteger
                     break;
                 }
             }
-        }
-
-        if (thisNegative && (exp.data[0] & 0x1) != 0) // 奇数指数
-        {
-            return -resultNum;
         }
 
         return resultNum;
@@ -2044,8 +2114,33 @@ public sealed class BigInteger
 
 
         // r2 = (q3 * n) mod b^(k+1)
-        // q3 和 n 的部分乘法
+        var r2 = ComputeBarrettR2(q3, n, kPlusOne);
 
+        r1 -= r2;
+        if ((r1.data[maxLength - 1] & 0x80000000) != 0) // 负数
+        {
+            var val = new BigInteger();
+            val.data[kPlusOne] = 0x00000001;
+            val.dataLength = kPlusOne + 1;
+            r1 += val;
+        }
+
+        while (r1 >= n)
+        {
+            r1 -= n; // 确保 r1 小于 n
+        }
+
+        return r1;
+    }
+
+
+    //***********************************************************************
+    // 计算 Barrett 减法中的 r2 = (q3 * n) mod b^(k+1)。
+    // 只保留最低 (k+1) 个字，使用 q3 和 n 的部分乘法。
+    //***********************************************************************
+
+    private static BigInteger ComputeBarrettR2(BigInteger q3, BigInteger n, int kPlusOne)
+    {
         var r2 = new BigInteger();
         for (var i = 0; i < q3.dataLength; i++)
         {
@@ -2078,21 +2173,7 @@ public sealed class BigInteger
             r2.dataLength--;
         }
 
-        r1 -= r2;
-        if ((r1.data[maxLength - 1] & 0x80000000) != 0) // 负数
-        {
-            var val = new BigInteger();
-            val.data[kPlusOne] = 0x00000001;
-            val.dataLength = kPlusOne + 1;
-            r1 += val;
-        }
-
-        while (r1 >= n)
-        {
-            r1 -= n; // 确保 r1 小于 n
-        }
-
-        return r1;
+        return r2;
     }
 
 
@@ -2155,7 +2236,7 @@ public sealed class BigInteger
 
         if (dwords > maxLength)
         {
-            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.RequiredBitsExceedMaxLength)); // 超过最大长度
+            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.RequiredBitsExceedMaxLength)); // 超过最大长度
         }
 
         for (var i = 0; i < dwords; i++)
@@ -2285,57 +2366,90 @@ public sealed class BigInteger
         }
 
         var bits = thisVal.BitCount();
-        var a = new BigInteger();
         var p_sub1 = thisVal - new BigInteger(1);
-        var rand = new Random();
+        var rand = new SecureRandom();
 
         for (var round = 0; round < confidence; round++)
         {
-            var done = false;
+            var a = GenerateFermatBase(bits, rand);
 
-            while (!done) // generate a < n
+            if (IsFermatBaseComposite(a, thisVal, p_sub1))
             {
-                var testBits = 0;
-
-                // make sure "a" has at least 2 bits
-                while (testBits < 2)
-                {
-                    testBits = (int)(rand.NextDouble() * bits);
-                }
-
-                a.GenRandomBits(testBits, rand);
-
-                var byteLen = a.dataLength;
-
-                // make sure "a" is not 0
-                if (byteLen > 1 || (byteLen == 1 && a.data[0] != 1))
-                {
-                    done = true;
-                }
-            }
-
-            // check whether a factor exists (fix for version 1.03)
-            var gcdTest = a.Gcd(thisVal);
-            if (gcdTest.dataLength == 1 && gcdTest.data[0] != 1)
-            {
-                return false;
-            }
-
-            // calculate a^(p-1) mod p
-            var expResult = a.ModPow(p_sub1, thisVal);
-
-            var resultLen = expResult.dataLength;
-
-            // is NOT prime is a^(p-1) mod p != 1
-
-            if (resultLen > 1 || (resultLen == 1 && expResult.data[0] != 1))
-            {
-                //LogHelper.Info("a = " + a.ToString());
                 return false;
             }
         }
 
         return true;
+    }
+
+
+    //***********************************************************************
+    // 生成费马测试的随机基数 a：
+    // 循环随机取至少 2 位的 testBits，调用 GenRandomBits 填充 a，
+    // 直至 a 非零（dataLength > 1，或 dataLength == 1 且 data[0] != 1）。
+    // GenRandomBits 每次会完全重置 data 数组与 dataLength，
+    // 故此处新建 a 与原「方法级复用 a」在读取前已被完全重写，行为等价。
+    //***********************************************************************
+
+    private static BigInteger GenerateFermatBase(int bits, SecureRandom rand)
+    {
+        var a = new BigInteger();
+        var done = false;
+
+        while (!done) // generate a < n
+        {
+            var testBits = 0;
+
+            // make sure "a" has at least 2 bits
+            while (testBits < 2)
+            {
+                testBits = (int)(rand.NextDouble() * bits);
+            }
+
+            a.GenRandomBits(testBits, rand);
+
+            var byteLen = a.dataLength;
+
+            // make sure "a" is not 0
+            if (byteLen > 1 || (byteLen == 1 && a.data[0] != 1))
+            {
+                done = true;
+            }
+        }
+
+        return a;
+    }
+
+
+    //***********************************************************************
+    // 费马测试单轮见证检验：
+    // 1) gcd(a, n) 存在非 1 因子 → n 为合数；
+    // 2) a^(p-1) mod p != 1 → n 为合数（费马小定理逆否）。
+    // 返回 true 表示该基数证明 n 为合数，调用方据此 return false。
+    //***********************************************************************
+
+    private static bool IsFermatBaseComposite(BigInteger a, BigInteger thisVal, BigInteger p_sub1)
+    {
+        // check whether a factor exists (fix for version 1.03)
+        var gcdTest = a.Gcd(thisVal);
+        if (gcdTest.dataLength == 1 && gcdTest.data[0] != 1)
+        {
+            return true;
+        }
+
+        // calculate a^(p-1) mod p
+        var expResult = a.ModPow(p_sub1, thisVal);
+
+        var resultLen = expResult.dataLength;
+
+        // is NOT prime is a^(p-1) mod p != 1
+        if (resultLen > 1 || (resultLen == 1 && expResult.data[0] != 1))
+        {
+            //LogHelper.Info("a = " + a.ToString());
+            return true;
+        }
+
+        return false;
     }
 
     //***********************************************************************
@@ -2396,97 +2510,139 @@ public sealed class BigInteger
 
         // 计算 s 和 t 的值
         var p_sub1 = thisVal - new BigInteger(1);
-        var s = 0;
-
-        for (var index = 0; index < p_sub1.dataLength; index++)
-        {
-            uint mask = 0x01;
-
-            for (var i = 0; i < 32; i++)
-            {
-                if ((p_sub1.data[index] & mask) != 0)
-                {
-                    index = p_sub1.dataLength; // 退出外层循环
-                    break;
-                }
-
-                mask <<= 1;
-                s++;
-            }
-        }
-
+        var s = CountTrailingZeroBits(p_sub1);
         var t = p_sub1 >> s;
 
         var bits = thisVal.BitCount();
-        var a = new BigInteger();
         var rand = new Random();
 
         for (var round = 0; round < confidence; round++)
         {
-            var done = false;
-
-            while (!done) // 生成 a < n
-            {
-                var testBits = 0;
-
-                // 确保 "a" 至少有 2 位
-                while (testBits < 2)
-                {
-                    testBits = (int)(rand.NextDouble() * bits);
-                }
-
-                a.GenRandomBits(testBits, rand);
-
-                var byteLen = a.dataLength;
-
-                // 确保 "a" 不为 0
-                if (byteLen > 1 || (byteLen == 1 && a.data[0] != 1))
-                {
-                    done = true;
-                }
-            }
-
-            // 检查是否存在因子（修复版本 1.03）
-            var gcdTest = a.Gcd(thisVal);
-            if (gcdTest.dataLength == 1 && gcdTest.data[0] != 1)
-            {
-                return false;
-            }
-
-            var b = a.ModPow(t, thisVal);
-
-            /*
-        LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugA, a.ToString(10)));
-        LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugB, b.ToString(10)));
-        LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugT, t.ToString(10)));
-        LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugS, s));
-        */
-
-            var result = false;
-
-            if (b.dataLength == 1 && b.data[0] == 1) // a^t mod p = 1
-            {
-                result = true;
-            }
-
-            for (var j = 0; result == false && j < s; j++)
-            {
-                if (b == p_sub1) // a^((2^j)*t) mod p = p-1，对于某些 0 <= j <= s-1
-                {
-                    result = true;
-                    break;
-                }
-
-                b = b * b % thisVal;
-            }
-
-            if (result == false)
+            if (!PassesRabinMillerRound(thisVal, p_sub1, t, s, bits, rand))
             {
                 return false;
             }
         }
 
         return true;
+    }
+
+
+    //***********************************************************************
+    // 统计 value 二进制表示中低位连续 0 的个数（即分解 value = 2^s · t 所需的 s）。
+    // 外层按 dataLength 字、内层按 32 个 bit（mask 逐位左移）扫描，
+    // 命中首个置位 bit 即 return count，与原「index = p_sub1.dataLength; break;」退出外层循环等价。
+    //***********************************************************************
+
+    private static int CountTrailingZeroBits(BigInteger value)
+    {
+        var count = 0;
+
+        for (var index = 0; index < value.dataLength; index++)
+        {
+            uint mask = 0x01;
+
+            for (var i = 0; i < 32; i++)
+            {
+                if ((value.data[index] & mask) != 0)
+                {
+                    return count;
+                }
+
+                mask <<= 1;
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+
+    //***********************************************************************
+    // 生成满足拉宾-米勒测试要求的随机基数 a：a < n、至少 2 位、且不为 0/1。
+    // 循环随机取至少 2 位的 testBits，调用 GenRandomBits 填充 a，
+    // 直至 a 非零（dataLength > 1，或 dataLength == 1 且 data[0] != 1）。
+    // GenRandomBits 每次会完全重置 data 数组与 dataLength，
+    // 故此处新建 a 与原「方法级复用 a」在读取前已被完全重写，行为等价。
+    //***********************************************************************
+
+    private static BigInteger GenerateRabinMillerBase(int bits, Random rand)
+    {
+        var a = new BigInteger();
+        var done = false;
+
+        while (!done) // 生成 a < n
+        {
+            var testBits = 0;
+
+            // 确保 "a" 至少有 2 位
+            while (testBits < 2)
+            {
+                testBits = (int)(rand.NextDouble() * bits);
+            }
+
+            a.GenRandomBits(testBits, rand);
+
+            var byteLen = a.dataLength;
+
+            // 确保 "a" 不为 0
+            if (byteLen > 1 || (byteLen == 1 && a.data[0] != 1))
+            {
+                done = true;
+            }
+        }
+
+        return a;
+    }
+
+
+    //***********************************************************************
+    // 拉宾-米勒单轮见证检验：
+    // 1) 生成随机基数 a；
+    // 2) gcd(a, n) 存在非 1 因子 → n 为合数，返回 false；
+    // 3) b = a^t mod n；b == 1 通过；否则对 j = 0..s-1 平方并比较 b == n-1。
+    // 返回 true 表示本轮通过（未发现合数见证），false 表示找到合数见证。
+    //***********************************************************************
+
+    private static bool PassesRabinMillerRound(BigInteger thisVal, BigInteger p_sub1, BigInteger t, int s, int bits, Random rand)
+    {
+        var a = GenerateRabinMillerBase(bits, rand);
+
+        // 检查是否存在因子（修复版本 1.03）
+        var gcdTest = a.Gcd(thisVal);
+        if (gcdTest.dataLength == 1 && gcdTest.data[0] != 1)
+        {
+            return false;
+        }
+
+        var b = a.ModPow(t, thisVal);
+
+        /*
+    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugA, a.ToString(10)));
+    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugB, b.ToString(10)));
+    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugT, t.ToString(10)));
+    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugS, s));
+    */
+
+        var result = false;
+
+        if (b.dataLength == 1 && b.data[0] == 1) // a^t mod p = 1
+        {
+            result = true;
+        }
+
+        for (var j = 0; result == false && j < s; j++)
+        {
+            if (b == p_sub1) // a^((2^j)*t) mod p = p-1，对于某些 0 <= j <= s-1
+            {
+                result = true;
+                break;
+            }
+
+            b = b * b % thisVal;
+        }
+
+        return result;
     }
 
 
@@ -2550,59 +2706,91 @@ public sealed class BigInteger
         var p_sub1 = thisVal - 1;
         var p_sub1_shift = p_sub1 >> 1;
 
-        var rand = new Random();
+        var rand = new SecureRandom();
 
         for (var round = 0; round < confidence; round++)
         {
-            var done = false;
-
-            while (!done) // 生成 a < n
-            {
-                var testBits = 0;
-
-                // 确保 "a" 至少有 2 位
-                while (testBits < 2)
-                {
-                    testBits = (int)(rand.NextDouble() * bits);
-                }
-
-                a.GenRandomBits(testBits, rand);
-
-                var byteLen = a.dataLength;
-
-                // 确保 "a" 不为 0
-                if (byteLen > 1 || (byteLen == 1 && a.data[0] != 1))
-                {
-                    done = true;
-                }
-            }
-
-            // 检查是否存在因子（修复版本 1.03）
-            var gcdTest = a.Gcd(thisVal);
-            if (gcdTest.dataLength == 1 && gcdTest.data[0] != 1)
+            if (!SolovayStrassenRound(a, thisVal, p_sub1, p_sub1_shift, rand, bits))
             {
                 return false;
             }
+        }
 
-            // 计算 a^((p-1)/2) mod p
+        return true;
+    }
 
-            var expResult = a.ModPow(p_sub1_shift, thisVal);
-            if (expResult == p_sub1)
+
+    //***********************************************************************
+    // 执行一轮 Solovay-Strassen 验证（生成随机基数 a + gcd 因子检查 +
+    // a^((p-1)/2) mod p 与雅可比符号比较）。
+    //
+    // 返回值
+    // -------
+    // true  —— 本轮通过，调用方继续下一轮。
+    // false —— 发现 a 与 n 的非平凡因子或欧拉准则不成立，n 一定不是素数。
+    //
+    //***********************************************************************
+
+    /// <summary>
+    /// 执行一轮 Solovay-Strassen 验证
+    /// </summary>
+    /// <param name="a">复用的基数对象，方法内会重新填入随机位</param>
+    /// <param name="thisVal">待测数（已取绝对值）</param>
+    /// <param name="p_sub1">thisVal - 1</param>
+    /// <param name="p_sub1_shift">(thisVal - 1) >> 1</param>
+    /// <param name="rand">随机数生成器</param>
+    /// <param name="bits">thisVal 的比特位数，限定生成 a 的位宽上限</param>
+    /// <returns>本轮通过返回 true；判定不是素数返回 false</returns>
+    private bool SolovayStrassenRound(BigInteger a, BigInteger thisVal, BigInteger p_sub1, BigInteger p_sub1_shift, Random rand, int bits)
+    {
+        var done = false;
+
+        while (!done) // 生成 a < n
+        {
+            var testBits = 0;
+
+            // 确保 "a" 至少有 2 位
+            while (testBits < 2)
             {
-                expResult = -1;
+                testBits = (int)(rand.NextDouble() * bits);
             }
 
-            // 计算雅可比符号
-            BigInteger jacob = Jacobi(a, thisVal);
+            a.GenRandomBits(testBits, rand);
 
-            //LogHelper.Info("a = " + a.ToString(10) + " b = " + thisVal.ToString(10));
-            //LogHelper.Info("expResult = " + expResult.ToString(10) + " Jacob = " + jacob.ToString(10));
+            var byteLen = a.dataLength;
 
-            // 如果它们不同，则不是素数
-            if (expResult != jacob)
+            // 确保 "a" 不为 0
+            if (byteLen > 1 || (byteLen == 1 && a.data[0] != 1))
             {
-                return false;
+                done = true;
             }
+        }
+
+        // 检查是否存在因子（修复版本 1.03）
+        var gcdTest = a.Gcd(thisVal);
+        if (gcdTest.dataLength == 1 && gcdTest.data[0] != 1)
+        {
+            return false;
+        }
+
+        // 计算 a^((p-1)/2) mod p
+
+        var expResult = a.ModPow(p_sub1_shift, thisVal);
+        if (expResult == p_sub1)
+        {
+            expResult = -1;
+        }
+
+        // 计算雅可比符号
+        BigInteger jacob = Jacobi(a, thisVal);
+
+        //LogHelper.Info("a = " + a.ToString(10) + " b = " + thisVal.ToString(10));
+        //LogHelper.Info("expResult = " + expResult.ToString(10) + " Jacob = " + jacob.ToString(10));
+
+        // 如果它们不同，则不是素数
+        if (expResult != jacob)
+        {
+            return false;
         }
 
         return true;
@@ -2664,77 +2852,16 @@ public sealed class BigInteger
 
     private bool LucasStrongTestHelper(BigInteger thisVal)
     {
-        // 执行测试（根据 Selfridge 选择 D）
-        // 设 D 为序列的第一个元素
-        // 5, -7, 9, -11, 13, ... 使得 J(D,n) = -1
-        // 设 P = 1, Q = (1-D) / 4
-
-        long D = 5, sign = -1, dCount = 0;
-        var done = false;
-
-        while (!done)
+        // 根据 Selfridge 选择 D（5, -7, 9, -11, ...）使 J(D, n) = -1，
+        // 设 P = 1, Q = (1-D) / 4；途中找到因子或命中完全平方数则判定合数。
+        if (!TrySelectLucasParameters(thisVal, out var Q))
         {
-            var Jresult = Jacobi(D, thisVal);
-
-            if (Jresult == -1)
-            {
-                done = true; // J(D, this) = 1
-            }
-            else
-            {
-                if (Jresult == 0 && System.Math.Abs(D) < thisVal) // 找到因子
-                {
-                    return false;
-                }
-
-                if (dCount == 20)
-                {
-                    // 检查是否为平方数
-                    var root = thisVal.Sqrt();
-                    if (root * root == thisVal)
-                    {
-                        return false;
-                    }
-                }
-
-                //LogHelper.Info(D);
-                D = (System.Math.Abs(D) + 2) * sign;
-                sign = -sign;
-            }
-
-            dCount++;
+            return false;
         }
 
-        var Q = (1 - D) >> 2;
-
-        /*
-    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugD, D));
-    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugQ, Q));
-    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugND, thisVal.gcd(D)));
-    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugNQ, thisVal.gcd(Q)));
-    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugJacobi, BigInteger.Jacobi(D, thisVal)));
-    */
-
+        // 分解 n+1 = 2^s * t
         var p_add1 = thisVal + 1;
-        var s = 0;
-
-        for (var index = 0; index < p_add1.dataLength; index++)
-        {
-            uint mask = 0x01;
-
-            for (var i = 0; i < 32; i++)
-            {
-                if ((p_add1.data[index] & mask) != 0)
-                {
-                    index = p_add1.dataLength; // 退出外层循环
-                    break;
-                }
-
-                mask <<= 1;
-                s++;
-            }
-        }
-
+        var s = CountTrailingZeroBits(p_add1);
         var t = p_add1 >> s;
 
         // 计算常数 = b^(2k) / m
@@ -2748,15 +2875,129 @@ public sealed class BigInteger
         constant = constant / thisVal;
 
         var lucas = LucasSequenceHelper(1, Q, t, thisVal, constant, 0);
-        var isPrime = false;
+        var isPrime = IsLucasSequenceZero(lucas);
+        isPrime = ApplyLucasSquaring(lucas, s, thisVal, constant, isPrime);
 
-        if ((lucas[0].dataLength == 1 && lucas[0].data[0] == 0) ||
-            (lucas[1].dataLength == 1 && lucas[1].data[0] == 0))
+        if (isPrime)
         {
-            // u(t) = 0 或 V(t) = 0
-            isPrime = true;
+            // 对合数的额外检查
+            isPrime = VerifyLucasCompositeness(lucas, thisVal, Q);
         }
 
+        return isPrime;
+    }
+
+
+    //***********************************************************************
+    // 根据 Selfridge 方法选择 Lucas 测试的参数 Q。
+    // 在序列 D = 5, -7, 9, -11, 13, ... 中找到第一个满足 J(D, n) = -1 的 D，
+    // 取 Q = (1 - D) / 4。
+    // 若 J(D, n) == 0 且 |D| < n 表示找到因子，或第 20 次迭代时 n 为完全平方数，
+    // 则 n 为合数，返回 false；否则返回 true 并通过 Q 输出参数。
+    //***********************************************************************
+
+    private static bool TrySelectLucasParameters(BigInteger thisVal, out long Q)
+    {
+        long D = 5, sign = -1, dCount = 0;
+        var done = false;
+
+        while (!done)
+        {
+            var Jresult = Jacobi(D, thisVal);
+
+            if (Jresult == -1)
+            {
+                done = true; // J(D, this) = -1
+            }
+            else
+            {
+                if (Jresult == 0 && System.Math.Abs(D) < thisVal) // 找到因子
+                {
+                    Q = 0;
+                    return false;
+                }
+
+                if (dCount == 20)
+                {
+                    // 检查是否为平方数
+                    var root = thisVal.Sqrt();
+                    if (root * root == thisVal)
+                    {
+                        Q = 0;
+                        return false;
+                    }
+                }
+
+                //LogHelper.Info(D);
+                D = (System.Math.Abs(D) + 2) * sign;
+                sign = -sign;
+            }
+
+            dCount++;
+        }
+
+        Q = (1 - D) >> 2;
+
+        /*
+    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugD, D));
+    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugQ, Q));
+    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugND, thisVal.gcd(D)));
+    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugNQ, thisVal.gcd(Q)));
+    LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.BigIntegerDebug.DebugJacobi, BigInteger.Jacobi(D, thisVal)));
+    */
+
+        return true;
+    }
+
+
+    //***********************************************************************
+    // 计算 value 尾随零比特数（即最低置位 bit 之前的 0 的个数）。
+    // 用于从 n+1 中分离出 2^s 因子。
+    //***********************************************************************
+
+    private static int CountTrailingZeroBits(BigInteger value)
+    {
+        var count = 0;
+
+        for (var index = 0; index < value.dataLength; index++)
+        {
+            uint mask = 0x01;
+
+            for (var i = 0; i < 32; i++)
+            {
+                if ((value.data[index] & mask) != 0)
+                {
+                    return count;
+                }
+
+                mask <<= 1;
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+
+    //***********************************************************************
+    // 判断 Lucas 序列结果是否出现 U(t) = 0 或 V(t) = 0。
+    //***********************************************************************
+
+    private static bool IsLucasSequenceZero(BigInteger[] lucas)
+    {
+        return (lucas[0].dataLength == 1 && lucas[0].data[0] == 0) ||
+               (lucas[1].dataLength == 1 && lucas[1].data[0] == 0);
+    }
+
+
+    //***********************************************************************
+    // 对 Lucas 序列做指数逐次加倍（共 s-1 次）：
+    // 未确认为伪素数时更新 V(2^i * t)，命中 0 则置伪素数；
+    // 每步同时平方 Q^t 分量。返回最终伪素数判定。
+    //***********************************************************************
+
+    private static bool ApplyLucasSquaring(BigInteger[] lucas, int s, BigInteger thisVal, BigInteger constant, bool isPrime)
+    {
         for (var i = 1; i < s; i++)
         {
             if (!isPrime)
@@ -2776,33 +3017,42 @@ public sealed class BigInteger
             lucas[2] = thisVal.BarrettReduction(lucas[2] * lucas[2], thisVal, constant); //Q^k
         }
 
-        if (isPrime) // 对合数的额外检查
+        return isPrime;
+    }
+
+
+    //***********************************************************************
+    // 对已通过 Lucas 测试的候选数做额外合数校验：
+    // 若 gcd(n, Q) == 1，则当 n 为素数时 Q^((n+1)/2) ≡ Q * J(Q, n) (mod n)，
+    // 据此校验 V 分量；不满足则返回 false（合数），否则返回 true（维持素数判定）。
+    //***********************************************************************
+
+    private static bool VerifyLucasCompositeness(BigInteger[] lucas, BigInteger thisVal, long Q)
+    {
+        // 如果 n 是素数且 gcd(n, Q) == 1，则
+        // Q^((n+1)/2) = Q * Q^((n-1)/2) 与 (Q * J(Q, n)) mod n 同余
+
+        var g = thisVal.Gcd(Q);
+        if (g.dataLength == 1 && g.data[0] == 1) // gcd(this, Q) == 1
         {
-            // 如果 n 是素数且 gcd(n, Q) == 1，则
-            // Q^((n+1)/2) = Q * Q^((n-1)/2) 与 (Q * J(Q, n)) mod n 同余
-
-            var g = thisVal.Gcd(Q);
-            if (g.dataLength == 1 && g.data[0] == 1) // gcd(this, Q) == 1
+            if ((lucas[2].data[maxLength - 1] & 0x80000000) != 0)
             {
-                if ((lucas[2].data[maxLength - 1] & 0x80000000) != 0)
-                {
-                    lucas[2] += thisVal;
-                }
+                lucas[2] += thisVal;
+            }
 
-                var temp = Q * Jacobi(Q, thisVal) % thisVal;
-                if ((temp.data[maxLength - 1] & 0x80000000) != 0)
-                {
-                    temp += thisVal;
-                }
+            var temp = Q * Jacobi(Q, thisVal) % thisVal;
+            if ((temp.data[maxLength - 1] & 0x80000000) != 0)
+            {
+                temp += thisVal;
+            }
 
-                if (lucas[2] != temp)
-                {
-                    isPrime = false;
-                }
+            if (lucas[2] != temp)
+            {
+                return false;
             }
         }
 
-        return isPrime;
+        return true;
     }
 
 
@@ -2898,6 +3148,34 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
             thisVal = this;
         }
 
+        // 小数字 / 偶数 / 小素数整除快速排除。返回非 null 表示素性已确定，null 表示需继续后续测试。
+        var quick = CheckSmallPrimality(thisVal);
+        if (quick.HasValue)
+        {
+            return quick.Value;
+        }
+
+        // 基于 2 的强伪素数测试，通过后再做强卢卡斯测试
+        var result = IsStrongPseudoPrimeBase2(thisVal);
+        if (result)
+        {
+            result = LucasStrongTestHelper(thisVal);
+        }
+
+        return result;
+    }
+
+
+    /// <summary>
+    /// 对小数字、偶数以及能否被小于 2000 的素数整除进行快速判定。
+    /// </summary>
+    /// <param name="thisVal">待测的正数 BigInteger</param>
+    /// <returns>
+    /// 已确定素性时返回 <c>true</c>（2/3 等小素数）或 <c>false</c>（0/1/偶数/可被小素数整除）；
+    /// 需要继续 Rabin-Miller + Lucas 测试时返回 <c>null</c>。
+    /// </returns>
+    private static bool? CheckSmallPrimality(BigInteger thisVal)
+    {
         if (thisVal.dataLength == 1)
         {
             // 测试小数字
@@ -2937,8 +3215,17 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
             }
         }
 
-        // 执行基于 2 的拉宾-米勒测试
+        return null; // 继续 Rabin-Miller + Lucas 测试
+    }
 
+
+    /// <summary>
+    /// 执行基于 2 的拉宾-米勒强伪素数测试。
+    /// </summary>
+    /// <param name="thisVal">待测的正数 BigInteger</param>
+    /// <returns>通过基于 2 的强伪素数测试返回 true，否则返回 false</returns>
+    private static bool IsStrongPseudoPrimeBase2(BigInteger thisVal)
+    {
         // 计算 s 和 t 的值
         var p_sub1 = thisVal - new BigInteger(1);
         var s = 0;
@@ -2983,12 +3270,6 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
             }
 
             b = b * b % thisVal;
-        }
-
-        // 如果数字是基于 2 的强伪素数，则进行强卢卡斯测试
-        if (result)
-        {
-            result = LucasStrongTestHelper(thisVal);
         }
 
         return result;
@@ -3043,7 +3324,7 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
         // 雅可比符号仅定义于奇数
         if ((b.data[0] & 0x1) == 0)
         {
-            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.JacobiSymbolDefinedForOddOnly));
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.JacobiSymbolDefinedForOddOnly));
         }
 
         if (a >= b)
@@ -3071,26 +3352,57 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
             return -Jacobi(-a, b);
         }
 
-        var e = 0;
-        for (var index = 0; index < a.dataLength; index++)
+        var e = CountTrailingZeroBits(a);
+        var a1 = a >> e;
+        var s = JacobiReciprocitySign(e, b, a1);
+
+        if (a1.dataLength == 1 && a1.data[0] == 1)
+        {
+            return s;
+        }
+
+        return s * Jacobi(b % a1, a1);
+    }
+
+
+    /// <summary>
+    /// 计算 <paramref name="value" /> 的尾随零比特数（首个置位 bit 之前的 0 的个数）。
+    /// 外层按 32 位字遍历，内层按 bit 遍历，命中首个置位 bit 即返回。
+    /// </summary>
+    /// <param name="value">待计算的 BigInteger（调用方保证非零）</param>
+    /// <returns>尾随零比特数</returns>
+    private static int CountTrailingZeroBits(BigInteger value)
+    {
+        var count = 0;
+        for (var index = 0; index < value.dataLength; index++)
         {
             uint mask = 0x01;
 
             for (var i = 0; i < 32; i++)
             {
-                if ((a.data[index] & mask) != 0)
+                if ((value.data[index] & mask) != 0)
                 {
-                    index = a.dataLength; // 退出外层循环
-                    break;
+                    return count;
                 }
 
                 mask <<= 1;
-                e++;
+                count++;
             }
         }
 
-        var a1 = a >> e;
+        return count;
+    }
 
+    /// <summary>
+    /// 依据尾随零数 <paramref name="e" />、奇数 <paramref name="b" /> 与奇数部分 <paramref name="a1" />，
+    /// 按雅可比符号的二次互反律计算符号修正值 s（±1）。
+    /// </summary>
+    /// <param name="e">从 a 中抽出的 2 的幂次（尾随零比特数）</param>
+    /// <param name="b">奇数参数 b</param>
+    /// <param name="a1">a 右移 e 位后的奇数部分</param>
+    /// <returns>互反符号修正值（+1 或 -1）</returns>
+    private static int JacobiReciprocitySign(int e, BigInteger b, BigInteger a1)
+    {
         var s = 1;
         if ((e & 0x1) != 0 && ((b.data[0] & 0x7) == 3 || (b.data[0] & 0x7) == 5))
         {
@@ -3102,12 +3414,7 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
             s = -s;
         }
 
-        if (a1.dataLength == 1 && a1.data[0] == 1)
-        {
-            return s;
-        }
-
-        return s * Jacobi(b % a1, a1);
+        return s;
     }
 
     /// <summary>
@@ -3222,7 +3529,7 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
 
         if (r[0].dataLength > 1 || (r[0].dataLength == 1 && r[0].data[0] != 1))
         {
-            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.NoInverse));
+            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.NoInverse));
         }
 
         var result = (p[0] - p[1] * q[0]) % modulus;
@@ -3507,7 +3814,7 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
 
         if ((k.data[0] & 0x00000001) == 0)
         {
-            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.ParameterKMustBeOdd));
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ParameterKMustBeOdd));
         }
 
         var numbits = k.BitCount();
@@ -3616,5 +3923,36 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
         result[2] = Q_k;
 
         return result;
+    }
+
+
+    /// <summary>
+    /// 基于 <see cref="RandomNumberGenerator"/> 的加密强度随机数生成器，
+    /// 用于消除 Sonar S2245：素性测试不应使用伪随机数（PRNG）。
+    /// 保持 <see cref="Random"/> 语义（<see cref="NextDouble"/> 返回 [0,1)），可无缝替换 <c>new Random()</c>。
+    /// </summary>
+    internal sealed class SecureRandom : Random
+    {
+        /// <summary>用加密强度随机源填充字节数组。</summary>
+        public override void NextBytes(byte[] buffer)
+        {
+            RandomNumberGenerator.Fill(buffer);
+        }
+
+        /// <summary>返回一个大于或等于 0.0 且小于 1.0 的浮点数。</summary>
+        public override double NextDouble()
+        {
+            return Sample();
+        }
+
+        /// <summary>返回一个大于或等于 0.0 且小于 1.0 的浮点数（加密强度随机源）。</summary>
+        protected override double Sample()
+        {
+            // 取 53 位无符号整数除以 2^53，得到 [0, 1) 区间均匀分布。
+            var bytes = new byte[8];
+            RandomNumberGenerator.Fill(bytes);
+            var value = BitConverter.ToUInt64(bytes, 0) >> 11;
+            return value / (double)(1UL << 53);
+        }
     }
 }
