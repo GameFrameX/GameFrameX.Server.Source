@@ -106,7 +106,8 @@ internal sealed class AppStartUpGame : AppStartUpBase
                 HttpIsDevelopment = true,
                 MaxModuleId = 9999,
                 TagName = "GameFrameX",
-                DataBaseUrl = "mongodb+srv://gameframex:f9v42aU9DVeFNfAF@gameframex.8taphic.mongodb.net/?retryWrites=true&w=majority",
+                // 数据库连接地址优先从环境变量读取，避免在源码中硬编码凭证（消除 Sonar csharpsquid:S2068）
+                DataBaseUrl = Environment.GetEnvironmentVariable("GAMEFRAMEX_GAME_DB_URL") ?? "mongodb://127.0.0.1:27017/?authSource=admin",
                 DataBaseName = "gameframex",
             };
         }
