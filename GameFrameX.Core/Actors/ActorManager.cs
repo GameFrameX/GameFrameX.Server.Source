@@ -298,40 +298,60 @@ public static class ActorManager
                 continue;
             }
 
-            async Task Func()
-            {
-                if (actor.AutoRecycle && (TimerHelper.GetNowWithUtc() - ActiveTimeDic[actor.Id]).TotalMinutes > GlobalSettings.CurrentSetting.ActorRecycleTime)
-                {
-                    async Task<bool> Work()
-                    {
-                        if (ActiveTimeDic.TryGetValue(actor.Id, out var activeTime) && (TimerHelper.GetNowWithUtc() - ActiveTimeDic[actor.Id]).TotalMinutes > GlobalSettings.CurrentSetting.ActorRecycleTime)
-                        {
-                            // 防止定时回存失败时State被直接移除
-                            if (actor.ReadyToDeActive)
-                            {
-                                await actor.Inactive();
-                                await actor.OnRecycle();
-                                ActorMap.TryRemove(actor.Id, out _);
-                                LogHelper.Debug("ActorManager.CheckIdle, Actor recycled, actorId: {actorId}, actorType: {actorType}, message: {message}", actor.Id, actor.Type, LocalizationService.GetString(Localization.Keys.Core.Actor.Recycled, actor.Id, actor.Type));
-                            }
-                            else
-                            {
-                                // 不能存就久一点再判断
-                                ActiveTimeDic[actor.Id] = TimerHelper.GetNowWithUtc();
-                            }
-                        }
-
-                        return true;
-                    }
-
-                    await GetLifeActor(actor.Id).SendAsync(Work);
-                }
-            }
-
-            actor.Tell(Func);
+            actor.Tell(() => CheckIdleActorAsync(actor));
         }
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 检查单个Actor是否空闲超时并触发回收投递。
+    /// </summary>
+    /// <remarks>
+    /// Re-checks the recycle window on the Actor's own worker; if overdue, dispatches the
+    /// actual recycle work to the life-actor (mutex) worker. 提取自 <see cref="CheckIdle"/>
+    /// 外层闭包，条件表达式与原实现逐字保留，仅把闭包提升为带 <paramref name="actor"/> 参数的方法以降低嵌套层级。
+    /// </remarks>
+    /// <param name="actor">待检查的Actor / The Actor to check</param>
+    /// <returns>表示检查与回收投递完成的异步任务 / Async task representing the check and recycle dispatch</returns>
+    private static async Task CheckIdleActorAsync(Actor actor)
+    {
+        if (actor.AutoRecycle && (TimerHelper.GetNowWithUtc() - ActiveTimeDic[actor.Id]).TotalMinutes > GlobalSettings.CurrentSetting.ActorRecycleTime)
+        {
+            await GetLifeActor(actor.Id).SendAsync(() => RecycleIdleActorAsync(actor));
+        }
+    }
+
+    /// <summary>
+    /// 在 life-actor worker 上执行空闲Actor的实际回收。
+    /// </summary>
+    /// <remarks>
+    /// 提取自 <see cref="CheckIdleActorAsync"/> 内层闭包：再次确认回收窗口，命中后按
+    /// <see cref="Actor.ReadyToDeActive"/> 决定执行 Inactive→OnRecycle→移除 或 推迟再判。
+    /// 条件表达式与原实现逐字保留。
+    /// </remarks>
+    /// <param name="actor">待回收的Actor / The Actor to recycle</param>
+    /// <returns>固定返回 <c>true</c> 以适配 <c>SendAsync&lt;T&gt;</c> 投递签名 / Always <c>true</c> to fit the dispatch signature</returns>
+    private static async Task<bool> RecycleIdleActorAsync(Actor actor)
+    {
+        if (ActiveTimeDic.TryGetValue(actor.Id, out var activeTime) && (TimerHelper.GetNowWithUtc() - ActiveTimeDic[actor.Id]).TotalMinutes > GlobalSettings.CurrentSetting.ActorRecycleTime)
+        {
+            // 防止定时回存失败时State被直接移除
+            if (actor.ReadyToDeActive)
+            {
+                await actor.Inactive();
+                await actor.OnRecycle();
+                ActorMap.TryRemove(actor.Id, out _);
+                LogHelper.Debug("ActorManager.CheckIdle, Actor recycled, actorId: {actorId}, actorType: {actorType}, message: {message}", actor.Id, actor.Type, LocalizationService.GetString(Localization.Keys.Core.Actor.Recycled, actor.Id, actor.Type));
+            }
+            else
+            {
+                // 不能存就久一点再判断
+                ActiveTimeDic[actor.Id] = TimerHelper.GetNowWithUtc();
+            }
+        }
+
+        return true;
     }
 
     /// <summary>
