@@ -42,7 +42,7 @@ namespace GameFrameX.NetWork.Kcp;
 /// KCP network channel / KCP 网络通道
 /// Implements INetWorkChannel interface
 /// </summary>
-public sealed class KcpNetWorkChannel : INetWorkChannel
+public sealed class KcpNetWorkChannel : INetWorkChannel, IDisposable
 {
     private readonly CancellationTokenSource _cancellationTokenSource = new();
     private readonly KcpGameAppSession _gameAppSession;
@@ -135,22 +135,8 @@ public sealed class KcpNetWorkChannel : INetWorkChannel
 
         var actorId = GetData<long>(GlobalConst.ActorIdKey);
         var messageData = MessageHelper.EncoderHandler.Handler(msg);
-
-        if (Setting.IsDebug && Setting.IsDebugSend)
-        {
-            if (msg is IHeartBeatMessage)
-            {
-                if (Setting.IsDebugSendHeartBeat)
-                {
-                    LogHelper.Debug("Send HeartBeat Message:{actorId} {message}", actorId, LocalizationService.GetString(Keys.NetWork.MessageSent, msg.ToFormatMessageString(actorId)));
-                }
-            }
-            else
-            {
-                var responseErrorCode = msg is IResponseMessage respMsg2 ? respMsg2.ErrorCode : 0;
-                LogHelper.Debug("Send Message:{actorId} {errorCode} {message}", actorId, responseErrorCode, LocalizationService.GetString(Keys.NetWork.MessageSent, msg.ToFormatMessageString(actorId)));
-            }
-        }
+        var responseErrorCode = msg is IResponseMessage responseMessage ? responseMessage.ErrorCode : 0;
+        LogSendDebug(msg, actorId, responseErrorCode);
 
         if (!KcpSession.IsConnected)
         {
@@ -174,6 +160,35 @@ public sealed class KcpNetWorkChannel : INetWorkChannel
     }
 
     /// <summary>
+    /// Log the outgoing message when send debugging is enabled / 在开启发送调试时记录发送消息日志
+    /// </summary>
+    /// <remarks>
+    /// Heartbeat messages are additionally gated by the heartbeat debug flag. Extracted from WriteAsync to reduce cognitive complexity.
+    /// </remarks>
+    /// <param name="msg">Network message / 网络消息</param>
+    /// <param name="actorId">Actor id / 角色 Id</param>
+    /// <param name="responseErrorCode">Response error code / 响应错误码</param>
+    private void LogSendDebug(INetworkMessage msg, long actorId, int responseErrorCode)
+    {
+        if (!Setting.IsDebug || !Setting.IsDebugSend)
+        {
+            return;
+        }
+
+        if (msg is IHeartBeatMessage)
+        {
+            if (Setting.IsDebugSendHeartBeat)
+            {
+                LogHelper.Debug("Send HeartBeat Message:{actorId} {message}", actorId, LocalizationService.GetString(Keys.NetWork.MessageSent, msg.ToFormatMessageString(actorId)));
+            }
+        }
+        else
+        {
+            LogHelper.Debug("Send Message:{actorId} {errorCode} {message}", actorId, responseErrorCode, LocalizationService.GetString(Keys.NetWork.MessageSent, msg.ToFormatMessageString(actorId)));
+        }
+    }
+
+    /// <summary>
     /// Close the channel / 关闭通道
     /// </summary>
     public void Close()
@@ -187,6 +202,18 @@ public sealed class KcpNetWorkChannel : INetWorkChannel
         _cancellationTokenSource.Cancel();
         KcpSession.Close();
         ClearData();
+        _cancellationTokenSource.Dispose();
+    }
+
+    /// <summary>
+    /// Releases resources held by this channel / 释放本通道持有的资源
+    /// </summary>
+    /// <remarks>
+    /// Disposes the cancellation token source. Delegates to <see cref="Close"/> so the shutdown and disposal paths share one cleanup sequence.
+    /// </remarks>
+    public void Dispose()
+    {
+        Close();
     }
 
     /// <summary>
