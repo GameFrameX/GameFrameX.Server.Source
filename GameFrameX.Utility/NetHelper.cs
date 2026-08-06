@@ -166,48 +166,12 @@ public static class NetHelper
             var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             foreach (var line in lines)
             {
-                if (!line.StartsWith("TCP", StringComparison.OrdinalIgnoreCase))
+                var item = TryBuildNetstatPortItem(line, port);
+                if (item == null)
                 {
                     continue;
                 }
 
-                var columns = line.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
-                // 典型格式：TCP LocalAddress ForeignAddress State PID
-                if (columns.Length < 5)
-                {
-                    continue;
-                }
-
-                var localAddress = columns[1];
-                var state = columns[3];
-                var pidRaw = columns[4];
-                if (!string.Equals(state, "LISTENING", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                if (!(localAddress.EndsWith($":{port}", StringComparison.OrdinalIgnoreCase) ||
-                      localAddress.EndsWith($"]:{port}", StringComparison.OrdinalIgnoreCase)))
-                {
-                    continue;
-                }
-
-                if (!int.TryParse(pidRaw, out var pid))
-                {
-                    continue;
-                }
-
-                var processName = "Unknown";
-                try
-                {
-                    processName = Process.GetProcessById(pid).ProcessName;
-                }
-                catch
-                {
-                    // 在部分系统权限下可能无法读取进程名，此时使用 Unknown
-                }
-
-                var item = $"{processName} {pid} {localAddress} (LISTENING)";
                 if (!deDuplicate.Add(item))
                 {
                     continue;
@@ -226,6 +190,58 @@ public static class NetHelper
         {
             return new List<string>();
         }
+    }
+
+    /// <summary>
+    /// 解析单行 netstat 输出，若为监听目标端口的 TCP 行则返回格式化条目，否则返回 null。
+    /// </summary>
+    /// <param name="line">netstat 单行输出</param>
+    /// <param name="port">目标端口号</param>
+    /// <returns>命中目标端口时返回格式化条目；不匹配返回 null</returns>
+    private static string TryBuildNetstatPortItem(string line, int port)
+    {
+        if (!line.StartsWith("TCP", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var columns = line.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
+        // 典型格式：TCP LocalAddress ForeignAddress State PID
+        if (columns.Length < 5)
+        {
+            return null;
+        }
+
+        var localAddress = columns[1];
+        var state = columns[3];
+        var pidRaw = columns[4];
+        if (!string.Equals(state, "LISTENING", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        if (!(localAddress.EndsWith($":{port}", StringComparison.OrdinalIgnoreCase) ||
+              localAddress.EndsWith($"]:{port}", StringComparison.OrdinalIgnoreCase)))
+        {
+            return null;
+        }
+
+        if (!int.TryParse(pidRaw, out var pid))
+        {
+            return null;
+        }
+
+        var processName = "Unknown";
+        try
+        {
+            processName = Process.GetProcessById(pid).ProcessName;
+        }
+        catch
+        {
+            // 在部分系统权限下可能无法读取进程名，此时使用 Unknown
+        }
+
+        return $"{processName} {pid} {localAddress} (LISTENING)";
     }
 
     /// <summary>
