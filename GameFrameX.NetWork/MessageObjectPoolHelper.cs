@@ -37,6 +37,30 @@ using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.NetWork;
 
 /// <summary>
+/// Custom pooled object policy that resets objects to default values / 自定义池化对象策略，将对象重置为默认值
+/// </summary>
+/// <typeparam name="T">The type of objects in the pool / 池中对象的类型</typeparam>
+internal class ResetObjectPolicy<T> : IPooledObjectPolicy<T> where T : class, IMessageObject, new()
+{
+    public T Create()
+    {
+        return new T();
+    }
+
+    public bool Return(T obj)
+    {
+        if (obj == null)
+        {
+            return false;
+        }
+
+        // Reset object to default values / 将对象重置为默认值
+        obj.Clear();
+        return true;
+    }
+}
+
+/// <summary>
 /// Static message object pool helper class / 静态消息对象池帮助类
 /// Provides centralized management for object pools using Microsoft.Extensions.ObjectPool / 使用 Microsoft.Extensions.ObjectPool 提供对象池的集中管理
 /// </summary>
@@ -59,30 +83,6 @@ public static class MessageObjectPoolHelper
     private static readonly ConcurrentDictionary<Type, Action<object>> ReturnActions = new();
     private static readonly ConcurrentDictionary<Type, Func<object>> GetActions = new();
     private static readonly ObjectPoolProvider PoolProvider = new DefaultObjectPoolProvider();
-
-    /// <summary>
-    /// Custom pooled object policy that resets objects to default values / 自定义池化对象策略，将对象重置为默认值
-    /// </summary>
-    /// <typeparam name="T">The type of objects in the pool / 池中对象的类型</typeparam>
-    private class ResetObjectPolicy<T> : IPooledObjectPolicy<T> where T : class, IMessageObject, new()
-    {
-        public T Create()
-        {
-            return new T();
-        }
-
-        public bool Return(T obj)
-        {
-            if (obj == null)
-            {
-                return false;
-            }
-
-            // Reset object to default values / 将对象重置为默认值
-            obj.Clear();
-            return true;
-        }
-    }
 
     /// <summary>
     /// Gets or creates an object pool for the specified type / 获取或创建指定类型的对象池
