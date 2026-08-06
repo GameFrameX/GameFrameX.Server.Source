@@ -844,7 +844,7 @@ public sealed class BigInteger
                 return result;
             }
 
-            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.Exceptions.MultiplicationOverflow));
+            throw new ArithmeticException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.MultiplicationOverflow));
         }
 
         // 如果输入符号不同，则结果为负
