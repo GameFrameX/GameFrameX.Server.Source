@@ -154,85 +154,60 @@ public sealed class Actor : IActor, IDisposable
     public async Task<IComponentAgent> GetComponentAgent(Type agentType, bool isNew = true)
     {
         var compType = agentType.BaseType.GetGenericArguments()[0];
-        IComponentAgent agent;
         BaseComponent component;
         if (isNew)
         {
             component = _componentsMap.GetOrAdd(compType, GetOrAddFactory);
-            agent = component.GetAgent(agentType);
-            if (!component.IsActive)
-            {
-                async Task Worker()
-                {
-                    try
-                    {
-                        await component.Active();
-                    }
-                    catch (Exception e)
-                    {
-                        LogHelper.Fatal(e, "Actor.GetComponentAgent, Active component failed, actorId: {actorId}, componentType: {componentType}", Id, compType.FullName);
-                    }
-
-                    try
-                    {
-                        await agent.BeforeActivation();
-                        await agent.Active();
-                        await agent.AfterActivation();
-                    }
-                    catch (Exception e)
-                    {
-                        LogHelper.Fatal(e, "Actor.GetComponentAgent, Active component failed, actorId: {actorId}, componentType: {componentType}", Id, compType.FullName);
-                    }
-                }
-
-                await SendAsyncWithoutCheck(Worker);
-            }
-
-            return agent;
         }
-
-        if (!_componentsMap.TryGetValue(compType, out component))
+        else if (!_componentsMap.TryGetValue(compType, out component))
         {
             return default;
         }
 
-        agent = component.GetAgent(agentType);
+        var agent = component.GetAgent(agentType);
         if (!component.IsActive)
         {
-            async Task Worker()
-            {
-                try
-                {
-                    await component.Active();
-                }
-                catch (Exception e)
-                {
-                    LogHelper.Fatal(e, "Actor.GetComponentAgent, Active component failed, actorId: {actorId}, componentType: {componentType}", Id, compType.FullName);
-                }
-
-                try
-                {
-                    await agent.BeforeActivation();
-                    await agent.Active();
-                    await agent.AfterActivation();
-                }
-                catch (Exception e)
-                {
-                    LogHelper.Fatal(e, "Actor.GetComponentAgent, Active component failed, actorId: {actorId}, componentType: {componentType}", Id, compType.FullName);
-                }
-            }
-
-            await SendAsyncWithoutCheck(Worker);
+            await SendAsyncWithoutCheck(() => ActivateComponentAsync(component, agent, compType));
         }
 
         return agent;
     }
 
     /// <summary>
+    /// 激活指定组件并依次调用其代理的激活生命周期方法
+    /// </summary>
+    /// <param name="component">要激活的组件实例</param>
+    /// <param name="agent">组件对应的代理实例</param>
+    /// <param name="compType">组件类型,用于日志记录</param>
+    /// <returns>表示异步操作的任务</returns>
+    private async Task ActivateComponentAsync(BaseComponent component, IComponentAgent agent, Type compType)
+    {
+        try
+        {
+            await component.Active();
+        }
+        catch (Exception e)
+        {
+            LogHelper.Fatal(e, "Actor.GetComponentAgent, Active component failed, actorId: {actorId}, componentType: {componentType}", Id, compType.FullName);
+        }
+
+        try
+        {
+            await agent.BeforeActivation();
+            await agent.Active();
+            await agent.AfterActivation();
+        }
+        catch (Exception e)
+        {
+            LogHelper.Fatal(e, "Actor.GetComponentAgent, Active component failed, actorId: {actorId}, componentType: {componentType}", Id, compType.FullName);
+        }
+    }
+
+    /// <summary>
     /// 处理跨天逻辑,遍历所有组件并执行跨天操作
     /// </summary>
-    /// <param name="openServerDay">开服天数</param>
-    public async Task CrossDay(int openServerDay)
+    /// <param name="serverDay">开服天数</param>
+    public async Task CrossDay(int serverDay)
     {
         LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.Actor.CrossDay, Id, Type));
         foreach (var comp in _componentsMap.Values)
@@ -243,7 +218,7 @@ public sealed class Actor : IActor, IDisposable
                 // 使用try-catch缩小异常影响范围
                 try
                 {
-                    await crossDay.OnCrossDay(openServerDay);
+                    await crossDay.OnCrossDay(serverDay);
                 }
                 catch (Exception e)
                 {
@@ -482,17 +457,17 @@ public sealed class Actor : IActor, IDisposable
     /// 发送带超时的异步工作指令
     /// </summary>
     /// <param name="work">要执行的工作内容</param>
-    /// <param name="timeout">执行超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="timeOut">执行超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="cancellationToken">取消操作的令牌</param>
     /// <returns>返回表示异步操作的Task</returns>
-    public Task SendAsync(Action work, int timeout, CancellationToken cancellationToken = default)
+    public Task SendAsync(Action work, int timeOut = -1, CancellationToken cancellationToken = default)
     {
-        if (timeout <= 0)
+        if (timeOut <= 0)
         {
-            timeout = GlobalSettings.CurrentSetting.ActorTimeOut;
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
         }
 
-        return WorkerActor.SendAsync(work, timeout, cancellationToken);
+        return WorkerActor.SendAsync(work, timeOut, cancellationToken);
     }
 
     /// <summary>
@@ -500,35 +475,35 @@ public sealed class Actor : IActor, IDisposable
     /// </summary>
     /// <typeparam name="T">返回值类型</typeparam>
     /// <param name="work">要执行的工作内容</param>
-    /// <param name="timeout">执行超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="timeOut">执行超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="cancellationToken">取消操作的令牌</param>
     /// <returns>返回指定类型的异步操作结果</returns>
-    public Task<T> SendAsync<T>(Func<T> work, int timeout = -1, CancellationToken cancellationToken = default)
+    public Task<T> SendAsync<T>(Func<T> work, int timeOut = -1, CancellationToken cancellationToken = default)
     {
-        if (timeout <= 0)
+        if (timeOut <= 0)
         {
-            timeout = GlobalSettings.CurrentSetting.ActorTimeOut;
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
         }
 
-        return WorkerActor.SendAsync(work, timeout, cancellationToken);
+        return WorkerActor.SendAsync(work, timeOut, cancellationToken);
     }
 
     /// <summary>
     /// 发送带锁检查的异步工作指令
     /// </summary>
     /// <param name="work">要执行的异步工作内容</param>
-    /// <param name="timeout">执行超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="timeOut">执行超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="checkLock">是否检查锁,默认为true</param>
     /// <param name="cancellationToken">取消操作的令牌</param>
     /// <returns>返回表示异步操作的Task</returns>
-    public Task SendAsync(Func<Task> work, int timeout = -1, bool checkLock = true, CancellationToken cancellationToken = default)
+    public Task SendAsync(Func<Task> work, int timeOut = -1, bool checkLock = true, CancellationToken cancellationToken = default)
     {
-        if (timeout <= 0)
+        if (timeOut <= 0)
         {
-            timeout = GlobalSettings.CurrentSetting.ActorTimeOut;
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
         }
 
-        return WorkerActor.SendAsync(work, timeout, checkLock, cancellationToken);
+        return WorkerActor.SendAsync(work, timeOut, checkLock, cancellationToken);
     }
 
     /// <summary>
@@ -553,17 +528,17 @@ public sealed class Actor : IActor, IDisposable
     /// </summary>
     /// <typeparam name="T">返回值类型</typeparam>
     /// <param name="work">要执行的异步工作内容</param>
-    /// <param name="timeout">执行超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="timeOut">执行超时时间（毫秒）,默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="cancellationToken">取消操作的令牌</param>
     /// <returns>返回指定类型的异步操作结果</returns>
-    public Task<T> SendAsync<T>(Func<Task<T>> work, int timeout = -1, CancellationToken cancellationToken = default)
+    public Task<T> SendAsync<T>(Func<Task<T>> work, int timeOut = -1, CancellationToken cancellationToken = default)
     {
-        if (timeout <= 0)
+        if (timeOut <= 0)
         {
-            timeout = GlobalSettings.CurrentSetting.ActorTimeOut;
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
         }
 
-        return WorkerActor.SendAsync(work, timeout, cancellationToken);
+        return WorkerActor.SendAsync(work, timeOut, cancellationToken);
     }
 
     #endregion
