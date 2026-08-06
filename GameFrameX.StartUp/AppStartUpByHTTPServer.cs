@@ -73,11 +73,42 @@ public abstract partial class AppStartUpBase
     /// <exception cref="NotImplementedException">当启用 HTTPS 但未实现时抛出 / Thrown when HTTPS is enabled but not implemented</exception>
     private async Task StartHttpServer(List<BaseHttpHandler> baseHandler, Func<string, BaseHttpHandler> httpFactory, List<IHttpAopHandler> aopHandlerTypes = null, LogLevel minimumLevelLogLevel = LogLevel.Debug)
     {
+        // 前置校验：启用状态与 HTTP URL 格式
+        if (!EnsureHttpServerEnabled())
+        {
+            return;
+        }
+
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.StartingServer));
+        if (!Setting.HttpPort.IsRange(5000, ushort.MaxValue - 1))
+        {
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.PortOutOfRange, Setting.HttpPort, 5000, ushort.MaxValue - 1));
+            return;
+        }
+
+        // 检查端口是否可用：不可用则记录占用详情后返回
+        if (!NetHelper.PortIsAvailable(Setting.HttpPort))
+        {
+            LogHttpPortOccupied();
+            return;
+        }
+
+        await RunHttpServerAsync(baseHandler, httpFactory, aopHandlerTypes, minimumLevelLogLevel);
+    }
+
+    /// <summary>
+    /// 校验 HTTP 服务器是否启用及 URL 格式是否合法。
+    /// </summary>
+    /// <remarks>Validate whether the HTTP server is enabled and the URL format is valid. Extracted from <see cref="StartHttpServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <returns>启用且 URL 合法返回 true；未启用返回 false；URL 不合法时抛出 <see cref="ArgumentException"/> / Returns true if enabled and URL is valid; returns false if disabled; throws <see cref="ArgumentException"/> for invalid URL</returns>
+    /// <exception cref="ArgumentException">当 HTTP URL 格式不正确时抛出 / Thrown when HTTP URL format is incorrect</exception>
+    private bool EnsureHttpServerEnabled()
+    {
         // 检查是否启用HTTP服务
         if (!Setting.IsEnableHttp)
         {
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.ServiceDisabled));
-            return;
+            return false;
         }
 
         // 验证HTTP URL格式
@@ -91,150 +122,220 @@ public abstract partial class AppStartUpBase
             throw new ArgumentException(LocalizationService.GetString(Localization.Keys.StartUp.HttpExceptions.AddressMustEndWithSlash), nameof(Setting.HttpUrl));
         }
 
-        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.StartingServer));
-        if (!Setting.HttpPort.IsRange(5000, ushort.MaxValue - 1))
+        return true;
+    }
+
+    /// <summary>
+    /// 记录 HTTP 端口被占用时的占用进程详情。
+    /// </summary>
+    /// <remarks>Log the occupying process details when the HTTP port is occupied. Extracted from <see cref="StartHttpServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    private void LogHttpPortOccupied()
+    {
+        LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.PortOccupied, Setting.HttpPort));
+        var occupiedProcesses = NetHelper.GetPortOccupyingProcesses(Setting.HttpPort);
+        if (occupiedProcesses.Count > 0)
         {
-            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.PortOutOfRange, Setting.HttpPort, 5000, ushort.MaxValue - 1));
-            return;
-        }
-
-        // 检查端口是否可用
-        if (NetHelper.PortIsAvailable(Setting.HttpPort))
-        {
-            var builder = WebApplication.CreateBuilder();
-
-            // 确定是否为开发环境
-            var development = Setting.HttpIsDevelopment || EnvironmentHelper.IsDevelopment();
-
-            var openApiInfo = GetOpenApiInfo();
-
-            var corsAllowedOrigins = ResolveHttpCorsAllowedOrigins(Setting.HttpCorsAllowedOrigins, development);
-            if (corsAllowedOrigins.Length > 0)
-            {
-                builder.Services.AddCors(options =>
-                {
-                    options.AddDefaultPolicy(policy =>
-                    {
-                        policy.WithOrigins(corsAllowedOrigins)
-                              .AllowAnyMethod()
-                              .AllowAnyHeader();
-                    });
-                });
-            }
-
-            // 在开发环境下配置Swagger
-            if (development)
-            {
-                builder.Services.AddEndpointsApiExplorer();
-                builder.Services.AddSwaggerGen(options =>
-                {
-                    options.SwaggerDoc(openApiInfo.Version, openApiInfo);
-                    options.SchemaFilter<PreservePropertyCasingSchemaFilter>();
-                    options.OperationFilter<SwaggerOperationFilter>(baseHandler);
-                    options.CustomSchemaIds(type => type.Name);
-                });
-            }
-
-            // 配置Web主机
-            var hostBuilder = builder.WebHost.UseKestrel(options =>
-            {
-                options.Limits.MaxRequestBodySize = Setting.HttpMaxRequestBodyBytes;
-                options.ListenAnyIP(Setting.HttpPort);
-
-                if (Setting.HttpsPort > 0 && NetHelper.PortIsAvailable(Setting.HttpsPort))
-                {
-                    throw new NotImplementedException(LocalizationService.GetString(Localization.Keys.StartUp.HttpExceptions.HttpsNotImplemented));
-                }
-            });
-
-            hostBuilder.ConfigureLogging(logging =>
-            {
-                logging.ClearProviders();
-                logging.AddSerilog(Log.Logger);
-                logging.SetMinimumLevel(minimumLevelLogLevel);
-            });
-            builder.AddServiceDefaults(Setting.IsOpenTelemetry, Setting.IsOpenTelemetryMetrics, Setting.IsOpenTelemetryTracing);
-            var app = builder.Build();
-            app.MapDefaultEndpoints();
-            var ipList = NetHelper.GetLocalIpList();
-            // 开发环境下的Swagger UI配置
-            if (development)
-            {
-                // 添加 Swagger 中间件
-                app.UseSwagger();
-                app.UseSwaggerUI(options =>
-                {
-                    var swaggerEndpoint = LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.SwaggerEndpointFormat, openApiInfo.Version);
-                    options.SwaggerEndpoint(swaggerEndpoint, openApiInfo.Title);
-                    options.RoutePrefix = LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.SwaggerRoutePrefix);
-                });
-
-                foreach (var ip in ipList)
-                {
-                    LogHelper.Debug(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.SwaggerUiAccess, ip, Setting.HttpPort));
-                }
-            }
-
-            if (corsAllowedOrigins.Length > 0)
-            {
-                app.UseCors();
-            }
-
-            // 配置全局异常处理
-            app.UseExceptionHandler(ExceptionHandler);
-
-            // 配置OpenTelemetry Prometheus端点（仅在未配置独立指标端口时）
-            if (Setting.IsOpenTelemetry && Setting.IsOpenTelemetryMetrics && Setting.MetricsPort == 0)
-            {
-                app.MapPrometheusScrapingEndpoint();
-                foreach (var ip in ipList)
-                {
-                    LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.PrometheusMetricsEndpointEnabledInline, ip, Setting.HttpPort));
-                }
-            }
-            else if (Setting.IsOpenTelemetry && Setting.IsOpenTelemetryMetrics && Setting.MetricsPort > 0)
-            {
-                LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.PrometheusMetricsServiceOnStandalonePort, Setting.MetricsPort));
-                foreach (var ip in ipList)
-                {
-                    LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.PrometheusMetricsEndpointEnabled, ip, Setting.MetricsPort));
-                }
-            }
-
-            var registeredRouteKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var handler in baseHandler)
-            {
-                var handlerType = handler.GetType();
-                var mappingAttribute = handlerType.GetCustomAttribute<HttpMessageMappingAttribute>();
-                if (mappingAttribute == null)
-                {
-                    continue;
-                }
-
-                // 注册驼峰格式路由
-                RegisterHandlerRoute(app, mappingAttribute, mappingAttribute.OriginalCmd, httpFactory, aopHandlerTypes, development, registeredRouteKeys);
-
-                // 注册下划线格式路由（如果与驼峰格式不同）
-                if (mappingAttribute.OriginalCmd != mappingAttribute.StandardCmd)
-                {
-                    RegisterHandlerRoute(app, mappingAttribute, mappingAttribute.StandardCmd, httpFactory, aopHandlerTypes, development, registeredRouteKeys);
-                }
-            }
-
-            await app.StartAsync();
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.StartupComplete, Setting.HttpPort));
+            LogHelper.Error($"HTTP端口[{Setting.HttpPort}]占用详情: {string.Join(" | ", occupiedProcesses)}");
         }
         else
         {
-            LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.PortOccupied, Setting.HttpPort));
-            var occupiedProcesses = NetHelper.GetPortOccupyingProcesses(Setting.HttpPort);
-            if (occupiedProcesses.Count > 0)
+            LogHelper.Warning($"HTTP端口[{Setting.HttpPort}]已被占用，但未能获取占用进程详情。");
+        }
+    }
+
+    /// <summary>
+    /// 构建、配置并启动 HTTP 服务器。
+    /// </summary>
+    /// <remarks>Build, configure and start the HTTP server. Extracted from <see cref="StartHttpServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <param name="baseHandler">HTTP 处理器列表，用于处理不同的 HTTP 请求 / HTTP handler list for processing different HTTP requests</param>
+    /// <param name="httpFactory">HTTP 处理器工厂，根据命令标识符创建对应的处理器实例 / HTTP handler factory that creates corresponding handler instances based on command identifiers</param>
+    /// <param name="aopHandlerTypes">AOP 处理器列表，用于在 HTTP 请求处理前后执行额外的逻辑 / AOP handler list for executing additional logic before and after HTTP request processing</param>
+    /// <param name="minimumLevelLogLevel">日志记录的最小级别，用于控制日志输出 / Minimum level for logging to control log output</param>
+    /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
+    /// <exception cref="NotImplementedException">当启用 HTTPS 但未实现时抛出 / Thrown when HTTPS is enabled but not implemented</exception>
+    private async Task RunHttpServerAsync(List<BaseHttpHandler> baseHandler, Func<string, BaseHttpHandler> httpFactory, List<IHttpAopHandler> aopHandlerTypes, LogLevel minimumLevelLogLevel)
+    {
+        var builder = WebApplication.CreateBuilder();
+
+        // 确定是否为开发环境
+        var development = Setting.HttpIsDevelopment || EnvironmentHelper.IsDevelopment();
+
+        var openApiInfo = GetOpenApiInfo();
+
+        var corsAllowedOrigins = ResolveHttpCorsAllowedOrigins(Setting.HttpCorsAllowedOrigins, development);
+
+        ConfigureHttpBuilder(builder, baseHandler, development, openApiInfo, corsAllowedOrigins, minimumLevelLogLevel);
+
+        var app = builder.Build();
+        app.MapDefaultEndpoints();
+
+        ConfigureHttpApplication(app, development, openApiInfo, corsAllowedOrigins, baseHandler, httpFactory, aopHandlerTypes);
+
+        await app.StartAsync();
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.StartupComplete, Setting.HttpPort));
+    }
+
+    /// <summary>
+    /// 配置 HTTP 服务器的 <see cref="WebApplicationBuilder"/> 侧服务（CORS、Swagger、Kestrel、日志、OpenTelemetry）。
+    /// </summary>
+    /// <remarks>Configure the builder-side services of the HTTP server (CORS, Swagger, Kestrel, logging, OpenTelemetry). Extracted from <see cref="StartHttpServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <param name="builder">Web 应用程序构建器 / Web application builder</param>
+    /// <param name="baseHandler">HTTP 处理器列表 / HTTP handler list</param>
+    /// <param name="development">是否为开发环境 / Whether it is development environment</param>
+    /// <param name="openApiInfo">OpenAPI 信息 / OpenAPI information</param>
+    /// <param name="corsAllowedOrigins">允许的跨域来源 / Allowed CORS origins</param>
+    /// <param name="minimumLevelLogLevel">日志记录的最小级别 / Minimum level for logging</param>
+    /// <exception cref="NotImplementedException">当启用 HTTPS 但未实现时抛出 / Thrown when HTTPS is enabled but not implemented</exception>
+    private void ConfigureHttpBuilder(WebApplicationBuilder builder, List<BaseHttpHandler> baseHandler, bool development, OpenApiInfo openApiInfo, string[] corsAllowedOrigins, LogLevel minimumLevelLogLevel)
+    {
+        if (corsAllowedOrigins.Length > 0)
+        {
+            builder.Services.AddCors(options =>
             {
-                LogHelper.Error($"HTTP端口[{Setting.HttpPort}]占用详情: {string.Join(" | ", occupiedProcesses)}");
+                options.AddDefaultPolicy(policy =>
+                {
+                    policy.WithOrigins(corsAllowedOrigins)
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
+            });
+        }
+
+        // 在开发环境下配置Swagger
+        if (development)
+        {
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen(options =>
+            {
+                options.SwaggerDoc(openApiInfo.Version, openApiInfo);
+                options.SchemaFilter<PreservePropertyCasingSchemaFilter>();
+                options.OperationFilter<SwaggerOperationFilter>(baseHandler);
+                options.CustomSchemaIds(type => type.Name);
+            });
+        }
+
+        // 配置Web主机
+        var hostBuilder = builder.WebHost.UseKestrel(options =>
+        {
+            options.Limits.MaxRequestBodySize = Setting.HttpMaxRequestBodyBytes;
+            options.ListenAnyIP(Setting.HttpPort);
+
+            if (Setting.HttpsPort > 0 && NetHelper.PortIsAvailable(Setting.HttpsPort))
+            {
+                throw new NotImplementedException(LocalizationService.GetString(Localization.Keys.StartUp.HttpExceptions.HttpsNotImplemented));
             }
-            else
+        });
+
+        hostBuilder.ConfigureLogging(logging =>
+        {
+            logging.ClearProviders();
+            logging.AddSerilog(Log.Logger);
+            logging.SetMinimumLevel(minimumLevelLogLevel);
+        });
+        builder.AddServiceDefaults(Setting.IsOpenTelemetry, Setting.IsOpenTelemetryMetrics, Setting.IsOpenTelemetryTracing);
+    }
+
+    /// <summary>
+    /// 配置 HTTP 服务器的 <see cref="WebApplication"/> 请求管道（Swagger UI、CORS、异常处理、Prometheus、路由）。
+    /// </summary>
+    /// <remarks>Configure the request pipeline of the HTTP server (Swagger UI, CORS, exception handling, Prometheus, routing). Extracted from <see cref="StartHttpServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <param name="app">Web 应用程序实例 / Web application instance</param>
+    /// <param name="development">是否为开发环境 / Whether it is development environment</param>
+    /// <param name="openApiInfo">OpenAPI 信息 / OpenAPI information</param>
+    /// <param name="corsAllowedOrigins">允许的跨域来源 / Allowed CORS origins</param>
+    /// <param name="baseHandler">HTTP 处理器列表 / HTTP handler list</param>
+    /// <param name="httpFactory">HTTP 处理器工厂 / HTTP handler factory</param>
+    /// <param name="aopHandlerTypes">AOP 处理器列表 / AOP handler list</param>
+    private void ConfigureHttpApplication(WebApplication app, bool development, OpenApiInfo openApiInfo, string[] corsAllowedOrigins, List<BaseHttpHandler> baseHandler, Func<string, BaseHttpHandler> httpFactory, List<IHttpAopHandler> aopHandlerTypes)
+    {
+        var ipList = NetHelper.GetLocalIpList();
+
+        // 开发环境下的Swagger UI配置
+        if (development)
+        {
+            // 添加 Swagger 中间件
+            app.UseSwagger();
+            app.UseSwaggerUI(options =>
             {
-                LogHelper.Warning($"HTTP端口[{Setting.HttpPort}]已被占用，但未能获取占用进程详情。");
+                var swaggerEndpoint = LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.SwaggerEndpointFormat, openApiInfo.Version);
+                options.SwaggerEndpoint(swaggerEndpoint, openApiInfo.Title);
+                options.RoutePrefix = LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.SwaggerRoutePrefix);
+            });
+
+            foreach (var ip in ipList)
+            {
+                LogHelper.Debug(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.SwaggerUiAccess, ip, Setting.HttpPort));
+            }
+        }
+
+        if (corsAllowedOrigins.Length > 0)
+        {
+            app.UseCors();
+        }
+
+        // 配置全局异常处理
+        app.UseExceptionHandler(ExceptionHandler);
+
+        ConfigureHttpPrometheusEndpoint(app, ipList);
+
+        RegisterHandlerRoutes(app, baseHandler, httpFactory, aopHandlerTypes, development);
+    }
+
+    /// <summary>
+    /// 配置 OpenTelemetry Prometheus 指标端点（内联端点或独立端口服务）。
+    /// </summary>
+    /// <remarks>Configure the OpenTelemetry Prometheus metrics endpoint (inline endpoint or standalone-port service). Extracted from <see cref="StartHttpServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <param name="app">Web 应用程序实例 / Web application instance</param>
+    /// <param name="ipList">本机 IP 列表 / Local IP list</param>
+    private void ConfigureHttpPrometheusEndpoint(WebApplication app, List<string> ipList)
+    {
+        // 配置OpenTelemetry Prometheus端点（仅在未配置独立指标端口时）
+        if (Setting.IsOpenTelemetry && Setting.IsOpenTelemetryMetrics && Setting.MetricsPort == 0)
+        {
+            app.MapPrometheusScrapingEndpoint();
+            foreach (var ip in ipList)
+            {
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.PrometheusMetricsEndpointEnabledInline, ip, Setting.HttpPort));
+            }
+        }
+        else if (Setting.IsOpenTelemetry && Setting.IsOpenTelemetryMetrics && Setting.MetricsPort > 0)
+        {
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.PrometheusMetricsServiceOnStandalonePort, Setting.MetricsPort));
+            foreach (var ip in ipList)
+            {
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.PrometheusMetricsEndpointEnabled, ip, Setting.MetricsPort));
+            }
+        }
+    }
+
+    /// <summary>
+    /// 注册全部 HTTP 处理器路由（驼峰与下划线两种格式）。
+    /// </summary>
+    /// <remarks>Register routes for all HTTP handlers (both camelCase and underscore forms). Extracted from <see cref="StartHttpServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <param name="app">Web 应用程序实例 / Web application instance</param>
+    /// <param name="baseHandler">HTTP 处理器列表 / HTTP handler list</param>
+    /// <param name="httpFactory">HTTP 处理器工厂 / HTTP handler factory</param>
+    /// <param name="aopHandlerTypes">AOP 处理器列表 / AOP handler list</param>
+    /// <param name="development">是否为开发环境 / Whether it is development environment</param>
+    private static void RegisterHandlerRoutes(WebApplication app, List<BaseHttpHandler> baseHandler, Func<string, BaseHttpHandler> httpFactory, List<IHttpAopHandler> aopHandlerTypes, bool development)
+    {
+        var registeredRouteKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var handler in baseHandler)
+        {
+            var handlerType = handler.GetType();
+            var mappingAttribute = handlerType.GetCustomAttribute<HttpMessageMappingAttribute>();
+            if (mappingAttribute == null)
+            {
+                continue;
+            }
+
+            // 注册驼峰格式路由
+            RegisterHandlerRoute(app, mappingAttribute, mappingAttribute.OriginalCmd, httpFactory, aopHandlerTypes, development, registeredRouteKeys);
+
+            // 注册下划线格式路由（如果与驼峰格式不同）
+            if (mappingAttribute.OriginalCmd != mappingAttribute.StandardCmd)
+            {
+                RegisterHandlerRoute(app, mappingAttribute, mappingAttribute.StandardCmd, httpFactory, aopHandlerTypes, development, registeredRouteKeys);
             }
         }
     }
