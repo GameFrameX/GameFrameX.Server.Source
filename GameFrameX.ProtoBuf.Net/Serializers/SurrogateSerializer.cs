@@ -61,40 +61,61 @@ internal sealed class SurrogateSerializer : IProtoTypeSerializer
 
     private static bool HasCast(TypeModel model, Type type, Type from, Type to, out MethodInfo op)
     {
+        var found = GetStaticMethods(type);
+
+        if (TryGetProtoConverterMethod(model, found, from, to, out op))
+        {
+            return true;
+        }
+
+        if (TryGetOperatorCastMethod(found, from, to, out op))
+        {
+            return true;
+        }
+
+        op = null;
+        return false;
+    }
+
+    private static MethodInfo[] GetStaticMethods(Type type)
+    {
 #if PROFILE259
-			System.Collections.Generic.List<MethodInfo> list = new System.Collections.Generic.List<MethodInfo>();
-            foreach (var item in type.GetRuntimeMethods())
+        System.Collections.Generic.List<MethodInfo> list = new System.Collections.Generic.List<MethodInfo>();
+        foreach (var item in type.GetRuntimeMethods())
+        {
+            if (item.IsStatic)
             {
-                if (item.IsStatic) list.Add(item);
+                list.Add(item);
             }
-            MethodInfo[] found = list.ToArray();
+        }
+        return list.ToArray();
 #else
         const BindingFlags flags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
-        var found = type.GetMethods(flags);
+        return type.GetMethods(flags);
 #endif
-        ParameterInfo[] paramTypes;
-        Type convertAttributeType = null;
-        for (var i = 0; i < found.Length; i++)
+    }
+
+    private static bool TryGetProtoConverterMethod(TypeModel model, MethodInfo[] methods, Type from, Type to, out MethodInfo op)
+    {
+        Type convertAttributeType = model.MapType(typeof(ProtoConverterAttribute), false);
+        if (convertAttributeType == null)
         {
-            var m = found[i];
+            // attribute isn't defined in the source assembly: stop looking
+            op = null;
+            return false;
+        }
+
+        for (var i = 0; i < methods.Length; i++)
+        {
+            var m = methods[i];
             if (m.ReturnType != to)
             {
                 continue;
             }
 
-            paramTypes = m.GetParameters();
+            ParameterInfo[] paramTypes = m.GetParameters();
             if (paramTypes.Length == 1 && paramTypes[0].ParameterType == from)
             {
-                if (convertAttributeType == null)
-                {
-                    convertAttributeType = model.MapType(typeof(ProtoConverterAttribute), false);
-                    if (convertAttributeType == null)
-                    {
-                        // attribute isn't defined in the source assembly: stop looking
-                        break;
-                    }
-                }
-
                 if (m.IsDefined(convertAttributeType, true))
                 {
                     op = m;
@@ -103,15 +124,21 @@ internal sealed class SurrogateSerializer : IProtoTypeSerializer
             }
         }
 
-        for (var i = 0; i < found.Length; i++)
+        op = null;
+        return false;
+    }
+
+    private static bool TryGetOperatorCastMethod(MethodInfo[] methods, Type from, Type to, out MethodInfo op)
+    {
+        for (var i = 0; i < methods.Length; i++)
         {
-            var m = found[i];
+            var m = methods[i];
             if ((m.Name != "op_Implicit" && m.Name != "op_Explicit") || m.ReturnType != to)
             {
                 continue;
             }
 
-            paramTypes = m.GetParameters();
+            ParameterInfo[] paramTypes = m.GetParameters();
             if (paramTypes.Length == 1 && paramTypes[0].ParameterType == from)
             {
                 op = m;
@@ -137,9 +164,9 @@ internal sealed class SurrogateSerializer : IProtoTypeSerializer
                                             ExpectedType.FullName + " / " + declaredType.FullName);
     }
 
-    public void Write(object value, ProtoWriter writer)
+    public void Write(object value, ProtoWriter dest)
     {
-        rootTail.Write(toTail.Invoke(null, new[] { value, }), writer);
+        rootTail.Write(toTail.Invoke(null, new[] { value, }), dest);
     }
 
     public object Read(object value, ProtoReader source)
