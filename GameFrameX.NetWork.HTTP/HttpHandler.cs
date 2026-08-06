@@ -83,83 +83,20 @@ public static class HttpHandler
         try
         {
             var paramMap = new Dictionary<string, object>();
-            var queryStringParamCount = 0;
-
-            // 从查询字符串中提取参数
-            foreach (var keyValuePair in context.Request.Query)
-            {
-                paramMap.Add(keyValuePair.Key, keyValuePair.Value.ToString());
-                queryStringParamCount++;
-            }
+            var queryStringParamCount = ExtractQueryParameters(context, paramMap);
 
             context.Response.Headers.ContentType = JsonContentType;
-            MessageObject message = null;
-            var headContentType = context.Request.ContentType;
-            string jsonBody = null;
             var isGetRequest = HttpMethods.IsGet(context.Request.Method);
 
-            // GET 请求允许没有 ContentType
-            if (headContentType.IsNullOrWhiteSpace() && !isGetRequest)
+            var parseResult = await TryParseRequestBodyAsync(context, paramMap, isGetRequest);
+            if (parseResult.ShouldAbort)
             {
-                await context.Response.WriteAsync(LocalizationService.GetString(Localization.Keys.NetWorkHttp.HttpHeaderContentTypeNull));
                 return;
             }
 
-            var isProtoBuf = !isGetRequest && headContentType.Equals(ProtoBufContentType, StringComparison.OrdinalIgnoreCase);
-
-            // GET 请求只使用 Query String 参数，不需要处理 Body
-            if (isGetRequest)
-            {
-                // GET 请求跳过 Body 处理，参数已在 Query String 中提取
-            }
-            else if (isProtoBuf)
-            {
-                var maxBodyBytes = GetEffectiveRequestBodyLimit(GlobalSettings.CurrentSetting.HttpMaxProtoBodyBytes);
-                var readResult = await TryReadRequestBodyBytes(context, maxBodyBytes);
-                if (!readResult.Success)
-                {
-                    return;
-                }
-
-                var buffer = readResult.Buffer;
-                var messageObjectHttp = ProtoBufSerializerHelper.Deserialize<MessageHttpObject>(buffer);
-                var messageType = MessageProtoHelper.GetMessageTypeById(messageObjectHttp.Id);
-                message = (MessageObject)ProtoBufSerializerHelper.Deserialize(messageObjectHttp.Body, messageType);
-                message.SetMessageId(messageObjectHttp.Id);
-                message.SetUniqueId(messageObjectHttp.UniqueId);
-            }
-            else
-            {
-                var isJson = context.Request.HasJsonContentType();
-
-                if (isJson)
-                {
-                    var maxBodyBytes = GetEffectiveRequestBodyLimit(GlobalSettings.CurrentSetting.HttpMaxJsonBodyBytes);
-                    var readResult = await TryReadRequestBodyBytes(context, maxBodyBytes);
-                    if (!readResult.Success)
-                    {
-                        return;
-                    }
-
-                    var buffer = readResult.Buffer;
-                    jsonBody = Encoding.UTF8.GetString(buffer);
-                    var jsonKv = JsonHelper.Deserialize<Dictionary<string, object>>(jsonBody);
-                    foreach (var keyValuePair in jsonKv)
-                    {
-                        if (!paramMap.TryAdd(keyValuePair.Key, keyValuePair.Value))
-                        {
-                            // 参数Key发生重复
-                            await context.Response.WriteAsync(HttpJsonResult.ErrorString(GameHttpStatusCode.ParamErr, LocalizationService.GetString(Localization.Keys.NetWorkHttp.ParameterDuplicate, keyValuePair.Key)));
-                            return;
-                        }
-                    }
-                }
-                else
-                {
-                    await context.Response.WriteAsync(HttpJsonResult.ErrorString(GameHttpStatusCode.ParamErr, LocalizationService.GetString(Localization.Keys.NetWorkHttp.UnsupportedContentType, headContentType)));
-                    return;
-                }
-            }
+            var message = parseResult.Message;
+            var jsonBody = parseResult.JsonBody;
+            var isProtoBuf = parseResult.IsProtoBuf;
 
             // 记录请求参数
             if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp && GlobalSettings.CurrentSetting.IsDebugHttpRequest && paramMap.Count > 0)
@@ -167,154 +104,30 @@ public static class HttpHandler
                 LogHelper.Debug<string>("HTTP RequestParameters {parameters}", JsonHelper.Serialize(paramMap));
             }
 
-            // 检查指令是否有效
-            if (command.IsNullOrEmptyOrWhiteSpace())
+            var validation = await TryValidateAndResolveHandlerAsync(context, baseHandler, command, ip, url, paramMap, aopHandlerTypes);
+            if (!validation.IsValid)
             {
-                await context.Response.WriteAsync(HttpJsonResult.ErrorString(GameHttpStatusCode.Undefined, HttpStatusMessage.UndefinedCommand));
                 return;
             }
 
-            if (!GameAppRuntime.IsRunning)
-            {
-                await context.Response.WriteAsync(HttpJsonResult.ErrorString(GameHttpStatusCode.ActionFailed, LocalizationService.GetString(Localization.Keys.NetWorkHttp.ServerStatusError)));
-                return;
-            }
-
-            #region AOP
-
-            // 执行AOP处理器
-            if (aopHandlerTypes is { Count: > 0, })
-            {
-                foreach (var httpAopHandler in aopHandlerTypes)
-                {
-                    if (!httpAopHandler.Run(context, ip, url, paramMap))
-                    {
-                        return;
-                    }
-                }
-            }
-
-            #endregion
-
-            // 获取并执行对应的HTTP处理器
-            var handler = baseHandler(command);
-            if (handler == null)
-            {
-                LogHelper.Warning<string>("HTTP CommandHandlerNotFound {command}", LocalizationService.GetString(Localization.Keys.NetWorkHttp.CommandHandlerNotFound, command));
-                await context.Response.WriteAsync(HttpJsonResult.NotFoundString());
-                return;
-            }
-
-            // 验证签名
-            var isChecked = handler.CheckSign(paramMap, out var error);
-            if (isChecked == false)
-            {
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await context.Response.WriteAsync(error);
-                return;
-            }
-
+            var handler = validation.Handler;
 
             // 执行处理器逻辑
             if (isProtoBuf)
             {
-                var stopwatch = new Stopwatch();
-                stopwatch.Start();
-                var result = await handler.Action(ip, url, paramMap, message);
-                stopwatch.Stop();
-                if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp && GlobalSettings.CurrentSetting.IsDebugHttpResponse)
-                {
-                    LogHelper.Debug("HTTP ProtoBuf ExecutionTime {logHeader} {elapsedMilliseconds} {result}", logHeader, stopwatch.ElapsedMilliseconds, result);
-                }
-                else if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp)
-                {
-                    LogHelper.Debug("HTTP ProtoBuf ExecutionTime {logHeader} {elapsedMilliseconds}", logHeader, stopwatch.ElapsedMilliseconds);
-                }
-
-                if (result.IsNotNull())
-                {
-                    try
-                    {
-                        ReadOnlyMemory<byte> body = ProtoBufSerializerHelper.Serialize(result);
-                        var messageHttpObject = new MessageHttpObject { Id = MessageProtoHelper.GetMessageIdByType(result), UniqueId = message.UniqueId, Body = body.ToArray(), };
-                        var resultResponse = ProtoBufSerializerHelper.Serialize(messageHttpObject);
-                        context.Response.ContentLength = resultResponse.Length;
-                        await context.Response.BodyWriter.WriteAsync(resultResponse);
-                    }
-                    catch (Exception e)
-                    {
-                        LogHelper.Error<string>("HTTP ProtoBuf MessageEncodingException {exception}", e.ToString());
-                    }
-                }
+                await ExecuteProtoBufAsync(context, handler, ip, url, paramMap, message, logHeader);
             }
             else
             {
                 var httpRequestAttr = handler.GetType().GetCustomAttribute<HttpMessageRequestAttribute>();
-                if (httpRequestAttr != null)
+                if (httpRequestAttr == null)
                 {
-                    // 优化：如果没有 Query String 参数，直接使用原始 JSON 字符串反序列化，避免重复序列化
-                    HttpMessageRequestBase httpMessageRequestBase;
-                    if (queryStringParamCount == 0 && !string.IsNullOrEmpty(jsonBody))
-                    {
-                        // 直接使用原始 JSON 字符串反序列化
-                        httpMessageRequestBase = (HttpMessageRequestBase)JsonHelper.Deserialize(jsonBody, httpRequestAttr.MessageType);
-                    }
-                    else
-                    {
-                        // 有 Query String 参数时，需要合并参数
-                        httpMessageRequestBase = (HttpMessageRequestBase)JsonHelper.Deserialize(JsonHelper.Serialize(paramMap), httpRequestAttr.MessageType);
-                    }
-
-                    var validationResults = new List<ValidationResult>();
-
-                    var validationContext = new ValidationContext(httpMessageRequestBase, null, null);
-
-                    var isValid = Validator.TryValidateObject(httpMessageRequestBase, validationContext, validationResults, true);
-                    if (isValid)
-                    {
-                        var stopwatch = new Stopwatch();
-                        stopwatch.Start();
-                        var result = await handler.Action(ip, url, httpMessageRequestBase);
-                        stopwatch.Stop();
-                        if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp && GlobalSettings.CurrentSetting.IsDebugHttpResponse)
-                        {
-                            LogHelper.Debug("HTTP JSON ExecutionTime {logHeader} {elapsedMilliseconds} {result}", logHeader, stopwatch.ElapsedMilliseconds, result);
-                        }
-                        else if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp)
-                        {
-                            LogHelper.Debug("HTTP JSON ExecutionTime {logHeader} {elapsedMilliseconds}", logHeader, stopwatch.ElapsedMilliseconds);
-                        }
-
-                        await context.Response.WriteAsync(result);
-                    }
-                    else
-                    {
-                        if (validationResults.Count > 0)
-                        {
-                            await context.Response.WriteAsync(HttpJsonResult.ErrorString(400, validationResults[0].ErrorMessage));
-                        }
-                        else
-                        {
-                            await context.Response.WriteAsync(HttpJsonResult.ErrorString(400, LocalizationService.GetString(Localization.Keys.NetWorkHttp.DataVerificationFailed)));
-                        }
-                    }
+                    await ExecutePlainJsonAsync(context, handler, ip, url, paramMap, logHeader);
                 }
                 else
                 {
-                    var stopwatch = new Stopwatch();
-                    stopwatch.Start();
-                    var result = await handler.Action(ip, url, paramMap);
-                    stopwatch.Stop();
-                    if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp && GlobalSettings.CurrentSetting.IsDebugHttpResponse)
-                    {
-                        LogHelper.Debug("HTTP JSON ExecutionTime {logHeader} {elapsedMilliseconds} {result}", logHeader, stopwatch.ElapsedMilliseconds, result);
-                    }
-                    else if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp)
-                    {
-                        LogHelper.Debug("HTTP JSON ExecutionTime {logHeader} {elapsedMilliseconds}", logHeader, stopwatch.ElapsedMilliseconds);
-                    }
-
-                    await context.Response.WriteAsync(result);
+                    var messageRequest = BuildHttpMessageRequest(httpRequestAttr, paramMap, jsonBody, queryStringParamCount);
+                    await ExecuteJsonMessageRequestAsync(context, handler, ip, url, messageRequest, logHeader);
                 }
             }
         }
@@ -323,6 +136,254 @@ public static class HttpHandler
             LogHelper.Error("HTTP JSON ExceptionOccurred {logHeader} {message} {stackTrace}", logHeader, e.Message, e.StackTrace);
             await context.Response.WriteAsync(HttpJsonResult.FailString(e.Message));
         }
+    }
+
+    // 从查询字符串中提取参数并返回参数个数 / Extract parameters from the query string and return the count.
+    private static int ExtractQueryParameters(HttpContext context, Dictionary<string, object> paramMap)
+    {
+        var queryStringParamCount = 0;
+        foreach (var keyValuePair in context.Request.Query)
+        {
+            paramMap.Add(keyValuePair.Key, keyValuePair.Value.ToString());
+            queryStringParamCount++;
+        }
+
+        return queryStringParamCount;
+    }
+
+    // 解析请求体：GET 跳过 Body；ProtoBuf 反序列化；JSON 合并参数。返回解析结果，ShouldAbort=true 表示已写出错误响应、调用方应直接 return。
+    // Parse the request body: GET skips the body; ProtoBuf deserializes; JSON merges parameters. ShouldAbort=true means an error response was written and the caller should return.
+    private static async Task<(bool ShouldAbort, MessageObject Message, string JsonBody, bool IsProtoBuf)> TryParseRequestBodyAsync(HttpContext context, Dictionary<string, object> paramMap, bool isGetRequest)
+    {
+        var contentType = context.Request.ContentType;
+
+        // GET 请求允许没有 ContentType
+        if (contentType.IsNullOrWhiteSpace() && !isGetRequest)
+        {
+            await context.Response.WriteAsync(LocalizationService.GetString(Localization.Keys.NetWorkHttp.HttpHeaderContentTypeNull));
+            return (true, null, null, false);
+        }
+
+        var isProtoBuf = !isGetRequest && contentType.Equals(ProtoBufContentType, StringComparison.OrdinalIgnoreCase);
+
+        // GET 请求只使用 Query String 参数，不需要处理 Body
+        if (isGetRequest)
+        {
+            return (false, null, null, false);
+        }
+
+        if (isProtoBuf)
+        {
+            var maxBodyBytes = GetEffectiveRequestBodyLimit(GlobalSettings.CurrentSetting.HttpMaxProtoBodyBytes);
+            var readResult = await TryReadRequestBodyBytes(context, maxBodyBytes);
+            if (!readResult.Success)
+            {
+                return (true, null, null, false);
+            }
+
+            var buffer = readResult.Buffer;
+            var messageObjectHttp = ProtoBufSerializerHelper.Deserialize<MessageHttpObject>(buffer);
+            var messageType = MessageProtoHelper.GetMessageTypeById(messageObjectHttp.Id);
+            var message = (MessageObject)ProtoBufSerializerHelper.Deserialize(messageObjectHttp.Body, messageType);
+            message.SetMessageId(messageObjectHttp.Id);
+            message.SetUniqueId(messageObjectHttp.UniqueId);
+            return (false, message, null, true);
+        }
+
+        if (!context.Request.HasJsonContentType())
+        {
+            await context.Response.WriteAsync(HttpJsonResult.ErrorString(GameHttpStatusCode.ParamErr, LocalizationService.GetString(Localization.Keys.NetWorkHttp.UnsupportedContentType, contentType)));
+            return (true, null, null, false);
+        }
+
+        var maxJsonBodyBytes = GetEffectiveRequestBodyLimit(GlobalSettings.CurrentSetting.HttpMaxJsonBodyBytes);
+        var jsonReadResult = await TryReadRequestBodyBytes(context, maxJsonBodyBytes);
+        if (!jsonReadResult.Success)
+        {
+            return (true, null, null, false);
+        }
+
+        var jsonBody = Encoding.UTF8.GetString(jsonReadResult.Buffer);
+        var jsonKv = JsonHelper.Deserialize<Dictionary<string, object>>(jsonBody);
+        foreach (var keyValuePair in jsonKv)
+        {
+            if (!paramMap.TryAdd(keyValuePair.Key, keyValuePair.Value))
+            {
+                // 参数Key发生重复
+                await context.Response.WriteAsync(HttpJsonResult.ErrorString(GameHttpStatusCode.ParamErr, LocalizationService.GetString(Localization.Keys.NetWorkHttp.ParameterDuplicate, keyValuePair.Key)));
+                return (true, null, null, false);
+            }
+        }
+
+        return (false, null, jsonBody, false);
+    }
+
+    // 依次执行 AOP 处理器，任一返回 false 则停止并返回 false（等价于原 return 短路）/ Run AOP handlers in order; return false on the first failure (equivalent to the original short-circuit return).
+    private static bool RunAopHandlers(HttpContext context, string ip, string url, Dictionary<string, object> paramMap, List<IHttpAopHandler> aopHandlerTypes)
+    {
+        if (aopHandlerTypes is { Count: > 0, })
+        {
+            foreach (var httpAopHandler in aopHandlerTypes)
+            {
+                if (!httpAopHandler.Run(context, ip, url, paramMap))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    // 指令空校验 + 运行态校验 + AOP + 处理器解析 + 签名校验：任一失败即写出对应错误响应并返回 (false, null)，全通过返回 (true, handler)。
+    // Validate command + runtime state, run AOP, resolve handler, verify signature: on any failure write the corresponding error response and return (false, null); on full pass return (true, handler).
+    private static async Task<(bool IsValid, BaseHttpHandler Handler)> TryValidateAndResolveHandlerAsync(HttpContext context, Func<string, BaseHttpHandler> baseHandler, string command, string ip, string url, Dictionary<string, object> paramMap, List<IHttpAopHandler> aopHandlerTypes)
+    {
+        // 检查指令是否有效
+        if (command.IsNullOrEmptyOrWhiteSpace())
+        {
+            await context.Response.WriteAsync(HttpJsonResult.ErrorString(GameHttpStatusCode.Undefined, HttpStatusMessage.UndefinedCommand));
+            return (false, null);
+        }
+
+        if (!GameAppRuntime.IsRunning)
+        {
+            await context.Response.WriteAsync(HttpJsonResult.ErrorString(GameHttpStatusCode.ActionFailed, LocalizationService.GetString(Localization.Keys.NetWorkHttp.ServerStatusError)));
+            return (false, null);
+        }
+
+        #region AOP
+
+        // 执行AOP处理器
+        if (!RunAopHandlers(context, ip, url, paramMap, aopHandlerTypes))
+        {
+            return (false, null);
+        }
+
+        #endregion
+
+        // 获取并执行对应的HTTP处理器
+        var handler = baseHandler(command);
+        if (handler == null)
+        {
+            LogHelper.Warning<string>("HTTP CommandHandlerNotFound {command}", LocalizationService.GetString(Localization.Keys.NetWorkHttp.CommandHandlerNotFound, command));
+            await context.Response.WriteAsync(HttpJsonResult.NotFoundString());
+            return (false, null);
+        }
+
+        // 验证签名
+        var isChecked = handler.CheckSign(paramMap, out var error);
+        if (isChecked == false)
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await context.Response.WriteAsync(error);
+            return (false, null);
+        }
+
+        return (true, handler);
+    }
+
+    // ProtoBuf 执行：调用处理器 + 调试执行耗时日志 + result 非空时序列化 MessageHttpObject 写出（含编码异常 try/catch 日志）。
+    // ProtoBuf execution: invoke handler + debug timing log + when result is non-null serialize MessageHttpObject and write (with encoding-exception try/catch logging).
+    private static async Task ExecuteProtoBufAsync(HttpContext context, BaseHttpHandler handler, string ip, string url, Dictionary<string, object> paramMap, MessageObject message, string logHeader)
+    {
+        var stopwatch = new Stopwatch();
+        stopwatch.Start();
+        var result = await handler.Action(ip, url, paramMap, message);
+        stopwatch.Stop();
+        if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp && GlobalSettings.CurrentSetting.IsDebugHttpResponse)
+        {
+            LogHelper.Debug("HTTP ProtoBuf ExecutionTime {logHeader} {elapsedMilliseconds} {result}", logHeader, stopwatch.ElapsedMilliseconds, result);
+        }
+        else if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp)
+        {
+            LogHelper.Debug("HTTP ProtoBuf ExecutionTime {logHeader} {elapsedMilliseconds}", logHeader, stopwatch.ElapsedMilliseconds);
+        }
+
+        if (result.IsNotNull())
+        {
+            try
+            {
+                ReadOnlyMemory<byte> body = ProtoBufSerializerHelper.Serialize(result);
+                var messageHttpObject = new MessageHttpObject { Id = MessageProtoHelper.GetMessageIdByType(result), UniqueId = message.UniqueId, Body = body.ToArray(), };
+                var resultResponse = ProtoBufSerializerHelper.Serialize(messageHttpObject);
+                context.Response.ContentLength = resultResponse.Length;
+                await context.Response.BodyWriter.WriteAsync(resultResponse);
+            }
+            catch (Exception e)
+            {
+                LogHelper.Error<string>("HTTP ProtoBuf MessageEncodingException {exception}", e.ToString());
+            }
+        }
+    }
+
+    // 按是否有 Query String 参数 / 原始 JSON Body 选择反序列化路径，构造请求消息基类 / Choose the deserialization path based on query-string params and raw JSON body, building the request message base.
+    private static HttpMessageRequestBase BuildHttpMessageRequest(HttpMessageRequestAttribute httpRequestAttr, Dictionary<string, object> paramMap, string jsonBody, int queryStringParamCount)
+    {
+        // 优化：如果没有 Query String 参数，直接使用原始 JSON 字符串反序列化，避免重复序列化
+        if (queryStringParamCount == 0 && !string.IsNullOrEmpty(jsonBody))
+        {
+            // 直接使用原始 JSON 字符串反序列化
+            return (HttpMessageRequestBase)JsonHelper.Deserialize(jsonBody, httpRequestAttr.MessageType);
+        }
+
+        // 有 Query String 参数时，需要合并参数
+        return (HttpMessageRequestBase)JsonHelper.Deserialize(JsonHelper.Serialize(paramMap), httpRequestAttr.MessageType);
+    }
+
+    // 标注 HttpMessageRequestAttribute 的 JSON 执行：Validator 校验，通过则执行 + 日志 + 写出，否则写出校验错误 / JSON execution for handlers annotated with HttpMessageRequestAttribute: validate, on pass execute + log + write, otherwise write validation errors.
+    private static async Task ExecuteJsonMessageRequestAsync(HttpContext context, BaseHttpHandler handler, string ip, string url, HttpMessageRequestBase httpMessageRequestBase, string logHeader)
+    {
+        var validationResults = new List<ValidationResult>();
+        var validationContext = new ValidationContext(httpMessageRequestBase, null, null);
+        var isValid = Validator.TryValidateObject(httpMessageRequestBase, validationContext, validationResults, true);
+        if (isValid)
+        {
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+            var result = await handler.Action(ip, url, httpMessageRequestBase);
+            stopwatch.Stop();
+            if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp && GlobalSettings.CurrentSetting.IsDebugHttpResponse)
+            {
+                LogHelper.Debug("HTTP JSON ExecutionTime {logHeader} {elapsedMilliseconds} {result}", logHeader, stopwatch.ElapsedMilliseconds, result);
+            }
+            else if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp)
+            {
+                LogHelper.Debug("HTTP JSON ExecutionTime {logHeader} {elapsedMilliseconds}", logHeader, stopwatch.ElapsedMilliseconds);
+            }
+
+            await context.Response.WriteAsync(result);
+        }
+        else
+        {
+            if (validationResults.Count > 0)
+            {
+                await context.Response.WriteAsync(HttpJsonResult.ErrorString(400, validationResults[0].ErrorMessage));
+            }
+            else
+            {
+                await context.Response.WriteAsync(HttpJsonResult.ErrorString(400, LocalizationService.GetString(Localization.Keys.NetWorkHttp.DataVerificationFailed)));
+            }
+        }
+    }
+
+    // 未标注特性的 JSON 执行：调用处理器 + 调试执行耗时日志 + 写出 / Plain JSON execution (no attribute): invoke handler + debug timing log + write.
+    private static async Task ExecutePlainJsonAsync(HttpContext context, BaseHttpHandler handler, string ip, string url, Dictionary<string, object> paramMap, string logHeader)
+    {
+        var stopwatch = new Stopwatch();
+        stopwatch.Start();
+        var result = await handler.Action(ip, url, paramMap);
+        stopwatch.Stop();
+        if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp && GlobalSettings.CurrentSetting.IsDebugHttpResponse)
+        {
+            LogHelper.Debug("HTTP JSON ExecutionTime {logHeader} {elapsedMilliseconds} {result}", logHeader, stopwatch.ElapsedMilliseconds, result);
+        }
+        else if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp)
+        {
+            LogHelper.Debug("HTTP JSON ExecutionTime {logHeader} {elapsedMilliseconds}", logHeader, stopwatch.ElapsedMilliseconds);
+        }
+
+        await context.Response.WriteAsync(result);
     }
 
     private static long GetEffectiveRequestBodyLimit(long contentTypeLimit)
