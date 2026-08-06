@@ -37,7 +37,7 @@ namespace GameFrameX.NetWork.Kcp;
 /// KCP game app session wrapper / KCP 游戏应用会话包装器
 /// Implements IGameAppSession interface for compatibility with the existing framework
 /// </summary>
-public sealed class KcpGameAppSession : IGameAppSession
+public sealed class KcpGameAppSession : IGameAppSession, IDisposable
 {
     private bool _disposed;
 
