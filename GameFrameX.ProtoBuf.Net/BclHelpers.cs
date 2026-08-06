@@ -93,74 +93,11 @@ public static class BclHelpers
             throw new ArgumentNullException(nameof(dest));
         }
 
-        long value;
         switch (dest.WireType)
         {
             case WireType.String:
             case WireType.StartGroup:
-                TimeSpanScale scale;
-                value = timeSpan.Ticks;
-                if (timeSpan == TimeSpan.MaxValue)
-                {
-                    value = 1;
-                    scale = TimeSpanScale.MinMax;
-                }
-                else if (timeSpan == TimeSpan.MinValue)
-                {
-                    value = -1;
-                    scale = TimeSpanScale.MinMax;
-                }
-                else if (value % TimeSpan.TicksPerDay == 0)
-                {
-                    scale = TimeSpanScale.Days;
-                    value /= TimeSpan.TicksPerDay;
-                }
-                else if (value % TimeSpan.TicksPerHour == 0)
-                {
-                    scale = TimeSpanScale.Hours;
-                    value /= TimeSpan.TicksPerHour;
-                }
-                else if (value % TimeSpan.TicksPerMinute == 0)
-                {
-                    scale = TimeSpanScale.Minutes;
-                    value /= TimeSpan.TicksPerMinute;
-                }
-                else if (value % TimeSpan.TicksPerSecond == 0)
-                {
-                    scale = TimeSpanScale.Seconds;
-                    value /= TimeSpan.TicksPerSecond;
-                }
-                else if (value % TimeSpan.TicksPerMillisecond == 0)
-                {
-                    scale = TimeSpanScale.Milliseconds;
-                    value /= TimeSpan.TicksPerMillisecond;
-                }
-                else
-                {
-                    scale = TimeSpanScale.Ticks;
-                }
-
-                var token = ProtoWriter.StartSubItem(null, dest);
-
-                if (value != 0)
-                {
-                    ProtoWriter.WriteFieldHeader(FieldTimeSpanValue, WireType.SignedVariant, dest);
-                    ProtoWriter.WriteInt64(value, dest);
-                }
-
-                if (scale != TimeSpanScale.Days)
-                {
-                    ProtoWriter.WriteFieldHeader(FieldTimeSpanScale, WireType.Variant, dest);
-                    ProtoWriter.WriteInt32((int)scale, dest);
-                }
-
-                if (kind != DateTimeKind.Unspecified)
-                {
-                    ProtoWriter.WriteFieldHeader(FieldTimeSpanKind, WireType.Variant, dest);
-                    ProtoWriter.WriteInt32((int)kind, dest);
-                }
-
-                ProtoWriter.EndSubItem(token, dest);
+                WriteTimeSpanSubItem(timeSpan, dest, kind);
                 break;
             case WireType.Fixed64:
                 ProtoWriter.WriteInt64(timeSpan.Ticks, dest);
@@ -168,6 +105,81 @@ public static class BclHelpers
             default:
                 throw new ProtoException("Unexpected wire-type: " + dest.WireType);
         }
+    }
+
+    private static void WriteTimeSpanSubItem(TimeSpan timeSpan, ProtoWriter dest, DateTimeKind kind)
+    {
+        long value = timeSpan.Ticks;
+        var scale = GetTimeSpanScale(timeSpan, ref value);
+
+        var token = ProtoWriter.StartSubItem(null, dest);
+
+        if (value != 0)
+        {
+            ProtoWriter.WriteFieldHeader(FieldTimeSpanValue, WireType.SignedVariant, dest);
+            ProtoWriter.WriteInt64(value, dest);
+        }
+
+        if (scale != TimeSpanScale.Days)
+        {
+            ProtoWriter.WriteFieldHeader(FieldTimeSpanScale, WireType.Variant, dest);
+            ProtoWriter.WriteInt32((int)scale, dest);
+        }
+
+        if (kind != DateTimeKind.Unspecified)
+        {
+            ProtoWriter.WriteFieldHeader(FieldTimeSpanKind, WireType.Variant, dest);
+            ProtoWriter.WriteInt32((int)kind, dest);
+        }
+
+        ProtoWriter.EndSubItem(token, dest);
+    }
+
+    private static TimeSpanScale GetTimeSpanScale(TimeSpan timeSpan, ref long value)
+    {
+        if (timeSpan == TimeSpan.MaxValue)
+        {
+            value = 1;
+            return TimeSpanScale.MinMax;
+        }
+
+        if (timeSpan == TimeSpan.MinValue)
+        {
+            value = -1;
+            return TimeSpanScale.MinMax;
+        }
+
+        if (value % TimeSpan.TicksPerDay == 0)
+        {
+            value /= TimeSpan.TicksPerDay;
+            return TimeSpanScale.Days;
+        }
+
+        if (value % TimeSpan.TicksPerHour == 0)
+        {
+            value /= TimeSpan.TicksPerHour;
+            return TimeSpanScale.Hours;
+        }
+
+        if (value % TimeSpan.TicksPerMinute == 0)
+        {
+            value /= TimeSpan.TicksPerMinute;
+            return TimeSpanScale.Minutes;
+        }
+
+        if (value % TimeSpan.TicksPerSecond == 0)
+        {
+            value /= TimeSpan.TicksPerSecond;
+            return TimeSpanScale.Seconds;
+        }
+
+        if (value % TimeSpan.TicksPerMillisecond == 0)
+        {
+            value /= TimeSpan.TicksPerMillisecond;
+            return TimeSpanScale.Milliseconds;
+        }
+
+        return TimeSpanScale.Ticks;
     }
 
     /// <summary>
@@ -635,89 +647,12 @@ public static class BclHelpers
                     newTypeKey = source.ReadInt32();
                     break;
                 case FieldTypeName:
-                    var typeName = source.ReadString();
-                    type = source.DeserializeType(typeName);
-                    if (type == null)
-                    {
-                        throw new ProtoException("Unable to resolve type: " + typeName + " (you can use the TypeModel.DynamicTypeFormatting event to provide a custom mapping)");
-                    }
-
-                    if (type == typeof(string))
-                    {
-                        key = -1;
-                    }
-                    else
-                    {
-                        key = source.GetTypeKey(ref type);
-                        if (key < 0)
-                        {
-                            throw new InvalidOperationException("Dynamic type is not a contract-type: " + type.Name);
-                        }
-                    }
-
+                    ResolveNetObjectType(source, ref type, ref key);
                     break;
                 case FieldObject:
-                    var isString = type == typeof(string);
-                    var wasNull = value == null;
-                    var lateSet = wasNull && (isString || (options & NetObjectOptions.LateSet) != 0);
-
-                    if (newObjectKey >= 0 && !lateSet)
-                    {
-                        if (value == null)
-                        {
-                            source.TrapNextObject(newObjectKey);
-                        }
-                        else
-                        {
-                            source.NetCache.SetKeyedObject(newObjectKey, value);
-                        }
-
-                        if (newTypeKey >= 0)
-                        {
-                            source.NetCache.SetKeyedObject(newTypeKey, type);
-                        }
-                    }
-
-                    var oldValue = value;
-                    if (isString)
-                    {
-                        value = source.ReadString();
-                    }
-                    else
-                    {
-                        value = ProtoReader.ReadTypedObject(oldValue, key, source, type);
-                    }
-
-                    if (newObjectKey >= 0)
-                    {
-                        if (wasNull && !lateSet)
-                        {
-                            // this both ensures (via exception) that it *was* set, and makes sure we don't shout
-                            // about changed references
-                            oldValue = source.NetCache.GetKeyedObject(newObjectKey);
-                        }
-
-                        if (lateSet)
-                        {
-                            source.NetCache.SetKeyedObject(newObjectKey, value);
-                            if (newTypeKey >= 0)
-                            {
-                                source.NetCache.SetKeyedObject(newTypeKey, type);
-                            }
-                        }
-                    }
-
-                    if (newObjectKey >= 0 && !lateSet && !ReferenceEquals(oldValue, value))
-                    {
-                        throw new ProtoException("A reference-tracked object changed reference during deserialization");
-                    }
-
-                    if (newObjectKey < 0 && newTypeKey >= 0)
-                    {
-                        // have a new type, but not a new object
-                        source.NetCache.SetKeyedObject(newTypeKey, type);
-                    }
-
+                    value = ReadNetObjectValue(value, type, key, options, newObjectKey, newTypeKey, source,
+                        out var wasNull, out var lateSet, out var oldValue);
+                    FinalizeNetObjectRead(value, oldValue, type, wasNull, lateSet, newObjectKey, newTypeKey, source);
                     break;
                 default:
                     source.SkipField();
@@ -733,6 +668,96 @@ public static class BclHelpers
         ProtoReader.EndSubItem(token, source);
 
         return value;
+    }
+
+    private static void ResolveNetObjectType(ProtoReader source, ref Type type, ref int key)
+    {
+        var typeName = source.ReadString();
+        type = source.DeserializeType(typeName);
+        if (type == null)
+        {
+            throw new ProtoException("Unable to resolve type: " + typeName + " (you can use the TypeModel.DynamicTypeFormatting event to provide a custom mapping)");
+        }
+
+        if (type == typeof(string))
+        {
+            key = -1;
+        }
+        else
+        {
+            key = source.GetTypeKey(ref type);
+            if (key < 0)
+            {
+                throw new InvalidOperationException("Dynamic type is not a contract-type: " + type.Name);
+            }
+        }
+    }
+
+    private static object ReadNetObjectValue(object value, Type type, int key, NetObjectOptions options,
+        int newObjectKey, int newTypeKey, ProtoReader source, out bool wasNull, out bool lateSet, out object oldValue)
+    {
+        var isString = type == typeof(string);
+        wasNull = value == null;
+        lateSet = wasNull && (isString || (options & NetObjectOptions.LateSet) != 0);
+
+        if (newObjectKey >= 0 && !lateSet)
+        {
+            if (value == null)
+            {
+                source.TrapNextObject(newObjectKey);
+            }
+            else
+            {
+                source.NetCache.SetKeyedObject(newObjectKey, value);
+            }
+
+            if (newTypeKey >= 0)
+            {
+                source.NetCache.SetKeyedObject(newTypeKey, type);
+            }
+        }
+
+        oldValue = value;
+        if (isString)
+        {
+            return source.ReadString();
+        }
+
+        return ProtoReader.ReadTypedObject(oldValue, key, source, type);
+    }
+
+    private static void FinalizeNetObjectRead(object value, object oldValue, Type type, bool wasNull, bool lateSet,
+        int newObjectKey, int newTypeKey, ProtoReader source)
+    {
+        if (newObjectKey >= 0)
+        {
+            if (wasNull && !lateSet)
+            {
+                // this both ensures (via exception) that it *was* set, and makes sure we don't shout
+                // about changed references
+                oldValue = source.NetCache.GetKeyedObject(newObjectKey);
+            }
+
+            if (lateSet)
+            {
+                source.NetCache.SetKeyedObject(newObjectKey, value);
+                if (newTypeKey >= 0)
+                {
+                    source.NetCache.SetKeyedObject(newTypeKey, type);
+                }
+            }
+        }
+
+        if (newObjectKey >= 0 && !lateSet && !ReferenceEquals(oldValue, value))
+        {
+            throw new ProtoException("A reference-tracked object changed reference during deserialization");
+        }
+
+        if (newObjectKey < 0 && newTypeKey >= 0)
+        {
+            // have a new type, but not a new object
+            source.NetCache.SetKeyedObject(newTypeKey, type);
+        }
     }
 
     /// <summary>
@@ -765,25 +790,7 @@ public static class BclHelpers
         {
             if (dynamicType)
             {
-                var type = value.GetType();
-
-                if (!(value is string))
-                {
-                    key = dest.GetTypeKey(ref type);
-                    if (key < 0)
-                    {
-                        throw new InvalidOperationException("Dynamic type is not a contract-type: " + type.Name);
-                    }
-                }
-
-                var typeKey = dest.NetCache.AddObjectKey(type, out var existing);
-                ProtoWriter.WriteFieldHeader(existing ? FieldExistingTypeKey : FieldNewTypeKey, WireType.Variant, dest);
-                ProtoWriter.WriteInt32(typeKey, dest);
-                if (!existing)
-                {
-                    ProtoWriter.WriteFieldHeader(FieldTypeName, WireType.String, dest);
-                    ProtoWriter.WriteString(dest.SerializeType(type), dest);
-                }
+                key = WriteDynamicTypeMetadata(value, dest, key);
             }
 
             ProtoWriter.WriteFieldHeader(FieldObject, wireType, dest);
@@ -798,5 +805,30 @@ public static class BclHelpers
         }
 
         ProtoWriter.EndSubItem(token, dest);
+    }
+
+    private static int WriteDynamicTypeMetadata(object value, ProtoWriter dest, int key)
+    {
+        var type = value.GetType();
+
+        if (!(value is string))
+        {
+            key = dest.GetTypeKey(ref type);
+            if (key < 0)
+            {
+                throw new InvalidOperationException("Dynamic type is not a contract-type: " + type.Name);
+            }
+        }
+
+        var typeKey = dest.NetCache.AddObjectKey(type, out var existing);
+        ProtoWriter.WriteFieldHeader(existing ? FieldExistingTypeKey : FieldNewTypeKey, WireType.Variant, dest);
+        ProtoWriter.WriteInt32(typeKey, dest);
+        if (!existing)
+        {
+            ProtoWriter.WriteFieldHeader(FieldTypeName, WireType.String, dest);
+            ProtoWriter.WriteString(dest.SerializeType(type), dest);
+        }
+
+        return key;
     }
 }
