@@ -3010,35 +3010,6 @@ public sealed class BigInteger
 
 
     //***********************************************************************
-    // 计算 value 尾随零比特数（即最低置位 bit 之前的 0 的个数）。
-    // 用于从 n+1 中分离出 2^s 因子。
-    //***********************************************************************
-
-    private static int CountTrailingZeroBits(BigInteger value)
-    {
-        var count = 0;
-
-        for (var index = 0; index < value.dataLength; index++)
-        {
-            uint mask = 0x01;
-
-            for (var i = 0; i < 32; i++)
-            {
-                if ((value.data[index] & mask) != 0)
-                {
-                    return count;
-                }
-
-                mask <<= 1;
-                count++;
-            }
-        }
-
-        return count;
-    }
-
-
-    //***********************************************************************
     // 判断 Lucas 序列结果是否出现 U(t) = 0 或 V(t) = 0。
     //***********************************************************************
 
@@ -3421,35 +3392,6 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
         }
 
         return s * Jacobi(b % a1, a1);
-    }
-
-
-    /// <summary>
-    /// 计算 <paramref name="value" /> 的尾随零比特数（首个置位 bit 之前的 0 的个数）。
-    /// 外层按 32 位字遍历，内层按 bit 遍历，命中首个置位 bit 即返回。
-    /// </summary>
-    /// <param name="value">待计算的 BigInteger（调用方保证非零）</param>
-    /// <returns>尾随零比特数</returns>
-    private static int CountTrailingZeroBits(BigInteger value)
-    {
-        var count = 0;
-        for (var index = 0; index < value.dataLength; index++)
-        {
-            uint mask = 0x01;
-
-            for (var i = 0; i < 32; i++)
-            {
-                if ((value.data[index] & mask) != 0)
-                {
-                    return count;
-                }
-
-                mask <<= 1;
-                count++;
-            }
-        }
-
-        return count;
     }
 
     /// <summary>
