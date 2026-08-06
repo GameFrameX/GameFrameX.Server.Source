@@ -310,17 +310,17 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// </summary>
     /// <typeparam name="T">返回结果的类型</typeparam>
     /// <param name="work">要执行的工作内容，以Func&lt;T&gt;委托形式传入</param>
-    /// <param name="timeout">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
+    /// <param name="timeOut">执行超时时间，如果超过这个时间还未执行完成则会抛出异常，默认为-1,将采用配置时间ActorTimeOut</param>
     /// <param name="cancellationToken">取消令牌，用于取消正在执行的操作</param>
     /// <returns>包含执行结果的 Task&lt;T&gt; 对象</returns>
-    public Task<T> SendAsync<T>(Func<T> work, int timeout = -1, CancellationToken cancellationToken = default)
+    public Task<T> SendAsync<T>(Func<T> work, int timeOut = -1, CancellationToken cancellationToken = default)
     {
-        if (timeout <= 0)
+        if (timeOut <= 0)
         {
-            timeout = GlobalSettings.CurrentSetting.ActorTimeOut;
+            timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
         }
 
-        return Actor.SendAsync(work, timeout, cancellationToken);
+        return Actor.SendAsync(work, timeOut, cancellationToken);
     }
 
     /// <summary>
