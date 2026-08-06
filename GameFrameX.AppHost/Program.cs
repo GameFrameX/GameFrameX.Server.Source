@@ -138,31 +138,7 @@ internal static class Program
     /// <param name="startupOptions">启动选项实例 / Startup options instance</param>
     private static void ConfigureLogOptions(StartupOptions startupOptions)
     {
-        var properties = typeof(StartupOptions).GetProperties();
-        foreach (var property in properties)
-        {
-            var grafanaLokiLabelTagAttribute = property.GetCustomAttribute<GrafanaLokiLabelTagAttribute>();
-            if (grafanaLokiLabelTagAttribute == null)
-            {
-                continue;
-            }
-
-            if (property.Name.Equals(nameof(StartupOptions.ServerType), StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            var value = property.GetValue(startupOptions)?.ToString();
-            if (string.IsNullOrEmpty(value))
-            {
-                continue;
-            }
-
-            if (!LogOptions.Default.GrafanaLokiLabels.TryAdd(property.Name, value))
-            {
-                LogHelper.Warning(LocalizationService.GetString(Keys.StartUp.GrafanaLokiLabelExists, property.Name));
-            }
-        }
+        ApplyGrafanaLokiLabels(startupOptions);
 
         LogOptions.Default.IsConsole = startupOptions.LogIsConsole;
         LogOptions.Default.IsGrafanaLoki = startupOptions.LogIsGrafanaLoki;
@@ -204,6 +180,42 @@ internal static class Program
         }
 
         LogOptions.Default.LogTagName = logTypeParts.Count > 0 ? string.Join("_", logTypeParts) : null;
+    }
+
+    /// <summary>
+    /// 根据启动选项上的 GrafanaLokiLabelTagAttribute 标记，收集并写入日志的 Grafana Loki 标签。
+    /// </summary>
+    /// <remarks>
+    /// Collects Grafana Loki labels from GrafanaLokiLabelTagAttribute markers on startup options and writes them to log options. Extracted from ConfigureLogOptions to keep cognitive complexity under the Sonar S3776 threshold.
+    /// </remarks>
+    /// <param name="startupOptions">启动选项实例 / Startup options instance</param>
+    private static void ApplyGrafanaLokiLabels(StartupOptions startupOptions)
+    {
+        var properties = typeof(StartupOptions).GetProperties();
+        foreach (var property in properties)
+        {
+            var grafanaLokiLabelTagAttribute = property.GetCustomAttribute<GrafanaLokiLabelTagAttribute>();
+            if (grafanaLokiLabelTagAttribute == null)
+            {
+                continue;
+            }
+
+            if (property.Name.Equals(nameof(StartupOptions.ServerType), StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var value = property.GetValue(startupOptions)?.ToString();
+            if (string.IsNullOrEmpty(value))
+            {
+                continue;
+            }
+
+            if (!LogOptions.Default.GrafanaLokiLabels.TryAdd(property.Name, value))
+            {
+                LogHelper.Warning(LocalizationService.GetString(Keys.StartUp.GrafanaLokiLabelExists, property.Name));
+            }
+        }
     }
 
     /// <summary>
