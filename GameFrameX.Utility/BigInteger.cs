@@ -3193,26 +3193,57 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
             return -Jacobi(-a, b);
         }
 
-        var e = 0;
-        for (var index = 0; index < a.dataLength; index++)
+        var e = CountTrailingZeroBits(a);
+        var a1 = a >> e;
+        var s = JacobiReciprocitySign(e, b, a1);
+
+        if (a1.dataLength == 1 && a1.data[0] == 1)
+        {
+            return s;
+        }
+
+        return s * Jacobi(b % a1, a1);
+    }
+
+
+    /// <summary>
+    /// 计算 <paramref name="value" /> 的尾随零比特数（首个置位 bit 之前的 0 的个数）。
+    /// 外层按 32 位字遍历，内层按 bit 遍历，命中首个置位 bit 即返回。
+    /// </summary>
+    /// <param name="value">待计算的 BigInteger（调用方保证非零）</param>
+    /// <returns>尾随零比特数</returns>
+    private static int CountTrailingZeroBits(BigInteger value)
+    {
+        var count = 0;
+        for (var index = 0; index < value.dataLength; index++)
         {
             uint mask = 0x01;
 
             for (var i = 0; i < 32; i++)
             {
-                if ((a.data[index] & mask) != 0)
+                if ((value.data[index] & mask) != 0)
                 {
-                    index = a.dataLength; // 退出外层循环
-                    break;
+                    return count;
                 }
 
                 mask <<= 1;
-                e++;
+                count++;
             }
         }
 
-        var a1 = a >> e;
+        return count;
+    }
 
+    /// <summary>
+    /// 依据尾随零数 <paramref name="e" />、奇数 <paramref name="b" /> 与奇数部分 <paramref name="a1" />，
+    /// 按雅可比符号的二次互反律计算符号修正值 s（±1）。
+    /// </summary>
+    /// <param name="e">从 a 中抽出的 2 的幂次（尾随零比特数）</param>
+    /// <param name="b">奇数参数 b</param>
+    /// <param name="a1">a 右移 e 位后的奇数部分</param>
+    /// <returns>互反符号修正值（+1 或 -1）</returns>
+    private static int JacobiReciprocitySign(int e, BigInteger b, BigInteger a1)
+    {
         var s = 1;
         if ((e & 0x1) != 0 && ((b.data[0] & 0x7) == 3 || (b.data[0] & 0x7) == 5))
         {
@@ -3224,12 +3255,7 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
             s = -s;
         }
 
-        if (a1.dataLength == 1 && a1.data[0] == 1)
-        {
-            return s;
-        }
-
-        return s * Jacobi(b % a1, a1);
+        return s;
     }
 
     /// <summary>
