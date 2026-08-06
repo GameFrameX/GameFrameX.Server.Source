@@ -389,6 +389,7 @@ public static class Serializer
 
 
 #if !NO_RUNTIME
+#pragma warning disable S3218 // NonGeneric 是 protobuf-net 有意设计的非泛型反射 API 入口，与外层泛型 Serializer 同名方法是上游既定公共契约（泛型编译期入口 / 非泛型运行期入口并列），S3218 在此为设计性误报
     /// <summary>
     /// Provides non-generic access to the default serializer.
     /// </summary>
@@ -499,6 +500,7 @@ public static class Serializer
 #endif
         }
     }
+#pragma warning restore S3218
 
     /// <summary>
     /// Global switches that change the behavior of protobuf-net
