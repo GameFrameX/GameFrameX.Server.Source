@@ -138,41 +138,46 @@ public class ServerComponentAgent : StateComponentAgent<ServerComponent, ServerS
                 continue;
             }
 
-            var key = rawKey.Replace("__", ":", StringComparison.Ordinal).Trim();
-            if (!key.StartsWith("services:", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            var segments = key.Split(':', StringSplitOptions.RemoveEmptyEntries);
-            if (segments.Length < 3)
-            {
-                continue;
-            }
-
-            var serviceToken = segments[1];
-            var serviceName = TopologyServiceNames.FirstOrDefault(name => string.Equals(name, serviceToken, StringComparison.OrdinalIgnoreCase));
-            if (serviceName == null)
-            {
-                continue;
-            }
-
-            if (GlobalSettings.CurrentSetting != null && string.Equals(serviceName, GlobalSettings.CurrentSetting.ServerType, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            var instanceId = BuildInstanceId(serviceName, rawValue);
-            if (!snapshot[serviceName].TryGetValue(instanceId, out var endpoints))
-            {
-                endpoints = Array.Empty<string>();
-                snapshot[serviceName][instanceId] = endpoints;
-            }
-
-            snapshot[serviceName][instanceId] = endpoints.Concat(new[] { rawValue }).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            TryAddTopologyEntry(snapshot, rawKey, rawValue);
         }
 
         return snapshot;
+    }
+
+    private static void TryAddTopologyEntry(Dictionary<string, Dictionary<long, IReadOnlyList<string>>> snapshot, string rawKey, string rawValue)
+    {
+        var key = rawKey.Replace("__", ":", StringComparison.Ordinal).Trim();
+        if (!key.StartsWith("services:", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var segments = key.Split(':', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length < 3)
+        {
+            return;
+        }
+
+        var serviceToken = segments[1];
+        var serviceName = TopologyServiceNames.FirstOrDefault(name => string.Equals(name, serviceToken, StringComparison.OrdinalIgnoreCase));
+        if (serviceName == null)
+        {
+            return;
+        }
+
+        if (GlobalSettings.CurrentSetting != null && string.Equals(serviceName, GlobalSettings.CurrentSetting.ServerType, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var instanceId = BuildInstanceId(serviceName, rawValue);
+        if (!snapshot[serviceName].TryGetValue(instanceId, out var endpoints))
+        {
+            endpoints = Array.Empty<string>();
+            snapshot[serviceName][instanceId] = endpoints;
+        }
+
+        snapshot[serviceName][instanceId] = endpoints.Concat(new[] { rawValue }).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
     private static long BuildInstanceId(string serviceName, string endpoint)
@@ -286,6 +291,7 @@ public class ServerComponentAgent : StateComponentAgent<ServerComponent, ServerS
     [ThreadSafe]
     protected void DoSomething2()
     {
+        // 演示占位方法，无具体业务逻辑；保留方法签名以供示例展示。
     }
 
     [Discard]

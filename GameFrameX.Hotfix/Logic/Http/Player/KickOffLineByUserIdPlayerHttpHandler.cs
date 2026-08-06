@@ -46,12 +46,12 @@ public sealed class KickOffLineByUserIdPlayerHttpHandler : BaseHttpHandler
     /// </summary>
     /// <param name="ip"></param>
     /// <param name="url"></param>
-    /// <param name="requestBase"></param>
+    /// <param name="request"></param>
     /// <returns></returns>
-    public override Task<string> Action(string ip, string url, HttpMessageRequestBase requestBase)
+    public override Task<string> Action(string ip, string url, HttpMessageRequestBase request)
     {
-        var request = (KickOffLineByUserIdPlayerRequest)requestBase;
-        SessionManager.KickOffLineByUserId(request.RoleId);
+        var kickOffRequest = (KickOffLineByUserIdPlayerRequest)request;
+        SessionManager.KickOffLineByUserId(kickOffRequest.RoleId);
         return Task.FromResult(HttpJsonResult.SuccessString());
     }
 }
