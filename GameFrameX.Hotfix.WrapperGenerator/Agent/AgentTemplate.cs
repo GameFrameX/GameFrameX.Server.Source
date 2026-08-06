@@ -72,41 +72,77 @@ public static class AgentTemplate
         TemplateStringBuilder.AppendLine("\t{");
         foreach (var infoMethod in info.Methods)
         {
-            TemplateStringBuilder.AppendLine("\t\t" + infoMethod.Declare);
-            TemplateStringBuilder.AppendLine("\t\t{");
-
-            if (infoMethod.Discard)
-            {
-                if (infoMethod.IsThreadSafe)
-                {
-                    TemplateStringBuilder.AppendLine($"\t\t\t_ = base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString});");
-                }
-                else
-                {
-                    TemplateStringBuilder.AppendLine("\t\t\tlong callChainId = GameFrameX.Core.Actors.Impl.WorkerActor.NextChainId();");
-                    TemplateStringBuilder.AppendLine($"\t\t\t_ = base.Actor.WorkerActor.Enqueue(()=>base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), callChainId, true, {infoMethod.TimeOut});");
-                }
-
-                TemplateStringBuilder.AppendLine($"\t\t\treturn {infoMethod.ReturnType}.CompletedTask;");
-            }
-            else
-            {
-                var needAwait = infoMethod.IsAsync && infoMethod.ReturnType.Contains("<");
-                TemplateStringBuilder.AppendLine("\t\t\t(bool needEnqueue, long chainId)= base.Actor.WorkerActor.IsNeedEnqueue();");
-                TemplateStringBuilder.AppendLine("\t\t\tif (!needEnqueue)");
-                TemplateStringBuilder.AppendLine("\t\t\t{");
-                TemplateStringBuilder.AppendLine($"\t\t\t\treturn {(needAwait ? "await " : string.Empty)} base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString});");
-                TemplateStringBuilder.AppendLine("\t\t\t}");
-                TemplateStringBuilder.AppendLine($"\t\t\treturn {(needAwait ? "await " : string.Empty)} base.Actor.WorkerActor.Enqueue(()=>base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), chainId, {(infoMethod.Discard ? "true" : "false")}, {infoMethod.TimeOut});");
-            }
-
-            TemplateStringBuilder.AppendLine("\t\t}");
-            TemplateStringBuilder.AppendLine();
+            AppendMethod(infoMethod);
         }
 
         TemplateStringBuilder.AppendLine("\t}");
         TemplateStringBuilder.AppendLine("}");
 
         return TemplateStringBuilder.ToString();
+    }
+
+    /// <summary>
+    /// 拼接单个方法的方法声明与方法体。
+    /// </summary>
+    /// <remarks>
+    /// Appends the method declaration and body for a single method.
+    /// </remarks>
+    /// <param name="infoMethod">方法元数据 / Method metadata</param>
+    private static void AppendMethod(MethodInfoData infoMethod)
+    {
+        TemplateStringBuilder.AppendLine("\t\t" + infoMethod.Declare);
+        TemplateStringBuilder.AppendLine("\t\t{");
+
+        if (infoMethod.Discard)
+        {
+            AppendDiscardBody(infoMethod);
+        }
+        else
+        {
+            AppendInvocationBody(infoMethod);
+        }
+
+        TemplateStringBuilder.AppendLine("\t\t}");
+        TemplateStringBuilder.AppendLine();
+    }
+
+    /// <summary>
+    /// 拼接丢弃返回值的方法体（线程安全直调或入队丢弃，末尾返回已完成任务）。
+    /// </summary>
+    /// <remarks>
+    /// Appends the method body for discard (fire-and-forget) invocations.
+    /// </remarks>
+    /// <param name="infoMethod">方法元数据 / Method metadata</param>
+    private static void AppendDiscardBody(MethodInfoData infoMethod)
+    {
+        if (infoMethod.IsThreadSafe)
+        {
+            TemplateStringBuilder.AppendLine($"\t\t\t_ = base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString});");
+        }
+        else
+        {
+            TemplateStringBuilder.AppendLine("\t\t\tlong callChainId = GameFrameX.Core.Actors.Impl.WorkerActor.NextChainId();");
+            TemplateStringBuilder.AppendLine($"\t\t\t_ = base.Actor.WorkerActor.Enqueue(()=>base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), callChainId, true, {infoMethod.TimeOut});");
+        }
+
+        TemplateStringBuilder.AppendLine($"\t\t\treturn {infoMethod.ReturnType}.CompletedTask;");
+    }
+
+    /// <summary>
+    /// 拼接需要等待结果的方法体（按是否需要入队分流，直调或入队等待）。
+    /// </summary>
+    /// <remarks>
+    /// Appends the method body for invocations that await a result.
+    /// </remarks>
+    /// <param name="infoMethod">方法元数据 / Method metadata</param>
+    private static void AppendInvocationBody(MethodInfoData infoMethod)
+    {
+        var needAwait = infoMethod.IsAsync && infoMethod.ReturnType.Contains("<");
+        TemplateStringBuilder.AppendLine("\t\t\t(bool needEnqueue, long chainId)= base.Actor.WorkerActor.IsNeedEnqueue();");
+        TemplateStringBuilder.AppendLine("\t\t\tif (!needEnqueue)");
+        TemplateStringBuilder.AppendLine("\t\t\t{");
+        TemplateStringBuilder.AppendLine($"\t\t\t\treturn {(needAwait ? "await " : string.Empty)} base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString});");
+        TemplateStringBuilder.AppendLine("\t\t\t}");
+        TemplateStringBuilder.AppendLine($"\t\t\treturn {(needAwait ? "await " : string.Empty)} base.Actor.WorkerActor.Enqueue(()=>base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), chainId, {(infoMethod.Discard ? "true" : "false")}, {infoMethod.TimeOut});");
     }
 }
