@@ -343,7 +343,7 @@ public partial struct FP : IEquatable<FP>, IComparable<FP>
         if (x.RawValue <= 0)
         {
             throw new ArgumentOutOfRangeException(
-                LocalizationService.GetString(Keys.Utility.Exceptions.LnValueNonPositive),
+                LocalizationService.GetString(Keys.Utility.ExceptionMessages.LnValueNonPositive),
                 "x");
         }
 
@@ -917,7 +917,7 @@ public partial struct FP : IEquatable<FP>, IComparable<FP>
         {
             // 我们无法像 Single 和 Double 一样表示无穷大，且 Sqrt 在 x < 0 时
             // 数学上是未定义的。因此我们抛出异常。
-            throw new ArgumentOutOfRangeException(LocalizationService.GetString(Keys.Utility.Exceptions.SqrtValueNegative), "x");
+            throw new ArgumentOutOfRangeException(LocalizationService.GetString(Keys.Utility.ExceptionMessages.SqrtValueNegative), "x");
         }
 
         var num = (ulong)xl;
@@ -1277,7 +1277,7 @@ public partial struct FP : IEquatable<FP>, IComparable<FP>
     {
         if (x < -One || x > One)
         {
-            throw new ArgumentOutOfRangeException(LocalizationService.GetString(Keys.Utility.Exceptions.ValueOutOfRange), "x");
+            throw new ArgumentOutOfRangeException(LocalizationService.GetString(Keys.Utility.ExceptionMessages.ValueOutOfRange), "x");
         }
 
         if (x.RawValue == 0)
