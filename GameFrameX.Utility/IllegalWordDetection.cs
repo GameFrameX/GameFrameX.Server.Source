@@ -301,7 +301,7 @@ public sealed class IllegalWordDetection
         LogHelper.Info("IllegalWordDetection.Init {time} {activeNum}", (DateTime.UtcNow - startTime).TotalMilliseconds, activeNum);
     }
 
-    private static unsafe void InnerInit(string[] badWords)
+    private static void InnerInit(string[] badWords)
     {
         if (badWords == null || badWords.Length == 0)
         {
@@ -327,14 +327,9 @@ public sealed class IllegalWordDetection
         // 初始化好一个用来存检测到的字符串的buffer
         _dectectedBuffer = new char[maxWordLength];
         // 记录应该跳过的不予检测的词
-        fixed (char* start = SkipList)
+        foreach (var c in SkipList)
         {
-            var itor = start;
-            var end = start + SkipList.Length;
-            while (itor < end)
-            {
-                SkipBitArray[*itor++] = true;
-            }
+            SkipBitArray[c] = true;
         }
 
         LogHelper.Info("IllegalWordDetection.Init {time} {activeNum}", (DateTime.UtcNow - startTime).TotalMilliseconds, activeNum);
@@ -403,23 +398,15 @@ public sealed class IllegalWordDetection
         return text;
     }
 
-    private static unsafe bool EnsuranceLower(string text)
+    private static bool EnsuranceLower(string text)
     {
-        fixed (char* newText = text)
+        for (int i = 0; i < text.Length; i++)
         {
-            var itor = newText;
-            var end = newText + text.Length;
+            var c = text[i];
 
-            while (itor < end)
+            if (c >= 'A' && c <= 'Z')
             {
-                var c = *itor;
-
-                if (c is >= 'A' and <= 'Z')
-                {
-                    return true;
-                }
-
-                ++itor;
+                return true;
             }
         }
 
