@@ -71,120 +71,33 @@ internal sealed class ImmutableCollectionDecorator : ListDecorator
         {
             return false;
         }
-#if COREFX || PROFILE259
-			TypeInfo declaredTypeInfo = declaredType.GetTypeInfo();
-#else
-        var declaredTypeInfo = declaredType;
-#endif
 
-        // try to detect immutable collections; firstly, they are all generic, and all implement IReadOnlyCollection<T> for some T
-        if (!declaredTypeInfo.IsGenericType)
+        if (!TryResolveEffectiveType(declaredType, model, out var typeArgs, out var effectiveType))
         {
             return false;
         }
 
-#if COREFX || PROFILE259
-			Type[] typeArgs = declaredTypeInfo.GenericTypeArguments, effectiveType;
-#else
-        Type[] typeArgs = declaredTypeInfo.GetGenericArguments(), effectiveType;
-#endif
-        switch (typeArgs.Length)
-        {
-            case 1:
-                effectiveType = typeArgs;
-                break; // fine
-            case 2:
-                var kvp = model.MapType(typeof(KeyValuePair<,>));
-                if (kvp == null)
-                {
-                    return false;
-                }
-
-                kvp = kvp.MakeGenericType(typeArgs);
-                effectiveType = new[] { kvp, };
-                break;
-            default:
-                return false; // no clue!
-        }
-
+        // try to detect immutable collections; firstly, they are all generic, and all implement IReadOnlyCollection<T> for some T
         if (ResolveIReadOnlyCollection(declaredType, null) == null)
         {
             return false; // no IReadOnlyCollection<T> found
         }
 
-        // and we want to use the builder API, so for generic Foo<T> or IFoo<T> we want to use Foo.CreateBuilder<T>
-        var name = declaredType.Name;
-        var i = name.IndexOf('`');
-        if (i <= 0)
-        {
-            return false;
-        }
-
-        name = declaredTypeInfo.IsInterface ? name.Substring(1, i - 1) : name.Substring(0, i);
-
-        var outerType = model.GetType(declaredType.Namespace + "." + name, declaredTypeInfo.Assembly);
-        // I hate special-cases...
-        if (outerType == null && name == "ImmutableSet")
-        {
-            outerType = model.GetType(declaredType.Namespace + ".ImmutableHashSet", declaredTypeInfo.Assembly);
-        }
-
+        var outerType = ResolveOuterType(model, declaredType);
         if (outerType == null)
         {
             return false;
         }
 
-#if PROFILE259
-			foreach (MethodInfo method in outerType.GetTypeInfo().DeclaredMethods)
-#else
-        foreach (var method in outerType.GetMethods())
-#endif
-        {
-            if (!method.IsStatic || method.Name != "CreateBuilder" || !method.IsGenericMethodDefinition || method.GetParameters().Length != 0
-                || method.GetGenericArguments().Length != typeArgs.Length)
-            {
-                continue;
-            }
-
-            builderFactory = method.MakeGenericMethod(typeArgs);
-            break;
-        }
-
         var voidType = model.MapType(typeof(void));
-        if (builderFactory == null || builderFactory.ReturnType == null || builderFactory.ReturnType == voidType)
+        if (!TryResolveBuilderFactory(outerType, typeArgs, voidType, out builderFactory))
         {
             return false;
         }
 
-#if COREFX
-            TypeInfo typeInfo = declaredType.GetTypeInfo();
-#else
-        var typeInfo = declaredType;
-#endif
-        isEmpty = Helpers.GetProperty(typeInfo, "IsDefaultOrEmpty", false); //struct based immutabletypes can have both a "default" and "empty" state
-        if (isEmpty == null)
+        if (!TryResolveEmptyOrLength(declaredType, effectiveType, out isEmpty, out length))
         {
-            isEmpty = Helpers.GetProperty(typeInfo, "IsEmpty", false);
-        }
-
-        if (isEmpty == null)
-        {
-            //Fallback to checking length if a "IsEmpty" property is not found
-            length = Helpers.GetProperty(typeInfo, "Length", false);
-            if (length == null)
-            {
-                length = Helpers.GetProperty(typeInfo, "Count", false);
-            }
-
-            if (length == null)
-            {
-                length = Helpers.GetProperty(ResolveIReadOnlyCollection(declaredType, effectiveType[0]), "Count", false);
-            }
-
-            if (length == null)
-            {
-                return false;
-            }
+            return false;
         }
 
         add = Helpers.GetInstanceMethod(builderFactory.ReturnType, "Add", effectiveType);
@@ -204,17 +117,154 @@ internal sealed class ImmutableCollectionDecorator : ListDecorator
             return false;
         }
 
-        addRange = Helpers.GetInstanceMethod(builderFactory.ReturnType, "AddRange", new[] { declaredType, });
-        if (addRange == null)
+        addRange = ResolveAddRange(builderFactory.ReturnType, model, effectiveType, declaredType);
+
+        return true;
+    }
+
+    private static bool TryResolveEffectiveType(Type declaredType, TypeModel model, out Type[] typeArgs, out Type[] effectiveType)
+    {
+        typeArgs = null;
+        effectiveType = null;
+#if COREFX || PROFILE259
+            TypeInfo declaredTypeInfo = declaredType.GetTypeInfo();
+#else
+        var declaredTypeInfo = declaredType;
+#endif
+        if (!declaredTypeInfo.IsGenericType)
         {
-            var enumerable = model.MapType(typeof(IEnumerable<>), false);
-            if (enumerable != null)
+            return false;
+        }
+
+#if COREFX || PROFILE259
+            typeArgs = declaredTypeInfo.GenericTypeArguments;
+#else
+        typeArgs = declaredTypeInfo.GetGenericArguments();
+#endif
+        switch (typeArgs.Length)
+        {
+            case 1:
+                effectiveType = typeArgs;
+                return true; // fine
+            case 2:
+                var kvp = model.MapType(typeof(KeyValuePair<,>));
+                if (kvp == null)
+                {
+                    return false;
+                }
+
+                kvp = kvp.MakeGenericType(typeArgs);
+                effectiveType = new[] { kvp, };
+                return true;
+            default:
+                return false; // no clue!
+        }
+    }
+
+    private static Type ResolveOuterType(TypeModel model, Type declaredType)
+    {
+#if COREFX || PROFILE259
+            TypeInfo declaredTypeInfo = declaredType.GetTypeInfo();
+#else
+        var declaredTypeInfo = declaredType;
+#endif
+
+        // and we want to use the builder API, so for generic Foo<T> or IFoo<T> we want to use Foo.CreateBuilder<T>
+        var name = declaredType.Name;
+        var i = name.IndexOf('`');
+        if (i <= 0)
+        {
+            return null;
+        }
+
+        name = declaredTypeInfo.IsInterface ? name.Substring(1, i - 1) : name.Substring(0, i);
+
+        var outerType = model.GetType(declaredType.Namespace + "." + name, declaredTypeInfo.Assembly);
+        // I hate special-cases...
+        if (outerType == null && name == "ImmutableSet")
+        {
+            outerType = model.GetType(declaredType.Namespace + ".ImmutableHashSet", declaredTypeInfo.Assembly);
+        }
+
+        return outerType;
+    }
+
+    private static bool TryResolveBuilderFactory(Type outerType, Type[] typeArgs, Type voidType, out MethodInfo builderFactory)
+    {
+        builderFactory = null;
+#if PROFILE259
+            foreach (MethodInfo method in outerType.GetTypeInfo().DeclaredMethods)
+#else
+        foreach (var method in outerType.GetMethods())
+#endif
+        {
+            if (!method.IsStatic || method.Name != "CreateBuilder" || !method.IsGenericMethodDefinition || method.GetParameters().Length != 0
+                || method.GetGenericArguments().Length != typeArgs.Length)
             {
-                addRange = Helpers.GetInstanceMethod(builderFactory.ReturnType, "AddRange", new[] { enumerable.MakeGenericType(effectiveType), });
+                continue;
             }
+
+            builderFactory = method.MakeGenericMethod(typeArgs);
+            break;
+        }
+
+        if (builderFactory == null || builderFactory.ReturnType == null || builderFactory.ReturnType == voidType)
+        {
+            return false;
         }
 
         return true;
+    }
+
+    private static bool TryResolveEmptyOrLength(Type declaredType, Type[] effectiveType, out PropertyInfo isEmpty, out PropertyInfo length)
+    {
+#if COREFX
+            TypeInfo typeInfo = declaredType.GetTypeInfo();
+#else
+        var typeInfo = declaredType;
+#endif
+        isEmpty = Helpers.GetProperty(typeInfo, "IsDefaultOrEmpty", false); //struct based immutabletypes can have both a "default" and "empty" state
+        if (isEmpty == null)
+        {
+            isEmpty = Helpers.GetProperty(typeInfo, "IsEmpty", false);
+        }
+
+        if (isEmpty != null)
+        {
+            length = null;
+            return true;
+        }
+
+        //Fallback to checking length if a "IsEmpty" property is not found
+        length = Helpers.GetProperty(typeInfo, "Length", false);
+        if (length == null)
+        {
+            length = Helpers.GetProperty(typeInfo, "Count", false);
+        }
+
+        if (length == null)
+        {
+            length = Helpers.GetProperty(ResolveIReadOnlyCollection(declaredType, effectiveType[0]), "Count", false);
+        }
+
+        return length != null;
+    }
+
+    private static MethodInfo ResolveAddRange(Type builderReturnType, TypeModel model, Type[] effectiveType, Type declaredType)
+    {
+        var addRange = Helpers.GetInstanceMethod(builderReturnType, "AddRange", new[] { declaredType, });
+        if (addRange != null)
+        {
+            return addRange;
+        }
+
+        var enumerable = model.MapType(typeof(IEnumerable<>), false);
+        if (enumerable == null)
+        {
+            return null;
+        }
+
+        return Helpers.GetInstanceMethod(builderReturnType, "AddRange", new[] { enumerable.MakeGenericType(effectiveType), });
     }
 
     private readonly MethodInfo builderFactory, add, addRange, finish;
@@ -237,22 +287,7 @@ internal sealed class ImmutableCollectionDecorator : ListDecorator
         var builderInstance = builderFactory.Invoke(null, null);
         var field = source.FieldNumber;
         var args = new object[1];
-        if (AppendToCollection && value != null && (isEmpty != null ? !(bool)isEmpty.GetValue(value, null) : (int)length.GetValue(value, null) != 0))
-        {
-            if (addRange != null)
-            {
-                args[0] = value;
-                addRange.Invoke(builderInstance, args);
-            }
-            else
-            {
-                foreach (var item in (ICollection)value)
-                {
-                    args[0] = item;
-                    add.Invoke(builderInstance, args);
-                }
-            }
-        }
+        AppendExistingCollection(value, builderInstance, args);
 
         if (packedWireType != WireType.None && source.WireType == WireType.String)
         {
@@ -275,6 +310,26 @@ internal sealed class ImmutableCollectionDecorator : ListDecorator
         }
 
         return finish.Invoke(builderInstance, null);
+    }
+
+    private void AppendExistingCollection(object value, object builderInstance, object[] args)
+    {
+        if (AppendToCollection && value != null && (isEmpty != null ? !(bool)isEmpty.GetValue(value, null) : (int)length.GetValue(value, null) != 0))
+        {
+            if (addRange != null)
+            {
+                args[0] = value;
+                addRange.Invoke(builderInstance, args);
+            }
+            else
+            {
+                foreach (var item in (ICollection)value)
+                {
+                    args[0] = item;
+                    add.Invoke(builderInstance, args);
+                }
+            }
+        }
     }
 
 #if FEAT_COMPILER
@@ -318,7 +373,7 @@ internal sealed class ImmutableCollectionDecorator : ListDecorator
                     else
                     {
                         // loop and call Add repeatedly
-                        MethodInfo moveNext, current, getEnumerator = GetEnumeratorInfo(ctx.Model, out moveNext, out current);
+                        MethodInfo moveNext, current, getEnumerator = GetEnumeratorInfo(ctx.Model, out moveNext, current);
                         Helpers.DebugAssert(moveNext != null);
                         Helpers.DebugAssert(current != null);
                         Helpers.DebugAssert(getEnumerator != null);
