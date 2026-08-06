@@ -150,6 +150,16 @@ def add_keys_to_resx(resx_path, missing_keys, is_chinese=False):
     return added_count
 
 
+def print_key_list(keys, limit=10):
+    """打印 key 列表，最多显示 limit 个，超出部分汇总提示"""
+    sorted_keys = sorted(keys)
+    for key in sorted_keys[:limit]:
+        print(f"     - {key}")
+    remaining = len(sorted_keys) - limit
+    if remaining > 0:
+        print(f"     ... 还有 {remaining} 个")
+
+
 def main():
     print("=" * 60)
     print("Keys 检查脚本 - 检查 resx 资源文件中缺失的 key")
@@ -176,10 +186,7 @@ def main():
 
         if missing_keys:
             print(f"   缺失 {len(missing_keys)} 个 key:")
-            for key in sorted(missing_keys)[:10]:  # 只显示前10个
-                print(f"     - {key}")
-            if len(missing_keys) > 10:
-                print(f"     ... 还有 {len(missing_keys) - 10} 个")
+            print_key_list(missing_keys)
 
             # 添加缺失的 key
             is_chinese = lang == "zh-CN"
@@ -190,10 +197,7 @@ def main():
 
         if extra_keys:
             print(f"   资源文件中有 {len(extra_keys)} 个多余的 key (在 C# 中未定义)")
-            for key in sorted(extra_keys)[:10]:  # 只显示前10个
-                print(f"     - {key}")
-            if len(extra_keys) > 10:
-                print(f"     ... 还有 {len(extra_keys) - 10} 个")
+            print_key_list(extra_keys)
 
     print()
     print("=" * 60)
