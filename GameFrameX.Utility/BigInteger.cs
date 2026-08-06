@@ -1854,36 +1854,50 @@ public sealed class BigInteger
             }
         }
 
-        var quotient = new BigInteger();
-        var remainder = new BigInteger();
-        var biRadix = new BigInteger(radix);
-
         if (a.dataLength == 1 && a.data[0] == 0)
         {
             result = "0"; // 如果值为0，返回"0"
         }
         else
         {
-            while (a.dataLength > 1 || (a.dataLength == 1 && a.data[0] != 0))
-            {
-                SingleByteDivide(a, biRadix, quotient, remainder);
-
-                if (remainder.data[0] < 10)
-                {
-                    result = remainder.data[0] + result; // 处理小于10的余数
-                }
-                else
-                {
-                    result = charSet[(int)remainder.data[0] - 10] + result; // 处理大于等于10的余数
-                }
-
-                a = quotient; // 更新被除数
-            }
+            result = BuildRadixMagnitude(a, radix, charSet);
 
             if (negative)
             {
                 result = "-" + result; // 如果是负数，添加负号
             }
+        }
+
+        return result;
+    }
+
+
+    //***********************************************************************
+    // 把非负 BigInteger 转换为指定基数下的数字字符串（不含符号），供 ToString(int) 使用。
+    //***********************************************************************
+
+    private static string BuildRadixMagnitude(BigInteger value, int radix, string charSet)
+    {
+        var result = "";
+        var quotient = new BigInteger();
+        var remainder = new BigInteger();
+        var biRadix = new BigInteger(radix);
+        var a = value;
+
+        while (a.dataLength > 1 || (a.dataLength == 1 && a.data[0] != 0))
+        {
+            SingleByteDivide(a, biRadix, quotient, remainder);
+
+            if (remainder.data[0] < 10)
+            {
+                result = remainder.data[0] + result; // 处理小于10的余数
+            }
+            else
+            {
+                result = charSet[(int)remainder.data[0] - 10] + result; // 处理大于等于10的余数
+            }
+
+            a = quotient; // 更新被除数
         }
 
         return result;
