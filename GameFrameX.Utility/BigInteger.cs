@@ -2676,55 +2676,87 @@ public sealed class BigInteger
 
         for (var round = 0; round < confidence; round++)
         {
-            var done = false;
-
-            while (!done) // 生成 a < n
-            {
-                var testBits = 0;
-
-                // 确保 "a" 至少有 2 位
-                while (testBits < 2)
-                {
-                    testBits = (int)(rand.NextDouble() * bits);
-                }
-
-                a.GenRandomBits(testBits, rand);
-
-                var byteLen = a.dataLength;
-
-                // 确保 "a" 不为 0
-                if (byteLen > 1 || (byteLen == 1 && a.data[0] != 1))
-                {
-                    done = true;
-                }
-            }
-
-            // 检查是否存在因子（修复版本 1.03）
-            var gcdTest = a.Gcd(thisVal);
-            if (gcdTest.dataLength == 1 && gcdTest.data[0] != 1)
+            if (!SolovayStrassenRound(a, thisVal, p_sub1, p_sub1_shift, rand, bits))
             {
                 return false;
             }
+        }
 
-            // 计算 a^((p-1)/2) mod p
+        return true;
+    }
 
-            var expResult = a.ModPow(p_sub1_shift, thisVal);
-            if (expResult == p_sub1)
+
+    //***********************************************************************
+    // 执行一轮 Solovay-Strassen 验证（生成随机基数 a + gcd 因子检查 +
+    // a^((p-1)/2) mod p 与雅可比符号比较）。
+    //
+    // 返回值
+    // -------
+    // true  —— 本轮通过，调用方继续下一轮。
+    // false —— 发现 a 与 n 的非平凡因子或欧拉准则不成立，n 一定不是素数。
+    //
+    //***********************************************************************
+
+    /// <summary>
+    /// 执行一轮 Solovay-Strassen 验证
+    /// </summary>
+    /// <param name="a">复用的基数对象，方法内会重新填入随机位</param>
+    /// <param name="thisVal">待测数（已取绝对值）</param>
+    /// <param name="p_sub1">thisVal - 1</param>
+    /// <param name="p_sub1_shift">(thisVal - 1) >> 1</param>
+    /// <param name="rand">随机数生成器</param>
+    /// <param name="bits">thisVal 的比特位数，限定生成 a 的位宽上限</param>
+    /// <returns>本轮通过返回 true；判定不是素数返回 false</returns>
+    private bool SolovayStrassenRound(BigInteger a, BigInteger thisVal, BigInteger p_sub1, BigInteger p_sub1_shift, Random rand, int bits)
+    {
+        var done = false;
+
+        while (!done) // 生成 a < n
+        {
+            var testBits = 0;
+
+            // 确保 "a" 至少有 2 位
+            while (testBits < 2)
             {
-                expResult = -1;
+                testBits = (int)(rand.NextDouble() * bits);
             }
 
-            // 计算雅可比符号
-            BigInteger jacob = Jacobi(a, thisVal);
+            a.GenRandomBits(testBits, rand);
 
-            //LogHelper.Info("a = " + a.ToString(10) + " b = " + thisVal.ToString(10));
-            //LogHelper.Info("expResult = " + expResult.ToString(10) + " Jacob = " + jacob.ToString(10));
+            var byteLen = a.dataLength;
 
-            // 如果它们不同，则不是素数
-            if (expResult != jacob)
+            // 确保 "a" 不为 0
+            if (byteLen > 1 || (byteLen == 1 && a.data[0] != 1))
             {
-                return false;
+                done = true;
             }
+        }
+
+        // 检查是否存在因子（修复版本 1.03）
+        var gcdTest = a.Gcd(thisVal);
+        if (gcdTest.dataLength == 1 && gcdTest.data[0] != 1)
+        {
+            return false;
+        }
+
+        // 计算 a^((p-1)/2) mod p
+
+        var expResult = a.ModPow(p_sub1_shift, thisVal);
+        if (expResult == p_sub1)
+        {
+            expResult = -1;
+        }
+
+        // 计算雅可比符号
+        BigInteger jacob = Jacobi(a, thisVal);
+
+        //LogHelper.Info("a = " + a.ToString(10) + " b = " + thisVal.ToString(10));
+        //LogHelper.Info("expResult = " + expResult.ToString(10) + " Jacob = " + jacob.ToString(10));
+
+        // 如果它们不同，则不是素数
+        if (expResult != jacob)
+        {
+            return false;
         }
 
         return true;
