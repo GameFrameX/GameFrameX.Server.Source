@@ -145,6 +145,9 @@ internal static class AppExitHandler
         posixSignalContext.Cancel = true;
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Application.SigtermSignalReceived));
         _exitCallBack?.Invoke("SIGTERM exit");
+        //收到退出信号后应用进入退出流程，释放信号注册以避免重复触发并归还底层资源
+        _exitSignalRegistration?.Dispose();
+        _exitSignalRegistration = null;
     }
 
     /// <summary>
