@@ -119,7 +119,8 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
                 IsDebugReceive = true,
                 IsDebugReceiveHeartBeat = false,
                 IsDebugSendHeartBeat = false,
-                DataBaseUrl = "mongodb://gameframex:7bmEw5HS0otl_KNpnsGeMOq@175.178.65.215:27017/?authSource=admin",
+                // 数据库连接地址优先从环境变量读取，避免在源码中硬编码凭证（消除 Sonar csharpsquid:S2068）
+                DataBaseUrl = Environment.GetEnvironmentVariable("GAMEFRAMEX_SOCIAL_DB_URL") ?? "mongodb://127.0.0.1:27017/?authSource=admin",
                 DataBaseName = "gameframex",
             };
         }
