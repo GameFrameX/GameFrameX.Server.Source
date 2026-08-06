@@ -132,6 +132,25 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     /// <param name="allClasses">所有候选类声明语法节点列表 / List of all candidate class declaration syntax nodes</param>
     private static void Execute(SourceProductionContext context, IReadOnlyList<ClassDeclarationSyntax> allClasses)
     {
+        var agents = CollectAgents(allClasses);
+        var partialClassCount = new Dictionary<string, int>();
+
+        foreach (var agent in agents)
+        {
+            ProcessAgent(context, agent, partialClassCount);
+        }
+    }
+
+    /// <summary>
+    /// 从候选类中收集组件代理类，并把与代理类同名的分部类合并进结果列表。
+    /// </summary>
+    /// <remarks>
+    /// Collects component agent classes from the candidates and merges same-named partial classes into the result list.
+    /// </remarks>
+    /// <param name="allClasses">所有候选类声明语法节点列表 / List of all candidate class declaration syntax nodes</param>
+    /// <returns>合并分部类后的代理类列表 / The list of agent classes after merging partial classes</returns>
+    private static List<ClassDeclarationSyntax> CollectAgents(IReadOnlyList<ClassDeclarationSyntax> allClasses)
+    {
         var agentNames = new HashSet<string>();
         var agents = new List<ClassDeclarationSyntax>();
         var partials = new List<ClassDeclarationSyntax>();
@@ -157,171 +176,328 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
             }
         }
 
-        var partialClassCount = new Dictionary<string, int>();
+        return agents;
+    }
 
-        foreach (var agent in agents)
+    /// <summary>
+    /// 处理单个代理类：构建代理信息、收集方法元数据并生成包装器源代码。
+    /// </summary>
+    /// <remarks>
+    /// Processes a single agent class: builds agent info, collects method metadata, and emits the wrapper source code.
+    /// </remarks>
+    /// <param name="context">源代码生成上下文 / Source production context</param>
+    /// <param name="agent">代理类声明语法节点 / Agent class declaration syntax node</param>
+    /// <param name="partialClassCount">分部类输出文件名计数表 / Partial class output filename counter map</param>
+    private static void ProcessAgent(SourceProductionContext context, ClassDeclarationSyntax agent, Dictionary<string, int> partialClassCount)
+    {
+        var fullName = agent.GetFullName();
+        var info = CreateAgentInfo(agent, partialClassCount, out var outFileName);
+
+        var root = agent.SyntaxTree.GetCompilationUnitRoot();
+        foreach (var element in root.Usings)
         {
-            var fullName = agent.GetFullName();
-            var info = new AgentInfo();
-            info.Super = agent.Identifier.Text;
-            info.Name = info.Super + WrapperNameSuffix;
-            info.Space = HotfixNameSpaceNamePrefix + WrapperNameSuffix + ".Agent";
+            info.UsingSpaces.Add(element.Name.ToString());
+        }
 
-            string outFileName = null;
+        info.UsingSpaces.Add(Tools.GetNameSpace(fullName));
 
-            var isPartialClass = agent.Modifiers.ToList().FindIndex(s => s.Text == "partial") >= 0;
-            if (isPartialClass)
+        foreach (var member in agent.Members)
+        {
+            AddAgentMethod(context, info, fullName, member);
+        }
+
+        var source = AgentTemplate.Run(info);
+        context.AddSource(outFileName, source);
+    }
+
+    /// <summary>
+    /// 根据代理类创建代理信息，并确定生成的输出文件名。
+    /// </summary>
+    /// <remarks>
+    /// Creates agent info from the agent class and determines the generated output filename.
+    /// </remarks>
+    /// <param name="agent">代理类声明语法节点 / Agent class declaration syntax node</param>
+    /// <param name="partialClassCount">分部类输出文件名计数表 / Partial class output filename counter map</param>
+    /// <param name="outFileName">生成的输出文件名 / The generated output filename</param>
+    /// <returns>填充好的代理信息 / The populated agent info</returns>
+    private static AgentInfo CreateAgentInfo(ClassDeclarationSyntax agent, Dictionary<string, int> partialClassCount, out string outFileName)
+    {
+        var info = new AgentInfo();
+        info.Super = agent.Identifier.Text;
+        info.Name = info.Super + WrapperNameSuffix;
+        info.Space = HotfixNameSpaceNamePrefix + WrapperNameSuffix + ".Agent";
+
+        var isPartialClass = agent.Modifiers.ToList().FindIndex(s => s.Text == "partial") >= 0;
+        if (isPartialClass)
+        {
+            info.Partial = "partial";
+            partialClassCount.TryGetValue(info.Name, out var count);
+            partialClassCount[info.Name] = count + 1;
+            outFileName = $"{info.Name}{count}.g.cs";
+        }
+        else
+        {
+            outFileName = $"{info.Name}.g.cs";
+        }
+
+        return info;
+    }
+
+    /// <summary>
+    /// 处理代理类的单个成员：若是需要包装的方法，则读取其元数据并收集到代理信息中。
+    /// </summary>
+    /// <remarks>
+    /// Processes a single member of the agent class: if it is a method to wrap, reads its metadata and collects it into the agent info.
+    /// </remarks>
+    /// <param name="context">源代码生成上下文 / Source production context</param>
+    /// <param name="info">代理信息 / Agent info</param>
+    /// <param name="fullName">代理类完全限定名 / Fully qualified name of the agent class</param>
+    /// <param name="member">成员声明语法节点 / Member declaration syntax node</param>
+    private static void AddAgentMethod(SourceProductionContext context, AgentInfo info, string fullName, MemberDeclarationSyntax member)
+    {
+        if (!(member is MethodDeclarationSyntax method))
+        {
+            return;
+        }
+
+        if (method.Identifier.Text.Equals("Active") || method.Identifier.Text.Equals("Inactive"))
+        {
+            return;
+        }
+
+        var mth = new MethodInfoData();
+        ReadModifiers(method, mth);
+
+        if (mth.IsStatic)
+        {
+            return;
+        }
+
+        mth.ReturnType = method.ReturnType?.ToString() ?? "void";
+        foreach (var attributeListSyntax in method.AttributeLists)
+        {
+            ApplyAttribute(attributeListSyntax, mth);
+        }
+
+        CollectMethod(context, info, fullName, method, mth);
+    }
+
+    /// <summary>
+    /// 读取方法修饰符并填充到方法元数据中。
+    /// </summary>
+    /// <remarks>
+    /// Reads method modifiers and populates them into the method metadata.
+    /// </remarks>
+    /// <param name="method">方法声明语法节点 / Method declaration syntax node</param>
+    /// <param name="mth">待填充的方法元数据 / Method metadata to populate</param>
+    private static void ReadModifiers(MethodDeclarationSyntax method, MethodInfoData mth)
+    {
+        foreach (var m in method.Modifiers)
+        {
+            if (m.Text.Equals("virtual"))
             {
-                info.Partial = "partial";
-                partialClassCount.TryGetValue(info.Name, out var count);
-                partialClassCount[info.Name] = count + 1;
-                outFileName = $"{info.Name}{count}.g.cs";
+                mth.IsVirtual = true;
+                mth.Modify += "override ";
             }
             else
             {
-                outFileName = $"{info.Name}.g.cs";
+                mth.Modify += m.Text + " ";
             }
 
-            var root = agent.SyntaxTree.GetCompilationUnitRoot();
-            foreach (var element in root.Usings)
+            if (m.Text.Equals("public"))
             {
-                info.UsingSpaces.Add(element.Name.ToString());
+                mth.IsPublic = true;
             }
 
-            info.UsingSpaces.Add(Tools.GetNameSpace(fullName));
-
-            foreach (var member in agent.Members)
+            if (m.Text.Equals("static"))
             {
-                if (member is MethodDeclarationSyntax method)
-                {
-                    if (method.Identifier.Text.Equals("Active")
-                        || method.Identifier.Text.Equals("Inactive"))
-                    {
-                        continue;
-                    }
-
-                    var mth = new MethodInfoData();
-                    foreach (var m in method.Modifiers)
-                    {
-                        if (m.Text.Equals("virtual"))
-                        {
-                            mth.IsVirtual = true;
-                            mth.Modify += "override ";
-                        }
-                        else
-                        {
-                            mth.Modify += m.Text + " ";
-                        }
-
-                        if (m.Text.Equals("public"))
-                        {
-                            mth.IsPublic = true;
-                        }
-
-                        if (m.Text.Equals("static"))
-                        {
-                            mth.IsStatic = true;
-                        }
-
-                        if (m.Text.Equals("async"))
-                        {
-                            mth.IsAsync = true;
-                        }
-                    }
-
-                    if (mth.IsStatic)
-                    {
-                        continue;
-                    }
-
-                    mth.ReturnType = method.ReturnType?.ToString() ?? "void";
-                    foreach (var attributeListSyntax in method.AttributeLists)
-                    {
-                        var attrName = attributeListSyntax.ToString().RemoveWhitespace() + "Attribute";
-                        if (attrName.IndexOf(ServiceAttributeName, StringComparison.OrdinalIgnoreCase) >= 0)
-                        {
-                            mth.IsApi = true;
-                        }
-                        else if (attrName.IndexOf(DiscardAttributeName, StringComparison.OrdinalIgnoreCase) >= 0)
-                        {
-                            mth.Discard = true;
-                            if (mth.IsAsync)
-                            {
-                                mth.Modify = mth.Modify.Replace("async ", "");
-                                mth.IsAsync = false;
-                            }
-                        }
-                        else if (attrName.IndexOf(TimeOutAttributeName, StringComparison.OrdinalIgnoreCase) >= 0)
-                        {
-                            mth.HasTimeout = true;
-                            var argStr = attributeListSyntax.Attributes[0].ArgumentList.Arguments[0].ToString();
-                            if (argStr.IndexOf(":", StringComparison.OrdinalIgnoreCase) >= 0)
-                            {
-                                mth.TimeOut = int.Parse(argStr.Split(':')[1].Trim());
-                            }
-                            else
-                            {
-                                mth.TimeOut = int.Parse(argStr);
-                            }
-                        }
-                        else if (attrName.IndexOf(ThreadSafeAttributeName, StringComparison.OrdinalIgnoreCase) >= 0)
-                        {
-                            mth.IsThreadSafe = true;
-                        }
-                    }
-
-                    if (mth.IsThreadSafe && mth.HasTimeout)
-                    {
-                        context.LogError($"{fullName}.{method.Identifier.Text}无法为标记【{ThreadSafeAttributeName}】的函数指定超时时间");
-                    }
-
-                    if (!mth.IsApi && !mth.Discard && mth.HasTimeout)
-                    {
-                        context.LogError($"{fullName}.{method.Identifier.Text}【{TimeOutAttributeName}】注解只能配合【Api】或【{DiscardAttributeName}】使用");
-                    }
-
-                    if (!mth.IsApi && !mth.Discard && !mth.IsThreadSafe)
-                    {
-                        continue;
-                    }
-
-                    if (mth.IsThreadSafe && !mth.Discard)
-                    {
-                        continue;
-                    }
-
-                    if (mth.IsApi && !mth.IsThreadSafe && !mth.ReturnType.Contains("Task"))
-                    {
-                        context.LogError($"{fullName}.{method.Identifier.Text}, 非【{ThreadSafeAttributeName}】的【Api】接口只能是异步函数");
-                    }
-
-                    if ((mth.IsApi || mth.Discard || mth.IsThreadSafe) && !mth.IsVirtual)
-                    {
-                        context.LogError($"{fullName}.{method.Identifier.Text}标记了【AsyncApi】【{ThreadSafeAttributeName}】【{DiscardAttributeName}】注解的函数必须申明为virtual");
-                    }
-
-                    if (mth.IsVirtual)
-                    {
-                        info.Methods.Add(mth);
-                        mth.Name = method.Identifier.Text;
-                        mth.ParamDeclare = method.ParameterList.ToString();
-                        if (mth.Discard && !mth.ReturnType.Equals(nameof(Task)) && !mth.ReturnType.Equals(nameof(ValueTask)))
-                        {
-                            context.LogError($"{fullName}.{method.Identifier.Text}只有返回值为Task类型或ValueTask类型才能添加【Discard】注解");
-                        }
-
-                        mth.Constraint = method.ConstraintClauses.ToString();
-                        mth.Typeparams = method.TypeParameterList?.ToString();
-                        foreach (var p in method.ParameterList.Parameters)
-                        {
-                            mth.Params.Add(p.Identifier.Text);
-                        }
-                    }
-                }
+                mth.IsStatic = true;
             }
 
-            var source = AgentTemplate.Run(info);
-            context.AddSource(outFileName, source);
+            if (m.Text.Equals("async"))
+            {
+                mth.IsAsync = true;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 解析单个属性列表，按 Service/Discard/TimeOut/ThreadSafe 分类填充到方法元数据中。
+    /// </summary>
+    /// <remarks>
+    /// Parses a single attribute list, classifying it as Service/Discard/TimeOut/ThreadSafe and populating the method metadata.
+    /// </remarks>
+    /// <param name="attributeListSyntax">属性列表语法节点 / Attribute list syntax node</param>
+    /// <param name="mth">待填充的方法元数据 / Method metadata to populate</param>
+    private static void ApplyAttribute(AttributeListSyntax attributeListSyntax, MethodInfoData mth)
+    {
+        var attrName = attributeListSyntax.ToString().RemoveWhitespace() + "Attribute";
+        if (attrName.IndexOf(ServiceAttributeName, StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            mth.IsApi = true;
+        }
+        else if (attrName.IndexOf(DiscardAttributeName, StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            mth.Discard = true;
+            if (mth.IsAsync)
+            {
+                mth.Modify = mth.Modify.Replace("async ", "");
+                mth.IsAsync = false;
+            }
+        }
+        else if (attrName.IndexOf(TimeOutAttributeName, StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            mth.HasTimeout = true;
+            mth.TimeOut = ParseTimeout(attributeListSyntax);
+        }
+        else if (attrName.IndexOf(ThreadSafeAttributeName, StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            mth.IsThreadSafe = true;
+        }
+    }
+
+    /// <summary>
+    /// 从 TimeOut 属性的参数中解析超时时间（毫秒）。
+    /// </summary>
+    /// <remarks>
+    /// Parses the timeout duration (in milliseconds) from the TimeOut attribute argument.
+    /// </remarks>
+    /// <param name="attributeListSyntax">属性列表语法节点 / Attribute list syntax node</param>
+    /// <returns>超时时间（毫秒）/ Timeout duration in milliseconds</returns>
+    private static int ParseTimeout(AttributeListSyntax attributeListSyntax)
+    {
+        var argStr = attributeListSyntax.Attributes[0].ArgumentList.Arguments[0].ToString();
+        if (argStr.IndexOf(":", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            return int.Parse(argStr.Split(':')[1].Trim());
+        }
+
+        return int.Parse(argStr);
+    }
+
+    /// <summary>
+    /// 对已读取元数据的方法进行属性组合校验、跳过判定、契约校验，并在符合条件时收集为包装方法。
+    /// </summary>
+    /// <remarks>
+    /// Validates attribute combinations, applies skip rules and contract checks for a method whose metadata has been read, and collects it as a wrapped method when eligible.
+    /// </remarks>
+    /// <param name="context">源代码生成上下文 / Source production context</param>
+    /// <param name="info">代理信息 / Agent info</param>
+    /// <param name="fullName">代理类完全限定名 / Fully qualified name of the agent class</param>
+    /// <param name="method">方法声明语法节点 / Method declaration syntax node</param>
+    /// <param name="mth">方法元数据 / Method metadata</param>
+    private static void CollectMethod(SourceProductionContext context, AgentInfo info, string fullName, MethodDeclarationSyntax method, MethodInfoData mth)
+    {
+        ReportAttributeViolations(context, fullName, method, mth);
+
+        if (!ShouldWrapMethod(mth))
+        {
+            return;
+        }
+
+        ReportContractViolations(context, fullName, method, mth);
+
+        if (mth.IsVirtual)
+        {
+            AddWrappedMethod(info, context, fullName, method, mth);
+        }
+    }
+
+    /// <summary>
+    /// 报告属性组合相关的诊断错误（ThreadSafe 与 TimeOut 冲突、非 Api/Discard 却带 TimeOut）。
+    /// </summary>
+    /// <remarks>
+    /// Reports diagnostics for attribute-combination violations (ThreadSafe conflicting with TimeOut, and TimeOut used without Api/Discard).
+    /// </remarks>
+    /// <param name="context">源代码生成上下文 / Source production context</param>
+    /// <param name="fullName">代理类完全限定名 / Fully qualified name of the agent class</param>
+    /// <param name="method">方法声明语法节点 / Method declaration syntax node</param>
+    /// <param name="mth">方法元数据 / Method metadata</param>
+    private static void ReportAttributeViolations(SourceProductionContext context, string fullName, MethodDeclarationSyntax method, MethodInfoData mth)
+    {
+        if (mth.IsThreadSafe && mth.HasTimeout)
+        {
+            context.LogError($"{fullName}.{method.Identifier.Text}无法为标记【{ThreadSafeAttributeName}】的函数指定超时时间");
+        }
+
+        if (!mth.IsApi && !mth.Discard && mth.HasTimeout)
+        {
+            context.LogError($"{fullName}.{method.Identifier.Text}【{TimeOutAttributeName}】注解只能配合【Api】或【{DiscardAttributeName}】使用");
+        }
+    }
+
+    /// <summary>
+    /// 判断方法是否需要生成包装器（排除无 Api/Discard/ThreadSafe 标记，以及 ThreadSafe 但非 Discard 的方法）。
+    /// </summary>
+    /// <remarks>
+    /// Determines whether the method needs a generated wrapper (excluding methods without Api/Discard/ThreadSafe, and ThreadSafe-but-not-Discard methods).
+    /// </remarks>
+    /// <param name="mth">方法元数据 / Method metadata</param>
+    /// <returns>如果需要生成包装器则为 <c>true</c>；否则为 <c>false</c> / <c>true</c> if a wrapper should be generated; otherwise <c>false</c></returns>
+    private static bool ShouldWrapMethod(MethodInfoData mth)
+    {
+        if (!mth.IsApi && !mth.Discard && !mth.IsThreadSafe)
+        {
+            return false;
+        }
+
+        if (mth.IsThreadSafe && !mth.Discard)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 报告契约相关的诊断错误（非 ThreadSafe 的 Api 必须为异步、标记 Api/ThreadSafe/Discard 必须申明为 virtual）。
+    /// </summary>
+    /// <remarks>
+    /// Reports diagnostics for contract violations (non-ThreadSafe Api must be async; Api/ThreadSafe/Discard must be declared virtual).
+    /// </remarks>
+    /// <param name="context">源代码生成上下文 / Source production context</param>
+    /// <param name="fullName">代理类完全限定名 / Fully qualified name of the agent class</param>
+    /// <param name="method">方法声明语法节点 / Method declaration syntax node</param>
+    /// <param name="mth">方法元数据 / Method metadata</param>
+    private static void ReportContractViolations(SourceProductionContext context, string fullName, MethodDeclarationSyntax method, MethodInfoData mth)
+    {
+        if (mth.IsApi && !mth.IsThreadSafe && !mth.ReturnType.Contains("Task"))
+        {
+            context.LogError($"{fullName}.{method.Identifier.Text}, 非【{ThreadSafeAttributeName}】的【Api】接口只能是异步函数");
+        }
+
+        if ((mth.IsApi || mth.Discard || mth.IsThreadSafe) && !mth.IsVirtual)
+        {
+            context.LogError($"{fullName}.{method.Identifier.Text}标记了【AsyncApi】【{ThreadSafeAttributeName}】【{DiscardAttributeName}】注解的函数必须申明为virtual");
+        }
+    }
+
+    /// <summary>
+    /// 将虚方法收集为包装方法：加入代理信息的方法列表，并填充签名与参数元数据。
+    /// </summary>
+    /// <remarks>
+    /// Collects a virtual method as a wrapped method: adds it to the agent info's method list and populates signature and parameter metadata.
+    /// </remarks>
+    /// <param name="info">代理信息 / Agent info</param>
+    /// <param name="context">源代码生成上下文 / Source production context</param>
+    /// <param name="fullName">代理类完全限定名 / Fully qualified name of the agent class</param>
+    /// <param name="method">方法声明语法节点 / Method declaration syntax node</param>
+    /// <param name="mth">方法元数据 / Method metadata</param>
+    private static void AddWrappedMethod(AgentInfo info, SourceProductionContext context, string fullName, MethodDeclarationSyntax method, MethodInfoData mth)
+    {
+        info.Methods.Add(mth);
+        mth.Name = method.Identifier.Text;
+        mth.ParamDeclare = method.ParameterList.ToString();
+        if (mth.Discard && !mth.ReturnType.Equals(nameof(Task)) && !mth.ReturnType.Equals(nameof(ValueTask)))
+        {
+            context.LogError($"{fullName}.{method.Identifier.Text}只有返回值为Task类型或ValueTask类型才能添加【Discard】注解");
+        }
+
+        mth.Constraint = method.ConstraintClauses.ToString();
+        mth.Typeparams = method.TypeParameterList?.ToString();
+        foreach (var p in method.ParameterList.Parameters)
+        {
+            mth.Params.Add(p.Identifier.Text);
         }
     }
 
