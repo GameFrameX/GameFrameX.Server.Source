@@ -39,7 +39,7 @@ namespace GameFrameX.NetWork.RemoteMessaging.Transport;
 /// </remarks>
 public sealed class PooledBuffer : IDisposable
 {
-    private byte[]? _buffer;
+    private byte[] _buffer;
 
     /// <summary>
     /// 初始化新的池化字节缓冲区句柄。
