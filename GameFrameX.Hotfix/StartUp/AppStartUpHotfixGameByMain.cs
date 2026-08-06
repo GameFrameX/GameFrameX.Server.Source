@@ -92,53 +92,63 @@ internal partial class AppStartUpHotfixGame
     /// <summary>
     /// 处理收到的消息结果
     /// </summary>
-    /// <param name="appSession"></param>
+    /// <param name="session"></param>
     /// <param name="message"></param>
-    protected override async ValueTask PackageHandler(IAppSession appSession, IMessage message)
+    protected override async ValueTask PackageHandler(IAppSession session, IMessage message)
     {
         if (message is NetworkMessagePackage messagePackage)
         {
-            var netWorkChannel = SessionManager.GetChannel(appSession.SessionID);
+            await HandleNetworkMessagePackageAsync(session, messagePackage);
+        }
+    }
 
-            if (netWorkChannel.IsNull())
+    /// <summary>
+    /// 处理网络消息包：解析会话通道，按消息类型分发（心跳回复 / 业务 handler 调用）。
+    /// </summary>
+    /// <param name="session">客户端会话。</param>
+    /// <param name="messagePackage">网络消息包。</param>
+    private async ValueTask HandleNetworkMessagePackageAsync(IAppSession session, NetworkMessagePackage messagePackage)
+    {
+        var netWorkChannel = SessionManager.GetChannel(session.SessionID);
+
+        if (netWorkChannel.IsNull())
+        {
+            return;
+        }
+
+        var actorId = netWorkChannel.GetData<long>(GlobalConst.ActorIdKey);
+        if (messagePackage.Header.OperationType == (byte)MessageOperationType.HeartBeat)
+        {
+            if (Setting.IsDebug && Setting.IsDebugReceive && Setting.IsDebugReceiveHeartBeat)
             {
-                return;
+                LogHelper.Debug<string>("Data Package Receive HeartBeat: {message}", messagePackage.ToFormatMessageString(actorId));
             }
 
-            var actorId = netWorkChannel.GetData<long>(GlobalConst.ActorIdKey);
-            if (messagePackage.Header.OperationType == (byte)MessageOperationType.HeartBeat)
-            {
-                if (Setting.IsDebug && Setting.IsDebugReceive && Setting.IsDebugReceiveHeartBeat)
-                {
-                    LogHelper.Debug<string>("Data Package Receive HeartBeat: {message}", messagePackage.ToFormatMessageString(actorId));
-                }
+            // 心跳消息回复
+            await ReplyHeartBeatAsync(netWorkChannel, (MessageObject)messagePackage.DeserializeMessageObject());
+            return;
+        }
 
-                // 心跳消息回复
-                await ReplyHeartBeatAsync(netWorkChannel, (MessageObject)messagePackage.DeserializeMessageObject());
-                return;
-            }
+        if (Setting.IsDebug && Setting.IsDebugReceive)
+        {
+            LogHelper.Debug<string>("Data Package Receive: {message}", messagePackage.ToFormatMessageString(actorId));
+        }
 
-            if (Setting.IsDebug && Setting.IsDebugReceive)
-            {
-                LogHelper.Debug<string>("Data Package Receive: {message}", messagePackage.ToFormatMessageString(actorId));
-            }
+        var handler = HotfixManager.GetTcpHandler(messagePackage.Header.MessageId);
+        if (handler == null)
+        {
+            LogHelper.Error("Data Package Receive: Can not find handler for message id: {messageId}, message type: {messageType}", messagePackage.Header.MessageId, messagePackage.MessageType);
+            return;
+        }
 
-            var handler = HotfixManager.GetTcpHandler(messagePackage.Header.MessageId);
-            if (handler == null)
-            {
-                LogHelper.Error("Data Package Receive: Can not find handler for message id: {messageId}, message type: {messageType}", messagePackage.Header.MessageId, messagePackage.MessageType);
-                return;
-            }
-
-            // 执行消息分发处理
-            try
-            {
-                await InvokeMessageHandler(handler, messagePackage.DeserializeMessageObject(), netWorkChannel);
-            }
-            catch (Exception exception)
-            {
-                LogHelper.Fatal("Data Package Receive: Error when invoke message handler for message id: {messageId}, message type: {messageType} , exception: {exception}", messagePackage.Header.MessageId, messagePackage.MessageType, exception);
-            }
+        // 执行消息分发处理
+        try
+        {
+            await InvokeMessageHandler(handler, messagePackage.DeserializeMessageObject(), netWorkChannel);
+        }
+        catch (Exception exception)
+        {
+            LogHelper.Fatal("Data Package Receive: Error when invoke message handler for message id: {messageId}, message type: {messageType} , exception: {exception}", messagePackage.Header.MessageId, messagePackage.MessageType, exception);
         }
     }
 
