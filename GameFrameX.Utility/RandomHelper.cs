@@ -748,13 +748,13 @@ public static class RandomHelper
     /// <exception cref="ArgumentNullException">当array为null时抛出此异常</exception>
     /// <exception cref="ArgumentException">当array为空数组时抛出此异常</exception>
     /// <exception cref="ArgumentOutOfRangeException">当num小于0时抛出此异常</exception>
-    public static List<int> Ids(int[][] array, int num, bool isCanRepeat = true)
+    public static List<int> Ids(IReadOnlyList<int[]> array, int num, bool isCanRepeat = true)
     {
         ArgumentNullException.ThrowIfNull(array, nameof(array));
-        ArgumentOutOfRangeException.ThrowIfZero(array.Length, nameof(array));
+        ArgumentOutOfRangeException.ThrowIfZero(array.Count, nameof(array));
         ArgumentOutOfRangeException.ThrowIfNegative(num, nameof(num));
 
-        return RandomSelect(array, num, 1, isCanRepeat).Select(t => t[0]).ToList();
+        return RandomSelect(array.ToArray(), num, 1, isCanRepeat).Select(t => t[0]).ToList();
     }
 
     /// <summary>
