@@ -20,8 +20,11 @@ RESX_DIR = SCRIPT_DIR / "Localization" / "Messages"
 RESX_DEFAULT = RESX_DIR / "Resources.resx"
 RESX_ZH_CN = RESX_DIR / "Resources.zh-CN.resx"
 
+# 待翻译占位符
+TODO_PLACEHOLDER = '[TODO]'
 
-def get_todo_keys(resx_path, placeholder='[TODO]'):
+
+def get_todo_keys(resx_path, placeholder=TODO_PLACEHOLDER):
     """获取带指定占位符标记的 key"""
     keys = []
     with open(resx_path, 'r', encoding='utf-8') as f:
@@ -500,7 +503,7 @@ def update_resx_file(resx_path, updates, is_chinese=False):
 
     for key, (en_value, zh_value) in updates.items():
         value = zh_value if is_chinese else en_value
-        placeholder = '[待翻译]' if is_chinese else '[TODO]'
+        placeholder = '[待翻译]' if is_chinese else TODO_PLACEHOLDER
 
         # 使用正则表达式替换
         # 匹配 <data name="key"...><value>[TODO/待翻译] ...</value>
@@ -523,6 +526,21 @@ def update_resx_file(resx_path, updates, is_chinese=False):
     return updated_count
 
 
+def build_translations(todo_keys, translations):
+    """为待翻译 key 搜索上下文并补充翻译规则，结果写回共享的 translations 字典。"""
+    for key in todo_keys:
+        if key in translations:
+            continue
+        context = search_key_usage(key)
+        info = analyze_key_context(key, context)
+        result = generate_translation(key, context, info)
+        if result:
+            translations[key] = result
+            print(f"   [OK] {key}")
+        else:
+            print(f"   [SKIP] {key} - 未找到翻译规则")
+
+
 def main():
     print("=" * 60)
     print("自动翻译脚本 - 分析代码并生成翻译")
@@ -534,21 +552,11 @@ def main():
 
     # 1. 处理英文版
     print("1. 处理英文资源文件 (Resources.resx)...")
-    todo_keys_en = get_todo_keys(RESX_DEFAULT, '[TODO]')
+    todo_keys_en = get_todo_keys(RESX_DEFAULT, TODO_PLACEHOLDER)
     print(f"   找到 {len(todo_keys_en)} 个需要翻译的 key")
 
     if todo_keys_en:
-        for key in todo_keys_en:
-            if key not in translations:
-                context = search_key_usage(key)
-                info = analyze_key_context(key, context)
-                result = generate_translation(key, context, info)
-                if result:
-                    translations[key] = result
-                    print(f"   [OK] {key}")
-                else:
-                    print(f"   [SKIP] {key} - 未找到翻译规则")
-
+        build_translations(todo_keys_en, translations)
         if translations:
             updated_en = update_resx_file(RESX_DEFAULT, translations, is_chinese=False)
             print(f"   英文资源文件更新了 {updated_en} 条")
@@ -562,17 +570,7 @@ def main():
     print(f"   找到 {len(todo_keys_zh)} 个需要翻译的 key")
 
     if todo_keys_zh:
-        for key in todo_keys_zh:
-            if key not in translations:
-                context = search_key_usage(key)
-                info = analyze_key_context(key, context)
-                result = generate_translation(key, context, info)
-                if result:
-                    translations[key] = result
-                    print(f"   [OK] {key}")
-                else:
-                    print(f"   [SKIP] {key} - 未找到翻译规则")
-
+        build_translations(todo_keys_zh, translations)
         if translations:
             updated_zh = update_resx_file(RESX_ZH_CN, translations, is_chinese=True)
             print(f"   中文资源文件更新了 {updated_zh} 条")
