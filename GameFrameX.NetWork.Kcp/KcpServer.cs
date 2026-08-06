@@ -49,7 +49,6 @@ public sealed class KcpServer : IDisposable
     private readonly ConcurrentDictionary<uint, KcpNetWorkChannel> _channels = new();
     private readonly KcpMessagePipelineFilter _messageFilter;
     private readonly Func<EndPoint, ValueTask> _onConnected;
-    private readonly Func<EndPoint, ValueTask> _onDisconnected;
     private readonly KcpOptions _options;
     private readonly Action<IGameAppSession, IMessage> _packageHandler;
     private readonly byte[] _receiveBuffer;
@@ -79,7 +78,6 @@ public sealed class KcpServer : IDisposable
         _setting = setting ?? throw new ArgumentNullException(nameof(setting));
         _packageHandler = packageHandler ?? throw new ArgumentNullException(nameof(packageHandler));
         _onConnected = onConnected;
-        _onDisconnected = onDisconnected;
         _receiveBuffer = new byte[options.Mtu * 2];
         _messageFilter = new KcpMessagePipelineFilter();
 
