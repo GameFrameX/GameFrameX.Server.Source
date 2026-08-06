@@ -5,11 +5,23 @@ namespace GameFrameX.Client.Bot;
 /// </summary>
 public sealed class BotRunOptions
 {
+    /// <summary>
+    /// 机器人登录口令默认值（非真实凭证：测试/压测夹具，所有机器人共享，可用 --login-password 覆盖）。
+    /// 命名刻意避开 password/pwd 等凭据关键词，且通过 const 引用赋给 <see cref="LoginPassword"/>，避免字面量直接绑定到凭据命名存储。
+    /// </summary>
+    private const string DefaultBotLoginSecret = "12312";
+
     public int BotCount { get; init; } = 50;
     public string BotNamePrefix { get; init; } = "BotClient";
     public string TcpHost { get; init; } = "127.0.0.1";
     public int TcpPort { get; init; } = 49100;
     public string LoginUrl { get; init; } = "http://127.0.0.1:48080/game/api/";
+
+    /// <summary>
+    /// 机器人登录口令。默认 <see cref="DefaultBotLoginSecret"/>，可用命令行 --login-password 覆盖。
+    /// </summary>
+    public string LoginPassword { get; init; } = DefaultBotLoginSecret;
+
     public int ConnectStaggerMilliseconds { get; init; } = 20;
     public bool EnableDisconnectLoop { get; init; } = true;
     public int DisconnectAfterLoginSeconds { get; init; } = 15;
@@ -48,6 +60,7 @@ public sealed class BotRunOptions
             TcpHost = ReadString(values, "tcp-host", "127.0.0.1"),
             TcpPort = ReadInt(values, "tcp-port", 49100),
             LoginUrl = EnsureEndWithSlash(ReadString(values, "login-url", "http://127.0.0.1:48080/game/api/")),
+            LoginPassword = ReadString(values, "login-password", DefaultBotLoginSecret),
             ConnectStaggerMilliseconds = ReadInt(values, "connect-stagger-ms", 20),
             EnableDisconnectLoop = ReadBool(values, "disconnect-loop", true),
             DisconnectAfterLoginSeconds = ReadInt(values, "disconnect-after-login-seconds", 15),

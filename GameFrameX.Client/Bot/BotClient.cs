@@ -163,6 +163,9 @@ public sealed class BotClient
     /// <param name="error">错误信息</param>
     private void ClientErrorCallback(ErrorEventArgs error)
     {
+        // 机器人客户端对底层传输错误采取容忍策略，此处刻意留空：
+        // 连接异常最终会触发 ClientClosedCallback 清理在线表，EntryAsync 的 try/catch 亦已兜底记录，
+        // 故无需在此重复处理，避免对可恢复的瞬态错误产生噪声。
     }
 
     /// <summary>
@@ -193,7 +196,7 @@ public sealed class BotClient
             var reqLogin = new ReqLogin
             {
                 UserName = m_BotName,
-                Password = "12312",
+                Password = _options.LoginPassword,
                 Platform = "LoginPlatform.Custom",
             };
             m_TcpClient.SendToServer(reqLogin);
