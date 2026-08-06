@@ -2764,6 +2764,7 @@ public sealed class BigInteger
         var p_sub1 = thisVal - 1;
         var p_sub1_shift = p_sub1 >> 1;
 
+        // 使用加密强度随机源（SecureRandom）消除 Sonar S2245
         var rand = new SecureRandom();
 
         for (var round = 0; round < confidence; round++)
