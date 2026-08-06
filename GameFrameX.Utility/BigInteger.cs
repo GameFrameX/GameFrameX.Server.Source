@@ -3896,7 +3896,6 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
         return result;
     }
 
-
     //***********************************************************************
     // Lucas 序列按位展开时，“索引加倍” 步骤里对 Q_k 的统一处理：
     // 首遍（flag 仍为 true）按 setQkToQOnFirstPass 决定保持 Q_k 或置为 Q%n，并清掉 flag；
