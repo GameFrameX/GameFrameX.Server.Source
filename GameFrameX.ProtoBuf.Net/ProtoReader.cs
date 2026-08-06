@@ -509,101 +509,30 @@ public sealed class ProtoReader : IDisposable
         }
 
         value &= 0x7F;
-        if (available == 1)
-        {
-            throw EoF(this);
-        }
+        return TryReadUInt64VariantRemaining(ref readPos, ref value);
+    }
 
-        ulong chunk = ioBuffer[readPos++];
-        value |= (chunk & 0x7F) << 7;
-        if ((chunk & 0x80) == 0)
+    // Reads the remaining varint chunks (bytes 1..9) after the first byte, without advancing ioIndex.
+    // Mirrors the loop already used by the stream-based TryReadUInt64Variant; kept as a separate
+    // helper so TryReadUInt64VariantWithoutMoving stays under the cognitive-complexity threshold.
+    private int TryReadUInt64VariantRemaining(ref int readPos, ref ulong value)
+    {
+        int shift = 7;
+        while (shift < 63)
         {
-            return 2;
-        }
+            int byteIndex = shift / 7;
+            if (available == byteIndex)
+            {
+                throw EoF(this);
+            }
 
-        if (available == 2)
-        {
-            throw EoF(this);
-        }
-
-        chunk = ioBuffer[readPos++];
-        value |= (chunk & 0x7F) << 14;
-        if ((chunk & 0x80) == 0)
-        {
-            return 3;
-        }
-
-        if (available == 3)
-        {
-            throw EoF(this);
-        }
-
-        chunk = ioBuffer[readPos++];
-        value |= (chunk & 0x7F) << 21;
-        if ((chunk & 0x80) == 0)
-        {
-            return 4;
-        }
-
-        if (available == 4)
-        {
-            throw EoF(this);
-        }
-
-        chunk = ioBuffer[readPos++];
-        value |= (chunk & 0x7F) << 28;
-        if ((chunk & 0x80) == 0)
-        {
-            return 5;
-        }
-
-        if (available == 5)
-        {
-            throw EoF(this);
-        }
-
-        chunk = ioBuffer[readPos++];
-        value |= (chunk & 0x7F) << 35;
-        if ((chunk & 0x80) == 0)
-        {
-            return 6;
-        }
-
-        if (available == 6)
-        {
-            throw EoF(this);
-        }
-
-        chunk = ioBuffer[readPos++];
-        value |= (chunk & 0x7F) << 42;
-        if ((chunk & 0x80) == 0)
-        {
-            return 7;
-        }
-
-        if (available == 7)
-        {
-            throw EoF(this);
-        }
-
-
-        chunk = ioBuffer[readPos++];
-        value |= (chunk & 0x7F) << 49;
-        if ((chunk & 0x80) == 0)
-        {
-            return 8;
-        }
-
-        if (available == 8)
-        {
-            throw EoF(this);
-        }
-
-        chunk = ioBuffer[readPos++];
-        value |= (chunk & 0x7F) << 56;
-        if ((chunk & 0x80) == 0)
-        {
-            return 9;
+            ulong chunk = ioBuffer[readPos++];
+            value |= (chunk & 0x7F) << shift;
+            if ((chunk & 0x80) == 0)
+            {
+                return byteIndex + 1;
+            }
+            shift += 7;
         }
 
         if (available == 9)
@@ -611,10 +540,9 @@ public sealed class ProtoReader : IDisposable
             throw EoF(this);
         }
 
-        chunk = ioBuffer[readPos];
-        value |= chunk << 63; // can only use 1 bit from this chunk
-
-        if ((chunk & ~(ulong)0x01) != 0)
+        ulong last = ioBuffer[readPos];
+        value |= last << 63; // can only use 1 bit from this chunk
+        if ((last & ~(ulong)0x01) != 0)
         {
             throw AddErrorData(new OverflowException(), this);
         }
@@ -740,23 +668,14 @@ public sealed class ProtoReader : IDisposable
     /// <summary>
     /// Reads a double-precision number from the stream; supported wire-types: Fixed32, Fixed64
     /// </summary>
-    public
-#if !FEAT_SAFE
-        unsafe
-#endif
-        double ReadDouble()
+    public double ReadDouble()
     {
         switch (WireType)
         {
             case WireType.Fixed32:
                 return ReadSingle();
             case WireType.Fixed64:
-                var value = ReadInt64();
-#if FEAT_SAFE
-                    return BitConverter.ToDouble(BitConverter.GetBytes(value), 0);
-#else
-                return *(double*)&value;
-#endif
+                return BitConverter.Int64BitsToDouble(ReadInt64());
             default:
                 throw CreateWireTypeException();
         }
@@ -1019,37 +938,7 @@ public sealed class ProtoReader : IDisposable
                 LongPosition += 8;
                 return;
             case WireType.String:
-                var len = (long)ReadUInt64Variant();
-                if (len < 0)
-                {
-                    ThrowInvalidLength(len);
-                }
-
-                if (len <= available)
-                {
-                    // just jump it!
-                    available -= (int)len;
-                    ioIndex += (int)len;
-                    LongPosition += len;
-                    return;
-                }
-
-                // everything remaining in the buffer is garbage
-                LongPosition += len; // assumes success, but if it fails we're screwed anyway
-                len -= available; // discount anything we've got to-hand
-                ioIndex = available = 0; // note that we have no data in the buffer
-                if (isFixedLength)
-                {
-                    if (len > dataRemaining64)
-                    {
-                        throw EoF(this);
-                    }
-
-                    // else assume we're going to be OK
-                    dataRemaining64 -= len;
-                }
-
-                Seek(source, len, ioBuffer);
+                SkipStringField();
                 return;
             case WireType.Variant:
             case WireType.SignedVariant:
@@ -1077,6 +966,43 @@ public sealed class ProtoReader : IDisposable
             default: // treat as implicit error
                 throw CreateWireTypeException();
         }
+    }
+
+    // Body of the WireType.String case in SkipField, extracted to keep SkipField
+    // under the cognitive-complexity threshold.
+    private void SkipStringField()
+    {
+        var len = (long)ReadUInt64Variant();
+        if (len < 0)
+        {
+            ThrowInvalidLength(len);
+        }
+
+        if (len <= available)
+        {
+            // just jump it!
+            available -= (int)len;
+            ioIndex += (int)len;
+            LongPosition += len;
+            return;
+        }
+
+        // everything remaining in the buffer is garbage
+        LongPosition += len; // assumes success, but if it fails we're screwed anyway
+        len -= available; // discount anything we've got to-hand
+        ioIndex = available = 0; // note that we have no data in the buffer
+        if (isFixedLength)
+        {
+            if (len > dataRemaining64)
+            {
+                throw EoF(this);
+            }
+
+            // else assume we're going to be OK
+            dataRemaining64 -= len;
+        }
+
+        Seek(source, len, ioBuffer);
     }
 
     /// <summary>
@@ -1115,22 +1041,13 @@ public sealed class ProtoReader : IDisposable
     /// <summary>
     /// Reads a single-precision number from the stream; supported wire-types: Fixed32, Fixed64
     /// </summary>
-    public
-#if !FEAT_SAFE
-        unsafe
-#endif
-        float ReadSingle()
+    public float ReadSingle()
     {
         switch (WireType)
         {
             case WireType.Fixed32:
             {
-                var value = ReadInt32();
-#if FEAT_SAFE
-                        return BitConverter.ToSingle(BitConverter.GetBytes(value), 0);
-#else
-                return *(float*)&value;
-#endif
+                return BitConverter.Int32BitsToSingle(ReadInt32());
             }
             case WireType.Fixed64:
             {
@@ -1177,68 +1094,83 @@ public sealed class ProtoReader : IDisposable
         switch (reader.WireType)
         {
             case WireType.String:
-                var len = (int)reader.ReadUInt32Variant(false);
-                reader.WireType = WireType.None;
-                if (len == 0)
-                {
-                    return value ?? EmptyBlob;
-                }
-
-                if (len < 0)
-                {
-                    reader.ThrowInvalidLength(len);
-                }
-
-                int offset;
-                if (value == null || value.Length == 0)
-                {
-                    offset = 0;
-                    value = new byte[len];
-                }
-                else
-                {
-                    offset = value.Length;
-                    var tmp = new byte[value.Length + len];
-                    Buffer.BlockCopy(value, 0, tmp, 0, value.Length);
-                    value = tmp;
-                }
-
-                // value is now sized with the final length, and (if necessary)
-                // contains the old data up to "offset"
-                reader.LongPosition += len; // assume success
-                while (len > reader.available)
-                {
-                    if (reader.available > 0)
-                    {
-                        // copy what we *do* have
-                        Buffer.BlockCopy(reader.ioBuffer, reader.ioIndex, value, offset, reader.available);
-                        len -= reader.available;
-                        offset += reader.available;
-                        reader.ioIndex = reader.available = 0; // we've drained the buffer
-                    }
-
-                    //  now refill the buffer (without overflowing it)
-                    var count = len > reader.ioBuffer.Length ? reader.ioBuffer.Length : len;
-                    if (count > 0)
-                    {
-                        reader.Ensure(count, true);
-                    }
-                }
-
-                // at this point, we know that len <= available
-                if (len > 0)
-                {
-                    // still need data, but we have enough buffered
-                    Buffer.BlockCopy(reader.ioBuffer, reader.ioIndex, value, offset, len);
-                    reader.ioIndex += len;
-                    reader.available -= len;
-                }
-
-                return value;
+                return ReadStringBytesField(value, reader);
             case WireType.Variant:
                 return new byte[0];
             default:
                 throw reader.CreateWireTypeException();
+        }
+    }
+
+    // The WireType.String case of AppendBytes, split into helpers to keep AppendBytes
+    // under the cognitive-complexity threshold. Behavior is unchanged.
+    private static byte[] ReadStringBytesField(byte[] value, ProtoReader reader)
+    {
+        var len = (int)reader.ReadUInt32Variant(false);
+        reader.WireType = WireType.None;
+        if (len == 0)
+        {
+            return value ?? EmptyBlob;
+        }
+
+        if (len < 0)
+        {
+            reader.ThrowInvalidLength(len);
+        }
+
+        var offset = PrepareBytesBuffer(ref value, len);
+
+        // value is now sized with the final length, and (if necessary)
+        // contains the old data up to "offset"
+        reader.LongPosition += len; // assume success
+        DrainBytesAcrossBuffers(reader, value, ref len, ref offset);
+
+        // at this point, we know that len <= available
+        if (len > 0)
+        {
+            // still need data, but we have enough buffered
+            Buffer.BlockCopy(reader.ioBuffer, reader.ioIndex, value, offset, len);
+            reader.ioIndex += len;
+            reader.available -= len;
+        }
+
+        return value;
+    }
+
+    private static int PrepareBytesBuffer(ref byte[] value, int len)
+    {
+        if (value == null || value.Length == 0)
+        {
+            value = new byte[len];
+            return 0;
+        }
+
+        var offset = value.Length;
+        var tmp = new byte[value.Length + len];
+        Buffer.BlockCopy(value, 0, tmp, 0, value.Length);
+        value = tmp;
+        return offset;
+    }
+
+    private static void DrainBytesAcrossBuffers(ProtoReader reader, byte[] value, ref int len, ref int offset)
+    {
+        while (len > reader.available)
+        {
+            if (reader.available > 0)
+            {
+                // copy what we *do* have
+                Buffer.BlockCopy(reader.ioBuffer, reader.ioIndex, value, offset, reader.available);
+                len -= reader.available;
+                offset += reader.available;
+                reader.ioIndex = reader.available = 0; // we've drained the buffer
+            }
+
+            //  now refill the buffer (without overflowing it)
+            var count = len > reader.ioBuffer.Length ? reader.ioBuffer.Length : len;
+            if (count > 0)
+            {
+                reader.Ensure(count, true);
+            }
         }
     }
 
@@ -1383,41 +1315,7 @@ public sealed class ProtoReader : IDisposable
                 bytesRead = 0;
                 return long.MaxValue;
             case PrefixStyle.Base128:
-                ulong val;
-                int tmpBytesRead;
-                bytesRead = 0;
-                if (expectHeader)
-                {
-                    tmpBytesRead = TryReadUInt64Variant(source, out val);
-                    bytesRead += tmpBytesRead;
-                    if (tmpBytesRead > 0)
-                    {
-                        if ((val & 7) != (uint)WireType.String)
-                        {
-                            // got a header, but it isn't a string
-                            throw new InvalidOperationException();
-                        }
-
-                        fieldNumber = (int)(val >> 3);
-                        tmpBytesRead = TryReadUInt64Variant(source, out val);
-                        bytesRead += tmpBytesRead;
-                        if (bytesRead == 0)
-                        {
-                            // got a header, but no length
-                            throw EoF(null);
-                        }
-
-                        return (long)val;
-                    } // no header
-
-                    bytesRead = 0;
-                    return -1;
-                }
-
-                // check for a length
-                tmpBytesRead = TryReadUInt64Variant(source, out val);
-                bytesRead += tmpBytesRead;
-                return bytesRead < 0 ? -1 : (long)val;
+                return ReadBase128LengthPrefix(source, expectHeader, out fieldNumber, out bytesRead);
 
             case PrefixStyle.Fixed32:
             {
@@ -1452,6 +1350,48 @@ public sealed class ProtoReader : IDisposable
             default:
                 throw new ArgumentOutOfRangeException("style");
         }
+    }
+
+    // Base128 length-prefix decoding, extracted from ReadLongLengthPrefix to keep that
+    // method under the cognitive-complexity threshold. Behavior is unchanged.
+    private static long ReadBase128LengthPrefix(Stream source, bool expectHeader, out int fieldNumber, out int bytesRead)
+    {
+        fieldNumber = 0;
+        bytesRead = 0;
+        ulong val;
+        int tmpBytesRead;
+        if (expectHeader)
+        {
+            tmpBytesRead = TryReadUInt64Variant(source, out val);
+            bytesRead += tmpBytesRead;
+            if (tmpBytesRead > 0)
+            {
+                if ((val & 7) != (uint)WireType.String)
+                {
+                    // got a header, but it isn't a string
+                    throw new InvalidOperationException();
+                }
+
+                fieldNumber = (int)(val >> 3);
+                tmpBytesRead = TryReadUInt64Variant(source, out val);
+                bytesRead += tmpBytesRead;
+                if (bytesRead == 0)
+                {
+                    // got a header, but no length
+                    throw EoF(null);
+                }
+
+                return (long)val;
+            } // no header
+
+            bytesRead = 0;
+            return -1;
+        }
+
+        // check for a length
+        tmpBytesRead = TryReadUInt64Variant(source, out val);
+        bytesRead += tmpBytesRead;
+        return bytesRead < 0 ? -1 : (long)val;
     }
 
     /// <returns>The number of bytes consumed; 0 if no data available</returns>
@@ -1514,32 +1454,14 @@ public sealed class ProtoReader : IDisposable
         }
         else if (buffer != null)
         {
-            int bytesRead;
-            while (count > buffer.Length && (bytesRead = source.Read(buffer, 0, buffer.Length)) > 0)
-            {
-                count -= bytesRead;
-            }
-
-            while (count > 0 && (bytesRead = source.Read(buffer, 0, (int)count)) > 0)
-            {
-                count -= bytesRead;
-            }
+            DrainSeek(source, ref count, buffer);
         }
         else // borrow a buffer
         {
             buffer = BufferPool.GetBuffer();
             try
             {
-                int bytesRead;
-                while (count > buffer.Length && (bytesRead = source.Read(buffer, 0, buffer.Length)) > 0)
-                {
-                    count -= bytesRead;
-                }
-
-                while (count > 0 && (bytesRead = source.Read(buffer, 0, (int)count)) > 0)
-                {
-                    count -= bytesRead;
-                }
+                DrainSeek(source, ref count, buffer);
             }
             finally
             {
@@ -1550,6 +1472,23 @@ public sealed class ProtoReader : IDisposable
         if (count > 0)
         {
             throw EoF(null);
+        }
+    }
+
+    // Drains `count` bytes from source through buffer in two passes (whole-buffer reads,
+    // then the remainder). Extracted from Seek to remove the duplication between the
+    // caller-supplied-buffer and borrowed-buffer branches.
+    private static void DrainSeek(Stream source, ref long count, byte[] buffer)
+    {
+        int bytesRead;
+        while (count > buffer.Length && (bytesRead = source.Read(buffer, 0, buffer.Length)) > 0)
+        {
+            count -= bytesRead;
+        }
+
+        while (count > 0 && (bytesRead = source.Read(buffer, 0, (int)count)) > 0)
+        {
+            count -= bytesRead;
         }
     }
 
