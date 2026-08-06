@@ -278,152 +278,201 @@ public abstract partial class AppStartUpBase
     private async Task StartServer(List<BaseHttpHandler> baseHandler, Func<string, BaseHttpHandler> httpFactory, List<IHttpAopHandler> aopHandlerTypes = null, LogLevel minimumLevelLogLevel = LogLevel.Debug)
     {
         var multipleServerHostBuilder = MultipleServerHostBuilder.Create();
-        if (Setting.IsEnableTcp)
+        ConfigureTcpServer(multipleServerHostBuilder);
+        ConfigureWebSocketServer(multipleServerHostBuilder);
+        ConfigureKcpServer();
+
+        // await StartHttpServerAsync(hostBuilder,baseHandler, httpFactory, aopHandlerTypes, minimumLevelLogLevel);
+        await StartHttpServer(baseHandler, httpFactory, aopHandlerTypes, minimumLevelLogLevel);
+
+        // 配置日志
+        ConfigureHostLogging(multipleServerHostBuilder, minimumLevelLogLevel);
+        // 配置监控和跟踪
+        multipleServerHostBuilder.ConfigureServices(services => { services.AddServiceDefaults(Setting.IsOpenTelemetry, Setting.IsOpenTelemetryMetrics, Setting.IsOpenTelemetryTracing); });
+
+        // 构建并启动服务器
+        _gameServer = multipleServerHostBuilder.Build();
+
+        await _gameServer.StartAsync();
+    }
+
+    /// <summary>
+    /// 配置 TCP 服务器（含可选 UDP）。
+    /// </summary>
+    /// <remarks>Configure the TCP server (with optional UDP). Extracted from <see cref="StartServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <param name="multipleServerHostBuilder">多服务器主机构建器 / Multiple server host builder</param>
+    private void ConfigureTcpServer(MultipleServerHostBuilder multipleServerHostBuilder)
+    {
+        if (!Setting.IsEnableTcp)
         {
-            // 检查TCP端口是否可用
-            if (Setting.InnerPort > 0 && NetHelper.PortIsAvailable(Setting.InnerPort))
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.ServerDisabled, ServerType, Setting.InnerHost, Setting.InnerPort));
+            return;
+        }
+
+        // 检查TCP端口是否可用
+        if (Setting.InnerPort > 0 && NetHelper.PortIsAvailable(Setting.InnerPort))
+        {
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.StartingServer, ServerType, Setting.InnerHost, Setting.InnerPort));
+            multipleServerHostBuilder.AddServer<IMessage, MessageObjectPipelineFilter>(builder =>
             {
-                LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.StartingServer, ServerType, Setting.InnerHost, Setting.InnerPort));
-                multipleServerHostBuilder.AddServer<IMessage, MessageObjectPipelineFilter>(builder =>
+                var serverBuilder = builder
+                                    .UseClearIdleSession()
+                                    .UseSessionHandler(OnConnected, OnDisconnected)
+                                    .UsePackageHandler(PackageHandler, PackageErrorHandler)
+                                    .UseInProcSessionContainer();
+
+                // 启用UDP 检查是否可用
+                if (Setting.IsEnableUdp)
                 {
-                    var serverBuilder = builder
-                                        .UseClearIdleSession()
-                                        .UseSessionHandler(OnConnected, OnDisconnected)
-                                        .UsePackageHandler(PackageHandler, PackageErrorHandler)
-                                        .UseInProcSessionContainer();
+                    serverBuilder.UseUdp();
+                }
 
-                    // 启用UDP 检查是否可用
-                    if (Setting.IsEnableUdp)
+                serverBuilder.ConfigureServices((context, serviceCollection) =>
+                {
+                    serviceCollection.Configure<ServerOptions>(options =>
                     {
-                        serverBuilder.UseUdp();
-                    }
+                        var listenOptions = new ListenOptions
+                        {
+                            Ip = "Any",
+                            Port = Setting.InnerPort,
+                        };
+                        options.AddListener(listenOptions);
+                    });
+                    // foreach (var serviceDescriptor in serviceCollection)
+                    // {
+                    //     if (serviceDescriptor.ServiceType == typeof(IPackageDecoder<IMessage>))
+                    //     {
+                    //         serviceDescriptor.ImplementationInstance ;
+                    //         LogHelper.Info($"XX");
+                    //     }
+                    // }
+                });
+            });
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.StartupComplete, ServerType, Setting.InnerHost, Setting.InnerPort));
+        }
+        else
+        {
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.StartupFailed, ServerType, Setting.InnerHost, Setting.InnerPort));
+            LogPortOccupationDetails("TCP", Setting.InnerPort);
+        }
+    }
 
-                    serverBuilder.ConfigureServices((context, serviceCollection) =>
+    /// <summary>
+    /// 配置 WebSocket 服务器。
+    /// </summary>
+    /// <remarks>Configure the WebSocket server. Extracted from <see cref="StartServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <param name="multipleServerHostBuilder">多服务器主机构建器 / Multiple server host builder</param>
+    private void ConfigureWebSocketServer(MultipleServerHostBuilder multipleServerHostBuilder)
+    {
+        if (!Setting.IsEnableWebSocket)
+        {
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.WebSocketServer.ServiceNotEnabled, ServerType, Setting.WsPort));
+            return;
+        }
+
+        // 检查WebSocket端口是否可用
+        if (Setting.WsPort is > 0 and < ushort.MaxValue && NetHelper.PortIsAvailable(Setting.WsPort))
+        {
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.WebSocketServer.StartingServer, ServerType, Setting.WsPort));
+
+            // 配置并启动WebSocket服务器
+            multipleServerHostBuilder.AddWebSocketServer(builder =>
+            {
+                builder
+                    .UseWebSocketMessageHandler(WebSocketMessageHandler)
+                    .UseSessionHandler(OnConnected, OnDisconnected)
+                    .ConfigureServices((context, serviceCollection) =>
                     {
                         serviceCollection.Configure<ServerOptions>(options =>
                         {
                             var listenOptions = new ListenOptions
                             {
                                 Ip = "Any",
-                                Port = Setting.InnerPort,
+                                Port = Setting.WsPort,
                             };
                             options.AddListener(listenOptions);
                         });
-                        // foreach (var serviceDescriptor in serviceCollection)
-                        // {
-                        //     if (serviceDescriptor.ServiceType == typeof(IPackageDecoder<IMessage>))
-                        //     {
-                        //         serviceDescriptor.ImplementationInstance ;
-                        //         LogHelper.Info($"XX");
-                        //     }
-                        // }
                     });
-                });
-                LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.StartupComplete, ServerType, Setting.InnerHost, Setting.InnerPort));
-            }
-            else
-            {
-                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.StartupFailed, ServerType, Setting.InnerHost, Setting.InnerPort));
-                if (Setting.InnerPort > 0)
-                {
-                    var occupiedProcesses = NetHelper.GetPortOccupyingProcesses(Setting.InnerPort);
-                    if (occupiedProcesses.Count > 0)
-                    {
-                        LogHelper.Warning($"TCP端口[{Setting.InnerPort}]占用详情: {string.Join(" | ", occupiedProcesses)}");
-                    }
-                }
-            }
+            });
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.WebSocketServer.StartupComplete, ServerType, Setting.WsPort));
         }
         else
         {
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.ServerDisabled, ServerType, Setting.InnerHost, Setting.InnerPort));
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.WebSocketServer.StartupFailed, ServerType, Setting.WsPort));
+            LogPortOccupationDetails("WebSocket", Setting.WsPort);
         }
+    }
 
-        // 检查WebSocket端口是否可用
-        if (Setting.IsEnableWebSocket)
+    /// <summary>
+    /// 处理 KCP 服务器启动（当前实现已禁用）。
+    /// </summary>
+    /// <remarks>Handle KCP server startup (currently disabled). Extracted from <see cref="StartServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    private void ConfigureKcpServer()
+    {
+        if (!Setting.IsEnableKcp)
         {
-            if (Setting.WsPort is > 0 and < ushort.MaxValue && NetHelper.PortIsAvailable(Setting.WsPort))
-            {
-                LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.WebSocketServer.StartingServer, ServerType, Setting.WsPort));
-
-                // 配置并启动WebSocket服务器
-                multipleServerHostBuilder.AddWebSocketServer(builder =>
-                {
-                    builder
-                        .UseWebSocketMessageHandler(WebSocketMessageHandler)
-                        .UseSessionHandler(OnConnected, OnDisconnected)
-                        .ConfigureServices((context, serviceCollection) =>
-                        {
-                            serviceCollection.Configure<ServerOptions>(options =>
-                            {
-                                var listenOptions = new ListenOptions
-                                {
-                                    Ip = "Any",
-                                    Port = Setting.WsPort,
-                                };
-                                options.AddListener(listenOptions);
-                            });
-                        });
-                });
-                LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.WebSocketServer.StartupComplete, ServerType, Setting.WsPort));
-            }
-            else
-            {
-                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.WebSocketServer.StartupFailed, ServerType, Setting.WsPort));
-                if (Setting.WsPort > 0)
-                {
-                    var occupiedProcesses = NetHelper.GetPortOccupyingProcesses(Setting.WsPort);
-                    if (occupiedProcesses.Count > 0)
-                    {
-                        LogHelper.Warning($"WebSocket端口[{Setting.WsPort}]占用详情: {string.Join(" | ", occupiedProcesses)}");
-                    }
-                }
-            }
-        }
-        else
-        {
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.WebSocketServer.ServiceNotEnabled, ServerType, Setting.WsPort));
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.KcpServer.ServerDisabled, ServerType, Setting.InnerHost, Setting.KcpPort));
+            return;
         }
 
         // 启动KCP服务器
-        if (Setting.IsEnableKcp)
+        // var kcpPort = Setting.KcpPort > 0 ? Setting.KcpPort : Setting.InnerPort;
+        // if (kcpPort > 0 && NetHelper.PortIsAvailable(kcpPort))
+        // {
+        //     LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.KcpServer.StartingServer, ServerType, Setting.InnerHost, kcpPort));
+        //     var kcpServer = new KcpServer(
+        //         kcpPort,
+        //         new KcpOptions { Enable = true },
+        //         Setting,
+        //         KcpPackageHandler,
+        //         OnKcpConnected,
+        //         OnKcpDisconnected
+        //     );
+        //     _ = kcpServer.StartAsync();
+        //     LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.KcpServer.StartupComplete, ServerType, Setting.InnerHost, kcpPort));
+        // }
+        // else
+        // {
+        //     LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.KcpServer.StartupFailed, ServerType, Setting.InnerHost, kcpPort));
+        //     if (kcpPort > 0)
+        //     {
+        //         var occupiedProcesses = NetHelper.GetPortOccupyingProcesses(kcpPort);
+        //         if (occupiedProcesses.Count > 0)
+        //         {
+        //             LogHelper.Warning($"KCP端口[{kcpPort}]占用详情: {string.Join(" | ", occupiedProcesses)}");
+        //         }
+        //     }
+        // }
+    }
+
+    /// <summary>
+    /// 端口不可用时记录占用该端口的进程详情。
+    /// </summary>
+    /// <remarks>Log details of processes occupying a port when it is unavailable. Consolidates the occupation-detail logging previously inlined for both TCP and WebSocket startup.</remarks>
+    /// <param name="serverName">服务器名称，用于日志展示 / Server name for log display</param>
+    /// <param name="port">待检查的端口 / Port to check</param>
+    private void LogPortOccupationDetails(string serverName, int port)
+    {
+        if (port <= 0)
         {
-            // var kcpPort = Setting.KcpPort > 0 ? Setting.KcpPort : Setting.InnerPort;
-            // if (kcpPort > 0 && NetHelper.PortIsAvailable(kcpPort))
-            // {
-            //     LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.KcpServer.StartingServer, ServerType, Setting.InnerHost, kcpPort));
-            //     var kcpServer = new KcpServer(
-            //         kcpPort,
-            //         new KcpOptions { Enable = true },
-            //         Setting,
-            //         KcpPackageHandler,
-            //         OnKcpConnected,
-            //         OnKcpDisconnected
-            //     );
-            //     _ = kcpServer.StartAsync();
-            //     LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.KcpServer.StartupComplete, ServerType, Setting.InnerHost, kcpPort));
-            // }
-            // else
-            // {
-            //     LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.KcpServer.StartupFailed, ServerType, Setting.InnerHost, kcpPort));
-            //     if (kcpPort > 0)
-            //     {
-            //         var occupiedProcesses = NetHelper.GetPortOccupyingProcesses(kcpPort);
-            //         if (occupiedProcesses.Count > 0)
-            //         {
-            //             LogHelper.Warning($"KCP端口[{kcpPort}]占用详情: {string.Join(" | ", occupiedProcesses)}");
-            //         }
-            //     }
-            // }
-        }
-        else
-        {
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.KcpServer.ServerDisabled, ServerType, Setting.InnerHost, Setting.KcpPort));
+            return;
         }
 
-        // await StartHttpServerAsync(hostBuilder,baseHandler, httpFactory, aopHandlerTypes, minimumLevelLogLevel);
-        await StartHttpServer(baseHandler, httpFactory, aopHandlerTypes, minimumLevelLogLevel);
+        var occupiedProcesses = NetHelper.GetPortOccupyingProcesses(port);
+        if (occupiedProcesses.Count > 0)
+        {
+            LogHelper.Warning($"{serverName}端口[{port}]占用详情: {string.Join(" | ", occupiedProcesses)}");
+        }
+    }
 
+    /// <summary>
+    /// 配置服务器主机的日志记录。
+    /// </summary>
+    /// <remarks>Configure host logging for the multiple server host builder. Extracted from <see cref="StartServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <param name="multipleServerHostBuilder">多服务器主机构建器 / Multiple server host builder</param>
+    /// <param name="minimumLevelLogLevel">日志记录的最小级别，用于控制日志输出 / Minimum level for logging to control log output</param>
+    private void ConfigureHostLogging(MultipleServerHostBuilder multipleServerHostBuilder, LogLevel minimumLevelLogLevel)
+    {
         // 配置日志
         multipleServerHostBuilder.ConfigureLogging(logging =>
         {
@@ -432,13 +481,6 @@ public abstract partial class AppStartUpBase
             logging.SetMinimumLevel(minimumLevelLogLevel);
             logging.ConfigureOpenTelemetryLogger(Setting.IsOpenTelemetry);
         });
-        // 配置监控和跟踪
-        multipleServerHostBuilder.ConfigureServices(services => { services.AddServiceDefaults(Setting.IsOpenTelemetry, Setting.IsOpenTelemetryMetrics, Setting.IsOpenTelemetryTracing); });
-
-        // 构建并启动服务器
-        _gameServer = multipleServerHostBuilder.Build();
-
-        await _gameServer.StartAsync();
     }
 
     #endregion
