@@ -3849,14 +3849,7 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
                     v1 = n.BarrettReduction(v1 * v1, n, constant);
                     v1 = (v1 - ((Q_k * Q) << 1)) % n;
 
-                    if (flag)
-                    {
-                        flag = false;
-                    }
-                    else
-                    {
-                        Q_k = n.BarrettReduction(Q_k * Q_k, n, constant);
-                    }
+                    Q_k = UpdateQkForDoubling(Q_k, Q, n, constant, ref flag, false);
 
                     Q_k = Q_k * Q % n;
                 }
@@ -3869,15 +3862,7 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
                     v = n.BarrettReduction(v * v, n, constant);
                     v = (v - (Q_k << 1)) % n;
 
-                    if (flag)
-                    {
-                        Q_k = Q % n;
-                        flag = false;
-                    }
-                    else
-                    {
-                        Q_k = n.BarrettReduction(Q_k * Q_k, n, constant);
-                    }
+                    Q_k = UpdateQkForDoubling(Q_k, Q, n, constant, ref flag, true);
                 }
 
                 mask >>= 1;
@@ -3891,14 +3876,7 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
 
         u1 = (u1 * v - Q_k) % n;
         v = (v * v1 - P * Q_k) % n;
-        if (flag)
-        {
-            flag = false;
-        }
-        else
-        {
-            Q_k = n.BarrettReduction(Q_k * Q_k, n, constant);
-        }
+        Q_k = UpdateQkForDoubling(Q_k, Q, n, constant, ref flag, false);
 
         Q_k = Q_k * Q % n;
 
@@ -3908,15 +3886,7 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
             u1 = u1 * v % n;
             v = (v * v - (Q_k << 1)) % n;
 
-            if (flag)
-            {
-                Q_k = Q % n;
-                flag = false;
-            }
-            else
-            {
-                Q_k = n.BarrettReduction(Q_k * Q_k, n, constant);
-            }
+            Q_k = UpdateQkForDoubling(Q_k, Q, n, constant, ref flag, true);
         }
 
         result[0] = u1;
@@ -3926,6 +3896,32 @@ LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Utilit
         return result;
     }
 
+
+    //***********************************************************************
+    // Lucas 序列按位展开时，“索引加倍” 步骤里对 Q_k 的统一处理：
+    // 首遍（flag 仍为 true）按 setQkToQOnFirstPass 决定保持 Q_k 或置为 Q%n，并清掉 flag；
+    // 非首遍用 Barrett 规约对 Q_k 做平方。
+    //***********************************************************************
+
+    private static BigInteger UpdateQkForDoubling(BigInteger Q_k, BigInteger Q, BigInteger n,
+        BigInteger constant, ref bool flag, bool setQkToQOnFirstPass)
+    {
+        if (flag)
+        {
+            if (setQkToQOnFirstPass)
+            {
+                Q_k = Q % n;
+            }
+
+            flag = false;
+        }
+        else
+        {
+            Q_k = n.BarrettReduction(Q_k * Q_k, n, constant);
+        }
+
+        return Q_k;
+    }
 
     /// <summary>
     /// 基于 <see cref="RandomNumberGenerator"/> 的加密强度随机数生成器，
