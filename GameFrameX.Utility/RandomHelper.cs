@@ -754,7 +754,7 @@ public static class RandomHelper
         ArgumentOutOfRangeException.ThrowIfZero(array.Count, nameof(array));
         ArgumentOutOfRangeException.ThrowIfNegative(num, nameof(num));
 
-        return RandomSelect(array, num, 1, isCanRepeat).Select(t => t[0]).ToList();
+        return RandomSelect(array.ToArray(), num, 1, isCanRepeat).Select(t => t[0]).ToList();
     }
 
     /// <summary>
@@ -809,7 +809,7 @@ public static class RandomHelper
         ArgumentOutOfRangeException.ThrowIfZero(array.Count, nameof(array));
         ArgumentOutOfRangeException.ThrowIfNegative(num, nameof(num));
 
-        return RandomSelect(array, num, 2, isCanRepeat);
+        return RandomSelect(array.ToArray(), num, 2, isCanRepeat);
     }
 
     /// <summary>
