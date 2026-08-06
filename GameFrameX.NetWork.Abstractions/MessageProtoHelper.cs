@@ -199,45 +199,56 @@ public static class MessageProtoHelper
             var types = assembly.GetTypes();
             foreach (var type in types)
             {
-                var messageTypeHandlerAttribute = type.GetCustomAttribute(typeof(MessageTypeHandlerAttribute));
-
-                if (messageTypeHandlerAttribute is MessageTypeHandlerAttribute messageTypeHandler)
+                if (type.GetCustomAttribute(typeof(MessageTypeHandlerAttribute)) is MessageTypeHandlerAttribute messageTypeHandler)
                 {
-                    if (!AllMessageDictionary.TryAdd(messageTypeHandler.MessageId, type))
-                    {
-                        RequestDictionary.TryGetValue(messageTypeHandler.MessageId, out var value);
-                        throw new ArgumentAlreadyException(LocalizationService.GetString(Localization.Keys.NetWorkAbstractions.MessageIdDuplicate, messageTypeHandler.MessageId, value?.FullName ?? "Unknown"));
-                    }
-
-                    OperationType.TryAdd(type, messageTypeHandler.OperationType);
-
-                    if (type.IsImplWithInterface(typeof(IHeartBeatMessage)))
-                    {
-                        if (!HeartBeatList.Add(type))
-                        {
-                            throw new ArgumentAlreadyException(LocalizationService.GetString(Localization.Keys.NetWorkAbstractions.HeartbeatMessageDuplicate, type.FullName ?? "Unknown"));
-                        }
-                    }
-
-                    if (type.IsImplWithInterface(typeof(IRequestMessage)))
-                    {
-                        // 请求
-                        if (!RequestDictionary.TryAdd(messageTypeHandler.MessageId, type))
-                        {
-                            RequestDictionary.TryGetValue(messageTypeHandler.MessageId, out var value);
-                            throw new ArgumentAlreadyException(LocalizationService.GetString(Localization.Keys.NetWorkAbstractions.RequestIdDuplicate, messageTypeHandler.MessageId, value?.FullName ?? "Unknown"));
-                        }
-                    }
-                    else if (type.IsImplWithInterface(typeof(IResponseMessage)) || type.IsImplWithInterface(typeof(INotifyMessage)))
-                    {
-                        // 返回
-                        if (!ResponseDictionary.TryAdd(messageTypeHandler.MessageId, type))
-                        {
-                            ResponseDictionary.TryGetValue(messageTypeHandler.MessageId, out var value);
-                            throw new ArgumentAlreadyException(LocalizationService.GetString(Localization.Keys.NetWorkAbstractions.ResponseIdDuplicate, messageTypeHandler.MessageId, value?.FullName ?? "Unknown"));
-                        }
-                    }
+                    RegisterMessageType(type, messageTypeHandler);
                 }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 注册单个消息协议类型到各映射字典。
+    /// </summary>
+    /// <remarks>
+    /// Registers a single message protocol type into the message identifier, operation type, heartbeat, request and response mappings. Throws <see cref="ArgumentAlreadyException"/> on duplicate identifiers.
+    /// </remarks>
+    /// <param name="type">消息类型 / Message type</param>
+    /// <param name="messageTypeHandler">消息类型处理器特性 / Message type handler attribute</param>
+    private static void RegisterMessageType(Type type, MessageTypeHandlerAttribute messageTypeHandler)
+    {
+        if (!AllMessageDictionary.TryAdd(messageTypeHandler.MessageId, type))
+        {
+            RequestDictionary.TryGetValue(messageTypeHandler.MessageId, out var value);
+            throw new ArgumentAlreadyException(LocalizationService.GetString(Localization.Keys.NetWorkAbstractions.MessageIdDuplicate, messageTypeHandler.MessageId, value?.FullName ?? "Unknown"));
+        }
+
+        OperationType.TryAdd(type, messageTypeHandler.OperationType);
+
+        if (type.IsImplWithInterface(typeof(IHeartBeatMessage)))
+        {
+            if (!HeartBeatList.Add(type))
+            {
+                throw new ArgumentAlreadyException(LocalizationService.GetString(Localization.Keys.NetWorkAbstractions.HeartbeatMessageDuplicate, type.FullName ?? "Unknown"));
+            }
+        }
+
+        if (type.IsImplWithInterface(typeof(IRequestMessage)))
+        {
+            // 请求
+            if (!RequestDictionary.TryAdd(messageTypeHandler.MessageId, type))
+            {
+                RequestDictionary.TryGetValue(messageTypeHandler.MessageId, out var value);
+                throw new ArgumentAlreadyException(LocalizationService.GetString(Localization.Keys.NetWorkAbstractions.RequestIdDuplicate, messageTypeHandler.MessageId, value?.FullName ?? "Unknown"));
+            }
+        }
+        else if (type.IsImplWithInterface(typeof(IResponseMessage)) || type.IsImplWithInterface(typeof(INotifyMessage)))
+        {
+            // 返回
+            if (!ResponseDictionary.TryAdd(messageTypeHandler.MessageId, type))
+            {
+                ResponseDictionary.TryGetValue(messageTypeHandler.MessageId, out var value);
+                throw new ArgumentAlreadyException(LocalizationService.GetString(Localization.Keys.NetWorkAbstractions.ResponseIdDuplicate, messageTypeHandler.MessageId, value?.FullName ?? "Unknown"));
             }
         }
     }
