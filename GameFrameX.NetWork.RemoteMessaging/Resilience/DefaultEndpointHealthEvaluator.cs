@@ -90,7 +90,6 @@ internal sealed class DefaultEndpointHealthEvaluator : IEndpointHealthEvaluator
         lock (tracker)
         {
             tracker.ConsecutiveFailures++;
-            tracker.LastFailureTick = Environment.TickCount;
         }
     }
 
@@ -114,7 +113,6 @@ internal sealed class DefaultEndpointHealthEvaluator : IEndpointHealthEvaluator
     private sealed class HealthTracker
     {
         public int ConsecutiveFailures;
-        public int LastFailureTick;
         public int LastSuccessTick;
     }
 }
