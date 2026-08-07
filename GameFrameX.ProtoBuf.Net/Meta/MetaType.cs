@@ -767,60 +767,76 @@ public class MetaType : ISerializerProxy
         ref int dataMemberOffset, ref int implicitFirstTag, ref bool inferTagByName,
         ref ImplicitFields implicitMode, ref string name)
     {
-        object tmp;
         for (var i = 0; i < typeAttribs.Length; i++)
         {
-            var item = typeAttribs[i];
-            var fullAttributeTypeName = item.AttributeType.FullName;
-            if (!isEnum && fullAttributeTypeName == "ProtoBuf.ProtoIncludeAttribute")
+            ApplyTypeLevelAttribute(typeAttribs[i], ref isEnum, ref enumShouldUseImplicitPassThru,
+                ref partialIgnores, ref partialMembers, ref dataMemberOffset, ref implicitFirstTag,
+                ref inferTagByName, ref implicitMode, ref name);
+        }
+    }
+
+    private void ApplyTypeLevelAttribute(AttributeMap item,
+        ref bool isEnum, ref bool enumShouldUseImplicitPassThru,
+        ref BasicList partialIgnores, ref BasicList partialMembers,
+        ref int dataMemberOffset, ref int implicitFirstTag, ref bool inferTagByName,
+        ref ImplicitFields implicitMode, ref string name)
+    {
+        var fullAttributeTypeName = item.AttributeType.FullName;
+        if (!isEnum && fullAttributeTypeName == "ProtoBuf.ProtoIncludeAttribute")
+        {
+            TryApplyProtoIncludeAttribute(item);
+        }
+        else if (fullAttributeTypeName == "ProtoBuf.ProtoPartialIgnoreAttribute")
+        {
+            AddPartialIgnore(item, ref partialIgnores);
+        }
+        else if (!isEnum && fullAttributeTypeName == "ProtoBuf.ProtoPartialMemberAttribute")
+        {
+            AddPartialMember(item, ref partialMembers);
+        }
+        else if (fullAttributeTypeName == "ProtoBuf.ProtoContractAttribute")
+        {
+            ApplyProtoContractAttribute(item, ref isEnum, ref enumShouldUseImplicitPassThru,
+                ref dataMemberOffset, ref implicitFirstTag, ref inferTagByName, ref implicitMode, ref name);
+        }
+        else if (fullAttributeTypeName == "System.Runtime.Serialization.DataContractAttribute")
+        {
+            TryApplyNameAttribute(item, "Name", ref name);
+        }
+        else if (fullAttributeTypeName == "System.Xml.Serialization.XmlTypeAttribute")
+        {
+            TryApplyNameAttribute(item, "TypeName", ref name);
+        }
+    }
+
+    private static void AddPartialIgnore(AttributeMap item, ref BasicList partialIgnores)
+    {
+        if (item.TryGet(nameof(ProtoPartialIgnoreAttribute.MemberName), out var tmp) && tmp != null)
+        {
+            if (partialIgnores == null)
             {
-                TryApplyProtoIncludeAttribute(item);
+                partialIgnores = new BasicList();
             }
 
-            if (fullAttributeTypeName == "ProtoBuf.ProtoPartialIgnoreAttribute")
-            {
-                if (item.TryGet(nameof(ProtoPartialIgnoreAttribute.MemberName), out tmp) && tmp != null)
-                {
-                    if (partialIgnores == null)
-                    {
-                        partialIgnores = new BasicList();
-                    }
+            partialIgnores.Add((string)tmp);
+        }
+    }
 
-                    partialIgnores.Add((string)tmp);
-                }
-            }
+    private static void AddPartialMember(AttributeMap item, ref BasicList partialMembers)
+    {
+        if (partialMembers == null)
+        {
+            partialMembers = new BasicList();
+        }
 
-            if (!isEnum && fullAttributeTypeName == "ProtoBuf.ProtoPartialMemberAttribute")
-            {
-                if (partialMembers == null)
-                {
-                    partialMembers = new BasicList();
-                }
+        partialMembers.Add(item);
+    }
 
-                partialMembers.Add(item);
-            }
-
-            if (fullAttributeTypeName == "ProtoBuf.ProtoContractAttribute")
-            {
-                ApplyProtoContractAttribute(item, ref isEnum, ref enumShouldUseImplicitPassThru,
-                    ref dataMemberOffset, ref implicitFirstTag, ref inferTagByName, ref implicitMode, ref name);
-            }
-
-            if (fullAttributeTypeName == "System.Runtime.Serialization.DataContractAttribute")
-            {
-                if (name == null && item.TryGet("Name", out tmp))
-                {
-                    name = (string)tmp;
-                }
-            }
-
-            if (fullAttributeTypeName == "System.Xml.Serialization.XmlTypeAttribute")
-            {
-                if (name == null && item.TryGet("TypeName", out tmp))
-                {
-                    name = (string)tmp;
-                }
-            }
+    private static void TryApplyNameAttribute(AttributeMap item, string memberName, ref string name)
+    {
+        if (name == null && item.TryGet(memberName, out var tmp))
+        {
+            name = (string)tmp;
         }
     }
 
@@ -882,68 +898,80 @@ public class MetaType : ISerializerProxy
 
         if (Helpers.IsEnum(Type)) // note this is subtly different to isEnum; want to do this even if [Flags]
         {
-            if (item.TryGet(nameof(ProtoContractAttribute.EnumPassthruHasValue), false, out tmp) && (bool)tmp)
-            {
-                if (item.TryGet(nameof(ProtoContractAttribute.EnumPassthru), out tmp))
-                {
-                    EnumPassthru = (bool)tmp;
-                    enumShouldUseImplicitPassThru = false;
-                    if (EnumPassthru)
-                    {
-                        isEnum = false; // no longer treated as an enum
-                    }
-                }
-            }
+            ApplyEnumContractOptions(item, ref isEnum, ref enumShouldUseImplicitPassThru);
         }
         else
         {
-            if (item.TryGet(nameof(ProtoContractAttribute.DataMemberOffset), out tmp))
-            {
-                dataMemberOffset = (int)tmp;
-            }
+            ApplyNonEnumContractOptions(item, ref dataMemberOffset, ref implicitFirstTag, ref inferTagByName, ref implicitMode);
+        }
+    }
 
-            if (item.TryGet(nameof(ProtoContractAttribute.InferTagFromNameHasValue), false, out tmp) && (bool)tmp)
+    private void ApplyEnumContractOptions(AttributeMap item, ref bool isEnum, ref bool enumShouldUseImplicitPassThru)
+    {
+        if (item.TryGet(nameof(ProtoContractAttribute.EnumPassthruHasValue), false, out var tmp) && (bool)tmp)
+        {
+            if (item.TryGet(nameof(ProtoContractAttribute.EnumPassthru), out tmp))
             {
-                if (item.TryGet(nameof(ProtoContractAttribute.InferTagFromName), out tmp))
+                EnumPassthru = (bool)tmp;
+                enumShouldUseImplicitPassThru = false;
+                if (EnumPassthru)
                 {
-                    inferTagByName = (bool)tmp;
+                    isEnum = false; // no longer treated as an enum
                 }
             }
+        }
+    }
 
-            if (item.TryGet(nameof(ProtoContractAttribute.ImplicitFields), out tmp) && tmp != null)
-            {
-                implicitMode = (ImplicitFields)(int)tmp; // note that this uses the bizarre unboxing rules of enums/underlying-types
-            }
+    private void ApplyNonEnumContractOptions(AttributeMap item,
+        ref int dataMemberOffset, ref int implicitFirstTag, ref bool inferTagByName,
+        ref ImplicitFields implicitMode)
+    {
+        if (item.TryGet(nameof(ProtoContractAttribute.DataMemberOffset), out var tmp))
+        {
+            dataMemberOffset = (int)tmp;
+        }
 
-            if (item.TryGet(nameof(ProtoContractAttribute.SkipConstructor), out tmp))
+        if (item.TryGet(nameof(ProtoContractAttribute.InferTagFromNameHasValue), false, out tmp) && (bool)tmp)
+        {
+            if (item.TryGet(nameof(ProtoContractAttribute.InferTagFromName), out tmp))
             {
-                UseConstructor = !(bool)tmp;
+                inferTagByName = (bool)tmp;
             }
+        }
 
-            if (item.TryGet(nameof(ProtoContractAttribute.IgnoreListHandling), out tmp))
-            {
-                IgnoreListHandling = (bool)tmp;
-            }
+        if (item.TryGet(nameof(ProtoContractAttribute.ImplicitFields), out tmp) && tmp != null)
+        {
+            implicitMode = (ImplicitFields)(int)tmp; // note that this uses the bizarre unboxing rules of enums/underlying-types
+        }
 
-            if (item.TryGet(nameof(ProtoContractAttribute.AsReferenceDefault), out tmp))
-            {
-                AsReferenceDefault = (bool)tmp;
-            }
+        if (item.TryGet(nameof(ProtoContractAttribute.SkipConstructor), out tmp))
+        {
+            UseConstructor = !(bool)tmp;
+        }
 
-            if (item.TryGet(nameof(ProtoContractAttribute.ImplicitFirstTag), out tmp) && (int)tmp > 0)
-            {
-                implicitFirstTag = (int)tmp;
-            }
+        if (item.TryGet(nameof(ProtoContractAttribute.IgnoreListHandling), out tmp))
+        {
+            IgnoreListHandling = (bool)tmp;
+        }
 
-            if (item.TryGet(nameof(ProtoContractAttribute.IsGroup), out tmp))
-            {
-                IsGroup = (bool)tmp;
-            }
+        if (item.TryGet(nameof(ProtoContractAttribute.AsReferenceDefault), out tmp))
+        {
+            AsReferenceDefault = (bool)tmp;
+        }
 
-            if (item.TryGet(nameof(ProtoContractAttribute.Surrogate), out tmp))
-            {
-                SetSurrogate((Type)tmp);
-            }
+        if (item.TryGet(nameof(ProtoContractAttribute.ImplicitFirstTag), out tmp) && (int)tmp > 0)
+        {
+            implicitFirstTag = (int)tmp;
+        }
+
+        if (item.TryGet(nameof(ProtoContractAttribute.IsGroup), out tmp))
+        {
+            IsGroup = (bool)tmp;
+        }
+
+        if (item.TryGet(nameof(ProtoContractAttribute.Surrogate), out tmp))
+        {
+            SetSurrogate((Type)tmp);
         }
     }
 
@@ -977,20 +1005,7 @@ public class MetaType : ISerializerProxy
 #endif
         foreach (var member in foundList)
         {
-            if (!inheritPropertyInfo)
-            {
-                if (member.DeclaringType != Type)
-                {
-                    continue;
-                }
-            }
-
-            if (member.IsDefined(model.MapType(typeof(ProtoIgnoreAttribute)), true))
-            {
-                continue;
-            }
-
-            if (partialIgnores != null && partialIgnores.Contains(member.Name))
+            if (ShouldIgnoreMember(member, inheritPropertyInfo, partialIgnores))
             {
                 continue;
             }
@@ -1008,6 +1023,26 @@ public class MetaType : ISerializerProxy
                 ProcessMethodMember(method, isEnum, ref callbacks);
             }
         }
+    }
+
+    private bool ShouldIgnoreMember(MemberInfo member, bool inheritPropertyInfo, BasicList partialIgnores)
+    {
+        if (!inheritPropertyInfo && member.DeclaringType != Type)
+        {
+            return true;
+        }
+
+        if (member.IsDefined(model.MapType(typeof(ProtoIgnoreAttribute)), true))
+        {
+            return true;
+        }
+
+        if (partialIgnores != null && partialIgnores.Contains(member.Name))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     private void ProcessPropertyMember(IEnumerable<MemberInfo> foundList, PropertyInfo property, bool isEnum,
@@ -1257,34 +1292,10 @@ public class MetaType : ISerializerProxy
         var demandReadOnly = type.Name.IndexOf("Tuple", StringComparison.OrdinalIgnoreCase) < 0;
         for (var i = 0; i < fieldsPropsUnfiltered.Length; i++)
         {
-            if (fieldsPropsUnfiltered[i] is PropertyInfo prop)
+            if (!TryAddTupleMember(fieldsPropsUnfiltered[i], demandReadOnly, memberList))
             {
-                if (!prop.CanRead)
-                {
-                    members = null;
-                    return false; // no use if can't read
-                }
-
-                if (demandReadOnly && prop.CanWrite && Helpers.GetSetMethod(prop, false, false) != null)
-                {
-                    members = null;
-                    return false; // don't allow a public set (need to allow non-public to handle Mono's KeyValuePair<,>)
-                }
-
-                memberList.Add(prop);
-            }
-            else
-            {
-                if (fieldsPropsUnfiltered[i] is FieldInfo field)
-                {
-                    if (demandReadOnly && !field.IsInitOnly)
-                    {
-                        members = null;
-                        return false; // all public fields must be readonly to be counted a tuple
-                    }
-
-                    memberList.Add(field);
-                }
+                members = null;
+                return false;
             }
         }
 
@@ -1296,6 +1307,48 @@ public class MetaType : ISerializerProxy
 
         members = new MemberInfo[memberList.Count];
         memberList.CopyTo(members, 0);
+        return true;
+    }
+
+    private static bool TryAddTupleMember(MemberInfo member, bool demandReadOnly, BasicList memberList)
+    {
+        if (member is PropertyInfo prop)
+        {
+            return TryAddTupleProperty(prop, demandReadOnly, memberList);
+        }
+
+        if (member is FieldInfo field)
+        {
+            return TryAddTupleField(field, demandReadOnly, memberList);
+        }
+
+        return true; // neither property nor field: silently skip (matches original no-op else branch)
+    }
+
+    private static bool TryAddTupleProperty(PropertyInfo prop, bool demandReadOnly, BasicList memberList)
+    {
+        if (!prop.CanRead)
+        {
+            return false; // no use if can't read
+        }
+
+        if (demandReadOnly && prop.CanWrite && Helpers.GetSetMethod(prop, false, false) != null)
+        {
+            return false; // don't allow a public set (need to allow non-public to handle Mono's KeyValuePair<,>)
+        }
+
+        memberList.Add(prop);
+        return true;
+    }
+
+    private static bool TryAddTupleField(FieldInfo field, bool demandReadOnly, BasicList memberList)
+    {
+        if (demandReadOnly && !field.IsInitOnly)
+        {
+            return false; // all public fields must be readonly to be counted a tuple
+        }
+
+        memberList.Add(field);
         return true;
     }
 
@@ -1320,39 +1373,9 @@ public class MetaType : ISerializerProxy
                 mapping[j] = -1;
             }
 
-            for (var j = 0; j < parameters.Length; j++)
-            {
-                for (var k = 0; k < members.Length; k++)
-                {
-                    if (string.Compare(parameters[j].Name, members[k].Name, StringComparison.OrdinalIgnoreCase) != 0)
-                    {
-                        continue;
-                    }
+            MapConstructorParameters(parameters, members, mapping);
 
-                    var memberType = Helpers.GetMemberType(members[k]);
-                    if (memberType != parameters[j].ParameterType)
-                    {
-                        continue;
-                    }
-
-                    mapping[j] = k;
-                }
-            }
-
-            // did we map all?
-            var notMapped = false;
-            for (var j = 0; j < mapping.Length; j++)
-            {
-                if (mapping[j] < 0)
-                {
-                    notMapped = true;
-                    break;
-                }
-
-                mappedMembers[j] = members[mapping[j]];
-            }
-
-            if (notMapped)
+            if (!TryBuildMappedMembers(members, mapping, mappedMembers))
             {
                 continue;
             }
@@ -1362,6 +1385,43 @@ public class MetaType : ISerializerProxy
         }
 
         return found == 1 ? result : null;
+    }
+
+    private static void MapConstructorParameters(ParameterInfo[] parameters, MemberInfo[] members, int[] mapping)
+    {
+        for (var j = 0; j < parameters.Length; j++)
+        {
+            for (var k = 0; k < members.Length; k++)
+            {
+                if (string.Compare(parameters[j].Name, members[k].Name, StringComparison.OrdinalIgnoreCase) != 0)
+                {
+                    continue;
+                }
+
+                var memberType = Helpers.GetMemberType(members[k]);
+                if (memberType != parameters[j].ParameterType)
+                {
+                    continue;
+                }
+
+                mapping[j] = k;
+            }
+        }
+    }
+
+    private static bool TryBuildMappedMembers(MemberInfo[] members, int[] mapping, MemberInfo[] mappedMembers)
+    {
+        for (var j = 0; j < mapping.Length; j++)
+        {
+            if (mapping[j] < 0)
+            {
+                return false;
+            }
+
+            mappedMembers[j] = members[mapping[j]];
+        }
+
+        return true;
     }
 
     private static void CheckForCallback(MethodInfo method, AttributeMap[] attributes, string callbackTypeName, ref MethodInfo[] callbacks, int index)
@@ -1413,60 +1473,10 @@ public class MetaType : ISerializerProxy
 
         var attribs = AttributeMap.Create(model, member, true);
 
-        if (isEnum)
-        {
-            NormalizeEnumMember(attribs, member, ref fieldNumber, ref name, ref ignore, ref hasConflictingEnumValue);
-            done = true;
-        }
-
-        if (!ignore && !done) // always consider ProtoMember
-        {
-            TryNormalizeProtoMemberAttribute(attribs, member, partialMembers,
-                ref fieldNumber, ref name, ref isRequired, ref isPacked, ref overwriteList,
-                ref dataFormat, ref asReference, ref asReferenceHasValue, ref dynamicType,
-                ref ignore, ref done, ref tagIsPinned);
-        }
-
-        if (!ignore && !done && HasFamily(family, AttributeFamily.DataContractSerialier))
-        {
-            var attrib = GetAttribute(attribs, "System.Runtime.Serialization.DataMemberAttribute");
-            if (attrib != null)
-            {
-                GetFieldNumber(ref fieldNumber, attrib, "Order");
-                GetFieldName(ref name, attrib, "Name");
-                GetFieldBoolean(ref isRequired, attrib, "IsRequired");
-                done = fieldNumber >= minAcceptFieldNumber;
-                if (done)
-                {
-                    fieldNumber += dataMemberOffset; // dataMemberOffset only applies to DCS flags, to allow us to "bump" WCF by a notch
-                }
-            }
-        }
-
-        if (!ignore && !done && HasFamily(family, AttributeFamily.XmlSerializer))
-        {
-            var attrib = GetAttribute(attribs, "System.Xml.Serialization.XmlElementAttribute");
-            if (attrib == null)
-            {
-                attrib = GetAttribute(attribs, "System.Xml.Serialization.XmlArrayAttribute");
-            }
-
-            GetIgnore(ref ignore, attrib, attribs, "System.Xml.Serialization.XmlIgnoreAttribute");
-            if (attrib != null && !ignore)
-            {
-                GetFieldNumber(ref fieldNumber, attrib, "Order");
-                GetFieldName(ref name, attrib, "ElementName");
-                done = fieldNumber >= minAcceptFieldNumber;
-            }
-        }
-
-        if (!ignore && !done)
-        {
-            if (GetAttribute(attribs, "System.NonSerializedAttribute") != null)
-            {
-                ignore = true;
-            }
-        }
+        ApplyMemberNormalization(attribs, member, family, isEnum, partialMembers, dataMemberOffset, minAcceptFieldNumber,
+            ref fieldNumber, ref name, ref isRequired, ref isPacked, ref overwriteList, ref dataFormat,
+            ref asReference, ref asReferenceHasValue, ref dynamicType, ref ignore, ref done, ref tagIsPinned,
+            ref hasConflictingEnumValue);
 
         if (ignore || (fieldNumber < minAcceptFieldNumber && !forced))
         {
@@ -1490,6 +1500,74 @@ public class MetaType : ISerializerProxy
         return result;
     }
 
+    private static void ApplyMemberNormalization(AttributeMap[] attribs, MemberInfo member, AttributeFamily family, bool isEnum, BasicList partialMembers, int dataMemberOffset, int minAcceptFieldNumber,
+        ref int fieldNumber, ref string name, ref bool isRequired, ref bool isPacked, ref bool overwriteList,
+        ref DataFormat dataFormat, ref bool asReference, ref bool asReferenceHasValue, ref bool dynamicType,
+        ref bool ignore, ref bool done, ref bool tagIsPinned, ref bool hasConflictingEnumValue)
+    {
+        if (isEnum)
+        {
+            NormalizeEnumMember(attribs, member, ref fieldNumber, ref name, ref ignore, ref hasConflictingEnumValue);
+            done = true;
+        }
+
+        if (!ignore && !done) // always consider ProtoMember
+        {
+            TryNormalizeProtoMemberAttribute(attribs, member, partialMembers,
+                ref fieldNumber, ref name, ref isRequired, ref isPacked, ref overwriteList,
+                ref dataFormat, ref asReference, ref asReferenceHasValue, ref dynamicType,
+                ref ignore, ref done, ref tagIsPinned);
+        }
+
+        if (!ignore && !done && HasFamily(family, AttributeFamily.DataContractSerialier))
+        {
+            TryApplyDataMemberAttribute(attribs, dataMemberOffset, ref fieldNumber, minAcceptFieldNumber, ref name, ref isRequired, ref done);
+        }
+
+        if (!ignore && !done && HasFamily(family, AttributeFamily.XmlSerializer))
+        {
+            TryApplyXmlAttribute(attribs, ref fieldNumber, minAcceptFieldNumber, ref name, ref ignore, ref done);
+        }
+
+        if (!ignore && !done && GetAttribute(attribs, "System.NonSerializedAttribute") != null)
+        {
+            ignore = true;
+        }
+    }
+
+    private static void TryApplyDataMemberAttribute(AttributeMap[] attribs, int dataMemberOffset, ref int fieldNumber, int minAcceptFieldNumber, ref string name, ref bool isRequired, ref bool done)
+    {
+        var attrib = GetAttribute(attribs, "System.Runtime.Serialization.DataMemberAttribute");
+        if (attrib != null)
+        {
+            GetFieldNumber(ref fieldNumber, attrib, "Order");
+            GetFieldName(ref name, attrib, "Name");
+            GetFieldBoolean(ref isRequired, attrib, "IsRequired");
+            done = fieldNumber >= minAcceptFieldNumber;
+            if (done)
+            {
+                fieldNumber += dataMemberOffset; // dataMemberOffset only applies to DCS flags, to allow us to "bump" WCF by a notch
+            }
+        }
+    }
+
+    private static void TryApplyXmlAttribute(AttributeMap[] attribs, ref int fieldNumber, int minAcceptFieldNumber, ref string name, ref bool ignore, ref bool done)
+    {
+        var attrib = GetAttribute(attribs, "System.Xml.Serialization.XmlElementAttribute");
+        if (attrib == null)
+        {
+            attrib = GetAttribute(attribs, "System.Xml.Serialization.XmlArrayAttribute");
+        }
+
+        GetIgnore(ref ignore, attrib, attribs, "System.Xml.Serialization.XmlIgnoreAttribute");
+        if (attrib != null && !ignore)
+        {
+            GetFieldNumber(ref fieldNumber, attrib, "Order");
+            GetFieldName(ref name, attrib, "ElementName");
+            done = fieldNumber >= minAcceptFieldNumber;
+        }
+    }
+
     private static void NormalizeEnumMember(AttributeMap[] attribs, MemberInfo member,
         ref int fieldNumber, ref string name, ref bool ignore, ref bool hasConflictingEnumValue)
     {
@@ -1500,31 +1578,37 @@ public class MetaType : ISerializerProxy
         }
         else
         {
-            attrib = GetAttribute(attribs, "ProtoBuf.ProtoEnumAttribute");
+            ApplyProtoEnumAttribute(attribs, member, ref fieldNumber, ref name, ref hasConflictingEnumValue);
+        }
+    }
+
+    private static void ApplyProtoEnumAttribute(AttributeMap[] attribs, MemberInfo member,
+        ref int fieldNumber, ref string name, ref bool hasConflictingEnumValue)
+    {
+        var attrib = GetAttribute(attribs, "ProtoBuf.ProtoEnumAttribute");
 #if PORTABLE || CF || COREFX || PROFILE259
-            fieldNumber = Convert.ToInt32(((FieldInfo)member).GetValue(null));
+        fieldNumber = Convert.ToInt32(((FieldInfo)member).GetValue(null));
 #else
-            fieldNumber = Convert.ToInt32(((FieldInfo)member).GetRawConstantValue());
+        fieldNumber = Convert.ToInt32(((FieldInfo)member).GetRawConstantValue());
 #endif
-            if (attrib != null)
-            {
-                GetFieldName(ref name, attrib, nameof(ProtoEnumAttribute.Name));
+        if (attrib != null)
+        {
+            GetFieldName(ref name, attrib, nameof(ProtoEnumAttribute.Name));
 
-                if ((bool)Helpers.GetInstanceMethod(attrib.AttributeType
+            if ((bool)Helpers.GetInstanceMethod(attrib.AttributeType
 #if COREFX || PROFILE259
-                    .GetTypeInfo()
+                .GetTypeInfo()
 #endif
-                    , nameof(ProtoEnumAttribute.HasValue)).Invoke(attrib.Target, null))
+                , nameof(ProtoEnumAttribute.HasValue)).Invoke(attrib.Target, null))
+            {
+                if (attrib.TryGet(nameof(ProtoEnumAttribute.Value), out var tmp))
                 {
-                    if (attrib.TryGet(nameof(ProtoEnumAttribute.Value), out var tmp))
+                    if (fieldNumber != (int)tmp)
                     {
-                        if (fieldNumber != (int)tmp)
-                        {
-                            hasConflictingEnumValue = true;
-                        }
-
-                        fieldNumber = (int)tmp;
+                        hasConflictingEnumValue = true;
                     }
+
+                    fieldNumber = (int)tmp;
                 }
             }
         }
@@ -1560,28 +1644,39 @@ public class MetaType : ISerializerProxy
 
         if (!done && partialMembers != null)
         {
-            foreach (AttributeMap ppma in partialMembers)
+            TryNormalizePartialMemberAttribute(partialMembers, member, attrib,
+                ref fieldNumber, ref name, ref isRequired, ref isPacked, ref overwriteList,
+                ref dataFormat, ref asReference, ref asReferenceHasValue, ref dynamicType,
+                ref done, ref tagIsPinned);
+        }
+    }
+
+    private static void TryNormalizePartialMemberAttribute(BasicList partialMembers, MemberInfo member, AttributeMap attrib,
+        ref int fieldNumber, ref string name, ref bool isRequired, ref bool isPacked, ref bool overwriteList,
+        ref DataFormat dataFormat, ref bool asReference, ref bool asReferenceHasValue, ref bool dynamicType,
+        ref bool done, ref bool tagIsPinned)
+    {
+        foreach (AttributeMap ppma in partialMembers)
+        {
+            if (ppma.TryGet("MemberName", out var tmp) && (string)tmp == member.Name)
             {
-                if (ppma.TryGet("MemberName", out var tmp) && (string)tmp == member.Name)
+                GetFieldNumber(ref fieldNumber, ppma, "Tag");
+                GetFieldName(ref name, ppma, "Name");
+                GetFieldBoolean(ref isRequired, ppma, "IsRequired");
+                GetFieldBoolean(ref isPacked, ppma, "IsPacked");
+                GetFieldBoolean(ref overwriteList, attrib, "OverwriteList");
+                GetDataFormat(ref dataFormat, ppma, "DataFormat");
+                GetFieldBoolean(ref asReferenceHasValue, attrib, "AsReferenceHasValue", false);
+
+                if (asReferenceHasValue)
                 {
-                    GetFieldNumber(ref fieldNumber, ppma, "Tag");
-                    GetFieldName(ref name, ppma, "Name");
-                    GetFieldBoolean(ref isRequired, ppma, "IsRequired");
-                    GetFieldBoolean(ref isPacked, ppma, "IsPacked");
-                    GetFieldBoolean(ref overwriteList, attrib, "OverwriteList");
-                    GetDataFormat(ref dataFormat, ppma, "DataFormat");
-                    GetFieldBoolean(ref asReferenceHasValue, attrib, "AsReferenceHasValue", false);
+                    asReferenceHasValue = GetFieldBoolean(ref asReference, ppma, "AsReference", true);
+                }
 
-                    if (asReferenceHasValue)
-                    {
-                        asReferenceHasValue = GetFieldBoolean(ref asReference, ppma, "AsReference", true);
-                    }
-
-                    GetFieldBoolean(ref dynamicType, ppma, "DynamicType");
-                    if (done = tagIsPinned = fieldNumber > 0)
-                    {
-                        break; // note minAcceptFieldNumber only applies to non-proto
-                    }
+                GetFieldBoolean(ref dynamicType, ppma, "DynamicType");
+                if (done = tagIsPinned = fieldNumber > 0)
+                {
+                    break; // note minAcceptFieldNumber only applies to non-proto
                 }
             }
         }
@@ -1603,18 +1698,8 @@ public class MetaType : ISerializerProxy
 
         // check for list types
         ResolveListTypes(model, effectiveType, ref itemType, ref defaultType);
-        var ignoreListHandling = false;
         // but take it back if it is explicitly excluded
-        if (itemType != null)
-        {
-            // looks like a list, but double check for IgnoreListHandling
-            var idx = model.FindOrAddAuto(effectiveType, false, true);
-            if (idx >= 0 && (ignoreListHandling = model[effectiveType].IgnoreListHandling))
-            {
-                itemType = null;
-                defaultType = null;
-            }
-        }
+        var ignoreListHandling = ResolveIgnoreListHandling(effectiveType, ref itemType, ref defaultType);
 
         var attribs = AttributeMap.Create(model, member, true);
 
@@ -1656,6 +1741,25 @@ public class MetaType : ISerializerProxy
         }
 
         return vm;
+    }
+
+    private bool ResolveIgnoreListHandling(Type effectiveType, ref Type itemType, ref Type defaultType)
+    {
+        if (itemType == null)
+        {
+            return false;
+        }
+
+        // looks like a list, but double check for IgnoreListHandling
+        var idx = model.FindOrAddAuto(effectiveType, false, true);
+        if (idx >= 0 && model[effectiveType].IgnoreListHandling)
+        {
+            itemType = null;
+            defaultType = null;
+            return true;
+        }
+
+        return false;
     }
 
     private object GetImplicitZeroDefaultValue(Type effectiveType)
@@ -1745,17 +1849,22 @@ public class MetaType : ISerializerProxy
                 }
                 else
                 {
-                    if (attrib.TryGet(nameof(ProtoMapAttribute.KeyFormat), out tmp))
-                    {
-                        vm.MapKeyFormat = (DataFormat)tmp;
-                    }
-
-                    if (attrib.TryGet(nameof(ProtoMapAttribute.ValueFormat), out tmp))
-                    {
-                        vm.MapValueFormat = (DataFormat)tmp;
-                    }
+                    ApplyMapKeyFormats(attrib, vm);
                 }
             }
+        }
+    }
+
+    private void ApplyMapKeyFormats(AttributeMap attrib, ValueMember vm)
+    {
+        if (attrib.TryGet(nameof(ProtoMapAttribute.KeyFormat), out var tmp))
+        {
+            vm.MapKeyFormat = (DataFormat)tmp;
+        }
+
+        if (attrib.TryGet(nameof(ProtoMapAttribute.ValueFormat), out tmp))
+        {
+            vm.MapValueFormat = (DataFormat)tmp;
         }
     }
 
@@ -2754,41 +2863,12 @@ public class MetaType : ISerializerProxy
     {
         if (syntax == ProtoSyntax.Proto2 && member.DefaultValue != null && member.IsRequired == false)
         {
-            if (member.DefaultValue is string)
-            {
-                AddOption(builder, ref hasOption).Append("default = \"").Append(member.DefaultValue).Append("\"");
-            }
-            else if (member.DefaultValue is TimeSpan)
-            {
-                // ignore
-            }
-            else if (member.DefaultValue is bool)
-            {
-                // need to be lower case (issue 304)
-                AddOption(builder, ref hasOption).Append((bool)member.DefaultValue ? "default = true" : "default = false");
-            }
-            else
-            {
-                AddOption(builder, ref hasOption).Append("default = ").Append(member.DefaultValue);
-            }
+            WriteDefaultValueOption(builder, ref hasOption, member);
         }
 
         if (CanPack(member.ItemType))
         {
-            if (syntax == ProtoSyntax.Proto2)
-            {
-                if (member.IsPacked)
-                {
-                    AddOption(builder, ref hasOption).Append("packed = true"); // disabled by default
-                }
-            }
-            else
-            {
-                if (!member.IsPacked)
-                {
-                    AddOption(builder, ref hasOption).Append("packed = false"); // enabled by default
-                }
-            }
+            WritePackedOption(builder, ref hasOption, syntax, member);
         }
 
         if (member.AsReference)
@@ -2801,6 +2881,45 @@ public class MetaType : ISerializerProxy
         {
             imports |= RuntimeTypeModel.CommonImports.Protogen;
             AddOption(builder, ref hasOption).Append("(.protobuf_net.fieldopt).dynamicType = true");
+        }
+    }
+
+    private void WriteDefaultValueOption(StringBuilder builder, ref bool hasOption, ValueMember member)
+    {
+        if (member.DefaultValue is string)
+        {
+            AddOption(builder, ref hasOption).Append("default = \"").Append(member.DefaultValue).Append("\"");
+        }
+        else if (member.DefaultValue is TimeSpan)
+        {
+            // ignore
+        }
+        else if (member.DefaultValue is bool)
+        {
+            // need to be lower case (issue 304)
+            AddOption(builder, ref hasOption).Append((bool)member.DefaultValue ? "default = true" : "default = false");
+        }
+        else
+        {
+            AddOption(builder, ref hasOption).Append("default = ").Append(member.DefaultValue);
+        }
+    }
+
+    private void WritePackedOption(StringBuilder builder, ref bool hasOption, ProtoSyntax syntax, ValueMember member)
+    {
+        if (syntax == ProtoSyntax.Proto2)
+        {
+            if (member.IsPacked)
+            {
+                AddOption(builder, ref hasOption).Append("packed = true"); // disabled by default
+            }
+        }
+        else
+        {
+            if (!member.IsPacked)
+            {
+                AddOption(builder, ref hasOption).Append("packed = false"); // enabled by default
+            }
         }
     }
 
