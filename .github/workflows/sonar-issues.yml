@@ -1,15 +1,13 @@
 name: Sonar Issues
 
 on:
-  pull_request:
-    branches:
-      - main
   push:
     branches:
       - main
   workflow_dispatch:
   schedule:
-    - cron: "0 */2 * * *"
+    # 每 48 小时（每 2 天 UTC 0:00 / 北京时间 8:00）同步一次 SonarCloud issue
+    - cron: "0 0 */2 * *"
 
 permissions:
   contents: read
@@ -17,22 +15,7 @@ permissions:
   pull-requests: read
 
 jobs:
-  analyze:
-    uses: GameFrameX/public-github-actions/.github/workflows/quality-dotnet.yml@main
-    with:
-      dotnet_version: "10.0.x"
-      solution_path: Server.slnx
-      build_configuration: Release
-      run_tests: false
-      sonar_project_key: ${{ github.event.repository.name }}
-      sonar_host_url: ${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}
-      sonar_organization: ${{ vars.SONAR_ORGANIZATION || 'gameframex' }}
-      sonar_exclusions: ".github/**,Dockerfile,**/Dockerfile,Dockerfile.*,**/Dockerfile.*"
-    secrets: inherit
-
   sync:
-    needs: analyze
-    if: ${{ always() && github.event_name != 'pull_request' }}
     uses: GameFrameX/public-github-actions/.github/workflows/sonar-issue-sync.yml@main
     with:
       sonar_project_key: ${{ github.event.repository.name }}
