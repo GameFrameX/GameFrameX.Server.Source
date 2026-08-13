@@ -61,14 +61,14 @@ public sealed class TestHttpHandler : BaseHttpHandler
                 FriendCount = friendResponse.Friends?.Count ?? 0,
                 Friends = friendResponse.Friends ?? new List<FriendInfo>(),
             };
-            return HttpJsonResult.SuccessString(crossResponse);
+            return HttpJsonResultData<string>.SuccessString(JsonHelper.Serialize(crossResponse));
         }
 
         var response = new HttpTestResponse
         {
             Message = "hello",
         };
-        return HttpJsonResult.SuccessString(response);
+        return HttpJsonResultData<string>.SuccessString(JsonHelper.Serialize(response));
     }
 
     /// <summary>

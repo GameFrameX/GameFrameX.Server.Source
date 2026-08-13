@@ -134,7 +134,7 @@ public static class HttpHandler
         catch (Exception e)
         {
             LogHelper.Error("HTTP JSON ExceptionOccurred {logHeader} {message} {stackTrace}", logHeader, e.Message, e.StackTrace);
-            await context.Response.WriteAsync(HttpJsonResult.FailString(e.Message));
+            await context.Response.WriteAsync(HttpJsonResultData<string>.FailString(e.Message));
         }
     }
 
@@ -192,7 +192,7 @@ public static class HttpHandler
 
         if (!context.Request.HasJsonContentType())
         {
-            await context.Response.WriteAsync(HttpJsonResult.ErrorString(GameHttpStatusCode.ParamErr, LocalizationService.GetString(Localization.Keys.NetWorkHttp.UnsupportedContentType, contentType)));
+            await context.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(GameHttpStatusCode.ParamErr, LocalizationService.GetString(Localization.Keys.NetWorkHttp.UnsupportedContentType, contentType)));
             return (true, null, null, false);
         }
 
@@ -210,7 +210,7 @@ public static class HttpHandler
             if (!paramMap.TryAdd(keyValuePair.Key, keyValuePair.Value))
             {
                 // 参数Key发生重复
-                await context.Response.WriteAsync(HttpJsonResult.ErrorString(GameHttpStatusCode.ParamErr, LocalizationService.GetString(Localization.Keys.NetWorkHttp.ParameterDuplicate, keyValuePair.Key)));
+                await context.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(GameHttpStatusCode.ParamErr, LocalizationService.GetString(Localization.Keys.NetWorkHttp.ParameterDuplicate, keyValuePair.Key)));
                 return (true, null, null, false);
             }
         }
@@ -242,13 +242,13 @@ public static class HttpHandler
         // 检查指令是否有效
         if (command.IsNullOrEmptyOrWhiteSpace())
         {
-            await context.Response.WriteAsync(HttpJsonResult.ErrorString(GameHttpStatusCode.Undefined, HttpStatusMessage.UndefinedCommand));
+            await context.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(GameHttpStatusCode.Undefined, HttpStatusMessage.UndefinedCommand));
             return (false, null);
         }
 
         if (!GameAppRuntime.IsRunning)
         {
-            await context.Response.WriteAsync(HttpJsonResult.ErrorString(GameHttpStatusCode.ActionFailed, LocalizationService.GetString(Localization.Keys.NetWorkHttp.ServerStatusError)));
+            await context.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(GameHttpStatusCode.ActionFailed, LocalizationService.GetString(Localization.Keys.NetWorkHttp.ServerStatusError)));
             return (false, null);
         }
 
@@ -267,7 +267,7 @@ public static class HttpHandler
         if (handler == null)
         {
             LogHelper.Warning<string>("HTTP CommandHandlerNotFound {command}", LocalizationService.GetString(Localization.Keys.NetWorkHttp.CommandHandlerNotFound, command));
-            await context.Response.WriteAsync(HttpJsonResult.NotFoundString());
+            await context.Response.WriteAsync(HttpJsonResultData<string>.NotFoundString());
             return (false, null);
         }
 
@@ -358,11 +358,11 @@ public static class HttpHandler
         {
             if (validationResults.Count > 0)
             {
-                await context.Response.WriteAsync(HttpJsonResult.ErrorString(400, validationResults[0].ErrorMessage));
+                await context.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(400, validationResults[0].ErrorMessage));
             }
             else
             {
-                await context.Response.WriteAsync(HttpJsonResult.ErrorString(400, LocalizationService.GetString(Localization.Keys.NetWorkHttp.DataVerificationFailed)));
+                await context.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(400, LocalizationService.GetString(Localization.Keys.NetWorkHttp.DataVerificationFailed)));
             }
         }
     }
@@ -432,6 +432,6 @@ public static class HttpHandler
     private static Task WriteRequestBodyTooLarge(HttpContext context, long maxBodyBytes)
     {
         context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
-        return context.Response.WriteAsync(HttpJsonResult.ErrorString(StatusCodes.Status413PayloadTooLarge, $"HTTP request body is too large. Max allowed bytes: {maxBodyBytes}."));
+        return context.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(StatusCodes.Status413PayloadTooLarge, $"HTTP request body is too large. Max allowed bytes: {maxBodyBytes}."));
     }
 }

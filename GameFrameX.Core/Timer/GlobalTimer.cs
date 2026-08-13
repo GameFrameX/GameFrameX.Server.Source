@@ -75,7 +75,7 @@ public static class GlobalTimer
 
         while (IsWorking)
         {
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.NextSaveTime, TimerHelper.TimestampSecondToDateTime(nextSaveTime).ToString("yyyy-MM-dd HH:mm:ss.fff K")));
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.NextSaveTime, TimerHelper.TimestampSecondsToDateTime(nextSaveTime).ToString("yyyy-MM-dd HH:mm:ss.fff K")));
             var currentTime = TimerHelper.UnixTimeMilliseconds();
             while (currentTime < nextSaveTime && IsWorking)
             {

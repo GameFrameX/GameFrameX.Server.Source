@@ -82,7 +82,7 @@ public sealed class ReqPlayerSendItemHttpHandler : BaseHttpHandler
             await UpdateOfflineBagAsync(sendItemRequest.RoleId, itemDic);
         }
 
-        return HttpJsonResult.SuccessString(new ReqPlayerSendItemResponse { Items = itemDic, });
+        return HttpJsonResultData<string>.SuccessString(JsonHelper.Serialize(new ReqPlayerSendItemResponse { Items = itemDic, }));
     }
 
     // 玩家不在线：直接落库并尝试发送道具变更通知（若玩家刚上线可立即收到；仍离线则按策略丢弃）

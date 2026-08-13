@@ -185,18 +185,18 @@ public abstract class BaseHttpHandler : IHttpHandler
         // 内部验证
         if (!paramMap.ContainsKey(GlobalConst.HttpSignKey) || !paramMap.ContainsKey(GlobalConst.HttpTimestampKey))
         {
-            error = HttpJsonResult.ValidationErrorString();
+            error = HttpJsonResultData<string>.ValidationErrorString();
             return false;
         }
 
         var sign = paramMap[GlobalConst.HttpSignKey].ToString();
         var time = paramMap[GlobalConst.HttpTimestampKey].ToString();
         long.TryParse(time, out var timeTick);
-        var span = TimerHelper.TimeSpanWithTimestampUtc(timeTick);
+        var span = TimerHelper.GetTimeDifferenceFromNow(timeTick);
         // 5分钟内有效
         if (span.TotalMinutes > 5)
         {
-            error = HttpJsonResult.IllegalString();
+            error = HttpJsonResultData<string>.IllegalString();
             return false;
         }
 
@@ -206,7 +206,7 @@ public abstract class BaseHttpHandler : IHttpHandler
             return true;
         }
 
-        error = HttpJsonResult.ValidationErrorString();
+        error = HttpJsonResultData<string>.ValidationErrorString();
         return false;
     }
 }

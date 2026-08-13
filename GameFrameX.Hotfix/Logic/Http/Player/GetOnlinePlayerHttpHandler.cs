@@ -54,7 +54,7 @@ public sealed class GetOnlinePlayerHttpHandler : BaseHttpHandler
         {
             Count = SessionManager.Count(),
         };
-        var res = HttpJsonResult.SuccessString($"当前在线人数:{response.Count}", JsonHelper.Serialize(response));
+        var res = HttpJsonResultData<string>.SuccessString($"当前在线人数:{response.Count}", JsonHelper.Serialize(response));
         return Task.FromResult(res);
     }
 }

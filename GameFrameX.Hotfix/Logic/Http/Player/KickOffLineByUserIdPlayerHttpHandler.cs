@@ -52,7 +52,7 @@ public sealed class KickOffLineByUserIdPlayerHttpHandler : BaseHttpHandler
     {
         var kickOffRequest = (KickOffLineByUserIdPlayerRequest)request;
         SessionManager.KickOffLineByUserId(kickOffRequest.RoleId);
-        return Task.FromResult(HttpJsonResult.SuccessString());
+        return Task.FromResult(HttpJsonResultData<string>.SuccessString());
     }
 }
 

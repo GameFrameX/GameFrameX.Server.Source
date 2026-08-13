@@ -53,7 +53,7 @@ public sealed class GetOnlinePlayerListHttpHandler : BaseHttpHandler
     {
         GetOnlinePlayerListRequest parameters = (GetOnlinePlayerListRequest)request;
         var response = SessionManager.GetPageList(parameters.PageSize, parameters.PageIndex);
-        var res = HttpJsonResult.SuccessString("当前在线玩家", JsonHelper.Serialize(response));
+        var res = HttpJsonResultData<string>.SuccessString("当前在线玩家", JsonHelper.Serialize(response));
         return Task.FromResult(res);
     }
 }
