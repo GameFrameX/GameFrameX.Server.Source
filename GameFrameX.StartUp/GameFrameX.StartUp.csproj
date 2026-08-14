@@ -21,7 +21,7 @@
         <PackageReference Include="GameFrameX.SuperSocket.ClientEngine" Version="1.2.0"/>
         <PackageReference Include="GameFrameX.SuperSocket.Server" Version="1.2.0"/>
         <PackageReference Include="GameFrameX.SuperSocket.Udp" Version="1.2.0"/>
-        <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.11"/>
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9"/>
+        <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.12"/>
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11"/>
     </ItemGroup>
 </Project>
