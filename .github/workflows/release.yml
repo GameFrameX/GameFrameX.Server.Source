@@ -12,11 +12,3 @@ jobs:
       dotnet_version: "10.0.x"
       version_props_path: "Version.props"
     secrets: inherit
-
-  notify:
-    needs: release
-    if: needs.release.result == 'success'
-    uses: GameFrameX/public-github-actions/.github/workflows/notify.yml@main
-    with:
-      repository_name: GameFrameX.Server
-    secrets: inherit
