@@ -1,43 +1,54 @@
 <div align="center">
 
-![GameFrameX Logo](https://download.alianblank.com/gameframex/gameframex_logo_320.png)
+<img src="https://download.alianblank.com/gameframex/gameframex_logo_320.png" alt="Game Frame X Logo" width="160" />
 
 # GameFrameX Server
 
-[![Version](https://img.shields.io/github/v/release/GameFrameX/GameFrameX.Server.Source?label=version&color=green)](https://github.com/GameFrameX/GameFrameX.Server.Source/releases)
+[![License](https://img.shields.io/badge/license-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/github/v/release/GameFrameX/GameFrameX.Server.Source)](https://github.com/GameFrameX/GameFrameX.Server.Source/releases)
 [![.NET](https://img.shields.io/badge/.NET-10.0-purple.svg)](https://dotnet.microsoft.com/download/dotnet/10.0)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Documentation](https://img.shields.io/badge/docs-gameframex.doc.alianblank.com-brightgreen.svg)](https://gameframex.doc.alianblank.com)
 
-**고성능, 크로스 플랫폼 게임 서버 프레임워크**
+[![Discord](https://img.shields.io/badge/-5865F2?logo=discord&logoColor=white)](https://discord.gg/VDWUjWMDw9)
+[![GitHub](https://img.shields.io/badge/-181717?logo=github&logoColor=white)](https://github.com/GameFrameX/gameframex)
+[![Bilibili](https://img.shields.io/badge/-00A1D6?logo=bilibili&logoColor=white)](https://www.bilibili.com/video/BV1yrpeepEn7)
+[![Gitee](https://img.shields.io/badge/-C71D23?logo=gitee&logoColor=white)](https://gitee.com/GameFrameX/gameframex)
 
-[📖 문서](https://gameframex.doc.alianblank.com) • [🚀 빠른 시작](#빠른-시작) • [💬 QQ 그룹: 467608841](https://qm.qq.com/cgi-bin/qm/qr?k=sYFd1nv6m2KZIWFLorZ5pBR0AE5ZhbuL&jump_from=webapi&authKey=oCu+uoL3n35fT5SEt7iLgGtROPxh31n/rHUxRlp0w1f+j38W4tKBuWyRH3KEdwHN)
+**인디 게임 개발자를 위한 올인원 솔루션 · 인디 개발자의 꿈을 실현**
 
----
+<br />
 
-🌐 **언어**: [English](README.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [日本語](README.ja.md) | **한국어**
+[문서](https://gameframex.doc.alianblank.com) · [빠른 시작](#빠른-시작) · QQ 그룹: 467608841 / 233840761
 
----
+<br />
+
+[English](README.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [日本語](README.ja.md) | **한국어**
 
 </div>
 
 ## 목차
 
 - [프로젝트 개요](#프로젝트-개요)
-- [핵심 기능](#핵심-기능)
-- [시스템 아키텍처](#시스템-아키텍처)
-- [프로젝트 구조](#프로젝트-구조)
+  - [기능](#기능)
 - [빠른 시작](#빠른-시작)
-- [설정 관리](#설정-관리)
-- [비즈니스 로직 개발](#비즈니스-로직-개발)
-- [핫 업데이트 메커니즘](#핫-업데이트-메커니즘)
-- [Docker 배포](#docker-배포)
-- [멀티 프로세스 크로스 프로세스 디버깅](#멀티-프로세스-크로스-프로세스-디버깅)
-- [모니터링 및 관측 가능성](#모니터링-및-관측-가능성)
-- [테스트](#테스트)
-- [기여 가이드](#기여-가이드)
+  - [요구 사항](#요구-사항)
+  - [설치](#설치)
+- [사용 예시](#사용-예시)
+  - [설정 관리](#설정-관리)
+  - [비즈니스 로직 개발](#비즈니스-로직-개발)
+  - [핫 업데이트 메커니즘](#핫-업데이트-메커니즘)
+  - [Docker 배포](#docker-배포)
+  - [멀티 프로세스 크로스 프로세스 디버깅](#멀티-프로세스-크로스-프로세스-디버깅)
+  - [모니터링 및 관측 가능성](#모니터링-및-관측-가능성)
+  - [테스트](#테스트)
+- [아키텍처](#아키텍처)
+  - [프로젝트 구조](#프로젝트-구조)
+- [의존성](#의존성)
+- [문서 및 자료](#문서-및-자료)
+- [커뮤니티 및 지원](#커뮤니티-및-지원)
+  - [기여 가이드](#기여-가이드)
+- [변경 로그](#변경-로그)
 - [라이선스](#라이선스)
-- [관련 링크](#관련-링크)
 
 ---
 
@@ -47,9 +58,11 @@ GameFrameX Server는 C# .NET 10.0으로 개발된 고성능, 크로스 플랫폼
 
 **설계 철학**: 대도지간, 심플 이즈 베스트
 
-## 핵심 기능
+---
 
-### 고성능 아키텍처
+### 기능
+
+#### 고성능 아키텍처
 
 - **Actor 모델**: TPL DataFlow 기반의 락프리 고동시성 시스템. 메시지 전달을 통해 기존 락 성능 저하 회피
 - **완전 비동기 프로그래밍**: 완전한 async/await 비동기 프로그래밍 모델
@@ -57,14 +70,14 @@ GameFrameX Server는 C# .NET 10.0으로 개발된 고성능, 크로스 플랫폼
 - **배치 영속화**: 배치 DB 쓰기를 지원하며 배치 크기와 타임아웃 설정 가능
 - **스노우플레이크 ID 생성**: 분산 유니크 ID 생성기 내장. 워커 노드 및 데이터센터 설정 지원
 
-### 핫 업데이트 시스템
+#### 핫 업데이트 시스템
 
 - **제로 다운타임 업데이트**: 런타임에 새로운 로직 어셈블리 로드. 서비스 중지 불필요
 - **상태-로직 분리**: 영속화 상태 데이터(Apps 레이어)와 핫 업데이트 가능한 비즈니스 로직(Hotfix 레이어)을 엄격히 분리
 - **그레이스풀 전환**: 이전 어셈블리는 10분 유예 기간을 유지하며 진행 중인 요청 완료 후 언로드
 - **버전 관리**: HTTP 엔드포인트를 통해 버전 번호를 지정하여 로드 가능
 
-### 멀티 프로토콜 네트워크 통신
+#### 멀티 프로토콜 네트워크 통신
 
 - **TCP**: SuperSocket 기반의 고성능 TCP 서버. 메인 게임 통신 프로토콜
 - **UDP**: 선택적 UDP 프로토콜 지원
@@ -73,94 +86,19 @@ GameFrameX Server는 C# .NET 10.0으로 개발된 고성능, 크로스 플랫폼
 - **KCP**: KCP 프로토콜 기반 UDP 신뢰성 전송(실험적)
 - **크로스 프로세스 메시징**: RemoteMessaging 모듈 내장. 서킷 브레이커, 재시도 전략, 일관 해싱 샤딩 지원
 
-### 데이터베이스 및 영속화
+#### 데이터베이스 및 영속화
 
 - **MongoDB 주 데이터베이스**: 완전한 MongoDB 통합. 헬스 상태 머신 지원(Healthy → Degraded → Unhealthy → Recovering)
 - **투명한 영속화**: StateComponent 자동 직렬화/역직렬화. 정기적 배치 ReplaceOne 작업으로 영속화
 - **연결 풀 관리**: 설정 가능한 연결 풀 및 재시도 전략
 - **OpenTelemetry 통합**: 데이터베이스 작업 메트릭(지연 시간, 재시도 횟수, 헬스 상태)
 
-### 모니터링 및 관측 가능성
+#### 모니터링 및 관측 가능성
 
 - **OpenTelemetry**: 포괄적인 메트릭(Metrics), 트레이싱(Tracing), 로깅(Logging)
 - **Prometheus**: 네이티브 메트릭 익스포트 엔드포인트
 - **Grafana Loki**: 로그 집계 출력 지원
 - **Serilog**: 구조화된 로깅. 콘솔, 파일, Loki 멀티 출력 지원
-
----
-
-## 시스템 아키텍처
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        클라이언트 레이어                          │
-│         Unity3D / Godot / LayaBox / Cocos Creator               │
-├─────────────────────────────────────────────────────────────────┤
-│                       네트워크 레이어                             │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
-│  │   TCP    │ │WebSocket │ │   HTTP   │ │   KCP    │           │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │
-├─────────────────────────────────────────────────────────────────┤
-│                     메시지 처리 레이어                             │
-│  ┌────────────────┐ ┌────────────────┐ ┌────────────────┐      │
-│  │TCP 메시지       │ │  HTTP 핸들러   │ │크로스 프로세스  │      │
-│  │핸들러          │ │               │ │메시지 라우터    │      │
-│  └────────────────┘ └────────────────┘ └────────────────┘      │
-├─────────────────────────────────────────────────────────────────┤
-│                       Actor 레이어                               │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
-│  │ 플레이어 │ │  서버    │ │  계정    │ │ 글로벌   │           │
-│  │  Actor   │ │  Actor   │ │  Actor   │ │  Actor   │           │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │
-├─────────────────────────────────────────────────────────────────┤
-│         컴포넌트-에이전트 레이어(핫 업데이트 경계)                 │
-│  ┌─────────────────────┐  ┌─────────────────────────────┐      │
-│  │ Apps 레이어 (핫불가)  │  │ Hotfix 레이어 (핫 가능)      │      │
-│  │ StateComponent<T>   │←→│ StateComponentAgent<T,TState>│      │
-│  │ CacheState          │  │ ComponentAgent               │      │
-│  └─────────────────────┘  └─────────────────────────────┘      │
-├─────────────────────────────────────────────────────────────────┤
-│                      데이터베이스 레이어                          │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │                    MongoDB                               │    │
-│  └─────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 프로젝트 구조
-
-```
-Server/
-├── GameFrameX.Launcher/              # 애플리케이션 진입점
-├── GameFrameX.StartUp/               # 시작 오케스트레이션 및 초기화
-├── GameFrameX.Core/                  # 코어 프레임워크(Actor 시스템, 컴포넌트, 이벤트, 핫 업데이트 관리)
-├── GameFrameX.Apps/                  # 상태 데이터 레이어(계정, 플레이어, 서버 모듈) — 핫 업데이트 불가
-├── GameFrameX.Hotfix/                # 비즈니스 로직 레이어(HTTP, 플레이어, 서버 핸들러) — 핫 업데이트 가능
-├── GameFrameX.Config/                # 게임 설정 테이블(JSON 형식, LuBan 생성)
-├── GameFrameX.Core.Config/           # 코어 설정 관리
-├── GameFrameX.Proto/                 # ProtoBuf 프로토콜 정의
-├── GameFrameX.ProtoBuf.Net/          # ProtoBuf 직렬화 구현
-├── GameFrameX.NetWork/               # 네트워크 코어(메시지 객체, 센더, WebSocket)
-├── GameFrameX.NetWork.Abstractions/  # 네트워크 인터페이스(IMessage, IMessageHandler, 메시지 매핑)
-├── GameFrameX.NetWork.HTTP/          # HTTP 서버(Swagger, Kestrel, BaseHttpHandler)
-├── GameFrameX.NetWork.Kcp/           # KCP 프로토콜 지원(UDP 기반 신뢰성 전송)
-├── GameFrameX.NetWork.Message/       # 메시지 파이프라인 및 코덱
-├── GameFrameX.NetWork.RemoteMessaging/ # 크로스 프로세스 원격 메시지(서킷 브레이커, 재시도, 일관 해싱)
-├── GameFrameX.DataBase/              # 데이터베이스 추상 레이어
-├── GameFrameX.DataBase.Mongo/        # MongoDB 구현(헬스 모니터링, 재시도, 배치 작업)
-├── GameFrameX.Localization/          # 현지화 시스템(Keys.*.cs + .resx 리소스 파일)
-├── GameFrameX.Monitor/               # OpenTelemetry + Prometheus 메트릭 통합
-├── GameFrameX.Utility/               # 유틸리티(로깅, 압축, 오브젝트 풀, Mapster, Harmony)
-├── GameFrameX.Client/                # 테스트 클라이언트(TCP 연결)
-├── GameFrameX.Architecture.Analyzers/         # Roslyn 아키텍처 분석기
-├── GameFrameX.Hotfix.WrapperGenerator/ # Roslyn 소스 제너레이터(핫 업데이트 프록시 래퍼 클래스)
-├── GameFrameX.AppHost/               # .NET Aspire 애플리케이션 호스트
-├── GameFrameX.AppHost.ServiceDefaults/ # Aspire 공유 기본 설정(OTel, 서비스 디스커버리)
-└── Tests/
-    └── GameFrameX.Tests/             # xUnit 테스트 스위트
-```
 
 ---
 
@@ -172,7 +110,7 @@ Server/
 - [MongoDB 4.x+](https://www.mongodb.com/try/download/community)
 - Visual Studio 2022 또는 JetBrains Rider(권장)
 
-### 설치 단계
+### 설치
 
 1. **저장소 클론**
    ```bash
@@ -216,11 +154,17 @@ Server/
 
 ---
 
-## 설정 관리
+## 사용 예시
+
+아래 예시는 설정, 비즈니스 로직, 핫 업데이트, 배포, 디버깅까지 전체 개발 흐름을 다룹니다.
+
+---
+
+### 설정 관리
 
 GameFrameX는 명령줄 인수(`--Key=Value`)로 설정합니다. 모든 설정 항목은 `StartupOptions` 클래스에 정의되어 있습니다.
 
-### 서버 설정
+#### 서버 설정
 
 | 설정 항목 | 설명 | 기본값 | 예시 |
 |:---------|:-----|:------|:-----|
@@ -234,7 +178,7 @@ GameFrameX는 명령줄 인수(`--Key=Value`)로 설정합니다. 모든 설정 
 | `IsUseTimeZone` | 커스텀 시간대 활성화 | `false` | `true` |
 | `Language` | 언어 설정 | 없음 | `zh-CN` |
 
-### 네트워크 설정
+#### 네트워크 설정
 
 | 설정 항목 | 설명 | 기본값 | 예시 |
 |:---------|:-----|:------|:-----|
@@ -252,7 +196,7 @@ GameFrameX는 명령줄 인수(`--Key=Value`)로 설정합니다. 모든 설정 
 | `HttpUrl` | API 루트 경로 | `/game/api/` | `/game/api/` |
 | `HttpIsDevelopment` | HTTP 개발 모드(Swagger 활성화) | `false` | `true` |
 
-### 데이터베이스 설정
+#### 데이터베이스 설정
 
 | 설정 항목 | 설명 | 기본값 | 예시 |
 |:---------|:-----|:------|:-----|
@@ -260,7 +204,7 @@ GameFrameX는 명령줄 인수(`--Key=Value`)로 설정합니다. 모든 설정 
 | `DataBaseName` | 데이터베이스 이름 | 없음 | `gameframex` |
 | `DataBasePassword` | 데이터베이스 비밀번호 | 없음 | `your_password` |
 
-### Actor 설정
+#### Actor 설정
 
 | 설정 항목 | 설명 | 기본값 | 예시 |
 |:---------|:-----|:------|:-----|
@@ -271,7 +215,7 @@ GameFrameX는 명령줄 인수(`--Key=Value`)로 설정합니다. 모든 설정 
 | `SaveDataBatchCount` | 배치 저장 수 | `500` | `1000` |
 | `SaveDataBatchTimeOut` | 배치 저장 타임아웃(밀리초) | `30000` | `60000` |
 
-### 로깅 설정
+#### 로깅 설정
 
 | 설정 항목 | 설명 | 기본값 | 예시 |
 |:---------|:-----|:------|:-----|
@@ -286,7 +230,7 @@ GameFrameX는 명령줄 인수(`--Key=Value`)로 설정합니다. 모든 설정 
 | `LogIsGrafanaLoki` | Grafana Loki 출력 | `false` | `true` |
 | `LogGrafanaLokiUrl` | Grafana Loki URL | `http://localhost:3100` | — |
 
-### 모니터링 설정
+#### 모니터링 설정
 
 | 설정 항목 | 설명 | 기본값 | 예시 |
 |:---------|:-----|:------|:-----|
@@ -297,14 +241,14 @@ GameFrameX는 명령줄 인수(`--Key=Value`)로 설정합니다. 모든 설정 
 | `IsMonitorMessageTimeOut` | 메시지 처리 타임아웃 모니터링 | `false` | `true` |
 | `MonitorMessageTimeOutSeconds` | 타임아웃 임계값(초) | `1` | `5` |
 
-### ID 생성 설정
+#### ID 생성 설정
 
 | 설정 항목 | 설명 | 기본값 | 예시 |
 |:---------|:-----|:------|:-----|
 | `WorkerId` | 스노우플레이크 ID 워커 노드 ID | `1` | `2` |
 | `DataCenterId` | 스노우플레이크 ID 데이터센터 ID | `1` | `2` |
 
-### 시작 명령 예시
+#### 시작 명령 예시
 
 ```bash
 # 최소 시작 매개변수
@@ -338,9 +282,9 @@ dotnet GameFrameX.Launcher.dll \
 
 ---
 
-## 비즈니스 로직 개발
+### 비즈니스 로직 개발
 
-### 컴포넌트-에이전트 패턴
+#### 컴포넌트-에이전트 패턴
 
 프레임워크의 핵심 설계 패턴은 **상태-로직 분리**입니다. 영속화 상태(Apps 레이어, 핫 업데이트 불가)와 비즈니스 로직(Hotfix 레이어, 핫 업데이트 가능)을 엄격히 분리합니다.
 
@@ -399,7 +343,7 @@ var bagAgent = await ActorManager.GetComponentAgent<BagComponentAgent>(playerId)
 var result = await bagAgent.AddItem(1001, 10);
 ```
 
-### HTTP 핸들러
+#### HTTP 핸들러
 
 HTTP 핸들러는 `BaseHttpHandler`를 상속하고 `[HttpMessageMapping]` 속성으로 라우트를 등록합니다.
 
@@ -429,7 +373,7 @@ public sealed class GetPlayerInfoHandler : BaseHttpHandler
 }
 ```
 
-### TCP/RPC 메시지 핸들러
+#### TCP/RPC 메시지 핸들러
 
 TCP 메시지 핸들러는 클라이언트가 TCP 연결을 통해 보낸 게임 메시지를 처리합니다.
 
@@ -468,7 +412,7 @@ internal sealed class AddItemHandler : PlayerRpcComponentHandler<BagComponentAge
 }
 ```
 
-### 이벤트 핸들러
+#### 이벤트 핸들러
 
 이벤트 시스템은 Actor 간의 느슨한 결합 통신에 사용됩니다.
 
@@ -491,9 +435,9 @@ internal sealed class PlayerLoginEventHandler : EventListener<PlayerComponentAge
 
 ---
 
-## 핫 업데이트 메커니즘
+### 핫 업데이트 메커니즘
 
-### 아키텍처 원리
+#### 아키텍처 원리
 
 핫 업데이트 시스템은 `AssemblyLoadContext`(수집 가능)를 통해 어셈블리의 런타임 로드 및 언로드를 구현합니다:
 
@@ -519,7 +463,7 @@ internal sealed class PlayerLoginEventHandler : EventListener<PlayerComponentAge
 └───────────────────────────────────────────────────────┘
 ```
 
-### 핫 업데이트 흐름
+#### 핫 업데이트 흐름
 
 1. **새 로직 컴파일**: 업데이트된 `GameFrameX.Hotfix.dll` 빌드
 2. **어셈블리 배포**: 서버의 지정된 디렉토리에 복사
@@ -529,7 +473,7 @@ internal sealed class PlayerLoginEventHandler : EventListener<PlayerComponentAge
 6. **에이전트 전환**: `ActorManager.ClearAgent()`가 캐시된 에이전트 인스턴스를 클리어
 7. **그레이스풀 전환**: 이전 어셈블리는 10분 유예 기간을 유지하며 진행 중인 요청 완료 후 언로드
 
-### 핫 업데이트 API
+#### 핫 업데이트 API
 
 ```bash
 # 핫 업데이트 트리거(버전 지정)
@@ -538,9 +482,9 @@ curl -X POST "http://localhost:28080/game/api/Reload?version=1.7.2"
 
 ---
 
-## Docker 배포
+### Docker 배포
 
-### 단일 인스턴스 배포
+#### 단일 인스턴스 배포
 
 `docker-compose.yml`을 사용하여 MongoDB + Game + Social의 완전한 환경을 시작:
 
@@ -568,7 +512,7 @@ docker compose down
 | Social TCP | 29400 | 39400 | 소셜 서버 |
 | Social HTTP | 28081 | 38081 | 소셜 서버 HTTP API |
 
-### 멀티 인스턴스 배포
+#### 멀티 인스턴스 배포
 
 `docker-compose.multi.yml`을 사용하여 1 MongoDB + 2 Social + 10 Game의 클러스터 환경을 시작:
 
@@ -601,7 +545,7 @@ environment:
   # ...
 ```
 
-### 커스텀 빌드
+#### 커스텀 빌드
 
 ```bash
 # 이미지 빌드
@@ -621,9 +565,9 @@ docker run -d \
 
 ---
 
-## 멀티 프로세스 크로스 프로세스 디버깅
+### 멀티 프로세스 크로스 프로세스 디버깅
 
-### 크로스 프로세스 스모크 테스트
+#### 크로스 프로세스 스모크 테스트
 
 ```bash
 # 멀티 인스턴스 환경이 실행 중인지 확인
@@ -638,7 +582,7 @@ docker compose -f docker-compose.multi.yml up -d --build
 - `game-2` → `social` 크로스 프로세스 호출
 - `code=0` 및 `FriendCount >= 1` 반환
 
-### 봇 스트레스 테스트
+#### 봇 스트레스 테스트
 
 실제 클라이언트를 시뮬레이션하여 "로그인 → 온라인 → 능동적 연결 해제 → 재연결 로그인"을 반복:
 
@@ -665,7 +609,7 @@ RUN_SECONDS=300 \
 | `DISCONNECT_AFTER_LOGIN_SECONDS` | 로그인 후 연결 해제 지연(초) | `20` |
 | `RUN_SECONDS` | 총 실행 시간(초) | `300` |
 
-### 일반적인 문제 해결 명령
+#### 일반적인 문제 해결 명령
 
 ```bash
 # 모든 서비스 로그 확인
@@ -680,16 +624,16 @@ docker compose -f docker-compose.multi.yml up -d --build
 
 ---
 
-## 모니터링 및 관측 가능성
+### 모니터링 및 관측 가능성
 
-### 엔드포인트
+#### 엔드포인트
 
 | 엔드포인트 | 설명 |
 |:---------|:-----|
 | `http://<host>:<HttpPort>/game/api/health` | 헬스 체크 |
 | `http://<host>:<MetricsPort>/metrics` | Prometheus 메트릭 |
 
-### 메트릭 카테고리
+#### 메트릭 카테고리
 
 - **데이터베이스**: 작업 지연 시간(`db_operation_latency_ms`), 재시도 횟수(`db_open_retry_total`), 헬스 상태(`db_health_status`)
 - **네트워크**: 연결 수, 메시지 처리량, 바이트 전송량
@@ -698,9 +642,9 @@ docker compose -f docker-compose.multi.yml up -d --build
 
 ---
 
-## 테스트
+### 테스트
 
-### 테스트 실행
+#### 테스트 실행
 
 ```bash
 # 모든 테스트 실행
@@ -713,7 +657,7 @@ dotnet test Tests/GameFrameX.Tests/GameFrameX.Tests.csproj
 dotnet test --logger "console;verbosity=detailed"
 ```
 
-### 테스트 커버리지
+#### 테스트 커버리지
 
 테스트 프로젝트는 **xUnit** 기반이며, 다음 모듈을 커버합니다:
 
@@ -730,7 +674,128 @@ dotnet test --logger "console;verbosity=detailed"
 
 ---
 
-## 기여 가이드
+## 아키텍처
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        클라이언트 레이어                          │
+│         Unity3D / Godot / LayaBox / Cocos Creator               │
+├─────────────────────────────────────────────────────────────────┤
+│                       네트워크 레이어                             │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
+│  │   TCP    │ │WebSocket │ │   HTTP   │ │   KCP    │           │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │
+├─────────────────────────────────────────────────────────────────┤
+│                     메시지 처리 레이어                             │
+│  ┌────────────────┐ ┌────────────────┐ ┌────────────────┐      │
+│  │TCP 메시지       │ │  HTTP 핸들러   │ │크로스 프로세스  │      │
+│  │핸들러          │ │               │ │메시지 라우터    │      │
+│  └────────────────┘ └────────────────┘ └────────────────┘      │
+├─────────────────────────────────────────────────────────────────┤
+│                       Actor 레이어                               │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
+│  │ 플레이어 │ │  서버    │ │  계정    │ │ 글로벌   │           │
+│  │  Actor   │ │  Actor   │ │  Actor   │ │  Actor   │           │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │
+├─────────────────────────────────────────────────────────────────┤
+│         컴포넌트-에이전트 레이어(핫 업데이트 경계)                 │
+│  ┌─────────────────────┐  ┌─────────────────────────────┐      │
+│  │ Apps 레이어 (핫불가)  │  │ Hotfix 레이어 (핫 가능)      │      │
+│  │ StateComponent<T>   │←→│ StateComponentAgent<T,TState>│      │
+│  │ CacheState          │  │ ComponentAgent               │      │
+│  └─────────────────────┘  └─────────────────────────────┘      │
+├─────────────────────────────────────────────────────────────────┤
+│                      데이터베이스 레이어                          │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                    MongoDB                               │    │
+│  └─────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 프로젝트 구조
+
+```
+Server/
+├── GameFrameX.Launcher/              # 애플리케이션 진입점
+├── GameFrameX.StartUp/               # 시작 오케스트레이션 및 초기화
+├── GameFrameX.Core/                  # 코어 프레임워크(Actor 시스템, 컴포넌트, 이벤트, 핫 업데이트 관리)
+├── GameFrameX.Apps/                  # 상태 데이터 레이어(계정, 플레이어, 서버 모듈) — 핫 업데이트 불가
+├── GameFrameX.Hotfix/                # 비즈니스 로직 레이어(HTTP, 플레이어, 서버 핸들러) — 핫 업데이트 가능
+├── GameFrameX.Config/                # 게임 설정 테이블(JSON 형식, LuBan 생성)
+├── GameFrameX.Core.Config/           # 코어 설정 관리
+├── GameFrameX.Proto/                 # ProtoBuf 프로토콜 정의
+├── GameFrameX.ProtoBuf.Net/          # ProtoBuf 직렬화 구현
+├── GameFrameX.NetWork/               # 네트워크 코어(메시지 객체, 센더, WebSocket)
+├── GameFrameX.NetWork.Abstractions/  # 네트워크 인터페이스(IMessage, IMessageHandler, 메시지 매핑)
+├── GameFrameX.NetWork.HTTP/          # HTTP 서버(Swagger, Kestrel, BaseHttpHandler)
+├── GameFrameX.NetWork.Kcp/           # KCP 프로토콜 지원(UDP 기반 신뢰성 전송)
+├── GameFrameX.NetWork.Message/       # 메시지 파이프라인 및 코덱
+├── GameFrameX.NetWork.RemoteMessaging/ # 크로스 프로세스 원격 메시지(서킷 브레이커, 재시도, 일관 해싱)
+├── GameFrameX.DataBase/              # 데이터베이스 추상 레이어
+├── GameFrameX.DataBase.Mongo/        # MongoDB 구현(헬스 모니터링, 재시도, 배치 작업)
+├── GameFrameX.Localization/          # 현지화 시스템(Keys.*.cs + .resx 리소스 파일)
+├── GameFrameX.Monitor/               # OpenTelemetry + Prometheus 메트릭 통합
+├── GameFrameX.Utility/               # 유틸리티(로깅, 압축, 오브젝트 풀, Mapster, Harmony)
+├── GameFrameX.Client/                # 테스트 클라이언트(TCP 연결)
+├── GameFrameX.Architecture.Analyzers/         # Roslyn 아키텍처 분석기
+├── GameFrameX.Hotfix.WrapperGenerator/ # Roslyn 소스 제너레이터(핫 업데이트 프록시 래퍼 클래스)
+├── GameFrameX.AppHost/               # .NET Aspire 애플리케이션 호스트
+├── GameFrameX.AppHost.ServiceDefaults/ # Aspire 공유 기본 설정(OTel, 서비스 디스커버리)
+└── Tests/
+    └── GameFrameX.Tests/             # xUnit 테스트 스위트
+```
+
+---
+
+## 의존성
+
+| 패키지 | 설명 |
+|:--|:--|
+| `GameFrameX.Foundation.*` | 현지화, 로깅, 명령줄 옵션, ORM 특성, 해싱, HTTP 응답 정규화, 유틸리티 |
+| `GameFrameX.SuperSocket.Server` / `.ClientEngine` / `.Udp` / `.WebSocket.Server` | TCP, UDP, WebSocket 네트워크 전송 |
+| `MongoDB.Driver` | MongoDB 영속화 드라이버 |
+| `Kcp` | UDP 기반 신뢰성 전송 |
+| `OpenTelemetry.*` + `Grafana.OpenTelemetry` | 메트릭, 분산 추적, 런타임 계측 |
+| `prometheus-net.AspNetCore` | Prometheus 메트릭 내보내기 |
+| `Mapster` | 객체 매핑 |
+| `Lib.Harmony` | 런타임 메서드 패치 |
+| `Quartz` | 예약 작업 스케줄링 |
+| `Swashbuckle.AspNetCore.SwaggerGen` | HTTP API용 Swagger 문서 |
+| `Aspire.Hosting.AppHost` / `Microsoft.Extensions.ServiceDiscovery` | Aspire 오케스트레이션 및 서비스 검색 |
+| `xunit` | 단위 테스트 프레임워크 |
+
+---
+
+## 문서 및 자료
+
+- [공식 문서](https://gameframex.doc.alianblank.com/)
+- [GitHub 저장소](https://github.com/GameFrameX)
+- [Gitee 저장소](https://gitee.com/GameFrameX)
+- [CNB 저장소](https://cnb.cool/GameFrameX)
+- [Unity 클라이언트](https://github.com/GameFrameX/GameFrameX.Unity)
+- [이슈 트래커](https://github.com/GameFrameX/GameFrameX/issues)
+- [커뮤니티 토론](https://github.com/GameFrameX/GameFrameX/discussions)
+
+---
+
+## 커뮤니티 및 지원
+
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/GameFrameX/gameframex)
+[![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/VDWUjWMDw9)
+[<img src="https://cdn.jsdelivr.net/npm/devicon@2/icons/linkedin/linkedin-original.svg" height="28" alt="LinkedIn" />](https://www.linkedin.com/in/alianblank)
+[![Reddit](https://img.shields.io/badge/Reddit-FF4500?style=for-the-badge&logo=reddit&logoColor=white)](https://www.reddit.com/r/GameFrameX/)
+[![X](https://img.shields.io/badge/X-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/alian_blank)
+[![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/channel/UCD9QhSFJ5xZkn5NTSV-DVAw)
+[![Bluesky](https://img.shields.io/badge/Bluesky-0285FF?style=for-the-badge&logo=bluesky&logoColor=white)](https://bsky.app/profile/alianblank.bsky.social)
+[![Bilibili](https://img.shields.io/badge/Bilibili-00A1D6?style=for-the-badge&logo=bilibili&logoColor=white)](https://www.bilibili.com/video/BV1yrpeepEn7)
+[![Gitee](https://img.shields.io/badge/Gitee-C71D23?style=for-the-badge&logo=gitee&logoColor=white)](https://gitee.com/GameFrameX/gameframex)
+![QQ](https://img.shields.io/badge/QQ-467608841%2F233840761-EB1923?style=for-the-badge&logo=qq&logoColor=white)
+
+---
+
+### 기여 가이드
 
 모든 형태의 기여를 환영합니다! 다음 단계를 따라주세요:
 
@@ -744,21 +809,23 @@ dotnet test --logger "console;verbosity=detailed"
 
 ---
 
-## 라이선스
+## 변경 로그
 
-본 프로젝트는 **Apache License 2.0** 라이선스에 따라 배포됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
+GameFrameX Server의 버전 히스토리는 [CHANGELOG.md](CHANGELOG.md)를 참조하세요.
 
 ---
 
-## 관련 링크
+## 라이선스
 
-- [공식 문서](https://gameframex.doc.alianblank.com/)
-- [GitHub 저장소](https://github.com/GameFrameX)
-- [Gitee 저장소](https://gitee.com/GameFrameX)
-- [CNB 저장소](https://cnb.cool/GameFrameX)
-- [Unity 클라이언트](https://github.com/GameFrameX/GameFrameX.Unity)
-- [이슈 트래커](https://github.com/GameFrameX/GameFrameX/issues)
-- [커뮤니티 토론](https://github.com/GameFrameX/GameFrameX/discussions)
+자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
+
+<!--
+EN: See [LICENSE](LICENSE) for license information.
+zh-CN: 详见 [LICENSE](LICENSE) 文件。
+zh-TW: 詳見 [LICENSE](LICENSE) 檔案。
+ja: 詳しくは [LICENSE](LICENSE) をご参照ください。
+ko: 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
+-->
 
 ---
 

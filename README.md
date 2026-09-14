@@ -1,55 +1,68 @@
 <div align="center">
 
-![GameFrameX Logo](https://download.alianblank.com/gameframex/gameframex_logo_320.png)
+<img src="https://download.alianblank.com/gameframex/gameframex_logo_320.png" alt="Game Frame X Logo" width="160" />
 
 # GameFrameX Server
 
-[![Version](https://img.shields.io/github/v/release/GameFrameX/GameFrameX.Server.Source?label=version&color=green)](https://github.com/GameFrameX/GameFrameX.Server.Source/releases)
+[![License](https://img.shields.io/badge/license-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/github/v/release/GameFrameX/GameFrameX.Server.Source)](https://github.com/GameFrameX/GameFrameX.Server.Source/releases)
 [![.NET](https://img.shields.io/badge/.NET-10.0-purple.svg)](https://dotnet.microsoft.com/download/dotnet/10.0)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Documentation](https://img.shields.io/badge/docs-gameframex.doc.alianblank.com-brightgreen.svg)](https://gameframex.doc.alianblank.com)
 
-**High-Performance, Cross-Platform Game Server Framework**
+[![Discord](https://img.shields.io/badge/-5865F2?logo=discord&logoColor=white)](https://discord.gg/VDWUjWMDw9)
+[![GitHub](https://img.shields.io/badge/-181717?logo=github&logoColor=white)](https://github.com/GameFrameX/gameframex)
+[![Bilibili](https://img.shields.io/badge/-00A1D6?logo=bilibili&logoColor=white)](https://www.bilibili.com/video/BV1yrpeepEn7)
+[![Gitee](https://img.shields.io/badge/-C71D23?logo=gitee&logoColor=white)](https://gitee.com/GameFrameX/gameframex)
 
-[📖 Documentation](https://gameframex.doc.alianblank.com) • [🚀 Quick Start](#quick-start) • [💬 QQ Group: 467608841](https://qm.qq.com/cgi-bin/qm/qr?k=sYFd1nv6m2KZIWFLorZ5pBR0AE5ZhbuL&jump_from=webapi&authKey=oCu+uoL3n35fT5SEt7iLgGtROPxh31n/rHUxRlp0w1f+j38W4tKBuWyRH3KEdwHN)
+**All-in-One Solution for Indie Game Development · Empowering Indie Developers' Dreams**
 
----
+<br />
 
-🌐 **Language**: **English** | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
+[Documentation](https://gameframex.doc.alianblank.com) · [Quick Start](#quick-start) · QQ Group: 467608841 / 233840761
 
----
+<br />
+
+**English** | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
 
 </div>
 
 ## Table of Contents
 
-- [Introduction](#introduction)
-- [Core Features](#core-features)
-- [Architecture](#architecture)
-- [Project Structure](#project-structure)
+- [Project Overview](#project-overview)
+  - [Features](#features)
 - [Quick Start](#quick-start)
-- [Configuration Management](#configuration-management)
-- [Business Logic Development](#business-logic-development)
-- [Hot Update Mechanism](#hot-update-mechanism)
-- [Docker Deployment](#docker-deployment)
-- [Multi-Process Cross-Process Debugging](#multi-process-cross-process-debugging)
-- [Monitoring & Observability](#monitoring--observability)
-- [Testing](#testing)
-- [Contributing](#contributing)
+  - [Requirements](#requirements)
+  - [Installation](#installation)
+- [Usage Examples](#usage-examples)
+  - [Configuration Management](#configuration-management)
+  - [Business Logic Development](#business-logic-development)
+  - [Hot Update Mechanism](#hot-update-mechanism)
+  - [Docker Deployment](#docker-deployment)
+  - [Multi-Process Cross-Process Debugging](#multi-process-cross-process-debugging)
+  - [Monitoring & Observability](#monitoring--observability)
+  - [Testing](#testing)
+- [Architecture](#architecture)
+  - [Project Structure](#project-structure)
+- [Dependencies](#dependencies)
+- [Documentation & Resources](#documentation--resources)
+- [Community & Support](#community--support)
+  - [Contributing](#contributing)
+- [Changelog](#changelog)
 - [License](#license)
-- [Related Links](#related-links)
 
 ---
 
-## Introduction
+## Project Overview
 
 GameFrameX Server is a high-performance, cross-platform game server framework built with C# .NET 10.0, designed with the Actor model and supporting hot update mechanisms. Designed for multiplayer online game development, it supports integration with various client platforms including Unity3D, Godot, and LayaBox.
 
 **Design Philosophy**: Simplicity is the ultimate sophistication
 
-## Core Features
+---
 
-### High-Performance Architecture
+### Features
+
+#### High-Performance Architecture
 
 - **Actor Model**: Lock-free high-concurrency system built on TPL DataFlow, avoiding traditional lock performance overhead through message passing
 - **Full Asynchronous Programming**: Complete async/await asynchronous programming model
@@ -57,14 +70,14 @@ GameFrameX Server is a high-performance, cross-platform game server framework bu
 - **Batch Persistence**: Supports batch database writes with configurable batch size and timeout
 - **Snowflake ID Generation**: Built-in distributed unique ID generator with worker node and data center configuration
 
-### Hot Update System
+#### Hot Update System
 
 - **Zero-Downtime Updates**: Runtime loading of new logic assemblies without stopping the service
 - **State-Logic Separation**: Strict separation between persistent state data (Apps layer) and hot-updatable business logic (Hotfix layer)
 - **Graceful Transition**: Old assemblies retain a 10-minute grace period, waiting for in-progress requests to complete before unloading
 - **Version Management**: Supports loading specific versions via HTTP endpoint
 
-### Multi-Protocol Network Communication
+#### Multi-Protocol Network Communication
 
 - **TCP**: High-performance TCP server based on SuperSocket, primary game communication protocol
 - **UDP**: Optional UDP protocol support
@@ -73,93 +86,19 @@ GameFrameX Server is a high-performance, cross-platform game server framework bu
 - **KCP**: UDP reliable transport based on KCP protocol (experimental)
 - **Cross-Process Messaging**: Built-in RemoteMessaging module with circuit breaker, retry strategy, and consistent hashing sharding
 
-### Database & Persistence
+#### Database & Persistence
 
 - **MongoDB Primary Database**: Complete MongoDB integration with health state machine (Healthy → Degraded → Unhealthy → Recovering)
 - **Transparent Persistence**: StateComponent automatic serialization/deserialization, persisted through timed batch ReplaceOne operations
 - **Connection Pool Management**: Configurable connection pool and retry strategy
 - **OpenTelemetry Integration**: Database operation metrics (latency, retry count, health status)
 
-### Monitoring & Observability
+#### Monitoring & Observability
 
 - **OpenTelemetry**: Comprehensive metrics, tracing, and logging
 - **Prometheus**: Native metrics export endpoint
 - **Grafana Loki**: Log aggregation output support
 - **Serilog**: Structured logging with console, file, and Loki multi-output
-
----
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Client Layer                             │
-│         Unity3D / Godot / LayaBox / Cocos Creator               │
-├─────────────────────────────────────────────────────────────────┤
-│                        Network Layer                             │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
-│  │   TCP    │ │WebSocket │ │   HTTP   │ │   KCP    │           │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │
-├─────────────────────────────────────────────────────────────────┤
-│                     Message Processing Layer                     │
-│  ┌────────────────┐ ┌────────────────┐ ┌────────────────┐      │
-│  │TCP Msg Handlers│ │  HTTP Handlers │ │Cross-Proc Router│     │
-│  └────────────────┘ └────────────────┘ └────────────────┘      │
-├─────────────────────────────────────────────────────────────────┤
-│                        Actor Layer                               │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
-│  │ Player   │ │  Server  │ │ Account  │ │  Global  │           │
-│  │  Actor   │ │  Actor   │ │  Actor   │ │  Actor   │           │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │
-├─────────────────────────────────────────────────────────────────┤
-│              Component-Agent Layer (Hot Update Boundary)          │
-│  ┌─────────────────────┐  ┌─────────────────────────────┐      │
-│  │  Apps Layer (Static) │  │ Hotfix Layer (Hot-updatable) │     │
-│  │ StateComponent<T>   │←→│ StateComponentAgent<T,TState>│      │
-│  │ CacheState          │  │ ComponentAgent               │      │
-│  └─────────────────────┘  └─────────────────────────────┘      │
-├─────────────────────────────────────────────────────────────────┤
-│                       Database Layer                             │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │                    MongoDB                               │    │
-│  └─────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Project Structure
-
-```
-Server/
-├── GameFrameX.Launcher/              # Application entry point
-├── GameFrameX.StartUp/               # Startup orchestration and initialization
-├── GameFrameX.Core/                  # Core framework (Actor system, components, events, hot update management)
-├── GameFrameX.Apps/                  # State data layer (Account, Player, Server modules) — not hot-updatable
-├── GameFrameX.Hotfix/                # Business logic layer (HTTP, Player, Server handlers) — hot-updatable
-├── GameFrameX.Config/                # Game configuration tables (JSON format, generated by LuBan)
-├── GameFrameX.Core.Config/           # Core configuration management
-├── GameFrameX.Proto/                 # ProtoBuf protocol definitions
-├── GameFrameX.ProtoBuf.Net/          # ProtoBuf serialization implementation
-├── GameFrameX.NetWork/               # Network core (message objects, sender, WebSocket)
-├── GameFrameX.NetWork.Abstractions/  # Network interfaces (IMessage, IMessageHandler, message mapping)
-├── GameFrameX.NetWork.HTTP/          # HTTP server (Swagger, Kestrel, BaseHttpHandler)
-├── GameFrameX.NetWork.Kcp/           # KCP protocol support (UDP-based reliable transport)
-├── GameFrameX.NetWork.Message/       # Message pipeline and codec
-├── GameFrameX.NetWork.RemoteMessaging/ # Cross-process remote messaging (circuit breaker, retry, consistent hashing)
-├── GameFrameX.DataBase/              # Database abstraction layer
-├── GameFrameX.DataBase.Mongo/        # MongoDB implementation (health monitoring, retry, batch operations)
-├── GameFrameX.Localization/          # Localization system (Keys.*.cs + .resx resource files)
-├── GameFrameX.Monitor/               # OpenTelemetry + Prometheus metrics integration
-├── GameFrameX.Utility/               # Utilities (logging, compression, object pool, Mapster, Harmony)
-├── GameFrameX.Client/                # Test client (TCP connection)
-├── GameFrameX.Architecture.Analyzers/         # Roslyn architecture analyzers
-├── GameFrameX.Hotfix.WrapperGenerator/ # Roslyn source generator (hot update proxy wrapper classes)
-├── GameFrameX.AppHost/               # .NET Aspire application host
-├── GameFrameX.AppHost.ServiceDefaults/ # Aspire shared defaults (OTel, service discovery)
-└── Tests/
-    └── GameFrameX.Tests/             # xUnit test suite
-```
 
 ---
 
@@ -171,7 +110,7 @@ Server/
 - [MongoDB 4.x+](https://www.mongodb.com/try/download/community)
 - Visual Studio 2022 or JetBrains Rider (recommended)
 
-### Installation Steps
+### Installation
 
 1. **Clone the Repository**
    ```bash
@@ -215,11 +154,17 @@ Server/
 
 ---
 
-## Configuration Management
+## Usage Examples
+
+The examples below cover the full development workflow: configuration, business logic, hot update, deployment, and debugging.
+
+---
+
+### Configuration Management
 
 GameFrameX uses command-line arguments (`--Key=Value`) for configuration. All configuration items are defined in the `StartupOptions` class.
 
-### Server Configuration
+#### Server Configuration
 
 | Option             | Description                                                             | Default         | Example          |
 |:-------------------|:------------------------------------------------------------------------|:----------------|:-----------------|
@@ -233,7 +178,7 @@ GameFrameX uses command-line arguments (`--Key=Value`) for configuration. All co
 | `IsUseTimeZone`    | Enable custom timezone                                                  | `false`         | `true`           |
 | `Language`         | Language setting                                                        | None            | `zh-CN`          |
 
-### Network Configuration
+#### Network Configuration
 
 | Option              | Description                               | Default      | Example      |
 |:--------------------|:------------------------------------------|:-------------|:-------------|
@@ -251,7 +196,7 @@ GameFrameX uses command-line arguments (`--Key=Value`) for configuration. All co
 | `HttpUrl`           | API root path                             | `/game/api/` | `/game/api/` |
 | `HttpIsDevelopment` | HTTP development mode (enables Swagger)   | `false`      | `true`       |
 
-### Database Configuration
+#### Database Configuration
 
 | Option             | Description               | Default | Example                     |
 |:-------------------|:--------------------------|:--------|:----------------------------|
@@ -259,7 +204,7 @@ GameFrameX uses command-line arguments (`--Key=Value`) for configuration. All co
 | `DataBaseName`     | Database name             | None    | `gameframex`                |
 | `DataBasePassword` | Database password         | None    | `your_password`             |
 
-### Actor Configuration
+#### Actor Configuration
 
 | Option                 | Description                       | Default | Example |
 |:-----------------------|:----------------------------------|:--------|:--------|
@@ -270,7 +215,7 @@ GameFrameX uses command-line arguments (`--Key=Value`) for configuration. All co
 | `SaveDataBatchCount`   | Batch save count                  | `500`   | `1000`  |
 | `SaveDataBatchTimeOut` | Batch save timeout (ms)           | `30000` | `60000` |
 
-### Logging Configuration
+#### Logging Configuration
 
 | Option                      | Description                 | Default                 | Example       |
 |:----------------------------|:----------------------------|:------------------------|:--------------|
@@ -285,7 +230,7 @@ GameFrameX uses command-line arguments (`--Key=Value`) for configuration. All co
 | `LogIsGrafanaLoki`          | Output to Grafana Loki      | `false`                 | `true`        |
 | `LogGrafanaLokiUrl`         | Grafana Loki URL            | `http://localhost:3100` | —             |
 
-### Monitoring Configuration
+#### Monitoring Configuration
 
 | Option                         | Description                        | Default                | Example |
 |:-------------------------------|:-----------------------------------|:-----------------------|:--------|
@@ -296,14 +241,14 @@ GameFrameX uses command-line arguments (`--Key=Value`) for configuration. All co
 | `IsMonitorMessageTimeOut`      | Monitor message processing timeout | `false`                | `true`  |
 | `MonitorMessageTimeOutSeconds` | Timeout threshold (seconds)        | `1`                    | `5`     |
 
-### ID Generation Configuration
+#### ID Generation Configuration
 
 | Option         | Description                 | Default | Example |
 |:---------------|:----------------------------|:--------|:--------|
 | `WorkerId`     | Snowflake ID worker node ID | `1`     | `2`     |
 | `DataCenterId` | Snowflake ID data center ID | `1`     | `2`     |
 
-### Startup Command Examples
+#### Startup Command Examples
 
 ```bash
 # Minimal startup parameters
@@ -337,9 +282,9 @@ dotnet GameFrameX.Launcher.dll \
 
 ---
 
-## Business Logic Development
+### Business Logic Development
 
-### Component-Agent Pattern
+#### Component-Agent Pattern
 
 The core design pattern of the framework is **state-logic separation**, strictly separating persistent state (Apps layer, not hot-updatable) from business logic (Hotfix layer, hot-updatable).
 
@@ -398,7 +343,7 @@ var bagAgent = await ActorManager.GetComponentAgent<BagComponentAgent>(playerId)
 var result = await bagAgent.AddItem(1001, 10);
 ```
 
-### HTTP Handler
+#### HTTP Handler
 
 HTTP handlers inherit `BaseHttpHandler` and use the `[HttpMessageMapping]` attribute to register routes.
 
@@ -428,7 +373,7 @@ public sealed class GetPlayerInfoHandler : BaseHttpHandler
 }
 ```
 
-### TCP/RPC Message Handler
+#### TCP/RPC Message Handler
 
 TCP message handlers process game messages sent by clients via TCP connections.
 
@@ -467,7 +412,7 @@ internal sealed class AddItemHandler : PlayerRpcComponentHandler<BagComponentAge
 }
 ```
 
-### Event Handler
+#### Event Handler
 
 The event system is used for loosely coupled communication between Actors.
 
@@ -490,9 +435,9 @@ internal sealed class PlayerLoginEventHandler : EventListener<PlayerComponentAge
 
 ---
 
-## Hot Update Mechanism
+### Hot Update Mechanism
 
-### Architecture Principle
+#### Architecture Principle
 
 The hot update system implements runtime loading and unloading of assemblies through `AssemblyLoadContext` (collectible):
 
@@ -518,7 +463,7 @@ The hot update system implements runtime loading and unloading of assemblies thr
 └───────────────────────────────────────────────────────┘
 ```
 
-### Hot Update Process
+#### Hot Update Process
 
 1. **Compile New Logic**: Build the updated `GameFrameX.Hotfix.dll`
 2. **Deploy Assembly**: Copy to the server's specified directory
@@ -528,7 +473,7 @@ The hot update system implements runtime loading and unloading of assemblies thr
 6. **Agent Switching**: `ActorManager.ClearAgent()` clears cached agent instances
 7. **Graceful Transition**: Old assemblies retain a 10-minute grace period, waiting for in-progress requests to complete before unloading
 
-### Hot Update API
+#### Hot Update API
 
 ```bash
 # Trigger hot update (with specified version)
@@ -537,9 +482,9 @@ curl -X POST "http://localhost:28080/game/api/Reload?version=1.7.2"
 
 ---
 
-## Docker Deployment
+### Docker Deployment
 
-### Single Instance Deployment
+#### Single Instance Deployment
 
 Use `docker-compose.yml` to start a complete environment with MongoDB + Game + Social:
 
@@ -567,7 +512,7 @@ Service port mapping:
 | Social TCP  | 29400          | 39400     | Social server          |
 | Social HTTP | 28081          | 38081     | Social server HTTP API |
 
-### Multi-Instance Deployment
+#### Multi-Instance Deployment
 
 Use `docker-compose.multi.yml` to start a cluster with 1 MongoDB + 2 Social + 10 Game instances:
 
@@ -600,7 +545,7 @@ environment:
   # ...
 ```
 
-### Custom Build
+#### Custom Build
 
 ```bash
 # Build image
@@ -620,9 +565,9 @@ docker run -d \
 
 ---
 
-## Multi-Process Cross-Process Debugging
+### Multi-Process Cross-Process Debugging
 
-### Cross-Process Smoke Test
+#### Cross-Process Smoke Test
 
 ```bash
 # Ensure multi-instance environment is running
@@ -638,7 +583,7 @@ Script verification:
 - `game-2` → `social` cross-process call
 - Returns `code=0` and `FriendCount >= 1`
 
-### Bot Stress Testing
+#### Bot Stress Testing
 
 Simulate real clients performing repeated "login → online → active disconnect → reconnect":
 
@@ -665,7 +610,7 @@ Available environment variables:
 | `DISCONNECT_AFTER_LOGIN_SECONDS` | Disconnect delay after login (seconds) | `20`                               |
 | `RUN_SECONDS`                    | Total run duration (seconds)           | `300`                              |
 
-### Common Troubleshooting Commands
+#### Common Troubleshooting Commands
 
 ```bash
 # View all service logs
@@ -680,16 +625,16 @@ docker compose -f docker-compose.multi.yml up -d --build
 
 ---
 
-## Monitoring & Observability
+### Monitoring & Observability
 
-### Endpoints
+#### Endpoints
 
 | Endpoint                                   | Description        |
 |:-------------------------------------------|:-------------------|
 | `http://<host>:<HttpPort>/game/api/health` | Health check       |
 | `http://<host>:<MetricsPort>/metrics`      | Prometheus metrics |
 
-### Metrics Categories
+#### Metrics Categories
 
 - **Database**: Operation latency (`db_operation_latency_ms`), retry count (`db_open_retry_total`), health status (`db_health_status`)
 - **Network**: Connection count, message throughput, byte transfer volume
@@ -698,9 +643,9 @@ docker compose -f docker-compose.multi.yml up -d --build
 
 ---
 
-## Testing
+### Testing
 
-### Running Tests
+#### Running Tests
 
 ```bash
 # Run all tests
@@ -713,7 +658,7 @@ dotnet test Tests/GameFrameX.Tests/GameFrameX.Tests.csproj
 dotnet test --logger "console;verbosity=detailed"
 ```
 
-### Test Coverage
+#### Test Coverage
 
 The test project is based on **xUnit**, covering the following modules:
 
@@ -730,7 +675,127 @@ The test project is based on **xUnit**, covering the following modules:
 
 ---
 
-## Contributing
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         Client Layer                             │
+│         Unity3D / Godot / LayaBox / Cocos Creator               │
+├─────────────────────────────────────────────────────────────────┤
+│                        Network Layer                             │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
+│  │   TCP    │ │WebSocket │ │   HTTP   │ │   KCP    │           │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │
+├─────────────────────────────────────────────────────────────────┤
+│                     Message Processing Layer                     │
+│  ┌────────────────┐ ┌────────────────┐ ┌────────────────┐      │
+│  │TCP Msg Handlers│ │  HTTP Handlers │ │Cross-Proc Router│     │
+│  └────────────────┘ └────────────────┘ └────────────────┘      │
+├─────────────────────────────────────────────────────────────────┤
+│                        Actor Layer                               │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
+│  │ Player   │ │  Server  │ │ Account  │ │  Global  │           │
+│  │  Actor   │ │  Actor   │ │  Actor   │ │  Actor   │           │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │
+├─────────────────────────────────────────────────────────────────┤
+│              Component-Agent Layer (Hot Update Boundary)          │
+│  ┌─────────────────────┐  ┌─────────────────────────────┐      │
+│  │  Apps Layer (Static) │  │ Hotfix Layer (Hot-updatable) │     │
+│  │ StateComponent<T>   │←→│ StateComponentAgent<T,TState>│      │
+│  │ CacheState          │  │ ComponentAgent               │      │
+│  └─────────────────────┘  └─────────────────────────────┘      │
+├─────────────────────────────────────────────────────────────────┤
+│                       Database Layer                             │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                    MongoDB                               │    │
+│  └─────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Project Structure
+
+```
+Server/
+├── GameFrameX.Launcher/              # Application entry point
+├── GameFrameX.StartUp/               # Startup orchestration and initialization
+├── GameFrameX.Core/                  # Core framework (Actor system, components, events, hot update management)
+├── GameFrameX.Apps/                  # State data layer (Account, Player, Server modules) — not hot-updatable
+├── GameFrameX.Hotfix/                # Business logic layer (HTTP, Player, Server handlers) — hot-updatable
+├── GameFrameX.Config/                # Game configuration tables (JSON format, generated by LuBan)
+├── GameFrameX.Core.Config/           # Core configuration management
+├── GameFrameX.Proto/                 # ProtoBuf protocol definitions
+├── GameFrameX.ProtoBuf.Net/          # ProtoBuf serialization implementation
+├── GameFrameX.NetWork/               # Network core (message objects, sender, WebSocket)
+├── GameFrameX.NetWork.Abstractions/  # Network interfaces (IMessage, IMessageHandler, message mapping)
+├── GameFrameX.NetWork.HTTP/          # HTTP server (Swagger, Kestrel, BaseHttpHandler)
+├── GameFrameX.NetWork.Kcp/           # KCP protocol support (UDP-based reliable transport)
+├── GameFrameX.NetWork.Message/       # Message pipeline and codec
+├── GameFrameX.NetWork.RemoteMessaging/ # Cross-process remote messaging (circuit breaker, retry, consistent hashing)
+├── GameFrameX.DataBase/              # Database abstraction layer
+├── GameFrameX.DataBase.Mongo/        # MongoDB implementation (health monitoring, retry, batch operations)
+├── GameFrameX.Localization/          # Localization system (Keys.*.cs + .resx resource files)
+├── GameFrameX.Monitor/               # OpenTelemetry + Prometheus metrics integration
+├── GameFrameX.Utility/               # Utilities (logging, compression, object pool, Mapster, Harmony)
+├── GameFrameX.Client/                # Test client (TCP connection)
+├── GameFrameX.Architecture.Analyzers/         # Roslyn architecture analyzers
+├── GameFrameX.Hotfix.WrapperGenerator/ # Roslyn source generator (hot update proxy wrapper classes)
+├── GameFrameX.AppHost/               # .NET Aspire application host
+├── GameFrameX.AppHost.ServiceDefaults/ # Aspire shared defaults (OTel, service discovery)
+└── Tests/
+    └── GameFrameX.Tests/             # xUnit test suite
+```
+
+---
+
+## Dependencies
+
+| Package | Description |
+|:--|:--|
+| `GameFrameX.Foundation.*` | Localization, logging, command-line options, ORM attributes, hashing, HTTP response normalization, utilities |
+| `GameFrameX.SuperSocket.Server` / `.ClientEngine` / `.Udp` / `.WebSocket.Server` | TCP, UDP, and WebSocket network transport |
+| `MongoDB.Driver` | MongoDB persistence driver |
+| `Kcp` | Reliable UDP transport |
+| `OpenTelemetry.*` + `Grafana.OpenTelemetry` | Metrics, distributed tracing, runtime instrumentation |
+| `prometheus-net.AspNetCore` | Prometheus metrics export |
+| `Mapster` | Object mapping |
+| `Lib.Harmony` | Runtime method patching |
+| `Quartz` | Scheduled task scheduling |
+| `Swashbuckle.AspNetCore.SwaggerGen` | Swagger documentation for the HTTP API |
+| `Aspire.Hosting.AppHost` / `Microsoft.Extensions.ServiceDiscovery` | Aspire orchestration and service discovery |
+| `xunit` | Unit testing framework |
+
+---
+
+## Documentation & Resources
+
+- [Official Documentation](https://gameframex.doc.alianblank.com/)
+- [GitHub Repository](https://github.com/GameFrameX)
+- [Gitee Repository](https://gitee.com/GameFrameX)
+- [CNB Repository](https://cnb.cool/GameFrameX)
+- [Unity Client](https://github.com/GameFrameX/GameFrameX.Unity)
+- [Issue Tracker](https://github.com/GameFrameX/GameFrameX/issues)
+- [Community Discussions](https://github.com/GameFrameX/GameFrameX/discussions)
+
+---
+
+## Community & Support
+
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/GameFrameX/gameframex)
+[![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/VDWUjWMDw9)
+[<img src="https://cdn.jsdelivr.net/npm/devicon@2/icons/linkedin/linkedin-original.svg" height="28" alt="LinkedIn" />](https://www.linkedin.com/in/alianblank)
+[![Reddit](https://img.shields.io/badge/Reddit-FF4500?style=for-the-badge&logo=reddit&logoColor=white)](https://www.reddit.com/r/GameFrameX/)
+[![X](https://img.shields.io/badge/X-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/alian_blank)
+[![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/channel/UCD9QhSFJ5xZkn5NTSV-DVAw)
+[![Bluesky](https://img.shields.io/badge/Bluesky-0285FF?style=for-the-badge&logo=bluesky&logoColor=white)](https://bsky.app/profile/alianblank.bsky.social)
+[![Bilibili](https://img.shields.io/badge/Bilibili-00A1D6?style=for-the-badge&logo=bilibili&logoColor=white)](https://www.bilibili.com/video/BV1yrpeepEn7)
+[![Gitee](https://img.shields.io/badge/Gitee-C71D23?style=for-the-badge&logo=gitee&logoColor=white)](https://gitee.com/GameFrameX/gameframex)
+![QQ](https://img.shields.io/badge/QQ-467608841%2F233840761-EB1923?style=for-the-badge&logo=qq&logoColor=white)
+
+---
+
+### Contributing
 
 We welcome all forms of contributions! Please follow these steps:
 
@@ -744,21 +809,23 @@ Please follow the [Conventional Commits](https://www.conventionalcommits.org/en/
 
 ---
 
-## License
+## Changelog
 
-This project is licensed under the **Apache License 2.0**. See the [LICENSE](LICENSE) file for details.
+See [CHANGELOG.md](CHANGELOG.md) for the version history of GameFrameX Server.
 
 ---
 
-## Related Links
+## License
 
-- [Official Documentation](https://gameframex.doc.alianblank.com/)
-- [GitHub Repository](https://github.com/GameFrameX)
-- [Gitee Repository](https://gitee.com/GameFrameX)
-- [CNB Repository](https://cnb.cool/GameFrameX)
-- [Unity Client](https://github.com/GameFrameX/GameFrameX.Unity)
-- [Issue Tracker](https://github.com/GameFrameX/GameFrameX/issues)
-- [Community Discussions](https://github.com/GameFrameX/GameFrameX/discussions)
+See [LICENSE](LICENSE) for license information.
+
+<!--
+EN: See [LICENSE](LICENSE) for license information.
+zh-CN: 详见 [LICENSE](LICENSE) 文件。
+zh-TW: 詳見 [LICENSE](LICENSE) 檔案。
+ja: 詳しくは [LICENSE](LICENSE) をご参照ください。
+ko: 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
+-->
 
 ---
 

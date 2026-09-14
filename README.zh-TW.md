@@ -1,55 +1,68 @@
 <div align="center">
 
-![GameFrameX Logo](https://download.alianblank.com/gameframex/gameframex_logo_320.png)
+<img src="https://download.alianblank.com/gameframex/gameframex_logo_320.png" alt="Game Frame X Logo" width="160" />
 
 # GameFrameX Server
 
-[![Version](https://img.shields.io/github/v/release/GameFrameX/GameFrameX.Server.Source?label=version&color=green)](https://github.com/GameFrameX/GameFrameX.Server.Source/releases)
+[![License](https://img.shields.io/badge/license-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/github/v/release/GameFrameX/GameFrameX.Server.Source)](https://github.com/GameFrameX/GameFrameX.Server.Source/releases)
 [![.NET](https://img.shields.io/badge/.NET-10.0-purple.svg)](https://dotnet.microsoft.com/download/dotnet/10.0)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Documentation](https://img.shields.io/badge/docs-gameframex.doc.alianblank.com-brightgreen.svg)](https://gameframex.doc.alianblank.com)
 
-**高效能、跨平臺的遊戲伺服器框架**
+[![Discord](https://img.shields.io/badge/-5865F2?logo=discord&logoColor=white)](https://discord.gg/VDWUjWMDw9)
+[![GitHub](https://img.shields.io/badge/-181717?logo=github&logoColor=white)](https://github.com/GameFrameX/gameframex)
+[![Bilibili](https://img.shields.io/badge/-00A1D6?logo=bilibili&logoColor=white)](https://www.bilibili.com/video/BV1yrpeepEn7)
+[![Gitee](https://img.shields.io/badge/-C71D23?logo=gitee&logoColor=white)](https://gitee.com/GameFrameX/gameframex)
 
-[📖 文檔](https://gameframex.doc.alianblank.com) • [🚀 快速開始](#快速開始) • [💬 QQ群: 467608841](https://qm.qq.com/cgi-bin/qm/qr?k=sYFd1nv6m2KZIWFLorZ5pBR0AE5ZhbuL&jump_from=webapi&authKey=oCu+uoL3n35fT5SEt7iLgGtROPxh31n/rHUxRlp0w1f+j38W4tKBuWyRH3KEdwHN)
+**獨立遊戲前後端一體化解決方案 · 獨立遊戲開發者的圓夢大使**
 
----
+<br />
 
-🌐 **語言**: [English](README.md) | [简体中文](README.zh-CN.md) | **繁體中文** | [日本語](README.ja.md) | [한국어](README.ko.md)
+[文檔](https://gameframex.doc.alianblank.com) · [快速開始](#快速開始) · QQ群: 467608841 / 233840761
 
----
+<br />
+
+[English](README.md) | [简体中文](README.zh-CN.md) | **繁體中文** | [日本語](README.ja.md) | [한국어](README.ko.md)
 
 </div>
 
 ## 目錄
 
-- [框架簡介](#框架簡介)
-- [核心特性](#核心特性)
-- [系統架構](#系統架構)
-- [專案結構](#專案結構)
+- [項目簡介](#項目簡介)
+  - [功能特性](#功能特性)
 - [快速開始](#快速開始)
-- [配置管理](#配置管理)
-- [業務邏輯開發](#業務邏輯開發)
-- [熱更新機制](#熱更新機制)
-- [Docker 部署](#docker-部署)
-- [多程序跨程序聯調](#多程序跨程序聯調)
-- [監控與可觀測性](#監控與可觀測性)
-- [測試](#測試)
-- [貢獻指南](#貢獻指南)
-- [許可證](#許可證)
-- [相關連結](#相關連結)
+  - [環境要求](#環境要求)
+  - [安裝](#安裝)
+- [使用範例](#使用範例)
+  - [配置管理](#配置管理)
+  - [業務邏輯開發](#業務邏輯開發)
+  - [熱更新機制](#熱更新機制)
+  - [Docker 部署](#docker-部署)
+  - [多程序跨程序聯調](#多程序跨程序聯調)
+  - [監控與可觀測性](#監控與可觀測性)
+  - [測試](#測試)
+- [架構概覽](#架構概覽)
+  - [專案結構](#專案結構)
+- [依賴](#依賴)
+- [文檔與資源](#文檔與資源)
+- [社區與支援](#社區與支援)
+  - [貢獻指南](#貢獻指南)
+- [更新日誌](#更新日誌)
+- [開源協議](#開源協議)
 
 ---
 
-## 框架簡介
+## 項目簡介
 
 GameFrameX Server 是基於 C# .NET 10.0 開發的高效能、跨平臺遊戲伺服器框架，採用 Actor 模型設計，支援熱更新機制。專為多人線上遊戲開發而設計，支援 Unity3D、Godot、LayaBox 等多種客戶端平臺整合。
 
 **設計理念**：大道至簡，以簡化繁
 
-## 核心特性
+---
 
-### 高效能架構
+### 功能特性
+
+#### 高效能架構
 
 - **Actor 模型**：基於 TPL DataFlow 構建的無鎖高併發系統，透過訊息傳遞機制避免傳統鎖效能損耗
 - **全非同步程式設計**：完整的 async/await 非同步程式設計模型
@@ -57,14 +70,14 @@ GameFrameX Server 是基於 C# .NET 10.0 開發的高效能、跨平臺遊戲伺
 - **批次持久化**：支援批次資料庫寫入，可配置批次大小和逾時時間
 - **雪花 ID 生成**：內建分散式唯一 ID 生成器，支援工作節點和資料中心配置
 
-### 熱更新系統
+#### 熱更新系統
 
 - **零停機更新**：執行時載入新邏輯組件，無需停止服務
 - **狀態邏輯分離**：持久化狀態資料（Apps 層）與可熱更業務邏輯（Hotfix 層）嚴格分離
 - **優雅過渡**：舊組件保留 10 分鐘寬限期，等待進行中請求完成後卸載
 - **版本管理**：支援透過 HTTP 端點指定版本號載入
 
-### 多協議網路通訊
+#### 多協議網路通訊
 
 - **TCP**：基於 SuperSocket 的高效能 TCP 伺服器，主要遊戲通訊協議
 - **UDP**：可選的 UDP 協議支援
@@ -73,93 +86,19 @@ GameFrameX Server 是基於 C# .NET 10.0 開發的高效能、跨平臺遊戲伺
 - **KCP**：基於 KCP 協議的 UDP 可靠傳輸（實驗性）
 - **跨程序訊息**：內建 RemoteMessaging 模組，支援斷路器、重試策略、一致性雜湊分片
 
-### 資料庫與持久化
+#### 資料庫與持久化
 
 - **MongoDB 主資料庫**：完整的 MongoDB 整合，支援健康狀態機（Healthy → Degraded → Unhealthy → Recovering）
 - **透明持久化**：StateComponent 自動序列化/反序列化，透過定時批次 ReplaceOne 操作持久化
 - **連線池管理**：可配置的連線池和重試策略
 - **OpenTelemetry 整合**：資料庫操作指標（延遲、重試次數、健康狀態）
 
-### 監控與可觀測性
+#### 監控與可觀測性
 
 - **OpenTelemetry**：全面的指標（Metrics）、追蹤（Tracing）和日誌（Logging）
 - **Prometheus**：原生指標匯出端點
 - **Grafana Loki**：日誌聚合輸出支援
 - **Serilog**：結構化日誌，支援控制檯、檔案、Loki 多輸出
-
----
-
-## 系統架構
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                          客戶端層                                │
-│         Unity3D / Godot / LayaBox / Cocos Creator               │
-├─────────────────────────────────────────────────────────────────┤
-│                          網路層                                  │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
-│  │   TCP    │ │WebSocket │ │   HTTP   │ │   KCP    │           │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │
-├─────────────────────────────────────────────────────────────────┤
-│                       訊息處理層                                  │
-│  ┌────────────────┐ ┌────────────────┐ ┌────────────────┐      │
-│  │ TCP 訊息處理器  │ │  HTTP 處理器   │ │ 跨程序訊息路由  │      │
-│  └────────────────┘ └────────────────┘ └────────────────┘      │
-├─────────────────────────────────────────────────────────────────┤
-│                       Actor 層                                   │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
-│  │ 玩家     │ │ 伺服器   │ │  帳戶    │ │ 全域     │           │
-│  │ Actor    │ │ Actor    │ │  Actor   │ │ Actor    │           │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │
-├─────────────────────────────────────────────────────────────────┤
-│                    元件-代理層（熱更新邊界）                        │
-│  ┌─────────────────────┐  ┌─────────────────────────────┐      │
-│  │ Apps 層 (不可熱更)   │  │ Hotfix 層 (可熱更)           │      │
-│  │ StateComponent<T>   │←→│ StateComponentAgent<T,TState>│      │
-│  │ CacheState          │  │ ComponentAgent               │      │
-│  └─────────────────────┘  └─────────────────────────────┘      │
-├─────────────────────────────────────────────────────────────────┤
-│                       資料庫層                                    │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │                    MongoDB                               │    │
-│  └─────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 專案結構
-
-```
-Server/
-├── GameFrameX.Launcher/              # 應用入口點
-├── GameFrameX.StartUp/               # 啟動編排和初始化
-├── GameFrameX.Core/                  # 核心框架（Actor 系統、元件、事件、熱更新管理）
-├── GameFrameX.Apps/                  # 狀態資料層（帳戶、玩家、伺服器模組）— 不可熱更
-├── GameFrameX.Hotfix/                # 業務邏輯層（HTTP、玩家、伺服器處理器）— 可熱更
-├── GameFrameX.Config/                # 遊戲配置表（JSON 格式，LuBan 生成）
-├── GameFrameX.Core.Config/           # 核心配置管理
-├── GameFrameX.Proto/                 # ProtoBuf 協議定義
-├── GameFrameX.ProtoBuf.Net/          # ProtoBuf 序列化實作
-├── GameFrameX.NetWork/               # 網路核心（訊息物件、傳送器、WebSocket）
-├── GameFrameX.NetWork.Abstractions/  # 網路介面（IMessage、IMessageHandler、訊息映射）
-├── GameFrameX.NetWork.HTTP/          # HTTP 伺服器（Swagger、Kestrel、BaseHttpHandler）
-├── GameFrameX.NetWork.Kcp/           # KCP 協議支援（基於 UDP 的可靠傳輸）
-├── GameFrameX.NetWork.Message/       # 訊息管道和編解碼
-├── GameFrameX.NetWork.RemoteMessaging/ # 跨程序遠端訊息（斷路器、重試、一致性雜湊）
-├── GameFrameX.DataBase/              # 資料庫抽象層
-├── GameFrameX.DataBase.Mongo/        # MongoDB 實作（健康監控、重試、批次操作）
-├── GameFrameX.Localization/          # 本地化系統（Keys.*.cs + .resx 資源檔案）
-├── GameFrameX.Monitor/               # OpenTelemetry + Prometheus 指標整合
-├── GameFrameX.Utility/               # 工具集（日誌、壓縮、物件池、Mapster、Harmony）
-├── GameFrameX.Client/                # 測試客戶端（TCP 連線）
-├── GameFrameX.Architecture.Analyzers/         # Roslyn 架構分析器
-├── GameFrameX.Hotfix.WrapperGenerator/ # Roslyn 原始碼生成器（熱更新代理包裝類別）
-├── GameFrameX.AppHost/               # .NET Aspire 應用主機
-├── GameFrameX.AppHost.ServiceDefaults/ # Aspire 共享預設配置（OTel、服務發現）
-└── Tests/
-    └── GameFrameX.Tests/             # xUnit 測試套件
-```
 
 ---
 
@@ -171,7 +110,7 @@ Server/
 - [MongoDB 4.x+](https://www.mongodb.com/try/download/community)
 - Visual Studio 2022 或 JetBrains Rider（推薦）
 
-### 安裝步驟
+### 安裝
 
 1. **複製儲存庫**
    ```bash
@@ -215,11 +154,17 @@ Server/
 
 ---
 
-## 配置管理
+## 使用範例
+
+以下範例涵蓋從配置、業務邏輯、熱更新到部署與偵錯的完整開發流程。
+
+---
+
+### 配置管理
 
 GameFrameX 使用命令列參數 (`--Key=Value`) 進行配置，所有配置項定義在 `StartupOptions` 類別中。
 
-### 伺服器配置
+#### 伺服器配置
 
 | 配置項 | 說明 | 預設值 | 範例 |
 |:------|:-----|:------|:----|
@@ -233,7 +178,7 @@ GameFrameX 使用命令列參數 (`--Key=Value`) 進行配置，所有配置項�
 | `IsUseTimeZone` | 是否啟用自訂時區 | `false` | `true` |
 | `Language` | 語言設定 | 無 | `zh-CN` |
 
-### 網路配置
+#### 網路配置
 
 | 配置項 | 說明 | 預設值 | 範例 |
 |:------|:-----|:------|:----|
@@ -251,7 +196,7 @@ GameFrameX 使用命令列參數 (`--Key=Value`) 進行配置，所有配置項�
 | `HttpUrl` | API 介面根路徑 | `/game/api/` | `/game/api/` |
 | `HttpIsDevelopment` | HTTP 開發模式（啟用 Swagger） | `false` | `true` |
 
-### 資料庫配置
+#### 資料庫配置
 
 | 配置項 | 說明 | 預設值 | 範例 |
 |:------|:-----|:------|:----|
@@ -259,7 +204,7 @@ GameFrameX 使用命令列參數 (`--Key=Value`) 進行配置，所有配置項�
 | `DataBaseName` | 資料庫名稱 | 無 | `gameframex` |
 | `DataBasePassword` | 資料庫密碼 | 無 | `your_password` |
 
-### Actor 配置
+#### Actor 配置
 
 | 配置項 | 說明 | 預設值 | 範例 |
 |:------|:-----|:------|:----|
@@ -270,7 +215,7 @@ GameFrameX 使用命令列參數 (`--Key=Value`) 進行配置，所有配置項�
 | `SaveDataBatchCount` | 批次儲存數量 | `500` | `1000` |
 | `SaveDataBatchTimeOut` | 批次儲存逾時（毫秒） | `30000` | `60000` |
 
-### 日誌配置
+#### 日誌配置
 
 | 配置項 | 說明 | 預設值 | 範例 |
 |:------|:-----|:------|:----|
@@ -285,7 +230,7 @@ GameFrameX 使用命令列參數 (`--Key=Value`) 進行配置，所有配置項�
 | `LogIsGrafanaLoki` | 輸出到 Grafana Loki | `false` | `true` |
 | `LogGrafanaLokiUrl` | Grafana Loki 位址 | `http://localhost:3100` | — |
 
-### 監控配置
+#### 監控配置
 
 | 配置項 | 說明 | 預設值 | 範例 |
 |:------|:-----|:------|:----|
@@ -296,14 +241,14 @@ GameFrameX 使用命令列參數 (`--Key=Value`) 進行配置，所有配置項�
 | `IsMonitorMessageTimeOut` | 監控訊息處理逾時 | `false` | `true` |
 | `MonitorMessageTimeOutSeconds` | 逾時閾值（秒） | `1` | `5` |
 
-### ID 生成配置
+#### ID 生成配置
 
 | 配置項 | 說明 | 預設值 | 範例 |
 |:------|:-----|:------|:----|
 | `WorkerId` | 雪花 ID 工作節點 ID | `1` | `2` |
 | `DataCenterId` | 雪花 ID 資料中心 ID | `1` | `2` |
 
-### 啟動命令範例
+#### 啟動命令範例
 
 ```bash
 # 最小啟動參數
@@ -337,9 +282,9 @@ dotnet GameFrameX.Launcher.dll \
 
 ---
 
-## 業務邏輯開發
+### 業務邏輯開發
 
-### 元件-代理模式
+#### 元件-代理模式
 
 框架的核心設計模式是**狀態-邏輯分離**，將持久化狀態（Apps 層，不可熱更）與業務邏輯（Hotfix 層，可熱更）嚴格分離。
 
@@ -398,7 +343,7 @@ var bagAgent = await ActorManager.GetComponentAgent<BagComponentAgent>(playerId)
 var result = await bagAgent.AddItem(1001, 10);
 ```
 
-### HTTP 處理器
+#### HTTP 處理器
 
 HTTP 處理器繼承 `BaseHttpHandler`，使用 `[HttpMessageMapping]` 特性註冊路由。
 
@@ -428,7 +373,7 @@ public sealed class GetPlayerInfoHandler : BaseHttpHandler
 }
 ```
 
-### TCP/RPC 訊息處理器
+#### TCP/RPC 訊息處理器
 
 TCP 訊息處理器負責處理客戶端透過 TCP 連線傳送的遊戲訊息。
 
@@ -467,7 +412,7 @@ internal sealed class AddItemHandler : PlayerRpcComponentHandler<BagComponentAge
 }
 ```
 
-### 事件處理器
+#### 事件處理器
 
 事件系統用於 Actor 之間的鬆耦合通訊。
 
@@ -490,9 +435,9 @@ internal sealed class PlayerLoginEventHandler : EventListener<PlayerComponentAge
 
 ---
 
-## 熱更新機制
+### 熱更新機制
 
-### 架構原理
+#### 架構原理
 
 熱更新系統透過 `AssemblyLoadContext`（可回收）實作組件的執行時載入和卸載：
 
@@ -517,7 +462,7 @@ internal sealed class PlayerLoginEventHandler : EventListener<PlayerComponentAge
 └───────────────────────────────────────────────────────┘
 ```
 
-### 熱更新流程
+#### 熱更新流程
 
 1. **編譯新邏輯**：建置更新後的 `GameFrameX.Hotfix.dll`
 2. **部署組件**：複製到伺服器指定目錄
@@ -527,7 +472,7 @@ internal sealed class PlayerLoginEventHandler : EventListener<PlayerComponentAge
 6. **代理切換**：`ActorManager.ClearAgent()` 清除快取的代理實例
 7. **優雅過渡**：舊組件保留 10 分鐘寬限期，等待進行中請求完成後卸載
 
-### 熱更新 API
+#### 熱更新 API
 
 ```bash
 # 觸發熱更新（指定版本號）
@@ -536,9 +481,9 @@ curl -X POST "http://localhost:28080/game/api/Reload?version=1.7.2"
 
 ---
 
-## Docker 部署
+### Docker 部署
 
-### 單實例部署
+#### 單實例部署
 
 使用 `docker-compose.yml` 啟動包含 MongoDB + Game + Social 的完整環境：
 
@@ -566,7 +511,7 @@ docker compose down
 | Social TCP | 29400 | 39400 | 社交伺服器 |
 | Social HTTP | 28081 | 38081 | 社交伺服器 HTTP API |
 
-### 多實例部署
+#### 多實例部署
 
 使用 `docker-compose.multi.yml` 啟動包含 1 個 MongoDB + 2 個 Social + 10 個 Game 的叢集環境：
 
@@ -599,7 +544,7 @@ environment:
   # ...
 ```
 
-### 自訂建置
+#### 自訂建置
 
 ```bash
 # 建置映像
@@ -619,9 +564,9 @@ docker run -d \
 
 ---
 
-## 多程序跨程序聯調
+### 多程序跨程序聯調
 
-### 跨程序 Smoke 測試
+#### 跨程序 Smoke 測試
 
 ```bash
 # 確保多實例環境已啟動
@@ -636,7 +581,7 @@ docker compose -f docker-compose.multi.yml up -d --build
 - `game-2` → `social` 跨程序呼叫
 - 回傳 `code=0` 且 `FriendCount >= 1`
 
-### 機器人壓力測試
+#### 機器人壓力測試
 
 模擬真實客戶端反覆「登入 → 線上 → 主動斷開 → 重連登入」：
 
@@ -663,7 +608,7 @@ RUN_SECONDS=300 \
 | `DISCONNECT_AFTER_LOGIN_SECONDS` | 登入後斷開延遲（秒） | `20` |
 | `RUN_SECONDS` | 總執行時長（秒） | `300` |
 
-### 常用排查命令
+#### 常用排查命令
 
 ```bash
 # 檢視所有服務日誌
@@ -678,16 +623,16 @@ docker compose -f docker-compose.multi.yml up -d --build
 
 ---
 
-## 監控與可觀測性
+### 監控與可觀測性
 
-### 端點
+#### 端點
 
 | 端點 | 說明 |
 |:----|:-----|
 | `http://<host>:<HttpPort>/game/api/health` | 健康檢查 |
 | `http://<host>:<MetricsPort>/metrics` | Prometheus 指標 |
 
-### 指標分類
+#### 指標分類
 
 - **資料庫**：操作延遲（`db_operation_latency_ms`）、重試次數（`db_open_retry_total`）、健康狀態（`db_health_status`）
 - **網路**：連線數、訊息吞吐量、位元組傳輸量
@@ -696,9 +641,9 @@ docker compose -f docker-compose.multi.yml up -d --build
 
 ---
 
-## 測試
+### 測試
 
-### 執行測試
+#### 執行測試
 
 ```bash
 # 執行所有測試
@@ -711,7 +656,7 @@ dotnet test Tests/GameFrameX.Tests/GameFrameX.Tests.csproj
 dotnet test --logger "console;verbosity=detailed"
 ```
 
-### 測試覆蓋範圍
+#### 測試覆蓋範圍
 
 測試專案基於 **xUnit**，覆蓋以下模組：
 
@@ -728,7 +673,127 @@ dotnet test --logger "console;verbosity=detailed"
 
 ---
 
-## 貢獻指南
+## 架構概覽
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                          客戶端層                                │
+│         Unity3D / Godot / LayaBox / Cocos Creator               │
+├─────────────────────────────────────────────────────────────────┤
+│                          網路層                                  │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
+│  │   TCP    │ │WebSocket │ │   HTTP   │ │   KCP    │           │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │
+├─────────────────────────────────────────────────────────────────┤
+│                       訊息處理層                                  │
+│  ┌────────────────┐ ┌────────────────┐ ┌────────────────┐      │
+│  │ TCP 訊息處理器  │ │  HTTP 處理器   │ │ 跨程序訊息路由  │      │
+│  └────────────────┘ └────────────────┘ └────────────────┘      │
+├─────────────────────────────────────────────────────────────────┤
+│                       Actor 層                                   │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
+│  │ 玩家     │ │ 伺服器   │ │  帳戶    │ │ 全域     │           │
+│  │ Actor    │ │ Actor    │ │  Actor   │ │ Actor    │           │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │
+├─────────────────────────────────────────────────────────────────┤
+│                    元件-代理層（熱更新邊界）                        │
+│  ┌─────────────────────┐  ┌─────────────────────────────┐      │
+│  │ Apps 層 (不可熱更)   │  │ Hotfix 層 (可熱更)           │      │
+│  │ StateComponent<T>   │←→│ StateComponentAgent<T,TState>│      │
+│  │ CacheState          │  │ ComponentAgent               │      │
+│  └─────────────────────┘  └─────────────────────────────┘      │
+├─────────────────────────────────────────────────────────────────┤
+│                       資料庫層                                    │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                    MongoDB                               │    │
+│  └─────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 專案結構
+
+```
+Server/
+├── GameFrameX.Launcher/              # 應用入口點
+├── GameFrameX.StartUp/               # 啟動編排和初始化
+├── GameFrameX.Core/                  # 核心框架（Actor 系統、元件、事件、熱更新管理）
+├── GameFrameX.Apps/                  # 狀態資料層（帳戶、玩家、伺服器模組）— 不可熱更
+├── GameFrameX.Hotfix/                # 業務邏輯層（HTTP、玩家、伺服器處理器）— 可熱更
+├── GameFrameX.Config/                # 遊戲配置表（JSON 格式，LuBan 生成）
+├── GameFrameX.Core.Config/           # 核心配置管理
+├── GameFrameX.Proto/                 # ProtoBuf 協議定義
+├── GameFrameX.ProtoBuf.Net/          # ProtoBuf 序列化實作
+├── GameFrameX.NetWork/               # 網路核心（訊息物件、傳送器、WebSocket）
+├── GameFrameX.NetWork.Abstractions/  # 網路介面（IMessage、IMessageHandler、訊息映射）
+├── GameFrameX.NetWork.HTTP/          # HTTP 伺服器（Swagger、Kestrel、BaseHttpHandler）
+├── GameFrameX.NetWork.Kcp/           # KCP 協議支援（基於 UDP 的可靠傳輸）
+├── GameFrameX.NetWork.Message/       # 訊息管道和編解碼
+├── GameFrameX.NetWork.RemoteMessaging/ # 跨程序遠端訊息（斷路器、重試、一致性雜湊）
+├── GameFrameX.DataBase/              # 資料庫抽象層
+├── GameFrameX.DataBase.Mongo/        # MongoDB 實作（健康監控、重試、批次操作）
+├── GameFrameX.Localization/          # 本地化系統（Keys.*.cs + .resx 資源檔案）
+├── GameFrameX.Monitor/               # OpenTelemetry + Prometheus 指標整合
+├── GameFrameX.Utility/               # 工具集（日誌、壓縮、物件池、Mapster、Harmony）
+├── GameFrameX.Client/                # 測試客戶端（TCP 連線）
+├── GameFrameX.Architecture.Analyzers/         # Roslyn 架構分析器
+├── GameFrameX.Hotfix.WrapperGenerator/ # Roslyn 原始碼生成器（熱更新代理包裝類別）
+├── GameFrameX.AppHost/               # .NET Aspire 應用主機
+├── GameFrameX.AppHost.ServiceDefaults/ # Aspire 共享預設配置（OTel、服務發現）
+└── Tests/
+    └── GameFrameX.Tests/             # xUnit 測試套件
+```
+
+---
+
+## 依賴
+
+| 套件 | 說明 |
+|:--|:--|
+| `GameFrameX.Foundation.*` | 本地化、日誌、命令列配置、ORM 特性、雜湊、HTTP 回應正規化、通用工具 |
+| `GameFrameX.SuperSocket.Server` / `.ClientEngine` / `.Udp` / `.WebSocket.Server` | TCP、UDP、WebSocket 網路傳輸 |
+| `MongoDB.Driver` | MongoDB 持久化驅動 |
+| `Kcp` | 基於 UDP 的可靠傳輸 |
+| `OpenTelemetry.*` + `Grafana.OpenTelemetry` | 指標、分散式鏈路追蹤、執行階段插樁 |
+| `prometheus-net.AspNetCore` | Prometheus 指標匯出 |
+| `Mapster` | 物件映射 |
+| `Lib.Harmony` | 執行階段方法修補 |
+| `Quartz` | 排程任務調度 |
+| `Swashbuckle.AspNetCore.SwaggerGen` | HTTP API 的 Swagger 文件 |
+| `Aspire.Hosting.AppHost` / `Microsoft.Extensions.ServiceDiscovery` | Aspire 編排與服務發現 |
+| `xunit` | 單元測試框架 |
+
+---
+
+## 文檔與資源
+
+- [官方文件](https://gameframex.doc.alianblank.com/)
+- [GitHub 儲存庫](https://github.com/GameFrameX)
+- [Gitee 儲存庫](https://gitee.com/GameFrameX)
+- [CNB 儲存庫](https://cnb.cool/GameFrameX)
+- [Unity 客戶端](https://github.com/GameFrameX/GameFrameX.Unity)
+- [問題回饋](https://github.com/GameFrameX/GameFrameX/issues)
+- [社群討論](https://github.com/GameFrameX/GameFrameX/discussions)
+
+---
+
+## 社區與支援
+
+![QQ](https://img.shields.io/badge/QQ-467608841%2F233840761-EB1923?style=for-the-badge&logo=qq&logoColor=white)
+[![Bilibili](https://img.shields.io/badge/Bilibili-00A1D6?style=for-the-badge&logo=bilibili&logoColor=white)](https://www.bilibili.com/video/BV1yrpeepEn7)
+[![Gitee](https://img.shields.io/badge/Gitee-C71D23?style=for-the-badge&logo=gitee&logoColor=white)](https://gitee.com/GameFrameX/gameframex)
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/GameFrameX/gameframex)
+[![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/VDWUjWMDw9)
+[<img src="https://cdn.jsdelivr.net/npm/devicon@2/icons/linkedin/linkedin-original.svg" height="28" alt="LinkedIn" />](https://www.linkedin.com/in/alianblank)
+[![Reddit](https://img.shields.io/badge/Reddit-FF4500?style=for-the-badge&logo=reddit&logoColor=white)](https://www.reddit.com/r/GameFrameX/)
+[![X](https://img.shields.io/badge/X-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/alian_blank)
+[![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/channel/UCD9QhSFJ5xZkn5NTSV-DVAw)
+[![Bluesky](https://img.shields.io/badge/Bluesky-0285FF?style=for-the-badge&logo=bluesky&logoColor=white)](https://bsky.app/profile/alianblank.bsky.social)
+
+---
+
+### 貢獻指南
 
 我們歡迎任何形式的貢獻！請遵循以下步驟：
 
@@ -742,21 +807,23 @@ dotnet test --logger "console;verbosity=detailed"
 
 ---
 
-## 許可證
+## 更新日誌
 
-本專案採用 **Apache License 2.0** 許可證。詳見 [LICENSE](LICENSE) 檔案。
+請參閱 [CHANGELOG.md](CHANGELOG.md) 了解 GameFrameX Server 的版本歷程。
 
 ---
 
-## 相關連結
+## 開源協議
 
-- [官方文件](https://gameframex.doc.alianblank.com/)
-- [GitHub 儲存庫](https://github.com/GameFrameX)
-- [Gitee 儲存庫](https://gitee.com/GameFrameX)
-- [CNB 儲存庫](https://cnb.cool/GameFrameX)
-- [Unity 客戶端](https://github.com/GameFrameX/GameFrameX.Unity)
-- [問題回饋](https://github.com/GameFrameX/GameFrameX/issues)
-- [社群討論](https://github.com/GameFrameX/GameFrameX/discussions)
+詳見 [LICENSE](LICENSE) 檔案。
+
+<!--
+EN: See [LICENSE](LICENSE) for license information.
+zh-CN: 详见 [LICENSE](LICENSE) 文件。
+zh-TW: 詳見 [LICENSE](LICENSE) 檔案。
+ja: 詳しくは [LICENSE](LICENSE) をご参照ください。
+ko: 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
+-->
 
 ---
 
