@@ -166,27 +166,58 @@ public sealed class OnlineAuditService
 
         // 反预言同构：存储按 (Tenant, App) 索引结构性隔离，跨作用域查询与「无数据」都得到空行集。
         var records = await _store.ListAsync(scope.TenantId, scope.AppId, cancellationToken).ConfigureAwait(false);
-        var selected = new List<OnlineAuditRecord>();
-        if (records != null)
-        {
-            foreach (var record in records)
-            {
-                if (record == null || !MatchesFilter(record, request))
-                {
-                    continue;
-                }
-
-                if (hasCursor && !IsAfterCursor(record, cursorOccurredTime, cursorEventId))
-                {
-                    continue;
-                }
-
-                selected.Add(record);
-            }
-        }
-
+        var selected = SelectRecords(records, request, hasCursor, cursorOccurredTime, cursorEventId);
         selected.Sort(CompareRecords);
 
+        return OnlineResult<OnlineAuditPage>.Ok(BuildPage(selected, pageSize));
+    }
+
+    /// <summary>
+    /// 选出落在全部可选过滤内且位于游标之后的记录（过滤在前、游标筛选在全序上生效）。
+    /// <para>
+    /// 返回结果未排序，全序排序由调用方执行。
+    /// </para>
+    /// </summary>
+    /// <param name="records">全量候选记录（存储半边可能返回 null，等价于空集）。</param>
+    /// <param name="request">查询条件。</param>
+    /// <param name="hasCursor">是否携带游标。</param>
+    /// <param name="cursorOccurredTime">游标行的发生时刻（UTC 毫秒）。</param>
+    /// <param name="cursorEventId">游标行的审计标识。</param>
+    /// <returns>命中记录集合（未排序）。</returns>
+    private static List<OnlineAuditRecord> SelectRecords(IReadOnlyList<OnlineAuditRecord> records, OnlineAuditQuery request, bool hasCursor, long cursorOccurredTime, string cursorEventId)
+    {
+        var selected = new List<OnlineAuditRecord>();
+        if (records == null)
+        {
+            return selected;
+        }
+
+        foreach (var record in records)
+        {
+            if (record == null || !MatchesFilter(record, request))
+            {
+                continue;
+            }
+
+            if (hasCursor && !IsAfterCursor(record, cursorOccurredTime, cursorEventId))
+            {
+                continue;
+            }
+
+            selected.Add(record);
+        }
+
+        return selected;
+    }
+
+    /// <summary>
+    /// 按全序切页并组装分页结果：取前 <paramref name="pageSize"/> 行，有更多行时以本页末行编码下一页游标。
+    /// </summary>
+    /// <param name="selected">已按全序排序的候选记录。</param>
+    /// <param name="pageSize">页大小（已校验在 1～<see cref="MaxPageSize"/> 之间）。</param>
+    /// <returns>组装好的审计分页结果。</returns>
+    private static OnlineAuditPage BuildPage(List<OnlineAuditRecord> selected, int pageSize)
+    {
         var page = new List<OnlineAuditRecord>(pageSize);
         foreach (var record in selected)
         {
@@ -201,7 +232,7 @@ public sealed class OnlineAuditService
         var hasMore = selected.Count > page.Count;
         var nextCursor = hasMore ? EncodeCursor(page[page.Count - 1]) : string.Empty;
 
-        return OnlineResult<OnlineAuditPage>.Ok(new OnlineAuditPage(page, new OnlinePageCursor(nextCursor, hasMore)));
+        return new OnlineAuditPage(page, new OnlinePageCursor(nextCursor, hasMore));
     }
 
     /// <summary>
@@ -282,24 +313,51 @@ public sealed class OnlineAuditService
     /// <returns>命中过滤返回 <c>true</c>。</returns>
     private static bool MatchesFilter(OnlineAuditRecord record, OnlineAuditQuery query)
     {
-        if (query.Domains != null && query.Domains.Count > 0)
+        if (!MatchesDomainFilter(record, query.Domains))
         {
-            var domainMatched = false;
-            foreach (var domain in query.Domains)
-            {
-                if (string.Equals(record.Domain, domain, StringComparison.Ordinal))
-                {
-                    domainMatched = true;
-                    break;
-                }
-            }
+            return false;
+        }
 
-            if (!domainMatched)
+        if (!MatchesDimensionFilter(record, query))
+        {
+            return false;
+        }
+
+        return MatchesTimeRangeFilter(record, query);
+    }
+
+    /// <summary>
+    /// 判定域集合过滤是否命中（析取——跨域联查语义；集合为空即不限域）。
+    /// </summary>
+    /// <param name="record">待判定记录。</param>
+    /// <param name="domains">域过滤集合。</param>
+    /// <returns>命中返回 <c>true</c>。</returns>
+    private static bool MatchesDomainFilter(OnlineAuditRecord record, IReadOnlyList<string> domains)
+    {
+        if (domains == null || domains.Count == 0)
+        {
+            return true;
+        }
+
+        foreach (var domain in domains)
+        {
+            if (string.Equals(record.Domain, domain, StringComparison.Ordinal))
             {
-                return false;
+                return true;
             }
         }
 
+        return false;
+    }
+
+    /// <summary>
+    /// 判定玩家 / 操作者 / 事件类型 / 关联标识 / 区服五个维度过滤是否命中（合取；各维度为空表示不过滤）。
+    /// </summary>
+    /// <param name="record">待判定记录。</param>
+    /// <param name="query">查询条件。</param>
+    /// <returns>命中返回 <c>true</c>。</returns>
+    private static bool MatchesDimensionFilter(OnlineAuditRecord record, OnlineAuditQuery query)
+    {
         if (query.PlayerId.HasValue && record.PlayerId != query.PlayerId.Value)
         {
             return false;
@@ -325,6 +383,17 @@ public sealed class OnlineAuditService
             return false;
         }
 
+        return true;
+    }
+
+    /// <summary>
+    /// 判定发生时刻时间窗过滤是否命中（合取闭区间 <c>[StartTime, EndTime]</c>；两端为空表示不过滤）。
+    /// </summary>
+    /// <param name="record">待判定记录。</param>
+    /// <param name="query">查询条件。</param>
+    /// <returns>命中返回 <c>true</c>。</returns>
+    private static bool MatchesTimeRangeFilter(OnlineAuditRecord record, OnlineAuditQuery query)
+    {
         if (query.StartTime.HasValue && record.OccurredTime < query.StartTime.Value)
         {
             return false;
