@@ -195,6 +195,11 @@ GameFrameX uses command-line arguments (`--Key=Value`) for configuration. All co
 | `HttpsPort`         | HTTPS service port                        | None         | `443`        |
 | `HttpUrl`           | API root path                             | `/game/api/` | `/game/api/` |
 | `HttpIsDevelopment` | HTTP development mode (enables Swagger)   | `false`      | `true`       |
+| `IsEnableOnlineAdmin` | Host the Online Runtime + admin API in-process | `false` | `true` |
+| `OnlineAdminPort`   | Online admin API listen port              | `28090`      | `28090`      |
+| `OnlineAdminApiPrefix` | Online admin API route prefix          | `online/admin` | `online/admin` |
+| `OnlineTenantId`    | Online runtime authorized tenant id (scope triple) | `0` | `1` |
+| `OnlineAppId`       | Online runtime authorized app id (scope triple)    | `0` | `1` |
 
 #### Database Configuration
 
@@ -509,8 +514,17 @@ Service port mapping:
 | MongoDB     | 27017          | 37017     | Database               |
 | Game TCP    | 29100          | 39100     | Game server            |
 | Game HTTP   | 28080          | 38080     | Game server HTTP API   |
+| Online Admin | 28090         | 28090     | Online platform admin API (see below) |
 | Social TCP  | 29400          | 39400     | Social server          |
 | Social HTTP | 28081          | 38081     | Social server HTTP API |
+
+#### Online Platform Admin API
+
+When `IsEnableOnlineAdmin=true`, the Game process assembles the Online Runtime (in-process capability library: asset / session / match / social / LiveOps services on in-memory stores) and exposes the admin HTTP API on an independent Kestrel listener:
+
+- Endpoint: `POST http://<server-host>:28090/online/admin/{action}` (all 29 admin actions, HTTP status is always 200; business results travel in the inner envelope `Code`)
+- Scope triple: each request carries `TenantId` / `AppId` / `ServerId`; requests that do not match the authorized `OnlineTenantId` / `OnlineAppId` / `ServerId` are rejected with 3002/3003/3004, missing triple with 3005
+- Registering the server in the GameFrameX Admin console: set the area's `HttpManageUrl` to `http://<server-host>:28090` (the `online/admin` prefix and the action name are appended by the Admin client, per its wire contract)
 
 #### Multi-Instance Deployment
 

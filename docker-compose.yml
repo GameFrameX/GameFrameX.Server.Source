@@ -33,6 +33,9 @@ services:
       - "--OuterPort=29100"
       - "--HttpPort=28080"
       - "--IsEnableHttp=true"
+      - "--IsEnableOnlineAdmin=true"
+      - "--OnlineTenantId=1"
+      - "--OnlineAppId=1"
       - "--DataBaseUrl=mongodb://mongo:27017/?authSource=admin"
       - "--DataBaseName=gameframex"
     environment:
@@ -41,6 +44,7 @@ services:
     ports:
       - "39100:29100"
       - "38080:28080"
+      - "28090:28090"
     volumes:
       - "./running/game/logs:/app/data/logs"
     networks:

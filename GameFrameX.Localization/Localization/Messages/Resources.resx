@@ -400,6 +400,12 @@
     <data name="Launcher.HotfixModuleLoadEnd" xml:space="preserve">
     <value>Hotfix module loading completed...</value>
   </data>
+    <data name="Launcher.OnlineAdminStartBegin" xml:space="preserve">
+    <value>Starting Online admin API assembly (port {0})...</value>
+  </data>
+    <data name="Launcher.OnlineAdminStartEnd" xml:space="preserve">
+    <value>Online admin API assembly completed (tenant {0}, app {1}, server {2})...</value>
+  </data>
     <data name="Launcher.EnterMainLoop" xml:space="preserve">
     <value>Entering game main loop...</value>
   </data>

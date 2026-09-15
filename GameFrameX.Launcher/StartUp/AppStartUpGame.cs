@@ -31,6 +31,8 @@
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.Foundation.Utility;
 using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Online.Runtime;
+using GameFrameX.Online.Runtime.AdminApi;
 using GameFrameX.Utility.Runtime;
 
 namespace GameFrameX.Launcher.StartUp;
@@ -41,6 +43,16 @@ namespace GameFrameX.Launcher.StartUp;
 [StartUpTag(GameServerConst.Game.Name)]
 internal sealed class AppStartUpGame : AppStartUpBase
 {
+    /// <summary>
+    /// Online Runtime 宿主（IsEnableOnlineAdmin 开启时装配；进程退出时随主流程停止）。
+    /// </summary>
+    private OnlineRuntimeHost _onlineRuntime;
+
+    /// <summary>
+    /// Online admin HTTP 服务（与协议端口独立的 Kestrel 监听）。
+    /// </summary>
+    private OnlineAdminApiServer _onlineAdminApi;
+
     public override async Task StartAsync()
     {
         string exitMessage = null;
@@ -74,6 +86,23 @@ internal sealed class AppStartUpGame : AppStartUpBase
             await HotfixManager.LoadHotfixModule(Setting);
             LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.HotfixModuleLoadEnd));
 
+            if (Setting.IsEnableOnlineAdmin)
+            {
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.OnlineAdminStartBegin, Setting.OnlineAdminPort));
+                _onlineRuntime = new OnlineRuntimeHost(new OnlineRuntimeOptions
+                {
+                    TenantId = Setting.OnlineTenantId,
+                    AppId = Setting.OnlineAppId,
+                    ServerId = Setting.ServerId,
+                    AdminPort = Setting.OnlineAdminPort,
+                    AdminApiPrefix = Setting.OnlineAdminApiPrefix,
+                });
+                await _onlineRuntime.StartAsync();
+                _onlineAdminApi = new OnlineAdminApiServer(_onlineRuntime);
+                await _onlineAdminApi.StartAsync();
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.OnlineAdminStartEnd, Setting.OnlineTenantId, Setting.OnlineAppId, Setting.ServerId));
+            }
+
             LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.EnterMainLoop));
             GameAppRuntime.MarkStarted(TimerHelper.GetNowWithUtc());
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.ServerStartEnd, Setting.ServerType));
@@ -86,6 +115,16 @@ internal sealed class AppStartUpGame : AppStartUpBase
         }
 
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.ServerExitBegin));
+        if (_onlineAdminApi != null)
+        {
+            await _onlineAdminApi.StopAsync();
+        }
+
+        if (_onlineRuntime != null)
+        {
+            await _onlineRuntime.StopAsync();
+        }
+
         await HotfixManager.Stop(exitMessage);
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.ServerExitSuccess));
     }
