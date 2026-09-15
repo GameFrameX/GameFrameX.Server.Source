@@ -217,20 +217,11 @@ public sealed class OnlineNotificationService
         }
 
         var now = Now();
-        if (current.ExpiresAtTime > 0 && current.ExpiresAtTime <= now)
+        // 过期兜底独立成方法：命中即就地终结并返回，未到期返回 null 交回主流程继续推送。
+        var expiredResult = await TerminateIfExpiredAsync(tenantId, appId, playerId, current, now, cancellationToken).ConfigureAwait(false);
+        if (expiredResult != null)
         {
-            // 扫描轮还没跑到：到期即终结，不推给玩家（VC-6.13）。
-            var expired = current.Copy();
-            expired.State = OnlineNotificationState.Expired;
-            expired.UpdatedAtTime = now;
-            var terminated = await _store.ReplaceAsync(expired, current.State, current.AttemptCount, cancellationToken).ConfigureAwait(false);
-            if (terminated == null)
-            {
-                return await ConvergeAsync(tenantId, appId, playerId, notificationId, cancellationToken).ConfigureAwait(false);
-            }
-
-            await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(terminated, null), cancellationToken).ConfigureAwait(false);
-            return OnlineResult<OnlineNotification>.Ok(terminated);
+            return expiredResult;
         }
 
         // 在途标记：先落 Queued 再推送。已在途（Queued）的记录**拒绝重投**——「在途」说明另一个调用方
@@ -255,28 +246,7 @@ public sealed class OnlineNotificationService
         await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(queued, null), cancellationToken).ConfigureAwait(false);
 
         var outcome = await DispatchAsync(queued, cancellationToken).ConfigureAwait(false);
-
-        var settled = queued.Copy();
-        settled.UpdatedAtTime = Now();
-        if (outcome.Delivered)
-        {
-            settled.State = OnlineNotificationState.Delivered;
-            settled.DeliveredAtTime = settled.UpdatedAtTime;
-            settled.LastError = string.Empty;
-        }
-        else
-        {
-            settled.LastError = outcome.FailureReason ?? string.Empty;
-            if (outcome.Retryable && settled.AttemptCount < _maxAttempts)
-            {
-                settled.State = OnlineNotificationState.Retrying;
-            }
-            else
-            {
-                // 不可重试（如接收者不存在）或重试次数耗尽：落 Failed 终态，不再占用重试预算。
-                settled.State = OnlineNotificationState.Failed;
-            }
-        }
+        var settled = SettleDispatchOutcome(queued, outcome);
 
         if (!OnlineNotificationStateMachine.TryTransition(OnlineNotificationState.Queued, settled.State))
         {
@@ -503,6 +473,71 @@ public sealed class OnlineNotificationService
         }
 
         return OnlineResult<int>.Ok(attempted);
+    }
+
+    /// <summary>
+    /// 过期兜底（仅由 <see cref="TryDispatchAsync"/> 调用）：到期通知就地终结为
+    /// <see cref="OnlineNotificationState.Expired"/> 并原样返回，绝不推给玩家（VC-6.13）。
+    /// </summary>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="playerId">接收者玩家标识。</param>
+    /// <param name="current">推送入口读到的当前通知快照。</param>
+    /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>命中过期兜底时返回终结结果（含 CAS 失败后的收敛结果）；未设有效期或未到期返回 null，由调用方继续推送主流程。</returns>
+    private async Task<OnlineResult<OnlineNotification>> TerminateIfExpiredAsync(long tenantId, long appId, long playerId, OnlineNotification current, long nowUnixMilliseconds, CancellationToken cancellationToken)
+    {
+        if (current.ExpiresAtTime <= 0 || current.ExpiresAtTime > nowUnixMilliseconds)
+        {
+            // 未设有效期或尚未到期：不走过期兜底，交回主流程继续推送。
+            return null;
+        }
+
+        // 扫描轮还没跑到：到期即终结，不推给玩家（VC-6.13）。
+        var expired = current.Copy();
+        expired.State = OnlineNotificationState.Expired;
+        expired.UpdatedAtTime = nowUnixMilliseconds;
+        var terminated = await _store.ReplaceAsync(expired, current.State, current.AttemptCount, cancellationToken).ConfigureAwait(false);
+        if (terminated == null)
+        {
+            return await ConvergeAsync(tenantId, appId, playerId, current.NotificationId, cancellationToken).ConfigureAwait(false);
+        }
+
+        await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(terminated, null), cancellationToken).ConfigureAwait(false);
+        return OnlineResult<OnlineNotification>.Ok(terminated);
+    }
+
+    /// <summary>
+    /// 按推送回执构建落定快照（仅由 <see cref="TryDispatchAsync"/> 调用；不落库，落定仍由调用方走 CAS）：
+    /// 成功落 <see cref="OnlineNotificationState.Delivered"/>；失败按可重试性与剩余预算落
+    /// <see cref="OnlineNotificationState.Retrying"/> / <see cref="OnlineNotificationState.Failed"/>。
+    /// </summary>
+    /// <param name="queued">在途（Queued）通知快照。</param>
+    /// <param name="outcome">推送出口回执。</param>
+    /// <returns>落定后的通知快照（调用方据此做状态机校验与 CAS 写入）。</returns>
+    private OnlineNotification SettleDispatchOutcome(OnlineNotification queued, OnlineNotificationDispatchOutcome outcome)
+    {
+        var settled = queued.Copy();
+        settled.UpdatedAtTime = Now();
+        if (outcome.Delivered)
+        {
+            settled.State = OnlineNotificationState.Delivered;
+            settled.DeliveredAtTime = settled.UpdatedAtTime;
+            settled.LastError = string.Empty;
+            return settled;
+        }
+
+        settled.LastError = outcome.FailureReason ?? string.Empty;
+        if (outcome.Retryable && settled.AttemptCount < _maxAttempts)
+        {
+            settled.State = OnlineNotificationState.Retrying;
+            return settled;
+        }
+
+        // 不可重试（如接收者不存在）或重试次数耗尽：落 Failed 终态，不再占用重试预算。
+        settled.State = OnlineNotificationState.Failed;
+        return settled;
     }
 
     /// <summary>
