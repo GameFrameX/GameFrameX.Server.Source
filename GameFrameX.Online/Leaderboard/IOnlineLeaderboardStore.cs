@@ -90,4 +90,20 @@ public interface IOnlineLeaderboardStore
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>全序条目副本；空榜返回空列表。</returns>
     Task<List<OnlineLeaderboardEntry>> ListOrderedEntriesAsync(OnlineLeaderboard leaderboard, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 清空榜上条目（**赛季重置的唯一移除入口**；CAS 语义——只有榜上条目集合与
+    /// <paramref name="expectedEntries"/> 逐项一致时才清空，否则拒绝且不改变任何状态）。
+    /// <para>
+    /// 维护约束（红线）：C102 的「条目一经产生不从榜单移除」在赛季维度由此方法开例外——重置作用于整榜，
+    /// 不做单条移除。CAS 比对是**榜首快照与清空之间的写入保护**：调用方（赛季服务）以「先持久化快照、
+    /// 再按同一份快照清空」的次序执行，比对不一致即说明期间有写入落地，此时必须拒绝清空而不是把
+    /// 这条已结算的真实成绩一并抹掉（赛季重置不得丢分）。
+    /// </para>
+    /// </summary>
+    /// <param name="leaderboard">目标榜单定义（调用方先经 <see cref="FindAsync"/> 取得）。</param>
+    /// <param name="expectedEntries">调用方持有的全序条目快照（须来自 <see cref="ListOrderedEntriesAsync"/>）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>清空成功返回 <c>true</c>；榜上条目已变化而拒绝清空返回 <c>false</c>。</returns>
+    Task<bool> TryResetAsync(OnlineLeaderboard leaderboard, IReadOnlyList<OnlineLeaderboardEntry> expectedEntries, CancellationToken cancellationToken = default);
 }

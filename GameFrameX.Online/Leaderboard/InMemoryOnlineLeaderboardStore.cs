@@ -178,6 +178,79 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
         return Task.FromResult(copies);
     }
 
+    /// <inheritdoc />
+    public Task<bool> TryResetAsync(OnlineLeaderboard leaderboard, IReadOnlyList<OnlineLeaderboardEntry> expectedEntries, CancellationToken cancellationToken = default)
+    {
+        if (leaderboard == null)
+        {
+            throw new ArgumentNullException(nameof(leaderboard));
+        }
+
+        if (expectedEntries == null)
+        {
+            throw new ArgumentNullException(nameof(expectedEntries));
+        }
+
+        lock (_syncRoot)
+        {
+            var key = BuildKey(leaderboard.TenantId, leaderboard.AppId, leaderboard.LeaderboardId);
+            if (!_entries.TryGetValue(key, out var boardEntries))
+            {
+                throw new InvalidOperationException("榜单不存在或已失效，重置前必须先经 FindAsync 解析");
+            }
+
+            if (!MatchesExpectedOrdered(leaderboard, boardEntries, expectedEntries))
+            {
+                return Task.FromResult(false);
+            }
+
+            boardEntries.Clear();
+            return Task.FromResult(true);
+        }
+    }
+
+    /// <summary>
+    /// 在临界区内比对榜上条目与调用方持有的快照是否逐项一致（CAS 判据）。
+    /// </summary>
+    /// <param name="leaderboard">榜单定义（取排序方向重建全序）。</param>
+    /// <param name="boardEntries">临界区内的条目表。</param>
+    /// <param name="expectedEntries">调用方持有的全序条目快照。</param>
+    /// <returns>完全一致返回 <c>true</c>。</returns>
+    private static bool MatchesExpectedOrdered(OnlineLeaderboard leaderboard, Dictionary<long, OnlineLeaderboardEntry> boardEntries, IReadOnlyList<OnlineLeaderboardEntry> expectedEntries)
+    {
+        if (boardEntries.Count != expectedEntries.Count)
+        {
+            return false;
+        }
+
+        var current = new List<OnlineLeaderboardEntry>(boardEntries.Values);
+        OnlineLeaderboardOrdering.Sort(leaderboard.SortOrder, current);
+        for (var index = 0; index < current.Count; index++)
+        {
+            if (!MatchesExpectedEntry(current[index], expectedEntries[index]))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 比对单个条目是否与快照一致（玩家、分数、更新时间、提交计数四要素全等）。
+    /// </summary>
+    /// <param name="current">临界区内的条目。</param>
+    /// <param name="expected">快照中的条目。</param>
+    /// <returns>一致返回 <c>true</c>。</returns>
+    private static bool MatchesExpectedEntry(OnlineLeaderboardEntry current, OnlineLeaderboardEntry expected)
+    {
+        return expected != null
+            && current.PlayerId == expected.PlayerId
+            && current.Score == expected.Score
+            && current.LastUpdateTime == expected.LastUpdateTime
+            && current.SubmissionCount == expected.SubmissionCount;
+    }
+
     /// <summary>
     /// 在锁内解析榜单定义（调用方已持锁）。
     /// </summary>
