@@ -429,24 +429,7 @@ public sealed class OnlineTournamentService
             IsReplay = isReplay,
         };
 
-        if (standings.Entries != null)
-        {
-            foreach (var view in standings.Entries)
-            {
-                if (view == null || view.Entry == null)
-                {
-                    continue;
-                }
-
-                var rule = FindRule(tournament.RewardRules, view.Rank);
-                if (rule == null)
-                {
-                    continue;
-                }
-
-                await SettlePlayerAsync(tournament, view.Entry.PlayerId, rule.Rewards, outcome, cancellationToken).ConfigureAwait(false);
-            }
-        }
+        await SettleStandingsEntriesAsync(tournament, standings, outcome, cancellationToken).ConfigureAwait(false);
 
         if (!isReplay && outcome.FailedPlayers.Count == 0)
         {
@@ -457,6 +440,38 @@ public sealed class OnlineTournamentService
         }
 
         return OnlineResult<OnlineTournamentSettlementOutcome>.Ok(outcome);
+    }
+
+    /// <summary>
+    /// 按冻结成绩逐条目结算奖励（跳过无效视图与名次未命中规则的条目；发放经 <see cref="SettlePlayerAsync"/> 幂等执行）。
+    /// </summary>
+    /// <param name="tournament">赛事定义（提供作用域与奖励规则）。</param>
+    /// <param name="standings">结算依据的冻结成绩。</param>
+    /// <param name="outcome">累计回执。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>完成通知。</returns>
+    private async Task SettleStandingsEntriesAsync(OnlineTournament tournament, OnlineTournamentStandings standings, OnlineTournamentSettlementOutcome outcome, CancellationToken cancellationToken)
+    {
+        if (standings.Entries == null)
+        {
+            return;
+        }
+
+        foreach (var view in standings.Entries)
+        {
+            if (view == null || view.Entry == null)
+            {
+                continue;
+            }
+
+            var rule = FindRule(tournament.RewardRules, view.Rank);
+            if (rule == null)
+            {
+                continue;
+            }
+
+            await SettlePlayerAsync(tournament, view.Entry.PlayerId, rule.Rewards, outcome, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
