@@ -307,6 +307,29 @@ public sealed class OnlineFriendService
         var all = await _store.ListByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
         var friendIds = new List<long>();
         var establishedAtTimeByPlayer = new Dictionary<long, long>();
+        CollectEstablishedFriends(all, scope.PlayerId, friendIds, establishedAtTimeByPlayer);
+
+        var names = new Dictionary<long, string>();
+        var serverIds = new Dictionary<long, long>();
+        await ResolveFriendDirectoryAsync(scope, friendIds, names, serverIds, cancellationToken).ConfigureAwait(false);
+
+        var result = await BuildFriendSummariesAsync(scope, friendIds, names, serverIds, establishedAtTimeByPlayer, cancellationToken).ConfigureAwait(false);
+        return OnlineResult<IReadOnlyList<OnlineFriendSummary>>.Ok(result);
+    }
+
+    /// <summary>
+    /// 从全量关系中筛出已建立的好友（填充好友标识列表与建立时刻映射）。
+    /// <para>
+    /// 筛选判据：状态已建立（<see cref="OnlineFriendshipStateMachine.IsEstablished"/>）且对端标识有效；
+    /// 建立时刻优先取答复时刻，未答复过（0）则回退最后更新时刻。
+    /// </para>
+    /// </summary>
+    /// <param name="all">玩家的全量关系列表。</param>
+    /// <param name="playerId">玩家标识。</param>
+    /// <param name="friendIds">输出：已建立好友的标识列表。</param>
+    /// <param name="establishedAtTimeByPlayer">输出：好友标识 → 建立时刻映射。</param>
+    private static void CollectEstablishedFriends(IReadOnlyList<OnlineFriendship> all, long playerId, List<long> friendIds, Dictionary<long, long> establishedAtTimeByPlayer)
+    {
         foreach (var friendship in all)
         {
             if (!OnlineFriendshipStateMachine.IsEstablished(friendship.State))
@@ -314,7 +337,7 @@ public sealed class OnlineFriendService
                 continue;
             }
 
-            var other = friendship.OtherOf(scope.PlayerId);
+            var other = friendship.OtherOf(playerId);
             if (other <= 0)
             {
                 continue;
@@ -323,19 +346,43 @@ public sealed class OnlineFriendService
             friendIds.Add(other);
             establishedAtTimeByPlayer[other] = friendship.RespondedAtTime > 0 ? friendship.RespondedAtTime : friendship.UpdatedAtTime;
         }
+    }
 
-        var names = new Dictionary<long, string>();
-        var serverIds = new Dictionary<long, long>();
-        if (_directory != null && friendIds.Count > 0)
+    /// <summary>
+    /// 解析好友的展示名与归属区服（填充两个映射；未装配目录或无好友时直接返回，保持空映射）。
+    /// </summary>
+    /// <param name="scope">生效作用域。</param>
+    /// <param name="friendIds">已建立好友的标识列表。</param>
+    /// <param name="names">输出：好友标识 → 展示名映射。</param>
+    /// <param name="serverIds">输出：好友标识 → 归属区服映射。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    private async Task ResolveFriendDirectoryAsync(OnlineScope scope, List<long> friendIds, Dictionary<long, string> names, Dictionary<long, long> serverIds, CancellationToken cancellationToken)
+    {
+        if (_directory == null || friendIds.Count == 0)
         {
-            var entries = await _directory.FindAsync(scope.TenantId, scope.AppId, friendIds, cancellationToken).ConfigureAwait(false);
-            foreach (var entry in entries)
-            {
-                names[entry.PlayerId] = entry.Name;
-                serverIds[entry.PlayerId] = entry.ServerId;
-            }
+            return;
         }
 
+        var entries = await _directory.FindAsync(scope.TenantId, scope.AppId, friendIds, cancellationToken).ConfigureAwait(false);
+        foreach (var entry in entries)
+        {
+            names[entry.PlayerId] = entry.Name;
+            serverIds[entry.PlayerId] = entry.ServerId;
+        }
+    }
+
+    /// <summary>
+    /// 组装好友列表条目（展示名缺失或为空时回退为标识字面量；在线状态为读取时即时事实，探针未装配恒为离线）。
+    /// </summary>
+    /// <param name="scope">生效作用域。</param>
+    /// <param name="friendIds">已建立好友的标识列表。</param>
+    /// <param name="names">好友标识 → 展示名映射。</param>
+    /// <param name="serverIds">好友标识 → 归属区服映射。</param>
+    /// <param name="establishedAtTimeByPlayer">好友标识 → 建立时刻映射。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>好友列表条目。</returns>
+    private async Task<List<OnlineFriendSummary>> BuildFriendSummariesAsync(OnlineScope scope, List<long> friendIds, Dictionary<long, string> names, Dictionary<long, long> serverIds, Dictionary<long, long> establishedAtTimeByPlayer, CancellationToken cancellationToken)
+    {
         var result = new List<OnlineFriendSummary>();
         foreach (var friendId in friendIds)
         {
@@ -364,7 +411,7 @@ public sealed class OnlineFriendService
             });
         }
 
-        return OnlineResult<IReadOnlyList<OnlineFriendSummary>>.Ok(result);
+        return result;
     }
 
     /// <summary>
