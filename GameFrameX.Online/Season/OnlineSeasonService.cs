@@ -320,24 +320,7 @@ public sealed class OnlineSeasonService
             IsReplay = isReplay,
         };
 
-        if (snapshot.Entries != null)
-        {
-            foreach (var view in snapshot.Entries)
-            {
-                if (view == null || view.Entry == null)
-                {
-                    continue;
-                }
-
-                var rule = FindRule(season.RewardRules, view.Rank);
-                if (rule == null)
-                {
-                    continue;
-                }
-
-                await SettlePlayerAsync(season, view.Entry.PlayerId, rule.Rewards, outcome, cancellationToken).ConfigureAwait(false);
-            }
-        }
+        await SettleSnapshotEntriesAsync(season, snapshot, outcome, cancellationToken).ConfigureAwait(false);
 
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         if (!isReplay && outcome.FailedPlayers.Count == 0)
@@ -349,6 +332,38 @@ public sealed class OnlineSeasonService
         }
 
         return OnlineResult<OnlineSeasonSettlementOutcome>.Ok(outcome);
+    }
+
+    /// <summary>
+    /// 按冻结快照逐条目结算奖励（跳过无效视图与名次未命中规则的条目；发放经 <see cref="SettlePlayerAsync"/> 幂等执行）。
+    /// </summary>
+    /// <param name="season">赛季定义（提供作用域与奖励规则）。</param>
+    /// <param name="snapshot">结算依据的冻结快照。</param>
+    /// <param name="outcome">累计回执。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>完成通知。</returns>
+    private async Task SettleSnapshotEntriesAsync(OnlineSeason season, OnlineSeasonSnapshot snapshot, OnlineSeasonSettlementOutcome outcome, CancellationToken cancellationToken)
+    {
+        if (snapshot.Entries == null)
+        {
+            return;
+        }
+
+        foreach (var view in snapshot.Entries)
+        {
+            if (view == null || view.Entry == null)
+            {
+                continue;
+            }
+
+            var rule = FindRule(season.RewardRules, view.Rank);
+            if (rule == null)
+            {
+                continue;
+            }
+
+            await SettlePlayerAsync(season, view.Entry.PlayerId, rule.Rewards, outcome, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
