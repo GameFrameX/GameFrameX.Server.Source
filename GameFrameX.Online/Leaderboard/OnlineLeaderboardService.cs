@@ -367,6 +367,46 @@ public sealed class OnlineLeaderboardService
     }
 
     /// <summary>
+    /// 内部：读取榜单全序条目（赛季结束取快照专用；**绕过读缓存直读存储**——快照必须是重置前的最新事实，
+    /// 取到缓存旧值会漏掉刚刚落榜的成绩）。
+    /// </summary>
+    /// <param name="leaderboard">目标榜单（调用方已解析）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>全序条目副本。</returns>
+    internal Task<List<OnlineLeaderboardEntry>> ListOrderedEntriesForSeasonAsync(OnlineLeaderboard leaderboard, CancellationToken cancellationToken = default)
+    {
+        if (leaderboard == null)
+        {
+            throw new ArgumentNullException(nameof(leaderboard));
+        }
+
+        return _store.ListOrderedEntriesAsync(leaderboard, cancellationToken);
+    }
+
+    /// <summary>
+    /// 内部：赛季重置清空榜单条目（CAS；成功后**立即失效读缓存**——否则重置后 TTL 内仍会返回旧榜）。
+    /// </summary>
+    /// <param name="leaderboard">目标榜单（调用方已解析）。</param>
+    /// <param name="expectedEntries">调用方持有的全序条目快照（CAS 判据）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>清空成功返回 <c>true</c>；榜上条目已变化返回 <c>false</c>。</returns>
+    internal async Task<bool> TryResetForSeasonAsync(OnlineLeaderboard leaderboard, IReadOnlyList<OnlineLeaderboardEntry> expectedEntries, CancellationToken cancellationToken = default)
+    {
+        if (leaderboard == null)
+        {
+            throw new ArgumentNullException(nameof(leaderboard));
+        }
+
+        var reset = await _store.TryResetAsync(leaderboard, expectedEntries, cancellationToken).ConfigureAwait(false);
+        if (reset)
+        {
+            InvalidateCache(leaderboard);
+        }
+
+        return reset;
+    }
+
+    /// <summary>
     /// 构造失败回执。
     /// </summary>
     /// <param name="code">错误码。</param>
