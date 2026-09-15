@@ -31,6 +31,7 @@
 namespace GameFrameX.Online.Events;
 
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using GameFrameX.Online.Assets;
 
 /// <summary>
@@ -82,7 +83,7 @@ public static class OnlineAssetEvents
         {
             TransactionId = transaction.TransactionId,
             Operation = transaction.Operation.ToString(),
-            Source = transaction.Source.ToString(),
+            ChangeSource = transaction.Source.ToString(),
             BusinessOrderId = transaction.BusinessOrderId ?? string.Empty,
             Lines = entries.Select(entry => new AssetEventLine { AssetKind = entry.AssetKind.ToString(), AssetId = entry.AssetId, Delta = entry.Delta, AmountBefore = entry.AmountBefore, AmountAfter = entry.AmountAfter }).ToList(),
         };
@@ -130,8 +131,9 @@ public static class OnlineAssetEvents
             set;
         }
 
-        /// <summary>变更来源名。</summary>
-        public string Source
+        /// <summary>变更来源名（wire 字段名固定为 Source，不随属性名演进）。</summary>
+        [JsonPropertyName("Source")]
+        public string ChangeSource
         {
             get;
             set;
