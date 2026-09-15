@@ -228,15 +228,10 @@ public sealed class OnlineMatchmakerCoordinator
             return null;
         }
 
-        var players = new HashSet<long>();
-        if (anchor.PlayerIds == null || anchor.PlayerIds.Count > anchor.TeamSize)
+        var players = BuildAnchorPlayerSet(anchor);
+        if (players == null)
         {
             return null;
-        }
-
-        foreach (var playerId in anchor.PlayerIds)
-        {
-            players.Add(playerId);
         }
 
         var group = new List<OnlineMatchTicket> { anchor };
@@ -247,41 +242,13 @@ public sealed class OnlineMatchmakerCoordinator
 
         foreach (var candidate in ordered)
         {
-            if (candidate.TicketId == anchor.TicketId || consumed.Contains(candidate.TicketId))
-            {
-                continue;
-            }
-
-            if (candidate.PlayerIds == null)
-            {
-                continue;
-            }
-
-            if (players.Count + candidate.PlayerIds.Count > anchor.TeamSize)
-            {
-                continue;
-            }
-
-            if (ContainsAny(players, candidate.PlayerIds))
-            {
-                continue;
-            }
-
-            if (!_rule.CanGroup(anchor, candidate, nowUnixMilliseconds))
-            {
-                continue;
-            }
-
-            if (!await IsSociallyCompatibleAsync(players, candidate, tenantId, appId, cancellationToken).ConfigureAwait(false))
+            if (!await CanAddToGroupAsync(anchor, candidate, players, consumed, nowUnixMilliseconds, tenantId, appId, cancellationToken).ConfigureAwait(false))
             {
                 continue;
             }
 
             group.Add(candidate);
-            foreach (var playerId in candidate.PlayerIds)
-            {
-                players.Add(playerId);
-            }
+            players.UnionWith(candidate.PlayerIds);
 
             if (players.Count == anchor.TeamSize)
             {
@@ -290,6 +257,67 @@ public sealed class OnlineMatchmakerCoordinator
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// 构造基准票据的初始玩家集合（整票累加的起点）。
+    /// </summary>
+    /// <param name="anchor">基准票据。</param>
+    /// <returns>去重后的玩家集合；成员为空或超过目标规模（整票进组必超员）返回 <c>null</c>。</returns>
+    private static HashSet<long> BuildAnchorPlayerSet(OnlineMatchTicket anchor)
+    {
+        if (anchor.PlayerIds == null || anchor.PlayerIds.Count > anchor.TeamSize)
+        {
+            return null;
+        }
+
+        return new HashSet<long>(anchor.PlayerIds);
+    }
+
+    /// <summary>
+    /// 判断候选票据能否累加进当前组（六项裁决依次进行：自票据/已消费 → 空成员 → 超规模 → 成员重叠 → 规则 → 社交）。
+    /// <para>
+    /// 求值顺序与既有逐条 <c>continue</c> 顺序一致：廉价同步判定在前、社交裁决（异步）最后，
+    /// 避免无谓的跨域裁决调用；任一命中即整体不中——跳过候选而不是拆开它（整票进整票出红线的延续）。
+    /// </para>
+    /// </summary>
+    /// <param name="anchor">基准票据（决定目标规模与规则判定基准）。</param>
+    /// <param name="candidate">候选票据。</param>
+    /// <param name="players">已累加玩家集合。</param>
+    /// <param name="consumed">本轮已消费的票据标识。</param>
+    /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>可累加返回 <c>true</c>。</returns>
+    private async Task<bool> CanAddToGroupAsync(OnlineMatchTicket anchor, OnlineMatchTicket candidate, HashSet<long> players, HashSet<string> consumed, long nowUnixMilliseconds, long tenantId, long appId, CancellationToken cancellationToken)
+    {
+        if (candidate.TicketId == anchor.TicketId || consumed.Contains(candidate.TicketId))
+        {
+            return false;
+        }
+
+        if (candidate.PlayerIds == null)
+        {
+            return false;
+        }
+
+        if (players.Count + candidate.PlayerIds.Count > anchor.TeamSize)
+        {
+            return false;
+        }
+
+        if (ContainsAny(players, candidate.PlayerIds))
+        {
+            return false;
+        }
+
+        if (!_rule.CanGroup(anchor, candidate, nowUnixMilliseconds))
+        {
+            return false;
+        }
+
+        return await IsSociallyCompatibleAsync(players, candidate, tenantId, appId, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
