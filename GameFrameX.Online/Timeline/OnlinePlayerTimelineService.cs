@@ -194,6 +194,26 @@ public sealed class OnlinePlayerTimelineService
         await CollectPenaltyRowsAsync(scope, rows, cancellationToken).ConfigureAwait(false);
         await CollectConfigHitRowsAsync(scope, rows, cancellationToken).ConfigureAwait(false);
 
+        var selected = SelectRows(rows, request, hasCursor, cursorOccurredAt, cursorEventId);
+        selected.Sort(CompareEntries);
+
+        return OnlineResult<OnlinePlayerTimelinePage>.Ok(BuildPage(selected, pageSize));
+    }
+
+    /// <summary>
+    /// 选出落在分组 / 时间窗过滤内且位于游标之后的行（过滤在前、游标筛选在全序上生效）。
+    /// <para>
+    /// 返回结果未排序，全序排序由调用方执行。
+    /// </para>
+    /// </summary>
+    /// <param name="rows">全量候选行。</param>
+    /// <param name="request">查询条件。</param>
+    /// <param name="hasCursor">是否携带游标。</param>
+    /// <param name="cursorOccurredAt">游标行的发生时刻（Unix 秒）。</param>
+    /// <param name="cursorEventId">游标行的行标识。</param>
+    /// <returns>命中行集合（未排序）。</returns>
+    private static List<OnlinePlayerTimelineEntry> SelectRows(List<OnlinePlayerTimelineEntry> rows, OnlinePlayerTimelineQuery request, bool hasCursor, long cursorOccurredAt, string cursorEventId)
+    {
         var selected = new List<OnlinePlayerTimelineEntry>();
         foreach (var row in rows)
         {
@@ -210,8 +230,17 @@ public sealed class OnlinePlayerTimelineService
             selected.Add(row);
         }
 
-        selected.Sort(CompareEntries);
+        return selected;
+    }
 
+    /// <summary>
+    /// 按全序切页并组装分页结果：取前 <paramref name="pageSize"/> 行，有更多行时以本页末行编码下一页游标。
+    /// </summary>
+    /// <param name="selected">已按全序排序的候选行。</param>
+    /// <param name="pageSize">页大小（已校验在 1～<see cref="MaxPageSize"/> 之间）。</param>
+    /// <returns>组装好的分页结果。</returns>
+    private static OnlinePlayerTimelinePage BuildPage(List<OnlinePlayerTimelineEntry> selected, int pageSize)
+    {
         var page = new List<OnlinePlayerTimelineEntry>(pageSize);
         foreach (var row in selected)
         {
@@ -226,7 +255,7 @@ public sealed class OnlinePlayerTimelineService
         var hasMore = selected.Count > page.Count;
         var nextCursor = hasMore ? EncodeCursor(page[page.Count - 1]) : string.Empty;
 
-        return OnlineResult<OnlinePlayerTimelinePage>.Ok(new OnlinePlayerTimelinePage(page, new OnlinePageCursor(nextCursor, hasMore)));
+        return new OnlinePlayerTimelinePage(page, new OnlinePageCursor(nextCursor, hasMore));
     }
 
     /// <summary>
