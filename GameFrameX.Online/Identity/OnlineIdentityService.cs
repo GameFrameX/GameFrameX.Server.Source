@@ -82,130 +82,200 @@ public sealed class OnlineIdentityService
         if (identity == null || identity.UnboundAtTime > 0)
         {
             // 新身份自动注册：账号 + 身份 + 首个玩家一次性建立（服务端生成，客户端不得拼接）。
-            var accountId = await _store.NextAccountIdAsync(cancellationToken);
-            account = new OnlineGameAccount
-            {
-                Id = accountId,
-                TenantId = tenantId,
-                AppId = appId,
-                Status = OnlineGameAccountStatus.Active,
-                CreatedAtTime = now,
-                UpdatedAtTime = now,
-            };
-            var playerId = await _store.NextPlayerIdAsync(cancellationToken);
-            player = new OnlinePlayerProfile
-            {
-                Id = playerId,
-                GameAccountId = accountId,
-                TenantId = tenantId,
-                AppId = appId,
-                ServerId = serverId,
-                Name = string.IsNullOrEmpty(playerName) ? "Player-" + playerId : playerName,
-                CreatedAtTime = now,
-                UpdatedAtTime = now,
-            };
-            identity = new OnlineIdentity
-            {
-                Id = "ident-" + Guid.NewGuid().ToString("N"),
-                TenantId = tenantId,
-                AppId = appId,
-                Kind = kind,
-                Identifier = identifier,
-                GameAccountId = accountId,
-                CreatedAtTime = now,
-                UpdatedAtTime = now,
-            };
-            await _store.AddOrUpdateAccountAsync(account, cancellationToken);
-            await _store.AddOrUpdatePlayerAsync(player, cancellationToken);
-            await _store.AddOrUpdateIdentityAsync(identity, cancellationToken);
+            (identity, account, player) = await RegisterIdentityAsync(tenantId, appId, serverId, kind, identifier, playerName, now, cancellationToken);
         }
         else
         {
-            account = await _store.FindAccountAsync(identity.GameAccountId, cancellationToken);
-            if (account == null)
+            var accountResult = await ResolveAccountAsync(identity, cancellationToken);
+            if (!accountResult.IsSuccess)
             {
-                return OnlineResult<OnlineLoginResolution>.Fail(OnlineErrorCode.StateNotReady, "身份指向的账号不存在（数据不一致）。");
+                return OnlineResult<OnlineLoginResolution>.Fail(accountResult.Code, accountResult.Message);
             }
 
-            // 合并账号跟随：身份与玩家归属以合并目标账号为准（单跳，目标必须活跃）。
-            if (account.Status == OnlineGameAccountStatus.Merged)
-            {
-                if (account.MergedIntoAccountId <= 0)
-                {
-                    return OnlineResult<OnlineLoginResolution>.Fail(OnlineErrorCode.StateNotReady, "合并账号缺少目标账号指向。");
-                }
-
-                var targetAccount = await _store.FindAccountAsync(account.MergedIntoAccountId, cancellationToken);
-                if (targetAccount == null || targetAccount.Status != OnlineGameAccountStatus.Active)
-                {
-                    return OnlineResult<OnlineLoginResolution>.Fail(OnlineErrorCode.StateNotReady, "合并目标账号不可用。");
-                }
-
-                account = targetAccount;
-            }
-
-            if (account.Status == OnlineGameAccountStatus.Deactivated)
-            {
-                return OnlineResult<OnlineLoginResolution>.Fail(OnlineErrorCode.StateOperationForbidden, "账号已注销，保留期内不可登录。");
-            }
-
-            if (account.Status != OnlineGameAccountStatus.Active)
-            {
-                return OnlineResult<OnlineLoginResolution>.Fail(OnlineErrorCode.StateNotReady, "账号状态不可登录。");
-            }
-
-            var players = await _store.ListPlayersAsync(account.Id, appId, serverId, cancellationToken);
-            if (players.Count > 0)
-            {
-                player = players[0];
-            }
-            else
-            {
-                var playerId = await _store.NextPlayerIdAsync(cancellationToken);
-                player = new OnlinePlayerProfile
-                {
-                    Id = playerId,
-                    GameAccountId = account.Id,
-                    TenantId = tenantId,
-                    AppId = appId,
-                    ServerId = serverId,
-                    Name = string.IsNullOrEmpty(playerName) ? "Player-" + playerId : playerName,
-                    CreatedAtTime = now,
-                    UpdatedAtTime = now,
-                };
-                await _store.AddOrUpdatePlayerAsync(player, cancellationToken);
-            }
+            account = accountResult.Data;
+            player = await ResolvePlayerAsync(account, tenantId, appId, serverId, playerName, now, cancellationToken);
         }
 
         // 设备识别与换绑策略校验：已失效设备（换绑后旧设备）按策略拒绝登录（VC-2.13）。
         if (!string.IsNullOrEmpty(deviceIdentifier))
         {
-            var device = await _store.FindDeviceAsync(account.Id, deviceIdentifier, cancellationToken);
-            if (device == null)
+            var deviceResult = await TouchDeviceAsync(account, deviceIdentifier, devicePlatform, now, cancellationToken);
+            if (!deviceResult.IsSuccess)
             {
-                device = new OnlinePlayerDevice
-                {
-                    Id = "device-" + Guid.NewGuid().ToString("N"),
-                    GameAccountId = account.Id,
-                    DeviceIdentifier = deviceIdentifier,
-                    Platform = devicePlatform ?? string.Empty,
-                    BoundAtTime = now,
-                    LastActiveAtTime = now,
-                };
-                await _store.AddOrUpdateDeviceAsync(device, cancellationToken);
-            }
-            else if (device.RevokedAtTime > 0)
-            {
-                return OnlineResult<OnlineLoginResolution>.Fail(OnlineErrorCode.StateOperationForbidden, "设备已失效（换绑后旧设备按策略拒绝登录）。");
-            }
-            else
-            {
-                device.LastActiveAtTime = now;
-                await _store.AddOrUpdateDeviceAsync(device, cancellationToken);
+                return OnlineResult<OnlineLoginResolution>.Fail(deviceResult.Code, deviceResult.Message);
             }
         }
 
         return OnlineResult<OnlineLoginResolution>.Ok(new OnlineLoginResolution(identity, account, player));
+    }
+
+    /// <summary>
+    /// 新身份自动注册（S2.3 红线）：账号、身份与首个玩家由服务端一次性生成并落库，客户端不得拼接身份关系。
+    /// </summary>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">应用标识。</param>
+    /// <param name="serverId">区服标识。</param>
+    /// <param name="kind">身份类型。</param>
+    /// <param name="identifier">身份标识串。</param>
+    /// <param name="playerName">玩家显示名（可空，缺省按玩家标识生成）。</param>
+    /// <param name="now">当前 Unix 毫秒时间。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>身份/账号/玩家三元组（均已写入存储）。</returns>
+    private async Task<(OnlineIdentity Identity, OnlineGameAccount Account, OnlinePlayerProfile Player)> RegisterIdentityAsync(long tenantId, long appId, long serverId, OnlineIdentityKind kind, string identifier, string playerName, long now, CancellationToken cancellationToken)
+    {
+        var accountId = await _store.NextAccountIdAsync(cancellationToken);
+        var account = new OnlineGameAccount
+        {
+            Id = accountId,
+            TenantId = tenantId,
+            AppId = appId,
+            Status = OnlineGameAccountStatus.Active,
+            CreatedAtTime = now,
+            UpdatedAtTime = now,
+        };
+        var playerId = await _store.NextPlayerIdAsync(cancellationToken);
+        var player = new OnlinePlayerProfile
+        {
+            Id = playerId,
+            GameAccountId = accountId,
+            TenantId = tenantId,
+            AppId = appId,
+            ServerId = serverId,
+            Name = string.IsNullOrEmpty(playerName) ? "Player-" + playerId : playerName,
+            CreatedAtTime = now,
+            UpdatedAtTime = now,
+        };
+        var identity = new OnlineIdentity
+        {
+            Id = "ident-" + Guid.NewGuid().ToString("N"),
+            TenantId = tenantId,
+            AppId = appId,
+            Kind = kind,
+            Identifier = identifier,
+            GameAccountId = accountId,
+            CreatedAtTime = now,
+            UpdatedAtTime = now,
+        };
+        await _store.AddOrUpdateAccountAsync(account, cancellationToken);
+        await _store.AddOrUpdatePlayerAsync(player, cancellationToken);
+        await _store.AddOrUpdateIdentityAsync(identity, cancellationToken);
+        return (identity, account, player);
+    }
+
+    /// <summary>
+    /// 解析既有身份指向的可登录账号：合并账号单跳跟随（目标必须活跃），注销账号保留期内拒绝登录。
+    /// </summary>
+    /// <param name="identity">已命中的绑定身份。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>可登录的活跃账号；失败返回段位化错误码。</returns>
+    private async Task<OnlineResult<OnlineGameAccount>> ResolveAccountAsync(OnlineIdentity identity, CancellationToken cancellationToken)
+    {
+        var account = await _store.FindAccountAsync(identity.GameAccountId, cancellationToken);
+        if (account == null)
+        {
+            return OnlineResult<OnlineGameAccount>.Fail(OnlineErrorCode.StateNotReady, "身份指向的账号不存在（数据不一致）。");
+        }
+
+        // 合并账号跟随：身份与玩家归属以合并目标账号为准（单跳，目标必须活跃）。
+        if (account.Status == OnlineGameAccountStatus.Merged)
+        {
+            if (account.MergedIntoAccountId <= 0)
+            {
+                return OnlineResult<OnlineGameAccount>.Fail(OnlineErrorCode.StateNotReady, "合并账号缺少目标账号指向。");
+            }
+
+            var targetAccount = await _store.FindAccountAsync(account.MergedIntoAccountId, cancellationToken);
+            if (targetAccount == null || targetAccount.Status != OnlineGameAccountStatus.Active)
+            {
+                return OnlineResult<OnlineGameAccount>.Fail(OnlineErrorCode.StateNotReady, "合并目标账号不可用。");
+            }
+
+            account = targetAccount;
+        }
+
+        if (account.Status == OnlineGameAccountStatus.Deactivated)
+        {
+            return OnlineResult<OnlineGameAccount>.Fail(OnlineErrorCode.StateOperationForbidden, "账号已注销，保留期内不可登录。");
+        }
+
+        if (account.Status != OnlineGameAccountStatus.Active)
+        {
+            return OnlineResult<OnlineGameAccount>.Fail(OnlineErrorCode.StateNotReady, "账号状态不可登录。");
+        }
+
+        return OnlineResult<OnlineGameAccount>.Ok(account);
+    }
+
+    /// <summary>
+    /// 解析账号在指定 App/Server 下的归属玩家：命中既有玩家则复用，否则新建并落库。
+    /// </summary>
+    /// <param name="account">已解析的可登录账号。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">应用标识。</param>
+    /// <param name="serverId">区服标识。</param>
+    /// <param name="playerName">新建玩家显示名（可空，缺省按玩家标识生成）。</param>
+    /// <param name="now">当前 Unix 毫秒时间。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>归属玩家实例。</returns>
+    private async Task<OnlinePlayerProfile> ResolvePlayerAsync(OnlineGameAccount account, long tenantId, long appId, long serverId, string playerName, long now, CancellationToken cancellationToken)
+    {
+        var players = await _store.ListPlayersAsync(account.Id, appId, serverId, cancellationToken);
+        if (players.Count > 0)
+        {
+            return players[0];
+        }
+
+        var playerId = await _store.NextPlayerIdAsync(cancellationToken);
+        var player = new OnlinePlayerProfile
+        {
+            Id = playerId,
+            GameAccountId = account.Id,
+            TenantId = tenantId,
+            AppId = appId,
+            ServerId = serverId,
+            Name = string.IsNullOrEmpty(playerName) ? "Player-" + playerId : playerName,
+            CreatedAtTime = now,
+            UpdatedAtTime = now,
+        };
+        await _store.AddOrUpdatePlayerAsync(player, cancellationToken);
+        return player;
+    }
+
+    /// <summary>
+    /// 设备识别与换绑策略校验（VC-2.13）：新设备绑定，既有设备刷新活跃时间，已失效设备（换绑后旧设备）按策略拒绝登录。
+    /// </summary>
+    /// <param name="account">当前登录账号。</param>
+    /// <param name="deviceIdentifier">登录设备标识。</param>
+    /// <param name="devicePlatform">登录设备平台描述（可空）。</param>
+    /// <param name="now">当前 Unix 毫秒时间。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>成功返回 true；设备已失效返回段位化错误码。</returns>
+    private async Task<OnlineResult<bool>> TouchDeviceAsync(OnlineGameAccount account, string deviceIdentifier, string devicePlatform, long now, CancellationToken cancellationToken)
+    {
+        var device = await _store.FindDeviceAsync(account.Id, deviceIdentifier, cancellationToken);
+        if (device == null)
+        {
+            device = new OnlinePlayerDevice
+            {
+                Id = "device-" + Guid.NewGuid().ToString("N"),
+                GameAccountId = account.Id,
+                DeviceIdentifier = deviceIdentifier,
+                Platform = devicePlatform ?? string.Empty,
+                BoundAtTime = now,
+                LastActiveAtTime = now,
+            };
+        }
+        else if (device.RevokedAtTime > 0)
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.StateOperationForbidden, "设备已失效（换绑后旧设备按策略拒绝登录）。");
+        }
+        else
+        {
+            device.LastActiveAtTime = now;
+        }
+
+        await _store.AddOrUpdateDeviceAsync(device, cancellationToken);
+        return OnlineResult<bool>.Ok(true);
     }
 
     /// <summary>
