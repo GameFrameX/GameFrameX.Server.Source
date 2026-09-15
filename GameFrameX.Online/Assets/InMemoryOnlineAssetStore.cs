@@ -164,88 +164,166 @@ public sealed class InMemoryOnlineAssetStore : IOnlineAssetStore
         lock (playerLock)
         {
             // 校验 1：同批次同一 (类别, 资产标识) 只允许一行。
-            var seenAssets = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var line in batch.Lines)
+            var duplicate = ValidateBatchAssetUniqueness(batch);
+            if (duplicate != null)
             {
-                if (!seenAssets.Add(BuildAssetKey(batch.TenantId, batch.AppId, batch.PlayerId, line.AssetKind, line.AssetId)))
-                {
-                    return Task.FromResult(new OnlineAssetApplyResult(false, OnlineErrorCode.ParameterInvalid, "同一批次内资产重复：" + line.AssetId, Array.Empty<OnlineLedgerEntry>()));
-                }
+                return Task.FromResult(duplicate);
             }
 
             // 校验 2：全量预演——应用后下限 0（先算后写，任何一行不满足则整批拒绝）。
             var occurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            var planned = new List<OnlineLedgerEntry>(batch.Lines.Count);
-            foreach (var line in batch.Lines)
+            var rejection = PlanEntries(batch, occurredTime, out var planned);
+            if (rejection != null)
             {
-                long amountBefore;
-                if (line.AssetKind == OnlineAssetKind.Currency)
-                {
-                    amountBefore = _wallets.TryGetValue(BuildAssetKey(batch.TenantId, batch.AppId, batch.PlayerId, line.AssetKind, line.AssetId), out var wallet) ? wallet.Balance : 0;
-                }
-                else
-                {
-                    amountBefore = _inventories.TryGetValue(BuildAssetKey(batch.TenantId, batch.AppId, batch.PlayerId, line.AssetKind, line.AssetId), out var stack) ? stack.Quantity : 0;
-                }
-
-                var amountAfter = amountBefore + line.Amount;
-                if (amountAfter < 0)
-                {
-                    return Task.FromResult(new OnlineAssetApplyResult(false, OnlineErrorCode.StateOperationForbidden, "资产不足：" + line.AssetId + "（当前 " + amountBefore + "，拟变更 " + line.Amount + "）", Array.Empty<OnlineLedgerEntry>()));
-                }
-
-                planned.Add(BuildEntry(batch, line, amountBefore, amountAfter, occurredTime));
+                return Task.FromResult(rejection);
             }
 
             // 落账：快照同步 + 账本追加 + 索引维护（分片锁内原子，中途不可见）。
-            var playerKey = BuildPlayerKey(batch.TenantId, batch.AppId, batch.PlayerId);
-            foreach (var entry in planned)
-            {
-                if (entry.AssetKind == OnlineAssetKind.Currency)
-                {
-                    var assetKey = BuildAssetKey(batch.TenantId, batch.AppId, batch.PlayerId, entry.AssetKind, entry.AssetId);
-                    if (!_wallets.TryGetValue(assetKey, out var wallet))
-                    {
-                        wallet = new OnlineWalletAccount { TenantId = entry.TenantId, AppId = entry.AppId, PlayerId = entry.PlayerId, CurrencyId = entry.AssetId, Balance = 0, Version = 0 };
-                        _wallets[assetKey] = wallet;
-                    }
-
-                    wallet.Balance = entry.AmountAfter;
-                    wallet.Version++;
-                    wallet.UpdatedTime = occurredTime;
-                }
-                else
-                {
-                    var assetKey = BuildAssetKey(batch.TenantId, batch.AppId, batch.PlayerId, entry.AssetKind, entry.AssetId);
-                    if (!_inventories.TryGetValue(assetKey, out var stack))
-                    {
-                        stack = new OnlineInventoryStack { TenantId = entry.TenantId, AppId = entry.AppId, PlayerId = entry.PlayerId, ItemId = entry.AssetId, Quantity = 0, Version = 0 };
-                        _inventories[assetKey] = stack;
-                    }
-
-                    stack.Quantity = entry.AmountAfter;
-                    stack.Version++;
-                    stack.UpdatedTime = occurredTime;
-                }
-
-                if (!_ledgerByPlayer.TryGetValue(playerKey, out var playerLedger))
-                {
-                    playerLedger = new List<OnlineLedgerEntry>();
-                    _ledgerByPlayer[playerKey] = playerLedger;
-                }
-
-                playerLedger.Add(entry);
-                if (!_ledgerByTransaction.TryGetValue(entry.TransactionId, out var transactionLedger))
-                {
-                    transactionLedger = new List<OnlineLedgerEntry>();
-                    _ledgerByTransaction[entry.TransactionId] = transactionLedger;
-                }
-
-                transactionLedger.Add(entry);
-            }
-
+            CommitEntries(batch.TenantId, batch.AppId, batch.PlayerId, planned, occurredTime);
             return Task.FromResult(new OnlineAssetApplyResult(true, OnlineErrorCode.None, string.Empty, planned));
         }
+    }
+
+    /// <summary>
+    /// 校验 1：同批次同一 (类别, 资产标识) 只允许一行（必须在玩家分片锁内调用）。
+    /// </summary>
+    /// <param name="batch">变更批次。</param>
+    /// <returns>存在重复时的失败结果；无重复返回 null。</returns>
+    private OnlineAssetApplyResult ValidateBatchAssetUniqueness(OnlineAssetChangeBatch batch)
+    {
+        var seenAssets = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var line in batch.Lines)
+        {
+            if (!seenAssets.Add(BuildAssetKey(batch.TenantId, batch.AppId, batch.PlayerId, line.AssetKind, line.AssetId)))
+            {
+                return new OnlineAssetApplyResult(false, OnlineErrorCode.ParameterInvalid, "同一批次内资产重复：" + line.AssetId, Array.Empty<OnlineLedgerEntry>());
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 校验 2：全量预演——应用后下限 0（必须在玩家分片锁内调用）。
+    /// <para>先算后写：逐行读取变更前数量并构造账本条目，任何一行应用后低于 0 则整批拒绝，净效应为 0。</para>
+    /// </summary>
+    /// <param name="batch">变更批次。</param>
+    /// <param name="occurredTime">落账时刻。</param>
+    /// <param name="planned">预演构造的账本条目（可落账时非空；拒绝时为 null）。</param>
+    /// <returns>预演拒绝时的失败结果；可落账返回 null。</returns>
+    private OnlineAssetApplyResult PlanEntries(OnlineAssetChangeBatch batch, long occurredTime, out List<OnlineLedgerEntry> planned)
+    {
+        planned = new List<OnlineLedgerEntry>(batch.Lines.Count);
+        foreach (var line in batch.Lines)
+        {
+            var amountBefore = ReadAmountBefore(batch, line);
+            var amountAfter = amountBefore + line.Amount;
+            if (amountAfter < 0)
+            {
+                planned = null;
+                return new OnlineAssetApplyResult(false, OnlineErrorCode.StateOperationForbidden, "资产不足：" + line.AssetId + "（当前 " + amountBefore + "，拟变更 " + line.Amount + "）", Array.Empty<OnlineLedgerEntry>());
+            }
+
+            planned.Add(BuildEntry(batch, line, amountBefore, amountAfter, occurredTime));
+        }
+
+        return null;
+    }
+
+    /// <summary>读取资产变更前数量（未发生过变更按 0 计；必须在玩家分片锁内调用）。</summary>
+    /// <param name="batch">变更批次。</param>
+    /// <param name="line">变更行。</param>
+    /// <returns>变更前数量。</returns>
+    private long ReadAmountBefore(OnlineAssetChangeBatch batch, OnlineAssetChangeLine line)
+    {
+        var assetKey = BuildAssetKey(batch.TenantId, batch.AppId, batch.PlayerId, line.AssetKind, line.AssetId);
+        if (line.AssetKind == OnlineAssetKind.Currency)
+        {
+            return _wallets.TryGetValue(assetKey, out var wallet) ? wallet.Balance : 0;
+        }
+
+        return _inventories.TryGetValue(assetKey, out var stack) ? stack.Quantity : 0;
+    }
+
+    /// <summary>
+    /// 落账：快照同步 + 账本追加 + 索引维护（分片锁内原子，中途不可见；必须在玩家分片锁内调用）。
+    /// </summary>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="playerId">玩家标识。</param>
+    /// <param name="planned">预演构造的账本条目。</param>
+    /// <param name="occurredTime">落账时刻。</param>
+    private void CommitEntries(long tenantId, long appId, long playerId, List<OnlineLedgerEntry> planned, long occurredTime)
+    {
+        var playerKey = BuildPlayerKey(tenantId, appId, playerId);
+        foreach (var entry in planned)
+        {
+            if (entry.AssetKind == OnlineAssetKind.Currency)
+            {
+                UpsertWallet(entry, occurredTime);
+            }
+            else
+            {
+                UpsertInventoryStack(entry, occurredTime);
+            }
+
+            AppendToLedgerIndexes(playerKey, entry);
+        }
+    }
+
+    /// <summary>同步货币账户快照（不存在则建档；必须在玩家分片锁内调用）。</summary>
+    /// <param name="entry">账本条目。</param>
+    /// <param name="occurredTime">落账时刻。</param>
+    private void UpsertWallet(OnlineLedgerEntry entry, long occurredTime)
+    {
+        var assetKey = BuildAssetKey(entry.TenantId, entry.AppId, entry.PlayerId, entry.AssetKind, entry.AssetId);
+        if (!_wallets.TryGetValue(assetKey, out var wallet))
+        {
+            wallet = new OnlineWalletAccount { TenantId = entry.TenantId, AppId = entry.AppId, PlayerId = entry.PlayerId, CurrencyId = entry.AssetId, Balance = 0, Version = 0 };
+            _wallets[assetKey] = wallet;
+        }
+
+        wallet.Balance = entry.AmountAfter;
+        wallet.Version++;
+        wallet.UpdatedTime = occurredTime;
+    }
+
+    /// <summary>同步道具库存快照（不存在则建档；必须在玩家分片锁内调用）。</summary>
+    /// <param name="entry">账本条目。</param>
+    /// <param name="occurredTime">落账时刻。</param>
+    private void UpsertInventoryStack(OnlineLedgerEntry entry, long occurredTime)
+    {
+        var assetKey = BuildAssetKey(entry.TenantId, entry.AppId, entry.PlayerId, entry.AssetKind, entry.AssetId);
+        if (!_inventories.TryGetValue(assetKey, out var stack))
+        {
+            stack = new OnlineInventoryStack { TenantId = entry.TenantId, AppId = entry.AppId, PlayerId = entry.PlayerId, ItemId = entry.AssetId, Quantity = 0, Version = 0 };
+            _inventories[assetKey] = stack;
+        }
+
+        stack.Quantity = entry.AmountAfter;
+        stack.Version++;
+        stack.UpdatedTime = occurredTime;
+    }
+
+    /// <summary>账本双索引追加：玩家归组列表 + 交易反查列表（必须在玩家分片锁内调用）。</summary>
+    /// <param name="playerKey">玩家键。</param>
+    /// <param name="entry">账本条目。</param>
+    private void AppendToLedgerIndexes(string playerKey, OnlineLedgerEntry entry)
+    {
+        if (!_ledgerByPlayer.TryGetValue(playerKey, out var playerLedger))
+        {
+            playerLedger = new List<OnlineLedgerEntry>();
+            _ledgerByPlayer[playerKey] = playerLedger;
+        }
+
+        playerLedger.Add(entry);
+        if (!_ledgerByTransaction.TryGetValue(entry.TransactionId, out var transactionLedger))
+        {
+            transactionLedger = new List<OnlineLedgerEntry>();
+            _ledgerByTransaction[entry.TransactionId] = transactionLedger;
+        }
+
+        transactionLedger.Add(entry);
     }
 
     /// <summary>按账本序分页列举玩家账本条目。</summary>
