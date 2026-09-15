@@ -34,6 +34,7 @@ using System.Threading.Tasks;
 using GameFrameX.Online.Contracts;
 using GameFrameX.Online.Events;
 using GameFrameX.Online.Scope;
+using GameFrameX.Online.Social;
 
 /// <summary>
 /// 队伍服务（vault:C5 S4.3、S4.7：队伍生命周期的唯一写者）。
@@ -50,7 +51,7 @@ using GameFrameX.Online.Scope;
 /// 不匹配一律 <see cref="OnlineErrorCode.ResourceNotFound"/>（反预言，不泄露他人队伍存在性）。
 /// </para>
 /// </summary>
-public sealed class OnlinePartyService
+public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
 {
     /// <summary>队伍存储。</summary>
     private readonly IOnlinePartyStore _store;
@@ -60,6 +61,9 @@ public sealed class OnlinePartyService
 
     /// <summary>在线事实探针（可空：未装配时离线清理退化为「不执行」而非误判全员离线）。</summary>
     private readonly IOnlinePartyPresenceProbe _presenceProbe;
+
+    /// <summary>跨域社交裁决（可空：null = 不启用屏蔽/处罚裁决，既有行为不变；见 C99 方案复审 P0-1）。</summary>
+    private readonly IOnlineSocialGate _socialGate;
 
     /// <summary>人数下限。</summary>
     private readonly int _minMembers;
@@ -83,6 +87,7 @@ public sealed class OnlinePartyService
     /// <param name="inviteTimeToLiveSeconds">邀请存活时长（秒；默认 120）。</param>
     /// <param name="idleTimeToLiveSeconds">队伍空闲存活时长（秒；默认 1800）。</param>
     /// <param name="presenceProbe">在线事实探针（可空）。</param>
+    /// <param name="socialGate">跨域社交裁决入口（可空；由 <c>OnlineSocialDecisionService</c> 提供）。</param>
     public OnlinePartyService(
         IOnlinePartyStore store,
         IOnlineEventPublisher eventPublisher,
@@ -90,11 +95,13 @@ public sealed class OnlinePartyService
         int maxMembers = 8,
         long inviteTimeToLiveSeconds = 120,
         long idleTimeToLiveSeconds = 1800,
-        IOnlinePartyPresenceProbe presenceProbe = null)
+        IOnlinePartyPresenceProbe presenceProbe = null,
+        IOnlineSocialGate socialGate = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _eventPublisher = eventPublisher ?? throw new ArgumentNullException(nameof(eventPublisher));
         _presenceProbe = presenceProbe;
+        _socialGate = socialGate;
         _minMembers = minMembers;
         _maxMembers = maxMembers;
         _inviteTimeToLiveSeconds = inviteTimeToLiveSeconds;
@@ -179,6 +186,17 @@ public sealed class OnlinePartyService
             return OnlineResult<OnlinePartyInvite>.Fail(reachable.Code, reachable.Message);
         }
 
+        if (_socialGate != null)
+        {
+            // 社交裁决走跨域唯一入口（C99 方案复审 P0-1）：屏蔽双向生效、封禁拒绝、禁言不影响组队。
+            // 置于去重检查之前——被屏蔽/被封禁的邀请即使此前已存在待答复记录也不得再取得答复通道。
+            var decision = await _socialGate.EvaluateAsync(scope.TenantId, scope.AppId, scope.PlayerId, inviteeId, OnlineSocialInteractionPurpose.PartyInvite, cancellationToken);
+            if (!decision.Allowed)
+            {
+                return OnlineResult<OnlinePartyInvite>.Fail(decision.Code, decision.Reason);
+            }
+        }
+
         if (party.Members.Count >= party.MaxMembers)
         {
             return OnlineResult<OnlinePartyInvite>.Fail(OnlineErrorCode.StateNotReady, "队伍人数已达上限");
@@ -223,6 +241,10 @@ public sealed class OnlinePartyService
 
     /// <summary>
     /// 答复邀请（接受或拒绝；仅被邀请人本人可答复，终态邀请返回既有终态而非报错）。
+    /// <para>
+    /// 装配了社交裁决（<see cref="IOnlineSocialGate"/>）时，**接受**前会复核双方关系：
+    /// 屏蔽在邀请等待期内生效则拒绝入队（拒绝始终放行）。裁决未装配时行为与 C97 完全一致。
+    /// </para>
     /// </summary>
     /// <param name="scope">生效作用域（必须含玩家主体位）。</param>
     /// <param name="inviteId">邀请标识。</param>
@@ -269,6 +291,20 @@ public sealed class OnlinePartyService
             await _store.SaveInviteAsync(invite, cancellationToken);
             await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite, party.ServerId, correlationId), cancellationToken);
             return OnlineResult<OnlineParty>.Ok(party);
+        }
+
+        if (_socialGate != null)
+        {
+            // 接受面同样受社交裁决约束（C7 红线「Block 后不能邀请」的时间维度）：邀请可能**早于**屏蔽建立，
+            // 若只在发起面判定，屏蔽生效后仍可在邀请存活期（默认 120 秒）内靠一次「接受」完成组队，
+            // 等于绕开红线。这里复核的是与重新发起邀请时同一组关系的裁决（屏蔽本就双向生效）。
+            // 拒绝不做裁决——拒绝是脱离互动，拦下它只会把玩家困在待答复状态里。
+            // 禁言 / 封禁的持续强制不在此处重复：其后果由下游同源判定兜底（聊天发送 / 匹配成组）。
+            var decision = await _socialGate.EvaluateAsync(scope.TenantId, scope.AppId, invite.InviterId, scope.PlayerId, OnlineSocialInteractionPurpose.PartyInvite, cancellationToken);
+            if (!decision.Allowed)
+            {
+                return OnlineResult<OnlineParty>.Fail(decision.Code, decision.Reason);
+            }
         }
 
         if (party.Members.Count >= party.MaxMembers)
@@ -626,6 +662,52 @@ public sealed class OnlinePartyService
         }
 
         return OnlineResult<OnlineParty>.Ok(party);
+    }
+
+    /// <summary>
+    /// 应答「某玩家是否为某频道的成员」（<see cref="OnlineChatChannelKind.Party"/> 频道的唯一裁决方，C99）。
+    /// <para>
+    /// 维护约束（职责边界）：频道成员集**不复制**进频道记录——复制会在离队/被踢后留下陈旧成员表，
+    /// 让已被移出的人继续读到队内消息（隐私泄漏）。因此裁决权留在组队域，聊天域只问不判。
+    /// </para>
+    /// <para>
+    /// 维护约束（终态队伍）：已 <see cref="OnlinePartyStateMachine.IsTerminal"/> 的队伍一律返回 <c>false</c>——
+    /// 队伍已不存在，其频道随之一并封存，否则解散后队员仍能继续发言，形成「僵尸频道」。
+    /// </para>
+    /// <para>
+    /// 维护约束（非本域频道）：<paramref name="kind"/> 不是 <see cref="OnlineChatChannelKind.Party"/> 时
+    /// 一律返回 <c>false</c>（不认领），由对应的归属域应答。
+    /// </para>
+    /// </summary>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="kind">频道类型。</param>
+    /// <param name="boundId">频道绑定的业务标识（本域为队伍标识）。</param>
+    /// <param name="playerId">待裁决玩家。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>是成员且队伍仍可发言返回 <c>true</c>。</returns>
+    public async Task<bool> IsChannelMemberAsync(long tenantId, long appId, OnlineChatChannelKind kind, string boundId, long playerId, CancellationToken cancellationToken = default)
+    {
+        if (kind != OnlineChatChannelKind.Party || string.IsNullOrEmpty(boundId))
+        {
+            return false;
+        }
+
+        var party = await _store.FindPartyAsync(tenantId, appId, boundId, cancellationToken).ConfigureAwait(false);
+        if (party == null || OnlinePartyStateMachine.IsTerminal(party.State) || party.Members == null)
+        {
+            return false;
+        }
+
+        foreach (var member in party.Members)
+        {
+            if (member.PlayerId == playerId)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

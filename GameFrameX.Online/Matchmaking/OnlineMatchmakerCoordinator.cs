@@ -33,6 +33,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Online.Contracts;
 using GameFrameX.Online.Events;
+using GameFrameX.Online.Social;
 
 /// <summary>
 /// 匹配协调器（vault:C5 S4.6：按模式/区域/规模/等级区间成组，产出 assignment）。
@@ -63,6 +64,9 @@ public sealed class OnlineMatchmakerCoordinator
     /// <summary>事件发布器。</summary>
     private readonly IOnlineEventPublisher _eventPublisher;
 
+    /// <summary>跨域社交裁决（可空：null = 不启用屏蔽/处罚裁决，既有行为不变；见 C99 方案复审 P0-1）。</summary>
+    private readonly IOnlineSocialGate _socialGate;
+
     /// <summary>
     /// 初始化 <see cref="OnlineMatchmakerCoordinator"/>。
     /// </summary>
@@ -70,11 +74,13 @@ public sealed class OnlineMatchmakerCoordinator
     /// <param name="ticketService">票据服务。</param>
     /// <param name="eventPublisher">事件发布器。</param>
     /// <param name="options">匹配与限流可配置项（null 取默认值）。</param>
-    public OnlineMatchmakerCoordinator(IOnlineMatchTicketStore store, OnlineMatchTicketService ticketService, IOnlineEventPublisher eventPublisher, OnlineMatchmakerOptions options = null)
+    /// <param name="socialGate">跨域社交裁决入口（可空；由 <c>OnlineSocialDecisionService</c> 提供）。</param>
+    public OnlineMatchmakerCoordinator(IOnlineMatchTicketStore store, OnlineMatchTicketService ticketService, IOnlineEventPublisher eventPublisher, OnlineMatchmakerOptions options = null, IOnlineSocialGate socialGate = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _ticketService = ticketService ?? throw new ArgumentNullException(nameof(ticketService));
         _eventPublisher = eventPublisher ?? throw new ArgumentNullException(nameof(eventPublisher));
+        _socialGate = socialGate;
         _rule = new OnlineMatchRule(options == null ? new OnlineMatchmakerOptions() : options);
     }
 
@@ -112,7 +118,7 @@ public sealed class OnlineMatchmakerCoordinator
                 continue;
             }
 
-            var group = SelectGroup(anchor, ordered, consumed, now);
+            var group = await SelectGroupAsync(anchor, ordered, consumed, now, tenantId, appId, cancellationToken).ConfigureAwait(false);
             if (group == null)
             {
                 continue;
@@ -195,13 +201,27 @@ public sealed class OnlineMatchmakerCoordinator
 
     /// <summary>
     /// 以基准票据为中心挑选成组票据（FIFO 顺序、整票累加、不拆队）。
+    /// <para>
+    /// 维护约束（社交裁决，C99 方案复审 P0-1）：候选票据与**已入组的每一名成员**两两走
+    /// <see cref="IOnlineSocialGate"/> 裁决（屏蔽双向生效、封禁拒绝），任一命中即**跳过该候选票据**——
+    /// 跳过而不是拆开它，是「整票进整票出」红线在社交裁决下的延续：
+    /// 拆票会让同一队伍的成员被分进不同对局，代价远大于多等一轮。
+    /// 裁决对每一对玩家**双向各问一次**：屏蔽在裁决内部本就是对双向查的，但处罚（禁言 / 封禁）
+    /// 是绑定在发起方身上的单向事实——只问一个方向会让「被处罚者恰好在候选票据里」逃过裁决，
+    /// 而本处没有「谁是发起方」的概念，双方都是被动入组。方案 P0-1 的措辞是「任一方向被 Block / 被处罚」。
+    /// 天花板（ponytail）：两两裁决是 O(组规模 × 候选规模 × 2) 次判定，队规模上调后需换成
+    /// 「先取成员屏蔽 / 处罚集合再求交」的批量形态。
+    /// </para>
     /// </summary>
     /// <param name="anchor">基准票据。</param>
     /// <param name="ordered">按入队顺序排列的候选票据。</param>
     /// <param name="consumed">本轮已消费的票据标识（不得再次成组）。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>凑满目标规模的票据组；不足返回 null。</returns>
-    private List<OnlineMatchTicket> SelectGroup(OnlineMatchTicket anchor, List<OnlineMatchTicket> ordered, HashSet<string> consumed, long nowUnixMilliseconds)
+    private async Task<List<OnlineMatchTicket>> SelectGroupAsync(OnlineMatchTicket anchor, List<OnlineMatchTicket> ordered, HashSet<string> consumed, long nowUnixMilliseconds, long tenantId, long appId, CancellationToken cancellationToken)
     {
         if (anchor.TeamSize <= 0 || consumed.Contains(anchor.TicketId))
         {
@@ -248,6 +268,11 @@ public sealed class OnlineMatchmakerCoordinator
             }
 
             if (!_rule.CanGroup(anchor, candidate, nowUnixMilliseconds))
+            {
+                continue;
+            }
+
+            if (!await IsSociallyCompatibleAsync(players, candidate, tenantId, appId, cancellationToken).ConfigureAwait(false))
             {
                 continue;
             }
@@ -331,6 +356,47 @@ public sealed class OnlineMatchmakerCoordinator
             return string.CompareOrdinal(left.TicketId ?? string.Empty, right.TicketId ?? string.Empty);
         });
         return ordered;
+    }
+
+    /// <summary>
+    /// 判断候选票据能否与本组共处一局（pairwise 社交裁决：屏蔽双向生效、封禁拒绝）。
+    /// <para>
+    /// 未注入 <see cref="IOnlineSocialGate"/>（<c>null</c>）时一律放行，保持既有行为不变（C99 方案复审 P0-1）。
+    /// 组内为空（白板基准票据）时无需裁决——没有对手方就没有社交冲突。
+    /// </para>
+    /// </summary>
+    /// <param name="players">已累加玩家集合。</param>
+    /// <param name="candidate">候选票据。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>可共处一局返回 <c>true</c>。</returns>
+    private async Task<bool> IsSociallyCompatibleAsync(HashSet<long> players, OnlineMatchTicket candidate, long tenantId, long appId, CancellationToken cancellationToken)
+    {
+        if (_socialGate == null || players.Count == 0)
+        {
+            return true;
+        }
+
+        foreach (var existingPlayerId in players)
+        {
+            foreach (var candidatePlayerId in candidate.PlayerIds)
+            {
+                var forward = await _socialGate.EvaluateAsync(tenantId, appId, existingPlayerId, candidatePlayerId, OnlineSocialInteractionPurpose.Matchmaking, cancellationToken).ConfigureAwait(false);
+                if (!forward.Allowed)
+                {
+                    return false;
+                }
+
+                var backward = await _socialGate.EvaluateAsync(tenantId, appId, candidatePlayerId, existingPlayerId, OnlineSocialInteractionPurpose.Matchmaking, cancellationToken).ConfigureAwait(false);
+                if (!backward.Allowed)
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     /// <summary>
