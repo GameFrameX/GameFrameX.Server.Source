@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="../Version.props" Label="版本号定义"/>
+
+    <PropertyGroup>
+        <Description>GameFrameX.Online,GFX Online 平台横切契约服务端基座:公共消息契约/错误码/Session Token 契约/幂等 Server 侧/事件信封/作用域传递. Cross-cutting contract foundation for the GFX Online platform server side. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Online,Contracts,Idempotency,EventEnvelope,Scope,GameServer</PackageTags>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="GameFrameX.Foundation.Idempotency" Version="4.1.1" />
+    </ItemGroup>
+
+</Project>
