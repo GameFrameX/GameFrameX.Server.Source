@@ -429,87 +429,7 @@ public sealed class OnlineMatchActor
             return Task.FromResult(Fail<OnlineMatchInputAck>(OnlineErrorCode.ParameterInvalid, "输入不能为空"));
         }
 
-        return MutateAsync(scope, nowUnixMilliseconds, cancellationToken, (match, actorScope) =>
-        {
-            var member = match.FindMember(actorScope.PlayerId);
-            if (member == null)
-            {
-                return Fail<OnlineMatchInputAck>(OnlineErrorCode.ScopeDenied, "提交者不是本对局成员");
-            }
-
-            if (member.State == OnlineMatchMemberState.Left || member.State == OnlineMatchMemberState.Kicked)
-            {
-                return Ok(RejectAck(match, input, OnlineMatchInputRejection.MemberLeft));
-            }
-
-            if (member.State == OnlineMatchMemberState.Disconnected)
-            {
-                return Ok(RejectAck(match, input, OnlineMatchInputRejection.MemberDisconnected));
-            }
-
-            if (OnlineMatchStateMachine.IsEnded(match.State))
-            {
-                return Ok(RejectAck(match, input, OnlineMatchInputRejection.MatchEnded));
-            }
-
-            if (!OnlineMatchStateMachine.IsPlayable(match.State))
-            {
-                return Ok(RejectAck(match, input, OnlineMatchInputRejection.StateNotPlayable));
-            }
-
-            if (input.ClientSequence <= member.LastClientSequence)
-            {
-                var duplicateAck = RejectAck(match, input, OnlineMatchInputRejection.Duplicate);
-                duplicateAck.IsDuplicate = true;
-                return Ok(duplicateAck);
-            }
-
-            if (input.ClientSequence > member.LastClientSequence + 1)
-            {
-                return Ok(RejectAck(match, input, OnlineMatchInputRejection.OutOfOrder));
-            }
-
-            var step = _game.ApplyInput(match, member, input);
-            if (step == null || !step.Accepted)
-            {
-                return Ok(RejectAck(match, input, step == null ? OnlineMatchInputRejection.IllegalAction : step.Rejection));
-            }
-
-            if (step.GameState != null)
-            {
-                match.GameState = step.GameState;
-            }
-
-            member.LastClientSequence = input.ClientSequence;
-            if (step.ServerEvents != null)
-            {
-                foreach (var emitted in step.ServerEvents)
-                {
-                    if (emitted != null)
-                    {
-                        AppendServerEvent(match, emitted.EventType, emitted.Payload, nowUnixMilliseconds);
-                    }
-                }
-            }
-
-            member.LastAckSequence = AppendServerEvent(match, "InputAccepted", null, nowUnixMilliseconds);
-            var ack = new OnlineMatchInputAck
-            {
-                Accepted = true,
-                ServerSequence = member.LastAckSequence,
-                ClientSequence = input.ClientSequence,
-                Rejection = OnlineMatchInputRejection.None,
-                IsDuplicate = false,
-                Message = "已接受",
-            };
-
-            if (_game.IsCompleted(match) && OnlineMatchStateMachine.TryTransition(match.State, OnlineMatchState.Settling))
-            {
-                Transition(match, OnlineMatchState.Settling, nowUnixMilliseconds);
-            }
-
-            return Ok(ack);
-        });
+        return MutateAsync(scope, nowUnixMilliseconds, cancellationToken, (match, actorScope) => ApplyInput(match, actorScope, input, nowUnixMilliseconds));
     }
 
     /// <summary>
@@ -700,31 +620,7 @@ public sealed class OnlineMatchActor
             }
 
             var working = _match.Copy();
-            var changed = false;
-
-            if (OnlineMatchStateMachine.IsPlayable(working.State))
-            {
-                var emittedEvents = new List<OnlineMatchServerEvent>();
-                if (_game.Advance(working, nowUnixMilliseconds, emittedEvents))
-                {
-                    changed = true;
-                }
-
-                foreach (var emitted in emittedEvents)
-                {
-                    if (emitted != null)
-                    {
-                        AppendServerEvent(working, emitted.EventType, emitted.Payload, nowUnixMilliseconds);
-                        changed = true;
-                    }
-                }
-
-                if (_game.IsCompleted(working) && OnlineMatchStateMachine.TryTransition(working.State, OnlineMatchState.Settling))
-                {
-                    Transition(working, OnlineMatchState.Settling, nowUnixMilliseconds);
-                    result.EnteredSettling = true;
-                }
-            }
+            var changed = AdvanceGameplay(working, result, nowUnixMilliseconds);
 
             if (ExpireDisconnectedMembers(working, nowUnixMilliseconds))
             {
@@ -744,8 +640,7 @@ public sealed class OnlineMatchActor
                 result.TimedOut = true;
             }
 
-            if (OnlineMatchStateMachine.IsEnded(working.State) && working.State != OnlineMatchState.Closed
-                && nowUnixMilliseconds >= working.EndedTime + (_options.EndedRetentionSeconds * 1000L))
+            if (IsRetentionElapsed(working, nowUnixMilliseconds))
             {
                 Transition(working, OnlineMatchState.Closed, nowUnixMilliseconds);
                 changed = true;
@@ -775,6 +670,182 @@ public sealed class OnlineMatchActor
         {
             _gate.Release();
         }
+    }
+
+    /// <summary>
+    /// 应用一次已通过前置校验的输入（<see cref="SubmitInputAsync"/> 的门内委托体）。
+    /// <para>处理顺序固定：玩法裁决 → 状态替换 → 序号推进 → 产出事件回放 → InputAccepted → 完成进结算；被拒绝的输入不改写状态、不推进序号（VC-5.3 / VC-5.4）。</para>
+    /// </summary>
+    /// <param name="match">门内候选副本。</param>
+    /// <param name="actorScope">请求作用域。</param>
+    /// <param name="input">输入意图（已判非空）。</param>
+    /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
+    /// <returns>输入确认；拒绝以确认形式返回。</returns>
+    private OnlineResult<OnlineMatchInputAck> ApplyInput(OnlineMatch match, OnlineScope actorScope, OnlineMatchInput input, long nowUnixMilliseconds)
+    {
+        var gate = ValidateInputGate(match, actorScope, input, out var member);
+        if (gate != null)
+        {
+            return gate;
+        }
+
+        var step = _game.ApplyInput(match, member, input);
+        if (step == null || !step.Accepted)
+        {
+            return Ok(RejectAck(match, input, step == null ? OnlineMatchInputRejection.IllegalAction : step.Rejection));
+        }
+
+        if (step.GameState != null)
+        {
+            match.GameState = step.GameState;
+        }
+
+        member.LastClientSequence = input.ClientSequence;
+        AppendEmittedEvents(match, step.ServerEvents, nowUnixMilliseconds);
+        member.LastAckSequence = AppendServerEvent(match, "InputAccepted", null, nowUnixMilliseconds);
+        var ack = new OnlineMatchInputAck
+        {
+            Accepted = true,
+            ServerSequence = member.LastAckSequence,
+            ClientSequence = input.ClientSequence,
+            Rejection = OnlineMatchInputRejection.None,
+            IsDuplicate = false,
+            Message = "已接受",
+        };
+
+        if (_game.IsCompleted(match) && OnlineMatchStateMachine.TryTransition(match.State, OnlineMatchState.Settling))
+        {
+            Transition(match, OnlineMatchState.Settling, nowUnixMilliseconds);
+        }
+
+        return Ok(ack);
+    }
+
+    /// <summary>
+    /// 执行输入的六重前置校验，求值顺序固定（类头红线②）：
+    /// 成员身份 → Left/Kicked → 断线 → 对局结束 → 阶段不可玩 → 重复包 → 乱序包。
+    /// </summary>
+    /// <param name="match">门内候选副本。</param>
+    /// <param name="actorScope">请求作用域。</param>
+    /// <param name="input">输入意图（已判非空）。</param>
+    /// <param name="member">命中的成员（校验通过时非空）。</param>
+    /// <returns>任一校验不通过时返回对应失败/拒绝结果；全部通过返回 <c>null</c> 继续裁决。</returns>
+    private OnlineResult<OnlineMatchInputAck> ValidateInputGate(OnlineMatch match, OnlineScope actorScope, OnlineMatchInput input, out OnlineMatchMember member)
+    {
+        member = match.FindMember(actorScope.PlayerId);
+        if (member == null)
+        {
+            return Fail<OnlineMatchInputAck>(OnlineErrorCode.ScopeDenied, "提交者不是本对局成员");
+        }
+
+        if (member.State == OnlineMatchMemberState.Left || member.State == OnlineMatchMemberState.Kicked)
+        {
+            return Ok(RejectAck(match, input, OnlineMatchInputRejection.MemberLeft));
+        }
+
+        if (member.State == OnlineMatchMemberState.Disconnected)
+        {
+            return Ok(RejectAck(match, input, OnlineMatchInputRejection.MemberDisconnected));
+        }
+
+        if (OnlineMatchStateMachine.IsEnded(match.State))
+        {
+            return Ok(RejectAck(match, input, OnlineMatchInputRejection.MatchEnded));
+        }
+
+        if (!OnlineMatchStateMachine.IsPlayable(match.State))
+        {
+            return Ok(RejectAck(match, input, OnlineMatchInputRejection.StateNotPlayable));
+        }
+
+        if (input.ClientSequence <= member.LastClientSequence)
+        {
+            var duplicateAck = RejectAck(match, input, OnlineMatchInputRejection.Duplicate);
+            duplicateAck.IsDuplicate = true;
+            return Ok(duplicateAck);
+        }
+
+        if (input.ClientSequence > member.LastClientSequence + 1)
+        {
+            return Ok(RejectAck(match, input, OnlineMatchInputRejection.OutOfOrder));
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 回放玩法裁决产出的服务器事件（玩法事件不带序号，序号由 Actor 统一分配后入日志）。
+    /// </summary>
+    /// <param name="match">门内候选副本。</param>
+    /// <param name="events">玩法产出事件（可空容器）。</param>
+    /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
+    /// <returns>追加了至少一条事件返回 <c>true</c>；容器为空引用或无有效事件返回 <c>false</c>。</returns>
+    private bool AppendEmittedEvents(OnlineMatch match, List<OnlineMatchServerEvent> events, long nowUnixMilliseconds)
+    {
+        if (events == null)
+        {
+            return false;
+        }
+
+        var appended = false;
+        foreach (var emitted in events)
+        {
+            if (emitted != null)
+            {
+                AppendServerEvent(match, emitted.EventType, emitted.Payload, nowUnixMilliseconds);
+                appended = true;
+            }
+        }
+
+        return appended;
+    }
+
+    /// <summary>
+    /// Tick 的玩法推进段：阶段可玩时执行 <see cref="IOnlineMatchGame.Advance"/>、回放产出事件并判定完成进结算。
+    /// <para>注意：「完成进结算」分支不置 changed（沿袭既有控制流，推进只反映在 <c>EnteredSettling</c>）。</para>
+    /// </summary>
+    /// <param name="working">门内候选副本。</param>
+    /// <param name="result">Tick 结果（写入 EnteredSettling）。</param>
+    /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
+    /// <returns>Advance 或事件回放发生改写返回 <c>true</c>。</returns>
+    private bool AdvanceGameplay(OnlineMatch working, OnlineMatchTickResult result, long nowUnixMilliseconds)
+    {
+        if (!OnlineMatchStateMachine.IsPlayable(working.State))
+        {
+            return false;
+        }
+
+        var changed = false;
+        var emittedEvents = new List<OnlineMatchServerEvent>();
+        if (_game.Advance(working, nowUnixMilliseconds, emittedEvents))
+        {
+            changed = true;
+        }
+
+        if (AppendEmittedEvents(working, emittedEvents, nowUnixMilliseconds))
+        {
+            changed = true;
+        }
+
+        if (_game.IsCompleted(working) && OnlineMatchStateMachine.TryTransition(working.State, OnlineMatchState.Settling))
+        {
+            Transition(working, OnlineMatchState.Settling, nowUnixMilliseconds);
+            result.EnteredSettling = true;
+        }
+
+        return changed;
+    }
+
+    /// <summary>
+    /// 判定已结束对局是否滞留满释放窗口（终态 → Closed 的入口条件，VC-5.11）。
+    /// </summary>
+    /// <param name="working">门内候选副本。</param>
+    /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
+    /// <returns>已结束、未 Closed 且滞留超窗返回 <c>true</c>。</returns>
+    private bool IsRetentionElapsed(OnlineMatch working, long nowUnixMilliseconds)
+    {
+        return OnlineMatchStateMachine.IsEnded(working.State) && working.State != OnlineMatchState.Closed
+               && nowUnixMilliseconds >= working.EndedTime + (_options.EndedRetentionSeconds * 1000L);
     }
 
     /// <summary>
