@@ -201,23 +201,7 @@ public sealed class OnlineGroupService : IOnlineChannelMembershipProbe
             RespondedAtTime = 0,
         };
 
-        var saved = await ReplaceWithReplayAsync(group, (copy) =>
-        {
-            if (copy.State != OnlineGroupState.Active)
-            {
-                // 重放快照已被解散：不再追加邀请（否则邀请会挂在一个已结束的群上）。
-                return false;
-            }
-
-            // 重放快照可能已有并发写入的同向邀请：已在则不再追加第二条（同一被邀请人至多一条待答复）。
-            if (FindPendingInvite(copy, inviteeId) != null)
-            {
-                return false;
-            }
-
-            copy.Invites.Add(invite);
-            return true;
-        }, cancellationToken).ConfigureAwait(false);
+        var saved = await ReplaceWithReplayAsync(group, (copy) => TryAppendInvite(copy, invite, inviteeId), cancellationToken).ConfigureAwait(false);
 
         if (saved == null)
         {
@@ -332,24 +316,7 @@ public sealed class OnlineGroupService : IOnlineChannelMembershipProbe
         }
 
         var now = Now();
-        var saved = await ReplaceWithReplayAsync(group, (copy) =>
-        {
-            if (copy.State != OnlineGroupState.Active)
-            {
-                return false;
-            }
-
-            var pending = FindInvite(copy, inviteId);
-            if (pending == null || pending.State != OnlineGroupInviteState.Pending)
-            {
-                // 重放快照已被并发答复：不改写（调用方按当前事实收敛）。
-                return false;
-            }
-
-            pending.State = OnlineGroupInviteState.Revoked;
-            pending.RespondedAtTime = now;
-            return true;
-        }, cancellationToken).ConfigureAwait(false);
+        var saved = await ReplaceWithReplayAsync(group, (copy) => TryRevokeInvite(copy, inviteId, now), cancellationToken).ConfigureAwait(false);
 
         if (saved == null)
         {
@@ -866,25 +833,7 @@ public sealed class OnlineGroupService : IOnlineChannelMembershipProbe
         {
             // 超期但尚未被扫描到的邀请就地终结：接受会新增成员，绝不能放过期邀请入群
             // （拒绝不校验有效期——拒绝不改变成员集合，被拒与过期同属「未入群」终态）。
-            var stale = await ReplaceWithReplayAsync(group, (copy) =>
-            {
-                var expired = FindInvite(copy, inviteId);
-                if (expired == null || expired.State != OnlineGroupInviteState.Pending)
-                {
-                    // 已被并发答复/撤销：无需就地终结。
-                    return false;
-                }
-
-                expired.State = OnlineGroupInviteState.Expired;
-                return true;
-            }, cancellationToken).ConfigureAwait(false);
-
-            if (stale != null)
-            {
-                await PublishGroupChangedAsync(stale, OnlineSocialEvents.GroupInviteChanged, correlationId, cancellationToken).ConfigureAwait(false);
-            }
-
-            return OnlineResult<OnlineGroup>.Fail(OnlineErrorCode.StateEnded, "邀请已过期");
+            return await ExpireStaleInviteAsync(group, inviteId, correlationId, cancellationToken).ConfigureAwait(false);
         }
 
         if (accept && group.Members.Count >= group.MaxMembers)
@@ -892,42 +841,7 @@ public sealed class OnlineGroupService : IOnlineChannelMembershipProbe
             return OnlineResult<OnlineGroup>.Fail(OnlineErrorCode.StateOperationForbidden, "群组成员数已达上限");
         }
 
-        var saved = await ReplaceWithReplayAsync(group, (copy) =>
-        {
-            if (copy.State != OnlineGroupState.Active)
-            {
-                // 重放快照已被解散：绝不把成员加回一个已结束的群（前置判据是针对旧快照做的，此处必须再判）。
-                return false;
-            }
-
-            var pending = FindInvite(copy, inviteId);
-            if (pending == null || pending.State != OnlineGroupInviteState.Pending)
-            {
-                // 重放快照已被并发答复/撤销：不改写（调用方按当前事实收敛）。
-                return false;
-            }
-
-            if (accept && !copy.Contains(scope.PlayerId))
-            {
-                if (copy.Members.Count >= copy.MaxMembers)
-                {
-                    // 重放快照可能已被并发入群顶到上限：接受不得越过上限（同上，判据必须落在新快照上）。
-                    // 已在成员集合中的被邀请人不受此限——那一步不新增成员。
-                    return false;
-                }
-
-                copy.Members.Add(new OnlineGroupMember
-                {
-                    PlayerId = scope.PlayerId,
-                    Role = OnlineGroupRole.Member,
-                    JoinedAtTime = now,
-                });
-            }
-
-            pending.State = target;
-            pending.RespondedAtTime = now;
-            return true;
-        }, cancellationToken).ConfigureAwait(false);
+        var saved = await ReplaceWithReplayAsync(group, (copy) => TryAnswerInvite(copy, inviteId, scope.PlayerId, accept, target, now), cancellationToken).ConfigureAwait(false);
 
         if (saved == null)
         {
@@ -938,6 +852,41 @@ public sealed class OnlineGroupService : IOnlineChannelMembershipProbe
         var action = accept ? OnlineSocialEvents.GroupMemberJoined : OnlineSocialEvents.GroupInviteChanged;
         await PublishGroupChangedAsync(saved, action, correlationId, cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineGroup>.Ok(saved);
+    }
+
+    /// <summary>
+    /// 就地终结一条已超期且尚未被扫描到的待答复邀请（<see cref="AnswerInviteAsync"/> 接受路径专用）。
+    /// <para>
+    /// 维护约束：接受会新增成员，绝不能放过期邀请入群；拒绝不校验有效期——拒绝不改变成员集合，
+    /// 被拒与过期同属「未入群」终态，故本方法只在接受路径调用。
+    /// </para>
+    /// </summary>
+    /// <param name="group">答复依据的群记录快照。</param>
+    /// <param name="inviteId">邀请标识。</param>
+    /// <param name="correlationId">关联标识（可空）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>恒为「邀请已过期」错误结果（终结落库成功才外发邀请变更事件）。</returns>
+    private async Task<OnlineResult<OnlineGroup>> ExpireStaleInviteAsync(OnlineGroup group, string inviteId, string correlationId, CancellationToken cancellationToken)
+    {
+        var stale = await ReplaceWithReplayAsync(group, (copy) =>
+        {
+            var expired = FindInvite(copy, inviteId);
+            if (expired == null || expired.State != OnlineGroupInviteState.Pending)
+            {
+                // 已被并发答复/撤销：无需就地终结。
+                return false;
+            }
+
+            expired.State = OnlineGroupInviteState.Expired;
+            return true;
+        }, cancellationToken).ConfigureAwait(false);
+
+        if (stale != null)
+        {
+            await PublishGroupChangedAsync(stale, OnlineSocialEvents.GroupInviteChanged, correlationId, cancellationToken).ConfigureAwait(false);
+        }
+
+        return OnlineResult<OnlineGroup>.Fail(OnlineErrorCode.StateEnded, "邀请已过期");
     }
 
     /// <summary>
@@ -996,6 +945,104 @@ public sealed class OnlineGroupService : IOnlineChannelMembershipProbe
         }
 
         return await _store.ReplaceAsync(copy, snapshot.Revision, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 在重放快照副本上追加一条入群邀请（<see cref="InviteAsync"/> 的 CAS 变更判据）。
+    /// </summary>
+    /// <param name="copy">重放得到的群记录副本。</param>
+    /// <param name="invite">待追加的邀请条目。</param>
+    /// <param name="inviteeId">被邀请玩家标识。</param>
+    /// <returns>已追加返回 <c>true</c>；重放快照已解散或已有同被邀请人待答复邀请返回 <c>false</c>（无事可做即不提交）。</returns>
+    private static bool TryAppendInvite(OnlineGroup copy, OnlineGroupInvite invite, long inviteeId)
+    {
+        if (copy.State != OnlineGroupState.Active)
+        {
+            // 重放快照已被解散：不再追加邀请（否则邀请会挂在一个已结束的群上）。
+            return false;
+        }
+
+        // 重放快照可能已有并发写入的同向邀请：已在则不再追加第二条（同一被邀请人至多一条待答复）。
+        if (FindPendingInvite(copy, inviteeId) != null)
+        {
+            return false;
+        }
+
+        copy.Invites.Add(invite);
+        return true;
+    }
+
+    /// <summary>
+    /// 在重放快照副本上撤销一条待答复邀请（<see cref="RevokeInviteAsync"/> 的 CAS 变更判据）。
+    /// </summary>
+    /// <param name="copy">重放得到的群记录副本。</param>
+    /// <param name="inviteId">邀请标识。</param>
+    /// <param name="nowUnixMilliseconds">当前 UTC 毫秒时刻（回填答复时刻用）。</param>
+    /// <returns>已撤销返回 <c>true</c>；重放快照已解散或邀请已被并发答复/撤销返回 <c>false</c>（无事可做即不提交）。</returns>
+    private static bool TryRevokeInvite(OnlineGroup copy, string inviteId, long nowUnixMilliseconds)
+    {
+        if (copy.State != OnlineGroupState.Active)
+        {
+            return false;
+        }
+
+        var pending = FindInvite(copy, inviteId);
+        if (pending == null || pending.State != OnlineGroupInviteState.Pending)
+        {
+            // 重放快照已被并发答复：不改写（调用方按当前事实收敛）。
+            return false;
+        }
+
+        pending.State = OnlineGroupInviteState.Revoked;
+        pending.RespondedAtTime = nowUnixMilliseconds;
+        return true;
+    }
+
+    /// <summary>
+    /// 在重放快照副本上答复一条待答复邀请（<see cref="AnswerInviteAsync"/> 的 CAS 变更判据；接受时按需追加成员）。
+    /// </summary>
+    /// <param name="copy">重放得到的群记录副本。</param>
+    /// <param name="inviteId">邀请标识。</param>
+    /// <param name="playerId">被邀请玩家（答复人）标识。</param>
+    /// <param name="accept">接受传 <c>true</c>，拒绝传 <c>false</c>。</param>
+    /// <param name="target">答复目标终态（Accepted / Rejected）。</param>
+    /// <param name="nowUnixMilliseconds">当前 UTC 毫秒时刻（入群时刻与答复时刻用）。</param>
+    /// <returns>已答复返回 <c>true</c>；重放快照已解散、邀请已被并发答复/撤销或接受越过成员上限返回 <c>false</c>（无事可做即不提交）。</returns>
+    private static bool TryAnswerInvite(OnlineGroup copy, string inviteId, long playerId, bool accept, OnlineGroupInviteState target, long nowUnixMilliseconds)
+    {
+        if (copy.State != OnlineGroupState.Active)
+        {
+            // 重放快照已被解散：绝不把成员加回一个已结束的群（前置判据是针对旧快照做的，此处必须再判）。
+            return false;
+        }
+
+        var pending = FindInvite(copy, inviteId);
+        if (pending == null || pending.State != OnlineGroupInviteState.Pending)
+        {
+            // 重放快照已被并发答复/撤销：不改写（调用方按当前事实收敛）。
+            return false;
+        }
+
+        if (accept && !copy.Contains(playerId))
+        {
+            if (copy.Members.Count >= copy.MaxMembers)
+            {
+                // 重放快照可能已被并发入群顶到上限：接受不得越过上限（同上，判据必须落在新快照上）。
+                // 已在成员集合中的被邀请人不受此限——那一步不新增成员。
+                return false;
+            }
+
+            copy.Members.Add(new OnlineGroupMember
+            {
+                PlayerId = playerId,
+                Role = OnlineGroupRole.Member,
+                JoinedAtTime = nowUnixMilliseconds,
+            });
+        }
+
+        pending.State = target;
+        pending.RespondedAtTime = nowUnixMilliseconds;
+        return true;
     }
 
     /// <summary>
