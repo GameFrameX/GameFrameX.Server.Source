@@ -147,35 +147,46 @@ public sealed class OnlineMatchListingService
                 break;
             }
 
-            if (!filter.IncludeUnavailable && listing.State != OnlineMatchListingState.Open)
+            if (MatchesFilters(listing, filter))
             {
-                continue;
+                result.Add(Sanitize(listing));
             }
-
-            if (filter.Mode.HasValue && listing.Mode != filter.Mode.Value)
-            {
-                continue;
-            }
-
-            if (filter.Region.HasValue && listing.Region != filter.Region.Value)
-            {
-                continue;
-            }
-
-            if (filter.JoinPolicy.HasValue && listing.JoinPolicy != filter.JoinPolicy.Value)
-            {
-                continue;
-            }
-
-            if (!MatchesAnyTag(listing, filter.Tags))
-            {
-                continue;
-            }
-
-            result.Add(Sanitize(listing));
         }
 
         return OnlineResult<IReadOnlyList<OnlineMatchListing>>.Ok(result);
+    }
+
+    /// <summary>
+    /// 判定列表项是否命中查询过滤（仅由 <see cref="QueryAsync"/> 调用）。
+    /// <para>裁决顺序与语义固定：可用性剔除 → 模式 → 区域 → 策略 → 标签，任一不中即落选；
+    /// 各过滤条件为空（HasValue = false / 标签集合为空）表示该维度不过滤。</para>
+    /// </summary>
+    /// <param name="listing">列表项。</param>
+    /// <param name="filter">查询条件。</param>
+    /// <returns>命中返回 <c>true</c>。</returns>
+    private static bool MatchesFilters(OnlineMatchListing listing, OnlineMatchListingQuery filter)
+    {
+        if (!filter.IncludeUnavailable && listing.State != OnlineMatchListingState.Open)
+        {
+            return false;
+        }
+
+        if (filter.Mode.HasValue && listing.Mode != filter.Mode.Value)
+        {
+            return false;
+        }
+
+        if (filter.Region.HasValue && listing.Region != filter.Region.Value)
+        {
+            return false;
+        }
+
+        if (filter.JoinPolicy.HasValue && listing.JoinPolicy != filter.JoinPolicy.Value)
+        {
+            return false;
+        }
+
+        return MatchesAnyTag(listing, filter.Tags);
     }
 
     /// <summary>
