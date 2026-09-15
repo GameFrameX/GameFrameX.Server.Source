@@ -390,8 +390,19 @@ public sealed class OnlineGrantService
             return OnlineResult<OnlineGrantResult>.Fail(OnlineErrorCode.ParameterInvalid, "变更行不得为空");
         }
 
+        return ValidateChangeLines(request.Changes);
+    }
+
+    /// <summary>
+    /// 校验变更行合法性（入口红线：资产标识非空、数额非 0、同一交易内资产不重复——审计对账与幂等规范化输入约束）。
+    /// 仅由 <see cref="ValidateRequest"/> 在标量字段校验通过后调用。
+    /// </summary>
+    /// <param name="changes">变更行集合。</param>
+    /// <returns>失败结果；合法返回 null。</returns>
+    private static OnlineResult<OnlineGrantResult> ValidateChangeLines(IReadOnlyList<OnlineAssetChangeLine> changes)
+    {
         var seenAssets = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var line in request.Changes)
+        foreach (var line in changes)
         {
             if (line == null || string.IsNullOrWhiteSpace(line.AssetId))
             {
