@@ -282,37 +282,10 @@ public sealed class OnlineOverviewService
     {
         var tickets = await _ticketStore.ListAllAsync(scope.TenantId, scope.AppId, cancellationToken).ConfigureAwait(false);
         var accumulator = new Dictionary<string, QueueAccumulator>();
-
-        if (tickets != null)
-        {
-            foreach (var ticket in tickets)
-            {
-                if (ticket == null || ticket.ServerId != scope.ServerId || ticket.State != OnlineMatchTicketState.Queued)
-                {
-                    continue;
-                }
-
-                var entry = Resolve(accumulator, ticket.Mode, ticket.Region);
-                entry.Depth++;
-                entry.TotalWaitSeconds += OnlineMatchRule.WaitSeconds(ticket, now);
-            }
-        }
+        AccumulateQueueDepth(tickets, scope, accumulator, now);
 
         var assignments = await _ticketStore.ListAssignmentsAsync(scope.TenantId, scope.AppId, cancellationToken).ConfigureAwait(false);
-        var windowStart = now - ThroughputWindowMilliseconds;
-        if (assignments != null)
-        {
-            foreach (var assignment in assignments)
-            {
-                if (assignment == null || assignment.ServerId != scope.ServerId || assignment.CreatedAtTime <= windowStart || assignment.CreatedAtTime > now)
-                {
-                    continue;
-                }
-
-                var entry = Resolve(accumulator, assignment.Mode, assignment.Region);
-                entry.Throughput += assignment.TicketIds == null ? 0 : assignment.TicketIds.Count;
-            }
-        }
+        AccumulateThroughput(assignments, scope, accumulator, now);
 
         var summaries = new List<OnlineOverviewQueueSummary>(accumulator.Count);
         foreach (var pair in accumulator.Values)
@@ -329,6 +302,56 @@ public sealed class OnlineOverviewService
 
         summaries.Sort(CompareQueueSummaries);
         snapshot.QueueSummaries = summaries;
+    }
+
+    /// <summary>
+    /// 累加队列深度与等待时长（排队态票据按 (Mode, Region) 槽位聚合）。
+    /// </summary>
+    /// <param name="tickets">全量票据列表（可为 <see langword="null"/>，此时不累加）。</param>
+    /// <param name="scope">生效作用域。</param>
+    /// <param name="accumulator">聚合表（按 (Mode, Region) 取或建槽位）。</param>
+    /// <param name="now">观测时刻（UTC 毫秒）。</param>
+    private static void AccumulateQueueDepth(IReadOnlyList<OnlineMatchTicket> tickets, OnlineScope scope, Dictionary<string, QueueAccumulator> accumulator, long now)
+    {
+        if (tickets != null)
+        {
+            foreach (var ticket in tickets)
+            {
+                if (ticket == null || ticket.ServerId != scope.ServerId || ticket.State != OnlineMatchTicketState.Queued)
+                {
+                    continue;
+                }
+
+                var entry = Resolve(accumulator, ticket.Mode, ticket.Region);
+                entry.Depth++;
+                entry.TotalWaitSeconds += OnlineMatchRule.WaitSeconds(ticket, now);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 累加吞吐（最近一分钟窗口 <c>(now - 60000, now]</c> 内落档的匹配分配所消费的票据数，按 (Mode, Region) 槽位聚合）。
+    /// </summary>
+    /// <param name="assignments">全量分配列表（可为 <see langword="null"/>，此时不累加）。</param>
+    /// <param name="scope">生效作用域。</param>
+    /// <param name="accumulator">聚合表（按 (Mode, Region) 取或建槽位）。</param>
+    /// <param name="now">观测时刻（UTC 毫秒）。</param>
+    private static void AccumulateThroughput(IReadOnlyList<OnlineMatchAssignment> assignments, OnlineScope scope, Dictionary<string, QueueAccumulator> accumulator, long now)
+    {
+        var windowStart = now - ThroughputWindowMilliseconds;
+        if (assignments != null)
+        {
+            foreach (var assignment in assignments)
+            {
+                if (assignment == null || assignment.ServerId != scope.ServerId || assignment.CreatedAtTime <= windowStart || assignment.CreatedAtTime > now)
+                {
+                    continue;
+                }
+
+                var entry = Resolve(accumulator, assignment.Mode, assignment.Region);
+                entry.Throughput += assignment.TicketIds == null ? 0 : assignment.TicketIds.Count;
+            }
+        }
     }
 
     /// <summary>
