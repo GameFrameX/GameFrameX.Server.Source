@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="../Version.props" Label="版本号定义"/>
+
+    <PropertyGroup>
+        <Description>GameFrameX.Online.Runtime,GFX Online 运行时装配:组合根(InMemory 存储+全域服务+事件桥+幂等)+Admin HTTP API(Kestrel)+后台调度器+Hotfix 回滚执行器. Runtime assembly for the GFX Online platform: composition root, admin HTTP API, background scheduler and hotfix rollback executor. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Online,Runtime,AdminApi,CompositionRoot,GameServer</PackageTags>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="GameFrameX.Foundation.Http.Normalization" Version="4.1.1"/>
+        <PackageReference Include="GameFrameX.Foundation.Json" Version="4.1.1"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../GameFrameX.Online/GameFrameX.Online.csproj"/>
+    </ItemGroup>
+
+</Project>

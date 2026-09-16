@@ -32,6 +32,7 @@
   <Project Path="GameFrameX.NetWork.Message/GameFrameX.NetWork.Message.csproj" />
   <Project Path="GameFrameX.NetWork.RemoteMessaging/GameFrameX.NetWork.RemoteMessaging.csproj" />
   <Project Path="GameFrameX.Online/GameFrameX.Online.csproj" />
+  <Project Path="GameFrameX.Online.Runtime/GameFrameX.Online.Runtime.csproj" />
   <Project Path="GameFrameX.NetWork/GameFrameX.NetWork.csproj" />
   <Project Path="GameFrameX.Proto/GameFrameX.Proto.csproj" />
   <Project Path="GameFrameX.ProtoBuf.Net/GameFrameX.ProtoBuf.Net.csproj" />

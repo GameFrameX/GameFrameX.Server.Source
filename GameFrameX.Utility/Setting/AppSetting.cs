@@ -541,6 +541,55 @@ public class AppSetting
     public string HttpCorsAllowedOrigins { get; set; }
 
     /// <summary>
+    /// 是否启用 Online 平台管理面（admin API）
+    /// <para>开启后 Game 服进程在本进程内装配 Online Runtime（InMemory 存储 + 各域服务 + 事件桥 + 幂等），并按 OnlineAdminPort 暴露 Admin 管理端点</para>
+    /// <para>默认值为 false，存量部署零影响</para>
+    /// </summary>
+    /// <remarks>
+    /// Whether to enable the Online platform admin API.
+    /// When enabled, the Game process hosts the Online Runtime in-process and exposes admin endpoints on OnlineAdminPort.
+    /// Default value is false.
+    /// </remarks>
+    [Option(nameof(IsEnableOnlineAdmin), DefaultValue = false, Description = "是否启用 Online 平台管理面(admin API),默认值为 false")]
+    public bool IsEnableOnlineAdmin { get; set; }
+
+    /// <summary>
+    /// Online admin API 监听端口
+    /// </summary>
+    /// <remarks>
+    /// Online admin API listening port.
+    /// </remarks>
+    [Option(nameof(OnlineAdminPort), DefaultValue = 28090, Description = "Online admin API 监听端口,默认值为 28090,只有 IsEnableOnlineAdmin 为 true 时才生效")]
+    public ushort OnlineAdminPort { get; set; } = 28090;
+
+    /// <summary>
+    /// Online admin API 路由前缀（与 Admin 侧区服寻址约定一致）
+    /// </summary>
+    /// <remarks>
+    /// Online admin API route prefix (aligned with the Admin-side area addressing convention).
+    /// </remarks>
+    [Option(nameof(OnlineAdminApiPrefix), DefaultValue = "online/admin", Description = "Online admin API 路由前缀,默认值为 online/admin,与 Admin 侧区服 HttpManageUrl 寻址约定一致")]
+    public string OnlineAdminApiPrefix { get; set; } = "online/admin";
+
+    /// <summary>
+    /// Online 运行时授权租户标识（与 ServerId 构成作用域三元组，跨租户请求按 3002 拒绝）
+    /// </summary>
+    /// <remarks>
+    /// Online runtime authorized tenant id (part of the scope triple; cross-tenant requests are rejected with 3002).
+    /// </remarks>
+    [Option(nameof(OnlineTenantId), DefaultValue = 0L, Description = "Online 运行时授权租户标识,与 OnlineAppId、ServerId 构成作用域三元组,默认值为 0(未配置)")]
+    public long OnlineTenantId { get; set; }
+
+    /// <summary>
+    /// Online 运行时授权应用标识（跨 App 请求按 3003 拒绝）
+    /// </summary>
+    /// <remarks>
+    /// Online runtime authorized app id (cross-app requests are rejected with 3003).
+    /// </remarks>
+    [Option(nameof(OnlineAppId), DefaultValue = 0L, Description = "Online 运行时授权应用标识,默认值为 0(未配置)")]
+    public long OnlineAppId { get; set; }
+
+    /// <summary>
     /// Prometheus指标端口（如果为0则使用HTTP端口）
     /// </summary>
     /// <remarks>

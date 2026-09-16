@@ -132,6 +132,26 @@ public static partial class Keys
         public const string HotfixModuleLoadEnd = "Launcher.HotfixModuleLoadEnd";
 
         /// <summary>
+        /// 开始装配 Online 平台管理面（admin API，端口 {0}）...
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineAdminStartBegin
+        /// 用途: 记录开始装配 Online 管理面的日志
+        /// 参数: {0} - admin API 监听端口
+        /// </remarks>
+        public const string OnlineAdminStartBegin = "Launcher.OnlineAdminStartBegin";
+
+        /// <summary>
+        /// Online 平台管理面装配完成（租户 {0}，应用 {1}，区服 {2}）...
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineAdminStartEnd
+        /// 用途: 记录 Online 管理面装配完成的日志
+        /// 参数: {0} - 租户标识；{1} - 应用标识；{2} - 区服标识
+        /// </remarks>
+        public const string OnlineAdminStartEnd = "Launcher.OnlineAdminStartEnd";
+
+        /// <summary>
         /// 进入游戏主循环...
         /// </summary>
         /// <remarks>
