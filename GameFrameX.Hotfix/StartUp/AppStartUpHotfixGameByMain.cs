@@ -35,6 +35,7 @@ using GameFrameX.Apps.Common.EventData;
 using GameFrameX.Core.Events;
 using GameFrameX.NetWork;
 using GameFrameX.NetWork.Abstractions;
+using GameFrameX.Hotfix.Logic.Game.Room;
 using GameFrameX.Proto.Proto;
 using GameFrameX.SuperSocket.Connection;
 using GameFrameX.SuperSocket.Server.Abstractions.Session;
@@ -100,11 +101,17 @@ internal partial class AppStartUpHotfixGame
     }
 
 
-    protected override ValueTask OnDisconnected(IAppSession appSession, CloseEventArgs disconnectEventArgs)
+    protected override async ValueTask OnDisconnected(IAppSession appSession, CloseEventArgs disconnectEventArgs)
     {
         LogHelper.Info("Client disconnected. SessionID: {sessionId}, Reason: {reason}", appSession.SessionId, disconnectEventArgs.Reason);
-        SessionManager.Remove(appSession.SessionId);
-        return ValueTask.CompletedTask;
+        var session = SessionManager.Remove(appSession.SessionId);
+        if (session != null && session.PlayerId > 0)
+        {
+            // 房间系统：标记玩家断线，等待重连或超时清理
+            var roomAgent = await ActorManager.GetComponentAgent<RoomComponentAgent>();
+            await roomAgent.MarkPlayerDisconnected(session.PlayerId);
+        }
+        return;
     }
 
     protected override async ValueTask OnConnected(IAppSession appSession)
