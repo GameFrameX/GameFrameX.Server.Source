@@ -31,6 +31,7 @@
 using GameFrameX.AppHost.ServiceDefaults;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.NetWork;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.NetWork.HTTP;
 using GameFrameX.NetWork.Message;
@@ -39,6 +40,8 @@ using GameFrameX.SuperSocket.Primitives;
 using GameFrameX.SuperSocket.ProtoBase;
 using GameFrameX.SuperSocket.Server;
 using GameFrameX.SuperSocket.Server.Abstractions;
+using GameFrameX.SuperSocket.Server.Abstractions.Host;
+using GameFrameX.SuperSocket.Server.Abstractions.Middleware;
 using GameFrameX.SuperSocket.Server.Abstractions.Session;
 using GameFrameX.SuperSocket.Server.Host;
 using GameFrameX.SuperSocket.Kcp;
@@ -322,11 +325,29 @@ public abstract partial class AppStartUpBase
     }
 
     /// <summary>
+    /// 创建 KCP 会话首消息鉴权配置。
+    /// </summary>
+    /// <remarks>
+    /// Creates the KCP session first-message authentication options.
+    /// KCP 无握手：服务端收到未知 conv 的任意 UDP 包即建连，必须启用首消息鉴权防线（GFX-822）。
+    /// 默认返回空白名单的严格配置（fail-closed：未鉴权会话除心跳外全部拦截），
+    /// 需要放行登录流的宿主应 override 本方法并填充 <see cref="SessionAuthenticationOptions.AllowedMessageIds"/>
+    /// （登录流程消息）与 <see cref="SessionAuthenticationOptions.AuthenticatedByMessageIds"/>（鉴权完成消息，如角色登录）。
+    /// </remarks>
+    /// <returns>KCP 会话鉴权配置 / The KCP session authentication options</returns>
+    protected virtual SessionAuthenticationOptions CreateKcpSessionAuthenticationOptions()
+    {
+        return new SessionAuthenticationOptions();
+    }
+
+    /// <summary>
     /// 配置 KCP 服务器（基于 GameFrameX.SuperSocket.Kcp）。
     /// </summary>
     /// <remarks>
     /// Configure the KCP server. 与 <see cref="ConfigureTcpServer"/> 同构：开关检查 → 端口检查 → AddServer + UseKcp + 共用连接/断开/消息回调 → 生命周期日志。
     /// KCP 与 TCP 共享 OnConnected / OnDisconnected / PackageHandler / PackageErrorHandler 四个回调，会话走与 TCP 相同的 InProcSessionContainer。
+    /// 在此之上叠加 KCP 专属的首消息鉴权防线：<see cref="SessionAuthenticationMiddleware"/>（仅挂载到本 KCP server，
+    /// 负责未鉴权会话的超时主动关闭）+ UsePackageHandler 前置鉴权包装（未鉴权期仅放行心跳与白名单消息，包装内部仍转发共享 PackageHandler，不新增回调签名）。
     /// </remarks>
     /// <param name="multipleServerHostBuilder">多服务器主机构建器 / Multiple server host builder</param>
     private void ConfigureKcpServer(MultipleServerHostBuilder multipleServerHostBuilder)
@@ -341,6 +362,8 @@ public abstract partial class AppStartUpBase
         if (Setting.KcpPort is > 0 and <= ushort.MaxValue && NetHelper.PortIsAvailable(Setting.KcpPort))
         {
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Kcp.StartingServer, ServerType, Setting.InnerHost, Setting.KcpPort));
+            var authenticationOptions = CreateKcpSessionAuthenticationOptions();
+            var authenticationMiddleware = new SessionAuthenticationMiddleware(authenticationOptions);
             multipleServerHostBuilder.AddServer<IMessage, MessageObjectPipelineFilter>(builder =>
             {
                 builder
@@ -354,8 +377,10 @@ public abstract partial class AppStartUpBase
                     })
                     .UseClearIdleSession()
                     .UseSessionHandler(OnConnected, OnDisconnected)
-                    .UsePackageHandler(PackageHandler, PackageErrorHandler)
+                    .UsePackageHandler((session, message) => HandleKcpPackageWithAuthenticationAsync(authenticationMiddleware, session, message), PackageErrorHandler)
                     .UseInProcSessionContainer()
+                    // UseMiddleware 返回非泛型 ISuperSocketHostBuilder，须置于泛型链末尾（其后仅剩 IHostBuilder 级调用）
+                    .UseMiddleware<SessionAuthenticationMiddleware>(_ => authenticationMiddleware)
                     .ConfigureServices((context, serviceCollection) =>
                     {
                         serviceCollection.Configure<ServerOptions>(options =>
@@ -376,6 +401,26 @@ public abstract partial class AppStartUpBase
             LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.Kcp.StartupFailed, ServerType, Setting.InnerHost, Setting.KcpPort));
             LogPortOccupationDetails("KCP", Setting.KcpPort);
         }
+    }
+
+    /// <summary>
+    /// KCP 消息处理前置鉴权包装：未通过首消息鉴权的消息不进入业务 PackageHandler。
+    /// </summary>
+    /// <remarks>
+    /// Pre-authentication gate for KCP packages: messages rejected by the first-message authentication middleware
+    /// are dropped (and the session closed as protocol violation) before reaching the shared business PackageHandler.
+    /// </remarks>
+    /// <param name="authenticationMiddleware">KCP 会话鉴权中间件 / The KCP session authentication middleware</param>
+    /// <param name="session">会话对象 / Session object</param>
+    /// <param name="message">接收到的消息 / Received message</param>
+    private async ValueTask HandleKcpPackageWithAuthenticationAsync(SessionAuthenticationMiddleware authenticationMiddleware, IAppSession session, IMessage message)
+    {
+        if (!await authenticationMiddleware.ShouldAllowPackageAsync(session, message))
+        {
+            return;
+        }
+
+        await PackageHandler(session, message);
     }
 
     /// <summary>
