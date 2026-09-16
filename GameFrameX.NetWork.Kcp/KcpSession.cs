@@ -136,7 +136,18 @@ public sealed class KcpSession : IKcpSession, IKcpCallback, IDisposable
         return ValueTask.CompletedTask;
     }
 
-    public string SessionID { get; }
+    public ValueTask SendAsync(ReadOnlySequence<byte> data, CancellationToken cancellationToken = new())
+    {
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return ValueTask.FromCanceled(cancellationToken);
+        }
+
+        Send(data.ToArray());
+        return ValueTask.CompletedTask;
+    }
+
+    public string SessionId { get; }
 
     /// <summary>
     /// Is connection active / 连接是否活跃

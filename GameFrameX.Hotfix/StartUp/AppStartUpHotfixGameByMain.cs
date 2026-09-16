@@ -67,14 +67,14 @@ internal partial class AppStartUpHotfixGame
 
     protected override ValueTask OnDisconnected(IAppSession appSession, CloseEventArgs disconnectEventArgs)
     {
-        LogHelper.Info("Client disconnected. SessionID: {sessionId}, Reason: {reason}", appSession.SessionID, disconnectEventArgs.Reason);
-        SessionManager.Remove(appSession.SessionID);
+        LogHelper.Info("Client disconnected. SessionID: {sessionId}, Reason: {reason}", appSession.SessionId, disconnectEventArgs.Reason);
+        SessionManager.Remove(appSession.SessionId);
         return ValueTask.CompletedTask;
     }
 
     protected override async ValueTask OnConnected(IAppSession appSession)
     {
-        LogHelper.Info("Client connected. SessionID: {sessionId}, RemoteEndPoint: {remoteEndPoint}", appSession.SessionID, appSession.RemoteEndPoint);
+        LogHelper.Info("Client connected. SessionID: {sessionId}, RemoteEndPoint: {remoteEndPoint}", appSession.SessionId, appSession.RemoteEndPoint);
         var netChannel = new DefaultNetWorkChannel(appSession, Setting);
         var count = SessionManager.Count();
         if (count > Setting.MaxClientCount)
@@ -85,7 +85,7 @@ internal partial class AppStartUpHotfixGame
             return;
         }
 
-        var session = new Session(appSession.SessionID, netChannel);
+        var session = new Session(appSession.SessionId, netChannel);
         SessionManager.Add(session);
     }
 
@@ -109,7 +109,7 @@ internal partial class AppStartUpHotfixGame
     /// <param name="messagePackage">网络消息包。</param>
     private async ValueTask HandleNetworkMessagePackageAsync(IAppSession session, NetworkMessagePackage messagePackage)
     {
-        var netWorkChannel = SessionManager.GetChannel(session.SessionID);
+        var netWorkChannel = SessionManager.GetChannel(session.SessionId);
 
         if (netWorkChannel.IsNull())
         {

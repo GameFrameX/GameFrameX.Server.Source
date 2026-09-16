@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 
+using System.Buffers;
 using System.Net;
 using GameFrameX.SuperSocket.Server.Abstractions.Session;
 
@@ -66,7 +67,7 @@ public sealed class KcpGameAppSession : IGameAppSession, IDisposable
     /// <summary>
     /// Session unique ID / 会话唯一 ID
     /// </summary>
-    public string SessionID
+    public string SessionId
     {
         get { return KcpSession.ConversationId.ToString(); }
     }
@@ -107,6 +108,21 @@ public sealed class KcpGameAppSession : IGameAppSession, IDisposable
         }
 
         await KcpSession.SendAsync(data, cancellationToken);
+    }
+
+    /// <summary>
+    /// Send data to client / 发送数据到客户端
+    /// </summary>
+    /// <param name="data">Data to send / 要发送的数据</param>
+    /// <param name="cancellationToken">Cancellation token / 取消令牌</param>
+    public async ValueTask SendAsync(ReadOnlySequence<byte> data, CancellationToken cancellationToken = default)
+    {
+        if (_disposed || !KcpSession.IsConnected)
+        {
+            return;
+        }
+
+        await KcpSession.SendAsync(data.ToArray(), cancellationToken);
     }
 
     /// <summary>
