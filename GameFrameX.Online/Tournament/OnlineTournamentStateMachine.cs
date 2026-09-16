@@ -51,7 +51,7 @@ public static class OnlineTournamentStateMachine
         { OnlineTournamentState.Scheduled, new[] { OnlineTournamentState.Active } },
         { OnlineTournamentState.Active, new[] { OnlineTournamentState.Ended } },
         { OnlineTournamentState.Ended, new[] { OnlineTournamentState.Settled } },
-        { OnlineTournamentState.Settled, new OnlineTournamentState[0] },
+        { OnlineTournamentState.Settled, Array.Empty<OnlineTournamentState>() },
     };
 
     /// <summary>
@@ -72,7 +72,7 @@ public static class OnlineTournamentStateMachine
     /// <returns>合法目标态列表；终态返回空列表。</returns>
     public static IReadOnlyList<OnlineTournamentState> GetLegalTargets(OnlineTournamentState from)
     {
-        return Adjacency.TryGetValue(from, out var targets) ? targets : new OnlineTournamentState[0];
+        return Adjacency.TryGetValue(from, out var targets) ? targets : Array.Empty<OnlineTournamentState>();
     }
 
     /// <summary>
