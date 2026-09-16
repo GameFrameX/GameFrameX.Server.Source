@@ -27,6 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using System.Buffers.Binary;
 using System.Net;
 using System.Net.Sockets;
 using GameFrameX.NetWork.Abstractions;
@@ -50,12 +51,14 @@ namespace GameFrameX.Tests.NetWork.SuperSocket;
 /// 覆盖 GFX-821（基于 GameFrameX.SuperSocket.Kcp 重写服务端 KCP 接入）的验收标准：
 /// 通过与 <c>AppStartUpByServer.ConfigureKcpServer</c> 相同的构建路径
 /// （<c>MultipleServerHostBuilder.Create</c> + <c>AddServer&lt;IMessage, MessageObjectPipelineFilter&gt;</c>
-/// + <c>UseKcp</c>）启动 KCP 服务器，并用真实 UDP 客户端发送探测包证明端口处于监听状态。
+/// + <c>UseKcp</c>）启动 KCP 服务器，并用真实 UDP 客户端发送最小 KCP 头包，
+/// 以会话建立回调被触发证明端口不仅可收包、整条 KCP 建连链路已就绪。
 /// </remarks>
 public class SuperSocketKcpListeningTests : IAsyncLifetime
 {
     private IHost _host;
     private int _kcpPort;
+    private readonly TaskCompletionSource<bool> _sessionConnected = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public async Task InitializeAsync()
     {
@@ -106,20 +109,42 @@ public class SuperSocketKcpListeningTests : IAsyncLifetime
     /// KCP 服务器启动后 UDP 端口应处于监听状态 / KCP server should listen on UDP port after startup
     /// </summary>
     /// <remarks>
-    /// 用 UdpClient 真实发送一个空探测包：发送成功（无 SocketException/IOException）即证明目的端口已 listen。
-    /// KCP 协议握手由 GameFrameX.SuperSocket.Kcp 内部处理，单包探测仅用于验证端口可达性，完整端到端 IMessage 收发不在本冒烟测试范围。
+    /// 用 UdpClient 真实发送一个 24 字节（IKCP_OVERHEAD）最小 KCP 头包：KcpConnectionListener 对未知
+    /// <c>RemoteEndPoint:Conv</c> 的合法 KCP 包即建连，进而触发 <c>UseSessionHandler</c> 注册的 OnConnected 回调。
+    /// 断言该回调在超时内触发——「发送成功即视为已 listen」不成立（无连接 UDP 的首次 sendto 即使端口无人监听也会返回成功），
+    /// 只有回调触发才证明监听器完成「收包 → 建连 → 会话建立」全链路。完整端到端 IMessage 收发不在本冒烟测试范围。
     /// </remarks>
     [Fact]
     public async Task KcpServer_AfterStart_ShouldListenOnUdpPort()
     {
         using var udpClient = new UdpClient();
-        using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var datagram = CreateMinimalKcpDatagram(1001u);
 
-        // 真实 UDP 发送：成功后无异常即视为端口已 listen
-        await udpClient.SendAsync(
-            new byte[] { 0x00 },
-            1,
-            new IPEndPoint(IPAddress.Loopback, _kcpPort));
+        // 真实 UDP 发送：服务器对未知 conv 的合法 KCP 包建连并触发 OnConnected
+        await udpClient.SendAsync(datagram, datagram.Length, new IPEndPoint(IPAddress.Loopback, _kcpPort));
+
+        var connectedTask = _sessionConnected.Task;
+        await Task.WhenAny(connectedTask, Task.Delay(TimeSpan.FromSeconds(5)));
+        Assert.True(connectedTask.IsCompleted, $"Expected a session to be established on UDP port {_kcpPort} after sending a minimal KCP datagram.");
+    }
+
+    /// <summary>
+    /// 构造最小合法长度的 KCP 数据报（24 字节头：conv + cmd + frg + wnd + ts + sn + una + len）。
+    /// </summary>
+    /// <param name="conv">KCP 会话 Conv / The KCP conv</param>
+    /// <returns>24 字节 KCP 头数据报 / The 24-byte KCP header datagram</returns>
+    private static byte[] CreateMinimalKcpDatagram(uint conv)
+    {
+        var datagram = new byte[24];
+        BinaryPrimitives.WriteUInt32LittleEndian(datagram.AsSpan(0, 4), conv);
+        datagram[4] = 81; // cmd = IKCP_CMD_PUSH
+        datagram[5] = 0; // frg
+        BinaryPrimitives.WriteUInt16LittleEndian(datagram.AsSpan(6, 2), 32); // wnd
+        BinaryPrimitives.WriteUInt32LittleEndian(datagram.AsSpan(8, 4), 0); // ts
+        BinaryPrimitives.WriteUInt32LittleEndian(datagram.AsSpan(12, 4), 0); // sn
+        BinaryPrimitives.WriteUInt32LittleEndian(datagram.AsSpan(16, 4), 0); // una
+        BinaryPrimitives.WriteUInt32LittleEndian(datagram.AsSpan(20, 4), 0); // len
+        return datagram;
     }
 
     /// <summary>
@@ -131,8 +156,9 @@ public class SuperSocketKcpListeningTests : IAsyncLifetime
         return ((IPEndPoint)udpClient.Client.LocalEndPoint).Port;
     }
 
-    private static ValueTask OnConnected(IAppSession session)
+    private ValueTask OnConnected(IAppSession session)
     {
+        _sessionConnected.TrySetResult(true);
         return ValueTask.CompletedTask;
     }
 
