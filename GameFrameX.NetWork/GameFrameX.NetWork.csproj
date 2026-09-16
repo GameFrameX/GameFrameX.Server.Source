@@ -11,6 +11,6 @@
         <ProjectReference Include="..\GameFrameX.Utility\GameFrameX.Utility.csproj"/>
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="GameFrameX.SuperSocket.WebSocket.Server" Version="1.2.0"/>
+        <PackageReference Include="GameFrameX.SuperSocket.WebSocket.Server" Version="1.3.0"/>
     </ItemGroup>
 </Project>

@@ -141,7 +141,7 @@ public abstract partial class AppStartUpBase
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     protected virtual ValueTask OnDisconnected(IAppSession appSession, CloseEventArgs disconnectEventArgs)
     {
-        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.ClientDisconnected, appSession.SessionID, appSession.RemoteEndPoint, disconnectEventArgs.Reason));
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.ClientDisconnected, appSession.SessionId, appSession.RemoteEndPoint, disconnectEventArgs.Reason));
         return ValueTask.CompletedTask;
     }
 
@@ -156,7 +156,7 @@ public abstract partial class AppStartUpBase
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     protected virtual ValueTask OnConnected(IAppSession appSession)
     {
-        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.NewClientConnection, appSession.SessionID, appSession.RemoteEndPoint));
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.NewClientConnection, appSession.SessionId, appSession.RemoteEndPoint));
         return ValueTask.CompletedTask;
     }
 
