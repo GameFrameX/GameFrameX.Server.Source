@@ -103,7 +103,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证停机后端口释放（停机 → 再次启停同端口成功，可重复启停）。
+        /// 验证停机后端口释放（停机 → 再次启停同端口成功，重启后仍能服务真实 HTTP 请求）。
         /// </summary>
         [Fact]
         public async Task StopAsync_ThenRestart_ShouldReleasePort()
@@ -115,6 +115,9 @@ namespace GameFrameX.Tests.Online
             await first.StopAsync();
             var second = new OnlineAdminApiServer(options, new OnlineAdminApiDispatcher(new OnlineRuntimeHost(options)));
             await second.StartAsync();
+            var content = new StringContent("{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001}", Encoding.UTF8, "application/json");
+            var response = await SharedHttpClient.PostAsync("http://127.0.0.1:" + TestPort + "/online/admin/no_such_action", content);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             await second.StopAsync();
         }
 
