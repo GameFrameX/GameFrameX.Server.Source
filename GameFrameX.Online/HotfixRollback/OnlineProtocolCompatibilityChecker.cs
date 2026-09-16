@@ -71,7 +71,26 @@ public static class OnlineProtocolCompatibilityChecker
         var targetById = BuildIdIndex(target);
         var issues = new List<OnlineProtocolCompatibilityIssue>();
 
-        // 当前 → 目标方向：判 Removed（当前有目标无）与 Changed（同名不同号 / 同号不同名）。
+        // 先 Removed/Changed（不兼容拒绝），后 Added（兼容提示）——追加顺序即报告行序，为既有契约。
+        CollectRemovedAndChangedIssues(current, targetByName, targetById, issues);
+        CollectAddedIssues(target, currentByName, currentById, issues);
+
+        return new OnlineProtocolCompatibilityReport(issues);
+    }
+
+    /// <summary>
+    /// 按当前（活跃）版本逐行比对目标（回滚）版本索引，收集 Removed 与 Changed 两类不兼容差异行。
+    /// <para>
+    /// 判定顺序为既有契约：名字索引命中时仅比对消息号（不同号报 Changed）；名字未命中但消息号被占位
+    /// 报 Changed（改名）；两者皆无报 Removed。索引由调用方建好传入复用，本方法不重建。
+    /// </para>
+    /// </summary>
+    /// <param name="current">当前活跃版本清单。</param>
+    /// <param name="targetByName">目标版本的消息名索引。</param>
+    /// <param name="targetById">目标版本的消息号索引。</param>
+    /// <param name="issues">差异行收集集合（按比对顺序追加）。</param>
+    private static void CollectRemovedAndChangedIssues(OnlineHotfixProtocolManifest current, Dictionary<string, int> targetByName, Dictionary<int, string> targetById, List<OnlineProtocolCompatibilityIssue> issues)
+    {
         foreach (var currentMessage in current.Messages ?? Array.Empty<OnlineHotfixProtocolMessage>())
         {
             if (currentMessage == null)
@@ -118,9 +137,22 @@ public static class OnlineProtocolCompatibilityChecker
                 Description = "消息 " + currentMessage.MessageName + "(" + currentMessage.MessageId + ") 在目标版本不存在（回滚丢失既有协议面）",
             });
         }
+    }
 
-        // 目标 → 当前方向：判 Added（目标独有——回滚恢复旧处理器，兼容入报告提示）。
-        // 消息号在当前版本已占位的行不算 Added（那是改名差异，已在上方按 Changed 报告）。
+    /// <summary>
+    /// 按目标（回滚）版本逐行比对当前（活跃）版本索引，收集 Added（目标版本独有）差异行
+    /// （回滚恢复旧处理器，恒兼容，仅入报告提示）。
+    /// <para>
+    /// 消息号在当前版本已占位的行不算 Added（那是改名差异，已由
+    /// <see cref="CollectRemovedAndChangedIssues"/> 按 Changed 报告）；索引由调用方建好传入复用。
+    /// </para>
+    /// </summary>
+    /// <param name="target">目标回滚版本清单。</param>
+    /// <param name="currentByName">当前版本的消息名索引。</param>
+    /// <param name="currentById">当前版本的消息号索引。</param>
+    /// <param name="issues">差异行收集集合（按比对顺序追加）。</param>
+    private static void CollectAddedIssues(OnlineHotfixProtocolManifest target, Dictionary<string, int> currentByName, Dictionary<int, string> currentById, List<OnlineProtocolCompatibilityIssue> issues)
+    {
         foreach (var targetMessage in target.Messages ?? Array.Empty<OnlineHotfixProtocolMessage>())
         {
             if (targetMessage == null)
@@ -140,8 +172,6 @@ public static class OnlineProtocolCompatibilityChecker
                 });
             }
         }
-
-        return new OnlineProtocolCompatibilityReport(issues);
     }
 
     /// <summary>
