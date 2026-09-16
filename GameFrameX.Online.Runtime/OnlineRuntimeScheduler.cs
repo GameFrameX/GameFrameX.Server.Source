@@ -36,8 +36,9 @@ namespace GameFrameX.Online.Runtime;
 /// 比单轮失败更糟）；Season/Tournament 到点驱动因 store 无枚举 API 登记为能力缺口（决策⑧③），
 /// 不在本调度器内做扫描。
 /// </para>
+/// <para>一次性生命周期：停止（<see cref="StopAsync"/> / <see cref="Dispose"/>）即释放停止令牌，不可重启。</para>
 /// </summary>
-public sealed class OnlineRuntimeScheduler
+public sealed class OnlineRuntimeScheduler : IDisposable
 {
     /// <summary>
     /// 宿主（服务集合的驱动对象）。
@@ -85,7 +86,8 @@ public sealed class OnlineRuntimeScheduler
     }
 
     /// <summary>
-    /// 停止调度循环（等待当轮完成后退出；可重复调用）。
+    /// 停止调度循环（等待当轮完成后退出并释放停止令牌；可重复调用）。
+    /// <para>停止后令牌已释放，不可重启（<see cref="Start"/> 在停止后为空操作）。</para>
     /// </summary>
     /// <returns>异步任务。</returns>
     public async Task StopAsync()
@@ -93,22 +95,44 @@ public sealed class OnlineRuntimeScheduler
         Task loopTask;
         lock (_sync)
         {
-            _cancellation.Cancel();
+            // 已取消说明此前已停止（令牌可能已释放），不再 Cancel 以免 ObjectDisposedException。
+            if (!_cancellation.IsCancellationRequested)
+            {
+                _cancellation.Cancel();
+            }
+
             loopTask = _loopTask;
         }
 
-        if (loopTask == null)
+        if (loopTask != null)
         {
-            return;
+            try
+            {
+                await loopTask.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // 等待周期被取消打断属预期退出路径。
+            }
         }
 
-        try
+        // 循环已退出（或从未启动），停止令牌不再需要，就地释放（Dispose 幂等，重复调用安全）。
+        _cancellation.Dispose();
+    }
+
+    /// <summary>
+    /// 释放资源（兜底释放停止令牌；常规停机走 <see cref="StopAsync"/> 以等待当轮完成）。
+    /// </summary>
+    public void Dispose()
+    {
+        lock (_sync)
         {
-            await loopTask.ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            // 等待周期被取消打断属预期退出路径。
+            if (!_cancellation.IsCancellationRequested)
+            {
+                _cancellation.Cancel();
+            }
+
+            _cancellation.Dispose();
         }
     }
 
