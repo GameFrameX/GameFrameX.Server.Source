@@ -145,22 +145,7 @@ public sealed class OnlineAdminSocialHandlers
         var pageSize = OnlineAdminApiContract.ReadPageSize(request);
         var cursor = OnlineAdminApiContract.ReadCursor(request);
 
-        var cases = new List<OnlineReportCase>();
-        if (status.HasValue)
-        {
-            cases.AddRange(await _host.ReportStore.ListByStateAsync(scope.TenantId, scope.AppId, status.Value, cancellationToken).ConfigureAwait(false));
-        }
-        else if (reporterPlayerId.HasValue)
-        {
-            cases.AddRange(await _host.ReportStore.ListByReporterAsync(scope.TenantId, scope.AppId, reporterPlayerId.Value, cancellationToken).ConfigureAwait(false));
-        }
-        else
-        {
-            foreach (OnlineReportState state in Enum.GetValues(typeof(OnlineReportState)))
-            {
-                cases.AddRange(await _host.ReportStore.ListByStateAsync(scope.TenantId, scope.AppId, state, cancellationToken).ConfigureAwait(false));
-            }
-        }
+        var cases = await CollectReportCasesAsync(scope, status, reporterPlayerId, cancellationToken).ConfigureAwait(false);
 
         var filtered = cases
             .Where(item => (!reporterPlayerId.HasValue || item.ReporterId == reporterPlayerId.Value)
@@ -169,11 +154,7 @@ public sealed class OnlineAdminSocialHandlers
             .OrderByDescending(item => item.CreatedAtTime)
             .ThenByDescending(item => item.ReportId, StringComparer.Ordinal)
             .ToList();
-        if (!string.IsNullOrEmpty(cursor) && TryParseReportCursor(cursor, out var cursorTime, out var cursorId))
-        {
-            filtered = filtered.Where(item => item.CreatedAtTime < cursorTime
-                                              || (item.CreatedAtTime == cursorTime && string.CompareOrdinal(item.ReportId, cursorId) < 0)).ToList();
-        }
+        filtered = ApplyReportCursor(filtered, cursor);
 
         var hasMore = filtered.Count > pageSize;
         var pageItems = hasMore ? filtered.Take(pageSize).ToList() : filtered;
@@ -296,6 +277,53 @@ public sealed class OnlineAdminSocialHandlers
             NextCursor = page.NextCursor,
             HasMore = page.HasMore,
         };
+    }
+
+    /// <summary>
+    /// 收集举报案件（状态过滤优先，次选举报人过滤，无过滤时全状态枚举汇总）。
+    /// </summary>
+    /// <param name="scope">作用域。</param>
+    /// <param name="status">Admin 举报状态过滤。</param>
+    /// <param name="reporterPlayerId">举报人过滤。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>案件全量列表。</returns>
+    private async Task<List<OnlineReportCase>> CollectReportCasesAsync(OnlineScope scope, OnlineReportState? status, long? reporterPlayerId, CancellationToken cancellationToken)
+    {
+        var cases = new List<OnlineReportCase>();
+        if (status.HasValue)
+        {
+            cases.AddRange(await _host.ReportStore.ListByStateAsync(scope.TenantId, scope.AppId, status.Value, cancellationToken).ConfigureAwait(false));
+        }
+        else if (reporterPlayerId.HasValue)
+        {
+            cases.AddRange(await _host.ReportStore.ListByReporterAsync(scope.TenantId, scope.AppId, reporterPlayerId.Value, cancellationToken).ConfigureAwait(false));
+        }
+        else
+        {
+            foreach (OnlineReportState state in Enum.GetValues(typeof(OnlineReportState)))
+            {
+                cases.AddRange(await _host.ReportStore.ListByStateAsync(scope.TenantId, scope.AppId, state, cancellationToken).ConfigureAwait(false));
+            }
+        }
+
+        return cases;
+    }
+
+    /// <summary>
+    /// 应用举报分页游标（保留创建时刻早于游标，或同时刻且 ReportId 序小于游标的条目；游标无效时原样返回）。
+    /// </summary>
+    /// <param name="cases">案件列表。</param>
+    /// <param name="cursor">游标原文。</param>
+    /// <returns>过滤后的案件列表。</returns>
+    private static List<OnlineReportCase> ApplyReportCursor(List<OnlineReportCase> cases, string cursor)
+    {
+        if (!string.IsNullOrEmpty(cursor) && TryParseReportCursor(cursor, out var cursorTime, out var cursorId))
+        {
+            return cases.Where(item => item.CreatedAtTime < cursorTime
+                                       || (item.CreatedAtTime == cursorTime && string.CompareOrdinal(item.ReportId, cursorId) < 0)).ToList();
+        }
+
+        return cases;
     }
 
     /// <summary>
