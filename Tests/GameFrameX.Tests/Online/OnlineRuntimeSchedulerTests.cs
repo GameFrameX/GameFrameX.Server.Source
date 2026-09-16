@@ -64,6 +64,11 @@ namespace GameFrameX.Tests.Online
             await scheduler.StopAsync();
 
             scheduler.Dispose();
+
+            // 停机后调度器仍可驱动一次 tick：TickAsync 不依赖运行中循环，仅走 _host sweep，
+            // 调用成功即锚定「启动→停止→释放」整段链未抛、_host 状态完整。
+            Assert.NotNull(scheduler);
+            await scheduler.TickAsync();
         }
 
         /// <summary>
@@ -79,6 +84,10 @@ namespace GameFrameX.Tests.Online
             await scheduler.StopAsync();
 
             scheduler.Dispose();
+
+            // 重复停止后调度器仍可驱动一次 tick：锚定 StopAsync 重入防护未破坏 host 路径。
+            Assert.NotNull(scheduler);
+            await scheduler.TickAsync();
         }
 
         /// <summary>
@@ -92,6 +101,11 @@ namespace GameFrameX.Tests.Online
             await scheduler.StopAsync();
 
             scheduler.Dispose();
+
+            // 从未启动即停止后调度器仍可驱动一次 tick：TickAsync 不读 _loopTask，走 _host sweep，
+            // 调用成功即锚定「释放路径未抛、_host sweep 可达」。
+            Assert.NotNull(scheduler);
+            await scheduler.TickAsync();
         }
     }
 }
