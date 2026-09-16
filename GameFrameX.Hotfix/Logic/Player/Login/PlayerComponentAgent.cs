@@ -32,6 +32,9 @@ using GameFrameX.Apps.Common.Session;
 using GameFrameX.Apps.Common.Event;
 using GameFrameX.Apps.Player.Player.Component;
 using GameFrameX.Apps.Player.Player.Entity;
+using GameFrameX.Hotfix.Logic.Game.Room;
+using GameFrameX.Hotfix.Logic.Player.Attribute;
+using GameFrameX.Hotfix.Logic.Player.Mail;
 using GameFrameX.Hotfix.Logic.Server;
 using GameFrameX.Core.Events;
 using GameFrameX.Proto.BuiltIn;
@@ -73,9 +76,22 @@ public class PlayerComponentAgent : StateComponentAgent<PlayerComponent, PlayerS
             Avatar = playerState.Avatar,
         };
 
+        // 初始化玩家属性默认值（属性系统）
+        var attributeComponentAgent = await ActorManager.GetComponentAgent<PlayerAttributeComponentAgent>(playerState.Id);
+        await attributeComponentAgent.InitializeDefaultsSilent();
+
         //加入在线玩家
         var serverComp = await ActorManager.GetComponentAgent<ServerComponentAgent>();
         await serverComp.AddOnlineRole(ActorId);
         EventDispatcher.Dispatch(ActorId, (int)EventId.OnRoleOnline);
+
+        // 房间断线重连标记（房间系统）
+        var roomComp = await ActorManager.GetComponentAgent<RoomComponentAgent>();
+        await roomComp.MarkPlayerReconnected(ActorId);
+
+        // 推送属性快照 + 邮件懒同步（邮件系统）
+        await workChannel.WriteAsync(attributeComponentAgent.BuildSyncSnapshot());
+        var mailAgent = await ActorManager.GetComponentAgent<MailComponentAgent>(playerState.Id);
+        await mailAgent.SyncAsync();
     }
 }
