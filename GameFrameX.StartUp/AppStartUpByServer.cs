@@ -28,13 +28,11 @@
 //  ==========================================================================================
 
 
-using System.Net;
 using GameFrameX.AppHost.ServiceDefaults;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.NetWork.HTTP;
-// using GameFrameX.NetWork.Kcp;
 using GameFrameX.NetWork.Message;
 using GameFrameX.SuperSocket.Connection;
 using GameFrameX.SuperSocket.Primitives;
@@ -148,41 +146,6 @@ public abstract partial class AppStartUpBase
     }
 
     /// <summary>
-    /// KCP客户端连接成功处理
-    /// </summary>
-    /// <param name="remoteEndPoint">远程端点</param>
-    /// <returns></returns>
-    protected virtual ValueTask OnKcpConnected(EndPoint remoteEndPoint)
-    {
-        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.KcpServer.NewClientConnection, remoteEndPoint));
-        return ValueTask.CompletedTask;
-    }
-
-    /// <summary>
-    /// KCP消息处理方法
-    /// </summary>
-    /// <param name="session">游戏应用会话</param>
-    /// <param name="message">接收到的消息</param>
-    protected virtual void KcpPackageHandler(IGameAppSession session, IMessage message)
-    {
-        if (Setting.IsDebug && Setting.IsDebugReceive)
-        {
-            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.MessageReceived, ServerType, message.ToFormatMessageString()));
-        }
-    }
-
-    /// <summary>
-    /// KCP客户端断开连接处理
-    /// </summary>
-    /// <param name="remoteEndPoint">远程端点</param>
-    /// <returns></returns>
-    protected virtual ValueTask OnKcpDisconnected(EndPoint remoteEndPoint)
-    {
-        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.KcpServer.ClientDisconnected, remoteEndPoint));
-        return ValueTask.CompletedTask;
-    }
-
-    /// <summary>
     /// 客户端连接成功时的处理方法。
     /// </summary>
     /// <remarks>
@@ -280,7 +243,6 @@ public abstract partial class AppStartUpBase
         var multipleServerHostBuilder = MultipleServerHostBuilder.Create();
         ConfigureTcpServer(multipleServerHostBuilder);
         ConfigureWebSocketServer(multipleServerHostBuilder);
-        ConfigureKcpServer();
 
         // await StartHttpServerAsync(hostBuilder,baseHandler, httpFactory, aopHandlerTypes, minimumLevelLogLevel);
         await StartHttpServer(baseHandler, httpFactory, aopHandlerTypes, minimumLevelLogLevel);
@@ -401,48 +363,6 @@ public abstract partial class AppStartUpBase
             LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.WebSocketServer.StartupFailed, ServerType, Setting.WsPort));
             LogPortOccupationDetails("WebSocket", Setting.WsPort);
         }
-    }
-
-    /// <summary>
-    /// 处理 KCP 服务器启动（当前实现已禁用）。
-    /// </summary>
-    /// <remarks>Handle KCP server startup (currently disabled). Extracted from <see cref="StartServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
-    private void ConfigureKcpServer()
-    {
-        if (!Setting.IsEnableKcp)
-        {
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.KcpServer.ServerDisabled, ServerType, Setting.InnerHost, Setting.KcpPort));
-            return;
-        }
-
-        // 启动KCP服务器
-        // var kcpPort = Setting.KcpPort > 0 ? Setting.KcpPort : Setting.InnerPort;
-        // if (kcpPort > 0 && NetHelper.PortIsAvailable(kcpPort))
-        // {
-        //     LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.KcpServer.StartingServer, ServerType, Setting.InnerHost, kcpPort));
-        //     var kcpServer = new KcpServer(
-        //         kcpPort,
-        //         new KcpOptions { Enable = true },
-        //         Setting,
-        //         KcpPackageHandler,
-        //         OnKcpConnected,
-        //         OnKcpDisconnected
-        //     );
-        //     _ = kcpServer.StartAsync();
-        //     LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.KcpServer.StartupComplete, ServerType, Setting.InnerHost, kcpPort));
-        // }
-        // else
-        // {
-        //     LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.KcpServer.StartupFailed, ServerType, Setting.InnerHost, kcpPort));
-        //     if (kcpPort > 0)
-        //     {
-        //         var occupiedProcesses = NetHelper.GetPortOccupyingProcesses(kcpPort);
-        //         if (occupiedProcesses.Count > 0)
-        //         {
-        //             LogHelper.Warning($"KCP端口[{kcpPort}]占用详情: {string.Join(" | ", occupiedProcesses)}");
-        //         }
-        //     }
-        // }
     }
 
     /// <summary>

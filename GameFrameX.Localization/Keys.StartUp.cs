@@ -525,69 +525,51 @@ public static partial class Keys
         }
 
         /// <summary>
-        /// KCP服务器相关消息
+        /// KCP 传输生命周期消息。
+        /// 自旧 KcpServer 键组迁移的生命周期键，供 KCP 接入重写（基于 GameFrameX.SuperSocket.Kcp）复用；
+        /// 当前暂无代码引用，接入落地时按需登记 resx 翻译条目。
         /// </summary>
-        public static class KcpServer
+        public static class Kcp
         {
-            /// <summary>
-            /// 客户端断开连接 - 远程终端: {0}
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.KcpServer.ClientDisconnected
-            /// 用途: 当KCP客户端断开连接时记录
-            /// 参数: {0} - 远程端点
-            /// </remarks>
-            public const string ClientDisconnected = "StartUp.KcpServer.ClientDisconnected";
-
-            /// <summary>
-            /// 新客户端连接 - 远程终端: {0}
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.KcpServer.NewClientConnection
-            /// 用途: 当新KCP客户端连接时记录
-            /// 参数: {0} - 远程端点
-            /// </remarks>
-            public const string NewClientConnection = "StartUp.KcpServer.NewClientConnection";
-
             /// <summary>
             /// 启动KCP服务器 类型: {0}, 地址: {1}, 端口: {2}
             /// </summary>
             /// <remarks>
-            /// 键名: StartUp.KcpServer.StartingServer
+            /// 键名: StartUp.Kcp.StartingServer
             /// 用途: 当开始启动KCP服务器时记录
             /// 参数: {0} - 服务器类型, {1} - 地址, {2} - 端口
             /// </remarks>
-            public const string StartingServer = "StartUp.KcpServer.StartingServer";
+            public const string StartingServer = "StartUp.Kcp.StartingServer";
 
             /// <summary>
             /// 启动KCP服务器完成 类型: {0}, 地址: {1}, 端口: {2}
             /// </summary>
             /// <remarks>
-            /// 键名: StartUp.KcpServer.StartupComplete
+            /// 键名: StartUp.Kcp.StartupComplete
             /// 用途: 当KCP服务器启动完成时记录
             /// 参数: {0} - 服务器类型, {1} - 地址, {2} - 端口
             /// </remarks>
-            public const string StartupComplete = "StartUp.KcpServer.StartupComplete";
+            public const string StartupComplete = "StartUp.Kcp.StartupComplete";
 
             /// <summary>
             /// 启动KCP服务器失败 类型: {0}, 地址: {1}, 端口: {2}, 原因: 端口无效或被占用
             /// </summary>
             /// <remarks>
-            /// 键名: StartUp.KcpServer.StartupFailed
+            /// 键名: StartUp.Kcp.StartupFailed
             /// 用途: 当KCP服务器启动失败时记录警告
             /// 参数: {0} - 服务器类型, {1} - 地址, {2} - 端口
             /// </remarks>
-            public const string StartupFailed = "StartUp.KcpServer.StartupFailed";
+            public const string StartupFailed = "StartUp.Kcp.StartupFailed";
 
             /// <summary>
             /// 启动KCP服务器 类型: {0}, 地址: {1}, 端口: {2}, 原因: KCP服务器被禁用
             /// </summary>
             /// <remarks>
-            /// 键名: StartUp.KcpServer.ServerDisabled
+            /// 键名: StartUp.Kcp.ServerDisabled
             /// 用途: 当KCP服务器被禁用时记录
             /// 参数: {0} - 服务器类型, {1} - 地址, {2} - 端口
             /// </remarks>
-            public const string ServerDisabled = "StartUp.KcpServer.ServerDisabled";
+            public const string ServerDisabled = "StartUp.Kcp.ServerDisabled";
         }
 
         /// <summary>
