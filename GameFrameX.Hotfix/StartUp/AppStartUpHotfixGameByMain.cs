@@ -28,10 +28,14 @@
 //  ==========================================================================================
 
 
+using System.Reflection;
 using GameFrameX.Apps.Common.Session;
 using GameFrameX.Apps.Common.Event;
 using GameFrameX.Apps.Common.EventData;
 using GameFrameX.Core.Events;
+using GameFrameX.NetWork;
+using GameFrameX.NetWork.Abstractions;
+using GameFrameX.Proto.Proto;
 using GameFrameX.SuperSocket.Connection;
 using GameFrameX.SuperSocket.Server.Abstractions.Session;
 
@@ -42,6 +46,37 @@ namespace GameFrameX.Hotfix.StartUp;
 /// </summary>
 internal partial class AppStartUpHotfixGame
 {
+    /// <summary>
+    /// 创建 Game 服务器的 KCP 会话首消息鉴权配置：放行登录流程消息，以角色登录为鉴权完成信号。
+    /// </summary>
+    /// <remarks>
+    /// Creates the KCP session first-message authentication options for the game server.
+    /// 白名单为现有 TCP 登录流全链路（账号登录 → 角色列表/角色创建 → 角色登录）；
+    /// <see cref="ReqPlayerLogin"/> 是鉴权终态——业务侧 OnPlayerLogin 处理该消息并绑定 ActorId，此后会话消息全放行。
+    /// </remarks>
+    /// <returns>KCP 会话鉴权配置 / The KCP session authentication options</returns>
+    protected override SessionAuthenticationOptions CreateKcpSessionAuthenticationOptions()
+    {
+        var options = base.CreateKcpSessionAuthenticationOptions();
+        options.AllowedMessageIds.Add(GetLoginMessageId(typeof(ReqLogin)));
+        options.AllowedMessageIds.Add(GetLoginMessageId(typeof(ReqPlayerList)));
+        options.AllowedMessageIds.Add(GetLoginMessageId(typeof(ReqPlayerCreate)));
+        options.AllowedMessageIds.Add(GetLoginMessageId(typeof(ReqPlayerLogin)));
+        options.AuthenticatedByMessageIds.Add(GetLoginMessageId(typeof(ReqPlayerLogin)));
+        return options;
+    }
+
+    /// <summary>
+    /// 从消息类型的 <see cref="MessageTypeHandlerAttribute"/> 读取消息码（编译期固定值，不依赖运行时协议注册表初始化）。
+    /// </summary>
+    /// <param name="messageType">登录流程消息类型 / The login-flow message type</param>
+    /// <returns>消息码 / The message id</returns>
+    private static int GetLoginMessageId(Type messageType)
+    {
+        return messageType.GetCustomAttribute<MessageTypeHandlerAttribute>()?.MessageId
+               ?? throw new InvalidOperationException($"Login message type {messageType.FullName} is missing {nameof(MessageTypeHandlerAttribute)}.");
+    }
+
     public override async Task StartAsync()
     {
         // 启动网络服务
