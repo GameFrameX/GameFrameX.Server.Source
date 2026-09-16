@@ -2,7 +2,7 @@
 //   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
 //   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
 //   均受中华人民共和国及相关国际法律法规保护。
-//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   are protected by the laws of the People's Republic of China and related international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
@@ -28,76 +28,54 @@
 //  ==========================================================================================
 
 
-namespace GameFrameX.Apps.Common.Event;
+using System;
+using System.Collections.Generic;
+using GameFrameX.Apps.Player.Attribute;
 
-public enum EventId
+namespace GameFrameX.Hotfix.Logic.Player.Attribute;
+
+/// <summary>
+/// 玩家登录初始化使用的第一版基础属性默认值。
+/// </summary>
+internal static class PlayerInitialAttributeDefaults
 {
-    #region role event
+    // ponytail: 当前仓库没有玩家初始属性配置表；配置链路落地后把这里替换为配置读取。
+    private static readonly IReadOnlyDictionary<AttributeType, long> DefaultBaseValues = new Dictionary<AttributeType, long>
+    {
+        [AttributeType.LifeBase] = 1000,
+        [AttributeType.PhysicalAttackBase] = 100,
+        [AttributeType.MagicAttackBase] = 100,
+        [AttributeType.PhysicalDefenseBase] = 50,
+        [AttributeType.MagicDefenseBase] = 50,
+        [AttributeType.CriticalBase] = 0,
+        [AttributeType.CriticalDamageBase] = 15000,
+        [AttributeType.PrecisionBase] = 0,
+        [AttributeType.BlockBase] = 0
+    };
 
     /// <summary>
-    /// 玩家事件
+    /// 只补齐缺失的基础属性槽，并静默重算对应最终属性。
     /// </summary>
-    SessionRemove = 1000,
+    /// <param name="values">玩家属性状态字典。</param>
+    /// <returns>如果状态发生变化则返回 true。</returns>
+    public static bool ApplyMissing(Dictionary<int, long> values)
+    {
+        if (values == null)
+        {
+            throw new ArgumentNullException(nameof(values));
+        }
 
-    /// <summary>
-    /// 玩家等级提升
-    /// </summary>
-    RoleLevelUp = 1001,
+        var changed = false;
+        foreach (var attribute in DefaultBaseValues)
+        {
+            if (values.ContainsKey((int)attribute.Key))
+            {
+                continue;
+            }
 
-    /// <summary>
-    /// 玩家vip改变
-    /// </summary>
-    RoleVipChange,
+            changed |= PlayerAttributeMutation.ApplyValue(values, attribute.Key, attribute.Value, true).StateChanged;
+        }
 
-    /// <summary>
-    /// 玩家上线
-    /// </summary>
-    OnRoleOnline,
-
-    /// <summary>
-    /// 玩家下线
-    /// </summary>
-    OnRoleOffline,
-
-    /// <summary>
-    /// 解锁用
-    /// </summary>
-    GotNewPet,
-
-    /// <summary>
-    /// 玩家发送道具
-    /// </summary>
-    PlayerSendItem,
-
-    /// <summary>
-    /// 玩家最终属性变化
-    /// </summary>
-    AttributeChanged,
-
-    #endregion
-
-    /// <summary>
-    /// 玩家事件分割点
-    /// </summary>
-    RoleSeparator = 8000,
-
-    #region server event
-
-    //服务器事件
-    /// <summary>
-    /// 世界等级改变
-    /// </summary>
-    WorldLevelChange,
-
-    /// <summary>
-    /// 服务上线
-    /// </summary>
-    ServiceOnline,
-
-    /// <summary>
-    /// 服务下线
-    /// </summary>
-    ServiceOffline,
-
-    #endregion
+        return changed;
+    }
 }

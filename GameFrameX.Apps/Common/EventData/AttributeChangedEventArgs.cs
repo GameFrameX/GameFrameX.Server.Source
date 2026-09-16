@@ -28,76 +28,55 @@
 //  ==========================================================================================
 
 
-namespace GameFrameX.Apps.Common.Event;
+using GameFrameX.Apps.Player.Attribute;
+using GameFrameX.Core.Abstractions.Events;
 
-public enum EventId
+namespace GameFrameX.Apps.Common.EventData;
+
+/// <summary>
+/// 玩家最终属性变化事件参数。
+/// </summary>
+public sealed class AttributeChangedEventArgs : GameEventArgs
 {
-    #region role event
+    /// <summary>
+    /// 玩家ID。
+    /// </summary>
+    public long PlayerId { get; }
 
     /// <summary>
-    /// 玩家事件
+    /// 发生变化的最终属性。
     /// </summary>
-    SessionRemove = 1000,
+    public AttributeType AttributeType { get; }
 
     /// <summary>
-    /// 玩家等级提升
+    /// 触发重算的属性槽。
     /// </summary>
-    RoleLevelUp = 1001,
+    public AttributeType SourceAttributeType { get; }
 
     /// <summary>
-    /// 玩家vip改变
+    /// 旧最终属性值。
     /// </summary>
-    RoleVipChange,
+    public long OldValue { get; }
 
     /// <summary>
-    /// 玩家上线
+    /// 新最终属性值。
     /// </summary>
-    OnRoleOnline,
+    public long NewValue { get; }
 
     /// <summary>
-    /// 玩家下线
+    /// 初始化属性变化事件参数。
     /// </summary>
-    OnRoleOffline,
-
-    /// <summary>
-    /// 解锁用
-    /// </summary>
-    GotNewPet,
-
-    /// <summary>
-    /// 玩家发送道具
-    /// </summary>
-    PlayerSendItem,
-
-    /// <summary>
-    /// 玩家最终属性变化
-    /// </summary>
-    AttributeChanged,
-
-    #endregion
-
-    /// <summary>
-    /// 玩家事件分割点
-    /// </summary>
-    RoleSeparator = 8000,
-
-    #region server event
-
-    //服务器事件
-    /// <summary>
-    /// 世界等级改变
-    /// </summary>
-    WorldLevelChange,
-
-    /// <summary>
-    /// 服务上线
-    /// </summary>
-    ServiceOnline,
-
-    /// <summary>
-    /// 服务下线
-    /// </summary>
-    ServiceOffline,
-
-    #endregion
+    /// <param name="playerId">玩家ID。</param>
+    /// <param name="attributeType">发生变化的最终属性。</param>
+    /// <param name="sourceAttributeType">触发重算的属性槽。</param>
+    /// <param name="oldValue">旧最终属性值。</param>
+    /// <param name="newValue">新最终属性值。</param>
+    public AttributeChangedEventArgs(long playerId, AttributeType attributeType, AttributeType sourceAttributeType, long oldValue, long newValue)
+    {
+        PlayerId = playerId;
+        AttributeType = attributeType;
+        SourceAttributeType = sourceAttributeType;
+        OldValue = oldValue;
+        NewValue = newValue;
+    }
 }

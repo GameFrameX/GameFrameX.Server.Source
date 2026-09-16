@@ -2,7 +2,7 @@
 //   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
 //   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
 //   均受中华人民共和国及相关国际法律法规保护。
-//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   are protected by the laws of the People's Republic of China and related international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
@@ -28,76 +28,110 @@
 //  ==========================================================================================
 
 
-namespace GameFrameX.Apps.Common.Event;
+namespace GameFrameX.Apps.Player.Attribute;
 
-public enum EventId
+/// <summary>
+/// 玩家属性编号。最终值使用稳定主编号，派生槽使用固定偏移。
+/// </summary>
+public enum AttributeType
 {
-    #region role event
+    /// <summary>
+    /// 未知属性。
+    /// </summary>
+    None = 0,
 
     /// <summary>
-    /// 玩家事件
+    /// 生命最终值。
     /// </summary>
-    SessionRemove = 1000,
+    Life = 1,
 
     /// <summary>
-    /// 玩家等级提升
+    /// 物理攻击最终值。
     /// </summary>
-    RoleLevelUp = 1001,
+    PhysicalAttack = 2,
 
     /// <summary>
-    /// 玩家vip改变
+    /// 魔法攻击最终值。
     /// </summary>
-    RoleVipChange,
+    MagicAttack = 3,
 
     /// <summary>
-    /// 玩家上线
+    /// 物理防御最终值。
     /// </summary>
-    OnRoleOnline,
+    PhysicalDefense = 4,
 
     /// <summary>
-    /// 玩家下线
+    /// 魔法防御最终值。
     /// </summary>
-    OnRoleOffline,
+    MagicDefense = 5,
 
     /// <summary>
-    /// 解锁用
+    /// 暴击最终值。
     /// </summary>
-    GotNewPet,
+    Critical = 6,
 
     /// <summary>
-    /// 玩家发送道具
+    /// 爆伤最终值。
     /// </summary>
-    PlayerSendItem,
+    CriticalDamage = 7,
 
     /// <summary>
-    /// 玩家最终属性变化
+    /// 精准最终值。
     /// </summary>
-    AttributeChanged,
-
-    #endregion
+    Precision = 8,
 
     /// <summary>
-    /// 玩家事件分割点
+    /// 格挡最终值。
     /// </summary>
-    RoleSeparator = 8000,
+    Block = 9,
 
-    #region server event
+    LifeBase = 10001,
+    PhysicalAttackBase = 10002,
+    MagicAttackBase = 10003,
+    PhysicalDefenseBase = 10004,
+    MagicDefenseBase = 10005,
+    CriticalBase = 10006,
+    CriticalDamageBase = 10007,
+    PrecisionBase = 10008,
+    BlockBase = 10009,
 
-    //服务器事件
-    /// <summary>
-    /// 世界等级改变
-    /// </summary>
-    WorldLevelChange,
+    LifeAdd = 20001,
+    PhysicalAttackAdd = 20002,
+    MagicAttackAdd = 20003,
+    PhysicalDefenseAdd = 20004,
+    MagicDefenseAdd = 20005,
+    CriticalAdd = 20006,
+    CriticalDamageAdd = 20007,
+    PrecisionAdd = 20008,
+    BlockAdd = 20009,
 
-    /// <summary>
-    /// 服务上线
-    /// </summary>
-    ServiceOnline,
+    LifePct = 30001,
+    PhysicalAttackPct = 30002,
+    MagicAttackPct = 30003,
+    PhysicalDefensePct = 30004,
+    MagicDefensePct = 30005,
+    CriticalPct = 30006,
+    CriticalDamagePct = 30007,
+    PrecisionPct = 30008,
+    BlockPct = 30009,
 
-    /// <summary>
-    /// 服务下线
-    /// </summary>
-    ServiceOffline,
+    LifeFinalAdd = 40001,
+    PhysicalAttackFinalAdd = 40002,
+    MagicAttackFinalAdd = 40003,
+    PhysicalDefenseFinalAdd = 40004,
+    MagicDefenseFinalAdd = 40005,
+    CriticalFinalAdd = 40006,
+    CriticalDamageFinalAdd = 40007,
+    PrecisionFinalAdd = 40008,
+    BlockFinalAdd = 40009,
 
-    #endregion
+    LifeFinalPct = 50001,
+    PhysicalAttackFinalPct = 50002,
+    MagicAttackFinalPct = 50003,
+    PhysicalDefenseFinalPct = 50004,
+    MagicDefenseFinalPct = 50005,
+    CriticalFinalPct = 50006,
+    CriticalDamageFinalPct = 50007,
+    PrecisionFinalPct = 50008,
+    BlockFinalPct = 50009
 }

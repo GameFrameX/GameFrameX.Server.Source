@@ -4,8 +4,10 @@
         <ApplicationIcon />
         <StartupObject />
         <IsPackable>false</IsPackable>
+        <!-- 热更新程序集按名字加载（非强名称），且需暴露 internal 给未签名的测试工程 -->
+        <SignAssembly>false</SignAssembly>
+        <PublicSign>false</PublicSign>
     </PropertyGroup>
-
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
         <OutputPath>..\bin\app_debug\hotfix</OutputPath>
     </PropertyGroup>
@@ -27,6 +29,10 @@
         <ProjectReference Include="..\GameFrameX.NetWork.RemoteMessaging\GameFrameX.NetWork.RemoteMessaging.csproj" />
     </ItemGroup>
 
+    <!-- 暴露 internal 给测试工程：供 MailCampaignRegistryTests 调用 ResetForTest 隔离进程内 registry 状态。 -->
+    <ItemGroup>
+      <InternalsVisibleTo Include="GameFrameX.Hotfix.Tests" />
+    </ItemGroup>
     <!--如需磁盘上生成文件打开以下注释-->
     <!--<PropertyGroup>
         <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
