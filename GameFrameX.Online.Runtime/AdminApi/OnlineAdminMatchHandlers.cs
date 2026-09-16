@@ -217,43 +217,20 @@ public sealed class OnlineAdminMatchHandlers
         {
             abnormal = BuildRepeatedCancelViews(tickets);
         }
+        else if (abnormalKind.Value == 1)
+        {
+            abnormal = CollectLongWaitingViews(tickets, nowMilliseconds);
+        }
         else
         {
-            abnormal = new List<AbnormalTicketView>();
-            foreach (var ticket in tickets)
-            {
-                if (abnormalKind.Value == 1)
-                {
-                    if (ticket.State == OnlineMatchTicketState.Queued && nowMilliseconds - ticket.CreatedAtTime > 60000L)
-                    {
-                        abnormal.Add(new AbnormalTicketView(ticket, (nowMilliseconds - ticket.CreatedAtTime) / 1000L, null));
-                    }
-                }
-                else
-                {
-                    if (ticket.State != OnlineMatchTicketState.Matched || !string.IsNullOrEmpty(ticket.AssignmentId))
-                    {
-                        continue;
-                    }
-
-                    var assignment = await _host.MatchTicketStore.FindAssignmentAsync(scope.TenantId, scope.AppId, ticket.AssignmentId, cancellationToken).ConfigureAwait(false);
-                    if (assignment == null)
-                    {
-                        abnormal.Add(new AbnormalTicketView(ticket, null, null));
-                    }
-                }
-            }
+            abnormal = await CollectOrphanViewsAsync(tickets, scope, cancellationToken).ConfigureAwait(false);
         }
 
         var ordered = abnormal
             .OrderByDescending(view => view.Ticket.CreatedAtTime)
             .ThenByDescending(view => view.Ticket.TicketId, StringComparer.Ordinal)
             .ToList();
-        if (!string.IsNullOrEmpty(cursor) && TryParseCursor(cursor, out var cursorTime, out var cursorId))
-        {
-            ordered = ordered.Where(view => view.Ticket.CreatedAtTime < cursorTime
-                                            || (view.Ticket.CreatedAtTime == cursorTime && string.CompareOrdinal(view.Ticket.TicketId, cursorId) < 0)).ToList();
-        }
+        ordered = ApplyAbnormalCursor(ordered, cursor);
 
         var hasMore = ordered.Count > pageSize;
         var pageItems = hasMore ? ordered.Take(pageSize).ToList() : ordered;
@@ -507,6 +484,80 @@ public sealed class OnlineAdminMatchHandlers
             {
                 views.Add(new AbnormalTicketView(ticket, null, cancelCount));
             }
+        }
+
+        return views;
+    }
+
+    /// <summary>
+    /// 构造 LongWaiting 视图（排队中且等待超 60 秒的票据集合）。
+    /// <para>
+    /// 纯函数式扫描：WaitingSeconds = 当前时刻与创建时刻毫秒差 / 1000，CancelCount 恒为 null；判定阈值与数值口径为既有契约。
+    /// </para>
+    /// </summary>
+    /// <param name="tickets">全量票据。</param>
+    /// <param name="nowMilliseconds">当前时刻（UTC 毫秒）。</param>
+    /// <returns>异常视图列表。</returns>
+    private static List<AbnormalTicketView> CollectLongWaitingViews(IReadOnlyList<OnlineMatchTicket> tickets, long nowMilliseconds)
+    {
+        var views = new List<AbnormalTicketView>();
+        foreach (var ticket in tickets)
+        {
+            if (ticket.State == OnlineMatchTicketState.Queued && nowMilliseconds - ticket.CreatedAtTime > 60000L)
+            {
+                views.Add(new AbnormalTicketView(ticket, (nowMilliseconds - ticket.CreatedAtTime) / 1000L, null));
+            }
+        }
+
+        return views;
+    }
+
+    /// <summary>
+    /// 构造 Orphan 视图（已匹配、派给标识为空且查无派给记录的票据集合）。
+    /// <para>
+    /// 跳过非 Matched 或带派给标识的票据；仅 Matched 且派给标识为空的候选按存储返回顺序
+    /// 逐票串行查询派给记录，查无派给才入列；两附加值（等待秒数 / 取消计数）均为 null。
+    /// </para>
+    /// </summary>
+    /// <param name="tickets">全量票据。</param>
+    /// <param name="scope">作用域。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>异常视图列表。</returns>
+    private async Task<List<AbnormalTicketView>> CollectOrphanViewsAsync(IReadOnlyList<OnlineMatchTicket> tickets, OnlineScope scope, CancellationToken cancellationToken)
+    {
+        var views = new List<AbnormalTicketView>();
+        foreach (var ticket in tickets)
+        {
+            if (ticket.State != OnlineMatchTicketState.Matched || !string.IsNullOrEmpty(ticket.AssignmentId))
+            {
+                continue;
+            }
+
+            var assignment = await _host.MatchTicketStore.FindAssignmentAsync(scope.TenantId, scope.AppId, ticket.AssignmentId, cancellationToken).ConfigureAwait(false);
+            if (assignment == null)
+            {
+                views.Add(new AbnormalTicketView(ticket, null, null));
+            }
+        }
+
+        return views;
+    }
+
+    /// <summary>
+    /// 按「时刻:标识」复合游标过滤异常视图（创建时刻严格小于游标时刻，或相等且标识序小于游标标识）。
+    /// <para>
+    /// 游标为空或不可解析时原样返回，过滤语义为既有契约。
+    /// </para>
+    /// </summary>
+    /// <param name="views">排序后的异常视图。</param>
+    /// <param name="cursor">游标原文。</param>
+    /// <returns>过滤后的视图列表。</returns>
+    private static List<AbnormalTicketView> ApplyAbnormalCursor(List<AbnormalTicketView> views, string cursor)
+    {
+        if (!string.IsNullOrEmpty(cursor) && TryParseCursor(cursor, out var cursorTime, out var cursorId))
+        {
+            return views.Where(view => view.Ticket.CreatedAtTime < cursorTime
+                                       || (view.Ticket.CreatedAtTime == cursorTime && string.CompareOrdinal(view.Ticket.TicketId, cursorId) < 0)).ToList();
         }
 
         return views;
