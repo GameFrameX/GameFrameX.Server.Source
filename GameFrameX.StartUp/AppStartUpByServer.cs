@@ -41,6 +41,7 @@ using GameFrameX.SuperSocket.Server;
 using GameFrameX.SuperSocket.Server.Abstractions;
 using GameFrameX.SuperSocket.Server.Abstractions.Session;
 using GameFrameX.SuperSocket.Server.Host;
+using GameFrameX.SuperSocket.Kcp;
 using GameFrameX.SuperSocket.Udp;
 using GameFrameX.SuperSocket.WebSocket;
 using GameFrameX.SuperSocket.WebSocket.Server;
@@ -65,10 +66,10 @@ namespace GameFrameX.StartUp;
 public abstract partial class AppStartUpBase
 {
     /// <summary>
-    /// 启动服务器 - 同时启动 TCP 和 WebSocket 服务。
+    /// 启动服务器 - 同时启动 TCP、KCP 和 WebSocket 服务。
     /// </summary>
     /// <remarks>
-    /// Start server - simultaneously start TCP and WebSocket services.
+    /// Start server - simultaneously start TCP, KCP, and WebSocket services.
     /// This method is responsible for initializing message encoders/decoders, starting various network services, and setting the global startup status.
     /// </remarks>
     /// <typeparam name="TMessageDecoderHandler">消息解码处理器类型，必须实现 <see cref="IMessageDecoderHandler"/> 和 <see cref="IPackageDecoder{TPackageInfo}"/> 接口 / Message decoder handler type, must implement IMessageDecoderHandler and IPackageDecoder interfaces</typeparam>
@@ -242,6 +243,7 @@ public abstract partial class AppStartUpBase
     {
         var multipleServerHostBuilder = MultipleServerHostBuilder.Create();
         ConfigureTcpServer(multipleServerHostBuilder);
+        ConfigureKcpServer(multipleServerHostBuilder);
         ConfigureWebSocketServer(multipleServerHostBuilder);
 
         // await StartHttpServerAsync(hostBuilder,baseHandler, httpFactory, aopHandlerTypes, minimumLevelLogLevel);
@@ -316,6 +318,63 @@ public abstract partial class AppStartUpBase
         {
             LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.StartupFailed, ServerType, Setting.InnerHost, Setting.InnerPort));
             LogPortOccupationDetails("TCP", Setting.InnerPort);
+        }
+    }
+
+    /// <summary>
+    /// 配置 KCP 服务器（基于 GameFrameX.SuperSocket.Kcp）。
+    /// </summary>
+    /// <remarks>
+    /// Configure the KCP server. 与 <see cref="ConfigureTcpServer"/> 同构：开关检查 → 端口检查 → AddServer + UseKcp + 共用连接/断开/消息回调 → 生命周期日志。
+    /// KCP 与 TCP 共享 OnConnected / OnDisconnected / PackageHandler / PackageErrorHandler 四个回调，会话走与 TCP 相同的 InProcSessionContainer。
+    /// </remarks>
+    /// <param name="multipleServerHostBuilder">多服务器主机构建器 / Multiple server host builder</param>
+    private void ConfigureKcpServer(MultipleServerHostBuilder multipleServerHostBuilder)
+    {
+        if (!Setting.IsEnableKcp)
+        {
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Kcp.ServerDisabled, ServerType, Setting.InnerHost, Setting.KcpPort));
+            return;
+        }
+
+        // KCP 端口必须在 (0, ushort.MaxValue] 范围内（与 WsPort 守卫同构）
+        if (Setting.KcpPort is > 0 and <= ushort.MaxValue && NetHelper.PortIsAvailable(Setting.KcpPort))
+        {
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Kcp.StartingServer, ServerType, Setting.InnerHost, Setting.KcpPort));
+            multipleServerHostBuilder.AddServer<IMessage, MessageObjectPipelineFilter>(builder =>
+            {
+                builder
+                    .UseKcp(o =>
+                    {
+                        // 实时游戏推荐配置：NoDelay+小 Interval+中等 MTU+1 分钟空闲超时
+                        o.NoDelay = true;
+                        o.Interval = 10;
+                        o.Mtu = 1400;
+                        o.IdleTimeout = 60000;
+                    })
+                    .UseClearIdleSession()
+                    .UseSessionHandler(OnConnected, OnDisconnected)
+                    .UsePackageHandler(PackageHandler, PackageErrorHandler)
+                    .UseInProcSessionContainer()
+                    .ConfigureServices((context, serviceCollection) =>
+                    {
+                        serviceCollection.Configure<ServerOptions>(options =>
+                        {
+                            var listenOptions = new ListenOptions
+                            {
+                                Ip = "Any",
+                                Port = Setting.KcpPort,
+                            };
+                            options.AddListener(listenOptions);
+                        });
+                    });
+            });
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Kcp.StartupComplete, ServerType, Setting.InnerHost, Setting.KcpPort));
+        }
+        else
+        {
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.Kcp.StartupFailed, ServerType, Setting.InnerHost, Setting.KcpPort));
+            LogPortOccupationDetails("KCP", Setting.KcpPort);
         }
     }
 
