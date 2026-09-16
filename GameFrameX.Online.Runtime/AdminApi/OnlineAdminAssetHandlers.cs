@@ -327,27 +327,7 @@ public sealed class OnlineAdminAssetHandlers
         {
             foreach (var item in arrayElement.EnumerateArray())
             {
-                string itemOrCurrencyType = null;
-                long quantity = 0;
-                foreach (var property in item.EnumerateObject())
-                {
-                    if (string.Equals(property.Name, "ItemOrCurrencyType", StringComparison.OrdinalIgnoreCase))
-                    {
-                        itemOrCurrencyType = property.Value.ValueKind == JsonValueKind.String ? property.Value.GetString() : property.Value.GetRawText();
-                    }
-                    else if (string.Equals(property.Name, "Quantity", StringComparison.OrdinalIgnoreCase) && property.Value.ValueKind == JsonValueKind.Number)
-                    {
-                        property.Value.TryGetInt64(out quantity);
-                    }
-                }
-
-                if (string.IsNullOrEmpty(itemOrCurrencyType) || quantity <= 0)
-                {
-                    throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, "GrantItems entries require ItemOrCurrencyType (string) and Quantity (positive number).");
-                }
-
-                var assetKind = Enum.TryParse<OnlineAssetKind>(itemOrCurrencyType, true, out var parsedKind) ? parsedKind : OnlineAssetKind.Item;
-                changes.Add(new OnlineAssetChangeLine(assetKind, itemOrCurrencyType, quantity));
+                changes.Add(ReadGrantItem(item));
             }
         }
 
@@ -357,6 +337,36 @@ public sealed class OnlineAdminAssetHandlers
         }
 
         return changes;
+    }
+
+    /// <summary>
+    /// 解析单条 GrantItems 变更行（ItemOrCurrencyType 大小写不敏感匹配，非 String 值取原文 JSON；Quantity 仅认 Number；单条非法即抛参数异常）。
+    /// </summary>
+    /// <param name="item">变更行元素。</param>
+    /// <returns>变更行。</returns>
+    private static OnlineAssetChangeLine ReadGrantItem(JsonElement item)
+    {
+        string itemOrCurrencyType = null;
+        long quantity = 0;
+        foreach (var property in item.EnumerateObject())
+        {
+            if (string.Equals(property.Name, "ItemOrCurrencyType", StringComparison.OrdinalIgnoreCase))
+            {
+                itemOrCurrencyType = property.Value.ValueKind == JsonValueKind.String ? property.Value.GetString() : property.Value.GetRawText();
+            }
+            else if (string.Equals(property.Name, "Quantity", StringComparison.OrdinalIgnoreCase) && property.Value.ValueKind == JsonValueKind.Number)
+            {
+                property.Value.TryGetInt64(out quantity);
+            }
+        }
+
+        if (string.IsNullOrEmpty(itemOrCurrencyType) || quantity <= 0)
+        {
+            throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, "GrantItems entries require ItemOrCurrencyType (string) and Quantity (positive number).");
+        }
+
+        var assetKind = Enum.TryParse<OnlineAssetKind>(itemOrCurrencyType, true, out var parsedKind) ? parsedKind : OnlineAssetKind.Item;
+        return new OnlineAssetChangeLine(assetKind, itemOrCurrencyType, quantity);
     }
 
     /// <summary>
