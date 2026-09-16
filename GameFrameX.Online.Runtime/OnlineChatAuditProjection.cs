@@ -118,79 +118,19 @@ public sealed class OnlineChatAuditProjection
     public async Task<ChatAuditPage> QueryAsync(long tenantId, long appId, OnlineChatChannelKind? channelKind, long? participantPlayerId, string keyword, long? startTime, long? endTime, string cursor, int pageSize)
     {
         var effectivePageSize = Math.Max(1, Math.Min(100, pageSize <= 0 ? 20 : pageSize));
-        List<MessageSentRef> snapshot;
-        lock (_sync)
-        {
-            snapshot = new List<MessageSentRef>(_refs);
-        }
-
-        var ordered = snapshot.OrderByDescending(reference => reference.SentAtTime).ThenByDescending(reference => reference.Sequence).ToList();
-        if (!string.IsNullOrEmpty(cursor) && TryParseCursor(cursor, out var cursorTime, out var cursorSequence))
-        {
-            ordered = ordered.Where(reference => reference.SentAtTime < cursorTime
-                                                 || (reference.SentAtTime == cursorTime && reference.Sequence < cursorSequence)).ToList();
-        }
-
+        var ordered = BuildOrderedSnapshot(cursor);
         var channelCache = new Dictionary<string, OnlineChatChannel>();
         var items = new List<ChatAuditItem>();
         var lastExamined = 0;
         for (var index = 0; index < ordered.Count; index++)
         {
-            var reference = ordered[index];
             lastExamined = index;
-            if (startTime.HasValue && reference.SentAtTime < startTime.Value)
+            var item = await TryComposeItemAsync(ordered[index], channelCache, tenantId, appId, channelKind, participantPlayerId, keyword, startTime, endTime).ConfigureAwait(false);
+            if (item != null)
             {
-                continue;
+                items.Add(item);
             }
 
-            if (endTime.HasValue && reference.SentAtTime > endTime.Value)
-            {
-                continue;
-            }
-
-            if (channelKind.HasValue)
-            {
-                if (!Enum.TryParse<OnlineChatChannelKind>(reference.ChannelKind, true, out var parsedKind) || parsedKind != channelKind.Value)
-                {
-                    continue;
-                }
-            }
-
-            if (!channelCache.TryGetValue(reference.ChannelId, out var channel))
-            {
-                channel = await _chatStore.FindChannelAsync(tenantId, appId, reference.ChannelId).ConfigureAwait(false);
-                channelCache[reference.ChannelId] = channel;
-            }
-
-            var participants = BuildParticipants(reference, channel);
-            if (participantPlayerId.HasValue && !participants.Contains(participantPlayerId.Value))
-            {
-                continue;
-            }
-
-            var message = await _chatStore.FindMessageAsync(tenantId, appId, reference.ChannelId, reference.MessageId).ConfigureAwait(false);
-            if (message == null)
-            {
-                continue;
-            }
-
-            if (!string.IsNullOrEmpty(keyword) && (message.Content == null || message.Content.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) < 0))
-            {
-                continue;
-            }
-
-            items.Add(new ChatAuditItem
-            {
-                MessageId = message.MessageId,
-                ChannelId = message.ChannelId,
-                ChannelKind = message.ChannelKind,
-                SenderId = message.SenderId,
-                Content = message.Content ?? string.Empty,
-                State = message.State,
-                SentAtTime = message.SentAtTime,
-                Sequence = message.Sequence,
-                Participants = participants,
-            });
             if (items.Count > effectivePageSize)
             {
                 break;
@@ -217,6 +157,160 @@ public sealed class OnlineChatAuditProjection
             HasMore = hasMore,
             ExaminedCount = lastExamined + 1,
         };
+    }
+
+    /// <summary>
+    /// 构造排序后的引用快照（新到旧；应用复合游标过滤）。
+    /// <para>
+    /// 锁内拷贝引用表后按发送时刻降序、频道内序号降序排序；游标非空且可解析时
+    /// 仅保留严格早于游标（或时刻相等且序号小于游标）的引用，排序键与过滤语义为既有契约。
+    /// </para>
+    /// </summary>
+    /// <param name="cursor">分页游标（<c>sentAtTime:sequence</c>；null 从头）。</param>
+    /// <returns>排序并过滤后的引用列表。</returns>
+    private List<MessageSentRef> BuildOrderedSnapshot(string cursor)
+    {
+        List<MessageSentRef> snapshot;
+        lock (_sync)
+        {
+            snapshot = new List<MessageSentRef>(_refs);
+        }
+
+        var ordered = snapshot.OrderByDescending(reference => reference.SentAtTime).ThenByDescending(reference => reference.Sequence).ToList();
+        if (!string.IsNullOrEmpty(cursor) && TryParseCursor(cursor, out var cursorTime, out var cursorSequence))
+        {
+            ordered = ordered.Where(reference => reference.SentAtTime < cursorTime
+                                                 || (reference.SentAtTime == cursorTime && reference.Sequence < cursorSequence)).ToList();
+        }
+
+        return ordered;
+    }
+
+    /// <summary>
+    /// 组装单条引用的审计条目（过滤与受控回读的固定顺序：时间窗 → 频道类型 → 频道回读 → 参与者 → 消息回读 → 关键字）。
+    /// <para>
+    /// 过滤顺序决定回读触发面：参与者不匹配的引用不触发消息回读；频道记录经共享缓存回读，
+    /// 正文经 <see cref="IOnlineChatStore.FindMessageAsync"/> 受控回读（C7 脱敏红线）。任一环节不满足返回 null（调用方跳过）。
+    /// </para>
+    /// </summary>
+    /// <param name="reference">消息引用。</param>
+    /// <param name="channelCache">频道回读缓存（跨引用共享）。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="channelKind">频道类型过滤（null 表示不限）。</param>
+    /// <param name="participantPlayerId">参与者过滤（null 表示不限）。</param>
+    /// <param name="keyword">正文关键字过滤（null 或空表示不限）。</param>
+    /// <param name="startTime">起始时刻（UTC 毫秒；null 表示不限）。</param>
+    /// <param name="endTime">结束时刻（UTC 毫秒；null 表示不限）。</param>
+    /// <returns>审计条目；任一过滤不满足或消息已不存在返回 null。</returns>
+    private async Task<ChatAuditItem> TryComposeItemAsync(MessageSentRef reference, Dictionary<string, OnlineChatChannel> channelCache, long tenantId, long appId, OnlineChatChannelKind? channelKind, long? participantPlayerId, string keyword, long? startTime, long? endTime)
+    {
+        if (!MatchesTimeWindow(reference, startTime, endTime))
+        {
+            return null;
+        }
+
+        if (!MatchesChannelKind(reference, channelKind))
+        {
+            return null;
+        }
+
+        OnlineChatChannel channel;
+        if (!channelCache.TryGetValue(reference.ChannelId, out channel))
+        {
+            channel = await _chatStore.FindChannelAsync(tenantId, appId, reference.ChannelId).ConfigureAwait(false);
+            channelCache[reference.ChannelId] = channel;
+        }
+
+        var participants = BuildParticipants(reference, channel);
+        if (!MatchesParticipant(participants, participantPlayerId))
+        {
+            return null;
+        }
+
+        var message = await _chatStore.FindMessageAsync(tenantId, appId, reference.ChannelId, reference.MessageId).ConfigureAwait(false);
+        if (message == null)
+        {
+            return null;
+        }
+
+        if (!MatchesKeyword(message.Content, keyword))
+        {
+            return null;
+        }
+
+        return new ChatAuditItem
+        {
+            MessageId = message.MessageId,
+            ChannelId = message.ChannelId,
+            ChannelKind = message.ChannelKind,
+            SenderId = message.SenderId,
+            Content = message.Content ?? string.Empty,
+            State = message.State,
+            SentAtTime = message.SentAtTime,
+            Sequence = message.Sequence,
+            Participants = participants,
+        };
+    }
+
+    /// <summary>
+    /// 判定引用是否落在查询时间窗内（起点/终点任一为 null 表示该侧不限）。
+    /// </summary>
+    /// <param name="reference">消息引用。</param>
+    /// <param name="startTime">起始时刻（UTC 毫秒；null 表示不限）。</param>
+    /// <param name="endTime">结束时刻（UTC 毫秒；null 表示不限）。</param>
+    /// <returns>窗内返回 true。</returns>
+    private static bool MatchesTimeWindow(MessageSentRef reference, long? startTime, long? endTime)
+    {
+        if (startTime.HasValue && reference.SentAtTime < startTime.Value)
+        {
+            return false;
+        }
+
+        if (endTime.HasValue && reference.SentAtTime > endTime.Value)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 判定引用的频道类型是否匹配过滤（null 表示不限；频道类型名忽略大小写解析，解析失败视为不匹配）。
+    /// </summary>
+    /// <param name="reference">消息引用。</param>
+    /// <param name="channelKind">频道类型过滤。</param>
+    /// <returns>匹配返回 true。</returns>
+    private static bool MatchesChannelKind(MessageSentRef reference, OnlineChatChannelKind? channelKind)
+    {
+        if (!channelKind.HasValue)
+        {
+            return true;
+        }
+
+        return Enum.TryParse<OnlineChatChannelKind>(reference.ChannelKind, true, out var parsedKind) && parsedKind == channelKind.Value;
+    }
+
+    /// <summary>
+    /// 判定参与者集合是否包含目标参与者（null 表示不限）。
+    /// </summary>
+    /// <param name="participants">参与者集合。</param>
+    /// <param name="participantPlayerId">目标参与者。</param>
+    /// <returns>包含或不过滤返回 true。</returns>
+    private static bool MatchesParticipant(List<long> participants, long? participantPlayerId)
+    {
+        return !participantPlayerId.HasValue || participants.Contains(participantPlayerId.Value);
+    }
+
+    /// <summary>
+    /// 判定消息正文是否命中关键字（null 或空表示不限；忽略大小写包含匹配）。
+    /// </summary>
+    /// <param name="content">消息正文（可能为 null）。</param>
+    /// <param name="keyword">关键字。</param>
+    /// <returns>命中或不过滤返回 true。</returns>
+    private static bool MatchesKeyword(string content, string keyword)
+    {
+        return string.IsNullOrEmpty(keyword) || (content != null && content.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0);
     }
 
     /// <summary>
