@@ -1,11 +1,7 @@
 # ==============================================================================
 # CNB 云原生构建流水线（文档：https://docs.cnb.cool/zh/build/grammar.html）
 #
-# 触发规则（正常打包规则：发布物只在打 tag 发版时产出，一个版本一个镜像标签）:
-#   (**) pull_request → 构建 + 测试（质量门禁）
-#   main  push       → 构建 + 测试（日常 CI，不产镜像不部署）
-#   '*'   tag_push   → 构建 + 测试 + 构建镜像 (git tag 版本号) + 推送 + 自动部署 Game
-#   $     vscode     → 云原生开发环境一键启动在线示例服务（MongoDB + Game）
+# 触发规则：'*' tag_push → 构建镜像 (git tag 版本号) + 推送 + 调用部署脚本
 #
 # 镜像产物（唯一）：${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:<git tag>
 #
@@ -21,29 +17,6 @@
 # 启动参数由 GAMEFRAMEX_SERVER_ARGS 环境变量原样透传（含 --ServerType 与数据库连接等完整参数）。
 # ==============================================================================
 
-# 构建 + 测试通用流水线（PR 与 main 复用）
-.ci-pipeline: &ci-pipeline
-  name: 构建与测试
-  docker:
-    image: mcr.microsoft.com/dotnet/sdk:10.0
-  runner:
-    cpus: 4
-  stages:
-    - name: 还原依赖
-      script: dotnet restore Server.slnx
-    - name: 构建
-      script: dotnet build Server.slnx -c Release --nologo
-    - name: 单元测试
-      script: dotnet test Server.slnx -c Release --no-build --nologo
-
-main:
-  push:
-    - <<: *ci-pipeline
-
-(**):
-  pull_request:
-    - <<: *ci-pipeline
-
 '*':
   tag_push:
     - name: 发布镜像并部署
@@ -55,12 +28,6 @@ main:
         - docker
       imports: https://cnb.cool/GameFrameX/Admin/cnb-shared-config/-/blob/main/envs.yml
       stages:
-        - name: 还原依赖
-          script: dotnet restore Server.slnx
-        - name: 构建
-          script: dotnet build Server.slnx -c Release --nologo
-        - name: 单元测试
-          script: dotnet test Server.slnx -c Release --no-build --nologo
         - name: 设置镜像标签（git tag 版本号）
           script: |
             GIT_TAG=$(git tag --points-at HEAD | head -1)
@@ -73,35 +40,3 @@ main:
           script: docker push "${IMAGE_TAG}"
         - name: 部署（Game）
           script: bash build/deploy-game.sh
-
-# ==============================================================================
-# 云原生开发环境：一键启动示例在线服务
-# 在仓库分支页点击「云原生开发」按钮触发；stages 结束后环境保留，服务持续运行。
-# 通过 WebIDE 的 PORTS 面板（或环境变量 CNB_VSCODE_PROXY_URI）暴露业务端口：
-#   28080  Game HTTP API / Swagger（HTTP 预览）
-#   29110  Game WebSocket（HTTPS 代理预览，Web 客户端示例连接入口）
-#   29100  Game TCP（需 VS Code 端口转发访问，HTTPS 代理不支持裸 TCP）
-# 环境销毁时 endStages 自动清理容器与数据卷。
-# ==============================================================================
-$:
-  vscode:
-    - name: 在线示例服务
-      docker:
-        image: mcr.microsoft.com/dotnet/sdk:10.0
-      runner:
-        cpus: 4
-      services:
-        - vscode
-        - docker
-      stages:
-        - name: 安装 Docker Compose
-          script:
-            - apt-get update
-            - apt-get install -y docker-cli docker-compose-plugin
-        - name: 启动在线服务（MongoDB + Game）
-          script:
-            - docker compose up -d --build
-            - docker compose ps
-      endStages:
-        - name: 停止在线服务
-          script: docker compose down -v
