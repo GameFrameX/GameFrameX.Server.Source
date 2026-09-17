@@ -34,12 +34,21 @@ COPY --from=publish /app/build/hotfix/ /app/hotfix/
 # 热更依赖加载逻辑默认从 /app 根目录查找引用程序集，这里同步 DLL 到根目录
 RUN cp -f /app/hotfix/*.dll /app/ || true
 
-# 切换到root用户创建数据目录并设置权限
+# 切换到root用户：创建数据目录、写入入口脚本并赋权
 USER root
 RUN mkdir -p /app/data && chmod 755 /app/data
 
 # 复制发布文件
 COPY --from=publish /app/publish .
+
+# 单一镜像多角色：镜像不固化、不检查任何业务参数。
+# 启动参数由 GAMEFRAMEX_SERVER_ARGS 环境变量原样透传（含 --ServerType / --DataBaseUrl 等完整参数），
+# 未设置时不传参数，由应用默认逻辑启动首个可用服务器。
+COPY <<'ENTRYPOINT' /app/entrypoint.sh
+#!/bin/sh
+exec dotnet GameFrameX.Launcher.dll ${GAMEFRAMEX_SERVER_ARGS:-} "$@"
+ENTRYPOINT
+RUN chmod +x /app/entrypoint.sh
 
 # 声明数据卷以实现数据持久化
 VOLUME ["/app/data"]
@@ -47,5 +56,4 @@ VOLUME ["/app/data"]
 # 切换回非root用户运行应用
 USER $APP_UID
 
-
-ENTRYPOINT ["dotnet", "GameFrameX.Launcher.dll"]
+ENTRYPOINT ["/app/entrypoint.sh"]

@@ -13,6 +13,7 @@ services:
     networks:
       - gameframex
 
+  # 单一镜像；启动参数经 GAMEFRAMEX_SERVER_ARGS 原样透传（当前仅启动 Game，Social 后续补充）
   game:
     build:
       context: .
@@ -21,61 +22,14 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
-      social:
-        condition: service_started
-    command:
-      - "--ServerType=Game"
-      - "--ServerId=1001"
-      - "--ServerInstanceId=1"
-      - "--InnerHost=0.0.0.0"
-      - "--InnerPort=29100"
-      - "--OuterHost=0.0.0.0"
-      - "--OuterPort=29100"
-      - "--HttpPort=28080"
-      - "--IsEnableHttp=true"
-      - "--IsEnableOnlineAdmin=true"
-      - "--OnlineTenantId=1"
-      - "--OnlineAppId=1"
-      - "--DataBaseUrl=mongodb://mongo:27017/?authSource=admin"
-      - "--DataBaseName=gameframex"
     environment:
-      services__social__tcp__0: "tcp://social:29400"
-      services__social__http__0: "http://social:28081"
+      GAMEFRAMEX_SERVER_ARGS: "--ServerType=Game --ServerId=1001 --ServerInstanceId=1 --InnerPort=29100 --OuterPort=29100 --HttpPort=28080 --WsPort=29110 --MetricsPort=29090 --MinModuleId=10 --MaxModuleId=9999 --IsEnableOnlineAdmin=true --OnlineTenantId=1 --OnlineAppId=1 --DataBaseUrl=mongodb://mongo:27017/?authSource=admin --DataBaseName=gameframex"
     ports:
       - "39100:29100"
       - "38080:28080"
       - "28090:28090"
     volumes:
       - "./running/game/logs:/app/data/logs"
-    networks:
-      - gameframex
-
-  social:
-    image: gameframex/server.launcher:local
-    container_name: gfx-social
-    depends_on:
-      mongo:
-        condition: service_healthy
-    command:
-      - "--ServerType=Social"
-      - "--ServerId=1002"
-      - "--ServerInstanceId=2"
-      - "--InnerHost=0.0.0.0"
-      - "--InnerPort=29400"
-      - "--OuterHost=0.0.0.0"
-      - "--OuterPort=29400"
-      - "--HttpPort=28081"
-      - "--IsEnableHttp=true"
-      - "--DataBaseUrl=mongodb://mongo:27017/?authSource=admin"
-      - "--DataBaseName=gameframex"
-    environment:
-      services__game__tcp__0: "tcp://game:29100"
-      services__game__http__0: "http://game:28080"
-    ports:
-      - "39400:29400"
-      - "38081:28081"
-    volumes:
-      - "./running/social/logs:/app/data/logs"
     networks:
       - gameframex
 
