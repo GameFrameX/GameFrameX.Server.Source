@@ -7,7 +7,7 @@
 #   '*'   tag_push   → 构建 + 测试 + 构建镜像 (git tag 版本号) + 推送 + 自动部署 Game
 #   $     vscode     → 云原生开发环境一键启动在线示例服务（MongoDB + Game）
 #
-# 镜像产物：${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}/gameframex-server:<git tag>
+# 镜像产物（唯一）：${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:<git tag>
 #
 # 部署约定参考 GameFrameX.Admin.Unified.Api：
 #   镜像推送 CNB Docker 制品库后，POST 调用部署 API（DEPLOY_API_URL），
@@ -21,35 +21,28 @@
 # 启动参数由 GAMEFRAMEX_SERVER_ARGS 环境变量原样透传（含 --ServerType 与数据库连接等完整参数）。
 # ==============================================================================
 
+# 构建 + 测试通用流水线（PR 与 main 复用）
+.ci-pipeline: &ci-pipeline
+  name: 构建与测试
+  docker:
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+  runner:
+    cpus: 4
+  stages:
+    - name: 还原依赖
+      script: dotnet restore Server.slnx
+    - name: 构建
+      script: dotnet build Server.slnx -c Release --nologo
+    - name: 单元测试
+      script: dotnet test Server.slnx -c Release --no-build --nologo
+
 main:
   push:
-    - name: 构建与测试
-      docker:
-        image: mcr.microsoft.com/dotnet/sdk:10.0
-      runner:
-        cpus: 4
-      stages:
-        - name: 还原依赖
-          script: dotnet restore Server.slnx
-        - name: 构建
-          script: dotnet build Server.slnx -c Release --nologo
-        - name: 单元测试
-          script: dotnet test Server.slnx -c Release --no-build --nologo
+    - <<: *ci-pipeline
 
 (**):
   pull_request:
-    - name: 构建与测试
-      docker:
-        image: mcr.microsoft.com/dotnet/sdk:10.0
-      runner:
-        cpus: 4
-      stages:
-        - name: 还原依赖
-          script: dotnet restore Server.slnx
-        - name: 构建
-          script: dotnet build Server.slnx -c Release --nologo
-        - name: 单元测试
-          script: dotnet test Server.slnx -c Release --no-build --nologo
+    - <<: *ci-pipeline
 
 '*':
   tag_push:
@@ -71,7 +64,7 @@ main:
         - name: 设置镜像标签（git tag 版本号）
           script: |
             GIT_TAG=$(git tag --points-at HEAD | head -1)
-            echo -n "${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}/gameframex-server:${GIT_TAG:?未找到指向当前提交的 tag}"
+            echo -n "${CNB_DOCKER_REGISTRY}/${CNB_REPO_SLUG_LOWERCASE}:${GIT_TAG:?未找到指向当前提交的 tag}"
           exports:
             info: IMAGE_TAG
         - name: 构建镜像

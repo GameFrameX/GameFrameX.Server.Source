@@ -17,7 +17,7 @@ services:
   game:
     build:
       context: .
-    image: gameframex/server.launcher:local
+    image: gameframex-server:local
     container_name: gfx-game
     depends_on:
       mongo:
