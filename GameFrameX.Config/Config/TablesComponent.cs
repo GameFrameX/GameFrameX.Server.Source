@@ -7,19 +7,17 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-using System.Text.Json;
+using System;
 using GameFrameX.Core.Config;
-using GameFrameX.Config;
 
 namespace GameFrameX.Config
 {
     public partial class TablesComponent
     {
-        internal Local.TbLocalization TbLocalization { private set; get; }
         internal Tables.TbAchievementConfig TbAchievementConfig { private set; get; }
-        internal Tables.TbItemConfig TbItemConfig { private set; get; }
         internal Tables.TbSoundsConfig TbSoundsConfig { private set; get; }
-    
+        internal Tables.TbItemConfig TbItemConfig { private set; get; }
+        internal Local.TbLocalization TbLocalization { private set; get; }
         private ConfigComponent m_ConfigComponent;
 
         public void Init(ConfigComponent configComponent)
@@ -28,42 +26,72 @@ namespace GameFrameX.Config
             configComponent.RemoveAllConfigs();
         }
 
-        public async System.Threading.Tasks.Task LoadAsync(System.Func<string, System.Threading.Tasks.Task<JsonElement>> loader)
-        {
-            //m_ConfigComponent.RemoveAllConfigs();
-            var loadTasks = new System.Collections.Generic.List<System.Threading.Tasks.Task>();
-    
-            TbLocalization = new Local.TbLocalization(() => loader("local_tblocalization"));
-            loadTasks.Add(TbLocalization.LoadAsync());
-            m_ConfigComponent.Add(nameof(Local.TbLocalization), TbLocalization);
+        /// <summary>
+        /// 是否加载完成
+        /// </summary>
+        public bool IsLoaded { get; private set; }
 
-            TbAchievementConfig = new Tables.TbAchievementConfig(() => loader("tables_tbachievementconfig"));
+        /// <summary>
+        /// 异步加载配置文件
+        /// </summary>
+        /// <param name="loader">加载器</param>
+        public async System.Threading.Tasks.Task LoadAsync(System.Func<string, bool, System.Threading.Tasks.Task<ByteBuf>> loader)
+        {
+            if (IsLoaded)
+            {
+                return;
+            }
+            IsLoaded = false;
+            m_ConfigComponent.RemoveAllConfigs();
+            var loadTasks = new System.Collections.Generic.List<System.Threading.Tasks.Task>();
+
+            TbAchievementConfig = new Tables.TbAchievementConfig(() => loader("tables_tbachievementconfig", true));
             loadTasks.Add(TbAchievementConfig.LoadAsync());
             m_ConfigComponent.Add(nameof(Tables.TbAchievementConfig), TbAchievementConfig);
 
-            TbItemConfig = new Tables.TbItemConfig(() => loader("tables_tbitemconfig"));
-            loadTasks.Add(TbItemConfig.LoadAsync());
-            m_ConfigComponent.Add(nameof(Tables.TbItemConfig), TbItemConfig);
-
-            TbSoundsConfig = new Tables.TbSoundsConfig(() => loader("tables_tbsoundsconfig"));
+            TbSoundsConfig = new Tables.TbSoundsConfig(() => loader("tables_tbsoundsconfig", true));
             loadTasks.Add(TbSoundsConfig.LoadAsync());
             m_ConfigComponent.Add(nameof(Tables.TbSoundsConfig), TbSoundsConfig);
 
-    
+            TbItemConfig = new Tables.TbItemConfig(() => loader("tables_tbitemconfig", true));
+            loadTasks.Add(TbItemConfig.LoadAsync());
+            m_ConfigComponent.Add(nameof(Tables.TbItemConfig), TbItemConfig);
+
+            TbLocalization = new Local.TbLocalization(() => loader("local_tblocalization", true));
+            loadTasks.Add(TbLocalization.LoadAsync());
+            m_ConfigComponent.Add(nameof(Local.TbLocalization), TbLocalization);
+
+
             await System.Threading.Tasks.Task.WhenAll(loadTasks);
-    
+
             Refresh();
+            IsLoaded = true;
         }
 
-        public TablesComponent()
+        /// <summary>
+        /// 设置本地化的适配器
+        /// </summary>
+        /// <param name="translator">适配器对象</param>
+        /// <exception cref="InvalidOperationException">如果未加载完成将抛出此异常</exception>
+        public void SetTranslateText(System.Func<string, string, string> translator)
         {
-            //TablesMemory.BeginRecord();
-    
-            // TbLocalization = new Local.TbLocalization();
-            // TbAchievementConfig = new Tables.TbAchievementConfig();
-            // TbItemConfig = new Tables.TbItemConfig();
-            // TbSoundsConfig = new Tables.TbSoundsConfig();
-            //TablesMemory.EndRecord();
+            if (IsLoaded == false)
+            {
+                throw new InvalidOperationException("Table is not loaded!");
+            }
+            TbAchievementConfig.TranslateText(translator);
+            TbSoundsConfig.TranslateText(translator);
+            TbItemConfig.TranslateText(translator);
+            TbLocalization.TranslateText(translator);
+        }
+
+        private void ResolveRef()
+        {
+            TbAchievementConfig.ResolveRef(this);
+            TbSoundsConfig.ResolveRef(this);
+            TbItemConfig.ResolveRef(this);
+            TbLocalization.ResolveRef(this);
+            PostResolveRef();
         }
 
         public void Refresh()
@@ -72,14 +100,7 @@ namespace GameFrameX.Config
             ResolveRef();
         }
 
-        private void ResolveRef()
-        {
-            TbLocalization.ResolveRef(this);
-            TbAchievementConfig.ResolveRef(this);
-            TbItemConfig.ResolveRef(this);
-            TbSoundsConfig.ResolveRef(this);
-        }
-    
         partial void PostInit();
+        partial void PostResolveRef();
     }
 }

@@ -7,32 +7,29 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-using System.Text.Json;
 using GameFrameX.Core.Config;
 
 namespace GameFrameX.Config.Tables
 {
     public partial class TbSoundsConfig : BaseDataTable<Tables.SoundsConfig>
     {
-        //private readonly System.Collections.Generic.Dictionary<int, Tables.SoundsConfig> _dataMap;
-        //private readonly System.Collections.Generic.List<Tables.SoundsConfig> _dataList;
-    
-        //public System.Collections.Generic.Dictionary<int, Tables.SoundsConfig> DataMap => _dataMap;
-        //public System.Collections.Generic.List<Tables.SoundsConfig> DataList => _dataList;
-        //public Tables.SoundsConfig GetOrDefault(int key) => _dataMap.TryGetValue(key, out var v) ? v : null;
-        //public Tables.SoundsConfig Get(int key) => _dataMap[key];
-        //public Tables.SoundsConfig this[int key] => _dataMap[key];
-    
+        private readonly System.Func<System.Threading.Tasks.Task<ByteBuf>> _loadFunc;
+
+        public TbSoundsConfig(System.Func<System.Threading.Tasks.Task<ByteBuf>> loadFunc)
+        {
+            _loadFunc = loadFunc;
+        }
+
         public override async System.Threading.Tasks.Task LoadAsync()
         {
-            var jsonElement = await _loadFunc();
-            DataList.Clear();
-            LongDataMaps.Clear();
+            ByteBuf _buf = await _loadFunc();
             StringDataMaps.Clear();
-            foreach(var element in jsonElement.EnumerateArray())
+            LongDataMaps.Clear();
+            DataList.Clear();
+            for(int n = _buf.ReadSize() ; n > 0 ; --n)
             {
                 Tables.SoundsConfig _v;
-                _v = Tables.SoundsConfig.DeserializeSoundsConfig(element);
+                _v = global::GameFrameX.Config.Tables.SoundsConfig.DeserializeSoundsConfig(_buf);
                 DataList.Add(_v);
                 LongDataMaps.Add(_v.Id, _v);
                 StringDataMaps.Add(_v.Id.ToString(), _v);
@@ -40,19 +37,26 @@ namespace GameFrameX.Config.Tables
             PostInit();
         }
 
+
         public void ResolveRef(TablesComponent tables)
         {
-            foreach(var element in DataList)
+            foreach(var value in DataList)
             {
-                element.ResolveRef(tables);
+                value.ResolveRef(tables);
+            }
+            PostResolveRef();
+        }
+
+        public void TranslateText(System.Func<string, string, string> translator)
+        {
+            foreach(var v in DataList)
+            {
+                v.TranslateText(translator);
             }
         }
-    
-    
-        partial void PostInit();
 
-        public TbSoundsConfig(Func<Task<JsonElement>> loadFunc) : base(loadFunc)
-        {
-        }
+
+        partial void PostInit();
+        partial void PostResolveRef();
     }
 }

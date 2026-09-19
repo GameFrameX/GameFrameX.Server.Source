@@ -7,29 +7,33 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-using System.Text.Json;
 using GameFrameX.Core.Config;
 
 namespace GameFrameX.Config
 {
     public sealed partial class PropItem : BeanBase
     {
-        /*
+        private System.Func<string, string, string> Translator;
+
         public PropItem(int Id, int Count) 
         {
+            Translator = null;
             this.Id = Id;
             this.Count = Count;
             PostInit();
-        }        
-        */
-
-        public PropItem(JsonElement _buf) 
-        {
-            Id = _buf.GetProperty("Id").GetInt32();
-            Count = _buf.GetProperty("Count").GetInt32();
         }
-    
-        public static PropItem DeserializePropItem(JsonElement _buf)
+
+        public PropItem(ByteBuf _buf) 
+        {
+            Translator = null;
+            Id = _buf.ReadInt();
+            Count = _buf.ReadInt();
+            // Localization Key Begin
+            // Localization Key End
+            PostInit();
+        }
+
+        public static PropItem DeserializePropItem(ByteBuf _buf)
         {
             return new PropItem(_buf);
         }
@@ -42,14 +46,19 @@ namespace GameFrameX.Config
         /// 道具数量
         /// </summary>
         public int Count { private set; get; }
-
-        private const int __ID__ = -929329866;
+        public const int __ID__ = -929329866;
         public override int GetTypeId() => __ID__;
 
         public  void ResolveRef(TablesComponent tables)
         {
             
             
+            PostResolveRef();
+        }
+
+        public  void TranslateText(System.Func<string, string, string> translator)
+        {
+            Translator = translator;
         }
 
         public override string ToString()
@@ -61,5 +70,6 @@ namespace GameFrameX.Config
         }
 
         partial void PostInit();
+        partial void PostResolveRef();
     }
 }

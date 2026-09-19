@@ -7,29 +7,33 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-using System.Text.Json;
 using GameFrameX.Core.Config;
 
 namespace GameFrameX.Config
 {
     public partial struct vec2
     {
-        /*
+        private System.Func<string, string, string> Translator;
+
         public vec2(float X, float Y) 
         {
+            Translator = null;
             this.X = X;
             this.Y = Y;
             PostInit();
-        }        
-        */
-
-        public vec2(JsonElement _buf) 
-        {
-            X = _buf.GetProperty("x").GetSingle();
-            Y = _buf.GetProperty("y").GetSingle();
         }
-    
-        public static vec2 Deserializevec2(JsonElement _buf)
+
+        public vec2(ByteBuf _buf) 
+        {
+            Translator = null;
+            X = _buf.ReadFloat();
+            Y = _buf.ReadFloat();
+            // Localization Key Begin
+            // Localization Key End
+            PostInit();
+        }
+
+        public static vec2 Deserializevec2(ByteBuf _buf)
         {
             return new vec2(_buf);
         }
@@ -37,11 +41,16 @@ namespace GameFrameX.Config
         public float X { private set; get; }
         public float Y { private set; get; }
 
-
         public  void ResolveRef(TablesComponent tables)
         {
             
             
+            PostResolveRef();
+        }
+
+        public  void TranslateText(System.Func<string, string, string> translator)
+        {
+            Translator = translator;
         }
 
         public override string ToString()
@@ -53,5 +62,6 @@ namespace GameFrameX.Config
         }
 
         partial void PostInit();
+        partial void PostResolveRef();
     }
 }

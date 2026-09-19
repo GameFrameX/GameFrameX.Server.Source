@@ -7,7 +7,6 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-using System.Text.Json;
 using GameFrameX.Core.Config;
 
 namespace GameFrameX.Config
@@ -17,9 +16,11 @@ namespace GameFrameX.Config
     /// </summary>
     public sealed partial class Property : BeanBase
     {
-        /*
+        private System.Func<string, string, string> Translator;
+
         public Property(int PhysicalAttack, int MagicAttack, int PhysicalDefense, int MagicDefense, int Life, int Crit, int BurstDamage, int Precise, int Block) 
         {
+            Translator = null;
             this.PhysicalAttack = PhysicalAttack;
             this.MagicAttack = MagicAttack;
             this.PhysicalDefense = PhysicalDefense;
@@ -30,23 +31,26 @@ namespace GameFrameX.Config
             this.Precise = Precise;
             this.Block = Block;
             PostInit();
-        }        
-        */
-
-        public Property(JsonElement _buf) 
-        {
-            PhysicalAttack = _buf.GetProperty("PhysicalAttack").GetInt32();
-            MagicAttack = _buf.GetProperty("MagicAttack").GetInt32();
-            PhysicalDefense = _buf.GetProperty("PhysicalDefense").GetInt32();
-            MagicDefense = _buf.GetProperty("MagicDefense").GetInt32();
-            Life = _buf.GetProperty("Life").GetInt32();
-            Crit = _buf.GetProperty("Crit").GetInt32();
-            BurstDamage = _buf.GetProperty("burstDamage").GetInt32();
-            Precise = _buf.GetProperty("precise").GetInt32();
-            Block = _buf.GetProperty("block").GetInt32();
         }
-    
-        public static Property DeserializeProperty(JsonElement _buf)
+
+        public Property(ByteBuf _buf) 
+        {
+            Translator = null;
+            PhysicalAttack = _buf.ReadInt();
+            MagicAttack = _buf.ReadInt();
+            PhysicalDefense = _buf.ReadInt();
+            MagicDefense = _buf.ReadInt();
+            Life = _buf.ReadInt();
+            Crit = _buf.ReadInt();
+            BurstDamage = _buf.ReadInt();
+            Precise = _buf.ReadInt();
+            Block = _buf.ReadInt();
+            // Localization Key Begin
+            // Localization Key End
+            PostInit();
+        }
+
+        public static Property DeserializeProperty(ByteBuf _buf)
         {
             return new Property(_buf);
         }
@@ -87,8 +91,7 @@ namespace GameFrameX.Config
         /// 格挡
         /// </summary>
         public int Block { private set; get; }
-
-        private const int __ID__ = -928497163;
+        public const int __ID__ = -928497163;
         public override int GetTypeId() => __ID__;
 
         public  void ResolveRef(TablesComponent tables)
@@ -102,6 +105,12 @@ namespace GameFrameX.Config
             
             
             
+            PostResolveRef();
+        }
+
+        public  void TranslateText(System.Func<string, string, string> translator)
+        {
+            Translator = translator;
         }
 
         public override string ToString()
@@ -120,5 +129,6 @@ namespace GameFrameX.Config
         }
 
         partial void PostInit();
+        partial void PostResolveRef();
     }
 }

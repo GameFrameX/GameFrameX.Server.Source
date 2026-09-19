@@ -7,16 +7,17 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-using System.Text.Json;
 using GameFrameX.Core.Config;
 
 namespace GameFrameX.Config.Tables
 {
     public sealed partial class ItemConfig : BeanBase
     {
-        /*
+        private System.Func<string, string, string> Translator;
+
         public ItemConfig(int Id, string Name, ItemType Type, ItemSubType SubType, ItemEPrompt EPrompt, ItemCanUse CanUse, bool IsDecompose, int MaxNum, string Description, System.Collections.Generic.List<int> ComeLink, string Icon, string BgIcon, ItemLevelColor LevelColor, bool CanAnnounce, string LinkInfo, int FunctionID, ItemUseLimiteType UseLimiteType, bool Abandon, bool DoubleCheckDesc, bool CanTrade, int TradeCD, int TradeItemsLimit, int UseLinmit, long? ExpireTime, bool IsRecordLog) 
         {
+            Translator = null;
             this.Id = Id;
             this.Name = Name;
             this.Type = Type;
@@ -43,39 +44,44 @@ namespace GameFrameX.Config.Tables
             this.ExpireTime = ExpireTime;
             this.IsRecordLog = IsRecordLog;
             PostInit();
-        }        
-        */
-
-        public ItemConfig(JsonElement _buf) 
-        {
-            Id = _buf.GetProperty("id").GetInt32();
-            Name = _buf.GetProperty("Name").GetString();
-            Type = (ItemType)_buf.GetProperty("Type").GetInt32();
-            SubType = (ItemSubType)_buf.GetProperty("SubType").GetInt32();
-            EPrompt = (ItemEPrompt)_buf.GetProperty("EPrompt").GetInt32();
-            CanUse = (ItemCanUse)_buf.GetProperty("CanUse").GetInt32();
-            IsDecompose = _buf.GetProperty("IsDecompose").GetBoolean();
-            MaxNum = _buf.GetProperty("MaxNum").GetInt32();
-            Description = _buf.GetProperty("description").GetString();
-            { var __json0 = _buf.GetProperty("ComeLink"); ComeLink = new System.Collections.Generic.List<int>(__json0.GetArrayLength()); foreach(JsonElement __e0 in __json0.EnumerateArray()) { int __v0;  __v0 = __e0.GetInt32();  ComeLink.Add(__v0); }   }
-            Icon = _buf.GetProperty("Icon").GetString();
-            BgIcon = _buf.GetProperty("BgIcon").GetString();
-            LevelColor = (ItemLevelColor)_buf.GetProperty("LevelColor").GetInt32();
-            CanAnnounce = _buf.GetProperty("CanAnnounce").GetBoolean();
-            LinkInfo = _buf.GetProperty("LinkInfo").GetString();
-            FunctionID = _buf.GetProperty("FunctionID").GetInt32();
-            UseLimiteType = (ItemUseLimiteType)_buf.GetProperty("UseLimiteType").GetInt32();
-            Abandon = _buf.GetProperty("Abandon").GetBoolean();
-            DoubleCheckDesc = _buf.GetProperty("doubleCheckDesc").GetBoolean();
-            CanTrade = _buf.GetProperty("CanTrade").GetBoolean();
-            TradeCD = _buf.GetProperty("TradeCD").GetInt32();
-            TradeItemsLimit = _buf.GetProperty("TradeItemsLimit").GetInt32();
-            UseLinmit = _buf.GetProperty("UseLinmit").GetInt32();
-            {if (_buf.TryGetProperty("ExpireTime", out var _j) && _j.ValueKind != JsonValueKind.Null) { ExpireTime = _j.GetInt64(); } else { ExpireTime = null; } }
-            IsRecordLog = _buf.GetProperty("IsRecordLog").GetBoolean();
         }
-    
-        public static ItemConfig DeserializeItemConfig(JsonElement _buf)
+
+        public ItemConfig(ByteBuf _buf) 
+        {
+            Translator = null;
+            Id = _buf.ReadInt();
+            Name = _buf.ReadString();
+            Type = (ItemType)_buf.ReadInt();
+            SubType = (ItemSubType)_buf.ReadInt();
+            EPrompt = (ItemEPrompt)_buf.ReadInt();
+            CanUse = (ItemCanUse)_buf.ReadInt();
+            IsDecompose = _buf.ReadBool();
+            MaxNum = _buf.ReadInt();
+            Description = _buf.ReadString();
+            {int n0 = System.Math.Min(_buf.ReadSize(), _buf.Size);ComeLink = new System.Collections.Generic.List<int>(n0);for(var i0 = 0 ; i0 < n0 ; i0++) { int _e0;  _e0 = _buf.ReadInt(); ComeLink.Add(_e0);}}
+            Icon = _buf.ReadString();
+            BgIcon = _buf.ReadString();
+            LevelColor = (ItemLevelColor)_buf.ReadInt();
+            CanAnnounce = _buf.ReadBool();
+            LinkInfo = _buf.ReadString();
+            FunctionID = _buf.ReadInt();
+            UseLimiteType = (ItemUseLimiteType)_buf.ReadInt();
+            Abandon = _buf.ReadBool();
+            DoubleCheckDesc = _buf.ReadBool();
+            CanTrade = _buf.ReadBool();
+            TradeCD = _buf.ReadInt();
+            TradeItemsLimit = _buf.ReadInt();
+            UseLinmit = _buf.ReadInt();
+            if(_buf.ReadBool()){ ExpireTime = _buf.ReadLong(); } else { ExpireTime = null; }
+            IsRecordLog = _buf.ReadBool();
+            // Localization Key Begin
+            Name_Localization_Key = Name;
+            Description_Localization_Key = Description;
+            // Localization Key End
+            PostInit();
+        }
+
+        public static ItemConfig DeserializeItemConfig(ByteBuf _buf)
         {
             return new Tables.ItemConfig(_buf);
         }
@@ -84,7 +90,20 @@ namespace GameFrameX.Config.Tables
         /// ID
         /// </summary>
         public int Id { private set; get; }
-        public string Name { private set; get; }
+        private string _Name;
+        public string Name
+        {
+            get
+            {
+                if (Translator != null)
+                {
+                    return Translator(Name_Localization_Key, _Name);
+                }
+                return _Name;
+            }
+            private set => _Name = value;
+        }
+        public readonly string Name_Localization_Key;
         /// <summary>
         /// 道具类型
         /// </summary>
@@ -112,7 +131,23 @@ namespace GameFrameX.Config.Tables
         /// <summary>
         /// 描述信息
         /// </summary>
-        public string Description { private set; get; }
+        private string _Description;
+        public string Description
+        {
+            get
+            {
+                if (Translator != null)
+                {
+                    return Translator(Description_Localization_Key, _Description);
+                }
+                return _Description;
+            }
+            private set => _Description = value;
+        }
+        /// <summary>
+        /// 描述信息 的多语言Key
+        /// </summary>
+        public readonly string Description_Localization_Key;
         /// <summary>
         /// 来源链接
         /// </summary>
@@ -177,8 +212,7 @@ namespace GameFrameX.Config.Tables
         /// 是否记录日志
         /// </summary>
         public bool IsRecordLog { private set; get; }
-
-        private const int __ID__ = -1046574242;
+        public const int __ID__ = -1046574242;
         public override int GetTypeId() => __ID__;
 
         public  void ResolveRef(TablesComponent tables)
@@ -208,6 +242,12 @@ namespace GameFrameX.Config.Tables
             
             
             
+            PostResolveRef();
+        }
+
+        public  void TranslateText(System.Func<string, string, string> translator)
+        {
+            Translator = translator;
         }
 
         public override string ToString()
@@ -242,5 +282,6 @@ namespace GameFrameX.Config.Tables
         }
 
         partial void PostInit();
+        partial void PostResolveRef();
     }
 }

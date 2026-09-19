@@ -7,16 +7,17 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-using System.Text.Json;
 using GameFrameX.Core.Config;
 
 namespace GameFrameX.Config.Local
 {
     public sealed partial class Localization : BeanBase
     {
-        /*
+        private System.Func<string, string, string> Translator;
+
         public Localization(string Key, string ChineseSimplified, string ChineseTraditional, string English, string Japanese, string Korean, string Thai, string Indonesian, string French, string German, string Russian, string Italian, string PortuguesePortugal, string Spanish, string Vietnamese) 
         {
+            Translator = null;
             this.Key = Key;
             this.ChineseSimplified = ChineseSimplified;
             this.ChineseTraditional = ChineseTraditional;
@@ -33,29 +34,32 @@ namespace GameFrameX.Config.Local
             this.Spanish = Spanish;
             this.Vietnamese = Vietnamese;
             PostInit();
-        }        
-        */
-
-        public Localization(JsonElement _buf) 
-        {
-            Key = _buf.GetProperty("key").GetString();
-            ChineseSimplified = _buf.GetProperty("ChineseSimplified").GetString();
-            ChineseTraditional = _buf.GetProperty("ChineseTraditional").GetString();
-            English = _buf.GetProperty("English").GetString();
-            Japanese = _buf.GetProperty("Japanese").GetString();
-            Korean = _buf.GetProperty("Korean").GetString();
-            Thai = _buf.GetProperty("Thai").GetString();
-            Indonesian = _buf.GetProperty("Indonesian").GetString();
-            French = _buf.GetProperty("French").GetString();
-            German = _buf.GetProperty("German").GetString();
-            Russian = _buf.GetProperty("Russian").GetString();
-            Italian = _buf.GetProperty("Italian").GetString();
-            PortuguesePortugal = _buf.GetProperty("PortuguesePortugal").GetString();
-            Spanish = _buf.GetProperty("Spanish").GetString();
-            Vietnamese = _buf.GetProperty("Vietnamese").GetString();
         }
-    
-        public static Localization DeserializeLocalization(JsonElement _buf)
+
+        public Localization(ByteBuf _buf) 
+        {
+            Translator = null;
+            Key = _buf.ReadString();
+            ChineseSimplified = _buf.ReadString();
+            ChineseTraditional = _buf.ReadString();
+            English = _buf.ReadString();
+            Japanese = _buf.ReadString();
+            Korean = _buf.ReadString();
+            Thai = _buf.ReadString();
+            Indonesian = _buf.ReadString();
+            French = _buf.ReadString();
+            German = _buf.ReadString();
+            Russian = _buf.ReadString();
+            Italian = _buf.ReadString();
+            PortuguesePortugal = _buf.ReadString();
+            Spanish = _buf.ReadString();
+            Vietnamese = _buf.ReadString();
+            // Localization Key Begin
+            // Localization Key End
+            PostInit();
+        }
+
+        public static Localization DeserializeLocalization(ByteBuf _buf)
         {
             return new Local.Localization(_buf);
         }
@@ -120,8 +124,7 @@ namespace GameFrameX.Config.Local
         /// 越南语
         /// </summary>
         public string Vietnamese { private set; get; }
-
-        private const int __ID__ = -1694250884;
+        public const int __ID__ = -1694250884;
         public override int GetTypeId() => __ID__;
 
         public  void ResolveRef(TablesComponent tables)
@@ -141,6 +144,12 @@ namespace GameFrameX.Config.Local
             
             
             
+            PostResolveRef();
+        }
+
+        public  void TranslateText(System.Func<string, string, string> translator)
+        {
+            Translator = translator;
         }
 
         public override string ToString()
@@ -165,5 +174,6 @@ namespace GameFrameX.Config.Local
         }
 
         partial void PostInit();
+        partial void PostResolveRef();
     }
 }
