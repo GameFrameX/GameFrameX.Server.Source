@@ -27,7 +27,6 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using System.Text.Json;
 
 namespace GameFrameX.Core.Config;
 
@@ -69,25 +68,6 @@ public abstract class BaseDataTable<T> : IDataTable<T> where T : class
     private bool _countCacheInitialized;
     private int _countCache;
 
-    /// <summary>
-    /// 异步加载器。
-    /// </summary>
-    /// <remarks>
-    /// The asynchronous loader.
-    /// </remarks>
-    protected readonly Func<Task<JsonElement>> _loadFunc;
-
-    /// <summary>
-    /// 初始化基础数据表。
-    /// </summary>
-    /// <remarks>
-    /// Initializes the base data table.
-    /// </remarks>
-    /// <param name="loadFunc">异步加载数据的委托 / The delegate for asynchronous data loading</param>
-    public BaseDataTable(Func<Task<JsonElement>> loadFunc)
-    {
-        _loadFunc = loadFunc;
-    }
 
     /// <summary>
     /// 异步加载数据表。
