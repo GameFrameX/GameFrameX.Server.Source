@@ -35,8 +35,8 @@ namespace GameFrameX.Utility.Setting;
 /// <remarks>
 /// Thrown by <see cref="GlobalSettings.SetCurrentSetting"/> when a process-level field
 /// of the incoming setting differs from the current setting (C143a D19).
-/// The message lists every conflicting field with its source segments and both values.
-/// </remarks>
+/// The message lists every conflicting field with its source segments and both values;
+/// sensitive fields (e.g. <see cref="AppSetting.DataBasePassword"/>) omit their values from the message.
 public sealed class SettingConflictException : Exception
 {
     /// <summary>

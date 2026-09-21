@@ -103,14 +103,31 @@ public sealed class SettingFieldConflict
     public object ActualValue { get; }
 
     /// <summary>
-    /// 返回冲突描述文本："段 X 字段 Y 期望值 A 实际值 B"。
+    /// 判断字段是否为敏感字段（其值不得出现在异常消息中）。
     /// </summary>
     /// <remarks>
-    /// Returns the conflict description text.
+    /// Determines whether the field is sensitive (its value must not appear in exception messages).
+    /// Matches credential-like names such as <see cref="AppSetting.DataBasePassword"/>; value details are preserved on the conflict object itself.
+    /// </remarks>
+    private static bool IsSensitiveFieldName(string fieldName)
+    {
+        return fieldName != null && fieldName.IndexOf("Password", StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    /// <summary>
+    /// 返回冲突描述文本："段 X 字段 Y 期望值 A 实际值 B"；敏感字段（如密码）只输出字段名与来源段，不输出值。
+    /// </summary>
+    /// <remarks>
+    /// Returns the conflict description text; sensitive fields (e.g. passwords) output only the field name and source segments, never the values.
     /// </remarks>
     /// <returns>冲突描述文本 / Conflict description text</returns>
     public override string ToString()
     {
+        if (IsSensitiveFieldName(FieldName))
+        {
+            return $"segment '{ActualSegment ?? "null"}' field '{FieldName}' has a conflicting value (from segment '{ExpectedSegment ?? "null"}'); values are omitted for a sensitive field";
+        }
+
         return $"segment '{ActualSegment}' field '{FieldName}' expected value '{ExpectedValue ?? "null"}' (from segment '{ExpectedSegment ?? "null"}') but actual value '{ActualValue ?? "null"}'";
     }
 }

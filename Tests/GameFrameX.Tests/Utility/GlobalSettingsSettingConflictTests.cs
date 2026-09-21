@@ -143,6 +143,51 @@ public class GlobalSettingsSettingConflictTests : IDisposable
     }
 
     /// <summary>
+    /// 规范化后等价的进程级字段（低于下限的 SaveDataInterval、空 HttpUrl、过小的超时与回收时间）不被误判为冲突。
+    /// </summary>
+    [Fact]
+    public void SetCurrentSetting_NormalizedEquivalentFields_DoNotConflict()
+    {
+        var firstSetting = CreateSetting("Game");
+        firstSetting.SaveDataInterval = 0;
+        GlobalSettings.SetCurrentSetting(firstSetting);
+
+        var secondSetting = CreateSetting("Social");
+        secondSetting.SaveDataInterval = 3000;
+        secondSetting.HttpUrl = "";
+        secondSetting.NetWorkSendTimeOutSeconds = 0;
+        secondSetting.ActorRecycleTime = 0;
+
+        GlobalSettings.SetCurrentSetting(secondSetting);
+
+        Assert.Same(secondSetting, GlobalSettings.CurrentSetting);
+        Assert.Equal(firstSetting.SaveDataInterval, secondSetting.SaveDataInterval);
+        Assert.Equal("/game/api/", secondSetting.HttpUrl);
+        Assert.Equal(5, secondSetting.NetWorkSendTimeOutSeconds);
+        Assert.Equal(5, secondSetting.ActorRecycleTime);
+    }
+
+    /// <summary>
+    /// 敏感字段（如 DataBasePassword）冲突时，异常消息只含字段名与来源段，不包含期望/实际值。
+    /// </summary>
+    [Fact]
+    public void SetCurrentSetting_ConflictingSensitiveField_MessageOmitsValues()
+    {
+        var firstSetting = CreateSetting("Game");
+        firstSetting.DataBasePassword = "secret-expected";
+        GlobalSettings.SetCurrentSetting(firstSetting);
+
+        var secondSetting = CreateSetting("Social");
+        secondSetting.DataBasePassword = "secret-actual";
+
+        var exception = Assert.Throws<SettingConflictException>(() => GlobalSettings.SetCurrentSetting(secondSetting));
+
+        Assert.Contains(nameof(AppSetting.DataBasePassword), exception.Message);
+        Assert.DoesNotContain("secret-expected", exception.Message);
+        Assert.DoesNotContain("secret-actual", exception.Message);
+    }
+
+    /// <summary>
     /// 冲突抛出后 CurrentSetting 保持原值（不被部分更新）。
     /// </summary>
     [Fact]

@@ -116,9 +116,10 @@ public static class GlobalSettings
     /// This method is used to update the global current settings.
     /// Typically called during application startup or when switching configurations.
     /// Features:
-    /// 1. Repeated settings perform process-level field consistency validation (C143a D19):
+    /// 1. Process-level field normalization runs first (SaveDataInterval / HttpUrl / NetWorkSendTimeOutSeconds / ActorRecycleTime),
+    ///    then repeated settings perform process-level field consistency validation (C143a D19) on the normalized values:
     ///    identical process-level fields pass through idempotently, conflicting ones fail fast with <see cref="SettingConflictException"/>;
-    ///    role-level fields accept the latest value
+    ///    role-level fields accept the latest value, so equivalent multi-Role configurations are not reported as conflicts
     /// 2. Null values are not allowed
     /// 3. Automatically corrects SaveDataInterval if less than 5000ms
     /// </remarks>
@@ -129,14 +130,6 @@ public static class GlobalSettings
     {
         ArgumentNullException.ThrowIfNull(setting, nameof(setting));
 
-        if (CurrentSetting.IsNotNull())
-        {
-            var conflicts = CollectProcessLevelConflicts(CurrentSetting, setting);
-            if (conflicts.Count > 0)
-            {
-                throw new SettingConflictException(conflicts);
-            }
-        }
         if (setting.SaveDataInterval < 5000)
         {
             LogHelper.Warning<string>("GlobalSettings.SetCurrentSetting {setting}", LocalizationService.GetString(Localization.Keys.Utility.Settings.SaveDataIntervalTooSmall, GlobalConst.SaveIntervalInMilliSeconds));
@@ -159,6 +152,17 @@ public static class GlobalSettings
         {
             LogHelper.Warning<string>("GlobalSettings.SetCurrentSetting {setting}", LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.ActorRecycleTimeTooShort, 5));
             setting.ActorRecycleTime = 5;
+        }
+
+        // C143a D19 修复：先完成上面的进程级字段规范化，再用规范化后的值做一致性校验，
+        // 避免等价的多 Role 配置（规范化后相同）被误判为冲突。
+        if (CurrentSetting.IsNotNull())
+        {
+            var conflicts = CollectProcessLevelConflicts(CurrentSetting, setting);
+            if (conflicts.Count > 0)
+            {
+                throw new SettingConflictException(conflicts);
+            }
         }
 
         // 创建ID生成器配置，WorkerId设为0
