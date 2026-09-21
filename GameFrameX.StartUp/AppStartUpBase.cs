@@ -83,7 +83,9 @@ public abstract partial class AppStartUpBase : IAppStartUp
     /// </summary>
     /// <remarks>
     /// Initialize the application startup.
-    /// Sets the server type and configuration information, and calls the virtual Init method for subclass-specific initialization.
+    /// Sets the server type and configuration information, idempotently initializes the process-level
+    /// shared kernel (log handler) via <see cref="AppBootstrapper.EnsureInitialized"/> (C143b D5: only the
+    /// first role of the process creates the kernel), and calls the virtual Init method for subclass-specific initialization.
     /// </remarks>
     /// <param name="serverType">服务器类型标识符 / Server type identifier</param>
     /// <param name="setting">应用程序配置设置 / Application configuration settings</param>
@@ -94,6 +96,7 @@ public abstract partial class AppStartUpBase : IAppStartUp
     {
         ServerType = serverType;
         Setting = setting;
+        AppBootstrapper.EnsureInitialized(() => LogHandler.Create(LogOptions.Default));
         Init();
         GlobalSettings.SetCurrentSetting(Setting);
         return true;

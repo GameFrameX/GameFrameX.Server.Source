@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 
+using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Options.Attributes;
 using GameFrameX.Utility.Setting;
 
@@ -53,4 +54,43 @@ public partial class StartupOptions : AppSetting
     [Option(nameof(IsSingleMode), DefaultValue = false, Description = "是否单进程模式,默认值为false(多进程)")]
     [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public bool IsSingleMode { get; set; }
+
+    /// <summary>
+    /// 是否 All-in-One 单进程拉起全部已注册 Role（C143b D2）。
+    /// </summary>
+    /// <value>All-in-One 则为 <c>true</c>；否则为 <c>false</c>。默认值为 <c>false</c> / <c>true</c> for all-in-one; otherwise, <c>false</c>. Default is <c>false</c></value>
+    /// <remarks>
+    /// Whether to launch every registered role in one process (all-in-one, C143b D2).
+    /// This flag is process-level: every role of the process shares one kernel.
+    /// It intentionally coexists with (and is NOT replaced by) <see cref="IsSingleMode"/>, which is consumed
+    /// by the AppHost orchestration layer with the opposite meaning ("one AppHost orchestrating all roles").
+    /// The launch decision reads <see cref="AllInOneOptions"/> (which also recognizes the bare <c>--AllInOne</c> switch).
+    /// </remarks>
+    [Option(nameof(IsAllInOne), DefaultValue = false, Description = "是否单进程拉起全部已注册 Role(All-in-One),默认值为false")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
+    public bool IsAllInOne { get; set; }
+
+    /// <summary>
+    /// 获取由 <see cref="AppSetting.ServerType"/> 逗号拆分出的 Role 名列表（C143b D2）。
+    /// </summary>
+    /// <value>Role 名数组（trim、去空、去重）；未指定时为空数组 / The role names (trimmed, non-empty, deduplicated); an empty array when unspecified</value>
+    /// <remarks>
+    /// Derived view of the comma-separated <c>--ServerType</c> value (e.g. "Game,Social" → ["Game", "Social"]).
+    /// Read-only projection, not an independent CLI option; the launch decision reads <see cref="AllInOneOptions"/>.
+    /// </remarks>
+    public string[] ServerTypes
+    {
+        get
+        {
+            if (ServerType.IsNullOrEmpty())
+            {
+                return Array.Empty<string>();
+            }
+
+            return ServerType.Split(',').Select(serverType => serverType.Trim())
+                .Where(serverType => serverType.Length > 0)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+        }
+    }
 }

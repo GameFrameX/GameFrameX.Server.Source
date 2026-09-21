@@ -71,33 +71,46 @@ internal static class AppEnter
     private static volatile Task _exitTask;
 
     /// <summary>
-    /// 应用程序启动实例。
+    /// 应用程序启动实例集合（按启动优先级排序；单 Role 为单元素集合）。
     /// </summary>
     /// <remarks>
-    /// The application startup instance.
+    /// The application startup instances, ordered by launch priority (a single-role process holds a one-element list).
     /// </remarks>
-    /// <value>用于管理应用程序生命周期的启动实例 / The startup instance used to manage application lifecycle</value>
-    private static volatile IAppStartUp _appStartUp;
+    /// <value>用于管理应用程序生命周期的启动实例集合 / The startup instances used to manage application lifecycle</value>
+    private static volatile IReadOnlyList<IAppStartUp> _appStartUps;
 
     /// <summary>
     /// 应用程序启动入口点。
     /// </summary>
     /// <remarks>
     /// Application startup entry point.
-    /// Initializes the application, sets up exit handlers, and starts the main game loop.
+    /// Initializes the application, sets up exit handlers, and starts the main game loop of every hosted role:
+    /// hosts are started sequentially in list order (higher priority first, C143b D7) without awaiting completion,
+    /// then all loops are awaited together. Exit stops the hosts in reverse order (lower priority first).
     /// </remarks>
-    /// <param name="appStartUp">应用程序启动实例 / Application startup instance</param>
+    /// <param name="appStartUps">应用程序启动实例集合（启动优先级序）/ Application startup instances (launch priority order)</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
-    /// <exception cref="ArgumentNullException">当 <paramref name="appStartUp"/> 为 null 时抛出 / Thrown when <paramref name="appStartUp"/> is null</exception>
-    internal static async Task Entry(IAppStartUp appStartUp)
+    /// <exception cref="ArgumentNullException">当 <paramref name="appStartUps"/> 为 null 时抛出 / Thrown when <paramref name="appStartUps"/> is null</exception>
+    /// <exception cref="ArgumentException">当 <paramref name="appStartUps"/> 为空集合时抛出 / Thrown when <paramref name="appStartUps"/> is empty</exception>
+    internal static async Task Entry(IReadOnlyList<IAppStartUp> appStartUps)
     {
-        ArgumentNullException.ThrowIfNull(appStartUp, nameof(appStartUp));
+        ArgumentNullException.ThrowIfNull(appStartUps, nameof(appStartUps));
+        if (appStartUps.Count == 0)
+        {
+            throw new ArgumentException("At least one application startup instance is required.", nameof(appStartUps));
+        }
 
         try
         {
-            _appStartUp = appStartUp;
-            AppExitHandler.Init(HandleExit, appStartUp.Setting);
-            _gameLoopTask = appStartUp.StartAsync();
+            _appStartUps = appStartUps;
+            AppExitHandler.Init(HandleExit, appStartUps[0].Setting);
+            var startUpTasks = new List<Task>(appStartUps.Count);
+            foreach (var appStartUp in appStartUps)
+            {
+                startUpTasks.Add(appStartUp.StartAsync());
+            }
+
+            _gameLoopTask = startUpTasks.Count == 1 ? startUpTasks[0] : Task.WhenAll(startUpTasks);
             await _gameLoopTask;
             if (_exitTask != null)
             {
@@ -143,6 +156,7 @@ internal static class AppEnter
     /// </summary>
     /// <remarks>
     /// Handles application exit asynchronously.
+    /// Stops every hosted role in reverse launch order (lower priority first, C143b D7).
     /// </remarks>
     /// <param name="message">退出消息 / Exit message</param>
     private static async Task HandleExitAsync(string message)
@@ -151,9 +165,9 @@ internal static class AppEnter
         try
         {
             GameAppRuntime.MarkStopping();
-            if (_appStartUp != null)
+            if (_appStartUps != null)
             {
-                await _appStartUp.StopAsync(message);
+                await StopHostsInReverseOrderAsync(_appStartUps, message);
             }
 
             AppExitHandler.Kill();
@@ -166,6 +180,29 @@ internal static class AppEnter
         finally
         {
             LogHelper.FlushAndSave();
+        }
+    }
+
+    /// <summary>
+    /// 按启动顺序的逆序依次停机（低优先级先停，C143b D7）。
+    /// </summary>
+    /// <remarks>
+    /// Stops the hosts sequentially in reverse launch order (lower priority stops first, C143b D7),
+    /// mirroring the start order: the last started role is the first stopped one.
+    /// </remarks>
+    /// <param name="appStartUps">启动实例集合（启动优先级序）/ Application startup instances (launch priority order)</param>
+    /// <param name="message">退出消息 / Exit message</param>
+    internal static async Task StopHostsInReverseOrderAsync(IReadOnlyList<IAppStartUp> appStartUps, string message)
+    {
+        for (var index = appStartUps.Count - 1; index >= 0; index--)
+        {
+            var appStartUp = appStartUps[index];
+            if (appStartUp == null)
+            {
+                continue;
+            }
+
+            await appStartUp.StopAsync(message);
         }
     }
 }
