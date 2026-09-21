@@ -68,6 +68,7 @@ public class AppSetting
     /// </remarks>
     [Option(nameof(ServerType), Description = "服务器类型。单进程传单值(如 Game)，多进程传逗号分隔值(如 Game,Social,Chat)")]
     [GrafanaLokiLabelTag]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public string ServerType
     {
         get { return _serverType; }
@@ -128,6 +129,7 @@ public class AppSetting
     /// Default value is false.
     /// </remarks>
     [Option(nameof(IsOpenTelemetryMetrics), DefaultValue = false, Description = "是否启用指标收集功能,需要 IsOpenTelemetry 为true时有效,默认值为false")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public bool IsOpenTelemetryMetrics { get; set; }
 
     /// <summary>
@@ -141,6 +143,7 @@ public class AppSetting
     /// Default value is false.
     /// </remarks>
     [Option(nameof(IsOpenTelemetryTracing), DefaultValue = false, Description = "是否启用分布式追踪功能,需要 IsOpenTelemetry为true时有效,默认值为false")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public bool IsOpenTelemetryTracing { get; set; }
 
     /// <summary>
@@ -156,6 +159,7 @@ public class AppSetting
     /// Default value is false.
     /// </remarks>
     [Option(nameof(IsOpenTelemetry), DefaultValue = false, Description = "是否启用OpenTelemetry遥测功能,默认值为false")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public bool IsOpenTelemetry { get; set; }
 
     /// <summary>
@@ -165,6 +169,7 @@ public class AppSetting
     /// Whether to enable debug log mode. Default value is false.
     /// </remarks>
     [Option(nameof(IsDebug), DefaultValue = false, Description = "是否是Debug打印日志模式,默认值为false")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public bool IsDebug { get; set; }
 
     /// <summary>
@@ -174,6 +179,7 @@ public class AppSetting
     /// Whether to print timeout logs.
     /// </remarks>
     [Option(nameof(IsMonitorMessageTimeOut), DefaultValue = false, Description = "是否打印超时日志,默认值为false")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public bool IsMonitorMessageTimeOut { get; set; }
 
     /// <summary>
@@ -183,6 +189,7 @@ public class AppSetting
     /// Handler timeout in seconds. Default value is 1 second.
     /// </remarks>
     [Option(nameof(MonitorMessageTimeOutSeconds), DefaultValue = 1, Description = "处理器超时时间（秒）,默认值为1秒,只有IsMonitorMessageTimeOut为true时有效")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public int MonitorMessageTimeOutSeconds { get; set; } = 1;
 
     /// <summary>
@@ -192,6 +199,7 @@ public class AppSetting
     /// Network send timeout in seconds. Default value is 5 seconds.
     /// </remarks>
     [Option(nameof(NetWorkSendTimeOutSeconds), DefaultValue = 5, Description = "网络发送等待超时时间（秒）,默认值为5秒,最小值为1秒")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public int NetWorkSendTimeOutSeconds { get; set; } = 5;
 
     /// <summary>
@@ -201,6 +209,7 @@ public class AppSetting
     /// Whether to print sent data, effective when IsDebug is true. Default value is false.
     /// </remarks>
     [Option(nameof(IsDebugSend), DefaultValue = false, Description = "是否打印发送数据,只有在IsDebug为true时有效,默认值为false")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public bool IsDebugSend { get; set; }
 
     /// <summary>
@@ -210,6 +219,7 @@ public class AppSetting
     /// Whether to print sent heartbeat data, effective when IsDebugSend is true. Default value is false.
     /// </remarks>
     [Option(nameof(IsDebugSendHeartBeat), DefaultValue = false, Description = "是否打印发送的心跳数据,只有在IsDebugSend为true时有效,默认值为false")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public bool IsDebugSendHeartBeat { get; set; }
 
     /// <summary>
@@ -219,6 +229,7 @@ public class AppSetting
     /// Whether to print received data, effective when IsDebug is true. Default value is false.
     /// </remarks>
     [Option(nameof(IsDebugReceive), DefaultValue = false, Description = "是否打印接收数据,只有在IsDebug为true时有效,默认值为false")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public bool IsDebugReceive { get; set; }
 
     /// <summary>
@@ -228,6 +239,7 @@ public class AppSetting
     /// Whether to print received heartbeat data, effective when IsDebugReceive is true. Default value is false.
     /// </remarks>
     [Option(nameof(IsDebugReceiveHeartBeat), DefaultValue = false, Description = "是否打印接收的心跳数据,只有在IsDebugReceive为true时有效,默认值为false")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public bool IsDebugReceiveHeartBeat { get; set; }
 
     /// <summary>
@@ -240,6 +252,7 @@ public class AppSetting
     /// Effective when IsDebug is true. Default value is true.
     /// </remarks>
     [Option(nameof(IsDebugHttp), DefaultValue = true, Description = "是否启用HTTP调试日志总开关,只有在IsDebug为true时有效,默认值为true")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public bool IsDebugHttp { get; set; } = true;
 
     /// <summary>
@@ -254,6 +267,7 @@ public class AppSetting
     /// Effective when IsDebugHttp is true. Default value is true.
     /// </remarks>
     [Option(nameof(IsDebugHttpRequest), DefaultValue = true, Description = "是否打印HTTP请求参数日志,只有在IsDebugHttp为true时有效,默认值为true")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public bool IsDebugHttpRequest { get; set; } = true;
 
     /// <summary>
@@ -268,6 +282,7 @@ public class AppSetting
     /// Effective when IsDebugHttp is true. Default value is true.
     /// </remarks>
     [Option(nameof(IsDebugHttpResponse), DefaultValue = true, Description = "是否打印HTTP响应结果日志,只有在IsDebugHttp为true时有效,默认值为true")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public bool IsDebugHttpResponse { get; set; } = true;
 
     /// <summary>
@@ -278,6 +293,7 @@ public class AppSetting
     /// </remarks>
     [Option(nameof(ServerId), Description = "服务器ID-如果需要合服，请确保不同服的ServerId一样。不然合服后数据会无法处理用户数据")]
     [GrafanaLokiLabelTag]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public int ServerId { get; set; }
 
     /// <summary>
@@ -288,6 +304,7 @@ public class AppSetting
     /// </remarks>
     [Option(nameof(ServerInstanceId), Description = "服务器实例ID-用于区分同一服务器的不同实例")]
     [GrafanaLokiLabelTag]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public long ServerInstanceId { get; set; }
 
     /// <summary>
@@ -296,6 +313,7 @@ public class AppSetting
     /// <remarks>
     /// Server name.
     /// </remarks>
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public string ServerName { get; set; }
 
     /// <summary>
@@ -306,6 +324,7 @@ public class AppSetting
     /// </remarks>
     [Option(nameof(TagName), DefaultValue = "", Description = "标签名称-用于区分不同环境的服务器,没有实际用途,只是方便运维管理")]
     [GrafanaLokiLabelTag]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public string TagName { get; set; }
 
     /// <summary>
@@ -315,6 +334,7 @@ public class AppSetting
     /// Data save interval in milliseconds. Default is 30,000 (30 seconds).
     /// </remarks>
     [Option(nameof(SaveDataInterval), DefaultValue = 30_000, Description = "保存数据间隔,单位毫秒,默认30000毫秒(30秒),最小值为5秒(5000毫秒)")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public int SaveDataInterval { get; set; } = 30_000;
 
     /// <summary>
@@ -324,6 +344,7 @@ public class AppSetting
     /// Batch count for saving data. Default is 500.
     /// </remarks>
     [Option(nameof(SaveDataBatchCount), DefaultValue = 500, Description = "保存数据的批量数量长度,默认为500")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public int SaveDataBatchCount { get; set; } = 500;
 
     /// <summary>
@@ -333,6 +354,7 @@ public class AppSetting
     /// Data save batch timeout in milliseconds. Default is 30,000 (30 seconds).
     /// </remarks>
     [Option(nameof(SaveDataBatchTimeOut), DefaultValue = 30_000, Description = "保存数据的超时时间(毫秒),默认值为30秒")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public int SaveDataBatchTimeOut { get; set; } = 30_000;
 
     /// <summary>
@@ -342,6 +364,7 @@ public class AppSetting
     /// Actor task execution timeout in milliseconds. Default is 30,000 (30 seconds).
     /// </remarks>
     [Option(nameof(ActorTimeOut), DefaultValue = 30_000, Description = "Actor 执行任务超时时间(毫秒),默认值为30秒")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public int ActorTimeOut { get; set; } = 30_000;
 
     /// <summary>
@@ -351,6 +374,7 @@ public class AppSetting
     /// Actor idle recycle time in minutes. Default is 15 minutes.
     /// </remarks>
     [Option(nameof(ActorRecycleTime), DefaultValue = 15, Description = "Actor 空闲多久回收,单位分钟,默认值为15分钟,最小值为1分钟,小于1则强制设置为5分钟")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public int ActorRecycleTime { get; set; } = 15;
 
     /// <summary>
@@ -360,6 +384,7 @@ public class AppSetting
     /// Actor queue timeout in milliseconds. Default is 30,000 (30 seconds).
     /// </remarks>
     [Option(nameof(ActorQueueTimeOut), DefaultValue = 30_000, Description = "Actor 执行任务队列超时时间(毫秒),默认值为30秒")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public int ActorQueueTimeOut { get; set; } = 30_000;
 
     /// <summary>
@@ -369,6 +394,7 @@ public class AppSetting
     /// Whether to enable TCP.
     /// </remarks>
     [Option(nameof(IsEnableTcp), DefaultValue = true, Description = "是否启用 TCP 服务，默认值为 true")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public bool IsEnableTcp { get; set; } = true;
 
     /// <summary>
@@ -378,6 +404,7 @@ public class AppSetting
     /// Whether to enable UDP. Default is false.
     /// </remarks>
     [Option(nameof(IsEnableUdp), DefaultValue = false, Description = "是否启用 UDP 服务，默认值为 false")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public bool IsEnableUdp { get; set; } = false;
 
     /// <summary>
@@ -386,6 +413,7 @@ public class AppSetting
     /// <remarks>
     /// Whether to enable KCP. Default is false.
     /// </remarks>
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public bool IsEnableKcp { get; set; } = false;
 
     /// <summary>
@@ -394,6 +422,7 @@ public class AppSetting
     /// <remarks>
     /// KCP server port. Default is 0 (uses same port as TCP).
     /// </remarks>
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public int KcpPort { get; set; } = 0;
 
     /// <summary>
@@ -403,6 +432,7 @@ public class AppSetting
     /// Internal host address.
     /// </remarks>
     [Option(nameof(InnerHost), DefaultValue = "0.0.0.0", Description = "内部IP")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public string InnerHost { get; set; } = "0.0.0.0";
 
     /// <summary>
@@ -412,6 +442,7 @@ public class AppSetting
     /// Internal port.
     /// </remarks>
     [Option(nameof(InnerPort), DefaultValue = 8888, Description = "内部端口")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public ushort InnerPort { get; set; } = 8888;
 
     /// <summary>
@@ -421,6 +452,7 @@ public class AppSetting
     /// Snowflake ID worker ID.
     /// </remarks>
     [Option(nameof(WorkerId), DefaultValue = 1, Description = "雪花ID的工作ID,默认为1")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public ushort WorkerId { get; set; } = 1;
 
     /// <summary>
@@ -430,6 +462,7 @@ public class AppSetting
     /// Snowflake ID data center ID.
     /// </remarks>
     [Option(nameof(DataCenterId), DefaultValue = 1, Description = "雪花ID的数据中心ID,默认为1")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public ushort DataCenterId { get; set; } = 1;
 
     /// <summary>
@@ -439,6 +472,7 @@ public class AppSetting
     /// External host address.
     /// </remarks>
     [Option(nameof(OuterHost), DefaultValue = "0.0.0.0", Description = "外部IP")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public string OuterHost { get; set; } = "0.0.0.0";
 
     /// <summary>
@@ -448,6 +482,7 @@ public class AppSetting
     /// External port.
     /// </remarks>
     [Option(nameof(OuterPort), Description = "外部端口")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public ushort OuterPort { get; set; }
 
     /// <summary>
@@ -457,6 +492,7 @@ public class AppSetting
     /// HTTP URL path.
     /// </remarks>
     [Option(nameof(HttpUrl), DefaultValue = "/game/api/", Description = "API接口根路径,必须以/开头和以/结尾,默认为[/game/api/]")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public string HttpUrl { get; set; } = "/game/api/";
 
     /// <summary>
@@ -466,6 +502,7 @@ public class AppSetting
     /// Whether to enable HTTP service.
     /// </remarks>
     [Option(nameof(IsEnableHttp), DefaultValue = true, Description = "是否启用 HTTP 服务，默认值为 true")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public bool IsEnableHttp { get; set; } = true;
 
     /// <summary>
@@ -475,6 +512,7 @@ public class AppSetting
     /// Whether HTTP is in development mode.
     /// </remarks>
     [Option(nameof(HttpIsDevelopment), DefaultValue = false, Description = "HTTP 是否是开发模式,当是开发模式的时候将会启用Swagger")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public bool HttpIsDevelopment { get; set; }
 
     /// <summary>
@@ -484,6 +522,7 @@ public class AppSetting
     /// HTTP port.
     /// </remarks>
     [Option(nameof(HttpPort), DefaultValue = 8080, Description = "HTTP 端口")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public ushort HttpPort { get; set; } = 8080;
 
     /// <summary>
@@ -493,6 +532,7 @@ public class AppSetting
     /// HTTPS port.
     /// </remarks>
     [Option(nameof(HttpsPort), Description = "HTTPS 端口")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public ushort HttpsPort { get; set; }
 
     /// <summary>
@@ -502,6 +542,7 @@ public class AppSetting
     /// Maximum HTTP request body size in bytes.
     /// </remarks>
     [Option(nameof(HttpMaxRequestBodyBytes), DefaultValue = 1048576L, Description = "HTTP 请求体最大字节数,默认 1MB")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public long HttpMaxRequestBodyBytes { get; set; } = 1024 * 1024;
 
     /// <summary>
@@ -511,6 +552,7 @@ public class AppSetting
     /// Maximum HTTP JSON request body size in bytes.
     /// </remarks>
     [Option(nameof(HttpMaxJsonBodyBytes), DefaultValue = 1048576L, Description = "HTTP JSON 请求体最大字节数,默认 1MB")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public long HttpMaxJsonBodyBytes { get; set; } = 1024 * 1024;
 
     /// <summary>
@@ -520,6 +562,7 @@ public class AppSetting
     /// Maximum HTTP ProtoBuf request body size in bytes.
     /// </remarks>
     [Option(nameof(HttpMaxProtoBodyBytes), DefaultValue = 1048576L, Description = "HTTP ProtoBuf 请求体最大字节数,默认 1MB")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public long HttpMaxProtoBodyBytes { get; set; } = 1024 * 1024;
 
     /// <summary>
@@ -529,6 +572,7 @@ public class AppSetting
     /// Whether all HTTP handlers require signature validation globally.
     /// </remarks>
     [Option(nameof(HttpRequireSign), DefaultValue = false, Description = "HTTP是否全局要求签名校验,默认false。生产环境可开启")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public bool HttpRequireSign { get; set; }
 
     /// <summary>
@@ -538,6 +582,7 @@ public class AppSetting
     /// HTTP CORS allowed origin whitelist, separated by comma or semicolon.
     /// </remarks>
     [Option(nameof(HttpCorsAllowedOrigins), DefaultValue = "", Description = "HTTP CORS允许的Origin白名单,多个值用逗号或分号分隔。生产环境空值时不启用CORS")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public string HttpCorsAllowedOrigins { get; set; }
 
     /// <summary>
@@ -551,6 +596,7 @@ public class AppSetting
     /// Default value is false.
     /// </remarks>
     [Option(nameof(IsEnableOnlineAdmin), DefaultValue = false, Description = "是否启用 Online 平台管理面(admin API),默认值为 false")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public bool IsEnableOnlineAdmin { get; set; }
 
     /// <summary>
@@ -560,6 +606,7 @@ public class AppSetting
     /// Online admin API listening port.
     /// </remarks>
     [Option(nameof(OnlineAdminPort), DefaultValue = 28090, Description = "Online admin API 监听端口,默认值为 28090,只有 IsEnableOnlineAdmin 为 true 时才生效")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public ushort OnlineAdminPort { get; set; } = 28090;
 
     /// <summary>
@@ -569,6 +616,7 @@ public class AppSetting
     /// Online admin API route prefix (aligned with the Admin-side area addressing convention).
     /// </remarks>
     [Option(nameof(OnlineAdminApiPrefix), DefaultValue = "online/admin", Description = "Online admin API 路由前缀,默认值为 online/admin,与 Admin 侧区服 HttpManageUrl 寻址约定一致")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public string OnlineAdminApiPrefix { get; set; } = "online/admin";
 
     /// <summary>
@@ -578,6 +626,7 @@ public class AppSetting
     /// Online runtime authorized tenant id (part of the scope triple; cross-tenant requests are rejected with 3002).
     /// </remarks>
     [Option(nameof(OnlineTenantId), DefaultValue = 0L, Description = "Online 运行时授权租户标识,与 OnlineAppId、ServerId 构成作用域三元组,默认值为 0(未配置)")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public long OnlineTenantId { get; set; }
 
     /// <summary>
@@ -587,6 +636,7 @@ public class AppSetting
     /// Online runtime authorized app id (cross-app requests are rejected with 3003).
     /// </remarks>
     [Option(nameof(OnlineAppId), DefaultValue = 0L, Description = "Online 运行时授权应用标识,默认值为 0(未配置)")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public long OnlineAppId { get; set; }
 
     /// <summary>
@@ -596,6 +646,7 @@ public class AppSetting
     /// Prometheus metrics port (uses HTTP port if 0).
     /// </remarks>
     [Option(nameof(MetricsPort), Description = "Metrics 端口")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public ushort MetricsPort { get; set; }
 
     /// <summary>
@@ -609,6 +660,7 @@ public class AppSetting
     /// Default value is false.
     /// </remarks>
     [Option(nameof(IsEnableWebSocket), DefaultValue = false, Description = "是否启用 WebSocket 服务，默认值为 false")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public bool IsEnableWebSocket { get; set; } = false;
 
     /// <summary>
@@ -618,6 +670,7 @@ public class AppSetting
     /// WebSocket port.
     /// </remarks>
     [Option(nameof(WsPort), DefaultValue = 8889, Description = "WebSocket 端口，默认值为 8889，当 IsEnableWebSocket 为 true 时才会启用")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public ushort WsPort { get; set; } = 8889;
 
     /// <summary>
@@ -627,6 +680,7 @@ public class AppSetting
     /// WebSocket secure port.
     /// </remarks>
     [Option(nameof(WssPort), Description = "WebSocket 加密端口")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public ushort WssPort { get; set; }
 
     /// <summary>
@@ -636,6 +690,7 @@ public class AppSetting
     /// Certificate file path for WSS.
     /// </remarks>
     [Option(nameof(WssCertFilePath), Description = "Wss 使用的证书路径")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public string WssCertFilePath { get; set; }
 
     /// <summary>
@@ -645,6 +700,7 @@ public class AppSetting
     /// Database URL.
     /// </remarks>
     [Option(nameof(DataBaseUrl), Description = "数据库 地址")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public string DataBaseUrl { get; set; }
 
     /// <summary>
@@ -654,6 +710,7 @@ public class AppSetting
     /// Database name.
     /// </remarks>
     [Option(nameof(DataBaseName), Description = "数据库名称")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public string DataBaseName { get; set; }
 
     /// <summary>
@@ -663,6 +720,7 @@ public class AppSetting
     /// Database password.
     /// </remarks>
     [Option(nameof(DataBasePassword), Description = "数据库密码")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public string DataBasePassword { get; set; }
 
     /// <summary>
@@ -672,6 +730,7 @@ public class AppSetting
     /// Server time zone identifier.
     /// </remarks>
     [Option(nameof(TimeZone), DefaultValue = "Asia/Shanghai", Description = "服务器时区设置，默认为 Asia/Shanghai，支持 IANA 时区数据库标准标识符")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public string TimeZone { get; set; } = "Asia/Shanghai";
 
     /// <summary>
@@ -685,6 +744,7 @@ public class AppSetting
     /// Default value is false.
     /// </remarks>
     [Option(nameof(IsUseTimeZone), DefaultValue = false, Description = "是否启用自定义时区设置，默认为 false，禁用时使用系统默认时区")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public bool IsUseTimeZone { get; set; } = false;
 
     /// <summary>
@@ -695,6 +755,7 @@ public class AppSetting
     /// </remarks>
     [Option(nameof(Language), Description = "语言")]
     [GrafanaLokiLabelTag]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public string Language { get; set; }
 
     /// <summary>
@@ -704,6 +765,7 @@ public class AppSetting
     /// Data center.
     /// </remarks>
     [Option(nameof(DataCenter), Description = "数据中心")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public string DataCenter { get; set; }
 
     /// <summary>
@@ -712,6 +774,7 @@ public class AppSetting
     /// <remarks>
     /// Maximum client count. Default is 3000.
     /// </remarks>
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public int MaxClientCount { get; set; } = 3000;
 
     /// <summary>
@@ -721,6 +784,7 @@ public class AppSetting
     /// Minimum module ID for game logic server.
     /// </remarks>
     [Option(nameof(MinModuleId), Description = "游戏逻辑服务器的处理最小模块ID")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public short MinModuleId { get; set; }
 
     /// <summary>
@@ -730,6 +794,7 @@ public class AppSetting
     /// Maximum module ID for game logic server.
     /// </remarks>
     [Option(nameof(MaxModuleId), Description = "游戏逻辑服务器的处理最大模块ID")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public short MaxModuleId { get; set; }
 
     /// <summary>
@@ -740,6 +805,7 @@ public class AppSetting
     /// </remarks>
     [Option(nameof(Description), DefaultValue = "", Description = "描述信息-用于描述该服务器的用途,没有实际用途,只是方便运维管理")]
     [GrafanaLokiLabelTag]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public string Description { get; set; }
 
     /// <summary>
@@ -750,6 +816,7 @@ public class AppSetting
     /// </remarks>
     [Option(nameof(Note), DefaultValue = "", Description = "备注信息-用于描述该服务器的备注信息,没有实际用途,只是方便运维管理")]
     [GrafanaLokiLabelTag]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public string Note { get; set; }
 
     /// <summary>
@@ -760,6 +827,7 @@ public class AppSetting
     /// </remarks>
     [Option(nameof(Label), DefaultValue = "", Description = "标签信息-用于描述该服务器的标签信息,没有实际用途,只是方便运维管理")]
     [GrafanaLokiLabelTag]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public string Label { get; set; }
 
     /// <summary>
@@ -769,6 +837,7 @@ public class AppSetting
     /// Client API host.
     /// </remarks>
     [Option(nameof(ClientApiHost), DefaultValue = "", Description = "客户端API地址")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public string ClientApiHost { get; set; }
 
     /// <summary>
@@ -778,6 +847,7 @@ public class AppSetting
     /// Hub API host.
     /// </remarks>
     [Option(nameof(HubApiHost), DefaultValue = "", Description = "HubAPI地址")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public string HubApiHost { get; set; }
 
     #endregion

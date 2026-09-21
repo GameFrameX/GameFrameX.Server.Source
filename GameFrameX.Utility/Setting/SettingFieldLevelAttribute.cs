@@ -14,7 +14,7 @@
 //   侵犯他人合法权益等法律法规所禁止的行为！
 //   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
-//   Any legal disputes and liabilities arising from secondary development based on this project
+//   Any legal disputes or liabilities arising from secondary development based on this project
 //   本项目组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
@@ -22,35 +22,58 @@
 //   Gitee  仓库：https://gitee.com/GameFrameX
 //   Gitee Repository:  https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
-//   CNB Repository:  https://cnb.cool/GameFrameX
+//   CNB Repository: https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using System.Reflection;
 
-using GameFrameX.Foundation.Options.Attributes;
-using GameFrameX.Utility.Setting;
-
-namespace GameFrameX.StartUp.Options;
+namespace GameFrameX.Utility.Setting;
 
 /// <summary>
-/// GameFrameX 服务器启动配置选项
+/// 应用设置字段的进程拓扑级别标注（C143a D19）。
 /// </summary>
 /// <remarks>
-/// Startup configuration options for GameFrameX server startup, containing various configuration options required for host and server startup.
+/// Marks an application setting property with its process topology level (C143a D19).
+/// Used by <see cref="GlobalSettings.SetCurrentSetting"/> to detect process-level field conflicts
+/// when multiple roles set the current setting in the same process.
 /// </remarks>
-public partial class StartupOptions : AppSetting
+[AttributeUsage(AttributeTargets.Property, Inherited = true, AllowMultiple = false)]
+public sealed class SettingFieldLevelAttribute : Attribute
 {
     /// <summary>
-    /// 是否启用单进程模式。
+    /// 构造函数
     /// </summary>
-    /// <value>如果启用单进程模式则为 <c>true</c>；否则为 <c>false</c>（多进程模式）。默认值为 <c>false</c> / <c>true</c> if single-process mode is enabled; otherwise, <c>false</c> (multi-process mode). Default is <c>false</c></value>
     /// <remarks>
-    /// Whether to enable single-process mode. Default is <c>false</c> (multi-process mode).
-    /// When <c>true</c>, only one service type will be started in the current process.
-    /// When <c>false</c>, multiple service types will be orchestrated based on ServerType comma-separated list.
+    /// Constructor that specifies the field level.
     /// </remarks>
-    [Option(nameof(IsSingleMode), DefaultValue = false, Description = "是否单进程模式,默认值为false(多进程)")]
-    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
-    public bool IsSingleMode { get; set; }
+    /// <param name="level">字段级别 / The field level</param>
+    public SettingFieldLevelAttribute(SettingFieldLevel level)
+    {
+        Level = level;
+    }
+
+    /// <summary>
+    /// 字段级别
+    /// </summary>
+    /// <remarks>
+    /// The field level.
+    /// </remarks>
+    /// <value>字段级别 / The field level</value>
+    public SettingFieldLevel Level { get; }
+
+    /// <summary>
+    /// 读取指定属性的级别标注；未标注时返回 null。
+    /// </summary>
+    /// <remarks>
+    /// Gets the level annotation of the specified property; returns null when not annotated.
+    /// </remarks>
+    /// <param name="property">属性信息 / Property information</param>
+    /// <returns>字段级别；未标注返回 null / The field level, or null when not annotated</returns>
+    public static SettingFieldLevel? GetLevel(PropertyInfo property)
+    {
+        ArgumentNullException.ThrowIfNull(property, nameof(property));
+        return property.GetCustomAttribute<SettingFieldLevelAttribute>()?.Level;
+    }
 }
