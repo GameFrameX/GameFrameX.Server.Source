@@ -14,7 +14,7 @@
 //   侵犯他人合法权益等法律法规所禁止的行为！
 //   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
-//   Any legal disputes and liabilities arising from secondary development based on this project
+//   Any legal disputes or liabilities arising from secondary development based on this project
 //   本项目组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
@@ -22,35 +22,57 @@
 //   Gitee  仓库：https://gitee.com/GameFrameX
 //   Gitee Repository:  https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
-//   CNB Repository:  https://cnb.cool/GameFrameX
+//   CNB Repository: https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-using GameFrameX.Foundation.Options.Attributes;
-using GameFrameX.Utility.Setting;
-
-namespace GameFrameX.StartUp.Options;
+namespace GameFrameX.Utility.Setting;
 
 /// <summary>
-/// GameFrameX 服务器启动配置选项
+/// 同进程多 Role 下进程级设置字段冲突异常（C143a D19）。
 /// </summary>
 /// <remarks>
-/// Startup configuration options for GameFrameX server startup, containing various configuration options required for host and server startup.
+/// Thrown by <see cref="GlobalSettings.SetCurrentSetting"/> when a process-level field
+/// of the incoming setting differs from the current setting (C143a D19).
+/// The message lists every conflicting field with its source segments and both values.
 /// </remarks>
-public partial class StartupOptions : AppSetting
+public sealed class SettingConflictException : Exception
 {
     /// <summary>
-    /// 是否启用单进程模式。
+    /// 构造函数
     /// </summary>
-    /// <value>如果启用单进程模式则为 <c>true</c>；否则为 <c>false</c>（多进程模式）。默认值为 <c>false</c> / <c>true</c> if single-process mode is enabled; otherwise, <c>false</c> (multi-process mode). Default is <c>false</c></value>
     /// <remarks>
-    /// Whether to enable single-process mode. Default is <c>false</c> (multi-process mode).
-    /// When <c>true</c>, only one service type will be started in the current process.
-    /// When <c>false</c>, multiple service types will be orchestrated based on ServerType comma-separated list.
+    /// Constructor that builds the message from the conflict list.
     /// </remarks>
-    [Option(nameof(IsSingleMode), DefaultValue = false, Description = "是否单进程模式,默认值为false(多进程)")]
-    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
-    public bool IsSingleMode { get; set; }
+    /// <param name="conflicts">进程级字段冲突列表 / The list of process-level field conflicts</param>
+    public SettingConflictException(IReadOnlyList<SettingFieldConflict> conflicts)
+        : base(BuildMessage(conflicts))
+    {
+        Conflicts = conflicts;
+    }
+
+    /// <summary>
+    /// 进程级字段冲突列表
+    /// </summary>
+    /// <remarks>
+    /// The list of process-level field conflicts.
+    /// </remarks>
+    /// <value>冲突列表（只读）/ The read-only conflict list</value>
+    public IReadOnlyList<SettingFieldConflict> Conflicts { get; }
+
+    /// <summary>
+    /// 构建包含全部冲突字段与来源段的异常消息。
+    /// </summary>
+    /// <remarks>
+    /// Builds the exception message containing every conflicting field and its source segments.
+    /// </remarks>
+    /// <param name="conflicts">冲突列表 / The conflict list</param>
+    /// <returns>异常消息 / The exception message</returns>
+    private static string BuildMessage(IReadOnlyList<SettingFieldConflict> conflicts)
+    {
+        var count = conflicts?.Count ?? 0;
+        var detail = count > 0 ? string.Join("; ", conflicts) : string.Empty;
+        return $"Process-level setting conflict detected ({count} field(s)): {detail}";
+    }
 }

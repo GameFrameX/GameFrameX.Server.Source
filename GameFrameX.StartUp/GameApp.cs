@@ -328,7 +328,7 @@ public static class GameApp
             return Task.CompletedTask;
         }
 
-        LogOptions.Default.LogType = serverType;
+        SetLogTypeOnce(serverType);
         LogHandler.Create(LogOptions.Default);
         var isSuccess = startUp.Init(serverType, setting, args);
         if (!isSuccess)
@@ -341,6 +341,25 @@ public static class GameApp
         // LogHelper.Info(startUp.Setting.ToFormatString());
         var task = AppEnter.Entry(startUp);
         return task;
+    }
+
+    /// <summary>
+    /// 设置进程级固定日志标识（C143a D20#4：LogType 只在首次设置时生效，不再随最后启动的 Role 漂移）。
+    /// </summary>
+    /// <remarks>
+    /// Sets the process-level fixed log type (C143a D20#4): the log type is assigned only on the first
+    /// call, so it no longer drifts to the last started role in a multi-role process.
+    /// Single-role startup calls this exactly once, keeping current behaviour unchanged.
+    /// </remarks>
+    /// <param name="serverType">服务器类型标识符 / The server type identifier</param>
+    internal static void SetLogTypeOnce(string serverType)
+    {
+        if (!LogOptions.Default.LogType.IsNullOrEmptyOrWhiteSpace())
+        {
+            return;
+        }
+
+        LogOptions.Default.LogType = serverType;
     }
 
     /// <summary>

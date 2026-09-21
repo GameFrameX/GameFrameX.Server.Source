@@ -27,6 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using System.Reflection;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Json;
 using GameFrameX.Foundation.Logger;
@@ -50,6 +51,17 @@ public static class GlobalSettings
     /// List storing application settings.
     /// </remarks>
     private static readonly List<AppSetting> Settings = new(16);
+
+    /// <summary>
+    /// 进程级字段的反射缓存（C143a D19：带 <see cref="SettingFieldLevelAttribute"/> 且级别为 <see cref="SettingFieldLevel.ProcessLevel"/> 的公共属性）。
+    /// </summary>
+    /// <remarks>
+    /// Reflection cache of process-level properties (C143a D19: public properties annotated as ProcessLevel).
+    /// </remarks>
+    private static readonly PropertyInfo[] ProcessLevelProperties = typeof(AppSetting)
+        .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+        .Where(property => SettingFieldLevelAttribute.GetLevel(property) == SettingFieldLevel.ProcessLevel)
+        .ToArray();
 
     /// <summary>
     /// 获取当前应用程序设置
@@ -104,21 +116,27 @@ public static class GlobalSettings
     /// This method is used to update the global current settings.
     /// Typically called during application startup or when switching configurations.
     /// Features:
-    /// 1. Can only be set once; repeated settings will log a warning
+    /// 1. Repeated settings perform process-level field consistency validation (C143a D19):
+    ///    identical process-level fields pass through idempotently, conflicting ones fail fast with <see cref="SettingConflictException"/>;
+    ///    role-level fields accept the latest value
     /// 2. Null values are not allowed
     /// 3. Automatically corrects SaveDataInterval if less than 5000ms
     /// </remarks>
     /// <param name="setting">要设置的应用程序配置对象 / Application configuration object to set</param>
     /// <exception cref="ArgumentNullException">当传入的setting参数为null时抛出此异常 / Thrown when the setting parameter is null</exception>
+    /// <exception cref="SettingConflictException">当与当前设置存在进程级字段冲突时抛出 / Thrown when process-level fields conflict with the current setting</exception>
     public static void SetCurrentSetting(AppSetting setting)
     {
+        ArgumentNullException.ThrowIfNull(setting, nameof(setting));
+
         if (CurrentSetting.IsNotNull())
         {
-            LogHelper.Warning<string>("GlobalSettings.SetCurrentSetting {setting}", LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.SettingAlreadyExists));
-            return;
+            var conflicts = CollectProcessLevelConflicts(CurrentSetting, setting);
+            if (conflicts.Count > 0)
+            {
+                throw new SettingConflictException(conflicts);
+            }
         }
-
-        ArgumentNullException.ThrowIfNull(setting, nameof(setting));
         if (setting.SaveDataInterval < 5000)
         {
             LogHelper.Warning<string>("GlobalSettings.SetCurrentSetting {setting}", LocalizationService.GetString(Localization.Keys.Utility.Settings.SaveDataIntervalTooSmall, GlobalConst.SaveIntervalInMilliSeconds));
@@ -156,6 +174,45 @@ public static class GlobalSettings
         }
 
         CurrentSetting = setting;
+    }
+
+    /// <summary>
+    /// 比对两份设置的进程级字段，返回全部冲突项（C143a D19）。
+    /// </summary>
+    /// <remarks>
+    /// Compares process-level fields between two settings and returns every conflict (C143a D19).
+    /// Role-level fields are ignored; null and null are treated as equal.
+    /// </remarks>
+    /// <param name="currentSetting">当前生效的设置 / The currently effective setting</param>
+    /// <param name="incomingSetting">新传入的设置 / The incoming setting</param>
+    /// <returns>进程级字段冲突列表；无冲突时为空 / The list of process-level field conflicts; empty when none</returns>
+    private static List<SettingFieldConflict> CollectProcessLevelConflicts(AppSetting currentSetting, AppSetting incomingSetting)
+    {
+        var conflicts = new List<SettingFieldConflict>();
+        foreach (var property in ProcessLevelProperties)
+        {
+            var currentValue = property.GetValue(currentSetting);
+            var incomingValue = property.GetValue(incomingSetting);
+            if (Equals(currentValue, incomingValue))
+            {
+                continue;
+            }
+
+            conflicts.Add(new SettingFieldConflict(property.Name, currentSetting.ServerType, currentValue, incomingSetting.ServerType, incomingValue));
+        }
+
+        return conflicts;
+    }
+
+    /// <summary>
+    /// 重置当前应用程序设置（仅供单元测试隔离静态状态使用）。
+    /// </summary>
+    /// <remarks>
+    /// Resets the current application setting. For unit test isolation of static state only.
+    /// </remarks>
+    internal static void ResetCurrentSetting()
+    {
+        CurrentSetting = null;
     }
 
     /// <summary>

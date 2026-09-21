@@ -14,7 +14,7 @@
 //   侵犯他人合法权益等法律法规所禁止的行为！
 //   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
-//   Any legal disputes and liabilities arising from secondary development based on this project
+//   Any legal disputes or liabilities arising from secondary development based on this project
 //   本项目组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
@@ -22,35 +22,36 @@
 //   Gitee  仓库：https://gitee.com/GameFrameX
 //   Gitee Repository:  https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
-//   CNB Repository:  https://cnb.cool/GameFrameX
+//   CNB Repository: https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-using GameFrameX.Foundation.Options.Attributes;
-using GameFrameX.Utility.Setting;
-
-namespace GameFrameX.StartUp.Options;
+namespace GameFrameX.Utility.Setting;
 
 /// <summary>
-/// GameFrameX 服务器启动配置选项
+/// 应用设置字段的进程拓扑级别（C143a D19 字段分区）。
 /// </summary>
 /// <remarks>
-/// Startup configuration options for GameFrameX server startup, containing various configuration options required for host and server startup.
+/// Process topology level of an application setting field (C143a D19 field partition).
+/// <para><see cref="ProcessLevel"/>：进程级字段——同进程多 Role 重复设置时必须一致，不一致则启动 fail fast；</para>
+/// <para><see cref="RoleLevel"/>：Role 级字段——各 Role 配置段可不同，以最后一次设置为准。</para>
 /// </remarks>
-public partial class StartupOptions : AppSetting
+public enum SettingFieldLevel
 {
     /// <summary>
-    /// 是否启用单进程模式。
+    /// 进程级：多 Role 同进程下必须一致的字段（如数据库连接、雪花 ID、超时策略）。
     /// </summary>
-    /// <value>如果启用单进程模式则为 <c>true</c>；否则为 <c>false</c>（多进程模式）。默认值为 <c>false</c> / <c>true</c> if single-process mode is enabled; otherwise, <c>false</c> (multi-process mode). Default is <c>false</c></value>
     /// <remarks>
-    /// Whether to enable single-process mode. Default is <c>false</c> (multi-process mode).
-    /// When <c>true</c>, only one service type will be started in the current process.
-    /// When <c>false</c>, multiple service types will be orchestrated based on ServerType comma-separated list.
+    /// Process-level: fields that must be identical across roles in the same process (e.g. database connection, snowflake id, timeout policies).
     /// </remarks>
-    [Option(nameof(IsSingleMode), DefaultValue = false, Description = "是否单进程模式,默认值为false(多进程)")]
-    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
-    public bool IsSingleMode { get; set; }
+    ProcessLevel = 0,
+
+    /// <summary>
+    /// Role 级：各 Role 配置段可各自取值的字段（如监听端口、Role 身份标识、模块 ID 范围）。
+    /// </summary>
+    /// <remarks>
+    /// Role-level: fields that may differ per role configuration section (e.g. listening ports, role identity, module id ranges).
+    /// </remarks>
+    RoleLevel = 1,
 }

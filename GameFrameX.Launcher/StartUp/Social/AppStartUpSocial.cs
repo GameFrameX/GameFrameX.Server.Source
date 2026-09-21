@@ -29,6 +29,7 @@
 
 
 using GameFrameX.Core.Components;
+using GameFrameX.DataBase;
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.NetWork.HTTP;
@@ -56,7 +57,17 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Launcher.ActorLimitConfigBegin));
             ActorLimit.Init(ActorLimit.RuleType.None);
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Launcher.ActorLimitConfigEnd));
-            var initResult = await GameDb.Init<MongoDbService>(new DbOptions { ConnectionString = Setting.DataBaseUrl, Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
+            // C143a D16：控制库先行于业务库（D-Single 缺省回落：与业务库共用同一 Mongo 实例连接串，库固定 gameframex_control）
+            if (!MultiDbRegistry.Contains(MultiDbRegistry.ControlDatabaseName))
+            {
+                var controlDatabaseInitResult = await GameDb.Init<MongoDbService>(Setting.DataBaseUrl, new DbOptions { Name = MultiDbRegistry.ControlDatabaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
+                if (controlDatabaseInitResult == false)
+                {
+                    throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
+                }
+            }
+
+            var initResult = await GameDb.Init<MongoDbService>(Setting.DataBaseUrl, new DbOptions { Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
             if (initResult == false)
             {
                 throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));

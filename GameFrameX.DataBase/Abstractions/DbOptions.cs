@@ -57,13 +57,13 @@ public sealed record DbOptions
     public string ConnectionString { get; init; }
 
     /// <summary>
-    /// 数据库名称。
+    /// 数据库名称（同时作为 <see cref="MultiDbRegistry"/> 的注册名，C143a D20#2）。
     /// </summary>
     /// <remarks>
-    /// Database name.
+    /// Database name, also used as the registry name in <see cref="MultiDbRegistry"/> (C143a D20#2).
     /// </remarks>
-    /// <value>数据库名称 / Database name</value>
-    public string Name { get; init; }
+    /// <value>数据库名称，缺省 <c>"default"</c> / Database name, defaults to <c>"default"</c></value>
+    public string Name { get; init; } = "default";
 
     /// <summary>
     /// 是否使用时区时间记录。

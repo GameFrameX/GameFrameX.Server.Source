@@ -14,43 +14,84 @@
 //   侵犯他人合法权益等法律法规所禁止的行为！
 //   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
-//   Any legal disputes and liabilities arising from secondary development based on this project
+//   Any legal disputes or liabilities arising from secondary development based on this project
 //   本项目组织与贡献者概不承担。
-//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
 //   GitHub Repository: https://github.com/GameFrameX
 //   Gitee  仓库：https://gitee.com/GameFrameX
 //   Gitee Repository:  https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
-//   CNB Repository:  https://cnb.cool/GameFrameX
+//   CNB Repository: https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using GameFrameX.Foundation.Logger;
+using GameFrameX.StartUp;
+using Xunit;
 
-using GameFrameX.Foundation.Options.Attributes;
-using GameFrameX.Utility.Setting;
-
-namespace GameFrameX.StartUp.Options;
+namespace GameFrameX.Tests.StartUp;
 
 /// <summary>
-/// GameFrameX 服务器启动配置选项
+/// GameApp 进程级固定日志标识的单元测试（C143a D20#4）。
 /// </summary>
 /// <remarks>
-/// Startup configuration options for GameFrameX server startup, containing various configuration options required for host and server startup.
+/// Unit tests for the process-level fixed log type of GameApp (C143a D20#4):
+/// the log type is assigned only on the first call, so it does not drift
+/// to the last started role in a multi-role process.
 /// </remarks>
-public partial class StartupOptions : AppSetting
+public class GameAppLogTypeTests : IDisposable
 {
     /// <summary>
-    /// 是否启用单进程模式。
+    /// 构造函数：每个测试前清空 LogType，隔离静态状态。
     /// </summary>
-    /// <value>如果启用单进程模式则为 <c>true</c>；否则为 <c>false</c>（多进程模式）。默认值为 <c>false</c> / <c>true</c> if single-process mode is enabled; otherwise, <c>false</c> (multi-process mode). Default is <c>false</c></value>
-    /// <remarks>
-    /// Whether to enable single-process mode. Default is <c>false</c> (multi-process mode).
-    /// When <c>true</c>, only one service type will be started in the current process.
-    /// When <c>false</c>, multiple service types will be orchestrated based on ServerType comma-separated list.
-    /// </remarks>
-    [Option(nameof(IsSingleMode), DefaultValue = false, Description = "是否单进程模式,默认值为false(多进程)")]
-    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
-    public bool IsSingleMode { get; set; }
+    public GameAppLogTypeTests()
+    {
+        LogOptions.Default.LogType = null;
+    }
+
+    /// <summary>
+    /// 释放：测试后恢复，避免静态状态泄漏到其它测试。
+    /// </summary>
+    public void Dispose()
+    {
+        LogOptions.Default.LogType = null;
+    }
+
+    /// <summary>
+    /// 首次调用赋值。
+    /// </summary>
+    [Fact]
+    public void SetLogTypeOnce_FirstCall_Assigns()
+    {
+        GameApp.SetLogTypeOnce("Game");
+
+        Assert.Equal("Game", LogOptions.Default.LogType);
+    }
+
+    /// <summary>
+    /// 二次调用（模拟同进程第二个 Role 启动）不覆盖：LogType 不漂移到最后启动的 Role（D20#4）。
+    /// </summary>
+    [Fact]
+    public void SetLogTypeOnce_SecondCall_DoesNotDrift()
+    {
+        GameApp.SetLogTypeOnce("Game");
+
+        GameApp.SetLogTypeOnce("Social");
+
+        Assert.Equal("Game", LogOptions.Default.LogType);
+    }
+
+    /// <summary>
+    /// 空 serverType 不赋值（保持原值）。
+    /// </summary>
+    [Fact]
+    public void SetLogTypeOnce_EmptyServerType_KeepsCurrentValue()
+    {
+        LogOptions.Default.LogType = "Existing";
+
+        GameApp.SetLogTypeOnce(string.Empty);
+
+        Assert.Equal("Existing", LogOptions.Default.LogType);
+    }
 }
