@@ -88,41 +88,10 @@ public class MailComponentAgent : StateComponentAgent<MailComponent, MailBoxStat
                 maxPublishedAt = campaign.PublishedAt;
             }
 
-            var key = MailCampaignRegistry.BuildKey(campaign.CampaignId, campaign.PublishVersion);
-            if (state.CreatedCampaignVersions.Contains(key))
+            if (TryInstantiateCampaign(state, campaign, serverId, playerLevel, playerCreatedTime, changedMailIds))
             {
-                continue; // 幂等（B5）
-            }
-
-            if (campaign.Status == MailCampaignStatus.Revoked)
-            {
-                // 撤回 Campaign 防重实例化（B5）：记 key 永久跳过。
-                state.CreatedCampaignVersions.Add(key);
                 changed = true;
-                continue;
             }
-
-            if (campaign.ChannelIds != null && campaign.ChannelIds.Count > 0)
-            {
-                // 渠道条件未补齐：不实例化也不记 key，待后续补齐后再判断（U1 §4.5）。
-                continue;
-            }
-
-            if (!MailCampaignFilter.Match(campaign, serverId, playerLevel, playerCreatedTime))
-            {
-                continue; // 命中失败：不记 key（本 since 游标推进后不再重评估）
-            }
-
-            var mail = Instantiate(campaign);
-            state.List.Add(mail);
-            state.CreatedCampaignVersions.Add(key);
-            if (mail.ReadStatus == ReadStatus.Unread)
-            {
-                state.UnreadCount++;
-            }
-
-            changedMailIds.Add(mail.MailId);
-            changed = true;
         }
 
         state.LastSyncCampaignTime = maxPublishedAt;
@@ -141,6 +110,48 @@ public class MailComponentAgent : StateComponentAgent<MailComponent, MailBoxStat
             await OwnerComponent.WriteStateAsync();
             await NotifyChangedAsync(changedMailIds);
         }
+    }
+
+    /// <summary>
+    /// 单个 Campaign 的懒创建判定（B5 幂等）：已实例化跳过；已撤回记 key 永久跳过；渠道未补齐 / 筛选命中失败不实例化也不记 key；
+    /// 命中则实例化入列并计入变更。返回是否产生状态变更。
+    /// </summary>
+    private bool TryInstantiateCampaign(MailBoxState state, MailCampaignState campaign, int serverId, long playerLevel, long playerCreatedTime, List<long> changedMailIds)
+    {
+        var key = MailCampaignRegistry.BuildKey(campaign.CampaignId, campaign.PublishVersion);
+        if (state.CreatedCampaignVersions.Contains(key))
+        {
+            return false; // 幂等（B5）
+        }
+
+        if (campaign.Status == MailCampaignStatus.Revoked)
+        {
+            // 撤回 Campaign 防重实例化（B5）：记 key 永久跳过。
+            state.CreatedCampaignVersions.Add(key);
+            return true;
+        }
+
+        if (campaign.ChannelIds != null && campaign.ChannelIds.Count > 0)
+        {
+            // 渠道条件未补齐：不实例化也不记 key，待后续补齐后再判断（U1 §4.5）。
+            return false;
+        }
+
+        if (!MailCampaignFilter.Match(campaign, serverId, playerLevel, playerCreatedTime))
+        {
+            return false; // 命中失败：不记 key（本 since 游标推进后不再重评估）
+        }
+
+        var mail = Instantiate(campaign);
+        state.List.Add(mail);
+        state.CreatedCampaignVersions.Add(key);
+        if (mail.ReadStatus == ReadStatus.Unread)
+        {
+            state.UnreadCount++;
+        }
+
+        changedMailIds.Add(mail.MailId);
+        return true;
     }
 
     /// <summary>
@@ -379,43 +390,7 @@ public class MailComponentAgent : StateComponentAgent<MailComponent, MailBoxStat
                 continue;
             }
 
-            foreach (var att in mail.Attachments)
-            {
-                if (att.ClaimStatus != ClaimStatus.Claimable)
-                {
-                    continue;
-                }
-
-                var grantResult = await GrantAttachmentAsync(mail, att);
-                var success = grantResult.AllSuccess;
-                if (success)
-                {
-                    MailAttachmentClaim.MarkClaimed(att, now);
-                }
-
-                mail.AttachmentStatus = MailAttachmentClaim.ComputeAttachmentStatus(mail);
-
-                response.Slots.Add(new MailClaimedSlot
-                {
-                    MailId = mail.MailId,
-                    SlotId = att.SlotId,
-                    RewardType = att.RewardType,
-                    ItemId = att.ItemId,
-                    Count = att.Amount,
-                    ClaimStatus = (int)att.ClaimStatus,
-                    Success = success,
-                });
-
-                if (success)
-                {
-                    response.ClaimedCount++;
-                }
-
-                if (!changedMailIds.Contains(mail.MailId))
-                {
-                    changedMailIds.Add(mail.MailId);
-                }
-            }
+            await ClaimMailAttachmentsAsync(mail, response, changedMailIds, now);
         }
 
         if (changedMailIds.Count > 0)
@@ -424,6 +399,51 @@ public class MailComponentAgent : StateComponentAgent<MailComponent, MailBoxStat
             await NotifyChangedAsync(changedMailIds);
         }
 
+    }
+
+    /// <summary>
+    /// 逐槽领取单封邮件全部 <see cref="ClaimStatus.Claimable"/> 附件（B6 幂等发放）。逐项独立判定，
+    /// 成功置 <see cref="ClaimStatus.Claimed"/>，失败保留可领供重试；同步维护 Slots / ClaimedCount / changedMailIds。
+    /// </summary>
+    private async Task ClaimMailAttachmentsAsync(MailState mail, RespMailClaimAllAttachment response, List<long> changedMailIds, long now)
+    {
+        foreach (var att in mail.Attachments)
+        {
+            if (att.ClaimStatus != ClaimStatus.Claimable)
+            {
+                continue;
+            }
+
+            var grantResult = await GrantAttachmentAsync(mail, att);
+            var success = grantResult.AllSuccess;
+            if (success)
+            {
+                MailAttachmentClaim.MarkClaimed(att, now);
+            }
+
+            mail.AttachmentStatus = MailAttachmentClaim.ComputeAttachmentStatus(mail);
+
+            response.Slots.Add(new MailClaimedSlot
+            {
+                MailId = mail.MailId,
+                SlotId = att.SlotId,
+                RewardType = att.RewardType,
+                ItemId = att.ItemId,
+                Count = att.Amount,
+                ClaimStatus = (int)att.ClaimStatus,
+                Success = success,
+            });
+
+            if (success)
+            {
+                response.ClaimedCount++;
+            }
+
+            if (!changedMailIds.Contains(mail.MailId))
+            {
+                changedMailIds.Add(mail.MailId);
+            }
+        }
     }
 
     /// <summary>
@@ -486,29 +506,7 @@ public class MailComponentAgent : StateComponentAgent<MailComponent, MailBoxStat
                 continue;
             }
 
-            var policy = ResolveExpirePolicy(mail);
-            switch (policy)
-            {
-                case ExpireAttachmentPolicy.DiscardUnclaimed:
-                    foreach (var att in mail.Attachments)
-                    {
-                        if (att.ClaimStatus == ClaimStatus.Claimable)
-                        {
-                            att.ClaimStatus = ClaimStatus.Discarded;
-                        }
-                    }
-
-                    break;
-                case ExpireAttachmentPolicy.KeepUnclaimed:
-                    // 保留待领取：附件仍可领，仅邮件视图过期。
-                    break;
-                case ExpireAttachmentPolicy.AutoClaim:
-                    // 预留：自动领取未领附件，需显式配置；本 change 不启用。
-                    break;
-            }
-
-            mail.MailStatus = MailStatus.Expired;
-            RecomputeAttachmentStatus(mail);
+            ExpireMail(mail);
             changedMailIds.Add(mail.MailId);
             changed = true;
         }
@@ -520,6 +518,38 @@ public class MailComponentAgent : StateComponentAgent<MailComponent, MailBoxStat
             await OwnerComponent.WriteStateAsync();
             await NotifyChangedAsync(changedMailIds);
         }
+    }
+
+    /// <summary>
+    /// 处理单封到期邮件（B4）：按 Campaign <c>ExpireAttachmentPolicy</c> 处理附件
+    /// （<see cref="ExpireAttachmentPolicy.DiscardUnclaimed"/> 作废未领 / <see cref="ExpireAttachmentPolicy.KeepUnclaimed"/> 保留待领 /
+    /// <see cref="ExpireAttachmentPolicy.AutoClaim"/> 预留未启用），随后迁移 <see cref="MailStatus.Expired"/> 终态并重算附件状态。
+    /// </summary>
+    private void ExpireMail(MailState mail)
+    {
+        var policy = ResolveExpirePolicy(mail);
+        switch (policy)
+        {
+            case ExpireAttachmentPolicy.DiscardUnclaimed:
+                foreach (var att in mail.Attachments)
+                {
+                    if (att.ClaimStatus == ClaimStatus.Claimable)
+                    {
+                        att.ClaimStatus = ClaimStatus.Discarded;
+                    }
+                }
+
+                break;
+            case ExpireAttachmentPolicy.KeepUnclaimed:
+                // 保留待领取：附件仍可领，仅邮件视图过期。
+                break;
+            case ExpireAttachmentPolicy.AutoClaim:
+                // 预留：自动领取未领附件，需显式配置；本 change 不启用。
+                break;
+        }
+
+        mail.MailStatus = MailStatus.Expired;
+        RecomputeAttachmentStatus(mail);
     }
 
     /// <summary>
@@ -638,37 +668,47 @@ public class MailComponentAgent : StateComponentAgent<MailComponent, MailBoxStat
                 continue; // 终态不动
             }
 
-            var hasUnclaimed = false;
-            foreach (var att in mail.Attachments)
-            {
-                if (att.ClaimStatus == ClaimStatus.Claimed)
-                {
-                    continue; // B3：已领不动
-                }
-
-                if (att.ClaimStatus == ClaimStatus.Claimable)
-                {
-                    att.ClaimStatus = ClaimStatus.Discarded;
-                    hasUnclaimed = true;
-                }
-            }
-
-            // 仍存在非已领附件（被作废）→ 终态 Revoked；全部已领则保持原状态（玩家可自行删除）。
-            if (hasUnclaimed || mail.Attachments.Count == 0)
-            {
-                // 无附件邮件撤回：保持原状态（不强制作废）。有作废附件则进入 Revoked 终态。
-                if (hasUnclaimed && mail.MailStatus != MailStatus.Revoked)
-                {
-                    mail.MailStatus = MailStatus.Revoked;
-                }
-            }
-
-            RecomputeAttachmentStatus(mail);
-            changedMailIds.Add(mail.MailId);
+            RevokeMail(mail, changedMailIds);
             changed = true;
         }
 
         return changed;
+    }
+
+    /// <summary>
+    /// 对单封命中撤回条件的邮件执行 B3 作废：已 <see cref="ClaimStatus.Claimed"/> 附件与资产不动；
+    /// 可领附件置 <see cref="ClaimStatus.Discarded"/>；有作废附件则进入 <see cref="MailStatus.Revoked"/> 终态，
+    /// 无附件 / 全部已领则保持原状态（不强制作废）。最后重算附件状态并记入变更列表。
+    /// </summary>
+    private static void RevokeMail(MailState mail, List<long> changedMailIds)
+    {
+        var hasUnclaimed = false;
+        foreach (var att in mail.Attachments)
+        {
+            if (att.ClaimStatus == ClaimStatus.Claimed)
+            {
+                continue; // B3：已领不动
+            }
+
+            if (att.ClaimStatus == ClaimStatus.Claimable)
+            {
+                att.ClaimStatus = ClaimStatus.Discarded;
+                hasUnclaimed = true;
+            }
+        }
+
+        // 仍存在非已领附件（被作废）→ 终态 Revoked；全部已领则保持原状态（玩家可自行删除）。
+        if (hasUnclaimed || mail.Attachments.Count == 0)
+        {
+            // 无附件邮件撤回：保持原状态（不强制作废）。有作废附件则进入 Revoked 终态。
+            if (hasUnclaimed && mail.MailStatus != MailStatus.Revoked)
+            {
+                mail.MailStatus = MailStatus.Revoked;
+            }
+        }
+
+        RecomputeAttachmentStatus(mail);
+        changedMailIds.Add(mail.MailId);
     }
 
     /// <summary>
