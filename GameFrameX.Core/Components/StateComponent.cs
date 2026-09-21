@@ -342,7 +342,9 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
         var stateName = typeof(TState).Name;
         StateComponent.StatisticsTool.Count(stateName, writeList.Count);
         LogHelper.Debug("StateComponent.StateSaveBack StateName: {stateName} , Count: {count}", stateName, writeList.Count);
-        var currentDatabase = GameDb.As<MongoDbService>().CurrentDatabase;
+        // 业务状态写入按配置的业务库名（Setting.DataBaseName）解析；控制库(gameframex_control)先注册，
+        // 门面 GameDb.As<T>() 固定返回首个注册库，不能作为业务状态的落库目标。
+        var currentDatabase = GameDb.As<MongoDbService>(GlobalSettings.CurrentSetting.DataBaseName).CurrentDatabase;
         var collection = currentDatabase.GetCollection<BsonDocument>(stateName);
 
         for (var idx = 0; idx < writeList.Count; idx += GlobalSettings.CurrentSetting.SaveDataBatchCount)
