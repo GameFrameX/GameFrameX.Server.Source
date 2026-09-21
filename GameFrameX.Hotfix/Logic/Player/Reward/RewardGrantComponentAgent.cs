@@ -101,41 +101,15 @@ public class RewardGrantComponentAgent : StateComponentAgent<RewardGrantComponen
         for (var i = 0; i < request.Rewards.Count; i++)
         {
             var reward = request.Rewards[i];
-            var itemResult = new RewardGrantItemResult
+            if (TryCollectNormalItem(reward, normalItemDic, out var failure))
             {
-                RewardType = reward.RewardType,
-                ItemId = reward.ItemId,
-                Count = reward.Count,
-            };
-
-            if (reward.RewardType == RewardType.NormalItem)
-            {
-                if (reward.Count <= 0)
-                {
-                    itemResult.Success = false;
-                    itemResult.ErrorCode = (int)OperationStatusCode.InvalidReward;
-                }
-                else if (!ConfigComponent.Instance.GetConfig<TbItemConfig>().TryGet(reward.ItemId, out _))
-                {
-                    itemResult.Success = false;
-                    itemResult.ErrorCode = (int)OperationStatusCode.NotFound;
-                }
-                else
-                {
-                    // 暂记待发放，稍后批量写背包。
-                    normalItemDic[reward.ItemId] = normalItemDic.TryGetValue(reward.ItemId, out var sum) ? sum + reward.Count : reward.Count;
-                    bagItemResultIndex.Add(i);
-                    continue;
-                }
+                // 暂记成功：结果延后由批量写背包回填。
+                bagItemResultIndex.Add(i);
             }
             else
             {
-                // 预留路由位：隐藏道具 / 月卡 / 终生卡 / VIP 点 / 权益一期不实现。
-                itemResult.Success = false;
-                itemResult.ErrorCode = (int)OperationStatusCode.Unsupported;
+                items.Add(failure);
             }
-
-            items.Add(itemResult);
         }
 
         // 普通道具批量写背包（在线推 notify、离线只持久化）。
@@ -167,6 +141,55 @@ public class RewardGrantComponentAgent : StateComponentAgent<RewardGrantComponen
             Items = items,
             ErrorCode = errorCode,
             AllSuccess = allSuccess,
+        };
+    }
+
+    /// <summary>
+    /// 校验单个奖励项并暂记普通道具待发放数量。
+    /// </summary>
+    /// <param name="reward">待校验的奖励项。</param>
+    /// <param name="normalItemDic">普通道具累计表（ItemId → 发放总数），合法普通道具就地累加。</param>
+    /// <param name="failure">校验失败时的单项失败结果；合法暂记时为 <c>null</c>。</param>
+    /// <returns>合法普通道具已暂记待发放返回 <c>true</c>（结果延后由批量写背包决定）；其余返回 <c>false</c> 并经 <paramref name="failure"/> 给出失败原因。</returns>
+    private static bool TryCollectNormalItem(RewardItem reward, Dictionary<int, long> normalItemDic, out RewardGrantItemResult failure)
+    {
+        if (reward.RewardType != RewardType.NormalItem)
+        {
+            // 预留路由位：隐藏道具 / 月卡 / 终生卡 / VIP 点 / 权益一期不实现。
+            failure = BuildFailure(reward, OperationStatusCode.Unsupported);
+            return false;
+        }
+
+        if (reward.Count <= 0)
+        {
+            failure = BuildFailure(reward, OperationStatusCode.InvalidReward);
+            return false;
+        }
+
+        if (!ConfigComponent.Instance.GetConfig<TbItemConfig>().TryGet(reward.ItemId, out _))
+        {
+            failure = BuildFailure(reward, OperationStatusCode.NotFound);
+            return false;
+        }
+
+        // 暂记待发放，稍后批量写背包。
+        normalItemDic[reward.ItemId] = normalItemDic.TryGetValue(reward.ItemId, out var sum) ? sum + reward.Count : reward.Count;
+        failure = null;
+        return true;
+    }
+
+    /// <summary>
+    /// 按奖励项原样字段构造单项失败结果（<c>Success=false</c> + 指定错误码）。
+    /// </summary>
+    private static RewardGrantItemResult BuildFailure(RewardItem reward, OperationStatusCode errorCode)
+    {
+        return new RewardGrantItemResult
+        {
+            RewardType = reward.RewardType,
+            ItemId = reward.ItemId,
+            Count = reward.Count,
+            Success = false,
+            ErrorCode = (int)errorCode,
         };
     }
 
