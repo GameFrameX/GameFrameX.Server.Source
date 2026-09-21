@@ -48,23 +48,23 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
     public sealed class PreviewMailCampaignHttpHandler : BaseHttpHandler
     {
         /// <inheritdoc />
-        public override async Task<string> Action(string ip, string url, HttpMessageRequestBase requestBase)
+        public override async Task<string> Action(string ip, string url, HttpMessageRequestBase request)
         {
-            var request = (PreviewMailCampaignRequest)requestBase;
+            var previewRequest = (PreviewMailCampaignRequest)request;
             var response = new PreviewMailCampaignResponse();
 
             var state = new MailCampaignState
             {
-                MailType = request.MailType,
-                MinLevel = request.MinLevel,
-                MaxLevel = request.MaxLevel,
-                Titles = request.Titles ?? new List<MailLocalizedContent>(),
-                Contents = request.Contents ?? new List<MailLocalizedContent>(),
-                Attachments = request.Attachments ?? new List<MailAttachmentState>(),
-                ServerIds = request.ServerIds ?? new List<int>(),
-                ChannelIds = request.ChannelIds ?? new List<int>(),
-                ExpireAttachmentPolicy = request.ExpireAttachmentPolicy,
-                ExpireAt = request.ExpireAt,
+                MailType = previewRequest.MailType,
+                MinLevel = previewRequest.MinLevel,
+                MaxLevel = previewRequest.MaxLevel,
+                Titles = previewRequest.Titles ?? new List<MailLocalizedContent>(),
+                Contents = previewRequest.Contents ?? new List<MailLocalizedContent>(),
+                Attachments = previewRequest.Attachments ?? new List<MailAttachmentState>(),
+                ServerIds = previewRequest.ServerIds ?? new List<int>(),
+                ChannelIds = previewRequest.ChannelIds ?? new List<int>(),
+                ExpireAttachmentPolicy = previewRequest.ExpireAttachmentPolicy,
+                ExpireAt = previewRequest.ExpireAt,
             };
 
             var code = MailCampaignRegistry.Validate(state);
