@@ -103,7 +103,17 @@ public static partial class GameDb
             return false;
         }
 
-        MultiDbRegistry.Register(dbOptions.Name, service);
+        try
+        {
+            MultiDbRegistry.Register(dbOptions.Name, service);
+        }
+        catch (InvalidOperationException)
+        {
+            // 注册失败（如同名库已注册）：先释放已打开的服务，再抛出原异常，避免泄漏已建立的连接
+            // Registration failed (e.g. duplicate name): release the opened service before rethrowing to avoid leaking the established connection.
+            await service.Close();
+            throw;
+        }
         if (_dbServiceImplementation == null)
         {
             _dbServiceImplementation = service;

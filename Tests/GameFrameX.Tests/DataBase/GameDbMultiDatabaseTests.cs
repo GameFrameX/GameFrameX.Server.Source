@@ -35,12 +35,25 @@ using Xunit;
 namespace GameFrameX.Tests.DataBase;
 
 /// <summary>
+/// 会修改进程级静态状态（GameDb 门面 / MultiDbRegistry）的测试类共享集合：禁用并行执行。
+/// </summary>
+/// <remarks>
+/// Shared xUnit collection for test classes that mutate process-level static state (GameDb facade / MultiDbRegistry);
+/// <see cref="CollectionDefinitionAttribute.DisableParallelization"/> ensures they never run in parallel.
+/// </remarks>
+[CollectionDefinition(nameof(GameDbStaticStateCollection), DisableParallelization = true)]
+public sealed class GameDbStaticStateCollection
+{
+}
+
+/// <summary>
 /// GameDb 多库注册与门面别名行为的单元测试（C143a D20#2）。
 /// </summary>
 /// <remarks>
 /// Unit tests for GameDb multi-database registration and facade alias behaviour (C143a D20#2).
 /// Uses <see cref="NoConnectionDatabaseService"/> so no real database connection is required.
 /// </remarks>
+[Collection(nameof(GameDbStaticStateCollection))]
 public class GameDbMultiDatabaseTests : IDisposable
 {
     /// <summary>
@@ -105,15 +118,19 @@ public class GameDbMultiDatabaseTests : IDisposable
     }
 
     /// <summary>
-    /// 二次 Init 同名库：拒绝静默覆盖，抛 InvalidOperationException（D20#2 fail fast）。
+    /// 二次 Init 同名库：拒绝静默覆盖，抛 InvalidOperationException（D20#2 fail fast），
+    /// 且注册失败前已打开的服务会被关闭，不泄漏连接。
     /// </summary>
     [Fact]
     public async Task Init_SameNameTwice_Throws()
     {
         await GameDb.Init<NoConnectionDatabaseService>("mongodb://first", new DbOptions { Name = "gameframex" });
+        var closeCountBefore = NoConnectionDatabaseService.TotalCloseCallCount;
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             GameDb.Init<NoConnectionDatabaseService>("mongodb://second", new DbOptions { Name = "gameframex" }));
+
+        Assert.Equal(closeCountBefore + 1, NoConnectionDatabaseService.TotalCloseCallCount);
     }
 
     /// <summary>
