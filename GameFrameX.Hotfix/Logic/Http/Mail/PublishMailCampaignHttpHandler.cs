@@ -48,12 +48,12 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
     public sealed class PublishMailCampaignHttpHandler : BaseHttpHandler
     {
         /// <inheritdoc />
-        public override async Task<string> Action(string ip, string url, HttpMessageRequestBase requestBase)
+        public override async Task<string> Action(string ip, string url, HttpMessageRequestBase request)
         {
-            var request = (PublishMailCampaignRequest)requestBase;
+            var publishRequest = (PublishMailCampaignRequest)request;
             var response = new PublishMailCampaignResponse();
 
-            var state = BuildCampaignState(request);
+            var state = BuildCampaignState(publishRequest);
             var code = MailCampaignRegistry.Validate(state);
             if (code != MailCampaignErrorCode.Ok)
             {
@@ -64,7 +64,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
 
             try
             {
-                var published = MailCampaignRegistry.PublishOrUpdate(state, request.Operator, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                var published = MailCampaignRegistry.PublishOrUpdate(state, publishRequest.Operator, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
                 response.Code = MailCampaignErrorCode.Ok;
                 response.CampaignId = published.CampaignId;
                 response.Version = published.PublishVersion;
