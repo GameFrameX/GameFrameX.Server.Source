@@ -40,6 +40,7 @@ namespace GameFrameX.Tests.DataBase;
 /// Unit tests for MultiDbRegistry dictionary behaviour (C143a D20#2).
 /// Uses <see cref="NoConnectionDatabaseService"/> from <see cref="GameDbMultiDatabaseTests"/> as the service instance.
 /// </remarks>
+[Collection(nameof(GameDbStaticStateCollection))]
 public class MultiDbRegistryTests : IDisposable
 {
     /// <summary>

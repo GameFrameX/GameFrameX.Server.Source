@@ -45,6 +45,7 @@ namespace GameFrameX.Tests.DataBase;
 /// <summary>
 /// MongoDbService 查询接口集成测试。
 /// </summary>
+[Collection(nameof(GameDbStaticStateCollection))]
 public sealed class MongoDbServiceQueryTests
 {
     private static long _idSeed = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
