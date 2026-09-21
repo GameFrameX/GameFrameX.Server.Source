@@ -46,18 +46,18 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
     public sealed class RevokeMailCampaignHttpHandler : BaseHttpHandler
     {
         /// <inheritdoc />
-        public override async Task<string> Action(string ip, string url, HttpMessageRequestBase requestBase)
+        public override async Task<string> Action(string ip, string url, HttpMessageRequestBase request)
         {
-            var request = (RevokeMailCampaignRequest)requestBase;
-            var response = new RevokeMailCampaignResponse { CampaignId = request.CampaignId };
+            var revokeRequest = (RevokeMailCampaignRequest)request;
+            var response = new RevokeMailCampaignResponse { CampaignId = revokeRequest.CampaignId };
 
-            var code = MailCampaignRegistry.Revoke(request.CampaignId, request.Operator, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            var code = MailCampaignRegistry.Revoke(revokeRequest.CampaignId, revokeRequest.Operator, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
             response.Code = code;
             switch (code)
             {
                 case MailCampaignErrorCode.Ok:
                     response.Message = "撤回成功（已发放资产不回滚 B3）";
-                    if (MailCampaignRegistry.TryQuery(request.CampaignId, out var campaign))
+                    if (MailCampaignRegistry.TryQuery(revokeRequest.CampaignId, out var campaign))
                     {
                         response.RevokedAt = campaign.RevokedAt;
                     }
