@@ -61,69 +61,118 @@ namespace GameFrameX.Hotfix.Logic.Player.Mail
         /// <param name="campaign">待校验的 Campaign 快照（<see cref="MailCampaignState.CampaignId"/> 可为 0，由发布接口分配）。</param>
         public static MailCampaignErrorCode Validate(MailCampaignState campaign)
         {
-            if (campaign == null)
+            if (campaign == null
+                || !HasValidTitles(campaign)
+                || !HasValidContents(campaign)
+                || !HasValidAttachments(campaign)
+                || !HasValidLevelRange(campaign)
+                || !HasValidTimestamps(campaign))
             {
                 return MailCampaignErrorCode.InvalidCampaignParameter;
             }
 
+            return MailCampaignErrorCode.Ok;
+        }
+
+        /// <summary>
+        /// 校验多语言标题：集合非空，且每条标题非空、Language 与 Text 均非空白。
+        /// </summary>
+        private static bool HasValidTitles(MailCampaignState campaign)
+        {
             if (campaign.Titles == null || campaign.Titles.Count == 0)
             {
-                return MailCampaignErrorCode.InvalidCampaignParameter;
+                return false;
             }
 
             foreach (var title in campaign.Titles)
             {
                 if (title == null || string.IsNullOrWhiteSpace(title.Language) || string.IsNullOrWhiteSpace(title.Text))
                 {
-                    return MailCampaignErrorCode.InvalidCampaignParameter;
+                    return false;
                 }
             }
 
-            if (campaign.Contents != null)
+            return true;
+        }
+
+        /// <summary>
+        /// 校验多语言正文：集合为 null 视为通过；否则每条正文非空且 Language 非空白。
+        /// </summary>
+        private static bool HasValidContents(MailCampaignState campaign)
+        {
+            if (campaign.Contents == null)
             {
-                foreach (var content in campaign.Contents)
-                {
-                    if (content == null || string.IsNullOrWhiteSpace(content.Language))
-                    {
-                        return MailCampaignErrorCode.InvalidCampaignParameter;
-                    }
-                }
+                return true;
             }
 
-            if (campaign.Attachments != null && campaign.Attachments.Count > 0)
+            foreach (var content in campaign.Contents)
             {
-                var slotSet = new HashSet<int>();
-                foreach (var attachment in campaign.Attachments)
+                if (content == null || string.IsNullOrWhiteSpace(content.Language))
                 {
-                    // 附件数量非正属于 Campaign 参数非法（奖励发放层的 InvalidReward 用于运行时发放失败，与此处校验区分）。
-                    if (attachment == null || attachment.Amount <= 0)
-                    {
-                        return MailCampaignErrorCode.InvalidCampaignParameter;
-                    }
-
-                    if (!slotSet.Add(attachment.SlotId))
-                    {
-                        return MailCampaignErrorCode.InvalidCampaignParameter;
-                    }
+                    return false;
                 }
             }
 
+            return true;
+        }
+
+        /// <summary>
+        /// 校验附件：集合为 null / 空视为通过；否则每条附件非空、数量为正，且 SlotId 不重复。
+        /// </summary>
+        private static bool HasValidAttachments(MailCampaignState campaign)
+        {
+            if (campaign.Attachments == null || campaign.Attachments.Count == 0)
+            {
+                return true;
+            }
+
+            var slotSet = new HashSet<int>();
+            foreach (var attachment in campaign.Attachments)
+            {
+                // 附件数量非正属于 Campaign 参数非法（奖励发放层的 InvalidReward 用于运行时发放失败，与此处校验区分）。
+                if (attachment == null || attachment.Amount <= 0)
+                {
+                    return false;
+                }
+
+                if (!slotSet.Add(attachment.SlotId))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 校验等级区间：MinLevel / MaxLevel 非负；MaxLevel &gt; 0 时 MinLevel 不得超过 MaxLevel。
+        /// </summary>
+        private static bool HasValidLevelRange(MailCampaignState campaign)
+        {
             if (campaign.MinLevel < 0 || campaign.MaxLevel < 0)
             {
-                return MailCampaignErrorCode.InvalidCampaignParameter;
+                return false;
             }
 
             if (campaign.MaxLevel > 0 && campaign.MinLevel > campaign.MaxLevel)
             {
-                return MailCampaignErrorCode.InvalidCampaignParameter;
+                return false;
             }
 
+            return true;
+        }
+
+        /// <summary>
+        /// 校验时间戳：ExpireAt / PublishedAt / CreateTime 均非负。
+        /// </summary>
+        private static bool HasValidTimestamps(MailCampaignState campaign)
+        {
             if (campaign.ExpireAt < 0 || campaign.PublishedAt < 0 || campaign.CreateTime < 0)
             {
-                return MailCampaignErrorCode.InvalidCampaignParameter;
+                return false;
             }
 
-            return MailCampaignErrorCode.Ok;
+            return true;
         }
 
         /// <summary>
