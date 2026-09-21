@@ -48,7 +48,7 @@ public sealed class AppEnterExitTests
 
         SetAppEnterField("_exitCalled", 0);
         SetAppEnterField("_exitTask", null);
-        SetAppEnterField("_appStartUp", appStartUp);
+        SetAppEnterField("_appStartUps", new List<IAppStartUp> { appStartUp });
         SetAppEnterField("_gameLoopTask", gameLoopGate.Task);
 
         try
@@ -72,7 +72,7 @@ public sealed class AppEnterExitTests
         {
             SetAppEnterField("_exitCalled", 0);
             SetAppEnterField("_exitTask", null);
-            SetAppEnterField("_appStartUp", null);
+            SetAppEnterField("_appStartUps", null);
             SetAppEnterField("_gameLoopTask", null);
             SetAppExitHandlerField("_isKill", false);
         }
