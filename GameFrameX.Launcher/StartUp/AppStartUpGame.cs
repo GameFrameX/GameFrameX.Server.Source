@@ -41,7 +41,8 @@ namespace GameFrameX.Launcher.StartUp;
 /// <summary>
 /// 游戏服务器
 /// </summary>
-[StartUpTag(GameServerConst.Game.Name)]
+// C143b：显式优先级修复与 Social 同为缺省 1000 的冲突——Game 为主服务先起（值越小优先级越高）
+[StartUpTag(GameServerConst.Game.Name, 100)]
 internal sealed class AppStartUpGame : AppStartUpBase
 {
     /// <summary>
