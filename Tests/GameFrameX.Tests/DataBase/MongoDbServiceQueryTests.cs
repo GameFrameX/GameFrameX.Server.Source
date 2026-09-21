@@ -1560,7 +1560,7 @@ public sealed class MongoDbServiceQueryTests
             Name = dbName,
         };
 
-        var opened = await GameDb.Init<MongoDbService>(options);
+        var opened = await GameDb.Init<MongoDbService>(options.ConnectionString, options);
         Assert.True(opened);
 
         try
@@ -1570,6 +1570,7 @@ public sealed class MongoDbServiceQueryTests
         finally
         {
             await GameDb.CloseAsync();
+            GameDb.ResetForTesting();
             try
             {
                 var client = new MongoClient(connectionString);
