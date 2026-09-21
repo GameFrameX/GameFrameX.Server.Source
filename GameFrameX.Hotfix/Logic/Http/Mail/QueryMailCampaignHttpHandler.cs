@@ -47,14 +47,14 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
     public sealed class QueryMailCampaignHttpHandler : BaseHttpHandler
     {
         /// <inheritdoc />
-        public override async Task<string> Action(string ip, string url, HttpMessageRequestBase requestBase)
+        public override async Task<string> Action(string ip, string url, HttpMessageRequestBase request)
         {
-            var request = (QueryMailCampaignRequest)requestBase;
+            var queryRequest = (QueryMailCampaignRequest)request;
             var response = new QueryMailCampaignResponse { Code = MailCampaignErrorCode.Ok };
 
-            if (request.CampaignId > 0)
+            if (queryRequest.CampaignId > 0)
             {
-                if (MailCampaignRegistry.TryQuery(request.CampaignId, out var single))
+                if (MailCampaignRegistry.TryQuery(queryRequest.CampaignId, out var single))
                 {
                     response.Campaigns.Add(single);
                     response.Total = 1;
@@ -69,14 +69,14 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
             }
 
             var list = MailCampaignRegistry.QueryAll(
-                status: request.Status,
-                mailType: request.MailType,
-                serverId: request.ServerId,
-                channelId: request.ChannelId,
-                minLevel: request.MinLevel,
-                createdFromUnixSeconds: request.CreatedFrom,
-                createdToUnixSeconds: request.CreatedTo,
-                limit: request.Limit);
+                status: queryRequest.Status,
+                mailType: queryRequest.MailType,
+                serverId: queryRequest.ServerId,
+                channelId: queryRequest.ChannelId,
+                minLevel: queryRequest.MinLevel,
+                createdFromUnixSeconds: queryRequest.CreatedFrom,
+                createdToUnixSeconds: queryRequest.CreatedTo,
+                limit: queryRequest.Limit);
 
             response.Campaigns = list;
             response.Total = list.Count;
