@@ -166,7 +166,41 @@ public static class EndpointParser
             return new ParsedEndpoint(scheme, host, ParsePort(originalEndpoint, authority.Substring(lastColonIndex + 1)), EndpointAddressKind.IPv4);
         }
 
+        ValidateDnsHost(originalEndpoint, host);
         return new ParsedEndpoint(scheme, host, ParsePort(originalEndpoint, authority.Substring(lastColonIndex + 1)), EndpointAddressKind.DnsName);
+    }
+
+    /// <summary>
+    /// DNS/容器名/Service 名中不合法的字符（URI 分隔符与端口分隔符）。
+    /// </summary>
+    /// <remarks>
+    /// Characters never legal inside a DNS, container, or Service name
+    /// (URI delimiters and the port separator).
+    /// </remarks>
+    private const string InvalidHostCharacters = "/?#@:";
+
+    /// <summary>
+    /// 校验非 IP host 是合法的 DNS/容器名/Service 名（空白与 URI 分隔符立即拒绝）。
+    /// </summary>
+    /// <remarks>
+    /// Validates a non-IP host as a DNS, container, or Service name: whitespace
+    /// and the URI delimiter characters (<c>/ ? # @ :</c>) are rejected at parse
+    /// time, so malformed inputs such as <c>tcp://user@host:7777</c> or
+    /// <c>tcp://host/path:7777</c> fail fast here instead of surfacing as an
+    /// unexplainable connect failure later.
+    /// </remarks>
+    /// <param name="originalEndpoint">原始输入（仅用于异常消息）/ The original input (used in exception messages only)</param>
+    /// <param name="host">待校验的 host / The host to validate</param>
+    /// <exception cref="EndpointFormatException">当 host 含空白或 URI 分隔符时抛出 / Thrown when the host contains whitespace or a URI delimiter</exception>
+    private static void ValidateDnsHost(string originalEndpoint, string host)
+    {
+        foreach (var character in host)
+        {
+            if (char.IsWhiteSpace(character) || InvalidHostCharacters.IndexOf(character) >= 0)
+            {
+                throw new EndpointFormatException($"The endpoint '{originalEndpoint}' has the invalid host '{host}': whitespace and the URI delimiters '/', '?', '#', '@' and ':' are not allowed in a DNS, container, or Service name.");
+            }
+        }
     }
 
     /// <summary>

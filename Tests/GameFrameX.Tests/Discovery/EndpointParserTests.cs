@@ -121,6 +121,12 @@ public sealed class EndpointParserTests
     [InlineData("tcp://[::1]7777")]                   // IPv6 后缺端口冒号
     [InlineData("tcp://[::1]:")]                      // IPv6 端口缺失
     [InlineData("tcp://fe80::1:7777")]                // 未加方括号的 IPv6
+    [InlineData("tcp://host/path:7777")]           // host 含路径分隔符
+    [InlineData("tcp://user@host:7777")]           // host 含 userinfo 分隔符
+    [InlineData("tcp://host?q=1:7777")]            // host 含查询分隔符
+    [InlineData("tcp://host#frag:7777")]           // host 含片段分隔符
+    [InlineData("tcp://ho st:7777")]               // host 含空白
+    [InlineData("tcp://a:b:7777")]                 // host 含冒号
     public void Parse_WithStructuralViolations_ShouldThrowEndpointFormatException(string endpoint)
     {
         Assert.Throws<EndpointFormatException>(() => EndpointParser.Parse(endpoint));
