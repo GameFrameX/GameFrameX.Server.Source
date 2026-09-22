@@ -223,6 +223,8 @@ public static class ConfigStartupValidator
     /// The address dimension collapses to the wildcard: every listener binds a wildcard address at runtime
     /// (SuperSocket Ip="Any", Kestrel ListenAnyIP, likewise the Online admin and standalone metrics ports),
     /// so the endpoint key is transport + port; KCP listens on UDP and may share its number with a TCP port.
+    /// Extracted endpoint expansion and clash reporting into helper methods to keep cognitive complexity
+    /// under the Sonar S3776 threshold.
     /// </remarks>
     /// <param name="conflicts">冲突收集列表 / The conflict sink</param>
     /// <param name="selectedSections">选中 Role 的文件段列表 / The selected roles' file sections</param>
@@ -233,6 +235,24 @@ public static class ConfigStartupValidator
             return;
         }
 
+        var endpoints = ExpandEnabledEndpoints(selectedSections);
+        ReportEndpointClashes(conflicts, endpoints);
+    }
+
+    /// <summary>
+    /// 展开所有会实际 bind 的监听端点：遍历端口字段 × 选中 Role，
+    /// 使能开关全开且端口非零的才收集（禁用监听器永不 bind，零端口视为未设置跳过）。
+    /// </summary>
+    /// <remarks>
+    /// Expands every endpoint that would actually bind: iterating the port fields over the selected
+    /// roles, only an endpoint whose enable switches are all on and whose port is non-zero is collected
+    /// (a disabled listener never binds and a zero port counts as unset).
+    /// Extracted from <see cref="CollectPortConflicts"/> to keep cognitive complexity under the Sonar S3776 threshold.
+    /// </remarks>
+    /// <param name="selectedSections">选中 Role 的文件段列表 / The selected roles' file sections</param>
+    /// <returns>会实际 bind 的端点列表 / The endpoints that would actually bind</returns>
+    private static List<(string ServerType, string FieldName, string Transport, long Port)> ExpandEnabledEndpoints(IReadOnlyList<(string ServerType, AppSetting Setting)> selectedSections)
+    {
         var endpoints = new List<(string ServerType, string FieldName, string Transport, long Port)>();
         foreach (var portCheck in PortChecks)
         {
@@ -257,6 +277,23 @@ public static class ConfigStartupValidator
             }
         }
 
+        return endpoints;
+    }
+
+    /// <summary>
+    /// 按（传输协议, 端口）分组报告冲突：组内相邻端点两两成对报告，
+    /// 同一 Role 的合法共享监听对（InnerPort 与 OuterPort 同值）豁免。
+    /// </summary>
+    /// <remarks>
+    /// Reports the conflicts grouped by (transport, port): the adjacent endpoints of a group are
+    /// reported pairwise, and the legal same-role shared-listener pairs (InnerPort equal to OuterPort)
+    /// are exempt.
+    /// Extracted from <see cref="CollectPortConflicts"/> to keep cognitive complexity under the Sonar S3776 threshold.
+    /// </remarks>
+    /// <param name="conflicts">冲突收集列表 / The conflict sink</param>
+    /// <param name="endpoints">会实际 bind 的端点列表 / The endpoints that would actually bind</param>
+    private static void ReportEndpointClashes(List<ConfigFieldConflict> conflicts, List<(string ServerType, string FieldName, string Transport, long Port)> endpoints)
+    {
         foreach (var group in endpoints.GroupBy(endpoint => (endpoint.Transport, endpoint.Port)).Where(group => group.Count() > 1))
         {
             // 同组内相邻端点两两成对报告（典型两 Role 场景恰为一条；链式覆盖保证每个冲突 Role 至少出现一次）
@@ -270,16 +307,34 @@ public static class ConfigStartupValidator
                     continue;
                 }
 
-                var sameField = previous.FieldName == current.FieldName;
-                conflicts.Add(new ConfigFieldConflict(
-                    ConfigConflictKind.PortConflict,
-                    sameField ? previous.FieldName : $"{previous.FieldName}/{current.FieldName}",
-                    sameField ? $"file[{previous.ServerType}]" : $"file[{previous.ServerType}].{previous.FieldName}",
-                    previous.Port,
-                    sameField ? $"file[{current.ServerType}]" : $"file[{current.ServerType}].{current.FieldName}",
-                    current.Port));
+                ReportEndpointPairConflict(conflicts, previous, current);
             }
         }
+    }
+
+    /// <summary>
+    /// 报告一对冲突端点：同字段的冲突字段名取单一字段名、来源段不带字段后缀；
+    /// 跨字段的字段名取「前/后」拼接、来源段各带自己的字段后缀。
+    /// </summary>
+    /// <remarks>
+    /// Reports one clashing endpoint pair: a same-field clash reports the single field name with the bare
+    /// section sources, while a cross-field clash reports the joined "previous/current" field name with the
+    /// section sources suffixed by their own field.
+    /// Extracted from <see cref="CollectPortConflicts"/> to keep cognitive complexity under the Sonar S3776 threshold.
+    /// </remarks>
+    /// <param name="conflicts">冲突收集列表 / The conflict sink</param>
+    /// <param name="previous">前一个端点 / The previous endpoint</param>
+    /// <param name="current">当前端点 / The current endpoint</param>
+    private static void ReportEndpointPairConflict(List<ConfigFieldConflict> conflicts, (string ServerType, string FieldName, string Transport, long Port) previous, (string ServerType, string FieldName, string Transport, long Port) current)
+    {
+        var sameField = previous.FieldName == current.FieldName;
+        conflicts.Add(new ConfigFieldConflict(
+            ConfigConflictKind.PortConflict,
+            sameField ? previous.FieldName : $"{previous.FieldName}/{current.FieldName}",
+            sameField ? $"file[{previous.ServerType}]" : $"file[{previous.ServerType}].{previous.FieldName}",
+            previous.Port,
+            sameField ? $"file[{current.ServerType}]" : $"file[{current.ServerType}].{current.FieldName}",
+            current.Port));
     }
 
     /// <summary>
