@@ -82,6 +82,19 @@ public static class RoleRouterHolder
     }
 
     /// <summary>
+    /// 是否已初始化（C143e：装配点用它判断是否要重装路由器，避免覆盖 C143c 占位）。
+    /// </summary>
+    /// <remarks>
+    /// Whether the holder has been initialized. C143e bootstrap reads this
+    /// before re-installing the router so it can skip when C143c's placeholder
+    /// has already been replaced.
+    /// </remarks>
+    public static bool IsInitialized
+    {
+        get { return _router != null; }
+    }
+
+    /// <summary>
     /// 初始化全局路由器。启动流程调用一次。
     /// </summary>
     /// <remarks>

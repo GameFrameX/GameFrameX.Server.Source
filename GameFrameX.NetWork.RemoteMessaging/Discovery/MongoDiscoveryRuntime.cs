@@ -86,8 +86,9 @@ public static class MongoDiscoveryRuntime
     /// </remarks>
     /// <param name="controlDatabase">控制库（gameframex_control）/ The control database</param>
     /// <param name="hostedRoleNames">本进程承载的 Role 名全集（RoleSet 快照）/ The full hosted role-name set (the RoleSet snapshot)</param>
+    /// <param name="playerRouteFastPath">Tier 1 玩家路由快路径提供方（apps 端 SessionManager 适配器；null 则跳过 Tier 1）/ Tier 1 fast path; null skips Tier 1</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="controlDatabase"/> 或 <paramref name="hostedRoleNames"/> 为 null 时抛出 / Thrown when controlDatabase or hostedRoleNames is null</exception>
-    public static void Activate(IMongoDatabase controlDatabase, IEnumerable<string> hostedRoleNames)
+    public static void Activate(IMongoDatabase controlDatabase, IEnumerable<string> hostedRoleNames, IPlayerRouteFastPath playerRouteFastPath = null)
     {
         ArgumentNullException.ThrowIfNull(controlDatabase, nameof(controlDatabase));
         ArgumentNullException.ThrowIfNull(hostedRoleNames, nameof(hostedRoleNames));
@@ -118,6 +119,9 @@ public static class MongoDiscoveryRuntime
         }
 
         RoleRouterHolder.Initialize(new InProcessRoleRouter(hostedRoles, null, new MongoDiscoveryRemoteRoleRouter(_watcher, new TcpEnvelopeForwarder())));
+        // C143e D21：玩家路由层装配（建索引 + 装 SyncTarget）。在路由缝激活后追加；
+        // 接收端 envelope 复投由 LocalEnvelopeDispatcher 承担，LocalEnvelopeDispatcher 在装配流程末尾（GameApp）按需注入，本类不直接重装 RoleRouterHolder。
+        MongoPlayerRouteResolverBootstrap.Attach(controlDatabase, playerRouteFastPath).GetAwaiter().GetResult();
     }
 
     /// <summary>
