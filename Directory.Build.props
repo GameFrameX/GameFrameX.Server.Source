@@ -40,6 +40,16 @@
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     </PropertyGroup>
 
+    <!--
+        显式落默认值：不经解决方案直接对 csproj 求值（如 dotnet test 的 no-build 模式）时，
+        本文件先于 SDK 默认值求值，$(Platform) 为空会导致下方 OutputPath 条件组被跳过，
+        测试容器路径与实际构建输出（../bin/app_debug）不一致。
+    -->
+    <PropertyGroup>
+        <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+        <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    </PropertyGroup>
+
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
         <OutputPath>$(MSBuildProjectDirectory)/../bin/app_debug</OutputPath>
     </PropertyGroup>

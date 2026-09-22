@@ -32,4 +32,4 @@ jobs:
         run: >
           dotnet test Tests/GameFrameX.Tests/GameFrameX.Tests.csproj --no-build
           --filter "FullyQualifiedName~GameFrameX.Tests.Topology.Equivalence"
-          --logger "github;summary=true"
+          --logger GitHubActions

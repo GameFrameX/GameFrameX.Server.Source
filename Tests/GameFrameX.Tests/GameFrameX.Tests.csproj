@@ -27,6 +27,11 @@
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
+        <!-- CI 门禁用：为 vstest 提供 github logger（logger 参数 github;summary=true），本地无 GITHUB_ACTIONS 环境时自动降级为普通输出 -->
+        <PackageReference Include="GitHubActionsTestLogger" Version="3.0.5">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
 
     <ItemGroup>
