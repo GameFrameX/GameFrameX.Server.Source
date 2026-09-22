@@ -91,10 +91,10 @@ public class StartupOptionsTests
     }
 
     /// <summary>
-    /// ServerTypes 派生属性按逗号拆分 ServerType（C143b D2），未指定时为空数组。
+    /// GetServerTypes 派生方法按逗号拆分 ServerType（C143b D2），未指定时为空数组。
     /// </summary>
     [Fact]
-    public void ServerTypes_DerivedFromServerType_SplitsOnComma()
+    public void GetServerTypes_DerivedFromServerType_SplitsOnComma()
     {
         // Arrange
         string[] pluralArgs = ["--ServerType=Game,Social"];
@@ -106,9 +106,9 @@ public class StartupOptionsTests
 
         // Assert
         Assert.True(pluralSuccess, pluralError);
-        Assert.Equal(new[] { "Game", "Social" }, pluralOptions.ServerTypes);
+        Assert.Equal(new[] { "Game", "Social" }, pluralOptions.GetServerTypes());
         Assert.True(singleSuccess, singleError);
-        Assert.Equal(new[] { "Game" }, singleOptions.ServerTypes);
-        Assert.Empty(new StartupOptions().ServerTypes);
+        Assert.Equal(new[] { "Game" }, singleOptions.GetServerTypes());
+        Assert.Empty(new StartupOptions().GetServerTypes());
     }
 }
