@@ -75,7 +75,7 @@ public sealed class RoleSet : IReadOnlySet<string>
     {
         ArgumentNullException.ThrowIfNull(startUpTypes, nameof(startUpTypes));
 
-        StartUpTypes = startUpTypes.ToList();
+        StartUpTypes = Array.AsReadOnly(startUpTypes.ToArray());
         _roleNames = new HashSet<string>(StartUpTypes.Select(pair => pair.Value.ServerType));
     }
 
@@ -107,8 +107,11 @@ public sealed class RoleSet : IReadOnlySet<string>
     /// <remarks>
     /// Gets the priority-ordered startup types snapshot (type × startup tag).
     /// The launch order is this order; the shutdown order is its reverse.
+    /// The snapshot is exposed through a read-only wrapper over a copied array: callers cannot
+    /// cast it back to a mutable <c>List&lt;&gt;</c> and desynchronize it from the role-name set
+    /// exposed by <see cref="Count"/> and <see cref="Contains"/>.
     /// </remarks>
-    /// <value>启动类型快照 / The startup types snapshot</value>
+    /// <value>启动类型快照（只读包装）/ The startup types snapshot (read-only wrapper)</value>
     public IReadOnlyList<KeyValuePair<Type, StartUpTagAttribute>> StartUpTypes { get; }
 
     /// <summary>

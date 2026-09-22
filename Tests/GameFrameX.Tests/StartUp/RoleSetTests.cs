@@ -58,6 +58,22 @@ public class RoleSetTests
     }
 
     /// <summary>
+    /// StartUpTypes 暴露只读快照：不能转回可变 List 修改，Count/Contains 与快照保持一致。
+    /// </summary>
+    [Fact]
+    public void StartUpTypes_ExposesReadOnlySnapshot_NotCastableToMutableList()
+    {
+        var roleSet = new RoleSet(new List<KeyValuePair<Type, StartUpTagAttribute>>
+        {
+            new(typeof(RoleSetTestsRoleAlpha), new StartUpTagAttribute("Alpha", 10)),
+            new(typeof(RoleSetTestsRoleBeta), new StartUpTagAttribute("Beta", 20)),
+        });
+
+        Assert.IsNotAssignableFrom<List<KeyValuePair<Type, StartUpTagAttribute>>>(roleSet.StartUpTypes);
+        Assert.True(roleSet.Contains("Alpha"));
+    }
+
+    /// <summary>
     /// 成员判定：Contains 按服务器类型名判定 Role 是否属于本进程。
     /// </summary>
     [Fact]
