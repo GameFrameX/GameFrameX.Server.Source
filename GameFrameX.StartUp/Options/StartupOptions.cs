@@ -73,24 +73,23 @@ public partial class StartupOptions : AppSetting
     /// <summary>
     /// 获取由 <see cref="AppSetting.ServerType"/> 逗号拆分出的 Role 名列表（C143b D2）。
     /// </summary>
-    /// <value>Role 名数组（trim、去空、去重）；未指定时为空数组 / The role names (trimmed, non-empty, deduplicated); an empty array when unspecified</value>
     /// <remarks>
     /// Derived view of the comma-separated <c>--ServerType</c> value (e.g. "Game,Social" → ["Game", "Social"]).
     /// Read-only projection, not an independent CLI option; the launch decision reads <see cref="AllInOneOptions"/>.
+    /// Modeled as a method rather than a property because each call derives a new array (Sonar S2365:
+    /// properties should not copy collections).
     /// </remarks>
-    public string[] ServerTypes
+    /// <returns>Role 名数组（trim、去空、去重）；未指定时为空数组 / The role names (trimmed, non-empty, deduplicated); an empty array when unspecified</returns>
+    public string[] GetServerTypes()
     {
-        get
+        if (ServerType.IsNullOrEmpty())
         {
-            if (ServerType.IsNullOrEmpty())
-            {
-                return Array.Empty<string>();
-            }
-
-            return ServerType.Split(',').Select(serverType => serverType.Trim())
-                .Where(serverType => serverType.Length > 0)
-                .Distinct(StringComparer.Ordinal)
-                .ToArray();
+            return Array.Empty<string>();
         }
+
+        return ServerType.Split(',').Select(serverType => serverType.Trim())
+            .Where(serverType => serverType.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
     }
 }
