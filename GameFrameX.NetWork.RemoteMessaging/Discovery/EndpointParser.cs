@@ -121,29 +121,61 @@ public static class EndpointParser
         // IPv6 方括号字面量：[::1]:port
         if (authority[0] == '[')
         {
-            var closingBracketIndex = authority.IndexOf(']');
-            if (closingBracketIndex < 0 || closingBracketIndex == 1)
-            {
-                throw new EndpointFormatException($"The endpoint '{originalEndpoint}' has a malformed bracketed IPv6 host: expected '[<ipv6 literal>]:<port>'.");
-            }
-
-            var ipv6Host = authority.Substring(1, closingBracketIndex - 1);
-            if (!IPAddress.TryParse(ipv6Host, out var bracketedAddress) || bracketedAddress.AddressFamily != AddressFamily.InterNetworkV6)
-            {
-                throw new EndpointFormatException($"The endpoint '{originalEndpoint}' has a bracketed host '{ipv6Host}' that is not a valid IPv6 literal.");
-            }
-
-            var remainder = authority.Substring(closingBracketIndex + 1);
-            if (remainder.Length == 0 || remainder[0] != ':')
-            {
-                throw new EndpointFormatException($"The endpoint '{originalEndpoint}' is missing the port after the bracketed IPv6 host: expected '[<ipv6 literal>]:<port>'.");
-            }
-
-            var port = ParsePort(originalEndpoint, remainder.Substring(1));
-            return new ParsedEndpoint(scheme, ipv6Host, port, EndpointAddressKind.IPv6);
+            return ParseBracketedIpv6Authority(originalEndpoint, scheme, authority);
         }
 
-        // 域名/容器名/Service 名/IPv4：最后一个冒号分隔端口
+        return ParseHostPortAuthority(originalEndpoint, scheme, authority);
+    }
+
+    /// <summary>
+    /// 解析方括号 IPv6 字面量形式的 authority（[ipv6 literal]:port）。
+    /// </summary>
+    /// <remarks>
+    /// Parses the bracketed IPv6 literal form of authority.
+    /// </remarks>
+    /// <param name="originalEndpoint">原始输入（仅用于异常消息）/ The original input (used in exception messages only)</param>
+    /// <param name="scheme">已校验的小写 scheme / The validated lower-cased scheme</param>
+    /// <param name="authority">以 <c>[</c> 开头的 authority 段 / The authority part starting with <c>[</c></param>
+    /// <returns>解析后的三元组 / The parsed endpoint triple</returns>
+    /// <exception cref="EndpointFormatException">当结构违规时抛出 / Thrown on structural violations</exception>
+    private static ParsedEndpoint ParseBracketedIpv6Authority(string originalEndpoint, string scheme, string authority)
+    {
+        var closingBracketIndex = authority.IndexOf(']');
+        if (closingBracketIndex < 0 || closingBracketIndex == 1)
+        {
+            throw new EndpointFormatException($"The endpoint '{originalEndpoint}' has a malformed bracketed IPv6 host: expected '[<ipv6 literal>]:<port>'.");
+        }
+
+        var ipv6Host = authority.Substring(1, closingBracketIndex - 1);
+        if (!IPAddress.TryParse(ipv6Host, out var bracketedAddress) || bracketedAddress.AddressFamily != AddressFamily.InterNetworkV6)
+        {
+            throw new EndpointFormatException($"The endpoint '{originalEndpoint}' has a bracketed host '{ipv6Host}' that is not a valid IPv6 literal.");
+        }
+
+        var remainder = authority.Substring(closingBracketIndex + 1);
+        if (remainder.Length == 0 || remainder[0] != ':')
+        {
+            throw new EndpointFormatException($"The endpoint '{originalEndpoint}' is missing the port after the bracketed IPv6 host: expected '[<ipv6 literal>]:<port>'.");
+        }
+
+        var port = ParsePort(originalEndpoint, remainder.Substring(1));
+        return new ParsedEndpoint(scheme, ipv6Host, port, EndpointAddressKind.IPv6);
+    }
+
+    /// <summary>
+    /// 解析非方括号形式的 authority（域名/容器名/Service 名/IPv4，最后一个冒号分隔端口）。
+    /// </summary>
+    /// <remarks>
+    /// Parses the non-bracketed form of authority (domain / container / Service name
+    /// / IPv4 literal), splitting on the last colon into host and port.
+    /// </remarks>
+    /// <param name="originalEndpoint">原始输入（仅用于异常消息）/ The original input (used in exception messages only)</param>
+    /// <param name="scheme">已校验的小写 scheme / The validated lower-cased scheme</param>
+    /// <param name="authority">非方括号开头的 authority 段 / The authority part not starting with <c>[</c></param>
+    /// <returns>解析后的三元组 / The parsed endpoint triple</returns>
+    /// <exception cref="EndpointFormatException">当结构违规时抛出 / Thrown on structural violations</exception>
+    private static ParsedEndpoint ParseHostPortAuthority(string originalEndpoint, string scheme, string authority)
+    {
         var lastColonIndex = authority.LastIndexOf(':');
         if (lastColonIndex < 0 || lastColonIndex == authority.Length - 1)
         {
