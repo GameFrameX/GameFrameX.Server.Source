@@ -783,10 +783,17 @@ A startup-time validator (`ConfigStartupValidator`) fails fast — listing every
 source section — when:
 
 1. a role selected via `--AllInOne` or a plural `--ServerType` has no section in `app_config.json`;
-2. two roles of the same process would bind the same enabled, non-zero listener port;
-3. a field explicitly set on the command line differs from the file section in use (the file section is
-   the single source of truth; CLI role-level values only apply in the section-less fallback form).
-   `ServerType` (section key) and the `IsAllInOne` / `IsSingleMode` switches are exempt.
+2. two roles of the same process would bind the same enabled, non-zero listening endpoint — endpoints are
+   compared across port fields and transports (TCP vs UDP), so e.g. `Game.InnerPort == Social.HttpPort`
+   fails fast too; one role's `InnerPort`/`OuterPort` sharing is the legal same-role form;
+3. process-level fields (`SettingFieldLevel(ProcessLevel)`, e.g. `DataBaseUrl`) differ between the
+   selected sections (after the runtime normalization rules), so the shared kernel never receives
+   contradictory process configuration;
+4. a field explicitly supplied on the command line differs from the file section in use (the file section
+   is the single source of truth; CLI role-level values only apply in the section-less fallback form).
+   "Explicitly supplied" is decided from the raw argument tokens, so passing a value equal to the default
+   (e.g. `--HttpPort=0`) is still compared. `ServerType` (section key) and the `IsAllInOne` /
+   `IsSingleMode` switches are exempt.
 
 Single-role and default startup commands keep their current behaviour (missing sections fall back to
 launcher defaults).
@@ -795,13 +802,15 @@ launcher defaults).
 
 | File | Purpose |
 |:--|:--|
-| `docker-compose.development.yml` | Local development: a single MongoDB service (host port `37017`, matching the example `app_config.json`) |
-| `docker-compose.multi.yml` | Multi-instance topology form, **generated** by `scripts/multi/generate-docker-compose-multi.py`; each instance is injected with `GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId` plus the `services__{Role}__tcp__0` static bootstrap map |
+| `docker-compose.development.yml` | Local development: a single MongoDB service (host port `127.0.0.1:37017`, matching the example `app_config.json`) |
+| `docker-compose.multi.yml` | Multi-instance topology form, **generated** by `scripts/multi/generate-docker-compose-multi.py`; each instance is injected with `GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId` plus the `services__{Role}__tcp__0` static bootstrap map, and mounts its own `Configs/multi/{service}.json` section (values identical to the `command` arguments) at `/app/Configs/app_config.json` |
 | `docker-compose.multi.legacy.yml` | The previous static form, kept for transition |
 
 Change the topology by editing the `ROLES` definition in the generator and re-running
 `python3 scripts/multi/generate-docker-compose-multi.py` (idempotent; `--check` verifies the committed
-file matches the generator output).
+compose file and the per-instance configs match the generator output). The unauthenticated MongoDB
+services are published on `127.0.0.1` only; enable MongoDB authentication before exposing them to
+other hosts.
 
 ### AppHost Freeze (Deprecation Notice)
 
