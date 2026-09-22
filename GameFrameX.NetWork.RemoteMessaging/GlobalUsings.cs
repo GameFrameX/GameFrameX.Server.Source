@@ -38,3 +38,4 @@ global using GameFrameX.NetWork.RemoteMessaging.Resilience;
 global using GameFrameX.NetWork.RemoteMessaging.Transport;
 global using GameFrameX.NetWork.RemoteMessaging.Versioning;
 global using GameFrameX.Utility;
+global using GameFrameX.NetWork.RemoteMessaging.Routing;

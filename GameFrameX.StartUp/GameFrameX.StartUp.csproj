@@ -13,6 +13,7 @@
         <ProjectReference Include="..\GameFrameX.NetWork.Abstractions\GameFrameX.NetWork.Abstractions.csproj"/>
         <ProjectReference Include="..\GameFrameX.NetWork.HTTP\GameFrameX.NetWork.HTTP.csproj"/>
         <ProjectReference Include="..\GameFrameX.NetWork.Message\GameFrameX.NetWork.Message.csproj"/>
+        <ProjectReference Include="..\GameFrameX.NetWork.RemoteMessaging\GameFrameX.NetWork.RemoteMessaging.csproj"/>
         <ProjectReference Include="..\GameFrameX.Utility\GameFrameX.Utility.csproj"/>
     </ItemGroup>
 

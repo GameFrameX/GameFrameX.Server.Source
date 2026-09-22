@@ -37,6 +37,7 @@ using GameFrameX.Foundation.Options;
 using GameFrameX.Foundation.Options.Attributes;
 using GameFrameX.Foundation.Utility;
 using GameFrameX.Localization;
+using GameFrameX.NetWork.RemoteMessaging.Routing;
 using GameFrameX.StartUp.Abstractions;
 using GameFrameX.StartUp.Options;
 using GameFrameX.Utility;
@@ -325,6 +326,10 @@ public static class GameApp
         }
 
         RoleSet.Current = new RoleSet(startedStartUpTypes);
+
+        // C143c D3：Role 快照发布后装配跨 Role 路由缝。本地投递器暂不配置（随 C143e 接入 Actor 投递），
+        // 远程转发用 C143d 前的占位实现——过早路由会在缝上显式抛异常，不会静默丢消息。
+        RoleRouterHolder.Initialize(new InProcessRoleRouter(RoleSet.Current, null, new RemoteRoleRouter()));
         _launchTask = AppEnter.Entry(appStartUps);
     }
 
