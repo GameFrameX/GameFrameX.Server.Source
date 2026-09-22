@@ -66,6 +66,29 @@ public abstract partial class AppStartUpBase : IAppStartUp
     public AppSetting Setting { get; protected set; }
 
     /// <summary>
+    /// 启动就绪信号源（启动阶段完成时置位；进程退出前保持未完成也合法）。
+    /// </summary>
+    /// <remarks>
+    /// The startup-ready signal source (set when the startup phase completes; it is also legal for it to stay incomplete until process exit).
+    /// </remarks>
+    private readonly TaskCompletionSource _startUpReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>
+    /// 获取启动就绪任务。
+    /// </summary>
+    /// <remarks>
+    /// Gets the startup-ready task (C143b D7 priority startup barrier).
+    /// Completes when the role calls <see cref="MarkStartUpReady"/> — i.e. its databases, components
+    /// and network listeners are up — long before the run-until-exit <see cref="StartAsync"/> task completes.
+    /// The multi-role launcher awaits this signal before starting the next role.
+    /// </remarks>
+    /// <value>启动就绪任务 / The startup-ready task</value>
+    public Task StartUpReadyTask
+    {
+        get { return _startUpReady.Task; }
+    }
+
+    /// <summary>
     /// 获取应用程序退出令牌。
     /// </summary>
     /// <remarks>
@@ -111,6 +134,22 @@ public abstract partial class AppStartUpBase : IAppStartUp
     /// </remarks>
     /// <returns>表示异步启动操作的任务 / A task representing the asynchronous start operation</returns>
     public abstract Task StartAsync();
+
+    /// <summary>
+    /// 标记当前 Role 启动就绪（C143b D7 优先级启动屏障）。
+    /// </summary>
+    /// <remarks>
+    /// Marks the current role as startup-ready (C143b D7 priority startup barrier).
+    /// Derived classes call this at the end of their startup phase (after databases, components
+    /// and network listeners are up, before entering the run-until-exit wait), so the multi-role
+    /// launcher can start the next role only after this one is fully initialized.
+    /// Idempotent: the first call wins; later calls are no-ops. A role that never calls it simply
+    /// keeps the barrier released by its <see cref="StartAsync"/> completion instead.
+    /// </remarks>
+    protected void MarkStartUpReady()
+    {
+        _startUpReady.TrySetResult();
+    }
 
     /// <summary>
     /// 停止服务器。

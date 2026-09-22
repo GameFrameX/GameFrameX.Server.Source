@@ -150,6 +150,8 @@ public sealed class AppEnterExitTests
             return Task.CompletedTask;
         }
 
+        public Task StartUpReadyTask { get; } = Task.CompletedTask;
+
         public async Task StopAsync(string message = "")
         {
             Interlocked.Increment(ref _stopCallCount);

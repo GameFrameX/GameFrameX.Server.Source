@@ -79,6 +79,9 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
             await StartServerAsync<DefaultMessageDecoderHandler, DefaultMessageEncoderHandler>(new DefaultMessageCompressHandler(), new DefaultMessageDecompressHandler(), HotfixManager.GetListHttpHandler(), HotfixManager.GetHttpHandler, aopHandlerTypes);
             EventDispatcher.Dispatch(0, (int)EventId.ServiceOnline, new ServiceOnlineEventArgs(Setting.ServerType, Setting.ServerInstanceId, DateTime.UtcNow));
 
+            // C143b D7：启动阶段完成（DB/组件/网络监听均已就绪），放行下一个 Role 的启动屏障
+            MarkStartUpReady();
+
             await AppExitToken;
         }
         catch (Exception e)

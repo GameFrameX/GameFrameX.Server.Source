@@ -95,6 +95,20 @@ public interface IAppStartUp
     Task StartAsync();
 
     /// <summary>
+    /// 获取启动就绪任务。
+    /// </summary>
+    /// <remarks>
+    /// Gets the startup-ready task.
+    /// Completes when the role has finished its startup phase (databases, components, network listeners),
+    /// long before its run-until-exit <see cref="StartAsync"/> task completes.
+    /// The multi-role launcher awaits this signal of the current role before starting the next one
+    /// (priority startup barrier, C143b D7), so lower-priority roles never run while a higher-priority
+    /// role is still initializing shared infrastructure.
+    /// </remarks>
+    /// <value>启动就绪任务；启动阶段完成后完成 / The startup-ready task; completes when the startup phase is done</value>
+    Task StartUpReadyTask { get; }
+
+    /// <summary>
     /// 使用可选消息异步停止服务器。
     /// </summary>
     /// <remarks>

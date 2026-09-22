@@ -36,7 +36,7 @@ using Xunit;
 namespace GameFrameX.Tests.StartUp;
 
 /// <summary>
-/// AppEnter 逆序停机测试（C143b D7：启动优先级序拉起，低优先级先停）。
+/// AppEnter 逆序停机与按优先级启动屏障测试（C143b D7：启动优先级序拉起、就绪屏障、低优先级先停）。
 /// </summary>
 public class AppEnterShutdownOrderTests
 {
@@ -93,6 +93,77 @@ public class AppEnterShutdownOrderTests
     }
 
     /// <summary>
+    /// 单个 Role 停机失败不阻断其余 Role：全部宿主仍按逆序停机，失败以 AggregateException 聚合抛出。
+    /// </summary>
+    [Fact]
+    public async Task StopHostsInReverseOrderAsync_FailingHost_StillStopsRemainingHostsAndThrowsAggregate()
+    {
+        var stopOrder = new List<string>();
+        var hosts = new List<IAppStartUp>
+        {
+            new RecordingStartUp("Alpha", stopOrder),
+            new ThrowingStopStartUp("Beta"),
+            new RecordingStartUp("Gamma", stopOrder),
+        };
+
+        var aggregateException = await Assert.ThrowsAsync<AggregateException>(() => AppEnter.StopHostsInReverseOrderAsync(hosts, "unit-test"));
+
+        Assert.Equal(new[] { "Gamma", "Alpha" }, stopOrder);
+        var failure = Assert.Single(aggregateException.InnerExceptions);
+        Assert.IsType<InvalidOperationException>(failure);
+    }
+
+    /// <summary>
+    /// 启动就绪屏障：下一个 Role 在前一个 Role 报告启动就绪前不得启动。
+    /// </summary>
+    [Fact]
+    public async Task StartHostsInOrderAsync_NextRoleWaitsForPreviousStartUpReady()
+    {
+        var hostAlpha = new BarrierStartUp("Alpha");
+        var hostBeta = new BarrierStartUp("Beta");
+        var hosts = new List<IAppStartUp> { hostAlpha, hostBeta };
+
+        var startTask = Task.Run(() => AppEnter.StartHostsInOrderAsync(hosts));
+
+        // Alpha 已启动但未报告就绪：Beta 不得启动
+        await hostAlpha.WaitStartedAsync();
+        Assert.Equal(0, hostBeta.StartCallCount);
+
+        hostAlpha.MarkReady();
+        await hostBeta.WaitStartedAsync();
+
+        // 收尾：放行两个宿主的运行任务并确认聚合结果包含两项
+        hostAlpha.MarkReady();
+        hostBeta.MarkReady();
+        hostAlpha.CompleteRun();
+        hostBeta.CompleteRun();
+        var startUpTasks = await startTask.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(2, startUpTasks.Count);
+    }
+
+    /// <summary>
+    /// 就绪信号缺失不导致死锁：Role 提前退出（运行任务完成）同样放行启动屏障。
+    /// </summary>
+    [Fact]
+    public async Task StartHostsInOrderAsync_RoleExitsBeforeReady_ReleasesBarrier()
+    {
+        var hostAlpha = new BarrierStartUp("Alpha");
+        var hostBeta = new BarrierStartUp("Beta");
+        var hosts = new List<IAppStartUp> { hostAlpha, hostBeta };
+
+        var startTask = Task.Run(() => AppEnter.StartHostsInOrderAsync(hosts));
+
+        await hostAlpha.WaitStartedAsync();
+        // Alpha 从不 MarkReady，直接完成运行任务：屏障应放行
+        hostAlpha.CompleteRun();
+        await hostBeta.WaitStartedAsync();
+
+        hostBeta.MarkReady();
+        hostBeta.CompleteRun();
+        await startTask.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    /// <summary>
     /// 记录停机顺序的假宿主。
     /// </summary>
     private sealed class RecordingStartUp : IAppStartUp
@@ -114,6 +185,8 @@ public class AppEnterShutdownOrderTests
 
         public AppSetting Setting { get; } = new AppSetting();
 
+        public Task StartUpReadyTask { get; } = Task.CompletedTask;
+
         public bool Init(string serverType, AppSetting setting, string[] args = null)
         {
             return true;
@@ -128,6 +201,110 @@ public class AppEnterShutdownOrderTests
         {
             _stopOrder.Add(ServerType);
             return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    /// StopAsync 必抛异常的假宿主。
+    /// </summary>
+    private sealed class ThrowingStopStartUp : IAppStartUp
+    {
+        public ThrowingStopStartUp(string serverType)
+        {
+            ServerType = serverType;
+        }
+
+        public Task<string> AppExitToken
+        {
+            get { return Task.FromResult<string>(null); }
+        }
+
+        public string ServerType { get; }
+
+        public AppSetting Setting { get; } = new AppSetting();
+
+        public Task StartUpReadyTask { get; } = Task.CompletedTask;
+
+        public bool Init(string serverType, AppSetting setting, string[] args = null)
+        {
+            return true;
+        }
+
+        public Task StartAsync()
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync(string message = "")
+        {
+            throw new InvalidOperationException($"stop failed for {ServerType}");
+        }
+    }
+
+    /// <summary>
+    /// 可控就绪信号与运行任务的假宿主（启动屏障测试）。
+    /// </summary>
+    private sealed class BarrierStartUp : IAppStartUp
+    {
+        private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _runCompletion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _startCallCount;
+
+        public BarrierStartUp(string serverType)
+        {
+            ServerType = serverType;
+        }
+
+        public Task<string> AppExitToken
+        {
+            get { return Task.FromResult<string>(null); }
+        }
+
+        public string ServerType { get; }
+
+        public AppSetting Setting { get; } = new AppSetting();
+
+        public Task StartUpReadyTask
+        {
+            get { return _ready.Task; }
+        }
+
+        public int StartCallCount
+        {
+            get { return Volatile.Read(ref _startCallCount); }
+        }
+
+        public bool Init(string serverType, AppSetting setting, string[] args = null)
+        {
+            return true;
+        }
+
+        public Task StartAsync()
+        {
+            Interlocked.Increment(ref _startCallCount);
+            _started.TrySetResult();
+            return _runCompletion.Task;
+        }
+
+        public Task StopAsync(string message = "")
+        {
+            return Task.CompletedTask;
+        }
+
+        public void MarkReady()
+        {
+            _ready.TrySetResult();
+        }
+
+        public void CompleteRun()
+        {
+            _runCompletion.TrySetResult();
+        }
+
+        public async Task WaitStartedAsync()
+        {
+            await _started.Task.WaitAsync(TimeSpan.FromSeconds(5));
         }
     }
 }

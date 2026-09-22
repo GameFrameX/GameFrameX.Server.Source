@@ -118,6 +118,8 @@ internal sealed class AppStartUpGame : AppStartUpBase
             LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.EnterMainLoop));
             GameAppRuntime.MarkStarted(TimerHelper.GetNowWithUtc());
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.ServerStartEnd, Setting.ServerType));
+            // C143b D7：启动阶段完成（DB/组件/热-fix/在线管理均已就绪），放行下一个 Role 的启动屏障
+            MarkStartUpReady();
             exitMessage = await AppExitToken;
         }
         catch (Exception e)
