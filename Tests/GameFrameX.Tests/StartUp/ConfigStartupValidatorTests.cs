@@ -37,7 +37,7 @@ using GameFrameX.Utility.Setting;
 namespace GameFrameX.Tests.StartUp;
 
 /// <summary>
-/// 启动期配置校验器测试（C143f D4：一致放行 / 段缺失 / 同进程端口冲突 / CLI-文件冲突）。
+/// 启动期配置校验器测试（C143f D4：一致放行 / 段缺失 / 同进程监听端点冲突 / 进程级字段一致性 / CLI-文件冲突）。
 /// </summary>
 public class ConfigStartupValidatorTests
 {
@@ -80,6 +80,7 @@ public class ConfigStartupValidatorTests
             new[] { "Game", "Social" },
             sections,
             OptionsBuilder.CreateDefault<StartupOptions>(),
+            Array.Empty<string>(),
             AllInOneOptions.Parse(["--AllInOne"])));
 
         Assert.Null(exception);
@@ -96,13 +97,15 @@ public class ConfigStartupValidatorTests
             CreateSection("Game", 29100, 29100, 28080),
             CreateSection("Social", 29400, 29400, 28081),
         };
-        var launcherOptions = OptionsBuilder.Create<StartupOptions>(["--ServerType=Game,Social"]);
+        var args = new[] { "--ServerType=Game,Social" };
+        var launcherOptions = OptionsBuilder.Create<StartupOptions>(args);
 
         var exception = Record.Exception(() => ConfigStartupValidator.Validate(
             new[] { "Game", "Social" },
             sections,
             launcherOptions,
-            AllInOneOptions.Parse(["--ServerType=Game,Social"])));
+            args,
+            AllInOneOptions.Parse(args)));
 
         Assert.Null(exception);
     }
@@ -119,6 +122,7 @@ public class ConfigStartupValidatorTests
             new[] { "Game", "Social" },
             sections,
             OptionsBuilder.CreateDefault<StartupOptions>(),
+            Array.Empty<string>(),
             AllInOneOptions.Parse(["--ServerType=Game,Social"])));
 
         var conflict = Assert.Single(exception.Conflicts);
@@ -138,6 +142,7 @@ public class ConfigStartupValidatorTests
             new[] { "Game" },
             new List<AppSetting>(),
             OptionsBuilder.CreateDefault<StartupOptions>(),
+            Array.Empty<string>(),
             AllInOneOptions.Parse(["--ServerType=Game"])));
 
         Assert.Null(exception);
@@ -151,19 +156,99 @@ public class ConfigStartupValidatorTests
     {
         var sections = new List<AppSetting>
         {
-            CreateSection("Game", 29100, 29100, 28080),
-            CreateSection("Social", 29100, 29400, 28081),
+            CreateSection("Game", 29100, 29101, 28080),
+            CreateSection("Social", 29100, 29102, 28081),
         };
 
         var exception = Assert.Throws<ConfigConflictException>(() => ConfigStartupValidator.Validate(
             new[] { "Game", "Social" },
             sections,
             OptionsBuilder.CreateDefault<StartupOptions>(),
+            Array.Empty<string>(),
             AllInOneOptions.Parse(["--AllInOne"])));
 
         var conflict = Assert.Single(exception.Conflicts);
         Assert.Equal(ConfigConflictKind.PortConflict, conflict.Kind);
         Assert.Equal(nameof(AppSetting.InnerPort), conflict.FieldName);
+        Assert.Equal("file[Game]", conflict.FirstSource);
+        Assert.Equal("file[Social]", conflict.SecondSource);
+    }
+
+    /// <summary>
+    /// 跨字段端点冲突：Game.InnerPort 与 Social.HttpPort 使用同一 TCP 端点 → fail fast，
+    /// 字段名为组合形式且来源带字段限定（不再留到 bind 期报错兜底）。
+    /// </summary>
+    [Fact]
+    public void Validate_CrossFieldEndpointCollision_ThrowsPortConflict()
+    {
+        var sections = new List<AppSetting>
+        {
+            CreateSection("Game", 29100, 29101, 28080),
+            CreateSection("Social", 29400, 29401, 29100),
+        };
+
+        var exception = Assert.Throws<ConfigConflictException>(() => ConfigStartupValidator.Validate(
+            new[] { "Game", "Social" },
+            sections,
+            OptionsBuilder.CreateDefault<StartupOptions>(),
+            Array.Empty<string>(),
+            AllInOneOptions.Parse(["--AllInOne"])));
+
+        var conflict = Assert.Single(exception.Conflicts);
+        Assert.Equal(ConfigConflictKind.PortConflict, conflict.Kind);
+        Assert.Equal("InnerPort/HttpPort", conflict.FieldName);
+        Assert.Equal("file[Game].InnerPort", conflict.FirstSource);
+        Assert.Equal("file[Social].HttpPort", conflict.SecondSource);
+        Assert.Equal(29100L, conflict.FirstValue);
+        Assert.Equal(29100L, conflict.SecondValue);
+    }
+
+    /// <summary>
+    /// KCP（UDP）与 HTTP（TCP）同号端口可共存：不同传输协议不构成端点冲突。
+    /// </summary>
+    [Fact]
+    public void Validate_KcpAndTcpSharingPortNumber_Passes()
+    {
+        var sections = new List<AppSetting>
+        {
+            new AppSetting { ServerType = "Game", ServerId = 1001, InnerPort = 29101, OuterPort = 29102, HttpPort = 28080, IsEnableKcp = true, KcpPort = 29100 },
+            CreateSection("Social", 29400, 29401, 29100),
+        };
+
+        var exception = Record.Exception(() => ConfigStartupValidator.Validate(
+            new[] { "Game", "Social" },
+            sections,
+            OptionsBuilder.CreateDefault<StartupOptions>(),
+            Array.Empty<string>(),
+            AllInOneOptions.Parse(["--AllInOne"])));
+
+        Assert.Null(exception);
+    }
+
+    /// <summary>
+    /// 禁用监听器的 Role 不掩盖其余 Role 的冲突：三个 Role 中两个启用 OnlineAdminPort 同值、
+    /// 第三个未启用 → 仍 fail fast 报告前两者的冲突。
+    /// </summary>
+    [Fact]
+    public void Validate_DisabledListenerRole_DoesNotMaskPortConflict()
+    {
+        var sections = new List<AppSetting>
+        {
+            new AppSetting { ServerType = "Game", ServerId = 1001, InnerPort = 29100, OuterPort = 29101, HttpPort = 28080, IsEnableOnlineAdmin = true, OnlineAdminPort = 28090 },
+            new AppSetting { ServerType = "Social", ServerId = 5531, InnerPort = 29400, OuterPort = 29401, HttpPort = 28081, IsEnableOnlineAdmin = true, OnlineAdminPort = 28090 },
+            new AppSetting { ServerType = "Chat", ServerId = 6611, InnerPort = 29700, OuterPort = 29701, HttpPort = 28082 },
+        };
+
+        var exception = Assert.Throws<ConfigConflictException>(() => ConfigStartupValidator.Validate(
+            new[] { "Game", "Social", "Chat" },
+            sections,
+            OptionsBuilder.CreateDefault<StartupOptions>(),
+            Array.Empty<string>(),
+            AllInOneOptions.Parse(["--AllInOne"])));
+
+        var conflict = Assert.Single(exception.Conflicts);
+        Assert.Equal(ConfigConflictKind.PortConflict, conflict.Kind);
+        Assert.Equal(nameof(AppSetting.OnlineAdminPort), conflict.FieldName);
         Assert.Equal("file[Game]", conflict.FirstSource);
         Assert.Equal("file[Social]", conflict.SecondSource);
     }
@@ -180,6 +265,7 @@ public class ConfigStartupValidatorTests
             new[] { "Game" },
             sections,
             OptionsBuilder.CreateDefault<StartupOptions>(),
+            Array.Empty<string>(),
             AllInOneOptions.Parse(["--ServerType=Game"])));
 
         Assert.Null(exception);
@@ -201,6 +287,7 @@ public class ConfigStartupValidatorTests
             new[] { "Game", "Social" },
             sections,
             OptionsBuilder.CreateDefault<StartupOptions>(),
+            Array.Empty<string>(),
             AllInOneOptions.Parse(["--AllInOne"])));
 
         var conflict = Assert.Single(exception.Conflicts);
@@ -209,19 +296,74 @@ public class ConfigStartupValidatorTests
     }
 
     /// <summary>
+    /// 进程级字段一致性：两个 Role 的文件段 DataBaseUrl 不同 → fail fast，
+    /// 冲突类型为 ProcessFieldConflict 且列字段与双方来源段（共享内核不会收到矛盾配置）。
+    /// </summary>
+    [Fact]
+    public void Validate_ProcessLevelFieldDiffersAcrossSections_ThrowsProcessFieldConflict()
+    {
+        var sections = new List<AppSetting>
+        {
+            new AppSetting { ServerType = "Game", ServerId = 1001, InnerPort = 29100, OuterPort = 29101, HttpPort = 28080, DataBaseUrl = "mongodb://127.0.0.1:37017/?authSource=admin" },
+            new AppSetting { ServerType = "Social", ServerId = 5531, InnerPort = 29400, OuterPort = 29401, HttpPort = 28081, DataBaseUrl = "mongodb://127.0.0.2:37017/?authSource=admin" },
+        };
+
+        var exception = Assert.Throws<ConfigConflictException>(() => ConfigStartupValidator.Validate(
+            new[] { "Game", "Social" },
+            sections,
+            OptionsBuilder.CreateDefault<StartupOptions>(),
+            Array.Empty<string>(),
+            AllInOneOptions.Parse(["--AllInOne"])));
+
+        var conflict = Assert.Single(exception.Conflicts);
+        Assert.Equal(ConfigConflictKind.ProcessFieldConflict, conflict.Kind);
+        Assert.Equal(nameof(AppSetting.DataBaseUrl), conflict.FieldName);
+        Assert.Equal("file[Game]", conflict.FirstSource);
+        Assert.Equal("file[Social]", conflict.SecondSource);
+        Assert.Contains("127.0.0.1:37017", exception.Message);
+        Assert.Contains("127.0.0.2:37017", exception.Message);
+    }
+
+    /// <summary>
+    /// 规范化后等价的进程级字段不误报：SaveDataInterval 双双低于 5000（运行期统一改写为 300_000）、
+    /// HttpUrl 一空一空串（运行期统一回填 "/game/api/"）→ 不抛异常。
+    /// </summary>
+    [Fact]
+    public void Validate_ProcessLevelFieldsEquivalentAfterNormalization_Passes()
+    {
+        var sections = new List<AppSetting>
+        {
+            new AppSetting { ServerType = "Game", ServerId = 1001, InnerPort = 29100, OuterPort = 29101, HttpPort = 28080, SaveDataInterval = 3000 },
+            new AppSetting { ServerType = "Social", ServerId = 5531, InnerPort = 29400, OuterPort = 29401, HttpPort = 28081, SaveDataInterval = 4000, HttpUrl = "  " },
+        };
+
+        var exception = Record.Exception(() => ConfigStartupValidator.Validate(
+            new[] { "Game", "Social" },
+            sections,
+            OptionsBuilder.CreateDefault<StartupOptions>(),
+            Array.Empty<string>(),
+            AllInOneOptions.Parse(["--AllInOne"])));
+
+        Assert.Null(exception);
+    }
+
+    /// <summary>
     /// CLI-文件冲突：CLI 显式 InnerPort 与文件段不同 → fail fast，列字段与双方来源。
+    /// 分离形态（--InnerPort 30000）同样被识别为显式提供。
     /// </summary>
     [Fact]
     public void Validate_CliValueDiffersFromFileSection_ThrowsCliFileConflict()
     {
         var sections = new List<AppSetting> { CreateSection("Game", 29100, 29100, 28080) };
-        var launcherOptions = OptionsBuilder.Create<StartupOptions>(["--ServerType=Game", "--InnerPort=30000"]);
+        var args = new[] { "--ServerType=Game", "--InnerPort", "30000" };
+        var launcherOptions = OptionsBuilder.Create<StartupOptions>(args);
 
         var exception = Assert.Throws<ConfigConflictException>(() => ConfigStartupValidator.Validate(
             new[] { "Game" },
             sections,
             launcherOptions,
-            AllInOneOptions.Parse(["--ServerType=Game"])));
+            args,
+            AllInOneOptions.Parse(args)));
 
         var conflict = Assert.Single(exception.Conflicts);
         Assert.Equal(ConfigConflictKind.CliFileValueConflict, conflict.Kind);
@@ -233,19 +375,46 @@ public class ConfigStartupValidatorTests
     }
 
     /// <summary>
+    /// 显式传入等于默认值的 CLI 值同样参与比较：--HttpPort=0（0 为默认值）与文件段 28080 不同 → fail fast，
+    /// 不再因“值等于默认值”而被当作未提供跳过。
+    /// </summary>
+    [Fact]
+    public void Validate_ExplicitCliValueEqualToDefault_StillCompared()
+    {
+        var sections = new List<AppSetting> { CreateSection("Game", 29100, 29100, 28080) };
+        var args = new[] { "--ServerType=Game", "--HttpPort=0" };
+        var launcherOptions = OptionsBuilder.Create<StartupOptions>(args);
+
+        var exception = Assert.Throws<ConfigConflictException>(() => ConfigStartupValidator.Validate(
+            new[] { "Game" },
+            sections,
+            launcherOptions,
+            args,
+            AllInOneOptions.Parse(args)));
+
+        var conflict = Assert.Single(exception.Conflicts);
+        Assert.Equal(ConfigConflictKind.CliFileValueConflict, conflict.Kind);
+        Assert.Equal(nameof(AppSetting.HttpPort), conflict.FieldName);
+        Assert.Equal("CLI", conflict.FirstSource);
+        Assert.Equal("file[Game]", conflict.SecondSource);
+    }
+
+    /// <summary>
     /// CLI 显式值与文件段一致：不构成冲突（值相同无丢弃）。
     /// </summary>
     [Fact]
     public void Validate_CliValueMatchesFileSection_Passes()
     {
         var sections = new List<AppSetting> { CreateSection("Game", 29100, 29100, 28080) };
-        var launcherOptions = OptionsBuilder.Create<StartupOptions>(["--ServerType=Game", "--InnerPort=29100"]);
+        var args = new[] { "--ServerType=Game", "--InnerPort=29100" };
+        var launcherOptions = OptionsBuilder.Create<StartupOptions>(args);
 
         var exception = Record.Exception(() => ConfigStartupValidator.Validate(
             new[] { "Game" },
             sections,
             launcherOptions,
-            AllInOneOptions.Parse(["--ServerType=Game"])));
+            args,
+            AllInOneOptions.Parse(args)));
 
         Assert.Null(exception);
     }
@@ -257,13 +426,15 @@ public class ConfigStartupValidatorTests
     public void Validate_ConflictMessageListsFieldAndSources()
     {
         var sections = new List<AppSetting> { CreateSection("Game", 29100, 29100, 28080) };
-        var launcherOptions = OptionsBuilder.Create<StartupOptions>(["--ServerType=Game", "--HttpPort=30000"]);
+        var args = new[] { "--ServerType=Game", "--HttpPort=30000" };
+        var launcherOptions = OptionsBuilder.Create<StartupOptions>(args);
 
         var exception = Assert.Throws<ConfigConflictException>(() => ConfigStartupValidator.Validate(
             new[] { "Game" },
             sections,
             launcherOptions,
-            AllInOneOptions.Parse(["--ServerType=Game"])));
+            args,
+            AllInOneOptions.Parse(args)));
 
         Assert.Contains(nameof(AppSetting.HttpPort), exception.Message);
         Assert.Contains("CLI", exception.Message);

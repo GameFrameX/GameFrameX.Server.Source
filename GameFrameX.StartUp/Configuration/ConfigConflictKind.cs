@@ -55,6 +55,17 @@ public enum ConfigConflictKind
     PortConflict,
 
     /// <summary>
+    /// 同进程多个 Role 的进程级字段（SettingFieldLevel(ProcessLevel)）值不一致，
+    /// 共享内核会收到互相矛盾的进程配置。
+    /// </summary>
+    /// <remarks>
+    /// Multiple roles of the same process disagree on a process-level field
+    /// (SettingFieldLevel(ProcessLevel)), so the shared kernel would receive contradictory
+    /// process configuration.
+    /// </remarks>
+    ProcessFieldConflict,
+
+    /// <summary>
     /// CLI 显式设置的字段值与所用文件段的字段值不一致（文件段为单源，CLI 值会被丢弃）。
     /// </summary>
     /// <remarks>
