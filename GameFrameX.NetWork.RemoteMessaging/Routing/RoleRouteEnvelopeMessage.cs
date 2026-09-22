@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 
+using GameFrameX.NetWork.Abstractions;
 using GameFrameX.ProtoBuf.Net;
 using ProtoBuf;
 
@@ -41,11 +42,12 @@ namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 /// <see cref="TcpEnvelopeForwarder"/> serializes this message through the standard
 /// codec frame, so the bytes on the wire are indistinguishable from any other
 /// RemoteMessaging packet. The receiving side (envelope unpacking back into local
-/// delivery) is delivered with C143e; until then its message id is only a reserved
-/// constant — it is written into the frame header but never registered in
-/// <c>MessageProtoHelper</c>.
+/// delivery) is delivered with C143e: <see cref="LocalEnvelopeDispatcher"/> looks up
+/// <see cref="InnerMessageId"/> in <c>MessageProtoHelper</c> and re-delivers via
+/// <see cref="IPlayerLocalSender"/>.
 /// </remarks>
 [ProtoContract]
+[MessageTypeHandler(ReservedMessageId)]
 public sealed class RoleRouteEnvelopeMessage : MessageObject
 {
     /// <summary>
