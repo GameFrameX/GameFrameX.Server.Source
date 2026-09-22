@@ -1,0 +1,41 @@
+[
+  {
+    "ServerType": "Game",
+    "ServerId": 1001,
+    "ServerInstanceId": 1001,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 29100,
+    "OuterHost": "0.0.0.0",
+    "OuterPort": 29100,
+    "HttpPort": 28080,
+    "WsPort": 29110,
+    "OnlineAdminPort": 28090,
+    "MetricsPort": 29090,
+    "IsEnableOnlineAdmin": true,
+    "MinModuleId": 10,
+    "MaxModuleId": 9999,
+    "OnlineTenantId": 1,
+    "OnlineAppId": 1,
+    "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
+    "DataBaseName": "gameframex"
+  },
+  {
+    "ServerType": "Social",
+    "ServerId": 5531,
+    "ServerInstanceId": 2001,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 29400,
+    "OuterHost": "0.0.0.0",
+    "OuterPort": 29400,
+    "HttpPort": 28081,
+    "WsPort": 29410,
+    "OnlineAdminPort": 28190,
+    "MetricsPort": 29490,
+    "MinModuleId": 10000,
+    "MaxModuleId": 19999,
+    "OnlineTenantId": 1,
+    "OnlineAppId": 1,
+    "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
+    "DataBaseName": "gameframex"
+  }
+]
