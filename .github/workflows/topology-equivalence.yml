@@ -1,0 +1,35 @@
+name: Topology Equivalence Gate
+
+# C143c D9：跨 Role 消息链路语义等价 CI 门禁。
+# 4 条代表性链路 × 2 拓扑（All-in-One 单进程 / 三进程）在同一套固定预期下运行，
+# 任一用例失败即阻塞合并。这是 DynamicPhase-0 核心契约（AC-2）的守护门。
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  topology-equivalence:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore Server.slnx
+
+      - name: Build
+        run: dotnet build Server.slnx --no-restore
+
+      - name: Run Topology Equivalence Suite
+        run: >
+          dotnet test Tests/GameFrameX.Tests/GameFrameX.Tests.csproj --no-build
+          --filter "FullyQualifiedName~GameFrameX.Tests.Topology.Equivalence"
+          --logger "github;summary=true"
