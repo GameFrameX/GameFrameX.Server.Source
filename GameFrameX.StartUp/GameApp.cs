@@ -260,10 +260,11 @@ public static class GameApp
         GlobalSettings.Load("Configs/app_config.json");
         initAction?.Invoke();
 
-        // 5. 发现并启动服务器
+        // 5. 发现并启动服务器（C143b D2：--ServerType 复数 + --AllInOne 开关）
         StartUpTypeRegistry.Instance.DiscoverAndRegister();
         var sortedStartUpTypes = StartUpTypeRegistry.Instance.GetSortedByPriority();
-        TryLaunchServer(args, serverType, sortedStartUpTypes, launcherOptions);
+        var allInOneOptions = AllInOneOptions.Parse(args);
+        TryLaunchServer(args, allInOneOptions, sortedStartUpTypes, launcherOptions);
 
         LogHelper.Info(LocalizationService.GetString(Keys.StartUp.StartupOver));
         ConsoleHelper.ConsoleLogo();
@@ -280,67 +281,208 @@ public static class GameApp
     }
 
     /// <summary>
-    /// 为指定的服务器类型启动一个启动任务。
+    /// 为选定的 Role 集合启动启动任务（C143b D7：按优先级序拉起，逆序停机由 AppEnter 负责）。
     /// </summary>
     /// <remarks>
-    /// Launches a startup task for the specified server type.
-    /// This method creates and starts a new server instance task, adding the task to the AppStartUpTasks list
-    /// for subsequent concurrent execution and waiting.
+    /// Launches the startup task for the selected role collection.
+    /// Builds one startup instance per selected role (priority order), resolves each role's configuration
+    /// (config file section first, launcher options as the default fallback), reports priority conflicts,
+    /// publishes the <see cref="RoleSet"/> snapshot, and hands the host collection to
+    /// <see cref="AppEnter.Entry(IReadOnlyList{IAppStartUp})"/> which starts them in order and stops them in reverse order.
     /// </remarks>
     /// <param name="args">命令行参数 / Command line arguments</param>
-    /// <param name="keyValuePair">包含启动类型及其属性的键值对 / Key-value pair containing the startup type and its attribute</param>
-    /// <param name="appSetting">服务器的应用程序设置 / Application settings for the server</param>
-    private static void Launcher(string[] args, KeyValuePair<Type, StartUpTagAttribute> keyValuePair, AppSetting appSetting = null)
+    /// <param name="startUpTypes">按优先级排序选定的启动类型集合 / The selected startup types in priority order</param>
+    /// <param name="appSettings">配置中的应用程序设置集合 / Collection of application settings from configuration</param>
+    /// <param name="launcherOptions">用于默认配置的启动器选项 / Launcher options for default configuration</param>
+    /// <param name="warnOnMissingConfiguration">缺省回退形态下对无配置段 Role 记 Warning（保留现状行为）/ Whether to warn about roles without a config section in the default fallback form (current behaviour preserved)</param>
+    private static void Launcher(string[] args, IReadOnlyList<KeyValuePair<Type, StartUpTagAttribute>> startUpTypes, IEnumerable<AppSetting> appSettings, StartupOptions launcherOptions, bool warnOnMissingConfiguration)
     {
-        _launchTask = Start(args, keyValuePair.Key, keyValuePair.Value.ServerType, appSetting);
+        if (startUpTypes.Count == 0)
+        {
+            return;
+        }
+
+        LogPriorityConflicts(startUpTypes);
+
+        var appStartUps = new List<IAppStartUp>(startUpTypes.Count);
+        var startedStartUpTypes = new List<KeyValuePair<Type, StartUpTagAttribute>>(startUpTypes.Count);
+        foreach (var keyValuePair in startUpTypes)
+        {
+            var appSetting = ResolveAppSetting(keyValuePair.Value.ServerType, appSettings, launcherOptions, warnOnMissingConfiguration);
+            var appStartUp = CreateStartUp(args, keyValuePair.Key, keyValuePair.Value.ServerType, appSetting);
+            if (appStartUp == null)
+            {
+                continue;
+            }
+
+            appStartUps.Add(appStartUp);
+            startedStartUpTypes.Add(keyValuePair);
+        }
+
+        if (appStartUps.Count == 0)
+        {
+            return;
+        }
+
+        RoleSet.Current = new RoleSet(startedStartUpTypes);
+        _launchTask = AppEnter.Entry(appStartUps);
     }
 
     /// <summary>
-    /// 启动特定的服务器实例。
+    /// 创建并初始化单个 Role 的启动实例。
     /// </summary>
     /// <remarks>
-    /// Starts a specific server instance.
-    /// This method performs the following steps:
-    /// 1. Create startup class instance
-    /// 2. Initialize startup class
-    /// 3. Log configuration information
-    /// 4. Call AppEnter.Entry to start the server
-    /// If initialization fails, returns a completed task.
+    /// Creates and initializes the startup instance of a single role.
+    /// Instantiates the startup class, fixes the process-level log type, and initializes the instance
+    /// (the shared kernel runs through <see cref="AppBootstrapper.EnsureInitialized"/>, C143b D5).
+    /// Returns null when the class cannot be instantiated or initialization fails.
     /// </remarks>
     /// <param name="args">命令行参数 / Command line arguments</param>
     /// <param name="appStartUpType">启动类的类型 / The type of the startup class</param>
     /// <param name="serverType">服务器类型标识符 / The server type identifier</param>
     /// <param name="setting">服务器的应用程序设置 / Application settings for the server</param>
-    /// <returns>表示服务器启动操作的任务 / A task representing the server startup operation</returns>
-    /// <exception cref="InvalidOperationException">当启动类无法实例化时抛出 / Thrown when startup class cannot be instantiated</exception>
-    /// <exception cref="ArgumentNullException">当 <paramref name="appStartUpType"/> 为 null 时抛出 / Thrown when <paramref name="appStartUpType"/> is null</exception>
-    /// <example>
-    /// <code>
-    /// var task = Start(args, typeof(GameServerStartUp), "GameServer", appSetting);
-    /// await task;
-    /// </code>
-    /// </example>
-    private static Task Start(string[] args, Type appStartUpType, string serverType, AppSetting setting)
+    /// <returns>启动实例；无法创建或初始化失败时为 null / The startup instance, or null when creation or initialization fails</returns>
+    private static IAppStartUp CreateStartUp(string[] args, Type appStartUpType, string serverType, AppSetting setting)
     {
         var startUp = (IAppStartUp)Activator.CreateInstance(appStartUpType);
         if (startUp == null)
         {
-            return Task.CompletedTask;
+            return null;
         }
 
         SetLogTypeOnce(serverType);
-        LogHandler.Create(LogOptions.Default);
         var isSuccess = startUp.Init(serverType, setting, args);
         if (!isSuccess)
         {
-            return Task.CompletedTask;
+            return null;
         }
 
         LogHelper.ShowOption(LocalizationService.GetString(Keys.StartUp.StartingServerWithConfiguration, serverType), startUp.Setting.ToFormatString());
-        // LogHelper.Info(LocalizationService.GetString(Keys.StartUp.StartingServerWithConfiguration, serverType));
-        // LogHelper.Info(startUp.Setting.ToFormatString());
-        var task = AppEnter.Entry(startUp);
-        return task;
+        return startUp;
+    }
+
+    /// <summary>
+    /// 解析指定 Role 的应用程序配置（配置段优先，回落启动器选项的独立副本）。
+    /// </summary>
+    /// <remarks>
+    /// Resolves the application settings for the given role: the matching config file section wins;
+    /// otherwise each role gets an independent copy of the launcher options with
+    /// <see cref="AppSetting.ServerType"/> fixed to that role — multiple roles never share one
+    /// mutable <see cref="AppSetting"/> instance, and configuration/logging/event flows that read
+    /// <c>Setting.ServerType</c> always observe the single current role name instead of the raw
+    /// comma-separated CLI value (e.g. "Game,Social"). When the launcher options themselves are
+    /// unavailable (argument parsing failed), <c>null</c> is returned so the role's
+    /// <see cref="AppStartUpBase.Init"/> override creates its own role-level defaults.
+    /// </remarks>
+    /// <param name="serverType">服务器类型标识符 / The server type identifier</param>
+    /// <param name="appSettings">配置中的应用程序设置集合 / Collection of application settings from configuration</param>
+    /// <param name="launcherOptions">用于默认配置的启动器选项 / Launcher options for default configuration</param>
+    /// <param name="warnOnMissingConfiguration">无配置段时是否记 Warning / Whether to warn when the config section is missing</param>
+    /// <returns>该 Role 的应用程序配置；启动器选项不可用时为 null / The application settings for the role, or null when the launcher options are unavailable</returns>
+    internal static AppSetting ResolveAppSetting(string serverType, IEnumerable<AppSetting> appSettings, StartupOptions launcherOptions, bool warnOnMissingConfiguration)
+    {
+        var appSetting = appSettings.FirstOrDefault(m => m.ServerType == serverType);
+        if (appSetting != null)
+        {
+            return appSetting;
+        }
+
+        if (warnOnMissingConfiguration)
+        {
+            LogHelper.Warning(LocalizationService.GetString(Keys.StartUp.NoConfigurationUseDefault, serverType));
+        }
+
+        // 启动器选项解析失败：返回 null，让各 Role 的 Init 用自己的缺省配置
+        if (launcherOptions == null)
+        {
+            return null;
+        }
+
+        return CreateRoleDefaultSetting(serverType, launcherOptions);
+    }
+
+    /// <summary>
+    /// 从启动器选项构建指定 Role 的独立默认配置（C143b：缺失配置段的 Role 各持一份配置实例）。
+    /// </summary>
+    /// <remarks>
+    /// Builds an independent default <see cref="AppSetting"/> for the given role from the launcher options
+    /// (C143b: every role missing a config section holds its own instance). Copies the AppSetting-level
+    /// property values of the launcher options, then fixes <see cref="AppSetting.ServerType"/> to the
+    /// current role name (its init-only setter also updates <c>ServerName</c>), never leaking the raw
+    /// comma-separated CLI value ("Game,Social") into a per-role setting.
+    /// </remarks>
+    /// <param name="serverType">服务器类型标识符 / The server type identifier</param>
+    /// <param name="launcherOptions">启动器选项 / The launcher options</param>
+    /// <returns>该 Role 的独立默认配置 / The independent default settings for the role</returns>
+    private static AppSetting CreateRoleDefaultSetting(string serverType, StartupOptions launcherOptions)
+    {
+        var roleSetting = new AppSetting();
+        foreach (var property in typeof(AppSetting).GetProperties())
+        {
+            if (!property.CanRead || !property.CanWrite)
+            {
+                continue;
+            }
+
+            if (property.Name == nameof(AppSetting.ServerType))
+            {
+                // ServerType 为 init-only 且必须使用当前 Role 名，不能沿用 "Game,Social" 组合值（init 限制仅在编译期，反射赋值合法）
+                property.SetValue(roleSetting, serverType);
+                continue;
+            }
+
+            property.SetValue(roleSetting, property.GetValue(launcherOptions));
+        }
+
+        return roleSetting;
+    }
+
+    /// <summary>
+    /// 输出选定集合内的启动优先级冲突表（C143b：重复优先级导致多 Role 拉起顺序不稳定）。
+    /// </summary>
+    /// <remarks>
+    /// Reports a conflict table when multiple selected roles share the same startup priority,
+    /// because the multi-role launch order is unstable between roles of equal priority.
+    /// Single-role launches never report (a group of one cannot conflict).
+    /// </remarks>
+    /// <param name="startUpTypes">按优先级排序选定的启动类型集合 / The selected startup types in priority order</param>
+    private static void LogPriorityConflicts(IReadOnlyList<KeyValuePair<Type, StartUpTagAttribute>> startUpTypes)
+    {
+        var conflictTable = GetPriorityConflictTable(startUpTypes);
+        if (conflictTable == null)
+        {
+            return;
+        }
+
+        LogHelper.Warning($"Duplicate startup priorities detected; multi-role launch order is unstable between these roles (C143b) — {conflictTable}");
+    }
+
+    /// <summary>
+    /// 构建选定集合内的启动优先级冲突表。
+    /// </summary>
+    /// <remarks>
+    /// Builds the priority conflict table of the selected collection:
+    /// groups roles by priority and renders every group holding more than one role
+    /// (e.g. "priority 1000: Game,Social"); returns null when no conflict exists.
+    /// </remarks>
+    /// <param name="startUpTypes">按优先级排序选定的启动类型集合 / The selected startup types in priority order</param>
+    /// <returns>冲突表文本；无冲突时为 null / The conflict table text, or null when there is no conflict</returns>
+    internal static string GetPriorityConflictTable(IReadOnlyList<KeyValuePair<Type, StartUpTagAttribute>> startUpTypes)
+    {
+        var conflictEntries = startUpTypes.GroupBy(pair => pair.Value.Priority)
+            .Where(group => group.Count() > 1)
+            .Select(group =>
+            {
+                var roleNames = string.Join(",", group.Select(pair => pair.Value.ServerType));
+                return $"priority {group.Key}: {roleNames}";
+            })
+            .ToList();
+        if (conflictEntries.Count == 0)
+        {
+            return null;
+        }
+
+        return string.Join("; ", conflictEntries);
     }
 
     /// <summary>
@@ -363,84 +505,90 @@ public static class GameApp
     }
 
     /// <summary>
-    /// 尝试根据指定的服务器类型启动服务器。
+    /// 尝试按 All-in-One 选项选择并启动 Role 集合（C143b D2）。
     /// </summary>
     /// <remarks>
-    /// Attempts to launch a server based on the specified server type.
+    /// Attempts to select and launch the role collection according to the all-in-one options:
+    /// <c>--AllInOne</c> launches every registered role; a plural <c>--ServerType</c> launches the matching
+    /// roles in priority order; a single value or no value keeps the current single-role behaviour unchanged.
     /// </remarks>
     /// <param name="args">命令行参数 / Command line arguments</param>
-    /// <param name="serverType">要启动的服务器类型，或为 null 以启动第一个可用的服务器 / The server type to launch, or null to launch the first available</param>
+    /// <param name="allInOneOptions">多 Role / All-in-One 解析结果 / The all-in-one parse result</param>
     /// <param name="sortedStartUpTypes">按优先级排序的启动类型集合 / Collection of startup types sorted by priority</param>
     /// <param name="launcherOptions">包含默认配置的启动器选项 / Launcher options containing default configuration</param>
-    private static void TryLaunchServer(string[] args, string serverType, IEnumerable<KeyValuePair<Type, StartUpTagAttribute>> sortedStartUpTypes, StartupOptions launcherOptions)
+    private static void TryLaunchServer(string[] args, AllInOneOptions allInOneOptions, IEnumerable<KeyValuePair<Type, StartUpTagAttribute>> sortedStartUpTypes, StartupOptions launcherOptions)
     {
         var appSettings = GlobalSettings.GetSettings();
+        var selectedStartUpTypes = SelectStartUpTypes(allInOneOptions, sortedStartUpTypes);
 
-        if (serverType.IsNullOrWhiteSpace())
-        {
-            TryLaunchFirstAvailable(args, sortedStartUpTypes, appSettings);
-            return;
-        }
+        // 缺省回退形态（无 --ServerType）保留现状：对首个可用 Role 无配置段记 Warning 并使用默认配置
+        var warnOnMissingConfiguration = !allInOneOptions.IsAllInOne && allInOneOptions.ServerTypes.Count == 0;
 
-        TryLaunchByServerType(args, serverType, sortedStartUpTypes, appSettings, launcherOptions);
+        Launcher(args, selectedStartUpTypes, appSettings, launcherOptions, warnOnMissingConfiguration);
     }
 
     /// <summary>
-    /// 尝试按指定的服务器类型启动服务器。
+    /// 按 All-in-One 选项选定要拉起的 Role 集合（结果保持优先级序）。
     /// </summary>
     /// <remarks>
-    /// Attempts to launch a server by the specified server type.
+    /// Selects the roles to launch according to the all-in-one options; the result always keeps the
+    /// <see cref="StartUpTypeRegistry"/> priority order (higher priority first), regardless of the CLI input order.
+    /// <list type="bullet">
+    /// <item><c>--AllInOne</c> → every registered role.</item>
+    /// <item>plural <c>--ServerType</c> (more than one name) → the registered matches, unregistered names are skipped with a warning.</item>
+    /// <item>single <c>--ServerType</c> → the single match, or nothing when unregistered (current behaviour: silent skip).</item>
+    /// <item>no value → the first available role in priority order (current behaviour).</item>
+    /// </list>
     /// </remarks>
-    /// <param name="args">命令行参数 / Command line arguments</param>
-    /// <param name="serverType">服务器类型标识符 / The server type identifier</param>
+    /// <param name="allInOneOptions">多 Role / All-in-One 解析结果 / The all-in-one parse result</param>
     /// <param name="sortedStartUpTypes">按优先级排序的启动类型集合 / Collection of startup types sorted by priority</param>
-    /// <param name="appSettings">配置中的应用程序设置集合 / Collection of application settings from configuration</param>
-    /// <param name="launcherOptions">用于默认配置的启动器选项 / Launcher options for default configuration</param>
-    private static void TryLaunchByServerType(string[] args, string serverType, IEnumerable<KeyValuePair<Type, StartUpTagAttribute>> sortedStartUpTypes, IEnumerable<AppSetting> appSettings, StartupOptions launcherOptions)
+    /// <returns>选定的启动类型集合（优先级序）/ The selected startup types in priority order</returns>
+    internal static IReadOnlyList<KeyValuePair<Type, StartUpTagAttribute>> SelectStartUpTypes(AllInOneOptions allInOneOptions, IEnumerable<KeyValuePair<Type, StartUpTagAttribute>> sortedStartUpTypes)
     {
-        var startKv = sortedStartUpTypes.FirstOrDefault(m => m.Value.ServerType == serverType);
-        if (startKv.Value == null)
+        ArgumentNullException.ThrowIfNull(allInOneOptions, nameof(allInOneOptions));
+
+        var sortedList = sortedStartUpTypes as IReadOnlyList<KeyValuePair<Type, StartUpTagAttribute>> ?? sortedStartUpTypes.ToList();
+
+        if (allInOneOptions.IsAllInOne)
         {
-            return;
+            // All-in-One：拉起全部已注册 Role（D2）
+            return sortedList;
         }
 
-        var appSetting = appSettings.FirstOrDefault(m => m.ServerType == serverType);
-        if (appSetting != null)
+        if (allInOneOptions.ServerTypes.Count > 1)
         {
-            // LogHelper.Info(LocalizationService.GetString(Keys.StartUp.FindingConfigurationForServerType, startKv.Value.ServerType));
-        }
-        else
-        {
-            // LogHelper.Warning(LocalizationService.GetString(Keys.StartUp.NoConfigurationUseDefault, startKv.Value.ServerType));
-            appSetting = launcherOptions;
-        }
-
-        Launcher(args, startKv, appSetting);
-    }
-
-    /// <summary>
-    /// 尝试启动第一个可用的服务器。
-    /// </summary>
-    /// <remarks>
-    /// Attempts to launch the first available server.
-    /// </remarks>
-    /// <param name="args">命令行参数 / Command line arguments</param>
-    /// <param name="sortedStartUpTypes">按优先级排序的启动类型集合 / Collection of startup types sorted by priority</param>
-    /// <param name="appSettings">配置中的应用程序设置集合 / Collection of application settings from configuration</param>
-    private static void TryLaunchFirstAvailable(string[] args, IEnumerable<KeyValuePair<Type, StartUpTagAttribute>> sortedStartUpTypes, IEnumerable<AppSetting> appSettings)
-    {
-        foreach (var keyValuePair in sortedStartUpTypes)
-        {
-            var appSetting = appSettings.FirstOrDefault(setting => keyValuePair.Value.ServerType == setting.ServerType);
-            if (appSetting != null)
+            // 复数形态：按名匹配，保持优先级序；未注册名跳过并记 Warning
+            var serverTypeNames = new HashSet<string>(allInOneOptions.ServerTypes, StringComparer.Ordinal);
+            var selected = sortedList.Where(pair => serverTypeNames.Contains(pair.Value.ServerType)).ToList();
+            foreach (var serverTypeName in allInOneOptions.ServerTypes)
             {
-                Launcher(args, keyValuePair, appSetting);
-                return;
+                if (selected.All(pair => pair.Value.ServerType != serverTypeName))
+                {
+                    LogHelper.Warning($"No registered startup type found for server type '{serverTypeName}' (C143b multi-role selection); skipped it.");
+                }
             }
 
-            LogHelper.Warning(LocalizationService.GetString(Keys.StartUp.NoConfigurationUseDefault, keyValuePair.Value.ServerType));
-            Launcher(args, keyValuePair);
-            return;
+            return selected;
         }
+
+        if (allInOneOptions.ServerTypes.Count == 1)
+        {
+            // 单 Role 现状形态：未注册时静默跳过（保留现状行为）
+            var startKv = sortedList.FirstOrDefault(m => m.Value.ServerType == allInOneOptions.ServerTypes[0]);
+            if (startKv.Value == null)
+            {
+                return Array.Empty<KeyValuePair<Type, StartUpTagAttribute>>();
+            }
+
+            return new List<KeyValuePair<Type, StartUpTagAttribute>> { startKv };
+        }
+
+        // 缺省：启动第一个可用的服务器（现状行为）
+        if (sortedList.Count == 0)
+        {
+            return Array.Empty<KeyValuePair<Type, StartUpTagAttribute>>();
+        }
+
+        return new List<KeyValuePair<Type, StartUpTagAttribute>> { sortedList[0] };
     }
 }

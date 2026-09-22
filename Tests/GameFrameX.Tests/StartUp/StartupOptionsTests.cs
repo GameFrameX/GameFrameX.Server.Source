@@ -68,4 +68,47 @@ public class StartupOptionsTests
         Assert.True(options.IsSingleMode);
         Assert.False(options.LogIsConsole);
     }
+
+    /// <summary>
+    /// IsAllInOne 开关可通过启动参数解析（C143b D2），缺省为 false。
+    /// </summary>
+    [Fact]
+    public void TryCreate_ShouldBindIsAllInOneOption()
+    {
+        // Arrange
+        string[] enabledArgs = ["--ServerType=Game,Social", "--IsAllInOne=true"];
+        string[] defaultArgs = ["--ServerType=Game"];
+
+        // Act
+        var enabledSuccess = OptionsBuilder.TryCreate<StartupOptions>(enabledArgs, out var enabledOptions, out var enabledError);
+        var defaultSuccess = OptionsBuilder.TryCreate<StartupOptions>(defaultArgs, out var defaultOptions, out var defaultError);
+
+        // Assert
+        Assert.True(enabledSuccess, enabledError);
+        Assert.True(enabledOptions.IsAllInOne);
+        Assert.True(defaultSuccess, defaultError);
+        Assert.False(defaultOptions.IsAllInOne);
+    }
+
+    /// <summary>
+    /// ServerTypes 派生属性按逗号拆分 ServerType（C143b D2），未指定时为空数组。
+    /// </summary>
+    [Fact]
+    public void ServerTypes_DerivedFromServerType_SplitsOnComma()
+    {
+        // Arrange
+        string[] pluralArgs = ["--ServerType=Game,Social"];
+        string[] singleArgs = ["--ServerType=Game"];
+
+        // Act
+        var pluralSuccess = OptionsBuilder.TryCreate<StartupOptions>(pluralArgs, out var pluralOptions, out var pluralError);
+        var singleSuccess = OptionsBuilder.TryCreate<StartupOptions>(singleArgs, out var singleOptions, out var singleError);
+
+        // Assert
+        Assert.True(pluralSuccess, pluralError);
+        Assert.Equal(new[] { "Game", "Social" }, pluralOptions.ServerTypes);
+        Assert.True(singleSuccess, singleError);
+        Assert.Equal(new[] { "Game" }, singleOptions.ServerTypes);
+        Assert.Empty(new StartupOptions().ServerTypes);
+    }
 }

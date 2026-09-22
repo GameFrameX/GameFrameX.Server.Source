@@ -44,7 +44,8 @@ namespace GameFrameX.Launcher.StartUp.Social;
 /// <summary>
 /// 游戏服务器
 /// </summary>
-[StartUpTag(GameServerConst.Social.Name)]
+// C143b：显式优先级修复与 Game 同为缺省 1000 的冲突——Social 在主服务 Game 之后启动（值越小优先级越高）
+[StartUpTag(GameServerConst.Social.Name, 200)]
 internal sealed partial class AppStartUpSocial : AppStartUpBase
 {
     public override async Task StartAsync()
@@ -77,6 +78,9 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
             HotfixManager.LoadHotfix(Setting);
             await StartServerAsync<DefaultMessageDecoderHandler, DefaultMessageEncoderHandler>(new DefaultMessageCompressHandler(), new DefaultMessageDecompressHandler(), HotfixManager.GetListHttpHandler(), HotfixManager.GetHttpHandler, aopHandlerTypes);
             EventDispatcher.Dispatch(0, (int)EventId.ServiceOnline, new ServiceOnlineEventArgs(Setting.ServerType, Setting.ServerInstanceId, DateTime.UtcNow));
+
+            // C143b D7：启动阶段完成（DB/组件/网络监听均已就绪），放行下一个 Role 的启动屏障
+            MarkStartUpReady();
 
             await AppExitToken;
         }
