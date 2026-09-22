@@ -1,0 +1,15 @@
+[
+  {
+    "ServerType": "Game",
+    "ServerId": 1006,
+    "ServerInstanceId": 1006,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 29105,
+    "OuterHost": "0.0.0.0",
+    "OuterPort": 29105,
+    "HttpPort": 28090,
+    "IsEnableHttp": true,
+    "DataBaseUrl": "mongodb://mongo:27017/?authSource=admin",
+    "DataBaseName": "gameframex_multi"
+  }
+]

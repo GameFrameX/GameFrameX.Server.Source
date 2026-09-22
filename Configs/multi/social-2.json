@@ -1,0 +1,15 @@
+[
+  {
+    "ServerType": "Social",
+    "ServerId": 5532,
+    "ServerInstanceId": 2002,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 29401,
+    "OuterHost": "0.0.0.0",
+    "OuterPort": 29401,
+    "HttpPort": 28083,
+    "IsEnableHttp": true,
+    "DataBaseUrl": "mongodb://mongo:27017/?authSource=admin",
+    "DataBaseName": "gameframex_multi"
+  }
+]

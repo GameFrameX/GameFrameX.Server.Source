@@ -39,6 +39,7 @@ using GameFrameX.Foundation.Utility;
 using GameFrameX.Localization;
 using GameFrameX.NetWork.RemoteMessaging.Routing;
 using GameFrameX.StartUp.Abstractions;
+using GameFrameX.StartUp.Configuration;
 using GameFrameX.StartUp.Options;
 using GameFrameX.Utility;
 using GameFrameX.Utility.Setting;
@@ -525,6 +526,15 @@ public static class GameApp
     {
         var appSettings = GlobalSettings.GetSettings();
         var selectedStartUpTypes = SelectStartUpTypes(allInOneOptions, sortedStartUpTypes);
+
+        // C143f D4：Role 实例化前的唯一收口点做启动期校验（选中集合 + 文件段 + CLI 选项 + 原始参数齐备），
+        // 冲突 fail fast 抛 ConfigConflictException，先于任何 Role 拉起
+        ConfigStartupValidator.Validate(
+            selectedStartUpTypes.Select(pair => pair.Value.ServerType).ToList(),
+            appSettings,
+            launcherOptions,
+            args,
+            allInOneOptions);
 
         // 缺省回退形态（无 --ServerType）保留现状：对首个可用 Role 无配置段记 Warning 并使用默认配置
         var warnOnMissingConfiguration = !allInOneOptions.IsAllInOne && allInOneOptions.ServerTypes.Count == 0;

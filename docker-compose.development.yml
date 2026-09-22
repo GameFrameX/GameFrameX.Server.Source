@@ -1,0 +1,25 @@
+name: gfx-development
+
+# 本地开发 Mongo 单服务（C143f Stage-6 D14）：
+#   docker compose -f docker-compose.development.yml up -d
+# 与 Configs/app_config.json 示例的 DataBaseUrl（mongodb://127.0.0.1:37017）对齐。
+services:
+  mongo:
+    image: mongo:8.2
+    container_name: gfx-development-mongo
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:37017:27017"
+    healthcheck:
+      test: [ "CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok" ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - "./running/development/mongo:/data/db"
+    networks:
+      - gameframex-development
+
+networks:
+  gameframex-development:
+    driver: bridge

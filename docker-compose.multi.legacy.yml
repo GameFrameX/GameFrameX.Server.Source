@@ -1,7 +1,3 @@
-# 本文件由 scripts/multi/generate-docker-compose-multi.py 生成（C143f Stage-6 拓扑环境变量生成器）。
-# 修改拓扑请编辑该脚本的 ROLES 定义后重新生成，不要手改本文件。
-# 现有静态形态保留在 docker-compose.multi.legacy.yml（过渡期兼容）。
-
 name: gfx-multi
 
 x-launcher-discovery-env: &launcher-discovery-env
@@ -35,6 +31,7 @@ services:
       - "./running-multi/mongo:/data/db"
     networks:
       - gameframex-multi
+
   social-1:
     build:
       context: .
@@ -56,16 +53,12 @@ services:
       - "--DataBaseName=gameframex_multi"
     environment:
       <<: *launcher-discovery-env
-      GameFrameX__AdvertiseHost: social-1
-      GameFrameX__AdvertisePort: "29400"
-      GameFrameX__RoleInstanceId: "2001"
     ports:
       - "49400:29400"
       - "48081:28081"
     volumes:
       - "./running-multi/social-1/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
-      - "./Configs/multi/social-1.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -88,16 +81,12 @@ services:
       - "--DataBaseName=gameframex_multi"
     environment:
       <<: *launcher-discovery-env
-      GameFrameX__AdvertiseHost: social-2
-      GameFrameX__AdvertisePort: "29401"
-      GameFrameX__RoleInstanceId: "2002"
     ports:
       - "49401:29401"
       - "48083:28083"
     volumes:
       - "./running-multi/social-2/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
-      - "./Configs/multi/social-2.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -124,16 +113,12 @@ services:
       - "--DataBaseName=gameframex_multi"
     environment:
       <<: *launcher-discovery-env
-      GameFrameX__AdvertiseHost: game-1
-      GameFrameX__AdvertisePort: "29100"
-      GameFrameX__RoleInstanceId: "1001"
     ports:
       - "49100:29100"
       - "48080:28080"
     volumes:
       - "./running-multi/game-1/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
-      - "./Configs/multi/game-1.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -160,16 +145,12 @@ services:
       - "--DataBaseName=gameframex_multi"
     environment:
       <<: *launcher-discovery-env
-      GameFrameX__AdvertiseHost: game-2
-      GameFrameX__AdvertisePort: "29101"
-      GameFrameX__RoleInstanceId: "1002"
     ports:
       - "49101:29101"
       - "48082:28082"
     volumes:
       - "./running-multi/game-2/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
-      - "./Configs/multi/game-2.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -196,16 +177,12 @@ services:
       - "--DataBaseName=gameframex_multi"
     environment:
       <<: *launcher-discovery-env
-      GameFrameX__AdvertiseHost: game-3
-      GameFrameX__AdvertisePort: "29102"
-      GameFrameX__RoleInstanceId: "1003"
     ports:
       - "49102:29102"
       - "48084:28084"
     volumes:
       - "./running-multi/game-3/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
-      - "./Configs/multi/game-3.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -232,16 +209,12 @@ services:
       - "--DataBaseName=gameframex_multi"
     environment:
       <<: *launcher-discovery-env
-      GameFrameX__AdvertiseHost: game-4
-      GameFrameX__AdvertisePort: "29103"
-      GameFrameX__RoleInstanceId: "1004"
     ports:
       - "49103:29103"
       - "48086:28086"
     volumes:
       - "./running-multi/game-4/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
-      - "./Configs/multi/game-4.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -268,16 +241,12 @@ services:
       - "--DataBaseName=gameframex_multi"
     environment:
       <<: *launcher-discovery-env
-      GameFrameX__AdvertiseHost: game-5
-      GameFrameX__AdvertisePort: "29104"
-      GameFrameX__RoleInstanceId: "1005"
     ports:
       - "49104:29104"
       - "48088:28088"
     volumes:
       - "./running-multi/game-5/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
-      - "./Configs/multi/game-5.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -304,16 +273,12 @@ services:
       - "--DataBaseName=gameframex_multi"
     environment:
       <<: *launcher-discovery-env
-      GameFrameX__AdvertiseHost: game-6
-      GameFrameX__AdvertisePort: "29105"
-      GameFrameX__RoleInstanceId: "1006"
     ports:
       - "49105:29105"
       - "48090:28090"
     volumes:
       - "./running-multi/game-6/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
-      - "./Configs/multi/game-6.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -340,16 +305,12 @@ services:
       - "--DataBaseName=gameframex_multi"
     environment:
       <<: *launcher-discovery-env
-      GameFrameX__AdvertiseHost: game-7
-      GameFrameX__AdvertisePort: "29106"
-      GameFrameX__RoleInstanceId: "1007"
     ports:
       - "49106:29106"
       - "48092:28092"
     volumes:
       - "./running-multi/game-7/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
-      - "./Configs/multi/game-7.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -376,16 +337,12 @@ services:
       - "--DataBaseName=gameframex_multi"
     environment:
       <<: *launcher-discovery-env
-      GameFrameX__AdvertiseHost: game-8
-      GameFrameX__AdvertisePort: "29107"
-      GameFrameX__RoleInstanceId: "1008"
     ports:
       - "49107:29107"
       - "48094:28094"
     volumes:
       - "./running-multi/game-8/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
-      - "./Configs/multi/game-8.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -412,16 +369,12 @@ services:
       - "--DataBaseName=gameframex_multi"
     environment:
       <<: *launcher-discovery-env
-      GameFrameX__AdvertiseHost: game-9
-      GameFrameX__AdvertisePort: "29108"
-      GameFrameX__RoleInstanceId: "1009"
     ports:
       - "49108:29108"
       - "48096:28096"
     volumes:
       - "./running-multi/game-9/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
-      - "./Configs/multi/game-9.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -448,16 +401,12 @@ services:
       - "--DataBaseName=gameframex_multi"
     environment:
       <<: *launcher-discovery-env
-      GameFrameX__AdvertiseHost: game-10
-      GameFrameX__AdvertisePort: "29109"
-      GameFrameX__RoleInstanceId: "1010"
     ports:
       - "49109:29109"
       - "48098:28098"
     volumes:
       - "./running-multi/game-10/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
-      - "./Configs/multi/game-10.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
