@@ -150,6 +150,8 @@ public class GlobalSettingsSettingConflictTests : IDisposable
     {
         var firstSetting = CreateSetting("Game");
         firstSetting.SaveDataInterval = 0;
+        // ActorRecycleTime 类默认为 15（≥1 不被规范化），必须与第二段同样显式压到下限，两边规范化后才等价
+        firstSetting.ActorRecycleTime = 0;
         GlobalSettings.SetCurrentSetting(firstSetting);
 
         var secondSetting = CreateSetting("Social");
