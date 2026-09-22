@@ -149,24 +149,24 @@ def render_service(instance: dict, build_image: bool) -> list[str]:
     return lines
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate docker-compose.multi.yml from the topology definition.")
-    parser.add_argument("--check", action="store_true", help="verify the committed file matches the generated output")
-    parser.add_argument("--output", type=pathlib.Path, default=OUTPUT_PATH, help="output path (default: docker-compose.multi.yml)")
-    args = parser.parse_args()
+def expand_role_instances() -> tuple[list[dict], dict[str, list[dict]]]:
+    """把 ROLES 拓扑定义展开为逐实例参数表。
 
+    返回 ``(all_instances, role_instances)``：前者按 ROLES 定义顺序平铺全部实例，
+    后者按 Role 名分组，供发现映射与 service 段渲染分别取用。
+    """
     all_instances = []
     role_instances = {}
     for role in ROLES:
         instances = build_instances(role)
         role_instances[role["name"]] = instances
         all_instances.extend(instances)
+    return all_instances, role_instances
 
-    discovery_env_lines = build_discovery_env(all_instances)
 
-    out = [HEADER, "name: gfx-multi", "", "x-launcher-discovery-env: &launcher-discovery-env"]
-    out += discovery_env_lines
-    out += [
+def render_mongo_service() -> list[str]:
+    """渲染 mongo service 定义段（含前置空行与 ``services:`` 头，保持字节级顺序）。"""
+    return [
         "",
         "services:",
         "  mongo:",
@@ -185,54 +185,124 @@ def main() -> int:
         "      - gameframex-multi",
     ]
 
-    social_services = [i["service"] for i in role_instances["Social"]]
 
+def render_instance_service_body(instance: dict, role_name: str, social_services: list[str]) -> list[str]:
+    """渲染单实例 service 定义体（depends_on + command + environment + ports + volumes + networks）。
+
+    Game 角色额外按 ``social_services`` 顺序附加对全部 Social 实例的
+    ``service_started`` 依赖；字段值必须与 ``render_instance_config`` 的文件段同源一致。
+    """
+    lines = [
+        "    depends_on:",
+        "      mongo:",
+        "        condition: service_healthy",
+    ]
+    if role_name == "Game":
+        for social_service in social_services:
+            lines += [
+                f"      {social_service}:",
+                "        condition: service_started",
+            ]
+    lines += [
+        "    command:",
+        f"      - \"--ServerType={role_name}\"",
+        f"      - \"--ServerId={instance['server_id']}\"",
+        f"      - \"--ServerInstanceId={instance['instance_id']}\"",
+        "      - \"--InnerHost=0.0.0.0\"",
+        f"      - \"--InnerPort={instance['inner_port']}\"",
+        "      - \"--OuterHost=0.0.0.0\"",
+        f"      - \"--OuterPort={instance['inner_port']}\"",
+        f"      - \"--HttpPort={instance['http_port']}\"",
+        "      - \"--IsEnableHttp=true\"",
+        f"      - \"--DataBaseUrl={DATABASE_URL}\"",
+        f"      - \"--DataBaseName={DATABASE_NAME}\"",
+        "    environment:",
+        "      <<: *launcher-discovery-env",
+        f"      GameFrameX__AdvertiseHost: {instance['service']}",
+        f"      GameFrameX__AdvertisePort: \"{instance['inner_port']}\"",
+        f"      GameFrameX__RoleInstanceId: \"{instance['instance_id']}\"",
+        "    ports:",
+        f"      - \"{instance['host_inner_port']}:{instance['inner_port']}\"",
+        f"      - \"{instance['host_http_port']}:{instance['http_port']}\"",
+        "    volumes:",
+        f"      - \"./running-multi/{instance['service']}/logs:/app/data/logs\"",
+        "      - \"./GameFrameX.Config/json:/app/Configs:ro\"",
+        f"      - \"./Configs/multi/{instance['service']}.json:/app/Configs/app_config.json:ro\"",
+        "    networks:",
+        "      - gameframex-multi",
+        "",
+    ]
+    return lines
+
+
+def render_launcher_services(role_instances: dict[str, list[dict]]) -> list[str]:
+    """按 ROLES 顺序渲染全部 launcher 实例的 service 段（仅首个实例附加 build 段）。"""
+    social_services = [i["service"] for i in role_instances["Social"]]
+    out = []
     first = True
     for role in ROLES:
         for instance in role_instances[role["name"]]:
             out += render_service(instance, build_image=first)
             first = False
-            out += [
-                "    depends_on:",
-                "      mongo:",
-                "        condition: service_healthy",
-            ]
-            if role["name"] == "Game":
-                for social_service in social_services:
-                    out += [
-                        f"      {social_service}:",
-                        "        condition: service_started",
-                    ]
-            out += [
-                "    command:",
-                f"      - \"--ServerType={role['name']}\"",
-                f"      - \"--ServerId={instance['server_id']}\"",
-                f"      - \"--ServerInstanceId={instance['instance_id']}\"",
-                "      - \"--InnerHost=0.0.0.0\"",
-                f"      - \"--InnerPort={instance['inner_port']}\"",
-                "      - \"--OuterHost=0.0.0.0\"",
-                f"      - \"--OuterPort={instance['inner_port']}\"",
-                f"      - \"--HttpPort={instance['http_port']}\"",
-                "      - \"--IsEnableHttp=true\"",
-                f"      - \"--DataBaseUrl={DATABASE_URL}\"",
-                f"      - \"--DataBaseName={DATABASE_NAME}\"",
-                "    environment:",
-                "      <<: *launcher-discovery-env",
-                f"      GameFrameX__AdvertiseHost: {instance['service']}",
-                f"      GameFrameX__AdvertisePort: \"{instance['inner_port']}\"",
-                f"      GameFrameX__RoleInstanceId: \"{instance['instance_id']}\"",
-                "    ports:",
-                f"      - \"{instance['host_inner_port']}:{instance['inner_port']}\"",
-                f"      - \"{instance['host_http_port']}:{instance['http_port']}\"",
-                "    volumes:",
-                f"      - \"./running-multi/{instance['service']}/logs:/app/data/logs\"",
-                "      - \"./GameFrameX.Config/json:/app/Configs:ro\"",
-                f"      - \"./Configs/multi/{instance['service']}.json:/app/Configs/app_config.json:ro\"",
-                "    networks:",
-                "      - gameframex-multi",
-                "",
-            ]
+            out += render_instance_service_body(instance, role["name"], social_services)
+    return out
 
+
+def verify_outputs(output_path: pathlib.Path, content: str, config_outputs: dict[pathlib.Path, str]) -> int:
+    """校验已提交的 compose 文件与实例配置段是否与生成结果一致（``--check`` 模式）。
+
+    任一不一致打印 ``[FAIL]`` 明细并返回 1；全部一致打印 ``[OK]`` 并返回 0。
+    """
+    ok = True
+    existing = output_path.read_text() if output_path.exists() else ""
+    if existing != content:
+        print(f"[FAIL] {output_path.name} 与生成结果不一致，请运行生成器更新后提交")
+        ok = False
+
+    committed = {path.name for path in CONFIG_OUTPUT_DIR.glob("*.json")} if CONFIG_OUTPUT_DIR.exists() else set()
+    expected = {path.name for path in config_outputs}
+    if committed != expected:
+        print(
+            f"[FAIL] {CONFIG_OUTPUT_DIR.name}/ 与生成结果不一致"
+            f"（多余: {sorted(committed - expected)}, 缺失: {sorted(expected - committed)}）"
+        )
+        ok = False
+    else:
+        for path, expected_content in config_outputs.items():
+            if path.read_text() != expected_content:
+                print(f"[FAIL] {path.name} 与生成结果不一致，请运行生成器更新后提交")
+                ok = False
+    if not ok:
+        return 1
+
+    print(f"[OK] {output_path.name} 与生成结果一致")
+    print(f"[OK] {CONFIG_OUTPUT_DIR.name}/ 共 {len(config_outputs)} 份实例配置与生成结果一致")
+    return 0
+
+
+def write_outputs(output_path: pathlib.Path, content: str, config_outputs: dict[pathlib.Path, str]) -> int:
+    """写出 compose 文件与逐实例配置段（默认模式）。"""
+    output_path.write_text(content)
+    print(f"[OK] 已写入 {output_path}")
+    CONFIG_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    for path, config_content in config_outputs.items():
+        path.write_text(config_content)
+        print(f"[OK] 已写入 {path}")
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Generate docker-compose.multi.yml from the topology definition.")
+    parser.add_argument("--check", action="store_true", help="verify the committed file matches the generated output")
+    parser.add_argument("--output", type=pathlib.Path, default=OUTPUT_PATH, help="output path (default: docker-compose.multi.yml)")
+    args = parser.parse_args()
+
+    all_instances, role_instances = expand_role_instances()
+
+    out = [HEADER, "name: gfx-multi", "", "x-launcher-discovery-env: &launcher-discovery-env"]
+    out += build_discovery_env(all_instances)
+    out += render_mongo_service()
+    out += render_launcher_services(role_instances)
     out += [
         "networks:",
         "  gameframex-multi:",
@@ -248,39 +318,8 @@ def main() -> int:
     }
 
     if args.check:
-        ok = True
-        existing = args.output.read_text() if args.output.exists() else ""
-        if existing != content:
-            print(f"[FAIL] {args.output.name} 与生成结果不一致，请运行生成器更新后提交")
-            ok = False
-
-        committed = {path.name for path in CONFIG_OUTPUT_DIR.glob("*.json")} if CONFIG_OUTPUT_DIR.exists() else set()
-        expected = {path.name for path in config_outputs}
-        if committed != expected:
-            print(
-                f"[FAIL] {CONFIG_OUTPUT_DIR.name}/ 与生成结果不一致"
-                f"（多余: {sorted(committed - expected)}, 缺失: {sorted(expected - committed)}）"
-            )
-            ok = False
-        else:
-            for path, expected_content in config_outputs.items():
-                if path.read_text() != expected_content:
-                    print(f"[FAIL] {path.name} 与生成结果不一致，请运行生成器更新后提交")
-                    ok = False
-        if not ok:
-            return 1
-
-        print(f"[OK] {args.output.name} 与生成结果一致")
-        print(f"[OK] {CONFIG_OUTPUT_DIR.name}/ 共 {len(config_outputs)} 份实例配置与生成结果一致")
-        return 0
-
-    args.output.write_text(content)
-    print(f"[OK] 已写入 {args.output}")
-    CONFIG_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    for path, config_content in config_outputs.items():
-        path.write_text(config_content)
-        print(f"[OK] 已写入 {path}")
-    return 0
+        return verify_outputs(args.output, content, config_outputs)
+    return write_outputs(args.output, content, config_outputs)
 
 
 if __name__ == "__main__":
