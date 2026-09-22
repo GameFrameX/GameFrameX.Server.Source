@@ -34,7 +34,9 @@ using GameFrameX.Apps.Common.Event;
 using GameFrameX.Core.Actors;
 using GameFrameX.Core.Events;
 using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Foundation.Logger;
 using GameFrameX.NetWork.Abstractions;
+using GameFrameX.NetWork.RemoteMessaging.Routing;
 using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Apps.Common.Session;
@@ -46,6 +48,26 @@ public static class SessionManager
 {
     private static readonly ConcurrentDictionary<string, Session> SessionMap = new();
     private static readonly ConcurrentDictionary<long, SessionRouteSnapshot> PlayerRouteMap = new();
+
+    /// <summary>
+    /// 玩家路由外发同步目标（C143e D21：控制库写入钩子）。
+    /// </summary>
+    /// <remarks>
+    /// The outbound player-route sync target (C143e D21). Wired by
+    /// <see cref="MongoPlayerRouteResolverBootstrap"/> once the control database
+    /// is registered; default is <see cref="NullPlayerRouteSyncTarget.Instance"/>
+    /// so the in-process-only launch flow keeps working with zero side effects.
+    /// Callers must catch and swallow any exception from the hook — the local
+    /// <see cref="PlayerRouteMap"/> stays the single source of truth for the
+    /// process and a failed Mongo write is recovered on the next SetOnline.
+    /// </remarks>
+    public static IPlayerRouteSyncTarget PlayerRouteSyncTarget
+    {
+        get { return _playerRouteSyncTarget; }
+        set { _playerRouteSyncTarget = value ?? NullPlayerRouteSyncTarget.Instance; }
+    }
+
+    private static IPlayerRouteSyncTarget _playerRouteSyncTarget = NullPlayerRouteSyncTarget.Instance;
 
     /// <summary>
     /// 获取当前在线玩家的数量。
@@ -275,10 +297,13 @@ public static class SessionManager
                                      : serverType;
         var resolvedServerId = serverId ?? (GlobalSettings.CurrentSetting?.ServerId ?? GameServerConst.Game.Id);
 
-        PlayerRouteMap.AddOrUpdate(
+        var snapshot = PlayerRouteMap.AddOrUpdate(
             playerId,
             _ => SessionRouteSnapshot.Online(playerId, resolvedServerType, resolvedServerId, 1),
             (_, old) => SessionRouteSnapshot.Online(playerId, resolvedServerType, resolvedServerId, old.Version + 1));
+
+        // C143e D21：内存态落定后再调控制库钩子；失败 swallow（warning），主链路不挂。
+        FireSyncUpsert(playerId, resolvedServerType, snapshot);
     }
 
     /// <summary>
@@ -296,6 +321,53 @@ public static class SessionManager
             playerId,
             _ => SessionRouteSnapshot.Offline(playerId, 1),
             (_, old) => SessionRouteSnapshot.Offline(playerId, old.Version + 1));
+
+        // C143e D21：内存态落定后再调控制库钩子；失败 swallow（warning），主链路不挂。
+        FireSyncDelete(playerId);
+    }
+
+    private static void FireSyncUpsert(long playerId, string resolvedServerType, SessionRouteSnapshot snapshot)
+    {
+        var syncTarget = _playerRouteSyncTarget;
+        if (syncTarget == null || ReferenceEquals(syncTarget, NullPlayerRouteSyncTarget.Instance))
+        {
+            return;
+        }
+
+        // 钩子实例 ID：进程未注册发现层时退化为主机名 + 时间戳（与 MongoEndpointRegistry.CreateSelfDescriptorFromEnvironment 同形态）。
+        var instanceId = ResolveSyncInstanceId(resolvedServerType);
+        try
+        {
+            _ = syncTarget.UpsertAsync(playerId, instanceId, resolvedServerType, snapshot.Version);
+        }
+        catch (Exception exception)
+        {
+            LogHelper.Warning(exception, "[SessionManager] player_route upsert hook failed for player {playerId}; the local PlayerRouteMap stays authoritative and the next SetOnline converges", playerId);
+        }
+    }
+
+    private static void FireSyncDelete(long playerId)
+    {
+        var syncTarget = _playerRouteSyncTarget;
+        if (syncTarget == null || ReferenceEquals(syncTarget, NullPlayerRouteSyncTarget.Instance))
+        {
+            return;
+        }
+
+        try
+        {
+            _ = syncTarget.DeleteAsync(playerId);
+        }
+        catch (Exception exception)
+        {
+            LogHelper.Warning(exception, "[SessionManager] player_route delete hook failed for player {playerId}", playerId);
+        }
+    }
+
+    private static string ResolveSyncInstanceId(string resolvedServerType)
+    {
+        // 优先用 Mongo 发现层实例 ID（运行时通过 PlayerRouteSyncTarget 注入点的静态字段不可见——保留退化路径）。
+        return $"{resolvedServerType}-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds():x}";
     }
 }
 
