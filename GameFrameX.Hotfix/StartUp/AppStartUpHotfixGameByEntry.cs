@@ -32,6 +32,8 @@ using GameFrameX.StartUp;
 using GameFrameX.Apps.Common.Event;
 using GameFrameX.Apps.Common.EventData;
 using GameFrameX.NetWork.RemoteMessaging;
+using GameFrameX.NetWork.RemoteMessaging.Discovery;
+using GameFrameX.NetWork.RemoteMessaging.Routing;
 using GameFrameX.Hotfix.Logic.Server.Unified;
 using GameFrameX.NetWork.RemoteMessaging.Unified;
 
@@ -48,14 +50,22 @@ internal partial class AppStartUpHotfixGame : AppStartUpBase, IHotfixBridge
         }
 
         Init(setting.ServerType, setting);
-        // 初始化统一消息发送器（仅依赖 SessionManager 的内存态路由）
+        // 初始化统一消息发送器：resolver 按发现层可用性选择（C152）——
+        // 启动流程先 Activate 发现层（含 player_route 读侧），后加载 Hotfix，故此处
+        // Bootstrap.Resolver 必然已就绪；未激活发现层的形态回落 DefaultPlayerRouteResolver（与 C152 前等价）。
+        // localSender 单实例同时供 UnifiedMessageSenderHolder 与 LocalEnvelopeDispatcher，保证一条本地复投语义。
         if (!UnifiedMessageSenderHolder.IsInitialized)
         {
             var remoteClient = RemoteMessagingBuilder.BuildFromEnvironment();
+            var localSender = new DefaultPlayerLocalSender();
+            var routeResolver = PlayerRouteWiring.SelectRouteResolver(MongoPlayerRouteResolverBootstrap.Resolver);
             UnifiedMessageSenderHolder.InitializeWithDefaults(
-                new DefaultPlayerRouteResolver(),
-                new DefaultPlayerLocalSender(),
+                routeResolver,
+                localSender,
                 remoteClient);
+
+            // C152：holder 初始化后补装路由缝 case 1 的本地投递槽（幂等；时序前提见 AttachLocalDispatcher 注释）。
+            MongoDiscoveryRuntime.AttachLocalDispatcher(new LocalEnvelopeDispatcher(localSender));
         }
 
         await RunServer();
