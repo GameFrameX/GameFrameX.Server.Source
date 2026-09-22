@@ -43,6 +43,10 @@
   - [Testing](#testing)
 - [Architecture](#architecture)
   - [Project Structure](#project-structure)
+- [Process Topology Isomorphism](#process-topology-isomorphism)
+  - [Multi-Role Startup](#multi-role-startup)
+  - [Docker Compose Files](#docker-compose-files)
+  - [AppHost Freeze (Deprecation Notice)](#apphost-freeze-deprecation-notice)
 - [Dependencies](#dependencies)
 - [Documentation & Resources](#documentation--resources)
 - [Community & Support](#community--support)
@@ -760,6 +764,56 @@ Server/
 └── Tests/
     └── GameFrameX.Tests/             # xUnit test suite
 ```
+
+---
+
+## Process Topology Isomorphism
+
+Since C143 the server supports a *process topology isomorphism* model: the same role set can run as one
+process per role, or as a single all-in-one process, without changing role code.
+
+### Multi-Role Startup
+
+- `--ServerType=Game,Social` — launch multiple registered roles in one process (priority order).
+- `--AllInOne` — launch every registered role in one process.
+- `Configs/app_config.json` — multi-section example (Game / Social) shipped in the repository root.
+  Each role resolves its own section; process-level fields must be identical across sections.
+
+A startup-time validator (`ConfigStartupValidator`) fails fast — listing every conflicting field and its
+source section — when:
+
+1. a role selected via `--AllInOne` or a plural `--ServerType` has no section in `app_config.json`;
+2. two roles of the same process would bind the same enabled, non-zero listener port;
+3. a field explicitly set on the command line differs from the file section in use (the file section is
+   the single source of truth; CLI role-level values only apply in the section-less fallback form).
+   `ServerType` (section key) and the `IsAllInOne` / `IsSingleMode` switches are exempt.
+
+Single-role and default startup commands keep their current behaviour (missing sections fall back to
+launcher defaults).
+
+### Docker Compose Files
+
+| File | Purpose |
+|:--|:--|
+| `docker-compose.development.yml` | Local development: a single MongoDB service (host port `37017`, matching the example `app_config.json`) |
+| `docker-compose.multi.yml` | Multi-instance topology form, **generated** by `scripts/multi/generate-docker-compose-multi.py`; each instance is injected with `GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId` plus the `services__{Role}__tcp__0` static bootstrap map |
+| `docker-compose.multi.legacy.yml` | The previous static form, kept for transition |
+
+Change the topology by editing the `ROLES` definition in the generator and re-running
+`python3 scripts/multi/generate-docker-compose-multi.py` (idempotent; `--check` verifies the committed
+file matches the generator output).
+
+### AppHost Freeze (Deprecation Notice)
+
+`GameFrameX.AppHost` / `GameFrameX.AppHost.ServiceDefaults` (.NET Aspire orchestration) are **frozen**:
+
+- **No new features** will be accepted for the AppHost projects.
+- The docker-compose files above are the single orchestrator going forward; `AspireEndpointResolver`
+  keeps resolving the `services__*` environment variables unchanged.
+- Retirement plan: (step 1, now) freeze + this notice; (step 2) revisit after the C6 / G5 milestones;
+  (step 3) removal from the solution.
+
+Feedback is welcome via GitHub issues with the `apphost-deprecation` label.
 
 ---
 
