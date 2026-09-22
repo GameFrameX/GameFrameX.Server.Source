@@ -145,6 +145,91 @@ public class AppBootstrapperTests
     }
 
     /// <summary>
+    /// 并发等待方在首个内核委托完成前不返回：阻塞首个委托，确认其它调用被挂起、
+    /// IsInitialized 仅在成功后发布、委托只执行一次。
+    /// </summary>
+    [Fact]
+    public async Task EnsureInitialized_ConcurrentCalls_WaitersBlockUntilFirstInitializationSucceeds()
+    {
+        var invocationCount = 0;
+        var firstDelegateEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseFirstDelegate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var waiterReturnCount = 0;
+
+        var initializer = Task.Run(() =>
+        {
+            AppBootstrapper.EnsureInitialized(() =>
+            {
+                Interlocked.Increment(ref invocationCount);
+                firstDelegateEntered.SetResult();
+                releaseFirstDelegate.Task.Wait();
+            });
+        });
+
+        // 首个委托已进入且被阻塞：Initialized 尚未发布
+        await firstDelegateEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.False(AppBootstrapper.IsInitialized);
+
+        var waiters = Enumerable.Range(0, 4).Select(_ => Task.Run(async () =>
+        {
+            AppBootstrapper.EnsureInitialized(() => Interlocked.Increment(ref invocationCount));
+            Interlocked.Increment(ref waiterReturnCount);
+        })).ToArray();
+
+        // 等待方全部阻塞：在首个委托完成前不得有任何一个返回
+        await Task.Delay(150);
+        Assert.Equal(0, Volatile.Read(ref waiterReturnCount));
+        Assert.False(AppBootstrapper.IsInitialized);
+
+        releaseFirstDelegate.SetResult();
+        await Task.WhenAll(waiters).WaitAsync(TimeSpan.FromSeconds(5));
+        await initializer.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal(1, invocationCount);
+        Assert.Equal(waiters.Length, Volatile.Read(ref waiterReturnCount));
+        Assert.True(AppBootstrapper.IsInitialized);
+    }
+
+    /// <summary>
+    /// 首个初始化失败后等待方重试：阻塞的首个委托抛异常回滚状态，等待方用自己的委托重试成功。
+    /// </summary>
+    [Fact]
+    public async Task EnsureInitialized_FirstInitializationFails_WaiterRetriesWithOwnDelegate()
+    {
+        var invocationCount = 0;
+        var firstDelegateEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseFirstDelegate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var initializer = Task.Run(() =>
+        {
+            AppBootstrapper.EnsureInitialized(() =>
+            {
+                Interlocked.Increment(ref invocationCount);
+                firstDelegateEntered.SetResult();
+                releaseFirstDelegate.Task.Wait();
+                throw new InvalidOperationException("kernel failure");
+            });
+        });
+
+        await firstDelegateEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        var waiter = Task.Run(() => AppBootstrapper.EnsureInitialized(() => Interlocked.Increment(ref invocationCount)));
+
+        // 等待方阻塞在首个（即将失败的）初始化上，不得提前返回
+        await Task.Delay(150);
+        Assert.False(waiter.IsCompleted);
+        Assert.False(AppBootstrapper.IsInitialized);
+
+        releaseFirstDelegate.SetResult();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => initializer.WaitAsync(TimeSpan.FromSeconds(5)));
+
+        // 首个失败回滚后，等待方用自己的委托重试并成功（重试必在回滚之后，否则 Initialize 会抛 BootstrapperAlreadyInitializedException）
+        await waiter.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(2, invocationCount);
+        Assert.True(AppBootstrapper.IsInitialized);
+    }
+
+    /// <summary>
     /// Initialize 对 null 委抛 ArgumentNullException。
     /// </summary>
     [Fact]
