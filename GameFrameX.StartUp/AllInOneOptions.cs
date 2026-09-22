@@ -123,54 +123,20 @@ public sealed class AllInOneOptions
         for (var index = 0; index < args.Length; index++)
         {
             var argument = args[index];
-            if (argument.IsNullOrEmpty() || !argument.StartsWith("--", StringComparison.Ordinal))
+            if (!IsOptionArgument(argument))
             {
                 continue;
             }
 
-            var body = argument.Substring(2);
-            int separatorIndex = body.IndexOf('=');
-            string name;
-            string value = null;
-            if (separatorIndex >= 0)
-            {
-                name = body.Substring(0, separatorIndex);
-                value = body.Substring(separatorIndex + 1);
-            }
-            else
-            {
-                name = body;
-            }
+            SplitArgumentNameAndValue(argument.Substring(2), out var name, out var value);
 
             if (name.Equals(nameof(StartupOptions.ServerType), StringComparison.OrdinalIgnoreCase))
             {
-                if (value == null && index + 1 < args.Length)
-                {
-                    var nextArgument = args[index + 1];
-                    if (!nextArgument.IsNullOrEmpty() && !nextArgument.StartsWith("--", StringComparison.Ordinal))
-                    {
-                        // 空格分隔形态：--ServerType Game,Social；下一个参数是选项标记（如 --ServerType --AllInOne）时不消费，避免把 "--AllInOne" 当作 Role 名
-                        value = nextArgument;
-                        index++;
-                    }
-                }
-
-                if (!value.IsNullOrEmpty())
-                {
-                    rawServerTypes = value;
-                }
+                rawServerTypes = ApplyServerTypeArgument(args, ref index, value, rawServerTypes);
             }
             else if (name.Equals(AllInOneArgumentName, StringComparison.OrdinalIgnoreCase))
             {
-                if (value == null || !bool.TryParse(value, out var allInOneFlag))
-                {
-                    // 裸开关 --AllInOne 等价于 true
-                    isAllInOne = true;
-                }
-                else
-                {
-                    isAllInOne = allInOneFlag;
-                }
+                isAllInOne = ParseAllInOneValue(value);
             }
         }
 
@@ -180,6 +146,101 @@ public sealed class AllInOneOptions
         }
 
         return new AllInOneOptions(isAllInOne, SplitServerTypes(rawServerTypes));
+    }
+
+    /// <summary>
+    /// 判定参数是否为非空且带 <c>--</c> 前缀的选项形态。
+    /// </summary>
+    /// <remarks>
+    /// Determines whether the argument is a non-empty option of the <c>--</c>-prefixed form.
+    /// Extracted from <see cref="Parse"/> to keep cognitive complexity under the Sonar S3776 threshold.
+    /// </remarks>
+    /// <param name="argument">单个命令行参数 / A single command line argument</param>
+    /// <returns>是选项形态则为 <c>true</c>；否则为 <c>false</c> / <c>true</c> for an option argument; otherwise, <c>false</c></returns>
+    private static bool IsOptionArgument(string argument)
+    {
+        return !argument.IsNullOrEmpty() && argument.StartsWith("--", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// 拆分选项主体的名称与值（<c>name=value</c>；无 <c>=</c> 时值为 null）。
+    /// </summary>
+    /// <remarks>
+    /// Splits the option body into its name and value (<c>name=value</c>; the value is <c>null</c> when no <c>=</c> is present).
+    /// Extracted from <see cref="Parse"/> to keep cognitive complexity under the Sonar S3776 threshold.
+    /// </remarks>
+    /// <param name="body">去掉 <c>--</c> 前缀后的选项主体 / The option body with the <c>--</c> prefix removed</param>
+    /// <param name="name">解析出的参数名 / The parsed argument name</param>
+    /// <param name="value">解析出的参数值；无 <c>=</c> 时为 null / The parsed argument value; <c>null</c> when no <c>=</c> is present</param>
+    private static void SplitArgumentNameAndValue(string body, out string name, out string value)
+    {
+        var separatorIndex = body.IndexOf('=');
+        if (separatorIndex >= 0)
+        {
+            name = body.Substring(0, separatorIndex);
+            value = body.Substring(separatorIndex + 1);
+        }
+        else
+        {
+            name = body;
+            value = null;
+        }
+    }
+
+    /// <summary>
+    /// 应用 <c>--ServerType</c> 参数：值缺失时按空格分隔形态消费下一个非选项标记参数；空值不覆盖现行值。
+    /// </summary>
+    /// <remarks>
+    /// Applies the <c>--ServerType</c> argument: a missing value is resolved from the next argument
+    /// (space-separated form; an option marker such as <c>--AllInOne</c> is never consumed, so it is not
+    /// mistaken for a role name), and an empty value keeps the current value in effect
+    /// (last-wins applies to non-empty values only).
+    /// Extracted from <see cref="Parse"/> to keep cognitive complexity under the Sonar S3776 threshold.
+    /// </remarks>
+    /// <param name="args">命令行参数全集 / The full command line arguments</param>
+    /// <param name="index">当前参数下标；消费下一参数时随之推进 / The current argument index; advanced when the next argument is consumed</param>
+    /// <param name="value">当前解析出的参数值（可为 null）/ The currently parsed argument value (may be <c>null</c>)</param>
+    /// <param name="currentRawServerTypes">此前已生效的原始 Role 名值 / The raw role-name value currently in effect</param>
+    /// <returns>应用本次参数后的原始 Role 名值 / The raw role-name value after applying this argument</returns>
+    private static string ApplyServerTypeArgument(string[] args, ref int index, string value, string currentRawServerTypes)
+    {
+        if (value == null && index + 1 < args.Length)
+        {
+            var nextArgument = args[index + 1];
+            if (!IsOptionArgument(nextArgument))
+            {
+                // 空格分隔形态：--ServerType Game,Social；下一个参数是选项标记（如 --ServerType --AllInOne）时不消费，避免把 "--AllInOne" 当作 Role 名
+                value = nextArgument;
+                index++;
+            }
+        }
+
+        if (!value.IsNullOrEmpty())
+        {
+            return value;
+        }
+
+        return currentRawServerTypes;
+    }
+
+    /// <summary>
+    /// 解析 <c>--AllInOne</c> 参数值：裸开关等价 true，布尔解析失败同样按 true 处理。
+    /// </summary>
+    /// <remarks>
+    /// Parses the <c>--AllInOne</c> argument value: a bare switch (or a value that fails to parse as a boolean) means <c>true</c>.
+    /// Extracted from <see cref="Parse"/> to keep cognitive complexity under the Sonar S3776 threshold.
+    /// </remarks>
+    /// <param name="value">当前解析出的参数值；裸开关时为 null / The currently parsed argument value; <c>null</c> for a bare switch</param>
+    /// <returns>解析后的 All-in-One 开关值 / The parsed all-in-one switch value</returns>
+    private static bool ParseAllInOneValue(string value)
+    {
+        if (value == null || !bool.TryParse(value, out var allInOneFlag))
+        {
+            // 裸开关 --AllInOne 等价于 true
+            return true;
+        }
+
+        return allInOneFlag;
     }
 
     /// <summary>
