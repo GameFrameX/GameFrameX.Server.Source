@@ -83,7 +83,7 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task Registry_ShouldUpsertActiveAndWriteStoppedOnStop()
+    public async Task Registry_ShouldPublishBootingThenActiveAndKeepHeartbeatFresh()
     {
         if (ShouldSkip)
         {
@@ -97,27 +97,113 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
             await registry.StartAsync();
 
             var collection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(MongoEndpointRegistry.HeartbeatCollectionName);
+            var bootingDocument = await WaitForDocumentAsync(collection, "integration-registry-1");
+            Assert.NotNull(bootingDocument);
+            // 启动即宣告 Booting 而非 Active：其他进程在服务真正就绪前不应向本实例路由流量。
+            Assert.Equal("Booting", bootingDocument["status"].AsString);
+            Assert.Equal("Game", bootingDocument["role"].AsString);
+            Assert.Equal("tcp://127.0.0.1:7701", bootingDocument["advertiseEndpoint"].AsString);
+            Assert.Equal(9001, bootingDocument["incarnation"].AsInt64);
+
+            await registry.MarkActiveAsync();
+            var activeDocument = await WaitForStatusAsync(collection, "integration-registry-1", "Active");
+            Assert.NotNull(activeDocument);
+
+            // 首次写入后心跳循环必须继续全量 upsert：lastHeartbeat 持续前进（否则 watcher 会在三周期后将健康实例误判下线）。
+            var heartbeatBefore = activeDocument["lastHeartbeat"].ToUniversalTime();
+            var heartbeatAdvanced = false;
             var deadline = DateTime.UtcNow.AddSeconds(10);
-            MongoDB.Bson.BsonDocument document = null;
-            while (document == null && DateTime.UtcNow < deadline)
+            while (DateTime.UtcNow < deadline)
             {
-                document = await collection.Find(candidate => candidate["_id"] == "integration-registry-1").FirstOrDefaultAsync();
-                if (document == null)
+                var latest = await collection.Find(candidate => candidate["_id"] == "integration-registry-1").FirstOrDefaultAsync();
+                if (latest != null && latest["lastHeartbeat"].ToUniversalTime() > heartbeatBefore)
                 {
-                    await Task.Delay(100);
+                    heartbeatAdvanced = true;
+                    break;
                 }
+
+                await Task.Delay(100);
             }
 
-            Assert.NotNull(document);
-            Assert.Equal("Active", document["status"].AsString);
-            Assert.Equal("Game", document["role"].AsString);
-            Assert.Equal("tcp://127.0.0.1:7701", document["advertiseEndpoint"].AsString);
-            Assert.Equal(9001, document["incarnation"].AsInt64);
+            Assert.True(heartbeatAdvanced, "The heartbeat lastHeartbeat did not advance after the initial write.");
 
             await registry.StopAsync();
             var stoppedDocument = await collection.Find(candidate => candidate["_id"] == "integration-registry-1").FirstOrDefaultAsync();
             Assert.NotNull(stoppedDocument);
             Assert.Equal("Stopped", stoppedDocument["status"].AsString);
+        }
+    }
+
+    [Fact]
+    public async Task Watcher_ShouldSkipEventsForIneligibleFirstObservations()
+    {
+        if (ShouldSkip)
+        {
+            return;
+        }
+
+        var controlDatabase = CreateControlDatabase();
+        var collection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(MongoEndpointRegistry.HeartbeatCollectionName);
+        var events = new RecordingInstanceEvents();
+        using (var watcher = new MongoEndpointWatcher(controlDatabase, TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(30)))
+        {
+            watcher.Subscribe(events);
+            await watcher.StartAsync();
+
+            // 三类不具备路由资格的首次观测：Stopped、陈旧（超过判活阈值）、Booting；外加一个首次即为 Draining 的实例。
+            var stoppedId = $"integration-ineligible-stopped-{Guid.NewGuid():N}";
+            var staleId = $"integration-ineligible-stale-{Guid.NewGuid():N}";
+            var bootingId = $"integration-ineligible-booting-{Guid.NewGuid():N}";
+            var drainingId = $"integration-ineligible-draining-{Guid.NewGuid():N}";
+            await collection.InsertManyAsync(new[]
+            {
+                new MongoDB.Bson.BsonDocument
+                {
+                    { "_id", stoppedId }, { "role", "Game" }, { "advertiseEndpoint", "tcp://10.0.0.1:7501" }, { "status", "Stopped" },
+                    { "load", 0 }, { "addressKind", "IPv4" }, { "incarnation", 9400L }, { "lastHeartbeat", DateTime.UtcNow },
+                },
+                new MongoDB.Bson.BsonDocument
+                {
+                    { "_id", staleId }, { "role", "Game" }, { "advertiseEndpoint", "tcp://10.0.0.2:7502" }, { "status", "Active" },
+                    { "load", 0 }, { "addressKind", "IPv4" }, { "incarnation", 9401L }, { "lastHeartbeat", DateTime.UtcNow.AddSeconds(-60) },
+                },
+                new MongoDB.Bson.BsonDocument
+                {
+                    { "_id", bootingId }, { "role", "Game" }, { "advertiseEndpoint", "tcp://10.0.0.3:7503" }, { "status", "Booting" },
+                    { "load", 0 }, { "addressKind", "IPv4" }, { "incarnation", 9402L }, { "lastHeartbeat", DateTime.UtcNow },
+                },
+                new MongoDB.Bson.BsonDocument
+                {
+                    { "_id", drainingId }, { "role", "Match" }, { "advertiseEndpoint", "tcp://match.internal:7504" }, { "status", "Draining" },
+                    { "load", 0 }, { "addressKind", "DnsName" }, { "incarnation", 9403L }, { "lastHeartbeat", DateTime.UtcNow },
+                },
+            });
+
+            // 等若干轮 poll：不具备路由资格的实例既不发 Online，也不进路由表；Draining 首次观测发 Draining 且进 Instance 视图。
+            await Task.Delay(TimeSpan.FromMilliseconds(1000));
+            lock (events.Observed)
+            {
+                Assert.DoesNotContain((RoleInstanceChangeKind.Online, stoppedId), events.Observed);
+                Assert.DoesNotContain((RoleInstanceChangeKind.Online, staleId), events.Observed);
+                Assert.DoesNotContain((RoleInstanceChangeKind.Online, bootingId), events.Observed);
+                Assert.Contains((RoleInstanceChangeKind.Draining, drainingId), events.Observed);
+            }
+
+            Assert.False(watcher.Current.TryGetInstance(stoppedId, out _));
+            Assert.False(watcher.Current.TryGetInstance(staleId, out _));
+            Assert.False(watcher.Current.TryGetInstance(bootingId, out _));
+            Assert.True(watcher.Current.TryGetInstance(drainingId, out _));
+
+            // Booting → Active 跃迁后才发 Online 并进入路由表（与写侧 MarkActive 的就绪语义闭环）。
+            var update = Builders<MongoDB.Bson.BsonDocument>.Update
+                .Set("status", "Active")
+                .Set("lastHeartbeat", DateTime.UtcNow);
+            await collection.UpdateOneAsync(candidate => candidate["_id"] == bootingId, update);
+            await WaitUntilAsync(delegate ()
+            {
+                return watcher.Current.TryGetInstance(bootingId, out _) && watcher.Current.GetActiveInstances("Game").Any(instance => instance.InstanceId == bootingId);
+            }, TimeSpan.FromSeconds(10));
+            Assert.Contains((RoleInstanceChangeKind.Online, bootingId), events.Observed);
         }
     }
 
@@ -263,6 +349,46 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
             Assert.True(watcher.Current.TryGetInstance(instanceId, out _));
             Assert.Contains((RoleInstanceChangeKind.Draining, instanceId), events.Observed);
         }
+    }
+
+    /// <summary>
+    /// 轮询等待指定实例文档出现。
+    /// </summary>
+    private static async Task<MongoDB.Bson.BsonDocument> WaitForDocumentAsync(IMongoCollection<MongoDB.Bson.BsonDocument> collection, string instanceId)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        MongoDB.Bson.BsonDocument document = null;
+        while (document == null && DateTime.UtcNow < deadline)
+        {
+            document = await collection.Find(candidate => candidate["_id"] == instanceId).FirstOrDefaultAsync();
+            if (document == null)
+            {
+                await Task.Delay(100);
+            }
+        }
+
+        return document;
+    }
+
+    /// <summary>
+    /// 轮询等待指定实例文档达到期望状态。
+    /// </summary>
+    private static async Task<MongoDB.Bson.BsonDocument> WaitForStatusAsync(IMongoCollection<MongoDB.Bson.BsonDocument> collection, string instanceId, string status)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        MongoDB.Bson.BsonDocument document = null;
+        while (DateTime.UtcNow < deadline)
+        {
+            document = await collection.Find(candidate => candidate["_id"] == instanceId).FirstOrDefaultAsync();
+            if (document != null && document["status"].AsString == status)
+            {
+                return document;
+            }
+
+            await Task.Delay(100);
+        }
+
+        return document;
     }
 
     /// <summary>

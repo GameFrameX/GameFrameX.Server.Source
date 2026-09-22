@@ -90,7 +90,9 @@ public sealed class RoleRouteTable
     /// </summary>
     /// <remarks>
     /// Builds a snapshot from the live instance set. Only Active instances enter
-    /// the Role view; Active and Draining both enter the Instance view.
+    /// the Role view; the Instance view keeps Active and Draining; every other
+    /// status (Booting, Stopped, Removed, ...) is excluded from both views so no
+    /// not-yet-ready or decommissioned instance is ever routable.
     /// </remarks>
     /// <param name="liveInstances">本轮判活后的实例集合 / The instances judged live this round</param>
     /// <returns>双视图快照 / The dual-view snapshot</returns>
@@ -102,7 +104,13 @@ public sealed class RoleRouteTable
         var activeByRole = new Dictionary<string, List<InstanceDescriptor>>(StringComparer.Ordinal);
         foreach (var instance in liveInstances)
         {
-            instancesById.Add(instance.InstanceId, instance);
+            // Instance 视图仅收 Active/Draining（D3 case 2 契约）：Booting/Removed 等其余状态不参与任何路由，
+            // 防止已注册但尚未就绪（或已摘除）的实例被 case 2 解析并转发流量。
+            if (instance.Status == InstanceStatus.Active || instance.Status == InstanceStatus.Draining)
+            {
+                instancesById.Add(instance.InstanceId, instance);
+            }
+
             if (instance.Status == InstanceStatus.Active)
             {
                 if (!activeByRole.TryGetValue(instance.Role, out var instances))

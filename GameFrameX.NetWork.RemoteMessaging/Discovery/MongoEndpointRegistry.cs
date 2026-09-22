@@ -145,9 +145,19 @@ public sealed class MongoEndpointRegistry : IDisposable
     /// 是否已写终态 Stopped（幂等守卫）。
     /// </summary>
     /// <remarks>
-    /// Whether the terminal Stopped state was already written (idempotent guard).
+    /// Whether the terminal Stopped state was already written (idempotent guard —
+    /// only Stopped writes are deduplicated; heartbeats keep flowing until then).
     /// </remarks>
     private int _stoppedWritten;
+
+    /// <summary>
+    /// 当前宣告的实例状态（启动完成为 Booting，MarkActive 后为 Active）。
+    /// </summary>
+    /// <remarks>
+    /// The status currently announced by the heartbeat loop: Booting until the
+    /// owning startup flow calls <see cref="MarkActiveAsync"/>, Active afterwards.
+    /// </remarks>
+    private volatile int _currentStatus = (int)InstanceStatus.Booting;
 
     /// <summary>
     /// 初始化 Mongo 心跳写侧。
@@ -211,16 +221,23 @@ public sealed class MongoEndpointRegistry : IDisposable
         }
 
         var incarnation = DateTimeOffset.UtcNow.UtcTicks;
-        return new InstanceDescriptor(roleName, instanceId.Trim(), $"tcp://{advertiseHost}:{advertisePort}", InstanceStatus.Booting, 0, addressKind, incarnation, DateTime.UtcNow);
+        // URI authority 中的 IPv6 host 必须方括号包裹：出口探测返回裸 IPv6 文本，显式配置且已带方括号的输入原样保留。
+        var authorityHost = addressKind == EndpointAddressKind.IPv6 && !advertiseHost.StartsWith("[", StringComparison.Ordinal)
+            ? $"[{advertiseHost}]"
+            : advertiseHost;
+        return new InstanceDescriptor(roleName, instanceId.Trim(), $"tcp://{authorityHost}:{advertisePort}", InstanceStatus.Booting, 0, addressKind, incarnation, DateTime.UtcNow);
     }
 
     /// <summary>
-    /// 启动心跳写侧：建 TTL 索引 + 立即 upsert Active + 起后台心跳循环。
+    /// 启动心跳写侧：建 TTL 索引 + 立即 upsert 当前状态（Booting）+ 起后台心跳循环。
     /// </summary>
     /// <remarks>
-    /// Starts the writer: creates the TTL index (idempotent), upserts the Active
-    /// document immediately so the watcher can discover this process within one
-    /// poll round, then runs the background heartbeat loop. Also subscribes to
+    /// Starts the writer: creates the TTL index (idempotent), upserts the current
+    /// status (Booting) immediately so the topology can see this process within one
+    /// poll round — without routing to it yet — then runs the background heartbeat
+    /// loop. The owning startup flow must call <see cref="MarkActiveAsync"/> once
+    /// the process is truly ready (databases, components, listeners up) to flip
+    /// the announced status to Active. Also subscribes to
     /// <see cref="AppDomain.ProcessExit"/> as the best-effort Stopped safety net.
     /// </remarks>
     /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
@@ -230,9 +247,27 @@ public sealed class MongoEndpointRegistry : IDisposable
         var indexKeys = Builders<ServerHeartbeatDocument>.IndexKeys.Ascending(document => document.LastHeartbeat);
         var indexOptions = new CreateIndexOptions { ExpireAfter = TimeSpan.FromSeconds(HeartbeatTimeToLiveSeconds), Name = "lastHeartbeat_ttl_15s" };
         await _collection.Indexes.CreateOneAsync(new CreateIndexModel<ServerHeartbeatDocument>(indexKeys, indexOptions), cancellationToken: cancellationToken);
-        await UpsertHeartbeatAsync(InstanceStatus.Active, CancellationToken.None);
+        await UpsertHeartbeatAsync((InstanceStatus)_currentStatus, CancellationToken.None);
         AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
         _loopTask = Task.Run(() => HeartbeatLoopAsync(_loopCancellation.Token));
+    }
+
+    /// <summary>
+    /// 标记实例就绪：心跳状态由 Booting 切换为 Active 并立即写入。
+    /// </summary>
+    /// <remarks>
+    /// Marks the instance as ready: flips the announced status from Booting to
+    /// Active and writes it immediately (instead of waiting for the next loop
+    /// tick), so other processes only discover this instance as routable once
+    /// its databases, components, and listeners are up. Repeat calls are
+    /// harmless (they just re-upsert Active).
+    /// </remarks>
+    /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
+    /// <returns>异步任务 / Async task</returns>
+    public Task MarkActiveAsync(CancellationToken cancellationToken = default)
+    {
+        _currentStatus = (int)InstanceStatus.Active;
+        return UpsertHeartbeatAsync(InstanceStatus.Active, cancellationToken);
     }
 
     /// <summary>
@@ -303,7 +338,7 @@ public sealed class MongoEndpointRegistry : IDisposable
             try
             {
                 await Task.Delay(_heartbeatInterval, cancellationToken);
-                await UpsertHeartbeatAsync(InstanceStatus.Active, CancellationToken.None);
+                await UpsertHeartbeatAsync((InstanceStatus)_currentStatus, CancellationToken.None);
             }
             catch (OperationCanceledException)
             {
@@ -359,8 +394,17 @@ public sealed class MongoEndpointRegistry : IDisposable
     /// <returns>异步任务 / Async task</returns>
     private Task UpsertHeartbeatAsync(InstanceStatus status, CancellationToken cancellationToken)
     {
-        if (Interlocked.CompareExchange(ref _stoppedWritten, 1, 0) != 0 && status != InstanceStatus.Stopped)
+        if (status == InstanceStatus.Stopped)
         {
+            // 终态幂等：首个 Stopped 写入胜出，后续 Stopped 调用直接返回。
+            if (Interlocked.Exchange(ref _stoppedWritten, 1) != 0)
+            {
+                return Task.CompletedTask;
+            }
+        }
+        else if (Volatile.Read(ref _stoppedWritten) != 0)
+        {
+            // 终态后不再回退：Stopped 已写入时，仍在途的心跳（Booting/Active）不再覆盖终态。
             return Task.CompletedTask;
         }
 

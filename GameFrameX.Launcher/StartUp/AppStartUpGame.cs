@@ -125,6 +125,9 @@ internal sealed class AppStartUpGame : AppStartUpBase
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.ServerStartEnd, Setting.ServerType));
             // C143b D7：启动阶段完成（DB/组件/热-fix/在线管理均已就绪），放行下一个 Role 的启动屏障
             MarkStartUpReady();
+            // C143d D15：启动阶段真正完成（DB/组件/热-fix/在线管理均已就绪）后才把心跳从 Booting 切到 Active，
+            // 避免其他进程在服务就绪前发现本实例并投递流量；未激活发现层或无广播身份时为无害 no-op。
+            MongoDiscoveryRuntime.MarkActive();
             exitMessage = await AppExitToken;
         }
         catch (Exception e)

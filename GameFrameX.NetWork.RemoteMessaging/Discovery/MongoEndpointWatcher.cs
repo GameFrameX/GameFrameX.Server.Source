@@ -353,15 +353,25 @@ public sealed class MongoEndpointWatcher : IRoleRouteTableProvider, IDisposable
 
             if (!_knownInstances.TryGetValue(descriptor.InstanceId, out var known))
             {
-                // 新出现的 instanceId：曾在 graveyard 里见过且 incarnation 变化 → 重启语义（Offline+Online）。
-                if (lastIncarnation != default && lastIncarnation != descriptor.Incarnation)
+                // 新出现的 instanceId：仅对具备路由资格（非 stale 且 Active/Draining，与路由表准入一致）的首次观测发事件；
+                // stale 或 Stopped/Booting 首次观测不进路由表，也不发 Online，避免订阅者看到表中不存在的实例。
+                if (!isStale && (descriptor.Status == InstanceStatus.Active || descriptor.Status == InstanceStatus.Draining))
                 {
-                    pendingEvents.Add(new KeyValuePair<RoleInstanceChangeKind, InstanceDescriptor>(RoleInstanceChangeKind.Offline, descriptor));
-                    pendingEvents.Add(new KeyValuePair<RoleInstanceChangeKind, InstanceDescriptor>(RoleInstanceChangeKind.Online, descriptor));
-                }
-                else
-                {
-                    pendingEvents.Add(new KeyValuePair<RoleInstanceChangeKind, InstanceDescriptor>(RoleInstanceChangeKind.Online, descriptor));
+                    if (lastIncarnation != default && lastIncarnation != descriptor.Incarnation)
+                    {
+                        // 曾在 graveyard 里见过且 incarnation 变化 → 重启语义（Offline+Online，D15 规则）。
+                        pendingEvents.Add(new KeyValuePair<RoleInstanceChangeKind, InstanceDescriptor>(RoleInstanceChangeKind.Offline, descriptor));
+                        pendingEvents.Add(new KeyValuePair<RoleInstanceChangeKind, InstanceDescriptor>(RoleInstanceChangeKind.Online, descriptor));
+                    }
+                    else if (descriptor.Status == InstanceStatus.Draining)
+                    {
+                        // 首次观测即为 Draining：发 Draining（不接新流量、保留在途投递）。
+                        pendingEvents.Add(new KeyValuePair<RoleInstanceChangeKind, InstanceDescriptor>(RoleInstanceChangeKind.Draining, descriptor));
+                    }
+                    else
+                    {
+                        pendingEvents.Add(new KeyValuePair<RoleInstanceChangeKind, InstanceDescriptor>(RoleInstanceChangeKind.Online, descriptor));
+                    }
                 }
             }
             else if (known.Descriptor.Incarnation != descriptor.Incarnation)

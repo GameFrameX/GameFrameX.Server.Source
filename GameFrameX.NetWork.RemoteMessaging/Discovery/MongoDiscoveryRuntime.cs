@@ -119,4 +119,19 @@ public static class MongoDiscoveryRuntime
 
         RoleRouterHolder.Initialize(new InProcessRoleRouter(hostedRoles, null, new MongoDiscoveryRemoteRoleRouter(_watcher, new TcpEnvelopeForwarder())));
     }
+
+    /// <summary>
+    /// 把本进程心跳从 Booting 切换为 Active（启动阶段真正完成、服务就绪后调用）。
+    /// </summary>
+    /// <remarks>
+    /// Flips this process's announced status from Booting to Active. The startup
+    /// flows call this right after their readiness point (<c>MarkStartUpReady</c>:
+    /// databases, components, and listeners up) so other processes never discover
+    /// and route traffic to a not-yet-ready instance. No-op when the discovery
+    /// layer was not activated or the write side was skipped (no advertise identity).
+    /// </remarks>
+    public static void MarkActive()
+    {
+        _registry?.MarkActiveAsync(CancellationToken.None).GetAwaiter().GetResult();
+    }
 }
