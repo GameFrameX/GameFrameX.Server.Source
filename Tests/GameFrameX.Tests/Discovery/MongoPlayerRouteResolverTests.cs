@@ -108,13 +108,19 @@ public sealed class MongoPlayerRouteResolverTests
     [Fact]
     public void NullPlayerRouteSyncTarget_DeleteAsync_IsNoOp()
     {
-        NullPlayerRouteSyncTarget.Instance.DeleteAsync(1).GetAwaiter().GetResult();
+        var task = NullPlayerRouteSyncTarget.Instance.DeleteAsync(1);
+
+        Assert.NotNull(task);
+        Assert.True(task.IsCompletedSuccessfully);
     }
 
     [Fact]
     public void NullPlayerRouteSyncTarget_UpsertAsync_IsNoOp()
     {
-        NullPlayerRouteSyncTarget.Instance.UpsertAsync(1, "instance", "Game", 1).GetAwaiter().GetResult();
+        var task = NullPlayerRouteSyncTarget.Instance.UpsertAsync(1, "instance", "Game", 1);
+
+        Assert.NotNull(task);
+        Assert.True(task.IsCompletedSuccessfully);
     }
 
     [Fact]
