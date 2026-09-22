@@ -105,7 +105,8 @@ public sealed class AllInOneOptions
     /// <remarks>
     /// Parses the multi-role / all-in-one startup arguments.
     /// Unknown arguments are ignored; a bare <c>--AllInOne</c> switch means <c>true</c>;
-    /// repeated <c>--ServerType</c> arguments keep the last occurrence.
+    /// repeated <c>--ServerType</c> arguments keep the last occurrence;
+    /// the space-separated form never consumes a following option marker (e.g. <c>--ServerType --AllInOne</c>).
     /// </remarks>
     /// <param name="args">命令行参数 / The command line arguments</param>
     /// <returns>解析结果；无相关参数时返回 <see cref="None"/> / The parse result, or <see cref="None"/> when no related argument is present</returns>
@@ -145,9 +146,13 @@ public sealed class AllInOneOptions
             {
                 if (value == null && index + 1 < args.Length)
                 {
-                    // 空格分隔形态：--ServerType Game,Social
-                    value = args[index + 1];
-                    index++;
+                    var nextArgument = args[index + 1];
+                    if (!nextArgument.IsNullOrEmpty() && !nextArgument.StartsWith("--", StringComparison.Ordinal))
+                    {
+                        // 空格分隔形态：--ServerType Game,Social；下一个参数是选项标记（如 --ServerType --AllInOne）时不消费，避免把 "--AllInOne" 当作 Role 名
+                        value = nextArgument;
+                        index++;
+                    }
                 }
 
                 if (!value.IsNullOrEmpty())

@@ -135,6 +135,30 @@ public class AllInOneOptionsTests
     }
 
     /// <summary>
+    /// 空格分隔形态的选项标记保护：--ServerType --AllInOne 不把 "--AllInOne" 当作 Role 名消费。
+    /// </summary>
+    [Fact]
+    public void Parse_SpaceSeparatedServerType_DoesNotConsumeNextOptionMarker()
+    {
+        var options = AllInOneOptions.Parse(["--ServerType", "--AllInOne"]);
+
+        Assert.True(options.IsAllInOne);
+        Assert.Empty(options.ServerTypes);
+    }
+
+    /// <summary>
+    /// 空格分隔形态的选项标记保护：后续参数仍正常解析（--ServerType --ServerId=1 Game）。
+    /// </summary>
+    [Fact]
+    public void Parse_SpaceSeparatedServerType_SkipsMarkerButReadsLaterValue()
+    {
+        var options = AllInOneOptions.Parse(["--ServerType", "--ServerId=1", "--ServerType", "Game"]);
+
+        Assert.False(options.IsAllInOne);
+        Assert.Equal(new[] { "Game" }, options.ServerTypes);
+    }
+
+    /// <summary>
     /// 未识别参数被忽略，不影响解析结果。
     /// </summary>
     [Fact]
