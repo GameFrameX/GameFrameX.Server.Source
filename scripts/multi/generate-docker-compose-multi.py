@@ -8,18 +8,24 @@
 - ``GameFrameX__AdvertiseHost`` / ``GameFrameX__AdvertisePort`` / ``GameFrameX__RoleInstanceId``：
   MongoEndpointRegistry 地址自报引导变量（逐实例注入，D12）。
 
+每个实例同时生成一份与其 command 参数值完全一致的独立配置段
+（``Configs/multi/{service}.json``），并挂载到容器内 ``/app/Configs/app_config.json``：
+文件层与 CLI 层单源一致，ConfigStartupValidator 的冲突校验保持启用且必然放行。
+
 端口编号方案与退役前的静态形态（现保留为 docker-compose.multi.legacy.yml）逐实例一致，
-生成结果直接写入 docker-compose.multi.yml；重复执行输出幂等。
+生成结果直接写入 docker-compose.multi.yml 与 Configs/multi/；重复执行输出幂等。
+未认证的 MongoDB 仅绑定 127.0.0.1，避免向外部接口暴露可读写的数据面。
 
 用法::
 
-    python3 scripts/multi/generate-docker-compose-multi.py            # 写入 docker-compose.multi.yml
+    python3 scripts/multi/generate-docker-compose-multi.py            # 写入 docker-compose.multi.yml 与 Configs/multi/
     python3 scripts/multi/generate-docker-compose-multi.py --check    # 校验已提交文件与生成结果一致（CI 冒烟）
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import pathlib
 import sys
 
@@ -58,6 +64,7 @@ DATABASE_NAME = "gameframex_multi"
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 OUTPUT_PATH = REPO_ROOT / "docker-compose.multi.yml"
+CONFIG_OUTPUT_DIR = REPO_ROOT / "Configs" / "multi"
 
 HEADER = """\
 # 本文件由 scripts/multi/generate-docker-compose-multi.py 生成（C143f Stage-6 拓扑环境变量生成器）。
@@ -108,6 +115,28 @@ def build_discovery_env(all_instances: list[dict]) -> list[str]:
     return lines
 
 
+def render_instance_config(instance: dict) -> str:
+    """渲染单实例配置段（列表形态，与 Configs/app_config.json 的多段结构同构）。
+
+    字段与值必须与下方 command 参数一一对应：ConfigStartupValidator 会比较实际出现的
+    CLI 字段与文件段值，二者不一致即启动前 fail fast，因此这里与 command 同源生成。
+    """
+    section = {
+        "ServerType": instance["role"],
+        "ServerId": instance["server_id"],
+        "ServerInstanceId": instance["instance_id"],
+        "InnerHost": "0.0.0.0",
+        "InnerPort": instance["inner_port"],
+        "OuterHost": "0.0.0.0",
+        "OuterPort": instance["inner_port"],
+        "HttpPort": instance["http_port"],
+        "IsEnableHttp": True,
+        "DataBaseUrl": DATABASE_URL,
+        "DataBaseName": DATABASE_NAME,
+    }
+    return json.dumps([section], indent=2, ensure_ascii=False) + "\n"
+
+
 def render_service(instance: dict, build_image: bool) -> list[str]:
     """渲染单个实例的 service 定义头（服务名 + 可选构建段 + 镜像）。"""
     lines = [f"  {instance['service']}:"]
@@ -144,7 +173,7 @@ def main() -> int:
         "    image: mongo:8.2",
         "    restart: unless-stopped",
         "    ports:",
-        f"      - \"{MONGO_HOST_PORT}:27017\"",
+        f"      - \"127.0.0.1:{MONGO_HOST_PORT}:27017\"",
         "    healthcheck:",
         "      test: [ \"CMD\", \"mongosh\", \"--quiet\", \"--eval\", \"db.runCommand({ ping: 1 }).ok\" ]",
         "      interval: 5s",
@@ -198,6 +227,7 @@ def main() -> int:
                 "    volumes:",
                 f"      - \"./running-multi/{instance['service']}/logs:/app/data/logs\"",
                 "      - \"./GameFrameX.Config/json:/app/Configs:ro\"",
+                f"      - \"./Configs/multi/{instance['service']}.json:/app/Configs/app_config.json:ro\"",
                 "    networks:",
                 "      - gameframex-multi",
                 "",
@@ -212,16 +242,44 @@ def main() -> int:
 
     content = "\n".join(out)
 
+    config_outputs = {
+        CONFIG_OUTPUT_DIR / f"{instance['service']}.json": render_instance_config(instance)
+        for instance in all_instances
+    }
+
     if args.check:
+        ok = True
         existing = args.output.read_text() if args.output.exists() else ""
         if existing != content:
             print(f"[FAIL] {args.output.name} 与生成结果不一致，请运行生成器更新后提交")
+            ok = False
+
+        committed = {path.name for path in CONFIG_OUTPUT_DIR.glob("*.json")} if CONFIG_OUTPUT_DIR.exists() else set()
+        expected = {path.name for path in config_outputs}
+        if committed != expected:
+            print(
+                f"[FAIL] {CONFIG_OUTPUT_DIR.name}/ 与生成结果不一致"
+                f"（多余: {sorted(committed - expected)}, 缺失: {sorted(expected - committed)}）"
+            )
+            ok = False
+        else:
+            for path, expected_content in config_outputs.items():
+                if path.read_text() != expected_content:
+                    print(f"[FAIL] {path.name} 与生成结果不一致，请运行生成器更新后提交")
+                    ok = False
+        if not ok:
             return 1
+
         print(f"[OK] {args.output.name} 与生成结果一致")
+        print(f"[OK] {CONFIG_OUTPUT_DIR.name}/ 共 {len(config_outputs)} 份实例配置与生成结果一致")
         return 0
 
     args.output.write_text(content)
     print(f"[OK] 已写入 {args.output}")
+    CONFIG_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    for path, config_content in config_outputs.items():
+        path.write_text(config_content)
+        print(f"[OK] 已写入 {path}")
     return 0
 
 

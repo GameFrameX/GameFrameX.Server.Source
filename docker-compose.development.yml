@@ -9,7 +9,7 @@ services:
     container_name: gfx-development-mongo
     restart: unless-stopped
     ports:
-      - "37017:27017"
+      - "127.0.0.1:37017:27017"
     healthcheck:
       test: [ "CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok" ]
       interval: 5s

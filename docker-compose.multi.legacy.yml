@@ -21,7 +21,7 @@ services:
     image: mongo:8.2
     restart: unless-stopped
     ports:
-      - "47017:27017"
+      - "127.0.0.1:47017:27017"
     healthcheck:
       test: [ "CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok" ]
       interval: 5s

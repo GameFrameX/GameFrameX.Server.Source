@@ -25,7 +25,7 @@ services:
     image: mongo:8.2
     restart: unless-stopped
     ports:
-      - "47017:27017"
+      - "127.0.0.1:47017:27017"
     healthcheck:
       test: [ "CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok" ]
       interval: 5s
@@ -65,6 +65,7 @@ services:
     volumes:
       - "./running-multi/social-1/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
+      - "./Configs/multi/social-1.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -96,6 +97,7 @@ services:
     volumes:
       - "./running-multi/social-2/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
+      - "./Configs/multi/social-2.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -131,6 +133,7 @@ services:
     volumes:
       - "./running-multi/game-1/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
+      - "./Configs/multi/game-1.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -166,6 +169,7 @@ services:
     volumes:
       - "./running-multi/game-2/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
+      - "./Configs/multi/game-2.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -201,6 +205,7 @@ services:
     volumes:
       - "./running-multi/game-3/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
+      - "./Configs/multi/game-3.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -236,6 +241,7 @@ services:
     volumes:
       - "./running-multi/game-4/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
+      - "./Configs/multi/game-4.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -271,6 +277,7 @@ services:
     volumes:
       - "./running-multi/game-5/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
+      - "./Configs/multi/game-5.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -306,6 +313,7 @@ services:
     volumes:
       - "./running-multi/game-6/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
+      - "./Configs/multi/game-6.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -341,6 +349,7 @@ services:
     volumes:
       - "./running-multi/game-7/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
+      - "./Configs/multi/game-7.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -376,6 +385,7 @@ services:
     volumes:
       - "./running-multi/game-8/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
+      - "./Configs/multi/game-8.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -411,6 +421,7 @@ services:
     volumes:
       - "./running-multi/game-9/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
+      - "./Configs/multi/game-9.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
@@ -446,6 +457,7 @@ services:
     volumes:
       - "./running-multi/game-10/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
+      - "./Configs/multi/game-10.json:/app/Configs/app_config.json:ro"
     networks:
       - gameframex-multi
 
