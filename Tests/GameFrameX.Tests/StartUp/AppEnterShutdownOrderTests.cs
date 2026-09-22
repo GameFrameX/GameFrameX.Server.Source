@@ -160,7 +160,8 @@ public class AppEnterShutdownOrderTests
 
         hostBeta.MarkReady();
         hostBeta.CompleteRun();
-        await startTask.WaitAsync(TimeSpan.FromSeconds(5));
+        var startUpTasks = await startTask.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(2, startUpTasks.Count);
     }
 
     /// <summary>
