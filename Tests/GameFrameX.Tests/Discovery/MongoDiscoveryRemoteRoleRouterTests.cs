@@ -210,6 +210,77 @@ public sealed class MongoDiscoveryRemoteRoleRouterTests
         }
     }
 
+    [Fact]
+    public async Task ForwardAsync_WithConcurrentCallsOnSameEndpoint_ShouldNeverInterleaveFrames()
+    {
+        using (var listener = new TcpListener(IPAddress.Loopback, 0))
+        {
+            listener.Start();
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            const int frameCount = 32;
+            var receiveTask = ReceiveFramesAsync(listener, frameCount);
+            var table = RoleRouteTable.FromInstances(new List<InstanceDescriptor>
+            {
+                new InstanceDescriptor("Game", "game-tcp-1", $"tcp://127.0.0.1:{port}", InstanceStatus.Active, 0, EndpointAddressKind.IPv4, 106, DateTime.UtcNow),
+            });
+
+            using (var forwarder = new TcpEnvelopeForwarder())
+            {
+                var router = new MongoDiscoveryRemoteRoleRouter(new FixedTableProvider(table), forwarder);
+                var sends = new List<Task<RoleRouteDelivery>>();
+                for (var index = 0; index < frameCount; index++)
+                {
+                    sends.Add(router.ForwardAsync(BuildEnvelope("Game", "game-tcp-1")));
+                }
+
+                await Task.WhenAll(sends);
+            }
+
+            // 同端点并发整帧写入必须串行化：每一帧的长度前缀与载荷都完整可解析，不允许交错破坏。
+            var completed = await Task.WhenAny(receiveTask, Task.Delay(TimeSpan.FromSeconds(15)));
+            Assert.Same(receiveTask, completed);
+            var envelopes = await receiveTask;
+            Assert.Equal(frameCount, envelopes.Count);
+            foreach (var envelope in envelopes)
+            {
+                Assert.Equal("Game", envelope.TargetRole);
+                Assert.Equal("game-tcp-1", envelope.TargetInstanceId);
+                var innerMessage = Assert.IsType<WirePayloadMessage>(ProtoBufSerializerHelper.Deserialize(envelope.InnerMessageBytes, typeof(WirePayloadMessage)));
+                Assert.Equal(42, innerMessage.PlayerId);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 接收并解码指定数量的标准帧（每帧 4B 总长 + 10B 头 + protobuf 载荷，帧间不允许交错）。
+    /// </summary>
+    private static async Task<List<RoleRouteEnvelopeMessage>> ReceiveFramesAsync(TcpListener listener, int frameCount)
+    {
+        var envelopes = new List<RoleRouteEnvelopeMessage>(frameCount);
+        using (var client = await listener.AcceptTcpClientAsync())
+        using (var stream = client.GetStream())
+        {
+            for (var index = 0; index < frameCount; index++)
+            {
+                var header = new byte[14];
+                await ReadExactAsync(stream, header);
+                var totalLength = BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(0, 4));
+                var messageId = BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(10, 4));
+                Assert.Equal(RoleRouteEnvelopeMessage.ReservedMessageId, messageId);
+
+                var payloadLength = totalLength - header.Length;
+                Assert.True(payloadLength > 0, $"The frame length prefix is corrupted: total length {totalLength}.");
+                var payload = new byte[payloadLength];
+                await ReadExactAsync(stream, payload);
+                envelopes.Add((RoleRouteEnvelopeMessage)ProtoBufSerializerHelper.Deserialize(payload, typeof(RoleRouteEnvelopeMessage)));
+            }
+
+            listener.Stop();
+        }
+
+        return envelopes;
+    }
+
     /// <summary>
     /// 接收并解码一帧标准格式信封消息（4B 总长 + 10B 头 + protobuf 载荷）。
     /// </summary>

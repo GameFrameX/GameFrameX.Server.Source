@@ -40,11 +40,14 @@ namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 /// </summary>
 /// <remarks>
 /// The default TCP send channel for D3 case 2/3 (C143d).
-/// One <see cref="IConnectionProvider"/> per target endpoint (each provider owns a
-/// single pooled connection), so different instances stay on independent
-/// connections. Frames reuse the standard codec layout, making the bytes
-/// compatible with the existing protocol stack; a write failure invalidates that
-/// endpoint's provider so the next forward reconnects.
+/// One connection bundle per target endpoint (a provider owning a single pooled
+/// connection plus a whole-frame write lock), so different instances stay on
+/// independent connections while concurrent forwards to the same endpoint are
+/// serialized — a frame's Write+Flush always runs inside the endpoint's write
+/// lock, so frame bytes never interleave. Frames reuse the standard codec
+/// layout, making the bytes compatible with the existing protocol stack; a
+/// write failure invalidates that endpoint's connection so the next forward
+/// reconnects.
 /// </remarks>
 public sealed class TcpEnvelopeForwarder : IEnvelopeForwarder, IDisposable
 {
@@ -57,12 +60,15 @@ public sealed class TcpEnvelopeForwarder : IEnvelopeForwarder, IDisposable
     private readonly IMessageCodec _messageCodec;
 
     /// <summary>
-    /// 目标端点 → 连接提供器（每端点单连接池）。
+    /// 目标端点 → 连接束（连接提供器 + 整帧写锁）。
     /// </summary>
     /// <remarks>
-    /// The per-endpoint connection providers (one pooled connection each).
+    /// The per-endpoint bundles: a connection provider (owning a single pooled
+    /// connection) plus the write lock that serializes whole-frame writes on
+    /// that connection, so concurrent forwards to the same endpoint can never
+    /// interleave frame bytes.
     /// </remarks>
-    private readonly ConcurrentDictionary<string, IConnectionProvider> _connectionProviders = new ConcurrentDictionary<string, IConnectionProvider>(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, EndpointConnection> _endpointConnections = new ConcurrentDictionary<string, EndpointConnection>(StringComparer.Ordinal);
 
     /// <summary>
     /// 初始化 TCP 信封转发器（标准编解码器）。
@@ -108,7 +114,7 @@ public sealed class TcpEnvelopeForwarder : IEnvelopeForwarder, IDisposable
         ArgumentNullException.ThrowIfNull(envelope, nameof(envelope));
 
         var endpointKey = $"{endpoint.Host}:{endpoint.Port}";
-        var connectionProvider = _connectionProviders.GetOrAdd(endpointKey, delegate (string key) { return new TcpConnectionProvider(); });
+        var connection = _endpointConnections.GetOrAdd(endpointKey, delegate (string key) { return new EndpointConnection(); });
         var envelopeMessage = new RoleRouteEnvelopeMessage
         {
             TargetRole = envelope.TargetRole,
@@ -123,31 +129,70 @@ public sealed class TcpEnvelopeForwarder : IEnvelopeForwarder, IDisposable
         {
             try
             {
-                var stream = await connectionProvider.GetOrCreateStreamAsync(endpoint.Host, endpoint.Port, cancellationToken);
-                await stream.WriteAsync(frame.Memory, cancellationToken);
-                await stream.FlushAsync(cancellationToken);
+                // 整帧串行化：提供器的信号量只保护连接获取/创建，Write+Flush 必须在同一把写锁的临界区内完成，
+                // 否则同端点的并发 ForwardAsync 会交错帧字节，接收端无法解析长度前缀。
+                await connection.WriteLock.WaitAsync(cancellationToken);
+                try
+                {
+                    var stream = await connection.Provider.GetOrCreateStreamAsync(endpoint.Host, endpoint.Port, cancellationToken);
+                    await stream.WriteAsync(frame.Memory, cancellationToken);
+                    await stream.FlushAsync(cancellationToken);
+                }
+                finally
+                {
+                    connection.WriteLock.Release();
+                }
             }
             catch (Exception exception) when (exception is IOException || exception is SocketException || exception is OperationCanceledException)
             {
-                connectionProvider.Invalidate();
+                connection.Provider.Invalidate();
                 throw;
             }
         }
     }
 
     /// <summary>
-    /// 释放全部连接提供器。
+    /// 释放全部端点连接束。
     /// </summary>
     /// <remarks>
-    /// Disposes every per-endpoint connection provider.
+    /// Disposes every per-endpoint bundle (connection provider and write lock).
     /// </remarks>
     public void Dispose()
     {
-        foreach (var pair in _connectionProviders)
+        foreach (var pair in _endpointConnections)
         {
             pair.Value.Dispose();
         }
 
-        _connectionProviders.Clear();
+        _endpointConnections.Clear();
+    }
+
+    /// <summary>
+    /// 单端点连接束：连接提供器 + 整帧写锁。
+    /// </summary>
+    /// <remarks>
+    /// The per-endpoint bundle: the connection provider (a single pooled
+    /// connection) plus the SemaphoreSlim write lock serializing whole-frame
+    /// writes on that connection.
+    /// </remarks>
+    private sealed class EndpointConnection : IDisposable
+    {
+        /// <summary>连接提供器（单连接池）/ The connection provider (one pooled connection)</summary>
+        public IConnectionProvider Provider { get; } = new TcpConnectionProvider();
+
+        /// <summary>整帧写锁 / The whole-frame write lock</summary>
+        public SemaphoreSlim WriteLock { get; } = new SemaphoreSlim(1, 1);
+
+        /// <summary>
+        /// 释放连接与写锁。
+        /// </summary>
+        /// <remarks>
+        /// Releases the connection and the write lock.
+        /// </remarks>
+        public void Dispose()
+        {
+            Provider.Dispose();
+            WriteLock.Dispose();
+        }
     }
 }
