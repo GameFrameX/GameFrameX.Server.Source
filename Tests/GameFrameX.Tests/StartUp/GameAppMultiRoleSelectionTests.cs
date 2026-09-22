@@ -29,7 +29,8 @@
 
 
 using GameFrameX.StartUp;
-using Xunit;
+using GameFrameX.StartUp.Options;
+using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Tests.StartUp;
 
@@ -156,6 +157,60 @@ public class GameAppMultiRoleSelectionTests
         Assert.DoesNotContain("Gamma", conflictTable);
 
         Assert.Null(GameApp.GetPriorityConflictTable(CreateSortedStartUpTypes()));
+    }
+
+    /// <summary>
+    /// 缺配置段的多个 Role 各获得独立 AppSetting：不共享启动器选项实例，ServerType 为当前 Role 名。
+    /// </summary>
+    [Fact]
+    public void ResolveAppSetting_MissingConfigSection_EachRoleGetsIndependentSettingWithOwnServerType()
+    {
+        var launcherOptions = new StartupOptions { ServerType = "Alpha,Beta", ServerId = 42, InnerPort = 25000, };
+        var appSettings = Array.Empty<AppSetting>();
+
+        var alphaSetting = GameApp.ResolveAppSetting("Alpha", appSettings, launcherOptions, warnOnMissingConfiguration: false);
+        var betaSetting = GameApp.ResolveAppSetting("Beta", appSettings, launcherOptions, warnOnMissingConfiguration: false);
+
+        Assert.NotNull(alphaSetting);
+        Assert.NotNull(betaSetting);
+        Assert.NotSame(alphaSetting, betaSetting);
+        Assert.NotSame(alphaSetting, launcherOptions);
+        Assert.NotSame(betaSetting, launcherOptions);
+        Assert.Equal("Alpha", alphaSetting.ServerType);
+        Assert.Equal("Beta", betaSetting.ServerType);
+
+        // 启动器选项值被复制到各 Role 副本，且副本互不影响
+        Assert.Equal(42, alphaSetting.ServerId);
+        Assert.Equal(42, betaSetting.ServerId);
+        Assert.Equal(25000, alphaSetting.InnerPort);
+        alphaSetting.InnerPort = 29999;
+        Assert.Equal(25000, betaSetting.InnerPort);
+        Assert.Equal(25000, launcherOptions.InnerPort);
+    }
+
+    /// <summary>
+    /// 配置段存在时优先返回配置段实例（现状行为不变）。
+    /// </summary>
+    [Fact]
+    public void ResolveAppSetting_ExistingConfigSection_ReturnsSectionInstance()
+    {
+        var sectionSetting = new AppSetting { ServerType = "Alpha", ServerId = 7, };
+        var launcherOptions = new StartupOptions { ServerType = "Alpha,Beta", ServerId = 42, };
+
+        var resolved = GameApp.ResolveAppSetting("Alpha", new[] { sectionSetting }, launcherOptions, warnOnMissingConfiguration: false);
+
+        Assert.Same(sectionSetting, resolved);
+    }
+
+    /// <summary>
+    /// 启动器选项不可用（参数解析失败）时返回 null，让 Role 的 Init 创建自己的缺省配置。
+    /// </summary>
+    [Fact]
+    public void ResolveAppSetting_NullLauncherOptions_ReturnsNullForRoleDefaults()
+    {
+        var resolved = GameApp.ResolveAppSetting("Alpha", Array.Empty<AppSetting>(), null, warnOnMissingConfiguration: false);
+
+        Assert.Null(resolved);
     }
 
     /// <summary>

@@ -362,18 +362,24 @@ public static class GameApp
     }
 
     /// <summary>
-    /// 解析指定 Role 的应用程序配置（配置段优先，回落启动器选项）。
+    /// 解析指定 Role 的应用程序配置（配置段优先，回落启动器选项的独立副本）。
     /// </summary>
     /// <remarks>
     /// Resolves the application settings for the given role: the matching config file section wins;
-    /// otherwise the launcher options serve as the default fallback (current behaviour preserved).
+    /// otherwise each role gets an independent copy of the launcher options with
+    /// <see cref="AppSetting.ServerType"/> fixed to that role — multiple roles never share one
+    /// mutable <see cref="AppSetting"/> instance, and configuration/logging/event flows that read
+    /// <c>Setting.ServerType</c> always observe the single current role name instead of the raw
+    /// comma-separated CLI value (e.g. "Game,Social"). When the launcher options themselves are
+    /// unavailable (argument parsing failed), <c>null</c> is returned so the role's
+    /// <see cref="AppStartUpBase.Init"/> override creates its own role-level defaults.
     /// </remarks>
     /// <param name="serverType">服务器类型标识符 / The server type identifier</param>
     /// <param name="appSettings">配置中的应用程序设置集合 / Collection of application settings from configuration</param>
     /// <param name="launcherOptions">用于默认配置的启动器选项 / Launcher options for default configuration</param>
     /// <param name="warnOnMissingConfiguration">无配置段时是否记 Warning / Whether to warn when the config section is missing</param>
-    /// <returns>该 Role 的应用程序配置 / The application settings for the role</returns>
-    private static AppSetting ResolveAppSetting(string serverType, IEnumerable<AppSetting> appSettings, StartupOptions launcherOptions, bool warnOnMissingConfiguration)
+    /// <returns>该 Role 的应用程序配置；启动器选项不可用时为 null / The application settings for the role, or null when the launcher options are unavailable</returns>
+    internal static AppSetting ResolveAppSetting(string serverType, IEnumerable<AppSetting> appSettings, StartupOptions launcherOptions, bool warnOnMissingConfiguration)
     {
         var appSetting = appSettings.FirstOrDefault(m => m.ServerType == serverType);
         if (appSetting != null)
@@ -386,7 +392,49 @@ public static class GameApp
             LogHelper.Warning(LocalizationService.GetString(Keys.StartUp.NoConfigurationUseDefault, serverType));
         }
 
-        return launcherOptions;
+        // 启动器选项解析失败：返回 null，让各 Role 的 Init 用自己的缺省配置
+        if (launcherOptions == null)
+        {
+            return null;
+        }
+
+        return CreateRoleDefaultSetting(serverType, launcherOptions);
+    }
+
+    /// <summary>
+    /// 从启动器选项构建指定 Role 的独立默认配置（C143b：缺失配置段的 Role 各持一份配置实例）。
+    /// </summary>
+    /// <remarks>
+    /// Builds an independent default <see cref="AppSetting"/> for the given role from the launcher options
+    /// (C143b: every role missing a config section holds its own instance). Copies the AppSetting-level
+    /// property values of the launcher options, then fixes <see cref="AppSetting.ServerType"/> to the
+    /// current role name (its init-only setter also updates <c>ServerName</c>), never leaking the raw
+    /// comma-separated CLI value ("Game,Social") into a per-role setting.
+    /// </remarks>
+    /// <param name="serverType">服务器类型标识符 / The server type identifier</param>
+    /// <param name="launcherOptions">启动器选项 / The launcher options</param>
+    /// <returns>该 Role 的独立默认配置 / The independent default settings for the role</returns>
+    private static AppSetting CreateRoleDefaultSetting(string serverType, StartupOptions launcherOptions)
+    {
+        var roleSetting = new AppSetting();
+        foreach (var property in typeof(AppSetting).GetProperties())
+        {
+            if (!property.CanRead || !property.CanWrite)
+            {
+                continue;
+            }
+
+            if (property.Name == nameof(AppSetting.ServerType))
+            {
+                // ServerType 为 init-only 且必须使用当前 Role 名，不能沿用 "Game,Social" 组合值（init 限制仅在编译期，反射赋值合法）
+                property.SetValue(roleSetting, serverType);
+                continue;
+            }
+
+            property.SetValue(roleSetting, property.GetValue(launcherOptions));
+        }
+
+        return roleSetting;
     }
 
     /// <summary>
