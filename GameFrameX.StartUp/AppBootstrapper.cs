@@ -67,7 +67,7 @@ public static class AppBootstrapper
     /// </summary>
     /// <remarks>
     /// The initializing state marker (the first caller is currently running the kernel initialization delegate).
-    /// </summary>
+    /// </remarks>
     private const int Initializing = 2;
 
     /// <summary>
@@ -75,7 +75,7 @@ public static class AppBootstrapper
     /// </summary>
     /// <remarks>
     /// The initialization gate: serializes state transitions and lets concurrent waiters block until the initialization result is published.
-    /// </summary>
+    /// </remarks>
     private static readonly object InitializationGate = new object();
 
     /// <summary>
@@ -94,7 +94,7 @@ public static class AppBootstrapper
     /// </summary>
     /// <remarks>
     /// Gets whether the shared kernel has been initialized.
-    /// </summary>
+    /// </remarks>
     /// <value>已初始化则为 <c>true</c>；否则为 <c>false</c> / <c>true</c> if initialized; otherwise, <c>false</c></value>
     public static bool IsInitialized
     {

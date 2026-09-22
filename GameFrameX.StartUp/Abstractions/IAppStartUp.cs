@@ -95,15 +95,38 @@ public interface IAppStartUp
     Task StartAsync();
 
     /// <summary>
-    /// 获取启动就绪任务。
+    /// 获取启动就绪任务（破坏性新增成员，见迁移说明）。
     /// </summary>
     /// <remarks>
-    /// Gets the startup-ready task.
+    /// Gets the startup-ready task (a breaking addition — see the migration notes below).
     /// Completes when the role has finished its startup phase (databases, components, network listeners),
     /// long before its run-until-exit <see cref="StartAsync"/> task completes.
     /// The multi-role launcher awaits this signal of the current role before starting the next one
     /// (priority startup barrier, C143b D7), so lower-priority roles never run while a higher-priority
     /// role is still initializing shared infrastructure.
+    /// <para>
+    /// ⚠️ BREAKING CHANGE：本成员是 <see cref="IAppStartUp"/> 的必需成员。
+    /// 升级前版本中直接实现本接口的类型将无法编译，必须补齐本成员后迁移：
+    /// </para>
+    /// <para>
+    /// ⚠️ BREAKING CHANGE: this member is required on <see cref="IAppStartUp"/>.
+    /// Direct implementations written against previous versions fail to compile until migrated:
+    /// </para>
+    /// <list type="number">
+    /// <item>推荐改为继承 <see cref="AppStartUpBase"/>：基类已提供本成员（<c>TaskCompletionSource</c> 支撑），
+    /// 派生类只需在启动阶段结束时调用 <c>MarkStartUpReady()</c>；不调用也不会死锁——运行任务完成同样放行屏障。</item>
+    /// <item>recommended: derive from <see cref="AppStartUpBase"/>, which already provides this member
+    /// (backed by a <c>TaskCompletionSource</c>); derived classes only call <c>MarkStartUpReady()</c>
+    /// at the end of their startup phase — skipping the call cannot deadlock, because the barrier
+    /// is also released when the run task completes.</item>
+    /// <item>保持直接实现时，用自有 <c>TaskCompletionSource</c>（建议 <c>RunContinuationsAsynchronously</c>）支撑本成员，
+    /// 在启动阶段结束时 <c>TrySetResult()</c>；无法提供就绪语义的实现可返回 <see cref="Task.CompletedTask"/>
+    /// （等价于“启动即就绪”，不参与屏障等待）。</item>
+    /// <item>keeping a direct implementation: back this member with an own <c>TaskCompletionSource</c>
+    /// (preferably <c>RunContinuationsAsynchronously</c>) and <c>TrySetResult()</c> it at the end of the
+    /// startup phase; implementations with no readiness semantics may return <see cref="Task.CompletedTask"/>
+    /// (equivalent to "ready on start", opting out of the barrier wait).</item>
+    /// </list>
     /// </remarks>
     /// <value>启动就绪任务；启动阶段完成后完成 / The startup-ready task; completes when the startup phase is done</value>
     Task StartUpReadyTask { get; }

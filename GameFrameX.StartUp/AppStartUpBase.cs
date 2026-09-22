@@ -78,6 +78,9 @@ public abstract partial class AppStartUpBase : IAppStartUp
     /// </summary>
     /// <remarks>
     /// Gets the startup-ready task (C143b D7 priority startup barrier).
+    /// Satisfies the required <see cref="IAppStartUp.StartUpReadyTask"/> member (a breaking API addition):
+    /// classes deriving from this base need no migration, while direct <see cref="IAppStartUp"/>
+    /// implementers must provide the member themselves (see the interface remarks for the migration notes).
     /// Completes when the role calls <see cref="MarkStartUpReady"/> — i.e. its databases, components
     /// and network listeners are up — long before the run-until-exit <see cref="StartAsync"/> task completes.
     /// The multi-role launcher awaits this signal before starting the next role.
