@@ -54,7 +54,26 @@ public sealed class LocalEnvelopeDispatcher : ILocalRoleMessageDispatcher
         _offlineStrategy = offlineStrategy;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 把跨进程信封解包为本服本地投递。
+    /// </summary>
+    /// <remarks>
+    /// Unpacks the cross-process envelope for local delivery: the envelope
+    /// message must be a <see cref="RoleRouteEnvelopeMessage"/> (anything else is
+    /// dropped with a warning); the embedded
+    /// <see cref="RoleRouteEnvelopeMessage.InnerMessageId"/> is resolved through
+    /// <c>MessageProtoHelper</c>, the
+    /// <see cref="RoleRouteEnvelopeMessage.InnerMessageBytes"/> are deserialized
+    /// into the concrete message, and — when <see cref="MessageEnvelope.TargetActorId"/>
+    /// is valid and the player is still online — the message is re-delivered via the
+    /// injected <see cref="IPlayerLocalSender"/>. Unregistered ids, deserialization
+    /// failures, missing targets and offline players never throw: the envelope is
+    /// dropped after logging, per the best-effort "never block the route seam"
+    /// semantics.
+    /// </remarks>
+    /// <param name="envelope">路由信封（消息须为 RoleRouteEnvelopeMessage）/ The routing envelope (message must be a RoleRouteEnvelopeMessage)</param>
+    /// <param name="cancellationToken">取消操作的令牌 / The cancellation token</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="envelope"/> 为 null 时抛出 / Thrown when <paramref name="envelope"/> is null</exception>
     public async Task DispatchAsync(MessageEnvelope envelope, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(envelope, nameof(envelope));

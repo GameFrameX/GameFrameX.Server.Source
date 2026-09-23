@@ -56,10 +56,27 @@ internal sealed class TcpTransportProtocolAdapter : ITransportProtocolAdapter
         _connectionProvider = connectionProvider;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取协议名称，固定返回 TCP。
+    /// </summary>
+    /// <remarks>
+    /// Gets the protocol name, always returning TCP.
+    /// </remarks>
     public string ProtocolName => "TCP";
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取或创建目标服务对应的可用 TCP 流：解析服务端点并拆分主机与端口，
+    /// 端点非法时抛出 <see cref="RemoteEndpointNotFoundException"/>，否则委托连接提供器获取或建立流。
+    /// </summary>
+    /// <remarks>
+    /// Gets an existing or creates a new usable TCP stream for the target service: it resolves the service endpoint
+    /// and splits it into host and port, throws <see cref="RemoteEndpointNotFoundException"/> when the endpoint is invalid,
+    /// and otherwise delegates to the connection provider to get or create the stream.
+    /// </remarks>
+    /// <param name="serviceName">目标服务名 / Target service name</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>可用流 / Usable stream</returns>
+    /// <exception cref="RemoteEndpointNotFoundException">服务端点无法解析为主机与端口时抛出 / Thrown when the service endpoint cannot be parsed into host and port</exception>
     public async Task<Stream> GetOrCreateStreamAsync(string serviceName, CancellationToken cancellationToken = default)
     {
         var endpoint = _endpointResolver.ResolveTcpEndpoint(serviceName);
@@ -71,20 +88,39 @@ internal sealed class TcpTransportProtocolAdapter : ITransportProtocolAdapter
         return await _connectionProvider.GetOrCreateStreamAsync(host, port, cancellationToken);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 检查目标服务是否可用：解析服务端点并尝试拆分主机与端口，解析成功即视为可用。
+    /// </summary>
+    /// <remarks>
+    /// Checks whether the target service is available: it resolves the service endpoint and tries to split it
+    /// into host and port; a successful parse means the service is available.
+    /// </remarks>
+    /// <param name="serviceName">目标服务名 / Target service name</param>
+    /// <returns>端点可解析为合法主机与端口时返回 true / Returns true when the endpoint parses into a valid host and port</returns>
     public bool IsServiceAvailable(string serviceName)
     {
         var endpoint = _endpointResolver.ResolveTcpEndpoint(serviceName);
         return TryParseTcpEndpoint(endpoint, out _, out _);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 标记连接失效：委托连接提供器丢弃当前连接，促使下次请求重建连接。
+    /// </summary>
+    /// <remarks>
+    /// Invalidates the connection by delegating to the connection provider, so the next request can recreate it.
+    /// </remarks>
     public void Invalidate()
     {
         _connectionProvider.Invalidate();
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 释放适配器持有的资源：委托连接提供器释放其管理的连接。
+    /// </summary>
+    /// <remarks>
+    /// Disposes the resources held by the adapter by delegating to the connection provider
+    /// to release the connections it manages.
+    /// </remarks>
     public void Dispose()
     {
         _connectionProvider.Dispose();

@@ -58,7 +58,19 @@ public sealed class MongoPlayerRouteResolver : IPlayerRouteResolver
         _fastPath = fastPath;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 按三级策略解析玩家当前路由位置。
+    /// </summary>
+    /// <remarks>
+    /// Resolves the player's current routing location through the three tiers:
+    /// non-positive ids return <see cref="PlayerRouteInfo.Offline"/> immediately;
+    /// Tier 1 consults the injected fast path (skipped when not injected, and a
+    /// negative answer falls through); Tier 2 reads the control-database
+    /// <c>player_route</c> collection through the 30-second per-player cache; a
+    /// miss anywhere falls through to the Tier 3 offline answer.
+    /// </remarks>
+    /// <param name="playerId">玩家 ID / The player id</param>
+    /// <returns>在线时含 role + serverId 的路由信息，否则离线标记 / The online route info carrying role + serverId, or the offline marker</returns>
     public async Task<PlayerRouteInfo> ResolveAsync(long playerId)
     {
         if (playerId <= 0)

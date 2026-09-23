@@ -96,7 +96,15 @@ public sealed class ParsedEndpoint
     /// <value>主机形态 / The address kind</value>
     public EndpointAddressKind AddressKind { get; }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 返回 scheme://host:port 形式的 URI 字符串（IPv6 主机重新加上方括号）。
+    /// </summary>
+    /// <remarks>
+    /// Returns the endpoint in URI form (<c>scheme://host:port</c>); IPv6 hosts
+    /// (stored without brackets) are re-wrapped as <c>scheme://[host]:port</c>
+    /// so the string parses back to the same endpoint.
+    /// </remarks>
+    /// <returns>scheme://host:port 字符串（IPv6 主机带方括号）/ The scheme://host:port string (IPv6 hosts bracketed)</returns>
     public override string ToString()
     {
         if (AddressKind == EndpointAddressKind.IPv6)

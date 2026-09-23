@@ -54,10 +54,24 @@ internal sealed class KcpTransportProtocolAdapter : ITransportProtocolAdapter
         _endpointResolver = endpointResolver;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取协议名称，固定返回 KCP。
+    /// </summary>
+    /// <remarks>
+    /// Gets the protocol name, always returning KCP.
+    /// </remarks>
     public string ProtocolName => "KCP";
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取或创建流的占位实现：仅解析出服务端点即抛出 <see cref="NotSupportedException"/>，KCP 传输尚未接入。
+    /// </summary>
+    /// <remarks>
+    /// Placeholder implementation for getting or creating a stream: it only resolves the service endpoint
+    /// and then throws <see cref="NotSupportedException"/> because KCP transport is not wired yet.
+    /// </remarks>
+    /// <param name="serviceName">目标服务名 / Target service name</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <exception cref="NotSupportedException">KCP 传输尚未接入，恒抛出 / Always thrown since KCP transport is not wired yet</exception>
     public Task<Stream> GetOrCreateStreamAsync(string serviceName, CancellationToken cancellationToken = default)
     {
         var endpoint = _endpointResolver.ResolveTcpEndpoint(serviceName);
@@ -65,7 +79,15 @@ internal sealed class KcpTransportProtocolAdapter : ITransportProtocolAdapter
             $"KCP adapter is not wired yet for service '{serviceName}'. Raw endpoint: '{endpoint}'.");
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 检查目标服务是否可用：沿用 TCP 发现键解析端点，端点非空白即视为可用。
+    /// </summary>
+    /// <remarks>
+    /// Checks whether the target service is available: it reuses the TCP discovery key to resolve the endpoint
+    /// and treats any non-whitespace endpoint as available.
+    /// </remarks>
+    /// <param name="serviceName">目标服务名 / Target service name</param>
+    /// <returns>端点解析结果非空白时返回 true / Returns true when the resolved endpoint is non-whitespace</returns>
     public bool IsServiceAvailable(string serviceName)
     {
         // 当前沿用现有发现键做可用性预判，后续接入 KCP 专属端点后可替换。
@@ -73,13 +95,25 @@ internal sealed class KcpTransportProtocolAdapter : ITransportProtocolAdapter
         return !string.IsNullOrWhiteSpace(endpoint);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 标记连接失效的占位实现：占位适配器无持久连接状态，本方法不执行任何操作，仅保留接口兼容统一调用流程。
+    /// </summary>
+    /// <remarks>
+    /// Placeholder implementation of invalidation: the placeholder adapter holds no persistent connection state,
+    /// so this method does nothing and only keeps the interface compatible with the unified call flow.
+    /// </remarks>
     public void Invalidate()
     {
         // 占位实现无持久连接状态，保留接口以兼容统一调用流程。
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 释放资源的占位实现：占位适配器不持有任何托管或非托管资源，本方法不执行任何操作。
+    /// </summary>
+    /// <remarks>
+    /// Placeholder implementation of disposal: the placeholder adapter holds no managed or unmanaged resources,
+    /// so this method does nothing.
+    /// </remarks>
     public void Dispose()
     {
         // 占位实现无非托管资源。

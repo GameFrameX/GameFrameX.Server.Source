@@ -110,7 +110,15 @@ public sealed class RoleRouteEnvelopeMessage : MessageObject
     [ProtoMember(5)]
     public byte[] InnerMessageBytes { get; set; }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 清空信封的全部序列化字段为默认值。
+    /// </summary>
+    /// <remarks>
+    /// Resets every serialized envelope field to its default:
+    /// <see cref="TargetRole"/> and <see cref="TargetInstanceId"/> to null,
+    /// <see cref="TargetActorId"/> and <see cref="InnerMessageId"/> to zero, and
+    /// <see cref="InnerMessageBytes"/> to null.
+    /// </remarks>
     public override void Clear()
     {
         TargetRole = null;

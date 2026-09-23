@@ -49,7 +49,16 @@ public sealed class RoutingPlayerRouteResolverAdapter : IPlayerRouteResolver
         _innerResolver = innerResolver;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 解析玩家路由信息。委托内部 Routing 侧解析器查询，并将结果逐字段映射为 Unified 契约：
+    /// 在线路由转换为 <see cref="PlayerRouteInfo.Online"/>，离线路由转换为 <see cref="PlayerRouteInfo.Offline"/>，路由缺失时返回 null。
+    /// </summary>
+    /// <remarks>
+    /// Resolves player route information. Delegates to the wrapped Routing-side resolver and maps the result field-by-field into the Unified contract:
+    /// online routes become <see cref="PlayerRouteInfo.Online"/>, offline routes become <see cref="PlayerRouteInfo.Offline"/>, and a missing route returns null.
+    /// </remarks>
+    /// <param name="playerId">玩家ID / Player ID</param>
+    /// <returns>Unified 路由信息，null 表示路由缺失 / Unified route information, null indicates route missing</returns>
     public async Task<PlayerRouteInfo> ResolveAsync(long playerId)
     {
         var route = await _innerResolver.ResolveAsync(playerId).ConfigureAwait(false);

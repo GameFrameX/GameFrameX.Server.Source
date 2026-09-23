@@ -94,7 +94,19 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
 
     #region SendToPlayerAsync
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 发送消息给目标玩家。按“本服直发 → 路由解析 → 跨服转发 → 离线处理”的顺序执行完整投递链路，
+    /// 全程记录耗时与 traceId 指标；参数非法、取消或异常时返回对应的失败结果。
+    /// </summary>
+    /// <remarks>
+    /// Sends a message to the target player. Runs the full delivery pipeline in the order "local delivery → route resolution → cross-server forwarding → offline handling",
+    /// recording elapsed time and traceId metrics throughout; returns a corresponding failure result on invalid arguments, cancellation, or exceptions.
+    /// </remarks>
+    /// <param name="playerId">目标玩家ID / Target player ID</param>
+    /// <param name="message">消息对象 / Message object</param>
+    /// <param name="options">发送选项 / Send options</param>
+    /// <param name="ct">取消令牌 / Cancellation token</param>
+    /// <returns>发送结果 / Send result</returns>
     public async Task<PlayerSendResult> SendToPlayerAsync(
         long playerId,
         MessageObject message,
@@ -314,7 +326,22 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
 
     #region SendToServerAsync
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 发送请求-响应消息给目标服务。按需刷新实例列表并选择目标实例，
+    /// 依据 AllowRetry 决定走带重试或不带重试的远程调用，并将结果转换为结构化发送结果；
+    /// 服务名/消息为空、取消或异常时返回对应的失败结果。
+    /// </summary>
+    /// <remarks>
+    /// Sends a request-response message to the target service. Refreshes the instance list on demand and selects a target instance,
+    /// then performs a remote call with or without retry depending on AllowRetry and converts the result into a structured send result;
+    /// returns a corresponding failure result on empty service name/message, cancellation, or exceptions.
+    /// </remarks>
+    /// <typeparam name="TResp">响应消息类型 / Response message type</typeparam>
+    /// <param name="serviceName">目标服务名 / Target service name</param>
+    /// <param name="message">请求消息对象 / Request message object</param>
+    /// <param name="options">发送选项 / Send options</param>
+    /// <param name="ct">取消令牌 / Cancellation token</param>
+    /// <returns>结构化调用结果 / Structured call result</returns>
     public async Task<ServerSendResult<TResp>> SendToServerAsync<TResp>(
         string serviceName,
         MessageObject message,
@@ -388,7 +415,19 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
 
     #region SendToServerOneWayAsync
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 单向发送消息给目标服务，不等待响应。按需刷新实例列表并选择目标实例后执行单向远程调用；
+    /// 服务名/消息为空或调用异常时返回对应的失败结果。
+    /// </summary>
+    /// <remarks>
+    /// Sends a one-way message to the target service without waiting for a response. Refreshes the instance list on demand, selects a target instance, then performs the one-way remote call;
+    /// returns a corresponding failure result on empty service name/message or call exceptions.
+    /// </remarks>
+    /// <param name="serviceName">目标服务名 / Target service name</param>
+    /// <param name="message">消息对象 / Message object</param>
+    /// <param name="options">发送选项 / Send options</param>
+    /// <param name="ct">取消令牌 / Cancellation token</param>
+    /// <returns>发送结果 / Send result</returns>
     public async Task<ServerSendResult> SendToServerOneWayAsync(
         string serviceName,
         MessageObject message,

@@ -42,7 +42,27 @@ public sealed class MongoPlayerRouteSyncTarget : IPlayerRouteSyncTarget
         _collection = controlDatabase.GetCollection<PlayerRouteDocument>(PlayerRouteCollection.CollectionName);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 以 version CAS 语义把玩家路由原子写入控制库 player_route 集合。
+    /// </summary>
+    /// <remarks>
+    /// Atomically writes the player route into the control-database
+    /// <c>player_route</c> collection. Non-positive player ids are ignored; a
+    /// first login (<c>version &lt;= 1</c>) performs an unconditional upsert of a
+    /// fresh online document, while later relogins run a compare-and-swap update
+    /// matching only the persisted version equal to the supplied one — on a miss
+    /// the latest document is re-read: a deleted document returns silently (the
+    /// next SetOnline retries), an overtaken version throws
+    /// <see cref="PlayerRouteStaleException"/> for the SessionManager hook to
+    /// swallow.
+    /// </remarks>
+    /// <param name="playerId">玩家 ID / Player id</param>
+    /// <param name="instanceId">实例 ID / Instance id</param>
+    /// <param name="role">Role 名 / Role name</param>
+    /// <param name="version">顶号版本号 / Kick/relogin version</param>
+    /// <returns>异步任务 / Async task</returns>
+    /// <exception cref="ArgumentException">当 <paramref name="instanceId"/> 为空白时抛出 / Thrown when <paramref name="instanceId"/> is blank</exception>
+    /// <exception cref="PlayerRouteStaleException">当控制库中的版本已超过送入版本时抛出 / Thrown when the persisted version is already ahead of the supplied version</exception>
     public async Task UpsertAsync(long playerId, string instanceId, string role, long version)
     {
         if (playerId <= 0)
@@ -95,7 +115,16 @@ public sealed class MongoPlayerRouteSyncTarget : IPlayerRouteSyncTarget
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 从控制库 player_route 集合删除该玩家的路由文档。
+    /// </summary>
+    /// <remarks>
+    /// Deletes the player's route document from the control-database
+    /// <c>player_route</c> collection with a single delete; non-positive ids are
+    /// ignored and a missing document is not an error (idempotent semantics).
+    /// </remarks>
+    /// <param name="playerId">玩家 ID / Player id</param>
+    /// <returns>异步任务 / Async task</returns>
     public async Task DeleteAsync(long playerId)
     {
         if (playerId <= 0)

@@ -59,7 +59,17 @@ public sealed class ConsistentHashServerInstanceSelector : IServerInstanceSelect
         _virtualNodeCount = virtualNodeCount;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 选择目标服务实例。serviceName 为空或哈希环不存在/为空时返回未选中结果；
+    /// 提供 routeKey 时按一致性哈希定位实例，未提供时按轮询计数器轮转选择。
+    /// </summary>
+    /// <remarks>
+    /// Selects a target service instance. Returns a none-selection when serviceName is empty or the hash ring is missing/empty;
+    /// locates an instance by consistent hash when routeKey is provided, otherwise rotates instances via a round-robin counter.
+    /// </remarks>
+    /// <param name="serviceName">服务名 / Service name</param>
+    /// <param name="routeKey">路由键（可选）/ Route key (optional)</param>
+    /// <returns>实例选择结果 / Instance selection result</returns>
     public InstanceSelection Select(string serviceName, string routeKey = null)
     {
         if (string.IsNullOrEmpty(serviceName))
@@ -91,7 +101,16 @@ public sealed class ConsistentHashServerInstanceSelector : IServerInstanceSelect
         return InstanceSelection.Selected(serviceName, instances[index]);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 刷新服务的可用实例列表。instanceIds 为空时移除该服务的哈希环与轮询计数器，
+    /// 否则按配置的虚拟节点数重建哈希环。
+    /// </summary>
+    /// <remarks>
+    /// Refreshes the available instance list of a service. Removes the service's hash ring and round-robin counter when instanceIds is empty,
+    /// otherwise rebuilds the hash ring with the configured virtual node count.
+    /// </remarks>
+    /// <param name="serviceName">服务名 / Service name</param>
+    /// <param name="instanceIds">可用实例ID列表 / Available instance IDs</param>
     public void RefreshInstances(string serviceName, IReadOnlyList<string> instanceIds)
     {
         if (string.IsNullOrEmpty(serviceName))

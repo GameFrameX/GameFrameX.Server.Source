@@ -32,13 +32,33 @@ public sealed class NullPlayerRouteSyncTarget : IPlayerRouteSyncTarget
     {
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// NoOp 实现：不写入控制库，直接返回已完成任务。
+    /// </summary>
+    /// <remarks>
+    /// NoOp implementation: writes nothing to any control store and returns an
+    /// already-completed task, so the local PlayerRouteMap stays the single
+    /// source of truth.
+    /// </remarks>
+    /// <param name="playerId">玩家 ID / Player id</param>
+    /// <param name="instanceId">实例 ID / Instance id</param>
+    /// <param name="role">Role 名 / Role name</param>
+    /// <param name="version">顶号版本号 / Kick/relogin version</param>
+    /// <returns>已完成的任务 / The completed task</returns>
     public Task UpsertAsync(long playerId, string instanceId, string role, long version)
     {
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// NoOp 实现：不删除任何文档，直接返回已完成任务。
+    /// </summary>
+    /// <remarks>
+    /// NoOp implementation: deletes nothing and returns an already-completed
+    /// task.
+    /// </remarks>
+    /// <param name="playerId">玩家 ID / Player id</param>
+    /// <returns>已完成的任务 / The completed task</returns>
     public Task DeleteAsync(long playerId)
     {
         return Task.CompletedTask;

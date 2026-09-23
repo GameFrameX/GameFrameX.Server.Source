@@ -62,7 +62,12 @@ public sealed class ReqSendToPlayerInner : MessageObject, IRequestMessage
     [ProtoMember(2)]
     public MessageObject InnerMessage { get; set; }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 清除消息内容。重置目标玩家ID为 0 并将待投递的原始消息置为 null。
+    /// </summary>
+    /// <remarks>
+    /// Clears the message content. Resets the target player ID to 0 and sets the inner message to deliver to null.
+    /// </remarks>
     public override void Clear()
     {
         TargetPlayerId = 0;
@@ -97,11 +102,22 @@ public sealed class RespSendToPlayerInner : MessageObject, IResponseMessage
     [ProtoMember(2)]
     public bool PlayerOffline { get; set; }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取或设置跨服投递的错误码，非 0 表示错误。
+    /// </summary>
+    /// <remarks>
+    /// Gets or sets the error code for cross-server delivery. Non-zero value indicates an error.
+    /// </remarks>
+    /// <value>错误码，非 0 表示错误 / Error code, non-zero indicates an error</value>
     [ProtoMember(3)]
     public int ErrorCode { get; set; }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 清除消息内容。重置投递成功标志与玩家离线标志为 false，并将错误码归 0。
+    /// </summary>
+    /// <remarks>
+    /// Clears the message content. Resets the delivery success and player-offline flags to false, and resets the error code to 0.
+    /// </remarks>
     public override void Clear()
     {
         Success = false;
