@@ -47,7 +47,16 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
     [Description("Admin 发布运营邮件 Campaign")]
     public sealed class PublishMailCampaignHttpHandler : BaseHttpHandler
     {
-        /// <inheritdoc />
+        /// <summary>
+        /// 处理发布运营邮件 Campaign 的 HTTP 请求。校验通过后调用发布 / 覆盖草稿并返回 CampaignId、发布版本与发布时间；Campaign 已发布或已撤回导致主体字段不可修改（B1，InvalidOperationException）以及参数非法时返回对应错误码的 JSON 响应。
+        /// </summary>
+        /// <remarks>
+        /// Handles the HTTP request for publishing a mail campaign. After validation passes, publishes or overwrites the draft and returns the campaign id, publish version, and publish time; returns a JSON response with the corresponding error code when the campaign is already published or revoked so its main fields cannot be modified (B1, InvalidOperationException) or a parameter is invalid.
+        /// </remarks>
+        /// <param name="ip">客户端 IP 地址 / Client IP address</param>
+        /// <param name="url">请求的 URL / Request URL</param>
+        /// <param name="request">发布 Campaign 请求对象 / Publish campaign request object</param>
+        /// <returns>处理结果的 JSON 字符串 / JSON string of the processing result</returns>
         public override async Task<string> Action(string ip, string url, HttpMessageRequestBase request)
         {
             var publishRequest = (PublishMailCampaignRequest)request;

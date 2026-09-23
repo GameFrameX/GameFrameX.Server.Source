@@ -41,14 +41,29 @@ namespace GameFrameX.Hotfix.Logic.Server.Unified;
 /// </remarks>
 public sealed class DefaultPlayerLocalSender : IPlayerLocalSender
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 检查玩家是否在本服在线。通过 SessionManager 查找玩家会话，仅当会话存在且工作通道不为空时视为在线。
+    /// </summary>
+    /// <remarks>
+    /// Checks whether the player is online on the local server. Looks up the player session via SessionManager and treats the player as online only when the session exists and its work channel is not null.
+    /// </remarks>
+    /// <param name="playerId">玩家ID / Player ID</param>
+    /// <returns>是否在线 / Whether online</returns>
     public bool IsPlayerOnline(long playerId)
     {
         var session = SessionManager.GetByRoleId(playerId);
         return session != null && session.WorkChannel != null;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 直接发送消息给本服在线玩家。通过会话异步写入消息，会话不存在或写入抛出异常时返回 false，不向上传播异常。
+    /// </summary>
+    /// <remarks>
+    /// Sends a message directly to an online player on the local server. Writes the message asynchronously through the session; returns false without propagating exceptions when the session is missing or the write throws.
+    /// </remarks>
+    /// <param name="playerId">玩家ID / Player ID</param>
+    /// <param name="message">消息对象 / Message object</param>
+    /// <returns>是否发送成功 / Whether the send was successful</returns>
     public async Task<bool> SendToLocalPlayerAsync(long playerId, MessageObject message)
     {
         var session = SessionManager.GetByRoleId(playerId);

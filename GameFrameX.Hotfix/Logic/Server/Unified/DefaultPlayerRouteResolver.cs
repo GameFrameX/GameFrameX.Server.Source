@@ -45,7 +45,14 @@ namespace GameFrameX.Hotfix.Logic.Server.Unified;
 /// </remarks>
 public sealed class DefaultPlayerRouteResolver : IPlayerRouteResolver
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 解析玩家路由信息。优先按本服 SessionManager 会话命中，服务类型与 ID 取自全局配置；未命中时回退到 SessionManager 内存路由表，按快照返回在线或离线；两者均未命中时默认返回离线。
+    /// </summary>
+    /// <remarks>
+    /// Resolves player route information. First checks the local SessionManager session with server type and id taken from global settings; when missing, falls back to the SessionManager in-memory route table and returns online or offline based on the snapshot; returns offline by default when neither hits.
+    /// </remarks>
+    /// <param name="playerId">玩家ID / Player ID</param>
+    /// <returns>玩家路由信息，本实现始终返回非 null，未命中时为离线信息 / Player route info; this implementation never returns null and yields offline info when missing</returns>
     public Task<PlayerRouteInfo> ResolveAsync(long playerId)
     {
         // 检查本服是否有该玩家的 session

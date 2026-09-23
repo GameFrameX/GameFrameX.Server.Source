@@ -47,7 +47,16 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
     [Description("Admin 预览 / 校验运营邮件 Campaign")]
     public sealed class PreviewMailCampaignHttpHandler : BaseHttpHandler
     {
-        /// <inheritdoc />
+        /// <summary>
+        /// 处理预览 / 校验运营邮件 Campaign 参数的 HTTP 请求（不落库）。构造 Campaign 状态并校验，校验通过后执行预览并返回预估命中规模；校验失败或参数非法（ArgumentException）时返回对应错误码的 JSON 响应。
+        /// </summary>
+        /// <remarks>
+        /// Handles the HTTP request for previewing / validating a mail campaign (without persistence). Builds the campaign state and validates it, then runs the preview and returns the estimated hit count; returns a JSON response with the corresponding error code when validation fails or a parameter is invalid (ArgumentException).
+        /// </remarks>
+        /// <param name="ip">客户端 IP 地址 / Client IP address</param>
+        /// <param name="url">请求的 URL / Request URL</param>
+        /// <param name="request">预览 / 校验 Campaign 请求对象 / Preview / validation campaign request object</param>
+        /// <returns>处理结果的 JSON 字符串 / JSON string of the processing result</returns>
         public override async Task<string> Action(string ip, string url, HttpMessageRequestBase request)
         {
             var previewRequest = (PreviewMailCampaignRequest)request;

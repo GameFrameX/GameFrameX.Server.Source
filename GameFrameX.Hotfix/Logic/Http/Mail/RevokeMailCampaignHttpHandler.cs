@@ -45,7 +45,16 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
     [Description("Admin 撤回运营邮件 Campaign")]
     public sealed class RevokeMailCampaignHttpHandler : BaseHttpHandler
     {
-        /// <inheritdoc />
+        /// <summary>
+        /// 处理撤回运营邮件 Campaign 的 HTTP 请求。调用注册表撤回将状态置为 Revoked 并返回撤回时间（B3：已发放资产不回滚）；Campaign 不存在、已撤回不可重复撤回或其他失败时返回对应错误码的 JSON 响应。
+        /// </summary>
+        /// <remarks>
+        /// Handles the HTTP request for revoking a mail campaign. Invokes the registry revoke to mark the campaign as Revoked and returns the revoked time (B3: granted assets are not rolled back); returns a JSON response with the corresponding error code when the campaign is missing, already revoked, or fails otherwise.
+        /// </remarks>
+        /// <param name="ip">客户端 IP 地址 / Client IP address</param>
+        /// <param name="url">请求的 URL / Request URL</param>
+        /// <param name="request">撤回 Campaign 请求对象 / Revoke campaign request object</param>
+        /// <returns>处理结果的 JSON 字符串 / JSON string of the processing result</returns>
         public override async Task<string> Action(string ip, string url, HttpMessageRequestBase request)
         {
             var revokeRequest = (RevokeMailCampaignRequest)request;
