@@ -73,8 +73,13 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
             // C143d D11-D15：控制库就绪后激活 Mongo 发现层——读侧 watcher + 写侧心跳（未配置广播端口时自动跳过）
             // 并以真实 case 2/3 转发器重装跨 Role 路由缝（替换 C143c 占位）。幂等：多 Role 进程首个调用生效。
             // C143e D21：再激活玩家路由层（建 player_route 索引 + 装 SyncTarget），Tier 1 fast-path 注入 SessionManager 适配器。
-            // C159：改走按名重载，控制库 IMongoDatabase 解析下沉到发现层内部。
-            MongoDiscoveryRuntime.Activate(GameDb.ControlDatabaseName, RoleSet.Current, GameFrameX.Apps.Common.Session.SessionManagerFastPathAdapter.Instance);
+            // C159：控制库 IMongoDatabase 解析下沉到发现层内部；C154：收敛为激活参数对象。
+            MongoDiscoveryRuntime.Activate(new DiscoveryActivationOptions
+            {
+                ConnectionName = GameDb.ControlDatabaseName,
+                HostedRoleNames = RoleSet.Current,
+                PlayerRouteFastPath = GameFrameX.Apps.Common.Session.SessionManagerFastPathAdapter.Instance,
+            });
             GameFrameX.Apps.Common.Session.SessionManager.PlayerRouteSyncTarget = GameFrameX.NetWork.RemoteMessaging.Routing.MongoPlayerRouteResolverBootstrap.SyncTarget;
 
             var initResult = await GameDb.Init<MongoDbService>(Setting.DataBaseUrl, new DbOptions { Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });

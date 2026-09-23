@@ -91,7 +91,7 @@ public static class MongoDiscoveryRuntime
     /// Activate 时创建的远程转发器（挂接时原样复用，保证不动远程链）。
     /// </summary>
     /// <remarks>
-    /// The remote router created by <see cref="Activate(IMongoDatabase, IEnumerable{string}, IPlayerRouteFastPath)"/>; <see cref="AttachLocalDispatcher"/>
+    /// The remote router created by <see cref="Activate(DiscoveryActivationOptions)"/>; <see cref="AttachLocalDispatcher"/>
     /// reuses the exact instance so only the local slot ever changes.
     /// </remarks>
     private static IRemoteRoleRouter _remoteRouter;
@@ -113,16 +113,33 @@ public static class MongoDiscoveryRuntime
     /// exists (advertise port configured). <see cref="RoleRouterHolder"/> is then
     /// re-initialized over the hosted role names with the real remote router.
     /// Call this after the control database is registered; calling it more than
-    /// once per process is a no-op.
+    /// once per process is a no-op. The control database comes from
+    /// <see cref="DiscoveryActivationOptions.ControlDatabase"/> directly, or is
+    /// resolved through the unified <c>GameDb</c> entry when only
+    /// <see cref="DiscoveryActivationOptions.ConnectionName"/> is set (the C159
+    /// name-based overload folded into this options shape by C154).
     /// </remarks>
-    /// <param name="controlDatabase">控制库（gameframex_control）/ The control database</param>
-    /// <param name="hostedRoleNames">本进程承载的 Role 名全集（RoleSet 快照）/ The full hosted role-name set (the RoleSet snapshot)</param>
-    /// <param name="playerRouteFastPath">Tier 1 玩家路由快路径提供方（apps 端 SessionManager 适配器；null 则跳过 Tier 1）/ Tier 1 fast path; null skips Tier 1</param>
-    /// <exception cref="ArgumentNullException">当 <paramref name="controlDatabase"/> 或 <paramref name="hostedRoleNames"/> 为 null 时抛出 / Thrown when controlDatabase or hostedRoleNames is null</exception>
-    public static void Activate(IMongoDatabase controlDatabase, IEnumerable<string> hostedRoleNames, IPlayerRouteFastPath playerRouteFastPath = null)
+    /// <param name="options">激活参数（ControlDatabase / ConnectionName 二选一，HostedRoleNames 必填）/ Activation options (either ControlDatabase or ConnectionName; HostedRoleNames required)</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="options"/> 或 <c>HostedRoleNames</c> 为 null 时抛出 / Thrown when options or HostedRoleNames is null</exception>
+    /// <exception cref="ArgumentException">当 <c>ControlDatabase</c> 与 <c>ConnectionName</c> 均未设置时抛出 / Thrown when neither ControlDatabase nor ConnectionName is set</exception>
+    /// <exception cref="InvalidOperationException">当注册名未注册时抛出（由 MultiDbRegistry 经 GameDb.As 抛出）/ Thrown when the connection name is not registered (raised by MultiDbRegistry via GameDb.As)</exception>
+    public static void Activate(DiscoveryActivationOptions options)
     {
-        ArgumentNullException.ThrowIfNull(controlDatabase, nameof(controlDatabase));
-        ArgumentNullException.ThrowIfNull(hostedRoleNames, nameof(hostedRoleNames));
+        ArgumentNullException.ThrowIfNull(options, nameof(options));
+
+        var controlDatabase = options.ControlDatabase;
+        if (controlDatabase == null)
+        {
+            if (string.IsNullOrWhiteSpace(options.ConnectionName))
+            {
+                throw new ArgumentException("Either ControlDatabase or ConnectionName must be set.", nameof(options));
+            }
+
+            controlDatabase = GameDb.As<MongoDbService>(options.ConnectionName).CurrentDatabase;
+        }
+
+        var hostedRoleNames = options.HostedRoleNames;
+        ArgumentNullException.ThrowIfNull(hostedRoleNames, nameof(options.HostedRoleNames));
 
         if (Interlocked.CompareExchange(ref _activated, 1, 0) != 0)
         {
@@ -155,33 +172,7 @@ public static class MongoDiscoveryRuntime
         // C143e D21：玩家路由层装配（建索引 + 装 SyncTarget）。在路由缝激活后追加；
         // 接收端 envelope 复投由 LocalEnvelopeDispatcher 承担：C152 起 Hotfix 装配点在热更加载后
         // 经 AttachLocalDispatcher 补装 local 槽（发现层装配时 Hotfix 组件尚不存在）。
-        MongoPlayerRouteResolverBootstrap.Attach(controlDatabase, playerRouteFastPath).GetAwaiter().GetResult();
-    }
-
-    /// <summary>
-    /// 按注册名激活 Mongo 发现层（C159：Launcher 等启动链零 Mongo 类型引用的统一入口形态）。
-    /// </summary>
-    /// <remarks>
-    /// Name-based activation for launch flows (C159): resolves the control database through the
-    /// unified <see cref="GameDb"/> entry — <c>GameDb.As&lt;MongoDbService&gt;(name).CurrentDatabase</c> —
-    /// so callers pass <see cref="GameDb.ControlDatabaseName"/> instead of an
-    /// <see cref="IMongoDatabase"/> instance and keep no Mongo types of their own. Fails fast when the
-    /// name is not registered or the registered service is not the Mongo implementation. Semantics are
-    /// identical to the <see cref="Activate(IMongoDatabase, IEnumerable{string}, IPlayerRouteFastPath)"/>
-    /// overload, which remains for direct package consumers (to be folded into an options-shaped
-    /// Activate by C154 T4.1, carrying this name-based form as <c>ConnectionName</c>).
-    /// </remarks>
-    /// <param name="controlDatabaseName">控制库注册名（<see cref="GameDb.ControlDatabaseName"/>） / The control database registry name</param>
-    /// <param name="hostedRoleNames">本进程承载的 Role 名全集（RoleSet 快照） / The full hosted role-name set (the RoleSet snapshot)</param>
-    /// <param name="playerRouteFastPath">Tier 1 玩家路由快路径提供方；null 则跳过 Tier 1 / Tier 1 fast path; null skips Tier 1</param>
-    /// <exception cref="ArgumentNullException">当 <paramref name="controlDatabaseName"/> 或 <paramref name="hostedRoleNames"/> 为 null 时抛出 / Thrown when controlDatabaseName or hostedRoleNames is null</exception>
-    /// <exception cref="InvalidOperationException">当注册名未注册时抛出（由 MultiDbRegistry 经 GameDb.As 抛出） / Thrown when the name is not registered (raised by MultiDbRegistry via GameDb.As)</exception>
-    public static void Activate(string controlDatabaseName, IEnumerable<string> hostedRoleNames, IPlayerRouteFastPath playerRouteFastPath = null)
-    {
-        ArgumentNullException.ThrowIfNull(controlDatabaseName, nameof(controlDatabaseName));
-
-        var controlDatabase = GameDb.As<MongoDbService>(controlDatabaseName).CurrentDatabase;
-        Activate(controlDatabase, hostedRoleNames, playerRouteFastPath);
+        MongoPlayerRouteResolverBootstrap.Attach(controlDatabase, options.PlayerRouteFastPath).GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -190,19 +181,19 @@ public static class MongoDiscoveryRuntime
     /// <remarks>
     /// Rebuilds the process router with the given dispatcher in the case 1 slot,
     /// reusing the hosted-role snapshot and the exact remote router instance
-    /// created by <see cref="Activate(IMongoDatabase, IEnumerable{string}, IPlayerRouteFastPath)"/> — the remote chain (watcher, forwarder,
+    /// created by <see cref="Activate(DiscoveryActivationOptions)"/> — the remote chain (watcher, forwarder,
     /// heartbeat registry) is untouched. Timing premise: the production caller is
     /// the Hotfix <c>OnLoadSuccess</c> wiring point, which the launch flow orders
-    /// strictly after <see cref="Activate(IMongoDatabase, IEnumerable{string}, IPlayerRouteFastPath)"/> (the hotfix module loads later in the
+    /// strictly after <see cref="Activate(DiscoveryActivationOptions)"/> (the hotfix module loads later in the
     /// same startup sequence, when the Hotfix-side sender components finally
-    /// exist); a call before <see cref="Activate(IMongoDatabase, IEnumerable{string}, IPlayerRouteFastPath)"/> therefore throws instead of
+    /// exist); a call before <see cref="Activate(DiscoveryActivationOptions)"/> therefore throws instead of
     /// quietly degrading case 1 back to route-time <see cref="RouteNotFoundException"/>.
     /// Idempotent per process: the first call wins, later calls (multi-role
     /// re-entry) return immediately without rebuilding the router.
     /// </remarks>
     /// <param name="dispatcher">本地 envelope 复投器（Hotfix 装配点传入，与 UnifiedMessageSenderHolder 共用同一 IPlayerLocalSender）/ The local envelope dispatcher (sharing the same IPlayerLocalSender as UnifiedMessageSenderHolder)</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="dispatcher"/> 为 null 时抛出 / Thrown when dispatcher is null</exception>
-    /// <exception cref="InvalidOperationException">当尚未调用 <see cref="Activate(IMongoDatabase, IEnumerable{string}, IPlayerRouteFastPath)"/> 时抛出 / Thrown when Activate has not been called</exception>
+    /// <exception cref="InvalidOperationException">当尚未调用 <see cref="Activate(DiscoveryActivationOptions)"/> 时抛出 / Thrown when Activate has not been called</exception>
     public static void AttachLocalDispatcher(ILocalRoleMessageDispatcher dispatcher)
     {
         ArgumentNullException.ThrowIfNull(dispatcher, nameof(dispatcher));
