@@ -75,15 +75,17 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
                 return HttpJsonResultData<string>.SuccessString(JsonHelper.Serialize(response));
             }
 
-            var list = MailCampaignRegistry.QueryAll(
-                status: queryRequest.Status,
-                mailType: queryRequest.MailType,
-                serverId: queryRequest.ServerId,
-                channelId: queryRequest.ChannelId,
-                minLevel: queryRequest.MinLevel,
-                createdFromUnixSeconds: queryRequest.CreatedFrom,
-                createdToUnixSeconds: queryRequest.CreatedTo,
-                limit: queryRequest.Limit);
+            var list = MailCampaignRegistry.QueryAll(new MailCampaignQuery
+            {
+                Status = queryRequest.Status,
+                MailType = queryRequest.MailType,
+                ServerId = queryRequest.ServerId,
+                ChannelId = queryRequest.ChannelId,
+                MinLevel = queryRequest.MinLevel,
+                CreatedFromUnixSeconds = queryRequest.CreatedFrom,
+                CreatedToUnixSeconds = queryRequest.CreatedTo,
+                Limit = queryRequest.Limit,
+            });
 
             response.Campaigns = list;
             response.Total = list.Count;

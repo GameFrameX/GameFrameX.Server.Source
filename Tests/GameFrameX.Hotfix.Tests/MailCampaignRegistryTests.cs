@@ -201,14 +201,14 @@ public class MailCampaignRegistryTests
         Assert.Equal(1_700_020_500L, q2.RevokedAt);
         Assert.Equal("admin-revoke", q2.RevokeOperator);
 
-        // 5. QueryAll(status=Revoked) 过滤命中；重复撤回返回 CampaignAlreadyRevoked。
-        var revokedList = MailCampaignRegistry.QueryAll(status: MailCampaignStatus.Revoked);
+        // 5. QueryAll(Status=Revoked) 过滤命中；重复撤回返回 CampaignAlreadyRevoked。
+        var revokedList = MailCampaignRegistry.QueryAll(new MailCampaignQuery { Status = MailCampaignStatus.Revoked });
         Assert.Contains(revokedList, c => c.CampaignId == published.CampaignId);
         Assert.Equal(MailCampaignErrorCode.CampaignAlreadyRevoked,
             MailCampaignRegistry.Revoke(published.CampaignId, "admin-revoke", 1_700_020_600L));
     }
 
-    /// <summary>查询过滤：QueryAll() 返回全部；QueryAll(mailType) / QueryAll(serverId) 命中正确子集。</summary>
+    /// <summary>查询过滤：空载荷 QueryAll 返回全部；MailType / ServerId 载荷过滤命中正确子集。</summary>
     [Fact]
     public void QueryAll_Filters_By_MailType_And_ServerId()
     {
@@ -225,13 +225,13 @@ public class MailCampaignRegistryTests
         c2.MailType = MailType.Compensation;
         var p2 = MailCampaignRegistry.PublishOrUpdate(c2, "admin-test", 1_700_000_600L);
 
-        Assert.True(MailCampaignRegistry.QueryAll().Count >= 2);
+        Assert.True(MailCampaignRegistry.QueryAll(new MailCampaignQuery()).Count >= 2);
 
-        var filtered = MailCampaignRegistry.QueryAll(mailType: MailType.Operation);
+        var filtered = MailCampaignRegistry.QueryAll(new MailCampaignQuery { MailType = MailType.Operation });
         Assert.NotEmpty(filtered);
         Assert.All(filtered, c => Assert.Equal(MailType.Operation, c.MailType));
 
-        var byServer = MailCampaignRegistry.QueryAll(serverId: 100);
+        var byServer = MailCampaignRegistry.QueryAll(new MailCampaignQuery { ServerId = 100 });
         Assert.NotEmpty(byServer);
         Assert.All(byServer, c => Assert.Contains(100, c.ServerIds));
 

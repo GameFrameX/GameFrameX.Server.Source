@@ -291,60 +291,58 @@ namespace GameFrameX.Hotfix.Logic.Player.Mail
         }
 
         /// <summary>
-        /// 按过滤条件查询 Campaign 列表（Admin 查询发布状态）。所有过滤条件为 AND 关系，空 / 0 表示不限。
+        /// 按 <see cref="MailCampaignQuery"/> 过滤条件查询 Campaign 列表（Admin 查询发布状态）。所有过滤条件为 AND 关系，空 / 0 表示不限。
         /// </summary>
-        /// <param name="status">状态过滤；传 null 表示不限。</param>
-        /// <param name="mailType">类型过滤；传 null 表示不限。</param>
-        /// <param name="serverId">服务器 ID 过滤；≤ 0 表示不限。</param>
-        /// <param name="channelId">渠道 ID 过滤；≤ 0 表示不限。</param>
-        /// <param name="minLevel">最低等级过滤；≤ 0 表示不限。</param>
-        /// <param name="createdFromUnixSeconds">创建时间下限（含）；≤ 0 表示不限。</param>
-        /// <param name="createdToUnixSeconds">创建时间上限（含）；≤ 0 表示不限。</param>
-        /// <param name="limit">返回条数上限；≤ 0 表示返回全部。</param>
-        public static List<MailCampaignState> QueryAll(MailCampaignStatus? status = null, MailType? mailType = null, int serverId = 0, int channelId = 0, int minLevel = 0, long createdFromUnixSeconds = 0, long createdToUnixSeconds = 0, int limit = 0)
+        /// <param name="query">查询过滤条件载荷。</param>
+        public static List<MailCampaignState> QueryAll(MailCampaignQuery query)
         {
+            if (query == null)
+            {
+                throw new ArgumentNullException(nameof(query));
+            }
+
             IEnumerable<MailCampaignState> result = Campaigns.Values;
 
-            if (status.HasValue)
+            if (query.Status.HasValue)
             {
-                result = result.Where(c => c.Status == status.Value);
+                result = result.Where(c => c.Status == query.Status.Value);
             }
 
-            if (mailType.HasValue)
+            if (query.MailType.HasValue)
             {
-                result = result.Where(c => c.MailType == mailType.Value);
+                result = result.Where(c => c.MailType == query.MailType.Value);
             }
 
-            if (serverId > 0)
+            if (query.ServerId > 0)
             {
-                result = result.Where(c => c.ServerIds != null && c.ServerIds.Contains(serverId));
+                result = result.Where(c => c.ServerIds != null && c.ServerIds.Contains(query.ServerId));
             }
 
-            if (channelId > 0)
+            if (query.ChannelId > 0)
             {
-                result = result.Where(c => c.ChannelIds != null && c.ChannelIds.Contains(channelId));
+                result = result.Where(c => c.ChannelIds != null && c.ChannelIds.Contains(query.ChannelId));
             }
 
-            if (minLevel > 0)
+            if (query.MinLevel > 0)
             {
-                result = result.Where(c => c.MaxLevel == 0 || c.MaxLevel >= minLevel);
+                result = result.Where(c => c.MaxLevel == 0 || c.MaxLevel >= query.MinLevel);
             }
 
-            if (createdFromUnixSeconds > 0)
+            if (query.CreatedFromUnixSeconds > 0)
             {
-                result = result.Where(c => c.CreateTime >= createdFromUnixSeconds);
+                result = result.Where(c => c.CreateTime >= query.CreatedFromUnixSeconds);
             }
 
-            if (createdToUnixSeconds > 0)
+            if (query.CreatedToUnixSeconds > 0)
             {
-                result = result.Where(c => c.CreateTime <= createdToUnixSeconds);
+                result = result.Where(c => c.CreateTime <= query.CreatedToUnixSeconds);
             }
 
             result = result.OrderBy(c => c.CreateTime);
 
-            if (limit > 0)
+            if (query.Limit > 0)
             {
-                result = result.Take(limit);
+                result = result.Take(query.Limit);
             }
 
             return result.ToList();
