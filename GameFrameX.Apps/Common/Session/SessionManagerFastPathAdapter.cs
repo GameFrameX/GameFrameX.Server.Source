@@ -29,7 +29,15 @@ public sealed class SessionManagerFastPathAdapter : IPlayerRouteFastPath
     {
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 查询玩家是否在本进程在线。命中 <c>SessionManager.PlayerRouteMap</c> 且快照在线时包装为在线路由信息返回 true；玩家 ID 非法、未命中或离线时返回离线路由信息与 false，使解析器落入 Tier 2 查询。
+    /// </summary>
+    /// <remarks>
+    /// Checks whether the player is online in the current process. When the SessionManager.PlayerRouteMap entry exists and the snapshot is online, wraps it into an online route info and returns true; returns offline route info and false when the player id is invalid, missing, or offline, so the resolver falls through to the Tier 2 lookup.
+    /// </remarks>
+    /// <param name="playerId">玩家 ID / The player id</param>
+    /// <param name="info">在线态返回本地缓存的路由信息，离线态为离线占位信息 / The locally cached route info when online, or an offline placeholder when offline</param>
+    /// <returns>是否本地在线 / Whether the player is locally online</returns>
     public bool TryGetOnline(long playerId, out PlayerRouteInfo info)
     {
         if (playerId > 0 && SessionManager.TryGetPlayerRoute(playerId, out var snapshot) && snapshot.IsOnline)
