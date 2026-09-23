@@ -75,20 +75,26 @@ public sealed class OnlinePunishmentService
     /// <summary>
     /// 施加处罚（禁言 / 封禁）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="playerId">被处罚玩家。</param>
-    /// <param name="kind">处罚种类。</param>
-    /// <param name="reason">处罚原因（必填）。</param>
-    /// <param name="effectiveAtTime">生效时刻（UTC 毫秒；<c>0</c> 表示立即生效）。</param>
-    /// <param name="expiresAtTime">失效时刻（UTC 毫秒；<c>0</c> 表示永久处罚）。</param>
-    /// <param name="adminId">施加处罚的 Admin 标识。</param>
-    /// <param name="adminCaseId">来源案件标识（可空；非举报来源不填）。</param>
-    /// <param name="correlationId">关联标识（可空）。</param>
+    /// <param name="request">处罚施加请求。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>生效的处罚记录。</returns>
-    public async Task<OnlineResult<OnlinePunishment>> ApplyAsync(long tenantId, long appId, long playerId, OnlinePunishmentKind kind, string reason, long effectiveAtTime = 0, long expiresAtTime = 0, long adminId = 0, string adminCaseId = null, string correlationId = null, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<OnlinePunishment>> ApplyAsync(OnlinePunishmentRequest request, CancellationToken cancellationToken = default)
     {
+        if (request == null)
+        {
+            throw new ArgumentNullException(nameof(request));
+        }
+
+        var tenantId = request.TenantId;
+        var appId = request.AppId;
+        var playerId = request.PlayerId;
+        var kind = request.Kind;
+        var reason = request.Reason;
+        var effectiveAtTime = request.EffectiveAtTime;
+        var expiresAtTime = request.ExpiresAtTime;
+        var adminId = request.AdminId;
+        var adminCaseId = request.AdminCaseId;
+        var correlationId = request.CorrelationId;
         if (tenantId <= 0 || appId <= 0 || playerId <= 0)
         {
             return OnlineResult<OnlinePunishment>.Fail(OnlineErrorCode.ParameterInvalid, "处罚定位参数无效");
@@ -217,7 +223,7 @@ public sealed class OnlinePunishmentService
         }
 
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : Now();
-        var active = await _graphStore.ListActivePunishmentsAsync(tenantId, appId, playerId, now, cancellationToken).ConfigureAwait(false);
+        var active = await _graphStore.ListActivePunishmentsAsync(tenantId, appId, new ActivePunishmentQuery { PlayerId = playerId, NowUnixMilliseconds = now }, cancellationToken).ConfigureAwait(false);
         return OnlineResult<IReadOnlyList<OnlinePunishment>>.Ok(active);
     }
 

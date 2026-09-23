@@ -81,8 +81,15 @@ public sealed class OnlineAdminLiveOpsHandlers
     {
         var configId = RequireId(request, "ConfigId");
         var reason = OnlineAdminApiContract.RequireString(request, "Reason");
-        var entry = _host.LiveOps.Publish("RemoteConfig", configId.ToString(System.Globalization.CultureInfo.InvariantCulture), string.Empty,
-            reason, "admin", request.ReadRequestId());
+        var entry = _host.LiveOps.Publish(new OnlineLiveOpsCommand
+        {
+            Kind = "RemoteConfig",
+            Key = configId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            Version = string.Empty,
+            PayloadText = reason,
+            OperatorId = "admin",
+            CorrelationId = request.ReadRequestId(),
+        });
         return Task.FromResult<object>(BuildResponse(entry, 0));
     }
 
@@ -97,8 +104,14 @@ public sealed class OnlineAdminLiveOpsHandlers
     {
         var deviceGroupId = RequireId(request, "DeviceGroupId");
         var reason = OnlineAdminApiContract.RequireString(request, "Reason");
-        var entry = _host.LiveOps.Sync("DeviceGroup", deviceGroupId.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            reason, "admin", request.ReadRequestId());
+        var entry = _host.LiveOps.Sync(new OnlineLiveOpsCommand
+        {
+            Kind = "DeviceGroup",
+            Key = deviceGroupId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            PayloadText = reason,
+            OperatorId = "admin",
+            CorrelationId = request.ReadRequestId(),
+        });
         return Task.FromResult<object>(BuildResponse(entry, 0));
     }
 
@@ -113,8 +126,14 @@ public sealed class OnlineAdminLiveOpsHandlers
     {
         var jobId = RequireId(request, "JobId");
         var reason = OnlineAdminApiContract.RequireString(request, "Reason");
-        var entry = _host.LiveOps.Sync("ScheduledTask", jobId.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            reason, "admin", request.ReadRequestId());
+        var entry = _host.LiveOps.Sync(new OnlineLiveOpsCommand
+        {
+            Kind = "ScheduledTask",
+            Key = jobId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            PayloadText = reason,
+            OperatorId = "admin",
+            CorrelationId = request.ReadRequestId(),
+        });
         return Task.FromResult<object>(BuildResponse(entry, 0));
     }
 
@@ -129,8 +148,15 @@ public sealed class OnlineAdminLiveOpsHandlers
     {
         var announcementId = RequireId(request, "AnnouncementId");
         var reason = OnlineAdminApiContract.RequireString(request, "Reason");
-        var entry = _host.LiveOps.Publish("Announcement", announcementId.ToString(System.Globalization.CultureInfo.InvariantCulture), string.Empty,
-            reason, "admin", request.ReadRequestId());
+        var entry = _host.LiveOps.Publish(new OnlineLiveOpsCommand
+        {
+            Kind = "Announcement",
+            Key = announcementId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            Version = string.Empty,
+            PayloadText = reason,
+            OperatorId = "admin",
+            CorrelationId = request.ReadRequestId(),
+        });
         return Task.FromResult<object>(BuildResponse(entry, 0));
     }
 
@@ -148,8 +174,14 @@ public sealed class OnlineAdminLiveOpsHandlers
         var conditions = OnlineAdminApiContract.ReadOptionalString(request, "Conditions") ?? string.Empty;
         var reason = OnlineAdminApiContract.RequireString(request, "Reason");
         var payload = JsonHelper.Serialize(new SegmentPayload { Name = name, Conditions = conditions, Reason = reason, });
-        var entry = _host.LiveOps.Sync("PlayerSegment", segmentId.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            payload, "admin", request.ReadRequestId());
+        var entry = _host.LiveOps.Sync(new OnlineLiveOpsCommand
+        {
+            Kind = "PlayerSegment",
+            Key = segmentId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            PayloadText = payload,
+            OperatorId = "admin",
+            CorrelationId = request.ReadRequestId(),
+        });
         return Task.FromResult<object>(BuildResponse(entry, segmentId));
     }
 
@@ -175,8 +207,15 @@ public sealed class OnlineAdminLiveOpsHandlers
             Percent = percent,
             Reason = reason,
         });
-        var entry = _host.LiveOps.Publish(RolloutKind(configKind), configKey, configVersion.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            payload, "admin", request.ReadRequestId());
+        var entry = _host.LiveOps.Publish(new OnlineLiveOpsCommand
+        {
+            Kind = RolloutKind(configKind),
+            Key = configKey,
+            Version = configVersion.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            PayloadText = payload,
+            OperatorId = "admin",
+            CorrelationId = request.ReadRequestId(),
+        });
         return Task.FromResult<object>(BuildResponse(entry, segmentId));
     }
 
@@ -193,8 +232,15 @@ public sealed class OnlineAdminLiveOpsHandlers
         var configKey = OnlineAdminApiContract.RequireString(request, "ConfigKey");
         var targetVersion = RequireVersion(request, "TargetVersion");
         var reason = OnlineAdminApiContract.RequireString(request, "Reason");
-        var entry = _host.LiveOps.Rollback(RolloutKind(configKind), configKey, targetVersion.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            reason, "admin", request.ReadRequestId());
+        var entry = _host.LiveOps.Rollback(new OnlineLiveOpsCommand
+        {
+            Kind = RolloutKind(configKind),
+            Key = configKey,
+            Version = targetVersion.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            PayloadText = reason,
+            OperatorId = "admin",
+            CorrelationId = request.ReadRequestId(),
+        });
         return Task.FromResult<object>(BuildResponse(entry, 0));
     }
 

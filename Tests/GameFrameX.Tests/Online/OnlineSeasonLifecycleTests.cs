@@ -216,7 +216,7 @@ namespace GameFrameX.Tests.Online
             await harness.CreateBoardAsync("board-cache");
             await harness.WriteScoresAsync("board-cache", (OnlineSeasonTestHarness.PlayerOne, 300));
 
-            var before = await harness.LeaderboardService.GetTopAsync(harness.Scope(), "board-cache", 10, null, OnlineSeasonTestHarness.Now + 500);
+            var before = await harness.LeaderboardService.GetTopAsync(harness.Scope(), new OnlineLeaderboardTopQuery { LeaderboardId = "board-cache", Count = 10, NowUnixMilliseconds = OnlineSeasonTestHarness.Now + 500 });
             Assert.True(before.IsSuccess, before.Message);
             Assert.Single(before.Data.Entries);
 
@@ -225,7 +225,7 @@ namespace GameFrameX.Tests.Online
             var ended = await harness.EndSeasonAsync("s1");
             Assert.True(ended.IsSuccess, ended.Message);
 
-            var after = await harness.LeaderboardService.GetTopAsync(harness.Scope(), "board-cache", 10, null, OnlineSeasonTestHarness.Now + 600);
+            var after = await harness.LeaderboardService.GetTopAsync(harness.Scope(), new OnlineLeaderboardTopQuery { LeaderboardId = "board-cache", Count = 10, NowUnixMilliseconds = OnlineSeasonTestHarness.Now + 600 });
 
             Assert.True(after.IsSuccess, after.Message);
             Assert.Empty(after.Data.Entries);

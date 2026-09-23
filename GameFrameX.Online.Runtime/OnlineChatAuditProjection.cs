@@ -107,16 +107,22 @@ public sealed class OnlineChatAuditProjection
     /// </summary>
     /// <param name="tenantId">租户标识。</param>
     /// <param name="appId">App 标识。</param>
-    /// <param name="channelKind">频道类型过滤（null 表示不限）。</param>
-    /// <param name="participantPlayerId">参与者过滤（频道成员或发送者；null 表示不限）。</param>
-    /// <param name="keyword">正文关键字过滤（null 或空表示不限）。</param>
-    /// <param name="startTime">起始时刻（UTC 毫秒；null 表示不限）。</param>
-    /// <param name="endTime">结束时刻（UTC 毫秒；null 表示不限）。</param>
-    /// <param name="cursor">分页游标（<c>sentAtTime:sequence</c>；null 从头）。</param>
-    /// <param name="pageSize">页大小（1～100）。</param>
+    /// <param name="query">检索条件载荷（可选过滤 + 游标 + 页大小）。</param>
     /// <returns>查询页（正文与参与者已回读补全）。</returns>
-    public async Task<ChatAuditPage> QueryAsync(long tenantId, long appId, OnlineChatChannelKind? channelKind, long? participantPlayerId, string keyword, long? startTime, long? endTime, string cursor, int pageSize)
+    public async Task<ChatAuditPage> QueryAsync(long tenantId, long appId, ChatAuditQuery query)
     {
+        if (query == null)
+        {
+            throw new ArgumentNullException(nameof(query));
+        }
+
+        var channelKind = query.ChannelKind;
+        var participantPlayerId = query.ParticipantPlayerId;
+        var keyword = query.Keyword;
+        var startTime = query.StartTime;
+        var endTime = query.EndTime;
+        var cursor = query.Cursor;
+        var pageSize = query.PageSize;
         var effectivePageSize = Math.Max(1, Math.Min(100, pageSize <= 0 ? 20 : pageSize));
         var ordered = BuildOrderedSnapshot(cursor);
         var channelCache = new Dictionary<string, OnlineChatChannel>();

@@ -151,7 +151,7 @@ namespace GameFrameX.Tests.Online
                 (1004, 200, Now + 2),
                 (1005, 100, Now + 5));
 
-            var top = await harness.Service.GetTopAsync(harness.Scope(), "board-1", 10, null, Now + 100);
+            var top = await harness.Service.GetTopAsync(harness.Scope(), new OnlineLeaderboardTopQuery { LeaderboardId = "board-1", Count = 10, NowUnixMilliseconds = Now + 100 });
 
             Assert.True(top.IsSuccess, top.Message);
             Assert.Equal(5, top.Data.TotalCount);
@@ -169,7 +169,7 @@ namespace GameFrameX.Tests.Online
             var board = await harness.CreateBoardAsync("board-asc", OnlineLeaderboardSortOrder.Ascending, OnlineLeaderboardScoreUpdatePolicy.Best);
             await harness.SeedAsync(board, (1001, 90, Now), (1002, 30, Now + 1), (1003, 60, Now + 2));
 
-            var top = await harness.Service.GetTopAsync(harness.Scope(), "board-asc", 10, null, Now + 100);
+            var top = await harness.Service.GetTopAsync(harness.Scope(), new OnlineLeaderboardTopQuery { LeaderboardId = "board-asc", Count = 10, NowUnixMilliseconds = Now + 100 });
 
             Assert.True(top.IsSuccess, top.Message);
             Assert.Equal(new long[] { 1002, 1003, 1001 }, harness.PlayerIds(top.Data));
@@ -186,7 +186,7 @@ namespace GameFrameX.Tests.Online
             await harness.SeedAsync(board, (1001, 100, Now), (1002, 90, Now + 1), (1003, 80, Now + 2), (1004, 70, Now + 3), (1005, 60, Now + 4));
 
             var collected = new List<long>();
-            var firstPage = await harness.Service.GetTopAsync(harness.Scope(), "board-page", 2, null, Now + 100);
+            var firstPage = await harness.Service.GetTopAsync(harness.Scope(), new OnlineLeaderboardTopQuery { LeaderboardId = "board-page", Count = 2, NowUnixMilliseconds = Now + 100 });
             Assert.True(firstPage.IsSuccess, firstPage.Message);
             Assert.True(firstPage.Data.Cursor.HasMore);
             collected.AddRange(harness.PlayerIds(firstPage.Data));
@@ -195,12 +195,12 @@ namespace GameFrameX.Tests.Online
             // 翻页期间插入新的榜首：keyset 游标不受影响，后续页不重不漏。
             await harness.SeedAsync(board, (1006, 150, Now + 200));
 
-            var secondPage = await harness.Service.GetTopAsync(harness.Scope(), "board-page", 2, firstPage.Data.Cursor.Cursor, Now + 201);
+            var secondPage = await harness.Service.GetTopAsync(harness.Scope(), new OnlineLeaderboardTopQuery { LeaderboardId = "board-page", Count = 2, Cursor = firstPage.Data.Cursor.Cursor, NowUnixMilliseconds = Now + 201 });
             Assert.True(secondPage.IsSuccess, secondPage.Message);
             Assert.True(secondPage.Data.Cursor.HasMore);
             collected.AddRange(harness.PlayerIds(secondPage.Data));
 
-            var lastPage = await harness.Service.GetTopAsync(harness.Scope(), "board-page", 2, secondPage.Data.Cursor.Cursor, Now + 202);
+            var lastPage = await harness.Service.GetTopAsync(harness.Scope(), new OnlineLeaderboardTopQuery { LeaderboardId = "board-page", Count = 2, Cursor = secondPage.Data.Cursor.Cursor, NowUnixMilliseconds = Now + 202 });
             Assert.True(lastPage.IsSuccess, lastPage.Message);
             Assert.False(lastPage.Data.Cursor.HasMore);
             Assert.Equal(string.Empty, lastPage.Data.Cursor.Cursor);
@@ -219,7 +219,7 @@ namespace GameFrameX.Tests.Online
             var board = await harness.CreateBoardAsync("board-clamp", OnlineLeaderboardSortOrder.Descending, OnlineLeaderboardScoreUpdatePolicy.Best);
             await harness.SeedAsync(board, (1001, 50, Now), (1002, 40, Now + 1), (1003, 30, Now + 2), (1004, 20, Now + 3), (1005, 10, Now + 4));
 
-            var top = await harness.Service.GetTopAsync(harness.Scope(), "board-clamp", 10, null, Now + 100);
+            var top = await harness.Service.GetTopAsync(harness.Scope(), new OnlineLeaderboardTopQuery { LeaderboardId = "board-clamp", Count = 10, NowUnixMilliseconds = Now + 100 });
 
             Assert.True(top.IsSuccess, top.Message);
             Assert.Equal(3, top.Data.Entries.Count);
@@ -243,26 +243,26 @@ namespace GameFrameX.Tests.Online
                 (1004, 200, Now + 3),
                 (1005, 100, Now + 4));
 
-            var middle = await harness.Service.GetAroundPlayerAsync(harness.Scope(), "board-around", 1003, 1, 1, Now + 100);
+            var middle = await harness.Service.GetAroundPlayerAsync(harness.Scope(), new OnlineLeaderboardAroundQuery { LeaderboardId = "board-around", PlayerId = 1003, Before = 1, After = 1, NowUnixMilliseconds = Now + 100 });
 
             Assert.True(middle.IsSuccess, middle.Message);
             Assert.Equal(3, middle.Data.Rank);
             Assert.Equal(5, middle.Data.TotalCount);
             Assert.Equal(new long[] { 1002, 1003, 1004 }, harness.AroundPlayerIds(middle.Data));
 
-            var topEdge = await harness.Service.GetAroundPlayerAsync(harness.Scope(), "board-around", 1001, 2, 2, Now + 100);
+            var topEdge = await harness.Service.GetAroundPlayerAsync(harness.Scope(), new OnlineLeaderboardAroundQuery { LeaderboardId = "board-around", PlayerId = 1001, Before = 2, After = 2, NowUnixMilliseconds = Now + 100 });
 
             Assert.True(topEdge.IsSuccess, topEdge.Message);
             Assert.Equal(1, topEdge.Data.Rank);
             Assert.Equal(new long[] { 1001, 1002, 1003 }, harness.AroundPlayerIds(topEdge.Data));
 
-            var bottomEdge = await harness.Service.GetAroundPlayerAsync(harness.Scope(), "board-around", 1005, 2, 2, Now + 100);
+            var bottomEdge = await harness.Service.GetAroundPlayerAsync(harness.Scope(), new OnlineLeaderboardAroundQuery { LeaderboardId = "board-around", PlayerId = 1005, Before = 2, After = 2, NowUnixMilliseconds = Now + 100 });
 
             Assert.True(bottomEdge.IsSuccess, bottomEdge.Message);
             Assert.Equal(5, bottomEdge.Data.Rank);
             Assert.Equal(new long[] { 1003, 1004, 1005 }, harness.AroundPlayerIds(bottomEdge.Data));
 
-            var offBoard = await harness.Service.GetAroundPlayerAsync(harness.Scope(), "board-around", 9999, 2, 2, Now + 100);
+            var offBoard = await harness.Service.GetAroundPlayerAsync(harness.Scope(), new OnlineLeaderboardAroundQuery { LeaderboardId = "board-around", PlayerId = 9999, Before = 2, After = 2, NowUnixMilliseconds = Now + 100 });
 
             Assert.False(offBoard.IsSuccess);
             Assert.Equal(OnlineErrorCode.ResourceNotFound, offBoard.Code);
@@ -300,9 +300,9 @@ namespace GameFrameX.Tests.Online
             var board = await harness.CreateBoardAsync("board-scope", OnlineLeaderboardSortOrder.Descending, OnlineLeaderboardScoreUpdatePolicy.Best);
             await harness.SeedAsync(board, (1001, 100, Now));
 
-            var crossApp = await harness.Service.GetTopAsync(harness.Scope(OtherAppId), "board-scope", 10, null, Now + 100);
-            var crossTenant = await harness.Service.GetTopAsync(harness.Scope(AppId, OtherTenantId), "board-scope", 10, null, Now + 100);
-            var unknownBoard = await harness.Service.GetTopAsync(harness.Scope(), "board-none", 10, null, Now + 100);
+            var crossApp = await harness.Service.GetTopAsync(harness.Scope(OtherAppId), new OnlineLeaderboardTopQuery { LeaderboardId = "board-scope", Count = 10, NowUnixMilliseconds = Now + 100 });
+            var crossTenant = await harness.Service.GetTopAsync(harness.Scope(AppId, OtherTenantId), new OnlineLeaderboardTopQuery { LeaderboardId = "board-scope", Count = 10, NowUnixMilliseconds = Now + 100 });
+            var unknownBoard = await harness.Service.GetTopAsync(harness.Scope(), new OnlineLeaderboardTopQuery { LeaderboardId = "board-none", Count = 10, NowUnixMilliseconds = Now + 100 });
 
             Assert.False(crossApp.IsSuccess);
             Assert.Equal(OnlineErrorCode.ResourceNotFound, crossApp.Code);
@@ -322,26 +322,26 @@ namespace GameFrameX.Tests.Online
             var board = await cached.CreateBoardAsync("board-cache", OnlineLeaderboardSortOrder.Descending, OnlineLeaderboardScoreUpdatePolicy.Best);
             await cached.SeedAsync(board, (1001, 100, Now), (1002, 90, Now + 1), (1003, 80, Now + 2));
 
-            var firstRead = await cached.Service.GetTopAsync(cached.Scope(), "board-cache", 10, null, 10000L);
+            var firstRead = await cached.Service.GetTopAsync(cached.Scope(), new OnlineLeaderboardTopQuery { LeaderboardId = "board-cache", Count = 10, NowUnixMilliseconds = 10000L });
             Assert.Equal(3, firstRead.Data.TotalCount);
 
             await cached.SeedAsync(board, (1004, 70, 20000L));
 
-            var withinTtl = await cached.Service.GetTopAsync(cached.Scope(), "board-cache", 10, null, 11000L);
+            var withinTtl = await cached.Service.GetTopAsync(cached.Scope(), new OnlineLeaderboardTopQuery { LeaderboardId = "board-cache", Count = 10, NowUnixMilliseconds = 11000L });
             Assert.Equal(3, withinTtl.Data.TotalCount);
 
-            var afterTtl = await cached.Service.GetTopAsync(cached.Scope(), "board-cache", 10, null, 30000L);
+            var afterTtl = await cached.Service.GetTopAsync(cached.Scope(), new OnlineLeaderboardTopQuery { LeaderboardId = "board-cache", Count = 10, NowUnixMilliseconds = 30000L });
             Assert.Equal(4, afterTtl.Data.TotalCount);
 
             var uncached = new Harness(cacheEnabled: false);
             var uncachedBoard = await uncached.CreateBoardAsync("board-nocache", OnlineLeaderboardSortOrder.Descending, OnlineLeaderboardScoreUpdatePolicy.Best);
             await uncached.SeedAsync(uncachedBoard, (1001, 100, Now));
 
-            var beforeWrite = await uncached.Service.GetTopAsync(uncached.Scope(), "board-nocache", 10, null, 10000L);
+            var beforeWrite = await uncached.Service.GetTopAsync(uncached.Scope(), new OnlineLeaderboardTopQuery { LeaderboardId = "board-nocache", Count = 10, NowUnixMilliseconds = 10000L });
             Assert.Equal(1, beforeWrite.Data.TotalCount);
 
             await uncached.SeedAsync(uncachedBoard, (1002, 90, 20000L));
-            var immediate = await uncached.Service.GetTopAsync(uncached.Scope(), "board-nocache", 10, null, 21000L);
+            var immediate = await uncached.Service.GetTopAsync(uncached.Scope(), new OnlineLeaderboardTopQuery { LeaderboardId = "board-nocache", Count = 10, NowUnixMilliseconds = 21000L });
             Assert.Equal(2, immediate.Data.TotalCount);
         }
 

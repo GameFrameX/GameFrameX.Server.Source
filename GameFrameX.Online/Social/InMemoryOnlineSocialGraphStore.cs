@@ -406,12 +406,13 @@ public sealed class InMemoryOnlineSocialGraphStore : IOnlineSocialGraphStore
     /// </remarks>
     /// <param name="tenantId">租户标识 / Tenant identifier</param>
     /// <param name="appId">App 标识 / App identifier</param>
-    /// <param name="playerId">被处罚玩家 / Punished player</param>
-    /// <param name="nowUnixMilliseconds">判定时刻（UTC 毫秒） / Judgment moment in Unix milliseconds (UTC)</param>
+    /// <param name="query">生效处罚查询载荷（玩家标识与判定时刻） / Active punishment query payload (player id and judgment moment)</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现不使用） / Cancellation token (unused by the synchronous in-memory implementation)</param>
     /// <returns>生效中的处罚副本列表（已撤销、未到生效时刻、已失效的均不返回） / List of copies of the punishments in effect (revoked, not-yet-effective, and expired ones are excluded)</returns>
-    public Task<IReadOnlyList<OnlinePunishment>> ListActivePunishmentsAsync(long tenantId, long appId, long playerId, long nowUnixMilliseconds, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlinePunishment>> ListActivePunishmentsAsync(long tenantId, long appId, ActivePunishmentQuery query, CancellationToken cancellationToken = default)
     {
+        var playerId = query.PlayerId;
+        var nowUnixMilliseconds = query.NowUnixMilliseconds;
         var result = new List<OnlinePunishment>();
         lock (_syncRoot)
         {

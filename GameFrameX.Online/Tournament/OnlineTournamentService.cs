@@ -493,11 +493,12 @@ public sealed class OnlineTournamentService
             OnlineGrantOperation.Grant,
             "赛事奖励结算",
             businessOrderId,
-            "online-tournament",
             rewards,
-            businessOrderId,
-            0,
-            tournament.TournamentId);
+            businessOrderId)
+        {
+            OperatorId = "online-tournament",
+            CorrelationId = tournament.TournamentId,
+        };
 
         var granted = await _grantService.ExecuteAsync(request, cancellationToken).ConfigureAwait(false);
         if (!granted.IsSuccess)

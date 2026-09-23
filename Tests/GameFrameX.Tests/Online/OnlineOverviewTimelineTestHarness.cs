@@ -171,7 +171,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>登录解析结果（身份 / 账号 / 玩家档案三件套）。</returns>
         internal async Task<OnlineLoginResolution> RegisterPlayerAsync(long serverId, string userName)
         {
-            var outcome = await new OnlineIdentityService(IdentityStore).ResolveLoginAsync(TenantId, AppId, serverId, OnlineIdentityKind.UserName, userName);
+            var outcome = await new OnlineIdentityService(IdentityStore).ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = serverId, Kind = OnlineIdentityKind.UserName, Identifier = userName });
             Assert.True(outcome.IsSuccess);
             return outcome.Data;
         }
@@ -348,7 +348,6 @@ namespace GameFrameX.Tests.Online
                 OnlineGrantOperation.Grant,
                 "测试发放",
                 businessOrderId,
-                null,
                 new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", amount) },
                 "key-" + businessOrderId);
 
@@ -365,7 +364,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>处罚记录。</returns>
         internal async Task<OnlinePunishment> PunishAsync(long playerId, string reason)
         {
-            var outcome = await new OnlinePunishmentService(SocialGraphStore, Recorder).ApplyAsync(TenantId, AppId, playerId, OnlinePunishmentKind.Mute, reason, 0, 0, AdminId);
+            var outcome = await new OnlinePunishmentService(SocialGraphStore, Recorder).ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = playerId, Kind = OnlinePunishmentKind.Mute, Reason = reason, AdminId = AdminId });
             Assert.True(outcome.IsSuccess);
             return outcome.Data;
         }

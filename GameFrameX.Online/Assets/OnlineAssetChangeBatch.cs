@@ -148,31 +148,22 @@ public sealed class OnlineAssetChangeBatch
     /// 构造变更批次（internal：只允许统一入口在本程序集内构造，杜绝旁路写入）。
     /// </summary>
     /// <param name="transactionId">交易标识。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="playerId">玩家标识。</param>
-    /// <param name="homeServerId">归属服标识。</param>
-    /// <param name="initiatingServerId">发起服标识。</param>
-    /// <param name="source">变更来源。</param>
-    /// <param name="operation">操作类型。</param>
-    /// <param name="reason">变更原因。</param>
-    /// <param name="businessOrderId">业务单号。</param>
-    /// <param name="operatorId">操作者。</param>
+    /// <param name="header">账本头载荷（作用域 + 来源/操作/原因/单号/操作者，与账本条目共享）。</param>
     /// <param name="lines">变更行列表。</param>
     /// <param name="compensatesTransactionId">补偿指向原交易（普通批次传空字符串）。</param>
-    internal OnlineAssetChangeBatch(string transactionId, long tenantId, long appId, long playerId, long homeServerId, long initiatingServerId, OnlineAssetChangeSource source, OnlineGrantOperation operation, string reason, string businessOrderId, string operatorId, IReadOnlyList<OnlineAssetChangeLine> lines, string compensatesTransactionId)
+    internal OnlineAssetChangeBatch(string transactionId, OnlineLedgerHeader header, IReadOnlyList<OnlineAssetChangeLine> lines, string compensatesTransactionId)
     {
         TransactionId = transactionId;
-        TenantId = tenantId;
-        AppId = appId;
-        PlayerId = playerId;
-        HomeServerId = homeServerId;
-        InitiatingServerId = initiatingServerId;
-        Source = source;
-        Operation = operation;
-        Reason = reason;
-        BusinessOrderId = businessOrderId;
-        OperatorId = operatorId;
+        TenantId = header.TenantId;
+        AppId = header.AppId;
+        PlayerId = header.PlayerId;
+        HomeServerId = header.HomeServerId;
+        InitiatingServerId = header.InitiatingServerId;
+        Source = header.Source;
+        Operation = header.Operation;
+        Reason = header.Reason;
+        BusinessOrderId = header.BusinessOrderId;
+        OperatorId = header.OperatorId;
         Lines = lines;
         CompensatesTransactionId = compensatesTransactionId;
     }

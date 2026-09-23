@@ -219,15 +219,16 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
     /// </remarks>
     /// <param name="tenantId">租户标识 / Tenant id</param>
     /// <param name="appId">App 标识 / App id</param>
-    /// <param name="ticketId">票据标识 / Ticket id</param>
-    /// <param name="expectedState">期望的当前状态；不匹配即失败 / The expected current state; a mismatch fails the update</param>
-    /// <param name="newState">目标状态 / The target state</param>
-    /// <param name="failureReason">失败原因码；非失败转迁移填 None / The failure reason code; None for non-failure transitions</param>
-    /// <param name="assignmentId">关联的分配标识；空字符串时保留原值 / The associated assignment id; an empty string keeps the original value</param>
+    /// <param name="transition">状态 CAS 迁移载荷（票据标识 / 期望状态 / 目标状态 / 失败原因 / 分配标识）/ The ticket state CAS transition payload (ticket id, expected state, target state, failure reason, assignment id)</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>更新后的票据副本；CAS 失败或票据不存在返回 null / A copy of the updated ticket, or null when the CAS fails or the ticket does not exist</returns>
-    public Task<OnlineMatchTicket> UpdateStateAsync(long tenantId, long appId, string ticketId, OnlineMatchTicketState expectedState, OnlineMatchTicketState newState, OnlineMatchFailureReason failureReason, string assignmentId, CancellationToken cancellationToken = default)
+    public Task<OnlineMatchTicket> UpdateStateAsync(long tenantId, long appId, MatchTicketStateTransition transition, CancellationToken cancellationToken = default)
     {
+        var ticketId = transition.TicketId;
+        var expectedState = transition.ExpectedState;
+        var newState = transition.NewState;
+        var failureReason = transition.FailureReason;
+        var assignmentId = transition.AssignmentId;
         lock (_syncRoot)
         {
             var current = FindInternal(tenantId, appId, ticketId);

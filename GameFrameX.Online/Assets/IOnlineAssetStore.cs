@@ -87,14 +87,10 @@ public interface IOnlineAssetStore
     Task<OnlineAssetApplyResult> ApplyAsync(OnlineAssetChangeBatch batch, CancellationToken cancellationToken = default);
 
     /// <summary>按账本序分页列举玩家账本条目（稳定排序键 = SequenceNumber，升序）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="playerId">玩家标识。</param>
-    /// <param name="afterSequenceNumber">游标（起始序，不含；0 = 从头列举）。</param>
-    /// <param name="maxCount">最大返回条数。</param>
+    /// <param name="query">分页查询载荷（玩家定位 + 游标 + 上限）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>账本条目列表（按序升序）。</returns>
-    Task<IReadOnlyList<OnlineLedgerEntry>> ListLedgerEntriesAsync(long tenantId, long appId, long playerId, long afterSequenceNumber, int maxCount, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineLedgerEntry>> ListLedgerEntriesAsync(OnlineLedgerPageQuery query, CancellationToken cancellationToken = default);
 
     /// <summary>按交易标识反查账本条目（VC-3.14 追溯：来源/原因/单号/操作者/前后值全字段）。</summary>
     /// <param name="transactionId">交易标识。</param>

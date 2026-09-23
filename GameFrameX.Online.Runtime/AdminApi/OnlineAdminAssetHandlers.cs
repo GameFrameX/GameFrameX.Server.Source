@@ -88,7 +88,12 @@ public sealed class OnlineAdminAssetHandlers
         var businessOrderNumber = request.ReadString("BusinessOrderNumber");
         var idempotencyKey = request.ReadString("IdempotencyKey");
         var grantRequest = new OnlineGrantRequest(playerScope, OnlineAssetChangeSource.AdminOperation, OnlineGrantOperation.Grant, reason,
-            ReadBusinessOrderId(request, businessOrderNumber, idempotencyKey), "admin", changes, idempotencyKey ?? string.Empty, scope.ServerId, request.ReadRequestId());
+            ReadBusinessOrderId(request, businessOrderNumber, idempotencyKey), changes, idempotencyKey ?? string.Empty)
+        {
+            OperatorId = "admin",
+            HomeServerId = scope.ServerId,
+            CorrelationId = request.ReadRequestId(),
+        };
         var result = OnlineAdminApiContract.Unwrap(await _host.GrantService.ExecuteAsync(grantRequest, cancellationToken).ConfigureAwait(false));
         return new GrantAckResponse
         {
@@ -126,7 +131,12 @@ public sealed class OnlineAdminAssetHandlers
         }
 
         var revokeRequest = new OnlineGrantRequest(playerScope, OnlineAssetChangeSource.AdminOperation, OnlineGrantOperation.Revoke, reason,
-            ReadBusinessOrderId(request, businessOrderNumber, idempotencyKey), "admin", changes, idempotencyKey ?? string.Empty, scope.ServerId, request.ReadRequestId());
+            ReadBusinessOrderId(request, businessOrderNumber, idempotencyKey), changes, idempotencyKey ?? string.Empty)
+        {
+            OperatorId = "admin",
+            HomeServerId = scope.ServerId,
+            CorrelationId = request.ReadRequestId(),
+        };
         var result = OnlineAdminApiContract.Unwrap(await _host.GrantService.ExecuteAsync(revokeRequest, cancellationToken).ConfigureAwait(false));
         return new GrantAckResponse
         {

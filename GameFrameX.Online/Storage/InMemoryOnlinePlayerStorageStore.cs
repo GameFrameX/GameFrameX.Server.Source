@@ -55,18 +55,19 @@ public sealed class InMemoryOnlinePlayerStorageStore : IOnlinePlayerStorageStore
     private readonly Dictionary<string, long> _committedVersionByKey = new Dictionary<string, long>();
 
     /// <summary>按键查找条目。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
-    /// <param name="playerId">玩家标识。</param>
-    /// <param name="collection">集合名。</param>
-    /// <param name="key">条目键。</param>
+    /// <param name="key">条目键载荷。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>条目；不存在返回 null。</returns>
-    public Task<OnlinePlayerStorageEntry> FindAsync(long tenantId, long appId, long playerId, string collection, string key, CancellationToken cancellationToken = default)
+    public Task<OnlinePlayerStorageEntry> FindAsync(OnlineStorageEntryKey key, CancellationToken cancellationToken = default)
     {
+        var tenantId = key.TenantId;
+        var appId = key.AppId;
+        var playerId = key.PlayerId;
+        var collection = key.Collection;
+        var entryKey = key.Key;
         lock (_syncRoot)
         {
-            _entries.TryGetValue(BuildKey(tenantId, appId, playerId, collection, key), out var entry);
+            _entries.TryGetValue(BuildKey(tenantId, appId, playerId, collection, entryKey), out var entry);
             return Task.FromResult(entry);
         }
     }
@@ -110,16 +111,17 @@ public sealed class InMemoryOnlinePlayerStorageStore : IOnlinePlayerStorageStore
     }
 
     /// <summary>按键字典序列举集合内非软删条目。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
-    /// <param name="playerId">玩家标识。</param>
-    /// <param name="collection">集合名。</param>
-    /// <param name="afterKey">游标（排序起始键，不含；空串 = 从头列举）。</param>
-    /// <param name="maxCount">最大返回条数。</param>
+    /// <param name="query">列举查询载荷。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>非软删条目列表（按键字典序）。</returns>
-    public Task<IReadOnlyList<OnlinePlayerStorageEntry>> ListAsync(long tenantId, long appId, long playerId, string collection, string afterKey, int maxCount, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlinePlayerStorageEntry>> ListAsync(OnlineStorageListQuery query, CancellationToken cancellationToken = default)
     {
+        var tenantId = query.TenantId;
+        var appId = query.AppId;
+        var playerId = query.PlayerId;
+        var collection = query.Collection;
+        var afterKey = query.AfterKey;
+        var maxCount = query.MaxCount;
         lock (_syncRoot)
         {
             var prefix = BuildPrefix(tenantId, appId, playerId, collection);

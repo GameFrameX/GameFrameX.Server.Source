@@ -69,9 +69,8 @@ public interface IOnlineGameEventStore
     /// </summary>
     /// <param name="tenantId">租户标识。</param>
     /// <param name="appId">App 标识。</param>
-    /// <param name="fromTime">窗口起点（UTC 毫秒，含）。</param>
-    /// <param name="toTime">窗口终点（UTC 毫秒，含）。</param>
+    /// <param name="query">时间窗查询载荷（闭区间）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>事件列表；无记录返回空列表。</returns>
-    Task<List<OnlineEvent>> ListAsync(long tenantId, long appId, long fromTime, long toTime, CancellationToken cancellationToken = default);
+    Task<List<OnlineEvent>> ListAsync(long tenantId, long appId, EventTimeRangeQuery query, CancellationToken cancellationToken = default);
 }

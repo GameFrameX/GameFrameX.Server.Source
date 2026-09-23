@@ -87,7 +87,7 @@ public sealed class OnlineGameEventMetricsService
             ToTime = toTime,
         };
 
-        var events = await _eventStore.ListAsync(tenantId, appId, fromTime, toTime, cancellationToken).ConfigureAwait(false);
+        var events = await _eventStore.ListAsync(tenantId, appId, new EventTimeRangeQuery { FromTime = fromTime, ToTime = toTime }, cancellationToken).ConfigureAwait(false);
         if (events != null)
         {
             var activePlayers = new HashSet<long>();
@@ -116,7 +116,7 @@ public sealed class OnlineGameEventMetricsService
             metrics.ActivePlayerCount = activePlayers.Count;
         }
 
-        var deadLetters = await _deadLetterSink.ListAsync(tenantId, appId, fromTime, toTime, cancellationToken).ConfigureAwait(false);
+        var deadLetters = await _deadLetterSink.ListAsync(tenantId, appId, new EventTimeRangeQuery { FromTime = fromTime, ToTime = toTime }, cancellationToken).ConfigureAwait(false);
         metrics.RejectedCount = deadLetters == null ? 0 : deadLetters.Count;
         return metrics;
     }

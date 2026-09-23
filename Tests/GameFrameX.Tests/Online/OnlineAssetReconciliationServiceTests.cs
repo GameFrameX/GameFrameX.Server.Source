@@ -132,9 +132,9 @@ namespace GameFrameX.Tests.Online
                 return _inner.ListInventoryStacksAsync(tenantId, appId, playerId, cancellationToken);
             }
 
-            public Task<IReadOnlyList<OnlineLedgerEntry>> ListLedgerEntriesAsync(long tenantId, long appId, long playerId, long afterSequenceNumber, int maxCount, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<OnlineLedgerEntry>> ListLedgerEntriesAsync(OnlineLedgerPageQuery query, CancellationToken cancellationToken = default)
             {
-                return _inner.ListLedgerEntriesAsync(tenantId, appId, playerId, afterSequenceNumber, maxCount, cancellationToken);
+                return _inner.ListLedgerEntriesAsync(query, cancellationToken);
             }
 
             public Task<IReadOnlyList<OnlineLedgerEntry>> FindLedgerEntriesByTransactionIdAsync(string transactionId, CancellationToken cancellationToken = default)
@@ -185,7 +185,7 @@ namespace GameFrameX.Tests.Online
         private static OnlineGrantRequest BuildRequest(long playerId, string key, long amount)
         {
             var scope = new OnlineScope(1, 10, 100, playerId);
-            return new OnlineGrantRequest(scope, OnlineAssetChangeSource.MatchReward, OnlineGrantOperation.Grant, "赛季结算", "bo-" + key, null, new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", amount) }, key);
+            return new OnlineGrantRequest(scope, OnlineAssetChangeSource.MatchReward, OnlineGrantOperation.Grant, "赛季结算", "bo-" + key, new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", amount) }, key);
         }
 
         /// <summary>

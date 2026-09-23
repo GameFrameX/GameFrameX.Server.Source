@@ -59,45 +59,31 @@ public sealed class OnlineLiveOpsRegistry
     /// <summary>
     /// 发布配置版本（同 kind+key 重复发布即追加新条目并接管最新视图）。
     /// </summary>
-    /// <param name="kind">配置种类（如 <c>RemoteConfig</c> / <c>ConfigRollout</c>）。</param>
-    /// <param name="key">配置键（种类内唯一）。</param>
-    /// <param name="version">版本号（调用方给定）。</param>
-    /// <param name="payloadText">配置载荷原文（原样登记，供查询端点回读）。</param>
-    /// <param name="operatorId">操作者。</param>
-    /// <param name="correlationId">关联标识。</param>
+    /// <param name="command">登记命令载荷（Publish 语义：版本号参与登记）。</param>
     /// <returns>登记条目。</returns>
-    public OnlineLiveOpsEntry Publish(string kind, string key, string version, string payloadText, string operatorId, string correlationId)
+    public OnlineLiveOpsEntry Publish(OnlineLiveOpsCommand command)
     {
-        return Append(OnlineLiveOpsOperation.Publish, kind, key, version, payloadText, operatorId, correlationId);
+        return Append(OnlineLiveOpsOperation.Publish, command);
     }
 
     /// <summary>
     /// 回滚配置版本（登记回滚条目并接管最新视图；不删除历史条目）。
     /// </summary>
-    /// <param name="kind">配置种类。</param>
-    /// <param name="key">配置键。</param>
-    /// <param name="version">被回滚到的版本。</param>
-    /// <param name="payloadText">回滚说明或目标版本载荷。</param>
-    /// <param name="operatorId">操作者。</param>
-    /// <param name="correlationId">关联标识。</param>
+    /// <param name="command">登记命令载荷（Rollback 语义：版本号为被回滚到的目标版本）。</param>
     /// <returns>登记条目。</returns>
-    public OnlineLiveOpsEntry Rollback(string kind, string key, string version, string payloadText, string operatorId, string correlationId)
+    public OnlineLiveOpsEntry Rollback(OnlineLiveOpsCommand command)
     {
-        return Append(OnlineLiveOpsOperation.Rollback, kind, key, version, payloadText, operatorId, correlationId);
+        return Append(OnlineLiveOpsOperation.Rollback, command);
     }
 
     /// <summary>
     /// 同步实体（设备分群 / 定时任务 / 玩家分群等 upsert 语义：追加条目并接管最新视图）。
     /// </summary>
-    /// <param name="kind">实体种类（如 <c>DeviceGroup</c> / <c>ScheduledTask</c> / <c>PlayerSegment</c> / <c>Announcement</c>）。</param>
-    /// <param name="key">实体键。</param>
-    /// <param name="payloadText">实体载荷原文。</param>
-    /// <param name="operatorId">操作者。</param>
-    /// <param name="correlationId">关联标识。</param>
+    /// <param name="command">登记命令载荷（Sync 语义：版本号不消费）。</param>
     /// <returns>登记条目。</returns>
-    public OnlineLiveOpsEntry Sync(string kind, string key, string payloadText, string operatorId, string correlationId)
+    public OnlineLiveOpsEntry Sync(OnlineLiveOpsCommand command)
     {
-        return Append(OnlineLiveOpsOperation.Sync, kind, key, string.Empty, payloadText, operatorId, correlationId);
+        return Append(OnlineLiveOpsOperation.Sync, command);
     }
 
     /// <summary>
@@ -136,25 +122,20 @@ public sealed class OnlineLiveOpsRegistry
     /// 追加条目并接管最新视图。
     /// </summary>
     /// <param name="operation">登记操作。</param>
-    /// <param name="kind">配置种类。</param>
-    /// <param name="key">配置键。</param>
-    /// <param name="version">版本号。</param>
-    /// <param name="payloadText">载荷原文。</param>
-    /// <param name="operatorId">操作者。</param>
-    /// <param name="correlationId">关联标识。</param>
+    /// <param name="command">登记命令载荷。</param>
     /// <returns>登记条目。</returns>
-    private OnlineLiveOpsEntry Append(OnlineLiveOpsOperation operation, string kind, string key, string version, string payloadText, string operatorId, string correlationId)
+    private OnlineLiveOpsEntry Append(OnlineLiveOpsOperation operation, OnlineLiveOpsCommand command)
     {
         var entry = new OnlineLiveOpsEntry
         {
             Sequence = System.Threading.Interlocked.Increment(ref _sequence),
             Operation = operation,
-            Kind = kind ?? string.Empty,
-            Key = key ?? string.Empty,
-            Version = version ?? string.Empty,
-            PayloadText = payloadText ?? string.Empty,
-            OperatorId = operatorId ?? string.Empty,
-            CorrelationId = correlationId ?? string.Empty,
+            Kind = command.Kind ?? string.Empty,
+            Key = command.Key ?? string.Empty,
+            Version = operation == OnlineLiveOpsOperation.Sync ? string.Empty : command.Version ?? string.Empty,
+            PayloadText = command.PayloadText ?? string.Empty,
+            OperatorId = command.OperatorId ?? string.Empty,
+            CorrelationId = command.CorrelationId ?? string.Empty,
             CreatedAtTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
         };
         lock (_sync)

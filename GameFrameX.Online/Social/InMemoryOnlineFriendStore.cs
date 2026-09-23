@@ -123,15 +123,16 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
     /// </remarks>
     /// <param name="tenantId">租户标识 / Tenant id</param>
     /// <param name="appId">App 标识 / App id</param>
-    /// <param name="friendshipId">关系标识 / Friendship id</param>
-    /// <param name="expectedState">期望的当前状态；不匹配即失败 / Expected current state; a mismatch fails the call</param>
-    /// <param name="newState">目标状态 / Target state</param>
-    /// <param name="nowUnixMilliseconds">本次变更时刻（UTC 毫秒） / Change time of this update (UTC milliseconds)</param>
-    /// <param name="responded">本次变更是否构成一次答复（答复时回填答复时刻） / Whether this change counts as a response (backfills the responded-at time when true)</param>
+    /// <param name="transition">状态迁移载荷（关系定位 + 期望/目标状态 + 变更时刻与答复标记） / State transition payload (friendship locator + expected/target states + change time and responded flag)</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
     /// <returns>更新后的关系副本；CAS 失败或记录不存在返回 null / Copy of the updated friendship; null on CAS failure or missing record</returns>
-    public Task<OnlineFriendship> UpdateStateAsync(long tenantId, long appId, string friendshipId, OnlineFriendshipState expectedState, OnlineFriendshipState newState, long nowUnixMilliseconds, bool responded, CancellationToken cancellationToken = default)
+    public Task<OnlineFriendship> UpdateStateAsync(long tenantId, long appId, FriendshipStateTransition transition, CancellationToken cancellationToken = default)
     {
+        var friendshipId = transition.FriendshipId;
+        var expectedState = transition.ExpectedState;
+        var newState = transition.NewState;
+        var nowUnixMilliseconds = transition.NowUnixMilliseconds;
+        var responded = transition.Responded;
         var lookupKey = friendshipId ?? string.Empty;
         lock (_syncRoot)
         {
@@ -177,16 +178,17 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
     /// </remarks>
     /// <param name="tenantId">租户标识 / Tenant id</param>
     /// <param name="appId">App 标识 / App id</param>
-    /// <param name="friendshipId">关系标识 / Friendship id</param>
-    /// <param name="expectedState">期望的当前状态（静止态）；不匹配即失败 / Expected current state (quiescent); a mismatch fails the call</param>
-    /// <param name="requesterId">本次发起人（写入为新的方向事实） / Initiator of this round (written as the new direction fact)</param>
-    /// <param name="addresseeId">本次被请求方 / Addressee of this round</param>
-    /// <param name="nowUnixMilliseconds">本次变更时刻（UTC 毫秒） / Change time of this update (UTC milliseconds)</param>
-    /// <param name="expiresAtTime">重置后的请求失效时刻（UTC 毫秒） / Reset request expiry time (UTC milliseconds)</param>
+    /// <param name="renewal">重新发起载荷（关系标识、期望状态、发起人、被请求方、变更时刻、失效时刻） / Renewal payload (friendship id, expected state, requester, addressee, change time, expiry)</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
     /// <returns>更新后的关系副本；CAS 失败或记录不存在返回 null / Copy of the updated friendship; null on CAS failure or missing record</returns>
-    public Task<OnlineFriendship> RenewRequestAsync(long tenantId, long appId, string friendshipId, OnlineFriendshipState expectedState, long requesterId, long addresseeId, long nowUnixMilliseconds, long expiresAtTime, CancellationToken cancellationToken = default)
+    public Task<OnlineFriendship> RenewRequestAsync(long tenantId, long appId, FriendshipRenewal renewal, CancellationToken cancellationToken = default)
     {
+        var friendshipId = renewal.FriendshipId;
+        var expectedState = renewal.ExpectedState;
+        var requesterId = renewal.RequesterId;
+        var addresseeId = renewal.AddresseeId;
+        var nowUnixMilliseconds = renewal.NowUnixMilliseconds;
+        var expiresAtTime = renewal.ExpiresAtTime;
         var lookupKey = friendshipId ?? string.Empty;
         lock (_syncRoot)
         {

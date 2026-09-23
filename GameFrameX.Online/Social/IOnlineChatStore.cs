@@ -106,41 +106,31 @@ public interface IOnlineChatStore
     /// </summary>
     /// <param name="tenantId">租户标识。</param>
     /// <param name="appId">App 标识。</param>
-    /// <param name="channelId">频道标识。</param>
-    /// <param name="messageId">消息标识。</param>
-    /// <param name="expectedState">期望的当前状态；不匹配即失败。</param>
-    /// <param name="newState">目标状态。</param>
-    /// <param name="nowUnixMilliseconds">本次变更时刻（UTC 毫秒）。</param>
-    /// <param name="recalledByPlayerId">撤回人（非撤回迁移传 <c>0</c>）。</param>
+    /// <param name="transition">消息状态迁移载荷（频道/消息定位 + 期望/目标状态 + 变更时刻与撤回人）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>更新后的消息副本；CAS 失败或记录不存在返回 null。</returns>
-    Task<OnlineChatMessage> UpdateMessageStateAsync(long tenantId, long appId, string channelId, string messageId, OnlineChatMessageState expectedState, OnlineChatMessageState newState, long nowUnixMilliseconds, long recalledByPlayerId, CancellationToken cancellationToken = default);
+    Task<OnlineChatMessage> UpdateMessageStateAsync(long tenantId, long appId, ChatMessageStateTransition transition, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 按稳定排序键升序读取游标之后的消息页（离线补拉与历史分页共用）。
     /// </summary>
     /// <param name="tenantId">租户标识。</param>
     /// <param name="appId">App 标识。</param>
-    /// <param name="channelId">频道标识。</param>
-    /// <param name="afterSentAtTime">游标位置的发送时刻（UTC 毫秒；从头读传 <c>0</c>）。</param>
-    /// <param name="afterSequence">游标位置的频道内序号（从头读传 <c>0</c>）。</param>
-    /// <param name="limit">最多返回条数（必须为正）。</param>
+    /// <param name="cursor">读取游标（频道定位 + 位点二元组 + 页大小）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>严格位于游标之后、按 <c>(SentAtTime, Sequence)</c> 升序排列的消息副本列表。</returns>
-    Task<IReadOnlyList<OnlineChatMessage>> ReadAfterAsync(long tenantId, long appId, string channelId, long afterSentAtTime, long afterSequence, int limit, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlineChatMessage>> ReadAfterAsync(long tenantId, long appId, ChatReadCursor cursor, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 统计游标之后的未读条数（排除本人发送的与已撤回的消息）。
     /// </summary>
     /// <param name="tenantId">租户标识。</param>
     /// <param name="appId">App 标识。</param>
-    /// <param name="channelId">频道标识。</param>
-    /// <param name="afterSentAtTime">已读位点的发送时刻（UTC 毫秒）。</param>
-    /// <param name="afterSequence">已读位点的频道内序号。</param>
+    /// <param name="cursor">读取游标（频道定位 + 已读位点二元组；页大小字段不消费）。</param>
     /// <param name="readerPlayerId">读取者（本人发的消息不计未读）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>未读条数。</returns>
-    Task<int> CountUnreadAsync(long tenantId, long appId, string channelId, long afterSentAtTime, long afterSequence, long readerPlayerId, CancellationToken cancellationToken = default);
+    Task<int> CountUnreadAsync(long tenantId, long appId, ChatReadCursor cursor, long readerPlayerId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 落定已读位点（整体替换：位点是只进不退的最终位置，不做增量合并）。

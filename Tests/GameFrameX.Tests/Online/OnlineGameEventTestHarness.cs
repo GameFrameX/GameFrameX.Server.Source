@@ -169,7 +169,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>事件列表。</returns>
         public Task<List<OnlineEvent>> StoredEventsAsync()
         {
-            return EventStore.ListAsync(TenantId, AppId, 0, long.MaxValue);
+            return EventStore.ListAsync(TenantId, AppId, new EventTimeRangeQuery { FromTime = 0, ToTime = long.MaxValue });
         }
 
         /// <summary>
@@ -178,7 +178,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>死信列表。</returns>
         public Task<List<OnlineGameEventDeadLetter>> DeadLettersAsync()
         {
-            return DeadLetterSink.ListAsync(TenantId, AppId, 0, long.MaxValue);
+            return DeadLetterSink.ListAsync(TenantId, AppId, new EventTimeRangeQuery { FromTime = 0, ToTime = long.MaxValue });
         }
 
         /// <summary>

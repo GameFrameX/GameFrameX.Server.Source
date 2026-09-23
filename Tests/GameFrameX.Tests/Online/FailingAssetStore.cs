@@ -178,16 +178,12 @@ namespace GameFrameX.Tests.Online
         /// <remarks>
         /// Forwards directly to the inner store to list ledger entries page by ledger sequence.
         /// </remarks>
-        /// <param name="tenantId">租户标识 / Tenant id</param>
-        /// <param name="appId">App 标识 / App id</param>
-        /// <param name="playerId">玩家标识 / Player id</param>
-        /// <param name="afterSequenceNumber">游标（起始序，不含）/ Cursor (exclusive starting sequence)</param>
-        /// <param name="maxCount">最大返回条数 / Maximum number of entries to return</param>
+        /// <param name="query">分页查询载荷 / The page query payload</param>
         /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
         /// <returns>内部存储返回的账本条目列表 / The ledger entry list from the inner store</returns>
-        public Task<IReadOnlyList<OnlineLedgerEntry>> ListLedgerEntriesAsync(long tenantId, long appId, long playerId, long afterSequenceNumber, int maxCount, CancellationToken cancellationToken = default)
+        public Task<IReadOnlyList<OnlineLedgerEntry>> ListLedgerEntriesAsync(OnlineLedgerPageQuery query, CancellationToken cancellationToken = default)
         {
-            return _inner.ListLedgerEntriesAsync(tenantId, appId, playerId, afterSequenceNumber, maxCount, cancellationToken);
+            return _inner.ListLedgerEntriesAsync(query, cancellationToken);
         }
 
         /// <summary>

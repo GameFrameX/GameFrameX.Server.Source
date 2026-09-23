@@ -124,8 +124,16 @@ public sealed class OnlineAdminSocialHandlers
     {
         var playerScope = OnlineAdminApiContract.ReadPlayerScope(request, scope);
         var adminId = request.ReadNullableInt64("PenaltyId") ?? 0;
-        OnlineAdminApiContract.Unwrap(await _host.Punishments.ApplyAsync(scope.TenantId, scope.AppId, playerScope.PlayerId,
-            OnlinePunishmentKind.Mute, BuildPenaltyReason(request), 0, 0, adminId, null, request.ReadRequestId(), cancellationToken).ConfigureAwait(false));
+        OnlineAdminApiContract.Unwrap(await _host.Punishments.ApplyAsync(new OnlinePunishmentRequest
+        {
+            TenantId = scope.TenantId,
+            AppId = scope.AppId,
+            PlayerId = playerScope.PlayerId,
+            Kind = OnlinePunishmentKind.Mute,
+            Reason = BuildPenaltyReason(request),
+            AdminId = adminId,
+            CorrelationId = request.ReadRequestId(),
+        }, cancellationToken).ConfigureAwait(false));
         return new LinkCommandAckResponse { TokenRevokedConfirmed = true, };
     }
 
@@ -212,8 +220,16 @@ public sealed class OnlineAdminSocialHandlers
         }
 
         var resolution = status.Value == OnlineReportState.Rejected ? OnlineReportResolution.NoViolation : OnlineReportResolution.None;
-        OnlineAdminApiContract.Unwrap(await _host.SocialDecisions.TransitionReportAsync(scope.TenantId, scope.AppId, caseId, status.Value, resolution,
-            0, null, request.ReadRequestId(), cancellationToken).ConfigureAwait(false));
+        OnlineAdminApiContract.Unwrap(await _host.SocialDecisions.TransitionReportAsync(new OnlineReportTransition
+        {
+            TenantId = scope.TenantId,
+            AppId = scope.AppId,
+            ReportId = caseId,
+            TargetState = status.Value,
+            Resolution = resolution,
+            HandlerAdminId = 0,
+            CorrelationId = request.ReadRequestId(),
+        }, cancellationToken).ConfigureAwait(false));
         return new EmptyAckResponse();
     }
 
@@ -251,7 +267,16 @@ public sealed class OnlineAdminSocialHandlers
         var endTime = OnlineAdminApiContract.ReadOptionalInt64(request, "EndTime");
         var pageSize = OnlineAdminApiContract.ReadPageSize(request);
         var cursor = OnlineAdminApiContract.ReadCursor(request);
-        var page = await _host.ChatAudit.QueryAsync(scope.TenantId, scope.AppId, channelKind, participantPlayerId, keyword, startTime, endTime, cursor, pageSize).ConfigureAwait(false);
+        var page = await _host.ChatAudit.QueryAsync(scope.TenantId, scope.AppId, new ChatAuditQuery
+        {
+            ChannelKind = channelKind,
+            ParticipantPlayerId = participantPlayerId,
+            Keyword = keyword,
+            StartTime = startTime,
+            EndTime = endTime,
+            Cursor = cursor,
+            PageSize = pageSize,
+        }).ConfigureAwait(false);
         var items = new List<ChatAuditMessageResponse>();
         foreach (var item in page.Items)
         {

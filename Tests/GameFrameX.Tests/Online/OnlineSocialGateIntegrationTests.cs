@@ -218,7 +218,7 @@ namespace GameFrameX.Tests.Online
             // Arrange
             var fixture = CreatePartyFixture(withGate: true);
             var party = await CreatePartyAsync(fixture.Party, PlayerOne);
-            Assert.True((await fixture.Punishments.ApplyAsync(TenantId, AppId, PlayerOne, OnlinePunishmentKind.Mute, "刷屏", 0, 0, AdminId)).IsSuccess);
+            Assert.True((await fixture.Punishments.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = PlayerOne, Kind = OnlinePunishmentKind.Mute, Reason = "刷屏", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId })).IsSuccess);
 
             // Act
             var invite = await fixture.Party.InviteAsync(CreatePlayerScope(PlayerOne), party.PartyId, PlayerTwo);
@@ -236,7 +236,7 @@ namespace GameFrameX.Tests.Online
             // Arrange
             var fixture = CreatePartyFixture(withGate: true);
             var party = await CreatePartyAsync(fixture.Party, PlayerOne);
-            Assert.True((await fixture.Punishments.ApplyAsync(TenantId, AppId, PlayerOne, OnlinePunishmentKind.Ban, "使用外挂", 0, 0, AdminId)).IsSuccess);
+            Assert.True((await fixture.Punishments.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = PlayerOne, Kind = OnlinePunishmentKind.Ban, Reason = "使用外挂", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId })).IsSuccess);
 
             // Act
             var invite = await fixture.Party.InviteAsync(CreatePlayerScope(PlayerOne), party.PartyId, PlayerTwo);
@@ -341,7 +341,7 @@ namespace GameFrameX.Tests.Online
             var bannedTicket = await EnqueueAsync(fixture, PlayerTwo, 3, new List<long> { PlayerTwo, PlayerThree });
             await NextArrivalTickAsync();
             await EnqueueAsync(fixture, PlayerFour, 3, new List<long> { PlayerFour, PlayerFive });
-            Assert.True((await fixture.Punishments.ApplyAsync(TenantId, AppId, PlayerTwo, OnlinePunishmentKind.Ban, "使用外挂", 0, 0, AdminId)).IsSuccess);
+            Assert.True((await fixture.Punishments.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = PlayerTwo, Kind = OnlinePunishmentKind.Ban, Reason = "使用外挂", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId })).IsSuccess);
 
             // Act
             var outcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
@@ -369,7 +369,7 @@ namespace GameFrameX.Tests.Online
             var bannedTicket = await EnqueueAsync(fixture, PlayerOne, 2, new List<long> { PlayerOne });
             await NextArrivalTickAsync();
             await EnqueueAsync(fixture, PlayerTwo, 2, new List<long> { PlayerTwo });
-            Assert.True((await fixture.Punishments.ApplyAsync(TenantId, AppId, PlayerOne, OnlinePunishmentKind.Ban, "使用外挂", 0, 0, AdminId)).IsSuccess);
+            Assert.True((await fixture.Punishments.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = PlayerOne, Kind = OnlinePunishmentKind.Ban, Reason = "使用外挂", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId })).IsSuccess);
 
             // Act
             var outcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);

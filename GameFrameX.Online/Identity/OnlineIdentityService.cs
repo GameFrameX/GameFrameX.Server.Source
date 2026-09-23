@@ -57,18 +57,24 @@ public sealed class OnlineIdentityService
     /// <summary>
     /// 解析一次登录（S2.3）：命中身份或自动注册，选定 App/Server 归属玩家，校验设备状态。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
-    /// <param name="serverId">区服标识。</param>
-    /// <param name="kind">身份类型。</param>
-    /// <param name="identifier">身份标识串。</param>
-    /// <param name="playerName">自动注册时的玩家显示名（可空，缺省按玩家标识生成）。</param>
-    /// <param name="deviceIdentifier">登录设备标识（可空；提供时参与换绑策略校验）。</param>
-    /// <param name="devicePlatform">登录设备平台描述（可空）。</param>
+    /// <param name="request">登录解析请求。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>登录解析结果（身份/账号/玩家三件套）；失败返回段位化错误码。</returns>
-    public async Task<OnlineResult<OnlineLoginResolution>> ResolveLoginAsync(long tenantId, long appId, long serverId, OnlineIdentityKind kind, string identifier, string playerName = null, string deviceIdentifier = null, string devicePlatform = null, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<OnlineLoginResolution>> ResolveLoginAsync(OnlineLoginRequest request, CancellationToken cancellationToken = default)
     {
+        if (request == null)
+        {
+            throw new ArgumentNullException(nameof(request));
+        }
+
+        var tenantId = request.TenantId;
+        var appId = request.AppId;
+        var serverId = request.ServerId;
+        var kind = request.Kind;
+        var identifier = request.Identifier;
+        var playerName = request.PlayerName;
+        var deviceIdentifier = request.DeviceIdentifier;
+        var devicePlatform = request.DevicePlatform;
         if (!Enum.IsDefined(typeof(OnlineIdentityKind), kind) || string.IsNullOrEmpty(identifier))
         {
             return OnlineResult<OnlineLoginResolution>.Fail(OnlineErrorCode.ParameterInvalid, "身份类型未定义或标识为空。");

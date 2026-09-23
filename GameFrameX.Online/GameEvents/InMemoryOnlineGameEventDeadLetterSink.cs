@@ -113,12 +113,13 @@ public sealed class InMemoryOnlineGameEventDeadLetterSink : IOnlineGameEventDead
     /// </remarks>
     /// <param name="tenantId">租户标识 / The tenant id</param>
     /// <param name="appId">App 标识 / The app id</param>
-    /// <param name="fromTime">窗口起点（UTC 毫秒，含）/ Window start (UTC milliseconds, inclusive)</param>
-    /// <param name="toTime">窗口终点（UTC 毫秒，含）/ Window end (UTC milliseconds, inclusive)</param>
+    /// <param name="query">时间窗查询载荷（闭区间）/ The time-range query payload (inclusive window)</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>匹配的死信列表（按写入即拒收顺序升序）；无记录返回空列表 / The matched dead letters in write (rejection) order; an empty list when none match</returns>
-    public Task<List<OnlineGameEventDeadLetter>> ListAsync(long tenantId, long appId, long fromTime, long toTime, CancellationToken cancellationToken = default)
+    public Task<List<OnlineGameEventDeadLetter>> ListAsync(long tenantId, long appId, EventTimeRangeQuery query, CancellationToken cancellationToken = default)
     {
+        var fromTime = query.FromTime;
+        var toTime = query.ToTime;
         var matched = new List<OnlineGameEventDeadLetter>();
         lock (_syncRoot)
         {

@@ -104,11 +104,12 @@ public sealed class OnlineMatchResultDispatcher
                 OnlineGrantOperation.Grant,
                 "对局结算奖励",
                 businessOrderId,
-                "online-match",
                 entry.Rewards,
-                businessOrderId,
-                0,
-                result.MatchResultId);
+                businessOrderId)
+            {
+                OperatorId = "online-match",
+                CorrelationId = result.MatchResultId,
+            };
 
             var granted = await _grantService.ExecuteAsync(request, cancellationToken).ConfigureAwait(false);
             if (!granted.IsSuccess)

@@ -43,14 +43,10 @@ using System.Threading.Tasks;
 public interface IOnlinePlayerStorageStore
 {
     /// <summary>按键查找条目（含软删条目；可见性判定归服务层）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
-    /// <param name="playerId">玩家标识。</param>
-    /// <param name="collection">集合名。</param>
-    /// <param name="key">条目键。</param>
+    /// <param name="key">条目键载荷（租户 + App + 玩家 + 集合名 + 条目键）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>条目；不存在返回 null。</returns>
-    Task<OnlinePlayerStorageEntry> FindAsync(long tenantId, long appId, long playerId, string collection, string key, CancellationToken cancellationToken = default);
+    Task<OnlinePlayerStorageEntry> FindAsync(OnlineStorageEntryKey key, CancellationToken cancellationToken = default);
 
     /// <summary>原子比较交换写入（乐观锁；expectedVersion=0 为仅创建，&gt;0 为版本匹配更新）。</summary>
     /// <param name="entry">待写入条目（Version 由调用方预置为目标版本）。</param>
@@ -60,15 +56,10 @@ public interface IOnlinePlayerStorageStore
     Task<bool> UpsertAsync(OnlinePlayerStorageEntry entry, long expectedVersion, CancellationToken cancellationToken = default);
 
     /// <summary>按键字典序列举集合内非软删条目（游标 = 排序起始键，不含）。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
-    /// <param name="playerId">玩家标识。</param>
-    /// <param name="collection">集合名。</param>
-    /// <param name="afterKey">游标（排序起始键，不含；空串 = 从头列举）。</param>
-    /// <param name="maxCount">最大返回条数。</param>
+    /// <param name="query">列举查询载荷（玩家定位 + 集合名 + 游标 + 上限）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>非软删条目列表（按键字典序）。</returns>
-    Task<IReadOnlyList<OnlinePlayerStorageEntry>> ListAsync(long tenantId, long appId, long playerId, string collection, string afterKey, int maxCount, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlinePlayerStorageEntry>> ListAsync(OnlineStorageListQuery query, CancellationToken cancellationToken = default);
 
     /// <summary>统计集合内活跃（非软删）键数（键数上限 enforcement 输入）。</summary>
     /// <param name="tenantId">租户标识。</param>

@@ -385,11 +385,12 @@ public sealed class OnlineSeasonService
             OnlineGrantOperation.Grant,
             "赛季奖励结算",
             businessOrderId,
-            "online-season",
             rewards,
-            businessOrderId,
-            0,
-            season.SeasonId);
+            businessOrderId)
+        {
+            OperatorId = "online-season",
+            CorrelationId = season.SeasonId,
+        };
 
         var granted = await _grantService.ExecuteAsync(request, cancellationToken).ConfigureAwait(false);
         if (!granted.IsSuccess)

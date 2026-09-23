@@ -327,15 +327,16 @@ public sealed class InMemoryOnlineAssetStore : IOnlineAssetStore
     }
 
     /// <summary>按账本序分页列举玩家账本条目。</summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="playerId">玩家标识。</param>
-    /// <param name="afterSequenceNumber">游标（起始序，不含；0 = 从头）。</param>
-    /// <param name="maxCount">最大返回条数。</param>
+    /// <param name="query">分页查询载荷。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>账本条目列表（按序升序）。</returns>
-    public Task<IReadOnlyList<OnlineLedgerEntry>> ListLedgerEntriesAsync(long tenantId, long appId, long playerId, long afterSequenceNumber, int maxCount, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineLedgerEntry>> ListLedgerEntriesAsync(OnlineLedgerPageQuery query, CancellationToken cancellationToken = default)
     {
+        var tenantId = query.TenantId;
+        var appId = query.AppId;
+        var playerId = query.PlayerId;
+        var afterSequenceNumber = query.AfterSequenceNumber;
+        var maxCount = query.MaxCount;
         lock (_registryLock)
         {
             if (!_ledgerByPlayer.TryGetValue(BuildPlayerKey(tenantId, appId, playerId), out var ledger))
@@ -448,7 +449,7 @@ public sealed class InMemoryOnlineAssetStore : IOnlineAssetStore
         _sequenceByPlayer.TryGetValue(playerKey, out var sequence);
         sequence++;
         _sequenceByPlayer[playerKey] = sequence;
-        return new OnlineLedgerEntry("led-" + Guid.NewGuid().ToString("N"), batch.TransactionId, batch.TenantId, batch.AppId, batch.PlayerId, batch.HomeServerId, batch.InitiatingServerId, batch.Source, batch.Operation, batch.Reason, batch.BusinessOrderId, batch.OperatorId, line.AssetKind, line.AssetId, amountBefore, line.Amount, amountAfter, batch.CompensatesTransactionId, sequence, occurredTime);
+        return new OnlineLedgerEntry("led-" + Guid.NewGuid().ToString("N"), batch.TransactionId, new OnlineLedgerHeader { TenantId = batch.TenantId, AppId = batch.AppId, PlayerId = batch.PlayerId, HomeServerId = batch.HomeServerId, InitiatingServerId = batch.InitiatingServerId, Source = batch.Source, Operation = batch.Operation, Reason = batch.Reason, BusinessOrderId = batch.BusinessOrderId, OperatorId = batch.OperatorId }, line.AssetKind, line.AssetId, amountBefore, line.Amount, amountAfter, batch.CompensatesTransactionId, sequence, occurredTime);
     }
 
     /// <summary>获取玩家分片锁（不存在则注册）。</summary>

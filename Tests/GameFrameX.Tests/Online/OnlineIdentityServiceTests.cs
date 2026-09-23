@@ -59,8 +59,8 @@ namespace GameFrameX.Tests.Online
             var service = new OnlineIdentityService(new InMemoryOnlineIdentityStore());
 
             // Act
-            var first = await service.ResolveLoginAsync(TenantId, AppId, ServerId, OnlineIdentityKind.UserName, "alice");
-            var second = await service.ResolveLoginAsync(TenantId, AppId, ServerId, OnlineIdentityKind.UserName, "alice");
+            var first = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "alice" });
+            var second = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "alice" });
 
             // Assert
             Assert.True(first.IsSuccess);
@@ -86,10 +86,10 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var service = new OnlineIdentityService(new InMemoryOnlineIdentityStore());
-            var first = await service.ResolveLoginAsync(TenantId, AppId, ServerId, OnlineIdentityKind.UserName, "bob");
+            var first = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "bob" });
 
             // Act
-            var second = await service.ResolveLoginAsync(TenantId, AppId, ServerId + 1, OnlineIdentityKind.UserName, "bob");
+            var second = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId + 1, Kind = OnlineIdentityKind.UserName, Identifier = "bob" });
 
             // Assert
             Assert.True(second.IsSuccess);
@@ -106,12 +106,12 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var service = new OnlineIdentityService(new InMemoryOnlineIdentityStore());
-            var first = await service.ResolveLoginAsync(TenantId, AppId, ServerId, OnlineIdentityKind.UserName, "carol", null, "device-old", "iOS");
+            var first = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "carol", DeviceIdentifier = "device-old", DevicePlatform = "iOS" });
 
             // Act
             var rebind = await service.RebindDeviceAsync(first.Data.GameAccount.Id, "device-old", "device-new", "Android");
-            var oldDeviceLogin = await service.ResolveLoginAsync(TenantId, AppId, ServerId, OnlineIdentityKind.UserName, "carol", null, "device-old", "iOS");
-            var newDeviceLogin = await service.ResolveLoginAsync(TenantId, AppId, ServerId, OnlineIdentityKind.UserName, "carol", null, "device-new", "Android");
+            var oldDeviceLogin = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "carol", DeviceIdentifier = "device-old", DevicePlatform = "iOS" });
+            var newDeviceLogin = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "carol", DeviceIdentifier = "device-new", DevicePlatform = "Android" });
 
             // Assert
             Assert.True(rebind.IsSuccess);
@@ -128,11 +128,11 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var service = new OnlineIdentityService(new InMemoryOnlineIdentityStore());
-            var first = await service.ResolveLoginAsync(TenantId, AppId, ServerId, OnlineIdentityKind.UserName, "dave");
+            var first = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "dave" });
 
             // Act
             var deactivated = await service.DeactivateAccountAsync(first.Data.GameAccount.Id, 0);
-            var login = await service.ResolveLoginAsync(TenantId, AppId, ServerId, OnlineIdentityKind.UserName, "dave");
+            var login = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "dave" });
 
             // Assert
             Assert.True(deactivated.IsSuccess);
@@ -148,12 +148,12 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var service = new OnlineIdentityService(new InMemoryOnlineIdentityStore());
-            var source = await service.ResolveLoginAsync(TenantId, AppId, ServerId, OnlineIdentityKind.UserName, "erin");
-            var target = await service.ResolveLoginAsync(TenantId, AppId, ServerId, OnlineIdentityKind.UserName, "frank");
+            var source = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "erin" });
+            var target = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "frank" });
 
             // Act
             var merged = await service.MergeAccountsAsync(source.Data.GameAccount.Id, target.Data.GameAccount.Id);
-            var sourceLogin = await service.ResolveLoginAsync(TenantId, AppId, ServerId, OnlineIdentityKind.UserName, "erin");
+            var sourceLogin = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "erin" });
 
             // Assert：合并后源身份登录跟随目标账号，源玩家档案随合并迁移保留（归属目标账号）。
             Assert.True(merged.IsSuccess);
@@ -174,8 +174,8 @@ namespace GameFrameX.Tests.Online
             var service = new OnlineIdentityService(new InMemoryOnlineIdentityStore());
 
             // Act
-            var badKind = await service.ResolveLoginAsync(TenantId, AppId, ServerId, (OnlineIdentityKind)99, "alice");
-            var emptyIdentifier = await service.ResolveLoginAsync(TenantId, AppId, ServerId, OnlineIdentityKind.UserName, string.Empty);
+            var badKind = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = (OnlineIdentityKind)99, Identifier = "alice" });
+            var emptyIdentifier = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = string.Empty });
 
             // Assert
             Assert.False(badKind.IsSuccess);

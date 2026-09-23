@@ -80,7 +80,7 @@ public sealed class OnlinePlayerStorageService
             return failure;
         }
 
-        var entry = await _store.FindAsync(scope.TenantId, scope.AppId, scope.PlayerId, collection, key, cancellationToken);
+        var entry = await _store.FindAsync(new OnlineStorageEntryKey { TenantId = scope.TenantId, AppId = scope.AppId, PlayerId = scope.PlayerId, Collection = collection, Key = key }, cancellationToken);
         if (entry == null || entry.DeletedAtTime > 0 || IsExpired(entry))
         {
             return OnlineResult<OnlinePlayerStorageEntry>.Fail(OnlineErrorCode.ResourceNotFound, "存储条目不存在");
@@ -120,7 +120,7 @@ public sealed class OnlinePlayerStorageService
         }
 
         var now = Now();
-        var existing = await _store.FindAsync(scope.TenantId, scope.AppId, scope.PlayerId, collection, key, cancellationToken);
+        var existing = await _store.FindAsync(new OnlineStorageEntryKey { TenantId = scope.TenantId, AppId = scope.AppId, PlayerId = scope.PlayerId, Collection = collection, Key = key }, cancellationToken);
         var casVersion = expectedVersion;
         var isResurrecting = false;
         if (existing != null && existing.DeletedAtTime > 0 && expectedVersion == 0)
@@ -192,7 +192,7 @@ public sealed class OnlinePlayerStorageService
         }
 
         var effectivePageSize = pageSize == 0 ? _options.MaxPageSize : Math.Min(pageSize, _options.MaxPageSize);
-        var fetch = await _store.ListAsync(scope.TenantId, scope.AppId, scope.PlayerId, collection, cursor ?? string.Empty, effectivePageSize + 1, cancellationToken);
+        var fetch = await _store.ListAsync(new OnlineStorageListQuery { TenantId = scope.TenantId, AppId = scope.AppId, PlayerId = scope.PlayerId, Collection = collection, AfterKey = cursor ?? string.Empty, MaxCount = effectivePageSize + 1 }, cancellationToken);
         var hasMore = fetch.Count > effectivePageSize;
         var pageEntries = hasMore ? fetch.Take(effectivePageSize).ToList() : fetch.ToList();
         var now = Now();
@@ -229,7 +229,7 @@ public sealed class OnlinePlayerStorageService
             return OnlineResult<bool>.Fail(failure.Code, failure.Message);
         }
 
-        var entry = await _store.FindAsync(scope.TenantId, scope.AppId, scope.PlayerId, collection, key, cancellationToken);
+        var entry = await _store.FindAsync(new OnlineStorageEntryKey { TenantId = scope.TenantId, AppId = scope.AppId, PlayerId = scope.PlayerId, Collection = collection, Key = key }, cancellationToken);
         if (entry == null || entry.DeletedAtTime > 0 || IsExpired(entry))
         {
             return OnlineResult<bool>.Fail(OnlineErrorCode.ResourceNotFound, "存储条目不存在");

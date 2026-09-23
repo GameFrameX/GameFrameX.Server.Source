@@ -106,14 +106,10 @@ public interface IOnlineMatchTicketStore
     /// </summary>
     /// <param name="tenantId">租户标识。</param>
     /// <param name="appId">App 标识。</param>
-    /// <param name="ticketId">票据标识。</param>
-    /// <param name="expectedState">期望的当前状态；不匹配即失败。</param>
-    /// <param name="newState">目标状态。</param>
-    /// <param name="failureReason">失败原因码（非失败转迁移填 <see cref="OnlineMatchFailureReason.None"/>）。</param>
-    /// <param name="assignmentId">关联的分配标识（无则空字符串）。</param>
+    /// <param name="transition">状态迁移载荷（票据定位 + 期望/目标状态 + 失败原因与分配标识）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>更新后的票据副本；CAS 失败或票据不存在返回 null。</returns>
-    Task<OnlineMatchTicket> UpdateStateAsync(long tenantId, long appId, string ticketId, OnlineMatchTicketState expectedState, OnlineMatchTicketState newState, OnlineMatchFailureReason failureReason, string assignmentId, CancellationToken cancellationToken = default);
+    Task<OnlineMatchTicket> UpdateStateAsync(long tenantId, long appId, MatchTicketStateTransition transition, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 原子提交一次成组：校验全部票据仍处于期望状态，是则一次性全部置为

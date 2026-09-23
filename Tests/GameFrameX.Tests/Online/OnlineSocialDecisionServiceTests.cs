@@ -280,7 +280,7 @@ namespace GameFrameX.Tests.Online
             var service = CreateService(out _, out var graphStore);
             var future = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 60000;
             var punishmentService = new OnlinePunishmentService(graphStore, new OnlineEventRecorder());
-            var scheduled = await punishmentService.ApplyAsync(TenantId, AppId, PlayerTwo, OnlinePunishmentKind.Ban, "预置封禁", future, 0, AdminId);
+            var scheduled = await punishmentService.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = PlayerTwo, Kind = OnlinePunishmentKind.Ban, Reason = "预置封禁", EffectiveAtTime = future, ExpiresAtTime = 0, AdminId = AdminId });
             Assert.True(scheduled.IsSuccess);
 
             // Act
@@ -300,7 +300,7 @@ namespace GameFrameX.Tests.Online
             var service = CreateService(out _, out var graphStore);
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             var punishmentService = new OnlinePunishmentService(graphStore, new OnlineEventRecorder());
-            var expired = await punishmentService.ApplyAsync(TenantId, AppId, PlayerTwo, OnlinePunishmentKind.Ban, "历史封禁", now - 100000, now - 50000, AdminId);
+            var expired = await punishmentService.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = PlayerTwo, Kind = OnlinePunishmentKind.Ban, Reason = "历史封禁", EffectiveAtTime = now - 100000, ExpiresAtTime = now - 50000, AdminId = AdminId });
             Assert.True(expired.IsSuccess);
 
             // Act
@@ -474,7 +474,7 @@ namespace GameFrameX.Tests.Online
             var service = CreateService(out _);
 
             // Act
-            var outcome = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), PlayerTwo, OnlineReportScene.Chat, OnlineReportReason.Spam);
+            var outcome = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), new OnlineReportSubmission { ReportedPlayerId = PlayerTwo, Scene = OnlineReportScene.Chat, Reason = OnlineReportReason.Spam });
 
             // Assert
             Assert.False(outcome.IsSuccess);
@@ -491,7 +491,7 @@ namespace GameFrameX.Tests.Online
             var service = CreateService(out _);
 
             // Act
-            var outcome = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), PlayerTwo, OnlineReportScene.Profile, OnlineReportReason.Other);
+            var outcome = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), new OnlineReportSubmission { ReportedPlayerId = PlayerTwo, Scene = OnlineReportScene.Profile, Reason = OnlineReportReason.Other });
 
             // Assert
             Assert.False(outcome.IsSuccess);
@@ -508,8 +508,8 @@ namespace GameFrameX.Tests.Online
             var service = CreateService(out _);
 
             // Act
-            var selfReport = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), PlayerOne, OnlineReportScene.Profile, OnlineReportReason.Spam);
-            var invalidTarget = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), 0, OnlineReportScene.Profile, OnlineReportReason.Spam);
+            var selfReport = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), new OnlineReportSubmission { ReportedPlayerId = PlayerOne, Scene = OnlineReportScene.Profile, Reason = OnlineReportReason.Spam });
+            var invalidTarget = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), new OnlineReportSubmission { ReportedPlayerId = 0, Scene = OnlineReportScene.Profile, Reason = OnlineReportReason.Spam });
 
             // Assert
             Assert.False(selfReport.IsSuccess);
@@ -530,13 +530,7 @@ namespace GameFrameX.Tests.Online
             // Act
             var outcome = await service.SubmitReportAsync(
                 CreatePlayerScope(PlayerOne),
-                PlayerTwo,
-                OnlineReportScene.Chat,
-                OnlineReportReason.Harassment,
-                "match-1",
-                "msg-1",
-                "chan-1",
-                "连续辱骂");
+                new OnlineReportSubmission { ReportedPlayerId = PlayerTwo, Scene = OnlineReportScene.Chat, Reason = OnlineReportReason.Harassment, MatchId = "match-1", ChatMessageId = "msg-1", ChannelId = "chan-1", Evidence = "连续辱骂" });
 
             // Assert
             Assert.True(outcome.IsSuccess);
@@ -563,7 +557,7 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var service = CreateService(out _);
-            var submitted = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), PlayerTwo, OnlineReportScene.Profile, OnlineReportReason.Spam);
+            var submitted = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), new OnlineReportSubmission { ReportedPlayerId = PlayerTwo, Scene = OnlineReportScene.Profile, Reason = OnlineReportReason.Spam });
 
             // Act
             var outcome = await service.WithdrawReportAsync(CreatePlayerScope(PlayerOne), submitted.Data.ReportId);
@@ -582,7 +576,7 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var service = CreateService(out _);
-            var submitted = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), PlayerTwo, OnlineReportScene.Profile, OnlineReportReason.Spam);
+            var submitted = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), new OnlineReportSubmission { ReportedPlayerId = PlayerTwo, Scene = OnlineReportScene.Profile, Reason = OnlineReportReason.Spam });
 
             // Act
             var byTarget = await service.WithdrawReportAsync(CreatePlayerScope(PlayerTwo), submitted.Data.ReportId);
@@ -603,10 +597,10 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var service = CreateService(out _);
-            var submitted = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), PlayerTwo, OnlineReportScene.Profile, OnlineReportReason.Spam);
+            var submitted = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), new OnlineReportSubmission { ReportedPlayerId = PlayerTwo, Scene = OnlineReportScene.Profile, Reason = OnlineReportReason.Spam });
 
             // Act
-            var outcome = await service.TransitionReportAsync(TenantId, AppId, submitted.Data.ReportId, OnlineReportState.Actioned, OnlineReportResolution.Banned, AdminId);
+            var outcome = await service.TransitionReportAsync(new OnlineReportTransition { TenantId = TenantId, AppId = AppId, ReportId = submitted.Data.ReportId, TargetState = OnlineReportState.Actioned, Resolution = OnlineReportResolution.Banned, HandlerAdminId = AdminId });
 
             // Assert
             Assert.False(outcome.IsSuccess);
@@ -621,11 +615,11 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var service = CreateService(out _);
-            var submitted = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), PlayerTwo, OnlineReportScene.Profile, OnlineReportReason.Spam);
-            Assert.True((await service.TransitionReportAsync(TenantId, AppId, submitted.Data.ReportId, OnlineReportState.Reviewing, OnlineReportResolution.None, AdminId)).IsSuccess);
+            var submitted = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), new OnlineReportSubmission { ReportedPlayerId = PlayerTwo, Scene = OnlineReportScene.Profile, Reason = OnlineReportReason.Spam });
+            Assert.True((await service.TransitionReportAsync(new OnlineReportTransition { TenantId = TenantId, AppId = AppId, ReportId = submitted.Data.ReportId, TargetState = OnlineReportState.Reviewing, Resolution = OnlineReportResolution.None, HandlerAdminId = AdminId })).IsSuccess);
 
             // Act
-            var outcome = await service.TransitionReportAsync(TenantId, AppId, submitted.Data.ReportId, OnlineReportState.Actioned, OnlineReportResolution.None, AdminId);
+            var outcome = await service.TransitionReportAsync(new OnlineReportTransition { TenantId = TenantId, AppId = AppId, ReportId = submitted.Data.ReportId, TargetState = OnlineReportState.Actioned, Resolution = OnlineReportResolution.None, HandlerAdminId = AdminId });
 
             // Assert
             Assert.False(outcome.IsSuccess);
@@ -640,11 +634,11 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var service = CreateService(out _);
-            var submitted = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), PlayerTwo, OnlineReportScene.Profile, OnlineReportReason.Spam);
+            var submitted = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), new OnlineReportSubmission { ReportedPlayerId = PlayerTwo, Scene = OnlineReportScene.Profile, Reason = OnlineReportReason.Spam });
 
             // Act
-            var contradictory = await service.TransitionReportAsync(TenantId, AppId, submitted.Data.ReportId, OnlineReportState.Rejected, OnlineReportResolution.Banned, AdminId);
-            var consistent = await service.TransitionReportAsync(TenantId, AppId, submitted.Data.ReportId, OnlineReportState.Rejected, OnlineReportResolution.NoViolation, AdminId, "ADM-1");
+            var contradictory = await service.TransitionReportAsync(new OnlineReportTransition { TenantId = TenantId, AppId = AppId, ReportId = submitted.Data.ReportId, TargetState = OnlineReportState.Rejected, Resolution = OnlineReportResolution.Banned, HandlerAdminId = AdminId });
+            var consistent = await service.TransitionReportAsync(new OnlineReportTransition { TenantId = TenantId, AppId = AppId, ReportId = submitted.Data.ReportId, TargetState = OnlineReportState.Rejected, Resolution = OnlineReportResolution.NoViolation, HandlerAdminId = AdminId, AdminCaseId = "ADM-1" });
 
             // Assert
             Assert.False(contradictory.IsSuccess);
@@ -665,12 +659,12 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var service = CreateService(out _);
-            var submitted = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), PlayerTwo, OnlineReportScene.Profile, OnlineReportReason.Spam);
-            var first = await service.TransitionReportAsync(TenantId, AppId, submitted.Data.ReportId, OnlineReportState.Reviewing, OnlineReportResolution.None, AdminId);
+            var submitted = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), new OnlineReportSubmission { ReportedPlayerId = PlayerTwo, Scene = OnlineReportScene.Profile, Reason = OnlineReportReason.Spam });
+            var first = await service.TransitionReportAsync(new OnlineReportTransition { TenantId = TenantId, AppId = AppId, ReportId = submitted.Data.ReportId, TargetState = OnlineReportState.Reviewing, Resolution = OnlineReportResolution.None, HandlerAdminId = AdminId });
             Assert.True(first.IsSuccess);
 
             // Act
-            var second = await service.TransitionReportAsync(TenantId, AppId, submitted.Data.ReportId, OnlineReportState.Reviewing, OnlineReportResolution.None, AdminId);
+            var second = await service.TransitionReportAsync(new OnlineReportTransition { TenantId = TenantId, AppId = AppId, ReportId = submitted.Data.ReportId, TargetState = OnlineReportState.Reviewing, Resolution = OnlineReportResolution.None, HandlerAdminId = AdminId });
 
             // Assert
             Assert.True(second.IsSuccess);
@@ -685,8 +679,8 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var service = CreateService(out _);
-            var mine = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), PlayerTwo, OnlineReportScene.Profile, OnlineReportReason.Spam);
-            var others = await service.SubmitReportAsync(CreatePlayerScope(PlayerTwo), PlayerThree, OnlineReportScene.Profile, OnlineReportReason.Spam);
+            var mine = await service.SubmitReportAsync(CreatePlayerScope(PlayerOne), new OnlineReportSubmission { ReportedPlayerId = PlayerTwo, Scene = OnlineReportScene.Profile, Reason = OnlineReportReason.Spam });
+            var others = await service.SubmitReportAsync(CreatePlayerScope(PlayerTwo), new OnlineReportSubmission { ReportedPlayerId = PlayerThree, Scene = OnlineReportScene.Profile, Reason = OnlineReportReason.Spam });
             Assert.True(mine.IsSuccess);
             Assert.True(others.IsSuccess);
 
@@ -759,7 +753,7 @@ namespace GameFrameX.Tests.Online
         private static async Task<OnlinePunishment> ApplyPunishmentAsync(InMemoryOnlineSocialGraphStore graphStore, long playerId, OnlinePunishmentKind kind)
         {
             var punishmentService = new OnlinePunishmentService(graphStore, new OnlineEventRecorder());
-            var outcome = await punishmentService.ApplyAsync(TenantId, AppId, playerId, kind, "测试处罚", 0, 0, AdminId);
+            var outcome = await punishmentService.ApplyAsync(new OnlinePunishmentRequest { TenantId = TenantId, AppId = AppId, PlayerId = playerId, Kind = kind, Reason = "测试处罚", EffectiveAtTime = 0, ExpiresAtTime = 0, AdminId = AdminId });
             Assert.True(outcome.IsSuccess);
             return outcome.Data;
         }

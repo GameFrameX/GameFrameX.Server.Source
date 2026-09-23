@@ -208,16 +208,7 @@ public sealed class OnlineLedgerEntry
     /// </summary>
     /// <param name="entryId">条目标识。</param>
     /// <param name="transactionId">所属交易标识。</param>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="playerId">玩家标识。</param>
-    /// <param name="homeServerId">归属服标识。</param>
-    /// <param name="initiatingServerId">发起服标识。</param>
-    /// <param name="source">变更来源。</param>
-    /// <param name="operation">操作类型。</param>
-    /// <param name="reason">变更原因。</param>
-    /// <param name="businessOrderId">业务单号。</param>
-    /// <param name="operatorId">操作者。</param>
+    /// <param name="header">账本头载荷（作用域 + 来源/操作/原因/单号/操作者，与变更批次共享）。</param>
     /// <param name="assetKind">资产类别。</param>
     /// <param name="assetId">资产标识。</param>
     /// <param name="amountBefore">变更前数量。</param>
@@ -226,20 +217,20 @@ public sealed class OnlineLedgerEntry
     /// <param name="compensatesTransactionId">补偿指向原交易（非反转条目传空字符串）。</param>
     /// <param name="sequenceNumber">玩家维度账本序。</param>
     /// <param name="occurredTime">落账时刻（UTC 毫秒）。</param>
-    public OnlineLedgerEntry(string entryId, string transactionId, long tenantId, long appId, long playerId, long homeServerId, long initiatingServerId, OnlineAssetChangeSource source, OnlineGrantOperation operation, string reason, string businessOrderId, string operatorId, OnlineAssetKind assetKind, string assetId, long amountBefore, long delta, long amountAfter, string compensatesTransactionId, long sequenceNumber, long occurredTime)
+    public OnlineLedgerEntry(string entryId, string transactionId, OnlineLedgerHeader header, OnlineAssetKind assetKind, string assetId, long amountBefore, long delta, long amountAfter, string compensatesTransactionId, long sequenceNumber, long occurredTime)
     {
         EntryId = entryId;
         TransactionId = transactionId;
-        TenantId = tenantId;
-        AppId = appId;
-        PlayerId = playerId;
-        HomeServerId = homeServerId;
-        InitiatingServerId = initiatingServerId;
-        Source = source;
-        Operation = operation;
-        Reason = reason;
-        BusinessOrderId = businessOrderId;
-        OperatorId = operatorId;
+        TenantId = header.TenantId;
+        AppId = header.AppId;
+        PlayerId = header.PlayerId;
+        HomeServerId = header.HomeServerId;
+        InitiatingServerId = header.InitiatingServerId;
+        Source = header.Source;
+        Operation = header.Operation;
+        Reason = header.Reason;
+        BusinessOrderId = header.BusinessOrderId;
+        OperatorId = header.OperatorId;
         AssetKind = assetKind;
         AssetId = assetId;
         AmountBefore = amountBefore;

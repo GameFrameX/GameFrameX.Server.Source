@@ -139,7 +139,7 @@ namespace GameFrameX.Tests.Online
             var service = new OnlineIdentityService(new InMemoryOnlineIdentityStore());
 
             // Act
-            var outcomes = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => service.ResolveLoginAsync(TenantId, AppId, ServerId, OnlineIdentityKind.UserName, "concurrent-user")));
+            var outcomes = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "concurrent-user" })));
 
             // Assert：并发自动注册可能产生多账号（首建竞争），但每次解析必须自洽成功且玩家可见一致。
             var accountIds = new HashSet<long>();

@@ -133,7 +133,7 @@ namespace GameFrameX.Tests.Online
             foreach (var source in sources)
             {
                 var key = "g3-" + source;
-                var request = new OnlineGrantRequest(scope, source, OnlineGrantOperation.Grant, "G3 验收发放", "bo-" + key, null, new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 100) }, key);
+                var request = new OnlineGrantRequest(scope, source, OnlineGrantOperation.Grant, "G3 验收发放", "bo-" + key, new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 100) }, key);
                 var first = await grantService.ExecuteAsync(request);
                 var retry = await grantService.ExecuteAsync(request);
                 Assert.True(first.IsSuccess);

@@ -142,7 +142,7 @@ public sealed class OnlineGrantService
         var applyInterrupted = false;
         try
         {
-            var batch = new OnlineAssetChangeBatch(transaction.TransactionId, transaction.TenantId, transaction.AppId, transaction.PlayerId, transaction.HomeServerId, transaction.InitiatingServerId, transaction.Source, transaction.Operation, transaction.Reason, transaction.BusinessOrderId, transaction.OperatorId, request.Changes, string.Empty);
+            var batch = new OnlineAssetChangeBatch(transaction.TransactionId, OnlineLedgerHeader.FromTransaction(transaction), request.Changes, string.Empty);
             apply = await _assetStore.ApplyAsync(batch, cancellationToken);
         }
         catch (Exception ex)
@@ -305,7 +305,7 @@ public sealed class OnlineGrantService
             CreatedTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             FailureMessage = string.Empty,
         };
-        var batch = new OnlineAssetChangeBatch(compensationTransaction.TransactionId, compensationTransaction.TenantId, compensationTransaction.AppId, compensationTransaction.PlayerId, compensationTransaction.HomeServerId, compensationTransaction.InitiatingServerId, compensationTransaction.Source, compensationTransaction.Operation, compensationTransaction.Reason, compensationTransaction.BusinessOrderId, compensationTransaction.OperatorId, reversalLines, transaction.TransactionId);
+        var batch = new OnlineAssetChangeBatch(compensationTransaction.TransactionId, OnlineLedgerHeader.FromTransaction(compensationTransaction), reversalLines, transaction.TransactionId);
         var apply = await _assetStore.ApplyAsync(batch, cancellationToken);
         if (!apply.Success)
         {

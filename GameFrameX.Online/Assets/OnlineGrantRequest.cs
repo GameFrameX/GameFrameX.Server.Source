@@ -85,12 +85,9 @@ public sealed class OnlineGrantRequest
     }
 
     /// <summary>
-    /// 获取操作者（撤销与人工调整必填；系统来源为空字符串）。
+    /// 获取或设置操作者（撤销与人工调整必填；系统来源为空字符串）。
     /// </summary>
-    public string OperatorId
-    {
-        get;
-    }
+    public string OperatorId { get; init; } = string.Empty;
 
     /// <summary>
     /// 获取变更行列表（同一资产只一行，数额非 0）。
@@ -109,45 +106,33 @@ public sealed class OnlineGrantRequest
     }
 
     /// <summary>
-    /// 获取归属服标识（玩家家服；0 = 取作用域区服。跨服发奖的路由判定输入，VC-3.10）。
+    /// 获取或设置归属服标识（玩家家服；0 = 取作用域区服。跨服发奖的路由判定输入，VC-3.10）。
     /// </summary>
-    public long HomeServerId
-    {
-        get;
-    }
+    public long HomeServerId { get; init; }
 
     /// <summary>
-    /// 获取关联链路键（可空；贯穿事件信封）。
+    /// 获取或设置关联链路键（可空；贯穿事件信封）。
     /// </summary>
-    public string CorrelationId
-    {
-        get;
-    }
+    public string CorrelationId { get; init; }
 
     /// <summary>
-    /// 构造统一入口请求。
+    /// 构造统一入口请求（必填定位参数收敛为位置参数；操作者 / 归属服 / 关联键经对象初始化器追加）。
     /// </summary>
     /// <param name="scope">生效作用域（必须含玩家主体位）。</param>
     /// <param name="source">变更来源。</param>
     /// <param name="operation">操作类型。</param>
     /// <param name="reason">变更原因。</param>
     /// <param name="businessOrderId">业务单号。</param>
-    /// <param name="operatorId">操作者（撤销/人工调整必填）。</param>
     /// <param name="changes">变更行列表。</param>
     /// <param name="idempotencyKey">幂等键。</param>
-    /// <param name="homeServerId">归属服（0 = 取作用域区服）。</param>
-    /// <param name="correlationId">关联链路键（可空）。</param>
-    public OnlineGrantRequest(OnlineScope scope, OnlineAssetChangeSource source, OnlineGrantOperation operation, string reason, string businessOrderId, string operatorId, IReadOnlyList<OnlineAssetChangeLine> changes, string idempotencyKey, long homeServerId = 0, string correlationId = null)
+    public OnlineGrantRequest(OnlineScope scope, OnlineAssetChangeSource source, OnlineGrantOperation operation, string reason, string businessOrderId, IReadOnlyList<OnlineAssetChangeLine> changes, string idempotencyKey)
     {
         Scope = scope ?? throw new ArgumentNullException(nameof(scope));
         Source = source;
         Operation = operation;
         Reason = reason ?? throw new ArgumentNullException(nameof(reason));
         BusinessOrderId = businessOrderId ?? throw new ArgumentNullException(nameof(businessOrderId));
-        OperatorId = operatorId ?? string.Empty;
         Changes = changes ?? throw new ArgumentNullException(nameof(changes));
         IdempotencyKey = idempotencyKey ?? throw new ArgumentNullException(nameof(idempotencyKey));
-        HomeServerId = homeServerId;
-        CorrelationId = correlationId;
     }
 }

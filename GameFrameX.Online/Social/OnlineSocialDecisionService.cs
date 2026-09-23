@@ -357,18 +357,24 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
     /// 提交举报（证据字段照单全收，VC-6.16 证据链的写入点）。
     /// </summary>
     /// <param name="scope">生效作用域（必须含玩家主体位）。</param>
-    /// <param name="reportedPlayerId">被举报人。</param>
-    /// <param name="scene">举报场景。</param>
-    /// <param name="reason">举报原因。</param>
-    /// <param name="matchId">对局标识（可空）。</param>
-    /// <param name="chatMessageId">被举报消息标识（可空）。</param>
-    /// <param name="channelId">频道标识（可空；聊天场景必填）。</param>
-    /// <param name="evidence">补充说明（可空；原因选「其他」时必填）。</param>
-    /// <param name="correlationId">关联标识（可空）。</param>
+    /// <param name="submission">举报提交载荷。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>已提交的案件。</returns>
-    public async Task<OnlineResult<OnlineReportCase>> SubmitReportAsync(OnlineScope scope, long reportedPlayerId, OnlineReportScene scene, OnlineReportReason reason, string matchId = null, string chatMessageId = null, string channelId = null, string evidence = null, string correlationId = null, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<OnlineReportCase>> SubmitReportAsync(OnlineScope scope, OnlineReportSubmission submission, CancellationToken cancellationToken = default)
     {
+        if (submission == null)
+        {
+            throw new ArgumentNullException(nameof(submission));
+        }
+
+        var reportedPlayerId = submission.ReportedPlayerId;
+        var scene = submission.Scene;
+        var reason = submission.Reason;
+        var matchId = submission.MatchId;
+        var chatMessageId = submission.ChatMessageId;
+        var channelId = submission.ChannelId;
+        var evidence = submission.Evidence;
+        var correlationId = submission.CorrelationId;
         var failure = ValidateScope<OnlineReportCase>(scope);
         if (failure != null)
         {
@@ -470,18 +476,24 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
     /// <summary>
     /// 受理 / 裁决举报案件（Admin 命令面的服务端半边；S6.10 页面归 Admin 仓）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="reportId">案件标识。</param>
-    /// <param name="targetState">目标状态。</param>
-    /// <param name="resolution">处置结果（进入「已处置」须非 <see cref="OnlineReportResolution.None"/>）。</param>
-    /// <param name="handlerAdminId">受理 Admin 标识。</param>
-    /// <param name="adminCaseId">Admin 侧案件关联键（可空）。</param>
-    /// <param name="correlationId">关联标识（可空）。</param>
+    /// <param name="transition">举报案件迁移载荷。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>裁决后的案件。</returns>
-    public async Task<OnlineResult<OnlineReportCase>> TransitionReportAsync(long tenantId, long appId, string reportId, OnlineReportState targetState, OnlineReportResolution resolution, long handlerAdminId, string adminCaseId = null, string correlationId = null, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<OnlineReportCase>> TransitionReportAsync(OnlineReportTransition transition, CancellationToken cancellationToken = default)
     {
+        if (transition == null)
+        {
+            throw new ArgumentNullException(nameof(transition));
+        }
+
+        var tenantId = transition.TenantId;
+        var appId = transition.AppId;
+        var reportId = transition.ReportId;
+        var targetState = transition.TargetState;
+        var resolution = transition.Resolution;
+        var handlerAdminId = transition.HandlerAdminId;
+        var adminCaseId = transition.AdminCaseId;
+        var correlationId = transition.CorrelationId;
         if (IsScopeLocatorInvalid(tenantId, appId) || string.IsNullOrEmpty(reportId))
         {
             return OnlineResult<OnlineReportCase>.Fail(OnlineErrorCode.ParameterInvalid, "案件定位参数无效");
@@ -527,7 +539,7 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
     /// <returns>裁决结果。</returns>
     private async Task<OnlineSocialDecision> EvaluatePunishmentsAsync(long tenantId, long appId, long playerId, OnlineSocialInteractionPurpose purpose, CancellationToken cancellationToken)
     {
-        var active = await _graphStore.ListActivePunishmentsAsync(tenantId, appId, playerId, Now(), cancellationToken).ConfigureAwait(false);
+        var active = await _graphStore.ListActivePunishmentsAsync(tenantId, appId, new ActivePunishmentQuery { PlayerId = playerId, NowUnixMilliseconds = Now() }, cancellationToken).ConfigureAwait(false);
         foreach (var punishment in active)
         {
             if (punishment.Kind == OnlinePunishmentKind.Ban)

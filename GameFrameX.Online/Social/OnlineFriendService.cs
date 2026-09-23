@@ -273,7 +273,7 @@ public sealed class OnlineFriendService
             return OnlineResult<OnlineFriendship>.Fail(OnlineErrorCode.StateOperationForbidden, "当前关系状态不允许删除：" + friendship.State);
         }
 
-        var removed = await _store.UpdateStateAsync(scope.TenantId, scope.AppId, friendship.FriendshipId, friendship.State, OnlineFriendshipState.Removed, Now(), false, cancellationToken).ConfigureAwait(false);
+        var removed = await _store.UpdateStateAsync(scope.TenantId, scope.AppId, new FriendshipStateTransition { FriendshipId = friendship.FriendshipId, ExpectedState = friendship.State, NewState = OnlineFriendshipState.Removed, NowUnixMilliseconds = Now(), Responded = false }, cancellationToken).ConfigureAwait(false);
         if (removed == null)
         {
             // CAS 失败 = 状态被并发改写；重读后按当前事实返回，不报错。
@@ -461,7 +461,7 @@ public sealed class OnlineFriendService
                 continue;
             }
 
-            var expired = await _store.UpdateStateAsync(tenantId, appId, friendship.FriendshipId, OnlineFriendshipState.Requested, OnlineFriendshipState.Expired, now, false, cancellationToken).ConfigureAwait(false);
+            var expired = await _store.UpdateStateAsync(tenantId, appId, new FriendshipStateTransition { FriendshipId = friendship.FriendshipId, ExpectedState = OnlineFriendshipState.Requested, NewState = OnlineFriendshipState.Expired, NowUnixMilliseconds = now, Responded = false }, cancellationToken).ConfigureAwait(false);
             if (expired != null)
             {
                 await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateFriendshipChanged(expired, OnlineSocialEvents.FriendshipExpired, null), cancellationToken).ConfigureAwait(false);
@@ -578,7 +578,7 @@ public sealed class OnlineFriendService
         }
 
         var now = Now();
-        var updated = await _store.UpdateStateAsync(scope.TenantId, scope.AppId, friendshipId, friendship.State, target, now, true, cancellationToken).ConfigureAwait(false);
+        var updated = await _store.UpdateStateAsync(scope.TenantId, scope.AppId, new FriendshipStateTransition { FriendshipId = friendshipId, ExpectedState = friendship.State, NewState = target, NowUnixMilliseconds = now, Responded = true }, cancellationToken).ConfigureAwait(false);
         if (updated == null)
         {
             // CAS 失败 = 已被并发答复 / 超期扫描抢先；重读后按当前事实返回。
@@ -644,12 +644,15 @@ public sealed class OnlineFriendService
         var renewed = await _store.RenewRequestAsync(
             scope.TenantId,
             scope.AppId,
-            existing.FriendshipId,
-            existing.State,
-            scope.PlayerId,
-            targetPlayerId,
-            nowUnixMilliseconds,
-            nowUnixMilliseconds + (_requestTimeToLiveSeconds * 1000),
+            new FriendshipRenewal
+            {
+                FriendshipId = existing.FriendshipId,
+                ExpectedState = existing.State,
+                RequesterId = scope.PlayerId,
+                AddresseeId = targetPlayerId,
+                NowUnixMilliseconds = nowUnixMilliseconds,
+                ExpiresAtTime = nowUnixMilliseconds + (_requestTimeToLiveSeconds * 1000),
+            },
             cancellationToken).ConfigureAwait(false);
 
         if (renewed == null)

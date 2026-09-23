@@ -342,7 +342,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>账本条目数。</returns>
         public async Task<int> LedgerCountAsync(long playerId)
         {
-            var entries = await RawAssetStore.ListLedgerEntriesAsync(TenantId, AppId, playerId, 0, 1000);
+            var entries = await RawAssetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = TenantId, AppId = AppId, PlayerId = playerId, AfterSequenceNumber = 0, MaxCount = 1000 });
             return entries.Count;
         }
 

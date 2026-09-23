@@ -261,16 +261,17 @@ public sealed class InMemoryOnlineChatStore : IOnlineChatStore
     /// </remarks>
     /// <param name="tenantId">租户标识 / Tenant id</param>
     /// <param name="appId">App 标识 / App id</param>
-    /// <param name="channelId">频道标识 / Channel id</param>
-    /// <param name="messageId">消息标识 / Message id</param>
-    /// <param name="expectedState">期望的当前状态；不匹配即失败 / Expected current state; a mismatch fails the call</param>
-    /// <param name="newState">目标状态 / Target state</param>
-    /// <param name="nowUnixMilliseconds">本次变更时刻（UTC 毫秒） / Change time of this update (UTC milliseconds)</param>
-    /// <param name="recalledByPlayerId">撤回人（非撤回迁移传 0） / Recalling player (pass 0 for non-recall transitions)</param>
+    /// <param name="transition">消息状态 CAS 迁移载荷（频道、消息标识、期望/目标状态、变更时刻、撤回人） / Message state CAS transition payload (channel, message id, expected/target state, change time, recaller)</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
     /// <returns>更新后的消息副本；CAS 失败或记录不存在返回 null / Copy of the updated message; null on CAS failure or missing record</returns>
-    public Task<OnlineChatMessage> UpdateMessageStateAsync(long tenantId, long appId, string channelId, string messageId, OnlineChatMessageState expectedState, OnlineChatMessageState newState, long nowUnixMilliseconds, long recalledByPlayerId, CancellationToken cancellationToken = default)
+    public Task<OnlineChatMessage> UpdateMessageStateAsync(long tenantId, long appId, ChatMessageStateTransition transition, CancellationToken cancellationToken = default)
     {
+        var channelId = transition.ChannelId;
+        var messageId = transition.MessageId;
+        var expectedState = transition.ExpectedState;
+        var newState = transition.NewState;
+        var nowUnixMilliseconds = transition.NowUnixMilliseconds;
+        var recalledByPlayerId = transition.RecalledByPlayerId;
         var key = BuildChannelKey(tenantId, appId, channelId) + ":" + (messageId ?? string.Empty);
         lock (_syncRoot)
         {
@@ -301,14 +302,15 @@ public sealed class InMemoryOnlineChatStore : IOnlineChatStore
     /// </remarks>
     /// <param name="tenantId">租户标识 / Tenant id</param>
     /// <param name="appId">App 标识 / App id</param>
-    /// <param name="channelId">频道标识 / Channel id</param>
-    /// <param name="afterSentAtTime">游标位置的发送时刻（UTC 毫秒；从头读传 0） / Sent-at time of the cursor (UTC milliseconds; pass 0 to read from the start)</param>
-    /// <param name="afterSequence">游标位置的频道内序号（从头读传 0） / Per-channel sequence of the cursor (pass 0 to read from the start)</param>
-    /// <param name="limit">最多返回条数（非正时按 1 处理） / Maximum number of items to return (non-positive is treated as 1)</param>
+    /// <param name="cursor">读取游标载荷（频道、位点发送时刻、位点序号、最多返回条数） / Read cursor payload (channel, cursor sent-at time, cursor sequence, limit)</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
     /// <returns>严格位于游标之后、按 (SentAtTime, Sequence) 升序排列的消息副本列表 / Message copies strictly after the cursor, sorted ascending by (SentAtTime, Sequence)</returns>
-    public Task<IReadOnlyList<OnlineChatMessage>> ReadAfterAsync(long tenantId, long appId, string channelId, long afterSentAtTime, long afterSequence, int limit, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<OnlineChatMessage>> ReadAfterAsync(long tenantId, long appId, ChatReadCursor cursor, CancellationToken cancellationToken = default)
     {
+        var channelId = cursor.ChannelId;
+        var afterSentAtTime = cursor.AfterSentAtTime;
+        var afterSequence = cursor.AfterSequence;
+        var limit = cursor.Limit;
         var channelKey = BuildChannelKey(tenantId, appId, channelId);
         var pageSize = limit > 0 ? limit : 1;
         var matched = new List<OnlineChatMessage>();
@@ -353,14 +355,15 @@ public sealed class InMemoryOnlineChatStore : IOnlineChatStore
     /// </remarks>
     /// <param name="tenantId">租户标识 / Tenant id</param>
     /// <param name="appId">App 标识 / App id</param>
-    /// <param name="channelId">频道标识 / Channel id</param>
-    /// <param name="afterSentAtTime">已读位点的发送时刻（UTC 毫秒） / Sent-at time of the read mark (UTC milliseconds)</param>
-    /// <param name="afterSequence">已读位点的频道内序号 / Per-channel sequence of the read mark</param>
+    /// <param name="cursor">读取游标载荷（频道与已读位点；Limit 字段不消费） / Read cursor payload (channel and read position; the Limit field is not consumed)</param>
     /// <param name="readerPlayerId">读取者（本人发的消息不计未读） / Reader (own messages are not counted as unread)</param>
     /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
     /// <returns>未读条数 / Unread count</returns>
-    public Task<int> CountUnreadAsync(long tenantId, long appId, string channelId, long afterSentAtTime, long afterSequence, long readerPlayerId, CancellationToken cancellationToken = default)
+    public Task<int> CountUnreadAsync(long tenantId, long appId, ChatReadCursor cursor, long readerPlayerId, CancellationToken cancellationToken = default)
     {
+        var channelId = cursor.ChannelId;
+        var afterSentAtTime = cursor.AfterSentAtTime;
+        var afterSequence = cursor.AfterSequence;
         var count = 0;
         lock (_syncRoot)
         {

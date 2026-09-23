@@ -73,14 +73,10 @@ public interface IOnlineFriendStore
     /// </summary>
     /// <param name="tenantId">租户标识。</param>
     /// <param name="appId">App 标识。</param>
-    /// <param name="friendshipId">关系标识。</param>
-    /// <param name="expectedState">期望的当前状态；不匹配即失败。</param>
-    /// <param name="newState">目标状态。</param>
-    /// <param name="nowUnixMilliseconds">本次变更时刻（UTC 毫秒）。</param>
-    /// <param name="responded">本次变更是否构成一次答复（答复时回填答复时刻）。</param>
+    /// <param name="transition">状态迁移载荷（关系定位 + 期望/目标状态 + 变更时刻与答复标记）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>更新后的关系副本；CAS 失败或记录不存在返回 null。</returns>
-    Task<OnlineFriendship> UpdateStateAsync(long tenantId, long appId, string friendshipId, OnlineFriendshipState expectedState, OnlineFriendshipState newState, long nowUnixMilliseconds, bool responded, CancellationToken cancellationToken = default);
+    Task<OnlineFriendship> UpdateStateAsync(long tenantId, long appId, FriendshipStateTransition transition, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 以 CAS 语义把静止态关系重新发起为待答复请求（VC-6.2 状态机末段：「删除后可重新添加」）。
@@ -92,15 +88,10 @@ public interface IOnlineFriendStore
     /// </summary>
     /// <param name="tenantId">租户标识。</param>
     /// <param name="appId">App 标识。</param>
-    /// <param name="friendshipId">关系标识。</param>
-    /// <param name="expectedState">期望的当前状态（静止态）；不匹配即失败。</param>
-    /// <param name="requesterId">本次发起人（写入为新的方向事实）。</param>
-    /// <param name="addresseeId">本次被请求方。</param>
-    /// <param name="nowUnixMilliseconds">本次变更时刻（UTC 毫秒）。</param>
-    /// <param name="expiresAtTime">重置后的请求失效时刻（UTC 毫秒）。</param>
+    /// <param name="renewal">重新发起载荷（关系定位 + 期望状态 + 发起人/被请求方 + 变更时刻与失效时刻）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>更新后的关系副本；CAS 失败或记录不存在返回 null。</returns>
-    Task<OnlineFriendship> RenewRequestAsync(long tenantId, long appId, string friendshipId, OnlineFriendshipState expectedState, long requesterId, long addresseeId, long nowUnixMilliseconds, long expiresAtTime, CancellationToken cancellationToken = default);
+    Task<OnlineFriendship> RenewRequestAsync(long tenantId, long appId, FriendshipRenewal renewal, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 列出某玩家的全部关系记录（任意状态；好友列表与待答复请求列表的输入）。

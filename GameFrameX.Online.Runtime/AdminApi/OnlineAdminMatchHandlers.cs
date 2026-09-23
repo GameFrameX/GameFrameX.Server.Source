@@ -343,8 +343,16 @@ public sealed class OnlineAdminMatchHandlers
         var adminId = ReadReviewerAdminId(request);
         if (direction == "Apply")
         {
-            OnlineAdminApiContract.Unwrap(await _host.Punishments.ApplyAsync(scope.TenantId, scope.AppId, playerScope.PlayerId, OnlinePunishmentKind.Ban,
-                "match-isolation:" + reason, 0, 0, adminId, null, request.ReadRequestId(), cancellationToken).ConfigureAwait(false));
+            OnlineAdminApiContract.Unwrap(await _host.Punishments.ApplyAsync(new OnlinePunishmentRequest
+            {
+                TenantId = scope.TenantId,
+                AppId = scope.AppId,
+                PlayerId = playerScope.PlayerId,
+                Kind = OnlinePunishmentKind.Ban,
+                Reason = "match-isolation:" + reason,
+                AdminId = adminId,
+                CorrelationId = request.ReadRequestId(),
+            }, cancellationToken).ConfigureAwait(false));
         }
         else
         {

@@ -128,8 +128,8 @@ namespace GameFrameX.Tests.Online
                 deadLetters.Select(item => item.Reason).ToArray());
 
             // 作用域非法的两条按「退化作用域」原样归档（可检索、不丢失）。
-            var zeroTenant = await harness.DeadLetterSink.ListAsync(0, OnlineGameEventTestHarness.AppId, 0, long.MaxValue);
-            var zeroApp = await harness.DeadLetterSink.ListAsync(OnlineGameEventTestHarness.TenantId, 0, 0, long.MaxValue);
+            var zeroTenant = await harness.DeadLetterSink.ListAsync(0, OnlineGameEventTestHarness.AppId, new EventTimeRangeQuery { FromTime = 0, ToTime = long.MaxValue });
+            var zeroApp = await harness.DeadLetterSink.ListAsync(OnlineGameEventTestHarness.TenantId, 0, new EventTimeRangeQuery { FromTime = 0, ToTime = long.MaxValue });
             Assert.Single(zeroTenant);
             Assert.Single(zeroApp);
             Assert.Equal(OnlineGameEventRejectionReason.InvalidScope, zeroTenant[0].Reason);
@@ -214,9 +214,9 @@ namespace GameFrameX.Tests.Online
 
             Assert.Single(await harness.StoredEventsAsync());
             Assert.Single(await harness.DeadLettersAsync());
-            Assert.Empty(await harness.EventStore.ListAsync(OnlineGameEventTestHarness.OtherAppId, OnlineGameEventTestHarness.AppId, 0, long.MaxValue));
-            Assert.Empty(await harness.EventStore.ListAsync(OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.OtherAppId, 0, long.MaxValue));
-            Assert.Empty(await harness.DeadLetterSink.ListAsync(OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.OtherAppId, 0, long.MaxValue));
+            Assert.Empty(await harness.EventStore.ListAsync(OnlineGameEventTestHarness.OtherAppId, OnlineGameEventTestHarness.AppId, new EventTimeRangeQuery { FromTime = 0, ToTime = long.MaxValue }));
+            Assert.Empty(await harness.EventStore.ListAsync(OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.OtherAppId, new EventTimeRangeQuery { FromTime = 0, ToTime = long.MaxValue }));
+            Assert.Empty(await harness.DeadLetterSink.ListAsync(OnlineGameEventTestHarness.TenantId, OnlineGameEventTestHarness.OtherAppId, new EventTimeRangeQuery { FromTime = 0, ToTime = long.MaxValue }));
         }
     }
 }

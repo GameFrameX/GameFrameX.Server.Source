@@ -148,14 +148,20 @@ public sealed class OnlineLeaderboardService
     /// 查询 Top N（带 keyset 游标分页；游标由本服务编码，客户端不透明）。
     /// </summary>
     /// <param name="scope">生效作用域（跨 App / 跨租户与不存在同构拒绝）。</param>
-    /// <param name="leaderboardId">榜单标识。</param>
-    /// <param name="count">本页条目数（超出 <c>MaxPageSize</c> 按上限截断）。</param>
-    /// <param name="cursor">上一页返回的游标（首页传 null 或空串）。</param>
-    /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟，缓存 TTL 判定用）。</param>
+    /// <param name="query">Top N 查询载荷。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>本页条目与后继游标；失败返回对应错误码。</returns>
-    public async Task<OnlineResult<OnlineLeaderboardPage>> GetTopAsync(OnlineScope scope, string leaderboardId, int count, string cursor = null, long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<OnlineLeaderboardPage>> GetTopAsync(OnlineScope scope, OnlineLeaderboardTopQuery query, CancellationToken cancellationToken = default)
     {
+        if (query == null)
+        {
+            throw new ArgumentNullException(nameof(query));
+        }
+
+        var leaderboardId = query.LeaderboardId;
+        var count = query.Count;
+        var cursor = query.Cursor;
+        var nowUnixMilliseconds = query.NowUnixMilliseconds;
         if (count <= 0)
         {
             return OnlineResult<OnlineLeaderboardPage>.Fail(OnlineErrorCode.ParameterInvalid, "条目数必须为正");
@@ -240,15 +246,21 @@ public sealed class OnlineLeaderboardService
     /// 查询玩家附近排名（窗口含玩家本人，边界处截断；VC-7.3）。
     /// </summary>
     /// <param name="scope">生效作用域。</param>
-    /// <param name="leaderboardId">榜单标识。</param>
-    /// <param name="playerId">玩家标识（未上榜返回 ResourceNotFound）。</param>
-    /// <param name="before">前向窗口条数（默认 2）。</param>
-    /// <param name="after">后向窗口条数（默认 2）。</param>
-    /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟）。</param>
+    /// <param name="query">附近排名窗口查询载荷。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>附近排名窗口；失败返回对应错误码。</returns>
-    public async Task<OnlineResult<OnlineLeaderboardAroundView>> GetAroundPlayerAsync(OnlineScope scope, string leaderboardId, long playerId, int before = 2, int after = 2, long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
+    public async Task<OnlineResult<OnlineLeaderboardAroundView>> GetAroundPlayerAsync(OnlineScope scope, OnlineLeaderboardAroundQuery query, CancellationToken cancellationToken = default)
     {
+        if (query == null)
+        {
+            throw new ArgumentNullException(nameof(query));
+        }
+
+        var leaderboardId = query.LeaderboardId;
+        var playerId = query.PlayerId;
+        var before = query.Before;
+        var after = query.After;
+        var nowUnixMilliseconds = query.NowUnixMilliseconds;
         if (before < 0 || after < 0)
         {
             return OnlineResult<OnlineLeaderboardAroundView>.Fail(OnlineErrorCode.ParameterInvalid, "附近排名窗口不得为负");

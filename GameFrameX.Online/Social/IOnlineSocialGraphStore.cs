@@ -182,11 +182,10 @@ public interface IOnlineSocialGraphStore
     /// </summary>
     /// <param name="tenantId">租户标识。</param>
     /// <param name="appId">App 标识。</param>
-    /// <param name="playerId">被处罚玩家。</param>
-    /// <param name="nowUnixMilliseconds">判定时刻（UTC 毫秒）。</param>
+    /// <param name="query">生效处罚查询载荷（玩家定位 + 判定时刻；预留过滤维度扩展位）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>生效中的处罚副本列表（已撤销、未到生效时刻、已失效的均不返回）。</returns>
-    Task<IReadOnlyList<OnlinePunishment>> ListActivePunishmentsAsync(long tenantId, long appId, long playerId, long nowUnixMilliseconds, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<OnlinePunishment>> ListActivePunishmentsAsync(long tenantId, long appId, ActivePunishmentQuery query, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 列出某玩家的全部处罚记录（含已撤销与已失效；Admin 复查与玩家申诉的输入）。

@@ -212,9 +212,9 @@ namespace GameFrameX.Tests.Online
                 return _inner.ListInventoryStacksAsync(tenantId, appId, playerId, cancellationToken);
             }
 
-            public Task<IReadOnlyList<OnlineLedgerEntry>> ListLedgerEntriesAsync(long tenantId, long appId, long playerId, long afterSequenceNumber, int maxCount, CancellationToken cancellationToken = default)
+            public Task<IReadOnlyList<OnlineLedgerEntry>> ListLedgerEntriesAsync(OnlineLedgerPageQuery query, CancellationToken cancellationToken = default)
             {
-                return _inner.ListLedgerEntriesAsync(tenantId, appId, playerId, afterSequenceNumber, maxCount, cancellationToken);
+                return _inner.ListLedgerEntriesAsync(query, cancellationToken);
             }
 
             public Task<IReadOnlyList<OnlineLedgerEntry>> FindLedgerEntriesByTransactionIdAsync(string transactionId, CancellationToken cancellationToken = default)
@@ -238,7 +238,20 @@ namespace GameFrameX.Tests.Online
             private static OnlineAssetChangeBatch BuildBatch(OnlineAssetChangeBatch source, IReadOnlyList<OnlineAssetChangeLine> lines)
             {
                 var constructor = typeof(OnlineAssetChangeBatch).GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance).Single();
-                return (OnlineAssetChangeBatch)constructor.Invoke(new object[] { source.TransactionId, source.TenantId, source.AppId, source.PlayerId, source.HomeServerId, source.InitiatingServerId, source.Source, source.Operation, source.Reason, source.BusinessOrderId, source.OperatorId, lines, source.CompensatesTransactionId });
+                var header = new OnlineLedgerHeader
+                {
+                    TenantId = source.TenantId,
+                    AppId = source.AppId,
+                    PlayerId = source.PlayerId,
+                    HomeServerId = source.HomeServerId,
+                    InitiatingServerId = source.InitiatingServerId,
+                    Source = source.Source,
+                    Operation = source.Operation,
+                    Reason = source.Reason,
+                    BusinessOrderId = source.BusinessOrderId,
+                    OperatorId = source.OperatorId,
+                };
+                return (OnlineAssetChangeBatch)constructor.Invoke(new object[] { source.TransactionId, header, lines, source.CompensatesTransactionId });
             }
         }
 
@@ -342,7 +355,7 @@ namespace GameFrameX.Tests.Online
             var scope = new OnlineScope(1, 10, 100, playerId);
             var lines = new List<OnlineAssetChangeLine> { line };
             lines.AddRange(moreLines);
-            return new OnlineGrantRequest(scope, source, OnlineGrantOperation.Grant, "赛季结算奖励", "bo-" + key, null, lines, key);
+            return new OnlineGrantRequest(scope, source, OnlineGrantOperation.Grant, "赛季结算奖励", "bo-" + key, lines, key);
         }
 
         /// <summary>
@@ -412,23 +425,23 @@ namespace GameFrameX.Tests.Online
             var scope = new OnlineScope(1, 10, 100, 10001);
 
             // Act / Assert
-            var compensationSource = await service.ExecuteAsync(new OnlineGrantRequest(scope, OnlineAssetChangeSource.SystemCompensation, OnlineGrantOperation.Adjust, "r", "bo-x", "op-1", new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 100) }, "key-c"));
+            var compensationSource = await service.ExecuteAsync(new OnlineGrantRequest(scope, OnlineAssetChangeSource.SystemCompensation, OnlineGrantOperation.Adjust, "r", "bo-x", new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 100) }, "key-c") { OperatorId = "op-1" });
             Assert.False(compensationSource.IsSuccess);
             Assert.Equal(OnlineErrorCode.ParameterInvalid, compensationSource.Code);
 
-            var noOperator = await service.ExecuteAsync(new OnlineGrantRequest(scope, OnlineAssetChangeSource.AdminOperation, OnlineGrantOperation.Revoke, "r", "bo-y", null, new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 100) }, "key-o"));
+            var noOperator = await service.ExecuteAsync(new OnlineGrantRequest(scope, OnlineAssetChangeSource.AdminOperation, OnlineGrantOperation.Revoke, "r", "bo-y", new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 100) }, "key-o"));
             Assert.False(noOperator.IsSuccess);
             Assert.Equal(OnlineErrorCode.ParameterInvalid, noOperator.Code);
 
-            var zeroAmount = await service.ExecuteAsync(new OnlineGrantRequest(scope, OnlineAssetChangeSource.MatchReward, OnlineGrantOperation.Grant, "r", "bo-z", null, new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 0) }, "key-z"));
+            var zeroAmount = await service.ExecuteAsync(new OnlineGrantRequest(scope, OnlineAssetChangeSource.MatchReward, OnlineGrantOperation.Grant, "r", "bo-z", new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 0) }, "key-z"));
             Assert.False(zeroAmount.IsSuccess);
             Assert.Equal(OnlineErrorCode.ParameterInvalid, zeroAmount.Code);
 
-            var duplicateAsset = await service.ExecuteAsync(new OnlineGrantRequest(scope, OnlineAssetChangeSource.MatchReward, OnlineGrantOperation.Grant, "r", "bo-d", null, new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 100), new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 50) }, "key-d"));
+            var duplicateAsset = await service.ExecuteAsync(new OnlineGrantRequest(scope, OnlineAssetChangeSource.MatchReward, OnlineGrantOperation.Grant, "r", "bo-d", new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 100), new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 50) }, "key-d"));
             Assert.False(duplicateAsset.IsSuccess);
             Assert.Equal(OnlineErrorCode.ParameterInvalid, duplicateAsset.Code);
 
-            var emptyReason = await service.ExecuteAsync(new OnlineGrantRequest(scope, OnlineAssetChangeSource.MatchReward, OnlineGrantOperation.Grant, " ", "bo-e", null, new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 100) }, "key-e"));
+            var emptyReason = await service.ExecuteAsync(new OnlineGrantRequest(scope, OnlineAssetChangeSource.MatchReward, OnlineGrantOperation.Grant, " ", "bo-e", new[] { new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 100) }, "key-e"));
             Assert.False(emptyReason.IsSuccess);
             Assert.Equal(OnlineErrorCode.ParameterInvalid, emptyReason.Code);
         }
@@ -452,7 +465,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(OnlineErrorCode.StateOperationForbidden, result.Code);
             var wallet = await harness.AssetStore.FindWalletAsync(1, 10, 10001, "gold");
             Assert.Equal(100, wallet.Balance);
-            var ledger = await harness.AssetStore.ListLedgerEntriesAsync(1, 10, 10001, 0, 100);
+            var ledger = await harness.AssetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = 1, AppId = 10, PlayerId = 10001, AfterSequenceNumber = 0, MaxCount = 100 });
             Assert.Single(ledger);
             Assert.Contains(harness.AlertSink.Records, record => record.Kind == OnlineAssetAlertKind.NegativeBalanceAttempt);
         }
@@ -479,7 +492,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(5, results.Count(result => !result.IsSuccess));
             var wallet = await harness.AssetStore.FindWalletAsync(1, 10, 10001, "gold");
             Assert.Equal(0, wallet.Balance);
-            var ledger = await harness.AssetStore.ListLedgerEntriesAsync(1, 10, 10001, 0, 100);
+            var ledger = await harness.AssetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = 1, AppId = 10, PlayerId = 10001, AfterSequenceNumber = 0, MaxCount = 100 });
             Assert.Equal(6, ledger.Count);
         }
 
@@ -633,7 +646,7 @@ namespace GameFrameX.Tests.Online
             Assert.True(replayed.Data.IsReplay);
             var wallet = await harness.AssetStore.FindWalletAsync(1, 10, 10001, "gold");
             Assert.Equal(100, wallet.Balance);
-            var ledger = await harness.AssetStore.ListLedgerEntriesAsync(1, 10, 10001, 0, 100);
+            var ledger = await harness.AssetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = 1, AppId = 10, PlayerId = 10001, AfterSequenceNumber = 0, MaxCount = 100 });
             Assert.Single(ledger);
         }
 
