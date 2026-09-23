@@ -12,8 +12,6 @@
     <Project Path="Tests/GameFrameX.Tests/GameFrameX.Tests.csproj" />
     <Project Path="Tests/GameFrameX.Hotfix.Tests/GameFrameX.Hotfix.Tests.csproj" />
   </Folder>
-  <Project Path="GameFrameX.AppHost.ServiceDefaults/GameFrameX.AppHost.ServiceDefaults.csproj" />
-  <Project Path="GameFrameX.AppHost/GameFrameX.AppHost.csproj" />
   <Project Path="GameFrameX.Apps/GameFrameX.Apps.csproj" />
   <Project Path="GameFrameX.Client/GameFrameX.Client.csproj" />
   <Project Path="GameFrameX.Architecture.Analyzers/GameFrameX.Architecture.Analyzers.csproj" />

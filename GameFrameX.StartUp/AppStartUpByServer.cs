@@ -28,7 +28,6 @@
 //  ==========================================================================================
 
 
-using GameFrameX.AppHost.ServiceDefaults;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.NetWork;
@@ -51,6 +50,7 @@ using GameFrameX.SuperSocket.WebSocket.Server;
 using GameFrameX.Utility;
 using GameFrameX.Utility.Runtime;
 using GameFrameX.Utility.Setting;
+using GameFrameX.StartUp.ServiceDefaults;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

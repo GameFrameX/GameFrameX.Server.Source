@@ -13,7 +13,7 @@
         <ProjectReference Include="..\GameFrameX.Utility\GameFrameX.Utility.csproj"/>
     </ItemGroup>
 
-    <!-- C143d D11：动态发现层（MongoEndpointRegistry/Watcher）的心跳存储依赖 Mongo 控制库；版本须与 GameFrameX.DataBase.Mongo / AppHost.ServiceDefaults 对齐，避免 NU1605 -->
+    <!-- C143d D11：动态发现层（MongoEndpointRegistry/Watcher）的心跳存储依赖 Mongo 控制库；版本须与 GameFrameX.DataBase.Mongo / StartUp 对齐，避免 NU1605 -->
     <ItemGroup>
         <PackageReference Include="MongoDB.Driver" Version="3.11.0"/>
     </ItemGroup>

@@ -29,7 +29,6 @@
 
 
 using System.Reflection;
-using GameFrameX.AppHost.ServiceDefaults;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.NetWork.HTTP;
@@ -37,6 +36,7 @@ using GameFrameX.Utility;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Utility;
 using GameFrameX.Utility.Setting;
+using GameFrameX.StartUp.ServiceDefaults;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Hosting;
