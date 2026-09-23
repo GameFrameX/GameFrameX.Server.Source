@@ -29,6 +29,7 @@
 
 
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
 using ProtoBuf;
 
@@ -47,6 +48,7 @@ namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 /// <see cref="PlayerRouteStaleException"/>.
 /// </remarks>
 [ProtoContract]
+[BsonIgnoreExtraElements]
 public sealed class PlayerRouteDocument
 {
     /// <summary>
@@ -56,6 +58,7 @@ public sealed class PlayerRouteDocument
     /// The player id (the business key).
     /// </remarks>
     [ProtoMember(1)]
+    [BsonElement(PlayerRouteCollection.PlayerIdField)]
     public long PlayerId { get; set; }
 
     /// <summary>
@@ -65,6 +68,7 @@ public sealed class PlayerRouteDocument
     /// The player's current owning instance id (the Mongo discovery-layer instanceId).
     /// </remarks>
     [ProtoMember(2)]
+    [BsonElement("instanceId")]
     public string InstanceId { get; set; }
 
     /// <summary>
@@ -74,6 +78,7 @@ public sealed class PlayerRouteDocument
     /// The player's current owning role name (e.g. Game / Social).
     /// </remarks>
     [ProtoMember(3)]
+    [BsonElement("role")]
     public string Role { get; set; }
 
     /// <summary>
@@ -83,6 +88,7 @@ public sealed class PlayerRouteDocument
     /// The monotonic kick/relogin version used for compare-and-set on upsert.
     /// </remarks>
     [ProtoMember(4)]
+    [BsonElement(PlayerRouteCollection.VersionField)]
     public long Version { get; set; }
 
     /// <summary>
@@ -92,6 +98,7 @@ public sealed class PlayerRouteDocument
     /// The last write timestamp; the TTL index expires documents 30 days after this point.
     /// </remarks>
     [ProtoMember(5)]
+    [BsonElement("lastSeenAt")]
     public DateTime LastSeenAt { get; set; }
 }
 

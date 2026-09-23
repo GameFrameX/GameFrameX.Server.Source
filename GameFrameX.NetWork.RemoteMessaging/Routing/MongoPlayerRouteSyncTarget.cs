@@ -75,20 +75,16 @@ public sealed class MongoPlayerRouteSyncTarget : IPlayerRouteSyncTarget
             throw new ArgumentException("Instance id must not be empty.", nameof(instanceId));
         }
 
-        // 首登（version=1）走无条件 upsert；后续顶号走 CAS：当前 version 必须等于送入 version，否则抛 PlayerRouteStaleException。
-        if (version <= 1)
-        {
-            var firstTime = PlayerRouteCollection.CreateOnline(playerId, instanceId, role);
-            await _collection.ReplaceOneAsync(
-                Builders<PlayerRouteDocument>.Filter.Eq(candidate => candidate.PlayerId, playerId),
-                firstTime,
-                new ReplaceOptions { IsUpsert = true }).ConfigureAwait(false);
-            return;
-        }
-
+        // 统一 CAS：送入 version 必须等于当前 version + 1（旧文档 version == version-1）。
+        // 首登（文档缺失且 version=1）才走无条件插入；文档缺失且 version>1 静默返回（下一轮 SetOnline 重试）；
+        // 文档存在但版本不满足 current+1 则抛 PlayerRouteStaleException。
+        // Unified CAS: the supplied version must equal the current version + 1 (old document version == version-1).
+        // Only a first login (missing document with version=1) inserts unconditionally; a missing document with
+        // version>1 returns silently (the next SetOnline retries); an existing document whose version is not
+        // current+1 throws PlayerRouteStaleException.
         var filter = Builders<PlayerRouteDocument>.Filter.And(
             Builders<PlayerRouteDocument>.Filter.Eq(candidate => candidate.PlayerId, playerId),
-            Builders<PlayerRouteDocument>.Filter.Eq(candidate => candidate.Version, version));
+            Builders<PlayerRouteDocument>.Filter.Eq(candidate => candidate.Version, version - 1));
 
         var update = Builders<PlayerRouteDocument>.Update
             .Set(candidate => candidate.InstanceId, instanceId)
@@ -97,22 +93,32 @@ public sealed class MongoPlayerRouteSyncTarget : IPlayerRouteSyncTarget
             .Set(candidate => candidate.LastSeenAt, DateTime.UtcNow);
 
         var result = await _collection.UpdateOneAsync(filter, update, new UpdateOptions { IsUpsert = false }).ConfigureAwait(false);
-
-        if (result.MatchedCount == 0)
+        if (result.MatchedCount > 0)
         {
-            // 未命中：可能文档被删，可能 version 已经更新。先读最新 version 区分两种情况。
-            var latest = await _collection.Find(Builders<PlayerRouteDocument>.Filter.Eq(candidate => candidate.PlayerId, playerId))
-                .FirstOrDefaultAsync()
-                .ConfigureAwait(false);
+            return;
+        }
 
-            if (latest == null)
+        // 未命中：可能文档被删（首登/重试），可能版本竞争失败。读最新文档区分处理。
+        // No match: the document is missing (first login / retry) or the version check failed; read the latest.
+        var latest = await _collection.Find(Builders<PlayerRouteDocument>.Filter.Eq(candidate => candidate.PlayerId, playerId))
+            .FirstOrDefaultAsync()
+            .ConfigureAwait(false);
+
+        if (latest == null)
+        {
+            if (version <= 1)
             {
-                // 文档缺失：让 SessionManager 钩子在下一轮 SetOnline 重试即可（不必抛）。
-                return;
+                var firstTime = PlayerRouteCollection.CreateOnline(playerId, instanceId, role);
+                await _collection.ReplaceOneAsync(
+                    Builders<PlayerRouteDocument>.Filter.Eq(candidate => candidate.PlayerId, playerId),
+                    firstTime,
+                    new ReplaceOptions { IsUpsert = true }).ConfigureAwait(false);
             }
 
-            throw new PlayerRouteStaleException(playerId, version, latest.Version);
+            return;
         }
+
+        throw new PlayerRouteStaleException(playerId, version, latest.Version);
     }
 
     /// <summary>
