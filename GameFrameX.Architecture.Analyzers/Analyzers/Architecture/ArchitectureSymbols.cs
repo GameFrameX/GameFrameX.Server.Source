@@ -53,7 +53,9 @@ public sealed class ArchitectureSymbols
         INamedTypeSymbol? messageMappingAttribute,
         INamedTypeSymbol? messageRpcMappingAttribute,
         INamedTypeSymbol? eventListener,
-        INamedTypeSymbol? timerHandler)
+        INamedTypeSymbol? timerHandler,
+        INamedTypeSymbol? mongoDbService,
+        INamedTypeSymbol? multiDbRegistry)
     {
         BaseCacheState = baseCacheState;
         CacheState = cacheState;
@@ -66,6 +68,8 @@ public sealed class ArchitectureSymbols
         MessageRpcMappingAttribute = messageRpcMappingAttribute;
         EventListener = eventListener;
         TimerHandler = timerHandler;
+        MongoDbService = mongoDbService;
+        MultiDbRegistry = multiDbRegistry;
     }
 
     /// <summary>GameFrameX.DataBase.BaseCacheState — 数据库缓存状态的抽象基类。</summary>
@@ -101,6 +105,12 @@ public sealed class ArchitectureSymbols
     /// <summary>GameFrameX.Core.Timer.Handler.ITimerHandler — 定时器回调处理器接口。</summary>
     public INamedTypeSymbol? TimerHandler { get; }
 
+    /// <summary>GameFrameX.DataBase.Mongo.MongoDbService — MongoDB 数据服务实现，仅限 Mongo 实现层引用。</summary>
+    public INamedTypeSymbol? MongoDbService { get; }
+
+    /// <summary>GameFrameX.DataBase.MultiDbRegistry — 多库注册表，仅限 GameFrameX.DataBase 内部引用。</summary>
+    public INamedTypeSymbol? MultiDbRegistry { get; }
+
     /// <summary>
     /// 从编译上下文中解析所有知名类型符号。每个编译只调用一次。
     /// </summary>
@@ -117,6 +127,8 @@ public sealed class ArchitectureSymbols
             compilation.GetTypeByMetadataName("GameFrameX.NetWork.Abstractions.MessageMappingAttribute"),
             compilation.GetTypeByMetadataName("GameFrameX.NetWork.Abstractions.MessageRpcMappingAttribute"),
             compilation.GetTypeByMetadataName("GameFrameX.Core.Abstractions.Events.IEventListener"),
-            compilation.GetTypeByMetadataName("GameFrameX.Core.Timer.Handler.ITimerHandler"));
+            compilation.GetTypeByMetadataName("GameFrameX.Core.Timer.Handler.ITimerHandler"),
+            compilation.GetTypeByMetadataName("GameFrameX.DataBase.Mongo.MongoDbService"),
+            compilation.GetTypeByMetadataName("GameFrameX.DataBase.MultiDbRegistry"));
     }
 }
