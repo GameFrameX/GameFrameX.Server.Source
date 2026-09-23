@@ -100,6 +100,7 @@ public sealed partial class MongoDbService
         var currentTime = GetCurrentTimestamp();
         state.CreatedTime = currentTime;
         state.UpdateTime = currentTime;
+        state.UpdateCount ??= 0;
         var collection = _mongoDbContext.GetCollection<TState>();
         await ExecuteWriteWithRetryAsync(token => collection.InsertOneAsync(state, cancellationToken: token), cancellationToken, nameof(AddAsync), false).ConfigureAwait(false);
     }
@@ -143,6 +144,7 @@ public sealed partial class MongoDbService
         {
             cacheState.CreatedTime = currentTime;
             cacheState.UpdateTime = currentTime;
+            cacheState.UpdateCount ??= 0;
         }
 
         var collection = _mongoDbContext.GetCollection<TState>();

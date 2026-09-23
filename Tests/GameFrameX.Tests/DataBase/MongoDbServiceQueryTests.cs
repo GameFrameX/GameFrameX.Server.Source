@@ -1495,6 +1495,9 @@ public sealed class MongoDbServiceQueryTests
                 [nameof(MongoQueryTestState.OptionalNote)] = null,
             });
             Assert.Equal(1, affected);
+            var partialCounts = await service.FindProjectedAsync<MongoQueryTestState, int?>(x => x.Id == state.Id, x => x.UpdateCount);
+            Assert.Single(partialCounts);
+            Assert.Equal(1, partialCounts[0]);
 
             await service.DeleteAsync(state);
             var includeDeletedCount = await service.CountAsync<MongoQueryTestState>(x => x.Id == state.Id, includeDeleted: true);

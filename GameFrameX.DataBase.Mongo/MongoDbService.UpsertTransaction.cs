@@ -106,7 +106,7 @@ public sealed partial class MongoDbService
         }
 
         state.UpdateTime = currentTime;
-        state.UpdateCount++;
+        state.UpdateCount = (state.UpdateCount ?? 0) + 1;
 
         // 使用 ReplaceOne with Upsert - 单次数据库操作
         var filter = Builders<TState>.Filter.Eq(m => m.Id, state.Id);
@@ -161,7 +161,7 @@ public sealed partial class MongoDbService
             }
 
             state.UpdateTime = currentTime;
-            state.UpdateCount++;
+            state.UpdateCount = (state.UpdateCount ?? 0) + 1;
             var filter = Builders<TState>.Filter.Eq(m => m.Id, state.Id);
             writeModels.Add(new ReplaceOneModel<TState>(filter, state) { IsUpsert = true, });
         }

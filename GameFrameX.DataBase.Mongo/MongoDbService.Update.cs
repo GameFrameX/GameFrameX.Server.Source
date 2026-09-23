@@ -30,7 +30,6 @@
 
 using GameFrameX.Foundation.Utility;
 using MongoDB.Bson;
-using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 using System.Threading;
 using GameFrameX.Utility;
@@ -85,7 +84,7 @@ public sealed partial class MongoDbService
         if (isChanged)
         {
             state.UpdateTime = GetCurrentTimestamp();
-            state.UpdateCount++;
+            state.UpdateCount = (state.UpdateCount ?? 0) + 1;
 
             var collection = _mongoDbContext.GetCollection<TState>();
             var filter = Builders<TState>.Filter.Eq(m => m.Id, state.Id);
@@ -146,7 +145,7 @@ public sealed partial class MongoDbService
             if (isChanged)
             {
                 state.UpdateTime = currentTime;
-                state.UpdateCount++;
+                state.UpdateCount = (state.UpdateCount ?? 0) + 1;
 
                 var filter = Builders<TState>.Filter.Eq(m => m.Id, state.Id);
                 var updateDefinition = BuildUpdateDefinition(state);
@@ -236,33 +235,15 @@ public sealed partial class MongoDbService
 
         var currentTime = GetCurrentTimestamp();
         updates.Add(Builders<TState>.Update.Set(m => m.UpdateTime, currentTime));
+        // UpdateCount 为 int?（EntityBase）；插入与保存路径已在写库前将其归一为非 null，
+        // 因此这里可以安全使用经典 $inc（$inc 作用于 BSON null 字段会直接报错）。
+        // UpdateCount is int? (EntityBase); insert and save paths normalize it to non-null before
+        // persisting, so the classic $inc below is safe ($inc on a BSON null field errors out).
+        updates.Add(Builders<TState>.Update.Inc(m => m.UpdateCount, 1));
 
         var collection = _mongoDbContext.GetCollection<TState>();
         var filter = Builders<TState>.Filter.Eq(m => m.Id, id) & Builders<TState>.Filter.Where(GetDefaultFindExpression<TState>(null));
-
-        // UpdateCount 在实体层为 int?（EntityBase），新增未经 AddOrUpdate 的文档该字段为 BSON null，
-        // MongoDB 8.x 起 $inc 作用于 null 字段直接报错，因此改用管道更新：先经 $ifNull 兜底为 0 再 +1。
-        // UpdateCount is int? at the entity level (EntityBase); documents inserted without AddOrUpdate hold BSON null
-        // for this field, and MongoDB 8.x errors when $inc targets a null field — use a pipeline update instead:
-        // normalize via $ifNull to 0 and then add 1 (requires MongoDB 4.2+).
-        var renderArgs = new RenderArgs<TState>(collection.DocumentSerializer, BsonSerializer.SerializerRegistry);
-        var updateCountElementName = Builders<TState>.Update.Set(m => m.UpdateCount, 0).Render(renderArgs)["$set"].AsBsonDocument.GetElement(0).Name;
-        var rendered = (BsonDocument)Builders<TState>.Update.Combine(updates).Render(renderArgs);
-        var stages = new List<BsonDocument>();
-        foreach (var operation in rendered)
-        {
-            if (operation.Name == "$unset")
-            {
-                stages.Add(new BsonDocument("$unset", new BsonArray(operation.Value.AsBsonDocument.Names)));
-            }
-            else
-            {
-                stages.Add(new BsonDocument(operation.Name, operation.Value));
-            }
-        }
-
-        stages.Add(new BsonDocument("$set", new BsonDocument(updateCountElementName, new BsonDocument("$add", new BsonArray { new BsonDocument("$ifNull", new BsonArray { "$" + updateCountElementName, 0 }), 1 }))));
-        var update = new PipelineUpdateDefinition<TState>(new BsonDocumentStagePipelineDefinition<TState, TState>(stages, collection.DocumentSerializer));
+        var update = Builders<TState>.Update.Combine(updates);
         var result = await ExecuteWriteWithRetryAsync(token => collection.UpdateOneAsync(filter, update, cancellationToken: token), cancellationToken, nameof(UpdatePartialAsync), false).ConfigureAwait(false);
         return result.ModifiedCount;
     }
