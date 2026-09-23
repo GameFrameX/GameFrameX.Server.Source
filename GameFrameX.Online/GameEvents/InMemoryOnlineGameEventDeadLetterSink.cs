@@ -65,7 +65,19 @@ public sealed class InMemoryOnlineGameEventDeadLetterSink : IOnlineGameEventDead
         _capacity = capacity < 1 ? DefaultCapacity : capacity;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在全局锁内写入一条死信，超出保留上限时淘汰最旧记录。
+    /// </summary>
+    /// <remarks>
+    /// Writes a dead letter under the global lock, evicting the oldest records when the retention capacity is exceeded.
+    /// </remarks>
+    /// <param name="onlineEvent">被拒绝的事件信封 / The rejected event envelope</param>
+    /// <param name="reason">拒绝码 / The rejection reason code</param>
+    /// <param name="message">拒绝原因 / The rejection message</param>
+    /// <param name="rejectedTime">拒收时刻（UTC 毫秒）/ Rejection time (UTC milliseconds)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>落档后的死信记录 / The archived dead letter record</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="onlineEvent"/> 为 null 时抛出 / Thrown when <paramref name="onlineEvent"/> is null</exception>
     public Task<OnlineGameEventDeadLetter> WriteAsync(OnlineEvent onlineEvent, OnlineGameEventRejectionReason reason, string message, long rejectedTime, CancellationToken cancellationToken = default)
     {
         if (onlineEvent == null)
@@ -93,7 +105,18 @@ public sealed class InMemoryOnlineGameEventDeadLetterSink : IOnlineGameEventDead
         return Task.FromResult(deadLetter);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在全局锁内按作用域与闭区间时间窗筛选内存中的死信。
+    /// </summary>
+    /// <remarks>
+    /// Filters the in-memory dead letters by scope and inclusive time window under the global lock.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / The tenant id</param>
+    /// <param name="appId">App 标识 / The app id</param>
+    /// <param name="fromTime">窗口起点（UTC 毫秒，含）/ Window start (UTC milliseconds, inclusive)</param>
+    /// <param name="toTime">窗口终点（UTC 毫秒，含）/ Window end (UTC milliseconds, inclusive)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>匹配的死信列表（按写入即拒收顺序升序）；无记录返回空列表 / The matched dead letters in write (rejection) order; an empty list when none match</returns>
     public Task<List<OnlineGameEventDeadLetter>> ListAsync(long tenantId, long appId, long fromTime, long toTime, CancellationToken cancellationToken = default)
     {
         var matched = new List<OnlineGameEventDeadLetter>();

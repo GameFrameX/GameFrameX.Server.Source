@@ -61,7 +61,16 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
     {
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在全局锁内创建榜单：同作用域同标识已存在时拒绝返回 null，否则落档定义副本并初始化空条目表。
+    /// </summary>
+    /// <remarks>
+    /// Creates the leaderboard under the global lock: refuses with null when the same id already exists in the scope, otherwise stores a defensive copy of the definition and initializes an empty entry table.
+    /// </remarks>
+    /// <param name="leaderboard">榜单定义（作用域取自其 TenantId 与 AppId）/ The leaderboard definition (scope taken from its TenantId and AppId)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>创建后的榜单副本；已存在返回 null / A copy of the created leaderboard; null when it already exists</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="leaderboard"/> 为 null 时抛出 / Thrown when <paramref name="leaderboard"/> is null</exception>
     public Task<OnlineLeaderboard> CreateAsync(OnlineLeaderboard leaderboard, CancellationToken cancellationToken = default)
     {
         if (leaderboard == null)
@@ -83,7 +92,17 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在全局锁内按作用域与榜单标识查找榜单定义，返回防御性副本。
+    /// </summary>
+    /// <remarks>
+    /// Finds the leaderboard definition by scope and leaderboard id under the global lock, returning a defensive copy.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / The tenant id</param>
+    /// <param name="appId">App 标识 / The app id</param>
+    /// <param name="leaderboardId">榜单标识 / The leaderboard id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>榜单副本；不存在或跨作用域返回 null / A copy of the leaderboard; null when not found or cross-scope</returns>
     public Task<OnlineLeaderboard> FindAsync(long tenantId, long appId, string leaderboardId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
@@ -92,7 +111,18 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在全局锁内查找指定玩家的榜上条目，返回防御性副本。
+    /// </summary>
+    /// <remarks>
+    /// Finds a single player's entry on the board under the global lock, returning a defensive copy.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / The tenant id</param>
+    /// <param name="appId">App 标识 / The app id</param>
+    /// <param name="leaderboardId">榜单标识 / The leaderboard id</param>
+    /// <param name="playerId">玩家标识 / The player id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>条目副本；未上榜或榜单不存在返回 null / A copy of the entry; null when the player is unranked or the board does not exist</returns>
     public Task<OnlineLeaderboardEntry> FindEntryAsync(long tenantId, long appId, string leaderboardId, long playerId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
@@ -106,7 +136,18 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在全局锁内的同一临界区按累计策略裁决分数并落档条目，不存在则新建条目。
+    /// </summary>
+    /// <remarks>
+    /// Resolves the score by the accumulation policy and archives the entry within the same critical section under the global lock, creating the entry when absent.
+    /// </remarks>
+    /// <param name="leaderboard">目标榜单定义（调用方先经 <see cref="FindAsync"/> 取得）/ The target leaderboard definition (obtained by the caller via <see cref="FindAsync"/> first)</param>
+    /// <param name="submission">分数提交 / The score submission</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>写入结果（聚合后条目副本与临界区内事实的前值）/ The apply result (the merged entry copy and the pre-update facts observed inside the critical section)</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="leaderboard"/> 或 <paramref name="submission"/> 为 null 时抛出 / Thrown when <paramref name="leaderboard"/> or <paramref name="submission"/> is null</exception>
+    /// <exception cref="InvalidOperationException">当目标榜单未创建或已失效（未经 <see cref="FindAsync"/> 解析）时抛出 / Thrown when the target leaderboard is not created or has expired (not resolved via <see cref="FindAsync"/>)</exception>
     public Task<OnlineLeaderboardApplyResult> ApplySubmissionAsync(OnlineLeaderboard leaderboard, OnlineLeaderboardScoreSubmission submission, CancellationToken cancellationToken = default)
     {
         if (leaderboard == null)
@@ -150,7 +191,17 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在全局锁内拷贝全榜条目，再按榜单排序规则排出全序返回。
+    /// </summary>
+    /// <remarks>
+    /// Copies every entry of the board under the global lock, then sorts the copies into the full order defined by the board's sort rule.
+    /// </remarks>
+    /// <param name="leaderboard">目标榜单定义 / The target leaderboard definition</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>全序条目副本；空榜返回空列表 / The ordered entry copies; an empty list for an empty board</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="leaderboard"/> 为 null 时抛出 / Thrown when <paramref name="leaderboard"/> is null</exception>
+    /// <exception cref="InvalidOperationException">当目标榜单未创建或已失效（未经 <see cref="FindAsync"/> 解析）时抛出 / Thrown when the target leaderboard is not created or has expired (not resolved via <see cref="FindAsync"/>)</exception>
     public Task<List<OnlineLeaderboardEntry>> ListOrderedEntriesAsync(OnlineLeaderboard leaderboard, CancellationToken cancellationToken = default)
     {
         if (leaderboard == null)
@@ -178,7 +229,18 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
         return Task.FromResult(copies);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在全局锁内将榜上条目与期望快照做 CAS 比对，完全一致才清空整榜，否则拒绝且不改变状态。
+    /// </summary>
+    /// <remarks>
+    /// Compares the board entries against the expected snapshot as a CAS check under the global lock, clearing the whole board only on an exact match and otherwise refusing without any state change.
+    /// </remarks>
+    /// <param name="leaderboard">目标榜单定义 / The target leaderboard definition</param>
+    /// <param name="expectedEntries">调用方持有的全序条目快照 / The ordered entry snapshot held by the caller</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>清空成功返回 true；榜上条目已变化而拒绝清空返回 false / True when the board is cleared; false when the entries changed and the reset is refused</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="leaderboard"/> 或 <paramref name="expectedEntries"/> 为 null 时抛出 / Thrown when <paramref name="leaderboard"/> or <paramref name="expectedEntries"/> is null</exception>
+    /// <exception cref="InvalidOperationException">当目标榜单未创建或已失效（未经 <see cref="FindAsync"/> 解析）时抛出 / Thrown when the target leaderboard is not created or has expired (not resolved via <see cref="FindAsync"/>)</exception>
     public Task<bool> TryResetAsync(OnlineLeaderboard leaderboard, IReadOnlyList<OnlineLeaderboardEntry> expectedEntries, CancellationToken cancellationToken = default)
     {
         if (leaderboard == null)

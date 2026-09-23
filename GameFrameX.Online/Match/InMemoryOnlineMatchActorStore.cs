@@ -55,7 +55,16 @@ public sealed class InMemoryOnlineMatchActorStore : IOnlineMatchActorStore
     /// <summary>对局表：键 = (TenantId, AppId, MatchId)。</summary>
     private readonly Dictionary<string, OnlineMatch> _matches = new Dictionary<string, OnlineMatch>();
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在全局锁内新增对局：已存在同标识对局返回 null，否则落档副本并将版本初始化为 1。
+    /// </summary>
+    /// <remarks>
+    /// Creates the match under the global lock: returns null when a match with the same id already exists, otherwise stores a copy with the version initialized to 1.
+    /// </remarks>
+    /// <param name="match">对局 / The match</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>落库后的对局副本（版本为 1）；已存在返回 null / The stored match copy (version 1); null when it already exists</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="match"/> 为 null 时抛出 / Thrown when <paramref name="match"/> is null</exception>
     public Task<OnlineMatch> CreateAsync(OnlineMatch match, CancellationToken cancellationToken = default)
     {
         if (match == null)
@@ -78,7 +87,17 @@ public sealed class InMemoryOnlineMatchActorStore : IOnlineMatchActorStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在全局锁内按作用域与对局标识查找对局并返回副本。
+    /// </summary>
+    /// <remarks>
+    /// Finds the match by scope and match id under the global lock and returns a copy.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / The tenant id</param>
+    /// <param name="appId">App 标识 / The app id</param>
+    /// <param name="matchId">对局标识 / The match id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>对局副本；不存在或标识为空返回 null / The match copy; null when not found or the id is empty</returns>
     public Task<OnlineMatch> FindAsync(long tenantId, long appId, string matchId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
@@ -87,7 +106,16 @@ public sealed class InMemoryOnlineMatchActorStore : IOnlineMatchActorStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在全局锁内以期望版本做 CAS 更新：版本不匹配或对局不存在时整体失败返回 null，绝不部分应用。
+    /// </summary>
+    /// <remarks>
+    /// Updates the match with compare-and-swap semantics under the global lock: fails as a whole with null when the expected version mismatches or the match does not exist, never applying partially.
+    /// </remarks>
+    /// <param name="match">对局新状态（Version 字段为期望版本）/ The new match state (the Version field carries the expected version)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>更新后的对局副本（版本已递增）；失败返回 null / The updated match copy (version incremented); null on failure</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="match"/> 为 null 时抛出 / Thrown when <paramref name="match"/> is null</exception>
     public Task<OnlineMatch> UpdateAsync(OnlineMatch match, CancellationToken cancellationToken = default)
     {
         if (match == null)
@@ -115,7 +143,17 @@ public sealed class InMemoryOnlineMatchActorStore : IOnlineMatchActorStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在全局锁内删除对局（Actor 释放）：仅 Closed 状态允许删除，其余情况拒绝返回 false。
+    /// </summary>
+    /// <remarks>
+    /// Deletes the match (actor release) under the global lock: only a Closed match can be deleted; every other case is refused with false.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / The tenant id</param>
+    /// <param name="appId">App 标识 / The app id</param>
+    /// <param name="matchId">对局标识 / The match id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>删除成功返回 true；不存在或未关闭返回 false / True when deleted; false when not found or not closed</returns>
     public Task<bool> DeleteAsync(long tenantId, long appId, string matchId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
@@ -136,7 +174,16 @@ public sealed class InMemoryOnlineMatchActorStore : IOnlineMatchActorStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在全局锁内列出作用域内全部对局的副本（Tick 扫描与可观测性用）。
+    /// </summary>
+    /// <remarks>
+    /// Lists copies of every match in the scope under the global lock (for tick scanning and observability).
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / The tenant id</param>
+    /// <param name="appId">App 标识 / The app id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>对局副本列表 / The list of match copies</returns>
     public Task<IReadOnlyList<OnlineMatch>> ListAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
     {
         var result = new List<OnlineMatch>();

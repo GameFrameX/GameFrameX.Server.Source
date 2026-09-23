@@ -48,7 +48,18 @@ public sealed class InMemoryOnlineReportStore : IOnlineReportStore
     /// <summary>案件表（键 = 作用域 + 案件标识）。</summary>
     private readonly Dictionary<string, OnlineReportCase> _casesById = new Dictionary<string, OnlineReportCase>(StringComparer.Ordinal);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 以案件标识为唯一键在内存表内「不存在则创建」：键已存在时返回既有案件副本且不写入，否则存入入参的防御性副本。
+    /// </summary>
+    /// <remarks>
+    /// Creates the report case in the in-memory table if the key (scope + case id) is absent;
+    /// returns a copy of the existing record without writing when the key already exists,
+    /// otherwise stores a defensive copy of the input.
+    /// </remarks>
+    /// <param name="reportCase">待创建的案件 / The report case to create</param>
+    /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
+    /// <returns>当前生效的案件副本（既有记录或刚落库的入参）/ Copy of the currently effective report case (existing record or just-stored input)</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="reportCase"/> 为 null 时抛出 / Thrown when <paramref name="reportCase"/> is null</exception>
     public Task<OnlineReportCase> SaveIfAbsentAsync(OnlineReportCase reportCase, CancellationToken cancellationToken = default)
     {
         if (reportCase == null)
@@ -72,7 +83,17 @@ public sealed class InMemoryOnlineReportStore : IOnlineReportStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 按作用域与案件标识在内存表内查找案件。
+    /// </summary>
+    /// <remarks>
+    /// Finds a report case in the in-memory table by scope and case id.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="reportId">案件标识 / Case id</param>
+    /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
+    /// <returns>案件副本；不存在返回 null / Copy of the report case, or null if absent</returns>
     public Task<OnlineReportCase> FindAsync(long tenantId, long appId, string reportId, CancellationToken cancellationToken = default)
     {
         var key = BuildKey(tenantId, appId, reportId);
@@ -88,7 +109,18 @@ public sealed class InMemoryOnlineReportStore : IOnlineReportStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在同一临界区内以期望状态 CAS 改写案件：状态不匹配或记录不存在即整体失败且不留写入痕迹。
+    /// </summary>
+    /// <remarks>
+    /// Rewrites the report case under one lock via expected-state CAS; a mismatching state or a
+    /// missing record fails as a whole, leaving no trace.
+    /// </remarks>
+    /// <param name="reportCase">改写后的案件 / The rewritten report case</param>
+    /// <param name="expectedState">期望的当前状态 / The expected current state</param>
+    /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
+    /// <returns>更新后的案件副本；CAS 失败或记录不存在返回 null / Copy of the updated report case, or null on CAS failure or missing record</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="reportCase"/> 为 null 时抛出 / Thrown when <paramref name="reportCase"/> is null</exception>
     public Task<OnlineReportCase> ReplaceAsync(OnlineReportCase reportCase, OnlineReportState expectedState, CancellationToken cancellationToken = default)
     {
         if (reportCase == null)
@@ -118,7 +150,17 @@ public sealed class InMemoryOnlineReportStore : IOnlineReportStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 全表线性扫描列出某举报人提交的全部案件。
+    /// </summary>
+    /// <remarks>
+    /// Linearly scans the whole table to list all cases submitted by a reporter.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="reporterId">举报人标识 / Reporter id</param>
+    /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
+    /// <returns>案件副本列表 / List of report case copies</returns>
     public Task<IReadOnlyList<OnlineReportCase>> ListByReporterAsync(long tenantId, long appId, long reporterId, CancellationToken cancellationToken = default)
     {
         var result = new List<OnlineReportCase>();
@@ -137,7 +179,17 @@ public sealed class InMemoryOnlineReportStore : IOnlineReportStore
         return Task.FromResult<IReadOnlyList<OnlineReportCase>>(result);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 全表线性扫描列出作用域内处于指定状态的案件（Admin 待办队列输入）。
+    /// </summary>
+    /// <remarks>
+    /// Linearly scans the whole table to list cases in the scope with the given state (input for the admin pending queue).
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="state">案件状态 / Case state</param>
+    /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
+    /// <returns>案件副本列表 / List of report case copies</returns>
     public Task<IReadOnlyList<OnlineReportCase>> ListByStateAsync(long tenantId, long appId, OnlineReportState state, CancellationToken cancellationToken = default)
     {
         var result = new List<OnlineReportCase>();

@@ -51,7 +51,16 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
     /// <summary>关系标识索引。</summary>
     private readonly Dictionary<string, string> _pairKeyByFriendshipId = new Dictionary<string, string>(StringComparer.Ordinal);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 以内存字典实现无向对的「不存在则创建」：键已存在时返回既有记录的副本且不写入；新建时存入入参的深拷贝并登记关系标识索引。
+    /// </summary>
+    /// <remarks>
+    /// In-memory dictionary based create-if-absent for the undirected pair: returns a copy of the existing record without writing when the key exists; on creation stores a deep copy of the input and registers the friendship-id index.
+    /// </remarks>
+    /// <param name="friendship">待创建的关系（其无向对与作用域已由调用方规范化） / Friendship to create (undirected pair and scope already canonicalized by the caller)</param>
+    /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
+    /// <returns>当前生效的关系记录副本（既有记录或刚入库的入参副本） / Copy of the effective friendship record (the existing one or the just-stored copy of the input)</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="friendship"/> 为 null 时抛出 / Thrown when <paramref name="friendship"/> is null</exception>
     public Task<OnlineFriendship> SaveIfAbsentAsync(OnlineFriendship friendship, CancellationToken cancellationToken = default)
     {
         if (friendship == null)
@@ -76,7 +85,18 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 先把两侧玩家规范化为无向对，再按索引键在内存关系表中查找并返回副本（两个方向的入参命中同一条记录）。
+    /// </summary>
+    /// <remarks>
+    /// Canonicalizes the two players into the undirected pair first, then looks up the in-memory friendship table by index key and returns a copy (either direction of the arguments hits the same record).
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="leftPlayerId">一侧玩家标识（无需预先规范化） / One-side player id (no pre-canonicalization needed)</param>
+    /// <param name="rightPlayerId">另一侧玩家标识（无需预先规范化） / Other-side player id (no pre-canonicalization needed)</param>
+    /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
+    /// <returns>关系副本；不存在返回 null / Copy of the friendship; null if absent</returns>
     public Task<OnlineFriendship> FindAsync(long tenantId, long appId, long leftPlayerId, long rightPlayerId, CancellationToken cancellationToken = default)
     {
         long low;
@@ -95,7 +115,21 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 以 CAS 语义在临界区内改写内存中的关系状态：作用域不符、当前状态与期望不符或记录不存在时不留写入痕迹并返回 null。
+    /// </summary>
+    /// <remarks>
+    /// Rewrites the in-memory friendship state with CAS semantics inside the critical section: leaves no write trace and returns null on scope mismatch, expected-state mismatch or missing record.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="friendshipId">关系标识 / Friendship id</param>
+    /// <param name="expectedState">期望的当前状态；不匹配即失败 / Expected current state; a mismatch fails the call</param>
+    /// <param name="newState">目标状态 / Target state</param>
+    /// <param name="nowUnixMilliseconds">本次变更时刻（UTC 毫秒） / Change time of this update (UTC milliseconds)</param>
+    /// <param name="responded">本次变更是否构成一次答复（答复时回填答复时刻） / Whether this change counts as a response (backfills the responded-at time when true)</param>
+    /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
+    /// <returns>更新后的关系副本；CAS 失败或记录不存在返回 null / Copy of the updated friendship; null on CAS failure or missing record</returns>
     public Task<OnlineFriendship> UpdateStateAsync(long tenantId, long appId, string friendshipId, OnlineFriendshipState expectedState, OnlineFriendshipState newState, long nowUnixMilliseconds, bool responded, CancellationToken cancellationToken = default)
     {
         var lookupKey = friendshipId ?? string.Empty;
@@ -135,7 +169,22 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 以 CAS 语义在同一临界区内把静止态关系重新发起为待答复请求：状态、方向与有效期三项一并落到同一条记录。
+    /// </summary>
+    /// <remarks>
+    /// Re-initiates a quiescent friendship as a pending request with CAS semantics, writing state, direction and expiry together onto the same record within one critical section.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="friendshipId">关系标识 / Friendship id</param>
+    /// <param name="expectedState">期望的当前状态（静止态）；不匹配即失败 / Expected current state (quiescent); a mismatch fails the call</param>
+    /// <param name="requesterId">本次发起人（写入为新的方向事实） / Initiator of this round (written as the new direction fact)</param>
+    /// <param name="addresseeId">本次被请求方 / Addressee of this round</param>
+    /// <param name="nowUnixMilliseconds">本次变更时刻（UTC 毫秒） / Change time of this update (UTC milliseconds)</param>
+    /// <param name="expiresAtTime">重置后的请求失效时刻（UTC 毫秒） / Reset request expiry time (UTC milliseconds)</param>
+    /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
+    /// <returns>更新后的关系副本；CAS 失败或记录不存在返回 null / Copy of the updated friendship; null on CAS failure or missing record</returns>
     public Task<OnlineFriendship> RenewRequestAsync(long tenantId, long appId, string friendshipId, OnlineFriendshipState expectedState, long requesterId, long addresseeId, long nowUnixMilliseconds, long expiresAtTime, CancellationToken cancellationToken = default)
     {
         var lookupKey = friendshipId ?? string.Empty;
@@ -168,7 +217,17 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 临界区内全表线性扫描列出作用域内包含指定玩家的全部关系记录（任意状态）。
+    /// </summary>
+    /// <remarks>
+    /// Lists all friendship records in the scope containing the given player (any state) via a full-table linear scan inside the critical section.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="playerId">玩家标识 / Player id</param>
+    /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
+    /// <returns>关系副本列表 / List of friendship copies</returns>
     public Task<IReadOnlyList<OnlineFriendship>> ListByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
     {
         var result = new List<OnlineFriendship>();
@@ -192,7 +251,17 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
         return Task.FromResult<IReadOnlyList<OnlineFriendship>>(result);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 临界区内全表线性扫描列出作用域内处于指定状态的全部关系记录。
+    /// </summary>
+    /// <remarks>
+    /// Lists all friendship records in the scope with the given state via a full-table linear scan inside the critical section.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="state">关系状态 / Friendship state</param>
+    /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
+    /// <returns>关系副本列表 / List of friendship copies</returns>
     public Task<IReadOnlyList<OnlineFriendship>> ListByStateAsync(long tenantId, long appId, OnlineFriendshipState state, CancellationToken cancellationToken = default)
     {
         var result = new List<OnlineFriendship>();

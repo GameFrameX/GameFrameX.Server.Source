@@ -65,7 +65,16 @@ public sealed class InMemoryOnlineChatStore : IOnlineChatStore
     /// <summary>已读位点表（键 = 作用域 + 玩家 + 频道标识）。</summary>
     private readonly Dictionary<string, OnlineChatReadMark> _readMarksByPlayerChannel = new Dictionary<string, OnlineChatReadMark>(StringComparer.Ordinal);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 以内存字典实现频道的「不存在则创建」：键已存在时返回既有记录的副本且不写入；新建时存入入参的深拷贝。
+    /// </summary>
+    /// <remarks>
+    /// In-memory dictionary based create-if-absent for channels: returns a copy of the existing record without writing when the key exists; stores a deep copy of the input on creation.
+    /// </remarks>
+    /// <param name="channel">待创建的频道（标识已由调用方确定性派生） / Channel to create (id already deterministically derived by the caller)</param>
+    /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
+    /// <returns>当前生效的频道记录副本（既有记录或刚入库的入参副本） / Copy of the effective channel record (the existing one or the just-stored copy of the input)</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="channel"/> 为 null 时抛出 / Thrown when <paramref name="channel"/> is null</exception>
     public Task<OnlineChatChannel> SaveChannelIfAbsentAsync(OnlineChatChannel channel, CancellationToken cancellationToken = default)
     {
         if (channel == null)
@@ -89,7 +98,17 @@ public sealed class InMemoryOnlineChatStore : IOnlineChatStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 按作用域与频道标识在内存频道表中查找记录并返回副本。
+    /// </summary>
+    /// <remarks>
+    /// Looks up a record in the in-memory channel table by scope and channel id, returning a copy.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="channelId">频道标识 / Channel id</param>
+    /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
+    /// <returns>频道记录副本；不存在返回 null / Copy of the channel record; null if absent</returns>
     public Task<OnlineChatChannel> FindChannelAsync(long tenantId, long appId, string channelId, CancellationToken cancellationToken = default)
     {
         var key = BuildChannelKey(tenantId, appId, channelId);
@@ -105,7 +124,17 @@ public sealed class InMemoryOnlineChatStore : IOnlineChatStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在同一临界区内完成「去重键查重 → 分配频道内序号 → 落定单调不减的发送时刻 → 写入」并返回入库副本；
+    /// 去重键命中时原样返回既有消息，不新增、不改写。
+    /// </summary>
+    /// <remarks>
+    /// Performs the dedupe-key check, per-channel sequence assignment, monotonic sent-at pinning and the write within a single critical section, returning the stored copy; a dedupe-key hit returns the existing message as-is without adding or rewriting.
+    /// </remarks>
+    /// <param name="message">待追加的消息（序号与发送时刻由本方法落定并回填到入库副本） / Message to append (sequence and sent-at time are pinned by this method and backfilled onto the stored copy)</param>
+    /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
+    /// <returns>生效的消息副本（去重命中的既有消息或刚入库的入参副本） / Copy of the effective message (the deduped existing one or the just-stored copy of the input)</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="message"/> 为 null 时抛出 / Thrown when <paramref name="message"/> is null</exception>
     public Task<OnlineChatMessage> AppendAsync(OnlineChatMessage message, CancellationToken cancellationToken = default)
     {
         if (message == null)
@@ -161,7 +190,18 @@ public sealed class InMemoryOnlineChatStore : IOnlineChatStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 经内存去重索引按发送方去重键查找消息；去重键为空直接返回 null。
+    /// </summary>
+    /// <remarks>
+    /// Resolves a message through the in-memory dedupe index by sender dedupe key; returns null immediately when the dedupe key is empty.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="channelId">频道标识 / Channel id</param>
+    /// <param name="dedupeKey">发送方去重键 / Sender dedupe key</param>
+    /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
+    /// <returns>命中的消息副本；无去重键或未命中返回 null / Copy of the matched message; null for an empty dedupe key or no match</returns>
     public Task<OnlineChatMessage> FindByDedupeKeyAsync(long tenantId, long appId, string channelId, string dedupeKey, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(dedupeKey))
@@ -186,7 +226,18 @@ public sealed class InMemoryOnlineChatStore : IOnlineChatStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 按作用域、频道与消息标识在内存消息表中查找记录并返回副本。
+    /// </summary>
+    /// <remarks>
+    /// Looks up a record in the in-memory message table by scope, channel and message id, returning a copy.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="channelId">频道标识 / Channel id</param>
+    /// <param name="messageId">消息标识 / Message id</param>
+    /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
+    /// <returns>消息副本；不存在返回 null / Copy of the message; null if absent</returns>
     public Task<OnlineChatMessage> FindMessageAsync(long tenantId, long appId, string channelId, string messageId, CancellationToken cancellationToken = default)
     {
         var key = BuildChannelKey(tenantId, appId, channelId) + ":" + (messageId ?? string.Empty);
@@ -202,7 +253,22 @@ public sealed class InMemoryOnlineChatStore : IOnlineChatStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 以 CAS 语义在临界区内改写内存中的消息状态：当前状态与期望不符或记录不存在时不留写入痕迹并返回 null。
+    /// </summary>
+    /// <remarks>
+    /// Rewrites the in-memory message state with CAS semantics inside the critical section: leaves no write trace and returns null when the current state mismatches the expected one or the record is absent.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="channelId">频道标识 / Channel id</param>
+    /// <param name="messageId">消息标识 / Message id</param>
+    /// <param name="expectedState">期望的当前状态；不匹配即失败 / Expected current state; a mismatch fails the call</param>
+    /// <param name="newState">目标状态 / Target state</param>
+    /// <param name="nowUnixMilliseconds">本次变更时刻（UTC 毫秒） / Change time of this update (UTC milliseconds)</param>
+    /// <param name="recalledByPlayerId">撤回人（非撤回迁移传 0） / Recalling player (pass 0 for non-recall transitions)</param>
+    /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
+    /// <returns>更新后的消息副本；CAS 失败或记录不存在返回 null / Copy of the updated message; null on CAS failure or missing record</returns>
     public Task<OnlineChatMessage> UpdateMessageStateAsync(long tenantId, long appId, string channelId, string messageId, OnlineChatMessageState expectedState, OnlineChatMessageState newState, long nowUnixMilliseconds, long recalledByPlayerId, CancellationToken cancellationToken = default)
     {
         var key = BuildChannelKey(tenantId, appId, channelId) + ":" + (messageId ?? string.Empty);
@@ -227,7 +293,20 @@ public sealed class InMemoryOnlineChatStore : IOnlineChatStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 临界区内全表扫描收集频道内严格位于游标之后的消息，按 (SentAtTime, Sequence) 升序排序后取前 limit 条。
+    /// </summary>
+    /// <remarks>
+    /// Scans the whole table inside the critical section to collect channel messages strictly after the cursor, sorts them ascending by (SentAtTime, Sequence) and takes the first limit items.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="channelId">频道标识 / Channel id</param>
+    /// <param name="afterSentAtTime">游标位置的发送时刻（UTC 毫秒；从头读传 0） / Sent-at time of the cursor (UTC milliseconds; pass 0 to read from the start)</param>
+    /// <param name="afterSequence">游标位置的频道内序号（从头读传 0） / Per-channel sequence of the cursor (pass 0 to read from the start)</param>
+    /// <param name="limit">最多返回条数（非正时按 1 处理） / Maximum number of items to return (non-positive is treated as 1)</param>
+    /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
+    /// <returns>严格位于游标之后、按 (SentAtTime, Sequence) 升序排列的消息副本列表 / Message copies strictly after the cursor, sorted ascending by (SentAtTime, Sequence)</returns>
     public Task<IReadOnlyList<OnlineChatMessage>> ReadAfterAsync(long tenantId, long appId, string channelId, long afterSentAtTime, long afterSequence, int limit, CancellationToken cancellationToken = default)
     {
         var channelKey = BuildChannelKey(tenantId, appId, channelId);
@@ -266,7 +345,20 @@ public sealed class InMemoryOnlineChatStore : IOnlineChatStore
         return Task.FromResult<IReadOnlyList<OnlineChatMessage>>(result);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 临界区内全表线性扫描统计游标之后的未读条数：排除读取者本人发送的与已撤回（非 Normal）的消息。
+    /// </summary>
+    /// <remarks>
+    /// Counts unread messages after the cursor via a full-table linear scan inside the critical section, excluding those sent by the reader and recalled (non-Normal) ones.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="channelId">频道标识 / Channel id</param>
+    /// <param name="afterSentAtTime">已读位点的发送时刻（UTC 毫秒） / Sent-at time of the read mark (UTC milliseconds)</param>
+    /// <param name="afterSequence">已读位点的频道内序号 / Per-channel sequence of the read mark</param>
+    /// <param name="readerPlayerId">读取者（本人发的消息不计未读） / Reader (own messages are not counted as unread)</param>
+    /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
+    /// <returns>未读条数 / Unread count</returns>
     public Task<int> CountUnreadAsync(long tenantId, long appId, string channelId, long afterSentAtTime, long afterSequence, long readerPlayerId, CancellationToken cancellationToken = default)
     {
         var count = 0;
@@ -301,7 +393,16 @@ public sealed class InMemoryOnlineChatStore : IOnlineChatStore
         return Task.FromResult(count);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在同一临界区内比对既有位点实现「只进不退」：入参位置不晚于既有位点时整体拒绝并返回 null，不留写入痕迹；通过时存入入参的深拷贝。
+    /// </summary>
+    /// <remarks>
+    /// Enforces the never-moves-back rule by comparing against the existing mark inside one critical section: rejects and returns null without any write trace when the input position is not after the existing one; otherwise stores a deep copy of the input.
+    /// </remarks>
+    /// <param name="readMark">已读位点（作用域、玩家与频道已由调用方落定） / Read mark (scope, player and channel already pinned by the caller)</param>
+    /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
+    /// <returns>生效的位点副本；位点回落返回 null / Copy of the effective read mark; null when the position moves back</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="readMark"/> 为 null 时抛出 / Thrown when <paramref name="readMark"/> is null</exception>
     public Task<OnlineChatReadMark> SaveReadMarkAsync(OnlineChatReadMark readMark, CancellationToken cancellationToken = default)
     {
         if (readMark == null)
@@ -325,7 +426,18 @@ public sealed class InMemoryOnlineChatStore : IOnlineChatStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 按作用域、玩家与频道标识在内存位点表中查找已读位点并返回副本。
+    /// </summary>
+    /// <remarks>
+    /// Looks up the read mark in the in-memory mark table by scope, player and channel id, returning a copy.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="playerId">玩家标识 / Player id</param>
+    /// <param name="channelId">频道标识 / Channel id</param>
+    /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
+    /// <returns>已读位点副本；从未标记过返回 null / Copy of the read mark; null if never marked</returns>
     public Task<OnlineChatReadMark> FindReadMarkAsync(long tenantId, long appId, long playerId, string channelId, CancellationToken cancellationToken = default)
     {
         var key = BuildReadMarkKey(tenantId, appId, playerId, channelId);

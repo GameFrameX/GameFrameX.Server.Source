@@ -55,7 +55,17 @@ public sealed class InMemoryOnlineMatchResultStore : IOnlineMatchResultStore
     /// <summary>结果表：键 = (TenantId, AppId, MatchId)。</summary>
     private readonly Dictionary<string, OnlineMatchResult> _results = new Dictionary<string, OnlineMatchResult>();
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在全局锁内按作用域与对局标识查找结算结果并返回副本；标识为空直接返回 null。
+    /// </summary>
+    /// <remarks>
+    /// Finds the settlement result by scope and match id under the global lock and returns a copy; an empty id returns null directly.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / The tenant id</param>
+    /// <param name="appId">App 标识 / The app id</param>
+    /// <param name="matchId">对局标识 / The match id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>结果副本；未结算返回 null / The result copy; null when not settled</returns>
     public Task<OnlineMatchResult> FindByMatchAsync(long tenantId, long appId, string matchId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(matchId))
@@ -69,7 +79,16 @@ public sealed class InMemoryOnlineMatchResultStore : IOnlineMatchResultStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在全局锁内的同一临界区完成存在性检查与写入，实现首次结果胜出：已存在时返回既有结果，不覆盖。
+    /// </summary>
+    /// <remarks>
+    /// Performs the existence check and the write within the same critical section under the global lock to implement first-result-wins: returns the existing result without overwriting when one is already present.
+    /// </remarks>
+    /// <param name="result">待落定结果 / The result to commit</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>落定后的结果副本（重试时即首次结果）/ The committed result copy (the first result on retry)</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="result"/> 为 null 时抛出 / Thrown when <paramref name="result"/> is null</exception>
     public Task<OnlineMatchResult> CommitAsync(OnlineMatchResult result, CancellationToken cancellationToken = default)
     {
         if (result == null)

@@ -57,7 +57,17 @@ public sealed class InMemoryOnlineGameEventStore : IOnlineGameEventStore
     {
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在全局锁内的同一临界区完成事件标识去重与追加，重复投递只落一条。
+    /// </summary>
+    /// <remarks>
+    /// Deduplicates by event id and appends within the same critical section under the global lock, so a duplicate delivery is stored only once.
+    /// </remarks>
+    /// <param name="onlineEvent">通过 L0 校验的事件信封 / The event envelope that passed L0 validation</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>本次是否新落档（EventId 已存在返回 false）/ Whether this call newly stored the event (false when the EventId already exists)</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="onlineEvent"/> 为 null 时抛出 / Thrown when <paramref name="onlineEvent"/> is null</exception>
+    /// <exception cref="ArgumentException">当 <paramref name="onlineEvent"/> 的 EventId 为 null 或空时抛出 / Thrown when the EventId of <paramref name="onlineEvent"/> is null or empty</exception>
     public Task<bool> AppendAsync(OnlineEvent onlineEvent, CancellationToken cancellationToken = default)
     {
         if (onlineEvent == null)
@@ -83,7 +93,15 @@ public sealed class InMemoryOnlineGameEventStore : IOnlineGameEventStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在全局锁内按事件标识（幂等键）查找内存事件表中的事件。
+    /// </summary>
+    /// <remarks>
+    /// Looks up the in-memory event table by event id (the idempotency key) under the global lock.
+    /// </remarks>
+    /// <param name="eventId">事件标识 / The event id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>事件信封；不存在返回 null / The event envelope; null when not found</returns>
     public Task<OnlineEvent> FindAsync(string eventId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
@@ -92,7 +110,18 @@ public sealed class InMemoryOnlineGameEventStore : IOnlineGameEventStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在全局锁内按作用域与闭区间时间窗筛选事件，并按事件发生时刻升序排序返回。
+    /// </summary>
+    /// <remarks>
+    /// Filters events by scope and inclusive time window under the global lock, returning them sorted ascending by occurred time.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / The tenant id</param>
+    /// <param name="appId">App 标识 / The app id</param>
+    /// <param name="fromTime">窗口起点（UTC 毫秒，含）/ Window start (UTC milliseconds, inclusive)</param>
+    /// <param name="toTime">窗口终点（UTC 毫秒，含）/ Window end (UTC milliseconds, inclusive)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>事件列表；无记录返回空列表 / The event list; an empty list when none match</returns>
     public Task<List<OnlineEvent>> ListAsync(long tenantId, long appId, long fromTime, long toTime, CancellationToken cancellationToken = default)
     {
         var matched = new List<OnlineEvent>();

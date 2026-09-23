@@ -48,7 +48,18 @@ public sealed class InMemoryOnlineGroupStore : IOnlineGroupStore
     /// <summary>群组表（键 = 作用域 + 群组标识）。</summary>
     private readonly Dictionary<string, OnlineGroup> _groupsById = new Dictionary<string, OnlineGroup>(StringComparer.Ordinal);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 以群组标识为唯一键在内存表内「不存在则创建」：键已存在时返回既有记录副本且不写入，否则存入入参的防御性副本。
+    /// </summary>
+    /// <remarks>
+    /// Creates the group in the in-memory table if the key (scope + group id) is absent;
+    /// returns a copy of the existing record without writing when the key already exists,
+    /// otherwise stores a defensive copy of the input.
+    /// </remarks>
+    /// <param name="group">待创建的群记录 / The group record to create</param>
+    /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
+    /// <returns>当前生效的群记录副本（既有记录或刚落库的入参）/ Copy of the currently effective group record (existing record or just-stored input)</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="group"/> 为 null 时抛出 / Thrown when <paramref name="group"/> is null</exception>
     public Task<OnlineGroup> SaveIfAbsentAsync(OnlineGroup group, CancellationToken cancellationToken = default)
     {
         if (group == null)
@@ -71,7 +82,17 @@ public sealed class InMemoryOnlineGroupStore : IOnlineGroupStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 按作用域与群组标识在内存表内查找群记录。
+    /// </summary>
+    /// <remarks>
+    /// Finds a group record in the in-memory table by scope and group id.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="groupId">群组标识 / Group id</param>
+    /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
+    /// <returns>群记录副本；不存在返回 null / Copy of the group record, or null if absent</returns>
     public Task<OnlineGroup> FindAsync(long tenantId, long appId, string groupId, CancellationToken cancellationToken = default)
     {
         var key = BuildKey(tenantId, appId, groupId);
@@ -87,7 +108,19 @@ public sealed class InMemoryOnlineGroupStore : IOnlineGroupStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在同一临界区内以版本号 CAS 整体替换群记录：比对通过才落库并把版本号加一，任一不匹配即整体失败且不留写入痕迹。
+    /// </summary>
+    /// <remarks>
+    /// Replaces the whole group record under one lock via revision CAS: the write lands only
+    /// when the revision matches, bumping it by one; a mismatching revision or a missing
+    /// record fails as a whole, leaving no trace.
+    /// </remarks>
+    /// <param name="group">替换后的群记录（其 GroupId/TenantId/AppId 定位目标行）/ The replacement group record (its GroupId/TenantId/AppId locate the target row)</param>
+    /// <param name="expectedRevision">期望的当前版本号 / The expected current revision</param>
+    /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
+    /// <returns>落库后的群记录副本；CAS 失败或记录不存在返回 null / Copy of the stored group record, or null on CAS failure or missing record</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="group"/> 为 null 时抛出 / Thrown when <paramref name="group"/> is null</exception>
     public Task<OnlineGroup> ReplaceAsync(OnlineGroup group, int expectedRevision, CancellationToken cancellationToken = default)
     {
         if (group == null)
@@ -118,7 +151,17 @@ public sealed class InMemoryOnlineGroupStore : IOnlineGroupStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 全表线性扫描列出某玩家所属的全部群组（含已解散群组）。
+    /// </summary>
+    /// <remarks>
+    /// Linearly scans the whole table to list all groups the player belongs to, including dissolved ones.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="playerId">玩家标识 / Player id</param>
+    /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
+    /// <returns>群记录副本列表 / List of group record copies</returns>
     public Task<IReadOnlyList<OnlineGroup>> ListByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
     {
         var result = new List<OnlineGroup>();
@@ -142,7 +185,17 @@ public sealed class InMemoryOnlineGroupStore : IOnlineGroupStore
         return Task.FromResult<IReadOnlyList<OnlineGroup>>(result);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 全表线性扫描列出作用域内处于指定状态的全部群组。
+    /// </summary>
+    /// <remarks>
+    /// Linearly scans the whole table to list all groups in the scope with the given state.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="state">群组状态 / Group state</param>
+    /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
+    /// <returns>群记录副本列表 / List of group record copies</returns>
     public Task<IReadOnlyList<OnlineGroup>> ListByStateAsync(long tenantId, long appId, OnlineGroupState state, CancellationToken cancellationToken = default)
     {
         var result = new List<OnlineGroup>();

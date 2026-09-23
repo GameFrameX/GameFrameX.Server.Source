@@ -55,7 +55,18 @@ public sealed class InMemoryOnlineNotificationStore : IOnlineNotificationStore
     /// <summary>去重索引（键 = 作用域 + 接收者 + 去重键，值 = 通知表键）。</summary>
     private readonly Dictionary<string, string> _idKeyByDedupeKey = new Dictionary<string, string>(StringComparer.Ordinal);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 以去重键为唯一键在内存表内「不存在则创建」：命中去重索引时返回既有通知副本且不写入，否则在同一临界区内同时落定标识索引与去重索引。
+    /// </summary>
+    /// <remarks>
+    /// Creates the notification in the in-memory table if the dedupe key (scope + recipient + dedupe key) is absent;
+    /// a dedupe hit returns a copy of the existing record without writing, otherwise the id index and the dedupe
+    /// index are settled together in one critical section.
+    /// </remarks>
+    /// <param name="notification">待创建的通知 / The notification to create</param>
+    /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
+    /// <returns>当前生效的通知副本（既有记录或刚落库的入参）/ Copy of the currently effective notification (existing record or just-stored input)</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="notification"/> 为 null 时抛出 / Thrown when <paramref name="notification"/> is null</exception>
     public Task<OnlineNotification> SaveIfAbsentAsync(OnlineNotification notification, CancellationToken cancellationToken = default)
     {
         if (notification == null)
@@ -86,7 +97,18 @@ public sealed class InMemoryOnlineNotificationStore : IOnlineNotificationStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 按「作用域 + 接收者 + 通知标识」在内存表内查找通知。
+    /// </summary>
+    /// <remarks>
+    /// Finds a notification in the in-memory table by scope, recipient and notification id.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="playerId">接收者玩家标识 / Recipient player id</param>
+    /// <param name="notificationId">通知标识 / Notification id</param>
+    /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
+    /// <returns>通知副本；不存在返回 null / Copy of the notification, or null if absent</returns>
     public Task<OnlineNotification> FindAsync(long tenantId, long appId, long playerId, string notificationId, CancellationToken cancellationToken = default)
     {
         var idKey = BuildIdKey(tenantId, appId, playerId, notificationId);
@@ -102,7 +124,19 @@ public sealed class InMemoryOnlineNotificationStore : IOnlineNotificationStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在同一临界区内以「期望状态 + 期望尝试次数」双判据 CAS 整体替换通知记录，任一不匹配或记录不存在即整体失败且不留写入痕迹。
+    /// </summary>
+    /// <remarks>
+    /// Replaces the whole notification record under one lock via CAS on both the expected state and the
+    /// expected attempt count; any mismatch or a missing record fails as a whole, leaving no trace.
+    /// </remarks>
+    /// <param name="notification">替换后的通知快照 / The replacement notification snapshot</param>
+    /// <param name="expectedState">期望的当前状态 / The expected current state</param>
+    /// <param name="expectedAttemptCount">期望的当前尝试次数 / The expected current attempt count</param>
+    /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
+    /// <returns>替换后的通知副本；CAS 失败或记录不存在返回 null / Copy of the replaced notification, or null on CAS failure or missing record</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="notification"/> 为 null 时抛出 / Thrown when <paramref name="notification"/> is null</exception>
     public Task<OnlineNotification> ReplaceAsync(OnlineNotification notification, OnlineNotificationState expectedState, int expectedAttemptCount, CancellationToken cancellationToken = default)
     {
         if (notification == null)
@@ -132,7 +166,17 @@ public sealed class InMemoryOnlineNotificationStore : IOnlineNotificationStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 全表线性扫描列出某接收者的全部通知（任意状态）。
+    /// </summary>
+    /// <remarks>
+    /// Linearly scans the whole table to list all notifications of a recipient in any state.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="playerId">接收者玩家标识 / Recipient player id</param>
+    /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
+    /// <returns>通知副本列表 / List of notification copies</returns>
     public Task<IReadOnlyList<OnlineNotification>> ListByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
     {
         var result = new List<OnlineNotification>();
@@ -151,7 +195,17 @@ public sealed class InMemoryOnlineNotificationStore : IOnlineNotificationStore
         return Task.FromResult<IReadOnlyList<OnlineNotification>>(result);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 全表线性扫描列出作用域内处于指定状态的全部通知。
+    /// </summary>
+    /// <remarks>
+    /// Linearly scans the whole table to list all notifications in the scope with the given state.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="state">通知状态 / Notification state</param>
+    /// <param name="cancellationToken">取消令牌（本实现同步完成，不消费该令牌）/ Cancellation token (unused; this implementation completes synchronously)</param>
+    /// <returns>通知副本列表 / List of notification copies</returns>
     public Task<IReadOnlyList<OnlineNotification>> ListByStateAsync(long tenantId, long appId, OnlineNotificationState state, CancellationToken cancellationToken = default)
     {
         var result = new List<OnlineNotification>();

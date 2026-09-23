@@ -60,7 +60,16 @@ public sealed class InMemoryOnlineSeasonStore : IOnlineSeasonStore
     {
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 深拷贝赛季后写入内存赛季表：同作用域同标识已存在时拒绝并返回 null、不覆盖；否则落档并返回创建后的副本。
+    /// </summary>
+    /// <remarks>
+    /// Stores a defensive copy of the season into the in-memory season table: rejects with null and does not overwrite when the same season id already exists within the scope; otherwise archives it and returns a copy of the created season.
+    /// </remarks>
+    /// <param name="season">赛季定义（作用域取其 TenantId / AppId）/ The season definition (scope taken from its TenantId / AppId)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>创建后的赛季副本；已存在返回 null / A copy of the created season, or null when it already exists</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="season"/> 为 null 时抛出 / Thrown when <paramref name="season"/> is null</exception>
     public Task<OnlineSeason> CreateAsync(OnlineSeason season, CancellationToken cancellationToken = default)
     {
         if (season == null)
@@ -81,7 +90,17 @@ public sealed class InMemoryOnlineSeasonStore : IOnlineSeasonStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 按作用域与赛季标识从内存赛季表读取赛季定义副本。
+    /// </summary>
+    /// <remarks>
+    /// Reads a copy of the season definition from the in-memory season table by scope and season id.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="seasonId">赛季标识 / Season id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>赛季副本；不存在或跨作用域返回 null / A copy of the season, or null when not found or out of scope</returns>
     public Task<OnlineSeason> FindAsync(long tenantId, long appId, string seasonId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
@@ -90,7 +109,17 @@ public sealed class InMemoryOnlineSeasonStore : IOnlineSeasonStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 深拷贝后按作用域与赛季标识覆盖保存赛季定义：赛季必须已经 CreateAsync 建立，不存在时抛出 <see cref="InvalidOperationException"/>，不会隐式创建。
+    /// </summary>
+    /// <remarks>
+    /// Overwrites the season definition with a defensive copy, keyed by scope and season id: the season must already exist via CreateAsync; throws <see cref="InvalidOperationException"/> when it does not, and never creates it implicitly.
+    /// </remarks>
+    /// <param name="season">赛季定义（含推进后的状态与时间戳）/ The season definition (with the advanced state and timestamps)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>完成通知 / Completion notification</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="season"/> 为 null 时抛出 / Thrown when <paramref name="season"/> is null</exception>
+    /// <exception cref="InvalidOperationException">当赛季不存在时抛出 / Thrown when the season does not exist</exception>
     public Task SaveAsync(OnlineSeason season, CancellationToken cancellationToken = default)
     {
         if (season == null)
@@ -111,7 +140,16 @@ public sealed class InMemoryOnlineSeasonStore : IOnlineSeasonStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 深拷贝后按作用域与赛季标识覆盖写入内存快照表（快照一经落档不受后续赛季状态推进影响）。
+    /// </summary>
+    /// <remarks>
+    /// Overwrites the in-memory snapshot table with a defensive copy, keyed by scope and season id (an archived snapshot is never affected by later season state advances).
+    /// </remarks>
+    /// <param name="snapshot">历史快照 / The season snapshot</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>完成通知 / Completion notification</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="snapshot"/> 为 null 时抛出 / Thrown when <paramref name="snapshot"/> is null</exception>
     public Task SaveSnapshotAsync(OnlineSeasonSnapshot snapshot, CancellationToken cancellationToken = default)
     {
         if (snapshot == null)
@@ -126,7 +164,17 @@ public sealed class InMemoryOnlineSeasonStore : IOnlineSeasonStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 按作用域与赛季标识从内存快照表读取历史快照副本。
+    /// </summary>
+    /// <remarks>
+    /// Reads a copy of the season snapshot from the in-memory snapshot table by scope and season id.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="seasonId">赛季标识 / Season id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>快照副本；不存在或跨作用域返回 null / A copy of the snapshot, or null when not found or out of scope</returns>
     public Task<OnlineSeasonSnapshot> FindSnapshotAsync(long tenantId, long appId, string seasonId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)

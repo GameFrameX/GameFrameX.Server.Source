@@ -56,7 +56,16 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
     /// <summary>对局分配表：键 = (TenantId, AppId, AssignmentId)。</summary>
     private readonly Dictionary<string, OnlineMatchAssignment> _assignments = new Dictionary<string, OnlineMatchAssignment>();
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 深拷贝票据后写入内存票据表（新增或覆盖），票据处于排队态时同步写入玩家反查索引。
+    /// </summary>
+    /// <remarks>
+    /// Stores a defensive copy of the ticket into the in-memory ticket table (insert or overwrite), and writes the player reverse-lookup index when the ticket is queued.
+    /// </remarks>
+    /// <param name="ticket">票据 / The match ticket</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>完成通知 / Completion notification</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="ticket"/> 为 null 时抛出 / Thrown when <paramref name="ticket"/> is null</exception>
     public Task SaveAsync(OnlineMatchTicket ticket, CancellationToken cancellationToken = default)
     {
         if (ticket == null)
@@ -76,7 +85,17 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 按作用域与票据标识从内存票据表读取票据副本（含终态历史）。
+    /// </summary>
+    /// <remarks>
+    /// Reads a copy of the ticket from the in-memory ticket table by scope and ticket id, including terminal-state history.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="ticketId">票据标识 / Ticket id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>票据副本；不存在返回 null / A copy of the ticket, or null when not found</returns>
     public Task<OnlineMatchTicket> FindAsync(long tenantId, long appId, string ticketId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
@@ -85,7 +104,17 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 全表扫描内存票据表，返回同作用域内处于排队态且队伍标识匹配的首张票据副本；<paramref name="partyId"/> 为空直接返回 null。
+    /// </summary>
+    /// <remarks>
+    /// Scans the in-memory ticket table and returns a copy of the first queued ticket whose party id matches within the scope; returns null immediately when <paramref name="partyId"/> is empty.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="partyId">队伍标识 / Party id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>排队中的票据副本；无则返回 null / A copy of the queued ticket, or null when none exists</returns>
     public Task<OnlineMatchTicket> FindActiveByPartyAsync(long tenantId, long appId, string partyId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(partyId))
@@ -107,7 +136,17 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 经玩家反查索引定位票据标识，并校验该票据仍处于排队态后返回其副本。
+    /// </summary>
+    /// <remarks>
+    /// Locates the ticket id through the player reverse-lookup index, verifies the ticket is still queued, and returns its copy.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="playerId">玩家标识 / Player id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>排队中的票据副本；无则返回 null / A copy of the queued ticket, or null when none exists</returns>
     public Task<OnlineMatchTicket> FindActiveByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
@@ -116,7 +155,16 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 遍历内存票据表，收集作用域内全部处于排队态的票据副本。
+    /// </summary>
+    /// <remarks>
+    /// Iterates the in-memory ticket table and collects copies of all queued tickets within the scope.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>排队中的票据副本列表 / The list of queued ticket copies</returns>
     public Task<IReadOnlyList<OnlineMatchTicket>> ListQueuedAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
     {
         var queued = new List<OnlineMatchTicket>();
@@ -135,7 +183,16 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
         return Task.FromResult<IReadOnlyList<OnlineMatchTicket>>(queued);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 遍历内存票据表，收集作用域内全部票据副本（含终态历史）。
+    /// </summary>
+    /// <remarks>
+    /// Iterates the in-memory ticket table and collects copies of all tickets within the scope, including terminal-state history.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>票据副本列表 / The list of ticket copies</returns>
     public Task<IReadOnlyList<OnlineMatchTicket>> ListAllAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
     {
         var tickets = new List<OnlineMatchTicket>();
@@ -154,7 +211,21 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
         return Task.FromResult<IReadOnlyList<OnlineMatchTicket>>(tickets);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 以 CAS 语义更新单张票据状态：票据不存在或当前状态与期望不符时整体失败返回 null、不留任何写入痕迹；成功时写入目标状态、失败原因与分配标识，并在离开排队态时释放玩家反查索引。
+    /// </summary>
+    /// <remarks>
+    /// Updates a single ticket state with CAS semantics: returns null without leaving any write trace when the ticket is missing or its current state does not match the expected one; on success writes the new state, failure reason and assignment id, and releases the player reverse-lookup index when leaving the queued state.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="ticketId">票据标识 / Ticket id</param>
+    /// <param name="expectedState">期望的当前状态；不匹配即失败 / The expected current state; a mismatch fails the update</param>
+    /// <param name="newState">目标状态 / The target state</param>
+    /// <param name="failureReason">失败原因码；非失败转迁移填 None / The failure reason code; None for non-failure transitions</param>
+    /// <param name="assignmentId">关联的分配标识；空字符串时保留原值 / The associated assignment id; an empty string keeps the original value</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>更新后的票据副本；CAS 失败或票据不存在返回 null / A copy of the updated ticket, or null when the CAS fails or the ticket does not exist</returns>
     public Task<OnlineMatchTicket> UpdateStateAsync(long tenantId, long appId, string ticketId, OnlineMatchTicketState expectedState, OnlineMatchTicketState newState, OnlineMatchFailureReason failureReason, string assignmentId, CancellationToken cancellationToken = default)
     {
         lock (_syncRoot)
@@ -179,7 +250,18 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 在同一临界区内原子提交一次成组：票据标识集合含空标识、重复标识，或任一票据不存在、不处于期望状态时整体不生效并返回 null；全部满足时一次性把票据置为 Matched、清空失败原因、写入分配标识、释放玩家反查索引并落档分配副本。
+    /// </summary>
+    /// <remarks>
+    /// Atomically commits a group within a single critical section: when the ticket id collection contains an empty or duplicate id, or any ticket is missing or not in the expected state, nothing is applied and null is returned; otherwise all tickets are set to Matched at once, their failure reasons cleared, assignment ids written, player reverse-lookup indexes released, and a copy of the assignment archived.
+    /// </remarks>
+    /// <param name="assignment">待落档的对局分配 / The match assignment to archive</param>
+    /// <param name="ticketIds">本分配消费的票据标识集合（不得重复、不得为空）/ The ticket ids consumed by this assignment (no duplicates, non-empty)</param>
+    /// <param name="expectedState">期望的票据当前状态 / The expected current state of the tickets</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>落档后的分配副本；任一前置条件不满足返回 null / A copy of the archived assignment, or null when any precondition is not met</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="assignment"/> 为 null 时抛出 / Thrown when <paramref name="assignment"/> is null</exception>
     public Task<OnlineMatchAssignment> CommitMatchAsync(OnlineMatchAssignment assignment, IReadOnlyList<string> ticketIds, OnlineMatchTicketState expectedState, CancellationToken cancellationToken = default)
     {
         if (assignment == null)
@@ -228,7 +310,17 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 按作用域与分配标识从内存分配表读取分配副本；<paramref name="assignmentId"/> 为空直接返回 null。
+    /// </summary>
+    /// <remarks>
+    /// Reads a copy of the assignment from the in-memory assignment table by scope and assignment id; returns null immediately when <paramref name="assignmentId"/> is empty.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="assignmentId">分配标识 / Assignment id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>分配副本；不存在返回 null / A copy of the assignment, or null when not found</returns>
     public Task<OnlineMatchAssignment> FindAssignmentAsync(long tenantId, long appId, string assignmentId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(assignmentId))
@@ -247,7 +339,16 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 遍历内存分配表，收集作用域内全部对局分配副本。
+    /// </summary>
+    /// <remarks>
+    /// Iterates the in-memory assignment table and collects copies of all match assignments within the scope.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>分配副本列表 / The list of assignment copies</returns>
     public Task<IReadOnlyList<OnlineMatchAssignment>> ListAssignmentsAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
     {
         var assignments = new List<OnlineMatchAssignment>();
