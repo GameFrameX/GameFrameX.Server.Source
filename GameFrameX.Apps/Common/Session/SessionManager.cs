@@ -338,7 +338,7 @@ public static class SessionManager
         var instanceId = ResolveSyncInstanceId(resolvedServerType);
         try
         {
-            _ = syncTarget.UpsertAsync(playerId, instanceId, resolvedServerType, snapshot.Version);
+            _ = syncTarget.UpsertAsync(new PlayerRouteRecord { PlayerId = playerId, InstanceId = instanceId, Role = resolvedServerType, Version = snapshot.Version, });
         }
         catch (Exception exception)
         {

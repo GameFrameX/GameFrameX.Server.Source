@@ -48,7 +48,7 @@ public sealed class MongoPlayerRouteSyncTarget : IPlayerRouteSyncTarget
     /// <remarks>
     /// Atomically writes the player route into the control-database
     /// <c>player_route</c> collection. Non-positive player ids are ignored; a
-    /// first login (<c>version &lt;= 1</c>) performs an unconditional upsert of a
+    /// first login (<c>Version &lt;= 1</c>) performs an unconditional upsert of a
     /// fresh online document, while later relogins run a compare-and-swap update
     /// matching only the persisted version equal to the supplied one — on a miss
     /// the latest document is re-read: a deleted document returns silently (the
@@ -56,15 +56,19 @@ public sealed class MongoPlayerRouteSyncTarget : IPlayerRouteSyncTarget
     /// <see cref="PlayerRouteStaleException"/> for the SessionManager hook to
     /// swallow.
     /// </remarks>
-    /// <param name="playerId">玩家 ID / Player id</param>
-    /// <param name="instanceId">实例 ID / Instance id</param>
-    /// <param name="role">Role 名 / Role name</param>
-    /// <param name="version">顶号版本号 / Kick/relogin version</param>
+    /// <param name="record">待写入的玩家路由记录 / The player-route record to write</param>
     /// <returns>异步任务 / Async task</returns>
-    /// <exception cref="ArgumentException">当 <paramref name="instanceId"/> 为空白时抛出 / Thrown when <paramref name="instanceId"/> is blank</exception>
+    /// <exception cref="ArgumentException">当 <paramref name="record"/> 为 null 或 <c>InstanceId</c> 为空白时抛出 / Thrown when record is null or InstanceId is blank</exception>
     /// <exception cref="PlayerRouteStaleException">当控制库中的版本已超过送入版本时抛出 / Thrown when the persisted version is already ahead of the supplied version</exception>
-    public async Task UpsertAsync(long playerId, string instanceId, string role, long version)
+    public async Task UpsertAsync(PlayerRouteRecord record)
     {
+        ArgumentNullException.ThrowIfNull(record, nameof(record));
+
+        var playerId = record.PlayerId;
+        var instanceId = record.InstanceId;
+        var role = record.Role;
+        var version = record.Version;
+
         if (playerId <= 0)
         {
             return;
@@ -72,7 +76,7 @@ public sealed class MongoPlayerRouteSyncTarget : IPlayerRouteSyncTarget
 
         if (string.IsNullOrWhiteSpace(instanceId))
         {
-            throw new ArgumentException("Instance id must not be empty.", nameof(instanceId));
+            throw new ArgumentException("Instance id must not be empty.", nameof(record));
         }
 
         // 统一 CAS：送入 version 必须等于当前 version + 1（旧文档 version == version-1）。

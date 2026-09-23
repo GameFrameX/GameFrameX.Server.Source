@@ -40,12 +40,9 @@ public sealed class NullPlayerRouteSyncTarget : IPlayerRouteSyncTarget
     /// already-completed task, so the local PlayerRouteMap stays the single
     /// source of truth.
     /// </remarks>
-    /// <param name="playerId">玩家 ID / Player id</param>
-    /// <param name="instanceId">实例 ID / Instance id</param>
-    /// <param name="role">Role 名 / Role name</param>
-    /// <param name="version">顶号版本号 / Kick/relogin version</param>
+    /// <param name="record">待写入的玩家路由记录（本实现不读取）/ The player-route record (not read by this implementation)</param>
     /// <returns>已完成的任务 / The completed task</returns>
-    public Task UpsertAsync(long playerId, string instanceId, string role, long version)
+    public Task UpsertAsync(PlayerRouteRecord record)
     {
         return Task.CompletedTask;
     }

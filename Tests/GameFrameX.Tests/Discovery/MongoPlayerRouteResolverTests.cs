@@ -117,7 +117,7 @@ public sealed class MongoPlayerRouteResolverTests
     [Fact]
     public void NullPlayerRouteSyncTarget_UpsertAsync_IsNoOp()
     {
-        var task = NullPlayerRouteSyncTarget.Instance.UpsertAsync(1, "instance", "Game", 1);
+        var task = NullPlayerRouteSyncTarget.Instance.UpsertAsync(new PlayerRouteRecord { PlayerId = 1, InstanceId = "instance", Role = "Game", Version = 1, });
 
         Assert.NotNull(task);
         Assert.True(task.IsCompletedSuccessfully);

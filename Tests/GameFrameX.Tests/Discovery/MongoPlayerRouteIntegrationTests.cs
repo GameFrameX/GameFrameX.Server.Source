@@ -86,7 +86,7 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
         var database = CreateDatabase();
         var target = new MongoPlayerRouteSyncTarget(database);
 
-        await target.UpsertAsync(playerId: 101, instanceId: "game-1", role: "Game", version: 1);
+        await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 101, InstanceId = "game-1", Role = "Game", Version = 1, });
 
         var collection = database.GetCollection<PlayerRouteDocument>(PlayerRouteCollection.CollectionName);
         var stored = await collection.Find(Builders<PlayerRouteDocument>.Filter.Eq(candidate => candidate.PlayerId, 101)).FirstOrDefaultAsync();
@@ -107,8 +107,8 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
         var database = CreateDatabase();
         var target = new MongoPlayerRouteSyncTarget(database);
 
-        await target.UpsertAsync(playerId: 102, instanceId: "game-1", role: "Game", version: 1);
-        await target.UpsertAsync(playerId: 102, instanceId: "game-2", role: "Game", version: 2);
+        await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 102, InstanceId = "game-1", Role = "Game", Version = 1, });
+        await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 102, InstanceId = "game-2", Role = "Game", Version = 2, });
 
         var collection = database.GetCollection<PlayerRouteDocument>(PlayerRouteCollection.CollectionName);
         var stored = await collection.Find(Builders<PlayerRouteDocument>.Filter.Eq(candidate => candidate.PlayerId, 102)).FirstOrDefaultAsync();
@@ -128,13 +128,13 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
         var database = CreateDatabase();
         var target = new MongoPlayerRouteSyncTarget(database);
 
-        await target.UpsertAsync(playerId: 103, instanceId: "game-1", role: "Game", version: 1);
-        await target.UpsertAsync(playerId: 103, instanceId: "game-2", role: "Game", version: 2);
+        await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 103, InstanceId = "game-1", Role = "Game", Version = 1, });
+        await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 103, InstanceId = "game-2", Role = "Game", Version = 2, });
 
         // version=1 已经被 version=2 覆盖；再送 version=1 应抛 PlayerRouteStaleException
         await Assert.ThrowsAsync<PlayerRouteStaleException>(async () =>
         {
-            await target.UpsertAsync(playerId: 103, instanceId: "game-3", role: "Game", version: 1);
+            await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 103, InstanceId = "game-3", Role = "Game", Version = 1, });
         });
     }
 
@@ -149,7 +149,7 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
         var database = CreateDatabase();
         var target = new MongoPlayerRouteSyncTarget(database);
 
-        await target.UpsertAsync(playerId: 104, instanceId: "game-1", role: "Game", version: 1);
+        await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 104, InstanceId = "game-1", Role = "Game", Version = 1, });
         await target.DeleteAsync(playerId: 104);
 
         var collection = database.GetCollection<PlayerRouteDocument>(PlayerRouteCollection.CollectionName);

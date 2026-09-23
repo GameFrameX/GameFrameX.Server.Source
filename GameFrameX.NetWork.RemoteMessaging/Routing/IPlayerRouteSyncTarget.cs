@@ -21,27 +21,25 @@ namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 /// The hook is async-by-design so the Mongo implementation can <c>await</c>
 /// the CAS upsert; the NoOp default returns immediately. Callers (SessionManager)
 /// must catch and swallow exceptions themselves — the inline hook contract is
-/// "best effort, never throws". This interface deliberately exposes primitive
-/// fields instead of a struct/DTO to keep GameFrameX.Apps free of Mongo types
-/// (the SyncTarget type lives in RemoteMessaging, which Apps already references).
+/// "best effort, never throws". C154 shapes the write side as
+/// <see cref="PlayerRouteRecord"/> so the player_route fields can evolve without
+/// breaking the interface, its implementations, or callers; the record type
+/// lives in RemoteMessaging, keeping GameFrameX.Apps free of Mongo types.
 /// </remarks>
 public interface IPlayerRouteSyncTarget
 {
     /// <summary>
-    /// 把 (playerId, instanceId, role, version) 原子写入控制库 player_route（version CAS）。
+    /// 把一条玩家路由记录（PlayerId/InstanceId/Role/Version）原子写入控制库 player_route（version CAS）。
     /// </summary>
     /// <remarks>
-    /// Atomically writes the (playerId, instanceId, role, version) tuple into the
-    /// control-database <c>player_route</c> collection using <c>version</c> as the
+    /// Atomically writes the player-route record (PlayerId/InstanceId/Role/Version) into the
+    /// control-database <c>player_route</c> collection using <c>Version</c> as the
     /// CAS key. The Mongo implementation throws <see cref="PlayerRouteStaleException"/>
     /// when the persisted version is already ahead of the supplied value.
     /// </remarks>
-    /// <param name="playerId">玩家 ID / Player id</param>
-    /// <param name="instanceId">实例 ID / Instance id</param>
-    /// <param name="role">Role 名 / Role name</param>
-    /// <param name="version">顶号版本号 / Kick/relogin version</param>
+    /// <param name="record">待写入的玩家路由记录 / The player-route record to write</param>
     /// <returns>异步任务 / Async task</returns>
-    Task UpsertAsync(long playerId, string instanceId, string role, long version);
+    Task UpsertAsync(PlayerRouteRecord record);
 
     /// <summary>
     /// 从控制库 player_route 删除该玩家路由。
