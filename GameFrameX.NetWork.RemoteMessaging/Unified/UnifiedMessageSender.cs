@@ -485,41 +485,39 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
 
     private PlayerSendResult RecordPlayerResult(PlayerSendResult result)
     {
-        _metrics.Record(
-            "player",
-            result.TargetServiceName ?? _currentServerType,
-            result.PlayerId,
-            result.Status.ToString(),
-            result.ElapsedMs,
-            result.RetryCount,
-            result.TraceId);
+        _metrics.Record(new SendMetricsRecord
+        {
+            TargetType = "player",
+            ServiceName = result.TargetServiceName ?? _currentServerType,
+            StatusCode = result.Status.ToString(),
+            ElapsedMs = result.ElapsedMs,
+            RetryCount = result.RetryCount,
+        });
         return result;
     }
 
     private ServerSendResult<TResp> RecordServerResult<TResp>(string serviceName, ServerSendResult<TResp> result)
         where TResp : class, IResponseMessage
     {
-        _metrics.Record(
-            "server",
-            serviceName ?? string.Empty,
-            0,
-            result.StatusCode.ToString(),
-            result.ElapsedMs,
-            result.RetryCount,
-            result.TraceId);
+        _metrics.Record(new SendMetricsRecord
+        {
+            TargetType = "server",
+            ServiceName = serviceName ?? string.Empty,
+            StatusCode = result.StatusCode.ToString(),
+            ElapsedMs = result.ElapsedMs,
+            RetryCount = result.RetryCount,
+        });
         return result;
     }
 
     private ServerSendResult RecordServerOneWayResult(string serviceName, ServerSendResult result)
     {
-        _metrics.Record(
-            "server",
-            serviceName ?? string.Empty,
-            0,
-            result.IsSuccess ? "Success" : "Failed",
-            0,
-            0,
-            string.Empty);
+        _metrics.Record(new SendMetricsRecord
+        {
+            TargetType = "server",
+            ServiceName = serviceName ?? string.Empty,
+            StatusCode = result.IsSuccess ? "Success" : "Failed",
+        });
         return result;
     }
 }

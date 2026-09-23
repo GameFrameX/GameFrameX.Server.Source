@@ -364,9 +364,9 @@ public class MessageSendMetricsTests
     public void Record_AndGetSnapshot()
     {
         var metrics = new MessageSendMetrics();
-        metrics.Record("player", "Game", 123, "LocalDelivered", 50, 0, "trace-1");
-        metrics.Record("player", "Game", 456, "LocalDelivered", 100, 0, "trace-2");
-        metrics.Record("player", "Game", 789, "Timeout", 5000, 1, "trace-3");
+        metrics.Record(new SendMetricsRecord { TargetType = "player", ServiceName = "Game", StatusCode = "LocalDelivered", ElapsedMs = 50, });
+        metrics.Record(new SendMetricsRecord { TargetType = "player", ServiceName = "Game", StatusCode = "LocalDelivered", ElapsedMs = 100, });
+        metrics.Record(new SendMetricsRecord { TargetType = "player", ServiceName = "Game", StatusCode = "Timeout", ElapsedMs = 5000, RetryCount = 1, });
 
         var snapshots = metrics.GetSnapshots();
         Assert.Single(snapshots);

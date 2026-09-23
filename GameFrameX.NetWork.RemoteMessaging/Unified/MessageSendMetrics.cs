@@ -42,29 +42,18 @@ public sealed class MessageSendMetrics
     private readonly ConcurrentDictionary<string, ServiceMetrics> _serviceMetrics = new();
 
     /// <summary>
-    /// 记录玩家消息发送结果
+    /// 记录一次消息发送结果
     /// </summary>
     /// <remarks>
-    /// Records a player message send result.
+    /// Records one message-send outcome. The former seven scattered parameters
+    /// (including the unused playerId/traceId) are collapsed into
+    /// <see cref="SendMetricsRecord"/> by C154.
     /// </remarks>
-    /// <param name="targetType">目标类型 (player/server) / Target type</param>
-    /// <param name="serviceName">服务名 / Service name</param>
-    /// <param name="playerId">玩家ID / Player ID</param>
-    /// <param name="statusCode">状态码 / Status code</param>
-    /// <param name="elapsedMs">耗时毫秒 / Elapsed milliseconds</param>
-    /// <param name="retryCount">重试次数 / Retry count</param>
-    /// <param name="traceId">追踪ID / Trace ID</param>
-    public void Record(
-        string targetType,
-        string serviceName,
-        long playerId,
-        string statusCode,
-        long elapsedMs,
-        int retryCount,
-        string traceId)
+    /// <param name="record">指标记录（TargetType + ServiceName 构成分桶键）/ The metrics record (TargetType + ServiceName form the bucket key)</param>
+    public void Record(SendMetricsRecord record)
     {
-        var metrics = _serviceMetrics.GetOrAdd($"{targetType}:{serviceName}", _ => new ServiceMetrics());
-        metrics.Record(statusCode, elapsedMs, retryCount);
+        var metrics = _serviceMetrics.GetOrAdd($"{record.TargetType}:{record.ServiceName}", _ => new ServiceMetrics());
+        metrics.Record(record.StatusCode, record.ElapsedMs, record.RetryCount);
     }
 
     /// <summary>
