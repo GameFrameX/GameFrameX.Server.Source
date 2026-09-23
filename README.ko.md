@@ -741,8 +741,6 @@ Server/
 ├── GameFrameX.Client/                # 테스트 클라이언트(TCP 연결)
 ├── GameFrameX.Architecture.Analyzers/         # Roslyn 아키텍처 분석기
 ├── GameFrameX.Hotfix.WrapperGenerator/ # Roslyn 소스 제너레이터(핫 업데이트 프록시 래퍼 클래스)
-├── GameFrameX.AppHost/               # .NET Aspire 애플리케이션 호스트
-├── GameFrameX.AppHost.ServiceDefaults/ # Aspire 공유 기본 설정(OTel, 서비스 디스커버리)
 └── Tests/
     └── GameFrameX.Tests/             # xUnit 테스트 스위트
 ```
@@ -763,7 +761,6 @@ Server/
 | `Lib.Harmony` | 런타임 메서드 패치 |
 | `Quartz` | 예약 작업 스케줄링 |
 | `Swashbuckle.AspNetCore.SwaggerGen` | HTTP API용 Swagger 문서 |
-| `Aspire.Hosting.AppHost` / `Microsoft.Extensions.ServiceDiscovery` | Aspire 오케스트레이션 및 서비스 검색 |
 | `xunit` | 단위 테스트 프레임워크 |
 
 ---

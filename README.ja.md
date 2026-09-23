@@ -741,8 +741,6 @@ Server/
 ├── GameFrameX.Client/                # テストクライアント（TCP 接続）
 ├── GameFrameX.Architecture.Analyzers/         # Roslyn アーキテクチャアナライザー
 ├── GameFrameX.Hotfix.WrapperGenerator/ # Roslyn ソースジェネレーター（ホット更新プロキシラッパークラス）
-├── GameFrameX.AppHost/               # .NET Aspire アプリケーションホスト
-├── GameFrameX.AppHost.ServiceDefaults/ # Aspire 共有デフォルト設定（OTel、サービスディスカバリ）
 └── Tests/
     └── GameFrameX.Tests/             # xUnit テストスイート
 ```
@@ -763,7 +761,6 @@ Server/
 | `Lib.Harmony` | ランタイムメソッドパッチ |
 | `Quartz` | スケジュールタスク |
 | `Swashbuckle.AspNetCore.SwaggerGen` | HTTP API の Swagger ドキュメント |
-| `Aspire.Hosting.AppHost` / `Microsoft.Extensions.ServiceDiscovery` | Aspire オーケストレーションとサービスディスカバリ |
 | `xunit` | ユニットテストフレームワーク |
 
 ---

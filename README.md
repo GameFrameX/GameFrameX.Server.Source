@@ -46,7 +46,6 @@
 - [Process Topology Isomorphism](#process-topology-isomorphism)
   - [Multi-Role Startup](#multi-role-startup)
   - [Docker Compose Files](#docker-compose-files)
-  - [AppHost Freeze (Deprecation Notice)](#apphost-freeze-deprecation-notice)
 - [Dependencies](#dependencies)
 - [Documentation & Resources](#documentation--resources)
 - [Community & Support](#community--support)
@@ -759,8 +758,6 @@ Server/
 ├── GameFrameX.Client/                # Test client (TCP connection)
 ├── GameFrameX.Architecture.Analyzers/         # Roslyn architecture analyzers
 ├── GameFrameX.Hotfix.WrapperGenerator/ # Roslyn source generator (hot update proxy wrapper classes)
-├── GameFrameX.AppHost/               # .NET Aspire application host
-├── GameFrameX.AppHost.ServiceDefaults/ # Aspire shared defaults (OTel, service discovery)
 └── Tests/
     └── GameFrameX.Tests/             # xUnit test suite
 ```
@@ -812,18 +809,6 @@ compose file and the per-instance configs match the generator output). The unaut
 services are published on `127.0.0.1` only; enable MongoDB authentication before exposing them to
 other hosts.
 
-### AppHost Freeze (Deprecation Notice)
-
-`GameFrameX.AppHost` / `GameFrameX.AppHost.ServiceDefaults` (.NET Aspire orchestration) are **frozen**:
-
-- **No new features** will be accepted for the AppHost projects.
-- The docker-compose files above are the single orchestrator going forward; `AspireEndpointResolver`
-  keeps resolving the `services__*` environment variables unchanged.
-- Retirement plan: (step 1, now) freeze + this notice; (step 2) revisit after the C6 / G5 milestones;
-  (step 3) removal from the solution.
-
-Feedback is welcome via GitHub issues with the `apphost-deprecation` label.
-
 ---
 
 ## Dependencies
@@ -840,7 +825,6 @@ Feedback is welcome via GitHub issues with the `apphost-deprecation` label.
 | `Lib.Harmony` | Runtime method patching |
 | `Quartz` | Scheduled task scheduling |
 | `Swashbuckle.AspNetCore.SwaggerGen` | Swagger documentation for the HTTP API |
-| `Aspire.Hosting.AppHost` / `Microsoft.Extensions.ServiceDiscovery` | Aspire orchestration and service discovery |
 | `xunit` | Unit testing framework |
 
 ---

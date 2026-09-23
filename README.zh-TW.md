@@ -739,8 +739,6 @@ Server/
 ├── GameFrameX.Client/                # 測試客戶端（TCP 連線）
 ├── GameFrameX.Architecture.Analyzers/         # Roslyn 架構分析器
 ├── GameFrameX.Hotfix.WrapperGenerator/ # Roslyn 原始碼生成器（熱更新代理包裝類別）
-├── GameFrameX.AppHost/               # .NET Aspire 應用主機
-├── GameFrameX.AppHost.ServiceDefaults/ # Aspire 共享預設配置（OTel、服務發現）
 └── Tests/
     └── GameFrameX.Tests/             # xUnit 測試套件
 ```
@@ -761,7 +759,6 @@ Server/
 | `Lib.Harmony` | 執行階段方法修補 |
 | `Quartz` | 排程任務調度 |
 | `Swashbuckle.AspNetCore.SwaggerGen` | HTTP API 的 Swagger 文件 |
-| `Aspire.Hosting.AppHost` / `Microsoft.Extensions.ServiceDiscovery` | Aspire 編排與服務發現 |
 | `xunit` | 單元測試框架 |
 
 ---
