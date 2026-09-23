@@ -41,6 +41,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi;
@@ -224,6 +225,8 @@ public abstract partial class AppStartUpBase
             {
                 throw new NotImplementedException(LocalizationService.GetString(Localization.Keys.StartUp.HttpExceptions.HttpsNotImplemented));
             }
+
+            ConfigureMetricsPortListen(options);
         });
 
         hostBuilder.ConfigureLogging(logging =>
@@ -233,6 +236,33 @@ public abstract partial class AppStartUpBase
             logging.SetMinimumLevel(minimumLevelLogLevel);
         });
         builder.AddServiceDefaults(Setting.IsOpenTelemetry, Setting.IsOpenTelemetryMetrics, Setting.IsOpenTelemetryTracing);
+    }
+
+    /// <summary>
+    /// 为 Kestrel 追加独立指标抓取端口（MetricsPort）监听。
+    /// </summary>
+    /// <remarks>
+    /// 承载端口契约语义（C160）：对外宣称的独立指标抓取端口由主 HTTP 宿主 Kestrel 多绑实现（对齐 HttpsPort 条件监听先例），
+    /// 不新增第二个 HTTP 服务器组件；仅 OTel 双开关开启且端口未被占用时追加监听，被占用时记 Warning 跳过附加监听、不阻断主服务。
+    /// Append the standalone metrics scraping port (MetricsPort) listener to the main HTTP host (C160);
+    /// skipped with a Warning when the port is occupied so the main service is never blocked.
+    /// </remarks>
+    /// <param name="options">Kestrel 服务器选项 / Kestrel server options</param>
+    private void ConfigureMetricsPortListen(KestrelServerOptions options)
+    {
+        if (!Setting.IsOpenTelemetry || !Setting.IsOpenTelemetryMetrics || Setting.MetricsPort == 0)
+        {
+            return;
+        }
+
+        // 端口被占用：跳过附加监听，/metrics 端点因 RequireHost 端口限定随之失配，主服务继续运行
+        if (!NetHelper.PortIsAvailable(Setting.MetricsPort))
+        {
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.MetricsPortInUse, Setting.MetricsPort));
+            return;
+        }
+
+        options.ListenAnyIP(Setting.MetricsPort);
     }
 
     /// <summary>
@@ -282,14 +312,14 @@ public abstract partial class AppStartUpBase
     }
 
     /// <summary>
-    /// 配置 OpenTelemetry Prometheus 指标端点（内联端点或独立端口服务）。
+    /// 配置 OpenTelemetry Prometheus 指标端点（内联形态或 MetricsPort 端口限定形态）。
     /// </summary>
-    /// <remarks>Configure the OpenTelemetry Prometheus metrics endpoint (inline endpoint or standalone-port service). Extracted from <see cref="StartHttpServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <remarks>Configure the OpenTelemetry Prometheus metrics endpoint (inline form or the MetricsPort host-restricted form). Extracted from <see cref="StartHttpServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
     /// <param name="app">Web 应用程序实例 / Web application instance</param>
     /// <param name="ipList">本机 IP 列表 / Local IP list</param>
     private void ConfigureHttpPrometheusEndpoint(WebApplication app, List<string> ipList)
     {
-        // 配置OpenTelemetry Prometheus端点（仅在未配置独立指标端口时）
+        // 内联形态：未配置独立指标端口时，/metrics 挂主 API 端口
         if (Setting.IsOpenTelemetry && Setting.IsOpenTelemetryMetrics && Setting.MetricsPort == 0)
         {
             app.MapPrometheusScrapingEndpoint();
@@ -300,7 +330,10 @@ public abstract partial class AppStartUpBase
         }
         else if (Setting.IsOpenTelemetry && Setting.IsOpenTelemetryMetrics && Setting.MetricsPort > 0)
         {
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.PrometheusMetricsServiceOnStandalonePort, Setting.MetricsPort));
+            // 端口契约（C160）：独立指标抓取端口由主 HTTP 宿主 Kestrel 多绑承载（ConfigureMetricsPortListen 追加监听），
+            // /metrics 以 RequireHost("*:MetricsPort") 限定仅指标端口应答，主 API 端口不暴露指标面。
+            // Port contract: /metrics only answers on MetricsPort (RequireHost host:port matching); the main API port does not expose it.
+            app.MapPrometheusScrapingEndpoint().RequireHost($"*:{Setting.MetricsPort}");
             foreach (var ip in ipList)
             {
                 LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.PrometheusMetricsEndpointEnabled, ip, Setting.MetricsPort));

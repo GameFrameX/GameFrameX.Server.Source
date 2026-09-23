@@ -81,7 +81,9 @@ namespace GameFrameX.StartUp.ServiceDefaults
             // 配置OpenTelemetry以收集遥测数据
             if (isOpenTelemetry)
             {
-                builder.ConfigureOpenTelemetry(isOpenTelemetryMetrics, isOpenTelemetryTracing);
+                // 具名传参：TBuilder 版 ConfigureOpenTelemetry 首参是 isOpenTelemetry，位置传参会把 metrics/tracing 错位到 (isOpenTelemetry, isOpenTelemetryMetrics)，
+                // 导致指标开关被静默翻转（/metrics 抓取链路断裂的隐性根因，C160 冒烟定位修复）
+                builder.ConfigureOpenTelemetry(isOpenTelemetryMetrics: isOpenTelemetryMetrics, isOpenTelemetryTracing: isOpenTelemetryTracing);
             }
 
             // 添加默认健康检查
@@ -249,6 +251,9 @@ namespace GameFrameX.StartUp.ServiceDefaults
                     metrics.AddMeter("System.Net.NameResolution");
                     metrics.AddMeter("GameFrameX.DataBase.Mongo");
                     metrics.AddMeter("GameFrameX.RemoteMessaging");
+                    // 挂 Prometheus 拉取导出器：/metrics 抓取端点（MapPrometheusScrapingEndpoint）依赖本导出器，缺失时端点首次抓取即 500。
+                    // Attach the Prometheus pull exporter required by the /metrics scraping endpoint (MapPrometheusScrapingEndpoint).
+                    metrics.AddPrometheusExporter();
                 });
             }
 
@@ -277,45 +282,7 @@ namespace GameFrameX.StartUp.ServiceDefaults
 
             openTelemetryBuilder.UseGrafana();
 
-            // 添加OpenTelemetry导出器
-            // serviceCollection.AddOpenTelemetryExporters(openTelemetryBuilder);
-
             return serviceCollection;
-        }
-
-        /// <summary>
-        /// 根据配置添加OpenTelemetry导出器
-        /// </summary>
-        /// <param name="builder">主机应用程序构建器实例</param>
-        /// <param name="openTelemetryBuilder"></param>
-        /// <returns>更新后的构建器实例</returns>
-        private static IServiceCollection AddOpenTelemetryExporters(this IServiceCollection builder, IOpenTelemetryBuilder openTelemetryBuilder)
-        {
-            if (openTelemetryBuilder != null)
-            {
-                var otelExporterOtlpEndpoint = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
-                var otelExporterOtlpProtocol = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_PROTOCOL");
-                // 检查是否配置了OTLP导出端点
-                var useOtlpExporter = !string.IsNullOrWhiteSpace(otelExporterOtlpEndpoint);
-                var otlpProtocol = Convert.ToInt32(otelExporterOtlpProtocol);
-
-                if (useOtlpExporter)
-                {
-                    // 使用OTLP导出器
-                    openTelemetryBuilder.UseOtlpExporter(otlpProtocol > 0 ? OtlpExportProtocol.HttpProtobuf : OtlpExportProtocol.Grpc, new Uri(otelExporterOtlpEndpoint));
-                }
-            }
-
-
-            // builder.AddPrometheusExporter();
-            // 取消以下注释以启用Azure Monitor导出器（需要Azure.Monitor.OpenTelemetry.AspNetCore包）
-            //if (!string.IsNullOrEmpty(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
-            //{
-            //    builder.Services.AddOpenTelemetry()
-            //       .UseAzureMonitor();
-            //}
-
-            return builder;
         }
 
         /// <summary>
