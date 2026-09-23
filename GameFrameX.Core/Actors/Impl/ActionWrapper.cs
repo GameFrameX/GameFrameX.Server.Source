@@ -98,14 +98,26 @@ public class ActionWrapper : WorkWrapper
         Tcs.TrySetResult(false);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 重置上下文后将内部任务完成源设置为取消状态。
+    /// </summary>
+    /// <remarks>
+    /// Resets the context, then transitions the inner task completion source to the canceled state.
+    /// </remarks>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     public override void TrySetCanceled(CancellationToken cancellationToken)
     {
         ResetContext();
         Tcs.TrySetCanceled(cancellationToken);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 重置上下文后将内部任务完成源设置为异常状态。
+    /// </summary>
+    /// <remarks>
+    /// Resets the context, then transitions the inner task completion source to the faulted state with the given exception.
+    /// </remarks>
+    /// <param name="exception">异常 / Exception</param>
     public override void TrySetException(Exception exception)
     {
         ResetContext();
