@@ -36,8 +36,8 @@ using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Utility;
 using Quartz;
-using Quartz.Impl;
-using Quartz.Logging;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace GameFrameX.Core.Timer;
 
@@ -63,7 +63,7 @@ public static class QuartzTimer
             return;
         }
 
-        Scheduler.DeleteJob(JobKey.Create(id.ToString()));
+        Scheduler.DeleteJob(new JobKey(id.ToString()));
     }
 
     /// <summary>
@@ -89,7 +89,7 @@ public static class QuartzTimer
             return;
         }
 
-        Scheduler.PauseJob(JobKey.Create(id.ToString()));
+        Scheduler.PauseJob(new JobKey(id.ToString()));
     }
 
     /// <summary>
@@ -115,7 +115,7 @@ public static class QuartzTimer
             return;
         }
 
-        Scheduler.ResumeJob(JobKey.Create(id.ToString()));
+        Scheduler.ResumeJob(new JobKey(id.ToString()));
     }
 
     /// <summary>
@@ -147,31 +147,25 @@ public static class QuartzTimer
     {
         var nextId = NextId();
         var firstTimeOffset = DateTimeOffset.Now.Add(delay);
-        TriggerBuilder builder;
+        var schedule = SimpleScheduleBuilder.Create().WithInterval(interval);
         if (repeatCount < 0)
         {
-            builder = TriggerBuilder.Create().StartAt(firstTimeOffset).WithSimpleSchedule(x =>
-            {
-                var scheduleBuilder = x.WithInterval(interval).RepeatForever();
-                if (isMissFire)
-                {
-                    scheduleBuilder.WithMisfireHandlingInstructionIgnoreMisfires();
-                }
-            });
+            schedule = schedule.RepeatForever();
         }
         else
         {
-            builder = TriggerBuilder.Create().StartAt(firstTimeOffset).WithSimpleSchedule(x =>
-            {
-                var scheduleBuilder = x.WithInterval(interval).WithRepeatCount(repeatCount);
-                if (isMissFire)
-                {
-                    scheduleBuilder.WithMisfireHandlingInstructionIgnoreMisfires();
-                }
-            });
+            schedule = schedule.WithRepeatCount(repeatCount);
         }
 
-        Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), builder.Build());
+        if (isMissFire)
+        {
+            // 与旧版 WithMisfireHandlingInstructionIgnoreMisfires 行为一致
+            // Matches the previous WithMisfireHandlingInstructionIgnoreMisfires behavior
+            schedule = schedule.WithMisfireInstruction(SimpleTriggerMisfireInstruction.IgnoreMisfires);
+        }
+
+        var trigger = TriggerBuilder.Create(TimeProvider.System).StartAt(firstTimeOffset).WithSchedule(schedule).Build();
+        Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
         return nextId;
     }
 
@@ -187,7 +181,7 @@ public static class QuartzTimer
     {
         var nextId = NextId();
         var firstTimeOffset = DateTimeOffset.Now.Add(delay);
-        var trigger = TriggerBuilder.Create().StartAt(firstTimeOffset).WithSimpleSchedule(x => x.WithMisfireHandlingInstructionNextWithRemainingCount()).Build();
+        var trigger = TriggerBuilder.Create(TimeProvider.System).StartAt(firstTimeOffset).WithSchedule(SimpleScheduleBuilder.Create().WithMisfireInstruction(SimpleTriggerMisfireInstruction.NextWithRemainingCount)).Build();
         Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
         return nextId;
     }
@@ -203,7 +197,7 @@ public static class QuartzTimer
     public static long WithCronExpression<T>(long actorId, string cronExpression, GameEventArgs eventArgs = null) where T : ITimerHandler
     {
         var nextId = NextId();
-        var trigger = TriggerBuilder.Create().StartNow().WithCronSchedule(cronExpression).Build();
+        var trigger = TriggerBuilder.Create(TimeProvider.System).StartNow().WithSchedule(CronScheduleBuilder.Create(cronExpression)).Build();
         Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
         return nextId;
     }
@@ -226,7 +220,7 @@ public static class QuartzTimer
         }
 
         var nextId = NextId();
-        var trigger = TriggerBuilder.Create().StartNow().WithSchedule(CronScheduleBuilder.DailyAtHourAndMinute(hour, minute)).Build();
+        var trigger = TriggerBuilder.Create(TimeProvider.System).StartNow().WithSchedule(CronScheduleBuilder.Create($"0 {minute} {hour} * * ?")).Build();
         Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
         return nextId;
     }
@@ -250,7 +244,8 @@ public static class QuartzTimer
         }
 
         var nextId = NextId();
-        var trigger = TriggerBuilder.Create().StartNow().WithSchedule(CronScheduleBuilder.AtHourAndMinuteOnGivenDaysOfWeek(hour, minute, dayOfWeeks)).Build();
+        var daysOfWeek = string.Join(",", dayOfWeeks.Select(ToCronDayOfWeek));
+        var trigger = TriggerBuilder.Create(TimeProvider.System).StartNow().WithSchedule(CronScheduleBuilder.Create($"0 {minute} {hour} ? * {daysOfWeek}")).Build();
         Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, gameEventArgs), trigger);
         return nextId;
     }
@@ -268,7 +263,7 @@ public static class QuartzTimer
     public static long Weekly<T>(long actorId, DayOfWeek dayOfWeek, int hour, int minute, GameEventArgs gameEventArgs = null) where T : ITimerHandler
     {
         var nextId = NextId();
-        var trigger = TriggerBuilder.Create().StartNow().WithSchedule(CronScheduleBuilder.WeeklyOnDayAndHourAndMinute(dayOfWeek, hour, minute)).Build();
+        var trigger = TriggerBuilder.Create(TimeProvider.System).StartNow().WithSchedule(CronScheduleBuilder.Create($"0 {minute} {hour} ? * {ToCronDayOfWeek(dayOfWeek)}")).Build();
         Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, gameEventArgs), trigger);
         return nextId;
     }
@@ -292,9 +287,28 @@ public static class QuartzTimer
         }
 
         var nextId = NextId();
-        var trigger = TriggerBuilder.Create().StartNow().WithSchedule(CronScheduleBuilder.MonthlyOnDayAndHourAndMinute(dayOfMonth, hour, minute)).Build();
+        var trigger = TriggerBuilder.Create(TimeProvider.System).StartNow().WithSchedule(CronScheduleBuilder.Create($"0 {minute} {hour} {dayOfMonth} * ?")).Build();
         Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, gameEventArgs), trigger);
         return nextId;
+    }
+
+    /// <summary>
+    /// 将 System.DayOfWeek 转换为 Quartz Cron 的星期表达式
+    /// </summary>
+    /// <param name="dayOfWeek">星期几 / Day of week</param>
+    /// <returns>Cron 星期表达式（MON-SUN）/ Cron day-of-week token (MON-SUN)</returns>
+    private static string ToCronDayOfWeek(DayOfWeek dayOfWeek)
+    {
+        return dayOfWeek switch
+        {
+            DayOfWeek.Sunday => "SUN",
+            DayOfWeek.Monday => "MON",
+            DayOfWeek.Tuesday => "TUE",
+            DayOfWeek.Wednesday => "WED",
+            DayOfWeek.Thursday => "THU",
+            DayOfWeek.Friday => "FRI",
+            _ => "SAT",
+        };
     }
 
     #endregion 热更定时器
@@ -486,8 +500,15 @@ public static class QuartzTimer
     /// </remarks>
     private static async Task<IScheduler> CreateSchedulerAsync()
     {
-        LogProvider.SetCurrentLogProvider(new ConsoleLogProvider());
-        var factory = new StdSchedulerFactory();
+        // Quartz 4 移除了 Quartz.Logging 抽象与 StdSchedulerFactory：
+        // 日志改经 Microsoft.Extensions.Logging 桥接到 LogHelper，调度器改由 QuartzSchedulerBuilder 构建，
+        // 并把容器内日志与无法注入日志的站点统一指向 Quartz.Diagnostics.LogProvider
+        // (Quartz 4 removed Quartz.Logging and StdSchedulerFactory; logging now bridges to LogHelper via
+        // Microsoft.Extensions.Logging, the scheduler is built by QuartzSchedulerBuilder, and both the
+        // container's loggers and non-injectable sites point at Quartz.Diagnostics.LogProvider).
+        Quartz.Diagnostics.LogProvider.SetLogProvider(new QuartzLogBridge());
+        var factory = QuartzSchedulerBuilder.Create(builder => builder.Services.AddSingleton<ILoggerFactory>(new QuartzLogBridge()))
+            .Build();
         return await factory.GetScheduler();
     }
 
@@ -501,7 +522,7 @@ public static class QuartzTimer
     public static async Task Start()
     {
         _scheduler = await SchedulerInitializer.Value;
-        if (!_scheduler.IsStarted)
+        if (_scheduler.Status != SchedulerStatus.Running)
         {
             await _scheduler.Start();
         }
@@ -527,7 +548,7 @@ public static class QuartzTimer
     private static async Task StopAsync()
     {
         var scheduler = _scheduler ?? await SchedulerInitializer.Value;
-        if (!scheduler.IsShutdown)
+        if (scheduler.Status is not (SchedulerStatus.Shutdown or SchedulerStatus.ShuttingDown))
         {
             await scheduler.Shutdown();
         }
@@ -556,10 +577,12 @@ public static class QuartzTimer
         /// <summary>
         /// 执行定时任务
         /// </summary>
-        /// <param name="context">任务执行上下文</param>
-        /// <returns>表示异步操作的任务</returns>
-        public async Task Execute(IJobExecutionContext context)
+        /// <param name="context">任务执行上下文 / Job execution context</param>
+        /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+        /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
+        public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var handlerType = context.JobDetail.JobDataMap.GetString(TimerKey);
             try
             {
@@ -659,69 +682,97 @@ public static class QuartzTimer
     }
 
     /// <summary>
-    /// 控制台日志提供程序
-    /// 用于处理Quartz的日志输出
+    /// Quartz 日志桥接工厂（Quartz 4 使用 Microsoft.Extensions.Logging 记录日志）。
+    /// 将 Warning 及以上级别路由到 LogHelper，低于 Warning 的级别忽略，保持原有日志行为。
+    /// Quartz log bridge factory (Quartz 4 logs via Microsoft.Extensions.Logging).
+    /// Routes Warning and above to LogHelper and ignores lower levels, preserving the previous behavior.
     /// </summary>
-    private class ConsoleLogProvider : ILogProvider
+    private sealed class QuartzLogBridge : ILoggerFactory
     {
         /// <summary>
-        /// 获取日志记录器
+        /// 创建日志桥接实例
         /// </summary>
-        /// <param name="name">日志记录器名称</param>
-        /// <returns>日志记录委托</returns>
-        public Logger GetLogger(string name)
+        /// <param name="categoryName">日志类别名称 / Log category name</param>
+        /// <returns>日志桥接实例 / Log bridge instance</returns>
+        public ILogger CreateLogger(string categoryName)
         {
-            return (level, func, exception, parameters) =>
+            return new BridgeLogger();
+        }
+
+        /// <summary>
+        /// 添加日志提供程序（桥接场景无需处理）
+        /// </summary>
+        /// <param name="provider">日志提供程序 / Log provider</param>
+        public void AddProvider(ILoggerProvider provider)
+        {
+        }
+
+        /// <summary>
+        /// 释放资源
+        /// </summary>
+        public void Dispose()
+        {
+        }
+
+        /// <summary>
+        /// 日志桥接，将 MEL 级别映射到 LogHelper
+        /// </summary>
+        private sealed class BridgeLogger : ILogger
+        {
+            /// <summary>
+            /// 开始日志作用域（不支持）
+            /// </summary>
+            /// <typeparam name="TState">状态类型 / State type</typeparam>
+            /// <param name="state">作用域状态 / Scope state</param>
+            /// <returns>始终返回 null / Always returns null</returns>
+            public IDisposable BeginScope<TState>(TState state) where TState : notnull
             {
-                if (func == null)
+                return null;
+            }
+
+            /// <summary>
+            /// 判断日志级别是否启用（Warning 及以上）
+            /// </summary>
+            /// <typeparam name="TState">状态类型 / State type</typeparam>
+            /// <param name="logLevel">日志级别 / Log level</param>
+            /// <returns>Warning 及以上返回 true / true for Warning and above</returns>
+            public bool IsEnabled(LogLevel logLevel)
+            {
+                return logLevel >= LogLevel.Warning;
+            }
+
+            /// <summary>
+            /// 写入日志，按级别路由到 LogHelper
+            /// </summary>
+            /// <typeparam name="TState">状态类型 / State type</typeparam>
+            /// <param name="logLevel">日志级别 / Log level</param>
+            /// <param name="eventId">事件 ID / Event ID</param>
+            /// <param name="state">日志状态 / Log state</param>
+            /// <param name="exception">异常信息 / Exception information</param>
+            /// <param name="formatter">格式化函数 / Formatter function</param>
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+            {
+                if (!IsEnabled(logLevel))
                 {
-                    return true;
+                    return;
                 }
 
-                if (level < LogLevel.Warn)
+                var message = formatter(state, exception);
+                if (logLevel == LogLevel.Warning)
                 {
-                    // if (level == LogLevel.Debug)
-                    // {
-                    //     LogHelper.Debug(func(), parameters);
-                    // }
-                    // else
-                    // {
-                    //     LogHelper.Info(func(), parameters);
-                    // }
+                    LogHelper.Warning(message);
+                    return;
                 }
-                else if (level == LogLevel.Warn)
+
+                if (exception != null)
                 {
-                    LogHelper.Warning(func(), parameters);
+                    LogHelper.Error($"{message}{Environment.NewLine}{exception}");
                 }
                 else
                 {
-                    LogHelper.Error(func(), parameters);
+                    LogHelper.Error(message);
                 }
-
-                return true;
-            };
-        }
-
-        /// <summary>
-        /// 打开映射上下文
-        /// </summary>
-        /// <param name="key">键</param>
-        /// <param name="value">值</param>
-        /// <param name="destructure">是否解构</param>
-        /// <returns>可释放的对象</returns>
-        public IDisposable OpenMappedContext(string key, object value, bool destructure = false)
-        {
-            throw new NotImplementedException();
-        }
-
-        /// <summary>
-        /// 打开嵌套上下文
-        /// </summary>
-        /// <param name="message">消息</param>
-        /// <returns>可释放的对象</returns>
-        public IDisposable OpenNestedContext(string message)
-        {
-            throw new NotImplementedException();
+            }
         }
     }
 

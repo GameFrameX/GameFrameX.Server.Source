@@ -40,16 +40,18 @@ public abstract class NotHotfixTimerHandler : IJob
     /// <summary>
     /// 内部计时器处理器调用函数
     /// </summary>
-    /// <param name="context">Quartz 作业执行上下文，包含作业执行所需的信息</param>
-    /// <returns>一个任务，表示异步操作的结果</returns>
-    public Task Execute(IJobExecutionContext context)
+    /// <param name="context">Quartz 作业执行上下文，包含作业执行所需的信息 / Quartz job execution context</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>一个任务，表示异步操作的结果 / A task representing the asynchronous operation</returns>
+    public ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (!context.JobDetail.JobDataMap.TryGetValue(QuartzTimer.ParamKey, out var value))
         {
-            return Task.CompletedTask;
+            return ValueTask.CompletedTask;
         }
 
-        return HandleTimer(value as GameEventArgs);
+        return new ValueTask(HandleTimer(value as GameEventArgs));
     }
 
     /// <summary>
