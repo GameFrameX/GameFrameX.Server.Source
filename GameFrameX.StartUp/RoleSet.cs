@@ -139,49 +139,103 @@ public sealed class RoleSet : IReadOnlySet<string>
         return serverType != null && _roleNames.Contains(serverType);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 返回遍历本进程全部 Role 名的枚举器（委托给内部 Role 名集合）。
+    /// </summary>
+    /// <remarks>
+    /// Returns an enumerator that iterates over all role names of this process (delegates to the internal role-name set).
+    /// </remarks>
+    /// <returns>Role 名枚举器 / An enumerator over the role names</returns>
     public IEnumerator<string> GetEnumerator()
     {
         return _roleNames.GetEnumerator();
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 返回非泛型枚举器（转发到 <see cref="GetEnumerator"/> 返回的强类型枚举器）。
+    /// </summary>
+    /// <remarks>
+    /// Returns a non-generic enumerator (forwards to the strongly typed enumerator returned by <see cref="GetEnumerator"/>).
+    /// </remarks>
+    /// <returns>非泛型枚举器 / A non-generic enumerator</returns>
     IEnumerator IEnumerable.GetEnumerator()
     {
         return GetEnumerator();
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 判定本进程 Role 名集合是否为指定集合的子集（委托给内部集合）。
+    /// </summary>
+    /// <remarks>
+    /// Determines whether the role-name set of this process is a subset of the specified collection (delegates to the internal set).
+    /// </remarks>
+    /// <param name="other">要对比的集合 / The collection to compare against</param>
+    /// <returns>是子集则为 <c>true</c>；否则为 <c>false</c> / <c>true</c> if it is a subset; otherwise, <c>false</c></returns>
     public bool IsSubsetOf(IEnumerable<string> other)
     {
         return _roleNames.IsSubsetOf(other);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 判定本进程 Role 名集合是否为指定集合的超集（委托给内部集合）。
+    /// </summary>
+    /// <remarks>
+    /// Determines whether the role-name set of this process is a superset of the specified collection (delegates to the internal set).
+    /// </remarks>
+    /// <param name="other">要对比的集合 / The collection to compare against</param>
+    /// <returns>是超集则为 <c>true</c>；否则为 <c>false</c> / <c>true</c> if it is a superset; otherwise, <c>false</c></returns>
     public bool IsSupersetOf(IEnumerable<string> other)
     {
         return _roleNames.IsSupersetOf(other);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 判定本进程 Role 名集合是否为指定集合的真子集（委托给内部集合）。
+    /// </summary>
+    /// <remarks>
+    /// Determines whether the role-name set of this process is a proper subset of the specified collection (delegates to the internal set).
+    /// </remarks>
+    /// <param name="other">要对比的集合 / The collection to compare against</param>
+    /// <returns>是真子集则为 <c>true</c>；否则为 <c>false</c> / <c>true</c> if it is a proper subset; otherwise, <c>false</c></returns>
     public bool IsProperSubsetOf(IEnumerable<string> other)
     {
         return _roleNames.IsProperSubsetOf(other);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 判定本进程 Role 名集合是否为指定集合的真超集（委托给内部集合）。
+    /// </summary>
+    /// <remarks>
+    /// Determines whether the role-name set of this process is a proper superset of the specified collection (delegates to the internal set).
+    /// </remarks>
+    /// <param name="other">要对比的集合 / The collection to compare against</param>
+    /// <returns>是真超集则为 <c>true</c>；否则为 <c>false</c> / <c>true</c> if it is a proper superset; otherwise, <c>false</c></returns>
     public bool IsProperSupersetOf(IEnumerable<string> other)
     {
         return _roleNames.IsProperSupersetOf(other);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 判定本进程 Role 名集合是否与指定集合存在共同元素（委托给内部集合）。
+    /// </summary>
+    /// <remarks>
+    /// Determines whether the role-name set of this process shares at least one element with the specified collection (delegates to the internal set).
+    /// </remarks>
+    /// <param name="other">要对比的集合 / The collection to compare against</param>
+    /// <returns>存在共同元素则为 <c>true</c>；否则为 <c>false</c> / <c>true</c> if they share at least one element; otherwise, <c>false</c></returns>
     public bool Overlaps(IEnumerable<string> other)
     {
         return _roleNames.Overlaps(other);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 判定本进程 Role 名集合是否与指定集合包含完全相同的元素（委托给内部集合）。
+    /// </summary>
+    /// <remarks>
+    /// Determines whether the role-name set of this process contains exactly the same elements as the specified collection (delegates to the internal set).
+    /// </remarks>
+    /// <param name="other">要对比的集合 / The collection to compare against</param>
+    /// <returns>元素完全相同则为 <c>true</c>；否则为 <c>false</c> / <c>true</c> if both contain the same elements; otherwise, <c>false</c></returns>
     public bool SetEquals(IEnumerable<string> other)
     {
         return _roleNames.SetEquals(other);
