@@ -352,15 +352,12 @@ HTTP 處理器繼承 `BaseHttpHandler`，使用 `[HttpMessageMapping]` 特性註
 [Description("取得玩家資訊")]
 public sealed class GetPlayerInfoHandler : BaseHttpHandler
 {
-    public override async Task<MessageObject> Action(
-        string ip, string url,
-        Dictionary<string, object> parameters,
-        MessageObject messageObject)
+    public override async Task<MessageObject> ActionMessageObject(HttpActionContext context)
     {
-        var request = (GetPlayerInfoRequest)messageObject;
+        var playerRequest = (GetPlayerInfoRequest)context.MessageObject;
         var response = new GetPlayerInfoResponse();
 
-        var agent = await ActorManager.GetComponentAgent<PlayerComponentAgent>(request.PlayerId);
+        var agent = await ActorManager.GetComponentAgent<PlayerComponentAgent>(playerRequest.PlayerId);
         if (agent == null)
         {
             response.ErrorCode = (int)ResultCode.PlayerNotFound;

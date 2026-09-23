@@ -138,7 +138,7 @@ blocks: []
 
 #### 3.7 Server HTTP API（Admin 调用，钉死路径与字段语义）
 
-沿用 `[HttpMessageMapping(typeof(XxxHttpHandler))]` + `BaseHttpHandler.Action(ip, url, paramMap, messageObject)` 模式（参考 `GameFrameX.Hotfix/Logic/Http/Player/ReqPlayerListHttpHandler.cs`）。
+沿用 `[HttpMessageMapping(typeof(XxxHttpHandler))]` + `BaseHttpHandler.ActionMessageObject(HttpActionContext)` 模式（参考 `GameFrameX.Hotfix/Logic/Http/Player/ReqPlayerListHttpHandler.cs`）。
 
 | API | 方法 | 路径（占位，最终由 HttpHandler 类名生成） | 入参 | 出参 | 行为 |
 |---|---|---|---|---|---|
