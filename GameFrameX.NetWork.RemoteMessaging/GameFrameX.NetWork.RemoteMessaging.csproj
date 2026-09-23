@@ -13,9 +13,10 @@
         <ProjectReference Include="..\GameFrameX.Utility\GameFrameX.Utility.csproj"/>
     </ItemGroup>
 
-    <!-- C143d D11：动态发现层（MongoEndpointRegistry/Watcher）的心跳存储依赖 Mongo 控制库；版本须与 GameFrameX.DataBase.Mongo / StartUp 对齐，避免 NU1605 -->
+    <!-- C143d D11 / C159：心跳存储依赖 Mongo 控制库；改以 GameFrameX.DataBase.Mongo 项目引用替代裸 MongoDB.Driver 包，
+         Driver 版本经传递与 GameFrameX.DataBase.Mongo 对齐，消除 NU1605 版本漂移面（C159 P1-4 收敛）。 -->
     <ItemGroup>
-        <PackageReference Include="MongoDB.Driver" Version="3.11.0"/>
+        <ProjectReference Include="..\GameFrameX.DataBase.Mongo\GameFrameX.DataBase.Mongo.csproj"/>
     </ItemGroup>
 
     <!-- C152：暴露 internal 测试缝（MongoDiscoveryRuntime.ResetForTest / SimulateActivatedForTest）给测试工程，先例同 DataBase / StartUp / Utility。 -->

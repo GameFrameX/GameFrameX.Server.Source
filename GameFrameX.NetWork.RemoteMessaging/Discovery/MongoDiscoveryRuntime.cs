@@ -28,6 +28,8 @@
 //  ==========================================================================================
 
 
+using GameFrameX.DataBase;
+using GameFrameX.DataBase.Mongo;
 using GameFrameX.NetWork.RemoteMessaging.Routing;
 using MongoDB.Driver;
 
@@ -38,7 +40,7 @@ namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
 /// </summary>
 /// <remarks>
 /// The process-level wiring point for the Mongo discovery layer (C143d).
-/// The launch flow calls <see cref="Activate"/> once the control database
+/// The launch flow calls <see cref="Activate(IMongoDatabase, IEnumerable{string}, IPlayerRouteFastPath)"/> once the control database
 /// (gameframex_control) is registered in MultiDbRegistry: it starts the watcher
 /// (read side), starts the registry (write side — skipped when no advertise port
 /// is configured, e.g. single-process local development), and re-installs
@@ -80,7 +82,7 @@ public static class MongoDiscoveryRuntime
     /// Activate 时捕获的本进程 Role 名快照（供 <see cref="AttachLocalDispatcher"/> 重建路由器）。
     /// </summary>
     /// <remarks>
-    /// The hosted-role snapshot captured by <see cref="Activate"/>; reused by
+    /// The hosted-role snapshot captured by <see cref="Activate(IMongoDatabase, IEnumerable{string}, IPlayerRouteFastPath)"/>; reused by
     /// <see cref="AttachLocalDispatcher"/> when rebuilding the router.
     /// </remarks>
     private static IReadOnlyCollection<string> _hostedRoles;
@@ -89,7 +91,7 @@ public static class MongoDiscoveryRuntime
     /// Activate 时创建的远程转发器（挂接时原样复用，保证不动远程链）。
     /// </summary>
     /// <remarks>
-    /// The remote router created by <see cref="Activate"/>; <see cref="AttachLocalDispatcher"/>
+    /// The remote router created by <see cref="Activate(IMongoDatabase, IEnumerable{string}, IPlayerRouteFastPath)"/>; <see cref="AttachLocalDispatcher"/>
     /// reuses the exact instance so only the local slot ever changes.
     /// </remarks>
     private static IRemoteRoleRouter _remoteRouter;
@@ -157,24 +159,50 @@ public static class MongoDiscoveryRuntime
     }
 
     /// <summary>
+    /// 按注册名激活 Mongo 发现层（C159：Launcher 等启动链零 Mongo 类型引用的统一入口形态）。
+    /// </summary>
+    /// <remarks>
+    /// Name-based activation for launch flows (C159): resolves the control database through the
+    /// unified <see cref="GameDb"/> entry — <c>GameDb.As&lt;MongoDbService&gt;(name).CurrentDatabase</c> —
+    /// so callers pass <see cref="GameDb.ControlDatabaseName"/> instead of an
+    /// <see cref="IMongoDatabase"/> instance and keep no Mongo types of their own. Fails fast when the
+    /// name is not registered or the registered service is not the Mongo implementation. Semantics are
+    /// identical to the <see cref="Activate(IMongoDatabase, IEnumerable{string}, IPlayerRouteFastPath)"/>
+    /// overload, which remains for direct package consumers (to be folded into an options-shaped
+    /// Activate by C154 T4.1, carrying this name-based form as <c>ConnectionName</c>).
+    /// </remarks>
+    /// <param name="controlDatabaseName">控制库注册名（<see cref="GameDb.ControlDatabaseName"/>） / The control database registry name</param>
+    /// <param name="hostedRoleNames">本进程承载的 Role 名全集（RoleSet 快照） / The full hosted role-name set (the RoleSet snapshot)</param>
+    /// <param name="playerRouteFastPath">Tier 1 玩家路由快路径提供方；null 则跳过 Tier 1 / Tier 1 fast path; null skips Tier 1</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="controlDatabaseName"/> 或 <paramref name="hostedRoleNames"/> 为 null 时抛出 / Thrown when controlDatabaseName or hostedRoleNames is null</exception>
+    /// <exception cref="InvalidOperationException">当注册名未注册时抛出（由 MultiDbRegistry 经 GameDb.As 抛出） / Thrown when the name is not registered (raised by MultiDbRegistry via GameDb.As)</exception>
+    public static void Activate(string controlDatabaseName, IEnumerable<string> hostedRoleNames, IPlayerRouteFastPath playerRouteFastPath = null)
+    {
+        ArgumentNullException.ThrowIfNull(controlDatabaseName, nameof(controlDatabaseName));
+
+        var controlDatabase = GameDb.As<MongoDbService>(controlDatabaseName).CurrentDatabase;
+        Activate(controlDatabase, hostedRoleNames, playerRouteFastPath);
+    }
+
+    /// <summary>
     /// 补装本地 envelope 投递缝（C152：只补 case 1 的 local 槽，不动远程链）。
     /// </summary>
     /// <remarks>
     /// Rebuilds the process router with the given dispatcher in the case 1 slot,
     /// reusing the hosted-role snapshot and the exact remote router instance
-    /// created by <see cref="Activate"/> — the remote chain (watcher, forwarder,
+    /// created by <see cref="Activate(IMongoDatabase, IEnumerable{string}, IPlayerRouteFastPath)"/> — the remote chain (watcher, forwarder,
     /// heartbeat registry) is untouched. Timing premise: the production caller is
     /// the Hotfix <c>OnLoadSuccess</c> wiring point, which the launch flow orders
-    /// strictly after <see cref="Activate"/> (the hotfix module loads later in the
+    /// strictly after <see cref="Activate(IMongoDatabase, IEnumerable{string}, IPlayerRouteFastPath)"/> (the hotfix module loads later in the
     /// same startup sequence, when the Hotfix-side sender components finally
-    /// exist); a call before <see cref="Activate"/> therefore throws instead of
+    /// exist); a call before <see cref="Activate(IMongoDatabase, IEnumerable{string}, IPlayerRouteFastPath)"/> therefore throws instead of
     /// quietly degrading case 1 back to route-time <see cref="RouteNotFoundException"/>.
     /// Idempotent per process: the first call wins, later calls (multi-role
     /// re-entry) return immediately without rebuilding the router.
     /// </remarks>
     /// <param name="dispatcher">本地 envelope 复投器（Hotfix 装配点传入，与 UnifiedMessageSenderHolder 共用同一 IPlayerLocalSender）/ The local envelope dispatcher (sharing the same IPlayerLocalSender as UnifiedMessageSenderHolder)</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="dispatcher"/> 为 null 时抛出 / Thrown when dispatcher is null</exception>
-    /// <exception cref="InvalidOperationException">当尚未调用 <see cref="Activate"/> 时抛出 / Thrown when Activate has not been called</exception>
+    /// <exception cref="InvalidOperationException">当尚未调用 <see cref="Activate(IMongoDatabase, IEnumerable{string}, IPlayerRouteFastPath)"/> 时抛出 / Thrown when Activate has not been called</exception>
     public static void AttachLocalDispatcher(ILocalRoleMessageDispatcher dispatcher)
     {
         ArgumentNullException.ThrowIfNull(dispatcher, nameof(dispatcher));

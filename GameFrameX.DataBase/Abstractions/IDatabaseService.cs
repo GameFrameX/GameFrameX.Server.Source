@@ -580,6 +580,26 @@ public interface IDatabaseService
     Task<long> AddOrUpdateListAsync<TState>(IEnumerable<TState> states, CancellationToken cancellationToken) where TState : BaseCacheState, new();
 
     /// <summary>
+    /// 按批次大小分批执行批量 upsert 保存（`_id` 等值过滤 + 整文档替换 + IsUpsert）。
+    /// </summary>
+    /// <remarks>
+    /// Bulk-upserts the given states in batches of <paramref name="batchSize"/> (`_id` equality
+    /// filter, whole-document replace, upsert). Each batch is acknowledged and exception-isolated
+    /// independently: a failed batch is logged and execution continues with the remaining batches,
+    /// and the returned list contains exactly the states of the acknowledged batches. Unlike
+    /// <see cref="AddOrUpdateListAsync{TState}(IEnumerable{TState})"/> this contract does NOT touch
+    /// state timestamps or <c>UpdateCount</c> — it persists the states exactly as handed in
+    /// (C159: migrated verbatim from <c>StateComponent.ExecuteBatchWritesAsync</c> to keep the
+    /// shutdown-save path behaviour-identical).
+    /// </remarks>
+    /// <param name="states">待保存的状态集合 / The states to save</param>
+    /// <param name="batchSize">每批数量（&lt;= 0 抛异常） / Batch size (values &lt;= 0 throw)</param>
+    /// <typeparam name="TState">实现ICacheState接口的类型 / Type implementing ICacheState interface</typeparam>
+    /// <returns>全部成功 ack 批次的状态列表 / The states of all acknowledged batches</returns>
+    /// <exception cref="ArgumentOutOfRangeException">当 <paramref name="batchSize"/> &lt;= 0 时抛出 / Thrown when batchSize is &lt;= 0</exception>
+    Task<IReadOnlyList<TState>> SaveBulkAsync<TState>(IEnumerable<TState> states, int batchSize) where TState : BaseCacheState, new();
+
+    /// <summary>
     /// 批量保存数据。
     /// </summary>
     /// <remarks>

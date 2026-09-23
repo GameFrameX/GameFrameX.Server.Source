@@ -54,7 +54,7 @@ public static partial class GameDb
     public static Task<List<TState>> FindListAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.FindListAsync(filter);
+        return FacadeService.FindListAsync(filter);
     }
 
     /// <summary>
@@ -70,7 +70,7 @@ public static partial class GameDb
     public static Task<List<TState>> FindListAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.FindListAsync(filter, cancellationToken);
+        return FacadeService.FindListAsync(filter, cancellationToken);
     }
 
     /// <summary>
@@ -85,7 +85,7 @@ public static partial class GameDb
     public static Task<List<TState>> FindByIdsAsync<TState>(IEnumerable<long> ids) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.FindByIdsAsync<TState>(ids);
+        return FacadeService.FindByIdsAsync<TState>(ids);
     }
 
     /// <summary>
@@ -101,7 +101,7 @@ public static partial class GameDb
     public static Task<List<TState>> FindByIdsAsync<TState>(IEnumerable<long> ids, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.FindByIdsAsync<TState>(ids, cancellationToken);
+        return FacadeService.FindByIdsAsync<TState>(ids, cancellationToken);
     }
 
     /// <summary>
@@ -120,7 +120,7 @@ public static partial class GameDb
     public static Task<(List<TState> Items, long Total)> FindPageAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, bool descending, int pageIndex, int pageSize) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.FindPageAsync<TState>(filter, sortExpression, descending, pageIndex, pageSize);
+        return FacadeService.FindPageAsync<TState>(filter, sortExpression, descending, pageIndex, pageSize);
     }
 
     /// <summary>
@@ -140,7 +140,7 @@ public static partial class GameDb
     public static Task<(List<TState> Items, long Total)> FindPageAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, bool descending, int pageIndex, int pageSize, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.FindPageAsync<TState>(filter, sortExpression, descending, pageIndex, pageSize, cancellationToken);
+        return FacadeService.FindPageAsync<TState>(filter, sortExpression, descending, pageIndex, pageSize, cancellationToken);
     }
 
     /// <summary>
@@ -157,7 +157,7 @@ public static partial class GameDb
     public static Task<List<TResult>> FindProjectedAsync<TState, TResult>(Expression<Func<TState, bool>> filter, Expression<Func<TState, TResult>> selector) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.FindProjectedAsync<TState, TResult>(filter, selector);
+        return FacadeService.FindProjectedAsync<TState, TResult>(filter, selector);
     }
 
     /// <summary>
@@ -175,7 +175,7 @@ public static partial class GameDb
     public static Task<List<TResult>> FindProjectedAsync<TState, TResult>(Expression<Func<TState, bool>> filter, Expression<Func<TState, TResult>> selector, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.FindProjectedAsync<TState, TResult>(filter, selector, cancellationToken);
+        return FacadeService.FindProjectedAsync<TState, TResult>(filter, selector, cancellationToken);
     }
 
     /// <summary>
@@ -190,7 +190,7 @@ public static partial class GameDb
     public static Task<long> CountAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.CountAsync(filter);
+        return FacadeService.CountAsync(filter);
     }
 
     /// <summary>
@@ -206,7 +206,7 @@ public static partial class GameDb
     public static Task<long> CountAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.CountAsync(filter, cancellationToken);
+        return FacadeService.CountAsync(filter, cancellationToken);
     }
 
     /// <summary>
@@ -222,7 +222,7 @@ public static partial class GameDb
     public static Task<long> CountAsync<TState>(Expression<Func<TState, bool>> filter, bool includeDeleted) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.CountAsync(filter, includeDeleted);
+        return FacadeService.CountAsync(filter, includeDeleted);
     }
 
     /// <summary>
@@ -239,7 +239,7 @@ public static partial class GameDb
     public static Task<long> CountAsync<TState>(Expression<Func<TState, bool>> filter, bool includeDeleted, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.CountAsync(filter, includeDeleted, cancellationToken);
+        return FacadeService.CountAsync(filter, includeDeleted, cancellationToken);
     }
 
     /// <summary>
@@ -255,7 +255,7 @@ public static partial class GameDb
     public static Task<TState> FindSortAscendingFirstOneAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.FindSortAscendingFirstOneAsync(filter, sortExpression);
+        return FacadeService.FindSortAscendingFirstOneAsync(filter, sortExpression);
     }
 
     /// <summary>
@@ -272,7 +272,7 @@ public static partial class GameDb
     public static Task<TState> FindSortAscendingFirstOneAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.FindSortAscendingFirstOneAsync(filter, sortExpression, cancellationToken);
+        return FacadeService.FindSortAscendingFirstOneAsync(filter, sortExpression, cancellationToken);
     }
 
     /// <summary>
@@ -288,7 +288,7 @@ public static partial class GameDb
     public static Task<TState> FindSortDescendingFirstOneAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.FindSortDescendingFirstOneAsync(filter, sortExpression);
+        return FacadeService.FindSortDescendingFirstOneAsync(filter, sortExpression);
     }
 
     /// <summary>
@@ -305,7 +305,7 @@ public static partial class GameDb
     public static Task<TState> FindSortDescendingFirstOneAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.FindSortDescendingFirstOneAsync(filter, sortExpression, cancellationToken);
+        return FacadeService.FindSortDescendingFirstOneAsync(filter, sortExpression, cancellationToken);
     }
 
     /// <summary>
@@ -323,7 +323,7 @@ public static partial class GameDb
     public static Task<List<TState>> FindSortDescendingAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, int pageIndex = 0, int pageSize = 10) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.FindSortDescendingAsync(filter, sortExpression, pageIndex, pageSize);
+        return FacadeService.FindSortDescendingAsync(filter, sortExpression, pageIndex, pageSize);
     }
 
     /// <summary>
@@ -342,7 +342,7 @@ public static partial class GameDb
     public static Task<List<TState>> FindSortDescendingAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, int pageIndex, int pageSize, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.FindSortDescendingAsync(filter, sortExpression, pageIndex, pageSize, cancellationToken);
+        return FacadeService.FindSortDescendingAsync(filter, sortExpression, pageIndex, pageSize, cancellationToken);
     }
 
     /// <summary>
@@ -360,7 +360,7 @@ public static partial class GameDb
     public static Task<List<TState>> FindSortAscendingAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, int pageIndex = 0, int pageSize = 10) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.FindSortAscendingAsync(filter, sortExpression, pageIndex, pageSize);
+        return FacadeService.FindSortAscendingAsync(filter, sortExpression, pageIndex, pageSize);
     }
 
     /// <summary>
@@ -379,7 +379,7 @@ public static partial class GameDb
     public static Task<List<TState>> FindSortAscendingAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, int pageIndex, int pageSize, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.FindSortAscendingAsync(filter, sortExpression, pageIndex, pageSize, cancellationToken);
+        return FacadeService.FindSortAscendingAsync(filter, sortExpression, pageIndex, pageSize, cancellationToken);
     }
 
     /// <summary>
@@ -398,7 +398,7 @@ public static partial class GameDb
     public static Task<TState> FindAsync<TState>(long id, Expression<Func<TState, bool>> filter = null, bool isCreateIfNotExists = true) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.FindAsync(id, filter, isCreateIfNotExists);
+        return FacadeService.FindAsync(id, filter, isCreateIfNotExists);
     }
 
     /// <summary>
@@ -416,7 +416,7 @@ public static partial class GameDb
     public static Task<TState> FindAsync<TState>(long id, Expression<Func<TState, bool>> filter, bool isCreateIfNotExists, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.FindAsync(id, filter, isCreateIfNotExists, cancellationToken);
+        return FacadeService.FindAsync(id, filter, isCreateIfNotExists, cancellationToken);
     }
 
     /// <summary>
@@ -434,7 +434,7 @@ public static partial class GameDb
     public static Task<TState> FindAsync<TState>(Expression<Func<TState, bool>> filter, bool isCreateIfNotExists = true) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.FindAsync(filter, isCreateIfNotExists);
+        return FacadeService.FindAsync(filter, isCreateIfNotExists);
     }
 
     /// <summary>
@@ -451,7 +451,7 @@ public static partial class GameDb
     public static Task<TState> FindAsync<TState>(Expression<Func<TState, bool>> filter, bool isCreateIfNotExists, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.FindAsync(filter, isCreateIfNotExists, cancellationToken);
+        return FacadeService.FindAsync(filter, isCreateIfNotExists, cancellationToken);
     }
 
     /// <summary>
@@ -466,7 +466,7 @@ public static partial class GameDb
     public static Task<bool> ExistsByIdAsync<TState>(long id) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.ExistsByIdAsync<TState>(id);
+        return FacadeService.ExistsByIdAsync<TState>(id);
     }
 
     /// <summary>
@@ -482,7 +482,7 @@ public static partial class GameDb
     public static Task<bool> ExistsByIdAsync<TState>(long id, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.ExistsByIdAsync<TState>(id, cancellationToken);
+        return FacadeService.ExistsByIdAsync<TState>(id, cancellationToken);
     }
 
     /// <summary>
@@ -497,7 +497,7 @@ public static partial class GameDb
     public static Task<bool> AnyAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.AnyAsync(filter);
+        return FacadeService.AnyAsync(filter);
     }
 
     /// <summary>
@@ -513,6 +513,6 @@ public static partial class GameDb
     public static Task<bool> AnyAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.AnyAsync(filter, cancellationToken);
+        return FacadeService.AnyAsync(filter, cancellationToken);
     }
 }

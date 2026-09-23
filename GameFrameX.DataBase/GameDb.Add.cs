@@ -53,7 +53,7 @@ public static partial class GameDb
     public static Task SaveOneAsync<TState>(TState state) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.AddAsync(state);
+        return FacadeService.AddAsync(state);
     }
 
     /// <summary>
@@ -69,7 +69,7 @@ public static partial class GameDb
     public static Task SaveOneAsync<TState>(TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.AddAsync(state, cancellationToken);
+        return FacadeService.AddAsync(state, cancellationToken);
     }
 
     /// <summary>
@@ -84,7 +84,7 @@ public static partial class GameDb
     public static Task<TState> AddOrUpdateAsync<TState>(TState state) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.AddOrUpdateAsync(state);
+        return FacadeService.AddOrUpdateAsync(state);
     }
 
     /// <summary>
@@ -100,7 +100,7 @@ public static partial class GameDb
     public static Task<TState> AddOrUpdateAsync<TState>(TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.AddOrUpdateAsync(state, cancellationToken);
+        return FacadeService.AddOrUpdateAsync(state, cancellationToken);
     }
 
     /// <summary>
@@ -115,7 +115,7 @@ public static partial class GameDb
     public static Task<long> AddOrUpdateListAsync<TState>(IEnumerable<TState> states) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.AddOrUpdateListAsync(states);
+        return FacadeService.AddOrUpdateListAsync(states);
     }
 
     /// <summary>
@@ -131,7 +131,7 @@ public static partial class GameDb
     public static Task<long> AddOrUpdateListAsync<TState>(IEnumerable<TState> states, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.AddOrUpdateListAsync(states, cancellationToken);
+        return FacadeService.AddOrUpdateListAsync(states, cancellationToken);
     }
 
     /// <summary>
@@ -146,7 +146,7 @@ public static partial class GameDb
     public static Task AddListAsync<TState>(IEnumerable<TState> states) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.AddListAsync(states);
+        return FacadeService.AddListAsync(states);
     }
 
     /// <summary>
@@ -162,6 +162,6 @@ public static partial class GameDb
     public static Task AddListAsync<TState>(IEnumerable<TState> states, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.AddListAsync(states, cancellationToken);
+        return FacadeService.AddListAsync(states, cancellationToken);
     }
 }

@@ -1419,6 +1419,65 @@ public sealed class MongoDbServiceQueryTests
     }
 
     /// <summary>
+    /// 测试批量保存接口的分批 upsert 与 ack 返回（batchSize 小于总量时按批执行）。
+    /// </summary>
+    [Fact]
+    public async Task SaveBulkAsync_ShouldBatchUpsertAndReturnAllStates()
+    {
+        await ExecuteWithServiceAsync(async service =>
+        {
+            var a = CreateState("bulk-save-a", group: 140, score: 10);
+            var b = CreateState("bulk-save-b", group: 140, score: 20);
+            var c = CreateState("bulk-save-c", group: 140, score: 30);
+
+            var saved = await service.SaveBulkAsync(new[] { a, b, c }, 2);
+
+            Assert.Equal(new[] { a.Id, b.Id, c.Id }, saved.Select(x => x.Id).ToArray());
+            var list = await service.FindSortAscendingAsync<MongoQueryTestState>(x => x.Group == 140, x => x.Score);
+            Assert.Equal(new[] { 10, 20, 30 }, list.Select(x => x.Score).ToArray());
+        });
+    }
+
+    /// <summary>
+    /// 测试批量保存的幂等 upsert 且不修改状态时间戳（与 AddOrUpdateListAsync 的语义差异契约）。
+    /// </summary>
+    [Fact]
+    public async Task SaveBulkAsync_ShouldBeIdempotentUpsertWithoutTouchingTimestamps()
+    {
+        await ExecuteWithServiceAsync(async service =>
+        {
+            var a = CreateState("bulk-repeat-a", group: 141, score: 10);
+            var firstPass = await service.SaveBulkAsync(new[] { a }, 10);
+            Assert.Single(firstPass);
+
+            a.Score = 55;
+            var secondPass = await service.SaveBulkAsync(new[] { a }, 10);
+            Assert.Single(secondPass);
+
+            var reloaded = await service.FindAsync<MongoQueryTestState>(a.Id, isCreateIfNotExists: false);
+            Assert.NotNull(reloaded);
+            Assert.Equal(55, reloaded.Score);
+            Assert.Equal(a.UpdateCount, reloaded.UpdateCount);
+            Assert.Equal(a.UpdateTime, reloaded.UpdateTime);
+
+            var count = await service.CountAsync<MongoQueryTestState>(x => x.Id == a.Id, includeDeleted: true);
+            Assert.Equal(1, count);
+        });
+    }
+
+    /// <summary>
+    /// 测试批量保存的 batchSize 参数校验（无需真实连接：参数校验先于连接初始化）。
+    /// </summary>
+    [Fact]
+    public async Task SaveBulkAsync_InvalidBatchSize_ShouldThrowArgumentOutOfRangeException()
+    {
+        var service = new MongoDbService();
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => service.SaveBulkAsync<MongoQueryTestState>(Array.Empty<MongoQueryTestState>(), 0));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => service.SaveBulkAsync<MongoQueryTestState>(Array.Empty<MongoQueryTestState>(), -1));
+    }
+
+    /// <summary>
     /// 测试部分更新、恢复与物理删除接口。
     /// </summary>
     [Fact]

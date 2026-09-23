@@ -217,6 +217,9 @@
     <data name="Database.MongoDb.OperationRetryFailed" xml:space="preserve">
     <value>MongoDbService.{0}重试失败，未知异常。</value>
   </data>
+    <data name="Database.GameDb.ImplicitDefaultBindingWarning" xml:space="preserve">
+    <value>已注册多个数据库（{0}）但从未调用 GameDb.SetDefault 显式指定默认库，静态门面当前指向首个注册库；多库部署请在业务库初始化成功后调用 GameDb.SetDefault(业务库名)。</value>
+  </data>
 
     <!-- LNumber模块日志和错误键名 -->
     <data name="Utility.LNumber.CreateFailed" xml:space="preserve">
@@ -1299,6 +1302,34 @@
 
   <data name="Utility.GlobalSettings.LoadGlobalSettingsFailed" xml:space="preserve">
     <value>加载全局设置失败。错误：{0}。</value>
+  </data>
+
+  <data name="Logs.UnifiedMessaging.Initialized" xml:space="preserve">
+    <value>[待翻译] Logs.UnifiedMessaging.Initialized</value>
+  </data>
+
+  <data name="Logs.UnifiedMessaging.PlayerSendResult" xml:space="preserve">
+    <value>[待翻译] Logs.UnifiedMessaging.PlayerSendResult</value>
+  </data>
+
+  <data name="Logs.UnifiedMessaging.ServerSendResult" xml:space="preserve">
+    <value>[待翻译] Logs.UnifiedMessaging.ServerSendResult</value>
+  </data>
+
+  <data name="StartUp.Kcp.ServerDisabled" xml:space="preserve">
+    <value>[待翻译] StartUp.Kcp.ServerDisabled</value>
+  </data>
+
+  <data name="StartUp.Kcp.StartingServer" xml:space="preserve">
+    <value>[待翻译] StartUp.Kcp.StartingServer</value>
+  </data>
+
+  <data name="StartUp.Kcp.StartupComplete" xml:space="preserve">
+    <value>[待翻译] StartUp.Kcp.StartupComplete</value>
+  </data>
+
+  <data name="StartUp.Kcp.StartupFailed" xml:space="preserve">
+    <value>[待翻译] StartUp.Kcp.StartupFailed</value>
   </data>
 
 </root>

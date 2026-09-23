@@ -186,6 +186,87 @@ public class GameDbMultiDatabaseTests : IDisposable
     }
 
     /// <summary>
+    /// 按 Launcher 真实顺序双注册（控制库先行）+ SetDefault(业务库)：门面目标必须落在业务库
+    /// （C159 根缺陷回归用例：D20#2 set-once 绑首注册曾使门面静默指向控制库）。
+    /// </summary>
+    [Fact]
+    public async Task SetDefault_AfterLauncherOrderRegistration_RoutesFacadeToBusinessDatabase()
+    {
+        var connectionString = "mongodb://127.0.0.1:27017";
+        await GameDb.Init<NoConnectionDatabaseService>(connectionString, new DbOptions { Name = MultiDbRegistry.ControlDatabaseName });
+        await GameDb.Init<NoConnectionDatabaseService>(connectionString, new DbOptions { Name = "gameframex" });
+
+        GameDb.SetDefault("gameframex");
+
+        var facade = GameDb.As<NoConnectionDatabaseService>();
+        Assert.Equal("gameframex", facade.LastOpenedOptions.Name);
+        Assert.Same(GameDb.As<NoConnectionDatabaseService>("gameframex"), facade);
+    }
+
+    /// <summary>
+    /// SetDefault 未注册名（含空注册表形态）：抛 InvalidOperationException，消息列出已注册名。
+    /// </summary>
+    [Fact]
+    public async Task SetDefault_UnknownName_Throws()
+    {
+        var emptyException = Assert.Throws<InvalidOperationException>(() => GameDb.SetDefault("missing_database"));
+        Assert.Contains("missing_database", emptyException.Message);
+
+        await GameDb.Init<NoConnectionDatabaseService>("mongodb://first", new DbOptions { Name = "first_database" });
+        var exception = Assert.Throws<InvalidOperationException>(() => GameDb.SetDefault("second_database"));
+        Assert.Contains("second_database", exception.Message);
+        Assert.Contains("first_database", exception.Message);
+    }
+
+    /// <summary>
+    /// SetDefault set-once：二次异名抛 InvalidOperationException；同名幂等放行且门面不变。
+    /// </summary>
+    [Fact]
+    public async Task SetDefault_SecondDifferentName_Throws_SameNameIsIdempotent()
+    {
+        await GameDb.Init<NoConnectionDatabaseService>("mongodb://first", new DbOptions { Name = "first_database" });
+        await GameDb.Init<NoConnectionDatabaseService>("mongodb://second", new DbOptions { Name = "second_database" });
+        GameDb.SetDefault("second_database");
+
+        GameDb.SetDefault("second_database");
+        Assert.Equal("second_database", GameDb.As<NoConnectionDatabaseService>().LastOpenedOptions.Name);
+
+        Assert.Throws<InvalidOperationException>(() => GameDb.SetDefault("first_database"));
+        Assert.Equal("second_database", GameDb.As<NoConnectionDatabaseService>().LastOpenedOptions.Name);
+    }
+
+    /// <summary>
+    /// ResetForTesting 清理默认库标记：重置后门面回落「首注册」语义（单库形态兼容保护）。
+    /// </summary>
+    [Fact]
+    public async Task ResetForTesting_ClearsDefaultDatabase()
+    {
+        await GameDb.Init<NoConnectionDatabaseService>("mongodb://control", new DbOptions { Name = MultiDbRegistry.ControlDatabaseName });
+        await GameDb.Init<NoConnectionDatabaseService>("mongodb://business", new DbOptions { Name = "gameframex" });
+        GameDb.SetDefault("gameframex");
+
+        GameDb.ResetForTesting();
+
+        await GameDb.Init<NoConnectionDatabaseService>("mongodb://single", new DbOptions { Name = "only_database" });
+        Assert.Equal("only_database", GameDb.As<NoConnectionDatabaseService>().LastOpenedOptions.Name);
+    }
+
+    /// <summary>
+    /// GameDb.Contains / GameDb.ControlDatabaseName 转发注册表行为，调用点无需引用 MultiDbRegistry。
+    /// </summary>
+    [Fact]
+    public async Task Contains_And_ControlDatabaseName_ForwardToRegistry()
+    {
+        Assert.Equal(MultiDbRegistry.ControlDatabaseName, GameDb.ControlDatabaseName);
+
+        Assert.False(GameDb.Contains(MultiDbRegistry.ControlDatabaseName));
+        await GameDb.Init<NoConnectionDatabaseService>("mongodb://control", new DbOptions { Name = MultiDbRegistry.ControlDatabaseName });
+
+        Assert.True(GameDb.Contains(GameDb.ControlDatabaseName));
+        Assert.False(GameDb.Contains("missing_database"));
+    }
+
+    /// <summary>
     /// 无连接的数据库服务测试替身：Open 记录选项并成功，其余成员一律不支持。
     /// </summary>
     /// <remarks>
@@ -437,6 +518,11 @@ public class GameDbMultiDatabaseTests : IDisposable
         public Task<long> AddOrUpdateListAsync<TState>(IEnumerable<TState> states, CancellationToken cancellationToken) where TState : BaseCacheState, new()
         {
             throw new NotSupportedException($"NoConnectionDatabaseService does not implement AddOrUpdateListAsync.");
+        }
+
+        public Task<IReadOnlyList<TState>> SaveBulkAsync<TState>(IEnumerable<TState> states, int batchSize) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement SaveBulkAsync.");
         }
 
         public Task AddListAsync<TState>(IEnumerable<TState> states) where TState : BaseCacheState, new()

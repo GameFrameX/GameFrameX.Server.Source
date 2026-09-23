@@ -188,6 +188,9 @@
     <data name="Database.MongoDb.OperationRetryFailed" xml:space="preserve">
     <value>MongoDbService.{0} failed with unknown retry exception.</value>
   </data>
+    <data name="Database.GameDb.ImplicitDefaultBindingWarning" xml:space="preserve">
+    <value>Multiple databases are registered ({0}) but GameDb.SetDefault was never called; the static facade currently targets the first registered database. In multi-database deployments call GameDb.SetDefault(businessDatabaseName) after the business database initializes.</value>
+  </data>
 
     <!-- LNumber module log and error keys -->
     <data name="Utility.LNumber.CreateFailed" xml:space="preserve">
@@ -1303,6 +1306,34 @@
 
   <data name="Utility.Settings.LoadConfigurationFailed" xml:space="preserve">
     <value>Failed to load configuration. Configuration file: {0}.</value>
+  </data>
+
+  <data name="Logs.UnifiedMessaging.Initialized" xml:space="preserve">
+    <value>[TODO] Logs.UnifiedMessaging.Initialized</value>
+  </data>
+
+  <data name="Logs.UnifiedMessaging.PlayerSendResult" xml:space="preserve">
+    <value>[TODO] Logs.UnifiedMessaging.PlayerSendResult</value>
+  </data>
+
+  <data name="Logs.UnifiedMessaging.ServerSendResult" xml:space="preserve">
+    <value>[TODO] Logs.UnifiedMessaging.ServerSendResult</value>
+  </data>
+
+  <data name="StartUp.Kcp.ServerDisabled" xml:space="preserve">
+    <value>[TODO] StartUp.Kcp.ServerDisabled</value>
+  </data>
+
+  <data name="StartUp.Kcp.StartingServer" xml:space="preserve">
+    <value>[TODO] StartUp.Kcp.StartingServer</value>
+  </data>
+
+  <data name="StartUp.Kcp.StartupComplete" xml:space="preserve">
+    <value>[TODO] StartUp.Kcp.StartupComplete</value>
+  </data>
+
+  <data name="StartUp.Kcp.StartupFailed" xml:space="preserve">
+    <value>[TODO] StartUp.Kcp.StartupFailed</value>
   </data>
 
 </root>

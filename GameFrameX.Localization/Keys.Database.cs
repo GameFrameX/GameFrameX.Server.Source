@@ -96,5 +96,14 @@ public static partial class Keys
         /// 参数: {0} - 操作名称
         /// </remarks>
         public const string MongoDbOperationRetryFailed = "Database.MongoDb.OperationRetryFailed";
+        /// <summary>
+        /// 已注册多个数据库（{0}）但从未 SetDefault，门面指向首个注册库。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.GameDb.ImplicitDefaultBindingWarning
+        /// 用途: 多库注册且未显式指定门面默认库时，首次门面调用打一次性 Warning（C159）
+        /// 参数: {0} - 已注册库名列表
+        /// </remarks>
+        public const string GameDbImplicitDefaultBindingWarning = "Database.GameDb.ImplicitDefaultBindingWarning";
     }
 }

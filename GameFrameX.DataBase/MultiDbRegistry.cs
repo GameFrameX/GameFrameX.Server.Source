@@ -69,6 +69,26 @@ public static class MultiDbRegistry
     private static readonly ConcurrentDictionary<string, IDatabaseService> Databases = new(StringComparer.Ordinal);
 
     /// <summary>
+    /// 已注册库数量（O(1) 维护，供门面隐式绑定告警做廉价判断）。
+    /// </summary>
+    /// <remarks>
+    /// The number of registered databases (maintained O(1) so the facade implicit-binding
+    /// warning can check it cheaply on every facade call, C159).
+    /// </remarks>
+    private static int _registeredCount;
+
+    /// <summary>
+    /// 已注册库数量（测试与同程序集内可见）。
+    /// </summary>
+    /// <remarks>
+    /// The number of registered databases (visible to the test assembly and this assembly).
+    /// </remarks>
+    internal static int RegisteredCount
+    {
+        get { return Volatile.Read(ref _registeredCount); }
+    }
+
+    /// <summary>
     /// 注册数据库服务；同名库重复注册时抛出异常（fail fast，拒绝静默覆盖）。
     /// </summary>
     /// <remarks>
@@ -86,8 +106,9 @@ public static class MultiDbRegistry
         {
             throw new InvalidOperationException($"A database named '{databaseName}' is already registered. Registered names: [{string.Join(", ", Databases.Keys)}]");
         }
-    }
 
+        Interlocked.Increment(ref _registeredCount);
+    }
     /// <summary>
     /// 按注册名获取数据库服务。
     /// </summary>
@@ -171,5 +192,6 @@ public static class MultiDbRegistry
     internal static void Clear()
     {
         Databases.Clear();
+        Volatile.Write(ref _registeredCount, 0);
     }
 }

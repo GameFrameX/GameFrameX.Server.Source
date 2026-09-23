@@ -54,7 +54,7 @@ public static partial class GameDb
     public static Task<long> DeleteAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.DeleteAsync(filter);
+        return FacadeService.DeleteAsync(filter);
     }
 
     /// <summary>
@@ -70,7 +70,7 @@ public static partial class GameDb
     public static Task<long> DeleteAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.DeleteAsync(filter, cancellationToken);
+        return FacadeService.DeleteAsync(filter, cancellationToken);
     }
 
     /// <summary>
@@ -85,7 +85,7 @@ public static partial class GameDb
     public static Task<long> DeleteAsync<TState>(TState state) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.DeleteAsync(state);
+        return FacadeService.DeleteAsync(state);
     }
 
     /// <summary>
@@ -101,7 +101,7 @@ public static partial class GameDb
     public static Task<long> DeleteAsync<TState>(TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.DeleteAsync(state, cancellationToken);
+        return FacadeService.DeleteAsync(state, cancellationToken);
     }
 
     /// <summary>
@@ -116,7 +116,7 @@ public static partial class GameDb
     public static Task<long> DeleteListAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.DeleteListAsync<TState>(filter);
+        return FacadeService.DeleteListAsync<TState>(filter);
     }
 
     /// <summary>
@@ -132,7 +132,7 @@ public static partial class GameDb
     public static Task<long> DeleteListAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.DeleteListAsync<TState>(filter, cancellationToken);
+        return FacadeService.DeleteListAsync<TState>(filter, cancellationToken);
     }
 
     /// <summary>
@@ -147,7 +147,7 @@ public static partial class GameDb
     public static Task<long> DeleteListIdAsync<TState>(IEnumerable<long> ids) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.DeleteListIdAsync<TState>(ids);
+        return FacadeService.DeleteListIdAsync<TState>(ids);
     }
 
     /// <summary>
@@ -163,7 +163,7 @@ public static partial class GameDb
     public static Task<long> DeleteListIdAsync<TState>(IEnumerable<long> ids, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.DeleteListIdAsync<TState>(ids, cancellationToken);
+        return FacadeService.DeleteListIdAsync<TState>(ids, cancellationToken);
     }
 
     /// <summary>
@@ -178,7 +178,7 @@ public static partial class GameDb
     public static Task<long> HardDeleteAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.HardDeleteAsync<TState>(filter);
+        return FacadeService.HardDeleteAsync<TState>(filter);
     }
 
     /// <summary>
@@ -194,7 +194,7 @@ public static partial class GameDb
     public static Task<long> HardDeleteAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.HardDeleteAsync<TState>(filter, cancellationToken);
+        return FacadeService.HardDeleteAsync<TState>(filter, cancellationToken);
     }
 
     /// <summary>
@@ -209,7 +209,7 @@ public static partial class GameDb
     public static Task<long> RestoreAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.RestoreAsync<TState>(filter);
+        return FacadeService.RestoreAsync<TState>(filter);
     }
 
     /// <summary>
@@ -225,6 +225,6 @@ public static partial class GameDb
     public static Task<long> RestoreAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.RestoreAsync<TState>(filter, cancellationToken);
+        return FacadeService.RestoreAsync<TState>(filter, cancellationToken);
     }
 }

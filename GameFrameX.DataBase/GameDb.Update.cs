@@ -53,7 +53,7 @@ public static partial class GameDb
     public static Task<TState> UpdateAsync<TState>(TState state) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.UpdateAsync(state);
+        return FacadeService.UpdateAsync(state);
     }
 
     /// <summary>
@@ -69,7 +69,7 @@ public static partial class GameDb
     public static Task<TState> UpdateAsync<TState>(TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.UpdateAsync(state, cancellationToken);
+        return FacadeService.UpdateAsync(state, cancellationToken);
     }
 
     /// <summary>
@@ -84,7 +84,7 @@ public static partial class GameDb
     public static Task<long> UpdateAsync<TState>(IEnumerable<TState> stateList) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.UpdateAsync(stateList);
+        return FacadeService.UpdateAsync(stateList);
     }
 
     /// <summary>
@@ -100,7 +100,7 @@ public static partial class GameDb
     public static Task<long> UpdateAsync<TState>(IEnumerable<TState> stateList, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.UpdateAsync(stateList, cancellationToken);
+        return FacadeService.UpdateAsync(stateList, cancellationToken);
     }
 
     /// <summary>
@@ -116,7 +116,7 @@ public static partial class GameDb
     public static Task<long> UpdatePartialAsync<TState>(long id, IReadOnlyDictionary<string, object> updateFields) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.UpdatePartialAsync<TState>(id, updateFields);
+        return FacadeService.UpdatePartialAsync<TState>(id, updateFields);
     }
 
     /// <summary>
@@ -133,7 +133,7 @@ public static partial class GameDb
     public static Task<long> UpdatePartialAsync<TState>(long id, IReadOnlyDictionary<string, object> updateFields, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.UpdatePartialAsync<TState>(id, updateFields, cancellationToken);
+        return FacadeService.UpdatePartialAsync<TState>(id, updateFields, cancellationToken);
     }
 
     /// <summary>
@@ -147,7 +147,7 @@ public static partial class GameDb
     public static Task ExecuteInTransactionAsync(Func<Task> action)
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.ExecuteInTransactionAsync(action);
+        return FacadeService.ExecuteInTransactionAsync(action);
     }
 
     /// <summary>
@@ -162,6 +162,25 @@ public static partial class GameDb
     public static Task ExecuteInTransactionAsync(Func<Task> action, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return _dbServiceImplementation.ExecuteInTransactionAsync(action, cancellationToken);
+        return FacadeService.ExecuteInTransactionAsync(action, cancellationToken);
+    }
+
+    /// <summary>
+    /// 按批次大小分批执行批量 upsert 保存（转发 <see cref="IDatabaseService.SaveBulkAsync{TState}"/>，C159）。
+    /// </summary>
+    /// <remarks>
+    /// Bulk-upserts the given states in batches of <paramref name="batchSize"/> on the facade default
+    /// database (forwards to <see cref="IDatabaseService.SaveBulkAsync{TState}"/>, C159). Batches are
+    /// ack/exception-isolated independently and the returned list contains exactly the states of the
+    /// acknowledged batches; state timestamps are persisted as handed in (not modified here).
+    /// </remarks>
+    /// <typeparam name="TState">文档的类型,必须继承自BaseCacheState / Document type, must inherit from BaseCacheState</typeparam>
+    /// <param name="states">待保存的状态集合 / The states to save</param>
+    /// <param name="batchSize">每批数量（&lt;= 0 抛出异常） / Batch size (values &lt;= 0 throw)</param>
+    /// <returns>全部成功 ack 批次的状态列表 / The states of all acknowledged batches</returns>
+    /// <exception cref="ArgumentOutOfRangeException">当 <paramref name="batchSize"/> &lt;= 0 时抛出 / Thrown when batchSize is &lt;= 0</exception>
+    public static Task<IReadOnlyList<TState>> SaveBulkAsync<TState>(IEnumerable<TState> states, int batchSize) where TState : BaseCacheState, new()
+    {
+        return FacadeService.SaveBulkAsync(states, batchSize);
     }
 }

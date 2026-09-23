@@ -29,6 +29,9 @@
 
 
 using GameFrameX.DataBase.Abstractions;
+using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Foundation.Logger;
+using GameFrameX.Localization;
 
 namespace GameFrameX.DataBase;
 
@@ -37,8 +40,10 @@ namespace GameFrameX.DataBase;
 /// </summary>
 /// <remarks>
 /// Static utility class for game database operations, providing basic database operation encapsulation.
-/// The static facade operates on the first registered database (D20#2 fix: no longer overwritten by later Init calls);
-/// additional databases are registered in <see cref="MultiDbRegistry"/> and resolved by name.
+/// The static facade targets the database explicitly nominated by <see cref="SetDefault"/> when present
+/// (C159), and falls back to the first registered database otherwise (D20#2 semantics preserved for
+/// single-database processes and legacy consumers); additional databases are registered in
+/// <see cref="MultiDbRegistry"/> and resolved by name.
 /// </remarks>
 public static partial class GameDb
 {
@@ -50,6 +55,65 @@ public static partial class GameDb
     /// C143a D20#2 fix: a second Init no longer silently overwrites it).
     /// </remarks>
     private static IDatabaseService _dbServiceImplementation;
+
+    /// <summary>
+    /// 门面默认库的注册名（显式指定标记；null 表示未显式指定，门面回落首个注册库）。
+    /// </summary>
+    /// <remarks>
+    /// The registry name explicitly nominated as the facade default database; null means no explicit
+    /// nomination and the facade falls back to the first registered database (C159).
+    /// </remarks>
+    private static string _defaultDatabaseName;
+
+    /// <summary>
+    /// 门面隐式绑定告警的一次性标志（0 = 未告警，1 = 已告警）。
+    /// </summary>
+    /// <remarks>
+    /// One-shot flag for the implicit facade binding warning (0 = not warned, 1 = warned).
+    /// </remarks>
+    private static int _implicitBindingWarningLogged;
+
+    /// <summary>
+    /// 门面目标库（全部静态 CRUD 与无参 <see cref="As{T}()"/> 的实际落点）。
+    /// </summary>
+    /// <remarks>
+    /// The facade target database actually serving every static CRUD member and the parameterless
+    /// <see cref="As{T}()"/>. Centralizes the C159 binding semantics: explicit <see cref="SetDefault"/>
+    /// nomination first, first-registered fallback otherwise; emits the one-shot implicit-binding
+    /// warning when multiple databases are registered without an explicit nomination.
+    /// </remarks>
+    private static IDatabaseService FacadeService
+    {
+        get
+        {
+            ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+            if (Volatile.Read(ref _defaultDatabaseName) == null && MultiDbRegistry.RegisteredCount > 1)
+            {
+                WarnImplicitBindingOnce();
+            }
+
+            return _dbServiceImplementation;
+        }
+    }
+
+    /// <summary>
+    /// 多库注册但从未 <see cref="SetDefault"/> 时，首次门面调用打一条一次性 Warning（不 fail fast，
+    /// 避免破坏单库与既有测试场景；P1-5 收敛）。
+    /// </summary>
+    /// <remarks>
+    /// Logs a one-shot Warning on the first facade call when more than one database is registered and
+    /// <see cref="SetDefault"/> was never called (P1-5: warn once instead of failing fast, so
+    /// single-database processes and existing tests keep working unchanged).
+    /// </remarks>
+    private static void WarnImplicitBindingOnce()
+    {
+        if (Interlocked.CompareExchange(ref _implicitBindingWarningLogged, 1, 0) != 0)
+        {
+            return;
+        }
+
+        LogHelper.Warning<string>("GameDb.ImplicitDefaultBinding {message}", LocalizationService.GetString(Localization.Keys.Database.GameDbImplicitDefaultBindingWarning, string.Join(", ", MultiDbRegistry.GetRegisteredDatabaseNames())));
+    }
 
     /// <summary>
     /// 初始化GameDb（兼容旧签名：连接串取自 <paramref name="dbOptions"/>）。
@@ -76,7 +140,8 @@ public static partial class GameDb
     /// <see cref="MultiDbRegistry"/>, C143a D20#2). The connection string passed explicitly takes precedence;
     /// when empty it falls back to <see cref="DbOptions.ConnectionString"/> (control-database D-Single fallback:
     /// pass the business <c>DataBaseUrl</c> explicitly so the control database shares the Mongo instance).
-    /// The static facade binds to the first registered database and is never overwritten by later calls.
+    /// The static facade targets <see cref="SetDefault"/> nomination first and otherwise binds to the
+    /// first registered database (C159: never silently re-bound once a default is explicitly nominated).
     /// </remarks>
     /// <typeparam name="T">数据库服务的具体实现类型,必须实现IDatabaseService接口且有无参构造函数 / Database service implementation type, must implement IDatabaseService interface and have a parameterless constructor</typeparam>
     /// <param name="connectionString">连接字符串；为空时回落 <paramref name="dbOptions"/> 内连接串 / Connection string; falls back to the one in <paramref name="dbOptions"/> when empty</param>
@@ -123,6 +188,80 @@ public static partial class GameDb
     }
 
     /// <summary>
+    /// 显式指定静态门面的默认库（全部静态 CRUD 与无参 <see cref="As{T}()"/> 的目标库）。
+    /// </summary>
+    /// <remarks>
+    /// Explicitly nominates the default database of the static facade (the target of every static CRUD
+    /// member and the parameterless <see cref="As{T}()"/>). This carries the data-lifecycle semantics
+    /// "business database = facade default database" (C159): the launch flow registers the control
+    /// database first (D16, discovery layer dependency), so first-registered binding alone would
+    /// silently route all business reads/writes to the control database — the split-brain defect this
+    /// API exists to remove. Decoupled from registration order by design: the composition root calls
+    /// it once after the business database initializes successfully. Set-once: a second call with a
+    /// different name throws; the same name is idempotently accepted.
+    /// </remarks>
+    /// <param name="databaseName">注册名（须已通过 <see cref="Init{T}(string, DbOptions)"/> 注册） / Registry name (must already be registered)</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="databaseName"/> 为 null 时抛出 / Thrown when databaseName is null</exception>
+    /// <exception cref="InvalidOperationException">当注册名未注册，或默认库已显式指定为另一注册名时抛出 / Thrown when the name is not registered, or the default was already set to a different name</exception>
+    public static void SetDefault(string databaseName)
+    {
+        ArgumentNullException.ThrowIfNull(databaseName, nameof(databaseName));
+        if (!MultiDbRegistry.TryGet(databaseName, out var service))
+        {
+            throw new InvalidOperationException($"No database named '{databaseName}' is registered. Registered names: [{string.Join(", ", MultiDbRegistry.GetRegisteredDatabaseNames())}]");
+        }
+
+        var current = Volatile.Read(ref _defaultDatabaseName);
+        if (current != null)
+        {
+            if (current == databaseName)
+            {
+                return;
+            }
+
+            throw new InvalidOperationException($"The default database is already set to '{current}' (set-once, C159); changing it to '{databaseName}' is not allowed. Registered names: [{string.Join(", ", MultiDbRegistry.GetRegisteredDatabaseNames())}]");
+        }
+
+        if (Interlocked.CompareExchange(ref _defaultDatabaseName, databaseName, null) != null)
+        {
+            // 并发首次指定：胜者生效；同名视为幂等，异名拒绝（与串行路径语义一致）
+            var winner = Volatile.Read(ref _defaultDatabaseName);
+            if (winner != databaseName)
+            {
+                throw new InvalidOperationException($"The default database is already set to '{winner}' (set-once, C159); changing it to '{databaseName}' is not allowed. Registered names: [{string.Join(", ", MultiDbRegistry.GetRegisteredDatabaseNames())}]");
+            }
+
+            return;
+        }
+
+        _dbServiceImplementation = service;
+    }
+
+    /// <summary>
+    /// 判断指定注册名的库是否已注册（转发 <see cref="MultiDbRegistry.Contains"/>，供启动链幂等守卫使用）。
+    /// </summary>
+    /// <remarks>
+    /// Determines whether a database with the specified registry name is registered (forwards to
+    /// <see cref="MultiDbRegistry.Contains"/> for idempotent startup guards, C159: callers no longer
+    /// need to reference the registry type directly).
+    /// </remarks>
+    /// <param name="databaseName">注册名 / Registry name</param>
+    /// <returns>已注册返回 true；否则 false / true when registered; otherwise false</returns>
+    public static bool Contains(string databaseName)
+    {
+        return MultiDbRegistry.Contains(databaseName);
+    }
+
+    /// <summary>
+    /// 控制库的固定注册名（转发 <see cref="MultiDbRegistry.ControlDatabaseName"/>）。
+    /// </summary>
+    /// <remarks>
+    /// The fixed registry name of the control database (forwards to
+    /// <see cref="MultiDbRegistry.ControlDatabaseName"/> so call sites stay on the unified entry, C159).
+    /// </remarks>
+    public const string ControlDatabaseName = MultiDbRegistry.ControlDatabaseName;
+
+    /// <summary>
     /// 以指定类型获取数据库服务实例。
     /// </summary>
     /// <remarks>
@@ -133,8 +272,7 @@ public static partial class GameDb
     /// <exception cref="InvalidCastException">当类型转换失败时抛出 / Thrown when type conversion fails</exception>
     public static T As<T>() where T : IDatabaseService
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
-        return (T)_dbServiceImplementation;
+        return (T)FacadeService;
     }
 
     /// <summary>
@@ -190,6 +328,8 @@ public static partial class GameDb
     internal static void ResetForTesting()
     {
         _dbServiceImplementation = null;
+        _defaultDatabaseName = null;
+        Volatile.Write(ref _implicitBindingWarningLogged, 0);
         MultiDbRegistry.Clear();
     }
 

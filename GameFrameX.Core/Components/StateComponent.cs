@@ -32,13 +32,10 @@ using GameFrameX.Core.Actors;
 using GameFrameX.Core.Timer;
 using GameFrameX.Core.Utility;
 using GameFrameX.DataBase;
-using GameFrameX.DataBase.Mongo;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Utility.Setting;
-using MongoDB.Bson;
-using MongoDB.Driver;
 
 namespace GameFrameX.Core.Components;
 
@@ -244,30 +241,28 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
     /// <returns>异步任务</returns>
     public static async Task SaveAll(bool shutdown, bool force = false)
     {
-        var idList = new List<long>();
-        var writeList = new List<ReplaceOneModel<BsonDocument>>();
+        var stateList = new List<TState>();
 
         if (shutdown)
         {
-            CollectShutdownWrites(writeList, idList);
+            CollectShutdownWrites(stateList);
         }
         else
         {
-            await CollectActorWritesAsync(writeList, idList, force);
+            await CollectActorWritesAsync(stateList, force);
         }
 
-        if (!writeList.IsNullOrEmpty())
+        if (!stateList.IsNullOrEmpty())
         {
-            await ExecuteBatchWritesAsync(writeList, idList, shutdown);
+            await ExecuteBatchWritesAsync(stateList, shutdown);
         }
     }
 
     /// <summary>
-    /// 关服保存：顺序遍历所有已修改的状态，生成批量写入模型
+    /// 关服保存：顺序遍历所有已修改的状态，收集待写入状态
     /// </summary>
-    /// <param name="writeList">批量写入模型列表</param>
-    /// <param name="idList">对应的状态 Id 列表</param>
-    private static void CollectShutdownWrites(List<ReplaceOneModel<BsonDocument>> writeList, List<long> idList)
+    /// <param name="stateList">待写入的状态列表</param>
+    private static void CollectShutdownWrites(List<TState> stateList)
     {
         foreach (var state in StateDic.Values)
         {
@@ -276,18 +271,17 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
                 continue;
             }
 
-            AppendWrite(writeList, idList, state);
+            AppendWrite(stateList, state);
         }
     }
 
     /// <summary>
-    /// 非关服保存：将各状态的写入操作派发到对应 Actor 上并发执行，回填批量写入模型
+    /// 非关服保存：将各状态的写入操作派发到对应 Actor 上并发执行，回填待写入状态
     /// </summary>
-    /// <param name="writeList">批量写入模型列表</param>
-    /// <param name="idList">对应的状态 Id 列表</param>
+    /// <param name="stateList">待写入的状态列表</param>
     /// <param name="force">是否强制保存</param>
     /// <returns>异步任务</returns>
-    private static async Task CollectActorWritesAsync(List<ReplaceOneModel<BsonDocument>> writeList, List<long> idList, bool force)
+    private static async Task CollectActorWritesAsync(List<TState> stateList, bool force)
     {
         var tasks = new List<Task>();
 
@@ -306,7 +300,7 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
                     return;
                 }
 
-                AppendWrite(writeList, idList, state);
+                AppendWrite(stateList, state);
             }, GlobalSettings.CurrentSetting.SaveDataBatchTimeOut));
         }
 
@@ -316,82 +310,47 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
     /// <summary>
     /// 将单个状态追加到批量写入列表（线程安全，关服/非关服分支共用）
     /// </summary>
-    /// <param name="writeList">批量写入模型列表</param>
-    /// <param name="idList">对应的状态 Id 列表</param>
+    /// <param name="stateList">待写入的状态列表</param>
     /// <param name="state">要写入的状态</param>
-    private static void AppendWrite(List<ReplaceOneModel<BsonDocument>> writeList, List<long> idList, TState state)
+    private static void AppendWrite(List<TState> stateList, TState state)
     {
-        var bsonDoc = state.ToBsonDocument();
-        lock (writeList)
+        lock (stateList)
         {
-            var filter = Builders<BsonDocument>.Filter.Eq("_id", state.Id);
-            writeList.Add(new ReplaceOneModel<BsonDocument>(filter, bsonDoc) { IsUpsert = true, });
-            idList.Add(state.Id);
+            stateList.Add(state);
         }
     }
 
     /// <summary>
-    /// 按配置批量大小执行 Mongo 批量写入，并处理写入结果与异常
+    /// 经 GameDb 统一入口按配置批量大小执行批量 upsert 保存，并处理写入结果（C159）
     /// </summary>
-    /// <param name="writeList">批量写入模型列表</param>
-    /// <param name="idList">对应的状态 Id 列表</param>
+    /// <param name="stateList">待写入的状态列表</param>
     /// <param name="shutdown">是否为关服保存</param>
     /// <returns>异步任务</returns>
-    private static async Task ExecuteBatchWritesAsync(List<ReplaceOneModel<BsonDocument>> writeList, List<long> idList, bool shutdown)
+    private static async Task ExecuteBatchWritesAsync(List<TState> stateList, bool shutdown)
     {
         var stateName = typeof(TState).Name;
-        StateComponent.StatisticsTool.Count(stateName, writeList.Count);
-        LogHelper.Debug("StateComponent.StateSaveBack StateName: {stateName} , Count: {count}", stateName, writeList.Count);
-        // 业务状态写入按配置的业务库名（Setting.DataBaseName）解析；控制库(gameframex_control)先注册，
-        // 门面 GameDb.As<T>() 固定返回首个注册库，不能作为业务状态的落库目标。
-        var currentDatabase = GameDb.As<MongoDbService>(GlobalSettings.CurrentSetting.DataBaseName).CurrentDatabase;
-        var collection = currentDatabase.GetCollection<BsonDocument>(stateName);
+        StateComponent.StatisticsTool.Count(stateName, stateList.Count);
+        LogHelper.Debug("StateComponent.StateSaveBack StateName: {stateName} , Count: {count}", stateName, stateList.Count);
+        // C159：批量保存统一走 GameDb.SaveBulkAsync（分批 upsert、逐批 ack/异常隔离在 DataBase 层实现）；
+        // 门面默认库由 Launcher 在业务库 Init 成功后显式 SetDefault(Setting.DataBaseName)，
+        // Core 不再直接依赖 MongoDB.Driver / GameFrameX.DataBase.Mongo（取代 GFX-327 的按名直连方案）。
+        var savedStates = await GameDb.SaveBulkAsync(stateList, GlobalSettings.CurrentSetting.SaveDataBatchCount);
 
-        for (var idx = 0; idx < writeList.Count; idx += GlobalSettings.CurrentSetting.SaveDataBatchCount)
+        NotifyBatchSaved(savedStates);
+        if (savedStates.Count < stateList.Count && shutdown)
         {
-            var docs = writeList.GetRange(idx, Math.Min(GlobalSettings.CurrentSetting.SaveDataBatchCount, writeList.Count - idx));
-            var ids = idList.GetRange(idx, docs.Count);
-
-            var save = false;
-            try
-            {
-                var result = await collection.BulkWriteAsync(docs, MongoDbService.BulkWriteOptions);
-                if (result.IsAcknowledged)
-                {
-                    NotifyBatchSaved(ids);
-                    save = true;
-                }
-                else
-                {
-                    LogHelper.Error("StateComponent.SaveDataFailed StateName: {stateName} , Message: {message}", stateName, LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveDataFailed, typeof(TState).FullName));
-                }
-            }
-            catch (Exception ex)
-            {
-                LogHelper.Error("StateComponent.SaveDataException StateName: {stateName} , Error: {error} , Message: {message}", stateName, ex, LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveDataException, typeof(TState).FullName, ex));
-            }
-
-            if (!save && shutdown)
-            {
-                LogHelper.Error("StateComponent.SaveDataFailed StateName: {stateName} , Message: {message}", stateName, LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveDataFailed, typeof(TState).FullName));
-            }
+            LogHelper.Error("StateComponent.SaveDataFailed StateName: {stateName} , Message: {message}", stateName, LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveDataFailed, typeof(TState).FullName));
         }
     }
 
     /// <summary>
     /// 通知一批已成功写入数据库的状态执行后置处理
     /// </summary>
-    /// <param name="ids">已写入的状态 Id 列表</param>
-    private static void NotifyBatchSaved(List<long> ids)
+    /// <param name="savedStates">已成功写入数据库的状态列表</param>
+    private static void NotifyBatchSaved(IReadOnlyList<TState> savedStates)
     {
-        foreach (var id in ids)
+        foreach (var state in savedStates)
         {
-            StateDic.TryGetValue(id, out var state);
-            if (state == null)
-            {
-                continue;
-            }
-
             state.SaveToDbPostHandler();
         }
     }

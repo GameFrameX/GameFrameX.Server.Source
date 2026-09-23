@@ -60,9 +60,10 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
             ActorLimit.Init(ActorLimit.RuleType.None);
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Launcher.ActorLimitConfigEnd));
             // C143a D16：控制库先行于业务库（D-Single 缺省回落：与业务库共用同一 Mongo 实例连接串，库固定 gameframex_control）
-            if (!MultiDbRegistry.Contains(MultiDbRegistry.ControlDatabaseName))
+            // C159：经 GameDb 统一入口判重/命名，启动链不再直接引用注册表与 Mongo 实现类型。
+            if (!GameDb.Contains(GameDb.ControlDatabaseName))
             {
-                var controlDatabaseInitResult = await GameDb.Init<MongoDbService>(Setting.DataBaseUrl, new DbOptions { Name = MultiDbRegistry.ControlDatabaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
+                var controlDatabaseInitResult = await GameDb.Init<MongoDbService>(Setting.DataBaseUrl, new DbOptions { Name = GameDb.ControlDatabaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
                 if (controlDatabaseInitResult == false)
                 {
                     throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
@@ -72,7 +73,8 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
             // C143d D11-D15：控制库就绪后激活 Mongo 发现层——读侧 watcher + 写侧心跳（未配置广播端口时自动跳过）
             // 并以真实 case 2/3 转发器重装跨 Role 路由缝（替换 C143c 占位）。幂等：多 Role 进程首个调用生效。
             // C143e D21：再激活玩家路由层（建 player_route 索引 + 装 SyncTarget），Tier 1 fast-path 注入 SessionManager 适配器。
-            MongoDiscoveryRuntime.Activate(((MongoDbService)MultiDbRegistry.Get(MultiDbRegistry.ControlDatabaseName)).CurrentDatabase, RoleSet.Current, GameFrameX.Apps.Common.Session.SessionManagerFastPathAdapter.Instance);
+            // C159：改走按名重载，控制库 IMongoDatabase 解析下沉到发现层内部。
+            MongoDiscoveryRuntime.Activate(GameDb.ControlDatabaseName, RoleSet.Current, GameFrameX.Apps.Common.Session.SessionManagerFastPathAdapter.Instance);
             GameFrameX.Apps.Common.Session.SessionManager.PlayerRouteSyncTarget = GameFrameX.NetWork.RemoteMessaging.Routing.MongoPlayerRouteResolverBootstrap.SyncTarget;
 
             var initResult = await GameDb.Init<MongoDbService>(Setting.DataBaseUrl, new DbOptions { Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
@@ -80,6 +82,10 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
             {
                 throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
             }
+
+            // C159：业务库 Init 成功后显式指定门面默认库——控制库先注册会使 set-once 门面静默指向控制库，
+            // 全部经 GameDb 门面的业务读写必须落在业务库（根缺陷修复点）。
+            GameDb.SetDefault(Setting.DataBaseName);
 
             await ComponentRegister.Init(typeof(AppsHandler).Assembly);
             HotfixManager.LoadHotfix(Setting);
