@@ -53,13 +53,11 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
         /// <remarks>
         /// Handles the HTTP request for publishing a mail campaign. After validation passes, publishes or overwrites the draft and returns the campaign id, publish version, and publish time; returns a JSON response with the corresponding error code when the campaign is already published or revoked so its main fields cannot be modified (B1, InvalidOperationException) or a parameter is invalid.
         /// </remarks>
-        /// <param name="ip">客户端 IP 地址 / Client IP address</param>
-        /// <param name="url">请求的 URL / Request URL</param>
-        /// <param name="request">发布 Campaign 请求对象 / Publish campaign request object</param>
+        /// <param name="context">HTTP 处理管线统一请求载荷 / Unified request payload for the HTTP handling pipeline</param>
         /// <returns>处理结果的 JSON 字符串 / JSON string of the processing result</returns>
-        public override async Task<string> Action(string ip, string url, HttpMessageRequestBase request)
+        public override async Task<string> Action(HttpActionContext context)
         {
-            var publishRequest = (PublishMailCampaignRequest)request;
+            var publishRequest = (PublishMailCampaignRequest)context.Request;
             var response = new PublishMailCampaignResponse();
 
             var state = BuildCampaignState(publishRequest);

@@ -43,12 +43,11 @@ public sealed class TestHttpHandler : BaseHttpHandler
     /// <summary>
     /// 测试入口，支持普通回包与跨进程通讯示例。
     /// </summary>
-    /// <param name="ip"></param>
-    /// <param name="url"></param>
-    /// <param name="paramMap"></param>
+    /// <param name="context"></param>
     /// <returns></returns>
-    public override async Task<string> Action(string ip, string url, Dictionary<string, object> paramMap)
+    public override async Task<string> Action(HttpActionContext context)
     {
+        var paramMap = context.Parameters;
         if (TryGetMode(paramMap, out var mode) && string.Equals(mode, "cross-process-friend", StringComparison.OrdinalIgnoreCase))
         {
             var friendComponentAgent = await ActorManager.GetComponentAgent<FriendComponentAgent>();

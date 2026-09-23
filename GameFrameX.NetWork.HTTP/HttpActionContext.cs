@@ -3,7 +3,7 @@
 //   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
 //   均受中华人民共和国及相关国际法律法规保护。
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
-//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   使用本项目须严格遵守相应法律法规与开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
 //   This project is licensed solely under the Apache License 2.0,
@@ -22,70 +22,65 @@
 //   Gitee  仓库：https://gitee.com/GameFrameX
 //   Gitee Repository:  https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
-//   CNB Repository:  https://cnb.cool/GameFrameX
+//   CNB Repository:   https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-using GameFrameX.Apps;
-using GameFrameX.Apps.Account.Login.Entity;
-using GameFrameX.DataBase;
 using GameFrameX.NetWork.Messages;
 
-namespace GameFrameX.Hotfix.Logic.Http.Player;
+namespace GameFrameX.NetWork.HTTP;
 
 /// <summary>
-/// 账号登录
+/// HTTP 处理管线统一请求上下文，承载客户端 IP、请求 URL、参数字典、消息对象与请求消息对象。
 /// </summary>
-[HttpMessageMapping(typeof(ReqLoginHttpHandler))]
-[Description("账号登录,仅限前端调用")]
-public sealed class ReqLoginHttpHandler : BaseHttpHandler
+/// <remarks>
+/// Unified request context for the HTTP handling pipeline, carrying the client IP, request URL, parameter dictionary, message object, and request message object.
+/// </remarks>
+public sealed class HttpActionContext
 {
-    public override async Task<MessageObject> ActionMessageObject(HttpActionContext context)
-    {
-        var messageObject = context.MessageObject;
-        var reqLogin = (ReqLogin)messageObject;
-        var respLogin = new RespLogin();
-        if (reqLogin.UserName.IsNullOrEmpty() || reqLogin.Password.IsNullOrEmpty())
-        {
-            respLogin.ErrorCode = (int)ResultCode.Failed;
-            return null;
-        }
+    /// <summary>
+    /// 获取客户端 IP 地址。
+    /// </summary>
+    /// <remarks>
+    /// Gets the client IP address.
+    /// </remarks>
+    /// <value>客户端 IP 地址 / Client IP address</value>
+    public string Ip { get; init; }
 
-        AppMetrics.AccountLogin.Add(1);
-        var loginState = await OnLogin(reqLogin);
+    /// <summary>
+    /// 获取请求的 URL。
+    /// </summary>
+    /// <remarks>
+    /// Gets the request URL.
+    /// </remarks>
+    /// <value>请求的 URL / Request URL</value>
+    public string Url { get; init; }
 
-        if (loginState == null)
-        {
-            var accountId = ActorIdGenerator.GetUniqueId();
-            loginState = await Register(accountId, reqLogin);
-        }
+    /// <summary>
+    /// 获取请求参数字典，键为参数名，值为参数值。
+    /// </summary>
+    /// <remarks>
+    /// Gets the request parameter dictionary with parameter names as keys and parameter values as values.
+    /// </remarks>
+    /// <value>请求参数字典 / Request parameter dictionary</value>
+    public Dictionary<string, object> Parameters { get; init; }
 
-        // 构建账号登录返回信息
-        respLogin.Code = loginState.State;
-        if (loginState.CreatedTime != null)
-        {
-            respLogin.CreateTime = (long)loginState.CreatedTime;
-        }
+    /// <summary>
+    /// 获取 ProtoBuf 形态的消息对象。
+    /// </summary>
+    /// <remarks>
+    /// Gets the message object of the ProtoBuf pipeline form.
+    /// </remarks>
+    /// <value>消息对象 / Message object</value>
+    public MessageObject MessageObject { get; init; }
 
-        respLogin.Level = loginState.Level;
-        respLogin.Id = loginState.Id;
-        respLogin.RoleName = loginState.NickName;
-        return respLogin;
-    }
-
-    public async Task<LoginState> OnLogin(ReqLogin reqLogin)
-    {
-        AppMetrics.AccountLogin.Add(1);
-        return await GameDb.FindAsync<LoginState>(m => m.UserName == reqLogin.UserName && m.Password == reqLogin.Password, false);
-    }
-
-    public async Task<LoginState> Register(long accountId, ReqLogin reqLogin)
-    {
-        AppMetrics.AccountRegister.Add(1);
-        var loginState = new LoginState { Id = accountId, UserName = reqLogin.UserName, Password = reqLogin.Password, };
-        await GameDb.AddOrUpdateAsync(loginState);
-        return loginState;
-    }
+    /// <summary>
+    /// 获取标注 <see cref="HttpMessageRequestAttribute"/> 形态的请求消息对象。
+    /// </summary>
+    /// <remarks>
+    /// Gets the request message object of the form annotated with <see cref="HttpMessageRequestAttribute"/>.
+    /// </remarks>
+    /// <value>请求消息对象 / Request message object</value>
+    public HttpMessageRequestBase Request { get; init; }
 }

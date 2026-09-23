@@ -45,13 +45,11 @@ public sealed class GetOnlinePlayerListHttpHandler : BaseHttpHandler
 {
     /// <summary>
     /// </summary>
-    /// <param name="ip"></param>
-    /// <param name="url"></param>
-    /// <param name="request"></param>
+    /// <param name="context"></param>
     /// <returns></returns>
-    public override Task<string> Action(string ip, string url, HttpMessageRequestBase request)
+    public override Task<string> Action(HttpActionContext context)
     {
-        GetOnlinePlayerListRequest parameters = (GetOnlinePlayerListRequest)request;
+        GetOnlinePlayerListRequest parameters = (GetOnlinePlayerListRequest)context.Request;
         var response = SessionManager.GetPageList(parameters.PageSize, parameters.PageIndex);
         var res = HttpJsonResultData<string>.SuccessString("当前在线玩家", JsonHelper.Serialize(response));
         return Task.FromResult(res);

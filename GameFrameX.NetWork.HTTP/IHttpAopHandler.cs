@@ -54,10 +54,8 @@ public interface IHttpAopHandler
     /// <remarks>
     /// Executes the interception processing logic.
     /// </remarks>
-    /// <param name="context">HTTP 上下文 / HTTP context</param>
-    /// <param name="ip">请求的客户端 IP 地址 / Client IP address of the request</param>
-    /// <param name="url">请求的 URL 地址 / Request URL</param>
-    /// <param name="paramMap">请求参数字典 / Request parameter dictionary</param>
+    /// <param name="httpContext">HTTP 上下文 / HTTP context</param>
+    /// <param name="context">HTTP 处理管线统一请求上下文 / Unified request context for the HTTP handling pipeline</param>
     /// <returns>如果需要继续执行后续处理则返回 <c>true</c>；否则返回 <c>false</c> / <c>true</c> to continue execution; otherwise <c>false</c></returns>
-    bool Run(HttpContext context, string ip, string url, Dictionary<string, object> paramMap);
+    bool Run(HttpContext httpContext, HttpActionContext context);
 }

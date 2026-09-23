@@ -53,13 +53,11 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
         /// <remarks>
         /// Handles the HTTP request for previewing / validating a mail campaign (without persistence). Builds the campaign state and validates it, then runs the preview and returns the estimated hit count; returns a JSON response with the corresponding error code when validation fails or a parameter is invalid (ArgumentException).
         /// </remarks>
-        /// <param name="ip">客户端 IP 地址 / Client IP address</param>
-        /// <param name="url">请求的 URL / Request URL</param>
-        /// <param name="request">预览 / 校验 Campaign 请求对象 / Preview / validation campaign request object</param>
+        /// <param name="context">HTTP 处理管线统一请求载荷 / Unified request payload for the HTTP handling pipeline</param>
         /// <returns>处理结果的 JSON 字符串 / JSON string of the processing result</returns>
-        public override async Task<string> Action(string ip, string url, HttpMessageRequestBase request)
+        public override async Task<string> Action(HttpActionContext context)
         {
-            var previewRequest = (PreviewMailCampaignRequest)request;
+            var previewRequest = (PreviewMailCampaignRequest)context.Request;
             var response = new PreviewMailCampaignResponse();
 
             var state = new MailCampaignState

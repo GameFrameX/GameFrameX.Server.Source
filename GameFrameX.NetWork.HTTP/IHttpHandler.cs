@@ -54,11 +54,9 @@ public interface IHttpHandler
     /// <remarks>
     /// Asynchronously processes HTTP request and returns string result.
     /// </remarks>
-    /// <param name="ip">客户端 IP 地址 / Client IP address</param>
-    /// <param name="url">请求的 URL / Request URL</param>
-    /// <param name="paramMap">请求参数字典，键为参数名，值为参数值 / Request parameter dictionary with parameter names as keys and values as parameter values</param>
+    /// <param name="context">HTTP 处理管线统一请求上下文 / Unified request context for the HTTP handling pipeline</param>
     /// <returns>处理结果的字符串 / String result of the processing</returns>
-    Task<string> Action(string ip, string url, Dictionary<string, object> paramMap);
+    Task<string> Action(HttpActionContext context);
 
 
     /// <summary>
@@ -67,10 +65,7 @@ public interface IHttpHandler
     /// <remarks>
     /// Asynchronously processes HTTP request and returns <see cref="MessageObject"/> result.
     /// </remarks>
-    /// <param name="ip">客户端 IP 地址 / Client IP address</param>
-    /// <param name="url">请求的 URL / Request URL</param>
-    /// <param name="paramMap">请求参数字典，键为参数名，值为参数值 / Request parameter dictionary with parameter names as keys and values as parameter values</param>
-    /// <param name="messageObject">消息对象，包含更多信息 / Message object containing additional information</param>
+    /// <param name="context">HTTP 处理管线统一请求上下文 / Unified request context for the HTTP handling pipeline</param>
     /// <returns>处理结果的 <see cref="MessageObject"/> 对象 / <see cref="MessageObject"/> result of the processing</returns>
-    Task<MessageObject> Action(string ip, string url, Dictionary<string, object> paramMap, MessageObject messageObject);
+    Task<MessageObject> ActionMessageObject(HttpActionContext context);
 }

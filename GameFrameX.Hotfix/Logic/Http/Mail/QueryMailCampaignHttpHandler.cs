@@ -52,13 +52,11 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
         /// <remarks>
         /// Handles the HTTP request for querying mail campaign publish status. When CampaignId is greater than 0, queries a single campaign by id and returns CampaignNotFound when missing; otherwise lists campaigns with AND-combined filters (status, mail type, server, channel, level, creation time) and returns the campaign list with the total count.
         /// </remarks>
-        /// <param name="ip">客户端 IP 地址 / Client IP address</param>
-        /// <param name="url">请求的 URL / Request URL</param>
-        /// <param name="request">查询 Campaign 请求对象 / Query campaign request object</param>
+        /// <param name="context">HTTP 处理管线统一请求载荷 / Unified request payload for the HTTP handling pipeline</param>
         /// <returns>处理结果的 JSON 字符串 / JSON string of the processing result</returns>
-        public override async Task<string> Action(string ip, string url, HttpMessageRequestBase request)
+        public override async Task<string> Action(HttpActionContext context)
         {
-            var queryRequest = (QueryMailCampaignRequest)request;
+            var queryRequest = (QueryMailCampaignRequest)context.Request;
             var response = new QueryMailCampaignResponse { Code = MailCampaignErrorCode.Ok };
 
             if (queryRequest.CampaignId > 0)

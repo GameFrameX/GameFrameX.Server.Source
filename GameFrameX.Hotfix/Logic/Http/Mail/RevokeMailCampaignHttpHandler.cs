@@ -51,13 +51,11 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
         /// <remarks>
         /// Handles the HTTP request for revoking a mail campaign. Invokes the registry revoke to mark the campaign as Revoked and returns the revoked time (B3: granted assets are not rolled back); returns a JSON response with the corresponding error code when the campaign is missing, already revoked, or fails otherwise.
         /// </remarks>
-        /// <param name="ip">客户端 IP 地址 / Client IP address</param>
-        /// <param name="url">请求的 URL / Request URL</param>
-        /// <param name="request">撤回 Campaign 请求对象 / Revoke campaign request object</param>
+        /// <param name="context">HTTP 处理管线统一请求载荷 / Unified request payload for the HTTP handling pipeline</param>
         /// <returns>处理结果的 JSON 字符串 / JSON string of the processing result</returns>
-        public override async Task<string> Action(string ip, string url, HttpMessageRequestBase request)
+        public override async Task<string> Action(HttpActionContext context)
         {
-            var revokeRequest = (RevokeMailCampaignRequest)request;
+            var revokeRequest = (RevokeMailCampaignRequest)context.Request;
             var response = new RevokeMailCampaignResponse { CampaignId = revokeRequest.CampaignId };
 
             var code = MailCampaignRegistry.Revoke(revokeRequest.CampaignId, revokeRequest.Operator, DateTimeOffset.UtcNow.ToUnixTimeSeconds());

@@ -104,7 +104,8 @@ public static class HttpHandler
                 LogHelper.Debug<string>("HTTP RequestParameters {parameters}", JsonHelper.Serialize(paramMap));
             }
 
-            var validation = await TryValidateAndResolveHandlerAsync(context, baseHandler, command, ip, url, paramMap, aopHandlerTypes);
+            var actionContext = new HttpActionContext { Ip = ip, Url = url, Parameters = paramMap, MessageObject = message };
+            var validation = await TryValidateAndResolveHandlerAsync(context, baseHandler, command, actionContext, aopHandlerTypes);
             if (!validation.IsValid)
             {
                 return;
@@ -115,19 +116,20 @@ public static class HttpHandler
             // 执行处理器逻辑
             if (isProtoBuf)
             {
-                await ExecuteProtoBufAsync(context, handler, ip, url, paramMap, message, logHeader);
+                await ExecuteProtoBufAsync(context, handler, actionContext, logHeader);
             }
             else
             {
                 var httpRequestAttr = handler.GetType().GetCustomAttribute<HttpMessageRequestAttribute>();
                 if (httpRequestAttr == null)
                 {
-                    await ExecutePlainJsonAsync(context, handler, ip, url, paramMap, logHeader);
+                    await ExecutePlainJsonAsync(context, handler, actionContext, logHeader);
                 }
                 else
                 {
                     var messageRequest = BuildHttpMessageRequest(httpRequestAttr, paramMap, jsonBody, queryStringParamCount);
-                    await ExecuteJsonMessageRequestAsync(context, handler, ip, url, messageRequest, logHeader);
+                    var typedContext = new HttpActionContext { Ip = ip, Url = url, Parameters = paramMap, Request = messageRequest };
+                    await ExecuteJsonMessageRequestAsync(context, handler, typedContext, logHeader);
                 }
             }
         }
@@ -219,13 +221,13 @@ public static class HttpHandler
     }
 
     // 依次执行 AOP 处理器，任一返回 false 则停止并返回 false（等价于原 return 短路）/ Run AOP handlers in order; return false on the first failure (equivalent to the original short-circuit return).
-    private static bool RunAopHandlers(HttpContext context, string ip, string url, Dictionary<string, object> paramMap, List<IHttpAopHandler> aopHandlerTypes)
+    private static bool RunAopHandlers(HttpContext httpContext, HttpActionContext context, List<IHttpAopHandler> aopHandlerTypes)
     {
         if (aopHandlerTypes is { Count: > 0, })
         {
             foreach (var httpAopHandler in aopHandlerTypes)
             {
-                if (!httpAopHandler.Run(context, ip, url, paramMap))
+                if (!httpAopHandler.Run(httpContext, context))
                 {
                     return false;
                 }
@@ -237,25 +239,25 @@ public static class HttpHandler
 
     // 指令空校验 + 运行态校验 + AOP + 处理器解析 + 签名校验：任一失败即写出对应错误响应并返回 (false, null)，全通过返回 (true, handler)。
     // Validate command + runtime state, run AOP, resolve handler, verify signature: on any failure write the corresponding error response and return (false, null); on full pass return (true, handler).
-    private static async Task<(bool IsValid, BaseHttpHandler Handler)> TryValidateAndResolveHandlerAsync(HttpContext context, Func<string, BaseHttpHandler> baseHandler, string command, string ip, string url, Dictionary<string, object> paramMap, List<IHttpAopHandler> aopHandlerTypes)
+    private static async Task<(bool IsValid, BaseHttpHandler Handler)> TryValidateAndResolveHandlerAsync(HttpContext httpContext, Func<string, BaseHttpHandler> baseHandler, string command, HttpActionContext context, List<IHttpAopHandler> aopHandlerTypes)
     {
         // 检查指令是否有效
         if (command.IsNullOrEmptyOrWhiteSpace())
         {
-            await context.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(GameHttpStatusCode.Undefined, HttpStatusMessage.UndefinedCommand));
+            await httpContext.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(GameHttpStatusCode.Undefined, HttpStatusMessage.UndefinedCommand));
             return (false, null);
         }
 
         if (!GameAppRuntime.IsRunning)
         {
-            await context.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(GameHttpStatusCode.ActionFailed, LocalizationService.GetString(Localization.Keys.NetWorkHttp.ServerStatusError)));
+            await httpContext.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(GameHttpStatusCode.ActionFailed, LocalizationService.GetString(Localization.Keys.NetWorkHttp.ServerStatusError)));
             return (false, null);
         }
 
         #region AOP
 
         // 执行AOP处理器
-        if (!RunAopHandlers(context, ip, url, paramMap, aopHandlerTypes))
+        if (!RunAopHandlers(httpContext, context, aopHandlerTypes))
         {
             return (false, null);
         }
@@ -267,16 +269,16 @@ public static class HttpHandler
         if (handler == null)
         {
             LogHelper.Warning<string>("HTTP CommandHandlerNotFound {command}", LocalizationService.GetString(Localization.Keys.NetWorkHttp.CommandHandlerNotFound, command));
-            await context.Response.WriteAsync(HttpJsonResultData<string>.NotFoundString());
+            await httpContext.Response.WriteAsync(HttpJsonResultData<string>.NotFoundString());
             return (false, null);
         }
 
         // 验证签名
-        var isChecked = handler.CheckSign(paramMap, out var error);
+        var isChecked = handler.CheckSign(context.Parameters, out var error);
         if (isChecked == false)
         {
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await context.Response.WriteAsync(error);
+            httpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await httpContext.Response.WriteAsync(error);
             return (false, null);
         }
 
@@ -285,11 +287,11 @@ public static class HttpHandler
 
     // ProtoBuf 执行：调用处理器 + 调试执行耗时日志 + result 非空时序列化 MessageHttpObject 写出（含编码异常 try/catch 日志）。
     // ProtoBuf execution: invoke handler + debug timing log + when result is non-null serialize MessageHttpObject and write (with encoding-exception try/catch logging).
-    private static async Task ExecuteProtoBufAsync(HttpContext context, BaseHttpHandler handler, string ip, string url, Dictionary<string, object> paramMap, MessageObject message, string logHeader)
+    private static async Task ExecuteProtoBufAsync(HttpContext httpContext, BaseHttpHandler handler, HttpActionContext context, string logHeader)
     {
         var stopwatch = new Stopwatch();
         stopwatch.Start();
-        var result = await handler.Action(ip, url, paramMap, message);
+        var result = await handler.ActionMessageObject(context);
         stopwatch.Stop();
         if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp && GlobalSettings.CurrentSetting.IsDebugHttpResponse)
         {
@@ -305,10 +307,10 @@ public static class HttpHandler
             try
             {
                 ReadOnlyMemory<byte> body = ProtoBufSerializerHelper.Serialize(result);
-                var messageHttpObject = new MessageHttpObject { Id = MessageProtoHelper.GetMessageIdByType(result), UniqueId = message.UniqueId, Body = body.ToArray(), };
+                var messageHttpObject = new MessageHttpObject { Id = MessageProtoHelper.GetMessageIdByType(result), UniqueId = context.MessageObject.UniqueId, Body = body.ToArray(), };
                 var resultResponse = ProtoBufSerializerHelper.Serialize(messageHttpObject);
-                context.Response.ContentLength = resultResponse.Length;
-                await context.Response.BodyWriter.WriteAsync(resultResponse);
+                httpContext.Response.ContentLength = resultResponse.Length;
+                await httpContext.Response.BodyWriter.WriteAsync(resultResponse);
             }
             catch (Exception e)
             {
@@ -332,16 +334,16 @@ public static class HttpHandler
     }
 
     // 标注 HttpMessageRequestAttribute 的 JSON 执行：Validator 校验，通过则执行 + 日志 + 写出，否则写出校验错误 / JSON execution for handlers annotated with HttpMessageRequestAttribute: validate, on pass execute + log + write, otherwise write validation errors.
-    private static async Task ExecuteJsonMessageRequestAsync(HttpContext context, BaseHttpHandler handler, string ip, string url, HttpMessageRequestBase httpMessageRequestBase, string logHeader)
+    private static async Task ExecuteJsonMessageRequestAsync(HttpContext httpContext, BaseHttpHandler handler, HttpActionContext context, string logHeader)
     {
         var validationResults = new List<ValidationResult>();
-        var validationContext = new ValidationContext(httpMessageRequestBase, null, null);
-        var isValid = Validator.TryValidateObject(httpMessageRequestBase, validationContext, validationResults, true);
+        var validationContext = new ValidationContext(context.Request, null, null);
+        var isValid = Validator.TryValidateObject(context.Request, validationContext, validationResults, true);
         if (isValid)
         {
             var stopwatch = new Stopwatch();
             stopwatch.Start();
-            var result = await handler.Action(ip, url, httpMessageRequestBase);
+            var result = await handler.Action(context);
             stopwatch.Stop();
             if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp && GlobalSettings.CurrentSetting.IsDebugHttpResponse)
             {
@@ -352,27 +354,27 @@ public static class HttpHandler
                 LogHelper.Debug("HTTP JSON ExecutionTime {logHeader} {elapsedMilliseconds}", logHeader, stopwatch.ElapsedMilliseconds);
             }
 
-            await context.Response.WriteAsync(result);
+            await httpContext.Response.WriteAsync(result);
         }
         else
         {
             if (validationResults.Count > 0)
             {
-                await context.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(400, validationResults[0].ErrorMessage));
+                await httpContext.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(400, validationResults[0].ErrorMessage));
             }
             else
             {
-                await context.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(400, LocalizationService.GetString(Localization.Keys.NetWorkHttp.DataVerificationFailed)));
+                await httpContext.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(400, LocalizationService.GetString(Localization.Keys.NetWorkHttp.DataVerificationFailed)));
             }
         }
     }
 
     // 未标注特性的 JSON 执行：调用处理器 + 调试执行耗时日志 + 写出 / Plain JSON execution (no attribute): invoke handler + debug timing log + write.
-    private static async Task ExecutePlainJsonAsync(HttpContext context, BaseHttpHandler handler, string ip, string url, Dictionary<string, object> paramMap, string logHeader)
+    private static async Task ExecutePlainJsonAsync(HttpContext httpContext, BaseHttpHandler handler, HttpActionContext context, string logHeader)
     {
         var stopwatch = new Stopwatch();
         stopwatch.Start();
-        var result = await handler.Action(ip, url, paramMap);
+        var result = await handler.Action(context);
         stopwatch.Stop();
         if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp && GlobalSettings.CurrentSetting.IsDebugHttpResponse)
         {
@@ -383,7 +385,7 @@ public static class HttpHandler
             LogHelper.Debug("HTTP JSON ExecutionTime {logHeader} {elapsedMilliseconds}", logHeader, stopwatch.ElapsedMilliseconds);
         }
 
-        await context.Response.WriteAsync(result);
+        await httpContext.Response.WriteAsync(result);
     }
 
     private static long GetEffectiveRequestBodyLimit(long contentTypeLimit)

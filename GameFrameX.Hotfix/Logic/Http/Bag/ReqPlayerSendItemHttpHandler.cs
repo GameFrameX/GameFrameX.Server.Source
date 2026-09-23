@@ -47,9 +47,9 @@ namespace GameFrameX.Hotfix.Logic.Http.Bag;
 [Description("请求给玩家发送道具")]
 public sealed class ReqPlayerSendItemHttpHandler : BaseHttpHandler
 {
-    public override async Task<string> Action(string ip, string url, HttpMessageRequestBase request)
+    public override async Task<string> Action(HttpActionContext context)
     {
-        var sendItemRequest = (ReqPlayerSendItemRequest)request;
+        var sendItemRequest = (ReqPlayerSendItemRequest)context.Request;
         var playerSession = SessionManager.GetByRoleId(sendItemRequest.RoleId);
         Dictionary<int, long> itemDic = new Dictionary<int, long>();
 

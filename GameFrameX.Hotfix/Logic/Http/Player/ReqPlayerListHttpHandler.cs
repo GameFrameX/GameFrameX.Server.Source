@@ -42,21 +42,23 @@ namespace GameFrameX.Hotfix.Logic.Http.Player;
 [Description("获取角色列表,仅限前端调用")]
 public sealed class ReqPlayerListHttpHandler : BaseHttpHandler
 {
-    public override async Task<MessageObject> Action(string ip, string url, Dictionary<string, object> paramMap, MessageObject messageObject)
+    public override async Task<MessageObject> ActionMessageObject(HttpActionContext context)
     {
-        var request = (ReqPlayerList)messageObject;
+        var messageObject = context.MessageObject;
+        var reqPlayerList = (ReqPlayerList)messageObject;
+
 
         var respPlayerList = new RespPlayerList
         {
-            UniqueId = request.UniqueId,
+            UniqueId = reqPlayerList.UniqueId,
             PlayerList = new List<PlayerInfo>(),
         };
-        if (request.Id == default)
+        if (reqPlayerList.Id == default)
         {
             return respPlayerList;
         }
 
-        var playerList = await GetPlayerList(request);
+        var playerList = await GetPlayerList(reqPlayerList);
 
         if (playerList != null)
         {

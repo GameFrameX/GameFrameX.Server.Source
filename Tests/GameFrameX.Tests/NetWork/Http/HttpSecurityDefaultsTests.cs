@@ -167,7 +167,7 @@ public class HttpSecurityDefaultsTests
             _onAction = onAction;
         }
 
-        public override Task<string> Action(string ip, string url, Dictionary<string, object> paramMap)
+        public override Task<string> Action(HttpActionContext context)
         {
             _onAction?.Invoke();
             return Task.FromResult("{}");
