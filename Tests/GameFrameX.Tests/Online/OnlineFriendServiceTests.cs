@@ -736,7 +736,19 @@ namespace GameFrameX.Tests.Online
                 });
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// 记录关键字与条数上限后，返回展示名含关键字的登记条目并截取至条数上限。
+            /// </summary>
+            /// <remarks>
+            /// Records the keyword and limit, then returns the registered entries whose
+            /// display name contains the keyword, truncated to the limit.
+            /// </remarks>
+            /// <param name="tenantId">租户标识 / Tenant id</param>
+            /// <param name="appId">App 标识 / App id</param>
+            /// <param name="keyword">名称关键字 / The name keyword</param>
+            /// <param name="limit">返回条数上限 / The maximum number of entries</param>
+            /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+            /// <returns>名称含关键字的目录条目（至多 limit 条）/ Directory entries whose name contains the keyword (at most limit)</returns>
             public Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> SearchByNameAsync(long tenantId, long appId, string keyword, int limit, CancellationToken cancellationToken = default)
             {
                 LastKeyword = keyword;
@@ -758,7 +770,18 @@ namespace GameFrameX.Tests.Online
                 return Task.FromResult<IReadOnlyList<OnlinePlayerDirectoryEntry>>(matched);
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// 返回登记条目中玩家标识命中给定集合的部分，不存在的标识不出现在结果中。
+            /// </summary>
+            /// <remarks>
+            /// Returns the registered entries whose player id appears in the given set;
+            /// unknown ids are simply absent from the result.
+            /// </remarks>
+            /// <param name="tenantId">租户标识 / Tenant id</param>
+            /// <param name="appId">App 标识 / App id</param>
+            /// <param name="playerIds">玩家标识集合 / The player ids to resolve</param>
+            /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+            /// <returns>命中标识的目录条目 / The matched directory entries</returns>
             public Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> FindAsync(long tenantId, long appId, IReadOnlyList<long> playerIds, CancellationToken cancellationToken = default)
             {
                 var matched = new List<OnlinePlayerDirectoryEntry>();
@@ -795,7 +818,18 @@ namespace GameFrameX.Tests.Online
                 _online.Add(playerId);
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// 仅判定玩家是否在在线白名单集合中（可用 <see cref="SetOnline"/> 在用例中途改写）。
+            /// </summary>
+            /// <remarks>
+            /// Only checks whether the player is in the online whitelist set
+            /// (mutable mid-test via <see cref="SetOnline"/>).
+            /// </remarks>
+            /// <param name="tenantId">租户标识 / Tenant id</param>
+            /// <param name="appId">App 标识 / App id</param>
+            /// <param name="playerId">玩家标识 / Player id</param>
+            /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+            /// <returns>在白名单中返回 true / True when present in the whitelist</returns>
             public Task<bool> IsOnlineAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
             {
                 return Task.FromResult(_online.Contains(playerId));

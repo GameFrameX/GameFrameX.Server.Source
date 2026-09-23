@@ -51,7 +51,15 @@ public class InProcessRoleRouterTests
         /// <summary>已收到的信封 / The received envelopes</summary>
         public List<MessageEnvelope> ReceivedEnvelopes { get; } = new List<MessageEnvelope>();
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 记录信封到已接收列表并立即返回已完成的任务。
+        /// </summary>
+        /// <remarks>
+        /// Records the envelope into the received list and returns an already completed task.
+        /// </remarks>
+        /// <param name="envelope">要记录的路由信封 / The routing envelope to record</param>
+        /// <param name="cancellationToken">本实现忽略的取消令牌 / The cancellation token ignored by this implementation</param>
+        /// <returns>已完成的任务 / A completed task</returns>
         public Task DispatchAsync(MessageEnvelope envelope, CancellationToken cancellationToken = default)
         {
             ReceivedEnvelopes.Add(envelope);
@@ -67,7 +75,15 @@ public class InProcessRoleRouterTests
         /// <summary>已收到的信封 / The received envelopes</summary>
         public List<MessageEnvelope> ReceivedEnvelopes { get; } = new List<MessageEnvelope>();
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 记录信封到已接收列表并固定返回 RemoteForwarded。
+        /// </summary>
+        /// <remarks>
+        /// Records the envelope into the received list and always returns <see cref="RoleRouteDelivery.RemoteForwarded"/>.
+        /// </remarks>
+        /// <param name="envelope">要记录的路由信封 / The routing envelope to record</param>
+        /// <param name="cancellationToken">本实现忽略的取消令牌 / The cancellation token ignored by this implementation</param>
+        /// <returns>固定为 <see cref="RoleRouteDelivery.RemoteForwarded"/> 的投递分支 / Always <see cref="RoleRouteDelivery.RemoteForwarded"/></returns>
         public Task<RoleRouteDelivery> ForwardAsync(MessageEnvelope envelope, CancellationToken cancellationToken = default)
         {
             ReceivedEnvelopes.Add(envelope);

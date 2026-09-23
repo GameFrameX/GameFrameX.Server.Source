@@ -86,7 +86,19 @@ namespace GameFrameX.Tests.Online
             get;
         } = new List<(long PlayerId, long Score)>();
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 递增重置尝试计数；注入窗口内的尝试先经内部存储落一笔竞态成绩再执行 CAS 清空（快照已过期、清空必被拒），窗口外直接转发内部存储。
+        /// </summary>
+        /// <remarks>
+        /// Increments the reset attempt counter; an attempt inside the injection window first
+        /// writes a late score through the inner store and only then runs the CAS reset
+        /// (which must be rejected because the caller's snapshot is already stale), while
+        /// attempts outside the window forward to the inner store directly.
+        /// </remarks>
+        /// <param name="leaderboard">目标榜单定义 / The target leaderboard definition</param>
+        /// <param name="expectedEntries">调用方持有的全序条目快照 / The caller's ordered entry snapshot</param>
+        /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
+        /// <returns>内部存储的 CAS 清空结果（注入后预期为 false）/ The inner store's CAS reset result (expected false after an injection)</returns>
         public Task<bool> TryResetAsync(OnlineLeaderboard leaderboard, IReadOnlyList<OnlineLeaderboardEntry> expectedEntries, CancellationToken cancellationToken = default)
         {
             ResetAttempts++;
@@ -98,31 +110,77 @@ namespace GameFrameX.Tests.Online
             return InterleaveThenResetAsync(leaderboard, expectedEntries, ResetAttempts - 1, cancellationToken);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 直接转发内部存储创建榜单。
+        /// </summary>
+        /// <remarks>
+        /// Forwards directly to the inner store to create the leaderboard.
+        /// </remarks>
+        /// <param name="leaderboard">榜单定义 / The leaderboard definition</param>
+        /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
+        /// <returns>内部存储返回的创建结果（同名已存在时为 null）/ The creation result from the inner store (null when a same-name leaderboard already exists)</returns>
         public Task<OnlineLeaderboard> CreateAsync(OnlineLeaderboard leaderboard, CancellationToken cancellationToken = default)
         {
             return _inner.CreateAsync(leaderboard, cancellationToken);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 直接转发内部存储按作用域查找榜单定义。
+        /// </summary>
+        /// <remarks>
+        /// Forwards directly to the inner store to find the leaderboard definition by scope.
+        /// </remarks>
+        /// <param name="tenantId">租户标识 / Tenant id</param>
+        /// <param name="appId">App 标识 / App id</param>
+        /// <param name="leaderboardId">榜单标识 / Leaderboard id</param>
+        /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
+        /// <returns>内部存储返回的榜单副本（不存在或跨作用域时为 null）/ The leaderboard copy from the inner store (null when missing or cross-scope)</returns>
         public Task<OnlineLeaderboard> FindAsync(long tenantId, long appId, string leaderboardId, CancellationToken cancellationToken = default)
         {
             return _inner.FindAsync(tenantId, appId, leaderboardId, cancellationToken);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 直接转发内部存储查找单玩家条目。
+        /// </summary>
+        /// <remarks>
+        /// Forwards directly to the inner store to find a single player's entry.
+        /// </remarks>
+        /// <param name="tenantId">租户标识 / Tenant id</param>
+        /// <param name="appId">App 标识 / App id</param>
+        /// <param name="leaderboardId">榜单标识 / Leaderboard id</param>
+        /// <param name="playerId">玩家标识 / Player id</param>
+        /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
+        /// <returns>内部存储返回的条目副本（未上榜时为 null）/ The entry copy from the inner store (null when the player is unranked)</returns>
         public Task<OnlineLeaderboardEntry> FindEntryAsync(long tenantId, long appId, string leaderboardId, long playerId, CancellationToken cancellationToken = default)
         {
             return _inner.FindEntryAsync(tenantId, appId, leaderboardId, playerId, cancellationToken);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 直接转发内部存储原子应用一笔分数提交。
+        /// </summary>
+        /// <remarks>
+        /// Forwards directly to the inner store to apply a score submission atomically.
+        /// </remarks>
+        /// <param name="leaderboard">目标榜单定义 / The target leaderboard definition</param>
+        /// <param name="submission">分数提交 / The score submission</param>
+        /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
+        /// <returns>内部存储返回的写入结果 / The write result from the inner store</returns>
         public Task<OnlineLeaderboardApplyResult> ApplySubmissionAsync(OnlineLeaderboard leaderboard, OnlineLeaderboardScoreSubmission submission, CancellationToken cancellationToken = default)
         {
             return _inner.ApplySubmissionAsync(leaderboard, submission, cancellationToken);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 直接转发内部存储列出榜单全序条目。
+        /// </summary>
+        /// <remarks>
+        /// Forwards directly to the inner store to list the leaderboard's fully ordered entries.
+        /// </remarks>
+        /// <param name="leaderboard">目标榜单定义 / The target leaderboard definition</param>
+        /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
+        /// <returns>内部存储返回的全序条目副本 / The ordered entry copies from the inner store</returns>
         public Task<List<OnlineLeaderboardEntry>> ListOrderedEntriesAsync(OnlineLeaderboard leaderboard, CancellationToken cancellationToken = default)
         {
             return _inner.ListOrderedEntriesAsync(leaderboard, cancellationToken);

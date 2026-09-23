@@ -53,7 +53,12 @@ public static class EquivalenceTestMessages
         /// <summary>玩家 Id / The player id</summary>
         public long PlayerId { get; set; }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 重置玩家 Id 为默认值。
+        /// </summary>
+        /// <remarks>
+        /// Resets the player id to its default value.
+        /// </remarks>
         public override void Clear()
         {
             PlayerId = 0;
@@ -71,7 +76,12 @@ public static class EquivalenceTestMessages
         /// <summary>是否已接受 / Whether the session was accepted</summary>
         public bool Accepted { get; set; }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 重置玩家 Id 与接受标志为默认值。
+        /// </summary>
+        /// <remarks>
+        /// Resets the player id and the accepted flag to their default values.
+        /// </remarks>
         public override void Clear()
         {
             PlayerId = 0;
@@ -87,7 +97,12 @@ public static class EquivalenceTestMessages
         /// <summary>玩家 Id / The player id</summary>
         public long PlayerId { get; set; }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 重置玩家 Id 为默认值。
+        /// </summary>
+        /// <remarks>
+        /// Resets the player id to its default value.
+        /// </remarks>
         public override void Clear()
         {
             PlayerId = 0;
@@ -105,7 +120,12 @@ public static class EquivalenceTestMessages
         /// <summary>好友 Id 列表（确定性构造）/ The friend id list (deterministically built)</summary>
         public long[] FriendPlayerIds { get; set; }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 重置玩家 Id 为默认值，并清空好友 Id 列表。
+        /// </summary>
+        /// <remarks>
+        /// Resets the player id to its default value and clears the friend id list.
+        /// </remarks>
         public override void Clear()
         {
             PlayerId = 0;
@@ -121,7 +141,12 @@ public static class EquivalenceTestMessages
         /// <summary>玩家 Id / The player id</summary>
         public long PlayerId { get; set; }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 重置玩家 Id 为默认值。
+        /// </summary>
+        /// <remarks>
+        /// Resets the player id to its default value.
+        /// </remarks>
         public override void Clear()
         {
             PlayerId = 0;
@@ -139,7 +164,12 @@ public static class EquivalenceTestMessages
         /// <summary>匹配票据（由玩家 Id 确定性生成）/ The match ticket (deterministically derived from the player id)</summary>
         public string TicketId { get; set; }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 重置玩家 Id 为默认值，并清空匹配票据。
+        /// </summary>
+        /// <remarks>
+        /// Resets the player id to its default value and clears the match ticket.
+        /// </remarks>
         public override void Clear()
         {
             PlayerId = 0;
@@ -158,7 +188,12 @@ public static class EquivalenceTestMessages
         /// <summary>胜者玩家 Id / The winner player id</summary>
         public long WinnerPlayerId { get; set; }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 重置对局 Id 与胜者玩家 Id 为默认值。
+        /// </summary>
+        /// <remarks>
+        /// Resets the match id and the winner player id to their default values.
+        /// </remarks>
         public override void Clear()
         {
             MatchId = 0;
@@ -177,7 +212,12 @@ public static class EquivalenceTestMessages
         /// <summary>已落地的胜者玩家 Id / The applied winner player id</summary>
         public long WinnerPlayerId { get; set; }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 重置对局 Id 与胜者玩家 Id 为默认值。
+        /// </summary>
+        /// <remarks>
+        /// Resets the match id and the winner player id to their default values.
+        /// </remarks>
         public override void Clear()
         {
             MatchId = 0;

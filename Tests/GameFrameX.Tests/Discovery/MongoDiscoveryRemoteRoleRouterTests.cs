@@ -86,7 +86,12 @@ public sealed class MongoDiscoveryRemoteRoleRouterTests
         [ProtoMember(1)]
         public long PlayerId { get; set; }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 清除测试载荷内容：重置 <see cref="PlayerId"/> 为 0。
+        /// </summary>
+        /// <remarks>
+        /// Clears the test payload content by resetting <see cref="PlayerId"/> to 0.
+        /// </remarks>
         public override void Clear()
         {
             PlayerId = 0;

@@ -447,7 +447,19 @@ namespace GameFrameX.Tests.Online
                 });
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// 回放按 (租户, App, 区服, 玩家) 四键登记的命中记录，未登记的作用域返回空集合。
+            /// </summary>
+            /// <remarks>
+            /// Replays the records registered under the (tenant, app, server, player) four-part key;
+            /// unregistered scopes yield an empty list.
+            /// </remarks>
+            /// <param name="tenantId">租户标识 / Tenant id</param>
+            /// <param name="appId">App 标识 / App id</param>
+            /// <param name="serverId">区服标识 / Server id</param>
+            /// <param name="playerId">玩家标识 / Player id</param>
+            /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+            /// <returns>该作用域登记的命中记录 / The hit records registered for the scope</returns>
             public Task<IReadOnlyList<OnlineConfigHitRecord>> ListHitsAsync(long tenantId, long appId, long serverId, long playerId, CancellationToken cancellationToken = default)
             {
                 var matched = new List<OnlineConfigHitRecord>();

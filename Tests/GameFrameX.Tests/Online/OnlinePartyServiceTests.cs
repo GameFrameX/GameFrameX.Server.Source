@@ -366,7 +366,17 @@ namespace GameFrameX.Tests.Online
                 _online = new HashSet<long>(onlinePlayerIds);
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// 仅判定玩家是否在构造时给定的在线白名单中。
+            /// </summary>
+            /// <remarks>
+            /// Only checks whether the player is in the online whitelist supplied at construction.
+            /// </remarks>
+            /// <param name="tenantId">租户标识 / Tenant id</param>
+            /// <param name="appId">App 标识 / App id</param>
+            /// <param name="playerId">玩家标识 / Player id</param>
+            /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+            /// <returns>在白名单中返回 true / True when present in the whitelist</returns>
             public Task<bool> IsOnlineAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
             {
                 return Task.FromResult(_online.Contains(playerId));

@@ -78,7 +78,17 @@ public sealed class TopologyWorld : IDisposable
             _mailboxes = mailboxes;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 按信封目标 Role 将信封投递到本 cell 中对应的邮箱。
+        /// </summary>
+        /// <remarks>
+        /// Dispatches the envelope to the mailbox registered for its target role within the cell.
+        /// </remarks>
+        /// <param name="envelope">路由信封（目标 Role 在本 cell 中必有邮箱）/ The routing envelope (its target role must have a mailbox in this cell)</param>
+        /// <param name="cancellationToken">取消操作的令牌 / The cancellation token</param>
+        /// <returns>邮箱投递任务 / The mailbox delivery task</returns>
+        /// <exception cref="ArgumentNullException">当 <paramref name="envelope"/> 为 null 时抛出 / Thrown when <paramref name="envelope"/> is null</exception>
+        /// <exception cref="RouteNotFoundException">当本 cell 未承载目标 Role 的邮箱时抛出 / Thrown when this cell hosts no mailbox for the target role</exception>
         public Task DispatchAsync(MessageEnvelope envelope, CancellationToken cancellationToken = default)
         {
             if (envelope == null)

@@ -1009,7 +1009,20 @@ namespace GameFrameX.Tests.Online
                 _members = new HashSet<long>(memberPlayerIds);
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// 仅判定玩家是否在构造时给定的成员白名单中，忽略频道类型与绑定主体。
+            /// </summary>
+            /// <remarks>
+            /// Only checks whether the player is in the member whitelist supplied at
+            /// construction, ignoring the channel kind and bound id.
+            /// </remarks>
+            /// <param name="tenantId">租户标识 / Tenant id</param>
+            /// <param name="appId">App 标识 / App id</param>
+            /// <param name="kind">频道类型 / The channel kind</param>
+            /// <param name="boundId">绑定主体标识 / The bound id</param>
+            /// <param name="playerId">待判定的玩家 / The player to check</param>
+            /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+            /// <returns>在白名单中返回 true / True when present in the whitelist</returns>
             public Task<bool> IsChannelMemberAsync(long tenantId, long appId, OnlineChatChannelKind kind, string boundId, long playerId, CancellationToken cancellationToken = default)
             {
                 return Task.FromResult(_members.Contains(playerId));
@@ -1033,7 +1046,15 @@ namespace GameFrameX.Tests.Online
                 _reason = reason;
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// 一律返回以构造时给定理由的拒绝裁决。
+            /// </summary>
+            /// <remarks>
+            /// Always returns a reject verdict carrying the reason supplied at construction.
+            /// </remarks>
+            /// <param name="message">待发送消息 / The message to moderate</param>
+            /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+            /// <returns>恒为拒绝裁决 / Always a reject verdict</returns>
             public Task<OnlineChatModerationVerdict> CheckAsync(OnlineChatMessage message, CancellationToken cancellationToken = default)
             {
                 return Task.FromResult(OnlineChatModerationVerdict.Reject(_reason));
@@ -1045,7 +1066,16 @@ namespace GameFrameX.Tests.Online
         /// </summary>
         private sealed class ThrowingModerationHook : IOnlineChatModerationHook
         {
-            /// <inheritdoc />
+            /// <summary>
+            /// 一律抛出 <see cref="InvalidOperationException"/>，模拟审核服务不可用。
+            /// </summary>
+            /// <remarks>
+            /// Always throws <see cref="InvalidOperationException"/> to simulate an unavailable moderation service.
+            /// </remarks>
+            /// <param name="message">待发送消息 / The message to moderate</param>
+            /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+            /// <returns>此桩恒抛异常，不会正常返回 / This stub always throws and never returns normally</returns>
+            /// <exception cref="InvalidOperationException">无条件抛出，模拟审核服务不可用 / Thrown unconditionally to simulate an unavailable moderation service</exception>
             public Task<OnlineChatModerationVerdict> CheckAsync(OnlineChatMessage message, CancellationToken cancellationToken = default)
             {
                 throw new InvalidOperationException("审核服务不可用");

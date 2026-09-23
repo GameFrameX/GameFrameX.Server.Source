@@ -66,7 +66,12 @@ public class PlayerRouteWiringTests
         [ProtoMember(2)]
         public string Reason { get; set; }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 清除测试消息内容：重置 <see cref="PlayerId"/> 为 0、<see cref="Reason"/> 为 null。
+        /// </summary>
+        /// <remarks>
+        /// Clears the test message content by resetting <see cref="PlayerId"/> to 0 and <see cref="Reason"/> to null.
+        /// </remarks>
         public override void Clear()
         {
             PlayerId = 0;
@@ -244,7 +249,15 @@ public class PlayerRouteWiringTests
             _routeInfo = routeInfo;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 忽略玩家 Id，返回构造时固定的路由信息，模拟发现层已装配的 Mongo 解析器。
+        /// </summary>
+        /// <remarks>
+        /// Ignores the player id and returns the fixed route info supplied at construction,
+        /// simulating the discovery-wired Mongo resolver.
+        /// </remarks>
+        /// <param name="playerId">玩家 ID / The player id</param>
+        /// <returns>构造时固定的路由信息 / The fixed route info supplied at construction</returns>
         public Task<GameFrameX.NetWork.RemoteMessaging.Routing.PlayerRouteInfo> ResolveAsync(long playerId)
         {
             return Task.FromResult(_routeInfo);
@@ -258,7 +271,15 @@ public class PlayerRouteWiringTests
     {
         public List<MessageEnvelope> Received { get; } = new List<MessageEnvelope>();
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 将信封记录到 <see cref="Received"/> 列表后立即完成，供断言挂接语义。
+        /// </summary>
+        /// <remarks>
+        /// Records the envelope into the <see cref="Received"/> list and completes
+        /// immediately for attachment-semantics assertions.
+        /// </remarks>
+        /// <param name="envelope">路由信封 / The routing envelope</param>
+        /// <param name="cancellationToken">取消操作的令牌 / The cancellation token</param>
         public Task DispatchAsync(MessageEnvelope envelope, CancellationToken cancellationToken = default)
         {
             Received.Add(envelope);
@@ -273,7 +294,16 @@ public class PlayerRouteWiringTests
     {
         public List<MessageEnvelope> Forwarded { get; } = new List<MessageEnvelope>();
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 将信封记录到 <see cref="Forwarded"/> 列表并恒返回 <see cref="RoleRouteDelivery.RemoteForwarded"/>，不执行真实转发。
+        /// </summary>
+        /// <remarks>
+        /// Records the envelope into the <see cref="Forwarded"/> list and always returns
+        /// <see cref="RoleRouteDelivery.RemoteForwarded"/> without performing any real forwarding.
+        /// </remarks>
+        /// <param name="envelope">路由信封 / The routing envelope</param>
+        /// <param name="cancellationToken">取消操作的令牌 / The cancellation token</param>
+        /// <returns>恒为 <see cref="RoleRouteDelivery.RemoteForwarded"/> / Always <see cref="RoleRouteDelivery.RemoteForwarded"/></returns>
         public Task<RoleRouteDelivery> ForwardAsync(MessageEnvelope envelope, CancellationToken cancellationToken = default)
         {
             Forwarded.Add(envelope);
@@ -290,13 +320,29 @@ public class PlayerRouteWiringTests
 
         public List<DeliveryRecord> Delivered { get; } = new List<DeliveryRecord>();
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 检查玩家 Id 是否包含于预置的 <see cref="OnlinePlayerIds"/> 在线集合。
+        /// </summary>
+        /// <remarks>
+        /// Checks whether the player id is contained in the preset <see cref="OnlinePlayerIds"/> online set.
+        /// </remarks>
+        /// <param name="playerId">玩家 ID / The player id</param>
+        /// <returns>是否在预置在线集合中 / Whether present in the preset online set</returns>
         public bool IsPlayerOnline(long playerId)
         {
             return OnlinePlayerIds.Contains(playerId);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 将一次投递记录到 <see cref="Delivered"/> 列表后恒返回成功，不发送真实网络消息。
+        /// </summary>
+        /// <remarks>
+        /// Records one delivery into the <see cref="Delivered"/> list and always reports
+        /// success without sending any real network message.
+        /// </remarks>
+        /// <param name="playerId">玩家 ID / The player id</param>
+        /// <param name="message">内层消息对象 / The inner message object</param>
+        /// <returns>恒为 true / Always true</returns>
         public Task<bool> SendToLocalPlayerAsync(long playerId, MessageObject message)
         {
             Delivered.Add(new DeliveryRecord(playerId, message));
