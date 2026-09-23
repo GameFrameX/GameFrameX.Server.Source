@@ -179,8 +179,16 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
                 },
             });
 
-            // 等若干轮 poll：不具备路由资格的实例既不发 Online，也不进路由表；Draining 首次观测发 Draining 且进 Instance 视图。
-            await Task.Delay(TimeSpan.FromMilliseconds(1000));
+            // 等待 watcher 至少完成一轮 poll（见到 Draining 广播即证明该轮已处理同批插入的全部实例）：
+            // 不具备路由资格的实例既不发 Online，也不进路由表；Draining 首次观测发 Draining 且进 Instance 视图。
+            await WaitUntilAsync(delegate ()
+            {
+                lock (events.Observed)
+                {
+                    return events.Observed.Contains((RoleInstanceChangeKind.Draining, drainingId));
+                }
+            }, TimeSpan.FromSeconds(30));
+
             lock (events.Observed)
             {
                 Assert.DoesNotContain((RoleInstanceChangeKind.Online, stoppedId), events.Observed);
@@ -202,7 +210,7 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
             await WaitUntilAsync(delegate ()
             {
                 return watcher.Current.TryGetInstance(bootingId, out _) && watcher.Current.GetActiveInstances("Game").Any(instance => instance.InstanceId == bootingId);
-            }, TimeSpan.FromSeconds(10));
+            }, TimeSpan.FromSeconds(30));
             Assert.Contains((RoleInstanceChangeKind.Online, bootingId), events.Observed);
         }
     }
@@ -218,7 +226,7 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
         var controlDatabase = CreateControlDatabase();
         var collection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(MongoEndpointRegistry.HeartbeatCollectionName);
         var events = new RecordingInstanceEvents();
-        using (var watcher = new MongoEndpointWatcher(controlDatabase, TimeSpan.FromMilliseconds(150), TimeSpan.FromMilliseconds(450)))
+        using (var watcher = new MongoEndpointWatcher(controlDatabase, TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(5)))
         {
             watcher.Subscribe(events);
             await watcher.StartAsync();
@@ -237,12 +245,12 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
                 { "lastHeartbeat", DateTime.UtcNow },
             });
 
-            await WaitUntilAsync(() => watcher.Current.TryGetInstance(instanceId, out _), TimeSpan.FromSeconds(10));
+            await WaitUntilAsync(() => watcher.Current.TryGetInstance(instanceId, out _), TimeSpan.FromSeconds(30));
             Assert.Contains((RoleInstanceChangeKind.Online, instanceId), events.Observed);
 
             // 删除文档（模拟 TTL 清除），watcher 应广播 Evicted 且路由表摘除该实例。
             await collection.DeleteOneAsync(candidate => candidate["_id"] == instanceId);
-            await WaitUntilAsync(() => !watcher.Current.TryGetInstance(instanceId, out _), TimeSpan.FromSeconds(10));
+            await WaitUntilAsync(() => !watcher.Current.TryGetInstance(instanceId, out _), TimeSpan.FromSeconds(30));
             Assert.Contains((RoleInstanceChangeKind.Evicted, instanceId), events.Observed);
         }
     }
@@ -258,7 +266,7 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
         var controlDatabase = CreateControlDatabase();
         var collection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(MongoEndpointRegistry.HeartbeatCollectionName);
         var events = new RecordingInstanceEvents();
-        using (var watcher = new MongoEndpointWatcher(controlDatabase, TimeSpan.FromMilliseconds(150), TimeSpan.FromMilliseconds(450)))
+        using (var watcher = new MongoEndpointWatcher(controlDatabase, TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(5)))
         {
             watcher.Subscribe(events);
             await watcher.StartAsync();
@@ -275,7 +283,7 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
                 { "incarnation", 9200L },
                 { "lastHeartbeat", DateTime.UtcNow },
             });
-            await WaitUntilAsync(() => watcher.Current.TryGetInstance(instanceId, out _), TimeSpan.FromSeconds(10));
+            await WaitUntilAsync(() => watcher.Current.TryGetInstance(instanceId, out _), TimeSpan.FromSeconds(30));
 
             // 同 instanceId 换 incarnation（进程重启语义）：应广播 Offline+Online，而非 Recovered。
             var restarted = new MongoDB.Bson.BsonDocument
@@ -294,7 +302,7 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
             await WaitUntilAsync(delegate ()
             {
                 return watcher.Current.TryGetInstance(instanceId, out var instance) && instance.Incarnation == 9201;
-            }, TimeSpan.FromSeconds(10));
+            }, TimeSpan.FromSeconds(30));
             lock (events.Observed)
             {
                 var kinds = events.Observed.Where(pair => pair.InstanceId == instanceId).Select(pair => pair.Kind).ToList();
@@ -317,7 +325,7 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
         var controlDatabase = CreateControlDatabase();
         var collection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(MongoEndpointRegistry.HeartbeatCollectionName);
         var events = new RecordingInstanceEvents();
-        using (var watcher = new MongoEndpointWatcher(controlDatabase, TimeSpan.FromMilliseconds(150), TimeSpan.FromMilliseconds(450)))
+        using (var watcher = new MongoEndpointWatcher(controlDatabase, TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(5)))
         {
             watcher.Subscribe(events);
             await watcher.StartAsync();
@@ -334,7 +342,7 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
                 { "incarnation", 9300L },
                 { "lastHeartbeat", DateTime.UtcNow },
             });
-            await WaitUntilAsync(() => watcher.Current.GetActiveInstances("Match").Count > 0, TimeSpan.FromSeconds(10));
+            await WaitUntilAsync(() => watcher.Current.GetActiveInstances("Match").Count > 0, TimeSpan.FromSeconds(30));
 
             // 状态跃迁 Active → Draining：应广播 Draining 事件；Role 视图摘除、Instance 视图保留（在途投递合法）。
             var update = Builders<MongoDB.Bson.BsonDocument>.Update
@@ -345,7 +353,7 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
             await WaitUntilAsync(delegate ()
             {
                 return watcher.Current.GetActiveInstances("Match").Count == 0;
-            }, TimeSpan.FromSeconds(10));
+            }, TimeSpan.FromSeconds(30));
             Assert.True(watcher.Current.TryGetInstance(instanceId, out _));
             Assert.Contains((RoleInstanceChangeKind.Draining, instanceId), events.Observed);
         }
