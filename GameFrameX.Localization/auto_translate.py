@@ -417,10 +417,6 @@ def generate_translation(key, context, info):
             'Prometheus metrics endpoint enabled inline.',
             'Prometheus指标端点已内联启用。'
         ),
-        'StartUp.PrometheusMetricsServiceOnStandalonePort': (
-            'Prometheus metrics service running on standalone port: {0}.',
-            'Prometheus指标服务运行在独立端口：{0}。'
-        ),
         'StartUp.StartingServerWithConfiguration': (
             'Starting server with configuration: {0}.',
             '使用配置启动服务器：{0}。'

@@ -478,9 +478,6 @@
     <data name="StartUp.PrometheusMetricsEndpointEnabled" xml:space="preserve">
     <value>Independent Prometheus metrics endpoint enabled: http://{0}:{1}/metrics</value>
   </data>
-    <data name="StartUp.MetricsHealthCheckEndpointEnabled" xml:space="preserve">
-    <value>Independent Metrics health check endpoint: http://{0}:{1}/health</value>
-  </data>
     <data name="StartUp.HttpServer.HandlePostRequest" xml:space="preserve">
     <value>Handle POST request</value>
   </data>
@@ -549,9 +546,6 @@
   </data>
     <data name="StartUp.WebSocketServer.ServiceNotEnabled" xml:space="preserve">
     <value>Start WebSocket server start failed type: {0}, port: {1}, cause: WebSocket service is not enabled</value>
-  </data>
-    <data name="StartUp.Application.MetricServerStarted" xml:space="preserve">
-    <value>The standalone metric server is started on the port: {0}</value>
   </data>
     <data name="StartUp.Application.ListeningExitMessage" xml:space="preserve">
     <value>Listen to the exit message from the program</value>
@@ -1242,10 +1236,6 @@
 
   <data name="StartUp.PrometheusMetricsEndpointEnabledInline" xml:space="preserve">
     <value>Prometheus metrics endpoint enabled inline.</value>
-  </data>
-
-  <data name="StartUp.PrometheusMetricsServiceOnStandalonePort" xml:space="preserve">
-    <value>Prometheus metrics service running on standalone port: {0}.</value>
   </data>
 
   <data name="StartUp.StartingServerWithConfiguration" xml:space="preserve">

@@ -139,16 +139,6 @@ public static partial class Keys
         public const string PrometheusMetricsEndpointEnabled = "StartUp.PrometheusMetricsEndpointEnabled";
 
         /// <summary>
-        /// 独立 Metrics 健康检查端点: http://{0}:{1}/health
-        /// </summary>
-        /// <remarks>
-        /// 键名: StartUp.MetricsHealthCheckEndpointEnabled
-        /// 用途: 当Metrics健康检查端点启用时记录
-        /// 参数: {0} - IP地址, {1} - 端口号
-        /// </remarks>
-        public const string MetricsHealthCheckEndpointEnabled = "StartUp.MetricsHealthCheckEndpointEnabled";
-
-        /// <summary>
         /// Prometheus metrics endpoint is enabled: http://{0}:{1}/metrics
         /// </summary>
         /// <remarks>
@@ -157,16 +147,6 @@ public static partial class Keys
         /// 参数: {0} - IP地址, {1} - 端口号
         /// </remarks>
         public const string PrometheusMetricsEndpointEnabledInline = "StartUp.PrometheusMetricsEndpointEnabledInline";
-
-        /// <summary>
-        /// Prometheus metrics service will be provided on the standalone port {0}
-        /// </summary>
-        /// <remarks>
-        /// 键名: StartUp.PrometheusMetricsServiceOnStandalonePort
-        /// 用途: 当Prometheus指标服务将在独立端口提供时记录
-        /// 参数: {0} - 端口号
-        /// </remarks>
-        public const string PrometheusMetricsServiceOnStandalonePort = "StartUp.PrometheusMetricsServiceOnStandalonePort";
 
         /// <summary>
         /// HTTP服务器相关消息
@@ -691,16 +671,6 @@ public static partial class Keys
         /// </summary>
         public static class Application
         {
-            /// <summary>
-            /// 独立指标服务器已在端口: {0} 启动
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.Application.MetricServerStarted
-            /// 用途: 当独立指标服务器启动时记录
-            /// 参数: {0} - 端口号
-            /// </remarks>
-            public const string MetricServerStarted = "StartUp.Application.MetricServerStarted";
-
             /// <summary>
             /// 监听程序退出消息
             /// </summary>

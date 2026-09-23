@@ -510,9 +510,6 @@
     <data name="StartUp.PrometheusMetricsEndpointEnabled" xml:space="preserve">
     <value>独立普罗米修斯指标端点已启用: http://{0}:{1}/metrics</value>
   </data>
-    <data name="StartUp.MetricsHealthCheckEndpointEnabled" xml:space="preserve">
-    <value>独立指标健康检查端点: http://{0}:{1}/health</value>
-  </data>
     <data name="StartUp.HttpServer.HandlePostRequest" xml:space="preserve">
     <value>处理 POST 请求</value>
   </data>
@@ -581,9 +578,6 @@
   </data>
     <data name="StartUp.WebSocketServer.ServiceNotEnabled" xml:space="preserve">
     <value>启动WebSocket服务器失败 类型: {0}, 端口: {1}, 原因: WebSocket服务未启用</value>
-  </data>
-    <data name="StartUp.Application.MetricServerStarted" xml:space="preserve">
-    <value>独立指标服务器已在端口: {0} 启动</value>
   </data>
     <data name="StartUp.Application.ListeningExitMessage" xml:space="preserve">
     <value>监听程序退出消息</value>
@@ -1278,10 +1272,6 @@
 
   <data name="StartUp.PrometheusMetricsEndpointEnabledInline" xml:space="preserve">
     <value>Prometheus指标端点已内联启用。</value>
-  </data>
-
-  <data name="StartUp.PrometheusMetricsServiceOnStandalonePort" xml:space="preserve">
-    <value>Prometheus指标服务运行在独立端口：{0}。</value>
   </data>
 
   <data name="StartUp.StartingServerWithConfiguration" xml:space="preserve">
