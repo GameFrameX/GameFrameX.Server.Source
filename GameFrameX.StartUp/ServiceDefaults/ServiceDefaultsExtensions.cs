@@ -251,6 +251,9 @@ namespace GameFrameX.StartUp.ServiceDefaults
                     metrics.AddMeter("System.Net.NameResolution");
                     metrics.AddMeter("GameFrameX.DataBase.Mongo");
                     metrics.AddMeter("GameFrameX.RemoteMessaging");
+                    // Apps 业务指标门面（AppMetrics）的 Meter 名，未登记则其计数器不会出现在 /metrics 抓取结果中。
+                    // Meter name of the Apps business metrics facade (AppMetrics); counters are invisible to /metrics unless whitelisted.
+                    metrics.AddMeter("GameFrameX.Apps");
                     // 挂 Prometheus 拉取导出器：/metrics 抓取端点（MapPrometheusScrapingEndpoint）依赖本导出器，缺失时端点首次抓取即 500。
                     // Attach the Prometheus pull exporter required by the /metrics scraping endpoint (MapPrometheusScrapingEndpoint).
                     metrics.AddPrometheusExporter();

@@ -29,7 +29,6 @@
 
 using GameFrameX.Apps.Account.Login.Entity;
 using GameFrameX.Apps.Player.Player.Entity;
-using GameFrameX.Monitor.Player;
 
 namespace GameFrameX.Apps.Account.Login.Component;
 
@@ -40,7 +39,7 @@ public sealed class LoginComponent : StateComponent<LoginState>
 
     public async Task<PlayerState> OnPlayerLogin(ReqPlayerLogin reqLogin)
     {
-        MetricsPlayerHelper.LoginCounterOptions.Inc();
+        AppMetrics.PlayerLogin.Add(1);
         return await GameDb.FindAsync<PlayerState>(m => m.Id == reqLogin.Id, false);
     }
 }

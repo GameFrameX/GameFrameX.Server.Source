@@ -29,7 +29,6 @@
 
 
 using GameFrameX.Apps.Player.Player.Entity;
-using GameFrameX.Monitor.Player;
 
 namespace GameFrameX.Apps.Player.Player.Component;
 

@@ -28,9 +28,9 @@
 //  ==========================================================================================
 
 
+using GameFrameX.Apps;
 using GameFrameX.Apps.Player.Player.Entity;
 using GameFrameX.DataBase;
-using GameFrameX.Monitor.Player;
 using GameFrameX.NetWork.Messages;
 
 namespace GameFrameX.Hotfix.Logic.Http.Player;
@@ -73,7 +73,7 @@ public sealed class ReqPlayerCreateHttpHandler : BaseHttpHandler
             State = 0,
             Avatar = (uint)Utility.RandomHelper.Next(1, 50),
         };
-        MetricsPlayerHelper.CreateCounterOptions.Inc();
+        AppMetrics.PlayerCreate.Add(1);
         await GameDb.SaveOneAsync(playerState);
         return playerState;
     }

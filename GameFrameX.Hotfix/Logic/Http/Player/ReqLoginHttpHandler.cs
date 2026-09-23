@@ -28,9 +28,9 @@
 //  ==========================================================================================
 
 
+using GameFrameX.Apps;
 using GameFrameX.Apps.Account.Login.Entity;
 using GameFrameX.DataBase;
-using GameFrameX.Monitor.Account;
 using GameFrameX.NetWork.Messages;
 
 namespace GameFrameX.Hotfix.Logic.Http.Player;
@@ -52,7 +52,7 @@ public sealed class ReqLoginHttpHandler : BaseHttpHandler
             return null;
         }
 
-        MetricsAccountHelper.LoginCounterOptions.Inc();
+        AppMetrics.AccountLogin.Add(1);
         var loginState = await OnLogin(reqLogin);
 
         if (loginState == null)
@@ -76,13 +76,13 @@ public sealed class ReqLoginHttpHandler : BaseHttpHandler
 
     public async Task<LoginState> OnLogin(ReqLogin reqLogin)
     {
-        MetricsAccountHelper.LoginCounterOptions.Inc();
+        AppMetrics.AccountLogin.Add(1);
         return await GameDb.FindAsync<LoginState>(m => m.UserName == reqLogin.UserName && m.Password == reqLogin.Password, false);
     }
 
     public async Task<LoginState> Register(long accountId, ReqLogin reqLogin)
     {
-        MetricsAccountHelper.RegisterCounterOptions.Inc();
+        AppMetrics.AccountRegister.Add(1);
         var loginState = new LoginState { Id = accountId, UserName = reqLogin.UserName, Password = reqLogin.Password, };
         await GameDb.AddOrUpdateAsync(loginState);
         return loginState;

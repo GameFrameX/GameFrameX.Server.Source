@@ -24,7 +24,6 @@
   <Project Path="GameFrameX.Hotfix.WrapperGenerator/GameFrameX.Hotfix.WrapperGenerator.csproj" />
   <Project Path="GameFrameX.Launcher/GameFrameX.Launcher.csproj" />
   <Project Path="GameFrameX.Localization/GameFrameX.Localization.csproj" />
-  <Project Path="GameFrameX.Monitor/GameFrameX.Monitor.csproj" />
   <Project Path="GameFrameX.NetWork.Abstractions/GameFrameX.NetWork.Abstractions.csproj" />
   <Project Path="GameFrameX.NetWork.HTTP/GameFrameX.NetWork.HTTP.csproj" />
   <Project Path="GameFrameX.NetWork.Message/GameFrameX.NetWork.Message.csproj" />

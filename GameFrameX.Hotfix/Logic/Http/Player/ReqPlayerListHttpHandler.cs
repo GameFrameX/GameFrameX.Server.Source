@@ -28,9 +28,9 @@
 //  ==========================================================================================
 
 
+using GameFrameX.Apps;
 using GameFrameX.Apps.Player.Player.Entity;
 using GameFrameX.DataBase;
-using GameFrameX.Monitor.Player;
 using GameFrameX.NetWork.Messages;
 
 namespace GameFrameX.Hotfix.Logic.Http.Player;
@@ -79,7 +79,7 @@ public sealed class ReqPlayerListHttpHandler : BaseHttpHandler
 
     private async Task<List<PlayerState>> GetPlayerList(ReqPlayerList reqPlayerList)
     {
-        MetricsPlayerHelper.GetPlayerListCounterOptions.Inc();
+        AppMetrics.PlayerListQuery.Add(1);
         return await GameDb.FindListAsync<PlayerState>(m => m.AccountId == reqPlayerList.Id);
     }
 }

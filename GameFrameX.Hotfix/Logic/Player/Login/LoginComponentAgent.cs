@@ -28,14 +28,13 @@
 //  ==========================================================================================
 
 
+using GameFrameX.Apps;
 using GameFrameX.Apps.Account.Login.Component;
 using GameFrameX.Apps.Account.Login.Entity;
 using GameFrameX.Apps.Common.Session;
 using GameFrameX.Apps.Player.Player.Entity;
 using GameFrameX.DataBase;
 using GameFrameX.Hotfix.Logic.Server;
-using GameFrameX.Monitor.Account;
-using GameFrameX.Monitor.Player;
 using GameFrameX.Proto.BuiltIn;
 
 namespace GameFrameX.Hotfix.Logic.Player.Login;
@@ -50,11 +49,11 @@ public class LoginComponentAgent : StateComponentAgent<LoginComponent, LoginStat
             return;
         }
 
-        MetricsAccountHelper.LoginCounterOptions.Inc();
+        AppMetrics.AccountLogin.Add(1);
         var loginState = await GameDb.FindAsync<LoginState>(m => m.UserName == request.UserName && m.Password == request.Password, false);
         if (loginState == null)
         {
-            MetricsAccountHelper.RegisterCounterOptions.Inc();
+            AppMetrics.AccountRegister.Add(1);
             var accountId = ActorIdGenerator.GetUniqueId();
             loginState = new LoginState
             {
@@ -82,7 +81,7 @@ public class LoginComponentAgent : StateComponentAgent<LoginComponent, LoginStat
             return;
         }
 
-        MetricsPlayerHelper.GetPlayerListCounterOptions.Inc();
+        AppMetrics.PlayerListQuery.Add(1);
         var playerList = await GameDb.FindListAsync<PlayerState>(m => m.AccountId == request.Id);
         if (playerList == null)
         {
@@ -113,7 +112,7 @@ public class LoginComponentAgent : StateComponentAgent<LoginComponent, LoginStat
             State = 0,
             Avatar = (uint)Utility.RandomHelper.Next(1, 50),
         };
-        MetricsPlayerHelper.CreateCounterOptions.Inc();
+        AppMetrics.PlayerCreate.Add(1);
         await GameDb.SaveOneAsync(playerState);
 
         response.UniqueId = request.UniqueId;
