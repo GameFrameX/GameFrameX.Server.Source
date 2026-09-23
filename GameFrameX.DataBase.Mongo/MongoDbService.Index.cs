@@ -29,7 +29,6 @@
 
 
 using System.Collections.Concurrent;
-using System.Linq.Expressions;
 using System.Reflection;
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.Foundation.Orm.Attribute;
@@ -54,7 +53,7 @@ namespace GameFrameX.DataBase.Mongo;
 /// </remarks>
 public sealed partial class MongoDbService
 {
-    private readonly ConcurrentDictionary<string, List<MongoIndexModel>> _indexCache = new();
+    private readonly ConcurrentDictionary<string, bool> _indexCache = new();
 
     /// <summary>
     /// 检查待创建的索引与已创建的索引是否一致。
@@ -110,13 +109,12 @@ public sealed partial class MongoDbService
     private void CreateIndexes<T>(IMongoCollection<T> collection)
     {
         var entityType = typeof(T);
-        if (_indexCache.TryGetValue(entityType.Name, out var list))
+        if (_indexCache.ContainsKey(entityType.Name))
         {
             return;
         }
 
-        list = new List<MongoIndexModel>();
-        _indexCache.TryAdd(entityType.Name, list);
+        _indexCache.TryAdd(entityType.Name, true);
         var properties = entityType.GetProperties();
         // 索引列表
         var result = collection.Indexes.List().ToList();
@@ -135,8 +133,6 @@ public sealed partial class MongoDbService
                     Name = indexAttribute.Name,
                 });
                 indexModels.Add(indexModel);
-                var mongoIndexModel = new MongoIndexModel(indexAttribute.Unique, indexAttribute.Name);
-                list.Add(mongoIndexModel);
             }
         }
 
@@ -144,45 +140,6 @@ public sealed partial class MongoDbService
         {
             collection.Indexes.CreateMany(indexModels);
         }
-    }
-
-    /// <summary>
-    /// MongoDB索引模型。
-    /// </summary>
-    /// <remarks>
-    /// MongoDB index model.
-    /// </remarks>
-    private sealed class MongoIndexModel
-    {
-        /// <summary>
-        /// 初始化 MongoIndexModel 的新实例。
-        /// </summary>
-        /// <remarks>
-        /// Initializes a new instance of MongoIndexModel.
-        /// </remarks>
-        /// <param name="unique">是否为唯一索引 / Whether the index is unique</param>
-        /// <param name="name">索引名称 / Index name</param>
-        internal MongoIndexModel(bool unique, string name)
-        {
-            Unique = unique;
-            Name = name;
-        }
-
-        /// <summary>
-        /// 获取或设置索引名称。
-        /// </summary>
-        /// <remarks>
-        /// Gets or sets the index name.
-        /// </remarks>
-        public string Name { get; set; }
-
-        /// <summary>
-        /// 获取或设置是否为唯一索引。
-        /// </summary>
-        /// <remarks>
-        /// Gets or sets whether the index is unique.
-        /// </remarks>
-        public bool Unique { get; set; }
     }
 
     #region 索引
@@ -194,18 +151,18 @@ public sealed partial class MongoDbService
     /// Creates an index.
     /// </remarks>
     /// <param name="collectionName">集合名称 / Collection name</param>
-    /// <param name="index">索引键 / Index key</param>
-    /// <param name="asc">是否升序，默认为 true / Whether ascending, defaults to true</param>
+    /// <param name="definition">索引定义（键名、方向，预留唯一 / TTL 位）/ Index definition (key, direction, with unique / TTL slots reserved)</param>
     /// <returns>创建的索引名称，如果索引已存在则返回空字符串 / The created index name, or empty string if index already exists</returns>
-    public string CreateIndex(string collectionName, string index, bool asc = true)
+    public string CreateIndex(string collectionName, IndexDefinition definition)
     {
+        ArgumentNullException.ThrowIfNull(definition, nameof(definition));
         var mgr = GetCollection(collectionName).Indexes;
         var list = mgr.List();
         while (list.MoveNext())
         {
-            if (!list.Current.Any(doc => doc["name"].AsString.StartsWith(index)))
+            if (!list.Current.Any(doc => doc["name"].AsString.StartsWith(definition.Key)))
             {
-                return mgr.CreateOne(new CreateIndexModel<BsonDocument>(asc ? Builders<BsonDocument>.IndexKeys.Ascending(doc => doc[index]) : Builders<BsonDocument>.IndexKeys.Descending(doc => doc[index])));
+                return mgr.CreateOne(new CreateIndexModel<BsonDocument>(definition.Ascending ? Builders<BsonDocument>.IndexKeys.Ascending(doc => doc[definition.Key]) : Builders<BsonDocument>.IndexKeys.Descending(doc => doc[definition.Key]), BuildIndexOptions(definition)));
             }
         }
 
@@ -219,18 +176,18 @@ public sealed partial class MongoDbService
     /// Asynchronously creates an index.
     /// </remarks>
     /// <param name="collectionName">集合名称 / Collection name</param>
-    /// <param name="index">索引键 / Index key</param>
-    /// <param name="asc">是否升序，默认为 true / Whether ascending, defaults to true</param>
+    /// <param name="definition">索引定义（键名、方向，预留唯一 / TTL 位）/ Index definition (key, direction, with unique / TTL slots reserved)</param>
     /// <returns>创建的索引名称，如果索引已存在则返回空字符串 / The created index name, or empty string if index already exists</returns>
-    public async Task<string> CreateIndexAsync(string collectionName, string index, bool asc = true)
+    public async Task<string> CreateIndexAsync(string collectionName, IndexDefinition definition)
     {
+        ArgumentNullException.ThrowIfNull(definition, nameof(definition));
         var mgr = GetCollection(collectionName).Indexes;
         var list = await mgr.ListAsync();
         while (await list.MoveNextAsync())
         {
-            if (!list.Current.Any(doc => doc["name"].AsString.StartsWith(index)))
+            if (!list.Current.Any(doc => doc["name"].AsString.StartsWith(definition.Key)))
             {
-                return await mgr.CreateOneAsync(new CreateIndexModel<BsonDocument>(asc ? Builders<BsonDocument>.IndexKeys.Ascending(doc => doc[index]) : Builders<BsonDocument>.IndexKeys.Descending(doc => doc[index])));
+                return await mgr.CreateOneAsync(new CreateIndexModel<BsonDocument>(definition.Ascending ? Builders<BsonDocument>.IndexKeys.Ascending(doc => doc[definition.Key]) : Builders<BsonDocument>.IndexKeys.Descending(doc => doc[definition.Key]), BuildIndexOptions(definition)));
             }
         }
 
@@ -244,13 +201,13 @@ public sealed partial class MongoDbService
     /// Updates an index.
     /// </remarks>
     /// <param name="collectionName">集合名称 / Collection name</param>
-    /// <param name="index">索引键 / Index key</param>
-    /// <param name="asc">是否升序，默认为 true / Whether ascending, defaults to true</param>
+    /// <param name="definition">索引定义（键名、方向，预留唯一 / TTL 位）/ Index definition (key, direction, with unique / TTL slots reserved)</param>
     /// <returns>创建的索引名称 / The created index name</returns>
-    public string UpdateIndex(string collectionName, string index, bool asc = true)
+    public string UpdateIndex(string collectionName, IndexDefinition definition)
     {
+        ArgumentNullException.ThrowIfNull(definition, nameof(definition));
         var mgr = GetCollection(collectionName).Indexes;
-        return mgr.CreateOne(new CreateIndexModel<BsonDocument>(asc ? Builders<BsonDocument>.IndexKeys.Ascending(doc => doc[index]) : Builders<BsonDocument>.IndexKeys.Descending(doc => doc[index])));
+        return mgr.CreateOne(new CreateIndexModel<BsonDocument>(definition.Ascending ? Builders<BsonDocument>.IndexKeys.Ascending(doc => doc[definition.Key]) : Builders<BsonDocument>.IndexKeys.Descending(doc => doc[definition.Key]), BuildIndexOptions(definition)));
     }
 
     /// <summary>
@@ -260,13 +217,13 @@ public sealed partial class MongoDbService
     /// Asynchronously updates an index.
     /// </remarks>
     /// <param name="collectionName">集合名称 / Collection name</param>
-    /// <param name="index">索引键 / Index key</param>
-    /// <param name="asc">是否升序，默认为 true / Whether ascending, defaults to true</param>
+    /// <param name="definition">索引定义（键名、方向，预留唯一 / TTL 位）/ Index definition (key, direction, with unique / TTL slots reserved)</param>
     /// <returns>创建的索引名称 / The created index name</returns>
-    public async Task<string> UpdateIndexAsync(string collectionName, string index, bool asc = true)
+    public async Task<string> UpdateIndexAsync(string collectionName, IndexDefinition definition)
     {
+        ArgumentNullException.ThrowIfNull(definition, nameof(definition));
         var mgr = GetCollection(collectionName).Indexes;
-        return await mgr.CreateOneAsync(new CreateIndexModel<BsonDocument>(asc ? Builders<BsonDocument>.IndexKeys.Ascending(doc => doc[index]) : Builders<BsonDocument>.IndexKeys.Descending(doc => doc[index])));
+        return await mgr.CreateOneAsync(new CreateIndexModel<BsonDocument>(definition.Ascending ? Builders<BsonDocument>.IndexKeys.Ascending(doc => doc[definition.Key]) : Builders<BsonDocument>.IndexKeys.Descending(doc => doc[definition.Key]), BuildIndexOptions(definition)));
     }
 
     /// <summary>
@@ -303,19 +260,18 @@ public sealed partial class MongoDbService
     /// Creates a generic index.
     /// </remarks>
     /// <typeparam name="TState">文档类型，必须实现 ICacheState 接口 / Document type, must implement ICacheState interface</typeparam>
-    /// <param name="index">索引名称 / Index name</param>
-    /// <param name="key">索引键表达式 / Index key expression</param>
-    /// <param name="asc">是否升序，默认为 true / Whether ascending, defaults to true</param>
+    /// <param name="definition">索引定义（名称、键表达式、方向，预留唯一 / TTL 位）/ Index definition (name, key expression, direction, with unique / TTL slots reserved)</param>
     /// <returns>创建的索引名称，如果索引已存在则返回空字符串 / The created index name, or empty string if index already exists</returns>
-    public string CreateIndex<TState>(string index, Expression<Func<TState, object>> key, bool asc = true) where TState : class, ICacheState, new()
+    public string CreateIndex<TState>(IndexDefinition<TState> definition) where TState : class, ICacheState, new()
     {
+        ArgumentNullException.ThrowIfNull(definition, nameof(definition));
         var mgr = GetCollection<TState>().Indexes;
         var list = mgr.List();
         while (list.MoveNext())
         {
-            if (!list.Current.Any(doc => doc["name"].AsString.StartsWith(index)))
+            if (!list.Current.Any(doc => doc["name"].AsString.StartsWith(definition.Name)))
             {
-                return mgr.CreateOne(new CreateIndexModel<TState>(asc ? Builders<TState>.IndexKeys.Ascending(key) : Builders<TState>.IndexKeys.Descending(key)));
+                return mgr.CreateOne(new CreateIndexModel<TState>(definition.Ascending ? Builders<TState>.IndexKeys.Ascending(definition.Key) : Builders<TState>.IndexKeys.Descending(definition.Key), BuildIndexOptions(definition)));
             }
         }
 
@@ -329,19 +285,18 @@ public sealed partial class MongoDbService
     /// Asynchronously creates a generic index.
     /// </remarks>
     /// <typeparam name="TState">文档类型，必须实现 ICacheState 接口 / Document type, must implement ICacheState interface</typeparam>
-    /// <param name="index">索引名称 / Index name</param>
-    /// <param name="key">索引键表达式 / Index key expression</param>
-    /// <param name="asc">是否升序，默认为 true / Whether ascending, defaults to true</param>
+    /// <param name="definition">索引定义（名称、键表达式、方向，预留唯一 / TTL 位）/ Index definition (name, key expression, direction, with unique / TTL slots reserved)</param>
     /// <returns>创建的索引名称，如果索引已存在则返回空字符串 / The created index name, or empty string if index already exists</returns>
-    public async Task<string> CreateIndexAsync<TState>(string index, Expression<Func<TState, object>> key, bool asc = true) where TState : class, ICacheState, new()
+    public async Task<string> CreateIndexAsync<TState>(IndexDefinition<TState> definition) where TState : class, ICacheState, new()
     {
+        ArgumentNullException.ThrowIfNull(definition, nameof(definition));
         var mgr = GetCollection<TState>().Indexes;
         var list = await mgr.ListAsync();
         while (await list.MoveNextAsync())
         {
-            if (!list.Current.Any(doc => doc["name"].AsString.StartsWith(index)))
+            if (!list.Current.Any(doc => doc["name"].AsString.StartsWith(definition.Name)))
             {
-                return await mgr.CreateOneAsync(new CreateIndexModel<TState>(asc ? Builders<TState>.IndexKeys.Ascending(key) : Builders<TState>.IndexKeys.Descending(key)));
+                return await mgr.CreateOneAsync(new CreateIndexModel<TState>(definition.Ascending ? Builders<TState>.IndexKeys.Ascending(definition.Key) : Builders<TState>.IndexKeys.Descending(definition.Key), BuildIndexOptions(definition)));
             }
         }
 
@@ -355,13 +310,13 @@ public sealed partial class MongoDbService
     /// Updates a generic index.
     /// </remarks>
     /// <typeparam name="TState">文档类型，必须实现 ICacheState 接口 / Document type, must implement ICacheState interface</typeparam>
-    /// <param name="key">索引键表达式 / Index key expression</param>
-    /// <param name="asc">是否升序，默认为 true / Whether ascending, defaults to true</param>
+    /// <param name="definition">索引定义（键表达式、方向，预留唯一 / TTL 位；名称缺省由数据库生成）/ Index definition (key expression, direction, with unique / TTL slots reserved; name defaults to database-generated)</param>
     /// <returns>创建的索引名称 / The created index name</returns>
-    public string UpdateIndex<TState>(Expression<Func<TState, object>> key, bool asc = true) where TState : class, ICacheState, new()
+    public string UpdateIndex<TState>(IndexDefinition<TState> definition) where TState : class, ICacheState, new()
     {
+        ArgumentNullException.ThrowIfNull(definition, nameof(definition));
         var mgr = GetCollection<TState>().Indexes;
-        return mgr.CreateOne(new CreateIndexModel<TState>(asc ? Builders<TState>.IndexKeys.Ascending(key) : Builders<TState>.IndexKeys.Descending(key)));
+        return mgr.CreateOne(new CreateIndexModel<TState>(definition.Ascending ? Builders<TState>.IndexKeys.Ascending(definition.Key) : Builders<TState>.IndexKeys.Descending(definition.Key), BuildIndexOptions(definition)));
     }
 
     /// <summary>
@@ -371,13 +326,59 @@ public sealed partial class MongoDbService
     /// Asynchronously updates a generic index.
     /// </remarks>
     /// <typeparam name="TState">文档类型，必须实现 ICacheState 接口 / Document type, must implement ICacheState interface</typeparam>
-    /// <param name="key">索引键表达式 / Index key expression</param>
-    /// <param name="asc">是否升序，默认为 true / Whether ascending, defaults to true</param>
+    /// <param name="definition">索引定义（键表达式、方向，预留唯一 / TTL 位；名称缺省由数据库生成）/ Index definition (key expression, direction, with unique / TTL slots reserved; name defaults to database-generated)</param>
     /// <returns>创建的索引名称 / The created index name</returns>
-    public async Task<string> UpdateIndexAsync<TState>(Expression<Func<TState, object>> key, bool asc = true) where TState : class, ICacheState, new()
+    public async Task<string> UpdateIndexAsync<TState>(IndexDefinition<TState> definition) where TState : class, ICacheState, new()
     {
+        ArgumentNullException.ThrowIfNull(definition, nameof(definition));
         var mgr = GetCollection<TState>().Indexes;
-        return await mgr.CreateOneAsync(new CreateIndexModel<TState>(asc ? Builders<TState>.IndexKeys.Ascending(key) : Builders<TState>.IndexKeys.Descending(key)));
+        return await mgr.CreateOneAsync(new CreateIndexModel<TState>(definition.Ascending ? Builders<TState>.IndexKeys.Ascending(definition.Key) : Builders<TState>.IndexKeys.Descending(definition.Key), BuildIndexOptions(definition)));
+    }
+
+    /// <summary>
+    /// 依据索引定义生成数据库索引选项；未启用任何可选项时返回 null 以保持默认行为。
+    /// </summary>
+    /// <remarks>
+    /// Builds the database index options from the definition; returns null to keep the default behaviour when no option is set.
+    /// </remarks>
+    /// <param name="definition">索引定义 / Index definition</param>
+    /// <returns>索引选项，或 null / Index options, or null</returns>
+    private static CreateIndexOptions BuildIndexOptions(IndexDefinition definition)
+    {
+        if (!definition.Unique && !definition.ExpireAfter.HasValue && string.IsNullOrWhiteSpace(definition.Name))
+        {
+            return null;
+        }
+
+        return new CreateIndexOptions
+        {
+            Unique = definition.Unique ? true : null,
+            ExpireAfter = definition.ExpireAfter,
+            Name = definition.Name,
+        };
+    }
+
+    /// <summary>
+    /// 依据泛型索引定义生成数据库索引选项；未启用任何可选项时返回 null 以保持默认行为。
+    /// </summary>
+    /// <remarks>
+    /// Builds the database index options from the generic definition; returns null to keep the default behaviour when no option is set.
+    /// </remarks>
+    /// <param name="definition">索引定义 / Index definition</param>
+    /// <returns>索引选项，或 null / Index options, or null</returns>
+    private static CreateIndexOptions BuildIndexOptions<TState>(IndexDefinition<TState> definition) where TState : class, ICacheState
+    {
+        if (!definition.Unique && !definition.ExpireAfter.HasValue && string.IsNullOrWhiteSpace(definition.Name))
+        {
+            return null;
+        }
+
+        return new CreateIndexOptions
+        {
+            Unique = definition.Unique ? true : null,
+            ExpireAfter = definition.ExpireAfter,
+            Name = definition.Name,
+        };
     }
 
     #endregion 索引
