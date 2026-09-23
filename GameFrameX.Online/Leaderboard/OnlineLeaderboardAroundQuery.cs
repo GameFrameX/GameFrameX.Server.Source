@@ -48,15 +48,15 @@ public sealed class OnlineLeaderboardAroundQuery
     public long PlayerId { get; init; }
 
     /// <summary>
-    /// 获取或设置前向窗口条数（默认 2）。
+    /// 获取或设置前向窗口条数（缺省 0 = 不含前向邻居；Before / After 均缺省时窗口仅含本人）。
     /// </summary>
-    /// <remarks>Gets or sets the number of entries before the player (default 2).</remarks>
+    /// <remarks>Gets or sets the number of entries before the player (default 0 = no preceding neighbors; when both Before and After are left at 0 the window contains only the player).</remarks>
     public int Before { get; init; }
 
     /// <summary>
-    /// 获取或设置后向窗口条数（默认 2）。
+    /// 获取或设置后向窗口条数（缺省 0 = 不含后向邻居；Before / After 均缺省时窗口仅含本人）。
     /// </summary>
-    /// <remarks>Gets or sets the number of entries after the player (default 2).</remarks>
+    /// <remarks>Gets or sets the number of entries after the player (default 0 = no following neighbors; when both Before and After are left at 0 the window contains only the player).</remarks>
     public int After { get; init; }
 
     /// <summary>

@@ -32,7 +32,7 @@ namespace GameFrameX.Online.Identity;
 /// <summary>
 /// 登录解析请求（<see cref="OnlineIdentityService.ResolveLoginAsync"/> 的唯一提交形态，客户端登录主路径）。
 /// <para>
-/// 维护约束：请求只表达「以什么身份登录哪個区服」；身份/账号/玩家三件套一律由服务端解析或生成，
+/// 维护约束：请求只表达「以什么身份登录哪个区服」；身份/账号/玩家三件套一律由服务端解析或生成，
 /// 客户端不得自行拼接身份关系。设备信息三连（<see cref="DeviceIdentifier"/>/<see cref="DevicePlatform"/>）
 /// 为可选追加维度，后续设备字段演进只改本载荷。
 /// </para>
