@@ -40,6 +40,7 @@ namespace GameFrameX.Tests.Utility;
 /// identical process-level fields pass through idempotently; conflicting ones fail fast with
 /// <see cref="SettingConflictException"/> listing field names and source segments.
 /// </remarks>
+[Collection(GameAppRuntimeCollection.Name)]
 public class GlobalSettingsSettingConflictTests : IDisposable
 {
     /// <summary>

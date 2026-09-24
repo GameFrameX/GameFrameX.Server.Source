@@ -28,12 +28,14 @@
 //  ==========================================================================================
 
 using GameFrameX.Core.Actors.Impl;
+using GameFrameX.Tests.Utility;
 using GameFrameX.Utility.Setting;
 using System.Reflection;
 using System.Threading.Tasks.Dataflow;
 
 namespace GameFrameX.Tests.Core.Actors;
 
+[Collection(GameAppRuntimeCollection.Name)]
 public sealed class WorkerActorTests
 {
     private static readonly object SettingsLock = new();
