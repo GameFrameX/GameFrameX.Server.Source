@@ -43,7 +43,7 @@ public abstract class NotHotfixTimerHandler : IJob
     /// <param name="context">Quartz 作业执行上下文，包含作业执行所需的信息 / Quartz job execution context</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>一个任务，表示异步操作的结果 / A task representing the asynchronous operation</returns>
-    public ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken)
+    public ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (!context.JobDetail.JobDataMap.TryGetValue(QuartzTimer.ParamKey, out var value))
