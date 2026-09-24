@@ -77,39 +77,68 @@ public sealed class MongoImplementationAccessAnalyzer : SingleDiagnosticSymbolAn
 
         if (IsForbiddenReference(type.BaseType, symbols, out var baseReference))
         {
-            ArchitectureSymbolFacts.Report(context, Descriptor, type, type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat), assemblyName, baseReference);
+            ReportForbiddenReference(context, type, assemblyName, baseReference);
             return;
         }
 
         foreach (var member in type.GetMembers())
         {
-            ITypeSymbol? memberType = member switch
+            if (TryReportForbiddenMember(context, type, assemblyName, member, symbols))
             {
-                IFieldSymbol field => field.Type,
-                IPropertySymbol property => property.Type,
-                IEventSymbol eventSymbol => eventSymbol.Type,
-                IMethodSymbol method => method.ReturnType,
-                _ => null,
-            };
-
-            if (IsForbiddenReference(memberType, symbols, out var memberReference))
-            {
-                ArchitectureSymbolFacts.Report(context, Descriptor, type, type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat), assemblyName, memberReference);
                 return;
             }
+        }
+    }
 
-            if (member is IMethodSymbol parameterOwner)
+    /// <summary>
+    /// 检查单个成员的声明面（字段 / 属性 / 事件 / 方法返回值，以及方法形参类型），
+    /// 命中 Mongo 实现层引用即上报 GFX0016 并返回 true。
+    /// </summary>
+    /// <remarks>
+    /// Checks one member's declaration surface (field / property / event / method return type and
+    /// method parameter types); reports GFX0016 and returns true on the first forbidden reference.
+    /// </remarks>
+    private static bool TryReportForbiddenMember(SymbolAnalysisContext context, INamedTypeSymbol type, string assemblyName, ISymbol member, ArchitectureSymbols symbols)
+    {
+        ITypeSymbol? memberType = member switch
+        {
+            IFieldSymbol field => field.Type,
+            IPropertySymbol property => property.Type,
+            IEventSymbol eventSymbol => eventSymbol.Type,
+            IMethodSymbol method => method.ReturnType,
+            _ => null,
+        };
+
+        if (IsForbiddenReference(memberType, symbols, out var memberReference))
+        {
+            ReportForbiddenReference(context, type, assemblyName, memberReference);
+            return true;
+        }
+
+        if (member is IMethodSymbol parameterOwner)
+        {
+            foreach (var parameter in parameterOwner.Parameters)
             {
-                foreach (var parameter in parameterOwner.Parameters)
+                if (IsForbiddenReference(parameter.Type, symbols, out var parameterReference))
                 {
-                    if (IsForbiddenReference(parameter.Type, symbols, out var parameterReference))
-                    {
-                        ArchitectureSymbolFacts.Report(context, Descriptor, type, type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat), assemblyName, parameterReference);
-                        return;
-                    }
+                    ReportForbiddenReference(context, type, assemblyName, parameterReference);
+                    return true;
                 }
             }
         }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 上报一次 GFX0016 诊断：类型声明面引用了 Mongo 实现层类型。
+    /// </summary>
+    /// <remarks>
+    /// Reports one GFX0016 diagnostic: the type's declaration surface references a Mongo implementation type.
+    /// </remarks>
+    private static void ReportForbiddenReference(SymbolAnalysisContext context, INamedTypeSymbol type, string assemblyName, string referenceName)
+    {
+        ArchitectureSymbolFacts.Report(context, SDescriptor, type, type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat), assemblyName, referenceName);
     }
 
     private static bool IsMongoImplementationLayer(string assemblyName)
