@@ -580,7 +580,7 @@ public static class QuartzTimer
         /// <param name="context">任务执行上下文 / Job execution context</param>
         /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
         /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
-        public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken)
+        public async ValueTask Execute(IJobExecutionContext context, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var handlerType = context.JobDetail.JobDataMap.GetString(TimerKey);
