@@ -1322,4 +1322,22 @@
     <value>[待翻译] StartUp.Kcp.StartupFailed</value>
   </data>
 
+    <data name="Database.PostgreSql.InitializedSuccessfully" xml:space="preserve">
+    <value>PostgreSqlService初始化成功，连接目标：{0}，注册名：{1}</value>
+  </data>
+    <data name="Database.PostgreSql.InitializationFailed" xml:space="preserve">
+    <value>PostgreSqlService初始化失败，连接目标：{0}，注册名：{1}</value>
+  </data>
+    <data name="Database.PostgreSql.ServiceUnavailable" xml:space="preserve">
+    <value>PostgreSqlDbService不可用，Open()尚未成功完成。</value>
+  </data>
+    <data name="Database.PostgreSql.ExecuteInTransactionFailed" xml:space="preserve">
+    <value>PostgreSqlDbService.ExecuteInTransactionAsync重试失败，未知异常。</value>
+  </data>
+    <data name="Database.PostgreSql.CommitTransactionFailed" xml:space="preserve">
+    <value>PostgreSqlDbService事务提交重试失败，未知异常。</value>
+  </data>
+    <data name="Database.PostgreSql.OperationRetryFailed" xml:space="preserve">
+    <value>PostgreSqlDbService.{0}重试失败，未知异常。</value>
+  </data>
 </root>

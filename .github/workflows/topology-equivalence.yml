@@ -5,6 +5,8 @@ name: Topology Equivalence Gate
 # 任一用例失败即阻塞合并。这是 DynamicPhase-0 核心契约（AC-2）的守护门。
 # C143d：套件扩入 Discovery（地址格式 / 双视图路由 / Mongo 心跳集成用例），
 # sidecar Mongo 让 GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING 门控的集成用例真跑。
+# C166：sidecar PostgreSQL 让 GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING 门控的
+# PG 契约 + 发现层平行实现用例真跑（门控模式对齐 Mongo；filter 扩 FullyQualifiedName~PostgreSql）。
 
 on:
   pull_request:
@@ -25,8 +27,21 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: gameframex
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING: mongodb://localhost:27017
+      GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING: 'Host=localhost;Port=5432;Username=postgres;Password=postgres;Database=postgres'
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -45,5 +60,5 @@ jobs:
       - name: Run Topology Equivalence Suite
         run: >
           dotnet test Tests/GameFrameX.Tests/GameFrameX.Tests.csproj --no-build
-          --filter "FullyQualifiedName~GameFrameX.Tests.Topology.Equivalence|FullyQualifiedName~GameFrameX.Tests.Discovery"
+          --filter "FullyQualifiedName~GameFrameX.Tests.Topology.Equivalence|FullyQualifiedName~GameFrameX.Tests.Discovery|FullyQualifiedName~GameFrameX.Tests.DataBase.PostgreSqlDbServiceQueryTests"
           --logger GitHubActions

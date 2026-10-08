@@ -58,6 +58,13 @@ namespace GameFrameX.DataBase.Mongo
     {
     }
 }
+
+namespace GameFrameX.DataBase.PostgreSql
+{
+    public class PostgreSqlDbService
+    {
+    }
+}
 """;
 
     [Fact]
@@ -148,6 +155,51 @@ namespace GameFrameX.DataBase.Mongo.Internal
     }
 }
 """, "GameFrameX.DataBase.Mongo");
+
+        var diagnostics = await GetDiagnosticsAsync(compilation, new MongoImplementationAccessAnalyzer());
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public async Task Declaration_surface_referencing_postgre_sql_service_in_hotfix_reports_diagnostic()
+    {
+        var compilation = CreateCompilation(StubSource + """
+namespace GameFrameX.Hotfix.Logic.Sample
+{
+    public sealed class SamplePgService
+    {
+        private readonly GameFrameX.DataBase.PostgreSql.PostgreSqlDbService _service;
+
+        public SamplePgService(GameFrameX.DataBase.PostgreSql.PostgreSqlDbService service)
+        {
+            _service = service;
+        }
+    }
+}
+""", "GameFrameX.Hotfix");
+
+        var diagnostics = await GetDiagnosticsAsync(compilation, new MongoImplementationAccessAnalyzer());
+
+        var diagnostic = Assert.Single(diagnostics, item => item.Id == "GFX0016");
+        Assert.Contains("SamplePgService", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public async Task Composition_root_generic_registration_of_postgre_sql_service_is_exempt()
+    {
+        var compilation = CreateCompilation(StubSource + """
+namespace GameFrameX.Launcher.StartUp
+{
+    public sealed class StartUpGame
+    {
+        public static void Init()
+        {
+            GameFrameX.DataBase.GameDb.Init<GameFrameX.DataBase.PostgreSql.PostgreSqlDbService>("Host=127.0.0.1");
+        }
+    }
+}
+""", "GameFrameX.Launcher");
 
         var diagnostics = await GetDiagnosticsAsync(compilation, new MongoImplementationAccessAnalyzer());
 

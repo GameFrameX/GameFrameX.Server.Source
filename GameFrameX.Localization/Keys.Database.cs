@@ -105,5 +105,61 @@ public static partial class Keys
         /// 参数: {0} - 已注册库名列表
         /// </remarks>
         public const string GameDbImplicitDefaultBindingWarning = "Database.GameDb.ImplicitDefaultBindingWarning";
+        /// <summary>
+        /// PostgreSQL服务初始化成功，连接目标：{0}，注册名：{1}
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.PostgreSql.InitializedSuccessfully
+        /// 用途: PostgreSQL服务成功初始化时记录
+        /// 参数: {0} - 连接目标, {1} - 注册名
+        /// </remarks>
+        public const string PostgreSqlInitializedSuccessfully = "Database.PostgreSql.InitializedSuccessfully";
+
+        /// <summary>
+        /// PostgreSQL服务初始化失败，连接目标：{0}，注册名：{1}
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.PostgreSql.InitializationFailed
+        /// 用途: PostgreSQL服务初始化失败时记录
+        /// 参数: {0} - 连接目标, {1} - 注册名
+        /// </remarks>
+        public const string PostgreSqlInitializationFailed = "Database.PostgreSql.InitializationFailed";
+
+        /// <summary>
+        /// PostgreSqlDbService 未初始化，Open() 未成功完成。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.PostgreSql.ServiceUnavailable
+        /// 用途: 当 PostgreSqlDbService 尚未初始化就执行数据库操作时抛出
+        /// </remarks>
+        public const string PostgreSqlServiceUnavailable = "Database.PostgreSql.ServiceUnavailable";
+
+        /// <summary>
+        /// PostgreSqlDbService.ExecuteInTransactionAsync 所有重试均失败，异常未知。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.PostgreSql.ExecuteInTransactionFailed
+        /// 用途: 事务执行重试全部失败后抛出
+        /// </remarks>
+        public const string PostgreSqlExecuteInTransactionFailed = "Database.PostgreSql.ExecuteInTransactionFailed";
+
+        /// <summary>
+        /// PostgreSqlDbService 事务提交所有重试均失败，异常未知。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.PostgreSql.CommitTransactionFailed
+        /// 用途: 事务提交重试全部失败后抛出
+        /// </remarks>
+        public const string PostgreSqlCommitTransactionFailed = "Database.PostgreSql.CommitTransactionFailed";
+
+        /// <summary>
+        /// PostgreSqlDbService.{0} 所有重试均失败，异常未知。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.PostgreSql.OperationRetryFailed
+        /// 用途: 通用操作重试全部失败后抛出
+        /// 参数: {0} - 操作名称
+        /// </remarks>
+        public const string PostgreSqlOperationRetryFailed = "Database.PostgreSql.OperationRetryFailed";
     }
 }

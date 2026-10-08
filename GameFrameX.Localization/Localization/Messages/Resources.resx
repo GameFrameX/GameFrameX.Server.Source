@@ -1326,4 +1326,22 @@
     <value>[TODO] StartUp.Kcp.StartupFailed</value>
   </data>
 
+    <data name="Database.PostgreSql.InitializedSuccessfully" xml:space="preserve">
+    <value>PostgreSqlService initialized successfully. Connection target: {0}, registered name: {1}</value>
+  </data>
+    <data name="Database.PostgreSql.InitializationFailed" xml:space="preserve">
+    <value>PostgreSqlService initialization failed. Connection target: {0}, registered name: {1}</value>
+  </data>
+    <data name="Database.PostgreSql.ServiceUnavailable" xml:space="preserve">
+    <value>PostgreSqlDbService is unavailable. Open() has not completed successfully.</value>
+  </data>
+    <data name="Database.PostgreSql.ExecuteInTransactionFailed" xml:space="preserve">
+    <value>PostgreSqlDbService.ExecuteInTransactionAsync failed with unknown retry exception.</value>
+  </data>
+    <data name="Database.PostgreSql.CommitTransactionFailed" xml:space="preserve">
+    <value>PostgreSqlDbService transaction commit failed after all retries with unknown exception.</value>
+  </data>
+    <data name="Database.PostgreSql.OperationRetryFailed" xml:space="preserve">
+    <value>PostgreSqlDbService.{0} failed after all retries with unknown exception.</value>
+  </data>
 </root>

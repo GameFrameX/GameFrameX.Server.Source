@@ -27,7 +27,7 @@ namespace GameFrameX.Tests.Discovery;
 /// <remarks>
 /// Unit tests for the C152 player-route wiring completion:
 /// resolver selection (discovery-provided Mongo resolver vs Hotfix default fallback),
-/// <c>MongoDiscoveryRuntime.AttachLocalDispatcher</c> semantics (install, idempotence,
+/// <c>DiscoveryRoutingWire.AttachLocalDispatcher</c> semantics (install, idempotence,
 /// remote-chain preservation, explicit pre-Activate failure), and the closed-loop
 /// envelope re-delivery through the routing seam case 1 down to
 /// <c>IPlayerLocalSender</c>. Mongo-dependent activation paths stay in the
@@ -43,7 +43,7 @@ public class PlayerRouteWiringTests
     {
         // 注册内嵌测试消息（清空后重扫本程序集：仅 WiringTestMessage 带 MessageTypeHandler，无其他用例依赖注册表）。
         MessageProtoHelper.Init(typeof(PlayerRouteWiringTests).Assembly);
-        MongoDiscoveryRuntime.ResetForTest();
+        DiscoveryRoutingWire.ResetForTest();
     }
 
     /// <summary>
@@ -116,19 +116,19 @@ public class PlayerRouteWiringTests
     }
 
     [Fact]
-    public void AttachLocalDispatcher_BeforeActivate_Throws()
+    public void AttachLocalDispatcher_BeforeInitialize_Throws()
     {
-        Assert.Throws<InvalidOperationException>(() => MongoDiscoveryRuntime.AttachLocalDispatcher(new RecordingLocalDispatcher()));
+        Assert.Throws<InvalidOperationException>(() => DiscoveryRoutingWire.AttachLocalDispatcher(new RecordingLocalDispatcher()));
     }
 
     [Fact]
-    public async Task AttachLocalDispatcher_AfterActivate_InstallsCase1DispatcherIntoRoleRouterHolder()
+    public async Task AttachLocalDispatcher_AfterInitialize_InstallsCase1DispatcherIntoRoleRouterHolder()
     {
         var remoteRouter = new RecordingRemoteRouter();
-        MongoDiscoveryRuntime.SimulateActivatedForTest(new[] { "Game", "Social" }, remoteRouter);
+        DiscoveryRoutingWire.SimulateInitializedForTest(new[] { "Game", "Social" }, remoteRouter);
         var dispatcher = new RecordingLocalDispatcher();
 
-        MongoDiscoveryRuntime.AttachLocalDispatcher(dispatcher);
+        DiscoveryRoutingWire.AttachLocalDispatcher(dispatcher);
 
         var envelope = new MessageEnvelope("Game", new WiringTestMessage { PlayerId = 1001 });
         var delivery = await RoleRouterHolder.Current.RouteAsync(envelope);
@@ -141,12 +141,12 @@ public class PlayerRouteWiringTests
     public async Task AttachLocalDispatcher_SecondCall_IsNoOpAndKeepsFirstDispatcher()
     {
         var remoteRouter = new RecordingRemoteRouter();
-        MongoDiscoveryRuntime.SimulateActivatedForTest(new[] { "Game" }, remoteRouter);
+        DiscoveryRoutingWire.SimulateInitializedForTest(new[] { "Game" }, remoteRouter);
         var first = new RecordingLocalDispatcher();
         var second = new RecordingLocalDispatcher();
 
-        MongoDiscoveryRuntime.AttachLocalDispatcher(first);
-        MongoDiscoveryRuntime.AttachLocalDispatcher(second);
+        DiscoveryRoutingWire.AttachLocalDispatcher(first);
+        DiscoveryRoutingWire.AttachLocalDispatcher(second);
 
         var envelope = new MessageEnvelope("Game", new WiringTestMessage { PlayerId = 1001 });
         await RoleRouterHolder.Current.RouteAsync(envelope);
@@ -159,8 +159,8 @@ public class PlayerRouteWiringTests
     public async Task AttachLocalDispatcher_PreservesRemoteChain()
     {
         var remoteRouter = new RecordingRemoteRouter();
-        MongoDiscoveryRuntime.SimulateActivatedForTest(new[] { "Game" }, remoteRouter);
-        MongoDiscoveryRuntime.AttachLocalDispatcher(new RecordingLocalDispatcher());
+        DiscoveryRoutingWire.SimulateInitializedForTest(new[] { "Game" }, remoteRouter);
+        DiscoveryRoutingWire.AttachLocalDispatcher(new RecordingLocalDispatcher());
 
         var envelope = new MessageEnvelope("Gate", new WiringTestMessage { PlayerId = 1001 });
         var delivery = await RoleRouterHolder.Current.RouteAsync(envelope);
