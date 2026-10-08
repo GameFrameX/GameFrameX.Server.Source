@@ -70,7 +70,7 @@ public static class DiscoveryRoutingWire
         }
 
         _hostedRoles = hostedRoleNames;
-        _remoteRouter = new MongoDiscoveryRemoteRoleRouter(tableProvider, new TcpEnvelopeForwarder());
+        _remoteRouter = new DiscoveryRemoteRoleRouter(tableProvider, new TcpEnvelopeForwarder());
         RoleRouterHolder.Initialize(new InProcessRoleRouter(hostedRoleNames, null, _remoteRouter));
     }
 
