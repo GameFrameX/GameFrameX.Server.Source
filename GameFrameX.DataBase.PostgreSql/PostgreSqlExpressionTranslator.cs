@@ -56,9 +56,16 @@ internal static class PostgreSqlExpressionTranslator
     /// <summary>
     /// 翻译过滤表达式为参数化 WHERE 片段。
     /// </summary>
+    /// <remarks>
+    /// Translates a filter expression into a parameterized WHERE fragment. Values are always bound as
+    /// <c>NpgsqlParameter</c>s (never inlined into SQL text); unsupported nodes throw instead of
+    /// silently falling back to in-memory filtering.
+    /// </remarks>
     /// <typeparam name="TState">状态类型 / State type</typeparam>
     /// <param name="filter">过滤表达式 / Filter expression</param>
     /// <returns>SQL 片段与参数列表 / SQL fragment and parameters</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="filter"/> 为 null 时抛出 / Thrown when <paramref name="filter"/> is null</exception>
+    /// <exception cref="NotSupportedException">当表达式节点超出受支持方言矩阵时抛出 / Thrown when an expression node is outside the supported dialect matrix</exception>
     public static (string Sql, IReadOnlyList<NpgsqlParameter> Parameters) TranslateFilter<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(filter, nameof(filter));
@@ -70,15 +77,21 @@ internal static class PostgreSqlExpressionTranslator
     /// <summary>
     /// 翻译排序表达式为 ORDER BY 片段（仅成员绑定）。
     /// </summary>
+    /// <remarks>
+    /// Translates a sort expression into an ORDER BY fragment. Only single-property member bindings
+    /// are supported; null placement mirrors Mongo (nulls/missing first ascending, last descending).
+    /// </remarks>
     /// <typeparam name="TState">状态类型 / State type</typeparam>
     /// <param name="sortExpression">排序表达式 / Sort expression</param>
     /// <param name="descending">是否降序 / Whether descending</param>
     /// <returns>ORDER BY 片段 / ORDER BY fragment</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="sortExpression"/> 为 null 时抛出 / Thrown when <paramref name="sortExpression"/> is null</exception>
+    /// <exception cref="NotSupportedException">当排序表达式不是单属性成员绑定时抛出 / Thrown when the sort expression is not a single-property member binding</exception>
     public static string TranslateSort<TState>(Expression<Func<TState, object>> sortExpression, bool descending) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(sortExpression, nameof(sortExpression));
         var member = UnwrapConvert(sortExpression.Body);
-        if (member is not MemberExpression { Expression: ParameterExpression } memberExpression)
+        if (member is not MemberExpression { Expression: ParameterExpression, } memberExpression)
         {
             throw new NotSupportedException($"PostgreSqlExpressionTranslator: sort expression '{sortExpression}' is not a member binding (node type: {sortExpression.Body.NodeType}). Only single-property sort expressions like 'x => x.Property' are supported; compute complex ordering in memory instead.");
         }
@@ -93,6 +106,9 @@ internal static class PostgreSqlExpressionTranslator
     /// <summary>
     /// 翻译上下文（参数名计数与集合）。
     /// </summary>
+    /// <remarks>
+    /// Translation context holding the parameter counter and the collected parameters.
+    /// </remarks>
     private sealed class TranslationContext
     {
         public List<NpgsqlParameter> Parameters { get; } = new();
@@ -108,6 +124,9 @@ internal static class PostgreSqlExpressionTranslator
     /// <summary>
     /// 递归访问表达式节点。
     /// </summary>
+    /// <remarks>
+    /// Recursively visits expression nodes and returns the translated SQL fragment.
+    /// </remarks>
     private static string Visit(Expression node, TranslationContext context, Type stateType)
     {
         switch (node.NodeType)
@@ -175,6 +194,10 @@ internal static class PostgreSqlExpressionTranslator
     /// <summary>
     /// 访问比较表达式（等值/不等/大小比较，支持左右互换与 null 常量）。
     /// </summary>
+    /// <remarks>
+    /// Visits a comparison expression (equality/inequality/ordering), supporting swapped operands and
+    /// null constants.
+    /// </remarks>
     private static string VisitComparison(BinaryExpression node, TranslationContext context, Type stateType)
     {
         if (TryResolveMemberAccessor(node.Left, stateType, out var accessor, out var property))
@@ -189,11 +212,11 @@ internal static class PostgreSqlExpressionTranslator
             var value = EvaluateConstantOperand(node.Left);
             var mirrored = node.NodeType switch
             {
-                ExpressionType.LessThan => ExpressionType.GreaterThan,
-                ExpressionType.LessThanOrEqual => ExpressionType.GreaterThanOrEqual,
-                ExpressionType.GreaterThan => ExpressionType.LessThan,
+                ExpressionType.LessThan           => ExpressionType.GreaterThan,
+                ExpressionType.LessThanOrEqual    => ExpressionType.GreaterThanOrEqual,
+                ExpressionType.GreaterThan        => ExpressionType.LessThan,
                 ExpressionType.GreaterThanOrEqual => ExpressionType.LessThanOrEqual,
-                _ => node.NodeType,
+                _                                 => node.NodeType,
             };
             return BuildComparison(accessor, property, value, mirrored, context);
         }
@@ -204,26 +227,30 @@ internal static class PostgreSqlExpressionTranslator
     /// <summary>
     /// 构建比较 SQL（null 常量 → IS [NOT] NULL；NotEqual 显式 OR IS NULL 对齐 C#/MQL null 语义）。
     /// </summary>
+    /// <remarks>
+    /// Builds the comparison SQL (null constant → IS [NOT] NULL; NotEqual explicitly ORs IS NULL to
+    /// align with C#/MQL null semantics).
+    /// </remarks>
     private static string BuildComparison(string accessor, PropertyInfo property, object value, ExpressionType nodeType, TranslationContext context)
     {
         var sqlOperator = nodeType switch
         {
-            ExpressionType.Equal => "=",
-            ExpressionType.NotEqual => "<>",
-            ExpressionType.LessThan => "<",
-            ExpressionType.LessThanOrEqual => "<=",
-            ExpressionType.GreaterThan => ">",
+            ExpressionType.Equal              => "=",
+            ExpressionType.NotEqual           => "<>",
+            ExpressionType.LessThan           => "<",
+            ExpressionType.LessThanOrEqual    => "<=",
+            ExpressionType.GreaterThan        => ">",
             ExpressionType.GreaterThanOrEqual => ">=",
-            _ => throw CreateUnsupported(null),
+            _                                 => throw CreateUnsupported(null),
         };
 
         if (value == null)
         {
             return nodeType switch
             {
-                ExpressionType.Equal => $"{accessor} IS NULL",
+                ExpressionType.Equal    => $"{accessor} IS NULL",
                 ExpressionType.NotEqual => $"{accessor} IS NOT NULL",
-                _ => throw new NotSupportedException($"PostgreSqlExpressionTranslator: ordering comparison against a null constant is not supported (operator '{sqlOperator}'). Use an explicit null check like 'x => x.Field == null' instead."),
+                _                       => throw new NotSupportedException($"PostgreSqlExpressionTranslator: ordering comparison against a null constant is not supported (operator '{sqlOperator}'). Use an explicit null check like 'x => x.Field == null' instead."),
             };
         }
 
@@ -241,6 +268,9 @@ internal static class PostgreSqlExpressionTranslator
     /// <summary>
     /// 访问字符串方法调用（Contains/StartsWith/EndsWith）。
     /// </summary>
+    /// <remarks>
+    /// Visits string method calls (Contains/StartsWith/EndsWith) and translates them into LIKE patterns.
+    /// </remarks>
     private static string VisitMethodCall(MethodCallExpression node, TranslationContext context, Type stateType)
     {
         if (node.Object == null || node.Arguments.Count != 1)
@@ -268,21 +298,25 @@ internal static class PostgreSqlExpressionTranslator
         var parameterName = context.AddParameter(value.ToString(), typeof(string));
         return methodName switch
         {
-            "Contains" => $"{accessor} LIKE '%' || {parameterName} || '%'",
+            "Contains"   => $"{accessor} LIKE '%' || {parameterName} || '%'",
             "StartsWith" => $"{accessor} LIKE {parameterName} || '%'",
-            _ => $"{accessor} LIKE '%' || {parameterName}",
+            _            => $"{accessor} LIKE '%' || {parameterName}",
         };
     }
 
     /// <summary>
     /// 尝试将表达式解析为 jsonb 访问器（参数成员绑定，含 Convert 解包；闭包/嵌套成员返回 false）。
     /// </summary>
+    /// <remarks>
+    /// Tries to resolve an expression to a jsonb accessor (parameter member binding with Convert
+    /// unwrapping; closures and nested member chains return false).
+    /// </remarks>
     private static bool TryResolveMemberAccessor(Expression node, Type stateType, out string accessor, out PropertyInfo property)
     {
         accessor = null;
         property = null;
         var unwrapped = UnwrapConvert(node);
-        if (unwrapped is not MemberExpression { Expression: ParameterExpression } memberExpression)
+        if (unwrapped is not MemberExpression { Expression: ParameterExpression, } memberExpression)
         {
             return false;
         }
@@ -295,6 +329,9 @@ internal static class PostgreSqlExpressionTranslator
     /// <summary>
     /// 解析 jsonb 访问器（成员必须绑定参数）。
     /// </summary>
+    /// <remarks>
+    /// Resolves the jsonb accessor (the member must bind to the lambda parameter).
+    /// </remarks>
     private static string ResolveMemberAccessor(MemberExpression node, Type stateType)
     {
         var property = ResolveProperty(node, stateType);
@@ -304,6 +341,9 @@ internal static class PostgreSqlExpressionTranslator
     /// <summary>
     /// 解析成员表达式对应的属性信息（含基类属性）。
     /// </summary>
+    /// <remarks>
+    /// Resolves the property information for a member expression (including inherited properties).
+    /// </remarks>
     private static PropertyInfo ResolveProperty(MemberExpression node, Type stateType)
     {
         var property = stateType.GetProperty(node.Member.Name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
@@ -318,23 +358,29 @@ internal static class PostgreSqlExpressionTranslator
     /// <summary>
     /// 求值常量/闭包操作数的运行时值（null 表示 null 常量）。
     /// </summary>
+    /// <remarks>
+    /// Evaluates the runtime value of a constant or closure operand (null denotes a null constant).
+    /// </remarks>
     private static object EvaluateConstantOperand(Expression node)
     {
         var unwrapped = UnwrapConvert(node);
         return unwrapped.NodeType switch
         {
-            ExpressionType.Constant => ((ConstantExpression)unwrapped).Value,
+            ExpressionType.Constant     => ((ConstantExpression)unwrapped).Value,
             ExpressionType.MemberAccess => Expression.Lambda(unwrapped).Compile().DynamicInvoke(),
-            _ => throw new NotSupportedException($"PostgreSqlExpressionTranslator: expression operand '{unwrapped}' (node type: {unwrapped.NodeType}) is not a constant or closure value. Use a local constant captured by the lambda, e.g. 'var g = 130; x => x.Group == g'."),
+            _                           => throw new NotSupportedException($"PostgreSqlExpressionTranslator: expression operand '{unwrapped}' (node type: {unwrapped.NodeType}) is not a constant or closure value. Use a local constant captured by the lambda, e.g. 'var g = 130; x => x.Group == g'."),
         };
     }
 
     /// <summary>
     /// 解包 Convert 节点（装箱/可空/枚举转换）。
     /// </summary>
+    /// <remarks>
+    /// Unwraps Convert nodes (boxing/nullable/enum conversions).
+    /// </remarks>
     private static Expression UnwrapConvert(Expression node)
     {
-        while (node is UnaryExpression { NodeType: ExpressionType.Convert } unary)
+        while (node is UnaryExpression { NodeType: ExpressionType.Convert, } unary)
         {
             node = unary.Operand;
         }
@@ -345,6 +391,9 @@ internal static class PostgreSqlExpressionTranslator
     /// <summary>
     /// 创建指名节点与替代写法的 NotSupportedException。
     /// </summary>
+    /// <remarks>
+    /// Creates a <see cref="NotSupportedException"/> naming the offending node and suggesting alternatives.
+    /// </remarks>
     private static NotSupportedException CreateUnsupported(Expression node)
     {
         var description = node == null ? "<null>" : $"{node.NodeType}: {node}";
@@ -354,36 +403,40 @@ internal static class PostgreSqlExpressionTranslator
     /// <summary>
     /// 按 CLR 值类型创建强类型参数（DateTime 强制 UTC timestamptz，枚举按底层整型）。
     /// </summary>
+    /// <remarks>
+    /// Creates a strongly typed parameter according to the CLR value type (DateTime forced to UTC
+    /// timestamptz, enums bound as their underlying integer type).
+    /// </remarks>
     private static NpgsqlParameter CreateParameter(string name, object value, Type propertyType)
     {
         var underlying = Nullable.GetUnderlyingType(propertyType) ?? propertyType;
         if (underlying.IsEnum)
         {
             var converted = Convert.ChangeType(value, Enum.GetUnderlyingType(value.GetType()), System.Globalization.CultureInfo.InvariantCulture);
-            return new NpgsqlParameter(name, NpgsqlDbType.Bigint) { Value = converted };
+            return new NpgsqlParameter(name, NpgsqlDbType.Bigint) { Value = converted, };
         }
 
         if (value is DateTime dateTime)
         {
             // P1-7：全 UTC 写 timestamptz
-            return new NpgsqlParameter(name, NpgsqlDbType.TimestampTz) { Value = dateTime.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(dateTime, DateTimeKind.Utc) : dateTime.ToUniversalTime() };
+            return new NpgsqlParameter(name, NpgsqlDbType.TimestampTz) { Value = dateTime.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(dateTime, DateTimeKind.Utc) : dateTime.ToUniversalTime(), };
         }
 
         if (value is DateTimeOffset dateTimeOffset)
         {
-            return new NpgsqlParameter(name, NpgsqlDbType.TimestampTz) { Value = dateTimeOffset.ToUniversalTime() };
+            return new NpgsqlParameter(name, NpgsqlDbType.TimestampTz) { Value = dateTimeOffset.ToUniversalTime(), };
         }
 
         if (underlying == typeof(bool))
         {
-            return new NpgsqlParameter(name, NpgsqlDbType.Boolean) { Value = value };
+            return new NpgsqlParameter(name, NpgsqlDbType.Boolean) { Value = value, };
         }
 
         var valueUnderlying = Nullable.GetUnderlyingType(value.GetType()) ?? value.GetType();
         if (valueUnderlying.IsEnum)
         {
             var converted = Convert.ChangeType(value, Enum.GetUnderlyingType(valueUnderlying), System.Globalization.CultureInfo.InvariantCulture);
-            return new NpgsqlParameter(name, NpgsqlDbType.Bigint) { Value = converted };
+            return new NpgsqlParameter(name, NpgsqlDbType.Bigint) { Value = converted, };
         }
 
         return new NpgsqlParameter(name, value);

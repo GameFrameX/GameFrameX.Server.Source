@@ -110,6 +110,7 @@ DELETE FROM player_route WHERE last_seen_at < now() - interval '30 days';";
     /// </remarks>
     /// <param name="dataSource">控制库数据源 / The control-database data source</param>
     /// <param name="interval">清理周期；缺省 5s / The cleanup period; defaults to 5 s</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="dataSource"/> 为 null 时抛出 / Thrown when <paramref name="dataSource"/> is null</exception>
     public PostgreSqlTtlCleanupJob(NpgsqlDataSource dataSource, TimeSpan? interval = null)
     {
         ArgumentNullException.ThrowIfNull(dataSource, nameof(dataSource));

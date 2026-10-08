@@ -52,6 +52,10 @@ internal static class PostgreSqlJsonbAccess
     /// <summary>
     /// 获取 jsonb 文本访问器（不附加类型 cast）。
     /// </summary>
+    /// <remarks>
+    /// Gets the jsonb text accessor (without appending a type cast). Single quotes in the property
+    /// name are doubled so the accessor stays a valid SQL string literal.
+    /// </remarks>
     /// <param name="propertyName">属性名 / Property name</param>
     /// <returns>访问器 SQL / Accessor SQL</returns>
     public static string GetAccessor(string propertyName)
@@ -79,6 +83,10 @@ internal static class PostgreSqlJsonbAccess
     /// <summary>
     /// 获取 CLR 类型对应的 SQL cast 后缀（空串表示按文本比较）。
     /// </summary>
+    /// <remarks>
+    /// Gets the SQL cast suffix for the CLR type (an empty string means the value is compared as text).
+    /// Mirrors the bounded cast list documented on <see cref="GetTypedAccessor"/>.
+    /// </remarks>
     /// <param name="clrType">CLR 类型 / CLR type</param>
     /// <returns>cast 后缀 / Cast suffix</returns>
     public static string GetCastSuffix(Type clrType)

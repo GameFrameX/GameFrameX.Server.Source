@@ -141,7 +141,7 @@ ON CONFLICT (instance_id) DO UPDATE SET
     /// <remarks>
     /// The heartbeat loop cancellation token source.
     /// </remarks>
-    private readonly CancellationTokenSource _loopCancellation = new CancellationTokenSource();
+    private readonly CancellationTokenSource _loopCancellation = new();
 
     /// <summary>
     /// 心跳循环任务。
@@ -176,6 +176,8 @@ ON CONFLICT (instance_id) DO UPDATE SET
     /// <param name="dataSource">控制库数据源 / The control-database data source</param>
     /// <param name="selfDescriptor">本进程实例身份 / This process's instance identity</param>
     /// <param name="heartbeatInterval">心跳间隔；缺省 5s / The heartbeat interval; defaults to 5 s</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="dataSource"/> 为 null 时抛出 / Thrown when <paramref name="dataSource"/> is null</exception>
+    /// <exception cref="ArgumentNullException">当 <paramref name="selfDescriptor"/> 为 null 时抛出 / Thrown when <paramref name="selfDescriptor"/> is null</exception>
     public PostgreSqlEndpointRegistry(NpgsqlDataSource dataSource, InstanceDescriptor selfDescriptor, TimeSpan? heartbeatInterval = null)
     {
         ArgumentNullException.ThrowIfNull(dataSource, nameof(dataSource));
@@ -212,6 +214,7 @@ ON CONFLICT (instance_id) DO UPDATE SET
     /// <param name="dataSource">数据源 / The data source</param>
     /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
     /// <returns>异步任务 / Async task</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="dataSource"/> 为 null 时抛出 / Thrown when <paramref name="dataSource"/> is null</exception>
     public static Task EnsureSchemaAsync(NpgsqlDataSource dataSource, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(dataSource, nameof(dataSource));

@@ -47,6 +47,7 @@ internal sealed class DefaultMessageCodec : IMessageCodec
     /// 总包头含长度字段：4 + 10 = 14
     /// </summary>
     private const int InnerPackageHeaderLength = 14;
+
     private const int DefaultMaxPacketSize = 1024 * 1024;
     private readonly int _compressThreshold;
     private readonly int _maxPacketSize;
@@ -157,6 +158,9 @@ internal sealed class DefaultMessageCodec : IMessageCodec
     /// <param name="stream">网络流 / The network stream to read from</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>解码后的消息对象；连接关闭时返回 null / The decoded message object, or null if the connection was closed</returns>
+    /// <exception cref="IOException">远程连接在读取完成前关闭时抛出 / Thrown when the remote connection closes before the read completes</exception>
+    /// <exception cref="InvalidDataException">包长或解压后载荷超出限制时抛出 / Thrown when the packet length or decompressed payload exceeds limits</exception>
+    /// <exception cref="NotSupportedException">压缩算法未注册时抛出 / Thrown when the compression algorithm is not registered</exception>
     public async Task<MessageObject> DecodeAsync(Stream stream, CancellationToken cancellationToken)
     {
         var lengthBuffer = ArrayPool<byte>.Shared.Rent(4);

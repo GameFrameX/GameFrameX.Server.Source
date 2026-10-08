@@ -73,17 +73,24 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 执行带有自动重试机制的读取操作。
     /// </summary>
+    /// <remarks>
+    /// Executes a read operation with automatic retry on transient failures.
+    /// </remarks>
     private async Task<T> ExecuteReadWithRetryAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken, string operationName)
     {
-        return await ExecuteReadWithRetryAsync(operation, cancellationToken, operationName, fallbackValueFactory: null).ConfigureAwait(false);
+        return await ExecuteReadWithRetryAsync(operation, cancellationToken, operationName, null).ConfigureAwait(false);
     }
 
     /// <summary>
     /// 执行带有自动重试机制的读取操作（支持降级返回）。
     /// </summary>
+    /// <remarks>
+    /// Executes a read operation with automatic retry on transient failures,
+    /// with an optional fallback value factory used when reads are degraded.
+    /// </remarks>
     private async Task<T> ExecuteReadWithRetryAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken, string operationName, Func<T> fallbackValueFactory)
     {
-        if (TryReturnDegradedReadFallback(operationName, fallbackValueFactory, out T degradedValue))
+        if (TryReturnDegradedReadFallback(operationName, fallbackValueFactory, out var degradedValue))
         {
             return degradedValue;
         }
@@ -121,7 +128,7 @@ public sealed partial class PostgreSqlDbService
     /// </remarks>
     private static bool ShouldRetryTransactionException(Exception exception)
     {
-        return exception is PostgresException { SqlState: "40001" or "40P01" };
+        return exception is PostgresException { SqlState: "40001" or "40P01", };
     }
 
     /// <summary>
@@ -208,17 +215,20 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 获取失败原因标签。
     /// </summary>
+    /// <remarks>
+    /// Gets the failure-reason metric tag for the given exception.
+    /// </remarks>
     private static string GetFailureReason(Exception exception)
     {
         return exception switch
         {
-            null => "unknown",
-            TimeoutException => "timeout",
-            PostgresException postgresException => $"postgres_{postgresException.SqlState}",
+            null                                                             => "unknown",
+            TimeoutException                                                 => "timeout",
+            PostgresException postgresException                              => $"postgres_{postgresException.SqlState}",
             NpgsqlException npgsqlException when npgsqlException.IsTransient => "connection",
-            NpgsqlException => "npgsql_exception",
-            DatabaseUnavailableException => "database_unavailable",
-            _ => "unknown",
+            NpgsqlException                                                  => "npgsql_exception",
+            DatabaseUnavailableException                                     => "database_unavailable",
+            _                                                                => "unknown",
         };
     }
 }

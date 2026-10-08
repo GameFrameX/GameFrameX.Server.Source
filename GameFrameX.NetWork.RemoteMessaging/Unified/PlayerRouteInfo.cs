@@ -43,6 +43,7 @@ public sealed class PlayerRouteInfo
     /// <remarks>
     /// The server type where the player is located (e.g. "Game", "Social").
     /// </remarks>
+    /// <value>服务器类型（如 "Game"、"Social"）/ The server type (e.g. "Game", "Social")</value>
     public string ServerType { get; init; }
 
     /// <summary>
@@ -51,6 +52,7 @@ public sealed class PlayerRouteInfo
     /// <remarks>
     /// The server ID where the player is located.
     /// </remarks>
+    /// <value>玩家所在的服务器ID / The server ID where the player is located</value>
     public int ServerId { get; init; }
 
     /// <summary>
@@ -59,6 +61,7 @@ public sealed class PlayerRouteInfo
     /// <remarks>
     /// Whether the player is online.
     /// </remarks>
+    /// <value>如果玩家在线则为 <c>true</c>；否则为 <c>false</c> / <c>true</c> if the player is online; otherwise <c>false</c></value>
     public bool IsOnline { get; init; }
 
     /// <summary>
@@ -67,6 +70,7 @@ public sealed class PlayerRouteInfo
     /// <remarks>
     /// Route version number (used for expiration checking).
     /// </remarks>
+    /// <value>路由版本号 / The route version number</value>
     public long Version { get; init; }
 
     /// <summary>

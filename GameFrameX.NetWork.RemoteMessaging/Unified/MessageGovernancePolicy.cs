@@ -124,6 +124,9 @@ public sealed class MessageGovernancePolicy
     /// <remarks>
     /// Query policy: retry allowed, no idempotency key required.
     /// </remarks>
+    /// <param name="timeoutMs">超时毫秒数 / Timeout in milliseconds</param>
+    /// <param name="maxRetryCount">最大重试次数 / Maximum retry count</param>
+    /// <returns>查询类治理策略 / Query governance policy</returns>
     public static MessageGovernancePolicy QueryPolicy(int timeoutMs = DefaultTimeoutMs, int maxRetryCount = DefaultMaxRetryCount)
     {
         return new MessageGovernancePolicy
@@ -141,6 +144,8 @@ public sealed class MessageGovernancePolicy
     /// <remarks>
     /// Command policy: no retry by default, idempotency key enforced.
     /// </remarks>
+    /// <param name="timeoutMs">超时毫秒数 / Timeout in milliseconds</param>
+    /// <returns>命令类治理策略 / Command governance policy</returns>
     public static MessageGovernancePolicy CommandPolicy(int timeoutMs = DefaultTimeoutMs)
     {
         return new MessageGovernancePolicy
@@ -158,6 +163,8 @@ public sealed class MessageGovernancePolicy
     /// <remarks>
     /// Notification policy: one-way, alert on failure.
     /// </remarks>
+    /// <param name="timeoutMs">超时毫秒数 / Timeout in milliseconds</param>
+    /// <returns>通知类治理策略 / Notification governance policy</returns>
     public static MessageGovernancePolicy NotificationPolicy(int timeoutMs = DefaultTimeoutMs)
     {
         return new MessageGovernancePolicy

@@ -77,7 +77,7 @@ public sealed class PostgreSqlPlayerRouteResolver : IPlayerRouteResolver
     /// <remarks>
     /// The per-player tier-2 cache.
     /// </remarks>
-    private readonly ConcurrentDictionary<long, ControlCacheEntry> _controlCache = new ConcurrentDictionary<long, ControlCacheEntry>();
+    private readonly ConcurrentDictionary<long, ControlCacheEntry> _controlCache = new();
 
     /// <summary>
     /// 初始化三级玩家路由解析器。
@@ -88,6 +88,7 @@ public sealed class PostgreSqlPlayerRouteResolver : IPlayerRouteResolver
     /// </remarks>
     /// <param name="dataSource">控制库数据源 / The control-database data source</param>
     /// <param name="fastPath">Tier 1 快路径提供方（null 跳过 Tier 1）/ Tier 1 fast path (null skips Tier 1)</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="dataSource"/> 为 null 时抛出 / Thrown when <paramref name="dataSource"/> is null</exception>
     public PostgreSqlPlayerRouteResolver(NpgsqlDataSource dataSource, IPlayerRouteFastPath fastPath = null)
     {
         ArgumentNullException.ThrowIfNull(dataSource, nameof(dataSource));
@@ -167,7 +168,7 @@ public sealed class PostgreSqlPlayerRouteResolver : IPlayerRouteResolver
         }
         else
         {
-            var serverType = string.IsNullOrEmpty(role) ? (GlobalSettings.CurrentSetting?.ServerType ?? GameServerConst.Game.Name) : role;
+            var serverType = string.IsNullOrEmpty(role) ? GlobalSettings.CurrentSetting?.ServerType ?? GameServerConst.Game.Name : role;
             info = PlayerRouteInfo.Online(serverType, ExtractServerId(instanceId), version);
         }
 
@@ -193,8 +194,8 @@ public sealed class PostgreSqlPlayerRouteResolver : IPlayerRouteResolver
 
         var separatorIndex = instanceId.LastIndexOf('-');
         var candidate = separatorIndex >= 0 && separatorIndex + 1 < instanceId.Length
-            ? instanceId.Substring(separatorIndex + 1)
-            : instanceId;
+                            ? instanceId.Substring(separatorIndex + 1)
+                            : instanceId;
 
         if (int.TryParse(candidate, out var parsed))
         {

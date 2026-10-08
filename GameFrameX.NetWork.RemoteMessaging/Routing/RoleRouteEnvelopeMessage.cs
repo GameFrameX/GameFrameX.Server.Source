@@ -57,7 +57,7 @@ public sealed class RoleRouteEnvelopeMessage : MessageObject
     /// The reserved message id (inner segment -130, sub id 10). Written into frame
     /// headers only; it becomes meaningful once the receiving change registers it.
     /// </remarks>
-    public const int ReservedMessageId = unchecked((int)(((-130) << 16) + 10));
+    public const int ReservedMessageId = unchecked((int)((-130 << 16) + 10));
 
     /// <summary>
     /// 获取或设置目标 Role 名。
@@ -65,6 +65,7 @@ public sealed class RoleRouteEnvelopeMessage : MessageObject
     /// <remarks>
     /// Gets or sets the target role name.
     /// </remarks>
+    /// <value>目标 Role 名 / The target role name</value>
     [ProtoMember(1)]
     public string TargetRole { get; set; }
 
@@ -74,6 +75,7 @@ public sealed class RoleRouteEnvelopeMessage : MessageObject
     /// <remarks>
     /// Gets or sets the local delivery target actor id (passed through the remote hop).
     /// </remarks>
+    /// <value>本地投递目标 ActorId / The local delivery target actor id</value>
     [ProtoMember(2)]
     public long TargetActorId { get; set; }
 
@@ -83,6 +85,7 @@ public sealed class RoleRouteEnvelopeMessage : MessageObject
     /// <remarks>
     /// Gets or sets the target instance id (D3 case 2; empty for case 3).
     /// </remarks>
+    /// <value>目标实例 Id；case 3 时为空 / The target instance id, or empty for case 3</value>
     [ProtoMember(3)]
     public string TargetInstanceId { get; set; }
 
@@ -93,6 +96,7 @@ public sealed class RoleRouteEnvelopeMessage : MessageObject
     /// Gets or sets the embedded routed message's message id (the receiving side
     /// restores the concrete type from it).
     /// </remarks>
+    /// <value>内嵌消息的消息 Id / The embedded message's message id</value>
     [ProtoMember(4)]
     public int InnerMessageId { get; set; }
 
@@ -107,6 +111,7 @@ public sealed class RoleRouteEnvelopeMessage : MessageObject
     /// only registered per-assembly by the receiving change — the id + bytes form
     /// keeps this contract independent of any registration.
     /// </remarks>
+    /// <value>内嵌消息的序列化字节 / The embedded message's serialized bytes</value>
     [ProtoMember(5)]
     public byte[] InnerMessageBytes { get; set; }
 

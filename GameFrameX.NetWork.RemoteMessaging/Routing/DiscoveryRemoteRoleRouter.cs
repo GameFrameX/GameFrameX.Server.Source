@@ -105,8 +105,8 @@ public sealed class DiscoveryRemoteRoleRouter : IRemoteRoleRouter
 
         // 把选中的实例 Id 盖到信封上：case 3 的选择结果对发送通道与接收端复投（C143e）都必须可见。
         var stampedEnvelope = envelope.TargetInstanceId == targetInstance.InstanceId
-            ? envelope
-            : new MessageEnvelope(envelope.TargetRole, envelope.Message, envelope.TargetActorId, targetInstance.InstanceId);
+                                  ? envelope
+                                  : new MessageEnvelope(envelope.TargetRole, envelope.Message, envelope.TargetActorId, targetInstance.InstanceId);
 
         var parsedEndpoint = EndpointParser.Parse(targetInstance.AdvertiseEndpoint);
         await _forwarder.ForwardAsync(parsedEndpoint, stampedEnvelope, cancellationToken);

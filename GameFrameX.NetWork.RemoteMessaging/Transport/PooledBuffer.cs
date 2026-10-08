@@ -61,6 +61,7 @@ public sealed class PooledBuffer : IDisposable
     /// <remarks>
     /// Returns the valid data length of the buffer.
     /// </remarks>
+    /// <value>有效数据长度（字节） / The valid data length in bytes</value>
     public int Length { get; }
 
     /// <summary>
@@ -69,6 +70,7 @@ public sealed class PooledBuffer : IDisposable
     /// <remarks>
     /// Returns the valid data view of the buffer.
     /// </remarks>
+    /// <value>缓冲区有效数据的只读内存视图 / A read-only memory view of the valid buffer data</value>
     public ReadOnlyMemory<byte> Memory
     {
         get { return _buffer?.AsMemory(0, Length) ?? ReadOnlyMemory<byte>.Empty; }

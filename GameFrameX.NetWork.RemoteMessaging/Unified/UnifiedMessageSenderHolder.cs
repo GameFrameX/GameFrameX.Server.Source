@@ -77,6 +77,9 @@ public static class UnifiedMessageSenderHolder
     /// <summary>
     /// 获取统一消息发送指标聚合器。
     /// </summary>
+    /// <remarks>
+    /// Gets the unified message send metrics aggregator.
+    /// </remarks>
     /// <exception cref="InvalidOperationException">未初始化或发送器未提供指标实例时访问 / Thrown when metrics are unavailable</exception>
     public static MessageSendMetrics Metrics
     {
@@ -98,6 +101,7 @@ public static class UnifiedMessageSenderHolder
     /// Initializes the unified message sender. Called once during service startup.
     /// </remarks>
     /// <param name="sender">统一消息发送器实例 / The unified message sender instance</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="sender"/> 为 null 时抛出 / Thrown when <paramref name="sender"/> is null</exception>
     public static void Initialize(IUnifiedMessageSender sender)
     {
         if (sender == null)
@@ -121,6 +125,7 @@ public static class UnifiedMessageSenderHolder
     /// <param name="routeResolver">玩家路由解析器 / Player route resolver</param>
     /// <param name="localSender">本服玩家发送器 / Local player sender</param>
     /// <param name="remoteClient">远程消息客户端 / Remote message client</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="remoteClient"/> 为 null 时抛出 / Thrown when <paramref name="remoteClient"/> is null</exception>
     public static void InitializeWithDefaults(
         IPlayerRouteResolver routeResolver,
         IPlayerLocalSender localSender,
@@ -136,5 +141,4 @@ public static class UnifiedMessageSenderHolder
         var sender = new UnifiedMessageSender(remoteClient, routeResolver, localSender, instanceSelector, metrics);
         Initialize(sender);
     }
-
 }

@@ -43,6 +43,7 @@ public sealed class InstanceSelection
     /// <remarks>
     /// Selected instance identifier.
     /// </remarks>
+    /// <value>选中的实例标识 / The selected instance identifier</value>
     public string InstanceId { get; init; }
 
     /// <summary>
@@ -51,6 +52,7 @@ public sealed class InstanceSelection
     /// <remarks>
     /// Corresponding service name.
     /// </remarks>
+    /// <value>对应的服务名 / The corresponding service name</value>
     public string ServiceName { get; init; }
 
     /// <summary>
@@ -59,6 +61,7 @@ public sealed class InstanceSelection
     /// <remarks>
     /// Whether an instance was found.
     /// </remarks>
+    /// <value>如果命中可用实例则为 <c>true</c>；否则为 <c>false</c> / <c>true</c> if an available instance was found; otherwise <c>false</c></value>
     public bool HasInstance
     {
         get { return !string.IsNullOrEmpty(InstanceId); }

@@ -56,6 +56,8 @@ internal static class PostgreSqlJsonDocumentSerializer
     /// <remarks>
     /// 枚举按数值序列化（对齐 MongoDB C# 驱动枚举 int32 默认；查询翻译器对枚举属性按底层整型
     /// 生成 <c>::bigint</c> cast，字符串形态会导致 cast 失败）。
+    /// Enums are serialized as numbers (matching the MongoDB C# driver's int32 default; the query
+    /// translator emits a <c>::bigint</c> cast for enum properties, so a string form would fail the cast).
     /// </remarks>
     private static readonly JsonSerializerOptions DocumentOptions = new()
     {
@@ -67,6 +69,10 @@ internal static class PostgreSqlJsonDocumentSerializer
     /// <summary>
     /// 将状态对象序列化为 jsonb 文本。
     /// </summary>
+    /// <remarks>
+    /// Serializes the state object to jsonb text following the BSON alignment conventions documented
+    /// on this class.
+    /// </remarks>
     /// <typeparam name="TState">状态类型 / State type</typeparam>
     /// <param name="state">状态对象 / State object</param>
     /// <returns>jsonb 文本 / jsonb text</returns>
@@ -78,6 +84,9 @@ internal static class PostgreSqlJsonDocumentSerializer
     /// <summary>
     /// 将 jsonb 文本反序列化为状态对象。
     /// </summary>
+    /// <remarks>
+    /// Deserializes jsonb text back into a state object (a parameterless constructor is required).
+    /// </remarks>
     /// <typeparam name="TState">状态类型 / State type</typeparam>
     /// <param name="json">jsonb 文本 / jsonb text</param>
     /// <returns>状态对象 / State object</returns>
@@ -89,6 +98,10 @@ internal static class PostgreSqlJsonDocumentSerializer
     /// <summary>
     /// 将部分更新字段字典序列化为 jsonb 合并对象（null 值项由调用方移入移除键集合）。
     /// </summary>
+    /// <remarks>
+    /// Serializes a partial-update field dictionary into a jsonb merge object (null-valued entries
+    /// are moved into the removal key set by the caller).
+    /// </remarks>
     /// <param name="updateFields">更新字段 / Update fields</param>
     /// <returns>jsonb 对象文本 / jsonb object text</returns>
     public static string SerializeFields(IReadOnlyDictionary<string, object> updateFields)

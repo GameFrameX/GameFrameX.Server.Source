@@ -61,6 +61,7 @@ public static class PostgreSqlPlayerRouteResolverBootstrap
     /// <remarks>
     /// The wired resolver (null before <see cref="Attach"/>).
     /// </remarks>
+    /// <value>已装配的解析器实例；Attach 之前为 null / The wired resolver instance; null before <see cref="Attach"/></value>
     public static PostgreSqlPlayerRouteResolver Resolver { get; private set; }
 
     /// <summary>
@@ -69,6 +70,7 @@ public static class PostgreSqlPlayerRouteResolverBootstrap
     /// <remarks>
     /// The wired sync target (null before <see cref="Attach"/>).
     /// </remarks>
+    /// <value>已装配的同步目标实例；Attach 之前为 null / The wired sync-target instance; null before <see cref="Attach"/></value>
     public static PostgreSqlPlayerRouteSyncTarget SyncTarget { get; private set; }
 
     /// <summary>
@@ -84,6 +86,7 @@ public static class PostgreSqlPlayerRouteResolverBootstrap
     /// <param name="dataSource">控制库数据源 / The control-database data source</param>
     /// <param name="fastPath">Tier 1 快路径提供方（null 跳过 Tier 1）/ Tier 1 fast path (null skips Tier 1)</param>
     /// <returns>是否为本进程首次装配（false 表示已激活，本次调用为 no-op） / true on first attach, false on subsequent calls</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="dataSource"/> 为 null 时抛出 / Thrown when <paramref name="dataSource"/> is null</exception>
     public static async Task<bool> Attach(NpgsqlDataSource dataSource, IPlayerRouteFastPath fastPath = null)
     {
         ArgumentNullException.ThrowIfNull(dataSource, nameof(dataSource));

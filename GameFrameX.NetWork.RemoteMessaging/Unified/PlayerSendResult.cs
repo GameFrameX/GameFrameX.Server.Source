@@ -188,6 +188,7 @@ public sealed class PlayerSendResult
     /// <param name="elapsedMs">耗时毫秒数 / Elapsed time in milliseconds</param>
     /// <param name="traceId">追踪ID / Trace ID</param>
     /// <param name="targetServiceName">目标服务名 / Target service name</param>
+    /// <param name="retryCount">重试次数 / Number of retries attempted</param>
     /// <returns>成功的发送结果 / A successful send result</returns>
     public static PlayerSendResult Ok(PlayerDeliverStatus status, long playerId, long elapsedMs, string traceId = null, string targetServiceName = null, int retryCount = 0)
     {
@@ -213,6 +214,7 @@ public sealed class PlayerSendResult
     /// <param name="errorMessage">错误描述 / Error description</param>
     /// <param name="elapsedMs">耗时毫秒数 / Elapsed time in milliseconds</param>
     /// <param name="traceId">追踪ID / Trace ID</param>
+    /// <param name="retryCount">重试次数 / Number of retries attempted</param>
     /// <returns>失败的发送结果 / A failed send result</returns>
     public static PlayerSendResult Fail(PlayerDeliverStatus status, long playerId, string errorMessage, long elapsedMs = 0, string traceId = null, int retryCount = 0)
     {

@@ -288,6 +288,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
     /// <remarks>
     /// Sends a request and returns a structured result containing status code, elapsed time, and retry information.
     /// </remarks>
+    /// <typeparam name="TResponse">响应消息类型 / The response message type</typeparam>
     /// <param name="context">调用上下文（含超时、重试策略、追踪信息） / The call context (including timeout, retry strategy, and tracing info)</param>
     /// <param name="requestMessage">请求消息对象 / The request message object</param>
     /// <returns>结构化调用结果 / The structured call result</returns>
@@ -382,12 +383,12 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
             if (_protocolVersionNegotiator != null && !_protocolVersionNegotiator.IsCompatible(requestMessage.GetType()))
             {
                 return (
-                    RemoteCallResult<TResponse>.Fail(
-                        RemoteStatusCode.UnexpectedResponse,
-                        $"Protocol version incompatible for message type: {requestMessage.GetType().Name}",
-                        stopwatch.ElapsedMilliseconds,
-                        context.TraceId),
-                    false);
+                           RemoteCallResult<TResponse>.Fail(
+                               RemoteStatusCode.UnexpectedResponse,
+                               $"Protocol version incompatible for message type: {requestMessage.GetType().Name}",
+                               stopwatch.ElapsedMilliseconds,
+                               context.TraceId),
+                           false);
             }
 
             await _callSemaphore.WaitAsync(context.CancellationToken);
@@ -398,12 +399,12 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
                 {
                     RecordFailures(context.ServiceName, "Failed to create connection");
                     return (
-                        RemoteCallResult<TResponse>.Fail(
-                            RemoteStatusCode.ConnectionFailed,
-                            "Failed to create connection",
-                            stopwatch.ElapsedMilliseconds,
-                            context.TraceId),
-                        false);
+                               RemoteCallResult<TResponse>.Fail(
+                                   RemoteStatusCode.ConnectionFailed,
+                                   "Failed to create connection",
+                                   stopwatch.ElapsedMilliseconds,
+                                   context.TraceId),
+                               false);
                 }
 
                 var requestUniqueId = _requestResponseMatcher?.RegisterPendingRequest(context.TimeoutMs) ?? IdGenerator.GetNextUniqueIntId();
@@ -426,12 +427,12 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
             RecordFailures(context.ServiceName, endpointNotFoundException.Message);
             await RunExceptionInterceptorsAsync(context, requestMessage, endpointNotFoundException, stopwatch.ElapsedMilliseconds);
             return (
-                RemoteCallResult<TResponse>.Fail(
-                    RemoteStatusCode.EndpointNotFound,
-                    "Failed to resolve service endpoint",
-                    stopwatch.ElapsedMilliseconds,
-                    context.TraceId),
-                false);
+                       RemoteCallResult<TResponse>.Fail(
+                           RemoteStatusCode.EndpointNotFound,
+                           "Failed to resolve service endpoint",
+                           stopwatch.ElapsedMilliseconds,
+                           context.TraceId),
+                       false);
         }
         catch (OperationCanceledException)
         {
@@ -442,8 +443,8 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
             await RunExceptionInterceptorsAsync(context, requestMessage, new TimeoutException(cancellation.errorMessage), stopwatch.ElapsedMilliseconds);
 
             return (
-                RemoteCallResult<TResponse>.Fail(cancellation.statusCode, cancellation.errorMessage, stopwatch.ElapsedMilliseconds, context.TraceId),
-                ShouldRetry(context, cancellation.statusCode, attemptCount));
+                       RemoteCallResult<TResponse>.Fail(cancellation.statusCode, cancellation.errorMessage, stopwatch.ElapsedMilliseconds, context.TraceId),
+                       ShouldRetry(context, cancellation.statusCode, attemptCount));
         }
         catch (Exception ex)
         {
@@ -455,8 +456,8 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
 
             var statusCode = IsConnectionException(ex) ? RemoteStatusCode.ConnectionFailed : RemoteStatusCode.UnknownError;
             return (
-                RemoteCallResult<TResponse>.Fail(statusCode, ex.Message, stopwatch.ElapsedMilliseconds, context.TraceId),
-                ShouldRetry(context, statusCode, attemptCount));
+                       RemoteCallResult<TResponse>.Fail(statusCode, ex.Message, stopwatch.ElapsedMilliseconds, context.TraceId),
+                       ShouldRetry(context, statusCode, attemptCount));
         }
     }
 
@@ -703,5 +704,4 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
         message.SetOperationType(MessageProtoHelper.GetMessageOperationType(message));
         message.SetUniqueId(uniqueId);
     }
-
 }

@@ -39,6 +39,9 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 启动后台恢复任务（单飞）。
     /// </summary>
+    /// <remarks>
+    /// Starts the background recovery task exactly once (single-flight).
+    /// </remarks>
     private void EnsureRecoveryTaskStarted()
     {
         if (Interlocked.CompareExchange(ref _recoveryTaskStartedFlag, 1, 0) != 0)
@@ -53,6 +56,9 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 停止后台恢复任务。
     /// </summary>
+    /// <remarks>
+    /// Stops the background recovery task and releases its resources.
+    /// </remarks>
     private async Task StopRecoveryTaskAsync()
     {
         if (Interlocked.CompareExchange(ref _recoveryTaskStartedFlag, 0, 1) != 1)
@@ -82,6 +88,9 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 后台恢复循环，负责 Unhealthy 状态下探活。
     /// </summary>
+    /// <remarks>
+    /// Background recovery loop that probes the database while it is Unhealthy.
+    /// </remarks>
     private async Task RunRecoveryLoopAsync(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
@@ -114,6 +123,9 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 尝试重建数据源并执行探活。
     /// </summary>
+    /// <remarks>
+    /// Attempts to rebuild the data source and execute a ping probe.
+    /// </remarks>
     private async Task<bool> TryReconnectAndPingAsync(CancellationToken cancellationToken)
     {
         var options = Options;

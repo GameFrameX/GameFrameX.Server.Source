@@ -47,6 +47,7 @@ internal sealed class TraceRemoteCallInterceptor : IRemoteCallInterceptor
     /// The ActivitySource name constant used for creating distributed tracing activities.
     /// </remarks>
     public const string ActivitySourceName = "GameFrameX.RemoteMessaging";
+
     private static readonly ActivitySource ActivitySource = new(ActivitySourceName);
 
     /// <summary>

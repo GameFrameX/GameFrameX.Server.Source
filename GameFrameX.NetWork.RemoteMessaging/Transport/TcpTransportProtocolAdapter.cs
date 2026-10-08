@@ -62,7 +62,10 @@ internal sealed class TcpTransportProtocolAdapter : ITransportProtocolAdapter
     /// <remarks>
     /// Gets the protocol name, always returning TCP.
     /// </remarks>
-    public string ProtocolName => "TCP";
+    public string ProtocolName
+    {
+        get { return "TCP"; }
+    }
 
     /// <summary>
     /// 获取或创建目标服务对应的可用 TCP 流：解析服务端点并拆分主机与端口，

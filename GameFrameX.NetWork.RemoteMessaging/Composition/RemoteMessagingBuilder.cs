@@ -210,7 +210,7 @@ public sealed class RemoteMessagingBuilder
         var endpointResolver = new AspireEndpointResolver();
         var connectionProvider = new TcpConnectionProvider();
         var transportProtocolAdapter = _transportAdapterFactory?.Invoke(endpointResolver, connectionProvider)
-                                     ?? new TcpTransportProtocolAdapter(endpointResolver, connectionProvider);
+                                       ?? new TcpTransportProtocolAdapter(endpointResolver, connectionProvider);
         var compressionRegistry = _options.CompressionRegistry ?? new DefaultMessageCompressionRegistry();
         var messageCodec = new DefaultMessageCodec(
             compressionRegistry,

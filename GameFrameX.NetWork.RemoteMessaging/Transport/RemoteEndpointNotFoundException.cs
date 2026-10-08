@@ -58,6 +58,7 @@ public sealed class RemoteEndpointNotFoundException : Exception
     /// <remarks>
     /// Service name.
     /// </remarks>
+    /// <value>目标服务名 / The target service name</value>
     public string ServiceName { get; }
 
     /// <summary>
@@ -66,5 +67,6 @@ public sealed class RemoteEndpointNotFoundException : Exception
     /// <remarks>
     /// Raw endpoint string.
     /// </remarks>
+    /// <value>无法解析的原始端点字符串 / The raw endpoint string that could not be resolved</value>
     public string Endpoint { get; }
 }

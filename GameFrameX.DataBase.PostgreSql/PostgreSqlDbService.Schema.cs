@@ -43,6 +43,9 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 表结构就绪缓存（表名 → 是否已确保 DDL），对齐 Mongo 适配器的 <c>_indexCache</c> 语义。
     /// </summary>
+    /// <remarks>
+    /// Schema-readiness cache (table name to whether DDL has been ensured), aligned with the Mongo adapter's <c>_indexCache</c> semantics.
+    /// </remarks>
     private readonly ConcurrentDictionary<string, bool> _schemaCache = new();
 
     /// <summary>
@@ -98,6 +101,9 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 获取文档表名（带引号标识符，表名 = 状态类型名，对齐 Mongo 集合名契约）。
     /// </summary>
+    /// <remarks>
+    /// Gets the document table name as a quoted identifier (table name = state type name, mirroring the Mongo collection-name contract).
+    /// </remarks>
     /// <typeparam name="TState">文档类型 / Document type</typeparam>
     /// <returns>带引号的表名 / The quoted table name</returns>
     private static string GetTableName<TState>()
@@ -108,6 +114,9 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 转义并引用 SQL 标识符。
     /// </summary>
+    /// <remarks>
+    /// Escapes and quotes a SQL identifier.
+    /// </remarks>
     /// <param name="identifier">原始标识符 / Raw identifier</param>
     /// <returns>带引号标识符 / Quoted identifier</returns>
     private static string QuoteIdentifier(string identifier)
@@ -158,9 +167,9 @@ public sealed partial class PostgreSqlDbService
     private static async Task EnsureIndexesAsync(NpgsqlConnection connection, string tableName, Type entityType, CancellationToken cancellationToken)
     {
         var indexAttributes = entityType.GetProperties()
-            .Select(property => (Property: property, Attribute: property.GetCustomAttribute<EntityIndexAttribute>()))
-            .Where(static entry => entry.Attribute != null)
-            .ToList();
+                                        .Select(property => (Property: property, Attribute: property.GetCustomAttribute<EntityIndexAttribute>()))
+                                        .Where(static entry => entry.Attribute != null)
+                                        .ToList();
         if (indexAttributes.Count == 0)
         {
             return;
@@ -253,6 +262,6 @@ public sealed partial class PostgreSqlDbService
     /// </remarks>
     private static NpgsqlParameter CreateJsonParameter(string parameterName, string json)
     {
-        return new NpgsqlParameter(parameterName, NpgsqlDbType.Jsonb) { Value = json };
+        return new NpgsqlParameter(parameterName, NpgsqlDbType.Jsonb) { Value = json, };
     }
 }

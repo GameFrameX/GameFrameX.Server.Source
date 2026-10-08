@@ -30,7 +30,7 @@ namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 public sealed class PerInstanceDedupe
 {
     private readonly TimeSpan _window;
-    private readonly ConcurrentDictionary<string, long> _lastSeenTicks = new ConcurrentDictionary<string, long>(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, long> _lastSeenTicks = new(StringComparer.Ordinal);
 
     /// <summary>
     /// 初始化单飞去重器（1s 时间窗）。

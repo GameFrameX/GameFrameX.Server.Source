@@ -49,6 +49,9 @@ public sealed class PostgreSqlHealthCheck : IHealthCheck
     /// <summary>
     /// 初始化 PostgreSqlHealthCheck 的新实例。
     /// </summary>
+    /// <remarks>
+    /// Initializes the health check with the pooled data source used for probing.
+    /// </remarks>
     /// <param name="dataSource">PostgreSQL 数据源 / PostgreSQL data source</param>
     public PostgreSqlHealthCheck(NpgsqlDataSource dataSource)
     {
@@ -58,6 +61,11 @@ public sealed class PostgreSqlHealthCheck : IHealthCheck
     /// <summary>
     /// 执行健康检查。
     /// </summary>
+    /// <remarks>
+    /// Probes the connection with <c>SELECT 1</c>. Failures are tracked consecutively:
+    /// a successful probe resets the counter and reports Healthy; failures below the
+    /// threshold report Degraded; failures at or above the threshold report Unhealthy.
+    /// </remarks>
     /// <param name="context">健康检查上下文 / Health check context</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>健康检查结果 / Health check result</returns>

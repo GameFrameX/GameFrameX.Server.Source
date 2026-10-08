@@ -29,6 +29,7 @@ public sealed class SendMetricsRecord
     /// <remarks>
     /// Gets or sets the target-type label ("player" / "server"); combined with ServiceName it forms the metrics bucket key.
     /// </remarks>
+    /// <value>目标类型标签（"player" 或 "server"）/ The target-type label ("player" or "server")</value>
     public string TargetType { get; init; }
 
     /// <summary>
@@ -37,6 +38,7 @@ public sealed class SendMetricsRecord
     /// <remarks>
     /// Gets or sets the service-name label.
     /// </remarks>
+    /// <value>服务名标签 / The service-name label</value>
     public string ServiceName { get; init; }
 
     /// <summary>
@@ -45,6 +47,7 @@ public sealed class SendMetricsRecord
     /// <remarks>
     /// Gets or sets the status-code label (e.g. "LocalDelivered", "Success", "Timeout").
     /// </remarks>
+    /// <value>状态码标签 / The status-code label</value>
     public string StatusCode { get; init; }
 
     /// <summary>
@@ -53,6 +56,7 @@ public sealed class SendMetricsRecord
     /// <remarks>
     /// Gets or sets the elapsed time in milliseconds.
     /// </remarks>
+    /// <value>耗时（毫秒）/ The elapsed time in milliseconds</value>
     public long ElapsedMs { get; init; }
 
     /// <summary>
@@ -61,5 +65,6 @@ public sealed class SendMetricsRecord
     /// <remarks>
     /// Gets or sets the retry count.
     /// </remarks>
+    /// <value>重试次数 / The retry count</value>
     public int RetryCount { get; init; }
 }

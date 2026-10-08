@@ -69,6 +69,8 @@ internal sealed class FaultInjectionRemoteCallInterceptor : IRemoteCallIntercept
     /// <param name="context">调用上下文 / The remote call context</param>
     /// <param name="request">请求消息 / The request message</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
+    /// <exception cref="TimeoutException">当注入类型为超时时抛出 / Thrown when the injection type is Timeout</exception>
+    /// <exception cref="IOException">当注入类型为断连时抛出 / Thrown when the injection type is ConnectionDrop</exception>
     public async Task OnBeforeCallAsync(RemoteCallContext context, MessageObject request)
     {
         switch (_injectionType)

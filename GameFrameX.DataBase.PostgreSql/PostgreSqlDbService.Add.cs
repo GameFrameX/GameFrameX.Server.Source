@@ -40,6 +40,11 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 增加一条数据（适配器补齐时间戳与更新计数，对齐 Mongo）。
     /// </summary>
+    /// <remarks>
+    /// Adds a single document (the adapter fills timestamps and update count, aligned with Mongo).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
+    /// <param name="state">要新增的数据 / The state to add</param>
     public async Task AddAsync<TState>(TState state) where TState : BaseCacheState, new()
     {
         await AddAsync(state, CancellationToken.None).ConfigureAwait(false);
@@ -48,6 +53,12 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 增加一条数据（适配器补齐时间戳与更新计数，对齐 Mongo）。
     /// </summary>
+    /// <remarks>
+    /// Adds a single document (the adapter fills timestamps and update count, aligned with Mongo).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
+    /// <param name="state">要新增的数据 / The state to add</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     public async Task AddAsync<TState>(TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -73,6 +84,11 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 增加一个列表数据（单语句多值插入，整体原子；空集合直接返回，对齐 Mongo）。
     /// </summary>
+    /// <remarks>
+    /// Adds a list of documents (single multi-value INSERT, atomic as a whole; empty collections return directly, aligned with Mongo).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
+    /// <param name="states">要新增的数据列表 / The states to add</param>
     public async Task AddListAsync<TState>(IEnumerable<TState> states) where TState : BaseCacheState, new()
     {
         await AddListAsync(states, CancellationToken.None).ConfigureAwait(false);
@@ -81,6 +97,12 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 增加一个列表数据（单语句多值插入，整体原子；空集合直接返回，对齐 Mongo）。
     /// </summary>
+    /// <remarks>
+    /// Adds a list of documents (single multi-value INSERT, atomic as a whole; empty collections return directly, aligned with Mongo).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
+    /// <param name="states">要新增的数据列表 / The states to add</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     public async Task AddListAsync<TState>(IEnumerable<TState> states, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -113,6 +135,13 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 构建多值插入命令（INSERT INTO ... VALUES (...), (...)）。
     /// </summary>
+    /// <remarks>
+    /// Builds a multi-value INSERT command (INSERT INTO ... VALUES (...), (...)).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
+    /// <param name="connection">数据库连接 / The database connection</param>
+    /// <param name="states">要插入的数据列表 / The states to insert</param>
+    /// <returns>构建好的插入命令 / The built insert command</returns>
     private static NpgsqlCommand BuildInsertManyCommand<TState>(NpgsqlConnection connection, IReadOnlyList<TState> states) where TState : BaseCacheState, new()
     {
         var valueFragments = new List<string>(states.Count);

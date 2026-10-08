@@ -45,6 +45,7 @@ public interface ITransportProtocolAdapter : IDisposable
     /// <remarks>
     /// Gets the protocol name (e.g., TCP/KCP/QUIC).
     /// </remarks>
+    /// <value>协议名称（如 TCP/KCP/QUIC） / The protocol name (e.g., TCP/KCP/QUIC)</value>
     string ProtocolName { get; }
 
     /// <summary>

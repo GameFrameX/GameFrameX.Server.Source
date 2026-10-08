@@ -21,20 +21,18 @@
 
 -- 心跳过期行清理（15s TTL，替代 Mongo TTL 索引）/ Heartbeat expiry (15 s TTL, replacing the Mongo TTL index)
 SELECT cron.schedule(
-    'gameframex_server_heartbeat_ttl_cleanup',
-    '5 seconds',
-    $cron$DELETE FROM server_heartbeat WHERE last_heartbeat < now() - interval '15 seconds'$cron$
-)
-WHERE NOT EXISTS (
+               'gameframex_server_heartbeat_ttl_cleanup',
+               '5 seconds',
+               $cron$DELETE FROM server_heartbeat WHERE last_heartbeat < now() - interval '15 seconds'$cron$
+       ) WHERE NOT EXISTS (
     SELECT 1 FROM cron.job WHERE jobname = 'gameframex_server_heartbeat_ttl_cleanup'
 );
 
 -- 玩家路由过期行清理（30 天 TTL）/ Player-route expiry (30-day TTL)
 SELECT cron.schedule(
-    'gameframex_player_route_ttl_cleanup',
-    '1 hour',
-    $cron$DELETE FROM player_route WHERE last_seen_at < now() - interval '30 days'$cron$
-)
-WHERE NOT EXISTS (
+               'gameframex_player_route_ttl_cleanup',
+               '1 hour',
+               $cron$DELETE FROM player_route WHERE last_seen_at < now() - interval '30 days'$cron$
+       ) WHERE NOT EXISTS (
     SELECT 1 FROM cron.job WHERE jobname = 'gameframex_player_route_ttl_cleanup'
 );

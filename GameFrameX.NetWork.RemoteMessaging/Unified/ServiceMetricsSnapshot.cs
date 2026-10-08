@@ -43,6 +43,7 @@ public sealed class ServiceMetricsSnapshot
     /// <remarks>
     /// Metrics key (targetType:serviceName).
     /// </remarks>
+    /// <value>指标键，格式为 targetType:serviceName / The metrics key in the format targetType:serviceName</value>
     public string Key { get; init; }
 
     /// <summary>
@@ -51,6 +52,7 @@ public sealed class ServiceMetricsSnapshot
     /// <remarks>
     /// Total call count.
     /// </remarks>
+    /// <value>总调用次数 / The total call count</value>
     public long TotalCalls { get; init; }
 
     /// <summary>
@@ -59,6 +61,7 @@ public sealed class ServiceMetricsSnapshot
     /// <remarks>
     /// Success count.
     /// </remarks>
+    /// <value>成功次数 / The success count</value>
     public long SuccessCalls { get; init; }
 
     /// <summary>
@@ -67,6 +70,7 @@ public sealed class ServiceMetricsSnapshot
     /// <remarks>
     /// Timeout count.
     /// </remarks>
+    /// <value>超时次数 / The timeout count</value>
     public long TimeoutCalls { get; init; }
 
     /// <summary>
@@ -75,6 +79,7 @@ public sealed class ServiceMetricsSnapshot
     /// <remarks>
     /// Retry count.
     /// </remarks>
+    /// <value>重试次数 / The retry count</value>
     public long RetryCalls { get; init; }
 
     /// <summary>
@@ -83,6 +88,7 @@ public sealed class ServiceMetricsSnapshot
     /// <remarks>
     /// Success rate.
     /// </remarks>
+    /// <value>成功率（0 到 1 之间）/ The success rate (between 0 and 1)</value>
     public double SuccessRate { get; init; }
 
     /// <summary>
@@ -91,6 +97,7 @@ public sealed class ServiceMetricsSnapshot
     /// <remarks>
     /// Average elapsed time in milliseconds.
     /// </remarks>
+    /// <value>平均耗时（毫秒）/ The average elapsed time in milliseconds</value>
     public double AvgElapsedMs { get; init; }
 
     /// <summary>
@@ -99,6 +106,7 @@ public sealed class ServiceMetricsSnapshot
     /// <remarks>
     /// Maximum elapsed time in milliseconds.
     /// </remarks>
+    /// <value>最大耗时（毫秒）/ The maximum elapsed time in milliseconds</value>
     public long MaxElapsedMs { get; init; }
 
     /// <summary>
@@ -107,6 +115,7 @@ public sealed class ServiceMetricsSnapshot
     /// <remarks>
     /// P50 latency.
     /// </remarks>
+    /// <value>P50 耗时（毫秒）/ The P50 latency in milliseconds</value>
     public long P50ElapsedMs { get; init; }
 
     /// <summary>
@@ -115,6 +124,7 @@ public sealed class ServiceMetricsSnapshot
     /// <remarks>
     /// P90 latency.
     /// </remarks>
+    /// <value>P90 耗时（毫秒）/ The P90 latency in milliseconds</value>
     public long P90ElapsedMs { get; init; }
 
     /// <summary>
@@ -123,5 +133,6 @@ public sealed class ServiceMetricsSnapshot
     /// <remarks>
     /// P99 latency.
     /// </remarks>
+    /// <value>P99 耗时（毫秒）/ The P99 latency in milliseconds</value>
     public long P99ElapsedMs { get; init; }
 }

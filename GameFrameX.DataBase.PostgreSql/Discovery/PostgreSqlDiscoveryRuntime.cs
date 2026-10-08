@@ -148,7 +148,10 @@ public static class PostgreSqlDiscoveryRuntime
     /// The discovery route table provider (C166 second dependency fix: router wiring moved to the
     /// composition-side <c>DiscoveryRoutingWire</c>; this runtime only exposes the reader instance).
     /// </remarks>
-    public static IRoleRouteTableProvider TableProvider => _watcher;
+    public static IRoleRouteTableProvider TableProvider
+    {
+        get { return _watcher; }
+    }
 
 
     /// <summary>
@@ -219,7 +222,6 @@ public static class PostgreSqlDiscoveryRuntime
     }
 
 
-
     /// <summary>
     /// 把本进程心跳从 Booting 切换为 Active（启动阶段真正完成、服务就绪后调用）。
     /// </summary>
@@ -246,6 +248,5 @@ public static class PostgreSqlDiscoveryRuntime
         _watcher = null;
         _ttlCleanupJob?.Dispose();
         _ttlCleanupJob = null;
-
     }
 }

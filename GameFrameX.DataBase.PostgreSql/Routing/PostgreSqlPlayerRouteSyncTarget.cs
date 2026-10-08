@@ -125,6 +125,7 @@ ON CONFLICT (player_id) DO NOTHING;";
     /// responsibility; the sync target only writes.
     /// </remarks>
     /// <param name="dataSource">控制库数据源 / The control-database data source</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="dataSource"/> 为 null 时抛出 / Thrown when <paramref name="dataSource"/> is null</exception>
     public PostgreSqlPlayerRouteSyncTarget(NpgsqlDataSource dataSource)
     {
         ArgumentNullException.ThrowIfNull(dataSource, nameof(dataSource));
@@ -236,6 +237,7 @@ ON CONFLICT (player_id) DO NOTHING;";
     /// <param name="dataSource">数据源 / The data source</param>
     /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
     /// <returns>异步任务 / Async task</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="dataSource"/> 为 null 时抛出 / Thrown when <paramref name="dataSource"/> is null</exception>
     public static Task EnsureSchemaAsync(NpgsqlDataSource dataSource, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(dataSource, nameof(dataSource));

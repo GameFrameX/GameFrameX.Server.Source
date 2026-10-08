@@ -54,6 +54,12 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 保存数据（仅当 StateHash 判定已修改才写库；更新保留字段语义见 <see cref="PreservedOnUpdateFields"/>）。
     /// </summary>
+    /// <remarks>
+    /// Saves a document (only writes when the StateHash marks it modified; see <see cref="PreservedOnUpdateFields"/> for preserved-field semantics).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
+    /// <param name="state">要保存的数据 / The state to save</param>
+    /// <returns>保存后的数据 / The saved state</returns>
     public async Task<TState> UpdateAsync<TState>(TState state) where TState : BaseCacheState, new()
     {
         return await UpdateAsync(state, CancellationToken.None).ConfigureAwait(false);
@@ -62,6 +68,13 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 保存数据（仅当 StateHash 判定已修改才写库；更新保留字段语义见 <see cref="PreservedOnUpdateFields"/>）。
     /// </summary>
+    /// <remarks>
+    /// Saves a document (only writes when the StateHash marks it modified; see <see cref="PreservedOnUpdateFields"/> for preserved-field semantics).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
+    /// <param name="state">要保存的数据 / The state to save</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>保存后的数据 / The saved state</returns>
     public async Task<TState> UpdateAsync<TState>(TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -90,6 +103,12 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 保存多条数据（返回实际更新行数；未变更项跳过，对齐 Mongo BulkWrite 语义）。
     /// </summary>
+    /// <remarks>
+    /// Saves multiple documents (returns the actually updated count; unchanged items are skipped, aligned with Mongo BulkWrite semantics).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
+    /// <param name="stateList">要保存的数据列表 / The states to save</param>
+    /// <returns>实际更新的数量 / The number of actually updated documents</returns>
     public async Task<long> UpdateAsync<TState>(IEnumerable<TState> stateList) where TState : BaseCacheState, new()
     {
         return await UpdateAsync(stateList, CancellationToken.None).ConfigureAwait(false);
@@ -98,6 +117,13 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 保存多条数据（返回实际更新行数；未变更项跳过，对齐 Mongo BulkWrite 语义）。
     /// </summary>
+    /// <remarks>
+    /// Saves multiple documents (returns the actually updated count; unchanged items are skipped, aligned with Mongo BulkWrite semantics).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
+    /// <param name="stateList">要保存的数据列表 / The states to save</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>实际更新的数量 / The number of actually updated documents</returns>
     public async Task<long> UpdateAsync<TState>(IEnumerable<TState> stateList, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -139,7 +165,7 @@ public sealed partial class PostgreSqlDbService
                 foreach (var parameter in parameters)
                 {
                     // Clone：参数列表可能跨命令/重试复用（NpgsqlParameter 绑定后不可再入集合）
-                command.Parameters.Add(parameter.Clone());
+                    command.Parameters.Add(parameter.Clone());
                 }
 
                 modifiedCount += await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
@@ -166,6 +192,15 @@ public sealed partial class PostgreSqlDbService
     /// 对齐 Mongo 语义：null 值字段移除（$unset）、非 null 字段写入（$set）；Id/CreatedTime/CreatedId 不可更新；
     /// 过滤附带软删默认过滤；返回值对齐 ModifiedCount（值未变不计行）。
     /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
+    /// <param name="id">数据ID / The document ID</param>
+    /// <param name="updateFields">要更新的字段字典 / The fields to update</param>
+    /// <returns>实际更新的行数 / The number of actually updated rows</returns>
+    /// <remarks>
+    /// Partially updates by ID (server-side jsonb merge + UpdateTime write + UpdateCount increment, atomic in one statement).
+    /// 对齐 Mongo 语义：null 值字段移除（$unset）、非 null 字段写入（$set）；Id/CreatedTime/CreatedId 不可更新；
+    /// 过滤附带软删默认过滤；返回值对齐 ModifiedCount（值未变不计行）。
+    /// </remarks>
     public async Task<long> UpdatePartialAsync<TState>(long id, IReadOnlyDictionary<string, object> updateFields) where TState : BaseCacheState, new()
     {
         return await UpdatePartialAsync<TState>(id, updateFields, CancellationToken.None).ConfigureAwait(false);
@@ -174,6 +209,16 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 根据ID部分更新数据（服务器端 jsonb 合并 + UpdateTime 写入 + UpdateCount 自增，单语句原子）。
     /// </summary>
+    /// <remarks>
+    /// Partially updates by ID (server-side jsonb merge + UpdateTime write + UpdateCount increment, atomic in one statement).
+    /// 对齐 Mongo 语义：null 值字段移除（$unset）、非 null 字段写入（$set）；Id/CreatedTime/CreatedId 不可更新；
+    /// 过滤附带软删默认过滤；返回值对齐 ModifiedCount（值未变不计行）。
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
+    /// <param name="id">数据ID / The document ID</param>
+    /// <param name="updateFields">要更新的字段字典 / The fields to update</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>实际更新的行数 / The number of actually updated rows</returns>
     public async Task<long> UpdatePartialAsync<TState>(long id, IReadOnlyDictionary<string, object> updateFields, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -240,6 +285,12 @@ WHERE t.id = newdoc.id AND t.doc IS DISTINCT FROM newdoc.d";
     /// <summary>
     /// 构建保留字段的更新语句（存储侧 Id/CreatedTime/CreatedId/IsDeleted/DeleteTime 优先，值未变不计行）。
     /// </summary>
+    /// <remarks>
+    /// Builds an update statement preserving storage-side fields (Id/CreatedTime/CreatedId/IsDeleted/DeleteTime take precedence; unchanged values do not count as updated rows).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
+    /// <param name="state">要更新的数据 / The state to update</param>
+    /// <returns>SQL 语句与参数列表 / The SQL statement and parameter list</returns>
     private static (string Sql, List<NpgsqlParameter> Parameters) BuildUpdatePreservingSql<TState>(TState state) where TState : BaseCacheState, new()
     {
         var newDocJson = PostgreSqlJsonDocumentSerializer.Serialize(state);
@@ -258,6 +309,14 @@ WHERE t.id = newdoc.id AND t.doc IS DISTINCT FROM newdoc.d";
     /// <summary>
     /// 执行写命令（含表结构确保），返回受影响行数。
     /// </summary>
+    /// <remarks>
+    /// Executes a write command (including table-structure ensuring) and returns the affected row count.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
+    /// <param name="sql">SQL 语句 / The SQL statement</param>
+    /// <param name="parameters">参数列表 / The parameter list</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>受影响行数 / The affected row count</returns>
     private async Task<int> ExecuteWriteCommandAsync<TState>(string sql, IReadOnlyList<NpgsqlParameter> parameters, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         await using var connection = DataSource.CreateConnection();
@@ -267,7 +326,7 @@ WHERE t.id = newdoc.id AND t.doc IS DISTINCT FROM newdoc.d";
         foreach (var parameter in parameters)
         {
             // Clone：参数列表可能跨命令/重试复用（NpgsqlParameter 绑定后不可再入集合）
-                command.Parameters.Add(parameter.Clone());
+            command.Parameters.Add(parameter.Clone());
         }
 
         return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);

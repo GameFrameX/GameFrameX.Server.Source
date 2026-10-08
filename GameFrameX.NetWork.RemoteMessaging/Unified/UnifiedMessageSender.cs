@@ -68,6 +68,10 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
     /// <param name="localSender">本服玩家发送器 / Local player sender</param>
     /// <param name="instanceSelector">服务实例选择器 / Server instance selector</param>
     /// <param name="metrics">发送指标聚合器；为空时自动创建 / Metrics recorder; auto-created when null</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="remoteClient"/> 为 null 时抛出 / Thrown when <paramref name="remoteClient"/> is null</exception>
+    /// <exception cref="ArgumentNullException">当 <paramref name="routeResolver"/> 为 null 时抛出 / Thrown when <paramref name="routeResolver"/> is null</exception>
+    /// <exception cref="ArgumentNullException">当 <paramref name="localSender"/> 为 null 时抛出 / Thrown when <paramref name="localSender"/> is null</exception>
+    /// <exception cref="ArgumentNullException">当 <paramref name="instanceSelector"/> 为 null 时抛出 / Thrown when <paramref name="instanceSelector"/> is null</exception>
     public UnifiedMessageSender(
         IRemoteMessageClient remoteClient,
         IPlayerRouteResolver routeResolver,
@@ -87,6 +91,10 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
     /// <summary>
     /// 获取统一发送器内部指标聚合器。
     /// </summary>
+    /// <remarks>
+    /// Gets the internal metrics recorder of the unified sender.
+    /// </remarks>
+    /// <value>发送指标聚合器实例 / The metrics recorder instance</value>
     public MessageSendMetrics Metrics
     {
         get { return _metrics; }
@@ -138,10 +146,10 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
                 if (sent)
                 {
                     return RecordPlayerResult(PlayerSendResult.Ok(
-                        PlayerDeliverStatus.LocalDelivered,
-                        playerId,
-                        sw.ElapsedMilliseconds,
-                        traceId));
+                                                  PlayerDeliverStatus.LocalDelivered,
+                                                  playerId,
+                                                  sw.ElapsedMilliseconds,
+                                                  traceId));
                 }
 
                 // 本服投递失败（可能在投递瞬间断线），继续走路由解析
@@ -154,11 +162,11 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
             {
                 sw.Stop();
                 return RecordPlayerResult(PlayerSendResult.Fail(
-                    PlayerDeliverStatus.RouteMissing,
-                    playerId,
-                    "Route info not found",
-                    sw.ElapsedMilliseconds,
-                    traceId));
+                                              PlayerDeliverStatus.RouteMissing,
+                                              playerId,
+                                              "Route info not found",
+                                              sw.ElapsedMilliseconds,
+                                              traceId));
             }
 
             // Step 3: 路由指向本服但 SessionManager 未命中（路由过期）
@@ -184,21 +192,21 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
         {
             sw.Stop();
             return RecordPlayerResult(PlayerSendResult.Fail(
-                PlayerDeliverStatus.Cancelled,
-                playerId,
-                "Operation cancelled",
-                sw.ElapsedMilliseconds,
-                traceId));
+                                          PlayerDeliverStatus.Cancelled,
+                                          playerId,
+                                          "Operation cancelled",
+                                          sw.ElapsedMilliseconds,
+                                          traceId));
         }
         catch (Exception ex)
         {
             sw.Stop();
             return RecordPlayerResult(PlayerSendResult.Fail(
-                PlayerDeliverStatus.Failed,
-                playerId,
-                ex.Message,
-                sw.ElapsedMilliseconds,
-                traceId));
+                                          PlayerDeliverStatus.Failed,
+                                          playerId,
+                                          ex.Message,
+                                          sw.ElapsedMilliseconds,
+                                          traceId));
         }
     }
 
@@ -378,19 +386,19 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
             if (options.AllowRetry)
             {
                 result = await _remoteClient.CallWithRetryAsync<TResp>(
-                    targetService,
-                    message,
-                    options.TimeoutMs,
-                    options.MaxRetryCount,
-                    ct);
+                             targetService,
+                             message,
+                             options.TimeoutMs,
+                             options.MaxRetryCount,
+                             ct);
             }
             else
             {
                 result = await _remoteClient.CallWithoutRetryAsync<TResp>(
-                    targetService,
-                    message,
-                    options.TimeoutMs,
-                    ct);
+                             targetService,
+                             message,
+                             options.TimeoutMs,
+                             ct);
             }
 
             return RecordServerResult(

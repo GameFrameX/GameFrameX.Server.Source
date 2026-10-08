@@ -60,7 +60,10 @@ internal sealed class KcpTransportProtocolAdapter : ITransportProtocolAdapter
     /// <remarks>
     /// Gets the protocol name, always returning KCP.
     /// </remarks>
-    public string ProtocolName => "KCP";
+    public string ProtocolName
+    {
+        get { return "KCP"; }
+    }
 
     /// <summary>
     /// 获取或创建流的占位实现：仅解析出服务端点即抛出 <see cref="NotSupportedException"/>，KCP 传输尚未接入。

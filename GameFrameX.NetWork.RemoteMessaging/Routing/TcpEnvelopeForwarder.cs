@@ -68,7 +68,7 @@ public sealed class TcpEnvelopeForwarder : IEnvelopeForwarder, IDisposable
     /// that connection, so concurrent forwards to the same endpoint can never
     /// interleave frame bytes.
     /// </remarks>
-    private readonly ConcurrentDictionary<string, EndpointConnection> _endpointConnections = new ConcurrentDictionary<string, EndpointConnection>(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, EndpointConnection> _endpointConnections = new(StringComparer.Ordinal);
 
     /// <summary>
     /// 初始化 TCP 信封转发器（标准编解码器）。
@@ -88,6 +88,7 @@ public sealed class TcpEnvelopeForwarder : IEnvelopeForwarder, IDisposable
     /// Initializes the forwarder with a specific codec (injection point).
     /// </remarks>
     /// <param name="messageCodec">消息编解码器 / The message codec</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="messageCodec"/> 为 null 时抛出 / Thrown when <paramref name="messageCodec"/> is null</exception>
     public TcpEnvelopeForwarder(IMessageCodec messageCodec)
     {
         ArgumentNullException.ThrowIfNull(messageCodec, nameof(messageCodec));
@@ -108,13 +109,13 @@ public sealed class TcpEnvelopeForwarder : IEnvelopeForwarder, IDisposable
     /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
     /// <returns>异步任务 / Async task</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="endpoint"/> 或 <paramref name="envelope"/> 为 null 时抛出 / Thrown when endpoint or envelope is null</exception>
-    public async Task ForwardAsync(Discovery.ParsedEndpoint endpoint, MessageEnvelope envelope, CancellationToken cancellationToken = default)
+    public async Task ForwardAsync(ParsedEndpoint endpoint, MessageEnvelope envelope, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(endpoint, nameof(endpoint));
         ArgumentNullException.ThrowIfNull(envelope, nameof(envelope));
 
         var endpointKey = $"{endpoint.Host}:{endpoint.Port}";
-        var connection = _endpointConnections.GetOrAdd(endpointKey, delegate (string key) { return new EndpointConnection(); });
+        var connection = _endpointConnections.GetOrAdd(endpointKey, delegate(string key) { return new EndpointConnection(); });
         var envelopeMessage = new RoleRouteEnvelopeMessage
         {
             TargetRole = envelope.TargetRole,
@@ -177,11 +178,23 @@ public sealed class TcpEnvelopeForwarder : IEnvelopeForwarder, IDisposable
     /// </remarks>
     private sealed class EndpointConnection : IDisposable
     {
-        /// <summary>连接提供器（单连接池）/ The connection provider (one pooled connection)</summary>
+        /// <summary>
+        /// 连接提供器（单连接池）。
+        /// </summary>
+        /// <remarks>
+        /// The connection provider (one pooled connection).
+        /// </remarks>
+        /// <value>连接提供器 / The connection provider</value>
         public IConnectionProvider Provider { get; } = new TcpConnectionProvider();
 
-        /// <summary>整帧写锁 / The whole-frame write lock</summary>
-        public SemaphoreSlim WriteLock { get; } = new SemaphoreSlim(1, 1);
+        /// <summary>
+        /// 整帧写锁。
+        /// </summary>
+        /// <remarks>
+        /// The whole-frame write lock.
+        /// </remarks>
+        /// <value>整帧写锁 / The whole-frame write lock</value>
+        public SemaphoreSlim WriteLock { get; } = new(1, 1);
 
         /// <summary>
         /// 释放连接与写锁。

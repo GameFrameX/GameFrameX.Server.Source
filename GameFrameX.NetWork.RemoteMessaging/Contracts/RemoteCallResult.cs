@@ -44,6 +44,7 @@ public sealed class RemoteCallResult<T> where T : class, IResponseMessage
     /// <remarks>
     /// The status code of the remote call.
     /// </remarks>
+    /// <value>调用状态码 / The status code of the remote call</value>
     public RemoteStatusCode StatusCode { get; init; }
 
     /// <summary>
@@ -52,6 +53,7 @@ public sealed class RemoteCallResult<T> where T : class, IResponseMessage
     /// <remarks>
     /// The response object (non-null only when StatusCode equals Success).
     /// </remarks>
+    /// <value>响应对象；仅成功时非 null / The response object; non-null only on success</value>
     public T Response { get; init; }
 
     /// <summary>
@@ -60,6 +62,7 @@ public sealed class RemoteCallResult<T> where T : class, IResponseMessage
     /// <remarks>
     /// Error description.
     /// </remarks>
+    /// <value>错误描述 / The error description</value>
     public string ErrorMessage { get; init; }
 
     /// <summary>
@@ -68,6 +71,7 @@ public sealed class RemoteCallResult<T> where T : class, IResponseMessage
     /// <remarks>
     /// Elapsed time of the call in milliseconds.
     /// </remarks>
+    /// <value>调用耗时毫秒数 / The elapsed time of the call in milliseconds</value>
     public long ElapsedMs { get; init; }
 
     /// <summary>
@@ -76,6 +80,7 @@ public sealed class RemoteCallResult<T> where T : class, IResponseMessage
     /// <remarks>
     /// Number of retries attempted.
     /// </remarks>
+    /// <value>重试次数 / The number of retries attempted</value>
     public int RetryCount { get; init; }
 
     /// <summary>
@@ -84,6 +89,7 @@ public sealed class RemoteCallResult<T> where T : class, IResponseMessage
     /// <remarks>
     /// Trace ID for distributed tracing.
     /// </remarks>
+    /// <value>追踪 ID / The trace ID</value>
     public string TraceId { get; init; }
 
     /// <summary>
@@ -92,6 +98,7 @@ public sealed class RemoteCallResult<T> where T : class, IResponseMessage
     /// <remarks>
     /// Indicates whether the call was successful.
     /// </remarks>
+    /// <value>是否调用成功 / Whether the call was successful</value>
     public bool IsSuccess
     {
         get { return StatusCode == RemoteStatusCode.Success; }

@@ -102,7 +102,7 @@ public sealed class PostgreSqlEndpointWatcher : IRoleRouteTableProvider, IDispos
     /// <remarks>
     /// The event subscribers (subscribe before Start).
     /// </remarks>
-    private readonly List<IRoleInstanceEvents> _subscribers = new List<IRoleInstanceEvents>();
+    private readonly List<IRoleInstanceEvents> _subscribers = new();
 
     /// <summary>
     /// 订阅者列表的同步锁。
@@ -110,7 +110,7 @@ public sealed class PostgreSqlEndpointWatcher : IRoleRouteTableProvider, IDispos
     /// <remarks>
     /// The subscribers list lock.
     /// </remarks>
-    private readonly object _subscribersLock = new object();
+    private readonly object _subscribersLock = new();
 
     /// <summary>
     /// 当前已知实例（instanceId → 最近观测与陈旧标记）。
@@ -118,7 +118,7 @@ public sealed class PostgreSqlEndpointWatcher : IRoleRouteTableProvider, IDispos
     /// <remarks>
     /// The currently known instances (stale entries stay until the TTL cleanup removes their rows).
     /// </remarks>
-    private readonly Dictionary<string, KnownInstance> _knownInstances = new Dictionary<string, KnownInstance>(StringComparer.Ordinal);
+    private readonly Dictionary<string, KnownInstance> _knownInstances = new(StringComparer.Ordinal);
 
     /// <summary>
     /// 曾观测过的最后代数（instanceId → incarnation；Evicted 后仍保留）。
@@ -126,7 +126,7 @@ public sealed class PostgreSqlEndpointWatcher : IRoleRouteTableProvider, IDispos
     /// <remarks>
     /// The last incarnation ever observed per instance id.
     /// </remarks>
-    private readonly Dictionary<string, long> _lastSeenIncarnations = new Dictionary<string, long>(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _lastSeenIncarnations = new(StringComparer.Ordinal);
 
     /// <summary>
     /// 轮询循环取消令牌源。
@@ -134,7 +134,7 @@ public sealed class PostgreSqlEndpointWatcher : IRoleRouteTableProvider, IDispos
     /// <remarks>
     /// The poll loop cancellation token source.
     /// </remarks>
-    private readonly CancellationTokenSource _loopCancellation = new CancellationTokenSource();
+    private readonly CancellationTokenSource _loopCancellation = new();
 
     /// <summary>
     /// 状态与快照的同步锁（单轮 poll 串行化）。
@@ -142,7 +142,7 @@ public sealed class PostgreSqlEndpointWatcher : IRoleRouteTableProvider, IDispos
     /// <remarks>
     /// The lock serializing state transitions and snapshot swaps.
     /// </remarks>
-    private readonly object _stateLock = new object();
+    private readonly object _stateLock = new();
 
     /// <summary>
     /// 轮询循环任务。
@@ -171,6 +171,7 @@ public sealed class PostgreSqlEndpointWatcher : IRoleRouteTableProvider, IDispos
     /// <param name="dataSource">控制库数据源 / The control-database data source</param>
     /// <param name="pollInterval">轮询间隔；缺省 5s / The poll interval; defaults to 5 s</param>
     /// <param name="stalenessThreshold">判活阈值；缺省 3 × 轮询间隔（15s）/ The staleness threshold; defaults to 3 × the poll interval</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="dataSource"/> 为 null 时抛出 / Thrown when <paramref name="dataSource"/> is null</exception>
     public PostgreSqlEndpointWatcher(NpgsqlDataSource dataSource, TimeSpan? pollInterval = null, TimeSpan? stalenessThreshold = null)
     {
         ArgumentNullException.ThrowIfNull(dataSource, nameof(dataSource));
@@ -189,10 +190,7 @@ public sealed class PostgreSqlEndpointWatcher : IRoleRouteTableProvider, IDispos
     /// <value>当前快照 / The current snapshot</value>
     public RoleRouteTable Current
     {
-        get
-        {
-            return _currentTable;
-        }
+        get { return _currentTable; }
     }
 
     /// <summary>
@@ -202,6 +200,7 @@ public sealed class PostgreSqlEndpointWatcher : IRoleRouteTableProvider, IDispos
     /// Subscribes to instance lifecycle events (must be called before <see cref="StartAsync"/>).
     /// </remarks>
     /// <param name="events">事件订阅者 / The subscriber</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="events"/> 为 null 时抛出 / Thrown when <paramref name="events"/> is null</exception>
     public void Subscribe(IRoleInstanceEvents events)
     {
         ArgumentNullException.ThrowIfNull(events, nameof(events));
@@ -341,14 +340,14 @@ public sealed class PostgreSqlEndpointWatcher : IRoleRouteTableProvider, IDispos
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
             rows.Add(new HeartbeatRow(
-                reader.GetString(0),
-                reader.GetString(1),
-                reader.GetString(2),
-                reader.GetString(3),
-                reader.GetInt32(4),
-                reader.GetString(5),
-                reader.GetInt64(6),
-                DateTime.SpecifyKind(reader.GetDateTime(7), DateTimeKind.Utc)));
+                         reader.GetString(0),
+                         reader.GetString(1),
+                         reader.GetString(2),
+                         reader.GetString(3),
+                         reader.GetInt32(4),
+                         reader.GetString(5),
+                         reader.GetInt64(6),
+                         DateTime.SpecifyKind(reader.GetDateTime(7), DateTimeKind.Utc)));
         }
 
         return rows;
@@ -477,9 +476,9 @@ public sealed class PostgreSqlEndpointWatcher : IRoleRouteTableProvider, IDispos
         RoleInstanceChangeKind? kind = descriptor.Status switch
         {
             InstanceStatus.Draining => RoleInstanceChangeKind.Draining,
-            InstanceStatus.Active => RoleInstanceChangeKind.Online,
-            InstanceStatus.Stopped => RoleInstanceChangeKind.Offline,
-            _ => null,
+            InstanceStatus.Active   => RoleInstanceChangeKind.Online,
+            InstanceStatus.Stopped  => RoleInstanceChangeKind.Offline,
+            _                       => null,
         };
         if (kind.HasValue)
         {
@@ -531,14 +530,19 @@ public sealed class PostgreSqlEndpointWatcher : IRoleRouteTableProvider, IDispos
             {
                 continue;
             }
+
             observedInstanceIds.Add(descriptor.InstanceId);
         }
+
         return observedInstanceIds;
     }
 
     /// <summary>
     /// 是否 incarnation 变化。
     /// </summary>
+    /// <remarks>
+    /// Whether the incarnation changed.
+    /// </remarks>
     private static bool IncarnationChanged(KnownInstance known, InstanceDescriptor descriptor)
     {
         return known.Descriptor.Incarnation != descriptor.Incarnation;
@@ -547,6 +551,9 @@ public sealed class PostgreSqlEndpointWatcher : IRoleRouteTableProvider, IDispos
     /// <summary>
     /// 是否从陈旧恢复新鲜（同 incarnation）。
     /// </summary>
+    /// <remarks>
+    /// Whether the instance recovered from stale (same incarnation).
+    /// </remarks>
     private static bool RecoveredFromStale(KnownInstance known, bool isStale)
     {
         return known.IsStale && !isStale;
@@ -555,6 +562,9 @@ public sealed class PostgreSqlEndpointWatcher : IRoleRouteTableProvider, IDispos
     /// <summary>
     /// 是否发生状态跃迁（fresh → 另一 fresh 状态）。
     /// </summary>
+    /// <remarks>
+    /// Whether the status changed (fresh to a different fresh status).
+    /// </remarks>
     private static bool StatusChanged(KnownInstance known, InstanceDescriptor descriptor, bool isStale)
     {
         return !known.IsStale && known.Descriptor.Status != descriptor.Status && !isStale;
@@ -563,6 +573,9 @@ public sealed class PostgreSqlEndpointWatcher : IRoleRouteTableProvider, IDispos
     /// <summary>
     /// 是否从新鲜变为陈旧（三周期阈值判死）。
     /// </summary>
+    /// <remarks>
+    /// Whether the instance became stale (the three-period death threshold).
+    /// </remarks>
     private static bool BecameStale(KnownInstance known, bool isStale)
     {
         return !known.IsStale && isStale;
@@ -571,6 +584,9 @@ public sealed class PostgreSqlEndpointWatcher : IRoleRouteTableProvider, IDispos
     /// <summary>
     /// 是否进入路由表（非 stale 且非 Stopped）。
     /// </summary>
+    /// <remarks>
+    /// Whether the instance is routable (not stale and not Stopped).
+    /// </remarks>
     private static bool IsRoutable(InstanceDescriptor descriptor, bool isStale)
     {
         return !isStale && descriptor.Status != InstanceStatus.Stopped;
@@ -579,6 +595,9 @@ public sealed class PostgreSqlEndpointWatcher : IRoleRouteTableProvider, IDispos
     /// <summary>
     /// 首观测是否被跳过（stale 或非 Active/Draining 时不发事件）。
     /// </summary>
+    /// <remarks>
+    /// Whether the first observation is skipped (no event when stale or not Active/Draining).
+    /// </remarks>
     private static bool IsFirstObservationSkipped(bool isStale, InstanceStatus status)
     {
         return isStale || !IsActiveOrDraining(status);
@@ -587,6 +606,9 @@ public sealed class PostgreSqlEndpointWatcher : IRoleRouteTableProvider, IDispos
     /// <summary>
     /// 是否为 Active 或 Draining 状态。
     /// </summary>
+    /// <remarks>
+    /// Whether the status is Active or Draining.
+    /// </remarks>
     private static bool IsActiveOrDraining(InstanceStatus status)
     {
         return status == InstanceStatus.Active || status == InstanceStatus.Draining;

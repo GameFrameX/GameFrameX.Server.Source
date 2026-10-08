@@ -41,6 +41,13 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 增加或更新数据（单语句 upsert：INSERT ... ON CONFLICT (id) DO UPDATE，整文档替换，对齐 Mongo ReplaceOne+IsUpsert）。
     /// </summary>
+    /// <remarks>
+    /// Adds or updates a single document via a one-statement upsert (INSERT ... ON CONFLICT (id) DO UPDATE,
+    /// whole-document replacement), aligned with Mongo's ReplaceOne + IsUpsert semantics.
+    /// </remarks>
+    /// <typeparam name="TState">状态类型 / The state type</typeparam>
+    /// <param name="state">要增加或更新的状态对象 / The state object to add or update</param>
+    /// <returns>已持久化的状态对象 / The persisted state object</returns>
     public async Task<TState> AddOrUpdateAsync<TState>(TState state) where TState : BaseCacheState, new()
     {
         return await AddOrUpdateAsync(state, CancellationToken.None).ConfigureAwait(false);
@@ -49,6 +56,14 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 增加或更新数据（单语句 upsert：INSERT ... ON CONFLICT (id) DO UPDATE，整文档替换，对齐 Mongo ReplaceOne+IsUpsert）。
     /// </summary>
+    /// <remarks>
+    /// Adds or updates a single document via a one-statement upsert (INSERT ... ON CONFLICT (id) DO UPDATE,
+    /// whole-document replacement), aligned with Mongo's ReplaceOne + IsUpsert semantics.
+    /// </remarks>
+    /// <typeparam name="TState">状态类型 / The state type</typeparam>
+    /// <param name="state">要增加或更新的状态对象 / The state object to add or update</param>
+    /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
+    /// <returns>已持久化的状态对象 / The persisted state object</returns>
     public async Task<TState> AddOrUpdateAsync<TState>(TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -75,6 +90,13 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 批量增加或更新数据（单语句多值 upsert；返回处理记录数，对齐 Mongo BulkWrite ReplaceOne 语义）。
     /// </summary>
+    /// <remarks>
+    /// Bulk adds or updates documents with a single multi-value upsert statement; returns the number of processed
+    /// records, aligned with Mongo's BulkWrite ReplaceOne semantics.
+    /// </remarks>
+    /// <typeparam name="TState">状态类型 / The state type</typeparam>
+    /// <param name="states">要增加或更新的状态集合 / The states to add or update</param>
+    /// <returns>处理的记录数 / The number of processed records</returns>
     public async Task<long> AddOrUpdateListAsync<TState>(IEnumerable<TState> states) where TState : BaseCacheState, new()
     {
         return await AddOrUpdateListAsync(states, CancellationToken.None).ConfigureAwait(false);
@@ -83,6 +105,14 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 批量增加或更新数据（单语句多值 upsert；返回处理记录数，对齐 Mongo BulkWrite ReplaceOne 语义）。
     /// </summary>
+    /// <remarks>
+    /// Bulk adds or updates documents with a single multi-value upsert statement; returns the number of processed
+    /// records, aligned with Mongo's BulkWrite ReplaceOne semantics.
+    /// </remarks>
+    /// <typeparam name="TState">状态类型 / The state type</typeparam>
+    /// <param name="states">要增加或更新的状态集合 / The states to add or update</param>
+    /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
+    /// <returns>处理的记录数 / The number of processed records</returns>
     public async Task<long> AddOrUpdateListAsync<TState>(IEnumerable<TState> states, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -210,6 +240,9 @@ public sealed partial class PostgreSqlDbService
     /// <c>TransientTransactionError</c> retry classification). As with the Mongo adapter, the action's own
     /// operations use their pooled connections and are not bound to this transaction's snapshot.
     /// </remarks>
+    /// <param name="action">要在事务中执行的操作 / The action to execute inside the transaction</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="action"/> 为 null 时抛出 / Thrown when <paramref name="action"/> is null</exception>
+    /// <exception cref="DatabaseUnavailableException">当事务重试全部失败后抛出 / Thrown when all transaction retry attempts fail</exception>
     public async Task ExecuteInTransactionAsync(Func<Task> action)
     {
         await ExecuteInTransactionAsync(action, CancellationToken.None).ConfigureAwait(false);
@@ -218,6 +251,17 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 在事务中执行操作（独立连接 BEGIN → action → COMMIT；SQLSTATE 40001/40P01 重试分类，对齐 Mongo 事务语义）。
     /// </summary>
+    /// <remarks>
+    /// Executes the action inside a transaction shell on a dedicated connection
+    /// (BEGIN → action → COMMIT), retrying on PostgreSQL serialization failures
+    /// (SQLSTATE <c>40001</c> serialization_failure / <c>40P01</c> deadlock_detected — aligned with Mongo's
+    /// <c>TransientTransactionError</c> retry classification). As with the Mongo adapter, the action's own
+    /// operations use their pooled connections and are not bound to this transaction's snapshot.
+    /// </remarks>
+    /// <param name="action">要在事务中执行的操作 / The action to execute inside the transaction</param>
+    /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="action"/> 为 null 时抛出 / Thrown when <paramref name="action"/> is null</exception>
+    /// <exception cref="DatabaseUnavailableException">当事务重试全部失败后抛出 / Thrown when all transaction retry attempts fail</exception>
     public async Task ExecuteInTransactionAsync(Func<Task> action, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -258,6 +302,9 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 构建单行 upsert 语句。
     /// </summary>
+    /// <remarks>
+    /// Builds the single-row upsert statement and its parameters.
+    /// </remarks>
     private static (string Sql, List<NpgsqlParameter> Parameters) BuildUpsertSql<TState>(TState state) where TState : BaseCacheState, new()
     {
         var sql = $"INSERT INTO {GetTableName<TState>()} (id, doc) VALUES (@id, @doc) ON CONFLICT (id) DO UPDATE SET doc = EXCLUDED.doc";
@@ -272,6 +319,9 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 构建多行 upsert 命令（VALUES (...), (...) + ON CONFLICT DO UPDATE）。
     /// </summary>
+    /// <remarks>
+    /// Builds the multi-row upsert command (VALUES (...), (...) + ON CONFLICT DO UPDATE).
+    /// </remarks>
     private static NpgsqlCommand BuildUpsertManyCommand<TState>(IReadOnlyList<TState> states) where TState : BaseCacheState, new()
     {
         var valueFragments = new List<string>(states.Count);

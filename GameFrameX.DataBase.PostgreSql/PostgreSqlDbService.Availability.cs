@@ -39,6 +39,10 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 获取当前健康状态名称。
     /// </summary>
+    /// <remarks>
+    /// Gets the name of the current availability state.
+    /// </remarks>
+    /// <returns>当前健康状态名称 / The name of the current availability state</returns>
     public string GetAvailabilityStateName()
     {
         return AvailabilityState.ToString();
@@ -47,6 +51,9 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 记录一次成功操作并根据状态机更新状态。
     /// </summary>
+    /// <remarks>
+    /// Records a successful operation and advances the availability state machine accordingly.
+    /// </remarks>
     private void RecordOperationSuccess(string operationName, string operationType)
     {
         lock (_availabilityLock)
@@ -78,6 +85,9 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 记录一次可重试失败并根据状态机更新状态。
     /// </summary>
+    /// <remarks>
+    /// Records a retryable failure and advances the availability state machine accordingly.
+    /// </remarks>
     private void RecordRetryableFailure(string operationName, string operationType, Exception exception)
     {
         lock (_availabilityLock)
@@ -108,6 +118,9 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 切换数据库可用性状态并记录审计指标。
     /// </summary>
+    /// <remarks>
+    /// Transitions the database availability state and records audit metrics.
+    /// </remarks>
     private void ChangeAvailabilityState(DatabaseAvailabilityState newState, string reason)
     {
         var oldState = AvailabilityState;
@@ -139,6 +152,9 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 判断恢复中的请求是否允许进入半开探测窗口。
     /// </summary>
+    /// <remarks>
+    /// Determines whether a request during recovery may enter the half-open probe window.
+    /// </remarks>
     private bool TryAcquireRecoveringProbeSlot()
     {
         var nowTicks = DateTime.UtcNow.Ticks;
@@ -163,6 +179,9 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 判断并执行非核心读降级返回。
     /// </summary>
+    /// <remarks>
+    /// Determines whether a non-critical read should return a degraded fallback value, and does so when applicable.
+    /// </remarks>
     private bool TryReturnDegradedReadFallback<T>(string operationName, Func<T> fallbackValueFactory, out T fallbackValue)
     {
         fallbackValue = default;
@@ -191,6 +210,9 @@ public sealed partial class PostgreSqlDbService
     /// <summary>
     /// 判断核心写操作是否应快速失败。
     /// </summary>
+    /// <remarks>
+    /// Determines whether a core write operation should fast-fail while the database is unavailable or rate-limited during recovery.
+    /// </remarks>
     private bool IsCoreWriteAllowed(string operationName)
     {
         if (!CoreWriteOperationWhiteList.Contains(operationName))

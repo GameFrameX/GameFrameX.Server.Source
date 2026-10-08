@@ -148,7 +148,7 @@ public sealed class ConsistentHashServerInstanceSelector : IServerInstanceSelect
 
             foreach (var instance in instances)
             {
-                for (int i = 0; i < virtualNodeCount; i++)
+                for (var i = 0; i < virtualNodeCount; i++)
                 {
                     var key = Hash($"{_serviceName}:{instance}:{i}");
                     _ring[key] = instance;
@@ -172,7 +172,7 @@ public sealed class ConsistentHashServerInstanceSelector : IServerInstanceSelect
 
             // 查找第一个大于等于 hash 的节点
             var keys = _ring.Keys;
-            int index = BinarySearchCeiling(keys, hash);
+            var index = BinarySearchCeiling(keys, hash);
 
             // 如果超过末尾，环绕到第一个节点
             if (index >= keys.Count)
@@ -194,8 +194,8 @@ public sealed class ConsistentHashServerInstanceSelector : IServerInstanceSelect
             const ulong FnvOffsetBasis = 14695981039346656037UL;
             const ulong FnvPrime = 1099511628211UL;
 
-            ulong hash = FnvOffsetBasis;
-            for (int i = 0; i < key.Length; i++)
+            var hash = FnvOffsetBasis;
+            for (var i = 0; i < key.Length; i++)
             {
                 hash ^= (byte)key[i];
                 hash *= FnvPrime;
@@ -206,12 +206,12 @@ public sealed class ConsistentHashServerInstanceSelector : IServerInstanceSelect
 
         private static int BinarySearchCeiling(IList<long> keys, long value)
         {
-            int lo = 0;
-            int hi = keys.Count - 1;
+            var lo = 0;
+            var hi = keys.Count - 1;
 
             while (lo <= hi)
             {
-                int mid = lo + (hi - lo) / 2;
+                var mid = lo + (hi - lo) / 2;
                 if (keys[mid] < value)
                 {
                     lo = mid + 1;

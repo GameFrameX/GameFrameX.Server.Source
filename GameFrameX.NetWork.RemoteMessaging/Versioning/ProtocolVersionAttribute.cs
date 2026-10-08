@@ -63,24 +63,36 @@ public sealed class ProtocolVersionAttribute : Attribute
     /// <summary>
     /// 主版本号。不兼容变更时递增。
     /// </summary>
+    /// <remarks>
+    /// The major version number. Incremented on breaking changes.
+    /// </remarks>
     /// <value>主版本号 / The major version number</value>
     public int Major { get; }
 
     /// <summary>
     /// 次版本号。向后兼容新增时递增。
     /// </summary>
+    /// <remarks>
+    /// The minor version number. Incremented for backward-compatible additions.
+    /// </remarks>
     /// <value>次版本号 / The minor version number</value>
     public int Minor { get; }
 
     /// <summary>
     /// 协议描述。
     /// </summary>
+    /// <remarks>
+    /// The protocol description.
+    /// </remarks>
     /// <value>协议描述 / The protocol description</value>
     public string Description { get; set; }
 
     /// <summary>
     /// 版本字符串。
     /// </summary>
+    /// <remarks>
+    /// The version string.
+    /// </remarks>
     /// <value>版本字符串（格式 "Major.Minor"） / The version string (format "Major.Minor")</value>
     public string VersionString
     {

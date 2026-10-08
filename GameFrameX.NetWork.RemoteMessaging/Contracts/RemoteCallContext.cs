@@ -61,6 +61,7 @@ public sealed class RemoteCallContext
     /// <remarks>
     /// Target service name.
     /// </remarks>
+    /// <value>目标服务名 / The target service name</value>
     public string ServiceName { get; init; }
 
     /// <summary>
@@ -69,6 +70,7 @@ public sealed class RemoteCallContext
     /// <remarks>
     /// Timeout duration in milliseconds.
     /// </remarks>
+    /// <value>超时毫秒数 / The timeout duration in milliseconds</value>
     public int TimeoutMs { get; init; } = DefaultTimeoutMs;
 
     /// <summary>
@@ -77,6 +79,7 @@ public sealed class RemoteCallContext
     /// <remarks>
     /// Cancellation token for cancelling the remote call.
     /// </remarks>
+    /// <value>取消令牌 / The cancellation token</value>
     public CancellationToken CancellationToken { get; init; } = CancellationToken.None;
 
     /// <summary>
@@ -85,6 +88,7 @@ public sealed class RemoteCallContext
     /// <remarks>
     /// Whether retry is allowed (should only be set to true for idempotent interfaces).
     /// </remarks>
+    /// <value>是否允许重试 / Whether retry is allowed</value>
     public bool AllowRetry { get; init; }
 
     /// <summary>
@@ -93,6 +97,7 @@ public sealed class RemoteCallContext
     /// <remarks>
     /// Maximum retry count (effective when AllowRetry is true).
     /// </remarks>
+    /// <value>最大重试次数 / The maximum retry count</value>
     public int MaxRetryCount { get; init; } = DefaultMaxRetryCount;
 
     /// <summary>
@@ -101,6 +106,7 @@ public sealed class RemoteCallContext
     /// <remarks>
     /// Trace ID used for cross-service distributed tracing.
     /// </remarks>
+    /// <value>追踪 ID / The trace ID</value>
     public string TraceId { get; set; }
 
     /// <summary>
@@ -111,11 +117,16 @@ public sealed class RemoteCallContext
     /// Environment parameter dictionary. Used to pass caller context information (e.g., ServerId, PlayerId, environment tag).
     /// Interceptors can read these parameters for logging, distributed tracing, or dynamic routing.
     /// </remarks>
+    /// <value>环境参数字典 / The environment parameter dictionary</value>
     public Dictionary<string, string> Metadata { get; init; }
 
     /// <summary>
     /// 调用期间持有的追踪活动对象。
     /// </summary>
+    /// <remarks>
+    /// The trace activity held during the remote call.
+    /// </remarks>
+    /// <value>调用期间持有的追踪活动对象 / The trace activity held during the remote call</value>
     internal Activity TraceActivity { get; set; }
 
     /// <summary>

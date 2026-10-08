@@ -60,11 +60,12 @@ public sealed partial class PostgreSqlDbService : IDatabaseService
     private static readonly Counter<long> DbHealthStateTransitionTotal = DbMeter.CreateCounter<long>("db_health_state_transition_total");
     private static readonly Counter<long> DbDegradeActionTotal = DbMeter.CreateCounter<long>("db_degrade_action_total");
     private static readonly ObservableGauge<int> DbHealthStatus = DbMeter.CreateObservableGauge("db_health_status", () => Volatile.Read(ref _healthStatusValue));
-    private static readonly Histogram<double> DbOperationLatencyMilliseconds = DbMeter.CreateHistogram<double>("db_operation_latency_ms", unit: "ms");
-    private static readonly Histogram<double> DbRecoveryDurationMilliseconds = DbMeter.CreateHistogram<double>("db_recovery_duration_ms", unit: "ms");
-    private static readonly int[] DefaultReadRetryDelaysMilliseconds = { 120, 300, 700 };
-    private static readonly int[] DefaultIdempotentWriteRetryDelaysMilliseconds = { 150, 400, 900 };
-    private static readonly int[] DefaultTransactionRetryDelaysMilliseconds = { 200, 500, 1000 };
+    private static readonly Histogram<double> DbOperationLatencyMilliseconds = DbMeter.CreateHistogram<double>("db_operation_latency_ms", "ms");
+    private static readonly Histogram<double> DbRecoveryDurationMilliseconds = DbMeter.CreateHistogram<double>("db_recovery_duration_ms", "ms");
+    private static readonly int[] DefaultReadRetryDelaysMilliseconds = { 120, 300, 700, };
+    private static readonly int[] DefaultIdempotentWriteRetryDelaysMilliseconds = { 150, 400, 900, };
+    private static readonly int[] DefaultTransactionRetryDelaysMilliseconds = { 200, 500, 1000, };
+
     private static readonly HashSet<string> NonCriticalReadOperationWhiteList = new(StringComparer.Ordinal)
     {
         nameof(FindListAsync),
@@ -77,6 +78,7 @@ public sealed partial class PostgreSqlDbService : IDatabaseService
         nameof(AnyAsync),
         nameof(ExistsByIdAsync),
     };
+
     private static readonly HashSet<string> CoreWriteOperationWhiteList = new(StringComparer.Ordinal)
     {
         nameof(AddAsync),
@@ -116,7 +118,13 @@ public sealed partial class PostgreSqlDbService : IDatabaseService
     /// <summary>
     /// 获取当前数据库可用性状态。
     /// </summary>
-    public DatabaseAvailabilityState AvailabilityState => (DatabaseAvailabilityState)Volatile.Read(ref _availabilityState);
+    /// <remarks>
+    /// Gets the current database availability state.
+    /// </remarks>
+    public DatabaseAvailabilityState AvailabilityState
+    {
+        get { return (DatabaseAvailabilityState)Volatile.Read(ref _availabilityState); }
+    }
 
     private readonly object _availabilityLock = new();
     private int _availabilityState = (int)DatabaseAvailabilityState.Healthy;
@@ -147,7 +155,10 @@ public sealed partial class PostgreSqlDbService : IDatabaseService
     /// <summary>
     /// 应用数据库运行时配置并执行默认值/边界归一化。
     /// </summary>
-    /// <param name="runtimeOptions">运行时配置。</param>
+    /// <remarks>
+    /// Applies the database runtime options and performs default/boundary normalization.
+    /// </remarks>
+    /// <param name="runtimeOptions">运行时配置 / Runtime options</param>
     private void ApplyRuntimeOptions(DatabaseRuntimeOptions runtimeOptions)
     {
         runtimeOptions ??= new DatabaseRuntimeOptions();
@@ -169,10 +180,13 @@ public sealed partial class PostgreSqlDbService : IDatabaseService
     /// <summary>
     /// 归一化毫秒配置。
     /// </summary>
-    /// <param name="configuredValue">配置值。</param>
-    /// <param name="defaultValue">默认值。</param>
-    /// <param name="minValue">最小值。</param>
-    /// <returns>归一化后的值。</returns>
+    /// <remarks>
+    /// Normalizes a millisecond-based option value.
+    /// </remarks>
+    /// <param name="configuredValue">配置值 / Configured value</param>
+    /// <param name="defaultValue">默认值 / Default value</param>
+    /// <param name="minValue">最小值 / Minimum value</param>
+    /// <returns>归一化后的值 / The normalized value</returns>
     private static int NormalizeMilliseconds(int configuredValue, int defaultValue, int minValue)
     {
         var value = configuredValue > 0 ? configuredValue : defaultValue;
@@ -182,9 +196,12 @@ public sealed partial class PostgreSqlDbService : IDatabaseService
     /// <summary>
     /// 归一化阈值配置。
     /// </summary>
-    /// <param name="configuredValue">配置值。</param>
-    /// <param name="defaultValue">默认值。</param>
-    /// <returns>归一化后的阈值。</returns>
+    /// <remarks>
+    /// Normalizes a threshold option value.
+    /// </remarks>
+    /// <param name="configuredValue">配置值 / Configured value</param>
+    /// <param name="defaultValue">默认值 / Default value</param>
+    /// <returns>归一化后的阈值 / The normalized threshold</returns>
     private static int NormalizeThreshold(int configuredValue, int defaultValue)
     {
         var value = configuredValue > 0 ? configuredValue : defaultValue;
@@ -194,9 +211,12 @@ public sealed partial class PostgreSqlDbService : IDatabaseService
     /// <summary>
     /// 归一化重试延迟配置。
     /// </summary>
-    /// <param name="configuredValue">配置值。</param>
-    /// <param name="defaultValue">默认值。</param>
-    /// <returns>归一化后的重试延迟数组。</returns>
+    /// <remarks>
+    /// Normalizes a retry-delay array option.
+    /// </remarks>
+    /// <param name="configuredValue">配置值 / Configured value</param>
+    /// <param name="defaultValue">默认值 / Default value</param>
+    /// <returns>归一化后的重试延迟数组 / The normalized retry-delay array</returns>
     private static int[] NormalizeRetryDelays(int[] configuredValue, int[] defaultValue)
     {
         if (configuredValue == null || configuredValue.Length == 0)

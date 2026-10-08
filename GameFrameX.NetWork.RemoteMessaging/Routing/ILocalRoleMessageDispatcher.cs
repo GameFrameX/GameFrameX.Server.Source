@@ -53,5 +53,6 @@ public interface ILocalRoleMessageDispatcher
     /// </remarks>
     /// <param name="envelope">路由信封（目标 Role 必属于本进程角色集）/ The routing envelope (target role is hosted by this process)</param>
     /// <param name="cancellationToken">取消操作的令牌 / The cancellation token</param>
+    /// <returns>异步任务；消息交给目标队列（或被其处理）后完成 / Async task; completes once the message has been handed to (or processed by) the target queue</returns>
     Task DispatchAsync(MessageEnvelope envelope, CancellationToken cancellationToken = default);
 }

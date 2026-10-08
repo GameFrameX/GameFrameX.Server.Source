@@ -56,7 +56,7 @@ public static class RoleRouterHolder
     /// <remarks>
     /// The initialization lock.
     /// </remarks>
-    private static readonly object InitializeLock = new object();
+    private static readonly object InitializeLock = new();
 
     /// <summary>
     /// 获取全局跨 Role 路由器实例。必须在调用 <see cref="Initialize"/> 之后使用。
@@ -89,6 +89,7 @@ public static class RoleRouterHolder
     /// before re-installing the router so it can skip when C143c's placeholder
     /// has already been replaced.
     /// </remarks>
+    /// <value>是否已初始化 / Whether the holder has been initialized</value>
     public static bool IsInitialized
     {
         get { return _router != null; }

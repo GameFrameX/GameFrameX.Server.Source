@@ -49,6 +49,7 @@ public sealed partial class PostgreSqlDbService
     /// </remarks>
     /// <param name="dbOptions">数据库配置选项 / Database configuration options</param>
     /// <returns>返回数据库是否初始化成功 / Returns whether the database was initialized successfully</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="dbOptions"/>、其 ConnectionString 或 Name 为 null 时抛出 / Thrown when <paramref name="dbOptions"/>, its ConnectionString, or its Name is null</exception>
     public async Task<bool> Open(DbOptions dbOptions)
     {
         ArgumentNullException.ThrowIfNull(dbOptions, nameof(dbOptions));
@@ -85,7 +86,7 @@ public sealed partial class PostgreSqlDbService
         Options = dbOptions;
         ApplyRuntimeOptions(dbOptions.RuntimeOptions);
         Exception lastException = null;
-        var retryDelays = new[] { 300, 700, 1500 };
+        var retryDelays = new[] { 300, 700, 1500, };
         for (var attempt = 0; attempt < retryDelays.Length; attempt++)
         {
             try
@@ -101,7 +102,7 @@ public sealed partial class PostgreSqlDbService
                 }
 
                 DbOperationLatencyMilliseconds.Record(openStopwatch.Elapsed.TotalMilliseconds, new TagList { { "op", "open" }, { "name", nameof(Open) }, { "success", true }, });
-                LogHelper.Info("PostgreSqlDbService.Open {dbName} {target} {postgreSqlInitializedSuccessfully}", dbOptions.Name, connectionTarget, LocalizationService.GetString(Localization.Keys.Database.PostgreSqlInitializedSuccessfully, connectionTarget, dbOptions.Name));
+                LogHelper.Info("PostgreSqlDbService.Open {dbName} {target} {postgreSqlInitializedSuccessfully}", dbOptions.Name, connectionTarget, LocalizationService.GetString(Keys.Database.PostgreSqlInitializedSuccessfully, connectionTarget, dbOptions.Name));
                 return true;
             }
             catch (Exception exception)
@@ -121,7 +122,7 @@ public sealed partial class PostgreSqlDbService
         DbOperationFailTotal.Add(1, new TagList { { "op", "open" }, { "name", nameof(Open) }, { "reason", GetFailureReason(lastException) }, });
         DbOperationLatencyMilliseconds.Record(openStopwatch.Elapsed.TotalMilliseconds, new TagList { { "op", "open" }, { "name", nameof(Open) }, { "success", false }, });
         LogHelper.Fatal("PostgreSqlDbService.Open Exception {dbName} {target} {exception}", dbOptions.Name, connectionTarget, lastException);
-        var message = LocalizationService.GetString(Localization.Keys.Database.PostgreSqlInitializationFailed, connectionTarget, dbOptions.Name);
+        var message = LocalizationService.GetString(Keys.Database.PostgreSqlInitializationFailed, connectionTarget, dbOptions.Name);
         Console.ForegroundColor = ConsoleColor.Red;
         Console.WriteLine(message);
         Console.ResetColor();

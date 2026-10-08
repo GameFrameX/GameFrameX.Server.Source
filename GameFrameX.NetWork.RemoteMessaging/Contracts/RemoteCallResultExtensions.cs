@@ -125,6 +125,7 @@ public static class RemoteErrorCatalog
     /// <remarks>
     /// Determines whether the status code indicates a successful call.
     /// </remarks>
+    /// <param name="statusCode">技术状态码 / Technical status code</param>
     /// <returns>如果状态码为 Success 则返回 <c>true</c>；否则返回 <c>false</c> / <c>true</c> if the status code is Success; otherwise <c>false</c></returns>
     public static bool IsSuccess(this RemoteStatusCode statusCode)
     {
@@ -137,6 +138,7 @@ public static class RemoteErrorCatalog
     /// <remarks>
     /// Determines whether the status code represents a recoverable transient error (eligible for retry).
     /// </remarks>
+    /// <param name="statusCode">技术状态码 / Technical status code</param>
     /// <returns>如果状态码为可重试的临时错误则返回 <c>true</c>；否则返回 <c>false</c> / <c>true</c> if the status code is a retryable transient error; otherwise <c>false</c></returns>
     public static bool IsTransient(this RemoteStatusCode statusCode)
     {
