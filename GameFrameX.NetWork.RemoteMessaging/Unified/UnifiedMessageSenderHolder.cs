@@ -41,7 +41,7 @@ public static class UnifiedMessageSenderHolder
 {
     private static IUnifiedMessageSender _sender;
     private static MessageSendMetrics _metrics;
-    private static readonly object _lock = new();
+    private static readonly object Lock = new();
 
     /// <summary>
     /// 获取全局统一消息发送器实例。必须在调用 <see cref="Initialize"/> 之后使用。
@@ -56,8 +56,7 @@ public static class UnifiedMessageSenderHolder
         {
             if (_sender == null)
             {
-                throw new InvalidOperationException(
-                    "UnifiedMessageSenderHolder has not been initialized. Call Initialize() first during startup.");
+                throw new InvalidOperationException("UnifiedMessageSenderHolder has not been initialized. Call Initialize() first during startup.");
             }
 
             return _sender;
@@ -85,8 +84,7 @@ public static class UnifiedMessageSenderHolder
         {
             if (_metrics == null)
             {
-                throw new InvalidOperationException(
-                    "UnifiedMessageSender metrics are unavailable. Initialize() with UnifiedMessageSender first.");
+                throw new InvalidOperationException("UnifiedMessageSender metrics are unavailable. Initialize() with UnifiedMessageSender first.");
             }
 
             return _metrics;
@@ -107,7 +105,7 @@ public static class UnifiedMessageSenderHolder
             throw new ArgumentNullException(nameof(sender));
         }
 
-        lock (_lock)
+        lock (Lock)
         {
             _sender = sender;
             _metrics = (sender as UnifiedMessageSender)?.Metrics;
