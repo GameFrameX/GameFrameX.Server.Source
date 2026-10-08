@@ -17,7 +17,7 @@ namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 /// player's current logical location (which <c>role</c> + numeric <c>serverId</c>
 /// holds them, or that they are offline) by looking through some set of tiers —
 /// typically in-process memory first, then a shared control store. The default
-/// Mongo-backed implementation is <see cref="MongoPlayerRouteResolver"/>; the
+/// database-implementation-backed resolvers live in the DataBase.* assemblies; the
 /// bootstrap swaps it in once the control database is registered. Returning a
 /// cached or negative answer is allowed: the caller treats
 /// <see cref="PlayerRouteInfo.IsOnline"/> as the binding signal.

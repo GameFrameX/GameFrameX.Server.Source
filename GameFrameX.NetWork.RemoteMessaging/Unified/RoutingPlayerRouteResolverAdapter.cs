@@ -16,7 +16,7 @@ namespace GameFrameX.NetWork.RemoteMessaging.Unified;
 /// </summary>
 /// <remarks>
 /// Adapts the C143e <see cref="Routing.IPlayerRouteResolver"/> (the control-database
-/// player-route read side, exposed through <c>MongoPlayerRouteResolverBootstrap.Resolver</c>)
+/// player-route read side, exposed through the <c>*PlayerRouteResolverBootstrap.Resolver</c> singletons in the DataBase.* assemblies)
 /// to the Unified-messaging resolver contract consumed by
 /// <see cref="UnifiedMessageSenderHolder"/>. The two hierarchies evolved separately
 /// (Unified: pre-C143e sender stack; Routing: C143e <c>player_route</c> read side);

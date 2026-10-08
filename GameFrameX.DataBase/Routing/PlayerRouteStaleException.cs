@@ -14,8 +14,8 @@ namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 /// </summary>
 /// <remarks>
 /// Thrown when the persisted route document already carries a newer
-/// <see cref="PlayerRouteDocument.Version"/> than the value supplied by
-/// <see cref="MongoPlayerRouteSyncTarget.UpsertAsync"/>. The CAS loss means a
+/// <c>PlayerRouteDocument.Version</c> than the value supplied by the player-route
+/// sync target's <c>UpsertAsync</c> (DataBase.* implementation assemblies). The CAS loss means a
 /// concurrent session has already pushed a higher version (typical scenario:
 /// player A logs in on instance X, then immediately logs in on instance Y;
 /// the X-side upsert races and arrives second, so X's "version+1" is stale).

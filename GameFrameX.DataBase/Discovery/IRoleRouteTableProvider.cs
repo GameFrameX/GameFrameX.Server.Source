@@ -35,7 +35,7 @@ namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
 /// </summary>
 /// <remarks>
 /// Provides the current dual-view route table snapshot (C143d D15).
-/// <see cref="MongoEndpointWatcher"/> is the production implementation; routing and
+/// the Mongo/PostgreSql endpoint watchers (in the database implementation assemblies) are the
 /// endpoint-resolution consumers depend on this narrow seam instead of the watcher
 /// itself, so tests can substitute a fixed table without any Mongo dependency.
 /// </remarks>

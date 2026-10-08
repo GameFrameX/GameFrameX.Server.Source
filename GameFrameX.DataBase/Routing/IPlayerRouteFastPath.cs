@@ -16,7 +16,7 @@ namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 /// The Tier 1 player-route fast-path provider (C143e D21). The default
 /// implementation in <c>GameFrameX.Apps</c> is the in-process
 /// <c>SessionManager.PlayerRouteMap</c>; it is injected into
-/// <see cref="MongoPlayerRouteResolver"/> at launch time so the resolver does
+/// the Mongo/PostgreSql player-route resolvers at launch time so the resolver does
 /// not depend on the host application layer. Returning <c>false</c> (or
 /// <paramref name="info"/> with <see cref="PlayerRouteInfo.IsOnline"/> = false)
 /// makes the resolver fall through to the Tier 2 control-database lookup.

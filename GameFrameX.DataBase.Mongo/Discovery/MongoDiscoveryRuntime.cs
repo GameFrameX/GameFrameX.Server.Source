@@ -79,39 +79,25 @@ public static class MongoDiscoveryRuntime
     private static MongoEndpointWatcher _watcher;
 
     /// <summary>
-    /// Activate 时捕获的本进程 Role 名快照（供 <see cref="AttachLocalDispatcher"/> 重建路由器）。
+    /// 发现层路由表提供者（C166 依赖纠偏第二轮：路由胶水装配移交组合侧 DiscoveryRoutingWire，本 Runtime 只暴露读侧实例）。
     /// </summary>
     /// <remarks>
-    /// The hosted-role snapshot captured by <see cref="Activate(IMongoDatabase, IEnumerable{string}, IPlayerRouteFastPath)"/>; reused by
-    /// <see cref="AttachLocalDispatcher"/> when rebuilding the router.
+    /// The discovery route table provider (C166 second dependency fix: router wiring moved to the
+    /// composition-side <c>DiscoveryRoutingWire</c>; this runtime only exposes the reader instance).
     /// </remarks>
-    private static IReadOnlyCollection<string> _hostedRoles;
+    public static IRoleRouteTableProvider TableProvider => _watcher;
 
     /// <summary>
-    /// Activate 时创建的远程转发器（挂接时原样复用，保证不动远程链）。
-    /// </summary>
-    /// <remarks>
-    /// The remote router created by <see cref="Activate(DiscoveryActivationOptions)"/>; <see cref="AttachLocalDispatcher"/>
-    /// reuses the exact instance so only the local slot ever changes.
-    /// </remarks>
-    private static IRemoteRoleRouter _remoteRouter;
-
-    /// <summary>
-    /// 本地投递缝挂接互斥标志（首调胜出）。
-    /// </summary>
-    /// <remarks>
-    /// The local-dispatcher attach idempotence flag (first call wins).
-    /// </remarks>
-    private static int _localDispatcherAttached;
-
-    /// <summary>
-    /// 激活 Mongo 发现层并重装跨 Role 路由缝。
+    /// 激活 Mongo 发现层（读侧 watcher + 写侧心跳 + 玩家路由层装配）。
     /// </summary>
     /// <remarks>
     /// Activates the discovery layer. The watcher always starts (every process
-    /// observes the topology); the registry starts only when a advertise identity
-    /// exists (advertise port configured). <see cref="RoleRouterHolder"/> is then
-    /// re-initialized over the hosted role names with the real remote router.
+    /// observes the topology); the registry starts only when an advertise identity
+    /// exists (advertise port configured); the player-route bootstrap attaches
+    /// right after (C143e D21). Router wiring (RoleRouterHolder / InProcessRoleRouter /
+    /// TcpEnvelopeForwarder) is NOT performed here — the composition side calls
+    /// <c>DiscoveryRoutingWire.Initialize(RoleSet.Current, MongoDiscoveryRuntime.TableProvider)</c>
+    /// right after this (C166 second dependency-direction ruling).
     /// Call this after the control database is registered; calling it more than
     /// once per process is a no-op. The control database comes from
     /// <see cref="DiscoveryActivationOptions.ControlDatabase"/> directly, or is
@@ -163,85 +149,15 @@ public static class MongoDiscoveryRuntime
         }
         else
         {
-            LogHelper.Warning("[MongoDiscoveryRuntime] no advertise port configured ({environmentVariable}); the heartbeat write side is skipped and this process only observes the topology", MongoEndpointRegistry.AdvertisePortEnvironmentVariable);
+            LogHelper.Warning("[MongoDiscoveryRuntime] no advertise port configured ({environmentVariable}); the heartbeat write side is skipped and this process only observes the topology", AdvertiseEndpointEnvironment.AdvertisePortEnvironmentVariable);
         }
 
-        _hostedRoles = hostedRoles;
-        _remoteRouter = new MongoDiscoveryRemoteRoleRouter(_watcher, new TcpEnvelopeForwarder());
-        RoleRouterHolder.Initialize(new InProcessRoleRouter(hostedRoles, null, _remoteRouter));
+        // C166 依赖纠偏第二轮：RoleRouterHolder/InProcessRoleRouter/TcpEnvelopeForwarder 装配移交组合侧
+        // DiscoveryRoutingWire.Initialize（Launcher 在 Activate 后调用，传入本 TableProvider）。
         // C143e D21：玩家路由层装配（建索引 + 装 SyncTarget）。在路由缝激活后追加；
         // 接收端 envelope 复投由 LocalEnvelopeDispatcher 承担：C152 起 Hotfix 装配点在热更加载后
         // 经 AttachLocalDispatcher 补装 local 槽（发现层装配时 Hotfix 组件尚不存在）。
         MongoPlayerRouteResolverBootstrap.Attach(controlDatabase, options.PlayerRouteFastPath).GetAwaiter().GetResult();
-    }
-
-    /// <summary>
-    /// 补装本地 envelope 投递缝（C152：只补 case 1 的 local 槽，不动远程链）。
-    /// </summary>
-    /// <remarks>
-    /// Rebuilds the process router with the given dispatcher in the case 1 slot,
-    /// reusing the hosted-role snapshot and the exact remote router instance
-    /// created by <see cref="Activate(DiscoveryActivationOptions)"/> — the remote chain (watcher, forwarder,
-    /// heartbeat registry) is untouched. Timing premise: the production caller is
-    /// the Hotfix <c>OnLoadSuccess</c> wiring point, which the launch flow orders
-    /// strictly after <see cref="Activate(DiscoveryActivationOptions)"/> (the hotfix module loads later in the
-    /// same startup sequence, when the Hotfix-side sender components finally
-    /// exist); a call before <see cref="Activate(DiscoveryActivationOptions)"/> therefore throws instead of
-    /// quietly degrading case 1 back to route-time <see cref="RouteNotFoundException"/>.
-    /// Idempotent per process: the first call wins, later calls (multi-role
-    /// re-entry) return immediately without rebuilding the router.
-    /// </remarks>
-    /// <param name="dispatcher">本地 envelope 复投器（Hotfix 装配点传入，与 UnifiedMessageSenderHolder 共用同一 IPlayerLocalSender）/ The local envelope dispatcher (sharing the same IPlayerLocalSender as UnifiedMessageSenderHolder)</param>
-    /// <exception cref="ArgumentNullException">当 <paramref name="dispatcher"/> 为 null 时抛出 / Thrown when dispatcher is null</exception>
-    /// <exception cref="InvalidOperationException">当尚未调用 <see cref="Activate(DiscoveryActivationOptions)"/> 时抛出 / Thrown when Activate has not been called</exception>
-    public static void AttachLocalDispatcher(ILocalRoleMessageDispatcher dispatcher)
-    {
-        ArgumentNullException.ThrowIfNull(dispatcher, nameof(dispatcher));
-
-        if (_hostedRoles == null)
-        {
-            throw new InvalidOperationException("MongoDiscoveryRuntime.AttachLocalDispatcher must be called after Activate; the router rebuild needs the hosted-role snapshot and the remote router created by Activate.");
-        }
-
-        if (Interlocked.CompareExchange(ref _localDispatcherAttached, 1, 0) != 0)
-        {
-            return;
-        }
-
-        RoleRouterHolder.Initialize(new InProcessRoleRouter(_hostedRoles, dispatcher, _remoteRouter));
-    }
-
-    /// <summary>
-    /// 重置全部装配状态（仅测试隔离使用）。
-    /// </summary>
-    /// <remarks>
-    /// Resets all wiring state for test isolation (precedent:
-    /// <c>MailCampaignRegistry.ResetForTest</c>). Test-only: production code never calls this.
-    /// </remarks>
-    internal static void ResetForTest()
-    {
-        _activated = 0;
-        _localDispatcherAttached = 0;
-        _registry = null;
-        _watcher = null;
-        _hostedRoles = null;
-        _remoteRouter = null;
-    }
-
-    /// <summary>
-    /// 模拟已 Activate 的装配状态（仅测试使用；不创建 watcher / registry 等真实 Mongo 资源）。
-    /// </summary>
-    /// <remarks>
-    /// Simulates the post-Activate state without real Mongo resources so unit tests
-    /// can exercise <see cref="AttachLocalDispatcher"/> semantics (attach, idempotence,
-    /// remote-chain preservation) on top of stub components.
-    /// </remarks>
-    /// <param name="hostedRoleNames">模拟的本进程 Role 名快照 / The simulated hosted-role snapshot</param>
-    /// <param name="remoteRouter">模拟的远程转发缝 / The simulated remote forwarding seam</param>
-    internal static void SimulateActivatedForTest(IReadOnlyCollection<string> hostedRoleNames, IRemoteRoleRouter remoteRouter)
-    {
-        _hostedRoles = hostedRoleNames;
-        _remoteRouter = remoteRouter;
     }
 
     /// <summary>
