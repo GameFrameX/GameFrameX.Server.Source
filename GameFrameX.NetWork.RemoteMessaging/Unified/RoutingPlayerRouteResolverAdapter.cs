@@ -19,7 +19,7 @@ namespace GameFrameX.NetWork.RemoteMessaging.Unified;
 /// player-route read side, exposed through the <c>*PlayerRouteResolverBootstrap.Resolver</c> singletons in the DataBase.* assemblies)
 /// to the Unified-messaging resolver contract consumed by
 /// <see cref="UnifiedMessageSenderHolder"/>. The two hierarchies evolved separately
-/// (Unified: pre-C143e sender stack; Routing: C143e <c>player_route</c> read side);
+/// (Unified: pre-C143e sender stack; Routing: C143e player-route read side);
 /// this adapter maps <see cref="Routing.PlayerRouteInfo"/> field-by-field instead of
 /// forcing a breaking interface merge. Offline-state convention differs slightly
 /// (Routing normalizes <c>Version</c> to 1, Unified leaves 0); mapping goes through
