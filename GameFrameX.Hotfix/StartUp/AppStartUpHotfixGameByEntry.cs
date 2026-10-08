@@ -58,14 +58,20 @@ internal partial class AppStartUpHotfixGame : AppStartUpBase, IHotfixBridge
         {
             var remoteClient = RemoteMessagingBuilder.BuildFromEnvironment();
             var localSender = new DefaultPlayerLocalSender();
-            var routeResolver = PlayerRouteWiring.SelectRouteResolver(MongoPlayerRouteResolverBootstrap.Resolver);
+            // C166：按 Provider 选择发现层装配的解析器与本地投递槽（PG 路径走 PostgreSql Bootstrap/Runtime，形态对齐 Mongo）。
+            var isPostgreSql = setting.DatabaseProvider == DatabaseProviderType.PostgreSql;
+            GameFrameX.NetWork.RemoteMessaging.Routing.IPlayerRouteResolver discoveredResolver = isPostgreSql
+                ? PostgreSqlPlayerRouteResolverBootstrap.Resolver
+                : MongoPlayerRouteResolverBootstrap.Resolver;
+            var routeResolver = PlayerRouteWiring.SelectRouteResolver(discoveredResolver);
             UnifiedMessageSenderHolder.InitializeWithDefaults(
                 routeResolver,
                 localSender,
                 remoteClient);
 
             // C152：holder 初始化后补装路由缝 case 1 的本地投递槽（幂等；时序前提见 AttachLocalDispatcher 注释）。
-            MongoDiscoveryRuntime.AttachLocalDispatcher(new LocalEnvelopeDispatcher(localSender));
+            // C166 依赖纠偏第二轮：本地投递槽装配统一走组合侧 DiscoveryRoutingWire（两 Provider 共用，不再按实现分支）。
+            GameFrameX.NetWork.RemoteMessaging.Routing.DiscoveryRoutingWire.AttachLocalDispatcher(new LocalEnvelopeDispatcher(localSender));
         }
 
         await RunServer();

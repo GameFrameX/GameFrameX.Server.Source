@@ -59,30 +59,50 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Launcher.ActorLimitConfigBegin));
             ActorLimit.Init(ActorLimit.RuleType.None);
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Launcher.ActorLimitConfigEnd));
-            // C143a D16：控制库先行于业务库（D-Single 缺省回落：与业务库共用同一 Mongo 实例连接串，库固定 gameframex_control）
-            // C159：经 GameDb 统一入口判重/命名，启动链不再直接引用注册表与 Mongo 实现类型。
+            // C143a D16：控制库先行于业务库；C159：经 GameDb 统一入口判重/命名；
+            // C166：Provider 装配分支——PostgreSql 时控制库走 PostgreSqlDbService（Name 仅注册名，库由连接串决定）。
             if (!GameDb.Contains(GameDb.ControlDatabaseName))
             {
-                var controlDatabaseInitResult = await GameDb.Init<MongoDbService>(Setting.DataBaseUrl, new DbOptions { Name = GameDb.ControlDatabaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
+                var controlDatabaseInitResult = Setting.DatabaseProvider == DatabaseProviderType.PostgreSql
+                    ? await GameDb.Init<PostgreSqlDbService>(Setting.DataBaseUrl, new DbOptions { Name = GameDb.ControlDatabaseName, IsUseTimeZone = Setting.IsUseTimeZone, })
+                    : await GameDb.Init<MongoDbService>(Setting.DataBaseUrl, new DbOptions { Name = GameDb.ControlDatabaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
                 if (controlDatabaseInitResult == false)
                 {
                     throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
                 }
             }
 
-            // C143d D11-D15：控制库就绪后激活 Mongo 发现层——读侧 watcher + 写侧心跳（未配置广播端口时自动跳过）
-            // 并以真实 case 2/3 转发器重装跨 Role 路由缝（替换 C143c 占位）。幂等：多 Role 进程首个调用生效。
+            // C143d D11-D15：控制库就绪后激活发现层——读侧 watcher + 写侧心跳（未配置广播端口时自动跳过）
+            // 并以真实 case 2/3 转发器重装跨 Role 路由缝。幂等：多 Role 进程首个调用生效。
             // C143e D21：再激活玩家路由层（建 player_route 索引 + 装 SyncTarget），Tier 1 fast-path 注入 SessionManager 适配器。
-            // C159：控制库 IMongoDatabase 解析下沉到发现层内部；C154：收敛为激活参数对象。
-            MongoDiscoveryRuntime.Activate(new DiscoveryActivationOptions
+            // C159：控制库句柄解析下沉到发现层内部；C154：收敛为激活参数对象。
+            // C166：Provider 装配分支——PostgreSql 时激活 PG 平行发现层并接 PG SyncTarget。
+            if (Setting.DatabaseProvider == DatabaseProviderType.PostgreSql)
             {
-                ConnectionName = GameDb.ControlDatabaseName,
-                HostedRoleNames = RoleSet.Current,
-                PlayerRouteFastPath = GameFrameX.Apps.Common.Session.SessionManagerFastPathAdapter.Instance,
-            });
-            GameFrameX.Apps.Common.Session.SessionManager.PlayerRouteSyncTarget = GameFrameX.NetWork.RemoteMessaging.Routing.MongoPlayerRouteResolverBootstrap.SyncTarget;
+                PostgreSqlDiscoveryRuntime.Activate(new PostgreSqlDiscoveryActivationOptions
+                {
+                    ConnectionName = GameDb.ControlDatabaseName,
+                    HostedRoleNames = RoleSet.Current,
+                    PlayerRouteFastPath = GameFrameX.Apps.Common.Session.SessionManagerFastPathAdapter.Instance,
+                });
+                GameFrameX.Apps.Common.Session.SessionManager.PlayerRouteSyncTarget = GameFrameX.NetWork.RemoteMessaging.Routing.PostgreSqlPlayerRouteResolverBootstrap.SyncTarget;
+            }
+            else
+            {
+                MongoDiscoveryRuntime.Activate(new DiscoveryActivationOptions
+                {
+                    ConnectionName = GameDb.ControlDatabaseName,
+                    HostedRoleNames = RoleSet.Current,
+                    PlayerRouteFastPath = GameFrameX.Apps.Common.Session.SessionManagerFastPathAdapter.Instance,
+                });
+                GameFrameX.Apps.Common.Session.SessionManager.PlayerRouteSyncTarget = GameFrameX.NetWork.RemoteMessaging.Routing.MongoPlayerRouteResolverBootstrap.SyncTarget;
+            }
+            // C166 依赖纠偏第二轮：路由胶水装配自 Runtime 拆至组合侧 DiscoveryRoutingWire（发现层 Runtime 不再引用消息胶水程序集）。
+            GameFrameX.NetWork.RemoteMessaging.Routing.DiscoveryRoutingWire.Initialize(RoleSet.Current, Setting.DatabaseProvider == DatabaseProviderType.PostgreSql ? PostgreSqlDiscoveryRuntime.TableProvider : MongoDiscoveryRuntime.TableProvider);
 
-            var initResult = await GameDb.Init<MongoDbService>(Setting.DataBaseUrl, new DbOptions { Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
+            var initResult = Setting.DatabaseProvider == DatabaseProviderType.PostgreSql
+                ? await GameDb.Init<PostgreSqlDbService>(Setting.DataBaseUrl, new DbOptions { Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, })
+                : await GameDb.Init<MongoDbService>(Setting.DataBaseUrl, new DbOptions { Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
             if (initResult == false)
             {
                 throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
@@ -101,7 +121,14 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
             MarkStartUpReady();
             // C143d D15：启动阶段真正完成（DB/组件/网络监听均已就绪）后才把心跳从 Booting 切到 Active，
             // 避免其他进程在 Social TCP listener 就绪前发现本实例并投递流量。
-            MongoDiscoveryRuntime.MarkActive();
+            if (Setting.DatabaseProvider == DatabaseProviderType.PostgreSql)
+            {
+                PostgreSqlDiscoveryRuntime.MarkActive();
+            }
+            else
+            {
+                MongoDiscoveryRuntime.MarkActive();
+            }
 
             await AppExitToken;
         }

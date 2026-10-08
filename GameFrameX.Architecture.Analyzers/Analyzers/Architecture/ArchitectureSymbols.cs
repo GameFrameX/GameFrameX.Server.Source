@@ -55,6 +55,7 @@ public sealed class ArchitectureSymbols
         INamedTypeSymbol? eventListener,
         INamedTypeSymbol? timerHandler,
         INamedTypeSymbol? mongoDbService,
+        INamedTypeSymbol? postgreSqlDbService,
         INamedTypeSymbol? multiDbRegistry)
     {
         BaseCacheState = baseCacheState;
@@ -69,6 +70,7 @@ public sealed class ArchitectureSymbols
         EventListener = eventListener;
         TimerHandler = timerHandler;
         MongoDbService = mongoDbService;
+        PostgreSqlDbService = postgreSqlDbService;
         MultiDbRegistry = multiDbRegistry;
     }
 
@@ -108,6 +110,9 @@ public sealed class ArchitectureSymbols
     /// <summary>GameFrameX.DataBase.Mongo.MongoDbService — MongoDB 数据服务实现，仅限 Mongo 实现层引用。</summary>
     public INamedTypeSymbol? MongoDbService { get; }
 
+    /// <summary>GameFrameX.DataBase.PostgreSql.PostgreSqlDbService — PostgreSQL 数据服务实现，仅限 PG 实现层引用。</summary>
+    public INamedTypeSymbol? PostgreSqlDbService { get; }
+
     /// <summary>GameFrameX.DataBase.MultiDbRegistry — 多库注册表，仅限 GameFrameX.DataBase 内部引用。</summary>
     public INamedTypeSymbol? MultiDbRegistry { get; }
 
@@ -129,6 +134,7 @@ public sealed class ArchitectureSymbols
             compilation.GetTypeByMetadataName("GameFrameX.Core.Abstractions.Events.IEventListener"),
             compilation.GetTypeByMetadataName("GameFrameX.Core.Timer.Handler.ITimerHandler"),
             compilation.GetTypeByMetadataName("GameFrameX.DataBase.Mongo.MongoDbService"),
+            compilation.GetTypeByMetadataName("GameFrameX.DataBase.PostgreSql.PostgreSqlDbService"),
             compilation.GetTypeByMetadataName("GameFrameX.DataBase.MultiDbRegistry"));
     }
 }

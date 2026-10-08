@@ -33,25 +33,25 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace GameFrameX.Architecture.Analyzers;
 
 /// <summary>
-/// GFX0016：非 Mongo 实现层代码不得在类型声明面上引用 MongoDbService / MultiDbRegistry。
+/// GFX0016：非实现层代码不得在类型声明面上引用 MongoDbService / PostgreSqlDbService / MultiDbRegistry。
 /// </summary>
 /// <remarks>
-/// <para>规则：GameFrameX.DataBase* 与 GameFrameX.NetWork.RemoteMessaging（Mongo 专属实现层）之外的程序集，
-/// 其类型的声明面（基类、字段、属性、事件、方法签名）不得出现 MongoDbService（含其子类）
-/// 或 MultiDbRegistry 引用。</para>
+/// <para>规则：GameFrameX.DataBase* 与 GameFrameX.NetWork.RemoteMessaging（数据实现层）之外的程序集，
+/// 其类型的声明面（基类、字段、属性、事件、方法签名）不得出现 MongoDbService / PostgreSqlDbService
+/// （含其子类）或 MultiDbRegistry 引用。</para>
 /// <para>原因：C159 统一入口铁律——数据库访问一律经 GameDb 门面（判重用 GameDb.Contains、
 /// 控制库名用 GameDb.ControlDatabaseName），直接持有实现类型会绕开门面默认库语义，
 /// 重演 C143a 门面绑定错位的 split-brain 缺陷。</para>
-/// <para>豁免（声明面天然不可见，故不误报）：Launcher 组合根 GameDb.Init&lt;MongoDbService&gt;
-/// 注册泛型实参与方法体内的 GameDb.As&lt;MongoDbService&gt;(name) 调用属于装配而非数据访问；
-/// GlobalUsings 的命名空间 using 不产生符号引用。</para>
+/// <para>豁免（声明面天然不可见，故不误报）：Launcher 组合根 GameDb.Init&lt;MongoDbService&gt; /
+/// GameDb.Init&lt;PostgreSqlDbService&gt; 注册泛型实参与方法体内的 GameDb.As&lt;…&gt;(name) 调用
+/// 属于装配而非数据访问；GlobalUsings 的命名空间 using 不产生符号引用。</para>
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class MongoImplementationAccessAnalyzer : SingleDiagnosticSymbolAnalyzer
 {
     private static readonly DiagnosticDescriptor SDescriptor = new DiagnosticDescriptor(
         "GFX0016",
-        "MongoDbService/MultiDbRegistry must not be referenced outside Mongo implementation layers",
+        "MongoDbService/PostgreSqlDbService/MultiDbRegistry must not be referenced outside database implementation layers",
         "Type '{0}' in assembly '{1}' references '{2}' in its declaration surface; database access must go through the GameDb facade",
         ArchitectureAnalyzerConstants.Category,
         DiagnosticSeverity.Error,
@@ -64,7 +64,7 @@ public sealed class MongoImplementationAccessAnalyzer : SingleDiagnosticSymbolAn
 
     protected override void AnalyzeNamedType(SymbolAnalysisContext context, ArchitectureSymbols symbols, INamedTypeSymbol type)
     {
-        if (symbols.MongoDbService == null && symbols.MultiDbRegistry == null)
+        if (symbols.MongoDbService == null && symbols.PostgreSqlDbService == null && symbols.MultiDbRegistry == null)
         {
             return;
         }
@@ -165,7 +165,8 @@ public sealed class MongoImplementationAccessAnalyzer : SingleDiagnosticSymbolAn
             return false;
         }
 
-        if (ArchitectureSymbolFacts.SymbolEquals(namedType, symbols.MongoDbService) || ArchitectureSymbolFacts.InheritsFrom(namedType, symbols.MongoDbService))
+        if (ArchitectureSymbolFacts.SymbolEquals(namedType, symbols.MongoDbService) || ArchitectureSymbolFacts.InheritsFrom(namedType, symbols.MongoDbService)
+            || ArchitectureSymbolFacts.SymbolEquals(namedType, symbols.PostgreSqlDbService) || ArchitectureSymbolFacts.InheritsFrom(namedType, symbols.PostgreSqlDbService))
         {
             referenceName = namedType.Name;
             return true;

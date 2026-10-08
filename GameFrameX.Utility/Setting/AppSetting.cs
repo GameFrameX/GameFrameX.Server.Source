@@ -748,6 +748,18 @@ public class AppSetting
     public bool IsUseTimeZone { get; set; } = false;
 
     /// <summary>
+    /// 数据库实现提供者
+    /// <para>默认 Mongo；配置为 PostgreSql 时装配点切换为 PostgreSQL 实现（C166）</para>
+    /// </summary>
+    /// <remarks>
+    /// Database implementation provider.
+    /// Defaults to Mongo; setting PostgreSql switches the assembly points to the PostgreSQL implementation (C166).
+    /// </remarks>
+    [Option(nameof(DatabaseProvider), DefaultValue = "Mongo", Description = "数据库实现提供者：Mongo（默认）/ PostgreSql")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
+    public DatabaseProviderType DatabaseProvider { get; set; } = DatabaseProviderType.Mongo;
+
+    /// <summary>
     /// 语言
     /// </summary>
     /// <remarks>

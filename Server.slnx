@@ -20,6 +20,7 @@
   <Project Path="GameFrameX.Core/GameFrameX.Core.csproj" />
   <Project Path="GameFrameX.DataBase.Mongo/GameFrameX.DataBase.Mongo.csproj" />
   <Project Path="GameFrameX.DataBase/GameFrameX.DataBase.csproj" />
+  <Project Path="GameFrameX.DataBase.PostgreSql/GameFrameX.DataBase.PostgreSql.csproj" />
   <Project Path="GameFrameX.Hotfix/GameFrameX.Hotfix.csproj" />
   <Project Path="GameFrameX.Hotfix.WrapperGenerator/GameFrameX.Hotfix.WrapperGenerator.csproj" />
   <Project Path="GameFrameX.Launcher/GameFrameX.Launcher.csproj" />
