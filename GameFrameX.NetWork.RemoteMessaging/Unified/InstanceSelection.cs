@@ -6,7 +6,7 @@
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
-//   This project is licensed solely under the Apache License 2.0,
+//   This project is licensed solely under the Apache License 2.0,,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -30,20 +30,71 @@
 namespace GameFrameX.NetWork.RemoteMessaging.Unified;
 
 /// <summary>
-/// 玩家路由解析器接口。负责查询玩家归属（ServerType/ServerId/在线状态）。
+/// 服务实例选择结果。
 /// </summary>
 /// <remarks>
-/// Player route resolver interface. Responsible for querying player location (ServerType/ServerId/online status).
+/// Service instance selection result.
 /// </remarks>
-public interface IPlayerRouteResolver
+public sealed class InstanceSelection
 {
     /// <summary>
-    /// 解析玩家路由信息。
+    /// 选中的实例标识
     /// </summary>
     /// <remarks>
-    /// Resolves player route information.
+    /// Selected instance identifier.
     /// </remarks>
-    /// <param name="playerId">玩家ID / Player ID</param>
-    /// <returns>路由信息，null 表示路由缺失 / Route information, null indicates route missing</returns>
-    Task<PlayerRouteInfo> ResolveAsync(long playerId);
+    public string InstanceId { get; init; }
+
+    /// <summary>
+    /// 对应的服务名
+    /// </summary>
+    /// <remarks>
+    /// Corresponding service name.
+    /// </remarks>
+    public string ServiceName { get; init; }
+
+    /// <summary>
+    /// 是否命中
+    /// </summary>
+    /// <remarks>
+    /// Whether an instance was found.
+    /// </remarks>
+    public bool HasInstance
+    {
+        get { return !string.IsNullOrEmpty(InstanceId); }
+    }
+
+    /// <summary>
+    /// 创建选中结果
+    /// </summary>
+    /// <remarks>
+    /// Creates a selection result.
+    /// </remarks>
+    /// <param name="serviceName">服务名 / Service name</param>
+    /// <param name="instanceId">实例ID / Instance ID</param>
+    /// <returns>实例选择结果 / Instance selection result</returns>
+    public static InstanceSelection Selected(string serviceName, string instanceId)
+    {
+        return new InstanceSelection
+        {
+            ServiceName = serviceName,
+            InstanceId = instanceId,
+        };
+    }
+
+    /// <summary>
+    /// 无可用实例
+    /// </summary>
+    /// <remarks>
+    /// No available instance.
+    /// </remarks>
+    /// <param name="serviceName">服务名 / Service name</param>
+    /// <returns>空选择结果 / Empty selection result</returns>
+    public static InstanceSelection None(string serviceName)
+    {
+        return new InstanceSelection
+        {
+            ServiceName = serviceName,
+        };
+    }
 }

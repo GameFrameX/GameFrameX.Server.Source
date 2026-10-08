@@ -6,7 +6,7 @@
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
-//   This project is licensed solely under the Apache License 2.0,
+//   This project is licensed solely under the Apache License 2.0,,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -30,20 +30,78 @@
 namespace GameFrameX.NetWork.RemoteMessaging.Unified;
 
 /// <summary>
-/// 玩家路由解析器接口。负责查询玩家归属（ServerType/ServerId/在线状态）。
+/// 玩家路由解析结果。
 /// </summary>
 /// <remarks>
-/// Player route resolver interface. Responsible for querying player location (ServerType/ServerId/online status).
+/// Player route resolution result.
 /// </remarks>
-public interface IPlayerRouteResolver
+public sealed class PlayerRouteInfo
 {
     /// <summary>
-    /// 解析玩家路由信息。
+    /// 玩家所在的服务器类型（如 "Game"、"Social"）
     /// </summary>
     /// <remarks>
-    /// Resolves player route information.
+    /// The server type where the player is located (e.g. "Game", "Social").
     /// </remarks>
-    /// <param name="playerId">玩家ID / Player ID</param>
-    /// <returns>路由信息，null 表示路由缺失 / Route information, null indicates route missing</returns>
-    Task<PlayerRouteInfo> ResolveAsync(long playerId);
+    public string ServerType { get; init; }
+
+    /// <summary>
+    /// 玩家所在的服务器ID
+    /// </summary>
+    /// <remarks>
+    /// The server ID where the player is located.
+    /// </remarks>
+    public int ServerId { get; init; }
+
+    /// <summary>
+    /// 玩家是否在线
+    /// </summary>
+    /// <remarks>
+    /// Whether the player is online.
+    /// </remarks>
+    public bool IsOnline { get; init; }
+
+    /// <summary>
+    /// 路由版本号（用于过期校验）
+    /// </summary>
+    /// <remarks>
+    /// Route version number (used for expiration checking).
+    /// </remarks>
+    public long Version { get; init; }
+
+    /// <summary>
+    /// 创建在线路由信息
+    /// </summary>
+    /// <remarks>
+    /// Creates online route information.
+    /// </remarks>
+    /// <param name="serverType">服务器类型 / Server type</param>
+    /// <param name="serverId">服务器ID / Server ID</param>
+    /// <param name="version">路由版本号 / Route version</param>
+    /// <returns>在线路由信息 / Online route information</returns>
+    public static PlayerRouteInfo Online(string serverType, int serverId, long version = 0)
+    {
+        return new PlayerRouteInfo
+        {
+            ServerType = serverType,
+            ServerId = serverId,
+            IsOnline = true,
+            Version = version,
+        };
+    }
+
+    /// <summary>
+    /// 创建离线路由信息
+    /// </summary>
+    /// <remarks>
+    /// Creates offline route information.
+    /// </remarks>
+    /// <returns>离线路由信息 / Offline route information</returns>
+    public static PlayerRouteInfo Offline()
+    {
+        return new PlayerRouteInfo
+        {
+            IsOnline = false,
+        };
+    }
 }

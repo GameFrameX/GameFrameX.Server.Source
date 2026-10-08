@@ -6,7 +6,7 @@
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
-//   This project is licensed solely under the Apache License 2.0,
+//   This project is licensed solely under the Apache License 2.0,,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
 //   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
@@ -30,20 +30,98 @@
 namespace GameFrameX.NetWork.RemoteMessaging.Unified;
 
 /// <summary>
-/// 玩家路由解析器接口。负责查询玩家归属（ServerType/ServerId/在线状态）。
+/// 服务指标快照
 /// </summary>
 /// <remarks>
-/// Player route resolver interface. Responsible for querying player location (ServerType/ServerId/online status).
+/// Service metrics snapshot.
 /// </remarks>
-public interface IPlayerRouteResolver
+public sealed class ServiceMetricsSnapshot
 {
     /// <summary>
-    /// 解析玩家路由信息。
+    /// 指标键 (targetType:serviceName)
     /// </summary>
     /// <remarks>
-    /// Resolves player route information.
+    /// Metrics key (targetType:serviceName).
     /// </remarks>
-    /// <param name="playerId">玩家ID / Player ID</param>
-    /// <returns>路由信息，null 表示路由缺失 / Route information, null indicates route missing</returns>
-    Task<PlayerRouteInfo> ResolveAsync(long playerId);
+    public string Key { get; init; }
+
+    /// <summary>
+    /// 总调用次数
+    /// </summary>
+    /// <remarks>
+    /// Total call count.
+    /// </remarks>
+    public long TotalCalls { get; init; }
+
+    /// <summary>
+    /// 成功次数
+    /// </summary>
+    /// <remarks>
+    /// Success count.
+    /// </remarks>
+    public long SuccessCalls { get; init; }
+
+    /// <summary>
+    /// 超时次数
+    /// </summary>
+    /// <remarks>
+    /// Timeout count.
+    /// </remarks>
+    public long TimeoutCalls { get; init; }
+
+    /// <summary>
+    /// 重试次数
+    /// </summary>
+    /// <remarks>
+    /// Retry count.
+    /// </remarks>
+    public long RetryCalls { get; init; }
+
+    /// <summary>
+    /// 成功率
+    /// </summary>
+    /// <remarks>
+    /// Success rate.
+    /// </remarks>
+    public double SuccessRate { get; init; }
+
+    /// <summary>
+    /// 平均耗时毫秒
+    /// </summary>
+    /// <remarks>
+    /// Average elapsed time in milliseconds.
+    /// </remarks>
+    public double AvgElapsedMs { get; init; }
+
+    /// <summary>
+    /// 最大耗时毫秒
+    /// </summary>
+    /// <remarks>
+    /// Maximum elapsed time in milliseconds.
+    /// </remarks>
+    public long MaxElapsedMs { get; init; }
+
+    /// <summary>
+    /// P50 耗时
+    /// </summary>
+    /// <remarks>
+    /// P50 latency.
+    /// </remarks>
+    public long P50ElapsedMs { get; init; }
+
+    /// <summary>
+    /// P90 耗时
+    /// </summary>
+    /// <remarks>
+    /// P90 latency.
+    /// </remarks>
+    public long P90ElapsedMs { get; init; }
+
+    /// <summary>
+    /// P99 耗时
+    /// </summary>
+    /// <remarks>
+    /// P99 latency.
+    /// </remarks>
+    public long P99ElapsedMs { get; init; }
 }
