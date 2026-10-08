@@ -219,7 +219,7 @@ public sealed class MongoEndpointWatcher : IRoleRouteTableProvider, IDisposable
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
         await PollOnceAsync(cancellationToken);
-        _loopTask = Task.Run(() => PollLoopAsync(_loopCancellation.Token));
+        _loopTask = Task.Run(() => PollLoopAsync(_loopCancellation.Token), cancellationToken);
     }
 
     /// <summary>
@@ -231,7 +231,7 @@ public sealed class MongoEndpointWatcher : IRoleRouteTableProvider, IDisposable
     /// <returns>异步任务 / Async task</returns>
     public async Task StopAsync()
     {
-        _loopCancellation.Cancel();
+        await _loopCancellation.CancelAsync();
         if (_loopTask != null)
         {
             try
@@ -299,11 +299,10 @@ public sealed class MongoEndpointWatcher : IRoleRouteTableProvider, IDisposable
     {
         var documents = await _collection.Find(FilterDefinition<ServerHeartbeatDocument>.Empty).ToListAsync(cancellationToken);
         var pendingEvents = new List<KeyValuePair<RoleInstanceChangeKind, InstanceDescriptor>>();
-        List<InstanceDescriptor> liveInstances;
 
         lock (_stateLock)
         {
-            liveInstances = ApplyStateTransitions(documents, DateTime.UtcNow, pendingEvents);
+            var liveInstances = ApplyStateTransitions(documents, DateTime.UtcNow, pendingEvents);
             _currentTable = RoleRouteTable.FromInstances(liveInstances);
         }
 
