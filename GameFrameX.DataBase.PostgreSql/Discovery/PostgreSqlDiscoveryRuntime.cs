@@ -33,65 +33,8 @@ using GameFrameX.DataBase.PostgreSql;
 using GameFrameX.DataBase.PostgreSql.Routing;
 using GameFrameX.Discovery.Routing;
 using GameFrameX.Foundation.Localization.Core;
-using Npgsql;
 
 namespace GameFrameX.DataBase.PostgreSql.Discovery;
-
-/// <summary>
-/// PostgreSQL 发现层激活参数对象（控制库载体为 NpgsqlDataSource）。
-/// </summary>
-/// <remarks>
-/// Parameter object for PostgreSQL discovery activation: the same shape as
-/// <c>DiscoveryActivationOptions</c> with the control-database carrier swapped
-/// to <see cref="NpgsqlDataSource"/>. Set <see cref="DataSource"/> for direct
-/// package consumers, or <see cref="ConnectionName"/> for launch flows that
-/// resolve the control database through the unified <c>GameDb</c> entry
-/// (<c>GameDb.As&lt;PostgreSqlDbService&gt;(name).DataSource</c>); when both are
-/// null activation throws <see cref="ArgumentException"/>.
-/// </remarks>
-public sealed class PostgreSqlDiscoveryActivationOptions
-{
-    /// <summary>
-    /// 获取或设置控制库数据源；与 <see cref="ConnectionName"/> 二选一。
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets the control-database data source; mutually exclusive with <see cref="ConnectionName"/>.
-    /// </remarks>
-    public NpgsqlDataSource DataSource { get; init; }
-
-    /// <summary>
-    /// 获取或设置控制库注册名（经统一入口 GameDb 解析）；与 <see cref="DataSource"/> 二选一。
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets the control-database registry name (resolved through the unified GameDb entry); mutually exclusive with <see cref="DataSource"/>.
-    /// </remarks>
-    public string ConnectionName { get; init; }
-
-    /// <summary>
-    /// 获取或设置本进程承载的 Role 名全集（RoleSet 快照）。
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets the full hosted role-name set (the RoleSet snapshot).
-    /// </remarks>
-    public IEnumerable<string> HostedRoleNames { get; init; }
-
-    /// <summary>
-    /// 获取或设置 Tier 1 玩家路由快路径提供方（apps 端 SessionManager 适配器）；null 则跳过 Tier 1。
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets the Tier 1 player-route fast-path provider (the apps-side SessionManager adapter); null skips Tier 1.
-    /// </remarks>
-    public IPlayerRouteFastPath PlayerRouteFastPath { get; init; }
-
-    /// <summary>
-    /// 获取或设置 TTL 清理周期（缺省 5s；测试可收缩）。
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets the TTL cleanup period (defaults to 5 s; shrinkable in tests).
-    /// Drives the generic registry's cleanup loop over both stores.
-    /// </remarks>
-    public TimeSpan? TtlCleanupInterval { get; init; }
-}
 
 /// <summary>
 /// PostgreSQL 发现层进程装配器（消费通用组件 + PostgreSQL 存储适配）。
