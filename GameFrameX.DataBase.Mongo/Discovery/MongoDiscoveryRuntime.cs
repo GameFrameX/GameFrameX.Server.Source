@@ -40,16 +40,16 @@ namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
 /// </summary>
 /// <remarks>
 /// The process-level wiring point for the Mongo discovery layer (C143d).
-/// The launch flow calls <see cref="Activate(IMongoDatabase, IEnumerable{string}, IPlayerRouteFastPath)"/> once the control database
+/// The launch flow calls <c>Activate(IMongoDatabase, IEnumerable&lt;string&gt;, IPlayerRouteFastPath)</c> once the control database
 /// (gameframex_control) is registered in MultiDbRegistry: it starts the watcher
 /// (read side), starts the registry (write side — skipped when no advertise port
 /// is configured, e.g. single-process local development), and re-installs
-/// <see cref="RoleRouterHolder"/> with the real case 2/3 remote router in place of
+/// <c>RoleRouterHolder</c> with the real case 2/3 remote router in place of
 /// the C143c placeholder. Activation is idempotent per process: the first call
 /// wins, later calls (one per hosted role startup in a multi-role process) return
 /// immediately. The local dispatcher slot stays null here on purpose: the
 /// Hotfix-backed dispatcher only exists after the hotfix module loads, so the
-/// hotfix wiring point later calls <see cref="AttachLocalDispatcher"/> (C152) to
+/// hotfix wiring point later calls <c>AttachLocalDispatcher</c> (C152) to
 /// fill the case 1 slot without touching the remote chain.
 /// </remarks>
 public static class MongoDiscoveryRuntime

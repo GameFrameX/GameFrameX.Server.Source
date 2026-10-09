@@ -21,7 +21,7 @@ namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 /// <see cref="MongoPlayerRouteSyncTarget"/> as the SessionManager sync hook,
 /// and exposes the <see cref="MongoPlayerRouteResolver"/> through
 /// <see cref="Resolver"/> so the launch flow (or a test) can rewire
-/// <see cref="Unified.UnifiedMessageSenderHolder"/> to use it in place of the
+/// <c>Unified.UnifiedMessageSenderHolder</c> to use it in place of the
 /// default Hotfix <c>DefaultPlayerRouteResolver</c>. Idempotent: only the
 /// first call wires anything; later calls are no-ops (so per-role startups in
 /// a multi-role process never double-build indexes).

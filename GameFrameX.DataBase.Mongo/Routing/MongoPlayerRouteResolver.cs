@@ -22,7 +22,7 @@ namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 /// always hit it and never touch Mongo. Tier 2 is the control database
 /// <c>player_route</c> collection read with a 30-second per-player cache, so
 /// cross-process hot players do not re-query Mongo on every message. Tier 3
-/// is the offline fallback (driven by the configured <see cref="Unified.PlayerOfflineStrategy"/>).
+/// is the offline fallback (driven by the configured <c>Unified.PlayerOfflineStrategy</c>).
 /// Tier 1 negative answers still fall through to tier 2 (the in-process map is
 /// authoritative for "this process knows", but a stale entry may outlive a
 /// real login on another process; the control database is the cross-process
