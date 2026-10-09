@@ -224,7 +224,7 @@ public sealed partial class PostgreSqlDbService
             {
                 await context.Database.ExecuteSqlRawAsync(createScript, cancellationToken).ConfigureAwait(false);
             }
-            catch (PostgresException exception) when (exception.SqlState == PostgresDuplicateTableSqlState)
+            catch (PostgresException exception) when (exception.SqlState == PostgreSqlSqlState.DuplicateTable)
             {
                 // 表已存在（C166 存量库 / 并发进程先行创建）：视作成功，存量表结构零迁移。
                 // Table already exists (C166-stored database or a concurrent process won the race): success — existing tables are never migrated.
@@ -235,14 +235,6 @@ public sealed partial class PostgreSqlDbService
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
         await EnsureIndexesAsync(connection, GetTableName<TState>(), typeof(TState), cancellationToken).ConfigureAwait(false);
     }
-
-    /// <summary>
-    /// PostgreSQL「同名对象已存在」SQLSTATE（42P07 duplicate_table）。
-    /// </summary>
-    /// <remarks>
-    /// The PostgreSQL "duplicate table" SQLSTATE (42P07), used to make EF-generated CREATE idempotent at runtime.
-    /// </remarks>
-    private const string PostgresDuplicateTableSqlState = "42P07";
 
     /// <summary>
     /// 同步指定实体类型的 jsonb 表达式索引（同名异构时重建；cast 矩阵与 EF 翻译器生成逐字一致，C168 D4）。

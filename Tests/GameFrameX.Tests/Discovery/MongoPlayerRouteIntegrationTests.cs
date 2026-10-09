@@ -8,6 +8,7 @@
 
 
 using System.Threading.Tasks;
+using GameFrameX.Discovery;
 using GameFrameX.Discovery.Routing;
 using GameFrameX.DataBase.Mongo.Discovery;
 using GameFrameX.DataBase.Mongo.Routing;
@@ -90,7 +91,7 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
 
         await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 101, InstanceId = "game-1", Role = "Game", Version = 1, });
 
-        var collection = database.GetCollection<PlayerRouteDocument>(PlayerRouteCollection.CollectionName);
+        var collection = database.GetCollection<PlayerRouteDocument>(DiscoveryStorageNaming.TableName<PlayerRouteEntity>());
         var stored = await collection.Find(Builders<PlayerRouteDocument>.Filter.Eq(candidate => candidate.PlayerId, 101)).FirstOrDefaultAsync();
         Assert.NotNull(stored);
         Assert.Equal("game-1", stored.InstanceId);
@@ -112,7 +113,7 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
         await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 102, InstanceId = "game-1", Role = "Game", Version = 1, });
         await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 102, InstanceId = "game-2", Role = "Game", Version = 2, });
 
-        var collection = database.GetCollection<PlayerRouteDocument>(PlayerRouteCollection.CollectionName);
+        var collection = database.GetCollection<PlayerRouteDocument>(DiscoveryStorageNaming.TableName<PlayerRouteEntity>());
         var stored = await collection.Find(Builders<PlayerRouteDocument>.Filter.Eq(candidate => candidate.PlayerId, 102)).FirstOrDefaultAsync();
         Assert.NotNull(stored);
         Assert.Equal("game-2", stored.InstanceId);
@@ -154,7 +155,7 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
         await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 104, InstanceId = "game-1", Role = "Game", Version = 1, });
         await target.DeleteAsync(playerId: 104);
 
-        var collection = database.GetCollection<PlayerRouteDocument>(PlayerRouteCollection.CollectionName);
+        var collection = database.GetCollection<PlayerRouteDocument>(DiscoveryStorageNaming.TableName<PlayerRouteEntity>());
         var stored = await collection.Find(Builders<PlayerRouteDocument>.Filter.Eq(candidate => candidate.PlayerId, 104)).FirstOrDefaultAsync();
         Assert.Null(stored);
     }
@@ -168,7 +169,7 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
         }
 
         var database = CreateDatabase();
-        var collection = database.GetCollection<PlayerRouteDocument>(PlayerRouteCollection.CollectionName);
+        var collection = database.GetCollection<PlayerRouteDocument>(DiscoveryStorageNaming.TableName<PlayerRouteEntity>());
         await PlayerRouteCollection.EnsureIndexesAsync(collection);
 
         var indexes = await collection.Indexes.List().ToListAsync();
@@ -216,7 +217,7 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
         }
 
         var database = CreateDatabase();
-        var collection = database.GetCollection<PlayerRouteDocument>(PlayerRouteCollection.CollectionName);
+        var collection = database.GetCollection<PlayerRouteDocument>(DiscoveryStorageNaming.TableName<PlayerRouteEntity>());
         await PlayerRouteCollection.EnsureIndexesAsync(collection);
 
         // 控制库故意写错数据（role=other, version=999）：如果 resolver 走到 Tier 2 就会拿到错误结果
@@ -242,7 +243,7 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
         }
 
         var database = CreateDatabase();
-        var collection = database.GetCollection<PlayerRouteDocument>(PlayerRouteCollection.CollectionName);
+        var collection = database.GetCollection<PlayerRouteDocument>(DiscoveryStorageNaming.TableName<PlayerRouteEntity>());
         await PlayerRouteCollection.EnsureIndexesAsync(collection);
 
         await collection.InsertOneAsync(PlayerRouteCollection.CreateOnline(playerId: 202, instanceId: "7", role: "Game"));
@@ -266,7 +267,7 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
         }
 
         var database = CreateDatabase();
-        var collection = database.GetCollection<PlayerRouteDocument>(PlayerRouteCollection.CollectionName);
+        var collection = database.GetCollection<PlayerRouteDocument>(DiscoveryStorageNaming.TableName<PlayerRouteEntity>());
         await PlayerRouteCollection.EnsureIndexesAsync(collection);
 
         var fastPath = new OnlineFastPath(playerId: 999, serverType: "X", serverId: 1);

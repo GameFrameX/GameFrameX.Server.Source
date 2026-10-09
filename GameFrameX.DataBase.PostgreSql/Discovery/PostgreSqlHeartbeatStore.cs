@@ -93,7 +93,7 @@ public sealed class PostgreSqlHeartbeatStore : IHeartbeatStore
         {
             await context.Database.ExecuteSqlRawAsync(createScript, cancellationToken).ConfigureAwait(false);
         }
-        catch (PostgresException exception) when (exception.SqlState == PostgresDuplicateTableSqlState)
+        catch (PostgresException exception) when (exception.SqlState == PostgreSqlSqlState.DuplicateTable)
         {
             // 表已存在（存量控制库 / 并发装配）：视作成功，存量表结构零迁移。
             // Tables already exist (stored control database or concurrent bootstrap): success.
@@ -113,7 +113,7 @@ public sealed class PostgreSqlHeartbeatStore : IHeartbeatStore
     public async Task UpsertAsync(InstanceDescriptor instance, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(instance, nameof(instance));
-        for (var attempt = 0; ; attempt++)
+        for (var attempt = 0;; attempt++)
         {
             try
             {
@@ -131,7 +131,7 @@ public sealed class PostgreSqlHeartbeatStore : IHeartbeatStore
                 await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 return;
             }
-            catch (DbUpdateException exception) when (attempt == 0 && IsUniqueViolation(exception))
+            catch (DbUpdateException exception) when (attempt == 0 && PostgreSqlSqlState.IsUniqueViolation(exception))
             {
                 // 并发首写同 instance_id：重载后按替换收敛。
                 // Concurrent first write of the same instance_id: reload and converge as a replacement.
@@ -258,34 +258,5 @@ public sealed class PostgreSqlHeartbeatStore : IHeartbeatStore
         }
 
         return new InstanceDescriptor(row.Role, row.InstanceId, row.AdvertiseEndpoint, status, row.Load, addressKind, row.Incarnation, row.LastHeartbeat.ToUniversalTime());
-    }
-
-    /// <summary>
-    /// PostgreSQL「同名对象已存在」SQLSTATE（42P07 duplicate_table）。
-    /// </summary>
-    /// <remarks>
-    /// The PostgreSQL "duplicate table" SQLSTATE (42P07).
-    /// </remarks>
-    private const string PostgresDuplicateTableSqlState = "42P07";
-
-    /// <summary>
-    /// 判断异常链中是否含主键唯一冲突（SQLSTATE 23505）。
-    /// </summary>
-    /// <remarks>
-    /// Determines whether the exception chain contains a unique-constraint violation (SQLSTATE 23505).
-    /// </remarks>
-    /// <param name="exception">异常 / The exception</param>
-    /// <returns>是否唯一冲突 / Whether a unique violation</returns>
-    private static bool IsUniqueViolation(Exception exception)
-    {
-        for (var current = exception; current != null; current = current.InnerException)
-        {
-            if (current is PostgresException { SqlState: "23505", })
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

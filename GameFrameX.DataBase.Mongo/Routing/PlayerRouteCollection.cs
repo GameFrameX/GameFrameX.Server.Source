@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 
-using MongoDB.Bson;
+using GameFrameX.Discovery.Routing;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
 
@@ -36,64 +36,26 @@ using MongoDB.Driver;
 namespace GameFrameX.DataBase.Mongo.Routing;
 
 /// <summary>
-/// 跨服玩家路由控制文档（C143e D21）。
+/// 跨服玩家路由控制文档（C143e D21）；属性形态继承自 <see cref="PlayerRouteEntity"/>。
 /// </summary>
 /// <remarks>
 /// The cross-server player route document in the control database (C143e D21).
-/// One document per player; the unique <see cref="PlayerId"/> index is the lookup
-/// key, and the TTL on <see cref="LastSeenAt"/> keeps long-offline players from
-/// accumulating forever. <see cref="Version"/> is the CAS counter for the
-/// "踢号 + 重登" sequence: a new login must carry <c>oldVersion + 1</c>, otherwise
-/// <see cref="MongoPlayerRouteSyncTarget"/> refuses the upsert and throws
-/// <see cref="PlayerRouteStaleException"/>.
+/// Properties are declared once on the shared <see cref="PlayerRouteEntity"/> base;
+/// the BSON wire mapping (camelCase elements) lives in
+/// <see cref="MongoDiscoverySerialization"/> and is byte-identical to the former
+/// attribute form. One document per player; the unique <see cref="PlayerRouteEntity.PlayerId"/>
+/// index is the lookup key, and the TTL on <see cref="PlayerRouteEntity.LastSeenAt"/> keeps
+/// long-offline players from accumulating forever. <see cref="PlayerRouteEntity.Version"/> is
+/// the CAS counter for the "踢号 + 重登" sequence: a new login must carry
+/// <c>oldVersion + 1</c>, otherwise <see>
+///     <cref>MongoPlayerRouteSyncTarget</cref>
+/// </see>
+/// refuses
+/// the upsert and throws <see cref="PlayerRouteStaleException"/>.
 /// </remarks>
 [BsonIgnoreExtraElements]
-public sealed class PlayerRouteDocument
+public sealed class PlayerRouteDocument : PlayerRouteEntity
 {
-    /// <summary>
-    /// 玩家 ID（业务键）。
-    /// </summary>
-    /// <remarks>
-    /// The player id (the business key).
-    /// </remarks>
-    [BsonElement(PlayerRouteCollection.PlayerIdField)]
-    public long PlayerId { get; set; }
-
-    /// <summary>
-    /// 玩家当前所在的实例 ID（Mongo 发现层 instanceId）。
-    /// </summary>
-    /// <remarks>
-    /// The player's current owning instance id (the Mongo discovery-layer instanceId).
-    /// </remarks>
-    [BsonElement("instanceId")]
-    public string InstanceId { get; set; }
-
-    /// <summary>
-    /// 玩家当前所在的 Role 名（如 Game / Social）。
-    /// </summary>
-    /// <remarks>
-    /// The player's current owning role name (e.g. Game / Social).
-    /// </remarks>
-    [BsonElement("role")]
-    public string Role { get; set; }
-
-    /// <summary>
-    /// 顶号单调递增版本号（CAS 字段）。
-    /// </summary>
-    /// <remarks>
-    /// The monotonic kick/relogin version used for compare-and-set on upsert.
-    /// </remarks>
-    [BsonElement(PlayerRouteCollection.VersionField)]
-    public long Version { get; set; }
-
-    /// <summary>
-    /// 最近一次写入时间（TTL 索引依据）。
-    /// </summary>
-    /// <remarks>
-    /// The last write timestamp; the TTL index expires documents 30 days after this point.
-    /// </remarks>
-    [BsonElement("lastSeenAt")]
-    public DateTime LastSeenAt { get; set; }
 }
 
 /// <summary>
@@ -108,15 +70,22 @@ public sealed class PlayerRouteDocument
 /// </remarks>
 public static class PlayerRouteCollection
 {
+
     /// <summary>
-    /// 集合名（控制库 gameframex_control 内的子集合，D18 全名约定）。
+    /// playerId 唯一索引名（统一命名规则：{element}_unique）。
     /// </summary>
     /// <remarks>
-    /// The collection name (a child collection inside the control database
-    /// <c>gameframex_control</c>; the D18 no-abbreviation rule keeps the long
-    /// name even though <c>player_routes</c> would also be valid English).
+    /// The unique-index name on playerId (unified naming rule: {element}_unique).
     /// </remarks>
-    public const string CollectionName = "player_route";
+    private static string UniqueIndexName => DiscoveryStorageNaming.UniqueIndexName(DiscoveryStorageNaming.CamelCase(nameof(PlayerRouteEntity.PlayerId)));
+
+    /// <summary>
+    /// lastSeenAt TTL 索引名（统一命名规则：{element}_ttl_{window}）。
+    /// </summary>
+    /// <remarks>
+    /// The TTL-index name on lastSeenAt (unified naming rule: {element}_ttl_{window}).
+    /// </remarks>
+    private static string TtlIndexName => DiscoveryStorageNaming.TtlIndexName(DiscoveryStorageNaming.CamelCase(nameof(PlayerRouteEntity.LastSeenAt)), TimeSpan.FromSeconds(TtlSeconds));
 
     /// <summary>
     /// 离线路由 TTL（30 天）。
@@ -142,30 +111,14 @@ public static class PlayerRouteCollection
 
         var uniqueIndex = new CreateIndexModel<PlayerRouteDocument>(
             Builders<PlayerRouteDocument>.IndexKeys.Ascending(document => document.PlayerId),
-            new CreateIndexOptions { Unique = true, Name = "playerId_unique" });
+            new CreateIndexOptions { Unique = true, Name = UniqueIndexName });
 
         var ttlIndex = new CreateIndexModel<PlayerRouteDocument>(
             Builders<PlayerRouteDocument>.IndexKeys.Ascending(document => document.LastSeenAt),
-            new CreateIndexOptions { ExpireAfter = TimeSpan.FromSeconds(TtlSeconds), Name = "lastSeenAt_ttl_30d" });
+            new CreateIndexOptions { ExpireAfter = TimeSpan.FromSeconds(TtlSeconds), Name = TtlIndexName });
 
         await collection.Indexes.CreateManyAsync(new[] { uniqueIndex, ttlIndex }, cancellationToken).ConfigureAwait(false);
     }
-
-    /// <summary>
-    /// BSON 形态读取的 playerId 字段名（用于 CAS 过滤器与日志）。
-    /// </summary>
-    /// <remarks>
-    /// The BSON-side playerId field name (used for CAS filters and log lines).
-    /// </remarks>
-    public const string PlayerIdField = "playerId";
-
-    /// <summary>
-    /// BSON 形态读取的 version 字段名。
-    /// </summary>
-    /// <remarks>
-    /// The BSON-side version field name.
-    /// </remarks>
-    public const string VersionField = "version";
 
     /// <summary>
     /// 构造"首次出现的 player"文档（version=1）；new SetPlayerRouteOnline(playerId) 默认起点。
@@ -186,27 +139,6 @@ public static class PlayerRouteCollection
             Role = role,
             Version = 1,
             LastSeenAt = DateTime.UtcNow,
-        };
-    }
-
-    /// <summary>
-    /// 把 <see cref="PlayerRouteDocument"/> 转 BSON 字典（写日志/调试用）。
-    /// </summary>
-    /// <remarks>
-    /// Renders the document as a BSON dictionary for log/inspection use.
-    /// </remarks>
-    /// <param name="document">文档 / The document</param>
-    /// <returns>BSON 表示 / The BSON representation</returns>
-    public static BsonDocument ToBson(PlayerRouteDocument document)
-    {
-        ArgumentNullException.ThrowIfNull(document, nameof(document));
-        return new BsonDocument
-        {
-            { PlayerIdField, document.PlayerId },
-            { "instanceId", document.InstanceId ?? string.Empty },
-            { "role", document.Role ?? string.Empty },
-            { VersionField, document.Version },
-            { "lastSeenAt", document.LastSeenAt },
         };
     }
 }

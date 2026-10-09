@@ -46,14 +46,6 @@ namespace GameFrameX.Discovery.Routing;
 /// </remarks>
 public static class PlayerRouteResolverBootstrap
 {
-    /// <summary>
-    /// player_route 表 / 集合名（D18 全名约定；稳定契约，运维与测试可直接引用）。
-    /// </summary>
-    /// <remarks>
-    /// The player_route table / collection name (D18 no-abbreviation rule; a stable
-    /// contract, safe to reference from operations tooling and tests).
-    /// </remarks>
-    public const string TableName = "player_route";
 
     /// <summary>
     /// 离线路由 TTL（30 天，秒数；清理循环与 TTL 索引共用同值）。

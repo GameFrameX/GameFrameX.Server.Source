@@ -27,153 +27,38 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Npgsql;
 
 namespace GameFrameX.DataBase.PostgreSql.Discovery;
 
 /// <summary>
-/// server_heartbeat 表的 EF 关系实体（C168 发现层 EF 化；表 / 列形态与 C167 逐字一致，存量库零迁移）。
+/// server_heartbeat 表的 EF 关系实体（C168 发现层 EF 化）；属性形态继承自 <see cref="ServerHeartbeatEntity"/>。
 /// </summary>
 /// <remarks>
-/// The EF relational entity for the <c>server_heartbeat</c> table (C168 discovery EF migration; table and column
-/// shapes identical to C167 — zero migration for existing control databases, including the
-/// <c>server_heartbeat_pkey</c> primary-key constraint name). Enum-ish columns stay as raw
-/// strings so the watcher's defensive parsing (unknown names skipped) is preserved byte-for-byte.
+/// The EF relational entity for the <c>server_heartbeat</c> table (C168 discovery EF migration). Properties are
+/// declared once on the shared <see cref="ServerHeartbeatEntity"/> base; the snake_case column mapping lives in
+/// <see cref="PostgreSqlDiscoveryDbContext.OnModelCreating"/> and is identical to C167 — zero migration for
+/// existing control databases, including the <c>server_heartbeat_pkey</c> primary-key constraint name.
+/// Enum-ish columns stay as raw strings so the watcher's defensive parsing (unknown names skipped) is preserved.
 /// </remarks>
-[Table("server_heartbeat")]
-public sealed class ServerHeartbeatRow
+public sealed class ServerHeartbeatRow : ServerHeartbeatEntity
 {
-    /// <summary>
-    /// 实例 ID（主键，列 instance_id）。
-    /// </summary>
-    /// <remarks>
-    /// The instance id (primary key, column instance_id).
-    /// </remarks>
-    [Column("instance_id")]
-    public string InstanceId { get; set; }
-
-    /// <summary>
-    /// 角色名（列 role）。
-    /// </summary>
-    /// <remarks>
-    /// The role name (column role).
-    /// </remarks>
-    [Column("role")]
-    public string Role { get; set; }
-
-    /// <summary>
-    /// 广播端点（列 advertise_endpoint）。
-    /// </summary>
-    /// <remarks>
-    /// The advertise endpoint (column advertise_endpoint).
-    /// </remarks>
-    [Column("advertise_endpoint")]
-    public string AdvertiseEndpoint { get; set; }
-
-    /// <summary>
-    /// 状态名（列 status；字符串形态，解析防御在读取侧）。
-    /// </summary>
-    /// <remarks>
-    /// The status name (column status; kept as a raw string, parsed defensively on read).
-    /// </remarks>
-    [Column("status")]
-    public string Status { get; set; }
-
-    /// <summary>
-    /// 负载值（列 load）。
-    /// </summary>
-    /// <remarks>
-    /// The load value (column load).
-    /// </remarks>
-    [Column("load")]
-    public int Load { get; set; }
-
-    /// <summary>
-    /// 地址类型名（列 address_kind；字符串形态，解析防御在读取侧）。
-    /// </summary>
-    /// <remarks>
-    /// The address-kind name (column address_kind; kept as a raw string, parsed defensively on read).
-    /// </remarks>
-    [Column("address_kind")]
-    public string AddressKind { get; set; }
-
-    /// <summary>
-    /// 代次号（列 incarnation）。
-    /// </summary>
-    /// <remarks>
-    /// The incarnation number (column incarnation).
-    /// </remarks>
-    [Column("incarnation")]
-    public long Incarnation { get; set; }
-
-    /// <summary>
-    /// 最近心跳时间（UTC，列 last_heartbeat，timestamptz）。
-    /// </summary>
-    /// <remarks>
-    /// The last heartbeat time (UTC, column last_heartbeat, timestamptz).
-    /// </remarks>
-    [Column("last_heartbeat")]
-    public DateTime LastHeartbeat { get; set; }
 }
 
 /// <summary>
-/// player_route 表的 EF 关系实体（C168 发现层 EF 化；表 / 列形态与 C167 逐字一致，存量库零迁移）。
+/// player_route 表的 EF 关系实体（C168 发现层 EF 化）；属性形态继承自 <see cref="PlayerRouteEntity"/>。
 /// </summary>
 /// <remarks>
-/// EF relational entity for the <c>player_route</c> table (C168 discovery EF migration; table and column
-/// shapes identical to C167). The <c>xmin</c> system column is mapped as the optimistic concurrency token —
-/// the CAS guard replacing the former hand-written atomic upsert SQL.
+/// EF relational entity for the <c>player_route</c> table (C168 discovery EF migration). Properties are declared
+/// once on the shared <see cref="PlayerRouteEntity"/> base; the snake_case column mapping lives in
+/// <see cref="PostgreSqlDiscoveryDbContext.OnModelCreating"/> and is identical to C167. The <c>xmin</c> system
+/// column is mapped as the optimistic concurrency token — the CAS guard replacing the former hand-written
+/// atomic upsert SQL.
 /// </remarks>
-[Table("player_route")]
-public sealed class PlayerRouteRow
+public sealed class PlayerRouteRow : PlayerRouteEntity
 {
-    /// <summary>
-    /// 玩家 ID（主键，列 player_id）。
-    /// </summary>
-    /// <remarks>
-    /// The player id (primary key, column player_id).
-    /// </remarks>
-    [Column("player_id")]
-    public long PlayerId { get; set; }
-
-    /// <summary>
-    /// 实例 ID（列 instance_id）。
-    /// </summary>
-    /// <remarks>
-    /// The instance id (column instance_id).
-    /// </remarks>
-    [Column("instance_id")]
-    public string InstanceId { get; set; }
-
-    /// <summary>
-    /// 角色名（列 role）。
-    /// </summary>
-    /// <remarks>
-    /// The role name (column role).
-    /// </remarks>
-    [Column("role")]
-    public string Role { get; set; }
-
-    /// <summary>
-    /// 路由版本号（列 version；CAS 语义的业务载体）。
-    /// </summary>
-    /// <remarks>
-    /// The route version (column version; the business carrier of the CAS semantics).
-    /// </remarks>
-    [Column("version")]
-    public long Version { get; set; }
-
-    /// <summary>
-    /// 最近活跃时间（UTC，列 last_seen_at，timestamptz）。
-    /// </summary>
-    /// <remarks>
-    /// The last-seen time (UTC, column last_seen_at, timestamptz).
-    /// </remarks>
-    [Column("last_seen_at")]
-    public DateTime LastSeenAt { get; set; }
 }
 
 /// <summary>
@@ -226,16 +111,39 @@ public sealed class PostgreSqlDiscoveryDbContext : DbContext
     /// <param name="modelBuilder">模型构建器 / The model builder</param>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        var heartbeatTable = DiscoveryStorageNaming.TableName<ServerHeartbeatEntity>();
         var heartbeat = modelBuilder.Entity<ServerHeartbeatRow>();
-        heartbeat.HasKey(static row => row.InstanceId).HasName("server_heartbeat_pkey");
-        heartbeat.HasIndex(static row => row.LastHeartbeat).HasDatabaseName("ix_server_heartbeat_last_heartbeat");
+        heartbeat.ToTable(heartbeatTable);
+        heartbeat.HasKey(static row => row.InstanceId).HasName(DiscoveryStorageNaming.PrimaryKeyName(heartbeatTable));
+        heartbeat.HasIndex(static row => row.LastHeartbeat).HasDatabaseName(DiscoveryStorageNaming.TableIndexName(heartbeatTable, DiscoveryStorageNaming.SnakeCase(nameof(ServerHeartbeatEntity.LastHeartbeat))));
+        MapSnakeCaseColumns<ServerHeartbeatEntity>(heartbeat);
 
+        var playerRouteTable = DiscoveryStorageNaming.TableName<PlayerRouteEntity>();
         var playerRoute = modelBuilder.Entity<PlayerRouteRow>();
-        playerRoute.HasKey(static row => row.PlayerId).HasName("player_route_pkey");
-        playerRoute.HasIndex(static row => row.Role).HasDatabaseName("ix_player_route_role");
+        playerRoute.ToTable(playerRouteTable);
+        playerRoute.HasKey(static row => row.PlayerId).HasName(DiscoveryStorageNaming.PrimaryKeyName(playerRouteTable));
+        playerRoute.HasIndex(static row => row.Role).HasDatabaseName(DiscoveryStorageNaming.TableIndexName(playerRouteTable, DiscoveryStorageNaming.SnakeCase(nameof(PlayerRouteEntity.Role))));
+        MapSnakeCaseColumns<PlayerRouteEntity>(playerRoute);
         // xmin 系统列映射为乐观并发令牌（provider 10 起 UseXminAsConcurrencyToken 扩展已移除，采用标准 shadow 属性形态）。
         // The xmin system column is the concurrency token (the UseXminAsConcurrencyToken extension was removed
         // in provider 10; the canonical shadow-property form is used instead).
         playerRoute.Property<uint>("xmin").IsRowVersion();
+    }
+
+    /// <summary>
+    /// 按统一规则把实体基类的全部属性映射为 snake_case 列（零列名字面量）。
+    /// </summary>
+    /// <remarks>
+    /// Maps every property of the entity base to its snake_case column through the
+    /// unified naming rule (zero column-name literals).
+    /// </remarks>
+    /// <typeparam name="TEntity">实体基类 / The entity base</typeparam>
+    /// <param name="entityTypeBuilder">实体构建器 / The entity type builder</param>
+    private static void MapSnakeCaseColumns<TEntity>(EntityTypeBuilder entityTypeBuilder)
+    {
+        foreach (var property in typeof(TEntity).GetProperties())
+        {
+            entityTypeBuilder.Property(property.Name).HasColumnName(DiscoveryStorageNaming.SnakeCase(property.Name));
+        }
     }
 }

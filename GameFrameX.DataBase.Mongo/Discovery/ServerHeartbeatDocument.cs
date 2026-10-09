@@ -1,6 +1,6 @@
 // ==========================================================================================
 //   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents and related rights
 //   均受中华人民共和国及相关国际法律法规保护。
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
 //   使用本项目须严格遵守相应法律法规及开源许可证之规定。
@@ -15,7 +15,7 @@
 //   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
 //   Any legal disputes and liabilities arising from secondary development based on this project
-//   本项目组织与贡献者概不承担。
+//   本组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
 //   GitHub Repository: https://github.com/GameFrameX
@@ -28,23 +28,25 @@
 //  ==========================================================================================
 
 
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
+using GameFrameX.Discovery;
 
 namespace GameFrameX.DataBase.Mongo.Discovery;
 
 /// <summary>
-/// server_heartbeat 集合文档模型（C143d D11/D15，D18 全名约定）。
+/// server_heartbeat 集合文档实体（C143d D11/D15，D18 全名约定）；属性形态继承自 <see cref="ServerHeartbeatEntity"/>。
 /// </summary>
 /// <remarks>
-/// The document model of the <c>server_heartbeat</c> collection in the control
+/// The document entity of the <c>server_heartbeat</c> collection in the control
 /// database (C143d D11/D15; the collection name follows the D18 no-abbreviation rule).
-/// One document per live instance, keyed by instance id; the TTL index on
-/// <see cref="LastHeartbeat"/> (15 s) is the last-resort cleanup for instances that
-/// died without writing Stopped, while the watcher's three-period staleness check
-/// remains the primary liveness signal.
+/// Properties are declared once on the shared <see cref="ServerHeartbeatEntity"/> base;
+/// the BSON wire mapping (camelCase elements, <c>_id</c> key, DateTime representation)
+/// lives in <see cref="MongoDiscoverySerialization"/> and is byte-identical to the
+/// former attribute form. One document per live instance, keyed by instance id; the
+/// TTL index on <see cref="ServerHeartbeatEntity.LastHeartbeat"/> (15 s) is the
+/// last-resort cleanup for instances that died without writing Stopped, while the
+/// watcher's three-period staleness check remains the primary liveness signal.
 /// </remarks>
-internal sealed class ServerHeartbeatDocument
+internal sealed class ServerHeartbeatDocument : ServerHeartbeatEntity
 {
     /// <summary>
     /// 初始化心跳文档。
@@ -71,77 +73,4 @@ internal sealed class ServerHeartbeatDocument
         Incarnation = incarnation;
         LastHeartbeat = lastHeartbeatUtc;
     }
-
-    /// <summary>
-    /// 获取或设置实例唯一标识（主键）。
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets the instance id (the primary key).
-    /// </remarks>
-    [BsonId]
-    public string InstanceId { get; set; }
-
-    /// <summary>
-    /// 获取或设置承载的 Role 名。
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets the hosted role name.
-    /// </remarks>
-    [BsonElement("role")]
-    public string Role { get; set; }
-
-    /// <summary>
-    /// 获取或设置对外可达端点（未解析的 scheme://host:port）。
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets the advertise endpoint (unparsed scheme://host:port, D15).
-    /// </remarks>
-    [BsonElement("advertiseEndpoint")]
-    public string AdvertiseEndpoint { get; set; }
-
-    /// <summary>
-    /// 获取或设置实例状态名。
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets the status name (the enum name, stored as a string for readability).
-    /// </remarks>
-    [BsonElement("status")]
-    public string Status { get; set; }
-
-    /// <summary>
-    /// 获取或设置负载值（0–100）。
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets the load value (0-100).
-    /// </remarks>
-    [BsonElement("load")]
-    public int Load { get; set; }
-
-    /// <summary>
-    /// 获取或设置地址形态名。
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets the address kind name.
-    /// </remarks>
-    [BsonElement("addressKind")]
-    public string AddressKind { get; set; }
-
-    /// <summary>
-    /// 获取或设置代数（重启纪元）。
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets the incarnation.
-    /// </remarks>
-    [BsonElement("incarnation")]
-    public long Incarnation { get; set; }
-
-    /// <summary>
-    /// 获取或设置最后心跳时间（UTC，TTL 索引字段）。
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets the last heartbeat time (UTC; the TTL index field).
-    /// </remarks>
-    [BsonElement("lastHeartbeat")]
-    [BsonRepresentation(BsonType.DateTime)]
-    public DateTime LastHeartbeat { get; set; }
 }

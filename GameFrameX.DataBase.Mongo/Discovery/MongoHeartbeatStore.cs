@@ -58,14 +58,22 @@ public sealed class MongoHeartbeatStore : IHeartbeatStore
     /// </summary>
     /// <remarks>
     /// Initializes the store over the control database's
-    /// <see cref="DiscoveryRegistry.HeartbeatTableName"/> collection.
+    /// <see cref="ServerHeartbeatEntity.TableName"/> collection.
     /// </remarks>
     /// <param name="controlDatabase">控制库（gameframex_control）/ The control database</param>
     public MongoHeartbeatStore(IMongoDatabase controlDatabase)
     {
         ArgumentNullException.ThrowIfNull(controlDatabase, nameof(controlDatabase));
-        _collection = controlDatabase.GetCollection<ServerHeartbeatDocument>(DiscoveryRegistry.HeartbeatTableName);
+        _collection = controlDatabase.GetCollection<ServerHeartbeatDocument>(DiscoveryStorageNaming.TableName<ServerHeartbeatEntity>());
     }
+
+    /// <summary>
+    /// lastHeartbeat TTL 索引名（统一命名规则：{element}_ttl_{window}）。
+    /// </summary>
+    /// <remarks>
+    /// The TTL-index name on lastHeartbeat (unified naming rule: {element}_ttl_{window}).
+    /// </remarks>
+    private static string TtlIndexName => DiscoveryStorageNaming.TtlIndexName(DiscoveryStorageNaming.CamelCase(nameof(ServerHeartbeatEntity.LastHeartbeat)), DiscoveryRegistry.HeartbeatTimeToLive);
 
     /// <summary>
     /// 建 TTL 索引（幂等：lastHeartbeat_ttl_15s）。
@@ -78,7 +86,7 @@ public sealed class MongoHeartbeatStore : IHeartbeatStore
     public async Task EnsureSchemaAsync(CancellationToken cancellationToken = default)
     {
         var indexKeys = Builders<ServerHeartbeatDocument>.IndexKeys.Ascending(document => document.LastHeartbeat);
-        var indexOptions = new CreateIndexOptions { ExpireAfter = DiscoveryRegistry.HeartbeatTimeToLive, Name = "lastHeartbeat_ttl_15s" };
+        var indexOptions = new CreateIndexOptions { ExpireAfter = DiscoveryRegistry.HeartbeatTimeToLive, Name = TtlIndexName };
         await _collection.Indexes.CreateOneAsync(new CreateIndexModel<ServerHeartbeatDocument>(indexKeys, indexOptions), cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 

@@ -33,7 +33,6 @@ using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Localization;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace GameFrameX.DataBase.PostgreSql;
 
@@ -90,7 +89,7 @@ public sealed partial class PostgreSqlDbService
         await ExecuteWriteWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            for (var attempt = 0; ; attempt++)
+            for (var attempt = 0;; attempt++)
             {
                 try
                 {
@@ -99,7 +98,7 @@ public sealed partial class PostgreSqlDbService
                     await context.SaveChangesAsync(token).ConfigureAwait(false);
                     return true;
                 }
-                catch (DbUpdateException exception) when (attempt == 0 && IsUniqueViolation(exception))
+                catch (DbUpdateException exception) when (attempt == 0 && PostgreSqlSqlState.IsUniqueViolation(exception))
                 {
                     // 并发插入同 id 竞争失败：重载后按更新收敛（对齐原 upsert 的 last-writer-wins）
                     // Lost the insert race for the same id: reload and converge as an update (former upsert's last-writer-wins).
@@ -162,7 +161,7 @@ public sealed partial class PostgreSqlDbService
         await ExecuteWriteWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            for (var attempt = 0; ; attempt++)
+            for (var attempt = 0;; attempt++)
             {
                 try
                 {
@@ -171,7 +170,7 @@ public sealed partial class PostgreSqlDbService
                     await context.SaveChangesAsync(token).ConfigureAwait(false);
                     return true;
                 }
-                catch (DbUpdateException exception) when (attempt == 0 && IsUniqueViolation(exception))
+                catch (DbUpdateException exception) when (attempt == 0 && PostgreSqlSqlState.IsUniqueViolation(exception))
                 {
                     // 批内 id 与并发插入竞争：整批重探一次收敛
                     // A batch id raced a concurrent insert: re-probe the whole batch once.
@@ -360,27 +359,5 @@ public sealed partial class PostgreSqlDbService
                 context.Rows.Add(new StateRow<TState> { Id = state.Id, Doc = state, });
             }
         }
-    }
-
-    /// <summary>
-    /// 判断异常链中是否含主键唯一冲突（SQLSTATE 23505，用于 upsert 插入竞争重试）。
-    /// </summary>
-    /// <remarks>
-    /// Determines whether the exception chain contains a unique-constraint violation (SQLSTATE 23505) — the
-    /// signal that an upsert's insert raced a concurrent writer.
-    /// </remarks>
-    /// <param name="exception">异常 / The exception</param>
-    /// <returns>是否唯一冲突 / Whether a unique violation</returns>
-    private static bool IsUniqueViolation(Exception exception)
-    {
-        for (var current = exception; current != null; current = current.InnerException)
-        {
-            if (current is PostgresException { SqlState: "23505", })
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

@@ -53,14 +53,6 @@ namespace GameFrameX.Discovery;
 /// </remarks>
 public sealed class DiscoveryRegistry : IDisposable
 {
-    /// <summary>
-    /// server_heartbeat 表 / 集合名（D18 全名约定；稳定契约，运维与测试可直接引用）。
-    /// </summary>
-    /// <remarks>
-    /// The server_heartbeat table / collection name (D18 no-abbreviation rule; a stable
-    /// contract, safe to reference from operations tooling and tests).
-    /// </remarks>
-    public const string HeartbeatTableName = "server_heartbeat";
 
     /// <summary>
     /// 缺省心跳间隔（5s，D11）。
