@@ -41,12 +41,14 @@ namespace GameFrameX.DataBase.PostgreSql;
 public sealed partial class PostgreSqlDbService
 {
     /// <summary>
-    /// 表结构就绪缓存（表名 → 是否已确保 DDL），对齐 Mongo 适配器的 <c>_indexCache</c> 语义。
+    /// 表结构就绪缓存（表名 → 单飞 DDL 任务），对齐 Mongo 适配器的 <c>_indexCache</c> 语义。
     /// </summary>
     /// <remarks>
-    /// Schema-readiness cache (table name to whether DDL has been ensured), aligned with the Mongo adapter's <c>_indexCache</c> semantics.
+    /// Schema-readiness cache (table name to its single-flight DDL task), aligned with the Mongo adapter's
+    /// <c>_indexCache</c> semantics. Cold-cache concurrent first calls coalesce onto one DDL execution;
+    /// a faulted task is evicted so the next caller can retry.
     /// </remarks>
-    private readonly ConcurrentDictionary<string, bool> _schemaCache = new();
+    private readonly ConcurrentDictionary<string, Lazy<Task>> _schemaCache = new();
 
     /// <summary>
     /// 获取当前时间戳（毫秒）。
@@ -125,11 +127,14 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 确保指定状态类型的 jsonb 文档表与表达式索引就绪（幂等，进程内每类型仅执行一次）。
+    /// 确保指定状态类型的 jsonb 文档表与表达式索引就绪（幂等，进程内每类型仅执行一次；冷缓存并发首调单飞合并为一次 DDL）。
     /// </summary>
     /// <remarks>
     /// Ensures the jsonb document table and its expression indexes exist for the given state type
     /// (idempotent; executed once per type per process, mirroring the Mongo adapter's index-on-first-collection-access).
+    /// Single-flight: concurrent cold-cache first calls publish one <see cref="Lazy{T}"/> DDL task via
+    /// <c>GetOrAdd</c> and all await it; if that task faults or is canceled, the entry is evicted so a
+    /// later call retries the DDL instead of caching the failure forever.
     /// <para>
     /// Mongo 免费赠送的集合自动创建与索引同步在 PG 侧由本方法自建（C166）：DDL 为
     /// <c>CREATE TABLE IF NOT EXISTS (id bigint PRIMARY KEY, doc jsonb NOT NULL)</c>；<c>[EntityIndexAttribute]</c>
@@ -142,12 +147,35 @@ public sealed partial class PostgreSqlDbService
     private async Task EnsureTableAsync<TState>(NpgsqlConnection connection, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         var entityType = typeof(TState);
-        if (_schemaCache.ContainsKey(entityType.Name))
+        var entry = _schemaCache.GetOrAdd(entityType.Name, _ => new Lazy<Task>(() => EnsureTableCoreAsync<TState>(connection, cancellationToken), LazyThreadSafetyMode.ExecutionAndPublication));
+        try
         {
-            return;
+            await entry.Value.ConfigureAwait(false);
         }
+        catch
+        {
+            // 单飞任务失败（faulted/canceled）：仅当缓存仍是本条目时逐出，允许后续调用重新发起 DDL
+            // The single-flight task failed (faulted/canceled): evict only if the cache still holds this exact entry, allowing later calls to retry the DDL.
+            _schemaCache.TryRemove(new KeyValuePair<string, Lazy<Task>>(entityType.Name, entry));
+            throw;
+        }
+    }
 
-        _schemaCache.TryAdd(entityType.Name, true);
+    /// <summary>
+    /// 执行建表与索引同步的 DDL 核心（由 <see cref="EnsureTableAsync"/> 单飞发布，仅首调连接上运行一次）。
+    /// </summary>
+    /// <remarks>
+    /// Runs the table-creation and index-synchronization DDL core; published single-flight by
+    /// <see cref="EnsureTableAsync"/> and executed exactly once on the first caller's connection.
+    /// All DDL statements are idempotent (<c>IF NOT EXISTS</c> / drop-and-recreate on shape mismatch),
+    /// so coalescing concurrent callers onto the first caller's connection is safe.
+    /// </remarks>
+    /// <typeparam name="TState">文档类型 / Document type</typeparam>
+    /// <param name="connection">首调传入的活动连接 / The active connection supplied by the first caller</param>
+    /// <param name="cancellationToken">首调传入的取消令牌 / The cancellation token supplied by the first caller</param>
+    private static async Task EnsureTableCoreAsync<TState>(NpgsqlConnection connection, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        var entityType = typeof(TState);
         var tableName = GetTableName<TState>();
         await ExecuteNonQueryAsync(connection, $"CREATE TABLE IF NOT EXISTS {tableName} (id bigint PRIMARY KEY, doc jsonb NOT NULL)", cancellationToken).ConfigureAwait(false);
         await EnsureIndexesAsync(connection, tableName, entityType, cancellationToken).ConfigureAwait(false);
