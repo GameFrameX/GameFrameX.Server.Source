@@ -55,7 +55,9 @@ public static class DiscoveryRoutingWire
     /// <remarks>
     /// Initializes the routing seam with the discovery route table (the real case 2/3 forwarder in place
     /// of the placeholder). Single activation per process — a second call is a no-op (mirroring the
-    /// provider runtime's <c>Activate</c> guard semantics for multi-role re-entry).
+    /// provider runtime's <c>Activate</c> guard semantics for multi-role re-entry). The one-shot flag is
+    /// published only after the router is fully constructed and wired: if construction throws, the flag
+    /// and the half-written fields are rolled back so a later call can retry initialization cleanly.
     /// </remarks>
     /// <param name="hostedRoleNames">本进程承载的 Role 名集合（构造期快照）/ Hosted role names (construct-time snapshot)</param>
     /// <param name="tableProvider">发现层路由表提供者（各 *DiscoveryRuntime.TableProvider）/ The discovery route table provider</param>
@@ -69,9 +71,21 @@ public static class DiscoveryRoutingWire
             return;
         }
 
-        _hostedRoles = hostedRoleNames;
-        _remoteRouter = new DiscoveryRemoteRoleRouter(tableProvider, new TcpEnvelopeForwarder());
-        RoleRouterHolder.Initialize(new InProcessRoleRouter(hostedRoleNames, null, _remoteRouter));
+        try
+        {
+            _hostedRoles = hostedRoleNames;
+            _remoteRouter = new DiscoveryRemoteRoleRouter(tableProvider, new TcpEnvelopeForwarder());
+            RoleRouterHolder.Initialize(new InProcessRoleRouter(hostedRoleNames, null, _remoteRouter));
+        }
+        catch
+        {
+            // 标志后置回滚：构造/装配抛出时还原一次性标志与已写字段，允许进程后续重试 Initialize
+            // Roll back the one-shot flag: if construction or wiring throws, restore the flag and the half-written fields so the process can retry Initialize later.
+            _hostedRoles = null;
+            _remoteRouter = null;
+            Volatile.Write(ref _initialized, 0);
+            throw;
+        }
     }
 
     /// <summary>
