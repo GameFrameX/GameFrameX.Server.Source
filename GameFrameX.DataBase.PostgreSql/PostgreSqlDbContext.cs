@@ -148,7 +148,7 @@ public sealed class PostgreSqlDbContext<TState> : DbContext where TState : BaseC
             if (property.PropertyType.IsGenericType && property.PropertyType.GetGenericTypeDefinition() == typeof(Dictionary<,>))
             {
                 // EF owned JSON 不支持字典成员（C168 实测：值转换器在 owned JSON 读路径崩溃 / 双重编码破坏 C166 存量形态）。
-                // 显式抛错指名成员，避免 EF 关系推断的隐晦报错；绝不振默丢字段。
+                // 显式抛错指名成员，避免 EF 关系推断的隐晦报错；绝不静默丢字段。
                 // EF owned JSON cannot express dictionary members (C168 verified: value converters crash the JSON
                 // read shaper or double-encode, breaking C166-stored shapes). Fail explicitly naming the member;
                 // never silently drop data.

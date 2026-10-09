@@ -29,8 +29,6 @@
 
 
 using System.Reflection;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using GameFrameX.DataBase.Abstractions;
 using Microsoft.EntityFrameworkCore;
 
@@ -38,20 +36,6 @@ namespace GameFrameX.DataBase.PostgreSql;
 
 public sealed partial class PostgreSqlDbService
 {
-    /// <summary>
-    /// 部分更新字段比较探针的序列化选项（仅用于「值未变不计行」比较，非持久化路径）。
-    /// </summary>
-    /// <remarks>
-    /// Serialization options for the partial-update value-comparison probe (round-trip equality only —
-    /// persistence itself goes exclusively through the EF owned-JSON pipeline; no second document serializer exists).
-    /// </remarks>
-    private static readonly JsonSerializerOptions ComparisonOptions = new()
-    {
-        ReferenceHandler = ReferenceHandler.IgnoreCycles,
-        PropertyNamingPolicy = null,
-        DefaultIgnoreCondition = JsonIgnoreCondition.Never,
-    };
-
     /// <summary>
     /// 保存数据（仅当 StateHash 判定已修改才写库；整文档重写，新档为准，对齐 C168 语义裁定）。
     /// </summary>
@@ -199,13 +183,15 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 根据ID部分更新数据（读改写整档：字段写入 / null 移除 + UpdateTime 写入 + UpdateCount 自增；值未变不计行）。
+    /// 根据ID部分更新数据（读改写整档：字段写入 / null 移除 + UpdateTime 写入 + UpdateCount 自增）。
     /// </summary>
     /// <remarks>
     /// Partially updates by ID (load-modify-save whole document: non-null fields written, null-valued fields
     /// removed/zeroed; <c>UpdateTime</c> stamped and <c>UpdateCount</c> incremented). 对齐 Mongo 语义：
     /// <c>Id/CreatedTime/CreatedId</c> 不可更新；过滤附带软删默认过滤（仅可见行可更新）；
-    /// 返回值对齐 ModifiedCount——应用字段前后文档一致（含同毫秒时间戳）时不写库并返回 0。
+    /// 返回值对齐 ModifiedCount——命中可见行且字段非空即写库并返回 1，行不可见（软删过滤）或
+    /// 字段空返回 0。UpdateTime/UpdateCount 恒推进使「值未变」不可达，与 C166 的 IS DISTINCT FROM
+    /// 比较档内嵌新时间戳/计数、Mongo 的 $set UpdateTime + $inc UpdateCount 行为三方一致。
     /// 值类型字段的「移除」落地为 CLR 默认值（JSON 中的 <c>0/false</c> 与缺失键读取等价）。
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
@@ -218,13 +204,15 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 根据ID部分更新数据（读改写整档：字段写入 / null 移除 + UpdateTime 写入 + UpdateCount 自增；值未变不计行）。
+    /// 根据ID部分更新数据（读改写整档：字段写入 / null 移除 + UpdateTime 写入 + UpdateCount 自增）。
     /// </summary>
     /// <remarks>
     /// Partially updates by ID (load-modify-save whole document: non-null fields written, null-valued fields
     /// removed/zeroed; <c>UpdateTime</c> stamped and <c>UpdateCount</c> incremented). 对齐 Mongo 语义：
     /// <c>Id/CreatedTime/CreatedId</c> 不可更新；过滤附带软删默认过滤（仅可见行可更新）；
-    /// 返回值对齐 ModifiedCount——应用字段前后文档一致（含同毫秒时间戳）时不写库并返回 0。
+    /// 返回值对齐 ModifiedCount——命中可见行且字段非空即写库并返回 1，行不可见（软删过滤）或
+    /// 字段空返回 0。UpdateTime/UpdateCount 恒推进使「值未变」不可达，与 C166 的 IS DISTINCT FROM
+    /// 比较档内嵌新时间戳/计数、Mongo 的 $set UpdateTime + $inc UpdateCount 行为三方一致。
     /// 值类型字段的「移除」落地为 CLR 默认值（JSON 中的 <c>0/false</c> 与缺失键读取等价）。
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
@@ -283,7 +271,6 @@ public sealed partial class PostgreSqlDbService
             }
 
             var document = row.Doc;
-            var beforeJson = JsonSerializer.Serialize(document, ComparisonOptions);
             var stateType = typeof(TState);
             foreach (var item in setFields)
             {
@@ -295,16 +282,13 @@ public sealed partial class PostgreSqlDbService
                 ApplyFieldValue(stateType, document, removedKey, null);
             }
 
+            // UpdateTime/UpdateCount 恒推进：命中可见行且字段非空即视为修改（C170 移除值未变比较探针——
+            // 其 before/after 两侧必然不同，为不可达死代码；基线行为见方法注释）。
+            // UpdateTime/UpdateCount always advance: a visible row with non-empty fields always counts as
+            // modified (C170 removed the value-unchanged probe — its before/after captures could never
+            // compare equal; baseline behavior documented on the method).
             document.UpdateTime = GetCurrentTimestamp();
             document.UpdateCount = (document.UpdateCount ?? 0) + 1;
-            var afterJson = JsonSerializer.Serialize(document, ComparisonOptions);
-            if (string.Equals(beforeJson, afterJson, StringComparison.Ordinal))
-            {
-                // 值未变不计行（对齐原 IS DISTINCT FROM 语义）：文档一致时不产生写事务
-                // Unchanged values do not count (aligned with the former IS DISTINCT FROM semantics).
-                return 0;
-            }
-
             await context.SaveChangesAsync(token).ConfigureAwait(false);
             return 1;
         }, cancellationToken, nameof(UpdatePartialAsync), true).ConfigureAwait(false);

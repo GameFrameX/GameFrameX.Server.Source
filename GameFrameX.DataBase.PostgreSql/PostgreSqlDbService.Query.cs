@@ -707,34 +707,37 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 应用排序（null 位置对齐 Mongo：升序 null/缺失在前、降序在后；排序键 null 辅助键 + 本键双段翻译）。
+    /// 应用排序（null 位置对齐 Mongo：升序 null/缺失在前、降序在后；全类型 null 辅助键 + 本键双段翻译）。
     /// </summary>
     /// <remarks>
     /// Applies the sort with Mongo-aligned null placement (nulls/missing first ascending, last descending).
-    /// For nullable sort keys an auxiliary <c>IS NULL</c> ordering key precedes the value key so PostgreSQL's
-    /// default null ordering (nulls last ascending) does not diverge; non-nullable keys sort directly.
+    /// Every sort key gets an auxiliary <c>IS NULL</c> ordering key ahead of the value key so PostgreSQL's
+    /// default null ordering (nulls last ascending) does not diverge. Non-nullable value-type keys are
+    /// converted to <c>Nullable&lt;T&gt;</c> first: jsonb rows lacking the key (legacy rows written before the
+    /// property existed, or external writers) read as SQL NULL even when the CLR member is non-nullable,
+    /// and the lifted comparison translates to <c>CAST(...) IS NULL</c>.
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="source">行查询 / The row query</param>
     /// <param name="sortExpression">契约排序表达式 / The contract sort expression</param>
-    /// <param name="descending">是否降序 / Whether to sort descending</param>
+    /// <param name="descending">是否降序 / Whether descending</param>
     /// <returns>排序后的查询 / The ordered query</returns>
     private static IOrderedQueryable<StateRow<TState>> ApplySort<TState>(IQueryable<StateRow<TState>> source, Expression<Func<TState, object>> sortExpression, bool descending) where TState : BaseCacheState, new()
     {
         ArgumentNullException.ThrowIfNull(sortExpression, nameof(sortExpression));
         var sortSelector = PostgreSqlStateRowExpressionRewriter.RewriteSelector(sortExpression);
         var sortMember = sortSelector.Body is UnaryExpression { NodeType: ExpressionType.Convert, } convert ? convert.Operand : sortSelector.Body;
-        var isNullableSortKey = !sortMember.Type.IsValueType || Nullable.GetUnderlyingType(sortMember.Type) != null;
-        if (isNullableSortKey)
-        {
-            // 升序 null 在前：null 判定键降序（true=null 排最前）；降序 null 在后：null 判定键升序（true=null 排最后）。
-            // Ascending puts nulls first (null-flag descending); descending puts nulls last (null-flag ascending).
-            var nullFlag = Expression.Lambda<Func<StateRow<TState>, bool>>(Expression.Equal(sortMember, Expression.Constant(null, sortMember.Type)), sortSelector.Parameters[0]);
-            var ordered = descending ? source.OrderBy(nullFlag) : source.OrderByDescending(nullFlag);
-            return descending ? ordered.ThenByDescending(sortSelector) : ordered.ThenBy(sortSelector);
-        }
-
-        return descending ? source.OrderByDescending(sortSelector) : source.OrderBy(sortSelector);
+        // 非可空值类型键转 Nullable<T> 再判 null：jsonb 缺键行在 SQL 侧为 NULL，必须与引用/可空键同样处理。
+        // Non-nullable value-type keys are lifted to Nullable<T>: rows missing the jsonb key are SQL NULL and
+        // need the same null-flag treatment as reference / nullable keys.
+        var nullFlagMember = sortMember.Type.IsValueType && Nullable.GetUnderlyingType(sortMember.Type) == null
+            ? Expression.Convert(sortMember, typeof(Nullable<>).MakeGenericType(sortMember.Type))
+            : sortMember;
+        // 升序 null 在前：null 判定键降序（true=null 排最前）；降序 null 在后：null 判定键升序（true=null 排最后）。
+        // Ascending puts nulls first (null-flag descending); descending puts nulls last (null-flag ascending).
+        var nullFlag = Expression.Lambda<Func<StateRow<TState>, bool>>(Expression.Equal(nullFlagMember, Expression.Constant(null, nullFlagMember.Type)), sortSelector.Parameters[0]);
+        var ordered = descending ? source.OrderBy(nullFlag) : source.OrderByDescending(nullFlag);
+        return descending ? ordered.ThenByDescending(sortSelector) : ordered.ThenBy(sortSelector);
     }
 
     /// <summary>

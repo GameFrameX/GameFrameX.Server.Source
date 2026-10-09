@@ -172,6 +172,58 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
     }
 
     /// <summary>
+    /// 测试非可空值类型排序键在 jsonb 缺键行上的 null 位置与 Mongo 对齐（升序缺失在前 / 降序在后）。
+    /// </summary>
+    /// <remarks>
+    /// C170 R-2: a non-nullable value-type sort key (e.g. <c>int Score</c>) reads as SQL NULL on rows whose
+    /// jsonb document lacks the key (legacy rows written before the property existed, or external writers).
+    /// MongoDB places missing/null first ascending and last descending; the adapter must add the null-flag
+    /// ordering key for value-type keys too instead of falling back to PostgreSQL's default null placement.
+    /// </remarks>
+    [Fact]
+    public async Task SortOnMissingNonNullableKey_ShouldAlignNullPlacementWithMongo()
+    {
+        await ExecuteWithServiceAsync(async (service, connectionString) =>
+        {
+            // 先经适配器建表（EnsureTable 单飞）
+            Assert.Equal(0, await service.CountAsync<SortNullProbeState>(x => false));
+
+            var present1 = Interlocked.Increment(ref _idSeed);
+            var present2 = Interlocked.Increment(ref _idSeed);
+            var missing1 = Interlocked.Increment(ref _idSeed);
+            var missing2 = Interlocked.Increment(ref _idSeed);
+
+            // 存量形态：属性后加 / 外部写入产生的缺 Score 键行（jsonb 缺失 = SQL NULL = Mongo missing）
+            await using (var connection = new NpgsqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+                await new NpgsqlCommand(
+                    $"INSERT INTO \"{nameof(SortNullProbeState)}\" (id, doc) VALUES ({missing1}, '{{\"Id\":{missing1},\"Name\":\"m1\"}}'::jsonb), ({missing2}, '{{\"Id\":{missing2},\"Name\":\"m2\"}}'::jsonb)",
+                    connection).ExecuteNonQueryAsync();
+            }
+
+            await service.AddListAsync(new[]
+            {
+                new SortNullProbeState { Id = present1, Score = 1, Name = "p1", },
+                new SortNullProbeState { Id = present2, Score = 2, Name = "p2", },
+            });
+
+            // 升序：缺失（null）在前，随后按值升序；降序：值降序在前，缺失（null）在后——对齐 Mongo
+            var ascending = await service.FindSortAscendingAsync<SortNullProbeState>(x => x.Id > 0, x => x.Score);
+            var ascendingNames = ascending.Select(static state => state.Name).ToArray();
+            Assert.Equal(4, ascendingNames.Length);
+            Assert.Equal(new[] { "p1", "p2", }, ascendingNames.Skip(2).ToArray());
+            Assert.Equal(new[] { "m1", "m2", }, ascendingNames.Take(2).OrderBy(static name => name, StringComparer.Ordinal).ToArray());
+
+            var descending = await service.FindSortDescendingAsync<SortNullProbeState>(x => x.Id > 0, x => x.Score);
+            var descendingNames = descending.Select(static state => state.Name).ToArray();
+            Assert.Equal(4, descendingNames.Length);
+            Assert.Equal(new[] { "p2", "p1", }, descendingNames.Take(2).ToArray());
+            Assert.Equal(new[] { "m1", "m2", }, descendingNames.Skip(2).OrderBy(static name => name, StringComparer.Ordinal).ToArray());
+        });
+    }
+
+    /// <summary>
     /// 测试 harness：门控 + 独立库创建/销毁（每次调用一个独立库）。
     /// </summary>
     private static async Task ExecuteWithServiceAsync(Func<PostgreSqlDbService, string, Task> action)
@@ -332,6 +384,29 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
         /// 带索引的分数字段。
         /// </summary>
         [EntityIndex("ix_probe_score")]
+        public int Score { get; set; }
+
+        /// <summary>
+        /// 名称。
+        /// </summary>
+        public string Name { get; set; }
+
+        /// <inheritdoc />
+        public override byte[] ToBytes()
+        {
+            var data = $"{Id}|{Score}";
+            return Encoding.UTF8.GetBytes(data);
+        }
+    }
+
+    /// <summary>
+    /// 排序 null 位置探针状态（非可空 int 排序键，用于缺键行场景）。
+    /// </summary>
+    private sealed class SortNullProbeState : BaseCacheState
+    {
+        /// <summary>
+        /// 非可空排序键。
+        /// </summary>
         public int Score { get; set; }
 
         /// <summary>
