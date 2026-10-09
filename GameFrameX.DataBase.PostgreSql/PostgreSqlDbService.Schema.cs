@@ -432,9 +432,9 @@ public sealed partial class PostgreSqlDbService
     /// <returns>归一化文本 / The normalized text</returns>
     private static string NormalizeIndexDefinition(string definition)
     {
-        var withoutSchema = Regex.Replace(definition, @"(?i)\bON\s+[^\s]+\.", "ON ", RegexOptions.CultureInvariant);
+        var withoutSchema = Regex.Replace(definition, @"(?i)\bON\s+[^\s]+\.", "ON ", RegexOptions.CultureInvariant, Regex.InfiniteMatchTimeout);
         var withoutTextCast = withoutSchema.Replace("::text", string.Empty, StringComparison.OrdinalIgnoreCase);
-        return Regex.Replace(withoutTextCast, @"\s+", string.Empty).ToLowerInvariant();
+        return Regex.Replace(withoutTextCast, @"\s+", string.Empty, RegexOptions.None, Regex.InfiniteMatchTimeout).ToLowerInvariant();
     }
 
     /// <summary>
