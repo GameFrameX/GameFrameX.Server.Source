@@ -28,10 +28,12 @@
 //  ==========================================================================================
 
 
+using System.Diagnostics.CodeAnalysis;
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Localization;
+using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.DataBase;
 
@@ -142,6 +144,9 @@ public static partial class GameDb
     /// pass the business <c>DataBaseUrl</c> explicitly so the control database shares the Mongo instance).
     /// The static facade targets <see cref="SetDefault"/> nomination first and otherwise binds to the
     /// first registered database (never silently re-bound once a default is explicitly nominated).
+    /// Also the explicit escape hatch (AOT/trimming, custom implementations, test fakes) next to the
+    /// convention-resolving enum overload <see cref="Init(DatabaseProviderType, string, DbOptions)"/> (C177);
+    /// both share the exact same Open→Register→rollback→facade path through <c>InitCore</c>.
     /// </remarks>
     /// <typeparam name="T">数据库服务的具体实现类型,必须实现IDatabaseService接口且有无参构造函数 / Database service implementation type, must implement IDatabaseService interface and have a parameterless constructor</typeparam>
     /// <param name="connectionString">连接字符串；为空时回落 <paramref name="dbOptions"/> 内连接串 / Connection string; falls back to the one in <paramref name="dbOptions"/> when empty</param>
@@ -149,7 +154,49 @@ public static partial class GameDb
     /// <exception cref="ArgumentNullException">当 <paramref name="dbOptions"/>、<paramref name="connectionString"/> 或 <paramref name="dbOptions"/> 的 Name 为 null 时抛出 / Thrown when dbOptions, connectionString, or Name of dbOptions is null</exception>
     /// <exception cref="InvalidOperationException">当同名库已注册时抛出（拒绝静默覆盖） / Thrown when a database with the same name is already registered (silent overwrite rejected)</exception>
     /// <returns>返回数据库是否初始化成功 / Returns whether the database was initialized successfully</returns>
-    public static async Task<bool> Init<T>(string connectionString, DbOptions dbOptions) where T : IDatabaseService, new()
+    public static Task<bool> Init<T>(string connectionString, DbOptions dbOptions) where T : IDatabaseService, new()
+    {
+        return InitCore(new T(), connectionString, dbOptions);
+    }
+
+    /// <summary>
+    /// 初始化GameDb（提供者枚举签名：经 <see cref="DbProviderResolver"/> 按命名约定反射创建实现，C177 推荐路径）。
+    /// </summary>
+    /// <remarks>
+    /// Recommended launch path: resolves the implementation from <paramref name="provider"/> through the
+    /// convention mapping table (the composition root stays free of provider-type generics and ternaries),
+    /// then runs the exact same Open→Register→rollback→facade path as the generic overload through the
+    /// shared <c>InitCore</c>. The generic <see cref="Init{T}(string, DbOptions)"/> remains the explicit
+    /// escape hatch for AOT/trimming scenarios, custom <see cref="IDatabaseService"/> implementations and
+    /// test fakes.
+    /// </remarks>
+    /// <param name="provider">提供者枚举值（映射表见 <see cref="DbProviderResolver"/>） / Provider enum member (mapping table in <see cref="DbProviderResolver"/>)</param>
+    /// <param name="connectionString">连接字符串；为空时回落 <paramref name="dbOptions"/> 内连接串 / Connection string; falls back to the one in <paramref name="dbOptions"/> when empty</param>
+    /// <param name="dbOptions">数据库配置选项（Name 同时作为注册名） / Database configuration options (Name doubles as the registry name)</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="dbOptions"/>、<paramref name="connectionString"/> 或 <paramref name="dbOptions"/> 的 Name 为 null 时抛出 / Thrown when dbOptions, connectionString, or Name of dbOptions is null</exception>
+    /// <exception cref="InvalidOperationException">当枚举未配映射、宿主缺 Provider 工程引用、实例化失败或同名库已注册时抛出 / Thrown when the enum is unmapped, the provider assembly is not referenced by the host, instantiation fails, or a database with the same name is already registered</exception>
+    /// <returns>返回数据库是否初始化成功 / Returns whether the database was initialized successfully</returns>
+    [RequiresUnreferencedCode("按命名约定反射创建提供者；AOT/裁剪场景请改用 Init<T> 显式指定实现类型")]
+    public static Task<bool> Init(DatabaseProviderType provider, string connectionString, DbOptions dbOptions)
+    {
+        return InitCore(DbProviderResolver.Create(provider), connectionString, dbOptions);
+    }
+
+    /// <summary>
+    /// 两个 Init 重载的共享执行路径：参数校验→连接串回落→打开→注册（失败回滚关闭）→门面首绑（C177 自泛型 Init&lt;T&gt; 抽取，语义零变化）。
+    /// </summary>
+    /// <remarks>
+    /// Shared execution path of both Init overloads, extracted verbatim from the generic
+    /// <c>Init&lt;T&gt;</c>: argument validation, connection-string fallback, Open, registration with
+    /// close-on-failure rollback, and first-registered facade binding (C143a D20#2).
+    /// </remarks>
+    /// <param name="service">已创建的数据库实现实例（泛型重载由 new() 创建，枚举重载由 <see cref="DbProviderResolver"/> 反射创建） / The already created database service instance (new() in the generic overload, reflection in the enum overload)</param>
+    /// <param name="connectionString">连接字符串；为空时回落 <paramref name="dbOptions"/> 内连接串 / Connection string; falls back to the one in <paramref name="dbOptions"/> when empty</param>
+    /// <param name="dbOptions">数据库配置选项（Name 同时作为注册名） / Database configuration options (Name doubles as the registry name)</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="dbOptions"/>、<paramref name="connectionString"/> 或 <paramref name="dbOptions"/> 的 Name 为 null 时抛出 / Thrown when dbOptions, connectionString, or Name of dbOptions is null</exception>
+    /// <exception cref="InvalidOperationException">当同名库已注册时抛出（拒绝静默覆盖） / Thrown when a database with the same name is already registered (silent overwrite rejected)</exception>
+    /// <returns>返回数据库是否初始化成功 / Returns whether the database was initialized successfully</returns>
+    private static async Task<bool> InitCore(IDatabaseService service, string connectionString, DbOptions dbOptions)
     {
         ArgumentNullException.ThrowIfNull(dbOptions, nameof(dbOptions));
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -161,7 +208,6 @@ public static partial class GameDb
         ArgumentNullException.ThrowIfNull(dbOptions.Name, nameof(dbOptions.Name));
 
         var effectiveOptions = connectionString == dbOptions.ConnectionString ? dbOptions : dbOptions with { ConnectionString = connectionString };
-        var service = new T();
         var isOpened = await service.Open(effectiveOptions);
         if (!isOpened)
         {

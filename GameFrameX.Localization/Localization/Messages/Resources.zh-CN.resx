@@ -1353,6 +1353,18 @@
   <data name="Database.Registry.DefaultAlreadySet" xml:space="preserve">
     <value>默认数据库已被设置为“{0}”（set-once）；不允许将其更改为“{1}”。已注册名称：[{2}]</value>
   </data>
+  <data name="Database.Provider.NotSupported" xml:space="preserve">
+    <value>数据库提供者枚举值“{0}”未配置解析映射。已支持：[{1}]。新增 DatabaseProviderType 成员时必须同步在 DbProviderResolver 映射表登记实现类型。</value>
+  </data>
+  <data name="Database.Provider.NotInstalled" xml:space="preserve">
+    <value>无法解析数据库提供者“{0}”的实现类型“{1}”：宿主进程可能未引用对应的 Provider 工程（工程名即类型名中的程序集名）。请添加工程引用，或改用泛型 GameDb.Init&lt;T&gt;(...) 显式指定实现类型（AOT/裁剪场景逃生门）。</value>
+  </data>
+  <data name="Database.Provider.ActivationFailed" xml:space="preserve">
+    <value>创建数据库提供者实例失败：类型“{0}”（原因：{1}）。请确认该实现具有公共无参构造函数。</value>
+  </data>
+  <data name="Database.Provider.NotDatabaseService" xml:space="preserve">
+    <value>数据库提供者类型“{0}”未实现 IDatabaseService 接口。</value>
+  </data>
   <data name="Database.BatchSizeInvalid" xml:space="preserve">
     <value>批处理大小必须大于 0。</value>
   </data>

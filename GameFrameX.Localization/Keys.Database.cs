@@ -189,6 +189,42 @@ public static partial class Keys
         /// </remarks>
         public const string RegistryDefaultAlreadySet = "Database.Registry.DefaultAlreadySet";
         /// <summary>
+        /// 数据库提供者枚举值“{0}”未配置解析映射。已支持：[{1}]。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.Provider.NotSupported
+        /// 用途: DatabaseProviderType 成员未在 DbProviderResolver 映射表登记时抛出（新增枚举成员必须同步配映射）
+        /// 参数: {0} - 枚举值名, {1} - 已支持的枚举值列表
+        /// </remarks>
+        public const string ProviderNotSupported = "Database.Provider.NotSupported";
+        /// <summary>
+        /// 无法解析数据库提供者“{0}”的实现类型“{1}”：宿主进程可能未引用对应的 Provider 工程（工程名即类型名中的程序集名）。请添加工程引用，或改用泛型 GameDb.Init&lt;T&gt;(...) 显式指定实现类型（AOT/裁剪场景逃生门）。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.Provider.NotInstalled
+        /// 用途: 按命名约定反射解析实现类型失败（Type.GetType 返回 null）时抛出，消息含自诊断与逃生门指引
+        /// 参数: {0} - 枚举值名, {1} - 期望的程序集限定类型名
+        /// </remarks>
+        public const string ProviderNotInstalled = "Database.Provider.NotInstalled";
+        /// <summary>
+        /// 创建数据库提供者实例失败：类型“{0}”（原因：{1}）。请确认该实现具有公共无参构造函数。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.Provider.ActivationFailed
+        /// 用途: 约定解析的实例化分支失败（如缺少公共无参构造函数）时抛出
+        /// 参数: {0} - 程序集限定类型名, {1} - 底层异常消息
+        /// </remarks>
+        public const string ProviderActivationFailed = "Database.Provider.ActivationFailed";
+        /// <summary>
+        /// 数据库提供者类型“{0}”未实现 IDatabaseService 接口。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.Provider.NotDatabaseService
+        /// 用途: 约定解析得到的实例无法转型为 IDatabaseService 时抛出
+        /// 参数: {0} - 程序集限定类型名
+        /// </remarks>
+        public const string ProviderNotDatabaseService = "Database.Provider.NotDatabaseService";
+        /// <summary>
         /// 批处理大小必须大于 0。
         /// </summary>
         /// <remarks>

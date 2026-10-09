@@ -62,12 +62,10 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
             ActorLimit.Init(ActorLimit.RuleType.None);
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Launcher.ActorLimitConfigEnd));
             // 控制库先行于业务库，经 GameDb 统一入口判重/命名；
-            // Provider 装配分支——PostgreSql 时控制库走 PostgreSqlDbService（Name 仅注册名，库由连接串决定）。
+            // 实现类型按 Setting.DatabaseProvider 由 GameDb 枚举重载约定解析（Name 仅注册名，库由连接串决定）。
             if (!GameDb.Contains(GameDb.ControlDatabaseName))
             {
-                var controlDatabaseInitResult = Setting.DatabaseProvider == DatabaseProviderType.PostgreSql
-                    ? await GameDb.Init<PostgreSqlDbService>(Setting.DataBaseUrl, new DbOptions { Name = GameDb.ControlDatabaseName, IsUseTimeZone = Setting.IsUseTimeZone, })
-                    : await GameDb.Init<MongoDbService>(Setting.DataBaseUrl, new DbOptions { Name = GameDb.ControlDatabaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
+                var controlDatabaseInitResult = await GameDb.Init(Setting.DatabaseProvider, Setting.DataBaseUrl, new DbOptions { Name = GameDb.ControlDatabaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
                 if (controlDatabaseInitResult == false)
                 {
                     throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
@@ -102,9 +100,7 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
             // 路由胶水装配自 Runtime 拆至组合侧 DiscoveryRoutingWire（发现层 Runtime 不再引用消息胶水程序集）。
             GameFrameX.NetWork.RemoteMessaging.Routing.DiscoveryRoutingWire.Initialize(RoleSet.Current, Setting.DatabaseProvider == DatabaseProviderType.PostgreSql ? PostgreSqlDiscoveryRuntime.TableProvider : MongoDiscoveryRuntime.TableProvider);
 
-            var initResult = Setting.DatabaseProvider == DatabaseProviderType.PostgreSql
-                ? await GameDb.Init<PostgreSqlDbService>(Setting.DataBaseUrl, new DbOptions { Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, })
-                : await GameDb.Init<MongoDbService>(Setting.DataBaseUrl, new DbOptions { Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
+            var initResult = await GameDb.Init(Setting.DatabaseProvider, Setting.DataBaseUrl, new DbOptions { Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
             if (initResult == false)
             {
                 throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));

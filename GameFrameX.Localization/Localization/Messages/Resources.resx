@@ -1357,6 +1357,18 @@
   <data name="Database.Registry.DefaultAlreadySet" xml:space="preserve">
     <value>The default database is already set to '{0}' (set-once); changing it to '{1}' is not allowed. Registered names: [{2}]</value>
   </data>
+  <data name="Database.Provider.NotSupported" xml:space="preserve">
+    <value>The database provider '{0}' has no resolution mapping configured. Supported providers: [{1}]. Register its implementation type in the DbProviderResolver mapping table when adding a new DatabaseProviderType member.</value>
+  </data>
+  <data name="Database.Provider.NotInstalled" xml:space="preserve">
+    <value>Failed to resolve the implementation type '{1}' for database provider '{0}': the host process probably does not reference the corresponding provider project (the assembly name is the one embedded in the type name above). Add the project reference, or use the generic GameDb.Init&lt;T&gt;(...) overload to specify the implementation type explicitly (also the AOT/trimming escape hatch).</value>
+  </data>
+  <data name="Database.Provider.ActivationFailed" xml:space="preserve">
+    <value>Failed to create an instance of the database provider type '{0}' (cause: {1}). Verify the implementation exposes a public parameterless constructor.</value>
+  </data>
+  <data name="Database.Provider.NotDatabaseService" xml:space="preserve">
+    <value>The database provider type '{0}' does not implement the IDatabaseService interface.</value>
+  </data>
   <data name="Database.BatchSizeInvalid" xml:space="preserve">
     <value>Batch size must be greater than zero.</value>
   </data>
