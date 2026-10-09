@@ -58,7 +58,7 @@ public sealed class MongoPlayerRouteStore : IPlayerRouteStore
     /// </summary>
     /// <remarks>
     /// Initializes the store over the control database's
-    /// <see cref="PlayerRouteEntity.TableName"/> collection.
+    /// <see cref="DiscoveryStorageNaming.TableName{TEntity}"/> collection.
     /// </remarks>
     /// <param name="controlDatabase">控制库（gameframex_control）/ The control database</param>
     public MongoPlayerRouteStore(IMongoDatabase controlDatabase)
