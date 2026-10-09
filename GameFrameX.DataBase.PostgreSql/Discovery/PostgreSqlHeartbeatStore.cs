@@ -113,7 +113,7 @@ public sealed class PostgreSqlHeartbeatStore : IHeartbeatStore
     public async Task UpsertAsync(InstanceDescriptor instance, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(instance, nameof(instance));
-        for (var attempt = 0;; attempt++)
+        for (var attempt = 0; attempt < 2; attempt++)
         {
             try
             {
@@ -131,7 +131,7 @@ public sealed class PostgreSqlHeartbeatStore : IHeartbeatStore
                 await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 return;
             }
-            catch (DbUpdateException exception) when (attempt == 0 && PostgreSqlSqlState.IsUniqueViolation(exception))
+            catch (DbUpdateException exception) when (PostgreSqlSqlState.IsUniqueViolation(exception))
             {
                 // 并发首写同 instance_id：重载后按替换收敛。
                 // Concurrent first write of the same instance_id: reload and converge as a replacement.
