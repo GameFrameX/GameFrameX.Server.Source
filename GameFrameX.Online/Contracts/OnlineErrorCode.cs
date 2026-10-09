@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Contracts;
 
 /// <summary>
-/// GFX Online 平台协议错误码（vault:C2 S1.3 八段分层，Server 侧承载）。
+/// GFX Online 平台协议错误码（八段分层，Server 侧承载）。
 /// <para>
 /// 协议码分段固定：<c>1xxx</c> 系统与网络 / <c>2xxx</c> 鉴权与 Session / <c>3xxx</c> 租户·App·Server 作用域 /
 /// <c>4xxx</c> 参数与资源 / <c>5xxx</c> 业务状态 / <c>6xxx</c> 幂等与冲突 / <c>7xxx</c> 限流与风控 / <c>8xxx</c> 临时失败与可重试；
@@ -39,8 +39,8 @@ namespace GameFrameX.Online.Contracts;
 /// </para>
 /// <para>
 /// 维护约束：新增成员只能在对应段内顺延序号，禁止手改既有数值、禁止跨段挪用；
-/// 任何增删改必须先改错误码表快照并经评审，再同步 Admin 镜像与 SDK 映射，三端一致由守护测试锁定（VC-1.11）。
-/// 消费端对段外未知码必须兜底映射到 <see cref="InternalError"/>，不得崩溃、不得误判成功（VC-1.10）。
+/// 任何增删改必须先改错误码表快照并经评审，再同步 Admin 镜像与 SDK 映射，三端一致由守护测试锁定。
+/// 消费端对段外未知码必须兜底映射到 <see cref="InternalError"/>，不得崩溃、不得误判成功。
 /// </para>
 /// </summary>
 public enum OnlineErrorCode
@@ -114,7 +114,7 @@ public enum OnlineErrorCode
     // ---- 段 4xxx：参数与资源 ----
 
     /// <summary>
-    /// 参数校验失败（请求上下文缺失、幂等键格式非法、字段取值非法等，VC-1.1）。
+    /// 参数校验失败（请求上下文缺失、幂等键格式非法、字段取值非法等）。
     /// </summary>
     ParameterInvalid = 4001,
 
@@ -148,7 +148,7 @@ public enum OnlineErrorCode
     DuplicateRequest = 6001,
 
     /// <summary>
-    /// 版本冲突（相同幂等键承载了不同的业务意图，即同键不同请求体，VC-1.4）。
+    /// 版本冲突（相同幂等键承载了不同的业务意图，即同键不同请求体）。
     /// </summary>
     VersionConflict = 6002,
 
@@ -172,7 +172,7 @@ public enum OnlineErrorCode
     // ---- 段 8xxx：临时失败与可重试 ----
 
     /// <summary>
-    /// 服务忙（并发占位未落定等临时繁忙，调用方可安全重试，VC-1.3 并发半边）。
+    /// 服务忙（并发占位未落定等临时繁忙，调用方可安全重试）。
     /// </summary>
     ServiceBusy = 8001,
 

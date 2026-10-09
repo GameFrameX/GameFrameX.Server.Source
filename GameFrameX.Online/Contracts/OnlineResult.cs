@@ -30,12 +30,12 @@
 namespace GameFrameX.Online.Contracts;
 
 /// <summary>
-/// Online 服务层统一操作结果（vault:C3 服务端半边：业务可预期失败段位化返回，不抛异常）。
+/// Online 服务层统一操作结果（服务端半边：业务可预期失败段位化返回，不抛异常）。
 /// <para>
 /// 维护约束：<see cref="Code"/> 复用 <see cref="OnlineErrorCode"/> 分段，不新增码段；
 /// <see cref="IsSuccess"/> 仅在 Code == <see cref="OnlineErrorCode.None"/> 时为真；失败时 <see cref="Data"/> 为 null，
 /// 调用方不得在失败分支读取 Data；<see cref="Message"/> 为服务端内部语义描述，不直接透出客户端
-/// （客户端消费 Code + MessageKey 双通道，见 C93 <c>OnlineErrorCodeExtensions</c>）。
+/// （客户端消费 Code + MessageKey 双通道，见 <c>OnlineErrorCodeExtensions</c>）。
 /// </para>
 /// </summary>
 /// <typeparam name="TData">成功负载数据类型。</typeparam>

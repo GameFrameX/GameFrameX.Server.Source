@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Assets;
 
 /// <summary>
-/// 资产类别（vault:C4 对象所有权：Currency = 货币账户余额；Item = 库存道具数量）。
+/// 资产类别（对象所有权：Currency = 货币账户余额；Item = 库存道具数量）。
 /// <para>
 /// 维护约束：货币与道具共用同一账本与交易管道，只按本类别路由到不同的快照存储
 /// （<see cref="OnlineWalletAccount"/> / <see cref="OnlineInventoryStack"/>）；

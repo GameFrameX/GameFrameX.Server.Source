@@ -38,7 +38,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 玩家云存储服务测试（vault:C3 VC-2.7/2.8/2.9/2.10/2.11：作用域隔离、乐观锁、限制、分页、软删、过期）。
+    /// 玩家云存储服务测试（作用域隔离、乐观锁、限制、分页、软删、过期）。
     /// </summary>
     public class OnlinePlayerStorageServiceTests
     {
@@ -55,7 +55,7 @@ namespace GameFrameX.Tests.Online
         private const long PlayerTwo = 1002;
 
         /// <summary>
-        /// 验证三向隔离：跨玩家/跨 App/跨租户读取一律同构 ResourceNotFound（防存在性探测，VC-2.7/2.8/2.9）。
+        /// 验证三向隔离：跨玩家/跨 App/跨租户读取一律同构 ResourceNotFound（防存在性探测）。
         /// </summary>
         [Fact]
         public async Task ReadAsync_CrossScope_ShouldReturnUniformNotFound()
@@ -100,7 +100,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证乐观锁：重复创建冲突、版本不匹配冲突、正确版本更新成功且版本递增（VC-2.10）。
+        /// 验证乐观锁：重复创建冲突、版本不匹配冲突、正确版本更新成功且版本递增。
         /// </summary>
         [Fact]
         public async Task WriteAsync_VersionSemantics_ShouldEnforceOptimisticLock()
@@ -134,7 +134,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证写入限制：负载超限、标识格式非法、单集合键数上限（VC-2.11）。
+        /// 验证写入限制：负载超限、标识格式非法、单集合键数上限。
         /// </summary>
         [Fact]
         public async Task WriteAsync_Limits_ShouldBeRejected()

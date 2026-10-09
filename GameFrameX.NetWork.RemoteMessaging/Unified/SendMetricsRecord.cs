@@ -14,10 +14,10 @@
 namespace GameFrameX.NetWork.RemoteMessaging.Unified;
 
 /// <summary>
-/// 消息发送指标记录参数对象（C154）：收敛原 7 散参 Record 形态，删除未使用的 playerId/traceId。
+/// 消息发送指标记录参数对象：收敛原 7 散参 Record 形态，删除未使用的 playerId/traceId。
 /// </summary>
 /// <remarks>
-/// Parameter object for message-send metrics recording (C154): collapses the former seven-parameter
+/// Parameter object for message-send metrics recording: collapses the former seven-parameter
 /// Record shape and drops the unused playerId/traceId parameters. Player and server pipelines both
 /// feed this record; TargetType + ServiceName form the metrics bucket key.
 /// </remarks>

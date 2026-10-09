@@ -35,7 +35,7 @@ using GameFrameX.Utility.Setting;
 namespace GameFrameX.Tests.StartUp;
 
 /// <summary>
-/// GameApp 多 Role 选择测试（C143b D2/D7：结果保持 StartUpTypeRegistry 优先级序）。
+/// GameApp 多 Role 选择测试（结果保持 StartUpTypeRegistry 优先级序）。
 /// </summary>
 public class GameAppMultiRoleSelectionTests
 {

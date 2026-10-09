@@ -35,11 +35,11 @@ using System.Threading.Tasks;
 using GameFrameX.Online.Contracts;
 
 /// <summary>
-/// 跨服发奖路由（vault:C4 S3.8/VC-3.10：归属服明确的路由规则——本服直接执行，跨服经传输投递）。
+/// 跨服发奖路由（归属服明确的路由规则——本服直接执行，跨服经传输投递）。
 /// <para>
 /// 维护约束（红线）：归属服以 <see cref="OnlineGrantRequest.HomeServerId"/>（缺省取作用域区服）为准，
-/// ServerId 只表运行位置不产生数据歧义（vault:C1）；跨服投递失败（不可达）进补偿队列并返回
-/// <see cref="OnlineErrorCode.DependencyUnavailable"/>（可重试；重试后不得重复生效——由幂等保证，VC-3.11）；
+/// ServerId 只表运行位置不产生数据歧义；跨服投递失败（不可达）进补偿队列并返回
+/// <see cref="OnlineErrorCode.DependencyUnavailable"/>（可重试；重试后不得重复生效——由幂等保证）；
 /// 目标服业务性失败原样透传，不转补偿。
 /// </para>
 /// </summary>

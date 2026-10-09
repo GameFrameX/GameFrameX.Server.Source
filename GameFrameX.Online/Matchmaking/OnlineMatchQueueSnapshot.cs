@@ -30,10 +30,10 @@
 namespace GameFrameX.Online.Matchmaking;
 
 /// <summary>
-/// 匹配队列观测快照（vault:C5 S4.10 / VC-4.10：Admin 可核对各状态票据、队列构成与分配数）。
+/// 匹配队列观测快照（Admin 可核对各状态票据、队列构成与分配数）。
 /// <para>
 /// 维护约束：快照是**某一时刻的事实读数**，不保证跨字段的强一致（读取期间队列可能变化）；
-/// 需要强一致的判定请用单次 CAS 的返回值。指标口径与 vault:C5 对齐：
+/// 需要强一致的判定请用单次 CAS 的返回值。指标口径约定：
 /// <see cref="DuplicateAssignmentTicketCount"/> 必须为 0（重复 assignment = 0），
 /// <see cref="QueuedTicketCount"/> 与实际排队票据数一致（丢失有效 Ticket = 0）。
 /// </para>
@@ -140,7 +140,7 @@ public sealed class OnlineMatchQueueSnapshot
     }
 
     /// <summary>
-    /// 获取或设置被 **多份** 分配同时消费的票据数（VC-4.12 红指标，必须为 0）。
+    /// 获取或设置被 **多份** 分配同时消费的票据数（红指标，必须为 0）。
     /// </summary>
     public int DuplicateAssignmentTicketCount
     {

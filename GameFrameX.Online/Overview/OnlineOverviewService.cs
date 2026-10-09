@@ -42,23 +42,23 @@ using GameFrameX.Online.Session;
 namespace GameFrameX.Online.Overview;
 
 /// <summary>
-/// 在线总览只读查询服务（vault:C9 S8.1：Admin 在线总览的服务端半边）。
+/// 在线总览只读查询服务（Admin 在线总览的服务端半边）。
 /// <para>
 /// 维护约束（红线）：
-/// ① **只读**——本服务只依赖各域存储的读取方法（对齐 C97 <see cref="OnlineMatchQueueObserver"/>「只依赖存储的读取方法」先例），
+/// ① **只读**——本服务只依赖各域存储的读取方法（对齐 <see cref="OnlineMatchQueueObserver"/>「只依赖存储的读取方法」先例），
 /// 不持有任何写入型服务，调用本服务不会产生任何状态副作用或事件；
-/// ② 数据源唯一 = Online 玩家侧存储，**不含管理员连接**（vault:C9 X6）；
+/// ② 数据源唯一 = Online 玩家侧存储，**不含管理员连接**；
 /// ③ 所有计数按作用域三键 (TenantId, AppId, ServerId) 过滤，跨作用域读数与不存在同构（反预言）。
 /// </para>
 /// <para>
 /// 统计口径（集中定义，禁止在别处重复定义）：
 /// <list type="bullet">
-/// <item><description>在线玩家数：作用域内 Presence 记录数，<see cref="OnlinePresenceState.Blocked"/> 不计入（沿用 C94 <c>OnlinePresenceService.CountOnlineAsync</c> 的既有 Admin 查询口径）。</description></item>
+/// <item><description>在线玩家数：作用域内 Presence 记录数，<see cref="OnlinePresenceState.Blocked"/> 不计入（沿用 <c>OnlinePresenceService.CountOnlineAsync</c> 的既有 Admin 查询口径）。</description></item>
 /// <item><description>会话数：作用域内**非终态**会话数（终态 = 已关闭/被踢/过期，见 <see cref="OnlineSessionStateExtensions.IsTerminal"/>）。</description></item>
 /// <item><description>重连率：重连中会话数 ÷ 非终态会话数；分母为 0 时取 0（不做补 1 平滑，消费方按需自行处理）。</description></item>
 /// <item><description>队伍数：作用域内**非终态**队伍数（终态判定复用 <see cref="OnlinePartyStateMachine.IsTerminal"/>）。</description></item>
-/// <item><description>对局数：作用域内**非 <see cref="OnlineMatchState.Closed"/>** 对局数（Closed = 已释放，C98 口径下运行时随即删档；读取面仍显式排除，使该计数不依赖写入侧时序，VC-8.1-a）。</description></item>
-/// <item><description>队列深度：作用域内排队态票据数。**匹配池在 C97 口径下为 App 级**，本快照报告该池在当前 Server 上的分区——各 Server 深度之和等于 App 级排队总数，不得把本值当作跨服共享的池大小。</description></item>
+/// <item><description>对局数：作用域内**非 <see cref="OnlineMatchState.Closed"/>** 对局数（Closed = 已释放，按运行时口径随即删档；读取面仍显式排除，使该计数不依赖写入侧时序）。</description></item>
+/// <item><description>队列深度：作用域内排队态票据数。**匹配池为 App 级**，本快照报告该池在当前 Server 上的分区——各 Server 深度之和等于 App 级排队总数，不得把本值当作跨服共享的池大小。</description></item>
 /// <item><description>平均等待：排队态票据等待时长的算术平均（等待时长复用 <see cref="OnlineMatchRule.WaitSeconds"/>，与匹配域同源）；无排队票据时为 0。</description></item>
 /// <item><description>吞吐：最近 60 秒内（<c>(观测时刻 - 60000, 观测时刻]</c>，左开右闭——恰好落在窗口起点的分配不计入，避免把「上一轮窗口的边界」重复计入相邻两次查询）落档的匹配分配所消费的票据数——口径是「每分钟达成匹配的票据数」，不是对局数（一张票据可携带多人）。</description></item>
 /// </list>
@@ -240,7 +240,7 @@ public sealed class OnlineOverviewService
     }
 
     /// <summary>
-    /// 填充存活对局数与状态分布（<see cref="OnlineMatchState.Closed"/> 即已释放，不计入，VC-8.1-a）。
+    /// 填充存活对局数与状态分布（<see cref="OnlineMatchState.Closed"/> 即已释放，不计入）。
     /// </summary>
     /// <param name="snapshot">目标快照。</param>
     /// <param name="scope">生效作用域。</param>

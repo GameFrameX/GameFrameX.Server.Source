@@ -38,13 +38,13 @@ using GameFrameX.Utility.Setting;
 namespace GameFrameX.StartUp.Configuration;
 
 /// <summary>
-/// 启动期配置校验器（C143f D4 配置单源收口，fail fast）。
+/// 启动期配置校验器（配置单源收口，fail fast）。
 /// </summary>
 /// <remarks>
-/// Validates the configuration layers of a process at startup (C143f D4 single source of truth, fail fast):
+/// Validates the configuration layers of a process at startup (single source of truth, fail fast):
 /// <list type="number">
 /// <item><see cref="ConfigConflictKind.MissingSection"/>：多 Role 显式形态（--AllInOne 或复数 --ServerType）下，
-/// 所选 ServerType 必须在文件层（Configs/app_config.json）有配置段；单值/缺省形态保留现状回落，不报冲突（AC-3）。</item>
+/// 所选 ServerType 必须在文件层（Configs/app_config.json）有配置段；单值/缺省形态保留现状回落，不报冲突。</item>
 /// <item><see cref="ConfigConflictKind.PortConflict"/>：同进程 ≥2 个选中 Role 的文件段之间，
 /// 会实际 bind 的监听端点（使能开关全开 + 非零端口，按传输协议 TCP/UDP 区分，跨字段统一比对）相同即冲突；
 /// 同一 Role 的 InnerPort/OuterPort 共用监听是既有合法形态。</item>

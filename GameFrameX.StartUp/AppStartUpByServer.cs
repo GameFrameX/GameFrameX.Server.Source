@@ -329,7 +329,7 @@ public abstract partial class AppStartUpBase
     /// </summary>
     /// <remarks>
     /// Creates the KCP session first-message authentication options.
-    /// KCP 无握手：服务端收到未知 conv 的任意 UDP 包即建连，必须启用首消息鉴权防线（GFX-822）。
+    /// KCP 无握手：服务端收到未知 conv 的任意 UDP 包即建连，必须启用首消息鉴权防线。
     /// 默认返回空白名单的严格配置（fail-closed：未鉴权会话除心跳外全部拦截），
     /// 需要放行登录流的宿主应 override 本方法并填充 <see cref="SessionAuthenticationOptions.AllowedMessageIds"/>
     /// （登录流程消息）与 <see cref="SessionAuthenticationOptions.AuthenticatedByMessageIds"/>（鉴权完成消息，如角色登录）。

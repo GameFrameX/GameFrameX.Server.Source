@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Timeline;
 
 /// <summary>
-/// 玩家时间线事件行（字段集逐一对齐消费方 Admin C344 冻结契约 <c>OnlinePlayerTimelineEntryResponse</c>）。
+/// 玩家时间线事件行（字段集逐一对齐消费方 Admin 冻结契约 <c>OnlinePlayerTimelineEntryResponse</c>）。
 /// <para>
 /// 维护约束（红线）：
 /// ① 消费方对行只做**原值透传**——不构造行、不推断分组、不补齐空位，故本类型增删字段等同跨仓契约变更；

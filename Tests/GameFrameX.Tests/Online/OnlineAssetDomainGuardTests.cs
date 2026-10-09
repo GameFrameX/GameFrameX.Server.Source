@@ -43,7 +43,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 资产域结构守卫测试（vault:C4 X5/VC-3.7：批次旁路构造结构性不可达、
+    /// 资产域结构守卫测试（批次旁路构造结构性不可达、
     /// 账本条目不可变、账本条目审计身份完备、枚举契约面快照锁定）。
     /// </summary>
     public class OnlineAssetDomainGuardTests
@@ -63,7 +63,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-3.7：账本条目与变更行只读（不可变由类型面保证——只追加，无修改路径）。
+        /// 验证账本条目与变更行只读（不可变由类型面保证——只追加，无修改路径）。
         /// </summary>
         [Theory]
         [InlineData(typeof(OnlineLedgerEntry))]

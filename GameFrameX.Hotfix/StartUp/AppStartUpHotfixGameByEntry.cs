@@ -50,15 +50,15 @@ internal partial class AppStartUpHotfixGame : AppStartUpBase, IHotfixBridge
         }
 
         Init(setting.ServerType, setting);
-        // 初始化统一消息发送器：resolver 按发现层可用性选择（C152）——
+        // 初始化统一消息发送器：resolver 按发现层可用性选择——
         // 启动流程先 Activate 发现层（含 player_route 读侧），后加载 Hotfix，故此处
-        // Bootstrap.Resolver 必然已就绪；未激活发现层的形态回落 DefaultPlayerRouteResolver（与 C152 前等价）。
+        // Bootstrap.Resolver 必然已就绪；未激活发现层的形态回落 DefaultPlayerRouteResolver。
         // localSender 单实例同时供 UnifiedMessageSenderHolder 与 LocalEnvelopeDispatcher，保证一条本地复投语义。
         if (!UnifiedMessageSenderHolder.IsInitialized)
         {
             var remoteClient = RemoteMessagingBuilder.BuildFromEnvironment();
             var localSender = new DefaultPlayerLocalSender();
-            // C167：发现层存储适配归一——Resolver/SyncTarget 单例由通用 Bootstrap 提供（不再按 Provider 分立）。
+            // 发现层存储适配归一——Resolver/SyncTarget 单例由通用 Bootstrap 提供（不再按 Provider 分立）。
             GameFrameX.Discovery.Routing.IPlayerRouteResolver discoveredResolver = PlayerRouteResolverBootstrap.Resolver;
             var routeResolver = PlayerRouteWiring.SelectRouteResolver(discoveredResolver);
             UnifiedMessageSenderHolder.InitializeWithDefaults(
@@ -66,8 +66,8 @@ internal partial class AppStartUpHotfixGame : AppStartUpBase, IHotfixBridge
                 localSender,
                 remoteClient);
 
-            // C152：holder 初始化后补装路由缝 case 1 的本地投递槽（幂等；时序前提见 AttachLocalDispatcher 注释）。
-            // C166 依赖纠偏第二轮：本地投递槽装配统一走组合侧 DiscoveryRoutingWire（两 Provider 共用，不再按实现分支）。
+            // holder 初始化后补装路由缝 case 1 的本地投递槽（幂等；时序前提见 AttachLocalDispatcher 注释）。
+            // 本地投递槽装配统一走组合侧 DiscoveryRoutingWire（两 Provider 共用，不再按实现分支）。
             GameFrameX.NetWork.RemoteMessaging.Routing.DiscoveryRoutingWire.AttachLocalDispatcher(new LocalEnvelopeDispatcher(localSender));
         }
 

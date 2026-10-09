@@ -32,7 +32,7 @@ using GameFrameX.Online.Contracts;
 namespace GameFrameX.Online.Runtime.AdminApi;
 
 /// <summary>
-/// Online admin API 内层业务响应体（vault:C2 S1.2 公共响应结构的 admin 线缆形态，对齐 Admin 侧 <c>OnlineApiResponse&lt;T&gt;</c>）。
+/// Online admin API 内层业务响应体（公共响应结构的 admin 线缆形态，对齐 Admin 侧 <c>OnlineApiResponse&lt;T&gt;</c>）。
 /// <para>
 /// 维护约束：物理传输外层为 Foundation <c>HttpJsonResultData</c> 信封（code=0），本类型序列化为 JSON 字符串后置于信封
 /// <c>Data</c> 字段（Admin 侧 <c>ToHttpJsonResult</c> 双层解包契约）；机器判断走 <see cref="Code"/>，本地化走

@@ -33,7 +33,7 @@ using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
-/// 跨 Role 路由器全局持有者（C143c）。
+/// 跨 Role 路由器全局持有者。
 /// </summary>
 /// <remarks>
 /// Global holder for the process-wide <see cref="IRoleRouter"/> instance,
@@ -85,11 +85,11 @@ public static class RoleRouterHolder
     }
 
     /// <summary>
-    /// 是否已初始化（C143e：装配点用它判断是否要重装路由器，避免覆盖 C143c 占位）。
+    /// 是否已初始化（装配点用它判断是否要重装路由器，避免覆盖占位实现）。
     /// </summary>
     /// <remarks>
-    /// Whether the holder has been initialized. C143e bootstrap reads this
-    /// before re-installing the router so it can skip when C143c's placeholder
+    /// Whether the holder has been initialized. The bootstrap reads this
+    /// before re-installing the router so it can skip when the placeholder
     /// has already been replaced.
     /// </remarks>
     /// <value>是否已初始化 / Whether the holder has been initialized</value>

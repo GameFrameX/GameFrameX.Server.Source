@@ -32,11 +32,11 @@ using System.Collections.Generic;
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 对局结算结果（vault:C6「结算生成唯一 MatchResultId，同一对局只能成功结算一次」）。
+/// 对局结算结果（结算生成唯一 MatchResultId，同一对局只能成功结算一次）。
 /// <para>
 /// 维护约束（红线）：<see cref="MatchResultId"/> 是**幂等的唯一边界**——
 /// 资产发放以它同时作为 <c>BusinessOrderId</c> 与 <c>IdempotencyKey</c>，
-/// 因此「以同一 MatchResultId 重试结算 3 次只发一次奖」（VC-5.8）由既有资产域幂等直接保证，
+/// 因此「以同一 MatchResultId 重试结算 3 次只发一次奖」由既有资产域幂等直接保证，
 /// 本模块不再自建第二套去重。结果一经落定不可改写（重试返回首次结果）。
 /// </para>
 /// <para>

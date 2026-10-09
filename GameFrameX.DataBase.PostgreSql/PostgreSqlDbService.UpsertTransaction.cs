@@ -189,11 +189,11 @@ public sealed partial class PostgreSqlDbService
     /// 按批次大小分批执行批量 upsert 保存（关服保存路径，逐批 ack / 异常隔离，对齐 Mongo SaveBulkAsync）。
     /// </summary>
     /// <remarks>
-    /// Bulk-upserts in batches of <paramref name="batchSize"/> (C159 contract): per-batch ack and exception
+    /// Bulk-upserts in batches of <paramref name="batchSize"/> (per-batch contract): per-batch ack and exception
     /// isolation — a failed batch is logged and the remaining batches still execute. Unlike
     /// <c>AddOrUpdateListAsync</c> this deliberately does NOT touch <c>CreatedTime/UpdateTime/UpdateCount</c>:
     /// state timestamps are persisted exactly as handed in (the caller owns timestamp semantics, migrated
-    /// verbatim from the Mongo adapter C159). A batch is acknowledged when its atomic save completes with
+    /// verbatim from the Mongo adapter).
     /// one affected row per staged document.
     /// </remarks>
     /// <param name="states">待保存的状态集合 / The states to save</param>
@@ -251,7 +251,7 @@ public sealed partial class PostgreSqlDbService
             }
             catch (Exception exception)
             {
-                // 逐批异常隔离（C159 迁移语义）：失败批次记日志后继续后续批次，避免单批故障放大为整批丢失
+                // 逐批异常隔离：失败批次记日志后继续后续批次，避免单批故障放大为整批丢失
                 // Per-batch exception isolation (migrated semantics): a failed batch is logged and the loop continues with the remaining batches.
                 LogHelper.Error("PostgreSqlDbService.SaveBulkAsync batch failed. StateName: {stateName} , BatchIndex: {batchIndex} , BatchCount: {batchCount} , Error: {error}", stateName, index / batchSize + 1, batchCount, exception);
             }

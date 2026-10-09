@@ -30,9 +30,9 @@
 namespace GameFrameX.Online.Identity;
 
 /// <summary>
-/// 玩家设备实体（vault:C3 S2.2/S2.3：设备标识只用于识别设备与换绑判定，不能直接充当 PlayerId）。
+/// 玩家设备实体（设备标识只用于识别设备与换绑判定，不能直接充当 PlayerId）。
 /// <para>
-/// 维护约束：设备与 GameAccount 多对一归属；换绑（VC-2.13）为显式操作——
+/// 维护约束：设备与 GameAccount 多对一归属；换绑为显式操作——
 /// 旧设备按策略置 <see cref="RevokedAtTime"/> 失效，换绑到新设备后旧设备登录按策略拒绝；
 /// 设备记录仅承载识别与策略状态，不承载任何凭证材料。
 /// </para>

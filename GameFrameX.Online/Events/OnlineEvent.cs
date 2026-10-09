@@ -30,11 +30,11 @@
 namespace GameFrameX.Online.Events;
 
 /// <summary>
-/// Online 事件信封（vault:C2 S1.6 事件契约：EventId/EventType/OccurredAt/SchemaVersion +
+/// Online 事件信封（事件契约：EventId/EventType/OccurredAt/SchemaVersion +
 /// TenantId/AppId/ServerId/PlayerId + Source/CorrelationId/Payload）。
 /// <para>
 /// 维护约束：事件代表已经发生的事实，不作为当前状态的唯一存储（状态由 Actor 持有）；
-/// <c>EventId</c> 全局唯一（消费端去重键，VC-1.13）；<c>CorrelationId</c> 贯穿业务链路（VC-1.14）；
+/// <c>EventId</c> 全局唯一（消费端去重键）；<c>CorrelationId</c> 贯穿业务链路；
 /// 作用域字段为 Online 领域语义，经 <c>OnlineEventEnvelopeMapper</c> 以 Foundation 信封 Attributes 稳定键承载
 /// （红线：Online 领域语义不进 Foundation）。<c>PayloadAuditFields</c> 是载荷的语义字段投影，
 /// 仅供审计视图脱敏使用，不参与信封传输。

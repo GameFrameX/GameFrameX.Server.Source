@@ -32,17 +32,17 @@ using System.Collections.Generic;
 namespace GameFrameX.Online.Audit;
 
 /// <summary>
-/// 统一审计接入条目（vault:C9 S8.2：Admin 既有支付/奖励/邮件/兑换码/远程配置/处罚审计
-/// 与 S8.1 受控操作审计接入统一链路的**接入面**模型；字段 = 审计语义字段 + C93 事件信封字段的超集）。
+/// 统一审计接入条目（Admin 既有支付/奖励/邮件/兑换码/远程配置/处罚审计
+/// 与受控操作审计接入统一链路的**接入面**模型；字段 = 审计语义字段 + 事件信封字段的超集）。
 /// <para>
 /// 维护约束（红线）：
-/// ① <see cref="EventId"/> 全局唯一（C93 契约去重键，重复接入幂等回执不重复落档，VC-8.4）；
-/// ② <see cref="OperatorId"/> 与 <see cref="Reason"/> 必填——「审计完整含操作者/原因/时间」（VC-8.3），
+/// ① <see cref="EventId"/> 全局唯一（契约去重键，重复接入幂等回执不重复落档）；
+/// ② <see cref="OperatorId"/> 与 <see cref="Reason"/> 必填——「审计完整含操作者/原因/时间」，
 /// 缺失在 <c>OnlineAuditService.IngestAsync</c> 校验处拒绝（宁拒毋缺）；
-/// ③ <see cref="PayloadAuditFields"/> 是载荷的语义字段投影，落档前经 C93 <c>OnlineEventSanitizer</c> 脱敏
-/// （VC-8.16：存储与检索结构性无明文敏感值），**不得**把令牌/口令/手机号等敏感值放入非敏感键下绕过脱敏；
+/// ③ <see cref="PayloadAuditFields"/> 是载荷的语义字段投影，落档前经 <c>OnlineEventSanitizer</c> 脱敏
+/// （存储与检索结构性无明文敏感值），**不得**把令牌/口令/手机号等敏感值放入非敏感键下绕过脱敏；
 /// ④ <see cref="ServerId"/> 为 0 表示 App 级操作（支付、远程配置等无区服维度的审计），
-/// <see cref="PlayerId"/> 为 0 表示系统级（非玩家主体）操作——对齐 C93 信封作用域语义。
+/// <see cref="PlayerId"/> 为 0 表示系统级（非玩家主体）操作——对齐信封作用域语义。
 /// </para>
 /// </summary>
 public sealed class OnlineAuditEntry
@@ -58,8 +58,8 @@ public sealed class OnlineAuditEntry
 
     /// <summary>
     /// 获取或设置全局唯一审计标识（幂等去重键）。受控操作审计应从操作幂等键**确定性派生**
-    /// （如 <c>audit-{操作幂等键}</c>，对齐 C102/C103 幂等键派生先例）——重复执行同一命令命中同一条审计，
-    /// 与接入侧幂等共同构成 VC-8.4 半边；随机派生的标识会让重复执行产生多条审计记录。
+    /// （如 <c>audit-{操作幂等键}</c>，对齐幂等键派生先例）——重复执行同一命令命中同一条审计，
+    /// 与接入侧幂等共同构成幂等半边；随机派生的标识会让重复执行产生多条审计记录。
     /// </summary>
     public string EventId
     {
@@ -77,7 +77,7 @@ public sealed class OnlineAuditEntry
     }
 
     /// <summary>
-    /// 获取或设置审计业务时刻（UTC 毫秒；VC-8.3 审计三要素之一——时间）。
+    /// 获取或设置审计业务时刻（UTC 毫秒；审计三要素之一——时间）。
     /// </summary>
     public long OccurredTime
     {
@@ -122,7 +122,7 @@ public sealed class OnlineAuditEntry
     }
 
     /// <summary>
-    /// 获取或设置操作者标识（VC-8.3 审计三要素之一——操作者；必填，通常为管理员账号标识）。
+    /// 获取或设置操作者标识（审计三要素之一——操作者；必填，通常为管理员账号标识）。
     /// </summary>
     public string OperatorId
     {
@@ -140,7 +140,7 @@ public sealed class OnlineAuditEntry
     }
 
     /// <summary>
-    /// 获取或设置操作原因（VC-8.3 审计三要素之一——原因；必填，受控操作的业务理由留痕）。
+    /// 获取或设置操作原因（审计三要素之一——原因；必填，受控操作的业务理由留痕）。
     /// </summary>
     public string Reason
     {
@@ -149,7 +149,7 @@ public sealed class OnlineAuditEntry
     }
 
     /// <summary>
-    /// 获取或设置来源模块标识（如 <c>online-admin</c>；对齐 C93 信封 <c>Source</c> 语义）。
+    /// 获取或设置来源模块标识（如 <c>online-admin</c>；对齐信封 <c>Source</c> 语义）。
     /// </summary>
     public string Source
     {
@@ -158,7 +158,7 @@ public sealed class OnlineAuditEntry
     }
 
     /// <summary>
-    /// 获取或设置关联链路键（VC-8.5 可定位；未参与链路时可为空）。
+    /// 获取或设置关联链路键（可按链路定位；未参与链路时可为空）。
     /// </summary>
     public string CorrelationId
     {
@@ -167,7 +167,7 @@ public sealed class OnlineAuditEntry
     }
 
     /// <summary>
-    /// 获取或设置载荷语义字段投影（键值对；落档前经 C93 脱敏器生成 <c>SanitizedFields</c>，敏感键值替换为掩码）。
+    /// 获取或设置载荷语义字段投影（键值对；落档前经脱敏器生成 <c>SanitizedFields</c>，敏感键值替换为掩码）。
     /// </summary>
     public IReadOnlyDictionary<string, string> PayloadAuditFields
     {

@@ -38,7 +38,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 对局同步协议测试（vault:C6 S5.5 / S5.6 / VC-5.2～VC-5.7）：
+    /// 对局同步协议测试：
     /// 输入校验顺序、重复包与乱序包幂等、序号只由服务端推进、增量补发与重连窗口。
     /// </summary>
     public class OnlineMatchSyncProtocolTests
@@ -62,7 +62,7 @@ namespace GameFrameX.Tests.Online
         private const long Now = 1000000L;
 
         /// <summary>
-        /// 验证 VC-5.5：重复包按幂等处理——不重复执行、不推进序号、状态不变。
+        /// 验证重复包按幂等处理——不重复执行、不推进序号、状态不变。
         /// </summary>
         [Fact]
         public async Task DuplicatePacket_ShouldBeIdempotent()
@@ -86,7 +86,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.5：乱序包（序号跳变）被拒绝且状态不变。
+        /// 验证乱序包（序号跳变）被拒绝且状态不变。
         /// </summary>
         [Fact]
         public async Task OutOfOrderPacket_ShouldBeRejected()
@@ -104,7 +104,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.2 / VC-5.3：身份取自服务端作用域，客户端自报的 PlayerId 不参与判定。
+        /// 验证身份取自服务端作用域，客户端自报的 PlayerId 不参与判定。
         /// </summary>
         [Fact]
         public async Task SpoofedPlayerIdInInput_ShouldBeIgnored()
@@ -131,7 +131,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.3：非成员提交被拒（作用域越权），且不产生任何状态变更。
+        /// 验证非成员提交被拒（作用域越权），且不产生任何状态变更。
         /// </summary>
         [Fact]
         public async Task NonMemberInput_ShouldBeScopeDenied()
@@ -155,7 +155,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.3：非法操作值（越出玩法契约枚举）被拒。
+        /// 验证非法操作值（越出玩法契约枚举）被拒。
         /// </summary>
         [Fact]
         public async Task IllegalAction_ShouldBeRejected()
@@ -170,7 +170,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.2：对局未进入运行阶段时输入被拒。
+        /// 验证对局未进入运行阶段时输入被拒。
         /// </summary>
         [Fact]
         public async Task InputBeforeRunning_ShouldBeRejected()
@@ -185,7 +185,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.6：序号只由服务端推进（每次被接受的输入 +1，被拒的输入不变）。
+        /// 验证序号只由服务端推进（每次被接受的输入 +1，被拒的输入不变）。
         /// </summary>
         [Fact]
         public async Task ServerSequence_ShouldAdvanceOnlyOnAcceptedInput()
@@ -203,7 +203,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.6：增量区间为左开右闭，且终点即当前权威序号。
+        /// 验证增量区间为左开右闭，且终点即当前权威序号。
         /// </summary>
         [Fact]
         public async Task BuildDelta_ShouldCoverRequestedRange()
@@ -227,7 +227,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.6：客户端序号早于事件日志下界时增量不可用（必须回退全量快照）。
+        /// 验证客户端序号早于事件日志下界时增量不可用（必须回退全量快照）。
         /// </summary>
         [Fact]
         public async Task CanServeDelta_BelowEventLogLowerBound_ShouldBeFalse()
@@ -264,7 +264,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.6：窗口内重连返回快照 + 缺失增量，且增量起点即客户端已确认序号。
+        /// 验证窗口内重连返回快照 + 缺失增量，且增量起点即客户端已确认序号。
         /// </summary>
         [Fact]
         public async Task Reconnect_WithinWindow_ShouldReturnSnapshotAndDelta()
@@ -298,7 +298,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.2：伪造或过期令牌不得重新进入对局，且失败原因稳定。
+        /// 验证伪造或过期令牌不得重新进入对局，且失败原因稳定。
         /// </summary>
         [Fact]
         public async Task Reconnect_WrongToken_ShouldBeRevoked()
@@ -324,7 +324,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.7：超过重连窗口后重连失败且原因稳定（不无限重试）。
+        /// 验证超过重连窗口后重连失败且原因稳定（不无限重试）。
         /// </summary>
         [Fact]
         public async Task Reconnect_BeyondWindow_ShouldTimeout()
@@ -350,7 +350,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.7：重连窗口到期后成员进入确定态（退出），不存在永久 Reconnecting。
+        /// 验证重连窗口到期后成员进入确定态（退出），不存在永久 Reconnecting。
         /// </summary>
         [Fact]
         public async Task ReconnectWindowExpired_ShouldReachDeterminateMemberState()
@@ -369,7 +369,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.2：全程无人可服务时对局收敛到确定终态而不是悬挂。
+        /// 验证全程无人可服务时对局收敛到确定终态而不是悬挂。
         /// </summary>
         [Fact]
         public async Task AllMembersGone_ShouldCancelMatch()

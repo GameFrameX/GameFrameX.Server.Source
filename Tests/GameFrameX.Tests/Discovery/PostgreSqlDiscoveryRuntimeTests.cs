@@ -38,10 +38,10 @@ using Xunit;
 namespace GameFrameX.Tests.Discovery;
 
 /// <summary>
-/// PostgreSqlDiscoveryRuntime 激活时序测试（C166 verify P1-1 回归：空库 Activate 不得因缺表抛错）。
+/// PostgreSqlDiscoveryRuntime 激活时序测试（回归：空库 Activate 不得因缺表抛错）。
 /// </summary>
 /// <remarks>
-/// Activation-ordering tests for <c>PostgreSqlDiscoveryRuntime</c> (C166 verify P1-1 regression:
+/// Activation-ordering tests for <c>PostgreSqlDiscoveryRuntime</c> (regression:
 /// activating against a FRESH control database must not throw — unlike MongoDB, PostgreSQL does not
 /// lazily create missing relations, so the schema must be ensured before the watcher's immediate
 /// first poll). Gated by GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING (silent skip when unset,

@@ -33,10 +33,10 @@ using GameFrameX.Online.Assets;
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 结算结果中的单玩家条目（vault:C6「结算生成唯一 MatchResultId，同一对局只能成功结算一次」）。
+/// 结算结果中的单玩家条目（结算生成唯一 MatchResultId，同一对局只能成功结算一次）。
 /// <para>
 /// 维护约束（红线）：<see cref="Rewards"/> 是**服务端裁决**的奖励明细，
-/// 客户端上报的任何奖励字段都不会进入本结构（VC-5.2）；
+/// 客户端上报的任何奖励字段都不会进入本结构；
 /// 奖励只描述「发什么」，实际发放由资产域统一入口按 <see cref="OnlineMatchResult.MatchResultId"/>
 /// 幂等执行（结算与发奖解耦：结算失败不阻塞对局，发奖可重试）。
 /// </para>

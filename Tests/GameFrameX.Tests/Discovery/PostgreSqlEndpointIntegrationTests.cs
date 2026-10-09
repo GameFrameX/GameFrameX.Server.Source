@@ -35,11 +35,11 @@ using Npgsql;
 namespace GameFrameX.Tests.Discovery;
 
 /// <summary>
-/// PostgreSqlEndpointRegistry / PostgreSqlEndpointWatcher（TTL 清理经 DiscoveryRegistry 循环）的 PostgreSQL 集成测试（C166 T8）。
+/// PostgreSqlEndpointRegistry / PostgreSqlEndpointWatcher（TTL 清理经 DiscoveryRegistry 循环）的 PostgreSQL 集成测试。
 /// </summary>
 /// <remarks>
 /// PostgreSQL-backed integration tests for the heartbeat writer and reader
-/// (TTL cleanup via the DiscoveryRegistry loop) (C166 T8), ported test-by-test from
+/// (TTL cleanup via the DiscoveryRegistry loop), ported test-by-test from
 /// <c>MongoEndpointIntegrationTests</c> with identical names and assertions.
 /// Gated by GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING: without the variable
 /// the tests skip so plain <c>dotnet test</c> stays green on PostgreSQL-less
@@ -326,9 +326,9 @@ public sealed class PostgreSqlEndpointIntegrationTests : IDisposable
             await registry.StartAsync();
 
             // 同一轮清理 pass 的两个 DELETE（心跳 / 路由）之间没有原子性：等待条件必须覆盖两者，
-            // 否则并发负载下偶发在两步之间退出导致断言时序缺陷（C168 实测修复）。
+            // 否则并发负载下偶发在两步之间退出导致断言时序缺陷（实测修复）。
             // The two deletes of a cleanup pass are not atomic with each other: the wait must cover both,
-            // otherwise the test can exit between them under concurrent load (C168 timing fix).
+            // otherwise the test can exit between them under concurrent load (timing fix).
             await WaitUntilAsync(async () => await ReadRowAsync(testDatabase.DataSource, expiredId) == null &&
                                             Convert.ToInt64(await ExecuteScalarAsync(testDatabase.DataSource, "SELECT count(*) FROM player_route WHERE player_id = 901;")) == 0L, TimeSpan.FromSeconds(30));
         }

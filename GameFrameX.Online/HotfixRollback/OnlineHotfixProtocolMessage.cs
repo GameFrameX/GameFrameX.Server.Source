@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.HotfixRollback;
 
 /// <summary>
-/// Hotfix 版本协议消息契约行（vault:C9 S8.5 协议兼容检查的最小可见粒度：消息名 + 消息号）。
+/// Hotfix 版本协议消息契约行（协议兼容检查的最小可见粒度：消息名 + 消息号）。
 /// <para>
 /// 维护约束（红线）：同一清单内消息名与消息号均须唯一（登记处校验，<see cref="OnlineHotfixRollbackService"/>）；
 /// 同名不同号或同号不同名都会被判 <c>ChangedMessage</c> 不兼容差异（路由错乱）。

@@ -39,17 +39,17 @@ using GameFrameX.Online.Idempotency;
 using GameFrameX.Online.Scope;
 
 /// <summary>
-/// 统一资产入口服务（vault:C4 S3.3/S3.4/S3.5：发放/扣除/撤销/补发/人工调整的唯一提交管道，X5 红线）。
+/// 统一资产入口服务（发放/扣除/撤销/补发/人工调整的唯一提交管道）。
 /// <para>
 /// 维护约束（资产红线）：
-/// (1) 幂等先行——每笔交易先经 C93 <see cref="OnlineIdempotencyService"/>（Foundation 原语）判定，
-/// 相同业务意图重试回放首次结果（VC-3.1～3.4），同键不同请求体判冲突（VC-1.4）；
-/// (2) 原子应用——变更批次在存储层玩家分片事务内先全量校验后落账（VC-3.5/3.6）；
+/// (1) 幂等先行——每笔交易先经 <see cref="OnlineIdempotencyService"/>（Foundation 原语）判定，
+/// 相同业务意图重试回放首次结果，同键不同请求体判冲突；
+/// (2) 原子应用——变更批次在存储层玩家分片事务内先全量校验后落账；
 /// (3) 失败补偿——应用阶段异常时按已落账条目数裁决：零条目判 Failed；不足期望行数（部分应用）
-/// 追加反转条目净效应归零（账本不可变，纠正只追加，VC-3.6/3.7）；补偿失败滞留
-/// <see cref="OnlineAssetTransactionState.CompensationPending"/> 并告警（VC-3.11 语义）；
-/// (4) 恢复——<see cref="RecoverAsync"/> 以非终态交易为扫描输入重启续判（VC-3.12）；
-/// (5) 事件与告警——成功落账后发布资产变更事实；资产不足/重复意图/补偿动作经告警出口留痕（VC-3.15）。
+/// 追加反转条目净效应归零（账本不可变，纠正只追加）；补偿失败滞留
+/// <see cref="OnlineAssetTransactionState.CompensationPending"/> 并告警；
+/// (4) 恢复——<see cref="RecoverAsync"/> 以非终态交易为扫描输入重启续判；
+/// (5) 事件与告警——成功落账后发布资产变更事实；资产不足/重复意图/补偿动作经告警出口留痕。
 /// </para>
 /// </summary>
 public sealed class OnlineGrantService
@@ -60,7 +60,7 @@ public sealed class OnlineGrantService
     /// <summary>交易记录存储。</summary>
     private readonly IOnlineAssetTransactionStore _transactionStore;
 
-    /// <summary>幂等判定（C93 组装，Foundation 原语执行方）。</summary>
+    /// <summary>幂等判定（组装 Foundation 原语执行方）。</summary>
     private readonly OnlineIdempotencyService _idempotencyService;
 
     /// <summary>事件发布出口（资产变更事实）。</summary>

@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 输入拒绝原因（vault:C6 VC-5.3 / VC-5.4 / VC-5.5：非法输入、重复包、乱序包都必须有稳定原因码）。
+/// 输入拒绝原因（非法输入、重复包、乱序包都必须有稳定原因码）。
 /// <para>
 /// 维护约束（红线）：任何未被接受的输入都必须带非 <see cref="None"/> 的原因，
 /// 且拒绝**不得改变对局状态**（拒绝路径不推进 <c>ServerSequence</c>，也不记录服务器事件）。
@@ -43,28 +43,28 @@ public enum OnlineMatchInputRejection
     /// <summary>无（输入已被接受）。</summary>
     None = 0,
 
-    /// <summary>重复包（客户端序号不大于已接受的最大客户端序号，VC-5.4）。</summary>
+    /// <summary>重复包（客户端序号不大于已接受的最大客户端序号）。</summary>
     Duplicate = 1,
 
-    /// <summary>乱序包（客户端序号跳跃，超出允许的连续窗口，VC-5.5）。</summary>
+    /// <summary>乱序包（客户端序号跳跃，超出允许的连续窗口）。</summary>
     OutOfOrder = 2,
 
-    /// <summary>提交者不是本对局成员（VC-5.3 越权入局/越权操作）。</summary>
+    /// <summary>提交者不是本对局成员（越权入局/越权操作）。</summary>
     NotMember = 3,
 
     /// <summary>提交者已退出或被踢出（终态成员不可参与玩法）。</summary>
     MemberLeft = 4,
 
-    /// <summary>提交者处于断线态，需先重连（VC-5.6）。</summary>
+    /// <summary>提交者处于断线态，需先重连。</summary>
     MemberDisconnected = 5,
 
     /// <summary>对局当前阶段不接受输入（仅 <see cref="OnlineMatchState.Running"/> 接受）。</summary>
     StateNotPlayable = 6,
 
-    /// <summary>对局已结束（VC-5.7 / VC-5.12：结束后不再接受任何输入）。</summary>
+    /// <summary>对局已结束（结束后不再接受任何输入）。</summary>
     MatchEnded = 7,
 
-    /// <summary>玩法级非法输入（越权回合、非本回合玩家、动作不可识别等，VC-5.3）。</summary>
+    /// <summary>玩法级非法输入（越权回合、非本回合玩家、动作不可识别等）。</summary>
     IllegalAction = 8,
 
     /// <summary>作用域不匹配（跨租户/App/Server，任务书红线 P0-3）。</summary>

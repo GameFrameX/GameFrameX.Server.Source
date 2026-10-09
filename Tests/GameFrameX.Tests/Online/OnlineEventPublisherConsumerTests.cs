@@ -36,7 +36,7 @@ namespace GameFrameX.Tests.Online
 {
     /// <summary>
     /// OnlineEventPublisher / OnlineEventConsumer 事件发布与消费去重基座测试（Foundation InMemory 传输；
-    /// 同一 EventId 投递两次只处理一次，VC-1.13）。
+    /// 同一 EventId 投递两次只处理一次）。
     /// </summary>
     public class OnlineEventPublisherConsumerTests
     {
@@ -90,7 +90,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证消费去重：同一 EventId 首见被消费、重复被拦截（VC-1.13）。
+        /// 验证消费去重：同一 EventId 首见被消费、重复被拦截。
         /// </summary>
         [Fact]
         public void TryConsume_WithDuplicateEventId_ShouldRejectSecondDelivery()

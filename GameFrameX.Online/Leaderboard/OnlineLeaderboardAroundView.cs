@@ -35,7 +35,7 @@ namespace GameFrameX.Online.Leaderboard;
 /// 玩家附近排名视图（以目标玩家为中心的连续名次窗口，窗口含目标玩家本人）。
 /// <para>
 /// 维护约束：窗口在榜单边界处截断——榜首请求的前向窗口与榜尾请求的后向窗口返回实际存在的条目，
-/// 不以占位条目填充（VC-7.3 附近排名边界）；窗口内名次连续（rank 单调 +1），供客户端直接渲染。
+/// 不以占位条目填充（附近排名边界）；窗口内名次连续（rank 单调 +1），供客户端直接渲染。
 /// </para>
 /// </summary>
 public sealed class OnlineLeaderboardAroundView

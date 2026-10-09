@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Matchmaking;
 
 /// <summary>
-/// 票据观测摘要（vault:C5 S4.10 可观测性：Admin 按状态核对队列构成）。
+/// 票据观测摘要（可观测性：Admin 按状态核对队列构成）。
 /// <para>
 /// 维护约束：摘要只含标识与状态，**不含** <see cref="OnlineMatchTicket.CustomProperties"/>
 /// （玩法私有数据不进入观测面）与任何玩家明细——需要玩家维度的排查走审计事件，不走观测快照。

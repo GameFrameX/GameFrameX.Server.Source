@@ -39,13 +39,13 @@ using GameFrameX.Online.Scope;
 namespace GameFrameX.Online.Leaderboard;
 
 /// <summary>
-/// 排行榜服务（vault:C8 S7.1：创建 / Top N / 玩家附近排名 / 游标分页 / 读缓存；查询侧作用域反预言）。
+/// 排行榜服务（创建 / Top N / 玩家附近排名 / 游标分页 / 读缓存；查询侧作用域反预言）。
 /// <para>
 /// 维护约束（红线）：
 /// (1) **本服务没有任何接受「裸分数」的公开提交 API**——分数写入只经内部
 /// <see cref="ApplyTrustedScoreAsync"/>（由可信写入链路 <see cref="OnlineLeaderboardResultProjector"/> 调用），
-/// 客户端无入口可刷分（VC-7.1）；
-/// (2) 跨 App / 跨租户读写与「榜单不存在」同构返回 ResourceNotFound（反预言，不泄露榜单存在性，VC-7.14）；
+/// 客户端无入口可刷分；
+/// (2) 跨 App / 跨租户读写与「榜单不存在」同构返回 ResourceNotFound（反预言，不泄露榜单存在性）；
 /// (3) Top N 读缓存 TTL + 写失效——任何成功写榜立即失效该榜缓存，缓存只影响读延迟不影响正确性。
 /// </para>
 /// </summary>
@@ -243,7 +243,7 @@ public sealed class OnlineLeaderboardService
     }
 
     /// <summary>
-    /// 查询玩家附近排名（窗口含玩家本人，边界处截断；VC-7.3）。
+    /// 查询玩家附近排名（窗口含玩家本人，边界处截断）。
     /// </summary>
     /// <param name="scope">生效作用域。</param>
     /// <param name="query">附近排名窗口查询载荷。</param>

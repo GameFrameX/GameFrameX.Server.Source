@@ -36,7 +36,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 身份服务测试（vault:C3 VC-2.1/2.13：登录解析出 PlayerContext 主体、设备换绑、注销、账号合并）。
+    /// 身份服务测试（登录解析出 PlayerContext 主体、设备换绑、注销、账号合并）。
     /// </summary>
     public class OnlineIdentityServiceTests
     {
@@ -50,7 +50,7 @@ namespace GameFrameX.Tests.Online
         private const long ServerId = 100;
 
         /// <summary>
-        /// 验证新身份自动注册并解析出完整三件套，可组装 PlayerContext（VC-2.1）。
+        /// 验证新身份自动注册并解析出完整三件套，可组装 PlayerContext。
         /// </summary>
         [Fact]
         public async Task ResolveLoginAsync_NewIdentity_ShouldAutoRegisterAndYieldContext()
@@ -99,7 +99,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证换绑后旧设备登录被拒绝、新设备可登录（VC-2.13）。
+        /// 验证换绑后旧设备登录被拒绝、新设备可登录。
         /// </summary>
         [Fact]
         public async Task RebindDeviceAsync_OldDevice_ShouldBeRejectedOnNextLogin()

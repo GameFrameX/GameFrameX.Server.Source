@@ -30,9 +30,9 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 聊天频道类型（vault:C7 S6.5：四类频道，成员资格来源各不相同，隐私边界由此划开）。
+/// 聊天频道类型（四类频道，成员资格来源各不相同，隐私边界由此划开）。
 /// <para>
-/// 维护约束（成员资格来源，VC-6.8/6.9 的落点）：
+/// 维护约束（成员资格来源）：
 /// <list type="table">
 /// <item><term><see cref="Direct"/></term><description>成员 = 参与双方（无向对，A→B 与 B→A 落在**同一频道**，
 /// 否则历史会裂成两条单向流）；成员集合随频道记录落库。</description></item>

@@ -34,7 +34,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// OnlineEventSanitizer 事件审计脱敏测试（敏感字段掩码、无明文泄露，VC-1.17）。
+    /// OnlineEventSanitizer 事件审计脱敏测试（敏感字段掩码、无明文泄露）。
     /// </summary>
     public class OnlineEventSanitizerTests
     {

@@ -30,12 +30,12 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 通知生命周期状态（vault:C7 S6.8 冻结 7 态）。
+/// 通知生命周期状态（冻结 7 态）。
 /// <para>
 /// 维护约束：状态迁移唯一判据是 <see cref="OnlineNotificationStateMachine.TryTransition"/>；
 /// <see cref="Read"/> 与 <see cref="Expired"/> 是仅有的两个终态。首次推送、重试与离线补发共用同一套状态，
 /// 不另立「补发中」之类的影子状态——否则同一条通知会被两条路径各投一次
-/// （VC-6.12「通知不重复消费」的判定依据）。
+/// （「通知不重复消费」的判定依据）。
 /// </para>
 /// </summary>
 public enum OnlineNotificationState
@@ -61,7 +61,7 @@ public enum OnlineNotificationState
     Read = 3,
 
     /// <summary>
-    /// 已过期（终态；通知被丢弃，不再推送也不返回给玩家，VC-6.13）。
+    /// 已过期（终态；通知被丢弃，不再推送也不返回给玩家）。
     /// </summary>
     Expired = 4,
 

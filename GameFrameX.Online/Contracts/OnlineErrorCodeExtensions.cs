@@ -35,7 +35,7 @@ namespace GameFrameX.Online.Contracts;
 /// 维护约束：MessageKey 格式 <c>Online.Error.{段名}.{成员名}</c>（段名固定为
 /// System/Session/Scope/Param/Business/Idempotency/RateLimit/Transient 八个，与 Admin
 /// ErrorSegmentRegistry 段登记名去掉 Online 前缀一一对应）；客户端不得依赖中文文案判断流程，
-/// 只允许按 <c>Code</c>（机器可判断）与 <c>MessageKey</c>（可本地化）双通道处理（vault:C2）。
+/// 只允许按 <c>Code</c>（机器可判断）与 <c>MessageKey</c>（可本地化）双通道处理。
 /// </para>
 /// </summary>
 public static class OnlineErrorCodeExtensions
@@ -95,7 +95,7 @@ public static class OnlineErrorCodeExtensions
 
     /// <summary>
     /// 将任意整型协议码解析为受支持的错误码：段外或段内未登记的未知码兜底映射到 <see cref="OnlineErrorCode.InternalError"/>。
-    /// <para>消费端（客户端/网关）必须经本方法消费协议码，保证未知码不崩溃、不误判成功（VC-1.10 Server 半边约定）。</para>
+    /// <para>消费端（客户端/网关）必须经本方法消费协议码，保证未知码不崩溃、不误判成功。</para>
     /// </summary>
     /// <param name="code">原始整型协议码。</param>
     /// <returns>受支持的错误码；0 映射 <see cref="OnlineErrorCode.None"/>。</returns>

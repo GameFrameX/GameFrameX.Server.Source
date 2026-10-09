@@ -30,12 +30,12 @@
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 重连结果（vault:C6 S5.6「重连成功先发送完整快照，再发送客户端缺失的增量」）。
+/// 重连结果（重连成功先发送完整快照，再发送客户端缺失的增量）。
 /// <para>
 /// 维护约束（红线）：<see cref="Snapshot"/> 与 <see cref="Delta"/> 的服务器序号必须自洽——
 /// 增量区间起点即快照序号（<c>Snapshot.ServerSequence == Delta.FromSequence</c>），
 /// 客户端据此可直接续接而不需要额外对齐。当增量不可用（跨越了事件日志下界）时
-/// <see cref="Delta"/> 为 null，客户端必须以快照为准重新建立本地状态（VC-5.6）。
+/// <see cref="Delta"/> 为 null，客户端必须以快照为准重新建立本地状态。
 /// </para>
 /// </summary>
 public sealed class OnlineMatchReconnectResult
@@ -113,7 +113,7 @@ public sealed class OnlineMatchReconnectResult
     }
 
     /// <summary>
-    /// 获取或设置处置说明（如「转托管」「转退出」，VC-5.7 的确定态说明）。
+    /// 获取或设置处置说明（如「转托管」「转退出」的确定态说明）。
     /// </summary>
     public string Instruction
     {

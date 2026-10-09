@@ -30,11 +30,11 @@
 namespace GameFrameX.Online.Session;
 
 /// <summary>
-/// 会话域内存默认存储（vault:C3 S2.4：单进程/测试默认实现；生产装配以持久化实现替换）。
+/// 会话域内存默认存储（单进程/测试默认实现；生产装配以持久化实现替换）。
 /// <para>
 /// 维护约束（天花板）：全量驻留内存，无 TTL 自动清理（清理经 <c>OnlineSessionManager.SweepAsync</c> 主动触发）；
 /// 全局锁保护——Token 轮换与终态写为低频操作，粗粒度锁足够，持久化实现按原子更新替代；
-/// 进程重启即失忆（VC-2.14 重启失效策略的内存形态 = 全部失效），持久化语义由生产实现承载。
+/// 进程重启即失忆（重启失效策略的内存形态 = 全部失效），持久化语义由生产实现承载。
 /// </para>
 /// </summary>
 public sealed class InMemoryOnlineSessionStore : IOnlineSessionStore

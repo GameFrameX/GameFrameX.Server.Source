@@ -34,7 +34,7 @@ using System.Threading.Tasks;
 namespace GameFrameX.Online.Tournament;
 
 /// <summary>
-/// 赛事存储契约（赛事定义 + 报名登记 + 冻结成绩；InMemory 为单进程默认实现，生产持久化归 Server 仓运行时装配 X4）。
+/// 赛事存储契约（赛事定义 + 报名登记 + 冻结成绩；InMemory 为单进程默认实现，生产持久化归 Server 仓运行时装配）。
 /// <para>
 /// 维护约束（红线）：
 /// (1) 作用域隔离——所有查询以 (TenantId, AppId) 为前置条件，跨作用域访问与不存在同构（null，反预言）；

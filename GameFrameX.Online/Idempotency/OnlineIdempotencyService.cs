@@ -35,7 +35,7 @@ using GameFrameX.Online.Scope;
 namespace GameFrameX.Online.Idempotency;
 
 /// <summary>
-/// Online 幂等 Server 侧组装（vault:C2 S1.5 Server 半边：只组装 Foundation 原语，不实现第二套存储）。
+/// Online 幂等 Server 侧组装（只组装 Foundation 原语，不实现第二套存储）。
 /// <para>
 /// 维护约束（红线）：作用域绑定——幂等记录以 <c>online:tenant:app:server[:player]</c> 为存储作用域，
 /// 玩家级操作必须绑定玩家位，禁止跨玩家复用幂等键；请求摘要——对规范化请求文本做 SHA-256，

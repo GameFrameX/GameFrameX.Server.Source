@@ -33,15 +33,15 @@ using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
-/// 发现层路由胶水装配器（C166 依赖方向裁定第二轮：自 *DiscoveryRuntime 拆出的组合侧装配）。
+/// 发现层路由胶水装配器（自 *DiscoveryRuntime 拆出的组合侧装配）。
 /// </summary>
 /// <remarks>
-/// Composition-side wiring for the discovery routing fabric (C166 second dependency-direction ruling:
-/// extracted from the database-implementation <c>*DiscoveryRuntime</c> so that neither the database
-/// implementation assemblies nor RemoteMessaging reference each other). The launch flow calls
+/// Composition-side wiring for the discovery routing fabric, extracted from the
+/// database-implementation <c>*DiscoveryRuntime</c> so that neither the database
+/// implementation assemblies nor RemoteMessaging reference each other. The launch flow calls
 /// <see cref="Initialize"/> right after the provider runtime's <c>Activate</c> (passing its exposed
 /// <c>IRoleRouteTableProvider</c>); the Hotfix wiring point later calls
-/// <see cref="AttachLocalDispatcher"/> to fill the case-1 local slot (C152 semantics preserved verbatim:
+/// <see cref="AttachLocalDispatcher"/> to fill the case-1 local slot (semantics preserved verbatim:
 /// pre-Initialize call throws, idempotent per process, remote chain untouched).
 /// </remarks>
 public static class DiscoveryRoutingWire
@@ -91,7 +91,7 @@ public static class DiscoveryRoutingWire
     }
 
     /// <summary>
-    /// 补装本地 envelope 投递缝（C152：只补 case 1 的 local 槽，不动远程链）。
+    /// 补装本地 envelope 投递缝（只补 case 1 的 local 槽，不动远程链）。
     /// </summary>
     /// <remarks>
     /// Rebuilds the process router with the given dispatcher in the case 1 slot, reusing the

@@ -32,7 +32,7 @@ using System.Collections.Generic;
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 对局增量（vault:C6 S5.2「增量按序号补发」）。
+/// 对局增量（增量按序号补发）。
 /// <para>
 /// 维护约束（红线）：增量区间是**左开右闭** <c>(FromSequence, ToSequence]</c>——
 /// 客户端已确认到 <see cref="FromSequence"/>，因此该序号对应的事件不再重发；

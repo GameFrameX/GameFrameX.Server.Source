@@ -34,14 +34,14 @@ using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
-/// 资产存储接口（vault:C4 S3.3：钱包/库存/不可变账本的读写契约；写路径只有
-/// <see cref="ApplyAsync"/> 一个原子入口——批次构造仅限本程序集，旁路写入结构性不可达，X5）。
+/// 资产存储接口（钱包/库存/不可变账本的读写契约；写路径只有
+/// <see cref="ApplyAsync"/> 一个原子入口——批次构造仅限本程序集，旁路写入结构性不可达）。
 /// <para>
 /// 维护约束（红线）：<see cref="ApplyAsync"/> 必须在单个玩家分片事务内先全量校验后统一落账
-/// （余额/库存下限 0，无部分应用，VC-3.5/3.6）；账本只追加——本接口不提供任何账本修改/删除方法
-/// （VC-3.7 不可变性由契约面保证，纠正只能追加反转条目）；账本序按玩家单调递增，
+/// （余额/库存下限 0，无部分应用）；账本只追加——本接口不提供任何账本修改/删除方法
+/// （不可变性由契约面保证，纠正只能追加反转条目）；账本序按玩家单调递增，
 /// 列举以 <see cref="OnlineLedgerEntry.SequenceNumber"/> 稳定排序（游标分页基础）。
-/// 生产装配以持久化实现替换（按玩家分片事务对齐 vault 风险缓解），内存实现为本仓默认。
+/// 生产装配以持久化实现替换（按玩家分片事务的既定风险缓解约定），内存实现为本仓默认。
 /// </para>
 /// </summary>
 public interface IOnlineAssetStore
@@ -92,7 +92,7 @@ public interface IOnlineAssetStore
     /// <returns>账本条目列表（按序升序）。</returns>
     Task<IReadOnlyList<OnlineLedgerEntry>> ListLedgerEntriesAsync(OnlineLedgerPageQuery query, CancellationToken cancellationToken = default);
 
-    /// <summary>按交易标识反查账本条目（VC-3.14 追溯：来源/原因/单号/操作者/前后值全字段）。</summary>
+    /// <summary>按交易标识反查账本条目（追溯：来源/原因/单号/操作者/前后值全字段）。</summary>
     /// <param name="transactionId">交易标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>该交易的全部账本条目（含反转条目）。</returns>

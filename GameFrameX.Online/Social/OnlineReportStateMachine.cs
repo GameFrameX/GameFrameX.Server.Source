@@ -30,10 +30,10 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 举报案件状态机（vault:C7 S6.3：合法边固化，非法迁移一律拒绝）。
+/// 举报案件状态机（合法边固化，非法迁移一律拒绝）。
 /// <para>
 /// 维护约束：合法边集中在本类型的常量邻接表中维护，服务层禁止就地拼装迁移条件
-/// （形态对齐 C94 <c>OnlinePresenceStateMachine</c> / C97 <c>OnlinePartyStateMachine</c>）。
+/// （形态对齐 <c>OnlinePresenceStateMachine</c> / <c>OnlinePartyStateMachine</c>）。
 /// </para>
 /// <para>
 /// 合法边全集：

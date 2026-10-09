@@ -36,7 +36,7 @@ using GameFrameX.Online.Events;
 using GameFrameX.Online.Scope;
 
 /// <summary>
-/// 聊天服务（vault:C7 S6.5～S6.7：四类频道、发送裁决、历史游标、离线补拉、已读、撤回、举报入口）。
+/// 聊天服务（四类频道、发送裁决、历史游标、离线补拉、已读、撤回、举报入口）。
 /// <para>
 /// 维护约束（发送主链路的固定顺序，不可调换）：
 /// ① 频道解析与**成员资格校验**（非成员一律 <c>ResourceNotFound</c>，反预言）；
@@ -45,9 +45,9 @@ using GameFrameX.Online.Scope;
 /// 重放不得再走裁决 / 频控 / 审核，否则「重发幂等」会在窗口期内超限或此刻被禁言时退化为「发送失败」；
 /// ④ **社交裁决**（私聊走 <see cref="OnlineSocialDecisionService.EvaluateAsync"/> 带上对端做屏蔽双向判定，
 /// 其余频道走 <see cref="OnlineSocialDecisionService.EvaluateSendAsync"/> 做禁言/封禁判定）——
-/// 禁止在本类内自建屏蔽或处罚判断，那是 vault:C7 风险表首条要防的绕过；
+/// 禁止在本类内自建屏蔽或处罚判断，那正是三通路绕过风险要防的；
 /// ⑤ **频控**（在内容审核之前：先挡洪峰再让审核服务承压）；
-/// ⑥ 内容审核扩展点（未装配 = 放行；插件异常 = 捕获放行 + 留痕，VC-6.15）；
+/// ⑥ 内容审核扩展点（未装配 = 放行；插件异常 = 捕获放行 + 留痕）；
 /// ⑦ 落库与事件（事件**仅在真正新增**一条消息时发布：落库出口在并发重放下会返回既有消息，那不是新消息）。
 /// </para>
 /// <para>
@@ -248,7 +248,7 @@ public sealed class OnlineChatService
 
         if (!string.IsNullOrEmpty(dedupeKey))
         {
-            // 重发短路：命中即返回既有消息，不再走裁决 / 频控 / 审核（VC-6.10「同一逻辑发送只落一条」）。
+            // 重发短路：命中即返回既有消息，不再走裁决 / 频控 / 审核（「同一逻辑发送只落一条」）。
             // 顺序不可后移——移到最后则重放要先过频控，窗口期内重发会拿到 RateLimitExceeded，
             // 客户端据此判定「发送失败」而消息其实早已入库。
             var replayed = await _store.FindByDedupeKeyAsync(scope.TenantId, scope.AppId, channelId, dedupeKey, cancellationToken).ConfigureAwait(false);
@@ -497,7 +497,7 @@ public sealed class OnlineChatService
     }
 
     /// <summary>
-    /// 举报频道内的某条消息（vault:C7 S6.5 的举报入口：场景与证据由本方法补齐后交统一裁决域）。
+    /// 举报频道内的某条消息（举报入口：场景与证据由本方法补齐后交统一裁决域）。
     /// </summary>
     /// <param name="scope">生效作用域（必须含玩家主体位）。</param>
     /// <param name="channelId">频道标识。</param>
@@ -677,7 +677,7 @@ public sealed class OnlineChatService
     }
 
     /// <summary>
-    /// 执行内容审核扩展点（未装配 = 放行；插件异常 = 捕获放行并发留痕事件，VC-6.15）。
+    /// 执行内容审核扩展点（未装配 = 放行；插件异常 = 捕获放行并发留痕事件）。
     /// </summary>
     /// <param name="draft">待发送消息。</param>
     /// <param name="correlationId">关联标识（可空）。</param>

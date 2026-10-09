@@ -36,10 +36,10 @@ using System.Reflection;
 namespace GameFrameX.Tests.Discovery;
 
 /// <summary>
-/// PostgreSqlPlayerRouteSyncTarget / PostgreSqlPlayerRouteResolver 的 PostgreSQL 集成测试（C166 T8）。
+/// PostgreSqlPlayerRouteSyncTarget / PostgreSqlPlayerRouteResolver 的 PostgreSQL 集成测试。
 /// </summary>
 /// <remarks>
-/// PostgreSQL-backed integration tests for the player-route layer (C166 T8),
+/// PostgreSQL-backed integration tests for the player-route layer,
 /// ported test-by-test from <c>MongoPlayerRouteIntegrationTests</c> with identical
 /// names and assertions. Gated by GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING:
 /// without the variable the tests skip so plain <c>dotnet test</c> stays green on
@@ -127,13 +127,13 @@ public sealed class PostgreSqlPlayerRouteIntegrationTests : IDisposable
         var store = new PostgreSqlPlayerRouteStore(testDatabase.DataSource);
 
         // 行缺失时的两次首登插入（不同实例，version=1，顺序执行）：第二次无条件覆盖后写者胜出，
-        // 与 Mongo ReplaceOneAsync(IsUpsert) 的 last-writer-wins 对齐（C168 起 EF 化，经公开 API 直接覆盖）。
+        // 与 Mongo ReplaceOneAsync(IsUpsert) 的 last-writer-wins 对齐（EF 化后经公开 API 直接覆盖）。
         // 说明：顺序调用 UpsertAsync 时第二次会走 CAS 读回分支抛 PlayerRouteStaleException（行已存在），
         // 因此直接调用无条件首登写入以确定性地覆盖冲突覆盖路径；真并发收敛语义另见
         // SyncTarget_TrueConcurrentFirstLogin_ConvergesToOneRow。
         // Two sequential first-login inserts on a missing row (different instances, version=1): the second
-        // unconditionally overwrites — aligned with Mongo ReplaceOneAsync(IsUpsert) last-writer-wins. Since
-        // C168 the store is EF-based and this path is covered directly through the public API; a sequential
+        // unconditionally overwrites — aligned with Mongo ReplaceOneAsync(IsUpsert) last-writer-wins. The
+        // store is EF-based and this path is covered directly through the public API; a sequential
         // second UpsertAsync would instead hit the CAS read-back branch and throw PlayerRouteStaleException.
         await store.InsertFirstLoginAsync(new PlayerRouteRecord { PlayerId = 105, InstanceId = "game-1", Role = "Game", Version = 1, });
         await store.InsertFirstLoginAsync(new PlayerRouteRecord { PlayerId = 105, InstanceId = "game-2", Role = "Game", Version = 1, });

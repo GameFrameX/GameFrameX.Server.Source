@@ -31,12 +31,12 @@ using GameFrameX.Online.Social;
 namespace GameFrameX.Online.Runtime;
 
 /// <summary>
-/// 聊天审计投影（change C122 决策⑧④：<c>query_chat_messages</c> 依赖事件投影——聊天 store 无跨频道枚举 API，
+/// 聊天审计投影（<c>query_chat_messages</c> 依赖事件投影——聊天 store 无跨频道枚举 API，
 /// 本投影订阅 <c>Online.Chat.MessageSent</c> 事件建立跨频道索引，查询时回读 store 补全正文与参与者）。
 /// <para>
-/// 维护约束：事件载荷不含消息正文（C7 脱敏红线），正文一律经 <see cref="IOnlineChatStore.FindMessageAsync"/>
+/// 维护约束：事件载荷不含消息正文（脱敏红线），正文一律经 <see cref="IOnlineChatStore.FindMessageAsync"/>
 /// 受控回读；投影只存引用（频道 / 消息标识 / 排序键），消息撤回后的状态以回读结果为准；
-/// 宿主启动前的历史消息不在投影内（InMemory 单进程语义，C94）。
+/// 宿主启动前的历史消息不在投影内（InMemory 单进程语义）。
 /// </para>
 /// </summary>
 public sealed class OnlineChatAuditProjection
@@ -196,7 +196,7 @@ public sealed class OnlineChatAuditProjection
     /// 组装单条引用的审计条目（过滤与受控回读的固定顺序：时间窗 → 频道类型 → 频道回读 → 参与者 → 消息回读 → 关键字）。
     /// <para>
     /// 过滤顺序决定回读触发面：参与者不匹配的引用不触发消息回读；频道记录经共享缓存回读，
-    /// 正文经 <see cref="IOnlineChatStore.FindMessageAsync"/> 受控回读（C7 脱敏红线）。任一环节不满足返回 null（调用方跳过）。
+    /// 正文经 <see cref="IOnlineChatStore.FindMessageAsync"/> 受控回读（脱敏红线）。任一环节不满足返回 null（调用方跳过）。
     /// </para>
     /// </summary>
     /// <param name="reference">消息引用。</param>

@@ -31,10 +31,10 @@
 namespace GameFrameX.Discovery;
 
 /// <summary>
-/// 路由表快照提供者（C143d D15）。
+/// 路由表快照提供者。
 /// </summary>
 /// <remarks>
-/// Provides the current dual-view route table snapshot (C143d D15).
+/// Provides the current dual-view route table snapshot.
 /// the Mongo/PostgreSql endpoint watchers (in the database implementation assemblies) are the
 /// endpoint-resolution consumers depend on this narrow seam instead of the watcher
 /// itself, so tests can substitute a fixed table without any Mongo dependency.

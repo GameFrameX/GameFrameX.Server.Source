@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 群组聚合（vault:C7 S6.4：Group 是「成员集合 + 邀请集合 + 元数据」的唯一事实源）。
+/// 群组聚合（Group 是「成员集合 + 邀请集合 + 元数据」的唯一事实源）。
 /// <para>
 /// 维护约束（红线）：
 /// ① **整条记录是一个 CAS 单元**——成员集合、邀请集合、角色、Metadata 的任何变更都必须经

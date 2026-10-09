@@ -749,11 +749,11 @@ public class AppSetting
 
     /// <summary>
     /// 数据库实现提供者
-    /// <para>默认 Mongo；配置为 PostgreSql 时装配点切换为 PostgreSQL 实现（C166）</para>
+    /// <para>默认 Mongo；配置为 PostgreSql 时装配点切换为 PostgreSQL 实现</para>
     /// </summary>
     /// <remarks>
     /// Database implementation provider.
-    /// Defaults to Mongo; setting PostgreSql switches the assembly points to the PostgreSQL implementation (C166).
+    /// Defaults to Mongo; setting PostgreSql switches the assembly points to the PostgreSQL implementation.
     /// </remarks>
     [Option(nameof(DatabaseProvider), DefaultValue = "Mongo", Description = "数据库实现提供者：Mongo（默认）/ PostgreSql")]
     [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]

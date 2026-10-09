@@ -34,7 +34,7 @@ using GameFrameX.Discovery.Routing;
 namespace GameFrameX.Discovery;
 
 /// <summary>
-/// 通用心跳写侧（C167：自 Mongo / PG 平行实现归一，消费 <see cref="IHeartbeatStore"/>）。
+/// 通用心跳写侧（自 Mongo / PG 平行实现归一，消费 <see cref="IHeartbeatStore"/>）。
 /// </summary>
 /// <remarks>
 /// The generic heartbeat writer (C167, unified from the Mongo / PostgreSQL
@@ -63,7 +63,7 @@ public sealed class DiscoveryRegistry : IDisposable
     public static readonly TimeSpan DefaultHeartbeatInterval = TimeSpan.FromSeconds(5);
 
     /// <summary>
-    /// TTL 保存时长（15s，D11：watcher 三周期阈值同值兜底）。
+    /// TTL 保存时长（15s；watcher 三周期阈值同值兜底）。
     /// </summary>
     /// <remarks>
     /// The TTL expire-after window (15 s, D11; matches the watcher three-period threshold).
@@ -189,10 +189,10 @@ public sealed class DiscoveryRegistry : IDisposable
     }
 
     /// <summary>
-    /// 从环境变量构建本进程实例身份（D12 广播引导；驱动无关单一事实源的转发）。
+    /// 从环境变量构建本进程实例身份（广播引导；驱动无关单一事实源的转发）。
     /// </summary>
     /// <remarks>
-    /// Builds this process's instance identity from the D12 bootstrap environment
+    /// Builds this process's instance identity from the bootstrap environment
     /// variables (forwarded to the driver-neutral <see cref="AdvertiseEndpointEnvironment"/>).
     /// Returns null when the advertise port is not configured — callers treat that
     /// as "no cross-process identity" and skip the write side.
@@ -259,7 +259,7 @@ public sealed class DiscoveryRegistry : IDisposable
     }
 
     /// <summary>
-    /// 停止写侧并写终态 Stopped（D17 通道 4 优雅退出）。
+    /// 停止写侧并写终态 Stopped（通道 4 优雅退出）。
     /// </summary>
     /// <remarks>
     /// Stops the loops and writes the terminal Stopped state so watchers drop this

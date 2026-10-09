@@ -39,13 +39,13 @@ using GameFrameX.Online.Scope;
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 结算结果分发器（vault:C6 S5.8「可信结果 → 资产发放」）。
+/// 结算结果分发器（可信结果 → 资产发放）。
 /// <para>
 /// 维护约束（红线）：奖励发放的幂等边界是 <see cref="OnlineMatchResult.MatchResultId"/>——
 /// 业务单号与幂等键都由它派生（<c>{MatchResultId}-{PlayerId}</c>），
 /// 因此重复投递同一份结算结果不会二次发奖；而不同玩家的键不同，所以逐玩家独立判定，
 /// 一个玩家的失败或重放不影响其他玩家。分发**只消费服务端产出的结果对象**，
-/// 没有任何客户端可提交奖励结果的入口（VC-5.9）。
+/// 没有任何客户端可提交奖励结果的入口。
 /// </para>
 /// <para>
 /// 本次只覆盖资产侧（排行榜与通知由下游阶段消费 <c>Online.Match.Settled</c> 事件自行处理）。

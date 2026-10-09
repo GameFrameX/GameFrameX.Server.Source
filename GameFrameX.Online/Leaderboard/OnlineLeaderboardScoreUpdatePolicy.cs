@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Leaderboard;
 
 /// <summary>
-/// 排行榜分数累计策略（vault:C8 S7.1「分数来源」语义的一部分：同玩家多次可信写入如何合并为榜上分数）。
+/// 排行榜分数累计策略（「分数来源」语义的一部分：同玩家多次可信写入如何合并为榜上分数）。
 /// <para>
 /// 维护约束（红线）：策略裁决必须发生在存储临界区内（<c>InMemoryOnlineLeaderboardStore.ApplySubmissionAsync</c>），
 /// 与条目落档同一临界区，保证并发投递下「读旧值 → 算新值 → 写入」不被交错撕裂；

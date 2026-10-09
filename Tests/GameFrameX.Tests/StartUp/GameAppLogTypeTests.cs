@@ -33,10 +33,10 @@ using Xunit;
 namespace GameFrameX.Tests.StartUp;
 
 /// <summary>
-/// GameApp 进程级固定日志标识的单元测试（C143a D20#4）。
+/// GameApp 进程级固定日志标识的单元测试。
 /// </summary>
 /// <remarks>
-/// Unit tests for the process-level fixed log type of GameApp (C143a D20#4):
+/// Unit tests for the process-level fixed log type of GameApp:
 /// the log type is assigned only on the first call, so it does not drift
 /// to the last started role in a multi-role process.
 /// </remarks>

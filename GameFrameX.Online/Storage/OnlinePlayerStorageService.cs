@@ -35,13 +35,13 @@ using GameFrameX.Online.Contracts;
 using GameFrameX.Online.Scope;
 
 /// <summary>
-/// 玩家云存储服务（vault:C3 S2.6：玩家 + App 作用域隔离的 KV 读写/分页/软删/过期清理）。
+/// 玩家云存储服务（玩家 + App 作用域隔离的 KV 读写/分页/软删/过期清理）。
 /// <para>
-/// 维护约束（红线）：作用域 = (TenantId, AppId, PlayerId)——区服不参与隔离（换服数据随身，R3），
+/// 维护约束（红线）：作用域 = (TenantId, AppId, PlayerId)——区服不参与隔离（换服数据随身），
 /// 跨作用域读写在存储键层结构性不可达，查无记录一律 <see cref="OnlineErrorCode.ResourceNotFound"/>
-/// （同构错误，防存在性探测，VC-2.7/2.8/2.9）；写入走存储层 CAS 乐观锁——expectedVersion=0 为创建、
-/// &gt;0 为版本匹配更新，冲突映射 <see cref="OnlineErrorCode.VersionConflict"/>（VC-2.10）；
-/// 单值/单集合键数/分页上限超限拒绝（VC-2.11）；删除为软删；过期条目由
+/// （同构错误，防存在性探测）；写入走存储层 CAS 乐观锁——expectedVersion=0 为创建、
+/// &gt;0 为版本匹配更新，冲突映射 <see cref="OnlineErrorCode.VersionConflict"/>；
+/// 单值/单集合键数/分页上限超限拒绝；删除为软删；过期条目由
 /// <see cref="SweepExpiredAsync"/> 软删（读取即时不可见）。
 /// </para>
 /// </summary>

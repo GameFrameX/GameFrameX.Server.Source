@@ -238,7 +238,7 @@ public static partial class Keys
             public const string HolderNotInitialized = "RemoteMessaging.Routing.HolderNotInitialized";
 
             /// <summary>
-            /// 目标角色由本进程承载但未配置本地消息派发器（actor 派发器随 C143e 到达）
+            /// 目标角色由本进程承载但未配置本地消息派发器
             /// </summary>
             /// <remarks>
             /// 键名: RemoteMessaging.Routing.LocalDispatcherNotConfigured

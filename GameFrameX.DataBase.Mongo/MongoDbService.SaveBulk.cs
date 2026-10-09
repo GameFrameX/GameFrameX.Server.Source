@@ -86,9 +86,9 @@ public sealed partial class MongoDbService
         }
 
         var stateName = typeof(TState).Name;
-        // C171：SaveBulk 走 BsonDocument 直写 + state.ToBsonDocument() 序列化，写前必须先完成 ClassMap 懒注册，
+        // SaveBulk 走 BsonDocument 直写 + state.ToBsonDocument() 序列化，写前必须先完成 ClassMap 懒注册，
         // 否则存量文档多余字段容错与字典形态约定不生效。
-        // C171: SaveBulk writes raw BsonDocuments via state.ToBsonDocument(); lazy ClassMap registration must
+        // SaveBulk writes raw BsonDocuments via state.ToBsonDocument(); lazy ClassMap registration must
         // complete before writing, otherwise extra-element tolerance and dictionary conventions do not apply.
         MongoSerializationRegistry.EnsureClassMapRegistered<TState>();
         var collection = CurrentDatabase.GetCollection<BsonDocument>(stateName);
@@ -123,7 +123,7 @@ public sealed partial class MongoDbService
             }
             catch (Exception exception)
             {
-                // 逐批异常隔离（C159 迁移语义）：失败批次记日志后继续后续批次，避免单批故障放大为整批丢失
+                // 逐批异常隔离：失败批次记日志后继续后续批次，避免单批故障放大为整批丢失
                 // Per-batch exception isolation (migrated semantics): a failed batch is logged and the loop continues with the remaining batches.
                 LogHelper.Error("MongoDbService.SaveBulkAsync batch failed. StateName: {stateName} , BatchIndex: {batchIndex} , BatchCount: {batchCount} , Error: {error}", stateName, index / batchSize + 1, batchCount, exception);
             }

@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 举报案件（vault:C7 S6.3：举报的完整证据链，Admin 侧处置的输入，VC-6.16 断言对象）。
+/// 举报案件（举报的完整证据链，Admin 侧处置的输入）。
 /// <para>
 /// 维护约束：证据字段（<see cref="MatchId"/> / <see cref="ChatMessageId"/> / <see cref="ChannelId"/> /
 /// <see cref="Evidence"/>）是**照单全收的原始上下文**，服务层只校验、不改写、不解析——
@@ -168,7 +168,7 @@ public sealed class OnlineReportCase
     }
 
     /// <summary>
-    /// 获取或设置 Admin 侧案件关联键（Admin 仓案件编号；联调轮 GFX-771 对齐，未关联为空字符串）。
+    /// 获取或设置 Admin 侧案件关联键（Admin 仓案件编号；未关联为空字符串）。
     /// </summary>
     public string AdminCaseId
     {

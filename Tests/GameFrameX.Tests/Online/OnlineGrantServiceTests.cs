@@ -44,7 +44,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// OnlineGrantService 统一资产入口测试（vault:C4 VC-3.1～3.7：四来源幂等回放、
+    /// OnlineGrantService 统一资产入口测试（四来源幂等回放、
     /// 原子并发扣除、失败零半成品、部分应用补偿净效应归零、账本不可变只追加）。
     /// </summary>
     public class OnlineGrantServiceTests
@@ -359,7 +359,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-3.1～3.4：四类业务来源走统一入口，同键重试回放首次结果（只生效一次）。
+        /// 验证四类业务来源走统一入口，同键重试回放首次结果（只生效一次）。
         /// </summary>
         [Theory]
         [InlineData(OnlineAssetChangeSource.PaymentConfirm)]
@@ -391,7 +391,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证同键不同意图判冲突（规范化请求文本变化 → 6xxx，VC-1.4 语义在资产域的落地）。
+        /// 验证同键不同意图判冲突（规范化请求文本变化 → 6xxx，幂等冲突语义在资产域的落地）。
         /// </summary>
         [Fact]
         public async Task ExecuteAsync_SameKeyDifferentIntent_ShouldReturnVersionConflict()
@@ -447,7 +447,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-3.6：余额不足整批拒绝（零半成品——快照与账本都不留痕迹）并告警。
+        /// 验证余额不足整批拒绝（零半成品——快照与账本都不留痕迹）并告警。
         /// </summary>
         [Fact]
         public async Task ExecuteAsync_InsufficientBalance_ShouldFailWithoutPartialState()
@@ -471,7 +471,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-3.5：并发扣除互斥——只有余额可覆盖的请求成功，终态余额精确归零。
+        /// 验证并发扣除互斥——只有余额可覆盖的请求成功，终态余额精确归零。
         /// </summary>
         [Fact]
         public async Task ExecuteAsync_ConcurrentDeducts_OnlyAffordableApply()
@@ -497,7 +497,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-3.7/事件契约：多资产生效后账本前后值链式可推，事件带全量审计字段。
+        /// 验证多资产生效后账本前后值链式可推，事件带全量审计字段。
         /// </summary>
         [Fact]
         public async Task ExecuteAsync_MultiAssetBatch_ChainsLedgerAndPublishesAuditedEvent()
@@ -534,7 +534,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-3.6：部分应用中断 → 追加反转条目净效应归零，原条目不可变保留，原交易置 Compensated。
+        /// 验证部分应用中断 → 追加反转条目净效应归零，原条目不可变保留，原交易置 Compensated。
         /// </summary>
         [Fact]
         public async Task ExecuteAsync_PartialApplyCrash_CompensatesToNetZero()
@@ -616,7 +616,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-3.12：完整落账后、落定保存前崩溃 → 重启恢复判 Succeeded，同键重试回放而非重复发放。
+        /// 验证完整落账后、落定保存前崩溃 → 重启恢复判 Succeeded，同键重试回放而非重复发放。
         /// </summary>
         [Fact]
         public async Task RecoverAsync_FullApplyCrashBeforeSettle_RecoversAsSucceededThenReplays()
@@ -651,7 +651,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-3.12：重启时零落账的 Executing 交易判 Failed（不存在半成品长期滞留）。
+        /// 验证重启时零落账的 Executing 交易判 Failed（不存在半成品长期滞留）。
         /// </summary>
         [Fact]
         public async Task RecoverAsync_ZeroEntryExecutingTransaction_MarksFailed()

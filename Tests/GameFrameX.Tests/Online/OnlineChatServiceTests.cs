@@ -40,7 +40,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 聊天服务测试（vault:C7 S6.5/S6.6/S6.7：VC-6.10 游标翻页不重复不漏项、VC-6.15 审核插件不阻断主流程、
+    /// 聊天服务测试（游标翻页不重复不漏项、审核插件不阻断主流程、
     /// 以及频道成员资格 fail closed、频控、撤回窗口与事件脱敏）。
     /// </summary>
     public class OnlineChatServiceTests
@@ -146,7 +146,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证发送成功会落库并发出消息事件，且事件载荷**不含消息正文**（C93 脱敏红线）。
+        /// 验证发送成功会落库并发出消息事件，且事件载荷**不含消息正文**（脱敏红线）。
         /// <para>
         /// 事件会流向审计、Admin 与离线消费方；一旦带上正文，就等于绕过了频道成员资格校验。
         /// </para>
@@ -309,7 +309,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证审核插件抛异常时**放行**并发出留痕事件（VC-6.15：审核服务故障不得让全服聊天停摆）。
+        /// 验证审核插件抛异常时**放行**并发出留痕事件（审核服务故障不得让全服聊天停摆）。
         /// </summary>
         [Fact]
         public async Task SendAsync_WhenModerationHookThrows_ShouldAllowAndPublishModerationFailed()
@@ -415,7 +415,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证定向私聊受屏蔽约束（VC-6.3 落到聊天链路上：A 屏蔽 B 后 A 发不出去，B 也发不出去）。
+        /// 验证定向私聊受屏蔽约束（A 屏蔽 B 后 A 发不出去，B 也发不出去）。
         /// </summary>
         [Fact]
         public async Task SendAsync_WhenParticipantsBlocked_ShouldDenyBothDirections()
@@ -473,7 +473,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证连发后翻页**不重复、不漏项**（VC-6.10），且顺序为 <c>(SentAtTime, Sequence)</c> 升序。
+        /// 验证连发后翻页**不重复、不漏项**，且顺序为 <c>(SentAtTime, Sequence)</c> 升序。
         /// </summary>
         [Fact]
         public async Task GetHistoryAsync_ShouldPageCompleteSequenceWithoutDuplicateOrMissing()

@@ -30,11 +30,11 @@
 namespace GameFrameX.Online.GameEvents;
 
 /// <summary>
-/// 游戏事件 L0 校验的拒绝码（vault:C8 S7.5 四类拒绝；**不是** <c>OnlineErrorCode</c>）。
+/// 游戏事件基础校验的拒绝码（四类拒绝；**不是** <c>OnlineErrorCode</c>）。
 /// <para>
 /// 维护约束（红线）：拒绝码描述的是**脏事件本身**（投递方数据问题），不是业务判定结果，
-/// 因而不占用 23 个已冻结的 <c>OnlineErrorCode</c> 成员（对齐 C99 <c>OnlineSocialDecision</c> /
-/// C104 赛事报名拒绝码的同一取舍）。拒绝码**只增不改**。
+/// 因而不占用 23 个已冻结的 <c>OnlineErrorCode</c> 成员（对齐 <c>OnlineSocialDecision</c> /
+/// 赛事报名拒绝码的同一取舍）。拒绝码**只增不改**。
 /// </para>
 /// </summary>
 public enum OnlineGameEventRejectionReason

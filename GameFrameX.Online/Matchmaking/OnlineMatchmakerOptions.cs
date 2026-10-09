@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Matchmaking;
 
 /// <summary>
-/// 匹配与限流可配置项（vault:C5 风险表：规则不硬编码、限流阈值可配置且需验误伤率）。
+/// 匹配与限流可配置项（规则不硬编码、限流阈值可配置且需验误伤率）。
 /// <para>
 /// 维护约束：所有阈值必须可由装配方覆盖——压测要同时验证「刷 Ticket 被拦」与「正常玩家不受影响」，
 /// 阈值写死则该验证无法进行。默认值只保证单机测试可用，不代表线上取值。
@@ -39,7 +39,7 @@ namespace GameFrameX.Online.Matchmaking;
 public sealed class OnlineMatchmakerOptions
 {
     /// <summary>
-    /// 获取或设置票据存活时长（秒；默认 300）。到点未成组转 Expired（VC-4.9）。
+    /// 获取或设置票据存活时长（秒；默认 300）。到点未成组转 Expired。
     /// </summary>
     public int TicketTimeToLiveSeconds
     {
@@ -48,7 +48,7 @@ public sealed class OnlineMatchmakerOptions
     } = 300;
 
     /// <summary>
-    /// 获取或设置等待时间扩展阈值（秒；默认 30）。等待超过该值后技能区间按扩展间隔放宽（VC-4.5）。
+    /// 获取或设置等待时间扩展阈值（秒；默认 30）。等待超过该值后技能区间按扩展间隔放宽。
     /// </summary>
     public int WaitExpansionThresholdSeconds
     {

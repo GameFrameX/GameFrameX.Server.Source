@@ -32,7 +32,7 @@ using GameFrameX.Foundation.Idempotency;
 namespace GameFrameX.Online.Events;
 
 /// <summary>
-/// Online 事件发布基座（vault:C2 S1.6：组装 Foundation <c>IEventPublisher</c> 通用原语，
+/// Online 事件发布基座（组装 Foundation <c>IEventPublisher</c> 通用原语，
 /// Online 语义（作用域字段承载）由 <see cref="OnlineEventEnvelopeMapper"/> 完成）。
 /// <para>维护约束：发布前必须完成信封校验（Foundation 发布器保证非法信封不被分发）；业务侧只允许经本基座发布 Online 事件，
 /// 禁止绕过作用域承载直发裸信封。</para>

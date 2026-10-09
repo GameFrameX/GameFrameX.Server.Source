@@ -23,10 +23,10 @@ using PlayerRouteInfo = GameFrameX.NetWork.RemoteMessaging.Unified.PlayerRouteIn
 namespace GameFrameX.Tests.Discovery;
 
 /// <summary>
-/// 玩家路由装配接线测试（C152）。
+/// 玩家路由装配接线测试。
 /// </summary>
 /// <remarks>
-/// Unit tests for the C152 player-route wiring completion:
+/// Unit tests for the player-route wiring:
 /// resolver selection (discovery-provided Mongo resolver vs Hotfix default fallback),
 /// <c>DiscoveryRoutingWire.AttachLocalDispatcher</c> semantics (install, idempotence,
 /// remote-chain preservation, explicit pre-Activate failure), and the closed-loop
@@ -86,7 +86,7 @@ public class PlayerRouteWiringTests
         var resolver = PlayerRouteWiring.SelectRouteResolver(null);
 
         Assert.IsType<DefaultPlayerRouteResolver>(resolver);
-        // 回落分支行为等价：未知玩家在空 SessionManager 下解析为离线（与 C152 前一致）。
+        // 回落分支行为等价：未知玩家在空 SessionManager 下解析为离线（与原先一致）。
         var route = await resolver.ResolveAsync(987654321L);
         Assert.False(route.IsOnline);
     }

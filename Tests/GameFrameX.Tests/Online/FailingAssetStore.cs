@@ -36,11 +36,11 @@ using GameFrameX.Online.Contracts;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 发放通道瞬时故障注入资产存储（VC-7.6-b 证据件）：让指定玩家的落账前 N 次返回可重试失败，
+    /// 发放通道瞬时故障注入资产存储：让指定玩家的落账前 N 次返回可重试失败，
     /// 之后恢复正常——模拟生产上单玩家发放通道抖动（依赖不可用），而**其余玩家照常到账**。
     /// <para>
     /// 走的是统一入口的软失败分支（存储返回 Failed），因此幂等键会被入口释放、重试会重新执行——
-    /// 这正是「重试补齐且不重复」需要验证的那条路径；异常中断分支（落账状态未知）由 C95 用例覆盖。
+    /// 这正是「重试补齐且不重复」需要验证的那条路径；异常中断分支（落账状态未知）另有用例覆盖。
     /// </para>
     /// </summary>
     internal sealed class FailingAssetStore : IOnlineAssetStore

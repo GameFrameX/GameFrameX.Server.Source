@@ -31,11 +31,11 @@
 namespace GameFrameX.Discovery;
 
 /// <summary>
-/// 端点主机形态（C143d D15 addressKind 字段）。
+/// 端点主机形态（addressKind 字段）。
 /// </summary>
 /// <remarks>
-/// The host address kind carried by heartbeat documents (C143d D15 addressKind field).
-/// The DNS name is the first-class default per D15: advertised addresses prefer
+/// The host address kind carried by heartbeat documents (the addressKind field).
+/// The DNS name is the first-class default: advertised addresses prefer
 /// stable DNS names (container name / Kubernetes Service name / domain) over
 /// ephemeral IP literals so restarts keep a routable identity.
 /// </remarks>

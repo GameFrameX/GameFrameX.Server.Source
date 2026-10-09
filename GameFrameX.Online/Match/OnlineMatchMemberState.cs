@@ -30,11 +30,11 @@
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 对局成员状态（vault:C6「断线不立即等于退出」的落点）。
+/// 对局成员状态（「断线不立即等于退出」的落点）。
 /// <para>
 /// 维护约束（红线）：<see cref="Disconnected"/> 是**可恢复**态而非终态——断线后成员保留在对局成员表中，
 /// 直到重连窗口超时（窗口内重连回到 <see cref="Playing"/>，超窗按玩法转 <see cref="Left"/> 或托管，
-/// VC-5.6 / VC-5.7）。<see cref="Left"/> 与 <see cref="Kicked"/> 为终态且不可回退。
+/// 断线可重连、超窗收敛）。<see cref="Left"/> 与 <see cref="Kicked"/> 为终态且不可回退。
 /// </para>
 /// </summary>
 public enum OnlineMatchMemberState

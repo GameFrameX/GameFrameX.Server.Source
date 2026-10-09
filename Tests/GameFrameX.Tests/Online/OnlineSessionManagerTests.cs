@@ -39,7 +39,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 会话生命周期管理器测试（vault:C3 VC-2.15/2.16：主线推进、断线重连、超窗清理、事件发布）。
+    /// 会话生命周期管理器测试（主线推进、断线重连、超窗清理、事件发布）。
     /// </summary>
     public class OnlineSessionManagerTests
     {
@@ -56,7 +56,7 @@ namespace GameFrameX.Tests.Online
         private const long PlayerId = 1001;
 
         /// <summary>
-        /// 验证主线推进 Authenticated → Connected → Active，并按序发布生命周期事件（VC-2.16）。
+        /// 验证主线推进 Authenticated → Connected → Active，并按序发布生命周期事件。
         /// </summary>
         [Fact]
         public async Task Lifecycle_ShouldAdvanceAuthenticatedConnectedActiveWithEvents()
@@ -140,7 +140,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证重连窗口超时清理转 Closed/ReconnectWindowExpired，无永久 Reconnecting（VC-2.15）。
+        /// 验证重连窗口超时清理转 Closed/ReconnectWindowExpired，无永久 Reconnecting。
         /// </summary>
         [Fact]
         public async Task SweepAsync_ReconnectWindowExpired_ShouldCloseSession()

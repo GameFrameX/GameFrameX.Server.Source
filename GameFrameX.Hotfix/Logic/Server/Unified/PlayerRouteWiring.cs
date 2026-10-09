@@ -20,10 +20,10 @@ using GameFrameX.NetWork.RemoteMessaging.Unified;
 namespace GameFrameX.Hotfix.Logic.Server.Unified;
 
 /// <summary>
-/// 统一消息发送器的玩家路由装配选择（C152）。
+/// 统一消息发送器的玩家路由装配选择。
 /// </summary>
 /// <remarks>
-/// The resolver-selection wiring for <see cref="UnifiedMessageSenderHolder"/> (C152).
+/// The resolver-selection wiring for <see cref="UnifiedMessageSenderHolder"/>.
 /// The launch flow activates the Mongo discovery layer — and with it the
 /// control-database player-route read side — strictly before the hotfix module loads,
 /// so by the time <c>OnLoadSuccess</c> runs,

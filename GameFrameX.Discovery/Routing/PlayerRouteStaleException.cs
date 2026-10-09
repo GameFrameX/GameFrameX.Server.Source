@@ -10,7 +10,7 @@
 namespace GameFrameX.Discovery.Routing;
 
 /// <summary>
-/// 玩家路由版本号过期异常（C143e D21 顶号竞态）。
+/// 玩家路由版本号过期异常（顶号竞态）。
 /// </summary>
 /// <remarks>
 /// Thrown when the persisted route document already carries a newer

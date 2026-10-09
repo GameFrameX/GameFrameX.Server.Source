@@ -36,7 +36,7 @@ using GameFrameX.Online.Season;
 namespace GameFrameX.Online.Events;
 
 /// <summary>
-/// 赛季域事件工厂（vault:C8 S7.3；C93 信封事件，<c>Source = "online-season"</c>）。
+/// 赛季域事件工厂（统一信封事件，<c>Source = "online-season"</c>）。
 /// <para>
 /// 维护约束（红线）：事件是**事实不是状态**——<c>Ended</c> 只陈述「赛季已结束、快照已落档 N 条、榜单已重置」，
 /// 快照条目明细不进事件（快照本体经赛季快照回溯查询读取，事件只留计数与时刻作为审计锚点）；

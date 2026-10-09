@@ -32,9 +32,9 @@ namespace GameFrameX.Online.Overview;
 /// <summary>
 /// 在线总览的匹配队列概况行（按「玩法模式 + 区域」聚合）。
 /// <para>
-/// 维护约束：队列口径归 C97 匹配域所有，本行只是该口径在总览快照中的投影——深度、平均等待与吞吐的
+/// 维护约束：队列口径归匹配域所有，本行只是该口径在总览快照中的投影——深度、平均等待与吞吐的
 /// 统计定义集中在 <see cref="OnlineOverviewService"/> 类文档，本类型不得另行定义，否则同一指标会出现两处口径而漂移。
-/// 与 C97 <see cref="Matchmaking.OnlineMatchQueueSnapshot"/> 的分工：后者是匹配域的完整观测快照（含逐票据明细），
+/// 与 <see cref="Matchmaking.OnlineMatchQueueSnapshot"/> 的分工：后者是匹配域的完整观测快照（含逐票据明细），
 /// 本行是总览页需要的聚合视图（不含任何玩家或票据明细）。
 /// </para>
 /// </summary>

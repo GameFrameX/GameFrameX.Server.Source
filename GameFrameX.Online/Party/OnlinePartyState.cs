@@ -30,11 +30,11 @@
 namespace GameFrameX.Online.Party;
 
 /// <summary>
-/// 队伍生命周期状态（vault:C5 冻结：Created → Inviting → Formed → Ready → Matching → Matched，
+/// 队伍生命周期状态（冻结状态集：Created → Inviting → Formed → Ready → Matching → Matched，
 /// 分支 Disbanded / Expired / Left / Cancelled / Failed）。
 /// <para>
 /// 维护约束：本枚举是队伍状态的唯一权威，迁移合法性只由 <see cref="OnlinePartyStateMachine"/> 判定，
-/// 服务层不得绕过状态机直接落库（vault:C5 S4.3：迁移合法性单一判据）。
+/// 服务层不得绕过状态机直接落库（迁移合法性单一判据）。
 /// <c>Left</c> 表示「成员退出/被移除后人数跌破下限、队伍仍存活」——补人可回到 <c>Formed</c>；
 /// 它是可恢复态，不是终态。这与「解散」语义严格区分：解散后队伍不再使用。
 /// </para>

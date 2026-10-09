@@ -36,7 +36,7 @@ namespace GameFrameX.Online.Match;
 /// <para>
 /// 维护约束（红线）：<see cref="OnlineRockPaperScissorsPlayerState.Gesture"/> 持有**未结算**的出拳，
 /// 因此本状态的序列化结果属于服务端内部数据——不得原样下发给客户端（否则对手可在结算前窥屏）。
-/// 客户端可见的出拳只出现在已结算的 <c>RoundResolved</c> 事件载荷中（C6「未结算前对外为 None」）。
+/// 客户端可见的出拳只出现在已结算的 <c>RoundResolved</c> 事件载荷中（未结算前对外为 None）。
 /// </para>
 /// </summary>
 public sealed class OnlineRockPaperScissorsState

@@ -31,10 +31,10 @@
 namespace GameFrameX.Discovery;
 
 /// <summary>
-/// 实例上下线变化类别（C143d D15 事件）。
+/// 实例上下线变化类别（watcher 广播事件）。
 /// </summary>
 /// <remarks>
-/// The kind of instance lifecycle change broadcast by the watcher (C143d D15 events).
+/// The kind of instance lifecycle change broadcast by the watcher.
 /// Values start at 1 on purpose: an uninitialized field must never read as a valid kind.
 /// </remarks>
 public enum RoleInstanceChangeKind

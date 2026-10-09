@@ -32,7 +32,7 @@ namespace GameFrameX.Online.Timeline;
 /// <summary>
 /// 玩家时间线查询条件（作用域与玩家主体位来自 <see cref="Scope.OnlineScope"/>，本类型不重复承载玩家标识）。
 /// <para>
-/// 维护约束：玩家标识只在作用域里出现一次——对齐 C95 <c>OnlineAssetQueryService</c> 的「资产查询必须绑定玩家主体位」先例。
+/// 维护约束：玩家标识只在作用域里出现一次——对齐 <c>OnlineAssetQueryService</c> 的「资产查询必须绑定玩家主体位」先例。
 /// 若查询体再带一份玩家标识，两份不一致时就会出现「按 A 授权、按 B 取数」的越权读取，且这类缺陷在常规用例里不可见。
 /// </para>
 /// </summary>

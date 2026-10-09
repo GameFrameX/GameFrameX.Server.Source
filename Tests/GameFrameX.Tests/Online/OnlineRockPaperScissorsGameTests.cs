@@ -36,7 +36,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 石头剪刀布样例玩法测试（vault:C6 S5.4 / VC-5.12：服务端裁决胜负、超时按规则推进、
+    /// 石头剪刀布样例玩法测试（服务端裁决胜负、超时按规则推进、
     /// 结算只依赖服务端状态）。
     /// </summary>
     public class OnlineRockPaperScissorsGameTests
@@ -51,7 +51,7 @@ namespace GameFrameX.Tests.Online
         private const long Now = 1000000L;
 
         /// <summary>
-        /// 验证 S5.4：初始状态为两名玩家、第 1 局、无出拳。
+        /// 验证初始状态为两名玩家、第 1 局、无出拳。
         /// </summary>
         [Fact]
         public void CreateInitialState_ShouldSeedBothPlayers()
@@ -68,7 +68,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.12：双方出拳后由服务端裁决胜负并计分。
+        /// 验证双方出拳后由服务端裁决胜负并计分。
         /// </summary>
         [Fact]
         public void ApplyInput_BothSubmitted_ShouldResolveRound()
@@ -95,7 +95,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.3：同一局重复出拳被拒（客户端不得改主意）。
+        /// 验证同一局重复出拳被拒（客户端不得改主意）。
         /// </summary>
         [Fact]
         public void ApplyInput_TwiceInSameRound_ShouldBeRejected()
@@ -112,7 +112,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.2：越出玩法契约的出拳值被拒。
+        /// 验证越出玩法契约的出拳值被拒。
         /// </summary>
         [Fact]
         public void ApplyInput_OutOfContractGesture_ShouldBeRejected()
@@ -129,7 +129,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.12：超时未出拳方判负，已出拳方赢下该局。
+        /// 验证超时未出拳方判负，已出拳方赢下该局。
         /// </summary>
         [Fact]
         public void Advance_OneSubmitted_ShouldAwardRoundByTimeout()
@@ -155,7 +155,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.12：双方均不出拳时对局仍收敛到确定结果（局数耗尽 → 平局），不永久挂起。
+        /// 验证双方均不出拳时对局仍收敛到确定结果（局数耗尽 → 平局），不永久挂起。
         /// </summary>
         [Fact]
         public void Advance_NoSubmission_ShouldConvergeToDraw()
@@ -184,7 +184,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 S5.7 前置：先胜两局即终结，结算条目名次与奖励匹配。
+        /// 验证先胜两局即终结，结算条目名次与奖励匹配。
         /// </summary>
         [Fact]
         public void BuildResult_WinnerTakesTwoRounds()
@@ -212,7 +212,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 S5.4：玩家数不足玩法下限时不得开局（由 Actor 依据 MinPlayers 判定）。
+        /// 验证玩家数不足玩法下限时不得开局（由 Actor 依据 MinPlayers 判定）。
         /// </summary>
         [Fact]
         public void ModeContract_ShouldBeTwoPlayerMatch()

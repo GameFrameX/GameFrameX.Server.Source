@@ -36,10 +36,10 @@ using MongoDB.Driver;
 namespace GameFrameX.DataBase.Mongo.Routing;
 
 /// <summary>
-/// 跨服玩家路由控制文档（C143e D21）；属性形态继承自 <see cref="PlayerRouteEntity"/>。
+/// 跨服玩家路由控制文档；属性形态继承自 <see cref="PlayerRouteEntity"/>。
 /// </summary>
 /// <remarks>
-/// The cross-server player route document in the control database (C143e D21).
+/// The cross-server player route document in the control database.
 /// Properties are declared once on the shared <see cref="PlayerRouteEntity"/> base;
 /// the BSON wire mapping (camelCase elements) lives in
 /// <see cref="MongoDiscoverySerialization"/> and is byte-identical to the former
@@ -59,10 +59,10 @@ public sealed class PlayerRouteDocument : PlayerRouteEntity
 }
 
 /// <summary>
-/// player_route 集合契约（D18 全名约定 + 索引工具）。
+/// player_route 集合契约（全名约定 + 索引工具）。
 /// </summary>
 /// <remarks>
-/// The player_route collection contract (D18 no-abbreviation rule plus the
+/// The player_route collection contract (the no-abbreviation naming rule plus the
 /// index bootstrap utility). The unique index on <c>playerId</c> is what makes
 /// upsert idempotent; the TTL index on <c>lastSeenAt</c> bounds the offline
 /// garbage window to 30 days so the collection never grows unbounded for

@@ -36,17 +36,17 @@ using GameFrameX.Online.Events;
 using GameFrameX.Online.Social;
 
 /// <summary>
-/// 匹配协调器（vault:C5 S4.6：按模式/区域/规模/等级区间成组，产出 assignment）。
+/// 匹配协调器（按模式/区域/规模/等级区间成组，产出 assignment）。
 /// <para>
 /// 维护约束（红线）：
 /// ① 成组是**整票进整票出**——票据携带的所有成员要么一起进入对局，要么一起留在队列
-/// （VC-4.3 队伍完整性）；因此累加候选时若加上一张票据会超过目标规模，就跳过该票据而不是拆开它。
+/// （队伍完整性要求）；因此累加候选时若加上一张票据会超过目标规模，就跳过该票据而不是拆开它。
 /// ② 落档走 <see cref="IOnlineMatchTicketStore.CommitMatchAsync"/> 的原子提交：任何一张票据在提交瞬间
-/// 已不在排队态（被取消/过期/上一轮消费），整组不生效且**不留半成品**，下一轮重新收敛（VC-4.2/VC-4.12）。
-/// ③ FIFO 优先：按入队时刻升序挑选基准票据，等待最久者先成组（VC-4.5 等待时间扩展的公平性前提）。
+/// 已不在排队态（被取消/过期/上一轮消费），整组不生效且**不留半成品**，下一轮重新收敛。
+/// ③ FIFO 优先：按入队时刻升序挑选基准票据，等待最久者先成组（等待时间扩展的公平性前提）。
 /// </para>
 /// <para>
-/// 天花板（ponytail）：单轮 O(n²) 扫描（每张基准票据线性找同伴），队列规模上千后需换分桶索引
+/// 天花板：单轮 O(n²) 扫描（每张基准票据线性找同伴），队列规模上千后需换分桶索引
 /// （按 Mode/Region/TeamSize 预分组）；当前量级下正确性优先。
 /// </para>
 /// </summary>
@@ -64,7 +64,7 @@ public sealed class OnlineMatchmakerCoordinator
     /// <summary>事件发布器。</summary>
     private readonly IOnlineEventPublisher _eventPublisher;
 
-    /// <summary>跨域社交裁决（可空：null = 不启用屏蔽/处罚裁决，既有行为不变；见 C99 方案复审 P0-1）。</summary>
+    /// <summary>跨域社交裁决（可空：null = 不启用屏蔽/处罚裁决，既有行为不变）。</summary>
     private readonly IOnlineSocialGate _socialGate;
 
     /// <summary>
@@ -202,14 +202,14 @@ public sealed class OnlineMatchmakerCoordinator
     /// <summary>
     /// 以基准票据为中心挑选成组票据（FIFO 顺序、整票累加、不拆队）。
     /// <para>
-    /// 维护约束（社交裁决，C99 方案复审 P0-1）：候选票据与**已入组的每一名成员**两两走
+    /// 维护约束（社交裁决）：候选票据与**已入组的每一名成员**两两走
     /// <see cref="IOnlineSocialGate"/> 裁决（屏蔽双向生效、封禁拒绝），任一命中即**跳过该候选票据**——
     /// 跳过而不是拆开它，是「整票进整票出」红线在社交裁决下的延续：
     /// 拆票会让同一队伍的成员被分进不同对局，代价远大于多等一轮。
     /// 裁决对每一对玩家**双向各问一次**：屏蔽在裁决内部本就是对双向查的，但处罚（禁言 / 封禁）
     /// 是绑定在发起方身上的单向事实——只问一个方向会让「被处罚者恰好在候选票据里」逃过裁决，
-    /// 而本处没有「谁是发起方」的概念，双方都是被动入组。方案 P0-1 的措辞是「任一方向被 Block / 被处罚」。
-    /// 天花板（ponytail）：两两裁决是 O(组规模 × 候选规模 × 2) 次判定，队规模上调后需换成
+    /// 而本处没有「谁是发起方」的概念，双方都是被动入组。约定措辞是「任一方向被 Block / 被处罚」。
+    /// 天花板：两两裁决是 O(组规模 × 候选规模 × 2) 次判定，队规模上调后需换成
     /// 「先取成员屏蔽 / 处罚集合再求交」的批量形态。
     /// </para>
     /// </summary>
@@ -321,7 +321,7 @@ public sealed class OnlineMatchmakerCoordinator
     }
 
     /// <summary>
-    /// 生成成组时的规则快照（记录本次实际生效的区间与等待时长，VC-4.5 / VC-4.13）。
+    /// 生成成组时的规则快照（记录本次实际生效的区间与等待时长）。
     /// </summary>
     /// <param name="group">成组票据。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
@@ -389,7 +389,7 @@ public sealed class OnlineMatchmakerCoordinator
     /// <summary>
     /// 判断候选票据能否与本组共处一局（pairwise 社交裁决：屏蔽双向生效、封禁拒绝）。
     /// <para>
-    /// 未注入 <see cref="IOnlineSocialGate"/>（<c>null</c>）时一律放行，保持既有行为不变（C99 方案复审 P0-1）。
+    /// 未注入 <see cref="IOnlineSocialGate"/>（<c>null</c>）时一律放行，保持既有行为不变。
     /// 组内为空（白板基准票据）时无需裁决——没有对手方就没有社交冲突。
     /// </para>
     /// </summary>

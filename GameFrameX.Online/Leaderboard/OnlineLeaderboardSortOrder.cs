@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Leaderboard;
 
 /// <summary>
-/// 排行榜排序方向（vault:C8 S7.1：第一版个人榜支持高分优先与低分优先两种方向）。
+/// 排行榜排序方向（第一版个人榜支持高分优先与低分优先两种方向）。
 /// <para>
 /// 维护约束：方向在榜单创建时固化，写入侧（「更好分数」的判定）与查询侧（Top N / 附近排名 / 分页）
 /// 必须使用同一方向语义（统一经 <see cref="OnlineLeaderboardOrdering"/> 比较），禁止两处各写一份判定。

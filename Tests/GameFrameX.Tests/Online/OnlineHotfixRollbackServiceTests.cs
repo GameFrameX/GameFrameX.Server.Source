@@ -44,7 +44,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// Hotfix 回滚服务测试（C106 / vault:C9 S8.5 · VC-8.9 服务端半边：协议兼容检查三类差异判定
+    /// Hotfix 回滚服务测试（服务端半边：协议兼容检查三类差异判定
     /// （Removed/Changed 不兼容拒绝、Added 兼容入报告）、回滚成功全链路（版本切换 + 审计 Domain=Operation + 事件）、
     /// 幂等重放同构（IsReplay、不重复执行、审计不重复落档）、目标未登记 4002 / 无活跃版本 5001 /
     /// 目标=当前 5003 / 协议不兼容 6002 且版本未切换 / 执行器失败 8002 且幂等键落 Fail 可重试 /

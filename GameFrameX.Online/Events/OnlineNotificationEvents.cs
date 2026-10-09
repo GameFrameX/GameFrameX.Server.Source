@@ -33,12 +33,12 @@ using System.Text.Json;
 using GameFrameX.Online.Social;
 
 /// <summary>
-/// 通知域事件工厂（vault:C7 S6.8/S6.9：通知状态变更事件供下游与 Admin 消费）。
+/// 通知域事件工厂（通知状态变更事件供下游与 Admin 消费）。
 /// <para>
 /// 维护约束：事件是事实不是状态——消费端不得回写通知状态；载荷只放标识与状态名，
-/// **不放通知正文**（<see cref="OnlineNotification.Payload"/> 可能含敏感信息，沿用 C93 脱敏要求），
+/// **不放通知正文**（<see cref="OnlineNotification.Payload"/> 可能含敏感信息，沿用既有脱敏要求），
 /// 也不放去重键（去重键是通知域内部收敛依据，无对外语义）；
-/// 通知状态变更事件是「离线期间的必要通知已补发」的对外证据链（VC-6.11 补发顺序、VC-6.13 过期丢弃）。
+/// 通知状态变更事件是「离线期间的必要通知已补发」的对外证据链（补发顺序与过期丢弃依据）。
 /// </para>
 /// </summary>
 public static class OnlineNotificationEvents

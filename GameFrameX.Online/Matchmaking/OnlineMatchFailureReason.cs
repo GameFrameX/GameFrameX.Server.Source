@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Matchmaking;
 
 /// <summary>
-/// 匹配失败原因（vault:C5 量化指标：匹配失败可给出原因码的比例 = 100%）。
+/// 匹配失败原因（匹配失败可给出原因码的比例 = 100%）。
 /// <para>
 /// 维护约束：任何离开 <see cref="OnlineMatchTicketState.Queued"/> 的终态都必须带非
 /// <see cref="None"/> 的原因码——「无原因失败」是不可接受的（玩家要能知道为什么没匹配上）。

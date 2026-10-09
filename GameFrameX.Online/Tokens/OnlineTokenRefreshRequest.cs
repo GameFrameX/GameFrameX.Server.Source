@@ -32,7 +32,7 @@ using GameFrameX.Online.Scope;
 namespace GameFrameX.Online.Tokens;
 
 /// <summary>
-/// Token 刷新请求（vault:C2 S1.4：刷新必须校验原 Token 未吊销且未过刷新窗口，否则映射 2xxx 段拒绝）。
+/// Token 刷新请求（刷新必须校验原 Token 未吊销且未过刷新窗口，否则映射 2xxx 段拒绝）。
 /// </summary>
 public sealed class OnlineTokenRefreshRequest
 {

@@ -36,7 +36,7 @@ namespace GameFrameX.Online.Match;
 /// <para>
 /// 维护约束（红线）：<see cref="Accepted"/> 为 <c>false</c> 时
 /// <see cref="GameState"/> 必须为 null 或与传入状态等值——拒绝路径不得改变玩法状态，
-/// 否则「非法输入被拒不改变状态」（VC-5.3）在玩法层被绕过。
+/// 否则「非法输入被拒不改变状态」在玩法层被绕过。
 /// <see cref="ServerEvents"/> 中的事件不携带服务器序号，序号由 Actor 统一分配后入日志。
 /// </para>
 /// </summary>

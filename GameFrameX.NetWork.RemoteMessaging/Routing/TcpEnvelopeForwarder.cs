@@ -36,10 +36,10 @@ using GameFrameX.ProtoBuf.Net;
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
-/// TCP 信封转发器（C143d D3 case 2/3 默认发送通道）。
+/// TCP 信封转发器（case 2/3 默认发送通道）。
 /// </summary>
 /// <remarks>
-/// The default TCP send channel for D3 case 2/3 (C143d).
+/// The default TCP send channel for case 2/3.
 /// One connection bundle per target endpoint (a provider owning a single pooled
 /// connection plus a whole-frame write lock), so different instances stay on
 /// independent connections while concurrent forwards to the same endpoint are

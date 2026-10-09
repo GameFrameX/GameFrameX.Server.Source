@@ -37,14 +37,14 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 赛事生命周期测试（vault:C8 S7.4 / VC-7.8：赛事生命周期与报名幂等）。
+    /// 赛事生命周期测试（赛事生命周期与报名幂等）。
     /// 覆盖创建校验、报名资格判定与机器可读拒绝、报名幂等不重发事件、状态机门禁、
     /// 结束冻结成绩**且只读榜单**、未报名者不进成绩、跨 App 反预言。
     /// </summary>
     public class OnlineTournamentLifecycleTests
     {
         /// <summary>
-        /// 验证 VC-7.8-a：同一玩家重复报名返回既有登记（重放），登记数守恒、报名事件只发一次。
+        /// 验证同一玩家重复报名返回既有登记（重放），登记数守恒、报名事件只发一次。
         /// </summary>
         [Fact]
         public async Task RegisterAsync_DuplicateRegistration_ShouldReplayWithoutNewRegistration()
@@ -71,7 +71,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.8-b：资格条件不满足时以成功回执携带**机器可读拒绝码**返回（不是错误码），
+        /// 验证资格条件不满足时以成功回执携带**机器可读拒绝码**返回（不是错误码），
         /// 且不落报名登记、不发报名事件；判定顺序「先名次后分数」：未上榜报 NotRanked。
         /// </summary>
         [Fact]
@@ -105,7 +105,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.8-c：开始赛事后报名窗口关闭；未结束不能结算；终态不可回退。
+        /// 验证开始赛事后报名窗口关闭；未结束不能结算；终态不可回退。
         /// </summary>
         [Fact]
         public async Task Lifecycle_GateOnState_ShouldForbidOutOfOrderOperations()
@@ -140,7 +140,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.8-d：结束赛事把关联榜单的**已报名参赛者**名次冻结为赛事成绩，
+        /// 验证结束赛事把关联榜单的**已报名参赛者**名次冻结为赛事成绩，
         /// 且**不写入也不重置**关联榜单（赛事只读榜单——同一榜单可被赛季与赛事共用）。
         /// </summary>
         [Fact]
@@ -186,7 +186,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.8-e：创建校验（奖励规则区间重叠会重复发奖，必须拒绝）与跨 App 反预言
+        /// 验证创建校验（奖励规则区间重叠会重复发奖，必须拒绝）与跨 App 反预言
         /// （跨 App 读写与「赛事不存在」同构返回 ResourceNotFound）。
         /// </summary>
         [Fact]
@@ -224,7 +224,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.8-f：结束事件只陈述计数与时刻（事件是事实不是状态），报名登记可回溯到判定输入。
+        /// 验证结束事件只陈述计数与时刻（事件是事实不是状态），报名登记可回溯到判定输入。
         /// </summary>
         [Fact]
         public async Task Lifecycle_ShouldPublishAuditableFacts()
@@ -258,7 +258,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.8-g：无门槛赛事不读榜单，任何玩家（含未上榜者）都可报名。
+        /// 验证无门槛赛事不读榜单，任何玩家（含未上榜者）都可报名。
         /// </summary>
         [Fact]
         public async Task RegisterAsync_WithoutEligibility_ShouldAcceptUnrankedPlayer()
@@ -276,7 +276,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.8-h：报名登记查询与「未报名」反预言同构（返回 ResourceNotFound 而非空对象）。
+        /// 验证报名登记查询与「未报名」反预言同构（返回 ResourceNotFound 而非空对象）。
         /// </summary>
         [Fact]
         public async Task GetRegistrationAsync_UnregisteredPlayer_ShouldReturnNotFound()
@@ -296,7 +296,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.8-i：未结束时查询成绩返回 ResourceNotFound（冻结成绩尚未产生，不回落实时榜单）。
+        /// 验证未结束时查询成绩返回 ResourceNotFound（冻结成绩尚未产生，不回落实时榜单）。
         /// </summary>
         [Fact]
         public async Task GetStandingsAsync_BeforeEnd_ShouldReturnNotFound()
@@ -314,7 +314,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.8-j：并发重复报名不会落下两条登记（存储层「判定重复 + 落档」在同一临界区）。
+        /// 验证并发重复报名不会落下两条登记（存储层「判定重复 + 落档」在同一临界区）。
         /// </summary>
         [Fact]
         public async Task RegisterAsync_ConcurrentDuplicate_ShouldStoreSingleRegistration()

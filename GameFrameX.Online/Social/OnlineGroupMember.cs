@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 群成员（vault:C7 S6.4：群组内的值对象，随群记录整体 CAS 提交）。
+/// 群成员（群组内的值对象，随群记录整体 CAS 提交）。
 /// <para>
 /// 维护约束：成员条目**不独立持久化**——成员集合是群记录的一部分，任何成员变更都必须以整条群记录提交
 /// （见 <see cref="IOnlineGroupStore.ReplaceAsync"/>），否则「成员数上限」与「角色唯一性」会读到半成品。

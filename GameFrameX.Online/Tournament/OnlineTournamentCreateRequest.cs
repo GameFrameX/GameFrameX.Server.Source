@@ -33,7 +33,7 @@ using GameFrameX.Online.Scope;
 namespace GameFrameX.Online.Tournament;
 
 /// <summary>
-/// 赛事创建请求（vault:C8 S7.4：赛事定义的服务端意图载体）。
+/// 赛事创建请求（赛事定义的服务端意图载体）。
 /// <para>
 /// 维护约束（红线）：作用域取自鉴权上下文（<see cref="OnlineScope"/>），客户端提交的同名字段不可覆盖；
 /// 请求只承载「服务端运营意图」——**不存在客户端可直接提交赛事报名结果、成绩或奖励的通道**，

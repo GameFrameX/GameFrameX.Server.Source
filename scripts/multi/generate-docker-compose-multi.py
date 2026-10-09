@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""docker-compose.multi.yml 拓扑环境变量生成器（C143f Stage-6 D12/D13）。
+"""docker-compose.multi.yml 拓扑环境变量生成器。
 
 按拓扑定义（Role 名 / 实例数 / 端口基址）展开每个实例，并注入：
 
@@ -67,7 +67,7 @@ OUTPUT_PATH = REPO_ROOT / "docker-compose.multi.yml"
 CONFIG_OUTPUT_DIR = REPO_ROOT / "Configs" / "multi"
 
 HEADER = """\
-# 本文件由 scripts/multi/generate-docker-compose-multi.py 生成（C143f Stage-6 拓扑环境变量生成器）。
+# 本文件由 scripts/multi/generate-docker-compose-multi.py 生成（拓扑环境变量生成器）。
 # 修改拓扑请编辑该脚本的 ROLES 定义后重新生成，不要手改本文件。
 # 现有静态形态保留在 docker-compose.multi.legacy.yml（过渡期兼容）。
 """

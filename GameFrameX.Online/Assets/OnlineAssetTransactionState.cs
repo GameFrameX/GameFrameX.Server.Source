@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Assets;
 
 /// <summary>
-/// 资产交易状态（vault:C4 交易不变量「失败不能留下不可解释的半成品状态」的状态机承载）。
+/// 资产交易状态（交易不变量「失败不能留下不可解释的半成品状态」的状态机承载）。
 /// <para>
 /// 维护约束（红线）：合法迁移只有 <see cref="Executing"/>→<see cref="Succeeded"/>、
 /// <see cref="Executing"/>→<see cref="Failed"/>（应用前失败，零账本条目）、

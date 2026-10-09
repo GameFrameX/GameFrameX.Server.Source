@@ -39,14 +39,14 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 赛事结算测试（vault:C8 S7.4 / VC-7.7：赛事奖励可安全重试）。
+    /// 赛事结算测试（赛事奖励可安全重试）。
     /// 覆盖按冻结成绩发放、重复触发幂等回放不重复发奖、结算只读冻结成绩（不回落实时榜单）、
     /// 逐玩家失败隔离与重试补齐、部分发奖不标记完成、发放作用域固定无归属服、榜单不被结算改写。
     /// </summary>
     public class OnlineTournamentSettlementTests
     {
         /// <summary>
-        /// 验证 VC-7.7-a：按冻结成绩名次发放赛事奖励，重复触发逐玩家命中幂等回放——余额与账本条目数守恒，
+        /// 验证按冻结成绩名次发放赛事奖励，重复触发逐玩家命中幂等回放——余额与账本条目数守恒，
         /// 结算事件只发一次，赛事推进到结算完成态。
         /// </summary>
         [Fact]
@@ -93,8 +93,8 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.7-b：结算只读**冻结成绩**——结束赛事后关联榜单继续变化也不影响发放名次，
-        /// 且结算不改写榜单（赛事只读榜单，重置归 C103 赛季）。
+        /// 验证结算只读**冻结成绩**——结束赛事后关联榜单继续变化也不影响发放名次，
+        /// 且结算不改写榜单（赛事只读榜单，重置归赛季职责）。
         /// </summary>
         [Fact]
         public async Task SettleAsync_AfterBoardChanged_ShouldUseFrozenStandings()
@@ -130,10 +130,10 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.7-c：单玩家发放失败被逐玩家隔离（其余玩家照常到账、赛事不标记完成），
+        /// 验证单玩家发放失败被逐玩家隔离（其余玩家照常到账、赛事不标记完成），
         /// 恢复后重试补齐且**已发放玩家回放不重复发奖**。
         /// <para>
-        /// 重试补齐依赖宿主把失败重放策略装配为 <see cref="FailedReplayPolicy.ReExecute"/>（与 C103 赛季结算同一装配项）：
+        /// 重试补齐依赖宿主把失败重放策略装配为 <see cref="FailedReplayPolicy.ReExecute"/>（与赛季结算同一装配项）：
         /// 失败的幂等键可重新执行，故失败玩家在重试轮被真正补发；默认 <see cref="FailedReplayPolicy.ReplayError"/>
         /// 下失败原样回放的语义由 Foundation 幂等组件自身保证，不在本用例覆盖范围。
         /// </para>
@@ -192,8 +192,8 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.7-d：发放作用域固定无归属服（<c>ServerId = 0</c>）——调用方从不同区服作用域
-        /// 触发结算不会落到不同幂等键上而重复发奖（承 C103 R8 结论），结算通道复用统一资产入口。
+        /// 验证发放作用域固定无归属服（<c>ServerId = 0</c>）——调用方从不同区服作用域
+        /// 触发结算不会落到不同幂等键上而重复发奖，结算通道复用统一资产入口。
         /// </summary>
         [Fact]
         public async Task SettleAsync_FromOtherServerScope_ShouldReplayInsteadOfDoubleGrant()
@@ -231,7 +231,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.7-e：未命中任何奖励规则的名次不产生发放（规则区间覆盖不足时不得兜底发奖），
+        /// 验证未命中任何奖励规则的名次不产生发放（规则区间覆盖不足时不得兜底发奖），
         /// 且赛事仍正常推进到结算完成态。
         /// </summary>
         [Fact]

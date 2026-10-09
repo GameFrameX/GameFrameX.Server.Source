@@ -30,10 +30,10 @@
 namespace GameFrameX.Online.Matchmaking;
 
 /// <summary>
-/// 匹配票据状态（vault:C5 S4.5：队列状态必须唯一且可解释）。
+/// 匹配票据状态（队列状态必须唯一且可解释）。
 /// <para>
 /// 维护约束（红线）：<see cref="Queued"/> 是唯一的活动态，其余四态均为终态且不可回退——
-/// 「取消后不再收到旧结果」（VC-4.2）依赖于此：一旦离开 Queued，票据不再参与任何成组，
+/// 「取消后不再收到旧结果」依赖于此：一旦离开 Queued，票据不再参与任何成组，
 /// 已有 assignment 也不会被后续取消改写。状态迁移的唯一入口是票据存储的
 /// <c>CommitMatchAsync</c> 与 <c>UpdateStateAsync</c>（条件更新，不满足期望态则不生效）。
 /// </para>

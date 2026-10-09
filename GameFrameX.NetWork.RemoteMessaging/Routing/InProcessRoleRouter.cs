@@ -33,12 +33,12 @@ using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
-/// 进程内跨 Role 路由器（C143c D3 三步判定）。
+/// 进程内跨 Role 路由器（三步判定）。
 /// </summary>
 /// <remarks>
-/// In-process cross-role router implementing the D3 three-step decision.
+/// In-process cross-role router implementing the three-step decision.
 /// The hosted role names are captured as a defensive snapshot at construction time
-/// (mirroring the RoleSet snapshot semantics of C143b), so this instance always routes
+/// (mirroring the RoleSet snapshot semantics), so this instance always routes
 /// against the process shape it was built for. The constructor accepts plain role names
 /// instead of the StartUp RoleSet type because this assembly must not depend on the
 /// startup module; the launch flow passes the published role snapshot when wiring
@@ -98,10 +98,10 @@ public sealed class InProcessRoleRouter : IRoleRouter
     }
 
     /// <summary>
-    /// 路由一封跨 Role 消息信封（D3 三步判定）。
+    /// 路由一封跨 Role 消息信封（三步判定）。
     /// </summary>
     /// <remarks>
-    /// Applies the D3 three-step decision to the envelope:
+    /// Applies the three-step decision to the envelope:
     /// target role hosted by this process goes to the local dispatcher (case 1);
     /// anything else goes to the remote forwarding seam (case 2/3).
     /// An empty target role, a case 1 hit without a local dispatcher, or a non-local
@@ -123,12 +123,12 @@ public sealed class InProcessRoleRouter : IRoleRouter
             throw new RouteNotFoundException(envelope.TargetRole, LocalizationService.GetString(Localization.Keys.RemoteMessaging.Routing.TargetRoleMissing));
         }
 
-        // D3 case 1：目标 Role 属于本进程角色集 → 本地投递
+        // case 1：目标 Role 属于本进程角色集 → 本地投递
         if (_hostedRoleNames.Contains(envelope.TargetRole))
         {
             if (_localDispatcher == null)
             {
-                // Localization: RemoteMessaging.Routing.LocalDispatcherNotConfigured - 目标角色「{0}」由本进程承载，但未配置本地消息派发器（actor 派发器随 C143e 到达）
+                // Localization: RemoteMessaging.Routing.LocalDispatcherNotConfigured - 目标角色「{0}」由本进程承载，但未配置本地消息派发器
                 throw new RouteNotFoundException(
                     envelope.TargetRole,
                     LocalizationService.GetString(Localization.Keys.RemoteMessaging.Routing.LocalDispatcherNotConfigured, envelope.TargetRole));
@@ -138,7 +138,7 @@ public sealed class InProcessRoleRouter : IRoleRouter
             return RoleRouteDelivery.LocalActor;
         }
 
-        // D3 case 2/3：目标 Role 不属于本进程角色集 → 远程转发缝（真实实现随 C143d 交付）
+        // case 2/3：目标 Role 不属于本进程角色集 → 远程转发缝
         if (_remoteRouter == null)
         {
             throw new RouteNotFoundException(

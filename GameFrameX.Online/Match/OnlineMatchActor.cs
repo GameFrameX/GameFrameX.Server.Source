@@ -38,18 +38,18 @@ using GameFrameX.Online.Scope;
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 对局 Actor——单场对局的**唯一**状态持有者与改写者（vault:C6 S5.1「Match Actor 所有权」）。
+/// 对局 Actor——单场对局的**唯一**状态持有者与改写者（Match Actor 所有权）。
 /// <para>
 /// 维护约束（红线）：① 所有状态改写都经过「门内改写候选副本 → 存储层 CAS → 成功才替换权威副本」
 /// 三段式，CAS 失败即表示本 Actor 已失去所有权（另一 Actor 推进过同一对局），此时**不得**保留任何
-/// 本地改写（VC-5.13 无串局）；② 客户端只能提交 <see cref="OnlineMatchInput"/> 意图，
-/// 胜负与奖励一律由玩法实现依服务端状态裁决（VC-5.2）；③ 每个入口都校验
+/// 本地改写（无串局）；② 客户端只能提交 <see cref="OnlineMatchInput"/> 意图，
+/// 胜负与奖励一律由玩法实现依服务端状态裁决；③ 每个入口都校验
 /// <see cref="OnlineScope"/>，跨租户/App/Server 一律 <see cref="OnlineErrorCode.ScopeDenied"/>。
 /// </para>
 /// <para>
 /// 输入校验顺序固定为：成员身份 → 成员在线状态 → 对局阶段 → 重复包 → 乱序包 → 玩法裁决。
 /// 前三步属于「谁在说话」，后两步属于「说的话算不算数」；被拒绝的输入一律不推进
-/// <see cref="OnlineMatch.ServerSequence"/>，也不写事件日志（VC-5.3 / VC-5.4 / VC-5.5）。
+/// <see cref="OnlineMatch.ServerSequence"/>，也不写事件日志。
 /// </para>
 /// </summary>
 public sealed class OnlineMatchActor
@@ -135,7 +135,7 @@ public sealed class OnlineMatchActor
     }
 
     /// <summary>
-    /// 获取是否已进入终态（可供运行时释放，VC-5.11）。
+    /// 获取是否已进入终态（可供运行时释放）。
     /// </summary>
     public bool IsClosed
     {
@@ -196,7 +196,7 @@ public sealed class OnlineMatchActor
     }
 
     /// <summary>
-    /// 加入对局（S5.3）。
+    /// 加入对局。
     /// </summary>
     /// <param name="scope">请求作用域（玩家取自 <see cref="OnlineScope.PlayerId"/>）。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
@@ -257,7 +257,7 @@ public sealed class OnlineMatchActor
     }
 
     /// <summary>
-    /// 退出对局（S5.3）。退出不影响他人结算（VC-5.14）。
+    /// 退出对局。退出不影响他人结算。
     /// </summary>
     /// <param name="scope">请求作用域。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
@@ -288,7 +288,7 @@ public sealed class OnlineMatchActor
     }
 
     /// <summary>
-    /// 踢出成员（S5.3，仅房主在开局前可执行；房主 = 最早加入的成员）。
+    /// 踢出成员（仅房主在开局前可执行；房主 = 最早加入的成员）。
     /// </summary>
     /// <param name="scope">请求作用域（房主）。</param>
     /// <param name="targetPlayerId">被踢出玩家标识。</param>
@@ -336,7 +336,7 @@ public sealed class OnlineMatchActor
     }
 
     /// <summary>
-    /// 设置准备状态（S5.3）。全员准备且人数达标时进入 <see cref="OnlineMatchState.Ready"/>。
+    /// 设置准备状态。全员准备且人数达标时进入 <see cref="OnlineMatchState.Ready"/>。
     /// </summary>
     /// <param name="scope">请求作用域。</param>
     /// <param name="ready">是否准备。</param>
@@ -373,7 +373,7 @@ public sealed class OnlineMatchActor
     }
 
     /// <summary>
-    /// 开始对局（S5.3，仅房主可执行）。
+    /// 开始对局（仅房主可执行）。
     /// </summary>
     /// <param name="scope">请求作用域（房主）。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
@@ -415,7 +415,7 @@ public sealed class OnlineMatchActor
     }
 
     /// <summary>
-    /// 提交输入（S5.2 / S5.5）。被拒绝的输入不改写状态、不推进序号。
+    /// 提交输入。被拒绝的输入不改写状态、不推进序号。
     /// </summary>
     /// <param name="scope">请求作用域。</param>
     /// <param name="input">输入意图。</param>
@@ -433,7 +433,7 @@ public sealed class OnlineMatchActor
     }
 
     /// <summary>
-    /// 标记成员断线（S5.6：断线不立即等于退出，窗口内可重连）。
+    /// 标记成员断线（断线不立即等于退出，窗口内可重连）。
     /// </summary>
     /// <param name="scope">请求作用域。</param>
     /// <param name="reconnectToken">服务端签发的重连令牌。</param>
@@ -471,7 +471,7 @@ public sealed class OnlineMatchActor
     }
 
     /// <summary>
-    /// 窗口内重连（S5.6）：成员回到对局中，调用方随即补发快照 + 缺失增量。
+    /// 窗口内重连：成员回到对局中，调用方随即补发快照 + 缺失增量。
     /// </summary>
     /// <param name="scope">请求作用域。</param>
     /// <param name="reconnectToken">重连令牌（必须与断线时签发的一致）。</param>
@@ -514,7 +514,7 @@ public sealed class OnlineMatchActor
     }
 
     /// <summary>
-    /// 在结算阶段产出结算候选（S5.7：事实先落定，发奖解耦）。
+    /// 在结算阶段产出结算候选（事实先落定，发奖解耦）。
     /// </summary>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -548,7 +548,7 @@ public sealed class OnlineMatchActor
     }
 
     /// <summary>
-    /// 结算成功收口：<see cref="OnlineMatchState.Settling"/> → <see cref="OnlineMatchState.Completed"/>（S5.7）。
+    /// 结算成功收口：<see cref="OnlineMatchState.Settling"/> → <see cref="OnlineMatchState.Completed"/>。
     /// </summary>
     /// <param name="result">已落定的结算结果（写入对局，作为不可改写的事实）。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
@@ -598,7 +598,7 @@ public sealed class OnlineMatchActor
     }
 
     /// <summary>
-    /// 时间推进：玩法超时判定、阶段超时、断线窗口超时与终态释放（S5.1 / S5.6 / VC-5.7 / VC-5.11 / VC-5.12）。
+    /// 时间推进：玩法超时判定、阶段超时、断线窗口超时与终态释放。
     /// </summary>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -674,7 +674,7 @@ public sealed class OnlineMatchActor
 
     /// <summary>
     /// 应用一次已通过前置校验的输入（<see cref="SubmitInputAsync"/> 的门内委托体）。
-    /// <para>处理顺序固定：玩法裁决 → 状态替换 → 序号推进 → 产出事件回放 → InputAccepted → 完成进结算；被拒绝的输入不改写状态、不推进序号（VC-5.3 / VC-5.4）。</para>
+    /// <para>处理顺序固定：玩法裁决 → 状态替换 → 序号推进 → 产出事件回放 → InputAccepted → 完成进结算；被拒绝的输入不改写状态、不推进序号。</para>
     /// </summary>
     /// <param name="match">门内候选副本。</param>
     /// <param name="actorScope">请求作用域。</param>
@@ -837,7 +837,7 @@ public sealed class OnlineMatchActor
     }
 
     /// <summary>
-    /// 判定已结束对局是否滞留满释放窗口（终态 → Closed 的入口条件，VC-5.11）。
+    /// 判定已结束对局是否滞留满释放窗口（终态 → Closed 的入口条件）。
     /// </summary>
     /// <param name="working">门内候选副本。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
@@ -1017,7 +1017,7 @@ public sealed class OnlineMatchActor
     }
 
     /// <summary>
-    /// 清理超过重连窗口的断线成员（VC-5.7：不出现永久 Reconnecting）。
+    /// 清理超过重连窗口的断线成员（不出现永久 Reconnecting）。
     /// </summary>
     /// <param name="match">对局。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>

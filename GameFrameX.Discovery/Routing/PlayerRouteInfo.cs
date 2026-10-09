@@ -10,10 +10,10 @@
 namespace GameFrameX.Discovery.Routing;
 
 /// <summary>
-/// 玩家路由解析返回值（C143e D21）。
+/// 玩家路由解析返回值。
 /// </summary>
 /// <remarks>
-/// The player-route resolver's value object (C143e D21). When
+/// The player-route resolver's value object. When
 /// <see cref="IsOnline"/> is true, <see cref="ServerType"/> + <see cref="ServerId"/>
 /// describe the target instance; <see cref="Version"/> is the route-version
 /// observed at resolve time so callers can detect a routing change that

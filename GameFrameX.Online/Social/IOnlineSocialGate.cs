@@ -30,12 +30,12 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 跨域社交裁决契约（vault:C7 关键约束：Block「在 Chat / Party / Matchmaker 三处统一生效」的接口载体）。
+/// 跨域社交裁决契约（Block「在 Chat / Party / Matchmaker 三处统一生效」的接口载体）。
 /// <para>
 /// 维护约束（依赖方向）：本接口**定义在 Social 域**，由 Party 与 Matchmaking **依赖**本接口，
-/// Social 域不反向依赖二者——依赖箭头单向，无环（方案复审 P0-1）。
+/// Social 域不反向依赖二者——依赖箭头单向，无环。
 /// Party / Matchmaking 侧的注入是**可选**的（<c>null</c> = 不启用社会裁决，既有行为不变），
-/// 沿用 C97 <c>IOnlinePartyPresenceProbe</c> 可空探针先例。
+/// 沿用 <c>IOnlinePartyPresenceProbe</c> 可空探针先例。
 /// </para>
 /// <para>
 /// 维护约束（唯一入口）：实现必须落在 <see cref="OnlineSocialDecisionService"/>，

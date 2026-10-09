@@ -29,11 +29,11 @@ using GameFrameX.Online.Scope;
 namespace GameFrameX.Online.Runtime;
 
 /// <summary>
-/// Online Runtime 后台调度器（change C122 决策⑦：定时驱动对局 Tick、撮合单轮与各域过期清扫）。
+/// Online Runtime 后台调度器（定时驱动对局 Tick、撮合单轮与各域过期清扫）。
 /// <para>
 /// 维护约束：单循环顺序驱动（不做多任务并发——InMemory 存储为单进程默认实现，并发 Tick 与撮合
 /// 对同一票据集合操作会放大竞态）；单轮异常吞掉并继续（调度中断即整个 Runtime 停摆，
-/// 比单轮失败更糟）；Season/Tournament 到点驱动因 store 无枚举 API 登记为能力缺口（决策⑧③），
+/// Season/Tournament 到点驱动因 store 无枚举 API 登记为能力缺口，
 /// 不在本调度器内做扫描。
 /// </para>
 /// <para>一次性生命周期：停止（<see cref="StopAsync"/> / <see cref="Dispose"/>）即释放停止令牌，不可重启。</para>

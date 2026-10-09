@@ -43,11 +43,11 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// C103 赛季生命周期测试基座：真实幂等协调器 + 真实 C102 可信写榜链路（榜内容一律经投影器落榜，
-    /// 不直写存储——赛季测试的前置状态与生产路径同构）+ 真实 C95 统一资产入口。
+    /// 赛季生命周期测试基座：真实幂等协调器 + 真实可信写榜链路（榜内容一律经投影器落榜，
+    /// 不直写存储——赛季测试的前置状态与生产路径同构）+ 真实统一资产入口。
     /// <para>
-    /// 可选装饰器参数用于制造生产竞态：榜单存储装饰器在「快照与清空之间」插入真实写入（VC-7.5-c），
-    /// 资产存储装饰器让指定玩家的发放瞬时失败（VC-7.6-b）。
+    /// 可选装饰器参数用于制造生产竞态：榜单存储装饰器在「快照与清空之间」插入真实写入，
+    /// 资产存储装饰器让指定玩家的发放瞬时失败。
     /// </para>
     /// </summary>
     internal sealed class OnlineSeasonTestHarness
@@ -131,7 +131,7 @@ namespace GameFrameX.Tests.Online
             get;
         }
 
-        /// <summary>获取 Online 幂等服务（写榜链路与资产入口共用同一 C93 组件）。</summary>
+        /// <summary>获取 Online 幂等服务（写榜链路与资产入口共用同一幂等组件）。</summary>
         public OnlineIdempotencyService IdempotencyService
         {
             get;

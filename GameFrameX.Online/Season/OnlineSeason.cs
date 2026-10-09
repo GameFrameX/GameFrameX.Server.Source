@@ -32,14 +32,14 @@ using System.Collections.Generic;
 namespace GameFrameX.Online.Season;
 
 /// <summary>
-/// 赛季定义（vault:C8 S7.3：开始/结束时间、关联榜单、赛季奖励与结算状态）。
+/// 赛季定义（开始/结束时间、关联榜单、赛季奖励与结算状态）。
 /// <para>
 /// 维护约束（红线）：
-/// (1) 作用域 = (TenantId, AppId)，与 C102 榜单同口径（App 内跨区服聚合）——跨 App / 跨租户读写一律查不到
-/// （ResourceNotFound 反预言，对齐 C94/C99/C102 先例）；
+/// (1) 作用域 = (TenantId, AppId)，与榜单同口径（App 内跨区服聚合）——跨 App / 跨租户读写一律查不到
+/// （ResourceNotFound 反预言，对齐既有先例）；
 /// (2) 赛季本身**不承载分数**：成绩只存在于榜单与快照中，赛季只描述周期与奖励口径；
-/// (3) 奖励规则创建后固化，运行期不可变更（配置变更与结算并发的冻结要求，vault:C8 风险表）；
-/// (4) <see cref="StartTime"/> / <see cref="EndTime"/> 是**排期元数据**，由运行时装配（X4）的调度器到点驱动
+/// (3) 奖励规则创建后固化，运行期不可变更（配置变更与结算并发的冻结要求）；
+/// (4) <see cref="StartTime"/> / <see cref="EndTime"/> 是**排期元数据**，由运行时装配的调度器到点驱动
 /// 开始/结束，本类型不以时钟做隐式迁移。
 /// </para>
 /// </summary>

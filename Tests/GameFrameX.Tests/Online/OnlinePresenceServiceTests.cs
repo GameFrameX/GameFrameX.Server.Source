@@ -38,7 +38,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 在线状态服务测试（vault:C3 VC-2.5/2.6/2.15/2.16：上线登记、心跳、超窗清理、风控、在线计数口径）。
+    /// 在线状态服务测试（上线登记、心跳、超窗清理、风控、在线计数口径）。
     /// </summary>
     public class OnlinePresenceServiceTests
     {
@@ -58,7 +58,7 @@ namespace GameFrameX.Tests.Online
         private const long PlayerTwo = 1002;
 
         /// <summary>
-        /// 验证无效玩家主体位被结构性拒绝（VC-2.6：Admin 管理员连接不进入 Presence）。
+        /// 验证无效玩家主体位被结构性拒绝（Admin 管理员连接不进入 Presence）。
         /// </summary>
         [Fact]
         public async Task SetOnlineAsync_WithoutPlayerScope_ShouldBeRejected()
@@ -77,7 +77,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证上线登记落 Online 并发布 Offline → Online 变更事件（VC-2.16）。
+        /// 验证上线登记落 Online 并发布 Offline → Online 变更事件。
         /// </summary>
         [Fact]
         public async Task SetOnlineAsync_ShouldPublishOfflineToOnlineEvent()
@@ -151,7 +151,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证重连窗口超时清理转 Offline，不留永久 Reconnecting（VC-2.15）。
+        /// 验证重连窗口超时清理转 Offline，不留永久 Reconnecting。
         /// </summary>
         [Fact]
         public async Task SweepTimeoutsAsync_ReconnectWindowExpired_ShouldRemoveRecordAndPublishOffline()
@@ -232,7 +232,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证在线计数排除 Blocked（VC-2.6 计数口径）。
+        /// 验证在线计数排除 Blocked（计数口径）。
         /// </summary>
         [Fact]
         public async Task CountOnlineAsync_ShouldExcludeBlockedPlayers()

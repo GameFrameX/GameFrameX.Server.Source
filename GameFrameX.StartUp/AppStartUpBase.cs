@@ -77,7 +77,7 @@ public abstract partial class AppStartUpBase : IAppStartUp
     /// 获取启动就绪任务。
     /// </summary>
     /// <remarks>
-    /// Gets the startup-ready task (C143b D7 priority startup barrier).
+    /// Gets the startup-ready task (priority startup barrier).
     /// Satisfies the required <see cref="IAppStartUp.StartUpReadyTask"/> member (a breaking API addition):
     /// classes deriving from this base need no migration, while direct <see cref="IAppStartUp"/>
     /// implementers must provide the member themselves (see the interface remarks for the migration notes).
@@ -110,7 +110,7 @@ public abstract partial class AppStartUpBase : IAppStartUp
     /// <remarks>
     /// Initialize the application startup.
     /// Sets the server type and configuration information, idempotently initializes the process-level
-    /// shared kernel (log handler) via <see cref="AppBootstrapper.EnsureInitialized"/> (C143b D5: only the
+    /// shared kernel (log handler) via <see cref="AppBootstrapper.EnsureInitialized"/> (only the
     /// first role of the process creates the kernel), and calls the virtual Init method for subclass-specific initialization.
     /// </remarks>
     /// <param name="serverType">服务器类型标识符 / Server type identifier</param>
@@ -139,10 +139,10 @@ public abstract partial class AppStartUpBase : IAppStartUp
     public abstract Task StartAsync();
 
     /// <summary>
-    /// 标记当前 Role 启动就绪（C143b D7 优先级启动屏障）。
+    /// 标记当前 Role 启动就绪（优先级启动屏障）。
     /// </summary>
     /// <remarks>
-    /// Marks the current role as startup-ready (C143b D7 priority startup barrier).
+    /// Marks the current role as startup-ready (priority startup barrier).
     /// Derived classes call this at the end of their startup phase (after databases, components
     /// and network listeners are up, before entering the run-until-exit wait), so the multi-role
     /// launcher can start the next role only after this one is fully initialized.

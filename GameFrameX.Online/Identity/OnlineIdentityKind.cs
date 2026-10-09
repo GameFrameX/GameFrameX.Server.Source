@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Identity;
 
 /// <summary>
-/// 外源身份类型（vault:C3 S2.2：外部身份必须绑定明确的 TenantId + AppId，按类型分道检索）。
+/// 外源身份类型（外部身份必须绑定明确的 TenantId + AppId，按类型分道检索）。
 /// <para>
 /// 维护约束：同一 Identifier 在不同 <see cref="OnlineIdentityKind"/> 下视为不同身份；
 /// <c>Device</c> 类身份只用于识别设备与换绑判定，不得直接充当 PlayerId（身份模型红线）。

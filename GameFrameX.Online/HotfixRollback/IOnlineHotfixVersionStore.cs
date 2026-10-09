@@ -33,7 +33,7 @@ using System.Threading.Tasks;
 namespace GameFrameX.Online.HotfixRollback;
 
 /// <summary>
-/// Hotfix 版本清单存储契约（vault:C9 S8.5：版本协议清单登记簿 + 活跃版本指针；
+/// Hotfix 版本清单存储契约（版本协议清单登记簿 + 活跃版本指针；
 /// 作用域按 (TenantId, AppId) 两键隔离——清单是 App 级资产，ServerId 固定 0 不参与定位）。
 /// <para>
 /// 维护约束（红线）：

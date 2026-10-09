@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.HotfixRollback;
 
 /// <summary>
-/// Hotfix 回滚协议兼容差异行（vault:C9 S8.5 / VC-8.9「协议兼容检查通过」的检查产物：
+/// Hotfix 回滚协议兼容差异行（「协议兼容检查通过」的检查产物：
 /// 当前活跃清单与目标回滚清单之间的一行定位差异；<see cref="IssueKind"/> 决定该差异是否阻断回滚）。
 /// </summary>
 public sealed class OnlineProtocolCompatibilityIssue

@@ -321,7 +321,7 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
     }
 
     /// <summary>
-    /// 经 GameDb 统一入口按配置批量大小执行批量 upsert 保存，并处理写入结果（C159）
+    /// 经 GameDb 统一入口按配置批量大小执行批量 upsert 保存，并处理写入结果
     /// </summary>
     /// <param name="stateList">待写入的状态列表</param>
     /// <param name="shutdown">是否为关服保存</param>
@@ -331,9 +331,9 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
         var stateName = typeof(TState).Name;
         StateComponent.StatisticsTool.Count(stateName, stateList.Count);
         LogHelper.Debug("StateComponent.StateSaveBack StateName: {stateName} , Count: {count}", stateName, stateList.Count);
-        // C159：批量保存统一走 GameDb.SaveBulkAsync（分批 upsert、逐批 ack/异常隔离在 DataBase 层实现）；
+        // 批量保存统一走 GameDb.SaveBulkAsync（分批 upsert、逐批 ack/异常隔离在 DataBase 层实现）；
         // 门面默认库由 Launcher 在业务库 Init 成功后显式 SetDefault(Setting.DataBaseName)，
-        // Core 不再直接依赖 MongoDB.Driver / GameFrameX.DataBase.Mongo（取代 GFX-327 的按名直连方案）。
+        // Core 不再直接依赖 MongoDB.Driver / GameFrameX.DataBase.Mongo（取代原先的按名直连方案）。
         var savedStates = await GameDb.SaveBulkAsync(stateList, GlobalSettings.CurrentSetting.SaveDataBatchCount);
 
         NotifyBatchSaved(savedStates);

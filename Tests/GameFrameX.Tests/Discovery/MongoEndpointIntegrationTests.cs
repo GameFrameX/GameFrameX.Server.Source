@@ -35,10 +35,10 @@ using MongoDB.Driver;
 namespace GameFrameX.Tests.Discovery;
 
 /// <summary>
-/// MongoEndpointRegistry / MongoEndpointWatcher 的 Mongo 集成测试（C143d D11/D15）。
+/// MongoEndpointRegistry / MongoEndpointWatcher 的 Mongo 集成测试。
 /// </summary>
 /// <remarks>
-/// Mongo-backed integration tests for the heartbeat writer and reader (C143d D11/D15),
+/// Mongo-backed integration tests for the heartbeat writer and reader,
 /// following the repository's existing GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING gating
 /// convention (MongoDbServiceConnectionTests): without the variable the tests skip so
 /// plain <c>dotnet test</c> stays green on Mongo-less machines; the topology-equivalence

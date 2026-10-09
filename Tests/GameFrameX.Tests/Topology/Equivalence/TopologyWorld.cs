@@ -35,13 +35,13 @@ using GameFrameX.NetWork.RemoteMessaging.Routing;
 namespace GameFrameX.Tests.Topology.Equivalence;
 
 /// <summary>
-/// 等价用例集的拓扑世界：把若干模拟进程 cell 组装成一种可路由的拓扑（C143c D9）。
+/// 等价用例集的拓扑世界：把若干模拟进程 cell 组装成一种可路由的拓扑。
 /// </summary>
 /// <remarks>
-/// Topology world for the equivalence suite (C143c D9): assembles simulated process cells
+/// Topology world for the equivalence suite: assembles simulated process cells
 /// into a routable topology. AllInOne is one cell hosting every role (every hop must hit
-/// D3 case 1); MultiProcess follows the design source §D9 three-process split
-/// (Gate | Game+Social | Match) with a loopback forwarder standing in for the C143d
+/// the local direct-delivery branch); MultiProcess follows the design-source three-process split
+/// (Gate | Game+Social | Match) with a loopback forwarder standing in for the
 /// remote hop. Handlers may route replies back through <see cref="RouteAsync"/> — a
 /// handler runs on its own mailbox consumer, so cross-role round trips never deadlock.
 /// </remarks>
@@ -171,7 +171,7 @@ public sealed class TopologyWorld : IDisposable
     }
 
     /// <summary>
-    /// 创建 All-in-One 拓扑：单 cell 承载全部 Role，每一跳都必须命中 D3 case 1。
+    /// 创建 All-in-One 拓扑：单 cell 承载全部 Role，每一跳都必须命中本地直投分支。
     /// </summary>
     /// <param name="roleNames">全部 Role 名 / All role names</param>
     /// <returns>拓扑世界 / The topology world</returns>

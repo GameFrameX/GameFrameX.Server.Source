@@ -38,13 +38,13 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 游戏事件指标复算测试（vault:C8 S7.5 / VC-7.10：事件可查询、指标可由原始事件复算，可复算偏差 0）。
+    /// 游戏事件指标复算测试（事件可查询、指标可由原始事件复算，可复算偏差 0）。
     /// 覆盖分类 / 事件名计数、重复复算结果恒等、时间窗闭区间边界、作用域隔离、死信计数。
     /// </summary>
     public class OnlineGameEventMetricsTests
     {
         /// <summary>
-        /// 验证 VC-7.10-a：指标由原始事件现场复算，**重复复算结果恒等**（偏差 0），
+        /// 验证指标由原始事件现场复算，**重复复算结果恒等**（偏差 0），
         /// 且与存储中的事件总数守恒（不丢不重）。
         /// </summary>
         [Fact]
@@ -79,7 +79,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.10-b：分类由登记表归属推导（调用方不指定），六类计数逐一正确。
+        /// 验证分类由登记表归属推导（调用方不指定），六类计数逐一正确。
         /// </summary>
         [Fact]
         public async Task ComputeAsync_ShouldCountByRegisteredCategory()
@@ -113,7 +113,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.10-c：时间窗为闭区间——窗口两端的事件被计入，窗口外的不计。
+        /// 验证时间窗为闭区间——窗口两端的事件被计入，窗口外的不计。
         /// </summary>
         [Fact]
         public async Task ComputeAsync_Window_ShouldIncludeBothBoundaries()
@@ -134,7 +134,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.10-d：指标与死信均按作用域隔离（跨 App 复算得 0，反预言），
+        /// 验证指标与死信均按作用域隔离（跨 App 复算得 0，反预言），
         /// 脏事件计入死信计数而**不污染**事件计数。
         /// </summary>
         [Fact]
@@ -157,7 +157,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.10-e：指标快照只反映窗口内事实，不携带跨窗口累计状态——
+        /// 验证指标快照只反映窗口内事实，不携带跨窗口累计状态——
         /// 同一批事件切不同窗口复算，各窗口之和等于全窗口（无隐藏状态导致的漂移）。
         /// </summary>
         [Fact]

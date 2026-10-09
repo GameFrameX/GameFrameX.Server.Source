@@ -30,11 +30,11 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 好友关系状态（vault:C7 S6.2：关系状态唯一，删除后可重新添加）。
+/// 好友关系状态（关系状态唯一，删除后可重新添加）。
 /// <para>
 /// 维护约束：一条关系记录承载「一对玩家」的全部状态，状态迁移唯一判据是
 /// <see cref="OnlineFriendshipStateMachine.TryTransition"/>——不存在「请求中」与「已是好友」并存的中间态
-/// （VC-6.2：每步状态唯一、无中间态残留）。<see cref="Requested"/> 是唯一的非终态；
+/// （每步状态唯一、无中间态残留）。<see cref="Requested"/> 是唯一的非终态；
 /// <see cref="Rejected"/><see cref="Expired"/><see cref="Removed"/> 均为「可重新发起」的静止态，
 /// 重新发起时回到 <see cref="Requested"/>，不新建第二条关系记录。
 /// </para>
@@ -42,7 +42,7 @@ namespace GameFrameX.Online.Social;
 public enum OnlineFriendshipState
 {
     /// <summary>
-    /// 待答复（请求已发出、对方尚未处理）。同一对玩家至多一条处于本状态（VC-6.1）。
+    /// 待答复（请求已发出、对方尚未处理）。同一对玩家至多一条处于本状态。
     /// </summary>
     Requested = 0,
 
@@ -62,7 +62,7 @@ public enum OnlineFriendshipState
     Expired = 3,
 
     /// <summary>
-    /// 关系已删除（静止态；可重新发起，VC-6.2 状态机末段）。
+    /// 关系已删除（静止态；可重新发起）。
     /// </summary>
     Removed = 4,
 }

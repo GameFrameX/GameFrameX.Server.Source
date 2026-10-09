@@ -33,7 +33,7 @@ using GameFrameX.Foundation.Logger;
 namespace GameFrameX.Discovery;
 
 /// <summary>
-/// 通用心跳读侧（C167：自 Mongo / PG 平行实现归一，消费 <see cref="IHeartbeatStore"/>）。
+/// 通用心跳读侧（自 Mongo / PG 平行实现归一，消费 <see cref="IHeartbeatStore"/>）。
 /// </summary>
 /// <remarks>
 /// The generic heartbeat reader (C167, unified from the Mongo / PostgreSQL
@@ -60,10 +60,10 @@ public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
     public static readonly TimeSpan DefaultPollInterval = TimeSpan.FromSeconds(5);
 
     /// <summary>
-    /// 缺省陈旧阈值周期数（3 个心跳周期，D11/D15）。
+    /// 缺省陈旧阈值周期数（3 个心跳周期）。
     /// </summary>
     /// <remarks>
-    /// The default staleness threshold in heartbeat periods (3, D11/D15).
+    /// The default staleness threshold in heartbeat periods (3).
     /// </remarks>
     public const int DefaultStalenessPeriods = 3;
 
@@ -150,7 +150,7 @@ public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
     private Task _loopTask;
 
     /// <summary>
-    /// 当前双视图路由表快照（D15：volatile 原子替换不可变快照）。
+    /// 当前双视图路由表快照（volatile 原子替换不可变快照）。
     /// </summary>
     /// <remarks>
     /// The current dual-view snapshot (D15: volatile write of an immutable snapshot,
@@ -177,10 +177,10 @@ public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
     }
 
     /// <summary>
-    /// 获取当前双视图路由表快照（D15 原子替换语义）。
+    /// 获取当前双视图路由表快照（原子替换语义）。
     /// </summary>
     /// <remarks>
-    /// Gets the current snapshot (D15 atomic-replacement semantics); never null.
+    /// Gets the current snapshot (atomic-replacement semantics); never null.
     /// </remarks>
     /// <value>当前快照 / The current snapshot</value>
     public RoleRouteTable Current
@@ -409,7 +409,7 @@ public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
 
         if (lastIncarnation != default && lastIncarnation != descriptor.Incarnation)
         {
-            // 曾在 graveyard 里见过且 incarnation 变化 → 重启语义（Offline+Online，D15 规则）。
+            // 曾在 graveyard 里见过且 incarnation 变化 → 重启语义（Offline+Online）。
             pendingEvents.Add(new KeyValuePair<RoleInstanceChangeKind, InstanceDescriptor>(RoleInstanceChangeKind.Offline, descriptor));
             pendingEvents.Add(new KeyValuePair<RoleInstanceChangeKind, InstanceDescriptor>(RoleInstanceChangeKind.Online, descriptor));
         }
@@ -425,7 +425,7 @@ public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
     }
 
     /// <summary>
-    /// 已知实例的 incarnation 变化：旧身份下线 + 新身份上线（D15 incarnation 规则）。
+    /// 已知实例的 incarnation 变化：旧身份下线 + 新身份上线。
     /// </summary>
     /// <remarks>
     /// Emits the incarnation-change pair (Offline the old identity, Online the new one).
@@ -502,7 +502,7 @@ public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
     }
 
     /// <summary>
-    /// 是否 incarnation 变化（D15：旧身份被换新身份）。
+    /// 是否 incarnation 变化（旧身份被换新身份）。
     /// </summary>
     private static bool IncarnationChanged(KnownInstance known, InstanceDescriptor descriptor)
     {

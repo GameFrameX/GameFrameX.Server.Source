@@ -32,10 +32,10 @@ using Npgsql;
 namespace GameFrameX.Tests.Discovery;
 
 /// <summary>
-/// PostgreSQL 集成测试的独立库句柄（C166 T8：每测试类独立 database，Dispose 强制 DROP）。
+/// PostgreSQL 集成测试的独立库句柄（每测试类独立 database，Dispose 强制 DROP）。
 /// </summary>
 /// <remarks>
-/// The isolated-database handle for the PostgreSQL integration tests (C166 T8):
+/// The isolated-database handle for the PostgreSQL integration tests:
 /// each test class gets its own database (CREATE DATABASE gameframex_pg_test_{Guid})
 /// so parallel runs never cross-contaminate; Dispose drops it with WITH (FORCE)
 /// through a maintenance connection pinned to the <c>postgres</c> database. Gated

@@ -37,10 +37,10 @@ using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.Online.Season;
 
 /// <summary>
-/// 赛季内存存储（单进程默认实现；生产持久化 / 跨实例协调归 Server 仓运行时装配，X4）。
+/// 赛季内存存储（单进程默认实现；生产持久化 / 跨实例协调归 Server 仓运行时装配）。
 /// <para>
 /// 维护约束（红线）：赛季定义与快照分别建表、互不写入——快照一经落档不会被状态推进覆盖
-/// （重置后历史仍可回溯，VC-7.5）；出入参防御性拷贝，存储内对象与外界无别名。
+/// （重置后历史仍可回溯）；出入参防御性拷贝，存储内对象与外界无别名。
 /// </para>
 /// </summary>
 public sealed class InMemoryOnlineSeasonStore : IOnlineSeasonStore

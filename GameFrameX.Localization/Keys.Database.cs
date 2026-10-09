@@ -101,7 +101,7 @@ public static partial class Keys
         /// </summary>
         /// <remarks>
         /// 键名: Database.GameDb.ImplicitDefaultBindingWarning
-        /// 用途: 多库注册且未显式指定门面默认库时，首次门面调用打一次性 Warning（C159）
+        /// 用途: 多库注册且未显式指定门面默认库时，首次门面调用打一次性 Warning
         /// 参数: {0} - 已注册库名列表
         /// </remarks>
         public const string GameDbImplicitDefaultBindingWarning = "Database.GameDb.ImplicitDefaultBindingWarning";
@@ -213,11 +213,11 @@ public static partial class Keys
         /// </remarks>
         public const string DiscoveryControlDatabaseOrConnectionRequired = "Database.Discovery.ControlDatabaseOrConnectionRequired";
         /// <summary>
-        /// PostgreSqlDbContext：文档类型“{0}”声明了字典属性“{1}”（{2}）。EF owned JSON 列无法以 C166 兼容形状映射字典；请将其重构为 owned entries 集合或标量载荷。
+        /// PostgreSqlDbContext：文档类型“{0}”声明了字典属性“{1}”（{2}）。EF owned JSON 列无法以兼容形状映射字典；请将其重构为 owned entries 集合或标量载荷。
         /// </summary>
         /// <remarks>
         /// 键名: Database.Ef.DocumentDictionaryPropertyNotSupported
-        /// 用途: 文档类型成员为 Dictionary&lt;,&gt; 时在 owned JSON 形状配置阶段显式抛出（C168）
+        /// 用途: 文档类型成员为 Dictionary&lt;,&gt; 时在 owned JSON 形状配置阶段显式抛出
         /// 参数: {0} - 文档类型名, {1} - 属性名, {2} - 属性类型名
         /// </remarks>
         public const string EfDocumentDictionaryPropertyNotSupported = "Database.Ef.DocumentDictionaryPropertyNotSupported";

@@ -34,7 +34,7 @@ namespace GameFrameX.Online.Leaderboard;
 /// <para>
 /// 维护约束（红线）：本类型是存储临界区的唯一写入载体——分数与来源由投影器从结算结果逐字段抄录，
 /// 调用链上任何一层都不接受外部传入的「裸分数」；<see cref="IncomingScore"/> 仍须过防刷上限校验
-/// （可信链路也可能被上游缺陷 / 被攻陷结点灌入异常分数，防线不能省，VC-7.4）。
+/// （可信链路也可能被上游缺陷 / 被攻陷结点灌入异常分数，防线不能省）。
 /// </para>
 /// </summary>
 public sealed class OnlineLeaderboardScoreSubmission

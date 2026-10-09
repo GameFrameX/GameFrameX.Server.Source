@@ -30,10 +30,10 @@
 namespace GameFrameX.Utility.Setting;
 
 /// <summary>
-/// 应用设置字段的进程拓扑级别（C143a D19 字段分区）。
+/// 应用设置字段的进程拓扑级别（字段分区）。
 /// </summary>
 /// <remarks>
-/// Process topology level of an application setting field (C143a D19 field partition).
+/// Process topology level of an application setting field (field partition).
 /// <para><see cref="ProcessLevel"/>：进程级字段——同进程多 Role 重复设置时必须一致，不一致则启动 fail fast；</para>
 /// <para><see cref="RoleLevel"/>：Role 级字段——各 Role 配置段可不同，以最后一次设置为准。</para>
 /// </remarks>

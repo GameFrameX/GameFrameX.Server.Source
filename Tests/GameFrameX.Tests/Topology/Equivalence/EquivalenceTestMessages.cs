@@ -33,10 +33,10 @@ using GameFrameX.NetWork.Messages;
 namespace GameFrameX.Tests.Topology.Equivalence;
 
 /// <summary>
-/// 语义等价用例集的测试消息定义（C143c D9）。
+/// 语义等价用例集的测试消息定义。
 /// </summary>
 /// <remarks>
-/// Test messages for the topology equivalence suite (C143c D9).
+/// Test messages for the topology equivalence suite.
 /// Four representative cross-role chains need request/response pairs; they are nested
 /// in one static class because they are pure test payloads with no behavior of their own.
 /// Values are deterministic (derived from player ids) so both topologies can be compared

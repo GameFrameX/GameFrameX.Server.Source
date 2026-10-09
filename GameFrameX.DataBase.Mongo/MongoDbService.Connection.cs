@@ -54,9 +54,9 @@ public sealed partial class MongoDbService
         ArgumentNullException.ThrowIfNull(dbOptions.ConnectionString, nameof(dbOptions.ConnectionString));
         ArgumentNullException.ThrowIfNull(dbOptions.Name, nameof(dbOptions.Name));
 
-        // C171：Mongo 序列化准备（ConventionPack）内聚到 Provider 内；Open 是 GetCollection 的唯一先导入口，
+        // Mongo 序列化准备（ConventionPack）内聚到 Provider 内；Open 是 GetCollection 的唯一先导入口，
         // 必须先于任何 ClassMap AutoMap 完成（否则字典形态退回 Dynamic，破坏存量数据读写）。
-        // C171: Mongo serialization preparation (ConventionPack) is owned by the provider; Open is the only
+        // Serialization preparation is owned by the provider; Open is the only
         // entry preceding GetCollection and must complete before any ClassMap AutoMap (otherwise dictionary
         // representation falls back to Dynamic and breaks legacy data read/write).
         MongoSerializationRegistry.EnsureConventionsRegistered();

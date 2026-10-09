@@ -32,7 +32,7 @@ using System.Collections.Generic;
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 结果分发结果（vault:C6 S5.8「可信结果 → 资产 / 排行 / 通知」的资产侧回执）。
+/// 结果分发结果（可信结果 → 资产 / 排行 / 通知的资产侧回执）。
 /// <para>
 /// 维护约束（红线）：分发**逐玩家独立**——单个玩家的发奖失败不回滚其他玩家，
 /// 也不改变已落定的结算事实。失败玩家留在 <see cref="FailedPlayerIds"/> 中由后续补偿流程重投

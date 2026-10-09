@@ -31,13 +31,13 @@ using GameFrameX.Online.Scope;
 namespace GameFrameX.Online.HotfixRollback;
 
 /// <summary>
-/// Hotfix 回滚命令请求（vault:C9 S8.5：回滚是唯一受控操作——操作者显式命令 + 审计；
+/// Hotfix 回滚命令请求（回滚是唯一受控操作——操作者显式命令 + 审计；
 /// 登记（Register）与激活（Activate）为簿记 / 装配面初始化入口，不落审计）。
 /// <para>
 /// 维护约束（红线）：<see cref="Scope"/> 只锚定 TenantId/AppId 两键（App 级资产，ServerId 固定 0
 /// ——服务内统一归一，调用方传入的 ServerId 不参与定位）；<see cref="OperatorId"/>、<see cref="Reason"/>、
 /// <see cref="TargetVersion"/>、<see cref="IdempotencyKey"/> 必填（宁拒毋缺，缺失拒绝 4001）；
-/// 幂等键承载「回滚到版本 X」这一业务意图——相同键不同意图判 6002 冲突（C93）。
+/// 幂等键承载「回滚到版本 X」这一业务意图——相同键不同意图判 6002 冲突。
 /// </para>
 /// </summary>
 public sealed class OnlineHotfixRollbackRequest
@@ -88,7 +88,7 @@ public sealed class OnlineHotfixRollbackRequest
     }
 
     /// <summary>
-    /// 获取或设置命令幂等键（同一回滚命令重试 / 重发携带相同键；格式按 C93 幂等键校验）。
+    /// 获取或设置命令幂等键（同一回滚命令重试 / 重发携带相同键；格式按幂等键校验规则）。
     /// </summary>
     public string IdempotencyKey
     {

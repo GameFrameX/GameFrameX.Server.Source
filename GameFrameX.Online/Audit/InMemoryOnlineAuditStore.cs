@@ -35,9 +35,9 @@ using System.Threading.Tasks;
 namespace GameFrameX.Online.Audit;
 
 /// <summary>
-/// 统一审计内存存储（单进程默认实现；生产持久化实现归运行时装配，X4）。
+/// 统一审计内存存储（单进程默认实现；生产持久化实现归运行时装配）。
 /// <para>
-/// 维护约束：「EventId 判重 + 落档」在 <see cref="_gate"/> 锁内**同一临界区**完成（VC-8.4 幂等半边的
+/// 维护约束：「EventId 判重 + 落档」在 <see cref="_gate"/> 锁内**同一临界区**完成（幂等半边的
 /// 结构性保证）；作用域索引键为 (TenantId, AppId) 两键——审计是跨区服检索域，区服过滤由服务层承担；
 /// 出入参防御性拷贝（持久化行语义，调用方引用不得别名存储内部状态）。
 /// </para>

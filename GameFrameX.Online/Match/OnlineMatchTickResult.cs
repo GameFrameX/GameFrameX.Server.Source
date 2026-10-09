@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 一次 Tick 的结果（vault:C6 Tick/Timer 与清理策略的可观测面）。
+/// 一次 Tick 的结果（Tick/Timer 与清理策略的可观测面）。
 /// <para>
 /// 维护约束：本类型只陈述 Tick 观察到的事实，不承载任何裁决语义——
 /// 调用方（运行时）据此统计，不得据此反推对局状态。
@@ -57,7 +57,7 @@ public sealed class OnlineMatchTickResult
     }
 
     /// <summary>
-    /// 获取或设置是否因超时转入结束态（VC-5.12）。
+    /// 获取或设置是否因超时转入结束态。
     /// </summary>
     public bool TimedOut
     {
@@ -66,7 +66,7 @@ public sealed class OnlineMatchTickResult
     }
 
     /// <summary>
-    /// 获取或设置是否因重连窗口超时清理了断线成员（VC-5.7）。
+    /// 获取或设置是否因重连窗口超时清理了断线成员。
     /// </summary>
     public bool ReconnectWindowExpired
     {
@@ -84,7 +84,7 @@ public sealed class OnlineMatchTickResult
     }
 
     /// <summary>
-    /// 获取或设置是否已进入终态并可释放（VC-5.11）。
+    /// 获取或设置是否已进入终态并可释放。
     /// </summary>
     public bool Closable
     {

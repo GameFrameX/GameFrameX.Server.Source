@@ -35,12 +35,12 @@ using System.Threading.Tasks;
 using GameFrameX.Online.Contracts;
 
 /// <summary>
-/// 跨服补偿队列（vault:C4 S3.8/VC-3.11：归属服不可用时的续投承载；恢复后自动完成且不重复）。
+/// 跨服补偿队列（归属服不可用时的续投承载；恢复后自动完成且不重复）。
 /// <para>
 /// 维护约束（红线）：续投原样保留请求（幂等键不变——恢复后重复投递只生效一次）；
 /// SLO 超时告警一次并保留条目（超时转人工，积压超时 = 0 的守护输入）；
 /// 内存实现为单进程默认（生产装配以持久化队列替换；运维巡检消费 <see cref="ListPending"/>）。
-/// ponytail: 内存队列天花板——进程重启丢队列；生产以持久化实现替换，SLO 计时随之落库。
+/// 天花板：内存队列——进程重启丢队列；生产以持久化实现替换，SLO 计时随之落库。
 /// </para>
 /// </summary>
 public sealed class OnlineGrantCompensationQueue

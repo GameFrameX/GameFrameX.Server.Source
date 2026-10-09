@@ -13,10 +13,10 @@ using GameFrameX.NetWork.RemoteMessaging.Routing;
 namespace GameFrameX.Tests.Discovery;
 
 /// <summary>
-/// 玩家路由 Tier 1 fast-path 接口契约与 PlayerRouteInfo 工厂测试（C143e D21）。
+/// 玩家路由 Tier 1 fast-path 接口契约与 PlayerRouteInfo 工厂测试。
 /// </summary>
 /// <remarks>
-/// Pure-logic tests for the player-route resolver contract (C143e D21):
+/// Pure-logic tests for the player-route resolver contract:
 /// the Tier 1 fast-path shape that <see cref="MongoPlayerRouteResolver"/>
 /// consumes from the host application layer, and the <see cref="PlayerRouteInfo"/>
 /// factory methods. Tier 2 control-database and Tier 3 offline paths run against

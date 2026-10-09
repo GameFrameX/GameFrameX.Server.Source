@@ -34,10 +34,10 @@ using Xunit;
 namespace GameFrameX.Tests.Utility;
 
 /// <summary>
-/// SettingFieldLevel 标注的单元测试（C143a D19 字段分区）。
+/// SettingFieldLevel 标注的单元测试（字段分区）。
 /// </summary>
 /// <remarks>
-/// Unit tests for the SettingFieldLevel annotations (C143a D19 field partition).
+/// Unit tests for the SettingFieldLevel annotations (field partition).
 /// Guards against un-annotated AppSetting properties, which would silently bypass
 /// process-level conflict validation in GlobalSettings.SetCurrentSetting.
 /// </remarks>
@@ -85,7 +85,7 @@ public class SettingFieldLevelTests
     }
 
     /// <summary>
-    /// 进程级字段集合非空且数量级符合 D19 普查（95% 进程级）。
+    /// 进程级字段集合非空且数量级符合普查结果（95% 进程级）。
     /// </summary>
     [Fact]
     public void ProcessLevelPartition_IsNotEmpty()

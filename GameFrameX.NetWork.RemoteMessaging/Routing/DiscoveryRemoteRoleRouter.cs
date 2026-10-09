@@ -34,18 +34,18 @@ using GameFrameX.NetWork.RemoteMessaging.Discovery;
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
-/// 基于发现层路由表的跨进程 Role 转发器（C143d D3 case 2/3 真实实现）。
+/// 基于发现层路由表的跨进程 Role 转发器（case 2/3 真实实现）。
 /// </summary>
 /// <remarks>
-/// The real D3 case 2/3 implementation consuming the discovery route table's dual-view
-/// route table (C143d; it replaces the C143c placeholder that always threw).
+/// The real case 2/3 implementation consuming the discovery route table's dual-view
+/// route table (it replaces the placeholder that always threw).
 /// Case 2 resolves the envelope's target instance id through the Instance view
 /// (Draining stays resolvable — in-flight deliveries remain valid during graceful
 /// scale-down); case 3 picks from the Role view's Active instances (Draining
 /// excluded — no new traffic) with a deterministic first-choice policy —
 /// ponytail: upgrade path is the existing ConsistentHashServerInstanceSelector
 /// once per-key affinity is needed. Both failures are loud
-/// <see cref="RouteNotFoundException"/>s, matching the C143c seam contract of
+/// <see cref="RouteNotFoundException"/>s, matching the seam contract of
 /// never silently dropping a message.
 /// </remarks>
 public sealed class DiscoveryRemoteRoleRouter : IRemoteRoleRouter
@@ -84,7 +84,7 @@ public sealed class DiscoveryRemoteRoleRouter : IRemoteRoleRouter
     }
 
     /// <summary>
-    /// 将信封转发给目标 Role 所在的远端进程（D3 case 2/3）。
+    /// 将信封转发给目标 Role 所在的远端进程（case 2/3）。
     /// </summary>
     /// <remarks>
     /// Resolves the target instance through the dual-view table and forwards the
@@ -104,7 +104,7 @@ public sealed class DiscoveryRemoteRoleRouter : IRemoteRoleRouter
         var table = _tableProvider.Current;
         var targetInstance = ResolveTargetInstance(table, envelope);
 
-        // 把选中的实例 Id 盖到信封上：case 3 的选择结果对发送通道与接收端复投（C143e）都必须可见。
+        // 把选中的实例 Id 盖到信封上：case 3 的选择结果对发送通道与接收端复投都必须可见。
         var stampedEnvelope = envelope.TargetInstanceId == targetInstance.InstanceId
                                   ? envelope
                                   : new MessageEnvelope(envelope.TargetRole, envelope.Message, envelope.TargetActorId, targetInstance.InstanceId);
@@ -115,7 +115,7 @@ public sealed class DiscoveryRemoteRoleRouter : IRemoteRoleRouter
     }
 
     /// <summary>
-    /// 解析目标实例（D3 case 2 按实例 Id / case 3 取 Active 首选）。
+    /// 解析目标实例（case 2 按实例 Id / case 3 取 Active 首选）。
     /// </summary>
     /// <remarks>
     /// Resolves the target instance: case 2 by the envelope's instance id, case 3
@@ -127,7 +127,7 @@ public sealed class DiscoveryRemoteRoleRouter : IRemoteRoleRouter
     /// <exception cref="RouteNotFoundException">当目标不可解析时抛出 / Thrown when the target cannot be resolved</exception>
     private static InstanceDescriptor ResolveTargetInstance(RoleRouteTable table, MessageEnvelope envelope)
     {
-        // D3 case 2：指定实例投递（Draining 实例仍可命中——在途投递合法）。
+        // case 2：指定实例投递（Draining 实例仍可命中——在途投递合法）。
         if (!string.IsNullOrEmpty(envelope.TargetInstanceId))
         {
             if (!table.TryGetInstance(envelope.TargetInstanceId, out var instanceById))
@@ -139,7 +139,7 @@ public sealed class DiscoveryRemoteRoleRouter : IRemoteRoleRouter
             return instanceById;
         }
 
-        // D3 case 3：任意 Active 实例（Draining 不接新流量）。
+        // case 3：任意 Active 实例（Draining 不接新流量）。
         var activeInstances = table.GetActiveInstances(envelope.TargetRole);
         if (activeInstances.Count == 0)
         {

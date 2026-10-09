@@ -33,7 +33,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// OnlineRequestContextValidator 请求上下文校验测试（缺上下文拒 4xxx，副作用请求缺幂等键拒 4xxx，VC-1.1）。
+    /// OnlineRequestContextValidator 请求上下文校验测试（缺上下文拒 4xxx，副作用请求缺幂等键拒 4xxx）。
     /// </summary>
     public class OnlineRequestContextValidatorTests
     {
@@ -69,7 +69,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证缺失上下文（null）被拒为参数错误（VC-1.1 缺上下文）。
+        /// 验证缺失上下文（null）被拒为参数错误。
         /// </summary>
         [Fact]
         public void Validate_WithNullContext_ShouldReturnParameterInvalid()

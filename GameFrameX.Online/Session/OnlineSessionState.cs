@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Session;
 
 /// <summary>
-/// 会话生命周期状态（vault:C3 S2.4：Created → Authenticated → Connected → Active，断线入 Reconnecting，终态 Closed/Kicked/Expired）。
+/// 会话生命周期状态（Created → Authenticated → Connected → Active，断线入 Reconnecting，终态 Closed/Kicked/Expired）。
 /// <para>
 /// 维护约束：Session 负责一次连接和鉴权上下文，Presence 只表达在线事实，二者不得混用；
 /// 终态（Closed/Kicked/Expired）不可逆，终态会话的 Token 一律失效；

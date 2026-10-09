@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Identity;
 
 /// <summary>
-/// 外源身份实体（vault:C3 S2.2：邮箱/设备/渠道/第三方身份，绑定明确的 TenantId + AppId）。
+/// 外源身份实体（邮箱/设备/渠道/第三方身份，绑定明确的 TenantId + AppId）。
 /// <para>
 /// 维护约束：唯一性键 = (TenantId, AppId, Kind, Identifier)，四元组重复即同一身份；
 /// 凭证材料（口令散列、第三方 token）由装配层凭据组件持有，本实体只承载身份指向；

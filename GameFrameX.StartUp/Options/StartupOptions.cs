@@ -56,11 +56,11 @@ public partial class StartupOptions : AppSetting
     public bool IsSingleMode { get; set; }
 
     /// <summary>
-    /// 是否 All-in-One 单进程拉起全部已注册 Role（C143b D2）。
+    /// 是否 All-in-One 单进程拉起全部已注册 Role。
     /// </summary>
     /// <value>All-in-One 则为 <c>true</c>；否则为 <c>false</c>。默认值为 <c>false</c> / <c>true</c> for all-in-one; otherwise, <c>false</c>. Default is <c>false</c></value>
     /// <remarks>
-    /// Whether to launch every registered role in one process (all-in-one, C143b D2).
+    /// Whether to launch every registered role in one process (all-in-one).
     /// This flag is process-level: every role of the process shares one kernel.
     /// It intentionally coexists with (and is NOT replaced by) <see cref="IsSingleMode"/>, which is consumed
     /// by the AppHost orchestration layer with the opposite meaning ("one AppHost orchestrating all roles").
@@ -71,7 +71,7 @@ public partial class StartupOptions : AppSetting
     public bool IsAllInOne { get; set; }
 
     /// <summary>
-    /// 获取由 <see cref="AppSetting.ServerType"/> 逗号拆分出的 Role 名列表（C143b D2）。
+    /// 获取由 <see cref="AppSetting.ServerType"/> 逗号拆分出的 Role 名列表。
     /// </summary>
     /// <remarks>
     /// Derived view of the comma-separated <c>--ServerType</c> value (e.g. "Game,Social" → ["Game", "Social"]).

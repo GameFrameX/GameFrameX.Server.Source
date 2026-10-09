@@ -30,11 +30,11 @@
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 玩法扩展接口（vault:C6「对局超时、异常退出、托管和观战必须有玩法级扩展点」）。
+/// 玩法扩展接口（对局超时、异常退出、托管和观战必须有玩法级扩展点）。
 /// <para>
 /// 维护约束（红线）：实现方**只能**通过传入的 <see cref="OnlineMatch"/> 读写玩法状态，
 /// 且必须保持纯裁决语义——<see cref="ApplyInput"/> 只依据服务端持有的状态与成员身份判定合法性，
-/// 绝不读取任何来自客户端的「结果」（VC-5.2）。实现方自行产生的
+/// 绝不读取任何来自客户端的「结果」。实现方自行产生的
 /// <see cref="OnlineMatchServerEvent"/> 不携带服务器序号，序号一律由 Actor 统一分配。
 /// </para>
 /// <para>
@@ -85,14 +85,14 @@ public interface IOnlineMatchGame
     OnlineMatchGameStepResult ApplyInput(OnlineMatch match, OnlineMatchMember member, OnlineMatchInput input);
 
     /// <summary>
-    /// 按时间推进玩法（回合超时判定等，VC-5.12）。
+    /// 按时间推进玩法（回合超时判定等）。
     /// </summary>
     /// <param name="match">对局。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
     /// <param name="emittedEvents">
     /// 本次推进要追加的服务器事件（可为空列表）。序号由 Actor 统一分配，玩法不得预填
     /// <see cref="OnlineMatchServerEvent.Sequence"/>——客户端正是靠事件流感知「超时判负」这类
-    /// 无输入触发的推进，仅有状态变化而不发事件会让重连增量补发出现空洞（VC-5.6）。
+    /// 无输入触发的推进，仅有状态变化而不发事件会让重连增量补发出现空洞。
     /// </param>
     /// <returns>本次推进是否改写了玩法状态或成员状态；未改变返回 <c>false</c>（避免 Tick 产生无意义落库）。</returns>
     bool Advance(OnlineMatch match, long nowUnixMilliseconds, List<OnlineMatchServerEvent> emittedEvents);

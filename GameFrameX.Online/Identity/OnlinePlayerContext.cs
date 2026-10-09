@@ -33,7 +33,7 @@ using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Online.Scope;
 
 /// <summary>
-/// 统一玩家上下文（vault:C3：PlayerId + AppId + ServerId + SessionId，后续模块不再各自解析身份）。
+/// 统一玩家上下文（PlayerId + AppId + ServerId + SessionId，后续模块不再各自解析身份）。
 /// <para>
 /// 维护约束：登录成功后由服务端生成，客户端不得自行拼接身份关系；
 /// 会话进入终态后本上下文即失效，调用方不得缓存复用；

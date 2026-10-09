@@ -32,11 +32,11 @@ using System.Collections.Generic;
 namespace GameFrameX.Online.GameEvents;
 
 /// <summary>
-/// 游戏事件指标快照（vault:C8 S7.5 / VC-7.10 的 Server 半边：**现场复算**的计数事实，不是累计账本）。
+/// 游戏事件指标快照（服务端半边：**现场复算**的计数事实，不是累计账本）。
 /// <para>
 /// 维护约束（红线）：本对象是**某一时间窗内原始事件的纯函数**——同一窗口同一批原始事件复算必然得到同一结果
 /// （无采样、无近似、无历史累计状态），「可复算偏差 0」因此是结构性成立而非统计意义上的近似；
-/// 真实报表的上卷与留存归数据侧（S7.9），本对象只服务服务端可观测性与测试断言。
+/// 真实报表的上卷与留存归数据侧，本对象只服务服务端可观测性与测试断言。
 /// </para>
 /// </summary>
 public sealed class OnlineGameEventMetrics
@@ -105,7 +105,7 @@ public sealed class OnlineGameEventMetrics
     } = new Dictionary<string, int>();
 
     /// <summary>
-    /// 获取或设置窗口内被 L0 拒绝并进入死信的**脏事件**数（摄取健康度的唯一信号：正常应为 0）。
+    /// 获取或设置窗口内被基础校验拒绝并进入死信的**脏事件**数（摄取健康度的唯一信号：正常应为 0）。
     /// </summary>
     public int RejectedCount
     {

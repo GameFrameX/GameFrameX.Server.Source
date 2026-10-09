@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Presence;
 
 /// <summary>
-/// 在线状态存储接口（vault:C3 S2.5：Presence 事实源的持久化契约）。
+/// 在线状态存储接口（Presence 事实源的持久化契约）。
 /// <para>
 /// 维护约束：键 = (TenantId, AppId, PlayerId)——玩家维度唯一（多端并存时以会话域为准，Presence 表达玩家事实）；
 /// 无记录即 Offline（RemoveAsync 即下线）；查询按 (TenantId, AppId) 列举，在线计数在服务层过滤状态。

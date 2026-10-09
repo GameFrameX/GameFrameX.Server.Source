@@ -32,7 +32,7 @@ using GameFrameX.Online.Contracts;
 namespace GameFrameX.Online.Scope;
 
 /// <summary>
-/// Online 作用域解析器（vault:C2 S1.7：作用域在 Server / Client API / Hub API / Admin API 四端间传递，
+/// Online 作用域解析器（作用域在 Server / Client API / Hub API / Admin API 四端间传递，
 /// 以鉴权上下文为准，客户端伪造字段被忽略）。
 /// <para>
 /// 维护约束：字段名兼容 Admin 既成事实——GET 查询参数 camelCase（<c>tenantId/appId/serverId</c>）、
@@ -72,7 +72,7 @@ public static class OnlineScopeResolver
             return null;
         }
 
-        // 鉴权上下文（服务端权威）直接生效；客户端字段仅用于服务端路由参考，永远不覆盖鉴权值（VC-1.8）。
+        // 鉴权上下文（服务端权威）直接生效；客户端字段仅用于服务端路由参考，永远不覆盖鉴权值。
         var claimedTenantId = ReadInt64(parameters, TenantFieldName, authorizedScope.TenantId);
         var claimedAppId = ReadInt64(parameters, AppFieldName, authorizedScope.AppId);
         var claimedServerId = ReadInt64(parameters, ServerFieldName, authorizedScope.ServerId);
@@ -96,7 +96,7 @@ public static class OnlineScopeResolver
     }
 
     /// <summary>
-    /// 以鉴权上下文强制覆盖客户端声称的作用域（VC-1.8：服务端忽略客户端字段，以鉴权上下文为准）。
+    /// 以鉴权上下文强制覆盖客户端声称的作用域（服务端忽略客户端字段，以鉴权上下文为准）。
     /// <para>维护约束：本方法不对越权做拒绝判定（那是 <c>OnlineScopeGuard</c> 的职责），只保证权威值生效。</para>
     /// </summary>
     /// <param name="authorizedScope">鉴权上下文作用域（权威）。</param>

@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 举报案件状态（vault:C7 S6.3）。
+/// 举报案件状态。
 /// <para>
 /// 维护约束：状态迁移唯一判据是 <see cref="OnlineReportStateMachine.TryTransition"/>；
 /// <see cref="Submitted"/> 是玩家可撤回窗口，一旦进入 <see cref="Reviewing"/> 即由 Admin 接管，

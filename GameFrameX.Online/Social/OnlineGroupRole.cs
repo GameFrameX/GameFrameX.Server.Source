@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 群组成员角色（vault:C7 S6.4：Owner &gt; Admin &gt; Member 三级）。
+/// 群组成员角色（Owner &gt; Admin &gt; Member 三级）。
 /// <para>
 /// 维护约束：角色是权限判据的**唯一**来源，不额外落权限位掩码——同一判据存两处必然产生不一致。
 /// 数值越小权限越高（<see cref="Owner"/> = 0），因此「操作者能否处置目标」等价于数值比较

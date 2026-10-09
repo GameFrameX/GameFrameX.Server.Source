@@ -763,7 +763,7 @@ Server/
 
 ## Process Topology Isomorphism
 
-Since C143 the server supports a *process topology isomorphism* model: the same role set can run as one
+The server supports a *process topology isomorphism* model: the same role set can run as one
 process per role, or as a single all-in-one process, without changing role code.
 
 ### Multi-Role Startup

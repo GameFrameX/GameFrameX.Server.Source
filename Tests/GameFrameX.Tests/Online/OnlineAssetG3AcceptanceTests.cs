@@ -43,7 +43,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// G3 端到端验收测试（vault:C4：四来源统一入口 → 幂等 → 事件 → 对账差异 0 →
+    /// G3 端到端验收测试（四来源统一入口 → 幂等 → 事件 → 对账差异 0 →
     /// Admin 查询面可见；无来源变更结构性不可达）。
     /// </summary>
     public class OnlineAssetG3AcceptanceTests

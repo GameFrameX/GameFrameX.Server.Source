@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 举报处置结果（vault:C7 S6.3：Admin 裁决结论，与案件状态正交）。
+/// 举报处置结果（Admin 裁决结论，与案件状态正交）。
 /// <para>
 /// 维护约束：<see cref="None"/> 表示「尚未处置」，只在案件处于
 /// <see cref="OnlineReportState.Submitted"/> / <see cref="OnlineReportState.Reviewing"/> 时合法；

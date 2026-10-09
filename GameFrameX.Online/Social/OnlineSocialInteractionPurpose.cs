@@ -30,12 +30,12 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 定向社交互动的目的分类（vault:C7 关键约束：Block 必须在三处统一生效的**枚举载体**）。
+/// 定向社交互动的目的分类（Block 必须在三处统一生效的**枚举载体**）。
 /// <para>
 /// 维护约束：本枚举是「同一份裁决覆盖三条通路」的落点——Chat 私聊、Party 邀请、Matchmaker 成组
 /// 都携带本枚举调用 <see cref="IOnlineSocialGate.EvaluateAsync"/>。
 /// 新增定向互动通路**必须**扩展本枚举并走同一裁决入口，禁止在通路内自建判定
-/// （那正是 vault:C7 风险表首条要防的「行为不一致，出现绕过」）。
+/// （那正是要防的「行为不一致，出现绕过」）。
 /// 三种目的的裁决力度差异由 <see cref="OnlineSocialDecisionService"/> 承载：
 /// 禁言只拒绝 <see cref="DirectMessage"/>，封禁拒绝三者，屏蔽拒绝三者。
 /// </para>

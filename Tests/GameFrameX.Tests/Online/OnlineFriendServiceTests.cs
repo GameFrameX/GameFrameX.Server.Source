@@ -39,7 +39,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 好友服务测试（vault:C7 S6.2 好友域：关系生命周期唯一写者、反预言答复权、
+    /// 好友服务测试（好友域：关系生命周期唯一写者、反预言答复权、
     /// 状态机收敛与可重新发起、超期扫描、列表与搜索上限、在线状态读取时事实、社交变更事件）。
     /// </summary>
     public class OnlineFriendServiceTests
@@ -67,7 +67,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证发起好友请求生成唯一的待答复记录（方向事实、无向对规范化、有效期），
-        /// 且重复发起收敛到同一标识、不新建第二条、不重复发事件（VC-6.1）。
+        /// 且重复发起收敛到同一标识、不新建第二条、不重复发事件。
         /// </summary>
         [Fact]
         public async Task RequestAsync_ShouldCreateSinglePendingRecordAndConvergeOnRepeat()
@@ -107,7 +107,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证反向重复申请不自动接受：被请求方反向再发起时返回同一条待答复记录，
-        /// 状态不前进、方向事实不翻转，双方好友列表仍为空（VC-6.1：答复权只属于被请求方）。
+        /// 状态不前进、方向事实不翻转，双方好友列表仍为空（答复权只属于被请求方）。
         /// </summary>
         [Fact]
         public async Task RequestAsync_WhenAddresseeRequestsBack_ShouldNotAutoAccept()
@@ -142,7 +142,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证被请求方接受后关系进入 Accepted，双方好友列表各出现一条条目，
-        /// 待答复列表清空（VC-6.2：Requested → Accepted 是唯一迁移路径）。
+        /// 待答复列表清空（Requested → Accepted 是唯一迁移路径）。
         /// </summary>
         [Fact]
         public async Task AcceptAsync_WhenAddresseeAnswers_ShouldEstablishFriendshipOnBothSides()
@@ -179,7 +179,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证发起方答复自己的请求拿到 ResourceNotFound（反预言：答复权只属于被请求方，
-        /// 发起方看不到这条请求可被答复），失败不改变状态、不发布事件（VC-6.2）。
+        /// 发起方看不到这条请求可被答复），失败不改变状态、不发布事件。
         /// </summary>
         [Fact]
         public async Task AcceptAsync_WhenRequesterAnswersOwnRequest_ShouldReturnResourceNotFound()
@@ -208,7 +208,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证无关第三方答复他人的请求同样拿到 ResourceNotFound（反预言：不泄露他人关系的存在性），
-        /// 且请求维持待答复（VC-6.2）。
+        /// 且请求维持待答复。
         /// </summary>
         [Fact]
         public async Task RejectAsync_WhenUnrelatedPlayerAnswers_ShouldReturnResourceNotFound()
@@ -233,7 +233,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证被请求方拒绝后关系进入 Rejected、不出现在好友列表，且重复拒绝幂等
-        /// 返回同一快照、不重复发事件（VC-6.2）。
+        /// 返回同一快照、不重复发事件。
         /// </summary>
         [Fact]
         public async Task RejectAsync_WhenAddresseeRejects_ShouldSetRejectedAndHideFromFriendList()
@@ -267,7 +267,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证被拒绝后可重新发起：复用同一条记录回到 Requested，方向翻转为本次发起人
-        /// （Rejected → Requested 是合法边，不新建第二条记录，VC-6.2）。
+        /// （Rejected → Requested 是合法边，不新建第二条记录）。
         /// </summary>
         [Fact]
         public async Task RequestAsync_AfterRejected_ShouldReopenExistingRecordWithNewRequester()
@@ -296,7 +296,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证删除好友：Accepted → Removed，关系双方的好友列表均清空，且删除不是一次答复
-        /// （不改写答复时刻，VC-6.2）。
+        /// （不改写答复时刻）。
         /// </summary>
         [Fact]
         public async Task RemoveAsync_WhenEstablished_ShouldSetRemovedForBothSides()
@@ -324,7 +324,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证不存在的关系上执行删除返回 ResourceNotFound（VC-6.2：无关系不得伪造成功，
+        /// 验证不存在的关系上执行删除返回 ResourceNotFound（无关系不得伪造成功，
         /// 也不得凭空发事件）。
         /// </summary>
         [Fact]
@@ -345,7 +345,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证删除后可重新添加：复用同一条记录回到 Requested，方向翻转为本次发起人
-        /// （Removed → Requested 是合法边，VC-6.2 状态机末段）。
+        /// （Removed → Requested 是合法边，状态机末段）。
         /// </summary>
         [Fact]
         public async Task RequestAsync_AfterRemoved_ShouldReopenExistingRecordWithNewRequester()
@@ -370,7 +370,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证超期扫描：未到期不收敛，到期收敛为 Expired 并返回本次终结条数，
-        /// 重复扫描返回 0（幂等），终态后待答复列表清空（VC-6.2）。
+        /// 重复扫描返回 0（幂等），终态后待答复列表清空。
         /// </summary>
         [Fact]
         public async Task SweepExpiredAsync_WhenRequestOverdue_ShouldExpireAndReturnAffectedCount()
@@ -474,7 +474,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证搜索把去空白的关键字与配置的 searchLimit 传给玩家目录、返回匹配条目并过滤掉自己
-        /// （vault:C7 S6.2「好友支持搜索」；源码未标注专属 VC 编号）。
+        /// （好友支持搜索）。
         /// </summary>
         [Fact]
         public async Task SearchAsync_ShouldHonorSearchLimitAndExcludeSelf()
@@ -501,7 +501,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证未装配玩家目录时搜索降级为空结果而非报错（vault:C7 S6.2：搜索不可用不阻断其他社交能力）。
+        /// 验证未装配玩家目录时搜索降级为空结果而非报错（搜索不可用不阻断其他社交能力）。
         /// </summary>
         [Fact]
         public async Task SearchAsync_WhenDirectoryMissing_ShouldReturnEmptyResult()
@@ -520,8 +520,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证在线状态是读取时事实：探针状态变化后两次列表结果跟着变，
-        /// 且关系存储里的记录在两次读取后逐字段不变（在线状态不落库；
-        /// vault:C7 S6.2，源码未标注专属 VC 编号）。
+        /// 且关系存储里的记录在两次读取后逐字段不变（在线状态不落库）。
         /// </summary>
         [Fact]
         public async Task ListFriendsAsync_ShouldReadPresenceLiveWithoutPersistingIt()
@@ -553,8 +552,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证未装配在线探针时好友列表的在线标记恒为 false（降级为「未知」而非误报在线；
-        /// vault:C7 S6.2，源码未标注专属 VC 编号）。
+        /// 验证未装配在线探针时好友列表的在线标记恒为 false（降级为「未知」而非误报在线）。
         /// </summary>
         [Fact]
         public async Task ListFriendsAsync_WhenPresenceProbeMissing_ShouldReportOffline()
@@ -573,7 +571,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证好友生命周期各步都发布 FriendshipChanged 事件并携带对应 Action 与关联标识，
-        /// 信封玩家位取关系发起方（vault:C7 S6.3 社交域事件）。
+        /// 信封玩家位取关系发起方（社交域事件）。
         /// </summary>
         [Fact]
         public async Task FriendshipLifecycle_ShouldPublishChangedEventsWithAction()
@@ -612,7 +610,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证拒绝好友请求发布 Action = Rejected 的 FriendshipChanged 事件，且载荷状态同步为
-        /// Rejected（vault:C7 S6.3 社交域事件）。
+        /// Rejected（社交域事件）。
         /// </summary>
         [Fact]
         public async Task RejectAsync_ShouldPublishRejectedEvent()

@@ -35,14 +35,14 @@ using ProtoBuf;
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
-/// 跨进程路由信封传输协议（C143d D3 case 2/3 wire 格式）。
+/// 跨进程路由信封传输协议（case 2/3 wire 格式）。
 /// </summary>
 /// <remarks>
-/// The wire representation of a cross-process routing envelope (C143d D3 case 2/3).
+/// The wire representation of a cross-process routing envelope (case 2/3).
 /// <see cref="TcpEnvelopeForwarder"/> serializes this message through the standard
 /// codec frame, so the bytes on the wire are indistinguishable from any other
 /// RemoteMessaging packet. The receiving side (envelope unpacking back into local
-/// delivery) is delivered with C143e: <see cref="LocalEnvelopeDispatcher"/> looks up
+/// delivery) is handled by <see cref="LocalEnvelopeDispatcher"/>: it looks up
 /// <see cref="InnerMessageId"/> in <c>MessageProtoHelper</c> and re-delivers via
 /// <see cref="IPlayerLocalSender"/>.
 /// </remarks>
@@ -80,10 +80,10 @@ public sealed class RoleRouteEnvelopeMessage : MessageObject
     public long TargetActorId { get; set; }
 
     /// <summary>
-    /// 获取或设置目标实例 Id（D3 case 2 语义；case 3 时为空）。
+    /// 获取或设置目标实例 Id（case 2 语义；case 3 时为空）。
     /// </summary>
     /// <remarks>
-    /// Gets or sets the target instance id (D3 case 2; empty for case 3).
+    /// Gets or sets the target instance id (case 2; empty for case 3).
     /// </remarks>
     /// <value>目标实例 Id；case 3 时为空 / The target instance id, or empty for case 3</value>
     [ProtoMember(3)]

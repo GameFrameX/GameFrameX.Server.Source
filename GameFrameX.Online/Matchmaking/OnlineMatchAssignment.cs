@@ -30,10 +30,10 @@
 namespace GameFrameX.Online.Matchmaking;
 
 /// <summary>
-/// 对局分配（vault:C5 S4.8 冻结字段集：AssignmentId / MatchId / PlayerIds / Mode / Region /
-/// RuleSnapshot / CreatedAt）。阶段 5（C98）消费本类型创建 Match，不需要任何额外隐式约定。
+/// 对局分配（冻结字段集：AssignmentId / MatchId / PlayerIds / Mode / Region /
+/// RuleSnapshot / CreatedAt）。对局创建方直接消费本类型创建 Match，不需要任何额外隐式约定。
 /// <para>
-/// 维护约束（红线）：assignment 是**不可变事实**——产生后不得改写。VC-4.2 要求「取消不产生 assignment
+/// 维护约束（红线）：assignment 是**不可变事实**——产生后不得改写。「取消不产生 assignment
 /// 或产生后客户端被拒绝入局」；由于 assignment 与票据终态在同一原子边界内落定，
 /// 一旦产生即代表匹配已成立，取消只会作用于未成组的票据。
 /// </para>
@@ -50,7 +50,7 @@ public sealed class OnlineMatchAssignment
     }
 
     /// <summary>
-    /// 获取或设置对局标识（阶段 5 以此创建 Match）。
+    /// 获取或设置对局标识（对局创建方以此创建 Match）。
     /// </summary>
     public string MatchId
     {
@@ -59,7 +59,7 @@ public sealed class OnlineMatchAssignment
     }
 
     /// <summary>
-    /// 获取或设置本分配的玩家集合（队伍票据为整队成员，VC-4.3）。
+    /// 获取或设置本分配的玩家集合（队伍票据为整队成员）。
     /// </summary>
     public List<long> PlayerIds
     {
@@ -104,7 +104,7 @@ public sealed class OnlineMatchAssignment
     }
 
     /// <summary>
-    /// 获取或设置本分配消费的票据标识集合（VC-4.12 唯一性追溯的依据）。
+    /// 获取或设置本分配消费的票据标识集合（唯一性追溯的依据）。
     /// </summary>
     public List<string> TicketIds
     {

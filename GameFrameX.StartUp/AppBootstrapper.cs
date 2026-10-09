@@ -31,10 +31,10 @@
 namespace GameFrameX.StartUp;
 
 /// <summary>
-/// 进程级共享内核幂等初始化器（C143b D5）。
+/// 进程级共享内核幂等初始化器。
 /// </summary>
 /// <remarks>
-/// Process-level shared kernel idempotent initializer (C143b D5).
+/// Process-level shared kernel idempotent initializer.
 /// The shared kernel (log handler, proto registration, hotfix infrastructure, global settings)
 /// must be initialized exactly once before the first role of the process starts.
 /// <see cref="Initialize"/> guards the state behind an initialization gate and
@@ -84,7 +84,7 @@ public static class AppBootstrapper
     /// <remarks>
     /// The initialization state (0 = not initialized, 1 = initialized, 2 = initializing).
     /// <see cref="Initializing"/> is published only while the kernel delegate runs;
-    /// <see cref="Initialized"/> is published only after the delegate completes successfully (C143b D5),
+    /// <see cref="Initialized"/> is published only after the delegate completes successfully,
     /// so waiters never consume an incomplete shared kernel.
     /// </remarks>
     private static int _initializationState;

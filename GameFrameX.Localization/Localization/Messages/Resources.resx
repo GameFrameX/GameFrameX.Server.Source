@@ -1355,7 +1355,7 @@
     <value>No database named '{0}' is registered. Registered names: [{1}]</value>
   </data>
   <data name="Database.Registry.DefaultAlreadySet" xml:space="preserve">
-    <value>The default database is already set to '{0}' (set-once, C159); changing it to '{1}' is not allowed. Registered names: [{2}]</value>
+    <value>The default database is already set to '{0}' (set-once); changing it to '{1}' is not allowed. Registered names: [{2}]</value>
   </data>
   <data name="Database.BatchSizeInvalid" xml:space="preserve">
     <value>Batch size must be greater than zero.</value>
@@ -1367,7 +1367,7 @@
     <value>Either ControlDatabase or ConnectionName must be set.</value>
   </data>
   <data name="Database.Ef.DocumentDictionaryPropertyNotSupported" xml:space="preserve">
-    <value>PostgreSqlDbContext: document type '{0}' declares dictionary property '{1}' ({2}). EF owned JSON columns cannot map dictionaries in a C166-compatible shape; restructure it as a collection of owned entries or a scalar payload.</value>
+    <value>PostgreSqlDbContext: document type '{0}' declares dictionary property '{1}' ({2}). EF owned JSON columns cannot map dictionaries in a compatible shape; restructure it as a collection of owned entries or a scalar payload.</value>
   </data>
   <data name="Discovery.Endpoint.MissingSchemeSeparator" xml:space="preserve">
     <value>The endpoint '{0}' does not contain the required 'scheme://host:port' structure: the '://' separator with a non-empty scheme and authority is missing.</value>
@@ -1475,7 +1475,7 @@
     <value>Match ticket not found: {0}</value>
   </data>
   <data name="Online.AdminApi.EndAbnormalMatchForbidden" xml:space="preserve">
-    <value>Ending an abnormal match is not available on the admin plane; the game process owns match lifecycle (change C122 gap #1).</value>
+    <value>Ending an abnormal match is not available on the admin plane; the game process owns match lifecycle.</value>
   </data>
   <data name="Online.AdminApi.DirectionInvalid" xml:space="preserve">
     <value>Direction must be 'Apply' or 'Lift'.</value>
@@ -1603,6 +1603,6 @@
   </data>
 
   <data name="RemoteMessaging.Routing.LocalDispatcherNotConfigured" xml:space="preserve">
-    <value>Target role &#39;{0}&#39; is hosted by this process but no local message dispatcher is configured (the actor-backed dispatcher arrives with C143e).</value>
+    <value>Target role &#39;{0}&#39; is hosted by this process but no local message dispatcher is configured (the actor-backed dispatcher is not available yet).</value>
   </data>
 </root>

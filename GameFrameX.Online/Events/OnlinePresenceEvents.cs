@@ -32,10 +32,10 @@ using System.Text.Json;
 using GameFrameX.Online.Presence;
 
 /// <summary>
-/// 在线状态域事件工厂（vault:C3 S2.5/S2.8：Presence 状态转换事件供下游与 Admin 消费）。
+/// 在线状态域事件工厂（Presence 状态转换事件供下游与 Admin 消费）。
 /// <para>
-/// 维护约束：状态转换事件必须携带 from/to/reason 三元组（VC-2.5 状态机断言依据）；
-/// Presence 只表达玩家在线事实——Admin 管理员连接不产生 Presence 记录，也不产生本类事件（X6/VC-2.6）；
+/// 维护约束：状态转换事件必须携带 from/to/reason 三元组（状态机断言依据）；
+/// Presence 只表达玩家在线事实——Admin 管理员连接不产生 Presence 记录，也不产生本类事件；
 /// 事件是事实不是状态，消费端不得回写 Presence。
 /// </para>
 /// </summary>

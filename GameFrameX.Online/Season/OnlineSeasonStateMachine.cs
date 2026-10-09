@@ -33,12 +33,12 @@ using System.Collections.Generic;
 namespace GameFrameX.Online.Season;
 
 /// <summary>
-/// 赛季状态机（合法边固化表，形态对齐 C97/C98/C99 先例）。
+/// 赛季状态机（合法边固化表，形态对齐既有状态机先例）。
 /// <para>
 /// 维护约束（红线）：合法边以常量表固化，禁止在服务层用 if/switch 拼装迁移条件——新增迁移必须先改本表
 /// 并补状态机测试。本状态机是**单向线性链**：<c>Scheduled → Active → Ended → Settled</c>，
 /// 反向与跨级迁移一概非法（未开始的赛季不能结束、已结束的赛季不能复活、已结算不可回退），
-/// 保证「重置与结算各自只会发生一次」这一结构前提（VC-7.5 / VC-7.6）。
+/// 保证「重置与结算各自只会发生一次」这一结构前提。
 /// </para>
 /// </summary>
 public static class OnlineSeasonStateMachine

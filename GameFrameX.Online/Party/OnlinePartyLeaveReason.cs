@@ -30,10 +30,10 @@
 namespace GameFrameX.Online.Party;
 
 /// <summary>
-/// 队伍成员离开原因（vault:C5 S4.7：退出/踢出/队长退出/解散/离线移除必须可区分）。
+/// 队伍成员离开原因（退出/踢出/队长退出/解散/离线移除必须可区分）。
 /// <para>
 /// 维护约束：本枚举是「成员为何不在队伍里」的审计依据，只进入事件载荷与审计视图，不写入成员列表
-/// （成员移除即条目消失）。新增原因必须同步 <c>OnlinePartyEvents</c> 的原因码映射与 VC-4.6/4.7 用例。
+/// （成员移除即条目消失）。新增原因必须同步 <c>OnlinePartyEvents</c> 的原因码映射与相关用例。
 /// </para>
 /// </summary>
 public enum OnlinePartyLeaveReason

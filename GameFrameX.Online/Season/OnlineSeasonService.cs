@@ -41,25 +41,25 @@ using GameFrameX.Online.Scope;
 namespace GameFrameX.Online.Season;
 
 /// <summary>
-/// 赛季生命周期服务（vault:C8 S7.3：开始/结束时间、分数重置、历史快照、赛季奖励、结算幂等与失败重试）。
+/// 赛季生命周期服务（开始/结束时间、分数重置、历史快照、赛季奖励、结算幂等与失败重试）。
 /// <para>
 /// 维护约束（红线）：
 /// (1) **快照先行**——结束赛季时先持久化历史快照、再清空榜单，且清空是 CAS 语义（榜上条目与快照逐项一致
 /// 才清）；期间有写入落地则重读重拍快照后重试，重试耗尽返回可重试错误且赛季保持进行中。**赛季结束不能直接
-/// 删除历史数据**，也绝不静默丢弃一条已结算的真实成绩（VC-7.5）；
+/// 删除历史数据**，也绝不静默丢弃一条已结算的真实成绩；
 /// (2) **结算只读快照**——结算依据是冻结快照而非实时榜单（重置后榜单已空）；快照缺失一律拒绝结算，
-/// 不回落、不降级（VC-7.6）；
-/// (3) **结算幂等**——逐玩家经 C95 <see cref="OnlineGrantService"/> 发放，幂等键与业务单号确定性派生
+/// 不回落、不降级；
+/// (3) **结算幂等**——逐玩家经 <see cref="OnlineGrantService"/> 发放，幂等键与业务单号确定性派生
 /// <c>season-{SeasonId}-{PlayerId}</c>，重复触发命中回放返回首次结果，不重复发奖。「永不重复发奖」是
 /// 幂等键稳定性带来的策略无关硬保证；「重试补齐**此前发放失败**的玩家」则依赖宿主把 Foundation 的失败
 /// 重放策略装配为 <c>FailedReplayPolicy.ReExecute</c>——默认 <c>ReplayError</c> 会把失败原样回放，失败玩家
-/// 需待保留期过期后重新占位方可补发（本服务不自行改写全局幂等策略，见方案复审 R6）；
+/// 需待保留期过期后重新占位方可补发（本服务不自行改写全局幂等策略）；
 /// (4) **逐玩家失败隔离**——单玩家发放失败只计入回执明细，不阻塞其余玩家；仅当无失败玩家才把赛季推进到
 /// 结算完成态（部分发奖不得标记完成）；
-/// (5) 跨 App / 跨租户读写与「赛季不存在」同构返回 ResourceNotFound（反预言，对齐 C94/C99/C102 先例）。
+/// (5) 跨 App / 跨租户读写与「赛季不存在」同构返回 ResourceNotFound（反预言，对齐既有先例）。
 /// </para>
 /// <para>
-/// 运行时边界（X4）：<c>StartTime</c>/<c>EndTime</c> 只是排期元数据，到点驱动 <see cref="StartAsync"/> /
+/// 运行时边界：<c>StartTime</c>/<c>EndTime</c> 只是排期元数据，到点驱动 <see cref="StartAsync"/> /
 /// <see cref="EndAsync"/> 的调度器、以及持久化与跨实例协调，均归 Server 仓运行时装配。
 /// </para>
 /// </summary>
@@ -202,7 +202,7 @@ public sealed class OnlineSeasonService
     }
 
     /// <summary>
-    /// 结束赛季并重置榜单（vault:C8 S7.3 核心：先落历史快照，再清空榜单）。
+    /// 结束赛季并重置榜单（核心顺序：先落历史快照，再清空榜单）。
     /// <para>
     /// 快照与清空之间若榜单有新写入落地，清空会被 CAS 拒绝并重读重拍快照后重试，保证快照覆盖的条目集合
     /// 与被清空的条目集合完全一致——既不丢历史，也不丢分。重试耗尽返回 <c>ServiceBusy</c>，榜单与赛季状态均
@@ -213,7 +213,7 @@ public sealed class OnlineSeasonService
     /// <param name="seasonId">赛季标识。</param>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒；传 0 取系统时钟，测试可注入）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>落档的历史快照（即 VC-7.5 的「快照导出」证据）；失败返回对应错误码。</returns>
+    /// <returns>落档的历史快照（「快照导出」的证据）；失败返回对应错误码。</returns>
     public async Task<OnlineResult<OnlineSeasonSnapshot>> EndAsync(OnlineScope scope, string seasonId, long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
     {
         var seasonResult = await ResolveSeasonAsync(scope, seasonId, cancellationToken).ConfigureAwait(false);
@@ -442,7 +442,7 @@ public sealed class OnlineSeasonService
     }
 
     /// <summary>
-    /// 以榜单全序条目构造历史快照（名次按全序下标 1 起算，与 C102 查询口径同源）。
+    /// 以榜单全序条目构造历史快照（名次按全序下标 1 起算，与查询口径同源）。
     /// </summary>
     /// <param name="season">赛季定义。</param>
     /// <param name="entries">重置前的全序条目。</param>

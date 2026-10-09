@@ -296,7 +296,7 @@ public static partial class Keys
             public const string MatchTicketNotFound = "Online.AdminApi.MatchTicketNotFound";
 
             /// <summary>
-            /// 管理面不支持结束异常对局；对局生命周期归游戏进程所有（变更 C122 缺口 #1）。
+            /// 管理面不支持结束异常对局；对局生命周期归游戏进程所有。
             /// </summary>
             /// <remarks>
             /// 键名: Online.AdminApi.EndAbnormalMatchForbidden

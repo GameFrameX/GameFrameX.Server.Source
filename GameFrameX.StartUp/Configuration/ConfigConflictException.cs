@@ -33,10 +33,10 @@ using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.StartUp.Configuration;
 
 /// <summary>
-/// 启动期配置冲突异常（C143f D4：fail fast，携带全部冲突字段与来源段）。
+/// 启动期配置冲突异常（fail fast，携带全部冲突字段与来源段）。
 /// </summary>
 /// <remarks>
-/// Thrown at process startup when the configuration layers conflict (C143f D4: fail fast).
+/// Thrown at process startup when the configuration layers conflict (fail fast).
 /// Carries every detected <see cref="ConfigFieldConflict"/> so the error message lists
 /// the conflicting fields together with the source section each side came from.
 /// </remarks>
@@ -87,6 +87,6 @@ public sealed class ConfigConflictException : Exception
             lines.Add(conflict.ToString());
         }
 
-        return $"Startup configuration conflicts detected (C143f D4, fail fast): {string.Join("; ", lines)}";
+        return $"Startup configuration conflicts detected (fail fast): {string.Join("; ", lines)}";
     }
 }

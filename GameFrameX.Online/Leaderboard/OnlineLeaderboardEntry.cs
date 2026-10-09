@@ -34,7 +34,7 @@ namespace GameFrameX.Online.Leaderboard;
 /// <para>
 /// 维护约束（红线）：分数只经可信写入链路产生（<see cref="OnlineLeaderboardScoreSource"/> 即来源白名单），
 /// <see cref="SourceMatchResultId"/> 使每笔分数可追溯到结算结果——争议判定的审计依据；
-/// 条目一经产生不从榜单移除（第一版无移除语义，赛季重置归 C103）。
+/// 条目一经产生不从榜单移除（第一版无移除语义，赛季重置归赛季域）。
 /// </para>
 /// </summary>
 public sealed class OnlineLeaderboardEntry

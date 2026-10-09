@@ -85,7 +85,7 @@ internal static class AppEnter
     /// <remarks>
     /// Application startup entry point.
     /// Initializes the application, sets up exit handlers, and starts the main game loop of every hosted role.
-    /// Hosts are started sequentially in list order (higher priority first, C143b D7): the launcher awaits
+    /// Hosts are started sequentially in list order (higher priority first): the launcher awaits
     /// the current role's startup-ready signal before starting the next one, so a lower-priority role never
     /// initializes while a higher-priority role is still bringing up shared infrastructure (databases, components).
     /// All run-until-exit loops are then awaited together; exit stops the hosts in reverse order (lower priority first).
@@ -133,11 +133,11 @@ internal static class AppEnter
     }
 
     /// <summary>
-    /// 按优先级顺序依次启动宿主，并在两个宿主之间等待启动就绪屏障（C143b D7）。
+    /// 按优先级顺序依次启动宿主，并在两个宿主之间等待启动就绪屏障。
     /// </summary>
     /// <remarks>
     /// Starts the hosts sequentially in list order, awaiting the current role's
-    /// <see cref="IAppStartUp.StartUpReadyTask"/> before starting the next one (priority startup barrier, C143b D7),
+    /// <see cref="IAppStartUp.StartUpReadyTask"/> before starting the next one (priority startup barrier),
     /// so Game's databases and components are fully up before Social starts initializing.
     /// A role that exits (or fails) before reporting readiness also releases the barrier,
     /// preventing a missing ready signal from deadlocking the chain; its failure still surfaces
@@ -188,7 +188,7 @@ internal static class AppEnter
     /// </summary>
     /// <remarks>
     /// Handles application exit asynchronously.
-    /// Stops every hosted role in reverse launch order (lower priority first, C143b D7);
+    /// Stops every hosted role in reverse launch order (lower priority first);
     /// a role-level stop failure is recorded and the remaining roles are still stopped,
     /// so the exit procedure (kill and log flush) always runs to completion.
     /// </remarks>
@@ -229,7 +229,7 @@ internal static class AppEnter
     /// 按启动顺序的逆序依次停机（低优先级先停，C143b D7）。
     /// </summary>
     /// <remarks>
-    /// Stops the hosts sequentially in reverse launch order (lower priority stops first, C143b D7),
+    /// Stops the hosts sequentially in reverse launch order (lower priority stops first),
     /// mirroring the start order: the last started role is the first stopped one.
     /// A role-level stop failure is caught, logged, and does not abort the loop — the remaining
     /// (higher priority) roles are still stopped; after all roles have been processed the recorded

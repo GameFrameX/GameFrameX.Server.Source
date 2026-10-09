@@ -32,7 +32,7 @@ using GameFrameX.Online.Scope;
 namespace GameFrameX.Online.Tokens;
 
 /// <summary>
-/// 踢下线请求（vault:C2 S1.4：同账号多端互踢、风控强制下线；语义上等于吊销 + 通知，被踢端后续请求映射 <c>SessionInvalid</c>）。
+/// 踢下线请求（同账号多端互踢、风控强制下线；语义上等于吊销 + 通知，被踢端后续请求映射 <c>SessionInvalid</c>）。
 /// </summary>
 public sealed class OnlineTokenKickRequest
 {

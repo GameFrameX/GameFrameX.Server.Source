@@ -39,7 +39,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 社交裁决收口点测试（vault:C7 VC-6.3/VC-6.4/VC-6.5 + S6.3：屏蔽三通路统一、
+    /// 社交裁决收口点测试（屏蔽三通路统一、
     /// 禁言只挡发言、封禁拒绝一切主动互动，以及举报案件的状态机、证据链与反预言）。
     /// <para>
     /// 本类锁定的是一条**跨域唯一入口**的语义：Chat / Party / Matchmaking 三方都不自行判定屏蔽与处罚，
@@ -123,7 +123,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证屏蔽在三种互动目的下都拒绝、且**两个方向都拒绝**（VC-6.3 三通路统一）。
+        /// 验证屏蔽在三种互动目的下都拒绝、且**两个方向都拒绝**（三通路统一）。
         /// <para>
         /// 双向生效是刻意的：屏蔽若只挡一个方向，被屏蔽方仍可主动私聊、邀请、匹配到屏蔽者，
         /// 屏蔽就形同虚设（这正是「Block 后不能私聊、邀请或匹配到对方」的字面要求）。
@@ -153,7 +153,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证屏蔽不泄露方向（VC-6.3 隐私面）：只被单向屏蔽时，两个方向拿到的拒绝理由必须**逐字相同**。
+        /// 验证屏蔽不泄露方向（隐私面）：只被单向屏蔽时，两个方向拿到的拒绝理由必须**逐字相同**。
         /// <para>
         /// 若两方向的错误码或文案有差异，被屏蔽方就能反推出「是谁屏蔽了谁」——
         /// 屏蔽是单向私密事实，泄露方向等于把屏蔽者的身份交出去。
@@ -207,7 +207,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证**禁言只挡发言**（VC-6.4）：对私聊拒绝，对邀请与匹配一律放行。
+        /// 验证**禁言只挡发言**：对私聊拒绝，对邀请与匹配一律放行。
         /// </summary>
         [Fact]
         public async Task EvaluateAsync_WhenPunishedWithMute_ShouldDenyOnlyDirectMessage()
@@ -246,7 +246,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证封禁拒绝被处罚者主动发起的一切互动，错误码为 <see cref="OnlineErrorCode.AccountBanned"/>（VC-6.5）。
+        /// 验证封禁拒绝被处罚者主动发起的一切互动，错误码为 <see cref="OnlineErrorCode.AccountBanned"/>。
         /// </summary>
         [Fact]
         public async Task EvaluateAsync_WhenPunishedWithBan_ShouldDenyAllPurposesAsAccountBanned()
@@ -672,7 +672,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证「我的举报」只返回自己提交的案件（举报人之间互相不可见，VC-6.7 隐私隔离）。
+        /// 验证「我的举报」只返回自己提交的案件（举报人之间互相不可见，隐私隔离）。
         /// </summary>
         [Fact]
         public async Task ListMyReportsAsync_ShouldOnlyExposeOwnReports()

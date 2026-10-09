@@ -36,10 +36,10 @@ using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.Discovery;
 
 /// <summary>
-/// 统一端点地址解析器（C143d D15 / AC-4a）。
+/// 统一端点地址解析器。
 /// </summary>
 /// <remarks>
-/// The single unified endpoint parser (C143d D15 / AC-4a).
+/// The single unified endpoint parser.
 /// Every endpoint in the topology is stored as an unparsed <c>scheme://host:port</c>
 /// string and parsed only at connect time by this class, so heartbeat documents,
 /// <c>services__*</c> environment variables, and advertise addresses all share one

@@ -30,11 +30,11 @@
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 对局生命周期状态（vault:C6「Match 生命周期」：Created → Waiting → Ready → Running → Settling → Completed → Closed，
+/// 对局生命周期状态（Match 生命周期：Created → Waiting → Ready → Running → Settling → Completed → Closed，
 /// 以及 Cancelled / Timeout / Failed / Aborted / SettlementFailed 分支）。
 /// <para>
 /// 维护约束（红线）：状态只能由服务端 Match Actor 依 <see cref="OnlineMatchStateMachine"/> 的合法边推进，
-/// 客户端没有任何直接写入路径（VC-5.2「客户端篡改结果无效」的落点）。枚举取值是持久化与跨服协议的一部分，
+/// 客户端没有任何直接写入路径（「客户端篡改结果无效」的落点）。枚举取值是持久化与跨服协议的一部分，
 /// 禁止重排或改号；新增状态必须先改状态机邻接表并补状态机测试。
 /// </para>
 /// </summary>
@@ -58,7 +58,7 @@ public enum OnlineMatchState
     /// <summary>正常结束（结果已产出，等待释放）。</summary>
     Completed = 5,
 
-    /// <summary>已释放（唯一终态；进入后 Actor 从运行时摘除，VC-5.11「无僵尸 Match」的落点）。</summary>
+    /// <summary>已释放（唯一终态；进入后 Actor 从运行时摘除，「无僵尸 Match」的落点）。</summary>
     Closed = 6,
 
     /// <summary>已取消（开始前被取消）。</summary>
@@ -70,7 +70,7 @@ public enum OnlineMatchState
     /// <summary>已失败（玩法级规则不可满足）。</summary>
     Failed = 9,
 
-    /// <summary>异常中止（异常退出或 Actor 异常，VC-5.11）。</summary>
+    /// <summary>异常中止（异常退出或 Actor 异常）。</summary>
     Aborted = 10,
 
     /// <summary>结算失败（结算事实未成立，可重试结算）。</summary>

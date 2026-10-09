@@ -42,7 +42,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 资产对账服务测试（vault:C4 VC-3.13：账本累加 == 快照；漂移注入可发现、差异可定位）。
+    /// 资产对账服务测试（账本累加 == 快照；漂移注入可发现、差异可定位）。
     /// </summary>
     public class OnlineAssetReconciliationServiceTests
     {

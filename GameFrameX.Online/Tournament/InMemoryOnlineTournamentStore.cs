@@ -37,7 +37,7 @@ using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.Online.Tournament;
 
 /// <summary>
-/// 赛事内存存储（单进程默认实现；生产持久化 / 跨实例协调归 Server 仓运行时装配，X4）。
+/// 赛事内存存储（单进程默认实现；生产持久化 / 跨实例协调归 Server 仓运行时装配）。
 /// <para>
 /// 维护约束（红线）：赛事定义、报名登记与冻结成绩分别建表、互不写入——成绩一经落档不会被状态推进覆盖
 /// （结果查询长期可回溯）；报名登记的「判定重复 + 落档」在同一把锁内完成（并发报名不产生重复登记）；

@@ -100,8 +100,8 @@ public sealed partial class MongoDbService
     /// <returns>指定类型的MongoDB集合 / MongoDB collection of the specified type</returns>
     private IMongoCollection<TState> GetCollection<TState>(MongoCollectionSettings settings = null) where TState : class, ICacheState, new()
     {
-        // C171：索引管理等类型化入口同样需要先完成 ClassMap 懒注册（与 MongoDbContext.GetCollection 合起来覆盖全部路径）。
-        // C171: typed entries such as index management also require lazy ClassMap registration first
+        // 索引管理等类型化入口同样需要先完成 ClassMap 懒注册（与 MongoDbContext.GetCollection 合起来覆盖全部路径）。
+        // Typed entries such as index management also require lazy ClassMap registration first
         // (together with MongoDbContext.GetCollection this covers every path).
         MongoSerializationRegistry.EnsureClassMapRegistered<TState>();
         var collectionName = typeof(TState).Name;

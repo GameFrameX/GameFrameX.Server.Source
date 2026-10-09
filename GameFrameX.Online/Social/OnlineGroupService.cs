@@ -36,7 +36,7 @@ using GameFrameX.Online.Events;
 using GameFrameX.Online.Scope;
 
 /// <summary>
-/// 群组服务（vault:C7 S6.4：群组生命周期的唯一写者）。
+/// 群组服务（群组生命周期的唯一写者）。
 /// <para>
 /// 维护约束（红线）：
 /// ① **群记录是聚合根**——成员集合、邀请集合、角色、Metadata 的一切变更都以整条记录 CAS 提交
@@ -613,7 +613,7 @@ public sealed class OnlineGroupService : IOnlineChannelMembershipProbe
     }
 
     /// <summary>
-    /// 应答「某玩家是否为某频道的成员」（<see cref="OnlineChatChannelKind.Group"/> 频道的唯一裁决方，C99）。
+    /// 应答「某玩家是否为某频道的成员」（<see cref="OnlineChatChannelKind.Group"/> 频道的唯一裁决方）。
     /// <para>
     /// 维护约束（职责边界）：频道成员集**不复制**进频道记录——复制会在退群/踢人后留下陈旧成员表，
     /// 让已被移出的人继续读到群内消息（隐私泄漏）。因此裁决权留在群组域，聊天域只问不判。

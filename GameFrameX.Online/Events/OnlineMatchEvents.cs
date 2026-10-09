@@ -33,12 +33,12 @@ using System.Text.Json;
 using GameFrameX.Online.Matchmaking;
 
 /// <summary>
-/// 匹配域事件工厂（vault:C5 S4.7：票据状态与对局分配事件供下游与 Admin 消费）。
+/// 匹配域事件工厂（票据状态与对局分配事件供下游与 Admin 消费）。
 /// <para>
-/// 维护约束：事件是事实不是状态——消费端不得回写票据；票据事件必须携带 from/to/reason 三元组
-/// （VC-4.9 断言依据），分配事件必须携带 AssignmentId/MatchId 与消费的票据集合
-/// （VC-4.12「重复 assignment = 0」的对账依据）。载荷只放标识与状态名，不放自定义匹配属性
-/// （可能含玩法私有数据），沿用 C93 脱敏要求。
+/// 维护约束：事件是事实不是状态——消费端不得回写票据；票据事件必须携带 from/to/reason 三元组，
+/// 分配事件必须携带 AssignmentId/MatchId 与消费的票据集合
+/// （「重复 assignment = 0」的对账依据）。载荷只放标识与状态名，不放自定义匹配属性
+/// （可能含玩法私有数据），沿用既有脱敏要求。
 /// </para>
 /// </summary>
 public static class OnlineMatchEvents

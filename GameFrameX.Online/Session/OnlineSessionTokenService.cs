@@ -40,12 +40,12 @@ using GameFrameX.Online.Scope;
 using GameFrameX.Online.Tokens;
 
 /// <summary>
-/// 会话 Token 服务（vault:C3 S2.4：<see cref="IOnlineSessionTokenContract"/> 的 C94 默认实现）。
+/// 会话 Token 服务（<see cref="IOnlineSessionTokenContract"/> 的默认实现）。
 /// <para>
 /// 维护约束（红线）：Token 为 256 位随机不透明串——明文只存调用方，服务端只存 SHA-256 指纹（防拖库重放）；
 /// 刷新 = 原子轮换——旧指纹即刻失效、<see cref="OnlineSession.TokenGeneration"/> 递增，重放旧 Token 判
-/// <see cref="OnlineErrorCode.TokenRevoked"/>（VC-2.2/VC-2.12）；吊销/踢下线后原 Token 一律失效（VC-2.3，
-/// 踢下线审计事件必须含 SessionId 与 Reason）；终态会话指纹清空。契约 DTO 形状承载不了错误码的失败经
+/// <see cref="OnlineErrorCode.TokenRevoked"/>；吊销/踢下线后原 Token 一律失效
+/// （踢下线审计事件必须含 SessionId 与 Reason）；终态会话指纹清空。契约 DTO 形状承载不了错误码的失败经
 /// <see cref="OnlineServiceException"/> 抛出，由宿主装配层映射为响应信封。
 /// </para>
 /// </summary>
@@ -75,7 +75,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
     }
 
     /// <summary>
-    /// 签发会话 Token（C93 契约入口：按默认 LatestWins 多端策略开新会话）。
+    /// 签发会话 Token（契约入口：按默认 LatestWins 多端策略开新会话）。
     /// </summary>
     /// <param name="request">签发请求。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -198,7 +198,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
     }
 
     /// <summary>
-    /// 开启新会话（vault:C3 S2.4：签发即建会话 + 多端策略裁决；VC-2.4）。
+    /// 开启新会话（签发即建会话 + 多端策略裁决）。
     /// <para>
     /// 裁决口径：SingleDevice——已存在活跃会话时拒绝新登录（5xxx）；LatestWins——关闭全部活跃旧会话
     /// （Kicked + <see cref="OnlineSessionCloseReason.ReplacedByNewSession"/>，跨区服一并顶替）；
@@ -389,7 +389,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
     }
 
     /// <summary>
-    /// 清理过期 Token 的非终态会话（转 <see cref="OnlineSessionState.Expired"/>；VC-2.14 重启/到期失效兜底）。
+    /// 清理过期 Token 的非终态会话（转 <see cref="OnlineSessionState.Expired"/>；到期失效兜底）。
     /// </summary>
     /// <param name="nowUnixMilliseconds">判定基准时刻（Unix 毫秒；0 = 当前时刻，测试可注入）。</param>
     /// <param name="cancellationToken">取消令牌。</param>

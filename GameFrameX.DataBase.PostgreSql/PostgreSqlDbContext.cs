@@ -37,13 +37,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace GameFrameX.DataBase.PostgreSql;
 
 /// <summary>
-/// jsonb 文档表包装实体（C168）：每 <c>CacheState</c> 类型一张 <c>(id bigint PK, doc jsonb)</c> 文档表的 EF 映射载体。
+/// jsonb 文档表包装实体：每 <c>CacheState</c> 类型一张 <c>(id bigint PK, doc jsonb)</c> 文档表的 EF 映射载体。
 /// </summary>
 /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
 /// <remarks>
-/// Wrapper entity for the per-state-type jsonb document table (C168): <c>Id</c> maps the <c>id</c> primary key
+/// Wrapper entity for the per-state-type jsonb document table: <c>Id</c> maps the <c>id</c> primary key
 /// column and <c>Doc</c> maps the whole state object as an EF owned JSON document on the <c>doc</c> jsonb column
-/// (table / column names identical to the C166 storage model — zero data migration).
+/// (table / column names identical to the legacy storage model — zero data migration).
 /// </remarks>
 public sealed class StateRow<TState> where TState : BaseCacheState, new()
 {
@@ -65,14 +65,14 @@ public sealed class StateRow<TState> where TState : BaseCacheState, new()
 }
 
 /// <summary>
-/// 每 <c>TState</c> 一个闭式泛型 <c>DbContext</c>（C168 D1）：模型静态可缓存，避免运行时类型注册带来的模型失效抖动。
+/// 每 <c>TState</c> 一个闭式泛型 <c>DbContext</c>：模型静态可缓存，避免运行时类型注册带来的模型失效抖动。
 /// </summary>
 /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
 /// <remarks>
-/// One closed-generic context per <c>TState</c> (C168 D1): each closed generic gets its own compiled model, so
+/// One closed-generic context per <c>TState</c>: each closed generic gets its own compiled model, so
 /// models are statically cacheable and no runtime type registration can invalidate an already-built model
 /// (an unacceptable steady-state jitter source for game servers). Contexts are short-lived — one per database
-/// operation (C168 D6: after a failed EF operation the context is not reusable).
+/// operation (a context is not reusable after a failed EF operation).
 /// <para>
 /// 软删默认过滤 = <c>Doc.IsDeleted != true</c>（null 与 false 均可见，对齐 Mongo <c>IsDeleted == null || IsDeleted == false</c>
 /// 语义；EF 按 C# null 语义补偿展开为 SQL 时 null 行被保留）。需要包含软删数据的路径（includeDeleted / 物理删除 / 恢复）
@@ -101,10 +101,10 @@ public sealed class PostgreSqlDbContext<TState> : DbContext where TState : BaseC
     public DbSet<StateRow<TState>> Rows { get; set; }
 
     /// <summary>
-    /// 配置文档表映射（表名 / 列名与 C166 存储模型逐字一致）与软删全局查询过滤器。
+    /// 配置文档表映射（表名 / 列名与既有存储模型逐字一致）与软删全局查询过滤器。
     /// </summary>
     /// <remarks>
-    /// Configures the document-table mapping (table and column names byte-identical to the C166 storage model)
+    /// Configures the document-table mapping (table and column names byte-identical to the legacy storage model)
     /// and the soft-delete global query filter. jsonb 表达式索引 EF 模型 API 不可表达，由索引引导（白名单 DDL）另行创建。
     /// </remarks>
     /// <param name="modelBuilder">模型构建器 / The model builder</param>
@@ -121,8 +121,8 @@ public sealed class PostgreSqlDbContext<TState> : DbContext where TState : BaseC
                 owned.ToJson("doc");
                 ConfigureOwnedDocumentShape(owned, typeof(TState));
             });
-        // null 语义对齐 Mongo/C166：IsDeleted 为 null（未设置）或 false 均可见；仅 true 被过滤。
-        // Aligned with Mongo/C166: IsDeleted null (unset) or false stays visible; only true is filtered out.
+        // null 语义对齐 Mongo：IsDeleted 为 null（未设置）或 false 均可见；仅 true 被过滤。
+        // Aligned with Mongo: IsDeleted null (unset) or false stays visible; only true is filtered out.
         entity.HasQueryFilter(static row => row.Doc.IsDeleted != true);
     }
 
@@ -171,9 +171,9 @@ public sealed class PostgreSqlDbContext<TState> : DbContext where TState : BaseC
 
         if (IsNullableValueType(property.PropertyType))
         {
-            // C166 序列化语义：可空值类型写 JSON null（如 "IsDeleted": null），EF 默认会写 CLR 默认值（false/0）。
+            // 序列化语义：可空值类型写 JSON null（如 "IsDeleted": null），EF 默认会写 CLR 默认值（false/0）。
             // 显式置为可选，使 EF JSON 写入器输出 null，读取侧两种形态等价。
-            // C166 serialization semantics: nullable value types must be written as JSON null; EF would otherwise
+            // Serialization semantics: nullable value types must be written as JSON null; EF would otherwise
             // coerce to the CLR default (false/0). Explicitly optional so the EF JSON writer emits null.
             builder.Property(property.Name).IsRequired(false);
         }
@@ -225,16 +225,16 @@ public sealed class PostgreSqlDbContext<TState> : DbContext where TState : BaseC
     /// 抛出「字典属性不被 EF owned JSON 支持」错误。
     /// </summary>
     /// <remarks>
-    /// EF owned JSON 不支持字典成员（C168 实测：值转换器在 owned JSON 读路径崩溃 / 双重编码破坏 C166 存量形态）。
+    /// EF owned JSON 不支持字典成员（实测：值转换器在 owned JSON 读路径崩溃 / 双重编码破坏存量形态）。
     /// 显式抛错指名成员，避免 EF 关系推断的隐晦报错；绝不静默丢字段。
-    /// EF owned JSON cannot express dictionary members (C168 verified: value converters crash the JSON read shaper
-    /// or double-encode, breaking C166-stored shapes). Fail explicitly naming the member; never silently drop data.
+    /// EF owned JSON cannot express dictionary members (value converters crash the JSON read shaper
+    /// or double-encode, breaking stored shapes). Fail explicitly naming the member; never silently drop data.
     /// </remarks>
     /// <param name="clrType">当前文档 CLR 类型 / The current document CLR type</param>
     /// <param name="property">字典属性 / The dictionary property</param>
     private static void ThrowDocumentDictionaryNotSupported(Type clrType, PropertyInfo property)
     {
-        // Localization: Database.Ef.DocumentDictionaryPropertyNotSupported - PostgreSqlDbContext：文档类型“{0}”声明了字典属性“{1}”（{2}）。EF owned JSON 列无法以 C166 兼容形状映射字典；请将其重构为 owned entries 集合或标量载荷。
+        // Localization: Database.Ef.DocumentDictionaryPropertyNotSupported - PostgreSqlDbContext：文档类型“{0}”声明了字典属性“{1}”（{2}）。EF owned JSON 列无法以兼容形状映射字典；请将其重构为 owned entries 集合或标量载荷。
         throw new NotSupportedException(LocalizationService.GetString(Localization.Keys.Database.EfDocumentDictionaryPropertyNotSupported, clrType.Name, property.Name, property.PropertyType.Name));
     }
 

@@ -39,13 +39,13 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 赛季生命周期测试（vault:C8 S7.3 / VC-7.5-a～d：开始/结束时间、分数重置、历史快照）。
+    /// 赛季生命周期测试（开始/结束时间、分数重置、历史快照）。
     /// 覆盖快照先行不丢历史、CAS 重置不丢分、重试耗尽零损失、重置后读缓存不返陈旧榜、状态机与作用域隔离。
     /// </summary>
     public class OnlineSeasonLifecycleTests
     {
         /// <summary>
-        /// 验证 VC-7.5-a：全流程「创建 → 开始 → 结束」，结束时先落快照再清空榜单，名次与分数完整冻结，
+        /// 验证全流程「创建 → 开始 → 结束」，结束时先落快照再清空榜单，名次与分数完整冻结，
         /// 快照可回溯，三类生命周期事件按落定点发布（未结算不发 Settled）。
         /// </summary>
         [Fact]
@@ -95,7 +95,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.5-b：快照一经落档即冻结——下一届赛季写入新成绩不得改写上一届的历史快照，
+        /// 验证快照一经落档即冻结——下一届赛季写入新成绩不得改写上一届的历史快照，
         /// 且冻结名次与各字段与重置前逐项一致（历史不丢也不被覆盖）。
         /// </summary>
         [Fact]
@@ -132,7 +132,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.5-c 半边一：快照与清空之间被并发写入插入时，CAS 拒绝清空并重读重拍快照后重试成功——
+        /// 验证快照与清空之间被并发写入插入时，CAS 拒绝清空并重读重拍快照后重试成功——
         /// 晚到的成绩既进快照也不被丢弃，落档快照与被清空的条目集合完全一致。
         /// </summary>
         [Fact]
@@ -168,7 +168,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.5-c 半边二：并发写入持续存在时重试有界收敛——返回可重试错误且榜单逐条无损、
+        /// 验证并发写入持续存在时重试有界收敛——返回可重试错误且榜单逐条无损、
         /// 赛季保持进行中（宁可拒绝重置也不丢一条真实成绩）。
         /// </summary>
         [Fact]
@@ -233,7 +233,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.5-d：状态机只允许 Scheduled → Active → Ended → Settled——跳级、回退与终态后再推进
+        /// 验证状态机只允许 Scheduled → Active → Ended → Settled——跳级、回退与终态后再推进
         /// 一律拒绝，且拒绝路径不产生任何状态副作用。
         /// </summary>
         [Fact]

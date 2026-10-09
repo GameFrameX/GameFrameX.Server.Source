@@ -30,11 +30,11 @@
 namespace GameFrameX.Online.Matchmaking;
 
 /// <summary>
-/// 匹配票据（vault:C5 S4.5 冻结字段集：TicketId / PartyId / PlayerIds / AppId / Mode / Region /
+/// 匹配票据（冻结字段集：TicketId / PartyId / PlayerIds / AppId / Mode / Region /
 /// SkillRange / TeamSize / LatencyRequirement / CustomProperties / CreatedAt / ExpiresAt / Status）。
 /// <para>
 /// 维护约束（红线）：<see cref="PartyId"/> 非空时 <see cref="PlayerIds"/> 必须是**整队**成员——
-/// 队伍完整性（VC-4.3）要求一张票据要么整队成组、要么整队留队，禁止部分成员先走。
+/// 队伍完整性要求一张票据要么整队成组、要么整队留队，禁止部分成员先走。
 /// 票据一经离开 <see cref="OnlineMatchTicketState.Queued"/> 即冻结，任何字段不再改写
 /// （终态是事实，不是可编辑状态）。
 /// </para>

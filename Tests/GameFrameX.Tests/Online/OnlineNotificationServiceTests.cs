@@ -40,8 +40,8 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 通知服务测试（vault:C7 S6.8/S6.9；VC-6.11 推送失败留痕与离线补发、VC-6.12 入队去重不重复消费、
-    /// VC-6.13 过期收敛与丢弃、VC-6.14 推送出口异常不逃逸）。
+    /// 通知服务测试（推送失败留痕与离线补发、入队去重不重复消费、
+    /// 过期收敛与丢弃、推送出口异常不逃逸）。
     /// </summary>
     public class OnlineNotificationServiceTests
     {
@@ -70,7 +70,7 @@ namespace GameFrameX.Tests.Online
         private const string PayloadMarker = "payload-body-xyz";
 
         /// <summary>
-        /// 验证同一去重键重复入队返回同一条通知，不新建也不重发（VC-6.12：入队幂等）。
+        /// 验证同一去重键重复入队返回同一条通知，不新建也不重发（入队幂等）。
         /// </summary>
         [Fact]
         public async Task EnqueueAsync_WhenSameDedupeKey_ShouldReturnExistingNotificationAndNotRedispatch()
@@ -103,7 +103,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证未装配推送出口等价于「推送失败且可重试」：通知留在队列中待补发，不被丢弃也不据此判定玩家离线
-        /// （VC-6.11：推送失败必须留痕并转入重试 / 补发）。
+        /// （推送失败必须留痕并转入重试 / 补发）。
         /// </summary>
         [Fact]
         public async Task EnqueueAsync_WhenDispatcherMissing_ShouldKeepNotificationRetryable()
@@ -130,7 +130,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证推送成功时状态落 Delivered 并写入投递时刻，失败原因清空（VC-6.11：推送成功路径）。
+        /// 验证推送成功时状态落 Delivered 并写入投递时刻，失败原因清空（推送成功路径）。
         /// </summary>
         [Fact]
         public async Task EnqueueAsync_WhenDispatcherSucceeds_ShouldReachDeliveredWithDeliveredAtTime()
@@ -155,7 +155,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证可重试失败落 Retrying 中间态，失败原因与尝试次数同时留痕（VC-6.11：失败留痕是补发的唯一依据）。
+        /// 验证可重试失败落 Retrying 中间态，失败原因与尝试次数同时留痕（失败留痕是补发的唯一依据）。
         /// </summary>
         [Fact]
         public async Task EnqueueAsync_WhenDispatcherFailsRetryably_ShouldReachRetryingWithLastError()
@@ -180,7 +180,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证不可重试失败（Retryable = false）直接落 Failed 而非 Retrying，重投路径再次失败后仍为 Failed
-        /// 且尝试次数继续累加（VC-6.11：不可重试失败不占用重试预算）。
+        /// 且尝试次数继续累加（不可重试失败不占用重试预算）。
         /// </summary>
         [Fact]
         public async Task EnqueueAsync_WhenDispatcherFailsNonRetryably_ShouldReachFailed()
@@ -212,7 +212,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证推送出口抛异常或违约返回 null 时异常被捕获并转入重试路径，不得逃逸出服务（VC-6.11：信任边界）。
+        /// 验证推送出口抛异常或违约返回 null 时异常被捕获并转入重试路径，不得逃逸出服务（信任边界）。
         /// </summary>
         [Fact]
         public async Task EnqueueAsync_WhenDispatcherThrowsOrReturnsNull_ShouldFallBackToRetry()
@@ -249,7 +249,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证离线期间入队的通知在补发时被推送成功，且已投递的通知不被补发重复推送（VC-6.11：离线补发）。
+        /// 验证离线期间入队的通知在补发时被推送成功，且已投递的通知不被补发重复推送（离线补发）。
         /// </summary>
         [Fact]
         public async Task BackfillAsync_ShouldDeliverPendingNotificationOnlyOnce()
@@ -279,7 +279,7 @@ namespace GameFrameX.Tests.Online
             var listed = await service.ListAsync(scope);
             Assert.Equal(OnlineNotificationState.Delivered, listed.Data[0].State);
 
-            // 已投递的通知不再被补发（VC-6.12：不重复消费）
+            // 已投递的通知不再被补发（不重复消费）
             var second = await service.BackfillAsync(scope);
             Assert.True(second.IsSuccess);
             Assert.Empty(second.Data);
@@ -287,7 +287,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证重试扫描重投失败记录，尝试次数耗尽后落 Failed 并保留失败原因（VC-6.11：重试预算与终态）。
+        /// 验证重试扫描重投失败记录，尝试次数耗尽后落 Failed 并保留失败原因（重试预算与终态）。
         /// </summary>
         [Fact]
         public async Task RetryPendingAsync_ShouldExhaustRetryBudgetIntoFailed()
@@ -319,7 +319,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证超期通知被扫描收敛为 Expired，且默认列表不再返回过期通知（VC-6.13：过期丢弃、不误导玩家）。
+        /// 验证超期通知被扫描收敛为 Expired，且默认列表不再返回过期通知（过期丢弃、不误导玩家）。
         /// <para>
         /// 用「入队时还有效、随后才超期」构造，把验证点锁在**扫描轮**上：入队时已超期的记录会在推送入口
         /// 就被就地终结（见 <c>EnqueueAsync_WhenAlreadyExpired_ShouldNotDispatch</c>），扫不到它。
@@ -361,7 +361,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证已投递的通知可标记已读并落终态，重复标记已读幂等（VC-6.12：终态不重复消费）。
+        /// 验证已投递的通知可标记已读并落终态，重复标记已读幂等（终态不重复消费）。
         /// </summary>
         [Fact]
         public async Task MarkReadAsync_WhenDelivered_ShouldReachReadOnce()
@@ -392,7 +392,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证对已过期的通知标记已读返回状态操作禁止，过期属终态不可再迁移（VC-6.13：过期是终态）。
+        /// 验证对已过期的通知标记已读返回状态操作禁止，过期属终态不可再迁移（过期是终态）。
         /// </summary>
         [Fact]
         public async Task MarkReadAsync_WhenExpired_ShouldReturnStateOperationForbidden()
@@ -415,7 +415,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证推送在途期间到达的第二次推送**不会真的再推一次**（VC-6.12：不重复消费）。
+        /// 验证推送在途期间到达的第二次推送**不会真的再推一次**（不重复消费）。
         /// <para>
         /// 场景：推送出口已发出、回执未回，记录停在 <see cref="OnlineNotificationState.Queued"/>；
         /// 此时重连触发离线补发 / Admin 点重推会再次进入推送入口。若「在途」被当成幂等自环放行，
@@ -462,7 +462,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证入队时已超期的通知**不推送给玩家**、直接终结为 Expired（VC-6.13：过期丢弃、不误导玩家）。
+        /// 验证入队时已超期的通知**不推送给玩家**、直接终结为 Expired（过期丢弃、不误导玩家）。
         /// <para>
         /// 这条用例锁的是推送入口的过期兜底：扫描轮是周期性的，扫描间隔内到期的记录扫不到，
         /// 若推送入口不自己判一次有效期，一条早就过期的通知（例如离线节点补发迟到的旧消息）会照常推到玩家面前。
@@ -489,7 +489,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(0, dispatcher.DispatchCount);
             Assert.True(OnlineNotificationStateMachine.IsTerminal(enqueued.Data.State));
 
-            // 过期通知不得出现在玩家可见列表里（VC-6.13）。
+            // 过期通知不得出现在玩家可见列表里。
             var visible = await service.ListAsync(scope);
             Assert.True(visible.IsSuccess);
             Assert.Empty(visible.Data);
@@ -500,7 +500,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证未投递通知不得标记已读（状态未准备），非接收者按反预言返回未找到，空标识按参数非法拒绝
-        /// （VC-6.12：已读是投递后的状态，不得越权窥探他人通知）。
+        /// （已读是投递后的状态，不得越权窥探他人通知）。
         /// </summary>
         [Fact]
         public async Task MarkReadAsync_WhenNotDeliveredOrNotReceiver_ShouldBeRejected()
@@ -529,7 +529,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证通知状态机固化终态与合法边：Read / Expired 为终态（无出边），表外边与自环一律拒绝，
-        /// Failed → Queued 保留为合法边（VC-6.12：重投有处落址，补发仍可收敛）。
+        /// Failed → Queued 保留为合法边（重投有处落址，补发仍可收敛）。
         /// </summary>
         [Fact]
         public void OnlineNotificationStateMachine_ShouldFreezeTerminalStatesAndLegalEdges()
@@ -559,7 +559,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证入队与状态落定都发出 Online.Notification.Changed，信封归属接收者，且载荷与审计字段都不含
-        /// 通知正文与去重键（VC-6.11 证据链 / 脱敏红线）。
+        /// 通知正文与去重键（证据链 / 脱敏红线）。
         /// </summary>
         [Fact]
         public async Task EnqueueAsync_ShouldPublishNotificationChangedEventsWithoutPayloadOrDedupeKey()

@@ -33,7 +33,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
-/// 玩家云存储接口（vault:C3 S2.6：CAS 乐观锁内建于存储层——<see cref="UpsertAsync"/> 为原子比较交换）。
+/// 玩家云存储接口（CAS 乐观锁内建于存储层——<see cref="UpsertAsync"/> 为原子比较交换）。
 /// <para>
 /// 维护约束：键 = (TenantId, AppId, PlayerId, Collection, Key)；<see cref="UpsertAsync"/> 的
 /// <c>expectedVersion</c> == 0 表示仅创建（已存在即失败），&gt; 0 表示版本必须匹配；软删条目对列举不可见

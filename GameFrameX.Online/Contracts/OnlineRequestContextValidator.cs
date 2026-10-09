@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Contracts;
 
 /// <summary>
-/// Online 公共请求上下文校验器（vault:C2：缺上下文请求被拒 VC-1.1，副作用请求缺幂等键被拒）。
+/// Online 公共请求上下文校验器（缺上下文请求被拒，副作用请求缺幂等键被拒）。
 /// <para>
 /// 维护约束：所有 Online 消息入口必须先经本校验器再进入业务处理，禁止各 Handler 自行放宽；
 /// 校验失败统一映射 <see cref="OnlineErrorCode.ParameterInvalid"/>（4xxx 段），拒绝原因随日志留痕。
@@ -39,7 +39,7 @@ namespace GameFrameX.Online.Contracts;
 public static class OnlineRequestContextValidator
 {
     /// <summary>
-    /// 服务端最低支持的协议版本（vault:C2 协议从 1 起算；上调属破坏性变更，须回 vault 契约评审）。
+    /// 服务端最低支持的协议版本（协议从 1 起算；上调属破坏性变更，须回契约评审）。
     /// </summary>
     public const int MinimumProtocolVersion = 1;
 
@@ -85,7 +85,7 @@ public static class OnlineRequestContextValidator
     /// <summary>
     /// 校验幂等键格式：非空、长度不超过上限、仅允许字母/数字/下划线/连字符。
     /// <para>
-    /// 维护约束：键格式由服务端强制（vault:C2 风险表「幂等键由客户端任意生成」缓解项），
+    /// 维护约束：键格式由服务端强制（缓解「幂等键由客户端任意生成」的风险），
     /// 且幂等记录按作用域绑定（见 <c>OnlineIdempotencyService</c>），禁止跨玩家复用。
     /// </para>
     /// </summary>

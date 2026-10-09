@@ -32,10 +32,10 @@ namespace GameFrameX.Online.Identity;
 using GameFrameX.Online.Contracts;
 
 /// <summary>
-/// 身份域服务（vault:C3 S2.3：登录解析、绑定/换绑/解绑、合并与注销的显式操作）。
+/// 身份域服务（登录解析、绑定/换绑/解绑、合并与注销的显式操作）。
 /// <para>
 /// 维护约束（红线）：登录成功后由服务端生成账号与玩家材料，客户端不得自行拼接身份关系；
-/// 设备标识只用于识别与换绑判定（VC-2.13：旧设备换绑后按策略拒绝登录）；
+/// 设备标识只用于识别与换绑判定（旧设备换绑后按策略拒绝登录）；
 /// 注销与数据保留为显式操作——保留期内账号不可登录、数据不可物理删除；
 /// 多端登录策略不在本服务执行（会话域按签发时策略裁决，见 <c>OnlineSessionManager</c>）。
 /// </para>
@@ -55,7 +55,7 @@ public sealed class OnlineIdentityService
     }
 
     /// <summary>
-    /// 解析一次登录（S2.3）：命中身份或自动注册，选定 App/Server 归属玩家，校验设备状态。
+    /// 解析一次登录：命中身份或自动注册，选定 App/Server 归属玩家，校验设备状态。
     /// </summary>
     /// <param name="request">登录解析请求。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -102,7 +102,7 @@ public sealed class OnlineIdentityService
             player = await ResolvePlayerAsync(account, tenantId, appId, serverId, playerName, now, cancellationToken);
         }
 
-        // 设备识别与换绑策略校验：已失效设备（换绑后旧设备）按策略拒绝登录（VC-2.13）。
+        // 设备识别与换绑策略校验：已失效设备（换绑后旧设备）按策略拒绝登录。
         if (!string.IsNullOrEmpty(deviceIdentifier))
         {
             var deviceResult = await TouchDeviceAsync(account, deviceIdentifier, devicePlatform, now, cancellationToken);
@@ -116,7 +116,7 @@ public sealed class OnlineIdentityService
     }
 
     /// <summary>
-    /// 新身份自动注册（S2.3 红线）：账号、身份与首个玩家由服务端一次性生成并落库，客户端不得拼接身份关系。
+    /// 新身份自动注册（红线）：账号、身份与首个玩家由服务端一次性生成并落库，客户端不得拼接身份关系。
     /// </summary>
     /// <param name="tenantId">租户标识。</param>
     /// <param name="appId">应用标识。</param>
@@ -248,7 +248,7 @@ public sealed class OnlineIdentityService
     }
 
     /// <summary>
-    /// 设备识别与换绑策略校验（VC-2.13）：新设备绑定，既有设备刷新活跃时间，已失效设备（换绑后旧设备）按策略拒绝登录。
+    /// 设备识别与换绑策略校验：新设备绑定，既有设备刷新活跃时间，已失效设备（换绑后旧设备）按策略拒绝登录。
     /// </summary>
     /// <param name="account">当前登录账号。</param>
     /// <param name="deviceIdentifier">登录设备标识。</param>
@@ -369,7 +369,7 @@ public sealed class OnlineIdentityService
     }
 
     /// <summary>
-    /// 换绑设备（显式操作，VC-2.13）：旧设备立即失效，新设备绑定并可用；旧设备后续登录按策略拒绝。
+    /// 换绑设备（显式操作）：旧设备立即失效，新设备绑定并可用；旧设备后续登录按策略拒绝。
     /// </summary>
     /// <param name="gameAccountId">目标游戏账号。</param>
     /// <param name="oldDeviceIdentifier">旧设备唯一标识串。</param>

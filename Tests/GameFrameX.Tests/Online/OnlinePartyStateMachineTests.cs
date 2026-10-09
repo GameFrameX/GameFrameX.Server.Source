@@ -33,7 +33,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 队伍状态机测试（vault:C5 S4.3 生命周期图：合法边固化、终态不可复活、非法跳转被拒）。
+    /// 队伍状态机测试（生命周期图：合法边固化、终态不可复活、非法跳转被拒）。
     /// </summary>
     public class OnlinePartyStateMachineTests
     {
@@ -58,7 +58,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证跨阶段跳转被拒（vault:C5 S4.3：迁移由状态机裁决，不由调用方任意指定）。
+        /// 验证跨阶段跳转被拒（迁移由状态机裁决，不由调用方任意指定）。
         /// </summary>
         /// <param name="from">起态。</param>
         /// <param name="to">目标态。</param>

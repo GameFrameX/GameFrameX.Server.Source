@@ -39,7 +39,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 队伍服务测试（vault:C5 VC-4.1/VC-4.3/VC-4.6/VC-4.7 + S4.3/S4.7：队伍生命周期、整队完整、队长退出与离线清理、终态不可复活）。
+    /// 队伍服务测试（队伍生命周期、整队完整、队长退出与离线清理、终态不可复活）。
     /// </summary>
     public class OnlinePartyServiceTests
     {
@@ -59,7 +59,7 @@ namespace GameFrameX.Tests.Online
         private const long PlayerTwo = 1002;
 
         /// <summary>
-        /// 验证创建队伍后发起人即队长且已是首个成员（VC-4.1）。
+        /// 验证创建队伍后发起人即队长且已是首个成员。
         /// </summary>
         [Fact]
         public async Task CreateAsync_ShouldCreatePartyWithLeaderAsFirstMember()
@@ -79,7 +79,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证重复创建返回既有队伍而非第二支队伍（幂等，VC-4.1）。
+        /// 验证重复创建返回既有队伍而非第二支队伍（幂等）。
         /// </summary>
         [Fact]
         public async Task CreateAsync_WhenAlreadyInParty_ShouldReturnExistingParty()
@@ -98,7 +98,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证邀请被接受后队伍成型（Created/Inviting → Formed，vault:C5 S4.3）。
+        /// 验证邀请被接受后队伍成型（Created/Inviting → Formed）。
         /// </summary>
         [Fact]
         public async Task AnswerInviteAsync_WhenAccepted_ShouldFormParty()
@@ -119,7 +119,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证拒绝邀请不产生成员（VC-4.1：未接受者不进入队伍）。
+        /// 验证拒绝邀请不产生成员（未接受者不进入队伍）。
         /// </summary>
         [Fact]
         public async Task AnswerInviteAsync_WhenRejected_ShouldNotAddMember()
@@ -138,7 +138,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证全员就绪后队伍进入 Ready（vault:C5 S4.3：全员就绪才进 Ready）。
+        /// 验证全员就绪后队伍进入 Ready。
         /// </summary>
         [Fact]
         public async Task SetReadyAsync_WhenAllReady_ShouldReachReady()
@@ -157,7 +157,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证成员退队致人数不足时回落 Left，且队伍保留可恢复（vault:C5 S4.7 边界规则）。
+        /// 验证成员退队致人数不足时回落 Left，且队伍保留可恢复。
         /// </summary>
         [Fact]
         public async Task LeaveAsync_WhenBelowMinMembers_ShouldReachLeft()
@@ -177,7 +177,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证队长退出后队长位转移给加入最早者，且队伍不因队长离开而失效（VC-4.6：绝不产生孤儿队长）。
+        /// 验证队长退出后队长位转移给加入最早者，且队伍不因队长离开而失效（绝不产生孤儿队长）。
         /// </summary>
         [Fact]
         public async Task LeaveAsync_WhenLeaderLeaves_ShouldTransferToEarliestJoinedMember()
@@ -197,7 +197,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证最后一名成员离开时队伍解散（VC-4.6：无人可转移则解散，不留空壳队伍）。
+        /// 验证最后一名成员离开时队伍解散（无人可转移则解散，不留空壳队伍）。
         /// </summary>
         [Fact]
         public async Task LeaveAsync_WhenLastMemberLeaves_ShouldDisband()
@@ -219,7 +219,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证队长转移生效（VC-4.6：队长是队伍的单点事实源）。
+        /// 验证队长转移生效（队长是队伍的单点事实源）。
         /// </summary>
         [Fact]
         public async Task TransferLeaderAsync_ShouldSwitchLeader()
@@ -237,7 +237,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证取消队伍进入终态并发布状态变更事件（vault:C5 S4.3：终态唯一）。
+        /// 验证取消队伍进入终态并发布状态变更事件（终态唯一）。
         /// </summary>
         [Fact]
         public async Task CancelAsync_ShouldReachCancelledAndPublishEvent()
@@ -259,7 +259,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证已进入终态的队伍不可复活（vault:C5 S4.3：取消/解散后状态唯一且不可逆）。
+        /// 验证已进入终态的队伍不可复活（取消/解散后状态唯一且不可逆）。
         /// </summary>
         [Fact]
         public async Task BindMatchStateAsync_AfterTerminalState_ShouldBeRejected()
@@ -278,7 +278,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证离线成员被清理（VC-4.7：离线成员不再占位，队伍回落 Left 等待补充）。
+        /// 验证离线成员被清理（离线成员不再占位，队伍回落 Left 等待补充）。
         /// </summary>
         [Fact]
         public async Task PruneOfflineMembersAsync_ShouldRemoveOfflineMember()

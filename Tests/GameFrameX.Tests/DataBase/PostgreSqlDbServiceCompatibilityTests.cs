@@ -39,10 +39,10 @@ using Xunit;
 namespace GameFrameX.Tests.DataBase;
 
 /// <summary>
-/// C168 兼容性 / 索引引导集成测试：C166 存量 doc 经 EF 读取回归、表达式索引 cast 对齐 EXPLAIN 命中、同名异构索引滚动重建。
+/// 兼容性 / 索引引导集成测试：存量 doc 经 EF 读取回归、表达式索引 cast 对齐 EXPLAIN 命中、同名异构索引滚动重建。
 /// </summary>
 /// <remarks>
-/// Compatibility and index-bootstrap tests for the EF-based adapter (C168). Gated by
+/// Compatibility and index-bootstrap tests for the EF-based adapter. Gated by
 /// <c>GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING</c> (tests silently skip without a reachable database,
 /// aligned with the other PostgreSQL suites). Each test creates an isolated database, dropped on dispose.
 /// </remarks>
@@ -52,10 +52,10 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
     private static long _idSeed = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
     /// <summary>
-    /// 测试 C166 序列化器写入的存量 jsonb doc 经 EF owned JSON 读取字段一致（P0 回归门禁）。
+    /// 测试旧序列化器写入的存量 jsonb doc 经 EF owned JSON 读取字段一致（P0 回归门禁）。
     /// </summary>
     /// <remarks>
-    /// Verifies that a C166-era stored document (PascalCase keys, explicit JSON nulls, enum-as-number)
+    /// Verifies that a legacy stored document (PascalCase keys, explicit JSON nulls, enum-as-number)
     /// reads back byte-equivalently through the EF owned-JSON pipeline.
     /// </remarks>
     [Fact]
@@ -64,9 +64,9 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
         await ExecuteWithServiceAsync(async (service, connectionString) =>
         {
             var stateId = Interlocked.Increment(ref _idSeed);
-            // 先经适配器建表（EnsureTable 单飞），再写入 C166 形态的存量文档
+            // 先经适配器建表（EnsureTable 单飞），再写入旧序列化器形态的存量文档
             Assert.Equal(0, await service.CountAsync<LegacyProbeState>(x => false));
-            // C166 序列化器形态：PascalCase 键、null 显式写出、枚举数值、属性乱序、冗余键（旧类型已删字段）。
+            // 旧序列化器形态：PascalCase 键、null 显式写出、枚举数值、属性乱序、冗余键（旧类型已删字段）。
             var legacyDoc = $$"""
                 {"Id":{{stateId}},"CreatedId":null,"CreatedName":null,"CreatedTime":100,"DeletedId":null,"DeletedName":null,"DeleteTime":null,"IsDeleted":null,"IsEnabled":null,"RowVersion":0,"UpdateCount":null,"UpdatedId":null,"UpdatedName":null,"UpdateTime":null,"LegacyOnly":"stale","Name":"legacy-name","Level":3,"Kind":2,"Items":[{"Sub":"x"}]}
                 """;
@@ -99,7 +99,7 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
     /// 测试 jsonb 表达式索引与 EF 翻译谓词逐字对齐（EXPLAIN 命中 + pg_indexes 定义核对）。
     /// </summary>
     /// <remarks>
-    /// C166 P1-8 equivalent for the EF pipeline: the adapter's index DDL must match the EF-translated predicate
+    /// Index/predicate shape equivalence for the EF pipeline: the adapter's index DDL must match the EF-translated predicate
     /// shape (<c>int → ::integer</c>) so the planner picks the index.
     /// </remarks>
     [Fact]
@@ -136,10 +136,10 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
     }
 
     /// <summary>
-    /// 测试同名异构索引（C166 int→bigint cast）被滚动重建为 EF 对齐形态。
+    /// 测试同名异构索引（旧形态 int→bigint cast）被滚动重建为 EF 对齐形态。
     /// </summary>
     /// <remarks>
-    /// C168's rolling path off C166 indexes: a same-name index with the legacy <c>::bigint</c> cast must be
+    /// Rolling migration path off legacy indexes: a same-name index with the legacy <c>::bigint</c> cast must be
     /// dropped and recreated with the EF-aligned <c>::integer</c> cast on first schema sync.
     /// </remarks>
     [Fact]
@@ -147,7 +147,7 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
     {
         await ExecuteWithServiceAsync(async (service, connectionString) =>
         {
-            // 手工预置 C166 形态的同名索引（int 字段按旧矩阵 cast bigint），先于适配器首次 schema 同步
+            // 手工预置旧形态的同名索引（int 字段按旧矩阵 cast bigint），先于适配器首次 schema 同步
             await using (var setupConnection = new NpgsqlConnection(connectionString))
             {
                 await setupConnection.OpenAsync();
@@ -175,7 +175,7 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
     /// 测试非可空值类型排序键在 jsonb 缺键行上的 null 位置与 Mongo 对齐（升序缺失在前 / 降序在后）。
     /// </summary>
     /// <remarks>
-    /// C170 R-2: a non-nullable value-type sort key (e.g. <c>int Score</c>) reads as SQL NULL on rows whose
+    /// A non-nullable value-type sort key (e.g. <c>int Score</c>) reads as SQL NULL on rows whose
     /// jsonb document lacks the key (legacy rows written before the property existed, or external writers).
     /// MongoDB places missing/null first ascending and last descending; the adapter must add the null-flag
     /// ordering key for value-type keys too instead of falling back to PostgreSQL's default null placement.
@@ -298,7 +298,7 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
     }
 
     /// <summary>
-    /// 存量兼容探针状态（含枚举 / 集合 / 字符串成员，对应 C166 序列化器写过的形态）。
+    /// 存量兼容探针状态（含枚举 / 集合 / 字符串成员，对应旧序列化器写过的形态）。
     /// </summary>
     private sealed class LegacyProbeState : BaseCacheState
     {

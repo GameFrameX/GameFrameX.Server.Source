@@ -33,8 +33,8 @@ using System.Threading.Tasks;
 namespace GameFrameX.Online.Tokens;
 
 /// <summary>
-/// 会话 Token 契约承载（vault:C2 S1.4）。
-/// 仅声明 Server 侧会话 Token 的签发 / 刷新 / 吊销 / 踢下线四端契约；具体实现（存储、加密、过期策略）由 C94 会话管理任务落地，本基座不提供默认实现。
+/// 会话 Token 契约承载。
+/// 仅声明 Server 侧会话 Token 的签发 / 刷新 / 吊销 / 踢下线四端契约；具体实现（存储、加密、过期策略）由会话管理模块落地，本契约不提供默认实现。
 /// </summary>
 public interface IOnlineSessionTokenContract
 {

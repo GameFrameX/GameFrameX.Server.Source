@@ -31,10 +31,10 @@ using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.Discovery.Routing;
 
 /// <summary>
-/// 通用玩家路由同步目标（C167：自 Mongo / PG 平行实现归一，消费 <see cref="IPlayerRouteStore"/>）。
+/// 通用玩家路由同步目标（自 Mongo / PG 平行实现归一，消费 <see cref="IPlayerRouteStore"/>）。
 /// </summary>
 /// <remarks>
-/// The generic player-route sync target (C167, unified from the Mongo /
+/// The generic player-route sync target (unified from the Mongo /
 /// PostgreSQL parallel implementations; consumes <see cref="IPlayerRouteStore"/>
 /// and never branches on the backend). Each upsert runs the unified CAS
 /// policy — the supplied version must equal the current version + 1 — with

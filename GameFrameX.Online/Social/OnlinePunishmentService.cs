@@ -35,7 +35,7 @@ using GameFrameX.Online.Contracts;
 using GameFrameX.Online.Events;
 
 /// <summary>
-/// 处罚施加 / 撤销 / 查询服务（vault:C7 S6.3，方案复审 P0-2 收口点：Admin 命令面的服务端半边）。
+/// 处罚施加 / 撤销 / 查询服务（Admin 命令面的服务端半边）。
 /// <para>
 /// 维护约束（归属边界）：本服务只负责**记录处罚事实**；处罚的运行时强制在
 /// <see cref="OnlineSocialDecisionService"/>（Chat / Party / Matchmaker 三处同源裁决）。

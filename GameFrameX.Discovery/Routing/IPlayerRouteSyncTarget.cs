@@ -14,14 +14,14 @@
 namespace GameFrameX.Discovery.Routing;
 
 /// <summary>
-/// 玩家路由外发同步目标（C143e D21：SessionManager 钩子的可注入端）。
+/// 玩家路由外发同步目标（SessionManager 钩子的可注入端）。
 /// </summary>
 /// <remarks>
-/// The outbound sync target for the SessionManager player-route hooks (C143e D21).
+/// The outbound sync target for the SessionManager player-route hooks.
 /// The hook is async-by-design so the Mongo implementation can <c>await</c>
 /// the CAS upsert; the NoOp default returns immediately. Callers (SessionManager)
 /// must catch and swallow exceptions themselves — the inline hook contract is
-/// "best effort, never throws". C154 shapes the write side as
+/// "best effort, never throws". The write side is shaped as
 /// <see cref="PlayerRouteRecord"/> so the player_route fields can evolve without
 /// breaking the interface, its implementations, or callers; the record type
 /// lives in RemoteMessaging, keeping GameFrameX.Apps free of Mongo types.

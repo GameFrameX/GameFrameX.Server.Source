@@ -40,7 +40,7 @@ namespace GameFrameX.Online.Runtime.AdminApi;
 /// 维护约束：kick / revoke_token / mute 为 Admin 三族处罚命令（幂等键 <c>penalty-{penaltyId}-{kind}-{serverId}</c>），
 /// 经调度器层幂等包裹；踢线 / 吊销按「该玩家全部活跃会话」逐会话执行（Admin 线缆无会话标识，玩家级语义）；
 /// 举报状态映射固定（Admin Pending/Handling/Resolved/Rejected ↔ Online Submitted/Reviewing/Actioned/Rejected，
-/// Withdrawn 回退映射 Rejected）；聊天审计查询走 <see cref="OnlineChatAuditProjection"/>（C122 决策⑧④）。
+/// Withdrawn 回退映射 Rejected）；聊天审计查询走 <see cref="OnlineChatAuditProjection"/>。
 /// </para>
 /// </summary>
 public sealed class OnlineAdminSocialHandlers

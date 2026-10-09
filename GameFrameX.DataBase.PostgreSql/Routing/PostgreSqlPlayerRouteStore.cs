@@ -35,10 +35,10 @@ using Npgsql;
 namespace GameFrameX.DataBase.PostgreSql.Routing;
 
 /// <summary>
-/// PostgreSQL 玩家路由存储适配（C167 契约 / C168 EF 化：<see cref="IPlayerRouteStore"/> 的 EF 关系实现，CAS 经 xmin 乐观并发令牌）。
+/// PostgreSQL 玩家路由存储适配（<see cref="IPlayerRouteStore"/> 的 EF 关系实现，CAS 经 xmin 乐观并发令牌）。
 /// </summary>
 /// <remarks>
-/// The PostgreSQL implementation of the player-route storage seam (C167 contract, EF-based since C168):
+/// The PostgreSQL implementation of the player-route storage seam (EF-based):
 /// consumed by the generic resolver / sync target / bootstrap. The former hand-written guarded-update SQL is
 /// replaced by EF's <c>xmin</c> optimistic concurrency token — a concurrent row change makes the guarded
 /// save match zero rows, mapping onto the existing <see cref="PlayerRouteCasOutcome"/> semantics unchanged.

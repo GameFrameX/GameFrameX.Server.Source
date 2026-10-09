@@ -31,13 +31,13 @@
 namespace GameFrameX.Discovery;
 
 /// <summary>
-/// 服务实例状态（C143d D15：heartbeat 文档 status 字段）。
+/// 服务实例状态（heartbeat 文档 status 字段）。
 /// </summary>
 /// <remarks>
-/// The lifecycle status of a role instance (C143d D15: the heartbeat document status field).
-/// Scale-down follows the graceful Draining-to-Stopped semantics of AC-4: a Draining
-/// instance stays routable for in-flight deliveries (D3 case 2) but is excluded from
-/// new any-instance selections (D3 case 3); Stopped is written on graceful exit so the
+/// The lifecycle status of a role instance (the heartbeat document status field).
+/// Scale-down follows the graceful Draining-to-Stopped semantics: a Draining
+/// instance stays routable for in-flight deliveries (case 2) but is excluded from
+/// new any-instance selections (case 3); Stopped is written on graceful exit so the
 /// watcher does not have to wait for the TTL to expire.
 /// Values start at 1 on purpose: an uninitialized field must never read as a valid status.
 /// </remarks>

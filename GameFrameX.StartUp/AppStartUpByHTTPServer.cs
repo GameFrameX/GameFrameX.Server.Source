@@ -242,9 +242,9 @@ public abstract partial class AppStartUpBase
     /// 为 Kestrel 追加独立指标抓取端口（MetricsPort）监听。
     /// </summary>
     /// <remarks>
-    /// 承载端口契约语义（C160）：对外宣称的独立指标抓取端口由主 HTTP 宿主 Kestrel 多绑实现（对齐 HttpsPort 条件监听先例），
+    /// 承载端口契约语义：对外宣称的独立指标抓取端口由主 HTTP 宿主 Kestrel 多绑实现（对齐 HttpsPort 条件监听先例），
     /// 不新增第二个 HTTP 服务器组件；仅 OTel 双开关开启且端口未被占用时追加监听，被占用时记 Warning 跳过附加监听、不阻断主服务。
-    /// Append the standalone metrics scraping port (MetricsPort) listener to the main HTTP host (C160);
+    /// Append the standalone metrics scraping port (MetricsPort) listener to the main HTTP host;
     /// skipped with a Warning when the port is occupied so the main service is never blocked.
     /// </remarks>
     /// <param name="options">Kestrel 服务器选项 / Kestrel server options</param>
@@ -330,7 +330,7 @@ public abstract partial class AppStartUpBase
         }
         else if (Setting.IsOpenTelemetry && Setting.IsOpenTelemetryMetrics && Setting.MetricsPort > 0)
         {
-            // 端口契约（C160）：独立指标抓取端口由主 HTTP 宿主 Kestrel 多绑承载（ConfigureMetricsPortListen 追加监听），
+            // 端口契约：独立指标抓取端口由主 HTTP 宿主 Kestrel 多绑承载（ConfigureMetricsPortListen 追加监听），
             // /metrics 以 RequireHost("*:MetricsPort") 限定仅指标端口应答，主 API 端口不暴露指标面。
             // Port contract: /metrics only answers on MetricsPort (RequireHost host:port matching); the main API port does not expose it.
             app.MapPrometheusScrapingEndpoint().RequireHost($"*:{Setting.MetricsPort}");

@@ -33,10 +33,10 @@ using GameFrameX.NetWork.RemoteMessaging.Routing;
 namespace GameFrameX.Tests.Topology.Equivalence;
 
 /// <summary>
-/// 语义等价用例集的 4 条代表性跨 Role 消息链路（C143c D9）。
+/// 语义等价用例集的 4 条代表性跨 Role 消息链路。
 /// </summary>
 /// <remarks>
-/// The four representative cross-role chains of the equivalence suite (C143c D9):
+/// The four representative cross-role chains of the equivalence suite:
 /// Gate→Game session establishment, Game→Social friend query, Game→Match match request
 /// and Match→Game settlement callback. Every chain installs its role handlers on the
 /// world, then issues three sequential request round trips (deterministic player ids),

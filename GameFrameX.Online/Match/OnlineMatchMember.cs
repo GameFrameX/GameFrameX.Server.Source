@@ -30,10 +30,10 @@
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 对局成员（vault:C6 S5.3 成员流程：加入 / 退出 / 踢出 / 准备 / 开始）。
+/// 对局成员（成员流程：加入 / 退出 / 踢出 / 准备 / 开始）。
 /// <para>
 /// 维护约束（红线）：<see cref="LastAckSequence"/> 与 <see cref="LastClientSequence"/> 是**重连补齐的唯一依据**——
-/// 重连时服务端据此计算需要补发的增量区间（VC-5.6「序号连续」）；两者只能由服务端在成功接受输入后推进，
+/// 重连时服务端据此计算需要补发的增量区间（「序号连续」）；两者只能由服务端在成功接受输入后推进，
 /// 客户端上报的序号不直接写入本字段。断线成员保留在成员表中直至窗口超时，故成员表长度不等于在线人数。
 /// </para>
 /// </summary>
@@ -103,7 +103,7 @@ public sealed class OnlineMatchMember
     }
 
     /// <summary>
-    /// 获取或设置服务端已接受的最大客户端序号（重复包判定的依据，VC-5.4）。
+    /// 获取或设置服务端已接受的最大客户端序号（重复包判定的依据）。
     /// </summary>
     public long LastClientSequence
     {

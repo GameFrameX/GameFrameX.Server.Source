@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.GameEvents;
 
 /// <summary>
-/// 游戏事件 L0 校验结果（受理 / 拒绝 + 拒绝码 + 可读原因）。
+/// 游戏事件基础校验结果（受理 / 拒绝 + 拒绝码 + 可读原因）。
 /// </summary>
 public sealed class OnlineGameEventValidationResult
 {

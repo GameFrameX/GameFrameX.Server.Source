@@ -33,10 +33,10 @@ using GameFrameX.NetWork.RemoteMessaging.Routing;
 namespace GameFrameX.Tests.Topology.Equivalence;
 
 /// <summary>
-/// InProcessRoleRouter D3 三步判定单元测试（C143c）。
+/// InProcessRoleRouter 三步判定单元测试。
 /// </summary>
 /// <remarks>
-/// Unit tests for the InProcessRoleRouter three-step decision (C143c):
+/// Unit tests for the InProcessRoleRouter three-step decision:
 /// case 1 goes through the local dispatcher (mock), case 2/3 delegates to the remote
 /// seam — with the production placeholder that throws NotImplementedException — and
 /// every undecidable route fails loudly with RouteNotFoundException.
@@ -68,7 +68,7 @@ public class InProcessRoleRouterTests
     }
 
     /// <summary>
-    /// 固定应答型远程转发器（mock D3 case 2/3 缝）。
+    /// 固定应答型远程转发器（mock 三步判定的远程转发分支）。
     /// </summary>
     private sealed class StubRemoteRoleRouter : IRemoteRoleRouter
     {

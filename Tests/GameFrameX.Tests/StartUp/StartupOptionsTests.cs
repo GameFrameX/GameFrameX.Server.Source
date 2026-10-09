@@ -70,7 +70,7 @@ public class StartupOptionsTests
     }
 
     /// <summary>
-    /// IsAllInOne 开关可通过启动参数解析（C143b D2），缺省为 false。
+    /// IsAllInOne 开关可通过启动参数解析，缺省为 false。
     /// </summary>
     [Fact]
     public void TryCreate_ShouldBindIsAllInOneOption()
@@ -91,7 +91,7 @@ public class StartupOptionsTests
     }
 
     /// <summary>
-    /// GetServerTypes 派生方法按逗号拆分 ServerType（C143b D2），未指定时为空数组。
+    /// GetServerTypes 派生方法按逗号拆分 ServerType，未指定时为空数组。
     /// </summary>
     [Fact]
     public void GetServerTypes_DerivedFromServerType_SplitsOnComma()

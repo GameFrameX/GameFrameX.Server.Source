@@ -33,10 +33,10 @@ using System.Collections.Generic;
 namespace GameFrameX.Online.HotfixRollback;
 
 /// <summary>
-/// Hotfix 回滚协议兼容检查器（vault:C9 S8.5 / VC-8.9「协议兼容检查通过」的检查钩子——纯函数，
+/// Hotfix 回滚协议兼容检查器（「协议兼容检查通过」的检查钩子——纯函数，
 /// 不触存储、不写审计，供 <see cref="OnlineHotfixRollbackService"/> 回滚闸门与只读预检共用）。
 /// <para>
-/// 判定规则（维护约束，调整须回 vault 契约评审）：
+/// 判定规则（维护约束，调整须回契约评审）：
 /// <b>RemovedMessage</b>——当前（活跃）版本有、目标（回滚）版本无：回滚丢失既有协议面，
 /// 已升级客户端流量会被拒，<b>不兼容拒绝回滚</b>；
 /// <b>ChangedMessage</b>——同名不同消息号 / 同消息号不同名：路由错乱，<b>不兼容拒绝回滚</b>；

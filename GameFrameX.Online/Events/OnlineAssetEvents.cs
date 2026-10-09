@@ -35,7 +35,7 @@ using System.Text.Json.Serialization;
 using GameFrameX.Online.Assets;
 
 /// <summary>
-/// 资产域事件工厂（vault:C4 S3.4：统一入口成功落账后发布资产变更事实，供下游与 Admin 消费）。
+/// 资产域事件工厂（统一入口成功落账后发布资产变更事实，供下游与 Admin 消费）。
 /// <para>
 /// 维护约束：事件代表已落账的事实（只发布成功交易），消费端不得回写资产状态；
 /// 载荷携带交易标识与逐资产前后值（审计视图投影），金额输出经 <c>OnlineEventSanitizer</c>

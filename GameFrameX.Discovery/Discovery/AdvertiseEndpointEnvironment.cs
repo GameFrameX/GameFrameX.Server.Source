@@ -39,7 +39,7 @@ namespace GameFrameX.Discovery;
 /// </summary>
 /// <remarks>
 /// Advertise-endpoint environment bootstrap — the driver-neutral single source of truth shared by the
-/// Mongo and PostgreSQL heartbeat registries (C166 dependency-direction fix). Both database
+/// Mongo and PostgreSQL heartbeat registries. Both database
 /// implementation assemblies reference RemoteMessaging (never the reverse), so this pure environment
 /// probing logic lives here and both <c>*EndpointRegistry.CreateSelfDescriptorFromEnvironment</c>
 /// implementations delegate to it, keeping their behaviour identical by construction.

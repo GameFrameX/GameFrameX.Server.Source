@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 聊天频道（vault:C7 S6.5：频道 = 消息的归属与权限边界）。
+/// 聊天频道（频道 = 消息的归属与权限边界）。
 /// <para>
 /// 维护约束（频道标识是**确定性派生**的，不是随机生成）：标识由「作用域 + 类型 + 绑定主体」派生
 /// （见 <see cref="OnlineChatService.BuildChannelId"/>），因此 A→B 与 B→A 天然命中同一频道，

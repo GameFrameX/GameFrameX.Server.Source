@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 推送出口回执（vault:C7 S6.8「Socket 推送」的传输结果）。
+/// 推送出口回执（Socket 推送的传输结果）。
 /// <para>
 /// 维护约束（红线）：<see cref="Retryable"/> 是服务层在「重试」与「落 Failed 终态」之间抉择的唯一判据——
 /// <c>false</c> 表示重试也不会成功（如接收者不存在、连接被永久拒绝），服务层据此直接落

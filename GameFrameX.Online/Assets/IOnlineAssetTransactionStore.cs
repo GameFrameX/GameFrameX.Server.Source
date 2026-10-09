@@ -34,10 +34,10 @@ using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
-/// 资产交易记录存储接口（vault:C4 S3.3：交易幂等边界的持久化契约；重启恢复的扫描数据源）。
+/// 资产交易记录存储接口（交易幂等边界的持久化契约；重启恢复的扫描数据源）。
 /// <para>
 /// 维护约束：交易记录只由统一入口写入（状态迁移受状态机约束，终态不可再迁移）；
-/// <see cref="ListByStateAsync"/> 供恢复任务与运维巡检消费非终态记录（VC-3.12）；
+/// <see cref="ListByStateAsync"/> 供恢复任务与运维巡检消费非终态记录；
 /// 生产装配以持久化实现替换，内存实现为本仓默认。
 /// </para>
 /// </summary>

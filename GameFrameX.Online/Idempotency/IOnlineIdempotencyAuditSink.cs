@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Idempotency;
 
 /// <summary>
-/// Online 幂等审计出口（vault:C2：过期、重放和跨作用域请求必须被拒绝并记录审计；留痕率量化基线 100%）。
+/// Online 幂等审计出口（过期、重放和跨作用域请求必须被拒绝并记录审计；留痕率量化基线 100%）。
 /// <para>
 /// 维护约束：审计记录只含作用域绑定键与请求摘要（不可逆），禁止落明文请求体/响应体；
 /// 生产装配必须接线实现（落库/日志），未接线时 <c>OnlineIdempotencyService</c> 将跳过审计仅告警。

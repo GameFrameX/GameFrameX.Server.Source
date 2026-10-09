@@ -42,7 +42,7 @@ public class StartUpStaticStateCollection
 }
 
 /// <summary>
-/// AppBootstrapper 进程级共享内核幂等初始化测试（C143b D5）。
+/// AppBootstrapper 进程级共享内核幂等初始化测试。
 /// </summary>
 /// <remarks>
 /// <see cref="CollectionDefinitionAttribute.DisableParallelization"/> keeps these tests serialized

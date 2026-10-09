@@ -43,10 +43,10 @@ using Xunit;
 namespace GameFrameX.Tests.DataBase;
 
 /// <summary>
-/// PostgreSqlDbService 契约测试（C166 AC-2：用例集语义对齐 MongoDbServiceQueryTests）。
+/// PostgreSqlDbService 契约测试（用例集语义对齐 MongoDbServiceQueryTests）。
 /// </summary>
 /// <remarks>
-/// Contract tests for <c>PostgreSqlDbService</c> (C166 AC-2: semantics aligned with <c>MongoDbServiceQueryTests</c>).
+/// Contract tests for <c>PostgreSqlDbService</c> (semantics aligned with <c>MongoDbServiceQueryTests</c>).
 /// 门控：<c>GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING</c>（空则静默跳过，对齐 Mongo 门控模式）；
 /// 每次执行创建独立 database，Dispose 时 WITH (FORCE) 删除。
 /// </remarks>
@@ -558,14 +558,14 @@ public sealed class PostgreSqlDbServiceQueryTests
     }
 
     /// <summary>
-    /// 测试不可翻译节点显式失败（C168：EF 翻译器接管方言，超集节点可翻译，不可翻译节点抛 InvalidOperationException，绝不静默内存过滤）。
+    /// 测试不可翻译节点显式失败（EF 翻译器接管方言，超集节点可翻译，不可翻译节点抛 InvalidOperationException，绝不静默内存过滤）。
     /// </summary>
     [Fact]
     public async Task UntranslatableExpression_ShouldThrowExplicitly()
     {
         await ExecuteWithServiceAsync(async service =>
         {
-            // 客户端方法调用无法翻译：显式失败（C166 时代为 NotSupportedException，C168 起为 EF 的 InvalidOperationException）
+            // 客户端方法调用无法翻译：显式失败（旧序列化器时代为 NotSupportedException，切换 EF 后为 EF 的 InvalidOperationException）
             await Assert.ThrowsAsync<InvalidOperationException>(() => service.FindListAsync<PostgreSqlQueryTestState>(x => IsLongName(x.Name)));
 
             // 旧翻译器方言矩阵之外的节点（string.Length）在 EF 翻译器下可用（覆盖面升级）

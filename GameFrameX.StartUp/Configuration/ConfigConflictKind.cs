@@ -31,10 +31,10 @@
 namespace GameFrameX.StartUp.Configuration;
 
 /// <summary>
-/// 启动期配置冲突类型（C143f D4）。
+/// 启动期配置冲突类型。
 /// </summary>
 /// <remarks>
-/// The kind of a startup configuration conflict (C143f D4).
+/// The kind of a startup configuration conflict.
 /// </remarks>
 public enum ConfigConflictKind
 {

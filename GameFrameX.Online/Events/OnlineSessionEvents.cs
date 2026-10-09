@@ -34,11 +34,11 @@ using System.Text.Json;
 using GameFrameX.Online.Session;
 
 /// <summary>
-/// 会话域事件工厂（vault:C3 S2.8：Session 生命周期事件经 C93 事件信封供 Party/Friend/Admin 消费）。
+/// 会话域事件工厂（Session 生命周期事件经统一事件信封供 Party/Friend/Admin 消费）。
 /// <para>
 /// 维护约束：EventType 命名 <c>Online.Session.{动作}</c>，新增事件类型必须同步 Admin 镜像侧登记；
 /// Payload 为 UTF-8 JSON（SchemaVersion=1），审计字段（SessionId/PlayerId/Reason）经
-/// <see cref="OnlineEvent.PayloadAuditFields"/> 透出——踢下线审计必须含 SessionId 与原因（VC-2.3），
+/// <see cref="OnlineEvent.PayloadAuditFields"/> 透出——踢下线审计必须含 SessionId 与原因，
 /// 操作者（Operator）由装配层写入 Reason 承载；事件是事实不是状态，消费端不得回写会话。
 /// </para>
 /// </summary>

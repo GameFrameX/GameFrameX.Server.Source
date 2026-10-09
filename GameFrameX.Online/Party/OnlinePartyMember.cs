@@ -30,11 +30,11 @@
 namespace GameFrameX.Online.Party;
 
 /// <summary>
-/// 队伍成员（vault:C5 S4.3：队伍成员条目）。
+/// 队伍成员（队伍成员条目）。
 /// <para>
 /// 维护约束：队长身份由 <see cref="OnlineParty.LeaderId"/> 单点持有，成员条目不重复记录 IsLeader——
-/// 两处记录必然产生不一致。成员在线状态**不**在此存放：按 vault:C5 风险表，
-/// 阶段的 Presence 是唯一在线事实源，Party 不额外镜像。
+/// 两处记录必然产生不一致。成员在线状态**不**在此存放：按既有风险约定，
+/// Presence 是唯一在线事实源，Party 不额外镜像。
 /// </para>
 /// </summary>
 public sealed class OnlinePartyMember

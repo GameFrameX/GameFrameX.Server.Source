@@ -30,11 +30,11 @@
 namespace GameFrameX.Utility.Setting;
 
 /// <summary>
-/// 同进程多 Role 下进程级设置字段冲突异常（C143a D19）。
+/// 同进程多 Role 下进程级设置字段冲突异常。
 /// </summary>
 /// <remarks>
 /// Thrown by <see cref="GlobalSettings.SetCurrentSetting"/> when a process-level field
-/// of the incoming setting differs from the current setting (C143a D19).
+/// of the incoming setting differs from the current setting.
 /// The message lists every conflicting field with its source segments and both values;
 /// sensitive fields (e.g. <see cref="AppSetting.DataBasePassword"/>) omit their values from the message.
 public sealed class SettingConflictException : Exception

@@ -39,7 +39,7 @@ using GameFrameX.Online.Matchmaking;
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// Match Runtime（vault:C6 S5.1「Match Actor 所有权、Tick/Timer 与清理策略」的宿主）。
+/// Match Runtime（Match Actor 所有权、Tick/Timer 与清理策略的宿主）。
 /// <para>
 /// 维护约束（红线）：运行时不持有任何对局**状态**——它只是 Actor 的登记处与调度器，
 /// 状态一律由 Actor 独占并通过存储 CAS 落库。因此运行时可以安全地并发 Tick，
@@ -48,7 +48,7 @@ namespace GameFrameX.Online.Match;
 /// <para>
 /// 清理策略：<see cref="OnlineMatchState.Closed"/> 是可被释放的唯一终态，
 /// <see cref="TickAllAsync"/> 发现终态即从登记处摘除并删除落库记录——
-/// 这是 VC-5.11「僵尸 Match 数量 = 0」的实现路径。
+/// 这是「僵尸 Match 数量 = 0」的实现路径。
 /// </para>
 /// </summary>
 public sealed class OnlineMatchRuntime
@@ -71,7 +71,7 @@ public sealed class OnlineMatchRuntime
     /// <summary>Actor 登记表：键 = (TenantId, AppId, MatchId)。</summary>
     private readonly Dictionary<string, OnlineMatchActor> _actors = new Dictionary<string, OnlineMatchActor>();
 
-    /// <summary>已释放 Actor 计数（可观测性：VC-5.11 对账用）。</summary>
+    /// <summary>已释放 Actor 计数（可观测性对账用）。</summary>
     private int _releasedActorCount;
 
     /// <summary>
@@ -102,7 +102,7 @@ public sealed class OnlineMatchRuntime
     }
 
     /// <summary>
-    /// 获取累计已释放 Actor 数（VC-5.11 对账依据）。
+    /// 获取累计已释放 Actor 数（对账依据）。
     /// </summary>
     public int ReleasedActorCount
     {
@@ -133,7 +133,7 @@ public sealed class OnlineMatchRuntime
     }
 
     /// <summary>
-    /// 由匹配分配创建对局（vault:C5 assignment → 阶段 5 Match）。
+    /// 由匹配分配创建对局（上游匹配域的 assignment）。
     /// <para>成员表按 assignment 的玩家集合预置（分配即成员已定），对局进入等待阶段。</para>
     /// </summary>
     /// <param name="assignment">上游分配（不可变事实）。</param>
@@ -263,7 +263,7 @@ public sealed class OnlineMatchRuntime
     }
 
     /// <summary>
-    /// 推进全部在册对局，并释放已进入终态的 Actor（VC-5.7 / VC-5.11 / VC-5.12）。
+    /// 推进全部在册对局，并释放已进入终态的 Actor。
     /// </summary>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
     /// <param name="cancellationToken">取消令牌。</param>

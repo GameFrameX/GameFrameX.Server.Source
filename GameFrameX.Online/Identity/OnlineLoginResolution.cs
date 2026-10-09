@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Identity;
 
 /// <summary>
-/// 登录身份解析结果（vault:C3 S2.3：登录成功后由服务端生成账号与玩家上下文材料）。
+/// 登录身份解析结果（登录成功后由服务端生成账号与玩家上下文材料）。
 /// <para>
 /// 维护约束：本结果只承载身份域解析产物，不含会话与 Token——
 /// 会话签发由 Session 域（<c>OnlineSessionManager</c>）基于本结果执行，客户端不得自行拼接身份关系。

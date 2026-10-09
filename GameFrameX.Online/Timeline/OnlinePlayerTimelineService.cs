@@ -44,13 +44,13 @@ using GameFrameX.Online.Social;
 namespace GameFrameX.Online.Timeline;
 
 /// <summary>
-/// 玩家时间线只读查询服务（vault:C9 S8.1：Admin 玩家时间线的服务端半边）。
+/// 玩家时间线只读查询服务（Admin 玩家时间线的服务端半边）。
 /// <para>
 /// 维护约束（红线）：
 /// ① **只读**——本服务只依赖各域读取面：存储读接口（<see cref="IOnlineIdentityStore"/> / <see cref="IOnlineSessionStore"/> /
-/// <see cref="IOnlineMatchActorStore"/> / <see cref="IOnlineSocialGraphStore"/>）、只读查询服务（C95 <see cref="OnlineAssetQueryService"/>）
+/// <see cref="IOnlineMatchActorStore"/> / <see cref="IOnlineSocialGraphStore"/>）、只读查询服务（<see cref="OnlineAssetQueryService"/>）
 /// 与可空探针（<see cref="IOnlineConfigHitProbe"/>）。不持有任何写入型服务，调用本服务不产生状态副作用与事件
-/// ——「只读视图不直写各域状态」（X3）由类型系统结构性保证，对齐 C97 <c>OnlineMatchQueueObserver</c> 先例；
+/// ——「只读视图不直写各域状态」由类型系统结构性保证，对齐 <c>OnlineMatchQueueObserver</c> 先例；
 /// ② 数据源唯一 = 各权威域自身记录，**不拼接、不推断、不补齐**：缺数据源（配置命中未装配探针）即空槽；
 /// ③ 全部行按作用域三键 (TenantId, AppId, ServerId) + 玩家主体位过滤，跨作用域读取与「无数据」**同构**（反预言）：
 /// 查询先以**档案作用域门**判定「该玩家是否存在于本作用域」，不存在即直接返回空行集、不触及其余各腿
@@ -60,7 +60,7 @@ namespace GameFrameX.Online.Timeline;
 /// 五条腿（每条腿直读权威域，逐行保留来源域标识与关联标识，供按行定位原始记录）：
 /// <list type="bullet">
 /// <item><description>身份腿 → 分组 <see cref="OnlinePlayerTimelineGroup.Session"/>：玩家档案、账号、绑定身份、玩家侧非终态会话。</description></item>
-/// <item><description>资产腿 → 分组 <see cref="OnlinePlayerTimelineGroup.Asset"/>：账本流水（经 C95 只读查询服务读取）。</description></item>
+/// <item><description>资产腿 → 分组 <see cref="OnlinePlayerTimelineGroup.Asset"/>：账本流水（经只读查询服务读取）。</description></item>
 /// <item><description>对局腿 → 分组 <see cref="OnlinePlayerTimelineGroup.Match"/>：该玩家作为成员的对局。</description></item>
 /// <item><description>处罚腿 → 分组 <see cref="OnlinePlayerTimelineGroup.Penalty"/>：历史上全部处罚及其撤销。</description></item>
 /// <item><description>配置命中腿 → 分组 <see cref="OnlinePlayerTimelineGroup.LiveOps"/>：探针数据源，未装配即空槽。</description></item>
@@ -88,7 +88,7 @@ public sealed class OnlinePlayerTimelineService
     /// <summary>
     /// 账本腿扫描上限（条）。
     /// <para>
-    /// 天花板（ponytail）：取 C95 账本读取面单次允许的最大条数（1～100）。账本读取面按账本序**正序**分页且无倒序读取，
+    /// 天花板（ponytail）：取账本读取面单次允许的最大条数（1～100）。账本读取面按账本序**正序**分页且无倒序读取，
     /// 因此本腿覆盖的是**最早的** <see cref="LedgerScanCeiling"/> 条流水，更晚的流水被截断（截断发生在最新端）。
     /// 升级路径：存储层提供按时间 / 倒序索引读取后，本腿改为按时间窗从最新端读取，上限改为窗口内条数。
     /// </para>
@@ -385,9 +385,9 @@ public sealed class OnlinePlayerTimelineService
     /// <summary>
     /// 收集资产腿行（分组 Asset）：账本流水。
     /// <para>
-    /// 只读经 C95 <see cref="OnlineAssetQueryService"/>（不直连存储，保持依赖面为「只读查询服务」）；
+    /// 只读经 <see cref="OnlineAssetQueryService"/>（不直连存储，保持依赖面为「只读查询服务」）；
     /// 账本键为 (租户, App, 玩家)、**无区服维度**（<c>HomeServerId</c> 只表资产归属/运行位置，不做数据隔离），
-    /// 故此处不按归属服过滤——否则「归属服与玩家所在服不一致」的流水会在**任何作用域**都取不到（静默缺行，VC-8.1-c）。
+    /// 故此处不按归属服过滤——否则「归属服与玩家所在服不一致」的流水会在**任何作用域**都取不到（静默缺行）。
     /// 作用域边界由档案作用域门承担（他服玩家的档案过不了门，根本走不到本腿）。
     /// </para>
     /// </summary>
@@ -526,7 +526,7 @@ public sealed class OnlinePlayerTimelineService
     /// 探针未装配（<see langword="null"/>）即返回**空槽**——不从其它域推断补齐（推断值与真实配置域必然漂移且无法追溯）。
     /// 行标识以探针给出的原值为主：缺失时用关联标识合成（<c>config:&lt;关联标识&gt;</c>），
     /// 因为空行标识一旦成为某页末行，游标（<c>&lt;秒&gt;|&lt;行标识&gt;</c>）就不可解码，翻页会整页报参数非法；
-    /// 行标识与关联标识皆缺的行不可定位（VC-8.5）故整行跳过。
+    /// 行标识与关联标识皆缺的行不可定位，故整行跳过。
     /// </para>
     /// </summary>
     /// <param name="scope">生效作用域。</param>

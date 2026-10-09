@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Storage;
 
 /// <summary>
-/// 玩家云存储分页结果（vault:C3 S2.6：键字典序游标分页）。
+/// 玩家云存储分页结果（键字典序游标分页）。
 /// <para>
 /// 维护约束：<see cref="Cursor"/> 为本页最后一条键（透明游标，下一页从此键之后列举）；
 /// <see cref="HasMore"/> 为 false 时 Cursor 为空字符串，调用方不得继续翻页。

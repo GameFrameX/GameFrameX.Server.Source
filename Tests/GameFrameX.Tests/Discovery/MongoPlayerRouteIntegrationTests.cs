@@ -18,10 +18,10 @@ using MongoDB.Driver;
 namespace GameFrameX.Tests.Discovery;
 
 /// <summary>
-/// MongoPlayerRouteSyncTarget / MongoPlayerRouteResolver 的 Mongo 集成测试（C143e D21）。
+/// MongoPlayerRouteSyncTarget / MongoPlayerRouteResolver 的 Mongo 集成测试。
 /// </summary>
 /// <remarks>
-/// Mongo-backed integration tests for the player-route layer (C143e D21),
+/// Mongo-backed integration tests for the player-route layer,
 /// following the repository's existing GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING
 /// gating convention (MongoEndpointIntegrationTests): without the variable the
 /// tests skip so plain <c>dotnet test</c> stays green on Mongo-less machines; the

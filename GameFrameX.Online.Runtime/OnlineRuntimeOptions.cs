@@ -30,10 +30,10 @@
 namespace GameFrameX.Online.Runtime;
 
 /// <summary>
-/// Online Runtime 装配选项（change C122：宿主启动时由 <c>AppSetting</c> 映射，承载运行时授权作用域与 admin API 监听参数）。
+/// Online Runtime 装配选项（宿主启动时由 <c>AppSetting</c> 映射，承载运行时授权作用域与 admin API 监听参数）。
 /// <para>
 /// 维护约束：<see cref="TenantId"/>/<see cref="AppId"/>/<see cref="ServerId"/> 是本进程的运行时授权作用域
-/// （vault:C2：以服务端配置为准，请求体作用域字段不可覆盖；跨租户/App/服请求按 3002/3003/3004 拒绝）；
+/// （以服务端配置为准，请求体作用域字段不可覆盖；跨租户/App/服请求按 3002/3003/3004 拒绝）；
 /// admin API 与游戏 API 面隔离，独立端口监听。
 /// </para>
 /// </summary>

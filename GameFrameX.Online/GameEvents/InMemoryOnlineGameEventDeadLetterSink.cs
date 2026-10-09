@@ -36,7 +36,7 @@ using GameFrameX.Online.Events;
 namespace GameFrameX.Online.GameEvents;
 
 /// <summary>
-/// 死信汇内存实现（单进程默认；生产持久化归 Server 仓运行时装配，X4）。
+/// 死信汇内存实现（单进程默认；生产持久化归 Server 仓运行时装配）。
 /// <para>
 /// 维护约束（红线）：保留上限内的**最新**记录（超限丢弃最旧）——死信是排查素材而非账本，
 /// 无上限增长会拖垮进程；上限与淘汰策略由本实现的容量参数显式声明，不做隐式截断。

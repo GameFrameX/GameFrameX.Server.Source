@@ -30,10 +30,10 @@
 namespace GameFrameX.Online.Storage;
 
 /// <summary>
-/// 玩家云存储条目（vault:C3 S2.6：玩家 + App 作用域的 KV 实体；区服不参与隔离——换服数据随身）。
+/// 玩家云存储条目（玩家 + App 作用域的 KV 实体；区服不参与隔离——换服数据随身）。
 /// <para>
-/// 维护约束：键 = (TenantId, AppId, PlayerId, Collection, Key)，跨作用域读写结构性不可达（VC-2.7/2.8/2.9）；
-/// <see cref="Version"/> 为乐观锁版本（创建为 1，每次写递增，CAS 失败映射 6xxx，VC-2.10）；
+/// 维护约束：键 = (TenantId, AppId, PlayerId, Collection, Key)，跨作用域读写结构性不可达；
+/// <see cref="Version"/> 为乐观锁版本（创建为 1，每次写递增，CAS 失败映射 6xxx）；
 /// 删除为软删（<see cref="DeletedAtTime"/>，读取与列举即不可见）；<see cref="ExpiresAtTime"/> 到期后由清理任务软删。
 /// </para>
 /// </summary>

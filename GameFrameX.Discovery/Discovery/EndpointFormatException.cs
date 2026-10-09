@@ -31,7 +31,7 @@
 namespace GameFrameX.Discovery;
 
 /// <summary>
-/// 端点地址格式异常（C143d D15）。
+/// 端点地址格式异常。
 /// </summary>
 /// <remarks>
 /// Thrown by <see cref="EndpointParser"/> when an endpoint string violates the

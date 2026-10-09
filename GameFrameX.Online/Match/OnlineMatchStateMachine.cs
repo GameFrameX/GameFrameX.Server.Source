@@ -33,13 +33,13 @@ using System.Collections.Generic;
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 对局生命周期状态机（vault:C6「Match 生命周期」的边集合固化）。
+/// 对局生命周期状态机（Match 生命周期的边集合固化）。
 /// <para>
 /// 维护约束（红线）：合法边以常量邻接表固化，禁止在服务层用 if/switch 拼装迁移条件——
 /// 新增迁移必须先改本表并补状态机测试。所有「结束态」（Completed / Cancelled / Timeout / Failed /
 /// Aborted / SettlementFailed）都保留指向 <see cref="OnlineMatchState.Closed"/> 的唯一边，
 /// 使释放路径唯一：任何对局都能到达 <see cref="OnlineMatchState.Closed"/>，
-/// 这是 VC-5.11「僵尸 Match（未清理）数量 = 0」能够被结构性保证的前提。
+/// 这是「僵尸 Match（未清理）数量 = 0」能够被结构性保证的前提。
 /// </para>
 /// </summary>
 public static class OnlineMatchStateMachine
@@ -176,7 +176,7 @@ public static class OnlineMatchStateMachine
     /// <para>
     /// <see cref="OnlineMatchState.SettlementFailed"/> 属于结束态：结算产出失败后不会再产出权威结果，
     /// 它经保留期后同样释放为 <see cref="OnlineMatchState.Closed"/>——否则该状态既无玩法推进也无释放路径，
-    /// 会成为僵尸对局（VC-5.11）。
+    /// 会成为僵尸对局。
     /// </para>
     /// </summary>
     /// <param name="state">待判定状态。</param>

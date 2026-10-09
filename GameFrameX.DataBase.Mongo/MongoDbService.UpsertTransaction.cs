@@ -108,8 +108,8 @@ public sealed partial class MongoDbService
         state.UpdateTime = currentTime;
         state.UpdateCount = (state.UpdateCount ?? 0) + 1;
 
-        // 使用 ReplaceOne with Upsert - 单次数据库操作；C171：类型化集合入口需先完成 ClassMap 懒注册。
-        // ReplaceOne with Upsert - single database operation; C171: typed collection entries need lazy ClassMap registration first.
+        // 使用 ReplaceOne with Upsert - 单次数据库操作；类型化集合入口需先完成 ClassMap 懒注册
+        // (typed collection entries need lazy ClassMap registration first).
         MongoSerializationRegistry.EnsureClassMapRegistered<TState>();
         var filter = Builders<TState>.Filter.Eq(m => m.Id, state.Id);
         await ExecuteWriteWithRetryAsync(token => CurrentDatabase.GetCollection<TState>(typeof(TState).Name).ReplaceOneAsync(filter, state, ReplaceOptions, token), cancellationToken, nameof(AddOrUpdateAsync), true).ConfigureAwait(false);
@@ -153,8 +153,8 @@ public sealed partial class MongoDbService
         }
 
         var currentTime = GetCurrentTimestamp();
-        // C171：类型化集合入口需先完成 ClassMap 懒注册（与 MongoDbContext.GetCollection 合起来覆盖全部路径）。
-        // C171: typed collection entries need lazy ClassMap registration first (with MongoDbContext.GetCollection covering the rest).
+        // 类型化集合入口需先完成 ClassMap 懒注册（与 MongoDbContext.GetCollection 合起来覆盖全部路径）。
+        // Typed collection entries need lazy ClassMap registration first (with MongoDbContext.GetCollection covering the rest).
         MongoSerializationRegistry.EnsureClassMapRegistered<TState>();
         var collection = CurrentDatabase.GetCollection<TState>(typeof(TState).Name);
         var writeModels = new List<WriteModel<TState>>(stateArray.Length);

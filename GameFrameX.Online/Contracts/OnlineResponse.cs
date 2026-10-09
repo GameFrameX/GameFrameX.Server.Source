@@ -30,8 +30,8 @@
 namespace GameFrameX.Online.Contracts;
 
 /// <summary>
-/// Online 公共响应结构（vault:C2 S1.2：任何响应至少包含 <c>Code</c>、<c>MessageKey</c>、<c>RequestId</c>、
-/// <c>ServerTime</c>、<c>Data</c>，VC-1.2 响应字段完整性）。
+/// Online 公共响应结构（任何响应至少包含 <c>Code</c>、<c>MessageKey</c>、<c>RequestId</c>、
+/// <c>ServerTime</c>、<c>Data</c>，保证响应字段完整性）。
 /// <para>
 /// 维护约束：<c>Code</c> 为机器可判断协议码（<see cref="OnlineErrorCode"/>），<c>MessageKey</c> 为可本地化键，
 /// 双通道并存；客户端不得依赖中文文案判断流程。成功与失败响应都必须回显 <c>RequestId</c> 以支撑全链路追踪。

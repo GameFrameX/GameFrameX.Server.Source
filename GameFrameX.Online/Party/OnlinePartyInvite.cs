@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Party;
 
 /// <summary>
-/// 队伍邀请（vault:C5 S4.3：邀请含过期语义，过期不改写队伍状态）。
+/// 队伍邀请（邀请含过期语义，过期不改写队伍状态）。
 /// <para>
 /// 维护约束：邀请是独立生命周期对象，其过期**不**直接迁移队伍状态——队伍状态只由成员集合变化驱动
 /// （见 <see cref="OnlinePartyService.SweepExpiredAsync"/>：邀请过期只置邀请终态，队伍状态在成员集合

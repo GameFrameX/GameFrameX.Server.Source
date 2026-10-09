@@ -38,11 +38,11 @@ using Xunit;
 namespace GameFrameX.Hotfix.Tests;
 
 /// <summary>
-/// 运营邮件 Campaign 注册表（<see cref="MailCampaignRegistry"/>）总体验收单测（GFX-135 / F2）。
+/// 运营邮件 Campaign 注册表（<see cref="MailCampaignRegistry"/>）总体验收单测。
 /// 覆盖校验 / 发布（B1 发布后不可修改）/ 撤回（B3 状态字段写入 + 重复撤回 CampaignAlreadyRevoked）/
 /// B5（撤回后同 CampaignId 拒绝再发布）/ 端到端 smoke（发布 → 查询 → 撤回 → 查询）/ 查询过滤。
 /// 本组用例把 e921348a 移除 SelfCheck 工程时一并删除、且未迁移到 xunit 的 Campaign 侧 self-check 场景移植回归，
-/// 与 <see cref="MailAttachmentClaimTests"/>（领取侧 B2/B3/B4/B6）合并满足 GFX-135 验收硬性覆盖。
+/// 与 <see cref="MailAttachmentClaimTests"/>（领取侧 B2/B3/B4/B6）合并覆盖验收硬性场景。
 /// 进程内 registry 为静态字典，每个用例开头 <see cref="MailCampaignRegistry.ResetForTest"/> 隔离全局状态。
 /// </summary>
 public class MailCampaignRegistryTests

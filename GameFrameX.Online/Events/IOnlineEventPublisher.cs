@@ -33,7 +33,7 @@ using System.Threading.Tasks;
 namespace GameFrameX.Online.Events;
 
 /// <summary>
-/// Online 事件发布契约（vault:C2 S1.6：业务侧只允许经本契约发布 Online 事件，
+/// Online 事件发布契约（业务侧只允许经本契约发布 Online 事件，
 /// 传输实现由装配方注入 Foundation <c>IEventPublisher</c> 决定）。
 /// </summary>
 public interface IOnlineEventPublisher

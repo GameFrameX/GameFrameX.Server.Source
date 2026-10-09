@@ -30,13 +30,13 @@
 namespace GameFrameX.Online.Assets;
 
 /// <summary>
-/// 不可变资产账本条目（vault:C4 S3.2/S3.3：只追加、不修改、不删除；余额可由账本重算校验）。
+/// 不可变资产账本条目（只追加、不修改、不删除；余额可由账本重算校验）。
 /// <para>
-/// 维护约束（资产红线）：本类型一经落账即为事实，任何代码路径不得修改或删除历史条目
-/// （VC-3.7）；错误发放只能通过追加带符号反转条目（来源 <see cref="OnlineAssetChangeSource.SystemCompensation"/>，
+/// 维护约束（资产红线）：本类型一经落账即为事实，任何代码路径不得修改或删除历史条目；
+/// 错误发放只能通过追加带符号反转条目（来源 <see cref="OnlineAssetChangeSource.SystemCompensation"/>，
 /// <see cref="CompensatesTransactionId"/> 指向原交易）纠正；每条必须携带完整追溯字段——
 /// 作用域（Player/App/Server 双侧）、来源、原因、业务单号、操作者、前后值与所属交易
-/// （VC-3.14 反查依据）；<see cref="AmountBefore"/> + <see cref="Delta"/> == <see cref="AmountAfter"/>
+/// （反查依据）；<see cref="AmountBefore"/> + <see cref="Delta"/> == <see cref="AmountAfter"/>
 /// 由存储层在追加时原子校验；<see cref="SequenceNumber"/> 为玩家维度单调递增账本序
 /// （对账与游标分页的稳定排序键）。
 /// </para>
@@ -84,7 +84,7 @@ public sealed class OnlineLedgerEntry
     }
 
     /// <summary>
-    /// 获取归属服标识（资产所有者的家服；跨服发奖的路由归属，VC-3.10）。
+    /// 获取归属服标识（资产所有者的家服；跨服发奖的路由归属）。
     /// </summary>
     public long HomeServerId
     {

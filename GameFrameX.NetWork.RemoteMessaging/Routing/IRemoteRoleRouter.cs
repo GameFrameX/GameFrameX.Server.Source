@@ -31,13 +31,13 @@
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
-/// 跨进程 Role 消息转发缝（C143c D3 case 2/3）。
+/// 跨进程 Role 消息转发缝（case 2/3）。
 /// </summary>
 /// <remarks>
-/// The remote forwarding seam behind D3 case 2/3.
+/// The remote forwarding seam behind case 2/3.
 /// Case 2 forwards to a known target instance id; case 3 picks any active instance of
 /// the target role from the reachability table. The real implementation (endpoint
-/// reachability table + ForwardToRemoteServerAsync) is delivered by C143d; until then
+/// reachability table + ForwardToRemoteServerAsync) is delivered later; until then
 /// <see cref="RemoteRoleRouter"/> is the placeholder and throws
 /// <see cref="NotImplementedException"/>. Topology equivalence tests substitute a
 /// loopback forwarder to simulate the remote hop inside a single test process.
@@ -49,7 +49,7 @@ public interface IRemoteRoleRouter
     /// </summary>
     /// <remarks>
     /// Forwards the envelope to the remote process hosting the target role
-    /// (a known instance for D3 case 2, or any active instance for case 3).
+    /// (a known instance for case 2, or any active instance for case 3).
     /// </remarks>
     /// <param name="envelope">路由信封（目标 Role 不属于本进程角色集）/ The routing envelope (target role is hosted by another process)</param>
     /// <param name="cancellationToken">取消操作的令牌 / The cancellation token</param>

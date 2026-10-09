@@ -30,11 +30,11 @@
 namespace GameFrameX.Online.Scope;
 
 /// <summary>
-/// Online 作用域（vault:C2：TenantId/AppId/ServerId 以鉴权或服务端路由为准，不能由客户端字段直接覆盖）。
+/// Online 作用域（TenantId/AppId/ServerId 以鉴权或服务端路由为准，不能由客户端字段直接覆盖）。
 /// <para>
-/// 维护约束：作用域三元组是数据隔离的根边界——跨租户/跨 App/跨服请求必须被拒绝并留审计（VC-1.6/1.7）；
+/// 维护约束：作用域三元组是数据隔离的根边界——跨租户/跨 App/跨服请求必须被拒绝并留审计；
 /// <c>PlayerId</c> 为可选主体位，面向玩家级操作（幂等键绑定、事件归属）时必填。客户端提交的同名字段
-/// 一律经 <c>OnlineScopeResolver.EnforceAuthorized</c> 以鉴权上下文覆盖，服务端不信任请求体作用域（VC-1.8）。
+/// 一律经 <c>OnlineScopeResolver.EnforceAuthorized</c> 以鉴权上下文覆盖，服务端不信任请求体作用域。
 /// </para>
 /// </summary>
 public sealed class OnlineScope

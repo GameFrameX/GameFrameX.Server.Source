@@ -30,10 +30,10 @@
 namespace GameFrameX.Online.Leaderboard;
 
 /// <summary>
-/// 排行榜分数来源（vault:C8 S7.1「分数来源」：每笔榜上分数必须可追溯到可信产生方）。
+/// 排行榜分数来源（「分数来源」约束：每笔榜上分数必须可追溯到可信产生方）。
 /// <para>
-/// 维护约束（红线）：第一版唯一合法来源是对局结算结果（C98 <c>Online.Match.Settled</c> 可信事件链路）；
-/// 客户端直接提交的分数没有任何来源枚举值可承载——枚举即白名单，新增来源（如运营调整）必须先扩枚举并回 vault 评审。
+/// 维护约束（红线）：第一版唯一合法来源是对局结算结果（<c>Online.Match.Settled</c> 可信事件链路）；
+/// 客户端直接提交的分数没有任何来源枚举值可承载——枚举即白名单，新增来源（如运营调整）必须先扩枚举并评审。
 /// </para>
 /// </summary>
 public enum OnlineLeaderboardScoreSource

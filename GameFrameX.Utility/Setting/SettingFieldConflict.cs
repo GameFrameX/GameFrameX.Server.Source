@@ -30,10 +30,10 @@
 namespace GameFrameX.Utility.Setting;
 
 /// <summary>
-/// 单个进程级设置字段的冲突描述（C143a D19）。
+/// 单个进程级设置字段的冲突描述。
 /// </summary>
 /// <remarks>
-/// Describes the conflict of a single process-level setting field between two configuration sources (C143a D19).
+/// Describes the conflict of a single process-level setting field between two configuration sources.
 /// </remarks>
 public sealed class SettingFieldConflict
 {

@@ -37,10 +37,9 @@ internal static class Program
     {
         await GameApp.Entry(args, () =>
         {
-            // C171：CacheStateTypeManager（BSON ClassMap 预注册）已随 Mongo 序列化指令内聚到 Provider 内，
-            // Launcher 不再承担序列化准备；Mongo/PostgreSQL 互斥退化为纯部署配置选择。
-            // C171: CacheStateTypeManager (BSON ClassMap pre-registration) moved into the Mongo provider;
-            // the Launcher no longer prepares serialization; Mongo/PostgreSQL becomes a pure deployment choice.
+            // CacheStateTypeManager（BSON Class Map 预注册）已随 Mongo 序列化指令内聚到 Provider 内，
+            // Launcher 不再承担序列化准备；Mongo/PostgreSQL 互斥退化为纯部署配置选择
+            // (the Launcher no longer prepares serialization; the provider choice becomes a pure deployment choice).
             MessageProtoHelper.Init(typeof(MessageProtoHandler).Assembly);
         }, LogConfiguration);
     }

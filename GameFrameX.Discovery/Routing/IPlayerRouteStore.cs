@@ -31,10 +31,10 @@
 namespace GameFrameX.Discovery.Routing;
 
 /// <summary>
-/// 玩家路由 CAS 更新结果（C167）。
+/// 玩家路由 CAS 更新结果。
 /// </summary>
 /// <remarks>
-/// The outcome of a guarded player-route update (C167). The three values drive
+/// The outcome of a guarded player-route update. The three values drive
 /// the generic sync target's branch policy; the interpretation (not the
 /// detection) is business logic and lives in <see cref="PlayerRouteSyncTarget"/>.
 /// </remarks>
@@ -66,10 +66,10 @@ public enum PlayerRouteCasOutcome
 }
 
 /// <summary>
-/// 玩家路由存储适配契约（C167：驱动语义的最小封闭面）。
+/// 玩家路由存储适配契约（驱动语义的最小封闭面）。
 /// </summary>
 /// <remarks>
-/// The player-route storage seam (C167): the minimal closed surface of driver
+/// The player-route storage seam: the minimal closed surface of driver
 /// semantics consumed by the generic <see cref="PlayerRouteResolver"/> /
 /// <see cref="PlayerRouteSyncTarget"/> / <see cref="PlayerRouteResolverBootstrap"/>.
 /// Each database driver implements this interface once; the three-tier

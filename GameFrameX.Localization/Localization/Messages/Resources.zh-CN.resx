@@ -1351,7 +1351,7 @@
     <value>没有名为“{0}”的数据库被注册。已注册名称：[{1}]</value>
   </data>
   <data name="Database.Registry.DefaultAlreadySet" xml:space="preserve">
-    <value>默认数据库已被设置为“{0}”（set-once，C159）；不允许将其更改为“{1}”。已注册名称：[{2}]</value>
+    <value>默认数据库已被设置为“{0}”（set-once）；不允许将其更改为“{1}”。已注册名称：[{2}]</value>
   </data>
   <data name="Database.BatchSizeInvalid" xml:space="preserve">
     <value>批处理大小必须大于 0。</value>
@@ -1363,7 +1363,7 @@
     <value>必须设置 ControlDatabase 或 ConnectionName。</value>
   </data>
   <data name="Database.Ef.DocumentDictionaryPropertyNotSupported" xml:space="preserve">
-    <value>PostgreSqlDbContext：文档类型“{0}”声明了字典属性“{1}”（{2}）。EF owned JSON 列无法以 C166 兼容形状映射字典；请将其重构为 owned entries 集合或标量载荷。</value>
+    <value>PostgreSqlDbContext：文档类型“{0}”声明了字典属性“{1}”（{2}）。EF owned JSON 列无法以兼容形状映射字典；请将其重构为 owned entries 集合或标量载荷。</value>
   </data>
   <data name="Discovery.Endpoint.MissingSchemeSeparator" xml:space="preserve">
     <value>端点 '{0}' 缺少必需的 scheme://host:port 结构：缺少带非空 scheme 与 authority 的 '://' 分隔符。</value>
@@ -1471,7 +1471,7 @@
     <value>匹配票据不存在：{0}</value>
   </data>
   <data name="Online.AdminApi.EndAbnormalMatchForbidden" xml:space="preserve">
-    <value>管理面不支持结束异常对局；对局生命周期归游戏进程所有（变更 C122 缺口 #1）。</value>
+    <value>管理面不支持结束异常对局；对局生命周期归游戏进程所有。</value>
   </data>
   <data name="Online.AdminApi.DirectionInvalid" xml:space="preserve">
     <value>Direction 必须为 'Apply' 或 'Lift'。</value>
@@ -1599,6 +1599,6 @@
   </data>
 
   <data name="RemoteMessaging.Routing.LocalDispatcherNotConfigured" xml:space="preserve">
-    <value>目标角色「{0}」由本进程承载，但未配置本地消息派发器（actor 派发器随 C143e 到达）。</value>
+    <value>目标角色「{0}」由本进程承载，但未配置本地消息派发器（actor 派发器尚未接入）。</value>
   </data>
 </root>

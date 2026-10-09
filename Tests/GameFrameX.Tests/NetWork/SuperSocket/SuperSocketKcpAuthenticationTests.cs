@@ -52,7 +52,7 @@ namespace GameFrameX.Tests.NetWork.SuperSocket;
 /// SuperSocket KCP 首消息鉴权集成测试 / SuperSocket KCP first-message authentication integration test
 /// </summary>
 /// <remarks>
-/// 覆盖 GFX-822（KCP 接入生产前补齐首消息鉴权防线）的验收标准：
+/// 覆盖 KCP 接入生产前补齐首消息鉴权防线的验收标准：
 /// 通过与 <c>AppStartUpByServer.ConfigureKcpServer</c> 相同的构建路径
 /// （<c>MultipleServerHostBuilder.Create</c> + <c>AddServer&lt;IMessage, MessageObjectPipelineFilter&gt;</c>
 /// + <c>UseKcp</c> + <c>UseMiddleware&lt;SessionAuthenticationMiddleware&gt;</c>）启动 KCP 服务器，
