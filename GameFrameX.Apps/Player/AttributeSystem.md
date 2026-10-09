@@ -64,7 +64,7 @@ Final = (((Base + Add) * (10000 + Pct) / 10000) + FinalAdd) * (10000 + FinalPct)
 第一版 `AttributeState` 只需要一个属性字典：
 
 ```csharp
-public sealed class AttributeState : CacheState
+public sealed class AttributeState : BaseCacheState
 {
     public Dictionary<int, long> Values { get; set; } = new();
 }

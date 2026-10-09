@@ -1,3 +1,12 @@
+## [Unreleased]
+
+### Refactor
+
+* 统一 CacheState 为 Provider 中立基类：业务状态类改继承 BaseCacheState，Mongo 序列化指令（ConventionPack + ClassMap 懒注册）内聚到 GameFrameX.DataBase.Mongo（C171）
+* BaseCacheState.ToBytes 由抽象改为 JSON/UTF8 默认实现，StateHash 脏检查与持久化格式解耦；删除无引用的 BeforeSaveToDb
+* Apps/Hotfix 移除数据库实现程序集引用与 MongoDB GlobalUsings；移除 BsonClassMapHelper / CacheStateTypeManager 与孤儿本地化键
+* 架构分析器移除 Mongo CacheState 符号豁免（GFX0001）；GFX0016 不变
+
 ## [1.13.7] - 2026-08-05
 
 ### Bug Fixes

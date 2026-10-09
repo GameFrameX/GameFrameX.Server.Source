@@ -697,7 +697,7 @@ dotnet test --logger "console;verbosity=detailed"
 │  ┌─────────────────────┐  ┌─────────────────────────────┐      │
 │  │ Apps 層 (不可熱更)   │  │ Hotfix 層 (可熱更)           │      │
 │  │ StateComponent<T>   │←→│ StateComponentAgent<T,TState>│      │
-│  │ CacheState          │  │ ComponentAgent               │      │
+│  │ BaseCacheState          │  │ ComponentAgent               │      │
 │  └─────────────────────┘  └─────────────────────────────┘      │
 ├─────────────────────────────────────────────────────────────────┤
 │                       資料庫層                                    │

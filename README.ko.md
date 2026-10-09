@@ -699,7 +699,7 @@ dotnet test --logger "console;verbosity=detailed"
 │  ┌─────────────────────┐  ┌─────────────────────────────┐      │
 │  │ Apps 레이어 (핫불가)  │  │ Hotfix 레이어 (핫 가능)      │      │
 │  │ StateComponent<T>   │←→│ StateComponentAgent<T,TState>│      │
-│  │ CacheState          │  │ ComponentAgent               │      │
+│  │ BaseCacheState          │  │ ComponentAgent               │      │
 │  └─────────────────────┘  └─────────────────────────────┘      │
 ├─────────────────────────────────────────────────────────────────┤
 │                      데이터베이스 레이어                          │

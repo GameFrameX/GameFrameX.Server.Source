@@ -716,7 +716,7 @@ The test project is based on **xUnit**, covering the following modules:
 │  ┌─────────────────────┐  ┌─────────────────────────────┐      │
 │  │  Apps Layer (Static) │  │ Hotfix Layer (Hot-updatable) │     │
 │  │ StateComponent<T>   │←→│ StateComponentAgent<T,TState>│      │
-│  │ CacheState          │  │ ComponentAgent               │      │
+│  │ BaseCacheState      │  │ ComponentAgent               │      │
 │  └─────────────────────┘  └─────────────────────────────┘      │
 ├─────────────────────────────────────────────────────────────────┤
 │                       Database Layer                             │
