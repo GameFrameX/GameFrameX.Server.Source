@@ -169,25 +169,6 @@
     <value>CacheHash equals ToSaveHash before calling AfterSaveToDB: {0}</value>
   </data>
 
-    <!-- Database module log keys -->
-    <data name="Database.MongoDb.InitializedSuccessfully" xml:space="preserve">
-    <value>MongoDB service initialized successfully, ConnectionString: {0}, DatabaseName: {1}</value>
-  </data>
-    <data name="Database.MongoDb.InitializationFailed" xml:space="preserve">
-    <value>MongoDB service initialization failed, ConnectionString: {0}, DatabaseName: {1}</value>
-  </data>
-    <data name="Database.MongoDb.ServiceUnavailable" xml:space="preserve">
-    <value>MongoDbService is unavailable. Open() has not completed successfully.</value>
-  </data>
-    <data name="Database.MongoDb.ExecuteInTransactionFailed" xml:space="preserve">
-    <value>MongoDbService.ExecuteInTransactionAsync failed with unknown retry exception.</value>
-  </data>
-    <data name="Database.MongoDb.CommitTransactionFailed" xml:space="preserve">
-    <value>MongoDbService.CommitTransaction failed with unknown retry exception.</value>
-  </data>
-    <data name="Database.MongoDb.OperationRetryFailed" xml:space="preserve">
-    <value>MongoDbService.{0} failed with unknown retry exception.</value>
-  </data>
     <data name="Database.GameDb.ImplicitDefaultBindingWarning" xml:space="preserve">
     <value>Multiple databases are registered ({0}) but GameDb.SetDefault was never called; the static facade currently targets the first registered database. In multi-database deployments call GameDb.SetDefault(businessDatabaseName) after the business database initializes.</value>
   </data>
@@ -845,11 +826,6 @@
   </data>
 
     <!-- Apps module log messages -->
-    <!-- BSON class mapping helper related messages -->
-    <data name="Apps.BsonClassMapHelper.InitializationFailed" xml:space="preserve">
-    <value>BSON class mapping initialization failed</value>
-  </data>
-
     <!-- Session management related messages -->
     <data name="Apps.SessionManager.AccountAlreadyLoggedIn" xml:space="preserve">
     <value>Your account is already logged in on another device</value>

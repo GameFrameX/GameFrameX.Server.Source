@@ -198,25 +198,6 @@
     <value>调用AfterSaveToDB前CacheHash已经等于ToSaveHash {0}</value>
   </data>
 
-    <!-- 数据库模块日志键名 -->
-    <data name="Database.MongoDb.InitializedSuccessfully" xml:space="preserve">
-    <value>MongoDB服务初始化成功，连接字符串：{0}，数据库名称：{1}</value>
-  </data>
-    <data name="Database.MongoDb.InitializationFailed" xml:space="preserve">
-    <value>MongoDB服务初始化失败，连接字符串：{0}，数据库名称：{1}</value>
-  </data>
-    <data name="Database.MongoDb.ServiceUnavailable" xml:space="preserve">
-    <value>MongoDbService不可用，Open()尚未成功完成。</value>
-  </data>
-    <data name="Database.MongoDb.ExecuteInTransactionFailed" xml:space="preserve">
-    <value>MongoDbService.ExecuteInTransactionAsync重试失败，未知异常。</value>
-  </data>
-    <data name="Database.MongoDb.CommitTransactionFailed" xml:space="preserve">
-    <value>MongoDbService.CommitTransaction重试失败，未知异常。</value>
-  </data>
-    <data name="Database.MongoDb.OperationRetryFailed" xml:space="preserve">
-    <value>MongoDbService.{0}重试失败，未知异常。</value>
-  </data>
     <data name="Database.GameDb.ImplicitDefaultBindingWarning" xml:space="preserve">
     <value>已注册多个数据库（{0}）但从未调用 GameDb.SetDefault 显式指定默认库，静态门面当前指向首个注册库；多库部署请在业务库初始化成功后调用 GameDb.SetDefault(业务库名)。</value>
   </data>
@@ -877,11 +858,6 @@
   </data>
 
     <!-- Apps 模块日志消息 -->
-    <!-- BSON类映射辅助相关消息 -->
-    <data name="Apps.BsonClassMapHelper.InitializationFailed" xml:space="preserve">
-    <value>BSON类映射初始化失败</value>
-  </data>
-
     <!-- 会话管理相关消息 -->
     <data name="Apps.SessionManager.AccountAlreadyLoggedIn" xml:space="preserve">
     <value>你的账号已在其他设备上登陆</value>
