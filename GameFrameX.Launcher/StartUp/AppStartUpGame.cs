@@ -75,59 +75,12 @@ internal sealed class AppStartUpGame : AppStartUpBase
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Launcher.ActorLimitConfigEnd));
 
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartBegin));
-            // 控制库先行于业务库（D-Single 缺省回落：与业务库共用同一实例连接串），
-            // 经 GameDb 统一入口判重/命名；Provider 装配分支——PostgreSql 时控制库走 PostgreSqlDbService
-            //（PG 路径下 DbOptions.Name 仅作注册名，数据库由连接串 Database 决定）。
-            if (!GameDb.Contains(GameDb.ControlDatabaseName))
-            {
-                var controlDatabaseInitResult = Setting.DatabaseProvider == DatabaseProviderType.PostgreSql
-                    ? await GameDb.Init<PostgreSqlDbService>(Setting.DataBaseUrl, new DbOptions { Name = GameDb.ControlDatabaseName, IsUseTimeZone = Setting.IsUseTimeZone, })
-                    : await GameDb.Init<MongoDbService>(Setting.DataBaseUrl, new DbOptions { Name = GameDb.ControlDatabaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
-                if (controlDatabaseInitResult == false)
-                {
-                    throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
-                }
-            }
-
-            // 控制库就绪后激活发现层——读侧 watcher + 写侧心跳（未配置广播端口时自动跳过）
-            // 并以真实 case 2/3 转发器重装跨 Role 路由缝。幂等：多 Role 进程首个调用生效。
-            // 再激活玩家路由层（建 player_route 索引 + 装 SyncTarget），Tier 1 fast-path 注入 SessionManager 适配器。
-            // 控制库句柄解析下沉到发现层内部，收敛为激活参数对象。
-            // Provider 装配分支——PostgreSql 时激活 PG 平行发现层（控制库 NpgsqlDataSource 经 GameDb 按名解析）。
-            if (Setting.DatabaseProvider == DatabaseProviderType.PostgreSql)
-            {
-                PostgreSqlDiscoveryRuntime.Activate(new PostgreSqlDiscoveryActivationOptions
-                {
-                    ConnectionName = GameDb.ControlDatabaseName,
-                    HostedRoleNames = RoleSet.Current,
-                    PlayerRouteFastPath = GameFrameX.Apps.Common.Session.SessionManagerFastPathAdapter.Instance,
-                });
-                GameFrameX.Apps.Common.Session.SessionManager.PlayerRouteSyncTarget = GameFrameX.Discovery.Routing.PlayerRouteResolverBootstrap.SyncTarget;
-            }
-            else
-            {
-                MongoDiscoveryRuntime.Activate(new DiscoveryActivationOptions
-                {
-                    ConnectionName = GameDb.ControlDatabaseName,
-                    HostedRoleNames = RoleSet.Current,
-                    PlayerRouteFastPath = GameFrameX.Apps.Common.Session.SessionManagerFastPathAdapter.Instance,
-                });
-                GameFrameX.Apps.Common.Session.SessionManager.PlayerRouteSyncTarget = GameFrameX.Discovery.Routing.PlayerRouteResolverBootstrap.SyncTarget;
-            }
-            // 路由胶水装配自 Runtime 拆至组合侧 DiscoveryRoutingWire（发现层 Runtime 不再引用消息胶水程序集）。
-            GameFrameX.NetWork.RemoteMessaging.Routing.DiscoveryRoutingWire.Initialize(RoleSet.Current, Setting.DatabaseProvider == DatabaseProviderType.PostgreSql ? PostgreSqlDiscoveryRuntime.TableProvider : MongoDiscoveryRuntime.TableProvider);
-            var initResult = Setting.DatabaseProvider == DatabaseProviderType.PostgreSql
-                ? await GameDb.Init<PostgreSqlDbService>(Setting.DataBaseUrl, new DbOptions { Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, })
-                : await GameDb.Init<MongoDbService>(Setting.DataBaseUrl, new DbOptions { Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
-            if (initResult == false)
-            {
-                throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
-            }
-
+            await InitializeControlDatabaseAsync();
+            ActivateDiscoveryLayer();
+            await InitializeBusinessDatabaseAsync();
             // 业务库 Init 成功后显式指定门面默认库——控制库先注册会使 set-once 门面静默指向控制库，
             // 全部经 GameDb 门面的业务读写必须落在业务库（根缺陷修复点）。
             GameDb.SetDefault(Setting.DataBaseName);
-
             LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartEnd));
 
             LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.ComponentRegisterBegin));
@@ -138,38 +91,14 @@ internal sealed class AppStartUpGame : AppStartUpBase
             await HotfixManager.LoadHotfixModule(Setting);
             LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.HotfixModuleLoadEnd));
 
-            if (Setting.IsEnableOnlineAdmin)
-            {
-                LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.OnlineAdminStartBegin, Setting.OnlineAdminPort));
-                _onlineRuntime = new OnlineRuntimeHost(new OnlineRuntimeOptions
-                {
-                    TenantId = Setting.OnlineTenantId,
-                    AppId = Setting.OnlineAppId,
-                    ServerId = Setting.ServerId,
-                    AdminPort = Setting.OnlineAdminPort,
-                    AdminApiPrefix = Setting.OnlineAdminApiPrefix,
-                });
-                await _onlineRuntime.StartAsync();
-                _onlineAdminApi = new OnlineAdminApiServer(_onlineRuntime);
-                await _onlineAdminApi.StartAsync();
-                LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.OnlineAdminStartEnd, Setting.OnlineTenantId, Setting.OnlineAppId, Setting.ServerId));
-            }
+            await StartOnlineAdminIfEnabledAsync();
 
             LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.EnterMainLoop));
             GameAppRuntime.MarkStarted(TimerHelper.GetNowWithUtc());
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.ServerStartEnd, Setting.ServerType));
             // 启动阶段完成（DB/组件/热-fix/在线管理均已就绪），放行下一个 Role 的启动屏障
             MarkStartUpReady();
-            // 启动阶段真正完成（DB/组件/热-fix/在线管理均已就绪）后才把心跳从 Booting 切到 Active，
-            // 避免其他进程在服务就绪前发现本实例并投递流量；未激活发现层或无广播身份时为无害 no-op。
-            if (Setting.DatabaseProvider == DatabaseProviderType.PostgreSql)
-            {
-                PostgreSqlDiscoveryRuntime.MarkActive();
-            }
-            else
-            {
-                MongoDiscoveryRuntime.MarkActive();
-            }
+            MarkServiceActive();
             exitMessage = await AppExitToken;
         }
         catch (Exception e)
@@ -179,6 +108,123 @@ internal sealed class AppStartUpGame : AppStartUpBase
         }
 
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.ServerExitBegin));
+        await ShutdownOnlineAdminAsync();
+        await HotfixManager.Stop(exitMessage);
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.ServerExitSuccess));
+    }
+
+    /// <summary>
+    /// 控制库先行于业务库（D-Single 缺省回落：与业务库共用同一实例连接串），
+    /// 经 GameDb 统一入口判重/命名；Provider 装配分支——PostgreSql 时控制库走 PostgreSqlDbService
+    ///（PG 路径下 DbOptions.Name 仅作注册名，数据库由连接串 Database 决定）。
+    /// </summary>
+    private async Task InitializeControlDatabaseAsync()
+    {
+        if (!GameDb.Contains(GameDb.ControlDatabaseName))
+        {
+            var controlDatabaseInitResult = Setting.DatabaseProvider == DatabaseProviderType.PostgreSql
+                ? await GameDb.Init<PostgreSqlDbService>(Setting.DataBaseUrl, new DbOptions { Name = GameDb.ControlDatabaseName, IsUseTimeZone = Setting.IsUseTimeZone, })
+                : await GameDb.Init<MongoDbService>(Setting.DataBaseUrl, new DbOptions { Name = GameDb.ControlDatabaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
+            if (controlDatabaseInitResult == false)
+            {
+                throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
+            }
+        }
+    }
+
+    /// <summary>
+    /// 控制库就绪后激活发现层——读侧 watcher + 写侧心跳（未配置广播端口时自动跳过）
+    /// 并以真实 case 2/3 转发器重装跨 Role 路由缝。幂等：多 Role 进程首个调用生效。
+    /// 再激活玩家路由层（建 player_route 索引 + 装 SyncTarget），Tier 1 fast-path 注入 SessionManager 适配器。
+    /// 控制库句柄解析下沉到发现层内部，收敛为激活参数对象。
+    /// Provider 装配分支——PostgreSql 时激活 PG 平行发现层（控制库 NpgsqlDataSource 经 GameDb 按名解析）。
+    /// 路由胶水装配自 Runtime 拆至组合侧 DiscoveryRoutingWire（发现层 Runtime 不再引用消息胶水程序集）。
+    /// </summary>
+    private void ActivateDiscoveryLayer()
+    {
+        if (Setting.DatabaseProvider == DatabaseProviderType.PostgreSql)
+        {
+            PostgreSqlDiscoveryRuntime.Activate(new PostgreSqlDiscoveryActivationOptions
+            {
+                ConnectionName = GameDb.ControlDatabaseName,
+                HostedRoleNames = RoleSet.Current,
+                PlayerRouteFastPath = GameFrameX.Apps.Common.Session.SessionManagerFastPathAdapter.Instance,
+            });
+            GameFrameX.Apps.Common.Session.SessionManager.PlayerRouteSyncTarget = GameFrameX.Discovery.Routing.PlayerRouteResolverBootstrap.SyncTarget;
+        }
+        else
+        {
+            MongoDiscoveryRuntime.Activate(new DiscoveryActivationOptions
+            {
+                ConnectionName = GameDb.ControlDatabaseName,
+                HostedRoleNames = RoleSet.Current,
+                PlayerRouteFastPath = GameFrameX.Apps.Common.Session.SessionManagerFastPathAdapter.Instance,
+            });
+            GameFrameX.Apps.Common.Session.SessionManager.PlayerRouteSyncTarget = GameFrameX.Discovery.Routing.PlayerRouteResolverBootstrap.SyncTarget;
+        }
+        GameFrameX.NetWork.RemoteMessaging.Routing.DiscoveryRoutingWire.Initialize(RoleSet.Current, Setting.DatabaseProvider == DatabaseProviderType.PostgreSql ? PostgreSqlDiscoveryRuntime.TableProvider : MongoDiscoveryRuntime.TableProvider);
+    }
+
+    /// <summary>
+    /// 业务库 Init，Provider 装配分支；失败抛 <see cref="InvalidOperationException"/>。
+    /// </summary>
+    private async Task InitializeBusinessDatabaseAsync()
+    {
+        var initResult = Setting.DatabaseProvider == DatabaseProviderType.PostgreSql
+            ? await GameDb.Init<PostgreSqlDbService>(Setting.DataBaseUrl, new DbOptions { Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, })
+            : await GameDb.Init<MongoDbService>(Setting.DataBaseUrl, new DbOptions { Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
+        if (initResult == false)
+        {
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
+        }
+    }
+
+    /// <summary>
+    /// Online admin 可选启动——仅在 <see cref="AppSetting.IsEnableOnlineAdmin"/> 为 true 时装配
+    /// Online runtime 宿主与 Online admin HTTP 服务。
+    /// </summary>
+    private async Task StartOnlineAdminIfEnabledAsync()
+    {
+        if (Setting.IsEnableOnlineAdmin)
+        {
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.OnlineAdminStartBegin, Setting.OnlineAdminPort));
+            _onlineRuntime = new OnlineRuntimeHost(new OnlineRuntimeOptions
+            {
+                TenantId = Setting.OnlineTenantId,
+                AppId = Setting.OnlineAppId,
+                ServerId = Setting.ServerId,
+                AdminPort = Setting.OnlineAdminPort,
+                AdminApiPrefix = Setting.OnlineAdminApiPrefix,
+            });
+            await _onlineRuntime.StartAsync();
+            _onlineAdminApi = new OnlineAdminApiServer(_onlineRuntime);
+            await _onlineAdminApi.StartAsync();
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.OnlineAdminStartEnd, Setting.OnlineTenantId, Setting.OnlineAppId, Setting.ServerId));
+        }
+    }
+
+    /// <summary>
+    /// 启动阶段真正完成（DB/组件/热-fix/在线管理均已就绪）后才把心跳从 Booting 切到 Active，
+    /// 避免其他进程在服务就绪前发现本实例并投递流量；未激活发现层或无广播身份时为无害 no-op。
+    /// </summary>
+    private void MarkServiceActive()
+    {
+        if (Setting.DatabaseProvider == DatabaseProviderType.PostgreSql)
+        {
+            PostgreSqlDiscoveryRuntime.MarkActive();
+        }
+        else
+        {
+            MongoDiscoveryRuntime.MarkActive();
+        }
+    }
+
+    /// <summary>
+    /// 退出期按反向顺序停掉 Online admin HTTP 服务与 Online runtime 宿主；
+    /// 未启动（<see cref="AppSetting.IsEnableOnlineAdmin"/> 为 false）时为空判跳过。
+    /// </summary>
+    private async Task ShutdownOnlineAdminAsync()
+    {
         if (_onlineAdminApi != null)
         {
             await _onlineAdminApi.StopAsync();
@@ -188,9 +234,6 @@ internal sealed class AppStartUpGame : AppStartUpBase
         {
             await _onlineRuntime.StopAsync();
         }
-
-        await HotfixManager.Stop(exitMessage);
-        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.ServerExitSuccess));
     }
 
     protected override void Init()
