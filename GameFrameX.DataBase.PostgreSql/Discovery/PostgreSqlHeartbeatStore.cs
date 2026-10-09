@@ -101,11 +101,12 @@ public sealed class PostgreSqlHeartbeatStore : IHeartbeatStore
     }
 
     /// <summary>
-    /// 全行 upsert 一条心跳（写入时刻打 last_heartbeat 戳；加载-替换或新增，主键竞争自动重试一次）。
+    /// 全行 upsert 一条心跳（写入时刻打 last_heartbeat 戳；加载-替换或新增，主键竞争自动重试一次，重试再冲突则上抛）。
     /// </summary>
     /// <remarks>
     /// Upserts the full heartbeat row, stamped with the current UTC time (load-and-replace or insert; a
-    /// primary-key race with a concurrent writer is retried once, converging on last-writer-wins).
+    /// primary-key race with a concurrent writer is retried once, converging on last-writer-wins; a conflict
+    /// on the retry propagates so the missed write is observable and retried next heartbeat cycle).
     /// </remarks>
     /// <param name="instance">实例描述符 / The instance descriptor</param>
     /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
@@ -113,7 +114,7 @@ public sealed class PostgreSqlHeartbeatStore : IHeartbeatStore
     public async Task UpsertAsync(InstanceDescriptor instance, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(instance, nameof(instance));
-        for (var attempt = 0;; attempt++)
+        for (var attempt = 0; attempt < 2; attempt++)
         {
             try
             {
