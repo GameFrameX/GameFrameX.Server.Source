@@ -401,18 +401,31 @@ internal static class PostgreSqlExpressionTranslator
     }
 
     /// <summary>
-    /// 按 CLR 值类型创建强类型参数（DateTime 强制 UTC timestamptz，枚举按底层整型）。
+    /// 按 CLR 值类型创建强类型参数（null 直接输出 null 参数；DateTime 强制 UTC timestamptz，枚举按运行时类型统一转 bigint）。
     /// </summary>
     /// <remarks>
-    /// Creates a strongly typed parameter according to the CLR value type (DateTime forced to UTC
-    /// timestamptz, enums bound as their underlying integer type).
+/// Creates a strongly typed parameter according to the CLR value type. A <c>null</c> value short-circuits
+/// to a null parameter; DateTime is forced to UTC timestamptz; enums are handled once by their runtime
+/// type and bound as bigint (the jsonb expression indexes store enums as bigint, so equality predicates
+/// must bind the same shape). Premise: closure/constant values reach this method with the enum itself as
+/// their runtime type — a value pre-unboxed to the underlying integral type (e.g. <c>object box = (int)E.A</c>)
+/// skips the enum branch and binds by its integral runtime type instead.
     /// </remarks>
     private static NpgsqlParameter CreateParameter(string name, object value, Type propertyType)
     {
-        var underlying = Nullable.GetUnderlyingType(propertyType) ?? propertyType;
-        if (underlying.IsEnum)
+        if (value == null)
         {
-            var converted = Convert.ChangeType(value, Enum.GetUnderlyingType(value.GetType()), System.Globalization.CultureInfo.InvariantCulture);
+            // null 判定直接输出 null 参数（属性类型分支不再接触 null 值）
+            // Null checks bind a plain null parameter; no type conversion is attempted on null.
+            return new NpgsqlParameter(name, DBNull.Value);
+        }
+
+        var valueUnderlying = Nullable.GetUnderlyingType(value.GetType()) ?? value.GetType();
+        if (valueUnderlying.IsEnum)
+        {
+            // 枚举按值的运行时类型统一转底层整型并绑定为 bigint（与表达式索引的存储形态一致）
+            // Enums are converted via the value's runtime underlying type and bound as bigint (matching the expression-index storage shape).
+            var converted = Convert.ChangeType(value, Enum.GetUnderlyingType(valueUnderlying), System.Globalization.CultureInfo.InvariantCulture);
             return new NpgsqlParameter(name, NpgsqlDbType.Bigint) { Value = converted, };
         }
 
@@ -427,16 +440,9 @@ internal static class PostgreSqlExpressionTranslator
             return new NpgsqlParameter(name, NpgsqlDbType.TimestampTz) { Value = dateTimeOffset.ToUniversalTime(), };
         }
 
-        if (underlying == typeof(bool))
+        if (valueUnderlying == typeof(bool))
         {
             return new NpgsqlParameter(name, NpgsqlDbType.Boolean) { Value = value, };
-        }
-
-        var valueUnderlying = Nullable.GetUnderlyingType(value.GetType()) ?? value.GetType();
-        if (valueUnderlying.IsEnum)
-        {
-            var converted = Convert.ChangeType(value, Enum.GetUnderlyingType(valueUnderlying), System.Globalization.CultureInfo.InvariantCulture);
-            return new NpgsqlParameter(name, NpgsqlDbType.Bigint) { Value = converted, };
         }
 
         return new NpgsqlParameter(name, value);
