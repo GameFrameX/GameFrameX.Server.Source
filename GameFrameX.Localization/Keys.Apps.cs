@@ -41,21 +41,6 @@ public static partial class Keys
     public static class Apps
     {
         /// <summary>
-        /// BSON类映射辅助类相关消息
-        /// </summary>
-        public static class BsonClassMapHelper
-        {
-            /// <summary>
-            /// BSON类映射初始化失败
-            /// </summary>
-            /// <remarks>
-            /// 键名: Apps.BsonClassMapHelper.InitializationFailed
-            /// 用途: BSON类映射初始化失败时记录
-            /// </remarks>
-            public const string InitializationFailed = "Apps.BsonClassMapHelper.InitializationFailed";
-        }
-
-        /// <summary>
         /// 会话管理相关消息
         /// </summary>
         public static class SessionManager

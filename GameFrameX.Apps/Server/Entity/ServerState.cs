@@ -30,7 +30,7 @@
 
 namespace GameFrameX.Apps.Server.Entity;
 
-public class ServerState : CacheState
+public class ServerState : BaseCacheState
 {
     /// <summary>
     /// 世界等级

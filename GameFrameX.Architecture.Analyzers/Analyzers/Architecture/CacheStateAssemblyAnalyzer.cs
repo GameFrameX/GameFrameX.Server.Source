@@ -36,8 +36,8 @@ namespace GameFrameX.Architecture.Analyzers;
 /// GFX0001：CacheState 子类必须定义在 GameFrameX.Apps 程序集中。
 /// </summary>
 /// <remarks>
-/// <para>规则：所有继承自 BaseCacheState 的非抽象类（排除 CacheState 基类自身）必须位于 GameFrameX.Apps 程序集。</para>
-/// <para>原因：CacheState 代表持久化的缓存状态数据，属于状态层。若误放到 Hotfix 等逻辑层程序集，
+/// <para>规则：所有继承自 BaseCacheState 的非抽象类必须位于 GameFrameX.Apps 程序集。</para>
+/// <para>原因：状态对象代表持久化的缓存状态数据，属于状态层。若误放到 Hotfix 等逻辑层程序集，
 /// 热重载时状态数据会丢失，导致玩家数据不一致。</para>
 /// <para>目的：通过编译期强制隔离，确保状态数据与可热更新的业务逻辑物理分离，保障热更新安全。</para>
 /// </remarks>
@@ -61,7 +61,6 @@ public sealed class CacheStateAssemblyAnalyzer : SingleDiagnosticSymbolAnalyzer
     {
         var assemblyName = type.ContainingAssembly.Identity.Name;
         if (!ArchitectureSymbolFacts.InheritsFrom(type, symbols.BaseCacheState)
-            || ArchitectureSymbolFacts.SymbolEquals(type, symbols.CacheState)
             || assemblyName == ArchitectureAnalyzerConstants.AppsAssembly)
         {
             return;

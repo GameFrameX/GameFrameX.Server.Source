@@ -37,7 +37,7 @@ namespace GameFrameX.Apps.Player.Mail.Entity;
 /// 懒创建幂等（B5）以 <see cref="CreatedCampaignVersions"/>（<c>CampaignId@Version</c>）为去重键：同一 Campaign 仅实例化一次；
 /// 含已撤回 Campaign，防撤回后重实例化；渠道条件未补齐的 Campaign **不记 key**（条件待定，区别于撤回的永久跳过）。
 /// </remarks>
-public sealed class MailBoxState : CacheState
+public sealed class MailBoxState : BaseCacheState
 {
     /// <summary>玩家个人邮件实例集合。</summary>
     public List<MailState> List { get; set; } = new List<MailState>();

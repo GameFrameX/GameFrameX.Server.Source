@@ -29,11 +29,10 @@
 
 
 using System.Collections.Generic;
-using GameFrameX.DataBase.Mongo;
 
 namespace GameFrameX.Apps.Player.Attribute.Entity;
 
-public sealed class PlayerAttributeState : CacheState
+public sealed class PlayerAttributeState : BaseCacheState
 {
     /// <summary>
     /// 玩家属性值。Key 使用 <see cref="AttributeType" /> 的整数编号，Value 使用 long 定点数。

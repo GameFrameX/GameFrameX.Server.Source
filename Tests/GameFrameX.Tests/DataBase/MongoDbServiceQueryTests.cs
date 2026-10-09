@@ -1518,6 +1518,64 @@ public sealed class MongoDbServiceQueryTests
     }
 
     /// <summary>
+    /// C171 回归：存量文档含类上已删除（不存在）的字段时，反序列化不得抛 FormatException。
+    /// 保护 MongoSerializationRegistry 懒注册 ClassMap 的 SetIgnoreExtraElements 语义
+    /// （等价于旧 Mongo.CacheState 基类上的 [BsonIgnoreExtraElements(true, Inherited = true)]）。
+    /// </summary>
+    [Fact]
+    public async Task FindAsync_LegacyDocumentWithRemovedField_ShouldDeserializeWithoutError()
+    {
+        await ExecuteWithServiceAsync(async service =>
+        {
+            var state = CreateState("legacy-extra-field", group: 7, score: 77);
+            await service.AddAsync(state);
+
+            // 模拟存量文档：写入当前类上不存在的旧字段（字段已被删除的场景）。
+            var collection = service.CurrentDatabase.GetCollection<BsonDocument>(nameof(MongoQueryTestState));
+            var filter = Builders<BsonDocument>.Filter.Eq("_id", state.Id);
+            var update = Builders<BsonDocument>.Update.Set("LegacyRemovedField", "legacy-value").Set("AnotherOldField", 42);
+            await collection.UpdateOneAsync(filter, update);
+
+            var result = await service.FindAsync<MongoQueryTestState>(state.Id, isCreateIfNotExists: false);
+
+            Assert.NotNull(result);
+            Assert.Equal("legacy-extra-field", result.Name);
+            Assert.Equal(77, result.Score);
+        });
+    }
+
+    /// <summary>
+    /// C171 回归：字典字段持久化形态必须保持 ArrayOfDocuments（存量数据兼容）。
+    /// 保护 MongoSerializationRegistry 在 Open 注册的 DictionaryRepresentationConvention 时序
+    /// （ConventionPack 先于任何 ClassMap AutoMap，否则字典形态退回 Dynamic 破坏存量文档读写）。
+    /// </summary>
+    [Fact]
+    public async Task AddAsync_DictionaryMember_ShouldPersistAsArrayOfDocuments()
+    {
+        await ExecuteWithServiceAsync(async service =>
+        {
+            var state = new MongoDictRepresentationTestState
+            {
+                Id = Interlocked.Increment(ref _idSeed),
+                Flags = new Dictionary<string, int> { ["alpha"] = 1, ["beta"] = 2 },
+            };
+            await service.AddAsync(state);
+
+            var collection = service.CurrentDatabase.GetCollection<BsonDocument>(nameof(MongoDictRepresentationTestState));
+            var raw = await collection.Find(Builders<BsonDocument>.Filter.Eq("_id", state.Id)).FirstOrDefaultAsync();
+            Assert.NotNull(raw);
+
+            var flags = raw["Flags"];
+            Assert.Equal(BsonType.Array, flags.BsonType);
+            Assert.All(flags.AsBsonArray, entry => Assert.Equal(BsonType.Document, entry.BsonType));
+
+            var roundTrip = await service.FindAsync<MongoDictRepresentationTestState>(state.Id, isCreateIfNotExists: false);
+            Assert.NotNull(roundTrip);
+            Assert.Equal(1, roundTrip.Flags["alpha"]);
+            Assert.Equal(2, roundTrip.Flags["beta"]);
+        });
+    }
+
     /// 执行一次带数据库生命周期的测试。
     /// </summary>
     private static async Task ExecuteWithServiceAsync(Func<MongoDbService, Task> action)
@@ -1692,5 +1750,16 @@ public sealed class MongoDbServiceQueryTests
             var data = $"{Id}|{Name}|{Group}|{Score}|{OptionalNote}|{IsDeleted}|{DeleteTime}|{UpdateCount}|{UpdateTime}";
             return Encoding.UTF8.GetBytes(data);
         }
+    }
+
+    /// <summary>
+    /// 字典形态回归测试实体。
+    /// </summary>
+    private sealed class MongoDictRepresentationTestState : BaseCacheState
+    {
+        /// <summary>
+        /// 字典字段。
+        /// </summary>
+        public Dictionary<string, int> Flags { get; set; }
     }
 }

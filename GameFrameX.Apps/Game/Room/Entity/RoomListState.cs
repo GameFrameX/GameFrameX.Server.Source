@@ -30,7 +30,7 @@
 
 namespace GameFrameX.Apps.Game.Room.Entity;
 
-public sealed class RoomListState : CacheState
+public sealed class RoomListState : BaseCacheState
 {
     /// <summary>
     /// 下一个房间ID。

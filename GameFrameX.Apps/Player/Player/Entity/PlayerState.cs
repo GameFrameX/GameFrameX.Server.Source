@@ -30,7 +30,7 @@
 
 namespace GameFrameX.Apps.Player.Player.Entity;
 
-public sealed class PlayerState : CacheState
+public sealed class PlayerState : BaseCacheState
 {
     /// <summary>
     /// 账号ID

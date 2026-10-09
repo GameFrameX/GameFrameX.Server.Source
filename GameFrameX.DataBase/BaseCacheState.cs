@@ -112,27 +112,6 @@ public abstract class BaseCacheState : EntityBase<long>, ICacheState
     }
 
     /// <summary>
-    /// 仅DBModel.Mongodb时调用。
-    /// </summary>
-    /// <remarks>
-    /// Called only when using DBModel.Mongodb.
-    /// </remarks>
-    public virtual void BeforeSaveToDb()
-    {
-        // var db = GameDb.As<RocksDBConnection>().CurDataBase;
-        // var table = db.GetTable<SaveTimestamp>();
-        // var saveState = new SaveTimestamp
-        // {
-        //     //此处使用UTC时间
-        //     Timestamp = TimeUtils.CurrentTimeMillisUTC(),
-        //     StateName = GetType().FullName,
-        //     StateId = Id.ToString(),
-        // };
-        // table.Set(saveState.Key, saveState);
-    }
-
-
-    /// <summary>
     /// 在对象保存到数据库后调用的方法，可以进行一些后续处理。
     /// </summary>
     /// <remarks>
@@ -161,13 +140,19 @@ public abstract class BaseCacheState : EntityBase<long>, ICacheState
     }
 
     /// <summary>
-    /// 将对象序列化转换为字节数组。
+    /// 将对象序列化转换为字节数组（默认 JSON / UTF8 实现，供 StateHash 脏检查使用）。
     /// </summary>
     /// <remarks>
-    /// Serialize the object to a byte array.
+    /// Serialize the object to a byte array (default JSON/UTF8 implementation, used by StateHash change detection).
+    /// 仅服务于进程内 StateHash 脏检查，与持久化格式无关（Mongo 持久化为 BSON 文档，PostgreSQL 持久化为 jsonb 列，各自独立序列化）。
+    /// Only serves in-process StateHash change detection and is independent of the persistence format
+    /// (Mongo persists BSON documents and PostgreSQL persists jsonb columns, each with its own serialization).
     /// </remarks>
     /// <returns>序列化后的字节数组 / Serialized byte array</returns>
-    public abstract byte[] ToBytes();
+    public virtual byte[] ToBytes()
+    {
+        return System.Text.Encoding.UTF8.GetBytes(JsonHelper.Serialize(this));
+    }
 
     #endregion
 }

@@ -845,11 +845,6 @@
   </data>
 
     <!-- Apps module log messages -->
-    <!-- BSON class mapping helper related messages -->
-    <data name="Apps.BsonClassMapHelper.InitializationFailed" xml:space="preserve">
-    <value>BSON class mapping initialization failed</value>
-  </data>
-
     <!-- Session management related messages -->
     <data name="Apps.SessionManager.AccountAlreadyLoggedIn" xml:space="preserve">
     <value>Your account is already logged in on another device</value>

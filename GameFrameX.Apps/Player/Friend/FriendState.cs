@@ -30,7 +30,7 @@
 
 namespace GameFrameX.Apps.Player.Friend;
 
-public sealed class FriendState : CacheState
+public sealed class FriendState : BaseCacheState
 {
     /// <summary>
     /// 账号ID

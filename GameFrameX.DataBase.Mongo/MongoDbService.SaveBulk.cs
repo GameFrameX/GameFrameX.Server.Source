@@ -84,6 +84,11 @@ public sealed partial class MongoDbService
         }
 
         var stateName = typeof(TState).Name;
+        // C171：SaveBulk 走 BsonDocument 直写 + state.ToBsonDocument() 序列化，写前必须先完成 ClassMap 懒注册，
+        // 否则存量文档多余字段容错与字典形态约定不生效。
+        // C171: SaveBulk writes raw BsonDocuments via state.ToBsonDocument(); lazy ClassMap registration must
+        // complete before writing, otherwise extra-element tolerance and dictionary conventions do not apply.
+        MongoSerializationRegistry.EnsureClassMapRegistered<TState>();
         var collection = CurrentDatabase.GetCollection<BsonDocument>(stateName);
         var acknowledgedStates = new List<TState>(stateList.Count);
 

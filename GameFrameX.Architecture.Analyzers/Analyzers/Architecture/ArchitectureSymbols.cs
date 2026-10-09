@@ -44,7 +44,6 @@ public sealed class ArchitectureSymbols
 {
     private ArchitectureSymbols(
         INamedTypeSymbol? baseCacheState,
-        INamedTypeSymbol? cacheState,
         INamedTypeSymbol? stateComponent,
         INamedTypeSymbol? stateComponentAgent,
         INamedTypeSymbol? baseHttpHandler,
@@ -59,7 +58,6 @@ public sealed class ArchitectureSymbols
         INamedTypeSymbol? multiDbRegistry)
     {
         BaseCacheState = baseCacheState;
-        CacheState = cacheState;
         StateComponent = stateComponent;
         StateComponentAgent = stateComponentAgent;
         BaseHttpHandler = baseHttpHandler;
@@ -76,9 +74,6 @@ public sealed class ArchitectureSymbols
 
     /// <summary>GameFrameX.DataBase.BaseCacheState — 数据库缓存状态的抽象基类。</summary>
     public INamedTypeSymbol? BaseCacheState { get; }
-
-    /// <summary>GameFrameX.DataBase.Mongo.CacheState — MongoDB 缓存状态的默认实现（分析时跳过此类型自身）。</summary>
-    public INamedTypeSymbol? CacheState { get; }
 
     /// <summary>GameFrameX.Core.Components.StateComponent`1 — 持有 CacheState 的状态组件基类。</summary>
     public INamedTypeSymbol? StateComponent { get; }
@@ -123,7 +118,6 @@ public sealed class ArchitectureSymbols
     {
         return new ArchitectureSymbols(
             compilation.GetTypeByMetadataName("GameFrameX.DataBase.BaseCacheState"),
-            compilation.GetTypeByMetadataName("GameFrameX.DataBase.Mongo.CacheState"),
             compilation.GetTypeByMetadataName("GameFrameX.Core.Components.StateComponent`1"),
             compilation.GetTypeByMetadataName("GameFrameX.Core.Hotfix.Agent.StateComponentAgent`2"),
             compilation.GetTypeByMetadataName("GameFrameX.NetWork.HTTP.BaseHttpHandler"),
