@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 
-namespace GameFrameX.NetWork.RemoteMessaging.Routing;
+namespace GameFrameX.Discovery.Routing;
 
 /// <summary>
 /// 通用玩家路由同步目标（C167：自 Mongo / PG 平行实现归一，消费 <see cref="IPlayerRouteStore"/>）。

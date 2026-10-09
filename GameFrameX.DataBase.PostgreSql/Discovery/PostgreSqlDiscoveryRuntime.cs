@@ -30,10 +30,11 @@
 
 using GameFrameX.DataBase;
 using GameFrameX.DataBase.PostgreSql;
-using GameFrameX.NetWork.RemoteMessaging.Routing;
+using GameFrameX.DataBase.PostgreSql.Routing;
+using GameFrameX.Discovery.Routing;
 using Npgsql;
 
-namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
+namespace GameFrameX.DataBase.PostgreSql.Discovery;
 
 /// <summary>
 /// PostgreSQL 发现层激活参数对象（控制库载体为 NpgsqlDataSource）。

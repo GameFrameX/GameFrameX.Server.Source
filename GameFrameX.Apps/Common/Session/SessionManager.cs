@@ -36,7 +36,7 @@ using GameFrameX.Core.Events;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.NetWork.Abstractions;
-using GameFrameX.NetWork.RemoteMessaging.Routing;
+using GameFrameX.Discovery.Routing;
 using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Apps.Common.Session;

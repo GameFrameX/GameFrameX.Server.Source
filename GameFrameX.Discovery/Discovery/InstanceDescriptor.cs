@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 
-namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
+namespace GameFrameX.Discovery;
 
 /// <summary>
 /// 服务实例描述符（C143d D15：路由表与心跳文档共用的数据模型）。

@@ -7,6 +7,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\GameFrameX.DataBase\GameFrameX.DataBase.csproj"/>
+        <ProjectReference Include="..\GameFrameX.Discovery\GameFrameX.Discovery.csproj"/>
         <ProjectReference Include="..\GameFrameX.Localization\GameFrameX.Localization.csproj"/>
         <ProjectReference Include="..\GameFrameX.Utility\GameFrameX.Utility.csproj"/>
     </ItemGroup>

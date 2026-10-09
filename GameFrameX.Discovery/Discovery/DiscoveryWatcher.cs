@@ -30,7 +30,7 @@
 
 using GameFrameX.Foundation.Logger;
 
-namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
+namespace GameFrameX.Discovery;
 
 /// <summary>
 /// 通用心跳读侧（C167：自 Mongo / PG 平行实现归一，消费 <see cref="IHeartbeatStore"/>）。

@@ -8,7 +8,9 @@
 
 
 using System.Threading.Tasks;
-using GameFrameX.NetWork.RemoteMessaging.Routing;
+using GameFrameX.Discovery.Routing;
+using GameFrameX.DataBase.Mongo.Discovery;
+using GameFrameX.DataBase.Mongo.Routing;
 using MongoDB.Bson;
 using MongoDB.Driver;
 

@@ -13,6 +13,7 @@
     <Project Path="Tests/GameFrameX.Hotfix.Tests/GameFrameX.Hotfix.Tests.csproj" />
   </Folder>
   <Project Path="GameFrameX.Apps/GameFrameX.Apps.csproj" />
+  <Project Path="GameFrameX.Discovery/GameFrameX.Discovery.csproj" />
   <Project Path="GameFrameX.Client/GameFrameX.Client.csproj" />
   <Project Path="GameFrameX.Architecture.Analyzers/GameFrameX.Architecture.Analyzers.csproj" />
   <Project Path="GameFrameX.Config/GameFrameX.Config.csproj" />

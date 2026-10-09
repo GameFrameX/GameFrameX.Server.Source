@@ -31,7 +31,7 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
-namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
+namespace GameFrameX.DataBase.Mongo.Discovery;
 
 /// <summary>
 /// server_heartbeat 集合文档模型（C143d D11/D15，D18 全名约定）。

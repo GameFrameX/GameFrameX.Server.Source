@@ -29,9 +29,9 @@
 
 
 using GameFrameX.Foundation.Logger;
-using GameFrameX.NetWork.RemoteMessaging.Routing;
+using GameFrameX.Discovery.Routing;
 
-namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
+namespace GameFrameX.Discovery;
 
 /// <summary>
 /// 通用心跳写侧（C167：自 Mongo / PG 平行实现归一，消费 <see cref="IHeartbeatStore"/>）。

@@ -7,7 +7,7 @@
 //   ==========================================================================================
 
 
-namespace GameFrameX.NetWork.RemoteMessaging.Routing;
+namespace GameFrameX.Discovery.Routing;
 
 /// <summary>
 /// 玩家路由同步目标的 NoOp 默认实现（C143e D21）。

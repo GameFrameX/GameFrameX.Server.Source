@@ -30,10 +30,11 @@
 
 using GameFrameX.DataBase;
 using GameFrameX.DataBase.Mongo;
-using GameFrameX.NetWork.RemoteMessaging.Routing;
+using GameFrameX.DataBase.Mongo.Routing;
+using GameFrameX.Discovery.Routing;
 using MongoDB.Driver;
 
-namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
+namespace GameFrameX.DataBase.Mongo.Discovery;
 
 /// <summary>
 /// Mongo 发现层进程装配器（C143d D11–D15 落地接线；C167 起消费通用组件 + Mongo 存储适配）。

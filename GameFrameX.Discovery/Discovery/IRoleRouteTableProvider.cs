@@ -28,40 +28,26 @@
 //  ==========================================================================================
 
 
-namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
+namespace GameFrameX.Discovery;
 
 /// <summary>
-/// 端点主机形态（C143d D15 addressKind 字段）。
+/// 路由表快照提供者（C143d D15）。
 /// </summary>
 /// <remarks>
-/// The host address kind carried by heartbeat documents (C143d D15 addressKind field).
-/// The DNS name is the first-class default per D15: advertised addresses prefer
-/// stable DNS names (container name / Kubernetes Service name / domain) over
-/// ephemeral IP literals so restarts keep a routable identity.
+/// Provides the current dual-view route table snapshot (C143d D15).
+/// the Mongo/PostgreSql endpoint watchers (in the database implementation assemblies) are the
+/// endpoint-resolution consumers depend on this narrow seam instead of the watcher
+/// itself, so tests can substitute a fixed table without any Mongo dependency.
 /// </remarks>
-public enum EndpointAddressKind
+public interface IRoleRouteTableProvider
 {
     /// <summary>
-    /// 域名/容器名/Kubernetes Service 名（一等缺省形态）。
+    /// 获取当前双视图路由表快照。
     /// </summary>
     /// <remarks>
-    /// Domain, container name, or Kubernetes Service name (the first-class default).
+    /// Gets the current snapshot. Never returns null: before the first poll completes
+    /// the provider serves <see cref="RoleRouteTable.Empty"/>.
     /// </remarks>
-    DnsName = 1,
-
-    /// <summary>
-    /// IPv4 字面量。
-    /// </summary>
-    /// <remarks>
-    /// An IPv4 literal.
-    /// </remarks>
-    IPv4 = 2,
-
-    /// <summary>
-    /// IPv6 字面量（方括号形式）。
-    /// </summary>
-    /// <remarks>
-    /// An IPv6 literal (bracketed form).
-    /// </remarks>
-    IPv6 = 3,
+    /// <value>当前快照 / The current snapshot</value>
+    RoleRouteTable Current { get; }
 }

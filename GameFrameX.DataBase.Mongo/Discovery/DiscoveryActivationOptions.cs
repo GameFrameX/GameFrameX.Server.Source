@@ -13,7 +13,7 @@
 
 using MongoDB.Driver;
 
-namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
+namespace GameFrameX.DataBase.Mongo.Discovery;
 
 /// <summary>
 /// Mongo 发现层激活参数对象（C154）：合并原 IMongoDatabase 直入与 C159 按名解析两种重载。

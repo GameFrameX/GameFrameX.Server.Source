@@ -30,7 +30,7 @@
 using System.Collections.Concurrent;
 using GameFrameX.Utility.Setting;
 
-namespace GameFrameX.NetWork.RemoteMessaging.Routing;
+namespace GameFrameX.Discovery.Routing;
 
 /// <summary>
 /// 通用三级玩家路由解析器（C167：自 Mongo / PG 平行实现归一，消费 <see cref="IPlayerRouteStore"/>）。

@@ -28,9 +28,9 @@
 //  ==========================================================================================
 
 
-// C166 依赖方向裁定：发现层实现自 RemoteMessaging 下沉到本程序集（保留原命名空间），
+// C166 依赖方向裁定：发现层实现自 RemoteMessaging 下沉到本程序集；C169 起契约命名空间归位为 GameFrameX.Discovery.*。
 // 这三个命名空间为其原先依赖的项目级 GlobalUsings 的等价替代（不引入数据库实现层之外的耦合）。
 
 global using GameFrameX.Foundation.Logger;
-global using GameFrameX.NetWork.RemoteMessaging.Discovery;
-global using GameFrameX.NetWork.RemoteMessaging.Routing;
+global using GameFrameX.Discovery;
+global using GameFrameX.Discovery.Routing;

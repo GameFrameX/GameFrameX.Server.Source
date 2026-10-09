@@ -16,7 +16,7 @@
          本程序集仅引用 DataBase 抽象层获取契约；路由胶水（RoleRouterHolder/InProcess/TcpForwarder）留在本程序集，
          由 DiscoveryRoutingWire 在组合侧装配。 -->
     <ItemGroup>
-        <ProjectReference Include="..\GameFrameX.DataBase\GameFrameX.DataBase.csproj"/>
+        <ProjectReference Include="..\GameFrameX.Discovery\GameFrameX.Discovery.csproj"/>
     </ItemGroup>
 
     <!-- C166 依赖方向裁定（用户决策）：本程序集禁止引用数据库实现程序集（GameFrameX.DataBase.Mongo / GameFrameX.DataBase.PostgreSql），

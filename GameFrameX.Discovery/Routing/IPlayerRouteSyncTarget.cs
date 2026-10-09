@@ -11,7 +11,7 @@
 //  ==========================================================================================
 
 
-namespace GameFrameX.NetWork.RemoteMessaging.Routing;
+namespace GameFrameX.Discovery.Routing;
 
 /// <summary>
 /// 玩家路由外发同步目标（C143e D21：SessionManager 钩子的可注入端）。

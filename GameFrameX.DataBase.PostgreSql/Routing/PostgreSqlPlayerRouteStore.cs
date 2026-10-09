@@ -28,11 +28,11 @@
 //  ==========================================================================================
 
 
-using GameFrameX.NetWork.RemoteMessaging.Discovery;
+using GameFrameX.DataBase.PostgreSql.Discovery;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
-namespace GameFrameX.NetWork.RemoteMessaging.Routing;
+namespace GameFrameX.DataBase.PostgreSql.Routing;
 
 /// <summary>
 /// PostgreSQL 玩家路由存储适配（C167 契约 / C168 EF 化：<see cref="IPlayerRouteStore"/> 的 EF 关系实现，CAS 经 xmin 乐观并发令牌）。

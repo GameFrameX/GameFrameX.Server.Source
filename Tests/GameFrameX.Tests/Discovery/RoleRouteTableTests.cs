@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 
-using GameFrameX.NetWork.RemoteMessaging.Discovery;
+using GameFrameX.Discovery;
 
 namespace GameFrameX.Tests.Discovery;
 

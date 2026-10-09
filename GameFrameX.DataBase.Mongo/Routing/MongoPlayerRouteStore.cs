@@ -30,7 +30,7 @@
 
 using MongoDB.Driver;
 
-namespace GameFrameX.NetWork.RemoteMessaging.Routing;
+namespace GameFrameX.DataBase.Mongo.Routing;
 
 /// <summary>
 /// Mongo 玩家路由存储适配（C167：<see cref="IPlayerRouteStore"/> 的 MQL 实现）。

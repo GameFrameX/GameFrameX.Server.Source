@@ -28,7 +28,8 @@
 //  ==========================================================================================
 
 
-using GameFrameX.NetWork.RemoteMessaging.Discovery;
+using GameFrameX.Discovery;
+using GameFrameX.DataBase.Mongo.Discovery;
 using MongoDB.Driver;
 
 namespace GameFrameX.Tests.Discovery;

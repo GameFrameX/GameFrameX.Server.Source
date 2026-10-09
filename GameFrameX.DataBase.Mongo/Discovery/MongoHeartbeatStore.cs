@@ -30,7 +30,7 @@
 
 using MongoDB.Driver;
 
-namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
+namespace GameFrameX.DataBase.Mongo.Discovery;
 
 /// <summary>
 /// Mongo 心跳存储适配（C167：<see cref="IHeartbeatStore"/> 的 MQL 实现）。

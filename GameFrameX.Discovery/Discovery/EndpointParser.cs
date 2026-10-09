@@ -32,7 +32,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 
-namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
+namespace GameFrameX.Discovery;
 
 /// <summary>
 /// 统一端点地址解析器（C143d D15 / AC-4a）。

@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 
-namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
+namespace GameFrameX.Discovery;
 
 /// <summary>
 /// 解析后的端点三元组（C143d D15：scheme / host / port）。

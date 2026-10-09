@@ -33,7 +33,7 @@ using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
 
 
-namespace GameFrameX.NetWork.RemoteMessaging.Routing;
+namespace GameFrameX.DataBase.Mongo.Routing;
 
 /// <summary>
 /// 跨服玩家路由控制文档（C143e D21）。

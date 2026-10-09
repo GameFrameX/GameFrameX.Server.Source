@@ -11,7 +11,7 @@
 // ==========================================================================================
 
 
-namespace GameFrameX.NetWork.RemoteMessaging.Routing;
+namespace GameFrameX.Discovery.Routing;
 
 /// <summary>
 /// 玩家路由写入侧参数对象（C154）：一条待同步的玩家路由记录。

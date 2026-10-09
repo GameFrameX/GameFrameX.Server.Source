@@ -7,7 +7,7 @@
 //  ==========================================================================================
 
 
-namespace GameFrameX.NetWork.RemoteMessaging.Routing;
+namespace GameFrameX.Discovery.Routing;
 
 /// <summary>
 /// 玩家路由版本号过期异常（C143e D21 顶号竞态）。

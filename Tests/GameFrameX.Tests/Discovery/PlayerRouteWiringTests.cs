@@ -10,7 +10,8 @@
 using GameFrameX.Hotfix.Logic.Server.Unified;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.NetWork.Messages;
-using GameFrameX.NetWork.RemoteMessaging.Discovery;
+using GameFrameX.Discovery;
+using GameFrameX.Discovery.Routing;
 using GameFrameX.NetWork.RemoteMessaging.Routing;
 using GameFrameX.ProtoBuf.Net;
 using ProtoBuf;
@@ -93,7 +94,7 @@ public class PlayerRouteWiringTests
     [Fact]
     public async Task SelectRouteResolver_WithDiscoveredResolver_WrapsItAndMapsOnlineRoute()
     {
-        var discovered = new StubRoutingResolver(GameFrameX.NetWork.RemoteMessaging.Routing.PlayerRouteInfo.Online("Social", 7, 42));
+        var discovered = new StubRoutingResolver(GameFrameX.Discovery.Routing.PlayerRouteInfo.Online("Social", 7, 42));
 
         var resolver = PlayerRouteWiring.SelectRouteResolver(discovered);
 
@@ -107,7 +108,7 @@ public class PlayerRouteWiringTests
     [Fact]
     public async Task SelectRouteResolver_WithDiscoveredResolver_MapsOfflineRoute()
     {
-        var discovered = new StubRoutingResolver(GameFrameX.NetWork.RemoteMessaging.Routing.PlayerRouteInfo.Offline());
+        var discovered = new StubRoutingResolver(GameFrameX.Discovery.Routing.PlayerRouteInfo.Offline());
 
         var resolver = PlayerRouteWiring.SelectRouteResolver(discovered);
 
@@ -240,11 +241,11 @@ public class PlayerRouteWiringTests
     /// <summary>
     /// 记录型 Routing 侧解析器（模拟发现层已装配的 Mongo 解析器）。
     /// </summary>
-    private sealed class StubRoutingResolver : GameFrameX.NetWork.RemoteMessaging.Routing.IPlayerRouteResolver
+    private sealed class StubRoutingResolver : GameFrameX.Discovery.Routing.IPlayerRouteResolver
     {
-        private readonly GameFrameX.NetWork.RemoteMessaging.Routing.PlayerRouteInfo _routeInfo;
+        private readonly GameFrameX.Discovery.Routing.PlayerRouteInfo _routeInfo;
 
-        public StubRoutingResolver(GameFrameX.NetWork.RemoteMessaging.Routing.PlayerRouteInfo routeInfo)
+        public StubRoutingResolver(GameFrameX.Discovery.Routing.PlayerRouteInfo routeInfo)
         {
             _routeInfo = routeInfo;
         }
@@ -258,7 +259,7 @@ public class PlayerRouteWiringTests
         /// </remarks>
         /// <param name="playerId">玩家 ID / The player id</param>
         /// <returns>构造时固定的路由信息 / The fixed route info supplied at construction</returns>
-        public Task<GameFrameX.NetWork.RemoteMessaging.Routing.PlayerRouteInfo> ResolveAsync(long playerId)
+        public Task<GameFrameX.Discovery.Routing.PlayerRouteInfo> ResolveAsync(long playerId)
         {
             return Task.FromResult(_routeInfo);
         }

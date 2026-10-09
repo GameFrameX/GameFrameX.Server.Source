@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 
-namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
+namespace GameFrameX.Discovery;
 
 /// <summary>
 /// 双视图路由表快照（C143d D15：Role 视图 + Instance 视图）。

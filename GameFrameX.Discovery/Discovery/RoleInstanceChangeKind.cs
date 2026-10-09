@@ -28,25 +28,54 @@
 //  ==========================================================================================
 
 
-namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
+namespace GameFrameX.Discovery;
 
 /// <summary>
-/// 实例上下线事件订阅接口（C143d D15 / D17 通道 1 的进程内出口）。
+/// 实例上下线变化类别（C143d D15 事件）。
 /// </summary>
 /// <remarks>
-/// The in-process exit of D17 channel 1: subscribers are notified by the watcher
-/// whenever the dual-view table changes shape (C143d D15). Implementations run on
-/// the watcher poll loop thread and must not block; slow work must be queued elsewhere.
+/// The kind of instance lifecycle change broadcast by the watcher (C143d D15 events).
+/// Values start at 1 on purpose: an uninitialized field must never read as a valid kind.
 /// </remarks>
-public interface IRoleInstanceEvents
+public enum RoleInstanceChangeKind
 {
     /// <summary>
-    /// 实例变化回调。
+    /// 上线：新实例出现或重启实例（新 incarnation）上线。
     /// </summary>
     /// <remarks>
-    /// Called for every Online / Draining / Offline / Evicted / Recovered change.
+    /// Online: a new instance appeared, or a restarted instance (new incarnation) came online.
     /// </remarks>
-    /// <param name="kind">变化类别 / The change kind</param>
-    /// <param name="instance">变化后的实例描述符（Offline/Evicted 为摘除前最后一次观测）/ The descriptor after the change (for Offline/Evicted, the last observation before removal)</param>
-    void OnInstanceChanged(RoleInstanceChangeKind kind, InstanceDescriptor instance);
+    Online = 1,
+
+    /// <summary>
+    /// 排水中：实例进入 Draining。
+    /// </summary>
+    /// <remarks>
+    /// Draining: the instance entered the Draining state.
+    /// </remarks>
+    Draining = 2,
+
+    /// <summary>
+    /// 离线：心跳超过三周期阈值，从路由表摘除。
+    /// </summary>
+    /// <remarks>
+    /// Offline: the heartbeat exceeded the three-period staleness threshold and was evicted from the table.
+    /// </remarks>
+    Offline = 3,
+
+    /// <summary>
+    /// 驱逐：心跳文档被 TTL 清除，实例身份彻底消失。
+    /// </summary>
+    /// <remarks>
+    /// Evicted: the heartbeat document was TTL-removed; the instance identity is gone for good.
+    /// </remarks>
+    Evicted = 4,
+
+    /// <summary>
+    /// 恢复：同一实例（incarnation 不变）心跳恢复新鲜。
+    /// </summary>
+    /// <remarks>
+    /// Recovered: the same instance (unchanged incarnation) went stale and then became fresh again.
+    /// </remarks>
+    Recovered = 5,
 }

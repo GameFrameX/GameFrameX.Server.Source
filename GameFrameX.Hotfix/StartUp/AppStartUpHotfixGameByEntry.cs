@@ -32,7 +32,7 @@ using GameFrameX.StartUp;
 using GameFrameX.Apps.Common.Event;
 using GameFrameX.Apps.Common.EventData;
 using GameFrameX.NetWork.RemoteMessaging;
-using GameFrameX.NetWork.RemoteMessaging.Discovery;
+using GameFrameX.Discovery.Routing;
 using GameFrameX.NetWork.RemoteMessaging.Routing;
 using GameFrameX.Hotfix.Logic.Server.Unified;
 using GameFrameX.NetWork.RemoteMessaging.Unified;
@@ -59,7 +59,7 @@ internal partial class AppStartUpHotfixGame : AppStartUpBase, IHotfixBridge
             var remoteClient = RemoteMessagingBuilder.BuildFromEnvironment();
             var localSender = new DefaultPlayerLocalSender();
             // C167：发现层存储适配归一——Resolver/SyncTarget 单例由通用 Bootstrap 提供（不再按 Provider 分立）。
-            GameFrameX.NetWork.RemoteMessaging.Routing.IPlayerRouteResolver discoveredResolver = PlayerRouteResolverBootstrap.Resolver;
+            GameFrameX.Discovery.Routing.IPlayerRouteResolver discoveredResolver = PlayerRouteResolverBootstrap.Resolver;
             var routeResolver = PlayerRouteWiring.SelectRouteResolver(discoveredResolver);
             UnifiedMessageSenderHolder.InitializeWithDefaults(
                 routeResolver,

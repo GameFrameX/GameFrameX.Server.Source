@@ -7,7 +7,7 @@
 //   ==========================================================================================
 
 
-namespace GameFrameX.NetWork.RemoteMessaging.Routing;
+namespace GameFrameX.Discovery.Routing;
 
 /// <summary>
 /// 玩家路由 Tier 1 快路径提供方（C143e D21）。

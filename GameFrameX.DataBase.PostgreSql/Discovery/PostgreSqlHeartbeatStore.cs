@@ -31,7 +31,7 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
-namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
+namespace GameFrameX.DataBase.PostgreSql.Discovery;
 
 /// <summary>
 /// PostgreSQL 心跳存储适配（C167 契约 / C168 EF 化：<see cref="IHeartbeatStore"/> 的 EF 关系实现，零手写 SQL）。

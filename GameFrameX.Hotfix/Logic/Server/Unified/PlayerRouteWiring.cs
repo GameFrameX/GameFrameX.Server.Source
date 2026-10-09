@@ -48,7 +48,7 @@ public static class PlayerRouteWiring
     /// </remarks>
     /// <param name="discoveredResolver">发现层暴露的解析器（未激活发现层时为 null）/ The discovery-provided resolver (null when discovery never activated)</param>
     /// <returns>装入 UnifiedMessageSenderHolder 的解析器 / The resolver to install into UnifiedMessageSenderHolder</returns>
-    public static IPlayerRouteResolver SelectRouteResolver(GameFrameX.NetWork.RemoteMessaging.Routing.IPlayerRouteResolver discoveredResolver)
+    public static IPlayerRouteResolver SelectRouteResolver(GameFrameX.Discovery.Routing.IPlayerRouteResolver discoveredResolver)
     {
         if (discoveredResolver == null)
         {

@@ -28,26 +28,29 @@
 //  ==========================================================================================
 
 
-namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
+namespace GameFrameX.Discovery;
 
 /// <summary>
-/// 路由表快照提供者（C143d D15）。
+/// 端点地址格式异常（C143d D15）。
 /// </summary>
 /// <remarks>
-/// Provides the current dual-view route table snapshot (C143d D15).
-/// the Mongo/PostgreSql endpoint watchers (in the database implementation assemblies) are the
-/// endpoint-resolution consumers depend on this narrow seam instead of the watcher
-/// itself, so tests can substitute a fixed table without any Mongo dependency.
+/// Thrown by <see cref="EndpointParser"/> when an endpoint string violates the
+/// unified <c>scheme://host:port</c> format: missing scheme, missing or out-of-range
+/// port, or an unparsable host. Failing loudly at parse time (instead of at connect
+/// time with an opaque socket error) is the AC-4a contract: every endpoint shape is
+/// validated by the same single parser.
 /// </remarks>
-public interface IRoleRouteTableProvider
+public sealed class EndpointFormatException : FormatException
 {
     /// <summary>
-    /// 获取当前双视图路由表快照。
+    /// 初始化端点格式异常。
     /// </summary>
     /// <remarks>
-    /// Gets the current snapshot. Never returns null: before the first poll completes
-    /// the provider serves <see cref="RoleRouteTable.Empty"/>.
+    /// Initializes the exception with a descriptive message.
     /// </remarks>
-    /// <value>当前快照 / The current snapshot</value>
-    RoleRouteTable Current { get; }
+    /// <param name="message">描述违规原因的消息 / The message describing the violation</param>
+    public EndpointFormatException(string message)
+        : base(message)
+    {
+    }
 }

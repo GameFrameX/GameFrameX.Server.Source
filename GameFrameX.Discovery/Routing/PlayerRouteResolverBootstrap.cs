@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 
-namespace GameFrameX.NetWork.RemoteMessaging.Routing;
+namespace GameFrameX.Discovery.Routing;
 
 /// <summary>
 /// 通用玩家路由层装配点（C167：自 Mongo / PG 平行 Bootstrap 归一，消费 <see cref="IPlayerRouteStore"/>）。

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="../Version.props" Label="版本号定义"/>
+
+    <PropertyGroup>
+        <Description>GameFrameX.Discovery,GameFrameX 框架的多进程发现与玩家路由契约及通用组件模块. Multi-process discovery and player-routing contracts plus shared components for the GameFrameX framework. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Discovery,Routing,Topology,PlayerRoute,Server,GameServer</PackageTags>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\GameFrameX.Utility\GameFrameX.Utility.csproj"/>
+    </ItemGroup>
+
+</Project>

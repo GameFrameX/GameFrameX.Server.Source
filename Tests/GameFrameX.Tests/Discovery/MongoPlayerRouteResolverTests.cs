@@ -7,6 +7,7 @@
 //   ==========================================================================================
 
 
+using GameFrameX.Discovery.Routing;
 using GameFrameX.NetWork.RemoteMessaging.Routing;
 
 namespace GameFrameX.Tests.Discovery;

@@ -7,7 +7,7 @@
 //   ==========================================================================================
 
 
-using GameFrameX.NetWork.RemoteMessaging.Routing;
+using GameFrameX.Discovery.Routing;
 
 namespace GameFrameX.Apps.Common.Session;
 

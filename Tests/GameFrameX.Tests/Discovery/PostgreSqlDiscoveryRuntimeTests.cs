@@ -30,7 +30,8 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using GameFrameX.NetWork.RemoteMessaging.Discovery;
+using GameFrameX.Discovery;
+using GameFrameX.DataBase.PostgreSql.Discovery;
 using Npgsql;
 using Xunit;
 

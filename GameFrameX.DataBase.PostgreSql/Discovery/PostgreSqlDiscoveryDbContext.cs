@@ -32,7 +32,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
-namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
+namespace GameFrameX.DataBase.PostgreSql.Discovery;
 
 /// <summary>
 /// server_heartbeat 表的 EF 关系实体（C168 发现层 EF 化；表 / 列形态与 C167 逐字一致，存量库零迁移）。
@@ -221,7 +221,7 @@ public sealed class PostgreSqlDiscoveryDbContext : DbContext
     /// Configures both discovery tables (column names and indexes identical to C167). The player-route
     /// <c>xmin</c> system column is the concurrency token: any concurrent row change makes the guarded
     /// update match zero rows, which the store maps onto the existing
-    /// <see cref="GameFrameX.NetWork.RemoteMessaging.Routing.PlayerRouteCasOutcome"/> semantics.
+    /// <see cref="GameFrameX.Discovery.Routing.PlayerRouteCasOutcome"/> semantics.
     /// </remarks>
     /// <param name="modelBuilder">模型构建器 / The model builder</param>
     protected override void OnModelCreating(ModelBuilder modelBuilder)

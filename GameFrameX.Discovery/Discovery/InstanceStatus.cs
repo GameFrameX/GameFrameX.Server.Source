@@ -28,29 +28,58 @@
 //  ==========================================================================================
 
 
-namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
+namespace GameFrameX.Discovery;
 
 /// <summary>
-/// 端点地址格式异常（C143d D15）。
+/// 服务实例状态（C143d D15：heartbeat 文档 status 字段）。
 /// </summary>
 /// <remarks>
-/// Thrown by <see cref="EndpointParser"/> when an endpoint string violates the
-/// unified <c>scheme://host:port</c> format: missing scheme, missing or out-of-range
-/// port, or an unparsable host. Failing loudly at parse time (instead of at connect
-/// time with an opaque socket error) is the AC-4a contract: every endpoint shape is
-/// validated by the same single parser.
+/// The lifecycle status of a role instance (C143d D15: the heartbeat document status field).
+/// Scale-down follows the graceful Draining-to-Stopped semantics of AC-4: a Draining
+/// instance stays routable for in-flight deliveries (D3 case 2) but is excluded from
+/// new any-instance selections (D3 case 3); Stopped is written on graceful exit so the
+/// watcher does not have to wait for the TTL to expire.
+/// Values start at 1 on purpose: an uninitialized field must never read as a valid status.
 /// </remarks>
-public sealed class EndpointFormatException : FormatException
+public enum InstanceStatus
 {
     /// <summary>
-    /// 初始化端点格式异常。
+    /// 启动中：进程已注册但尚未宣告可服务。
     /// </summary>
     /// <remarks>
-    /// Initializes the exception with a descriptive message.
+    /// Booting: registered but not yet announcing service readiness.
     /// </remarks>
-    /// <param name="message">描述违规原因的消息 / The message describing the violation</param>
-    public EndpointFormatException(string message)
-        : base(message)
-    {
-    }
+    Booting = 1,
+
+    /// <summary>
+    /// 活跃：正常服务中，接收新流量。
+    /// </summary>
+    /// <remarks>
+    /// Active: serving normally, accepts new traffic.
+    /// </remarks>
+    Active = 2,
+
+    /// <summary>
+    /// 排水中：优雅缩容中，不接新流量、保留在途投递。
+    /// </summary>
+    /// <remarks>
+    /// Draining: graceful scale-down in progress; no new traffic, in-flight deliveries kept.
+    /// </remarks>
+    Draining = 3,
+
+    /// <summary>
+    /// 已停止：优雅退出时写入，不参与路由。
+    /// </summary>
+    /// <remarks>
+    /// Stopped: written on graceful exit; excluded from routing.
+    /// </remarks>
+    Stopped = 4,
+
+    /// <summary>
+    /// 已摘除：心跳文档被 TTL 清除或实例被移出拓扑。
+    /// </summary>
+    /// <remarks>
+    /// Removed: the heartbeat document was TTL-evicted or the instance left the topology.
+    /// </remarks>
+    Removed = 5,
 }

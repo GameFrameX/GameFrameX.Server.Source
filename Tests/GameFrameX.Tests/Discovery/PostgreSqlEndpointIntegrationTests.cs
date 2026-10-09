@@ -26,8 +26,10 @@
 //  ==========================================================================================
 
 
-using GameFrameX.NetWork.RemoteMessaging.Discovery;
-using GameFrameX.NetWork.RemoteMessaging.Routing;
+using GameFrameX.Discovery;
+using GameFrameX.Discovery.Routing;
+using GameFrameX.DataBase.PostgreSql.Discovery;
+using GameFrameX.DataBase.PostgreSql.Routing;
 using Npgsql;
 
 namespace GameFrameX.Tests.Discovery;
