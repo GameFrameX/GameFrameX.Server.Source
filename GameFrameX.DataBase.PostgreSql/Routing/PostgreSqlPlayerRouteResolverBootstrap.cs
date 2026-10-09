@@ -32,11 +32,11 @@ using Npgsql;
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
-/// PostgreSQL 玩家路由层装配点（C166 T8：与 <see cref="MongoPlayerRouteResolverBootstrap"/> 形态对齐）。
+/// PostgreSQL 玩家路由层装配点（C166 T8：与 <c>MongoPlayerRouteResolverBootstrap</c> 形态对齐）。
 /// </summary>
 /// <remarks>
 /// The PostgreSQL player-route layer wiring point (C166 T8), shaped after
-/// <see cref="MongoPlayerRouteResolverBootstrap"/>. The launch flow calls
+/// <c>MongoPlayerRouteResolverBootstrap</c>. The launch flow calls
 /// <see cref="Attach"/> once after the control database is registered: it creates
 /// the <c>player_route</c> schema (idempotent CREATE TABLE / INDEX IF NOT EXISTS —
 /// the PostgreSQL counterpart of the Mongo index bootstrap, minus the TTL index

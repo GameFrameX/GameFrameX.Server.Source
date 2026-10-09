@@ -34,11 +34,11 @@ using Npgsql;
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
-/// 三级玩家路由解析器（C166 T8：与 <see cref="MongoPlayerRouteResolver"/> 逐层对齐的 PostgreSQL 平行实现）。
+/// 三级玩家路由解析器（C166 T8：与 <c>MongoPlayerRouteResolver</c> 逐层对齐的 PostgreSQL 平行实现）。
 /// </summary>
 /// <remarks>
 /// The three-tier player route resolver over PostgreSQL (C166 T8), a tier-by-tier
-/// parallel of <see cref="MongoPlayerRouteResolver"/>. Tier 1 is the in-process
+/// parallel of <c>MongoPlayerRouteResolver</c>. Tier 1 is the in-process
 /// fast path (skipped when not injected; a negative answer falls through). Tier 2
 /// reads the <c>player_route</c> table through a 30-second per-player cache so
 /// cross-process hot players do not re-query on every message. Tier 3 is the

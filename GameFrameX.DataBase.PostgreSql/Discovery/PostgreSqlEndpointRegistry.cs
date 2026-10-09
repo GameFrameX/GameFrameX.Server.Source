@@ -33,11 +33,11 @@ using Npgsql;
 namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
 
 /// <summary>
-/// PostgreSQL 心跳写侧（C166 T8：与 <see cref="MongoEndpointRegistry"/> 逐字段对齐的平行实现）。
+/// PostgreSQL 心跳写侧（C166 T8：与 <c>MongoEndpointRegistry</c> 逐字段对齐的平行实现）。
 /// </summary>
 /// <remarks>
 /// The PostgreSQL heartbeat writer (C166 T8): a field-by-field parallel of
-/// <see cref="MongoEndpointRegistry"/> over the <c>server_heartbeat</c> table
+/// <c>MongoEndpointRegistry</c> over the <c>server_heartbeat</c> table
 /// (D18 full-name contract; one row per live instance, primary key
 /// <c>instance_id</c>). Start upserts the current state (Booting) immediately,
 /// then a full-row upsert every heartbeat interval (5 s default) — always the

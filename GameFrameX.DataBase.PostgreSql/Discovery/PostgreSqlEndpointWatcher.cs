@@ -31,11 +31,11 @@ using Npgsql;
 namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
 
 /// <summary>
-/// PostgreSQL 心跳读侧（C166 T8：与 <see cref="MongoEndpointWatcher"/> 状态机逐字段对齐的平行实现）。
+/// PostgreSQL 心跳读侧（C166 T8：与 <c>MongoEndpointWatcher</c> 状态机逐字段对齐的平行实现）。
 /// </summary>
 /// <remarks>
 /// The PostgreSQL heartbeat reader (C166 T8): a field-by-field parallel of
-/// <see cref="MongoEndpointWatcher"/> polling the <c>server_heartbeat</c> table
+/// <c>MongoEndpointWatcher</c> polling the <c>server_heartbeat</c> table
 /// every interval (5 s default). The three-period staleness threshold (15 s by
 /// default) remains the primary liveness signal: liveness is judged by comparing
 /// each row's <c>last_heartbeat</c> against the current UTC time, never inferred
