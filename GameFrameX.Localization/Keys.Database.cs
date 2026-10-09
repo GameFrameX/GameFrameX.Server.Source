@@ -233,21 +233,13 @@ public static partial class Keys
         /// </remarks>
         public const string BatchSizeInvalid = "Database.BatchSizeInvalid";
         /// <summary>
-        /// 必须设置 DataSource 或 ConnectionName。
+        /// 必须设置 ConnectionName。
         /// </summary>
         /// <remarks>
-        /// 键名: Database.Discovery.DataSourceOrConnectionRequired
-        /// 用途: PostgreSQL 发现层激活参数两者均未设置时抛出
+        /// 键名: Database.Discovery.ConnectionNameRequired
+        /// 用途: 发现层激活参数 ConnectionName 未设置时抛出（Mongo / PostgreSQL 共用）
         /// </remarks>
-        public const string DiscoveryDataSourceOrConnectionRequired = "Database.Discovery.DataSourceOrConnectionRequired";
-        /// <summary>
-        /// 必须设置 ControlDatabase 或 ConnectionName。
-        /// </summary>
-        /// <remarks>
-        /// 键名: Database.Discovery.ControlDatabaseOrConnectionRequired
-        /// 用途: Mongo 发现层激活参数两者均未设置时抛出
-        /// </remarks>
-        public const string DiscoveryControlDatabaseOrConnectionRequired = "Database.Discovery.ControlDatabaseOrConnectionRequired";
+        public const string DiscoveryConnectionNameRequired = "Database.Discovery.ConnectionNameRequired";
         /// <summary>
         /// PostgreSqlDbContext：文档类型“{0}”声明了字典属性“{1}”（{2}）。EF owned JSON 列无法以兼容形状映射字典；请将其重构为 owned entries 集合或标量载荷。
         /// </summary>

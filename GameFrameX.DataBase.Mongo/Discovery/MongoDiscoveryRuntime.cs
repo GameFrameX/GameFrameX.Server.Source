@@ -99,30 +99,25 @@ public static class MongoDiscoveryRuntime
     /// observes the topology); the registry's write side starts only when an
     /// advertise identity exists (advertise port configured); the player-route
     /// bootstrap attaches right after. Calling it more than once
-    /// per process is a no-op. The control database comes from
-    /// <see cref="DiscoveryActivationOptions.ControlDatabase"/> directly, or is
-    /// resolved through the unified <c>GameDb</c> entry when only
-    /// <see cref="DiscoveryActivationOptions.ConnectionName"/> is set.
+    /// per process is a no-op. The control database is resolved through the
+    /// unified <c>GameDb</c> entry by <see cref="DiscoveryActivationOptions.ConnectionName"/>
+    /// (the carrier direct-injection path was removed in C185).
     /// </remarks>
-    /// <param name="options">激活参数（ControlDatabase / ConnectionName 二选一，HostedRoleNames 必填）/ Activation options (either ControlDatabase or ConnectionName; HostedRoleNames required)</param>
+    /// <param name="options">激活参数（ConnectionName 必填，HostedRoleNames 必填）/ Activation options (ConnectionName and HostedRoleNames required)</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="options"/> 或 <c>HostedRoleNames</c> 为 null 时抛出 / Thrown when options or HostedRoleNames is null</exception>
-    /// <exception cref="ArgumentException">当 <c>ControlDatabase</c> 与 <c>ConnectionName</c> 均未设置时抛出 / Thrown when neither ControlDatabase nor ConnectionName is set</exception>
+    /// <exception cref="ArgumentException">当 <c>ConnectionName</c> 未设置时抛出 / Thrown when ConnectionName is not set</exception>
     /// <exception cref="InvalidOperationException">当注册名未注册时抛出（由 MultiDbRegistry 经 GameDb.As 抛出）/ Thrown when the connection name is not registered (raised by MultiDbRegistry via GameDb.As)</exception>
     public static void Activate(DiscoveryActivationOptions options)
     {
         ArgumentNullException.ThrowIfNull(options, nameof(options));
 
-        var controlDatabase = options.ControlDatabase;
-        if (controlDatabase == null)
+        if (string.IsNullOrWhiteSpace(options.ConnectionName))
         {
-            if (string.IsNullOrWhiteSpace(options.ConnectionName))
-            {
-                // Localization: Database.Discovery.ControlDatabaseOrConnectionRequired - 必须设置 ControlDatabase 或 ConnectionName。
-                throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Database.DiscoveryControlDatabaseOrConnectionRequired), nameof(options));
-            }
-
-            controlDatabase = GameDb.As<MongoDbService>(options.ConnectionName).CurrentDatabase;
+            // Localization: Database.Discovery.ConnectionNameRequired - 必须设置 ConnectionName。
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Database.DiscoveryConnectionNameRequired), nameof(options));
         }
+
+        var controlDatabase = GameDb.As<MongoDbService>(options.ConnectionName).CurrentDatabase;
 
         var hostedRoleNames = options.HostedRoleNames;
         ArgumentNullException.ThrowIfNull(hostedRoleNames, nameof(options.HostedRoleNames));

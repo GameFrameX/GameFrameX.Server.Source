@@ -60,12 +60,23 @@ internal sealed class PostgreSqlTestDatabase : IAsyncDisposable
     /// </remarks>
     private readonly string _databaseName;
 
-    private PostgreSqlTestDatabase(string maintenanceConnectionString, string databaseName, NpgsqlDataSource dataSource)
+    private PostgreSqlTestDatabase(string maintenanceConnectionString, string databaseName, string connectionString, NpgsqlDataSource dataSource)
     {
         _maintenanceConnectionString = maintenanceConnectionString;
         _databaseName = databaseName;
+        ConnectionString = connectionString;
         DataSource = dataSource;
     }
+
+    /// <summary>
+    /// 测试库连接串（Database 已指向测试库名，供 <c>DbOptions.ConnectionString</c> 使用）。
+    /// </summary>
+    /// <remarks>
+    /// The test-database connection string (Database pinned to the test database
+    /// name), consumed by <c>DbOptions.ConnectionString</c> when a test registers
+    /// the test database through the unified <c>GameDb.Init</c> entry (C185).
+    /// </remarks>
+    public string ConnectionString { get; }
 
     /// <summary>
     /// 测试库数据源。
@@ -98,7 +109,8 @@ internal sealed class PostgreSqlTestDatabase : IAsyncDisposable
         }
 
         var testBuilder = new NpgsqlConnectionStringBuilder(connectionString) { Database = databaseName };
-        return new PostgreSqlTestDatabase(maintenanceConnectionString, databaseName, NpgsqlDataSource.Create(testBuilder.ConnectionString));
+        var testConnectionString = testBuilder.ConnectionString;
+        return new PostgreSqlTestDatabase(maintenanceConnectionString, databaseName, testConnectionString, NpgsqlDataSource.Create(testConnectionString));
     }
 
     /// <summary>

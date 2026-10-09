@@ -33,6 +33,7 @@ using GameFrameX.DataBase;
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.DataBase.Mongo.Discovery;
 using GameFrameX.DataBase.PostgreSql.Discovery;
+using GameFrameX.Discovery;
 using GameFrameX.Discovery.Routing;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.NetWork.HTTP;
@@ -80,7 +81,7 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
             // Provider 装配分支——PostgreSql 时激活 PG 平行发现层并接 PG SyncTarget。
             if (Setting.DatabaseProvider == DatabaseProviderType.PostgreSql)
             {
-                PostgreSqlDiscoveryRuntime.Activate(new PostgreSqlDiscoveryActivationOptions
+                PostgreSqlDiscoveryRuntime.Activate(new DiscoveryActivationOptions
                 {
                     ConnectionName = GameDb.ControlDatabaseName,
                     HostedRoleNames = RoleSet.Current,

@@ -32,6 +32,7 @@ using GameFrameX.DataBase;
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.DataBase.Mongo.Discovery;
 using GameFrameX.DataBase.PostgreSql.Discovery;
+using GameFrameX.Discovery;
 using GameFrameX.Discovery.Routing;
 using GameFrameX.Foundation.Utility;
 using GameFrameX.Foundation.Localization.Core;
@@ -142,7 +143,7 @@ internal sealed class AppStartUpGame : AppStartUpBase
     {
         if (Setting.DatabaseProvider == DatabaseProviderType.PostgreSql)
         {
-            PostgreSqlDiscoveryRuntime.Activate(new PostgreSqlDiscoveryActivationOptions
+            PostgreSqlDiscoveryRuntime.Activate(new DiscoveryActivationOptions
             {
                 ConnectionName = GameDb.ControlDatabaseName,
                 HostedRoleNames = RoleSet.Current,

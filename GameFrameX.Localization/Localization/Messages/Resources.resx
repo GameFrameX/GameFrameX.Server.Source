@@ -1372,11 +1372,8 @@
   <data name="Database.BatchSizeInvalid" xml:space="preserve">
     <value>Batch size must be greater than zero.</value>
   </data>
-  <data name="Database.Discovery.DataSourceOrConnectionRequired" xml:space="preserve">
-    <value>Either DataSource or ConnectionName must be set.</value>
-  </data>
-  <data name="Database.Discovery.ControlDatabaseOrConnectionRequired" xml:space="preserve">
-    <value>Either ControlDatabase or ConnectionName must be set.</value>
+  <data name="Database.Discovery.ConnectionNameRequired" xml:space="preserve">
+    <value>ConnectionName must be set.</value>
   </data>
   <data name="Database.Ef.DocumentDictionaryPropertyNotSupported" xml:space="preserve">
     <value>PostgreSqlDbContext: document type '{0}' declares dictionary property '{1}' ({2}). EF owned JSON columns cannot map dictionaries in a compatible shape; restructure it as a collection of owned entries or a scalar payload.</value>

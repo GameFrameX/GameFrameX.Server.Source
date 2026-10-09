@@ -110,25 +110,21 @@ public static class PostgreSqlDiscoveryRuntime
     /// ensured inside the bootstrap). Calling it more than once per process
     /// is a no-op.
     /// </remarks>
-    /// <param name="options">激活参数（DataSource / ConnectionName 二选一，HostedRoleNames 必填）/ Activation options (either DataSource or ConnectionName; HostedRoleNames required)</param>
+    /// <param name="options">激活参数（ConnectionName 必填，HostedRoleNames 必填）/ Activation options (ConnectionName and HostedRoleNames required)</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="options"/> 或 <c>HostedRoleNames</c> 为 null 时抛出 / Thrown when options or HostedRoleNames is null</exception>
-    /// <exception cref="ArgumentException">当 <c>DataSource</c> 与 <c>ConnectionName</c> 均未设置时抛出 / Thrown when neither DataSource nor ConnectionName is set</exception>
-    /// <exception cref="InvalidOperationException">当注册名未注册时抛出（由 MultiDbRegistry 经 GameDb.As 抛出）/ Thrown when the connection name is not registered</exception>
-    public static void Activate(PostgreSqlDiscoveryActivationOptions options)
+    /// <exception cref="ArgumentException">当 <c>ConnectionName</c> 未设置时抛出 / Thrown when ConnectionName is not set</exception>
+    /// <exception cref="InvalidOperationException">当注册名未注册时抛出（由 MultiDbRegistry 经 GameDb.As 抛出）/ Thrown when the connection name is not registered (raised by MultiDbRegistry via GameDb.As)</exception>
+    public static void Activate(DiscoveryActivationOptions options)
     {
         ArgumentNullException.ThrowIfNull(options, nameof(options));
 
-        var dataSource = options.DataSource;
-        if (dataSource == null)
+        if (string.IsNullOrWhiteSpace(options.ConnectionName))
         {
-            if (string.IsNullOrWhiteSpace(options.ConnectionName))
-            {
-                // Localization: Database.Discovery.DataSourceOrConnectionRequired - 必须设置 DataSource 或 ConnectionName。
-                throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Database.DiscoveryDataSourceOrConnectionRequired), nameof(options));
-            }
-
-            dataSource = GameDb.As<PostgreSqlDbService>(options.ConnectionName).DataSource;
+            // Localization: Database.Discovery.ConnectionNameRequired - 必须设置 ConnectionName。
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Database.DiscoveryConnectionNameRequired), nameof(options));
         }
+
+        var dataSource = GameDb.As<PostgreSqlDbService>(options.ConnectionName).DataSource;
 
         var hostedRoleNames = options.HostedRoleNames;
         ArgumentNullException.ThrowIfNull(hostedRoleNames, nameof(options.HostedRoleNames));

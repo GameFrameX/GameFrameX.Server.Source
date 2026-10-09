@@ -1368,11 +1368,8 @@
   <data name="Database.BatchSizeInvalid" xml:space="preserve">
     <value>批处理大小必须大于 0。</value>
   </data>
-  <data name="Database.Discovery.DataSourceOrConnectionRequired" xml:space="preserve">
-    <value>必须设置 DataSource 或 ConnectionName。</value>
-  </data>
-  <data name="Database.Discovery.ControlDatabaseOrConnectionRequired" xml:space="preserve">
-    <value>必须设置 ControlDatabase 或 ConnectionName。</value>
+  <data name="Database.Discovery.ConnectionNameRequired" xml:space="preserve">
+    <value>必须设置 ConnectionName。</value>
   </data>
   <data name="Database.Ef.DocumentDictionaryPropertyNotSupported" xml:space="preserve">
     <value>PostgreSqlDbContext：文档类型“{0}”声明了字典属性“{1}”（{2}）。EF owned JSON 列无法以兼容形状映射字典；请将其重构为 owned entries 集合或标量载荷。</value>
