@@ -141,62 +141,153 @@ public sealed class PostgreSqlDbContext<TState> : DbContext where TState : BaseC
     {
         foreach (var property in clrType.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
         {
-            if (!property.CanRead || !property.CanWrite || property.GetIndexParameters().Length > 0)
-            {
-                continue;
-            }
-
-            if (property.PropertyType.IsGenericType && property.PropertyType.GetGenericTypeDefinition() == typeof(Dictionary<,>))
-            {
-                // EF owned JSON 不支持字典成员（实测：值转换器在 owned JSON 读路径崩溃 / 双重编码破坏存量形态）。
-                // 显式抛错指名成员，避免 EF 关系推断的隐晦报错；绝不静默丢字段。
-                // EF owned JSON cannot express dictionary members (value converters crash the JSON
-                // read shaper or double-encode, breaking stored shapes). Fail explicitly naming the member;
-                // never silently drop data.
-                // Localization: Database.Ef.DocumentDictionaryPropertyNotSupported - PostgreSqlDbContext：文档类型“{0}”声明了字典属性“{1}”（{2}）。EF owned JSON 列无法以兼容形状映射字典；请将其重构为 owned entries 集合或标量载荷。
-                throw new NotSupportedException(LocalizationService.GetString(Localization.Keys.Database.EfDocumentDictionaryPropertyNotSupported, clrType.Name, property.Name, property.PropertyType.Name));
-            }
-
-            if (Nullable.GetUnderlyingType(property.PropertyType) != null && property.PropertyType.IsValueType)
-            {
-                // 序列化语义：可空值类型写 JSON null（如 "IsDeleted": null），EF 默认会写 CLR 默认值（false/0）。
-                // 显式置为可选，使 EF JSON 写入器输出 null，读取侧两种形态等价。
-                // Serialization semantics: nullable value types must be written as JSON null; EF would otherwise
-                // coerce to the CLR default (false/0). Explicitly optional so the EF JSON writer emits null.
-                builder.Property(property.Name).IsRequired(false);
-            }
-
-            var propertyType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
-            if (IsScalarDocumentMember(propertyType))
-            {
-                continue;
-            }
-
-            if (propertyType == typeof(object))
-            {
-                // object 成员无 owned 映射形态，交由 EF 模型校验显式失败。
-                // object members have no owned mapping shape; left to EF model validation to fail explicitly.
-                continue;
-            }
-
-            if (typeof(System.Collections.IEnumerable).IsAssignableFrom(propertyType))
-            {
-                var elementType = ResolveElementType(propertyType);
-                if (elementType == null || IsScalarDocumentMember(elementType))
-                {
-                    // 基元集合由 EF JSON 原生映射（JSON 数组）。
-                    // Primitive collections map natively by EF as JSON arrays.
-                    continue;
-                }
-
-                var collectionNavigation = builder.OwnsMany(elementType, property.Name);
-                ConfigureOwnedDocumentShape(collectionNavigation, elementType);
-                continue;
-            }
-
-            var ownedNavigation = builder.OwnsOne(propertyType, property.Name);
-            ConfigureOwnedDocumentShape(ownedNavigation, propertyType);
+            ConfigureOwnedDocumentProperty(builder, clrType, property);
         }
+    }
+
+    /// <summary>
+    /// 分派单个文档属性到对应 leaf 辅助（只读/索引器跳过、字典拒绝、可空值类型标 IsRequired(false)、标量/object 跳过、集合/引用分派）。
+    /// </summary>
+    /// <remarks>
+    /// Dispatches a single document property to the matching leaf helper (skip read-only/indexer, reject
+    /// dictionaries, mark nullable value types IsRequired(false), skip scalar/object, route collections vs.
+    /// references).
+    /// </remarks>
+    /// <param name="builder">当前 owned 类型构建器 / The current owned-type builder</param>
+    /// <param name="clrType">当前文档 CLR 类型 / The current document CLR type</param>
+    /// <param name="property">待配置属性 / The property to configure</param>
+    private static void ConfigureOwnedDocumentProperty(OwnedNavigationBuilder builder, Type clrType, PropertyInfo property)
+    {
+        if (!IsDocumentPropertyMappable(property))
+        {
+            return;
+        }
+
+        if (IsDictionaryProperty(property))
+        {
+            ThrowDocumentDictionaryNotSupported(clrType, property);
+            return;
+        }
+
+        if (IsNullableValueType(property.PropertyType))
+        {
+            // 序列化语义：可空值类型写 JSON null（如 "IsDeleted": null），EF 默认会写 CLR 默认值（false/0）。
+            // 显式置为可选，使 EF JSON 写入器输出 null，读取侧两种形态等价。
+            // Serialization semantics: nullable value types must be written as JSON null; EF would otherwise
+            // coerce to the CLR default (false/0). Explicitly optional so the EF JSON writer emits null.
+            builder.Property(property.Name).IsRequired(false);
+        }
+
+        var propertyType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+        if (IsScalarDocumentMember(propertyType) || propertyType == typeof(object))
+        {
+            // object 成员无 owned 映射形态，交由 EF 模型校验显式失败。
+            // object members have no owned mapping shape; left to EF model validation to fail explicitly.
+            return;
+        }
+
+        if (typeof(System.Collections.IEnumerable).IsAssignableFrom(propertyType))
+        {
+            ConfigureOwnedCollectionProperty(builder, property, propertyType);
+            return;
+        }
+
+        ConfigureOwnedReferenceProperty(builder, property, propertyType);
+    }
+
+    /// <summary>
+    /// 文档属性是否可映射（非只读、非索引器）。
+    /// </summary>
+    /// <remarks>
+    /// Whether a document property is mappable (not read-only, not an indexer).
+    /// </remarks>
+    /// <param name="property">待判断属性 / The property to test</param>
+    /// <returns>可映射返回 true，否则 false / True when mappable, otherwise false</returns>
+    private static bool IsDocumentPropertyMappable(PropertyInfo property)
+    {
+        return property.CanRead && property.CanWrite && property.GetIndexParameters().Length == 0;
+    }
+
+    /// <summary>
+    /// 文档属性类型是否为 <c>Dictionary&lt;,&gt;</c>。
+    /// </summary>
+    /// <remarks>
+    /// Whether the property type is a <c>Dictionary&lt;,&gt;</c>.
+    /// </remarks>
+    /// <param name="property">待判断属性 / The property to test</param>
+    /// <returns>是字典返回 true，否则 false / True when dictionary, otherwise false</returns>
+    private static bool IsDictionaryProperty(PropertyInfo property)
+    {
+        return property.PropertyType.IsGenericType && property.PropertyType.GetGenericTypeDefinition() == typeof(Dictionary<,>);
+    }
+
+    /// <summary>
+    /// 抛出「字典属性不被 EF owned JSON 支持」错误。
+    /// </summary>
+    /// <remarks>
+    /// EF owned JSON 不支持字典成员（实测：值转换器在 owned JSON 读路径崩溃 / 双重编码破坏存量形态）。
+    /// 显式抛错指名成员，避免 EF 关系推断的隐晦报错；绝不静默丢字段。
+    /// EF owned JSON cannot express dictionary members (value converters crash the JSON read shaper
+    /// or double-encode, breaking stored shapes). Fail explicitly naming the member; never silently drop data.
+    /// </remarks>
+    /// <param name="clrType">当前文档 CLR 类型 / The current document CLR type</param>
+    /// <param name="property">字典属性 / The dictionary property</param>
+    private static void ThrowDocumentDictionaryNotSupported(Type clrType, PropertyInfo property)
+    {
+        // Localization: Database.Ef.DocumentDictionaryPropertyNotSupported - PostgreSqlDbContext：文档类型“{0}”声明了字典属性“{1}”（{2}）。EF owned JSON 列无法以兼容形状映射字典；请将其重构为 owned entries 集合或标量载荷。
+        throw new NotSupportedException(LocalizationService.GetString(Localization.Keys.Database.EfDocumentDictionaryPropertyNotSupported, clrType.Name, property.Name, property.PropertyType.Name));
+    }
+
+    /// <summary>
+    /// 类型是否为可空值类型（<c>Nullable&lt;T&gt;</c>）。
+    /// </summary>
+    /// <remarks>
+    /// Whether the type is a nullable value type (<c>Nullable&lt;T&gt;</c>).
+    /// </remarks>
+    /// <param name="type">待判断类型 / The type to test</param>
+    /// <returns>是可空值类型返回 true，否则 false / True when nullable value type, otherwise false</returns>
+    private static bool IsNullableValueType(Type type)
+    {
+        return Nullable.GetUnderlyingType(type) != null && type.IsValueType;
+    }
+
+    /// <summary>
+    /// 配置集合类型叶子属性（<c>OwnsMany</c> + 递归）。
+    /// </summary>
+    /// <remarks>
+    /// Configures a collection-typed leaf property (<c>OwnsMany</c> + recursion). Primitive / unsolvable
+    /// element types are skipped (EF maps them natively as JSON arrays).
+    /// </remarks>
+    /// <param name="builder">当前 owned 类型构建器 / The current owned-type builder</param>
+    /// <param name="property">集合属性 / The collection property</param>
+    /// <param name="propertyType">已剥去 <c>Nullable&lt;T&gt;</c> 包装的属性类型 / The property type with <c>Nullable&lt;T&gt;</c> unwrapped</param>
+    private static void ConfigureOwnedCollectionProperty(OwnedNavigationBuilder builder, PropertyInfo property, Type propertyType)
+    {
+        var elementType = ResolveElementType(propertyType);
+        if (elementType == null || IsScalarDocumentMember(elementType))
+        {
+            // 基元集合由 EF JSON 原生映射（JSON 数组）。
+            // Primitive collections map natively by EF as JSON arrays.
+            return;
+        }
+
+        var collectionNavigation = builder.OwnsMany(elementType, property.Name);
+        ConfigureOwnedDocumentShape(collectionNavigation, elementType);
+    }
+
+    /// <summary>
+    /// 配置引用类型叶子属性（<c>OwnsOne</c> + 递归）。
+    /// </summary>
+    /// <remarks>
+    /// Configures a reference-typed leaf property (<c>OwnsOne</c> + recursion).
+    /// </remarks>
+    /// <param name="builder">当前 owned 类型构建器 / The current owned-type builder</param>
+    /// <param name="property">引用属性 / The reference property</param>
+    /// <param name="propertyType">已剥去 <c>Nullable&lt;T&gt;</c> 包装的属性类型 / The property type with <c>Nullable&lt;T&gt;</c> unwrapped</param>
+    private static void ConfigureOwnedReferenceProperty(OwnedNavigationBuilder builder, PropertyInfo property, Type propertyType)
+    {
+        var ownedNavigation = builder.OwnsOne(propertyType, property.Name);
+        ConfigureOwnedDocumentShape(ownedNavigation, propertyType);
     }
 
     /// <summary>
