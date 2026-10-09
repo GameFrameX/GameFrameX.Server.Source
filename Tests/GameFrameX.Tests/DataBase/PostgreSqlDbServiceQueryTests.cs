@@ -553,7 +553,7 @@ public sealed class PostgreSqlDbServiceQueryTests
 
             // 布尔逻辑组合
             var combined = await service.FindListAsync<PostgreSqlQueryTestState>(x => x.Group == 19 && (x.Score > 1 || x.OptionalNote == null));
-            Assert.Equal(1, combined.Count);
+            Assert.Single(combined);
         });
     }
 
