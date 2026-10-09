@@ -85,7 +85,7 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
                     HostedRoleNames = RoleSet.Current,
                     PlayerRouteFastPath = GameFrameX.Apps.Common.Session.SessionManagerFastPathAdapter.Instance,
                 });
-                GameFrameX.Apps.Common.Session.SessionManager.PlayerRouteSyncTarget = GameFrameX.NetWork.RemoteMessaging.Routing.PostgreSqlPlayerRouteResolverBootstrap.SyncTarget;
+                GameFrameX.Apps.Common.Session.SessionManager.PlayerRouteSyncTarget = GameFrameX.NetWork.RemoteMessaging.Routing.PlayerRouteResolverBootstrap.SyncTarget;
             }
             else
             {
@@ -95,7 +95,7 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
                     HostedRoleNames = RoleSet.Current,
                     PlayerRouteFastPath = GameFrameX.Apps.Common.Session.SessionManagerFastPathAdapter.Instance,
                 });
-                GameFrameX.Apps.Common.Session.SessionManager.PlayerRouteSyncTarget = GameFrameX.NetWork.RemoteMessaging.Routing.MongoPlayerRouteResolverBootstrap.SyncTarget;
+                GameFrameX.Apps.Common.Session.SessionManager.PlayerRouteSyncTarget = GameFrameX.NetWork.RemoteMessaging.Routing.PlayerRouteResolverBootstrap.SyncTarget;
             }
             // C166 依赖纠偏第二轮：路由胶水装配自 Runtime 拆至组合侧 DiscoveryRoutingWire（发现层 Runtime 不再引用消息胶水程序集）。
             GameFrameX.NetWork.RemoteMessaging.Routing.DiscoveryRoutingWire.Initialize(RoleSet.Current, Setting.DatabaseProvider == DatabaseProviderType.PostgreSql ? PostgreSqlDiscoveryRuntime.TableProvider : MongoDiscoveryRuntime.TableProvider);

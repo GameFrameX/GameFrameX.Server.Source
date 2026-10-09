@@ -92,11 +92,11 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
 
         var controlDatabase = CreateControlDatabase();
         var selfDescriptor = new InstanceDescriptor("Game", "integration-registry-1", "tcp://127.0.0.1:7701", InstanceStatus.Booting, 0, EndpointAddressKind.IPv4, 9001, DateTime.UtcNow);
-        using (var registry = new MongoEndpointRegistry(controlDatabase, selfDescriptor, TimeSpan.FromMilliseconds(150)))
+        using (var registry = new DiscoveryRegistry(new MongoHeartbeatStore(controlDatabase), null, selfDescriptor, TimeSpan.FromMilliseconds(150)))
         {
             await registry.StartAsync();
 
-            var collection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(MongoEndpointRegistry.HeartbeatCollectionName);
+            var collection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(DiscoveryRegistry.HeartbeatTableName);
             var bootingDocument = await WaitForDocumentAsync(collection, "integration-registry-1");
             Assert.NotNull(bootingDocument);
             // 启动即宣告 Booting 而非 Active：其他进程在服务真正就绪前不应向本实例路由流量。
@@ -143,9 +143,9 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
         }
 
         var controlDatabase = CreateControlDatabase();
-        var collection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(MongoEndpointRegistry.HeartbeatCollectionName);
+        var collection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(DiscoveryRegistry.HeartbeatTableName);
         var events = new RecordingInstanceEvents();
-        using (var watcher = new MongoEndpointWatcher(controlDatabase, TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(30)))
+        using (var watcher = new DiscoveryWatcher(new MongoHeartbeatStore(controlDatabase), TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(30)))
         {
             watcher.Subscribe(events);
             await watcher.StartAsync();
@@ -224,9 +224,9 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
         }
 
         var controlDatabase = CreateControlDatabase();
-        var collection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(MongoEndpointRegistry.HeartbeatCollectionName);
+        var collection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(DiscoveryRegistry.HeartbeatTableName);
         var events = new RecordingInstanceEvents();
-        using (var watcher = new MongoEndpointWatcher(controlDatabase, TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(5)))
+        using (var watcher = new DiscoveryWatcher(new MongoHeartbeatStore(controlDatabase), TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(5)))
         {
             watcher.Subscribe(events);
             await watcher.StartAsync();
@@ -264,9 +264,9 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
         }
 
         var controlDatabase = CreateControlDatabase();
-        var collection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(MongoEndpointRegistry.HeartbeatCollectionName);
+        var collection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(DiscoveryRegistry.HeartbeatTableName);
         var events = new RecordingInstanceEvents();
-        using (var watcher = new MongoEndpointWatcher(controlDatabase, TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(5)))
+        using (var watcher = new DiscoveryWatcher(new MongoHeartbeatStore(controlDatabase), TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(5)))
         {
             watcher.Subscribe(events);
             await watcher.StartAsync();
@@ -323,9 +323,9 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
         }
 
         var controlDatabase = CreateControlDatabase();
-        var collection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(MongoEndpointRegistry.HeartbeatCollectionName);
+        var collection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(DiscoveryRegistry.HeartbeatTableName);
         var events = new RecordingInstanceEvents();
-        using (var watcher = new MongoEndpointWatcher(controlDatabase, TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(5)))
+        using (var watcher = new DiscoveryWatcher(new MongoHeartbeatStore(controlDatabase), TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(5)))
         {
             watcher.Subscribe(events);
             await watcher.StartAsync();

@@ -84,7 +84,7 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
         }
 
         var database = CreateDatabase();
-        var target = new MongoPlayerRouteSyncTarget(database);
+        var target = new PlayerRouteSyncTarget(new MongoPlayerRouteStore(database));
 
         await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 101, InstanceId = "game-1", Role = "Game", Version = 1, });
 
@@ -105,7 +105,7 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
         }
 
         var database = CreateDatabase();
-        var target = new MongoPlayerRouteSyncTarget(database);
+        var target = new PlayerRouteSyncTarget(new MongoPlayerRouteStore(database));
 
         await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 102, InstanceId = "game-1", Role = "Game", Version = 1, });
         await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 102, InstanceId = "game-2", Role = "Game", Version = 2, });
@@ -126,7 +126,7 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
         }
 
         var database = CreateDatabase();
-        var target = new MongoPlayerRouteSyncTarget(database);
+        var target = new PlayerRouteSyncTarget(new MongoPlayerRouteStore(database));
 
         await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 103, InstanceId = "game-1", Role = "Game", Version = 1, });
         await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 103, InstanceId = "game-2", Role = "Game", Version = 2, });
@@ -147,7 +147,7 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
         }
 
         var database = CreateDatabase();
-        var target = new MongoPlayerRouteSyncTarget(database);
+        var target = new PlayerRouteSyncTarget(new MongoPlayerRouteStore(database));
 
         await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 104, InstanceId = "game-1", Role = "Game", Version = 1, });
         await target.DeleteAsync(playerId: 104);
@@ -221,7 +221,7 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
         await collection.InsertOneAsync(PlayerRouteCollection.CreateOnline(playerId: 201, instanceId: "other-1", role: "Other"));
 
         var fastPath = new OnlineFastPath(playerId: 201, serverType: "Game", serverId: 7, version: 1);
-        var resolver = new MongoPlayerRouteResolver(database, fastPath);
+        var resolver = new PlayerRouteResolver(new MongoPlayerRouteStore(database), fastPath);
 
         var resolved = await resolver.ResolveAsync(201);
 
@@ -246,7 +246,7 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
         await collection.InsertOneAsync(PlayerRouteCollection.CreateOnline(playerId: 202, instanceId: "7", role: "Game"));
 
         var fastPath = new OnlineFastPath(playerId: 999, serverType: "X", serverId: 1);
-        var resolver = new MongoPlayerRouteResolver(database, fastPath);
+        var resolver = new PlayerRouteResolver(new MongoPlayerRouteStore(database), fastPath);
 
         var resolved = await resolver.ResolveAsync(202);
 
@@ -268,7 +268,7 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
         await PlayerRouteCollection.EnsureIndexesAsync(collection);
 
         var fastPath = new OnlineFastPath(playerId: 999, serverType: "X", serverId: 1);
-        var resolver = new MongoPlayerRouteResolver(database, fastPath);
+        var resolver = new PlayerRouteResolver(new MongoPlayerRouteStore(database), fastPath);
 
         var resolved = await resolver.ResolveAsync(303);
 

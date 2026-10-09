@@ -1,9 +1,9 @@
 // ==========================================================================================
 //   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents and related rights
 //   均受中华人民共和国及相关国际法律法规保护。
-//   are protected by the laws of the People's Republic of China and relevant international regulations.
-//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   are protected by the laws of the People's Republic of China and related international regulations.
+//   使用本项目须严格遵守相应法律法规与开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
 //   This project is licensed solely under the Apache License 2.0,
@@ -15,14 +15,14 @@
 //   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
 //   Any legal disputes and liabilities arising from secondary development based on this project
-//   本项目组织与贡献者概不承担。
+//   本组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
-//   GitHub Repository: https://github.com/GameFrameX
+//   GitHub Repository:  https://github.com/GameFrameX
 //   Gitee  仓库：https://gitee.com/GameFrameX
-//   Gitee Repository:  https://gitee.com/GameFrameX
+//   Gitee Repository:   https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
-//   CNB Repository:  https://cnb.cool/GameFrameX
+//   CNB Repository:     https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
@@ -36,21 +36,23 @@ using MongoDB.Driver;
 namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
 
 /// <summary>
-/// Mongo 发现层进程装配器（C143d D11–D15 落地接线）。
+/// Mongo 发现层进程装配器（C143d D11–D15 落地接线；C167 起消费通用组件 + Mongo 存储适配）。
 /// </summary>
 /// <remarks>
-/// The process-level wiring point for the Mongo discovery layer (C143d).
-/// The launch flow calls <c>Activate(IMongoDatabase, IEnumerable&lt;string&gt;, IPlayerRouteFastPath)</c> once the control database
-/// (gameframex_control) is registered in MultiDbRegistry: it starts the watcher
-/// (read side), starts the registry (write side — skipped when no advertise port
-/// is configured, e.g. single-process local development), and re-installs
-/// <c>RoleRouterHolder</c> with the real case 2/3 remote router in place of
-/// the C143c placeholder. Activation is idempotent per process: the first call
-/// wins, later calls (one per hosted role startup in a multi-role process) return
-/// immediately. The local dispatcher slot stays null here on purpose: the
-/// Hotfix-backed dispatcher only exists after the hotfix module loads, so the
-/// hotfix wiring point later calls <c>AttachLocalDispatcher</c> (C152) to
-/// fill the case 1 slot without touching the remote chain.
+/// The process-level wiring point for the Mongo discovery layer. The launch
+/// flow calls <c>Activate(DiscoveryActivationOptions)</c> once the control
+/// database (gameframex_control) is registered in MultiDbRegistry: it
+/// constructs the Mongo stores (<see cref="MongoHeartbeatStore"/> /
+/// <see cref="MongoPlayerRouteStore"/>), starts the generic
+/// <see cref="DiscoveryWatcher"/> (read side) and the generic
+/// <see cref="DiscoveryRegistry"/> (write side + TTL cleanup loop — skipped
+/// for the write side when no advertise port is configured, e.g.
+/// single-process local development), and attaches the generic player-route
+/// bootstrap. Router wiring is NOT performed here — the composition side
+/// calls <c>DiscoveryRoutingWire.Initialize(RoleSet.Current, MongoDiscoveryRuntime.TableProvider)</c>
+/// right after. Activation is idempotent per process: the first call wins.
+/// The local dispatcher slot stays null here on purpose: the hotfix wiring
+/// point later calls <c>AttachLocalDispatcher</c> to fill the case 1 slot.
 /// </remarks>
 public static class MongoDiscoveryRuntime
 {
@@ -68,7 +70,7 @@ public static class MongoDiscoveryRuntime
     /// <remarks>
     /// The created heartbeat writer, held for the process lifetime; its exit hooks own the terminal Stopped write.
     /// </remarks>
-    private static MongoEndpointRegistry _registry;
+    private static DiscoveryRegistry _registry;
 
     /// <summary>
     /// 已创建的心跳读侧。
@@ -76,7 +78,7 @@ public static class MongoDiscoveryRuntime
     /// <remarks>
     /// The created heartbeat reader.
     /// </remarks>
-    private static MongoEndpointWatcher _watcher;
+    private static DiscoveryWatcher _watcher;
 
     /// <summary>
     /// 发现层路由表提供者（C166 依赖纠偏第二轮：路由胶水装配移交组合侧 DiscoveryRoutingWire，本 Runtime 只暴露读侧实例）。
@@ -92,18 +94,13 @@ public static class MongoDiscoveryRuntime
     /// </summary>
     /// <remarks>
     /// Activates the discovery layer. The watcher always starts (every process
-    /// observes the topology); the registry starts only when an advertise identity
-    /// exists (advertise port configured); the player-route bootstrap attaches
-    /// right after (C143e D21). Router wiring (RoleRouterHolder / InProcessRoleRouter /
-    /// TcpEnvelopeForwarder) is NOT performed here — the composition side calls
-    /// <c>DiscoveryRoutingWire.Initialize(RoleSet.Current, MongoDiscoveryRuntime.TableProvider)</c>
-    /// right after this (C166 second dependency-direction ruling).
-    /// Call this after the control database is registered; calling it more than
-    /// once per process is a no-op. The control database comes from
+    /// observes the topology); the registry's write side starts only when an
+    /// advertise identity exists (advertise port configured); the player-route
+    /// bootstrap attaches right after (C143e D21). Calling it more than once
+    /// per process is a no-op. The control database comes from
     /// <see cref="DiscoveryActivationOptions.ControlDatabase"/> directly, or is
     /// resolved through the unified <c>GameDb</c> entry when only
-    /// <see cref="DiscoveryActivationOptions.ConnectionName"/> is set (the C159
-    /// name-based overload folded into this options shape by C154).
+    /// <see cref="DiscoveryActivationOptions.ConnectionName"/> is set.
     /// </remarks>
     /// <param name="options">激活参数（ControlDatabase / ConnectionName 二选一，HostedRoleNames 必填）/ Activation options (either ControlDatabase or ConnectionName; HostedRoleNames required)</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="options"/> 或 <c>HostedRoleNames</c> 为 null 时抛出 / Thrown when options or HostedRoleNames is null</exception>
@@ -132,8 +129,11 @@ public static class MongoDiscoveryRuntime
             return;
         }
 
+        var heartbeatStore = new MongoHeartbeatStore(controlDatabase);
+        var playerRouteStore = new MongoPlayerRouteStore(controlDatabase);
+
         var hostedRoles = hostedRoleNames as IReadOnlyCollection<string> ?? hostedRoleNames.ToList();
-        _watcher = new MongoEndpointWatcher(controlDatabase);
+        _watcher = new DiscoveryWatcher(heartbeatStore);
         _watcher.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
 
         // 写侧需要唯一的广播身份：未配置广播端口（单进程本地开发等）时跳过注册，仅观察拓扑。
@@ -141,23 +141,16 @@ public static class MongoDiscoveryRuntime
         // 多 Role 进程仅剩 AllInOne 开发形态，其路由全走本地 case 1，无跨进程发现需求；若未来多 Role 常态化
         // 再扩展为每 Role 一份心跳文档。
         var primaryRoleName = hostedRoles.Count > 0 ? hostedRoles.First() : "unknown";
-        var selfDescriptor = MongoEndpointRegistry.CreateSelfDescriptorFromEnvironment(primaryRoleName);
-        if (selfDescriptor != null)
-        {
-            _registry = new MongoEndpointRegistry(controlDatabase, selfDescriptor);
-            _registry.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
-        }
-        else
+        var selfDescriptor = DiscoveryRegistry.CreateSelfDescriptorFromEnvironment(primaryRoleName);
+        _registry = new DiscoveryRegistry(heartbeatStore, playerRouteStore, selfDescriptor);
+        _registry.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
+        if (selfDescriptor == null)
         {
             LogHelper.Warning("[MongoDiscoveryRuntime] no advertise port configured ({environmentVariable}); the heartbeat write side is skipped and this process only observes the topology", AdvertiseEndpointEnvironment.AdvertisePortEnvironmentVariable);
         }
 
-        // C166 依赖纠偏第二轮：RoleRouterHolder/InProcessRoleRouter/TcpEnvelopeForwarder 装配移交组合侧
-        // DiscoveryRoutingWire.Initialize（Launcher 在 Activate 后调用，传入本 TableProvider）。
-        // C143e D21：玩家路由层装配（建索引 + 装 SyncTarget）。在路由缝激活后追加；
-        // 接收端 envelope 复投由 LocalEnvelopeDispatcher 承担：C152 起 Hotfix 装配点在热更加载后
-        // 经 AttachLocalDispatcher 补装 local 槽（发现层装配时 Hotfix 组件尚不存在）。
-        MongoPlayerRouteResolverBootstrap.Attach(controlDatabase, options.PlayerRouteFastPath).GetAwaiter().GetResult();
+        // C143e D21：玩家路由层装配（建索引 + 装 SyncTarget），通用 Bootstrap 单例（C167 归一）。
+        PlayerRouteResolverBootstrap.Attach(playerRouteStore, options.PlayerRouteFastPath).GetAwaiter().GetResult();
     }
 
     /// <summary>

@@ -27,6 +27,7 @@
 
 
 using GameFrameX.NetWork.RemoteMessaging.Discovery;
+using GameFrameX.NetWork.RemoteMessaging.Routing;
 using Npgsql;
 
 namespace GameFrameX.Tests.Discovery;
@@ -88,7 +89,7 @@ public sealed class PostgreSqlEndpointIntegrationTests : IDisposable
         if (_testDatabase == null)
         {
             _testDatabase = await PostgreSqlTestDatabase.CreateAsync(_connectionString);
-            await PostgreSqlEndpointRegistry.EnsureSchemaAsync(_testDatabase.DataSource);
+            await new PostgreSqlHeartbeatStore(_testDatabase.DataSource).EnsureSchemaAsync();
         }
 
         return _testDatabase;
@@ -104,7 +105,7 @@ public sealed class PostgreSqlEndpointIntegrationTests : IDisposable
 
         var testDatabase = await CreateControlDatabaseAsync();
         var selfDescriptor = new InstanceDescriptor("Game", "integration-registry-1", "tcp://127.0.0.1:7701", InstanceStatus.Booting, 0, EndpointAddressKind.IPv4, 9001, DateTime.UtcNow);
-        using (var registry = new PostgreSqlEndpointRegistry(testDatabase.DataSource, selfDescriptor, TimeSpan.FromMilliseconds(150)))
+        using (var registry = new DiscoveryRegistry(new PostgreSqlHeartbeatStore(testDatabase.DataSource), null, selfDescriptor, TimeSpan.FromMilliseconds(150)))
         {
             await registry.StartAsync();
 
@@ -155,7 +156,7 @@ public sealed class PostgreSqlEndpointIntegrationTests : IDisposable
 
         var testDatabase = await CreateControlDatabaseAsync();
         var events = new RecordingInstanceEvents();
-        using (var watcher = new PostgreSqlEndpointWatcher(testDatabase.DataSource, TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(30)))
+        using (var watcher = new DiscoveryWatcher(new PostgreSqlHeartbeatStore(testDatabase.DataSource), TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(30)))
         {
             watcher.Subscribe(events);
             await watcher.StartAsync();
@@ -213,7 +214,7 @@ public sealed class PostgreSqlEndpointIntegrationTests : IDisposable
 
         var testDatabase = await CreateControlDatabaseAsync();
         var events = new RecordingInstanceEvents();
-        using (var watcher = new PostgreSqlEndpointWatcher(testDatabase.DataSource, TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(5)))
+        using (var watcher = new DiscoveryWatcher(new PostgreSqlHeartbeatStore(testDatabase.DataSource), TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(5)))
         {
             watcher.Subscribe(events);
             await watcher.StartAsync();
@@ -242,7 +243,7 @@ public sealed class PostgreSqlEndpointIntegrationTests : IDisposable
 
         var testDatabase = await CreateControlDatabaseAsync();
         var events = new RecordingInstanceEvents();
-        using (var watcher = new PostgreSqlEndpointWatcher(testDatabase.DataSource, TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(5)))
+        using (var watcher = new DiscoveryWatcher(new PostgreSqlHeartbeatStore(testDatabase.DataSource), TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(5)))
         {
             watcher.Subscribe(events);
             await watcher.StartAsync();
@@ -279,7 +280,7 @@ public sealed class PostgreSqlEndpointIntegrationTests : IDisposable
 
         var testDatabase = await CreateControlDatabaseAsync();
         var events = new RecordingInstanceEvents();
-        using (var watcher = new PostgreSqlEndpointWatcher(testDatabase.DataSource, TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(5)))
+        using (var watcher = new DiscoveryWatcher(new PostgreSqlHeartbeatStore(testDatabase.DataSource), TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(5)))
         {
             watcher.Subscribe(events);
             await watcher.StartAsync();
@@ -301,7 +302,7 @@ public sealed class PostgreSqlEndpointIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task TtlCleanupJob_ShouldRemoveExpiredHeartbeatRows()
+    public async Task TtlCleanup_ShouldRemoveExpiredHeartbeatRows()
     {
         if (ShouldSkip)
         {
@@ -315,12 +316,12 @@ public sealed class PostgreSqlEndpointIntegrationTests : IDisposable
         var expiredId = $"integration-ttl-expired-{Guid.NewGuid():N}";
         await InsertHeartbeatAsync(testDatabase.DataSource, freshId, "Game", "tcp://10.0.0.4:7601", "Active", "IPv4", 9500L, DateTime.UtcNow);
         await InsertHeartbeatAsync(testDatabase.DataSource, expiredId, "Game", "tcp://10.0.0.5:7602", "Active", "IPv4", 9501L, DateTime.UtcNow.AddSeconds(-60));
-        await GameFrameX.NetWork.RemoteMessaging.Routing.PostgreSqlPlayerRouteSyncTarget.EnsureSchemaAsync(testDatabase.DataSource);
+        await new PostgreSqlPlayerRouteStore(testDatabase.DataSource).EnsureSchemaAsync();
         await ExecuteAsync(testDatabase.DataSource, $"INSERT INTO player_route (player_id, instance_id, role, version, last_seen_at) VALUES (901, '{expiredId}', 'Game', 1, now() - interval '40 days');");
 
-        using (var cleanupJob = new PostgreSqlTtlCleanupJob(testDatabase.DataSource, TimeSpan.FromMilliseconds(200)))
+        using (var registry = new DiscoveryRegistry(new PostgreSqlHeartbeatStore(testDatabase.DataSource), new PostgreSqlPlayerRouteStore(testDatabase.DataSource), null, null, TimeSpan.FromMilliseconds(200)))
         {
-            cleanupJob.Start();
+            await registry.StartAsync();
 
             await WaitUntilAsync(async () => await ReadRowAsync(testDatabase.DataSource, expiredId) == null, TimeSpan.FromSeconds(30));
         }

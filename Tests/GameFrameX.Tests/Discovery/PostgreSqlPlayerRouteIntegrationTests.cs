@@ -87,7 +87,7 @@ public sealed class PostgreSqlPlayerRouteIntegrationTests : IDisposable
         if (_testDatabase == null)
         {
             _testDatabase = await PostgreSqlTestDatabase.CreateAsync(_connectionString);
-            await PostgreSqlPlayerRouteSyncTarget.EnsureSchemaAsync(_testDatabase.DataSource);
+            await new PostgreSqlPlayerRouteStore(_testDatabase.DataSource).EnsureSchemaAsync();
         }
 
         return _testDatabase;
@@ -102,7 +102,7 @@ public sealed class PostgreSqlPlayerRouteIntegrationTests : IDisposable
         }
 
         var testDatabase = await CreateDatabaseAsync();
-        var target = new PostgreSqlPlayerRouteSyncTarget(testDatabase.DataSource);
+        var target = new PlayerRouteSyncTarget(new PostgreSqlPlayerRouteStore(testDatabase.DataSource));
 
         await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 101, InstanceId = "game-1", Role = "Game", Version = 1, });
 
@@ -134,7 +134,7 @@ public sealed class PostgreSqlPlayerRouteIntegrationTests : IDisposable
         // hit the CAS read-back branch and throw PlayerRouteStaleException (row exists), so the first-login
         // SQL constant is executed directly to cover the conflict-overwrite path deterministically; the
         // true-concurrent convergence contract lives in SyncTarget_TrueConcurrentFirstLogin_ConvergesToOneRow.
-        var insertSql = (string)typeof(PostgreSqlPlayerRouteSyncTarget)
+        var insertSql = (string)typeof(PostgreSqlPlayerRouteStore)
             .GetField("InsertFirstLoginSql", BindingFlags.NonPublic | BindingFlags.Static)!
             .GetValue(null)!;
 
@@ -171,7 +171,7 @@ public sealed class PostgreSqlPlayerRouteIntegrationTests : IDisposable
         // one INSERT wins, the other converges through the ON CONFLICT DO UPDATE path. The winner is
         // timing-dependent and NOT asserted; the hard invariants are: exactly one row, no escaping
         // exception, version = 1, and the surviving instance is one of the two writers.
-        var insertSql = (string)typeof(PostgreSqlPlayerRouteSyncTarget)
+        var insertSql = (string)typeof(PostgreSqlPlayerRouteStore)
             .GetField("InsertFirstLoginSql", BindingFlags.NonPublic | BindingFlags.Static)!
             .GetValue(null)!;
 
@@ -200,7 +200,7 @@ public sealed class PostgreSqlPlayerRouteIntegrationTests : IDisposable
         }
 
         var testDatabase = await CreateDatabaseAsync();
-        var target = new PostgreSqlPlayerRouteSyncTarget(testDatabase.DataSource);
+        var target = new PlayerRouteSyncTarget(new PostgreSqlPlayerRouteStore(testDatabase.DataSource));
 
         await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 102, InstanceId = "game-1", Role = "Game", Version = 1, });
         await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 102, InstanceId = "game-2", Role = "Game", Version = 2, });
@@ -220,7 +220,7 @@ public sealed class PostgreSqlPlayerRouteIntegrationTests : IDisposable
         }
 
         var testDatabase = await CreateDatabaseAsync();
-        var target = new PostgreSqlPlayerRouteSyncTarget(testDatabase.DataSource);
+        var target = new PlayerRouteSyncTarget(new PostgreSqlPlayerRouteStore(testDatabase.DataSource));
 
         await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 103, InstanceId = "game-1", Role = "Game", Version = 1, });
         await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 103, InstanceId = "game-2", Role = "Game", Version = 2, });
@@ -241,7 +241,7 @@ public sealed class PostgreSqlPlayerRouteIntegrationTests : IDisposable
         }
 
         var testDatabase = await CreateDatabaseAsync();
-        var target = new PostgreSqlPlayerRouteSyncTarget(testDatabase.DataSource);
+        var target = new PlayerRouteSyncTarget(new PostgreSqlPlayerRouteStore(testDatabase.DataSource));
 
         await target.UpsertAsync(new PlayerRouteRecord { PlayerId = 104, InstanceId = "game-1", Role = "Game", Version = 1, });
         await target.DeleteAsync(playerId: 104);
@@ -280,7 +280,7 @@ public sealed class PostgreSqlPlayerRouteIntegrationTests : IDisposable
         await InsertRouteAsync(testDatabase.DataSource, playerId: 201, instanceId: "other-1", role: "Other");
 
         var fastPath = new OnlineFastPath(playerId: 201, serverType: "Game", serverId: 7, version: 1);
-        var resolver = new PostgreSqlPlayerRouteResolver(testDatabase.DataSource, fastPath);
+        var resolver = new PlayerRouteResolver(new PostgreSqlPlayerRouteStore(testDatabase.DataSource), fastPath);
 
         var resolved = await resolver.ResolveAsync(201);
 
@@ -303,7 +303,7 @@ public sealed class PostgreSqlPlayerRouteIntegrationTests : IDisposable
         await InsertRouteAsync(testDatabase.DataSource, playerId: 202, instanceId: "7", role: "Game");
 
         var fastPath = new OnlineFastPath(playerId: 999, serverType: "X", serverId: 1);
-        var resolver = new PostgreSqlPlayerRouteResolver(testDatabase.DataSource, fastPath);
+        var resolver = new PlayerRouteResolver(new PostgreSqlPlayerRouteStore(testDatabase.DataSource), fastPath);
 
         var resolved = await resolver.ResolveAsync(202);
 
@@ -323,7 +323,7 @@ public sealed class PostgreSqlPlayerRouteIntegrationTests : IDisposable
         var testDatabase = await CreateDatabaseAsync();
 
         var fastPath = new OnlineFastPath(playerId: 999, serverType: "X", serverId: 1);
-        var resolver = new PostgreSqlPlayerRouteResolver(testDatabase.DataSource, fastPath);
+        var resolver = new PlayerRouteResolver(new PostgreSqlPlayerRouteStore(testDatabase.DataSource), fastPath);
 
         var resolved = await resolver.ResolveAsync(303);
 

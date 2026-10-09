@@ -2,8 +2,8 @@
 //   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
 //   GameFrameX organization and its derivative projects' copyrights, trademarks, patents and related rights
 //   均受中华人民共和国及相关国际法律法规保护。
-//   are protected by the laws of the People's Republic of China and relevant international regulations.
-//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   are protected by the laws of the People's Republic of China and related international regulations.
+//   使用本项目须严格遵守相应法律法规与开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
 //   This project is licensed solely under the Apache License 2.0,
@@ -12,56 +12,56 @@
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
 //   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
 //   侵犯他人合法权益等法律法规所禁止的行为！
-//   or infringe upon the legitimate rights and interests of others as prohibited by laws and regulations!
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
 //   Any legal disputes and liabilities arising from secondary development based on this project
-//   本项目组织与贡献者概不承担。
+//   本组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
-//   GitHub Repository: https://github.com/GameFrameX
+//   GitHub Repository:  https://github.com/GameFrameX
 //   Gitee  仓库：https://gitee.com/GameFrameX
-//   Gitee Repository:  https://gitee.com/GameFrameX
+//   Gitee Repository:   https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
-//   CNB Repository: https://cnb.cool/GameFrameX
+//   CNB Repository:     https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
 using System.Collections.Concurrent;
 using GameFrameX.Utility.Setting;
-using Npgsql;
 
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
-/// 三级玩家路由解析器（C166 T8：与 <c>MongoPlayerRouteResolver</c> 逐层对齐的 PostgreSQL 平行实现）。
+/// 通用三级玩家路由解析器（C167：自 Mongo / PG 平行实现归一，消费 <see cref="IPlayerRouteStore"/>）。
 /// </summary>
 /// <remarks>
-/// The three-tier player route resolver over PostgreSQL (C166 T8), a tier-by-tier
-/// parallel of <c>MongoPlayerRouteResolver</c>. Tier 1 is the in-process
-/// fast path (skipped when not injected; a negative answer falls through). Tier 2
-/// reads the <c>player_route</c> table through a 30-second per-player cache so
-/// cross-process hot players do not re-query on every message. Tier 3 is the
-/// offline fallback. Negative tier-2 answers are cached as well (the 30 s TTL
-/// bounds the retry pressure).
+/// The generic three-tier player route resolver (C167, unified from the Mongo /
+/// PostgreSQL parallel implementations; consumes <see cref="IPlayerRouteStore"/>
+/// and never branches on the backend). Tier 1 is the in-process fast path
+/// (skipped when not injected; a negative answer falls through). Tier 2 reads
+/// the control-database <c>player_route</c> table through a 30-second
+/// per-player cache so cross-process hot players do not re-query on every
+/// message; negative tier-2 answers are cached as well (the 30 s TTL bounds
+/// the retry pressure). Tier 3 is the offline fallback.
 /// </remarks>
-public sealed class PostgreSqlPlayerRouteResolver : IPlayerRouteResolver
+public sealed class PlayerRouteResolver : IPlayerRouteResolver
 {
     /// <summary>
-    /// Tier 2 控制库缓存 TTL（30s，与 Mongo 版同值）。
+    /// Tier 2 控制库缓存 TTL（30s）。
     /// </summary>
     /// <remarks>
-    /// The tier-2 control-database cache TTL (30 s, same value as the Mongo implementation).
+    /// The tier-2 control-database cache TTL (30 s).
     /// </remarks>
     private const int ControlCacheTtlMs = 30_000;
 
     /// <summary>
-    /// 数据源（池化）。
+    /// 玩家路由存储适配。
     /// </summary>
     /// <remarks>
-    /// The pooled data source.
+    /// The player-route storage seam.
     /// </remarks>
-    private readonly NpgsqlDataSource _dataSource;
+    private readonly IPlayerRouteStore _store;
 
     /// <summary>
     /// Tier 1 快路径提供方（null 跳过 Tier 1）。
@@ -77,22 +77,23 @@ public sealed class PostgreSqlPlayerRouteResolver : IPlayerRouteResolver
     /// <remarks>
     /// The per-player tier-2 cache.
     /// </remarks>
-    private readonly ConcurrentDictionary<long, ControlCacheEntry> _controlCache = new();
+    private readonly ConcurrentDictionary<long, ControlCacheEntry> _controlCache = new ConcurrentDictionary<long, ControlCacheEntry>();
 
     /// <summary>
     /// 初始化三级玩家路由解析器。
     /// </summary>
     /// <remarks>
-    /// Initializes the resolver. Schema creation is the bootstrap's responsibility;
-    /// the resolver only reads.
+    /// Initializes the three-tier resolver. Schema creation is the bootstrap's
+    /// responsibility; the resolver only reads. <paramref name="fastPath"/> is
+    /// the in-process Tier 1 lookup; when null the resolver skips Tier 1 and
+    /// goes straight to the control database.
     /// </remarks>
-    /// <param name="dataSource">控制库数据源 / The control-database data source</param>
+    /// <param name="store">玩家路由存储适配 / The player-route storage seam</param>
     /// <param name="fastPath">Tier 1 快路径提供方（null 跳过 Tier 1）/ Tier 1 fast path (null skips Tier 1)</param>
-    /// <exception cref="ArgumentNullException">当 <paramref name="dataSource"/> 为 null 时抛出 / Thrown when <paramref name="dataSource"/> is null</exception>
-    public PostgreSqlPlayerRouteResolver(NpgsqlDataSource dataSource, IPlayerRouteFastPath fastPath = null)
+    public PlayerRouteResolver(IPlayerRouteStore store, IPlayerRouteFastPath fastPath = null)
     {
-        ArgumentNullException.ThrowIfNull(dataSource, nameof(dataSource));
-        _dataSource = dataSource;
+        ArgumentNullException.ThrowIfNull(store, nameof(store));
+        _store = store;
         _fastPath = fastPath;
     }
 
@@ -100,11 +101,15 @@ public sealed class PostgreSqlPlayerRouteResolver : IPlayerRouteResolver
     /// 按三级策略解析玩家当前路由位置。
     /// </summary>
     /// <remarks>
-    /// Resolves the player's current routing location through the three tiers;
-    /// non-positive ids return <see cref="PlayerRouteInfo.Offline"/> immediately.
+    /// Resolves the player's current routing location through the three tiers:
+    /// non-positive ids return <see cref="PlayerRouteInfo.Offline"/> immediately;
+    /// Tier 1 consults the injected fast path (skipped when not injected, and a
+    /// negative answer falls through); Tier 2 reads the control-database
+    /// <c>player_route</c> table through the 30-second per-player cache; a
+    /// miss anywhere falls through to the Tier 3 offline answer.
     /// </remarks>
     /// <param name="playerId">玩家 ID / The player id</param>
-    /// <returns>在线时含 role + serverId 的路由信息，否则离线标记 / The online route info, or the offline marker</returns>
+    /// <returns>在线时含 role + serverId 的路由信息，否则离线标记 / The online route info carrying role + serverId, or the offline marker</returns>
     public async Task<PlayerRouteInfo> ResolveAsync(long playerId)
     {
         if (playerId <= 0)
@@ -133,10 +138,11 @@ public sealed class PostgreSqlPlayerRouteResolver : IPlayerRouteResolver
     /// Tier 2 读取（30s 每玩家缓存，含 negative answer 缓存）。
     /// </summary>
     /// <remarks>
-    /// The tier-2 read through the 30-second per-player cache (negative answers cached too).
+    /// The tier-2 read through the 30-second per-player cache (negative answers cached too,
+    /// avoiding repeated control-database misses for hot offline players; retried after the TTL).
     /// </remarks>
     /// <param name="playerId">玩家 ID / The player id</param>
-    /// <returns>路由信息；未命中缓存有效时为 null / The route info, or null when the cache is still valid</returns>
+    /// <returns>路由信息 / The route info</returns>
     private async Task<PlayerRouteInfo> ResolveFromControlAsync(long playerId)
     {
         var now = Environment.TickCount64;
@@ -145,31 +151,18 @@ public sealed class PostgreSqlPlayerRouteResolver : IPlayerRouteResolver
             return cached.Info;
         }
 
-        string instanceId = null;
-        string role = null;
-        long version = 0;
-        await using (var command = _dataSource.CreateCommand("SELECT instance_id, role, version FROM player_route WHERE player_id = $1;"))
-        {
-            command.Parameters.AddWithValue(playerId);
-            await using var reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
-            if (await reader.ReadAsync().ConfigureAwait(false))
-            {
-                instanceId = reader.GetString(0);
-                role = reader.GetString(1);
-                version = reader.GetInt64(2);
-            }
-        }
+        var record = await _store.GetAsync(playerId).ConfigureAwait(false);
 
         PlayerRouteInfo info;
-        if (instanceId == null)
+        if (record == null)
         {
             // 缓存 negative answer 也吃下：避免热玩家的反复控制库 miss 抖动。30s 后重试一次。
             info = PlayerRouteInfo.Offline();
         }
         else
         {
-            var serverType = string.IsNullOrEmpty(role) ? GlobalSettings.CurrentSetting?.ServerType ?? GameServerConst.Game.Name : role;
-            info = PlayerRouteInfo.Online(serverType, ExtractServerId(instanceId), version);
+            var serverType = string.IsNullOrEmpty(record.Role) ? GlobalSettings.CurrentSetting?.ServerType ?? GameServerConst.Game.Name : record.Role;
+            info = PlayerRouteInfo.Online(serverType, ExtractServerId(record.InstanceId), record.Version);
         }
 
         _controlCache[playerId] = new ControlCacheEntry(now, info);
@@ -177,11 +170,12 @@ public sealed class PostgreSqlPlayerRouteResolver : IPlayerRouteResolver
     }
 
     /// <summary>
-    /// 从 instanceId 尾段提取数字部分作为 ServerId（不可解析时退回 Game.Id，与 Mongo 版一致）。
+    /// 从 instanceId 尾段提取数字部分作为 ServerId（不可解析时退回 Game.Id）。
     /// </summary>
     /// <remarks>
-    /// Extracts the trailing integer suffix from an instance id; the fallback keeps
-    /// the resolver non-throwing for legacy instance ids.
+    /// Extracts the trailing integer suffix from an instance id
+    /// (<c>role-...</c> in the instance id format has no integer; the
+    /// fallback keeps the resolver non-throwing for legacy instance ids).
     /// </remarks>
     /// <param name="instanceId">实例 ID / The instance id</param>
     /// <returns>ServerId / The server id</returns>

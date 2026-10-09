@@ -1,9 +1,9 @@
 // ==========================================================================================
 //   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents and related rights
 //   均受中华人民共和国及相关国际法律法规保护。
-//   are protected by the laws of the People's Republic of China and relevant international regulations.
-//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   are protected by the laws of the People's Republic of China and related international regulations.
+//   使用本项目须严格遵守相应法律法规与开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
 //   This project is licensed solely under the Apache License 2.0,
@@ -15,39 +15,41 @@
 //   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
 //   Any legal disputes and liabilities arising from secondary development based on this project
-//   本项目组织与贡献者概不承担。
+//   本组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
-//   GitHub Repository: https://github.com/GameFrameX
+//   GitHub Repository:  https://github.com/GameFrameX
 //   Gitee  仓库：https://gitee.com/GameFrameX
-//   Gitee Repository:  https://gitee.com/GameFrameX
+//   Gitee Repository:   https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
-//   CNB Repository:  https://cnb.cool/GameFrameX
+//   CNB Repository:     https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
 
-using MongoDB.Driver;
+using GameFrameX.Foundation.Logger;
 
 namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
 
 /// <summary>
-/// Mongo 心跳读侧（C143d D11/D15：判活 + 双视图路由表 + 事件）。
+/// 通用心跳读侧（C167：自 Mongo / PG 平行实现归一，消费 <see cref="IHeartbeatStore"/>）。
 /// </summary>
 /// <remarks>
-/// The Mongo heartbeat reader (C143d D11/D15: liveness + the dual-view route table + events).
-/// Polls the control database <c>server_heartbeat</c> collection every interval (5 s default)
-/// without mutating it, judges each instance against the three-period staleness threshold
-/// (15 s by default — the primary liveness signal, with the Mongo TTL as the last-resort
-/// document cleanup), and rebuilds the immutable <see cref="RoleRouteTable"/> snapshot
-/// atomically (Interlocked.Exchange — D15). Every shape change is broadcast to
-/// <see cref="IRoleInstanceEvents"/> subscribers: Online / Draining / Offline / Evicted /
-/// Recovered, with the incarnation rule of D15 — the same instance id coming back with a
-/// different incarnation emits Offline+Online, never Recovered. During a Mongo outage the
-/// previous table is served unchanged (the partition risk mitigation of D15).
+/// The generic heartbeat reader (C167, unified from the Mongo / PostgreSQL
+/// parallel implementations; consumes <see cref="IHeartbeatStore"/> and never
+/// branches on the backend). Polls the control database <c>server_heartbeat</c>
+/// every interval (5 s default) without mutating it, judges each instance
+/// against the three-period staleness threshold (15 s by default — the primary
+/// liveness signal, with the storage TTL as the last-resort row cleanup), and
+/// rebuilds the immutable <see cref="RoleRouteTable"/> snapshot atomically
+/// (Interlocked.Exchange). Every shape change is broadcast to
+/// <see cref="IRoleInstanceEvents"/> subscribers: Online / Draining / Offline /
+/// Evicted / Recovered, with the incarnation rule — the same instance id
+/// coming back with a different incarnation emits Offline+Online, never
+/// Recovered. During a database outage the previous table is served unchanged.
 /// </remarks>
-public sealed class MongoEndpointWatcher : IRoleRouteTableProvider, IDisposable
+public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
 {
     /// <summary>
     /// 缺省轮询间隔（5s，D11）。
@@ -66,12 +68,12 @@ public sealed class MongoEndpointWatcher : IRoleRouteTableProvider, IDisposable
     public const int DefaultStalenessPeriods = 3;
 
     /// <summary>
-    /// 心跳集合。
+    /// 心跳存储适配。
     /// </summary>
     /// <remarks>
-    /// The heartbeat collection.
+    /// The heartbeat storage seam.
     /// </remarks>
-    private readonly IMongoCollection<ServerHeartbeatDocument> _collection;
+    private readonly IHeartbeatStore _heartbeatStore;
 
     /// <summary>
     /// 轮询间隔。
@@ -110,7 +112,7 @@ public sealed class MongoEndpointWatcher : IRoleRouteTableProvider, IDisposable
     /// </summary>
     /// <remarks>
     /// The currently known instances (instance id to the last observation and its stale flag;
-    /// stale entries stay until the TTL removes their documents, so Recovered can be detected).
+    /// stale entries stay until the TTL removes their rows, so Recovered can be detected).
     /// </remarks>
     private readonly Dictionary<string, KnownInstance> _knownInstances = new Dictionary<string, KnownInstance>(StringComparer.Ordinal);
 
@@ -157,19 +159,19 @@ public sealed class MongoEndpointWatcher : IRoleRouteTableProvider, IDisposable
     private volatile RoleRouteTable _currentTable = RoleRouteTable.Empty;
 
     /// <summary>
-    /// 初始化 Mongo 心跳读侧。
+    /// 初始化通用心跳读侧。
     /// </summary>
     /// <remarks>
     /// Initializes the watcher. Call <see cref="StartAsync"/> to begin polling.
     /// </remarks>
-    /// <param name="controlDatabase">控制库（gameframex_control）/ The control database</param>
+    /// <param name="heartbeatStore">心跳存储适配 / The heartbeat storage seam</param>
     /// <param name="pollInterval">轮询间隔；缺省 5s / The poll interval; defaults to 5 s</param>
     /// <param name="stalenessThreshold">判活阈值；缺省 3 × 轮询间隔（15s）/ The staleness threshold; defaults to 3 × the poll interval (15 s)</param>
-    public MongoEndpointWatcher(IMongoDatabase controlDatabase, TimeSpan? pollInterval = null, TimeSpan? stalenessThreshold = null)
+    public DiscoveryWatcher(IHeartbeatStore heartbeatStore, TimeSpan? pollInterval = null, TimeSpan? stalenessThreshold = null)
     {
-        ArgumentNullException.ThrowIfNull(controlDatabase, nameof(controlDatabase));
+        ArgumentNullException.ThrowIfNull(heartbeatStore, nameof(heartbeatStore));
 
-        _collection = controlDatabase.GetCollection<ServerHeartbeatDocument>(MongoEndpointRegistry.HeartbeatCollectionName);
+        _heartbeatStore = heartbeatStore;
         _pollInterval = pollInterval ?? DefaultPollInterval;
         _stalenessThreshold = stalenessThreshold ?? TimeSpan.FromTicks(_pollInterval.Ticks * DefaultStalenessPeriods);
     }
@@ -218,7 +220,7 @@ public sealed class MongoEndpointWatcher : IRoleRouteTableProvider, IDisposable
     /// <returns>异步任务 / Async task</returns>
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
-        await PollOnceAsync(cancellationToken);
+        await PollOnceAsync(cancellationToken).ConfigureAwait(false);
         _loopTask = Task.Run(() => PollLoopAsync(_loopCancellation.Token), cancellationToken);
     }
 
@@ -231,12 +233,12 @@ public sealed class MongoEndpointWatcher : IRoleRouteTableProvider, IDisposable
     /// <returns>异步任务 / Async task</returns>
     public async Task StopAsync()
     {
-        await _loopCancellation.CancelAsync();
+        await _loopCancellation.CancelAsync().ConfigureAwait(false);
         if (_loopTask != null)
         {
             try
             {
-                await _loopTask;
+                await _loopTask.ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -260,7 +262,7 @@ public sealed class MongoEndpointWatcher : IRoleRouteTableProvider, IDisposable
     /// 轮询循环。
     /// </summary>
     /// <remarks>
-    /// The poll loop. A failed round keeps the previous snapshot (Mongo outage resilience)
+    /// The poll loop. A failed round keeps the previous snapshot (database outage resilience)
     /// and retries on the next tick.
     /// </remarks>
     /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
@@ -271,8 +273,8 @@ public sealed class MongoEndpointWatcher : IRoleRouteTableProvider, IDisposable
         {
             try
             {
-                await Task.Delay(_pollInterval, cancellationToken);
-                await PollOnceAsync(CancellationToken.None);
+                await Task.Delay(_pollInterval, cancellationToken).ConfigureAwait(false);
+                await PollOnceAsync(CancellationToken.None).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -280,7 +282,7 @@ public sealed class MongoEndpointWatcher : IRoleRouteTableProvider, IDisposable
             }
             catch (Exception exception)
             {
-                LogHelper.Error(exception, "[MongoEndpointWatcher] poll round failed; keeping the previous route table and retrying next interval");
+                LogHelper.Error(exception, "[DiscoveryWatcher] poll round failed; keeping the previous route table and retrying next interval");
             }
         }
     }
@@ -289,7 +291,7 @@ public sealed class MongoEndpointWatcher : IRoleRouteTableProvider, IDisposable
     /// 执行一轮轮询：拉全量 → 判活 → 状态转移 → 原子替换快照 → 广播事件。
     /// </summary>
     /// <remarks>
-    /// One poll round: fetch every document, judge liveness, apply the state machine
+    /// One poll round: fetch every observation, judge liveness, apply the state machine
     /// (Online / Draining / Offline / Evicted / Recovered, with the incarnation rule),
     /// swap the snapshot atomically, then broadcast the collected events.
     /// </remarks>
@@ -297,12 +299,12 @@ public sealed class MongoEndpointWatcher : IRoleRouteTableProvider, IDisposable
     /// <returns>异步任务 / Async task</returns>
     private async Task PollOnceAsync(CancellationToken cancellationToken)
     {
-        var documents = await _collection.Find(FilterDefinition<ServerHeartbeatDocument>.Empty).ToListAsync(cancellationToken);
+        var observations = await _heartbeatStore.QueryAllAsync(cancellationToken).ConfigureAwait(false);
         var pendingEvents = new List<KeyValuePair<RoleInstanceChangeKind, InstanceDescriptor>>();
 
         lock (_stateLock)
         {
-            var liveInstances = ApplyStateTransitions(documents, DateTime.UtcNow, pendingEvents);
+            var liveInstances = ApplyStateTransitions(observations, DateTime.UtcNow, pendingEvents);
             _currentTable = RoleRouteTable.FromInstances(liveInstances);
         }
 
@@ -330,21 +332,15 @@ public sealed class MongoEndpointWatcher : IRoleRouteTableProvider, IDisposable
     /// for the new snapshot. Events are collected instead of fired inline so the snapshot
     /// can be swapped before any subscriber runs.
     /// </remarks>
-    /// <param name="documents">本轮拉取的心跳文档 / The documents fetched this round</param>
+    /// <param name="observations">本轮拉取的观测 / The observations fetched this round</param>
     /// <param name="nowUtc">判定基准时间（UTC）/ The judgement reference time (UTC)</param>
     /// <param name="pendingEvents">收集的事件 / The collected events</param>
     /// <returns>存活实例集合 / The live instance set</returns>
-    private List<InstanceDescriptor> ApplyStateTransitions(List<ServerHeartbeatDocument> documents, DateTime nowUtc, List<KeyValuePair<RoleInstanceChangeKind, InstanceDescriptor>> pendingEvents)
+    private List<InstanceDescriptor> ApplyStateTransitions(IReadOnlyList<InstanceDescriptor> observations, DateTime nowUtc, List<KeyValuePair<RoleInstanceChangeKind, InstanceDescriptor>> pendingEvents)
     {
-        var liveInstances = new List<InstanceDescriptor>(documents.Count);
-        foreach (var document in documents)
+        var liveInstances = new List<InstanceDescriptor>(observations.Count);
+        foreach (var descriptor in observations)
         {
-            var descriptor = TryToDescriptor(document);
-            if (descriptor == null)
-            {
-                continue;
-            }
-
             var isStale = nowUtc - descriptor.LastHeartbeatUtc > _stalenessThreshold;
             _lastSeenIncarnations.TryGetValue(descriptor.InstanceId, out var lastIncarnation);
             _knownInstances.TryGetValue(descriptor.InstanceId, out var known);
@@ -359,7 +355,7 @@ public sealed class MongoEndpointWatcher : IRoleRouteTableProvider, IDisposable
             }
         }
 
-        EvictMissingInstances(documents, pendingEvents);
+        EvictMissingInstances(observations, pendingEvents);
         return liveInstances;
     }
 
@@ -370,7 +366,7 @@ public sealed class MongoEndpointWatcher : IRoleRouteTableProvider, IDisposable
     /// Dispatches the state machine. Each branch is a single-responsibility predicate
     /// so the method stays under the S3776 threshold.
     /// </remarks>
-    private void RecordTransition(KnownInstance known, long lastIncarnation, InstanceDescriptor descriptor, bool isStale, List<KeyValuePair<RoleInstanceChangeKind, InstanceDescriptor>> pendingEvents)
+    private static void RecordTransition(KnownInstance known, long lastIncarnation, InstanceDescriptor descriptor, bool isStale, List<KeyValuePair<RoleInstanceChangeKind, InstanceDescriptor>> pendingEvents)
     {
         if (known == null)
         {
@@ -463,14 +459,14 @@ public sealed class MongoEndpointWatcher : IRoleRouteTableProvider, IDisposable
     }
 
     /// <summary>
-    /// 曾知实例本轮文档消失（TTL 已清除）→ Evicted，彻底移出观测。
+    /// 曾知实例本轮观测消失（TTL 已清除）→ Evicted，彻底移出观测。
     /// </summary>
     /// <remarks>
-    /// Evicts known instances whose heartbeat documents disappeared this round (TTL cleanup).
+    /// Evicts known instances whose heartbeat observations disappeared this round (TTL cleanup).
     /// </remarks>
-    private void EvictMissingInstances(List<ServerHeartbeatDocument> documents, List<KeyValuePair<RoleInstanceChangeKind, InstanceDescriptor>> pendingEvents)
+    private void EvictMissingInstances(IReadOnlyList<InstanceDescriptor> observations, List<KeyValuePair<RoleInstanceChangeKind, InstanceDescriptor>> pendingEvents)
     {
-        var observedInstanceIds = CollectObservedInstanceIds(documents);
+        var observedInstanceIds = CollectObservedInstanceIds(observations);
         var evictedIds = new List<string>();
         foreach (var pair in _knownInstances)
         {
@@ -488,24 +484,20 @@ public sealed class MongoEndpointWatcher : IRoleRouteTableProvider, IDisposable
     }
 
     /// <summary>
-    /// 收集本轮文档中可解析的实例 id（用于 Evicted 判定）。
+    /// 收集本轮可解析观测的实例 id（用于 Evicted 判定）。
     /// </summary>
     /// <remarks>
-    /// Collects the parseable instance ids from this round's documents for the missing-instance
-    /// check (matches the per-document parse policy of the main loop).
+    /// Collects the instance ids of this round's parsable observations for the
+    /// missing-instance check.
     /// </remarks>
-    private static HashSet<string> CollectObservedInstanceIds(List<ServerHeartbeatDocument> documents)
+    private static HashSet<string> CollectObservedInstanceIds(IReadOnlyList<InstanceDescriptor> observations)
     {
         var observedInstanceIds = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var document in documents)
+        foreach (var descriptor in observations)
         {
-            var descriptor = TryToDescriptor(document);
-            if (descriptor == null)
-            {
-                continue;
-            }
             observedInstanceIds.Add(descriptor.InstanceId);
         }
+
         return observedInstanceIds;
     }
 
@@ -563,30 +555,6 @@ public sealed class MongoEndpointWatcher : IRoleRouteTableProvider, IDisposable
     private static bool IsActiveOrDraining(InstanceStatus status)
     {
         return status == InstanceStatus.Active || status == InstanceStatus.Draining;
-    }
-
-    /// <summary>
-    /// 心跳文档 → 实例描述符（未知枚举名返回 null 防御旧版本文档）。
-    /// </summary>
-    /// <remarks>
-    /// Converts a heartbeat document to a descriptor; returns null on an unknown enum
-    /// name or empty endpoint (defensive against documents written by a different version).
-    /// </remarks>
-    /// <param name="document">心跳文档 / The heartbeat document</param>
-    /// <returns>实例描述符；无法转换时为 null / The descriptor, or null when unparsable</returns>
-    private static InstanceDescriptor TryToDescriptor(ServerHeartbeatDocument document)
-    {
-        if (string.IsNullOrWhiteSpace(document.InstanceId) || string.IsNullOrWhiteSpace(document.Role) || string.IsNullOrWhiteSpace(document.AdvertiseEndpoint))
-        {
-            return null;
-        }
-
-        if (!Enum.TryParse<InstanceStatus>(document.Status, false, out var status) || !Enum.TryParse<EndpointAddressKind>(document.AddressKind, false, out var addressKind))
-        {
-            return null;
-        }
-
-        return new InstanceDescriptor(document.Role, document.InstanceId, document.AdvertiseEndpoint, status, document.Load, addressKind, document.Incarnation, document.LastHeartbeat);
     }
 
     /// <summary>

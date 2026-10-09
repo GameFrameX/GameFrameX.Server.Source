@@ -10,13 +10,13 @@
 --   3. 在控制库执行本脚本注册两条清理任务（已注册则 no-op，幂等）。
 --      Run this script in the control database to register both schedules (idempotent).
 --
---   语义 / Semantics: 与进程内 PostgreSqlTtlCleanupJob 等价——server_heartbeat 超 15 秒、
---   player_route 超 30 天未更新的行被删除；Evicted 时序在清理周期内放宽（清理 job 每 5s 一轮）。
---   Equivalent to the in-process PostgreSqlTtlCleanupJob: heartbeat rows older than 15 s and
---   player-route rows older than 30 days are deleted; Evicted timing is relaxed to within one
---   cleanup period (the job runs every 5 s).
---   使用本脚本时无需在进程内启动 PostgreSqlTtlCleanupJob（二选一）。
---   When using this script the in-process job is unnecessary (choose either, not both).
+--   语义 / Semantics: 与进程内通用清理循环（DiscoveryRegistry，C167 起替代原独立清理 job）等价——
+--   server_heartbeat 超 15 秒、player_route 超 30 天未更新的行被删除；Evicted 时序在清理周期内放宽（每 5s 一轮）。
+--   Equivalent to the in-process generic cleanup loop (DiscoveryRegistry; C167 replaced the former
+--   standalone job): heartbeat rows older than 15 s and player-route rows older than 30 days are
+--   deleted; Evicted timing is relaxed to within one cleanup period (every 5 s).
+--   使用本脚本时进程内清理循环对 PG 表的 DELETE 互不冲突（幂等删除，二选一更省一条连接）。
+--   The in-process loop and this script are idempotent duplicates; choosing either one saves a connection.
 -- ==========================================================================================
 
 -- 心跳过期行清理（15s TTL，替代 Mongo TTL 索引）/ Heartbeat expiry (15 s TTL, replacing the Mongo TTL index)
