@@ -537,7 +537,7 @@ public static partial class Keys
         /// <summary>
         /// 热更新相关消息
         /// </summary>
-        public static class Hotfix
+        public static class HotfixModule
         {
             /// <summary>
             /// the hot change dll initialization succeeds: {0}
@@ -685,7 +685,7 @@ public static partial class Keys
         /// <summary>
         /// 热更新相关异常
         /// </summary>
-        public static class Hotfix
+        public static class HotfixModule
         {
             /// <summary>
             /// HTTP processor command repeatedly registers, command:{0}
