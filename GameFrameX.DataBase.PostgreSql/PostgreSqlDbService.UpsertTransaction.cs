@@ -140,8 +140,7 @@ public sealed partial class PostgreSqlDbService
             await using var connection = DataSource.CreateConnection();
             await connection.OpenAsync(token).ConfigureAwait(false);
             await EnsureTableAsync<TState>(connection, token).ConfigureAwait(false);
-            await using var command = BuildUpsertManyCommand<TState>(stateArray);
-            command.Connection = connection;
+            await using var command = BuildUpsertManyCommand<TState>(connection, stateArray);
             await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
             return true;
         }, cancellationToken, nameof(AddOrUpdateListAsync), true).ConfigureAwait(false);
@@ -200,9 +199,8 @@ public sealed partial class PostgreSqlDbService
                 {
                     await connection.OpenAsync(CancellationToken.None).ConfigureAwait(false);
                     await EnsureTableAsync<TState>(connection, CancellationToken.None).ConfigureAwait(false);
-                    await using (var command = BuildUpsertManyCommand<TState>(batch))
+                    await using (var command = BuildUpsertManyCommand<TState>(connection, batch))
                     {
-                        command.Connection = connection;
                         var affected = await command.ExecuteNonQueryAsync(CancellationToken.None).ConfigureAwait(false);
                         // ON CONFLICT DO UPDATE 对插入与更新各计一行，受影响行数 >= 批大小即视为整批 ack
                         // ON CONFLICT DO UPDATE counts one row per insert and update; affected >= batch size means the whole batch was acknowledged.
@@ -317,15 +315,21 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 构建多行 upsert 命令（VALUES (...), (...) + ON CONFLICT DO UPDATE）。
+    /// 构建多行 upsert 命令（VALUES (...), (...) + ON CONFLICT DO UPDATE；统一形态：接收连接并在内部赋值，与 <c>BuildInsertManyCommand</c> 一致）。
     /// </summary>
     /// <remarks>
-    /// Builds the multi-row upsert command (VALUES (...), (...) + ON CONFLICT DO UPDATE).
+    /// Builds the multi-row upsert command (VALUES (...), (...) + ON CONFLICT DO UPDATE); unified shape:
+    /// takes the connection and assigns it internally, matching <c>BuildInsertManyCommand</c>.
     /// </remarks>
-    private static NpgsqlCommand BuildUpsertManyCommand<TState>(IReadOnlyList<TState> states) where TState : BaseCacheState, new()
+    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
+    /// <param name="connection">数据库连接 / The database connection</param>
+    /// <param name="states">要保存的数据列表 / The states to save</param>
+    /// <returns>构建好的 upsert 命令 / The built upsert command</returns>
+    private static NpgsqlCommand BuildUpsertManyCommand<TState>(NpgsqlConnection connection, IReadOnlyList<TState> states) where TState : BaseCacheState, new()
     {
         var valueFragments = new List<string>(states.Count);
         var command = new NpgsqlCommand();
+        command.Connection = connection;
         for (var index = 0; index < states.Count; index++)
         {
             var state = states[index];
