@@ -39,8 +39,9 @@ namespace GameFrameX.DataBase.Mongo.Routing;
 /// The Mongo implementation of the player-route storage seam: the MQL
 /// counterpart consumed by the generic resolver / sync target / bootstrap.
 /// Schema bootstrap delegates to <see cref="PlayerRouteCollection.EnsureIndexesAsync"/>
-/// (playerId unique + lastSeenAt 30-day TTL); <see cref="DeleteExpiredAsync"/>
-/// is therefore a no-op — the server-side TTL index is the backstop.
+/// (playerId unique; the legacy lastSeenAt TTL index is dropped — expiry deletion is
+/// client-side); <see cref="DeleteExpiredAsync"/> executes the real delete driven by
+/// the registry's cleanup loop.
 /// </remarks>
 public sealed class MongoPlayerRouteStore : IPlayerRouteStore
 {
@@ -67,11 +68,12 @@ public sealed class MongoPlayerRouteStore : IPlayerRouteStore
     }
 
     /// <summary>
-    /// 建 player_route 索引（playerId 唯一 + lastSeenAt 30 天 TTL；幂等）。
+    /// 建 player_route 索引（playerId 唯一）并清除遗留 lastSeenAt TTL 索引（存量迁移；幂等）。
     /// </summary>
     /// <remarks>
-    /// Creates the player_route indexes (playerId unique + lastSeenAt TTL), idempotently.
-    /// </remarks>
+    /// Creates the playerId unique index and drops the legacy lastSeenAt TTL index
+    /// (client-side expiry replaced the server-side one), idempotently.
+/// </remarks>
     /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
     /// <returns>异步任务 / Async task</returns>
     public Task EnsureSchemaAsync(CancellationToken cancellationToken = default)
@@ -168,18 +170,21 @@ public sealed class MongoPlayerRouteStore : IPlayerRouteStore
     }
 
     /// <summary>
-    /// no-op：Mongo 服务端 lastSeenAt TTL 索引兜底过期清除。
+    /// 删除过期路由文档（lastSeenAt 早于 now − timeToLive；清理循环驱动）。
     /// </summary>
     /// <remarks>
-    /// No-op: the server-side lastSeenAt TTL index (30 days, created by
-    /// <see cref="EnsureSchemaAsync"/>) already removes offline-route documents.
+    /// Deletes route documents whose <c>lastSeenAt</c> is older than
+    /// <paramref name="timeToLive"/> (the 30-day offline garbage window) — the
+    /// client-side TTL equivalent, driven by the registry's cleanup loop (same
+    /// semantics as the PostgreSQL store; removal relaxed to within one cleanup period).
     /// </remarks>
-    /// <param name="timeToLive">路由保存窗口（Mongo 路径忽略）/ The expire-after window (ignored on Mongo)</param>
+    /// <param name="timeToLive">路由保存窗口 / The expire-after window</param>
     /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
-    /// <returns>已完成的任务 / A completed task</returns>
+    /// <returns>异步任务 / Async task</returns>
     public Task DeleteExpiredAsync(TimeSpan timeToLive, CancellationToken cancellationToken = default)
     {
-        return Task.CompletedTask;
+        var cutoff = DateTime.UtcNow - timeToLive;
+        return _collection.DeleteManyAsync(document => document.LastSeenAt < cutoff, cancellationToken);
     }
 
     /// <summary>

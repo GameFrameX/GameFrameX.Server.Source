@@ -44,11 +44,12 @@ namespace GameFrameX.Discovery;
 public interface IHeartbeatStore
 {
     /// <summary>
-    /// 幂等建 schema（Mongo：TTL 索引；PG：CREATE TABLE / INDEX IF NOT EXISTS）。
+    /// 幂等建 schema（Mongo：索引引导 + 清除遗留 TTL 索引；PG：CREATE TABLE / INDEX IF NOT EXISTS）。
     /// </summary>
     /// <remarks>
-    /// Idempotently ensures the storage schema exists (Mongo: the TTL index;
-    /// PostgreSQL: CREATE TABLE / INDEX IF NOT EXISTS). Safe to call repeatedly.
+    /// Idempotently ensures the storage schema exists (Mongo: index bootstrap
+    /// plus the legacy-TTL-index cleanup; PostgreSQL: CREATE TABLE / INDEX IF
+    /// NOT EXISTS). Safe to call repeatedly.
     /// </remarks>
     /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
     /// <returns>异步任务 / Async task</returns>
@@ -84,16 +85,15 @@ public interface IHeartbeatStore
     Task<IReadOnlyList<InstanceDescriptor>> QueryAllAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 删除过期心跳（TTL 等效语义；Mongo 实现为 no-op，由服务端 TTL 索引兜底）。
+    /// 删除过期心跳（客户端 TTL 等效语义；两个后端都执行真实删除）。
     /// </summary>
     /// <remarks>
     /// Deletes heartbeats whose <c>last_heartbeat</c> is older than
-    /// <paramref name="heartbeatTimeToLive"/>. This is the explicit TTL
-    /// equivalent: the Mongo implementation is a no-op (the server-side TTL
-    /// index already covers it); the PostgreSQL implementation executes the
-    /// DELETE. Removal is relaxed to within one cleanup period (the watcher's
-    /// three-period staleness check is the primary liveness signal and never
-    /// depends on row disappearance).
+    /// <paramref name="heartbeatTimeToLive"/>. This is the client-side TTL
+    /// equivalent: both the Mongo and PostgreSQL implementations execute the
+    /// real delete, driven by the registry's cleanup loop. Removal is relaxed
+    /// to within one cleanup period (the watcher's three-period staleness
+    /// check is the primary liveness signal and never depends on row disappearance).
     /// </remarks>
     /// <param name="heartbeatTimeToLive">心跳保存窗口 / The heartbeat expire-after window</param>
     /// <param name="cancellationToken">取消令牌 / The cancellation token</param>

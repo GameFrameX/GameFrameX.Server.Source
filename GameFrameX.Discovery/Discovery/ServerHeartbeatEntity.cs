@@ -105,7 +105,8 @@ public abstract class ServerHeartbeatEntity
     /// 获取或设置最后心跳时间（UTC）。
     /// </summary>
     /// <remarks>
-    /// Gets or sets the last heartbeat time (UTC; the Mongo TTL index field).
+    /// Gets or sets the last heartbeat time (UTC; the client-side cleanup
+    /// window's cutoff field).
     /// </remarks>
     public DateTime LastHeartbeat { get; set; }
 }

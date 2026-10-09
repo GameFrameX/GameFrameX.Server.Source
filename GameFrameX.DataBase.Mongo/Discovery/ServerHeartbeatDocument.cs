@@ -42,9 +42,9 @@ namespace GameFrameX.DataBase.Mongo.Discovery;
 /// the BSON wire mapping (camelCase elements, <c>_id</c> key, DateTime representation)
 /// lives in <see cref="MongoDiscoverySerialization"/> and is byte-identical to the
 /// former attribute form. One document per live instance, keyed by instance id; the
-/// TTL index on <see cref="ServerHeartbeatEntity.LastHeartbeat"/> (15 s) is the
-/// last-resort cleanup for instances that died without writing Stopped, while the
-/// watcher's three-period staleness check remains the primary liveness signal.
+/// client-side cleanup loop removes documents whose LastHeartbeat exceeds the 15 s
+/// window — the last-resort cleanup for instances that died without writing Stopped —
+/// while the watcher's three-period staleness check remains the primary liveness signal.
 /// </remarks>
 internal sealed class ServerHeartbeatDocument : ServerHeartbeatEntity
 {

@@ -145,7 +145,7 @@ public static class MongoDiscoveryRuntime
         // 再扩展为每 Role 一份心跳文档。
         var primaryRoleName = hostedRoles.Count > 0 ? hostedRoles.First() : "unknown";
         var selfDescriptor = DiscoveryRegistry.CreateSelfDescriptorFromEnvironment(primaryRoleName);
-        _registry = new DiscoveryRegistry(heartbeatStore, playerRouteStore, selfDescriptor);
+        _registry = new DiscoveryRegistry(heartbeatStore, playerRouteStore, selfDescriptor, null, options.TtlCleanupInterval);
         _registry.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
         if (selfDescriptor == null)
         {

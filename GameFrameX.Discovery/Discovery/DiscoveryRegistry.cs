@@ -48,8 +48,9 @@ namespace GameFrameX.Discovery;
 /// safety net, on <see cref="AppDomain.ProcessExit"/>. The expiry-cleanup
 /// loop (default 5 s) drives <see cref="IHeartbeatStore.DeleteExpiredAsync"/>
 /// — and the player-route window when an <see cref="IPlayerRouteStore"/> is
-/// supplied — replacing the former PostgreSQL-only TTL cleanup job: Mongo's
-/// no-op implementation keeps the server-side TTL index as the backstop.
+/// supplied — with both backends executing the real deletes (client-side TTL
+/// cleanup; the watcher's three-period staleness check stays the primary
+/// liveness signal).
 /// </remarks>
 public sealed class DiscoveryRegistry : IDisposable
 {
@@ -336,8 +337,8 @@ public sealed class DiscoveryRegistry : IDisposable
     /// The expiry-cleanup loop: periodically drives
     /// <see cref="IHeartbeatStore.DeleteExpiredAsync"/> (15 s window) and, when a
     /// player-route store is supplied, <see cref="IPlayerRouteStore.DeleteExpiredAsync"/>
-    /// (30-day window). Mongo stores no-op both calls (server-side TTL indexes);
-    /// PostgreSQL stores execute the DELETEs. Removal is deliberately relaxed to
+    /// (30-day window). Both backends execute the real deletes (client-side TTL
+    /// cleanup). Removal is deliberately relaxed to
     /// within one cleanup period — liveness never depends on it. A failed pass is
     /// logged and retried on the next tick.
     /// </remarks>

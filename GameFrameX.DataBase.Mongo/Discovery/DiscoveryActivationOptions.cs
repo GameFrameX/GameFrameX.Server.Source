@@ -60,4 +60,14 @@ public sealed class DiscoveryActivationOptions
     /// null skips Tier 1.
     /// </remarks>
     public IPlayerRouteFastPath PlayerRouteFastPath { get; init; }
+
+    /// <summary>
+    /// 获取或设置 TTL 清理周期（缺省 5s；测试可收缩）。
+    /// </summary>
+    /// <remarks>
+    /// Gets or sets the TTL cleanup period (defaults to 5 s; shrinkable in tests).
+    /// Drives the generic registry's cleanup loop over both stores (client-side
+    /// expiry deletion; the same knob as the PostgreSQL options).
+    /// </remarks>
+    public TimeSpan? TtlCleanupInterval { get; init; }
 }

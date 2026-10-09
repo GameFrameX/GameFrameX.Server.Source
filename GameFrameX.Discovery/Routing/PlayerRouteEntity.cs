@@ -81,8 +81,8 @@ public abstract class PlayerRouteEntity
     /// 获取或设置最近一次写入时间（TTL / 清理依据）。
     /// </summary>
     /// <remarks>
-    /// Gets or sets the last write timestamp; the TTL index (Mongo) or cleanup
-    /// window (PostgreSql) expires rows 30 days after this point.
+    /// Gets or sets the last write timestamp; the client-side cleanup window
+    /// (both backends) expires rows 30 days after this point.
     /// </remarks>
     public DateTime LastSeenAt { get; set; }
 }

@@ -161,7 +161,7 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task EnsureIndexesAsync_CreatesUniqueAndTtlIndexes()
+    public async Task EnsureIndexesAsync_CreatesUniqueIndexAndDropsLegacyTtl()
     {
         if (ShouldSkip)
         {
@@ -170,15 +170,20 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
 
         var database = CreateDatabase();
         var collection = database.GetCollection<PlayerRouteDocument>(DiscoveryStorageNaming.TableName<PlayerRouteEntity>());
+
+        // 预建遗留服务端 TTL 索引（旧命名规则 lastSeenAt_ttl_30d），EnsureIndexes 应将其清除。
+        // Pre-create the legacy server-side TTL index; EnsureIndexes must drop it.
+        await collection.Indexes.CreateOneAsync(new CreateIndexModel<PlayerRouteDocument>(
+            Builders<PlayerRouteDocument>.IndexKeys.Ascending(document => document.LastSeenAt),
+            new CreateIndexOptions { ExpireAfter = TimeSpan.FromSeconds(PlayerRouteResolverBootstrap.RouteTimeToLiveSeconds), Name = "lastSeenAt_ttl_30d" }));
         await PlayerRouteCollection.EnsureIndexesAsync(collection);
 
         var indexes = await collection.Indexes.List().ToListAsync();
-        var indexSummary = string.Join(" | ", indexes.Select(BuildIndexSummary));
 
-        // 唯一索引：playerId_1
+        // 唯一索引：playerId（upsert 幂等键）。
         Assert.Contains(indexes, x => HasKey(x, "playerId") && IsUnique(x));
-        // TTL 索引：lastSeenAt_1（带 expireAfterSeconds 等于 30 天）
-        Assert.Contains(indexes, x => HasKey(x, "lastSeenAt") && HasTtl(x));
+        // 过期清理由客户端清理循环执行：不得残留任何带 expireAfterSeconds 的索引。
+        Assert.DoesNotContain(indexes, HasTtl);
     }
 
     private static string BuildIndexSummary(BsonDocument index)
@@ -199,13 +204,7 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
 
     private static bool HasTtl(BsonDocument index)
     {
-        if (!index.Contains("expireAfterSeconds"))
-        {
-            return false;
-        }
-
-        var seconds = index["expireAfterSeconds"].ToInt64();
-        return seconds == PlayerRouteCollection.TtlSeconds;
+        return index.Contains("expireAfterSeconds");
     }
 
     [Fact]

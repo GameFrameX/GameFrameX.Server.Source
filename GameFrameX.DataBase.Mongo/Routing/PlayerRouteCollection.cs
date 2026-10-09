@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 
+using GameFrameX.DataBase.Mongo.Discovery;
 using GameFrameX.Discovery.Routing;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
@@ -44,8 +45,9 @@ namespace GameFrameX.DataBase.Mongo.Routing;
 /// the BSON wire mapping (camelCase elements) lives in
 /// <see cref="MongoDiscoverySerialization"/> and is byte-identical to the former
 /// attribute form. One document per player; the unique <see cref="PlayerRouteEntity.PlayerId"/>
-/// index is the lookup key, and the TTL on <see cref="PlayerRouteEntity.LastSeenAt"/> keeps
-/// long-offline players from accumulating forever. <see cref="PlayerRouteEntity.Version"/> is
+/// index is the lookup key, and the client-side cleanup loop's 30-day window on
+/// <see cref="PlayerRouteEntity.LastSeenAt"/> keeps long-offline players from
+/// accumulating forever. <see cref="PlayerRouteEntity.Version"/> is
 /// the CAS counter for the "踢号 + 重登" sequence: a new login must carry
 /// <c>oldVersion + 1</c>, otherwise <see>
 ///     <cref>MongoPlayerRouteSyncTarget</cref>
@@ -64,9 +66,9 @@ public sealed class PlayerRouteDocument : PlayerRouteEntity
 /// <remarks>
 /// The player_route collection contract (the no-abbreviation naming rule plus the
 /// index bootstrap utility). The unique index on <c>playerId</c> is what makes
-/// upsert idempotent; the TTL index on <c>lastSeenAt</c> bounds the offline
-/// garbage window to 30 days so the collection never grows unbounded for
-/// churned players.
+/// upsert idempotent; the offline garbage window (30 days) is bounded by the
+/// registry's client-side cleanup loop, and the bootstrap drops the legacy
+/// server-side TTL index so the collection never grows unbounded for churned players.
 /// </remarks>
 public static class PlayerRouteCollection
 {
@@ -79,27 +81,13 @@ public static class PlayerRouteCollection
     /// </remarks>
     private static string UniqueIndexName => DiscoveryStorageNaming.UniqueIndexName(DiscoveryStorageNaming.CamelCase(nameof(PlayerRouteEntity.PlayerId)));
 
-    /// <summary>
-    /// lastSeenAt TTL 索引名（统一命名规则：{element}_ttl_{window}）。
-    /// </summary>
-    /// <remarks>
-    /// The TTL-index name on lastSeenAt (unified naming rule: {element}_ttl_{window}).
-    /// </remarks>
-    private static string TtlIndexName => DiscoveryStorageNaming.TtlIndexName(DiscoveryStorageNaming.CamelCase(nameof(PlayerRouteEntity.LastSeenAt)), TimeSpan.FromSeconds(TtlSeconds));
 
     /// <summary>
-    /// 离线路由 TTL（30 天）。
+    /// 建立 player_route 索引（playerId 唯一）并清除遗留 lastSeenAt TTL 索引（存量迁移）。幂等。
     /// </summary>
     /// <remarks>
-    /// The TTL window for an offline route document (30 days).
-    /// </remarks>
-    public const long TtlSeconds = 30L * 24L * 60L * 60L;
-
-    /// <summary>
-    /// 建立 player_route 索引（playerId 唯一 + lastSeenAt TTL）。幂等：已存在则 no-op。
-    /// </summary>
-    /// <remarks>
-    /// Creates the player_route indexes (unique on playerId, TTL on lastSeenAt).
+    /// Creates the player_route index (unique on playerId) and drops the legacy
+    /// lastSeenAt TTL index (client-side expiry replaced the server-side one).
     /// Idempotent: existing indexes are a no-op.
     /// </remarks>
     /// <param name="collection">目标集合 / The target collection</param>
@@ -113,11 +101,8 @@ public static class PlayerRouteCollection
             Builders<PlayerRouteDocument>.IndexKeys.Ascending(document => document.PlayerId),
             new CreateIndexOptions { Unique = true, Name = UniqueIndexName });
 
-        var ttlIndex = new CreateIndexModel<PlayerRouteDocument>(
-            Builders<PlayerRouteDocument>.IndexKeys.Ascending(document => document.LastSeenAt),
-            new CreateIndexOptions { ExpireAfter = TimeSpan.FromSeconds(TtlSeconds), Name = TtlIndexName });
-
-        await collection.Indexes.CreateManyAsync(new[] { uniqueIndex, ttlIndex }, cancellationToken).ConfigureAwait(false);
+        await collection.Indexes.CreateOneAsync(uniqueIndex, cancellationToken: cancellationToken).ConfigureAwait(false);
+        await MongoLegacyTtlIndexes.DropAllAsync(collection, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

@@ -38,10 +38,11 @@ namespace GameFrameX.DataBase.Mongo.Discovery;
 /// <remarks>
 /// The Mongo implementation of the heartbeat storage seam: the MQL
 /// counterpart consumed by the generic <see cref="DiscoveryRegistry"/> /
-/// <see cref="DiscoveryWatcher"/>. Schema bootstrap creates the 15 s TTL
-/// index on <c>lastHeartbeat</c>; <see cref="DeleteExpiredAsync"/> is
-/// therefore a no-op — the server-side TTL index is the backstop, and the
-/// watcher's three-period staleness check remains the primary liveness signal.
+/// <see cref="DiscoveryWatcher"/>. Expiry deletion is client-side:
+/// <see cref="DeleteExpiredAsync"/> executes the real delete driven by the
+/// registry's cleanup loop (the watcher's three-period staleness check
+/// remains the primary liveness signal); schema bootstrap keeps a plain
+/// lastHeartbeat index for the sweep and removes the legacy server-side TTL index.
 /// </remarks>
 public sealed class MongoHeartbeatStore : IHeartbeatStore
 {
@@ -68,26 +69,30 @@ public sealed class MongoHeartbeatStore : IHeartbeatStore
     }
 
     /// <summary>
-    /// lastHeartbeat TTL 索引名（统一命名规则：{element}_ttl_{window}）。
+    /// lastHeartbeat 普通索引名（统一命名规则：{element}_idx）。
     /// </summary>
     /// <remarks>
-    /// The TTL-index name on lastHeartbeat (unified naming rule: {element}_ttl_{window}).
+    /// The plain-index name on lastHeartbeat (unified naming rule: {element}_idx).
     /// </remarks>
-    private static string TtlIndexName => DiscoveryStorageNaming.TtlIndexName(DiscoveryStorageNaming.CamelCase(nameof(ServerHeartbeatEntity.LastHeartbeat)), DiscoveryRegistry.HeartbeatTimeToLive);
+    private static string PlainIndexName => DiscoveryStorageNaming.PlainIndexName(DiscoveryStorageNaming.CamelCase(nameof(ServerHeartbeatEntity.LastHeartbeat)));
 
     /// <summary>
-    /// 建 TTL 索引（幂等：lastHeartbeat_ttl_15s）。
+    /// 建 lastHeartbeat 普通索引（幂等：lastHeartbeat_idx）并清除遗留 TTL 索引（存量迁移）。
     /// </summary>
     /// <remarks>
-    /// Creates the 15 s TTL index on lastHeartbeat (idempotent).
+    /// Creates the plain lastHeartbeat index (idempotent; serves the cleanup
+    /// DELETE's range scan) and drops the legacy server-side TTL index left by
+    /// the former server-side-expiry design (idempotent via
+    /// <see cref="MongoLegacyTtlIndexes.DropAllAsync{TDocument}"/>).
     /// </remarks>
     /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
     /// <returns>异步任务 / Async task</returns>
     public async Task EnsureSchemaAsync(CancellationToken cancellationToken = default)
     {
         var indexKeys = Builders<ServerHeartbeatDocument>.IndexKeys.Ascending(document => document.LastHeartbeat);
-        var indexOptions = new CreateIndexOptions { ExpireAfter = DiscoveryRegistry.HeartbeatTimeToLive, Name = TtlIndexName };
+        var indexOptions = new CreateIndexOptions { Name = PlainIndexName };
         await _collection.Indexes.CreateOneAsync(new CreateIndexModel<ServerHeartbeatDocument>(indexKeys, indexOptions), cancellationToken: cancellationToken).ConfigureAwait(false);
+        await MongoLegacyTtlIndexes.DropAllAsync(_collection, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -146,19 +151,22 @@ public sealed class MongoHeartbeatStore : IHeartbeatStore
     }
 
     /// <summary>
-    /// no-op：Mongo 服务端 TTL 索引兜底过期清除。
+    /// 删除过期心跳文档（lastHeartbeat 早于 now − heartbeatTimeToLive；清理循环驱动）。
     /// </summary>
     /// <remarks>
-    /// No-op: the server-side TTL index (created by
-    /// <see cref="EnsureSchemaAsync"/>) already removes expired documents —
-    /// the explicit delete is unnecessary on Mongo.
+    /// Deletes heartbeat documents whose <c>lastHeartbeat</c> is older than
+    /// <paramref name="heartbeatTimeToLive"/> — the client-side TTL equivalent,
+    /// driven by the registry's cleanup loop (same semantics as the PostgreSQL
+    /// store; removal relaxed to within one cleanup period, the watcher's
+    /// three-period staleness check remains the primary liveness signal).
     /// </remarks>
-    /// <param name="heartbeatTimeToLive">心跳保存窗口（Mongo 路径忽略）/ The expire-after window (ignored on Mongo)</param>
+    /// <param name="heartbeatTimeToLive">心跳保存窗口 / The expire-after window</param>
     /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
-    /// <returns>已完成的任务 / A completed task</returns>
+    /// <returns>异步任务 / Async task</returns>
     public Task DeleteExpiredAsync(TimeSpan heartbeatTimeToLive, CancellationToken cancellationToken = default)
     {
-        return Task.CompletedTask;
+        var cutoff = DateTime.UtcNow - heartbeatTimeToLive;
+        return _collection.DeleteManyAsync(document => document.LastHeartbeat < cutoff, cancellationToken);
     }
 
     /// <summary>

@@ -48,11 +48,11 @@ public static class PlayerRouteResolverBootstrap
 {
 
     /// <summary>
-    /// 离线路由 TTL（30 天，秒数；清理循环与 TTL 索引共用同值）。
+    /// 离线路由 TTL（30 天，秒数；两个后端的客户端清理循环共用同值）。
     /// </summary>
     /// <remarks>
-    /// The TTL window for an offline route record (30 days, in seconds; shared by the
-    /// cleanup loop and the server-side TTL index).
+    /// The TTL window for an offline route record (30 days, in seconds; shared by
+    /// the client-side cleanup loop on both backends).
     /// </remarks>
     public const long RouteTimeToLiveSeconds = 30L * 24L * 60L * 60L;
 

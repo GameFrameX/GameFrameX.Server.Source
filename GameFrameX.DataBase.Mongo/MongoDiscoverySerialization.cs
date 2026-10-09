@@ -47,9 +47,9 @@ namespace GameFrameX.DataBase.Mongo;
 /// entity bases (the single naming rule — no per-field element literals), plus the
 /// two heartbeat specifics that cannot be expressed by a naming rule:
 /// <see cref="ServerHeartbeatEntity.InstanceId"/> as the document <c>_id</c> key
-/// (<c>MapIdMember</c>) and the BSON DateTime representation of
-/// <see cref="ServerHeartbeatEntity.LastHeartbeat"/> (the TTL index only fires on
-/// native BSON dates). The route side needs no class map at all — its camelCase
+/// <see cref="ServerHeartbeatEntity.LastHeartbeat"/> (native BSON dates keep the
+/// cleanup delete's time-range comparison and the read/write time semantics uniform).
+/// The route side needs no class map at all — its camelCase
 /// mapping comes entirely from the convention. Element names are byte-identical to
 /// the former attribute form, so existing control databases need no migration.
 /// The module initializer registers the convention before any first use of the

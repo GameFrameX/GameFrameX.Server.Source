@@ -138,39 +138,12 @@ public static class DiscoveryStorageNaming
     }
 
     /// <summary>
-    /// Mongo TTL 索引名规则（{element}_ttl_{window}；窗口紧凑格式 15s / 30d）。
+    /// Mongo 普通索引名规则（{element}_idx）。
     /// </summary>
     /// <param name="elementName">元素名（camelCase）/ The element name (camelCase)</param>
-    /// <param name="timeToLive">过期窗口 / The expire-after window</param>
     /// <returns>索引名 / The index name</returns>
-    public static string TtlIndexName(string elementName, TimeSpan timeToLive)
+    public static string PlainIndexName(string elementName)
     {
-        return $"{elementName}_ttl_{CompactDuration(timeToLive)}";
-    }
-
-    /// <summary>
-    /// 时长紧凑格式规则（天/时/分/秒取最大整单位：30d、15s）。
-    /// </summary>
-    /// <param name="value">时长 / The duration</param>
-    /// <returns>紧凑格式 / The compact form</returns>
-    private static string CompactDuration(TimeSpan value)
-    {
-        var totalSeconds = (long)value.TotalSeconds;
-        if (totalSeconds >= 86400 && totalSeconds % 86400 == 0)
-        {
-            return $"{totalSeconds / 86400}d";
-        }
-
-        if (totalSeconds >= 3600 && totalSeconds % 3600 == 0)
-        {
-            return $"{totalSeconds / 3600}h";
-        }
-
-        if (totalSeconds >= 60 && totalSeconds % 60 == 0)
-        {
-            return $"{totalSeconds / 60}m";
-        }
-
-        return $"{totalSeconds}s";
+        return $"{elementName}_idx";
     }
 }

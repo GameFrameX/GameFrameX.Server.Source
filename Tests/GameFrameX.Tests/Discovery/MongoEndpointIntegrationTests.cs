@@ -29,7 +29,9 @@
 
 
 using GameFrameX.Discovery;
+using GameFrameX.Discovery.Routing;
 using GameFrameX.DataBase.Mongo.Discovery;
+using GameFrameX.DataBase.Mongo.Routing;
 using MongoDB.Driver;
 
 namespace GameFrameX.Tests.Discovery;
@@ -249,7 +251,7 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
             await WaitUntilAsync(() => watcher.Current.TryGetInstance(instanceId, out _), TimeSpan.FromSeconds(30));
             Assert.Contains((RoleInstanceChangeKind.Online, instanceId), events.Observed);
 
-            // 删除文档（模拟 TTL 清除），watcher 应广播 Evicted 且路由表摘除该实例。
+            // 删除文档（模拟客户端清理循环清除），watcher 应广播 Evicted 且路由表摘除该实例。
             await collection.DeleteOneAsync(candidate => candidate["_id"] == instanceId);
             await WaitUntilAsync(() => !watcher.Current.TryGetInstance(instanceId, out _), TimeSpan.FromSeconds(30));
             Assert.Contains((RoleInstanceChangeKind.Evicted, instanceId), events.Observed);
@@ -360,6 +362,64 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task TtlCleanup_ShouldRemoveExpiredHeartbeatRows()
+    {
+        if (ShouldSkip)
+        {
+            return;
+        }
+
+        var controlDatabase = CreateControlDatabase();
+        var heartbeatCollection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(DiscoveryStorageNaming.TableName<ServerHeartbeatEntity>());
+        var routeCollection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(DiscoveryStorageNaming.TableName<PlayerRouteEntity>());
+
+        // 一条新鲜心跳、一条过期心跳（15s 窗口）与一条过期 player_route（30 天窗口）。
+        var freshId = $"integration-ttl-fresh-{Guid.NewGuid():N}";
+        var expiredId = $"integration-ttl-expired-{Guid.NewGuid():N}";
+        await heartbeatCollection.InsertManyAsync(new[]
+        {
+            new MongoDB.Bson.BsonDocument
+            {
+                { "_id", freshId }, { "role", "Game" }, { "advertiseEndpoint", "tcp://10.0.0.4:7601" }, { "status", "Active" },
+                { "load", 0 }, { "addressKind", "IPv4" }, { "incarnation", 9500L }, { "lastHeartbeat", DateTime.UtcNow },
+            },
+            new MongoDB.Bson.BsonDocument
+            {
+                { "_id", expiredId }, { "role", "Game" }, { "advertiseEndpoint", "tcp://10.0.0.5:7602" }, { "status", "Active" },
+                { "load", 0 }, { "addressKind", "IPv4" }, { "incarnation", 9501L }, { "lastHeartbeat", DateTime.UtcNow.AddSeconds(-60) },
+            },
+        });
+        await routeCollection.InsertManyAsync(new[]
+        {
+            new MongoDB.Bson.BsonDocument
+            {
+                { "playerId", 901L }, { "instanceId", expiredId }, { "role", "Game" }, { "version", 1L },
+                { "lastSeenAt", DateTime.UtcNow.AddDays(-40) },
+            },
+            new MongoDB.Bson.BsonDocument
+            {
+                { "playerId", 902L }, { "instanceId", freshId }, { "role", "Game" }, { "version", 1L },
+                { "lastSeenAt", DateTime.UtcNow },
+            },
+        });
+
+        using (var registry = new DiscoveryRegistry(new MongoHeartbeatStore(controlDatabase), new MongoPlayerRouteStore(controlDatabase), null, null, TimeSpan.FromMilliseconds(200)))
+        {
+            await registry.StartAsync();
+
+            // 同一轮清理 pass 的两个删除（心跳 / 路由）之间没有原子性：等待条件必须覆盖两者，
+            // 否则并发负载下偶发在两步之间退出导致断言时序缺陷（对齐 PG 侧实测修复）。
+            // The two deletes of a cleanup pass are not atomic with each other: the wait must cover both.
+            await WaitUntilAsync(async () => await heartbeatCollection.Find(candidate => candidate["_id"] == expiredId).FirstOrDefaultAsync() == null &&
+                                            await routeCollection.Find(candidate => candidate["playerId"] == 901L).FirstOrDefaultAsync() == null, TimeSpan.FromSeconds(30));
+        }
+
+        Assert.NotNull(await heartbeatCollection.Find(candidate => candidate["_id"] == freshId).FirstOrDefaultAsync());
+        Assert.NotNull(await routeCollection.Find(candidate => candidate["playerId"] == 902L).FirstOrDefaultAsync());
+        Assert.Null(await routeCollection.Find(candidate => candidate["playerId"] == 901L).FirstOrDefaultAsync());
+    }
+
     /// <summary>
     /// 轮询等待指定实例文档出现。
     /// </summary>
@@ -417,6 +477,25 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
         }
 
         Assert.True(condition(), "The expected condition was not met within the timeout.");
+    }
+
+    /// <summary>
+    /// 轮询断言直到异步条件成立或超时。
+    /// </summary>
+    private static async Task WaitUntilAsync(Func<Task<bool>> condition, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            if (await condition())
+            {
+                return;
+            }
+
+            await Task.Delay(100);
+        }
+
+        Assert.True(await condition(), "The expected condition was not met within the timeout.");
     }
 
     /// <summary>

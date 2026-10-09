@@ -78,7 +78,7 @@ public enum PlayerRouteCasOutcome
 public interface IPlayerRouteStore
 {
     /// <summary>
-    /// 幂等建 schema（Mongo：playerId 唯一 + lastSeenAt TTL 索引；PG：CREATE TABLE / INDEX IF NOT EXISTS）。
+    /// 幂等建 schema（Mongo：playerId 唯一索引；PG：CREATE TABLE / INDEX IF NOT EXISTS）。
     /// </summary>
     /// <remarks>
     /// Idempotently ensures the player_route schema exists. Safe to call repeatedly.
@@ -139,14 +139,14 @@ public interface IPlayerRouteStore
     Task DeleteAsync(long playerId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 删除过期路由（30 天窗口；Mongo 实现为 no-op，由服务端 TTL 索引兜底）。
+    /// 删除过期路由（30 天窗口；客户端 TTL 等效语义，两个后端都执行真实删除）。
     /// </summary>
     /// <remarks>
     /// Deletes routes whose <c>last_seen_at</c> is older than
-    /// <paramref name="timeToLive"/> (the 30-day offline garbage window). The
-    /// Mongo implementation is a no-op (the server-side TTL index covers it);
-    /// the PostgreSQL implementation executes the DELETE. Removal is relaxed to
-    /// within one cleanup period.
+    /// <paramref name="timeToLive"/> (the 30-day offline garbage window). Both
+    /// the Mongo and PostgreSQL implementations execute the real delete,
+    /// driven by the registry's cleanup loop. Removal is relaxed to within one
+    /// cleanup period.
     /// </remarks>
     /// <param name="timeToLive">路由保存窗口 / The expire-after window</param>
     /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
