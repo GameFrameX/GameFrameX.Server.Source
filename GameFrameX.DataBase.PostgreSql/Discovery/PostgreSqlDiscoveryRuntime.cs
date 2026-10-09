@@ -35,11 +35,11 @@ using Npgsql;
 namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
 
 /// <summary>
-/// PostgreSQL 发现层激活参数对象（C166 T8：与 <see cref="DiscoveryActivationOptions"/> 同形，控制库载体换为 NpgsqlDataSource）。
+/// PostgreSQL 发现层激活参数对象（C166 T8：与 <c>DiscoveryActivationOptions</c> 同形，控制库载体换为 NpgsqlDataSource）。
 /// </summary>
 /// <remarks>
 /// Parameter object for PostgreSQL discovery activation (C166 T8): the same shape
-/// as <see cref="DiscoveryActivationOptions"/> with the control-database carrier
+/// as <c>DiscoveryActivationOptions</c> with the control-database carrier
 /// swapped to <see cref="NpgsqlDataSource"/>. Set <see cref="DataSource"/> for
 /// direct package consumers, or <see cref="ConnectionName"/> for launch flows
 /// that resolve the control database through the unified <c>GameDb</c> entry
@@ -90,15 +90,18 @@ public sealed class PostgreSqlDiscoveryActivationOptions
 }
 
 /// <summary>
-/// PostgreSQL 发现层进程装配器（C166 T8：与 <see cref="MongoDiscoveryRuntime"/> 启动顺序对齐的平行实现）。
+/// PostgreSQL 发现层进程装配器（C166 T8：与 <c>MongoDiscoveryRuntime</c> 启动顺序对齐的平行实现）。
 /// </summary>
 /// <remarks>
 /// The process-level wiring point for the PostgreSQL discovery layer (C166 T8),
-/// mirroring <see cref="MongoDiscoveryRuntime"/>. The launch flow calls
-/// <see cref="Activate"/> once the control database is registered: it starts the
-/// watcher (read side), starts the registry (write side — skipped when no
-/// advertise port is configured), starts the TTL cleanup job (the AC-4
-/// replacement for the Mongo TTL index), then attaches the player-route layer.
+/// mirroring <c>MongoDiscoveryRuntime</c>. The launch flow calls
+/// <see cref="Activate"/> once the control database is registered: it first ensures
+/// the discovery schema (server_heartbeat — PostgreSQL, unlike MongoDB, never creates
+/// missing relations lazily, and the watcher's immediate first poll would otherwise
+/// throw 42P01), starts the watcher (read side), starts the registry (write side —
+/// skipped when no advertise port is configured), attaches the player-route layer,
+/// then starts the TTL cleanup job last (the AC-4 replacement for the Mongo TTL index,
+/// after player_route exists so its immediate first pass cannot miss the table).
 /// Router wiring (RoleRouterHolder / InProcessRoleRouter / TcpEnvelopeForwarder) is
 /// NOT performed here — the composition side calls
 /// <c>DiscoveryRoutingWire.Initialize(RoleSet.Current, PostgreSqlDiscoveryRuntime.TableProvider)</c>
@@ -187,7 +190,11 @@ public static class PostgreSqlDiscoveryRuntime
         }
 
         var hostedRoleNames = options.HostedRoleNames;
-        ArgumentNullException.ThrowIfNull(hostedRoleNames, nameof(options));
+        ArgumentNullException.ThrowIfNull(hostedRoleNames, nameof(hostedRoleNames));
+
+        // C166 verify P1-1：server_heartbeat 必须先于读侧立即轮询存在（且先于一次性激活守卫——
+        // 建表失败时进程重启可完整重试，不会把 Activate 永久锁成 no-op）。
+        PostgreSqlEndpointRegistry.EnsureSchemaAsync(dataSource, CancellationToken.None).GetAwaiter().GetResult();
 
         if (Interlocked.CompareExchange(ref _activated, 1, 0) != 0)
         {
@@ -211,7 +218,11 @@ public static class PostgreSqlDiscoveryRuntime
             LogHelper.Warning("[PostgreSqlDiscoveryRuntime] no advertise port configured ({environmentVariable}); the heartbeat write side is skipped and this process only observes the topology", AdvertiseEndpointEnvironment.AdvertisePortEnvironmentVariable);
         }
 
-        // AC-4：TTL 清理 job 替代 Mongo TTL 索引；Evicted 时序在清理周期内放宽（注释见 PostgreSqlTtlCleanupJob）。
+        // C166 verify P2：TTL 清理 job 的立即首轮要求 player_route 已建（Bootstrap.Attach 负责），
+        // 故后置于路由层装配，避免首轮整批 DELETE 因缺表回滚。
+        // 玩家路由层装配（建表 / 建索引 + 装 SyncTarget），时序与 Mongo 版一致：路由缝激活后追加。
+        PostgreSqlPlayerRouteResolverBootstrap.Attach(dataSource, options.PlayerRouteFastPath).GetAwaiter().GetResult();
+
         _ttlCleanupJob = new PostgreSqlTtlCleanupJob(dataSource, options.TtlCleanupInterval);
         _ttlCleanupJob.Start();
 
@@ -244,8 +255,11 @@ public static class PostgreSqlDiscoveryRuntime
     {
         _activated = 0;
 
-        _registry = null;
+        // 与 Activate 相反顺序停机：读侧 → 写侧（尽力写 Stopped 终态）→ 清理 job。
+        _watcher?.Dispose();
         _watcher = null;
+        _registry?.Dispose();
+        _registry = null;
         _ttlCleanupJob?.Dispose();
         _ttlCleanupJob = null;
     }
