@@ -57,7 +57,6 @@ public sealed class MongoDbServiceConnectionTests
         var service = new MongoDbService();
         var options = new DbOptions
         {
-            Type = "MongoDb",
             ConnectionString = connectionString,
             Name = dbName,
         };

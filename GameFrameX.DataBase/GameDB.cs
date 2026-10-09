@@ -118,97 +118,77 @@ public static partial class GameDb
     }
 
     /// <summary>
-    /// 初始化GameDb（兼容旧签名：连接串取自 <paramref name="dbOptions"/>）。
+    /// 初始化GameDb（显式实现类型逃生门：AOT/裁剪、自定义 <see cref="IDatabaseService"/> 实现与测试假实现）。
     /// </summary>
     /// <remarks>
-    /// Initialize the GameDb instance (legacy signature: connection string taken from <paramref name="dbOptions"/>).
+    /// Initialize the GameDb instance (explicit-type escape hatch for AOT/trimming scenarios, custom
+    /// <see cref="IDatabaseService"/> implementations and test fakes): registers by
+    /// <see cref="DbOptions.Name"/> into <see cref="MultiDbRegistry"/> and, on success, nominates the
+    /// facade default database when <see cref="DbOptions.IsDefault"/> is set (default). The generic
+    /// argument is itself the provider — <see cref="DbOptions.Provider"/> is ignored on this path.
+    /// Non-default databases (e.g. the control database registered first by the launch flow) must
+    /// pass <c>IsDefault = false</c> explicitly, otherwise a later default registration fails fast
+    /// with a set-once conflict. Startup composition roots resolving the provider from configuration
+    /// should use the non-generic <see cref="Init(DbOptions)"/> overload instead.
     /// </remarks>
     /// <typeparam name="T">数据库服务的具体实现类型,必须实现IDatabaseService接口且有无参构造函数 / Database service implementation type, must implement IDatabaseService interface and have a parameterless constructor</typeparam>
-    /// <param name="dbOptions">数据库配置选项 / Database configuration options</param>
-    /// <exception cref="ArgumentNullException">当 <paramref name="dbOptions"/> 的 ConnectionString 或 Name 为 null 时抛出 / Thrown when ConnectionString or Name of <paramref name="dbOptions"/> is null</exception>
+    /// <param name="dbOptions">数据库配置选项（ConnectionString 唯一来源；Name 同时作为注册名；IsDefault 提名门面默认库） / Database configuration options (ConnectionString is the single source; Name doubles as the registry name; IsDefault nominates the facade default)</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="dbOptions"/>、其 ConnectionString 或 Name 为 null 时抛出 / Thrown when dbOptions, its ConnectionString, or Name is null</exception>
+    /// <exception cref="ArgumentException">当 ConnectionString 为空白时抛出 / Thrown when ConnectionString is blank</exception>
+    /// <exception cref="InvalidOperationException">当同名库已注册，或 IsDefault 提名与既有默认库冲突时抛出（拒绝静默覆盖） / Thrown when a database with the same name is already registered, or the IsDefault nomination conflicts with the existing default (silent overwrite rejected)</exception>
     /// <returns>返回数据库是否初始化成功 / Returns whether the database was initialized successfully</returns>
-    [Obsolete("Use Init<T>(string connectionString, DbOptions dbOptions) instead")]
     public static Task<bool> Init<T>(DbOptions dbOptions) where T : IDatabaseService, new()
     {
-        ArgumentNullException.ThrowIfNull(dbOptions, nameof(dbOptions));
-        return Init<T>(dbOptions.ConnectionString, dbOptions);
+        return InitCore(new T(), dbOptions);
     }
 
     /// <summary>
-    /// 初始化GameDb（多库签名：按 <see cref="DbOptions.Name"/> 注册进 <see cref="MultiDbRegistry"/>，C143a D20#2）。
+    /// 初始化GameDb（推荐启动路径：按 <see cref="DbOptions.Provider"/> 经 <see cref="DbProviderResolver"/> 约定解析实现，C177/C183）。
     /// </summary>
     /// <remarks>
-    /// Initialize the GameDb instance (multi-database signature: registers by <see cref="DbOptions.Name"/> into
-    /// <see cref="MultiDbRegistry"/>). The connection string passed explicitly takes precedence;
-    /// when empty it falls back to <see cref="DbOptions.ConnectionString"/> (control-database D-Single fallback:
-    /// pass the business <c>DataBaseUrl</c> explicitly so the control database shares the Mongo instance).
-    /// The static facade targets <see cref="SetDefault"/> nomination first and otherwise binds to the
-    /// first registered database (never silently re-bound once a default is explicitly nominated).
-    /// Also the explicit escape hatch (AOT/trimming, custom implementations, test fakes) next to the
-    /// convention-resolving enum overload <see cref="Init(DatabaseProviderType, string, DbOptions)"/> (C177);
-    /// both share the exact same Open→Register→rollback→facade path through <c>InitCore</c>.
+    /// Recommended launch path: resolves the implementation from <see cref="DbOptions.Provider"/> through
+    /// the convention mapping table (the composition root stays free of provider-type generics and
+    /// ternaries), then runs the exact same validation→Open→Register→rollback→nomination→facade path as
+    /// the generic overload through the shared <c>InitCore</c>. The generic
+    /// <see cref="Init{T}(DbOptions)"/> remains the explicit escape hatch for AOT/trimming scenarios,
+    /// custom <see cref="IDatabaseService"/> implementations and test fakes.
     /// </remarks>
-    /// <typeparam name="T">数据库服务的具体实现类型,必须实现IDatabaseService接口且有无参构造函数 / Database service implementation type, must implement IDatabaseService interface and have a parameterless constructor</typeparam>
-    /// <param name="connectionString">连接字符串；为空时回落 <paramref name="dbOptions"/> 内连接串 / Connection string; falls back to the one in <paramref name="dbOptions"/> when empty</param>
-    /// <param name="dbOptions">数据库配置选项（Name 同时作为注册名） / Database configuration options (Name doubles as the registry name)</param>
-    /// <exception cref="ArgumentNullException">当 <paramref name="dbOptions"/>、<paramref name="connectionString"/> 或 <paramref name="dbOptions"/> 的 Name 为 null 时抛出 / Thrown when dbOptions, connectionString, or Name of dbOptions is null</exception>
-    /// <exception cref="InvalidOperationException">当同名库已注册时抛出（拒绝静默覆盖） / Thrown when a database with the same name is already registered (silent overwrite rejected)</exception>
-    /// <returns>返回数据库是否初始化成功 / Returns whether the database was initialized successfully</returns>
-    public static Task<bool> Init<T>(string connectionString, DbOptions dbOptions) where T : IDatabaseService, new()
-    {
-        return InitCore(new T(), connectionString, dbOptions);
-    }
-
-    /// <summary>
-    /// 初始化GameDb（提供者枚举签名：经 <see cref="DbProviderResolver"/> 按命名约定反射创建实现，C177 推荐路径）。
-    /// </summary>
-    /// <remarks>
-    /// Recommended launch path: resolves the implementation from <paramref name="provider"/> through the
-    /// convention mapping table (the composition root stays free of provider-type generics and ternaries),
-    /// then runs the exact same Open→Register→rollback→facade path as the generic overload through the
-    /// shared <c>InitCore</c>. The generic <see cref="Init{T}(string, DbOptions)"/> remains the explicit
-    /// escape hatch for AOT/trimming scenarios, custom <see cref="IDatabaseService"/> implementations and
-    /// test fakes.
-    /// </remarks>
-    /// <param name="provider">提供者枚举值（映射表见 <see cref="DbProviderResolver"/>） / Provider enum member (mapping table in <see cref="DbProviderResolver"/>)</param>
-    /// <param name="connectionString">连接字符串；为空时回落 <paramref name="dbOptions"/> 内连接串 / Connection string; falls back to the one in <paramref name="dbOptions"/> when empty</param>
-    /// <param name="dbOptions">数据库配置选项（Name 同时作为注册名） / Database configuration options (Name doubles as the registry name)</param>
-    /// <exception cref="ArgumentNullException">当 <paramref name="dbOptions"/>、<paramref name="connectionString"/> 或 <paramref name="dbOptions"/> 的 Name 为 null 时抛出 / Thrown when dbOptions, connectionString, or Name of dbOptions is null</exception>
-    /// <exception cref="InvalidOperationException">当枚举未配映射、宿主缺 Provider 工程引用、实例化失败或同名库已注册时抛出 / Thrown when the enum is unmapped, the provider assembly is not referenced by the host, instantiation fails, or a database with the same name is already registered</exception>
+    /// <param name="dbOptions">数据库配置选项（Provider 约定解析依据；ConnectionString 唯一来源；Name 同时作为注册名；IsDefault 提名门面默认库） / Database configuration options (Provider drives convention resolution; ConnectionString is the single source; Name doubles as the registry name; IsDefault nominates the facade default)</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="dbOptions"/>、其 ConnectionString 或 Name 为 null 时抛出 / Thrown when dbOptions, its ConnectionString, or Name is null</exception>
+    /// <exception cref="ArgumentException">当 ConnectionString 为空白时抛出 / Thrown when ConnectionString is blank</exception>
+    /// <exception cref="InvalidOperationException">当枚举未配映射、宿主缺 Provider 工程引用、实例化失败、同名库已注册，或 IsDefault 提名与既有默认库冲突时抛出 / Thrown when the enum is unmapped, the provider assembly is not referenced by the host, instantiation fails, a database with the same name is already registered, or the IsDefault nomination conflicts with the existing default</exception>
     /// <returns>返回数据库是否初始化成功 / Returns whether the database was initialized successfully</returns>
     [RequiresUnreferencedCode("按命名约定反射创建提供者；AOT/裁剪场景请改用 Init<T> 显式指定实现类型")]
-    public static Task<bool> Init(DatabaseProviderType provider, string connectionString, DbOptions dbOptions)
+    public static Task<bool> Init(DbOptions dbOptions)
     {
-        return InitCore(DbProviderResolver.Create(provider), connectionString, dbOptions);
+        ArgumentNullException.ThrowIfNull(dbOptions, nameof(dbOptions));
+        return InitCore(DbProviderResolver.Create(dbOptions.Provider), dbOptions);
     }
 
     /// <summary>
-    /// 两个 Init 重载的共享执行路径：参数校验→连接串回落→打开→注册（失败回滚关闭）→门面首绑（C177 自泛型 Init&lt;T&gt; 抽取，语义零变化）。
+    /// 两个 Init 重载的共享执行路径：参数校验→打开→注册（失败回滚关闭）→门面首绑→IsDefault 提名（C183：连接串/提名单一来源化）。
     /// </summary>
     /// <remarks>
-    /// Shared execution path of both Init overloads, extracted verbatim from the generic
-    /// <c>Init&lt;T&gt;</c>: argument validation, connection-string fallback, Open, registration with
-    /// close-on-failure rollback, and first-registered facade binding (C143a D20#2).
+    /// Shared execution path of both Init overloads: argument validation, Open, registration with
+    /// close-on-failure rollback, first-registered facade binding, and the <see cref="DbOptions.IsDefault"/>
+    /// nomination (C183: the connection string and the default nomination each have a single source —
+    /// DbOptions). A nomination conflict propagates after the database has already been registered:
+    /// startup is expected to abort on it (fail-fast) and the process tears down, mirroring the legacy
+    /// behavior of SetDefault throwing after a successful Init.
     /// </remarks>
-    /// <param name="service">已创建的数据库实现实例（泛型重载由 new() 创建，枚举重载由 <see cref="DbProviderResolver"/> 反射创建） / The already created database service instance (new() in the generic overload, reflection in the enum overload)</param>
-    /// <param name="connectionString">连接字符串；为空时回落 <paramref name="dbOptions"/> 内连接串 / Connection string; falls back to the one in <paramref name="dbOptions"/> when empty</param>
+    /// <param name="service">已创建的数据库实现实例（泛型重载由 new() 创建，非泛型重载由 <see cref="DbProviderResolver"/> 反射创建） / The already created database service instance (new() in the generic overload, reflection in the non-generic overload)</param>
     /// <param name="dbOptions">数据库配置选项（Name 同时作为注册名） / Database configuration options (Name doubles as the registry name)</param>
-    /// <exception cref="ArgumentNullException">当 <paramref name="dbOptions"/>、<paramref name="connectionString"/> 或 <paramref name="dbOptions"/> 的 Name 为 null 时抛出 / Thrown when dbOptions, connectionString, or Name of dbOptions is null</exception>
-    /// <exception cref="InvalidOperationException">当同名库已注册时抛出（拒绝静默覆盖） / Thrown when a database with the same name is already registered (silent overwrite rejected)</exception>
+    /// <exception cref="ArgumentNullException">当 <paramref name="dbOptions"/>、其 ConnectionString 或 Name 为 null 时抛出 / Thrown when dbOptions, its ConnectionString, or Name is null</exception>
+    /// <exception cref="ArgumentException">当 ConnectionString 为空白时抛出 / Thrown when ConnectionString is blank</exception>
+    /// <exception cref="InvalidOperationException">当同名库已注册，或 IsDefault 提名与既有默认库冲突时抛出（拒绝静默覆盖） / Thrown when a database with the same name is already registered, or the IsDefault nomination conflicts with the existing default (silent overwrite rejected)</exception>
     /// <returns>返回数据库是否初始化成功 / Returns whether the database was initialized successfully</returns>
-    private static async Task<bool> InitCore(IDatabaseService service, string connectionString, DbOptions dbOptions)
+    private static async Task<bool> InitCore(IDatabaseService service, DbOptions dbOptions)
     {
         ArgumentNullException.ThrowIfNull(dbOptions, nameof(dbOptions));
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            connectionString = dbOptions.ConnectionString;
-        }
-
-        ArgumentNullException.ThrowIfNull(connectionString, nameof(connectionString));
+        ArgumentException.ThrowIfNullOrWhiteSpace(dbOptions.ConnectionString, nameof(DbOptions.ConnectionString));
         ArgumentNullException.ThrowIfNull(dbOptions.Name, nameof(dbOptions.Name));
 
-        var effectiveOptions = connectionString == dbOptions.ConnectionString ? dbOptions : dbOptions with { ConnectionString = connectionString };
-        var isOpened = await service.Open(effectiveOptions);
+        var isOpened = await service.Open(dbOptions);
         if (!isOpened)
         {
             return false;
@@ -225,9 +205,15 @@ public static partial class GameDb
             await service.Close();
             throw;
         }
+
         if (_dbServiceImplementation == null)
         {
             _dbServiceImplementation = service;
+        }
+
+        if (dbOptions.IsDefault)
+        {
+            NominateDefaultDatabase(dbOptions.Name, service);
         }
 
         return true;
@@ -238,15 +224,13 @@ public static partial class GameDb
     /// </summary>
     /// <remarks>
     /// Explicitly nominates the default database of the static facade (the target of every static CRUD
-    /// member and the parameterless <see cref="As{T}()"/>). This carries the data-lifecycle semantics
-    /// "business database = facade default database" (C159): the launch flow registers the control
-    /// database first (D16, discovery layer dependency), so first-registered binding alone would
-    /// silently route all business reads/writes to the control database — the split-brain defect this
-    /// API exists to remove. Decoupled from registration order by design: the composition root calls
-    /// it once after the business database initializes successfully. Set-once: a second call with a
-    /// different name throws; the same name is idempotently accepted.
+    /// member and the parameterless <see cref="As{T}()"/>). Declarative nomination via
+    /// <see cref="DbOptions.IsDefault"/> is the primary launch path (the nomination then happens inside
+    /// Init right after a successful registration); this method remains the explicit /
+    /// post-registration entry point and shares the exact same set-once core. Set-once: a second call
+    /// with a different name throws; the same name is idempotently accepted.
     /// </remarks>
-    /// <param name="databaseName">注册名（须已通过 <see cref="Init{T}(string, DbOptions)"/> 注册） / Registry name (must already be registered)</param>
+    /// <param name="databaseName">注册名（须已通过 <c>GameDb.Init</c> 注册） / Registry name (must already be registered via <c>GameDb.Init</c>)</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="databaseName"/> 为 null 时抛出 / Thrown when databaseName is null</exception>
     /// <exception cref="InvalidOperationException">当注册名未注册，或默认库已显式指定为另一注册名时抛出 / Thrown when the name is not registered, or the default was already set to a different name</exception>
     public static void SetDefault(string databaseName)
@@ -258,6 +242,24 @@ public static partial class GameDb
             throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Database.RegistryNotRegistered, databaseName, string.Join(", ", MultiDbRegistry.GetRegisteredDatabaseNames())));
         }
 
+        NominateDefaultDatabase(databaseName, service);
+    }
+
+    /// <summary>
+    /// 门面默认库提名的 set-once 核心（<see cref="SetDefault"/> 与 <see cref="DbOptions.IsDefault"/> 声明式提名共用，C183 抽取）。
+    /// </summary>
+    /// <remarks>
+    /// Set-once core of the facade default nomination, shared by the public <see cref="SetDefault"/>
+    /// and the declarative <see cref="DbOptions.IsDefault"/> path inside InitCore (C183): the first
+    /// nomination wins; the same name is idempotently accepted; a different name throws naming both
+    /// databases. The concurrent first-set race resolves via CAS — the loser re-reads the winner and
+    /// applies the same same-name/different-name rule as the serial path.
+    /// </remarks>
+    /// <param name="databaseName">要提名的注册名 / Registry name to nominate</param>
+    /// <param name="service">该注册名对应的服务实例（提名即绑定为门面目标） / The service registered under the name (the nomination binds it as the facade target)</param>
+    /// <exception cref="InvalidOperationException">当默认库已显式指定为另一注册名时抛出 / Thrown when the default was already set to a different name</exception>
+    private static void NominateDefaultDatabase(string databaseName, IDatabaseService service)
+    {
         var current = Volatile.Read(ref _defaultDatabaseName);
         if (current != null)
         {

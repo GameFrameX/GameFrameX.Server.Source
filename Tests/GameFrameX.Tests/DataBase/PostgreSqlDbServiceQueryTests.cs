@@ -658,7 +658,6 @@ public sealed class PostgreSqlDbServiceQueryTests
         var service = new PostgreSqlDbService();
         var options = new DbOptions
         {
-            Type = "PostgreSql",
             ConnectionString = WithDatabase(connectionString, dbName),
             Name = dbName,
         };

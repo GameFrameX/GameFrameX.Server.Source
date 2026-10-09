@@ -62,10 +62,11 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
             ActorLimit.Init(ActorLimit.RuleType.None);
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Launcher.ActorLimitConfigEnd));
             // 控制库先行于业务库，经 GameDb 统一入口判重/命名；
-            // 实现类型按 Setting.DatabaseProvider 由 GameDb 枚举重载约定解析（Name 仅注册名，库由连接串决定）。
+            // 实现类型按 DbOptions.Provider 由 GameDb 约定解析（Name 仅注册名，库由连接串决定）。
+            // 控制库必须显式 IsDefault = false——门面默认库由业务库声明式提名（缺省 true），漏写即启动期冲突。
             if (!GameDb.Contains(GameDb.ControlDatabaseName))
             {
-                var controlDatabaseInitResult = await GameDb.Init(Setting.DatabaseProvider, Setting.DataBaseUrl, new DbOptions { Name = GameDb.ControlDatabaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
+                var controlDatabaseInitResult = await GameDb.Init(new DbOptions { Provider = Setting.DatabaseProvider, ConnectionString = Setting.DataBaseUrl, Name = GameDb.ControlDatabaseName, IsDefault = false, IsUseTimeZone = Setting.IsUseTimeZone, });
                 if (controlDatabaseInitResult == false)
                 {
                     throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
@@ -100,15 +101,13 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
             // 路由胶水装配自 Runtime 拆至组合侧 DiscoveryRoutingWire（发现层 Runtime 不再引用消息胶水程序集）。
             GameFrameX.NetWork.RemoteMessaging.Routing.DiscoveryRoutingWire.Initialize(RoleSet.Current, Setting.DatabaseProvider == DatabaseProviderType.PostgreSql ? PostgreSqlDiscoveryRuntime.TableProvider : MongoDiscoveryRuntime.TableProvider);
 
-            var initResult = await GameDb.Init(Setting.DatabaseProvider, Setting.DataBaseUrl, new DbOptions { Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
+            // 业务库注册即声明式提名门面默认库（DbOptions.IsDefault 缺省 true）——
+            // 全部经 GameDb 门面的业务读写必须落在业务库（控制库已显式 IsDefault = false，先注册不会抢占门面）。
+            var initResult = await GameDb.Init(new DbOptions { Provider = Setting.DatabaseProvider, ConnectionString = Setting.DataBaseUrl, Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
             if (initResult == false)
             {
                 throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
             }
-
-            // 业务库 Init 成功后显式指定门面默认库——控制库先注册会使 set-once 门面静默指向控制库，
-            // 全部经 GameDb 门面的业务读写必须落在业务库（根缺陷修复点）。
-            GameDb.SetDefault(Setting.DataBaseName);
 
             await ComponentRegister.Init(typeof(AppsHandler).Assembly);
             HotfixManager.LoadHotfix(Setting);

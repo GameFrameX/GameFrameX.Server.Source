@@ -46,8 +46,8 @@ namespace GameFrameX.DataBase;
 /// repository. Renaming a provider project/class/namespace therefore breaks here (and in the guard
 /// test <c>DbProviderResolverTests</c>) instead of scattering composition-root ternaries.
 /// internal on purpose: the resolution hook is an implementation detail of the non-generic
-/// <c>GameDb.Init(DatabaseProviderType, string, DbOptions)</c> overload; hosts wanting an explicit
-/// type keep using the generic <c>Init&lt;T&gt;</c> escape hatch.
+/// <c>GameDb.Init(DbOptions)</c> overload; hosts wanting an explicit type keep using the generic
+/// <c>Init&lt;T&gt;</c> escape hatch.
 /// </remarks>
 internal static class DbProviderResolver
 {

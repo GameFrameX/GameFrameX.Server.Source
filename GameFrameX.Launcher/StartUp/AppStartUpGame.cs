@@ -78,9 +78,7 @@ internal sealed class AppStartUpGame : AppStartUpBase
             await InitializeControlDatabaseAsync();
             ActivateDiscoveryLayer();
             await InitializeBusinessDatabaseAsync();
-            // 业务库 Init 成功后显式指定门面默认库——控制库先注册会使 set-once 门面静默指向控制库，
-            // 全部经 GameDb 门面的业务读写必须落在业务库（根缺陷修复点）。
-            GameDb.SetDefault(Setting.DataBaseName);
+
             LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartEnd));
 
             LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.ComponentRegisterBegin));
@@ -115,14 +113,16 @@ internal sealed class AppStartUpGame : AppStartUpBase
 
     /// <summary>
     /// 控制库先行于业务库（D-Single 缺省回落：与业务库共用同一实例连接串），
-    /// 经 GameDb 统一入口判重/命名；实现类型按 Setting.DatabaseProvider 由 GameDb 枚举重载约定解析
+    /// 经 GameDb 统一入口判重/命名；实现类型按 DbOptions.Provider 由 GameDb 约定解析
     ///（PG 路径下 DbOptions.Name 仅作注册名，数据库由连接串 Database 决定）。
+    /// 控制库必须显式 IsDefault = false——门面默认库由业务库声明式提名（缺省 true），
+    /// 漏写会在业务库注册时抛 set-once 冲突（启动期 fail-fast）。
     /// </summary>
     private async Task InitializeControlDatabaseAsync()
     {
         if (!GameDb.Contains(GameDb.ControlDatabaseName))
         {
-            var controlDatabaseInitResult = await GameDb.Init(Setting.DatabaseProvider, Setting.DataBaseUrl, new DbOptions { Name = GameDb.ControlDatabaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
+            var controlDatabaseInitResult = await GameDb.Init(new DbOptions { Provider = Setting.DatabaseProvider, ConnectionString = Setting.DataBaseUrl, Name = GameDb.ControlDatabaseName, IsDefault = false, IsUseTimeZone = Setting.IsUseTimeZone, });
             if (controlDatabaseInitResult == false)
             {
                 throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
@@ -164,11 +164,13 @@ internal sealed class AppStartUpGame : AppStartUpBase
     }
 
     /// <summary>
-    /// 业务库 Init，实现类型按 Setting.DatabaseProvider 由 GameDb 枚举重载约定解析；失败抛 <see cref="InvalidOperationException"/>。
+    /// 业务库 Init，实现类型按 DbOptions.Provider 由 GameDb 约定解析；缺省 IsDefault = true——
+    /// 注册成功即声明式提名门面默认库，全部经 GameDb 门面的业务读写必须落在业务库
+    ///（控制库已显式 IsDefault = false，先注册不会抢占门面）；失败抛 <see cref="InvalidOperationException"/>。
     /// </summary>
     private async Task InitializeBusinessDatabaseAsync()
     {
-        var initResult = await GameDb.Init(Setting.DatabaseProvider, Setting.DataBaseUrl, new DbOptions { Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
+        var initResult = await GameDb.Init(new DbOptions { Provider = Setting.DatabaseProvider, ConnectionString = Setting.DataBaseUrl, Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
         if (initResult == false)
         {
             throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));

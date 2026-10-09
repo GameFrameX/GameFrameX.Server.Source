@@ -73,12 +73,12 @@ public class GameDbMultiDatabaseTests : IDisposable
     }
 
     /// <summary>
-    /// 新签名按名注册后，As(name) 能取回对应实例。
+    /// 按名注册后，As(name) 能取回对应实例（连接串由 DbOptions 承载，C183）。
     /// </summary>
     [Fact]
-    public async Task Init_WithExplicitConnectionString_RegistersByName()
+    public async Task Init_RegistersByName()
     {
-        var opened = await GameDb.Init<NoConnectionDatabaseService>("mongodb://business", new DbOptions { Name = "gameframex" });
+        var opened = await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://business", Name = "gameframex" });
 
         Assert.True(opened);
         Assert.True(MultiDbRegistry.Contains("gameframex"));
@@ -89,26 +89,14 @@ public class GameDbMultiDatabaseTests : IDisposable
     }
 
     /// <summary>
-    /// 连接串为空时回落 DbOptions.ConnectionString。
-    /// </summary>
-    [Fact]
-    public async Task Init_WithEmptyConnectionString_FallsBackToOptionsConnectionString()
-    {
-        var opened = await GameDb.Init<NoConnectionDatabaseService>(null, new DbOptions { ConnectionString = "mongodb://fallback", Name = "gameframex" });
-
-        Assert.True(opened);
-        Assert.Equal("mongodb://fallback", GameDb.As<NoConnectionDatabaseService>("gameframex").LastOpenedOptions.ConnectionString);
-    }
-
-    /// <summary>
     /// 控制库 + 业务库双注册：两个名字各自可取回，互不覆盖（D20#2 修复）。
     /// </summary>
     [Fact]
     public async Task Init_ControlAndBusinessDatabase_BothResolvable()
     {
         var connectionString = "mongodb://127.0.0.1:27017";
-        var controlOpened = await GameDb.Init<NoConnectionDatabaseService>(connectionString, new DbOptions { Name = MultiDbRegistry.ControlDatabaseName });
-        var businessOpened = await GameDb.Init<NoConnectionDatabaseService>(connectionString, new DbOptions { Name = "gameframex" });
+        var controlOpened = await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = connectionString, Name = MultiDbRegistry.ControlDatabaseName, IsDefault = false });
+        var businessOpened = await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = connectionString, Name = "gameframex" });
 
         Assert.True(controlOpened);
         Assert.True(businessOpened);
@@ -124,23 +112,23 @@ public class GameDbMultiDatabaseTests : IDisposable
     [Fact]
     public async Task Init_SameNameTwice_Throws()
     {
-        await GameDb.Init<NoConnectionDatabaseService>("mongodb://first", new DbOptions { Name = "gameframex" });
+        await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://first", Name = "gameframex" });
         var closeCountBefore = NoConnectionDatabaseService.TotalCloseCallCount;
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            GameDb.Init<NoConnectionDatabaseService>("mongodb://second", new DbOptions { Name = "gameframex" }));
+            GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://second", Name = "gameframex" }));
 
         Assert.Equal(closeCountBefore + 1, NoConnectionDatabaseService.TotalCloseCallCount);
     }
 
     /// <summary>
-    /// 静态门面绑定首个注册库，后续 Init 不再覆盖（D20#2 修复：不漂移到最后一次 Init）。
+    /// 静态门面绑定首个注册库，后续 Init 不再覆盖（D20#2 修复：不漂移到最后一次 Init；两库均 IsDefault = false 触发回落）。
     /// </summary>
     [Fact]
     public async Task Init_FacadeStaysOnFirstRegisteredDatabase()
     {
-        await GameDb.Init<NoConnectionDatabaseService>("mongodb://first", new DbOptions { Name = "first_database" });
-        await GameDb.Init<NoConnectionDatabaseService>("mongodb://second", new DbOptions { Name = "second_database" });
+        await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://first", Name = "first_database", IsDefault = false });
+        await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://second", Name = "second_database", IsDefault = false });
 
         var facade = GameDb.As<NoConnectionDatabaseService>();
         Assert.Equal("first_database", facade.LastOpenedOptions.Name);
@@ -152,8 +140,8 @@ public class GameDbMultiDatabaseTests : IDisposable
     [Fact]
     public async Task CloseAsync_ClosesAllRegisteredDatabases()
     {
-        await GameDb.Init<NoConnectionDatabaseService>("mongodb://first", new DbOptions { Name = "first_database" });
-        await GameDb.Init<NoConnectionDatabaseService>("mongodb://second", new DbOptions { Name = "second_database" });
+        await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://first", Name = "first_database", IsDefault = false });
+        await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://second", Name = "second_database", IsDefault = false });
 
         await GameDb.CloseAsync();
 
@@ -172,35 +160,33 @@ public class GameDbMultiDatabaseTests : IDisposable
     }
 
     /// <summary>
-    /// 旧签名（[Obsolete]）委托新重载：连接串取自 DbOptions 并按名注册（AC-3 行为零变化）。
+    /// 按 Launcher 真实顺序双注册（控制库先行、显式 IsDefault=false；业务库缺省提名）：门面目标必须落在业务库
+    ///（声明式提名取代事后 SetDefault；set-once 绑首注册曾使门面静默指向控制库的根缺陷回归用例）。
     /// </summary>
     [Fact]
-    public async Task Init_LegacyOverload_RegistersWithOptionName()
-    {
-#pragma warning disable CS0618 // 旧签名兼容性验证
-        var opened = await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://legacy", Name = "gameframex" });
-#pragma warning restore CS0618
-
-        Assert.True(opened);
-        Assert.Equal("mongodb://legacy", GameDb.As<NoConnectionDatabaseService>("gameframex").LastOpenedOptions.ConnectionString);
-    }
-
-    /// <summary>
-    /// 按 Launcher 真实顺序双注册（控制库先行）+ SetDefault(业务库)：门面目标必须落在业务库
-    /// （set-once 绑首注册曾使门面静默指向控制库的根缺陷回归用例）。
-    /// </summary>
-    [Fact]
-    public async Task SetDefault_AfterLauncherOrderRegistration_RoutesFacadeToBusinessDatabase()
+    public async Task Init_LauncherOrderControlThenBusiness_RoutesFacadeToBusinessDatabase()
     {
         var connectionString = "mongodb://127.0.0.1:27017";
-        await GameDb.Init<NoConnectionDatabaseService>(connectionString, new DbOptions { Name = MultiDbRegistry.ControlDatabaseName });
-        await GameDb.Init<NoConnectionDatabaseService>(connectionString, new DbOptions { Name = "gameframex" });
-
-        GameDb.SetDefault("gameframex");
+        await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = connectionString, Name = MultiDbRegistry.ControlDatabaseName, IsDefault = false });
+        await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = connectionString, Name = "gameframex" });
 
         var facade = GameDb.As<NoConnectionDatabaseService>();
         Assert.Equal("gameframex", facade.LastOpenedOptions.Name);
         Assert.Same(GameDb.As<NoConnectionDatabaseService>("gameframex"), facade);
+    }
+
+    /// <summary>
+    /// 声明式提名 set-once：第二个 IsDefault=true 注册与既有默认库异名时抛 InvalidOperationException，消息指名两库。
+    /// </summary>
+    [Fact]
+    public async Task Init_SecondDeclarativeDefault_Throws()
+    {
+        await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://first", Name = "first_database" });
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://second", Name = "second_database" }));
+        Assert.Contains("first_database", exception.Message);
+        Assert.Contains("second_database", exception.Message);
     }
 
     /// <summary>
@@ -212,7 +198,7 @@ public class GameDbMultiDatabaseTests : IDisposable
         var emptyException = Assert.Throws<InvalidOperationException>(() => GameDb.SetDefault("missing_database"));
         Assert.Contains("missing_database", emptyException.Message);
 
-        await GameDb.Init<NoConnectionDatabaseService>("mongodb://first", new DbOptions { Name = "first_database" });
+        await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://first", Name = "first_database" });
         var exception = Assert.Throws<InvalidOperationException>(() => GameDb.SetDefault("second_database"));
         Assert.Contains("second_database", exception.Message);
         Assert.Contains("first_database", exception.Message);
@@ -224,8 +210,8 @@ public class GameDbMultiDatabaseTests : IDisposable
     [Fact]
     public async Task SetDefault_SecondDifferentName_Throws_SameNameIsIdempotent()
     {
-        await GameDb.Init<NoConnectionDatabaseService>("mongodb://first", new DbOptions { Name = "first_database" });
-        await GameDb.Init<NoConnectionDatabaseService>("mongodb://second", new DbOptions { Name = "second_database" });
+        await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://first", Name = "first_database", IsDefault = false });
+        await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://second", Name = "second_database", IsDefault = false });
         GameDb.SetDefault("second_database");
 
         GameDb.SetDefault("second_database");
@@ -241,13 +227,13 @@ public class GameDbMultiDatabaseTests : IDisposable
     [Fact]
     public async Task ResetForTesting_ClearsDefaultDatabase()
     {
-        await GameDb.Init<NoConnectionDatabaseService>("mongodb://control", new DbOptions { Name = MultiDbRegistry.ControlDatabaseName });
-        await GameDb.Init<NoConnectionDatabaseService>("mongodb://business", new DbOptions { Name = "gameframex" });
+        await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://control", Name = MultiDbRegistry.ControlDatabaseName, IsDefault = false });
+        await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://business", Name = "gameframex", IsDefault = false });
         GameDb.SetDefault("gameframex");
 
         GameDb.ResetForTesting();
 
-        await GameDb.Init<NoConnectionDatabaseService>("mongodb://single", new DbOptions { Name = "only_database" });
+        await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://single", Name = "only_database" });
         Assert.Equal("only_database", GameDb.As<NoConnectionDatabaseService>().LastOpenedOptions.Name);
     }
 
@@ -260,7 +246,7 @@ public class GameDbMultiDatabaseTests : IDisposable
         Assert.Equal(MultiDbRegistry.ControlDatabaseName, GameDb.ControlDatabaseName);
 
         Assert.False(GameDb.Contains(MultiDbRegistry.ControlDatabaseName));
-        await GameDb.Init<NoConnectionDatabaseService>("mongodb://control", new DbOptions { Name = MultiDbRegistry.ControlDatabaseName });
+        await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://control", Name = MultiDbRegistry.ControlDatabaseName });
 
         Assert.True(GameDb.Contains(GameDb.ControlDatabaseName));
         Assert.False(GameDb.Contains("missing_database"));

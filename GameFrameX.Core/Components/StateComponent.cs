@@ -332,7 +332,7 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
         StateComponent.StatisticsTool.Count(stateName, stateList.Count);
         LogHelper.Debug("StateComponent.StateSaveBack StateName: {stateName} , Count: {count}", stateName, stateList.Count);
         // 批量保存统一走 GameDb.SaveBulkAsync（分批 upsert、逐批 ack/异常隔离在 DataBase 层实现）；
-        // 门面默认库由 Launcher 在业务库 Init 成功后显式 SetDefault(Setting.DataBaseName)，
+        // 门面默认库由业务库 DbOptions.IsDefault（缺省 true）在注册时声明式提名（C183），
         // Core 不再直接依赖 MongoDB.Driver / GameFrameX.DataBase.Mongo（取代原先的按名直连方案）。
         var savedStates = await GameDb.SaveBulkAsync(stateList, GlobalSettings.CurrentSetting.SaveDataBatchCount);
 

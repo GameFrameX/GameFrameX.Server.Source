@@ -189,7 +189,7 @@
     <value>MongoDbService.{0} failed with unknown retry exception.</value>
   </data>
     <data name="Database.GameDb.ImplicitDefaultBindingWarning" xml:space="preserve">
-    <value>Multiple databases are registered ({0}) but GameDb.SetDefault was never called; the static facade currently targets the first registered database. In multi-database deployments call GameDb.SetDefault(businessDatabaseName) after the business database initializes.</value>
+    <value>Multiple databases are registered ({0}) but none is nominated as the facade default (DbOptions.IsDefault); the static facade currently targets the first registered database. Nominate the business database at Init via DbOptions.IsDefault = true (default), or call GameDb.SetDefault(businessDatabaseName) explicitly.</value>
   </data>
 
     <!-- LNumber module log and error keys -->

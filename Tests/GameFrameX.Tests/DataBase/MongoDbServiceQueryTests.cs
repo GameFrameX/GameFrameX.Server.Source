@@ -1590,7 +1590,6 @@ public sealed class MongoDbServiceQueryTests
         var service = new MongoDbService();
         var options = new DbOptions
         {
-            Type = "MongoDb",
             ConnectionString = connectionString,
             Name = dbName,
         };
@@ -1630,7 +1629,6 @@ public sealed class MongoDbServiceQueryTests
         var dbName = $"gameframex_test_{Guid.NewGuid():N}";
         var options = new DbOptions
         {
-            Type = "MongoDb",
             ConnectionString = connectionString,
             Name = dbName,
         };
@@ -1676,12 +1674,11 @@ public sealed class MongoDbServiceQueryTests
         var dbName = $"gameframex_test_{Guid.NewGuid():N}";
         var options = new DbOptions
         {
-            Type = "MongoDb",
             ConnectionString = connectionString,
             Name = dbName,
         };
 
-        var opened = await GameDb.Init<MongoDbService>(options.ConnectionString, options);
+        var opened = await GameDb.Init<MongoDbService>(options);
         Assert.True(opened);
 
         try

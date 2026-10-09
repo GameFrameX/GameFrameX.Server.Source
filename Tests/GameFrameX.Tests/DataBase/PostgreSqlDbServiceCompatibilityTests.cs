@@ -247,7 +247,6 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
         var service = new PostgreSqlDbService();
         var options = new DbOptions
         {
-            Type = "PostgreSql",
             ConnectionString = testConnectionString,
             Name = dbName,
         };
