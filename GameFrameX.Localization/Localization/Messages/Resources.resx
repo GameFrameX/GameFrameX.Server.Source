@@ -200,10 +200,10 @@
     <value>Number data exceeds limit {0} {1}</value>
   </data>
     <data name="Utility.LNumber.MultiplicationOverflow" xml:space="preserve">
-    <value>LNumber multiplication overflow > {0}</value>
+    <value>LNumber multiplication overflow &gt; {0}</value>
   </data>
     <data name="Utility.LNumber.DivisionOverflow" xml:space="preserve">
-    <value>LNumber division overflow > {0}</value>
+    <value>LNumber division overflow &gt; {0}</value>
   </data>
 
     <!-- Network module error keys -->
@@ -329,16 +329,16 @@
 
     <!-- NetWork.Abstractions module log and error keys -->
     <data name="NetWork.Abstractions.MessageIdDuplicate" xml:space="preserve">
-    <value>MessageId duplicate==>Current ID:{0},Existing ID type:{1}</value>
+    <value>MessageId duplicate==&gt;Current ID:{0},Existing ID type:{1}</value>
   </data>
     <data name="NetWork.Abstractions.HeartbeatMessageDuplicate" xml:space="preserve">
-    <value>Heartbeat message duplicate==>Type:{0}</value>
+    <value>Heartbeat message duplicate==&gt;Type:{0}</value>
   </data>
     <data name="NetWork.Abstractions.RequestIdDuplicate" xml:space="preserve">
-    <value>RequestId duplicate==>Current ID:{0},Existing ID type:{1}</value>
+    <value>RequestId duplicate==&gt;Current ID:{0},Existing ID type:{1}</value>
   </data>
     <data name="NetWork.Abstractions.ResponseIdDuplicate" xml:space="preserve">
-    <value>ResponseId duplicate==>Current ID:{0},Existing ID type:{1}</value>
+    <value>ResponseId duplicate==&gt;Current ID:{0},Existing ID type:{1}</value>
   </data>
 
     <!-- NetWork module log and error keys -->
@@ -597,7 +597,7 @@
   </data>
 
     <data name="Core.ActorLimit.InvalidCallPath" xml:space="preserve">
-    <value>Invalid call path:{0}==>{1}</value>
+    <value>Invalid call path:{0}==&gt;{1}</value>
   </data>
 
     <data name="Core.ActorLimit.CrossDeadlock" xml:space="preserve">
@@ -1338,5 +1338,271 @@
   </data>
     <data name="Database.PostgreSql.OperationRetryFailed" xml:space="preserve">
     <value>PostgreSqlDbService.{0} failed after all retries with unknown exception.</value>
+  </data>
+  <data name="Apps.Attribute.UnknownAttributeSlot" xml:space="preserve">
+    <value>A known attribute value slot must be provided.</value>
+  </data>
+  <data name="CoreExceptions.Timer.StartNotAwaited" xml:space="preserve">
+    <value>QuartzTimer.Start must be awaited before using timer operations.</value>
+  </data>
+  <data name="CoreConfig.ByteBuf.ExceedMaxSize" xml:space="preserve">
+    <value>exceed max size</value>
+  </data>
+  <data name="CoreConfig.ByteBuf.SegmentDataNotEnough" xml:space="preserve">
+    <value>segment data not enough</value>
+  </data>
+  <data name="Database.Registry.NotRegistered" xml:space="preserve">
+    <value>No database named '{0}' is registered. Registered names: [{1}]</value>
+  </data>
+  <data name="Database.Registry.DefaultAlreadySet" xml:space="preserve">
+    <value>The default database is already set to '{0}' (set-once, C159); changing it to '{1}' is not allowed. Registered names: [{2}]</value>
+  </data>
+  <data name="Database.BatchSizeInvalid" xml:space="preserve">
+    <value>Batch size must be greater than zero.</value>
+  </data>
+  <data name="Database.Discovery.DataSourceOrConnectionRequired" xml:space="preserve">
+    <value>Either DataSource or ConnectionName must be set.</value>
+  </data>
+  <data name="Database.Discovery.ControlDatabaseOrConnectionRequired" xml:space="preserve">
+    <value>Either ControlDatabase or ConnectionName must be set.</value>
+  </data>
+  <data name="Database.Ef.DocumentDictionaryPropertyNotSupported" xml:space="preserve">
+    <value>PostgreSqlDbContext: document type '{0}' declares dictionary property '{1}' ({2}). EF owned JSON columns cannot map dictionaries in a C166-compatible shape; restructure it as a collection of owned entries or a scalar payload.</value>
+  </data>
+  <data name="Discovery.Endpoint.MissingSchemeSeparator" xml:space="preserve">
+    <value>The endpoint '{0}' does not contain the required 'scheme://host:port' structure: the '://' separator with a non-empty scheme and authority is missing.</value>
+  </data>
+  <data name="Discovery.Endpoint.UnsupportedScheme" xml:space="preserve">
+    <value>The endpoint '{0}' uses the unsupported scheme '{1}'. Supported schemes: {2}.</value>
+  </data>
+  <data name="Discovery.Endpoint.EmptyHostAfterScheme" xml:space="preserve">
+    <value>The endpoint '{0}' has an empty host after the scheme.</value>
+  </data>
+  <data name="Discovery.Endpoint.BracketedIpv6Malformed" xml:space="preserve">
+    <value>The endpoint '{0}' has a malformed bracketed IPv6 host: expected '[&lt;ipv6 literal&gt;]:&lt;port&gt;'.</value>
+  </data>
+  <data name="Discovery.Endpoint.BracketedHostNotIpv6" xml:space="preserve">
+    <value>The endpoint '{0}' has a bracketed host '{1}' that is not a valid IPv6 literal.</value>
+  </data>
+  <data name="Discovery.Endpoint.MissingPortAfterBracketedIpv6" xml:space="preserve">
+    <value>The endpoint '{0}' is missing the port after the bracketed IPv6 host: expected '[&lt;ipv6 literal&gt;]:&lt;port&gt;'.</value>
+  </data>
+  <data name="Discovery.Endpoint.MissingPort" xml:space="preserve">
+    <value>The endpoint '{0}' is missing the port: expected 'scheme://host:port'.</value>
+  </data>
+  <data name="Discovery.Endpoint.EmptyHostBeforePort" xml:space="preserve">
+    <value>The endpoint '{0}' has an empty host before the port.</value>
+  </data>
+  <data name="Discovery.Endpoint.UnbracketedIpv6" xml:space="preserve">
+    <value>The endpoint '{0}' uses an unbracketed IPv6 literal '{1}'; IPv6 hosts must be bracketed as '[&lt;ipv6 literal&gt;]:&lt;port&gt;'.</value>
+  </data>
+  <data name="Discovery.Endpoint.InvalidHostCharacters" xml:space="preserve">
+    <value>The endpoint '{0}' has the invalid host '{1}': whitespace and the URI delimiters '/', '?', '#', '@' and ':' are not allowed in a DNS, container, or Service name.</value>
+  </data>
+  <data name="Discovery.Endpoint.InvalidPort" xml:space="preserve">
+    <value>The endpoint '{0}' has the invalid port '{1}': expected an integer between 1 and 65535.</value>
+  </data>
+  <data name="Discovery.PlayerRouteSync.InstanceIdEmpty" xml:space="preserve">
+    <value>Instance id must not be empty.</value>
+  </data>
+  <data name="Hotfix.MailCampaign.PublishedOrRevokedImmutable" xml:space="preserve">
+    <value>Campaign has already been published or revoked; core fields cannot be modified (B1). CampaignId={0}</value>
+  </data>
+  <data name="Hotfix.Startup.LoginMessageTypeMissingAttribute" xml:space="preserve">
+    <value>Login message type {0} is missing {1}.</value>
+  </data>
+  <data name="Online.Identity.ScopeMissingPlayerId" xml:space="preserve">
+    <value>Scope is missing the player identity slot (PlayerId &lt;= 0); cannot derive player context.</value>
+  </data>
+  <data name="Online.Tournament.NotFoundOnSave" xml:space="preserve">
+    <value>Tournament does not exist; it must be created via CreateAsync before saving.</value>
+  </data>
+  <data name="Online.Leaderboard.NotFoundOnWrite" xml:space="preserve">
+    <value>Leaderboard does not exist or has expired; it must be resolved via FindAsync before writing.</value>
+  </data>
+  <data name="Online.Leaderboard.NotFoundOnQuery" xml:space="preserve">
+    <value>Leaderboard does not exist or has expired; it must be resolved via FindAsync before querying.</value>
+  </data>
+  <data name="Online.Leaderboard.NotFoundOnReset" xml:space="preserve">
+    <value>Leaderboard does not exist or has expired; it must be resolved via FindAsync before resetting.</value>
+  </data>
+  <data name="Online.GameEvents.EventIdRequired" xml:space="preserve">
+    <value>Event identifier must not be empty (EventId is the storage idempotency key).</value>
+  </data>
+  <data name="Online.GameEvents.EventNameRequired" xml:space="preserve">
+    <value>Event name must not be empty.</value>
+  </data>
+  <data name="Online.GameEvents.EventVersionInvalid" xml:space="preserve">
+    <value>Event version must start from 1.</value>
+  </data>
+  <data name="Online.Season.NotFoundOnSave" xml:space="preserve">
+    <value>Season does not exist; it must be created via CreateAsync before saving.</value>
+  </data>
+  <data name="Online.Assets.ReconciliationRequiresPlayerScope" xml:space="preserve">
+    <value>Reconciliation must be bound to a player identity slot.</value>
+  </data>
+  <data name="Online.Session.SessionTerminal" xml:space="preserve">
+    <value>The session has already reached a terminal state.</value>
+  </data>
+  <data name="Online.AdminApi.ActionNameRequired" xml:space="preserve">
+    <value>Action name must not be null or empty.</value>
+  </data>
+  <data name="Online.AdminApi.InnerJsonRequired" xml:space="preserve">
+    <value>Inner response JSON must not be null or empty.</value>
+  </data>
+  <data name="Online.AdminApi.PrefixRequired" xml:space="preserve">
+    <value>Online admin API prefix must not be empty.</value>
+  </data>
+  <data name="Online.AdminApi.PlayerIdInvalid" xml:space="preserve">
+    <value>PlayerId must be a positive value (wire form: string).</value>
+  </data>
+  <data name="Online.AdminApi.NonEmptyStringRequired" xml:space="preserve">
+    <value>{0} must be a non-empty string.</value>
+  </data>
+  <data name="Online.AdminApi.ServiceNoResult" xml:space="preserve">
+    <value>Service returned no result.</value>
+  </data>
+  <data name="Online.AdminApi.PositiveNumberRequired" xml:space="preserve">
+    <value>{0} must be a positive number.</value>
+  </data>
+  <data name="Online.AdminApi.ConfigKindInvalid" xml:space="preserve">
+    <value>ConfigKind must be a number in [1,4] (RemoteConfig/Announcement/DeviceGroup/ScheduledTask).</value>
+  </data>
+  <data name="Online.AdminApi.AbnormalKindInvalid" xml:space="preserve">
+    <value>AbnormalKind must be a number in [1,3] (LongWaiting/RepeatedCancel/Orphan).</value>
+  </data>
+  <data name="Online.AdminApi.MatchTicketNotFound" xml:space="preserve">
+    <value>Match ticket not found: {0}</value>
+  </data>
+  <data name="Online.AdminApi.EndAbnormalMatchForbidden" xml:space="preserve">
+    <value>Ending an abnormal match is not available on the admin plane; the game process owns match lifecycle (change C122 gap #1).</value>
+  </data>
+  <data name="Online.AdminApi.DirectionInvalid" xml:space="preserve">
+    <value>Direction must be 'Apply' or 'Lift'.</value>
+  </data>
+  <data name="Online.AdminApi.StatusInvalid" xml:space="preserve">
+    <value>Status must be a number in [1,4] (Pending/Handling/Resolved/Rejected).</value>
+  </data>
+  <data name="Online.AdminApi.TransactionNotFound" xml:space="preserve">
+    <value>Transaction not found: {0}</value>
+  </data>
+  <data name="Online.AdminApi.GrantItemsEmpty" xml:space="preserve">
+    <value>GrantItems must contain at least one entry.</value>
+  </data>
+  <data name="Online.AdminApi.GrantItemInvalid" xml:space="preserve">
+    <value>GrantItems entries require ItemOrCurrencyType (string) and Quantity (positive number).</value>
+  </data>
+  <data name="Online.Runtime.OptionsInvalid" xml:space="preserve">
+    <value>Online runtime options are invalid (scope triple / port / prefix).</value>
+  </data>
+  <data name="RemoteMessaging.Codec.CompressionThresholdInvalid" xml:space="preserve">
+    <value>Compression threshold must be greater than or equal to 0.</value>
+  </data>
+  <data name="RemoteMessaging.Codec.MaxPacketSizeInvalid" xml:space="preserve">
+    <value>Maximum packet size must be greater than or equal to {0}.</value>
+  </data>
+  <data name="RemoteMessaging.Codec.MaxDecompressedSizeInvalid" xml:space="preserve">
+    <value>Maximum decompressed size must be greater than or equal to 0.</value>
+  </data>
+  <data name="RemoteMessaging.Codec.CompressionAlgorithmNotRegistered" xml:space="preserve">
+    <value>Compression algorithm '{0}' is not registered.</value>
+  </data>
+  <data name="RemoteMessaging.Codec.RemoteConnectionClosed" xml:space="preserve">
+    <value>Remote connection closed.</value>
+  </data>
+  <data name="RemoteMessaging.Codec.InvalidPacketLength" xml:space="preserve">
+    <value>Invalid remote message packet length: {0}. Allowed range: {1}-{2}.</value>
+  </data>
+  <data name="RemoteMessaging.Codec.PayloadLengthExceedsLimit" xml:space="preserve">
+    <value>Remote message payload length exceeds limit. Payload length: {0}, max: {1}.</value>
+  </data>
+  <data name="RemoteMessaging.Unified.SenderNotInitialized" xml:space="preserve">
+    <value>UnifiedMessageSenderHolder has not been initialized. Call Initialize() first during startup.</value>
+  </data>
+  <data name="RemoteMessaging.Unified.MetricsUnavailable" xml:space="preserve">
+    <value>UnifiedMessageSender metrics are unavailable. Initialize() with UnifiedMessageSender first.</value>
+  </data>
+  <data name="RemoteMessaging.FaultInjection.SimulatedTimeout" xml:space="preserve">
+    <value>Fault injection: simulated timeout</value>
+  </data>
+  <data name="RemoteMessaging.FaultInjection.SimulatedConnectionDrop" xml:space="preserve">
+    <value>Fault injection: simulated connection drop</value>
+  </data>
+  <data name="RemoteMessaging.Routing.AttachLocalDispatcherOrderInvalid" xml:space="preserve">
+    <value>DiscoveryRoutingWire.AttachLocalDispatcher must be called after Initialize; the router rebuild needs the hosted-role snapshot and the remote router created by Initialize.</value>
+  </data>
+  <data name="RemoteMessaging.Routing.TargetRoleMissing" xml:space="preserve">
+    <value>Cannot route an envelope without a target role.</value>
+  </data>
+  <data name="RemoteMessaging.Routing.TargetInstanceNotFound" xml:space="preserve">
+    <value>The target instance '{0}' of role '{1}' is not present in the dual-view route table (unknown id, offline, or removed).</value>
+  </data>
+  <data name="RemoteMessaging.Routing.RoleNoActiveInstance" xml:space="preserve">
+    <value>Role '{0}' has no Active instance in the dual-view route table; the role is scaled to zero or fully draining.</value>
+  </data>
+  <data name="RemoteMessaging.Routing.WindowMustBePositive" xml:space="preserve">
+    <value>Window must be positive.</value>
+  </data>
+  <data name="RemoteMessaging.Routing.HolderNotInitialized" xml:space="preserve">
+    <value>RoleRouterHolder has not been initialized; call RoleRouterHolder.Initialize during launch before routing.</value>
+  </data>
+  <data name="StartUp.Application.StartupInstanceRequired" xml:space="preserve">
+    <value>At least one application startup instance is required.</value>
+  </data>
+
+  <data name="Apps.Attribute.UnknownFinalAttribute" xml:space="preserve">
+    <value>A known final attribute must be provided.</value>
+  </data>
+
+  <data name="Client.Bot.PostFailed" xml:space="preserve">
+    <value>Failed to post data. Status code: {0}</value>
+  </data>
+
+  <data name="Config.Table.NotLoaded" xml:space="preserve">
+    <value>Table is not loaded!</value>
+  </data>
+
+  <data name="CoreConfig.ByteBuf.ExceedMaxSegmentSize" xml:space="preserve">
+    <value>exceed max segment size</value>
+  </data>
+
+  <data name="CoreExceptions.Timer.InvalidDayOfMonth" xml:space="preserve">
+    <value>Timer parameter error TimerHandler:{0} {1}:{2} actorId:{3} actorType:{4}</value>
+  </data>
+
+  <data name="Database.Registry.AlreadyRegistered" xml:space="preserve">
+    <value>A database named '{0}' is already registered. Registered names: [{1}]</value>
+  </data>
+
+  <data name="Discovery.Endpoint.EmptyString" xml:space="preserve">
+    <value>The endpoint string is empty. Expected the unified 'scheme://host:port' format (e.g. 'tcp://game-1.gameframex:7777').</value>
+  </data>
+
+  <data name="Exceptions.Hotfix.ComponentAgentMapNotFound" xml:space="preserve">
+    <value>Component agent mapping entry not found: {0} ===&gt; {1}</value>
+  </data>
+
+  <data name="Hotfix.MailCampaign.InvalidParameter" xml:space="preserve">
+    <value>Invalid campaign parameter, code={0}</value>
+  </data>
+
+  <data name="NetWork.SessionTypeCastInvalid" xml:space="preserve">
+    <value>Session type '{0}' can not be cast to '{1}'.</value>
+  </data>
+
+  <data name="Online.HotfixRollback.TargetVersionNotRegistered" xml:space="preserve">
+    <value>Target version is not registered; refusing to switch active version: {0}</value>
+  </data>
+
+  <data name="RemoteMessaging.Compression.AlgorithmIdReserved" xml:space="preserve">
+    <value>AlgorithmId 0 is reserved for uncompressed payload.</value>
+  </data>
+
+  <data name="StartUp.Application.ConflictRequired" xml:space="preserve">
+    <value>At least one conflict is required.</value>
+  </data>
+
+  <data name="RemoteMessaging.Routing.LocalDispatcherNotConfigured" xml:space="preserve">
+    <value>Target role &#39;{0}&#39; is hosted by this process but no local message dispatcher is configured (the actor-backed dispatcher arrives with C143e).</value>
   </data>
 </root>

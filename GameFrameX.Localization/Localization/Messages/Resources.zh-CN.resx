@@ -229,10 +229,10 @@
     <value>Number数据超上限了 {0} {1}</value>
   </data>
     <data name="Utility.LNumber.MultiplicationOverflow" xml:space="preserve">
-    <value>LNumber乘法已越界 > {0}</value>
+    <value>LNumber乘法已越界 &gt; {0}</value>
   </data>
     <data name="Utility.LNumber.DivisionOverflow" xml:space="preserve">
-    <value>LNumber除法已越界 > {0}</value>
+    <value>LNumber除法已越界 &gt; {0}</value>
   </data>
 
     <!-- 网络模块错误键名 -->
@@ -361,16 +361,16 @@
 
     <!-- NetWork.Abstractions模块日志和错误键名 -->
     <data name="NetWork.Abstractions.MessageIdDuplicate" xml:space="preserve">
-    <value>消息Id重复==>当前ID:{0},已有ID类型:{1}</value>
+    <value>消息Id重复==&gt;当前ID:{0},已有ID类型:{1}</value>
   </data>
     <data name="NetWork.Abstractions.HeartbeatMessageDuplicate" xml:space="preserve">
-    <value>心跳消息重复==>类型:{0}</value>
+    <value>心跳消息重复==&gt;类型:{0}</value>
   </data>
     <data name="NetWork.Abstractions.RequestIdDuplicate" xml:space="preserve">
-    <value>请求Id重复==>当前ID:{0},已有ID类型:{1}</value>
+    <value>请求Id重复==&gt;当前ID:{0},已有ID类型:{1}</value>
   </data>
     <data name="NetWork.Abstractions.ResponseIdDuplicate" xml:space="preserve">
-    <value>返回Id重复==>当前ID:{0},已有ID类型:{1}</value>
+    <value>返回Id重复==&gt;当前ID:{0},已有ID类型:{1}</value>
   </data>
 
     <!-- NetWork模块日志和错误键名 -->
@@ -629,7 +629,7 @@
   </data>
 
     <data name="Core.ActorLimit.InvalidCallPath" xml:space="preserve">
-    <value>不合法的调用路径:{0}==>{1}</value>
+    <value>不合法的调用路径:{0}==&gt;{1}</value>
   </data>
 
     <data name="Core.ActorLimit.CrossDeadlock" xml:space="preserve">
@@ -1334,5 +1334,271 @@
   </data>
     <data name="Database.PostgreSql.OperationRetryFailed" xml:space="preserve">
     <value>PostgreSqlDbService.{0}重试失败，未知异常。</value>
+  </data>
+  <data name="Apps.Attribute.UnknownAttributeSlot" xml:space="preserve">
+    <value>必须传入已知属性数值槽。</value>
+  </data>
+  <data name="CoreExceptions.Timer.StartNotAwaited" xml:space="preserve">
+    <value>使用定时器操作前必须先等待 QuartzTimer.Start 完成</value>
+  </data>
+  <data name="CoreConfig.ByteBuf.ExceedMaxSize" xml:space="preserve">
+    <value>超出大小上限</value>
+  </data>
+  <data name="CoreConfig.ByteBuf.SegmentDataNotEnough" xml:space="preserve">
+    <value>段数据不足</value>
+  </data>
+  <data name="Database.Registry.NotRegistered" xml:space="preserve">
+    <value>没有名为“{0}”的数据库被注册。已注册名称：[{1}]</value>
+  </data>
+  <data name="Database.Registry.DefaultAlreadySet" xml:space="preserve">
+    <value>默认数据库已被设置为“{0}”（set-once，C159）；不允许将其更改为“{1}”。已注册名称：[{2}]</value>
+  </data>
+  <data name="Database.BatchSizeInvalid" xml:space="preserve">
+    <value>批处理大小必须大于 0。</value>
+  </data>
+  <data name="Database.Discovery.DataSourceOrConnectionRequired" xml:space="preserve">
+    <value>必须设置 DataSource 或 ConnectionName。</value>
+  </data>
+  <data name="Database.Discovery.ControlDatabaseOrConnectionRequired" xml:space="preserve">
+    <value>必须设置 ControlDatabase 或 ConnectionName。</value>
+  </data>
+  <data name="Database.Ef.DocumentDictionaryPropertyNotSupported" xml:space="preserve">
+    <value>PostgreSqlDbContext：文档类型“{0}”声明了字典属性“{1}”（{2}）。EF owned JSON 列无法以 C166 兼容形状映射字典；请将其重构为 owned entries 集合或标量载荷。</value>
+  </data>
+  <data name="Discovery.Endpoint.MissingSchemeSeparator" xml:space="preserve">
+    <value>端点 '{0}' 缺少必需的 scheme://host:port 结构：缺少带非空 scheme 与 authority 的 '://' 分隔符。</value>
+  </data>
+  <data name="Discovery.Endpoint.UnsupportedScheme" xml:space="preserve">
+    <value>端点 '{0}' 使用了不受支持的 scheme '{1}'。支持的 scheme：{2}。</value>
+  </data>
+  <data name="Discovery.Endpoint.EmptyHostAfterScheme" xml:space="preserve">
+    <value>端点 '{0}' 在 scheme 之后 host 为空。</value>
+  </data>
+  <data name="Discovery.Endpoint.BracketedIpv6Malformed" xml:space="preserve">
+    <value>端点 '{0}' 的方括号 IPv6 host 格式错误：期望 '[IPv6 字面量]:端口'。</value>
+  </data>
+  <data name="Discovery.Endpoint.BracketedHostNotIpv6" xml:space="preserve">
+    <value>端点 '{0}' 的方括号 host '{1}' 不是合法的 IPv6 字面量。</value>
+  </data>
+  <data name="Discovery.Endpoint.MissingPortAfterBracketedIpv6" xml:space="preserve">
+    <value>端点 '{0}' 在方括号 IPv6 host 之后缺少端口：期望 '[IPv6 字面量]:端口'。</value>
+  </data>
+  <data name="Discovery.Endpoint.MissingPort" xml:space="preserve">
+    <value>端点 '{0}' 缺少端口：期望 'scheme://host:port'。</value>
+  </data>
+  <data name="Discovery.Endpoint.EmptyHostBeforePort" xml:space="preserve">
+    <value>端点 '{0}' 在端口之前 host 为空。</value>
+  </data>
+  <data name="Discovery.Endpoint.UnbracketedIpv6" xml:space="preserve">
+    <value>端点 '{0}' 使用了未加方括号的 IPv6 字面量 '{1}'；IPv6 host 必须写成 '[IPv6 字面量]:端口'。</value>
+  </data>
+  <data name="Discovery.Endpoint.InvalidHostCharacters" xml:space="preserve">
+    <value>端点 '{0}' 的 host '{1}' 非法：DNS、容器名或 Service 名中不允许空白以及 URI 分隔符 '/'、'?'、'#'、'@'、':'。</value>
+  </data>
+  <data name="Discovery.Endpoint.InvalidPort" xml:space="preserve">
+    <value>端点 '{0}' 的端口 '{1}' 非法：期望 1-65535 之间的整数。</value>
+  </data>
+  <data name="Discovery.PlayerRouteSync.InstanceIdEmpty" xml:space="preserve">
+    <value>实例 Id 不能为空。</value>
+  </data>
+  <data name="Hotfix.MailCampaign.PublishedOrRevokedImmutable" xml:space="preserve">
+    <value>Campaign 已发布或已撤回，主体字段不可修改（B1）。CampaignId={0}</value>
+  </data>
+  <data name="Hotfix.Startup.LoginMessageTypeMissingAttribute" xml:space="preserve">
+    <value>登录消息类型 {0} 缺少 {1}。</value>
+  </data>
+  <data name="Online.Identity.ScopeMissingPlayerId" xml:space="preserve">
+    <value>作用域缺少玩家主体位（PlayerId &lt;= 0），不能派生玩家上下文。</value>
+  </data>
+  <data name="Online.Tournament.NotFoundOnSave" xml:space="preserve">
+    <value>赛事不存在，保存前必须先经 CreateAsync 建立</value>
+  </data>
+  <data name="Online.Leaderboard.NotFoundOnWrite" xml:space="preserve">
+    <value>榜单不存在或已失效，写入前必须先经 FindAsync 解析</value>
+  </data>
+  <data name="Online.Leaderboard.NotFoundOnQuery" xml:space="preserve">
+    <value>榜单不存在或已失效，查询前必须先经 FindAsync 解析</value>
+  </data>
+  <data name="Online.Leaderboard.NotFoundOnReset" xml:space="preserve">
+    <value>榜单不存在或已失效，重置前必须先经 FindAsync 解析</value>
+  </data>
+  <data name="Online.GameEvents.EventIdRequired" xml:space="preserve">
+    <value>事件标识不能为空（EventId 是存储幂等键）</value>
+  </data>
+  <data name="Online.GameEvents.EventNameRequired" xml:space="preserve">
+    <value>事件名不能为空</value>
+  </data>
+  <data name="Online.GameEvents.EventVersionInvalid" xml:space="preserve">
+    <value>事件版本必须从 1 起</value>
+  </data>
+  <data name="Online.Season.NotFoundOnSave" xml:space="preserve">
+    <value>赛季不存在，保存前必须先经 CreateAsync 建立</value>
+  </data>
+  <data name="Online.Assets.ReconciliationRequiresPlayerScope" xml:space="preserve">
+    <value>对账必须绑定玩家主体位</value>
+  </data>
+  <data name="Online.Session.SessionTerminal" xml:space="preserve">
+    <value>会话已进入终态</value>
+  </data>
+  <data name="Online.AdminApi.ActionNameRequired" xml:space="preserve">
+    <value>Action 名称不能为 null 或为空。</value>
+  </data>
+  <data name="Online.AdminApi.InnerJsonRequired" xml:space="preserve">
+    <value>内层响应 JSON 不能为 null 或为空。</value>
+  </data>
+  <data name="Online.AdminApi.PrefixRequired" xml:space="preserve">
+    <value>Online admin API 前缀不能为空。</value>
+  </data>
+  <data name="Online.AdminApi.PlayerIdInvalid" xml:space="preserve">
+    <value>PlayerId 必须为正数（线缆形态：字符串）。</value>
+  </data>
+  <data name="Online.AdminApi.NonEmptyStringRequired" xml:space="preserve">
+    <value>{0} 必须为非空字符串。</value>
+  </data>
+  <data name="Online.AdminApi.ServiceNoResult" xml:space="preserve">
+    <value>服务未返回任何结果。</value>
+  </data>
+  <data name="Online.AdminApi.PositiveNumberRequired" xml:space="preserve">
+    <value>{0} 必须为正数。</value>
+  </data>
+  <data name="Online.AdminApi.ConfigKindInvalid" xml:space="preserve">
+    <value>ConfigKind 必须是 [1,4] 范围内的数字（RemoteConfig/Announcement/DeviceGroup/ScheduledTask）。</value>
+  </data>
+  <data name="Online.AdminApi.AbnormalKindInvalid" xml:space="preserve">
+    <value>AbnormalKind 必须是 [1,3] 范围内的数字（LongWaiting/RepeatedCancel/Orphan）。</value>
+  </data>
+  <data name="Online.AdminApi.MatchTicketNotFound" xml:space="preserve">
+    <value>匹配票据不存在：{0}</value>
+  </data>
+  <data name="Online.AdminApi.EndAbnormalMatchForbidden" xml:space="preserve">
+    <value>管理面不支持结束异常对局；对局生命周期归游戏进程所有（变更 C122 缺口 #1）。</value>
+  </data>
+  <data name="Online.AdminApi.DirectionInvalid" xml:space="preserve">
+    <value>Direction 必须为 'Apply' 或 'Lift'。</value>
+  </data>
+  <data name="Online.AdminApi.StatusInvalid" xml:space="preserve">
+    <value>Status 必须是 [1,4] 范围内的数字（Pending/Handling/Resolved/Rejected）。</value>
+  </data>
+  <data name="Online.AdminApi.TransactionNotFound" xml:space="preserve">
+    <value>交易不存在：{0}</value>
+  </data>
+  <data name="Online.AdminApi.GrantItemsEmpty" xml:space="preserve">
+    <value>GrantItems 必须至少包含一个条目。</value>
+  </data>
+  <data name="Online.AdminApi.GrantItemInvalid" xml:space="preserve">
+    <value>GrantItems 条目要求 ItemOrCurrencyType（字符串）且 Quantity（正数）。</value>
+  </data>
+  <data name="Online.Runtime.OptionsInvalid" xml:space="preserve">
+    <value>Online 运行时选项非法（作用域三元组 / 端口 / 前缀）。</value>
+  </data>
+  <data name="RemoteMessaging.Codec.CompressionThresholdInvalid" xml:space="preserve">
+    <value>压缩阈值必须大于等于 0。</value>
+  </data>
+  <data name="RemoteMessaging.Codec.MaxPacketSizeInvalid" xml:space="preserve">
+    <value>最大包大小必须大于等于 {0}。</value>
+  </data>
+  <data name="RemoteMessaging.Codec.MaxDecompressedSizeInvalid" xml:space="preserve">
+    <value>最大解压大小必须大于等于 0。</value>
+  </data>
+  <data name="RemoteMessaging.Codec.CompressionAlgorithmNotRegistered" xml:space="preserve">
+    <value>压缩算法 '{0}' 未注册。</value>
+  </data>
+  <data name="RemoteMessaging.Codec.RemoteConnectionClosed" xml:space="preserve">
+    <value>远程连接已关闭。</value>
+  </data>
+  <data name="RemoteMessaging.Codec.InvalidPacketLength" xml:space="preserve">
+    <value>远程消息包长度非法：{0}，允许范围：{1}-{2}。</value>
+  </data>
+  <data name="RemoteMessaging.Codec.PayloadLengthExceedsLimit" xml:space="preserve">
+    <value>远程消息载荷长度超限。载荷长度：{0}，最大：{1}。</value>
+  </data>
+  <data name="RemoteMessaging.Unified.SenderNotInitialized" xml:space="preserve">
+    <value>UnifiedMessageSenderHolder 尚未初始化。请在启动期间先调用 Initialize()。</value>
+  </data>
+  <data name="RemoteMessaging.Unified.MetricsUnavailable" xml:space="preserve">
+    <value>UnifiedMessageSender 指标不可用。请先使用 UnifiedMessageSender 调用 Initialize()。</value>
+  </data>
+  <data name="RemoteMessaging.FaultInjection.SimulatedTimeout" xml:space="preserve">
+    <value>故障注入：模拟超时</value>
+  </data>
+  <data name="RemoteMessaging.FaultInjection.SimulatedConnectionDrop" xml:space="preserve">
+    <value>故障注入：模拟连接断开</value>
+  </data>
+  <data name="RemoteMessaging.Routing.AttachLocalDispatcherOrderInvalid" xml:space="preserve">
+    <value>DiscoveryRoutingWire.AttachLocalDispatcher 必须在 Initialize 之后调用；路由器重建需要托管角色快照以及由 Initialize 创建的远程路由器。</value>
+  </data>
+  <data name="RemoteMessaging.Routing.TargetRoleMissing" xml:space="preserve">
+    <value>无法路由缺少目标角色的消息信封。</value>
+  </data>
+  <data name="RemoteMessaging.Routing.TargetInstanceNotFound" xml:space="preserve">
+    <value>角色 '{1}' 的目标实例 '{0}' 不在双视图路由表中（ID 未知、离线或已被移除）。</value>
+  </data>
+  <data name="RemoteMessaging.Routing.RoleNoActiveInstance" xml:space="preserve">
+    <value>角色 '{0}' 在双视图路由表中没有 Active 实例；该角色已缩容至零或正在完全排水。</value>
+  </data>
+  <data name="RemoteMessaging.Routing.WindowMustBePositive" xml:space="preserve">
+    <value>时间窗必须为正数。</value>
+  </data>
+  <data name="RemoteMessaging.Routing.HolderNotInitialized" xml:space="preserve">
+    <value>RoleRouterHolder 尚未初始化；请在路由前于启动阶段调用 RoleRouterHolder.Initialize。</value>
+  </data>
+  <data name="StartUp.Application.StartupInstanceRequired" xml:space="preserve">
+    <value>至少需要一个应用程序启动实例。</value>
+  </data>
+
+  <data name="Apps.Attribute.UnknownFinalAttribute" xml:space="preserve">
+    <value>必须传入已知最终属性。</value>
+  </data>
+
+  <data name="Client.Bot.PostFailed" xml:space="preserve">
+    <value>发送 POST 数据失败。状态码：{0}</value>
+  </data>
+
+  <data name="Config.Table.NotLoaded" xml:space="preserve">
+    <value>配置表未加载！</value>
+  </data>
+
+  <data name="CoreConfig.ByteBuf.ExceedMaxSegmentSize" xml:space="preserve">
+    <value>超出最大段大小</value>
+  </data>
+
+  <data name="CoreExceptions.Timer.InvalidDayOfMonth" xml:space="preserve">
+    <value>定时器参数错误 TimerHandler:{0} {1}:{2} actorId:{3} actorType:{4}</value>
+  </data>
+
+  <data name="Database.Registry.AlreadyRegistered" xml:space="preserve">
+    <value>名为“{0}”的数据库已被注册。已注册名称：[{1}]</value>
+  </data>
+
+  <data name="Discovery.Endpoint.EmptyString" xml:space="preserve">
+    <value>端点字符串为空；期望统一的 scheme://host:port 格式（如 tcp://game-1.gameframex:7777）。</value>
+  </data>
+
+  <data name="Exceptions.Hotfix.ComponentAgentMapNotFound" xml:space="preserve">
+    <value>组件代理映射中未找到条目：{0} ===> {1}</value>
+  </data>
+
+  <data name="Hotfix.MailCampaign.InvalidParameter" xml:space="preserve">
+    <value>Campaign 参数非法，code={0}</value>
+  </data>
+
+  <data name="NetWork.SessionTypeCastInvalid" xml:space="preserve">
+    <value>会话类型 '{0}' 无法转换为 '{1}'。</value>
+  </data>
+
+  <data name="Online.HotfixRollback.TargetVersionNotRegistered" xml:space="preserve">
+    <value>目标版本未登记，拒绝切换活跃版本：{0}</value>
+  </data>
+
+  <data name="RemoteMessaging.Compression.AlgorithmIdReserved" xml:space="preserve">
+    <value>AlgorithmId 0 保留给未压缩载荷。</value>
+  </data>
+
+  <data name="StartUp.Application.ConflictRequired" xml:space="preserve">
+    <value>至少需要一个冲突项。</value>
+  </data>
+
+  <data name="RemoteMessaging.Routing.LocalDispatcherNotConfigured" xml:space="preserve">
+    <value>目标角色「{0}」由本进程承载，但未配置本地消息派发器（actor 派发器随 C143e 到达）。</value>
   </data>
 </root>

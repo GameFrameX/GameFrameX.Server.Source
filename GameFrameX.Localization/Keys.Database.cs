@@ -161,5 +161,65 @@ public static partial class Keys
         /// 参数: {0} - 操作名称
         /// </remarks>
         public const string PostgreSqlOperationRetryFailed = "Database.PostgreSql.OperationRetryFailed";
+        /// <summary>
+        /// 名为“{0}”的数据库已被注册。已注册名称：[{1}]
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.Registry.AlreadyRegistered
+        /// 用途: 以已存在的注册名重复注册数据库时抛出
+        /// 参数: {0} - 注册名, {1} - 已注册库名列表
+        /// </remarks>
+        public const string RegistryAlreadyRegistered = "Database.Registry.AlreadyRegistered";
+        /// <summary>
+        /// 没有名为“{0}”的数据库被注册。已注册名称：[{1}]
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.Registry.NotRegistered
+        /// 用途: 按未注册的名称获取数据库时抛出
+        /// 参数: {0} - 注册名, {1} - 已注册库名列表
+        /// </remarks>
+        public const string RegistryNotRegistered = "Database.Registry.NotRegistered";
+        /// <summary>
+        /// 默认数据库已被设置为“{0}”（set-once，C159）；不允许将其更改为“{1}”。已注册名称：[{2}]
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.Registry.DefaultAlreadySet
+        /// 用途: 默认库已显式指定后再次以不同名称 SetDefault 时抛出（含并发路径）
+        /// 参数: {0} - 当前默认库名, {1} - 试图设置的库名, {2} - 已注册库名列表
+        /// </remarks>
+        public const string RegistryDefaultAlreadySet = "Database.Registry.DefaultAlreadySet";
+        /// <summary>
+        /// 批处理大小必须大于 0。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.BatchSizeInvalid
+        /// 用途: SaveBulkAsync 的 batchSize &lt;= 0 时抛出（PostgreSql / Mongo 共用）
+        /// </remarks>
+        public const string BatchSizeInvalid = "Database.BatchSizeInvalid";
+        /// <summary>
+        /// 必须设置 DataSource 或 ConnectionName。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.Discovery.DataSourceOrConnectionRequired
+        /// 用途: PostgreSQL 发现层激活参数两者均未设置时抛出
+        /// </remarks>
+        public const string DiscoveryDataSourceOrConnectionRequired = "Database.Discovery.DataSourceOrConnectionRequired";
+        /// <summary>
+        /// 必须设置 ControlDatabase 或 ConnectionName。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.Discovery.ControlDatabaseOrConnectionRequired
+        /// 用途: Mongo 发现层激活参数两者均未设置时抛出
+        /// </remarks>
+        public const string DiscoveryControlDatabaseOrConnectionRequired = "Database.Discovery.ControlDatabaseOrConnectionRequired";
+        /// <summary>
+        /// PostgreSqlDbContext：文档类型“{0}”声明了字典属性“{1}”（{2}）。EF owned JSON 列无法以 C166 兼容形状映射字典；请将其重构为 owned entries 集合或标量载荷。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.Ef.DocumentDictionaryPropertyNotSupported
+        /// 用途: 文档类型成员为 Dictionary&lt;,&gt; 时在 owned JSON 形状配置阶段显式抛出（C168）
+        /// 参数: {0} - 文档类型名, {1} - 属性名, {2} - 属性类型名
+        /// </remarks>
+        public const string EfDocumentDictionaryPropertyNotSupported = "Database.Ef.DocumentDictionaryPropertyNotSupported";
     }
 }

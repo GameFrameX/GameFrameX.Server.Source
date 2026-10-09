@@ -89,6 +89,16 @@ public static partial class Keys
         public const string Timer_Code_In_Hotfix = "Exceptions.Timer.CodeInHotfix";
 
         /// <summary>
+        /// 组件代理映射中未找到对应条目的错误消息
+        /// </summary>
+        /// <remarks>
+        /// 键名: Exceptions.Hotfix.ComponentAgentMapNotFound
+        /// 用途: 获取组件代理时在映射表中找不到对应条目时抛出此异常
+        /// 参数: {0} - 映射字段名称, {1} - 组件类型全名
+        /// </remarks>
+        public const string Component_Agent_Map_Not_Found = "Exceptions.Hotfix.ComponentAgentMapNotFound";
+
+        /// <summary>
         /// IP地址格式无效的错误消息
         /// </summary>
         /// <remarks>

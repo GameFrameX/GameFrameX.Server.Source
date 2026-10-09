@@ -31,85 +31,42 @@
 namespace GameFrameX.Localization;
 
 /// <summary>
-/// 本地化键常量定义 - Client 分部类
-/// </summary>
+/// 本地化字符串键常量类 - 主分部类
+/// Localization string keys constants class - Main partial class
+///</summary>
 public static partial class Keys
 {
     /// <summary>
-    /// 客户端相关日志消息资源键
-    /// </summary>
-    public static class Client
+    /// 核心配置模块（ByteBuf）相关消息常量
+    /// Core configuration module (ByteBuf) related message constants
+    ///</summary>
+    public static class CoreConfig
     {
         /// <summary>
-        /// 尝试连接到服务器...
+        /// 写入段时超出最大段大小限制
         /// </summary>
         /// <remarks>
-        /// 键名: Client.AttemptingToConnect
-        /// 用途: 客户端开始连接到服务器时记录
+        /// 键名: CoreConfig.ByteBuf.ExceedMaxSegmentSize
+        /// 用途: ByteBuf.EndWriteSegment 写入段大小超过最大可编码限制时抛出
         /// </remarks>
-        public const string AttemptingToConnect = "Client.AttemptingToConnect";
+        public const string ExceedMaxSegmentSize = "CoreConfig.ByteBuf.ExceedMaxSegmentSize";
 
         /// <summary>
-        /// 未连接到服务器, 尝试重连 (尝试次数: {0}/{1})
+        /// 读取段时段大小超出最大限制
         /// </summary>
         /// <remarks>
-        /// 键名: Client.RetryConnect
-        /// 用途: 客户端未连接到服务器，准备重试时记录
-        /// 参数: {0} - 当前尝试次数, {1} - 最大重试次数
+        /// 键名: CoreConfig.ByteBuf.ExceedMaxSize
+        /// 用途: ByteBuf.ReadSegment 读取到的段头编码超出支持的最大大小时抛出
         /// </remarks>
-        public const string RetryConnect = "Client.RetryConnect";
+        public const string ExceedMaxSize = "CoreConfig.ByteBuf.ExceedMaxSize";
 
         /// <summary>
-        /// 重连次数已达到上限，停止尝试。
+        /// 段数据不足
         /// </summary>
         /// <remarks>
-        /// 键名: Client.MaxRetryReached
-        /// 用途: 客户端重连次数达到上限时记录
+        /// 键名: CoreConfig.ByteBuf.SegmentDataNotEnough
+        /// 用途: ByteBuf.ReadSegment 读取后读索引超过写索引（数据不足）时抛出
         /// </remarks>
-        public const string MaxRetryReached = "Client.MaxRetryReached";
-
-        /// <summary>
-        /// 客户端发生错误: {0}
-        /// </summary>
-        /// <remarks>
-        /// 键名: Client.ErrorOccurred
-        /// 用途: 客户端操作过程中发生错误时记录
-        /// 参数: {0} - 错误信息
-        /// </remarks>
-        public const string ErrorOccurred = "Client.ErrorOccurred";
-
-        /// <summary>
-        /// 客户端断开连接
-        /// </summary>
-        /// <remarks>
-        /// 键名: Client.Disconnected
-        /// 用途: 客户端与服务器断开连接时记录
-        /// </remarks>
-        public const string Disconnected = "Client.Disconnected";
-
-        /// <summary>
-        /// 客户端成功连接到服务器
-        /// </summary>
-        /// <remarks>
-        /// 键名: Client.ConnectedSuccessfully
-        /// 用途: 客户端成功连接到服务器时记录
-        /// </remarks>
-        public const string ConnectedSuccessfully = "Client.ConnectedSuccessfully";
-
-        /// <summary>
-        /// 机器人 HTTP 客户端相关消息资源键
-        /// </summary>
-        public static class Bot
-        {
-            /// <summary>
-            /// 发送 POST 数据失败。状态码：{0}
-            /// </summary>
-            /// <remarks>
-            /// 键名: Client.Bot.PostFailed
-            /// 用途: 机器人客户端发送 POST 请求失败时抛出
-            /// 参数: {0} - HTTP 响应状态码
-            /// </remarks>
-            public const string PostFailed = "Client.Bot.PostFailed";
-        }
+        public const string SegmentDataNotEnough = "CoreConfig.ByteBuf.SegmentDataNotEnough";
     }
 }

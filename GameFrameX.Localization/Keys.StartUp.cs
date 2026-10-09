@@ -737,6 +737,24 @@ public static partial class Keys
             /// 用途: 当接收到SIGTERM信号时记录
             /// </remarks>
             public const string SigtermSignalReceived = "StartUp.Application.SigtermSignalReceived";
+
+            /// <summary>
+            /// 至少需要一个冲突项
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Application.ConflictRequired
+            /// 用途: 构建配置冲突异常消息时冲突集合为空抛出
+            /// </remarks>
+            public const string ConflictRequired = "StartUp.Application.ConflictRequired";
+
+            /// <summary>
+            /// 至少需要一个应用程序启动实例
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Application.StartupInstanceRequired
+            /// 用途: 应用程序启动入口收到空启动实例集合时抛出
+            /// </remarks>
+            public const string StartupInstanceRequired = "StartUp.Application.StartupInstanceRequired";
         }
     }
 }

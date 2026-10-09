@@ -610,6 +610,25 @@ public static partial class Keys
             /// 用途: 定时器代码不在热更项目时抛出异常
             /// </remarks>
             public const string CodeMustBeInHotfix = "CoreExceptions.Timer.CodeMustBeInHotfix";
+
+            /// <summary>
+            /// 定时器参数错误 TimerHandler:{0} {1}:{2} actorId:{3} actorType:{4}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.Timer.InvalidDayOfMonth
+            /// 用途: 每月定时任务的dayOfMonth参数超出有效范围时抛出异常
+            /// 参数: {0} - 处理器类型, {1} - 参数名, {2} - 参数值, {3} - Actor ID, {4} - Actor类型
+            /// </remarks>
+            public const string InvalidDayOfMonth = "CoreExceptions.Timer.InvalidDayOfMonth";
+
+            /// <summary>
+            /// 使用定时器操作前必须先等待 QuartzTimer.Start 完成
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.Timer.StartNotAwaited
+            /// 用途: 定时器调度器尚未启动就使用定时器操作时抛出异常
+            /// </remarks>
+            public const string StartNotAwaited = "CoreExceptions.Timer.StartNotAwaited";
         }
 
         /// <summary>

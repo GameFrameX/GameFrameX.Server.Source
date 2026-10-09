@@ -128,5 +128,15 @@ public static partial class Keys
         /// 参数: {0} - 异常消息
         /// </remarks>
         public const string MessageEncodingError = "NetWork.MessageEncodingError";
+
+        /// <summary>
+        /// Session type '{0}' can not be cast to '{1}' / 会话类型 '{0}' 无法转换为 '{1}'
+        /// </summary>
+        /// <remarks>
+        /// 键名: NetWork.SessionTypeCastInvalid
+        /// 用途: 当会话类型无法转换为目标 WebSocket 会话类型时抛出异常
+        /// 参数: {0} - 实际会话类型全名; {1} - 目标会话类型全名
+        /// </remarks>
+        public const string SessionTypeCastInvalid = "NetWork.SessionTypeCastInvalid";
     }
 }
