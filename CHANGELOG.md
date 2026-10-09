@@ -1,3 +1,16 @@
+## [Unreleased] - PostgreSQL-Only 验证分支（verify/pg-only-no-mongo）
+
+### Removed
+
+* 完全移除 MongoDB 依赖：删除 GameFrameX.DataBase.Mongo 模块、MongoDbService/MongoDiscoveryRuntime 装配分支、BSON 类映射辅助（BsonClassMapHelper/CacheStateTypeManager）与 Mongo 专属测试
+* BaseCacheState.ToBytes 由抽象改为 JSON/UTF8 默认实现（StateHash 脏检查不再依赖 BSON）
+* 业务状态类基类由 Mongo CacheState 切换为 BaseCacheState；移除 Apps/Hotfix/Launcher/StartUp 的全部 MongoDB using 与包引用
+* DatabaseProviderType 枚举与 DatabaseProvider 配置项移除（PostgreSQL 为唯一实现）
+* StartUp 服务默认配置移除 MongoDB 健康检查与 Mongo Meter 注册；清理 Mongo 相关本地化键
+
+### Known Issues
+
+* GameFrameX.Foundation.Logger ≥ 4.1.1 的 nuspec 无条件声明 MongoDB.Driver 与 Serilog.Sinks.MongoDB（运行时 IsWriteToMongoDb 默认关闭）。验证用 feed 内替换为去除该依赖的同版本补丁包；正式清理需 Foundation 仓库将 Mongo sink 拆为可选包
 ## [1.13.7] - 2026-08-05
 
 ### Bug Fixes
