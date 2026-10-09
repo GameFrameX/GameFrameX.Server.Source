@@ -100,10 +100,12 @@ public sealed class PostgreSqlDiscoveryRuntimeTests
     }
 
     /// <summary>
-    /// Activate 失败后（表仍缺失场景已由建表先行消除）重复调用保持幂等 no-op。
+    /// 重复调用 Activate：第二次为 no-op——守卫短路，不重建 watcher/registry（TableProvider 引用不变）。
     /// </summary>
     /// <remarks>
-    /// Repeated Activate calls stay idempotent no-ops (the one-shot guard).
+    /// Repeated Activate calls: the second is a no-op — the one-shot guard short-circuits and does not
+    /// rebuild the watcher/registry (TableProvider keeps the SAME instance). Reference equality is the
+    /// discriminator: a full re-execution would reassign _watcher and expose a new provider instance.
     /// </remarks>
     [Fact]
     public async Task Activate_Twice_SecondCallIsNoOp()
@@ -123,9 +125,12 @@ public sealed class PostgreSqlDiscoveryRuntimeTests
             };
 
             PostgreSqlDiscoveryRuntime.Activate(options);
+            var providerAfterFirst = PostgreSqlDiscoveryRuntime.TableProvider;
+            Assert.NotNull(providerAfterFirst);
+
             PostgreSqlDiscoveryRuntime.Activate(options);
 
-            Assert.NotNull(PostgreSqlDiscoveryRuntime.TableProvider);
+            Assert.Same(providerAfterFirst, PostgreSqlDiscoveryRuntime.TableProvider);
         }
 
         PostgreSqlDiscoveryRuntime.ResetForTest();

@@ -225,11 +225,6 @@ public static class PostgreSqlDiscoveryRuntime
 
         _ttlCleanupJob = new PostgreSqlTtlCleanupJob(dataSource, options.TtlCleanupInterval);
         _ttlCleanupJob.Start();
-
-        // C166 依赖纠偏第二轮：RoleRouterHolder/InProcessRoleRouter/TcpEnvelopeForwarder 装配移交组合侧
-        // DiscoveryRoutingWire.Initialize（Launcher 在 Activate 后调用，传入本 TableProvider）。
-        // 玩家路由层装配（建表 / 建索引 + 装 SyncTarget），时序与 Mongo 版一致：路由缝激活后追加。
-        PostgreSqlPlayerRouteResolverBootstrap.Attach(dataSource, options.PlayerRouteFastPath).GetAwaiter().GetResult();
     }
 
 
