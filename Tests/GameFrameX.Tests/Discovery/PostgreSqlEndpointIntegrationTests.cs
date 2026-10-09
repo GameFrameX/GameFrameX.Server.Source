@@ -33,11 +33,11 @@ using Npgsql;
 namespace GameFrameX.Tests.Discovery;
 
 /// <summary>
-/// PostgreSqlEndpointRegistry / PostgreSqlEndpointWatcher / PostgreSqlTtlCleanupJob 的 PostgreSQL 集成测试（C166 T8）。
+/// PostgreSqlEndpointRegistry / PostgreSqlEndpointWatcher（TTL 清理经 DiscoveryRegistry 循环）的 PostgreSQL 集成测试（C166 T8）。
 /// </summary>
 /// <remarks>
-/// PostgreSQL-backed integration tests for the heartbeat writer, reader, and TTL
-/// cleanup job (C166 T8), ported test-by-test from
+/// PostgreSQL-backed integration tests for the heartbeat writer and reader
+/// (TTL cleanup via the DiscoveryRegistry loop) (C166 T8), ported test-by-test from
 /// <c>MongoEndpointIntegrationTests</c> with identical names and assertions.
 /// Gated by GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING: without the variable
 /// the tests skip so plain <c>dotnet test</c> stays green on PostgreSQL-less
