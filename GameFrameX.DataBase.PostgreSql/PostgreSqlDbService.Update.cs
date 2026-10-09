@@ -12,50 +12,55 @@
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
 //   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
 //   侵犯他人合法权益等法律法规所禁止的行为！
-//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   or violate the legal rights and interests of others as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
 //   Any legal disputes or liabilities arising from secondary development based on this project
-//   本项目组织与贡献者概不承担。
+//   本组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
 //   GitHub Repository: https://github.com/GameFrameX
 //   Gitee  仓库：https://gitee.com/GameFrameX
 //   Gitee Repository:  https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
-//   CNB Repository: https://cnb.cool/GameFrameX
+//   CNB Repository:     https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
 
+using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using GameFrameX.DataBase.Abstractions;
-using Npgsql;
+using Microsoft.EntityFrameworkCore;
 
 namespace GameFrameX.DataBase.PostgreSql;
 
 public sealed partial class PostgreSqlDbService
 {
     /// <summary>
-    /// 更新时保留的存储字段（对齐 Mongo BuildUpdateDefinition 的排除集：Id/CreatedTime/CreatedId/IsDeleted/DeleteTime）。
+    /// 部分更新字段比较探针的序列化选项（仅用于「值未变不计行」比较，非持久化路径）。
     /// </summary>
     /// <remarks>
-    /// Storage-side fields preserved on update — mirroring Mongo's <c>$set</c> exclusion set.
-    /// PG jsonb 整文档替换通过 <c>(doc - 'Id') || (newDoc - 保留字段)</c> 合成：存储侧保留字段优先，其余以新文档为准。
+    /// Serialization options for the partial-update value-comparison probe (round-trip equality only —
+    /// persistence itself goes exclusively through the EF owned-JSON pipeline; no second document serializer exists).
     /// </remarks>
-    private static readonly string[] PreservedOnUpdateFields =
+    private static readonly JsonSerializerOptions ComparisonOptions = new()
     {
-        nameof(BaseCacheState.Id),
-        nameof(BaseCacheState.CreatedTime),
-        nameof(BaseCacheState.CreatedId),
-        nameof(BaseCacheState.IsDeleted),
-        nameof(BaseCacheState.DeleteTime),
+        ReferenceHandler = ReferenceHandler.IgnoreCycles,
+        PropertyNamingPolicy = null,
+        DefaultIgnoreCondition = JsonIgnoreCondition.Never,
     };
 
     /// <summary>
-    /// 保存数据（仅当 StateHash 判定已修改才写库；更新保留字段语义见 <see cref="PreservedOnUpdateFields"/>）。
+    /// 保存数据（仅当 StateHash 判定已修改才写库；整文档重写，新档为准，对齐 C168 语义裁定）。
     /// </summary>
     /// <remarks>
-    /// Saves a document (only writes when the StateHash marks it modified; see <see cref="PreservedOnUpdateFields"/> for preserved-field semantics).
+    /// Saves a document (only writes when the StateHash marks it modified). C168 semantics: the whole document
+    /// is rewritten from the state object — fields the state type no longer declares are naturally cleared
+    /// (unlike C166's stored-side merge); the state's own <c>IsDeleted</c>/<c>CreatedTime</c> etc. are
+    /// authoritative since update flows load states from the database first. A missing row is a silent no-op
+    /// (aligned with the previous <c>UPDATE ... WHERE id</c> row-count behavior).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="state">要保存的数据 / The state to save</param>
@@ -66,10 +71,14 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 保存数据（仅当 StateHash 判定已修改才写库；更新保留字段语义见 <see cref="PreservedOnUpdateFields"/>）。
+    /// 保存数据（仅当 StateHash 判定已修改才写库；整文档重写，新档为准，对齐 C168 语义裁定）。
     /// </summary>
     /// <remarks>
-    /// Saves a document (only writes when the StateHash marks it modified; see <see cref="PreservedOnUpdateFields"/> for preserved-field semantics).
+    /// Saves a document (only writes when the StateHash marks it modified). C168 semantics: the whole document
+    /// is rewritten from the state object — fields the state type no longer declares are naturally cleared
+    /// (unlike C166's stored-side merge); the state's own <c>IsDeleted</c>/<c>CreatedTime</c> etc. are
+    /// authoritative since update flows load states from the database first. A missing row is a silent no-op
+    /// (aligned with the previous <c>UPDATE ... WHERE id</c> row-count behavior).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="state">要保存的数据 / The state to save</param>
@@ -85,13 +94,19 @@ public sealed partial class PostgreSqlDbService
             state.UpdateTime = GetCurrentTimestamp();
             state.UpdateCount = (state.UpdateCount ?? 0) + 1;
 
-            var (sql, parameters) = BuildUpdatePreservingSql<TState>(state);
-            var result = await ExecuteWriteWithRetryAsync(async token =>
+            var updated = await ExecuteWriteWithRetryAsync(async token =>
             {
-                var rowCount = await ExecuteWriteCommandAsync<TState>(sql, parameters, token).ConfigureAwait(false);
-                return rowCount;
+                await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+                using var context = CreateContext<TState>();
+                var updatedRow = await ReplaceDocumentAsync(context, state, token).ConfigureAwait(false);
+                if (updatedRow)
+                {
+                    await context.SaveChangesAsync(token).ConfigureAwait(false);
+                }
+
+                return updatedRow;
             }, cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
-            if (result > 0)
+            if (updated)
             {
                 state.SaveToDbPostHandler();
             }
@@ -101,10 +116,12 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 保存多条数据（返回实际更新行数；未变更项跳过，对齐 Mongo BulkWrite 语义）。
+    /// 保存多条数据（返回实际变更数；未变更项跳过，对齐 Mongo BulkWrite 语义）。
     /// </summary>
     /// <remarks>
-    /// Saves multiple documents (returns the actually updated count; unchanged items are skipped, aligned with Mongo BulkWrite semantics).
+    /// Saves multiple documents (returns the actually-changed count; unchanged items are skipped, aligned with
+    /// Mongo BulkWrite semantics). All writes go through one <c>SaveChanges</c> (atomic batch); when at least
+    /// one row was written, every item receives <c>SaveToDbPostHandler</c> (aligned with the previous flow).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="stateList">要保存的数据列表 / The states to save</param>
@@ -115,10 +132,12 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 保存多条数据（返回实际更新行数；未变更项跳过，对齐 Mongo BulkWrite 语义）。
+    /// 保存多条数据（返回实际变更数；未变更项跳过，对齐 Mongo BulkWrite 语义）。
     /// </summary>
     /// <remarks>
-    /// Saves multiple documents (returns the actually updated count; unchanged items are skipped, aligned with Mongo BulkWrite semantics).
+    /// Saves multiple documents (returns the actually-changed count; unchanged items are skipped, aligned with
+    /// Mongo BulkWrite semantics). All writes go through one <c>SaveChanges</c> (atomic batch); when at least
+    /// one row was written, every item receives <c>SaveToDbPostHandler</c> (aligned with the previous flow).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="stateList">要保存的数据列表 / The states to save</param>
@@ -151,29 +170,24 @@ public sealed partial class PostgreSqlDbService
             return 0;
         }
 
-        long modifiedCount = 0;
-        await ExecuteWriteWithRetryAsync(async token =>
+        var anyRowWritten = await ExecuteWriteWithRetryAsync(async token =>
         {
-            modifiedCount = 0;
-            await using var connection = DataSource.CreateConnection();
-            await connection.OpenAsync(token).ConfigureAwait(false);
-            await EnsureTableAsync<TState>(connection, token).ConfigureAwait(false);
+            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+            using var context = CreateContext<TState>();
+            var written = false;
             foreach (var state in changedStates)
             {
-                var (sql, parameters) = BuildUpdatePreservingSql<TState>(state);
-                await using var command = new NpgsqlCommand(sql, connection);
-                foreach (var parameter in parameters)
-                {
-                    // Clone：参数列表可能跨命令/重试复用（NpgsqlParameter 绑定后不可再入集合）
-                    command.Parameters.Add(parameter.Clone());
-                }
-
-                modifiedCount += await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
+                written |= await ReplaceDocumentAsync(context, state, token).ConfigureAwait(false);
             }
 
-            return true;
+            if (written)
+            {
+                await context.SaveChangesAsync(token).ConfigureAwait(false);
+            }
+
+            return written;
         }, cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
-        if (modifiedCount > 0)
+        if (anyRowWritten)
         {
             foreach (var state in cacheStates)
             {
@@ -185,34 +199,33 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 根据ID部分更新数据（服务器端 jsonb 合并 + UpdateTime 写入 + UpdateCount 自增，单语句原子）。
+    /// 根据ID部分更新数据（读改写整档：字段写入 / null 移除 + UpdateTime 写入 + UpdateCount 自增；值未变不计行）。
     /// </summary>
     /// <remarks>
-    /// Partially updates by ID (server-side jsonb merge + UpdateTime write + UpdateCount increment, atomic in one statement).
-    /// 对齐 Mongo 语义：null 值字段移除（$unset）、非 null 字段写入（$set）；Id/CreatedTime/CreatedId 不可更新；
-    /// 过滤附带软删默认过滤；返回值对齐 ModifiedCount（值未变不计行）。
+    /// Partially updates by ID (load-modify-save whole document: non-null fields written, null-valued fields
+    /// removed/zeroed; <c>UpdateTime</c> stamped and <c>UpdateCount</c> incremented). 对齐 Mongo 语义：
+    /// <c>Id/CreatedTime/CreatedId</c> 不可更新；过滤附带软删默认过滤（仅可见行可更新）；
+    /// 返回值对齐 ModifiedCount——应用字段前后文档一致（含同毫秒时间戳）时不写库并返回 0。
+    /// 值类型字段的「移除」落地为 CLR 默认值（JSON 中的 <c>0/false</c> 与缺失键读取等价）。
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="id">数据ID / The document ID</param>
     /// <param name="updateFields">要更新的字段字典 / The fields to update</param>
     /// <returns>实际更新的行数 / The number of actually updated rows</returns>
-    /// <remarks>
-    /// Partially updates by ID (server-side jsonb merge + UpdateTime write + UpdateCount increment, atomic in one statement).
-    /// 对齐 Mongo 语义：null 值字段移除（$unset）、非 null 字段写入（$set）；Id/CreatedTime/CreatedId 不可更新；
-    /// 过滤附带软删默认过滤；返回值对齐 ModifiedCount（值未变不计行）。
-    /// </remarks>
     public async Task<long> UpdatePartialAsync<TState>(long id, IReadOnlyDictionary<string, object> updateFields) where TState : BaseCacheState, new()
     {
         return await UpdatePartialAsync<TState>(id, updateFields, CancellationToken.None).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// 根据ID部分更新数据（服务器端 jsonb 合并 + UpdateTime 写入 + UpdateCount 自增，单语句原子）。
+    /// 根据ID部分更新数据（读改写整档：字段写入 / null 移除 + UpdateTime 写入 + UpdateCount 自增；值未变不计行）。
     /// </summary>
     /// <remarks>
-    /// Partially updates by ID (server-side jsonb merge + UpdateTime write + UpdateCount increment, atomic in one statement).
-    /// 对齐 Mongo 语义：null 值字段移除（$unset）、非 null 字段写入（$set）；Id/CreatedTime/CreatedId 不可更新；
-    /// 过滤附带软删默认过滤；返回值对齐 ModifiedCount（值未变不计行）。
+    /// Partially updates by ID (load-modify-save whole document: non-null fields written, null-valued fields
+    /// removed/zeroed; <c>UpdateTime</c> stamped and <c>UpdateCount</c> incremented). 对齐 Mongo 语义：
+    /// <c>Id/CreatedTime/CreatedId</c> 不可更新；过滤附带软删默认过滤（仅可见行可更新）；
+    /// 返回值对齐 ModifiedCount——应用字段前后文档一致（含同毫秒时间戳）时不写库并返回 0。
+    /// 值类型字段的「移除」落地为 CLR 默认值（JSON 中的 <c>0/false</c> 与缺失键读取等价）。
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="id">数据ID / The document ID</param>
@@ -257,78 +270,114 @@ public sealed partial class PostgreSqlDbService
             return 0;
         }
 
-        var tableName = GetTableName<TState>();
-        var setsJson = PostgreSqlJsonDocumentSerializer.SerializeFields(setFields);
-        var sql = $@"
-WITH newdoc AS (
-    SELECT t.id AS id, jsonb_set(jsonb_set(
-        (t.doc || @sets::jsonb) - @removedKeys::text[],
-        '{{UpdateTime}}', to_jsonb(@updateTime::bigint)),
-        '{{UpdateCount}}', to_jsonb(COALESCE(NULLIF(t.doc->>'UpdateCount','')::bigint, 0) + 1)) AS d
-    FROM {tableName} t
-    WHERE t.id = @id AND ({PostgreSqlJsonbAccess.SoftDeleteFilter})
-)
-UPDATE {tableName} t SET doc = newdoc.d
-FROM newdoc
-WHERE t.id = newdoc.id AND t.doc IS DISTINCT FROM newdoc.d";
-        var parameters = new List<NpgsqlParameter>
+        return await ExecuteWriteWithRetryAsync(async token =>
         {
-            new("id", id),
-            CreateJsonParameter("sets", setsJson),
-            new("removedKeys", removedKeys.ToArray()),
-            new("updateTime", GetCurrentTimestamp()),
-        };
-        var rowCount = await ExecuteWriteWithRetryAsync(async token => await ExecuteWriteCommandAsync<TState>(sql, parameters, token).ConfigureAwait(false), cancellationToken, nameof(UpdatePartialAsync), false).ConfigureAwait(false);
-        return rowCount;
+            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+            using var context = CreateContext<TState>();
+            // 软删默认过滤生效：仅可见行可被部分更新（对齐原 WHERE 软删过滤条款）
+            // The soft-delete query filter applies: only visible rows can be partially updated.
+            var row = await context.Rows.FirstOrDefaultAsync(row => row.Id == id, token).ConfigureAwait(false);
+            if (row == null)
+            {
+                return 0;
+            }
+
+            var document = row.Doc;
+            var beforeJson = JsonSerializer.Serialize(document, ComparisonOptions);
+            var stateType = typeof(TState);
+            foreach (var item in setFields)
+            {
+                ApplyFieldValue(stateType, document, item.Key, item.Value);
+            }
+
+            foreach (var removedKey in removedKeys)
+            {
+                ApplyFieldValue(stateType, document, removedKey, null);
+            }
+
+            document.UpdateTime = GetCurrentTimestamp();
+            document.UpdateCount = (document.UpdateCount ?? 0) + 1;
+            var afterJson = JsonSerializer.Serialize(document, ComparisonOptions);
+            if (string.Equals(beforeJson, afterJson, StringComparison.Ordinal))
+            {
+                // 值未变不计行（对齐原 IS DISTINCT FROM 语义）：文档一致时不产生写事务
+                // Unchanged values do not count (aligned with the former IS DISTINCT FROM semantics).
+                return 0;
+            }
+
+            await context.SaveChangesAsync(token).ConfigureAwait(false);
+            return 1;
+        }, cancellationToken, nameof(UpdatePartialAsync), true).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// 构建保留字段的更新语句（存储侧 Id/CreatedTime/CreatedId/IsDeleted/DeleteTime 优先，值未变不计行）。
+    /// 反射写入文档字段值（null → 引用/可空置 null，值类型置 CLR 默认值；类型不匹配时按 IConvertible 转换）。
     /// </summary>
     /// <remarks>
-    /// Builds an update statement preserving storage-side fields (Id/CreatedTime/CreatedId/IsDeleted/DeleteTime take precedence; unchanged values do not count as updated rows).
+    /// Reflectively assigns a document field (null assigns null to reference/nullable members and the CLR
+    /// default to value types; mismatched runtime types convert via <see cref="IConvertible"/>). Unknown
+    /// property names are ignored (defensive against a different version's field sets).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
-    /// <param name="state">要更新的数据 / The state to update</param>
-    /// <returns>SQL 语句与参数列表 / The SQL statement and parameter list</returns>
-    private static (string Sql, List<NpgsqlParameter> Parameters) BuildUpdatePreservingSql<TState>(TState state) where TState : BaseCacheState, new()
+    /// <param name="stateType">状态类型 / The state type</param>
+    /// <param name="document">文档实例 / The document instance</param>
+    /// <param name="fieldName">字段名 / The field name</param>
+    /// <param name="value">字段值 / The field value</param>
+    private static void ApplyFieldValue<TState>(Type stateType, TState document, string fieldName, object value) where TState : BaseCacheState, new()
     {
-        var newDocJson = PostgreSqlJsonDocumentSerializer.Serialize(state);
-        // 根因修复（notes.md C166）：join(",") 会把键列表拼成 row 构造器（record），PG 报 jsonb || record；
-        // 正确形态是 jsonb - text[] 数组删键（键为编译期常量，无注入面）。
-        var removeKeysArray = "ARRAY[" + string.Join(", ", PreservedOnUpdateFields.Skip(1).Select(static field => $"'{field}'")) + "]";
-        var sql = $"UPDATE {GetTableName<TState>()} SET doc = (doc - 'Id') || (@doc::jsonb - {removeKeysArray}) WHERE id = @id AND doc IS DISTINCT FROM ((doc - 'Id') || (@doc::jsonb - {removeKeysArray}))";
-        var parameters = new List<NpgsqlParameter>
+        var property = stateType.GetProperty(fieldName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+        if (property == null || !property.CanWrite)
         {
-            new("id", state.Id),
-            CreateJsonParameter("doc", newDocJson),
-        };
-        return (sql, parameters);
-    }
-
-    /// <summary>
-    /// 执行写命令（含表结构确保），返回受影响行数。
-    /// </summary>
-    /// <remarks>
-    /// Executes a write command (including table-structure ensuring) and returns the affected row count.
-    /// </remarks>
-    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
-    /// <param name="sql">SQL 语句 / The SQL statement</param>
-    /// <param name="parameters">参数列表 / The parameter list</param>
-    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
-    /// <returns>受影响行数 / The affected row count</returns>
-    private async Task<int> ExecuteWriteCommandAsync<TState>(string sql, IReadOnlyList<NpgsqlParameter> parameters, CancellationToken cancellationToken) where TState : BaseCacheState, new()
-    {
-        await using var connection = DataSource.CreateConnection();
-        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-        await EnsureTableAsync<TState>(connection, cancellationToken).ConfigureAwait(false);
-        await using var command = new NpgsqlCommand(sql, connection);
-        foreach (var parameter in parameters)
-        {
-            // Clone：参数列表可能跨命令/重试复用（NpgsqlParameter 绑定后不可再入集合）
-            command.Parameters.Add(parameter.Clone());
+            return;
         }
 
-        return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        var propertyType = property.PropertyType;
+        var underlyingType = Nullable.GetUnderlyingType(propertyType) ?? propertyType;
+        if (value == null)
+        {
+            property.SetValue(document, propertyType.IsValueType && Nullable.GetUnderlyingType(propertyType) == null ? Activator.CreateInstance(propertyType) : null);
+            return;
+        }
+
+        var valueType = Nullable.GetUnderlyingType(value.GetType()) ?? value.GetType();
+        if (valueType != underlyingType)
+        {
+            if (value is IConvertible && typeof(IConvertible).IsAssignableFrom(underlyingType))
+            {
+                value = Convert.ChangeType(value, underlyingType, System.Globalization.CultureInfo.InvariantCulture);
+            }
+            else
+            {
+                return;
+            }
+        }
+
+        property.SetValue(document, value);
+    }
+
+    /// <summary>
+    /// 以整文档替换方式写回状态对象（加载跟踪行后替换 Doc 引用；行缺失返回 false）。
+    /// </summary>
+    /// <remarks>
+    /// Writes the state back as a whole-document replacement: the tracked row is loaded (bypassing the
+    /// soft-delete filter, matching the former unfiltered <c>UPDATE ... WHERE id</c> shape) and its <c>Doc</c>
+    /// reference replaced. The caller owns <c>SaveChangesAsync</c> so multiple replacements can share one
+    /// atomic save. Returns false when the row does not exist (no write, no exception).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
+    /// <param name="context">EF 上下文 / The EF context</param>
+    /// <param name="state">要写回的状态对象 / The state to write back</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>行存在并已标记写回时为 true；行缺失为 false / True when the row exists and the replacement is staged; false when the row is missing</returns>
+    private static async Task<bool> ReplaceDocumentAsync<TState>(PostgreSqlDbContext<TState> context, TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        var row = await context.Rows.IgnoreQueryFilters().FirstOrDefaultAsync(row => row.Id == state.Id, cancellationToken).ConfigureAwait(false);
+        if (row == null)
+        {
+            return false;
+        }
+
+        row.Doc = state;
+        return true;
     }
 }

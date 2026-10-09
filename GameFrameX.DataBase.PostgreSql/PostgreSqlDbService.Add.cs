@@ -12,24 +12,24 @@
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
 //   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
 //   侵犯他人合法权益等法律法规所禁止的行为！
-//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   or violate the legal rights and interests of others as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
 //   Any legal disputes or liabilities arising from secondary development based on this project
-//   本项目组织与贡献者概不承担。
+//   本组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
 //   GitHub Repository: https://github.com/GameFrameX
 //   Gitee  仓库：https://gitee.com/GameFrameX
 //   Gitee Repository:  https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
-//   CNB Repository: https://cnb.cool/GameFrameX
+//   CNB Repository:     https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
 
 using GameFrameX.DataBase.Abstractions;
-using Npgsql;
+using Microsoft.EntityFrameworkCore;
 
 namespace GameFrameX.DataBase.PostgreSql;
 
@@ -67,25 +67,22 @@ public sealed partial class PostgreSqlDbService
         state.CreatedTime = currentTime;
         state.UpdateTime = currentTime;
         state.UpdateCount ??= 0;
-        var sql = $"INSERT INTO {GetTableName<TState>()} (id, doc) VALUES (@id, @doc)";
         await ExecuteWriteWithRetryAsync(async token =>
         {
-            await using var connection = DataSource.CreateConnection();
-            await connection.OpenAsync(token).ConfigureAwait(false);
-            await EnsureTableAsync<TState>(connection, token).ConfigureAwait(false);
-            await using var command = new NpgsqlCommand(sql, connection);
-            command.Parameters.Add(new NpgsqlParameter("id", state.Id));
-            command.Parameters.Add(CreateJsonParameter("doc", PostgreSqlJsonDocumentSerializer.Serialize(state)));
-            await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
+            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+            using var context = CreateContext<TState>();
+            context.Rows.Add(new StateRow<TState> { Id = state.Id, Doc = state, });
+            await context.SaveChangesAsync(token).ConfigureAwait(false);
             return true;
         }, cancellationToken, nameof(AddAsync), false).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// 增加一个列表数据（单语句多值插入，整体原子；空集合直接返回，对齐 Mongo）。
+    /// 增加一个列表数据（单次 SaveChanges 整体原子；空集合直接返回，对齐 Mongo）。
     /// </summary>
     /// <remarks>
-    /// Adds a list of documents (single multi-value INSERT, atomic as a whole; empty collections return directly, aligned with Mongo).
+    /// Adds a list of documents — one <c>SaveChanges</c> wraps every insert in a single implicit transaction,
+    /// so the batch is atomic as a whole; empty collections return directly (aligned with Mongo).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="states">要新增的数据列表 / The states to add</param>
@@ -95,10 +92,11 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 增加一个列表数据（单语句多值插入，整体原子；空集合直接返回，对齐 Mongo）。
+    /// 增加一个列表数据（单次 SaveChanges 整体原子；空集合直接返回，对齐 Mongo）。
     /// </summary>
     /// <remarks>
-    /// Adds a list of documents (single multi-value INSERT, atomic as a whole; empty collections return directly, aligned with Mongo).
+    /// Adds a list of documents — one <c>SaveChanges</c> wraps every insert in a single implicit transaction,
+    /// so the batch is atomic as a whole; empty collections return directly (aligned with Mongo).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="states">要新增的数据列表 / The states to add</param>
@@ -123,42 +121,16 @@ public sealed partial class PostgreSqlDbService
 
         await ExecuteWriteWithRetryAsync(async token =>
         {
-            await using var connection = DataSource.CreateConnection();
-            await connection.OpenAsync(token).ConfigureAwait(false);
-            await EnsureTableAsync<TState>(connection, token).ConfigureAwait(false);
-            await using var command = BuildInsertManyCommand<TState>(connection, cacheStates);
-            await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
+            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+            using var context = CreateContext<TState>();
+            foreach (var cacheState in cacheStates)
+            {
+                context.Rows.Add(new StateRow<TState> { Id = cacheState.Id, Doc = cacheState, });
+            }
+
+            await context.SaveChangesAsync(token).ConfigureAwait(false);
             return true;
         }, cancellationToken, nameof(AddListAsync), false).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// 构建多值插入命令（INSERT INTO ... VALUES (...), (...)）。
-    /// </summary>
-    /// <remarks>
-    /// Builds a multi-value INSERT command (INSERT INTO ... VALUES (...), (...)).
-    /// </remarks>
-    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
-    /// <param name="connection">数据库连接 / The database connection</param>
-    /// <param name="states">要插入的数据列表 / The states to insert</param>
-    /// <returns>构建好的插入命令 / The built insert command</returns>
-    private static NpgsqlCommand BuildInsertManyCommand<TState>(NpgsqlConnection connection, IReadOnlyList<TState> states) where TState : BaseCacheState, new()
-    {
-        var valueFragments = new List<string>(states.Count);
-        var command = new NpgsqlCommand();
-        command.Connection = connection;
-        for (var index = 0; index < states.Count; index++)
-        {
-            var state = states[index];
-            var idParameterName = $"id{index}";
-            var docParameterName = $"doc{index}";
-            valueFragments.Add($"(@{idParameterName}, @{docParameterName})");
-            command.Parameters.Add(new NpgsqlParameter(idParameterName, state.Id));
-            command.Parameters.Add(CreateJsonParameter(docParameterName, PostgreSqlJsonDocumentSerializer.Serialize(state)));
-        }
-
-        command.CommandText = $"INSERT INTO {GetTableName<TState>()} (id, doc) VALUES {string.Join(", ", valueFragments)}";
-        return command;
     }
 
     #endregion 插入

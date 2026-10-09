@@ -193,12 +193,14 @@ public sealed partial class PostgreSqlDbService
     /// 重置连接状态并释放相关资源。
     /// </summary>
     /// <remarks>
-    /// Resets the connection state and releases related resources.
+    /// Resets the connection state and releases related resources. The per-TState EF context options cache is
+    /// cleared as well — cached options are bound to the disposed data source and must not outlive it.
     /// </remarks>
     private void ResetConnectionState()
     {
         DataSource?.Dispose();
         DataSource = null;
+        _contextOptionsCache.Clear();
     }
 
     /// <summary>

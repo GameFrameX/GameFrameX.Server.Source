@@ -12,17 +12,17 @@
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
 //   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
 //   侵犯他人合法权益等法律法规所禁止的行为！
-//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   or violate the legal rights and interests of others as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
 //   Any legal disputes or liabilities arising from secondary development based on this project
-//   本项目组织与贡献者概不承担。
+//   本组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
 //   GitHub Repository: https://github.com/GameFrameX
 //   Gitee  仓库：https://gitee.com/GameFrameX
 //   Gitee Repository:  https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
-//   CNB Repository: https://cnb.cool/GameFrameX
+//   CNB Repository:     https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
@@ -30,7 +30,8 @@
 
 using System.Linq.Expressions;
 using System.Threading;
-using Npgsql;
+using GameFrameX.DataBase.Abstractions;
+using Microsoft.EntityFrameworkCore;
 
 namespace GameFrameX.DataBase.PostgreSql;
 
@@ -155,10 +156,11 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 根据ID列表批量删除数据（软删除；单语句批量，时间戳每次变化故重复调用仍计行，与 Mongo $set 行为一致）。
+    /// 根据ID列表批量删除数据（软删除；单批 SaveChanges，时间戳每次变化故重复调用仍计行，与 Mongo $set 行为一致）。
     /// </summary>
     /// <remarks>
-    /// Soft-deletes documents by ID list (single batched statement; the timestamp changes every call so repeated calls still count rows, consistent with Mongo $set).
+    /// Soft-deletes documents by ID list (one tracked batch; the timestamp changes every call so repeated calls
+    /// still count rows, consistent with Mongo $set).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="ids">要删除的数据ID列表 / The IDs to delete</param>
@@ -169,10 +171,11 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 根据ID列表批量删除数据（软删除；单语句批量，时间戳每次变化故重复调用仍计行，与 Mongo $set 行为一致）。
+    /// 根据ID列表批量删除数据（软删除；单批 SaveChanges，时间戳每次变化故重复调用仍计行，与 Mongo $set 行为一致）。
     /// </summary>
     /// <remarks>
-    /// Soft-deletes documents by ID list (single batched statement; the timestamp changes every call so repeated calls still count rows, consistent with Mongo $set).
+    /// Soft-deletes documents by ID list (one tracked batch; the timestamp changes every call so repeated calls
+    /// still count rows, consistent with Mongo $set).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="ids">要删除的数据ID列表 / The IDs to delete</param>
@@ -188,13 +191,27 @@ public sealed partial class PostgreSqlDbService
             return 0;
         }
 
-        var sql = $"UPDATE {GetTableName<TState>()} SET doc = jsonb_set(jsonb_set(doc, '{{IsDeleted}}', 'true'::jsonb), '{{DeleteTime}}', to_jsonb(@deleteTime::bigint)) WHERE id = ANY(@ids) AND doc IS DISTINCT FROM jsonb_set(jsonb_set(doc, '{{IsDeleted}}', 'true'::jsonb), '{{DeleteTime}}', to_jsonb(@deleteTime::bigint))";
-        var parameters = new List<NpgsqlParameter>
+        var distinctIds = idArray.Distinct().ToArray();
+        var deleteTime = GetCurrentTimestamp();
+        return await ExecuteWriteWithRetryAsync(async token =>
         {
-            new("ids", idArray.Distinct().ToArray()),
-            new("deleteTime", GetCurrentTimestamp()),
-        };
-        return await ExecuteWriteWithRetryAsync(async token => await ExecuteWriteCommandAsync<TState>(sql, parameters, token).ConfigureAwait(false), cancellationToken, nameof(DeleteListIdAsync), true).ConfigureAwait(false);
+            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+            using var context = CreateContext<TState>();
+            var rows = await context.Rows.IgnoreQueryFilters().Where(row => distinctIds.Contains(row.Id)).ToListAsync(token).ConfigureAwait(false);
+            foreach (var row in rows)
+            {
+                row.Doc.IsDeleted = true;
+                row.Doc.DeleteTime = deleteTime;
+            }
+
+            if (rows.Count == 0)
+            {
+                return 0;
+            }
+
+            var affected = await context.SaveChangesAsync(token).ConfigureAwait(false);
+            return (long)affected;
+        }, cancellationToken, nameof(DeleteListIdAsync), true).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -225,16 +242,27 @@ public sealed partial class PostgreSqlDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
-        var (whereSql, parameters) = BuildWhere<TState>(filter, false);
-        var sql = $"DELETE FROM {GetTableName<TState>()} WHERE {whereSql}";
-        return await ExecuteWriteWithRetryAsync(async token => await ExecuteWriteCommandAsync<TState>(sql, parameters, token).ConfigureAwait(false), cancellationToken, nameof(HardDeleteAsync), true).ConfigureAwait(false);
+        return await ExecuteWriteWithRetryAsync(async token =>
+        {
+            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+            using var context = CreateContext<TState>();
+            var query = context.Rows.IgnoreQueryFilters().AsQueryable();
+            if (filter != null)
+            {
+                query = query.Where(PostgreSqlStateRowExpressionRewriter.RewriteFilter(filter));
+            }
+
+            return await query.ExecuteDeleteAsync(token).ConfigureAwait(false);
+        }, cancellationToken, nameof(HardDeleteAsync), true).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// 根据条件恢复软删除数据（IsDeleted 置 false 且移除 DeleteTime，对齐 Mongo $unset）。
+    /// 根据条件恢复软删除数据（IsDeleted 置 false 且 DeleteTime 置 null，对齐 Mongo $unset）。
     /// </summary>
     /// <remarks>
-    /// Restores soft-deleted documents matching the filter (sets IsDeleted to false and removes DeleteTime, aligned with Mongo $unset).
+    /// Restores soft-deleted documents matching the filter (sets IsDeleted to false and DeleteTime to null,
+    /// aligned with Mongo $unset). Only rows currently marked deleted are touched (bypasses the visibility
+    /// filter by design — restore must be able to see deleted rows).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="filter">过滤表达式 / The filter expression</param>
@@ -245,10 +273,12 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 根据条件恢复软删除数据（IsDeleted 置 false 且移除 DeleteTime，对齐 Mongo $unset）。
+    /// 根据条件恢复软删除数据（IsDeleted 置 false 且 DeleteTime 置 null，对齐 Mongo $unset）。
     /// </summary>
     /// <remarks>
-    /// Restores soft-deleted documents matching the filter (sets IsDeleted to false and removes DeleteTime, aligned with Mongo $unset).
+    /// Restores soft-deleted documents matching the filter (sets IsDeleted to false and DeleteTime to null,
+    /// aligned with Mongo $unset). Only rows currently marked deleted are touched (bypasses the visibility
+    /// filter by design — restore must be able to see deleted rows).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="filter">过滤表达式 / The filter expression</param>
@@ -258,18 +288,40 @@ public sealed partial class PostgreSqlDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
-        // Mongo 语义：命中条件 + IsDeleted == true（恢复过滤不走软删默认过滤）
-        // Mongo semantics: filter AND IsDeleted == true (restore intentionally bypasses the soft-delete default filter).
-        var (filterSql, filterParameters) = PostgreSqlExpressionTranslator.TranslateFilter(MatchAll<TState>(filter));
-        var sql = $"UPDATE {GetTableName<TState>()} SET doc = jsonb_set(doc, '{{IsDeleted}}', 'false'::jsonb) - 'DeleteTime' WHERE ({filterSql}) AND (doc->>'IsDeleted')::boolean = true";
-        return await ExecuteWriteWithRetryAsync(async token => await ExecuteWriteCommandAsync<TState>(sql, filterParameters, token).ConfigureAwait(false), cancellationToken, nameof(RestoreAsync), true).ConfigureAwait(false);
+        return await ExecuteWriteWithRetryAsync(async token =>
+        {
+            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+            using var context = CreateContext<TState>();
+            var query = context.Rows.IgnoreQueryFilters().Where(row => row.Doc.IsDeleted == true);
+            if (filter != null)
+            {
+                query = query.Where(PostgreSqlStateRowExpressionRewriter.RewriteFilter(filter));
+            }
+
+            var rows = await query.ToListAsync(token).ConfigureAwait(false);
+            foreach (var row in rows)
+            {
+                row.Doc.IsDeleted = false;
+                row.Doc.DeleteTime = null;
+            }
+
+            if (rows.Count == 0)
+            {
+                return 0;
+            }
+
+            var affected = await context.SaveChangesAsync(token).ConfigureAwait(false);
+            return (long)affected;
+        }, cancellationToken, nameof(RestoreAsync), true).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// 按 id 软删除（值未变不计行，对齐 Mongo ModifiedCount）。
+    /// 按 id 软删除（整档写回；重复同毫秒删除幂等返回 0，对齐 Mongo ModifiedCount）。
     /// </summary>
     /// <remarks>
-    /// Soft-deletes by id (unchanged values do not count as rows, aligned with Mongo ModifiedCount).
+    /// Soft-deletes by id: the tracked row's document is replaced with the caller's marked state (whole-document
+    /// write-back, C168 semantics). A same-millisecond repeat against an already-identical document counts as
+    /// unchanged and returns 0; a fresh delete timestamp always counts. Missing rows return 0.
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="id">数据ID / The document ID</param>
@@ -279,26 +331,20 @@ public sealed partial class PostgreSqlDbService
     /// <returns>实际删除的数量 / The number of actually deleted documents</returns>
     private async Task<long> ExecuteSoftDeleteByIdAsync<TState>(long id, long deleteTime, string operationName, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        var sql = $"UPDATE {GetTableName<TState>()} SET doc = jsonb_set(jsonb_set(doc, '{{IsDeleted}}', 'true'::jsonb), '{{DeleteTime}}', to_jsonb(@deleteTime::bigint)) WHERE id = @id AND doc IS DISTINCT FROM jsonb_set(jsonb_set(doc, '{{IsDeleted}}', 'true'::jsonb), '{{DeleteTime}}', to_jsonb(@deleteTime::bigint))";
-        var parameters = new List<NpgsqlParameter>
+        return await ExecuteWriteWithRetryAsync(async token =>
         {
-            new("id", id),
-            new("deleteTime", deleteTime),
-        };
-        return await ExecuteWriteWithRetryAsync(async token => await ExecuteWriteCommandAsync<TState>(sql, parameters, token).ConfigureAwait(false), cancellationToken, operationName, true).ConfigureAwait(false);
-    }
+            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+            using var context = CreateContext<TState>();
+            var row = await context.Rows.IgnoreQueryFilters().FirstOrDefaultAsync(row => row.Id == id, token).ConfigureAwait(false);
+            if (row == null)
+            {
+                return 0;
+            }
 
-    /// <summary>
-    /// 归一化过滤（null → 恒真），供不需要软删默认过滤的路径复用。
-    /// </summary>
-    /// <remarks>
-    /// Normalizes the filter (null → always-true) for code paths that do not need the soft-delete default filter.
-    /// </remarks>
-    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
-    /// <param name="filter">过滤表达式 / The filter expression</param>
-    /// <returns>归一化后的过滤表达式 / The normalized filter expression</returns>
-    private static Expression<Func<TState, bool>> MatchAll<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
-    {
-        return filter ?? (Expression<Func<TState, bool>>)(_ => true);
+            row.Doc.IsDeleted = true;
+            row.Doc.DeleteTime = deleteTime;
+            var affected = await context.SaveChangesAsync(token).ConfigureAwait(false);
+            return (long)affected;
+        }, cancellationToken, operationName, true).ConfigureAwait(false);
     }
 }

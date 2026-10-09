@@ -12,17 +12,17 @@
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
 //   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
 //   侵犯他人合法权益等法律法规所禁止的行为！
-//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   or violate the legal rights and interests of others as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
 //   Any legal disputes or liabilities arising from secondary development based on this project
-//   本项目组织与贡献者概不承担。
+//   本组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
 //   GitHub Repository: https://github.com/GameFrameX
 //   Gitee  仓库：https://gitee.com/GameFrameX
 //   Gitee Repository:  https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
-//   CNB Repository: https://cnb.cool/GameFrameX
+//   CNB Repository:     https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
@@ -32,6 +32,7 @@ using GameFrameX.DataBase.Abstractions;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Localization;
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 namespace GameFrameX.DataBase.PostgreSql;
@@ -39,11 +40,14 @@ namespace GameFrameX.DataBase.PostgreSql;
 public sealed partial class PostgreSqlDbService
 {
     /// <summary>
-    /// 增加或更新数据（单语句 upsert：INSERT ... ON CONFLICT (id) DO UPDATE，整文档替换，对齐 Mongo ReplaceOne+IsUpsert）。
+    /// 增加或更新数据（整文档替换 upsert，对齐 Mongo ReplaceOne+IsUpsert；主键并发竞争自动重试一次）。
     /// </summary>
     /// <remarks>
-    /// Adds or updates a single document via a one-statement upsert (INSERT ... ON CONFLICT (id) DO UPDATE,
-    /// whole-document replacement), aligned with Mongo's ReplaceOne + IsUpsert semantics.
+    /// Adds or updates a single document (whole-document replacement, aligned with Mongo's ReplaceOne + IsUpsert
+    /// semantics). The insert-or-update decision is not a single atomic statement under EF, so a concurrent
+    /// insert racing the existence probe surfaces as a unique-key violation (SQLSTATE 23505) which is retried
+    /// once via reload-and-replace — converging to the last-writer-wins outcome of the former
+    /// <c>INSERT ... ON CONFLICT DO UPDATE</c>.
     /// </remarks>
     /// <typeparam name="TState">状态类型 / The state type</typeparam>
     /// <param name="state">要增加或更新的状态对象 / The state object to add or update</param>
@@ -54,11 +58,14 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 增加或更新数据（单语句 upsert：INSERT ... ON CONFLICT (id) DO UPDATE，整文档替换，对齐 Mongo ReplaceOne+IsUpsert）。
+    /// 增加或更新数据（整文档替换 upsert，对齐 Mongo ReplaceOne+IsUpsert；主键并发竞争自动重试一次）。
     /// </summary>
     /// <remarks>
-    /// Adds or updates a single document via a one-statement upsert (INSERT ... ON CONFLICT (id) DO UPDATE,
-    /// whole-document replacement), aligned with Mongo's ReplaceOne + IsUpsert semantics.
+    /// Adds or updates a single document (whole-document replacement, aligned with Mongo's ReplaceOne + IsUpsert
+    /// semantics). The insert-or-update decision is not a single atomic statement under EF, so a concurrent
+    /// insert racing the existence probe surfaces as a unique-key violation (SQLSTATE 23505) which is retried
+    /// once via reload-and-replace — converging to the last-writer-wins outcome of the former
+    /// <c>INSERT ... ON CONFLICT DO UPDATE</c>.
     /// </remarks>
     /// <typeparam name="TState">状态类型 / The state type</typeparam>
     /// <param name="state">要增加或更新的状态对象 / The state object to add or update</param>
@@ -80,19 +87,36 @@ public sealed partial class PostgreSqlDbService
         state.UpdateTime = currentTime;
         state.UpdateCount = (state.UpdateCount ?? 0) + 1;
 
-        var (sql, parameters) = BuildUpsertSql(state);
-        await ExecuteWriteWithRetryAsync(async token => await ExecuteWriteCommandAsync<TState>(sql, parameters, token).ConfigureAwait(false), cancellationToken, nameof(AddOrUpdateAsync), true).ConfigureAwait(false);
+        await ExecuteWriteWithRetryAsync(async token =>
+        {
+            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+            for (var attempt = 0; ; attempt++)
+            {
+                try
+                {
+                    using var context = CreateContext<TState>();
+                    await StageUpsertAsync(context, new[] { state, }, token).ConfigureAwait(false);
+                    await context.SaveChangesAsync(token).ConfigureAwait(false);
+                    return true;
+                }
+                catch (DbUpdateException exception) when (attempt == 0 && IsUniqueViolation(exception))
+                {
+                    // 并发插入同 id 竞争失败：重载后按更新收敛（对齐原 upsert 的 last-writer-wins）
+                    // Lost the insert race for the same id: reload and converge as an update (former upsert's last-writer-wins).
+                }
+            }
+        }, cancellationToken, nameof(AddOrUpdateAsync), true).ConfigureAwait(false);
 
         state.SaveToDbPostHandler();
         return state;
     }
 
     /// <summary>
-    /// 批量增加或更新数据（单语句多值 upsert；返回处理记录数，对齐 Mongo BulkWrite ReplaceOne 语义）。
+    /// 批量增加或更新数据（单次 SaveChanges 原子批次；返回处理记录数，对齐 Mongo BulkWrite ReplaceOne 语义）。
     /// </summary>
     /// <remarks>
-    /// Bulk adds or updates documents with a single multi-value upsert statement; returns the number of processed
-    /// records, aligned with Mongo's BulkWrite ReplaceOne semantics.
+    /// Bulk adds or updates documents as one atomic <c>SaveChanges</c> batch (whole-document replacement);
+    /// returns the number of processed records, aligned with Mongo's BulkWrite ReplaceOne semantics.
     /// </remarks>
     /// <typeparam name="TState">状态类型 / The state type</typeparam>
     /// <param name="states">要增加或更新的状态集合 / The states to add or update</param>
@@ -103,11 +127,11 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 批量增加或更新数据（单语句多值 upsert；返回处理记录数，对齐 Mongo BulkWrite ReplaceOne 语义）。
+    /// 批量增加或更新数据（单次 SaveChanges 原子批次；返回处理记录数，对齐 Mongo BulkWrite ReplaceOne 语义）。
     /// </summary>
     /// <remarks>
-    /// Bulk adds or updates documents with a single multi-value upsert statement; returns the number of processed
-    /// records, aligned with Mongo's BulkWrite ReplaceOne semantics.
+    /// Bulk adds or updates documents as one atomic <c>SaveChanges</c> batch (whole-document replacement);
+    /// returns the number of processed records, aligned with Mongo's BulkWrite ReplaceOne semantics.
     /// </remarks>
     /// <typeparam name="TState">状态类型 / The state type</typeparam>
     /// <param name="states">要增加或更新的状态集合 / The states to add or update</param>
@@ -137,12 +161,22 @@ public sealed partial class PostgreSqlDbService
 
         await ExecuteWriteWithRetryAsync(async token =>
         {
-            await using var connection = DataSource.CreateConnection();
-            await connection.OpenAsync(token).ConfigureAwait(false);
-            await EnsureTableAsync<TState>(connection, token).ConfigureAwait(false);
-            await using var command = BuildUpsertManyCommand<TState>(connection, stateArray);
-            await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
-            return true;
+            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+            for (var attempt = 0; ; attempt++)
+            {
+                try
+                {
+                    using var context = CreateContext<TState>();
+                    await StageUpsertAsync(context, stateArray, token).ConfigureAwait(false);
+                    await context.SaveChangesAsync(token).ConfigureAwait(false);
+                    return true;
+                }
+                catch (DbUpdateException exception) when (attempt == 0 && IsUniqueViolation(exception))
+                {
+                    // 批内 id 与并发插入竞争：整批重探一次收敛
+                    // A batch id raced a concurrent insert: re-probe the whole batch once.
+                }
+            }
         }, cancellationToken, nameof(AddOrUpdateListAsync), true).ConfigureAwait(false);
         foreach (var state in stateArray)
         {
@@ -156,11 +190,12 @@ public sealed partial class PostgreSqlDbService
     /// 按批次大小分批执行批量 upsert 保存（关服保存路径，逐批 ack / 异常隔离，对齐 Mongo SaveBulkAsync）。
     /// </summary>
     /// <remarks>
-    /// Bulk-upserts in batches of <paramref name="batchSize"/> via <c>INSERT ... ON CONFLICT (id) DO UPDATE</c>
-    /// (C166): per-batch ack and exception isolation — a failed batch is logged and the remaining batches still
-    /// execute. Unlike <c>AddOrUpdateListAsync</c> this deliberately does NOT touch
-    /// <c>CreatedTime/UpdateTime/UpdateCount</c>: state timestamps are persisted exactly as handed in (the caller
-    /// owns timestamp semantics, migrated verbatim from the Mongo adapter C159).
+    /// Bulk-upserts in batches of <paramref name="batchSize"/> (C159 contract): per-batch ack and exception
+    /// isolation — a failed batch is logged and the remaining batches still execute. Unlike
+    /// <c>AddOrUpdateListAsync</c> this deliberately does NOT touch <c>CreatedTime/UpdateTime/UpdateCount</c>:
+    /// state timestamps are persisted exactly as handed in (the caller owns timestamp semantics, migrated
+    /// verbatim from the Mongo adapter C159). A batch is acknowledged when its atomic save completes with
+    /// one affected row per staged document.
     /// </remarks>
     /// <param name="states">待保存的状态集合 / The states to save</param>
     /// <param name="batchSize">每批数量（&lt;= 0 抛出 ArgumentOutOfRangeException）/ Batch size (values &lt;= 0 throw)</param>
@@ -194,18 +229,15 @@ public sealed partial class PostgreSqlDbService
 
             try
             {
+                await EnsureTableAsync<TState>(CancellationToken.None).ConfigureAwait(false);
                 var acknowledged = false;
-                await using (var connection = DataSource.CreateConnection())
+                using (var context = CreateContext<TState>())
                 {
-                    await connection.OpenAsync(CancellationToken.None).ConfigureAwait(false);
-                    await EnsureTableAsync<TState>(connection, CancellationToken.None).ConfigureAwait(false);
-                    await using (var command = BuildUpsertManyCommand<TState>(connection, batch))
-                    {
-                        var affected = await command.ExecuteNonQueryAsync(CancellationToken.None).ConfigureAwait(false);
-                        // ON CONFLICT DO UPDATE 对插入与更新各计一行，受影响行数 >= 批大小即视为整批 ack
-                        // ON CONFLICT DO UPDATE counts one row per insert and update; affected >= batch size means the whole batch was acknowledged.
-                        acknowledged = affected >= batchCount;
-                    }
+                    await StageUpsertAsync(context, batch, CancellationToken.None).ConfigureAwait(false);
+                    var affected = await context.SaveChangesAsync(CancellationToken.None).ConfigureAwait(false);
+                    // 每条 staged 文档各计一行；受影响行数 >= 批大小即视为整批 ack
+                    // Each staged document counts one row; affected >= batch size means the whole batch was acknowledged.
+                    acknowledged = affected >= batchCount;
                 }
 
                 if (acknowledged)
@@ -229,17 +261,16 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 在事务中执行操作（独立连接 BEGIN → action → COMMIT；SQLSTATE 40001/40P01 重试分类，对齐 Mongo 事务语义）。
+    /// 在事务中执行操作（EF 事务壳 BEGIN → action → COMMIT；SQLSTATE 40001/40P01 重试分类，对齐 Mongo 事务语义）。
     /// </summary>
     /// <remarks>
-    /// Executes the action inside a transaction shell on a dedicated connection
-    /// (BEGIN → action → COMMIT), retrying on PostgreSQL serialization failures
-    /// (SQLSTATE <c>40001</c> serialization_failure / <c>40P01</c> deadlock_detected — aligned with Mongo's
-    /// <c>TransientTransactionError</c> retry classification). As with the Mongo adapter, the action's own
-    /// operations use their pooled connections and are not bound to this transaction's snapshot.
+    /// Executes the action inside a transaction shell (<c>BeginTransactionAsync</c> → action → commit),
+    /// retrying on PostgreSQL serialization failures (SQLSTATE <c>40001</c> serialization_failure /
+    /// <c>40P01</c> deadlock_detected — aligned with Mongo's <c>TransientTransactionError</c> retry
+    /// classification). As with the Mongo adapter, the action's own operations use their pooled connections
+    /// and are not bound to this transaction's snapshot.
     /// </remarks>
     /// <param name="action">要在事务中执行的操作 / The action to execute inside the transaction</param>
-    /// <exception cref="ArgumentNullException">当 <paramref name="action"/> 为 null 时抛出 / Thrown when <paramref name="action"/> is null</exception>
     /// <exception cref="DatabaseUnavailableException">当事务重试全部失败后抛出 / Thrown when all transaction retry attempts fail</exception>
     public async Task ExecuteInTransactionAsync(Func<Task> action)
     {
@@ -247,14 +278,14 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 在事务中执行操作（独立连接 BEGIN → action → COMMIT；SQLSTATE 40001/40P01 重试分类，对齐 Mongo 事务语义）。
+    /// 在事务中执行操作（EF 事务壳 BEGIN → action → COMMIT；SQLSTATE 40001/40P01 重试分类，对齐 Mongo 事务语义）。
     /// </summary>
     /// <remarks>
-    /// Executes the action inside a transaction shell on a dedicated connection
-    /// (BEGIN → action → COMMIT), retrying on PostgreSQL serialization failures
-    /// (SQLSTATE <c>40001</c> serialization_failure / <c>40P01</c> deadlock_detected — aligned with Mongo's
-    /// <c>TransientTransactionError</c> retry classification). As with the Mongo adapter, the action's own
-    /// operations use their pooled connections and are not bound to this transaction's snapshot.
+    /// Executes the action inside a transaction shell (<c>BeginTransactionAsync</c> → action → commit),
+    /// retrying on PostgreSQL serialization failures (SQLSTATE <c>40001</c> serialization_failure /
+    /// <c>40P01</c> deadlock_detected — aligned with Mongo's <c>TransientTransactionError</c> retry
+    /// classification). As with the Mongo adapter, the action's own operations use their pooled connections
+    /// and are not bound to this transaction's snapshot.
     /// </remarks>
     /// <param name="action">要在事务中执行的操作 / The action to execute inside the transaction</param>
     /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
@@ -271,9 +302,8 @@ public sealed partial class PostgreSqlDbService
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                await using var connection = DataSource.CreateConnection();
-                await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-                await using var transaction = await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+                using var context = CreateShellContext();
+                await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
                 cancellationToken.ThrowIfCancellationRequested();
                 await action().ConfigureAwait(false);
                 await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
@@ -298,49 +328,59 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 构建单行 upsert 语句。
+    /// 暂存一批整文档替换 upsert（既有行替换 Doc 引用，缺失行 Add；调用方负责 SaveChanges）。
     /// </summary>
     /// <remarks>
-    /// Builds the single-row upsert statement and its parameters.
+    /// Stages a whole-document-replacement upsert for a batch: existing rows (bypassing the soft-delete filter —
+    /// upsert intentionally revives soft-deleted documents, aligned with Mongo ReplaceOne semantics) get their
+    /// <c>Doc</c> reference replaced; missing rows are staged as inserts. The caller owns the atomic
+    /// <c>SaveChangesAsync</c>.
     /// </remarks>
-    private static (string Sql, List<NpgsqlParameter> Parameters) BuildUpsertSql<TState>(TState state) where TState : BaseCacheState, new()
+    /// <typeparam name="TState">状态类型 / The state type</typeparam>
+    /// <param name="context">EF 上下文 / The EF context</param>
+    /// <param name="states">待 upsert 的状态集合 / The states to upsert</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    private static async Task StageUpsertAsync<TState>(PostgreSqlDbContext<TState> context, IReadOnlyList<TState> states, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        var sql = $"INSERT INTO {GetTableName<TState>()} (id, doc) VALUES (@id, @doc) ON CONFLICT (id) DO UPDATE SET doc = EXCLUDED.doc";
-        var parameters = new List<NpgsqlParameter>
+        var ids = new long[states.Count];
+        for (var index = 0; index < states.Count; index++)
         {
-            new("id", state.Id),
-            CreateJsonParameter("doc", PostgreSqlJsonDocumentSerializer.Serialize(state)),
-        };
-        return (sql, parameters);
+            ids[index] = states[index].Id;
+        }
+
+        var existingRows = await context.Rows.IgnoreQueryFilters().Where(row => ids.Contains(row.Id)).ToDictionaryAsync(row => row.Id, cancellationToken).ConfigureAwait(false);
+        foreach (var state in states)
+        {
+            if (existingRows.TryGetValue(state.Id, out var row))
+            {
+                row.Doc = state;
+            }
+            else
+            {
+                context.Rows.Add(new StateRow<TState> { Id = state.Id, Doc = state, });
+            }
+        }
     }
 
     /// <summary>
-    /// 构建多行 upsert 命令（VALUES (...), (...) + ON CONFLICT DO UPDATE；统一形态：接收连接并在内部赋值，与 <c>BuildInsertManyCommand</c> 一致）。
+    /// 判断异常链中是否含主键唯一冲突（SQLSTATE 23505，用于 upsert 插入竞争重试）。
     /// </summary>
     /// <remarks>
-    /// Builds the multi-row upsert command (VALUES (...), (...) + ON CONFLICT DO UPDATE); unified shape:
-    /// takes the connection and assigns it internally, matching <c>BuildInsertManyCommand</c>.
+    /// Determines whether the exception chain contains a unique-constraint violation (SQLSTATE 23505) — the
+    /// signal that an upsert's insert raced a concurrent writer.
     /// </remarks>
-    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
-    /// <param name="connection">数据库连接 / The database connection</param>
-    /// <param name="states">要保存的数据列表 / The states to save</param>
-    /// <returns>构建好的 upsert 命令 / The built upsert command</returns>
-    private static NpgsqlCommand BuildUpsertManyCommand<TState>(NpgsqlConnection connection, IReadOnlyList<TState> states) where TState : BaseCacheState, new()
+    /// <param name="exception">异常 / The exception</param>
+    /// <returns>是否唯一冲突 / Whether a unique violation</returns>
+    private static bool IsUniqueViolation(Exception exception)
     {
-        var valueFragments = new List<string>(states.Count);
-        var command = new NpgsqlCommand();
-        command.Connection = connection;
-        for (var index = 0; index < states.Count; index++)
+        for (var current = exception; current != null; current = current.InnerException)
         {
-            var state = states[index];
-            var idParameterName = $"id{index}";
-            var docParameterName = $"doc{index}";
-            valueFragments.Add($"(@{idParameterName}, @{docParameterName})");
-            command.Parameters.Add(new NpgsqlParameter(idParameterName, state.Id));
-            command.Parameters.Add(CreateJsonParameter(docParameterName, PostgreSqlJsonDocumentSerializer.Serialize(state)));
+            if (current is PostgresException { SqlState: "23505", })
+            {
+                return true;
+            }
         }
 
-        command.CommandText = $"INSERT INTO {GetTableName<TState>()} (id, doc) VALUES {string.Join(", ", valueFragments)} ON CONFLICT (id) DO UPDATE SET doc = EXCLUDED.doc";
-        return command;
+        return false;
     }
 }

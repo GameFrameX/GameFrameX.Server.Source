@@ -558,15 +558,30 @@ public sealed class PostgreSqlDbServiceQueryTests
     }
 
     /// <summary>
-    /// 测试超集表达式节点抛出显式 NotSupportedException。
+    /// 测试不可翻译节点显式失败（C168：EF 翻译器接管方言，超集节点可翻译，不可翻译节点抛 InvalidOperationException，绝不静默内存过滤）。
     /// </summary>
     [Fact]
-    public async Task UnsupportedExpression_ShouldThrowNotSupportedException()
+    public async Task UntranslatableExpression_ShouldThrowExplicitly()
     {
         await ExecuteWithServiceAsync(async service =>
         {
-            await Assert.ThrowsAsync<NotSupportedException>(() => service.FindListAsync<PostgreSqlQueryTestState>(x => x.Name.Length > 2));
+            // 客户端方法调用无法翻译：显式失败（C166 时代为 NotSupportedException，C168 起为 EF 的 InvalidOperationException）
+            await Assert.ThrowsAsync<InvalidOperationException>(() => service.FindListAsync<PostgreSqlQueryTestState>(x => IsLongName(x.Name)));
+
+            // 旧翻译器方言矩阵之外的节点（string.Length）在 EF 翻译器下可用（覆盖面升级）
+            var state = CreateState("ef-superset", group: 22, score: 1);
+            await service.AddAsync(state);
+            var longNames = await service.FindListAsync<PostgreSqlQueryTestState>(x => x.Name.Length > 2);
+            Assert.Single(longNames);
         });
+    }
+
+    /// <summary>
+    /// 判定名称是否为长名的本地方法（仅供不可翻译表达式测试使用）。
+    /// </summary>
+    private static bool IsLongName(string name)
+    {
+        return name?.Length > 2;
     }
 
     /// <summary>

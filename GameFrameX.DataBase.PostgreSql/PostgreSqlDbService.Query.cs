@@ -12,17 +12,17 @@
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
 //   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
 //   侵犯他人合法权益等法律法规所禁止的行为！
-//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   or violate the legal rights and interests of others as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
 //   Any legal disputes or liabilities arising from secondary development based on this project
-//   本项目组织与贡献者概不承担。
+//   本组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
 //   GitHub Repository: https://github.com/GameFrameX
 //   Gitee  仓库：https://gitee.com/GameFrameX
 //   Gitee Repository:  https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
-//   CNB Repository: https://cnb.cool/GameFrameX
+//   CNB Repository:     https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
@@ -32,7 +32,7 @@ using System.Linq.Expressions;
 using System.Threading;
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.Utility;
-using Npgsql;
+using Microsoft.EntityFrameworkCore;
 
 namespace GameFrameX.DataBase.PostgreSql;
 
@@ -70,9 +70,14 @@ public sealed partial class PostgreSqlDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
-        var (whereSql, parameters) = BuildWhere(filter, true, id);
-        var sql = $"SELECT doc FROM {GetTableName<TState>()} WHERE {whereSql} LIMIT 1";
-        var state = await ExecuteReadWithRetryAsync(async token => await ExecuteSingleReadAsync<TState>(sql, parameters, token).ConfigureAwait(false), cancellationToken, nameof(FindAsync)).ConfigureAwait(false);
+        var state = await ExecuteReadWithRetryAsync(async token =>
+        {
+            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+            using var context = CreateContext<TState>();
+            var query = BuildRowQuery<TState>(context, filter, token);
+            var row = await query.FirstOrDefaultAsync(row => row.Id == id, token).ConfigureAwait(false);
+            return row?.Doc;
+        }, cancellationToken, nameof(FindAsync)).ConfigureAwait(false);
 
         return await MaterializeOrCreateAsync(state, isCreateIfNotExists, id, true, cancellationToken).ConfigureAwait(false);
     }
@@ -107,9 +112,14 @@ public sealed partial class PostgreSqlDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
-        var (whereSql, parameters) = BuildWhere(filter, true);
-        var sql = $"SELECT doc FROM {GetTableName<TState>()} WHERE {whereSql} LIMIT 1";
-        var state = await ExecuteReadWithRetryAsync(async token => await ExecuteSingleReadAsync<TState>(sql, parameters, token).ConfigureAwait(false), cancellationToken, nameof(FindAsync)).ConfigureAwait(false);
+        var state = await ExecuteReadWithRetryAsync(async token =>
+        {
+            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+            using var context = CreateContext<TState>();
+            var query = BuildRowQuery<TState>(context, filter, token);
+            var row = await query.FirstOrDefaultAsync(token).ConfigureAwait(false);
+            return row?.Doc;
+        }, cancellationToken, nameof(FindAsync)).ConfigureAwait(false);
 
         return await MaterializeOrCreateAsync(state, isCreateIfNotExists, 0, false, cancellationToken).ConfigureAwait(false);
     }
@@ -142,9 +152,11 @@ public sealed partial class PostgreSqlDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
-        var (whereSql, parameters) = BuildWhere(filter, true);
-        var sql = $"SELECT doc FROM {GetTableName<TState>()} WHERE {whereSql}";
-        var result = await ExecuteReadWithRetryAsync(async token => await ExecuteListReadAsync<TState>(sql, parameters, token).ConfigureAwait(false), cancellationToken, nameof(FindListAsync), () => new List<TState>()).ConfigureAwait(false);
+        var result = await ExecuteReadWithRetryAsync(async token => await QueryDocumentListAsync<TState>(context =>
+        {
+            var query = BuildRowQuery<TState>(context, filter, token);
+            return query;
+        }, token).ConfigureAwait(false), cancellationToken, nameof(FindListAsync), () => new List<TState>()).ConfigureAwait(false);
         foreach (var state in result)
         {
             state?.LoadFromDbPostHandler();
@@ -187,9 +199,7 @@ public sealed partial class PostgreSqlDbService
             return new List<TState>();
         }
 
-        var sql = $"SELECT doc FROM {GetTableName<TState>()} WHERE id = ANY(@idList) AND ({PostgreSqlJsonbAccess.SoftDeleteFilter})";
-        var parameters = new List<NpgsqlParameter> { new("idList", idArray), };
-        var result = await ExecuteReadWithRetryAsync(async token => await ExecuteListReadAsync<TState>(sql, parameters, token).ConfigureAwait(false), cancellationToken, nameof(FindByIdsAsync), () => new List<TState>()).ConfigureAwait(false);
+        var result = await ExecuteReadWithRetryAsync(async token => await QueryDocumentListAsync<TState>(context => BuildRowQuery<TState>(context, null, token).Where(row => idArray.Contains(row.Id)), token).ConfigureAwait(false), cancellationToken, nameof(FindByIdsAsync), () => new List<TState>()).ConfigureAwait(false);
         foreach (var state in result)
         {
             state?.LoadFromDbPostHandler();
@@ -234,23 +244,16 @@ public sealed partial class PostgreSqlDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
-        if (pageIndex < 0)
-        {
-            pageIndex = 0;
-        }
+        NormalizePaging(ref pageIndex, ref pageSize);
 
-        if (pageSize <= 0)
+        var total = await ExecuteReadWithRetryAsync(async token =>
         {
-            pageSize = 10;
-        }
+            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+            using var context = CreateContext<TState>();
+            return await BuildRowQuery<TState>(context, filter, token).LongCountAsync(token).ConfigureAwait(false);
+        }, cancellationToken, nameof(FindPageAsync), () => 0L).ConfigureAwait(false);
 
-        var (whereSql, parameters) = BuildWhere(filter, true);
-        var sortSql = PostgreSqlExpressionTranslator.TranslateSort(sortExpression, descending);
-        var tableName = GetTableName<TState>();
-        var totalScalar = await ExecuteReadWithRetryAsync(async token => await ExecuteScalarReadAsync<TState>($"SELECT COUNT(*)::bigint FROM {tableName} WHERE {whereSql}", parameters, token).ConfigureAwait(false), cancellationToken, nameof(FindPageAsync), () => (object)0L).ConfigureAwait(false);
-        var total = Convert.ToInt64(totalScalar, System.Globalization.CultureInfo.InvariantCulture);
-        var itemsSql = $"SELECT doc FROM {tableName} WHERE {whereSql} ORDER BY {sortSql} OFFSET {pageIndex * pageSize} LIMIT {pageSize}";
-        var items = await ExecuteReadWithRetryAsync(async token => await ExecuteListReadAsync<TState>(itemsSql, parameters, token).ConfigureAwait(false), cancellationToken, nameof(FindPageAsync), () => new List<TState>()).ConfigureAwait(false);
+        var items = await ExecuteReadWithRetryAsync(async token => await QueryDocumentListAsync<TState>(context => ApplySort(BuildRowQuery<TState>(context, filter, token), sortExpression, descending).Skip(pageIndex * pageSize).Take(pageSize), token).ConfigureAwait(false), cancellationToken, nameof(FindPageAsync), () => new List<TState>()).ConfigureAwait(false);
         foreach (var state in items)
         {
             state?.LoadFromDbPostHandler();
@@ -337,10 +340,13 @@ public sealed partial class PostgreSqlDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
-        var (whereSql, parameters) = BuildWhere(filter, true);
-        var sortSql = PostgreSqlExpressionTranslator.TranslateSort(sortExpression, descending);
-        var sql = $"SELECT doc FROM {GetTableName<TState>()} WHERE {whereSql} ORDER BY {sortSql} LIMIT 1";
-        var state = await ExecuteReadWithRetryAsync(async token => await ExecuteSingleReadAsync<TState>(sql, parameters, token).ConfigureAwait(false), cancellationToken, descending ? nameof(FindSortDescendingFirstOneAsync) : nameof(FindSortAscendingFirstOneAsync)).ConfigureAwait(false);
+        var state = await ExecuteReadWithRetryAsync(async token =>
+        {
+            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+            using var context = CreateContext<TState>();
+            var row = await ApplySort(BuildRowQuery<TState>(context, filter, token), sortExpression, descending).FirstOrDefaultAsync(token).ConfigureAwait(false);
+            return row?.Doc;
+        }, cancellationToken, descending ? nameof(FindSortDescendingFirstOneAsync) : nameof(FindSortAscendingFirstOneAsync)).ConfigureAwait(false);
         state?.LoadFromDbPostHandler();
         return state;
     }
@@ -433,20 +439,9 @@ public sealed partial class PostgreSqlDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
-        if (pageIndex < 0)
-        {
-            pageIndex = 0;
-        }
+        NormalizePaging(ref pageIndex, ref pageSize);
 
-        if (pageSize <= 0)
-        {
-            pageSize = 10;
-        }
-
-        var (whereSql, parameters) = BuildWhere(filter, true);
-        var sortSql = PostgreSqlExpressionTranslator.TranslateSort(sortExpression, descending);
-        var sql = $"SELECT doc FROM {GetTableName<TState>()} WHERE {whereSql} ORDER BY {sortSql} OFFSET {pageIndex * pageSize} LIMIT {pageSize}";
-        var result = await ExecuteReadWithRetryAsync(async token => await ExecuteListReadAsync<TState>(sql, parameters, token).ConfigureAwait(false), cancellationToken, descending ? nameof(FindSortDescendingAsync) : nameof(FindSortAscendingAsync), () => new List<TState>()).ConfigureAwait(false);
+        var result = await ExecuteReadWithRetryAsync(async token => await QueryDocumentListAsync<TState>(context => ApplySort(BuildRowQuery<TState>(context, filter, token), sortExpression, descending).Skip(pageIndex * pageSize).Take(pageSize), token).ConfigureAwait(false), cancellationToken, descending ? nameof(FindSortDescendingAsync) : nameof(FindSortAscendingAsync), () => new List<TState>()).ConfigureAwait(false);
         foreach (var state in result)
         {
             state?.LoadFromDbPostHandler();
@@ -530,11 +525,13 @@ public sealed partial class PostgreSqlDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
-        var (whereSql, parameters) = BuildWhere(filter, !includeDeleted);
-        var sql = $"SELECT COUNT(*)::bigint FROM {GetTableName<TState>()} WHERE {whereSql}";
-        var countScalar = await ExecuteReadWithRetryAsync(async token => await ExecuteScalarReadAsync<TState>(sql, parameters, token).ConfigureAwait(false), cancellationToken, nameof(CountAsync), () => (object)0L).ConfigureAwait(false);
-        var count = Convert.ToInt64(countScalar, System.Globalization.CultureInfo.InvariantCulture);
-        return count;
+        return await ExecuteReadWithRetryAsync(async token =>
+        {
+            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+            using var context = CreateContext<TState>();
+            var query = BuildRowQuery<TState>(context, filter, token, includeDeleted);
+            return await query.LongCountAsync(token).ConfigureAwait(false);
+        }, cancellationToken, nameof(CountAsync), () => 0L).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -571,9 +568,7 @@ public sealed partial class PostgreSqlDbService
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
         ArgumentNullException.ThrowIfNull(selector, nameof(selector));
-        var (whereSql, parameters) = BuildWhere(filter, true);
-        var sql = $"SELECT doc FROM {GetTableName<TState>()} WHERE {whereSql}";
-        var states = await ExecuteReadWithRetryAsync(async token => await ExecuteListReadAsync<TState>(sql, parameters, token).ConfigureAwait(false), cancellationToken, nameof(FindProjectedAsync), () => new List<TState>()).ConfigureAwait(false);
+        var states = await ExecuteReadWithRetryAsync(async token => await QueryDocumentListAsync<TState>(context => BuildRowQuery<TState>(context, filter, token), token).ConfigureAwait(false), cancellationToken, nameof(FindProjectedAsync), () => new List<TState>()).ConfigureAwait(false);
         var projector = selector.Compile();
         var result = new List<TResult>(states.Count);
         foreach (var state in states)
@@ -612,11 +607,12 @@ public sealed partial class PostgreSqlDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
-        var (whereSql, parameters) = BuildWhere(filter, true);
-        var sql = $"SELECT EXISTS(SELECT 1 FROM {GetTableName<TState>()} WHERE {whereSql})";
-        var anyScalar = await ExecuteReadWithRetryAsync(async token => await ExecuteScalarReadAsync<TState>(sql, parameters, token).ConfigureAwait(false), cancellationToken, nameof(AnyAsync), () => (object)false).ConfigureAwait(false);
-        var result = anyScalar is true;
-        return result;
+        return await ExecuteReadWithRetryAsync(async token =>
+        {
+            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+            using var context = CreateContext<TState>();
+            return await BuildRowQuery<TState>(context, filter, token).AnyAsync(token).ConfigureAwait(false);
+        }, cancellationToken, nameof(AnyAsync), () => false).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -647,138 +643,119 @@ public sealed partial class PostgreSqlDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
-        var sql = $"SELECT EXISTS(SELECT 1 FROM {GetTableName<TState>()} WHERE id = @id AND ({PostgreSqlJsonbAccess.SoftDeleteFilter}))";
-        var parameters = new List<NpgsqlParameter> { new("id", id), };
-        var existsScalar = await ExecuteReadWithRetryAsync(async token => await ExecuteScalarReadAsync<TState>(sql, parameters, token).ConfigureAwait(false), cancellationToken, nameof(ExistsByIdAsync), () => (object)false).ConfigureAwait(false);
-        var result = existsScalar is true;
-        return result;
+        return await ExecuteReadWithRetryAsync(async token =>
+        {
+            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+            using var context = CreateContext<TState>();
+            return await BuildRowQuery<TState>(context, null, token).AnyAsync(row => row.Id == id, token).ConfigureAwait(false);
+        }, cancellationToken, nameof(ExistsByIdAsync), () => false).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// 构建软删过滤后的 WHERE 片段（对齐 Mongo GetDefaultFindExpression 语义）。
+    /// 构建行查询（无跟踪 + 软删全局过滤器默认生效；includeDeleted 时跳过过滤器）。
     /// </summary>
-    /// <typeparam name="TState">状态类型 / State type</typeparam>
-    /// <param name="filter">用户过滤表达式 / User filter expression</param>
-    /// <param name="includeSoftDeleteFilter">是否附加软删过滤 / Whether to append the soft-delete filter</param>
-    /// <param name="idFilter">可选 id 等值过滤 / Optional id equality filter</param>
-    /// <returns>WHERE 片段与参数 / WHERE fragment and parameters</returns>
-    private static (string WhereSql, List<NpgsqlParameter> Parameters) BuildWhere<TState>(Expression<Func<TState, bool>> filter, bool includeSoftDeleteFilter, long? idFilter = null) where TState : BaseCacheState, new()
+    /// <remarks>
+    /// Builds the row query (no-tracking, soft-delete query filter applied by default; skipped when
+    /// <paramref name="includeDeleted"/> is set). The contract filter is rewritten onto the wrapper entity
+    /// (<c>row.Doc</c>) and translated by the EF translator — an untranslatable node fails explicitly
+    /// (<see cref="InvalidOperationException"/>), never silently falling back to in-memory filtering.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
+    /// <param name="context">EF 上下文 / The EF context</param>
+    /// <param name="filter">契约过滤表达式 / The contract filter expression</param>
+    /// <param name="cancellationToken">取消令牌（未使用，仅保持签名一致） / Cancellation token (unused)</param>
+    /// <param name="includeDeleted">是否包含软删数据 / Whether to include soft-deleted rows</param>
+    /// <returns>行查询 / The row query</returns>
+    private static IQueryable<StateRow<TState>> BuildRowQuery<TState>(PostgreSqlDbContext<TState> context, Expression<Func<TState, bool>> filter, CancellationToken cancellationToken, bool includeDeleted = false) where TState : BaseCacheState, new()
     {
-        var parts = new List<string>();
-        var parameters = new List<NpgsqlParameter>();
-        if (idFilter.HasValue)
+        var query = context.Rows.AsNoTracking();
+        if (includeDeleted)
         {
-            parts.Add("id = @id");
-            parameters.Add(new NpgsqlParameter("id", idFilter.Value));
-        }
-
-        if (includeSoftDeleteFilter)
-        {
-            parts.Add($"({PostgreSqlJsonbAccess.SoftDeleteFilter})");
+            query = query.IgnoreQueryFilters();
         }
 
         if (filter != null)
         {
-            var (filterSql, filterParameters) = PostgreSqlExpressionTranslator.TranslateFilter(filter);
-            if (!string.Equals(filterSql, "TRUE", StringComparison.Ordinal))
-            {
-                parts.Add($"({filterSql})");
-                parameters.AddRange(filterParameters);
-            }
+            query = query.Where(PostgreSqlStateRowExpressionRewriter.RewriteFilter(filter));
         }
 
-        return (parts.Count > 0 ? string.Join(" AND ", parts) : "TRUE", parameters);
+        return query;
     }
 
     /// <summary>
-    /// 单行读取（无行返回 null；含表结构确保）。
+    /// 物化文档列表查询（无跟踪读取 + doc 物化为状态对象）。
     /// </summary>
     /// <remarks>
-    /// Reads a single row (returns null when no row exists; includes table-structure ensuring).
+    /// Materializes a document list (no-tracking read, doc column shaped into state objects).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
-    /// <param name="sql">SQL 语句 / The SQL statement</param>
-    /// <param name="parameters">参数列表 / The parameter list</param>
+    /// <param name="buildQuery">查询构建器 / The query builder</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
-    /// <returns>读取到的状态，无行时为 null / The deserialized state, or null when no row exists</returns>
-    private async Task<TState> ExecuteSingleReadAsync<TState>(string sql, IReadOnlyList<NpgsqlParameter> parameters, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    /// <returns>状态对象列表 / The state list</returns>
+    private async Task<List<TState>> QueryDocumentListAsync<TState>(Func<PostgreSqlDbContext<TState>, IQueryable<StateRow<TState>>> buildQuery, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        await using var connection = DataSource.CreateConnection();
-        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-        await EnsureTableAsync<TState>(connection, cancellationToken).ConfigureAwait(false);
-        await using var command = new NpgsqlCommand(sql, connection);
-        foreach (var parameter in parameters)
+        await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+        using var context = CreateContext<TState>();
+        var rows = await buildQuery(context).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var result = new List<TState>(rows.Count);
+        foreach (var row in rows)
         {
-            // Clone：参数列表可能跨命令/重试复用（NpgsqlParameter 绑定后不可再入集合）
-            command.Parameters.Add(parameter.Clone());
-        }
-
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
-        if (!await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
-        {
-            return null;
-        }
-
-        return PostgreSqlJsonDocumentSerializer.Deserialize<TState>(reader.GetString(0));
-    }
-
-    /// <summary>
-    /// 多行读取（含表结构确保）。
-    /// </summary>
-    /// <remarks>
-    /// Reads multiple rows (includes table-structure ensuring).
-    /// </remarks>
-    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
-    /// <param name="sql">SQL 语句 / The SQL statement</param>
-    /// <param name="parameters">参数列表 / The parameter list</param>
-    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
-    /// <returns>读取到的状态列表 / The deserialized state list</returns>
-    private async Task<List<TState>> ExecuteListReadAsync<TState>(string sql, IReadOnlyList<NpgsqlParameter> parameters, CancellationToken cancellationToken) where TState : BaseCacheState, new()
-    {
-        await using var connection = DataSource.CreateConnection();
-        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-        await EnsureTableAsync<TState>(connection, cancellationToken).ConfigureAwait(false);
-        await using var command = new NpgsqlCommand(sql, connection);
-        foreach (var parameter in parameters)
-        {
-            // Clone：参数列表可能跨命令/重试复用（NpgsqlParameter 绑定后不可再入集合）
-            command.Parameters.Add(parameter.Clone());
-        }
-
-        var result = new List<TState>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
-        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
-        {
-            result.Add(PostgreSqlJsonDocumentSerializer.Deserialize<TState>(reader.GetString(0)));
+            result.Add(row.Doc);
         }
 
         return result;
     }
 
     /// <summary>
-    /// 标量读取（含表结构确保）。
+    /// 应用排序（null 位置对齐 Mongo：升序 null/缺失在前、降序在后；排序键 null 辅助键 + 本键双段翻译）。
     /// </summary>
     /// <remarks>
-    /// Reads a scalar value (includes table-structure ensuring).
+    /// Applies the sort with Mongo-aligned null placement (nulls/missing first ascending, last descending).
+    /// For nullable sort keys an auxiliary <c>IS NULL</c> ordering key precedes the value key so PostgreSQL's
+    /// default null ordering (nulls last ascending) does not diverge; non-nullable keys sort directly.
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
-    /// <param name="sql">SQL 语句 / The SQL statement</param>
-    /// <param name="parameters">参数列表 / The parameter list</param>
-    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
-    /// <returns>标量结果 / The scalar result</returns>
-    private async Task<object> ExecuteScalarReadAsync<TState>(string sql, IReadOnlyList<NpgsqlParameter> parameters, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    /// <param name="source">行查询 / The row query</param>
+    /// <param name="sortExpression">契约排序表达式 / The contract sort expression</param>
+    /// <param name="descending">是否降序 / Whether to sort descending</param>
+    /// <returns>排序后的查询 / The ordered query</returns>
+    private static IOrderedQueryable<StateRow<TState>> ApplySort<TState>(IQueryable<StateRow<TState>> source, Expression<Func<TState, object>> sortExpression, bool descending) where TState : BaseCacheState, new()
     {
-        await using var connection = DataSource.CreateConnection();
-        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-        await EnsureTableAsync<TState>(connection, cancellationToken).ConfigureAwait(false);
-        await using var command = new NpgsqlCommand(sql, connection);
-        foreach (var parameter in parameters)
+        ArgumentNullException.ThrowIfNull(sortExpression, nameof(sortExpression));
+        var sortSelector = PostgreSqlStateRowExpressionRewriter.RewriteSelector(sortExpression);
+        var sortMember = sortSelector.Body is UnaryExpression { NodeType: ExpressionType.Convert, } convert ? convert.Operand : sortSelector.Body;
+        var isNullableSortKey = !sortMember.Type.IsValueType || Nullable.GetUnderlyingType(sortMember.Type) != null;
+        if (isNullableSortKey)
         {
-            // Clone：参数列表可能跨命令/重试复用（NpgsqlParameter 绑定后不可再入集合）
-            command.Parameters.Add(parameter.Clone());
+            // 升序 null 在前：null 判定键降序（true=null 排最前）；降序 null 在后：null 判定键升序（true=null 排最后）。
+            // Ascending puts nulls first (null-flag descending); descending puts nulls last (null-flag ascending).
+            var nullFlag = Expression.Lambda<Func<StateRow<TState>, bool>>(Expression.Equal(sortMember, Expression.Constant(null, sortMember.Type)), sortSelector.Parameters[0]);
+            var ordered = descending ? source.OrderBy(nullFlag) : source.OrderByDescending(nullFlag);
+            return descending ? ordered.ThenByDescending(sortSelector) : ordered.ThenBy(sortSelector);
         }
 
-        return await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+        return descending ? source.OrderByDescending(sortSelector) : source.OrderBy(sortSelector);
+    }
+
+    /// <summary>
+    /// 归一化分页参数（负索引归零，非正页大小归 10）。
+    /// </summary>
+    /// <remarks>
+    /// Normalizes paging arguments (negative index to zero, non-positive size to 10).
+    /// </remarks>
+    /// <param name="pageIndex">页索引 / The page index</param>
+    /// <param name="pageSize">页大小 / The page size</param>
+    private static void NormalizePaging(ref int pageIndex, ref int pageSize)
+    {
+        if (pageIndex < 0)
+        {
+            pageIndex = 0;
+        }
+
+        if (pageSize <= 0)
+        {
+            pageSize = 10;
+        }
     }
 
     /// <summary>

@@ -323,7 +323,12 @@ public sealed class PostgreSqlEndpointIntegrationTests : IDisposable
         {
             await registry.StartAsync();
 
-            await WaitUntilAsync(async () => await ReadRowAsync(testDatabase.DataSource, expiredId) == null, TimeSpan.FromSeconds(30));
+            // 同一轮清理 pass 的两个 DELETE（心跳 / 路由）之间没有原子性：等待条件必须覆盖两者，
+            // 否则并发负载下偶发在两步之间退出导致断言时序缺陷（C168 实测修复）。
+            // The two deletes of a cleanup pass are not atomic with each other: the wait must cover both,
+            // otherwise the test can exit between them under concurrent load (C168 timing fix).
+            await WaitUntilAsync(async () => await ReadRowAsync(testDatabase.DataSource, expiredId) == null &&
+                                            Convert.ToInt64(await ExecuteScalarAsync(testDatabase.DataSource, "SELECT count(*) FROM player_route WHERE player_id = 901;")) == 0L, TimeSpan.FromSeconds(30));
         }
 
         Assert.NotNull(await ReadRowAsync(testDatabase.DataSource, freshId));

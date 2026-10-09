@@ -122,30 +122,19 @@ public sealed class PostgreSqlPlayerRouteIntegrationTests : IDisposable
         }
 
         var testDatabase = await CreateDatabaseAsync();
+        var store = new PostgreSqlPlayerRouteStore(testDatabase.DataSource);
 
-        // 行缺失时的两次首登插入（不同实例，version=1，顺序执行）：第二次命中 InsertFirstLoginSql 的
-        // ON CONFLICT DO UPDATE 分支后写者覆盖，与 Mongo ReplaceOneAsync(IsUpsert) 的 last-writer-wins 对齐。
+        // 行缺失时的两次首登插入（不同实例，version=1，顺序执行）：第二次无条件覆盖后写者胜出，
+        // 与 Mongo ReplaceOneAsync(IsUpsert) 的 last-writer-wins 对齐（C168 起 EF 化，经公开 API 直接覆盖）。
         // 说明：顺序调用 UpsertAsync 时第二次会走 CAS 读回分支抛 PlayerRouteStaleException（行已存在），
-        // 因此直接执行首登 SQL 常量以确定性地覆盖冲突覆盖路径；真并发收敛语义另见
+        // 因此直接调用无条件首登写入以确定性地覆盖冲突覆盖路径；真并发收敛语义另见
         // SyncTarget_TrueConcurrentFirstLogin_ConvergesToOneRow。
         // Two sequential first-login inserts on a missing row (different instances, version=1): the second
-        // hits the InsertFirstLoginSql ON CONFLICT DO UPDATE branch and overwrites, aligned with the Mongo
-        // ReplaceOneAsync(IsUpsert) last-writer-wins semantics. Note: a sequential second UpsertAsync would
-        // hit the CAS read-back branch and throw PlayerRouteStaleException (row exists), so the first-login
-        // SQL constant is executed directly to cover the conflict-overwrite path deterministically; the
-        // true-concurrent convergence contract lives in SyncTarget_TrueConcurrentFirstLogin_ConvergesToOneRow.
-        var insertSql = (string)typeof(PostgreSqlPlayerRouteStore)
-            .GetField("InsertFirstLoginSql", BindingFlags.NonPublic | BindingFlags.Static)!
-            .GetValue(null)!;
-
-        for (var i = 1; i <= 2; i++)
-        {
-            await using var command = testDatabase.DataSource.CreateCommand(insertSql);
-            command.Parameters.AddWithValue(105L);
-            command.Parameters.AddWithValue($"game-{i}");
-            command.Parameters.AddWithValue("Game");
-            await command.ExecuteNonQueryAsync();
-        }
+        // unconditionally overwrites — aligned with Mongo ReplaceOneAsync(IsUpsert) last-writer-wins. Since
+        // C168 the store is EF-based and this path is covered directly through the public API; a sequential
+        // second UpsertAsync would instead hit the CAS read-back branch and throw PlayerRouteStaleException.
+        await store.InsertFirstLoginAsync(new PlayerRouteRecord { PlayerId = 105, InstanceId = "game-1", Role = "Game", Version = 1, });
+        await store.InsertFirstLoginAsync(new PlayerRouteRecord { PlayerId = 105, InstanceId = "game-2", Role = "Game", Version = 1, });
 
         var stored = await ReadRouteAsync(testDatabase.DataSource, 105);
         Assert.NotNull(stored);
@@ -163,26 +152,17 @@ public sealed class PostgreSqlPlayerRouteIntegrationTests : IDisposable
         }
 
         var testDatabase = await CreateDatabaseAsync();
+        var store = new PostgreSqlPlayerRouteStore(testDatabase.DataSource);
 
-        // 真并发双首登（同 player、不同实例、同时发起）：一条走 INSERT、另一条命中主键冲突经
-        // ON CONFLICT DO UPDATE 收敛——不断言谁胜（时序非确定），断言硬不变量：恰好一行、
-        // 无异常逃逸、version=1、终态实例 ∈ {game-1, game-2}。
-        // Two truly concurrent first logins (same player, different instances, fired simultaneously):
-        // one INSERT wins, the other converges through the ON CONFLICT DO UPDATE path. The winner is
+        // 真并发双首登（同 player、不同实例、同时发起）：主键竞争 / 并发令牌竞争由 store 内部重试收敛
+        // ——不断言谁胜（时序非确定），断言硬不变量：恰好一行、无异常逃逸、version=1、终态实例 ∈ {game-1, game-2}。
+        // Two truly concurrent first logins (same player, different instances, fired simultaneously): the
+        // store's bounded retry converges the primary-key / concurrency-token race. The winner is
         // timing-dependent and NOT asserted; the hard invariants are: exactly one row, no escaping
         // exception, version = 1, and the surviving instance is one of the two writers.
-        var insertSql = (string)typeof(PostgreSqlPlayerRouteStore)
-            .GetField("InsertFirstLoginSql", BindingFlags.NonPublic | BindingFlags.Static)!
-            .GetValue(null)!;
-
-        await Task.WhenAll(Enumerable.Range(1, 2).Select(async i =>
-        {
-            await using var command = testDatabase.DataSource.CreateCommand(insertSql);
-            command.Parameters.AddWithValue(206L);
-            command.Parameters.AddWithValue($"game-{i}");
-            command.Parameters.AddWithValue("Game");
-            await command.ExecuteNonQueryAsync();
-        }));
+        await Task.WhenAll(
+            store.InsertFirstLoginAsync(new PlayerRouteRecord { PlayerId = 206, InstanceId = "game-1", Role = "Game", Version = 1, }),
+            store.InsertFirstLoginAsync(new PlayerRouteRecord { PlayerId = 206, InstanceId = "game-2", Role = "Game", Version = 1, }));
 
         var stored = await ReadRouteAsync(testDatabase.DataSource, 206);
         Assert.NotNull(stored);

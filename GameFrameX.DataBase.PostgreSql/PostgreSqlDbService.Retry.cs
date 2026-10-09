@@ -12,17 +12,16 @@
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
 //   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
 //   侵犯他人合法权益等法律法规所禁止的行为！
-//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   or violate the legal rights and interests of others as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
 //   Any legal disputes or liabilities arising from secondary development based on this project
-//   本项目组织与贡献者概不承担。
-//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   本组织与贡献者概不承担。
 //   GitHub 仓库：https://github.com/GameFrameX
 //   GitHub Repository: https://github.com/GameFrameX
 //   Gitee  仓库：https://gitee.com/GameFrameX
 //   Gitee Repository:  https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
-//   CNB Repository: https://cnb.cool/GameFrameX
+//   CNB Repository:     https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
@@ -32,6 +31,7 @@ using GameFrameX.DataBase.Abstractions;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Localization;
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using System.Diagnostics;
 
@@ -120,15 +120,24 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 判断异常是否为可重试的事务异常（SQLSTATE 40001/40P01）。
+    /// 判断异常是否为可重试的事务异常（SQLSTATE 40001/40P01；沿异常链查找以覆盖 EF 包装）。
     /// </summary>
     /// <remarks>
     /// Determines whether the exception is a transient transaction error (SQLSTATE 40001/40P01),
-    /// aligned with Mongo's <c>TransientTransactionError</c> label.
+    /// aligned with Mongo's <c>TransientTransactionError</c> label. The whole exception chain is
+    /// inspected because EF can wrap the underlying <see cref="PostgresException"/>.
     /// </remarks>
     private static bool ShouldRetryTransactionException(Exception exception)
     {
-        return exception is PostgresException { SqlState: "40001" or "40P01", };
+        for (var current = exception; current != null; current = current.InnerException)
+        {
+            if (current is PostgresException { SqlState: "40001" or "40P01", })
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -136,13 +145,19 @@ public sealed partial class PostgreSqlDbService
     /// </summary>
     /// <remarks>
     /// Determines whether the exception is retryable: Npgsql transient flag, bounded transient SQLSTATE set,
-    /// or timeout (aligned with the Mongo adapter's retryable classification).
+    /// or timeout (aligned with the Mongo adapter's retryable classification). EF's <see cref="DbUpdateException"/>
+    /// wrapper is unwrapped so transient inner Npgsql failures still classify (C168).
     /// </remarks>
     private static bool IsRetryablePostgreSqlException(Exception exception)
     {
         if (exception is TimeoutException)
         {
             return true;
+        }
+
+        if (exception is DbUpdateException { InnerException: not null, } updateException)
+        {
+            return IsRetryablePostgreSqlException(updateException.InnerException);
         }
 
         if (exception is PostgresException postgresException)
