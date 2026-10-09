@@ -89,7 +89,7 @@ public sealed partial class PostgreSqlDbService
         await ExecuteWriteWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            for (var attempt = 0;; attempt++)
+            for (var attempt = 0; attempt < 2; attempt++)
             {
                 try
                 {
@@ -104,6 +104,7 @@ public sealed partial class PostgreSqlDbService
                     // Lost the insert race for the same id: reload and converge as an update (former upsert's last-writer-wins).
                 }
             }
+            return true;
         }, cancellationToken, nameof(AddOrUpdateAsync), true).ConfigureAwait(false);
 
         state.SaveToDbPostHandler();
@@ -161,7 +162,7 @@ public sealed partial class PostgreSqlDbService
         await ExecuteWriteWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            for (var attempt = 0;; attempt++)
+            for (var attempt = 0; attempt < 2; attempt++)
             {
                 try
                 {
@@ -176,6 +177,7 @@ public sealed partial class PostgreSqlDbService
                     // A batch id raced a concurrent insert: re-probe the whole batch once.
                 }
             }
+            return true;
         }, cancellationToken, nameof(AddOrUpdateListAsync), true).ConfigureAwait(false);
         foreach (var state in stateArray)
         {
