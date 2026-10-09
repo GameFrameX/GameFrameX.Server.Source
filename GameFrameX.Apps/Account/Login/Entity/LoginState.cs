@@ -29,7 +29,7 @@
 
 namespace GameFrameX.Apps.Account.Login.Entity;
 
-public class LoginState : CacheState
+public class LoginState : BaseCacheState
 {
     /// <summary>
     /// 昵称

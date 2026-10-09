@@ -30,7 +30,6 @@
 
 using System;
 using System.Collections.Generic;
-using GameFrameX.DataBase.Mongo;
 
 namespace GameFrameX.Apps.Player.Mail.Entity
 {
@@ -39,7 +38,7 @@ namespace GameFrameX.Apps.Player.Mail.Entity
     /// 由 Admin 发布接口（<c>PublishMailCampaignHttpHandler</c>）写入，发布后主体字段不可修改（B1：发布后不可修改），
     /// 仅 <see cref="Status"/> / <see cref="RevokedAt"/> / <see cref="RevokeOperator"/> 可通过撤回接口流转。
     /// </summary>
-    public sealed class MailCampaignState : CacheState
+        public sealed class MailCampaignState : BaseCacheState
     {
         /// <summary>
         /// Campaign 唯一 ID。由发布接口生成（雪花 ID 或自增），全局唯一。

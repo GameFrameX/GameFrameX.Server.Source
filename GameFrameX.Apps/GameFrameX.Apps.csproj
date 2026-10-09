@@ -6,7 +6,6 @@
 
     <ItemGroup>
       <ProjectReference Include="..\GameFrameX.Core\GameFrameX.Core.csproj" />
-      <ProjectReference Include="..\GameFrameX.DataBase.Mongo\GameFrameX.DataBase.Mongo.csproj" />
       <ProjectReference Include="..\GameFrameX.DataBase\GameFrameX.DataBase.csproj" />
       <ProjectReference Include="..\GameFrameX.Discovery\GameFrameX.Discovery.csproj" />
       <ProjectReference Include="..\GameFrameX.Proto\GameFrameX.Proto.csproj" />

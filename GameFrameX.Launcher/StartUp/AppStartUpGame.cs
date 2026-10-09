@@ -30,7 +30,6 @@
 
 using GameFrameX.DataBase;
 using GameFrameX.DataBase.Abstractions;
-using GameFrameX.DataBase.Mongo.Discovery;
 using GameFrameX.DataBase.PostgreSql.Discovery;
 using GameFrameX.Discovery.Routing;
 using GameFrameX.Foundation.Utility;
@@ -80,9 +79,7 @@ internal sealed class AppStartUpGame : AppStartUpBase
             //（PG 路径下 DbOptions.Name 仅作注册名，数据库由连接串 Database 决定，见 database spec）。
             if (!GameDb.Contains(GameDb.ControlDatabaseName))
             {
-                var controlDatabaseInitResult = Setting.DatabaseProvider == DatabaseProviderType.PostgreSql
-                    ? await GameDb.Init<PostgreSqlDbService>(Setting.DataBaseUrl, new DbOptions { Name = GameDb.ControlDatabaseName, IsUseTimeZone = Setting.IsUseTimeZone, })
-                    : await GameDb.Init<MongoDbService>(Setting.DataBaseUrl, new DbOptions { Name = GameDb.ControlDatabaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
+                var controlDatabaseInitResult = await GameDb.Init<PostgreSqlDbService>(Setting.DataBaseUrl, new DbOptions { Name = GameDb.ControlDatabaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
                 if (controlDatabaseInitResult == false)
                 {
                     throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
@@ -94,31 +91,16 @@ internal sealed class AppStartUpGame : AppStartUpBase
             // C143e D21：再激活玩家路由层（建 player_route 索引 + 装 SyncTarget），Tier 1 fast-path 注入 SessionManager 适配器。
             // C159：控制库句柄解析下沉到发现层内部；C154：收敛为激活参数对象。
             // C166：Provider 装配分支——PostgreSql 时激活 PG 平行发现层（控制库 NpgsqlDataSource 经 GameDb 按名解析）。
-            if (Setting.DatabaseProvider == DatabaseProviderType.PostgreSql)
+            PostgreSqlDiscoveryRuntime.Activate(new PostgreSqlDiscoveryActivationOptions
             {
-                PostgreSqlDiscoveryRuntime.Activate(new PostgreSqlDiscoveryActivationOptions
-                {
-                    ConnectionName = GameDb.ControlDatabaseName,
-                    HostedRoleNames = RoleSet.Current,
-                    PlayerRouteFastPath = GameFrameX.Apps.Common.Session.SessionManagerFastPathAdapter.Instance,
-                });
-                GameFrameX.Apps.Common.Session.SessionManager.PlayerRouteSyncTarget = GameFrameX.Discovery.Routing.PlayerRouteResolverBootstrap.SyncTarget;
-            }
-            else
-            {
-                MongoDiscoveryRuntime.Activate(new DiscoveryActivationOptions
-                {
-                    ConnectionName = GameDb.ControlDatabaseName,
-                    HostedRoleNames = RoleSet.Current,
-                    PlayerRouteFastPath = GameFrameX.Apps.Common.Session.SessionManagerFastPathAdapter.Instance,
-                });
-                GameFrameX.Apps.Common.Session.SessionManager.PlayerRouteSyncTarget = GameFrameX.Discovery.Routing.PlayerRouteResolverBootstrap.SyncTarget;
-            }
+                ConnectionName = GameDb.ControlDatabaseName,
+                HostedRoleNames = RoleSet.Current,
+                PlayerRouteFastPath = GameFrameX.Apps.Common.Session.SessionManagerFastPathAdapter.Instance,
+            });
+            GameFrameX.Apps.Common.Session.SessionManager.PlayerRouteSyncTarget = GameFrameX.Discovery.Routing.PlayerRouteResolverBootstrap.SyncTarget;
             // C166 依赖纠偏第二轮：路由胶水装配自 Runtime 拆至组合侧 DiscoveryRoutingWire（发现层 Runtime 不再引用消息胶水程序集）。
-            GameFrameX.NetWork.RemoteMessaging.Routing.DiscoveryRoutingWire.Initialize(RoleSet.Current, Setting.DatabaseProvider == DatabaseProviderType.PostgreSql ? PostgreSqlDiscoveryRuntime.TableProvider : MongoDiscoveryRuntime.TableProvider);
-            var initResult = Setting.DatabaseProvider == DatabaseProviderType.PostgreSql
-                ? await GameDb.Init<PostgreSqlDbService>(Setting.DataBaseUrl, new DbOptions { Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, })
-                : await GameDb.Init<MongoDbService>(Setting.DataBaseUrl, new DbOptions { Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
+            GameFrameX.NetWork.RemoteMessaging.Routing.DiscoveryRoutingWire.Initialize(RoleSet.Current, PostgreSqlDiscoveryRuntime.TableProvider);
+            var initResult = await GameDb.Init<PostgreSqlDbService>(Setting.DataBaseUrl, new DbOptions { Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
             if (initResult == false)
             {
                 throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
@@ -162,14 +144,7 @@ internal sealed class AppStartUpGame : AppStartUpBase
             MarkStartUpReady();
             // C143d D15：启动阶段真正完成（DB/组件/热-fix/在线管理均已就绪）后才把心跳从 Booting 切到 Active，
             // 避免其他进程在服务就绪前发现本实例并投递流量；未激活发现层或无广播身份时为无害 no-op。
-            if (Setting.DatabaseProvider == DatabaseProviderType.PostgreSql)
-            {
-                PostgreSqlDiscoveryRuntime.MarkActive();
-            }
-            else
-            {
-                MongoDiscoveryRuntime.MarkActive();
-            }
+            PostgreSqlDiscoveryRuntime.MarkActive();
             exitMessage = await AppExitToken;
         }
         catch (Exception e)

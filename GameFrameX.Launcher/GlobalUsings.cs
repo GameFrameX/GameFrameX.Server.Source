@@ -57,6 +57,5 @@ global using GameFrameX.SuperSocket.WebSocket.Server;
 global using CloseReason = GameFrameX.SuperSocket.WebSocket.CloseReason;
 global using ErrorEventArgs = GameFrameX.SuperSocket.ClientEngine.ErrorEventArgs;
 global using GameFrameX.Core.Components;
-global using GameFrameX.DataBase.Mongo;
 global using GameFrameX.DataBase.PostgreSql;
 global using GameFrameX.Utility.Setting;

@@ -30,10 +30,6 @@
 
 global using System;
 global using System.Threading.Tasks;
-global using MongoDB.Bson;
-global using MongoDB.Driver;
-global using MongoDB.Bson.Serialization;
-global using MongoDB.Bson.Serialization.Attributes;
 global using GameFrameX.Core;
 global using GameFrameX.Core.Utility;
 global using GameFrameX.Core.Components;
@@ -45,7 +41,6 @@ global using GameFrameX.Core.Timer;
 global using GameFrameX.Core.Abstractions.Attribute;
 global using GameFrameX.Proto.Proto;
 global using GameFrameX.DataBase;
-global using GameFrameX.DataBase.Mongo;
 global using GameFrameX.DataBase.Abstractions;
 global using GameFrameX.Foundation.Extensions;
 global using GameFrameX.Utility.Setting;
@@ -55,8 +50,6 @@ global using System.Collections;
 global using System.Collections.Concurrent;
 global using System.Collections.Generic;
 global using System.Reflection;
-global using MongoDB.Bson.Serialization.Conventions;
-global using MongoDB.Bson.Serialization.Options;
 global using System.Text.Json.Serialization;
 global using GameFrameX.NetWork.Abstractions;
 global using GameFrameX.NetWork.Messages;

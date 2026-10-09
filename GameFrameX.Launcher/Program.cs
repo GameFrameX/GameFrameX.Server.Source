@@ -37,7 +37,6 @@ internal static class Program
     {
         await GameApp.Entry(args, () =>
         {
-            CacheStateTypeManager.Init();
             MessageProtoHelper.Init(typeof(MessageProtoHandler).Assembly);
         }, LogConfiguration);
     }

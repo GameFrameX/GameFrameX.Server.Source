@@ -33,7 +33,7 @@ namespace GameFrameX.Apps.Player.Friend.Entity;
 /// 好友关系状态。
 /// 存储两个玩家之间的好友关系，采用双向存储设计（PlayerIdA &lt; PlayerIdB 确保唯一性）。
 /// </summary>
-public sealed class FriendRelationState : CacheState
+public sealed class FriendRelationState : BaseCacheState
 {
     /// <summary>
     /// 玩家A的ID（较小者作为主键的一部分，确保同一对玩家只有一条记录）

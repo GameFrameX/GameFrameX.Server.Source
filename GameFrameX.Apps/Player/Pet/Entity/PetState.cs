@@ -30,6 +30,6 @@
 
 namespace GameFrameX.Apps.Player.Pet.Entity;
 
-public class PetState : CacheState
+public class PetState : BaseCacheState
 {
 }

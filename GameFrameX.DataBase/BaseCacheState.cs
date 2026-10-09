@@ -161,13 +161,16 @@ public abstract class BaseCacheState : EntityBase<long>, ICacheState
     }
 
     /// <summary>
-    /// 将对象序列化转换为字节数组。
+    /// 将对象序列化转换为字节数组（默认 JSON / UTF8 实现，供 StateHash 脏检查使用）。
     /// </summary>
     /// <remarks>
-    /// Serialize the object to a byte array.
+    /// Serialize the object to a byte array (default JSON/UTF8 implementation, used by StateHash change detection).
     /// </remarks>
     /// <returns>序列化后的字节数组 / Serialized byte array</returns>
-    public abstract byte[] ToBytes();
+    public virtual byte[] ToBytes()
+    {
+        return System.Text.Encoding.UTF8.GetBytes(JsonHelper.Serialize(this));
+    }
 
     #endregion
 }
