@@ -258,13 +258,33 @@ public sealed partial class PostgreSqlDbService
             return 0;
         }
 
-        return await ExecuteWriteWithRetryAsync(async token =>
+        return await ExecuteWriteWithRetryAsync(token => ExecuteUpdatePartialCoreAsync<TState>(id, setFields, removedKeys, token), cancellationToken, nameof(UpdatePartialAsync), true).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 执行部分更新的核心流程（软删过滤 + 字段写入 + UpdateTime/UpdateCount 推进 + SaveChanges）。
+    /// </summary>
+    /// <remarks>
+    /// Core flow of a partial update: load the row (soft-delete query filter applies by default),
+    /// apply each set-field assignment and each removed-field null/default fallback, advance
+    /// <c>UpdateTime</c>/<c>UpdateCount</c>, and persist via <c>SaveChangesAsync</c>. Returns 0 when
+    /// the row is not visible (missing or soft-deleted) so callers can map the outcome to the
+    /// <c>ModifiedCount</c> contract without retries recognising the no-op as a write.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
+    /// <param name="id">数据ID / The document ID</param>
+    /// <param name="setFields">要写入的字段字典 / The fields to write</param>
+    /// <param name="removedKeys">要置空的字段名集合 / The field names to clear</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>命中可见行并已写库返回 1，行不可见返回 0 / 1 when a visible row was written; 0 when no row was visible</returns>
+    private async Task<long> ExecuteUpdatePartialCoreAsync<TState>(long id, Dictionary<string, object> setFields, List<string> removedKeys, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+        // 软删默认过滤生效：仅可见行可被部分更新（对齐原 WHERE 软删过滤条款）
+        // The soft-delete query filter applies: only visible rows can be partially updated.
+        using (var context = CreateContext<TState>())
         {
-            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            using var context = CreateContext<TState>();
-            // 软删默认过滤生效：仅可见行可被部分更新（对齐原 WHERE 软删过滤条款）
-            // The soft-delete query filter applies: only visible rows can be partially updated.
-            var row = await context.Rows.FirstOrDefaultAsync(row => row.Id == id, token).ConfigureAwait(false);
+            var row = await context.Rows.FirstOrDefaultAsync(row => row.Id == id, cancellationToken).ConfigureAwait(false);
             if (row == null)
             {
                 return 0;
@@ -289,9 +309,9 @@ public sealed partial class PostgreSqlDbService
             // compare equal; baseline behavior documented on the method).
             document.UpdateTime = GetCurrentTimestamp();
             document.UpdateCount = (document.UpdateCount ?? 0) + 1;
-            await context.SaveChangesAsync(token).ConfigureAwait(false);
+            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return 1;
-        }, cancellationToken, nameof(UpdatePartialAsync), true).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
