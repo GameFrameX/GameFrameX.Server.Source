@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Contracts;
 
 /// <summary>
-/// Online 公共请求上下文（vault:C2 S1.2：任何 Online 请求至少包含 <c>RequestId</c>、<c>ProtocolVersion</c>、
+/// Online 公共请求上下文（任何 Online 请求至少包含 <c>RequestId</c>、<c>ProtocolVersion</c>、
 /// <c>ClientVersion</c>、<c>Timestamp</c>；产生副作用的请求必须携带 <c>IdempotencyKey</c>）。
 /// <para>
 /// 维护约束：<c>TenantId</c>/<c>AppId</c>/<c>ServerId</c> 以鉴权或服务端路由为准，不由本上下文的客户端字段直接覆盖

@@ -32,15 +32,15 @@ using System.Threading.Tasks;
 namespace GameFrameX.Online.HotfixRollback;
 
 /// <summary>
-/// Hotfix 回滚执行器契约（vault:C9 S8.5 服务端配合面的装配面：实际 Hotfix 程序集加载切换
-/// 由运行时装配提供实现——Server 仓 X4 装配层调用 <c>HotfixManager.LoadHotfix(dllVersion)</c>）。
+/// Hotfix 回滚执行器契约（服务端配合面的装配面：实际 Hotfix 程序集加载切换
+/// 由运行时装配提供实现——Server 仓装配层调用 <c>HotfixManager.LoadHotfix(dllVersion)</c>）。
 /// <para>
 /// 维护约束（红线）：
 /// ① <b>依赖方向</b>——<c>GameFrameX.Online</c> 不引用 <c>GameFrameX.Core</c>，
-/// <c>HotfixManager</c> 经本契约解耦（对齐 C95 <c>IOnlineCrossServerGrantTransport</c> 先例）；
+/// <c>HotfixManager</c> 经本契约解耦（对齐 <c>IOnlineCrossServerGrantTransport</c> 先例）；
 /// ② <b>失败以异常表达</b>——程序集缺失、校验失败、加载异常一律抛出
 /// （<see cref="OnlineHotfixRollbackService"/> 捕获后映射 8002 并把幂等键落定失败，回滚未生效）；
-/// ③ <b>单进程语义</b>——本服务只驱动本进程的加载切换；多实例逐实例回滚的编排归运维发布流程（OL-025）。
+/// ③ <b>单进程语义</b>——本服务只驱动本进程的加载切换；多实例逐实例回滚的编排归运维发布流程。
 /// </para>
 /// </summary>
 public interface IOnlineHotfixRollbackExecutor

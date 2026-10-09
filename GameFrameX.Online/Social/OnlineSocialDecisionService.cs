@@ -36,9 +36,9 @@ using GameFrameX.Online.Events;
 using GameFrameX.Online.Scope;
 
 /// <summary>
-/// Block / Mute / Report / 处罚的**唯一判定入口**（vault:C7 S6.3，方案复审 P0-1 / P0-2 收口点）。
+/// Block / Mute / Report / 处罚的**唯一判定入口**。
 /// <para>
-/// 维护约束（为什么必须唯一）：vault:C7 风险表首条是「三通路各自实现 Block 判定，行为不一致出现绕过」。
+/// 维护约束（为什么必须唯一）：首要风险是「三通路各自实现 Block 判定，行为不一致出现绕过」。
 /// 因此 Chat 私聊、Party 邀请、Matchmaker 成组三个通路都只能经本类型裁决——
 /// 跨域通路经 <see cref="IOnlineSocialGate"/>（本类型实现），同域 Chat 经
 /// <see cref="EvaluateSendAsync"/>。**任何通路内自建屏蔽/处罚判定都视为回归**。
@@ -354,7 +354,7 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
     }
 
     /// <summary>
-    /// 提交举报（证据字段照单全收，VC-6.16 证据链的写入点）。
+    /// 提交举报（证据字段照单全收，证据链的写入点）。
     /// </summary>
     /// <param name="scope">生效作用域（必须含玩家主体位）。</param>
     /// <param name="submission">举报提交载荷。</param>
@@ -474,7 +474,7 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
     }
 
     /// <summary>
-    /// 受理 / 裁决举报案件（Admin 命令面的服务端半边；S6.10 页面归 Admin 仓）。
+    /// 受理 / 裁决举报案件（Admin 命令面的服务端半边；页面归 Admin 仓）。
     /// </summary>
     /// <param name="transition">举报案件迁移载荷。</param>
     /// <param name="cancellationToken">取消令牌。</param>

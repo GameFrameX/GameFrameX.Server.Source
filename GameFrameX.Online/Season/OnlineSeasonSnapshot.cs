@@ -33,14 +33,14 @@ using GameFrameX.Online.Leaderboard;
 namespace GameFrameX.Online.Season;
 
 /// <summary>
-/// 赛季历史快照（vault:C8 S7.3：赛季重置的审计依据与旧榜回溯载体）。
+/// 赛季历史快照（赛季重置的审计依据与旧榜回溯载体）。
 /// <para>
 /// 维护约束（红线）：
 /// (1) 快照是**重置前**的冻结事实——在榜单被清空**之前**持久化（快照先行），一旦写成就与后续榜单状态无关：
-/// 新一届的写入不得回流本快照（赛季结束不删除历史数据，VC-7.5）；
+/// 新一届的写入不得回流本快照（赛季结束不删除历史数据）；
 /// (2) 快照是**赛季结算的唯一依据**：名次取自冻结时的全序（<see cref="OnlineLeaderboardEntryView.Rank"/>），
 /// 结算绝不回落实时榜单（重置后榜单为空）；
-/// (3) 名次口径与 C102 <see cref="OnlineLeaderboardOrdering"/> 全序一致（分数按榜向 → 更新时间 → 玩家标识），
+/// (3) 名次口径与 <see cref="OnlineLeaderboardOrdering"/> 全序一致（分数按榜向 → 更新时间 → 玩家标识），
 /// 保证快照名次与重置前查询结果逐项可复算。
 /// </para>
 /// </summary>

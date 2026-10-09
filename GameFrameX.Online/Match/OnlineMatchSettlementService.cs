@@ -36,12 +36,12 @@ using GameFrameX.Online.Events;
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 结算服务（vault:C6 S5.7「结算事实先落定，发奖与结果分发解耦」）。
+/// 结算服务（结算事实先落定，发奖与结果分发解耦）。
 /// <para>
 /// 维护约束（红线）：同一对局只结算一次。两层保证：
 /// (1) <see cref="IOnlineMatchResultStore.CommitAsync"/> 首结果获胜——并发触发也只有一份结果能落地；
 /// (2) 已存在结果时直接复用，不再进入 Actor 的结算阶段（避免二次生成 <c>MatchResultId</c>）。
-/// 因此「两个客户端同时喊结算」或「结算被重试」都不会产生第二份结果（VC-5.8 / VC-5.9）。
+/// 因此「两个客户端同时喊结算」或「结算被重试」都不会产生第二份结果。
 /// </para>
 /// <para>
 /// 结算失败（玩法无法产出结果）时把对局转入 <see cref="OnlineMatchState.SettlementFailed"/>——

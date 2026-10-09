@@ -32,7 +32,7 @@ using System.Collections.Generic;
 namespace GameFrameX.Online.GameEvents;
 
 /// <summary>
-/// 统一 Game Event Schema（vault:C8 S7.5，Server 半边）：17 个标准事件名的登记表 + 版本策略。
+/// 统一 Game Event Schema（Server 半边）：17 个标准事件名的登记表 + 版本策略。
 /// <para>
 /// 维护约束（红线）：
 /// (1) **登记表是唯一事实来源**——分类、版本与必需字段只在本表声明，校验器与投影器都从本表读取，
@@ -40,9 +40,9 @@ namespace GameFrameX.Online.GameEvents;
 /// （守护测试锁定，漏登记 = 该事件名投递时被判未知）；
 /// (2) **版本策略**：版本号只增不减；投递版本 <c>1..CurrentVersion</c> 均受理（新旧并存期），
 /// 超出范围即拒绝；破坏性变更走「升版本 + 登记表保留旧版本声明」，非破坏性变更不升版本；
-/// (3) 本表只登记，**不定义第二套信封**——事件一律走 C93 <see cref="Events.OnlineEvent"/>；
-/// (4) 本 change 只登记 17 个事件名的 Schema，投影只覆盖六类中的 Server 半边可得事件
-/// （Install / Register / MailOpen 由客户端 SDK 与邮件域投递，本 change 不投影）。
+/// (3) 本表只登记，**不定义第二套信封**——事件一律走 <see cref="Events.OnlineEvent"/>；
+/// (4) 当前只登记 17 个事件名的 Schema，投影只覆盖六类中的 Server 半边可得事件
+/// （Install / Register / MailOpen 由客户端 SDK 与邮件域投递，暂不投影）。
 /// </para>
 /// </summary>
 public static class OnlineGameEventSchema

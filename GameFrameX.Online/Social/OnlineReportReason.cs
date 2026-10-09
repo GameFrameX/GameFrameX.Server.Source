@@ -30,10 +30,10 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 举报原因分类（vault:C7 S6.3：玩家侧选择的举报理由，Admin 侧按原因决定处置力度）。
+/// 举报原因分类（玩家侧选择的举报理由，Admin 侧按原因决定处置力度）。
 /// <para>
 /// 维护约束：<see cref="Other"/> 不是兜底垃圾桶——选择 <see cref="Other"/> 时举报证据字段
-/// （<see cref="OnlineReportCase.Evidence"/>）必须非空，否则 Admin 无法处置（VC-6.16 证据链要求）。
+/// （<see cref="OnlineReportCase.Evidence"/>）必须非空，否则 Admin 无法处置（证据链要求）。
 /// </para>
 /// </summary>
 public enum OnlineReportReason

@@ -102,7 +102,7 @@ public interface IAppStartUp
     /// Completes when the role has finished its startup phase (databases, components, network listeners),
     /// long before its run-until-exit <see cref="StartAsync"/> task completes.
     /// The multi-role launcher awaits this signal of the current role before starting the next one
-    /// (priority startup barrier, C143b D7), so lower-priority roles never run while a higher-priority
+    /// (priority startup barrier), so lower-priority roles never run while a higher-priority
     /// role is still initializing shared infrastructure.
     /// <para>
     /// ⚠️ BREAKING CHANGE：本成员是 <see cref="IAppStartUp"/> 的必需成员。

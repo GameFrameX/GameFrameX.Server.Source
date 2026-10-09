@@ -30,9 +30,9 @@
 namespace GameFrameX.Online.Party;
 
 /// <summary>
-/// 队伍在线事实探针（vault:C5 S4.7：成员部分离线处理必须基于唯一在线事实源）。
+/// 队伍在线事实探针（成员部分离线处理必须基于唯一在线事实源）。
 /// <para>
-/// 维护约束（红线）：按 vault:C5 风险表，阶段 2 的 Presence 是**唯一**在线事实源，Party 不得自行维护
+/// 维护约束（红线）：Presence 是**唯一**在线事实源，Party 不得自行维护
 /// 成员在线状态（不得镜像、不得缓存）。本探针是 Party 读取该事实的唯一入口，
 /// 运行时装配把它接到 <c>OnlinePresenceService</c>；测试以确定性假实现替换。
 /// 探针只读——Party 不允许通过本接口写入 Presence。

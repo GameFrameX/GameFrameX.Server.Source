@@ -13,11 +13,11 @@ using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
-/// 跨服投递单飞去重（C143e D21：per-instance + 时间窗）。
+/// 跨服投递单飞去重（per-instance + 时间窗）。
 /// </summary>
 /// <remarks>
 /// Per-instance single-flight deduplication for cross-server deliveries
-/// (C143e D21). Two cross-server sends to the same <c>targetInstanceId</c>
+/// with a bounded time window. Two cross-server sends to the same <c>targetInstanceId</c>
 /// within the same time window collapse into one — the second call returns
 /// <c>false</c> and the caller treats it as already-in-flight. A retry against
 /// a different instance clears the key (different instance = different slot),

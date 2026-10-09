@@ -35,7 +35,7 @@ using GameFrameX.DataBase;
 namespace GameFrameX.DataBase.PostgreSql;
 
 /// <summary>
-/// 契约表达式参数重写器（C168 D2）：把 <c>Expression&lt;Func&lt;TState, ...&gt;&gt;</c> 的参数引用重写为 <c>StateRow&lt;TState&gt;.Doc</c> 成员访问。
+/// 契约表达式参数重写器：把 <c>Expression&lt;Func&lt;TState, ...&gt;&gt;</c> 的参数引用重写为 <c>StateRow&lt;TState&gt;.Doc</c> 成员访问。
 /// </summary>
 /// <remarks>
 /// Rewrites parameter references of contract expressions (<c>x =&gt; x.Field</c>) into <c>row =&gt; row.Doc.Field</c>

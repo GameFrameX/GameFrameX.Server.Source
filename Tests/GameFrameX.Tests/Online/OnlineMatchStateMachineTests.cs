@@ -35,7 +35,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 对局生命周期状态机测试（vault:C6 S5.1 / VC-5.10 / VC-5.11：迁移固化、终态唯一、无僵尸对局）。
+    /// 对局生命周期状态机测试（迁移固化、终态唯一、无僵尸对局）。
     /// </summary>
     public class OnlineMatchStateMachineTests
     {
@@ -43,7 +43,7 @@ namespace GameFrameX.Tests.Online
         private static readonly OnlineMatchState[] AllStates = (OnlineMatchState[])Enum.GetValues(typeof(OnlineMatchState));
 
         /// <summary>
-        /// 验证 VC-5.10：除唯一终态外每个状态都有合法后继，不存在「进得去出不来」的死状态。
+        /// 验证除唯一终态外每个状态都有合法后继，不存在「进得去出不来」的死状态。
         /// </summary>
         [Fact]
         public void EveryNonTerminalState_ShouldHaveLegalTarget()
@@ -60,7 +60,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.7 / VC-5.10：运行中全员离场可按「取消」收束（原因码须准确，不能记成超时）。
+        /// 验证运行中全员离场可按「取消」收束（原因码须准确，不能记成超时）。
         /// </summary>
         [Fact]
         public void Running_ShouldAllowCancellation()
@@ -69,7 +69,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.11：唯一无出边的终态是 Closed（运行时只释放该状态）。
+        /// 验证唯一无出边的终态是 Closed（运行时只释放该状态）。
         /// </summary>
         [Fact]
         public void Closed_ShouldBeOnlyTerminalState()
@@ -83,7 +83,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.2：唯一接受玩家输入的阶段是 Running。
+        /// 验证唯一接受玩家输入的阶段是 Running。
         /// </summary>
         [Fact]
         public void Running_ShouldBeOnlyPlayableState()
@@ -95,14 +95,14 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.11：从任一状态出发都能到达 Closed——否则对局将永远占用 Actor（僵尸对局）。
+        /// 验证从任一状态出发都能到达 Closed——否则对局将永远占用 Actor（僵尸对局）。
         /// </summary>
         [Fact]
         public void EveryState_ShouldReachClosed()
         {
             foreach (var state in AllStates)
             {
-                Assert.True(CanReachClosed(state), state + " 无法到达 Closed，违反 VC-5.11");
+                Assert.True(CanReachClosed(state), state + " 无法到达 Closed，违反状态机释放约定");
             }
         }
 

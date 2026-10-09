@@ -33,10 +33,10 @@ using MongoDB.Driver;
 namespace GameFrameX.DataBase.Mongo.Discovery;
 
 /// <summary>
-/// Mongo 心跳存储适配（C167：<see cref="IHeartbeatStore"/> 的 MQL 实现）。
+/// Mongo 心跳存储适配（<see cref="IHeartbeatStore"/> 的 MQL 实现）。
 /// </summary>
 /// <remarks>
-/// The Mongo implementation of the heartbeat storage seam (C167): the MQL
+/// The Mongo implementation of the heartbeat storage seam: the MQL
 /// counterpart consumed by the generic <see cref="DiscoveryRegistry"/> /
 /// <see cref="DiscoveryWatcher"/>. Schema bootstrap creates the 15 s TTL
 /// index on <c>lastHeartbeat</c>; <see cref="DeleteExpiredAsync"/> is

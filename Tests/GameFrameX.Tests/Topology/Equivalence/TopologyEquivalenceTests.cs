@@ -33,16 +33,16 @@ using GameFrameX.NetWork.RemoteMessaging.Routing;
 namespace GameFrameX.Tests.Topology.Equivalence;
 
 /// <summary>
-/// 跨 Role 消息链路语义等价测试（C143c D9，AC-2）。
+/// 跨 Role 消息链路语义等价测试。
 /// </summary>
 /// <remarks>
-/// Topology equivalence suite (C143c D9, AC-2): every representative chain runs in the
-/// All-in-One topology and in the design-source §D9 three-process topology, and both
+/// Topology equivalence suite: every representative chain runs in the
+/// All-in-One topology and in the design-source three-process topology, and both
 /// assert the SAME fixed expectations — per-role receive order, final business state
-/// snapshot, and the D3 delivery branch sequence — so semantic equivalence between the
+/// snapshot, and the delivery branch sequence — so semantic equivalence between the
 /// topologies is enforced by the CI gate (topology-equivalence.yml).
-/// The All-in-One cases additionally prove the D3 acceptance property: case 1 local
-/// delivery is hit by 100% of the hops.
+/// The All-in-One cases additionally prove the local-delivery acceptance property:
+/// local direct delivery is hit by 100% of the hops.
 /// </remarks>
 public class TopologyEquivalenceTests
 {
@@ -72,7 +72,7 @@ public class TopologyEquivalenceTests
         /// <summary>All-in-One 单进程 / All-in-One single process</summary>
         AllInOne = 1,
 
-        /// <summary>三进程（设计源 §D9：Gate | Game+Social | Match）/ Three processes (§D9)</summary>
+        /// <summary>三进程（Gate | Game+Social | Match）/ Three processes</summary>
         MultiProcess = 2,
     }
 
@@ -253,7 +253,7 @@ public class TopologyEquivalenceTests
     }
 
     /// <summary>
-    /// 断言投递分支序列：All-in-One 恒 case 1（D3 验收：100% 命中）；三进程拓扑按 cell 划分分支。
+    /// 断言投递分支序列：All-in-One 恒本地直投（验收：100% 命中）；三进程拓扑按 cell 划分分支。
     /// </summary>
     private static void AssertExpectedDeliveryBranches(
         EquivalenceChainKind chainKind,
@@ -265,7 +265,7 @@ public class TopologyEquivalenceTests
 
         if (topologyKind == EquivalenceTopologyKind.AllInOne)
         {
-            // D3 验收：All-in-One 形态下 case 1 本地直投被 100% 命中
+            // 验收：All-in-One 形态下本地直投被 100% 命中
             Assert.All(result.Deliveries, delivery => Assert.Equal(RoleRouteDelivery.LocalActor, delivery));
             return;
         }

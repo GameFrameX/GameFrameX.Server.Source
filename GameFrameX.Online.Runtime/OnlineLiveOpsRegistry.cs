@@ -27,11 +27,11 @@
 namespace GameFrameX.Online.Runtime;
 
 /// <summary>
-/// LiveOps 最小承载（change C122 决策⑧②：InMemory 版本登记表 + publish/rollback 语义）。
+/// LiveOps 最小承载（InMemory 版本登记表 + publish/rollback 语义）。
 /// <para>
 /// 维护约束：这是装配层对 Admin LiveOps 同步命令的**最小**承接（远端下发 / 灰度引擎不存在，
-/// vault C8 G7-4 半边）——只做 append-only 登记与最新版本视图，不实现灰度分流、设备分群计算、
-/// 定时触发等引擎语义（全量引擎另立 change）；登记表不持久化（进程内，随宿主生命周期）。
+/// 只承担服务端半边）——只做 append-only 登记与最新版本视图，不实现灰度分流、设备分群计算、
+/// 定时触发等引擎语义（全量引擎另行演进）；登记表不持久化（进程内，随宿主生命周期）。
 /// </para>
 /// </summary>
 public sealed class OnlineLiveOpsRegistry

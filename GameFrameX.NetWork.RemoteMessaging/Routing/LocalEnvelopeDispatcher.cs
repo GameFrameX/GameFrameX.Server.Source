@@ -16,10 +16,10 @@ using GameFrameX.Foundation.Logger;
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
-/// 本地 envelope 复投器（C143e：case 1 命中时把 envelope 解包成本服本地投递）。
+/// 本地 envelope 复投器（case 1 命中时把 envelope 解包成本服本地投递）。
 /// </summary>
 /// <remarks>
-/// The local envelope dispatcher for D3 case 1 (C143e). When the routing seam
+/// The local envelope dispatcher for case 1. When the routing seam
 /// hands an envelope to the local dispatcher, the receiving end is responsible
 /// for unpacking the embedded <see cref="RoleRouteEnvelopeMessage.InnerMessageId"/>
 /// and <see cref="RoleRouteEnvelopeMessage.InnerMessageBytes"/> into a concrete

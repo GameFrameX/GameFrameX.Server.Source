@@ -30,11 +30,11 @@
 namespace GameFrameX.Online.Identity;
 
 /// <summary>
-/// 身份域存储接口（vault:C3 S2.2：Identity/GameAccount/Player/Device 数据关系的持久化契约）。
+/// 身份域存储接口（Identity/GameAccount/Player/Device 数据关系的持久化契约）。
 /// <para>
 /// 维护约束：唯一性索引——Identity(TenantId, AppId, Kind, Identifier)、Device(GameAccountId, DeviceIdentifier)；
 /// 查询键——Player 按 (GameAccountId, AppId, ServerId) 归属检索；
-/// 生产装配以 Mongo 等持久化实现本接口（交接点 X4 复用不 fork），本仓交付线程安全的内存默认实现；
+/// 生产装配以 Mongo 等持久化实现本接口（复用不 fork），本仓交付线程安全的内存默认实现；
 /// 实现方必须保证 AddOrUpdate 系列为幂等全量写（按主键覆盖）。
 /// </para>
 /// </summary>

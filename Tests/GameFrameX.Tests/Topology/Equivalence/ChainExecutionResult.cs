@@ -33,7 +33,7 @@ using GameFrameX.NetWork.RemoteMessaging.Routing;
 namespace GameFrameX.Tests.Topology.Equivalence;
 
 /// <summary>
-/// 语义等价用例集的链路执行结果快照（C143c D9）。
+/// 语义等价用例集的链路执行结果快照。
 /// </summary>
 /// <remarks>
 /// Deterministic snapshot of one chain execution: the delivery branch of every hop,

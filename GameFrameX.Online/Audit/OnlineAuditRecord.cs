@@ -33,12 +33,12 @@ namespace GameFrameX.Online.Audit;
 
 /// <summary>
 /// 统一审计落档记录（<c>OnlineAuditService.IngestAsync</c> 落入 <c>IOnlineAuditStore</c> 的**持久化行**；
-/// 字段 = C93 <c>OnlineEventAuditView</c> 元数据投影 + 审计语义字段 域/操作者/原因）。
+/// 字段 = <c>OnlineEventAuditView</c> 元数据投影 + 审计语义字段 域/操作者/原因）。
 /// <para>
 /// 维护约束（红线）：记录**只追加、不修改、不淘汰**（审计不可丢）；
-/// <see cref="SanitizedFields"/> 是接入时经 C93 <c>OnlineEventSanitizer</c> 脱敏后的字段投影，
-/// 记录自落档起即不含明文敏感值（VC-8.16 结构性保证），检索消费方无需二次脱敏；
-/// 原始载荷字节不落档（审计链路只消费语义投影，对齐 C93 审计视图约束）。
+/// <see cref="SanitizedFields"/> 是接入时经 <c>OnlineEventSanitizer</c> 脱敏后的字段投影，
+/// 记录自落档起即不含明文敏感值（结构性保证），检索消费方无需二次脱敏；
+/// 原始载荷字节不落档（审计链路只消费语义投影，对齐审计视图约束）。
 /// </para>
 /// </summary>
 public sealed class OnlineAuditRecord
@@ -71,7 +71,7 @@ public sealed class OnlineAuditRecord
     }
 
     /// <summary>
-    /// 获取或设置审计业务时刻（UTC 毫秒；VC-8.3 审计三要素之一——时间；跨域检索全序的第一键）。
+    /// 获取或设置审计业务时刻（UTC 毫秒；审计三要素之一——时间；跨域检索全序的第一键）。
     /// </summary>
     public long OccurredTime
     {
@@ -116,7 +116,7 @@ public sealed class OnlineAuditRecord
     }
 
     /// <summary>
-    /// 获取或设置操作者标识（VC-8.3 审计三要素之一——操作者；检索可按操作者过滤定位）。
+    /// 获取或设置操作者标识（审计三要素之一——操作者；检索可按操作者过滤定位）。
     /// </summary>
     public string OperatorId
     {
@@ -134,7 +134,7 @@ public sealed class OnlineAuditRecord
     }
 
     /// <summary>
-    /// 获取或设置操作原因（VC-8.3 审计三要素之一——原因）。
+    /// 获取或设置操作原因（审计三要素之一——原因）。
     /// </summary>
     public string Reason
     {
@@ -152,7 +152,7 @@ public sealed class OnlineAuditRecord
     }
 
     /// <summary>
-    /// 获取或设置关联链路键（VC-8.5 可定位检索入口）。
+    /// 获取或设置关联链路键（可定位检索入口）。
     /// </summary>
     public string CorrelationId
     {

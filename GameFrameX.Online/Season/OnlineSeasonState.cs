@@ -30,10 +30,10 @@
 namespace GameFrameX.Online.Season;
 
 /// <summary>
-/// 赛季生命周期状态（vault:C8 S7.3：开始/结束时间、分数重置、历史快照与奖励结算的阶段划分）。
+/// 赛季生命周期状态（开始/结束时间、分数重置、历史快照与奖励结算的阶段划分）。
 /// <para>
 /// 维护约束（红线）：状态只经 <see cref="OnlineSeasonStateMachine"/> 的合法边迁移，禁止服务层拼装迁移条件。
-/// <see cref="Ended"/> 的语义是「历史快照已生成 **且** 榜单已重置」——进入该态即意味着旧榜可回溯（VC-7.5），
+/// <see cref="Ended"/> 的语义是「历史快照已生成 **且** 榜单已重置」——进入该态即意味着旧榜可回溯，
 /// 因此结算前置不是「时间到了」而是「状态到了」；
 /// <see cref="Settled"/> 是终态，表示赛季奖励已全部发放完成，无出边。
 /// </para>
@@ -46,7 +46,7 @@ public enum OnlineSeasonState
     Scheduled = 1,
 
     /// <summary>
-    /// 进行中：榜单按 C102 可信写入链路接收分数，累积本届成绩。
+    /// 进行中：榜单按可信写入链路接收分数，累积本届成绩。
     /// </summary>
     Active = 2,
 

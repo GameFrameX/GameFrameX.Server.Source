@@ -37,12 +37,12 @@ namespace GameFrameX.DataBase.PostgreSql;
 public sealed partial class PostgreSqlDbService
 {
     /// <summary>
-    /// 保存数据（仅当 StateHash 判定已修改才写库；整文档重写，新档为准，对齐 C168 语义裁定）。
+    /// 保存数据（仅当 StateHash 判定已修改才写库；整文档重写，新档为准，对齐既有语义裁定）。
     /// </summary>
     /// <remarks>
-    /// Saves a document (only writes when the StateHash marks it modified). C168 semantics: the whole document
+    /// Saves a document (only writes when the StateHash marks it modified). Semantics: the whole document
     /// is rewritten from the state object — fields the state type no longer declares are naturally cleared
-    /// (unlike C166's stored-side merge); the state's own <c>IsDeleted</c>/<c>CreatedTime</c> etc. are
+    /// (unlike a stored-side merge); the state's own <c>IsDeleted</c>/<c>CreatedTime</c> etc. are
     /// authoritative since update flows load states from the database first. A missing row is a silent no-op
     /// (aligned with the previous <c>UPDATE ... WHERE id</c> row-count behavior).
     /// </remarks>
@@ -55,12 +55,12 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 保存数据（仅当 StateHash 判定已修改才写库；整文档重写，新档为准，对齐 C168 语义裁定）。
+    /// 保存数据（仅当 StateHash 判定已修改才写库；整文档重写，新档为准，对齐既有语义裁定）。
     /// </summary>
     /// <remarks>
-    /// Saves a document (only writes when the StateHash marks it modified). C168 semantics: the whole document
+    /// Saves a document (only writes when the StateHash marks it modified). Semantics: the whole document
     /// is rewritten from the state object — fields the state type no longer declares are naturally cleared
-    /// (unlike C166's stored-side merge); the state's own <c>IsDeleted</c>/<c>CreatedTime</c> etc. are
+    /// (unlike a stored-side merge); the state's own <c>IsDeleted</c>/<c>CreatedTime</c> etc. are
     /// authoritative since update flows load states from the database first. A missing row is a silent no-op
     /// (aligned with the previous <c>UPDATE ... WHERE id</c> row-count behavior).
     /// </remarks>
@@ -190,7 +190,7 @@ public sealed partial class PostgreSqlDbService
     /// removed/zeroed; <c>UpdateTime</c> stamped and <c>UpdateCount</c> incremented). 对齐 Mongo 语义：
     /// <c>Id/CreatedTime/CreatedId</c> 不可更新；过滤附带软删默认过滤（仅可见行可更新）；
     /// 返回值对齐 ModifiedCount——命中可见行且字段非空即写库并返回 1，行不可见（软删过滤）或
-    /// 字段空返回 0。UpdateTime/UpdateCount 恒推进使「值未变」不可达，与 C166 的 IS DISTINCT FROM
+    /// 字段空返回 0。UpdateTime/UpdateCount 恒推进使「值未变」不可达，与既有 IS DISTINCT FROM
     /// 比较档内嵌新时间戳/计数、Mongo 的 $set UpdateTime + $inc UpdateCount 行为三方一致。
     /// 值类型字段的「移除」落地为 CLR 默认值（JSON 中的 <c>0/false</c> 与缺失键读取等价）。
     /// </remarks>
@@ -211,7 +211,7 @@ public sealed partial class PostgreSqlDbService
     /// removed/zeroed; <c>UpdateTime</c> stamped and <c>UpdateCount</c> incremented). 对齐 Mongo 语义：
     /// <c>Id/CreatedTime/CreatedId</c> 不可更新；过滤附带软删默认过滤（仅可见行可更新）；
     /// 返回值对齐 ModifiedCount——命中可见行且字段非空即写库并返回 1，行不可见（软删过滤）或
-    /// 字段空返回 0。UpdateTime/UpdateCount 恒推进使「值未变」不可达，与 C166 的 IS DISTINCT FROM
+    /// 字段空返回 0。UpdateTime/UpdateCount 恒推进使「值未变」不可达，与既有 IS DISTINCT FROM
     /// 比较档内嵌新时间戳/计数、Mongo 的 $set UpdateTime + $inc UpdateCount 行为三方一致。
     /// 值类型字段的「移除」落地为 CLR 默认值（JSON 中的 <c>0/false</c> 与缺失键读取等价）。
     /// </remarks>
@@ -282,10 +282,10 @@ public sealed partial class PostgreSqlDbService
                 ApplyFieldValue(stateType, document, removedKey, null);
             }
 
-            // UpdateTime/UpdateCount 恒推进：命中可见行且字段非空即视为修改（C170 移除值未变比较探针——
+            // UpdateTime/UpdateCount 恒推进：命中可见行且字段非空即视为修改（已移除值未变比较探针——
             // 其 before/after 两侧必然不同，为不可达死代码；基线行为见方法注释）。
             // UpdateTime/UpdateCount always advance: a visible row with non-empty fields always counts as
-            // modified (C170 removed the value-unchanged probe — its before/after captures could never
+            // modified (the value-unchanged probe was removed — its before/after captures could never
             // compare equal; baseline behavior documented on the method).
             document.UpdateTime = GetCurrentTimestamp();
             document.UpdateCount = (document.UpdateCount ?? 0) + 1;

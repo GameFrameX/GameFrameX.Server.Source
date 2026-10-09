@@ -33,12 +33,12 @@ using System.Collections;
 namespace GameFrameX.StartUp;
 
 /// <summary>
-/// 本进程 Role 集合不可变快照（C143b D1）。
+/// 本进程 Role 集合不可变快照。
 /// </summary>
 /// <remarks>
-/// Immutable snapshot of the roles hosted by the current process (C143b D1).
+/// Immutable snapshot of the roles hosted by the current process.
 /// A role is identified by its server type name (the <see cref="StartUpTagAttribute.ServerType"/> value);
-/// membership queries ("target role belongs to this process") power the role routing seam (C143c RoleRouter).
+/// membership queries ("target role belongs to this process") power the role routing seam.
 /// The snapshot is defensively copied at construction: later changes to <see cref="StartUpTypeRegistry"/>
 /// never affect an existing instance, and the type exposes no mutation API at all.
 /// <see cref="Current"/> is published by <see cref="GameApp"/> once at launch time and must not change afterwards.

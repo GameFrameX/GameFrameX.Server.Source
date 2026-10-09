@@ -43,7 +43,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 跨服发奖路由与补偿队列测试（vault:C4 VC-3.10/3.11：归属服路由、不可达入队、
+    /// 跨服发奖路由与补偿队列测试（归属服路由、不可达入队、
     /// 恢复后自动续投不重复、业务性失败不重试、SLO 超时告警一次）。
     /// </summary>
     public class OnlineCrossServerGrantRouterTests
@@ -202,7 +202,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-3.10：归属服 = 本服时直接本地执行（不经传输）。
+        /// 验证归属服 = 本服时直接本地执行（不经传输）。
         /// </summary>
         [Fact]
         public async Task RouteAsync_LocalHome_ExecutesLocally()
@@ -226,7 +226,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-3.10：归属服为远端时经传输投递，结果原样透传，本地存储不变。
+        /// 验证归属服为远端时经传输投递，结果原样透传，本地存储不变。
         /// </summary>
         [Fact]
         public async Task RouteAsync_RemoteHome_DeliversViaTransport()
@@ -251,7 +251,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-3.11：远端不可达 → 返回 DependencyUnavailable 且入补偿队列；
+        /// 验证远端不可达 → 返回 DependencyUnavailable 且入补偿队列；
         /// 恢复后续投恰好一次成功、远端只生效一次（幂等键不变）。
         /// </summary>
         [Fact]

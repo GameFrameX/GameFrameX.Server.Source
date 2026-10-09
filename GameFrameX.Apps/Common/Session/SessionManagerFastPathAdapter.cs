@@ -12,10 +12,10 @@ using GameFrameX.Discovery.Routing;
 namespace GameFrameX.Apps.Common.Session;
 
 /// <summary>
-/// SessionManager Tier 1 快路径适配器（C143e D21）。
+/// SessionManager Tier 1 快路径适配器。
 /// </summary>
 /// <remarks>
-/// The Tier 1 player-route fast-path adapter (C143e D21). Wraps
+/// The Tier 1 player-route fast-path adapter. Wraps
 /// <c>SessionManager.PlayerRouteMap</c> in the <see cref="IPlayerRouteFastPath"/>
 /// contract so <see cref="MongoPlayerRouteResolver"/> can be activated from
 /// inside <c>GameFrameX.NetWork.RemoteMessaging</c> without taking a reverse

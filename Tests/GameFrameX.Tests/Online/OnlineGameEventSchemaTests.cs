@@ -38,14 +38,14 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 统一 Game Event Schema 测试（vault:C8 S7.5 / VC-7.9：脏事件拒绝且不进下游）。
+    /// 统一 Game Event Schema 测试（脏事件拒绝且不进下游）。
     /// 覆盖登记表自检（17 个标准事件名一一对应）、版本策略、四类 L0 拒绝、
     /// 「受理 ⇔ 入存储 / 拒绝 ⇔ 入死信」两条不变量、事件标识去重。
     /// </summary>
     public class OnlineGameEventSchemaTests
     {
         /// <summary>
-        /// 验证 VC-7.9-a：登记表与事件名常量一一对应（漏登记即该事件被判未知，守护测试锁定）。
+        /// 验证登记表与事件名常量一一对应（漏登记即该事件被判未知，守护测试锁定）。
         /// </summary>
         [Fact]
         public void Schema_ShouldRegisterEveryDeclaredName()
@@ -84,7 +84,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.9-b：四类 L0 拒绝（未登记事件名 / 版本非法 / 必需字段缺失 / 作用域非法）逐个命中，
+        /// 验证四类 L0 拒绝（未登记事件名 / 版本非法 / 必需字段缺失 / 作用域非法）逐个命中，
         /// 且**拒绝事件必进死信、绝不进事件存储**。
         /// </summary>
         [Fact]
@@ -140,7 +140,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.9-c：版本策略为「只增不减」——登记版本受理、低于 1 与高于当前版本拒绝，
+        /// 验证版本策略为「只增不减」——登记版本受理、低于 1 与高于当前版本拒绝，
         /// 受理路径无副作用（不进死信）。
         /// </summary>
         [Fact]
@@ -157,7 +157,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.9-d：事件标识是存储幂等键——同一信封重投只落一条，回执标记为重复而非拒绝。
+        /// 验证事件标识是存储幂等键——同一信封重投只落一条，回执标记为重复而非拒绝。
         /// </summary>
         [Fact]
         public async Task IngestAsync_RepeatedEnvelope_ShouldDeduplicate()
@@ -177,7 +177,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.9-e：必需字段判定读的是信封的**载荷语义投影**（与序列化格式无关），
+        /// 验证必需字段判定读的是信封的**载荷语义投影**（与序列化格式无关），
         /// 因此载荷为空但投影齐备的事件仍被受理（上游载荷格式演进不击穿本层）。
         /// </summary>
         [Fact]
@@ -203,7 +203,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.9-f：存储与死信的作用域隔离（跨 App 查询不到，反预言）。
+        /// 验证存储与死信的作用域隔离（跨 App 查询不到，反预言）。
         /// </summary>
         [Fact]
         public async Task StoreAndDeadLetter_ShouldIsolateScope()

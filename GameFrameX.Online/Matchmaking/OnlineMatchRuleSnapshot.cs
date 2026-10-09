@@ -30,11 +30,11 @@
 namespace GameFrameX.Online.Matchmaking;
 
 /// <summary>
-/// 匹配规则快照（vault:C5 S4.8：assignment 必须携带 RuleSnapshot，使阶段 5 可无歧义复现判定）。
+/// 匹配规则快照（assignment 必须携带 RuleSnapshot，使对局创建方可无歧义复现判定）。
 /// <para>
 /// 维护约束：快照记录的是**本次成组实际生效**的规则，不是当前配置——等待时间扩展会让有效技能区间
 /// 与入队时不同，快照必须反映扩展后的值（<see cref="SkillRangeExpanded"/> 标记是否发生扩展），
-/// 否则阶段 5 复盘「为什么这两个人匹配到一起」时得到错误答案。
+/// 否则复盘「为什么这两个人匹配到一起」时得到错误答案。
 /// </para>
 /// </summary>
 public sealed class OnlineMatchRuleSnapshot

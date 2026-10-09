@@ -31,11 +31,11 @@
 namespace GameFrameX.StartUp;
 
 /// <summary>
-/// 进程级共享内核重复初始化异常（C143b D5）。
+/// 进程级共享内核重复初始化异常。
 /// </summary>
 /// <remarks>
 /// Thrown by <see cref="AppBootstrapper.Initialize"/> when the process-level shared kernel
-/// has already been initialized (C143b D5). The second explicit initialization fails fast
+/// has already been initialized. The second explicit initialization fails fast
 /// instead of silently overwriting the kernel state; use <see cref="AppBootstrapper.EnsureInitialized"/>
 /// for idempotent per-role initialization.
 /// </remarks>
@@ -48,7 +48,7 @@ public sealed class BootstrapperAlreadyInitializedException : Exception
     /// Constructor with a fixed message describing the double-initialization violation.
     /// </remarks>
     public BootstrapperAlreadyInitializedException()
-        : base("The process-level shared kernel has already been initialized (C143b D5); explicit re-initialization is not allowed. Use AppBootstrapper.EnsureInitialized for idempotent initialization.")
+        : base("The process-level shared kernel has already been initialized; explicit re-initialization is not allowed. Use AppBootstrapper.EnsureInitialized for idempotent initialization.")
     {
     }
 }

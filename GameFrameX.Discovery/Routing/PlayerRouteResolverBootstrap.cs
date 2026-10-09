@@ -31,10 +31,10 @@
 namespace GameFrameX.Discovery.Routing;
 
 /// <summary>
-/// 通用玩家路由层装配点（C167：自 Mongo / PG 平行 Bootstrap 归一，消费 <see cref="IPlayerRouteStore"/>）。
+/// 通用玩家路由层装配点（自 Mongo / PG 平行 Bootstrap 归一，消费 <see cref="IPlayerRouteStore"/>）。
 /// </summary>
 /// <remarks>
-/// The generic player-route layer wiring point (C167, unified from the Mongo /
+/// The generic player-route layer wiring point (unified from the Mongo /
 /// PostgreSQL parallel bootstraps). The launch flow calls <see cref="Attach"/>
 /// once after the control database is registered: it ensures the
 /// <c>player_route</c> schema (idempotent — the driver's index / DDL

@@ -34,12 +34,12 @@ using Npgsql;
 namespace GameFrameX.DataBase.PostgreSql.Discovery;
 
 /// <summary>
-/// server_heartbeat 表的 EF 关系实体（C168 发现层 EF 化）；属性形态继承自 <see cref="ServerHeartbeatEntity"/>。
+/// server_heartbeat 表的 EF 关系实体（发现层 EF 化）；属性形态继承自 <see cref="ServerHeartbeatEntity"/>。
 /// </summary>
 /// <remarks>
-/// The EF relational entity for the <c>server_heartbeat</c> table (C168 discovery EF migration). Properties are
+/// The EF relational entity for the <c>server_heartbeat</c> table. Properties are
 /// declared once on the shared <see cref="ServerHeartbeatEntity"/> base; the snake_case column mapping lives in
-/// <see cref="PostgreSqlDiscoveryDbContext.OnModelCreating"/> and is identical to C167 — zero migration for
+/// <see cref="PostgreSqlDiscoveryDbContext.OnModelCreating"/> and is kept byte-identical — zero migration for
 /// existing control databases, including the <c>server_heartbeat_pkey</c> primary-key constraint name.
 /// Enum-ish columns stay as raw strings so the watcher's defensive parsing (unknown names skipped) is preserved.
 /// </remarks>
@@ -48,12 +48,12 @@ public sealed class ServerHeartbeatRow : ServerHeartbeatEntity
 }
 
 /// <summary>
-/// player_route 表的 EF 关系实体（C168 发现层 EF 化）；属性形态继承自 <see cref="PlayerRouteEntity"/>。
+/// player_route 表的 EF 关系实体（发现层 EF 化）；属性形态继承自 <see cref="PlayerRouteEntity"/>。
 /// </summary>
 /// <remarks>
-/// EF relational entity for the <c>player_route</c> table (C168 discovery EF migration). Properties are declared
+/// EF relational entity for the <c>player_route</c> table. Properties are declared
 /// once on the shared <see cref="PlayerRouteEntity"/> base; the snake_case column mapping lives in
-/// <see cref="PostgreSqlDiscoveryDbContext.OnModelCreating"/> and is identical to C167. The <c>xmin</c> system
+/// <see cref="PostgreSqlDiscoveryDbContext.OnModelCreating"/>. The <c>xmin</c> system
 /// column is mapped as the optimistic concurrency token — the CAS guard replacing the former hand-written
 /// atomic upsert SQL.
 /// </remarks>
@@ -62,10 +62,10 @@ public sealed class PlayerRouteRow : PlayerRouteEntity
 }
 
 /// <summary>
-/// 发现层控制库的 EF 上下文（C168：心跳 + 玩家路由两张关系表；表结构经 EF 模型 API 创建，适配器内不再有建表 SQL）。
+/// 发现层控制库的 EF 上下文（心跳 + 玩家路由两张关系表；表结构经 EF 模型 API 创建，适配器内不再有建表 SQL）。
 /// </summary>
 /// <remarks>
-/// The EF context for the discovery control database (C168): the heartbeat and player-route relational
+/// The EF context for the discovery control database: the heartbeat and player-route relational
 /// tables, schema-created through the EF model API. The context binds to the shared pooled
 /// <see cref="NpgsqlDataSource"/> (the same pool the health checks probe) and is short-lived — one per
 /// store operation.
@@ -100,7 +100,7 @@ public sealed class PostgreSqlDiscoveryDbContext : DbContext
     public DbSet<PlayerRouteRow> PlayerRoutes { get; set; }
 
     /// <summary>
-    /// 配置发现层两张表的映射（列名 / 索引与 C167 逐字一致；xmin 乐观并发令牌承载 CAS）。
+    /// 配置发现层两张表的映射（列名 / 索引与既有存储模型逐字一致；xmin 乐观并发令牌承载 CAS）。
     /// </summary>
     /// <remarks>
     /// Configures both discovery tables (column names and indexes identical to C167). The player-route

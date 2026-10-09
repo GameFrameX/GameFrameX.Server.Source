@@ -31,11 +31,11 @@
 namespace GameFrameX.Discovery;
 
 /// <summary>
-/// 实例上下线事件订阅接口（C143d D15 / D17 通道 1 的进程内出口）。
+/// 实例上下线事件订阅接口（通道 1 的进程内出口）。
 /// </summary>
 /// <remarks>
-/// The in-process exit of D17 channel 1: subscribers are notified by the watcher
-/// whenever the dual-view table changes shape (C143d D15). Implementations run on
+/// The in-process exit of channel 1: subscribers are notified by the watcher
+/// whenever the dual-view table changes shape. Implementations run on
 /// the watcher poll loop thread and must not block; slow work must be queued elsewhere.
 /// </remarks>
 public interface IRoleInstanceEvents

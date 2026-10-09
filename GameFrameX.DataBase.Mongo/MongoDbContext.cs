@@ -59,10 +59,10 @@ internal sealed class MongoDbContext
     /// </summary>
     /// <remarks>
     /// Gets the MongoDB collection of the specified type.
-    /// C171 挂载点唯一性说明：本方法是状态文档（BaseCacheState 派生）CRUD 路径唯一的集合获取入口，
+    /// 挂载点唯一性说明：本方法是状态文档（BaseCacheState 派生）CRUD 路径唯一的集合获取入口，
     /// ClassMap 懒注册（忽略多余元素 + 继承）在此完成；其余类型化入口（索引 / Upsert / SaveBulk）各自显式调用
     /// <see cref="MongoSerializationRegistry.EnsureClassMapRegistered{T}"/>，两处合起来覆盖全部状态文档序列化路径。
-    /// C171 mount-point note: this is the single collection entry for state-document CRUD paths, where lazy
+    /// Mount-point note: this is the single collection entry for state-document CRUD paths, where lazy
     /// ClassMap registration happens; the remaining typed entries (index / upsert / save-bulk) call
     /// <see cref="MongoSerializationRegistry.EnsureClassMapRegistered{T}"/> explicitly, together covering every
     /// state-document serialization path.

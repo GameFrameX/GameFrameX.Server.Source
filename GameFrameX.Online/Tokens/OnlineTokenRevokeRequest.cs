@@ -32,7 +32,7 @@ using GameFrameX.Online.Scope;
 namespace GameFrameX.Online.Tokens;
 
 /// <summary>
-/// Token 吊销请求（vault:C2 S1.4：主动登出、管理员强制下线等场景；吊销后原 Token 立即失效，后续使用映射 <c>TokenRevoked</c>）。
+/// Token 吊销请求（主动登出、管理员强制下线等场景；吊销后原 Token 立即失效，后续使用映射 <c>TokenRevoked</c>）。
 /// </summary>
 public sealed class OnlineTokenRevokeRequest
 {

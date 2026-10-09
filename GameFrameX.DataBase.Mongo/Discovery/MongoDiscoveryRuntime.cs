@@ -38,7 +38,7 @@ using MongoDB.Driver;
 namespace GameFrameX.DataBase.Mongo.Discovery;
 
 /// <summary>
-/// Mongo 发现层进程装配器（C143d D11–D15 落地接线；C167 起消费通用组件 + Mongo 存储适配）。
+/// Mongo 发现层进程装配器（消费通用组件 + Mongo 存储适配）。
 /// </summary>
 /// <remarks>
 /// The process-level wiring point for the Mongo discovery layer. The launch
@@ -83,10 +83,10 @@ public static class MongoDiscoveryRuntime
     private static DiscoveryWatcher _watcher;
 
     /// <summary>
-    /// 发现层路由表提供者（C166 依赖纠偏第二轮：路由胶水装配移交组合侧 DiscoveryRoutingWire，本 Runtime 只暴露读侧实例）。
+    /// 发现层路由表提供者（路由胶水装配移交组合侧 DiscoveryRoutingWire，本 Runtime 只暴露读侧实例）。
     /// </summary>
     /// <remarks>
-    /// The discovery route table provider (C166 second dependency fix: router wiring moved to the
+    /// The discovery route table provider (router wiring moved to the
     /// composition-side <c>DiscoveryRoutingWire</c>; this runtime only exposes the reader instance).
     /// </remarks>
     public static IRoleRouteTableProvider TableProvider => _watcher;
@@ -98,7 +98,7 @@ public static class MongoDiscoveryRuntime
     /// Activates the discovery layer. The watcher always starts (every process
     /// observes the topology); the registry's write side starts only when an
     /// advertise identity exists (advertise port configured); the player-route
-    /// bootstrap attaches right after (C143e D21). Calling it more than once
+    /// bootstrap attaches right after. Calling it more than once
     /// per process is a no-op. The control database comes from
     /// <see cref="DiscoveryActivationOptions.ControlDatabase"/> directly, or is
     /// resolved through the unified <c>GameDb</c> entry when only
@@ -140,7 +140,7 @@ public static class MongoDiscoveryRuntime
         _watcher.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
 
         // 写侧需要唯一的广播身份：未配置广播端口（单进程本地开发等）时跳过注册，仅观察拓扑。
-        // ponytail: 心跳文档是单 Role 模型，多 Role 进程只广播首选 Role——目标形态（D13 compose 单 Role 服务）下
+        // ponytail: 心跳文档是单 Role 模型，多 Role 进程只广播首选 Role——目标形态（compose 单 Role 服务）下
         // 多 Role 进程仅剩 AllInOne 开发形态，其路由全走本地 case 1，无跨进程发现需求；若未来多 Role 常态化
         // 再扩展为每 Role 一份心跳文档。
         var primaryRoleName = hostedRoles.Count > 0 ? hostedRoles.First() : "unknown";
@@ -152,7 +152,7 @@ public static class MongoDiscoveryRuntime
             LogHelper.Warning("[MongoDiscoveryRuntime] no advertise port configured ({environmentVariable}); the heartbeat write side is skipped and this process only observes the topology", AdvertiseEndpointEnvironment.AdvertisePortEnvironmentVariable);
         }
 
-        // C143e D21：玩家路由层装配（建索引 + 装 SyncTarget），通用 Bootstrap 单例（C167 归一）。
+        // 玩家路由层装配（建索引 + 装 SyncTarget），通用 Bootstrap 单例。
         PlayerRouteResolverBootstrap.Attach(playerRouteStore, options.PlayerRouteFastPath).GetAwaiter().GetResult();
     }
 

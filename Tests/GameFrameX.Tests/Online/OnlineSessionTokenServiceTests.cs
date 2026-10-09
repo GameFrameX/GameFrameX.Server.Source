@@ -40,7 +40,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 会话 Token 服务测试（vault:C3 VC-2.2/2.3/2.4/2.12：原子轮换、重放拒绝、踢下线审计、多端策略）。
+    /// 会话 Token 服务测试（原子轮换、重放拒绝、踢下线审计、多端策略）。
     /// </summary>
     public class OnlineSessionTokenServiceTests
     {
@@ -100,7 +100,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证刷新为原子轮换：新 Token 可用，旧 Token 即刻失效（VC-2.2）。
+        /// 验证刷新为原子轮换：新 Token 可用，旧 Token 即刻失效。
         /// </summary>
         [Fact]
         public async Task RefreshAsync_ShouldRotateTokenAndInvalidateOldOne()
@@ -125,7 +125,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证重放已轮换的旧 Token 判 TokenRevoked（VC-2.12；契约通道抛段位化异常）。
+        /// 验证重放已轮换的旧 Token 判 TokenRevoked（契约通道抛段位化异常）。
         /// </summary>
         [Fact]
         public async Task RefreshAsync_ReplayRotatedToken_ShouldThrowTokenRevoked()
@@ -152,7 +152,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证踢下线后旧 Token 失效，且审计事件含 SessionId 与 Reason（VC-2.3）。
+        /// 验证踢下线后旧 Token 失效，且审计事件含 SessionId 与 Reason。
         /// </summary>
         [Fact]
         public async Task KickAsync_ShouldInvalidateTokenAndAuditSessionAndReason()
@@ -252,7 +252,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 SingleDevice 策略拒绝第二次登录（VC-2.4）。
+        /// 验证 SingleDevice 策略拒绝第二次登录。
         /// </summary>
         [Fact]
         public async Task IssueSessionAsync_SingleDevice_ShouldRejectSecondLogin()
@@ -272,7 +272,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 LatestWins 策略顶替旧会话（旧 Token 失效、被顶替清单可见），Coexist 策略并存（VC-2.4）。
+        /// 验证 LatestWins 策略顶替旧会话（旧 Token 失效、被顶替清单可见），Coexist 策略并存。
         /// </summary>
         [Fact]
         public async Task IssueSessionAsync_LatestWinsAndCoexist_ShouldAdjudicateByPolicy()
@@ -309,7 +309,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 C93 契约签发入口返回完整 DTO（Token/SessionId/ExpiresAtTime）。
+        /// 验证契约签发入口返回完整 DTO（Token/SessionId/ExpiresAtTime）。
         /// </summary>
         [Fact]
         public async Task IssueAsync_ContractAdapter_ShouldReturnDto()
@@ -332,7 +332,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证过期清理：Token 到期的非终态会话转 Expired（VC-2.14 兜底）。
+        /// 验证过期清理：Token 到期的非终态会话转 Expired（兜底）。
         /// </summary>
         [Fact]
         public async Task SweepExpiredAsync_ShouldExpireSessionsPastTokenLifetime()

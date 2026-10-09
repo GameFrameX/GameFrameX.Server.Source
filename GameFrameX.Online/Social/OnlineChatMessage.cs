@@ -30,9 +30,9 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 聊天消息（vault:C7 S6.5/S6.6）。
+/// 聊天消息。
 /// <para>
-/// 维护约束（分页稳定性的地基，VC-6.10）：排序键是 <c>(SentAtTime, Sequence)</c>，其中
+/// 维护约束（分页稳定性的地基）：排序键是 <c>(SentAtTime, Sequence)</c>，其中
 /// <see cref="Sequence"/> 由存储层按频道单调递增分配。**为什么不能只按时间排序**：
 /// 同一毫秒内的多条消息时间相等，若再按消息标识（随机 GUID）打破平局，
 /// 「翻页期间新到达的同毫秒消息」可能排到游标之前而被永久跳过。Sequence 严格递增，

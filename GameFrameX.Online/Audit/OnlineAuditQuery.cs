@@ -32,12 +32,12 @@ using System.Collections.Generic;
 namespace GameFrameX.Online.Audit;
 
 /// <summary>
-/// 统一审计跨域检索条件（vault:C9 S8.2「跨域检索」：一次查询跨 支付/奖励/邮件/兑换码/远程配置/处罚/受控操作
+/// 统一审计跨域检索条件（「跨域检索」：一次查询跨 支付/奖励/邮件/兑换码/远程配置/处罚/受控操作
 /// 多域联查；租户/App 由 <c>OnlineScope</c> 锚定，其余维度全部为可选过滤）。
 /// <para>
 /// 维护约束：全部过滤条件为**合取**（AND）；<see cref="Domains"/> 为空表示不限域（全部七域），
 /// 非空时行命中集合内任一域即保留（域间为析取——跨域联查语义）；时间窗为闭区间 [StartTime, EndTime]；
-/// 过滤在全序对齐**之前**生效、游标筛选在全序**之上**生效（对齐 C101 时间线口径）。
+/// 过滤在全序对齐**之前**生效、游标筛选在全序**之上**生效（对齐时间线口径）。
 /// </para>
 /// </summary>
 public sealed class OnlineAuditQuery
@@ -61,7 +61,7 @@ public sealed class OnlineAuditQuery
     }
 
     /// <summary>
-    /// 获取或设置操作者标识过滤（空表示不限；按操作者定位其全部受控操作审计，VC-8.3）。
+    /// 获取或设置操作者标识过滤（空表示不限；按操作者定位其全部受控操作审计）。
     /// </summary>
     public string OperatorId
     {
@@ -79,7 +79,7 @@ public sealed class OnlineAuditQuery
     }
 
     /// <summary>
-    /// 获取或设置关联链路键过滤（空表示不限；VC-8.5 按链路定位）。
+    /// 获取或设置关联链路键过滤（空表示不限；按链路定位）。
     /// </summary>
     public string CorrelationId
     {

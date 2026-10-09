@@ -36,13 +36,13 @@ using GameFrameX.Online.Events;
 using GameFrameX.Online.Scope;
 
 /// <summary>
-/// 匹配票据服务（vault:C5 S4.5：入队、取消、查询；票据状态的**唯一裁决入口**）。
+/// 匹配票据服务（入队、取消、查询；票据状态的**唯一裁决入口**）。
 /// <para>
 /// 维护约束（红线）：
 /// ① 所有状态改写都经 <see cref="IOnlineMatchTicketStore"/> 的 CAS 入口，本类不做「先读后写」的两段式判断；
-/// ② 取消已进入终态的票据不是失败——返回该票据的终态回执（VC-4.2：匹配已成立时取消不产生任何回滚），
+/// ② 取消已进入终态的票据不是失败——返回该票据的终态回执（匹配已成立时取消不产生任何回滚），
 /// 调用方以回执的 <see cref="OnlineMatchTicket.State"/> 为准，而不是以「取消接口是否报错」为准；
-/// ③ 队伍票据的成员集合整队进整队出（VC-4.3），本类不提供按单个成员退出票据的入口——
+/// ③ 队伍票据的成员集合整队进整队出，本类不提供按单个成员退出票据的入口——
 /// 成员变动必须先回到 Party 域（<see cref="Party.OnlinePartyService.LeaveAsync"/> → 票据随队伍状态收敛）。
 /// </para>
 /// </summary>
@@ -57,7 +57,7 @@ public sealed class OnlineMatchTicketService
     /// <summary>匹配与限流可配置项。</summary>
     private readonly OnlineMatchmakerOptions _options;
 
-    /// <summary>入队/取消限流器（VC-4.11）。</summary>
+    /// <summary>入队/取消限流器。</summary>
     private readonly OnlineMatchRateLimiter _rateLimiter;
 
     /// <summary>
@@ -75,9 +75,9 @@ public sealed class OnlineMatchTicketService
     }
 
     /// <summary>
-    /// 入队（VC-4.3：队伍成员整队进入或整队不进入）。
+    /// 入队（队伍成员整队进入或整队不进入）。
     /// <para>
-    /// 重复排队被拒（VC-4.4 / VC-4.12）：同一队伍、或任一所携带玩家已有排队中票据，一律返回
+    /// 重复排队被拒：同一队伍、或任一所携带玩家已有排队中票据，一律返回
     /// <see cref="OnlineErrorCode.DuplicateRequest"/>，不产生第二张票据。
     /// </para>
     /// </summary>
@@ -166,7 +166,7 @@ public sealed class OnlineMatchTicketService
     }
 
     /// <summary>
-    /// 取消排队中的票据（VC-4.2 / VC-4.9：取消后不得再产出该票据的结果）。
+    /// 取消排队中的票据（取消后不得再产出该票据的结果）。
     /// </summary>
     /// <param name="scope">生效作用域（必须含玩家主体位）。</param>
     /// <param name="ticketId">票据标识。</param>
@@ -248,7 +248,7 @@ public sealed class OnlineMatchTicketService
     }
 
     /// <summary>
-    /// 查询当前玩家排队中的票据（VC-4.10：客户端可确定性获知「我在排队 / 我已被匹配」）。
+    /// 查询当前玩家排队中的票据（客户端可确定性获知「我在排队 / 我已被匹配」）。
     /// </summary>
     /// <param name="scope">生效作用域（必须含玩家主体位）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -266,7 +266,7 @@ public sealed class OnlineMatchTicketService
     }
 
     /// <summary>
-    /// 扫描并把超过存活时长的排队票据置为 <see cref="OnlineMatchTicketState.Expired"/>（VC-4.9）。
+    /// 扫描并把超过存活时长的排队票据置为 <see cref="OnlineMatchTicketState.Expired"/>。
     /// </summary>
     /// <param name="tenantId">租户标识。</param>
     /// <param name="appId">App 标识。</param>

@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Tokens;
 
 /// <summary>
-/// Token 签发结果（vault:C2 S1.4 契约承载；<c>ExpiresAtTime</c> 为 UTC 毫秒绝对时刻，到期映射 2xxx 段 <c>TokenExpired</c>）。
+/// Token 签发结果（契约承载；<c>ExpiresAtTime</c> 为 UTC 毫秒绝对时刻，到期映射 2xxx 段 <c>TokenExpired</c>）。
 /// </summary>
 public sealed class OnlineTokenIssueResult
 {

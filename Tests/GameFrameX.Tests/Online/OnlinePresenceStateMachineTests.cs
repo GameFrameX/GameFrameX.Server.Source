@@ -34,7 +34,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 在线状态机转换表测试（vault:C3 VC-2.5：全部合法边逐一断言 + 全矩阵非法转换拒绝，覆盖率 100%）。
+    /// 在线状态机转换表测试（全部合法边逐一断言 + 全矩阵非法转换拒绝，覆盖率 100%）。
     /// </summary>
     public class OnlinePresenceStateMachineTests
     {

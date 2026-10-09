@@ -37,7 +37,7 @@ using GameFrameX.Utility.Setting;
 namespace GameFrameX.Tests.StartUp;
 
 /// <summary>
-/// 启动期配置校验器测试（C143f D4：一致放行 / 段缺失 / 同进程监听端点冲突 / 进程级字段一致性 / CLI-文件冲突）。
+/// 启动期配置校验器测试（一致放行 / 段缺失 / 同进程监听端点冲突 / 进程级字段一致性 / CLI-文件冲突）。
 /// </summary>
 public class ConfigStartupValidatorTests
 {
@@ -420,7 +420,7 @@ public class ConfigStartupValidatorTests
     }
 
     /// <summary>
-    /// 异常消息完整性：同时含冲突字段名、CLI 来源与文件来源段（D4 验收）。
+    /// 异常消息完整性：同时含冲突字段名、CLI 来源与文件来源段。
     /// </summary>
     [Fact]
     public void Validate_ConflictMessageListsFieldAndSources()

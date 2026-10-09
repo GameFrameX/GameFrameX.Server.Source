@@ -31,10 +31,10 @@
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
-/// 跨 Role 路由投递结果（C143c D3）。
+/// 跨 Role 路由投递结果。
 /// </summary>
 /// <remarks>
-/// Delivery result of cross-role routing (C143c D3).
+/// Delivery result of cross-role routing.
 /// Tells the caller which branch of the three-step routing decision actually delivered
 /// the message, so topology equivalence tests can assert that the All-in-One topology
 /// hits the local in-process path 100% of the time.
@@ -43,18 +43,18 @@ namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 public enum RoleRouteDelivery
 {
     /// <summary>
-    /// D3 case 1：目标 Role 属于本进程角色集，经本地投递缝送达。
+    /// case 1：目标 Role 属于本进程角色集，经本地投递缝送达。
     /// </summary>
     /// <remarks>
-    /// D3 case 1: the target role belongs to this process and was delivered through the local dispatcher.
+    /// case 1: the target role belongs to this process and was delivered through the local dispatcher.
     /// </remarks>
     LocalActor = 1,
 
     /// <summary>
-    /// D3 case 2/3：目标 Role 不属于本进程角色集，经远程转发缝投出。
+    /// case 2/3：目标 Role 不属于本进程角色集，经远程转发缝投出。
     /// </summary>
     /// <remarks>
-    /// D3 case 2/3: the target role is hosted by another process and was handed to the remote forwarding seam.
+    /// case 2/3: the target role is hosted by another process and was handed to the remote forwarding seam.
     /// </remarks>
     RemoteForwarded = 2,
 }

@@ -35,14 +35,14 @@ using GameFrameX.Online.Events;
 namespace GameFrameX.Online.GameEvents;
 
 /// <summary>
-/// 游戏事件存储契约（**只存通过 L0 校验的事件**；VC-7.10「原始事件可查询、指标可复算」的存储半边）。
+/// 游戏事件存储契约（**只存通过基础校验的事件**；「原始事件可查询、指标可复算」的存储半边）。
 /// <para>
 /// 维护约束（红线）：
 /// (1) **只收受理事件**——本存储不认识「校验」这回事，脏事件由摄取器拦在门外（结构上保证下游读到的
 /// 事件必然通过 schema 校验）；
 /// (2) **事件标识唯一**（EventId 为幂等键）：重复投递同一信封只落一条（返回 false），
 /// 否则重投会让指标翻倍、报表失真；
-/// (3) **追加即不可变**——只追加不修改不删除（留存与归档策略归运行时装配 X4）；
+/// (3) **追加即不可变**——只追加不修改不删除（留存与归档策略归运行时装配）；
 /// (4) 作用域隔离：查询以 (TenantId, AppId) 为前置条件，跨作用域查不到（反预言）。
 /// </para>
 /// </summary>
@@ -51,7 +51,7 @@ public interface IOnlineGameEventStore
     /// <summary>
     /// 追加事件（EventId 已存在时不落档，返回 false）。
     /// </summary>
-    /// <param name="onlineEvent">通过 L0 校验的事件信封。</param>
+    /// <param name="onlineEvent">通过基础校验的事件信封。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>本次是否新落档（false 表示重复投递被去重）。</returns>
     Task<bool> AppendAsync(OnlineEvent onlineEvent, CancellationToken cancellationToken = default);

@@ -32,7 +32,7 @@ using GameFrameX.Foundation.Idempotency;
 namespace GameFrameX.Online.Events;
 
 /// <summary>
-/// Online 事件消费去重基座（vault:C2 S1.6：同一 <c>EventId</c> 投递两次只处理一次，第二次丢弃并记录，VC-1.13）。
+/// Online 事件消费去重基座（同一 <c>EventId</c> 投递两次只处理一次，第二次丢弃并记录）。
 /// <para>
 /// 维护约束：消费处理入口必须先经 <see cref="TryConsume"/> 判定再去执行业务处理；
 /// 重复事件被拦截时应保留审计痕迹（由调用方记录，本基座只做判定）。

@@ -32,7 +32,7 @@ using GameFrameX.Online.Contracts;
 namespace GameFrameX.Online.Scope;
 
 /// <summary>
-/// Online 作用域守卫（vault:C2：跨 Tenant/App/Server 请求被稳定拒绝且留审计，VC-1.6/1.7）。
+/// Online 作用域守卫（跨 Tenant/App/Server 请求被稳定拒绝且留审计）。
 /// <para>
 /// 维护约束：四端（Server / Client API / Hub API / Admin API）统一经本守卫判定，禁止各 Handler 自行判断；
 /// 判定拒绝必须 100% 留痕（审计钩子由调用方接线，拒绝码走 3xxx 段）。

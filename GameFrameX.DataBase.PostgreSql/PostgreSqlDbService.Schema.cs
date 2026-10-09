@@ -86,7 +86,7 @@ public sealed partial class PostgreSqlDbService
     /// 创建短生命周期 EF 上下文（每次数据库操作一个；选项按 TState 缓存）。
     /// </summary>
     /// <remarks>
-    /// Creates a short-lived EF context — one per database operation (C168 D6: a context is not reusable after a
+    /// Creates a short-lived EF context — one per database operation (a context is not reusable after a
     /// failed operation, so contexts are never shared). Options are cached per <c>TState</c> and bound to the
     /// current pooled <see cref="DataSource"/>, reusing EF's internal service provider across operations.
     /// </remarks>
@@ -208,10 +208,10 @@ public sealed partial class PostgreSqlDbService
     /// </summary>
     /// <remarks>
     /// Table creation uses the EF model-generated DDL (<c>GenerateCreateScript</c>, zero hand-written SQL in code);
-    /// a pre-existing table (SQLSTATE 42P07, e.g. created by C166 or a concurrent process) counts as success —
+    /// a pre-existing table (SQLSTATE 42P07, e.g. created by an earlier schema bootstrap or a concurrent process) counts as success —
     /// this keeps per-type lazy creation working in shared databases where <c>EnsureCreated</c> would no-op
     /// on the first foreign table. The jsonb expression indexes are then synchronized through the whitelisted
-    /// bootstrap DDL (the only raw-statement category left in this adapter, C168 D4).
+    /// bootstrap DDL (the only raw-statement category left in this adapter).
     /// </remarks>
     /// <typeparam name="TState">文档类型 / Document type</typeparam>
     /// <param name="cancellationToken">首调传入的取消令牌 / The cancellation token supplied by the first caller</param>
@@ -226,8 +226,8 @@ public sealed partial class PostgreSqlDbService
             }
             catch (PostgresException exception) when (exception.SqlState == PostgreSqlSqlState.DuplicateTable)
             {
-                // 表已存在（C166 存量库 / 并发进程先行创建）：视作成功，存量表结构零迁移。
-                // Table already exists (C166-stored database or a concurrent process won the race): success — existing tables are never migrated.
+                // 表已存在（存量库 / 并发进程先行创建）：视作成功，存量表结构零迁移。
+                // Table already exists (pre-existing database or a concurrent process won the race): success — existing tables are never migrated.
             }
         }
 
@@ -244,8 +244,8 @@ public sealed partial class PostgreSqlDbService
     /// with what the EF translator emits (bool→boolean、byte/short→smallint、int→integer、long→bigint、float→real、
     /// double→double precision、decimal→numeric、DateTime/DateTimeOffset→timestamp with time zone、Guid→uuid、
     /// enum 按底层整型、string 无 cast)，so predicates can hit the indexes. Same-name indexes whose stored
-    /// definition drifted (C166's int→bigint matrix, unique-flag changes) are rebuilt in place — the rolling
-    /// migration path from C166 indexes (breaking change per C168 spec).
+    /// definition drifted (e.g. an int→bigint cast-matrix upgrade or unique-flag change) are rebuilt in place — the rolling
+    /// migration path off legacy indexes (a breaking change).
     /// </remarks>
     /// <param name="connection">活动连接 / Active connection</param>
     /// <param name="tableName">表名 / Table name</param>
@@ -281,8 +281,8 @@ public sealed partial class PostgreSqlDbService
 
             if (existingDefinition != null)
             {
-                // 同名异构（cast 矩阵升级 / 唯一性冲突）：重建以对齐实体声明（C166 存量索引滚动迁移路径）。
-                // Same name but drifted shape (cast-matrix upgrade / unique mismatch): rebuild to match the declaration (the rolling path off C166 indexes).
+                // 同名异构（cast 矩阵升级 / 唯一性冲突）：重建以对齐实体声明（存量索引滚动迁移路径）。
+                // Same name but drifted shape (cast-matrix upgrade / unique mismatch): rebuild to match the declaration (the rolling path off legacy indexes).
                 await ExecuteNonQueryAsync(connection, $"DROP INDEX IF EXISTS {quotedIndexName}", cancellationToken).ConfigureAwait(false);
             }
 
@@ -358,7 +358,7 @@ public sealed partial class PostgreSqlDbService
     /// </summary>
     /// <remarks>
     /// Gets the index cast suffix for the property type, aligned verbatim with the EF translator's live output
-    /// (C168 实测锁定): bool→boolean、byte/short→smallint、int→integer、long→bigint、float→real、
+    /// (实测锁定): bool→boolean、byte/short→smallint、int→integer、long→bigint、float→real、
     /// double→double precision、decimal→numeric、DateTime/DateTimeOffset→timestamp with time zone、Guid→uuid、
     /// 枚举按底层整型；string 与 EF 不可翻译类型无 cast（按文本）。任何 cast 变化都会使同名索引异构并触发重建。
     /// </remarks>

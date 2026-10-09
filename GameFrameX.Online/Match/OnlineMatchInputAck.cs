@@ -30,11 +30,11 @@
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 输入确认（vault:C6 S5.2「服务端发送快照、增量、事件广播和输入确认」）。
+/// 输入确认（服务端发送快照、增量、事件广播和输入确认）。
 /// <para>
 /// 维护约束（红线）：<see cref="ServerSequence"/> 是服务端权威序号——
 /// 只有被接受的输入才推进它；被拒绝（含重复包）的输入原样返回当前序号，
-/// 客户端据此得知「我的这一步没有被采纳」而不会自行推演（VC-5.4）。
+/// 客户端据此得知「我的这一步没有被采纳」而不会自行推演。
 /// </para>
 /// </summary>
 public sealed class OnlineMatchInputAck
@@ -76,7 +76,7 @@ public sealed class OnlineMatchInputAck
     }
 
     /// <summary>
-    /// 获取或设置是否为重复包（重复包按幂等处理：不生效、不算失败，VC-5.4）。
+    /// 获取或设置是否为重复包（重复包按幂等处理：不生效、不算失败）。
     /// </summary>
     public bool IsDuplicate
     {

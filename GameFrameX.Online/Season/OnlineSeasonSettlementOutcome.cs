@@ -35,7 +35,7 @@ namespace GameFrameX.Online.Season;
 /// 赛季奖励结算回执（一次结算对该赛季全部命中玩家的逐玩家执行汇总）。
 /// <para>
 /// 维护约束（红线）：<see cref="GrantedCount"/> 只计**本次首次实际发放成功**的玩家，命中幂等回放的计入
-/// <see cref="ReplayCount"/>——重试时两者之和守恒，即「无重复发放」的可观测判据（VC-7.6 账本半边）；
+/// <see cref="ReplayCount"/>——重试时两者之和守恒，即「无重复发放」的可观测判据（账本对账口径）；
 /// <see cref="FailedPlayers"/> 是逐玩家隔离结果，一个玩家发放失败不影响同赛季其余玩家到账；
 /// <see cref="IsReplay"/> 表示本次是对已结算赛季的重复触发（返回首次结果，不重复发放）。
 /// </para>

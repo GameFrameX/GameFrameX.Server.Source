@@ -33,11 +33,11 @@ using System.Text.Json;
 using GameFrameX.Online.Party;
 
 /// <summary>
-/// 队伍域事件工厂（vault:C5 S4.3/S4.7：队伍状态与邀请变更事件供下游与 Admin 消费）。
+/// 队伍域事件工厂（队伍状态与邀请变更事件供下游与 Admin 消费）。
 /// <para>
 /// 维护约束：事件是事实不是状态——消费端不得回写队伍状态；队伍状态迁移事件必须携带
-/// from/to/reason 三元组与成员数快照（VC-4.6/VC-4.7 断言依据）；
-/// 载荷只放标识与状态名，不放邀请密码等敏感字段（沿用 C93 脱敏要求）。
+/// from/to/reason 三元组与成员数快照（断言依据）；
+/// 载荷只放标识与状态名，不放邀请密码等敏感字段（沿用既有脱敏要求）。
 /// </para>
 /// </summary>
 public static class OnlinePartyEvents

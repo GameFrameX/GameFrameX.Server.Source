@@ -1518,7 +1518,7 @@ public sealed class MongoDbServiceQueryTests
     }
 
     /// <summary>
-    /// C171 回归：存量文档含类上已删除（不存在）的字段时，反序列化不得抛 FormatException。
+    /// 回归用例：存量文档含类上已删除（不存在）的字段时，反序列化不得抛 FormatException。
     /// 保护 MongoSerializationRegistry 懒注册 ClassMap 的 SetIgnoreExtraElements 语义
     /// （等价于旧 Mongo.CacheState 基类上的 [BsonIgnoreExtraElements(true, Inherited = true)]）。
     /// </summary>
@@ -1545,7 +1545,7 @@ public sealed class MongoDbServiceQueryTests
     }
 
     /// <summary>
-    /// C171 回归：字典字段持久化形态必须保持 ArrayOfDocuments（存量数据兼容）。
+    /// 回归用例：字典字段持久化形态必须保持 ArrayOfDocuments（存量数据兼容）。
     /// 保护 MongoSerializationRegistry 在 Open 注册的 DictionaryRepresentationConvention 时序
     /// （ConventionPack 先于任何 ClassMap AutoMap，否则字典形态退回 Dynamic 破坏存量文档读写）。
     /// </summary>

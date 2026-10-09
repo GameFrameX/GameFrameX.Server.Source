@@ -35,12 +35,12 @@ using GameFrameX.Online.Leaderboard;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 并发写榜竞态注入榜单存储（VC-7.5-c 证据件）：在第 N 次重置尝试的临界区内、真正调用 CAS 清空**之前**，
+    /// 并发写榜竞态注入榜单存储：在第 N 次重置尝试的临界区内、真正调用 CAS 清空**之前**，
     /// 先落一笔真实的新成绩——精确复现「读序 → 快照 → 清空」之间被并发写入插入的时序，
     /// 用于验证 CAS 拒绝清空、重读重拍快照后重试成功，以及重试耗尽时的零损失回退。
     /// <para>
     /// 仅注写入存储边界：被插入的成绩不经投影器（生产路径上这一笔会伴随事件与缓存失效），
-    /// 因为本用例要验证的不变量是存储层 CAS 本身，而非写榜链路的可观测副作用（后者由 C102 用例覆盖）。
+    /// 因为本用例要验证的不变量是存储层 CAS 本身，而非写榜链路的可观测副作用（后者另有用例覆盖）。
     /// </para>
     /// </summary>
     internal sealed class InterleavingLeaderboardStore : IOnlineLeaderboardStore

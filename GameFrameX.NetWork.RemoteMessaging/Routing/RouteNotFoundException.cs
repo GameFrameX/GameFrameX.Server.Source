@@ -31,13 +31,13 @@
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
-/// 跨 Role 路由决策失败异常（C143c D3）。
+/// 跨 Role 路由决策失败异常。
 /// </summary>
 /// <remarks>
 /// Thrown when the cross-role routing seam cannot decide where a message must go
 /// (empty target role, target role not hosted by this process with no remote forwarder
 /// configured, or a local role hit with no local dispatcher configured).
-/// The router never falls back silently: an undecidable route is always a loud failure (C143c risk mitigation).
+/// The router never falls back silently: an undecidable route is always a loud failure.
 /// </remarks>
 public sealed class RouteNotFoundException : Exception
 {

@@ -35,7 +35,7 @@ using Microsoft.Extensions.Logging;
 namespace GameFrameX.Online.Runtime.AdminApi;
 
 /// <summary>
-/// Online admin HTTP 服务（change C122 决策④：独立 Kestrel 监听 <see cref="OnlineRuntimeOptions.AdminPort"/>，
+/// Online admin HTTP 服务（独立 Kestrel 监听 <see cref="OnlineRuntimeOptions.AdminPort"/>，
 /// 路由 <c>POST {prefix}/{action}</c>，全部业务结果经 <see cref="OnlineAdminApiDispatcher"/> 产出双层信封）。
 /// <para>
 /// 维护约束：环境中立（不读 ASPNETCORE_* 环境假设，无配置文件依赖，装配选项即全部配置）；

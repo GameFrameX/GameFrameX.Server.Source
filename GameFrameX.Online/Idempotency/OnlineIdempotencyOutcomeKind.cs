@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Idempotency;
 
 /// <summary>
-/// Online 幂等判定结果类型（vault:C2：相同键相同请求返回原结果；相同键不同请求返回冲突错误 6xxx）。
+/// Online 幂等判定结果类型（相同键相同请求返回原结果；相同键不同请求返回冲突错误 6xxx）。
 /// <para>
 /// 语义对照 Foundation <c>IdempotencyDecisionKind</c>（Execute/Replay/Conflict/Busy），
 /// 另增 <see cref="InvalidKey"/> 承载 Online 侧业务键格式校验失败（4xxx，未触达 Foundation 判定）。
@@ -49,12 +49,12 @@ public enum OnlineIdempotencyOutcomeKind
     Replay = 1,
 
     /// <summary>
-    /// 键冲突：相同幂等键承载了不同业务意图（同键不同请求体），拒绝并映射 6xxx（VC-1.4）。
+    /// 键冲突：相同幂等键承载了不同业务意图（同键不同请求体），拒绝并映射 6xxx。
     /// </summary>
     Conflict = 2,
 
     /// <summary>
-    /// 并发占位未落定：判定轮次内并发方仍在执行，映射 8xxx 可重试（VC-1.3 并发半边）。
+    /// 并发占位未落定：判定轮次内并发方仍在执行，映射 8xxx 可重试。
     /// </summary>
     Busy = 3,
 

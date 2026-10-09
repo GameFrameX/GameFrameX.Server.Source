@@ -34,9 +34,9 @@ using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
-/// 通知存储契约（vault:C7 S6.8）。
+/// 通知存储契约。
 /// <para>
-/// 维护约束（红线，VC-6.12 的落点）：**去重键在「作用域 + 接收者 + <see cref="OnlineNotification.DedupeKey"/>」
+/// 维护约束（红线）：**去重键在「作用域 + 接收者 + <see cref="OnlineNotification.DedupeKey"/>」
 /// 上唯一**是该存储的结构性不变量，不是调用方的纪律——<see cref="SaveIfAbsentAsync"/> 是它唯一的守卫点；
 /// 通知状态只能经 <see cref="ReplaceAsync"/> 的 CAS 语义改写（期望状态或**期望尝试次数**任一项不匹配即整体失败
 /// 并返回 null，绝不部分应用），并发「推送落定 vs 离线补发 vs 过期扫描」由此收敛到同一临界区——
@@ -52,7 +52,7 @@ public interface IOnlineNotificationStore
     /// <summary>
     /// 以去重键为唯一键「不存在则创建」：键已存在时返回既有记录且不写入。
     /// <para>
-    /// 该方法是「通知不重复消费」的实现依据（VC-6.12）：推送重试与离线补发并发时，只有第一次入队能创建记录，
+    /// 该方法是「通知不重复消费」的实现依据：推送重试与离线补发并发时，只有第一次入队能创建记录，
     /// 其余全部拿到同一条既有记录，调用方据此返回既有通知而非新建或重发。
     /// 去重键含接收者，故同一去重键对不同接收者各落一条合法通知。
     /// </para>
@@ -83,7 +83,7 @@ public interface IOnlineNotificationStore
     /// 为什么 CAS 除状态外还要比 <see cref="OnlineNotification.AttemptCount"/>：推送入口刻意允许
     /// 「已在途（Queued）的通知再次入队」这一自环，于是**仅比状态**时两个并发推送会说同一次谎都成真——
     /// 两个读线程读到的都是「Queued / 尝试 1」，先写者落尝试 2，后写者期望状态仍是 Queued 照样成功，
-    /// 同一条通知被推两次（VC-6.12 明确禁止重复消费）。把「读到的尝试次数」一并纳入期望值后，
+    /// 同一条通知被推两次（重复消费被明确禁止）。把「读到的尝试次数」一并纳入期望值后，
     /// 只有真正持有该次尝试的调用方能提交；而进程崩溃后滞留的 Queued 记录仍能被下一轮读到新的尝试次数后
     /// 重新认领，不牺牲活性。
     /// </para>

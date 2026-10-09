@@ -30,11 +30,11 @@
 namespace GameFrameX.Online.Matchmaking;
 
 /// <summary>
-/// 单轮匹配执行结果（vault:C5 S4.6：协调器每轮的可核对产出）。
+/// 单轮匹配执行结果（协调器每轮的可核对产出）。
 /// <para>
 /// 维护约束：结果只描述**本轮实际发生的事**——未成组的排队票据不计入任何计数，
 /// 它们仍在队列中等待后续轮次。对账口径：<c>MatchedTicketCount</c> 必须等于各
-/// <c>AssignmentIds</c> 对应分配消费的票据数之和（VC-4.12）。
+/// <c>AssignmentIds</c> 对应分配消费的票据数之和。
 /// </para>
 /// </summary>
 public sealed class OnlineMatchmakingRunResult

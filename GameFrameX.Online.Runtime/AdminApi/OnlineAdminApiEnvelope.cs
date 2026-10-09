@@ -34,7 +34,7 @@ using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.Online.Runtime.AdminApi;
 
 /// <summary>
-/// Online admin API 双层信封构造器（change C122：外层 Foundation <see cref="HttpJsonResultData{T}"/> 信封 code=0，
+/// Online admin API 双层信封构造器（外层 Foundation <see cref="HttpJsonResultData{T}"/> 信封 code=0，
 /// 内层 <see cref="OnlineAdminApiResponse"/> 以 JSON 字符串形态置于信封 Data 字段）。
 /// <para>
 /// 维护约束：双层形态对齐 Admin 侧 <c>OnlineServerClient</c> 的 <c>ToHttpJsonResult&lt;OnlineApiResponse&lt;T&gt;&gt;</c>

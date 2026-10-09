@@ -33,7 +33,7 @@ namespace GameFrameX.Tests.Online
 {
     /// <summary>
     /// Online admin API 调度器契约测试（双层信封、协议码、作用域守卫、幂等 Replay 透传与发放→账本→明细往返；
-    /// 变更 C122 X4 —— 对齐 Admin 侧 OnlineServerClient 线缆契约）。
+    /// 对齐 Admin 侧 OnlineServerClient 线缆契约）。
     /// </summary>
     public class OnlineAdminApiDispatcherTests
     {
@@ -263,7 +263,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 end_abnormal_match 按变更 C122 决策⑧①固定返回 5003。
+        /// 验证 end_abnormal_match 固定返回 5003。
         /// </summary>
         [Fact]
         public async Task Dispatch_EndAbnormalMatch_ShouldReturnInner5003()

@@ -33,12 +33,12 @@ using GameFrameX.Online.Assets;
 namespace GameFrameX.Online.Tournament;
 
 /// <summary>
-/// 赛事奖励规则（名次区间 → 资产变更行；vault:C8 S7.4「奖励」的配置载体）。
+/// 赛事奖励规则（名次区间 → 资产变更行；「奖励」的配置载体）。
 /// <para>
-/// 维护约束（红线）：名次区间按**冻结成绩的名次**判定（与 C103 赛季奖励同口径），不按实时榜单名次。
+/// 维护约束（红线）：名次区间按**冻结成绩的名次**判定（与赛季奖励同口径），不按实时榜单名次。
 /// 同一赛事内各规则的区间必须互不重叠（创建时校验），否则同一名次命中多条规则会造成重复发奖
-/// （量化指标「赛事重复发奖次数 = 0」的结构前提）。奖励行复用 C95 <see cref="OnlineAssetChangeLine"/>，
-/// 实际发放经统一资产入口（X5），本类型只描述「发什么」。
+/// （量化指标「赛事重复发奖次数 = 0」的结构前提）。奖励行复用 <see cref="OnlineAssetChangeLine"/>，
+/// 实际发放经统一资产入口，本类型只描述「发什么」。
 /// </para>
 /// </summary>
 public sealed class OnlineTournamentRewardRule

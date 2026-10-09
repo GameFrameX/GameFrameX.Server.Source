@@ -33,12 +33,12 @@ using System.Threading;
 using System.Threading.Tasks;
 
 /// <summary>
-/// 通知推送出口（vault:C7 S6.8：Socket 长连接的推送边界；真实实现在 Server 仓运行时装配，X4）。
+/// 通知推送出口（Socket 长连接的推送边界；真实实现在 Server 仓运行时装配）。
 /// <para>
 /// 维护约束（红线）：<b>实现必须把传输失败表达出来</b>——返回
 /// <see cref="OnlineNotificationDispatchOutcome.Fail"/> 或直接抛异常（服务层两者都会捕获并转入重试 /
-/// 离线补发路径）；<b>禁止吞掉失败后返回成功</b>，否则离线补发形同虚设，通知静默丢失（VC-6.11 失效）。
-/// 推送只承担投递动作：不得改写通知状态或载荷，状态一律由服务层经 CAS 落定（口径对齐 C95
+/// 离线补发路径）；<b>禁止吞掉失败后返回成功</b>，否则离线补发形同虚设，通知静默丢失。
+/// 推送只承担投递动作：不得改写通知状态或载荷，状态一律由服务层经 CAS 落定（口径对齐
 /// <c>IOnlineCrossServerGrantTransport</c> 的「不可达必须以异常表达」）。
 /// </para>
 /// </summary>

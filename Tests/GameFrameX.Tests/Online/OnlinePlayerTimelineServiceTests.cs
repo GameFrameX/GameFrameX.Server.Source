@@ -40,7 +40,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 玩家时间线服务测试（C101 / vault:C9 S8.1 · VC-8.1-c ~ VC-8.1-e：五腿合并与来源标注、全序游标分页无重漏、
+    /// 玩家时间线服务测试（五腿合并与来源标注、全序游标分页无重漏、
     /// 分组过滤与未知分组空列表、时间窗边界、配置命中腿空槽语义、跨作用域读取与无数据同构）。
     /// </summary>
     public class OnlinePlayerTimelineServiceTests
@@ -59,7 +59,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证五条腿合并：身份 / 会话（Session）、资产（Asset）、对局（Match）、处罚（Penalty）各腿行均在列，
-        /// 且每行都带齐行标识、事件类型、来源域与关联标识（VC-8.1-c）。
+        /// 且每行都带齐行标识、事件类型、来源域与关联标识。
         /// </summary>
         [Fact]
         public async Task QueryAsync_ShouldMergeAllDomainLegs()
@@ -214,7 +214,7 @@ namespace GameFrameX.Tests.Online
 
                 if (pages == 1)
                 {
-                    // 翻页途中插入新记录（VC-8.1-d）：新行排在游标之后则由后续页自然带上，排在游标之前则本轮不再出现——
+                    // 翻页途中插入新记录：新行排在游标之后则由后续页自然带上，排在游标之前则本轮不再出现——
                     // 两种情形都不得让**既有行**重复或遗漏。
                     var inserted = await harness.GrantAsync(ServerId, alice.Player.Id, 50, "order-page-inserted");
                     insertedEventId = "ledger:" + inserted.Entries[0].EntryId;
@@ -452,7 +452,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证资产腿按玩家维度取数：账本键为 (租户, App, 玩家)、无区服维度，故跨服发起（归属服 ≠ 玩家所在服）的发放
-        /// 仍出现在玩家所在服的时间线里——若按归属服过滤，该行在**任何作用域**都取不到（VC-8.1-c 数据一致无缺失）。
+        /// 仍出现在玩家所在服的时间线里——若按归属服过滤，该行在**任何作用域**都取不到（数据一致无缺失）。
         /// </summary>
         [Fact]
         public async Task QueryAsync_AssetLeg_ShouldFollowPlayerNotHomeServer()

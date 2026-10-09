@@ -42,7 +42,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 对局结算与结果分发测试（vault:C6 S5.7 / S5.8 / VC-5.8 / VC-5.9）：
+    /// 对局结算与结果分发测试：
     /// 一局一个结果、可信结果事件、逐玩家幂等发奖。
     /// </summary>
     public class OnlineMatchSettlementTests
@@ -69,7 +69,7 @@ namespace GameFrameX.Tests.Online
         private const string MatchId = "match-1";
 
         /// <summary>
-        /// 验证 VC-5.8 / VC-5.9 全链路：结算产出唯一结果 → 逐玩家发奖 → 可信结果事件。
+        /// 验证结算全链路：结算产出唯一结果 → 逐玩家发奖 → 可信结果事件。
         /// </summary>
         [Fact]
         public async Task SettleAndDispatch_ShouldProduceSingleResultAndGrantOnce()
@@ -109,7 +109,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(OnlineRockPaperScissorsGame.WinnerRewardAmount, winnerWallet.Balance);
             Assert.Equal(OnlineRockPaperScissorsGame.ParticipantRewardAmount, loserWallet.Balance);
 
-            // 重投同一份结果：幂等回放，余额不变（VC-5.9）。
+            // 重投同一份结果：幂等回放，余额不变。
             var replayed = await harness.Dispatcher.DispatchAsync(result);
 
             Assert.True(replayed.IsSuccess, replayed.Message);
@@ -119,7 +119,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.8：重复结算不产生第二份结果，且第二次为幂等回放。
+        /// 验证重复结算不产生第二份结果，且第二次为幂等回放。
         /// </summary>
         [Fact]
         public async Task SettleAsync_Twice_ShouldReplaySameResult()
@@ -139,7 +139,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.8：未进入结算阶段不得结算。
+        /// 验证未进入结算阶段不得结算。
         /// </summary>
         [Fact]
         public async Task SettleAsync_BeforeSettling_ShouldBeStateNotReady()
@@ -154,7 +154,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.8：结算结果存储按 (租户, App, 对局) 唯一——并发提交只保留首份。
+        /// 验证结算结果存储按 (租户, App, 对局) 唯一——并发提交只保留首份。
         /// </summary>
         [Fact]
         public async Task ResultStore_ConcurrentCommit_ShouldKeepFirstResult()
@@ -172,7 +172,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 S5.8：无奖励条目的结果不触发任何发奖（空结果不得空转）。
+        /// 验证无奖励条目的结果不触发任何发奖（空结果不得空转）。
         /// </summary>
         [Fact]
         public async Task DispatchAsync_WithoutRewards_ShouldNotGrant()

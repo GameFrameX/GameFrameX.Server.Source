@@ -42,11 +42,11 @@ using ProtoBuf;
 namespace GameFrameX.Tests.Discovery;
 
 /// <summary>
-/// DiscoveryRemoteRoleRouter 的选实例与转发语义测试（C143d D3 case 2/3）。
+/// DiscoveryRemoteRoleRouter 的选实例与转发语义测试。
 /// </summary>
 /// <remarks>
-/// Selection and forwarding semantics of DiscoveryRemoteRoleRouter (C143d D3
-/// case 2/3) without any Mongo dependency: the dual-view table comes from a fixed
+/// Selection and forwarding semantics of DiscoveryRemoteRoleRouter
+/// without any Mongo dependency: the dual-view table comes from a fixed
 /// provider and the send channel from a recording fake. Also covers the real TCP
 /// forwarder's wire format against a local TcpListener.
 /// </remarks>

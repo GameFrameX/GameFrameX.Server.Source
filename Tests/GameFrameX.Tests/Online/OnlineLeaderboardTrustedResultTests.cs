@@ -43,7 +43,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 可信结果写榜链路测试（vault:C8 S7.2 / VC-7.1 / VC-7.2 / VC-7.4 / VC-7.14 服务端半边）：
+    /// 可信结果写榜链路测试（服务端半边）：
     /// 载荷零信任（伪造 / 篡改拒绝）、重复投递幂等、防刷（分数上限 + 高频限流）逐玩家隔离、跨 App 拒绝。
     /// </summary>
     public class OnlineLeaderboardTrustedResultTests
@@ -54,7 +54,7 @@ namespace GameFrameX.Tests.Online
         /// <summary>App 标识。</summary>
         private const long AppId = 10;
 
-        /// <summary>另一 App 标识（跨 App 用例，VC-7.14）。</summary>
+        /// <summary>另一 App 标识（跨 App 用例）。</summary>
         private const long OtherAppId = 11;
 
         /// <summary>区服标识。</summary>
@@ -73,7 +73,7 @@ namespace GameFrameX.Tests.Online
         private const string MatchId = "match-1";
 
         /// <summary>
-        /// 验证 VC-7.1 可信半边：真实结算结果经投影器落榜，分数来源与追溯键完整，事件发布。
+        /// 验证可信半边：真实结算结果经投影器落榜，分数来源与追溯键完整，事件发布。
         /// </summary>
         [Fact]
         public async Task ProjectAsync_FromRealSettledMatch_ShouldWriteTrustedScores()
@@ -106,7 +106,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.1 不可信半边：伪造对局 / 伪造结果标识被拒绝，篡改载荷无从落榜。
+        /// 验证不可信半边：伪造对局 / 伪造结果标识被拒绝，篡改载荷无从落榜。
         /// </summary>
         [Fact]
         public async Task ProjectAsync_ForgedMatchOrResultId_ShouldBeRejected()
@@ -137,7 +137,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.2：同结果事件重复投递 3 次只计一次（首次落榜，后续全部幂等回放）。
+        /// 验证同结果事件重复投递 3 次只计一次（首次落榜，后续全部幂等回放）。
         /// </summary>
         [Fact]
         public async Task ProjectAsync_RedeliveredThrice_ShouldCountOnce()
@@ -167,7 +167,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.4 防刷半边一：远超合理范围的分数被风控拒绝，同结果正常玩家不受影响。
+        /// 验证防刷半边一：远超合理范围的分数被风控拒绝，同结果正常玩家不受影响。
         /// </summary>
         [Fact]
         public async Task ProjectAsync_AbnormalScore_ShouldRejectPlayerOnly()
@@ -190,7 +190,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.4 防刷半边二：高频提交被限流拒绝；窗口滚动后恢复，正常节奏不受永久影响。
+        /// 验证防刷半边二：高频提交被限流拒绝；窗口滚动后恢复，正常节奏不受永久影响。
         /// </summary>
         [Fact]
         public async Task ProjectAsync_HighFrequency_ShouldRateLimitThenRecover()
@@ -225,7 +225,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.14 投影半边：跨 App 作用域无法把结果投影到他 App 榜单（与不存在同构拒绝）。
+        /// 验证投影半边：跨 App 作用域无法把结果投影到他 App 榜单（与不存在同构拒绝）。
         /// </summary>
         [Fact]
         public async Task ProjectAsync_CrossAppBoard_ShouldBeResourceNotFound()
@@ -272,7 +272,7 @@ namespace GameFrameX.Tests.Online
         private sealed class Harness
         {
             /// <summary>
-            /// 初始化测试基座（真实 Foundation 幂等协调器 + C93 Online 幂等服务；防刷阈值在构造前注入）。
+            /// 初始化测试基座（真实 Foundation 幂等协调器 + Online 幂等服务；防刷阈值在构造前注入）。
             /// </summary>
             /// <param name="defaultMaxScorePerSubmission">单次分数上限（0 = 默认）。</param>
             /// <param name="rateLimitMaxSubmissions">限流窗口次数（0 = 默认）。</param>

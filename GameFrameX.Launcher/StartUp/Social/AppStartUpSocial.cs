@@ -47,7 +47,7 @@ namespace GameFrameX.Launcher.StartUp.Social;
 /// <summary>
 /// 游戏服务器
 /// </summary>
-// C143b：显式优先级修复与 Game 同为缺省 1000 的冲突——Social 在主服务 Game 之后启动（值越小优先级越高）
+// 显式优先级修复与 Game 同为缺省 1000 的冲突——Social 在主服务 Game 之后启动（值越小优先级越高）
 [StartUpTag(GameServerConst.Social.Name, 200)]
 internal sealed partial class AppStartUpSocial : AppStartUpBase
 {
@@ -61,8 +61,8 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Launcher.ActorLimitConfigBegin));
             ActorLimit.Init(ActorLimit.RuleType.None);
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Launcher.ActorLimitConfigEnd));
-            // C143a D16：控制库先行于业务库；C159：经 GameDb 统一入口判重/命名；
-            // C166：Provider 装配分支——PostgreSql 时控制库走 PostgreSqlDbService（Name 仅注册名，库由连接串决定）。
+            // 控制库先行于业务库，经 GameDb 统一入口判重/命名；
+            // Provider 装配分支——PostgreSql 时控制库走 PostgreSqlDbService（Name 仅注册名，库由连接串决定）。
             if (!GameDb.Contains(GameDb.ControlDatabaseName))
             {
                 var controlDatabaseInitResult = Setting.DatabaseProvider == DatabaseProviderType.PostgreSql
@@ -74,11 +74,11 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
                 }
             }
 
-            // C143d D11-D15：控制库就绪后激活发现层——读侧 watcher + 写侧心跳（未配置广播端口时自动跳过）
+            // 控制库就绪后激活发现层——读侧 watcher + 写侧心跳（未配置广播端口时自动跳过）
             // 并以真实 case 2/3 转发器重装跨 Role 路由缝。幂等：多 Role 进程首个调用生效。
-            // C143e D21：再激活玩家路由层（建 player_route 索引 + 装 SyncTarget），Tier 1 fast-path 注入 SessionManager 适配器。
-            // C159：控制库句柄解析下沉到发现层内部；C154：收敛为激活参数对象。
-            // C166：Provider 装配分支——PostgreSql 时激活 PG 平行发现层并接 PG SyncTarget。
+            // 再激活玩家路由层（建 player_route 索引 + 装 SyncTarget），Tier 1 fast-path 注入 SessionManager 适配器。
+            // 控制库句柄解析下沉到发现层内部，收敛为激活参数对象。
+            // Provider 装配分支——PostgreSql 时激活 PG 平行发现层并接 PG SyncTarget。
             if (Setting.DatabaseProvider == DatabaseProviderType.PostgreSql)
             {
                 PostgreSqlDiscoveryRuntime.Activate(new PostgreSqlDiscoveryActivationOptions
@@ -99,7 +99,7 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
                 });
                 GameFrameX.Apps.Common.Session.SessionManager.PlayerRouteSyncTarget = GameFrameX.Discovery.Routing.PlayerRouteResolverBootstrap.SyncTarget;
             }
-            // C166 依赖纠偏第二轮：路由胶水装配自 Runtime 拆至组合侧 DiscoveryRoutingWire（发现层 Runtime 不再引用消息胶水程序集）。
+            // 路由胶水装配自 Runtime 拆至组合侧 DiscoveryRoutingWire（发现层 Runtime 不再引用消息胶水程序集）。
             GameFrameX.NetWork.RemoteMessaging.Routing.DiscoveryRoutingWire.Initialize(RoleSet.Current, Setting.DatabaseProvider == DatabaseProviderType.PostgreSql ? PostgreSqlDiscoveryRuntime.TableProvider : MongoDiscoveryRuntime.TableProvider);
 
             var initResult = Setting.DatabaseProvider == DatabaseProviderType.PostgreSql
@@ -110,7 +110,7 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
                 throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
             }
 
-            // C159：业务库 Init 成功后显式指定门面默认库——控制库先注册会使 set-once 门面静默指向控制库，
+            // 业务库 Init 成功后显式指定门面默认库——控制库先注册会使 set-once 门面静默指向控制库，
             // 全部经 GameDb 门面的业务读写必须落在业务库（根缺陷修复点）。
             GameDb.SetDefault(Setting.DataBaseName);
 
@@ -119,9 +119,9 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
             await StartServerAsync<DefaultMessageDecoderHandler, DefaultMessageEncoderHandler>(new DefaultMessageCompressHandler(), new DefaultMessageDecompressHandler(), HotfixManager.GetListHttpHandler(), HotfixManager.GetHttpHandler, aopHandlerTypes);
             EventDispatcher.Dispatch(0, (int)EventId.ServiceOnline, new ServiceOnlineEventArgs(Setting.ServerType, Setting.ServerInstanceId, DateTime.UtcNow));
 
-            // C143b D7：启动阶段完成（DB/组件/网络监听均已就绪），放行下一个 Role 的启动屏障
+            // 启动阶段完成（DB/组件/网络监听均已就绪），放行下一个 Role 的启动屏障
             MarkStartUpReady();
-            // C143d D15：启动阶段真正完成（DB/组件/网络监听均已就绪）后才把心跳从 Booting 切到 Active，
+            // 启动阶段真正完成（DB/组件/网络监听均已就绪）后才把心跳从 Booting 切到 Active，
             // 避免其他进程在 Social TCP listener 就绪前发现本实例并投递流量。
             if (Setting.DatabaseProvider == DatabaseProviderType.PostgreSql)
             {

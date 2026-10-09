@@ -33,7 +33,7 @@ namespace GameFrameX.Online.Match;
 /// 石头剪刀布出拳（取值与现网客户端契约 <c>RockPaperScissors_410.RockPaperScissorsGesture</c> 一致）。
 /// <para>
 /// 维护约束（红线）：客户端只提交**意图**（本枚举值），服务端负责判定胜负并产生结果——
-/// 客户端不得提交任何比分、胜负或奖励字段（VC-5.2 / VC-5.9）。
+/// 客户端不得提交任何比分、胜负或奖励字段。
 /// </para>
 /// </summary>
 public enum OnlineRockPaperScissorsMove

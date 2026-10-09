@@ -35,7 +35,7 @@ using GameFrameX.Online.HotfixRollback;
 namespace GameFrameX.Online.Events;
 
 /// <summary>
-/// Hotfix 域事件工厂（vault:C9 S8.5；C93 信封事件，<c>Source = "online-hotfix"</c>，CorrelationId = 版本号）。
+/// Hotfix 域事件工厂（统一信封事件，<c>Source = "online-hotfix"</c>，CorrelationId = 版本号）。
 /// <para>
 /// 维护约束（红线）：事件是**事实不是状态**——<c>VersionRegistered</c> 只陈述「某版本清单已登记」
 /// （簿记事实，不含消息契约行明细——清单本体经版本清单存储读取）；

@@ -33,12 +33,12 @@ using GameFrameX.Online.Assets;
 namespace GameFrameX.Online.Season;
 
 /// <summary>
-/// 赛季奖励规则（名次区间 → 资产变更行；vault:C8 S7.3「赛季奖励」的配置载体）。
+/// 赛季奖励规则（名次区间 → 资产变更行；「赛季奖励」的配置载体）。
 /// <para>
 /// 维护约束（红线）：名次区间按**快照冻结名次**判定，不按实时榜单名次——重置后榜单为空，实时名次已无意义。
 /// 同一赛季内各规则的区间必须互不重叠（创建时校验），否则同一名次命中多条规则会造成重复发奖
-/// （量化指标「赛季重复发奖次数 = 0」的结构前提）。奖励行复用 C95 <see cref="OnlineAssetChangeLine"/>，
-/// 实际发放经统一资产入口（X5），本类型只描述「发什么」。
+/// （量化指标「赛季重复发奖次数 = 0」的结构前提）。奖励行复用 <see cref="OnlineAssetChangeLine"/>，
+/// 实际发放经统一资产入口，本类型只描述「发什么」。
 /// </para>
 /// </summary>
 public sealed class OnlineSeasonRewardRule

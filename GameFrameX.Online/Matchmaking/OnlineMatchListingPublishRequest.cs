@@ -30,10 +30,10 @@
 namespace GameFrameX.Online.Matchmaking;
 
 /// <summary>
-/// 发布对局列表项请求（vault:C5 S4.4）。
+/// 发布对局列表项请求（发布内容的唯一提交形态）。
 /// <para>
 /// 维护约束：请求只表达「想发布什么」，不携带作用域——作用域一律由鉴权上下文经
-/// <c>OnlineScope</c> 注入，客户端字段不可覆盖（C93 作用域红线）。
+/// <c>OnlineScope</c> 注入，客户端字段不可覆盖（作用域红线）。
 /// </para>
 /// </summary>
 public sealed class OnlineMatchListingPublishRequest

@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Session;
 
 /// <summary>
-/// 会话终态原因码（vault:C3 S2.5/VC-2.15：断网超窗等场景必须有确定原因码，无永久 Reconnecting）。
+/// 会话终态原因码（断网超窗等场景必须有确定原因码，无永久 Reconnecting）。
 /// <para>
 /// 维护约束：会话进入终态时必填；原因码参与 Session 终态事件审计（PayloadAuditFields.Reason），
 /// 客户端按原因码区分重登路径（如 ReplacedByNewSession 提示顶号）。

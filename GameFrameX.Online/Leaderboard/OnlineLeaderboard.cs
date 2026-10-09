@@ -30,12 +30,12 @@
 namespace GameFrameX.Online.Leaderboard;
 
 /// <summary>
-/// 排行榜榜单定义（vault:C8 S7.1：第一版个人榜；作用域 = (TenantId, AppId)，App 内跨区服聚合）。
+/// 排行榜榜单定义（第一版个人榜；作用域 = (TenantId, AppId)，App 内跨区服聚合）。
 /// <para>
 /// 维护约束（红线）：榜单归属租户与 App 双键隔离——跨 App / 跨租户读写一律查不到（ResourceNotFound 反预言，
-/// 对齐 C94 存储 / C99 频道先例，不泄露榜单存在性，VC-7.14）；<see cref="ServerId"/> 不参与榜单隔离，
-/// 队伍榜 / 公会榜 / 复杂跨服排名延后（vault Out of Scope）。排序方向与累计策略创建后固化，运行期不可变更；
-/// 赛季维度的生命周期（重置 / 快照）归 C103，本类型不承载赛季字段。
+/// 对齐存储与频道的既有先例，不泄露榜单存在性）；<see cref="ServerId"/> 不参与榜单隔离，
+/// 队伍榜 / 公会榜 / 复杂跨服排名延后（超出首版范围）。排序方向与累计策略创建后固化，运行期不可变更；
+/// 赛季维度的生命周期（重置 / 快照）归赛季域，本类型不承载赛季字段。
 /// </para>
 /// </summary>
 public sealed class OnlineLeaderboard

@@ -30,12 +30,12 @@
 namespace GameFrameX.Online.Tournament;
 
 /// <summary>
-/// 赛事报名登记（vault:C8 S7.4「报名」的事实记录）。
+/// 赛事报名登记（「报名」的事实记录）。
 /// <para>
 /// 维护约束（红线）：
 /// (1) 唯一键 = (TournamentId, PlayerId)——同一玩家在同一赛事内只有一条登记，重复报名返回既有登记而非新增；
 /// (2) 登记时**冻结判定输入**（<see cref="RankAtRegistration"/> / <see cref="ScoreAtRegistration"/>）：
-/// 资格判定发生在报名时刻，事后榜单变化不得让登记的合法性失去依据（可解释性，VC-7.8 的审计半边）；
+/// 资格判定发生在报名时刻，事后榜单变化不得让登记的合法性失去依据（可解释性的审计半边）；
 /// (3) 登记不代表成绩——成绩只存在于冻结的 <see cref="OnlineTournamentStandings"/> 中，本类型不承载分数排名语义。
 /// </para>
 /// </summary>

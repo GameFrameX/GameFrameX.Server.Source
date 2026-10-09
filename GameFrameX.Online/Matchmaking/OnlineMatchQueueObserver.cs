@@ -34,14 +34,14 @@ using System.Threading.Tasks;
 using GameFrameX.Online.Contracts;
 
 /// <summary>
-/// 匹配队列观测器（vault:C5 S4.10 / VC-4.10：Admin 可观测覆盖率 100%）。
+/// 匹配队列观测器（Admin 可观测覆盖率 100%）。
 /// <para>
 /// 维护约束（红线）：观测器**只读**——不得借助观测路径顺手改写票据或分配状态，
 /// 否则「观测一致性」与「写入一致性」会互相污染，排查时无法分辨看到的是原始事实还是观测副作用。
 /// 因此本类只依赖存储的读取方法。
 /// </para>
 /// <para>
-/// 天花板（ponytail）：单次观测全量拉取票据与分配，队列规模上万后应改为增量计数与分页明细；
+/// 天花板：单次观测全量拉取票据与分配，队列规模上万后应改为增量计数与分页明细；
 /// 当前实现保证口径简单可核对（计数与明细同源同一次读取）。
 /// </para>
 /// </summary>
@@ -136,7 +136,7 @@ public sealed class OnlineMatchQueueObserver
     }
 
     /// <summary>
-    /// 统计被多份分配同时消费的票据数（VC-4.12 红指标）。
+    /// 统计被多份分配同时消费的票据数（红指标，必须为 0）。
     /// </summary>
     /// <param name="assignments">分配集合。</param>
     /// <returns>重复消费的票据数（正常为 0）。</returns>

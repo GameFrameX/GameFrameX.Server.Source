@@ -43,11 +43,11 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// C104 赛事测试基座：真实幂等协调器 + 真实 C102 可信写榜链路（榜内容一律经投影器落榜，
-    /// 与生产路径同构）+ 真实 C95 统一资产入口。
+    /// 赛事测试基座：真实幂等协调器 + 真实可信写榜链路（榜内容一律经投影器落榜，
+    /// 与生产路径同构）+ 真实统一资产入口。
     /// <para>
     /// 可选资产存储装饰器用于制造生产竞态：让指定玩家的发放瞬时失败，验证逐玩家失败隔离
-    /// （VC-7.7 的「一个玩家失败不阻塞其余玩家」）。
+    /// （一个玩家失败不阻塞其余玩家）。
     /// </para>
     /// </summary>
     internal sealed class OnlineTournamentTestHarness
@@ -129,7 +129,7 @@ namespace GameFrameX.Tests.Online
             get;
         }
 
-        /// <summary>获取 Online 幂等服务（写榜链路与资产入口共用同一 C93 组件）。</summary>
+        /// <summary>获取 Online 幂等服务（写榜链路与资产入口共用同一幂等组件）。</summary>
         public OnlineIdempotencyService IdempotencyService
         {
             get;

@@ -39,9 +39,9 @@ namespace GameFrameX.Architecture.Analyzers;
 /// <para>规则：GameFrameX.DataBase* 与 GameFrameX.NetWork.RemoteMessaging（数据实现层）之外的程序集，
 /// 其类型的声明面（基类、字段、属性、事件、方法签名）不得出现 MongoDbService / PostgreSqlDbService
 /// （含其子类）或 MultiDbRegistry 引用。</para>
-/// <para>原因：C159 统一入口铁律——数据库访问一律经 GameDb 门面（判重用 GameDb.Contains、
+/// <para>原因：统一入口铁律——数据库访问一律经 GameDb 门面（判重用 GameDb.Contains、
 /// 控制库名用 GameDb.ControlDatabaseName），直接持有实现类型会绕开门面默认库语义，
-/// 重演 C143a 门面绑定错位的 split-brain 缺陷。</para>
+/// 重演门面绑定错位的 split-brain 缺陷。</para>
 /// <para>豁免（声明面天然不可见，故不误报）：Launcher 组合根 GameDb.Init&lt;MongoDbService&gt; /
 /// GameDb.Init&lt;PostgreSqlDbService&gt; 注册泛型实参与方法体内的 GameDb.As&lt;…&gt;(name) 调用
 /// 属于装配而非数据访问；GlobalUsings 的命名空间 using 不产生符号引用。</para>

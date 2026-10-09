@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Matchmaking;
 
 /// <summary>
-/// 入队限流器（vault:C5 S4.5 / VC-4.11：刷 Ticket 被限流，且正常玩家不受影响）。
+/// 入队限流器（刷 Ticket 被限流，且正常玩家不受影响）。
 /// <para>
 /// 维护约束（天花板）：滑动窗口计数，按 (TenantId, AppId, PlayerId) 分桶——阈值与窗口可由
 /// <see cref="OnlineMatchmakerOptions"/> 覆盖，压测需同时验证「高频被拦」与「正常节奏不受影响」。

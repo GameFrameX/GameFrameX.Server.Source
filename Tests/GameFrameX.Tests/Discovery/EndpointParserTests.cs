@@ -33,11 +33,11 @@ using GameFrameX.Discovery;
 namespace GameFrameX.Tests.Discovery;
 
 /// <summary>
-/// EndpointParser 地址格式用例集（C143d D15 / AC-4a：域名/容器名/Kubernetes Service 名/IPv4/IPv6 方括号）。
+/// EndpointParser 地址格式用例集（域名/容器名/Kubernetes Service 名/IPv4/IPv6 方括号）。
 /// </summary>
 /// <remarks>
-/// The address-format suite for EndpointParser (C143d D15 / AC-4a). These are the
-/// CI cases required by the change: every supported shape must parse to the exact
+/// The address-format suite for EndpointParser. These are the
+/// CI cases: every supported shape must parse to the exact
 /// scheme/host/port/address-kind triple, and every structural violation must fail
 /// loudly with EndpointFormatException.
 /// </remarks>

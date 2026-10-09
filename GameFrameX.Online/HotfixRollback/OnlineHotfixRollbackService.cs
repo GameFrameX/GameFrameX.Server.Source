@@ -41,20 +41,20 @@ using GameFrameX.Online.Scope;
 namespace GameFrameX.Online.HotfixRollback;
 
 /// <summary>
-/// Hotfix 回滚服务（vault:C9 S8.5 / Server gfx-doc C29 T3：服务端配合面——版本协议清单登记、
-/// 协议兼容性检查（回滚前置闸门）与 Hotfix 回滚受控命令；VC-8.9「协议兼容检查通过」服务端半边）。
+/// Hotfix 回滚服务（服务端配合面——版本协议清单登记、
+/// 协议兼容性检查（回滚前置闸门）与 Hotfix 回滚受控命令；承担「协议兼容检查通过」的服务端半边）。
 /// <para>
 /// 维护约束（红线）：
-/// ① <b>回滚命令顺序固定</b>——参数校验（4001 宁拒毋缺）→ 幂等先行（C93，重放透传首次结果）→
+/// ① <b>回滚命令顺序固定</b>——参数校验（4001 宁拒毋缺）→ 幂等先行（重放透传首次结果）→
 /// 读清单（目标未登记 4002 / 无活跃版本 5001 / 目标 = 当前 5003）→ 协议兼容检查（不兼容 6002 拒绝）→
-/// <b>审计先行</b>（C105 统一审计，Domain = Operation，审计失败 1001 拒绝且切换未发生——「无审计不执行」）→
+/// <b>审计先行</b>（统一审计，Domain = Operation，审计失败 1001 拒绝且切换未发生——「无审计不执行」）→
 /// 执行器回滚（未装配 / 失败 8002）→ 切活跃版本 → 事件发布 → 幂等落定；
 /// ② <b>登记 / 激活不落审计</b>——登记是发布流水线簿记、激活是装配面初始化入口，回滚是唯一受控操作
 /// （操作者显式命令 + 审计）；回滚审计标识从命令幂等键确定性派生（<c>hotfix-rollback-{幂等键}</c>，
 /// 重复执行同一命令命中同一条审计）；
 /// ③ <b>作用域两键锚定</b>——清单与活跃指针是 App 级资产，服务内统一以 (TenantId, AppId) 定位并归一
-/// ServerId = 0（对齐 C105 审计口径）；多实例逐实例回滚编排归运维（OL-025），本服务单进程语义；
-/// ④ <b>依赖方向</b>——实际 DLL 加载切换经 <see cref="IOnlineHotfixRollbackExecutor"/> 承载（X4 装配面），
+/// ServerId = 0（对齐审计口径）；多实例逐实例回滚编排归运维，本服务单进程语义；
+/// ④ <b>依赖方向</b>——实际 DLL 加载切换经 <see cref="IOnlineHotfixRollbackExecutor"/> 承载（装配面），
 /// 本模块不引用 Core。
 /// </para>
 /// </summary>
@@ -66,7 +66,7 @@ public sealed class OnlineHotfixRollbackService
     private readonly IOnlineHotfixVersionStore _store;
 
     /// <summary>
-    /// 幂等判定（C93 组装；回滚命令的重复执行透传首次结果）。
+    /// 幂等判定（回滚命令的重复执行透传首次结果）。
     /// </summary>
     private readonly OnlineIdempotencyService _idempotencyService;
 

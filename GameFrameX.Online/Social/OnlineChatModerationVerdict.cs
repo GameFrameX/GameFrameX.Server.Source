@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 内容审核裁决结果（vault:C7 S6.7：审核扩展点的返回载体）。
+/// 内容审核裁决结果（审核扩展点的返回载体）。
 /// <para>
 /// 维护约束：本类型**不携带拒绝错误码**——审核拒绝一律映射 <c>RiskControlRejected</c>（风控段），
 /// 由 <see cref="OnlineChatService"/> 统一落定。让插件自选错误码会把错误码表的控制权交给外部实现，

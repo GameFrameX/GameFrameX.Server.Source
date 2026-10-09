@@ -39,7 +39,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 统一审计链路服务测试（C105 / vault:C9 S8.2 · VC-8.3/VC-8.4 审计半边 + VC-8.16 服务端半边：
+    /// 统一审计链路服务测试（审计半边 + 服务端半边：
     /// 审计完整性校验（操作者/原因/标识/类型/作用域/域白名单逐维度拒绝）、重复接入幂等（不重复落档无副作用）、
     /// 脱敏落档与检索（掩码逐键断言、无明文敏感值）、跨域联查与各维度过滤、keyset 全序分页不重不漏、
     /// App 级与区服级审计共存、跨作用域读取与无数据同构（反预言））。
@@ -89,7 +89,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 构造被测服务（InMemory 存储 + C93 默认脱敏器）。
+        /// 构造被测服务（InMemory 存储 + 默认脱敏器）。
         /// </summary>
         /// <returns>统一审计服务。</returns>
         private static OnlineAuditService CreateService()
@@ -98,7 +98,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// VC-8.3 审计半边：完整审计（操作者/原因/时间）跨域接入后可被统一检索逐条定位——
+        /// 审计半边：完整审计（操作者/原因/时间）跨域接入后可被统一检索逐条定位——
         /// 支付、处罚、受控操作三域一次查询串起且全序倒序。
         /// </summary>
         [Fact]
@@ -122,7 +122,7 @@ namespace GameFrameX.Tests.Online
             var records = query.Data.Records;
             Assert.Equal(3, records.Count);
 
-            // 全序 = 发生时刻倒序；每条含操作者/原因/时间（VC-8.3 审计三要素完整）。
+            // 全序 = 发生时刻倒序；每条含操作者/原因/时间（审计三要素完整）。
             Assert.Equal("audit-operation-001", records[0].EventId);
             Assert.Equal("audit-penalty-001", records[1].EventId);
             Assert.Equal("audit-payment-001", records[2].EventId);
@@ -135,7 +135,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// VC-8.3 审计半边：缺操作者的审计条目被拒绝（宁拒毋缺——不完整审计进不了链路）。
+        /// 审计半边：缺操作者的审计条目被拒绝（宁拒毋缺——不完整审计进不了链路）。
         /// </summary>
         [Fact]
         public async Task Ingest_MissingOperator_Rejected()
@@ -153,7 +153,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// VC-8.3 审计半边：缺原因的审计条目被拒绝。
+        /// 审计半边：缺原因的审计条目被拒绝。
         /// </summary>
         [Fact]
         public async Task Ingest_MissingReason_Rejected()
@@ -168,7 +168,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// VC-8.3 审计半边：未知域被白名单拒绝（防各域私造域值分裂链路）。
+        /// 审计半边：未知域被白名单拒绝（防各域私造域值分裂链路）。
         /// </summary>
         [Fact]
         public async Task Ingest_UnknownDomain_Rejected()
@@ -182,7 +182,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// VC-8.3 审计半边：缺审计标识 / 缺事件类型 / 缺租户或 App 的条目分别被拒绝（参数非法）。
+        /// 审计半边：缺审计标识 / 缺事件类型 / 缺租户或 App 的条目分别被拒绝（参数非法）。
         /// </summary>
         /// <param name="mutate">按维度破坏条目的委托。</param>
         [Theory]
@@ -216,7 +216,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// VC-8.4 审计半边：同一 EventId 重复接入幂等——第二次回执 IsDuplicate=true（同构成功），
+        /// 审计半边：同一 EventId 重复接入幂等——第二次回执 IsDuplicate=true（同构成功），
         /// 存储仍只有一条、检索不重复、无副作用。
         /// </summary>
         [Fact]
@@ -244,7 +244,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// VC-8.16 服务端半边：敏感键（token/手机号/邮箱/口令）落档前被脱敏——存储与检索结果逐键断言为掩码，
+        /// 服务端半边：敏感键（token/手机号/邮箱/口令）落档前被脱敏——存储与检索结果逐键断言为掩码，
         /// 非敏感键原样保留；检索全程无明文敏感值。
         /// </summary>
         [Fact]
@@ -275,7 +275,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal("648", record.SanitizedFields["OrderAmount"]);
             Assert.Equal("order-2026-001", record.SanitizedFields["OrderId"]);
 
-            // 检索结果整体不含任何明文敏感值（VC-8.16：无明文敏感数据）。
+            // 检索结果整体不含任何明文敏感值。
             foreach (var pair in record.SanitizedFields)
             {
                 Assert.DoesNotContain("otk-plaintext-secret-value", pair.Value);

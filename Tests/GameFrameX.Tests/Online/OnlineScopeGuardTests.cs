@@ -34,7 +34,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// OnlineScopeGuard 作用域越界判定测试（跨租户/跨 App/跨服稳定拒绝 3xxx，VC-1.6/1.7）。
+    /// OnlineScopeGuard 作用域越界判定测试（跨租户/跨 App/跨服稳定拒绝 3xxx）。
     /// </summary>
     public class OnlineScopeGuardTests
     {

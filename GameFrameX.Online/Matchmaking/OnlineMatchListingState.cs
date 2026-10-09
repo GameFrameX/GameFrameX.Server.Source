@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Matchmaking;
 
 /// <summary>
-/// 对局列表项状态（vault:C5 S4.4：容量与状态查询）。
+/// 对局列表项状态（容量与状态查询）。
 /// <para>
 /// 维护约束：<see cref="Full"/> 由容量自动推导（<c>JoinedCount &gt;= Capacity</c>），不允许调用方手写——
 /// 手工置满会与容量字段形成两个事实源。<see cref="Closed"/> 是显式终态，关闭后不再接受加入。

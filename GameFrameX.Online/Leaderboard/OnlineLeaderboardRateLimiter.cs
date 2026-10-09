@@ -33,11 +33,11 @@ using System.Collections.Generic;
 namespace GameFrameX.Online.Leaderboard;
 
 /// <summary>
-/// 排行榜提交限流器（vault:C8 S7.1 防刷校验的高频半边；VC-7.4 高频提交被拒、正常玩家不受影响）。
+/// 排行榜提交限流器（防刷校验的高频半边：高频提交被拒、正常玩家不受影响）。
 /// <para>
 /// 维护约束（天花板）：滑动窗口计数，按 (TenantId, AppId, PlayerId) 分桶——阈值与窗口由
 /// <see cref="OnlineLeaderboardOptions"/> 覆盖；只在幂等 Execute 分支计数（重放不烧配额）。
-/// 形态对齐 C97 <c>OnlineMatchRateLimiter</c> / C99 <c>OnlineChatRateLimiter</c>（滑动窗口，不新增依赖）；
+/// 形态对齐 <c>OnlineMatchRateLimiter</c> / <c>OnlineChatRateLimiter</c>（滑动窗口，不新增依赖）；
 /// 桶在窗口过期后整桶重置，进程重启即清零——限流是速率保护不是配额，可接受；多实例共享存储归运行时装配。
 /// </para>
 /// </summary>

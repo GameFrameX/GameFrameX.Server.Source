@@ -109,7 +109,7 @@ public sealed partial class PostgreSqlDbService : IDatabaseService
     /// <remarks>
     /// Gets or sets the currently used PostgreSQL database configuration options.
     /// <para>
-    /// 与 Mongo 适配器的差异（C166）：<see cref="DbOptions.Name"/> 仅作为 <see cref="GameFrameX.DataBase.MultiDbRegistry"/>
+    /// 与 Mongo 适配器的差异：<see cref="DbOptions.Name"/> 仅作为 <see cref="GameFrameX.DataBase.MultiDbRegistry"/>
     /// 注册名，实际数据库由连接串 <c>Database</c> 决定（托管/Supavisor 场景库名内嵌连接串）。
     /// </para>
     /// </remarks>

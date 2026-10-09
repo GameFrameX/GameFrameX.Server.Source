@@ -33,10 +33,10 @@ using MongoDB.Driver;
 namespace GameFrameX.DataBase.Mongo.Routing;
 
 /// <summary>
-/// Mongo 玩家路由存储适配（C167：<see cref="IPlayerRouteStore"/> 的 MQL 实现）。
+/// Mongo 玩家路由存储适配（<see cref="IPlayerRouteStore"/> 的 MQL 实现）。
 /// </summary>
 /// <remarks>
-/// The Mongo implementation of the player-route storage seam (C167): the MQL
+/// The Mongo implementation of the player-route storage seam: the MQL
 /// counterpart consumed by the generic resolver / sync target / bootstrap.
 /// Schema bootstrap delegates to <see cref="PlayerRouteCollection.EnsureIndexesAsync"/>
 /// (playerId unique + lastSeenAt 30-day TTL); <see cref="DeleteExpiredAsync"/>

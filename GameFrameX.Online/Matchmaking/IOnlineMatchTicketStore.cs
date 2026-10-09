@@ -30,9 +30,9 @@
 namespace GameFrameX.Online.Matchmaking;
 
 /// <summary>
-/// 匹配票据存储契约（vault:C5 S4.5 / S4.8）。
+/// 匹配票据存储契约（票据状态 CAS 与成组原子提交的持久化契约）。
 /// <para>
-/// 维护约束（红线，VC-4.2 / VC-4.12 的落点）：<see cref="CommitMatchAsync"/> 与
+/// 维护约束（红线）：<see cref="CommitMatchAsync"/> 与
 /// <see cref="UpdateStateAsync"/> 是**唯一**允许改写票据状态的入口，且必须提供
 /// 「期望状态」参数——状态裁决采用 CAS 语义：期望状态不匹配即整体失败并返回 null，
 /// 绝不部分应用。取消与匹配成功的竞态由此收敛到同一临界区：
@@ -64,7 +64,7 @@ public interface IOnlineMatchTicketStore
     Task<OnlineMatchTicket> FindAsync(long tenantId, long appId, string ticketId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 查找队伍/玩家当前处于排队中的票据（VC-4.12 唯一性：同一队伍至多一张活跃票据）。
+    /// 查找队伍/玩家当前处于排队中的票据（唯一性：同一队伍至多一张活跃票据）。
     /// </summary>
     /// <param name="tenantId">租户标识。</param>
     /// <param name="appId">App 标识。</param>
@@ -93,7 +93,7 @@ public interface IOnlineMatchTicketStore
     Task<IReadOnlyList<OnlineMatchTicket>> ListQueuedAsync(long tenantId, long appId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 列出作用域内全部票据（含终态历史；VC-4.10 可观测性要求各状态计数可核对）。
+    /// 列出作用域内全部票据（含终态历史；可观测性要求各状态计数可核对）。
     /// </summary>
     /// <param name="tenantId">租户标识。</param>
     /// <param name="appId">App 标识。</param>
@@ -114,7 +114,7 @@ public interface IOnlineMatchTicketStore
     /// <summary>
     /// 原子提交一次成组：校验全部票据仍处于期望状态，是则一次性全部置为
     /// <see cref="OnlineMatchTicketState.Matched"/> 并落档 assignment；否则整体不生效并返回 null。
-    /// <para>该方法的原子性是「重复 assignment = 0」（VC-4.12）的实现依据。</para>
+    /// <para>该方法的原子性是「重复 assignment = 0」的实现依据。</para>
     /// </summary>
     /// <param name="assignment">待落档的对局分配。</param>
     /// <param name="ticketIds">本分配消费的票据标识集合（不得重复、不得为空）。</param>

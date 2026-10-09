@@ -50,7 +50,7 @@ namespace GameFrameX.Tests.NetWork.SuperSocket;
 /// SuperSocket 多服务器主机构建器监听冒烟测试 / SuperSocket multiple-server host builder listening smoke tests
 /// </summary>
 /// <remarks>
-/// 覆盖 GFX-819（GameFrameX.SuperSocket 1.2.0 → 1.3.0 升级）的验收标准：
+/// 覆盖 GameFrameX.SuperSocket 1.2.0 → 1.3.0 升级的验收标准：
 /// 通过与 <c>AppStartUpByServer.StartServer</c> 相同的构建路径（<c>MultipleServerHostBuilder.Create</c> +
 /// <c>AddServer</c> + <c>AddWebSocketServer</c> + <c>UseUdp</c>）启动 TCP（含 UDP）与 WebSocket 服务器，
 /// 并用真实客户端连接证明端口处于监听状态。

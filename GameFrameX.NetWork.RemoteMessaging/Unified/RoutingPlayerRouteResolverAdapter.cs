@@ -12,14 +12,14 @@ using GameFrameX.NetWork.RemoteMessaging.Routing;
 namespace GameFrameX.NetWork.RemoteMessaging.Unified;
 
 /// <summary>
-/// Routing 侧玩家路由解析器到 Unified 消息契约的适配器（C152 装配接线）。
+/// Routing 侧玩家路由解析器到 Unified 消息契约的适配器（装配接线）。
 /// </summary>
 /// <remarks>
-/// Adapts the C143e <see cref="GameFrameX.Discovery.Routing.IPlayerRouteResolver"/> (the control-database
+/// Adapts the <see cref="GameFrameX.Discovery.Routing.IPlayerRouteResolver"/> (the control-database
 /// player-route read side, exposed through the <c>*PlayerRouteResolverBootstrap.Resolver</c> singletons in the DataBase.* assemblies)
 /// to the Unified-messaging resolver contract consumed by
 /// <see cref="UnifiedMessageSenderHolder"/>. The two hierarchies evolved separately
-/// (Unified: pre-C143e sender stack; Routing: C143e player-route read side);
+/// (Unified: the earlier sender stack; Routing: the player-route read side);
 /// this adapter maps <see cref="GameFrameX.Discovery.Routing.PlayerRouteInfo"/> field-by-field instead of
 /// forcing a breaking interface merge. Offline-state convention differs slightly
 /// (Routing normalizes <c>Version</c> to 1, Unified leaves 0); mapping goes through

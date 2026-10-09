@@ -30,12 +30,12 @@
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 结算执行结果（vault:C6 S5.7「事实先落定」）。
+/// 结算执行结果（事实先落定）。
 /// <para>
 /// 维护约束（红线）：<see cref="IsReplay"/> 为 true 表示本次调用不是首次结算——
 /// 结果是从结果存储中读回的**已落定事实**，不是新算出来的。
 /// 调用方据此区分「本次结算」与「重复触发」，但两种情况的 <see cref="Result"/> 必定逐字段相同
-/// （VC-5.8：同一局只能有一个结果）。
+/// （同一局只能有一个结果）。
 /// </para>
 /// </summary>
 public sealed class OnlineMatchSettlementOutcome

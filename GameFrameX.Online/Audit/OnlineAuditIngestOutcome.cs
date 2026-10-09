@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Audit;
 
 /// <summary>
-/// 统一审计接入回执（VC-8.4 幂等半边：重复接入同一 <c>EventId</c> 不报错、不重复落档、不产生副作用，
+/// 统一审计接入回执（幂等语义：重复接入同一 <c>EventId</c> 不报错、不重复落档、不产生副作用，
 /// 以 <see cref="IsDuplicate"/> 标记重放——重复接入与首次接入返回**同构成功**，调用方可安全重试）。
 /// </summary>
 public sealed class OnlineAuditIngestOutcome

@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Session;
 
 /// <summary>
-/// 会话开启结果（vault:C3 S2.4：签发即建会话；明文 Token 仅在本结果中出现一次）。
+/// 会话开启结果（签发即建会话；明文 Token 仅在本结果中出现一次）。
 /// <para>
 /// 维护约束：<see cref="Token"/> 为唯一一次明文透出——服务端只存 SHA-256 指纹，调用方须即刻交付客户端；
 /// <see cref="ReplacedSessionIds"/> 为多端策略（SingleDevice 拒绝 / LatestWins 顶替）裁决时被关闭的旧会话，

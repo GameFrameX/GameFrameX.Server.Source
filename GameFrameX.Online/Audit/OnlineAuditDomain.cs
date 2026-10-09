@@ -30,13 +30,13 @@
 namespace GameFrameX.Online.Audit;
 
 /// <summary>
-/// 统一审计域词表（vault:C9 S8.2：支付、奖励、邮件、兑换码、远程配置与处罚六域审计接入统一链路；
-/// <see cref="Operation"/> 为 S8.1 受控操作审计落点——VC-8.3 的「审计查询」检索对象）。
+/// 统一审计域词表（支付、奖励、邮件、兑换码、远程配置与处罚六域审计接入统一链路；
+/// <see cref="Operation"/> 为受控操作审计落点——「审计查询」的检索对象）。
 /// <para>
-/// 维护约束（红线）：域值是**线上原值**，检索过滤按本词表匹配；六域清单为 vault:C9 契约字面集合，
-/// 新增或重命名属**跨仓契约变更**，须先改 vault:C9 契约与 Admin 侧映射，再改本词表；
-/// 本仓不得单方面扩展。未知域在接入时被白名单拒绝（<see cref="IsKnown"/>，VC-8.3 审计完整性），
-/// 防止各域私造域值使统一审计链路重新分裂为各域私有（C29 风险表）。
+/// 维护约束（红线）：域值是**线上原值**，检索过滤按本词表匹配；六域清单为跨仓契约字面集合，
+/// 新增或重命名属**跨仓契约变更**，须先改契约与 Admin 侧映射，再改本词表；
+/// 本仓不得单方面扩展。未知域在接入时被白名单拒绝（<see cref="IsKnown"/>，审计完整性约束），
+/// 防止各域私造域值使统一审计链路重新分裂为各域私有。
 /// </para>
 /// </summary>
 public static class OnlineAuditDomain
@@ -72,8 +72,8 @@ public static class OnlineAuditDomain
     public const string Penalty = "Penalty";
 
     /// <summary>
-    /// 受控操作域（vault:C9 S8.1 受控操作审计：踢下线、取消 Ticket、结束异常 Match、暂停恢复、冻结、
-    /// 发放撤销资产、匹配隔离等经权限判定后的操作留痕——VC-8.3 检索对象）。
+    /// 受控操作域（受控操作审计：踢下线、取消 Ticket、结束异常 Match、暂停恢复、冻结、
+    /// 发放撤销资产、匹配隔离等经权限判定后的操作留痕——检索对象）。
     /// </summary>
     public const string Operation = "Operation";
 

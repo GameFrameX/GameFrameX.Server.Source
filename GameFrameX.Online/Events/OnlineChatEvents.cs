@@ -33,9 +33,9 @@ using System.Text.Json;
 using GameFrameX.Online.Social;
 
 /// <summary>
-/// 聊天域事件工厂（vault:C7 S6.5/S6.6/S6.7：消息发送、撤回、已读、审核失败供下游与 Admin 消费）。
+/// 聊天域事件工厂（消息发送、撤回、已读、审核失败供下游与 Admin 消费）。
 /// <para>
-/// 维护约束（脱敏，沿用 C93 <c>OnlineEventSanitizer</c> 要求）：事件载荷**绝不携带消息正文**——
+/// 维护约束（脱敏，沿用 <c>OnlineEventSanitizer</c> 要求）：事件载荷**绝不携带消息正文**——
 /// 消息内容只在频道内按成员资格下发，事件会流向审计、Admin 与离线消费方，一旦带上正文
 /// 就等于绕过了频道权限。消费端要正文请按 <c>ChannelId</c> + <c>MessageId</c> 走受权限保护的读取面。
 /// </para>

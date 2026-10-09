@@ -36,11 +36,11 @@ using GameFrameX.Online.Leaderboard;
 namespace GameFrameX.Online.Events;
 
 /// <summary>
-/// 排行域事件工厂（vault:C8 S7.1 / S7.2；C93 信封事件，<c>Source = "online-leaderboard"</c>）。
+/// 排行域事件工厂（统一信封事件，<c>Source = "online-leaderboard"</c>）。
 /// <para>
 /// 维护约束（红线）：事件是**事实不是状态**——<see cref="ScoreUpdated"/> 只陈述「某玩家分数已由某结算结果
 /// 变更为某值」，榜上名次不进事件（名次是查询时事实，快照口径随读变化）；载荷与审计字段都不含
-/// 玩家私有数据。分数变更事件只可能由可信写入链路产生（分数写入唯一入口即投影器，VC-7.1 的事件半边）。
+/// 玩家私有数据。分数变更事件只可能由可信写入链路产生（分数写入唯一入口即投影器）。
 /// </para>
 /// </summary>
 public static class OnlineLeaderboardEvents

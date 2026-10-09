@@ -30,10 +30,10 @@
 namespace GameFrameX.Online.Tournament;
 
 /// <summary>
-/// 赛事报名回执（vault:C8 VC-7.8：报名结论 + 机读拒绝原因 + 登记事实）。
+/// 赛事报名回执（报名结论 + 机读拒绝原因 + 登记事实）。
 /// <para>
 /// 维护约束（红线）：资格不满足时服务返回**成功回执**并置 <see cref="Rejection"/>，而**不是**失败错误码——
-/// 资格判定是业务结论（对齐 C99 <c>OnlineSocialDecision</c>「允许 + 拒绝码 + 原因」先例），
+/// 资格判定是业务结论（对齐 <c>OnlineSocialDecision</c>「允许 + 拒绝码 + 原因」先例），
 /// 系统级失败（赛事不存在 / 状态不允许报名 / 榜单不可读）仍走 <c>OnlineResult</c> 的失败分支。
 /// </para>
 /// </summary>

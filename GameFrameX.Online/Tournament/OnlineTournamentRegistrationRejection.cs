@@ -30,11 +30,11 @@
 namespace GameFrameX.Online.Tournament;
 
 /// <summary>
-/// 赛事报名拒绝原因（vault:C8 VC-7.8「被拒绝，原因明确」的机读载体）。
+/// 赛事报名拒绝原因（「被拒绝，原因明确」的机读载体）。
 /// <para>
 /// 维护约束（红线）：资格不满足是**业务判定而非系统错误**——服务以成功回执携带本枚举返回，
 /// 不占用 <c>OnlineErrorCode</c>（该枚举 23 成员冻结，且「资格不足」不属于任何既有段位的语义）。
-/// 新增原因时必须同步 <see cref="OnlineTournamentEligibility.Evaluate"/> 与 VC-7.8 用例，
+/// 新增原因时必须同步 <see cref="OnlineTournamentEligibility.Evaluate"/> 与对应用例，
 /// 保证每条拒绝路径都有可断言的稳定取值。
 /// </para>
 /// </summary>

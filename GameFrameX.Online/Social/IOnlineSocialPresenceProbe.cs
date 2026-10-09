@@ -32,8 +32,8 @@ namespace GameFrameX.Online.Social;
 /// <summary>
 /// 玩家在线事实探针（社交域读取在线状态的唯一入口）。
 /// <para>
-/// 维护约束：在线事实的唯一来源是 Presence 域（C94），社交域**不镜像、不缓存**在线状态
-/// （形态与语义对齐 C97 <c>IOnlinePartyPresenceProbe</c>）。未装配时调用方须降级为「未知」，
+/// 维护约束：在线事实的唯一来源是 Presence 域，社交域**不镜像、不缓存**在线状态
+/// （形态与语义对齐 <c>IOnlinePartyPresenceProbe</c>）。未装配时调用方须降级为「未知」，
 /// 不得据此判定玩家离线并触发清理或投递失败。
 /// </para>
 /// </summary>

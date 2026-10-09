@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Identity;
 
 /// <summary>
-/// 游戏账号实体（vault:C3 S2.2：Tenant → App → Identity / GameAccount → Player 层级中的账号层）。
+/// 游戏账号实体（Tenant → App → Identity / GameAccount → Player 层级中的账号层）。
 /// <para>
 /// 维护约束：账号是身份与玩家的归属聚合根；一个 GameAccount 可拥有多个 Player，
 /// 但每个 Player 必须有明确的 App/Server 归属；合并（Merged）与注销（Deactivated）

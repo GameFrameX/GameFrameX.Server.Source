@@ -1,4 +1,4 @@
-# 本文件由 scripts/multi/generate-docker-compose-multi.py 生成（C143f Stage-6 拓扑环境变量生成器）。
+# 本文件由 scripts/multi/generate-docker-compose-multi.py 生成（拓扑环境变量生成器）。
 # 修改拓扑请编辑该脚本的 ROLES 定义后重新生成，不要手改本文件。
 # 现有静态形态保留在 docker-compose.multi.legacy.yml（过渡期兼容）。
 

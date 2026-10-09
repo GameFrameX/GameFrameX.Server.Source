@@ -37,7 +37,7 @@ namespace GameFrameX.Online.Leaderboard;
 /// <para>
 /// 维护约束（红线）：这是 Top N / 附近排名 / 分页 / keyset 游标共用的**唯一**排序事实来源，
 /// 禁止在服务或存储里另写一份比较逻辑；次级键保证同分玩家也有确定全序（先写入者靠前，再按玩家标识消解），
-/// 名次无并列空洞、结果可复算（VC-7.3）。修改比较语义 = 修改全部查询口径，须回 vault 评审。
+/// 名次无并列空洞、结果可复算。修改比较语义 = 修改全部查询口径，须先经设计评审。
 /// </para>
 /// </summary>
 public static class OnlineLeaderboardOrdering

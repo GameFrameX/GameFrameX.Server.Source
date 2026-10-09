@@ -33,15 +33,15 @@ using GameFrameX.NetWork.RemoteMessaging.Routing;
 namespace GameFrameX.Tests.Topology.Equivalence;
 
 /// <summary>
-/// 多进程拓扑的环回远程转发器（C143c D9 等价用例集）。
+/// 多进程拓扑的环回远程转发器。
 /// </summary>
 /// <remarks>
-/// Loopback remote forwarder for the MultiProcess topology fixture (C143c D9).
-/// Inside one test process the D3 case 2/3 remote hop cannot use real RemoteMessaging
-/// (the production forwarder is the C143d placeholder that throws NotImplementedException),
+/// Loopback remote forwarder for the MultiProcess topology fixture.
+/// Inside one test process the remote-forwarding hop cannot use real RemoteMessaging
+/// (the production forwarder is still a placeholder that throws NotImplementedException),
 /// so the fixture substitutes this loopback: it resolves the target role to the simulated
 /// process cell that hosts it and routes the envelope into that cell's router — the same
-/// decision C143d's reachability table will make, minus the physical transport.
+/// decision the production reachability table will make, minus the physical transport.
 /// Cancellation flows through the whole path so timeout behavior stays comparable
 /// across topologies.
 /// </remarks>

@@ -30,11 +30,11 @@
 namespace GameFrameX.Online.Presence;
 
 /// <summary>
-/// 玩家在线状态（vault:C3 S2.5：Presence 只表达在线事实，与 Session 生命周期分离）。
+/// 玩家在线状态（Presence 只表达在线事实，与 Session 生命周期分离）。
 /// <para>
-/// 维护约束：状态集合与转换表固化于 <see cref="OnlinePresenceStateMachine"/>（阶段 4/5 依赖，
-/// 改动必须走 vault 契约变更）；<see cref="Offline"/> 为「无有效连接」——Presence 存储中无记录即 Offline；
-/// Admin 管理员连接不进入 Presence（X6/VC-2.6）。
+/// 维护约束：状态集合与转换表固化于 <see cref="OnlinePresenceStateMachine"/>（下游依赖，
+/// 改动必须走契约变更）；<see cref="Offline"/> 为「无有效连接」——Presence 存储中无记录即 Offline；
+/// Admin 管理员连接不进入 Presence。
 /// </para>
 /// </summary>
 public enum OnlinePresenceState

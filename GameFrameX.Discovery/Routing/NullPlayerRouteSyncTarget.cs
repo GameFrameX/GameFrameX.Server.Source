@@ -10,7 +10,7 @@
 namespace GameFrameX.Discovery.Routing;
 
 /// <summary>
-/// 玩家路由同步目标的 NoOp 默认实现（C143e D21）。
+/// 玩家路由同步目标的 NoOp 默认实现。
 /// </summary>
 /// <remarks>
 /// The default NoOp <see cref="IPlayerRouteSyncTarget"/>. When the launch flow

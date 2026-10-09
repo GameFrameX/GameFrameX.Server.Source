@@ -30,16 +30,16 @@
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// Match Runtime 运行参数（vault:C6 Tick/Timer 与清理策略、重连窗口的装配面）。
+/// Match Runtime 运行参数（Tick/Timer 与清理策略、重连窗口的装配面）。
 /// <para>
-/// 维护约束：所有阈值必须可由装配方覆盖——压测要同时验证「超窗后确定态」（VC-5.7）与「窗口内重连成功」
-/// （VC-5.6），阈值写死则该验证无法进行。默认值只保证单机测试可用，不代表线上取值。
+/// 维护约束：所有阈值必须可由装配方覆盖——压测要同时验证「超窗后确定态」与「窗口内重连成功」
+/// 这两项验证，阈值写死则该验证无法进行。默认值只保证单机测试可用，不代表线上取值。
 /// </para>
 /// </summary>
 public sealed class OnlineMatchRuntimeOptions
 {
     /// <summary>
-    /// 获取或设置等待阶段时限（秒；默认 60）。超时转 <see cref="OnlineMatchState.Timeout"/>（VC-5.12）。
+    /// 获取或设置等待阶段时限（秒；默认 60）。超时转 <see cref="OnlineMatchState.Timeout"/>。
     /// </summary>
     public int WaitingTimeoutSeconds
     {
@@ -57,7 +57,7 @@ public sealed class OnlineMatchRuntimeOptions
     } = 300;
 
     /// <summary>
-    /// 获取或设置断线重连窗口（秒；默认 30）。窗口内可重连，超窗转退出/托管（VC-5.6 / VC-5.7）。
+    /// 获取或设置断线重连窗口（秒；默认 30）。窗口内可重连，超窗转退出/托管。
     /// </summary>
     public int ReconnectWindowSeconds
     {
@@ -66,7 +66,7 @@ public sealed class OnlineMatchRuntimeOptions
     } = 30;
 
     /// <summary>
-    /// 获取或设置结束态保留时长（秒；默认 30）。保留期内可查询结果，到期由 Tick 释放（VC-5.11）。
+    /// 获取或设置结束态保留时长（秒；默认 30）。保留期内可查询结果，到期由 Tick 释放。
     /// </summary>
     public int EndedRetentionSeconds
     {

@@ -36,12 +36,12 @@ using Xunit;
 namespace GameFrameX.Hotfix.Tests;
 
 /// <summary>
-/// 邮件附件领取闭环（GFX-136）单元测试。覆盖领取成功 / 重复领取幂等 / 不可领 / 不存在 / 删除门禁 / 撤回作废 / 过期作废 / 一键领取等关键状态流转，
+/// 邮件附件领取闭环单元测试。覆盖领取成功 / 重复领取幂等 / 不可领 / 不存在 / 删除门禁 / 撤回作废 / 过期作废 / 一键领取等关键状态流转，
 /// 通过对纯函数 <see cref="MailAttachmentClaim"/> 直接断言，避免引入 Actor 运行时。
 /// </summary>
 public class MailAttachmentClaimTests
 {
-    /// <summary>GFX-136 闭环：单附件领取成功 → Claimable 可发放 → 命中邮件 / 附件。</summary>
+    /// <summary>单附件领取成功 → Claimable 可发放 → 命中邮件 / 附件。</summary>
     [Fact]
     public void Prepare_Claimable_Returns_Ok()
     {

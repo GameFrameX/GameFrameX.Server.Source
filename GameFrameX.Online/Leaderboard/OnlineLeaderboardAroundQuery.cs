@@ -31,7 +31,7 @@ namespace GameFrameX.Online.Leaderboard;
 
 /// <summary>
 /// 玩家附近排名窗口查询载荷（<see cref="OnlineLeaderboardService.GetAroundPlayerAsync"/> 除作用域外的全部查询维度；
-/// 窗口含玩家本人，边界处截断，VC-7.3）。
+/// 窗口含玩家本人，边界处截断）。
 /// </summary>
 public sealed class OnlineLeaderboardAroundQuery
 {

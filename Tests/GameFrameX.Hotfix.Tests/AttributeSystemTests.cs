@@ -38,7 +38,7 @@ using Xunit;
 namespace GameFrameX.Hotfix.Tests;
 
 /// <summary>
-/// 玩家属性系统端到端闭环验收（GFX-145 / umbrella U2）单元测试。覆盖 acceptance criteria 列出的六个验收点：
+/// 玩家属性系统端到端闭环验收单元测试。覆盖 acceptance criteria 列出的六个验收点：
 /// 公式重算 / 状态读写 / Agent 读写 / 变化事件 / 登录初始化幂等 / 快照增量同步构建，外加 AttributeType 编号规则前置。
 /// 通过对纯函数 / 纯逻辑入口（<see cref="AttributeCore" /> / <see cref="PlayerAttributeMutation" /> /
 /// <see cref="PlayerInitialAttributeDefaults" /> / <see cref="PlayerAttributeSyncBuilder" />）直接断言，避免引入 Actor 运行时。

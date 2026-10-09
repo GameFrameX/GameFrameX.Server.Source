@@ -31,14 +31,14 @@
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
-/// 本地 Role 消息投递缝（C143c D3 case 1）。
+/// 本地 Role 消息投递缝（case 1）。
 /// </summary>
 /// <remarks>
-/// The local in-process delivery seam behind D3 case 1.
+/// The local in-process delivery seam behind case 1.
 /// Production delivery goes through the actor pipeline (Actor.Tell/SendAsync semantics);
 /// this interface is the explicit seam so the routing decision itself stays free of
 /// actor-world dependencies (GameFrameX.Core is outside this assembly's reference closure).
-/// The production actor-backed dispatcher arrives with C143e; until then the router is
+/// The production actor-backed dispatcher is wired by the launch flow; until then the router is
 /// wired without one and a case 1 hit fails loudly with <see cref="RouteNotFoundException"/>.
 /// </remarks>
 public interface ILocalRoleMessageDispatcher

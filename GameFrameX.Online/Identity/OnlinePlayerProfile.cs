@@ -30,11 +30,11 @@
 namespace GameFrameX.Online.Identity;
 
 /// <summary>
-/// 玩家档案实体（vault:C3 S2.2：GameAccount 下属的 Server/玩法角色层，区别于 User/GameAccount/Device/Identity/Session）。
+/// 玩家档案实体（GameAccount 下属的 Server/玩法角色层，区别于 User/GameAccount/Device/Identity/Session）。
 /// <para>
 /// 维护约束：每个 Player 必须有明确的 App/Server 归属（(GameAccountId, AppId, ServerId) 下命名不重）；
 /// 设备标识只能用于识别设备，不得直接充当 <see cref="Id"/>；
-/// 玩家核心属性、背包、钱包走强类型 CacheState + Actor（边界红线 4），本实体只承载身份层档案字段。
+/// 玩家核心属性、背包、钱包走强类型 CacheState + Actor（既定边界约束），本实体只承载身份层档案字段。
 /// </para>
 /// </summary>
 public sealed class OnlinePlayerProfile

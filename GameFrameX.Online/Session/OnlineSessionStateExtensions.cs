@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Session;
 
 /// <summary>
-/// <see cref="OnlineSessionState"/> 的生命周期派生规则（vault:C3 S2.4）。
+/// <see cref="OnlineSessionState"/> 的生命周期派生规则。
 /// </summary>
 public static class OnlineSessionStateExtensions
 {

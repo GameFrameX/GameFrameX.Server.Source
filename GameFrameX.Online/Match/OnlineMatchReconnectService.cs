@@ -36,11 +36,11 @@ using GameFrameX.Online.Scope;
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 重连服务（vault:C6 S5.6「断线 / 重连 / 超窗处置」的应用层入口）。
+/// 重连服务（断线 / 重连 / 超窗处置的应用层入口）。
 /// <para>
 /// 维护约束（红线）：令牌只在此处签发（断线时），且在**服务端**绑定 (MatchId, PlayerId)。
 /// 重连判定完全由 Actor 依据成员表 + 窗口 + 令牌三重校验做出，
-/// 服务层只负责组装「快照 + 缺失增量」的补发内容——它不做任何状态判定（VC-5.6 / VC-5.7）。
+/// 服务层只负责组装「快照 + 缺失增量」的补发内容——它不做任何状态判定。
 /// </para>
 /// </summary>
 public sealed class OnlineMatchReconnectService

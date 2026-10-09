@@ -36,11 +36,11 @@ using GameFrameX.Online.Contracts;
 using GameFrameX.Online.Scope;
 
 /// <summary>
-/// 资产查询服务（vault:C4：余额/库存/流水的只读查询面，供 Admin 资产流水查询与客服追溯消费）。
+/// 资产查询服务（余额/库存/流水的只读查询面，供 Admin 资产流水查询与客服追溯消费）。
 /// <para>
-/// 维护约束：本服务只读——资产变更唯一入口是 <see cref="OnlineGrantService"/>（X5），
+/// 维护约束：本服务只读——资产变更唯一入口是 <see cref="OnlineGrantService"/>，
 /// 查询路径不提供任何写通道；跨作用域查询与不存在同构 <see cref="OnlineErrorCode.ResourceNotFound"/>
-/// （防存在性探测）；分页以账本序为稳定排序键（VC-1.12）；Admin 侧权限校验由 Admin 装配承接（VC-3.9 归 Admin 半边）。
+/// （防存在性探测）；分页以账本序为稳定排序键；Admin 侧权限校验由 Admin 装配承接。
 /// </para>
 /// </summary>
 public sealed class OnlineAssetQueryService
@@ -166,7 +166,7 @@ public sealed class OnlineAssetQueryService
     }
 
     /// <summary>
-    /// 按交易标识反查详情（来源/原因/单号/操作者/前后值全字段，VC-3.14）。
+    /// 按交易标识反查详情（来源/原因/单号/操作者/前后值全字段）。
     /// </summary>
     /// <param name="scope">生效作用域（必须含玩家主体位）。</param>
     /// <param name="transactionId">交易标识。</param>

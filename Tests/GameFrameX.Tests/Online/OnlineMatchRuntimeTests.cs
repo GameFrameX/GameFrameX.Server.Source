@@ -39,7 +39,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// Match Runtime 与对局 Actor 生命周期测试（vault:C6 S5.1～S5.4 / VC-5.10 / VC-5.11 / VC-5.13）：
+    /// Match Runtime 与对局 Actor 生命周期测试：
     /// 分配建局、准备开局、阶段超时、终态释放与作用域隔离。
     /// </summary>
     public class OnlineMatchRuntimeTests
@@ -66,7 +66,7 @@ namespace GameFrameX.Tests.Online
         private const string MatchId = "match-1";
 
         /// <summary>
-        /// 验证 VC-5.1 前半段：分配建局后成员已就位并进入等待阶段。
+        /// 验证分配建局后成员已就位并进入等待阶段。
         /// </summary>
         [Fact]
         public async Task CreateFromAssignmentAsync_ShouldSeedMembersAndEnterWaiting()
@@ -101,7 +101,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.1：全员准备 → 房主开局 → 回合输入 → 分出胜负后进入结算阶段，且全程发布状态变更事件。
+        /// 验证全员准备 → 房主开局 → 回合输入 → 分出胜负后进入结算阶段，且全程发布状态变更事件。
         /// </summary>
         [Fact]
         public async Task FullFlow_ShouldReachSettlingAndPublishStateChanged()
@@ -126,7 +126,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.12：等待阶段超时进入 Timeout，并在保留期后释放为 Closed（无僵尸对局）。
+        /// 验证等待阶段超时进入 Timeout，并在保留期后释放为 Closed（无僵尸对局）。
         /// </summary>
         [Fact]
         public async Task TickAsync_StageTimeout_ShouldReachTimeoutThenReleaseActor()
@@ -153,7 +153,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-5.13：跨租户作用域不得读写他人对局。
+        /// 验证跨租户作用域不得读写他人对局。
         /// </summary>
         [Fact]
         public async Task CrossTenantScope_ShouldBeDenied()
@@ -169,7 +169,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 S5.3：仅房主可开始对局（房主 = 最早加入的在局成员）。
+        /// 验证仅房主可开始对局（房主 = 最早加入的在局成员）。
         /// </summary>
         [Fact]
         public async Task StartAsync_NonHost_ShouldBeForbidden()
@@ -187,7 +187,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 S5.3：成员未齐或未全部准备时不得开局。
+        /// 验证成员未齐或未全部准备时不得开局。
         /// </summary>
         [Fact]
         public async Task StartAsync_NotAllReady_ShouldBeRejected()
@@ -203,7 +203,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 S5.3：踢出后成员退出对局且不再是有效参与者。
+        /// 验证踢出后成员退出对局且不再是有效参与者。
         /// </summary>
         [Fact]
         public async Task KickAsync_ShouldRemoveMemberFromActiveSet()

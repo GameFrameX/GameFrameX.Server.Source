@@ -40,7 +40,7 @@ namespace GameFrameX.Tests.Online
 {
     /// <summary>
     /// OnlineIdempotencyService 幂等 Server 侧组装测试（Foundation InMemory 存储；
-    /// 相同键相同请求回放首次结果 / 相同键不同请求 6xxx 冲突 / 并发占位 8xxx 忙，VC-1.3/1.4/1.5）。
+    /// 相同键相同请求回放首次结果 / 相同键不同请求 6xxx 冲突 / 并发占位 8xxx 忙）。
     /// </summary>
     public class OnlineIdempotencyServiceTests
     {
@@ -139,7 +139,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证相同键相同请求在完成后回放首次响应（透明回放非错误，VC-1.3 回放半边）。
+        /// 验证相同键相同请求在完成后回放首次响应（透明回放非错误）。
         /// </summary>
         [Fact]
         public async Task BeginAsync_AfterComplete_WithSameKeyAndRequest_ShouldReplayFirstResponse()
@@ -163,7 +163,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证相同键承载不同业务意图被判冲突并映射 6xxx（VC-1.4 冲突半边）。
+        /// 验证相同键承载不同业务意图被判冲突并映射 6xxx（冲突半边）。
         /// </summary>
         [Fact]
         public async Task BeginAsync_WithSameKeyButDifferentRequest_ShouldReturnConflict()
@@ -185,7 +185,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证并发占位未落定时相同键相同请求被判忙并映射 8xxx（可安全重试，VC-1.3 并发半边）。
+        /// 验证并发占位未落定时相同键相同请求被判忙并映射 8xxx（可安全重试）。
         /// </summary>
         [Fact]
         public async Task BeginAsync_WhileProcessing_ShouldReturnBusy()

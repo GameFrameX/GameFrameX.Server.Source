@@ -33,11 +33,11 @@ using System.Threading.Tasks;
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 对局结算结果存储（vault:C6 S5.7 幂等结算的持久化面）。
+/// 对局结算结果存储（幂等结算的持久化面）。
 /// <para>
 /// 维护约束（红线）：<see cref="CommitAsync"/> 是**唯一**允许落定结算结果的入口，
 /// 且必须实现「同一对局首次结果胜出」语义——已存在结果时不得覆盖，直接返回既有结果。
-/// VC-5.8「以同一 MatchResultId 重试结算 3 次只发一次奖」与
+/// 「以同一 MatchResultId 重试结算 3 次只发一次奖」与
 /// 「重复结算生效次数 = 0」都由本约束担保；调用方无需自行去重。
 /// </para>
 /// </summary>

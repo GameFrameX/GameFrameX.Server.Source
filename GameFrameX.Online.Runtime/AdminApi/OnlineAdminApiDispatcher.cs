@@ -35,7 +35,7 @@ using GameFrameX.Online.Scope;
 namespace GameFrameX.Online.Runtime.AdminApi;
 
 /// <summary>
-/// Online admin API 调度器（change C122：action 注册表 + 作用域守卫 + 请求标识 + 幂等包裹 + 双层信封）。
+/// Online admin API 调度器（action 注册表 + 作用域守卫 + 请求标识 + 幂等包裹 + 双层信封）。
 /// <para>
 /// 维护约束（横切红线，四端统一语义）：
 /// 作用域判定只经 <see cref="OnlineScopeGuard"/>（客户端声称三元组 vs 宿主授权作用域，拒绝码 3002/3003/3004/3005），

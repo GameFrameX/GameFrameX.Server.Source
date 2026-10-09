@@ -36,13 +36,13 @@ using GameFrameX.Online.Events;
 using GameFrameX.Online.Scope;
 
 /// <summary>
-/// 在线状态服务（vault:C3 S2.5：Presence 事实源的唯一写者——所有状态写入必须经本服务并过状态机判定）。
+/// 在线状态服务（Presence 事实源的唯一写者——所有状态写入必须经本服务并过状态机判定）。
 /// <para>
-/// 维护约束（红线）：玩家主体位必须有效（PlayerId &lt;= 0 拒绝——Admin 管理员连接结构性不进入 Presence，X6/VC-2.6）；
+/// 维护约束（红线）：玩家主体位必须有效（PlayerId &lt;= 0 拒绝——Admin 管理员连接结构性不进入 Presence）；
 /// 状态变更唯一合法性判据为 <see cref="OnlinePresenceStateMachine.TryTransition"/>，表外转换映射
 /// <see cref="OnlineErrorCode.StateOperationForbidden"/>；每次变更必带原因码并发布
-/// <see cref="OnlinePresenceEvents.PresenceChanged"/> 事件（VC-2.16）；无永久 Reconnecting——超窗清理
-/// 经 <see cref="SweepTimeoutsAsync"/>（VC-2.15）；Offline = 无记录（下线即移除）。
+/// <see cref="OnlinePresenceEvents.PresenceChanged"/> 事件；无永久 Reconnecting——超窗清理
+/// 经 <see cref="SweepTimeoutsAsync"/>；Offline = 无记录（下线即移除）。
 /// </para>
 /// </summary>
 public sealed class OnlinePresenceService
@@ -349,7 +349,7 @@ public sealed class OnlinePresenceService
     }
 
     /// <summary>
-    /// 清理超时（VC-2.15：Reconnecting 超窗转 Offline 且不留永久 Reconnecting；Online 超过空闲阈值转 Idle）。
+    /// 清理超时（Reconnecting 超窗转 Offline 且不留永久 Reconnecting；Online 超过空闲阈值转 Idle）。
     /// </summary>
     /// <param name="tenantId">租户标识。</param>
     /// <param name="appId">应用标识。</param>

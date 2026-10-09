@@ -30,11 +30,11 @@
 namespace GameFrameX.Online.Matchmaking;
 
 /// <summary>
-/// 加入策略（vault:C5 S4.4 冻结四策略）。
+/// 加入策略（冻结四策略）。
 /// <para>
 /// 维护约束：策略判定在 <c>OnlineMatchListingService.JoinAsync</c> 单点收敛，四个分支互斥且必须各有
-/// 拒绝用例（VC-4.14：行为与策略一致、越权加入被拒）。第 5 种 <c>MatchmakerOnly</c> 待 vault:C5
-/// backlog L4 设计评审判定，本 change 不预埋分支——未定稿的策略一旦预埋就会成为事实契约。
+/// 拒绝用例（行为与策略一致、越权加入被拒）。第 5 种 <c>MatchmakerOnly</c> 待后续
+/// 设计评审判定，本仓不预埋分支——未定稿的策略一旦预埋就会成为事实契约。
 /// </para>
 /// </summary>
 public enum OnlineJoinPolicy

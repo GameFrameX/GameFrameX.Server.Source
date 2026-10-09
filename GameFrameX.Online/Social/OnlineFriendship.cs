@@ -30,14 +30,14 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 好友关系聚合（vault:C7 S6.2：一对玩家一条记录，方向由 <see cref="RequesterId"/> 表达）。
+/// 好友关系聚合（一对玩家一条记录，方向由 <see cref="RequesterId"/> 表达）。
 /// <para>
 /// 维护约束（红线）：
 /// ① **唯一键是无向对**——<see cref="LowPlayerId"/>/<see cref="HighPlayerId"/> 由
 /// <see cref="Canonicalize"/> 规范化（低标识在前），A→B 与 B→A 命中同一条记录，
-/// 因此「重复请求」在存储层就无第二条可落（VC-6.1）；
+/// 因此「重复请求」在存储层就无第二条可落；
 /// ② 本类型不承载作用域内的 ServerId 唯一性——好友关系是跨区服成立的，键为 Tenant + App + 无向对，
-/// 不含 ServerId（与 C94「键 = Tenant+App+Player，不含 Server」一致）；<see cref="ServerId"/> 仅记录
+/// 不含 ServerId（「键 = Tenant+App+Player，不含 Server」）；<see cref="ServerId"/> 仅记录
 /// 关系建立时的来源区服，供审计与投递路由参考；
 /// ③ <see cref="State"/> 只能经 <see cref="OnlineFriendshipStateMachine"/> 迁移；
 /// ④ <see cref="RequesterId"/> 是方向事实，关系被接受后**不翻转**——「谁先发起」是审计语义，

@@ -31,13 +31,13 @@
 namespace GameFrameX.Discovery;
 
 /// <summary>
-/// 双视图路由表快照（C143d D15：Role 视图 + Instance 视图）。
+/// 双视图路由表快照（Role 视图 + Instance 视图）。
 /// </summary>
 /// <remarks>
-/// The immutable dual-view route table snapshot (C143d D15).
-/// The Role view serves D3 case 3 (any active instance of a role: only
+/// The immutable dual-view route table snapshot.
+/// The Role view serves case 3 (any active instance of a role: only
 /// <see cref="InstanceStatus.Active"/> instances — Draining is excluded from new
-/// traffic); the Instance view serves D3 case 2 (a known instance: Active and
+/// traffic); the Instance view serves case 2 (a known instance: Active and
 /// Draining both stay routable for in-flight deliveries).
 /// The watcher replaces the whole snapshot atomically (Interlocked.Exchange);
 /// readers never lock and never observe a partially-updated table.
@@ -104,7 +104,7 @@ public sealed class RoleRouteTable
         var activeByRole = new Dictionary<string, List<InstanceDescriptor>>(StringComparer.Ordinal);
         foreach (var instance in liveInstances)
         {
-            // Instance 视图仅收 Active/Draining（D3 case 2 契约）：Booting/Removed 等其余状态不参与任何路由，
+            // Instance 视图仅收 Active/Draining（case 2 契约）：Booting/Removed 等其余状态不参与任何路由，
             // 防止已注册但尚未就绪（或已摘除）的实例被 case 2 解析并转发流量。
             if (instance.Status == InstanceStatus.Active || instance.Status == InstanceStatus.Draining)
             {
@@ -133,10 +133,10 @@ public sealed class RoleRouteTable
     }
 
     /// <summary>
-    /// 按实例 Id 查找实例（D3 case 2）。
+    /// 按实例 Id 查找实例（case 2：按已知实例解析）。
     /// </summary>
     /// <remarks>
-    /// Resolves an instance by id (D3 case 2). Draining instances resolve on purpose:
+    /// Resolves an instance by id (case 2: known-instance resolution). Draining instances resolve on purpose:
     /// in-flight deliveries to a known draining instance are still valid.
     /// </remarks>
     /// <param name="instanceId">实例 Id / The instance id</param>
@@ -148,10 +148,10 @@ public sealed class RoleRouteTable
     }
 
     /// <summary>
-    /// 获取指定 Role 的 Active 实例列表（D3 case 3）。
+    /// 获取指定 Role 的 Active 实例列表（case 3：任意 Active 实例）。
     /// </summary>
     /// <remarks>
-    /// Gets the Active instances of a role (D3 case 3); Draining is excluded.
+    /// Gets the Active instances of a role (case 3: any active instance); Draining is excluded.
     /// </remarks>
     /// <param name="roleName">Role 名 / The role name</param>
     /// <returns>Active 实例只读列表；无实例时为空列表 / The read-only Active instance list, or an empty list</returns>

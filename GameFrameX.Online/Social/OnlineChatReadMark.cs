@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 频道已读位点（vault:C7 S6.5/S6.6）。
+/// 频道已读位点。
 /// <para>
 /// 维护约束：位点记为**游标对**（<see cref="LastReadSentAtTime"/> + <see cref="LastReadSequence"/>）
 /// 而非「已读的第 N 条」——序号偏移在消息撤回、清理、补拉之后会整体错位，而

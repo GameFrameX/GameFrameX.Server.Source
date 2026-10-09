@@ -32,7 +32,7 @@ namespace GameFrameX.Online.Session;
 using GameFrameX.Online.Identity;
 
 /// <summary>
-/// 会话实体（vault:C3 S2.4：一次连接与鉴权上下文，含连接映射、Token 指纹与重连窗口）。
+/// 会话实体（一次连接与鉴权上下文，含连接映射、Token 指纹与重连窗口）。
 /// <para>
 /// 维护约束：Token 只存 SHA-256 指纹（<see cref="CurrentTokenHash"/>），明文 Token 不落存储；
 /// 刷新为原子轮换——旧指纹即刻失效（<see cref="TokenGeneration"/> 递增，重放按 6xxx 冲突）；

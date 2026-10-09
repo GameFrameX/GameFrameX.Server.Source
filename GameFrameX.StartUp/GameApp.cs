@@ -262,7 +262,7 @@ public static class GameApp
         GlobalSettings.Load("Configs/app_config.json");
         initAction?.Invoke();
 
-        // 5. 发现并启动服务器（C143b D2：--ServerType 复数 + --AllInOne 开关）
+        // 5. 发现并启动服务器（--ServerType 复数 + --AllInOne 开关）
         StartUpTypeRegistry.Instance.DiscoverAndRegister();
         var sortedStartUpTypes = StartUpTypeRegistry.Instance.GetSortedByPriority();
         var allInOneOptions = AllInOneOptions.Parse(args);
@@ -283,7 +283,7 @@ public static class GameApp
     }
 
     /// <summary>
-    /// 为选定的 Role 集合启动启动任务（C143b D7：按优先级序拉起，逆序停机由 AppEnter 负责）。
+    /// 为选定的 Role 集合启动启动任务（按优先级序拉起，逆序停机由 AppEnter 负责）。
     /// </summary>
     /// <remarks>
     /// Launches the startup task for the selected role collection.
@@ -328,8 +328,8 @@ public static class GameApp
 
         RoleSet.Current = new RoleSet(startedStartUpTypes);
 
-        // C143c D3：Role 快照发布后装配跨 Role 路由缝。本地投递器暂不配置（随 C143e 接入 Actor 投递），
-        // 远程转发用 C143d 前的占位实现——过早路由会在缝上显式抛异常，不会静默丢消息。
+        // Role 快照发布后装配跨 Role 路由缝。本地投递器暂不配置（等待接入 Actor 投递），
+        // 远程转发暂用占位实现——过早路由会在缝上显式抛异常，不会静默丢消息。
         RoleRouterHolder.Initialize(new InProcessRoleRouter(RoleSet.Current, null, new RemoteRoleRouter()));
         _launchTask = AppEnter.Entry(appStartUps);
     }
@@ -340,7 +340,7 @@ public static class GameApp
     /// <remarks>
     /// Creates and initializes the startup instance of a single role.
     /// Instantiates the startup class, fixes the process-level log type, and initializes the instance
-    /// (the shared kernel runs through <see cref="AppBootstrapper.EnsureInitialized"/>, C143b D5).
+    /// (the shared kernel runs through <see cref="AppBootstrapper.EnsureInitialized"/>).
     /// Returns null when the class cannot be instantiated or initialization fails.
     /// </remarks>
     /// <param name="args">命令行参数 / Command line arguments</param>
@@ -408,11 +408,11 @@ public static class GameApp
     }
 
     /// <summary>
-    /// 从启动器选项构建指定 Role 的独立默认配置（C143b：缺失配置段的 Role 各持一份配置实例）。
+    /// 从启动器选项构建指定 Role 的独立默认配置（缺失配置段的 Role 各持一份配置实例）。
     /// </summary>
     /// <remarks>
     /// Builds an independent default <see cref="AppSetting"/> for the given role from the launcher options
-    /// (C143b: every role missing a config section holds its own instance). Copies the AppSetting-level
+    /// (every role missing a config section holds its own instance). Copies the AppSetting-level
     /// property values of the launcher options, then fixes <see cref="AppSetting.ServerType"/> to the
     /// current role name (its init-only setter also updates <c>ServerName</c>), never leaking the raw
     /// comma-separated CLI value ("Game,Social") into a per-role setting.
@@ -444,7 +444,7 @@ public static class GameApp
     }
 
     /// <summary>
-    /// 输出选定集合内的启动优先级冲突表（C143b：重复优先级导致多 Role 拉起顺序不稳定）。
+    /// 输出选定集合内的启动优先级冲突表（重复优先级导致多 Role 拉起顺序不稳定）。
     /// </summary>
     /// <remarks>
     /// Reports a conflict table when multiple selected roles share the same startup priority,
@@ -492,12 +492,11 @@ public static class GameApp
     }
 
     /// <summary>
-    /// 设置进程级固定日志标识（C143a D20#4：LogType 只在首次设置时生效，不再随最后启动的 Role 漂移）。
+    /// 设置进程级固定日志标识（LogType 只在首次设置时生效，不再随最后启动的 Role 漂移）。
     /// </summary>
     /// <remarks>
-    /// Sets the process-level fixed log type (C143a D20#4): the log type is assigned only on the first
-    /// call, so it no longer drifts to the last started role in a multi-role process.
-    /// Single-role startup calls this exactly once, keeping current behaviour unchanged.
+    /// Sets the process-level fixed log type: the log type is assigned only on the first call,
+    /// so it no longer drifts to the last started role in a multi-role process.
     /// </remarks>
     /// <param name="serverType">服务器类型标识符 / The server type identifier</param>
     internal static void SetLogTypeOnce(string serverType)
@@ -511,7 +510,7 @@ public static class GameApp
     }
 
     /// <summary>
-    /// 尝试按 All-in-One 选项选择并启动 Role 集合（C143b D2）。
+    /// 尝试按 All-in-One 选项选择并启动 Role 集合。
     /// </summary>
     /// <remarks>
     /// Attempts to select and launch the role collection according to the all-in-one options:
@@ -527,7 +526,7 @@ public static class GameApp
         var appSettings = GlobalSettings.GetSettings();
         var selectedStartUpTypes = SelectStartUpTypes(allInOneOptions, sortedStartUpTypes);
 
-        // C143f D4：Role 实例化前的唯一收口点做启动期校验（选中集合 + 文件段 + CLI 选项 + 原始参数齐备），
+        // Role 实例化前的唯一收口点做启动期校验（选中集合 + 文件段 + CLI 选项 + 原始参数齐备），
         // 冲突 fail fast 抛 ConfigConflictException，先于任何 Role 拉起
         ConfigStartupValidator.Validate(
             selectedStartUpTypes.Select(pair => pair.Value.ServerType).ToList(),
@@ -579,7 +578,7 @@ public static class GameApp
             {
                 if (selected.All(pair => pair.Value.ServerType != serverTypeName))
                 {
-                    LogHelper.Warning($"No registered startup type found for server type '{serverTypeName}' (C143b multi-role selection); skipped it.");
+                    LogHelper.Warning($"No registered startup type found for server type '{serverTypeName}' (multi-role selection); skipped it.");
                 }
             }
 

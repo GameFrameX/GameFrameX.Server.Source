@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Matchmaking;
 
 /// <summary>
-/// 技术水平区间（vault:C5 S4.5：SkillRange 字段；S4.6：等级段位范围匹配与等待时间扩展）。
+/// 技术水平区间（SkillRange 字段；承载等级段位范围匹配与等待时间扩展）。
 /// <para>
 /// 维护约束：区间语义为闭区间 <c>[Min, Max]</c>；<see cref="Widen"/> 的下界截断在 0，
 /// 不允许产生负值（负分段会让「越等越宽」在低分段退化为无意义区间）。

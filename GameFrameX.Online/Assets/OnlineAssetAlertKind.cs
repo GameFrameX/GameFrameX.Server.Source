@@ -31,7 +31,7 @@
 namespace GameFrameX.Online.Assets;
 
 /// <summary>
-/// 资产域告警类型（vault:C4 交易不变量：负余额、负库存、重复订单和异常回滚必须告警）。
+/// 资产域告警类型（交易不变量：负余额、负库存、重复订单和异常回滚必须告警）。
 /// <para>
 /// 维护约束：告警必须携带定位字段（交易标识/作用域/资产标识，见
 /// <see cref="OnlineAssetAlertRecord"/>）；告警是事实通知不改变业务结果；
@@ -41,27 +41,27 @@ namespace GameFrameX.Online.Assets;
 public enum OnlineAssetAlertKind
 {
     /// <summary>
-    /// 资产不足尝试（拟扣减后低于下限 0 的拒绝；负余额/负库存出现次数 = 0 的守护输入，VC-3.15）。
+    /// 资产不足尝试（拟扣减后低于下限 0 的拒绝；负余额/负库存出现次数 = 0 的守护输入）。
     /// </summary>
     NegativeBalanceAttempt = 1,
 
     /// <summary>
-    /// 重复业务意图观察（幂等键命中首次结果的回放；回放本身是正确行为，告警供重复订单巡检，VC-3.1～3.4/3.15）。
+    /// 重复业务意图观察（幂等键命中首次结果的回放；回放本身是正确行为，告警供重复订单巡检）。
     /// </summary>
     DuplicateRequestObserved = 2,
 
     /// <summary>
-    /// 应用中断已补偿（交易执行中断后反转条目追加成功，净效应 0；异常回滚留痕，VC-3.6）。
+    /// 应用中断已补偿（交易执行中断后反转条目追加成功，净效应 0；异常回滚留痕）。
     /// </summary>
     CompensatedAfterApplyFailure = 3,
 
     /// <summary>
-    /// 补偿失败（反转条目追加失败，交易滞留 CompensationPending；需人工介入，SLO 告警，VC-3.11）。
+    /// 补偿失败（反转条目追加失败，交易滞留 CompensationPending；需人工介入，SLO 告警）。
     /// </summary>
     CompensationFailed = 4,
 
     /// <summary>
-    /// 补偿队列 SLO 超时（跨服补偿滞留超过时限仍未投递成功；超时转人工，VC-3.11）。
+    /// 补偿队列 SLO 超时（跨服补偿滞留超过时限仍未投递成功；超时转人工）。
     /// </summary>
     CompensationSloExceeded = 5,
 }

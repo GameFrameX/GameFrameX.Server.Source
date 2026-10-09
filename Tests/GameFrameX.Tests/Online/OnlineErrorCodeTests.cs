@@ -33,7 +33,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// OnlineErrorCode 协议派生规则测试（错误码分段、MessageKey 规范与未知码兜底，VC-1.10 Server 半边）。
+    /// OnlineErrorCode 协议派生规则测试（错误码分段、MessageKey 规范与未知码兜底，Server 半边）。
     /// </summary>
     public class OnlineErrorCodeTests
     {
@@ -116,7 +116,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证未知码兜底：段外码与段内未登记码都映射 InternalError，不误判成功（VC-1.10）。
+        /// 验证未知码兜底：段外码与段内未登记码都映射 InternalError，不误判成功。
         /// </summary>
         [Theory]
         [InlineData(9000)]

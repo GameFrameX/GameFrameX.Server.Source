@@ -36,7 +36,7 @@ using GameFrameX.Online.Social;
 /// 形态对齐统一审计的 <c>OnlineAuditQuery</c> 先例：可选过滤 + 不透明游标 + 页大小）。
 /// <para>
 /// 维护约束：全部过滤条件为合取（AND）；时间窗为闭区间 [<see cref="StartTime"/>, <see cref="EndTime"/>]；
-/// 正文回读经 <see cref="IOnlineChatStore.FindMessageAsync"/> 受控通道（C7 脱敏红线）。
+/// 正文回读经 <see cref="IOnlineChatStore.FindMessageAsync"/> 受控通道（脱敏红线）。
 /// </para>
 /// </summary>
 public sealed class ChatAuditQuery

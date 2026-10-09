@@ -33,10 +33,10 @@ using GameFrameX.Discovery;
 namespace GameFrameX.Tests.Discovery;
 
 /// <summary>
-/// RoleRouteTable 双视图准入用例集（C143d D15 / D3 case 2/3）。
+/// RoleRouteTable 双视图准入用例集。
 /// </summary>
 /// <remarks>
-/// The dual-view admission suite for RoleRouteTable (C143d D15 / D3 case 2/3):
+/// The dual-view admission suite for RoleRouteTable:
 /// only Active and Draining instances may enter the Instance view (and only
 /// Active the Role view), so a registered-but-not-ready (Booting) or
 /// decommissioned (Stopped/Removed) instance is never routable.
@@ -56,14 +56,14 @@ public sealed class RoleRouteTableTests
             new InstanceDescriptor("Game", "game-removed-1", "tcp://10.0.0.5:7005", InstanceStatus.Removed, 0, EndpointAddressKind.IPv4, 205, now),
         });
 
-        // Instance 视图（D3 case 2）：仅 Active 与 Draining 可解析；Booting/Stopped/Removed 一律拒绝。
+        // Instance 视图：仅 Active 与 Draining 可解析；Booting/Stopped/Removed 一律拒绝。
         Assert.True(table.TryGetInstance("game-active-1", out _));
         Assert.True(table.TryGetInstance("game-draining-1", out _));
         Assert.False(table.TryGetInstance("game-booting-1", out _));
         Assert.False(table.TryGetInstance("game-stopped-1", out _));
         Assert.False(table.TryGetInstance("game-removed-1", out _));
 
-        // Role 视图（D3 case 3）：仅 Active 进入；Draining 不接新流量。
+        // Role 视图：仅 Active 进入；Draining 不接新流量。
         var activeIds = table.GetActiveInstances("Game").Select(instance => instance.InstanceId).ToList();
         Assert.Equal(new List<string> { "game-active-1" }, activeIds);
     }

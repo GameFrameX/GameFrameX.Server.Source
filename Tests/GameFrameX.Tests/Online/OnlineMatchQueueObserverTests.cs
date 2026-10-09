@@ -37,7 +37,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 匹配队列观测器测试（vault:C5 VC-4.10：Admin 可核对各状态计数与重复分配红指标）。
+    /// 匹配队列观测器测试（Admin 可核对各状态计数与重复分配红指标）。
     /// </summary>
     public class OnlineMatchQueueObserverTests
     {
@@ -60,7 +60,7 @@ namespace GameFrameX.Tests.Online
         private const long PlayerThree = 1003;
 
         /// <summary>
-        /// 验证观测快照按状态给出票据计数、玩家计数与分配数（VC-4.10 覆盖率）。
+        /// 验证观测快照按状态给出票据计数、玩家计数与分配数（覆盖各状态）。
         /// </summary>
         [Fact]
         public async Task ObserveAsync_ShouldReportCountsByState()
@@ -89,7 +89,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证重复分配票据数在正常链路上恒为 0（VC-4.12 红指标）。
+        /// 验证重复分配票据数在正常链路上恒为 0（红指标）。
         /// </summary>
         [Fact]
         public async Task ObserveAsync_ShouldReportZeroDuplicateAssignmentTickets()

@@ -30,10 +30,10 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 玩家屏蔽条目（vault:C7 S6.3：屏蔽是**方向性**事实，不是对等关系）。
+/// 玩家屏蔽条目（屏蔽是**方向性**事实，不是对等关系）。
 /// <para>
 /// 维护约束：屏蔽表达「<see cref="OwnerId"/> 不想被 <see cref="BlockedPlayerId"/> 打扰」，
-/// 但**裁决时按双向生效**——A 屏蔽 B 后，A→B 与 B→A 的定向互动一律拒绝（vault:C7 关键约束），
+/// 但**裁决时按双向生效**——A 屏蔽 B 后，A→B 与 B→A 的定向互动一律拒绝，
 /// 否则被屏蔽方仍可单方面发起互动，屏蔽形同虚设。方向只影响存储键与「谁可以解除」，
 /// 不影响裁决结果；这一点由 <see cref="OnlineSocialDecisionService"/> 统一承担，
 /// 调用方不得自行判断方向。
@@ -93,7 +93,7 @@ public sealed class OnlineBlockEntry
 
     /// <summary>
     /// 获取或设置发起屏蔽时所在的区服标识（仅作事件信封与审计记录用；
-    /// 屏蔽是玩家社交事实，跨区服成立，**不参与存储键**——沿用 C94 的「作用域 = 租户 + App」结论）。
+    /// 屏蔽是玩家社交事实，跨区服成立，**不参与存储键**——「作用域 = 租户 + App」）。
     /// </summary>
     public long ServerId
     {

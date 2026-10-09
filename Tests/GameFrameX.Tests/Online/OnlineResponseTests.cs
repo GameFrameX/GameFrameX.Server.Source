@@ -33,7 +33,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// OnlineResponse 与 OnlinePageCursor 公共响应/分页契约测试（响应五字段完整性，VC-1.2）。
+    /// OnlineResponse 与 OnlinePageCursor 公共响应/分页契约测试（响应五字段完整性）。
     /// </summary>
     public class OnlineResponseTests
     {

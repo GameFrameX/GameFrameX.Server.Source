@@ -30,14 +30,14 @@
 namespace GameFrameX.Online.Timeline;
 
 /// <summary>
-/// 玩家时间线分组词表（六值；与消费方 Admin C344 <c>OnlinePlayerTimelineEventGroup</c> 同词表）。
+/// 玩家时间线分组词表（六值；与消费方 Admin <c>OnlinePlayerTimelineEventGroup</c> 同词表）。
 /// <para>
 /// 维护约束（红线）：分组值是**线上原值**，消费方 Admin 只做透传——请求侧把枚举 <c>ToString()</c> 后作为过滤参数传入，
 /// 响应侧把本值原样回显给前端。因此本词表必须是字符串常量而不是枚举：换成枚举即引入一层映射，
 /// 映射一旦漂移，Admin 的分组过滤会静默命中为空列表（无报错、无日志），是难以发现的一致性缺陷。
 /// </para>
 /// <para>
-/// 六值固定：新增或重命名分组属**跨仓契约变更**，须先改 vault:C9 契约与 Admin 侧枚举，再改本词表；
+/// 六值固定：新增或重命名分组属**跨仓契约变更**，须先改契约与 Admin 侧枚举，再改本词表；
 /// 本仓不得单方面扩展（扩展值在消费方会被当作未知分组兜底展示）。
 /// </para>
 /// </summary>
@@ -59,7 +59,7 @@ public static class OnlinePlayerTimelineGroup
     public const string Asset = "Asset";
 
     /// <summary>
-    /// 社交分组（好友/群组/聊天等关系型事件；vault:C9 保留分组，本仓当前不落腿，命中该过滤即空列表）。
+    /// 社交分组（好友/群组/聊天等关系型事件；契约保留分组，本仓当前不落腿，命中该过滤即空列表）。
     /// </summary>
     public const string Social = "Social";
 

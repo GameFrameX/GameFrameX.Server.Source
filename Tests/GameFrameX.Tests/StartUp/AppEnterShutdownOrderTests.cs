@@ -36,7 +36,7 @@ using Xunit;
 namespace GameFrameX.Tests.StartUp;
 
 /// <summary>
-/// AppEnter 逆序停机与按优先级启动屏障测试（C143b D7：启动优先级序拉起、就绪屏障、低优先级先停）。
+/// AppEnter 逆序停机与按优先级启动屏障测试（启动优先级序拉起、就绪屏障、低优先级先停）。
 /// </summary>
 public class AppEnterShutdownOrderTests
 {

@@ -30,11 +30,11 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 通知状态机（vault:C7 S6.8：合法边固化，非法迁移一律拒绝）。
+/// 通知状态机（合法边固化，非法迁移一律拒绝）。
 /// <para>
 /// 维护约束：合法边集中在本类型的常量邻接表中维护，服务层禁止就地拼装迁移条件
-/// （形态对齐 C94 <c>OnlinePresenceStateMachine</c> / C97 <c>OnlinePartyStateMachine</c> /
-/// C99 <see cref="OnlineFriendshipStateMachine"/>）；新增边必须先改本表再改调用方，
+/// （形态对齐 <c>OnlinePresenceStateMachine</c> / <c>OnlinePartyStateMachine</c> /
+/// <see cref="OnlineFriendshipStateMachine"/>）；新增边必须先改本表再改调用方，
 /// 避免「某条路径偷偷放行非法迁移」。
 /// </para>
 /// <para>
@@ -46,7 +46,7 @@ namespace GameFrameX.Online.Social;
 /// <c>Retrying → Queued / Delivered / Failed / Expired</c>；
 /// <see cref="OnlineNotificationState.Read"/> 与 <see cref="OnlineNotificationState.Expired"/> 为终态（无出边）。
 /// 自环（同态迁移）不属于合法边，调用方<b>不得</b>为「幂等」单独豁免——「已在途（Queued）的通知再次推送」
-/// 被这条规则拦下正是要的结果：在途说明另一个调用方正持有该记录，放行即重复推送（VC-6.12）。
+/// 被这条规则拦下正是要的结果：在途说明另一个调用方正持有该记录，放行即重复推送。
 /// </para>
 /// <para>
 /// 为什么 <c>Failed → Queued</c> 是合法边：重试次数耗尽落 <c>Failed</c> 的通知仍要能被离线补发与

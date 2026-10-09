@@ -39,10 +39,10 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 跨域社交裁决集成测试（vault:C7 关键约束「Block 必须在 Chat / Party / Matchmaker 三处统一生效」）。
+    /// 跨域社交裁决集成测试（关键约束「Block 必须在 Chat / Party / Matchmaker 三处统一生效」）。
     /// <para>
-    /// 本类锁定的不是任何一个服务内部的规则，而是 **C97 既有链路接入 C99 裁决入口后的行为边界**：
-    /// 未装配裁决时既有行为一字不变（C97 既有用例不受影响），装配后屏蔽与封禁在组队与匹配两条路径上
+    /// 本类锁定的不是任何一个服务内部的规则，而是**既有链路接入裁决入口后的行为边界**：
+    /// 未装配裁决时既有行为一字不变（既有用例不受影响），装配后屏蔽与封禁在组队与匹配两条路径上
     /// 同源生效，且不拆散票据、不误伤禁言。
     /// </para>
     /// </summary>
@@ -247,7 +247,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证匹配协调器未装配社交裁决时行为不变（C97 既有用例的等价快照）。
+        /// 验证匹配协调器未装配社交裁决时行为不变（既有用例的等价快照）。
         /// </summary>
         [Fact]
         public async Task RunOnceAsync_WhenSocialGateMissing_ShouldKeepLegacyBehavior()

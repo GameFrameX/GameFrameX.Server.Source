@@ -32,10 +32,10 @@ using System.Reflection;
 namespace GameFrameX.Utility.Setting;
 
 /// <summary>
-/// 应用设置字段的进程拓扑级别标注（C143a D19）。
+/// 应用设置字段的进程拓扑级别标注。
 /// </summary>
 /// <remarks>
-/// Marks an application setting property with its process topology level (C143a D19).
+/// Marks an application setting property with its process topology level.
 /// Used by <see cref="GlobalSettings.SetCurrentSetting"/> to detect process-level field conflicts
 /// when multiple roles set the current setting in the same process.
 /// </remarks>

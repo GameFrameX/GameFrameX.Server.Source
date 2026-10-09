@@ -32,7 +32,7 @@ using GameFrameX.Foundation.Idempotency;
 namespace GameFrameX.Online.Events;
 
 /// <summary>
-/// Online 事件与 Foundation 事件信封的双向映射（vault:C2 红线：Online 领域语义不进 Foundation，
+/// Online 事件与 Foundation 事件信封的双向映射（红线：Online 领域语义不进 Foundation，
 /// 作用域字段经 Foundation 信封 <c>Attributes</c> 稳定键承载）。
 /// <para>
 /// 维护约束：稳定键 <c>online.tenantId</c>/<c>online.appId</c>/<c>online.serverId</c>/<c>online.playerId</c>

@@ -34,16 +34,16 @@ using GameFrameX.NetWork.RemoteMessaging.Routing;
 namespace GameFrameX.Tests.Topology.Equivalence;
 
 /// <summary>
-/// 等价用例集的单 Role 邮箱（C143c D9）。
+/// 等价用例集的单 Role 邮箱。
 /// </summary>
 /// <remarks>
-/// Per-role mailbox for the topology equivalence suite (C143c D9).
+/// Per-role mailbox for the topology equivalence suite.
 /// Simulates one role's in-process message queue with the same guarantees the actor
 /// pipeline provides in production: strict per-role FIFO processing, one message at a
 /// time, and senders may either fire-and-forget or await the handler's completion
-/// (the Actor.Tell/SendAsync semantics behind D3 case 1).
+/// (the Actor.Tell/SendAsync semantics behind local direct delivery).
 /// Known ceiling: this is a lightweight queue, not the real Actor; the real actor-backed
-/// local dispatcher arrives with C143e and is exercised there.
+/// local dispatcher will be exercised there once it lands.
 /// The arrival log records the message type name of every processed message so the
 /// equivalence tests can assert identical receive order across topologies.
 /// </remarks>

@@ -94,7 +94,7 @@ public sealed class PostgreSqlDiscoveryActivationOptions
 }
 
 /// <summary>
-/// PostgreSQL 发现层进程装配器（C167 起消费通用组件 + PostgreSQL 存储适配）。
+/// PostgreSQL 发现层进程装配器（消费通用组件 + PostgreSQL 存储适配）。
 /// </summary>
 /// <remarks>
 /// The process-level wiring point for the PostgreSQL discovery layer. The
@@ -141,11 +141,11 @@ public static class PostgreSqlDiscoveryRuntime
     private static DiscoveryWatcher _watcher;
 
     /// <summary>
-    /// 发现层路由表提供者（C166 依赖纠偏第二轮：路由胶水装配移交组合侧 DiscoveryRoutingWire，
+    /// 发现层路由表提供者（路由胶水装配移交组合侧 DiscoveryRoutingWire，
     /// 本 Runtime 只暴露读侧实例）。
     /// </summary>
     /// <remarks>
-    /// The discovery route table provider (C166 second dependency fix: router wiring moved to the
+    /// The discovery route table provider (router wiring moved to the
     /// composition-side <c>DiscoveryRoutingWire</c>; this runtime only exposes the reader instance).
     /// </remarks>
     public static IRoleRouteTableProvider TableProvider

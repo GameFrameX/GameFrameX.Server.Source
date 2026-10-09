@@ -48,7 +48,7 @@ namespace GameFrameX.Tests.NetWork.SuperSocket;
 /// SuperSocket KCP 服务器监听冒烟测试 / SuperSocket KCP server listening smoke test
 /// </summary>
 /// <remarks>
-/// 覆盖 GFX-821（基于 GameFrameX.SuperSocket.Kcp 重写服务端 KCP 接入）的验收标准：
+/// 覆盖基于 GameFrameX.SuperSocket.Kcp 重写服务端 KCP 接入的验收标准：
 /// 通过与 <c>AppStartUpByServer.ConfigureKcpServer</c> 相同的构建路径
 /// （<c>MultipleServerHostBuilder.Create</c> + <c>AddServer&lt;IMessage, MessageObjectPipelineFilter&gt;</c>
 /// + <c>UseKcp</c>）启动 KCP 服务器，并用真实 UDP 客户端发送最小 KCP 头包，

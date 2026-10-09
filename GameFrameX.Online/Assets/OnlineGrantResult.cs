@@ -36,7 +36,7 @@ using GameFrameX.Online.Contracts;
 /// 统一资产入口执行结果（承载交易标识、终态与落账条目；重复请求回放首次结果的载荷）。
 /// <para>
 /// 维护约束：<see cref="IsReplay"/> 为真表示本次为幂等回放（未产生新账本条目，
-/// <see cref="Entries"/> 从账本按交易标识重取——账本不可变，重取即首次事实，VC-3.1～3.4）；
+/// <see cref="Entries"/> 从账本按交易标识重取——账本不可变，重取即首次事实）；
 /// 失败经由 <see cref="OnlineResult{TData}"/> 段位化返回，本类型只承载成功负载。
 /// </para>
 /// </summary>

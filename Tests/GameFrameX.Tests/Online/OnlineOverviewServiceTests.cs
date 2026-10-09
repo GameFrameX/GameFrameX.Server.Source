@@ -40,7 +40,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 在线总览服务测试（C101 / vault:C9 S8.1 · VC-8.1-a / VC-8.1-b：计数口径、队列概况、
+    /// 在线总览服务测试（计数口径、队列概况、
     /// 空作用域与跨作用域同构、作用域三键校验）。
     /// </summary>
     public class OnlineOverviewServiceTests
@@ -59,7 +59,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证总览计数口径：在线玩家数排除被限制玩家与他服玩家；会话数只计本作用域非终态会话并给出状态分布与重连率；
-        /// 队伍数排除终态与他服队伍；对局数排除已释放（Closed）与他服对局并给出状态分布（VC-8.1-a）。
+        /// 队伍数排除终态与他服队伍；对局数排除已释放（Closed）与他服对局并给出状态分布。
         /// </summary>
         [Fact]
         public async Task ReviewAsync_ShouldCountPlayersSessionsPartiesAndMatches()
@@ -126,7 +126,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证队列概况按 (玩法模式, 区域) 分组：深度为排队态票据数、平均等待可按匹配域口径复算、
-        /// 最近一分钟吞吐取本作用域匹配分配所消费的票据数，且他服票据不计入（VC-8.1-b）。
+        /// 最近一分钟吞吐取本作用域匹配分配所消费的票据数，且他服票据不计入。
         /// </summary>
         [Fact]
         public async Task ReviewAsync_ShouldGroupQueueSummaryByModeAndRegion()

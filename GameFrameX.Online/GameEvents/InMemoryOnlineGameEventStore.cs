@@ -36,7 +36,7 @@ using GameFrameX.Online.Events;
 namespace GameFrameX.Online.GameEvents;
 
 /// <summary>
-/// 游戏事件存储内存实现（单进程默认；生产持久化与留存归档归 Server 仓运行时装配，X4）。
+/// 游戏事件存储内存实现（单进程默认；生产持久化与留存归档归 Server 仓运行时装配）。
 /// <para>
 /// 维护约束（红线）：事件标识去重与追加在**同一临界区**完成（并发重投不会落两条）；
 /// 时间窗为**闭区间**（[from, to]），供指标复算得到确定结果；列表按事件发生时刻升序返回。
@@ -63,7 +63,7 @@ public sealed class InMemoryOnlineGameEventStore : IOnlineGameEventStore
     /// <remarks>
     /// Deduplicates by event id and appends within the same critical section under the global lock, so a duplicate delivery is stored only once.
     /// </remarks>
-    /// <param name="onlineEvent">通过 L0 校验的事件信封 / The event envelope that passed L0 validation</param>
+    /// <param name="onlineEvent">通过基础校验的事件信封 / The event envelope that passed basic validation</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>本次是否新落档（EventId 已存在返回 false）/ Whether this call newly stored the event (false when the EventId already exists)</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="onlineEvent"/> 为 null 时抛出 / Thrown when <paramref name="onlineEvent"/> is null</exception>

@@ -33,10 +33,10 @@ using GameFrameX.NetWork.RemoteMessaging.Discovery;
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
-/// 跨进程信封转发缝（C143d D3 case 2/3 的发送通道）。
+/// 跨进程信封转发缝（case 2/3 的发送通道）。
 /// </summary>
 /// <remarks>
-/// The send channel behind the D3 case 2/3 remote forwarding seam (C143d).
+/// The send channel behind the case 2/3 remote forwarding seam.
 /// The router resolves <em>where</em> (instance selection + endpoint parsing); the
 /// forwarder moves the envelope <em>there</em>. Keeping the transport behind this
 /// narrow seam lets the routing logic be unit-tested with a fake forwarder and lets

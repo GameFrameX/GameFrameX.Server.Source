@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 通知来源分类（vault:C7 S6.9：好友、组队、匹配、结算、资产、邮件、公告、处罚与申诉接入通知域）。
+/// 通知来源分类（好友、组队、匹配、结算、资产、邮件、公告、处罚与申诉接入通知域）。
 /// <para>
 /// 维护约束：分类表达「来源域归属」，不是权限判据、不是路由判据——通知域不按分类分派业务逻辑，
 /// 载荷由来源域自行序列化（通知域视为不透明，见 <see cref="OnlineNotification.Payload"/>）；
@@ -76,7 +76,7 @@ public enum OnlineNotificationKind
     Announcement = 6,
 
     /// <summary>
-    /// 处罚（来源：Admin 处罚流程，VC-6.17 的运行时限时通知）。
+    /// 处罚（来源：Admin 处罚流程，运行时限时通知）。
     /// </summary>
     Punishment = 7,
 

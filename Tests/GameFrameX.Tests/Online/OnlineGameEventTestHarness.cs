@@ -42,7 +42,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// C104 游戏事件测试基座：真实事件存储 + 真实死信汇 + 真实摄取器 / 投影器 / 指标复算服务。
+    /// 游戏事件测试基座：真实事件存储 + 真实死信汇 + 真实摄取器 / 投影器 / 指标复算服务。
     /// </summary>
     internal sealed class OnlineGameEventTestHarness
     {

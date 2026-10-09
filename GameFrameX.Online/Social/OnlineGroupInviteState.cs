@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 群邀请状态（vault:C7 S6.4：邀请生命周期唯一，<see cref="Pending"/> 是唯一非终态）。
+/// 群邀请状态（邀请生命周期唯一，<see cref="Pending"/> 是唯一非终态）。
 /// <para>
 /// 维护约束：**同一被邀请人在同一群组内同时刻至多一条 <see cref="Pending"/> 邀请**——重复邀请幂等返回
 /// 既有邀请，不新建也不报错（见 <c>OnlineGroupService.InviteAsync</c>）。

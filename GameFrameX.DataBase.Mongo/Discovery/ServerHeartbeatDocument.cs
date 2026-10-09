@@ -33,11 +33,11 @@ using GameFrameX.Discovery;
 namespace GameFrameX.DataBase.Mongo.Discovery;
 
 /// <summary>
-/// server_heartbeat 集合文档实体（C143d D11/D15，D18 全名约定）；属性形态继承自 <see cref="ServerHeartbeatEntity"/>。
+/// server_heartbeat 集合文档实体（全名约定）；属性形态继承自 <see cref="ServerHeartbeatEntity"/>。
 /// </summary>
 /// <remarks>
 /// The document entity of the <c>server_heartbeat</c> collection in the control
-/// database (C143d D11/D15; the collection name follows the D18 no-abbreviation rule).
+/// database (the collection name follows the no-abbreviation rule).
 /// Properties are declared once on the shared <see cref="ServerHeartbeatEntity"/> base;
 /// the BSON wire mapping (camelCase elements, <c>_id</c> key, DateTime representation)
 /// lives in <see cref="MongoDiscoverySerialization"/> and is byte-identical to the

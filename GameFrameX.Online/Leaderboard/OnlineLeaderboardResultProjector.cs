@@ -40,16 +40,16 @@ using GameFrameX.Online.Scope;
 namespace GameFrameX.Online.Leaderboard;
 
 /// <summary>
-/// 可信结果写榜投影器（vault:C8 S7.2：排行榜只接受服务端可信事件，客户端分数提交被拒绝）。
+/// 可信结果写榜投影器（排行榜只接受服务端可信事件，客户端分数提交被拒绝）。
 /// <para>
 /// 维护约束（红线）：
-/// (1) **载荷零信任**——结算结果只从 C98 <see cref="IOnlineMatchResultStore"/>（结算唯一落定点）按
+/// (1) **载荷零信任**——结算结果只从 <see cref="IOnlineMatchResultStore"/>（结算唯一落定点）按
 /// (TenantId, AppId, MatchId) 读取，且核对调用方传入的 MatchResultId 与存储值一致；本类型不接受
-/// 任何调用方直接携带分数 / 结果载荷的入口（伪造标识 → ResourceNotFound，篡改载荷 → RiskControlRejected，VC-7.1）；
-/// (2) **写入幂等**——复用 C93 <see cref="OnlineIdempotencyService"/>，键确定性派生
-/// <c>lb-{MatchResultId}-{LeaderboardId}-{PlayerId}</c>（对齐 C98 dispatcher「业务单号由结果标识派生」先例），
-/// 同结果事件重复投递只计一次（VC-7.2）；幂等记录过期后的重投残留与 C95 资产域同款，见模块 review.md；
-/// (3) 逐玩家失败隔离——防刷 / 限流 / 幂等冲突只影响该玩家，不阻塞同结果其余玩家（VC-7.4）。
+/// 任何调用方直接携带分数 / 结果载荷的入口（伪造标识 → ResourceNotFound，篡改载荷 → RiskControlRejected）；
+/// (2) **写入幂等**——复用 <see cref="OnlineIdempotencyService"/>，键确定性派生
+/// <c>lb-{MatchResultId}-{LeaderboardId}-{PlayerId}</c>（沿用「业务单号由结果标识派生」的既有约定），
+/// 同结果事件重复投递只计一次；幂等记录过期后的重投残留与资产域同款；
+/// (3) 逐玩家失败隔离——防刷 / 限流 / 幂等冲突只影响该玩家，不阻塞同结果其余玩家。
 /// </para>
 /// </summary>
 public sealed class OnlineLeaderboardResultProjector
@@ -60,7 +60,7 @@ public sealed class OnlineLeaderboardResultProjector
     /// <summary>排行榜服务（榜单解析 + 可信写入）。</summary>
     private readonly OnlineLeaderboardService _leaderboardService;
 
-    /// <summary>幂等服务（C93 组装）。</summary>
+    /// <summary>幂等服务。</summary>
     private readonly OnlineIdempotencyService _idempotencyService;
 
     /// <summary>
@@ -210,7 +210,7 @@ public sealed class OnlineLeaderboardResultProjector
     }
 
     /// <summary>
-    /// 构造确定性幂等键（同结果同榜同玩家重投同值；对齐 C98 dispatcher 派生先例）。
+    /// 构造确定性幂等键（同结果同榜同玩家重投同值）。
     /// </summary>
     /// <param name="matchResultId">结算结果标识。</param>
     /// <param name="leaderboardId">榜单标识。</param>

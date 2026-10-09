@@ -34,9 +34,9 @@ namespace GameFrameX.Online.GameEvents;
 /// <para>
 /// 维护约束（红线）：三态**互斥且完备**——<see cref="IsAccepted"/> 为真且 <see cref="IsDuplicate"/> 为真
 /// 表示「此前已落档、本次未新增」（重投的正常路径，不是错误），为真且为假表示本次新落档；
-/// <see cref="IsAccepted"/> 为假表示被 L0 拒绝并已进死信，此 <see cref="RejectionReason"/> 必非
+/// <see cref="IsAccepted"/> 为假表示被基础校验拒绝并已进死信，此 <see cref="RejectionReason"/> 必非
 /// <see cref="OnlineGameEventRejectionReason.None"/>——「受理 ⇔ 已入存储」「拒绝 ⇔ 已入死信」两条不变量
-/// 由调用方可直接断言（VC-7.9 判据）。
+/// 由调用方可直接断言。
 /// </para>
 /// </summary>
 public sealed class OnlineGameEventIngestOutcome

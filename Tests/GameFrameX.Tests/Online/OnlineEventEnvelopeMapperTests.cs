@@ -35,7 +35,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// OnlineEventEnvelopeMapper 事件信封双向映射测试（作用域经 Attributes 稳定键承载、CorrelationId 贯穿，VC-1.14）。
+    /// OnlineEventEnvelopeMapper 事件信封双向映射测试（作用域经 Attributes 稳定键承载、CorrelationId 贯穿）。
     /// </summary>
     public class OnlineEventEnvelopeMapperTests
     {

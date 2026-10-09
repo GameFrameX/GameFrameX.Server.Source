@@ -32,12 +32,12 @@ using System.Collections.Generic;
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 重连上下文（vault:C6「重连上下文至少保存 MatchId、PlayerId、ReconnectToken、最后确认序号、
+/// 重连上下文（至少保存 MatchId、PlayerId、ReconnectToken、最后确认序号、
 /// 当前快照、未确认输入和重连截止时间」）。
 /// <para>
 /// 维护约束（红线）：<see cref="LastAcknowledgedSequence"/> 是**客户端自称**的进度，
 /// 服务端只用它计算补发区间——它不参与任何权威判定，也不能让客户端「跳过」未确认的服务器事件：
-/// 若该序号早于事件日志下界，服务端退回全量快照而非假装增量完整（VC-5.6 的序号连续性由此保证）。
+/// 若该序号早于事件日志下界，服务端退回全量快照而非假装增量完整（序号连续性由此保证）。
 /// </para>
 /// </summary>
 public sealed class OnlineMatchReconnectContext

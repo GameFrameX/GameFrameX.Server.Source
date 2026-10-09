@@ -35,7 +35,7 @@ namespace GameFrameX.Online.Leaderboard;
 /// 排行榜查询条目视图（条目 + 按全序计算的名次；名次是查询时事实，不落存储）。
 /// <para>
 /// 维护约束：名次必须由 <see cref="OnlineLeaderboardOrdering"/> 全序计算（并列时以更新时间与玩家标识稳定消解，
-/// 不产生同名次空洞）——Top N / 附近排名 / 分页三个查询口径共用同一全序，保证结果可复算（VC-7.3）。
+/// 不产生同名次空洞）——Top N / 附近排名 / 分页三个查询口径共用同一全序，保证结果可复算。
 /// </para>
 /// </summary>
 public sealed class OnlineLeaderboardEntryView

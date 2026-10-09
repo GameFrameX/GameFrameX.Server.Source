@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Contracts;
 
 /// <summary>
-/// Online 契约实现层的段位化异常（vault:C2 S1.4：Token 契约等返回形 DTO 无法携带错误码时的失败通道）。
+/// Online 契约实现层的段位化异常（Token 契约等返回形 DTO 无法携带错误码时的失败通道）。
 /// <para>
 /// 维护约束：仅用于「契约 DTO 形状承载不了错误码」的场景（如 <c>IOnlineSessionTokenContract</c> 的结果类型）；
 /// 服务层常规业务失败应使用 <see cref="OnlineResult{TData}"/> 段位化返回，不抛本异常。

@@ -50,10 +50,10 @@ public static class SessionManager
     private static readonly ConcurrentDictionary<long, SessionRouteSnapshot> PlayerRouteMap = new();
 
     /// <summary>
-    /// 玩家路由外发同步目标（C143e D21：控制库写入钩子）。
+    /// 玩家路由外发同步目标（控制库写入钩子）。
     /// </summary>
     /// <remarks>
-    /// The outbound player-route sync target (C143e D21). Wired by
+    /// The outbound player-route sync target (control-database write hook). Wired by
     /// <see cref="MongoPlayerRouteResolverBootstrap"/> once the control database
     /// is registered; default is <see cref="NullPlayerRouteSyncTarget.Instance"/>
     /// so the in-process-only launch flow keeps working with zero side effects.
@@ -302,7 +302,7 @@ public static class SessionManager
             _ => SessionRouteSnapshot.Online(playerId, resolvedServerType, resolvedServerId, 1),
             (_, old) => SessionRouteSnapshot.Online(playerId, resolvedServerType, resolvedServerId, old.Version + 1));
 
-        // C143e D21：内存态落定后再调控制库钩子；失败 swallow（warning），主链路不挂。
+        // 内存态落定后再调控制库钩子；失败 swallow（warning），主链路不挂。
         FireSyncUpsert(playerId, resolvedServerType, snapshot);
     }
 
@@ -322,7 +322,7 @@ public static class SessionManager
             _ => SessionRouteSnapshot.Offline(playerId, 1),
             (_, old) => SessionRouteSnapshot.Offline(playerId, old.Version + 1));
 
-        // C143e D21：内存态落定后再调控制库钩子；失败 swallow（warning），主链路不挂。
+        // 内存态落定后再调控制库钩子；失败 swallow（warning），主链路不挂。
         FireSyncDelete(playerId);
     }
 

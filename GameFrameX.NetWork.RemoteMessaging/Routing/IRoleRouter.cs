@@ -31,13 +31,13 @@
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
-/// 跨 Role 消息路由缝（C143c D3）。
+/// 跨 Role 消息路由缝。
 /// </summary>
 /// <remarks>
-/// The cross-role message routing seam (C143c D3).
+/// The cross-role message routing seam.
 /// Implementations apply the three-step decision to every envelope:
 /// target role hosted by this process goes to local in-process delivery (case 1);
-/// everything else is handed to the remote forwarding seam (case 2/3, delivered by C143d).
+/// everything else is handed to the remote forwarding seam (case 2/3).
 /// Business code reaches the process-wide instance through <see cref="RoleRouterHolder"/>.
 /// </remarks>
 public interface IRoleRouter

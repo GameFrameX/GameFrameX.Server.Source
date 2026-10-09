@@ -69,8 +69,8 @@ public sealed class OnlineLeaderboardProjectionFailure
 /// 可信结果投影回执（一次投递对一榜的逐玩家执行汇总）。
 /// <para>
 /// 维护约束：同结果事件重复投递时，首次 <see cref="AppliedCount"/> 计入、后续全部计入
-/// <see cref="ReplayCount"/>（分数不重复累计，VC-7.2）；<see cref="FailedPlayers"/> 是逐玩家隔离结果——
-/// 一个玩家被防刷 / 限流拒绝不影响同结果其余玩家落榜（VC-7.4「正常玩家不受影响」）。
+/// <see cref="ReplayCount"/>（分数不重复累计）；<see cref="FailedPlayers"/> 是逐玩家隔离结果——
+/// 一个玩家被防刷 / 限流拒绝不影响同结果其余玩家落榜（「正常玩家不受影响」）。
 /// </para>
 /// </summary>
 public sealed class OnlineLeaderboardProjectionOutcome

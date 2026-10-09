@@ -10,10 +10,10 @@
 namespace GameFrameX.Discovery.Routing;
 
 /// <summary>
-/// 玩家路由解析抽象（C143e D21）。
+/// 玩家路由解析抽象。
 /// </summary>
 /// <remarks>
-/// The player-route resolver contract (C143e D21). Implementations resolve a
+/// The player-route resolver contract. Implementations resolve a
 /// player's current logical location (which <c>role</c> + numeric <c>serverId</c>
 /// holds them, or that they are offline) by looking through some set of tiers —
 /// typically in-process memory first, then a shared control store. The default

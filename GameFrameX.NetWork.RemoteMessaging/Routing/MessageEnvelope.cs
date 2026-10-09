@@ -31,13 +31,13 @@
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
-/// 跨 Role 路由信封（C143c D3）。
+/// 跨 Role 路由信封。
 /// </summary>
 /// <remarks>
-/// Envelope for cross-role message routing (C143c D3).
+/// Envelope for cross-role message routing.
 /// Carries everything the role routing seam needs to make its three-step decision:
 /// the target role name (process locality check), an optional target instance id
-/// (distinguishes D3 case 2 "known instance" from case 3 "any active instance"),
+/// (distinguishes case 2 "known instance" from case 3 "any active instance"),
 /// the target actor id used by local in-process delivery, and the message payload itself.
 /// The envelope is immutable after construction; routing never mutates it.
 /// </remarks>
@@ -50,12 +50,12 @@ public sealed class MessageEnvelope
     /// Initializes the routing envelope.
     /// An empty or whitespace target role is intentionally not rejected here:
     /// role-name validity is a routing decision, and the router fails it loudly with
-    /// <see cref="RouteNotFoundException"/> instead of a silent fallback (C143c risk mitigation).
+    /// <see cref="RouteNotFoundException"/> instead of a silent fallback (no silent fallback, by design).
     /// </remarks>
     /// <param name="targetRole">目标 Role 的服务器类型名 / The target role server type name</param>
     /// <param name="message">要路由的消息 / The message to route</param>
     /// <param name="targetActorId">本地投递目标 ActorId（跨进程跳时忽略）/ The local delivery target actor id (ignored on remote hops)</param>
-    /// <param name="targetInstanceId">可选的目标实例 Id（非空走 D3 case 2，空走 case 3）/ Optional target instance id (non-null selects D3 case 2, null selects case 3)</param>
+    /// <param name="targetInstanceId">可选的目标实例 Id（非空走 case 2，空走 case 3）/ Optional target instance id (non-null selects case 2, null selects case 3)</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="message"/> 为 null 时抛出 / Thrown when <paramref name="message"/> is null</exception>
     public MessageEnvelope(string targetRole, MessageObject message, long targetActorId = 0, string targetInstanceId = null)
     {
@@ -98,8 +98,8 @@ public sealed class MessageEnvelope
     /// 获取可选的目标实例 Id。
     /// </summary>
     /// <remarks>
-    /// Gets the optional target instance id. A non-null value selects D3 case 2
-    /// (forward to a known instance); <c>null</c> selects D3 case 3 (any active instance of the role).
+    /// Gets the optional target instance id. A non-null value selects case 2
+    /// (forward to a known instance); <c>null</c> selects case 3 (any active instance of the role).
     /// </remarks>
     /// <value>目标实例 Id；未指定时为 <c>null</c> / The target instance id, or <c>null</c> when unspecified</value>
     public string TargetInstanceId { get; }

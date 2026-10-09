@@ -30,12 +30,12 @@
 namespace GameFrameX.Online.Matchmaking;
 
 /// <summary>
-/// 对局列表项（vault:C5 S4.4：可被发现和加入的容器 / 对外展示的房间与对局摘要）。
+/// 对局列表项（可被发现和加入的容器 / 对外展示的房间与对局摘要）。
 /// <para>
 /// 维护约束（红线）：本类型只承载「展示与加入」语义，**不**承担 Party 的成员关系，也**不**承担
-/// Match 的对局状态（vault:C5 概念边界表：Room 不直接承担 Party、Matchmaker 和 Match 的全部职责）。
+/// Match 的对局状态（Room 不直接承担 Party、Matchmaker 和 Match 的全部职责）。
 /// <see cref="Password"/> 属敏感字段：只参与加入判定，绝不出现在查询结果、事件载荷或审计字段中
-/// （沿用 C93 脱敏要求）。
+/// （沿用既有脱敏要求）。
 /// </para>
 /// </summary>
 public sealed class OnlineMatchListing

@@ -31,10 +31,10 @@
 namespace GameFrameX.StartUp.Configuration;
 
 /// <summary>
-/// 启动期配置冲突描述：冲突类型 + 字段名 + 双方来源与值（C143f D4）。
+/// 启动期配置冲突描述：冲突类型 + 字段名 + 双方来源与值。
 /// </summary>
 /// <remarks>
-/// Describes one startup configuration conflict (C143f D4): the conflict kind, the field name,
+/// Describes one startup configuration conflict: the conflict kind, the field name,
 /// and both sources with their values, so the fail-fast error can name the conflicting field
 /// and where each side of the conflict came from.
 /// </remarks>

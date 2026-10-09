@@ -35,7 +35,7 @@ using System.Threading.Tasks;
 using GameFrameX.Online.Contracts;
 
 /// <summary>
-/// 跨服资产投递传输（vault:C4 S3.8：发起服 → 归属服的统一交易投递通道；真实传输由运行时装配提供）。
+/// 跨服资产投递传输（发起服 → 归属服的统一交易投递通道；真实传输由运行时装配提供）。
 /// <para>
 /// 维护约束（红线）：归属服<b>不可达必须以异常表达</b>（路由器以异常为补偿队列入队依据）；
 /// 业务性失败（余额不足等）经 <see cref="OnlineResult{TData}"/> 正常返回，不得入补偿队列；

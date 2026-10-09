@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Events;
 
 /// <summary>
-/// Online 事件审计脱敏器（vault:C2：敏感字段被脱敏，无明文泄露，VC-1.17）。
+/// Online 事件审计脱敏器（敏感字段被脱敏，无明文泄露）。
 /// <para>
 /// 维护约束：敏感键判定按字段名大小写不敏感包含匹配（如 token/secret/password/phone/email）；
 /// 命中键的值整体替换为固定掩码，不保留长度信息；默认敏感键集合的收窄须回安全评审，扩充可随装配追加。

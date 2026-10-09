@@ -47,10 +47,10 @@ public sealed class GameDbStaticStateCollection
 }
 
 /// <summary>
-/// GameDb 多库注册与门面别名行为的单元测试（C143a D20#2）。
+/// GameDb 多库注册与门面别名行为的单元测试。
 /// </summary>
 /// <remarks>
-/// Unit tests for GameDb multi-database registration and facade alias behaviour (C143a D20#2).
+/// Unit tests for GameDb multi-database registration and facade alias behaviour.
 /// Uses <see cref="NoConnectionDatabaseService"/> so no real database connection is required.
 /// </remarks>
 [Collection(nameof(GameDbStaticStateCollection))]
@@ -187,7 +187,7 @@ public class GameDbMultiDatabaseTests : IDisposable
 
     /// <summary>
     /// 按 Launcher 真实顺序双注册（控制库先行）+ SetDefault(业务库)：门面目标必须落在业务库
-    /// （C159 根缺陷回归用例：D20#2 set-once 绑首注册曾使门面静默指向控制库）。
+    /// （set-once 绑首注册曾使门面静默指向控制库的根缺陷回归用例）。
     /// </summary>
     [Fact]
     public async Task SetDefault_AfterLauncherOrderRegistration_RoutesFacadeToBusinessDatabase()

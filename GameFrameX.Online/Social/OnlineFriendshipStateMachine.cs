@@ -30,16 +30,16 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 好友关系状态机（vault:C7 S6.2：合法边固化，非法迁移一律拒绝）。
+/// 好友关系状态机（合法边固化，非法迁移一律拒绝）。
 /// <para>
 /// 维护约束：合法边集中在本类型的常量邻接表中维护，服务层禁止就地拼装迁移条件
-/// （形态对齐 C94 <c>OnlinePresenceStateMachine</c> / C97 <c>OnlinePartyStateMachine</c>）；
+/// （形态对齐 <c>OnlinePresenceStateMachine</c> / <c>OnlinePartyStateMachine</c>）；
 /// 新增边必须先改本表再改调用方，避免「某条路径偷偷放行非法迁移」。
 /// </para>
 /// <para>
 /// 合法边全集：
 /// <c>Requested → Accepted / Rejected / Expired / Removed</c>、
-/// <c>Rejected / Expired / Removed → Requested</c>（重新发起，VC-6.2）、
+/// <c>Rejected / Expired / Removed → Requested</c>（重新发起）、
 /// <c>Accepted → Removed</c>（删除好友）。
 /// 自环（同态迁移）不属于合法边，由调用方按幂等语义单独处理。
 /// </para>

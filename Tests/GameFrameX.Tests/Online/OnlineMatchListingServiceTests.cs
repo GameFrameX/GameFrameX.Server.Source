@@ -37,7 +37,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 对局列表项服务测试（vault:C5 VC-4.14：四策略判定互斥、未知策略一律拒绝、容量与脱敏）。
+    /// 对局列表项服务测试（四策略判定互斥、未知策略一律拒绝、容量与脱敏）。
     /// </summary>
     public class OnlineMatchListingServiceTests
     {
@@ -60,7 +60,7 @@ namespace GameFrameX.Tests.Online
         private const long PlayerThree = 1003;
 
         /// <summary>
-        /// 验证公开列表项接受单人加入（VC-4.14：Public 策略对成员数无额外要求）。
+        /// 验证公开列表项接受单人加入（Public 策略对成员数无额外要求）。
         /// </summary>
         [Fact]
         public async Task JoinAsync_WithPublicPolicy_ShouldAllowSingleMember()
@@ -96,7 +96,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 PartyOnly 策略要求至少两名成员（VC-4.14：单人不得借用组队房间）。
+        /// 验证 PartyOnly 策略要求至少两名成员（单人不得借用组队房间）。
         /// </summary>
         [Fact]
         public async Task JoinAsync_WithPartyOnlyPolicy_ShouldRequireTwoMembers()
@@ -119,7 +119,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 InviteOnly 策略要求全部成员都在邀请白名单内（VC-4.14）。
+        /// 验证 InviteOnly 策略要求全部成员都在邀请白名单内。
         /// </summary>
         [Fact]
         public async Task JoinAsync_WithInviteOnlyPolicy_ShouldRequireWhitelist()
@@ -141,7 +141,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 Password 策略下密码不匹配被拒、匹配则放行（VC-4.14）。
+        /// 验证 Password 策略下密码不匹配被拒、匹配则放行。
         /// </summary>
         [Fact]
         public async Task JoinAsync_WithPasswordPolicy_ShouldVerifyPassword()
@@ -160,7 +160,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证未登记的策略取值一律拒绝，不做「未知即放行」的兜底（VC-4.14 红线）。
+        /// 验证未登记的策略取值一律拒绝，不做「未知即放行」的兜底（红线）。
         /// </summary>
         [Fact]
         public async Task JoinAsync_WithUnknownPolicy_ShouldBeRejected()

@@ -34,7 +34,7 @@ using Xunit;
 namespace GameFrameX.Tests.StartUp;
 
 /// <summary>
-/// AllInOneOptions 多 Role / All-in-One CLI 解析测试（C143b D2）。
+/// AllInOneOptions 多 Role / All-in-One CLI 解析测试。
 /// </summary>
 public class AllInOneOptionsTests
 {

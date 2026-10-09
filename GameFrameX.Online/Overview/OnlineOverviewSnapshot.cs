@@ -36,11 +36,11 @@ using GameFrameX.Online.Session;
 namespace GameFrameX.Online.Overview;
 
 /// <summary>
-/// 在线总览只读快照（vault:C9 S8.1：Admin 在线总览的数据面，回答「当前有多少人在线/多少局/队列多长/谁在重连」）。
+/// 在线总览只读快照（Admin 在线总览的数据面，回答「当前有多少人在线/多少局/队列多长/谁在重连」）。
 /// <para>
 /// 维护约束（红线）：
 /// ① **运行态快照而非权威状态**——数值由运行态存储现场聚合，随时会变，消费方不得缓存后当作权威状态使用；
-/// ② 数据源唯一 = Online 玩家侧存储；**管理员连接不计入任何计数**（vault:C9 X6：管理员在线链路不是玩家在线数据源）；
+/// ② 数据源唯一 = Online 玩家侧存储；**管理员连接不计入任何计数**（管理员在线链路不是玩家在线数据源）；
 /// ③ 所有计数按作用域三键 (TenantId, AppId, ServerId) 过滤，跨作用域读数与不存在同构（反预言）。
 /// </para>
 /// <para>
@@ -113,7 +113,7 @@ public sealed class OnlineOverviewSnapshot
     }
 
     /// <summary>
-    /// 获取或设置非终态队伍数（解散/过期/离队/取消/失败均为终态，见 C97 <see cref="OnlinePartyStateMachine.IsTerminal"/>）。
+    /// 获取或设置非终态队伍数（解散/过期/离队/取消/失败均为终态，见 <see cref="OnlinePartyStateMachine.IsTerminal"/>）。
     /// </summary>
     public int PartyCount
     {

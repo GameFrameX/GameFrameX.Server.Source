@@ -41,7 +41,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 内存存储与服务并发语义测试（vault:C3 VC-2.2/2.10：并发轮换与并发 CAS 恰一成功）。
+    /// 内存存储与服务并发语义测试（并发轮换与并发 CAS 恰一成功）。
     /// </summary>
     public class OnlineInMemoryStoreConcurrencyTests
     {
@@ -58,7 +58,7 @@ namespace GameFrameX.Tests.Online
         private const long PlayerId = 1001;
 
         /// <summary>
-        /// 验证并发刷新同一 Token 恰一成功（原子轮换，VC-2.2 的并发面）。
+        /// 验证并发刷新同一 Token 恰一成功（原子轮换的并发面）。
         /// </summary>
         [Fact]
         public async Task ConcurrentRefresh_ShouldAllowExactlyOneWinner()
@@ -96,7 +96,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证并发创建同键条目恰一成功（存储层 CAS，VC-2.10 的并发面）。
+        /// 验证并发创建同键条目恰一成功（存储层 CAS 的并发面）。
         /// </summary>
         [Fact]
         public async Task ConcurrentCreateSameKey_ShouldAllowExactlyOneWinner()

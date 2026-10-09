@@ -589,7 +589,7 @@ public interface IDatabaseService
     /// and the returned list contains exactly the states of the acknowledged batches. Unlike
     /// <see cref="AddOrUpdateListAsync{TState}(IEnumerable{TState})"/> this contract does NOT touch
     /// state timestamps or <c>UpdateCount</c> — it persists the states exactly as handed in
-    /// (C159: migrated verbatim from <c>StateComponent.ExecuteBatchWritesAsync</c> to keep the
+    /// (migrated verbatim from <c>StateComponent.ExecuteBatchWritesAsync</c> to keep the
     /// shutdown-save path behaviour-identical).
     /// </remarks>
     /// <param name="states">待保存的状态集合 / The states to save</param>

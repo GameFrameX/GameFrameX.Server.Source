@@ -32,7 +32,7 @@ namespace GameFrameX.Online.Social;
 using GameFrameX.Online.Contracts;
 
 /// <summary>
-/// 聊天历史分页结果（vault:C7 S6.6 / vault:C2 游标契约：VC-6.10）。
+/// 聊天历史分页结果（游标契约）。
 /// <para>
 /// 维护约束：<see cref="PageCursor"/> 是服务端按「稳定排序键 + 偏移」编码的**不透明令牌**，
 /// 客户端只回传不解释；翻页顺序固定为 <c>(SentAtTime, Sequence)</c> 升序，

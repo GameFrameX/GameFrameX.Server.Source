@@ -33,14 +33,14 @@ using GameFrameX.Online.Matchmaking;
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 对局聚合根（vault:C6「Match Actor 持有对局运行状态」）。
+/// 对局聚合根（Match Actor 持有对局运行状态）。
 /// <para>
 /// 维护约束（红线）：本类型是**服务端权威状态**的唯一载体，只能由 <see cref="OnlineMatchActor"/> 改写——
-/// 客户端提交的是 <see cref="OnlineMatchInput"/>（意图），胜负与奖励从不来自客户端（VC-5.2）。
+/// 客户端提交的是 <see cref="OnlineMatchInput"/>（意图），胜负与奖励从不来自客户端。
 /// </para>
 /// <para>
 /// <see cref="Version"/> 是乐观并发标记：每次成功改写自增，存储层按期望版本做 CAS
-/// （同一对局被两个 Actor 同时处理时，后写者必然失败，避免串局，VC-5.13）。
+/// （同一对局被两个 Actor 同时处理时，后写者必然失败，避免串局）。
 /// <see cref="Events"/> 是有界事件日志，仅供重连增量补发读取，超出上限后最旧事件被丢弃。
 /// </para>
 /// </summary>
@@ -83,7 +83,7 @@ public sealed class OnlineMatch
     }
 
     /// <summary>
-    /// 获取或设置来源分配标识（vault:C5 上游，创建后不再改写）。
+    /// 获取或设置来源分配标识（来自上游匹配分配，创建后不再改写）。
     /// </summary>
     public string AssignmentId
     {

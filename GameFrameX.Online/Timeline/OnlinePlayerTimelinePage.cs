@@ -35,7 +35,7 @@ namespace GameFrameX.Online.Timeline;
 /// <summary>
 /// 玩家时间线分页结果。
 /// <para>
-/// 维护约束：翻页语义沿用 C93 <see cref="OnlinePageCursor"/>——游标按「发生时刻倒序 → 行标识序数升序」的全序编码，
+/// 维护约束：翻页语义沿用 <see cref="OnlinePageCursor"/>——游标按「发生时刻倒序 → 行标识序数升序」的全序编码，
 /// 翻页期间新写入的行不会造成重复或漏项（偏移分页做不到这一点，故不提供）。
 /// 末页 <see cref="Page"/> 的游标为空字符串且 HasMore 为 false。
 /// </para>

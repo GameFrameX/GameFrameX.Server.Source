@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Identity;
 
 /// <summary>
-/// 游戏账号生命周期状态（vault:C3 S2.2：注销与数据保留必须是显式操作）。
+/// 游戏账号生命周期状态（注销与数据保留必须是显式操作）。
 /// <para>
 /// 维护约束：仅 <see cref="Active"/> 账号可登录与签发会话；<see cref="Merged"/> 账号的身份与玩家
 /// 已迁移至目标账号，原账号只读保留；<see cref="Deactivated"/> 账号在数据保留期内不可登录、

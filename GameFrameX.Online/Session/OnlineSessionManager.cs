@@ -35,12 +35,12 @@ using GameFrameX.Online.Contracts;
 using GameFrameX.Online.Events;
 
 /// <summary>
-/// 会话生命周期管理器（vault:C3 S2.4：Session 状态推进的单写者——本类之外不得直改
+/// 会话生命周期管理器（Session 状态推进的单写者——本类之外不得直改
 /// <see cref="OnlineSession.State"/>（Token 签发/轮换/终态化归 <see cref="OnlineSessionTokenService"/>））。
 /// <para>
 /// 维护约束：状态推进严格按 Created → Authenticated → Connected → Active 主线，断线入
 /// <see cref="OnlineSessionState.Reconnecting"/>（带重连窗口），超窗/登出/服务端关闭转终态——
-/// 无永久 Reconnecting（VC-2.15）；每次推进发布对应会话事件（VC-2.16）；
+/// 无永久 Reconnecting；每次推进发布对应会话事件；
 /// 终态不可逆，终态后的一切操作映射 <see cref="OnlineErrorCode.SessionInvalid"/>。
 /// </para>
 /// </summary>
@@ -347,7 +347,7 @@ public sealed class OnlineSessionManager
 
     /// <summary>
     /// 清理重连窗口超时的会话（Reconnecting 超窗 → Closed/<see cref="OnlineSessionCloseReason.ReconnectWindowExpired"/>；
-    /// VC-2.15：无永久 Reconnecting）。
+    /// 无永久 Reconnecting）。
     /// </summary>
     /// <param name="nowUnixMilliseconds">判定基准时刻（Unix 毫秒；0 = 当前时刻，测试可注入）。</param>
     /// <param name="cancellationToken">取消令牌。</param>

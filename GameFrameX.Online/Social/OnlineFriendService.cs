@@ -36,14 +36,14 @@ using GameFrameX.Online.Events;
 using GameFrameX.Online.Scope;
 
 /// <summary>
-/// 好友服务（vault:C7 S6.2：好友关系生命周期的唯一写者）。
+/// 好友服务（好友关系生命周期的唯一写者）。
 /// <para>
 /// 维护约束（红线）：
 /// ① **同一对玩家在任意时刻只有一条关系记录、一个状态**——由存储层的无向对唯一键保证，
 /// 服务层不得先查后建（那会退化成「查完再写」的竞态），重复请求一律走
-/// <see cref="IOnlineFriendStore.SaveIfAbsentAsync"/> 收敛（VC-6.1）；
+/// <see cref="IOnlineFriendStore.SaveIfAbsentAsync"/> 收敛；
 /// ② 状态迁移唯一判据是 <see cref="OnlineFriendshipStateMachine.TryTransition"/>，
-/// 表外迁移映射 <see cref="OnlineErrorCode.StateOperationForbidden"/>（VC-6.2）；
+/// 表外迁移映射 <see cref="OnlineErrorCode.StateOperationForbidden"/>；
 /// ③ 答复权限只属于**被请求方**（<see cref="OnlineFriendship.AddresseeId"/>），非被请求方一律
 /// <see cref="OnlineErrorCode.ResourceNotFound"/>（反预言，不泄露他人关系存在性）；
 /// ④ 反向重复请求**不自动接受**——契约未定义「互相请求即成为好友」的语义，本服务不发明行为，
@@ -147,7 +147,7 @@ public sealed class OnlineFriendService
     /// <summary>
     /// 发起好友请求（重复请求幂等：返回既有关系而非新建，也不报错）。
     /// <para>
-    /// 收敛语义（VC-6.1 / VC-6.2）：
+    /// 收敛语义：
     /// ① 无记录 → 创建待答复请求（并发连发时只有第一条创建成功，其余拿到同一条）；
     /// ② 已有待答复请求 → 直接返回该请求（无论方向，避免「同一对玩家两条待答复」）；
     /// ③ 已是好友 → 返回既有关系（幂等，不降级为待答复）；
@@ -241,7 +241,7 @@ public sealed class OnlineFriendService
     }
 
     /// <summary>
-    /// 删除好友（关系双方均可发起；删除后该对玩家可重新添加，VC-6.2）。
+    /// 删除好友（关系双方均可发起；删除后该对玩家可重新添加）。
     /// </summary>
     /// <param name="scope">生效作用域（必须含玩家主体位）。</param>
     /// <param name="targetPlayerId">对方玩家标识。</param>
@@ -630,7 +630,7 @@ public sealed class OnlineFriendService
     {
         var targetPlayerId = existing.OtherOf(scope.PlayerId);
 
-        // 待答复 / 已是好友：直接返回既有状态（VC-6.1「其余返回已有状态」）。
+        // 待答复 / 已是好友：直接返回既有状态（「其余返回已有状态」）。
         if (existing.State == OnlineFriendshipState.Requested || OnlineFriendshipStateMachine.IsEstablished(existing.State))
         {
             return OnlineResult<OnlineFriendship>.Ok(existing);

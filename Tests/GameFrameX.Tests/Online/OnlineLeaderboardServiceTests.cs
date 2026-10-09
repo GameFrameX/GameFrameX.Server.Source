@@ -38,7 +38,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 排行榜组件测试（vault:C8 S7.1 / VC-7.3 / VC-7.14 服务端半边）：
+    /// 排行榜组件测试（服务端半边）：
     /// 创建、累计策略、Top N 全序、附近排名边界、游标分页稳定性、读缓存、跨作用域反预言。
     /// </summary>
     public class OnlineLeaderboardServiceTests
@@ -52,7 +52,7 @@ namespace GameFrameX.Tests.Online
         /// <summary>App 标识。</summary>
         private const long AppId = 10;
 
-        /// <summary>另一 App 标识（跨 App 用例，VC-7.14）。</summary>
+        /// <summary>另一 App 标识（跨 App 用例）。</summary>
         private const long OtherAppId = 11;
 
         /// <summary>区服标识。</summary>
@@ -136,7 +136,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.3：降序榜 Top N 全序正确——同分先更新者靠前，再按玩家标识消解；名次无并列空洞。
+        /// 验证降序榜 Top N 全序正确——同分先更新者靠前，再按玩家标识消解；名次无并列空洞。
         /// </summary>
         [Fact]
         public async Task GetTopAsync_Descending_ShouldOrderWithTieBreak()
@@ -160,7 +160,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.3：升序榜（用时类）分数低者靠前。
+        /// 验证升序榜（用时类）分数低者靠前。
         /// </summary>
         [Fact]
         public async Task GetTopAsync_Ascending_ShouldOrderLowScoreFirst()
@@ -176,7 +176,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.3 / VC-1.12：keyset 游标翻页全量无重复无漏项；翻页期间插入更高名次条目不影响后续页。
+        /// 验证 keyset 游标翻页全量无重复无漏项；翻页期间插入更高名次条目不影响后续页。
         /// </summary>
         [Fact]
         public async Task GetTopAsync_PagingCursor_ShouldBeStableAcrossInserts()
@@ -228,7 +228,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.3：附近排名窗口连续含本人；榜首 / 榜尾边界截断；未上榜玩家拒绝。
+        /// 验证附近排名窗口连续含本人；榜首 / 榜尾边界截断；未上榜玩家拒绝。
         /// </summary>
         [Fact]
         public async Task GetAroundPlayerAsync_ShouldReturnContiguousWindow()
@@ -291,7 +291,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.14：跨 App / 跨租户读榜与榜单不存在同构拒绝（反预言，不泄露存在性）。
+        /// 验证跨 App / 跨租户读榜与榜单不存在同构拒绝（反预言，不泄露存在性）。
         /// </summary>
         [Fact]
         public async Task CrossScopeRead_ShouldBeResourceNotFound()

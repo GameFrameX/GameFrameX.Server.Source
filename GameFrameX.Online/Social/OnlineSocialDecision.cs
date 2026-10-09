@@ -32,10 +32,10 @@ namespace GameFrameX.Online.Social;
 using GameFrameX.Online.Contracts;
 
 /// <summary>
-/// 社交互动裁决结果（vault:C7 S6.3：三通路共用的「是否允许 + 拒绝码 + 拒绝原因」）。
+/// 社交互动裁决结果（三通路共用的「是否允许 + 拒绝码 + 拒绝原因」）。
 /// <para>
 /// 维护约束：拒绝码必须取自冻结的 <see cref="OnlineErrorCode"/> 既有段位，
-/// **不得为社交裁决新增错误码成员**（VC-1.11 守护测试锁定 23 成员同构）；
+/// **不得为社交裁决新增错误码成员**（守护测试锁定 23 成员同构）；
 /// 允许时 <see cref="Code"/> 恒为 <see cref="OnlineErrorCode.None"/>。
 /// <see cref="Reason"/> 是服务端内部语义，用于日志与 Admin 追溯，不直接透出客户端行为差异
 /// （「被屏蔽」与「被禁言」在客户端提示上可区分，但不得暴露是**谁**屏蔽了你——屏蔽是单向私密事实）。

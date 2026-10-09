@@ -43,7 +43,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 资产查询服务测试（vault:C4 VC-3.14：余额/库存/流水分页/交易反查；
+    /// 资产查询服务测试（余额/库存/流水分页/交易反查；
     /// 跨作用域查询与不存在同构 ResourceNotFound；游标与页距参数校验）。
     /// </summary>
     public class OnlineAssetQueryServiceTests
@@ -195,7 +195,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-3.14 交易反查：来源/原因/单号/操作者/前后值全字段可见。
+        /// 验证交易反查：来源/原因/单号/操作者/前后值全字段可见。
         /// </summary>
         [Fact]
         public async Task GetTransactionDetailAsync_ReturnsFullAuditFields()

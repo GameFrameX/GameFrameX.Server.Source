@@ -41,22 +41,22 @@ using GameFrameX.Online.Scope;
 namespace GameFrameX.Online.Tournament;
 
 /// <summary>
-/// 赛事生命周期服务（vault:C8 S7.4：创建、报名、资格条件、开始/结束时间、关联排行榜、结算、奖励、结果查询）。
+/// 赛事生命周期服务（创建、报名、资格条件、开始/结束时间、关联排行榜、结算、奖励、结果查询）。
 /// <para>
 /// 维护约束（红线）：
 /// (1) **只读榜单**——赛事从关联榜单读取报名资格与结束成绩，但**从不写入、也从不重置**该榜：
-/// 榜单的写入归 C102 可信链路、重置归 C103 赛季；同一榜单可被赛季与赛事共用，赛事若也重置会清空赛季数据；
+/// 榜单的写入归可信链路、重置归赛季域；同一榜单可被赛季与赛事共用，赛事若也重置会清空赛季数据；
 /// (2) **成绩先行**——结束赛事时先把关联榜单的全序条目冻结为赛事成绩、再推进状态；冻结一经落档即与榜单后续
 /// 变化无关（结果查询的审计依据）；
 /// (3) **结算只读冻结成绩**——结算依据是冻结成绩而非实时榜单，成绩缺失一律拒绝结算，不回落、不降级；
-/// (4) **结算幂等**——逐玩家经 C95 <see cref="OnlineGrantService"/> 发放，幂等键与业务单号确定性派生
+/// (4) **结算幂等**——逐玩家经 <see cref="OnlineGrantService"/> 发放，幂等键与业务单号确定性派生
 /// <c>tournament-{TournamentId}-{PlayerId}</c>，重复触发命中回放返回首次结果，不重复发奖；
 /// (5) **逐玩家失败隔离**——单玩家发放失败只计入回执明细，不阻塞其余玩家；仅当无失败玩家才把赛事推进到
 /// 结算完成态（部分发奖不得标记完成）；
-/// (6) 跨 App / 跨租户读写与「赛事不存在」同构返回 ResourceNotFound（反预言，对齐 C94/C99/C102/C103 先例）。
+/// (6) 跨 App / 跨租户读写与「赛事不存在」同构返回 ResourceNotFound（反预言，对齐既有先例）。
 /// </para>
 /// <para>
-/// 运行时边界（X4）：<c>StartTime</c>/<c>EndTime</c> 只是排期元数据，到点驱动 <see cref="StartAsync"/> /
+/// 运行时边界：<c>StartTime</c>/<c>EndTime</c> 只是排期元数据，到点驱动 <see cref="StartAsync"/> /
 /// <see cref="EndAsync"/> 的调度器、以及持久化与跨实例协调，均归 Server 仓运行时装配。
 /// </para>
 /// </summary>
@@ -65,7 +65,7 @@ public sealed class OnlineTournamentService
     /// <summary>
     /// 赛事奖励发放使用的区服位（恒为 0）：赛事与榜单同为 (TenantId, AppId) 作用域，**没有归属服**。
     /// 若改取调用方作用域的区服，同一赛事从不同区服触发结算会落到不同的幂等绑定键上，重试将不再回放首次结果
-    /// 而重复发奖（承 C103 R8 结论）。
+    /// 而重复发奖。
     /// </summary>
     private const long TournamentScopeServerId = 0;
 
@@ -75,7 +75,7 @@ public sealed class OnlineTournamentService
     /// <summary>排行榜服务（榜单解析、报名资格读取、结束成绩读取）。</summary>
     private readonly OnlineLeaderboardService _leaderboardService;
 
-    /// <summary>统一资产入口（赛事奖励唯一发放通道，X5）。</summary>
+    /// <summary>统一资产入口（赛事奖励唯一发放通道）。</summary>
     private readonly OnlineGrantService _grantService;
 
     /// <summary>事件发布器（可空；未接线时不发事件）。</summary>
@@ -201,10 +201,10 @@ public sealed class OnlineTournamentService
     }
 
     /// <summary>
-    /// 报名参赛（vault:C8 VC-7.8：资格条件判定 + 报名幂等）。
+    /// 报名参赛（资格条件判定 + 报名幂等）。
     /// <para>
     /// 系统级失败（赛事不存在 / 状态不允许报名 / 关联榜单不可读）走失败分支；**资格不满足是业务结论**，
-    /// 以成功回执携带 <see cref="OnlineTournamentRegistrationOutcome.Rejection"/> 返回（对齐 C99
+    /// 以成功回执携带 <see cref="OnlineTournamentRegistrationOutcome.Rejection"/> 返回（对齐
     /// <c>OnlineSocialDecision</c>「允许 + 拒绝码 + 原因」先例，且不占用冻结的 <c>OnlineErrorCode</c>）。
     /// 重复报名返回既有登记并置 <see cref="OnlineTournamentRegistrationOutcome.IsReplay"/>，不新增登记、不重发事件。
     /// </para>
@@ -293,11 +293,11 @@ public sealed class OnlineTournamentService
     }
 
     /// <summary>
-    /// 结束赛事并冻结成绩（vault:C8 S7.4 核心：报名即参赛，成绩在结束时从关联榜单一次性冻结）。
+    /// 结束赛事并冻结成绩（核心语义：报名即参赛，成绩在结束时从关联榜单一次性冻结）。
     /// <para>
     /// 冻结范围**限于已报名参赛者**：未报名的玩家即使在该共用榜单上名列前茅也不进入赛事成绩——
-    /// 否则「报名」对奖励发放没有任何约束力。名次按 C102 全序（分数按榜向 → 更新时间 → 玩家标识）
-    /// 在参赛者集合内重新编号 1..N，使赛事名次是赛事内部的事实。**本流程不修改关联榜单**（只读，P0-1）。
+    /// 否则「报名」对奖励发放没有任何约束力。名次按榜单全序（分数按榜向 → 更新时间 → 玩家标识）
+    /// 在参赛者集合内重新编号 1..N，使赛事名次是赛事内部的事实。**本流程不修改关联榜单**（只读）。
     /// </para>
     /// </summary>
     /// <param name="scope">生效作用域（跨作用域与不存在同构拒绝）。</param>
@@ -394,7 +394,7 @@ public sealed class OnlineTournamentService
     /// 重复触发已结算赛事时逐玩家命中幂等回放（返回首次结果，不重复发放）。只要仍有失败玩家，赛事就停留在
     /// <see cref="OnlineTournamentState.Ended"/>，由运维重试（部分发奖不得标记完成）；重试时已发放玩家必定回放、
     /// 不会被重复发放，此前失败的玩家能否补发取决于宿主的幂等失败重放策略
-    /// （与 C103 同款装配依赖：默认 <c>ReplayError</c> 下失败键在保留期内原样回放）。
+    /// （同款装配依赖：默认 <c>ReplayError</c> 下失败键在保留期内原样回放）。
     /// </para>
     /// </summary>
     /// <param name="scope">生效作用域（跨作用域与不存在同构拒绝）。</param>
@@ -550,7 +550,7 @@ public sealed class OnlineTournamentService
     }
 
     /// <summary>
-    /// 以榜单全序条目构造赛事冻结成绩（**仅纳入已报名参赛者**，名次在参赛者集合内按 C102 全序重新编号 1..N）。
+    /// 以榜单全序条目构造赛事冻结成绩（**仅纳入已报名参赛者**，名次在参赛者集合内按榜单全序重新编号 1..N）。
     /// </summary>
     /// <param name="tournament">赛事定义。</param>
     /// <param name="entries">结束时读取的榜单全序条目。</param>

@@ -32,7 +32,7 @@ namespace GameFrameX.Online.Social;
 /// <summary>
 /// 举报提交载荷（<see cref="OnlineSocialDecisionService.SubmitReportAsync"/> 除作用域外的全部提交维度）。
 /// <para>
-/// 维护约束：证据字段照单全收（VC-6.16 证据链的写入点）；案件标识由服务生成，
+/// 维护约束：证据字段照单全收（证据链的写入点）；案件标识由服务生成，
 /// 调用方不可指定。聊天场景（<see cref="OnlineReportScene.Chat"/>）必须携带 <see cref="ChannelId"/>。
 /// </para>
 /// </summary>

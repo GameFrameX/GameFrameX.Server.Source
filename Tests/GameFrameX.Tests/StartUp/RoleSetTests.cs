@@ -34,7 +34,7 @@ using Xunit;
 namespace GameFrameX.Tests.StartUp;
 
 /// <summary>
-/// RoleSet 不可变快照测试（C143b D1）。
+/// RoleSet 不可变快照测试。
 /// </summary>
 public class RoleSetTests
 {

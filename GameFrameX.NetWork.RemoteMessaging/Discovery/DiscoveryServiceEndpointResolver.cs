@@ -31,10 +31,10 @@
 namespace GameFrameX.NetWork.RemoteMessaging.Discovery;
 
 /// <summary>
-/// 基于发现层的动态服务端点解析器（C143d D15）。
+/// 基于发现层的动态服务端点解析器。
 /// </summary>
 /// <remarks>
-/// The dynamic IServiceEndpointResolver backed by the discovery layer (C143d D15).
+/// The dynamic IServiceEndpointResolver backed by the discovery layer.
 /// <see cref="AspireEndpointResolver"/> stays as the static-bootstrap implementation
 /// (frozen, not removed); this counterpart resolves a service name — which in the
 /// dynamic topology is the role name — to the advertise endpoint of one of its
@@ -73,7 +73,7 @@ internal sealed class DiscoveryServiceEndpointResolver : IServiceEndpointResolve
     /// <remarks>
     /// Resolves the TCP endpoint for the given service (role) name from the Active
     /// instances of the dual-view table. Same deterministic first-choice policy as
-    /// the router's D3 case 3 (and the same ConsistentHashServerInstanceSelector
+    /// the router's case 3 (any active instance; and the same ConsistentHashServerInstanceSelector
     /// upgrade path); no Active instance resolves to an empty string, matching the
     /// Aspire resolver contract.
     /// </remarks>

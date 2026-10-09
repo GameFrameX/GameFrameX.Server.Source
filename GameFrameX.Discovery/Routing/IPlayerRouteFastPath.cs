@@ -10,10 +10,10 @@
 namespace GameFrameX.Discovery.Routing;
 
 /// <summary>
-/// 玩家路由 Tier 1 快路径提供方（C143e D21）。
+/// 玩家路由 Tier 1 快路径提供方。
 /// </summary>
 /// <remarks>
-/// The Tier 1 player-route fast-path provider (C143e D21). The default
+/// The Tier 1 player-route fast-path provider. The default
 /// implementation in <c>GameFrameX.Apps</c> is the in-process
 /// <c>SessionManager.PlayerRouteMap</c>; it is injected into
 /// the Mongo/PostgreSql player-route resolvers at launch time so the resolver does

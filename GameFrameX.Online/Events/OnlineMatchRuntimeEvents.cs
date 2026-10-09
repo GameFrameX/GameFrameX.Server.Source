@@ -36,12 +36,12 @@ using GameFrameX.Online.Match;
 namespace GameFrameX.Online.Events;
 
 /// <summary>
-/// 对局域事件工厂（vault:C6 S5.8「只有可信的服务端结果事件才能触发 Wallet、Reward、Leaderboard 和 Notification」）。
+/// 对局域事件工厂（「只有可信的服务端结果事件才能触发 Wallet、Reward、Leaderboard 和 Notification」）。
 /// <para>
 /// 维护约束（红线）：事件是**事实不是状态**——消费端不得回写对局；载荷只放标识与状态名，
-/// 不放玩法私有状态（沿用 C93 脱敏要求，玩法状态由快照/增量按序号补发，不经事件总线）。
-/// <see cref="MatchSettled"/> 是全链路唯一的可信结果来源：排行榜（阶段 7）与通知（阶段 6）
-/// 只消费它，绝不消费客户端上报的任何结果（VC-5.2 / VC-5.9）。
+/// 不放玩法私有状态（沿用既有脱敏要求，玩法状态由快照/增量按序号补发，不经事件总线）。
+/// <see cref="MatchSettled"/> 是全链路唯一的可信结果来源：排行榜与通知
+/// 只消费它，绝不消费客户端上报的任何结果。
 /// </para>
 /// </summary>
 public static class OnlineMatchRuntimeEvents

@@ -14,10 +14,10 @@
 namespace GameFrameX.Discovery.Routing;
 
 /// <summary>
-/// 玩家路由写入侧参数对象（C154）：一条待同步的玩家路由记录。
+/// 玩家路由写入侧参数对象：一条待同步的玩家路由记录。
 /// </summary>
 /// <remarks>
-/// Parameter object for the player-route write side (C154): one player-route record to sync.
+/// Parameter object for the player-route write side: one player-route record to sync.
 /// Replaces the former four-primitive <c>UpsertAsync(playerId, instanceId, role, version)</c>
 /// signature so the <c>player_route</c> fields can evolve without breaking the interface,
 /// its implementations, or callers; the record lives in RemoteMessaging to keep

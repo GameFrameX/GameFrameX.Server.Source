@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Matchmaking;
 
 /// <summary>
-/// 对局列表项发现查询（vault:C5 S4.4：标签、容量与状态查询）。
+/// 对局列表项发现查询（标签、容量与状态查询）。
 /// <para>
 /// 维护约束：各过滤项为 null 表示「不过滤」，不做隐式默认值填充——例如不设 <c>Mode</c> 即跨模式返回，
 /// 而不是默认匹配 0。结果条数由 <see cref="Limit"/> 封顶，防止发现接口被当作全量导出使用。

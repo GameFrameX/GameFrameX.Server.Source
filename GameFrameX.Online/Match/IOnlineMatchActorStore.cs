@@ -34,15 +34,15 @@ using System.Threading.Tasks;
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 对局 Actor 存储（vault:C6 S5.1 Actor 所有权与清理策略的持久化面）。
+/// 对局 Actor 存储（Actor 所有权与清理策略的持久化面）。
 /// <para>
 /// 维护约束（红线）：<see cref="UpdateAsync"/> 是**唯一**允许改写对局状态的入口，且必须提供
 /// 「期望版本」——版本不匹配即整体失败并返回 null，绝不部分应用。这是「同一对局不被两个 Actor
-/// 同时推进」（VC-5.13 无串局）的实现依据：谁先写到新版本谁生效，另一方的 CAS 必然失败。
+/// 同时推进」（无串局）的实现依据：谁先写到新版本谁生效，另一方的 CAS 必然失败。
 /// </para>
 /// <para>
 /// 存储实现负责防御性深拷贝，且**不得**在 CAS 失败时留下任何写入痕迹。
-/// 本阶段部署在同一进程内，<see cref="DeleteAsync"/> 即 Actor 释放（VC-5.11 无僵尸 Match）。
+/// 本阶段部署在同一进程内，<see cref="DeleteAsync"/> 即 Actor 释放（无僵尸 Match）。
 /// </para>
 /// </summary>
 public interface IOnlineMatchActorStore

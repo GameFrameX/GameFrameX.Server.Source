@@ -31,13 +31,13 @@
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
-/// 跨进程 Role 转发占位实现（C143c → C143d）。
+/// 跨进程 Role 转发占位实现。
 /// </summary>
 /// <remarks>
-/// Placeholder implementation of the D3 case 2/3 remote forwarding seam.
+/// Placeholder implementation of the case 2/3 remote forwarding seam.
 /// Every forward attempt throws <see cref="NotImplementedException"/> on purpose:
 /// real forwarding needs the endpoint reachability table and ForwardToRemoteServerAsync,
-/// which are delivered by change C143d. Keeping the placeholder as the production default
+/// which are delivered by the discovery-backed router. Keeping the placeholder as the production default
 /// makes premature cross-process routing fail loudly at the seam instead of silently
 /// dead-lettering messages. Topology equivalence tests replace it with a loopback forwarder.
 /// </remarks>
@@ -53,12 +53,12 @@ public sealed class RemoteRoleRouter : IRemoteRoleRouter
     /// <param name="cancellationToken">取消操作的令牌 / The cancellation token</param>
     /// <returns>恒不返回 / Never returns</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="envelope"/> 为 null 时抛出 / Thrown when <paramref name="envelope"/> is null</exception>
-    /// <exception cref="NotImplementedException">恒抛出，等待 C143d 实现可达表转发 / Always thrown until C143d implements reachability-table forwarding</exception>
+    /// <exception cref="NotImplementedException">恒抛出，等待可达表转发实现 / Always thrown until reachability-table forwarding is implemented</exception>
     public Task<RoleRouteDelivery> ForwardAsync(MessageEnvelope envelope, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(envelope, nameof(envelope));
 
         throw new NotImplementedException(
-            $"Remote role forwarding for target role '{envelope.TargetRole}' (D3 case 2/3) is not implemented yet; it arrives with change C143d together with the endpoint reachability table.");
+            $"Remote role forwarding for target role '{envelope.TargetRole}' is not implemented yet; it arrives together with the endpoint reachability table.");
     }
 }

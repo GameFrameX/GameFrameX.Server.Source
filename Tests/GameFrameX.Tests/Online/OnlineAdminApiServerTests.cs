@@ -36,7 +36,7 @@ namespace GameFrameX.Tests.Online
 {
     /// <summary>
     /// Online admin HTTP 服务冒烟测试（真实 Kestrel 监听：路由前缀、POST 往返、双层信封与优雅停机；
-    /// 变更 C122 X4 —— Admin 侧 IOnlineServerClient 寻址 <c>{HttpManageUrl}/online/admin/{action}</c>）。
+    /// Admin 侧 IOnlineServerClient 寻址 <c>{HttpManageUrl}/online/admin/{action}</c>）。
     /// <para>端口 28190 为测试专用（避开默认 28090，防本机 Game 服干扰）。</para>
     /// </summary>
     public class OnlineAdminApiServerTests : IDisposable

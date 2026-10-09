@@ -30,10 +30,10 @@
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 重连令牌（vault:C6 S5.6「Reconnect Token」）。
+/// 重连令牌（Reconnect Token）。
 /// <para>
 /// 维护约束（红线）：令牌必须在**服务端**签发且与 (MatchId, PlayerId) 绑定——
-/// 客户端自带的任何身份声明都不足以重新进入对局（VC-5.2 的越权变体：伪造重连）。
+/// 客户端自带的任何身份声明都不足以重新进入对局（越权变体：伪造重连）。
 /// 令牌一次性：重连成功后成员上的令牌即被清除，旧令牌再次使用会被拒绝。
 /// </para>
 /// </summary>

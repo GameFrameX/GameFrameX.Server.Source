@@ -30,11 +30,11 @@
 namespace GameFrameX.Online.Contracts;
 
 /// <summary>
-/// Online 分页游标契约（vault:C2 S1.2：分页统一使用明确的 <c>Cursor</c>、<c>HasMore</c> 和稳定排序，
+/// Online 分页游标契约（分页统一使用明确的 <c>Cursor</c>、<c>HasMore</c> 和稳定排序，
 /// 不使用无法解释的页码偏移作为跨服务游标）。
 /// <para>
 /// 维护约束：游标由服务端按「稳定排序键 + 偏移」编码生成，客户端视为不透明令牌只回传不解释；
-/// 列表接口必须声明稳定排序（键 + 方向），保证翻页期间插入新数据不重复、不漏项（VC-1.12 稳定性由排序约定保证）。
+/// 列表接口必须声明稳定排序（键 + 方向），保证翻页期间插入新数据不重复、不漏项（稳定性由排序约定保证）。
 /// </para>
 /// </summary>
 public sealed class OnlinePageCursor

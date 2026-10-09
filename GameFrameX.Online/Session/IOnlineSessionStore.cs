@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Session;
 
 /// <summary>
-/// 会话域存储接口（vault:C3 S2.4：会话与 Token 指纹索引的持久化契约）。
+/// 会话域存储接口（会话与 Token 指纹索引的持久化契约）。
 /// <para>
 /// 维护约束：索引——Token 指纹唯一（FindByTokenHashAsync 命中至多一条活跃会话）；
 /// 会话按 (TenantId, AppId, PlayerId) 检索活跃集合（多端策略裁决输入）；

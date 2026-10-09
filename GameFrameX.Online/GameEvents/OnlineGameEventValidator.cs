@@ -34,21 +34,21 @@ using GameFrameX.Online.Events;
 namespace GameFrameX.Online.GameEvents;
 
 /// <summary>
-/// 游戏事件 L0 校验器（vault:C8 S7.5 / VC-7.9）：登记表驱动的四类拒绝。
+/// 游戏事件基础校验器：登记表驱动的四类拒绝。
 /// <para>
 /// 维护约束（红线）：
 /// (1) **校验依据全部来自登记表**（<see cref="OnlineGameEventSchema"/>）——事件名、版本上限、必需字段
 /// 三处硬编码必然与登记表漂移，本类只做「查表 + 比对」；
-/// (2) **必需字段从 <c>PayloadAuditFields</c> 读取**——那是 C93 信封的载荷语义投影，因此本校验
+/// (2) **必需字段从 <c>PayloadAuditFields</c> 读取**——那是事件信封的载荷语义投影，因此本校验
 /// 与载荷的序列化格式无关（既不需要反序列化，也不解析兄弟事件的 JSON 载荷），
-/// 上游载荷格式演进不会静默击穿本层（P1-5）；
+/// 上游载荷格式演进不会静默击穿本层；
 /// (3) 校验是**只读判定**：不修改事件、不落存储；拒绝事件由摄取器送死信（<see cref="OnlineGameEventIngestor"/>）。
 /// </para>
 /// </summary>
 public static class OnlineGameEventValidator
 {
     /// <summary>
-    /// 执行 L0 校验（按耗时从低到高的顺序：作用域 → 事件名 → 版本 → 必需字段）。
+    /// 执行基础校验（按耗时从低到高的顺序：作用域 → 事件名 → 版本 → 必需字段）。
     /// </summary>
     /// <param name="onlineEvent">待校验的事件信封。</param>
     /// <returns>校验结果。</returns>

@@ -30,12 +30,12 @@
 namespace GameFrameX.Online.Assets;
 
 /// <summary>
-/// 资产变更来源（vault:C4 S3.1/S3.6：六类业务来源 + 系统补偿来源；账本红线——来源未登记的资产变更结构性不可达）。
+/// 资产变更来源（六类业务来源 + 系统补偿来源；账本红线——来源未登记的资产变更结构性不可达）。
 /// <para>
 /// 维护约束（资产红线）：任何账本条目必须携带本枚举之一；六类业务来源（支付确认、兑换码、邮件附件、
-/// 对局/赛季奖励、Admin 人工、活动任务）是 vault:C4 冻结契约的封闭集合，新增来源须回 vault 契约评审；
+/// 对局/赛季奖励、Admin 人工、活动任务）是冻结契约的封闭集合，新增来源须先经契约评审；
 /// <see cref="SystemCompensation"/> 仅供统一入口的补偿路径追加反转条目使用，业务调用方禁止指定。
-/// 既有系统（Bag/Mail/Reward/Payment/RedeemCode）迁移后只能以本枚举提交统一交易，不得绕过账本（X5）。
+/// 既有系统（Bag/Mail/Reward/Payment/RedeemCode）迁移后只能以本枚举提交统一交易，不得绕过账本。
 /// </para>
 /// </summary>
 public enum OnlineAssetChangeSource

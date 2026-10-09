@@ -32,11 +32,11 @@ using System.Collections.Generic;
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 对局快照（vault:C6 S5.2「重连成功先发送完整快照，再发送客户端缺失的增量」）。
+/// 对局快照（重连成功先发送完整快照，再发送客户端缺失的增量）。
 /// <para>
 /// 维护约束（红线）：快照是**服务端权威状态在某个服务器序号上的完整切片**——
 /// <see cref="ServerSequence"/> 标识该切片，客户端必须用它作为后续增量的起点；
-/// 快照只含必要状态（成员表 + 玩法不透明载荷），不放事件日志（vault 风险缓解：快照大小需受控）。
+/// 快照只含必要状态（成员表 + 玩法不透明载荷），不放事件日志（快照大小需受控）。
 /// </para>
 /// </summary>
 public sealed class OnlineMatchSnapshot

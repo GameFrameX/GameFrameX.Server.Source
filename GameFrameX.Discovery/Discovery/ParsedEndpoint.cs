@@ -31,12 +31,12 @@
 namespace GameFrameX.Discovery;
 
 /// <summary>
-/// 解析后的端点三元组（C143d D15：scheme / host / port）。
+/// 解析后的端点三元组（scheme / host / port）。
 /// </summary>
 /// <remarks>
-/// The parsed endpoint triple (C143d D15: scheme / host / port).
+/// The parsed endpoint triple (scheme / host / port).
 /// Endpoints are stored unparsed everywhere and parsed only at connect time
-/// (design source D15 "存储不解析、连接时才解析"); this type is the single
+/// (design source: "存储不解析、连接时才解析"); this type is the single
 /// result shape of <see cref="EndpointParser.Parse"/>. The instance is immutable.
 /// </remarks>
 public sealed class ParsedEndpoint

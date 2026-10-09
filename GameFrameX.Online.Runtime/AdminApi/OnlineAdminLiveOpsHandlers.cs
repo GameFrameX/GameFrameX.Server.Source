@@ -35,8 +35,8 @@ namespace GameFrameX.Online.Runtime.AdminApi;
 /// LiveOps 域 admin 命令（publishRemoteConfig / syncDeviceGroup / syncScheduledTask / pushAnnouncement /
 /// syncPlayerSegment / publishConfigRollout / rollbackConfigRollout）。
 /// <para>
-/// 维护约束：变更 C122 决策⑧②——InMemory 追加式注册表为最小承载（admin 面下发留痕与最新态查询），
-/// 生产级配置分发管道（存储 / 灰度计算 / 客户端推送）登记为后续 change；七个 action 均为 Admin 无幂等键族，
+/// 维护约束：InMemory 追加式注册表为最小承载（admin 面下发留痕与最新态查询），
+/// 生产级配置分发管道（存储 / 灰度计算 / 客户端推送）另行演进；七个 action 均为 Admin 无幂等键族，
 /// 不做调度器层幂等包裹；ConfigKind 线缆数字 1～4 固定映射 RemoteConfig / Announcement / DeviceGroup / ScheduledTask。
 /// </para>
 /// </summary>

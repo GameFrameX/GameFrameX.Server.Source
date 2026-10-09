@@ -34,10 +34,10 @@ using Xunit;
 namespace GameFrameX.Tests.DataBase;
 
 /// <summary>
-/// MultiDbRegistry 多库字典行为的单元测试（C143a D20#2）。
+/// MultiDbRegistry 多库字典行为的单元测试。
 /// </summary>
 /// <remarks>
-/// Unit tests for MultiDbRegistry dictionary behaviour (C143a D20#2).
+/// Unit tests for MultiDbRegistry dictionary behaviour.
 /// Uses <see cref="NoConnectionDatabaseService"/> from <see cref="GameDbMultiDatabaseTests"/> as the service instance.
 /// </remarks>
 [Collection(nameof(GameDbStaticStateCollection))]
@@ -149,7 +149,7 @@ public class MultiDbRegistryTests : IDisposable
     }
 
     /// <summary>
-    /// 控制库名与缺省名常量符合 D16/D18 约定（全名、无简写）。
+    /// 控制库名与缺省名常量符合约定（全名、无简写）。
     /// </summary>
     [Fact]
     public void WellKnownNames_MatchDesignContract()

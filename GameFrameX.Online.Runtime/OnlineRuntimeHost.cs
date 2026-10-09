@@ -54,11 +54,11 @@ using GameFrameX.Online.Tournament;
 namespace GameFrameX.Online.Runtime;
 
 /// <summary>
-/// Online Runtime 组合根（change C122：把 C93～C106 已交付的 Online 能力装配为可运行整体——
+/// Online Runtime 组合根（把已交付的 Online 能力装配为可运行整体——
 /// InMemory 存储 + 全域服务 + 事件桥 + 幂等 + 审计桥 + 后台调度器 + LiveOps 最小承载）。
 /// <para>
-/// 维护约束（装配红线）：单一接缝集中 <c>new</c> 全部 store 与服务（C94「内存存储为单进程默认实现」），
-/// 生产级 Mongo/PSQL 持久化实现登记为后续 change；事件出口统一 Foundation <see cref="InMemoryEventPublisher"/>
+/// 维护约束（装配红线）：单一接缝集中 <c>new</c> 全部 store 与服务（内存存储为单进程默认实现），
+/// 生产级 Mongo/PSQL 持久化实现另行演进；事件出口统一 Foundation <see cref="InMemoryEventPublisher"/>
 /// （订阅端做审计投影与聊天审计投影）；副作用命令经 <see cref="OnlineIdempotencyService"/>
 /// （<see cref="IdempotencyOptions.FailedReplayPolicy"/> = <see cref="FailedReplayPolicy.ReExecute"/>）；
 /// Hotfix 回滚执行器为可选注入位（admin 面暂无触发 action，默认空实现）。
@@ -98,7 +98,7 @@ public sealed class OnlineRuntimeHost
         get;
     } = SystemClock.Instance;
 
-    // ---- 存储（C94：InMemory 为单进程默认实现；生产持久化实现为后续 change）----
+    // ---- 存储（InMemory 为单进程默认实现；生产持久化实现另行演进）----
 
     /// <summary>资产存储（钱包 / 库存 / 账本）。</summary>
     public InMemoryOnlineAssetStore AssetStore
@@ -498,7 +498,7 @@ public sealed class OnlineRuntimeHost
     private bool _started;
 
     /// <summary>
-    /// C105 审计桥：把 Online 事件自动转接为统一审计记录（admin 命令 → 审计留痕）。
+    /// 审计桥：把 Online 事件自动转接为统一审计记录（admin 命令 → 审计留痕）。
     /// </summary>
     /// <param name="onlineEvent">Online 事件。</param>
     /// <param name="sanitizer">脱敏器。</param>

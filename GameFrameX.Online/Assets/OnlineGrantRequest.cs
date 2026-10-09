@@ -33,13 +33,13 @@ namespace GameFrameX.Online.Assets;
 using GameFrameX.Online.Scope;
 
 /// <summary>
-/// 统一资产入口请求（vault:C4 S3.4：所有资产发放/扣除/撤销/补发/人工调整的唯一提交形态，X5）。
+/// 统一资产入口请求（所有资产发放/扣除/撤销/补发/人工调整的唯一提交形态）。
 /// <para>
 /// 维护约束（资产红线）：作用域三元组以鉴权上下文为准（<c>OnlineScopeResolver.EnsureAuthorized</c>
 /// 产物），客户端提交的同名字段不可覆盖；<see cref="IdempotencyKey"/> 必填且绑定玩家位
-/// （六类来源各自的业务单号规则由调用方生成，服务端按 VC-1.4 语义校验键格式）；
+/// （六类来源各自的业务单号规则由调用方生成，服务端按既定语义校验键格式）；
 /// <see cref="HomeServerId"/> 为玩家归属服（0 = 取作用域区服；跨服发奖的路由判定输入）；
-/// 请求模型只承载「服务端意图」——不存在客户端直接提交余额/库存/奖励结果的通道（VC-3.8 本仓半边）。
+/// 请求模型只承载「服务端意图」——不存在客户端直接提交余额/库存/奖励结果的通道。
 /// </para>
 /// </summary>
 public sealed class OnlineGrantRequest
@@ -106,7 +106,7 @@ public sealed class OnlineGrantRequest
     }
 
     /// <summary>
-    /// 获取或设置归属服标识（玩家家服；0 = 取作用域区服。跨服发奖的路由判定输入，VC-3.10）。
+    /// 获取或设置归属服标识（玩家家服；0 = 取作用域区服。跨服发奖的路由判定输入）。
     /// </summary>
     public long HomeServerId { get; init; }
 

@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Tournament;
 
 /// <summary>
-/// 赛事生命周期状态（vault:C8 S7.4：创建、报名、开始/结束时间与奖励结算的阶段划分）。
+/// 赛事生命周期状态（创建、报名、开始/结束时间与奖励结算的阶段划分）。
 /// <para>
 /// 维护约束（红线）：状态只经 <see cref="OnlineTournamentStateMachine"/> 的合法边迁移，禁止服务层拼装迁移条件。
 /// <see cref="Scheduled"/> 是**唯一的报名窗口**——<see cref="Active"/> 起报名关闭，这使「报名 → 比赛 → 结算」
@@ -40,7 +40,7 @@ namespace GameFrameX.Online.Tournament;
 /// </para>
 /// <para>
 /// 最小版本取舍：不设独立的「报名期」状态，也不承载 League / 晋级 / 分组赛 / 淘汰赛与复杂赛程
-/// （vault:C8 明确延后，须待最小赛事稳定后再增加）。
+/// （明确延后，须待最小赛事稳定后再增加）。
 /// </para>
 /// </summary>
 public enum OnlineTournamentState
@@ -51,7 +51,7 @@ public enum OnlineTournamentState
     Scheduled = 1,
 
     /// <summary>
-    /// 进行中（报名已关闭；成绩由关联榜单按 C102 可信写入链路累积）。
+    /// 进行中（报名已关闭；成绩由关联榜单按可信写入链路累积）。
     /// </summary>
     Active = 2,
 

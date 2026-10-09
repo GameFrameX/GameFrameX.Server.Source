@@ -42,13 +42,13 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 六类事件接入测试（vault:C8 S7.6：登录 / 匹配 / 对局 / 奖励 / 付费 / 举报）。
+    /// 六类事件接入测试（登录 / 匹配 / 对局 / 奖励 / 付费 / 举报）。
     /// 覆盖六个投影入口的状态归属规则、只投影已发生事实、投影结果一律经 L0 校验落档且可查询。
     /// </summary>
     public class OnlineGameEventProjectorTests
     {
         /// <summary>
-        /// 验证 S7.6-a：会话状态映射到登录 / 会话开始 / 会话结束（Created 尚未产生可陈述事实，不投影）。
+        /// 验证会话状态映射到登录 / 会话开始 / 会话结束（Created 尚未产生可陈述事实，不投影）。
         /// </summary>
         [Fact]
         public void ProjectSessionEvents_ShouldMapStateToLoginStartEnd()
@@ -71,7 +71,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 S7.6-b：匹配与对局开局的归属规则（未开始的对局不投影，取消 / 失败不是开局）。
+        /// 验证匹配与对局开局的归属规则（未开始的对局不投影，取消 / 失败不是开局）。
         /// </summary>
         [Fact]
         public void ProjectMatchEvents_ShouldOnlyEmitWhenGameActuallyStarted()
@@ -93,7 +93,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 S7.6-c：对局结果投影 <c>MatchEnd</c> 一例 + 逐玩家胜负；中断（Aborted）全员记退出。
+        /// 验证对局结果投影 <c>MatchEnd</c> 一例 + 逐玩家胜负；中断（Aborted）全员记退出。
         /// </summary>
         [Fact]
         public void ProjectMatchResultEvents_ShouldEmitMatchEndAndPerPlayerOutcome()
@@ -120,7 +120,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 S7.6-d：资产交易归属（付费确认 → Purchase；扣减 / 撤销 → CurrencySpend；其余 → RewardGrant），
+        /// 验证资产交易归属（付费确认 → Purchase；扣减 / 撤销 → CurrencySpend；其余 → RewardGrant），
         /// 且**仅成功交易**投影（执行中 / 失败尚未产生资产事实）。
         /// </summary>
         [Fact]
@@ -152,7 +152,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 S7.6-e：举报与处罚归属——只有聊天场景举报投影 <c>ChatReport</c>（事件名是冻结契约，不冒用），
+        /// 验证举报与处罚归属——只有聊天场景举报投影 <c>ChatReport</c>（事件名是冻结契约，不冒用），
         /// 已撤销的处罚不投影。
         /// </summary>
         [Fact]
@@ -176,7 +176,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 S7.6-f：六类投影结果一律经 L0 校验落档（无一条被拒绝），并可按作用域与时间窗查询，
+        /// 验证六类投影结果一律经 L0 校验落档（无一条被拒绝），并可按作用域与时间窗查询，
         /// 覆盖六类中的 Server 半边可得事件。
         /// </summary>
         [Fact]

@@ -34,10 +34,10 @@ using Npgsql;
 namespace GameFrameX.DataBase.PostgreSql.Discovery;
 
 /// <summary>
-/// PostgreSQL 心跳存储适配（C167 契约 / C168 EF 化：<see cref="IHeartbeatStore"/> 的 EF 关系实现，零手写 SQL）。
+/// PostgreSQL 心跳存储适配（EF 关系实现，零手写 SQL）。
 /// </summary>
 /// <remarks>
-/// The PostgreSQL implementation of the heartbeat storage seam (C167 contract, EF-based since C168 — zero
+/// The PostgreSQL implementation of the heartbeat storage seam (EF-based — zero
 /// hand-written SQL) consumed by the generic <see cref="DiscoveryRegistry"/> / <see cref="DiscoveryWatcher"/>.
 /// PostgreSQL has no native TTL index, so <see cref="DeleteExpiredAsync"/> executes the real delete —
 /// driven by the registry's cleanup loop, with removal relaxed to within one cleanup period (the watcher's

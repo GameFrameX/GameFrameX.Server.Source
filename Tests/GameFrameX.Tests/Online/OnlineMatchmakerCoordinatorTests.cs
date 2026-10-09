@@ -37,7 +37,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 匹配协调器测试（vault:C5 VC-4.2/VC-4.3/VC-4.5/VC-4.12/VC-4.13：成组、整队不拆散、等待扩展、竞态与唯一性、assignment 快照）。
+    /// 匹配协调器测试（成组、整队不拆散、等待扩展、竞态与唯一性、assignment 快照）。
     /// </summary>
     public class OnlineMatchmakerCoordinatorTests
     {
@@ -60,7 +60,7 @@ namespace GameFrameX.Tests.Online
         private const long PlayerThree = 1003;
 
         /// <summary>
-        /// 验证两张兼容票据成组并产出唯一分配，票据同时转 Matched（VC-4.3/VC-4.12）。
+        /// 验证两张兼容票据成组并产出唯一分配，票据同时转 Matched。
         /// </summary>
         [Fact]
         public async Task RunOnceAsync_WithCompatibleTickets_ShouldProduceSingleAssignment()
@@ -87,7 +87,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证同一批票据不会被第二轮重复成组（VC-4.12：重复 assignment = 0）。
+        /// 验证同一批票据不会被第二轮重复成组（重复 assignment = 0）。
         /// </summary>
         [Fact]
         public async Task RunOnceAsync_WhenRunAgain_ShouldNotProduceSecondAssignment()
@@ -110,7 +110,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证人数不足的票据不被单独成组，继续留在队列中（VC-4.3：不做半组提交）。
+        /// 验证人数不足的票据不被单独成组，继续留在队列中（不做半组提交）。
         /// </summary>
         [Fact]
         public async Task RunOnceAsync_WithSingleTicket_ShouldKeepQueued()
@@ -130,7 +130,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证队伍票据整队成组、不被拆散，也不与落单玩家拼组（VC-4.3 队伍完整性红线）。
+        /// 验证队伍票据整队成组、不被拆散，也不与落单玩家拼组（队伍完整性红线）。
         /// </summary>
         [Fact]
         public async Task RunOnceAsync_WithPartyTicket_ShouldNotSplitParty()
@@ -152,7 +152,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证技术水平区间无交集时不匹配（VC-4.5：区间是成组的必要条件）。
+        /// 验证技术水平区间无交集时不匹配（区间是成组的必要条件）。
         /// </summary>
         [Fact]
         public async Task RunOnceAsync_WithDisjointSkillRange_ShouldNotMatch()
@@ -171,7 +171,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证等待时间扩展后区间放宽并促成匹配，且规则快照记录扩展事实（VC-4.5）。
+        /// 验证等待时间扩展后区间放宽并促成匹配，且规则快照记录扩展事实。
         /// </summary>
         [Fact]
         public async Task RunOnceAsync_AfterWaitExpansion_ShouldMatchAndRecordSnapshot()
@@ -205,7 +205,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证取消后的票据不再参与成组，且不产生属于它的结果（VC-4.2：取消后旧结果 = 0）。
+        /// 验证取消后的票据不再参与成组，且不产生属于它的结果（取消后旧结果 = 0）。
         /// </summary>
         [Fact]
         public async Task RunOnceAsync_AfterCancel_ShouldNotMatchCancelledTicket()
@@ -229,7 +229,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证协调器先清理过期票据，过期票据不参与成组（VC-4.9）。
+        /// 验证协调器先清理过期票据，过期票据不参与成组。
         /// </summary>
         [Fact]
         public async Task RunOnceAsync_WithOverdueTicket_ShouldExpireItFirst()

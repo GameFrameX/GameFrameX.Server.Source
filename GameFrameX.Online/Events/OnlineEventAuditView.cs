@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Events;
 
 /// <summary>
-/// Online 事件审计视图（vault:C2 S1.6：审计字段与脱敏规则的落点；VC-1.17 敏感字段脱敏）。
+/// Online 事件审计视图（审计字段与脱敏规则的落点；敏感字段必须脱敏）。
 /// <para>
 /// 维护约束：审计视图只承载信封元数据与脱敏后的字段投影，禁止携带原始载荷字节与未脱敏的敏感值；
 /// 日志与审计检索一律消费本视图而非 <see cref="OnlineEvent"/> 本体。
@@ -120,7 +120,7 @@ public sealed class OnlineEventAuditView
     }
 
     /// <summary>
-    /// 获取或设置关联链路键（链路追踪检索入口，VC-1.14）。
+    /// 获取或设置关联链路键（链路追踪检索入口）。
     /// </summary>
     public string CorrelationId
     {

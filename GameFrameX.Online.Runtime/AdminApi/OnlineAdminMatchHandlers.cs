@@ -39,9 +39,9 @@ namespace GameFrameX.Online.Runtime.AdminApi;
 /// <para>
 /// 维护约束：cancel / suspend_resume / match_isolation 为 Admin 受控四命令（幂等键
 /// <c>onlineControlled-{action}[-{apply|lift}]-{targetId}-{serverId}</c>）经调度器层幂等包裹；
-/// end_abnormal_match 按变更 C122 决策⑧①固定 5003 拒绝（对局结束属游戏进程权威，admin 面无该命令通道）；
+/// end_abnormal_match 固定 5003 拒绝（对局结束属游戏进程权威，admin 面无该命令通道）；
 /// 队列吞吐为快照内已匹配票据计数代理值（升级路径：观察器接入滑动窗口计数）；
-/// RepeatedCancel 判定 = 同队伍已取消票据数 ≥ 3（C122 决策⑧群扫最小语义）。
+/// RepeatedCancel 判定 = 同队伍已取消票据数 ≥ 3（群扫最小语义）。
 /// </para>
 /// </summary>
 public sealed class OnlineAdminMatchHandlers
@@ -295,7 +295,7 @@ public sealed class OnlineAdminMatchHandlers
     }
 
     /// <summary>
-    /// end_abnormal_match：固定拒绝（C122 决策⑧①——对局结束属游戏进程权威，admin 面无通道）。
+    /// end_abnormal_match：固定拒绝（对局结束属游戏进程权威，admin 面无通道）。
     /// </summary>
     /// <param name="request">请求。</param>
     /// <param name="scope">作用域。</param>
@@ -303,7 +303,7 @@ public sealed class OnlineAdminMatchHandlers
     /// <returns>不返回（恒抛 5003）。</returns>
     public Task<object> EndAbnormalMatchAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
-        // Localization: Online.AdminApi.EndAbnormalMatchForbidden - 管理面不支持结束异常对局；对局生命周期归游戏进程所有（变更 C122 缺口 #1）。
+        // Localization: Online.AdminApi.EndAbnormalMatchForbidden - 管理面不支持结束异常对局；对局生命周期归游戏进程所有。
         throw new OnlineServiceException(OnlineErrorCode.StateOperationForbidden,
             LocalizationService.GetString(Localization.Keys.Online.AdminApi.EndAbnormalMatchForbidden));
     }

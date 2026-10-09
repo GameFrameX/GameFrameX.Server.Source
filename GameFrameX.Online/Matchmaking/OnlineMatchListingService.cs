@@ -35,11 +35,11 @@ using GameFrameX.Online.Contracts;
 using GameFrameX.Online.Scope;
 
 /// <summary>
-/// 对局列表项服务（vault:C5 S4.4：发布、发现、按 JoinPolicy 加入）。
+/// 对局列表项服务（发布、发现、按 JoinPolicy 加入）。
 /// <para>
 /// 维护约束（红线）：
-/// ① JoinPolicy 四策略的判定在本类的 <c>ResolveJoinPolicy</c> 单点收敛，四个分支互斥且各有拒绝用例
-/// （VC-4.14）；未登记的策略值一律拒绝，不做「未知即放行」的兜底。
+/// ① JoinPolicy 四策略的判定在本类的 <c>ResolveJoinPolicy</c> 单点收敛，四个分支互斥且各有拒绝用例；
+/// 未登记的策略值一律拒绝，不做「未知即放行」的兜底。
 /// ② 对外输出（查询结果、事件、审计）不携带 <see cref="OnlineMatchListing.Password"/> 与
 /// <see cref="OnlineMatchListing.InvitedPlayerIds"/>——两者只参与判定（脱敏红线）。
 /// ③ 容量是唯一事实源：<see cref="OnlineMatchListingState.Full"/> 由容量推导，不接受调用方手工置位。
@@ -213,7 +213,7 @@ public sealed class OnlineMatchListingService
     }
 
     /// <summary>
-    /// 按 JoinPolicy 加入列表项（VC-4.14）。
+    /// 按 JoinPolicy 加入列表项。
     /// </summary>
     /// <param name="scope">生效作用域（必须含玩家主体位）。</param>
     /// <param name="listingId">列表项标识。</param>
@@ -293,7 +293,7 @@ public sealed class OnlineMatchListingService
     }
 
     /// <summary>
-    /// 策略裁决（VC-4.14 唯一判定点）。
+    /// 策略裁决（唯一判定点）。
     /// </summary>
     /// <param name="listing">列表项。</param>
     /// <param name="members">本次加入的有效成员集合（含请求方）。</param>

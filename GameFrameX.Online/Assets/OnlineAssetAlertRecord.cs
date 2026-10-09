@@ -34,7 +34,7 @@ namespace GameFrameX.Online.Assets;
 /// 资产域告警记录（定位字段 + 事实描述；不含明文请求体）。
 /// <para>
 /// 维护约束：定位字段（交易标识/作用域键/资产标识）必须可直查账本与交易记录；
-/// 告警出口未接线时跳过并留告警日志由宿主装配保证（生产装配必须接线，VC-3.15）。
+/// 告警出口未接线时跳过并留告警日志由宿主装配保证（生产装配必须接线）。
 /// </para>
 /// </summary>
 public sealed class OnlineAssetAlertRecord

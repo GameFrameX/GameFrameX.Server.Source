@@ -31,10 +31,10 @@
 namespace GameFrameX.Utility.Setting;
 
 /// <summary>
-/// 数据库实现提供者类型（C166 Provider 装配配置化）。
+/// 数据库实现提供者类型（Provider 装配配置化）。
 /// </summary>
 /// <remarks>
-/// Database implementation provider type (C166 provider-based assembly switching).
+/// Database implementation provider type (provider-based assembly switching).
 /// 默认 <see cref="Mongo"/>——未配置时现网启动流程与全部存量行为零变化、可回退；
 /// 配置为 <see cref="PostgreSql"/> 时三个装配点（Launcher 双 <c>GameDb.Init&lt;*&gt;</c>、
 /// <c>SessionManager.PlayerRouteSyncTarget</c>、发现层激活/解析器选择）切换为 PostgreSQL 实现。
@@ -47,7 +47,7 @@ public enum DatabaseProviderType
     Mongo = 0,
 
     /// <summary>
-    /// PostgreSQL 实现（<c>PostgreSqlDbService</c>，全拼命名遵守 D18 全名约定）。
+    /// PostgreSQL 实现（<c>PostgreSqlDbService</c>，全拼命名）。
     /// </summary>
     PostgreSql = 1,
 }

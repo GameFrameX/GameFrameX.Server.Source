@@ -36,11 +36,11 @@ using GameFrameX.Online.Events;
 using GameFrameX.Online.Scope;
 
 /// <summary>
-/// 通知服务（vault:C7 S6.8/S6.9：通知队列、推送出口与离线补发的唯一写者）。
+/// 通知服务（通知队列、推送出口与离线补发的唯一写者）。
 /// <para>
 /// 维护约束（红线）：
 /// ① **入队幂等由去重键保证**——同一去重键重复入队返回既有通知，不新建、不重发、不报错
-/// （VC-6.12：推送重试与离线补发同时发生时业务只执行一次）；
+/// （推送重试与离线补发同时发生时业务只执行一次）；
 /// ② 推送失败必须留痕（<see cref="OnlineNotification.LastError"/>）并转入重试或
 /// <see cref="OnlineNotificationState.Failed"/> 终态，不得静默丢弃——排障与补发的唯一依据；
 /// ③ 状态落定一律走 <see cref="IOnlineNotificationStore.ReplaceAsync"/> 的 CAS，CAS 失败即重读收敛，
@@ -102,7 +102,7 @@ public sealed class OnlineNotificationService
     /// <summary>
     /// 入队一条通知（去重键幂等：重复入队返回既有通知，不新建、不重发、不报错）。
     /// <para>
-    /// 收敛语义（VC-6.12）：新建成功的事件在落库后立即发布；随后**尽力尝试一次推送**，
+    /// 收敛语义：新建成功的事件在落库后立即发布；随后**尽力尝试一次推送**，
     /// 推送失败不影响入队成功——通知已在队列里，由离线补发路径兜底，调用方不应据此重试入队。
     /// </para>
     /// </summary>
@@ -188,7 +188,7 @@ public sealed class OnlineNotificationService
     /// <para>
     /// 过期兜底：<see cref="SweepExpiredAsync"/> 是**周期性**扫描，扫描间隔内到期的通知不会被它拦住；
     /// 推送入口因此自己按 <see cref="OnlineNotification.ExpiresAtTime"/> 判一次，到期就地终结为
-    /// <see cref="OnlineNotificationState.Expired"/> 并**原样返回、绝不推给玩家**（VC-6.13：过期丢弃、不误导玩家）。
+    /// <see cref="OnlineNotificationState.Expired"/> 并**原样返回、绝不推给玩家**（过期丢弃、不误导玩家）。
     /// </para>
     /// </summary>
     /// <param name="tenantId">租户标识。</param>
@@ -212,7 +212,7 @@ public sealed class OnlineNotificationService
 
         if (OnlineNotificationStateMachine.IsTerminal(current.State))
         {
-            // 终态幂等：已读 / 已过期不再推送（VC-6.12「不重复消费」）。
+            // 终态幂等：已读 / 已过期不再推送（「不重复消费」）。
             return OnlineResult<OnlineNotification>.Ok(current);
         }
 
@@ -225,7 +225,7 @@ public sealed class OnlineNotificationService
         }
 
         // 在途标记：先落 Queued 再推送。已在途（Queued）的记录**拒绝重投**——「在途」说明另一个调用方
-        // 正持有这条记录，放行就是一次真实的重复推送（VC-6.12 不重复消费）。自环不是合法边，不得豁免。
+        // 正持有这条记录，放行就是一次真实的重复推送。自环不是合法边，不得豁免。
         if (!OnlineNotificationStateMachine.TryTransition(current.State, OnlineNotificationState.Queued))
         {
             return OnlineResult<OnlineNotification>.Fail(OnlineErrorCode.StateOperationForbidden, "当前通知状态不允许推送：" + current.State);
@@ -325,7 +325,7 @@ public sealed class OnlineNotificationService
     /// <summary>
     /// 列出本接收者的通知（默认不含过期记录）。
     /// <para>
-    /// 维护约束：过期通知一律不返回给玩家（VC-6.13：丢弃、不误导玩家），仅在
+    /// 维护约束：过期通知一律不返回给玩家（丢弃、不误导玩家），仅在
     /// <paramref name="includeTerminal"/> 为 <c>true</c> 时作为历史返回；已读属玩家可见历史，始终保留。
     /// </para>
     /// </summary>
@@ -357,12 +357,12 @@ public sealed class OnlineNotificationService
     }
 
     /// <summary>
-    /// 离线补发（vault:C7 VC-6.11 的落点）：把该接收者全部未投递的通知逐条重投一次。
+    /// 离线补发：把该接收者全部未投递的通知逐条重投一次。
     /// <para>
     /// 补发范围是「未达终态、未投递且不在途」（<see cref="OnlineNotificationState.Created"/> /
     /// <see cref="OnlineNotificationState.Retrying"/> / <see cref="OnlineNotificationState.Failed"/>）——已投递 / 已读的
     /// 不重复推送，已过期的不补发，在途（<see cref="OnlineNotificationState.Queued"/>）的跳过：
-    /// 补发的本意是「投递没发生」，而在途说明投递正在进行，跟一发就是重复推送（VC-6.12）。
+    /// 补发的本意是「投递没发生」，而在途说明投递正在进行，跟一发就是重复推送。
     /// 逐条独立推进：单条失败不影响其余记录，返回的是**补发尝试后**的副本列表（在途记录原样返回，不被改写）。
     /// </para>
     /// </summary>
@@ -400,7 +400,7 @@ public sealed class OnlineNotificationService
     }
 
     /// <summary>
-    /// 扫描并终结超期通知（置 <see cref="OnlineNotificationState.Expired"/>，VC-6.13）。
+    /// 扫描并终结超期通知（置 <see cref="OnlineNotificationState.Expired"/>）。
     /// <para>
     /// 只处理「非终态 + 设了有效期 + 已到期」的记录；<see cref="OnlineNotification.ExpiresAtTime"/> 为 0 的
     /// 记录永不失效，不参与扫描。终态记录不可再迁移，扫描时直接跳过。
@@ -477,7 +477,7 @@ public sealed class OnlineNotificationService
 
     /// <summary>
     /// 过期兜底（仅由 <see cref="TryDispatchAsync"/> 调用）：到期通知就地终结为
-    /// <see cref="OnlineNotificationState.Expired"/> 并原样返回，绝不推给玩家（VC-6.13）。
+    /// <see cref="OnlineNotificationState.Expired"/> 并原样返回，绝不推给玩家。
     /// </summary>
     /// <param name="tenantId">租户标识。</param>
     /// <param name="appId">App 标识。</param>
@@ -494,7 +494,7 @@ public sealed class OnlineNotificationService
             return null;
         }
 
-        // 扫描轮还没跑到：到期即终结，不推给玩家（VC-6.13）。
+        // 扫描轮还没跑到：到期即终结，不推给玩家。
         var expired = current.Copy();
         expired.State = OnlineNotificationState.Expired;
         expired.UpdatedAtTime = nowUnixMilliseconds;

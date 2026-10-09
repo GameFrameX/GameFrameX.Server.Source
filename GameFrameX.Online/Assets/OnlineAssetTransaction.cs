@@ -30,12 +30,12 @@
 namespace GameFrameX.Online.Assets;
 
 /// <summary>
-/// 资产交易记录（vault:C4 S3.3：一次业务操作的幂等边界；每笔变更必须带 TransactionId + IdempotencyKey）。
+/// 资产交易记录（一次业务操作的幂等边界；每笔变更必须带 TransactionId + IdempotencyKey）。
 /// <para>
 /// 维护约束（红线）：<see cref="IdempotencyKey"/> 绑定玩家作用域（相同业务意图重试只生效一次，
-/// 幂等判定经 C93 <c>OnlineIdempotencyService</c> 组装 Foundation 原语）；状态迁移受
+/// 幂等判定经 <c>OnlineIdempotencyService</c> 组装 Foundation 原语）；状态迁移受
 /// <see cref="OnlineAssetTransactionState"/> 状态机约束，终态不可再迁移；<see cref="AppliedLedgerEntryIds"/>
-/// 记录本交易落账的账本条目（补偿反转的输入）；重启恢复以非终态记录为扫描输入（VC-3.12）。
+/// 记录本交易落账的账本条目（补偿反转的输入）；重启恢复以非终态记录为扫描输入。
 /// </para>
 /// </summary>
 public sealed class OnlineAssetTransaction
@@ -159,7 +159,7 @@ public sealed class OnlineAssetTransaction
 
     /// <summary>
     /// 获取或设置期望变更行数（创建时按请求变更行数固化；恢复任务以
-    /// 「已落账条目数 == 期望行数」区分完整落账后中断与部分应用，VC-3.12 判定依据）。
+    /// 「已落账条目数 == 期望行数」区分完整落账后中断与部分应用的判定依据）。
     /// </summary>
     public int ExpectedChangeCount
     {

@@ -37,16 +37,16 @@ using GameFrameX.Online.Scope;
 using GameFrameX.Online.Social;
 
 /// <summary>
-/// 队伍服务（vault:C5 S4.3、S4.7：队伍生命周期的唯一写者）。
+/// 队伍服务（队伍生命周期的唯一写者）。
 /// <para>
 /// 维护约束（红线）：
 /// ① 状态迁移唯一判据是 <see cref="OnlinePartyStateMachine.TryTransition"/>，表外迁移映射
 /// <see cref="OnlineErrorCode.StateOperationForbidden"/>，终态出边为空且映射
-/// <see cref="OnlineErrorCode.StateEnded"/>——取消/解散后不可复活（vault:C5 S4.3：终态唯一）；
+/// <see cref="OnlineErrorCode.StateEnded"/>——取消/解散后不可复活（终态唯一）；
 /// ② <see cref="OnlineParty.LeaderId"/> 必须始终是成员集合中的一员：队长退出要么转移给加入最早者、
-/// 要么解散，绝不产生孤儿队长（VC-4.6）；
+/// 要么解散，绝不产生孤儿队长；
 /// ③ 成员在线状态不落库，只在入队前经 <see cref="IOnlinePartyPresenceProbe"/> 读取唯一在线事实源
-/// （VC-4.7）；
+/// （在线事实源裁决）；
 /// ④ 玩家主体位必须有效（PlayerId &lt;= 0 拒绝），跨玩家操作以 <c>PlayerId</c> 归属校验，
 /// 不匹配一律 <see cref="OnlineErrorCode.ResourceNotFound"/>（反预言，不泄露他人队伍存在性）。
 /// </para>
@@ -62,7 +62,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
     /// <summary>在线事实探针（可空：未装配时离线清理退化为「不执行」而非误判全员离线）。</summary>
     private readonly IOnlinePartyPresenceProbe _presenceProbe;
 
-    /// <summary>跨域社交裁决（可空：null = 不启用屏蔽/处罚裁决，既有行为不变；见 C99 方案复审 P0-1）。</summary>
+    /// <summary>跨域社交裁决（可空：null = 不启用屏蔽/处罚裁决，既有行为不变）。</summary>
     private readonly IOnlineSocialGate _socialGate;
 
     /// <summary>人数下限。</summary>
@@ -188,7 +188,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
 
         if (_socialGate != null)
         {
-            // 社交裁决走跨域唯一入口（C99 方案复审 P0-1）：屏蔽双向生效、封禁拒绝、禁言不影响组队。
+            // 社交裁决走跨域唯一入口：屏蔽双向生效、封禁拒绝、禁言不影响组队。
             // 置于去重检查之前——被屏蔽/被封禁的邀请即使此前已存在待答复记录也不得再取得答复通道。
             var decision = await _socialGate.EvaluateAsync(scope.TenantId, scope.AppId, scope.PlayerId, inviteeId, OnlineSocialInteractionPurpose.PartyInvite, cancellationToken);
             if (!decision.Allowed)
@@ -243,7 +243,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
     /// 答复邀请（接受或拒绝；仅被邀请人本人可答复，终态邀请返回既有终态而非报错）。
     /// <para>
     /// 装配了社交裁决（<see cref="IOnlineSocialGate"/>）时，**接受**前会复核双方关系：
-    /// 屏蔽在邀请等待期内生效则拒绝入队（拒绝始终放行）。裁决未装配时行为与 C97 完全一致。
+    /// 屏蔽在邀请等待期内生效则拒绝入队（拒绝始终放行）。裁决未装配时保持既有行为不变。
     /// </para>
     /// </summary>
     /// <param name="scope">生效作用域（必须含玩家主体位）。</param>
@@ -295,7 +295,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
 
         if (_socialGate != null)
         {
-            // 接受面同样受社交裁决约束（C7 红线「Block 后不能邀请」的时间维度）：邀请可能**早于**屏蔽建立，
+            // 接受面同样受社交裁决约束（「Block 后不能邀请」红线的时间维度）：邀请可能**早于**屏蔽建立，
             // 若只在发起面判定，屏蔽生效后仍可在邀请存活期（默认 120 秒）内靠一次「接受」完成组队，
             // 等于绕开红线。这里复核的是与重新发起邀请时同一组关系的裁决（屏蔽本就双向生效）。
             // 拒绝不做裁决——拒绝是脱离互动，拦下它只会把玩家困在待答复状态里。
@@ -386,7 +386,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
     }
 
     /// <summary>
-    /// 退出队伍（S4.7 队长退出规则：转移给加入最早者，无人可转移则解散）。
+    /// 退出队伍（队长退出规则：转移给加入最早者，无人可转移则解散）。
     /// </summary>
     /// <param name="scope">生效作用域（必须含玩家主体位）。</param>
     /// <param name="reason">离开原因（审计用）。</param>
@@ -581,7 +581,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
     }
 
     /// <summary>
-    /// 清理离线成员（S4.7 / VC-4.7：入队前以唯一在线事实源裁决，结果是确定的）。
+    /// 清理离线成员（入队前以唯一在线事实源裁决，结果是确定的）。
     /// <para>
     /// 规则（确定性、可解释）：非队长成员离线即移除；队长离线**不**触发转移——队长身份与在线状态解耦，
     /// 离线队长在 Presence 重连窗口内可恢复。移除后人数跌破下限则队伍转 <see cref="OnlinePartyState.Left"/>，
@@ -665,7 +665,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
     }
 
     /// <summary>
-    /// 应答「某玩家是否为某频道的成员」（<see cref="OnlineChatChannelKind.Party"/> 频道的唯一裁决方，C99）。
+    /// 应答「某玩家是否为某频道的成员」（<see cref="OnlineChatChannelKind.Party"/> 频道的唯一裁决方）。
     /// <para>
     /// 维护约束（职责边界）：频道成员集**不复制**进频道记录——复制会在离队/被踢后留下陈旧成员表，
     /// 让已被移出的人继续读到队内消息（隐私泄漏）。因此裁决权留在组队域，聊天域只问不判。
@@ -851,7 +851,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
     }
 
     /// <summary>
-    /// 移除成员并按成员集合归位队伍状态（S4.7 队长退出规则的唯一实现点）。
+    /// 移除成员并按成员集合归位队伍状态（队长退出规则的唯一实现点）。
     /// </summary>
     /// <param name="party">队伍聚合。</param>
     /// <param name="playerId">被移除玩家标识。</param>

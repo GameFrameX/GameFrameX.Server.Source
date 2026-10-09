@@ -38,8 +38,8 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 群组服务测试（vault:C7 S6.4 群组生命周期、S6.5 群组频道成员资格；VC-6.6 群组生命周期、
-    /// VC-6.7 邀请与元数据、VC-6.8/VC-6.9 频道成员资格与 C99 频道探针）。
+    /// 群组服务测试（群组生命周期、群组频道成员资格、邀请与元数据、
+    /// 频道成员资格与频道探针）。
     /// </summary>
     public class OnlineGroupServiceTests
     {
@@ -71,7 +71,7 @@ namespace GameFrameX.Tests.Online
         private const long InviteTimeToLiveSeconds = 86400;
 
         /// <summary>
-        /// 验证建群后发起人即群主、且已是首个成员，群组处于 Active（VC-6.6：建群人即群主且是首个成员）。
+        /// 验证建群后发起人即群主、且已是首个成员，群组处于 Active（建群人即群主且是首个成员）。
         /// </summary>
         [Fact]
         public async Task CreateAsync_ShouldCreateActiveGroupWithOwnerAsFirstMember()
@@ -96,7 +96,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证群名为空白时按参数非法拒绝，不落库（VC-6.6：建群入参校验）。
+        /// 验证群名为空白时按参数非法拒绝，不落库（建群入参校验）。
         /// </summary>
         [Fact]
         public async Task CreateAsync_WhenNameBlank_ShouldReturnParameterInvalid()
@@ -114,7 +114,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证邀请被接受后成员数变为 2，且发出成员加入事件（VC-6.7：邀请 → 接受 → 成员数为 2）。
+        /// 验证邀请被接受后成员数变为 2，且发出成员加入事件（邀请 → 接受 → 成员数为 2）。
         /// </summary>
         [Fact]
         public async Task AnswerInviteAsync_WhenAccepted_ShouldAddMemberAndPublishJoinedEvent()
@@ -147,7 +147,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证拒绝邀请不改变成员集合，且发出邀请变更事件（VC-6.7：拒绝后成员数不变）。
+        /// 验证拒绝邀请不改变成员集合，且发出邀请变更事件（拒绝后成员数不变）。
         /// </summary>
         [Fact]
         public async Task AnswerInviteAsync_WhenRejected_ShouldKeepMemberCount()
@@ -169,7 +169,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证邀请已是成员者被状态操作禁止拒绝，且不新建第二条邀请（VC-6.7：邀请幂等与成员唯一性）。
+        /// 验证邀请已是成员者被状态操作禁止拒绝，且不新建第二条邀请（邀请幂等与成员唯一性）。
         /// </summary>
         [Fact]
         public async Task InviteAsync_WhenInviteeAlreadyMember_ShouldReturnStateOperationForbidden()
@@ -188,7 +188,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证成员数触达 MaxMembers 上限时接受邀请被状态操作禁止，成员数不越界（VC-6.7：上限错误码）。
+        /// 验证成员数触达 MaxMembers 上限时接受邀请被状态操作禁止，成员数不越界（上限错误码）。
         /// </summary>
         [Fact]
         public async Task AnswerInviteAsync_WhenMembersReachMax_ShouldReturnStateOperationForbidden()
@@ -213,7 +213,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证群主不得退出群组，成员集合保持不变（VC-6.6：群主身份单点持有，须先解散）。
+        /// 验证群主不得退出群组，成员集合保持不变（群主身份单点持有，须先解散）。
         /// </summary>
         [Fact]
         public async Task LeaveAsync_WhenCallerIsOwner_ShouldReturnStateOperationForbidden()
@@ -236,7 +236,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证群主不能被踢出（管理员执行时报状态操作禁止），群主也不能踢出自己（VC-6.6：群主不可被踢）。
+        /// 验证群主不能被踢出（管理员执行时报状态操作禁止），群主也不能踢出自己（群主不可被踢）。
         /// </summary>
         [Fact]
         public async Task KickAsync_WhenTargetIsOwnerOrSelf_ShouldBeRejected()
@@ -263,7 +263,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证把成员设为 Owner 被参数校验直接拒绝（VC-6.6：群主转让不在范围内，服务不发明该行为）。
+        /// 验证把成员设为 Owner 被参数校验直接拒绝（群主转让不在范围内，服务不发明该行为）。
         /// </summary>
         [Fact]
         public async Task SetRoleAsync_WhenTargetRoleIsOwner_ShouldReturnParameterInvalid()
@@ -282,7 +282,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证群主调整成员角色生效并发出角色变更事件，重复调整为同一角色时幂等不重发（VC-6.6：角色是权限唯一判据）。
+        /// 验证群主调整成员角色生效并发出角色变更事件，重复调整为同一角色时幂等不重发（角色是权限唯一判据）。
         /// </summary>
         [Fact]
         public async Task SetRoleAsync_ShouldChangeRoleAndPublishRoleChangedEventOnce()
@@ -308,7 +308,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证被踢者与退群者都从成员列表消失，且各发出一条成员离开事件（VC-6.6：踢人 / 退群事实一致）。
+        /// 验证被踢者与退群者都从成员列表消失，且各发出一条成员离开事件（踢人 / 退群事实一致）。
         /// </summary>
         [Fact]
         public async Task KickAndLeave_ShouldRemovePlayersFromMemberList()
@@ -336,7 +336,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证非成员对群的一切操作一律返回 ResourceNotFound 而非 ScopeDenied，不泄露群存在性（VC-6.6：反预言）。
+        /// 验证非成员对群的一切操作一律返回 ResourceNotFound 而非 ScopeDenied，不泄露群存在性（反预言）。
         /// </summary>
         [Fact]
         public async Task NonMemberOperations_ShouldReturnResourceNotFoundInsteadOfScopeDenied()
@@ -376,7 +376,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证成员但角色不足时返回 ScopeDenied（普通成员踢人 / 写元数据 / 调角色 / 解散，管理员踢管理员）
-        /// （VC-6.6：权限判据只有「是否成员」与「角色高低」两条正交轴）。
+        /// （权限判据只有「是否成员」与「角色高低」两条正交轴）。
         /// </summary>
         [Fact]
         public async Task MemberOperations_WhenRoleInsufficient_ShouldReturnScopeDenied()
@@ -407,7 +407,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证解散后状态为 Disbanded、成员集合保留供审计、再次邀请被状态结束拒绝，重复解散幂等（VC-6.6：解散是唯一终态）。
+        /// 验证解散后状态为 Disbanded、成员集合保留供审计、再次邀请被状态结束拒绝，重复解散幂等（解散是唯一终态）。
         /// </summary>
         [Fact]
         public async Task DisbandAsync_ShouldReachDisbandedAndRejectFurtherInvite()
@@ -438,7 +438,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证元数据写入按键落值（键去空白、值 null 归一为空串），并发出元数据变更事件；空键按参数非法拒绝
-        /// （VC-6.7：UpdateMetadataAsync 写键值）。
+        /// （UpdateMetadataAsync 写键值）。
         /// </summary>
         [Fact]
         public async Task UpdateMetadataAsync_ShouldWriteKeyValueAndPublishMetadataUpdatedEvent()
@@ -466,7 +466,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证超期邀请被扫描收敛为 Expired 并返回扫描条数，过期邀请不能再被接受，重复扫描不重复计数（VC-6.7：邀请超期）。
+        /// 验证超期邀请被扫描收敛为 Expired 并返回扫描条数，过期邀请不能再被接受，重复扫描不重复计数（邀请超期）。
         /// </summary>
         [Fact]
         public async Task SweepExpiredInvitesAsync_ShouldExpireOverdueInvite()
@@ -494,7 +494,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证群频道成员资格按当前成员事实裁决（C99 / VC-6.9）：在群成员为 true，非成员为 false，
+        /// 验证群频道成员资格按当前成员事实裁决：在群成员为 true，非成员为 false，
         /// 被踢后立即翻转为 false，群标识不存在或为空一律 false。
         /// </summary>
         [Fact]
@@ -528,7 +528,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证探针不认领非本域频道（Direct / Party / Global 一律 false），且群解散后频道随群封存，
-        /// 即使成员集合仍含该玩家也返回 false（C99 / VC-6.8：频道成员资格的唯一裁决方）。
+        /// 即使成员集合仍含该玩家也返回 false（频道成员资格的唯一裁决方）。
         /// </summary>
         [Fact]
         public async Task IsChannelMemberAsync_WhenKindIsNotGroupOrGroupDisbanded_ShouldReturnFalse()

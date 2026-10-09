@@ -35,10 +35,10 @@ using Xunit;
 namespace GameFrameX.Tests.DataBase;
 
 /// <summary>
-/// C171：BaseCacheState.ToBytes 默认 JSON/UTF8 实现的脏检查稳定性测试（无数据库依赖）。
+/// BaseCacheState.ToBytes 默认 JSON/UTF8 实现的脏检查稳定性测试（无数据库依赖）。
 /// </summary>
 /// <remarks>
-/// C171: dirty-check stability tests for the default JSON/UTF8 implementation of
+/// Dirty-check stability tests for the default JSON/UTF8 implementation of
 /// BaseCacheState.ToBytes (no database dependency).
 /// </remarks>
 public sealed class BaseCacheStateToBytesTests

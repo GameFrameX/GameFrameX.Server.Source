@@ -31,11 +31,11 @@
 namespace GameFrameX.Discovery;
 
 /// <summary>
-/// 服务实例描述符（C143d D15：路由表与心跳文档共用的数据模型）。
+/// 服务实例描述符（路由表与心跳文档共用的数据模型）。
 /// </summary>
 /// <remarks>
-/// The data model shared by heartbeat documents and the dual-view route table
-/// (C143d D15). One descriptor identifies one process hosting one role: who it is
+/// The data model shared by heartbeat documents and the dual-view route table:
+/// one descriptor identifies one process hosting one role: who it is
 /// (<see cref="Role"/> + <see cref="InstanceId"/>), where it is reachable
 /// (<see cref="AdvertiseEndpoint"/>, stored unparsed by design), what state it is in
 /// (<see cref="Status"/>), how loaded it is (<see cref="Load"/>), which host shape the
@@ -94,7 +94,7 @@ public sealed class InstanceDescriptor
     /// 获取对外可达端点（未解析）。
     /// </summary>
     /// <remarks>
-    /// Gets the reachable advertise endpoint, stored unparsed by D15 design.
+    /// Gets the reachable advertise endpoint, stored unparsed by design.
     /// </remarks>
     /// <value>scheme://host:port / The endpoint string</value>
     public string AdvertiseEndpoint { get; }
@@ -132,7 +132,7 @@ public sealed class InstanceDescriptor
     /// <remarks>
     /// Gets the incarnation. The same <see cref="InstanceId"/> with a different
     /// incarnation means the process restarted; the watcher then emits
-    /// Offline+Online instead of Recovered (D15 incarnation rule).
+    /// Offline+Online instead of Recovered (incarnation rule).
     /// </remarks>
     /// <value>代数 / The incarnation</value>
     public long Incarnation { get; }

@@ -53,10 +53,10 @@ public static class GlobalSettings
     private static readonly List<AppSetting> Settings = new(16);
 
     /// <summary>
-    /// 进程级字段的反射缓存（C143a D19：带 <see cref="SettingFieldLevelAttribute"/> 且级别为 <see cref="SettingFieldLevel.ProcessLevel"/> 的公共属性）。
+    /// 进程级字段的反射缓存（带 <see cref="SettingFieldLevelAttribute"/> 且级别为 <see cref="SettingFieldLevel.ProcessLevel"/> 的公共属性）。
     /// </summary>
     /// <remarks>
-    /// Reflection cache of process-level properties (C143a D19: public properties annotated as ProcessLevel).
+    /// Reflection cache of process-level properties (public properties annotated as ProcessLevel).
     /// </remarks>
     private static readonly PropertyInfo[] ProcessLevelProperties = typeof(AppSetting)
         .GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -117,7 +117,7 @@ public static class GlobalSettings
     /// Typically called during application startup or when switching configurations.
     /// Features:
     /// 1. Process-level field normalization runs first (SaveDataInterval / HttpUrl / NetWorkSendTimeOutSeconds / ActorRecycleTime),
-    ///    then repeated settings perform process-level field consistency validation (C143a D19) on the normalized values:
+    ///    then repeated settings perform process-level field consistency validation on the normalized values:
     ///    identical process-level fields pass through idempotently, conflicting ones fail fast with <see cref="SettingConflictException"/>;
     ///    role-level fields accept the latest value, so equivalent multi-Role configurations are not reported as conflicts
     /// 2. Null values are not allowed
@@ -154,7 +154,7 @@ public static class GlobalSettings
             setting.ActorRecycleTime = 5;
         }
 
-        // C143a D19 修复：先完成上面的进程级字段规范化，再用规范化后的值做一致性校验，
+        // 先完成上面的进程级字段规范化，再用规范化后的值做一致性校验，
         // 避免等价的多 Role 配置（规范化后相同）被误判为冲突。
         if (CurrentSetting.IsNotNull())
         {
@@ -181,10 +181,10 @@ public static class GlobalSettings
     }
 
     /// <summary>
-    /// 比对两份设置的进程级字段，返回全部冲突项（C143a D19）。
+    /// 比对两份设置的进程级字段，返回全部冲突项。
     /// </summary>
     /// <remarks>
-    /// Compares process-level fields between two settings and returns every conflict (C143a D19).
+    /// Compares process-level fields between two settings and returns every conflict.
     /// Role-level fields are ignored; null and null are treated as equal.
     /// </remarks>
     /// <param name="currentSetting">当前生效的设置 / The currently effective setting</param>

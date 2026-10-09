@@ -46,7 +46,7 @@ namespace GameFrameX.Tests.NetWork;
 /// 会话首消息鉴权中间件单元测试 / Session first-message authentication middleware unit tests
 /// </summary>
 /// <remarks>
-/// 覆盖 GFX-822（KCP 接入生产前补齐首消息鉴权防线）状态机语义：
+/// 覆盖会话首消息鉴权状态机语义：
 /// 未鉴权白名单放行 / 白名单外按协议违规关闭并拦截 / 心跳放行 / 鉴权完成消息升级 / 显式标记 / 超时主动关闭 / 已鉴权不受超时影响。
 /// </remarks>
 public class SessionAuthenticationMiddlewareTests : IDisposable

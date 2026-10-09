@@ -32,7 +32,7 @@ using GameFrameX.Online.Scope;
 namespace GameFrameX.Online.Tokens;
 
 /// <summary>
-/// Token 签发请求（vault:C2 S1.4：契约承载，登录业务实现在 C94）。
+/// Token 签发请求（契约承载，登录业务在会话管理模块实现）。
 /// <para>维护约束：<c>Scope</c> 为鉴权上下文解析产物（含玩家主体位）；<c>TimeToLiveSeconds</c> 必须落在装配配置的上下限内。</para>
 /// </summary>
 public sealed class OnlineTokenIssueRequest

@@ -16,11 +16,11 @@ using MongoDB.Driver;
 namespace GameFrameX.DataBase.Mongo.Discovery;
 
 /// <summary>
-/// Mongo 发现层激活参数对象（C154）：合并原 IMongoDatabase 直入与 C159 按名解析两种重载。
+/// Mongo 发现层激活参数对象：合并原 IMongoDatabase 直入与按名解析两种重载。
 /// </summary>
 /// <remarks>
-/// Parameter object for Mongo discovery activation (C154): merges the former
-/// direct-<see cref="IMongoDatabase"/> overload and the C159 name-based overload into a single shape.
+/// Parameter object for Mongo discovery activation: merges the former
+/// direct-<see cref="IMongoDatabase"/> overload and the name-based overload into a single shape.
 /// Set <see cref="ControlDatabase"/> for direct package consumers, or <see cref="ConnectionName"/>
 /// for launch flows that resolve the control database through the unified <c>GameDb</c> entry;
 /// when both are null activation throws <see cref="ArgumentException"/>.

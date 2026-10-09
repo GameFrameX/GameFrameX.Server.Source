@@ -33,10 +33,10 @@ using Xunit;
 namespace GameFrameX.Tests.Utility;
 
 /// <summary>
-/// GlobalSettings.SetCurrentSetting 进程级一致性校验的单元测试（C143a D19）。
+/// GlobalSettings.SetCurrentSetting 进程级一致性校验的单元测试。
 /// </summary>
 /// <remarks>
-/// Unit tests for the process-level consistency validation of GlobalSettings.SetCurrentSetting (C143a D19):
+/// Unit tests for the process-level consistency validation of GlobalSettings.SetCurrentSetting:
 /// identical process-level fields pass through idempotently; conflicting ones fail fast with
 /// <see cref="SettingConflictException"/> listing field names and source segments.
 /// </remarks>

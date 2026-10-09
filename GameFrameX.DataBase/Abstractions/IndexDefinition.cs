@@ -33,10 +33,10 @@ using System.Linq.Expressions;
 namespace GameFrameX.DataBase.Abstractions;
 
 /// <summary>
-/// 集合级索引定义参数对象（字符串键），收敛索引 API 的键名、方向散参并预留唯一 / TTL 位（C157）。
+/// 集合级索引定义参数对象（字符串键），收敛索引 API 的键名、方向散参并预留唯一 / TTL 位。
 /// </summary>
 /// <remarks>
-/// Parameter object for collection-level index definitions (string key), collapsing the key / direction parameters of the index API and reserving unique / TTL slots (C157).
+/// Parameter object for collection-level index definitions (string key), collapsing the key / direction parameters of the index API and reserving unique / TTL slots.
 /// </remarks>
 public sealed class IndexDefinition
 {
@@ -82,10 +82,10 @@ public sealed class IndexDefinition
 }
 
 /// <summary>
-/// 泛型索引定义参数对象（表达式键），收敛索引 API 的键、方向散参并预留唯一 / TTL 位（C157）。
+/// 泛型索引定义参数对象（表达式键），收敛索引 API 的键、方向散参并预留唯一 / TTL 位。
 /// </summary>
 /// <remarks>
-/// Parameter object for generic index definitions (expression key), collapsing the key / direction parameters of the index API and reserving unique / TTL slots (C157).
+/// Parameter object for generic index definitions (expression key), collapsing the key / direction parameters of the index API and reserving unique / TTL slots.
 /// </remarks>
 /// <typeparam name="TState">文档类型，必须实现 ICacheState 接口 / Document type, must implement ICacheState interface</typeparam>
 public sealed class IndexDefinition<TState> where TState : class, ICacheState

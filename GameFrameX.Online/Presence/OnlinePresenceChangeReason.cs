@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Presence;
 
 /// <summary>
-/// 在线状态变更原因码（vault:C3 VC-2.15：状态转换必须有确定原因码，无永久 Reconnecting）。
+/// 在线状态变更原因码（状态转换必须有确定原因码，无永久 Reconnecting）。
 /// <para>
 /// 维护约束：每次状态转换必填并随事件透出（<c>OnlinePresenceEvents</c> 审计字段 Reason）；
 /// 运营侧按原因码区分「主动离开」与「超窗离线」；新增原因码不改变状态机转换表。

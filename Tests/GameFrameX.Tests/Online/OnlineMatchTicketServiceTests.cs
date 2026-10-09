@@ -38,7 +38,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 匹配票据服务测试（vault:C5 VC-4.2/VC-4.4/VC-4.9/VC-4.11/VC-4.12：入队与重复保护、限流、取消与过期）。
+    /// 匹配票据服务测试（入队与重复保护、限流、取消与过期）。
     /// </summary>
     public class OnlineMatchTicketServiceTests
     {
@@ -58,7 +58,7 @@ namespace GameFrameX.Tests.Online
         private const long PlayerTwo = 1002;
 
         /// <summary>
-        /// 验证入队生成排队中的票据并带上存活时长（VC-4.9）。
+        /// 验证入队生成排队中的票据并带上存活时长。
         /// </summary>
         [Fact]
         public async Task EnqueueAsync_ShouldCreateQueuedTicketWithExpiry()
@@ -79,7 +79,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证同一玩家重复入队被拒，不产生第二张票据（VC-4.4 重复入队保护 / VC-4.12 唯一性）。
+        /// 验证同一玩家重复入队被拒，不产生第二张票据（重复入队保护 + 唯一性）。
         /// </summary>
         [Fact]
         public async Task EnqueueAsync_WhenPlayerAlreadyQueued_ShouldBeRejected()
@@ -100,7 +100,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证同一队伍重复入队被拒（VC-4.4 重复入队保护：队伍维度）。
+        /// 验证同一队伍重复入队被拒（重复入队保护：队伍维度）。
         /// </summary>
         [Fact]
         public async Task EnqueueAsync_WhenPartyAlreadyQueued_ShouldBeRejected()
@@ -122,7 +122,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证高频入队被限流（VC-4.11），且阈值内的正常入队不受影响。
+        /// 验证高频入队被限流，且阈值内的正常入队不受影响。
         /// </summary>
         [Fact]
         public async Task EnqueueAsync_WhenFlooding_ShouldBeRateLimited()
@@ -143,7 +143,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证取消排队中的票据后状态为 Cancelled 且发布事件（VC-4.2）。
+        /// 验证取消排队中的票据后状态为 Cancelled 且发布事件。
         /// </summary>
         [Fact]
         public async Task CancelAsync_ShouldCancelTicketAndPublishEvent()
@@ -164,7 +164,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证已匹配的票据不接受取消改写，而是返回匹配终态回执（VC-4.2：已成立的结果不被回滚）。
+        /// 验证已匹配的票据不接受取消改写，而是返回匹配终态回执（已成立的结果不被回滚）。
         /// </summary>
         [Fact]
         public async Task CancelAsync_WhenAlreadyMatched_ShouldReturnTerminalReceipt()
@@ -214,7 +214,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证取消后玩家的活跃票据查询返回空（VC-4.10：排队状态可确定性获知）。
+        /// 验证取消后玩家的活跃票据查询返回空（排队状态可确定性获知）。
         /// </summary>
         [Fact]
         public async Task GetActiveAsync_AfterCancel_ShouldReturnNull()
@@ -235,7 +235,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证超过存活时长的票据被扫描过期并发布事件（VC-4.9）。
+        /// 验证超过存活时长的票据被扫描过期并发布事件。
         /// </summary>
         [Fact]
         public async Task SweepExpiredAsync_ShouldExpireOverdueTicket()
@@ -257,7 +257,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证过期票据释放玩家索引，玩家可再次入队（VC-4.12：终态不占位）。
+        /// 验证过期票据释放玩家索引，玩家可再次入队（终态不占位）。
         /// </summary>
         [Fact]
         public async Task EnqueueAsync_AfterTicketExpired_ShouldBeAllowed()

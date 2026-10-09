@@ -30,12 +30,12 @@
 namespace GameFrameX.Online.Presence;
 
 /// <summary>
-/// 在线状态机（vault:C3 S2.5/VC-2.5：转换表固化为可断言常量，阶段 4/5 直接消费不得旁路）。
+/// 在线状态机（转换表固化为可断言常量，下游直接消费不得旁路）。
 /// <para>
 /// 维护约束（红线）：转换表为唯一合法性判据——任何写入 Presence 的状态变更必须先经
 /// <see cref="TryTransition"/> 判定；表外转换一律拒绝（返回 false，由服务层映射 5xxx）；
 /// 触发语义（进队列/组队/开局）由调用方解释，状态机只固化 from → to 合法边；
-/// 修改转换表必须走 vault 契约变更并同步 VC-2.5 用例集（状态边断言覆盖率 100%）。
+/// 修改转换表必须走契约变更并同步状态机用例集（状态边断言覆盖率 100%）。
 /// </para>
 /// </summary>
 public static class OnlinePresenceStateMachine
@@ -152,7 +152,7 @@ public static class OnlinePresenceStateMachine
     }
 
     /// <summary>
-    /// 枚举全部合法状态边（VC-2.5 状态机断言用：测试须对每条边逐一断言）。
+    /// 枚举全部合法状态边（状态机断言用：测试须对每条边逐一断言）。
     /// </summary>
     /// <returns>全部合法边 (from, to) 序列。</returns>
     public static IReadOnlyList<(OnlinePresenceState From, OnlinePresenceState To)> GetAllEdges()

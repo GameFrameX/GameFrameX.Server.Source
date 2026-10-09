@@ -39,14 +39,14 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 赛季结算测试（vault:C8 S7.3 / VC-7.6-a～c：赛季奖励可安全重试）。
+    /// 赛季结算测试（赛季奖励可安全重试）。
     /// 覆盖按冻结快照发放、重复触发幂等回放不重复发奖、中途失败逐玩家隔离后重试补齐、
     /// 部分发奖不标记完成、快照缺失拒绝结算、发放通道复用统一资产入口。
     /// </summary>
     public class OnlineSeasonSettlementTests
     {
         /// <summary>
-        /// 验证 VC-7.6-a：按快照名次发放赛季奖励，重复触发逐玩家命中幂等回放——余额与账本条目数守恒，
+        /// 验证按快照名次发放赛季奖励，重复触发逐玩家命中幂等回放——余额与账本条目数守恒，
         /// 结算事件只发一次，赛季推进到结算完成态。
         /// </summary>
         [Fact]
@@ -97,7 +97,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证发放通道复用 C95 统一资产入口：每玩家一笔结算交易、来源为既有的比赛奖励来源
+        /// 验证发放通道复用统一资产入口：每玩家一笔结算交易、来源为既有的比赛奖励来源
         /// （赛季奖励复用既有来源不新增第 5 类来源）、业务单号由赛季与玩家确定性派生。
         /// </summary>
         [Fact]
@@ -123,7 +123,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.6-b 隔离半边：单玩家发放失败被逐玩家隔离——其余玩家照常到账、失败玩家不进账，
+        /// 验证隔离半边：单玩家发放失败被逐玩家隔离——其余玩家照常到账、失败玩家不进账，
         /// 赛季**不**推进到结算完成态（部分发奖不得标记完成），也不发结算事件。
         /// </summary>
         [Fact]
@@ -156,7 +156,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.6-b 重试半边（宿主装配 <see cref="FailedReplayPolicy.ReExecute"/>）：发放通道恢复后
+        /// 验证重试半边（宿主装配 <see cref="FailedReplayPolicy.ReExecute"/>）：发放通道恢复后
         /// 重试补齐失败玩家，已发放玩家命中幂等回放，无一人重复到账，赛季推进到结算完成态。
         /// </summary>
         [Fact]
@@ -197,7 +197,7 @@ namespace GameFrameX.Tests.Online
         /// <summary>
         /// 验证失败重放的默认策略（Foundation 默认 <see cref="FailedReplayPolicy.ReplayError"/>）下的重试语义：
         /// 失败的幂等键**不**可重新执行，重试原样回放失败——因此「永不重复发奖」是策略无关的硬保证，
-        /// 而「重试补齐剩余玩家」依赖宿主把失败重放策略装配为 ReExecute，或在保留期后重新占位（C103 的运行时依赖）。
+        /// 而「重试补齐剩余玩家」依赖宿主把失败重放策略装配为 ReExecute，或在保留期后重新占位（运行时依赖）。
         /// </summary>
         [Fact]
         public async Task SettleAsync_RetryUnderDefaultReplayErrorPolicy_ShouldNeverDoubleGrant()
@@ -256,7 +256,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 VC-7.6-c：快照缺失时拒绝结算（不回落读榜、不降级发放），赛季状态与账本零变化，
+        /// 验证快照缺失时拒绝结算（不回落读榜、不降级发放），赛季状态与账本零变化，
         /// 待快照恢复后仍可正常结算。
         /// </summary>
         [Fact]

@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Matchmaking;
 
 /// <summary>
-/// 加入对局列表项请求（vault:C5 S4.4：按 JoinPolicy 分别裁决）。
+/// 加入对局列表项请求（按 JoinPolicy 分别裁决）。
 /// <para>
 /// 维护约束：<see cref="PlayerId"/> 即请求方主体位（由鉴权上下文注入，客户端不可覆盖）；
 /// <see cref="MemberPlayerIds"/> 是随行成员名单，整队加入时由调用方带全——

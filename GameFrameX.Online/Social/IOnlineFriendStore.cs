@@ -30,9 +30,9 @@
 namespace GameFrameX.Online.Social;
 
 /// <summary>
-/// 好友关系存储契约（vault:C7 S6.2）。
+/// 好友关系存储契约。
 /// <para>
-/// 维护约束（红线，VC-6.1 / VC-6.2 的落点）：**一对玩家（无向对）至多一条关系记录**是该存储的
+/// 维护约束（红线）：**一对玩家（无向对）至多一条关系记录**是该存储的
 /// 结构性不变量，不是调用方的纪律——<see cref="SaveIfAbsentAsync"/> 与
 /// <see cref="UpdateStateAsync"/> 是该不变量的两个守卫点：
 /// 并发「添加好友」只能在 <see cref="SaveIfAbsentAsync"/> 内收敛出一条记录（先到者生效，后到者拿到既有记录）；
@@ -48,7 +48,7 @@ public interface IOnlineFriendStore
     /// <summary>
     /// 以无向对为唯一键「不存在则创建」：键已存在时返回既有记录且不写入。
     /// <para>
-    /// 该方法是「重复请求不错乱」的实现依据（VC-6.1）：并发连发的好友请求里只有第一条能创建记录，
+    /// 该方法是「重复请求不错乱」的实现依据：并发连发的好友请求里只有第一条能创建记录，
     /// 其余全部拿到同一条既有记录，调用方据此返回既有状态而非报错或新建。
     /// </para>
     /// </summary>
@@ -79,7 +79,7 @@ public interface IOnlineFriendStore
     Task<OnlineFriendship> UpdateStateAsync(long tenantId, long appId, FriendshipStateTransition transition, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 以 CAS 语义把静止态关系重新发起为待答复请求（VC-6.2 状态机末段：「删除后可重新添加」）。
+    /// 以 CAS 语义把静止态关系重新发起为待答复请求（「删除后可重新添加」）。
     /// <para>
     /// 为什么需要独立入口：重新发起同时改写**状态、方向与有效期**三项——方向必须跟随本次发起人翻转
     /// （否则「谁先发起」的审计语义与「仅被请求方可答复」的权限判据会一起错位），

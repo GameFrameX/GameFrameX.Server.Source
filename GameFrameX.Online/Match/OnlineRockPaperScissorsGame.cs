@@ -34,12 +34,12 @@ using GameFrameX.Online.Assets;
 namespace GameFrameX.Online.Match;
 
 /// <summary>
-/// 石头剪刀布样例玩法（vault:C6「Online Sample：使用石头剪刀布或小型回合制玩法作为第一版样例」）。
+/// 石头剪刀布样例玩法（使用石头剪刀布或小型回合制玩法作为第一版样例）。
 /// <para>
 /// 规则：两人对局，三局两胜（先得 <see cref="WinTarget"/> 局者胜，最多 <see cref="MaxRounds"/> 局）；
 /// 每局双方各提交一次出拳，服务端判定胜负；单局无人出拳则本局作废。
 /// 单局超时（<see cref="RoundTimeoutMilliseconds"/>）由服务端按规则推进：已出拳方判该局胜，双方均未出拳则本局作废——
-/// 这使「玩家不做操作」也收敛到确定结果，而非永久挂起（VC-5.12）。
+/// 这使「玩家不做操作」也收敛到确定结果，而非永久挂起。
 /// </para>
 /// <para>
 /// 维护约束（红线）：本类不做任何鉴权与身份判定（由 Actor 负责），也不产出 <c>MatchResultId</c>

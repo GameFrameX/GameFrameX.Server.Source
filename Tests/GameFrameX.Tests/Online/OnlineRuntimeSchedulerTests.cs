@@ -32,7 +32,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// Online Runtime 后台调度器测试（change C128：停止令牌释放与停机路径幂等——S2930 修复的行为锚点）。
+    /// Online Runtime 后台调度器测试（停止令牌释放与停机路径幂等——S2930 修复的行为锚点）。
     /// </summary>
     public class OnlineRuntimeSchedulerTests
     {

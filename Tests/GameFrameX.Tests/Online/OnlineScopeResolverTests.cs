@@ -35,7 +35,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// OnlineScopeResolver 作用域解析测试（鉴权上下文优先、客户端字段不可覆盖，VC-1.8；缺失拒 3xxx）。
+    /// OnlineScopeResolver 作用域解析测试（鉴权上下文优先、客户端字段不可覆盖；缺失拒 3xxx）。
     /// </summary>
     public class OnlineScopeResolverTests
     {
@@ -93,7 +93,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证客户端伪造的作用域字段被鉴权上下文覆盖，不产生越权生效值（VC-1.8）。
+        /// 验证客户端伪造的作用域字段被鉴权上下文覆盖，不产生越权生效值。
         /// </summary>
         [Fact]
         public void TryResolve_WithForgedClientFields_ShouldEnforceAuthorizedValues()

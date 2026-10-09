@@ -320,7 +320,7 @@ public sealed partial class PostgreSqlDbService
     /// </summary>
     /// <remarks>
     /// Soft-deletes by id: the tracked row's document is replaced with the caller's marked state (whole-document
-    /// write-back, C168 semantics). A same-millisecond repeat against an already-identical document counts as
+    /// write-back semantics). A same-millisecond repeat against an already-identical document counts as
     /// unchanged and returns 0; a fresh delete timestamp always counts. Missing rows return 0.
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>

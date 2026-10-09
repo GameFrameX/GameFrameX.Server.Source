@@ -52,7 +52,7 @@ public static partial class GameDb
     /// </summary>
     /// <remarks>
     /// Database service implementation instance (facade alias of the first registered database;
-    /// C143a D20#2 fix: a second Init no longer silently overwrites it).
+    /// a second Init no longer silently overwrites it).
     /// </remarks>
     private static IDatabaseService _dbServiceImplementation;
 
@@ -78,7 +78,7 @@ public static partial class GameDb
     /// </summary>
     /// <remarks>
     /// The facade target database actually serving every static CRUD member and the parameterless
-    /// <see cref="As{T}()"/>. Centralizes the C159 binding semantics: explicit <see cref="SetDefault"/>
+    /// <see cref="As{T}()"/>. Centralizes the default-binding semantics: explicit <see cref="SetDefault"/>
     /// nomination first, first-registered fallback otherwise; emits the one-shot implicit-binding
     /// warning when multiple databases are registered without an explicit nomination.
     /// </remarks>
@@ -137,11 +137,11 @@ public static partial class GameDb
     /// </summary>
     /// <remarks>
     /// Initialize the GameDb instance (multi-database signature: registers by <see cref="DbOptions.Name"/> into
-    /// <see cref="MultiDbRegistry"/>, C143a D20#2). The connection string passed explicitly takes precedence;
+    /// <see cref="MultiDbRegistry"/>). The connection string passed explicitly takes precedence;
     /// when empty it falls back to <see cref="DbOptions.ConnectionString"/> (control-database D-Single fallback:
     /// pass the business <c>DataBaseUrl</c> explicitly so the control database shares the Mongo instance).
     /// The static facade targets <see cref="SetDefault"/> nomination first and otherwise binds to the
-    /// first registered database (C159: never silently re-bound once a default is explicitly nominated).
+    /// first registered database (never silently re-bound once a default is explicitly nominated).
     /// </remarks>
     /// <typeparam name="T">数据库服务的具体实现类型,必须实现IDatabaseService接口且有无参构造函数 / Database service implementation type, must implement IDatabaseService interface and have a parameterless constructor</typeparam>
     /// <param name="connectionString">连接字符串；为空时回落 <paramref name="dbOptions"/> 内连接串 / Connection string; falls back to the one in <paramref name="dbOptions"/> when empty</param>
@@ -220,7 +220,7 @@ public static partial class GameDb
                 return;
             }
 
-            // Localization: Database.Registry.DefaultAlreadySet - 默认数据库已被设置为“{0}”（set-once，C159）；不允许将其更改为“{1}”。已注册名称：[{2}]
+            // Localization: Database.Registry.DefaultAlreadySet - 默认数据库已被设置为“{0}”（set-once）；不允许将其更改为“{1}”。已注册名称：[{2}]
             throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Database.RegistryDefaultAlreadySet, current, databaseName, string.Join(", ", MultiDbRegistry.GetRegisteredDatabaseNames())));
         }
 
@@ -230,7 +230,7 @@ public static partial class GameDb
             var winner = Volatile.Read(ref _defaultDatabaseName);
             if (winner != databaseName)
             {
-                // Localization: Database.Registry.DefaultAlreadySet - 默认数据库已被设置为“{0}”（set-once，C159）；不允许将其更改为“{1}”。已注册名称：[{2}]
+                // Localization: Database.Registry.DefaultAlreadySet - 默认数据库已被设置为“{0}”（set-once）；不允许将其更改为“{1}”。已注册名称：[{2}]
                 throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Database.RegistryDefaultAlreadySet, winner, databaseName, string.Join(", ", MultiDbRegistry.GetRegisteredDatabaseNames())));
             }
 
@@ -245,7 +245,7 @@ public static partial class GameDb
     /// </summary>
     /// <remarks>
     /// Determines whether a database with the specified registry name is registered (forwards to
-    /// <see cref="MultiDbRegistry.Contains"/> for idempotent startup guards, C159: callers no longer
+    /// <see cref="MultiDbRegistry.Contains"/> for idempotent startup guards, so callers no longer
     /// need to reference the registry type directly).
     /// </remarks>
     /// <param name="databaseName">注册名 / Registry name</param>
@@ -279,10 +279,10 @@ public static partial class GameDb
     }
 
     /// <summary>
-    /// 按注册名以指定类型获取数据库服务实例（C143a D20#2 多库获取）。
+    /// 按注册名以指定类型获取数据库服务实例（多库获取）。
     /// </summary>
     /// <remarks>
-    /// Get the database service instance as the specified type by registry name (C143a D20#2).
+    /// Get the database service instance as the specified type by registry name.
     /// </remarks>
     /// <typeparam name="T">要转换的数据库服务类型,必须实现IDatabaseService接口 / Database service type to convert to, must implement IDatabaseService interface</typeparam>
     /// <param name="databaseName">注册名（如 <see cref="MultiDbRegistry.ControlDatabaseName"/>） / Registry name (e.g. <see cref="MultiDbRegistry.ControlDatabaseName"/>)</param>
@@ -310,7 +310,7 @@ public static partial class GameDb
     /// 异步关闭数据库连接（关闭全部已注册数据库，C143a D20#2）。
     /// </summary>
     /// <remarks>
-    /// Asynchronously closes every registered database connection (C143a D20#2).
+    /// Asynchronously closes every registered database connection.
     /// </remarks>
     /// <returns>表示异步关闭操作的任务 / Task representing the asynchronous close operation</returns>
     public static async Task CloseAsync()

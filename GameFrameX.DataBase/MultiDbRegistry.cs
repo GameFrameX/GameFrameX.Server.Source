@@ -34,10 +34,10 @@ using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.DataBase;
 
 /// <summary>
-/// 进程级多数据库注册表（C143a D20#2：按 <see cref="DbOptions.Name"/> 注册与获取，替代单静态字段）。
+/// 进程级多数据库注册表（按 <see cref="DbOptions.Name"/> 注册与获取，替代单静态字段）。
 /// </summary>
 /// <remarks>
-/// Process-level multi-database registry (C143a D20#2): registers and resolves database services by
+/// Process-level multi-database registry: registers and resolves database services by
 /// <see cref="DbOptions.Name"/> instead of a single static field, so the control database and the
 /// business database can coexist in one process without overwriting each other.
 /// <para>注册名约定：业务库用主库名（如 <c>gameframex</c>），控制库固定为 <see cref="ControlDatabaseName"/>；</para>
@@ -46,10 +46,10 @@ namespace GameFrameX.DataBase;
 public static class MultiDbRegistry
 {
     /// <summary>
-    /// 控制库的固定注册名与 Mongo 库名（C143a D16：主库内专用 database）。
+    /// 控制库的固定注册名与 Mongo 库名（主库内专用 database）。
     /// </summary>
     /// <remarks>
-    /// Fixed registry name and Mongo database name of the control database (C143a D16).
+    /// Fixed registry name and Mongo database name of the control database.
     /// </remarks>
     public const string ControlDatabaseName = "gameframex_control";
 

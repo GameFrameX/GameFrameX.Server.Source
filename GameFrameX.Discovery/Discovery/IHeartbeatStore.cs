@@ -31,10 +31,10 @@
 namespace GameFrameX.Discovery;
 
 /// <summary>
-/// 发现层心跳存储适配契约（C167：驱动语义的最小封闭面）。
+/// 发现层心跳存储适配契约（驱动语义的最小封闭面）。
 /// </summary>
 /// <remarks>
-/// The discovery heartbeat storage seam (C167): the minimal closed surface of
+/// The discovery heartbeat storage seam: the minimal closed surface of
 /// driver semantics consumed by the generic <see cref="DiscoveryRegistry"/> /
 /// <see cref="DiscoveryWatcher"/>. Each database driver implements this
 /// interface once (Mongo MQL / PostgreSQL parameterized SQL); the business

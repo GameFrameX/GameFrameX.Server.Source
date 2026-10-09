@@ -39,17 +39,17 @@ using GameFrameX.Online.Scope;
 namespace GameFrameX.Online.Audit;
 
 /// <summary>
-/// 统一审计链路服务（vault:C9 S8.2：Admin 既有支付/奖励/邮件/兑换码/远程配置/处罚审计与
-/// S8.1 受控操作审计接入统一链路 + 跨域检索；VC-8.3/VC-8.4 审计半边、VC-8.16 服务端半边）。
+/// 统一审计链路服务（Admin 既有支付/奖励/邮件/兑换码/远程配置/处罚审计与
+/// 受控操作审计接入统一链路 + 跨域检索；承担审计完整性与幂等校验、服务端脱敏）。
 /// <para>
 /// 维护约束（红线）：
-/// ① **只写审计存储**——本服务不持有任何其它域服务/存储，不触碰 Online Actor 与资产状态（X3；
-/// 「不得直写」由类型系统结构性保证，对齐 C101「只依赖读取面」在写入侧的镜像）；
-/// ② **审计完整性**（VC-8.3 半边）：接入条目缺 操作者/原因/标识/类型/租户/App 或域未知 → 拒绝
+/// ① **只写审计存储**——本服务不持有任何其它域服务/存储，不触碰 Online Actor 与资产状态
+/// （「不得直写」由类型系统结构性保证，对齐「只依赖读取面」在写入侧的镜像）；
+/// ② **审计完整性**：接入条目缺 操作者/原因/标识/类型/租户/App 或域未知 → 拒绝
 /// 4001（宁拒毋缺——「关键操作无审计次数 = 0」的服务端结构性保障：不完整审计进不了链路）；
-/// ③ **幂等**（VC-8.4 半边）：EventId 全局唯一，判重与落档在存储临界区内完成，重复接入回执
+/// ③ **幂等**：EventId 全局唯一，判重与落档在存储临界区内完成，重复接入回执
 /// <c>IsDuplicate=true</c>、无副作用；
-/// ④ **脱敏**（VC-8.16 半边）：落档前经 C93 <see cref="OnlineEventSanitizer"/> 生成 SanitizedFields，
+/// ④ **脱敏**：落档前经 <see cref="OnlineEventSanitizer"/> 生成 SanitizedFields，
 /// 存储与检索自落档起结构性无明文敏感值；
 /// ⑤ **检索锚定**：QueryAsync 的作用域只锚定 TenantId/AppId 两键——审计是跨区服检索域
 /// （支付/远程配置等 App 级审计 ServerId=0），区服/玩家/操作者等维度走 <see cref="OnlineAuditQuery"/>
@@ -70,14 +70,14 @@ public sealed class OnlineAuditService
     /// <summary>审计存储（唯一写入面）。</summary>
     private readonly IOnlineAuditStore _store;
 
-    /// <summary>审计脱敏器（复用 C93 脱敏规则与敏感键集合）。</summary>
+    /// <summary>审计脱敏器（复用既有脱敏规则与敏感键集合）。</summary>
     private readonly OnlineEventSanitizer _sanitizer;
 
     /// <summary>
     /// 初始化 <see cref="OnlineAuditService"/>。
     /// </summary>
     /// <param name="store">审计存储。</param>
-    /// <param name="sanitizer">审计脱敏器；传 <see langword="null"/> 时使用 C93 默认敏感键集合。</param>
+    /// <param name="sanitizer">审计脱敏器；传 <see langword="null"/> 时使用默认敏感键集合。</param>
     public OnlineAuditService(IOnlineAuditStore store, OnlineEventSanitizer sanitizer = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
@@ -104,7 +104,7 @@ public sealed class OnlineAuditService
             return failure;
         }
 
-        // 脱敏桥接：一次性构造 C93 信封调用既有脱敏器，取脱敏字段投影（零 C93 公开面改动，VC-8.16）。
+        // 脱敏桥接：一次性构造事件信封调用既有脱敏器，取脱敏字段投影（零公开面改动）。
         var sanitizedView = _sanitizer.CreateAuditView(ToEnvelope(entry));
         var record = new OnlineAuditRecord
         {
@@ -236,7 +236,7 @@ public sealed class OnlineAuditService
     }
 
     /// <summary>
-    /// 校验接入条目的审计完整性（VC-8.3 半边：缺任一必填维度拒绝——不完整的审计进不了链路）。
+    /// 校验接入条目的审计完整性（缺任一必填维度拒绝——不完整的审计进不了链路）。
     /// </summary>
     /// <param name="entry">接入条目。</param>
     /// <returns>非法时返回失败结果；合法返回 <see langword="null"/>。</returns>
@@ -259,12 +259,12 @@ public sealed class OnlineAuditService
 
         if (string.IsNullOrEmpty(entry.OperatorId))
         {
-            return OnlineResult<OnlineAuditIngestOutcome>.Fail(OnlineErrorCode.ParameterInvalid, "操作者（OperatorId）必填——审计完整性要求含操作者（VC-8.3）");
+            return OnlineResult<OnlineAuditIngestOutcome>.Fail(OnlineErrorCode.ParameterInvalid, "操作者（OperatorId）必填——审计完整性要求含操作者");
         }
 
         if (string.IsNullOrEmpty(entry.Reason))
         {
-            return OnlineResult<OnlineAuditIngestOutcome>.Fail(OnlineErrorCode.ParameterInvalid, "操作原因（Reason）必填——审计完整性要求含原因（VC-8.3）");
+            return OnlineResult<OnlineAuditIngestOutcome>.Fail(OnlineErrorCode.ParameterInvalid, "操作原因（Reason）必填——审计完整性要求含原因");
         }
 
         if (entry.TenantId <= 0 || entry.AppId <= 0)
@@ -281,7 +281,7 @@ public sealed class OnlineAuditService
     }
 
     /// <summary>
-    /// 把接入条目桥接为 C93 事件信封（仅为复用 <see cref="OnlineEventSanitizer.CreateAuditView"/> 的脱敏判定，
+    /// 把接入条目桥接为事件信封（仅为复用 <see cref="OnlineEventSanitizer.CreateAuditView"/> 的脱敏判定，
     /// 信封不发布、不传输；作用域字段与语义投影原样承载）。
     /// </summary>
     /// <param name="entry">接入条目。</param>

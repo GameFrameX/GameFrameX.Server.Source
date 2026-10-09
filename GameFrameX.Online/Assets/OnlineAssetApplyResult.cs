@@ -36,7 +36,7 @@ using GameFrameX.Online.Contracts;
 /// <para>
 /// 维护约束：成功时 <see cref="Entries"/> 为本批次全部落账条目（顺序与批次行一致）；
 /// 失败时净效应为 0（先全量校验后落账，无部分应用）；余额/库存不足映射
-/// <see cref="OnlineErrorCode.StateOperationForbidden"/>（5xxx 业务状态段，错误码复用约束见 C95 方案复审 R1）。
+/// <see cref="OnlineErrorCode.StateOperationForbidden"/>（5xxx 业务状态段）。
 /// </para>
 /// </summary>
 public sealed class OnlineAssetApplyResult
