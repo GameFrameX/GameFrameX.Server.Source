@@ -115,16 +115,14 @@ internal sealed class AppStartUpGame : AppStartUpBase
 
     /// <summary>
     /// 控制库先行于业务库（D-Single 缺省回落：与业务库共用同一实例连接串），
-    /// 经 GameDb 统一入口判重/命名；Provider 装配分支——PostgreSql 时控制库走 PostgreSqlDbService
+    /// 经 GameDb 统一入口判重/命名；实现类型按 Setting.DatabaseProvider 由 GameDb 枚举重载约定解析
     ///（PG 路径下 DbOptions.Name 仅作注册名，数据库由连接串 Database 决定）。
     /// </summary>
     private async Task InitializeControlDatabaseAsync()
     {
         if (!GameDb.Contains(GameDb.ControlDatabaseName))
         {
-            var controlDatabaseInitResult = Setting.DatabaseProvider == DatabaseProviderType.PostgreSql
-                ? await GameDb.Init<PostgreSqlDbService>(Setting.DataBaseUrl, new DbOptions { Name = GameDb.ControlDatabaseName, IsUseTimeZone = Setting.IsUseTimeZone, })
-                : await GameDb.Init<MongoDbService>(Setting.DataBaseUrl, new DbOptions { Name = GameDb.ControlDatabaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
+            var controlDatabaseInitResult = await GameDb.Init(Setting.DatabaseProvider, Setting.DataBaseUrl, new DbOptions { Name = GameDb.ControlDatabaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
             if (controlDatabaseInitResult == false)
             {
                 throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
@@ -166,13 +164,11 @@ internal sealed class AppStartUpGame : AppStartUpBase
     }
 
     /// <summary>
-    /// 业务库 Init，Provider 装配分支；失败抛 <see cref="InvalidOperationException"/>。
+    /// 业务库 Init，实现类型按 Setting.DatabaseProvider 由 GameDb 枚举重载约定解析；失败抛 <see cref="InvalidOperationException"/>。
     /// </summary>
     private async Task InitializeBusinessDatabaseAsync()
     {
-        var initResult = Setting.DatabaseProvider == DatabaseProviderType.PostgreSql
-            ? await GameDb.Init<PostgreSqlDbService>(Setting.DataBaseUrl, new DbOptions { Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, })
-            : await GameDb.Init<MongoDbService>(Setting.DataBaseUrl, new DbOptions { Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
+        var initResult = await GameDb.Init(Setting.DatabaseProvider, Setting.DataBaseUrl, new DbOptions { Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
         if (initResult == false)
         {
             throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
