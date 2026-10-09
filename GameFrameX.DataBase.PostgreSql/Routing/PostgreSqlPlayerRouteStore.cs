@@ -177,7 +177,7 @@ public sealed class PostgreSqlPlayerRouteStore : IPlayerRouteStore
     /// <returns>异步任务 / Async task</returns>
     public async Task InsertFirstLoginAsync(PlayerRouteRecord record, CancellationToken cancellationToken = default)
     {
-        for (var attempt = 0;; attempt++)
+        for (var attempt = 0; attempt < 2; attempt++)
         {
             try
             {
