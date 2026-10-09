@@ -155,12 +155,12 @@ internal sealed class HotfixModule
 
             ParseDll();
 
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Hotfix.DllInitializationSuccess, _dllPath));
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.HotfixModule.DllInitializationSuccess, _dllPath));
             success = true;
         }
         catch (Exception e)
         {
-            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.Hotfix.DllInitializationFailed, e));
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.HotfixModule.DllInitializationFailed, e));
             if (!reload)
             {
                 throw;
@@ -194,7 +194,7 @@ internal sealed class HotfixModule
 #pragma warning restore S1215
                     }
 
-                    LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.Hotfix.DllUninstall, weak.IsAlive ? "failure" : "successful"));
+                    LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.HotfixModule.DllUninstall, weak.IsAlive ? "failure" : "successful"));
                 });
             }
         }
@@ -273,14 +273,14 @@ internal sealed class HotfixModule
         if (!_httpHandlerMap.TryAdd(attr.OriginalCmd, handler))
         {
             // Localization: CoreExceptions.Hotfix.HttpProcessorRepeatedlyRegistered - HTTP处理器命令重复注册，命令:{0}
-            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Hotfix.HttpProcessorRepeatedlyRegistered, attr.OriginalCmd));
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.HttpProcessorRepeatedlyRegistered, attr.OriginalCmd));
         }
 
         // 注册标准化的命名
         if (!_httpHandlerMap.TryAdd(attr.StandardCmd, handler))
         {
             // Localization: CoreExceptions.Hotfix.HttpProcessorRepeatedlyRegistered - HTTP处理器命令重复注册，命令:{0}
-            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Hotfix.HttpProcessorRepeatedlyRegistered, attr.OriginalCmd));
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.HttpProcessorRepeatedlyRegistered, attr.OriginalCmd));
         }
 
         return true;
@@ -306,7 +306,7 @@ internal sealed class HotfixModule
         }
 
         // Localization: CoreExceptions.Hotfix.WrongTcpProcessorType - 错误的TCP处理器类型:{0}
-        throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Hotfix.WrongTcpProcessorType, instance.GetType().FullName));
+        throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.WrongTcpProcessorType, instance.GetType().FullName));
     }
 
     /// <summary>
@@ -325,7 +325,7 @@ internal sealed class HotfixModule
         var isHas = _rpcHandlerMap.TryGetValue(attribute.RequestMessage.GetType(), out var requestHandler);
         if (isHas && requestHandler?.GetType() == attribute.ResponseMessage.GetType())
         {
-            LogHelper.Error(LocalizationService.GetString(Localization.Keys.CoreExceptions.Hotfix.HttpProcessorRepeatedlyRegistered, attribute.RequestMessage));
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.HttpProcessorRepeatedlyRegistered, attribute.RequestMessage));
             return false;
         }
 
@@ -356,18 +356,18 @@ internal sealed class HotfixModule
         if (!type.IsSealed)
         {
             // Localization: CoreExceptions.Hotfix.ClassMustBeSealed - {0} 必须是标记为sealed的类
-            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.Hotfix.ClassMustBeSealed, classFullName));
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.ClassMustBeSealed, classFullName));
         }
 
         if (!classFullName.EndsWith(GlobalConst.ComponentHandlerNameSuffix))
         {
             // Localization: CoreExceptions.Hotfix.MessageProcessorWrongSuffix - 消息处理器必须以[{0}]结尾，{1}
-            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Hotfix.MessageProcessorWrongSuffix, GlobalConst.ComponentHandlerNameSuffix, classFullName));
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.MessageProcessorWrongSuffix, GlobalConst.ComponentHandlerNameSuffix, classFullName));
         }
 
         if (_tcpHandlerTypes.Contains(attribute.MessageType))
         {
-            LogHelper.Error(LocalizationService.GetString(Localization.Keys.CoreExceptions.Hotfix.WrongTcpProcessorType, type.FullName));
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.WrongTcpProcessorType, type.FullName));
             return false;
         }
 
@@ -380,7 +380,7 @@ internal sealed class HotfixModule
         var msgId = msgIdField.MessageId;
         if (!_tcpHandlerMap.TryAdd(msgId, type))
         {
-            LogHelper.Error(LocalizationService.GetString(Localization.Keys.CoreExceptions.Hotfix.WrongTcpProcessorType, type));
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.WrongTcpProcessorType, type));
         }
 
         _tcpHandlerTypes.Add(attribute.MessageType);
@@ -408,13 +408,13 @@ internal sealed class HotfixModule
         if (!type.IsSealed)
         {
             // Localization: CoreExceptions.Hotfix.ClassMustBeSealed - {0} 必须是标记为sealed的类
-            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.Hotfix.ClassMustBeSealed, classFullName));
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.ClassMustBeSealed, classFullName));
         }
 
         if (!classFullName.EndsWith(GlobalConst.EventListenerNameSuffix))
         {
             // Localization: CoreExceptions.Hotfix.EventHandlerWrongSuffix - 事件处理器必须以[{0}]结尾，{1}
-            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Hotfix.EventHandlerWrongSuffix, GlobalConst.EventListenerNameSuffix, classFullName));
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.EventHandlerWrongSuffix, GlobalConst.EventListenerNameSuffix, classFullName));
         }
 
         var compAgentType = type.BaseType.GetGenericArguments()[0];
@@ -427,14 +427,14 @@ internal sealed class HotfixModule
         if (infoAttributes.Count == 0)
         {
             // Localization: CoreExceptions.Hotfix.NoEventsToListen - IEventListener:{0} 没有指定要监听的事件
-            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Hotfix.NoEventsToListen, type.FullName));
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.NoEventsToListen, type.FullName));
         }
 
         var eventInfoAttribute = infoAttributes.FirstOrDefault();
         if (eventInfoAttribute == null)
         {
             // Localization: CoreExceptions.Hotfix.NoEventsToListen - IEventListener:{0} 没有指定要监听的事件
-            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Hotfix.NoEventsToListen, type.FullName));
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.NoEventsToListen, type.FullName));
         }
 
         var evtId = eventInfoAttribute.EventId;
@@ -478,14 +478,14 @@ internal sealed class HotfixModule
         if (!fullName.EndsWith(GlobalConst.ComponentAgentNameSuffix))
         {
             // Localization: CoreExceptions.Hotfix.ComponentAgentWrongSuffix - 组件代理必须以[{0}]结尾，{1}
-            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Hotfix.ComponentAgentWrongSuffix, GlobalConst.ComponentAgentNameSuffix, fullName));
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.ComponentAgentWrongSuffix, GlobalConst.ComponentAgentNameSuffix, fullName));
         }
 
         var compType = type.BaseType.GetGenericArguments()[0];
         if (!_compAgentMap.TryAdd(compType, type))
         {
             // Localization: CoreExceptions.Hotfix.MultipleAgents - 组件:[{0}] 存在多个代理
-            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Hotfix.MultipleAgents, compType.FullName));
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.MultipleAgents, compType.FullName));
         }
 
         _agentCompMap[type] = compType;
@@ -512,7 +512,7 @@ internal sealed class HotfixModule
         }
 
         // Localization: CoreExceptions.Hotfix.WrongTcpProcessorType - 错误的TCP处理器类型:{0}
-        throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Hotfix.WrongTcpProcessorType, instance.GetType().FullName));
+        throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.WrongTcpProcessorType, instance.GetType().FullName));
 
         //throw new HandlerNotFoundException($"消息ID：{msgId}");
     }
