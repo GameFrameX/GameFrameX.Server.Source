@@ -32,15 +32,15 @@ using Npgsql;
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
-/// 基于 PostgreSQL 控制库的 IPlayerRouteSyncTarget（C166 T8：与 <see cref="MongoPlayerRouteSyncTarget"/> 的 CAS 语义逐分支对齐）。
+/// 基于 PostgreSQL 控制库的 IPlayerRouteSyncTarget（C166 T8：与 <c>MongoPlayerRouteSyncTarget</c> 的 CAS 语义逐分支对齐）。
 /// </summary>
 /// <remarks>
 /// The PostgreSQL-backed implementation of the player-route sync hook (C166 T8),
-/// a branch-by-branch parallel of <see cref="MongoPlayerRouteSyncTarget"/> over
+/// a branch-by-branch parallel of <c>MongoPlayerRouteSyncTarget</c> over
 /// the <c>player_route</c> table. Each upsert is a guarded UPDATE (compare-and-swap
 /// on <c>version = supplied - 1</c>); a miss re-reads the latest row and applies
 /// the same three-branch policy: missing row + first login (version &lt;= 1)
-/// inserts unconditionally (INSERT ... ON CONFLICT DO NOTHING, then re-judged);
+/// inserts unconditionally (INSERT ... ON CONFLICT DO UPDATE, then re-judged);
 /// missing row + version &gt; 1 returns silently (the next SetOnline retries); an
 /// existing row whose version does not satisfy current+1 throws
 /// <see cref="PlayerRouteStaleException"/> for the SessionManager hook to swallow.
@@ -91,15 +91,16 @@ WHERE player_id = $1 AND version = $5;";
     private const string SelectLatestSql = "SELECT instance_id, role, version FROM player_route WHERE player_id = $1;";
 
     /// <summary>
-    /// 首登无条件插入（冲突即 no-op，随后按回读分支判定）。
+    /// 首登无条件插入（与 Mongo ReplaceOneAsync(IsUpsert) 的 last-writer-wins 对齐，冲突时后写者覆盖）。
     /// </summary>
     /// <remarks>
-    /// The unconditional first-login insert (ON CONFLICT DO NOTHING; the outcome is re-judged through the read-back branch).
+    /// The unconditional first-login insert, aligned with the Mongo ReplaceOneAsync(IsUpsert)
+    /// last-writer-wins semantics (ON CONFLICT DO UPDATE lets the later writer win).
     /// </remarks>
     private const string InsertFirstLoginSql = @"
 INSERT INTO player_route (player_id, instance_id, role, version, last_seen_at)
 VALUES ($1, $2, $3, 1, now())
-ON CONFLICT (player_id) DO NOTHING;";
+ON CONFLICT (player_id) DO UPDATE SET instance_id = EXCLUDED.instance_id, role = EXCLUDED.role, version = EXCLUDED.version, last_seen_at = EXCLUDED.last_seen_at;";
 
     /// <summary>
     /// 删除行（幂等）。
@@ -194,8 +195,8 @@ ON CONFLICT (player_id) DO NOTHING;";
 
         if (version <= 1)
         {
-            // 首登（version<=1 且行缺失）无条件插入；并发首登靠主键冲突 no-op 收敛。
-            // First login (missing row with version<=1) inserts unconditionally; concurrent first logins converge through the primary-key conflict no-op.
+            // 首登（version<=1 且行缺失）无条件插入；并发首登与 Mongo ReplaceOneAsync(IsUpsert) 的 last-writer-wins 对齐（后写者胜出）。
+            // First login (missing row with version<=1) inserts unconditionally; concurrent first logins follow the Mongo ReplaceOneAsync(IsUpsert) last-writer-wins policy (the later writer wins).
             await using var insertCommand = _dataSource.CreateCommand(InsertFirstLoginSql);
             insertCommand.Parameters.AddWithValue(playerId);
             insertCommand.Parameters.AddWithValue(instanceId);

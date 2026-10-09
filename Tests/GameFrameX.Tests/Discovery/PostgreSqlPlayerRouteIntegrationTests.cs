@@ -29,6 +29,7 @@
 
 using GameFrameX.NetWork.RemoteMessaging.Routing;
 using Npgsql;
+using System.Reflection;
 
 namespace GameFrameX.Tests.Discovery;
 
@@ -108,6 +109,46 @@ public sealed class PostgreSqlPlayerRouteIntegrationTests : IDisposable
         var stored = await ReadRouteAsync(testDatabase.DataSource, 101);
         Assert.NotNull(stored);
         Assert.Equal("game-1", stored.Value.InstanceId);
+        Assert.Equal("Game", stored.Value.Role);
+        Assert.Equal(1, stored.Value.Version);
+    }
+
+    [Fact]
+    public async Task SyncTarget_ConcurrentFirstLogin_LastWriterWins()
+    {
+        if (ShouldSkip)
+        {
+            return;
+        }
+
+        var testDatabase = await CreateDatabaseAsync();
+
+        // 行缺失时两次并发首登插入（不同实例，version=1）：均走 InsertFirstLoginSql 的 ON CONFLICT DO UPDATE 分支，
+        // 与 Mongo ReplaceOneAsync(IsUpsert) 的 last-writer-wins 对齐，断言终态为后写者。
+        // Two concurrent first-login inserts on a missing row (different instances, version=1): both go through
+        // the InsertFirstLoginSql ON CONFLICT DO UPDATE branch, aligned with the Mongo ReplaceOneAsync(IsUpsert)
+        // last-writer-wins semantics; the final state must be the later writer.
+        // 说明：顺序调用 UpsertAsync 时第二次会走 CAS 读回分支抛 PlayerRouteStaleException，
+        // 因此这里直接执行首登 SQL 常量来覆盖真正的并发首登路径。
+        // Note: a sequential second UpsertAsync would hit the CAS read-back branch and throw
+        // PlayerRouteStaleException, so the first-login SQL constant is executed directly here
+        // to cover the genuine concurrent-first-login path.
+        var insertSql = (string)typeof(PostgreSqlPlayerRouteSyncTarget)
+            .GetField("InsertFirstLoginSql", BindingFlags.NonPublic | BindingFlags.Static)!
+            .GetValue(null)!;
+
+        for (var i = 1; i <= 2; i++)
+        {
+            await using var command = testDatabase.DataSource.CreateCommand(insertSql);
+            command.Parameters.AddWithValue(105L);
+            command.Parameters.AddWithValue($"game-{i}");
+            command.Parameters.AddWithValue("Game");
+            await command.ExecuteNonQueryAsync();
+        }
+
+        var stored = await ReadRouteAsync(testDatabase.DataSource, 105);
+        Assert.NotNull(stored);
+        Assert.Equal("game-2", stored.Value.InstanceId);
         Assert.Equal("Game", stored.Value.Role);
         Assert.Equal(1, stored.Value.Version);
     }
