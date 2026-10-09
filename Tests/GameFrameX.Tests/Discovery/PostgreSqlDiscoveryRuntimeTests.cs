@@ -172,4 +172,78 @@ public sealed class PostgreSqlDiscoveryRuntimeTests
             GameDb.ResetForTesting();
         }
     }
+
+    /// <summary>
+    /// Activate 后经公共槽位 MarkActive：本实例 server_heartbeat 行由 Booting 翻转为 Active（宿主无分派就绪路径回归）。
+    /// </summary>
+    /// <remarks>
+    /// After Activate, flipping through the shared <c>ActiveDiscoveryRuntime</c> slot — the
+    /// exact call the hosts make at their readiness point — must turn this instance's
+    /// heartbeat row from Booting to Active: the <c>Bind</c> performed at the end of
+    /// Activate is what lets the provider-agnostic call reach the real registry.
+    /// </remarks>
+    [Fact]
+    public async Task Activate_ThenMarkActiveThroughSharedSlot_FlipsHeartbeatToActive()
+    {
+        if (ShouldSkip)
+        {
+            return;
+        }
+
+        // 写侧需要广播身份：临时注入广播端口与稳定实例 ID（测试内恢复原值；进程内无其他用例读取这两个变量）。
+        var previousPort = Environment.GetEnvironmentVariable(AdvertiseEndpointEnvironment.AdvertisePortEnvironmentVariable);
+        var previousInstanceId = Environment.GetEnvironmentVariable(AdvertiseEndpointEnvironment.RoleInstanceIdEnvironmentVariable);
+        var instanceId = $"slot-mark-active-{Guid.NewGuid():N}";
+        Environment.SetEnvironmentVariable(AdvertiseEndpointEnvironment.AdvertisePortEnvironmentVariable, "29100");
+        Environment.SetEnvironmentVariable(AdvertiseEndpointEnvironment.RoleInstanceIdEnvironmentVariable, instanceId);
+        try
+        {
+            PostgreSqlDiscoveryRuntime.ResetForTest();
+            GameDb.ResetForTesting();
+            await using (var testDatabase = await PostgreSqlTestDatabase.CreateAsync(_connectionString))
+            {
+                var opened = await GameDb.Init(new DbOptions
+                {
+                    Provider = DatabaseProviderType.PostgreSql,
+                    ConnectionString = testDatabase.ConnectionString,
+                    Name = GameDb.ControlDatabaseName,
+                    IsDefault = false,
+                });
+                Assert.True(opened);
+
+                PostgreSqlDiscoveryRuntime.Activate(new DiscoveryActivationOptions
+                {
+                    ConnectionName = GameDb.ControlDatabaseName,
+                    HostedRoleNames = new List<string> { "Game" },
+                });
+
+                // 宿主就绪点的真实调用形态：无分派经公共槽位异步切换。
+                await ActiveDiscoveryRuntime.MarkActiveAsync();
+
+                var status = string.Empty;
+                var deadline = DateTime.UtcNow.AddSeconds(10);
+                while (DateTime.UtcNow < deadline && status != "Active")
+                {
+                    await using var connection = await testDatabase.DataSource.OpenConnectionAsync();
+                    await using var command = new NpgsqlCommand("SELECT status FROM server_heartbeat WHERE instance_id = ($1)", connection);
+                    command.Parameters.AddWithValue(instanceId);
+                    status = await command.ExecuteScalarAsync() as string;
+                    if (status != "Active")
+                    {
+                        await Task.Delay(100);
+                    }
+                }
+
+                Assert.Equal("Active", status);
+
+                PostgreSqlDiscoveryRuntime.ResetForTest();
+                GameDb.ResetForTesting();
+            }
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(AdvertiseEndpointEnvironment.AdvertisePortEnvironmentVariable, previousPort);
+            Environment.SetEnvironmentVariable(AdvertiseEndpointEnvironment.RoleInstanceIdEnvironmentVariable, previousInstanceId);
+        }
+    }
 }

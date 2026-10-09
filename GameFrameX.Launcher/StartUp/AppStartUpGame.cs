@@ -97,7 +97,7 @@ internal sealed class AppStartUpGame : AppStartUpBase
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.ServerStartEnd, Setting.ServerType));
             // 启动阶段完成（DB/组件/热-fix/在线管理均已就绪），放行下一个 Role 的启动屏障
             MarkStartUpReady();
-            MarkServiceActive();
+            await MarkServiceActiveAsync();
             exitMessage = await AppExitToken;
         }
         catch (Exception e)
@@ -206,16 +206,10 @@ internal sealed class AppStartUpGame : AppStartUpBase
     /// 启动阶段真正完成（DB/组件/热-fix/在线管理均已就绪）后才把心跳从 Booting 切到 Active，
     /// 避免其他进程在服务就绪前发现本实例并投递流量；未激活发现层或无广播身份时为无害 no-op。
     /// </summary>
-    private void MarkServiceActive()
+    private async Task MarkServiceActiveAsync()
     {
-        if (Setting.DatabaseProvider == DatabaseProviderType.PostgreSql)
-        {
-            PostgreSqlDiscoveryRuntime.MarkActive();
-        }
-        else
-        {
-            MongoDiscoveryRuntime.MarkActive();
-        }
+        // 公共槽位持有实际激活的 Provider Runtime 写侧，宿主无需按 DatabaseProvider 分派。
+        await ActiveDiscoveryRuntime.MarkActiveAsync();
     }
 
     /// <summary>

@@ -52,7 +52,10 @@ namespace GameFrameX.DataBase.Mongo.Discovery;
 /// single-process local development), and attaches the generic player-route
 /// bootstrap. Router wiring is NOT performed here — the composition side
 /// calls <c>DiscoveryRoutingWire.Initialize(RoleSet.Current, MongoDiscoveryRuntime.TableProvider)</c>
-/// right after. Activation is idempotent per process: the first call wins.
+/// right after. Activation is idempotent per process: the first call wins. The
+/// started registry is published to the process-wide <see cref="ActiveDiscoveryRuntime"/>
+/// slot so provider-agnostic startup flows flip Booting → Active without
+/// provider dispatch.
 /// The local dispatcher slot stays null here on purpose: the hotfix wiring
 /// point later calls <c>AttachLocalDispatcher</c> to fill the case 1 slot.
 /// </remarks>
@@ -142,6 +145,8 @@ public static class MongoDiscoveryRuntime
         var selfDescriptor = DiscoveryRegistry.CreateSelfDescriptorFromEnvironment(primaryRoleName);
         _registry = new DiscoveryRegistry(heartbeatStore, playerRouteStore, selfDescriptor, null, options.TtlCleanupInterval);
         _registry.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
+        // 激活完成即登记公共槽位：宿主就绪时经 ActiveDiscoveryRuntime.MarkActiveAsync 无分派切 Active。
+        ActiveDiscoveryRuntime.Bind(_registry);
         if (selfDescriptor == null)
         {
             LogHelper.Warning("[MongoDiscoveryRuntime] no advertise port configured ({environmentVariable}); the heartbeat write side is skipped and this process only observes the topology", AdvertiseEndpointEnvironment.AdvertisePortEnvironmentVariable);
@@ -149,20 +154,5 @@ public static class MongoDiscoveryRuntime
 
         // 玩家路由层装配（建索引 + 装 SyncTarget），通用 Bootstrap 单例。
         PlayerRouteResolverBootstrap.Attach(playerRouteStore, options.PlayerRouteFastPath).GetAwaiter().GetResult();
-    }
-
-    /// <summary>
-    /// 把本进程心跳从 Booting 切换为 Active（启动阶段真正完成、服务就绪后调用）。
-    /// </summary>
-    /// <remarks>
-    /// Flips this process's announced status from Booting to Active. The startup
-    /// flows call this right after their readiness point (<c>MarkStartUpReady</c>:
-    /// databases, components, and listeners up) so other processes never discover
-    /// and route traffic to a not-yet-ready instance. No-op when the discovery
-    /// layer was not activated or the write side was skipped (no advertise identity).
-    /// </remarks>
-    public static void MarkActive()
-    {
-        _registry?.MarkActiveAsync(CancellationToken.None).GetAwaiter().GetResult();
     }
 }

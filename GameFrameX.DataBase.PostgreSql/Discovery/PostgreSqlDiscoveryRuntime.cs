@@ -53,9 +53,11 @@ namespace GameFrameX.DataBase.PostgreSql.Discovery;
 /// player-route bootstrap. Router wiring is NOT performed here — the
 /// composition side calls
 /// <c>DiscoveryRoutingWire.Initialize(RoleSet.Current, PostgreSqlDiscoveryRuntime.TableProvider)</c>
-/// right after. Activation is idempotent per process; the hotfix wiring point
-/// later calls <c>DiscoveryRoutingWire.AttachLocalDispatcher</c> to fill the
-/// case 1 slot.
+/// after. Activation is idempotent per process; the hotfix wiring point later
+/// calls <c>DiscoveryRoutingWire.AttachLocalDispatcher</c> to fill the case 1
+/// slot. The started registry is published to the process-wide
+/// <see cref="ActiveDiscoveryRuntime"/> slot so provider-agnostic startup flows
+/// flip Booting → Active without provider dispatch.
 /// </remarks>
 public static class PostgreSqlDiscoveryRuntime
 {
@@ -155,22 +157,12 @@ public static class PostgreSqlDiscoveryRuntime
 
         _registry = new DiscoveryRegistry(heartbeatStore, playerRouteStore, selfDescriptor, null, options.TtlCleanupInterval);
         _registry.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
+        // 激活完成即登记公共槽位：宿主就绪时经 ActiveDiscoveryRuntime.MarkActiveAsync 无分派切 Active。
+        ActiveDiscoveryRuntime.Bind(_registry);
         if (selfDescriptor == null)
         {
             LogHelper.Warning("[PostgreSqlDiscoveryRuntime] no advertise port configured ({environmentVariable}); the heartbeat write side is skipped and this process only observes the topology", AdvertiseEndpointEnvironment.AdvertisePortEnvironmentVariable);
         }
-    }
-
-    /// <summary>
-    /// 把本进程心跳从 Booting 切换为 Active（启动阶段真正完成、服务就绪后调用）。
-    /// </summary>
-    /// <remarks>
-    /// Flips this process's announced status from Booting to Active. No-op when
-    /// the discovery layer was not activated or the write side was skipped.
-    /// </remarks>
-    public static void MarkActive()
-    {
-        _registry?.MarkActiveAsync(CancellationToken.None).GetAwaiter().GetResult();
     }
 
     /// <summary>
@@ -188,5 +180,6 @@ public static class PostgreSqlDiscoveryRuntime
         _watcher = null;
         _registry?.Dispose();
         _registry = null;
+        // 公共槽位保留最近一次激活的写侧，重激活时由 Activate 末尾的 Bind 覆盖刷新。
     }
 }

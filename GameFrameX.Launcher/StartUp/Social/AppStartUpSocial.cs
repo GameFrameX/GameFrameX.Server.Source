@@ -119,14 +119,8 @@ internal sealed partial class AppStartUpSocial : AppStartUpBase
             MarkStartUpReady();
             // 启动阶段真正完成（DB/组件/网络监听均已就绪）后才把心跳从 Booting 切到 Active，
             // 避免其他进程在 Social TCP listener 就绪前发现本实例并投递流量。
-            if (Setting.DatabaseProvider == DatabaseProviderType.PostgreSql)
-            {
-                PostgreSqlDiscoveryRuntime.MarkActive();
-            }
-            else
-            {
-                MongoDiscoveryRuntime.MarkActive();
-            }
+            // 公共槽位持有实际激活的 Provider Runtime 写侧，宿主无需按 DatabaseProvider 分派。
+            await ActiveDiscoveryRuntime.MarkActiveAsync();
 
             await AppExitToken;
         }
