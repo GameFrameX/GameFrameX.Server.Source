@@ -29,6 +29,7 @@
 
 
 using GameFrameX.DataBase.Abstractions;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -73,7 +74,8 @@ public sealed partial class MongoDbService
     {
         if (batchSize <= 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(batchSize), batchSize, "Batch size must be greater than zero.");
+            // Localization: Database.BatchSizeInvalid - 批处理大小必须大于 0。
+            throw new ArgumentOutOfRangeException(nameof(batchSize), batchSize, LocalizationService.GetString(Localization.Keys.Database.BatchSizeInvalid));
         }
 
         EnsureInitialized();

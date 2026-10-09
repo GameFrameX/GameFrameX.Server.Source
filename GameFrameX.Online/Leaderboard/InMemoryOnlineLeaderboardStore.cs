@@ -32,6 +32,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
+using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Online.Leaderboard;
 
@@ -165,7 +166,8 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
             var key = BuildKey(leaderboard.TenantId, leaderboard.AppId, leaderboard.LeaderboardId);
             if (!_boards.ContainsKey(key) || !_entries.TryGetValue(key, out var boardEntries))
             {
-                throw new InvalidOperationException("榜单不存在或已失效，写入前必须先经 FindAsync 解析");
+                // Localization: Online.Leaderboard.NotFoundOnWrite - 榜单不存在或已失效，写入前必须先经 FindAsync 解析
+                throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Online.Leaderboard.NotFoundOnWrite));
             }
 
             if (!boardEntries.TryGetValue(submission.PlayerId, out var entry))
@@ -215,7 +217,8 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
             var key = BuildKey(leaderboard.TenantId, leaderboard.AppId, leaderboard.LeaderboardId);
             if (!_entries.TryGetValue(key, out var boardEntries))
             {
-                throw new InvalidOperationException("榜单不存在或已失效，查询前必须先经 FindAsync 解析");
+                // Localization: Online.Leaderboard.NotFoundOnQuery - 榜单不存在或已失效，查询前必须先经 FindAsync 解析
+                throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Online.Leaderboard.NotFoundOnQuery));
             }
 
             copies = new List<OnlineLeaderboardEntry>(boardEntries.Count);
@@ -258,7 +261,8 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
             var key = BuildKey(leaderboard.TenantId, leaderboard.AppId, leaderboard.LeaderboardId);
             if (!_entries.TryGetValue(key, out var boardEntries))
             {
-                throw new InvalidOperationException("榜单不存在或已失效，重置前必须先经 FindAsync 解析");
+                // Localization: Online.Leaderboard.NotFoundOnReset - 榜单不存在或已失效，重置前必须先经 FindAsync 解析
+                throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Online.Leaderboard.NotFoundOnReset));
             }
 
             if (!MatchesExpectedOrdered(leaderboard, boardEntries, expectedEntries))

@@ -31,6 +31,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
+using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Online.HotfixRollback;
 
@@ -143,7 +144,8 @@ public sealed class InMemoryOnlineHotfixVersionStore : IOnlineHotfixVersionStore
             var state = GetOrCreateState(tenantId, appId);
             if (!state.Manifests.ContainsKey(version))
             {
-                throw new InvalidOperationException("目标版本未登记，拒绝切换活跃版本：" + version);
+                // Localization: Online.HotfixRollback.TargetVersionNotRegistered - 目标版本未登记，拒绝切换活跃版本：{0}
+                throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Online.HotfixRollback.TargetVersionNotRegistered, version));
             }
 
             var previous = state.ActiveVersion ?? string.Empty;

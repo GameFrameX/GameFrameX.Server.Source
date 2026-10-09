@@ -33,6 +33,7 @@ using GameFrameX.Apps.Common.Session;
 using GameFrameX.Apps.Common.Event;
 using GameFrameX.Apps.Common.EventData;
 using GameFrameX.Core.Events;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.NetWork;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.Hotfix.Logic.Game.Room;
@@ -75,7 +76,8 @@ internal partial class AppStartUpHotfixGame
     private static int GetLoginMessageId(Type messageType)
     {
         return messageType.GetCustomAttribute<MessageTypeHandlerAttribute>()?.MessageId
-               ?? throw new InvalidOperationException($"Login message type {messageType.FullName} is missing {nameof(MessageTypeHandlerAttribute)}.");
+               // Localization: Hotfix.Startup.LoginMessageTypeMissingAttribute - 登录消息类型 {0} 缺少 {1}。
+               ?? throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Hotfix.LoginMessageTypeMissingAttribute, messageType.FullName, nameof(MessageTypeHandlerAttribute)));
     }
 
     public override async Task StartAsync()

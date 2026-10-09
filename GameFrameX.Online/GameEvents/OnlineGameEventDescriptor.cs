@@ -29,6 +29,7 @@
 
 using System;
 using System.Collections.Generic;
+using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Online.GameEvents;
 
@@ -59,12 +60,14 @@ public sealed class OnlineGameEventDescriptor
     {
         if (string.IsNullOrEmpty(name))
         {
-            throw new ArgumentException("事件名不能为空", nameof(name));
+            // Localization: Online.GameEvents.EventNameRequired - 事件名不能为空
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Online.GameEvents.EventNameRequired), nameof(name));
         }
 
         if (currentVersion < 1)
         {
-            throw new ArgumentOutOfRangeException(nameof(currentVersion), "事件版本必须从 1 起");
+            // Localization: Online.GameEvents.EventVersionInvalid - 事件版本必须从 1 起
+            throw new ArgumentOutOfRangeException(nameof(currentVersion), LocalizationService.GetString(Localization.Keys.Online.GameEvents.EventVersionInvalid));
         }
 
         Name = name;

@@ -27,6 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.SuperSocket.Server.Abstractions.Session;
 using GameFrameX.SuperSocket.WebSocket.Server;
 
@@ -43,7 +44,8 @@ internal sealed class WebSocketNetWorkSenderProvider : INetWorkSenderProvider
     {
         ArgumentNullException.ThrowIfNull(session, nameof(session));
         var webSocketSession = session as WebSocketSession
-                               ?? throw new InvalidCastException($"Session type '{session.GetType().FullName}' can not be cast to '{typeof(WebSocketSession).FullName}'.");
+                               // Localization: NetWork.SessionTypeCastInvalid - 会话类型 '{0}' 无法转换为 '{1}'
+                               ?? throw new InvalidCastException(LocalizationService.GetString(Localization.Keys.NetWork.SessionTypeCastInvalid, session.GetType().FullName, typeof(WebSocketSession).FullName));
         return new WebSocketNetWorkSender(webSocketSession);
     }
 }

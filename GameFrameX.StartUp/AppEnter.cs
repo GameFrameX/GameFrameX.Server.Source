@@ -99,7 +99,8 @@ internal static class AppEnter
         ArgumentNullException.ThrowIfNull(appStartUps, nameof(appStartUps));
         if (appStartUps.Count == 0)
         {
-            throw new ArgumentException("At least one application startup instance is required.", nameof(appStartUps));
+// Localization: StartUp.Application.StartupInstanceRequired - 至少需要一个应用程序启动实例
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.StartUp.Application.StartupInstanceRequired), nameof(appStartUps));
         }
 
         try

@@ -34,6 +34,7 @@ using System.Collections.Generic;
 using System.Linq;
 using GameFrameX.Apps.Player.Mail;
 using GameFrameX.Apps.Player.Mail.Entity;
+using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Hotfix.Logic.Player.Mail
 {
@@ -188,7 +189,8 @@ namespace GameFrameX.Hotfix.Logic.Player.Mail
             var code = Validate(campaign);
             if (code != MailCampaignErrorCode.Ok)
             {
-                throw new ArgumentException("Campaign 参数非法，code=" + code);
+                // Localization: Hotfix.MailCampaign.InvalidParameter - Campaign 参数非法，code={0}
+                throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Hotfix.MailCampaignInvalidParameter, code));
             }
 
             if (campaign.CampaignId <= 0)
@@ -200,7 +202,8 @@ namespace GameFrameX.Hotfix.Logic.Player.Mail
             {
                 if (existing.Status == MailCampaignStatus.Published || existing.Status == MailCampaignStatus.Revoked)
                 {
-                    throw new InvalidOperationException("Campaign 已发布或已撤回，主体字段不可修改（B1）。CampaignId=" + campaign.CampaignId);
+                    // Localization: Hotfix.MailCampaign.PublishedOrRevokedImmutable - Campaign 已发布或已撤回，主体字段不可修改（B1）。CampaignId={0}
+                    throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Hotfix.MailCampaignPublishedOrRevokedImmutable, campaign.CampaignId));
                 }
 
                 campaign.PublishVersion = existing.PublishVersion + 1;
@@ -358,7 +361,8 @@ namespace GameFrameX.Hotfix.Logic.Player.Mail
             var code = Validate(campaign);
             if (code != MailCampaignErrorCode.Ok)
             {
-                throw new ArgumentException("Campaign 参数非法，code=" + code);
+                // Localization: Hotfix.MailCampaign.InvalidParameter - Campaign 参数非法，code={0}
+                throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Hotfix.MailCampaignInvalidParameter, code));
             }
 
             // 一期无角色 / 在线统计模块接入，估算命中返回 -1 表示「未知」。

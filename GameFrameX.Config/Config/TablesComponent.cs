@@ -9,7 +9,7 @@
 
 using System;
 using GameFrameX.Core.Config;
-
+using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.Config
 {
     public partial class TablesComponent
@@ -77,7 +77,8 @@ namespace GameFrameX.Config
         {
             if (IsLoaded == false)
             {
-                throw new InvalidOperationException("Table is not loaded!");
+                // Localization: Config.Table.NotLoaded - 配置表未加载！
+                throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Config.Table.NotLoaded));
             }
             TbAchievementConfig.TranslateText(translator);
             TbSoundsConfig.TranslateText(translator);

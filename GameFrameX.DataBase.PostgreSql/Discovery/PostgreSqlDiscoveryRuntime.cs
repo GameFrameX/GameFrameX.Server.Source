@@ -32,6 +32,7 @@ using GameFrameX.DataBase;
 using GameFrameX.DataBase.PostgreSql;
 using GameFrameX.DataBase.PostgreSql.Routing;
 using GameFrameX.Discovery.Routing;
+using GameFrameX.Foundation.Localization.Core;
 using Npgsql;
 
 namespace GameFrameX.DataBase.PostgreSql.Discovery;
@@ -179,7 +180,8 @@ public static class PostgreSqlDiscoveryRuntime
         {
             if (string.IsNullOrWhiteSpace(options.ConnectionName))
             {
-                throw new ArgumentException("Either DataSource or ConnectionName must be set.", nameof(options));
+                // Localization: Database.Discovery.DataSourceOrConnectionRequired - 必须设置 DataSource 或 ConnectionName。
+                throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Database.DiscoveryDataSourceOrConnectionRequired), nameof(options));
             }
 
             dataSource = GameDb.As<PostgreSqlDbService>(options.ConnectionName).DataSource;

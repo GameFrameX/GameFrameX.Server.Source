@@ -28,6 +28,8 @@
 //  ==========================================================================================
 
 
+using GameFrameX.Foundation.Localization.Core;
+
 namespace GameFrameX.StartUp.Configuration;
 
 /// <summary>
@@ -75,7 +77,8 @@ public sealed class ConfigConflictException : Exception
     {
         if (conflicts == null || conflicts.Count == 0)
         {
-            throw new ArgumentException("At least one conflict is required.", nameof(conflicts));
+// Localization: StartUp.Application.ConflictRequired - 至少需要一个冲突项
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.StartUp.Application.ConflictRequired), nameof(conflicts));
         }
 
         var lines = new List<string>(conflicts.Count);

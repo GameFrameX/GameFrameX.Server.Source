@@ -6,4 +6,8 @@
         <PackageTags>GameFrameX,Core,Config,Configuration,Options,Server,GameServer</PackageTags>
     </PropertyGroup>
 
+    <ItemGroup>
+        <ProjectReference Include="..\GameFrameX.Localization\GameFrameX.Localization.csproj"/>
+    </ItemGroup>
+
 </Project>

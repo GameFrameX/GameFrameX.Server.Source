@@ -25,6 +25,7 @@
 //  ==========================================================================================
 
 using System.Net;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Online.Scope;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -102,7 +103,8 @@ public sealed class OnlineAdminApiServer
         var prefix = (_options.AdminApiPrefix ?? string.Empty).Trim('/');
         if (prefix.Length == 0)
         {
-            throw new InvalidOperationException("Online admin API prefix must not be empty.");
+            // Localization: Online.AdminApi.PrefixRequired - Online admin API 前缀不能为空。
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Online.AdminApi.PrefixRequired));
         }
 
         application.MapPost(prefix + "/{action}", async (string action, HttpRequest httpRequest) =>

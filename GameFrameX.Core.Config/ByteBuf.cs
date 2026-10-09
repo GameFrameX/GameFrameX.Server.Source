@@ -27,6 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using GameFrameX.Foundation.Localization.Core;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -1847,7 +1848,8 @@ public sealed class ByteBuf : ICloneable, IEquatable<ByteBuf>
         }
         else
         {
-            throw new SerializationException("exceed max segment size");
+// Localization: CoreConfig.ByteBuf.ExceedMaxSegmentSize - 超出最大段大小
+            throw new SerializationException(LocalizationService.GetString(Localization.Keys.CoreConfig.ExceedMaxSegmentSize));
         }
     }
 
@@ -1900,12 +1902,14 @@ public sealed class ByteBuf : ICloneable, IEquatable<ByteBuf>
         }
         else
         {
-            throw new SerializationException("exceed max size");
+// Localization: CoreConfig.ByteBuf.ExceedMaxSize - 超出大小上限
+            throw new SerializationException(LocalizationService.GetString(Localization.Keys.CoreConfig.ExceedMaxSize));
         }
 
         if (ReaderIndex > WriterIndex)
         {
-            throw new SerializationException("segment data not enough");
+// Localization: CoreConfig.ByteBuf.SegmentDataNotEnough - 段数据不足
+            throw new SerializationException(LocalizationService.GetString(Localization.Keys.CoreConfig.SegmentDataNotEnough));
         }
     }
 

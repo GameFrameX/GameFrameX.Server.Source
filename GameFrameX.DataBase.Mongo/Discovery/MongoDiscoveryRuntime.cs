@@ -32,6 +32,7 @@ using GameFrameX.DataBase;
 using GameFrameX.DataBase.Mongo;
 using GameFrameX.DataBase.Mongo.Routing;
 using GameFrameX.Discovery.Routing;
+using GameFrameX.Foundation.Localization.Core;
 using MongoDB.Driver;
 
 namespace GameFrameX.DataBase.Mongo.Discovery;
@@ -116,7 +117,8 @@ public static class MongoDiscoveryRuntime
         {
             if (string.IsNullOrWhiteSpace(options.ConnectionName))
             {
-                throw new ArgumentException("Either ControlDatabase or ConnectionName must be set.", nameof(options));
+                // Localization: Database.Discovery.ControlDatabaseOrConnectionRequired - 必须设置 ControlDatabase 或 ConnectionName。
+                throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Database.DiscoveryControlDatabaseOrConnectionRequired), nameof(options));
             }
 
             controlDatabase = GameDb.As<MongoDbService>(options.ConnectionName).CurrentDatabase;

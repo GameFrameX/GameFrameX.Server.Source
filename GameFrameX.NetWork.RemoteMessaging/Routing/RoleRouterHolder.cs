@@ -28,6 +28,8 @@
 //  ==========================================================================================
 
 
+using GameFrameX.Foundation.Localization.Core;
+
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
@@ -74,7 +76,8 @@ public static class RoleRouterHolder
         {
             if (_router == null)
             {
-                throw new InvalidOperationException("RoleRouterHolder has not been initialized; call RoleRouterHolder.Initialize during launch before routing.");
+                // Localization: RemoteMessaging.Routing.HolderNotInitialized - RoleRouterHolder 尚未初始化；请在路由前于启动阶段调用 RoleRouterHolder.Initialize
+                throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Routing.HolderNotInitialized));
             }
 
             return _router;

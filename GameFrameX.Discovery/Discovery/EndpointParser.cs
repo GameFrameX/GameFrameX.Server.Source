@@ -31,6 +31,7 @@
 using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
+using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Discovery;
 
@@ -80,19 +81,22 @@ public static class EndpointParser
         var trimmed = endpoint.Trim();
         if (trimmed.Length == 0)
         {
-            throw new EndpointFormatException("The endpoint string is empty. Expected the unified 'scheme://host:port' format (e.g. 'tcp://game-1.gameframex:7777').");
+            // Localization: Discovery.Endpoint.EmptyString - 端点字符串为空；期望统一的 scheme://host:port 格式（如 tcp://game-1.gameframex:7777）
+            throw new EndpointFormatException(LocalizationService.GetString(Localization.Keys.Discovery.Endpoint.EmptyString));
         }
 
         var separatorIndex = trimmed.IndexOf(SchemeSeparator, StringComparison.Ordinal);
         if (separatorIndex <= 0 || separatorIndex + SchemeSeparator.Length >= trimmed.Length)
         {
-            throw new EndpointFormatException($"The endpoint '{endpoint}' does not contain the required 'scheme://host:port' structure: the '://' separator with a non-empty scheme and authority is missing.");
+            // Localization: Discovery.Endpoint.MissingSchemeSeparator - 端点 '{0}' 缺少必需的 scheme://host:port 结构：缺少带非空 scheme 与 authority 的 '://' 分隔符
+            throw new EndpointFormatException(LocalizationService.GetString(Localization.Keys.Discovery.Endpoint.MissingSchemeSeparator, endpoint));
         }
 
         var scheme = trimmed.Substring(0, separatorIndex).ToLowerInvariant();
         if (!IsSupportedScheme(scheme))
         {
-            throw new EndpointFormatException($"The endpoint '{endpoint}' uses the unsupported scheme '{scheme}'. Supported schemes: tcp, kcp, ws, wss.");
+            // Localization: Discovery.Endpoint.UnsupportedScheme - 端点 '{0}' 使用了不受支持的 scheme '{1}'。支持的 scheme：{2}。
+            throw new EndpointFormatException(LocalizationService.GetString(Localization.Keys.Discovery.Endpoint.UnsupportedScheme, endpoint, scheme, "tcp, kcp, ws, wss"));
         }
 
         var authority = trimmed.Substring(separatorIndex + SchemeSeparator.Length);
@@ -115,7 +119,8 @@ public static class EndpointParser
     {
         if (authority.Length == 0)
         {
-            throw new EndpointFormatException($"The endpoint '{originalEndpoint}' has an empty host after the scheme.");
+            // Localization: Discovery.Endpoint.EmptyHostAfterScheme - 端点 '{0}' 在 scheme 之后 host 为空
+            throw new EndpointFormatException(LocalizationService.GetString(Localization.Keys.Discovery.Endpoint.EmptyHostAfterScheme, originalEndpoint));
         }
 
         // IPv6 方括号字面量：[::1]:port
@@ -143,19 +148,22 @@ public static class EndpointParser
         var closingBracketIndex = authority.IndexOf(']');
         if (closingBracketIndex < 0 || closingBracketIndex == 1)
         {
-            throw new EndpointFormatException($"The endpoint '{originalEndpoint}' has a malformed bracketed IPv6 host: expected '[<ipv6 literal>]:<port>'.");
+            // Localization: Discovery.Endpoint.BracketedIpv6Malformed - 端点 '{0}' 的方括号 IPv6 host 格式错误：期望 '[IPv6 字面量]:端口'
+            throw new EndpointFormatException(LocalizationService.GetString(Localization.Keys.Discovery.Endpoint.BracketedIpv6Malformed, originalEndpoint));
         }
 
         var ipv6Host = authority.Substring(1, closingBracketIndex - 1);
         if (!IPAddress.TryParse(ipv6Host, out var bracketedAddress) || bracketedAddress.AddressFamily != AddressFamily.InterNetworkV6)
         {
-            throw new EndpointFormatException($"The endpoint '{originalEndpoint}' has a bracketed host '{ipv6Host}' that is not a valid IPv6 literal.");
+            // Localization: Discovery.Endpoint.BracketedHostNotIpv6 - 端点 '{0}' 的方括号 host '{1}' 不是合法的 IPv6 字面量
+            throw new EndpointFormatException(LocalizationService.GetString(Localization.Keys.Discovery.Endpoint.BracketedHostNotIpv6, originalEndpoint, ipv6Host));
         }
 
         var remainder = authority.Substring(closingBracketIndex + 1);
         if (remainder.Length == 0 || remainder[0] != ':')
         {
-            throw new EndpointFormatException($"The endpoint '{originalEndpoint}' is missing the port after the bracketed IPv6 host: expected '[<ipv6 literal>]:<port>'.");
+            // Localization: Discovery.Endpoint.MissingPortAfterBracketedIpv6 - 端点 '{0}' 在方括号 IPv6 host 之后缺少端口：期望 '[IPv6 字面量]:端口'
+            throw new EndpointFormatException(LocalizationService.GetString(Localization.Keys.Discovery.Endpoint.MissingPortAfterBracketedIpv6, originalEndpoint));
         }
 
         var port = ParsePort(originalEndpoint, remainder.Substring(1));
@@ -179,20 +187,23 @@ public static class EndpointParser
         var lastColonIndex = authority.LastIndexOf(':');
         if (lastColonIndex < 0 || lastColonIndex == authority.Length - 1)
         {
-            throw new EndpointFormatException($"The endpoint '{originalEndpoint}' is missing the port: expected 'scheme://host:port'.");
+            // Localization: Discovery.Endpoint.MissingPort - 端点 '{0}' 缺少端口：期望 'scheme://host:port'
+            throw new EndpointFormatException(LocalizationService.GetString(Localization.Keys.Discovery.Endpoint.MissingPort, originalEndpoint));
         }
 
         var host = authority.Substring(0, lastColonIndex);
         if (host.Length == 0)
         {
-            throw new EndpointFormatException($"The endpoint '{originalEndpoint}' has an empty host before the port.");
+            // Localization: Discovery.Endpoint.EmptyHostBeforePort - 端点 '{0}' 在端口之前 host 为空
+            throw new EndpointFormatException(LocalizationService.GetString(Localization.Keys.Discovery.Endpoint.EmptyHostBeforePort, originalEndpoint));
         }
 
         if (IPAddress.TryParse(host, out var address))
         {
             if (address.AddressFamily == AddressFamily.InterNetworkV6)
             {
-                throw new EndpointFormatException($"The endpoint '{originalEndpoint}' uses an unbracketed IPv6 literal '{host}'; IPv6 hosts must be bracketed as '[<ipv6 literal>]:<port>'.");
+                // Localization: Discovery.Endpoint.UnbracketedIpv6 - 端点 '{0}' 使用了未加方括号的 IPv6 字面量 '{1}'；IPv6 host 必须写成 '[IPv6 字面量]:端口'
+                throw new EndpointFormatException(LocalizationService.GetString(Localization.Keys.Discovery.Endpoint.UnbracketedIpv6, originalEndpoint, host));
             }
 
             return new ParsedEndpoint(scheme, host, ParsePort(originalEndpoint, authority.Substring(lastColonIndex + 1)), EndpointAddressKind.IPv4);
@@ -230,7 +241,8 @@ public static class EndpointParser
         {
             if (char.IsWhiteSpace(character) || InvalidHostCharacters.IndexOf(character) >= 0)
             {
-                throw new EndpointFormatException($"The endpoint '{originalEndpoint}' has the invalid host '{host}': whitespace and the URI delimiters '/', '?', '#', '@' and ':' are not allowed in a DNS, container, or Service name.");
+                // Localization: Discovery.Endpoint.InvalidHostCharacters - 端点 '{0}' 的 host '{1}' 非法：DNS、容器名或 Service 名中不允许空白以及 URI 分隔符 '/'、'?'、'#'、'@'、':'
+                throw new EndpointFormatException(LocalizationService.GetString(Localization.Keys.Discovery.Endpoint.InvalidHostCharacters, originalEndpoint, host));
             }
         }
     }
@@ -250,7 +262,8 @@ public static class EndpointParser
     {
         if (!int.TryParse(portText, NumberStyles.None, CultureInfo.InvariantCulture, out var port) || port < 1 || port > 65535)
         {
-            throw new EndpointFormatException($"The endpoint '{originalEndpoint}' has the invalid port '{portText}': expected an integer between 1 and 65535.");
+            // Localization: Discovery.Endpoint.InvalidPort - 端点 '{0}' 的端口 '{1}' 非法：期望 1-65535 之间的整数
+            throw new EndpointFormatException(LocalizationService.GetString(Localization.Keys.Discovery.Endpoint.InvalidPort, originalEndpoint, portText));
         }
 
         return port;

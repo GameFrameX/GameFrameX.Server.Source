@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.NetWork.RemoteMessaging.Discovery;
 
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
@@ -131,7 +132,8 @@ public sealed class DiscoveryRemoteRoleRouter : IRemoteRoleRouter
         {
             if (!table.TryGetInstance(envelope.TargetInstanceId, out var instanceById))
             {
-                throw new RouteNotFoundException(envelope.TargetRole, $"The target instance '{envelope.TargetInstanceId}' of role '{envelope.TargetRole}' is not present in the dual-view route table (unknown id, offline, or removed).");
+                // Localization: RemoteMessaging.Routing.TargetInstanceNotFound - 角色 '{1}' 的目标实例 '{0}' 不在双视图路由表中（ID 未知、离线或已被移除）
+                throw new RouteNotFoundException(envelope.TargetRole, LocalizationService.GetString(Localization.Keys.RemoteMessaging.Routing.TargetInstanceNotFound, envelope.TargetInstanceId, envelope.TargetRole));
             }
 
             return instanceById;
@@ -141,7 +143,8 @@ public sealed class DiscoveryRemoteRoleRouter : IRemoteRoleRouter
         var activeInstances = table.GetActiveInstances(envelope.TargetRole);
         if (activeInstances.Count == 0)
         {
-            throw new RouteNotFoundException(envelope.TargetRole, $"Role '{envelope.TargetRole}' has no Active instance in the dual-view route table; the role is scaled to zero or fully draining.");
+            // Localization: RemoteMessaging.Routing.RoleNoActiveInstance - 角色 '{0}' 在双视图路由表中没有 Active 实例；该角色已缩容至零或正在完全排水
+            throw new RouteNotFoundException(envelope.TargetRole, LocalizationService.GetString(Localization.Keys.RemoteMessaging.Routing.RoleNoActiveInstance, envelope.TargetRole));
         }
 
         // ponytail: 确定性首选策略——无粘性需求时最简正确；需要按 key 亲和时接入 ConsistentHashServerInstanceSelector（Unified/）。

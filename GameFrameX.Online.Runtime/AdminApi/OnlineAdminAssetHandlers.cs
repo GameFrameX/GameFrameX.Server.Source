@@ -25,6 +25,7 @@
 //  ==========================================================================================
 
 using System.Text.Json;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Online.Assets;
 using GameFrameX.Online.Audit;
 using GameFrameX.Online.Contracts;
@@ -121,7 +122,8 @@ public sealed class OnlineAdminAssetHandlers
         var detail = OnlineAdminApiContract.Unwrap(await _host.AssetQuery.GetTransactionDetailAsync(playerScope, transactionId, cancellationToken).ConfigureAwait(false));
         if (detail == null || detail.Transaction == null)
         {
-            throw new OnlineServiceException(OnlineErrorCode.ResourceNotFound, "Transaction not found: " + transactionId);
+            // Localization: Online.AdminApi.TransactionNotFound - 交易不存在：{0}
+            throw new OnlineServiceException(OnlineErrorCode.ResourceNotFound, LocalizationService.GetString(Localization.Keys.Online.AdminApi.TransactionNotFound, transactionId));
         }
 
         var changes = new List<OnlineAssetChangeLine>();
@@ -264,7 +266,8 @@ public sealed class OnlineAdminAssetHandlers
         var storedTransaction = await _host.AssetTransactionStore.FindAsync(transactionId, cancellationToken).ConfigureAwait(false);
         if (storedTransaction == null || storedTransaction.TenantId != scope.TenantId || storedTransaction.AppId != scope.AppId)
         {
-            throw new OnlineServiceException(OnlineErrorCode.ResourceNotFound, "Transaction not found: " + transactionId);
+            // Localization: Online.AdminApi.TransactionNotFound - 交易不存在：{0}
+            throw new OnlineServiceException(OnlineErrorCode.ResourceNotFound, LocalizationService.GetString(Localization.Keys.Online.AdminApi.TransactionNotFound, transactionId));
         }
 
         // 线缆契约：query_transaction_detail 只携带交易标识；玩家位由交易记录回查补全（查询面按玩家位校验）。
@@ -272,7 +275,8 @@ public sealed class OnlineAdminAssetHandlers
         var detail = OnlineAdminApiContract.Unwrap(await _host.AssetQuery.GetTransactionDetailAsync(playerScope, transactionId, cancellationToken).ConfigureAwait(false));
         if (detail == null || detail.Transaction == null)
         {
-            throw new OnlineServiceException(OnlineErrorCode.ResourceNotFound, "Transaction not found: " + transactionId);
+            // Localization: Online.AdminApi.TransactionNotFound - 交易不存在：{0}
+            throw new OnlineServiceException(OnlineErrorCode.ResourceNotFound, LocalizationService.GetString(Localization.Keys.Online.AdminApi.TransactionNotFound, transactionId));
         }
 
         var grantItems = new List<TransactionGrantItemResponse>();
@@ -343,7 +347,8 @@ public sealed class OnlineAdminAssetHandlers
 
         if (changes.Count == 0)
         {
-            throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, "GrantItems must contain at least one entry.");
+            // Localization: Online.AdminApi.GrantItemsEmpty - GrantItems 必须至少包含一个条目。
+            throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, LocalizationService.GetString(Localization.Keys.Online.AdminApi.GrantItemsEmpty));
         }
 
         return changes;
@@ -372,7 +377,8 @@ public sealed class OnlineAdminAssetHandlers
 
         if (string.IsNullOrEmpty(itemOrCurrencyType) || quantity <= 0)
         {
-            throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, "GrantItems entries require ItemOrCurrencyType (string) and Quantity (positive number).");
+            // Localization: Online.AdminApi.GrantItemInvalid - GrantItems 条目要求 ItemOrCurrencyType（字符串）且 Quantity（正数）。
+            throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, LocalizationService.GetString(Localization.Keys.Online.AdminApi.GrantItemInvalid));
         }
 
         var assetKind = Enum.TryParse<OnlineAssetKind>(itemOrCurrencyType, true, out var parsedKind) ? parsedKind : OnlineAssetKind.Item;

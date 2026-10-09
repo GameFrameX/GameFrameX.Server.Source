@@ -27,6 +27,8 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using GameFrameX.Foundation.Localization.Core;
+
 namespace GameFrameX.NetWork.RemoteMessaging.Observability;
 
 /// <summary>
@@ -78,11 +80,13 @@ internal sealed class FaultInjectionRemoteCallInterceptor : IRemoteCallIntercept
             case FaultInjectionType.Timeout:
                 LogHelper.Info("FaultInjection: 模拟超时, Service: {serviceName}, Delay: {delayMs}ms", context.ServiceName, context.TimeoutMs + 1000);
                 await Task.Delay(context.TimeoutMs + 1000);
-                throw new TimeoutException("Fault injection: simulated timeout");
+                // Localization: RemoteMessaging.FaultInjection.SimulatedTimeout - 故障注入：模拟超时
+                throw new TimeoutException(LocalizationService.GetString(Localization.Keys.RemoteMessaging.FaultInjection.SimulatedTimeout));
 
             case FaultInjectionType.ConnectionDrop:
                 LogHelper.Info("FaultInjection: 模拟连接断开, Service: {serviceName}", context.ServiceName);
-                throw new IOException("Fault injection: simulated connection drop");
+                // Localization: RemoteMessaging.FaultInjection.SimulatedConnectionDrop - 故障注入：模拟连接断开
+                throw new IOException(LocalizationService.GetString(Localization.Keys.RemoteMessaging.FaultInjection.SimulatedConnectionDrop));
 
             case FaultInjectionType.SlowResponse:
                 var slowDelay = _delayMs > 0 ? _delayMs : 2000;

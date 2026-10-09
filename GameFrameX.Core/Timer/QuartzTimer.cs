@@ -216,7 +216,8 @@ public static class QuartzTimer
     {
         if (hour < 0 || hour >= 24 || minute < 0 || minute >= 60)
         {
-            throw new ArgumentOutOfRangeException($"定时器参数错误 TimerHandler:{typeof(T).FullName} {nameof(hour)}:{hour} {nameof(minute)}:{minute}");
+            // Localization: CoreExceptions.Timer.InvalidParameters - 定时器参数错误 TimerHandler:{0} {1}:{2} {3}:{4}
+            throw new ArgumentOutOfRangeException(LocalizationService.GetString(Localization.Keys.CoreExceptions.Timer.InvalidParameters, typeof(T).FullName, nameof(hour), hour, nameof(minute), minute));
         }
 
         var nextId = NextId();
@@ -240,7 +241,8 @@ public static class QuartzTimer
     {
         if (dayOfWeeks == null || dayOfWeeks.Length <= 0)
         {
-            throw new ArgumentNullException($"定时每周执行 参数为空：{nameof(dayOfWeeks)} TimerHandler:{typeof(T).FullName} actorId:{actorId} actorType:{ActorIdGenerator.GetActorType(actorId)}");
+            // Localization: CoreExceptions.Timer.DayOfWeeksParameterNull - 定时每周执行 参数为空：{0} TimerHandler:{1} actorId:{2} actorType:{3}
+            throw new ArgumentNullException(LocalizationService.GetString(Localization.Keys.CoreExceptions.Timer.DayOfWeeksParameterNull, nameof(dayOfWeeks), typeof(T).FullName, actorId, ActorIdGenerator.GetActorType(actorId)));
         }
 
         var nextId = NextId();
@@ -283,7 +285,8 @@ public static class QuartzTimer
     {
         if (dayOfMonth is < 0 or > 31)
         {
-            throw new ArgumentException($"定时器参数错误 TimerHandler:{typeof(T).FullName} {nameof(dayOfMonth)}:{dayOfMonth} actorId:{actorId} actorType:{ActorIdGenerator.GetActorType(actorId)}");
+            // Localization: CoreExceptions.Timer.InvalidDayOfMonth - 定时器参数错误 TimerHandler:{0} {1}:{2} actorId:{3} actorType:{4}
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.CoreExceptions.Timer.InvalidDayOfMonth, typeof(T).FullName, nameof(dayOfMonth), dayOfMonth, actorId, ActorIdGenerator.GetActorType(actorId)));
         }
 
         var nextId = NextId();
@@ -485,7 +488,8 @@ public static class QuartzTimer
         {
             if (_scheduler == null)
             {
-                throw new InvalidOperationException("QuartzTimer.Start must be awaited before using timer operations.");
+                // Localization: CoreExceptions.Timer.StartNotAwaited - 使用定时器操作前必须先等待 QuartzTimer.Start 完成
+                throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.Timer.StartNotAwaited));
             }
 
             return _scheduler;
@@ -646,7 +650,8 @@ public static class QuartzTimer
         StatisticsTool.Count(handlerType.FullName);
         if (handlerType.Assembly != HotfixManager.HotfixAssembly)
         {
-            throw new Exception("定时器代码需要在热更项目里");
+            // Localization: CoreExceptions.Timer.CodeMustBeInHotfix - 定时器代码需要在热更项目里
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Timer.CodeMustBeInHotfix));
         }
 
         var job = JobBuilder.Create<TimerJobHelper>().WithIdentity(id + string.Empty).Build();

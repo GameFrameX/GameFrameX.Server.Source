@@ -29,6 +29,7 @@
 
 using System.Collections.Concurrent;
 using GameFrameX.DataBase.Abstractions;
+using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.DataBase;
 
@@ -104,7 +105,8 @@ public static class MultiDbRegistry
         ArgumentNullException.ThrowIfNull(databaseService, nameof(databaseService));
         if (!Databases.TryAdd(databaseName, databaseService))
         {
-            throw new InvalidOperationException($"A database named '{databaseName}' is already registered. Registered names: [{string.Join(", ", Databases.Keys)}]");
+            // Localization: Database.Registry.AlreadyRegistered - 名为“{0}”的数据库已被注册。已注册名称：[{1}]
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Database.RegistryAlreadyRegistered, databaseName, string.Join(", ", Databases.Keys)));
         }
 
         Interlocked.Increment(ref _registeredCount);
@@ -124,7 +126,8 @@ public static class MultiDbRegistry
         ArgumentNullException.ThrowIfNull(databaseName, nameof(databaseName));
         if (!Databases.TryGetValue(databaseName, out var databaseService))
         {
-            throw new InvalidOperationException($"No database named '{databaseName}' is registered. Registered names: [{string.Join(", ", Databases.Keys)}]");
+            // Localization: Database.Registry.NotRegistered - 没有名为“{0}”的数据库被注册。已注册名称：[{1}]
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Database.RegistryNotRegistered, databaseName, string.Join(", ", Databases.Keys)));
         }
 
         return databaseService;

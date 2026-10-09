@@ -204,7 +204,8 @@ public sealed partial class PostgreSqlDbService
     {
         if (batchSize <= 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(batchSize), batchSize, "Batch size must be greater than zero.");
+            // Localization: Database.BatchSizeInvalid - 批处理大小必须大于 0。
+            throw new ArgumentOutOfRangeException(nameof(batchSize), batchSize, LocalizationService.GetString(Keys.Database.BatchSizeInvalid));
         }
 
         EnsureInitialized();

@@ -34,6 +34,7 @@ using GameFrameX.NetWork.HTTP;
 using GameFrameX.NetWork.Messages;
 using GameFrameX.ProtoBuf.Net;
 using GameFrameX.Foundation.Extensions;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 
 namespace GameFrameX.Client.Bot;
@@ -72,7 +73,8 @@ public sealed class BotHttpClient
         }
         else
         {
-            throw new Exception($"Failed to post data. Status code: {webBufferResult.StatusCode}");
+            // Localization: Client.Bot.PostFailed - 发送 POST 数据失败。状态码：{0}
+            throw new Exception(LocalizationService.GetString(Localization.Keys.Client.Bot.PostFailed, (int)webBufferResult.StatusCode));
         }
 
         return default!;

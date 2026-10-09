@@ -30,6 +30,7 @@
 using System.Buffers;
 using System.Buffers.Binary;
 using System.IO;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.ProtoBuf.Net;
 
 namespace GameFrameX.NetWork.RemoteMessaging.Transport;
@@ -89,22 +90,26 @@ internal sealed class DefaultMessageCodec : IMessageCodec
         ArgumentNullException.ThrowIfNull(compressionRegistry);
         if (compressThreshold < 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(compressThreshold), "Compression threshold must be greater than or equal to 0.");
+            // Localization: RemoteMessaging.Codec.CompressionThresholdInvalid - 压缩阈值必须大于等于 0
+            throw new ArgumentOutOfRangeException(nameof(compressThreshold), LocalizationService.GetString(Localization.Keys.RemoteMessaging.Codec.CompressionThresholdInvalid));
         }
 
         if (maxPacketSize < InnerPackageHeaderLength)
         {
-            throw new ArgumentOutOfRangeException(nameof(maxPacketSize), $"Maximum packet size must be greater than or equal to {InnerPackageHeaderLength}.");
+            // Localization: RemoteMessaging.Codec.MaxPacketSizeInvalid - 最大包大小必须大于等于 {0}
+            throw new ArgumentOutOfRangeException(nameof(maxPacketSize), LocalizationService.GetString(Localization.Keys.RemoteMessaging.Codec.MaxPacketSizeInvalid, InnerPackageHeaderLength));
         }
 
         if (maxDecompressedSize < 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(maxDecompressedSize), "Maximum decompressed size must be greater than or equal to 0.");
+            // Localization: RemoteMessaging.Codec.MaxDecompressedSizeInvalid - 最大解压大小必须大于等于 0
+            throw new ArgumentOutOfRangeException(nameof(maxDecompressedSize), LocalizationService.GetString(Localization.Keys.RemoteMessaging.Codec.MaxDecompressedSizeInvalid));
         }
 
         if (defaultCompressionAlgorithmId > 0 && !compressionRegistry.TryGet(defaultCompressionAlgorithmId, out _))
         {
-            throw new ArgumentException($"Compression algorithm '{defaultCompressionAlgorithmId}' is not registered.", nameof(defaultCompressionAlgorithmId));
+            // Localization: RemoteMessaging.Codec.CompressionAlgorithmNotRegistered - 压缩算法 '{0}' 未注册
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Codec.CompressionAlgorithmNotRegistered, defaultCompressionAlgorithmId), nameof(defaultCompressionAlgorithmId));
         }
 
         _compressionRegistry = compressionRegistry;
@@ -187,7 +192,8 @@ internal sealed class DefaultMessageCodec : IMessageCodec
                 {
                     if (!_compressionRegistry.TryGet(algorithmId, out var compressionAlgorithm))
                     {
-                        throw new NotSupportedException($"Compression algorithm '{algorithmId}' is not registered.");
+                        // Localization: RemoteMessaging.Codec.CompressionAlgorithmNotRegistered - 压缩算法 '{0}' 未注册
+                        throw new NotSupportedException(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Codec.CompressionAlgorithmNotRegistered, algorithmId));
                     }
 
                     messageData = compressionAlgorithm.Decompress(messageData);
@@ -231,7 +237,8 @@ internal sealed class DefaultMessageCodec : IMessageCodec
             var readLength = await stream.ReadAsync(buffer[offset..], cancellationToken);
             if (readLength == 0)
             {
-                throw new IOException("Remote connection closed.");
+                // Localization: RemoteMessaging.Codec.RemoteConnectionClosed - 远程连接已关闭
+                throw new IOException(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Codec.RemoteConnectionClosed));
             }
 
             offset += readLength;
@@ -242,7 +249,8 @@ internal sealed class DefaultMessageCodec : IMessageCodec
     {
         if (totalLength < InnerPackageHeaderLength || totalLength > _maxPacketSize)
         {
-            throw new InvalidDataException($"Invalid remote message packet length: {totalLength}. Allowed range: {InnerPackageHeaderLength}-{_maxPacketSize}.");
+            // Localization: RemoteMessaging.Codec.InvalidPacketLength - 远程消息包长度非法：{0}，允许范围 {1}-{2}
+            throw new InvalidDataException(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Codec.InvalidPacketLength, totalLength, InnerPackageHeaderLength, _maxPacketSize));
         }
     }
 
@@ -250,7 +258,8 @@ internal sealed class DefaultMessageCodec : IMessageCodec
     {
         if (payloadLength > _maxDecompressedSize)
         {
-            throw new InvalidDataException($"Remote message payload length exceeds limit. Payload length: {payloadLength}, max: {_maxDecompressedSize}.");
+            // Localization: RemoteMessaging.Codec.PayloadLengthExceedsLimit - 远程消息载荷长度超限。载荷长度：{0}，最大：{1}
+            throw new InvalidDataException(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Codec.PayloadLengthExceedsLimit, payloadLength, _maxDecompressedSize));
         }
     }
 }

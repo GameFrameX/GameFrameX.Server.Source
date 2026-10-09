@@ -8,6 +8,7 @@
 
 
 using System.Collections.Concurrent;
+using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
@@ -54,7 +55,8 @@ public sealed class PerInstanceDedupe
     {
         if (window <= TimeSpan.Zero)
         {
-            throw new ArgumentOutOfRangeException(nameof(window), "Window must be positive.");
+            // Localization: RemoteMessaging.Routing.WindowMustBePositive - 时间窗必须为正数
+            throw new ArgumentOutOfRangeException(nameof(window), LocalizationService.GetString(Localization.Keys.RemoteMessaging.Routing.WindowMustBePositive));
         }
 
         _window = window;

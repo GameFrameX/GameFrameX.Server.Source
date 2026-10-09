@@ -30,6 +30,7 @@
 
 using System.Reflection;
 using GameFrameX.DataBase;
+using GameFrameX.Foundation.Localization.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -152,7 +153,8 @@ public sealed class PostgreSqlDbContext<TState> : DbContext where TState : BaseC
                 // EF owned JSON cannot express dictionary members (C168 verified: value converters crash the JSON
                 // read shaper or double-encode, breaking C166-stored shapes). Fail explicitly naming the member;
                 // never silently drop data.
-                throw new NotSupportedException($"PostgreSqlDbContext: document type '{clrType.Name}' declares dictionary property '{property.Name}' ({property.PropertyType.Name}). EF owned JSON columns cannot map dictionaries in a C166-compatible shape; restructure it as a collection of owned entries or a scalar payload.");
+                // Localization: Database.Ef.DocumentDictionaryPropertyNotSupported - PostgreSqlDbContext：文档类型“{0}”声明了字典属性“{1}”（{2}）。EF owned JSON 列无法以 C166 兼容形状映射字典；请将其重构为 owned entries 集合或标量载荷。
+                throw new NotSupportedException(LocalizationService.GetString(Localization.Keys.Database.EfDocumentDictionaryPropertyNotSupported, clrType.Name, property.Name, property.PropertyType.Name));
             }
 
             if (Nullable.GetUnderlyingType(property.PropertyType) != null && property.PropertyType.IsValueType)

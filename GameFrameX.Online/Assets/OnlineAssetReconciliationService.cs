@@ -32,6 +32,7 @@ namespace GameFrameX.Online.Assets;
 
 using System.Threading;
 using System.Threading.Tasks;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Online.Scope;
 
 /// <summary>
@@ -71,7 +72,8 @@ public sealed class OnlineAssetReconciliationService
 
         if (scope.PlayerId <= 0)
         {
-            throw new ArgumentException("对账必须绑定玩家主体位", nameof(scope));
+            // Localization: Online.Assets.ReconciliationRequiresPlayerScope - 对账必须绑定玩家主体位
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Online.Assets.ReconciliationRequiresPlayerScope), nameof(scope));
         }
 
         var differences = await CollectDifferencesAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken);

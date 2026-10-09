@@ -24,6 +24,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Online.Contracts;
 using GameFrameX.Online.Matchmaking;
 using GameFrameX.Online.Presence;
@@ -205,7 +206,8 @@ public sealed class OnlineAdminMatchHandlers
         var abnormalKind = request.ReadNullableInt32("AbnormalKind");
         if (!abnormalKind.HasValue || abnormalKind.Value < 1 || abnormalKind.Value > 3)
         {
-            throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, "AbnormalKind must be a number in [1,3] (LongWaiting/RepeatedCancel/Orphan).");
+            // Localization: Online.AdminApi.AbnormalKindInvalid - AbnormalKind 必须是 [1,3] 范围内的数字（LongWaiting/RepeatedCancel/Orphan）。
+            throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, LocalizationService.GetString(Localization.Keys.Online.AdminApi.AbnormalKindInvalid));
         }
 
         var pageSize = OnlineAdminApiContract.ReadPageSize(request);
@@ -281,7 +283,8 @@ public sealed class OnlineAdminMatchHandlers
         var ticket = await _host.MatchTicketStore.FindAsync(scope.TenantId, scope.AppId, ticketId, cancellationToken).ConfigureAwait(false);
         if (ticket == null)
         {
-            throw new OnlineServiceException(OnlineErrorCode.ResourceNotFound, "Match ticket not found: " + ticketId);
+            // Localization: Online.AdminApi.MatchTicketNotFound - 匹配票据不存在：{0}
+            throw new OnlineServiceException(OnlineErrorCode.ResourceNotFound, LocalizationService.GetString(Localization.Keys.Online.AdminApi.MatchTicketNotFound, ticketId));
         }
 
         var ticketScope = ticket.PlayerIds != null && ticket.PlayerIds.Count > 0
@@ -300,8 +303,9 @@ public sealed class OnlineAdminMatchHandlers
     /// <returns>不返回（恒抛 5003）。</returns>
     public Task<object> EndAbnormalMatchAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
+        // Localization: Online.AdminApi.EndAbnormalMatchForbidden - 管理面不支持结束异常对局；对局生命周期归游戏进程所有（变更 C122 缺口 #1）。
         throw new OnlineServiceException(OnlineErrorCode.StateOperationForbidden,
-            "Ending an abnormal match is not available on the admin plane; the game process owns match lifecycle (change C122 gap #1).");
+            LocalizationService.GetString(Localization.Keys.Online.AdminApi.EndAbnormalMatchForbidden));
     }
 
     /// <summary>
@@ -433,7 +437,8 @@ public sealed class OnlineAdminMatchHandlers
             return string.Equals(direction, "Apply", StringComparison.OrdinalIgnoreCase) ? "Apply" : "Lift";
         }
 
-        throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, "Direction must be 'Apply' or 'Lift'.");
+        // Localization: Online.AdminApi.DirectionInvalid - Direction 必须为 'Apply' 或 'Lift'。
+        throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, LocalizationService.GetString(Localization.Keys.Online.AdminApi.DirectionInvalid));
     }
 
     /// <summary>

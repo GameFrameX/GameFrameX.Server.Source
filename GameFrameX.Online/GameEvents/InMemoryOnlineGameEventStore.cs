@@ -30,7 +30,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Online.Events;
 
 namespace GameFrameX.Online.GameEvents;
@@ -78,7 +78,8 @@ public sealed class InMemoryOnlineGameEventStore : IOnlineGameEventStore
         var eventId = onlineEvent.EventId;
         if (string.IsNullOrEmpty(eventId))
         {
-            throw new ArgumentException("事件标识不能为空（EventId 是存储幂等键）", nameof(onlineEvent));
+            // Localization: Online.GameEvents.EventIdRequired - 事件标识不能为空（EventId 是存储幂等键）
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Online.GameEvents.EventIdRequired), nameof(onlineEvent));
         }
 
         lock (_syncRoot)

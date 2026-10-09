@@ -27,6 +27,7 @@
 using System.Text;
 using System.Text.Json;
 using GameFrameX.Foundation.Json;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Online.Contracts;
 using GameFrameX.Online.Idempotency;
 using GameFrameX.Online.Scope;
@@ -93,7 +94,8 @@ public sealed class OnlineAdminApiDispatcher
     {
         if (string.IsNullOrWhiteSpace(action))
         {
-            throw new ArgumentException("Action name must not be null or empty.", nameof(action));
+            // Localization: Online.AdminApi.ActionNameRequired - Action 名称不能为 null 或空。
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Online.AdminApi.ActionNameRequired), nameof(action));
         }
 
         if (handler == null)

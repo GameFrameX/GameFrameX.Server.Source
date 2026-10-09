@@ -29,6 +29,7 @@
 
 namespace GameFrameX.Online.Identity;
 
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Online.Scope;
 
 /// <summary>
@@ -126,7 +127,8 @@ public sealed class OnlinePlayerContext
 
         if (scope.PlayerId <= 0)
         {
-            throw new ArgumentException("作用域缺少玩家主体位（PlayerId <= 0），不能派生玩家上下文。", nameof(scope));
+            // Localization: Online.Identity.ScopeMissingPlayerId - 作用域缺少玩家主体位（PlayerId <= 0），不能派生玩家上下文。
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Online.Identity.ScopeMissingPlayerId), nameof(scope));
         }
 
         return new OnlinePlayerContext(scope.TenantId, scope.AppId, scope.ServerId, scope.PlayerId, gameAccountId, sessionId);

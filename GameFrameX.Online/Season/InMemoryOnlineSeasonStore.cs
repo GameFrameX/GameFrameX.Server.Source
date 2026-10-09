@@ -32,6 +32,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
+using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Online.Season;
 
@@ -132,7 +133,8 @@ public sealed class InMemoryOnlineSeasonStore : IOnlineSeasonStore
             var key = BuildKey(season.TenantId, season.AppId, season.SeasonId);
             if (!_seasons.ContainsKey(key))
             {
-                throw new InvalidOperationException("赛季不存在，保存前必须先经 CreateAsync 建立");
+                // Localization: Online.Season.NotFoundOnSave - 赛季不存在，保存前必须先经 CreateAsync 建立
+                throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Online.Season.NotFoundOnSave));
             }
 
             _seasons[key] = season.Copy();

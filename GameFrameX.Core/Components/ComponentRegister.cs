@@ -132,7 +132,8 @@ public static class ComponentRegister
             }
             else
             {
-                throw new Exception($"component:[{type.FullName}] the actor type is not bound");
+                // Localization: CoreExceptions.Component.ActorTypeNotBound - 组件:[{0}] Actor类型未绑定
+                throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Component.ActorTypeNotBound, type.FullName));
             }
         }
 
@@ -256,12 +257,14 @@ public static class ComponentRegister
     {
         if (!ActorComponentDic.TryGetValue(actor.Type, out var compTypes))
         {
-            throw new Exception($"get an actor that doesn't belong to this actor: [{actor.Type}] component:[{compType.FullName}]");
+            // Localization: CoreExceptions.Component.ActorNotBelongToThis - 获取了一个不属于此Actor的Actor: [{0}] 组件:[{1}]
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Component.ActorNotBelongToThis, actor.Type, compType.FullName));
         }
 
         if (!compTypes.Contains(compType))
         {
-            throw new Exception($"get an actor that doesn't belong to this actor: [{actor.Type}] component:[{compType.FullName}]");
+            // Localization: CoreExceptions.Component.ActorNotBelongToThis - 获取了一个不属于此Actor的Actor: [{0}] 组件:[{1}]
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Component.ActorNotBelongToThis, actor.Type, compType.FullName));
         }
 
         var comp = (BaseComponent)Activator.CreateInstance(compType);

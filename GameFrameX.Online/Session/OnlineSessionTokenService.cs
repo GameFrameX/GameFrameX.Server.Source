@@ -32,6 +32,7 @@ namespace GameFrameX.Online.Session;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Online.Contracts;
 using GameFrameX.Online.Events;
 using GameFrameX.Online.Identity;
@@ -442,7 +443,8 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
 
         if (requireLive && session.State.IsTerminal())
         {
-            throw new OnlineServiceException(OnlineErrorCode.SessionInvalid, "会话已进入终态");
+            // Localization: Online.Session.SessionTerminal - 会话已进入终态
+            throw new OnlineServiceException(OnlineErrorCode.SessionInvalid, LocalizationService.GetString(Localization.Keys.Online.Session.SessionTerminal));
         }
 
         return session;

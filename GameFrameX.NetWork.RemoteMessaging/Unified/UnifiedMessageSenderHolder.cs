@@ -27,6 +27,8 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using GameFrameX.Foundation.Localization.Core;
+
 namespace GameFrameX.NetWork.RemoteMessaging.Unified;
 
 /// <summary>
@@ -56,7 +58,8 @@ public static class UnifiedMessageSenderHolder
         {
             if (_sender == null)
             {
-                throw new InvalidOperationException("UnifiedMessageSenderHolder has not been initialized. Call Initialize() first during startup.");
+                // Localization: RemoteMessaging.Unified.SenderNotInitialized - UnifiedMessageSenderHolder 尚未初始化。请在启动期间先调用 Initialize()
+                throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Unified.SenderNotInitialized));
             }
 
             return _sender;
@@ -87,7 +90,8 @@ public static class UnifiedMessageSenderHolder
         {
             if (_metrics == null)
             {
-                throw new InvalidOperationException("UnifiedMessageSender metrics are unavailable. Initialize() with UnifiedMessageSender first.");
+                // Localization: RemoteMessaging.Unified.MetricsUnavailable - UnifiedMessageSender 指标不可用。请先使用 UnifiedMessageSender 调用 Initialize()
+                throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Unified.MetricsUnavailable));
             }
 
             return _metrics;

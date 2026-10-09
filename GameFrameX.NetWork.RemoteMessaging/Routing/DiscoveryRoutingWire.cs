@@ -28,6 +28,8 @@
 //  ==========================================================================================
 
 
+using GameFrameX.Foundation.Localization.Core;
+
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
@@ -111,7 +113,8 @@ public static class DiscoveryRoutingWire
 
         if (_hostedRoles == null)
         {
-            throw new InvalidOperationException("DiscoveryRoutingWire.AttachLocalDispatcher must be called after Initialize; the router rebuild needs the hosted-role snapshot and the remote router created by Initialize.");
+            // Localization: RemoteMessaging.Routing.AttachLocalDispatcherOrderInvalid - DiscoveryRoutingWire.AttachLocalDispatcher 必须在 Initialize 之后调用；路由器重建需要托管角色快照以及由 Initialize 创建的远程路由器
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Routing.AttachLocalDispatcherOrderInvalid));
         }
 
         if (Interlocked.CompareExchange(ref _localDispatcherAttached, 1, 0) != 0)

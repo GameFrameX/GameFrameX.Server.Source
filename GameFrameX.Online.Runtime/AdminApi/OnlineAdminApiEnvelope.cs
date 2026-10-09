@@ -29,6 +29,7 @@
 
 using GameFrameX.Foundation.Http.Normalization;
 using GameFrameX.Foundation.Json;
+using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Online.Runtime.AdminApi;
 
@@ -68,7 +69,8 @@ public static class OnlineAdminApiEnvelope
     {
         if (string.IsNullOrEmpty(innerJson))
         {
-            throw new ArgumentException("Inner response JSON must not be null or empty.", nameof(innerJson));
+            // Localization: Online.AdminApi.InnerJsonRequired - 内层响应 JSON 不能为 null 或空。
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Online.AdminApi.InnerJsonRequired), nameof(innerJson));
         }
 
         return HttpJsonResultData<string>.SuccessString(innerJson);

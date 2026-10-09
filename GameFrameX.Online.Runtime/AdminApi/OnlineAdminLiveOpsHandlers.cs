@@ -25,6 +25,7 @@
 //  ==========================================================================================
 
 using GameFrameX.Foundation.Json;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Online.Contracts;
 using GameFrameX.Online.Scope;
 
@@ -258,7 +259,8 @@ public sealed class OnlineAdminLiveOpsHandlers
             return value.Value;
         }
 
-        throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, name + " must be a positive number.");
+        // Localization: Online.AdminApi.PositiveNumberRequired - {0} 必须为正数。
+        throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, LocalizationService.GetString(Localization.Keys.Online.AdminApi.PositiveNumberRequired, name));
     }
 
     /// <summary>
@@ -275,7 +277,8 @@ public sealed class OnlineAdminLiveOpsHandlers
             return value.Value;
         }
 
-        throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, name + " must be a positive number.");
+        // Localization: Online.AdminApi.PositiveNumberRequired - {0} 必须为正数。
+        throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, LocalizationService.GetString(Localization.Keys.Online.AdminApi.PositiveNumberRequired, name));
     }
 
     /// <summary>
@@ -291,7 +294,8 @@ public sealed class OnlineAdminLiveOpsHandlers
             return value.Value;
         }
 
-        throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, "ConfigKind must be a number in [1,4] (RemoteConfig/Announcement/DeviceGroup/ScheduledTask).");
+        // Localization: Online.AdminApi.ConfigKindInvalid - ConfigKind 必须是 [1,4] 范围内的数字（RemoteConfig/Announcement/DeviceGroup/ScheduledTask）。
+        throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, LocalizationService.GetString(Localization.Keys.Online.AdminApi.ConfigKindInvalid));
     }
 
     /// <summary>

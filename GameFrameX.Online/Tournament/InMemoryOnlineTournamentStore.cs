@@ -32,6 +32,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
+using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Online.Tournament;
 
@@ -135,7 +136,8 @@ public sealed class InMemoryOnlineTournamentStore : IOnlineTournamentStore
             var key = BuildKey(tournament.TenantId, tournament.AppId, tournament.TournamentId);
             if (!_tournaments.ContainsKey(key))
             {
-                throw new InvalidOperationException("赛事不存在，保存前必须先经 CreateAsync 建立");
+                // Localization: Online.Tournament.NotFoundOnSave - 赛事不存在，保存前必须先经 CreateAsync 建立
+                throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Online.Tournament.NotFoundOnSave));
             }
 
             _tournaments[key] = tournament.Copy();

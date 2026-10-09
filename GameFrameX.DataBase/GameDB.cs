@@ -208,7 +208,8 @@ public static partial class GameDb
         ArgumentNullException.ThrowIfNull(databaseName, nameof(databaseName));
         if (!MultiDbRegistry.TryGet(databaseName, out var service))
         {
-            throw new InvalidOperationException($"No database named '{databaseName}' is registered. Registered names: [{string.Join(", ", MultiDbRegistry.GetRegisteredDatabaseNames())}]");
+            // Localization: Database.Registry.NotRegistered - 没有名为“{0}”的数据库被注册。已注册名称：[{1}]
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Database.RegistryNotRegistered, databaseName, string.Join(", ", MultiDbRegistry.GetRegisteredDatabaseNames())));
         }
 
         var current = Volatile.Read(ref _defaultDatabaseName);
@@ -219,7 +220,8 @@ public static partial class GameDb
                 return;
             }
 
-            throw new InvalidOperationException($"The default database is already set to '{current}' (set-once, C159); changing it to '{databaseName}' is not allowed. Registered names: [{string.Join(", ", MultiDbRegistry.GetRegisteredDatabaseNames())}]");
+            // Localization: Database.Registry.DefaultAlreadySet - 默认数据库已被设置为“{0}”（set-once，C159）；不允许将其更改为“{1}”。已注册名称：[{2}]
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Database.RegistryDefaultAlreadySet, current, databaseName, string.Join(", ", MultiDbRegistry.GetRegisteredDatabaseNames())));
         }
 
         if (Interlocked.CompareExchange(ref _defaultDatabaseName, databaseName, null) != null)
@@ -228,7 +230,8 @@ public static partial class GameDb
             var winner = Volatile.Read(ref _defaultDatabaseName);
             if (winner != databaseName)
             {
-                throw new InvalidOperationException($"The default database is already set to '{winner}' (set-once, C159); changing it to '{databaseName}' is not allowed. Registered names: [{string.Join(", ", MultiDbRegistry.GetRegisteredDatabaseNames())}]");
+                // Localization: Database.Registry.DefaultAlreadySet - 默认数据库已被设置为“{0}”（set-once，C159）；不允许将其更改为“{1}”。已注册名称：[{2}]
+                throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Database.RegistryDefaultAlreadySet, winner, databaseName, string.Join(", ", MultiDbRegistry.GetRegisteredDatabaseNames())));
             }
 
             return;

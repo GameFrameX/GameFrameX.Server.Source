@@ -25,6 +25,7 @@
 //  ==========================================================================================
 
 using GameFrameX.Foundation.Json;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Online.Contracts;
 using GameFrameX.Online.Scope;
 using GameFrameX.Online.Social;
@@ -216,7 +217,8 @@ public sealed class OnlineAdminSocialHandlers
         var status = ReadAdminStatus(request);
         if (!status.HasValue)
         {
-            throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, "Status must be a number in [1,4] (Pending/Handling/Resolved/Rejected).");
+            // Localization: Online.AdminApi.StatusInvalid - Status 必须是 [1,4] 范围内的数字（Pending/Handling/Resolved/Rejected）。
+            throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, LocalizationService.GetString(Localization.Keys.Online.AdminApi.StatusInvalid));
         }
 
         var resolution = status.Value == OnlineReportState.Rejected ? OnlineReportResolution.NoViolation : OnlineReportResolution.None;

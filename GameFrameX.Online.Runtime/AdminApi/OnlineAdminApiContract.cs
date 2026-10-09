@@ -25,6 +25,7 @@
 //  ==========================================================================================
 
 using System.Text.Json;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Online.Contracts;
 using GameFrameX.Online.Scope;
 
@@ -78,7 +79,8 @@ public static class OnlineAdminApiContract
             return playerId;
         }
 
-        throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, "PlayerId must be a positive value (wire form: string).");
+        // Localization: Online.AdminApi.PlayerIdInvalid - PlayerId 必须为正数（线缆形态：字符串）。
+        throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, LocalizationService.GetString(Localization.Keys.Online.AdminApi.PlayerIdInvalid));
     }
 
     /// <summary>
@@ -106,7 +108,8 @@ public static class OnlineAdminApiContract
             return value;
         }
 
-        throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, name + " must be a non-empty string.");
+        // Localization: Online.AdminApi.NonEmptyStringRequired - {0} 必须为非空字符串。
+        throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, LocalizationService.GetString(Localization.Keys.Online.AdminApi.NonEmptyStringRequired, name));
     }
 
     /// <summary>
@@ -169,7 +172,8 @@ public static class OnlineAdminApiContract
     {
         if (result == null)
         {
-            throw new OnlineServiceException(OnlineErrorCode.InternalError, "Service returned no result.");
+            // Localization: Online.AdminApi.ServiceNoResult - 服务未返回任何结果。
+            throw new OnlineServiceException(OnlineErrorCode.InternalError, LocalizationService.GetString(Localization.Keys.Online.AdminApi.ServiceNoResult));
         }
 
         if (result.IsSuccess)

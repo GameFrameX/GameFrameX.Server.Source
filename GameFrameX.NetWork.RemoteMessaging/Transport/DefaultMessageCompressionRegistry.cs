@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 using System.Collections.Concurrent;
+using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.NetWork.RemoteMessaging.Transport;
 
@@ -66,7 +67,8 @@ public sealed class DefaultMessageCompressionRegistry : IMessageCompressionRegis
         ArgumentNullException.ThrowIfNull(algorithm);
         if (algorithm.AlgorithmId == 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(algorithm), "AlgorithmId 0 is reserved for uncompressed payload.");
+            // Localization: RemoteMessaging.Compression.AlgorithmIdReserved - AlgorithmId 0 保留给未压缩载荷
+            throw new ArgumentOutOfRangeException(nameof(algorithm), LocalizationService.GetString(Localization.Keys.RemoteMessaging.Compression.AlgorithmIdReserved));
         }
 
         _algorithms[algorithm.AlgorithmId] = algorithm;

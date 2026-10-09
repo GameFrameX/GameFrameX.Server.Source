@@ -28,6 +28,8 @@
 //  ==========================================================================================
 
 
+using GameFrameX.Foundation.Localization.Core;
+
 namespace GameFrameX.NetWork.RemoteMessaging.Routing;
 
 /// <summary>
@@ -117,7 +119,8 @@ public sealed class InProcessRoleRouter : IRoleRouter
 
         if (string.IsNullOrWhiteSpace(envelope.TargetRole))
         {
-            throw new RouteNotFoundException(envelope.TargetRole, "Cannot route an envelope without a target role.");
+            // Localization: RemoteMessaging.Routing.TargetRoleMissing - 无法路由缺少目标角色的信封
+            throw new RouteNotFoundException(envelope.TargetRole, LocalizationService.GetString(Localization.Keys.RemoteMessaging.Routing.TargetRoleMissing));
         }
 
         // D3 case 1：目标 Role 属于本进程角色集 → 本地投递
@@ -125,9 +128,10 @@ public sealed class InProcessRoleRouter : IRoleRouter
         {
             if (_localDispatcher == null)
             {
+                // Localization: RemoteMessaging.Routing.LocalDispatcherNotConfigured - 目标角色「{0}」由本进程承载，但未配置本地消息派发器（actor 派发器随 C143e 到达）
                 throw new RouteNotFoundException(
                     envelope.TargetRole,
-                    $"Target role '{envelope.TargetRole}' is hosted by this process but no local message dispatcher is configured (the actor-backed dispatcher arrives with C143e).");
+                    LocalizationService.GetString(Localization.Keys.RemoteMessaging.Routing.LocalDispatcherNotConfigured, envelope.TargetRole));
             }
 
             await _localDispatcher.DispatchAsync(envelope, cancellationToken);

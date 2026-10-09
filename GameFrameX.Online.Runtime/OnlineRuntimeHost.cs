@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 using GameFrameX.Foundation.Idempotency;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Online.Assets;
 using GameFrameX.Online.Audit;
 using GameFrameX.Online.Events;
@@ -405,7 +406,8 @@ public sealed class OnlineRuntimeHost
         Options = options ?? throw new ArgumentNullException(nameof(options));
         if (!options.IsValid())
         {
-            throw new InvalidOperationException("Online runtime options are invalid (scope triple / port / prefix).");
+            // Localization: Online.Runtime.OptionsInvalid - Online 运行时选项非法（作用域三元组 / 端口 / 前缀）。
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Online.Runtime.OptionsInvalid));
         }
 
         AuthorizedScope = new OnlineScope(options.TenantId, options.AppId, options.ServerId);

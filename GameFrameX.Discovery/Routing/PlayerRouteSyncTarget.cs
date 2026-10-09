@@ -26,7 +26,7 @@
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
-
+using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Discovery.Routing;
 
@@ -98,7 +98,8 @@ public sealed class PlayerRouteSyncTarget : IPlayerRouteSyncTarget
 
         if (string.IsNullOrWhiteSpace(instanceId))
         {
-            throw new ArgumentException("Instance id must not be empty.", nameof(record));
+            // Localization: Discovery.PlayerRouteSync.InstanceIdEmpty - 实例 Id 不能为空。
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Discovery.PlayerRouteSync.InstanceIdEmpty), nameof(record));
         }
 
         // 统一 CAS：送入 version 必须等于当前 version + 1（旧记录 version == version-1）。

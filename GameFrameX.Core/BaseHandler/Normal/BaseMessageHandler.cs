@@ -29,6 +29,7 @@
 
 using System.Diagnostics;
 using GameFrameX.Foundation.Logger;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.Utility.Setting;
 
@@ -73,7 +74,8 @@ public abstract class BaseMessageHandler<TRequest> : IMessageHandler where TRequ
         ArgumentNullException.ThrowIfNull(netWorkChannel, nameof(netWorkChannel));
         if (message is not TRequest requestMessage)
         {
-            throw new InvalidCastException($"消息类型错误, {message.GetType().FullName} to: {typeof(TRequest).FullName}");
+            // Localization: CoreExceptions.Message.TypeCastError - 消息类型错误, {0} to: {1}
+            throw new InvalidCastException(LocalizationService.GetString(Localization.Keys.CoreExceptions.Message.TypeCastError, message.GetType().FullName, typeof(TRequest).FullName));
         }
 
         _stopwatch = new Stopwatch();
@@ -93,7 +95,8 @@ public abstract class BaseMessageHandler<TRequest> : IMessageHandler where TRequ
     {
         if (_isInit == false)
         {
-            throw new Exception("消息处理器未初始化,请调用先Init方法，如果已经子类实现了Init方法，请调用在子类Init中调用父类Init方法");
+            // Localization: CoreExceptions.Message.HandlerNotInitialized - 消息处理器未初始化,请调用先Init方法，如果已经子类实现了Init方法，请调用在子类Init中调用父类Init方法
+            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Message.HandlerNotInitialized));
         }
 
         try
