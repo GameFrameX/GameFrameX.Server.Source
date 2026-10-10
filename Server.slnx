@@ -17,7 +17,6 @@
   <Project Path="GameFrameX.Client/GameFrameX.Client.csproj" />
   <Project Path="GameFrameX.Architecture.Analyzers/GameFrameX.Architecture.Analyzers.csproj" />
   <Project Path="GameFrameX.Config/GameFrameX.Config.csproj" />
-  <Project Path="GameFrameX.Core.Config/GameFrameX.Core.Config.csproj" />
   <Project Path="GameFrameX.Core/GameFrameX.Core.csproj" />
   <Project Path="GameFrameX.DataBase.Mongo/GameFrameX.DataBase.Mongo.csproj" />
   <Project Path="GameFrameX.DataBase/GameFrameX.DataBase.csproj" />

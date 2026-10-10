@@ -721,7 +721,6 @@ Server/
 ├── GameFrameX.Apps/                  # 状態データ層（アカウント、プレイヤー、サーバーモジュール）— ホット更新不可
 ├── GameFrameX.Hotfix/                # ビジネスロジック層（HTTP、プレイヤー、サーバーハンドラ）— ホット更新可能
 ├── GameFrameX.Config/                # ゲーム設定テーブル（JSON 形式、LuBan 生成）
-├── GameFrameX.Core.Config/           # コア設定管理
 ├── GameFrameX.Proto/                 # ProtoBuf プロトコル定義
 ├── GameFrameX.ProtoBuf.Net/          # ProtoBuf シリアライズ実装
 ├── GameFrameX.NetWork/               # ネットワークコア（メッセージオブジェクト、センダー、WebSocket）

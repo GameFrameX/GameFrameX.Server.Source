@@ -719,7 +719,6 @@ Server/
 ├── GameFrameX.Apps/                  # 狀態資料層（帳戶、玩家、伺服器模組）— 不可熱更
 ├── GameFrameX.Hotfix/                # 業務邏輯層（HTTP、玩家、伺服器處理器）— 可熱更
 ├── GameFrameX.Config/                # 遊戲配置表（JSON 格式，LuBan 生成）
-├── GameFrameX.Core.Config/           # 核心配置管理
 ├── GameFrameX.Proto/                 # ProtoBuf 協議定義
 ├── GameFrameX.ProtoBuf.Net/          # ProtoBuf 序列化實作
 ├── GameFrameX.NetWork/               # 網路核心（訊息物件、傳送器、WebSocket）

@@ -5,7 +5,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\GameFrameX.Core.Config\GameFrameX.Core.Config.csproj"/>
+        <ProjectReference Include="..\GameFrameX.Core\GameFrameX.Core.csproj"/>
         <ProjectReference Include="..\GameFrameX.Utility\GameFrameX.Utility.csproj" />
     </ItemGroup>
 

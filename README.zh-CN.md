@@ -719,7 +719,6 @@ Server/
 ├── GameFrameX.Apps/                  # 状态数据层（账户、玩家、服务器模块）— 不可热更
 ├── GameFrameX.Hotfix/                # 业务逻辑层（HTTP、玩家、服务器处理器）— 可热更
 ├── GameFrameX.Config/                # 游戏配置表（JSON 格式，LuBan 生成）
-├── GameFrameX.Core.Config/           # 核心配置管理
 ├── GameFrameX.Proto/                 # ProtoBuf 协议定义
 ├── GameFrameX.ProtoBuf.Net/          # ProtoBuf 序列化实现
 ├── GameFrameX.NetWork/               # 网络核心（消息对象、发送器、WebSocket）
