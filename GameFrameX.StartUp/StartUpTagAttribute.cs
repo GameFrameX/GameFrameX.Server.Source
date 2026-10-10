@@ -97,8 +97,8 @@ public class StartUpTagAttribute : Attribute
     /// </example>
     public StartUpTagAttribute(string serverType, int priority = 1000)
     {
-        ArgumentNullException.ThrowIfNull(serverType, nameof(serverType));
-        ArgumentException.ThrowIfNullOrWhiteSpace(serverType, nameof(serverType));
+        ArgumentNullException.ThrowIfNull(serverType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(serverType);
 
         ServerType = serverType;
         Priority = priority;

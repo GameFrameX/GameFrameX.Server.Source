@@ -73,7 +73,7 @@ public sealed class RoleSet : IReadOnlySet<string>
     /// <exception cref="ArgumentNullException">当 <paramref name="startUpTypes"/> 为 null 时抛出 / Thrown when <paramref name="startUpTypes"/> is null</exception>
     internal RoleSet(IEnumerable<KeyValuePair<Type, StartUpTagAttribute>> startUpTypes)
     {
-        ArgumentNullException.ThrowIfNull(startUpTypes, nameof(startUpTypes));
+        ArgumentNullException.ThrowIfNull(startUpTypes);
 
         StartUpTypes = Array.AsReadOnly(startUpTypes.ToArray());
         _roleNames = new HashSet<string>(StartUpTypes.Select(pair => pair.Value.ServerType));

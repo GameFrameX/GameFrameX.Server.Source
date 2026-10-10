@@ -139,7 +139,7 @@ public static class ConfigStartupValidator
     /// <exception cref="ConfigConflictException">检出任何冲突时抛出 / Thrown when any conflict is detected</exception>
     public static void Validate(IReadOnlyList<string> selectedServerTypes, IEnumerable<AppSetting> fileSettings, StartupOptions launcherOptions, string[] args, AllInOneOptions allInOneOptions)
     {
-        ArgumentNullException.ThrowIfNull(selectedServerTypes, nameof(selectedServerTypes));
+        ArgumentNullException.ThrowIfNull(selectedServerTypes);
 
         var conflicts = new List<ConfigFieldConflict>();
         var sectionsByServerType = new Dictionary<string, AppSetting>(StringComparer.Ordinal);

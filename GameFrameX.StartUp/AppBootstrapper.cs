@@ -116,7 +116,7 @@ public static class AppBootstrapper
     /// <exception cref="BootstrapperAlreadyInitializedException">当共享内核已初始化或正在初始化时抛出 / Thrown when the shared kernel has already been initialized or is currently initializing</exception>
     public static void Initialize(Action sharedKernelInitialization)
     {
-        ArgumentNullException.ThrowIfNull(sharedKernelInitialization, nameof(sharedKernelInitialization));
+        ArgumentNullException.ThrowIfNull(sharedKernelInitialization);
 
         lock (InitializationGate)
         {

@@ -563,7 +563,7 @@ public static class GameApp
     /// <returns>选定的启动类型集合（优先级序）/ The selected startup types in priority order</returns>
     internal static IReadOnlyList<KeyValuePair<Type, StartUpTagAttribute>> SelectStartUpTypes(AllInOneOptions allInOneOptions, IEnumerable<KeyValuePair<Type, StartUpTagAttribute>> sortedStartUpTypes)
     {
-        ArgumentNullException.ThrowIfNull(allInOneOptions, nameof(allInOneOptions));
+        ArgumentNullException.ThrowIfNull(allInOneOptions);
 
         var sortedList = sortedStartUpTypes as IReadOnlyList<KeyValuePair<Type, StartUpTagAttribute>> ?? sortedStartUpTypes.ToList();
 

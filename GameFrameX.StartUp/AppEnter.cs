@@ -96,7 +96,7 @@ internal static class AppEnter
     /// <exception cref="ArgumentException">当 <paramref name="appStartUps"/> 为空集合时抛出 / Thrown when <paramref name="appStartUps"/> is empty</exception>
     internal static async Task Entry(IReadOnlyList<IAppStartUp> appStartUps)
     {
-        ArgumentNullException.ThrowIfNull(appStartUps, nameof(appStartUps));
+        ArgumentNullException.ThrowIfNull(appStartUps);
         if (appStartUps.Count == 0)
         {
 // Localization: StartUp.Application.StartupInstanceRequired - 至少需要一个应用程序启动实例

@@ -330,7 +330,7 @@ namespace GameFrameX.StartUp.ServiceDefaults
         /// <param name="healthChecksBuilder">健康检查构建器 / Health checks builder</param>
         private static void AddMongoDbHealthCheckIfConfigured(IHealthChecksBuilder healthChecksBuilder)
         {
-            ArgumentNullException.ThrowIfNull(healthChecksBuilder, nameof(healthChecksBuilder));
+            ArgumentNullException.ThrowIfNull(healthChecksBuilder);
             var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__mongodb");
             if (string.IsNullOrWhiteSpace(connectionString))
             {
