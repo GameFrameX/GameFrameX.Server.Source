@@ -63,9 +63,9 @@ public static class NetHelper
     /// <exception cref="ArgumentOutOfRangeException">当端口不在合法范围时抛出</exception>
     public static List<string> GetPortOccupyingProcesses(int port, int maxCount = 5)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(port, 1, nameof(port));
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(port, 65535, nameof(port));
-        ArgumentOutOfRangeException.ThrowIfLessThan(maxCount, 1, nameof(maxCount));
+        ArgumentOutOfRangeException.ThrowIfLessThan(port, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(port, 65535);
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxCount, 1);
 
         if (OperatingSystem.IsWindows())
         {
@@ -254,8 +254,8 @@ public static class NetHelper
     /// <exception cref="ArgumentOutOfRangeException">当port小于等于0时抛出此异常</exception>
     public static EndPoint ParseEndPoint(string host, int port)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(host, nameof(host));
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(port, nameof(port));
+        ArgumentException.ThrowIfNullOrWhiteSpace(host);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(port);
         EndPoint connectEndPoint = default;
         if (IPAddress.TryParse(host, out var ipAddress))
         {
@@ -290,7 +290,7 @@ public static class NetHelper
     /// <exception cref="ArgumentNullException">当ipAddress为null时抛出此异常</exception>
     public static bool IsValidIpAddress(string ipAddress, out IPAddress value)
     {
-        ArgumentNullException.ThrowIfNull(ipAddress, nameof(ipAddress));
+        ArgumentNullException.ThrowIfNull(ipAddress);
 
         value = null;
 
@@ -322,11 +322,11 @@ public static class NetHelper
     /// <exception cref="ArgumentException">当startPort大于等于maxPort时抛出此异常</exception>
     public static int GetFirstAvailablePort(int startPort = 667, int maxPort = 65535)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(startPort, 1, nameof(startPort));
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(startPort, 65535, nameof(startPort));
-        ArgumentOutOfRangeException.ThrowIfLessThan(maxPort, 1, nameof(maxPort));
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(maxPort, 65535, nameof(maxPort));
-        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(startPort, maxPort, nameof(startPort));
+        ArgumentOutOfRangeException.ThrowIfLessThan(startPort, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(startPort, 65535);
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxPort, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(maxPort, 65535);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(startPort, maxPort);
 
         for (var i = startPort; i < maxPort; i++)
         {
@@ -384,8 +384,8 @@ public static class NetHelper
     /// <exception cref="ArgumentOutOfRangeException">当port小于1或大于65535时抛出此异常</exception>
     public static bool PortIsAvailable(int port)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(port, 1, nameof(port));
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(port, 65535, nameof(port));
+        ArgumentOutOfRangeException.ThrowIfLessThan(port, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(port, 65535);
 
         var isAvailable = true;
 
@@ -464,8 +464,8 @@ public static class NetHelper
     /// <exception cref="ArgumentOutOfRangeException">当timeout小于0时抛出此异常</exception>
     public static bool IsNetworkReachable(string host, int timeout = 5000)
     {
-        ArgumentException.ThrowIfNullOrEmpty(host, nameof(host));
-        ArgumentOutOfRangeException.ThrowIfNegative(timeout, nameof(timeout));
+        ArgumentException.ThrowIfNullOrEmpty(host);
+        ArgumentOutOfRangeException.ThrowIfNegative(timeout);
 
         try
         {
@@ -527,9 +527,9 @@ public static class NetHelper
     /// <exception cref="ArgumentException">当IP地址格式无效时抛出此异常</exception>
     public static bool IsIpInSubnet(string ipAddress, string networkAddress, string subnetMask)
     {
-        ArgumentException.ThrowIfNullOrEmpty(ipAddress, nameof(ipAddress));
-        ArgumentException.ThrowIfNullOrEmpty(networkAddress, nameof(networkAddress));
-        ArgumentException.ThrowIfNullOrEmpty(subnetMask, nameof(subnetMask));
+        ArgumentException.ThrowIfNullOrEmpty(ipAddress);
+        ArgumentException.ThrowIfNullOrEmpty(networkAddress);
+        ArgumentException.ThrowIfNullOrEmpty(subnetMask);
 
         if (!IPAddress.TryParse(ipAddress, out var ip) ||
             !IPAddress.TryParse(networkAddress, out var network) ||
@@ -568,12 +568,12 @@ public static class NetHelper
     /// <exception cref="ArgumentOutOfRangeException">当端口范围无效时抛出此异常</exception>
     public static List<int> GetAvailablePorts(int startPort, int endPort, int maxCount = 10)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(startPort, 1, nameof(startPort));
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(startPort, 65535, nameof(startPort));
-        ArgumentOutOfRangeException.ThrowIfLessThan(endPort, 1, nameof(endPort));
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(endPort, 65535, nameof(endPort));
-        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(startPort, endPort, nameof(startPort));
-        ArgumentOutOfRangeException.ThrowIfLessThan(maxCount, 1, nameof(maxCount));
+        ArgumentOutOfRangeException.ThrowIfLessThan(startPort, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(startPort, 65535);
+        ArgumentOutOfRangeException.ThrowIfLessThan(endPort, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(endPort, 65535);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(startPort, endPort);
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxCount, 1);
 
         var availablePorts = new List<int>();
         var usedPorts = PortIsUsed().ToHashSet();
@@ -598,7 +598,7 @@ public static class NetHelper
 #nullable enable
     public static async Task<string?> GetPublicIpAddressAsync(int timeout = 10000)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(timeout, nameof(timeout));
+        ArgumentOutOfRangeException.ThrowIfNegative(timeout);
 
         var services = new[]
         {
@@ -676,7 +676,7 @@ public static class NetHelper
     /// <exception cref="ArgumentException">当IP地址格式无效时抛出此异常</exception>
     public static bool IsPrivateIpAddress(string ipAddress)
     {
-        ArgumentException.ThrowIfNullOrEmpty(ipAddress, nameof(ipAddress));
+        ArgumentException.ThrowIfNullOrEmpty(ipAddress);
 
         if (!IsValidIpAddress(ipAddress, out var ip))
         {

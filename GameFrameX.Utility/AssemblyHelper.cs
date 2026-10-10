@@ -206,7 +206,7 @@ public static class AssemblyHelper
     /// <exception cref="ArgumentNullException">Thrown when results parameter is null / 当 results 参数为 null 时抛出</exception>
     public static void GetTypes(List<Type> results)
     {
-        ArgumentNullException.ThrowIfNull(results, nameof(results));
+        ArgumentNullException.ThrowIfNull(results);
 
         results.Clear();
         results.AddRange(LazyTypes.Value);
@@ -225,7 +225,7 @@ public static class AssemblyHelper
     /// <exception cref="ArgumentException">Thrown when typeName parameter is null, empty, or whitespace string / 当 typeName 参数为 null、空字符串或仅空白字符时抛出</exception>
     public static Type GetType(string typeName)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(typeName, nameof(typeName));
+        ArgumentException.ThrowIfNullOrWhiteSpace(typeName);
 
         return CachedTypes.GetOrAdd(typeName, name =>
         {
@@ -374,7 +374,7 @@ public static class AssemblyHelper
     /// <exception cref="ArgumentNullException">Thrown when type parameter is null / 当 type 参数为 null 时抛出</exception>
     public static List<Type> GetRuntimeImplementTypeNames(Type type)
     {
-        ArgumentNullException.ThrowIfNull(type, nameof(type));
+        ArgumentNullException.ThrowIfNull(type);
 
         var types = GetTypes();
         var results = new List<Type>();

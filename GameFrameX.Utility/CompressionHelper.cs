@@ -61,7 +61,7 @@ public static class CompressionHelper
     /// <exception cref="ArgumentNullException">Thrown when the input parameter bytes is null. / 当输入参数bytes为null时抛出。</exception>
     public static byte[] Compress(byte[] bytes)
     {
-        ArgumentNullException.ThrowIfNull(bytes, nameof(bytes));
+        ArgumentNullException.ThrowIfNull(bytes);
         if (bytes.Length == 0)
         {
             return bytes;
@@ -110,7 +110,7 @@ public static class CompressionHelper
     /// <exception cref="InvalidDataException">Thrown when the compressed data format is invalid or corrupted. / 当压缩数据格式无效或已损坏时抛出。</exception>
     public static byte[] Decompress(byte[] bytes)
     {
-        ArgumentNullException.ThrowIfNull(bytes, nameof(bytes));
+        ArgumentNullException.ThrowIfNull(bytes);
         if (bytes.Length == 0)
         {
             return bytes;

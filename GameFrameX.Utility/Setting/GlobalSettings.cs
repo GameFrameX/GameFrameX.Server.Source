@@ -128,7 +128,7 @@ public static class GlobalSettings
     /// <exception cref="SettingConflictException">当与当前设置存在进程级字段冲突时抛出 / Thrown when process-level fields conflict with the current setting</exception>
     public static void SetCurrentSetting(AppSetting setting)
     {
-        ArgumentNullException.ThrowIfNull(setting, nameof(setting));
+        ArgumentNullException.ThrowIfNull(setting);
 
         if (setting.SaveDataInterval < 5000)
         {
@@ -269,7 +269,7 @@ public static class GlobalSettings
     /// <exception cref="ArgumentNullException">当serverName为null时抛出此异常 / Thrown when serverName is null</exception>
     public static AppSetting GetSettingByServerName<T>(string serverName)
     {
-        ArgumentNullException.ThrowIfNull(serverName, nameof(serverName));
+        ArgumentNullException.ThrowIfNull(serverName);
         foreach (var setting in Settings)
         {
             if (setting.ServerName == serverName)
@@ -316,7 +316,7 @@ public static class GlobalSettings
     /// <exception cref="ArgumentNullException">当tagName为null时抛出此异常 / Thrown when tagName is null</exception>
     public static AppSetting GetSettingByTagName<T>(string tagName)
     {
-        ArgumentNullException.ThrowIfNull(tagName, nameof(tagName));
+        ArgumentNullException.ThrowIfNull(tagName);
         foreach (var setting in Settings)
         {
             if (setting.TagName == tagName)

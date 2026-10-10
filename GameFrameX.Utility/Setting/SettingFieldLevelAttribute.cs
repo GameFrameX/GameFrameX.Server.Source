@@ -73,7 +73,7 @@ public sealed class SettingFieldLevelAttribute : Attribute
     /// <returns>字段级别；未标注返回 null / The field level, or null when not annotated</returns>
     public static SettingFieldLevel? GetLevel(PropertyInfo property)
     {
-        ArgumentNullException.ThrowIfNull(property, nameof(property));
+        ArgumentNullException.ThrowIfNull(property);
         return property.GetCustomAttribute<SettingFieldLevelAttribute>()?.Level;
     }
 }

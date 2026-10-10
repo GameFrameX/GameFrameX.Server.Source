@@ -113,7 +113,7 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当 maxValue 小于 0 时抛出此异常</exception>
     public static int Next(int maxValue)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(maxValue, nameof(maxValue));
+        ArgumentOutOfRangeException.ThrowIfNegative(maxValue);
         return RandomShared.Next(maxValue);
     }
 
@@ -126,7 +126,7 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当 minValue 大于 maxValue 时抛出此异常</exception>
     public static int Next(int minValue, int maxValue)
     {
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(minValue, maxValue, nameof(minValue));
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(minValue, maxValue);
         return RandomShared.Next(minValue, maxValue);
     }
 
@@ -147,7 +147,7 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当 maxValue 小于 0 时抛出此异常</exception>
     public static long NextInt64(int maxValue)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(maxValue, nameof(maxValue));
+        ArgumentOutOfRangeException.ThrowIfNegative(maxValue);
         return RandomShared.NextInt64(maxValue);
     }
 
@@ -160,7 +160,7 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当 minValue 大于 maxValue 时抛出此异常</exception>
     public static long NextInt64(long minValue, long maxValue)
     {
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(minValue, maxValue, nameof(minValue));
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(minValue, maxValue);
         return RandomShared.NextInt64(minValue, maxValue);
     }
 
@@ -192,7 +192,7 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当 maxValue 小于 0 时抛出此异常</exception>
     public static double NextDouble(double maxValue)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(maxValue, nameof(maxValue));
+        ArgumentOutOfRangeException.ThrowIfNegative(maxValue);
         return RandomShared.NextDouble() * maxValue;
     }
 
@@ -205,7 +205,7 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当 minValue 大于 maxValue 时抛出此异常</exception>
     public static double NextDouble(double minValue, double maxValue)
     {
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(minValue, maxValue, nameof(minValue));
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(minValue, maxValue);
         return RandomShared.NextDouble() * (maxValue - minValue) + minValue;
     }
 
@@ -217,7 +217,7 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当 maxValue 小于 0 时抛出此异常</exception>
     public static long NextLong(long maxValue)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(maxValue, nameof(maxValue));
+        ArgumentOutOfRangeException.ThrowIfNegative(maxValue);
         return RandomShared.NextInt64(maxValue);
     }
 
@@ -230,7 +230,7 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当 minValue 大于 maxValue 时抛出此异常</exception>
     public static long NextLong(long minValue, long maxValue)
     {
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(minValue, maxValue, nameof(minValue));
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(minValue, maxValue);
         return RandomShared.NextInt64(minValue, maxValue);
     }
 
@@ -241,7 +241,7 @@ public static class RandomHelper
     /// <exception cref="ArgumentNullException">当 buffer 为 null 时抛出此异常</exception>
     public static void NextBytes(byte[] buffer)
     {
-        ArgumentNullException.ThrowIfNull(buffer, nameof(buffer));
+        ArgumentNullException.ThrowIfNull(buffer);
         RandomShared.NextBytes(buffer);
     }
 
@@ -265,7 +265,7 @@ public static class RandomHelper
     /// <exception cref="ArgumentException">当 items 为空集合时抛出此异常</exception>
     public static T RandomSelect<T>(IList<T> items)
     {
-        ArgumentNullException.ThrowIfNull(items, nameof(items));
+        ArgumentNullException.ThrowIfNull(items);
         ArgumentOutOfRangeException.ThrowIfZero(items.Count, nameof(items));
         return items[Next(items.Count)];
     }
@@ -280,7 +280,7 @@ public static class RandomHelper
     /// <exception cref="ArgumentException">当 items 为空数组时抛出此异常</exception>
     public static T RandomSelect<T>(T[] items)
     {
-        ArgumentNullException.ThrowIfNull(items, nameof(items));
+        ArgumentNullException.ThrowIfNull(items);
         ArgumentOutOfRangeException.ThrowIfZero(items.Length, nameof(items));
         return items[Next(items.Length)];
     }
@@ -295,7 +295,7 @@ public static class RandomHelper
     /// <exception cref="ArgumentException">当 items 为空列表时抛出此异常</exception>
     public static T RandomSelect<T>(List<T> items)
     {
-        ArgumentNullException.ThrowIfNull(items, nameof(items));
+        ArgumentNullException.ThrowIfNull(items);
         ArgumentOutOfRangeException.ThrowIfZero(items.Count, nameof(items));
         return items[Next(items.Count)];
     }
@@ -310,7 +310,7 @@ public static class RandomHelper
     /// <exception cref="ArgumentException">当 items 为空集合时抛出此异常</exception>
     public static int Idx<T>(IList<T> items)
     {
-        ArgumentNullException.ThrowIfNull(items, nameof(items));
+        ArgumentNullException.ThrowIfNull(items);
         ArgumentOutOfRangeException.ThrowIfZero(items.Count, nameof(items));
         return Next(items.Count);
     }
@@ -325,7 +325,7 @@ public static class RandomHelper
     /// <exception cref="ArgumentException">当 items 为空数组时抛出此异常</exception>
     public static int Idx<T>(T[] items)
     {
-        ArgumentNullException.ThrowIfNull(items, nameof(items));
+        ArgumentNullException.ThrowIfNull(items);
         ArgumentOutOfRangeException.ThrowIfZero(items.Length, nameof(items));
         return Next(items.Length);
     }
@@ -340,7 +340,7 @@ public static class RandomHelper
     /// <exception cref="ArgumentException">当 items 为空列表时抛出此异常</exception>
     public static int Idx<T>(List<T> items)
     {
-        ArgumentNullException.ThrowIfNull(items, nameof(items));
+        ArgumentNullException.ThrowIfNull(items);
         ArgumentOutOfRangeException.ThrowIfZero(items.Count, nameof(items));
         return Next(items.Count);
     }
@@ -356,9 +356,9 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当 items 为空集合或 count 小于 0 时抛出此异常</exception>
     public static int[] Ids<T>(IList<T> items, int count)
     {
-        ArgumentNullException.ThrowIfNull(items, nameof(items));
+        ArgumentNullException.ThrowIfNull(items);
         ArgumentOutOfRangeException.ThrowIfZero(items.Count, nameof(items));
-        ArgumentOutOfRangeException.ThrowIfNegative(count, nameof(count));
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
 
         var result = new int[count];
         for (var i = 0; i < count; i++)
@@ -380,9 +380,9 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当 items 为空数组或 count 小于 0 时抛出此异常</exception>
     public static int[] Ids<T>(T[] items, int count)
     {
-        ArgumentNullException.ThrowIfNull(items, nameof(items));
+        ArgumentNullException.ThrowIfNull(items);
         ArgumentOutOfRangeException.ThrowIfZero(items.Length, nameof(items));
-        ArgumentOutOfRangeException.ThrowIfNegative(count, nameof(count));
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
 
         var result = new int[count];
         for (var i = 0; i < count; i++)
@@ -404,9 +404,9 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当 items 为空列表或 count 小于 0 时抛出此异常</exception>
     public static int[] Ids<T>(List<T> items, int count)
     {
-        ArgumentNullException.ThrowIfNull(items, nameof(items));
+        ArgumentNullException.ThrowIfNull(items);
         ArgumentOutOfRangeException.ThrowIfZero(items.Count, nameof(items));
-        ArgumentOutOfRangeException.ThrowIfNegative(count, nameof(count));
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
 
         var result = new int[count];
         for (var i = 0; i < count; i++)
@@ -428,9 +428,9 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当 items 为空集合或 count 小于 0 时抛出此异常</exception>
     public static T[] Items<T>(IList<T> items, int count)
     {
-        ArgumentNullException.ThrowIfNull(items, nameof(items));
+        ArgumentNullException.ThrowIfNull(items);
         ArgumentOutOfRangeException.ThrowIfZero(items.Count, nameof(items));
-        ArgumentOutOfRangeException.ThrowIfNegative(count, nameof(count));
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
 
         var result = new T[count];
         for (var i = 0; i < count; i++)
@@ -452,9 +452,9 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当 items 为空数组或 count 小于 0 时抛出此异常</exception>
     public static T[] Items<T>(T[] items, int count)
     {
-        ArgumentNullException.ThrowIfNull(items, nameof(items));
+        ArgumentNullException.ThrowIfNull(items);
         ArgumentOutOfRangeException.ThrowIfZero(items.Length, nameof(items));
-        ArgumentOutOfRangeException.ThrowIfNegative(count, nameof(count));
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
 
         var result = new T[count];
         for (var i = 0; i < count; i++)
@@ -476,9 +476,9 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当 items 为空列表或 count 小于 0 时抛出此异常</exception>
     public static T[] Items<T>(List<T> items, int count)
     {
-        ArgumentNullException.ThrowIfNull(items, nameof(items));
+        ArgumentNullException.ThrowIfNull(items);
         ArgumentOutOfRangeException.ThrowIfZero(items.Count, nameof(items));
-        ArgumentOutOfRangeException.ThrowIfNegative(count, nameof(count));
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
 
         var result = new T[count];
         for (var i = 0; i < count; i++)
@@ -499,9 +499,9 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当m或n小于0，或m大于n时抛出此异常</exception>
     public static HashSet<int> RandomSelect(int m, int n)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(m, nameof(m));
-        ArgumentOutOfRangeException.ThrowIfNegative(n, nameof(n));
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(m, n, nameof(m));
+        ArgumentOutOfRangeException.ThrowIfNegative(m);
+        ArgumentOutOfRangeException.ThrowIfNegative(n);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(m, n);
 
         if (m == 0)
         {
@@ -528,9 +528,9 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当num或weightIndex小于0时抛出此异常</exception>
     private static List<int[]> RandomSelect(string weightStr, int num, int weightIndex, bool canRepeat = true)
     {
-        ArgumentException.ThrowIfNullOrEmpty(weightStr, nameof(weightStr));
-        ArgumentOutOfRangeException.ThrowIfNegative(num, nameof(num));
-        ArgumentOutOfRangeException.ThrowIfNegative(weightIndex, nameof(weightIndex));
+        ArgumentException.ThrowIfNullOrEmpty(weightStr);
+        ArgumentOutOfRangeException.ThrowIfNegative(num);
+        ArgumentOutOfRangeException.ThrowIfNegative(weightIndex);
 
         var array = weightStr.SplitTo2IntArray();
         return RandomSelect(array, num, weightIndex, canRepeat);
@@ -550,10 +550,10 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当num或weightIndex小于0时抛出此异常</exception>
     private static List<int[]> RandomSelect(IReadOnlyList<int[]> array, int num, int weightIndex, bool canRepeat = true)
     {
-        ArgumentNullException.ThrowIfNull(array, nameof(array));
+        ArgumentNullException.ThrowIfNull(array);
         ArgumentOutOfRangeException.ThrowIfZero(array.Count, nameof(array));
-        ArgumentOutOfRangeException.ThrowIfNegative(num, nameof(num));
-        ArgumentOutOfRangeException.ThrowIfNegative(weightIndex, nameof(weightIndex));
+        ArgumentOutOfRangeException.ThrowIfNegative(num);
+        ArgumentOutOfRangeException.ThrowIfNegative(weightIndex);
 
         if (canRepeat)
         {
@@ -684,7 +684,7 @@ public static class RandomHelper
     /// <exception cref="ArgumentException">当weights为空数组时抛出此异常</exception>
     public static int Idx(int[] weights)
     {
-        ArgumentNullException.ThrowIfNull(weights, nameof(weights));
+        ArgumentNullException.ThrowIfNull(weights);
         ArgumentOutOfRangeException.ThrowIfZero(weights.Length, nameof(weights));
 
         var totalWight = weights.Sum();
@@ -713,9 +713,9 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当weightIndex小于0时抛出此异常</exception>
     public static int Idx(IReadOnlyList<int[]> array, int weightIndex = 1)
     {
-        ArgumentNullException.ThrowIfNull(array, nameof(array));
+        ArgumentNullException.ThrowIfNull(array);
         ArgumentOutOfRangeException.ThrowIfZero(array.Count, nameof(array));
-        ArgumentOutOfRangeException.ThrowIfNegative(weightIndex, nameof(weightIndex));
+        ArgumentOutOfRangeException.ThrowIfNegative(weightIndex);
 
         var totalWeight = 0;
         foreach (var arr in array)
@@ -750,9 +750,9 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当num小于0时抛出此异常</exception>
     public static List<int> Ids(IReadOnlyList<int[]> array, int num, bool isCanRepeat = true)
     {
-        ArgumentNullException.ThrowIfNull(array, nameof(array));
+        ArgumentNullException.ThrowIfNull(array);
         ArgumentOutOfRangeException.ThrowIfZero(array.Count, nameof(array));
-        ArgumentOutOfRangeException.ThrowIfNegative(num, nameof(num));
+        ArgumentOutOfRangeException.ThrowIfNegative(num);
 
         return RandomSelect(array.ToArray(), num, 1, isCanRepeat).Select(t => t[0]).ToList();
     }
@@ -769,8 +769,8 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当num小于0时抛出此异常</exception>
     public static List<int> Ids(string str, int num, bool isCanRepeat = true)
     {
-        ArgumentException.ThrowIfNullOrEmpty(str, nameof(str));
-        ArgumentOutOfRangeException.ThrowIfNegative(num, nameof(num));
+        ArgumentException.ThrowIfNullOrEmpty(str);
+        ArgumentOutOfRangeException.ThrowIfNegative(num);
 
         return RandomSelect(str, num, 1, isCanRepeat).Select(t => t[0]).ToList();
     }
@@ -787,8 +787,8 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当num小于0时抛出此异常</exception>
     public static List<int[]> Items(string str, int num, bool isCanRepeat = true)
     {
-        ArgumentException.ThrowIfNullOrEmpty(str, nameof(str));
-        ArgumentOutOfRangeException.ThrowIfNegative(num, nameof(num));
+        ArgumentException.ThrowIfNullOrEmpty(str);
+        ArgumentOutOfRangeException.ThrowIfNegative(num);
 
         return RandomSelect(str, num, 2, isCanRepeat);
     }
@@ -805,9 +805,9 @@ public static class RandomHelper
     /// <exception cref="ArgumentOutOfRangeException">当num小于0时抛出此异常</exception>
     public static List<int[]> Items(IReadOnlyList<int[]> array, int num, bool isCanRepeat = true)
     {
-        ArgumentNullException.ThrowIfNull(array, nameof(array));
+        ArgumentNullException.ThrowIfNull(array);
         ArgumentOutOfRangeException.ThrowIfZero(array.Count, nameof(array));
-        ArgumentOutOfRangeException.ThrowIfNegative(num, nameof(num));
+        ArgumentOutOfRangeException.ThrowIfNegative(num);
 
         return RandomSelect(array.ToArray(), num, 2, isCanRepeat);
     }
@@ -820,7 +820,7 @@ public static class RandomHelper
     /// <exception cref="ArgumentNullException">当input为null时抛出此异常</exception>
     public static int Gcd(params int[] input)
     {
-        ArgumentNullException.ThrowIfNull(input, nameof(input));
+        ArgumentNullException.ThrowIfNull(input);
 
         if (input.Length == 0)
         {
