@@ -36,7 +36,7 @@ namespace GameFrameX.NetWork.Abstractions;
 /// <remarks>
 /// Message processing helper class for managing message encoder and decoder handlers.
 /// </remarks>
-public sealed class MessageHelper
+public static class MessageHelper
 {
     /// <summary>
     /// 获取消息编码处理器。用于将消息编码成二进制格式。
