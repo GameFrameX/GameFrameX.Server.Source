@@ -45,7 +45,7 @@ public sealed class RoutingPlayerRouteResolverAdapter : IPlayerRouteResolver
     /// <exception cref="ArgumentNullException">当 <paramref name="innerResolver"/> 为 null 时抛出 / Thrown when innerResolver is null</exception>
     public RoutingPlayerRouteResolverAdapter(GameFrameX.Discovery.Routing.IPlayerRouteResolver innerResolver)
     {
-        ArgumentNullException.ThrowIfNull(innerResolver, nameof(innerResolver));
+        ArgumentNullException.ThrowIfNull(innerResolver);
         _innerResolver = innerResolver;
     }
 

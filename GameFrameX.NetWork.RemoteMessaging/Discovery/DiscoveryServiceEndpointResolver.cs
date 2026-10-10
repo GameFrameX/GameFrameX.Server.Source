@@ -62,7 +62,7 @@ internal sealed class DiscoveryServiceEndpointResolver : IServiceEndpointResolve
     /// <exception cref="ArgumentNullException">当 <paramref name="tableProvider"/> 为 null 时抛出 / Thrown when <paramref name="tableProvider"/> is null</exception>
     public DiscoveryServiceEndpointResolver(IRoleRouteTableProvider tableProvider)
     {
-        ArgumentNullException.ThrowIfNull(tableProvider, nameof(tableProvider));
+        ArgumentNullException.ThrowIfNull(tableProvider);
 
         _tableProvider = tableProvider;
     }

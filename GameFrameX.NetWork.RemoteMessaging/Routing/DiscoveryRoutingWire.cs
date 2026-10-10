@@ -65,8 +65,8 @@ public static class DiscoveryRoutingWire
     /// <param name="tableProvider">发现层路由表提供者（各 *DiscoveryRuntime.TableProvider）/ The discovery route table provider</param>
     public static void Initialize(IReadOnlyCollection<string> hostedRoleNames, IRoleRouteTableProvider tableProvider)
     {
-        ArgumentNullException.ThrowIfNull(hostedRoleNames, nameof(hostedRoleNames));
-        ArgumentNullException.ThrowIfNull(tableProvider, nameof(tableProvider));
+        ArgumentNullException.ThrowIfNull(hostedRoleNames);
+        ArgumentNullException.ThrowIfNull(tableProvider);
 
         if (Interlocked.CompareExchange(ref _initialized, 1, 0) != 0)
         {
@@ -109,7 +109,7 @@ public static class DiscoveryRoutingWire
     /// <exception cref="InvalidOperationException">当尚未调用 <see cref="Initialize"/> 时抛出 / Thrown when Initialize has not been called</exception>
     public static void AttachLocalDispatcher(ILocalRoleMessageDispatcher dispatcher)
     {
-        ArgumentNullException.ThrowIfNull(dispatcher, nameof(dispatcher));
+        ArgumentNullException.ThrowIfNull(dispatcher);
 
         if (_hostedRoles == null)
         {

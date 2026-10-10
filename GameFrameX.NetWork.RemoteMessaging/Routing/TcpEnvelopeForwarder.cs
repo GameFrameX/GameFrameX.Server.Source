@@ -91,7 +91,7 @@ public sealed class TcpEnvelopeForwarder : IEnvelopeForwarder, IDisposable
     /// <exception cref="ArgumentNullException">当 <paramref name="messageCodec"/> 为 null 时抛出 / Thrown when <paramref name="messageCodec"/> is null</exception>
     public TcpEnvelopeForwarder(IMessageCodec messageCodec)
     {
-        ArgumentNullException.ThrowIfNull(messageCodec, nameof(messageCodec));
+        ArgumentNullException.ThrowIfNull(messageCodec);
 
         _messageCodec = messageCodec;
     }
@@ -111,8 +111,8 @@ public sealed class TcpEnvelopeForwarder : IEnvelopeForwarder, IDisposable
     /// <exception cref="ArgumentNullException">当 <paramref name="endpoint"/> 或 <paramref name="envelope"/> 为 null 时抛出 / Thrown when endpoint or envelope is null</exception>
     public async Task ForwardAsync(ParsedEndpoint endpoint, MessageEnvelope envelope, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(endpoint, nameof(endpoint));
-        ArgumentNullException.ThrowIfNull(envelope, nameof(envelope));
+        ArgumentNullException.ThrowIfNull(endpoint);
+        ArgumentNullException.ThrowIfNull(envelope);
 
         var endpointKey = $"{endpoint.Host}:{endpoint.Port}";
         var connection = _endpointConnections.GetOrAdd(endpointKey, delegate(string key) { return new EndpointConnection(); });

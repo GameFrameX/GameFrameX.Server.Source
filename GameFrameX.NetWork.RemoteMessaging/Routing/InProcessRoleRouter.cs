@@ -90,7 +90,7 @@ public sealed class InProcessRoleRouter : IRoleRouter
     /// <exception cref="ArgumentNullException">当 <paramref name="hostedRoleNames"/> 为 null 时抛出 / Thrown when <paramref name="hostedRoleNames"/> is null</exception>
     public InProcessRoleRouter(IEnumerable<string> hostedRoleNames, ILocalRoleMessageDispatcher localDispatcher = null, IRemoteRoleRouter remoteRouter = null)
     {
-        ArgumentNullException.ThrowIfNull(hostedRoleNames, nameof(hostedRoleNames));
+        ArgumentNullException.ThrowIfNull(hostedRoleNames);
 
         _hostedRoleNames = new HashSet<string>(hostedRoleNames);
         _localDispatcher = localDispatcher;
@@ -115,7 +115,7 @@ public sealed class InProcessRoleRouter : IRoleRouter
     /// <exception cref="RouteNotFoundException">当路由决策失败时抛出 / Thrown when routing cannot decide a route</exception>
     public async Task<RoleRouteDelivery> RouteAsync(MessageEnvelope envelope, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(envelope, nameof(envelope));
+        ArgumentNullException.ThrowIfNull(envelope);
 
         if (string.IsNullOrWhiteSpace(envelope.TargetRole))
         {

@@ -50,7 +50,7 @@ public sealed class LocalEnvelopeDispatcher : ILocalRoleMessageDispatcher
     /// <param name="offlineStrategy">离线处理策略（默认 Drop：仅日志，不抛）/ Offline handling strategy (defaults to Drop: log only)</param>
     public LocalEnvelopeDispatcher(IPlayerLocalSender localSender, PlayerOfflineStrategy offlineStrategy = PlayerOfflineStrategy.Discard)
     {
-        ArgumentNullException.ThrowIfNull(localSender, nameof(localSender));
+        ArgumentNullException.ThrowIfNull(localSender);
         _localSender = localSender;
         _offlineStrategy = offlineStrategy;
     }
@@ -77,7 +77,7 @@ public sealed class LocalEnvelopeDispatcher : ILocalRoleMessageDispatcher
     /// <exception cref="ArgumentNullException">当 <paramref name="envelope"/> 为 null 时抛出 / Thrown when <paramref name="envelope"/> is null</exception>
     public async Task DispatchAsync(MessageEnvelope envelope, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(envelope, nameof(envelope));
+        ArgumentNullException.ThrowIfNull(envelope);
 
         var envelopeMessage = envelope.Message as RoleRouteEnvelopeMessage;
         if (envelopeMessage == null)

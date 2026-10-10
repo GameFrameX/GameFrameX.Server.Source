@@ -109,7 +109,7 @@ public static class RoleRouterHolder
     /// <exception cref="ArgumentNullException">当 <paramref name="router"/> 为 null 时抛出 / Thrown when <paramref name="router"/> is null</exception>
     public static void Initialize(IRoleRouter router)
     {
-        ArgumentNullException.ThrowIfNull(router, nameof(router));
+        ArgumentNullException.ThrowIfNull(router);
 
         lock (InitializeLock)
         {

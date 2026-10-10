@@ -59,7 +59,7 @@ public sealed class MessageEnvelope
     /// <exception cref="ArgumentNullException">当 <paramref name="message"/> 为 null 时抛出 / Thrown when <paramref name="message"/> is null</exception>
     public MessageEnvelope(string targetRole, MessageObject message, long targetActorId = 0, string targetInstanceId = null)
     {
-        ArgumentNullException.ThrowIfNull(message, nameof(message));
+        ArgumentNullException.ThrowIfNull(message);
 
         TargetRole = targetRole;
         Message = message;

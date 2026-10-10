@@ -56,7 +56,7 @@ public sealed class RemoteRoleRouter : IRemoteRoleRouter
     /// <exception cref="NotImplementedException">恒抛出，等待可达表转发实现 / Always thrown until reachability-table forwarding is implemented</exception>
     public Task<RoleRouteDelivery> ForwardAsync(MessageEnvelope envelope, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(envelope, nameof(envelope));
+        ArgumentNullException.ThrowIfNull(envelope);
 
         throw new NotImplementedException(
             $"Remote role forwarding for target role '{envelope.TargetRole}' is not implemented yet; it arrives together with the endpoint reachability table.");

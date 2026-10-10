@@ -76,8 +76,8 @@ public sealed class DiscoveryRemoteRoleRouter : IRemoteRoleRouter
     /// <param name="forwarder">信封转发缝 / The envelope forwarding seam</param>
     public DiscoveryRemoteRoleRouter(IRoleRouteTableProvider tableProvider, IEnvelopeForwarder forwarder)
     {
-        ArgumentNullException.ThrowIfNull(tableProvider, nameof(tableProvider));
-        ArgumentNullException.ThrowIfNull(forwarder, nameof(forwarder));
+        ArgumentNullException.ThrowIfNull(tableProvider);
+        ArgumentNullException.ThrowIfNull(forwarder);
 
         _tableProvider = tableProvider;
         _forwarder = forwarder;
@@ -99,7 +99,7 @@ public sealed class DiscoveryRemoteRoleRouter : IRemoteRoleRouter
     /// <exception cref="RouteNotFoundException">当目标实例或目标 Role 的 Active 实例不存在时抛出 / Thrown when the target instance or the role's Active instances are absent</exception>
     public async Task<RoleRouteDelivery> ForwardAsync(MessageEnvelope envelope, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(envelope, nameof(envelope));
+        ArgumentNullException.ThrowIfNull(envelope);
 
         var table = _tableProvider.Current;
         var targetInstance = ResolveTargetInstance(table, envelope);
