@@ -56,7 +56,6 @@ public sealed class BotClient
     private readonly BotKcpClient m_KcpClient;
     private readonly string m_BotName;
     private readonly BotTcpClientEvent m_BotTcpClientEvent;
-    private readonly BotKcpClientEvent m_BotKcpClientEvent;
     private readonly BotRunOptions _options;
     private int _disconnectScheduled;
     private long _accountId;
@@ -85,15 +84,15 @@ public sealed class BotClient
         m_BotTcpClientEvent.OnReceiveMsgCallback += ClientReceiveCallback;
         m_TcpClient = new BotTcpClient(m_BotTcpClientEvent, options.TcpHost, options.TcpPort);
 
-        // KCP 事件以对象初始化器装配（事件成员为属性，readonly struct 字段上不支持 += 接线）
-        m_BotKcpClientEvent = new BotKcpClientEvent
+        // KCP 事件以局部变量对象初始化器装配（事件成员为属性），仅用于构造传参
+        var kcpClientEvent = new BotKcpClientEvent
         {
             OnConnectedCallback = ClientConnectedCallback,
             OnClosedCallback = ClientClosedCallback,
             OnErrorCallback = ClientErrorCallbackForKcp,
             OnReceiveMsgCallback = ClientReceiveCallback,
         };
-        m_KcpClient = new BotKcpClient(m_BotKcpClientEvent, options.KcpHost, options.KcpPort);
+        m_KcpClient = new BotKcpClient(kcpClientEvent, options.KcpHost, options.KcpPort);
     }
 
     /// <summary>
