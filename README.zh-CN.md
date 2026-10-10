@@ -43,6 +43,9 @@
   - [测试](#测试)
 - [架构概览](#架构概览)
   - [项目结构](#项目结构)
+- [进程拓扑同构](#进程拓扑同构)
+  - [多角色启动](#多角色启动)
+  - [Docker Compose 文件](#docker-compose-文件)
 - [依赖](#依赖)
 - [文档与资源](#文档与资源)
 - [社区与支持](#社区与支持)
@@ -83,13 +86,15 @@ GameFrameX Server 是基于 C# .NET 10.0 开发的高性能、跨平台游戏服
 - **UDP**：可选的 UDP 协议支持
 - **WebSocket**：基于 SuperSocket WebSocket 的双向通信
 - **HTTP/HTTPS**：基于 Kestrel 的 HTTP 服务，支持 Swagger 文档、CORS、健康检查
-- **KCP**：基于 KCP 协议的 UDP 可靠传输（实验性）
+- **KCP**：升级为正式支持（opt-in）的 UDP 可靠传输；`KcpPort` 为 `0` 时与 TCP 共用端口
 - **跨进程消息**：内置 RemoteMessaging 模块，支持断路器、重试策略、一致性哈希分片
 
 #### 数据库与持久化
 
-- **MongoDB 主数据库**：完整的 MongoDB 集成，支持健康状态机（Healthy → Degraded → Unhealthy → Recovering）
-- **透明持久化**：StateComponent 自动序列化/反序列化，通过定时批量 ReplaceOne 操作持久化
+- **双数据库 Provider**：通过 `DatabaseProvider` 选择 `Mongo`（默认）或 `PostgreSql`，两个 Provider 共享同一套 `GameFrameX.DataBase` 抽象层
+- **MongoDB Provider**：完整的 MongoDB 集成，支持健康状态机（Healthy → Degraded → Unhealthy → Recovering）
+- **PostgreSQL Provider**：基于 Npgsql，具备与 MongoDB Provider 相同的重试 / 恢复 / 可用性 / 健康检查能力
+- **透明持久化**：StateComponent 自动序列化/反序列化，通过定时批量 upsert 操作持久化
 - **连接池管理**：可配置的连接池和重试策略
 - **OpenTelemetry 集成**：数据库操作指标（延迟、重试次数、健康状态）
 
@@ -107,15 +112,15 @@ GameFrameX Server 是基于 C# .NET 10.0 开发的高性能、跨平台游戏服
 ### 环境要求
 
 - 仅支持 [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)，不支持 .NET 8/9。
-- [MongoDB 4.x+](https://www.mongodb.com/try/download/community)
+- [MongoDB 4.x+](https://www.mongodb.com/try/download/community)（默认 Provider；也可通过 `--DatabaseProvider=PostgreSql` 使用 PostgreSQL）
 - Visual Studio 2022 或 JetBrains Rider（推荐）
 
 ### 安装
 
 1. **克隆仓库**
    ```bash
-   git clone https://github.com/GameFrameX/GameFrameX.git
-   cd GameFrameX/Server
+   git clone https://github.com/GameFrameX/GameFrameX.Server.Source.git
+   cd GameFrameX.Server.Source
    ```
 
 2. **还原依赖**
@@ -149,7 +154,7 @@ GameFrameX Server 是基于 C# .NET 10.0 开发的高性能、跨平台游戏服
    ```
 
 6. **验证启动**
-   - 健康检查：`http://localhost:28080/game/api/health`
+   - 健康检查：`http://localhost:28080/health`（存活探针：`/alive`）
    - 查看控制台日志确认启动成功
 
 ---
@@ -188,6 +193,8 @@ GameFrameX 使用命令行参数 (`--Key=Value`) 进行配置，所有配置项�
 | `OuterPort` | 外部通信端口 | 无 | `29100` |
 | `IsEnableTcp` | 是否启用 TCP 服务 | `true` | `true` |
 | `IsEnableUdp` | 是否启用 UDP 服务 | `false` | `true` |
+| `IsEnableKcp` | 是否启用 KCP 服务（仅配置文件） | `false` | `true` |
+| `KcpPort` | KCP 端口（`0` 时与 TCP 共用端口） | `0` | `29120` |
 | `IsEnableWebSocket` | 是否启用 WebSocket | `false` | `true` |
 | `WsPort` | WebSocket 端口 | `8889` | `29300` |
 | `IsEnableHttp` | 是否启用 HTTP 服务 | `true` | `true` |
@@ -195,12 +202,18 @@ GameFrameX 使用命令行参数 (`--Key=Value`) 进行配置，所有配置项�
 | `HttpsPort` | HTTPS 服务端口 | 无 | `443` |
 | `HttpUrl` | API 接口根路径 | `/game/api/` | `/game/api/` |
 | `HttpIsDevelopment` | HTTP 开发模式（启用 Swagger） | `false` | `true` |
+| `IsEnableOnlineAdmin` | 是否在进程内托管 Online Runtime 与管理 API | `false` | `true` |
+| `OnlineAdminPort` | Online 管理 API 监听端口 | `28090` | `28090` |
+| `OnlineAdminApiPrefix` | Online 管理 API 路由前缀 | `online/admin` | `online/admin` |
+| `OnlineTenantId` | Online Runtime 授权租户 ID（作用域三元组） | `0` | `1` |
+| `OnlineAppId` | Online Runtime 授权应用 ID（作用域三元组） | `0` | `1` |
 
 #### 数据库配置
 
 | 配置项 | 说明 | 默认值 | 示例 |
 |:------|:-----|:------|:----|
-| `DataBaseUrl` | MongoDB 连接字符串 | 无 | `mongodb://localhost:27017` |
+| `DatabaseProvider` | 数据库 Provider | `Mongo` | `PostgreSql` |
+| `DataBaseUrl` | 数据库连接字符串 | 无 | `mongodb://localhost:27017` |
 | `DataBaseName` | 数据库名称 | 无 | `gameframex` |
 | `DataBasePassword` | 数据库密码 | 无 | `your_password` |
 
@@ -476,13 +489,15 @@ internal sealed class PlayerLoginEventHandler : EventListener<PlayerComponentAge
 curl -X POST "http://localhost:28080/game/api/Reload?version=1.7.2"
 ```
 
+> 注：`Reload` 处理器已标记 `[RequireHttpSignature]`，请求必须通过 HTTP 签名校验后才会被接受。
+
 ---
 
 ### Docker 部署
 
 #### 单实例部署
 
-使用 `docker-compose.yml` 启动包含 MongoDB + Game + Social 的完整环境：
+使用 `docker-compose.yml` 启动 MongoDB + Game 的最小环境（Social 后续补回）：
 
 ```bash
 # 构建并启动
@@ -492,7 +507,7 @@ docker compose up -d --build
 docker compose ps
 
 # 查看日志
-docker compose logs -f game social
+docker compose logs -f game
 
 # 停止
 docker compose down
@@ -505,8 +520,15 @@ docker compose down
 | MongoDB | 27017 | 37017 | 数据库 |
 | Game TCP | 29100 | 39100 | 游戏服务器 |
 | Game HTTP | 28080 | 38080 | 游戏服务器 HTTP API |
-| Social TCP | 29400 | 39400 | 社交服务器 |
-| Social HTTP | 28081 | 38081 | 社交服务器 HTTP API |
+| Online Admin | 28090 | 28090 | Online 平台管理 API（见下文） |
+
+#### Online 平台管理 API
+
+当 `IsEnableOnlineAdmin=true` 时，Game 进程会组装 Online Runtime（进程内能力库：基于内存存储的资产 / 会话 / 匹配 / 社交 / LiveOps 服务），并在独立的 Kestrel 监听器上暴露管理 HTTP API：
+
+- 端点：`POST http://<server-host>:28090/online/admin/{action}`（全部 29 个管理动作，HTTP 状态码恒为 200；业务结果通过内层信封 `Code` 返回）
+- 作用域三元组：每个请求携带 `TenantId` / `AppId` / `ServerId`；与授权的 `OnlineTenantId` / `OnlineAppId` / `ServerId` 不匹配的请求分别以 3002/3003/3004 拒绝，缺失三元组则以 3005 拒绝
+- 在 GameFrameX Admin 控制台注册服务器：将大区的 `HttpManageUrl` 指向 `http://<server-host>:28090`（`online/admin` 前缀与动作名由 Admin 客户端按其通信协议自动追加）
 
 #### 多实例部署
 
@@ -587,11 +609,12 @@ docker compose -f docker-compose.multi.yml up -d --build
 ./scripts/multi/run-bots-rpc.sh
 
 # 自定义参数
-BOT_COUNT=200 \
+BOT_COUNT=100 \
+TCP_HOST=127.0.0.1 \
 TCP_PORT=49100 \
 LOGIN_URL=http://127.0.0.1:48080/game/api/ \
-DISCONNECT_AFTER_LOGIN_SECONDS=20 \
-RUN_SECONDS=300 \
+DISCONNECT_AFTER_LOGIN_SECONDS=15 \
+RUN_SECONDS=600 \
 ./scripts/multi/run-bots-rpc.sh
 ```
 
@@ -599,11 +622,15 @@ RUN_SECONDS=300 \
 
 | 变量 | 说明 | 默认值 |
 |:----|:-----|:------|
-| `BOT_COUNT` | 机器人数量 | — |
+| `BOT_COUNT` | 机器人数量 | `100` |
+| `TCP_HOST` | TCP 连接主机 | `127.0.0.1` |
 | `TCP_PORT` | TCP 连接端口 | `49100` |
 | `LOGIN_URL` | 登录接口地址 | `http://127.0.0.1:48080/game/api/` |
-| `DISCONNECT_AFTER_LOGIN_SECONDS` | 登录后断开延迟（秒） | `20` |
-| `RUN_SECONDS` | 总运行时长（秒） | `300` |
+| `SCENARIO` | 机器人场景 | `login` |
+| `DISCONNECT_LOOP` | 是否循环执行断开/重连 | `true` |
+| `DISCONNECT_AFTER_LOGIN_SECONDS` | 登录后断开延迟（秒） | `15` |
+| `CONNECT_STAGGER_MS` | 机器人连接间隔（毫秒） | `10` |
+| `RUN_SECONDS` | 总运行时长（秒） | `180` |
 
 #### 常用排查命令
 
@@ -626,7 +653,7 @@ docker compose -f docker-compose.multi.yml up -d --build
 
 | 端点 | 说明 |
 |:----|:-----|
-| `http://<host>:<HttpPort>/game/api/health` | 健康检查 |
+| `http://<host>:<HttpPort>/health` | 健康检查（Aspire 默认；另有 `/alive` 存活探针） |
 | `http://<host>:<MetricsPort>/metrics` | Prometheus 指标 |
 
 #### 指标分类
@@ -655,18 +682,26 @@ dotnet test --logger "console;verbosity=detailed"
 
 #### 测试覆盖范围
 
-测试项目基于 **xUnit**，覆盖以下模块：
+测试套件基于 **xUnit** —— `Tests/GameFrameX.Tests` 覆盖框架层，`Tests/GameFrameX.Hotfix.Tests` 覆盖按 Role 划分的业务规则：
 
 | 测试目录 | 说明 |
 |:--------|:-----|
-| `Utility/` | 数学/定点数测试、压缩、随机数、ID 生成、单例 |
-| `NetWork/Kcp/` | KCP 管道过滤器、会话管理、服务器集成测试 |
-| `DataBase/` | MongoDB 连接和查询测试 |
+| `StartUp/` | 启动编排、多角色选择、All-in-One 选项、配置启动校验器、HTTP 路由注册 |
+| `Architecture/` | Roslyn 架构分析器测试（分层规则、代理密封） |
+| `Core/` | Actor 与会话管理测试（重复登录） |
+| `NetWork/` | SuperSocket KCP 监听 / 鉴权 / 端到端测试、HTTP 与会话鉴权中间件测试 |
+| `DataBase/` | MongoDB 与 PostgreSQL Provider 测试（查询、连接、多数据库、Provider 解析器） |
+| `Discovery/` | 服务发现端点 / 路由集成测试（MongoDB 与 PostgreSQL） |
+| `RemoteMessaging/` | 跨进程消息测试（编解码、传输） |
+| `UnifiedMessaging/` | 统一跨进程消息测试 |
+| `Online/` | Online Runtime 测试（管理 API、匹配、排行榜、赛季、锦标赛、LiveOps、在线状态、会话、惩罚、审计等） |
+| `Topology/` | 进程拓扑同构等价性测试 |
+| `Proto/` | ServerRole 消息域测试 |
 | `ProtoBuff/` | Protobuf 序列化和对象池测试 |
 | `Localization/` | 本地化键值解析测试 |
-| `RemoteMessaging/` | 跨进程消息测试 |
-| `UnifiedMessaging/` | 统一跨进程消息测试 |
-| `StartUp/` | HTTP 服务器路由注册测试 |
+| `Client/` | 机器人客户端运行选项 / 传输分发测试 |
+| `Utility/` | 数学/定点数测试、压缩、随机数、ID 生成、单例、设置 |
+| `GameFrameX.Hotfix.Tests/` | 按 Role 划分的业务规则测试（Account / Login / Auth / Gateway / Chat / Mail / Friend / Team / Guild / Match / Room / Scene / World / Battle / Trade / Auction / Gm）及事件绑定测试 |
 
 ---
 
@@ -702,7 +737,7 @@ dotnet test --logger "console;verbosity=detailed"
 ├─────────────────────────────────────────────────────────────────┤
 │                       数据库层                                    │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │                    MongoDB                               │    │
+│  │             MongoDB (default) / PostgreSQL              │    │
 │  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -712,32 +747,76 @@ dotnet test --logger "console;verbosity=detailed"
 ### 项目结构
 
 ```
-Server/
-├── GameFrameX.Launcher/              # 应用入口点
+GameFrameX.Server.Source/
+├── GameFrameX.Launcher/              # 应用入口点（Game + 18 个标准 Role 启动入口）
 ├── GameFrameX.StartUp/               # 启动编排和初始化
 ├── GameFrameX.Core/                  # 核心框架（Actor 系统、组件、事件、热更新管理）
-├── GameFrameX.Apps/                  # 状态数据层（账户、玩家、服务器模块）— 不可热更
-├── GameFrameX.Hotfix/                # 业务逻辑层（HTTP、玩家、服务器处理器）— 可热更
+├── GameFrameX.Apps/                  # 状态数据层（Account、Player、Game、ServerRole 模块）— 不可热更
+├── GameFrameX.Hotfix/                # 业务逻辑层（HTTP、Player、Server 处理器）— 可热更
 ├── GameFrameX.Config/                # 游戏配置表（JSON 格式，LuBan 生成）
 ├── GameFrameX.Proto/                 # ProtoBuf 协议定义
 ├── GameFrameX.ProtoBuf.Net/          # ProtoBuf 序列化实现
-├── GameFrameX.NetWork/               # 网络核心（消息对象、发送器、WebSocket）
+├── GameFrameX.NetWork/               # 网络核心（TCP/UDP/KCP/WebSocket 通道、消息对象、发送器）
 ├── GameFrameX.NetWork.Abstractions/  # 网络接口（IMessage、IMessageHandler、消息映射）
 ├── GameFrameX.NetWork.HTTP/          # HTTP 服务器（Swagger、Kestrel、BaseHttpHandler）
-├── GameFrameX.NetWork.Kcp/           # KCP 协议支持（基于 UDP 的可靠传输）
-├── GameFrameX.NetWork.Message/       # 消息管道和编解码
 ├── GameFrameX.NetWork.RemoteMessaging/ # 跨进程远程消息（断路器、重试、一致性哈希）
-├── GameFrameX.DataBase/              # 数据库抽象层
-├── GameFrameX.DataBase.Mongo/        # MongoDB 实现（健康监控、重试、批量操作）
+├── GameFrameX.Discovery/             # Aspire 风格服务发现（services__{Role}__tcp__0 引导映射）
+├── GameFrameX.DataBase/              # 数据库抽象层（多 Provider 注册表、GameDb 查询/更新/删除）
+├── GameFrameX.DataBase.Mongo/        # MongoDB Provider（健康监控、重试、批量操作）
+├── GameFrameX.DataBase.PostgreSql/   # PostgreSQL Provider（Npgsql，与 MongoDB Provider 同等容错能力）
+├── GameFrameX.Online/                # Online 平台能力库（匹配、排行榜、社交、赛季、锦标赛、时间线、聊天审计、资产、LiveOps 等）
+├── GameFrameX.Online.Runtime/        # 进程内 Online Runtime 宿主 + 管理 API
 ├── GameFrameX.Localization/          # 本地化系统（Keys.*.cs + .resx 资源文件）
-├── GameFrameX.Monitor/               # OpenTelemetry + Prometheus 指标集成
-├── GameFrameX.Utility/               # 工具集（日志、压缩、对象池、Mapster、Harmony）
-├── GameFrameX.Client/                # 测试客户端（TCP 连接）
+├── GameFrameX.Utility/               # 工具集（设置、压缩、随机数、雪花 ID、对象池、Mapster、Harmony）
+├── GameFrameX.Client/                # 测试客户端（TCP/KCP 机器人压测客户端）
 ├── GameFrameX.Architecture.Analyzers/         # Roslyn 架构分析器
 ├── GameFrameX.Hotfix.WrapperGenerator/ # Roslyn 源码生成器（热更新代理包装类）
 └── Tests/
-    └── GameFrameX.Tests/             # xUnit 测试套件
+    ├── GameFrameX.Tests/             # xUnit 测试套件（框架层）
+    └── GameFrameX.Hotfix.Tests/      # xUnit 测试套件（按 Role 划分的热更业务规则）
 ```
+
+---
+
+## 进程拓扑同构
+
+服务器支持*进程拓扑同构*模型：同一组 Role 既可以按“每个 Role 一个进程”运行，也可以合并为单个
+All-in-One 进程运行，而无需修改 Role 代码。
+
+### 多角色启动
+
+- `--ServerType=Game,Social` —— 在一个进程中启动多个已注册的 Role（按优先级顺序）。
+- `--AllInOne` —— 在一个进程中启动所有已注册的 Role。
+- `Configs/app_config.json` —— 为每个预定义 Role 提供一节配置（共 19 节：Game、Social 及其余 17 个标准 Role）。
+  每个 Role 解析自己的配置节；进程级字段在各节之间必须一致。
+
+启动时校验器（`ConfigStartupValidator`）会在以下情况快速失败（fail-fast）——并逐一列出冲突字段及其
+来源配置节：
+
+1. 通过 `--AllInOne` 或复数形式 `--ServerType` 选择的 Role 在 `app_config.json` 中没有对应配置节；
+2. 同一进程中的两个 Role 会绑定相同的已启用、非零监听端点 —— 端点比较覆盖各端口字段与传输协议
+   （TCP 与 UDP），因此例如 `Game.InnerPort == Social.HttpPort` 同样会快速失败；同一 Role 的
+   `InnerPort`/`OuterPort` 共用是合法的同 Role 形式；
+3. 所选配置节之间的进程级字段（`SettingFieldLevel(ProcessLevel)`，如 `DataBaseUrl`）不一致
+   （按运行时归一化规则处理后），确保共享内核不会收到相互矛盾的进程配置；
+4. 命令行显式传入的字段与正在使用的文件配置节不一致（文件配置节是唯一事实来源；命令行的 Role 级
+   取值仅在无配置节的回退形式下生效）。“是否显式传入”由原始参数词元判定，因此传入与默认值相同的值
+   （如 `--HttpPort=0`）也会参与比较。`ServerType`（配置节键）及 `IsAllInOne` / `IsSingleMode`
+   开关豁免。
+
+单 Role 与默认启动命令保持现有行为不变（缺失配置节时回退到启动器默认值）。
+
+### Docker Compose 文件
+
+| 文件 | 用途 |
+|:--|:--|
+| `docker-compose.development.yml` | 本地开发：仅一个 MongoDB 服务（宿主机端口 `127.0.0.1:37017`，与示例 `app_config.json` 匹配） |
+| `docker-compose.multi.yml` | 多实例拓扑形态，由 `scripts/multi/generate-docker-compose-multi.py` **生成**；每个实例注入 `GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId` 及 `services__{Role}__tcp__0` 静态引导映射，并将各自的 `Configs/multi/{service}.json` 配置节（取值与 `command` 参数一致）挂载为 `/app/Configs/app_config.json` |
+| `docker-compose.multi.legacy.yml` | 先前的静态形态，作为过渡保留 |
+
+修改生成器中的 `ROLES` 定义并重新运行 `python3 scripts/multi/generate-docker-compose-multi.py`
+即可变更拓扑（幂等；`--check` 用于校验已提交的 compose 文件与各实例配置是否与生成器输出一致）。
+未启用认证的 MongoDB 服务仅发布在 `127.0.0.1`；如需暴露给其他主机，请先启用 MongoDB 认证。
 
 ---
 
@@ -746,11 +825,12 @@ Server/
 | 包 | 说明 |
 |:--|:--|
 | `GameFrameX.Foundation.*` | 本地化、日志、命令行配置、ORM 特性、哈希、HTTP 响应规范化、通用工具 |
-| `GameFrameX.SuperSocket.Server` / `.ClientEngine` / `.Udp` / `.WebSocket.Server` | TCP、UDP、WebSocket 网络传输 |
+| `GameFrameX.SuperSocket.Server` / `.ClientEngine` / `.Udp` / `.Kcp` / `.WebSocket.Server` | TCP、UDP、KCP、WebSocket 网络传输 |
 | `MongoDB.Driver` | MongoDB 持久化驱动 |
-| `Kcp` | 基于 UDP 的可靠传输 |
+| `Npgsql` | PostgreSQL 持久化驱动 |
 | `OpenTelemetry.*` + `Grafana.OpenTelemetry` | 指标、分布式链路追踪、运行时插桩 |
-| `prometheus-net.AspNetCore` | Prometheus 指标导出 |
+| `OpenTelemetry.Exporter.Prometheus.AspNetCore` | Prometheus `/metrics` 抓取端点 |
+| `Microsoft.Extensions.ServiceDiscovery` | Aspire 风格服务发现 |
 | `Mapster` | 对象映射 |
 | `Lib.Harmony` | 运行时方法补丁 |
 | `Quartz` | 定时任务调度 |

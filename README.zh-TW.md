@@ -43,6 +43,9 @@
   - [測試](#測試)
 - [架構概覽](#架構概覽)
   - [專案結構](#專案結構)
+- [程序拓撲同構](#程序拓撲同構)
+  - [多角色啟動](#多角色啟動)
+  - [Docker Compose 檔案](#docker-compose-檔案)
 - [依賴](#依賴)
 - [文檔與資源](#文檔與資源)
 - [社區與支援](#社區與支援)
@@ -83,13 +86,15 @@ GameFrameX Server 是基於 C# .NET 10.0 開發的高效能、跨平臺遊戲伺
 - **UDP**：可選的 UDP 協議支援
 - **WebSocket**：基於 SuperSocket WebSocket 的雙向通訊
 - **HTTP/HTTPS**：基於 Kestrel 的 HTTP 服務，支援 Swagger 文件、CORS、健康檢查
-- **KCP**：基於 KCP 協議的 UDP 可靠傳輸（實驗性）
++- **KCP**：正式支援（opt-in）的 UDP 可靠傳輸；`KcpPort` 為 `0` 時與 TCP 共用埠
 - **跨程序訊息**：內建 RemoteMessaging 模組，支援斷路器、重試策略、一致性雜湊分片
 
 #### 資料庫與持久化
 
-- **MongoDB 主資料庫**：完整的 MongoDB 整合，支援健康狀態機（Healthy → Degraded → Unhealthy → Recovering）
-- **透明持久化**：StateComponent 自動序列化/反序列化，透過定時批次 ReplaceOne 操作持久化
+- **雙資料庫 Provider**：`DatabaseProvider` 可選 `Mongo`（預設）或 `PostgreSql`，兩者共用同一 `GameFrameX.DataBase` 抽象層
+- **MongoDB Provider**：完整的 MongoDB 整合，支援健康狀態機（Healthy → Degraded → Unhealthy → Recovering）
+- **PostgreSQL Provider**：基於 Npgsql，具備與 MongoDB Provider 同等的重試 / 復原 / 可用性 / 健康檢查能力
+- **透明持久化**：StateComponent 自動序列化/反序列化，透過定時批次 upsert 操作持久化
 - **連線池管理**：可配置的連線池和重試策略
 - **OpenTelemetry 整合**：資料庫操作指標（延遲、重試次數、健康狀態）
 
@@ -107,15 +112,15 @@ GameFrameX Server 是基於 C# .NET 10.0 開發的高效能、跨平臺遊戲伺
 ### 環境要求
 
 - 僅支援 [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)，不支援 .NET 8/9。
-- [MongoDB 4.x+](https://www.mongodb.com/try/download/community)
+- [MongoDB 4.x+](https://www.mongodb.com/try/download/community)（預設 Provider；亦可透過 `--DatabaseProvider=PostgreSql` 使用 PostgreSQL）
 - Visual Studio 2022 或 JetBrains Rider（推薦）
 
 ### 安裝
 
 1. **複製儲存庫**
    ```bash
-   git clone https://github.com/GameFrameX/GameFrameX.git
-   cd GameFrameX/Server
+   git clone https://github.com/GameFrameX/GameFrameX.Server.Source.git
+   cd GameFrameX.Server.Source
    ```
 
 2. **還原相依套件**
@@ -149,7 +154,7 @@ GameFrameX Server 是基於 C# .NET 10.0 開發的高效能、跨平臺遊戲伺
    ```
 
 6. **驗證啟動**
-   - 健康檢查：`http://localhost:28080/game/api/health`
+   - 健康檢查：`http://localhost:28080/health`（存活探針：`/alive`）
    - 檢視控制檯日誌確認啟動成功
 
 ---
@@ -188,6 +193,8 @@ GameFrameX 使用命令列參數 (`--Key=Value`) 進行配置，所有配置項�
 | `OuterPort` | 外部通訊埠 | 無 | `29100` |
 | `IsEnableTcp` | 是否啟用 TCP 服務 | `true` | `true` |
 | `IsEnableUdp` | 是否啟用 UDP 服務 | `false` | `true` |
+| `IsEnableKcp` | 是否啟用 KCP 服務（僅配置檔案） | `false` | `true` |
+| `KcpPort` | KCP 埠（`0` 時與 TCP 共用埠） | `0` | `29120` |
 | `IsEnableWebSocket` | 是否啟用 WebSocket | `false` | `true` |
 | `WsPort` | WebSocket 埠 | `8889` | `29300` |
 | `IsEnableHttp` | 是否啟用 HTTP 服務 | `true` | `true` |
@@ -200,7 +207,8 @@ GameFrameX 使用命令列參數 (`--Key=Value`) 進行配置，所有配置項�
 
 | 配置項 | 說明 | 預設值 | 範例 |
 |:------|:-----|:------|:----|
-| `DataBaseUrl` | MongoDB 連線字串 | 無 | `mongodb://localhost:27017` |
+| `DatabaseProvider` | 資料庫 Provider | `Mongo` | `PostgreSql` |
+| `DataBaseUrl` | 資料庫連線字串 | 無 | `mongodb://localhost:27017` |
 | `DataBaseName` | 資料庫名稱 | 無 | `gameframex` |
 | `DataBasePassword` | 資料庫密碼 | 無 | `your_password` |
 
@@ -476,13 +484,15 @@ internal sealed class PlayerLoginEventHandler : EventListener<PlayerComponentAge
 curl -X POST "http://localhost:28080/game/api/Reload?version=1.7.2"
 ```
 
+> 注意：`Reload` 處理器標記了 `[RequireHttpSignature]`，請求必須通過 HTTP 簽名校驗才會被接受。
+
 ---
 
 ### Docker 部署
 
 #### 單實例部署
 
-使用 `docker-compose.yml` 啟動包含 MongoDB + Game + Social 的完整環境：
+使用 `docker-compose.yml` 啟動包含 MongoDB + Game 的最小環境（Social 後續補回）：
 
 ```bash
 # 建置並啟動
@@ -492,7 +502,7 @@ docker compose up -d --build
 docker compose ps
 
 # 檢視日誌
-docker compose logs -f game social
+docker compose logs -f game
 
 # 停止
 docker compose down
@@ -505,8 +515,16 @@ docker compose down
 | MongoDB | 27017 | 37017 | 資料庫 |
 | Game TCP | 29100 | 39100 | 遊戲伺服器 |
 | Game HTTP | 28080 | 38080 | 遊戲伺服器 HTTP API |
-| Social TCP | 29400 | 39400 | 社交伺服器 |
-| Social HTTP | 28081 | 38081 | 社交伺服器 HTTP API |
+| Online Admin | 28090 | 28090 | Online 平台管理 API（見下文） |
+
+
+#### Online 平台管理 API
+
+當 `IsEnableOnlineAdmin=true` 時，Game 程序會組裝 Online Runtime（程序內能力庫：基於記憶體儲存的資產 / 工作階段 / 配對 / 社交 / LiveOps 服務），並在獨立的 Kestrel 監聽器上暴露管理 HTTP API：
+
+- 端點：`POST http://<server-host>:28090/online/admin/{action}`（全部 29 個管理動作，HTTP 狀態碼恆為 200；業務結果透過內層封套 `Code` 傳回）
+- 作用域三元組：每個請求攜帶 `TenantId` / `AppId` / `ServerId`；與授權的 `OnlineTenantId` / `OnlineAppId` / `ServerId` 不匹配的請求分別以 3002/3003/3004 拒絕，缺少三元組則以 3005 拒絕
+- 在 GameFrameX Admin 控制檯註冊伺服器：將區服的 `HttpManageUrl` 指向 `http://<server-host>:28090`（`online/admin` 前綴與動作名由 Admin 客戶端依其線路約定附加）
 
 #### 多實例部署
 
@@ -591,7 +609,7 @@ BOT_COUNT=200 \
 TCP_PORT=49100 \
 LOGIN_URL=http://127.0.0.1:48080/game/api/ \
 DISCONNECT_AFTER_LOGIN_SECONDS=20 \
-RUN_SECONDS=300 \
+RUN_SECONDS=600 \
 ./scripts/multi/run-bots-rpc.sh
 ```
 
@@ -599,11 +617,15 @@ RUN_SECONDS=300 \
 
 | 變數 | 說明 | 預設值 |
 |:----|:-----|:------|
-| `BOT_COUNT` | 機器人數量 | — |
+| `BOT_COUNT` | 機器人數量 | `100` |
+| `TCP_HOST` | TCP 連線主機 | `127.0.0.1` |
 | `TCP_PORT` | TCP 連線埠 | `49100` |
 | `LOGIN_URL` | 登入介面位址 | `http://127.0.0.1:48080/game/api/` |
-| `DISCONNECT_AFTER_LOGIN_SECONDS` | 登入後斷開延遲（秒） | `20` |
-| `RUN_SECONDS` | 總執行時長（秒） | `300` |
+| `SCENARIO` | 機器人場景 | `login` |
+| `DISCONNECT_LOOP` | 是否重複斷開/重連循環 | `true` |
+| `DISCONNECT_AFTER_LOGIN_SECONDS` | 登入後斷開延遲（秒） | `15` |
+| `CONNECT_STAGGER_MS` | 機器人連線間隔（毫秒） | `10` |
+| `RUN_SECONDS` | 總執行時長（秒） | `180` |
 
 #### 常用排查命令
 
@@ -626,7 +648,7 @@ docker compose -f docker-compose.multi.yml up -d --build
 
 | 端點 | 說明 |
 |:----|:-----|
-| `http://<host>:<HttpPort>/game/api/health` | 健康檢查 |
+| `http://<host>:<HttpPort>/health` | 健康檢查（Aspire 預設；另有 `/alive` 存活探針） |
 | `http://<host>:<MetricsPort>/metrics` | Prometheus 指標 |
 
 #### 指標分類
@@ -655,18 +677,26 @@ dotnet test --logger "console;verbosity=detailed"
 
 #### 測試覆蓋範圍
 
-測試專案基於 **xUnit**，覆蓋以下模組：
+測試套件基於 **xUnit** — `Tests/GameFrameX.Tests` 覆蓋框架層，`Tests/GameFrameX.Hotfix.Tests` 覆蓋按 Role 劃分的業務規則：
 
 | 測試目錄 | 說明 |
 |:--------|:-----|
-| `Utility/` | 數學/定點數測試、壓縮、隨機數、ID 生成、單例 |
-| `NetWork/Kcp/` | KCP 管道過濾器、工作階段管理、伺服器整合測試 |
-| `DataBase/` | MongoDB 連線和查詢測試 |
+| `StartUp/` | 啟動編排、多角色選擇、All-in-One 選項、配置啟動驗證器、HTTP 路由註冊 |
+| `Architecture/` | Roslyn 架構分析器測試（分層規則、代理密封） |
+| `Core/` | Actor 與工作階段管理測試（重複登入） |
+| `NetWork/` | SuperSocket KCP 監聽 / 驗證 / 端到端測試，HTTP 與工作階段驗證中介軟體測試 |
+| `DataBase/` | MongoDB 與 PostgreSQL Provider 測試（查詢、連線、多資料庫、Provider 解析器） |
+| `Discovery/` | 服務發現端點 / 路由整合測試（MongoDB 與 PostgreSQL） |
+| `RemoteMessaging/` | 跨程序訊息測試（編解碼、傳輸） |
+| `UnifiedMessaging/` | 統一跨程序訊息測試 |
+| `Online/` | Online Runtime 測試（管理 API、配對、排行榜、賽季、錦標賽、LiveOps、在線狀態、工作階段、懲罰、稽核等） |
+| `Topology/` | 程序拓撲同構等價性測試 |
+| `Proto/` | ServerRole 訊息領域測試 |
 | `ProtoBuff/` | Protobuf 序列化和物件池測試 |
 | `Localization/` | 本地化鍵值解析測試 |
-| `RemoteMessaging/` | 跨程序訊息測試 |
-| `UnifiedMessaging/` | 統一跨程序訊息測試 |
-| `StartUp/` | HTTP 伺服器路由註冊測試 |
+| `Client/` | 機器人客戶端執行選項 / 傳輸分發測試 |
+| `Utility/` | 數學/定點數測試、壓縮、隨機數、ID 生成、單例、設定 |
+| `GameFrameX.Hotfix.Tests/` | 按 Role 劃分的業務規則測試（Account / Login / Auth / Gateway / Chat / Mail / Friend / Team / Guild / Match / Room / Scene / World / Battle / Trade / Auction / Gm）及事件綁定測試 |
 
 ---
 
@@ -702,7 +732,7 @@ dotnet test --logger "console;verbosity=detailed"
 ├─────────────────────────────────────────────────────────────────┤
 │                       資料庫層                                    │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │                    MongoDB                               │    │
+│  │             MongoDB (default) / PostgreSQL              │    │
 │  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -712,32 +742,73 @@ dotnet test --logger "console;verbosity=detailed"
 ### 專案結構
 
 ```
-Server/
-├── GameFrameX.Launcher/              # 應用入口點
+GameFrameX.Server.Source/
+├── GameFrameX.Launcher/              # 應用程式入口（Game + 18 個標準 Role 啟動入口）
 ├── GameFrameX.StartUp/               # 啟動編排和初始化
 ├── GameFrameX.Core/                  # 核心框架（Actor 系統、元件、事件、熱更新管理）
-├── GameFrameX.Apps/                  # 狀態資料層（帳戶、玩家、伺服器模組）— 不可熱更
-├── GameFrameX.Hotfix/                # 業務邏輯層（HTTP、玩家、伺服器處理器）— 可熱更
+├── GameFrameX.Apps/                  # 狀態資料層（Account、Player、Game、ServerRole 模組）— 不可熱更
+├── GameFrameX.Hotfix/                # 業務邏輯層（HTTP、Player、Server 處理器）— 可熱更
 ├── GameFrameX.Config/                # 遊戲配置表（JSON 格式，LuBan 生成）
 ├── GameFrameX.Proto/                 # ProtoBuf 協議定義
 ├── GameFrameX.ProtoBuf.Net/          # ProtoBuf 序列化實作
-├── GameFrameX.NetWork/               # 網路核心（訊息物件、傳送器、WebSocket）
+├── GameFrameX.NetWork/               # 網路核心（TCP/UDP/KCP/WebSocket 通道、訊息物件、傳送器）
 ├── GameFrameX.NetWork.Abstractions/  # 網路介面（IMessage、IMessageHandler、訊息映射）
 ├── GameFrameX.NetWork.HTTP/          # HTTP 伺服器（Swagger、Kestrel、BaseHttpHandler）
-├── GameFrameX.NetWork.Kcp/           # KCP 協議支援（基於 UDP 的可靠傳輸）
-├── GameFrameX.NetWork.Message/       # 訊息管道和編解碼
 ├── GameFrameX.NetWork.RemoteMessaging/ # 跨程序遠端訊息（斷路器、重試、一致性雜湊）
-├── GameFrameX.DataBase/              # 資料庫抽象層
-├── GameFrameX.DataBase.Mongo/        # MongoDB 實作（健康監控、重試、批次操作）
+├── GameFrameX.Discovery/             # Aspire 風格服務發現（services__{Role}__tcp__0 引導映射）
+├── GameFrameX.DataBase/              # 資料庫抽象層（多 Provider 註冊表、GameDb 查詢/更新/刪除）
+├── GameFrameX.DataBase.Mongo/        # MongoDB Provider（健康監控、重試、批次操作）
+├── GameFrameX.DataBase.PostgreSql/   # PostgreSQL Provider（Npgsql，具備與 MongoDB Provider 同等的韌性）
+├── GameFrameX.Online/                # Online 平台能力庫（配對、排行榜、社交、賽季、錦標賽、時間軸、聊天稽核、資產、LiveOps 等）
+├── GameFrameX.Online.Runtime/        # 程序內 Online Runtime 宿主 + 管理 API
 ├── GameFrameX.Localization/          # 本地化系統（Keys.*.cs + .resx 資源檔案）
-├── GameFrameX.Monitor/               # OpenTelemetry + Prometheus 指標整合
-├── GameFrameX.Utility/               # 工具集（日誌、壓縮、物件池、Mapster、Harmony）
-├── GameFrameX.Client/                # 測試客戶端（TCP 連線）
+├── GameFrameX.Utility/               # 工具集（設定、壓縮、隨機數、雪花 ID、物件池、Mapster、Harmony）
+├── GameFrameX.Client/                # 測試客戶端（TCP/KCP 機器人壓測客戶端）
 ├── GameFrameX.Architecture.Analyzers/         # Roslyn 架構分析器
 ├── GameFrameX.Hotfix.WrapperGenerator/ # Roslyn 原始碼生成器（熱更新代理包裝類別）
 └── Tests/
-    └── GameFrameX.Tests/             # xUnit 測試套件
+    ├── GameFrameX.Tests/             # xUnit 測試套件（框架層）
+    └── GameFrameX.Hotfix.Tests/      # xUnit 測試套件（按 Role 劃分的 Hotfix 業務規則）
 ```
+
+---
+
+## 程序拓撲同構
+
+伺服器支援「程序拓撲同構」模型：同一組角色可以按每個角色一個程序執行，也可以合併為單一 All-in-One 程序執行，且無需修改角色程式碼。
+
+### 多角色啟動
+
+- `--ServerType=Game,Social` — 在單一程序中啟動多個已註冊角色（按優先順序）。
+- `--AllInOne` — 在單一程序中啟動全部已註冊角色。
+- `Configs/app_config.json` — 為每個預定義 Role 提供一節配置（共 19 節：Game、Social 及其他 17 個標準角色）。
+  每個角色解析自己的配置節；程序級欄位在各節之間必須一致。
+
+啟動時的驗證器（`ConfigStartupValidator`）會 fail-fast —— 列出所有衝突欄位及其來源配置節 —— 觸發條件如下：
+
+1. 透過 `--AllInOne` 或複數形式 `--ServerType` 選擇的角色在 `app_config.json` 中沒有對應配置節；
+2. 同一程序內兩個角色會綁定相同的已啟用、非零監聽端點 —— 端點會跨埠欄位與傳輸方式（TCP vs UDP）比較，
+   例如 `Game.InnerPort == Social.HttpPort` 也會 fail-fast；同一角色的 `InnerPort`/`OuterPort` 共用則是合法的同角色形式；
+3. 程序級欄位（`SettingFieldLevel(ProcessLevel)`，如 `DataBaseUrl`）在所選配置節之間不一致（經執行階段正規化規則處理後），
+   確保共享核心不會收到相互矛盾的程序配置；
+4. 命令列顯式提供的欄位與正在使用的檔案配置節不一致（檔案配置節是唯一事實來源；CLI 角色級數值僅在無配置節的回退形式下生效）。
+   「是否顯式提供」依原始參數 token 判斷，因此傳入與預設值相同的值（如 `--HttpPort=0`）仍會參與比較。
+   `ServerType`（配置節鍵）與 `IsAllInOne` / `IsSingleMode` 開關豁免。
+
+單角色與預設啟動命令保持現有行為（缺少配置節時回退到啟動器預設值）。
+
+### Docker Compose 檔案
+
+| 檔案 | 用途 |
+|:--|:--|
+| `docker-compose.development.yml` | 本地開發：單一 MongoDB 服務（宿主埠 `127.0.0.1:37017`，與範例 `app_config.json` 一致） |
+| `docker-compose.multi.yml` | 多實例拓撲形式，由 `scripts/multi/generate-docker-compose-multi.py` **生成**；每個實例注入 `GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId` 以及 `services__{Role}__tcp__0` 靜態引導映射，並掛載各自的 `Configs/multi/{service}.json` 配置節（數值與 `command` 參數一致）至 `/app/Configs/app_config.json` |
+| `docker-compose.multi.legacy.yml` | 先前的靜態形式，作為過渡保留 |
+
+修改拓撲的方式：編輯產生器中的 `ROLES` 定義並重新執行
+`python3 scripts/multi/generate-docker-compose-multi.py`（冪等；`--check` 可驗證已提交的
+compose 檔案與各實例配置是否與產生器輸出一致）。未啟用驗證的 MongoDB
+服務僅發布在 `127.0.0.1`；若要對其他主機暴露，請先啟用 MongoDB 驗證。
 
 ---
 
@@ -746,11 +817,12 @@ Server/
 | 套件 | 說明 |
 |:--|:--|
 | `GameFrameX.Foundation.*` | 本地化、日誌、命令列配置、ORM 特性、雜湊、HTTP 回應正規化、通用工具 |
-| `GameFrameX.SuperSocket.Server` / `.ClientEngine` / `.Udp` / `.WebSocket.Server` | TCP、UDP、WebSocket 網路傳輸 |
+| `GameFrameX.SuperSocket.Server` / `.ClientEngine` / `.Udp` / `.Kcp` / `.WebSocket.Server` | TCP、UDP、KCP、WebSocket 網路傳輸 |
 | `MongoDB.Driver` | MongoDB 持久化驅動 |
-| `Kcp` | 基於 UDP 的可靠傳輸 |
+| `Npgsql` | PostgreSQL 持久化驅動 |
 | `OpenTelemetry.*` + `Grafana.OpenTelemetry` | 指標、分散式鏈路追蹤、執行階段插樁 |
-| `prometheus-net.AspNetCore` | Prometheus 指標匯出 |
+| `OpenTelemetry.Exporter.Prometheus.AspNetCore` | Prometheus `/metrics` 抓取端點 |
+| `Microsoft.Extensions.ServiceDiscovery` | Aspire 風格服務發現 |
 | `Mapster` | 物件映射 |
 | `Lib.Harmony` | 執行階段方法修補 |
 | `Quartz` | 排程任務調度 |

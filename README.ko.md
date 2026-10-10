@@ -43,6 +43,9 @@
   - [테스트](#테스트)
 - [아키텍처](#아키텍처)
   - [프로젝트 구조](#프로젝트-구조)
+- [프로세스 토폴로지 동형](#프로세스-토폴로지-동형)
+  - [멀티 역할 시작](#멀티-역할-시작)
+  - [Docker Compose 파일](#docker-compose-파일)
 - [의존성](#의존성)
 - [문서 및 자료](#문서-및-자료)
 - [커뮤니티 및 지원](#커뮤니티-및-지원)
@@ -83,13 +86,15 @@ GameFrameX Server는 C# .NET 10.0으로 개발된 고성능, 크로스 플랫폼
 - **UDP**: 선택적 UDP 프로토콜 지원
 - **WebSocket**: SuperSocket WebSocket 기반의 양방향 통신
 - **HTTP/HTTPS**: Kestrel 기반 HTTP 서비스. Swagger 문서, CORS, 헬스 체크 지원
-- **KCP**: KCP 프로토콜 기반 UDP 신뢰성 전송(실험적)
+- **KCP**: 공식 지원으로 승격된 신뢰성 UDP 전송(옵트인). `KcpPort`가 `0`이면 TCP 포트를 공유
 - **크로스 프로세스 메시징**: RemoteMessaging 모듈 내장. 서킷 브레이커, 재시도 전략, 일관 해싱 샤딩 지원
 
 #### 데이터베이스 및 영속화
 
-- **MongoDB 주 데이터베이스**: 완전한 MongoDB 통합. 헬스 상태 머신 지원(Healthy → Degraded → Unhealthy → Recovering)
-- **투명한 영속화**: StateComponent 자동 직렬화/역직렬화. 정기적 배치 ReplaceOne 작업으로 영속화
+- **듀얼 데이터베이스 Provider**: `DatabaseProvider`로 `Mongo`(기본) 또는 `PostgreSql` 선택. 두 Provider 모두 동일한 `GameFrameX.DataBase` 추상 레이어를 공유
+- **MongoDB Provider**: 완전한 MongoDB 통합. 헬스 상태 머신 지원(Healthy → Degraded → Unhealthy → Recovering)
+- **PostgreSQL Provider**: Npgsql 기반. MongoDB Provider와 동일한 재시도 / 복구 / 가용성 / 헬스 체크 능력 제공
+- **투명한 영속화**: StateComponent 자동 직렬화/역직렬화. 정기적 배치 업서트 작업으로 영속화
 - **연결 풀 관리**: 설정 가능한 연결 풀 및 재시도 전략
 - **OpenTelemetry 통합**: 데이터베이스 작업 메트릭(지연 시간, 재시도 횟수, 헬스 상태)
 
@@ -107,15 +112,15 @@ GameFrameX Server는 C# .NET 10.0으로 개발된 고성능, 크로스 플랫폼
 ### 요구 사항
 
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)만 지원합니다. .NET 8/9는 지원하지 않습니다.
-- [MongoDB 4.x+](https://www.mongodb.com/try/download/community)
+- [MongoDB 4.x+](https://www.mongodb.com/try/download/community)(기본 Provider; `--DatabaseProvider=PostgreSql`로 PostgreSQL 사용 가능)
 - Visual Studio 2022 또는 JetBrains Rider(권장)
 
 ### 설치
 
 1. **저장소 클론**
    ```bash
-   git clone https://github.com/GameFrameX/GameFrameX.git
-   cd GameFrameX/Server
+   git clone https://github.com/GameFrameX/GameFrameX.Server.Source.git
+   cd GameFrameX.Server.Source
    ```
 
 2. **종속성 복원**
@@ -149,7 +154,7 @@ GameFrameX Server는 C# .NET 10.0으로 개발된 고성능, 크로스 플랫폼
    ```
 
 6. **시작 확인**
-   - 헬스 체크: `http://localhost:28080/game/api/health`
+   - 헬스 체크: `http://localhost:28080/health`(라이브니스 프로브: `/alive`)
    - 콘솔 로그에서 시작 성공 확인
 
 ---
@@ -188,6 +193,8 @@ GameFrameX는 명령줄 인수(`--Key=Value`)로 설정합니다. 모든 설정 
 | `OuterPort` | 외부 통신 포트 | 없음 | `29100` |
 | `IsEnableTcp` | TCP 서비스 활성화 | `true` | `true` |
 | `IsEnableUdp` | UDP 서비스 활성화 | `false` | `true` |
+| `IsEnableKcp` | KCP 서비스 활성화(설정 파일에서만) | `false` | `true` |
+| `KcpPort` | KCP 포트(`0`이면 TCP 포트 공유) | `0` | `29120` |
 | `IsEnableWebSocket` | WebSocket 활성화 | `false` | `true` |
 | `WsPort` | WebSocket 포트 | `8889` | `29300` |
 | `IsEnableHttp` | HTTP 서비스 활성화 | `true` | `true` |
@@ -200,7 +207,8 @@ GameFrameX는 명령줄 인수(`--Key=Value`)로 설정합니다. 모든 설정 
 
 | 설정 항목 | 설명 | 기본값 | 예시 |
 |:---------|:-----|:------|:-----|
-| `DataBaseUrl` | MongoDB 연결 문자열 | 없음 | `mongodb://localhost:27017` |
+| `DatabaseProvider` | 데이터베이스 Provider | `Mongo` | `PostgreSql` |
+| `DataBaseUrl` | 데이터베이스 연결 문자열 | 없음 | `mongodb://localhost:27017` |
 | `DataBaseName` | 데이터베이스 이름 | 없음 | `gameframex` |
 | `DataBasePassword` | 데이터베이스 비밀번호 | 없음 | `your_password` |
 
@@ -477,13 +485,15 @@ internal sealed class PlayerLoginEventHandler : EventListener<PlayerComponentAge
 curl -X POST "http://localhost:28080/game/api/Reload?version=1.7.2"
 ```
 
+> 참고: `Reload` 핸들러에는 `[RequireHttpSignature]`가 표시되어 있으며, 요청은 HTTP 서명 검증을 통과해야 승인됩니다.
+
 ---
 
 ### Docker 배포
 
 #### 단일 인스턴스 배포
 
-`docker-compose.yml`을 사용하여 MongoDB + Game + Social의 완전한 환경을 시작:
+`docker-compose.yml`을 사용하여 MongoDB + Game의 최소 환경을 시작(Social은 추후 다시 추가 예정):
 
 ```bash
 # 빌드 및 시작
@@ -493,7 +503,7 @@ docker compose up -d --build
 docker compose ps
 
 # 로그 확인
-docker compose logs -f game social
+docker compose logs -f game
 
 # 중지
 docker compose down
@@ -506,8 +516,16 @@ docker compose down
 | MongoDB | 27017 | 37017 | 데이터베이스 |
 | Game TCP | 29100 | 39100 | 게임 서버 |
 | Game HTTP | 28080 | 38080 | 게임 서버 HTTP API |
-| Social TCP | 29400 | 39400 | 소셜 서버 |
-| Social HTTP | 28081 | 38081 | 소셜 서버 HTTP API |
+| Online Admin | 28090 | 28090 | Online 플랫폼 관리 API(아래 참조) |
+
+
+#### Online 플랫폼 관리 API
+
+`IsEnableOnlineAdmin=true`이면 Game 프로세스가 Online Runtime(인메모리 저장소 기반의 에셋 / 세션 / 매치메이킹 / 소셜 / LiveOps 서비스를 갖춘 인프로세스 역량 라이브러리)을 구성하고, 관리 HTTP API를 독립된 Kestrel 리스너에서 노출합니다:
+
+- 엔드포인트: `POST http://<server-host>:28090/online/admin/{action}`(관리 액션 29개 전체, HTTP 상태는 항상 200. 비즈니스 결과는 내부 엔벨로프 `Code`로 전달)
+- 스코프 삼중항: 각 요청은 `TenantId` / `AppId` / `ServerId`를 전달하며, 인가된 `OnlineTenantId` / `OnlineAppId` / `ServerId`와 불일치하면 3002/3003/3004, 삼중항 누락 시 3005로 거부
+- GameFrameX Admin 콘솔 서버 등록: 대상 영역의 `HttpManageUrl`을 `http://<server-host>:28090`로 설정(`online/admin` 접두사와 액션 이름은 Admin 클라이언트가 와이어 계약에 따라 추가)
 
 #### 멀티 인스턴스 배포
 
@@ -592,7 +610,7 @@ BOT_COUNT=200 \
 TCP_PORT=49100 \
 LOGIN_URL=http://127.0.0.1:48080/game/api/ \
 DISCONNECT_AFTER_LOGIN_SECONDS=20 \
-RUN_SECONDS=300 \
+RUN_SECONDS=600 \
 ./scripts/multi/run-bots-rpc.sh
 ```
 
@@ -600,11 +618,15 @@ RUN_SECONDS=300 \
 
 | 변수 | 설명 | 기본값 |
 |:----|:-----|:------|
-| `BOT_COUNT` | 봇 수 | — |
+| `BOT_COUNT` | 봇 수 | `100` |
+| `TCP_HOST` | TCP 연결 호스트 | `127.0.0.1` |
 | `TCP_PORT` | TCP 연결 포트 | `49100` |
 | `LOGIN_URL` | 로그인 API URL | `http://127.0.0.1:48080/game/api/` |
-| `DISCONNECT_AFTER_LOGIN_SECONDS` | 로그인 후 연결 해제 지연(초) | `20` |
-| `RUN_SECONDS` | 총 실행 시간(초) | `300` |
+| `SCENARIO` | 봇 시나리오 | `login` |
+| `DISCONNECT_LOOP` | 연결 해제/재연결 사이클 반복 | `true` |
+| `DISCONNECT_AFTER_LOGIN_SECONDS` | 로그인 후 연결 해제 지연(초) | `15` |
+| `CONNECT_STAGGER_MS` | 봇 연결 간격(밀리초) | `10` |
+| `RUN_SECONDS` | 총 실행 시간(초) | `180` |
 
 #### 일반적인 문제 해결 명령
 
@@ -627,7 +649,7 @@ docker compose -f docker-compose.multi.yml up -d --build
 
 | 엔드포인트 | 설명 |
 |:---------|:-----|
-| `http://<host>:<HttpPort>/game/api/health` | 헬스 체크 |
+| `http://<host>:<HttpPort>/health` | 헬스 체크(Aspire 기본. `/alive` 라이브니스 프로브도 제공) |
 | `http://<host>:<MetricsPort>/metrics` | Prometheus 메트릭 |
 
 #### 메트릭 카테고리
@@ -656,18 +678,26 @@ dotnet test --logger "console;verbosity=detailed"
 
 #### 테스트 커버리지
 
-테스트 프로젝트는 **xUnit** 기반이며, 다음 모듈을 커버합니다:
+테스트 스위트는 **xUnit** 기반입니다 — `Tests/GameFrameX.Tests`는 프레임워크 레이어를, `Tests/GameFrameX.Hotfix.Tests`는 역할별 비즈니스 규칙을 커버합니다:
 
 | 테스트 디렉토리 | 설명 |
 |:-------------|:-----|
-| `Utility/` | 수학/고정소수점 테스트, 압축, 난수, ID 생성, 싱글톤 |
-| `NetWork/Kcp/` | KCP 파이프라인 필터, 세션 관리, 서버 통합 테스트 |
-| `DataBase/` | MongoDB 연결 및 쿼리 테스트 |
+| `StartUp/` | 시작 오케스트레이션, 멀티 역할 선택, All-in-One 옵션, 설정 시작 검증기, HTTP 라우트 등록 |
+| `Architecture/` | Roslyn 아키텍처 분석기 테스트(레이어링 규칙, 에이전트 실링) |
+| `Core/` | Actor 및 세션 관리 테스트(중복 로그인) |
+| `NetWork/` | SuperSocket KCP 리스닝 / 인증 / E2E 테스트, HTTP 및 세션 인증 미들웨어 테스트 |
+| `DataBase/` | MongoDB 및 PostgreSQL Provider 테스트(쿼리, 연결, 멀티 데이터베이스, Provider 리졸버) |
+| `Discovery/` | 서비스 디스커버리 엔드포인트 / 라우팅 통합 테스트(MongoDB 및 PostgreSQL) |
+| `RemoteMessaging/` | 크로스 프로세스 메시징 테스트(코덱, 전송) |
+| `UnifiedMessaging/` | 통합 크로스 프로세스 메시징 테스트 |
+| `Online/` | Online 런타임 테스트(관리 API, 매치메이킹, 리더보드, 시즌, 토너먼트, LiveOps, 프레즌스, 세션, 처벌, 감사 등) |
+| `Topology/` | 프로세스 토폴로지 동형 동치성 테스트 |
+| `Proto/` | ServerRole 메시지 도메인 테스트 |
 | `ProtoBuff/` | Protobuf 직렬화 및 오브젝트 풀 테스트 |
 | `Localization/` | 현지화 키값 파싱 테스트 |
-| `RemoteMessaging/` | 크로스 프로세스 메시징 테스트 |
-| `UnifiedMessaging/` | 통합 크로스 프로세스 메시징 테스트 |
-| `StartUp/` | HTTP 서버 라우트 등록 테스트 |
+| `Client/` | 봇 클라이언트 실행 옵션 / 전송 디스패치 테스트 |
+| `Utility/` | 수학/고정소수점 테스트, 압축, 난수, ID 생성, 싱글톤, 설정 |
+| `GameFrameX.Hotfix.Tests/` | 역할별 비즈니스 규칙 테스트(Account / Login / Auth / Gateway / Chat / Mail / Friend / Team / Guild / Match / Room / Scene / World / Battle / Trade / Auction / Gm) 및 이벤트 바인딩 테스트 |
 
 ---
 
@@ -704,7 +734,7 @@ dotnet test --logger "console;verbosity=detailed"
 ├─────────────────────────────────────────────────────────────────┤
 │                      데이터베이스 레이어                          │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │                    MongoDB                               │    │
+│  │             MongoDB (default) / PostgreSQL              │    │
 │  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -714,32 +744,67 @@ dotnet test --logger "console;verbosity=detailed"
 ### 프로젝트 구조
 
 ```
-Server/
-├── GameFrameX.Launcher/              # 애플리케이션 진입점
+GameFrameX.Server.Source/
+├── GameFrameX.Launcher/              # 애플리케이션 진입점(Game + 18개 표준 역할별 시작 진입점)
 ├── GameFrameX.StartUp/               # 시작 오케스트레이션 및 초기화
 ├── GameFrameX.Core/                  # 코어 프레임워크(Actor 시스템, 컴포넌트, 이벤트, 핫 업데이트 관리)
-├── GameFrameX.Apps/                  # 상태 데이터 레이어(계정, 플레이어, 서버 모듈) — 핫 업데이트 불가
-├── GameFrameX.Hotfix/                # 비즈니스 로직 레이어(HTTP, 플레이어, 서버 핸들러) — 핫 업데이트 가능
+├── GameFrameX.Apps/                  # 상태 데이터 레이어(Account, Player, Game, ServerRole 모듈) — 핫 업데이트 불가
+├── GameFrameX.Hotfix/                # 비즈니스 로직 레이어(HTTP, Player, Server 핸들러) — 핫 업데이트 가능
 ├── GameFrameX.Config/                # 게임 설정 테이블(JSON 형식, LuBan 생성)
 ├── GameFrameX.Proto/                 # ProtoBuf 프로토콜 정의
 ├── GameFrameX.ProtoBuf.Net/          # ProtoBuf 직렬화 구현
-├── GameFrameX.NetWork/               # 네트워크 코어(메시지 객체, 센더, WebSocket)
+├── GameFrameX.NetWork/               # 네트워크 코어(TCP/UDP/KCP/WebSocket 채널, 메시지 객체, 센더)
 ├── GameFrameX.NetWork.Abstractions/  # 네트워크 인터페이스(IMessage, IMessageHandler, 메시지 매핑)
 ├── GameFrameX.NetWork.HTTP/          # HTTP 서버(Swagger, Kestrel, BaseHttpHandler)
-├── GameFrameX.NetWork.Kcp/           # KCP 프로토콜 지원(UDP 기반 신뢰성 전송)
-├── GameFrameX.NetWork.Message/       # 메시지 파이프라인 및 코덱
 ├── GameFrameX.NetWork.RemoteMessaging/ # 크로스 프로세스 원격 메시지(서킷 브레이커, 재시도, 일관 해싱)
-├── GameFrameX.DataBase/              # 데이터베이스 추상 레이어
-├── GameFrameX.DataBase.Mongo/        # MongoDB 구현(헬스 모니터링, 재시도, 배치 작업)
+├── GameFrameX.Discovery/             # Aspire 스타일 서비스 디스커버리(services__{Role}__tcp__0 부트스트랩 맵)
+├── GameFrameX.DataBase/              # 데이터베이스 추상 레이어(멀티 Provider 레지스트리, GameDb 쿼리/업데이트/삭제)
+├── GameFrameX.DataBase.Mongo/        # MongoDB Provider(헬스 모니터링, 재시도, 배치 작업)
+├── GameFrameX.DataBase.PostgreSql/   # PostgreSQL Provider(Npgsql, MongoDB Provider와 동일한 복원력)
+├── GameFrameX.Online/                # Online 플랫폼 역량 라이브러리(매치메이킹, 리더보드, 소셜, 시즌, 토너먼트, 타임라인, 채팅 감사, 에셋, LiveOps 등)
+├── GameFrameX.Online.Runtime/        # 인프로세스 Online 런타임 호스트 + 관리 API
 ├── GameFrameX.Localization/          # 현지화 시스템(Keys.*.cs + .resx 리소스 파일)
-├── GameFrameX.Monitor/               # OpenTelemetry + Prometheus 메트릭 통합
-├── GameFrameX.Utility/               # 유틸리티(로깅, 압축, 오브젝트 풀, Mapster, Harmony)
-├── GameFrameX.Client/                # 테스트 클라이언트(TCP 연결)
+├── GameFrameX.Utility/               # 유틸리티(설정, 압축, 난수, 스노우플레이크 ID, 오브젝트 풀, Mapster, Harmony)
+├── GameFrameX.Client/                # 테스트 클라이언트(TCP/KCP 봇 스트레스 클라이언트)
 ├── GameFrameX.Architecture.Analyzers/         # Roslyn 아키텍처 분석기
 ├── GameFrameX.Hotfix.WrapperGenerator/ # Roslyn 소스 제너레이터(핫 업데이트 프록시 래퍼 클래스)
 └── Tests/
-    └── GameFrameX.Tests/             # xUnit 테스트 스위트
+    ├── GameFrameX.Tests/             # xUnit 테스트 스위트(프레임워크 레이어)
+    └── GameFrameX.Hotfix.Tests/      # xUnit 테스트 스위트(역할별 핫픽스 비즈니스 규칙)
 ```
+
+---
+
+## 프로세스 토폴로지 동형
+
+서버는 *프로세스 토폴로지 동형* 모델을 지원합니다. 동일한 역할 집합을 역할당 하나의 프로세스로, 또는 단일 올인원 프로세스로, 역할 코드 변경 없이 실행할 수 있습니다.
+
+### 멀티 역할 시작
+
+- `--ServerType=Game,Social` — 하나의 프로세스에서 여러 등록된 역할을 시작(우선순위 순).
+- `--AllInOne` — 하나의 프로세스에서 등록된 모든 역할을 시작.
+- `Configs/app_config.json` — 사전 정의된 각 역할마다 한 섹션을 제공(총 19개: Game, Social 및 나머지 17개 표준 역할).
+  각 역할은 자신의 섹션을 해석하며, 프로세스 수준 필드는 섹션 간에 동일해야 합니다.
+
+시작 시점의 검증기(`ConfigStartupValidator`)는 다음 경우에 fail-fast로 실패하며, 충돌하는 모든 필드와 그 출처 섹션을 나열합니다:
+
+1. `--AllInOne` 또는 복수형 `--ServerType`으로 선택한 역할이 `app_config.json`에 섹션이 없는 경우;
+2. 동일한 프로세스의 두 역할이 활성화된 0이 아닌 동일한 리스닝 엔드포인트에 바인딩하려는 경우 — 엔드포인트는 포트 필드와 전송(TCP vs UDP)을 걸쳐 비교되므로, 예를 들어 `Game.InnerPort == Social.HttpPort`도 fail-fast됩니다. 한 역할의 `InnerPort`/`OuterPort` 공유는 합법적인 동일 역할 형태입니다;
+3. 프로세스 수준 필드(`SettingFieldLevel(ProcessLevel)`, 예: `DataBaseUrl`)가 선택된 섹션들 간에 (런타임 정규화 규칙 적용 후) 서로 다른 경우 — 공유 커널이 모순된 프로세스 설정을 받지 않도록 합니다;
+4. 명령줄에서 명시적으로 지정된 필드가 사용 중인 파일 섹션과 다른 경우(파일 섹션이 단일 진실 공급원이며, CLI 역할 수준 값은 섹션 없는 폴백 형태에서만 적용됩니다).
+   "명시적으로 지정됨" 여부는 원시 인자 토큰으로 판정되므로, 기본값과 같은 값을 전달해도(예: `--HttpPort=0`) 여전히 비교됩니다. `ServerType`(섹션 키)과 `IsAllInOne` / `IsSingleMode` 스위치는 예외입니다.
+
+단일 역할 및 기본 시작 명령은 현재 동작을 유지합니다(섹션이 없으면 런처 기본값으로 폴백).
+
+### Docker Compose 파일
+
+| 파일 | 용도 |
+|:--|:--|
+| `docker-compose.development.yml` | 로컬 개발용: 단일 MongoDB 서비스(호스트 포트 `127.0.0.1:37017`, 예시 `app_config.json`과 일치) |
+| `docker-compose.multi.yml` | 멀티 인스턴스 토폴로지 형태. `scripts/multi/generate-docker-compose-multi.py`가 **생성**. 각 인스턴스에 `GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId`와 `services__{Role}__tcp__0` 정적 부트스트랩 맵이 주입되며, 자체 `Configs/multi/{service}.json` 섹션(`command` 인자와 동일한 값)을 `/app/Configs/app_config.json`으로 마운트 |
+| `docker-compose.multi.legacy.yml` | 이전 정적 형태. 전환 기간 동안 유지 |
+
+제너레이터의 `ROLES` 정의를 수정하고 `python3 scripts/multi/generate-docker-compose-multi.py`를 다시 실행하여 토폴로지를 변경합니다(멱등. `--check`는 커밋된 compose 파일과 인스턴스별 설정이 제너레이터 출력과 일치하는지 검증). 인증 없는 MongoDB 서비스는 `127.0.0.1`에만 게시되며, 다른 호스트에 노출하기 전에 MongoDB 인증을 활성화하세요.
 
 ---
 
@@ -748,11 +813,12 @@ Server/
 | 패키지 | 설명 |
 |:--|:--|
 | `GameFrameX.Foundation.*` | 현지화, 로깅, 명령줄 옵션, ORM 특성, 해싱, HTTP 응답 정규화, 유틸리티 |
-| `GameFrameX.SuperSocket.Server` / `.ClientEngine` / `.Udp` / `.WebSocket.Server` | TCP, UDP, WebSocket 네트워크 전송 |
+| `GameFrameX.SuperSocket.Server` / `.ClientEngine` / `.Udp` / `.Kcp` / `.WebSocket.Server` | TCP, UDP, KCP, WebSocket 네트워크 전송 |
 | `MongoDB.Driver` | MongoDB 영속화 드라이버 |
-| `Kcp` | UDP 기반 신뢰성 전송 |
+| `Npgsql` | PostgreSQL 영속화 드라이버 |
 | `OpenTelemetry.*` + `Grafana.OpenTelemetry` | 메트릭, 분산 추적, 런타임 계측 |
-| `prometheus-net.AspNetCore` | Prometheus 메트릭 내보내기 |
+| `OpenTelemetry.Exporter.Prometheus.AspNetCore` | Prometheus `/metrics` 스크래핑 엔드포인트 |
+| `Microsoft.Extensions.ServiceDiscovery` | Aspire 스타일 서비스 디스커버리 |
 | `Mapster` | 객체 매핑 |
 | `Lib.Harmony` | 런타임 메서드 패치 |
 | `Quartz` | 예약 작업 스케줄링 |

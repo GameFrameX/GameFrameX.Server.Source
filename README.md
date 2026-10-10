@@ -86,13 +86,15 @@ GameFrameX Server is a high-performance, cross-platform game server framework bu
 - **UDP**: Optional UDP protocol support
 - **WebSocket**: Bidirectional communication based on SuperSocket WebSocket
 - **HTTP/HTTPS**: HTTP service based on Kestrel, supporting Swagger documentation, CORS, health checks
-- **KCP**: UDP reliable transport based on KCP protocol (experimental)
+- **KCP**: Reliable UDP transport promoted to officially supported (opt-in); when `KcpPort` is `0` it shares the TCP port
 - **Cross-Process Messaging**: Built-in RemoteMessaging module with circuit breaker, retry strategy, and consistent hashing sharding
 
 #### Database & Persistence
 
-- **MongoDB Primary Database**: Complete MongoDB integration with health state machine (Healthy → Degraded → Unhealthy → Recovering)
-- **Transparent Persistence**: StateComponent automatic serialization/deserialization, persisted through timed batch ReplaceOne operations
+- **Dual Database Providers**: `DatabaseProvider` selects `Mongo` (default) or `PostgreSql`; both providers share the same `GameFrameX.DataBase` abstraction layer
+- **MongoDB Provider**: Complete MongoDB integration with health state machine (Healthy → Degraded → Unhealthy → Recovering)
+- **PostgreSQL Provider**: Based on Npgsql, with the same retry / recovery / availability / health-check capabilities as the MongoDB provider
+- **Transparent Persistence**: StateComponent automatic serialization/deserialization, persisted through timed batch upsert operations
 - **Connection Pool Management**: Configurable connection pool and retry strategy
 - **OpenTelemetry Integration**: Database operation metrics (latency, retry count, health status)
 
@@ -110,15 +112,15 @@ GameFrameX Server is a high-performance, cross-platform game server framework bu
 ### Requirements
 
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) only. .NET 8/9 are not supported.
-- [MongoDB 4.x+](https://www.mongodb.com/try/download/community)
+- [MongoDB 4.x+](https://www.mongodb.com/try/download/community) (default provider; alternatively PostgreSQL via `--DatabaseProvider=PostgreSql`)
 - Visual Studio 2022 or JetBrains Rider (recommended)
 
 ### Installation
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/GameFrameX/GameFrameX.git
-   cd GameFrameX/Server
+   git clone https://github.com/GameFrameX/GameFrameX.Server.Source.git
+   cd GameFrameX.Server.Source
    ```
 
 2. **Restore Dependencies**
@@ -152,7 +154,7 @@ GameFrameX Server is a high-performance, cross-platform game server framework bu
    ```
 
 6. **Verify Startup**
-    - Health check: `http://localhost:28080/game/api/health`
+    - Health check: `http://localhost:28080/health` (liveness probe: `/alive`)
     - Check console logs to confirm successful startup
 
 ---
@@ -191,6 +193,8 @@ GameFrameX uses command-line arguments (`--Key=Value`) for configuration. All co
 | `OuterPort`         | External communication port               | None         | `29100`      |
 | `IsEnableTcp`       | Enable TCP service                        | `true`       | `true`       |
 | `IsEnableUdp`       | Enable UDP service                        | `false`      | `true`       |
+| `IsEnableKcp`       | Enable KCP service (config file only)     | `false`       | `true`       |
+| `KcpPort`           | KCP port (`0` shares the TCP port)        | `0`           | `29120`      |
 | `IsEnableWebSocket` | Enable WebSocket                          | `false`      | `true`       |
 | `WsPort`            | WebSocket port                            | `8889`       | `29300`      |
 | `IsEnableHttp`      | Enable HTTP service                       | `true`       | `true`       |
@@ -208,7 +212,8 @@ GameFrameX uses command-line arguments (`--Key=Value`) for configuration. All co
 
 | Option             | Description               | Default | Example                     |
 |:-------------------|:--------------------------|:--------|:----------------------------|
-| `DataBaseUrl`      | MongoDB connection string | None    | `mongodb://localhost:27017` |
+| `DatabaseProvider` | Database provider         | `Mongo` | `PostgreSql`                |
+| `DataBaseUrl`      | Database connection string | None    | `mongodb://localhost:27017` |
 | `DataBaseName`     | Database name             | None    | `gameframex`                |
 | `DataBasePassword` | Database password         | None    | `your_password`             |
 
@@ -485,13 +490,15 @@ The hot update system implements runtime loading and unloading of assemblies thr
 curl -X POST "http://localhost:28080/game/api/Reload?version=1.7.2"
 ```
 
+> Note: the `Reload` handler is marked `[RequireHttpSignature]` — the request must pass HTTP signature validation before it is accepted.
+
 ---
 
 ### Docker Deployment
 
 #### Single Instance Deployment
 
-Use `docker-compose.yml` to start a complete environment with MongoDB + Game + Social:
+Use `docker-compose.yml` to start a minimal environment with MongoDB + Game (Social will be added back later):
 
 ```bash
 # Build and start
@@ -501,7 +508,7 @@ docker compose up -d --build
 docker compose ps
 
 # View logs
-docker compose logs -f game social
+docker compose logs -f game
 
 # Stop
 docker compose down
@@ -515,8 +522,6 @@ Service port mapping:
 | Game TCP    | 29100          | 39100     | Game server            |
 | Game HTTP   | 28080          | 38080     | Game server HTTP API   |
 | Online Admin | 28090         | 28090     | Online platform admin API (see below) |
-| Social TCP  | 29400          | 39400     | Social server          |
-| Social HTTP | 28081          | 38081     | Social server HTTP API |
 
 #### Online Platform Admin API
 
@@ -610,7 +615,7 @@ BOT_COUNT=200 \
 TCP_PORT=49100 \
 LOGIN_URL=http://127.0.0.1:48080/game/api/ \
 DISCONNECT_AFTER_LOGIN_SECONDS=20 \
-RUN_SECONDS=300 \
+RUN_SECONDS=600 \
 ./scripts/multi/run-bots-rpc.sh
 ```
 
@@ -618,11 +623,15 @@ Available environment variables:
 
 | Variable                         | Description                            | Default                            |
 |:---------------------------------|:---------------------------------------|:-----------------------------------|
-| `BOT_COUNT`                      | Number of bots                         | —                                  |
+| `BOT_COUNT`                      | Number of bots                         | `100`                              |
+| `TCP_HOST`                       | TCP connection host                    | `127.0.0.1`                        |
 | `TCP_PORT`                       | TCP connection port                    | `49100`                            |
 | `LOGIN_URL`                      | Login API URL                          | `http://127.0.0.1:48080/game/api/` |
-| `DISCONNECT_AFTER_LOGIN_SECONDS` | Disconnect delay after login (seconds) | `20`                               |
-| `RUN_SECONDS`                    | Total run duration (seconds)           | `300`                              |
+| `SCENARIO`                       | Bot scenario                           | `login`                            |
+| `DISCONNECT_LOOP`                | Repeat disconnect/reconnect cycles     | `true`                             |
+| `DISCONNECT_AFTER_LOGIN_SECONDS` | Disconnect delay after login (seconds) | `15`                               |
+| `CONNECT_STAGGER_MS`             | Stagger between bot connections (ms)   | `10`                               |
+| `RUN_SECONDS`                    | Total run duration (seconds)           | `180`                              |
 
 #### Common Troubleshooting Commands
 
@@ -645,7 +654,7 @@ docker compose -f docker-compose.multi.yml up -d --build
 
 | Endpoint                                   | Description        |
 |:-------------------------------------------|:-------------------|
-| `http://<host>:<HttpPort>/game/api/health` | Health check       |
+| `http://<host>:<HttpPort>/health`          | Health check (Aspire default; `/alive` liveness probe also available) |
 | `http://<host>:<MetricsPort>/metrics`      | Prometheus metrics |
 
 #### Metrics Categories
@@ -674,18 +683,26 @@ dotnet test --logger "console;verbosity=detailed"
 
 #### Test Coverage
 
-The test project is based on **xUnit**, covering the following modules:
+The test suites are based on **xUnit** — `Tests/GameFrameX.Tests` covers the framework layers, and `Tests/GameFrameX.Hotfix.Tests` covers per-role business rules:
 
 | Test Directory      | Description                                                           |
 |:--------------------|:----------------------------------------------------------------------|
-| `Utility/`          | Math/fixed-point tests, compression, random, ID generation, singleton |
-| `NetWork/Kcp/`      | KCP pipeline filter, session management, server integration tests     |
-| `DataBase/`         | MongoDB connection and query tests                                    |
+| `StartUp/`          | Startup orchestration, multi-role selection, All-in-One options, config startup validator, HTTP route registration |
+| `Architecture/`     | Roslyn architecture analyzer tests (layering rules, agent sealing)     |
+| `Core/`             | Actor and session management tests (duplicate login)                   |
+| `NetWork/`          | SuperSocket KCP listening / authentication / E2E tests, HTTP and session authentication middleware tests |
+| `DataBase/`         | MongoDB & PostgreSQL provider tests (query, connection, multi-database, provider resolver) |
+| `Discovery/`        | Service discovery endpoint / routing integration tests (MongoDB & PostgreSQL) |
+| `RemoteMessaging/`  | Cross-process messaging tests (codec, transport)                      |
+| `UnifiedMessaging/` | Unified cross-process messaging tests                                 |
+| `Online/`           | Online runtime tests (admin API, matchmaking, leaderboard, season, tournament, LiveOps, presence, session, punishment, audit, ...) |
+| `Topology/`         | Process topology isomorphism equivalence tests                        |
+| `Proto/`            | ServerRole message domain tests                                       |
 | `ProtoBuff/`        | Protobuf serialization and object pool tests                          |
 | `Localization/`     | Localization key-value parsing tests                                  |
-| `RemoteMessaging/`  | Cross-process messaging tests                                         |
-| `UnifiedMessaging/` | Unified cross-process messaging tests                                 |
-| `StartUp/`          | HTTP server route registration tests                                  |
+| `Client/`           | Bot client run options / transport dispatch tests                     |
+| `Utility/`          | Math/fixed-point tests, compression, random, ID generation, singleton, settings |
+| `GameFrameX.Hotfix.Tests/` | Per-role business rule tests (Account / Login / Auth / Gateway / Chat / Mail / Friend / Team / Guild / Match / Room / Scene / World / Battle / Trade / Auction / Gm) plus event binding tests |
 
 ---
 
@@ -721,7 +738,7 @@ The test project is based on **xUnit**, covering the following modules:
 ├─────────────────────────────────────────────────────────────────┤
 │                       Database Layer                             │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │                    MongoDB                               │    │
+│  │             MongoDB (default) / PostgreSQL              │    │
 │  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -731,31 +748,33 @@ The test project is based on **xUnit**, covering the following modules:
 ### Project Structure
 
 ```
-Server/
-├── GameFrameX.Launcher/              # Application entry point
+GameFrameX.Server.Source/
+├── GameFrameX.Launcher/              # Application entry point (Game + 18 standard per-role startup entries)
 ├── GameFrameX.StartUp/               # Startup orchestration and initialization
 ├── GameFrameX.Core/                  # Core framework (Actor system, components, events, hot update management)
-├── GameFrameX.Apps/                  # State data layer (Account, Player, Server modules) — not hot-updatable
+├── GameFrameX.Apps/                  # State data layer (Account, Player, Game, ServerRole modules) — not hot-updatable
 ├── GameFrameX.Hotfix/                # Business logic layer (HTTP, Player, Server handlers) — hot-updatable
 ├── GameFrameX.Config/                # Game configuration tables (JSON format, generated by LuBan)
 ├── GameFrameX.Proto/                 # ProtoBuf protocol definitions
 ├── GameFrameX.ProtoBuf.Net/          # ProtoBuf serialization implementation
-├── GameFrameX.NetWork/               # Network core (message objects, sender, WebSocket)
+├── GameFrameX.NetWork/               # Network core (TCP/UDP/KCP/WebSocket channels, message objects, sender)
 ├── GameFrameX.NetWork.Abstractions/  # Network interfaces (IMessage, IMessageHandler, message mapping)
 ├── GameFrameX.NetWork.HTTP/          # HTTP server (Swagger, Kestrel, BaseHttpHandler)
-├── GameFrameX.NetWork.Kcp/           # KCP protocol support (UDP-based reliable transport)
-├── GameFrameX.NetWork.Message/       # Message pipeline and codec
 ├── GameFrameX.NetWork.RemoteMessaging/ # Cross-process remote messaging (circuit breaker, retry, consistent hashing)
-├── GameFrameX.DataBase/              # Database abstraction layer
-├── GameFrameX.DataBase.Mongo/        # MongoDB implementation (health monitoring, retry, batch operations)
+├── GameFrameX.Discovery/             # Aspire-style service discovery (services__{Role}__tcp__0 bootstrap map)
+├── GameFrameX.DataBase/              # Database abstraction layer (multi-provider registry, GameDb query/update/delete)
+├── GameFrameX.DataBase.Mongo/        # MongoDB provider (health monitoring, retry, batch operations)
+├── GameFrameX.DataBase.PostgreSql/   # PostgreSQL provider (Npgsql, same resilience as the MongoDB provider)
+├── GameFrameX.Online/                # Online platform capability library (matchmaking, leaderboard, social, season, tournament, timeline, chat audit, assets, LiveOps, ...)
+├── GameFrameX.Online.Runtime/        # In-process Online Runtime host + admin API
 ├── GameFrameX.Localization/          # Localization system (Keys.*.cs + .resx resource files)
-├── GameFrameX.Monitor/               # OpenTelemetry + Prometheus metrics integration
-├── GameFrameX.Utility/               # Utilities (logging, compression, object pool, Mapster, Harmony)
-├── GameFrameX.Client/                # Test client (TCP connection)
+├── GameFrameX.Utility/               # Utilities (settings, compression, random, snowflake ID, object pool, Mapster, Harmony)
+├── GameFrameX.Client/                # Test client (TCP/KCP bot stress client)
 ├── GameFrameX.Architecture.Analyzers/         # Roslyn architecture analyzers
 ├── GameFrameX.Hotfix.WrapperGenerator/ # Roslyn source generator (hot update proxy wrapper classes)
 └── Tests/
-    └── GameFrameX.Tests/             # xUnit test suite
+    ├── GameFrameX.Tests/             # xUnit test suite (framework layers)
+    └── GameFrameX.Hotfix.Tests/      # xUnit test suite (per-role hotfix business rules)
 ```
 
 ---
@@ -769,7 +788,7 @@ process per role, or as a single all-in-one process, without changing role code.
 
 - `--ServerType=Game,Social` — launch multiple registered roles in one process (priority order).
 - `--AllInOne` — launch every registered role in one process.
-- `Configs/app_config.json` — multi-section example (Game / Social) shipped in the repository root.
+- `Configs/app_config.json` — ships a section per predefined role (19 in total: Game, Social, and the 17 other standard roles).
   Each role resolves its own section; process-level fields must be identical across sections.
 
 A startup-time validator (`ConfigStartupValidator`) fails fast — listing every conflicting field and its
@@ -812,11 +831,12 @@ other hosts.
 | Package | Description |
 |:--|:--|
 | `GameFrameX.Foundation.*` | Localization, logging, command-line options, ORM attributes, hashing, HTTP response normalization, utilities |
-| `GameFrameX.SuperSocket.Server` / `.ClientEngine` / `.Udp` / `.WebSocket.Server` | TCP, UDP, and WebSocket network transport |
+| `GameFrameX.SuperSocket.Server` / `.ClientEngine` / `.Udp` / `.Kcp` / `.WebSocket.Server` | TCP, UDP, KCP, and WebSocket network transport |
 | `MongoDB.Driver` | MongoDB persistence driver |
-| `Kcp` | Reliable UDP transport |
+| `Npgsql` | PostgreSQL persistence driver |
 | `OpenTelemetry.*` + `Grafana.OpenTelemetry` | Metrics, distributed tracing, runtime instrumentation |
-| `prometheus-net.AspNetCore` | Prometheus metrics export |
+| `OpenTelemetry.Exporter.Prometheus.AspNetCore` | Prometheus `/metrics` scraping endpoint |
+| `Microsoft.Extensions.ServiceDiscovery` | Aspire-style service discovery |
 | `Mapster` | Object mapping |
 | `Lib.Harmony` | Runtime method patching |
 | `Quartz` | Scheduled task scheduling |

@@ -43,6 +43,9 @@
   - [テスト](#テスト)
 - [アーキテクチャ](#アーキテクチャ)
   - [プロジェクト構成](#プロジェクト構成)
+- [プロセストポロジ同型](#プロセストポロジ同型)
+  - [マルチロール起動](#マルチロール起動)
+  - [Docker Compose ファイル](#docker-compose-ファイル)
 - [依存関係](#依存関係)
 - [ドキュメントとリソース](#ドキュメントとリソース)
 - [コミュニティとサポート](#コミュニティとサポート)
@@ -83,15 +86,14 @@ GameFrameX Server は、C# .NET 10.0 で開発された高性能・クロスプ�
 - **UDP**: オプションの UDP プロトコルサポート
 - **WebSocket**: SuperSocket WebSocket ベースの双方向通信
 - **HTTP/HTTPS**: Kestrel ベースの HTTP サービス。Swagger ドキュメント、CORS、ヘルスチェック対応
-- **KCP**: KCP プロトコルベースの UDP 信頼性伝送（実験的）
-- **クロスプロセスメッセージング**: RemoteMessaging モジュール内蔵。サーキットブレーカー、リトライ戦略、コンシステントハッシングシャーディング対応
+- **KCP**: 正式サポート（オプトイン）に昇格した UDP 信頼性伝送。`KcpPort` が `0` の場合は TCP ポートを共用
 
 #### データベースと永続化
 
-- **MongoDB プライマリDB**: 完全な MongoDB 統合。ヘルスステートマシン対応（Healthy → Degraded → Unhealthy → Recovering）
-- **透過的永続化**: StateComponent の自動シリアライズ/デシリアライズ。定期的バッチ ReplaceOne 操作で永続化
-- **接続プール管理**: 設定可能な接続プールとリトライ戦略
-- **OpenTelemetry 統合**: データベース操作メトリクス（レイテンシ、リトライ回数、ヘルスステータス）
+- **デュアルデータベース Provider**: `DatabaseProvider` で `Mongo`（デフォルト）または `PostgreSql` を選択。両 Provider は同じ `GameFrameX.DataBase` 抽象レイヤーを共有
+- **MongoDB Provider**: 完全な MongoDB 統合。ヘルスステートマシン対応（Healthy → Degraded → Unhealthy → Recovering）
+- **PostgreSQL Provider**: Npgsql ベース。MongoDB Provider と同等のリトライ / リカバリ / 可用性 / ヘルスチェック能力を備える
+- **透過的永続化**: StateComponent の自動シリアライズ/デシリアライズ。定期的バッチ upsert 操作で永続化
 
 #### モニタリングとオブザーバビリティ
 
@@ -107,15 +109,15 @@ GameFrameX Server は、C# .NET 10.0 で開発された高性能・クロスプ�
 ### 前提条件
 
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) のみをサポートします。.NET 8/9 はサポート対象外です。
-- [MongoDB 4.x+](https://www.mongodb.com/try/download/community)
+- [MongoDB 4.x+](https://www.mongodb.com/try/download/community)（デフォルト Provider。`--DatabaseProvider=PostgreSql` で PostgreSQL も利用可能）
 - Visual Studio 2022 または JetBrains Rider（推奨）
 
 ### インストール
 
 1. **リポジトリをクローン**
    ```bash
-   git clone https://github.com/GameFrameX/GameFrameX.git
-   cd GameFrameX/Server
+   git clone https://github.com/GameFrameX/GameFrameX.Server.Source.git
+   cd GameFrameX.Server.Source
    ```
 
 2. **依存関係を復元**
@@ -149,7 +151,7 @@ GameFrameX Server は、C# .NET 10.0 で開発された高性能・クロスプ�
    ```
 
 6. **起動確認**
-   - ヘルスチェック: `http://localhost:28080/game/api/health`
+   - ヘルスチェック: `http://localhost:28080/health`（ライブネスプローブ: `/alive`）
    - コンソールログで起動成功を確認
 
 ---
@@ -188,6 +190,8 @@ GameFrameX はコマンドライン引数（`--Key=Value`）で設定を行い�
 | `OuterPort` | 外部通信用ポート | なし | `29100` |
 | `IsEnableTcp` | TCP サービスを有効化 | `true` | `true` |
 | `IsEnableUdp` | UDP サービスを有効化 | `false` | `true` |
+| `IsEnableKcp` | KCP サービスを有効化（設定ファイルのみ） | `false` | `true` |
+| `KcpPort` | KCP ポート（`0` で TCP ポートを共用） | `0` | `29120` |
 | `IsEnableWebSocket` | WebSocket を有効化 | `false` | `true` |
 | `WsPort` | WebSocket ポート | `8889` | `29300` |
 | `IsEnableHttp` | HTTP サービスを有効化 | `true` | `true` |
@@ -195,12 +199,18 @@ GameFrameX はコマンドライン引数（`--Key=Value`）で設定を行い�
 | `HttpsPort` | HTTPS サービスポート | なし | `443` |
 | `HttpUrl` | API ルートパス | `/game/api/` | `/game/api/` |
 | `HttpIsDevelopment` | HTTP 開発モード（Swagger を有効化） | `false` | `true` |
+| `IsEnableOnlineAdmin` | Online Runtime + 管理 API をプロセス内でホスト | `false` | `true` |
+| `OnlineAdminPort` | Online 管理 API リッスンポート | `28090` | `28090` |
+| `OnlineAdminApiPrefix` | Online 管理 API ルートプレフィックス | `online/admin` | `online/admin` |
+| `OnlineTenantId` | Online Runtime 認可テナント ID（スコープトリプル） | `0` | `1` |
+| `OnlineAppId` | Online Runtime 認可アプリ ID（スコープトリプル） | `0` | `1` |
 
 #### データベース設定
 
 | 設定項目 | 説明 | デフォルト | 例 |
 |:--------|:-----|:----------|:---|
-| `DataBaseUrl` | MongoDB 接続文字列 | なし | `mongodb://localhost:27017` |
+| `DatabaseProvider` | データベース Provider | `Mongo` | `PostgreSql` |
+| `DataBaseUrl` | データベース接続文字列 | なし | `mongodb://localhost:27017` |
 | `DataBaseName` | データベース名 | なし | `gameframex` |
 | `DataBasePassword` | データベースパスワード | なし | `your_password` |
 
@@ -477,13 +487,15 @@ internal sealed class PlayerLoginEventHandler : EventListener<PlayerComponentAge
 curl -X POST "http://localhost:28080/game/api/Reload?version=1.7.2"
 ```
 
+> 補足: `Reload` ハンドラには `[RequireHttpSignature]` が付与されており、リクエストは HTTP 署名検証を通過する必要があります。
+
 ---
 
 ### Docker デプロイ
 
 #### 単一インスタンスデプロイ
 
-`docker-compose.yml` を使用して MongoDB + Game + Social の完全環境を起動：
+`docker-compose.yml` を使用して MongoDB + Game の最小環境を起動します（Social は後日復旧予定）：
 
 ```bash
 # ビルドして起動
@@ -493,7 +505,7 @@ docker compose up -d --build
 docker compose ps
 
 # ログを確認
-docker compose logs -f game social
+docker compose logs -f game
 
 # 停止
 docker compose down
@@ -506,8 +518,15 @@ docker compose down
 | MongoDB | 27017 | 37017 | データベース |
 | Game TCP | 29100 | 39100 | ゲームサーバー |
 | Game HTTP | 28080 | 38080 | ゲームサーバー HTTP API |
-| Social TCP | 29400 | 39400 | ソーシャルサーバー |
-| Social HTTP | 28081 | 38081 | ソーシャルサーバー HTTP API |
+| Online Admin | 28090 | 28090 | Online プラットフォーム管理 API（下記参照） |
+
+#### Online プラットフォーム管理 API
+
+`IsEnableOnlineAdmin=true` の場合、Game プロセスは Online Runtime（インメモリストア上のアセット / セッション / マッチング / ソーシャル / LiveOps サービスを含むプロセス内機能ライブラリ）を組み立て、管理用 HTTP API を独立した Kestrel リスナーで公開します：
+
+- エンドポイント: `POST http://<server-host>:28090/online/admin/{action}`（全 29 の管理アクション。HTTP ステータスは常に 200、業務結果は内部エンベロープの `Code` で返却）
+- スコープトリプル: 各リクエストは `TenantId` / `AppId` / `ServerId` を携行し、認可された `OnlineTenantId` / `OnlineAppId` / `ServerId` と不一致の場合は 3002/3003/3004、トリプル欠落の場合は 3005 で拒否されます
+- GameFrameX Admin コンソールへのサーバー登録: エリアの `HttpManageUrl` を `http://<server-host>:28090` に設定します（`online/admin` プレフィックスとアクション名は Admin クライアント側のワイヤ契約に従って付加されます）
 
 #### マルチインスタンスデプロイ
 
@@ -592,19 +611,23 @@ BOT_COUNT=200 \
 TCP_PORT=49100 \
 LOGIN_URL=http://127.0.0.1:48080/game/api/ \
 DISCONNECT_AFTER_LOGIN_SECONDS=20 \
-RUN_SECONDS=300 \
+RUN_SECONDS=600 \
 ./scripts/multi/run-bots-rpc.sh
 ```
 
-オプション環境変数：
+利用可能な環境変数：
 
 | 変数 | 説明 | デフォルト |
 |:----|:-----|:---------|
-| `BOT_COUNT` | ボット数 | — |
+| `BOT_COUNT` | ボット数 | `100` |
+| `TCP_HOST` | TCP 接続ホスト | `127.0.0.1` |
 | `TCP_PORT` | TCP 接続ポート | `49100` |
 | `LOGIN_URL` | ログイン API URL | `http://127.0.0.1:48080/game/api/` |
-| `DISCONNECT_AFTER_LOGIN_SECONDS` | ログイン後切断遅延（秒） | `20` |
-| `RUN_SECONDS` | 総実行時間（秒） | `300` |
+| `SCENARIO` | ボットシナリオ | `login` |
+| `DISCONNECT_LOOP` | 切断/再接続サイクルを繰り返し | `true` |
+| `DISCONNECT_AFTER_LOGIN_SECONDS` | ログイン後切断遅延（秒） | `15` |
+| `CONNECT_STAGGER_MS` | ボット接続のずらし間隔（ミリ秒） | `10` |
+| `RUN_SECONDS` | 総実行時間（秒） | `180` |
 
 #### トラブルシューティングコマンド
 
@@ -627,7 +650,7 @@ docker compose -f docker-compose.multi.yml up -d --build
 
 | エンドポイント | 説明 |
 |:-------------|:-----|
-| `http://<host>:<HttpPort>/game/api/health` | ヘルスチェック |
+| `http://<host>:<HttpPort>/health` | ヘルスチェック（Aspire デフォルト。`/alive` ライブネスプローブも利用可能） |
 | `http://<host>:<MetricsPort>/metrics` | Prometheus メトリクス |
 
 #### メトリクスカテゴリ
@@ -656,18 +679,26 @@ dotnet test --logger "console;verbosity=detailed"
 
 #### テストカバレッジ
 
-テストプロジェクトは **xUnit** ベースで、以下のモジュールをカバーしています：
+テストスイートは **xUnit** ベースです — `Tests/GameFrameX.Tests` はフレームワーク層を、`Tests/GameFrameX.Hotfix.Tests` は Role 別のビジネスルールをカバーします：
 
 | テストディレクトリ | 説明 |
 |:----------------|:-----|
-| `Utility/` | 数学/固定小数点テスト、圧縮、乱数、ID 生成、シングルトン |
-| `NetWork/Kcp/` | KCP パイプラインフィルター、セッション管理、サーバー統合テスト |
-| `DataBase/` | MongoDB 接続・クエリテスト |
+| `StartUp/` | 起動オーケストレーション、マルチロール選択、All-in-One オプション、設定起動バリデーター、HTTP ルート登録 |
+| `Architecture/` | Roslyn アーキテクチャアナライザーテスト（レイヤリング規則、エージェントシーリング） |
+| `Core/` | Actor とセッション管理テスト（重複ログイン） |
+| `NetWork/` | SuperSocket KCP リッスン / 認証 / E2E テスト、HTTP・セッション認証ミドルウェアテスト |
+| `DataBase/` | MongoDB・PostgreSQL Provider テスト（クエリ、接続、マルチデータベース、Provider リゾルバー） |
+| `Discovery/` | サービスディスカバリーエンドポイント / ルーティング統合テスト（MongoDB・PostgreSQL） |
+| `RemoteMessaging/` | クロスプロセスメッセージングテスト（コーデック、トランスポート） |
+| `UnifiedMessaging/` | 統合クロスプロセスメッセージングテスト |
+| `Online/` | Online Runtime テスト（管理 API、マッチメイキング、リーダーボード、シーズン、トーナメント、LiveOps、プレゼンス、セッション、処罰、監査、...） |
+| `Topology/` | プロセストポロジ同型の等価性テスト |
+| `Proto/` | ServerRole メッセージドメインテスト |
 | `ProtoBuff/` | Protobuf シリアライズ・オブジェクトプールテスト |
 | `Localization/` | ローカライゼーションキー値解析テスト |
-| `RemoteMessaging/` | クロスプロセスメッセージングテスト |
-| `UnifiedMessaging/` | 統合クロスプロセスメッセージングテスト |
-| `StartUp/` | HTTP サーバールート登録テスト |
+| `Client/` | ボットクライアント実行オプション / トランスポートディスパッチテスト |
+| `Utility/` | 数学/固定小数点テスト、圧縮、乱数、ID 生成、シングルトン、設定 |
+| `GameFrameX.Hotfix.Tests/` | Role 別ビジネスルールテスト（Account / Login / Auth / Gateway / Chat / Mail / Friend / Team / Guild / Match / Room / Scene / World / Battle / Trade / Auction / Gm）＋イベントバインディングテスト |
 
 ---
 
@@ -704,7 +735,7 @@ dotnet test --logger "console;verbosity=detailed"
 ├─────────────────────────────────────────────────────────────────┤
 │                     データベース層                                │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │                    MongoDB                               │    │
+│  │             MongoDB (デフォルト) / PostgreSQL              │    │
 │  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -714,32 +745,65 @@ dotnet test --logger "console;verbosity=detailed"
 ### プロジェクト構成
 
 ```
-Server/
-├── GameFrameX.Launcher/              # アプリケーションエントリポイント
+GameFrameX.Server.Source/
+├── GameFrameX.Launcher/              # アプリケーションエントリポイント（Game + 18 個の標準 Role 起動エントリ）
 ├── GameFrameX.StartUp/               # 起動オーケストレーションと初期化
 ├── GameFrameX.Core/                  # コアフレームワーク（Actor システム、コンポーネント、イベント、ホット更新管理）
-├── GameFrameX.Apps/                  # 状態データ層（アカウント、プレイヤー、サーバーモジュール）— ホット更新不可
-├── GameFrameX.Hotfix/                # ビジネスロジック層（HTTP、プレイヤー、サーバーハンドラ）— ホット更新可能
+├── GameFrameX.Apps/                  # 状態データ層（Account、Player、Game、ServerRole モジュール）— ホット更新不可
+├── GameFrameX.Hotfix/                # ビジネスロジック層（HTTP、Player、サーバーハンドラ）— ホット更新可能
 ├── GameFrameX.Config/                # ゲーム設定テーブル（JSON 形式、LuBan 生成）
 ├── GameFrameX.Proto/                 # ProtoBuf プロトコル定義
 ├── GameFrameX.ProtoBuf.Net/          # ProtoBuf シリアライズ実装
-├── GameFrameX.NetWork/               # ネットワークコア（メッセージオブジェクト、センダー、WebSocket）
+├── GameFrameX.NetWork/               # ネットワークコア（TCP/UDP/KCP/WebSocket チャネル、メッセージオブジェクト、センダー）
 ├── GameFrameX.NetWork.Abstractions/  # ネットワークインターフェース（IMessage、IMessageHandler、メッセージマッピング）
 ├── GameFrameX.NetWork.HTTP/          # HTTP サーバー（Swagger、Kestrel、BaseHttpHandler）
-├── GameFrameX.NetWork.Kcp/           # KCP プロトコルサポート（UDP ベースの信頼性伝送）
-├── GameFrameX.NetWork.Message/       # メッセージパイプラインとコーデック
 ├── GameFrameX.NetWork.RemoteMessaging/ # クロスプロセスリモートメッセージ（サーキットブレーカー、リトライ、コンシステントハッシング）
-├── GameFrameX.DataBase/              # データベース抽象レイヤー
-├── GameFrameX.DataBase.Mongo/        # MongoDB 実装（ヘルスモニタリング、リトライ、バッチ操作）
+├── GameFrameX.Discovery/             # Aspire スタイルのサービスディスカバリー（services__{Role}__tcp__0 ブートストラップマップ）
+├── GameFrameX.DataBase/              # データベース抽象レイヤー（マルチ Provider レジストリ、GameDb クエリ/更新/削除）
+├── GameFrameX.DataBase.Mongo/        # MongoDB Provider（ヘルスモニタリング、リトライ、バッチ操作）
+├── GameFrameX.DataBase.PostgreSql/   # PostgreSQL Provider（Npgsql、MongoDB Provider と同等の耐障害性）
+├── GameFrameX.Online/                # Online プラットフォーム機能ライブラリ（マッチメイキング、リーダーボード、ソーシャル、シーズン、トーナメント、タイムライン、チャット監査、アセット、LiveOps、...）
+├── GameFrameX.Online.Runtime/        # プロセス内 Online Runtime ホスト + 管理 API
 ├── GameFrameX.Localization/          # ローカライゼーションシステム（Keys.*.cs + .resx リソースファイル）
-├── GameFrameX.Monitor/               # OpenTelemetry + Prometheus メトリクス統合
-├── GameFrameX.Utility/               # ユーティリティ（ログ、圧縮、オブジェクトプール、Mapster、Harmony）
-├── GameFrameX.Client/                # テストクライアント（TCP 接続）
+├── GameFrameX.Utility/               # ユーティリティ（設定、圧縮、乱数、スノーフレーク ID、オブジェクトプール、Mapster、Harmony）
+├── GameFrameX.Client/                # テストクライアント（TCP/KCP ボットストレスクライアント）
 ├── GameFrameX.Architecture.Analyzers/         # Roslyn アーキテクチャアナライザー
 ├── GameFrameX.Hotfix.WrapperGenerator/ # Roslyn ソースジェネレーター（ホット更新プロキシラッパークラス）
 └── Tests/
-    └── GameFrameX.Tests/             # xUnit テストスイート
+    ├── GameFrameX.Tests/             # xUnit テストスイート（フレームワーク層）
+    └── GameFrameX.Hotfix.Tests/      # xUnit テストスイート（Role 別ホットフィックスビジネスルール）
 ```
+
+---
+
+## プロセストポロジ同型
+
+サーバーは*プロセストポロジ同型*モデルをサポートします。同一のロールセットを、ロールごとに 1 プロセスで実行しても、単一の All-in-One プロセスで実行しても、ロールコードを変更せずに運用できます。
+
+### マルチロール起動
+
+- `--ServerType=Game,Social` — 登録済みの複数ロールを 1 プロセスで起動（優先順）。
+- `--AllInOne` — 登録済みの全ロールを 1 プロセスで起動。
+- `Configs/app_config.json` — 定義済みの各ロールごとに 1 セクションを同梱（全 19 セクション: Game、Social、その他 17 個の標準ロール）。各ロールは自身のセクションを解決し、プロセスレベルのフィールドはセクション間で一致している必要があります。
+
+起動時バリデーター（`ConfigStartupValidator`）は以下の場合にフェイルファスト（競合フィールドとそのセクションをすべて列挙）します：
+
+1. `--AllInOne` または複数指定の `--ServerType` で選択されたロールが `app_config.json` にセクションを持たない場合。
+2. 同一プロセス内の 2 つのロールが、有効かつ非ゼロの同一リッスンエンドポイントにバインドする場合 — エンドポイントはポートフィールドとトランスポート（TCP vs UDP）を横断して比較されるため、例えば `Game.InnerPort == Social.HttpPort` もフェイルファスト対象です。同一ロール内での `InnerPort`/`OuterPort` 共用は正当な形式です。
+3. プロセスレベルのフィールド（`SettingFieldLevel(ProcessLevel)`、例: `DataBaseUrl`）が選択されたセクション間で（ランタイム正規化ルール適用後も）異なる場合。共有カーネルが矛盾したプロセス設定を受け取ることはありません。
+4. コマンドラインで明示指定されたフィールドが、使用中のファイルセクションと異なる場合（ファイルセクションが唯一の真実の情報源。CLI のロールレベル値はセクションなしフォールバック形式でのみ適用）。「明示指定」の判定は生の引数トークンに基づくため、デフォルトと同じ値の指定（例: `--HttpPort=0`）も比較対象です。`ServerType`（セクションキー）と `IsAllInOne` / `IsSingleMode` スイッチは除外されます。
+
+シングルロールおよびデフォルトの起動コマンドの挙動は現状のままです（セクション欠落時はランチャーデフォルトにフォールバック）。
+
+### Docker Compose ファイル
+
+| ファイル | 用途 |
+|:--|:--|
+| `docker-compose.development.yml` | ローカル開発用: MongoDB サービス 1 つ（ホストポート `127.0.0.1:37017`、サンプルの `app_config.json` と一致） |
+| `docker-compose.multi.yml` | マルチインスタンストポロジ形式。`scripts/multi/generate-docker-compose-multi.py` により**生成**されます。各インスタンスには `GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId` と `services__{Role}__tcp__0` 静的ブートストラップマップが注入され、独自の `Configs/multi/{service}.json` セクション（`command` 引数と同一値）を `/app/Configs/app_config.json` としてマウント |
+| `docker-compose.multi.legacy.yml` | 従来の静的形式。移行期間中は保持 |
+
+トポロジを変更するには、ジェネレーターの `ROLES` 定義を編集し、`python3 scripts/multi/generate-docker-compose-multi.py` を再実行してください（冪等。`--check` はコミット済み compose ファイルとインスタンス別設定がジェネレーター出力と一致するか検証します）。認証なしの MongoDB サービスは `127.0.0.1` のみで公開されます。他ホストに公開する前に MongoDB 認証を有効化してください。
 
 ---
 
@@ -748,11 +812,12 @@ Server/
 | パッケージ | 説明 |
 |:--|:--|
 | `GameFrameX.Foundation.*` | ローカライズ、ログ、コマンドラインオプション、ORM 属性、ハッシュ、HTTP レスポンス正規化、ユーティリティ |
-| `GameFrameX.SuperSocket.Server` / `.ClientEngine` / `.Udp` / `.WebSocket.Server` | TCP、UDP、WebSocket ネットワーク伝送 |
+| `GameFrameX.SuperSocket.Server` / `.ClientEngine` / `.Udp` / `.Kcp` / `.WebSocket.Server` | TCP、UDP、KCP、WebSocket ネットワーク伝送 |
 | `MongoDB.Driver` | MongoDB 永続化ドライバー |
-| `Kcp` | UDP ベースの信頼性伝送 |
+| `Npgsql` | PostgreSQL 永続化ドライバー |
 | `OpenTelemetry.*` + `Grafana.OpenTelemetry` | メトリクス、分散トレーシング、ランタイム計装 |
-| `prometheus-net.AspNetCore` | Prometheus メトリクスのエクスポート |
+| `OpenTelemetry.Exporter.Prometheus.AspNetCore` | Prometheus `/metrics` スクレイピングエンドポイント |
+| `Microsoft.Extensions.ServiceDiscovery` | Aspire スタイルのサービスディスカバリー |
 | `Mapster` | オブジェクトマッピング |
 | `Lib.Harmony` | ランタイムメソッドパッチ |
 | `Quartz` | スケジュールタスク |
