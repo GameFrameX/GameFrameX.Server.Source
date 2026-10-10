@@ -1306,19 +1306,19 @@
   </data>
 
   <data name="StartUp.Kcp.ServerDisabled" xml:space="preserve">
-    <value>[TODO] StartUp.Kcp.ServerDisabled</value>
+    <value>KCP server is disabled for {0} on {1}:{2}. Skipping listener setup (opt-in via IsEnableKcp).</value>
   </data>
 
   <data name="StartUp.Kcp.StartingServer" xml:space="preserve">
-    <value>[TODO] StartUp.Kcp.StartingServer</value>
+    <value>Starting KCP server for {0} on {1}:{2}.</value>
   </data>
 
   <data name="StartUp.Kcp.StartupComplete" xml:space="preserve">
-    <value>[TODO] StartUp.Kcp.StartupComplete</value>
+    <value>KCP server for {0} started successfully on {1}:{2}.</value>
   </data>
 
   <data name="StartUp.Kcp.StartupFailed" xml:space="preserve">
-    <value>[TODO] StartUp.Kcp.StartupFailed</value>
+    <value>KCP server for {0} failed to start on {1}:{2}. Port unavailable or out of range.</value>
   </data>
 
     <data name="Database.PostgreSql.InitializedSuccessfully" xml:space="preserve">

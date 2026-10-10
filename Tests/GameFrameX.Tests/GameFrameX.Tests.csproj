@@ -49,6 +49,7 @@
       <ProjectReference Include="..\..\GameFrameX.Online\GameFrameX.Online.csproj" />
       <ProjectReference Include="..\..\GameFrameX.Online.Runtime\GameFrameX.Online.Runtime.csproj" />
       <ProjectReference Include="..\..\GameFrameX.Architecture.Analyzers\GameFrameX.Architecture.Analyzers.csproj" />
+      <ProjectReference Include="..\..\GameFrameX.Client\GameFrameX.Client.csproj" />
     </ItemGroup>
 
 </Project>

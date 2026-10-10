@@ -53,6 +53,7 @@ public sealed class BotClient
     }
 
     private readonly BotTcpClient m_TcpClient;
+    private readonly BotKcpClient m_KcpClient;
     private readonly string m_BotName;
     private readonly BotTcpClientEvent m_BotTcpClientEvent;
     private readonly BotRunOptions _options;
@@ -82,6 +83,27 @@ public sealed class BotClient
         m_BotTcpClientEvent.OnErrorCallback += ClientErrorCallback;
         m_BotTcpClientEvent.OnReceiveMsgCallback += ClientReceiveCallback;
         m_TcpClient = new BotTcpClient(m_BotTcpClientEvent, options.TcpHost, options.TcpPort);
+
+        // KCP 事件以局部变量对象初始化器装配（事件成员为属性），仅用于构造传参
+        var kcpClientEvent = new BotKcpClientEvent
+        {
+            OnConnectedCallback = ClientConnectedCallback,
+            OnClosedCallback = ClientClosedCallback,
+            OnErrorCallback = ClientErrorCallbackForKcp,
+            OnReceiveMsgCallback = ClientReceiveCallback,
+        };
+        m_KcpClient = new BotKcpClient(kcpClientEvent, options.KcpHost, options.KcpPort);
+    }
+
+    /// <summary>
+    /// 当前机器人使用的传输类型。默认 tcp，与历史行为一致。
+    /// </summary>
+    internal bool UseKcpTransport
+    {
+        get
+        {
+            return string.Equals(_options.Transport, BotTransport.Kcp, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     /// <summary>
@@ -93,7 +115,14 @@ public sealed class BotClient
         try
         {
             _connectStartMs = Environment.TickCount64;
-            await m_TcpClient.EntryAsync(cancellationToken);
+            if (UseKcpTransport)
+            {
+                await m_KcpClient.EntryAsync(cancellationToken);
+            }
+            else
+            {
+                await m_TcpClient.EntryAsync(cancellationToken);
+            }
         }
         catch (Exception e)
         {
@@ -169,6 +198,46 @@ public sealed class BotClient
     }
 
     /// <summary>
+    /// KCP 传输的错误回调。语义与 <see cref="ClientErrorCallback"/> 一致：容忍底层瞬态错误，由关闭回调兜底清理。
+    /// </summary>
+    /// <param name="error">底层传输抛出的异常</param>
+    private void ClientErrorCallbackForKcp(Exception error)
+    {
+        // 同 ClientErrorCallback：连接异常最终由 Closed 回调与 EntryAsync 的 try/catch 兜底。
+    }
+
+    /// <summary>
+    /// 按当前传输类型发送消息到服务端。
+    /// </summary>
+    /// <param name="message">待发送的消息对象</param>
+    private void SendToTransport(MessageObject message)
+    {
+        if (UseKcpTransport)
+        {
+            m_KcpClient.SendToServer(message);
+        }
+        else
+        {
+            m_TcpClient.SendToServer(message);
+        }
+    }
+
+    /// <summary>
+    /// 按当前传输类型主动断开连接。
+    /// </summary>
+    private void DisconnectTransport()
+    {
+        if (UseKcpTransport)
+        {
+            m_KcpClient.Disconnect();
+        }
+        else
+        {
+            m_TcpClient.Disconnect();
+        }
+    }
+
+    /// <summary>
     /// 客户端接收消息的回调
     /// </summary>
     /// <param name="outerMsg">接收到的消息</param>
@@ -199,7 +268,7 @@ public sealed class BotClient
                 Password = _options.LoginPassword,
                 Platform = "LoginPlatform.Custom",
             };
-            m_TcpClient.SendToServer(reqLogin);
+            SendToTransport(reqLogin);
         }
         catch (Exception e)
         {
@@ -225,7 +294,7 @@ public sealed class BotClient
         _authMs = Environment.TickCount64 - _authStartMs;
         _listStartMs = Environment.TickCount64;
         LogHelper.Info($"机器人-{m_BotName}账号验证成功,id:{msg.Id}");
-        m_TcpClient.SendToServer(new ReqPlayerList { Id = _accountId });
+        SendToTransport(new ReqPlayerList { Id = _accountId });
     }
 
     private void OnPlayerListSuccess(RespPlayerList msg)
@@ -243,7 +312,7 @@ public sealed class BotClient
         {
             LogHelper.Info($"机器人-{m_BotName}角色列表为空，开始创建角色。");
             _createStartMs = Environment.TickCount64;
-            m_TcpClient.SendToServer(new ReqPlayerCreate
+            SendToTransport(new ReqPlayerCreate
             {
                 Id = _accountId,
                 Name = m_BotName,
@@ -254,7 +323,7 @@ public sealed class BotClient
         var player = msg.PlayerList[0];
         LogHelper.Info($"角色列表 Id:{player.Id}-昵称:{player.Name}-等级:{player.Level}-角色状态:{player.State}");
         _loginStartMs = Environment.TickCount64;
-        m_TcpClient.SendToServer(new ReqPlayerLogin { Id = player.Id });
+        SendToTransport(new ReqPlayerLogin { Id = player.Id });
     }
 
     private void OnPlayerCreateSuccess(RespPlayerCreate msg)
@@ -270,7 +339,7 @@ public sealed class BotClient
         _createMs = Environment.TickCount64 - _createStartMs;
         LogHelper.Info($"创建角色 Id:{player.Id}-昵称:{player.Name}-等级:{player.Level}-角色状态:{player.State}");
         _loginStartMs = Environment.TickCount64;
-        m_TcpClient.SendToServer(new ReqPlayerLogin { Id = player.Id });
+        SendToTransport(new ReqPlayerLogin { Id = player.Id });
     }
 
     /// <summary>
@@ -323,7 +392,7 @@ public sealed class BotClient
 
         _friendScenarioStage = FriendScenarioStage.WaitAdd;
         LogHelper.Info($"机器人-{m_BotName}开始执行好友场景，目标玩家:{_friendTargetPlayerId}");
-        m_TcpClient.SendToServer(new ReqFriendByAdd { PlayerId = _friendTargetPlayerId });
+        SendToTransport(new ReqFriendByAdd { PlayerId = _friendTargetPlayerId });
     }
 
     private void OnFriendAddSuccess(RespFriendByAdd msg)
@@ -342,7 +411,7 @@ public sealed class BotClient
 
         _friendScenarioStage = FriendScenarioStage.WaitListAfterAdd;
         LogHelper.Info($"机器人-{m_BotName}好友场景-加好友成功，开始拉取好友列表。");
-        m_TcpClient.SendToServer(new ReqFriendList());
+        SendToTransport(new ReqFriendList());
     }
 
     private void OnDeleteFriendSuccess(RespDeleteFriend msg)
@@ -361,7 +430,7 @@ public sealed class BotClient
 
         _friendScenarioStage = FriendScenarioStage.WaitListAfterDelete;
         LogHelper.Info($"机器人-{m_BotName}好友场景-删好友成功，开始二次拉取好友列表。");
-        m_TcpClient.SendToServer(new ReqFriendList());
+        SendToTransport(new ReqFriendList());
     }
 
     private void OnFriendListSuccess(RespFriendList msg)
@@ -383,7 +452,7 @@ public sealed class BotClient
         {
             _friendScenarioStage = FriendScenarioStage.WaitDelete;
             LogHelper.Info($"机器人-{m_BotName}好友场景-首次列表成功，数量:{msg.Friends?.Count ?? 0}，开始删好友。");
-            m_TcpClient.SendToServer(new ReqDeleteFriend { PlayerId = _friendTargetPlayerId });
+            SendToTransport(new ReqDeleteFriend { PlayerId = _friendTargetPlayerId });
             return;
         }
 
@@ -429,7 +498,7 @@ public sealed class BotClient
             {
                 await Task.Delay(TimeSpan.FromSeconds(_options.DisconnectAfterLoginSeconds));
                 LogHelper.Info($"机器人-{m_BotName}主动断开连接，模拟离线。");
-                m_TcpClient.Disconnect();
+                DisconnectTransport();
             }
             finally
             {
