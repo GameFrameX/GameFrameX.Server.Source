@@ -1302,19 +1302,19 @@
   </data>
 
   <data name="StartUp.Kcp.ServerDisabled" xml:space="preserve">
-    <value>[待翻译] StartUp.Kcp.ServerDisabled</value>
+    <value>{0} KCP 服务未启用（{1}:{2}），跳过监听器装配（需 IsEnableKcp 显式开启）。</value>
   </data>
 
   <data name="StartUp.Kcp.StartingServer" xml:space="preserve">
-    <value>[待翻译] StartUp.Kcp.StartingServer</value>
+    <value>正在启动 {0} KCP 服务，监听 {1}:{2}。</value>
   </data>
 
   <data name="StartUp.Kcp.StartupComplete" xml:space="preserve">
-    <value>[待翻译] StartUp.Kcp.StartupComplete</value>
+    <value>{0} KCP 服务已成功启动，监听 {1}:{2}。</value>
   </data>
 
   <data name="StartUp.Kcp.StartupFailed" xml:space="preserve">
-    <value>[待翻译] StartUp.Kcp.StartupFailed</value>
+    <value>{0} KCP 服务启动失败（{1}:{2}），端口不可用或越界。</value>
   </data>
 
     <data name="Database.PostgreSql.InitializedSuccessfully" xml:space="preserve">

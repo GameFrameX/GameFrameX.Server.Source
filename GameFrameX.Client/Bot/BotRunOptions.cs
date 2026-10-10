@@ -40,10 +40,17 @@ public sealed class BotRunOptions
     /// </summary>
     private const string DefaultBotLoginSecret = "12312";
 
+    /// <summary>
+    /// 默认传输类型（TCP）。保持现有行为零变化。
+    /// </summary>
+    public const string DefaultTransport = BotTransport.Tcp;
+
     public int BotCount { get; init; } = 50;
     public string BotNamePrefix { get; init; } = "BotClient";
     public string TcpHost { get; init; } = "127.0.0.1";
     public int TcpPort { get; init; } = 49100;
+    public string KcpHost { get; init; } = "127.0.0.1";
+    public int KcpPort { get; init; } = 49120;
     public string LoginUrl { get; init; } = "http://127.0.0.1:48080/game/api/";
 
     /// <summary>
@@ -56,6 +63,11 @@ public sealed class BotRunOptions
     public int DisconnectAfterLoginSeconds { get; init; } = 15;
     public int RunSeconds { get; init; } = 0;
     public string Scenario { get; init; } = "login";
+
+    /// <summary>
+    /// 机器人使用的传输类型（<c>tcp</c> 或 <c>kcp</c>），默认 <c>tcp</c>。
+    /// </summary>
+    public string Transport { get; init; } = DefaultTransport;
 
     public static BotRunOptions Parse(string[] args)
     {
@@ -88,6 +100,8 @@ public sealed class BotRunOptions
             BotNamePrefix = ReadString(values, "bot-prefix", "BotClient"),
             TcpHost = ReadString(values, "tcp-host", "127.0.0.1"),
             TcpPort = ReadInt(values, "tcp-port", 49100),
+            KcpHost = ReadString(values, "kcp-host", "127.0.0.1"),
+            KcpPort = ReadInt(values, "kcp-port", 49120),
             LoginUrl = EnsureEndWithSlash(ReadString(values, "login-url", "http://127.0.0.1:48080/game/api/")),
             LoginPassword = ReadString(values, "login-password", DefaultBotLoginSecret),
             ConnectStaggerMilliseconds = ReadInt(values, "connect-stagger-ms", 20),
@@ -95,6 +109,7 @@ public sealed class BotRunOptions
             DisconnectAfterLoginSeconds = ReadInt(values, "disconnect-after-login-seconds", 15),
             RunSeconds = ReadInt(values, "run-seconds", 0),
             Scenario = ReadString(values, "scenario", "login"),
+            Transport = ReadTransport(values, "transport", DefaultTransport),
         };
     }
 
@@ -140,6 +155,24 @@ public sealed class BotRunOptions
         }
 
         return bool.TryParse(value, out var parsed) ? parsed : defaultValue;
+    }
+
+    /// <summary>
+    /// 读取传输类型。非法值显式抛 <see cref="ArgumentException"/>，不静默回退到默认值。
+    /// </summary>
+    private static string ReadTransport(IDictionary<string, string> values, string key, string defaultValue)
+    {
+        if (!values.TryGetValue(key, out var value))
+        {
+            return defaultValue;
+        }
+
+        if (BotTransport.IsValid(value))
+        {
+            return value.ToLowerInvariant();
+        }
+
+        throw new ArgumentException($"Unsupported --transport value '{value}'. Valid values: {string.Join(", ", BotTransport.SupportedValues)}.", key);
     }
 
     private static string EnsureEndWithSlash(string value)
