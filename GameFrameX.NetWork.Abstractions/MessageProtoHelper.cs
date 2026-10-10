@@ -59,7 +59,7 @@ public static class MessageProtoHelper
     /// <returns>消息ID，如果未找到返回 -1 / Message identifier, returns -1 if not found</returns>
     public static int GetMessageIdByType(INetworkMessage message)
     {
-        ArgumentNullException.ThrowIfNull(message, nameof(message));
+        ArgumentNullException.ThrowIfNull(message);
         var messageType = message.GetType();
         return GetMessageIdByType(messageType);
     }
@@ -106,7 +106,7 @@ public static class MessageProtoHelper
     /// <returns>消息操作类型 / Message operation type</returns>
     public static byte GetMessageOperationType(INetworkMessage message)
     {
-        ArgumentNullException.ThrowIfNull(message, nameof(message));
+        ArgumentNullException.ThrowIfNull(message);
         var messageType = message.GetType();
         return GetMessageOperationType(messageType);
     }
@@ -143,7 +143,7 @@ public static class MessageProtoHelper
     /// <param name="message">消息对象 / Message object</param>
     public static void SetMessageId(INetworkMessage message)
     {
-        ArgumentNullException.ThrowIfNull(message, nameof(message));
+        ArgumentNullException.ThrowIfNull(message);
         var messageType = message.GetType();
         message.SetMessageId(GetMessageIdByType(messageType));
     }
@@ -158,7 +158,7 @@ public static class MessageProtoHelper
     /// <returns>如果是心跳类型返回 <c>true</c>；否则返回 <c>false</c> / <c>true</c> if heartbeat type; otherwise <c>false</c></returns>
     public static bool IsHeartbeat(INetworkMessage message)
     {
-        ArgumentNullException.ThrowIfNull(message, nameof(message));
+        ArgumentNullException.ThrowIfNull(message);
         var messageType = message.GetType();
         return IsHeartbeat(messageType);
     }
@@ -186,7 +186,7 @@ public static class MessageProtoHelper
     /// <exception cref="ArgumentAlreadyException">如果 ID 重复将会触发异常 / Thrown when duplicate ID is found</exception>
     public static void Init(params Assembly[] assemblies)
     {
-        ArgumentNullException.ThrowIfNull(assemblies, nameof(assemblies));
+        ArgumentNullException.ThrowIfNull(assemblies);
 
         AllMessageDictionary.Clear();
         RequestDictionary.Clear();

@@ -48,8 +48,8 @@ public class MessageRpcMappingAttribute : Attribute
     /// <param name="responseMessage">返回消息类型 / Response message type</param>
     public MessageRpcMappingAttribute(IRequestMessage requestMessage, IResponseMessage responseMessage)
     {
-        ArgumentNullException.ThrowIfNull(requestMessage, nameof(requestMessage));
-        ArgumentNullException.ThrowIfNull(responseMessage, nameof(responseMessage));
+        ArgumentNullException.ThrowIfNull(requestMessage);
+        ArgumentNullException.ThrowIfNull(responseMessage);
         RequestMessage = requestMessage;
         ResponseMessage = responseMessage;
     }

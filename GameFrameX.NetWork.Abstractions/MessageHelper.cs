@@ -67,7 +67,7 @@ public sealed class MessageHelper
     /// <exception cref="ArgumentNullException">当 <paramref name="decoderHandler"/> 为 null 时抛出 / Thrown when <paramref name="decoderHandler"/> is null</exception>
     public static void SetMessageDecoderHandler(IMessageDecoderHandler decoderHandler, IMessageDecompressHandler decompressHandler)
     {
-        ArgumentNullException.ThrowIfNull(decoderHandler, nameof(decoderHandler));
+        ArgumentNullException.ThrowIfNull(decoderHandler);
         DecoderHandler = decoderHandler;
         DecoderHandler.SetDecompressionHandler(decompressHandler);
     }
@@ -83,7 +83,7 @@ public sealed class MessageHelper
     /// <exception cref="ArgumentNullException">当 <paramref name="encoderHandler"/> 为 null 时抛出 / Thrown when <paramref name="encoderHandler"/> is null</exception>
     public static void SetMessageEncoderHandler(IMessageEncoderHandler encoderHandler, IMessageCompressHandler compressHandler)
     {
-        ArgumentNullException.ThrowIfNull(encoderHandler, nameof(encoderHandler));
+        ArgumentNullException.ThrowIfNull(encoderHandler);
         EncoderHandler = encoderHandler;
         EncoderHandler.SetCompressionHandler(compressHandler);
     }
