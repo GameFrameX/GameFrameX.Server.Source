@@ -282,7 +282,10 @@ public sealed class PostgreSqlEndpointIntegrationTests : IDisposable
 
         var testDatabase = await CreateControlDatabaseAsync();
         var events = new RecordingInstanceEvents();
-        using (var watcher = new DiscoveryWatcher(new PostgreSqlHeartbeatStore(testDatabase.DataSource), TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(5)))
+        // 判活阈值放宽到 60s：本用例被测语义是 Active → Draining 跃迁与双视图保留，而非陈旧判定；
+        // 满套件并行下轮询循环可被饥饿数秒（且 last_heartbeat 用 DB now() 与进程时钟存在时钟域偏差），
+        // 5s 窗口会把预期跃迁误判成 fresh → stale（Offline + 双视图摘除），陈旧路径由专职用例覆盖。
+        using (var watcher = new DiscoveryWatcher(new PostgreSqlHeartbeatStore(testDatabase.DataSource), TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(60)))
         {
             watcher.Subscribe(events);
             await watcher.StartAsync();
