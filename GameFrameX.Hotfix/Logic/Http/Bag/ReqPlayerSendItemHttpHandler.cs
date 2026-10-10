@@ -29,7 +29,7 @@
 
 
 using GameFrameX.Apps.Common.EventData;
-using GameFrameX.Apps.Common.Session;
+using GameFrameX.Core.Session;
 using GameFrameX.Apps.Player.Bag.Entity;
 using GameFrameX.Hotfix.Logic.Player.Bag;
 using GameFrameX.NetWork.RemoteMessaging.Unified;
@@ -50,7 +50,7 @@ public sealed class ReqPlayerSendItemHttpHandler : BaseHttpHandler
     public override async Task<string> Action(HttpActionContext context)
     {
         var sendItemRequest = (ReqPlayerSendItemRequest)context.Request;
-        var playerSession = SessionManager.GetByRoleId(sendItemRequest.RoleId);
+        var playerSession = PlayerSessionManager.Instance.GetByPlayerId(sendItemRequest.RoleId);
         Dictionary<int, long> itemDic = new Dictionary<int, long>();
 
         var tbItemConfig = ConfigComponent.Instance.GetConfig<TbItemConfig>();

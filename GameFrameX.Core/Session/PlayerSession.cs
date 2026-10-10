@@ -18,7 +18,7 @@
 //   本项目组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
-//   GitHub Repository: https://github.com/GameFrameX
+//   GitHub Repository:  https://github.com/GameFrameX
 //   Gitee  仓库：https://gitee.com/GameFrameX
 //   Gitee Repository:  https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
@@ -27,18 +27,24 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using System.Text.Json.Serialization;
 using GameFrameX.Foundation.Utility;
+using GameFrameX.NetWork.Abstractions;
 
-namespace GameFrameX.Apps.Common.Session;
+namespace GameFrameX.Core.Session;
 
-public sealed class Session
+/// <summary>
+/// 玩家运行时会话。承载单个玩家连接的会话标识、玩家绑定与网络通道
+/// （原 <c>GameFrameX.Apps.Common.Session.Session</c>，随 C192 下沉 Core 并更名 PlayerSession，避免与他系统 Session 族重名）。
+/// </summary>
+public sealed class PlayerSession : IPlayerSession
 {
     /// <summary>
     /// 初始化
     /// </summary>
     /// <param name="sessionId">连接会话ID</param>
     /// <param name="netWorkChannel">网络渠道对象</param>
-    public Session(string sessionId, INetWorkChannel netWorkChannel)
+    public PlayerSession(string sessionId, INetWorkChannel netWorkChannel)
     {
         WorkChannel = netWorkChannel;
         SessionId = sessionId;
@@ -94,7 +100,7 @@ public sealed class Session
     /// </summary>
     /// <param name="messageObject">消息对象</param>
     /// <param name="errorCode">消息错误码</param>
-    public async Task WriteAsync(MessageObject messageObject, int errorCode = 0)
+    public async Task WriteAsync(INetworkMessage messageObject, int errorCode = 0)
     {
         if (WorkChannel != null)
         {

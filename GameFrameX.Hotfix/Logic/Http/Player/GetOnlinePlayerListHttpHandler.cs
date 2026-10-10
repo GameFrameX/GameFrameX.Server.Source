@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 
-using GameFrameX.Apps.Common.Session;
+using GameFrameX.Core.Session;
 
 namespace GameFrameX.Hotfix.Logic.Http.Player;
 
@@ -50,7 +50,7 @@ public sealed class GetOnlinePlayerListHttpHandler : BaseHttpHandler
     public override Task<string> Action(HttpActionContext context)
     {
         GetOnlinePlayerListRequest parameters = (GetOnlinePlayerListRequest)context.Request;
-        var response = SessionManager.GetPageList(parameters.PageSize, parameters.PageIndex);
+        var response = PlayerSessionManager.Instance.GetPageList(parameters.PageSize, parameters.PageIndex);
         var res = HttpJsonResultData<string>.SuccessString("当前在线玩家", JsonHelper.Serialize(response));
         return Task.FromResult(res);
     }
@@ -58,7 +58,7 @@ public sealed class GetOnlinePlayerListHttpHandler : BaseHttpHandler
 
 public sealed class GetOnlinePlayerListResponse : HttpMessageResponseBase
 {
-    [Description("当前在线玩家列表")] public List<Session> List { get; set; }
+    [Description("当前在线玩家列表")] public List<PlayerSession> List { get; set; }
 }
 
 public sealed class GetOnlinePlayerListRequest : HttpMessageRequestBase

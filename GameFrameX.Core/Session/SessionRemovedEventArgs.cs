@@ -2,8 +2,8 @@
 //   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
 //   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
 //   均受中华人民共和国及相关国际法律法规保护。
-//   are protected by the laws of the People's Republic of China and related international regulations.
-//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应法律法规与开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
 //   This project is licensed solely under the Apache License 2.0,
@@ -12,7 +12,7 @@
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
 //   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
 //   侵犯他人合法权益等法律法规所禁止的行为！
-//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   or infringe upon the legal rights and interests of others, as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
 //   Any legal disputes and liabilities arising from secondary development based on this project
 //   本项目组织与贡献者概不承担。
@@ -27,32 +27,17 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-using GameFrameX.Apps.Common.EventData;
-using GameFrameX.Core.Session;
 using GameFrameX.Core.Abstractions.Events;
 
-namespace GameFrameX.Hotfix.Logic.Player.Attribute;
+namespace GameFrameX.Core.Session;
 
 /// <summary>
-/// 监听玩家最终属性变化，向在线玩家 session 推送增量同步消息。
+/// 玩家会话被移除（顶号/踢下线/断开）事件参数。
 /// </summary>
-[Event(typeof(AttributeChangedEventArgs))]
-internal sealed class PlayerAttributeChangedEventListener : EventListener<PlayerAttributeComponentAgent>
+/// <remarks>
+/// 无业务载荷事件的空标记类，迁移自原会话移除事件（原枚举成员 SessionRemove = 1000，已随 C193 类型键控改造退役），
+/// 事件绑定键即本类型本身。C193 创建于 <c>GameFrameX.Apps.Common.EventData</c>，随 C192 会话下沉迁入 Core/Session。
+/// </remarks>
+public sealed class SessionRemovedEventArgs : GameEventArgs
 {
-    protected override async Task HandleEvent(PlayerAttributeComponentAgent agent, GameEventArgs gameEventArgs)
-    {
-        if (agent == null || !(gameEventArgs is AttributeChangedEventArgs args))
-        {
-            return;
-        }
-
-        var session = PlayerSessionManager.Instance.GetByPlayerId(args.PlayerId);
-        if (session == null)
-        {
-            return;
-        }
-
-        await session.WriteAsync(PlayerAttributeSyncBuilder.BuildChanged(args.AttributeType, args.NewValue));
-    }
 }

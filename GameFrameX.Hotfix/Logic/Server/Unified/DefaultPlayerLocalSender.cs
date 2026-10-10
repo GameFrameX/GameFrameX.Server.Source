@@ -27,31 +27,31 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Apps.Common.Session;
+using GameFrameX.Core.Session;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.NetWork.RemoteMessaging.Unified;
 
 namespace GameFrameX.Hotfix.Logic.Server.Unified;
 
 /// <summary>
-/// 玩家本服发送器默认实现。通过 SessionManager 投递消息给本服在线玩家。
+/// 玩家本服发送器默认实现。通过 PlayerSessionManager 投递消息给本服在线玩家。
 /// </summary>
 /// <remarks>
-/// Default implementation of player local sender. Delivers messages to online players via SessionManager.
+/// Default implementation of player local sender. Delivers messages to online players via PlayerSessionManager.
 /// </remarks>
 public sealed class DefaultPlayerLocalSender : IPlayerLocalSender
 {
     /// <summary>
-    /// 检查玩家是否在本服在线。通过 SessionManager 查找玩家会话，仅当会话存在且工作通道不为空时视为在线。
+    /// 检查玩家是否在本服在线。通过 PlayerSessionManager 查找玩家会话，仅当会话存在且工作通道不为空时视为在线。
     /// </summary>
     /// <remarks>
-    /// Checks whether the player is online on the local server. Looks up the player session via SessionManager and treats the player as online only when the session exists and its work channel is not null.
+    /// Checks whether the player is online on the local server. Looks up the player session via PlayerSessionManager and treats the player as online only when the session exists and its work channel is not null.
     /// </remarks>
     /// <param name="playerId">玩家ID / Player ID</param>
     /// <returns>是否在线 / Whether online</returns>
     public bool IsPlayerOnline(long playerId)
     {
-        var session = SessionManager.GetByRoleId(playerId);
+        var session = PlayerSessionManager.Instance.GetByPlayerId(playerId);
         return session != null && session.WorkChannel != null;
     }
 
@@ -66,7 +66,7 @@ public sealed class DefaultPlayerLocalSender : IPlayerLocalSender
     /// <returns>是否发送成功 / Whether the send was successful</returns>
     public async Task<bool> SendToLocalPlayerAsync(long playerId, MessageObject message)
     {
-        var session = SessionManager.GetByRoleId(playerId);
+        var session = PlayerSessionManager.Instance.GetByPlayerId(playerId);
         if (session == null)
         {
             return false;

@@ -27,7 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Apps.Common.Session;
+using GameFrameX.Core.Session;
 using GameFrameX.NetWork.RemoteMessaging.Unified;
 using GameFrameX.Utility.Setting;
 
@@ -35,28 +35,28 @@ namespace GameFrameX.Hotfix.Logic.Server.Unified;
 
 /// <summary>
 /// 玩家路由解析器默认实现。
-/// 当前基于本地 SessionManager 判断在线状态，结合服务配置判断归属。
+/// 当前基于本地 PlayerSessionManager 判断在线状态，结合服务配置判断归属。
 /// 后续可对接 Redis / DB / PlayerCenter 服务。
 /// </summary>
 /// <remarks>
 /// Default implementation of player route resolver.
-/// Currently uses local SessionManager for online status and service configuration for routing.
+/// Currently uses local PlayerSessionManager for online status and service configuration for routing.
 /// Can be integrated with Redis / DB / PlayerCenter service in the future.
 /// </remarks>
 public sealed class DefaultPlayerRouteResolver : IPlayerRouteResolver
 {
     /// <summary>
-    /// 解析玩家路由信息。优先按本服 SessionManager 会话命中，服务类型与 ID 取自全局配置；未命中时回退到 SessionManager 内存路由表，按快照返回在线或离线；两者均未命中时默认返回离线。
+    /// 解析玩家路由信息。优先按本服 PlayerSessionManager 会话命中，服务类型与 ID 取自全局配置；未命中时回退到 PlayerSessionManager 内存路由表，按快照返回在线或离线；两者均未命中时默认返回离线。
     /// </summary>
     /// <remarks>
-    /// Resolves player route information. First checks the local SessionManager session with server type and id taken from global settings; when missing, falls back to the SessionManager in-memory route table and returns online or offline based on the snapshot; returns offline by default when neither hits.
+    /// Resolves player route information. First checks the local PlayerSessionManager session with server type and id taken from global settings; when missing, falls back to the PlayerSessionManager in-memory route table and returns online or offline based on the snapshot; returns offline by default when neither hits.
     /// </remarks>
     /// <param name="playerId">玩家ID / Player ID</param>
     /// <returns>玩家路由信息，本实现始终返回非 null，未命中时为离线信息 / Player route info; this implementation never returns null and yields offline info when missing</returns>
     public Task<PlayerRouteInfo> ResolveAsync(long playerId)
     {
         // 检查本服是否有该玩家的 session
-        var session = SessionManager.GetByRoleId(playerId);
+        var session = PlayerSessionManager.Instance.GetByPlayerId(playerId);
         if (session != null)
         {
             var serverType = GlobalSettings.CurrentSetting?.ServerType ?? GameServerConst.Game.Name;
@@ -65,8 +65,8 @@ public sealed class DefaultPlayerRouteResolver : IPlayerRouteResolver
             return Task.FromResult(PlayerRouteInfo.Online(serverType, serverId));
         }
 
-        // 回退到 SessionManager 内存路由（仅内存，不依赖外部存储）
-        if (SessionManager.TryGetPlayerRoute(playerId, out var snapshot))
+        // 回退到 PlayerSessionManager 内存路由（仅内存，不依赖外部存储）
+        if (PlayerSessionManager.Instance.TryGetPlayerRoute(playerId, out var snapshot))
         {
             if (snapshot.IsOnline)
             {

@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 
-using GameFrameX.Apps.Common.Session;
+using GameFrameX.Core.Session;
 
 namespace GameFrameX.Hotfix.Logic.Http.Player;
 
@@ -49,7 +49,7 @@ public sealed class KickOffLineByUserIdPlayerHttpHandler : BaseHttpHandler
     public override Task<string> Action(HttpActionContext context)
     {
         var kickOffRequest = (KickOffLineByUserIdPlayerRequest)context.Request;
-        SessionManager.KickOffLineByUserId(kickOffRequest.RoleId);
+        PlayerSessionManager.Instance.KickOffLineByPlayerId(kickOffRequest.RoleId);
         return Task.FromResult(HttpJsonResultData<string>.SuccessString());
     }
 }

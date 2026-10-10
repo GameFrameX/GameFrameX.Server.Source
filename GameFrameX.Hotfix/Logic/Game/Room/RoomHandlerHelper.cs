@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 
-using GameFrameX.Apps.Common.Session;
+using GameFrameX.Core.Session;
 
 namespace GameFrameX.Hotfix.Logic.Game.Room;
 
@@ -42,7 +42,7 @@ internal static class RoomHandlerHelper
             return 0;
         }
 
-        var session = SessionManager.Get(sessionId);
+        var session = PlayerSessionManager.Instance.Get(sessionId);
         return session?.PlayerId ?? 0;
     }
 }

@@ -30,7 +30,7 @@
 
 using System;
 using System.Collections.Generic;
-using GameFrameX.Apps.Common.Session;
+using GameFrameX.Core.Session;
 using GameFrameX.Apps.Player.Mail;
 using GameFrameX.Apps.Player.Mail.Component;
 using GameFrameX.Apps.Player.Mail.Entity;
@@ -585,7 +585,7 @@ public class MailComponentAgent : StateComponentAgent<MailComponent, MailBoxStat
             return;
         }
 
-        var channel = SessionManager.GetByRoleId(ActorId)?.WorkChannel;
+        var channel = PlayerSessionManager.Instance.GetByPlayerId(ActorId)?.WorkChannel;
         if (channel == null)
         {
             return;

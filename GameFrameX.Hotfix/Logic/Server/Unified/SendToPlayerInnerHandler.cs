@@ -27,7 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Apps.Common.Session;
+using GameFrameX.Core.Session;
 using GameFrameX.Core.BaseHandler;
 using GameFrameX.Hotfix.Logic.Server;
 using GameFrameX.NetWork.RemoteMessaging.Unified;
@@ -57,7 +57,7 @@ internal sealed class SendToPlayerInnerHandler : PlayerRpcComponentHandler<Serve
             return;
         }
 
-        var session = SessionManager.GetByRoleId(request.TargetPlayerId);
+        var session = PlayerSessionManager.Instance.GetByPlayerId(request.TargetPlayerId);
         if (session == null)
         {
             response.Success = false;

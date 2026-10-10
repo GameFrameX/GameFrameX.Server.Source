@@ -27,8 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
-using GameFrameX.Apps.Common.EventData;
+using GameFrameX.Core.Session;
 using GameFrameX.Core.Abstractions.Events;
 
 namespace GameFrameX.Hotfix.Logic.Player.Login;

@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 
-using GameFrameX.Apps.Common.Session;
+using GameFrameX.Core.Session;
 
 namespace GameFrameX.Hotfix.Logic.Http.Player;
 
@@ -50,7 +50,7 @@ public sealed class GetOnlinePlayerHttpHandler : BaseHttpHandler
     {
         var response = new GetOnlinePlayerResponse
         {
-            Count = SessionManager.Count(),
+            Count = PlayerSessionManager.Instance.Count(),
         };
         var res = HttpJsonResultData<string>.SuccessString($"当前在线人数:{response.Count}", JsonHelper.Serialize(response));
         return Task.FromResult(res);

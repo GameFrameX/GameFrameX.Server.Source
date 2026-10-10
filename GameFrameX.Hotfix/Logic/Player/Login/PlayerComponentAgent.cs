@@ -28,8 +28,9 @@
 //  ==========================================================================================
 
 
-using GameFrameX.Apps.Common.Session;
+using GameFrameX.Core.Session;
 using GameFrameX.Apps.Common.EventData;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Apps.Player.Player.Component;
 using GameFrameX.Apps.Player.Player.Entity;
 using GameFrameX.Hotfix.Logic.Game.Room;
@@ -64,7 +65,7 @@ public class PlayerComponentAgent : StateComponentAgent<PlayerComponent, PlayerS
     public async Task OnPlayerLogin(INetWorkChannel workChannel, PlayerState playerState, RespPlayerLogin response)
     {
         // 更新连接会话数据
-        await SessionManager.UpdateSession(workChannel.GameAppSession.SessionId, playerState.Id, playerState.Id.ToString());
+        await PlayerSessionManager.Instance.UpdateSession(workChannel.GameAppSession.SessionId, playerState.Id, playerState.Id.ToString(), NotifyDuplicateLoginAsync);
         response.Code = playerState.State;
         response.CreateTime = playerState.CreatedTime;
         response.PlayerInfo = new PlayerInfo
@@ -93,5 +94,21 @@ public class PlayerComponentAgent : StateComponentAgent<PlayerComponent, PlayerS
         await workChannel.WriteAsync(attributeComponentAgent.BuildSyncSnapshot());
         var mailAgent = await ActorManager.GetComponentAgent<MailComponentAgent>(playerState.Id);
         await mailAgent.SyncAsync();
+    }
+
+    /// <summary>
+    /// 顶号通知器：向被顶掉的旧会话发送"账号已在其他设备登录"提示（RespPrompt Type=5，本地化文案）。
+    /// 顶号编排（通知 → 清数据 → 断开 → 移除）封装在 PlayerSessionManager 内，通知器须在 Close 前内联 await，
+    /// RespPrompt 属游戏协议（Proto 在 Core 之上），故由本调用方注入构造逻辑。
+    /// </summary>
+    /// <param name="oldSession">被顶掉的旧会话</param>
+    private static Task NotifyDuplicateLoginAsync(IPlayerSession oldSession)
+    {
+        var msg = new RespPrompt
+        {
+            Type = 5,
+            Content = LocalizationService.GetString(Localization.Keys.Apps.SessionManager.AccountAlreadyLoggedIn),
+        };
+        return oldSession.WriteAsync(msg);
     }
 }

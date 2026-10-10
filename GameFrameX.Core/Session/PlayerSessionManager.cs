@@ -18,7 +18,7 @@
 //   本项目组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
-//   GitHub Repository: https://github.com/GameFrameX
+//   GitHub Repository:  https://github.com/GameFrameX
 //   Gitee  仓库：https://gitee.com/GameFrameX
 //   Gitee Repository:  https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
@@ -28,52 +28,64 @@
 //  ==========================================================================================
 
 using System.Collections.Concurrent;
-using System.Linq;
-using System.Threading.Tasks;
-using GameFrameX.Apps.Common.EventData;
 using GameFrameX.Core.Actors;
 using GameFrameX.Core.Events;
-using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Discovery.Routing;
+using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.NetWork.Abstractions;
-using GameFrameX.Discovery.Routing;
 using GameFrameX.Utility.Setting;
 
-namespace GameFrameX.Apps.Common.Session;
+namespace GameFrameX.Core.Session;
 
 /// <summary>
-/// 管理玩家session，一个玩家一个，下线之后移除，顶号之后释放之前的channel，替换channel
+/// 管理玩家运行时会话：一个玩家一个，下线之后移除，顶号之后释放之前的channel，替换channel。
+/// 原 <c>GameFrameX.Apps.Common.Session.SessionManager</c>，随 C192 下沉 Core，由静态类改为单例实现 <see cref="IPlayerSessionManager"/>，
+/// 并更名 PlayerSessionManager（避免与他系统 Session 管理器族重名）。
 /// </summary>
-public static class SessionManager
+public sealed class PlayerSessionManager : IPlayerSessionManager
 {
-    private static readonly ConcurrentDictionary<string, Session> SessionMap = new();
-    private static readonly ConcurrentDictionary<long, SessionRouteSnapshot> PlayerRouteMap = new();
+    /// <summary>
+    /// 全局单例入口。获取路径为 <c>PlayerSessionManager.Instance</c>，引用面一律按 <see cref="IPlayerSessionManager"/> 接口
+    /// （<see cref="PlayerSessionFastPathAdapter"/> 单例先例同款：私有构造 + <c>static readonly</c> 实例）。
+    /// </summary>
+    public static readonly IPlayerSessionManager Instance = new PlayerSessionManager();
+
+    private PlayerSessionManager()
+    {
+    }
+
+    private readonly ConcurrentDictionary<string, IPlayerSession> SessionMap = new();
+    private readonly ConcurrentDictionary<long, SessionRouteSnapshot> PlayerRouteMap = new();
 
     /// <summary>
     /// 玩家路由外发同步目标（控制库写入钩子）。
     /// </summary>
     /// <remarks>
     /// The outbound player-route sync target (control-database write hook). Wired by
-    /// <see cref="MongoPlayerRouteResolverBootstrap"/> once the control database
+    /// <see>
+    ///     <cref>MongoPlayerRouteResolverBootstrap</cref>
+    /// </see>
+    /// once the control database
     /// is registered; default is <see cref="NullPlayerRouteSyncTarget.Instance"/>
     /// so the in-process-only launch flow keeps working with zero side effects.
     /// Callers must catch and swallow any exception from the hook — the local
     /// <see cref="PlayerRouteMap"/> stays the single source of truth for the
     /// process and a failed Mongo write is recovered on the next SetOnline.
     /// </remarks>
-    public static IPlayerRouteSyncTarget PlayerRouteSyncTarget
+    public IPlayerRouteSyncTarget PlayerRouteSyncTarget
     {
         get { return _playerRouteSyncTarget; }
         set { _playerRouteSyncTarget = value ?? NullPlayerRouteSyncTarget.Instance; }
     }
 
-    private static IPlayerRouteSyncTarget _playerRouteSyncTarget = NullPlayerRouteSyncTarget.Instance;
+    private IPlayerRouteSyncTarget _playerRouteSyncTarget = NullPlayerRouteSyncTarget.Instance;
 
     /// <summary>
     /// 获取当前在线玩家的数量。
     /// </summary>
     /// <returns>当前在线玩家的数量。</returns>
-    public static int Count()
+    public int Count()
     {
         return SessionMap.Count;
     }
@@ -84,23 +96,23 @@ public static class SessionManager
     /// <param name="pageSize">每页的玩家数量。</param>
     /// <param name="pageIndex">当前页的索引，从0开始。</param>
     /// <returns>指定页的玩家会话列表。</returns>
-    public static List<Session> GetPageList(int pageSize, int pageIndex)
+    public List<IPlayerSession> GetPageList(int pageSize, int pageIndex)
     {
         var result = SessionMap.Values.OrderBy(m => m.CreateTime)
-                               .Where(m => ActorManager.HasActor(m.PlayerId))
-                               .Skip(pageIndex * pageSize)
-                               .Take(pageSize)
-                               .ToList();
+                              .Where(m => ActorManager.HasActor(m.PlayerId))
+                              .Skip(pageIndex * pageSize)
+                              .Take(pageSize)
+                              .ToList();
         return result;
     }
 
     /// <summary>
-    /// 踢掉指定角色ID的玩家，移除其会话。
+    /// 按玩家ID踢下线，移除其会话。
     /// </summary>
-    /// <param name="roleId">要踢掉的玩家的角色ID。</param>
-    public static void KickOffLineByUserId(long roleId)
+    /// <param name="playerId">要踢掉的玩家ID。</param>
+    public void KickOffLineByPlayerId(long playerId)
     {
-        var roleSession = Get(m => m.PlayerId == roleId);
+        var roleSession = Get(m => m.PlayerId == playerId);
         if (roleSession != null)
         {
             if (SessionMap.TryRemove(roleSession.SessionId, out var value) && ActorManager.HasActor(roleSession.PlayerId))
@@ -113,14 +125,14 @@ public static class SessionManager
     }
 
     /// <summary>
-    /// 根据角色ID获取对应的会话对象。
+    /// 根据玩家ID获取对应的会话对象。
     /// 会话对象必须已经存在才会返回。
     /// </summary>
-    /// <param name="roleId">角色ID。</param>
+    /// <param name="playerId">玩家ID。</param>
     /// <returns>对应的会话对象，如果不存在则返回null。</returns>
-    public static Session GetByRoleId(long roleId)
+    public IPlayerSession GetByPlayerId(long playerId)
     {
-        var roleSession = Get(m => m.PlayerId == roleId);
+        var roleSession = Get(m => m.PlayerId == playerId);
         if (roleSession != null && ActorManager.HasActor(roleSession.PlayerId))
         {
             return roleSession;
@@ -134,7 +146,7 @@ public static class SessionManager
     /// </summary>
     /// <param name="sessionId">会话ID。</param>
     /// <returns>对应的会话对象，如果不存在则返回null。</returns>
-    public static Session Get(string sessionId)
+    public IPlayerSession Get(string sessionId)
     {
         SessionMap.TryGetValue(sessionId, out var value);
         return value;
@@ -145,7 +157,7 @@ public static class SessionManager
     /// </summary>
     /// <param name="predicate">查询条件的委托。</param>
     /// <returns>符合条件的会话对象，如果不存在则返回null。</returns>
-    public static Session Get(Func<Session, bool> predicate)
+    public IPlayerSession Get(Func<IPlayerSession, bool> predicate)
     {
         return SessionMap.Values.FirstOrDefault(predicate);
     }
@@ -155,7 +167,7 @@ public static class SessionManager
     /// </summary>
     /// <param name="predicate">查询条件的委托。</param>
     /// <returns>符合条件的会话对象列表。</returns>
-    public static List<Session> GetList(Func<Session, bool> predicate)
+    public List<IPlayerSession> GetList(Func<IPlayerSession, bool> predicate)
     {
         return SessionMap.Values.Where(predicate).ToList();
     }
@@ -165,7 +177,7 @@ public static class SessionManager
     /// </summary>
     /// <param name="sessionId">要移除的会话ID。</param>
     /// <returns>被移除的会话对象，如果不存在则返回null。</returns>
-    public static Session Remove(string sessionId)
+    public IPlayerSession Remove(string sessionId)
     {
         if (SessionMap.TryRemove(sessionId, out var value) && ActorManager.HasActor(value.PlayerId))
         {
@@ -184,7 +196,7 @@ public static class SessionManager
     /// 移除所有在线玩家的会话。
     /// </summary>
     /// <returns>一个表示异步操作的任务。</returns>
-    public static Task RemoveAll()
+    public Task RemoveAll()
     {
         foreach (var session in SessionMap.Values)
         {
@@ -208,7 +220,7 @@ public static class SessionManager
     /// </summary>
     /// <param name="sessionId">会话ID。</param>
     /// <returns>对应的网络连接通道，如果不存在则返回null。</returns>
-    public static INetWorkChannel GetChannel(string sessionId)
+    public INetWorkChannel GetChannel(string sessionId)
     {
         SessionMap.TryGetValue(sessionId, out var session);
         return session?.WorkChannel;
@@ -218,7 +230,7 @@ public static class SessionManager
     /// 添加新的连接会话。
     /// </summary>
     /// <param name="session">要添加的会话对象。</param>
-    public static void Add(Session session)
+    public void Add(IPlayerSession session)
     {
         session.WorkChannel.SetData(GlobalConst.SessionIdKey, session.SessionId);
         SessionMap[session.SessionId] = session;
@@ -229,26 +241,25 @@ public static class SessionManager
     }
 
     /// <summary>
-    /// 更新会话，处理角色ID和签名的更新。
-    /// 如果角色ID已在其他设备上登录，则会通知旧会话并关闭其连接。
+    /// 更新会话，处理玩家ID和签名的更新。
+    /// 如果玩家ID已在其他设备上登录，则会通知旧会话并关闭其连接。
     /// </summary>
     /// <param name="sessionId">会话ID，用于标识当前会话</param>
-    /// <param name="roleId">角色ID，表示当前会话所关联的角色</param>
+    /// <param name="playerId">玩家ID，表示当前会话所关联的玩家</param>
     /// <param name="sign">签名，用于验证会话的唯一性</param>
-    public static async Task UpdateSession(string sessionId, long roleId, string sign)
+    /// <param name="duplicateLoginNotifier">
+    /// 顶号通知器：向旧会话发送"账号已在其他设备登录"提示。通知必须在 Close 之前内联 await——
+    /// 事件派发（Tell 入队）与 Close 存在竞态，异步入队可能晚于断连导致通知丢失；
+    /// 顶号提示 RespPrompt 属游戏协议（Proto 在 Core 之上），故由调用方注入构造逻辑。必填参数使漏注入成为编译错误。
+    /// </param>
+    public async Task UpdateSession(string sessionId, long playerId, string sign, Func<IPlayerSession, Task> duplicateLoginNotifier)
     {
-        // 获取与角色ID关联的旧会话
-        var oldSession = GetByRoleId(roleId);
+        // 获取与玩家ID关联的旧会话
+        var oldSession = GetByPlayerId(playerId);
         if (oldSession != null)
         {
-            // 创建提示消息，通知用户其账号已在其他设备上登录
-            var msg = new RespPrompt
-            {
-                Type = 5,
-                Content = LocalizationService.GetString(Localization.Keys.Apps.SessionManager.AccountAlreadyLoggedIn),
-            };
-            // 发送消息给旧会话
-            await oldSession.WriteAsync(msg);
+            // 内联 await 顶号通知（须先于 Close，理由见参数注释）
+            await duplicateLoginNotifier(oldSession);
             // 清除旧会话的连接数据并关闭连接
             oldSession.WorkChannel.ClearData();
             oldSession.WorkChannel.Close();
@@ -256,16 +267,16 @@ public static class SessionManager
             Remove(oldSession.SessionId);
         }
 
-        // 获取当前会话并更新角色ID和签名
+        // 获取当前会话并更新玩家ID和签名
         var session = Get(sessionId);
         if (session.IsNull())
         {
             return;
         }
 
-        session.SetPlayerId(roleId);
+        session.SetPlayerId(playerId);
         session.SetSign(sign);
-        SetPlayerRouteOnline(roleId);
+        SetPlayerRouteOnline(playerId);
     }
 
     /// <summary>
@@ -274,7 +285,7 @@ public static class SessionManager
     /// <param name="playerId">玩家ID。</param>
     /// <param name="snapshot">路由快照。</param>
     /// <returns>是否命中。</returns>
-    public static bool TryGetPlayerRoute(long playerId, out SessionRouteSnapshot snapshot)
+    public bool TryGetPlayerRoute(long playerId, out SessionRouteSnapshot snapshot)
     {
         return PlayerRouteMap.TryGetValue(playerId, out snapshot);
     }
@@ -285,7 +296,7 @@ public static class SessionManager
     /// <param name="playerId">玩家ID。</param>
     /// <param name="serverType">服务器类型，默认当前服务。</param>
     /// <param name="serverId">服务器ID，默认当前服务。</param>
-    public static void SetPlayerRouteOnline(long playerId, string serverType = null, int? serverId = null)
+    public void SetPlayerRouteOnline(long playerId, string serverType = null, int? serverId = null)
     {
         if (playerId <= 0)
         {
@@ -310,7 +321,7 @@ public static class SessionManager
     /// 将玩家标记为离线（内存态）。
     /// </summary>
     /// <param name="playerId">玩家ID。</param>
-    public static void SetPlayerRouteOffline(long playerId)
+    public void SetPlayerRouteOffline(long playerId)
     {
         if (playerId <= 0)
         {
@@ -326,7 +337,7 @@ public static class SessionManager
         FireSyncDelete(playerId);
     }
 
-    private static void FireSyncUpsert(long playerId, string resolvedServerType, SessionRouteSnapshot snapshot)
+    private void FireSyncUpsert(long playerId, string resolvedServerType, SessionRouteSnapshot snapshot)
     {
         var syncTarget = _playerRouteSyncTarget;
         if (syncTarget == null || ReferenceEquals(syncTarget, NullPlayerRouteSyncTarget.Instance))
@@ -342,11 +353,11 @@ public static class SessionManager
         }
         catch (Exception exception)
         {
-            LogHelper.Warning(exception, "[SessionManager] player_route upsert hook failed for player {playerId}; the local PlayerRouteMap stays authoritative and the next SetOnline converges", playerId);
+            LogHelper.Warning(exception, "[PlayerSessionManager] player_route upsert hook failed for player {playerId}; the local PlayerRouteMap stays authoritative and the next SetOnline converges", playerId);
         }
     }
 
-    private static void FireSyncDelete(long playerId)
+    private void FireSyncDelete(long playerId)
     {
         var syncTarget = _playerRouteSyncTarget;
         if (syncTarget == null || ReferenceEquals(syncTarget, NullPlayerRouteSyncTarget.Instance))
@@ -360,19 +371,19 @@ public static class SessionManager
         }
         catch (Exception exception)
         {
-            LogHelper.Warning(exception, "[SessionManager] player_route delete hook failed for player {playerId}", playerId);
+            LogHelper.Warning(exception, "[PlayerSessionManager] player_route delete hook failed for player {playerId}", playerId);
         }
     }
 
-    private static string ResolveSyncInstanceId(string resolvedServerType)
+    private string ResolveSyncInstanceId(string resolvedServerType)
     {
-        // 优先用 Mongo 发现层实例 ID（运行时通过 PlayerRouteSyncTarget 注入点的静态字段不可见——保留退化路径）。
+        // 优先用 Mongo 发现层实例 ID（运行时通过 PlayerRouteSyncTarget 注入点的实例字段不可见——保留退化路径）。
         return $"{resolvedServerType}-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds():x}";
     }
 }
 
 /// <summary>
-/// SessionManager 内存路由快照。
+/// PlayerSessionManager 内存路由快照。
 /// </summary>
 public sealed class SessionRouteSnapshot
 {

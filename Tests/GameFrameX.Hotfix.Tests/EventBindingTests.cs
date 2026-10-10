@@ -29,7 +29,7 @@
 
 using System.Reflection;
 using System.Threading.Tasks;
-using GameFrameX.Apps.Common.EventData;
+using GameFrameX.Core.Session;
 using GameFrameX.Apps.Player.Player.Component;
 using GameFrameX.Core.Abstractions.Events;
 using GameFrameX.Core.Components;

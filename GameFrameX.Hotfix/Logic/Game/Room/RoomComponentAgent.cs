@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 
-using GameFrameX.Apps.Common.Session;
+using GameFrameX.Core.Session;
 using GameFrameX.Apps.Game.Room.Component;
 using GameFrameX.Apps.Game.Room.Entity;
 using GameFrameX.Apps.Player.Player.Entity;
@@ -499,7 +499,7 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
             return RoomPlayerOnlineStatus.Reconnecting;
         }
 
-        return SessionManager.GetByRoleId(roleId) == null ? RoomPlayerOnlineStatus.Offline : RoomPlayerOnlineStatus.Online;
+        return PlayerSessionManager.Instance.GetByPlayerId(roleId) == null ? RoomPlayerOnlineStatus.Offline : RoomPlayerOnlineStatus.Online;
     }
 
     private static RoomPlayerStatus GetPlayerStatus(RoomStatus roomStatus)
@@ -538,7 +538,7 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
             Room = await ToMessageAsync(room),
         };
 
-        var sessions = SessionManager.GetList(session => session.PlayerId > 0);
+        var sessions = PlayerSessionManager.Instance.GetList(session => session.PlayerId > 0);
         foreach (var session in sessions)
         {
             await session.WriteAsync(notify);
@@ -560,7 +560,7 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
         var changed = false;
         foreach (var roleId in roleIds)
         {
-            if (SessionManager.GetByRoleId(roleId) != null)
+            if (PlayerSessionManager.Instance.GetByPlayerId(roleId) != null)
             {
                 State.DisconnectedPlayerTimeMap.Remove(roleId);
                 changed = true;

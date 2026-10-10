@@ -29,7 +29,7 @@
 
 
 using System.Reflection;
-using GameFrameX.Apps.Common.Session;
+using GameFrameX.Core.Session;
 using GameFrameX.Apps.Common.EventData;
 using GameFrameX.Core.Events;
 using GameFrameX.Foundation.Localization.Core;
@@ -106,7 +106,7 @@ internal partial class AppStartUpHotfixGame
     {
         // Localization: Hotfix.StartUp.ClientDisconnected - 客户端断开连接 - 会话ID: {0}, 断开原因: {1}
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.Hotfix.StartUp.ClientDisconnected, appSession.SessionId, disconnectEventArgs.Reason));
-        var session = SessionManager.Remove(appSession.SessionId);
+        var session = PlayerSessionManager.Instance.Remove(appSession.SessionId);
         if (session != null && session.PlayerId > 0)
         {
             // 房间系统：标记玩家断线，等待重连或超时清理
@@ -121,7 +121,7 @@ internal partial class AppStartUpHotfixGame
         // Localization: StartUp.TcpServer.NewClientConnection - 新客户端连接 - 会话ID: {0}, 远程终端: {1}
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.NewClientConnection, appSession.SessionId, appSession.RemoteEndPoint));
         var netChannel = new DefaultNetWorkChannel(appSession, Setting);
-        var count = SessionManager.Count();
+        var count = PlayerSessionManager.Instance.Count();
         if (count > Setting.MaxClientCount)
         {
             // 达到最大在线人数限制
@@ -130,8 +130,8 @@ internal partial class AppStartUpHotfixGame
             return;
         }
 
-        var session = new Session(appSession.SessionId, netChannel);
-        SessionManager.Add(session);
+        var session = new PlayerSession(appSession.SessionId, netChannel);
+        PlayerSessionManager.Instance.Add(session);
     }
 
     /// <summary>
@@ -154,7 +154,7 @@ internal partial class AppStartUpHotfixGame
     /// <param name="messagePackage">网络消息包。</param>
     private async ValueTask HandleNetworkMessagePackageAsync(IAppSession session, NetworkMessagePackage messagePackage)
     {
-        var netWorkChannel = SessionManager.GetChannel(session.SessionId);
+        var netWorkChannel = PlayerSessionManager.Instance.GetChannel(session.SessionId);
 
         if (netWorkChannel.IsNull())
         {
@@ -206,7 +206,7 @@ internal partial class AppStartUpHotfixGame
         EventDispatcher.Dispatch(0, new ServiceOfflineEventArgs(Setting.ServerType, Setting.ServerInstanceId, "Stopped", DateTime.UtcNow));
         await base.StopAsync(message);
         // 断开所有连接
-        await SessionManager.RemoveAll();
+        await PlayerSessionManager.Instance.RemoveAll();
         // 取消所有未执行定时器
         await QuartzTimer.Stop();
         // 保证actor之前的任务都执行完毕

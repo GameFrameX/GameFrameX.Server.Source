@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 
-using GameFrameX.Apps.Common.Session;
+using GameFrameX.Core.Session;
 using GameFrameX.Apps.Game.RockPaperScissors.Component;
 using GameFrameX.Apps.Game.RockPaperScissors.Entity;
 using GameFrameX.Hotfix.Logic.Game.Room;
@@ -270,7 +270,7 @@ public class RockPaperScissorsGameComponentAgent : StateComponentAgent<RockPaper
 
         foreach (var roleId in playerIds)
         {
-            var session = SessionManager.GetByRoleId(roleId);
+            var session = PlayerSessionManager.Instance.GetByPlayerId(roleId);
             if (session != null)
             {
                 await session.WriteAsync(notify);

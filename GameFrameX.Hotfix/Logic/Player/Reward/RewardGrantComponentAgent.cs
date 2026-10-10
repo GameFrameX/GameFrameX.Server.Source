@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 
-using GameFrameX.Apps.Common.Session;
+using GameFrameX.Core.Session;
 using GameFrameX.Apps.Player.Reward;
 using GameFrameX.Apps.Player.Reward.Component;
 using GameFrameX.Apps.Player.Reward.Entity;
@@ -116,7 +116,7 @@ public class RewardGrantComponentAgent : StateComponentAgent<RewardGrantComponen
         if (normalItemDic.Count > 0)
         {
             var bagAgent = await ActorManager.GetComponentAgent<BagComponentAgent>();
-            var channel = SessionManager.GetByRoleId(request.RoleId)?.WorkChannel;
+            var channel = PlayerSessionManager.Instance.GetByPlayerId(request.RoleId)?.WorkChannel;
             var bagState = await bagAgent.UpdateChanged(channel, normalItemDic);
             var bagFailed = bagState.IsNull();
 
