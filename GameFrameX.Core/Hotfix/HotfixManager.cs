@@ -102,6 +102,14 @@ public static class HotfixManager
         }
 
         var path = Path.Combine(Environment.CurrentDirectory, string.IsNullOrEmpty(dllVersion) ? dllPath : $"{dllVersion}", hotfixDllName);
+        // 同路径幂等判重：当前模块即从该路径装载时直接返回成功，避免重复的可收集 ALC 装载
+        //（单进程多 Role 形态下，后续 Role 对同一热更 DLL 的重复装载会制造跨 ALC 的类型身份割裂，
+        // 旧模块 agent 的激活/转型随竞态随机失败；进程内同一 DLL 只装载一次）
+        if (IsSamePathLoaded(path))
+        {
+            return true;
+        }
+
         // 装载前幂等确保目录存在（历史由调用方各自兜底创建，收敛为装载入口自身的前置条件）
         EnsureHotfixDirectory(path);
         var hotfixModule = new HotfixModule(path);
@@ -135,6 +143,13 @@ public static class HotfixManager
         }
 
         var path = Path.Combine(Environment.CurrentDirectory, string.IsNullOrEmpty(dllVersion) ? dllPath : $"{dllVersion}", hotfixDllName);
+        // 同路径幂等判重：当前模块即从该路径装载时直接返回成功，避免重复的可收集 ALC 装载
+        //（热更重载总是指向新 version 子目录；同路径「重载」没有可观测收益，只会制造跨 ALC 类型身份割裂）
+        if (IsSamePathLoaded(path))
+        {
+            return true;
+        }
+
         // 装载前幂等确保目录存在（历史由调用方各自兜底创建，收敛为装载入口自身的前置条件）
         EnsureHotfixDirectory(path);
         var hotfixModule = new HotfixModule(path);
@@ -205,6 +220,25 @@ public static class HotfixManager
         {
             Directory.CreateDirectory(directory);
         }
+    }
+
+    /// <summary>
+    /// 判断当前热更模块是否已从指定路径装载（同路径幂等判重）。
+    /// </summary>
+    /// <remarks>
+    /// Tells whether the current hotfix module was already loaded from the given path
+    /// (the same-path idempotency check). 单进程多 Role 形态下（--AllInOne），首个 Role 装载热更模块后，
+    /// 其余 Role 经装载入口的重复调用在此短路返回；路径由装载入口统一以
+    /// <see cref="Path.Combine(string,string,string)"/> 拼接（进程内 CWD 不变），字符串等值即路径等值。
+    /// In the single-process multi-role shape, once the first role has loaded the module the
+    /// remaining roles' repeated load calls short-circuit here; paths are built uniformly by the
+    /// load entries (the CWD never changes within a process), so string equality is path equality.
+    /// </remarks>
+    /// <param name="path">热更新程序集文件完整路径 / The full path of the hotfix assembly file</param>
+    /// <returns>已从该路径装载返回 <c>true</c> / <c>true</c> when the current module was loaded from this path</returns>
+    private static bool IsSamePathLoaded(string path)
+    {
+        return _module != null && string.Equals(_module.DllPath, path, StringComparison.Ordinal);
     }
 
     /// <summary>

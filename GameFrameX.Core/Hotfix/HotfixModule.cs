@@ -122,6 +122,18 @@ internal sealed class HotfixModule
     }
 
     /// <summary>
+    /// 获取模块的 DLL 完整路径（装载入口幂等判重用：同路径重复装载时跳过）。
+    /// </summary>
+    /// <remarks>
+    /// Gets the module's full DLL path (used by the load entries for same-path idempotency:
+    /// repeated loads of the same path are skipped).
+    /// </remarks>
+    internal string DllPath
+    {
+        get { return _dllPath; }
+    }
+
+    /// <summary>
     /// 默认构造函数，初始化热更程序集并解析DLL。
     /// </summary>
     internal HotfixModule()
