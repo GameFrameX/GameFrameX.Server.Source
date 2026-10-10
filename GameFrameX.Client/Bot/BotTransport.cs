@@ -27,6 +27,8 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using System.Linq;
+
 namespace GameFrameX.Client.Bot;
 
 /// <summary>
@@ -65,14 +67,6 @@ public static class BotTransport
             return false;
         }
 
-        foreach (var supported in SupportedValues)
-        {
-            if (string.Equals(supported, value, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return SupportedValues.Any(supported => string.Equals(supported, value, StringComparison.OrdinalIgnoreCase));
     }
 }

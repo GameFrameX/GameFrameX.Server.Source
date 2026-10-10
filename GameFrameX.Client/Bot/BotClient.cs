@@ -85,10 +85,14 @@ public sealed class BotClient
         m_BotTcpClientEvent.OnReceiveMsgCallback += ClientReceiveCallback;
         m_TcpClient = new BotTcpClient(m_BotTcpClientEvent, options.TcpHost, options.TcpPort);
 
-        m_BotKcpClientEvent.OnConnectedCallback += ClientConnectedCallback;
-        m_BotKcpClientEvent.OnClosedCallback += ClientClosedCallback;
-        m_BotKcpClientEvent.OnErrorCallback += ClientErrorCallbackForKcp;
-        m_BotKcpClientEvent.OnReceiveMsgCallback += ClientReceiveCallback;
+        // KCP 事件以对象初始化器装配（事件成员为属性，readonly struct 字段上不支持 += 接线）
+        m_BotKcpClientEvent = new BotKcpClientEvent
+        {
+            OnConnectedCallback = ClientConnectedCallback,
+            OnClosedCallback = ClientClosedCallback,
+            OnErrorCallback = ClientErrorCallbackForKcp,
+            OnReceiveMsgCallback = ClientReceiveCallback,
+        };
         m_KcpClient = new BotKcpClient(m_BotKcpClientEvent, options.KcpHost, options.KcpPort);
     }
 

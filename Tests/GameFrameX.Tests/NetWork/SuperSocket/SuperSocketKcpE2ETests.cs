@@ -133,9 +133,11 @@ public class SuperSocketKcpE2ETests : IAsyncLifetime
     {
         var received = new TaskCompletionSource<MessageObject>(TaskCreationOptions.RunContinuationsAsynchronously);
 
+        var clientConnected = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
         var clientEvent = new BotKcpClientEvent
         {
-            OnConnectedCallback = () => { },
+            OnConnectedCallback = () => clientConnected.TrySetResult(true),
             OnClosedCallback = () => { },
             OnErrorCallback = _ => { },
             // bot 自身会按 5s 节奏发心跳（时间戳 = UnixTimeMs），与测试唯一时间戳 EchoTimestamp 区分；
@@ -150,12 +152,18 @@ public class SuperSocketKcpE2ETests : IAsyncLifetime
         };
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-        var client = new BotKcpClient(clientEvent, IPAddress.Loopback.ToString(), _kcpPort);
+        // 主机名（非 IP 字面量）：同时覆盖 BotKcpClient.ResolveServerEndPoint 的 DNS 解析回退路径
+        var client = new BotKcpClient(clientEvent, "localhost", _kcpPort);
         var entryTask = client.EntryAsync(cts.Token);
 
         // 等待连接 + 服务端会话建立回调
         var established = await Task.WhenAny(_sessionEstablished.Task, Task.Delay(TimeSpan.FromSeconds(5), cts.Token));
         Assert.True(established == _sessionEstablished.Task, "BotKcpClient failed to establish a KCP session within 5s.");
+
+        // 等待客户端连接确认：OnConnectedCallback 由收到服务端首个应用层响应（探测心跳的回显）触发，
+        // 证明「连接中探测 → 服务端应答 → 连接确认」握手链路（而非 AsKcp 后立即置已连接）。
+        var connected = await Task.WhenAny(clientConnected.Task, Task.Delay(TimeSpan.FromSeconds(5), cts.Token));
+        Assert.True(connected == clientConnected.Task, "BotKcpClient failed to confirm connection via server response within 5s.");
 
         // 发送心跳：使用唯一时间戳以与其它消息区分
         client.SendToServer(new ReqHeartBeat { Timestamp = EchoTimestamp });

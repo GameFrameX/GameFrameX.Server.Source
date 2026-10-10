@@ -121,11 +121,13 @@ public class BotRunOptionsTests
     }
 
     [Fact]
-    public void Parse_DefaultKcpPort_ShouldDifferFromTcpPort()
+    public void Parse_DefaultKcpPort_ShouldMatchGameKcpListener()
     {
         var options = BotRunOptions.Parse(Array.Empty<string>());
 
-        // 默认 Kcp 端口与 Tcp 端口错开，避免共用造成混淆。
+        // 默认 Kcp 端口对齐 Game 服务 KCP 监听端口（Configs/app_config.json 的 29120），
+        // 保证 --transport=kcp 缺省 --kcp-port 时能连上默认监听器；且与 Tcp 端口错开。
+        Assert.Equal(29120, options.KcpPort);
         Assert.NotEqual(options.TcpPort, options.KcpPort);
     }
 }
