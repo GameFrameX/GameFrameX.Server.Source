@@ -102,6 +102,8 @@ public static class HotfixManager
         }
 
         var path = Path.Combine(Environment.CurrentDirectory, string.IsNullOrEmpty(dllVersion) ? dllPath : $"{dllVersion}", hotfixDllName);
+        // 装载前幂等确保目录存在（历史由调用方各自兜底创建，收敛为装载入口自身的前置条件）
+        EnsureHotfixDirectory(path);
         var hotfixModule = new HotfixModule(path);
         var reload = _module != null;
         // 起服时失败会有异常抛出
@@ -133,6 +135,8 @@ public static class HotfixManager
         }
 
         var path = Path.Combine(Environment.CurrentDirectory, string.IsNullOrEmpty(dllVersion) ? dllPath : $"{dllVersion}", hotfixDllName);
+        // 装载前幂等确保目录存在（历史由调用方各自兜底创建，收敛为装载入口自身的前置条件）
+        EnsureHotfixDirectory(path);
         var hotfixModule = new HotfixModule(path);
         var reload = _module != null;
         // 起服时失败会有异常抛出
@@ -178,6 +182,29 @@ public static class HotfixManager
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// 确保热更新模块所在目录存在（装载前幂等建目录）。
+    /// </summary>
+    /// <remarks>
+    /// Ensures the directory holding the hotfix assembly exists (idempotent creation before loading).
+    /// 历史上由调用方各自兜底创建热更目录；该职责属装载入口自身的前置条件，收敛于此。
+    /// <see cref="Directory.CreateDirectory(string)"/> 对已存在目录为 no-op，且天然覆盖按
+    /// version 子目录装载（<paramref name="dllFilePath"/> 的任意父目录链）的场景。
+    /// The directory creation used to be each caller's concern; it belongs to the load entry itself.
+    /// <see cref="Directory.CreateDirectory(string)"/> is a no-op for existing directories and covers
+    /// version-subdirectory loads (any parent chain of <paramref name="dllFilePath"/>).
+    /// </remarks>
+    /// <param name="dllFilePath">热更新程序集文件完整路径 / The full path of the hotfix assembly file</param>
+    private static void EnsureHotfixDirectory(string dllFilePath)
+    {
+        // 根路径/裸文件名时 GetDirectoryName 返回 null 或空串，无从建目录，直接跳过
+        var directory = Path.GetDirectoryName(dllFilePath);
+        if (!string.IsNullOrEmpty(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
     }
 
     /// <summary>

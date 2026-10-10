@@ -28,14 +28,8 @@
 //  ==========================================================================================
 
 
-using GameFrameX.DataBase;
-using GameFrameX.DataBase.Abstractions;
-using GameFrameX.DataBase.Mongo.Discovery;
-using GameFrameX.DataBase.PostgreSql.Discovery;
-using GameFrameX.Discovery;
-using GameFrameX.Discovery.Routing;
-using GameFrameX.Foundation.Utility;
 using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Foundation.Utility;
 using GameFrameX.Online.Runtime;
 using GameFrameX.Online.Runtime.AdminApi;
 using GameFrameX.Utility.Runtime;
@@ -47,141 +41,83 @@ namespace GameFrameX.Launcher.StartUp;
 /// </summary>
 // 显式优先级修复与 Social 同为缺省 1000 的冲突——Game 为主服务先起（值越小优先级越高）
 [StartUpTag(GameServerConst.Game.Name, 100)]
-internal sealed class AppStartUpGame : AppStartUpBase
+internal sealed class AppStartUpGame : AppStartUpGameServerBase
 {
     /// <summary>
     /// Online Runtime 宿主（IsEnableOnlineAdmin 开启时装配；进程退出时随主流程停止）。
     /// </summary>
+    /// <remarks>
+    /// The Online runtime host (assembled when <c>IsEnableOnlineAdmin</c> is on; stopped with the
+    /// main flow at process exit).
+    /// </remarks>
     private OnlineRuntimeHost _onlineRuntime;
 
     /// <summary>
     /// Online admin HTTP 服务（与协议端口独立的 Kestrel 监听）。
     /// </summary>
+    /// <remarks>
+    /// The Online admin HTTP service (a Kestrel listener independent of the protocol ports).
+    /// </remarks>
     private OnlineAdminApiServer _onlineAdminApi;
 
-    public override async Task StartAsync()
+    /// <summary>
+    /// Game 型 Role 服务：热更模块装载 + Online admin 可选启动（共享装配由模板序列承载）。
+    /// </summary>
+    /// <remarks>
+    /// Game-shape role services: hotfix module loading plus the optional Online admin; the shared
+    /// wiring (control database, discovery layer, business database, components) is carried by the
+    /// template sequence. 热更目录确保由 <c>HotfixManager</c> 装载入口自身兜底，非 Game 型差异。
+    /// The hotfix-directory ensuring is covered by the <c>HotfixManager</c> load entry itself and
+    /// is not a Game-shape difference.
+    /// </remarks>
+    /// <returns>表示 hook 操作的异步任务 / A task representing the hook operation</returns>
+    protected override async Task StartRoleServicesAsync()
     {
-        string exitMessage = null;
-        try
-        {
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.ServerStartBegin, Setting.ServerType));
-            var hotfixPath = Directory.GetCurrentDirectory() + "/hotfix";
-            if (!Directory.Exists(hotfixPath))
-            {
-                Directory.CreateDirectory(hotfixPath);
-            }
+        LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.HotfixModuleLoadBegin));
+        await HotfixManager.LoadHotfixModule(Setting);
+        LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.HotfixModuleLoadEnd));
 
-            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Launcher.ActorLimitConfigBegin));
-            ActorLimit.Init(ActorLimit.RuleType.None);
-            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Launcher.ActorLimitConfigEnd));
+        await StartOnlineAdminIfEnabledAsync();
+    }
 
-            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartBegin));
-            await InitializeControlDatabaseAsync();
-            ActivateDiscoveryLayer();
-            await InitializeBusinessDatabaseAsync();
+    /// <summary>
+    /// Game 型启动完成：业务装配全就绪，标记进程运行时已启动（退出令牌随之复位，进入运行至退出周期）。
+    /// </summary>
+    /// <remarks>
+    /// Game-shape startup completion: with every assembly step done, the process runtime is marked
+    /// started (which also resets the exit token for a fresh run-until-exit cycle).
+    /// </remarks>
+    /// <returns>表示 hook 操作的异步任务 / A task representing the hook operation</returns>
+    protected override Task OnStartupCompletedAsync()
+    {
+        GameAppRuntime.MarkStarted(TimerHelper.GetNowWithUtc());
+        return Task.CompletedTask;
+    }
 
-            LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartEnd));
-
-            LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.ComponentRegisterBegin));
-            await ComponentRegister.Init(typeof(AppsHandler).Assembly);
-            LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.ComponentRegisterEnd));
-
-            LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.HotfixModuleLoadBegin));
-            await HotfixManager.LoadHotfixModule(Setting);
-            LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.HotfixModuleLoadEnd));
-
-            await StartOnlineAdminIfEnabledAsync();
-
-            LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.EnterMainLoop));
-            GameAppRuntime.MarkStarted(TimerHelper.GetNowWithUtc());
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.ServerStartEnd, Setting.ServerType));
-            // 启动阶段完成（DB/组件/热-fix/在线管理均已就绪），放行下一个 Role 的启动屏障
-            MarkStartUpReady();
-            await MarkServiceActiveAsync();
-            exitMessage = await AppExitToken;
-        }
-        catch (Exception e)
-        {
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.ServerExecutionException, e));
-            LogHelper.Fatal(e);
-        }
-
-        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.ServerExitBegin));
+    /// <summary>
+    /// Game 型退出清理：按反向顺序停 Online admin HTTP 服务与 Online runtime 宿主，再停热更模块。
+    /// </summary>
+    /// <remarks>
+    /// Game-shape exit cleanup: stops the Online admin HTTP service and the Online runtime host in
+    /// reverse order, then stops the hotfix module.
+    /// </remarks>
+    /// <param name="exitMessage">退出原因（可能为 null——启动失败路径未获得退出消息）/ The exit reason (may be null on the startup-failure path)</param>
+    /// <returns>表示 hook 操作的异步任务 / A task representing the hook operation</returns>
+    protected override async Task ShutdownAsync(string exitMessage)
+    {
         await ShutdownOnlineAdminAsync();
         await HotfixManager.Stop(exitMessage);
-        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.ServerExitSuccess));
-    }
-
-    /// <summary>
-    /// 控制库先行于业务库（D-Single 缺省回落：与业务库共用同一实例连接串），
-    /// 经 GameDb 统一入口判重/命名；实现类型按 DbOptions.Provider 由 GameDb 约定解析
-    ///（PG 路径下 DbOptions.Name 仅作注册名，数据库由连接串 Database 决定）。
-    /// 控制库必须显式 IsDefault = false——门面默认库由业务库声明式提名（缺省 true），
-    /// 漏写会在业务库注册时抛 set-once 冲突（启动期 fail-fast）。
-    /// </summary>
-    private async Task InitializeControlDatabaseAsync()
-    {
-        if (!GameDb.Contains(GameDb.ControlDatabaseName))
-        {
-            var controlDatabaseInitResult = await GameDb.Init(new DbOptions { Provider = Setting.DatabaseProvider, ConnectionString = Setting.DataBaseUrl, Name = GameDb.ControlDatabaseName, IsDefault = false, IsUseTimeZone = Setting.IsUseTimeZone, });
-            if (controlDatabaseInitResult == false)
-            {
-                throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
-            }
-        }
-    }
-
-    /// <summary>
-    /// 控制库就绪后激活发现层——读侧 watcher + 写侧心跳（未配置广播端口时自动跳过）
-    /// 并以真实 case 2/3 转发器重装跨 Role 路由缝。幂等：多 Role 进程首个调用生效。
-    /// 再激活玩家路由层（建 player_route 索引 + 装 SyncTarget），Tier 1 fast-path 注入 SessionManager 适配器。
-    /// 控制库句柄解析下沉到发现层内部，收敛为激活参数对象。
-    /// Provider 装配分支——PostgreSql 时激活 PG 平行发现层（控制库 NpgsqlDataSource 经 GameDb 按名解析）。
-    /// 路由胶水装配自 Runtime 拆至组合侧 DiscoveryRoutingWire（发现层 Runtime 不再引用消息胶水程序集）。
-    /// </summary>
-    private void ActivateDiscoveryLayer()
-    {
-        if (Setting.DatabaseProvider == DatabaseProviderType.PostgreSql)
-        {
-            PostgreSqlDiscoveryRuntime.Activate(new DiscoveryActivationOptions
-            {
-                ConnectionName = GameDb.ControlDatabaseName,
-                HostedRoleNames = RoleSet.Current,
-                PlayerRouteFastPath = GameFrameX.Core.Session.PlayerSessionFastPathAdapter.Instance,
-            });
-            GameFrameX.Core.Session.PlayerSessionManager.Instance.PlayerRouteSyncTarget = GameFrameX.Discovery.Routing.PlayerRouteResolverBootstrap.SyncTarget;
-        }
-        else
-        {
-            MongoDiscoveryRuntime.Activate(new DiscoveryActivationOptions
-            {
-                ConnectionName = GameDb.ControlDatabaseName,
-                HostedRoleNames = RoleSet.Current,
-                PlayerRouteFastPath = GameFrameX.Core.Session.PlayerSessionFastPathAdapter.Instance,
-            });
-            GameFrameX.Core.Session.PlayerSessionManager.Instance.PlayerRouteSyncTarget = GameFrameX.Discovery.Routing.PlayerRouteResolverBootstrap.SyncTarget;
-        }
-        GameFrameX.Network.RemoteMessaging.Routing.DiscoveryRoutingWire.Initialize(RoleSet.Current, Setting.DatabaseProvider == DatabaseProviderType.PostgreSql ? PostgreSqlDiscoveryRuntime.TableProvider : MongoDiscoveryRuntime.TableProvider);
-    }
-
-    /// <summary>
-    /// 业务库 Init，实现类型按 DbOptions.Provider 由 GameDb 约定解析；缺省 IsDefault = true——
-    /// 注册成功即声明式提名门面默认库，全部经 GameDb 门面的业务读写必须落在业务库
-    ///（控制库已显式 IsDefault = false，先注册不会抢占门面）；失败抛 <see cref="InvalidOperationException"/>。
-    /// </summary>
-    private async Task InitializeBusinessDatabaseAsync()
-    {
-        var initResult = await GameDb.Init(new DbOptions { Provider = Setting.DatabaseProvider, ConnectionString = Setting.DataBaseUrl, Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
-        if (initResult == false)
-        {
-            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
-        }
     }
 
     /// <summary>
     /// Online admin 可选启动——仅在 <see cref="AppSetting.IsEnableOnlineAdmin"/> 为 true 时装配
     /// Online runtime 宿主与 Online admin HTTP 服务。
     /// </summary>
+    /// <remarks>
+    /// Starts the Online admin optionally — assembles the Online runtime host and the Online admin
+    /// HTTP service only when <see cref="AppSetting.IsEnableOnlineAdmin"/> is true.
+    /// </remarks>
+    /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     private async Task StartOnlineAdminIfEnabledAsync()
     {
         if (Setting.IsEnableOnlineAdmin)
@@ -203,19 +139,14 @@ internal sealed class AppStartUpGame : AppStartUpBase
     }
 
     /// <summary>
-    /// 启动阶段真正完成（DB/组件/热-fix/在线管理均已就绪）后才把心跳从 Booting 切到 Active，
-    /// 避免其他进程在服务就绪前发现本实例并投递流量；未激活发现层或无广播身份时为无害 no-op。
-    /// </summary>
-    private async Task MarkServiceActiveAsync()
-    {
-        // 公共槽位持有实际激活的 Provider Runtime 写侧，宿主无需按 DatabaseProvider 分派。
-        await ActiveDiscoveryRuntime.MarkActiveAsync();
-    }
-
-    /// <summary>
     /// 退出期按反向顺序停掉 Online admin HTTP 服务与 Online runtime 宿主；
     /// 未启动（<see cref="AppSetting.IsEnableOnlineAdmin"/> 为 false）时为空判跳过。
     /// </summary>
+    /// <remarks>
+    /// Stops the Online admin HTTP service and the Online runtime host in reverse order at exit;
+    /// skipped by null checks when they were never started (<see cref="AppSetting.IsEnableOnlineAdmin"/> false).
+    /// </remarks>
+    /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     private async Task ShutdownOnlineAdminAsync()
     {
         if (_onlineAdminApi != null)
@@ -229,28 +160,33 @@ internal sealed class AppStartUpGame : AppStartUpBase
         }
     }
 
-    protected override void Init()
+    /// <summary>
+    /// 创建 Game 服务器的缺省配置。
+    /// </summary>
+    /// <remarks>
+    /// Creates the Game role-level default settings.
+    /// 数据库连接地址优先从环境变量读取，避免在源码中硬编码凭证（消除 Sonar csharpsquid:S2068）。
+    /// The database connection URL is read from the environment variable first to avoid
+    /// hard-coded credentials in source (Sonar csharpsquid:S2068).
+    /// </remarks>
+    /// <returns>Game 缺省配置 / The Game default settings</returns>
+    protected override AppSetting CreateDefaultSetting()
     {
-        if (Setting == null)
+        return new AppSetting
         {
-            Setting = new AppSetting
-            {
-                ServerId = GameServerConst.Game.Id,
-                ServerType = GameServerConst.Game.Name,
-                InnerPort = 29100,
-                MetricsPort = 29090,
-                HttpPort = 28080,
-                WsPort = 29110,
-                MinModuleId = 10,
-                HttpIsDevelopment = true,
-                MaxModuleId = 9999,
-                TagName = "GameFrameX",
-                // 数据库连接地址优先从环境变量读取，避免在源码中硬编码凭证（消除 Sonar csharpsquid:S2068）
-                DataBaseUrl = Environment.GetEnvironmentVariable("GAMEFRAMEX_GAME_DB_URL") ?? "mongodb://127.0.0.1:27017/?authSource=admin",
-                DataBaseName = "gameframex",
-            };
-        }
-
-        base.Init();
+            ServerId = GameServerConst.Game.Id,
+            ServerType = GameServerConst.Game.Name,
+            InnerPort = 29100,
+            MetricsPort = 29090,
+            HttpPort = 28080,
+            WsPort = 29110,
+            MinModuleId = 10,
+            HttpIsDevelopment = true,
+            MaxModuleId = 9999,
+            TagName = "GameFrameX",
+            // 数据库连接地址优先从环境变量读取，避免在源码中硬编码凭证（消除 Sonar csharpsquid:S2068）
+            DataBaseUrl = Environment.GetEnvironmentVariable("GAMEFRAMEX_GAME_DB_URL") ?? "mongodb://127.0.0.1:27017/?authSource=admin",
+            DataBaseName = "gameframex",
+        };
     }
 }
