@@ -48,9 +48,9 @@ namespace GameFrameX.Core.Hotfix;
 internal sealed class HotfixModule
 {
     /// <summary>
-    /// 角色类型到事件ID到监听者的映射。
+    /// 角色类型到事件参数类型到监听者的映射（事件绑定键为 GameEventArgs 子类的 Type）。
     /// </summary>
-    private readonly Dictionary<ushort, Dictionary<int, List<IEventListener>>> _actorEvtListeners = new Dictionary<ushort, Dictionary<int, List<IEventListener>>>(512);
+    private readonly Dictionary<ushort, Dictionary<Type, List<IEventListener>>> _actorEvtListeners = new Dictionary<ushort, Dictionary<Type, List<IEventListener>>>(512);
 
     /// <summary>
     /// 代理类型到代理包装类型的映射。
@@ -127,6 +127,17 @@ internal sealed class HotfixModule
     internal HotfixModule()
     {
         HotfixAssembly = Assembly.GetEntryAssembly();
+        ParseDll();
+    }
+
+    /// <summary>
+    /// 测试用构造函数：直接扫描指定程序集并解析注册（不经磁盘 DLL 加载）。
+    /// </summary>
+    /// <param name="assembly">要解析的热更程序集。</param>
+    internal HotfixModule(Assembly assembly)
+    {
+        ArgumentNullException.ThrowIfNull(assembly);
+        HotfixAssembly = assembly;
         ParseDll();
     }
 
@@ -388,7 +399,7 @@ internal sealed class HotfixModule
     }
 
     /// <summary>
-    /// 添加事件监听者。
+    /// 添加事件监听者：读取 <see cref="EventAttribute" /> 按事件参数类型注册。
     /// </summary>
     /// <param name="type">监听者类型。</param>
     /// <returns>是否添加成功。</returns>
@@ -422,23 +433,21 @@ internal sealed class HotfixModule
         var actorType = ComponentRegister.ComponentActorDic[compType];
         var evtListenersDic = _actorEvtListeners.GetOrAddValue(actorType);
 
-        var eventInfoAttributes = type.GetCustomAttributes<EventInfoAttribute>();
-        var infoAttributes = eventInfoAttributes.ToList();
-        if (infoAttributes.Count == 0)
+        var eventAttribute = type.GetCustomAttribute<EventAttribute>();
+        if (eventAttribute == null)
         {
             // Localization: CoreExceptions.Hotfix.NoEventsToListen - IEventListener:{0} 没有指定要监听的事件
             throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.NoEventsToListen, type.FullName));
         }
 
-        var eventInfoAttribute = infoAttributes.FirstOrDefault();
-        if (eventInfoAttribute == null)
+        var eventArgsType = eventAttribute.EventArgsType;
+        if (!typeof(GameEventArgs).IsAssignableFrom(eventArgsType))
         {
-            // Localization: CoreExceptions.Hotfix.NoEventsToListen - IEventListener:{0} 没有指定要监听的事件
-            throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.NoEventsToListen, type.FullName));
+            // Localization: CoreExceptions.Hotfix.EventArgsTypeInvalid - 事件监听器:{0} 绑定的类型 {1} 必须是 GameEventArgs 的子类
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.EventArgsTypeInvalid, type.FullName, eventArgsType.FullName));
         }
 
-        var evtId = eventInfoAttribute.EventId;
-        var listeners = evtListenersDic.GetOrAddValue(evtId);
+        var listeners = evtListenersDic.GetOrAddValue(eventArgsType);
         listeners.Add((IEventListener)Activator.CreateInstance(type));
 
         return true;
@@ -596,11 +605,11 @@ internal sealed class HotfixModule
     /// 查找事件监听者。
     /// </summary>
     /// <param name="actorType">角色类型。</param>
-    /// <param name="eventId">事件ID。</param>
+    /// <param name="eventArgsType">事件参数类型（事件绑定键）。</param>
     /// <returns>事件监听者列表。</returns>
-    internal List<IEventListener> FindListeners(ushort actorType, int eventId)
+    internal List<IEventListener> FindListeners(ushort actorType, Type eventArgsType)
     {
-        if (_actorEvtListeners.TryGetValue(actorType, out var eventListeners) && eventListeners.TryGetValue(eventId, out var listeners))
+        if (_actorEvtListeners.TryGetValue(actorType, out var eventListeners) && eventListeners.TryGetValue(eventArgsType, out var listeners))
         {
             return listeners;
         }
@@ -611,14 +620,14 @@ internal sealed class HotfixModule
     /// <summary>
     /// 查找事件监听者。
     /// </summary>
-    /// <param name="eventId">事件ID。</param>
+    /// <param name="eventArgsType">事件参数类型（事件绑定键）。</param>
     /// <returns>事件监听者列表。</returns>
-    internal List<IEventListener> FindListeners(int eventId)
+    internal List<IEventListener> FindListeners(Type eventArgsType)
     {
         var listenerList = new List<IEventListener>(32);
         foreach (var actorEvtListener in _actorEvtListeners)
         {
-            if (actorEvtListener.Value.TryGetValue(eventId, out var listeners))
+            if (actorEvtListener.Value.TryGetValue(eventArgsType, out var listeners))
             {
                 listenerList.AddRange(listeners);
             }

@@ -161,9 +161,12 @@
 
     <!-- Events module log keys -->
     <data name="Events.NoListenersFound" xml:space="preserve">
-    <value>No listeners found for event ID: {0}</value>
+    <value>No listeners found for event type: {0}</value>
   </data>
 
+    <data name="CoreExceptions.Hotfix.EventArgsTypeInvalid" xml:space="preserve">
+    <value>Event listener:{0} the bound type {1} must be a subclass of GameEventArgs</value>
+  </data>
     <!-- Storage module log keys -->
     <data name="Storage.CacheHashEquals" xml:space="preserve">
     <value>CacheHash equals ToSaveHash before calling AfterSaveToDB: {0}</value>

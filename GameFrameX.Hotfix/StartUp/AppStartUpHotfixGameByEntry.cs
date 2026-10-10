@@ -29,7 +29,6 @@
 
 
 using GameFrameX.StartUp;
-using GameFrameX.Apps.Common.Event;
 using GameFrameX.Apps.Common.EventData;
 using GameFrameX.NetWork.RemoteMessaging;
 using GameFrameX.Discovery.Routing;
@@ -76,7 +75,7 @@ internal partial class AppStartUpHotfixGame : AppStartUpBase, IHotfixBridge
         await QuartzTimer.Start();
         GlobalTimer.Start();
         await ComponentRegister.ActiveGlobalComponents();
-        EventDispatcher.Dispatch(0, (int)EventId.ServiceOnline, new ServiceOnlineEventArgs(setting.ServerType, setting.ServerInstanceId, DateTime.UtcNow));
+        EventDispatcher.Dispatch(0, new ServiceOnlineEventArgs(setting.ServerType, setting.ServerInstanceId, DateTime.UtcNow));
         return true;
     }
 

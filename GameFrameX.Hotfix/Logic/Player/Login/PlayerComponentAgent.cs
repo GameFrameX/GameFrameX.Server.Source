@@ -29,7 +29,7 @@
 
 
 using GameFrameX.Apps.Common.Session;
-using GameFrameX.Apps.Common.Event;
+using GameFrameX.Apps.Common.EventData;
 using GameFrameX.Apps.Player.Player.Component;
 using GameFrameX.Apps.Player.Player.Entity;
 using GameFrameX.Hotfix.Logic.Game.Room;
@@ -48,7 +48,7 @@ public class PlayerComponentAgent : StateComponentAgent<PlayerComponent, PlayerS
         //移除在线玩家
         var serverComp = await ActorManager.GetComponentAgent<ServerComponentAgent>();
         await serverComp.RemoveOnlineRole(ActorId);
-        EventDispatcher.Dispatch(ActorId, (int)EventId.OnRoleOffline);
+        EventDispatcher.Dispatch(ActorId, new OnRoleOfflineEventArgs());
         //下线后会被自动回收
         SetAutoRecycle(true);
         QuartzTimer.Remove(ScheduleIdSet);
@@ -83,7 +83,7 @@ public class PlayerComponentAgent : StateComponentAgent<PlayerComponent, PlayerS
         //加入在线玩家
         var serverComp = await ActorManager.GetComponentAgent<ServerComponentAgent>();
         await serverComp.AddOnlineRole(ActorId);
-        EventDispatcher.Dispatch(ActorId, (int)EventId.OnRoleOnline);
+        EventDispatcher.Dispatch(ActorId, new OnRoleOnlineEventArgs());
 
         // 房间断线重连标记（房间系统）
         var roomComp = await ActorManager.GetComponentAgent<RoomComponentAgent>();

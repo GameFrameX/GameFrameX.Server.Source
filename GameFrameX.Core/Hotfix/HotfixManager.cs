@@ -304,24 +304,24 @@ public static class HotfixManager
     }
 
     /// <summary>
-    /// 获取指定Actor类型和事件ID的事件监听器列表
+    /// 获取指定Actor类型和事件参数类型的事件监听器列表
     /// </summary>
     /// <param name="actorType">Actor类型</param>
-    /// <param name="eventId">事件ID</param>
+    /// <param name="eventArgsType">事件参数类型（事件绑定键）</param>
     /// <returns>返回监听器列表，如果没有则返回空列表</returns>
-    public static List<IEventListener> FindListeners(ushort actorType, int eventId)
+    public static List<IEventListener> FindListeners(ushort actorType, Type eventArgsType)
     {
-        return _module.FindListeners(actorType, eventId) ?? EmptyListenerList;
+        return _module.FindListeners(actorType, eventArgsType) ?? EmptyListenerList;
     }
 
     /// <summary>
-    /// 获取指定事件ID的事件监听器列表
+    /// 获取指定事件参数类型的事件监听器列表
     /// </summary>
-    /// <param name="eventId">事件ID</param>
+    /// <param name="eventArgsType">事件参数类型（事件绑定键）</param>
     /// <returns>返回监听器列表，如果没有则返回空列表</returns>
-    public static List<IEventListener> FindListeners(int eventId)
+    public static List<IEventListener> FindListeners(Type eventArgsType)
     {
-        return _module.FindListeners(eventId) ?? EmptyListenerList;
+        return _module.FindListeners(eventArgsType) ?? EmptyListenerList;
     }
 
     /// <summary>

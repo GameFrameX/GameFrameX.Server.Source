@@ -657,7 +657,7 @@ public static class QuartzTimer
         var job = JobBuilder.Create<TimerJobHelper>().WithIdentity(id + string.Empty).Build();
         if (eventArgs == null)
         {
-            eventArgs = GameEmptyEventArgs.EmptyEventArgs;
+            eventArgs = TimerEmptyEventArgs.EmptyEventArgs;
         }
 
         job.JobDataMap.Add(ParamKey, eventArgs);
@@ -679,7 +679,7 @@ public static class QuartzTimer
         var job = JobBuilder.Create<T>().WithIdentity(id + string.Empty).Build();
         if (gameEventArgs == null)
         {
-            gameEventArgs = GameEmptyEventArgs.EmptyEventArgs;
+            gameEventArgs = TimerEmptyEventArgs.EmptyEventArgs;
         }
 
         job.JobDataMap.Add(ParamKey, gameEventArgs);

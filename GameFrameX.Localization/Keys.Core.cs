@@ -748,6 +748,16 @@ public static partial class Keys
             public const string NoEventsToListen = "CoreExceptions.Hotfix.NoEventsToListen";
 
             /// <summary>
+            /// Event listener:{0} the bound type {1} must be a subclass of GameEventArgs
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.Hotfix.EventArgsTypeInvalid
+            /// 用途: 事件监听器绑定的类型不是 GameEventArgs 子类时抛出异常
+            /// 参数: {0} - 监听器类型, {1} - 绑定的事件参数类型
+            /// </remarks>
+            public const string EventArgsTypeInvalid = "CoreExceptions.Hotfix.EventArgsTypeInvalid";
+
+            /// <summary>
             /// the component agent must be based on [{0}] ending，{1}
             /// </summary>
             /// <remarks>

@@ -7,9 +7,10 @@
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
 
-        <!-- 测试项目不签名 -->
-        <PublicSign>false</PublicSign>
-        <SignAssembly>false</SignAssembly>
+        <!-- 测试项目 public-sign：以共享 snk 成为签名程序集（GameFrameX.Core）的 InternalsVisibleTo 友元 -->
+        <PublicSign>true</PublicSign>
+        <SignAssembly>true</SignAssembly>
+        <AssemblyOriginatorKeyFile>../../gameframex.key.snk</AssemblyOriginatorKeyFile>
     </PropertyGroup>
 
     <ItemGroup>

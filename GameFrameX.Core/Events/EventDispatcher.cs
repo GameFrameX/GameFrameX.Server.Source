@@ -45,21 +45,23 @@ public static class EventDispatcher
     /// 分发事件到指定的Actor或全局监听器
     /// </summary>
     /// <param name="actorId">目标Actor的唯一标识符，如果为无效值则分发到全局监听器</param>
-    /// <param name="eventId">要分发的事件ID</param>
-    /// <param name="eventArgs">事件携带的参数数据，可以为null</param>
-    public static void Dispatch(long actorId, int eventId, GameEventArgs eventArgs = null)
+    /// <param name="eventArgs">事件携带的参数数据，绑定键取自其具体类型；无载荷事件须使用空标记类，禁止传null</param>
+    /// <exception cref="ArgumentNullException"><paramref name="eventArgs" /> 为 null 时抛出</exception>
+    public static void Dispatch(long actorId, GameEventArgs eventArgs)
     {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+
         // 尝试获取目标Actor
         var actor = ActorManager.GetActor(actorId);
         if (actor != null)
         {
             // 将工作任务提交到Actor的消息队列中
-            actor.Tell(() => DispatchToActorAsync(actor, actorId, eventId, eventArgs));
+            actor.Tell(() => DispatchToActorAsync(actor, actorId, eventArgs));
         }
         else
         {
             // 在新的线程中执行全局事件处理
-            Task.Run(() => DispatchGlobalAsync(actorId, eventId, eventArgs));
+            Task.Run(() => DispatchGlobalAsync(actorId, eventArgs));
         }
     }
 
@@ -68,17 +70,16 @@ public static class EventDispatcher
     /// </summary>
     /// <param name="actor">目标 Actor</param>
     /// <param name="actorId">目标Actor的唯一标识符</param>
-    /// <param name="eventId">要分发的事件ID</param>
-    /// <param name="eventArgs">事件携带的参数数据，可以为null</param>
+    /// <param name="eventArgs">事件携带的参数数据，不为null</param>
     /// <returns>异步任务</returns>
-    private static async Task DispatchToActorAsync(Actor actor, long actorId, int eventId, GameEventArgs eventArgs)
+    private static async Task DispatchToActorAsync(Actor actor, long actorId, GameEventArgs eventArgs)
     {
         // 事件需要在本actor内执行，不可多线程执行，所以不能使用Task.WhenAll来处理
         // 获取该Actor类型下注册的所有事件监听器
-        var listeners = HotfixManager.FindListeners(actor.Type, eventId);
+        var listeners = HotfixManager.FindListeners(actor.Type, eventArgs.GetType());
         if (listeners.IsNullOrEmpty())
         {
-            LogHelper.Warning("EventDispatcher.Dispatch Actor {actorId} {eventId} {message}", actorId, eventId, LocalizationService.GetString(Localization.Keys.Events.NoListenersFound, eventId));
+            LogHelper.Warning("EventDispatcher.Dispatch Actor {actorId} {eventArgsType} {message}", actorId, eventArgs.GetType().Name, LocalizationService.GetString(Localization.Keys.Events.NoListenersFound, eventArgs.GetType().Name));
             return;
         }
 
@@ -95,7 +96,7 @@ public static class EventDispatcher
             catch (Exception exception)
             {
                 // 捕获并记录事件处理过程中的异常
-                LogHelper.Error("EventDispatcher.Dispatch Actor {actorId} {eventId} {exception}", actorId, eventId, exception);
+                LogHelper.Error("EventDispatcher.Dispatch Actor {actorId} {eventArgsType} {exception}", actorId, eventArgs.GetType().Name, exception);
             }
         }
     }
@@ -104,17 +105,16 @@ public static class EventDispatcher
     /// 在全局上下文分发事件：取出全局注册的监听器并逐个调用其事件处理方法。
     /// </summary>
     /// <param name="actorId">目标Actor的唯一标识符</param>
-    /// <param name="eventId">要分发的事件ID</param>
-    /// <param name="eventArgs">事件携带的参数数据，可以为null</param>
+    /// <param name="eventArgs">事件携带的参数数据，不为null</param>
     /// <returns>异步任务</returns>
-    private static async Task DispatchGlobalAsync(long actorId, int eventId, GameEventArgs eventArgs)
+    private static async Task DispatchGlobalAsync(long actorId, GameEventArgs eventArgs)
     {
         // 事件需要在本actor内执行，不可多线程执行，所以不能使用Task.WhenAll来处理
         // 获取全局注册的事件监听器
-        var listeners = HotfixManager.FindListeners(eventId);
+        var listeners = HotfixManager.FindListeners(eventArgs.GetType());
         if (listeners.IsNullOrEmpty())
         {
-            LogHelper.Warning("EventDispatcher.Dispatch Actor {actorId} {eventId} {message}", actorId, eventId, LocalizationService.GetString(Localization.Keys.Events.NoListenersFound, eventId));
+            LogHelper.Warning("EventDispatcher.Dispatch Actor {actorId} {eventArgsType} {message}", actorId, eventArgs.GetType().Name, LocalizationService.GetString(Localization.Keys.Events.NoListenersFound, eventArgs.GetType().Name));
             return;
         }
 
@@ -129,7 +129,7 @@ public static class EventDispatcher
             catch (Exception exception)
             {
                 // 捕获并记录事件处理过程中的异常
-                LogHelper.Error("EventDispatcher.Dispatch Actor {actorId} {eventId} {exception}", actorId, eventId, exception);
+                LogHelper.Error("EventDispatcher.Dispatch Actor {actorId} {eventArgsType} {exception}", actorId, eventArgs.GetType().Name, exception);
             }
         }
     }

@@ -30,7 +30,6 @@
 
 using GameFrameX.Apps.Server.Component;
 using GameFrameX.Apps.Server.Entity;
-using GameFrameX.Apps.Common.Event;
 using GameFrameX.Apps.Common.EventData;
 using GameFrameX.Core.Abstractions.Attribute;
 using GameFrameX.Core.Abstractions.Events;
@@ -81,7 +80,7 @@ public class ServerComponentAgent : StateComponentAgent<ServerComponent, ServerS
             {
                 if (!previousInstances.Contains(instance.Key))
                 {
-                    EventDispatcher.Dispatch(ActorId, (int)EventId.ServiceOnline, new ServiceOnlineEventArgs(serviceName, instance.Key, DateTime.UtcNow, instance.Value));
+                    EventDispatcher.Dispatch(ActorId, new ServiceOnlineEventArgs(serviceName, instance.Key, DateTime.UtcNow, instance.Value));
                 }
 
                 _offlineConfirmCounter.Remove(GetOfflineKey(serviceName, instance.Key));
@@ -99,7 +98,7 @@ public class ServerComponentAgent : StateComponentAgent<ServerComponent, ServerS
                 counter++;
                 if (counter >= 2)
                 {
-                    EventDispatcher.Dispatch(ActorId, (int)EventId.ServiceOffline, new ServiceOfflineEventArgs(serviceName, instanceId, "Removed", DateTime.UtcNow));
+                    EventDispatcher.Dispatch(ActorId, new ServiceOfflineEventArgs(serviceName, instanceId, "Removed", DateTime.UtcNow));
                     _offlineConfirmCounter.Remove(counterKey);
                     continue;
                 }

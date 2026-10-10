@@ -414,7 +414,7 @@ internal sealed class AddItemHandler : PlayerRpcComponentHandler<BagComponentAge
 事件系統用於 Actor 之間的鬆耦合通訊。
 
 ```csharp
-[Event(EventId.PlayerLogin)]
+[Event(typeof(PlayerLoginEventArgs))]
 internal sealed class PlayerLoginEventHandler : EventListener<PlayerComponentAgent>
 {
     protected override Task HandleEvent(PlayerComponentAgent agent, GameEventArgs gameEventArgs)

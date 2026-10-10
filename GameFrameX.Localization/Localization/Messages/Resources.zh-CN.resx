@@ -190,7 +190,7 @@
 
     <!-- 事件模块日志键名 -->
     <data name="Events.NoListenersFound" xml:space="preserve">
-    <value>事件ID：{0} 没有找到任何监听者</value>
+    <value>事件类型：{0} 没有找到任何监听者</value>
   </data>
 
     <!-- 存储模块日志键名 -->
@@ -861,6 +861,9 @@
 
     <data name="CoreExceptions.Hotfix.NoEventsToListen" xml:space="preserve">
     <value>IEventListener:{0} 没有指定要监听的事件</value>
+  </data>
+    <data name="CoreExceptions.Hotfix.EventArgsTypeInvalid" xml:space="preserve">
+    <value>事件监听器:{0} 绑定的类型 {1} 必须是 GameEventArgs 的子类</value>
   </data>
 
     <data name="CoreExceptions.Hotfix.ComponentAgentWrongSuffix" xml:space="preserve">

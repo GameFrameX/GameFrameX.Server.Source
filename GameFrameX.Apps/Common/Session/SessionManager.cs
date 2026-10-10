@@ -30,7 +30,7 @@
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading.Tasks;
-using GameFrameX.Apps.Common.Event;
+using GameFrameX.Apps.Common.EventData;
 using GameFrameX.Core.Actors;
 using GameFrameX.Core.Events;
 using GameFrameX.Foundation.Localization.Core;
@@ -105,7 +105,7 @@ public static class SessionManager
         {
             if (SessionMap.TryRemove(roleSession.SessionId, out var value) && ActorManager.HasActor(roleSession.PlayerId))
             {
-                EventDispatcher.Dispatch(roleSession.PlayerId, (int)EventId.SessionRemove);
+                EventDispatcher.Dispatch(roleSession.PlayerId, new SessionRemovedEventArgs());
             }
 
             SetPlayerRouteOffline(roleSession.PlayerId);
@@ -169,7 +169,7 @@ public static class SessionManager
     {
         if (SessionMap.TryRemove(sessionId, out var value) && ActorManager.HasActor(value.PlayerId))
         {
-            EventDispatcher.Dispatch(value.PlayerId, (int)EventId.SessionRemove);
+            EventDispatcher.Dispatch(value.PlayerId, new SessionRemovedEventArgs());
         }
 
         if (value != null && value.PlayerId > 0)
@@ -190,7 +190,7 @@ public static class SessionManager
         {
             if (ActorManager.HasActor(session.PlayerId))
             {
-                EventDispatcher.Dispatch(session.PlayerId, (int)EventId.SessionRemove);
+                EventDispatcher.Dispatch(session.PlayerId, new SessionRemovedEventArgs());
             }
 
             if (session.PlayerId > 0)

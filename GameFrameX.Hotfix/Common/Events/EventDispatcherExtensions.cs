@@ -27,7 +27,6 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Apps.Common.Event;
 using GameFrameX.Core.Abstractions.Agent;
 using GameFrameX.Core.Abstractions.Events;
 using GameFrameX.Foundation.Extensions;
@@ -35,24 +34,28 @@ using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Hotfix.Logic.Server;
 using GameFrameX.Utility.Setting;
-using GameEventArgs = GameFrameX.Core.Abstractions.Events.GameEventArgs;
 
 namespace GameFrameX.Hotfix.Common.Events;
 
 public static class EventDispatcherExtensions
 {
     /// <summary>
-    /// 分发事件
+    /// 分发事件：服务器 agent 自处理；服务器段事件（<see cref="IServerScopeEvent" />）再遍历全部在线玩家 actor 逐个派发。
     /// </summary>
     /// <param name="agent">代理对象</param>
-    /// <param name="eventId">事件ID</param>
-    /// <param name="gameEventArgs">事件参数,可以为null</param>
-    public static void Dispatch(this IComponentAgent agent, int eventId, GameEventArgs gameEventArgs = null)
+    /// <param name="eventArgs">事件参数，绑定键取自其具体类型；无载荷事件须使用空标记类，禁止传null</param>
+    /// <remarks>
+    /// 广播不变式：服务器段事件先由服务器 agent 自身处理，再遍历在线玩家逐 actor 派发（顺序与历史值段语义一致）；
+    /// 作用域归属由事件参数类型实现 <see cref="IServerScopeEvent" /> 声明。
+    /// </remarks>
+    public static void Dispatch(this IComponentAgent agent, GameEventArgs eventArgs)
     {
-        // 自己处理
-        SelfHandle(agent, eventId, gameEventArgs);
+        ArgumentNullException.ThrowIfNull(eventArgs);
 
-        if ((EventId)eventId > EventId.RoleSeparator && agent.OwnerType > GlobalConst.ActorTypeSeparator)
+        // 自己处理
+        SelfHandle(agent, eventArgs);
+
+        if (eventArgs is IServerScopeEvent && agent.OwnerType > GlobalConst.ActorTypeSeparator)
         {
             // 全局非玩家事件，抛给所有玩家
             agent.Tell(()
@@ -61,21 +64,21 @@ public static class EventDispatcherExtensions
                            return ServerComponentAgent.OnlineRoleForeach(role
                                                                              =>
                                                                          {
-                                                                             role.Dispatch(eventId, gameEventArgs);
+                                                                             role.Dispatch(eventArgs);
                                                                          });
                        });
         }
     }
 
-    private static void SelfHandle(IComponentAgent agent, int evtId, GameEventArgs gameEventArgs)
+    private static void SelfHandle(IComponentAgent agent, GameEventArgs eventArgs)
     {
         agent.Tell(async () =>
         {
             // 事件需要在本actor内执行，不可多线程执行，所以不能使用Task.WhenAll来处理
-            var listeners = HotfixManager.FindListeners(agent.OwnerType, evtId);
+            var listeners = HotfixManager.FindListeners(agent.OwnerType, eventArgs.GetType());
             if (listeners.IsNullOrEmpty())
             {
-                LogHelper.Warning("EventDispatcherExtensions.SelfHandle {evtId} {noListenersFound}", evtId, LocalizationService.GetString(GameFrameX.Localization.Keys.Events.NoListenersFound, evtId));
+                LogHelper.Warning("EventDispatcherExtensions.SelfHandle {eventArgsType} {noListenersFound}", eventArgs.GetType().Name, LocalizationService.GetString(GameFrameX.Localization.Keys.Events.NoListenersFound, eventArgs.GetType().Name));
                 return;
             }
 
@@ -84,24 +87,13 @@ public static class EventDispatcherExtensions
                 var componentAgent = await agent.GetComponentAgent(listener.AgentType, false);
                 try
                 {
-                    await listener.HandleEvent(componentAgent, gameEventArgs);
+                    await listener.HandleEvent(componentAgent, eventArgs);
                 }
                 catch (Exception exception)
                 {
-                    LogHelper.Error("EventDispatcherExtensions.SelfHandle {evtId} {exception}", evtId, exception);
+                    LogHelper.Error("EventDispatcherExtensions.SelfHandle {eventArgsType} {exception}", eventArgs.GetType().Name, exception);
                 }
             }
         });
-    }
-
-    /// <summary>
-    /// 分发事件
-    /// </summary>
-    /// <param name="agent">代理对象</param>
-    /// <param name="eventId">事件ID</param>
-    /// <param name="args">事件参数</param>
-    public static void Dispatch(this IComponentAgent agent, EventId eventId, GameEventArgs args = null)
-    {
-        Dispatch(agent, (int)eventId, args);
     }
 }

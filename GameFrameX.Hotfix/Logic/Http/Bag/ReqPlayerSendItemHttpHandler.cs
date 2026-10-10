@@ -28,7 +28,6 @@
 //  ==========================================================================================
 
 
-using GameFrameX.Apps.Common.Event;
 using GameFrameX.Apps.Common.EventData;
 using GameFrameX.Apps.Common.Session;
 using GameFrameX.Apps.Player.Bag.Entity;
@@ -69,7 +68,7 @@ public sealed class ReqPlayerSendItemHttpHandler : BaseHttpHandler
 
         // 发送道具事件
         var playerSendItemEventData = new PlayerSendItemEventArgs(sendItemRequest.RoleId, itemDic);
-        EventDispatcher.Dispatch(sendItemRequest.RoleId, (int)EventId.PlayerSendItem, playerSendItemEventData);
+        EventDispatcher.Dispatch(sendItemRequest.RoleId, playerSendItemEventData);
         if (playerSession.IsNotNull())
         {
             // 玩家在线

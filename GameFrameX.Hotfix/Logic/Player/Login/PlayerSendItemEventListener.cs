@@ -28,12 +28,12 @@
 //  ==========================================================================================
 
 
-using GameFrameX.Apps.Common.Event;
+using GameFrameX.Apps.Common.EventData;
 using GameFrameX.Core.Abstractions.Events;
 
 namespace GameFrameX.Hotfix.Logic.Player.Login;
 
-[Event(EventId.PlayerSendItem)]
+[Event(typeof(PlayerSendItemEventArgs))]
 internal sealed class PlayerSendItemEventListener : EventListener<PlayerComponentAgent>
 {
     protected override Task HandleEvent(PlayerComponentAgent agent, GameEventArgs gameEventArgs)

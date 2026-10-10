@@ -30,7 +30,6 @@
 
 using System.Reflection;
 using GameFrameX.Apps.Common.Session;
-using GameFrameX.Apps.Common.Event;
 using GameFrameX.Apps.Common.EventData;
 using GameFrameX.Core.Events;
 using GameFrameX.Foundation.Localization.Core;
@@ -198,7 +197,7 @@ internal partial class AppStartUpHotfixGame
 
     public override async Task StopAsync(string message = "")
     {
-        EventDispatcher.Dispatch(0, (int)EventId.ServiceOffline, new ServiceOfflineEventArgs(Setting.ServerType, Setting.ServerInstanceId, "Stopped", DateTime.UtcNow));
+        EventDispatcher.Dispatch(0, new ServiceOfflineEventArgs(Setting.ServerType, Setting.ServerInstanceId, "Stopped", DateTime.UtcNow));
         await base.StopAsync(message);
         // 断开所有连接
         await SessionManager.RemoveAll();

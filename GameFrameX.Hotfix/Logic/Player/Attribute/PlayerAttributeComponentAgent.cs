@@ -28,7 +28,6 @@
 //  ==========================================================================================
 
 
-using GameFrameX.Apps.Common.Event;
 using GameFrameX.Apps.Common.EventData;
 using GameFrameX.Apps.Player.Attribute;
 using GameFrameX.Apps.Player.Attribute.Component;
@@ -134,7 +133,7 @@ public class PlayerAttributeComponentAgent : StateComponentAgent<PlayerAttribute
         await OwnerComponent.WriteStateAsync();
         if (result.ShouldDispatch)
         {
-            this.Dispatch(EventId.AttributeChanged, new AttributeChangedEventArgs(ActorId, result.FinalAttributeType, result.SourceAttributeType, result.OldFinalValue, result.NewFinalValue));
+            this.Dispatch(new AttributeChangedEventArgs(ActorId, result.FinalAttributeType, result.SourceAttributeType, result.OldFinalValue, result.NewFinalValue));
         }
     }
 

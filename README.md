@@ -422,7 +422,7 @@ internal sealed class AddItemHandler : PlayerRpcComponentHandler<BagComponentAge
 The event system is used for loosely coupled communication between Actors.
 
 ```csharp
-[Event(EventId.PlayerLogin)]
+[Event(typeof(PlayerLoginEventArgs))]
 internal sealed class PlayerLoginEventHandler : EventListener<PlayerComponentAgent>
 {
     protected override Task HandleEvent(PlayerComponentAgent agent, GameEventArgs gameEventArgs)

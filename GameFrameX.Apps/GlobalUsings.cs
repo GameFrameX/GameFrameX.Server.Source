@@ -44,7 +44,6 @@ global using GameFrameX.DataBase;
 global using GameFrameX.DataBase.Abstractions;
 global using GameFrameX.Foundation.Extensions;
 global using GameFrameX.Utility.Setting;
-global using GameFrameX.Apps.Common.Event;
 global using GameFrameX.Utility;
 global using System.Collections;
 global using System.Collections.Concurrent;

@@ -32,7 +32,7 @@ using GameFrameX.Core.Abstractions.Events;
 
 namespace GameFrameX.Apps.Common.EventData;
 
-public sealed class ServiceOnlineEventArgs : GameEventArgs
+public sealed class ServiceOnlineEventArgs : GameEventArgs, IServerScopeEvent
 {
     public string ServiceName { get; }
     public long InstanceId { get; }

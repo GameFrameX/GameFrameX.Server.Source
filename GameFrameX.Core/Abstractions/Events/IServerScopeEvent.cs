@@ -3,7 +3,7 @@
 //   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
 //   均受中华人民共和国及相关国际法律法规保护。
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
-//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   使用本项目须严格遵守相应法律法规与开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
 //   This project is licensed solely under the Apache License 2.0,
@@ -12,9 +12,9 @@
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
 //   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
 //   侵犯他人合法权益等法律法规所禁止的行为！
-//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   or infringe upon the legal rights and interests of others, as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
-//   Any legal disputes and liabilities arising from secondary development based on this project
+//   Any legal disputes or liabilities arising from secondary development based on this project
 //   本项目组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
@@ -30,12 +30,13 @@
 namespace GameFrameX.Core.Abstractions.Events;
 
 /// <summary>
-/// 空事件参数
+/// 服务器段事件标记接口：实现本接口的事件参数表示服务器段（全局）事件。
 /// </summary>
-public sealed class GameEmptyEventArgs : GameEventArgs
+/// <remarks>
+/// 经组件代理扩展派发（<c>EventDispatcherExtensions.Dispatch</c>）时，服务器段事件在服务器自身处理之外，
+/// 还会遍历全部在线玩家 actor 逐个派发。该标记接口替代历史「事件 ID 服务器段值域」约定：
+/// 作用域归属由事件参数类型自身声明，而非依赖事件 ID 数值区间。
+/// </remarks>
+public interface IServerScopeEvent
 {
-    /// <summary>
-    /// 空事件参数实例
-    /// </summary>
-    public static readonly GameEmptyEventArgs EmptyEventArgs = new GameEmptyEventArgs();
 }

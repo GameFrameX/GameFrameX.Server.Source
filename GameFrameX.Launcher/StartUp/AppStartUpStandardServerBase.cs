@@ -37,7 +37,6 @@ using GameFrameX.NetWork.Abstractions;
 using GameFrameX.NetWork.HTTP;
 using GameFrameX.NetWork.Message;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Apps.Common.Event;
 using GameFrameX.Apps.Common.EventData;
 using GameFrameX.Core.Events;
 
@@ -154,7 +153,7 @@ internal abstract class AppStartUpStandardServerBase : AppStartUpBase
             await ComponentRegister.Init(typeof(AppsHandler).Assembly);
             HotfixManager.LoadHotfix(Setting);
             await StartServerAsync<DefaultMessageDecoderHandler, DefaultMessageEncoderHandler>(new DefaultMessageCompressHandler(), new DefaultMessageDecompressHandler(), HotfixManager.GetListHttpHandler(), HotfixManager.GetHttpHandler, AopHandlerTypes);
-            EventDispatcher.Dispatch(0, (int)EventId.ServiceOnline, new ServiceOnlineEventArgs(Setting.ServerType, Setting.ServerInstanceId, DateTime.UtcNow));
+            EventDispatcher.Dispatch(0, new ServiceOnlineEventArgs(Setting.ServerType, Setting.ServerInstanceId, DateTime.UtcNow));
 
             // 启动阶段完成（DB/组件/网络监听均已就绪），放行下一个 Role 的启动屏障
             MarkStartUpReady();
@@ -209,7 +208,7 @@ internal abstract class AppStartUpStandardServerBase : AppStartUpBase
     /// <returns>表示钩子操作的异步任务 / A task representing the hook operation</returns>
     protected virtual Task OnStoppingAsync()
     {
-        EventDispatcher.Dispatch(0, (int)EventId.ServiceOffline, new ServiceOfflineEventArgs(Setting.ServerType, Setting.ServerInstanceId, "Stopped", DateTime.UtcNow));
+        EventDispatcher.Dispatch(0, new ServiceOfflineEventArgs(Setting.ServerType, Setting.ServerInstanceId, "Stopped", DateTime.UtcNow));
         return Task.CompletedTask;
     }
 
