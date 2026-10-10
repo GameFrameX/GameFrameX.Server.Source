@@ -32,10 +32,10 @@ using ProtoBuf;
 using Xunit;
 using Xunit.Abstractions;
 using System.Collections.Generic;
-using GameFrameX.NetWork.Messages;
-using GameFrameX.NetWork.Abstractions;
+using GameFrameX.Network.Messages;
+using GameFrameX.Network.Abstractions;
 using System;
-using GameFrameX.NetWork;
+using GameFrameX.Network;
 
 namespace GameFrameX.Tests.ProtoBuff
 {

@@ -109,7 +109,7 @@ public class AppSettingTests
         Assert.False(appSetting.IsOpenTelemetry);
         Assert.False(appSetting.IsMonitorMessageTimeOut);
         Assert.Equal(1, appSetting.MonitorMessageTimeOutSeconds);
-        Assert.Equal(5, appSetting.NetWorkSendTimeOutSeconds);
+        Assert.Equal(5, appSetting.NetworkSendTimeOutSeconds);
         Assert.Equal(30_000, appSetting.SaveDataInterval);
         Assert.Equal(500, appSetting.SaveDataBatchCount);
         Assert.Equal(30_000, appSetting.SaveDataBatchTimeOut);
@@ -139,7 +139,7 @@ public class AppSettingTests
         appSetting.IsOpenTelemetry = true;
         appSetting.IsMonitorMessageTimeOut = true;
         appSetting.MonitorMessageTimeOutSeconds = 5;
-        appSetting.NetWorkSendTimeOutSeconds = 10;
+        appSetting.NetworkSendTimeOutSeconds = 10;
         appSetting.SaveDataInterval = 600_000;
         appSetting.SaveDataBatchCount = 1000;
         appSetting.SaveDataBatchTimeOut = 60_000;
@@ -159,7 +159,7 @@ public class AppSettingTests
         Assert.True(appSetting.IsOpenTelemetry);
         Assert.True(appSetting.IsMonitorMessageTimeOut);
         Assert.Equal(5, appSetting.MonitorMessageTimeOutSeconds);
-        Assert.Equal(10, appSetting.NetWorkSendTimeOutSeconds);
+        Assert.Equal(10, appSetting.NetworkSendTimeOutSeconds);
         Assert.Equal(600_000, appSetting.SaveDataInterval);
         Assert.Equal(1000, appSetting.SaveDataBatchCount);
         Assert.Equal(60_000, appSetting.SaveDataBatchTimeOut);

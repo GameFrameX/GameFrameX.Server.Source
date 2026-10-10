@@ -41,7 +41,7 @@ internal sealed class ReqTeamCreateHandler : GlobalRpcComponentHandler<TeamCompo
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)TeamErrorCode.NotLoggedIn;
@@ -68,7 +68,7 @@ internal sealed class ReqTeamJoinHandler : GlobalRpcComponentHandler<TeamCompone
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)TeamErrorCode.NotLoggedIn;
@@ -95,7 +95,7 @@ internal sealed class ReqTeamLeaveHandler : GlobalRpcComponentHandler<TeamCompon
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)TeamErrorCode.NotLoggedIn;
@@ -122,7 +122,7 @@ internal sealed class ReqTeamKickHandler : GlobalRpcComponentHandler<TeamCompone
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)TeamErrorCode.NotLoggedIn;
@@ -149,7 +149,7 @@ internal sealed class ReqTeamDisbandHandler : GlobalRpcComponentHandler<TeamComp
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)TeamErrorCode.NotLoggedIn;
@@ -176,7 +176,7 @@ internal sealed class ReqTeamListHandler : GlobalRpcComponentHandler<TeamCompone
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)TeamErrorCode.NotLoggedIn;

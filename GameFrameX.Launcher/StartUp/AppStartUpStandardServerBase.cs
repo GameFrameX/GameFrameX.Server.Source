@@ -33,9 +33,9 @@ using GameFrameX.DataBase.Mongo.Discovery;
 using GameFrameX.DataBase.PostgreSql.Discovery;
 using GameFrameX.Discovery;
 using GameFrameX.Discovery.Routing;
-using GameFrameX.NetWork.Abstractions;
-using GameFrameX.NetWork.HTTP;
-using GameFrameX.NetWork.Message;
+using GameFrameX.Network.Abstractions;
+using GameFrameX.Network.HTTP;
+using GameFrameX.Network.Message;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Apps.Common.EventData;
 using GameFrameX.Core.Events;
@@ -135,7 +135,7 @@ internal abstract class AppStartUpStandardServerBase : AppStartUpBase
                 GameFrameX.Core.Session.PlayerSessionManager.Instance.PlayerRouteSyncTarget = GameFrameX.Discovery.Routing.PlayerRouteResolverBootstrap.SyncTarget;
             }
             // 路由胶水装配自 Runtime 拆至组合侧 DiscoveryRoutingWire（发现层 Runtime 不再引用消息胶水程序集）。
-            GameFrameX.NetWork.RemoteMessaging.Routing.DiscoveryRoutingWire.Initialize(RoleSet.Current, Setting.DatabaseProvider == DatabaseProviderType.PostgreSql ? PostgreSqlDiscoveryRuntime.TableProvider : MongoDiscoveryRuntime.TableProvider);
+            GameFrameX.Network.RemoteMessaging.Routing.DiscoveryRoutingWire.Initialize(RoleSet.Current, Setting.DatabaseProvider == DatabaseProviderType.PostgreSql ? PostgreSqlDiscoveryRuntime.TableProvider : MongoDiscoveryRuntime.TableProvider);
 
             // 业务库注册即声明式提名门面默认库（DbOptions.IsDefault 缺省 true）——
             // 全部经 GameDb 门面的业务读写必须落在业务库（控制库已显式 IsDefault = false，先注册不会抢占门面）。
@@ -229,7 +229,7 @@ internal abstract class AppStartUpStandardServerBase : AppStartUpBase
         if (message is INetworkMessagePackage messageObject)
         {
             var handler = HotfixManager.GetTcpHandler(messageObject.Header.MessageId);
-            await InvokeMessageHandler(handler, messageObject.DeserializeMessageObject(), new DefaultNetWorkChannel(session, Setting));
+            await InvokeMessageHandler(handler, messageObject.DeserializeMessageObject(), new DefaultNetworkChannel(session, Setting));
         }
     }
 

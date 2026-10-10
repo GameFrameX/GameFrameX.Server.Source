@@ -158,7 +158,7 @@ public class GlobalSettingsSettingConflictTests : IDisposable
         var secondSetting = CreateSetting("Social");
         secondSetting.SaveDataInterval = 3000;
         secondSetting.HttpUrl = "";
-        secondSetting.NetWorkSendTimeOutSeconds = 0;
+        secondSetting.NetworkSendTimeOutSeconds = 0;
         secondSetting.ActorRecycleTime = 0;
 
         GlobalSettings.SetCurrentSetting(secondSetting);
@@ -166,7 +166,7 @@ public class GlobalSettingsSettingConflictTests : IDisposable
         Assert.Same(secondSetting, GlobalSettings.CurrentSetting);
         Assert.Equal(firstSetting.SaveDataInterval, secondSetting.SaveDataInterval);
         Assert.Equal("/game/api/", secondSetting.HttpUrl);
-        Assert.Equal(5, secondSetting.NetWorkSendTimeOutSeconds);
+        Assert.Equal(5, secondSetting.NetworkSendTimeOutSeconds);
         Assert.Equal(5, secondSetting.ActorRecycleTime);
     }
 

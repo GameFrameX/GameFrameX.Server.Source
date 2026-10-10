@@ -33,8 +33,8 @@ using GameFrameX.Core.Session;
 using GameFrameX.Apps.Common.EventData;
 using GameFrameX.Core.Events;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.NetWork;
-using GameFrameX.NetWork.Abstractions;
+using GameFrameX.Network;
+using GameFrameX.Network.Abstractions;
 using GameFrameX.Hotfix.Logic.Game.Room;
 using GameFrameX.Proto.Proto;
 using GameFrameX.SuperSocket.Connection;
@@ -120,7 +120,7 @@ internal partial class AppStartUpHotfixGame
     {
         // Localization: StartUp.TcpServer.NewClientConnection - 新客户端连接 - 会话ID: {0}, 远程终端: {1}
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.NewClientConnection, appSession.SessionId, appSession.RemoteEndPoint));
-        var netChannel = new DefaultNetWorkChannel(appSession, Setting);
+        var netChannel = new DefaultNetworkChannel(appSession, Setting);
         var count = PlayerSessionManager.Instance.Count();
         if (count > Setting.MaxClientCount)
         {
@@ -154,14 +154,14 @@ internal partial class AppStartUpHotfixGame
     /// <param name="messagePackage">网络消息包。</param>
     private async ValueTask HandleNetworkMessagePackageAsync(IAppSession session, NetworkMessagePackage messagePackage)
     {
-        var netWorkChannel = PlayerSessionManager.Instance.GetChannel(session.SessionId);
+        var networkChannel = PlayerSessionManager.Instance.GetChannel(session.SessionId);
 
-        if (netWorkChannel.IsNull())
+        if (networkChannel.IsNull())
         {
             return;
         }
 
-        var actorId = netWorkChannel.GetData<long>(GlobalConst.ActorIdKey);
+        var actorId = networkChannel.GetData<long>(GlobalConst.ActorIdKey);
         if (messagePackage.Header.OperationType == (byte)MessageOperationType.HeartBeat)
         {
             if (Setting.IsDebug && Setting.IsDebugReceive && Setting.IsDebugReceiveHeartBeat)
@@ -171,7 +171,7 @@ internal partial class AppStartUpHotfixGame
             }
 
             // 心跳消息回复
-            await ReplyHeartBeatAsync(netWorkChannel, (MessageObject)messagePackage.DeserializeMessageObject());
+            await ReplyHeartBeatAsync(networkChannel, (MessageObject)messagePackage.DeserializeMessageObject());
             return;
         }
 
@@ -192,7 +192,7 @@ internal partial class AppStartUpHotfixGame
         // 执行消息分发处理
         try
         {
-            await InvokeMessageHandler(handler, messagePackage.DeserializeMessageObject(), netWorkChannel);
+            await InvokeMessageHandler(handler, messagePackage.DeserializeMessageObject(), networkChannel);
         }
         catch (Exception exception)
         {

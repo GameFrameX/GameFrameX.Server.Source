@@ -31,7 +31,7 @@
 using System.Reflection;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.NetWork.HTTP;
+using GameFrameX.Network.HTTP;
 using GameFrameX.Utility;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Utility;

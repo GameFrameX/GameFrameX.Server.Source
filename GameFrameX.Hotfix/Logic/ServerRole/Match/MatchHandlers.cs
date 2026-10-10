@@ -41,7 +41,7 @@ internal sealed class ReqMatchEnqueueHandler : GlobalRpcComponentHandler<MatchCo
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)MatchErrorCode.NotLoggedIn;
@@ -68,7 +68,7 @@ internal sealed class ReqMatchCancelHandler : GlobalRpcComponentHandler<MatchCom
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)MatchErrorCode.NotLoggedIn;
@@ -95,7 +95,7 @@ internal sealed class ReqMatchStatusHandler : GlobalRpcComponentHandler<MatchCom
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)MatchErrorCode.NotLoggedIn;

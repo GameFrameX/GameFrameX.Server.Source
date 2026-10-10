@@ -41,7 +41,7 @@ internal sealed class ReqBattleCreateHandler : GlobalRpcComponentHandler<BattleC
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)BattleErrorCode.NotLoggedIn;
@@ -68,7 +68,7 @@ internal sealed class ReqBattleQueryHandler : GlobalRpcComponentHandler<BattleCo
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)BattleErrorCode.NotLoggedIn;

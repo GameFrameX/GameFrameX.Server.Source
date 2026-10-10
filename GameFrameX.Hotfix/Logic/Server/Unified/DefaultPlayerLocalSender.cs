@@ -28,8 +28,8 @@
 //  ==========================================================================================
 
 using GameFrameX.Core.Session;
-using GameFrameX.NetWork.Abstractions;
-using GameFrameX.NetWork.RemoteMessaging.Unified;
+using GameFrameX.Network.Abstractions;
+using GameFrameX.Network.RemoteMessaging.Unified;
 
 namespace GameFrameX.Hotfix.Logic.Server.Unified;
 

@@ -36,7 +36,7 @@ namespace GameFrameX.Architecture.Analyzers;
 /// GFX0016：非实现层代码不得在类型声明面上引用 MongoDbService / PostgreSqlDbService / MultiDbRegistry。
 /// </summary>
 /// <remarks>
-/// <para>规则：GameFrameX.DataBase* 与 GameFrameX.NetWork.RemoteMessaging（数据实现层）之外的程序集，
+/// <para>规则：GameFrameX.DataBase* 与 GameFrameX.Network.RemoteMessaging（数据实现层）之外的程序集，
 /// 其类型的声明面（基类、字段、属性、事件、方法签名）不得出现 MongoDbService / PostgreSqlDbService
 /// （含其子类）或 MultiDbRegistry 引用。</para>
 /// <para>原因：统一入口铁律——数据库访问一律经 GameDb 门面（判重用 GameDb.Contains、
@@ -144,7 +144,7 @@ public sealed class MongoImplementationAccessAnalyzer : SingleDiagnosticSymbolAn
     private static bool IsMongoImplementationLayer(string assemblyName)
     {
         return assemblyName.StartsWith("GameFrameX.DataBase", StringComparison.Ordinal)
-               || assemblyName == "GameFrameX.NetWork.RemoteMessaging";
+               || assemblyName == "GameFrameX.Network.RemoteMessaging";
     }
 
     private static bool IsForbiddenReference(ITypeSymbol? type, ArchitectureSymbols symbols, out string referenceName)

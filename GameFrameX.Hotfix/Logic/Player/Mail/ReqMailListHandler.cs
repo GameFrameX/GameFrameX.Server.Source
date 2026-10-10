@@ -37,7 +37,7 @@ internal sealed class ReqMailListHandler : PlayerRpcComponentHandler<MailCompone
     {
         try
         {
-            await ComponentAgent.OnReqMailListAsync(NetWorkChannel, request, response);
+            await ComponentAgent.OnReqMailListAsync(NetworkChannel, request, response);
         }
         catch (Exception e)
         {

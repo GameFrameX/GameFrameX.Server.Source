@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 using System.Reflection;
-using GameFrameX.NetWork.HTTP;
+using GameFrameX.Network.HTTP;
 using GameFrameX.StartUp;
 using Xunit;
 

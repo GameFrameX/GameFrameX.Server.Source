@@ -37,7 +37,7 @@ internal sealed class ReqRestartRockPaperScissorsGameHandler : GlobalRpcComponen
     {
         try
         {
-            var playerId = RockPaperScissorsHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = RockPaperScissorsHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             await ComponentAgent.OnRestartGameAsync(playerId, request, response);
         }
         catch (Exception e)

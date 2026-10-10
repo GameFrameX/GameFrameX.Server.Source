@@ -27,7 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.NetWork.Abstractions;
+using GameFrameX.Network.Abstractions;
 
 namespace GameFrameX.Launcher;
 

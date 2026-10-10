@@ -41,7 +41,7 @@ internal sealed class ReqChatJoinHandler : GlobalRpcComponentHandler<ChatCompone
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)ChatErrorCode.NotLoggedIn;
@@ -68,7 +68,7 @@ internal sealed class ReqChatLeaveHandler : GlobalRpcComponentHandler<ChatCompon
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)ChatErrorCode.NotLoggedIn;
@@ -95,7 +95,7 @@ internal sealed class ReqChatSpeakHandler : GlobalRpcComponentHandler<ChatCompon
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)ChatErrorCode.NotLoggedIn;
@@ -122,7 +122,7 @@ internal sealed class ReqChatPullHistoryHandler : GlobalRpcComponentHandler<Chat
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)ChatErrorCode.NotLoggedIn;

@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 using GameFrameX.Discovery.Routing;
-using GameFrameX.NetWork.Abstractions;
+using GameFrameX.Network.Abstractions;
 
 namespace GameFrameX.Core.Session;
 
@@ -110,7 +110,7 @@ public interface IPlayerSessionManager
     /// </summary>
     /// <param name="sessionId">会话ID。</param>
     /// <returns>对应的网络连接通道，如果不存在则返回null。</returns>
-    INetWorkChannel GetChannel(string sessionId);
+    INetworkChannel GetChannel(string sessionId);
 
     /// <summary>
     /// 添加新的连接会话。

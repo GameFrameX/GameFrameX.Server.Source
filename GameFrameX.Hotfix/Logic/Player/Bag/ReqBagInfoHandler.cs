@@ -37,7 +37,7 @@ internal sealed class ReqBagInfoHandler : PlayerRpcComponentHandler<BagComponent
     {
         try
         {
-            await ComponentAgent.OnReqBagInfoAsync(NetWorkChannel, request, response);
+            await ComponentAgent.OnReqBagInfoAsync(NetworkChannel, request, response);
         }
         catch (Exception e)
         {

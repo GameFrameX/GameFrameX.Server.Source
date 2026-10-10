@@ -25,12 +25,12 @@
   <Project Path="GameFrameX.Hotfix.WrapperGenerator/GameFrameX.Hotfix.WrapperGenerator.csproj" />
   <Project Path="GameFrameX.Launcher/GameFrameX.Launcher.csproj" />
   <Project Path="GameFrameX.Localization/GameFrameX.Localization.csproj" />
-  <Project Path="GameFrameX.NetWork.Abstractions/GameFrameX.NetWork.Abstractions.csproj" />
-  <Project Path="GameFrameX.NetWork.HTTP/GameFrameX.NetWork.HTTP.csproj" />
-  <Project Path="GameFrameX.NetWork.RemoteMessaging/GameFrameX.NetWork.RemoteMessaging.csproj" />
+  <Project Path="GameFrameX.Network.Abstractions/GameFrameX.Network.Abstractions.csproj" />
+  <Project Path="GameFrameX.Network.HTTP/GameFrameX.Network.HTTP.csproj" />
+  <Project Path="GameFrameX.Network.RemoteMessaging/GameFrameX.Network.RemoteMessaging.csproj" />
   <Project Path="GameFrameX.Online/GameFrameX.Online.csproj" />
   <Project Path="GameFrameX.Online.Runtime/GameFrameX.Online.Runtime.csproj" />
-  <Project Path="GameFrameX.NetWork/GameFrameX.NetWork.csproj" />
+  <Project Path="GameFrameX.Network/GameFrameX.Network.csproj" />
   <Project Path="GameFrameX.Proto/GameFrameX.Proto.csproj" />
   <Project Path="GameFrameX.ProtoBuf.Net/GameFrameX.ProtoBuf.Net.csproj" />
   <Project Path="GameFrameX.StartUp/GameFrameX.StartUp.csproj" />

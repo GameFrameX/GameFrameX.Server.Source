@@ -34,9 +34,9 @@ namespace GameFrameX.Hotfix.Logic.Game.Room;
 
 internal static class RoomHandlerHelper
 {
-    public static long GetCurrentPlayerId(INetWorkChannel netWorkChannel)
+    public static long GetCurrentPlayerId(INetworkChannel networkChannel)
     {
-        var sessionId = netWorkChannel.GameAppSession?.SessionId;
+        var sessionId = networkChannel.GameAppSession?.SessionId;
         if (string.IsNullOrWhiteSpace(sessionId))
         {
             return 0;

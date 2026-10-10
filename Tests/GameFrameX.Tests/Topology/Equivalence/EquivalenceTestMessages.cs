@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 
-using GameFrameX.NetWork.Messages;
+using GameFrameX.Network.Messages;
 
 namespace GameFrameX.Tests.Topology.Equivalence;
 

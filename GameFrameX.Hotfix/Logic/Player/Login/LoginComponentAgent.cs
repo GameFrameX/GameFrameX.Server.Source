@@ -131,7 +131,7 @@ public class LoginComponentAgent : StateComponentAgent<LoginComponent, LoginStat
     /// <param name="workChannel"></param>
     /// <param name="reqLogin"></param>
     /// <param name="response"></param>
-    public async Task OnPlayerLogin(INetWorkChannel workChannel, ReqPlayerLogin reqLogin, RespPlayerLogin response)
+    public async Task OnPlayerLogin(INetworkChannel workChannel, ReqPlayerLogin reqLogin, RespPlayerLogin response)
     {
         var playerState = await OwnerComponent.OnPlayerLogin(reqLogin);
         if (playerState == null)

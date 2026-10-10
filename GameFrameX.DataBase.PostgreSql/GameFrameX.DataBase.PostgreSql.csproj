@@ -12,7 +12,7 @@
         <ProjectReference Include="..\GameFrameX.Utility\GameFrameX.Utility.csproj"/>
     </ItemGroup>
 
-    <!-- 依赖方向裁定：本程序集不引用 GameFrameX.NetWork.RemoteMessaging——共享发现/玩家路由契约
+    <!-- 依赖方向裁定：本程序集不引用 GameFrameX.Network.RemoteMessaging——共享发现/玩家路由契约
          已下沉至 GameFrameX.DataBase（命名空间保留，经既有 DataBase 引用解析）；路由胶水装配由组合侧
          DiscoveryRoutingWire（RemoteMessaging）承担，Runtime 暴露 IRoleRouteTableProvider 供其装配。 -->
     <!-- 发现层 Runtime.ResetForTest / SimulateActivatedForTest 等 internal 测试缝随实现迁入，IVT 自 RemoteMessaging 同步迁移。 -->

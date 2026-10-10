@@ -685,7 +685,7 @@ dotnet test --logger "console;verbosity=detailed"
 | `StartUp/` | 시작 오케스트레이션, 멀티 역할 선택, All-in-One 옵션, 설정 시작 검증기, HTTP 라우트 등록 |
 | `Architecture/` | Roslyn 아키텍처 분석기 테스트(레이어링 규칙, 에이전트 실링) |
 | `Core/` | Actor 및 세션 관리 테스트(중복 로그인) |
-| `NetWork/` | SuperSocket KCP 리스닝 / 인증 / E2E 테스트, HTTP 및 세션 인증 미들웨어 테스트 |
+| `Network/` | SuperSocket KCP 리스닝 / 인증 / E2E 테스트, HTTP 및 세션 인증 미들웨어 테스트 |
 | `DataBase/` | MongoDB 및 PostgreSQL Provider 테스트(쿼리, 연결, 멀티 데이터베이스, Provider 리졸버) |
 | `Discovery/` | 서비스 디스커버리 엔드포인트 / 라우팅 통합 테스트(MongoDB 및 PostgreSQL) |
 | `RemoteMessaging/` | 크로스 프로세스 메시징 테스트(코덱, 전송) |
@@ -753,10 +753,10 @@ GameFrameX.Server.Source/
 ├── GameFrameX.Config/                # 게임 설정 테이블(JSON 형식, LuBan 생성)
 ├── GameFrameX.Proto/                 # ProtoBuf 프로토콜 정의
 ├── GameFrameX.ProtoBuf.Net/          # ProtoBuf 직렬화 구현
-├── GameFrameX.NetWork/               # 네트워크 코어(TCP/UDP/KCP/WebSocket 채널, 메시지 객체, 센더)
-├── GameFrameX.NetWork.Abstractions/  # 네트워크 인터페이스(IMessage, IMessageHandler, 메시지 매핑)
-├── GameFrameX.NetWork.HTTP/          # HTTP 서버(Swagger, Kestrel, BaseHttpHandler)
-├── GameFrameX.NetWork.RemoteMessaging/ # 크로스 프로세스 원격 메시지(서킷 브레이커, 재시도, 일관 해싱)
+├── GameFrameX.Network/               # 네트워크 코어(TCP/UDP/KCP/WebSocket 채널, 메시지 객체, 센더)
+├── GameFrameX.Network.Abstractions/  # 네트워크 인터페이스(IMessage, IMessageHandler, 메시지 매핑)
+├── GameFrameX.Network.HTTP/          # HTTP 서버(Swagger, Kestrel, BaseHttpHandler)
+├── GameFrameX.Network.RemoteMessaging/ # 크로스 프로세스 원격 메시지(서킷 브레이커, 재시도, 일관 해싱)
 ├── GameFrameX.Discovery/             # Aspire 스타일 서비스 디스커버리(services__{Role}__tcp__0 부트스트랩 맵)
 ├── GameFrameX.DataBase/              # 데이터베이스 추상 레이어(멀티 Provider 레지스트리, GameDb 쿼리/업데이트/삭제)
 ├── GameFrameX.DataBase.Mongo/        # MongoDB Provider(헬스 모니터링, 재시도, 배치 작업)

@@ -8,17 +8,17 @@
 
 
 using GameFrameX.Hotfix.Logic.Server.Unified;
-using GameFrameX.NetWork.Abstractions;
-using GameFrameX.NetWork.Messages;
+using GameFrameX.Network.Abstractions;
+using GameFrameX.Network.Messages;
 using GameFrameX.Discovery;
 using GameFrameX.Discovery.Routing;
-using GameFrameX.NetWork.RemoteMessaging.Routing;
+using GameFrameX.Network.RemoteMessaging.Routing;
 using GameFrameX.ProtoBuf.Net;
 using ProtoBuf;
 using Xunit;
-using IPlayerLocalSender = GameFrameX.NetWork.RemoteMessaging.Unified.IPlayerLocalSender;
-using IPlayerRouteResolver = GameFrameX.NetWork.RemoteMessaging.Unified.IPlayerRouteResolver;
-using PlayerRouteInfo = GameFrameX.NetWork.RemoteMessaging.Unified.PlayerRouteInfo;
+using IPlayerLocalSender = GameFrameX.Network.RemoteMessaging.Unified.IPlayerLocalSender;
+using IPlayerRouteResolver = GameFrameX.Network.RemoteMessaging.Unified.IPlayerRouteResolver;
+using PlayerRouteInfo = GameFrameX.Network.RemoteMessaging.Unified.PlayerRouteInfo;
 
 namespace GameFrameX.Tests.Discovery;
 

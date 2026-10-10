@@ -37,7 +37,7 @@ using GameFrameX.Foundation.Options;
 using GameFrameX.Foundation.Options.Attributes;
 using GameFrameX.Foundation.Utility;
 using GameFrameX.Localization;
-using GameFrameX.NetWork.RemoteMessaging.Routing;
+using GameFrameX.Network.RemoteMessaging.Routing;
 using GameFrameX.StartUp.Abstractions;
 using GameFrameX.StartUp.Configuration;
 using GameFrameX.StartUp.Options;

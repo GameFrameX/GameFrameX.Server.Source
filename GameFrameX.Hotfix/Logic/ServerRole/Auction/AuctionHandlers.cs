@@ -41,7 +41,7 @@ internal sealed class ReqAuctionListLotHandler : GlobalRpcComponentHandler<Aucti
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)AuctionErrorCode.NotLoggedIn;
@@ -68,7 +68,7 @@ internal sealed class ReqAuctionBidHandler : GlobalRpcComponentHandler<AuctionCo
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)AuctionErrorCode.NotLoggedIn;
@@ -95,7 +95,7 @@ internal sealed class ReqAuctionBuyoutHandler : GlobalRpcComponentHandler<Auctio
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)AuctionErrorCode.NotLoggedIn;

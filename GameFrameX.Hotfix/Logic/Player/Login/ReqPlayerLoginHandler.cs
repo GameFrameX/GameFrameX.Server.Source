@@ -34,6 +34,6 @@ internal sealed class ReqPlayerLoginHandler : GlobalRpcComponentHandler<LoginCom
 {
     protected override async Task ActionAsync(ReqPlayerLogin request, RespPlayerLogin response)
     {
-        await ComponentAgent.OnPlayerLogin(NetWorkChannel, request, response);
+        await ComponentAgent.OnPlayerLogin(NetworkChannel, request, response);
     }
 }

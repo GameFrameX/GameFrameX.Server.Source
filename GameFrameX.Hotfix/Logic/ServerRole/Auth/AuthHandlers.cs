@@ -41,7 +41,7 @@ internal sealed class ReqAuthGrantHandler : GlobalRpcComponentHandler<AuthCompon
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)AuthErrorCode.NotLoggedIn;
@@ -68,7 +68,7 @@ internal sealed class ReqAuthRevokeHandler : GlobalRpcComponentHandler<AuthCompo
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)AuthErrorCode.NotLoggedIn;

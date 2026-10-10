@@ -27,7 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.NetWork.Messages;
+using GameFrameX.Network.Messages;
 using GameFrameX.Proto.Proto;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;

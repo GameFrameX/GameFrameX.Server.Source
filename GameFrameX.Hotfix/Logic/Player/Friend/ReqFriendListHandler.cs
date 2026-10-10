@@ -35,6 +35,6 @@ internal sealed class ReqFriendListHandler : GlobalRpcComponentHandler<FriendCom
 {
     protected override async Task ActionAsync(ReqFriendList request, RespFriendList response)
     {
-        await ComponentAgent.OnFriendList(NetWorkChannel, request, response);
+        await ComponentAgent.OnFriendList(NetworkChannel, request, response);
     }
 }

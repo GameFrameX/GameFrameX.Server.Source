@@ -37,7 +37,7 @@ internal sealed class ReqMailClaimAllAttachmentHandler : PlayerRpcComponentHandl
     {
         try
         {
-            await ComponentAgent.OnReqMailClaimAllAttachmentAsync(NetWorkChannel, request, response);
+            await ComponentAgent.OnReqMailClaimAllAttachmentAsync(NetworkChannel, request, response);
         }
         catch (Exception e)
         {

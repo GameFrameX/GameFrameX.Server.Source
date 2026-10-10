@@ -41,7 +41,7 @@ internal sealed class ReqGmAddPenaltyHandler : GlobalRpcComponentHandler<GmCompo
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)GmErrorCode.NotLoggedIn;

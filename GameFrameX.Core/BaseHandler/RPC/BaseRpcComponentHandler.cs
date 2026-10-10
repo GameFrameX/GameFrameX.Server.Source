@@ -32,8 +32,8 @@ using GameFrameX.Core.Abstractions.Agent;
 using GameFrameX.Core.Actors;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.NetWork;
-using GameFrameX.NetWork.Abstractions;
+using GameFrameX.Network;
+using GameFrameX.Network.Abstractions;
 using Serilog;
 
 namespace GameFrameX.Core.BaseHandler.RPC;
@@ -73,11 +73,11 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
     /// 初始化
     /// </summary>
     /// <param name="message">网络消息</param>
-    /// <param name="netWorkChannel">网络通道</param>
+    /// <param name="networkChannel">网络通道</param>
     /// <returns>返回是否初始化成功,true:成功,false:失败</returns>
-    public override async Task<bool> Init(INetworkMessage message, INetWorkChannel netWorkChannel)
+    public override async Task<bool> Init(INetworkMessage message, INetworkChannel networkChannel)
     {
-        var initSuccess = await base.Init(message, netWorkChannel);
+        var initSuccess = await base.Init(message, networkChannel);
         if (!initSuccess)
         {
             return false;
@@ -95,7 +95,7 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
             {
                 // Localization: Core.MessageHandler.ActorIdIsZero - ActorId为0，无法获取组件，{0}，关闭通道
                 LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.ActorIdIsZero, message.GetType().FullName));
-                NetWorkChannel.Close();
+                NetworkChannel.Close();
                 return false;
             }
 
@@ -107,7 +107,7 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
             {
                 // Localization: Core.MessageHandler.RpcGetComponentFailed - BaseRpcComponentHandler.Init 获取组件失败，关闭通道，actorId:{0}，组件代理类型:{1}，异常：\n{2}
                 LogHelper.Fatal(e, LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcGetComponentFailed, ActorId, ComponentAgentType.FullName, e));
-                NetWorkChannel.Close();
+                NetworkChannel.Close();
                 return false;
             }
         }
@@ -127,7 +127,7 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
         {
             // Localization: Core.MessageHandler.RpcInnerActionCacheComponentNull - BaseRpcComponentHandler.InnerAction 缓存组件为空，消息类型:{0}
             LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcInnerActionCacheComponentNull, RequestMessage.GetType().FullName));
-            NetWorkChannel.Close();
+            NetworkChannel.Close();
             return Task.CompletedTask;
         }
 
@@ -157,12 +157,12 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
                 }
             }
 
-            if (NetWorkChannel == null || NetWorkChannel.IsClosed() || response == null)
+            if (NetworkChannel == null || NetworkChannel.IsClosed() || response == null)
             {
                 return;
             }
 
-            await NetWorkChannel.WriteAsync(response);
+            await NetworkChannel.WriteAsync(response);
             MessageObjectPoolHelper.Return(response);
         }
 
@@ -181,7 +181,7 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
         {
             // Localization: Core.MessageHandler.RpcGetComponentAgentCacheComponentNull - BaseRpcComponentHandler.GetComponentAgent 缓存组件为空，消息类型:{0}
             LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcGetComponentAgentCacheComponentNull, RequestMessage.GetType().FullName));
-            NetWorkChannel.Close();
+            NetworkChannel.Close();
             return default;
         }
 

@@ -689,7 +689,7 @@ dotnet test --logger "console;verbosity=detailed"
 | `StartUp/` | 启动编排、多角色选择、All-in-One 选项、配置启动校验器、HTTP 路由注册 |
 | `Architecture/` | Roslyn 架构分析器测试（分层规则、代理密封） |
 | `Core/` | Actor 与会话管理测试（重复登录） |
-| `NetWork/` | SuperSocket KCP 监听 / 鉴权 / 端到端测试、HTTP 与会话鉴权中间件测试 |
+| `Network/` | SuperSocket KCP 监听 / 鉴权 / 端到端测试、HTTP 与会话鉴权中间件测试 |
 | `DataBase/` | MongoDB 与 PostgreSQL Provider 测试（查询、连接、多数据库、Provider 解析器） |
 | `Discovery/` | 服务发现端点 / 路由集成测试（MongoDB 与 PostgreSQL） |
 | `RemoteMessaging/` | 跨进程消息测试（编解码、传输） |
@@ -756,10 +756,10 @@ GameFrameX.Server.Source/
 ├── GameFrameX.Config/                # 游戏配置表（JSON 格式，LuBan 生成）
 ├── GameFrameX.Proto/                 # ProtoBuf 协议定义
 ├── GameFrameX.ProtoBuf.Net/          # ProtoBuf 序列化实现
-├── GameFrameX.NetWork/               # 网络核心（TCP/UDP/KCP/WebSocket 通道、消息对象、发送器）
-├── GameFrameX.NetWork.Abstractions/  # 网络接口（IMessage、IMessageHandler、消息映射）
-├── GameFrameX.NetWork.HTTP/          # HTTP 服务器（Swagger、Kestrel、BaseHttpHandler）
-├── GameFrameX.NetWork.RemoteMessaging/ # 跨进程远程消息（断路器、重试、一致性哈希）
+├── GameFrameX.Network/               # 网络核心（TCP/UDP/KCP/WebSocket 通道、消息对象、发送器）
+├── GameFrameX.Network.Abstractions/  # 网络接口（IMessage、IMessageHandler、消息映射）
+├── GameFrameX.Network.HTTP/          # HTTP 服务器（Swagger、Kestrel、BaseHttpHandler）
+├── GameFrameX.Network.RemoteMessaging/ # 跨进程远程消息（断路器、重试、一致性哈希）
 ├── GameFrameX.Discovery/             # Aspire 风格服务发现（services__{Role}__tcp__0 引导映射）
 ├── GameFrameX.DataBase/              # 数据库抽象层（多 Provider 注册表、GameDb 查询/更新/删除）
 ├── GameFrameX.DataBase.Mongo/        # MongoDB Provider（健康监控、重试、批量操作）

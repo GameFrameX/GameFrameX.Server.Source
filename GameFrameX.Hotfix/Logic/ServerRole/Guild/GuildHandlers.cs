@@ -41,7 +41,7 @@ internal sealed class ReqGuildCreateHandler : GlobalRpcComponentHandler<GuildCom
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)GuildErrorCode.NotLoggedIn;
@@ -68,7 +68,7 @@ internal sealed class ReqGuildApplyHandler : GlobalRpcComponentHandler<GuildComp
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)GuildErrorCode.NotLoggedIn;
@@ -95,7 +95,7 @@ internal sealed class ReqGuildApproveHandler : GlobalRpcComponentHandler<GuildCo
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)GuildErrorCode.NotLoggedIn;
@@ -122,7 +122,7 @@ internal sealed class ReqGuildLeaveHandler : GlobalRpcComponentHandler<GuildComp
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)GuildErrorCode.NotLoggedIn;
@@ -149,7 +149,7 @@ internal sealed class ReqGuildKickHandler : GlobalRpcComponentHandler<GuildCompo
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)GuildErrorCode.NotLoggedIn;
@@ -176,7 +176,7 @@ internal sealed class ReqGuildDisbandHandler : GlobalRpcComponentHandler<GuildCo
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)GuildErrorCode.NotLoggedIn;

@@ -30,7 +30,7 @@
 using System.Diagnostics;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.NetWork.Abstractions;
+using GameFrameX.Network.Abstractions;
 using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Core.BaseHandler.Normal;
@@ -54,7 +54,7 @@ public abstract class BaseMessageHandler<TRequest> : IMessageHandler where TRequ
     /// <summary>
     /// 网络频道
     /// </summary>
-    public INetWorkChannel NetWorkChannel { get; private set; }
+    public INetworkChannel NetworkChannel { get; private set; }
 
     /// <summary>
     /// 消息对象
@@ -66,12 +66,12 @@ public abstract class BaseMessageHandler<TRequest> : IMessageHandler where TRequ
     /// 子类实现必须调用
     /// </summary>
     /// <param name="message">消息对象</param>
-    /// <param name="netWorkChannel">网络渠道</param>
+    /// <param name="networkChannel">网络渠道</param>
     /// <returns>返回是否初始化成功,true:成功,false:失败</returns>
-    public virtual Task<bool> Init(INetworkMessage message, INetWorkChannel netWorkChannel)
+    public virtual Task<bool> Init(INetworkMessage message, INetworkChannel networkChannel)
     {
         ArgumentNullException.ThrowIfNull(message);
-        ArgumentNullException.ThrowIfNull(netWorkChannel);
+        ArgumentNullException.ThrowIfNull(networkChannel);
         if (message is not TRequest requestMessage)
         {
             // Localization: CoreExceptions.Message.TypeCastError - 消息类型错误, {0} to: {1}
@@ -80,7 +80,7 @@ public abstract class BaseMessageHandler<TRequest> : IMessageHandler where TRequ
 
         _stopwatch = new Stopwatch();
         Message = requestMessage;
-        NetWorkChannel = netWorkChannel;
+        NetworkChannel = networkChannel;
         _isInit = true;
         return Task.FromResult(true);
     }

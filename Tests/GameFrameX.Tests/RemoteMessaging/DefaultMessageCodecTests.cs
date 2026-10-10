@@ -29,7 +29,7 @@
 
 using System.Buffers.Binary;
 using System.IO;
-using GameFrameX.NetWork.RemoteMessaging.Transport;
+using GameFrameX.Network.RemoteMessaging.Transport;
 
 namespace GameFrameX.Tests.RemoteMessaging;
 
@@ -75,7 +75,7 @@ public class DefaultMessageCodecTests
         int maxPacketSize,
         int maxDecompressedSize)
     {
-        var codecType = typeof(IMessageCodec).Assembly.GetType("GameFrameX.NetWork.RemoteMessaging.Transport.DefaultMessageCodec", throwOnError: true);
+        var codecType = typeof(IMessageCodec).Assembly.GetType("GameFrameX.Network.RemoteMessaging.Transport.DefaultMessageCodec", throwOnError: true);
         return (IMessageCodec)Activator.CreateInstance(
             codecType!,
             registry,

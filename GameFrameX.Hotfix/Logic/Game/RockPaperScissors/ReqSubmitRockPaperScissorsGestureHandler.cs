@@ -37,7 +37,7 @@ internal sealed class ReqSubmitRockPaperScissorsGestureHandler : GlobalRpcCompon
     {
         try
         {
-            var playerId = RockPaperScissorsHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = RockPaperScissorsHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             await ComponentAgent.OnSubmitGestureAsync(playerId, request, response);
         }
         catch (Exception e)

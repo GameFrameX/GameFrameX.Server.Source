@@ -198,9 +198,9 @@ public class AppSetting
     /// <remarks>
     /// Network send timeout in seconds. Default value is 5 seconds.
     /// </remarks>
-    [Option(nameof(NetWorkSendTimeOutSeconds), DefaultValue = 5, Description = "网络发送等待超时时间（秒）,默认值为5秒,最小值为1秒")]
+    [Option(nameof(NetworkSendTimeOutSeconds), DefaultValue = 5, Description = "网络发送等待超时时间（秒）,默认值为5秒,最小值为1秒")]
     [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
-    public int NetWorkSendTimeOutSeconds { get; set; } = 5;
+    public int NetworkSendTimeOutSeconds { get; set; } = 5;
 
     /// <summary>
     /// 是否打印发送数据,只有在IsDebug为true时有效,默认值为false

@@ -1,0 +1,531 @@
+// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes and liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository:  https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+using System.Diagnostics;
+using System.Collections.Concurrent;
+using GameFrameX.Network.Abstractions;
+using GameFrameX.Network.RemoteMessaging.Contracts;
+using GameFrameX.Utility.Setting;
+
+namespace GameFrameX.Network.RemoteMessaging.Unified;
+
+/// <summary>
+/// 统一消息发送器默认实现。
+/// 内聚玩家消息（本服/跨服/离线）和系统消息（服务发现/一致性选路）的完整链路。
+/// </summary>
+/// <remarks>
+/// Default implementation of the unified message sender.
+/// Encapsulates the complete pipeline for player messages (local/cross-server/offline)
+/// and server messages (service discovery/consistent routing).
+/// </remarks>
+public sealed class UnifiedMessageSender : IUnifiedMessageSender
+{
+    private const int InstanceRefreshIntervalMs = 5000;
+
+    private readonly IRemoteMessageClient _remoteClient;
+    private readonly IPlayerRouteResolver _routeResolver;
+    private readonly IPlayerLocalSender _localSender;
+    private readonly IServerInstanceSelector _instanceSelector;
+    private readonly MessageSendMetrics _metrics;
+    private readonly ConcurrentDictionary<string, long> _lastInstanceRefreshTicks = new(StringComparer.OrdinalIgnoreCase);
+    private readonly string _currentServerType;
+    private readonly int _currentServerId;
+
+    /// <summary>
+    /// 初始化统一消息发送器。
+    /// </summary>
+    /// <remarks>
+    /// Initializes the unified message sender.
+    /// </remarks>
+    /// <param name="remoteClient">远程消息客户端 / Remote message client</param>
+    /// <param name="routeResolver">玩家路由解析器 / Player route resolver</param>
+    /// <param name="localSender">本服玩家发送器 / Local player sender</param>
+    /// <param name="instanceSelector">服务实例选择器 / Server instance selector</param>
+    /// <param name="metrics">发送指标聚合器；为空时自动创建 / Metrics recorder; auto-created when null</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="remoteClient"/> 为 null 时抛出 / Thrown when <paramref name="remoteClient"/> is null</exception>
+    /// <exception cref="ArgumentNullException">当 <paramref name="routeResolver"/> 为 null 时抛出 / Thrown when <paramref name="routeResolver"/> is null</exception>
+    /// <exception cref="ArgumentNullException">当 <paramref name="localSender"/> 为 null 时抛出 / Thrown when <paramref name="localSender"/> is null</exception>
+    /// <exception cref="ArgumentNullException">当 <paramref name="instanceSelector"/> 为 null 时抛出 / Thrown when <paramref name="instanceSelector"/> is null</exception>
+    public UnifiedMessageSender(
+        IRemoteMessageClient remoteClient,
+        IPlayerRouteResolver routeResolver,
+        IPlayerLocalSender localSender,
+        IServerInstanceSelector instanceSelector,
+        MessageSendMetrics metrics = null)
+    {
+        _remoteClient = remoteClient ?? throw new ArgumentNullException(nameof(remoteClient));
+        _routeResolver = routeResolver ?? throw new ArgumentNullException(nameof(routeResolver));
+        _localSender = localSender ?? throw new ArgumentNullException(nameof(localSender));
+        _instanceSelector = instanceSelector ?? throw new ArgumentNullException(nameof(instanceSelector));
+        _metrics = metrics ?? new MessageSendMetrics();
+        _currentServerType = GlobalSettings.CurrentSetting?.ServerType ?? GameServerConst.Game.Name;
+        _currentServerId = GlobalSettings.CurrentSetting?.ServerId ?? GameServerConst.Game.Id;
+    }
+
+    /// <summary>
+    /// 获取统一发送器内部指标聚合器。
+    /// </summary>
+    /// <remarks>
+    /// Gets the internal metrics recorder of the unified sender.
+    /// </remarks>
+    /// <value>发送指标聚合器实例 / The metrics recorder instance</value>
+    public MessageSendMetrics Metrics
+    {
+        get { return _metrics; }
+    }
+
+    #region SendToPlayerAsync
+
+    /// <summary>
+    /// 发送消息给目标玩家。按“本服直发 → 路由解析 → 跨服转发 → 离线处理”的顺序执行完整投递链路，
+    /// 全程记录耗时与 traceId 指标；参数非法、取消或异常时返回对应的失败结果。
+    /// </summary>
+    /// <remarks>
+    /// Sends a message to the target player. Runs the full delivery pipeline in the order "local delivery → route resolution → cross-server forwarding → offline handling",
+    /// recording elapsed time and traceId metrics throughout; returns a corresponding failure result on invalid arguments, cancellation, or exceptions.
+    /// </remarks>
+    /// <param name="playerId">目标玩家ID / Target player ID</param>
+    /// <param name="message">消息对象 / Message object</param>
+    /// <param name="options">发送选项 / Send options</param>
+    /// <param name="ct">取消令牌 / Cancellation token</param>
+    /// <returns>发送结果 / Send result</returns>
+    public async Task<PlayerSendResult> SendToPlayerAsync(
+        long playerId,
+        MessageObject message,
+        PlayerSendOptions options = null,
+        CancellationToken ct = default)
+    {
+        if (playerId <= 0)
+        {
+            return RecordPlayerResult(PlayerSendResult.Fail(PlayerDeliverStatus.Failed, playerId, "Invalid playerId"));
+        }
+
+        if (message == null)
+        {
+            return RecordPlayerResult(PlayerSendResult.Fail(PlayerDeliverStatus.Failed, playerId, "Message is null"));
+        }
+
+        options = options ?? new PlayerSendOptions();
+        var sw = Stopwatch.StartNew();
+        var traceId = Guid.NewGuid().ToString("N")[..16];
+
+        try
+        {
+            // Step 1: 优先检查本服在线
+            if (_localSender.IsPlayerOnline(playerId))
+            {
+                var sent = await _localSender.SendToLocalPlayerAsync(playerId, message);
+                sw.Stop();
+
+                if (sent)
+                {
+                    return RecordPlayerResult(PlayerSendResult.Ok(
+                                                  PlayerDeliverStatus.LocalDelivered,
+                                                  playerId,
+                                                  sw.ElapsedMilliseconds,
+                                                  traceId));
+                }
+
+                // 本服投递失败（可能在投递瞬间断线），继续走路由解析
+            }
+
+            // Step 2: 解析路由
+            var routeInfo = await _routeResolver.ResolveAsync(playerId);
+
+            if (routeInfo == null)
+            {
+                sw.Stop();
+                return RecordPlayerResult(PlayerSendResult.Fail(
+                                              PlayerDeliverStatus.RouteMissing,
+                                              playerId,
+                                              "Route info not found",
+                                              sw.ElapsedMilliseconds,
+                                              traceId));
+            }
+
+            // Step 3: 路由指向本服但 SessionManager 未命中（路由过期）
+            if (routeInfo.IsOnline && IsCurrentServer(routeInfo))
+            {
+                // 路由指向本服但本服投递失败，视为离线
+                sw.Stop();
+                return RecordPlayerResult(HandleOffline(playerId, options, sw.ElapsedMilliseconds, traceId));
+            }
+
+            // Step 4: 路由指向他服
+            if (routeInfo.IsOnline)
+            {
+                var remoteResult = await ForwardToRemoteServerAsync(playerId, message, options, routeInfo, sw, traceId, ct);
+                return RecordPlayerResult(remoteResult);
+            }
+
+            // Step 5: 路由标记为离线
+            sw.Stop();
+            return RecordPlayerResult(HandleOffline(playerId, options, sw.ElapsedMilliseconds, traceId));
+        }
+        catch (OperationCanceledException)
+        {
+            sw.Stop();
+            return RecordPlayerResult(PlayerSendResult.Fail(
+                                          PlayerDeliverStatus.Cancelled,
+                                          playerId,
+                                          "Operation cancelled",
+                                          sw.ElapsedMilliseconds,
+                                          traceId));
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            return RecordPlayerResult(PlayerSendResult.Fail(
+                                          PlayerDeliverStatus.Failed,
+                                          playerId,
+                                          ex.Message,
+                                          sw.ElapsedMilliseconds,
+                                          traceId));
+        }
+    }
+
+    private async Task<PlayerSendResult> ForwardToRemoteServerAsync(
+        long playerId,
+        MessageObject message,
+        PlayerSendOptions options,
+        PlayerRouteInfo routeInfo,
+        Stopwatch sw,
+        string traceId,
+        CancellationToken ct)
+    {
+        try
+        {
+            var context = new RemoteCallContext
+            {
+                ServiceName = routeInfo.ServerType,
+                TimeoutMs = options.TimeoutMs,
+                AllowRetry = options.AllowRetry,
+                MaxRetryCount = options.MaxRetryCount,
+                TraceId = traceId,
+                Metadata = new Dictionary<string, string>
+                {
+                    { "TargetPlayerId", playerId.ToString() },
+                    { "OriginalServiceName", routeInfo.ServerType },
+                },
+            };
+
+            var innerRequest = new ReqSendToPlayerInner
+            {
+                TargetPlayerId = playerId,
+                InnerMessage = message,
+            };
+
+            var result = await _remoteClient.CallWithResultAsync<RespSendToPlayerInner>(context, innerRequest);
+            sw.Stop();
+
+            if (result.IsSuccess && result.Response != null && result.Response.Success)
+            {
+                return PlayerSendResult.Ok(
+                    PlayerDeliverStatus.RemoteDelivered,
+                    playerId,
+                    sw.ElapsedMilliseconds,
+                    traceId,
+                    routeInfo.ServerType,
+                    result.RetryCount);
+            }
+
+            // 跨服转发失败，检查目标服返回的状态
+            var remoteFailed = result.Response != null && !result.Response.Success && result.Response.PlayerOffline;
+            if (remoteFailed)
+            {
+                return HandleOffline(playerId, options, sw.ElapsedMilliseconds, traceId, result.RetryCount);
+            }
+
+            return PlayerSendResult.Fail(
+                PlayerDeliverStatus.Failed,
+                playerId,
+                result.ErrorMessage ?? "Remote delivery failed",
+                sw.ElapsedMilliseconds,
+                traceId,
+                result.RetryCount);
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            return PlayerSendResult.Fail(
+                PlayerDeliverStatus.Failed,
+                playerId,
+                $"Cross-server forwarding failed: {ex.Message}",
+                sw.ElapsedMilliseconds,
+                traceId);
+        }
+    }
+
+    private PlayerSendResult HandleOffline(long playerId, PlayerSendOptions options, long elapsedMs, string traceId, int retryCount = 0)
+    {
+        switch (options.OfflineStrategy)
+        {
+            case PlayerOfflineStrategy.StoreOffline:
+                // TODO: 写入离线消息存储（P1 后续完善）
+                return PlayerSendResult.Ok(
+                    PlayerDeliverStatus.OfflineStored,
+                    playerId,
+                    elapsedMs,
+                    traceId,
+                    retryCount: retryCount);
+
+            case PlayerOfflineStrategy.Discard:
+                return PlayerSendResult.Fail(
+                    PlayerDeliverStatus.Offline,
+                    playerId,
+                    "Player offline, message discarded",
+                    elapsedMs,
+                    traceId,
+                    retryCount);
+
+            default:
+                return PlayerSendResult.Fail(
+                    PlayerDeliverStatus.Offline,
+                    playerId,
+                    "Player offline",
+                    elapsedMs,
+                    traceId,
+                    retryCount);
+        }
+    }
+
+    private bool IsCurrentServer(PlayerRouteInfo routeInfo)
+    {
+        if (routeInfo == null)
+        {
+            return false;
+        }
+
+        if (!string.Equals(routeInfo.ServerType, _currentServerType, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return routeInfo.ServerId == _currentServerId;
+    }
+
+    #endregion
+
+    #region SendToServerAsync
+
+    /// <summary>
+    /// 发送请求-响应消息给目标服务。按需刷新实例列表并选择目标实例，
+    /// 依据 AllowRetry 决定走带重试或不带重试的远程调用，并将结果转换为结构化发送结果；
+    /// 服务名/消息为空、取消或异常时返回对应的失败结果。
+    /// </summary>
+    /// <remarks>
+    /// Sends a request-response message to the target service. Refreshes the instance list on demand and selects a target instance,
+    /// then performs a remote call with or without retry depending on AllowRetry and converts the result into a structured send result;
+    /// returns a corresponding failure result on empty service name/message, cancellation, or exceptions.
+    /// </remarks>
+    /// <typeparam name="TResp">响应消息类型 / Response message type</typeparam>
+    /// <param name="serviceName">目标服务名 / Target service name</param>
+    /// <param name="message">请求消息对象 / Request message object</param>
+    /// <param name="options">发送选项 / Send options</param>
+    /// <param name="ct">取消令牌 / Cancellation token</param>
+    /// <returns>结构化调用结果 / Structured call result</returns>
+    public async Task<ServerSendResult<TResp>> SendToServerAsync<TResp>(
+        string serviceName,
+        MessageObject message,
+        ServerSendOptions options = null,
+        CancellationToken ct = default)
+        where TResp : class, IResponseMessage
+    {
+        if (string.IsNullOrEmpty(serviceName))
+        {
+            return RecordServerResult(
+                serviceName,
+                ServerSendResult<TResp>.Fail(RemoteStatusCode.EndpointNotFound, "Service name is empty"));
+        }
+
+        if (message == null)
+        {
+            return RecordServerResult(
+                serviceName,
+                ServerSendResult<TResp>.Fail(RemoteStatusCode.UnknownError, "Message is null"));
+        }
+
+        options = options ?? new ServerSendOptions();
+
+        RefreshInstancesIfNeeded(serviceName);
+
+        // 实例选择
+        var selection = _instanceSelector.Select(serviceName, options.RouteKey);
+        var targetService = selection.HasInstance ? $"{serviceName}_{selection.InstanceId}" : serviceName;
+
+        try
+        {
+            RemoteCallResult<TResp> result;
+
+            if (options.AllowRetry)
+            {
+                result = await _remoteClient.CallWithRetryAsync<TResp>(
+                             targetService,
+                             message,
+                             options.TimeoutMs,
+                             options.MaxRetryCount,
+                             ct);
+            }
+            else
+            {
+                result = await _remoteClient.CallWithoutRetryAsync<TResp>(
+                             targetService,
+                             message,
+                             options.TimeoutMs,
+                             ct);
+            }
+
+            return RecordServerResult(
+                serviceName,
+                ServerSendResult<TResp>.FromRemoteResult(result, selection.InstanceId));
+        }
+        catch (OperationCanceledException)
+        {
+            return RecordServerResult(
+                serviceName,
+                ServerSendResult<TResp>.Fail(RemoteStatusCode.Cancelled, "Operation cancelled"));
+        }
+        catch (Exception ex)
+        {
+            return RecordServerResult(
+                serviceName,
+                ServerSendResult<TResp>.Fail(RemoteStatusCode.UnknownError, ex.Message));
+        }
+    }
+
+    #endregion
+
+    #region SendToServerOneWayAsync
+
+    /// <summary>
+    /// 单向发送消息给目标服务，不等待响应。按需刷新实例列表并选择目标实例后执行单向远程调用；
+    /// 服务名/消息为空或调用异常时返回对应的失败结果。
+    /// </summary>
+    /// <remarks>
+    /// Sends a one-way message to the target service without waiting for a response. Refreshes the instance list on demand, selects a target instance, then performs the one-way remote call;
+    /// returns a corresponding failure result on empty service name/message or call exceptions.
+    /// </remarks>
+    /// <param name="serviceName">目标服务名 / Target service name</param>
+    /// <param name="message">消息对象 / Message object</param>
+    /// <param name="options">发送选项 / Send options</param>
+    /// <param name="ct">取消令牌 / Cancellation token</param>
+    /// <returns>发送结果 / Send result</returns>
+    public async Task<ServerSendResult> SendToServerOneWayAsync(
+        string serviceName,
+        MessageObject message,
+        ServerSendOptions options = null,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(serviceName))
+        {
+            return RecordServerOneWayResult(serviceName, ServerSendResult.Fail("Service name is empty"));
+        }
+
+        if (message == null)
+        {
+            return RecordServerOneWayResult(serviceName, ServerSendResult.Fail("Message is null"));
+        }
+
+        options = options ?? new ServerSendOptions();
+
+        RefreshInstancesIfNeeded(serviceName);
+
+        var selection = _instanceSelector.Select(serviceName, options.RouteKey);
+        var targetService = selection.HasInstance ? $"{serviceName}_{selection.InstanceId}" : serviceName;
+
+        try
+        {
+            await _remoteClient.SendOneWayAsync(targetService, message, options.TimeoutMs, ct);
+            return RecordServerOneWayResult(serviceName, ServerSendResult.Ok(selection.InstanceId));
+        }
+        catch (Exception ex)
+        {
+            return RecordServerOneWayResult(serviceName, ServerSendResult.Fail($"One-way send failed: {ex.Message}"));
+        }
+    }
+
+    #endregion
+
+    private void RefreshInstancesIfNeeded(string serviceName)
+    {
+        if (string.IsNullOrWhiteSpace(serviceName))
+        {
+            return;
+        }
+
+        var now = Environment.TickCount64;
+        var last = _lastInstanceRefreshTicks.GetOrAdd(serviceName, 0);
+        if (now - last < InstanceRefreshIntervalMs)
+        {
+            return;
+        }
+
+        _lastInstanceRefreshTicks[serviceName] = now;
+        var instanceIds = EnvironmentServiceInstanceDiscovery.DiscoverInstanceIds(serviceName);
+        _instanceSelector.RefreshInstances(serviceName, instanceIds);
+    }
+
+    private PlayerSendResult RecordPlayerResult(PlayerSendResult result)
+    {
+        _metrics.Record(new SendMetricsRecord
+        {
+            TargetType = "player",
+            ServiceName = result.TargetServiceName ?? _currentServerType,
+            StatusCode = result.Status.ToString(),
+            ElapsedMs = result.ElapsedMs,
+            RetryCount = result.RetryCount,
+        });
+        return result;
+    }
+
+    private ServerSendResult<TResp> RecordServerResult<TResp>(string serviceName, ServerSendResult<TResp> result)
+        where TResp : class, IResponseMessage
+    {
+        _metrics.Record(new SendMetricsRecord
+        {
+            TargetType = "server",
+            ServiceName = serviceName ?? string.Empty,
+            StatusCode = result.StatusCode.ToString(),
+            ElapsedMs = result.ElapsedMs,
+            RetryCount = result.RetryCount,
+        });
+        return result;
+    }
+
+    private ServerSendResult RecordServerOneWayResult(string serviceName, ServerSendResult result)
+    {
+        _metrics.Record(new SendMetricsRecord
+        {
+            TargetType = "server",
+            ServiceName = serviceName ?? string.Empty,
+            StatusCode = result.IsSuccess ? "Success" : "Failed",
+        });
+        return result;
+    }
+}

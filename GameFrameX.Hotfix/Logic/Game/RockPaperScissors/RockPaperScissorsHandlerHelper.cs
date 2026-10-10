@@ -34,8 +34,8 @@ namespace GameFrameX.Hotfix.Logic.Game.RockPaperScissors;
 
 internal static class RockPaperScissorsHandlerHelper
 {
-    public static long GetCurrentPlayerId(INetWorkChannel netWorkChannel)
+    public static long GetCurrentPlayerId(INetworkChannel networkChannel)
     {
-        return RoomHandlerHelper.GetCurrentPlayerId(netWorkChannel);
+        return RoomHandlerHelper.GetCurrentPlayerId(networkChannel);
     }
 }

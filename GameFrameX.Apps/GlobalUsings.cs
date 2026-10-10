@@ -50,5 +50,5 @@ global using System.Collections.Concurrent;
 global using System.Collections.Generic;
 global using System.Reflection;
 global using System.Text.Json.Serialization;
-global using GameFrameX.NetWork.Abstractions;
-global using GameFrameX.NetWork.Messages;
+global using GameFrameX.Network.Abstractions;
+global using GameFrameX.Network.Messages;

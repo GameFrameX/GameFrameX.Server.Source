@@ -27,7 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.NetWork.Abstractions;
+using GameFrameX.Network.Abstractions;
 
 namespace GameFrameX.Core.Session;
 
@@ -55,7 +55,7 @@ public interface IPlayerSession
     /// <summary>
     /// 连接上下文
     /// </summary>
-    INetWorkChannel WorkChannel { get; }
+    INetworkChannel WorkChannel { get; }
 
     /// <summary>
     /// 连接标示，避免自己顶自己的号,客户端每次启动游戏生成一次/或者每个设备一个

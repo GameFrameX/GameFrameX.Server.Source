@@ -34,6 +34,6 @@ internal sealed class ReqDeleteFriendHandler : GlobalRpcComponentHandler<FriendC
 {
     protected override async Task ActionAsync(ReqDeleteFriend request, RespDeleteFriend response)
     {
-        await ComponentAgent.OnDeleteFriend(NetWorkChannel, request, response);
+        await ComponentAgent.OnDeleteFriend(NetworkChannel, request, response);
     }
 }

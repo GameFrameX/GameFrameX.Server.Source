@@ -31,11 +31,11 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Buffers.Binary;
-using GameFrameX.NetWork.Messages;
+using GameFrameX.Network.Messages;
 using GameFrameX.Discovery;
 using GameFrameX.Discovery.Routing;
 using GameFrameX.Discovery.Routing;
-using GameFrameX.NetWork.RemoteMessaging.Routing;
+using GameFrameX.Network.RemoteMessaging.Routing;
 using GameFrameX.ProtoBuf.Net;
 using ProtoBuf;
 

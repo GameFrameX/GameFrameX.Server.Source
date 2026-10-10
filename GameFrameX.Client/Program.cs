@@ -29,7 +29,7 @@
 
 using GameFrameX.Client.Bot;
 using GameFrameX.Localization;
-using GameFrameX.NetWork.Abstractions;
+using GameFrameX.Network.Abstractions;
 using GameFrameX.Proto.Proto;
 using GameFrameX.ProtoBuf.Net;
 using GameFrameX.Foundation.Localization.Core;

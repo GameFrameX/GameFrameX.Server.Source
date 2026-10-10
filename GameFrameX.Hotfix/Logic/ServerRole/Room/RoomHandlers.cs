@@ -41,7 +41,7 @@ internal sealed class ReqRoomAllocateHandler : GlobalRpcComponentHandler<RoomCom
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)RoomErrorCode.NotLoggedIn;
@@ -68,7 +68,7 @@ internal sealed class ReqRoomReleaseHandler : GlobalRpcComponentHandler<RoomComp
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)RoomErrorCode.NotLoggedIn;
@@ -95,7 +95,7 @@ internal sealed class ReqRoomQueryHandler : GlobalRpcComponentHandler<RoomCompon
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)RoomErrorCode.NotLoggedIn;

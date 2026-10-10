@@ -31,7 +31,7 @@
 
 using System.Reflection;
 using GameFrameX.Core.Abstractions.Attribute;
-using GameFrameX.NetWork.Abstractions;
+using GameFrameX.Network.Abstractions;
 using GameFrameX.Proto.Proto;
 using GameFrameX.Utility.Setting;
 

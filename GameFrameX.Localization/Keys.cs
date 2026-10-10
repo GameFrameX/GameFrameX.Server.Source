@@ -43,13 +43,13 @@ namespace GameFrameX.Localization;
 /// - Keys.Database.cs - 数据库相关消息常量 / Database related message constants
 /// - Keys.Exceptions.cs - 异常相关消息常量 / Exceptions related message constants
 /// - Keys.Utility.cs - 工具类相关消息常量 / Utility related message constants
-/// - Keys.NetWorkMessage.cs - 网络消息相关常量 / Network message related constants
+/// - Keys.NetworkMessage.cs - 网络消息相关常量 / Network message related constants
 ///
 /// 其他网络和启动器相关的类可以根据需要继续拆分：
 /// Other network and startup related classes can continue to be split as needed:
-/// - Keys.NetWorkHttp.cs - HTTP网络相关 / HTTP network related
-/// - Keys.NetWorkAbstractions.cs - 网络抽象层相关 / Network abstraction layer related
-/// - Keys.NetWork.cs - 网络核心相关 / Network core related
+/// - Keys.NetworkHttp.cs - HTTP网络相关 / HTTP network related
+/// - Keys.NetworkAbstractions.cs - 网络抽象层相关 / Network abstraction layer related
+/// - Keys.Network.cs - 网络核心相关 / Network core related
 /// - Keys.Launcher.cs - 启动器相关 / Launcher related
 /// - Keys.StartUp.cs - 启动流程相关 / Startup process related
 /// </summary>

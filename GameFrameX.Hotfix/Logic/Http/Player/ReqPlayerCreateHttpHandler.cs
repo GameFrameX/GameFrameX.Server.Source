@@ -31,7 +31,7 @@
 using GameFrameX.Apps;
 using GameFrameX.Apps.Player.Player.Entity;
 using GameFrameX.DataBase;
-using GameFrameX.NetWork.Messages;
+using GameFrameX.Network.Messages;
 
 namespace GameFrameX.Hotfix.Logic.Http.Player;
 

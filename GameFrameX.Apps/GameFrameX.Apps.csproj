@@ -9,7 +9,7 @@
       <ProjectReference Include="..\GameFrameX.DataBase\GameFrameX.DataBase.csproj" />
       <ProjectReference Include="..\GameFrameX.Discovery\GameFrameX.Discovery.csproj" />
       <ProjectReference Include="..\GameFrameX.Proto\GameFrameX.Proto.csproj" />
-      <ProjectReference Include="..\GameFrameX.NetWork.RemoteMessaging\GameFrameX.NetWork.RemoteMessaging.csproj" />
+      <ProjectReference Include="..\GameFrameX.Network.RemoteMessaging\GameFrameX.Network.RemoteMessaging.csproj" />
       <ProjectReference Include="..\GameFrameX.Architecture.Analyzers\GameFrameX.Architecture.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     </ItemGroup>
 

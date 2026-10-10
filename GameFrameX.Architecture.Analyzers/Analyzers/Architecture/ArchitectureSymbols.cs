@@ -81,7 +81,7 @@ public sealed class ArchitectureSymbols
     /// <summary>GameFrameX.Core.Hotfix.Agent.StateComponentAgent`2 — 状态组件代理基类。</summary>
     public INamedTypeSymbol? StateComponentAgent { get; }
 
-    /// <summary>GameFrameX.NetWork.HTTP.BaseHttpHandler — HTTP 请求处理器的基类。</summary>
+    /// <summary>GameFrameX.Network.HTTP.BaseHttpHandler — HTTP 请求处理器的基类。</summary>
     public INamedTypeSymbol? BaseHttpHandler { get; }
 
     /// <summary>GameFrameX.Core.Hotfix.IHotfixBridge — 热更新桥接接口，用于状态层调用逻辑层。</summary>
@@ -90,10 +90,10 @@ public sealed class ArchitectureSymbols
     /// <summary>GameFrameX.Core.Abstractions.Agent.IComponentAgent — 组件代理接口（ECS 中的 System 角色）。</summary>
     public INamedTypeSymbol? ComponentAgent { get; }
 
-    /// <summary>GameFrameX.NetWork.Abstractions.MessageMappingAttribute — 标记消息处理器的特性。</summary>
+    /// <summary>GameFrameX.Network.Abstractions.MessageMappingAttribute — 标记消息处理器的特性。</summary>
     public INamedTypeSymbol? MessageMappingAttribute { get; }
 
-    /// <summary>GameFrameX.NetWork.Abstractions.MessageRpcMappingAttribute — 标记 RPC 消息处理器的特性。</summary>
+    /// <summary>GameFrameX.Network.Abstractions.MessageRpcMappingAttribute — 标记 RPC 消息处理器的特性。</summary>
     public INamedTypeSymbol? MessageRpcMappingAttribute { get; }
 
     /// <summary>GameFrameX.Core.Abstractions.Events.IEventListener — 事件监听器接口。</summary>
@@ -120,11 +120,11 @@ public sealed class ArchitectureSymbols
             compilation.GetTypeByMetadataName("GameFrameX.DataBase.BaseCacheState"),
             compilation.GetTypeByMetadataName("GameFrameX.Core.Components.StateComponent`1"),
             compilation.GetTypeByMetadataName("GameFrameX.Core.Hotfix.Agent.StateComponentAgent`2"),
-            compilation.GetTypeByMetadataName("GameFrameX.NetWork.HTTP.BaseHttpHandler"),
+            compilation.GetTypeByMetadataName("GameFrameX.Network.HTTP.BaseHttpHandler"),
             compilation.GetTypeByMetadataName("GameFrameX.Core.Hotfix.IHotfixBridge"),
             compilation.GetTypeByMetadataName("GameFrameX.Core.Abstractions.Agent.IComponentAgent"),
-            compilation.GetTypeByMetadataName("GameFrameX.NetWork.Abstractions.MessageMappingAttribute"),
-            compilation.GetTypeByMetadataName("GameFrameX.NetWork.Abstractions.MessageRpcMappingAttribute"),
+            compilation.GetTypeByMetadataName("GameFrameX.Network.Abstractions.MessageMappingAttribute"),
+            compilation.GetTypeByMetadataName("GameFrameX.Network.Abstractions.MessageRpcMappingAttribute"),
             compilation.GetTypeByMetadataName("GameFrameX.Core.Abstractions.Events.IEventListener"),
             compilation.GetTypeByMetadataName("GameFrameX.Core.Timer.Handler.ITimerHandler"),
             compilation.GetTypeByMetadataName("GameFrameX.DataBase.Mongo.MongoDbService"),

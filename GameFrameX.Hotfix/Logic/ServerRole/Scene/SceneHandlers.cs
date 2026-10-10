@@ -41,7 +41,7 @@ internal sealed class ReqSceneEnterHandler : GlobalRpcComponentHandler<SceneComp
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)SceneErrorCode.NotLoggedIn;
@@ -68,7 +68,7 @@ internal sealed class ReqSceneLeaveHandler : GlobalRpcComponentHandler<SceneComp
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)SceneErrorCode.NotLoggedIn;
@@ -95,7 +95,7 @@ internal sealed class ReqSceneQueryHandler : GlobalRpcComponentHandler<SceneComp
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)SceneErrorCode.NotLoggedIn;

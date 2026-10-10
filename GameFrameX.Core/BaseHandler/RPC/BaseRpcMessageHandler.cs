@@ -30,8 +30,8 @@
 using System.Diagnostics;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.NetWork;
-using GameFrameX.NetWork.Abstractions;
+using GameFrameX.Network;
+using GameFrameX.Network.Abstractions;
 using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Core.BaseHandler.RPC;
@@ -56,7 +56,7 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
     /// <summary>
     /// 网络频道
     /// </summary>
-    public INetWorkChannel NetWorkChannel { get; private set; }
+    public INetworkChannel NetworkChannel { get; private set; }
 
     /// <summary>
     /// 消息对象
@@ -68,12 +68,12 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
     /// 子类实现必须调用
     /// </summary>
     /// <param name="message">消息对象</param>
-    /// <param name="netWorkChannel">网络渠道</param>
+    /// <param name="networkChannel">网络渠道</param>
     /// <returns>返回是否初始化成功,true:成功,false:失败</returns>
-    public virtual Task<bool> Init(INetworkMessage message, INetWorkChannel netWorkChannel)
+    public virtual Task<bool> Init(INetworkMessage message, INetworkChannel networkChannel)
     {
         ArgumentNullException.ThrowIfNull(message);
-        ArgumentNullException.ThrowIfNull(netWorkChannel);
+        ArgumentNullException.ThrowIfNull(networkChannel);
         if (message is not TRequest requestMessage)
         {
             // Localization: CoreExceptions.Message.TypeCastError - 消息类型错误, {0} to: {1}
@@ -81,7 +81,7 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
         }
 
         RequestMessage = requestMessage;
-        NetWorkChannel = netWorkChannel;
+        NetworkChannel = networkChannel;
         _isInit = true;
 
         return Task.FromResult(true);
@@ -106,7 +106,7 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
             var response = MessageObjectPoolHelper.Get<TResponse>();
             var requestId = RequestMessage.UniqueId;
 
-            if (NetWorkChannel == null || NetWorkChannel.IsClosed() || response == null)
+            if (NetworkChannel == null || NetworkChannel.IsClosed() || response == null)
             {
                 return;
             }
@@ -120,7 +120,7 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
 
                 // 业务逻辑执行成功后，设置响应ID并发送 / After successful execution, set response ID and send
                 response.SetUniqueId(requestId);
-                await NetWorkChannel.WriteAsync(response);
+                await NetworkChannel.WriteAsync(response);
             }
             catch (TimeoutException timeoutException)
             {
@@ -130,7 +130,7 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
                 // 设置超时错误码并发送错误响应给客户端 / Set timeout error code and send error response to client
                 response.ErrorCode = OperationErrorCode.TimeOut;
                 response.SetUniqueId(requestId);
-                await NetWorkChannel.WriteAsync(response);
+                await NetworkChannel.WriteAsync(response);
 
                 //强制设状态-取消该操作
             }

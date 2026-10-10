@@ -8,7 +8,7 @@
 
 
 using GameFrameX.Discovery.Routing;
-using GameFrameX.NetWork.RemoteMessaging.Routing;
+using GameFrameX.Network.RemoteMessaging.Routing;
 
 namespace GameFrameX.Tests.Discovery;
 

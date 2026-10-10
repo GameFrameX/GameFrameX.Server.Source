@@ -31,8 +31,8 @@
 /*using System.Net;
 using System.Timers;
 using GameFrameX.Launcher;
-using GameFrameX.NetWork;
-using GameFrameX.NetWork.Messages;
+using GameFrameX.Network;
+using GameFrameX.Network.Messages;
 using GameFrameX.SuperSocket.ClientEngine;
 using GameFrameX.SuperSocket.Server.Abstractions.Session;
 using Timer = System.Timers.Timer;
@@ -123,7 +123,7 @@ internal partial class AppStartUpHotfixGame
         _gateWayReconnectionTimer.Stop();
         _gateWayHeartBeatTimer.Start();
         var appSession = sender as IGameAppSession;
-        var netChannel = new DefaultNetWorkChannel(appSession, messageEncoderHandler);
+        var netChannel = new DefaultNetworkChannel(appSession, messageEncoderHandler);
         GameClientSessionManager.SetSession(appSession.SessionID, netChannel); //移除
         LogHelper.Info("和网关服务器链接链接成功!");
         ReqRegisterGameServer reqRegisterGameServer = new ReqRegisterGameServer
@@ -157,7 +157,7 @@ internal partial class AppStartUpHotfixGame
             }
 
             handler.Message = messageObject;
-            handler.NetWorkChannel = GameClientSessionManager.GetSession(appSession.SessionID);
+            handler.NetworkChannel = GameClientSessionManager.GetSession(appSession.SessionID);
             await handler.Init();
             await handler.InnerAction();
         }

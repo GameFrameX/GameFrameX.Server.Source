@@ -36,18 +36,18 @@ internal partial class AppStartUpHotfixGame
     /// <summary>
     /// 回复心跳消息
     /// </summary>
-    /// <param name="netWorkChannel"></param>
+    /// <param name="networkChannel"></param>
     /// <param name="messageObject"></param>
-    private async Task ReplyHeartBeatAsync(INetWorkChannel netWorkChannel, MessageObject messageObject)
+    private async Task ReplyHeartBeatAsync(INetworkChannel networkChannel, MessageObject messageObject)
     {
         if (messageObject is ReqHeartBeat req)
         {
             // LogHelper.Info("收到心跳请求:" + req.Timestamp);
-            netWorkChannel.UpdateReceiveMessageTime();
+            networkChannel.UpdateReceiveMessageTime();
             NotifyHeartBeat notifyHeartBeat = MessageObjectPoolHelper.Get<NotifyHeartBeat>();
             notifyHeartBeat.Timestamp = TimerHelper.UnixTimeMilliseconds();
             notifyHeartBeat.UniqueId = req.UniqueId;
-            await netWorkChannel.WriteAsync(notifyHeartBeat);
+            await networkChannel.WriteAsync(notifyHeartBeat);
         }
     }
 }

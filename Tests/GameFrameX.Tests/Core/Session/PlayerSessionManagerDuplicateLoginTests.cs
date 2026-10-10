@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 using GameFrameX.Core.Session;
-using GameFrameX.NetWork.Abstractions;
+using GameFrameX.Network.Abstractions;
 using GameFrameX.SuperSocket.Server.Abstractions.Session;
 using Xunit;
 
@@ -44,12 +44,12 @@ public sealed class PlayerSessionManagerDuplicateLoginTests
     public async Task UpdateSession_DuplicateLogin_ShouldNotifyOldSessionBeforeClose()
     {
         var manager = PlayerSessionManager.Instance;
-        var oldChannel = new FakeNetWorkChannel();
+        var oldChannel = new FakeNetworkChannel();
         var oldSession = new PlayerSession("c192-dup-old", oldChannel);
         oldSession.SetPlayerId(910001);
         manager.Add(oldSession);
 
-        var newChannel = new FakeNetWorkChannel();
+        var newChannel = new FakeNetworkChannel();
         manager.Add(new PlayerSession("c192-dup-new", newChannel));
 
         IPlayerSession notified = null;
@@ -80,7 +80,7 @@ public sealed class PlayerSessionManagerDuplicateLoginTests
     public async Task UpdateSession_NoDuplicateLogin_ShouldNotCallNotifier()
     {
         var manager = PlayerSessionManager.Instance;
-        manager.Add(new PlayerSession("c192-solo", new FakeNetWorkChannel()));
+        manager.Add(new PlayerSession("c192-solo", new FakeNetworkChannel()));
 
         var called = false;
         await manager.UpdateSession("c192-solo", 910002, "sign-2", _ =>
@@ -99,7 +99,7 @@ public sealed class PlayerSessionManagerDuplicateLoginTests
     /// <summary>
     /// 最小网络通道假件：仅实现 SetData / ClearData / Close / IsClosed 的状态语义，其余成员为空实现。
     /// </summary>
-    private sealed class FakeNetWorkChannel : INetWorkChannel
+    private sealed class FakeNetworkChannel : INetworkChannel
     {
         private readonly Dictionary<string, object> _data = new();
         private bool _closed;

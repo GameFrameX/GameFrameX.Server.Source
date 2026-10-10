@@ -33,7 +33,7 @@ using GameFrameX.Core.Events;
 using GameFrameX.Discovery.Routing;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Logger;
-using GameFrameX.NetWork.Abstractions;
+using GameFrameX.Network.Abstractions;
 using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Core.Session;
@@ -220,7 +220,7 @@ public sealed class PlayerSessionManager : IPlayerSessionManager
     /// </summary>
     /// <param name="sessionId">会话ID。</param>
     /// <returns>对应的网络连接通道，如果不存在则返回null。</returns>
-    public INetWorkChannel GetChannel(string sessionId)
+    public INetworkChannel GetChannel(string sessionId)
     {
         SessionMap.TryGetValue(sessionId, out var session);
         return session?.WorkChannel;

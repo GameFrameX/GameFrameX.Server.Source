@@ -158,12 +158,12 @@ public class MailComponentAgent : StateComponentAgent<MailComponent, MailBoxStat
     /// 处理 <see cref="ReqMailList"/>：先懒同步，再分页返回邮件摘要（排除已删除）。
     /// </summary>
     [Service]
-    public virtual Task OnReqMailListAsync(INetWorkChannel netWorkChannel, ReqMailList request, RespMailList response)
+    public virtual Task OnReqMailListAsync(INetworkChannel networkChannel, ReqMailList request, RespMailList response)
     {
-        return OnReqMailListAsyncImpl(netWorkChannel, request, response);
+        return OnReqMailListAsyncImpl(networkChannel, request, response);
     }
 
-    private async Task OnReqMailListAsyncImpl(INetWorkChannel netWorkChannel, ReqMailList request, RespMailList response)
+    private async Task OnReqMailListAsyncImpl(INetworkChannel networkChannel, ReqMailList request, RespMailList response)
     {
         await SyncAsync();
 
@@ -197,12 +197,12 @@ public class MailComponentAgent : StateComponentAgent<MailComponent, MailBoxStat
     /// 处理 <see cref="ReqMailRead"/>：标记已读（读信幂等），返回完整文案与附件领取状态。
     /// </summary>
     [Service]
-    public virtual Task OnReqMailReadAsync(INetWorkChannel netWorkChannel, ReqMailRead request, RespMailRead response)
+    public virtual Task OnReqMailReadAsync(INetworkChannel networkChannel, ReqMailRead request, RespMailRead response)
     {
-        return OnReqMailReadAsyncImpl(netWorkChannel, request, response);
+        return OnReqMailReadAsyncImpl(networkChannel, request, response);
     }
 
-    private async Task OnReqMailReadAsyncImpl(INetWorkChannel netWorkChannel, ReqMailRead request, RespMailRead response)
+    private async Task OnReqMailReadAsyncImpl(INetworkChannel networkChannel, ReqMailRead request, RespMailRead response)
     {
         var state = OwnerComponent.State;
         var mail = TryFindMail(state, request.MailId);
@@ -256,12 +256,12 @@ public class MailComponentAgent : StateComponentAgent<MailComponent, MailBoxStat
     /// 处理 <see cref="ReqMailDelete"/>：U1 §4.8 删除算法（B2）。未领附件邮件拒绝删除。
     /// </summary>
     [Service]
-    public virtual Task OnReqMailDeleteAsync(INetWorkChannel netWorkChannel, ReqMailDelete request, RespMailDelete response)
+    public virtual Task OnReqMailDeleteAsync(INetworkChannel networkChannel, ReqMailDelete request, RespMailDelete response)
     {
-        return OnReqMailDeleteAsyncImpl(netWorkChannel, request, response);
+        return OnReqMailDeleteAsyncImpl(networkChannel, request, response);
     }
 
-    private async Task OnReqMailDeleteAsyncImpl(INetWorkChannel netWorkChannel, ReqMailDelete request, RespMailDelete response)
+    private async Task OnReqMailDeleteAsyncImpl(INetworkChannel networkChannel, ReqMailDelete request, RespMailDelete response)
     {
         var state = OwnerComponent.State;
         var mail = TryFindMail(state, request.MailId);
@@ -304,12 +304,12 @@ public class MailComponentAgent : StateComponentAgent<MailComponent, MailBoxStat
     /// </summary>
     /// <remarks>不触发 <see cref="SyncAsync"/>：领取作用于当前邮件箱快照，懒同步由列表 / 读信路径保证。幂等命中已领槽位时按成功回包，不重复发奖。</remarks>
     [Service]
-    public virtual Task OnReqMailClaimAttachmentAsync(INetWorkChannel netWorkChannel, ReqMailClaimAttachment request, RespMailClaimAttachment response)
+    public virtual Task OnReqMailClaimAttachmentAsync(INetworkChannel networkChannel, ReqMailClaimAttachment request, RespMailClaimAttachment response)
     {
-        return OnReqMailClaimAttachmentAsyncImpl(netWorkChannel, request, response);
+        return OnReqMailClaimAttachmentAsyncImpl(networkChannel, request, response);
     }
 
-    private async Task OnReqMailClaimAttachmentAsyncImpl(INetWorkChannel netWorkChannel, ReqMailClaimAttachment request, RespMailClaimAttachment response)
+    private async Task OnReqMailClaimAttachmentAsyncImpl(INetworkChannel networkChannel, ReqMailClaimAttachment request, RespMailClaimAttachment response)
     {
         var state = OwnerComponent.State;
         var prepare = MailAttachmentClaim.Prepare(state, request.MailId, request.SlotId);
@@ -372,12 +372,12 @@ public class MailComponentAgent : StateComponentAgent<MailComponent, MailBoxStat
     /// 处理 <see cref="ReqMailClaimAllAttachment"/>：一键领取当前邮件箱所有 <see cref="ClaimStatus.Claimable"/> 槽位。逐项独立判定，部分失败不影响其余项。
     /// </summary>
     [Service]
-    public virtual Task OnReqMailClaimAllAttachmentAsync(INetWorkChannel netWorkChannel, ReqMailClaimAllAttachment request, RespMailClaimAllAttachment response)
+    public virtual Task OnReqMailClaimAllAttachmentAsync(INetworkChannel networkChannel, ReqMailClaimAllAttachment request, RespMailClaimAllAttachment response)
     {
-        return OnReqMailClaimAllAttachmentAsyncImpl(netWorkChannel, request, response);
+        return OnReqMailClaimAllAttachmentAsyncImpl(networkChannel, request, response);
     }
 
-    private async Task OnReqMailClaimAllAttachmentAsyncImpl(INetWorkChannel netWorkChannel, ReqMailClaimAllAttachment request, RespMailClaimAllAttachment response)
+    private async Task OnReqMailClaimAllAttachmentAsyncImpl(INetworkChannel networkChannel, ReqMailClaimAllAttachment request, RespMailClaimAllAttachment response)
     {
         var state = OwnerComponent.State;
         var changedMailIds = new List<long>();

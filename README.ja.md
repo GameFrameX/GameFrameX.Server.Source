@@ -686,7 +686,7 @@ dotnet test --logger "console;verbosity=detailed"
 | `StartUp/` | 起動オーケストレーション、マルチロール選択、All-in-One オプション、設定起動バリデーター、HTTP ルート登録 |
 | `Architecture/` | Roslyn アーキテクチャアナライザーテスト（レイヤリング規則、エージェントシーリング） |
 | `Core/` | Actor とセッション管理テスト（重複ログイン） |
-| `NetWork/` | SuperSocket KCP リッスン / 認証 / E2E テスト、HTTP・セッション認証ミドルウェアテスト |
+| `Network/` | SuperSocket KCP リッスン / 認証 / E2E テスト、HTTP・セッション認証ミドルウェアテスト |
 | `DataBase/` | MongoDB・PostgreSQL Provider テスト（クエリ、接続、マルチデータベース、Provider リゾルバー） |
 | `Discovery/` | サービスディスカバリーエンドポイント / ルーティング統合テスト（MongoDB・PostgreSQL） |
 | `RemoteMessaging/` | クロスプロセスメッセージングテスト（コーデック、トランスポート） |
@@ -754,10 +754,10 @@ GameFrameX.Server.Source/
 ├── GameFrameX.Config/                # ゲーム設定テーブル（JSON 形式、LuBan 生成）
 ├── GameFrameX.Proto/                 # ProtoBuf プロトコル定義
 ├── GameFrameX.ProtoBuf.Net/          # ProtoBuf シリアライズ実装
-├── GameFrameX.NetWork/               # ネットワークコア（TCP/UDP/KCP/WebSocket チャネル、メッセージオブジェクト、センダー）
-├── GameFrameX.NetWork.Abstractions/  # ネットワークインターフェース（IMessage、IMessageHandler、メッセージマッピング）
-├── GameFrameX.NetWork.HTTP/          # HTTP サーバー（Swagger、Kestrel、BaseHttpHandler）
-├── GameFrameX.NetWork.RemoteMessaging/ # クロスプロセスリモートメッセージ（サーキットブレーカー、リトライ、コンシステントハッシング）
+├── GameFrameX.Network/               # ネットワークコア（TCP/UDP/KCP/WebSocket チャネル、メッセージオブジェクト、センダー）
+├── GameFrameX.Network.Abstractions/  # ネットワークインターフェース（IMessage、IMessageHandler、メッセージマッピング）
+├── GameFrameX.Network.HTTP/          # HTTP サーバー（Swagger、Kestrel、BaseHttpHandler）
+├── GameFrameX.Network.RemoteMessaging/ # クロスプロセスリモートメッセージ（サーキットブレーカー、リトライ、コンシステントハッシング）
 ├── GameFrameX.Discovery/             # Aspire スタイルのサービスディスカバリー（services__{Role}__tcp__0 ブートストラップマップ）
 ├── GameFrameX.DataBase/              # データベース抽象レイヤー（マルチ Provider レジストリ、GameDb クエリ/更新/削除）
 ├── GameFrameX.DataBase.Mongo/        # MongoDB Provider（ヘルスモニタリング、リトライ、バッチ操作）

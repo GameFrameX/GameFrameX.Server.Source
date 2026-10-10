@@ -33,9 +33,9 @@ using GameFrameX.Core.Abstractions.Agent;
 using GameFrameX.Core.Abstractions.Events;
 using GameFrameX.Core.Components;
 using GameFrameX.Foundation.Utility;
-using GameFrameX.NetWork.HTTP;
+using GameFrameX.Network.HTTP;
 using GameFrameX.Utility;
-using GameFrameX.NetWork.Abstractions;
+using GameFrameX.Network.Abstractions;
 using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Core.Hotfix;

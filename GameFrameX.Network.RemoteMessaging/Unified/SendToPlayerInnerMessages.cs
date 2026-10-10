@@ -1,0 +1,127 @@
+// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes and liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository:  https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+using GameFrameX.Network.Abstractions;
+using GameFrameX.Network.Messages;
+using ProtoBuf;
+
+namespace GameFrameX.Network.RemoteMessaging.Unified;
+
+/// <summary>
+/// 跨服转发玩家消息的内部请求协议。
+/// 当玩家不在本服时，通过此消息将原始消息转发到目标服。
+/// </summary>
+/// <remarks>
+/// Internal request protocol for cross-server player message forwarding.
+/// When the player is not on the local server, the original message is forwarded to the target server via this message.
+/// </remarks>
+[ProtoContract]
+public sealed class ReqSendToPlayerInner : MessageObject, IRequestMessage
+{
+    /// <summary>
+    /// 目标玩家ID
+    /// </summary>
+    /// <remarks>
+    /// Target player ID.
+    /// </remarks>
+    [ProtoMember(1)]
+    public long TargetPlayerId { get; set; }
+
+    /// <summary>
+    /// 需要投递给玩家的原始消息
+    /// </summary>
+    /// <remarks>
+    /// The original message to be delivered to the player.
+    /// </remarks>
+    [ProtoMember(2)]
+    public MessageObject InnerMessage { get; set; }
+
+    /// <summary>
+    /// 清除消息内容。重置目标玩家ID为 0 并将待投递的原始消息置为 null。
+    /// </summary>
+    /// <remarks>
+    /// Clears the message content. Resets the target player ID to 0 and sets the inner message to deliver to null.
+    /// </remarks>
+    public override void Clear()
+    {
+        TargetPlayerId = 0;
+        InnerMessage = null;
+    }
+}
+
+/// <summary>
+/// 跨服转发玩家消息的内部响应协议。
+/// </summary>
+/// <remarks>
+/// Internal response protocol for cross-server player message forwarding.
+/// </remarks>
+[ProtoContract]
+public sealed class RespSendToPlayerInner : MessageObject, IResponseMessage
+{
+    /// <summary>
+    /// 是否投递成功
+    /// </summary>
+    /// <remarks>
+    /// Whether delivery was successful.
+    /// </remarks>
+    [ProtoMember(1)]
+    public bool Success { get; set; }
+
+    /// <summary>
+    /// 目标玩家是否在线
+    /// </summary>
+    /// <remarks>
+    /// Whether the target player is online.
+    /// </remarks>
+    [ProtoMember(2)]
+    public bool PlayerOffline { get; set; }
+
+    /// <summary>
+    /// 获取或设置跨服投递的错误码，非 0 表示错误。
+    /// </summary>
+    /// <remarks>
+    /// Gets or sets the error code for cross-server delivery. Non-zero value indicates an error.
+    /// </remarks>
+    /// <value>错误码，非 0 表示错误 / Error code, non-zero indicates an error</value>
+    [ProtoMember(3)]
+    public int ErrorCode { get; set; }
+
+    /// <summary>
+    /// 清除消息内容。重置投递成功标志与玩家离线标志为 false，并将错误码归 0。
+    /// </summary>
+    /// <remarks>
+    /// Clears the message content. Resets the delivery success and player-offline flags to false, and resets the error code to 0.
+    /// </remarks>
+    public override void Clear()
+    {
+        Success = false;
+        PlayerOffline = false;
+        ErrorCode = 0;
+    }
+}

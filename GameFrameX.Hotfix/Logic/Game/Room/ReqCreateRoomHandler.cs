@@ -37,7 +37,7 @@ internal sealed class ReqCreateRoomHandler : GlobalRpcComponentHandler<RoomCompo
     {
         try
         {
-            var playerId = RoomHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = RoomHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             await ComponentAgent.OnCreateRoomAsync(playerId, request, response);
         }
         catch (Exception e)

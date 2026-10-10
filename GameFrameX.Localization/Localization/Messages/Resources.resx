@@ -209,151 +209,151 @@
     <data name="Utility.Settings.AppAlreadyExited" xml:space="preserve">
     <value>AppRunning has already been set to exit, cannot be enabled again...</value>
   </data>
-<!-- NetWork.Message module log and error keys -->
-    <data name="NetWork.Message.MessageDecodeFatalError" xml:space="preserve">
+<!-- Network.Message module log and error keys -->
+    <data name="Network.Message.MessageDecodeFatalError" xml:space="preserve">
     <value>Fatal exception occurred during message decoding: {0}</value>
   </data>
-    <data name="NetWork.Message.MessageEncodeError" xml:space="preserve">
+    <data name="Network.Message.MessageEncodeError" xml:space="preserve">
     <value>Message object encoding exception, please check error logs</value>
   </data>
-    <data name="NetWork.Message.MessageEncodeException" xml:space="preserve">
+    <data name="Network.Message.MessageEncodeException" xml:space="preserve">
     <value>Message encoding exception: {0}</value>
   </data>
-    <data name="NetWork.Message.MessageObjectNull" xml:space="preserve">
+    <data name="Network.Message.MessageObjectNull" xml:space="preserve">
     <value>Message object is null, encoding exception</value>
   </data>
-    <data name="NetWork.Message.MessageObjectEncodeException" xml:space="preserve">
+    <data name="Network.Message.MessageObjectEncodeException" xml:space="preserve">
     <value>Message object encoding exception, please check error logs</value>
   </data>
-    <data name="NetWork.Message.MessageObjectNullEncodeException" xml:space="preserve">
+    <data name="Network.Message.MessageObjectNullEncodeException" xml:space="preserve">
     <value>Message object is null, encoding exception</value>
   </data>
 
-    <!-- NetWork.Http module log and error keys -->
-    <data name="NetWork.Http.ParameterDuplicate" xml:space="preserve">
+    <!-- Network.Http module log and error keys -->
+    <data name="Network.Http.ParameterDuplicate" xml:space="preserve">
     <value>Parameter duplicate: {0}</value>
   </data>
-    <data name="NetWork.Http.UnsupportedContentType" xml:space="preserve">
+    <data name="Network.Http.UnsupportedContentType" xml:space="preserve">
     <value>Unsupported Content Type: {0}</value>
   </data>
-    <data name="NetWork.Http.RequestParameters" xml:space="preserve">
+    <data name="Network.Http.RequestParameters" xml:space="preserve">
     <value>Request parameters: {0}</value>
   </data>
-    <data name="NetWork.Http.ServerStatusError" xml:space="preserve">
+    <data name="Network.Http.ServerStatusError" xml:space="preserve">
     <value>Server status error [server starting/shutting down]</value>
   </data>
-    <data name="NetWork.Http.CommandHandlerNotFound" xml:space="preserve">
+    <data name="Network.Http.CommandHandlerNotFound" xml:space="preserve">
     <value>HTTP cmd handler not found: {0}</value>
   </data>
-    <data name="NetWork.Http.ExecutionTime" xml:space="preserve">
+    <data name="Network.Http.ExecutionTime" xml:space="preserve">
     <value>{0}, execution time: {1}ms, result: {2}</value>
   </data>
-    <data name="NetWork.Http.ExceptionOccurred" xml:space="preserve">
+    <data name="Network.Http.ExceptionOccurred" xml:space="preserve">
     <value>{0}, exception occurred. {1} {2}</value>
   </data>
-    <data name="NetWork.Http.MessageTypeInheritanceError" xml:space="preserve">
+    <data name="Network.Http.MessageTypeInheritanceError" xml:space="preserve">
     <value>Message type {0} must inherit from HttpMessageRequestBase</value>
   </data>
-    <data name="NetWork.Http.ResponseMessageTypeInheritanceError" xml:space="preserve">
+    <data name="Network.Http.ResponseMessageTypeInheritanceError" xml:space="preserve">
     <value>Message type {0} must inherit from HttpMessageResponseBase</value>
   </data>
-    <data name="NetWork.Http.ClassMustBeSealed" xml:space="preserve">
+    <data name="Network.Http.ClassMustBeSealed" xml:space="preserve">
     <value>{0} must be marked as sealed class</value>
   </data>
-    <data name="NetWork.Http.ClassMustEndWithSuffix" xml:space="preserve">
+    <data name="Network.Http.ClassMustEndWithSuffix" xml:space="preserve">
     <value>{0} must end with {1}</value>
   </data>
-    <data name="NetWork.Http.RequestLogHeader" xml:space="preserve">
+    <data name="Network.Http.RequestLogHeader" xml:space="preserve">
     <value>[HTTPServer] TraceIdentifier:[{0}], Source[{1}], url:[{2}]</value>
   </data>
-    <data name="NetWork.Http.RequestMethod" xml:space="preserve">
+    <data name="Network.Http.RequestMethod" xml:space="preserve">
     <value>{0}, Request Method:[{1}]</value>
   </data>
-    <data name="NetWork.Http.MessageEncodingException" xml:space="preserve">
+    <data name="Network.Http.MessageEncodingException" xml:space="preserve">
     <value>Message object encoding exception, please check error logs</value>
   </data>
-    <data name="NetWork.Http.HttpHeaderContentTypeNull" xml:space="preserve">
+    <data name="Network.Http.HttpHeaderContentTypeNull" xml:space="preserve">
     <value>http header content type is null</value>
   </data>
-    <data name="NetWork.Http.DataVerificationFailed" xml:space="preserve">
+    <data name="Network.Http.DataVerificationFailed" xml:space="preserve">
     <value>data verification failed</value>
   </data>
-    <data name="NetWork.Http.SwaggerRequestParameters" xml:space="preserve">
+    <data name="Network.Http.SwaggerRequestParameters" xml:space="preserve">
     <value>Request Parameters</value>
   </data>
-    <data name="NetWork.Http.SwaggerResponseStatusCode" xml:space="preserve">
+    <data name="Network.Http.SwaggerResponseStatusCode" xml:space="preserve">
     <value>Response Status Code</value>
   </data>
-    <data name="NetWork.Http.SwaggerResponseMessage" xml:space="preserve">
+    <data name="Network.Http.SwaggerResponseMessage" xml:space="preserve">
     <value>Response Message</value>
   </data>
-    <data name="NetWork.Http.SwaggerSuccessResponse" xml:space="preserve">
+    <data name="Network.Http.SwaggerSuccessResponse" xml:space="preserve">
     <value>Success Response</value>
   </data>
-    <data name="NetWork.Http.ApplicationJsonContentType" xml:space="preserve">
+    <data name="Network.Http.ApplicationJsonContentType" xml:space="preserve">
     <value>application/json</value>
   </data>
-    <data name="NetWork.Http.ApplicationProtoBufContentType" xml:space="preserve">
+    <data name="Network.Http.ApplicationProtoBufContentType" xml:space="preserve">
     <value>application/x-protobuf</value>
   </data>
-    <data name="NetWork.Http.HttpCommandMissingValidationParameters" xml:space="preserve">
+    <data name="Network.Http.HttpCommandMissingValidationParameters" xml:space="preserve">
     <value>http command missing validation parameters {0} and {1}</value>
   </data>
-    <data name="NetWork.Http.UndefinedCommand" xml:space="preserve">
+    <data name="Network.Http.UndefinedCommand" xml:space="preserve">
     <value>undefined command</value>
   </data>
-    <data name="NetWork.Http.NotFoundCommand" xml:space="preserve">
+    <data name="Network.Http.NotFoundCommand" xml:space="preserve">
     <value>not found command</value>
   </data>
-    <data name="NetWork.Http.CheckFailedCommand" xml:space="preserve">
+    <data name="Network.Http.CheckFailedCommand" xml:space="preserve">
     <value>check failed command</value>
   </data>
-    <data name="NetWork.Http.ServerError" xml:space="preserve">
+    <data name="Network.Http.ServerError" xml:space="preserve">
     <value>server error</value>
   </data>
 
-    <!-- NetWork.Abstractions module log and error keys -->
-    <data name="NetWork.Abstractions.MessageIdDuplicate" xml:space="preserve">
+    <!-- Network.Abstractions module log and error keys -->
+    <data name="Network.Abstractions.MessageIdDuplicate" xml:space="preserve">
     <value>MessageId duplicate==&gt;Current ID:{0},Existing ID type:{1}</value>
   </data>
-    <data name="NetWork.Abstractions.HeartbeatMessageDuplicate" xml:space="preserve">
+    <data name="Network.Abstractions.HeartbeatMessageDuplicate" xml:space="preserve">
     <value>Heartbeat message duplicate==&gt;Type:{0}</value>
   </data>
-    <data name="NetWork.Abstractions.RequestIdDuplicate" xml:space="preserve">
+    <data name="Network.Abstractions.RequestIdDuplicate" xml:space="preserve">
     <value>RequestId duplicate==&gt;Current ID:{0},Existing ID type:{1}</value>
   </data>
-    <data name="NetWork.Abstractions.ResponseIdDuplicate" xml:space="preserve">
+    <data name="Network.Abstractions.ResponseIdDuplicate" xml:space="preserve">
     <value>ResponseId duplicate==&gt;Current ID:{0},Existing ID type:{1}</value>
   </data>
 
-    <!-- NetWork module log and error keys -->
-    <data name="NetWork.MessageSent" xml:space="preserve">
+    <!-- Network module log and error keys -->
+    <data name="Network.MessageSent" xml:space="preserve">
     <value>---Send {0}</value>
   </data>
-    <data name="NetWork.MessageSendTimeout" xml:space="preserve">
+    <data name="Network.MessageSendTimeout" xml:space="preserve">
     <value>Message send timeout canceled:{0}</value>
   </data>
-    <data name="NetWork.TypeMustImplementInterface" xml:space="preserve">
+    <data name="Network.TypeMustImplementInterface" xml:space="preserve">
     <value>Type {0} must implement {1} interface</value>
   </data>
-    <data name="NetWork.TypeMustBeClass" xml:space="preserve">
+    <data name="Network.TypeMustBeClass" xml:space="preserve">
     <value>Type {0} must be a class</value>
   </data>
-    <data name="NetWork.TypeMustHaveParameterlessConstructor" xml:space="preserve">
+    <data name="Network.TypeMustHaveParameterlessConstructor" xml:space="preserve">
     <value>Type {0} must have a parameterless constructor</value>
   </data>
-    <data name="NetWork.CannotFindCreateMethod" xml:space="preserve">
+    <data name="Network.CannotFindCreateMethod" xml:space="preserve">
     <value>Cannot find Create method on ObjectPoolProvider</value>
   </data>
-    <data name="NetWork.FailedToCreateObjectPool" xml:space="preserve">
+    <data name="Network.FailedToCreateObjectPool" xml:space="preserve">
     <value>Failed to create object pool for type {0}</value>
   </data>
 
-    <data name="NetWork.RpcCallTimeout" xml:space="preserve">
+    <data name="Network.RpcCallTimeout" xml:space="preserve">
     <value>RPC call timeout! Message is: {0}</value>
   </data>
 
-    <data name="NetWork.MessageEncodingError" xml:space="preserve">
+    <data name="Network.MessageEncodingError" xml:space="preserve">
     <value>If the message object is encoded abnormally, check the error log, exception: {0}</value>
   </data>
 
@@ -1476,7 +1476,7 @@
     <value>Invalid campaign parameter, code={0}</value>
   </data>
 
-  <data name="NetWork.SessionTypeCastInvalid" xml:space="preserve">
+  <data name="Network.SessionTypeCastInvalid" xml:space="preserve">
     <value>Session type '{0}' can not be cast to '{1}'.</value>
   </data>
 
@@ -1971,63 +1971,63 @@
     <value>SendToPlayerInnerHandler delivery failed, PlayerId:{0}</value>
   </data>
 
-  <data name="NetWork.CloseAuthenticationTimeoutSessionFailed" xml:space="preserve">
+  <data name="Network.CloseAuthenticationTimeoutSessionFailed" xml:space="preserve">
     <value>Failed to close authentication-timeout session: SessionId: {0}, exception: {1}</value>
   </data>
 
-  <data name="NetWork.CloseAuthenticationTimeoutSessionsError" xml:space="preserve">
+  <data name="Network.CloseAuthenticationTimeoutSessionsError" xml:space="preserve">
     <value>Error happened when closing authentication timeout sessions: {0}</value>
   </data>
 
-  <data name="NetWork.CloseUnauthenticatedSessionFailed" xml:space="preserve">
+  <data name="Network.CloseUnauthenticatedSessionFailed" xml:space="preserve">
     <value>Failed to close unauthenticated session: SessionId: {0}, exception: {1}</value>
   </data>
 
-  <data name="NetWork.CreateNetworkMessagePackageError" xml:space="preserve">
+  <data name="Network.CreateNetworkMessagePackageError" xml:space="preserve">
     <value>Create NetworkMessagePackage Error {0} {1} {2} {3}</value>
   </data>
 
-  <data name="NetWork.FormatMessageError" xml:space="preserve">
+  <data name="Network.FormatMessageError" xml:space="preserve">
     <value>FormatMessage Error {0} {1} {2} {3} {4}</value>
   </data>
 
-  <data name="NetWork.Http.ExecutionTimeNoResult" xml:space="preserve">
+  <data name="Network.Http.ExecutionTimeNoResult" xml:space="preserve">
     <value>{0}, execution time: {1}ms</value>
   </data>
 
-  <data name="NetWork.Http.ProtoBufMessageEncodingException" xml:space="preserve">
+  <data name="Network.Http.ProtoBufMessageEncodingException" xml:space="preserve">
     <value>Message encoding exception: {0}</value>
   </data>
 
-  <data name="NetWork.MessageObjectEncodeException" xml:space="preserve">
+  <data name="Network.MessageObjectEncodeException" xml:space="preserve">
     <value>MessageObjectEncodeException {0} {1} {2} {3}</value>
   </data>
 
-  <data name="NetWork.ScanAuthenticationTimeoutSessionsError" xml:space="preserve">
+  <data name="Network.ScanAuthenticationTimeoutSessionsError" xml:space="preserve">
     <value>Error happened when scanning authentication timeout sessions: {0}</value>
   </data>
 
-  <data name="NetWork.SendHeartBeatMessage" xml:space="preserve">
+  <data name="Network.SendHeartBeatMessage" xml:space="preserve">
     <value>Send HeartBeat Message:{0} {1}</value>
   </data>
 
-  <data name="NetWork.SendMessage" xml:space="preserve">
+  <data name="Network.SendMessage" xml:space="preserve">
     <value>Send Message:{0} {1} {2}</value>
   </data>
 
-  <data name="NetWork.SendMessageError" xml:space="preserve">
+  <data name="Network.SendMessageError" xml:space="preserve">
     <value>Send Message Error:{0} {1}</value>
   </data>
 
-  <data name="NetWork.SendMessageTimeout" xml:space="preserve">
+  <data name="Network.SendMessageTimeout" xml:space="preserve">
     <value>Send Message Timeout:{0} {1}</value>
   </data>
 
-  <data name="NetWork.SessionAuthenticationRejected" xml:space="preserve">
+  <data name="Network.SessionAuthenticationRejected" xml:space="preserve">
     <value>Session authentication rejected and closing: SessionId: {0}, RemoteEndPoint: {1}, MessageId: {2}</value>
   </data>
 
-  <data name="NetWork.SessionAuthenticationTimeout" xml:space="preserve">
+  <data name="Network.SessionAuthenticationTimeout" xml:space="preserve">
     <value>Session authentication timeout, closing: SessionId: {0}, RemoteEndPoint: {1}</value>
   </data>
 
@@ -2160,7 +2160,7 @@
   </data>
 
   <data name="Utility.GlobalSettings.NetworkTimeoutTooShortLog" xml:space="preserve">
-    <value>GlobalSettings.SetCurrentSetting NetWorkSendTimeOutSeconds is less than 1 second, and the default value is 5 seconds</value>
+    <value>GlobalSettings.SetCurrentSetting NetworkSendTimeOutSeconds is less than 1 second, and the default value is 5 seconds</value>
   </data>
 
   <data name="Utility.GlobalSettings.SaveDataIntervalTooSmallLog" xml:space="preserve">

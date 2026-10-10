@@ -30,7 +30,7 @@
 using GameFrameX.Core.Session;
 using GameFrameX.Core.BaseHandler;
 using GameFrameX.Hotfix.Logic.Server;
-using GameFrameX.NetWork.RemoteMessaging.Unified;
+using GameFrameX.Network.RemoteMessaging.Unified;
 using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Hotfix.Logic.Server.Unified;

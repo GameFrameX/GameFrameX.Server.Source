@@ -1,0 +1,211 @@
+// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes and liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository:  https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+
+namespace GameFrameX.Network;
+
+/// <summary>
+/// 操作错误码。
+/// </summary>
+/// <remarks>
+/// Operation error codes.
+/// </remarks>
+public static class OperationErrorCode
+{
+    /// <summary>
+    /// 成功。
+    /// </summary>
+    /// <remarks>
+    /// Success.
+    /// </remarks>
+    [System.ComponentModel.Description("Success / 成功")]
+    public const int Success = 0;
+
+    /// <summary>
+    /// 配置表错误。
+    /// </summary>
+    /// <remarks>
+    /// Configuration error.
+    /// </remarks>
+    [System.ComponentModel.Description("Configuration error / 配置表错误")]
+    public const int ConfigErr = 1;
+
+    /// <summary>
+    /// 参数错误。
+    /// </summary>
+    /// <remarks>
+    /// Parameter error.
+    /// </remarks>
+    [System.ComponentModel.Description("Parameter error / 客户端传递参数错误")]
+    public const int ParamErr = 2;
+
+    /// <summary>
+    /// 消耗不足。
+    /// </summary>
+    /// <remarks>
+    /// Insufficient cost.
+    /// </remarks>
+    [System.ComponentModel.Description("Insufficient cost / 消耗不足")]
+    public const int CostNotEnough = 3;
+
+    /// <summary>
+    /// 未开通服务。
+    /// </summary>
+    /// <remarks>
+    /// Service not enabled.
+    /// </remarks>
+    [System.ComponentModel.Description("Service not enabled / 未开通服务")]
+    public const int Forbidden = 4;
+
+    /// <summary>
+    /// 不存在。
+    /// </summary>
+    /// <remarks>
+    /// Not found.
+    /// </remarks>
+    [System.ComponentModel.Description("Not found / 不存在")]
+    public const int NotFound = 5;
+
+    /// <summary>
+    /// 已经存在。
+    /// </summary>
+    /// <remarks>
+    /// Already exists.
+    /// </remarks>
+    [System.ComponentModel.Description("Already exists / 已经存在")]
+    public const int HasExist = 6;
+
+    /// <summary>
+    /// 账号不存在或为空。
+    /// </summary>
+    /// <remarks>
+    /// Account cannot be null or empty.
+    /// </remarks>
+    [System.ComponentModel.Description("Account cannot be null or empty / 账号不存在或为空")]
+    public const int AccountCannotBeNull = 7;
+
+    /// <summary>
+    /// 无法执行数据库修改。
+    /// </summary>
+    /// <remarks>
+    /// Unable to execute database modification.
+    /// </remarks>
+    [System.ComponentModel.Description("Unable to execute database modification / 无法执行数据库修改")]
+    public const int Unprocessable = 8;
+
+    /// <summary>
+    /// 未知平台。
+    /// </summary>
+    /// <remarks>
+    /// Unknown platform.
+    /// </remarks>
+    [System.ComponentModel.Description("Unknown platform / 未知平台")]
+    public const int UnknownPlatform = 9;
+
+    /// <summary>
+    /// 正常通知。
+    /// </summary>
+    /// <remarks>
+    /// Normal notification.
+    /// </remarks>
+    [System.ComponentModel.Description("Normal notification / 正常通知")]
+    public const int Notice = 10;
+
+    /// <summary>
+    /// 功能未开启，主消息屏蔽。
+    /// </summary>
+    /// <remarks>
+    /// Function not enabled, main message blocked.
+    /// </remarks>
+    [System.ComponentModel.Description("Function not enabled, main message blocked / 功能未开启，主消息屏蔽")]
+    public const int FuncNotOpen = 11;
+
+    /// <summary>
+    /// 其他。
+    /// </summary>
+    /// <remarks>
+    /// Other.
+    /// </remarks>
+    [System.ComponentModel.Description("Other / 其他")]
+    public const int Other = 12;
+
+    /// <summary>
+    /// 内部服务错误。
+    /// </summary>
+    /// <remarks>
+    /// Internal server error.
+    /// </remarks>
+    [System.ComponentModel.Description("Internal server error / 内部服务错误")]
+    public const int InternalServerError = 13;
+
+    /// <summary>
+    /// 通知客户端服务器人数已达上限。
+    /// </summary>
+    /// <remarks>
+    /// Server fully loaded.
+    /// </remarks>
+    [System.ComponentModel.Description("Server fully loaded / 通知客户端服务器人数已达上限")]
+    public const int ServerFullyLoaded = 14;
+
+    /// <summary>
+    /// 已经过期。
+    /// </summary>
+    /// <remarks>
+    /// Has expired.
+    /// </remarks>
+    [System.ComponentModel.Description("Has expired / 已经过期")]
+    public const int HasExpiration = 15;
+
+    /// <summary>
+    /// 角色未授权，直接踢下线。
+    /// </summary>
+    /// <remarks>
+    /// Player unauthorized, kick offline directly.
+    /// </remarks>
+    [System.ComponentModel.Description("Player unauthorized, kick offline directly / 角色未授权;直接踢下线")]
+    public const int PlayerUnauthorized = 16;
+
+    /// <summary>
+    /// 没有权限。
+    /// </summary>
+    /// <remarks>
+    /// No permission.
+    /// </remarks>
+    [System.ComponentModel.Description("No permission / 没有权限")]
+    public const int NoPermission = 17;
+
+    /// <summary>
+    /// 执行超时。
+    /// </summary>
+    /// <remarks>
+    /// Execution timeout.
+    /// </remarks>
+    [System.ComponentModel.Description("Execution timeout / 执行超时")]
+    public const int TimeOut = 18;
+}

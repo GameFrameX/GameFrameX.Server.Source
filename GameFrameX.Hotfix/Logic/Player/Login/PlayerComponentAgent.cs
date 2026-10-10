@@ -61,7 +61,7 @@ public class PlayerComponentAgent : StateComponentAgent<PlayerComponent, PlayerS
     /// <param name="playerState"></param>
     /// <param name="reqLoginUniqueId"></param>
     /// <param name="response"></param>
-    public async Task OnPlayerLogin(INetWorkChannel workChannel, PlayerState playerState, RespPlayerLogin response)
+    public async Task OnPlayerLogin(INetworkChannel workChannel, PlayerState playerState, RespPlayerLogin response)
     {
         // 更新连接会话数据
         await PlayerSessionManager.Instance.UpdateSession(workChannel.GameAppSession.SessionId, playerState.Id, playerState.Id.ToString(), NotifyDuplicateLoginAsync);

@@ -239,151 +239,151 @@
     <value>加载配置文件失败</value>
   </data>
 
-    <!-- NetWork.Message模块日志和错误键名 -->
-    <data name="NetWork.Message.MessageDecodeFatalError" xml:space="preserve">
+    <!-- Network.Message模块日志和错误键名 -->
+    <data name="Network.Message.MessageDecodeFatalError" xml:space="preserve">
     <value>消息解码过程中发生致命异常: {0}</value>
   </data>
-    <data name="NetWork.Message.MessageEncodeError" xml:space="preserve">
+    <data name="Network.Message.MessageEncodeError" xml:space="preserve">
     <value>消息对象编码异常,请检查错误日志</value>
   </data>
-    <data name="NetWork.Message.MessageEncodeException" xml:space="preserve">
+    <data name="Network.Message.MessageEncodeException" xml:space="preserve">
     <value>消息编码异常: {0}</value>
   </data>
-    <data name="NetWork.Message.MessageObjectNull" xml:space="preserve">
+    <data name="Network.Message.MessageObjectNull" xml:space="preserve">
     <value>消息对象为空，编码异常</value>
   </data>
-    <data name="NetWork.Message.MessageObjectEncodeException" xml:space="preserve">
+    <data name="Network.Message.MessageObjectEncodeException" xml:space="preserve">
     <value>消息对象编码异常,请检查错误日志</value>
   </data>
-    <data name="NetWork.Message.MessageObjectNullEncodeException" xml:space="preserve">
+    <data name="Network.Message.MessageObjectNullEncodeException" xml:space="preserve">
     <value>消息对象为空，编码异常</value>
   </data>
 
-    <!-- NetWork.Http模块日志和错误键名 -->
-    <data name="NetWork.Http.ParameterDuplicate" xml:space="preserve">
+    <!-- Network.Http模块日志和错误键名 -->
+    <data name="Network.Http.ParameterDuplicate" xml:space="preserve">
     <value>参数重复了:{0}</value>
   </data>
-    <data name="NetWork.Http.UnsupportedContentType" xml:space="preserve">
+    <data name="Network.Http.UnsupportedContentType" xml:space="preserve">
     <value>不支持的Content Type: {0}</value>
   </data>
-    <data name="NetWork.Http.RequestParameters" xml:space="preserve">
+    <data name="Network.Http.RequestParameters" xml:space="preserve">
     <value>请求参数:{0}</value>
   </data>
-    <data name="NetWork.Http.ServerStatusError" xml:space="preserve">
+    <data name="Network.Http.ServerStatusError" xml:space="preserve">
     <value>服务器状态错误[正在起/关服]</value>
   </data>
-    <data name="NetWork.Http.CommandHandlerNotFound" xml:space="preserve">
+    <data name="Network.Http.CommandHandlerNotFound" xml:space="preserve">
     <value>http cmd handler 不存在：{0}</value>
   </data>
-    <data name="NetWork.Http.ExecutionTime" xml:space="preserve">
+    <data name="Network.Http.ExecutionTime" xml:space="preserve">
     <value>{0},执行时间：{1}ms, 结果: {2}</value>
   </data>
-    <data name="NetWork.Http.ExceptionOccurred" xml:space="preserve">
+    <data name="Network.Http.ExceptionOccurred" xml:space="preserve">
     <value>{0}, 发生异常. {1} {2}</value>
   </data>
-    <data name="NetWork.Http.MessageTypeInheritanceError" xml:space="preserve">
+    <data name="Network.Http.MessageTypeInheritanceError" xml:space="preserve">
     <value>消息类型 {0} 必须继承自 HttpMessageRequestBase</value>
   </data>
-    <data name="NetWork.Http.ResponseMessageTypeInheritanceError" xml:space="preserve">
+    <data name="Network.Http.ResponseMessageTypeInheritanceError" xml:space="preserve">
     <value>消息类型 {0} 必须继承自 HttpMessageResponseBase</value>
   </data>
-    <data name="NetWork.Http.ClassMustBeSealed" xml:space="preserve">
+    <data name="Network.Http.ClassMustBeSealed" xml:space="preserve">
     <value>{0} 必须是标记为sealed的类</value>
   </data>
-    <data name="NetWork.Http.ClassMustEndWithSuffix" xml:space="preserve">
+    <data name="Network.Http.ClassMustEndWithSuffix" xml:space="preserve">
     <value>{0} 必须以{1}结尾</value>
   </data>
-    <data name="NetWork.Http.RequestLogHeader" xml:space="preserve">
+    <data name="Network.Http.RequestLogHeader" xml:space="preserve">
     <value>[HTTPServer] TraceIdentifier:[{0}], 来源[{1}], url:[{2}]</value>
   </data>
-    <data name="NetWork.Http.RequestMethod" xml:space="preserve">
+    <data name="Network.Http.RequestMethod" xml:space="preserve">
     <value>{0}，请求方式:[{1}]</value>
   </data>
-    <data name="NetWork.Http.MessageEncodingException" xml:space="preserve">
+    <data name="Network.Http.MessageEncodingException" xml:space="preserve">
     <value>消息对象编码异常,请检查错误日志</value>
   </data>
-    <data name="NetWork.Http.HttpHeaderContentTypeNull" xml:space="preserve">
+    <data name="Network.Http.HttpHeaderContentTypeNull" xml:space="preserve">
     <value>HTTP头部Content-Type为空</value>
   </data>
-    <data name="NetWork.Http.DataVerificationFailed" xml:space="preserve">
+    <data name="Network.Http.DataVerificationFailed" xml:space="preserve">
     <value>数据验证失败</value>
   </data>
-    <data name="NetWork.Http.SwaggerRequestParameters" xml:space="preserve">
+    <data name="Network.Http.SwaggerRequestParameters" xml:space="preserve">
     <value>请求参数</value>
   </data>
-    <data name="NetWork.Http.SwaggerResponseStatusCode" xml:space="preserve">
+    <data name="Network.Http.SwaggerResponseStatusCode" xml:space="preserve">
     <value>响应状态码</value>
   </data>
-    <data name="NetWork.Http.SwaggerResponseMessage" xml:space="preserve">
+    <data name="Network.Http.SwaggerResponseMessage" xml:space="preserve">
     <value>响应消息</value>
   </data>
-    <data name="NetWork.Http.SwaggerSuccessResponse" xml:space="preserve">
+    <data name="Network.Http.SwaggerSuccessResponse" xml:space="preserve">
     <value>成功响应</value>
   </data>
-    <data name="NetWork.Http.ApplicationJsonContentType" xml:space="preserve">
+    <data name="Network.Http.ApplicationJsonContentType" xml:space="preserve">
     <value>application/json</value>
   </data>
-    <data name="NetWork.Http.ApplicationProtoBufContentType" xml:space="preserve">
+    <data name="Network.Http.ApplicationProtoBufContentType" xml:space="preserve">
     <value>application/x-protobuf</value>
   </data>
-    <data name="NetWork.Http.HttpCommandMissingValidationParameters" xml:space="preserve">
+    <data name="Network.Http.HttpCommandMissingValidationParameters" xml:space="preserve">
     <value>http命令未包含验证参数{0} 和 {1}</value>
   </data>
-    <data name="NetWork.Http.UndefinedCommand" xml:space="preserve">
+    <data name="Network.Http.UndefinedCommand" xml:space="preserve">
     <value>未定义的命令</value>
   </data>
-    <data name="NetWork.Http.NotFoundCommand" xml:space="preserve">
+    <data name="Network.Http.NotFoundCommand" xml:space="preserve">
     <value>未找到的命令</value>
   </data>
-    <data name="NetWork.Http.CheckFailedCommand" xml:space="preserve">
+    <data name="Network.Http.CheckFailedCommand" xml:space="preserve">
     <value>验证失败的命令</value>
   </data>
-    <data name="NetWork.Http.ServerError" xml:space="preserve">
+    <data name="Network.Http.ServerError" xml:space="preserve">
     <value>服务器错误</value>
   </data>
 
-    <!-- NetWork.Abstractions模块日志和错误键名 -->
-    <data name="NetWork.Abstractions.MessageIdDuplicate" xml:space="preserve">
+    <!-- Network.Abstractions模块日志和错误键名 -->
+    <data name="Network.Abstractions.MessageIdDuplicate" xml:space="preserve">
     <value>消息Id重复==&gt;当前ID:{0},已有ID类型:{1}</value>
   </data>
-    <data name="NetWork.Abstractions.HeartbeatMessageDuplicate" xml:space="preserve">
+    <data name="Network.Abstractions.HeartbeatMessageDuplicate" xml:space="preserve">
     <value>心跳消息重复==&gt;类型:{0}</value>
   </data>
-    <data name="NetWork.Abstractions.RequestIdDuplicate" xml:space="preserve">
+    <data name="Network.Abstractions.RequestIdDuplicate" xml:space="preserve">
     <value>请求Id重复==&gt;当前ID:{0},已有ID类型:{1}</value>
   </data>
-    <data name="NetWork.Abstractions.ResponseIdDuplicate" xml:space="preserve">
+    <data name="Network.Abstractions.ResponseIdDuplicate" xml:space="preserve">
     <value>返回Id重复==&gt;当前ID:{0},已有ID类型:{1}</value>
   </data>
 
-    <!-- NetWork模块日志和错误键名 -->
-    <data name="NetWork.MessageSent" xml:space="preserve">
+    <!-- Network模块日志和错误键名 -->
+    <data name="Network.MessageSent" xml:space="preserve">
     <value>---发送{0}</value>
   </data>
-    <data name="NetWork.MessageSendTimeout" xml:space="preserve">
+    <data name="Network.MessageSendTimeout" xml:space="preserve">
     <value>消息发送超时被取消:{0}</value>
   </data>
-    <data name="NetWork.TypeMustImplementInterface" xml:space="preserve">
+    <data name="Network.TypeMustImplementInterface" xml:space="preserve">
     <value>类型 {0} 必须实现 {1} 接口</value>
   </data>
-    <data name="NetWork.TypeMustBeClass" xml:space="preserve">
+    <data name="Network.TypeMustBeClass" xml:space="preserve">
     <value>类型 {0} 必须是类</value>
   </data>
-    <data name="NetWork.TypeMustHaveParameterlessConstructor" xml:space="preserve">
+    <data name="Network.TypeMustHaveParameterlessConstructor" xml:space="preserve">
     <value>类型 {0} 必须有无参构造函数</value>
   </data>
-    <data name="NetWork.CannotFindCreateMethod" xml:space="preserve">
+    <data name="Network.CannotFindCreateMethod" xml:space="preserve">
     <value>无法在 ObjectPoolProvider 上找到 Create 方法</value>
   </data>
-    <data name="NetWork.FailedToCreateObjectPool" xml:space="preserve">
+    <data name="Network.FailedToCreateObjectPool" xml:space="preserve">
     <value>无法为类型 {0} 创建对象池</value>
   </data>
 
-    <data name="NetWork.RpcCallTimeout" xml:space="preserve">
+    <data name="Network.RpcCallTimeout" xml:space="preserve">
     <value>RPC调用超时！消息为：{0}</value>
   </data>
 
-    <data name="NetWork.MessageEncodingError" xml:space="preserve">
+    <data name="Network.MessageEncodingError" xml:space="preserve">
     <value>如果消息对象编码异常，请检查错误日志，异常：{0}</value>
   </data>
 
@@ -1474,7 +1474,7 @@
     <value>Campaign 参数非法，code={0}</value>
   </data>
 
-  <data name="NetWork.SessionTypeCastInvalid" xml:space="preserve">
+  <data name="Network.SessionTypeCastInvalid" xml:space="preserve">
     <value>会话类型 '{0}' 无法转换为 '{1}'。</value>
   </data>
 
@@ -1969,63 +1969,63 @@
     <value>SendToPlayerInnerHandler 投递失败, PlayerId:{0}</value>
   </data>
 
-  <data name="NetWork.CloseAuthenticationTimeoutSessionFailed" xml:space="preserve">
+  <data name="Network.CloseAuthenticationTimeoutSessionFailed" xml:space="preserve">
     <value>关闭认证超时会话失败: 会话Id: {0}, 异常: {1}</value>
   </data>
 
-  <data name="NetWork.CloseAuthenticationTimeoutSessionsError" xml:space="preserve">
+  <data name="Network.CloseAuthenticationTimeoutSessionsError" xml:space="preserve">
     <value>关闭认证超时会话时发生错误: {0}</value>
   </data>
 
-  <data name="NetWork.CloseUnauthenticatedSessionFailed" xml:space="preserve">
+  <data name="Network.CloseUnauthenticatedSessionFailed" xml:space="preserve">
     <value>关闭未认证会话失败: 会话Id: {0}, 异常: {1}</value>
   </data>
 
-  <data name="NetWork.CreateNetworkMessagePackageError" xml:space="preserve">
+  <data name="Network.CreateNetworkMessagePackageError" xml:space="preserve">
     <value>创建网络消息包错误 {0} {1} {2} {3}</value>
   </data>
 
-  <data name="NetWork.FormatMessageError" xml:space="preserve">
+  <data name="Network.FormatMessageError" xml:space="preserve">
     <value>格式化消息错误 {0} {1} {2} {3} {4}</value>
   </data>
 
-  <data name="NetWork.Http.ExecutionTimeNoResult" xml:space="preserve">
+  <data name="Network.Http.ExecutionTimeNoResult" xml:space="preserve">
     <value>{0},执行时间：{1}ms</value>
   </data>
 
-  <data name="NetWork.Http.ProtoBufMessageEncodingException" xml:space="preserve">
+  <data name="Network.Http.ProtoBufMessageEncodingException" xml:space="preserve">
     <value>消息编码异常: {0}</value>
   </data>
 
-  <data name="NetWork.MessageObjectEncodeException" xml:space="preserve">
+  <data name="Network.MessageObjectEncodeException" xml:space="preserve">
     <value>消息对象编码异常 {0} {1} {2} {3}</value>
   </data>
 
-  <data name="NetWork.ScanAuthenticationTimeoutSessionsError" xml:space="preserve">
+  <data name="Network.ScanAuthenticationTimeoutSessionsError" xml:space="preserve">
     <value>扫描认证超时会话时发生错误: {0}</value>
   </data>
 
-  <data name="NetWork.SendHeartBeatMessage" xml:space="preserve">
+  <data name="Network.SendHeartBeatMessage" xml:space="preserve">
     <value>发送心跳消息:{0} {1}</value>
   </data>
 
-  <data name="NetWork.SendMessage" xml:space="preserve">
+  <data name="Network.SendMessage" xml:space="preserve">
     <value>发送消息:{0} {1} {2}</value>
   </data>
 
-  <data name="NetWork.SendMessageError" xml:space="preserve">
+  <data name="Network.SendMessageError" xml:space="preserve">
     <value>发送消息错误:{0} {1}</value>
   </data>
 
-  <data name="NetWork.SendMessageTimeout" xml:space="preserve">
+  <data name="Network.SendMessageTimeout" xml:space="preserve">
     <value>发送消息超时:{0} {1}</value>
   </data>
 
-  <data name="NetWork.SessionAuthenticationRejected" xml:space="preserve">
+  <data name="Network.SessionAuthenticationRejected" xml:space="preserve">
     <value>会话认证被拒绝并关闭: 会话Id: {0}, 远程端点: {1}, 消息Id: {2}</value>
   </data>
 
-  <data name="NetWork.SessionAuthenticationTimeout" xml:space="preserve">
+  <data name="Network.SessionAuthenticationTimeout" xml:space="preserve">
     <value>会话认证超时，正在关闭: 会话Id: {0}, 远程端点: {1}</value>
   </data>
 
@@ -2158,7 +2158,7 @@
   </data>
 
   <data name="Utility.GlobalSettings.NetworkTimeoutTooShortLog" xml:space="preserve">
-    <value>GlobalSettings.SetCurrentSetting NetWorkSendTimeOutSeconds小于1秒，使用默认值5秒</value>
+    <value>GlobalSettings.SetCurrentSetting NetworkSendTimeOutSeconds小于1秒，使用默认值5秒</value>
   </data>
 
   <data name="Utility.GlobalSettings.SaveDataIntervalTooSmallLog" xml:space="preserve">

@@ -28,9 +28,9 @@
 //  ==========================================================================================
 
 using System.Net;
-using GameFrameX.NetWork.Abstractions;
-using GameFrameX.NetWork.Message;
-using GameFrameX.NetWork.Messages;
+using GameFrameX.Network.Abstractions;
+using GameFrameX.Network.Message;
+using GameFrameX.Network.Messages;
 using GameFrameX.Proto.Proto;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.ProtoBuf.Net;

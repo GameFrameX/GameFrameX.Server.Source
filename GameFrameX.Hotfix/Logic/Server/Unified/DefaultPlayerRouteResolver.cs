@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 using GameFrameX.Core.Session;
-using GameFrameX.NetWork.RemoteMessaging.Unified;
+using GameFrameX.Network.RemoteMessaging.Unified;
 using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Hotfix.Logic.Server.Unified;

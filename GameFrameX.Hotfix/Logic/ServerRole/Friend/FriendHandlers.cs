@@ -41,7 +41,7 @@ internal sealed class ReqFriendSendRequestHandler : GlobalRpcComponentHandler<Fr
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)FriendErrorCode.NotLoggedIn;
@@ -68,7 +68,7 @@ internal sealed class ReqFriendAcceptHandler : GlobalRpcComponentHandler<FriendC
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)FriendErrorCode.NotLoggedIn;
@@ -95,7 +95,7 @@ internal sealed class ReqFriendRejectHandler : GlobalRpcComponentHandler<FriendC
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)FriendErrorCode.NotLoggedIn;
@@ -122,7 +122,7 @@ internal sealed class ReqFriendRemoveHandler : GlobalRpcComponentHandler<FriendC
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)FriendErrorCode.NotLoggedIn;
@@ -149,7 +149,7 @@ internal sealed class ReqFriendRelationListHandler : GlobalRpcComponentHandler<F
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)FriendErrorCode.NotLoggedIn;

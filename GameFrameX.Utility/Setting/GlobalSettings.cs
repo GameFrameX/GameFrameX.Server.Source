@@ -116,7 +116,7 @@ public static class GlobalSettings
     /// This method is used to update the global current settings.
     /// Typically called during application startup or when switching configurations.
     /// Features:
-    /// 1. Process-level field normalization runs first (SaveDataInterval / HttpUrl / NetWorkSendTimeOutSeconds / ActorRecycleTime),
+    /// 1. Process-level field normalization runs first (SaveDataInterval / HttpUrl / NetworkSendTimeOutSeconds / ActorRecycleTime),
     ///    then repeated settings perform process-level field consistency validation on the normalized values:
     ///    identical process-level fields pass through idempotently, conflicting ones fail fast with <see cref="SettingConflictException"/>;
     ///    role-level fields accept the latest value, so equivalent multi-Role configurations are not reported as conflicts
@@ -144,11 +144,11 @@ public static class GlobalSettings
             setting.HttpUrl = "/game/api/";
         }
 
-        if (setting.NetWorkSendTimeOutSeconds < 1)
+        if (setting.NetworkSendTimeOutSeconds < 1)
         {
-            // Localization: Utility.GlobalSettings.NetworkTimeoutTooShortLog - GlobalSettings.SetCurrentSetting NetWorkSendTimeOutSeconds小于1秒，使用默认值5秒
+            // Localization: Utility.GlobalSettings.NetworkTimeoutTooShortLog - GlobalSettings.SetCurrentSetting NetworkSendTimeOutSeconds小于1秒，使用默认值5秒
             LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.NetworkTimeoutTooShortLog));
-            setting.NetWorkSendTimeOutSeconds = 5;
+            setting.NetworkSendTimeOutSeconds = 5;
         }
 
         if (setting.ActorRecycleTime < 1)

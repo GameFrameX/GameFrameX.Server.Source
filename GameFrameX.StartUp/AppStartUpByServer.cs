@@ -30,10 +30,10 @@
 
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.NetWork;
-using GameFrameX.NetWork.Abstractions;
-using GameFrameX.NetWork.HTTP;
-using GameFrameX.NetWork.Message;
+using GameFrameX.Network;
+using GameFrameX.Network.Abstractions;
+using GameFrameX.Network.HTTP;
+using GameFrameX.Network.Message;
 using GameFrameX.SuperSocket.Connection;
 using GameFrameX.SuperSocket.Primitives;
 using GameFrameX.SuperSocket.ProtoBase;
@@ -196,17 +196,17 @@ public abstract partial class AppStartUpBase
     /// </remarks>
     /// <param name="handler">消息处理器 / Message handler</param>
     /// <param name="message">网络消息 / Network message</param>
-    /// <param name="netWorkChannel">网络通道 / Network channel</param>
+    /// <param name="networkChannel">网络通道 / Network channel</param>
     /// <param name="timeout">超时时间（毫秒）/ Timeout (milliseconds)</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
-    protected async Task InvokeMessageHandler(IMessageHandler handler, INetworkMessage message, INetWorkChannel netWorkChannel, int timeout = 30000, CancellationToken cancellationToken = default)
+    protected async Task InvokeMessageHandler(IMessageHandler handler, INetworkMessage message, INetworkChannel networkChannel, int timeout = 30000, CancellationToken cancellationToken = default)
     {
         try
         {
             await Task.Run(async () =>
             {
-                var initSuccess = await handler.Init(message, netWorkChannel);
+                var initSuccess = await handler.Init(message, networkChannel);
                 if (!initSuccess)
                 {
                     return;

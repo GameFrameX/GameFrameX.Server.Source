@@ -41,7 +41,7 @@ internal sealed class ReqTradePlaceHandler : GlobalRpcComponentHandler<TradeComp
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)TradeErrorCode.NotLoggedIn;
@@ -68,7 +68,7 @@ internal sealed class ReqTradeCancelHandler : GlobalRpcComponentHandler<TradeCom
     {
         try
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
             if (playerId == 0)
             {
                 response.ErrorCode = (int)TradeErrorCode.NotLoggedIn;

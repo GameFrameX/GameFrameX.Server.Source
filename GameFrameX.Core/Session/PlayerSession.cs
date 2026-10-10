@@ -29,7 +29,7 @@
 
 using System.Text.Json.Serialization;
 using GameFrameX.Foundation.Utility;
-using GameFrameX.NetWork.Abstractions;
+using GameFrameX.Network.Abstractions;
 
 namespace GameFrameX.Core.Session;
 
@@ -43,10 +43,10 @@ public sealed class PlayerSession : IPlayerSession
     /// 初始化
     /// </summary>
     /// <param name="sessionId">连接会话ID</param>
-    /// <param name="netWorkChannel">网络渠道对象</param>
-    public PlayerSession(string sessionId, INetWorkChannel netWorkChannel)
+    /// <param name="networkChannel">网络渠道对象</param>
+    public PlayerSession(string sessionId, INetworkChannel networkChannel)
     {
-        WorkChannel = netWorkChannel;
+        WorkChannel = networkChannel;
         SessionId = sessionId;
         CreateTime = TimerHelper.UnixTimeSeconds();
     }
@@ -70,7 +70,7 @@ public sealed class PlayerSession : IPlayerSession
     /// 连接上下文
     /// </summary>
     [JsonIgnore]
-    public INetWorkChannel WorkChannel { get; }
+    public INetworkChannel WorkChannel { get; }
 
     /// <summary>
     /// 连接标示，避免自己顶自己的号,客户端每次启动游戏生成一次/或者每个设备一个

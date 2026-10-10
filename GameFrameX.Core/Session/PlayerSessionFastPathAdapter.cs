@@ -18,7 +18,7 @@ namespace GameFrameX.Core.Session;
 /// The Tier 1 player-route fast-path adapter. Wraps the
 /// <see cref="PlayerSessionManager"/>-owned player-route snapshot in the <see cref="IPlayerRouteFastPath"/>
 /// contract so the Mongo player-route resolver can be activated from
-/// inside <c>GameFrameX.NetWork.RemoteMessaging</c> without taking a project
+/// inside <c>GameFrameX.Network.RemoteMessaging</c> without taking a project
 /// reference on <c>GameFrameX.Core</c>（原反向引用 <c>GameFrameX.Apps</c> 的接缝成本随 C192 下沉消除）。
 /// </remarks>
 public sealed class PlayerSessionFastPathAdapter : IPlayerRouteFastPath

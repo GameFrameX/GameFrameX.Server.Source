@@ -27,10 +27,10 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.NetWork.RemoteMessaging;
-using GameFrameX.NetWork.RemoteMessaging.Contracts;
-using GameFrameX.NetWork.Abstractions;
-using GameFrameX.NetWork.Messages;
+using GameFrameX.Network.RemoteMessaging;
+using GameFrameX.Network.RemoteMessaging.Contracts;
+using GameFrameX.Network.Abstractions;
+using GameFrameX.Network.Messages;
 
 namespace GameFrameX.Tests.RemoteMessaging;
 

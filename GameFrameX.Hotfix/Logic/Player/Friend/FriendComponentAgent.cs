@@ -31,8 +31,8 @@
 using GameFrameX.Apps.Player.Friend;
 using GameFrameX.Apps.Player.Friend.Entity;
 using GameFrameX.Apps.Player.Player.Entity;
-using GameFrameX.NetWork.RemoteMessaging.Contracts;
-using GameFrameX.NetWork.RemoteMessaging.Unified;
+using GameFrameX.Network.RemoteMessaging.Contracts;
+using GameFrameX.Network.RemoteMessaging.Unified;
 using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Hotfix.Logic.Player.Friend;
@@ -45,15 +45,15 @@ public class FriendComponentAgent : StateComponentAgent<FriendComponent, FriendS
     /// 获取好友列表（通过统一消息发送器调用 Social 服务）。
     /// 好友列表查询为幂等操作，允许重试。
     /// </summary>
-    /// <param name="netWorkChannel">网络通道</param>
+    /// <param name="networkChannel">网络通道</param>
     /// <param name="request">请求</param>
     /// <param name="response">响应</param>
-    public async Task OnFriendList(INetWorkChannel netWorkChannel, ReqFriendList request, RespFriendList response)
+    public async Task OnFriendList(INetworkChannel networkChannel, ReqFriendList request, RespFriendList response)
     {
         if (string.Equals(GlobalSettings.CurrentSetting?.ServerType, GameServerConst.Social.Name, StringComparison.OrdinalIgnoreCase))
         {
             var innerResponse = new RespInnerFriendList();
-            await OnInnerFriendList(netWorkChannel, new ReqInnerFriendList { PlayerId = ActorId, }, innerResponse);
+            await OnInnerFriendList(networkChannel, new ReqInnerFriendList { PlayerId = ActorId, }, innerResponse);
             response.Friends = innerResponse.Friends ?? new List<FriendInfo>();
             response.ErrorCode = innerResponse.ErrorCode;
             return;
@@ -96,10 +96,10 @@ public class FriendComponentAgent : StateComponentAgent<FriendComponent, FriendS
     /// 添加好友（通过统一消息发送器调用 Social 服务）。
     /// 添加好友为非幂等操作，不允许重试。
     /// </summary>
-    /// <param name="netWorkChannel">网络通道</param>
+    /// <param name="networkChannel">网络通道</param>
     /// <param name="request">请求</param>
     /// <param name="response">响应</param>
-    public async Task OnAddFriend(INetWorkChannel netWorkChannel, ReqFriendByAdd request, RespFriendByAdd response)
+    public async Task OnAddFriend(INetworkChannel networkChannel, ReqFriendByAdd request, RespFriendByAdd response)
     {
         var reqInnerAddFriend = MessageObjectPoolHelper.Get<ReqInnerFriendByAdd>();
         reqInnerAddFriend.PlayerId = request.PlayerId;
@@ -107,7 +107,7 @@ public class FriendComponentAgent : StateComponentAgent<FriendComponent, FriendS
         if (string.Equals(GlobalSettings.CurrentSetting?.ServerType, GameServerConst.Social.Name, StringComparison.OrdinalIgnoreCase))
         {
             var innerResponse = new RespInnerFriendByAdd();
-            await OnInnerAddFriend(netWorkChannel, reqInnerAddFriend, innerResponse);
+            await OnInnerAddFriend(networkChannel, reqInnerAddFriend, innerResponse);
             response.Success = innerResponse.Success;
             response.ErrorCode = innerResponse.ErrorCode;
             MessageObjectPoolHelper.Return(reqInnerAddFriend);
@@ -149,10 +149,10 @@ public class FriendComponentAgent : StateComponentAgent<FriendComponent, FriendS
     /// 删除好友（通过统一消息发送器调用 Social 服务）。
     /// 删除好友为非幂等操作，不允许重试。
     /// </summary>
-    /// <param name="netWorkChannel">网络通道</param>
+    /// <param name="networkChannel">网络通道</param>
     /// <param name="request">请求</param>
     /// <param name="response">响应</param>
-    public async Task OnDeleteFriend(INetWorkChannel netWorkChannel, ReqDeleteFriend request, RespDeleteFriend response)
+    public async Task OnDeleteFriend(INetworkChannel networkChannel, ReqDeleteFriend request, RespDeleteFriend response)
     {
         var reqInnerDeleteFriend = MessageObjectPoolHelper.Get<ReqInnerFriendByDelete>();
         reqInnerDeleteFriend.PlayerId = request.PlayerId;
@@ -160,7 +160,7 @@ public class FriendComponentAgent : StateComponentAgent<FriendComponent, FriendS
         if (string.Equals(GlobalSettings.CurrentSetting?.ServerType, GameServerConst.Social.Name, StringComparison.OrdinalIgnoreCase))
         {
             var innerResponse = new RespInnerFriendByDelete();
-            await OnInnerDeleteFriend(netWorkChannel, reqInnerDeleteFriend, innerResponse);
+            await OnInnerDeleteFriend(networkChannel, reqInnerDeleteFriend, innerResponse);
             response.Success = innerResponse.Success;
             response.ErrorCode = innerResponse.ErrorCode;
             MessageObjectPoolHelper.Return(reqInnerDeleteFriend);
@@ -202,7 +202,7 @@ public class FriendComponentAgent : StateComponentAgent<FriendComponent, FriendS
     /// Social 进程内的添加好友处理。
     /// 将好友关系写入数据库。
     /// </summary>
-    public async Task OnInnerAddFriend(INetWorkChannel netWorkChannel, ReqInnerFriendByAdd request, RespInnerFriendByAdd response)
+    public async Task OnInnerAddFriend(INetworkChannel networkChannel, ReqInnerFriendByAdd request, RespInnerFriendByAdd response)
     {
         // 优先使用请求中的 SourcePlayerId（跨服场景），否则降级为 ActorId（本服场景）
         var ownerPlayerId = request.SourcePlayerId > 0 ? request.SourcePlayerId : ActorId;
@@ -268,10 +268,10 @@ public class FriendComponentAgent : StateComponentAgent<FriendComponent, FriendS
     /// Social 进程内的好友列表处理。
     /// 从数据库查询所有有效好友关系，并填充好友详情。
     /// </summary>
-    /// <param name="netWorkChannel">网络通道</param>
+    /// <param name="networkChannel">网络通道</param>
     /// <param name="request">请求</param>
     /// <param name="response">响应</param>
-    public async Task OnInnerFriendList(INetWorkChannel netWorkChannel, ReqInnerFriendList request, RespInnerFriendList response)
+    public async Task OnInnerFriendList(INetworkChannel networkChannel, ReqInnerFriendList request, RespInnerFriendList response)
     {
         var ownerPlayerId = request.PlayerId > 0 ? request.PlayerId : ActorId;
 
@@ -305,7 +305,7 @@ public class FriendComponentAgent : StateComponentAgent<FriendComponent, FriendS
     /// Social 进程内的删除好友处理。
     /// 软删除好友关系（设置 Status = 1）。
     /// </summary>
-    public async Task OnInnerDeleteFriend(INetWorkChannel netWorkChannel, ReqInnerFriendByDelete request, RespInnerFriendByDelete response)
+    public async Task OnInnerDeleteFriend(INetworkChannel networkChannel, ReqInnerFriendByDelete request, RespInnerFriendByDelete response)
     {
         // 优先使用请求中的 SourcePlayerId（跨服场景），否则降级为 ActorId（本服场景）
         var ownerPlayerId = request.SourcePlayerId > 0 ? request.SourcePlayerId : ActorId;

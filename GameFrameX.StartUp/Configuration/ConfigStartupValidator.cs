@@ -429,7 +429,7 @@ public static class ConfigStartupValidator
                 return 300_000;
             }
 
-            if ((property.Name == nameof(AppSetting.NetWorkSendTimeOutSeconds) || property.Name == nameof(AppSetting.ActorRecycleTime)) && intValue < 1)
+            if ((property.Name == nameof(AppSetting.NetworkSendTimeOutSeconds) || property.Name == nameof(AppSetting.ActorRecycleTime)) && intValue < 1)
             {
                 return 5;
             }

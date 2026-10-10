@@ -32,7 +32,7 @@ using GameFrameX.Apps.Common.EventData;
 using GameFrameX.Core.Session;
 using GameFrameX.Apps.Player.Bag.Entity;
 using GameFrameX.Hotfix.Logic.Player.Bag;
-using GameFrameX.NetWork.RemoteMessaging.Unified;
+using GameFrameX.Network.RemoteMessaging.Unified;
 using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Hotfix.Logic.Http.Bag;

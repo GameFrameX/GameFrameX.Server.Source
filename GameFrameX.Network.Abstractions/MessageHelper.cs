@@ -1,0 +1,90 @@
+// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes and liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository:  https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+
+namespace GameFrameX.Network.Abstractions;
+
+/// <summary>
+/// 消息处理帮助类，用于管理消息的编码和解码处理器。
+/// </summary>
+/// <remarks>
+/// Message processing helper class for managing message encoder and decoder handlers.
+/// </remarks>
+public static class MessageHelper
+{
+    /// <summary>
+    /// 获取消息编码处理器。用于将消息编码成二进制格式。
+    /// </summary>
+    /// <remarks>
+    /// Gets the message encoder handler. Used for encoding messages into binary format.
+    /// </remarks>
+    /// <value>消息编码处理器 / Message encoder handler</value>
+    public static IMessageEncoderHandler EncoderHandler { get; private set; }
+
+    /// <summary>
+    /// 获取消息解码处理器。用于将二进制数据解码成消息对象。
+    /// </summary>
+    /// <remarks>
+    /// Gets the message decoder handler. Used for decoding binary data into message objects.
+    /// </remarks>
+    /// <value>消息解码处理器 / Message decoder handler</value>
+    public static IMessageDecoderHandler DecoderHandler { get; private set; }
+
+    /// <summary>
+    /// 设置消息解码处理器和解压缩处理器。
+    /// </summary>
+    /// <remarks>
+    /// Sets the message decoder handler and decompression handler.
+    /// </remarks>
+    /// <param name="decoderHandler">消息解码处理器实例 / Message decoder handler instance</param>
+    /// <param name="decompressHandler">消息解压缩处理器实例 / Message decompression handler instance</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="decoderHandler"/> 为 null 时抛出 / Thrown when <paramref name="decoderHandler"/> is null</exception>
+    public static void SetMessageDecoderHandler(IMessageDecoderHandler decoderHandler, IMessageDecompressHandler decompressHandler)
+    {
+        ArgumentNullException.ThrowIfNull(decoderHandler);
+        DecoderHandler = decoderHandler;
+        DecoderHandler.SetDecompressionHandler(decompressHandler);
+    }
+
+    /// <summary>
+    /// 设置消息编码处理器和压缩处理器。
+    /// </summary>
+    /// <remarks>
+    /// Sets the message encoder handler and compression handler.
+    /// </remarks>
+    /// <param name="encoderHandler">消息编码处理器实例 / Message encoder handler instance</param>
+    /// <param name="compressHandler">消息压缩处理器实例 / Message compression handler instance</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="encoderHandler"/> 为 null 时抛出 / Thrown when <paramref name="encoderHandler"/> is null</exception>
+    public static void SetMessageEncoderHandler(IMessageEncoderHandler encoderHandler, IMessageCompressHandler compressHandler)
+    {
+        ArgumentNullException.ThrowIfNull(encoderHandler);
+        EncoderHandler = encoderHandler;
+        EncoderHandler.SetCompressionHandler(compressHandler);
+    }
+}

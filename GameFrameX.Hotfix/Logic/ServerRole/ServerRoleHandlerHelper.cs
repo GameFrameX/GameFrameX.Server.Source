@@ -45,11 +45,11 @@ internal static class ServerRoleHandlerHelper
     /// <summary>
     /// 获取会话绑定的当前玩家 ID。
     /// </summary>
-    /// <param name="netWorkChannel">网络会话通道。</param>
+    /// <param name="networkChannel">网络会话通道。</param>
     /// <returns>玩家 ID；未登录返回 0。</returns>
-    public static long GetCurrentPlayerId(INetWorkChannel netWorkChannel)
+    public static long GetCurrentPlayerId(INetworkChannel networkChannel)
     {
-        var sessionId = netWorkChannel.GameAppSession?.SessionId;
+        var sessionId = networkChannel.GameAppSession?.SessionId;
         if (string.IsNullOrWhiteSpace(sessionId))
         {
             return 0;

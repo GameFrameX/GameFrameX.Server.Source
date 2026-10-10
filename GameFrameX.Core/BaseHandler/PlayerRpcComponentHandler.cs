@@ -30,7 +30,7 @@
 using GameFrameX.Core.Abstractions.Agent;
 using GameFrameX.Core.BaseHandler.RPC;
 using GameFrameX.Core.Utility;
-using GameFrameX.NetWork.Abstractions;
+using GameFrameX.Network.Abstractions;
 using GameFrameX.Utility;
 using GameFrameX.Utility.Setting;
 
@@ -57,7 +57,7 @@ public abstract class PlayerRpcComponentHandler<TRequest, TResponse> : BaseRpcCo
     {
         if (ActorId <= 0)
         {
-            ActorId = NetWorkChannel.GetData<long>(GlobalConst.ActorIdKey);
+            ActorId = NetworkChannel.GetData<long>(GlobalConst.ActorIdKey);
         }
 
         if (ActorId <= 0)

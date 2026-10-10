@@ -1,0 +1,79 @@
+// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes and liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository:  https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+namespace GameFrameX.Network.RemoteMessaging.Transport;
+
+/// <summary>
+/// 请求-响应匹配器。统一管理 UniqueId 生命周期与响应匹配。
+/// </summary>
+/// <remarks>
+/// Request-response matcher. Manages UniqueId lifecycle and response matching in a unified manner.
+/// </remarks>
+public interface IRequestResponseMatcher
+{
+    /// <summary>
+    /// 注册一个待处理请求，返回分配的唯一 ID。
+    /// </summary>
+    /// <remarks>
+    /// Registers a pending request and returns the assigned unique ID.
+    /// </remarks>
+    /// <param name="timeoutMs">请求超时毫秒数 / Request timeout in milliseconds</param>
+    /// <returns>请求唯一 ID / The unique ID assigned to the request</returns>
+    int RegisterPendingRequest(int timeoutMs);
+
+    /// <summary>
+    /// 等待指定请求的响应。
+    /// </summary>
+    /// <remarks>
+    /// Asynchronously waits for the response of the specified request.
+    /// </remarks>
+    /// <param name="uniqueId">请求唯一 ID / The unique ID of the request</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>响应消息对象 / The response message object</returns>
+    Task<MessageObject> WaitResponseAsync(int uniqueId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// 收到响应时完成对应请求。
+    /// </summary>
+    /// <remarks>
+    /// Completes the corresponding pending request when a response is received.
+    /// </remarks>
+    /// <param name="uniqueId">请求唯一 ID / The unique ID of the request</param>
+    /// <param name="response">响应消息 / The response message</param>
+    /// <returns>是否成功匹配到等待中的请求 / Whether a pending request was successfully matched</returns>
+    bool TryComplete(int uniqueId, MessageObject response);
+
+    /// <summary>
+    /// 清理已超时的待处理请求。
+    /// </summary>
+    /// <remarks>
+    /// Removes expired pending requests that have exceeded their timeout.
+    /// </remarks>
+    void CleanupExpired();
+}

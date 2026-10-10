@@ -37,7 +37,7 @@ internal sealed class ReqMailDeleteHandler : PlayerRpcComponentHandler<MailCompo
     {
         try
         {
-            await ComponentAgent.OnReqMailDeleteAsync(NetWorkChannel, request, response);
+            await ComponentAgent.OnReqMailDeleteAsync(NetworkChannel, request, response);
         }
         catch (Exception e)
         {

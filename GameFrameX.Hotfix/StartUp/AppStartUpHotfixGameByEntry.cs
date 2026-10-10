@@ -30,11 +30,11 @@
 
 using GameFrameX.StartUp;
 using GameFrameX.Apps.Common.EventData;
-using GameFrameX.NetWork.RemoteMessaging;
+using GameFrameX.Network.RemoteMessaging;
 using GameFrameX.Discovery.Routing;
-using GameFrameX.NetWork.RemoteMessaging.Routing;
+using GameFrameX.Network.RemoteMessaging.Routing;
 using GameFrameX.Hotfix.Logic.Server.Unified;
-using GameFrameX.NetWork.RemoteMessaging.Unified;
+using GameFrameX.Network.RemoteMessaging.Unified;
 
 namespace GameFrameX.Hotfix.StartUp;
 
@@ -67,7 +67,7 @@ internal partial class AppStartUpHotfixGame : AppStartUpBase, IHotfixBridge
 
             // holder 初始化后补装路由缝 case 1 的本地投递槽（幂等；时序前提见 AttachLocalDispatcher 注释）。
             // 本地投递槽装配统一走组合侧 DiscoveryRoutingWire（两 Provider 共用，不再按实现分支）。
-            GameFrameX.NetWork.RemoteMessaging.Routing.DiscoveryRoutingWire.AttachLocalDispatcher(new LocalEnvelopeDispatcher(localSender));
+            GameFrameX.Network.RemoteMessaging.Routing.DiscoveryRoutingWire.AttachLocalDispatcher(new LocalEnvelopeDispatcher(localSender));
         }
 
         await RunServer();

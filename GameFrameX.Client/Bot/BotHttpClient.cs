@@ -29,9 +29,9 @@
 
 using System.Net.Http.Headers;
 using System.Text;
-using GameFrameX.NetWork.Abstractions;
-using GameFrameX.NetWork.HTTP;
-using GameFrameX.NetWork.Messages;
+using GameFrameX.Network.Abstractions;
+using GameFrameX.Network.HTTP;
+using GameFrameX.Network.Messages;
 using GameFrameX.ProtoBuf.Net;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Localization.Core;

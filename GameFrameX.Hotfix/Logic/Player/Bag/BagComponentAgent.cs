@@ -32,7 +32,7 @@ using GameFrameX.Apps.Player.Bag.Component;
 using GameFrameX.Apps.Player.Bag.Entity;
 using GameFrameX.Config;
 using GameFrameX.Config.Tables;
-using GameFrameX.NetWork.RemoteMessaging.Unified;
+using GameFrameX.Network.RemoteMessaging.Unified;
 
 namespace GameFrameX.Hotfix.Logic.Player.Bag;
 
@@ -41,11 +41,11 @@ public class BagComponentAgent : StateComponentAgent<BagComponent, BagState>
     /// <summary>
     /// 增加背包物品
     /// </summary>
-    /// <param name="netWorkChannel"></param>
+    /// <param name="networkChannel"></param>
     /// <param name="message"></param>
     /// <param name="response"></param>
     /// <exception cref="NotImplementedException"></exception>
-    public async Task OnAddBagItem(INetWorkChannel netWorkChannel, ReqAddItem message, RespAddItem response)
+    public async Task OnAddBagItem(INetworkChannel networkChannel, ReqAddItem message, RespAddItem response)
     {
         // 校验物品是否存在
         foreach (var item in message.ItemDic)
@@ -59,7 +59,7 @@ public class BagComponentAgent : StateComponentAgent<BagComponent, BagState>
             return;
         }
 
-        var result = await UpdateChanged(netWorkChannel, message.ItemDic);
+        var result = await UpdateChanged(networkChannel, message.ItemDic);
         if (result.IsNull())
         {
             response.ErrorCode = (int)OperationStatusCode.Unprocessable;
@@ -69,10 +69,10 @@ public class BagComponentAgent : StateComponentAgent<BagComponent, BagState>
     /// <summary>
     /// 增加背包物品
     /// </summary>
-    /// <param name="netWorkChannel"></param>
+    /// <param name="networkChannel"></param>
     /// <param name="itemDic"></param>
     /// <returns></returns>
-    public async Task<BagState> UpdateChanged(INetWorkChannel netWorkChannel, Dictionary<int, long> itemDic)
+    public async Task<BagState> UpdateChanged(INetworkChannel networkChannel, Dictionary<int, long> itemDic)
     {
         //将物品添加到背包
         var bagState = OwnerComponent.State;
@@ -114,10 +114,10 @@ public class BagComponentAgent : StateComponentAgent<BagComponent, BagState>
     /// <summary>
     /// 减少背包物品
     /// </summary>
-    /// <param name="netWorkChannel"></param>
+    /// <param name="networkChannel"></param>
     /// <param name="message"></param>
     /// <param name="response"></param>
-    public async Task OnRemoveBagItem(INetWorkChannel netWorkChannel, ReqRemoveItem message, RespRemoveItem response)
+    public async Task OnRemoveBagItem(INetworkChannel networkChannel, ReqRemoveItem message, RespRemoveItem response)
     {
         // 校验物品是否存在
         foreach (var item in message.ItemDic)
@@ -160,10 +160,10 @@ public class BagComponentAgent : StateComponentAgent<BagComponent, BagState>
     /// <summary>
     /// 减少背包物品
     /// </summary>
-    /// <param name="netWorkChannel"></param>
+    /// <param name="networkChannel"></param>
     /// <param name="message"></param>
     /// <param name="response"></param>
-    public async Task OnUseBagItem(INetWorkChannel netWorkChannel, ReqUseItem message, RespUseItem response)
+    public async Task OnUseBagItem(INetworkChannel networkChannel, ReqUseItem message, RespUseItem response)
     {
         // 校验物品是否存在
         if (!ConfigComponent.Instance.GetConfig<TbItemConfig>().TryGet(message.ItemId, out var tbItemConfig))
@@ -215,10 +215,10 @@ public class BagComponentAgent : StateComponentAgent<BagComponent, BagState>
     /// <summary>
     /// 异步请求背包数据
     /// </summary>
-    /// <param name="netWorkChannel"></param>
+    /// <param name="networkChannel"></param>
     /// <param name="message"></param>
     /// <param name="response"></param>
-    public async Task OnReqBagInfoAsync(INetWorkChannel netWorkChannel, ReqBagInfo message, RespBagInfo response)
+    public async Task OnReqBagInfoAsync(INetworkChannel networkChannel, ReqBagInfo message, RespBagInfo response)
     {
         var bagState = OwnerComponent.State;
         if (bagState.IsNotNull())

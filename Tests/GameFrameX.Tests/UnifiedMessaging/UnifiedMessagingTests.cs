@@ -27,11 +27,11 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.NetWork.RemoteMessaging.Unified;
-using GameFrameX.NetWork.RemoteMessaging.Contracts;
-using GameFrameX.NetWork.Abstractions;
-using GameFrameX.NetWork.RemoteMessaging;
-using GameFrameX.NetWork.Messages;
+using GameFrameX.Network.RemoteMessaging.Unified;
+using GameFrameX.Network.RemoteMessaging.Contracts;
+using GameFrameX.Network.Abstractions;
+using GameFrameX.Network.RemoteMessaging;
+using GameFrameX.Network.Messages;
 using System.Collections;
 using Xunit;
 
@@ -465,7 +465,7 @@ public class UnifiedMessagingGovernanceTests
     [Fact]
     public void LegacyRemoteMessageClientHolderType_ShouldNotExist()
     {
-        var holderType = Type.GetType("GameFrameX.NetWork.RemoteMessaging.RemoteMessageClientHolder, GameFrameX.NetWork.RemoteMessaging");
+        var holderType = Type.GetType("GameFrameX.Network.RemoteMessaging.RemoteMessageClientHolder, GameFrameX.Network.RemoteMessaging");
         Assert.Null(holderType);
     }
 
@@ -497,7 +497,7 @@ public class UnifiedMessagingGovernanceTests
         while (current != null)
         {
             var hotfixPath = Path.Combine(current.FullName, "GameFrameX.Hotfix");
-            var messagingPath = Path.Combine(current.FullName, "GameFrameX.NetWork.RemoteMessaging");
+            var messagingPath = Path.Combine(current.FullName, "GameFrameX.Network.RemoteMessaging");
             if (Directory.Exists(hotfixPath) && Directory.Exists(messagingPath))
             {
                 return current.FullName;
@@ -550,52 +550,52 @@ internal sealed class FakePlayerLocalSender : IPlayerLocalSender
 
 internal sealed class FakeRemoteMessageClient : IRemoteMessageClient
 {
-    public Task<TResponse> CallAsync<TResponse>(string serviceName, MessageObject requestMessage) where TResponse : class, GameFrameX.NetWork.Abstractions.IResponseMessage
+    public Task<TResponse> CallAsync<TResponse>(string serviceName, MessageObject requestMessage) where TResponse : class, GameFrameX.Network.Abstractions.IResponseMessage
     {
         throw new NotImplementedException();
     }
 
-    public Task<TResponse> CallAsync<TResponse>(string serviceName, MessageObject requestMessage, CancellationToken cancellationToken) where TResponse : class, GameFrameX.NetWork.Abstractions.IResponseMessage
+    public Task<TResponse> CallAsync<TResponse>(string serviceName, MessageObject requestMessage, CancellationToken cancellationToken) where TResponse : class, GameFrameX.Network.Abstractions.IResponseMessage
     {
         throw new NotImplementedException();
     }
 
-    public Task<TResponse> CallAsync<TResponse>(string serviceName, MessageObject requestMessage, int timeoutMs, CancellationToken cancellationToken = default) where TResponse : class, GameFrameX.NetWork.Abstractions.IResponseMessage
+    public Task<TResponse> CallAsync<TResponse>(string serviceName, MessageObject requestMessage, int timeoutMs, CancellationToken cancellationToken = default) where TResponse : class, GameFrameX.Network.Abstractions.IResponseMessage
     {
         throw new NotImplementedException();
     }
 
-    public Task<RemoteCallResult<TResponse>> CallWithResultAsync<TResponse>(string serviceName, MessageObject requestMessage) where TResponse : class, GameFrameX.NetWork.Abstractions.IResponseMessage
+    public Task<RemoteCallResult<TResponse>> CallWithResultAsync<TResponse>(string serviceName, MessageObject requestMessage) where TResponse : class, GameFrameX.Network.Abstractions.IResponseMessage
     {
         return Task.FromResult(BuildSuccessResult<TResponse>());
     }
 
-    public Task<RemoteCallResult<TResponse>> CallWithResultAsync<TResponse>(string serviceName, MessageObject requestMessage, int timeoutMs) where TResponse : class, GameFrameX.NetWork.Abstractions.IResponseMessage
+    public Task<RemoteCallResult<TResponse>> CallWithResultAsync<TResponse>(string serviceName, MessageObject requestMessage, int timeoutMs) where TResponse : class, GameFrameX.Network.Abstractions.IResponseMessage
     {
         return Task.FromResult(BuildSuccessResult<TResponse>());
     }
 
-    public Task<RemoteCallResult<TResponse>> CallWithResultAsync<TResponse>(string serviceName, MessageObject requestMessage, int timeoutMs, CancellationToken cancellationToken) where TResponse : class, GameFrameX.NetWork.Abstractions.IResponseMessage
+    public Task<RemoteCallResult<TResponse>> CallWithResultAsync<TResponse>(string serviceName, MessageObject requestMessage, int timeoutMs, CancellationToken cancellationToken) where TResponse : class, GameFrameX.Network.Abstractions.IResponseMessage
     {
         return Task.FromResult(BuildSuccessResult<TResponse>());
     }
 
-    public Task<RemoteCallResult<TResponse>> CallWithResultAsync<TResponse>(RemoteCallContext context, MessageObject requestMessage) where TResponse : class, GameFrameX.NetWork.Abstractions.IResponseMessage
+    public Task<RemoteCallResult<TResponse>> CallWithResultAsync<TResponse>(RemoteCallContext context, MessageObject requestMessage) where TResponse : class, GameFrameX.Network.Abstractions.IResponseMessage
     {
         return Task.FromResult(BuildSuccessResult<TResponse>());
     }
 
-    public Task<RemoteCallResult<TResponse>> CallWithRetryAsync<TResponse>(string serviceName, MessageObject requestMessage, int timeoutMs = RemoteCallContext.DefaultTimeoutMs, int maxRetryCount = RemoteCallContext.DefaultMaxRetryCount, CancellationToken cancellationToken = default) where TResponse : class, GameFrameX.NetWork.Abstractions.IResponseMessage
+    public Task<RemoteCallResult<TResponse>> CallWithRetryAsync<TResponse>(string serviceName, MessageObject requestMessage, int timeoutMs = RemoteCallContext.DefaultTimeoutMs, int maxRetryCount = RemoteCallContext.DefaultMaxRetryCount, CancellationToken cancellationToken = default) where TResponse : class, GameFrameX.Network.Abstractions.IResponseMessage
     {
         return Task.FromResult(BuildSuccessResult<TResponse>());
     }
 
-    public Task<RemoteCallResult<TResponse>> CallWithoutRetryAsync<TResponse>(string serviceName, MessageObject requestMessage, int timeoutMs = RemoteCallContext.DefaultTimeoutMs, CancellationToken cancellationToken = default) where TResponse : class, GameFrameX.NetWork.Abstractions.IResponseMessage
+    public Task<RemoteCallResult<TResponse>> CallWithoutRetryAsync<TResponse>(string serviceName, MessageObject requestMessage, int timeoutMs = RemoteCallContext.DefaultTimeoutMs, CancellationToken cancellationToken = default) where TResponse : class, GameFrameX.Network.Abstractions.IResponseMessage
     {
         return Task.FromResult(BuildSuccessResult<TResponse>());
     }
 
-    public Task<RemoteCallResult<TResponse>> CallWithMetadataAsync<TResponse>(string serviceName, MessageObject requestMessage, Dictionary<string, string> metadata, int timeoutMs = RemoteCallContext.DefaultTimeoutMs, CancellationToken cancellationToken = default) where TResponse : class, GameFrameX.NetWork.Abstractions.IResponseMessage
+    public Task<RemoteCallResult<TResponse>> CallWithMetadataAsync<TResponse>(string serviceName, MessageObject requestMessage, Dictionary<string, string> metadata, int timeoutMs = RemoteCallContext.DefaultTimeoutMs, CancellationToken cancellationToken = default) where TResponse : class, GameFrameX.Network.Abstractions.IResponseMessage
     {
         return Task.FromResult(BuildSuccessResult<TResponse>());
     }
@@ -610,7 +610,7 @@ internal sealed class FakeRemoteMessageClient : IRemoteMessageClient
         return Task.FromResult(true);
     }
 
-    private static RemoteCallResult<TResponse> BuildSuccessResult<TResponse>() where TResponse : class, GameFrameX.NetWork.Abstractions.IResponseMessage
+    private static RemoteCallResult<TResponse> BuildSuccessResult<TResponse>() where TResponse : class, GameFrameX.Network.Abstractions.IResponseMessage
     {
         if (typeof(TResponse) != typeof(RespSendToPlayerInner))
         {
