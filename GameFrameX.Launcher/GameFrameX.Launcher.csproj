@@ -34,7 +34,7 @@
         <ProjectReference Include="..\GameFrameX.Architecture.Analyzers\GameFrameX.Architecture.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false"/>
         <ProjectReference Include="..\GameFrameX.Localization\GameFrameX.Localization.csproj"/>
         <ProjectReference Include="..\GameFrameX.NetWork.Abstractions\GameFrameX.NetWork.Abstractions.csproj"/>
-        <ProjectReference Include="..\GameFrameX.NetWork.Message\GameFrameX.NetWork.Message.csproj"/>
+        <ProjectReference Include="..\GameFrameX.NetWork\GameFrameX.NetWork.csproj"/>
         <ProjectReference Include="..\GameFrameX.Online.Runtime\GameFrameX.Online.Runtime.csproj"/>
         <ProjectReference Include="..\GameFrameX.Proto\GameFrameX.Proto.csproj"/>
         <ProjectReference Include="..\GameFrameX.StartUp\GameFrameX.StartUp.csproj"/>
