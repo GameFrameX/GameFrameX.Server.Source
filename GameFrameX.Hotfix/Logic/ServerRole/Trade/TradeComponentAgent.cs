@@ -90,33 +90,7 @@ public class TradeComponentAgent : StateComponentAgent<TradeComponent, TradeStat
 
         var opposite = request.Side == TradeSide.Buy ? book.Sells : book.Buys;
         var (remaining, deals) = TradeRules.ExecuteMatch(order, opposite);
-        foreach (var deal in deals)
-        {
-            var buyerPlayerId = request.Side == TradeSide.Buy ? playerId : deal.CounterpartyPlayerId;
-            var sellerPlayerId = request.Side == TradeSide.Buy ? deal.CounterpartyPlayerId : playerId;
-            var tradeId = State.NextTradeId++;
-            response.Trades.Add(new TradeDealInfo
-            {
-                TradeId = tradeId,
-                Quantity = deal.Quantity,
-                UnitPrice = deal.UnitPrice,
-                CounterpartyPlayerId = deal.CounterpartyPlayerId,
-            });
-            TradeRules.AppendTrade(State, new TradeDealState
-            {
-                TradeId = tradeId,
-                ItemId = request.ItemId,
-                BuyerPlayerId = buyerPlayerId,
-                SellerPlayerId = sellerPlayerId,
-                Quantity = deal.Quantity,
-                UnitPrice = deal.UnitPrice,
-                UnixTime = now,
-            });
-            if (deal.MakerRemaining == 0)
-            {
-                State.Orders.Remove(deal.OrderId);
-            }
-        }
+        RecordDeals(order, response, deals, now);
 
         if (remaining > 0)
         {
@@ -130,6 +104,44 @@ public class TradeComponentAgent : StateComponentAgent<TradeComponent, TradeStat
 
         response.Remaining = (int)remaining;
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 逐笔成交落账：响应追加成交流水、状态记录 TradeDealState、对手挂单全额成交时从订单簿摘除。
+    /// </summary>
+    /// <param name="taker">吃单（携带 PlayerId / Side / ItemId）。</param>
+    /// <param name="response">挂单响应。</param>
+    /// <param name="deals">撮合成交明细。</param>
+    /// <param name="now">当前 Unix 时间戳（秒）。</param>
+    private void RecordDeals(TradeOrderState taker, RespTradePlace response, List<TradeMatchDeal> deals, long now)
+    {
+        foreach (var deal in deals)
+        {
+            var buyerPlayerId = taker.Side == TradeSide.Buy ? taker.PlayerId : deal.CounterpartyPlayerId;
+            var sellerPlayerId = taker.Side == TradeSide.Buy ? deal.CounterpartyPlayerId : taker.PlayerId;
+            var tradeId = State.NextTradeId++;
+            response.Trades.Add(new TradeDealInfo
+            {
+                TradeId = tradeId,
+                Quantity = deal.Quantity,
+                UnitPrice = deal.UnitPrice,
+                CounterpartyPlayerId = deal.CounterpartyPlayerId,
+            });
+            TradeRules.AppendTrade(State, new TradeDealState
+            {
+                TradeId = tradeId,
+                ItemId = taker.ItemId,
+                BuyerPlayerId = buyerPlayerId,
+                SellerPlayerId = sellerPlayerId,
+                Quantity = deal.Quantity,
+                UnitPrice = deal.UnitPrice,
+                UnixTime = now,
+            });
+            if (deal.MakerRemaining == 0)
+            {
+                State.Orders.Remove(deal.OrderId);
+            }
+        }
     }
 
     /// <summary>
