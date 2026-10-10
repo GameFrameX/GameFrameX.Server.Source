@@ -39,9 +39,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
     /// 路由：POST /api/mailCampaign/revoke。
     /// 仅置 <see cref="MailCampaignState.Status"/> = Revoked 与时间戳（B3：撤回不回滚已发放资产）。
     /// </summary>
-    [HttpMessageMapping(typeof(RevokeMailCampaignHttpHandler))]
-    [HttpMessageRequest(typeof(RevokeMailCampaignRequest))]
-    [HttpMessageResponse(typeof(RevokeMailCampaignResponse))]
+    [HttpMessageMapping(typeof(RevokeMailCampaignHttpHandler), typeof(RevokeMailCampaignRequest), typeof(RevokeMailCampaignResponse))]
     [Description("Admin 撤回运营邮件 Campaign")]
     public sealed class RevokeMailCampaignHttpHandler : BaseHttpHandler
     {

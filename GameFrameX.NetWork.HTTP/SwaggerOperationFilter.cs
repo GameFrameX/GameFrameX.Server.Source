@@ -63,22 +63,6 @@ public sealed class SwaggerOperationFilter : IOperationFilter
     private static readonly ConcurrentDictionary<Type, HttpMessageMappingAttribute> MappingAttributeCache = new();
 
     /// <summary>
-    /// 处理器类型到 <see cref="HttpMessageRequestAttribute"/> 的缓存。
-    /// </summary>
-    /// <remarks>
-    /// Cache for mapping handler types to <see cref="HttpMessageRequestAttribute"/>.
-    /// </remarks>
-    private static readonly ConcurrentDictionary<Type, HttpMessageRequestAttribute> RequestAttributeCache = new();
-
-    /// <summary>
-    /// 处理器类型到 <see cref="HttpMessageResponseAttribute"/> 的缓存。
-    /// </summary>
-    /// <remarks>
-    /// Cache for mapping handler types to <see cref="HttpMessageResponseAttribute"/>.
-    /// </remarks>
-    private static readonly ConcurrentDictionary<Type, HttpMessageResponseAttribute> ResponseAttributeCache = new();
-
-    /// <summary>
     /// 处理器类型到 <see cref="DescriptionAttribute"/> 的缓存。
     /// </summary>
     /// <remarks>
@@ -125,19 +109,17 @@ public sealed class SwaggerOperationFilter : IOperationFilter
 
         var handlerType = handler.GetType();
 
-        // 获取请求和响应的消息类型（使用缓存）
+        // 获取映射特性（含请求 / 响应消息类型，使用缓存）
         var mappingAttr = MappingAttributeCache.GetOrAdd(handlerType, t => t.GetCustomAttribute<HttpMessageMappingAttribute>());
-        var requestAttr = RequestAttributeCache.GetOrAdd(handlerType, t => t.GetCustomAttribute<HttpMessageRequestAttribute>());
-        var responseAttr = ResponseAttributeCache.GetOrAdd(handlerType, t => t.GetCustomAttribute<HttpMessageResponseAttribute>());
 
         // 判断是否为 GET 请求
         var isGetRequest = mappingAttr?.HttpMethod == HttpMethodType.GET;
 
         // 设置请求参数或请求体
-        ApplyRequestBody(operation, context, isGetRequest, requestAttr);
+        ApplyRequestBody(operation, context, isGetRequest, mappingAttr?.RequestType);
 
         // 设置成功响应体
-        ApplySuccessResponse(operation, context, responseAttr);
+        ApplySuccessResponse(operation, context, mappingAttr?.ResponseType);
 
         // 添加操作描述（使用缓存）
         var descriptionAttr = DescriptionAttributeCache.GetOrAdd(handlerType, t => t.GetCustomAttribute<DescriptionAttribute>());
@@ -172,21 +154,21 @@ public sealed class SwaggerOperationFilter : IOperationFilter
     /// <param name="operation">OpenAPI 操作对象 / OpenAPI operation object</param>
     /// <param name="context">操作过滤器上下文 / Operation filter context</param>
     /// <param name="isGetRequest">是否为 GET 请求 / Whether the request is a GET</param>
-    /// <param name="requestAttr">请求消息特性 / Request message attribute</param>
-    private void ApplyRequestBody(OpenApiOperation operation, OperationFilterContext context, bool isGetRequest, HttpMessageRequestAttribute requestAttr)
+    /// <param name="requestType">请求消息类型 / Request message type</param>
+    private void ApplyRequestBody(OpenApiOperation operation, OperationFilterContext context, bool isGetRequest, Type requestType)
     {
         // GET 请求且有消息类型：生成 Query 参数
-        if (isGetRequest && requestAttr?.MessageType != null)
+        if (isGetRequest && requestType != null)
         {
-            AddQueryParameters(operation, requestAttr.MessageType);
+            AddQueryParameters(operation, requestType);
             return;
         }
 
         // 非 GET 请求且有消息类型：生成带修正属性名的 RequestBody
-        if (requestAttr?.MessageType != null)
+        if (requestType != null)
         {
-            var requestSchema = context.SchemaGenerator.GenerateSchema(requestAttr.MessageType, context.SchemaRepository);
-            CorrectSchemaPropertyNames(requestSchema, requestAttr.MessageType);
+            var requestSchema = context.SchemaGenerator.GenerateSchema(requestType, context.SchemaRepository);
+            CorrectSchemaPropertyNames(requestSchema, requestType);
             operation.RequestBody = CreateJsonRequestBody(requestSchema);
             return;
         }
@@ -288,8 +270,8 @@ public sealed class SwaggerOperationFilter : IOperationFilter
     /// </remarks>
     /// <param name="operation">OpenAPI 操作对象 / OpenAPI operation object</param>
     /// <param name="context">操作过滤器上下文 / Operation filter context</param>
-    /// <param name="responseAttr">响应消息特性 / Response message attribute</param>
-    private static void ApplySuccessResponse(OpenApiOperation operation, OperationFilterContext context, HttpMessageResponseAttribute responseAttr)
+    /// <param name="responseType">响应消息类型 / Response message type</param>
+    private static void ApplySuccessResponse(OpenApiOperation operation, OperationFilterContext context, Type responseType)
     {
         var successResponseSchema = new OpenApiSchema
         {
@@ -312,9 +294,9 @@ public sealed class SwaggerOperationFilter : IOperationFilter
         };
 
         // 如果有响应类型，添加到 data 字段
-        if (responseAttr?.MessageType != null)
+        if (responseType != null)
         {
-            successResponseSchema.Properties["data"] = context.SchemaGenerator.GenerateSchema(responseAttr.MessageType, context.SchemaRepository);
+            successResponseSchema.Properties["data"] = context.SchemaGenerator.GenerateSchema(responseType, context.SchemaRepository);
         }
         else
         {

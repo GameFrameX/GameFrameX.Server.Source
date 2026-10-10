@@ -76,10 +76,10 @@ public sealed class HttpActionContext
     public MessageObject MessageObject { get; init; }
 
     /// <summary>
-    /// 获取标注 <see cref="HttpMessageRequestAttribute"/> 形态的请求消息对象。
+    /// 获取 <see cref="HttpMessageMappingAttribute.RequestType"/> 声明的强类型请求消息对象。
     /// </summary>
     /// <remarks>
-    /// Gets the request message object of the form annotated with <see cref="HttpMessageRequestAttribute"/>.
+    /// Gets the request message object declared by <see cref="HttpMessageMappingAttribute.RequestType"/>.
     /// </remarks>
     /// <value>请求消息对象 / Request message object</value>
     public HttpMessageRequestBase Request { get; init; }

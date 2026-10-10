@@ -35,8 +35,7 @@ using GameFrameX.Hotfix.Logic.Player.Friend;
 /// 测试
 /// http://localhost:20001/game/api/test
 /// </summary>
-[HttpMessageMapping(typeof(TestHttpHandler))]
-[HttpMessageResponse(typeof(HttpTestResponse))]
+[HttpMessageMapping(typeof(TestHttpHandler), null, typeof(HttpTestResponse))]
 [Description("测试通讯接口。没有实际用途")]
 public sealed class TestHttpHandler : BaseHttpHandler
 {

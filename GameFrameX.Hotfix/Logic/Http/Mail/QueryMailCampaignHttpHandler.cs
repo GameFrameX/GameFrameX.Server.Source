@@ -40,9 +40,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
     /// 路由：GET /api/mailCampaign/query。
     /// <see cref="QueryMailCampaignRequest.CampaignId"/> 大于 0 时按 ID 精确查询单条；否则按过滤条件列表查询。
     /// </summary>
-    [HttpMessageMapping(typeof(QueryMailCampaignHttpHandler))]
-    [HttpMessageRequest(typeof(QueryMailCampaignRequest))]
-    [HttpMessageResponse(typeof(QueryMailCampaignResponse))]
+    [HttpMessageMapping(typeof(QueryMailCampaignHttpHandler), typeof(QueryMailCampaignRequest), typeof(QueryMailCampaignResponse))]
     [Description("Admin 查询运营邮件 Campaign 发布状态")]
     public sealed class QueryMailCampaignHttpHandler : BaseHttpHandler
     {

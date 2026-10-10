@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 
+using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Reflection;
@@ -58,6 +59,14 @@ public static class HttpHandler
     private const string JsonContentType = "application/json; charset=utf-8";
     private const string ProtoBufContentType = "application/x-protobuf";
     private const int RequestBodyBufferSize = 81920;
+
+    /// <summary>
+    /// 处理器类型到 <see cref="HttpMessageMappingAttribute"/> 的缓存，避免每请求反射读取特性。
+    /// </summary>
+    /// <remarks>
+    /// Cache for mapping handler types to <see cref="HttpMessageMappingAttribute"/>, avoiding per-request attribute reflection.
+    /// </remarks>
+    private static readonly ConcurrentDictionary<Type, HttpMessageMappingAttribute> MappingAttributeCache = new ConcurrentDictionary<Type, HttpMessageMappingAttribute>();
 
     /// <summary>
     /// 处理 HTTP 请求。
@@ -122,14 +131,14 @@ public static class HttpHandler
             }
             else
             {
-                var httpRequestAttr = handler.GetType().GetCustomAttribute<HttpMessageRequestAttribute>();
-                if (httpRequestAttr == null)
+                var mappingAttribute = MappingAttributeCache.GetOrAdd(handler.GetType(), static t => t.GetCustomAttribute<HttpMessageMappingAttribute>());
+                if (mappingAttribute?.RequestType == null)
                 {
                     await ExecutePlainJsonAsync(context, handler, actionContext, logHeader);
                 }
                 else
                 {
-                    var messageRequest = BuildHttpMessageRequest(httpRequestAttr, paramMap, jsonBody, queryStringParamCount);
+                    var messageRequest = BuildHttpMessageRequest(mappingAttribute.RequestType, paramMap, jsonBody, queryStringParamCount);
                     var typedContext = new HttpActionContext { Ip = ip, Url = url, Parameters = paramMap, Request = messageRequest };
                     await ExecuteJsonMessageRequestAsync(context, handler, typedContext, logHeader);
                 }
@@ -327,20 +336,20 @@ public static class HttpHandler
     }
 
     // 按是否有 Query String 参数 / 原始 JSON Body 选择反序列化路径，构造请求消息基类 / Choose the deserialization path based on query-string params and raw JSON body, building the request message base.
-    private static HttpMessageRequestBase BuildHttpMessageRequest(HttpMessageRequestAttribute httpRequestAttr, Dictionary<string, object> paramMap, string jsonBody, int queryStringParamCount)
+    private static HttpMessageRequestBase BuildHttpMessageRequest(Type requestType, Dictionary<string, object> paramMap, string jsonBody, int queryStringParamCount)
     {
         // 优化：如果没有 Query String 参数，直接使用原始 JSON 字符串反序列化，避免重复序列化
         if (queryStringParamCount == 0 && !string.IsNullOrEmpty(jsonBody))
         {
             // 直接使用原始 JSON 字符串反序列化
-            return (HttpMessageRequestBase)JsonHelper.Deserialize(jsonBody, httpRequestAttr.MessageType);
+            return (HttpMessageRequestBase)JsonHelper.Deserialize(jsonBody, requestType);
         }
 
         // 有 Query String 参数时，需要合并参数
-        return (HttpMessageRequestBase)JsonHelper.Deserialize(JsonHelper.Serialize(paramMap), httpRequestAttr.MessageType);
+        return (HttpMessageRequestBase)JsonHelper.Deserialize(JsonHelper.Serialize(paramMap), requestType);
     }
 
-    // 标注 HttpMessageRequestAttribute 的 JSON 执行：Validator 校验，通过则执行 + 日志 + 写出，否则写出校验错误 / JSON execution for handlers annotated with HttpMessageRequestAttribute: validate, on pass execute + log + write, otherwise write validation errors.
+    // 标注 RequestType 的 JSON 执行：Validator 校验，通过则执行 + 日志 + 写出，否则写出校验错误 / JSON execution for handlers with a typed RequestType: validate, on pass execute + log + write, otherwise write validation errors.
     private static async Task ExecuteJsonMessageRequestAsync(HttpContext httpContext, BaseHttpHandler handler, HttpActionContext context, string logHeader)
     {
         var validationResults = new List<ValidationResult>();

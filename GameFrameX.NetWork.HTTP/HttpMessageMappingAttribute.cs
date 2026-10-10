@@ -65,11 +65,15 @@ public sealed class HttpMessageMappingAttribute : Attribute
     /// </summary>
     /// <remarks>
     /// Initializes a new instance of <see cref="HttpMessageMappingAttribute"/>.
+    /// 消息类型校验在构造函数内完成（特性物化即触发，启动期路由注册 / Swagger 扫描 fail-fast，异常不被反射包装）。
     /// </remarks>
     /// <param name="classType">处理器类的类型 / Handler class type</param>
+    /// <param name="requestType">强类型请求消息类型，可选，须继承 <see cref="HttpMessageRequestBase"/>；仅声明响应时传 <c>null</c> 占位 / Typed request message type, optional, must inherit from <see cref="HttpMessageRequestBase"/>; pass <c>null</c> as placeholder when only a response type is declared</param>
+    /// <param name="responseType">强类型响应消息类型，可选，须继承 <see cref="HttpMessageResponseBase"/> / Typed response message type, optional, must inherit from <see cref="HttpMessageResponseBase"/></param>
     /// <exception cref="ArgumentNullException">当 <paramref name="classType"/> 为 <c>null</c> 时抛出 / Thrown when <paramref name="classType"/> is <c>null</c></exception>
     /// <exception cref="InvalidOperationException">当 <paramref name="classType"/> 不是密封类或不以 <see cref="HTTPsuffix"/> 结尾时抛出 / Thrown when <paramref name="classType"/> is not sealed or does not end with <see cref="HTTPsuffix"/></exception>
-    public HttpMessageMappingAttribute(Type classType)
+    /// <exception cref="InvalidCastException">当 <paramref name="requestType"/> 未继承 <see cref="HttpMessageRequestBase"/> 或 <paramref name="responseType"/> 未继承 <see cref="HttpMessageResponseBase"/> 时抛出 / Thrown when <paramref name="requestType"/> does not inherit from <see cref="HttpMessageRequestBase"/> or <paramref name="responseType"/> does not inherit from <see cref="HttpMessageResponseBase"/></exception>
+    public HttpMessageMappingAttribute(Type classType, Type requestType = null, Type responseType = null)
     {
         ArgumentNullException.ThrowIfNull(classType);
         var className = classType.Name;
@@ -85,6 +89,19 @@ public sealed class HttpMessageMappingAttribute : Attribute
 
         OriginalCmd = className.Substring(HTTPprefix.Length, className.Length - HTTPprefix.Length - HTTPsuffix.Length);
         StandardCmd = OriginalCmd.ConvertToSnakeCase();
+
+        if (requestType != null && !requestType.IsSubclassOf(typeof(HttpMessageRequestBase)))
+        {
+            throw new InvalidCastException(LocalizationService.GetString(Localization.Keys.NetWorkHttp.MessageTypeInheritanceError, requestType.Name));
+        }
+
+        if (responseType != null && !responseType.IsSubclassOf(typeof(HttpMessageResponseBase)))
+        {
+            throw new InvalidCastException(LocalizationService.GetString(Localization.Keys.NetWorkHttp.ResponseMessageTypeInheritanceError, responseType.Name));
+        }
+
+        RequestType = requestType;
+        ResponseType = responseType;
     }
 
     /// <summary>
@@ -114,51 +131,21 @@ public sealed class HttpMessageMappingAttribute : Attribute
     /// <value>HTTP 请求方法类型 / HTTP request method type</value>
     public HttpMethodType HttpMethod { get; init; } = HttpMethodType.POST;
 
-    private Type _requestType;
-
     /// <summary>
-    /// 获取或设置强类型请求消息的类型；未设置（<c>null</c>）时处理器走普通 JSON 执行路径，设置后走请求绑定 + DataAnnotations 校验路径。
+    /// 获取强类型请求消息的类型；未设置（<c>null</c>）时处理器走普通 JSON 执行路径，设置后走请求绑定 + DataAnnotations 校验路径。
     /// </summary>
     /// <remarks>
-    /// Gets or sets the typed request message type. When <c>null</c> (default) the handler takes the plain JSON execution path; when set, the typed request-binding path with DataAnnotations validation applies. 命名实参在特性首次物化（启动期路由注册或 Swagger 扫描）时赋值并校验，非法类型立即抛出，保持启动期 fail-fast。
+    /// Gets the typed request message type. When <c>null</c> (default) the handler takes the plain JSON execution path; when set, the typed request-binding path with DataAnnotations validation applies. 类型合法性在构造函数校验。
     /// </remarks>
     /// <value>请求消息类型 / Request message type</value>
-    /// <exception cref="InvalidCastException">当赋值类型未继承自 <see cref="HttpMessageRequestBase"/> 时抛出 / Thrown when the assigned type does not inherit from <see cref="HttpMessageRequestBase"/></exception>
-    public Type RequestType
-    {
-        get => _requestType;
-        init
-        {
-            if (value != null && !value.IsSubclassOf(typeof(HttpMessageRequestBase)))
-            {
-                throw new InvalidCastException(LocalizationService.GetString(Localization.Keys.NetWorkHttp.MessageTypeInheritanceError, value.Name));
-            }
-
-            _requestType = value;
-        }
-    }
-
-    private Type _responseType;
+    public Type RequestType { get; }
 
     /// <summary>
-    /// 获取或设置强类型响应消息的类型；未设置（<c>null</c>）时 Swagger 文档的 data 字段使用通用对象。
+    /// 获取强类型响应消息的类型；未设置（<c>null</c>）时 Swagger 文档的 data 字段使用通用对象。
     /// </summary>
     /// <remarks>
-    /// Gets or sets the typed response message type. When <c>null</c> (default) the Swagger document falls back to a generic object for the data field. 本类型仅用于 OpenAPI 文档生成，运行时不消费；命名实参校验时机同 <see cref="RequestType"/>。
+    /// Gets the typed response message type. When <c>null</c> (default) the Swagger document falls back to a generic object for the data field. 本类型仅用于 OpenAPI 文档生成，运行时不消费；类型合法性在构造函数校验。
     /// </remarks>
     /// <value>响应消息类型 / Response message type</value>
-    /// <exception cref="InvalidCastException">当赋值类型未继承自 <see cref="HttpMessageResponseBase"/> 时抛出 / Thrown when the assigned type does not inherit from <see cref="HttpMessageResponseBase"/></exception>
-    public Type ResponseType
-    {
-        get => _responseType;
-        init
-        {
-            if (value != null && !value.IsSubclassOf(typeof(HttpMessageResponseBase)))
-            {
-                throw new InvalidCastException(LocalizationService.GetString(Localization.Keys.NetWorkHttp.ResponseMessageTypeInheritanceError, value.Name));
-            }
-
-            _responseType = value;
-        }
-    }
+    public Type ResponseType { get; }
 }

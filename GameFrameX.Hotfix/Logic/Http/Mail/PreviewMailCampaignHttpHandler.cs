@@ -41,9 +41,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
     /// 路由：POST /api/mailCampaign/preview。
     /// 用于发布前确认多语言文案、附件、过滤条件是否合法，并返回预估命中规模。
     /// </summary>
-    [HttpMessageMapping(typeof(PreviewMailCampaignHttpHandler))]
-    [HttpMessageRequest(typeof(PreviewMailCampaignRequest))]
-    [HttpMessageResponse(typeof(PreviewMailCampaignResponse))]
+    [HttpMessageMapping(typeof(PreviewMailCampaignHttpHandler), typeof(PreviewMailCampaignRequest), typeof(PreviewMailCampaignResponse))]
     [Description("Admin 预览 / 校验运营邮件 Campaign")]
     public sealed class PreviewMailCampaignHttpHandler : BaseHttpHandler
     {

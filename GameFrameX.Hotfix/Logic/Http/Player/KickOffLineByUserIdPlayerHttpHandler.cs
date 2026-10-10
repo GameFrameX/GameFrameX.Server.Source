@@ -36,8 +36,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Player;
 /// 将指定角色的玩家从当前服务断开
 /// http://localhost:20001/game/api/KickOffLineByUserIdPlayer
 /// </summary>
-[HttpMessageMapping(typeof(KickOffLineByUserIdPlayerHttpHandler))]
-[HttpMessageRequest(typeof(KickOffLineByUserIdPlayerRequest))]
+[HttpMessageMapping(typeof(KickOffLineByUserIdPlayerHttpHandler), typeof(KickOffLineByUserIdPlayerRequest))]
 [RequireHttpSignature]
 [Description("将指定角色的玩家从当前服务断开")]
 public sealed class KickOffLineByUserIdPlayerHttpHandler : BaseHttpHandler
