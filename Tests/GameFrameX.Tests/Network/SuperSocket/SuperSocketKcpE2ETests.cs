@@ -151,26 +151,26 @@ public class SuperSocketKcpE2ETests : IAsyncLifetime
             },
         };
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         // 主机名（非 IP 字面量）：同时覆盖 BotKcpClient.ResolveServerEndPoint 的 DNS 解析回退路径
         var client = new BotKcpClient(clientEvent, "localhost", _kcpPort);
         var entryTask = client.EntryAsync(cts.Token);
 
         // 等待连接 + 服务端会话建立回调
-        var established = await Task.WhenAny(_sessionEstablished.Task, Task.Delay(TimeSpan.FromSeconds(5), cts.Token));
-        Assert.True(established == _sessionEstablished.Task, "BotKcpClient failed to establish a KCP session within 5s.");
+        var established = await Task.WhenAny(_sessionEstablished.Task, Task.Delay(TimeSpan.FromSeconds(10), cts.Token));
+        Assert.True(established == _sessionEstablished.Task, "BotKcpClient failed to establish a KCP session within 10s.");
 
         // 等待客户端连接确认：OnConnectedCallback 由收到服务端首个应用层响应（探测心跳的回显）触发，
         // 证明「连接中探测 → 服务端应答 → 连接确认」握手链路（而非 AsKcp 后立即置已连接）。
-        var connected = await Task.WhenAny(clientConnected.Task, Task.Delay(TimeSpan.FromSeconds(5), cts.Token));
-        Assert.True(connected == clientConnected.Task, "BotKcpClient failed to confirm connection via server response within 5s.");
+        var connected = await Task.WhenAny(clientConnected.Task, Task.Delay(TimeSpan.FromSeconds(10), cts.Token));
+        Assert.True(connected == clientConnected.Task, "BotKcpClient failed to confirm connection via server response within 10s.");
 
         // 发送心跳：使用唯一时间戳以与其它消息区分
         client.SendToServer(new ReqHeartBeat { Timestamp = EchoTimestamp });
 
         // 等待回显（接收回调由 MessageObject 形态触发，证明产品编解码路径已运行）
-        var receiveTask = await Task.WhenAny(received.Task, Task.Delay(TimeSpan.FromSeconds(5), cts.Token));
-        Assert.True(receiveTask == received.Task, "BotKcpClient failed to receive KCP echo within 5s.");
+        var receiveTask = await Task.WhenAny(received.Task, Task.Delay(TimeSpan.FromSeconds(10), cts.Token));
+        Assert.True(receiveTask == received.Task, "BotKcpClient failed to receive KCP echo within 10s.");
 
         var echo = received.Task.Result;
         var heartbeat = Assert.IsType<ReqHeartBeat>(echo);
@@ -181,7 +181,10 @@ public class SuperSocketKcpE2ETests : IAsyncLifetime
             "KCP conv should be non-zero after session established.");
 
         cts.Cancel();
-        await Task.WhenAny(entryTask, Task.Delay(TimeSpan.FromSeconds(2)));
+        // 客户端先确定性断开并等待入口任务收尾，再由 DisposeAsync 停服务端宿主——
+        // 避免「宿主已停而客户端仍在收发」的拆除竞态（满载下曾放大包内收包循环的崩溃窗口）
+        client.Disconnect();
+        await Task.WhenAny(entryTask, Task.Delay(TimeSpan.FromSeconds(5)));
     }
 
     private ValueTask OnConnected(IAppSession session)
@@ -207,15 +210,14 @@ public class SuperSocketKcpE2ETests : IAsyncLifetime
     /// 服务端使用与 <see cref="BotKcpClient"/> 相同的 14 字节头 + ProtoBuf 序列化路径回写，
     /// 保证客户端解码端按 MessageObjectPipelineFilter → MessageHelper.DecoderHandler 路径正常解码。
     /// </remarks>
-    private ValueTask PackageHandler(IAppSession session, IMessage message)
+    private async ValueTask PackageHandler(IAppSession session, IMessage message)
     {
         if (message is NetworkMessagePackage package && package.DeserializeMessageObject() is ReqHeartBeat request)
         {
             var echo = new ReqHeartBeat { Timestamp = request.Timestamp };
-            session.SendAsync(EncodeHeartBeat(echo)).GetAwaiter().GetResult();
+            // 异步回写：不在服务端收包管线内同步阻塞（满载下同步等待会放大收发循环与连接关闭的竞态窗口）
+            await session.SendAsync(EncodeHeartBeat(echo));
         }
-
-        return ValueTask.CompletedTask;
     }
 
     /// <summary>

@@ -35,6 +35,13 @@
     </ItemGroup>
 
     <ItemGroup>
+        <!-- 限制测试并行线程数：真实 socket 的测试族（SuperSocket TCP/KCP）在 12 核满载并行下，
+             连接拆除与收包循环的竞态窗口会被 CPU 争用放大（包内 ReadPipeAsync 续体逃逸致 test host 崩溃）；
+             并行度收敛到 2 后满载崩溃不再复现，吞吐代价可接受（见 C207 验证记录） -->
+        <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+    <ItemGroup>
       <ProjectReference Include="..\..\GameFrameX.Apps\GameFrameX.Apps.csproj" />
       <ProjectReference Include="..\..\GameFrameX.Core\GameFrameX.Core.csproj" />
       <ProjectReference Include="..\..\GameFrameX.DataBase\GameFrameX.DataBase.csproj" />
