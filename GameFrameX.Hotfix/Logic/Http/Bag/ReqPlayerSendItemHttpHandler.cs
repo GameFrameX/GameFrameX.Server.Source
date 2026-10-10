@@ -28,7 +28,6 @@
 //  ==========================================================================================
 
 
-using System.Text.Json.Serialization;
 using GameFrameX.Apps.Common.EventData;
 using GameFrameX.Core.Session;
 using GameFrameX.Apps.Player.Bag.Entity;
@@ -147,13 +146,9 @@ public sealed class ReqPlayerSendItemHttpHandler : BaseHttpHandler
 
 public sealed class ReqPlayerSendItemRequest : HttpMessageRequestBase
 {
-    /// <summary>
-    /// 角色ID（wire 字段名固定为 RoleId，不随属性名演进）
-    /// </summary>
     [Required]
-    [Description("角色ID")]
+    [Description("玩家ID")]
     [Range(1, long.MaxValue)]
-    [JsonPropertyName("RoleId")]
     public long PlayerId { get; set; }
 
     [Required] [Description("道具列表")] public Dictionary<int, long> Items { get; set; } = new Dictionary<int, long>();

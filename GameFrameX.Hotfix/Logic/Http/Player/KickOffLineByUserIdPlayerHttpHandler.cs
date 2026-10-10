@@ -28,7 +28,6 @@
 //  ==========================================================================================
 
 
-using System.Text.Json.Serialization;
 using GameFrameX.Core.Session;
 
 namespace GameFrameX.Hotfix.Logic.Http.Player;
@@ -57,12 +56,8 @@ public sealed class KickOffLineByUserIdPlayerHttpHandler : BaseHttpHandler
 
 public sealed class KickOffLineByUserIdPlayerRequest : HttpMessageRequestBase
 {
-    /// <summary>
-    /// 角色Id（wire 字段名固定为 RoleId，不随属性名演进）
-    /// </summary>
-    [Description("角色Id")]
+    [Description("玩家ID")]
     [Required]
     [Range(1, long.MaxValue)]
-    [JsonPropertyName("RoleId")]
     public long PlayerId { get; set; }
 }
