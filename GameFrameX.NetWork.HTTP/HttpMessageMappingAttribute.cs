@@ -49,7 +49,7 @@ public sealed class HttpMessageMappingAttribute : Attribute
     /// Handler naming prefix constant.
     /// </remarks>
     /// <value>处理器命名前缀 / Handler naming prefix</value>
-    public const string HTTPprefix = "";
+    public const string HttpPrefix = "";
 
     /// <summary>
     /// 处理器命名后缀常量。
@@ -58,7 +58,7 @@ public sealed class HttpMessageMappingAttribute : Attribute
     /// Handler naming suffix constant.
     /// </remarks>
     /// <value>处理器命名后缀 / Handler naming suffix</value>
-    public const string HTTPsuffix = "HttpHandler";
+    public const string HttpSuffix = "HttpHandler";
 
     /// <summary>
     /// 初始化 <see cref="HttpMessageMappingAttribute"/> 的新实例。
@@ -71,7 +71,7 @@ public sealed class HttpMessageMappingAttribute : Attribute
     /// <param name="requestType">强类型请求消息类型，可选，须继承 <see cref="HttpMessageRequestBase"/>；仅声明响应时传 <c>null</c> 占位 / Typed request message type, optional, must inherit from <see cref="HttpMessageRequestBase"/>; pass <c>null</c> as placeholder when only a response type is declared</param>
     /// <param name="responseType">强类型响应消息类型，可选，须继承 <see cref="HttpMessageResponseBase"/> / Typed response message type, optional, must inherit from <see cref="HttpMessageResponseBase"/></param>
     /// <exception cref="ArgumentNullException">当 <paramref name="classType"/> 为 <c>null</c> 时抛出 / Thrown when <paramref name="classType"/> is <c>null</c></exception>
-    /// <exception cref="InvalidOperationException">当 <paramref name="classType"/> 不是密封类或不以 <see cref="HTTPsuffix"/> 结尾时抛出 / Thrown when <paramref name="classType"/> is not sealed or does not end with <see cref="HTTPsuffix"/></exception>
+    /// <exception cref="InvalidOperationException">当 <paramref name="classType"/> 不是密封类或不以 <see cref="HttpSuffix"/> 结尾时抛出 / Thrown when <paramref name="classType"/> is not sealed or does not end with <see cref="HttpSuffix"/></exception>
     /// <exception cref="InvalidCastException">当 <paramref name="requestType"/> 未继承 <see cref="HttpMessageRequestBase"/> 或 <paramref name="responseType"/> 未继承 <see cref="HttpMessageResponseBase"/> 时抛出 / Thrown when <paramref name="requestType"/> does not inherit from <see cref="HttpMessageRequestBase"/> or <paramref name="responseType"/> does not inherit from <see cref="HttpMessageResponseBase"/></exception>
     public HttpMessageMappingAttribute(Type classType, Type requestType = null, Type responseType = null)
     {
@@ -82,12 +82,12 @@ public sealed class HttpMessageMappingAttribute : Attribute
             throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.NetWorkHttp.ClassMustBeSealed, className));
         }
 
-        if (!className.EndsWith(HTTPsuffix, StringComparison.Ordinal))
+        if (!className.EndsWith(HttpSuffix, StringComparison.Ordinal))
         {
-            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.NetWorkHttp.ClassMustEndWithSuffix, className, HTTPsuffix));
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.NetWorkHttp.ClassMustEndWithSuffix, className, HttpSuffix));
         }
 
-        OriginalCmd = className.Substring(HTTPprefix.Length, className.Length - HTTPprefix.Length - HTTPsuffix.Length);
+        OriginalCmd = className.Substring(HttpPrefix.Length, className.Length - HttpPrefix.Length - HttpSuffix.Length);
         StandardCmd = OriginalCmd.ConvertToSnakeCase();
 
         if (requestType != null && !requestType.IsSubclassOf(typeof(HttpMessageRequestBase)))
