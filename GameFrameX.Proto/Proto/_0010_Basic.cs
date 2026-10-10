@@ -38,95 +38,58 @@ using GameFrameX.NetWork.Messages;
 namespace GameFrameX.Proto.Proto
 {
 	/// <summary>
-	/// 玩家属性条目，含最终值与 Base/Add/Pct 调试字段
+	/// 请求心跳
 	/// </summary>
 	[ProtoContract]
-	[System.ComponentModel.Description("玩家属性条目，含最终值与 Base/Add/Pct 调试字段")]
-	public sealed class PlayerAttributeEntry
+	[System.ComponentModel.Description("请求心跳")]
+	[MessageTypeHandler(((10) << 16) + 10)]
+	public sealed class ReqHeartBeat : MessageObject, IRequestMessage, IHeartBeatMessage
 	{
 		/// <summary>
-		/// 属性编号（AttributeType）
+		/// 时间戳
 		/// </summary>
 		[ProtoMember(1)]
-		[System.ComponentModel.Description("属性编号（AttributeType）")]
-		public int Type { get; set; }
-
-		/// <summary>
-		/// 最终值
-		/// </summary>
-		[ProtoMember(2)]
-		[System.ComponentModel.Description("最终值")]
-		public long Value { get; set; }
-
-		/// <summary>
-		/// 基础值（调试字段）
-		/// </summary>
-		[ProtoMember(3)]
-		[System.ComponentModel.Description("基础值（调试字段）")]
-		public long Base { get; set; }
-
-		/// <summary>
-		/// 加法修正（调试字段）
-		/// </summary>
-		[ProtoMember(4)]
-		[System.ComponentModel.Description("加法修正（调试字段）")]
-		public long Add { get; set; }
-
-		/// <summary>
-		/// 百分比修正，10000 表示 100%（调试字段）
-		/// </summary>
-		[ProtoMember(5)]
-		[System.ComponentModel.Description("百分比修正，10000 表示 100%（调试字段）")]
-		public long Pct { get; set; }
-	}
-
-	/// <summary>
-	/// 玩家属性完整快照（服务端推送，登录后或重连时发送）
-	/// </summary>
-	[ProtoContract]
-	[System.ComponentModel.Description("玩家属性完整快照（服务端推送，登录后或重连时发送）")]
-	[MessageTypeHandler(((310) << 16) + 10)]
-	public sealed class NotifyPlayerAttributeSync : MessageObject, INotifyMessage
-	{
-		/// <summary>
-		/// 全部最终属性条目
-		/// </summary>
-		[ProtoMember(1)]
-		[System.ComponentModel.Description("全部最终属性条目")]
-		public List<PlayerAttributeEntry> Attributes { get; set; } = new List<PlayerAttributeEntry>();
+		[System.ComponentModel.Description("时间戳")]
+		public long Timestamp { get; set; }
 
 		public override void Clear()
 		{
-			Attributes.Clear();
+			Timestamp = default;
 		}
 	}
 
 	/// <summary>
-	/// 单个玩家属性最终值变化（服务端推送增量）
+	/// 服务器通知心跳结果，因为有些业务需要对心跳结果做处理所以不做成RPC的方式处理
 	/// </summary>
 	[ProtoContract]
-	[System.ComponentModel.Description("单个玩家属性最终值变化（服务端推送增量）")]
-	[MessageTypeHandler(((310) << 16) + 11)]
-	public sealed class NotifyPlayerAttributeChanged : MessageObject, INotifyMessage
+	[System.ComponentModel.Description("服务器通知心跳结果，因为有些业务需要对心跳结果做处理所以不做成RPC的方式处理")]
+	[MessageTypeHandler(((10) << 16) + 11)]
+	public sealed class NotifyHeartBeat : MessageObject, INotifyMessage, IHeartBeatMessage
 	{
 		/// <summary>
-		/// 发生变化的最终属性编号（AttributeType）
+		/// 时间戳
 		/// </summary>
 		[ProtoMember(1)]
-		[System.ComponentModel.Description("发生变化的最终属性编号（AttributeType）")]
-		public int Type { get; set; }
-
-		/// <summary>
-		/// 新的最终值
-		/// </summary>
-		[ProtoMember(2)]
-		[System.ComponentModel.Description("新的最终值")]
-		public long Value { get; set; }
+		[System.ComponentModel.Description("时间戳")]
+		public long Timestamp { get; set; }
 
 		public override void Clear()
 		{
-			Type = default;
-			Value = default;
+			Timestamp = default;
+		}
+	}
+
+	/// <summary>
+	/// 通知客户端服务器人数已达上限
+	/// </summary>
+	[ProtoContract]
+	[System.ComponentModel.Description("通知客户端服务器人数已达上限")]
+	[MessageTypeHandler(((10) << 16) + 12)]
+	public sealed class NotifyServerFullyLoaded : MessageObject, INotifyMessage
+	{
+
+		public override void Clear()
+		{
 		}
 	}
 
