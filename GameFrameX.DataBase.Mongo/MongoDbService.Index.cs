@@ -155,7 +155,7 @@ public sealed partial class MongoDbService
     /// <returns>创建的索引名称，如果索引已存在则返回空字符串 / The created index name, or empty string if index already exists</returns>
     public string CreateIndex(string collectionName, IndexDefinition definition)
     {
-        ArgumentNullException.ThrowIfNull(definition, nameof(definition));
+        ArgumentNullException.ThrowIfNull(definition);
         var mgr = GetCollection(collectionName).Indexes;
         var list = mgr.List();
         while (list.MoveNext())
@@ -180,7 +180,7 @@ public sealed partial class MongoDbService
     /// <returns>创建的索引名称，如果索引已存在则返回空字符串 / The created index name, or empty string if index already exists</returns>
     public async Task<string> CreateIndexAsync(string collectionName, IndexDefinition definition)
     {
-        ArgumentNullException.ThrowIfNull(definition, nameof(definition));
+        ArgumentNullException.ThrowIfNull(definition);
         var mgr = GetCollection(collectionName).Indexes;
         var list = await mgr.ListAsync();
         while (await list.MoveNextAsync())
@@ -205,7 +205,7 @@ public sealed partial class MongoDbService
     /// <returns>创建的索引名称 / The created index name</returns>
     public string UpdateIndex(string collectionName, IndexDefinition definition)
     {
-        ArgumentNullException.ThrowIfNull(definition, nameof(definition));
+        ArgumentNullException.ThrowIfNull(definition);
         var mgr = GetCollection(collectionName).Indexes;
         return mgr.CreateOne(new CreateIndexModel<BsonDocument>(definition.Ascending ? Builders<BsonDocument>.IndexKeys.Ascending(doc => doc[definition.Key]) : Builders<BsonDocument>.IndexKeys.Descending(doc => doc[definition.Key]), BuildIndexOptions(definition)));
     }
@@ -221,7 +221,7 @@ public sealed partial class MongoDbService
     /// <returns>创建的索引名称 / The created index name</returns>
     public async Task<string> UpdateIndexAsync(string collectionName, IndexDefinition definition)
     {
-        ArgumentNullException.ThrowIfNull(definition, nameof(definition));
+        ArgumentNullException.ThrowIfNull(definition);
         var mgr = GetCollection(collectionName).Indexes;
         return await mgr.CreateOneAsync(new CreateIndexModel<BsonDocument>(definition.Ascending ? Builders<BsonDocument>.IndexKeys.Ascending(doc => doc[definition.Key]) : Builders<BsonDocument>.IndexKeys.Descending(doc => doc[definition.Key]), BuildIndexOptions(definition)));
     }
@@ -264,7 +264,7 @@ public sealed partial class MongoDbService
     /// <returns>创建的索引名称，如果索引已存在则返回空字符串 / The created index name, or empty string if index already exists</returns>
     public string CreateIndex<TState>(IndexDefinition<TState> definition) where TState : class, ICacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(definition, nameof(definition));
+        ArgumentNullException.ThrowIfNull(definition);
         var mgr = GetCollection<TState>().Indexes;
         var list = mgr.List();
         while (list.MoveNext())
@@ -289,7 +289,7 @@ public sealed partial class MongoDbService
     /// <returns>创建的索引名称，如果索引已存在则返回空字符串 / The created index name, or empty string if index already exists</returns>
     public async Task<string> CreateIndexAsync<TState>(IndexDefinition<TState> definition) where TState : class, ICacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(definition, nameof(definition));
+        ArgumentNullException.ThrowIfNull(definition);
         var mgr = GetCollection<TState>().Indexes;
         var list = await mgr.ListAsync();
         while (await list.MoveNextAsync())
@@ -314,7 +314,7 @@ public sealed partial class MongoDbService
     /// <returns>创建的索引名称 / The created index name</returns>
     public string UpdateIndex<TState>(IndexDefinition<TState> definition) where TState : class, ICacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(definition, nameof(definition));
+        ArgumentNullException.ThrowIfNull(definition);
         var mgr = GetCollection<TState>().Indexes;
         return mgr.CreateOne(new CreateIndexModel<TState>(definition.Ascending ? Builders<TState>.IndexKeys.Ascending(definition.Key) : Builders<TState>.IndexKeys.Descending(definition.Key), BuildIndexOptions(definition)));
     }
@@ -330,7 +330,7 @@ public sealed partial class MongoDbService
     /// <returns>创建的索引名称 / The created index name</returns>
     public async Task<string> UpdateIndexAsync<TState>(IndexDefinition<TState> definition) where TState : class, ICacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(definition, nameof(definition));
+        ArgumentNullException.ThrowIfNull(definition);
         var mgr = GetCollection<TState>().Indexes;
         return await mgr.CreateOneAsync(new CreateIndexModel<TState>(definition.Ascending ? Builders<TState>.IndexKeys.Ascending(definition.Key) : Builders<TState>.IndexKeys.Descending(definition.Key), BuildIndexOptions(definition)));
     }

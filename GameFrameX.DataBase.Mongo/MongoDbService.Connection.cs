@@ -50,7 +50,7 @@ public sealed partial class MongoDbService
     /// <returns>返回数据库是否初始化成功 / Returns whether the database was initialized successfully</returns>
     public async Task<bool> Open(DbOptions dbOptions)
     {
-        ArgumentNullException.ThrowIfNull(dbOptions, nameof(dbOptions));
+        ArgumentNullException.ThrowIfNull(dbOptions);
         ArgumentNullException.ThrowIfNull(dbOptions.ConnectionString, nameof(dbOptions.ConnectionString));
         ArgumentNullException.ThrowIfNull(dbOptions.Name, nameof(dbOptions.Name));
 

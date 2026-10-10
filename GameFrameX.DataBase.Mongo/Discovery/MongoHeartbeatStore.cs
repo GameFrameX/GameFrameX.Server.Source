@@ -64,7 +64,7 @@ public sealed class MongoHeartbeatStore : IHeartbeatStore
     /// <param name="controlDatabase">控制库（gameframex_control）/ The control database</param>
     public MongoHeartbeatStore(IMongoDatabase controlDatabase)
     {
-        ArgumentNullException.ThrowIfNull(controlDatabase, nameof(controlDatabase));
+        ArgumentNullException.ThrowIfNull(controlDatabase);
         _collection = controlDatabase.GetCollection<ServerHeartbeatDocument>(DiscoveryStorageNaming.TableName<ServerHeartbeatEntity>());
     }
 
@@ -107,7 +107,7 @@ public sealed class MongoHeartbeatStore : IHeartbeatStore
     /// <returns>异步任务 / Async task</returns>
     public Task UpsertAsync(InstanceDescriptor instance, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(instance, nameof(instance));
+        ArgumentNullException.ThrowIfNull(instance);
 
         var document = new ServerHeartbeatDocument(
             instance.InstanceId,

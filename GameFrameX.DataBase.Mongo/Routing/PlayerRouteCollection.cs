@@ -95,7 +95,7 @@ public static class PlayerRouteCollection
     /// <returns>异步任务 / Async task</returns>
     public static async Task EnsureIndexesAsync(IMongoCollection<PlayerRouteDocument> collection, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(collection, nameof(collection));
+        ArgumentNullException.ThrowIfNull(collection);
 
         var uniqueIndex = new CreateIndexModel<PlayerRouteDocument>(
             Builders<PlayerRouteDocument>.IndexKeys.Ascending(document => document.PlayerId),

@@ -112,7 +112,7 @@ public static class MongoDiscoveryRuntime
     /// <exception cref="InvalidOperationException">当注册名未注册时抛出（由 MultiDbRegistry 经 GameDb.As 抛出）/ Thrown when the connection name is not registered (raised by MultiDbRegistry via GameDb.As)</exception>
     public static void Activate(DiscoveryActivationOptions options)
     {
-        ArgumentNullException.ThrowIfNull(options, nameof(options));
+        ArgumentNullException.ThrowIfNull(options);
 
         if (string.IsNullOrWhiteSpace(options.ConnectionName))
         {

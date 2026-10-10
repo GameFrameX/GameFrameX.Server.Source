@@ -60,7 +60,7 @@ internal static class MongoLegacyTtlIndexes
     /// <returns>异步任务 / Async task</returns>
     internal static async Task DropAllAsync<TDocument>(IMongoCollection<TDocument> collection, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(collection, nameof(collection));
+        ArgumentNullException.ThrowIfNull(collection);
 
         using var cursor = await collection.Indexes.ListAsync(cancellationToken).ConfigureAwait(false);
         var indexes = await cursor.ToListAsync(cancellationToken).ConfigureAwait(false);
