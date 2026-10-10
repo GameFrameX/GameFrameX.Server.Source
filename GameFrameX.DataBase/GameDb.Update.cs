@@ -52,7 +52,7 @@ public static partial class GameDb
     /// <returns>更新后的文档 / The updated document</returns>
     public static Task<TState> UpdateAsync<TState>(TState state) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.UpdateAsync(state);
     }
 
@@ -68,7 +68,7 @@ public static partial class GameDb
     /// <returns>更新后的文档 / The updated document</returns>
     public static Task<TState> UpdateAsync<TState>(TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.UpdateAsync(state, cancellationToken);
     }
 
@@ -83,7 +83,7 @@ public static partial class GameDb
     /// <returns>成功更新的文档数量 / Number of successfully updated documents</returns>
     public static Task<long> UpdateAsync<TState>(IEnumerable<TState> stateList) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.UpdateAsync(stateList);
     }
 
@@ -99,7 +99,7 @@ public static partial class GameDb
     /// <returns>成功更新的文档数量 / Number of successfully updated documents</returns>
     public static Task<long> UpdateAsync<TState>(IEnumerable<TState> stateList, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.UpdateAsync(stateList, cancellationToken);
     }
 
@@ -115,7 +115,7 @@ public static partial class GameDb
     /// <returns>成功更新的文档数量 / Number of successfully updated documents</returns>
     public static Task<long> UpdatePartialAsync<TState>(long id, IReadOnlyDictionary<string, object> updateFields) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.UpdatePartialAsync<TState>(id, updateFields);
     }
 
@@ -132,7 +132,7 @@ public static partial class GameDb
     /// <returns>成功更新的文档数量 / Number of successfully updated documents</returns>
     public static Task<long> UpdatePartialAsync<TState>(long id, IReadOnlyDictionary<string, object> updateFields, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.UpdatePartialAsync<TState>(id, updateFields, cancellationToken);
     }
 
@@ -146,7 +146,7 @@ public static partial class GameDb
     /// <returns>表示异步操作的任务 / Task representing asynchronous operation</returns>
     public static Task ExecuteInTransactionAsync(Func<Task> action)
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.ExecuteInTransactionAsync(action);
     }
 
@@ -161,7 +161,7 @@ public static partial class GameDb
     /// <returns>表示异步操作的任务 / Task representing asynchronous operation</returns>
     public static Task ExecuteInTransactionAsync(Func<Task> action, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.ExecuteInTransactionAsync(action, cancellationToken);
     }
 

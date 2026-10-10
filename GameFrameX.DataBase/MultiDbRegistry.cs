@@ -101,8 +101,8 @@ public static class MultiDbRegistry
     /// <exception cref="InvalidOperationException">当同名库已注册时抛出 / Thrown when a database with the same name is already registered</exception>
     public static void Register(string databaseName, IDatabaseService databaseService)
     {
-        ArgumentNullException.ThrowIfNull(databaseName, nameof(databaseName));
-        ArgumentNullException.ThrowIfNull(databaseService, nameof(databaseService));
+        ArgumentNullException.ThrowIfNull(databaseName);
+        ArgumentNullException.ThrowIfNull(databaseService);
         if (!Databases.TryAdd(databaseName, databaseService))
         {
             // Localization: Database.Registry.AlreadyRegistered - 名为“{0}”的数据库已被注册。已注册名称：[{1}]
@@ -123,7 +123,7 @@ public static class MultiDbRegistry
     /// <exception cref="InvalidOperationException">当注册名未注册时抛出 / Thrown when the name is not registered</exception>
     public static IDatabaseService Get(string databaseName)
     {
-        ArgumentNullException.ThrowIfNull(databaseName, nameof(databaseName));
+        ArgumentNullException.ThrowIfNull(databaseName);
         if (!Databases.TryGetValue(databaseName, out var databaseService))
         {
             // Localization: Database.Registry.NotRegistered - 没有名为“{0}”的数据库被注册。已注册名称：[{1}]
@@ -144,7 +144,7 @@ public static class MultiDbRegistry
     /// <returns>已注册返回 true；否则 false / true when registered; otherwise false</returns>
     public static bool TryGet(string databaseName, out IDatabaseService databaseService)
     {
-        ArgumentNullException.ThrowIfNull(databaseName, nameof(databaseName));
+        ArgumentNullException.ThrowIfNull(databaseName);
         return Databases.TryGetValue(databaseName, out databaseService);
     }
 
@@ -158,7 +158,7 @@ public static class MultiDbRegistry
     /// <returns>已注册返回 true；否则 false / true when registered; otherwise false</returns>
     public static bool Contains(string databaseName)
     {
-        ArgumentNullException.ThrowIfNull(databaseName, nameof(databaseName));
+        ArgumentNullException.ThrowIfNull(databaseName);
         return Databases.ContainsKey(databaseName);
     }
 

@@ -88,7 +88,7 @@ public static partial class GameDb
     {
         get
         {
-            ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+            ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
             if (Volatile.Read(ref _defaultDatabaseName) == null && MultiDbRegistry.RegisteredCount > 1)
             {
                 WarnImplicitBindingOnce();
@@ -162,7 +162,7 @@ public static partial class GameDb
     [RequiresUnreferencedCode("按命名约定反射创建提供者；AOT/裁剪场景请改用 Init<T> 显式指定实现类型")]
     public static Task<bool> Init(DbOptions dbOptions)
     {
-        ArgumentNullException.ThrowIfNull(dbOptions, nameof(dbOptions));
+        ArgumentNullException.ThrowIfNull(dbOptions);
         return InitCore(DbProviderResolver.Create(dbOptions.Provider), dbOptions);
     }
 
@@ -185,7 +185,7 @@ public static partial class GameDb
     /// <returns>返回数据库是否初始化成功 / Returns whether the database was initialized successfully</returns>
     private static async Task<bool> InitCore(IDatabaseService service, DbOptions dbOptions)
     {
-        ArgumentNullException.ThrowIfNull(dbOptions, nameof(dbOptions));
+        ArgumentNullException.ThrowIfNull(dbOptions);
         ArgumentException.ThrowIfNullOrWhiteSpace(dbOptions.ConnectionString, nameof(DbOptions.ConnectionString));
         ArgumentNullException.ThrowIfNull(dbOptions.Name, nameof(dbOptions.Name));
 
@@ -236,7 +236,7 @@ public static partial class GameDb
     /// <exception cref="InvalidOperationException">当注册名未注册，或默认库已显式指定为另一注册名时抛出 / Thrown when the name is not registered, or the default was already set to a different name</exception>
     public static void SetDefault(string databaseName)
     {
-        ArgumentNullException.ThrowIfNull(databaseName, nameof(databaseName));
+        ArgumentNullException.ThrowIfNull(databaseName);
         if (!MultiDbRegistry.TryGet(databaseName, out var service))
         {
             // Localization: Database.Registry.NotRegistered - 没有名为“{0}”的数据库被注册。已注册名称：[{1}]
@@ -351,7 +351,7 @@ public static partial class GameDb
     /// </remarks>
     public static void Close()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         CloseAsync().GetAwaiter().GetResult();
     }
 
@@ -364,7 +364,7 @@ public static partial class GameDb
     /// <returns>表示异步关闭操作的任务 / Task representing the asynchronous close operation</returns>
     public static async Task CloseAsync()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         foreach (var databaseService in MultiDbRegistry.GetRegisteredDatabaseServices())
         {
             await databaseService.Close();

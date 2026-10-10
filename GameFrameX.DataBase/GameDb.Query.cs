@@ -53,7 +53,7 @@ public static partial class GameDb
     /// <returns>匹配的文档列表 / List of matching documents</returns>
     public static Task<List<TState>> FindListAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.FindListAsync(filter);
     }
 
@@ -69,7 +69,7 @@ public static partial class GameDb
     /// <returns>匹配的文档列表 / List of matching documents</returns>
     public static Task<List<TState>> FindListAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.FindListAsync(filter, cancellationToken);
     }
 
@@ -84,7 +84,7 @@ public static partial class GameDb
     /// <returns>匹配的文档列表 / List of matching documents</returns>
     public static Task<List<TState>> FindByIdsAsync<TState>(IEnumerable<long> ids) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.FindByIdsAsync<TState>(ids);
     }
 
@@ -100,7 +100,7 @@ public static partial class GameDb
     /// <returns>匹配的文档列表 / List of matching documents</returns>
     public static Task<List<TState>> FindByIdsAsync<TState>(IEnumerable<long> ids, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.FindByIdsAsync<TState>(ids, cancellationToken);
     }
 
@@ -119,7 +119,7 @@ public static partial class GameDb
     /// <returns>分页结果和总数 / Paged result and total count</returns>
     public static Task<(List<TState> Items, long Total)> FindPageAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, bool descending, int pageIndex, int pageSize) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.FindPageAsync<TState>(filter, sortExpression, descending, pageIndex, pageSize);
     }
 
@@ -139,7 +139,7 @@ public static partial class GameDb
     /// <returns>分页结果和总数 / Paged result and total count</returns>
     public static Task<(List<TState> Items, long Total)> FindPageAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, bool descending, int pageIndex, int pageSize, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.FindPageAsync<TState>(filter, sortExpression, descending, pageIndex, pageSize, cancellationToken);
     }
 
@@ -156,7 +156,7 @@ public static partial class GameDb
     /// <returns>投影后的结果列表 / Projected result list</returns>
     public static Task<List<TResult>> FindProjectedAsync<TState, TResult>(Expression<Func<TState, bool>> filter, Expression<Func<TState, TResult>> selector) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.FindProjectedAsync<TState, TResult>(filter, selector);
     }
 
@@ -174,7 +174,7 @@ public static partial class GameDb
     /// <returns>投影后的结果列表 / Projected result list</returns>
     public static Task<List<TResult>> FindProjectedAsync<TState, TResult>(Expression<Func<TState, bool>> filter, Expression<Func<TState, TResult>> selector, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.FindProjectedAsync<TState, TResult>(filter, selector, cancellationToken);
     }
 
@@ -189,7 +189,7 @@ public static partial class GameDb
     /// <returns>匹配的文档数量 / Number of matching documents</returns>
     public static Task<long> CountAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.CountAsync(filter);
     }
 
@@ -205,7 +205,7 @@ public static partial class GameDb
     /// <returns>匹配的文档数量 / Number of matching documents</returns>
     public static Task<long> CountAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.CountAsync(filter, cancellationToken);
     }
 
@@ -221,7 +221,7 @@ public static partial class GameDb
     /// <returns>匹配的文档数量 / Number of matching documents</returns>
     public static Task<long> CountAsync<TState>(Expression<Func<TState, bool>> filter, bool includeDeleted) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.CountAsync(filter, includeDeleted);
     }
 
@@ -238,7 +238,7 @@ public static partial class GameDb
     /// <returns>匹配的文档数量 / Number of matching documents</returns>
     public static Task<long> CountAsync<TState>(Expression<Func<TState, bool>> filter, bool includeDeleted, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.CountAsync(filter, includeDeleted, cancellationToken);
     }
 
@@ -254,7 +254,7 @@ public static partial class GameDb
     /// <returns>符合条件的第一个元素,如果没有匹配项则返回null / The first matching element, or null if no match is found</returns>
     public static Task<TState> FindSortAscendingFirstOneAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.FindSortAscendingFirstOneAsync(filter, sortExpression);
     }
 
@@ -271,7 +271,7 @@ public static partial class GameDb
     /// <returns>符合条件的第一个元素,如果没有匹配项则返回null / The first matching element, or null if no match is found</returns>
     public static Task<TState> FindSortAscendingFirstOneAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.FindSortAscendingFirstOneAsync(filter, sortExpression, cancellationToken);
     }
 
@@ -287,7 +287,7 @@ public static partial class GameDb
     /// <returns>符合条件的第一个元素,如果没有匹配项则返回null / The first matching element, or null if no match is found</returns>
     public static Task<TState> FindSortDescendingFirstOneAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.FindSortDescendingFirstOneAsync(filter, sortExpression);
     }
 
@@ -304,7 +304,7 @@ public static partial class GameDb
     /// <returns>符合条件的第一个元素,如果没有匹配项则返回null / The first matching element, or null if no match is found</returns>
     public static Task<TState> FindSortDescendingFirstOneAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.FindSortDescendingFirstOneAsync(filter, sortExpression, cancellationToken);
     }
 
@@ -322,7 +322,7 @@ public static partial class GameDb
     /// <returns>分页后的文档列表 / Paginated list of documents</returns>
     public static Task<List<TState>> FindSortDescendingAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, int pageIndex = 0, int pageSize = 10) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.FindSortDescendingAsync(filter, sortExpression, pageIndex, pageSize);
     }
 
@@ -341,7 +341,7 @@ public static partial class GameDb
     /// <returns>分页后的文档列表 / Paginated list of documents</returns>
     public static Task<List<TState>> FindSortDescendingAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, int pageIndex, int pageSize, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.FindSortDescendingAsync(filter, sortExpression, pageIndex, pageSize, cancellationToken);
     }
 
@@ -359,7 +359,7 @@ public static partial class GameDb
     /// <returns>分页后的文档列表 / Paginated list of documents</returns>
     public static Task<List<TState>> FindSortAscendingAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, int pageIndex = 0, int pageSize = 10) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.FindSortAscendingAsync(filter, sortExpression, pageIndex, pageSize);
     }
 
@@ -378,7 +378,7 @@ public static partial class GameDb
     /// <returns>分页后的文档列表 / Paginated list of documents</returns>
     public static Task<List<TState>> FindSortAscendingAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, int pageIndex, int pageSize, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.FindSortAscendingAsync(filter, sortExpression, pageIndex, pageSize, cancellationToken);
     }
 
@@ -397,7 +397,7 @@ public static partial class GameDb
     /// <returns>找到的文档,如果不存在则返回新的空文档 / The found document, or a new empty document if not found</returns>
     public static Task<TState> FindAsync<TState>(long id, Expression<Func<TState, bool>> filter = null, bool isCreateIfNotExists = true) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.FindAsync(id, filter, isCreateIfNotExists);
     }
 
@@ -415,7 +415,7 @@ public static partial class GameDb
     /// <returns>找到的文档,如果未找到且不创建则返回null / Found document, or null when not found and creation is disabled</returns>
     public static Task<TState> FindAsync<TState>(long id, Expression<Func<TState, bool>> filter, bool isCreateIfNotExists, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.FindAsync(id, filter, isCreateIfNotExists, cancellationToken);
     }
 
@@ -433,7 +433,7 @@ public static partial class GameDb
     /// <returns>找到的第一个匹配文档,如果没有匹配项则返回null / The first matching document, or null if no match is found</returns>
     public static Task<TState> FindAsync<TState>(Expression<Func<TState, bool>> filter, bool isCreateIfNotExists = true) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.FindAsync(filter, isCreateIfNotExists);
     }
 
@@ -450,7 +450,7 @@ public static partial class GameDb
     /// <returns>找到的第一个匹配文档,如果没有匹配项则返回null / The first matching document, or null if no match is found</returns>
     public static Task<TState> FindAsync<TState>(Expression<Func<TState, bool>> filter, bool isCreateIfNotExists, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.FindAsync(filter, isCreateIfNotExists, cancellationToken);
     }
 
@@ -465,7 +465,7 @@ public static partial class GameDb
     /// <returns>如果存在匹配的文档则返回true,否则返回false / Returns true if matching document exists, otherwise false</returns>
     public static Task<bool> ExistsByIdAsync<TState>(long id) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.ExistsByIdAsync<TState>(id);
     }
 
@@ -481,7 +481,7 @@ public static partial class GameDb
     /// <returns>如果存在匹配的文档则返回true,否则返回false / Returns true if matching document exists, otherwise false</returns>
     public static Task<bool> ExistsByIdAsync<TState>(long id, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.ExistsByIdAsync<TState>(id, cancellationToken);
     }
 
@@ -496,7 +496,7 @@ public static partial class GameDb
     /// <returns>如果存在匹配的文档则返回true,否则返回false / Returns true if matching documents exist, otherwise false</returns>
     public static Task<bool> AnyAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.AnyAsync(filter);
     }
 
@@ -512,7 +512,7 @@ public static partial class GameDb
     /// <returns>如果存在匹配的文档则返回true,否则返回false / Returns true if matching documents exist, otherwise false</returns>
     public static Task<bool> AnyAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation, nameof(_dbServiceImplementation));
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         return FacadeService.AnyAsync(filter, cancellationToken);
     }
 }
