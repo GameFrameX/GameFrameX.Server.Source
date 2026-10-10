@@ -245,7 +245,7 @@ public static partial class Keys
         /// <summary>
         /// 远程消息客户端类别键
         /// </summary>
-        public static class Client
+        public static class ClientModule
         {
             /// <summary>
             /// SendOneWayAsync: 熔断器已打开, Service: {0}
