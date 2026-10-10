@@ -31,16 +31,16 @@
 namespace GameFrameX.Launcher.StartUp.Social;
 
 /// <summary>
-/// 社交服务器启动入口 —— 标准骨架 <see cref="AppStartUpStandardServerBase"/> 的参照实例。
+/// 社交服务器启动入口 —— 标准模板 <see cref="AppStartUpGameServerBase"/> 的参照实例。
 /// </summary>
 /// <remarks>
-/// The Social server startup entry — the reference instance of the standard skeleton
-/// <see cref="AppStartUpStandardServerBase"/>: the whole startup/stop/package sequence lives in
-/// the skeleton, and this class only declares the startup tag and the role-level default settings.
+/// The Social server startup entry — the reference instance of the standard template
+/// <see cref="AppStartUpGameServerBase"/>: the whole startup/stop/package sequence lives in
+/// the template, and this class only declares the startup tag and the role-level default settings.
 /// </remarks>
 // 显式优先级修复与 Game 同为缺省 1000 的冲突——Social 在主服务 Game 之后启动（值越小优先级越高）
 [StartUpTag(GameServerConst.Social.Name, 200)]
-internal sealed class AppStartUpSocial : AppStartUpStandardServerBase
+internal sealed class AppStartUpSocial : AppStartUpGameServerBase
 {
     /// <summary>
     /// 创建 Social 服务器的缺省配置。

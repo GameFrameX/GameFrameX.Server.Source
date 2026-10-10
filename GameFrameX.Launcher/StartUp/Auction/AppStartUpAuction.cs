@@ -31,18 +31,18 @@
 namespace GameFrameX.Launcher.StartUp.Auction;
 
 /// <summary>
-/// 拍卖服务器启动入口 —— 「经济交易」域标准 Role（骨架 <see cref="AppStartUpStandardServerBase"/>）。
+/// 拍卖服务器启动入口 —— 「经济交易」域标准 Role（模板 <see cref="AppStartUpGameServerBase"/>）。
 /// </summary>
 /// <remarks>
 /// The Auction server startup entry — a standard role of the Economy domain on the
-/// <see cref="AppStartUpStandardServerBase"/> skeleton: the whole startup/stop/package sequence lives
-/// in the skeleton, and this class only declares the startup tag (name + domain-segment priority)
+/// <see cref="AppStartUpGameServerBase"/> template: the whole startup/stop/package sequence lives
+/// in the template, and this class only declares the startup tag (name + domain-segment priority)
 /// and the role-level default settings.
 /// 启动优先级按域段约定分配（接入 3xx → 社交 4xx → 玩法 5xx → 经济 6xx → 治理 7xx，域内 ×10 递增），
 /// 保证全表唯一且多 Role 启动屏障顺序稳定。
 /// </remarks>
 [StartUpTag(GameServerConst.Auction.Name, 610)]
-internal sealed class AppStartUpAuction : AppStartUpStandardServerBase
+internal sealed class AppStartUpAuction : AppStartUpGameServerBase
 {
     /// <summary>
     /// 创建 Auction 服务器的缺省配置。

@@ -30,6 +30,7 @@
 
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Utility;
+using GameFrameX.Network.Abstractions;
 using GameFrameX.Online.Runtime;
 using GameFrameX.Online.Runtime.AdminApi;
 using GameFrameX.Utility.Runtime;
@@ -107,6 +108,46 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     {
         await ShutdownOnlineAdminAsync();
         await HotfixManager.Stop(exitMessage);
+    }
+
+    /// <summary>
+    /// Game 型中性化覆写：空实现——不参与 <c>ServiceOffline</c> 分发（HEAD 行为，Game 无上下线事件面；
+    /// 模板缺省面向 Social 型多数形态）。
+    /// </summary>
+    /// <remarks>
+    /// Game-shape neutralizing override: a no-op — Game does not join the <c>ServiceOffline</c>
+    /// dispatch (the HEAD behaviour; Game has no online/offline event surface, while the template
+    /// default follows the Social-shape majority).
+    /// </remarks>
+    /// <param name="message">终止原因（护栏透传）/ The termination reason passed through by the guard</param>
+    /// <returns>表示钩子操作的异步任务 / A task representing the hook operation</returns>
+    protected override Task OnStoppingAsync(string message)
+    {
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Game 型中性化覆写：仅保留基类调试日志行为，不做 TCP 热更分发——Game 的网络监听由
+    /// Hotfix 模块实例（自持 PackageHandler 的 <c>AppStartUpHotfixGame</c>）承载，宿主实例无监听面。
+    /// </summary>
+    /// <remarks>
+    /// Game-shape neutralizing override: keeps only the base debug-logging behaviour without the
+    /// hotfix TCP dispatch — Game's network listeners live inside the hotfix module instance
+    /// (<c>AppStartUpHotfixGame</c> with its own <c>PackageHandler</c>), so the host instance has no
+    /// listener surface.
+    /// </remarks>
+    /// <param name="session">会话对象 / The session</param>
+    /// <param name="message">网络消息 / The network message</param>
+    /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
+    protected override ValueTask PackageHandler(IAppSession session, IMessage message)
+    {
+        if (Setting.IsDebug && Setting.IsDebugReceive)
+        {
+            // Localization: StartUp.TcpServer.MessageReceived - 接收到消息 - 服务器类型: [{0}], 消息内容: {1}
+            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.MessageReceived, ServerType, message.ToFormatMessageString()));
+        }
+
+        return ValueTask.CompletedTask;
     }
 
     /// <summary>

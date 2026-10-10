@@ -28,9 +28,14 @@
 //  ==========================================================================================
 
 
+using GameFrameX.Apps.Common.EventData;
+using GameFrameX.Core.Events;
 using GameFrameX.Discovery;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Utility;
+using GameFrameX.Network.Abstractions;
+using GameFrameX.Network.HTTP;
+using GameFrameX.Network.Message;
 
 namespace GameFrameX.Launcher.StartUp;
 
@@ -136,43 +141,102 @@ internal abstract class AppStartUpGameServerBase : AppStartUpRoleBase
     }
 
     /// <summary>
-    /// Role 服务启动 hook：共享装配（控制库/发现层/业务库/组件）就绪后执行本 Role 的专属服务装配。
-    /// Game 型在此装载热更模块与可选 Online admin；Social 型在此装载进程内热更并启动网络监听。
+    /// Role 服务启动 hook（缺省 = Social 型）：aop 反射装配 → 进程内热更加载 → 网络监听启动。
+    /// 缺省取向 = 18/19 多数形态（Social + 17 个标准 Role）；Game 型覆写为热更模块装载 + Online admin。
     /// </summary>
     /// <remarks>
-    /// The role-services hook: runs after the shared wiring (control database, discovery layer,
-    /// business database, components) is ready and assembles this role's own services. The Game
-    /// shape loads the hotfix module and the optional Online admin here; the Social shape loads
-    /// the in-process hotfix and starts its network listeners here.
+    /// The role-services hook (default = the Social shape): aop assembly by reflection, in-process
+    /// hotfix loading and network listener startup. The default follows the 18-of-19 majority shape
+    /// (Social plus the 17 predefined roles); the Game shape overrides it with hotfix module loading
+    /// and the optional Online admin. aop 装配自序列最前段挪入本 hook 首段：唯一消费方是
+    /// <c>StartServerAsync</c>，纯反射收集无 DB/状态依赖，位置后移效果等价。
+    /// The aop assembly moved here from the very front of the sequence: its only consumer is
+    /// <c>StartServerAsync</c>, it is pure reflection with no database or state dependency, so the
+    /// relocation is effect-equivalent.
     /// </remarks>
     /// <returns>表示 hook 操作的异步任务 / A task representing the hook operation</returns>
-    protected abstract Task StartRoleServicesAsync();
+    protected virtual async Task StartRoleServicesAsync()
+    {
+        // aop 处理器装配：反射收集 IHttpAopHandler 实现并按 Priority 升序，HTTP 拦截按声明优先级生效
+        var aopHandlers = AssemblyHelper.GetRuntimeImplementTypeNamesInstance<IHttpAopHandler>();
+        aopHandlers.Sort((handlerX, handlerY) => handlerX.Priority.CompareTo(handlerY.Priority));
+        HotfixManager.LoadHotfix(Setting);
+        await StartServerAsync<DefaultMessageDecoderHandler, DefaultMessageEncoderHandler>(new DefaultMessageCompressHandler(), new DefaultMessageDecompressHandler(), HotfixManager.GetListHttpHandler(), HotfixManager.GetHttpHandler, aopHandlers);
+    }
 
     /// <summary>
-    /// 启动完成 hook：Role 服务就绪后调用，默认空实现——Game 型在此标记进程运行时已启动
-    ///（<c>GameAppRuntime.MarkStarted</c>）；Social 型在此分发 <c>ServiceOnline</c> 事件。
+    /// 启动完成 hook（缺省 = Social 型）：网络监听就绪后分发 <c>ServiceOnline</c> 事件。
+    /// Game 型覆写为 <c>GameAppRuntime.MarkStarted</c>（无上下线事件面）。
     /// </summary>
     /// <remarks>
-    /// The startup-completed hook: invoked once this role's services are up; the default is a
-    /// no-op. The Game shape marks the process runtime started (<c>GameAppRuntime.MarkStarted</c>)
-    /// here; the Social shape dispatches the <c>ServiceOnline</c> event here.
+    /// The startup-completed hook (default = the Social shape): dispatches the <c>ServiceOnline</c>
+    /// event once the network listeners are up. The Game shape overrides it with
+    /// <c>GameAppRuntime.MarkStarted</c> (no online/offline event surface).
     /// </remarks>
     /// <returns>表示 hook 操作的异步任务 / A task representing the hook operation</returns>
     protected virtual Task OnStartupCompletedAsync()
     {
+        EventDispatcher.Dispatch(0, new ServiceOnlineEventArgs(Setting.ServerType, Setting.ServerInstanceId, DateTime.UtcNow));
         return Task.CompletedTask;
     }
 
     /// <summary>
-    /// 退出清理 hook：退出兜底日志之后、退出完成日志之前调用——Game 型停 Online admin 与热更模块；
-    /// Social 型自停（护栏内恰好一次）。
+    /// 停机钩子（缺省 = Social 型）：护栏放行后、基类停机流程前分发 <c>ServiceOffline</c> 事件恰好一次。
+    /// Game 型覆写为空实现（HEAD 行为——Game 无上下线事件面）。
     /// </summary>
     /// <remarks>
-    /// The exit-cleanup hook: called between the exit-begin and exit-success logs. The Game shape
-    /// stops the Online admin and the hotfix module here; the Social shape self-stops here
-    /// (exactly once behind the stop guard).
+    /// The stopping hook (default = the Social shape): dispatches the <c>ServiceOffline</c> event
+    /// exactly once, after the stop guard admits the first stop and before the base stop flow.
+    /// The Game shape overrides it with a no-op (the HEAD behaviour — Game has no online/offline
+    /// event surface).
+    /// </remarks>
+    /// <param name="message">终止原因（首个 <see cref="AppStartUpRoleBase.StopAsync(string)"/> 调用透传）/ The termination reason passed through by the first stop call</param>
+    /// <returns>表示钩子操作的异步任务 / A task representing the hook operation</returns>
+    protected override Task OnStoppingAsync(string message)
+    {
+        EventDispatcher.Dispatch(0, new ServiceOfflineEventArgs(Setting.ServerType, Setting.ServerInstanceId, "Stopped", DateTime.UtcNow));
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 退出清理 hook（缺省 = Social 型）：自停——护栏内的 <see cref="AppStartUpRoleBase.StopAsync(string)"/>，
+    /// 宿主逆序停机先到时本调用被护栏吸收，<c>ServiceOffline</c> 仍恰好一次。
+    /// Game 型覆写为 Online admin 停 + 热更模块停。
+    /// </summary>
+    /// <remarks>
+    /// The exit-cleanup hook (default = the Social shape): self-stop through the guarded
+    /// <see cref="AppStartUpRoleBase.StopAsync(string)"/> — when the host's reverse-order stop wins
+    /// the race, the guard absorbs this call and <c>ServiceOffline</c> still fires exactly once.
+    /// The Game shape overrides it with the Online admin stop plus the hotfix module stop.
     /// </remarks>
     /// <param name="exitMessage">退出原因（可能为 null——启动失败路径未获得退出消息）/ The exit reason (may be null on the startup-failure path)</param>
     /// <returns>表示 hook 操作的异步任务 / A task representing the hook operation</returns>
-    protected abstract Task ShutdownAsync(string exitMessage);
+    protected virtual Task ShutdownAsync(string exitMessage)
+    {
+        return StopAsync(exitMessage ?? "");
+    }
+
+    /// <summary>
+    /// 网络消息处理（Social 型）：基类调试日志处理后，将 <see cref="INetworkMessagePackage"/> 交热更 TCP handler 分发。
+    /// Game 型覆写还原为仅基类行为（其网络监听由 Hotfix 模块实例自持 PackageHandler 承载）。
+    /// </summary>
+    /// <remarks>
+    /// Network package handling (Social shape): after the base debug logging, dispatches
+    /// <see cref="INetworkMessagePackage"/> messages to the hotfix TCP handler resolved by
+    /// <c>HotfixManager.GetTcpHandler</c>; a message without a registered handler hits the existing
+    /// "handler not found" logging path. The Game shape overrides this back to the base behaviour
+    /// only (its listeners live inside the hotfix module instance with their own package handler).
+    /// </remarks>
+    /// <param name="session">会话对象 / The session</param>
+    /// <param name="message">网络消息 / The network message</param>
+    /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
+    protected override async ValueTask PackageHandler(IAppSession session, IMessage message)
+    {
+        await base.PackageHandler(session, message);
+        if (message is INetworkMessagePackage messageObject)
+        {
+            var handler = HotfixManager.GetTcpHandler(messageObject.Header.MessageId);
+            await InvokeMessageHandler(handler, messageObject.DeserializeMessageObject(), new DefaultNetworkChannel(session, Setting));
+        }
+    }
 }
