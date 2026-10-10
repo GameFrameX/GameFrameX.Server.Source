@@ -31,9 +31,9 @@ namespace GameFrameX.Online.Social;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Events;
-using GameFrameX.Online.Scope;
+using Contracts;
+using Events;
+using Scope;
 
 /// <summary>
 /// 群组服务（群组生命周期的唯一写者）。
@@ -114,7 +114,7 @@ public sealed class OnlineGroupService : IOnlineChannelMembershipProbe
             Metadata = new Dictionary<string, string>(StringComparer.Ordinal),
             Members = new List<OnlineGroupMember>
             {
-                new OnlineGroupMember
+                new()
                 {
                     PlayerId = scope.PlayerId,
                     Role = OnlineGroupRole.Owner,
@@ -197,7 +197,7 @@ public sealed class OnlineGroupService : IOnlineChannelMembershipProbe
             InviteeId = inviteeId,
             State = OnlineGroupInviteState.Pending,
             CreatedAtTime = now,
-            ExpiresAtTime = now + (_inviteTimeToLiveSeconds * 1000),
+            ExpiresAtTime = now + _inviteTimeToLiveSeconds * 1000,
             RespondedAtTime = 0,
         };
 

@@ -32,65 +32,29 @@ namespace GameFrameX.Online.Runtime;
 public sealed class OnlineLiveOpsEntry
 {
     /// <summary>获取登记序号（进程内单调递增）。</summary>
-    public long Sequence
-    {
-        get;
-        set;
-    }
+    public long Sequence { get; set; }
 
     /// <summary>获取登记操作。</summary>
-    public OnlineLiveOpsOperation Operation
-    {
-        get;
-        set;
-    }
+    public OnlineLiveOpsOperation Operation { get; set; }
 
     /// <summary>获取配置种类。</summary>
-    public string Kind
-    {
-        get;
-        set;
-    } = string.Empty;
+    public string Kind { get; set; } = string.Empty;
 
     /// <summary>获取配置键。</summary>
-    public string Key
-    {
-        get;
-        set;
-    } = string.Empty;
+    public string Key { get; set; } = string.Empty;
 
     /// <summary>获取版本号（Sync 操作为空串）。</summary>
-    public string Version
-    {
-        get;
-        set;
-    } = string.Empty;
+    public string Version { get; set; } = string.Empty;
 
     /// <summary>获取载荷原文。</summary>
-    public string PayloadText
-    {
-        get;
-        set;
-    } = string.Empty;
+    public string PayloadText { get; set; } = string.Empty;
 
     /// <summary>获取操作者。</summary>
-    public string OperatorId
-    {
-        get;
-        set;
-    } = string.Empty;
+    public string OperatorId { get; set; } = string.Empty;
 
     /// <summary>获取关联标识。</summary>
-    public string CorrelationId
-    {
-        get;
-        set;
-    } = string.Empty;
+    public string CorrelationId { get; set; } = string.Empty;
 
     /// <summary>获取登记时刻（UTC 毫秒）。</summary>
-    public long CreatedAtTime
-    {
-        get;
-        set;
-    }
+    public long CreatedAtTime { get; set; }
 }

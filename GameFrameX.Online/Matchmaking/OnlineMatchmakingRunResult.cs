@@ -42,63 +42,35 @@ public sealed class OnlineMatchmakingRunResult
     /// <summary>
     /// 获取或设置租户标识。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置本轮开始时排队中的票据数。
     /// </summary>
-    public int ScannedTicketCount
-    {
-        get;
-        set;
-    }
+    public int ScannedTicketCount { get; set; }
 
     /// <summary>
     /// 获取或设置本轮扫描出的过期票据数。
     /// </summary>
-    public int ExpiredTicketCount
-    {
-        get;
-        set;
-    }
+    public int ExpiredTicketCount { get; set; }
 
     /// <summary>
     /// 获取或设置本轮产出的分配标识集合。
     /// </summary>
-    public List<string> AssignmentIds
-    {
-        get;
-        set;
-    }
+    public List<string> AssignmentIds { get; set; }
 
     /// <summary>
     /// 获取或设置本轮被消费（转 Matched）的票据数。
     /// </summary>
-    public int MatchedTicketCount
-    {
-        get;
-        set;
-    }
+    public int MatchedTicketCount { get; set; }
 
     /// <summary>
     /// 获取或设置本轮进入对局的玩家数。
     /// </summary>
-    public int MatchedPlayerCount
-    {
-        get;
-        set;
-    }
+    public int MatchedPlayerCount { get; set; }
 }

@@ -42,72 +42,40 @@ public sealed class OnlinePlayerProfile
     /// <summary>
     /// 获取或设置玩家标识（服务端生成，全局唯一；存量迁移时沿用 PlayerState.Id）。
     /// </summary>
-    public long Id
-    {
-        get;
-        set;
-    }
+    public long Id { get; set; }
 
     /// <summary>
     /// 获取或设置归属游戏账号标识。
     /// </summary>
-    public long GameAccountId
-    {
-        get;
-        set;
-    }
+    public long GameAccountId { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置应用标识（玩家归属 App）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置区服标识（玩家归属 Server）。
     /// </summary>
-    public long ServerId
-    {
-        get;
-        set;
-    }
+    public long ServerId { get; set; }
 
     /// <summary>
     /// 获取或设置玩家显示名。
     /// </summary>
-    public string Name
-    {
-        get;
-        set;
-    }
+    public string Name { get; set; }
 
     /// <summary>
     /// 获取或设置创建时间（Unix 毫秒）。
     /// </summary>
-    public long CreatedAtTime
-    {
-        get;
-        set;
-    }
+    public long CreatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置最近更新时间（Unix 毫秒）。
     /// </summary>
-    public long UpdatedAtTime
-    {
-        get;
-        set;
-    }
+    public long UpdatedAtTime { get; set; }
 }

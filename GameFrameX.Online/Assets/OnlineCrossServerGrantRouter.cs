@@ -32,7 +32,7 @@ namespace GameFrameX.Online.Assets;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Contracts;
+using Contracts;
 
 /// <summary>
 /// 跨服发奖路由（归属服明确的路由规则——本服直接执行，跨服经传输投递）。

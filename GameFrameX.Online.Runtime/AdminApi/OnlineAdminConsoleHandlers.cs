@@ -200,39 +200,19 @@ public sealed class OnlineAdminConsoleHandlers
     public sealed class OverviewQueueResponse
     {
         /// <summary>获取或设置模式（数字字符串）。</summary>
-        public string Mode
-        {
-            get;
-            set;
-        }
+        public string Mode { get; set; }
 
         /// <summary>获取或设置区域（数字字符串）。</summary>
-        public string Region
-        {
-            get;
-            set;
-        }
+        public string Region { get; set; }
 
         /// <summary>获取或设置队列深度。</summary>
-        public long QueueDepth
-        {
-            get;
-            set;
-        }
+        public long QueueDepth { get; set; }
 
         /// <summary>获取或设置平均等待秒数。</summary>
-        public long AverageWaitSeconds
-        {
-            get;
-            set;
-        }
+        public long AverageWaitSeconds { get; set; }
 
         /// <summary>获取或设置每分钟吞吐。</summary>
-        public long ThroughputPerMinute
-        {
-            get;
-            set;
-        }
+        public long ThroughputPerMinute { get; set; }
     }
 
     /// <summary>
@@ -241,46 +221,22 @@ public sealed class OnlineAdminConsoleHandlers
     public sealed class OnlineOverviewResponse
     {
         /// <summary>获取或设置在线玩家数。</summary>
-        public long OnlinePlayerCount
-        {
-            get;
-            set;
-        }
+        public long OnlinePlayerCount { get; set; }
 
         /// <summary>获取或设置会话数。</summary>
-        public long SessionCount
-        {
-            get;
-            set;
-        }
+        public long SessionCount { get; set; }
 
         /// <summary>获取或设置对局数。</summary>
-        public long MatchCount
-        {
-            get;
-            set;
-        }
+        public long MatchCount { get; set; }
 
         /// <summary>获取或设置重连率（0～1）。</summary>
-        public double ReconnectRate
-        {
-            get;
-            set;
-        }
+        public double ReconnectRate { get; set; }
 
         /// <summary>获取或设置队列摘要列表。</summary>
-        public List<OverviewQueueResponse> QueueSummaries
-        {
-            get;
-            set;
-        }
+        public List<OverviewQueueResponse> QueueSummaries { get; set; }
 
         /// <summary>获取或设置服务端时刻（UTC 毫秒）。</summary>
-        public long ServerTime
-        {
-            get;
-            set;
-        }
+        public long ServerTime { get; set; }
     }
 
     /// <summary>
@@ -289,53 +245,25 @@ public sealed class OnlineAdminConsoleHandlers
     public sealed class TimelineEventResponse
     {
         /// <summary>获取或设置事件标识。</summary>
-        public string EventId
-        {
-            get;
-            set;
-        }
+        public string EventId { get; set; }
 
         /// <summary>获取或设置事件类型。</summary>
-        public string EventType
-        {
-            get;
-            set;
-        }
+        public string EventType { get; set; }
 
         /// <summary>获取或设置事件组。</summary>
-        public string Group
-        {
-            get;
-            set;
-        }
+        public string Group { get; set; }
 
         /// <summary>获取或设置发生时刻（UTC 毫秒）。</summary>
-        public long OccurredAt
-        {
-            get;
-            set;
-        }
+        public long OccurredAt { get; set; }
 
         /// <summary>获取或设置来源。</summary>
-        public string Source
-        {
-            get;
-            set;
-        }
+        public string Source { get; set; }
 
         /// <summary>获取或设置关联标识。</summary>
-        public string CorrelationId
-        {
-            get;
-            set;
-        }
+        public string CorrelationId { get; set; }
 
         /// <summary>获取或设置载荷摘要。</summary>
-        public string PayloadSummary
-        {
-            get;
-            set;
-        }
+        public string PayloadSummary { get; set; }
     }
 
     /// <summary>
@@ -344,25 +272,13 @@ public sealed class OnlineAdminConsoleHandlers
     public sealed class TimelineQueryResponse
     {
         /// <summary>获取或设置事件列表。</summary>
-        public List<TimelineEventResponse> Events
-        {
-            get;
-            set;
-        }
+        public List<TimelineEventResponse> Events { get; set; }
 
         /// <summary>获取或设置下一页游标。</summary>
-        public string NextCursor
-        {
-            get;
-            set;
-        }
+        public string NextCursor { get; set; }
 
         /// <summary>获取或设置是否还有更多。</summary>
-        public bool HasMore
-        {
-            get;
-            set;
-        }
+        public bool HasMore { get; set; }
     }
 
     /// <summary>
@@ -371,53 +287,25 @@ public sealed class OnlineAdminConsoleHandlers
     public sealed class AuditEventResponse
     {
         /// <summary>获取或设置事件标识。</summary>
-        public string EventId
-        {
-            get;
-            set;
-        }
+        public string EventId { get; set; }
 
         /// <summary>获取或设置命令类型（事件类型名）。</summary>
-        public string CommandType
-        {
-            get;
-            set;
-        }
+        public string CommandType { get; set; }
 
         /// <summary>获取或设置操作者。</summary>
-        public string OperatorId
-        {
-            get;
-            set;
-        }
+        public string OperatorId { get; set; }
 
         /// <summary>获取或设置目标玩家（字符串形态；无目标为 null）。</summary>
-        public string TargetPlayerId
-        {
-            get;
-            set;
-        }
+        public string TargetPlayerId { get; set; }
 
         /// <summary>获取或设置发生时刻（UTC 毫秒）。</summary>
-        public long OccurredAt
-        {
-            get;
-            set;
-        }
+        public long OccurredAt { get; set; }
 
         /// <summary>获取或设置摘要。</summary>
-        public string Summary
-        {
-            get;
-            set;
-        }
+        public string Summary { get; set; }
 
         /// <summary>获取或设置关联标识。</summary>
-        public string CorrelationId
-        {
-            get;
-            set;
-        }
+        public string CorrelationId { get; set; }
     }
 
     /// <summary>
@@ -426,24 +314,12 @@ public sealed class OnlineAdminConsoleHandlers
     public sealed class AuditEventQueryResponse
     {
         /// <summary>获取或设置事件列表。</summary>
-        public List<AuditEventResponse> Items
-        {
-            get;
-            set;
-        }
+        public List<AuditEventResponse> Items { get; set; }
 
         /// <summary>获取或设置下一页游标。</summary>
-        public string NextCursor
-        {
-            get;
-            set;
-        }
+        public string NextCursor { get; set; }
 
         /// <summary>获取或设置是否还有更多。</summary>
-        public bool HasMore
-        {
-            get;
-            set;
-        }
+        public bool HasMore { get; set; }
     }
 }

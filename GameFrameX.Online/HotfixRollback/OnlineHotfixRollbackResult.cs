@@ -42,36 +42,20 @@ public sealed class OnlineHotfixRollbackResult
     /// <summary>
     /// 获取或设置目标（回滚到）版本号。
     /// </summary>
-    public string TargetVersion
-    {
-        get;
-        set;
-    }
+    public string TargetVersion { get; set; }
 
     /// <summary>
     /// 获取或设置回滚前活跃版本号。
     /// </summary>
-    public string PreviousVersion
-    {
-        get;
-        set;
-    }
+    public string PreviousVersion { get; set; }
 
     /// <summary>
     /// 获取或设置是否为幂等回放（<c>true</c> = 命中首次结果，本次未重复执行、未重复落审计）。
     /// </summary>
-    public bool IsReplay
-    {
-        get;
-        set;
-    }
+    public bool IsReplay { get; set; }
 
     /// <summary>
     /// 获取或设置协议兼容报告摘要（首次执行时的三类差异计数文本）。
     /// </summary>
-    public string CompatibilitySummary
-    {
-        get;
-        set;
-    }
+    public string CompatibilitySummary { get; set; }
 }

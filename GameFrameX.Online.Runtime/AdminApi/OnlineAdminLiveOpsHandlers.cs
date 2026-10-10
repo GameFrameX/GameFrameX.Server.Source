@@ -329,8 +329,8 @@ public sealed class OnlineAdminLiveOpsHandlers
         return new OnlineLiveOpsResponse
         {
             ConfirmVersion = string.IsNullOrEmpty(entry.Version)
-                ? entry.Sequence.ToString(System.Globalization.CultureInfo.InvariantCulture)
-                : entry.Version,
+                                 ? entry.Sequence.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                                 : entry.Version,
             SegmentId = segmentId,
             ServerTime = OnlineAdminApiContract.NowSeconds() * 1000,
         };
@@ -342,25 +342,13 @@ public sealed class OnlineAdminLiveOpsHandlers
     public sealed class SegmentPayload
     {
         /// <summary>获取或设置分群名称。</summary>
-        public string Name
-        {
-            get;
-            set;
-        }
+        public string Name { get; set; }
 
         /// <summary>获取或设置条件原文。</summary>
-        public string Conditions
-        {
-            get;
-            set;
-        }
+        public string Conditions { get; set; }
 
         /// <summary>获取或设置原因。</summary>
-        public string Reason
-        {
-            get;
-            set;
-        }
+        public string Reason { get; set; }
     }
 
     /// <summary>
@@ -369,32 +357,16 @@ public sealed class OnlineAdminLiveOpsHandlers
     public sealed class RolloutPayload
     {
         /// <summary>获取或设置 ConfigKind（1=RemoteConfig/2=Announcement/3=DeviceGroup/4=ScheduledTask）。</summary>
-        public int ConfigKind
-        {
-            get;
-            set;
-        }
+        public int ConfigKind { get; set; }
 
         /// <summary>获取或设置分群标识。</summary>
-        public long SegmentId
-        {
-            get;
-            set;
-        }
+        public long SegmentId { get; set; }
 
         /// <summary>获取或设置灰度百分比（0～100）。</summary>
-        public int Percent
-        {
-            get;
-            set;
-        }
+        public int Percent { get; set; }
 
         /// <summary>获取或设置原因。</summary>
-        public string Reason
-        {
-            get;
-            set;
-        }
+        public string Reason { get; set; }
     }
 
     /// <summary>
@@ -403,31 +375,15 @@ public sealed class OnlineAdminLiveOpsHandlers
     public sealed class OnlineLiveOpsResponse
     {
         /// <summary>获取或设置确认版本。</summary>
-        public string ConfirmVersion
-        {
-            get;
-            set;
-        }
+        public string ConfirmVersion { get; set; }
 
         /// <summary>获取或设置分群标识（未返回为 0）。</summary>
-        public long SegmentId
-        {
-            get;
-            set;
-        }
+        public long SegmentId { get; set; }
 
         /// <summary>获取或设置消息（未返回为 null）。</summary>
-        public string Message
-        {
-            get;
-            set;
-        }
+        public string Message { get; set; }
 
         /// <summary>获取或设置服务端时刻（UTC 毫秒）。</summary>
-        public long ServerTime
-        {
-            get;
-            set;
-        }
+        public long ServerTime { get; set; }
     }
 }

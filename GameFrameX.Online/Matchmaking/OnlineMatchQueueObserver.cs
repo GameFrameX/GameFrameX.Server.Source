@@ -31,7 +31,7 @@ namespace GameFrameX.Online.Matchmaking;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Contracts;
+using Contracts;
 
 /// <summary>
 /// 匹配队列观测器（Admin 可观测覆盖率 100%）。

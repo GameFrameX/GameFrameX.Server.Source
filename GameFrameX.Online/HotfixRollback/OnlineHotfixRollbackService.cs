@@ -339,7 +339,7 @@ public sealed class OnlineHotfixRollbackService
             return OnlineResult<RollbackPreparation>.Fail(OnlineErrorCode.StateNotReady, "当前无活跃版本，无从回滚（先经 ActivateAsync 激活基线版本）");
         }
 
-        return OnlineResult<RollbackPreparation>.Ok(new RollbackPreparation { Target = target, Current = current });
+        return OnlineResult<RollbackPreparation>.Ok(new RollbackPreparation { Target = target, Current = current, });
     }
 
     /// <summary>
@@ -589,8 +589,8 @@ public sealed class OnlineHotfixRollbackService
     private static string BuildCompatibilitySummary(OnlineProtocolCompatibilityReport report)
     {
         return "Removed=" + report.RemovedCount.ToString(System.Globalization.CultureInfo.InvariantCulture)
-               + ",Changed=" + report.ChangedCount.ToString(System.Globalization.CultureInfo.InvariantCulture)
-               + ",Added=" + report.AddedCount.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                          + ",Changed=" + report.ChangedCount.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                          + ",Added=" + report.AddedCount.ToString(System.Globalization.CultureInfo.InvariantCulture);
     }
 
     /// <summary>
@@ -613,28 +613,16 @@ public sealed class OnlineHotfixRollbackService
         /// <summary>
         /// 获取或设置目标（回滚到）清单。
         /// </summary>
-        public OnlineHotfixProtocolManifest Target
-        {
-            get;
-            set;
-        }
+        public OnlineHotfixProtocolManifest Target { get; set; }
 
         /// <summary>
         /// 获取或设置当前（活跃）清单。
         /// </summary>
-        public OnlineHotfixProtocolManifest Current
-        {
-            get;
-            set;
-        }
+        public OnlineHotfixProtocolManifest Current { get; set; }
 
         /// <summary>
         /// 获取或设置协议兼容检查报告（守卫链后段填充）。
         /// </summary>
-        public OnlineProtocolCompatibilityReport Report
-        {
-            get;
-            set;
-        }
+        public OnlineProtocolCompatibilityReport Report { get; set; }
     }
 }

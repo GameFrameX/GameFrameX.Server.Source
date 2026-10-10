@@ -51,119 +51,67 @@ public sealed class OnlineTournament
     /// <summary>
     /// 获取或设置赛事标识（App 内唯一，创建方提供）。
     /// </summary>
-    public string TournamentId
-    {
-        get;
-        set;
-    }
+    public string TournamentId { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识（作用域隔离键）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识（作用域隔离键）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置关联榜单标识（报名资格判定与结束成绩冻结的唯一数据来源；本赛事只读该榜）。
     /// </summary>
-    public string LeaderboardId
-    {
-        get;
-        set;
-    }
+    public string LeaderboardId { get; set; }
 
     /// <summary>
     /// 获取或设置赛事开始时刻（UTC 毫秒；排期元数据，不触发隐式迁移）。
     /// </summary>
-    public long StartTime
-    {
-        get;
-        set;
-    }
+    public long StartTime { get; set; }
 
     /// <summary>
     /// 获取或设置赛事结束时刻（UTC 毫秒；排期元数据，不触发隐式迁移）。
     /// </summary>
-    public long EndTime
-    {
-        get;
-        set;
-    }
+    public long EndTime { get; set; }
 
     /// <summary>
     /// 获取或设置报名资格条件（创建后固化）。
     /// </summary>
-    public OnlineTournamentEligibility Eligibility
-    {
-        get;
-        set;
-    }
+    public OnlineTournamentEligibility Eligibility { get; set; }
 
     /// <summary>
     /// 获取或设置赛事奖励规则（名次区间 → 资产变更行；创建后固化）。
     /// </summary>
-    public List<OnlineTournamentRewardRule> RewardRules
-    {
-        get;
-        set;
-    }
+    public List<OnlineTournamentRewardRule> RewardRules { get; set; }
 
     /// <summary>
     /// 获取或设置当前生命周期状态（只经状态机迁移）。
     /// </summary>
-    public OnlineTournamentState State
-    {
-        get;
-        set;
-    }
+    public OnlineTournamentState State { get; set; }
 
     /// <summary>
     /// 获取或设置创建时刻（UTC 毫秒）。
     /// </summary>
-    public long CreatedTime
-    {
-        get;
-        set;
-    }
+    public long CreatedTime { get; set; }
 
     /// <summary>
     /// 获取或设置开始时刻（UTC 毫秒；未开始为 0；开始即关闭报名窗口）。
     /// </summary>
-    public long StartedTime
-    {
-        get;
-        set;
-    }
+    public long StartedTime { get; set; }
 
     /// <summary>
     /// 获取或设置结束（成绩冻结）时刻（UTC 毫秒；未结束为 0）。
     /// </summary>
-    public long EndedTime
-    {
-        get;
-        set;
-    }
+    public long EndedTime { get; set; }
 
     /// <summary>
     /// 获取或设置结算完成时刻（UTC 毫秒；未结算为 0）。
     /// </summary>
-    public long SettledTime
-    {
-        get;
-        set;
-    }
+    public long SettledTime { get; set; }
 
     /// <summary>
     /// 复制赛事定义（资格条件与奖励规则深拷贝，存储出入参防御性拷贝）。

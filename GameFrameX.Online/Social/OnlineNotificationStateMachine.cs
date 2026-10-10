@@ -57,7 +57,7 @@ namespace GameFrameX.Online.Social;
 public static class OnlineNotificationStateMachine
 {
     /// <summary>合法迁移边（起始态 → 允许的目标态集合）。</summary>
-    private static readonly Dictionary<OnlineNotificationState, OnlineNotificationState[]> AllowedEdges = new Dictionary<OnlineNotificationState, OnlineNotificationState[]>
+    private static readonly Dictionary<OnlineNotificationState, OnlineNotificationState[]> AllowedEdges = new()
     {
         {
             OnlineNotificationState.Created, new[]

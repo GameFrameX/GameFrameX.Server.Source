@@ -42,27 +42,15 @@ public sealed class OnlineMatchListingJoinRequest
     /// <summary>
     /// 获取或设置请求方玩家标识（必须与作用域主体位一致）。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置随行成员标识集合（不含请求方也可；服务会并入去重）。
     /// </summary>
-    public List<long> MemberPlayerIds
-    {
-        get;
-        set;
-    }
+    public List<long> MemberPlayerIds { get; set; }
 
     /// <summary>
     /// 获取或设置加入密码（仅 <see cref="OnlineJoinPolicy.Password"/> 使用）。
     /// </summary>
-    public string Password
-    {
-        get;
-        set;
-    }
+    public string Password { get; set; }
 }

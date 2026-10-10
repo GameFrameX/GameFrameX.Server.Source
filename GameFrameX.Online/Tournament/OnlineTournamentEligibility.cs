@@ -46,20 +46,12 @@ public sealed class OnlineTournamentEligibility
     /// <summary>
     /// 获取或设置名次上限（必须进入关联榜单前 N；0 表示不限）。
     /// </summary>
-    public int MinLeaderboardRank
-    {
-        get;
-        set;
-    }
+    public int MinLeaderboardRank { get; set; }
 
     /// <summary>
     /// 获取或设置分数下限（关联榜单分数不得低于该值；null 表示不限）。
     /// </summary>
-    public long? MinLeaderboardScore
-    {
-        get;
-        set;
-    }
+    public long? MinLeaderboardScore { get; set; }
 
     /// <summary>
     /// 判定报名资格（判定输入为关联榜单上的名次与分数）。

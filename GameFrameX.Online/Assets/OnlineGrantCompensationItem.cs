@@ -42,35 +42,22 @@ public sealed class OnlineGrantCompensationItem
     /// <summary>
     /// 获取待续投请求（原样保留）。
     /// </summary>
-    public OnlineGrantRequest Request
-    {
-        get;
-    }
+    public OnlineGrantRequest Request { get; }
 
     /// <summary>
     /// 获取入队时刻（UTC 毫秒）。
     /// </summary>
-    public long EnqueuedTime
-    {
-        get;
-    }
+    public long EnqueuedTime { get; }
 
     /// <summary>
     /// 获取 SLO 截止时刻（UTC 毫秒；超时未投递成功即告警转人工）。
     /// </summary>
-    public long DeadlineTime
-    {
-        get;
-    }
+    public long DeadlineTime { get; }
 
     /// <summary>
     /// 获取或设置是否已发过 SLO 超时告警（去重标记）。
     /// </summary>
-    public bool SloAlerted
-    {
-        get;
-        set;
-    }
+    public bool SloAlerted { get; set; }
 
     /// <summary>
     /// 构造补偿队列条目。

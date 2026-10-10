@@ -43,38 +43,22 @@ public sealed class OnlineMatchServerEvent
     /// <summary>
     /// 获取或设置服务器序号。
     /// </summary>
-    public long Sequence
-    {
-        get;
-        set;
-    }
+    public long Sequence { get; set; }
 
     /// <summary>
     /// 获取或设置事件类型名（如 <c>RoundResolved</c>、<c>MemberJoined</c>）。
     /// </summary>
-    public string EventType
-    {
-        get;
-        set;
-    }
+    public string EventType { get; set; }
 
     /// <summary>
     /// 获取或设置玩法私有载荷（不透明字节；可为空）。
     /// </summary>
-    public byte[] Payload
-    {
-        get;
-        set;
-    }
+    public byte[] Payload { get; set; }
 
     /// <summary>
     /// 获取或设置发生时刻（UTC 毫秒）。
     /// </summary>
-    public long OccurredTime
-    {
-        get;
-        set;
-    }
+    public long OccurredTime { get; set; }
 
     /// <summary>
     /// 复制事件（载荷逐字节拷贝，避免调用方改写已入日志的载荷）。

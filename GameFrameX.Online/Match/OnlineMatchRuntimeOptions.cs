@@ -41,48 +41,28 @@ public sealed class OnlineMatchRuntimeOptions
     /// <summary>
     /// 获取或设置等待阶段时限（秒；默认 60）。超时转 <see cref="OnlineMatchState.Timeout"/>。
     /// </summary>
-    public int WaitingTimeoutSeconds
-    {
-        get;
-        set;
-    } = 60;
+    public int WaitingTimeoutSeconds { get; set; } = 60;
 
     /// <summary>
     /// 获取或设置运行阶段时限（秒；默认 300）。超时转 <see cref="OnlineMatchState.Timeout"/>。
     /// </summary>
-    public int RunningTimeoutSeconds
-    {
-        get;
-        set;
-    } = 300;
+    public int RunningTimeoutSeconds { get; set; } = 300;
 
     /// <summary>
     /// 获取或设置断线重连窗口（秒；默认 30）。窗口内可重连，超窗转退出/托管。
     /// </summary>
-    public int ReconnectWindowSeconds
-    {
-        get;
-        set;
-    } = 30;
+    public int ReconnectWindowSeconds { get; set; } = 30;
 
     /// <summary>
     /// 获取或设置结束态保留时长（秒；默认 30）。保留期内可查询结果，到期由 Tick 释放。
     /// </summary>
-    public int EndedRetentionSeconds
-    {
-        get;
-        set;
-    } = 30;
+    public int EndedRetentionSeconds { get; set; } = 30;
 
     /// <summary>
     /// 获取或设置服务器事件日志上限（条；默认 512）。超出后仅保留最近 N 条，
     /// 重连跨越该窗口时退回全量快照（vault 风险缓解「快照只含必要状态，对快照大小设上限并测量」）。
     /// </summary>
-    public int MaxServerEventsPerMatch
-    {
-        get;
-        set;
-    } = 512;
+    public int MaxServerEventsPerMatch { get; set; } = 512;
 
     /// <summary>
     /// 复制配置（装配方传递后不被后续改动影响）。

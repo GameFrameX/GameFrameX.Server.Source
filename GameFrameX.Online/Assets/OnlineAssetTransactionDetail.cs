@@ -42,18 +42,12 @@ public sealed class OnlineAssetTransactionDetail
     /// <summary>
     /// 获取交易记录。
     /// </summary>
-    public OnlineAssetTransaction Transaction
-    {
-        get;
-    }
+    public OnlineAssetTransaction Transaction { get; }
 
     /// <summary>
     /// 获取该交易全部账本条目（按账本序升序，含反转条目）。
     /// </summary>
-    public IReadOnlyList<OnlineLedgerEntry> Entries
-    {
-        get;
-    }
+    public IReadOnlyList<OnlineLedgerEntry> Entries { get; }
 
     /// <summary>
     /// 构造交易详情。

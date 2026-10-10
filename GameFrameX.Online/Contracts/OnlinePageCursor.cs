@@ -42,20 +42,12 @@ public sealed class OnlinePageCursor
     /// <summary>
     /// 获取或设置分页游标（服务端编码的不透明令牌；首页请求传空）。
     /// </summary>
-    public string Cursor
-    {
-        get;
-        set;
-    }
+    public string Cursor { get; set; }
 
     /// <summary>
     /// 获取或设置是否还有更多数据（按稳定排序取满当前页且存在后续记录时为 <c>true</c>）。
     /// </summary>
-    public bool HasMore
-    {
-        get;
-        set;
-    }
+    public bool HasMore { get; set; }
 
     /// <summary>
     /// 构造游标结果。

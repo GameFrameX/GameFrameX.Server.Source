@@ -44,29 +44,17 @@ public sealed class OnlinePlayerStorageOptions
     /// <summary>
     /// 获取或设置单值负载上限（字节；默认 64KB）。
     /// </summary>
-    public int MaxPayloadBytes
-    {
-        get;
-        set;
-    } = 64 * 1024;
+    public int MaxPayloadBytes { get; set; } = 64 * 1024;
 
     /// <summary>
     /// 获取或设置单集合活跃键数上限（默认 256；软删键不占额度）。
     /// </summary>
-    public int MaxKeysPerCollection
-    {
-        get;
-        set;
-    } = 256;
+    public int MaxKeysPerCollection { get; set; } = 256;
 
     /// <summary>
     /// 获取或设置单页条数上限（默认 100；超出钳制到上限）。
     /// </summary>
-    public int MaxPageSize
-    {
-        get;
-        set;
-    } = 100;
+    public int MaxPageSize { get; set; } = 100;
 
     /// <summary>
     /// 校验集合名/键的格式与长度。

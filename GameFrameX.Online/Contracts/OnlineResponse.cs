@@ -43,47 +43,27 @@ public sealed class OnlineResponse<TData>
     /// <summary>
     /// 获取或设置协议错误码（0=成功；非 0 见 <see cref="OnlineErrorCode"/> 八段分层）。
     /// </summary>
-    public int Code
-    {
-        get;
-        set;
-    }
+    public int Code { get; set; }
 
     /// <summary>
     /// 获取或设置可本地化消息键（<c>Online.Error.{段名}.{成员名}</c>；成功时为空字符串）。
     /// </summary>
-    public string MessageKey
-    {
-        get;
-        set;
-    }
+    public string MessageKey { get; set; }
 
     /// <summary>
     /// 获取或设置请求标识回显（取自请求上下文 <c>RequestId</c>，支撑链路追踪）。
     /// </summary>
-    public string RequestId
-    {
-        get;
-        set;
-    }
+    public string RequestId { get; set; }
 
     /// <summary>
     /// 获取或设置服务端时间（UTC 毫秒；客户端本地时间校准与超时判定的基准）。
     /// </summary>
-    public long ServerTime
-    {
-        get;
-        set;
-    }
+    public long ServerTime { get; set; }
 
     /// <summary>
     /// 获取或设置业务数据载荷（失败响应允许为空）。
     /// </summary>
-    public TData Data
-    {
-        get;
-        set;
-    }
+    public TData Data { get; set; }
 
     /// <summary>
     /// 构造成功响应（Code=0、MessageKey 为空、回显 RequestId）。

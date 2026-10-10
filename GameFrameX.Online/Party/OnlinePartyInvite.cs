@@ -42,83 +42,47 @@ public sealed class OnlinePartyInvite
     /// <summary>
     /// 获取或设置邀请标识。
     /// </summary>
-    public string InviteId
-    {
-        get;
-        set;
-    }
+    public string InviteId { get; set; }
 
     /// <summary>
     /// 获取或设置队伍标识。
     /// </summary>
-    public string PartyId
-    {
-        get;
-        set;
-    }
+    public string PartyId { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识（作用域隔离键）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识（作用域隔离键）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置邀请发起人（队长）。
     /// </summary>
-    public long InviterId
-    {
-        get;
-        set;
-    }
+    public long InviterId { get; set; }
 
     /// <summary>
     /// 获取或设置被邀请玩家。
     /// </summary>
-    public long InviteeId
-    {
-        get;
-        set;
-    }
+    public long InviteeId { get; set; }
 
     /// <summary>
     /// 获取或设置邀请状态。
     /// </summary>
-    public OnlinePartyInviteState State
-    {
-        get;
-        set;
-    }
+    public OnlinePartyInviteState State { get; set; }
 
     /// <summary>
     /// 获取或设置创建时刻（UTC 毫秒）。
     /// </summary>
-    public long CreatedAtTime
-    {
-        get;
-        set;
-    }
+    public long CreatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置过期时刻（UTC 毫秒；到点由 <see cref="OnlinePartyService.SweepExpiredAsync"/> 置为过期）。
     /// </summary>
-    public long ExpiresAtTime
-    {
-        get;
-        set;
-    }
+    public long ExpiresAtTime { get; set; }
 
     /// <summary>
     /// 复制邀请条目（存储层防御性深拷贝使用）。

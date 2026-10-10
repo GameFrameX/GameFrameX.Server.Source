@@ -47,7 +47,7 @@ namespace GameFrameX.Online.Social;
 public static class OnlineReportStateMachine
 {
     /// <summary>合法迁移边（起始态 → 允许的目标态集合）。</summary>
-    private static readonly Dictionary<OnlineReportState, OnlineReportState[]> AllowedEdges = new Dictionary<OnlineReportState, OnlineReportState[]>
+    private static readonly Dictionary<OnlineReportState, OnlineReportState[]> AllowedEdges = new()
     {
         {
             OnlineReportState.Submitted, new[]

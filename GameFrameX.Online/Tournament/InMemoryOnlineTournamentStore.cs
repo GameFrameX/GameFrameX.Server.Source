@@ -47,16 +47,16 @@ namespace GameFrameX.Online.Tournament;
 public sealed class InMemoryOnlineTournamentStore : IOnlineTournamentStore
 {
     /// <summary>全局锁（三张表共用，保证出入参一致性与报名的临界区语义）。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>赛事定义表：键 = (TenantId, AppId, TournamentId)。</summary>
-    private readonly Dictionary<string, OnlineTournament> _tournaments = new Dictionary<string, OnlineTournament>();
+    private readonly Dictionary<string, OnlineTournament> _tournaments = new();
 
     /// <summary>报名登记表：键 = (TenantId, AppId, TournamentId, PlayerId)。</summary>
-    private readonly Dictionary<string, OnlineTournamentRegistration> _registrations = new Dictionary<string, OnlineTournamentRegistration>();
+    private readonly Dictionary<string, OnlineTournamentRegistration> _registrations = new();
 
     /// <summary>冻结成绩表：键 = (TenantId, AppId, TournamentId)。</summary>
-    private readonly Dictionary<string, OnlineTournamentStandings> _standings = new Dictionary<string, OnlineTournamentStandings>();
+    private readonly Dictionary<string, OnlineTournamentStandings> _standings = new();
 
     /// <summary>
     /// 初始化 <see cref="InMemoryOnlineTournamentStore"/>。
@@ -167,11 +167,11 @@ public sealed class InMemoryOnlineTournamentStore : IOnlineTournamentStore
             var key = BuildRegistrationKey(registration.TenantId, registration.AppId, registration.TournamentId, registration.PlayerId);
             if (_registrations.TryGetValue(key, out var existing))
             {
-                return Task.FromResult(new OnlineTournamentRegistrationResult { IsNew = false, Registration = existing.Copy() });
+                return Task.FromResult(new OnlineTournamentRegistrationResult { IsNew = false, Registration = existing.Copy(), });
             }
 
             _registrations[key] = registration.Copy();
-            return Task.FromResult(new OnlineTournamentRegistrationResult { IsNew = true, Registration = registration.Copy() });
+            return Task.FromResult(new OnlineTournamentRegistrationResult { IsNew = true, Registration = registration.Copy(), });
         }
     }
 

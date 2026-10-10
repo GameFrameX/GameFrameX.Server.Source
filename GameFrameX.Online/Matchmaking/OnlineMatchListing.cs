@@ -43,155 +43,87 @@ public sealed class OnlineMatchListing
     /// <summary>
     /// 获取或设置列表项标识。
     /// </summary>
-    public string ListingId
-    {
-        get;
-        set;
-    }
+    public string ListingId { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识（作用域隔离键）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识（作用域隔离键）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置区服标识（作用域隔离键）。
     /// </summary>
-    public long ServerId
-    {
-        get;
-        set;
-    }
+    public long ServerId { get; set; }
 
     /// <summary>
     /// 获取或设置来源队伍标识（非队伍来源为空字符串）。
     /// </summary>
-    public string PartyId
-    {
-        get;
-        set;
-    }
+    public string PartyId { get; set; }
 
     /// <summary>
     /// 获取或设置归属玩家标识（发布者）。
     /// </summary>
-    public long OwnerPlayerId
-    {
-        get;
-        set;
-    }
+    public long OwnerPlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置展示名称。
     /// </summary>
-    public string Name
-    {
-        get;
-        set;
-    }
+    public string Name { get; set; }
 
     /// <summary>
     /// 获取或设置玩法模式。
     /// </summary>
-    public int Mode
-    {
-        get;
-        set;
-    }
+    public int Mode { get; set; }
 
     /// <summary>
     /// 获取或设置区域。
     /// </summary>
-    public int Region
-    {
-        get;
-        set;
-    }
+    public int Region { get; set; }
 
     /// <summary>
     /// 获取或设置加入策略。
     /// </summary>
-    public OnlineJoinPolicy JoinPolicy
-    {
-        get;
-        set;
-    }
+    public OnlineJoinPolicy JoinPolicy { get; set; }
 
     /// <summary>
     /// 获取或设置加入密码（仅 <see cref="OnlineJoinPolicy.Password"/> 有效；不对外输出）。
     /// </summary>
-    public string Password
-    {
-        get;
-        set;
-    }
+    public string Password { get; set; }
 
     /// <summary>
     /// 获取或设置邀请白名单（仅 <see cref="OnlineJoinPolicy.InviteOnly"/> 有效；发布时登记，不对外输出）。
     /// </summary>
-    public List<long> InvitedPlayerIds
-    {
-        get;
-        set;
-    }
+    public List<long> InvitedPlayerIds { get; set; }
 
     /// <summary>
     /// 获取或设置标签集合（发现过滤用）。
     /// </summary>
-    public List<string> Tags
-    {
-        get;
-        set;
-    }
+    public List<string> Tags { get; set; }
 
     /// <summary>
     /// 获取或设置容量上限。
     /// </summary>
-    public int Capacity
-    {
-        get;
-        set;
-    }
+    public int Capacity { get; set; }
 
     /// <summary>
     /// 获取或设置已加入人数。
     /// </summary>
-    public int JoinedCount
-    {
-        get;
-        set;
-    }
+    public int JoinedCount { get; set; }
 
     /// <summary>
     /// 获取或设置列表项状态。
     /// </summary>
-    public OnlineMatchListingState State
-    {
-        get;
-        set;
-    }
+    public OnlineMatchListingState State { get; set; }
 
     /// <summary>
     /// 获取或设置创建时刻（UTC 毫秒）。
     /// </summary>
-    public long CreatedAtTime
-    {
-        get;
-        set;
-    }
+    public long CreatedAtTime { get; set; }
 
     /// <summary>
     /// 复制列表项（存储层防御性深拷贝使用；标签集合逐项复制）。

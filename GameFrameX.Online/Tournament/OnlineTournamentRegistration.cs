@@ -44,65 +44,37 @@ public sealed class OnlineTournamentRegistration
     /// <summary>
     /// 获取或设置赛事标识（归属键）。
     /// </summary>
-    public string TournamentId
-    {
-        get;
-        set;
-    }
+    public string TournamentId { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识（作用域隔离键）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识（作用域隔离键）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置报名玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置报名时刻（UTC 毫秒）。
     /// </summary>
-    public long RegisteredTime
-    {
-        get;
-        set;
-    }
+    public long RegisteredTime { get; set; }
 
     /// <summary>
     /// 获取或设置报名时刻在关联榜单上的名次（无门槛赛事或未取榜时为 0；资格判定输入，事后冻结）。
     /// </summary>
-    public int RankAtRegistration
-    {
-        get;
-        set;
-    }
+    public int RankAtRegistration { get; set; }
 
     /// <summary>
     /// 获取或设置报名时刻在关联榜单上的分数（无门槛赛事或未取榜时为 0；资格判定输入，事后冻结）。
     /// </summary>
-    public long ScoreAtRegistration
-    {
-        get;
-        set;
-    }
+    public long ScoreAtRegistration { get; set; }
 
     /// <summary>
     /// 复制报名登记（存储出入参防御性拷贝）。

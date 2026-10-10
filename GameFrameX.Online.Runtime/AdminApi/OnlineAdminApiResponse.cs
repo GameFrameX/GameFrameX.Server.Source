@@ -44,56 +44,32 @@ public sealed class OnlineAdminApiResponse
     /// <summary>
     /// 获取或设置协议业务码（0=成功；非 0 按 <see cref="Contracts.OnlineErrorCode"/> 八段分层）。
     /// </summary>
-    public int Code
-    {
-        get;
-        set;
-    }
+    public int Code { get; set; }
 
     /// <summary>
     /// 获取或设置可本地化消息键（<c>Online.Error.{段名}.{成员名}</c>；成功时为空字符串）。
     /// </summary>
-    public string MessageKey
-    {
-        get;
-        set;
-    } = string.Empty;
+    public string MessageKey { get; set; } = string.Empty;
 
     /// <summary>
     /// 获取或设置诊断消息（服务端原文，仅日志/排查用，客户端不得依赖其文案判断流程）。
     /// </summary>
-    public string Message
-    {
-        get;
-        set;
-    } = string.Empty;
+    public string Message { get; set; } = string.Empty;
 
     /// <summary>
     /// 获取或设置请求标识回显（取自请求 <c>RequestId</c>，支撑链路追踪；请求未携带时由服务端生成）。
     /// </summary>
-    public string RequestId
-    {
-        get;
-        set;
-    } = string.Empty;
+    public string RequestId { get; set; } = string.Empty;
 
     /// <summary>
     /// 获取或设置服务端时间（Unix 秒；Admin 线缆契约）。
     /// </summary>
-    public long ServerTime
-    {
-        get;
-        set;
-    }
+    public long ServerTime { get; set; }
 
     /// <summary>
     /// 获取或设置业务数据载荷（成功时必须非 null）。
     /// </summary>
-    public object Data
-    {
-        get;
-        set;
-    }
+    public object Data { get; set; }
 
     /// <summary>
     /// 构造成功响应。
@@ -123,7 +99,7 @@ public sealed class OnlineAdminApiResponse
     /// <param name="requestId">请求标识回显。</param>
     /// <param name="serverTime">服务端时间（UTC 毫秒）。</param>
     /// <returns>失败响应实例（Data 为 null）。</returns>
-    public static OnlineAdminApiResponse Fail(Contracts.OnlineErrorCode code, string message, string requestId, long serverTime)
+    public static OnlineAdminApiResponse Fail(OnlineErrorCode code, string message, string requestId, long serverTime)
     {
         return new OnlineAdminApiResponse
         {

@@ -47,26 +47,17 @@ public interface IOnlineMatchGame
     /// <summary>
     /// 获取本玩法对应的模式标识（与 <see cref="OnlineMatch.Mode"/> 匹配）。
     /// </summary>
-    int Mode
-    {
-        get;
-    }
+    int Mode { get; }
 
     /// <summary>
     /// 获取本玩法要求的最小参与人数。
     /// </summary>
-    int MinPlayers
-    {
-        get;
-    }
+    int MinPlayers { get; }
 
     /// <summary>
     /// 获取本玩法允许的最大参与人数。
     /// </summary>
-    int MaxPlayers
-    {
-        get;
-    }
+    int MaxPlayers { get; }
 
     /// <summary>
     /// 创建玩法初始状态。

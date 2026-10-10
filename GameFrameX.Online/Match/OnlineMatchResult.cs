@@ -49,92 +49,52 @@ public sealed class OnlineMatchResult
     /// <summary>
     /// 获取或设置结果标识（全局唯一，幂等边界）。
     /// </summary>
-    public string MatchResultId
-    {
-        get;
-        set;
-    }
+    public string MatchResultId { get; set; }
 
     /// <summary>
     /// 获取或设置对局标识。
     /// </summary>
-    public string MatchId
-    {
-        get;
-        set;
-    }
+    public string MatchId { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识（作用域隔离键）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识（作用域隔离键）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置区服标识（作用域隔离键）。
     /// </summary>
-    public long ServerId
-    {
-        get;
-        set;
-    }
+    public long ServerId { get; set; }
 
     /// <summary>
     /// 获取或设置玩法模式。
     /// </summary>
-    public int Mode
-    {
-        get;
-        set;
-    }
+    public int Mode { get; set; }
 
     /// <summary>
     /// 获取或设置区域。
     /// </summary>
-    public int Region
-    {
-        get;
-        set;
-    }
+    public int Region { get; set; }
 
     /// <summary>
     /// 获取或设置结束方式（正常完成 / 超时 / 中止等，对应结束态的原因）。
     /// </summary>
-    public OnlineMatchState Outcome
-    {
-        get;
-        set;
-    }
+    public OnlineMatchState Outcome { get; set; }
 
     /// <summary>
     /// 获取或设置各玩家条目（按名次升序）。
     /// </summary>
-    public List<OnlineMatchResultEntry> Entries
-    {
-        get;
-        set;
-    }
+    public List<OnlineMatchResultEntry> Entries { get; set; }
 
     /// <summary>
     /// 获取或设置结算时刻（UTC 毫秒）。
     /// </summary>
-    public long SettledTime
-    {
-        get;
-        set;
-    }
+    public long SettledTime { get; set; }
 
     /// <summary>
     /// 复制结果（条目逐项深拷贝）。

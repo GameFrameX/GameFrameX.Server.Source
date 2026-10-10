@@ -46,11 +46,11 @@ public static class OnlineTournamentStateMachine
     /// <summary>
     /// 合法迁移邻接表：键 = 起态，值 = 可达终态集合。
     /// </summary>
-    private static readonly Dictionary<OnlineTournamentState, OnlineTournamentState[]> Adjacency = new Dictionary<OnlineTournamentState, OnlineTournamentState[]>
+    private static readonly Dictionary<OnlineTournamentState, OnlineTournamentState[]> Adjacency = new()
     {
-        { OnlineTournamentState.Scheduled, new[] { OnlineTournamentState.Active } },
-        { OnlineTournamentState.Active, new[] { OnlineTournamentState.Ended } },
-        { OnlineTournamentState.Ended, new[] { OnlineTournamentState.Settled } },
+        { OnlineTournamentState.Scheduled, new[] { OnlineTournamentState.Active, } },
+        { OnlineTournamentState.Active, new[] { OnlineTournamentState.Ended, } },
+        { OnlineTournamentState.Ended, new[] { OnlineTournamentState.Settled, } },
         { OnlineTournamentState.Settled, Array.Empty<OnlineTournamentState>() },
     };
 

@@ -48,74 +48,42 @@ public sealed class OnlineMuteEntry
     /// 从而不重复外发变更事件。不用「创建时刻是否等于本地时钟」当判据：同一毫秒内的两次调用会双双判定成功。
     /// </para>
     /// </summary>
-    public string EntryId
-    {
-        get;
-        set;
-    }
+    public string EntryId { get; set; }
 
     /// <summary>
     /// 获取或设置静音发起人（本条记录的归属玩家）。
     /// </summary>
-    public long OwnerId
-    {
-        get;
-        set;
-    }
+    public long OwnerId { get; set; }
 
     /// <summary>
     /// 获取或设置被静音玩家。
     /// </summary>
-    public long MutedPlayerId
-    {
-        get;
-        set;
-    }
+    public long MutedPlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置发起静音时所在的区服标识（仅作事件信封与审计记录用；**不参与存储键**）。
     /// </summary>
-    public long ServerId
-    {
-        get;
-        set;
-    }
+    public long ServerId { get; set; }
 
     /// <summary>
     /// 获取或设置静音失效时刻（UTC 毫秒；<c>0</c> 表示永久静音）。
     /// </summary>
-    public long ExpiresAtTime
-    {
-        get;
-        set;
-    }
+    public long ExpiresAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置静音生效时刻（UTC 毫秒）。
     /// </summary>
-    public long CreatedAtTime
-    {
-        get;
-        set;
-    }
+    public long CreatedAtTime { get; set; }
 
     /// <summary>
     /// 判定静音在给定时刻是否仍然有效。

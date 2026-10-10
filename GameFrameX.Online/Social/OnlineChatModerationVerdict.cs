@@ -42,20 +42,12 @@ public sealed class OnlineChatModerationVerdict
     /// <summary>
     /// 获取是否放行。
     /// </summary>
-    public bool Allowed
-    {
-        get;
-        private set;
-    }
+    public bool Allowed { get; private set; }
 
     /// <summary>
     /// 获取拒绝原因（放行时为空字符串；供审计与排障，不透出给发送者）。
     /// </summary>
-    public string Reason
-    {
-        get;
-        private set;
-    }
+    public string Reason { get; private set; }
 
     /// <summary>
     /// 初始化裁决结果（仅供工厂方法使用）。

@@ -41,26 +41,17 @@ public sealed class OnlineLoginResolution
     /// <summary>
     /// 获取命中的外源身份。
     /// </summary>
-    public OnlineIdentity Identity
-    {
-        get;
-    }
+    public OnlineIdentity Identity { get; }
 
     /// <summary>
     /// 获取归属游戏账号。
     /// </summary>
-    public OnlineGameAccount GameAccount
-    {
-        get;
-    }
+    public OnlineGameAccount GameAccount { get; }
 
     /// <summary>
     /// 获取本次登录选定的玩家档案（App/Server 归属明确）。
     /// </summary>
-    public OnlinePlayerProfile Player
-    {
-        get;
-    }
+    public OnlinePlayerProfile Player { get; }
 
     /// <summary>
     /// 初始化 <see cref="OnlineLoginResolution"/>。

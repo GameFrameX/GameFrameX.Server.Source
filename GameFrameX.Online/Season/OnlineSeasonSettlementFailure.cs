@@ -39,27 +39,15 @@ public sealed class OnlineSeasonSettlementFailure
     /// <summary>
     /// 获取或设置玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置失败错误码（资产不足 / 参数非法 / 幂等冲突 / 占位繁忙等）。
     /// </summary>
-    public OnlineErrorCode Code
-    {
-        get;
-        set;
-    }
+    public OnlineErrorCode Code { get; set; }
 
     /// <summary>
     /// 获取或设置失败原因（脱敏后的可读描述，供日志与运维排查）。
     /// </summary>
-    public string Message
-    {
-        get;
-        set;
-    }
+    public string Message { get; set; }
 }

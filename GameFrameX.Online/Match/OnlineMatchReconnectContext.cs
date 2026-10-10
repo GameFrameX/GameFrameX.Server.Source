@@ -45,54 +45,30 @@ public sealed class OnlineMatchReconnectContext
     /// <summary>
     /// 获取或设置对局标识。
     /// </summary>
-    public string MatchId
-    {
-        get;
-        set;
-    }
+    public string MatchId { get; set; }
 
     /// <summary>
     /// 获取或设置玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置服务端签发的重连令牌。
     /// </summary>
-    public string ReconnectToken
-    {
-        get;
-        set;
-    }
+    public string ReconnectToken { get; set; }
 
     /// <summary>
     /// 获取或设置客户端最后确认的服务器序号。
     /// </summary>
-    public long LastAcknowledgedSequence
-    {
-        get;
-        set;
-    }
+    public long LastAcknowledgedSequence { get; set; }
 
     /// <summary>
     /// 获取或设置客户端未获确认的输入（重连后由客户端按需重放；服务端按重复包规则幂等处理）。
     /// </summary>
-    public List<OnlineMatchInput> UnacknowledgedInputs
-    {
-        get;
-        set;
-    }
+    public List<OnlineMatchInput> UnacknowledgedInputs { get; set; }
 
     /// <summary>
     /// 获取或设置重连截止时刻（UTC 毫秒；服务端权威值以成员表为准，此处仅供客户端对照）。
     /// </summary>
-    public long ReconnectDeadlineTime
-    {
-        get;
-        set;
-    }
+    public long ReconnectDeadlineTime { get; set; }
 }

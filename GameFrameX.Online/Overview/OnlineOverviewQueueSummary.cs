@@ -43,45 +43,25 @@ public sealed class OnlineOverviewQueueSummary
     /// <summary>
     /// 获取或设置玩法模式（取自票据 <see cref="Matchmaking.OnlineMatchTicket.Mode"/> 原值）。
     /// </summary>
-    public int Mode
-    {
-        get;
-        set;
-    }
+    public int Mode { get; set; }
 
     /// <summary>
     /// 获取或设置区域（取自票据 <see cref="Matchmaking.OnlineMatchTicket.Region"/> 原值）。
     /// </summary>
-    public int Region
-    {
-        get;
-        set;
-    }
+    public int Region { get; set; }
 
     /// <summary>
     /// 获取或设置队列深度（当前作用域内处于排队态的票据数）。
     /// </summary>
-    public int QueueDepth
-    {
-        get;
-        set;
-    }
+    public int QueueDepth { get; set; }
 
     /// <summary>
     /// 获取或设置平均已等待秒数（排队态票据的平均等待时长；无排队票据时为 0）。
     /// </summary>
-    public int AverageWaitSeconds
-    {
-        get;
-        set;
-    }
+    public int AverageWaitSeconds { get; set; }
 
     /// <summary>
     /// 获取或设置最近一分钟达成匹配的票据数（滑动窗口吞吐，详见服务类文档）。
     /// </summary>
-    public int ThroughputPerMinute
-    {
-        get;
-        set;
-    }
+    public int ThroughputPerMinute { get; set; }
 }

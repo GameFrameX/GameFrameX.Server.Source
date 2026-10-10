@@ -49,173 +49,97 @@ public sealed class OnlineMatch
     /// <summary>
     /// 获取或设置租户标识（作用域隔离键）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识（作用域隔离键）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置区服标识（作用域隔离键）。
     /// </summary>
-    public long ServerId
-    {
-        get;
-        set;
-    }
+    public long ServerId { get; set; }
 
     /// <summary>
     /// 获取或设置对局标识。
     /// </summary>
-    public string MatchId
-    {
-        get;
-        set;
-    }
+    public string MatchId { get; set; }
 
     /// <summary>
     /// 获取或设置来源分配标识（来自上游匹配分配，创建后不再改写）。
     /// </summary>
-    public string AssignmentId
-    {
-        get;
-        set;
-    }
+    public string AssignmentId { get; set; }
 
     /// <summary>
     /// 获取或设置玩法模式。
     /// </summary>
-    public int Mode
-    {
-        get;
-        set;
-    }
+    public int Mode { get; set; }
 
     /// <summary>
     /// 获取或设置区域。
     /// </summary>
-    public int Region
-    {
-        get;
-        set;
-    }
+    public int Region { get; set; }
 
     /// <summary>
     /// 获取或设置成组时冻结的规则快照（复盘「为什么这两个人匹配到一起」的依据）。
     /// </summary>
-    public OnlineMatchRuleSnapshot RuleSnapshot
-    {
-        get;
-        set;
-    }
+    public OnlineMatchRuleSnapshot RuleSnapshot { get; set; }
 
     /// <summary>
     /// 获取或设置当前生命周期状态。
     /// </summary>
-    public OnlineMatchState State
-    {
-        get;
-        set;
-    }
+    public OnlineMatchState State { get; set; }
 
     /// <summary>
     /// 获取或设置成员列表（含断线成员，断线不立即等于退出）。
     /// </summary>
-    public List<OnlineMatchMember> Members
-    {
-        get;
-        set;
-    }
+    public List<OnlineMatchMember> Members { get; set; }
 
     /// <summary>
     /// 获取或设置服务端权威序号（每次被接受的输入或服务器事件推进一次）。
     /// </summary>
-    public long ServerSequence
-    {
-        get;
-        set;
-    }
+    public long ServerSequence { get; set; }
 
     /// <summary>
     /// 获取或设置玩法私有状态载荷（不透明字节，由 <see cref="IOnlineMatchGame"/> 解释）。
     /// </summary>
-    public byte[] GameState
-    {
-        get;
-        set;
-    }
+    public byte[] GameState { get; set; }
 
     /// <summary>
     /// 获取或设置有界服务器事件日志（按序号升序，供重连增量补发）。
     /// </summary>
-    public List<OnlineMatchServerEvent> Events
-    {
-        get;
-        set;
-    }
+    public List<OnlineMatchServerEvent> Events { get; set; }
 
     /// <summary>
     /// 获取或设置结算结果（未结算为 null；一经落定不可改写）。
     /// </summary>
-    public OnlineMatchResult Result
-    {
-        get;
-        set;
-    }
+    public OnlineMatchResult Result { get; set; }
 
     /// <summary>
     /// 获取或设置创建时刻（UTC 毫秒）。
     /// </summary>
-    public long CreatedTime
-    {
-        get;
-        set;
-    }
+    public long CreatedTime { get; set; }
 
     /// <summary>
     /// 获取或设置最近一次状态变更时刻（UTC 毫秒）。
     /// </summary>
-    public long StateChangedTime
-    {
-        get;
-        set;
-    }
+    public long StateChangedTime { get; set; }
 
     /// <summary>
     /// 获取或设置当前阶段截止时刻（UTC 毫秒；由 Actor 按阶段时限重算）。
     /// </summary>
-    public long DeadlineTime
-    {
-        get;
-        set;
-    }
+    public long DeadlineTime { get; set; }
 
     /// <summary>
     /// 获取或设置进入结束态的时刻（UTC 毫秒；未结束为 0）。
     /// </summary>
-    public long EndedTime
-    {
-        get;
-        set;
-    }
+    public long EndedTime { get; set; }
 
     /// <summary>
     /// 获取或设置乐观并发版本（每次成功改写自增）。
     /// </summary>
-    public long Version
-    {
-        get;
-        set;
-    }
+    public long Version { get; set; }
 
     /// <summary>
     /// 按玩家标识查找成员。

@@ -33,10 +33,10 @@ namespace GameFrameX.Online.Assets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Events;
-using GameFrameX.Online.Idempotency;
-using GameFrameX.Online.Scope;
+using Contracts;
+using Events;
+using Idempotency;
+using Scope;
 
 /// <summary>
 /// 统一资产入口服务（发放/扣除/撤销/补发/人工调整的唯一提交管道）。
@@ -221,7 +221,7 @@ public sealed class OnlineGrantService
         var changeEvent = OnlineAssetEvents.Create(transaction, entries);
         await _eventPublisher.PublishAsync(changeEvent, cancellationToken);
 
-        return OnlineResult<OnlineGrantResult>.Ok(new OnlineGrantResult { TransactionId = transaction.TransactionId, State = transaction.State, IsReplay = false, Entries = entries });
+        return OnlineResult<OnlineGrantResult>.Ok(new OnlineGrantResult { TransactionId = transaction.TransactionId, State = transaction.State, IsReplay = false, Entries = entries, });
     }
 
     /// <summary>
@@ -345,7 +345,7 @@ public sealed class OnlineGrantService
 
         var transactionId = token.Substring(0, separatorIndex);
         var entries = await _assetStore.FindLedgerEntriesByTransactionIdAsync(transactionId, cancellationToken);
-        return OnlineResult<OnlineGrantResult>.Ok(new OnlineGrantResult { TransactionId = transactionId, State = OnlineAssetTransactionState.Succeeded, IsReplay = true, Entries = entries });
+        return OnlineResult<OnlineGrantResult>.Ok(new OnlineGrantResult { TransactionId = transactionId, State = OnlineAssetTransactionState.Succeeded, IsReplay = true, Entries = entries, });
     }
 
     /// <summary>

@@ -45,16 +45,16 @@ namespace GameFrameX.Online.Matchmaking;
 public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
 {
     /// <summary>全局读写锁。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>票据表：键 = (TenantId, AppId, TicketId)。</summary>
-    private readonly Dictionary<string, OnlineMatchTicket> _tickets = new Dictionary<string, OnlineMatchTicket>();
+    private readonly Dictionary<string, OnlineMatchTicket> _tickets = new();
 
     /// <summary>玩家反查索引：键 = (TenantId, AppId, PlayerId)，值 = 其排队中票据标识。</summary>
-    private readonly Dictionary<string, string> _playerIndex = new Dictionary<string, string>();
+    private readonly Dictionary<string, string> _playerIndex = new();
 
     /// <summary>对局分配表：键 = (TenantId, AppId, AssignmentId)。</summary>
-    private readonly Dictionary<string, OnlineMatchAssignment> _assignments = new Dictionary<string, OnlineMatchAssignment>();
+    private readonly Dictionary<string, OnlineMatchAssignment> _assignments = new();
 
     /// <summary>
     /// 深拷贝票据后写入内存票据表（新增或覆盖），票据处于排队态时同步写入玩家反查索引。

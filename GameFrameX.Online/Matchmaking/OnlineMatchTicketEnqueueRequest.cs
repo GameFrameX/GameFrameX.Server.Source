@@ -41,72 +41,40 @@ public sealed class OnlineMatchTicketEnqueueRequest
     /// <summary>
     /// 获取或设置来源队伍标识（单人排队留空）。
     /// </summary>
-    public string PartyId
-    {
-        get;
-        set;
-    }
+    public string PartyId { get; set; }
 
     /// <summary>
     /// 获取或设置票据携带的玩家集合（队伍票据必须为整队成员）。
     /// </summary>
-    public List<long> PlayerIds
-    {
-        get;
-        set;
-    }
+    public List<long> PlayerIds { get; set; }
 
     /// <summary>
     /// 获取或设置玩法模式。
     /// </summary>
-    public int Mode
-    {
-        get;
-        set;
-    }
+    public int Mode { get; set; }
 
     /// <summary>
     /// 获取或设置区域。
     /// </summary>
-    public int Region
-    {
-        get;
-        set;
-    }
+    public int Region { get; set; }
 
     /// <summary>
     /// 获取或设置技术水平区间。
     /// </summary>
-    public OnlineMatchSkillRange SkillRange
-    {
-        get;
-        set;
-    }
+    public OnlineMatchSkillRange SkillRange { get; set; }
 
     /// <summary>
     /// 获取或设置目标对局规模（组内总人数）。
     /// </summary>
-    public int TeamSize
-    {
-        get;
-        set;
-    }
+    public int TeamSize { get; set; }
 
     /// <summary>
     /// 获取或设置延迟要求（毫秒；0 表示不限）。
     /// </summary>
-    public int LatencyRequirement
-    {
-        get;
-        set;
-    }
+    public int LatencyRequirement { get; set; }
 
     /// <summary>
     /// 获取或设置自定义匹配属性。
     /// </summary>
-    public Dictionary<string, string> CustomProperties
-    {
-        get;
-        set;
-    }
+    public Dictionary<string, string> CustomProperties { get; set; }
 }

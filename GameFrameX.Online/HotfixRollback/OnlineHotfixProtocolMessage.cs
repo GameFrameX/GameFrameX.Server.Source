@@ -42,18 +42,10 @@ public sealed class OnlineHotfixProtocolMessage
     /// <summary>
     /// 获取或设置协议消息名（路由键；同清单内唯一）。
     /// </summary>
-    public string MessageName
-    {
-        get;
-        set;
-    }
+    public string MessageName { get; set; }
 
     /// <summary>
     /// 获取或设置协议消息号（线缆标识；同清单内唯一，必须大于 0）。
     /// </summary>
-    public int MessageId
-    {
-        get;
-        set;
-    }
+    public int MessageId { get; set; }
 }

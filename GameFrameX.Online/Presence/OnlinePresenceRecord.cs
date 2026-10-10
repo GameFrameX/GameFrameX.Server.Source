@@ -42,90 +42,50 @@ public sealed class OnlinePresenceRecord
     /// <summary>
     /// 获取或设置租户标识。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置应用标识。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置区服标识（事件归属透出用；Presence 键不含区服位）。
     /// </summary>
-    public long ServerId
-    {
-        get;
-        set;
-    }
+    public long ServerId { get; set; }
 
     /// <summary>
     /// 获取或设置玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置关联会话标识。
     /// </summary>
-    public string SessionId
-    {
-        get;
-        set;
-    }
+    public string SessionId { get; set; }
 
     /// <summary>
     /// 获取或设置当前在线状态。
     /// </summary>
-    public OnlinePresenceState State
-    {
-        get;
-        set;
-    }
+    public OnlinePresenceState State { get; set; }
 
     /// <summary>
     /// 获取或设置最近一次状态变更原因码。
     /// </summary>
-    public OnlinePresenceChangeReason ChangeReason
-    {
-        get;
-        set;
-    }
+    public OnlinePresenceChangeReason ChangeReason { get; set; }
 
     /// <summary>
     /// 获取或设置最近一次状态变更时间（Unix 毫秒）。
     /// </summary>
-    public long ChangedAtTime
-    {
-        get;
-        set;
-    }
+    public long ChangedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置最近心跳时间（Unix 毫秒；Idle 判定输入）。
     /// </summary>
-    public long LastHeartbeatAtTime
-    {
-        get;
-        set;
-    }
+    public long LastHeartbeatAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置重连窗口截止时间（Unix 毫秒；0 = 无窗口；超窗清理输入）。
     /// </summary>
-    public long ReconnectDeadlineAtTime
-    {
-        get;
-        set;
-    }
+    public long ReconnectDeadlineAtTime { get; set; }
 }

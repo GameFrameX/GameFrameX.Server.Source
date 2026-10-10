@@ -32,7 +32,7 @@ namespace GameFrameX.Online.Assets;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Contracts;
+using Contracts;
 
 /// <summary>
 /// 跨服补偿队列（归属服不可用时的续投承载；恢复后自动完成且不重复）。
@@ -55,10 +55,10 @@ public sealed class OnlineGrantCompensationQueue
     private readonly long _sloMilliseconds;
 
     /// <summary>队列守卫锁。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>待续投条目。</summary>
-    private readonly List<OnlineGrantCompensationItem> _items = new List<OnlineGrantCompensationItem>();
+    private readonly List<OnlineGrantCompensationItem> _items = new();
 
     /// <summary>
     /// 初始化 <see cref="OnlineGrantCompensationQueue"/>。

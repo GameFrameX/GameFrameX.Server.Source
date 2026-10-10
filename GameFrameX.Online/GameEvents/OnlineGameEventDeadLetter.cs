@@ -43,36 +43,20 @@ public sealed class OnlineGameEventDeadLetter
     /// <summary>
     /// 获取或设置被拒绝的事件信封。
     /// </summary>
-    public OnlineEvent Event
-    {
-        get;
-        set;
-    }
+    public OnlineEvent Event { get; set; }
 
     /// <summary>
     /// 获取或设置拒绝码。
     /// </summary>
-    public OnlineGameEventRejectionReason Reason
-    {
-        get;
-        set;
-    }
+    public OnlineGameEventRejectionReason Reason { get; set; }
 
     /// <summary>
     /// 获取或设置拒绝原因。
     /// </summary>
-    public string Message
-    {
-        get;
-        set;
-    }
+    public string Message { get; set; }
 
     /// <summary>
     /// 获取或设置拒收时刻（UTC 毫秒；摄取器判定拒绝的时刻）。
     /// </summary>
-    public long RejectedTime
-    {
-        get;
-        set;
-    }
+    public long RejectedTime { get; set; }
 }

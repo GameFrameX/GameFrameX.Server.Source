@@ -147,32 +147,16 @@ public static class OnlineLeaderboardEvents
     private sealed class LeaderboardCreatedPayload
     {
         /// <summary>榜单标识。</summary>
-        public string LeaderboardId
-        {
-            get;
-            set;
-        }
+        public string LeaderboardId { get; set; }
 
         /// <summary>排序方向名。</summary>
-        public string SortOrder
-        {
-            get;
-            set;
-        }
+        public string SortOrder { get; set; }
 
         /// <summary>累计策略名。</summary>
-        public string ScoreUpdatePolicy
-        {
-            get;
-            set;
-        }
+        public string ScoreUpdatePolicy { get; set; }
 
         /// <summary>创建时刻（UTC 毫秒）。</summary>
-        public long CreatedTime
-        {
-            get;
-            set;
-        }
+        public long CreatedTime { get; set; }
     }
 
     /// <summary>
@@ -181,52 +165,24 @@ public static class OnlineLeaderboardEvents
     private sealed class ScoreUpdatedPayload
     {
         /// <summary>榜单标识。</summary>
-        public string LeaderboardId
-        {
-            get;
-            set;
-        }
+        public string LeaderboardId { get; set; }
 
         /// <summary>玩家标识。</summary>
-        public long PlayerId
-        {
-            get;
-            set;
-        }
+        public long PlayerId { get; set; }
 
         /// <summary>变更前分数。</summary>
-        public long OldScore
-        {
-            get;
-            set;
-        }
+        public long OldScore { get; set; }
 
         /// <summary>变更后分数。</summary>
-        public long NewScore
-        {
-            get;
-            set;
-        }
+        public long NewScore { get; set; }
 
         /// <summary>分数来源名。</summary>
-        public string SourceKind
-        {
-            get;
-            set;
-        }
+        public string SourceKind { get; set; }
 
         /// <summary>来源结算结果标识。</summary>
-        public string SourceMatchResultId
-        {
-            get;
-            set;
-        }
+        public string SourceMatchResultId { get; set; }
 
         /// <summary>变更时刻（UTC 毫秒）。</summary>
-        public long UpdatedTime
-        {
-            get;
-            set;
-        }
+        public long UpdatedTime { get; set; }
     }
 }

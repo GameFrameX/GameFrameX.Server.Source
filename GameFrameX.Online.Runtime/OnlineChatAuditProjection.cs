@@ -49,12 +49,12 @@ public sealed class OnlineChatAuditProjection
     /// <summary>
     /// 同步锁（引用表为普通列表）。
     /// </summary>
-    private readonly object _sync = new object();
+    private readonly object _sync = new();
 
     /// <summary>
     /// 消息引用表（按事件到达序追加；查询时按排序键重排）。
     /// </summary>
-    private readonly List<MessageSentRef> _refs = new List<MessageSentRef>();
+    private readonly List<MessageSentRef> _refs = new();
 
     /// <summary>
     /// 初始化 <see cref="OnlineChatAuditProjection"/>。
@@ -361,46 +361,22 @@ public sealed class OnlineChatAuditProjection
     public sealed class MessageSentRef
     {
         /// <summary>获取或设置消息标识。</summary>
-        public string MessageId
-        {
-            get;
-            set;
-        }
+        public string MessageId { get; set; }
 
         /// <summary>获取或设置频道标识。</summary>
-        public string ChannelId
-        {
-            get;
-            set;
-        }
+        public string ChannelId { get; set; }
 
         /// <summary>获取或设置频道类型名。</summary>
-        public string ChannelKind
-        {
-            get;
-            set;
-        }
+        public string ChannelKind { get; set; }
 
         /// <summary>获取或设置发送者。</summary>
-        public long SenderId
-        {
-            get;
-            set;
-        }
+        public long SenderId { get; set; }
 
         /// <summary>获取或设置发送时刻（UTC 毫秒）。</summary>
-        public long SentAtTime
-        {
-            get;
-            set;
-        }
+        public long SentAtTime { get; set; }
 
         /// <summary>获取或设置频道内序号。</summary>
-        public long Sequence
-        {
-            get;
-            set;
-        }
+        public long Sequence { get; set; }
     }
 
     /// <summary>
@@ -409,32 +385,16 @@ public sealed class OnlineChatAuditProjection
     public sealed class ChatAuditPage
     {
         /// <summary>获取或设置消息条目（新到旧）。</summary>
-        public List<ChatAuditItem> Items
-        {
-            get;
-            set;
-        }
+        public List<ChatAuditItem> Items { get; set; }
 
         /// <summary>获取或设置下一页游标（无更多为 null）。</summary>
-        public string NextCursor
-        {
-            get;
-            set;
-        }
+        public string NextCursor { get; set; }
 
         /// <summary>获取或设置是否还有更多。</summary>
-        public bool HasMore
-        {
-            get;
-            set;
-        }
+        public bool HasMore { get; set; }
 
         /// <summary>获取或设置本次扫描的引用数（诊断用）。</summary>
-        public int ExaminedCount
-        {
-            get;
-            set;
-        }
+        public int ExaminedCount { get; set; }
     }
 
     /// <summary>
@@ -443,66 +403,30 @@ public sealed class OnlineChatAuditProjection
     public sealed class ChatAuditItem
     {
         /// <summary>获取或设置消息标识。</summary>
-        public string MessageId
-        {
-            get;
-            set;
-        }
+        public string MessageId { get; set; }
 
         /// <summary>获取或设置频道标识。</summary>
-        public string ChannelId
-        {
-            get;
-            set;
-        }
+        public string ChannelId { get; set; }
 
         /// <summary>获取或设置频道类型。</summary>
-        public OnlineChatChannelKind ChannelKind
-        {
-            get;
-            set;
-        }
+        public OnlineChatChannelKind ChannelKind { get; set; }
 
         /// <summary>获取或设置发送者。</summary>
-        public long SenderId
-        {
-            get;
-            set;
-        }
+        public long SenderId { get; set; }
 
         /// <summary>获取或设置消息正文（store 回读原文）。</summary>
-        public string Content
-        {
-            get;
-            set;
-        }
+        public string Content { get; set; }
 
         /// <summary>获取或设置消息状态。</summary>
-        public OnlineChatMessageState State
-        {
-            get;
-            set;
-        }
+        public OnlineChatMessageState State { get; set; }
 
         /// <summary>获取或设置发送时刻（UTC 毫秒）。</summary>
-        public long SentAtTime
-        {
-            get;
-            set;
-        }
+        public long SentAtTime { get; set; }
 
         /// <summary>获取或设置频道内序号。</summary>
-        public long Sequence
-        {
-            get;
-            set;
-        }
+        public long Sequence { get; set; }
 
         /// <summary>获取或设置参与者集合。</summary>
-        public List<long> Participants
-        {
-            get;
-            set;
-        }
+        public List<long> Participants { get; set; }
     }
 }

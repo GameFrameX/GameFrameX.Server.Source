@@ -42,65 +42,37 @@ public sealed class OnlineMatchRuleSnapshot
     /// <summary>
     /// 获取或设置玩法模式。
     /// </summary>
-    public int Mode
-    {
-        get;
-        set;
-    }
+    public int Mode { get; set; }
 
     /// <summary>
     /// 获取或设置区域。
     /// </summary>
-    public int Region
-    {
-        get;
-        set;
-    }
+    public int Region { get; set; }
 
     /// <summary>
     /// 获取或设置目标对局规模。
     /// </summary>
-    public int TeamSize
-    {
-        get;
-        set;
-    }
+    public int TeamSize { get; set; }
 
     /// <summary>
     /// 获取或设置成组后实际生效的技能区间下界。
     /// </summary>
-    public int SkillMin
-    {
-        get;
-        set;
-    }
+    public int SkillMin { get; set; }
 
     /// <summary>
     /// 获取或设置成组后实际生效的技能区间上界。
     /// </summary>
-    public int SkillMax
-    {
-        get;
-        set;
-    }
+    public int SkillMax { get; set; }
 
     /// <summary>
     /// 获取或设置参与成组票据的最长等待时长（秒）。
     /// </summary>
-    public int WaitSeconds
-    {
-        get;
-        set;
-    }
+    public int WaitSeconds { get; set; }
 
     /// <summary>
     /// 获取或设置是否发生了等待时间扩展。
     /// </summary>
-    public bool SkillRangeExpanded
-    {
-        get;
-        set;
-    }
+    public bool SkillRangeExpanded { get; set; }
 
     /// <summary>
     /// 复制快照。

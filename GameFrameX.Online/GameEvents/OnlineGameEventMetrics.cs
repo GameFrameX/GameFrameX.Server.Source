@@ -44,74 +44,42 @@ public sealed class OnlineGameEventMetrics
     /// <summary>
     /// 获取或设置租户标识。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置统计窗口起点（UTC 毫秒，含）。
     /// </summary>
-    public long FromTime
-    {
-        get;
-        set;
-    }
+    public long FromTime { get; set; }
 
     /// <summary>
     /// 获取或设置统计窗口终点（UTC 毫秒，含）。
     /// </summary>
-    public long ToTime
-    {
-        get;
-        set;
-    }
+    public long ToTime { get; set; }
 
     /// <summary>
     /// 获取或设置窗口内**已受理**事件总数（按事件发生时刻落在窗口内计）。
     /// </summary>
-    public int TotalCount
-    {
-        get;
-        set;
-    }
+    public int TotalCount { get; set; }
 
     /// <summary>
     /// 获取或设置按分类的事件计数（键为分类名，仅含计数大于 0 的分类）。
     /// </summary>
-    public Dictionary<string, int> CountByCategory
-    {
-        get;
-        set;
-    } = new Dictionary<string, int>();
+    public Dictionary<string, int> CountByCategory { get; set; } = new();
 
     /// <summary>
     /// 获取或设置按事件名的计数（键为事件名，仅含计数大于 0 的事件名；可枚举 17 个标准事件名逐个判定）。
     /// </summary>
-    public Dictionary<string, int> CountByName
-    {
-        get;
-        set;
-    } = new Dictionary<string, int>();
+    public Dictionary<string, int> CountByName { get; set; } = new();
 
     /// <summary>
     /// 获取或设置窗口内被基础校验拒绝并进入死信的**脏事件**数（摄取健康度的唯一信号：正常应为 0）。
     /// </summary>
-    public int RejectedCount
-    {
-        get;
-        set;
-    }
+    public int RejectedCount { get; set; }
 
     /// <summary>
     /// 获取或设置窗口内的**活跃玩家数**（去重口径：窗口内发生过 <see cref="OnlineGameEventName.SessionStart"/>
@@ -119,11 +87,7 @@ public sealed class OnlineGameEventMetrics
     /// 与计数类指标的差别是它**不是**某事件名的条数，故单独成项；胜率等比值指标可由
     /// <see cref="GetNameCount"/> 的 Win / Lose 计数派生，不在此固化比值口径。
     /// </summary>
-    public int ActivePlayerCount
-    {
-        get;
-        set;
-    }
+    public int ActivePlayerCount { get; set; }
 
     /// <summary>
     /// 获取某个分类的事件计数（无记录返回 0，便于断言与报表直接取值）。

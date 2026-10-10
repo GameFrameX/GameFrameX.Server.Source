@@ -31,9 +31,9 @@ namespace GameFrameX.Online.Social;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Events;
-using GameFrameX.Online.Scope;
+using Contracts;
+using Events;
+using Scope;
 
 /// <summary>
 /// 通知服务（通知队列、推送出口与离线补发的唯一写者）。
@@ -649,7 +649,7 @@ public sealed class OnlineNotificationService
             return 0;
         }
 
-        return nowUnixMilliseconds + (_defaultTimeToLiveSeconds * 1000);
+        return nowUnixMilliseconds + _defaultTimeToLiveSeconds * 1000;
     }
 
     /// <summary>

@@ -53,17 +53,17 @@ public sealed class InMemoryOnlineAuditStore : IOnlineAuditStore
     /// <summary>
     /// 全局写入门（判重与落档的同一临界区；覆盖全部作用域——EventId 全局唯一）。
     /// </summary>
-    private readonly object _gate = new object();
+    private readonly object _gate = new();
 
     /// <summary>
     /// 已落档 EventId 集合（全局判重索引，不按作用域分片）。
     /// </summary>
-    private readonly HashSet<string> _knownEventIds = new HashSet<string>(StringComparer.Ordinal);
+    private readonly HashSet<string> _knownEventIds = new(StringComparer.Ordinal);
 
     /// <summary>
     /// 作用域级记录索引（键 = "TenantId|AppId"；值为该作用域内的落档序列）。
     /// </summary>
-    private readonly Dictionary<string, List<OnlineAuditRecord>> _recordsByScope = new Dictionary<string, List<OnlineAuditRecord>>(StringComparer.Ordinal);
+    private readonly Dictionary<string, List<OnlineAuditRecord>> _recordsByScope = new(StringComparer.Ordinal);
 
     /// <summary>
     /// 追加一条审计记录（锁内判重 + 落档同一临界区）。

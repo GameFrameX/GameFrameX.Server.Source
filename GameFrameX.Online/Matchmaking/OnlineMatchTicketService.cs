@@ -31,9 +31,9 @@ namespace GameFrameX.Online.Matchmaking;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Events;
-using GameFrameX.Online.Scope;
+using Contracts;
+using Events;
+using Scope;
 
 /// <summary>
 /// 匹配票据服务（入队、取消、查询；票据状态的**唯一裁决入口**）。
@@ -154,7 +154,7 @@ public sealed class OnlineMatchTicketService
             LatencyRequirement = request.LatencyRequirement,
             CustomProperties = CopyProperties(request.CustomProperties),
             CreatedAtTime = now,
-            ExpiresAtTime = now + (_options.TicketTimeToLiveSeconds * 1000L),
+            ExpiresAtTime = now + _options.TicketTimeToLiveSeconds * 1000L,
             State = OnlineMatchTicketState.Queued,
             FailureReason = OnlineMatchFailureReason.None,
             AssignmentId = string.Empty,
@@ -201,7 +201,7 @@ public sealed class OnlineMatchTicketService
             return OnlineResult<OnlineMatchTicket>.Fail(OnlineErrorCode.RateLimitExceeded, "操作过于频繁，请稍后重试");
         }
 
-        var cancelled = await _store.UpdateStateAsync(scope.TenantId, scope.AppId, new MatchTicketStateTransition { TicketId = ticketId, ExpectedState = OnlineMatchTicketState.Queued, NewState = OnlineMatchTicketState.Cancelled, FailureReason = OnlineMatchFailureReason.CancelledByPlayer, AssignmentId = string.Empty }, cancellationToken).ConfigureAwait(false);
+        var cancelled = await _store.UpdateStateAsync(scope.TenantId, scope.AppId, new MatchTicketStateTransition { TicketId = ticketId, ExpectedState = OnlineMatchTicketState.Queued, NewState = OnlineMatchTicketState.Cancelled, FailureReason = OnlineMatchFailureReason.CancelledByPlayer, AssignmentId = string.Empty, }, cancellationToken).ConfigureAwait(false);
         if (cancelled == null)
         {
             var receipt = await _store.FindAsync(scope.TenantId, scope.AppId, ticketId, cancellationToken).ConfigureAwait(false);
@@ -286,7 +286,7 @@ public sealed class OnlineMatchTicketService
                 continue;
             }
 
-            var updated = await _store.UpdateStateAsync(tenantId, appId, new MatchTicketStateTransition { TicketId = ticket.TicketId, ExpectedState = OnlineMatchTicketState.Queued, NewState = OnlineMatchTicketState.Expired, FailureReason = OnlineMatchFailureReason.WaitTimeout, AssignmentId = string.Empty }, cancellationToken).ConfigureAwait(false);
+            var updated = await _store.UpdateStateAsync(tenantId, appId, new MatchTicketStateTransition { TicketId = ticket.TicketId, ExpectedState = OnlineMatchTicketState.Queued, NewState = OnlineMatchTicketState.Expired, FailureReason = OnlineMatchFailureReason.WaitTimeout, AssignmentId = string.Empty, }, cancellationToken).ConfigureAwait(false);
             if (updated != null)
             {
                 expired.Add(updated);

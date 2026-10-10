@@ -40,19 +40,19 @@ namespace GameFrameX.Online.Identity;
 public sealed class InMemoryOnlineIdentityStore : IOnlineIdentityStore
 {
     /// <summary>全局读写锁（身份域低频写入，粗粒度锁足够）。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>身份表：键 = (TenantId, AppId, Kind, Identifier)。</summary>
-    private readonly Dictionary<string, OnlineIdentity> _identities = new Dictionary<string, OnlineIdentity>();
+    private readonly Dictionary<string, OnlineIdentity> _identities = new();
 
     /// <summary>账号表：键 = GameAccountId。</summary>
-    private readonly Dictionary<long, OnlineGameAccount> _accounts = new Dictionary<long, OnlineGameAccount>();
+    private readonly Dictionary<long, OnlineGameAccount> _accounts = new();
 
     /// <summary>玩家表：键 = PlayerId。</summary>
-    private readonly Dictionary<long, OnlinePlayerProfile> _players = new Dictionary<long, OnlinePlayerProfile>();
+    private readonly Dictionary<long, OnlinePlayerProfile> _players = new();
 
     /// <summary>设备表：键 = (GameAccountId, DeviceIdentifier)。</summary>
-    private readonly Dictionary<string, OnlinePlayerDevice> _devices = new Dictionary<string, OnlinePlayerDevice>();
+    private readonly Dictionary<string, OnlinePlayerDevice> _devices = new();
 
     /// <summary>账号标识序列。</summary>
     private long _accountIdSequence;

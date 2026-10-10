@@ -41,56 +41,32 @@ public sealed class OnlineMatchmakerOptions
     /// <summary>
     /// 获取或设置票据存活时长（秒；默认 300）。到点未成组转 Expired。
     /// </summary>
-    public int TicketTimeToLiveSeconds
-    {
-        get;
-        set;
-    } = 300;
+    public int TicketTimeToLiveSeconds { get; set; } = 300;
 
     /// <summary>
     /// 获取或设置等待时间扩展阈值（秒；默认 30）。等待超过该值后技能区间按扩展间隔放宽。
     /// </summary>
-    public int WaitExpansionThresholdSeconds
-    {
-        get;
-        set;
-    } = 30;
+    public int WaitExpansionThresholdSeconds { get; set; } = 30;
 
     /// <summary>
     /// 获取或设置技能区间扩展间隔（秒；默认 15）。每满一个间隔放宽一档。
     /// </summary>
-    public int ExpansionIntervalSeconds
-    {
-        get;
-        set;
-    } = 15;
+    public int ExpansionIntervalSeconds { get; set; } = 15;
 
     /// <summary>
     /// 获取或设置单档扩展量（默认 50）。
     /// </summary>
-    public int SkillExpansionPerInterval
-    {
-        get;
-        set;
-    } = 50;
+    public int SkillExpansionPerInterval { get; set; } = 50;
 
     /// <summary>
     /// 获取或设置限流窗口内允许的入队/取消次数（默认 10）。
     /// </summary>
-    public int RateLimitMaxOperations
-    {
-        get;
-        set;
-    } = 10;
+    public int RateLimitMaxOperations { get; set; } = 10;
 
     /// <summary>
     /// 获取或设置限流窗口时长（秒；默认 10）。
     /// </summary>
-    public int RateLimitWindowSeconds
-    {
-        get;
-        set;
-    } = 10;
+    public int RateLimitWindowSeconds { get; set; } = 10;
 
     /// <summary>
     /// 复制配置（装配方传递后不被后续改动影响）。

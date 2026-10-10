@@ -44,27 +44,15 @@ public sealed class OnlineLeaderboardPage
     /// <summary>
     /// 获取或设置本页条目（按榜单全序升序名次排列）。
     /// </summary>
-    public List<OnlineLeaderboardEntryView> Entries
-    {
-        get;
-        set;
-    }
+    public List<OnlineLeaderboardEntryView> Entries { get; set; }
 
     /// <summary>
     /// 获取或设置分页游标（末页游标为空字符串）。
     /// </summary>
-    public OnlinePageCursor Cursor
-    {
-        get;
-        set;
-    }
+    public OnlinePageCursor Cursor { get; set; }
 
     /// <summary>
     /// 获取或设置榜单条目总数（当前快照口径）。
     /// </summary>
-    public long TotalCount
-    {
-        get;
-        set;
-    }
+    public long TotalCount { get; set; }
 }

@@ -50,128 +50,72 @@ public sealed class OnlineAuditEntry
     /// <summary>
     /// 获取或设置审计域（<see cref="OnlineAuditDomain"/> 七值之一；未知域接入被拒）。
     /// </summary>
-    public string Domain
-    {
-        get;
-        set;
-    }
+    public string Domain { get; set; }
 
     /// <summary>
     /// 获取或设置全局唯一审计标识（幂等去重键）。受控操作审计应从操作幂等键**确定性派生**
     /// （如 <c>audit-{操作幂等键}</c>，对齐幂等键派生先例）——重复执行同一命令命中同一条审计，
     /// 与接入侧幂等共同构成幂等半边；随机派生的标识会让重复执行产生多条审计记录。
     /// </summary>
-    public string EventId
-    {
-        get;
-        set;
-    }
+    public string EventId { get; set; }
 
     /// <summary>
     /// 获取或设置事件/操作类型（复用来源域既有事件常量或 Admin 审计动作名；如 <c>online.session.kicked</c>）。
     /// </summary>
-    public string EventType
-    {
-        get;
-        set;
-    }
+    public string EventType { get; set; }
 
     /// <summary>
     /// 获取或设置审计业务时刻（UTC 毫秒；审计三要素之一——时间）。
     /// </summary>
-    public long OccurredTime
-    {
-        get;
-        set;
-    }
+    public long OccurredTime { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识（必填，必须大于 0）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识（必填，必须大于 0）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置区服标识（0 表示 App 级操作——支付、远程配置等无区服维度的审计）。
     /// </summary>
-    public long ServerId
-    {
-        get;
-        set;
-    }
+    public long ServerId { get; set; }
 
     /// <summary>
     /// 获取或设置玩家标识（0 表示系统级/非玩家主体操作）。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置操作者标识（审计三要素之一——操作者；必填，通常为管理员账号标识）。
     /// </summary>
-    public string OperatorId
-    {
-        get;
-        set;
-    }
+    public string OperatorId { get; set; }
 
     /// <summary>
     /// 获取或设置操作者显示名（审计检索的辅助定位信息；可为空，定位以 <see cref="OperatorId"/> 为准）。
     /// </summary>
-    public string OperatorName
-    {
-        get;
-        set;
-    }
+    public string OperatorName { get; set; }
 
     /// <summary>
     /// 获取或设置操作原因（审计三要素之一——原因；必填，受控操作的业务理由留痕）。
     /// </summary>
-    public string Reason
-    {
-        get;
-        set;
-    }
+    public string Reason { get; set; }
 
     /// <summary>
     /// 获取或设置来源模块标识（如 <c>online-admin</c>；对齐信封 <c>Source</c> 语义）。
     /// </summary>
-    public string Source
-    {
-        get;
-        set;
-    }
+    public string Source { get; set; }
 
     /// <summary>
     /// 获取或设置关联链路键（可按链路定位；未参与链路时可为空）。
     /// </summary>
-    public string CorrelationId
-    {
-        get;
-        set;
-    }
+    public string CorrelationId { get; set; }
 
     /// <summary>
     /// 获取或设置载荷语义字段投影（键值对；落档前经脱敏器生成 <c>SanitizedFields</c>，敏感键值替换为掩码）。
     /// </summary>
-    public IReadOnlyDictionary<string, string> PayloadAuditFields
-    {
-        get;
-        set;
-    }
+    public IReadOnlyDictionary<string, string> PayloadAuditFields { get; set; }
 }

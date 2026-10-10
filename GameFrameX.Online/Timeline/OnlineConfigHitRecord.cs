@@ -42,54 +42,30 @@ public sealed class OnlineConfigHitRecord
     /// <summary>
     /// 获取或设置行标识（必须跨腿全局唯一；建议带来源域前缀，避免与其它腿的行标识撞号而破坏分页全序）。
     /// </summary>
-    public string EventId
-    {
-        get;
-        set;
-    }
+    public string EventId { get; set; }
 
     /// <summary>
     /// 获取或设置事件类型（配置域自有类型值；本仓不解析、不映射）。
     /// </summary>
-    public string EventType
-    {
-        get;
-        set;
-    }
+    public string EventType { get; set; }
 
     /// <summary>
     /// 获取或设置来源域标识（如 <c>online-season</c>；为空时时间线服务回落到 <c>online-config</c>）。
     /// </summary>
-    public string Source
-    {
-        get;
-        set;
-    }
+    public string Source { get; set; }
 
     /// <summary>
     /// 获取或设置发生时刻（Unix 秒）。
     /// </summary>
-    public long OccurredAt
-    {
-        get;
-        set;
-    }
+    public long OccurredAt { get; set; }
 
     /// <summary>
     /// 获取或设置关联标识（配置记录标识，供按行定位到原始记录）。
     /// </summary>
-    public string CorrelationId
-    {
-        get;
-        set;
-    }
+    public string CorrelationId { get; set; }
 
     /// <summary>
     /// 获取或设置载荷摘要（不得含令牌、指纹、设备标识等敏感值；脱敏责任在探针实现方）。
     /// </summary>
-    public string PayloadSummary
-    {
-        get;
-        set;
-    }
+    public string PayloadSummary { get; set; }
 }

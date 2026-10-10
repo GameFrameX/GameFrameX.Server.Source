@@ -52,117 +52,65 @@ public sealed class OnlineOverviewSnapshot
     /// <summary>
     /// 获取或设置租户标识（本快照的作用域归属）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识（本快照的作用域归属）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置区服标识（本快照的作用域归属）。
     /// </summary>
-    public long ServerId
-    {
-        get;
-        set;
-    }
+    public long ServerId { get; set; }
 
     /// <summary>
     /// 获取或设置快照观测时刻（UTC 毫秒；由调用方注入或取系统时钟）。
     /// </summary>
-    public long ObservedTime
-    {
-        get;
-        set;
-    }
+    public long ObservedTime { get; set; }
 
     /// <summary>
     /// 获取或设置在线玩家数（作用域内 Presence 记录数，风控限制中的玩家不计入）。
     /// </summary>
-    public int OnlinePlayerCount
-    {
-        get;
-        set;
-    }
+    public int OnlinePlayerCount { get; set; }
 
     /// <summary>
     /// 获取或设置非终态会话数（不含已关闭/被踢/过期会话）。
     /// </summary>
-    public int SessionCount
-    {
-        get;
-        set;
-    }
+    public int SessionCount { get; set; }
 
     /// <summary>
     /// 获取或设置会话状态分布（键为状态，值为该状态的会话数；按状态枚举值升序）。
     /// </summary>
-    public IReadOnlyDictionary<OnlineSessionState, int> SessionStateCounts
-    {
-        get;
-        set;
-    }
+    public IReadOnlyDictionary<OnlineSessionState, int> SessionStateCounts { get; set; }
 
     /// <summary>
     /// 获取或设置非终态队伍数（解散/过期/离队/取消/失败均为终态，见 <see cref="OnlinePartyStateMachine.IsTerminal"/>）。
     /// </summary>
-    public int PartyCount
-    {
-        get;
-        set;
-    }
+    public int PartyCount { get; set; }
 
     /// <summary>
     /// 获取或设置队伍状态分布（键为状态，值为该状态的队伍数；按状态枚举值升序）。
     /// </summary>
-    public IReadOnlyDictionary<OnlinePartyState, int> PartyStateCounts
-    {
-        get;
-        set;
-    }
+    public IReadOnlyDictionary<OnlinePartyState, int> PartyStateCounts { get; set; }
 
     /// <summary>
     /// 获取或设置存活对局数（<see cref="OnlineMatchState.Closed"/> 即已释放，不计入——见 <see cref="OnlineOverviewService"/> 口径）。
     /// </summary>
-    public int MatchCount
-    {
-        get;
-        set;
-    }
+    public int MatchCount { get; set; }
 
     /// <summary>
     /// 获取或设置对局状态分布（键为状态，值为该状态的对局数；按状态枚举值升序）。
     /// </summary>
-    public IReadOnlyDictionary<OnlineMatchState, int> MatchStateCounts
-    {
-        get;
-        set;
-    }
+    public IReadOnlyDictionary<OnlineMatchState, int> MatchStateCounts { get; set; }
 
     /// <summary>
     /// 获取或设置重连率（重连中会话 ÷ 非终态会话；分母为 0 时取 0）。
     /// </summary>
-    public double ReconnectRate
-    {
-        get;
-        set;
-    }
+    public double ReconnectRate { get; set; }
 
     /// <summary>
     /// 获取或设置队列概况（按「玩法模式 + 区域」聚合，按 Mode 升序、同 Mode 按 Region 升序）。
     /// </summary>
-    public IReadOnlyList<OnlineOverviewQueueSummary> QueueSummaries
-    {
-        get;
-        set;
-    }
+    public IReadOnlyList<OnlineOverviewQueueSummary> QueueSummaries { get; set; }
 }

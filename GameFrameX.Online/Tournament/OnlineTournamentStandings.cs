@@ -50,56 +50,32 @@ public sealed class OnlineTournamentStandings
     /// <summary>
     /// 获取或设置赛事标识（成绩的归属键）。
     /// </summary>
-    public string TournamentId
-    {
-        get;
-        set;
-    }
+    public string TournamentId { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识（作用域隔离键）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识（作用域隔离键）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置成绩来源的榜单标识。
     /// </summary>
-    public string LeaderboardId
-    {
-        get;
-        set;
-    }
+    public string LeaderboardId { get; set; }
 
     /// <summary>
     /// 获取或设置冻结时刻（UTC 毫秒；结果查询的审计依据）。
     /// </summary>
-    public long FrozenTime
-    {
-        get;
-        set;
-    }
+    public long FrozenTime { get; set; }
 
     /// <summary>
     /// 获取或设置冻结的全序条目（含名次；空成绩为合法取值，表示本届无人取得成绩）。
     /// </summary>
-    public List<OnlineLeaderboardEntryView> Entries
-    {
-        get;
-        set;
-    }
+    public List<OnlineLeaderboardEntryView> Entries { get; set; }
 
     /// <summary>
     /// 复制冻结成绩（条目逐项深拷贝，存储出入参防御性拷贝）。

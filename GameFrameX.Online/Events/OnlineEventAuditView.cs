@@ -41,99 +41,55 @@ public sealed class OnlineEventAuditView
     /// <summary>
     /// 获取或设置事件标识（去重键，保留明文供检索）。
     /// </summary>
-    public string EventId
-    {
-        get;
-        set;
-    }
+    public string EventId { get; set; }
 
     /// <summary>
     /// 获取或设置事件类型。
     /// </summary>
-    public string EventType
-    {
-        get;
-        set;
-    }
+    public string EventType { get; set; }
 
     /// <summary>
     /// 获取或设置事件发生时刻（UTC 毫秒）。
     /// </summary>
-    public long OccurredTime
-    {
-        get;
-        set;
-    }
+    public long OccurredTime { get; set; }
 
     /// <summary>
     /// 获取或设置载荷结构版本。
     /// </summary>
-    public int SchemaVersion
-    {
-        get;
-        set;
-    }
+    public int SchemaVersion { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置区服标识。
     /// </summary>
-    public long ServerId
-    {
-        get;
-        set;
-    }
+    public long ServerId { get; set; }
 
     /// <summary>
     /// 获取或设置玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置来源模块标识。
     /// </summary>
-    public string Source
-    {
-        get;
-        set;
-    }
+    public string Source { get; set; }
 
     /// <summary>
     /// 获取或设置关联链路键（链路追踪检索入口）。
     /// </summary>
-    public string CorrelationId
-    {
-        get;
-        set;
-    }
+    public string CorrelationId { get; set; }
 
     /// <summary>
     /// 获取或设置脱敏后的载荷字段投影（敏感键的值已替换为掩码）。
     /// </summary>
-    public IReadOnlyDictionary<string, string> SanitizedFields
-    {
-        get;
-        set;
-    }
+    public IReadOnlyDictionary<string, string> SanitizedFields { get; set; }
 }

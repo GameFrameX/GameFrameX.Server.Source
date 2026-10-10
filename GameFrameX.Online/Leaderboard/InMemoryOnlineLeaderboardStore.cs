@@ -47,13 +47,13 @@ namespace GameFrameX.Online.Leaderboard;
 public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
 {
     /// <summary>全局读写锁（榜单与条目共用，保证快照一致性）。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>榜单定义表：键 = (TenantId, AppId, LeaderboardId)。</summary>
-    private readonly Dictionary<string, OnlineLeaderboard> _boards = new Dictionary<string, OnlineLeaderboard>();
+    private readonly Dictionary<string, OnlineLeaderboard> _boards = new();
 
     /// <summary>条目表：键 = 榜单键 → (PlayerId → 条目)。</summary>
-    private readonly Dictionary<string, Dictionary<long, OnlineLeaderboardEntry>> _entries = new Dictionary<string, Dictionary<long, OnlineLeaderboardEntry>>();
+    private readonly Dictionary<string, Dictionary<long, OnlineLeaderboardEntry>> _entries = new();
 
     /// <summary>
     /// 初始化 <see cref="InMemoryOnlineLeaderboardStore"/>。
@@ -172,7 +172,7 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
 
             if (!boardEntries.TryGetValue(submission.PlayerId, out var entry))
             {
-                entry = new OnlineLeaderboardEntry { PlayerId = submission.PlayerId };
+                entry = new OnlineLeaderboardEntry { PlayerId = submission.PlayerId, };
                 boardEntries[submission.PlayerId] = entry;
             }
 
@@ -311,10 +311,10 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
     private static bool MatchesExpectedEntry(OnlineLeaderboardEntry current, OnlineLeaderboardEntry expected)
     {
         return expected != null
-            && current.PlayerId == expected.PlayerId
-            && current.Score == expected.Score
-            && current.LastUpdateTime == expected.LastUpdateTime
-            && current.SubmissionCount == expected.SubmissionCount;
+               && current.PlayerId == expected.PlayerId
+               && current.Score == expected.Score
+               && current.LastUpdateTime == expected.LastUpdateTime
+               && current.SubmissionCount == expected.SubmissionCount;
     }
 
     /// <summary>

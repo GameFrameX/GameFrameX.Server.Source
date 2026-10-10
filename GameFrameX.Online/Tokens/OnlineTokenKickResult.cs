@@ -37,9 +37,5 @@ public sealed class OnlineTokenKickResult
     /// <summary>
     /// 获取或设置是否实际执行了踢下线。
     /// </summary>
-    public bool Kicked
-    {
-        get;
-        set;
-    }
+    public bool Kicked { get; set; }
 }

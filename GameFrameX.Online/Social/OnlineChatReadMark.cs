@@ -43,74 +43,42 @@ public sealed class OnlineChatReadMark
     /// <summary>
     /// 获取或设置租户标识。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置频道标识。
     /// </summary>
-    public string ChannelId
-    {
-        get;
-        set;
-    }
+    public string ChannelId { get; set; }
 
     /// <summary>
     /// 获取或设置最后已读消息标识（展示与排障锚点；不参与排序比较）。
     /// </summary>
-    public string LastReadMessageId
-    {
-        get;
-        set;
-    }
+    public string LastReadMessageId { get; set; }
 
     /// <summary>
     /// 获取或设置最后已读位置的发送时刻（UTC 毫秒；未读任何消息为 <c>0</c>）。
     /// </summary>
-    public long LastReadSentAtTime
-    {
-        get;
-        set;
-    }
+    public long LastReadSentAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置最后已读位置的频道内序号（未读任何消息为 <c>0</c>）。
     /// </summary>
-    public long LastReadSequence
-    {
-        get;
-        set;
-    }
+    public long LastReadSequence { get; set; }
 
     /// <summary>
     /// 获取或设置位点更新时刻（UTC 毫秒）。
     /// </summary>
-    public long UpdatedAtTime
-    {
-        get;
-        set;
-    }
+    public long UpdatedAtTime { get; set; }
 
     /// <summary>
     /// 判定给定消息位置是否**不晚于**本位点（位点比较口径的唯一实现点，服务层与存储层共用）。

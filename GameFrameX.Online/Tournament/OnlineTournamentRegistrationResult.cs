@@ -13,18 +13,10 @@ public sealed class OnlineTournamentRegistrationResult
     /// <summary>
     /// 获取或设置本次是否为新登记（false 表示该玩家此前已登记，本次为幂等重放）。
     /// </summary>
-    public bool IsNew
-    {
-        get;
-        set;
-    }
+    public bool IsNew { get; set; }
 
     /// <summary>
     /// 获取或设置该玩家当前生效的登记（新登记时为本次落档的登记，重放时为既有登记）。
     /// </summary>
-    public OnlineTournamentRegistration Registration
-    {
-        get;
-        set;
-    }
+    public OnlineTournamentRegistration Registration { get; set; }
 }

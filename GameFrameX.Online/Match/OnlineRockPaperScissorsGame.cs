@@ -55,7 +55,7 @@ public sealed class OnlineRockPaperScissorsGame : IOnlineMatchGame
     public const int WinTarget = 2;
 
     /// <summary>最大局数（先胜 <see cref="WinTarget"/> 局即终局）。</summary>
-    public const int MaxRounds = (WinTarget * 2) - 1;
+    public const int MaxRounds = WinTarget * 2 - 1;
 
     /// <summary>单局时限（毫秒）。</summary>
     public const long RoundTimeoutMilliseconds = 30000L;
@@ -80,10 +80,7 @@ public sealed class OnlineRockPaperScissorsGame : IOnlineMatchGame
     /// </summary>
     public int Mode
     {
-        get
-        {
-            return MatchMode;
-        }
+        get { return MatchMode; }
     }
 
     /// <summary>
@@ -91,10 +88,7 @@ public sealed class OnlineRockPaperScissorsGame : IOnlineMatchGame
     /// </summary>
     public int MinPlayers
     {
-        get
-        {
-            return 2;
-        }
+        get { return 2; }
     }
 
     /// <summary>
@@ -102,10 +96,7 @@ public sealed class OnlineRockPaperScissorsGame : IOnlineMatchGame
     /// </summary>
     public int MaxPlayers
     {
-        get
-        {
-            return 2;
-        }
+        get { return 2; }
     }
 
     /// <summary>
@@ -305,7 +296,7 @@ public sealed class OnlineRockPaperScissorsGame : IOnlineMatchGame
                 Score = player.Wins,
                 Rewards = new List<OnlineAssetChangeLine>
                 {
-                    new OnlineAssetChangeLine(
+                    new(
                         OnlineAssetKind.Currency,
                         RewardAssetId,
                         isWinner ? WinnerRewardAmount : ParticipantRewardAmount),
@@ -451,8 +442,8 @@ public sealed class OnlineRockPaperScissorsGame : IOnlineMatchGame
     private static bool Beats(OnlineRockPaperScissorsMove left, OnlineRockPaperScissorsMove right)
     {
         return (left == OnlineRockPaperScissorsMove.Rock && right == OnlineRockPaperScissorsMove.Scissors)
-            || (left == OnlineRockPaperScissorsMove.Scissors && right == OnlineRockPaperScissorsMove.Paper)
-            || (left == OnlineRockPaperScissorsMove.Paper && right == OnlineRockPaperScissorsMove.Rock);
+               || (left == OnlineRockPaperScissorsMove.Scissors && right == OnlineRockPaperScissorsMove.Paper)
+               || (left == OnlineRockPaperScissorsMove.Paper && right == OnlineRockPaperScissorsMove.Rock);
     }
 
     /// <summary>
@@ -544,32 +535,16 @@ public sealed class OnlineRockPaperScissorsGame : IOnlineMatchGame
     private sealed class GestureSubmittedPayload
     {
         /// <summary>当前局数。</summary>
-        public int Round
-        {
-            get;
-            set;
-        }
+        public int Round { get; set; }
 
         /// <summary>提交者玩家标识。</summary>
-        public long PlayerId
-        {
-            get;
-            set;
-        }
+        public long PlayerId { get; set; }
 
         /// <summary>本局已提交人数。</summary>
-        public int SubmittedCount
-        {
-            get;
-            set;
-        }
+        public int SubmittedCount { get; set; }
 
         /// <summary>本局参与人数。</summary>
-        public int PlayerCount
-        {
-            get;
-            set;
-        }
+        public int PlayerCount { get; set; }
     }
 
     /// <summary>
@@ -578,39 +553,19 @@ public sealed class OnlineRockPaperScissorsGame : IOnlineMatchGame
     private sealed class RoundResolvedPayload
     {
         /// <summary>被结算的局数。</summary>
-        public int Round
-        {
-            get;
-            set;
-        }
+        public int Round { get; set; }
 
         /// <summary>本局胜者（0 = 平局）。</summary>
-        public long WinnerPlayerId
-        {
-            get;
-            set;
-        }
+        public long WinnerPlayerId { get; set; }
 
         /// <summary>是否由超时触发。</summary>
-        public bool TimedOut
-        {
-            get;
-            set;
-        }
+        public bool TimedOut { get; set; }
 
         /// <summary>本局双方出拳。</summary>
-        public List<RoundPlayPayload> Plays
-        {
-            get;
-            set;
-        }
+        public List<RoundPlayPayload> Plays { get; set; }
 
         /// <summary>结算后的累计胜局。</summary>
-        public List<RoundScorePayload> Scores
-        {
-            get;
-            set;
-        }
+        public List<RoundScorePayload> Scores { get; set; }
     }
 
     /// <summary>
@@ -619,18 +574,10 @@ public sealed class OnlineRockPaperScissorsGame : IOnlineMatchGame
     private sealed class RoundPlayPayload
     {
         /// <summary>玩家标识。</summary>
-        public long PlayerId
-        {
-            get;
-            set;
-        }
+        public long PlayerId { get; set; }
 
         /// <summary>出拳。</summary>
-        public OnlineRockPaperScissorsMove Gesture
-        {
-            get;
-            set;
-        }
+        public OnlineRockPaperScissorsMove Gesture { get; set; }
     }
 
     /// <summary>
@@ -639,17 +586,9 @@ public sealed class OnlineRockPaperScissorsGame : IOnlineMatchGame
     private sealed class RoundScorePayload
     {
         /// <summary>玩家标识。</summary>
-        public long PlayerId
-        {
-            get;
-            set;
-        }
+        public long PlayerId { get; set; }
 
         /// <summary>累计胜局。</summary>
-        public int Wins
-        {
-            get;
-            set;
-        }
+        public int Wins { get; set; }
     }
 }

@@ -45,52 +45,34 @@ public sealed class OnlineIdempotencyOutcome
     /// <summary>
     /// 获取判定类型。
     /// </summary>
-    public OnlineIdempotencyOutcomeKind Kind
-    {
-        get;
-    }
+    public OnlineIdempotencyOutcomeKind Kind { get; }
 
     /// <summary>
     /// 获取映射的协议错误码（Replay 成功回放为 <see cref="OnlineErrorCode.None"/>）。
     /// </summary>
-    public OnlineErrorCode ErrorCode
-    {
-        get;
-    }
+    public OnlineErrorCode ErrorCode { get; }
 
     /// <summary>
     /// 获取首次响应字节（仅 Replay 时非空；调用方按自身序列化契约还原）。
     /// </summary>
-    public ReadOnlyMemory<byte> FirstResponse
-    {
-        get;
-    }
+    public ReadOnlyMemory<byte> FirstResponse { get; }
 
     /// <summary>
     /// 获取本次判定的作用域绑定键（含玩家位与否由调用方 Begin 时决定）。
     /// </summary>
-    public string ScopeKey
-    {
-        get;
-    }
+    public string ScopeKey { get; }
 
     /// <summary>
     /// 获取本次判定的幂等键。
     /// </summary>
-    public string IdempotencyKey
-    {
-        get;
-    }
+    public string IdempotencyKey { get; }
 
     /// <summary>
     /// 获取判定是否允许执行业务。
     /// </summary>
     public bool CanExecute
     {
-        get
-        {
-            return Kind == OnlineIdempotencyOutcomeKind.Execute;
-        }
+        get { return Kind == OnlineIdempotencyOutcomeKind.Execute; }
     }
 
     /// <summary>

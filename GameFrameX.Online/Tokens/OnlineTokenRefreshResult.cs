@@ -37,18 +37,10 @@ public sealed class OnlineTokenRefreshResult
     /// <summary>
     /// 获取或设置刷新后的新令牌。
     /// </summary>
-    public string Token
-    {
-        get;
-        set;
-    }
+    public string Token { get; set; }
 
     /// <summary>
     /// 获取或设置新的过期时刻（UTC 毫秒）。
     /// </summary>
-    public long ExpiresAtTime
-    {
-        get;
-        set;
-    }
+    public long ExpiresAtTime { get; set; }
 }

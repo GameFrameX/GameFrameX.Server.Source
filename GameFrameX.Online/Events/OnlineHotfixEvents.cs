@@ -137,25 +137,13 @@ public static class OnlineHotfixEvents
     private sealed class VersionRegisteredPayload
     {
         /// <summary>版本号。</summary>
-        public string Version
-        {
-            get;
-            set;
-        }
+        public string Version { get; set; }
 
         /// <summary>协议消息契约行数。</summary>
-        public int MessageCount
-        {
-            get;
-            set;
-        }
+        public int MessageCount { get; set; }
 
         /// <summary>登记时刻（UTC 毫秒）。</summary>
-        public long RegisteredTime
-        {
-            get;
-            set;
-        }
+        public long RegisteredTime { get; set; }
     }
 
     /// <summary>
@@ -164,24 +152,12 @@ public static class OnlineHotfixEvents
     private sealed class RolledBackPayload
     {
         /// <summary>回滚前活跃版本号。</summary>
-        public string PreviousVersion
-        {
-            get;
-            set;
-        }
+        public string PreviousVersion { get; set; }
 
         /// <summary>回滚到的目标版本号。</summary>
-        public string TargetVersion
-        {
-            get;
-            set;
-        }
+        public string TargetVersion { get; set; }
 
         /// <summary>协议兼容报告摘要（Removed/Changed/Added 计数文本）。</summary>
-        public string CompatibilitySummary
-        {
-            get;
-            set;
-        }
+        public string CompatibilitySummary { get; set; }
     }
 }

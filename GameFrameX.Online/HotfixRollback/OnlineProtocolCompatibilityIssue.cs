@@ -61,45 +61,25 @@ public sealed class OnlineProtocolCompatibilityIssue
     /// <summary>
     /// 获取或设置差异类型。
     /// </summary>
-    public IssueKind Kind
-    {
-        get;
-        set;
-    }
+    public IssueKind Kind { get; set; }
 
     /// <summary>
     /// 获取或设置定位消息名（差异行锚定的协议消息名）。
     /// </summary>
-    public string MessageName
-    {
-        get;
-        set;
-    }
+    public string MessageName { get; set; }
 
     /// <summary>
     /// 获取或设置当前（活跃）版本侧的消息号（0 表示该侧无此行）。
     /// </summary>
-    public int CurrentMessageId
-    {
-        get;
-        set;
-    }
+    public int CurrentMessageId { get; set; }
 
     /// <summary>
     /// 获取或设置目标（回滚）版本侧的消息号（0 表示该侧无此行）。
     /// </summary>
-    public int TargetMessageId
-    {
-        get;
-        set;
-    }
+    public int TargetMessageId { get; set; }
 
     /// <summary>
     /// 获取或设置差异描述（人类可读的单行说明，随检查报告与拒绝错误反馈）。
     /// </summary>
-    public string Description
-    {
-        get;
-        set;
-    }
+    public string Description { get; set; }
 }

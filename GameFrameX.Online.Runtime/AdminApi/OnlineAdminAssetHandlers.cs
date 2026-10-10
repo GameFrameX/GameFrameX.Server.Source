@@ -89,7 +89,7 @@ public sealed class OnlineAdminAssetHandlers
         var businessOrderNumber = request.ReadString("BusinessOrderNumber");
         var idempotencyKey = request.ReadString("IdempotencyKey");
         var grantRequest = new OnlineGrantRequest(playerScope, OnlineAssetChangeSource.AdminOperation, OnlineGrantOperation.Grant, reason,
-            ReadBusinessOrderId(request, businessOrderNumber, idempotencyKey), changes, idempotencyKey ?? string.Empty)
+                                                  ReadBusinessOrderId(request, businessOrderNumber, idempotencyKey), changes, idempotencyKey ?? string.Empty)
         {
             OperatorId = "admin",
             HomeServerId = scope.ServerId,
@@ -133,7 +133,7 @@ public sealed class OnlineAdminAssetHandlers
         }
 
         var revokeRequest = new OnlineGrantRequest(playerScope, OnlineAssetChangeSource.AdminOperation, OnlineGrantOperation.Revoke, reason,
-            ReadBusinessOrderId(request, businessOrderNumber, idempotencyKey), changes, idempotencyKey ?? string.Empty)
+                                                   ReadBusinessOrderId(request, businessOrderNumber, idempotencyKey), changes, idempotencyKey ?? string.Empty)
         {
             OperatorId = "admin",
             HomeServerId = scope.ServerId,
@@ -407,32 +407,16 @@ public sealed class OnlineAdminAssetHandlers
     public sealed class GrantAckResponse
     {
         /// <summary>获取或设置交易标识。</summary>
-        public string TransactionId
-        {
-            get;
-            set;
-        }
+        public string TransactionId { get; set; }
 
         /// <summary>获取或设置幂等键回显。</summary>
-        public string IdempotencyKey
-        {
-            get;
-            set;
-        }
+        public string IdempotencyKey { get; set; }
 
         /// <summary>获取或设置交易状态名。</summary>
-        public string Status
-        {
-            get;
-            set;
-        }
+        public string Status { get; set; }
 
         /// <summary>获取或设置生效时刻（UTC 毫秒）。</summary>
-        public long OccurredAt
-        {
-            get;
-            set;
-        }
+        public long OccurredAt { get; set; }
     }
 
     /// <summary>
@@ -441,74 +425,34 @@ public sealed class OnlineAdminAssetHandlers
     public sealed class LedgerEntryResponse
     {
         /// <summary>获取或设置交易标识。</summary>
-        public string TransactionId
-        {
-            get;
-            set;
-        }
+        public string TransactionId { get; set; }
 
         /// <summary>获取或设置玩家标识（字符串形态）。</summary>
-        public string PlayerId
-        {
-            get;
-            set;
-        }
+        public string PlayerId { get; set; }
 
         /// <summary>获取或设置资产标识。</summary>
-        public string CurrencyOrItemType
-        {
-            get;
-            set;
-        }
+        public string CurrencyOrItemType { get; set; }
 
         /// <summary>获取或设置变更前值。</summary>
-        public long BeforeValue
-        {
-            get;
-            set;
-        }
+        public long BeforeValue { get; set; }
 
         /// <summary>获取或设置变更后值。</summary>
-        public long AfterValue
-        {
-            get;
-            set;
-        }
+        public long AfterValue { get; set; }
 
         /// <summary>获取或设置变更来源名。</summary>
-        public string Source
-        {
-            get;
-            set;
-        }
+        public string Source { get; set; }
 
         /// <summary>获取或设置变更原因。</summary>
-        public string Reason
-        {
-            get;
-            set;
-        }
+        public string Reason { get; set; }
 
         /// <summary>获取或设置业务单号。</summary>
-        public string BusinessOrderNumber
-        {
-            get;
-            set;
-        }
+        public string BusinessOrderNumber { get; set; }
 
         /// <summary>获取或设置操作者。</summary>
-        public string OperatorId
-        {
-            get;
-            set;
-        }
+        public string OperatorId { get; set; }
 
         /// <summary>获取或设置发生时刻（UTC 毫秒）。</summary>
-        public long OccurredAt
-        {
-            get;
-            set;
-        }
+        public long OccurredAt { get; set; }
     }
 
     /// <summary>
@@ -517,25 +461,13 @@ public sealed class OnlineAdminAssetHandlers
     public sealed class LedgerQueryResponse
     {
         /// <summary>获取或设置条目列表。</summary>
-        public List<LedgerEntryResponse> Items
-        {
-            get;
-            set;
-        }
+        public List<LedgerEntryResponse> Items { get; set; }
 
         /// <summary>获取或设置下一页游标。</summary>
-        public string NextCursor
-        {
-            get;
-            set;
-        }
+        public string NextCursor { get; set; }
 
         /// <summary>获取或设置是否还有更多。</summary>
-        public bool HasMore
-        {
-            get;
-            set;
-        }
+        public bool HasMore { get; set; }
     }
 
     /// <summary>
@@ -544,53 +476,25 @@ public sealed class OnlineAdminAssetHandlers
     public sealed class AssetAuditEntryResponse
     {
         /// <summary>获取或设置交易标识（脱敏字段缺省时回退事件标识）。</summary>
-        public string TransactionId
-        {
-            get;
-            set;
-        }
+        public string TransactionId { get; set; }
 
         /// <summary>获取或设置命令类型（事件类型名）。</summary>
-        public string CommandType
-        {
-            get;
-            set;
-        }
+        public string CommandType { get; set; }
 
         /// <summary>获取或设置操作者。</summary>
-        public string OperatorId
-        {
-            get;
-            set;
-        }
+        public string OperatorId { get; set; }
 
         /// <summary>获取或设置玩家标识（字符串形态）。</summary>
-        public string PlayerId
-        {
-            get;
-            set;
-        }
+        public string PlayerId { get; set; }
 
         /// <summary>获取或设置原因。</summary>
-        public string Reason
-        {
-            get;
-            set;
-        }
+        public string Reason { get; set; }
 
         /// <summary>获取或设置业务单号。</summary>
-        public string BusinessOrderNumber
-        {
-            get;
-            set;
-        }
+        public string BusinessOrderNumber { get; set; }
 
         /// <summary>获取或设置发生时刻（UTC 毫秒）。</summary>
-        public long OccurredAt
-        {
-            get;
-            set;
-        }
+        public long OccurredAt { get; set; }
     }
 
     /// <summary>
@@ -599,25 +503,13 @@ public sealed class OnlineAdminAssetHandlers
     public sealed class AssetAuditQueryResponse
     {
         /// <summary>获取或设置条目列表。</summary>
-        public List<AssetAuditEntryResponse> Items
-        {
-            get;
-            set;
-        }
+        public List<AssetAuditEntryResponse> Items { get; set; }
 
         /// <summary>获取或设置下一页游标。</summary>
-        public string NextCursor
-        {
-            get;
-            set;
-        }
+        public string NextCursor { get; set; }
 
         /// <summary>获取或设置是否还有更多。</summary>
-        public bool HasMore
-        {
-            get;
-            set;
-        }
+        public bool HasMore { get; set; }
     }
 
     /// <summary>
@@ -626,32 +518,16 @@ public sealed class OnlineAdminAssetHandlers
     public sealed class TransactionGrantItemResponse
     {
         /// <summary>获取或设置资产标识。</summary>
-        public string ItemOrCurrencyType
-        {
-            get;
-            set;
-        }
+        public string ItemOrCurrencyType { get; set; }
 
         /// <summary>获取或设置数额（发放正 / 撤销负）。</summary>
-        public long Quantity
-        {
-            get;
-            set;
-        }
+        public long Quantity { get; set; }
 
         /// <summary>获取或设置变更前值。</summary>
-        public long BeforeValue
-        {
-            get;
-            set;
-        }
+        public long BeforeValue { get; set; }
 
         /// <summary>获取或设置变更后值。</summary>
-        public long AfterValue
-        {
-            get;
-            set;
-        }
+        public long AfterValue { get; set; }
     }
 
     /// <summary>
@@ -660,73 +536,33 @@ public sealed class OnlineAdminAssetHandlers
     public sealed class TransactionDetailResponse
     {
         /// <summary>获取或设置交易标识。</summary>
-        public string TransactionId
-        {
-            get;
-            set;
-        }
+        public string TransactionId { get; set; }
 
         /// <summary>获取或设置幂等键。</summary>
-        public string IdempotencyKey
-        {
-            get;
-            set;
-        }
+        public string IdempotencyKey { get; set; }
 
         /// <summary>获取或设置状态名。</summary>
-        public string Status
-        {
-            get;
-            set;
-        }
+        public string Status { get; set; }
 
         /// <summary>获取或设置来源名。</summary>
-        public string Source
-        {
-            get;
-            set;
-        }
+        public string Source { get; set; }
 
         /// <summary>获取或设置原因。</summary>
-        public string Reason
-        {
-            get;
-            set;
-        }
+        public string Reason { get; set; }
 
         /// <summary>获取或设置业务单号。</summary>
-        public string BusinessOrderNumber
-        {
-            get;
-            set;
-        }
+        public string BusinessOrderNumber { get; set; }
 
         /// <summary>获取或设置操作者。</summary>
-        public string OperatorId
-        {
-            get;
-            set;
-        }
+        public string OperatorId { get; set; }
 
         /// <summary>获取或设置玩家标识（字符串形态）。</summary>
-        public string PlayerId
-        {
-            get;
-            set;
-        }
+        public string PlayerId { get; set; }
 
         /// <summary>获取或设置发生时刻（UTC 毫秒）。</summary>
-        public long OccurredAt
-        {
-            get;
-            set;
-        }
+        public long OccurredAt { get; set; }
 
         /// <summary>获取或设置变更行列表。</summary>
-        public List<TransactionGrantItemResponse> GrantItems
-        {
-            get;
-            set;
-        }
+        public List<TransactionGrantItemResponse> GrantItems { get; set; }
     }
 }

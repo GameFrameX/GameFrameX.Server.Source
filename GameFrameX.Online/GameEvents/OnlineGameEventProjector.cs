@@ -224,7 +224,7 @@ public sealed class OnlineGameEventProjector
                 continue;
             }
 
-            var name = aborted ? OnlineGameEventName.Abandon : (entry.IsWinner ? OnlineGameEventName.Win : OnlineGameEventName.Lose);
+            var name = aborted ? OnlineGameEventName.Abandon : entry.IsWinner ? OnlineGameEventName.Win : OnlineGameEventName.Lose;
             var playerFields = new Dictionary<string, string>
             {
                 { "MatchId", result.MatchId ?? string.Empty },

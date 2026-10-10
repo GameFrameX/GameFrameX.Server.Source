@@ -30,7 +30,7 @@
 
 namespace GameFrameX.Online.Assets;
 
-using GameFrameX.Online.Contracts;
+using Contracts;
 
 /// <summary>
 /// 资产账本分页结果（游标 = 末条账本序；稳定排序 = SequenceNumber 升序，翻页不重复不漏项）。
@@ -44,18 +44,12 @@ public sealed class OnlineLedgerPage
     /// <summary>
     /// 获取本页账本条目（按账本序升序）。
     /// </summary>
-    public IReadOnlyList<OnlineLedgerEntry> Entries
-    {
-        get;
-    }
+    public IReadOnlyList<OnlineLedgerEntry> Entries { get; }
 
     /// <summary>
     /// 获取分页游标（末页 HasMore = false 且游标为空字符串）。
     /// </summary>
-    public OnlinePageCursor Page
-    {
-        get;
-    }
+    public OnlinePageCursor Page { get; }
 
     /// <summary>
     /// 构造账本分页结果。

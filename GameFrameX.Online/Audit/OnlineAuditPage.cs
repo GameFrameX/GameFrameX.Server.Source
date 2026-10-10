@@ -45,18 +45,12 @@ public sealed class OnlineAuditPage
     /// <summary>
     /// 获取当前页审计记录行（只读；空页为空列表而非 <see langword="null"/>）。
     /// </summary>
-    public IReadOnlyList<OnlineAuditRecord> Records
-    {
-        get;
-    }
+    public IReadOnlyList<OnlineAuditRecord> Records { get; }
 
     /// <summary>
     /// 获取分页游标（末页 HasMore=false 且游标为空字符串）。
     /// </summary>
-    public OnlinePageCursor Cursor
-    {
-        get;
-    }
+    public OnlinePageCursor Cursor { get; }
 
     /// <summary>
     /// 构造审计分页结果。

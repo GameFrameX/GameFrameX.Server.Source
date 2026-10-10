@@ -46,11 +46,11 @@ public static class OnlineSeasonStateMachine
     /// <summary>
     /// 合法迁移邻接表：键 = 起态，值 = 可达终态集合。
     /// </summary>
-    private static readonly Dictionary<OnlineSeasonState, OnlineSeasonState[]> Adjacency = new Dictionary<OnlineSeasonState, OnlineSeasonState[]>
+    private static readonly Dictionary<OnlineSeasonState, OnlineSeasonState[]> Adjacency = new()
     {
-        { OnlineSeasonState.Scheduled, new[] { OnlineSeasonState.Active } },
-        { OnlineSeasonState.Active, new[] { OnlineSeasonState.Ended } },
-        { OnlineSeasonState.Ended, new[] { OnlineSeasonState.Settled } },
+        { OnlineSeasonState.Scheduled, new[] { OnlineSeasonState.Active, } },
+        { OnlineSeasonState.Active, new[] { OnlineSeasonState.Ended, } },
+        { OnlineSeasonState.Ended, new[] { OnlineSeasonState.Settled, } },
         { OnlineSeasonState.Settled, new OnlineSeasonState[0] },
     };
 

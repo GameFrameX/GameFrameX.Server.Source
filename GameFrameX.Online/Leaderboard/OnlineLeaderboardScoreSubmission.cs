@@ -42,45 +42,25 @@ public sealed class OnlineLeaderboardScoreSubmission
     /// <summary>
     /// 获取或设置玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置本笔提交分数（进入累计策略裁决前的原始值）。
     /// </summary>
-    public long IncomingScore
-    {
-        get;
-        set;
-    }
+    public long IncomingScore { get; set; }
 
     /// <summary>
     /// 获取或设置分数来源。
     /// </summary>
-    public OnlineLeaderboardScoreSource SourceKind
-    {
-        get;
-        set;
-    }
+    public OnlineLeaderboardScoreSource SourceKind { get; set; }
 
     /// <summary>
     /// 获取或设置来源结算结果标识（追溯键）。
     /// </summary>
-    public string SourceMatchResultId
-    {
-        get;
-        set;
-    }
+    public string SourceMatchResultId { get; set; }
 
     /// <summary>
     /// 获取或设置提交时刻（UTC 毫秒；写入条目的 <c>LastUpdateTime</c>）。
     /// </summary>
-    public long SubmittedTime
-    {
-        get;
-        set;
-    }
+    public long SubmittedTime { get; set; }
 }

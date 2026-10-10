@@ -42,58 +42,34 @@ public sealed class OnlineChatOptions
     /// <summary>
     /// 获取或设置单条消息内容长度上限（字符数；默认 500）。
     /// </summary>
-    public int MaxContentLength
-    {
-        get;
-        set;
-    }
+    public int MaxContentLength { get; set; }
 
     /// <summary>
     /// 获取或设置历史分页每页条数上限（默认 50；请求超过则按上限截断）。
     /// </summary>
-    public int MaxMessagesPerPage
-    {
-        get;
-        set;
-    }
+    public int MaxMessagesPerPage { get; set; }
 
     /// <summary>
     /// 获取或设置撤回窗口（秒；默认 120）。超窗后发送者也不能撤回——
     /// 无限期撤回等于允许篡改历史，他人已读后撤回会让讨论上下文凭空断裂。
     /// </summary>
-    public int RecallWindowSeconds
-    {
-        get;
-        set;
-    }
+    public int RecallWindowSeconds { get; set; }
 
     /// <summary>
     /// 获取或设置频控窗口时长（秒；默认 10）。
     /// </summary>
-    public int RateLimitWindowSeconds
-    {
-        get;
-        set;
-    }
+    public int RateLimitWindowSeconds { get; set; }
 
     /// <summary>
     /// 获取或设置频控窗口内允许的发送条数（默认 8）。压测需同时验证
     /// 「刷屏被拦」与「正常节奏不受影响」（误伤率 ≤0.1%）。
     /// </summary>
-    public int RateLimitMaxMessages
-    {
-        get;
-        set;
-    }
+    public int RateLimitMaxMessages { get; set; }
 
     /// <summary>
     /// 获取或设置历史保留时长（秒；默认 0 表示不设上限，由运行时装配的清理调度决定）。
     /// </summary>
-    public long HistoryRetentionSeconds
-    {
-        get;
-        set;
-    }
+    public long HistoryRetentionSeconds { get; set; }
 
     /// <summary>
     /// 按推荐值初始化 <see cref="OnlineChatOptions"/>。

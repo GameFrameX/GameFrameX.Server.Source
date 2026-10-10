@@ -33,11 +33,11 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Events;
-using GameFrameX.Online.Identity;
-using GameFrameX.Online.Scope;
-using GameFrameX.Online.Tokens;
+using Contracts;
+using Events;
+using Identity;
+using Scope;
+using Tokens;
 
 /// <summary>
 /// 会话 Token 服务（<see cref="IOnlineSessionTokenContract"/> 的默认实现）。
@@ -61,7 +61,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
     /// 变更串行门（原子轮换保证：签发/刷新/吊销/踢下线/清理互斥，防止并发双写产生即刻失效的新 Token）。
     /// ponytail: 单进程信号量——多进程部署时依赖装配层按会话归属单写者路由，跨进程原子性由持久化存储的 CAS 实现。
     /// </summary>
-    private readonly SemaphoreSlim _mutationGate = new SemaphoreSlim(1, 1);
+    private readonly SemaphoreSlim _mutationGate = new(1, 1);
 
     /// <summary>
     /// 初始化 <see cref="OnlineSessionTokenService"/>。
@@ -139,7 +139,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
         await _mutationGate.WaitAsync(cancellationToken);
         try
         {
-            var session = await FindLiveBySessionIdAsync(request.SessionId, request.Scope, requireLive: false, cancellationToken);
+            var session = await FindLiveBySessionIdAsync(request.SessionId, request.Scope, false, cancellationToken);
             if (session == null || session.State.IsTerminal())
             {
                 return new OnlineTokenRevokeResult
@@ -176,7 +176,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
         await _mutationGate.WaitAsync(cancellationToken);
         try
         {
-            var session = await FindLiveBySessionIdAsync(request.SessionId, request.Scope, requireLive: false, cancellationToken);
+            var session = await FindLiveBySessionIdAsync(request.SessionId, request.Scope, false, cancellationToken);
             if (session == null || session.State.IsTerminal())
             {
                 return new OnlineTokenKickResult

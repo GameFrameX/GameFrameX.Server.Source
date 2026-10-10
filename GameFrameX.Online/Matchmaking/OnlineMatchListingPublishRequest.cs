@@ -41,56 +41,32 @@ public sealed class OnlineMatchListingPublishRequest
     /// <summary>
     /// 获取或设置展示名称。
     /// </summary>
-    public string Name
-    {
-        get;
-        set;
-    }
+    public string Name { get; set; }
 
     /// <summary>
     /// 获取或设置来源队伍标识（非队伍来源留空）。
     /// </summary>
-    public string PartyId
-    {
-        get;
-        set;
-    }
+    public string PartyId { get; set; }
 
     /// <summary>
     /// 获取或设置玩法模式。
     /// </summary>
-    public int Mode
-    {
-        get;
-        set;
-    }
+    public int Mode { get; set; }
 
     /// <summary>
     /// 获取或设置区域。
     /// </summary>
-    public int Region
-    {
-        get;
-        set;
-    }
+    public int Region { get; set; }
 
     /// <summary>
     /// 获取或设置加入策略。
     /// </summary>
-    public OnlineJoinPolicy JoinPolicy
-    {
-        get;
-        set;
-    }
+    public OnlineJoinPolicy JoinPolicy { get; set; }
 
     /// <summary>
     /// 获取或设置加入密码（仅 <see cref="OnlineJoinPolicy.Password"/> 必填）。
     /// </summary>
-    public string Password
-    {
-        get;
-        set;
-    }
+    public string Password { get; set; }
 
     /// <summary>
     /// 获取或设置邀请白名单（仅 <see cref="OnlineJoinPolicy.InviteOnly"/> 使用）。
@@ -98,27 +74,15 @@ public sealed class OnlineMatchListingPublishRequest
     /// 第一版简化：白名单在发布时一次登记，不提供后续增删接口；需要动态邀请时再补独立的邀请签发契约。
     /// </para>
     /// </summary>
-    public List<long> InvitedPlayerIds
-    {
-        get;
-        set;
-    }
+    public List<long> InvitedPlayerIds { get; set; }
 
     /// <summary>
     /// 获取或设置标签集合。
     /// </summary>
-    public List<string> Tags
-    {
-        get;
-        set;
-    }
+    public List<string> Tags { get; set; }
 
     /// <summary>
     /// 获取或设置容量上限。
     /// </summary>
-    public int Capacity
-    {
-        get;
-        set;
-    }
+    public int Capacity { get; set; }
 }

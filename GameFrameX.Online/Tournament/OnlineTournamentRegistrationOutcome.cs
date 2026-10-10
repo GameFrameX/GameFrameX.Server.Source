@@ -42,36 +42,20 @@ public sealed class OnlineTournamentRegistrationOutcome
     /// <summary>
     /// 获取或设置报名是否通过（拒绝时为 <c>false</c>，此时 <see cref="Registration"/> 为 null）。
     /// </summary>
-    public bool Accepted
-    {
-        get;
-        set;
-    }
+    public bool Accepted { get; set; }
 
     /// <summary>
     /// 获取或设置是否为重复报名（命中原有登记，不新增、不重发事件）。
     /// </summary>
-    public bool IsReplay
-    {
-        get;
-        set;
-    }
+    public bool IsReplay { get; set; }
 
     /// <summary>
     /// 获取或设置拒绝原因（通过时为 <see cref="OnlineTournamentRegistrationRejection.None"/>）。
     /// </summary>
-    public OnlineTournamentRegistrationRejection Rejection
-    {
-        get;
-        set;
-    }
+    public OnlineTournamentRegistrationRejection Rejection { get; set; }
 
     /// <summary>
     /// 获取或设置报名登记（拒绝时为 null）。
     /// </summary>
-    public OnlineTournamentRegistration Registration
-    {
-        get;
-        set;
-    }
+    public OnlineTournamentRegistration Registration { get; set; }
 }

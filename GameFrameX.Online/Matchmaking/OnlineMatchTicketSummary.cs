@@ -41,81 +41,45 @@ public sealed class OnlineMatchTicketSummary
     /// <summary>
     /// 获取或设置票据标识。
     /// </summary>
-    public string TicketId
-    {
-        get;
-        set;
-    }
+    public string TicketId { get; set; }
 
     /// <summary>
     /// 获取或设置来源队伍标识（单人排队为空字符串）。
     /// </summary>
-    public string PartyId
-    {
-        get;
-        set;
-    }
+    public string PartyId { get; set; }
 
     /// <summary>
     /// 获取或设置票据携带玩家数。
     /// </summary>
-    public int PlayerCount
-    {
-        get;
-        set;
-    }
+    public int PlayerCount { get; set; }
 
     /// <summary>
     /// 获取或设置玩法模式。
     /// </summary>
-    public int Mode
-    {
-        get;
-        set;
-    }
+    public int Mode { get; set; }
 
     /// <summary>
     /// 获取或设置区域。
     /// </summary>
-    public int Region
-    {
-        get;
-        set;
-    }
+    public int Region { get; set; }
 
     /// <summary>
     /// 获取或设置目标对局规模。
     /// </summary>
-    public int TeamSize
-    {
-        get;
-        set;
-    }
+    public int TeamSize { get; set; }
 
     /// <summary>
     /// 获取或设置票据状态。
     /// </summary>
-    public OnlineMatchTicketState State
-    {
-        get;
-        set;
-    }
+    public OnlineMatchTicketState State { get; set; }
 
     /// <summary>
     /// 获取或设置已等待时长（秒）。
     /// </summary>
-    public int WaitSeconds
-    {
-        get;
-        set;
-    }
+    public int WaitSeconds { get; set; }
 
     /// <summary>
     /// 获取或设置产出的分配标识（未匹配为空字符串）。
     /// </summary>
-    public string AssignmentId
-    {
-        get;
-        set;
-    }
+    public string AssignmentId { get; set; }
 }

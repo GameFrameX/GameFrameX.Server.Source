@@ -49,119 +49,67 @@ public sealed class OnlineFriendship
     /// <summary>
     /// 获取或设置关系标识。
     /// </summary>
-    public string FriendshipId
-    {
-        get;
-        set;
-    }
+    public string FriendshipId { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识（数据隔离根边界）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识（数据隔离根边界）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置关系建立时的来源区服标识（仅审计与投递路由参考，不参与唯一键）。
     /// </summary>
-    public long ServerId
-    {
-        get;
-        set;
-    }
+    public long ServerId { get; set; }
 
     /// <summary>
     /// 获取或设置无向对的低标识侧玩家（规范化结果，恒有 <c>LowPlayerId &lt; HighPlayerId</c>）。
     /// </summary>
-    public long LowPlayerId
-    {
-        get;
-        set;
-    }
+    public long LowPlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置无向对的高标识侧玩家（规范化结果）。
     /// </summary>
-    public long HighPlayerId
-    {
-        get;
-        set;
-    }
+    public long HighPlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置发起方玩家标识（方向事实；关系被接受后不翻转）。
     /// </summary>
-    public long RequesterId
-    {
-        get;
-        set;
-    }
+    public long RequesterId { get; set; }
 
     /// <summary>
     /// 获取或设置被请求方玩家标识（方向事实）。
     /// </summary>
-    public long AddresseeId
-    {
-        get;
-        set;
-    }
+    public long AddresseeId { get; set; }
 
     /// <summary>
     /// 获取或设置关系状态。
     /// </summary>
-    public OnlineFriendshipState State
-    {
-        get;
-        set;
-    }
+    public OnlineFriendshipState State { get; set; }
 
     /// <summary>
     /// 获取或设置创建时刻（UTC 毫秒）。
     /// </summary>
-    public long CreatedAtTime
-    {
-        get;
-        set;
-    }
+    public long CreatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置最近更新时刻（UTC 毫秒）。
     /// </summary>
-    public long UpdatedAtTime
-    {
-        get;
-        set;
-    }
+    public long UpdatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置待答复请求的失效时刻（UTC 毫秒；超期由扫描置 <see cref="OnlineFriendshipState.Expired"/>）。
     /// </summary>
-    public long ExpiresAtTime
-    {
-        get;
-        set;
-    }
+    public long ExpiresAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置最近一次答复时刻（UTC 毫秒；未答复为 0）。
     /// </summary>
-    public long RespondedAtTime
-    {
-        get;
-        set;
-    }
+    public long RespondedAtTime { get; set; }
 
     /// <summary>
     /// 规范化玩家对为无向键（低标识在前）。

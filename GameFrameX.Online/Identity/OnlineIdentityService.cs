@@ -29,7 +29,7 @@
 
 namespace GameFrameX.Online.Identity;
 
-using GameFrameX.Online.Contracts;
+using Contracts;
 
 /// <summary>
 /// 身份域服务（登录解析、绑定/换绑/解绑、合并与注销的显式操作）。

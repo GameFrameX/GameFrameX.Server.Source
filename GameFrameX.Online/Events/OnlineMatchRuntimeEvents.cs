@@ -178,46 +178,22 @@ public static class OnlineMatchRuntimeEvents
     private sealed class MatchStateChangedPayload
     {
         /// <summary>对局标识。</summary>
-        public string MatchId
-        {
-            get;
-            set;
-        }
+        public string MatchId { get; set; }
 
         /// <summary>来源分配标识。</summary>
-        public string AssignmentId
-        {
-            get;
-            set;
-        }
+        public string AssignmentId { get; set; }
 
         /// <summary>原状态名。</summary>
-        public string FromState
-        {
-            get;
-            set;
-        }
+        public string FromState { get; set; }
 
         /// <summary>目标状态名。</summary>
-        public string ToState
-        {
-            get;
-            set;
-        }
+        public string ToState { get; set; }
 
         /// <summary>变更时的服务器序号。</summary>
-        public long ServerSequence
-        {
-            get;
-            set;
-        }
+        public long ServerSequence { get; set; }
 
         /// <summary>成员数（含断线成员）。</summary>
-        public int MemberCount
-        {
-            get;
-            set;
-        }
+        public int MemberCount { get; set; }
     }
 
     /// <summary>
@@ -226,53 +202,25 @@ public static class OnlineMatchRuntimeEvents
     private sealed class MatchSettledPayload
     {
         /// <summary>结果标识（幂等边界）。</summary>
-        public string MatchResultId
-        {
-            get;
-            set;
-        }
+        public string MatchResultId { get; set; }
 
         /// <summary>对局标识。</summary>
-        public string MatchId
-        {
-            get;
-            set;
-        }
+        public string MatchId { get; set; }
 
         /// <summary>玩法模式。</summary>
-        public int Mode
-        {
-            get;
-            set;
-        }
+        public int Mode { get; set; }
 
         /// <summary>区域。</summary>
-        public int Region
-        {
-            get;
-            set;
-        }
+        public int Region { get; set; }
 
         /// <summary>结束方式名。</summary>
-        public string Outcome
-        {
-            get;
-            set;
-        }
+        public string Outcome { get; set; }
 
         /// <summary>结算时刻（UTC 毫秒）。</summary>
-        public long SettledTime
-        {
-            get;
-            set;
-        }
+        public long SettledTime { get; set; }
 
         /// <summary>玩家条目集合。</summary>
-        public List<MatchSettledEntryPayload> Entries
-        {
-            get;
-            set;
-        }
+        public List<MatchSettledEntryPayload> Entries { get; set; }
     }
 
     /// <summary>
@@ -281,38 +229,18 @@ public static class OnlineMatchRuntimeEvents
     private sealed class MatchSettledEntryPayload
     {
         /// <summary>玩家标识。</summary>
-        public long PlayerId
-        {
-            get;
-            set;
-        }
+        public long PlayerId { get; set; }
 
         /// <summary>名次。</summary>
-        public int Rank
-        {
-            get;
-            set;
-        }
+        public int Rank { get; set; }
 
         /// <summary>是否胜方。</summary>
-        public bool IsWinner
-        {
-            get;
-            set;
-        }
+        public bool IsWinner { get; set; }
 
         /// <summary>玩法得分。</summary>
-        public long Score
-        {
-            get;
-            set;
-        }
+        public long Score { get; set; }
 
         /// <summary>奖励条目数（奖励明细经资产域事件下发，此处只给计数）。</summary>
-        public int RewardCount
-        {
-            get;
-            set;
-        }
+        public int RewardCount { get; set; }
     }
 }

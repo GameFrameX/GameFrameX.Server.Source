@@ -48,10 +48,10 @@ public sealed class InMemoryOnlineGameEventDeadLetterSink : IOnlineGameEventDead
     public const int DefaultCapacity = 10000;
 
     /// <summary>全局锁。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>死信列表（按写入顺序；超上限时从头部淘汰）。</summary>
-    private readonly LinkedList<OnlineGameEventDeadLetter> _deadLetters = new LinkedList<OnlineGameEventDeadLetter>();
+    private readonly LinkedList<OnlineGameEventDeadLetter> _deadLetters = new();
 
     /// <summary>保留条数上限。</summary>
     private readonly int _capacity;

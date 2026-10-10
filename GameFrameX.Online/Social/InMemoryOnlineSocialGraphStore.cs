@@ -44,16 +44,16 @@ namespace GameFrameX.Online.Social;
 public sealed class InMemoryOnlineSocialGraphStore : IOnlineSocialGraphStore
 {
     /// <summary>并发保护锁。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>屏蔽表（键 = 作用域 + 归属玩家 + 被屏蔽玩家）。</summary>
-    private readonly Dictionary<string, OnlineBlockEntry> _blocksByDirection = new Dictionary<string, OnlineBlockEntry>(StringComparer.Ordinal);
+    private readonly Dictionary<string, OnlineBlockEntry> _blocksByDirection = new(StringComparer.Ordinal);
 
     /// <summary>静音表（键 = 作用域 + 归属玩家 + 被静音玩家）。</summary>
-    private readonly Dictionary<string, OnlineMuteEntry> _mutesByDirection = new Dictionary<string, OnlineMuteEntry>(StringComparer.Ordinal);
+    private readonly Dictionary<string, OnlineMuteEntry> _mutesByDirection = new(StringComparer.Ordinal);
 
     /// <summary>处罚表（键 = 作用域 + 处罚标识）。</summary>
-    private readonly Dictionary<string, OnlinePunishment> _punishmentsById = new Dictionary<string, OnlinePunishment>(StringComparer.Ordinal);
+    private readonly Dictionary<string, OnlinePunishment> _punishmentsById = new(StringComparer.Ordinal);
 
     /// <summary>
     /// 以（归属玩家，被屏蔽玩家）方向键在内存屏蔽表中「不存在则创建」屏蔽记录：键已存在时返回既有记录且不写入，存档与返回值均为防御性副本。

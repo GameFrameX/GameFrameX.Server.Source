@@ -33,7 +33,7 @@ namespace GameFrameX.Online.Assets;
 using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Online.Scope;
+using Scope;
 
 /// <summary>
 /// 资产对账服务（账本累加 == 余额/库存快照；支持按玩家增量与全量巡检）。

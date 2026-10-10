@@ -42,83 +42,47 @@ public sealed class OnlineMatchMember
     /// <summary>
     /// 获取或设置玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置成员状态。
     /// </summary>
-    public OnlineMatchMemberState State
-    {
-        get;
-        set;
-    }
+    public OnlineMatchMemberState State { get; set; }
 
     /// <summary>
     /// 获取或设置加入时刻（UTC 毫秒）。
     /// </summary>
-    public long JoinedTime
-    {
-        get;
-        set;
-    }
+    public long JoinedTime { get; set; }
 
     /// <summary>
     /// 获取或设置最近一次状态变更时刻（UTC 毫秒）。
     /// </summary>
-    public long StateChangedTime
-    {
-        get;
-        set;
-    }
+    public long StateChangedTime { get; set; }
 
     /// <summary>
     /// 获取或设置断线时刻（UTC 毫秒；未断线为 0）。
     /// </summary>
-    public long DisconnectedTime
-    {
-        get;
-        set;
-    }
+    public long DisconnectedTime { get; set; }
 
     /// <summary>
     /// 获取或设置重连截止时刻（UTC 毫秒；超过该时刻转为退出/托管）。
     /// </summary>
-    public long ReconnectDeadlineTime
-    {
-        get;
-        set;
-    }
+    public long ReconnectDeadlineTime { get; set; }
 
     /// <summary>
     /// 获取或设置服务端已确认到的最大服务器序号（重连增量补发的下界）。
     /// </summary>
-    public long LastAckSequence
-    {
-        get;
-        set;
-    }
+    public long LastAckSequence { get; set; }
 
     /// <summary>
     /// 获取或设置服务端已接受的最大客户端序号（重复包判定的依据）。
     /// </summary>
-    public long LastClientSequence
-    {
-        get;
-        set;
-    }
+    public long LastClientSequence { get; set; }
 
     /// <summary>
     /// 获取或设置当前重连令牌（未断线为 null 或空）。
     /// </summary>
-    public string ReconnectToken
-    {
-        get;
-        set;
-    }
+    public string ReconnectToken { get; set; }
 
     /// <summary>
     /// 复制成员（存储与快照层防御性深拷贝使用）。

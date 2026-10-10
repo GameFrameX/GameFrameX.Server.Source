@@ -31,8 +31,8 @@ namespace GameFrameX.Online.Session;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Events;
+using Contracts;
+using Events;
 
 /// <summary>
 /// 会话生命周期管理器（Session 状态推进的单写者——本类之外不得直改

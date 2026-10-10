@@ -44,164 +44,92 @@ public sealed class OnlineReportCase
     /// <summary>
     /// 获取或设置案件标识。
     /// </summary>
-    public string ReportId
-    {
-        get;
-        set;
-    }
+    public string ReportId { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置举报人。
     /// </summary>
-    public long ReporterId
-    {
-        get;
-        set;
-    }
+    public long ReporterId { get; set; }
 
     /// <summary>
     /// 获取或设置被举报人。
     /// </summary>
-    public long ReportedPlayerId
-    {
-        get;
-        set;
-    }
+    public long ReportedPlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置举报场景。
     /// </summary>
-    public OnlineReportScene Scene
-    {
-        get;
-        set;
-    }
+    public OnlineReportScene Scene { get; set; }
 
     /// <summary>
     /// 获取或设置举报原因分类。
     /// </summary>
-    public OnlineReportReason Reason
-    {
-        get;
-        set;
-    }
+    public OnlineReportReason Reason { get; set; }
 
     /// <summary>
     /// 获取或设置对局标识（对局场景的证据；无则空字符串）。
     /// </summary>
-    public string MatchId
-    {
-        get;
-        set;
-    }
+    public string MatchId { get; set; }
 
     /// <summary>
     /// 获取或设置被举报消息标识（聊天场景的证据；无则空字符串）。
     /// </summary>
-    public string ChatMessageId
-    {
-        get;
-        set;
-    }
+    public string ChatMessageId { get; set; }
 
     /// <summary>
     /// 获取或设置频道标识（聊天场景的证据；无则空字符串）。
     /// </summary>
-    public string ChannelId
-    {
-        get;
-        set;
-    }
+    public string ChannelId { get; set; }
 
     /// <summary>
     /// 获取或设置补充说明（玩家自述；选择「其他」原因时必填）。
     /// </summary>
-    public string Evidence
-    {
-        get;
-        set;
-    }
+    public string Evidence { get; set; }
 
     /// <summary>
     /// 获取或设置案件状态。
     /// </summary>
-    public OnlineReportState State
-    {
-        get;
-        set;
-    }
+    public OnlineReportState State { get; set; }
 
     /// <summary>
     /// 获取或设置处置结果。
     /// </summary>
-    public OnlineReportResolution Resolution
-    {
-        get;
-        set;
-    }
+    public OnlineReportResolution Resolution { get; set; }
 
     /// <summary>
     /// 获取或设置受理该案件的 Admin 标识（未受理为 <c>0</c>）。
     /// </summary>
-    public long HandlerAdminId
-    {
-        get;
-        set;
-    }
+    public long HandlerAdminId { get; set; }
 
     /// <summary>
     /// 获取或设置 Admin 侧案件关联键（Admin 仓案件编号；未关联为空字符串）。
     /// </summary>
-    public string AdminCaseId
-    {
-        get;
-        set;
-    }
+    public string AdminCaseId { get; set; }
 
     /// <summary>
     /// 获取或设置提交时刻（UTC 毫秒）。
     /// </summary>
-    public long CreatedAtTime
-    {
-        get;
-        set;
-    }
+    public long CreatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置最后变更时刻（UTC 毫秒）。
     /// </summary>
-    public long UpdatedAtTime
-    {
-        get;
-        set;
-    }
+    public long UpdatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置结案时刻（UTC 毫秒；未结案为 <c>0</c>）。
     /// </summary>
-    public long ClosedAtTime
-    {
-        get;
-        set;
-    }
+    public long ClosedAtTime { get; set; }
 
     /// <summary>
     /// 构造深拷贝（存储层与调用方不得共享同一实例）。

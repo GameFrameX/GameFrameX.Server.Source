@@ -47,7 +47,7 @@ namespace GameFrameX.Online.Social;
 public static class OnlineFriendshipStateMachine
 {
     /// <summary>合法迁移边（起始态 → 允许的目标态集合）。</summary>
-    private static readonly Dictionary<OnlineFriendshipState, OnlineFriendshipState[]> AllowedEdges = new Dictionary<OnlineFriendshipState, OnlineFriendshipState[]>
+    private static readonly Dictionary<OnlineFriendshipState, OnlineFriendshipState[]> AllowedEdges = new()
     {
         {
             OnlineFriendshipState.Requested, new[]

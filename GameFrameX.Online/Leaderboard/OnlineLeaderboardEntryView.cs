@@ -43,20 +43,12 @@ public sealed class OnlineLeaderboardEntryView
     /// <summary>
     /// 获取或设置名次（从 1 开始；全序唯一，无并列名次）。
     /// </summary>
-    public int Rank
-    {
-        get;
-        set;
-    }
+    public int Rank { get; set; }
 
     /// <summary>
     /// 获取或设置榜上条目。
     /// </summary>
-    public OnlineLeaderboardEntry Entry
-    {
-        get;
-        set;
-    }
+    public OnlineLeaderboardEntry Entry { get; set; }
 
     /// <summary>
     /// 复制视图（条目深拷贝）。

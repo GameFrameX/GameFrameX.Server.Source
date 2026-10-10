@@ -42,45 +42,25 @@ public sealed class OnlineFriendSummary
     /// <summary>
     /// 获取或设置好友玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置好友展示名（未装配玩家目录时回退为标识字面量）。
     /// </summary>
-    public string Name
-    {
-        get;
-        set;
-    }
+    public string Name { get; set; }
 
     /// <summary>
     /// 获取或设置好友归属区服标识。
     /// </summary>
-    public long ServerId
-    {
-        get;
-        set;
-    }
+    public long ServerId { get; set; }
 
     /// <summary>
     /// 获取或设置好友当前是否在线（读取时事实；无在线探针时恒为 <c>false</c>）。
     /// </summary>
-    public bool Online
-    {
-        get;
-        set;
-    }
+    public bool Online { get; set; }
 
     /// <summary>
     /// 获取或设置成为好友的时刻（UTC 毫秒）。
     /// </summary>
-    public long EstablishedAtTime
-    {
-        get;
-        set;
-    }
+    public long EstablishedAtTime { get; set; }
 }

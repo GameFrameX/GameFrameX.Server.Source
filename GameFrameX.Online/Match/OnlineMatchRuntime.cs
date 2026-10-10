@@ -54,7 +54,7 @@ namespace GameFrameX.Online.Match;
 public sealed class OnlineMatchRuntime
 {
     /// <summary>登记处同步锁（仅保护字典本身，不保护对局状态）。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>对局存储。</summary>
     private readonly IOnlineMatchActorStore _store;
@@ -66,10 +66,10 @@ public sealed class OnlineMatchRuntime
     private readonly OnlineMatchRuntimeOptions _options;
 
     /// <summary>玩法注册表：键 = 模式标识。</summary>
-    private readonly Dictionary<int, IOnlineMatchGame> _games = new Dictionary<int, IOnlineMatchGame>();
+    private readonly Dictionary<int, IOnlineMatchGame> _games = new();
 
     /// <summary>Actor 登记表：键 = (TenantId, AppId, MatchId)。</summary>
-    private readonly Dictionary<string, OnlineMatchActor> _actors = new Dictionary<string, OnlineMatchActor>();
+    private readonly Dictionary<string, OnlineMatchActor> _actors = new();
 
     /// <summary>已释放 Actor 计数（可观测性对账用）。</summary>
     private int _releasedActorCount;
@@ -176,7 +176,7 @@ public sealed class OnlineMatchRuntime
             Events = new List<OnlineMatchServerEvent>(),
             CreatedTime = nowUnixMilliseconds,
             StateChangedTime = nowUnixMilliseconds,
-            DeadlineTime = nowUnixMilliseconds + (_options.WaitingTimeoutSeconds * 1000L),
+            DeadlineTime = nowUnixMilliseconds + _options.WaitingTimeoutSeconds * 1000L,
             Version = 0,
         };
 

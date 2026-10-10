@@ -43,7 +43,7 @@ public static class OnlinePartyStateMachine
     /// <summary>
     /// 合法迁移邻接表：键 = 起态，值 = 可达终态集合。
     /// </summary>
-    private static readonly Dictionary<OnlinePartyState, OnlinePartyState[]> Adjacency = new Dictionary<OnlinePartyState, OnlinePartyState[]>
+    private static readonly Dictionary<OnlinePartyState, OnlinePartyState[]> Adjacency = new()
     {
         {
             OnlinePartyState.Created, new[]

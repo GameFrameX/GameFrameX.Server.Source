@@ -39,18 +39,10 @@ public sealed class OnlineTokenRefreshRequest
     /// <summary>
     /// 获取或设置生效作用域。
     /// </summary>
-    public OnlineScope Scope
-    {
-        get;
-        set;
-    }
+    public OnlineScope Scope { get; set; }
 
     /// <summary>
     /// 获取或设置待刷新的原 Token。
     /// </summary>
-    public string Token
-    {
-        get;
-        set;
-    }
+    public string Token { get; set; }
 }

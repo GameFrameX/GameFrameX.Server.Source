@@ -31,9 +31,9 @@ namespace GameFrameX.Online.Matchmaking;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Events;
-using GameFrameX.Online.Social;
+using Contracts;
+using Events;
+using Social;
 
 /// <summary>
 /// 匹配协调器（按模式/区域/规模/等级区间成组，产出 assignment）。
@@ -234,7 +234,7 @@ public sealed class OnlineMatchmakerCoordinator
             return null;
         }
 
-        var group = new List<OnlineMatchTicket> { anchor };
+        var group = new List<OnlineMatchTicket> { anchor, };
         if (players.Count == anchor.TeamSize)
         {
             return group;

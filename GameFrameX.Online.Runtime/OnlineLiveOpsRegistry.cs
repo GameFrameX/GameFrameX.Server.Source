@@ -39,17 +39,17 @@ public sealed class OnlineLiveOpsRegistry
     /// <summary>
     /// 同步锁（登记表为普通列表 + 字典，全部操作临界区内完成）。
     /// </summary>
-    private readonly object _sync = new object();
+    private readonly object _sync = new();
 
     /// <summary>
     /// 登记表（append-only）。
     /// </summary>
-    private readonly List<OnlineLiveOpsEntry> _entries = new List<OnlineLiveOpsEntry>();
+    private readonly List<OnlineLiveOpsEntry> _entries = new();
 
     /// <summary>
     /// 最新条目索引（kind:key → 条目；回滚后指向回滚条目）。
     /// </summary>
-    private readonly Dictionary<string, OnlineLiveOpsEntry> _latest = new Dictionary<string, OnlineLiveOpsEntry>(StringComparer.Ordinal);
+    private readonly Dictionary<string, OnlineLiveOpsEntry> _latest = new(StringComparer.Ordinal);
 
     /// <summary>
     /// 登记序号分配器。
@@ -112,8 +112,8 @@ public sealed class OnlineLiveOpsRegistry
         lock (_sync)
         {
             var source = string.IsNullOrEmpty(kind)
-                ? _entries
-                : _entries.Where(entry => string.Equals(entry.Kind, kind, StringComparison.Ordinal)).ToList();
+                             ? _entries
+                             : _entries.Where(entry => string.Equals(entry.Kind, kind, StringComparison.Ordinal)).ToList();
             return source.OrderByDescending(entry => entry.Sequence).Take(Math.Max(1, maxCount)).ToList();
         }
     }
@@ -128,7 +128,7 @@ public sealed class OnlineLiveOpsRegistry
     {
         var entry = new OnlineLiveOpsEntry
         {
-            Sequence = System.Threading.Interlocked.Increment(ref _sequence),
+            Sequence = Interlocked.Increment(ref _sequence),
             Operation = operation,
             Kind = command.Kind ?? string.Empty,
             Key = command.Key ?? string.Empty,
@@ -158,4 +158,3 @@ public sealed class OnlineLiveOpsRegistry
         return (kind ?? string.Empty) + ":" + (key ?? string.Empty);
     }
 }
-

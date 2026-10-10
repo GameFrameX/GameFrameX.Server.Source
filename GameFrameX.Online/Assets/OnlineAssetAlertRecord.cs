@@ -42,54 +42,30 @@ public sealed class OnlineAssetAlertRecord
     /// <summary>
     /// 获取或设置告警类型。
     /// </summary>
-    public OnlineAssetAlertKind Kind
-    {
-        get;
-        set;
-    }
+    public OnlineAssetAlertKind Kind { get; set; }
 
     /// <summary>
     /// 获取或设置关联交易标识（无交易上下文为空字符串）。
     /// </summary>
-    public string TransactionId
-    {
-        get;
-        set;
-    }
+    public string TransactionId { get; set; }
 
     /// <summary>
     /// 获取或设置作用域键（可追溯到租户/App/区服/玩家）。
     /// </summary>
-    public string ScopeKey
-    {
-        get;
-        set;
-    }
+    public string ScopeKey { get; set; }
 
     /// <summary>
     /// 获取或设置关联资产标识（非资产特定告警为空字符串）。
     /// </summary>
-    public string AssetId
-    {
-        get;
-        set;
-    }
+    public string AssetId { get; set; }
 
     /// <summary>
     /// 获取或设置事实描述（服务端内部语义）。
     /// </summary>
-    public string Detail
-    {
-        get;
-        set;
-    }
+    public string Detail { get; set; }
 
     /// <summary>
     /// 获取或设置告警时刻（UTC 毫秒）。
     /// </summary>
-    public long OccurredTime
-    {
-        get;
-        set;
-    }
+    public long OccurredTime { get; set; }
 }

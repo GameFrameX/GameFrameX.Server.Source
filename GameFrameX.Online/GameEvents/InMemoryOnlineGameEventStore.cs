@@ -45,10 +45,10 @@ namespace GameFrameX.Online.GameEvents;
 public sealed class InMemoryOnlineGameEventStore : IOnlineGameEventStore
 {
     /// <summary>全局锁。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>事件表：键 = EventId（幂等键）。</summary>
-    private readonly Dictionary<string, OnlineEvent> _events = new Dictionary<string, OnlineEvent>();
+    private readonly Dictionary<string, OnlineEvent> _events = new();
 
     /// <summary>
     /// 初始化 <see cref="InMemoryOnlineGameEventStore"/>。

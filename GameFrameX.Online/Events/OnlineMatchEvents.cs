@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Events;
 
 using System.Text.Json;
-using GameFrameX.Online.Matchmaking;
+using Matchmaking;
 
 /// <summary>
 /// 匹配域事件工厂（票据状态与对局分配事件供下游与 Admin 消费）。
@@ -151,53 +151,25 @@ public static class OnlineMatchEvents
     private sealed class TicketChangedPayload
     {
         /// <summary>票据标识。</summary>
-        public string TicketId
-        {
-            get;
-            set;
-        }
+        public string TicketId { get; set; }
 
         /// <summary>来源队伍标识（单人排队为空字符串）。</summary>
-        public string PartyId
-        {
-            get;
-            set;
-        }
+        public string PartyId { get; set; }
 
         /// <summary>原状态名。</summary>
-        public string FromState
-        {
-            get;
-            set;
-        }
+        public string FromState { get; set; }
 
         /// <summary>目标状态名。</summary>
-        public string ToState
-        {
-            get;
-            set;
-        }
+        public string ToState { get; set; }
 
         /// <summary>失败原因名。</summary>
-        public string FailureReason
-        {
-            get;
-            set;
-        }
+        public string FailureReason { get; set; }
 
         /// <summary>产出的分配标识（未匹配为空字符串）。</summary>
-        public string AssignmentId
-        {
-            get;
-            set;
-        }
+        public string AssignmentId { get; set; }
 
         /// <summary>票据携带玩家数。</summary>
-        public int PlayerCount
-        {
-            get;
-            set;
-        }
+        public int PlayerCount { get; set; }
     }
 
     /// <summary>
@@ -206,45 +178,21 @@ public static class OnlineMatchEvents
     private sealed class AssignmentCreatedPayload
     {
         /// <summary>分配标识。</summary>
-        public string AssignmentId
-        {
-            get;
-            set;
-        }
+        public string AssignmentId { get; set; }
 
         /// <summary>对局标识。</summary>
-        public string MatchId
-        {
-            get;
-            set;
-        }
+        public string MatchId { get; set; }
 
         /// <summary>玩法模式。</summary>
-        public int Mode
-        {
-            get;
-            set;
-        }
+        public int Mode { get; set; }
 
         /// <summary>区域。</summary>
-        public int Region
-        {
-            get;
-            set;
-        }
+        public int Region { get; set; }
 
         /// <summary>参与玩家数。</summary>
-        public int PlayerCount
-        {
-            get;
-            set;
-        }
+        public int PlayerCount { get; set; }
 
         /// <summary>消费的票据集合。</summary>
-        public List<string> TicketIds
-        {
-            get;
-            set;
-        }
+        public List<string> TicketIds { get; set; }
     }
 }

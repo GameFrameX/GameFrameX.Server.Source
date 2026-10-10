@@ -41,27 +41,15 @@ public sealed class OnlineLeaderboardApplyResult
     /// <summary>
     /// 获取或设置写入后的条目副本（含聚合分数与提交计数）。
     /// </summary>
-    public OnlineLeaderboardEntry Entry
-    {
-        get;
-        set;
-    }
+    public OnlineLeaderboardEntry Entry { get; set; }
 
     /// <summary>
     /// 获取或设置写入前分数（首笔为 0；临界区内事实）。
     /// </summary>
-    public long OldScore
-    {
-        get;
-        set;
-    }
+    public long OldScore { get; set; }
 
     /// <summary>
     /// 获取或设置是否为本玩家首笔写入（此前未上榜）。
     /// </summary>
-    public bool IsNewEntry
-    {
-        get;
-        set;
-    }
+    public bool IsNewEntry { get; set; }
 }

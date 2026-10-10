@@ -79,26 +79,17 @@ public sealed class OnlineGameEventDescriptor
     /// <summary>
     /// 获取事件名（跨仓契约标识）。
     /// </summary>
-    public string Name
-    {
-        get;
-    }
+    public string Name { get; }
 
     /// <summary>
     /// 获取事件分类。
     /// </summary>
-    public OnlineGameEventCategory Category
-    {
-        get;
-    }
+    public OnlineGameEventCategory Category { get; }
 
     /// <summary>
     /// 获取当前版本（投递版本必须落在 1..<see cref="CurrentVersion"/> 内）。
     /// </summary>
-    public int CurrentVersion
-    {
-        get;
-    }
+    public int CurrentVersion { get; }
 
     /// <summary>
     /// 获取必需载荷字段（只读视图；缺任一字段即拒绝投递）。

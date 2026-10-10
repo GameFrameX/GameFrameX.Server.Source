@@ -50,10 +50,10 @@ namespace GameFrameX.Online.Match;
 public sealed class InMemoryOnlineMatchActorStore : IOnlineMatchActorStore
 {
     /// <summary>全局读写锁。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>对局表：键 = (TenantId, AppId, MatchId)。</summary>
-    private readonly Dictionary<string, OnlineMatch> _matches = new Dictionary<string, OnlineMatch>();
+    private readonly Dictionary<string, OnlineMatch> _matches = new();
 
     /// <summary>
     /// 在全局锁内新增对局：已存在同标识对局返回 null，否则落档副本并将版本初始化为 1。

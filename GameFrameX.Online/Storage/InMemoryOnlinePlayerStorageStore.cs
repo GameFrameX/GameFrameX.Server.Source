@@ -43,16 +43,16 @@ using System.Threading.Tasks;
 public sealed class InMemoryOnlinePlayerStorageStore : IOnlinePlayerStorageStore
 {
     /// <summary>全局读写锁。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>条目表：键 = (TenantId, AppId, PlayerId, Collection, Key) 复合字符串。</summary>
-    private readonly Dictionary<string, OnlinePlayerStorageEntry> _entries = new Dictionary<string, OnlinePlayerStorageEntry>();
+    private readonly Dictionary<string, OnlinePlayerStorageEntry> _entries = new();
 
     /// <summary>
     /// 各键当前已提交的版本（CAS 判定的事实源）。
     /// ponytail: 调用方可能原位变更条目对象后回写（引用共享），不能拿实体当前 Version 反推已提交版本，必须另行记账。
     /// </summary>
-    private readonly Dictionary<string, long> _committedVersionByKey = new Dictionary<string, long>();
+    private readonly Dictionary<string, long> _committedVersionByKey = new();
 
     /// <summary>按键查找条目。</summary>
     /// <param name="key">条目键载荷。</param>
@@ -79,10 +79,7 @@ public sealed class InMemoryOnlinePlayerStorageStore : IOnlinePlayerStorageStore
     /// <returns>交换成功返回 true；版本不匹配或创建冲突返回 false。</returns>
     public Task<bool> UpsertAsync(OnlinePlayerStorageEntry entry, long expectedVersion, CancellationToken cancellationToken = default)
     {
-        if (entry == null)
-        {
-            throw new ArgumentNullException(nameof(entry));
-        }
+        ArgumentNullException.ThrowIfNull(entry);
 
         lock (_syncRoot)
         {

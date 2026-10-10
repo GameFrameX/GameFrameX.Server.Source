@@ -44,38 +44,22 @@ public sealed class OnlineRockPaperScissorsState
     /// <summary>
     /// 获取或设置当前局数（从 1 开始）。
     /// </summary>
-    public int Round
-    {
-        get;
-        set;
-    }
+    public int Round { get; set; }
 
     /// <summary>
     /// 获取或设置上一局胜者（平局为 0）。
     /// </summary>
-    public long WinnerPlayerId
-    {
-        get;
-        set;
-    }
+    public long WinnerPlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置本局截止时刻（UTC 毫秒；0 = 未布防，由 <see cref="IOnlineMatchGame.Advance"/> 布防）。
     /// </summary>
-    public long RoundDeadlineTime
-    {
-        get;
-        set;
-    }
+    public long RoundDeadlineTime { get; set; }
 
     /// <summary>
     /// 获取或设置玩家状态集合。
     /// </summary>
-    public List<OnlineRockPaperScissorsPlayerState> Players
-    {
-        get;
-        set;
-    }
+    public List<OnlineRockPaperScissorsPlayerState> Players { get; set; }
 
     /// <summary>
     /// 单玩家玩法状态。
@@ -85,28 +69,16 @@ public sealed class OnlineRockPaperScissorsState
         /// <summary>
         /// 获取或设置玩家标识。
         /// </summary>
-        public long PlayerId
-        {
-            get;
-            set;
-        }
+        public long PlayerId { get; set; }
 
         /// <summary>
         /// 获取或设置已胜局数。
         /// </summary>
-        public int Wins
-        {
-            get;
-            set;
-        }
+        public int Wins { get; set; }
 
         /// <summary>
         /// 获取或设置本局出拳（<see cref="OnlineRockPaperScissorsMove.None"/> = 未出拳）。
         /// </summary>
-        public OnlineRockPaperScissorsMove Gesture
-        {
-            get;
-            set;
-        }
+        public OnlineRockPaperScissorsMove Gesture { get; set; }
     }
 }

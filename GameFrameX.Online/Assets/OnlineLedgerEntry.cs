@@ -46,162 +46,102 @@ public sealed class OnlineLedgerEntry
     /// <summary>
     /// 获取账本条目标识（全局唯一，<c>led-</c> 前缀）。
     /// </summary>
-    public string EntryId
-    {
-        get;
-    }
+    public string EntryId { get; }
 
     /// <summary>
     /// 获取所属资产交易标识（幂等边界的交易外键）。
     /// </summary>
-    public string TransactionId
-    {
-        get;
-    }
+    public string TransactionId { get; }
 
     /// <summary>
     /// 获取租户标识。
     /// </summary>
-    public long TenantId
-    {
-        get;
-    }
+    public long TenantId { get; }
 
     /// <summary>
     /// 获取 App 标识。
     /// </summary>
-    public long AppId
-    {
-        get;
-    }
+    public long AppId { get; }
 
     /// <summary>
     /// 获取玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-    }
+    public long PlayerId { get; }
 
     /// <summary>
     /// 获取归属服标识（资产所有者的家服；跨服发奖的路由归属）。
     /// </summary>
-    public long HomeServerId
-    {
-        get;
-    }
+    public long HomeServerId { get; }
 
     /// <summary>
     /// 获取发起服标识（执行本次变更的服务器；归属服只表运行位置，不做数据隔离）。
     /// </summary>
-    public long InitiatingServerId
-    {
-        get;
-    }
+    public long InitiatingServerId { get; }
 
     /// <summary>
     /// 获取变更来源（六类业务来源或系统补偿；未登记来源结构性不可达）。
     /// </summary>
-    public OnlineAssetChangeSource Source
-    {
-        get;
-    }
+    public OnlineAssetChangeSource Source { get; }
 
     /// <summary>
     /// 获取操作类型（发放/扣除/撤销/补发/人工调整）。
     /// </summary>
-    public OnlineGrantOperation Operation
-    {
-        get;
-    }
+    public OnlineGrantOperation Operation { get; }
 
     /// <summary>
     /// 获取变更原因（业务语义描述，审计追溯必填）。
     /// </summary>
-    public string Reason
-    {
-        get;
-    }
+    public string Reason { get; }
 
     /// <summary>
     /// 获取业务单号（支付订单号/兑换码流水/邮件附件流水/结算标识等来源侧单号）。
     /// </summary>
-    public string BusinessOrderId
-    {
-        get;
-    }
+    public string BusinessOrderId { get; }
 
     /// <summary>
     /// 获取操作者（会话或管理员标识；系统来源为空字符串，人工资金动作必填）。
     /// </summary>
-    public string OperatorId
-    {
-        get;
-    }
+    public string OperatorId { get; }
 
     /// <summary>
     /// 获取资产类别。
     /// </summary>
-    public OnlineAssetKind AssetKind
-    {
-        get;
-    }
+    public OnlineAssetKind AssetKind { get; }
 
     /// <summary>
     /// 获取资产标识（货币代码或道具 ID）。
     /// </summary>
-    public string AssetId
-    {
-        get;
-    }
+    public string AssetId { get; }
 
     /// <summary>
     /// 获取变更前数量（快照口径）。
     /// </summary>
-    public long AmountBefore
-    {
-        get;
-    }
+    public long AmountBefore { get; }
 
     /// <summary>
     /// 获取带符号变更数额（AmountAfter - AmountBefore）。
     /// </summary>
-    public long Delta
-    {
-        get;
-    }
+    public long Delta { get; }
 
     /// <summary>
     /// 获取变更后数量（AmountBefore + Delta；下限 0 由存储层保证）。
     /// </summary>
-    public long AmountAfter
-    {
-        get;
-    }
+    public long AmountAfter { get; }
 
     /// <summary>
     /// 获取补偿指向的原交易标识（反转条目非空；普通条目为空字符串）。
     /// </summary>
-    public string CompensatesTransactionId
-    {
-        get;
-    }
+    public string CompensatesTransactionId { get; }
 
     /// <summary>
     /// 获取玩家维度账本序（单调递增；追加时由存储层分配）。
     /// </summary>
-    public long SequenceNumber
-    {
-        get;
-    }
+    public long SequenceNumber { get; }
 
     /// <summary>
     /// 获取落账时刻（UTC 毫秒）。
     /// </summary>
-    public long OccurredTime
-    {
-        get;
-    }
+    public long OccurredTime { get; }
 
     /// <summary>
     /// 构造账本条目（仅供存储层在玩家分片事务内调用；构造后不得再变更任何字段）。

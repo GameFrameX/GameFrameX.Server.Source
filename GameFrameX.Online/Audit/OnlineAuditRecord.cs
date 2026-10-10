@@ -46,126 +46,70 @@ public sealed class OnlineAuditRecord
     /// <summary>
     /// 获取或设置全局唯一审计标识（幂等去重键；与接入条目 <c>EventId</c> 一致）。
     /// </summary>
-    public string EventId
-    {
-        get;
-        set;
-    }
+    public string EventId { get; set; }
 
     /// <summary>
     /// 获取或设置审计域（<see cref="OnlineAuditDomain"/> 七值之一）。
     /// </summary>
-    public string Domain
-    {
-        get;
-        set;
-    }
+    public string Domain { get; set; }
 
     /// <summary>
     /// 获取或设置事件/操作类型（接入时的来源域事件常量或 Admin 审计动作名）。
     /// </summary>
-    public string EventType
-    {
-        get;
-        set;
-    }
+    public string EventType { get; set; }
 
     /// <summary>
     /// 获取或设置审计业务时刻（UTC 毫秒；审计三要素之一——时间；跨域检索全序的第一键）。
     /// </summary>
-    public long OccurredTime
-    {
-        get;
-        set;
-    }
+    public long OccurredTime { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置区服标识（0 表示 App 级操作）。
     /// </summary>
-    public long ServerId
-    {
-        get;
-        set;
-    }
+    public long ServerId { get; set; }
 
     /// <summary>
     /// 获取或设置玩家标识（0 表示系统级/非玩家主体操作）。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置操作者标识（审计三要素之一——操作者；检索可按操作者过滤定位）。
     /// </summary>
-    public string OperatorId
-    {
-        get;
-        set;
-    }
+    public string OperatorId { get; set; }
 
     /// <summary>
     /// 获取或设置操作者显示名（辅助定位信息；定位以 <see cref="OperatorId"/> 为准）。
     /// </summary>
-    public string OperatorName
-    {
-        get;
-        set;
-    }
+    public string OperatorName { get; set; }
 
     /// <summary>
     /// 获取或设置操作原因（审计三要素之一——原因）。
     /// </summary>
-    public string Reason
-    {
-        get;
-        set;
-    }
+    public string Reason { get; set; }
 
     /// <summary>
     /// 获取或设置来源模块标识。
     /// </summary>
-    public string Source
-    {
-        get;
-        set;
-    }
+    public string Source { get; set; }
 
     /// <summary>
     /// 获取或设置关联链路键（可定位检索入口）。
     /// </summary>
-    public string CorrelationId
-    {
-        get;
-        set;
-    }
+    public string CorrelationId { get; set; }
 
     /// <summary>
     /// 获取或设置脱敏后的载荷字段投影（敏感键值已替换为掩码；原始载荷字节不落档）。
     /// </summary>
-    public IReadOnlyDictionary<string, string> SanitizedFields
-    {
-        get;
-        set;
-    }
+    public IReadOnlyDictionary<string, string> SanitizedFields { get; set; }
 }

@@ -45,45 +45,25 @@ public sealed class OnlineSeasonCreateRequest
     /// <summary>
     /// 获取或设置赛季标识（App 内唯一；同作用域重名创建被拒绝，不覆盖既有赛季）。
     /// </summary>
-    public string SeasonId
-    {
-        get;
-        set;
-    }
+    public string SeasonId { get; set; }
 
     /// <summary>
     /// 获取或设置关联榜单标识（必须已存在于同一作用域，创建时校验）。
     /// </summary>
-    public string LeaderboardId
-    {
-        get;
-        set;
-    }
+    public string LeaderboardId { get; set; }
 
     /// <summary>
     /// 获取或设置赛季开始时刻（UTC 毫秒；排期元数据，必须早于 <see cref="EndTime"/>）。
     /// </summary>
-    public long StartTime
-    {
-        get;
-        set;
-    }
+    public long StartTime { get; set; }
 
     /// <summary>
     /// 获取或设置赛季结束时刻（UTC 毫秒；排期元数据，必须晚于 <see cref="StartTime"/>）。
     /// </summary>
-    public long EndTime
-    {
-        get;
-        set;
-    }
+    public long EndTime { get; set; }
 
     /// <summary>
     /// 获取或设置赛季奖励规则（名次区间 → 资产变更行；区间之间必须互不重叠）。
     /// </summary>
-    public List<OnlineSeasonRewardRule> RewardRules
-    {
-        get;
-        set;
-    }
+    public List<OnlineSeasonRewardRule> RewardRules { get; set; }
 }

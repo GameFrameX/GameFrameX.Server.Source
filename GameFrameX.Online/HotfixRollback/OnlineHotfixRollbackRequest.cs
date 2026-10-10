@@ -45,54 +45,30 @@ public sealed class OnlineHotfixRollbackRequest
     /// <summary>
     /// 获取或设置生效作用域（服务内只用 TenantId/AppId 两键定位，ServerId 归一为 0）。
     /// </summary>
-    public OnlineScope Scope
-    {
-        get;
-        set;
-    }
+    public OnlineScope Scope { get; set; }
 
     /// <summary>
     /// 获取或设置目标回滚版本号（须已登记清单；禁止包含 <c>|</c>）。
     /// </summary>
-    public string TargetVersion
-    {
-        get;
-        set;
-    }
+    public string TargetVersion { get; set; }
 
     /// <summary>
     /// 获取或设置操作者标识（受控操作审计三要素之一，必填）。
     /// </summary>
-    public string OperatorId
-    {
-        get;
-        set;
-    }
+    public string OperatorId { get; set; }
 
     /// <summary>
     /// 获取或设置操作者显示名（审计检索辅助定位；可为空，定位以 <see cref="OperatorId"/> 为准）。
     /// </summary>
-    public string OperatorName
-    {
-        get;
-        set;
-    }
+    public string OperatorName { get; set; }
 
     /// <summary>
     /// 获取或设置操作原因（受控操作审计三要素之一，必填）。
     /// </summary>
-    public string Reason
-    {
-        get;
-        set;
-    }
+    public string Reason { get; set; }
 
     /// <summary>
     /// 获取或设置命令幂等键（同一回滚命令重试 / 重发携带相同键；格式按幂等键校验规则）。
     /// </summary>
-    public string IdempotencyKey
-    {
-        get;
-        set;
-    }
+    public string IdempotencyKey { get; set; }
 }

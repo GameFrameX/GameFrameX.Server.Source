@@ -40,29 +40,17 @@ public sealed class OnlineLeaderboardProjectionFailure
     /// <summary>
     /// 获取或设置玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置失败错误码（防刷拒绝 / 限流 / 幂等冲突 / 占位繁忙等）。
     /// </summary>
-    public OnlineErrorCode Code
-    {
-        get;
-        set;
-    }
+    public OnlineErrorCode Code { get; set; }
 
     /// <summary>
     /// 获取或设置失败原因（脱敏后的可读描述，供日志与排查）。
     /// </summary>
-    public string Message
-    {
-        get;
-        set;
-    }
+    public string Message { get; set; }
 }
 
 /// <summary>
@@ -78,45 +66,25 @@ public sealed class OnlineLeaderboardProjectionOutcome
     /// <summary>
     /// 获取或设置投影的结算结果标识。
     /// </summary>
-    public string MatchResultId
-    {
-        get;
-        set;
-    }
+    public string MatchResultId { get; set; }
 
     /// <summary>
     /// 获取或设置目标榜单标识。
     /// </summary>
-    public string LeaderboardId
-    {
-        get;
-        set;
-    }
+    public string LeaderboardId { get; set; }
 
     /// <summary>
     /// 获取或设置本次首次落榜的玩家数。
     /// </summary>
-    public int AppliedCount
-    {
-        get;
-        set;
-    }
+    public int AppliedCount { get; set; }
 
     /// <summary>
     /// 获取或设置本次命中幂等回放（此前已落榜）的玩家数。
     /// </summary>
-    public int ReplayCount
-    {
-        get;
-        set;
-    }
+    public int ReplayCount { get; set; }
 
     /// <summary>
     /// 获取或设置被拒绝玩家的失败明细列表。
     /// </summary>
-    public List<OnlineLeaderboardProjectionFailure> FailedPlayers
-    {
-        get;
-        set;
-    } = new List<OnlineLeaderboardProjectionFailure>();
+    public List<OnlineLeaderboardProjectionFailure> FailedPlayers { get; set; } = new();
 }

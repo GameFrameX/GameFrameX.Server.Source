@@ -48,45 +48,25 @@ public sealed class OnlineHotfixProtocolManifest
     /// <summary>
     /// 获取或设置版本号（与 Hotfix 程序集版本一致；同作用域内唯一，禁止包含 <c>|</c>）。
     /// </summary>
-    public string Version
-    {
-        get;
-        set;
-    }
+    public string Version { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识（必填，必须大于 0）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识（必填，必须大于 0）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置协议消息契约行集合（同清单内消息名与消息号均唯一；可为空集合，表示该版本无对外协议面）。
     /// </summary>
-    public IReadOnlyList<OnlineHotfixProtocolMessage> Messages
-    {
-        get;
-        set;
-    }
+    public IReadOnlyList<OnlineHotfixProtocolMessage> Messages { get; set; }
 
     /// <summary>
     /// 获取或设置登记时刻（UTC 毫秒；发布流水线簿记字段）。
     /// </summary>
-    public long RegisteredTime
-    {
-        get;
-        set;
-    }
+    public long RegisteredTime { get; set; }
 }

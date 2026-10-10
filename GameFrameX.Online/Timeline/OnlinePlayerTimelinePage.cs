@@ -45,18 +45,12 @@ public sealed class OnlinePlayerTimelinePage
     /// <summary>
     /// 获取本页事件行（按发生时刻倒序；同一秒内按行标识序数升序）。
     /// </summary>
-    public IReadOnlyList<OnlinePlayerTimelineEntry> Entries
-    {
-        get;
-    }
+    public IReadOnlyList<OnlinePlayerTimelineEntry> Entries { get; }
 
     /// <summary>
     /// 获取分页游标（末页 HasMore = false 且游标为空字符串）。
     /// </summary>
-    public OnlinePageCursor Page
-    {
-        get;
-    }
+    public OnlinePageCursor Page { get; }
 
     /// <summary>
     /// 构造时间线分页结果。

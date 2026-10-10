@@ -91,7 +91,7 @@ public sealed class OnlineAdminMatchHandlers
         var queues = new List<QueueSummaryResponse>();
         if (snapshot.Tickets != null)
         {
-            foreach (var group in snapshot.Tickets.GroupBy(ticket => new { Mode = ticket.Mode, Region = ticket.Region }))
+            foreach (var group in snapshot.Tickets.GroupBy(ticket => new { Mode = ticket.Mode, Region = ticket.Region, }))
             {
                 var modeText = group.Key.Mode.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 var regionText = group.Key.Region.ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -140,17 +140,17 @@ public sealed class OnlineAdminMatchHandlers
         var cursor = OnlineAdminApiContract.ReadCursor(request);
         var tickets = await _host.MatchTicketStore.ListAllAsync(scope.TenantId, scope.AppId, cancellationToken).ConfigureAwait(false);
         var failed = tickets
-            .Where(ticket => ticket.FailureReason != OnlineMatchFailureReason.None
-                             || ticket.State == OnlineMatchTicketState.Expired
-                             || ticket.State == OnlineMatchTicketState.Cancelled
-                             || ticket.State == OnlineMatchTicketState.Failed)
-            .Select(ticket => new { Ticket = ticket, ReasonCode = ToReasonCode(ticket.FailureReason), OccurredAt = ticket.ExpiresAtTime > 0 ? ticket.ExpiresAtTime : ticket.CreatedAtTime, })
-            .Where(item => (string.IsNullOrEmpty(reasonCodeFilter) || string.Equals(item.ReasonCode, reasonCodeFilter, StringComparison.OrdinalIgnoreCase))
-                           && (!startTime.HasValue || item.OccurredAt >= startTime.Value)
-                           && (!endTime.HasValue || item.OccurredAt <= endTime.Value))
-            .OrderByDescending(item => item.OccurredAt)
-            .ThenByDescending(item => item.Ticket.TicketId, StringComparer.Ordinal)
-            .ToList();
+                     .Where(ticket => ticket.FailureReason != OnlineMatchFailureReason.None
+                                      || ticket.State == OnlineMatchTicketState.Expired
+                                      || ticket.State == OnlineMatchTicketState.Cancelled
+                                      || ticket.State == OnlineMatchTicketState.Failed)
+                     .Select(ticket => new { Ticket = ticket, ReasonCode = ToReasonCode(ticket.FailureReason), OccurredAt = ticket.ExpiresAtTime > 0 ? ticket.ExpiresAtTime : ticket.CreatedAtTime, })
+                     .Where(item => (string.IsNullOrEmpty(reasonCodeFilter) || string.Equals(item.ReasonCode, reasonCodeFilter, StringComparison.OrdinalIgnoreCase))
+                                    && (!startTime.HasValue || item.OccurredAt >= startTime.Value)
+                                    && (!endTime.HasValue || item.OccurredAt <= endTime.Value))
+                     .OrderByDescending(item => item.OccurredAt)
+                     .ThenByDescending(item => item.Ticket.TicketId, StringComparer.Ordinal)
+                     .ToList();
         if (!string.IsNullOrEmpty(cursor) && TryParseCursor(cursor, out var cursorTime, out var cursorId))
         {
             failed = failed.Where(item => item.OccurredAt < cursorTime
@@ -158,10 +158,10 @@ public sealed class OnlineAdminMatchHandlers
         }
 
         var reasonSummary = failed
-            .GroupBy(item => item.ReasonCode)
-            .Select(group => new ReasonCountResponse { ReasonCode = group.Key, Count = group.Count(), })
-            .OrderByDescending(item => item.Count)
-            .ToList();
+                            .GroupBy(item => item.ReasonCode)
+                            .Select(group => new ReasonCountResponse { ReasonCode = group.Key, Count = group.Count(), })
+                            .OrderByDescending(item => item.Count)
+                            .ToList();
         var hasMore = failed.Count > pageSize;
         var pageItems = hasMore ? failed.Take(pageSize).ToList() : failed;
         var items = new List<TicketFailureResponse>();
@@ -229,9 +229,9 @@ public sealed class OnlineAdminMatchHandlers
         }
 
         var ordered = abnormal
-            .OrderByDescending(view => view.Ticket.CreatedAtTime)
-            .ThenByDescending(view => view.Ticket.TicketId, StringComparer.Ordinal)
-            .ToList();
+                      .OrderByDescending(view => view.Ticket.CreatedAtTime)
+                      .ThenByDescending(view => view.Ticket.TicketId, StringComparer.Ordinal)
+                      .ToList();
         ordered = ApplyAbnormalCursor(ordered, cursor);
 
         var hasMore = ordered.Count > pageSize;
@@ -288,8 +288,8 @@ public sealed class OnlineAdminMatchHandlers
         }
 
         var ticketScope = ticket.PlayerIds != null && ticket.PlayerIds.Count > 0
-            ? new OnlineScope(scope.TenantId, scope.AppId, scope.ServerId, ticket.PlayerIds[0])
-            : scope;
+                              ? new OnlineScope(scope.TenantId, scope.AppId, scope.ServerId, ticket.PlayerIds[0])
+                              : scope;
         OnlineAdminApiContract.Unwrap(await _host.MatchTickets.CancelAsync(ticketScope, ticketId, cancellationToken).ConfigureAwait(false));
         return BuildControlledAck(request, ticketId, "Ticket cancelled. Reason: " + reason);
     }
@@ -305,7 +305,7 @@ public sealed class OnlineAdminMatchHandlers
     {
         // Localization: Online.AdminApi.EndAbnormalMatchForbidden - 管理面不支持结束异常对局；对局生命周期归游戏进程所有。
         throw new OnlineServiceException(OnlineErrorCode.StateOperationForbidden,
-            LocalizationService.GetString(Localization.Keys.Online.AdminApi.EndAbnormalMatchForbidden));
+                                         LocalizationService.GetString(Localization.Keys.Online.AdminApi.EndAbnormalMatchForbidden));
     }
 
     /// <summary>
@@ -482,9 +482,9 @@ public sealed class OnlineAdminMatchHandlers
     {
         var views = new List<AbnormalTicketView>();
         var cancelledByParty = tickets
-            .Where(ticket => ticket.State == OnlineMatchTicketState.Cancelled)
-            .GroupBy(ticket => ticket.PartyId ?? string.Empty)
-            .ToDictionary(group => group.Key, group => group.Count());
+                               .Where(ticket => ticket.State == OnlineMatchTicketState.Cancelled)
+                               .GroupBy(ticket => ticket.PartyId ?? string.Empty)
+                               .ToDictionary(group => group.Key, group => group.Count());
         foreach (var ticket in tickets)
         {
             if (ticket.State != OnlineMatchTicketState.Cancelled)
@@ -605,26 +605,17 @@ public sealed class OnlineAdminMatchHandlers
         /// <summary>
         /// 票据。
         /// </summary>
-        public OnlineMatchTicket Ticket
-        {
-            get;
-        }
+        public OnlineMatchTicket Ticket { get; }
 
         /// <summary>
         /// 等待秒数（LongWaiting 专属）。
         /// </summary>
-        public long? WaitingSeconds
-        {
-            get;
-        }
+        public long? WaitingSeconds { get; }
 
         /// <summary>
         /// 队伍取消计数（RepeatedCancel 专属）。
         /// </summary>
-        public long? CancelCount
-        {
-            get;
-        }
+        public long? CancelCount { get; }
 
         /// <summary>
         /// 初始化视图。
@@ -646,39 +637,19 @@ public sealed class OnlineAdminMatchHandlers
     public sealed class QueueSummaryResponse
     {
         /// <summary>获取或设置模式（数字字符串）。</summary>
-        public string Mode
-        {
-            get;
-            set;
-        }
+        public string Mode { get; set; }
 
         /// <summary>获取或设置区域（数字字符串）。</summary>
-        public string Region
-        {
-            get;
-            set;
-        }
+        public string Region { get; set; }
 
         /// <summary>获取或设置队列深度。</summary>
-        public long QueueDepth
-        {
-            get;
-            set;
-        }
+        public long QueueDepth { get; set; }
 
         /// <summary>获取或设置平均等待秒数。</summary>
-        public long AverageWaitSeconds
-        {
-            get;
-            set;
-        }
+        public long AverageWaitSeconds { get; set; }
 
         /// <summary>获取或设置每分钟吞吐（快照内已匹配计数代理值）。</summary>
-        public long ThroughputPerMinute
-        {
-            get;
-            set;
-        }
+        public long ThroughputPerMinute { get; set; }
     }
 
     /// <summary>
@@ -687,18 +658,10 @@ public sealed class OnlineAdminMatchHandlers
     public sealed class MatchQueueOverviewResponse
     {
         /// <summary>获取或设置服务端时刻（UTC 毫秒）。</summary>
-        public long ServerTime
-        {
-            get;
-            set;
-        }
+        public long ServerTime { get; set; }
 
         /// <summary>获取或设置队列摘要列表。</summary>
-        public List<QueueSummaryResponse> Queues
-        {
-            get;
-            set;
-        }
+        public List<QueueSummaryResponse> Queues { get; set; }
     }
 
     /// <summary>
@@ -707,39 +670,19 @@ public sealed class OnlineAdminMatchHandlers
     public sealed class TicketFailureResponse
     {
         /// <summary>获取或设置票据标识。</summary>
-        public string TicketId
-        {
-            get;
-            set;
-        }
+        public string TicketId { get; set; }
 
         /// <summary>获取或设置队伍标识。</summary>
-        public string PartyId
-        {
-            get;
-            set;
-        }
+        public string PartyId { get; set; }
 
         /// <summary>获取或设置原因码（Timeout / CancelRace / RateLimited / DuplicateTicket）。</summary>
-        public string ReasonCode
-        {
-            get;
-            set;
-        }
+        public string ReasonCode { get; set; }
 
         /// <summary>获取或设置原因描述。</summary>
-        public string ReasonText
-        {
-            get;
-            set;
-        }
+        public string ReasonText { get; set; }
 
         /// <summary>获取或设置发生时刻（UTC 毫秒）。</summary>
-        public long OccurredAt
-        {
-            get;
-            set;
-        }
+        public long OccurredAt { get; set; }
     }
 
     /// <summary>
@@ -748,18 +691,10 @@ public sealed class OnlineAdminMatchHandlers
     public sealed class ReasonCountResponse
     {
         /// <summary>获取或设置原因码。</summary>
-        public string ReasonCode
-        {
-            get;
-            set;
-        }
+        public string ReasonCode { get; set; }
 
         /// <summary>获取或设置计数。</summary>
-        public long Count
-        {
-            get;
-            set;
-        }
+        public long Count { get; set; }
     }
 
     /// <summary>
@@ -768,39 +703,19 @@ public sealed class OnlineAdminMatchHandlers
     public sealed class TicketFailureQueryResponse
     {
         /// <summary>获取或设置服务端时刻（UTC 毫秒）。</summary>
-        public long ServerTime
-        {
-            get;
-            set;
-        }
+        public long ServerTime { get; set; }
 
         /// <summary>获取或设置失败票据列表。</summary>
-        public List<TicketFailureResponse> Items
-        {
-            get;
-            set;
-        }
+        public List<TicketFailureResponse> Items { get; set; }
 
         /// <summary>获取或设置原因汇总（全量过滤集）。</summary>
-        public List<ReasonCountResponse> ReasonSummary
-        {
-            get;
-            set;
-        }
+        public List<ReasonCountResponse> ReasonSummary { get; set; }
 
         /// <summary>获取或设置下一页游标。</summary>
-        public string NextCursor
-        {
-            get;
-            set;
-        }
+        public string NextCursor { get; set; }
 
         /// <summary>获取或设置是否还有更多。</summary>
-        public bool HasMore
-        {
-            get;
-            set;
-        }
+        public bool HasMore { get; set; }
     }
 
     /// <summary>
@@ -809,67 +724,31 @@ public sealed class OnlineAdminMatchHandlers
     public sealed class AbnormalTicketResponse
     {
         /// <summary>获取或设置票据标识。</summary>
-        public string TicketId
-        {
-            get;
-            set;
-        }
+        public string TicketId { get; set; }
 
         /// <summary>获取或设置队伍标识。</summary>
-        public string PartyId
-        {
-            get;
-            set;
-        }
+        public string PartyId { get; set; }
 
         /// <summary>获取或设置模式（数字字符串）。</summary>
-        public string Mode
-        {
-            get;
-            set;
-        }
+        public string Mode { get; set; }
 
         /// <summary>获取或设置区域（数字字符串）。</summary>
-        public string Region
-        {
-            get;
-            set;
-        }
+        public string Region { get; set; }
 
         /// <summary>获取或设置状态名（Queued / Matching / Matched / Cancelled / Expired / Failed）。</summary>
-        public string Status
-        {
-            get;
-            set;
-        }
+        public string Status { get; set; }
 
         /// <summary>获取或设置创建时刻（UTC 毫秒）。</summary>
-        public long CreatedAt
-        {
-            get;
-            set;
-        }
+        public long CreatedAt { get; set; }
 
         /// <summary>获取或设置过期时刻（UTC 毫秒）。</summary>
-        public long? ExpiresAt
-        {
-            get;
-            set;
-        }
+        public long? ExpiresAt { get; set; }
 
         /// <summary>获取或设置等待秒数（LongWaiting 专属）。</summary>
-        public long? WaitingSeconds
-        {
-            get;
-            set;
-        }
+        public long? WaitingSeconds { get; set; }
 
         /// <summary>获取或设置队伍取消计数（RepeatedCancel 专属）。</summary>
-        public long? CancelCount
-        {
-            get;
-            set;
-        }
+        public long? CancelCount { get; set; }
     }
 
     /// <summary>
@@ -878,32 +757,16 @@ public sealed class OnlineAdminMatchHandlers
     public sealed class AbnormalTicketQueryResponse
     {
         /// <summary>获取或设置服务端时刻（UTC 毫秒）。</summary>
-        public long ServerTime
-        {
-            get;
-            set;
-        }
+        public long ServerTime { get; set; }
 
         /// <summary>获取或设置异常票据列表。</summary>
-        public List<AbnormalTicketResponse> Items
-        {
-            get;
-            set;
-        }
+        public List<AbnormalTicketResponse> Items { get; set; }
 
         /// <summary>获取或设置下一页游标。</summary>
-        public string NextCursor
-        {
-            get;
-            set;
-        }
+        public string NextCursor { get; set; }
 
         /// <summary>获取或设置是否还有更多。</summary>
-        public bool HasMore
-        {
-            get;
-            set;
-        }
+        public bool HasMore { get; set; }
     }
 
     /// <summary>
@@ -912,45 +775,21 @@ public sealed class OnlineAdminMatchHandlers
     public sealed class ControlledCommandAckResponse
     {
         /// <summary>获取或设置命令回显。</summary>
-        public string Command
-        {
-            get;
-            set;
-        }
+        public string Command { get; set; }
 
         /// <summary>获取或设置目标标识。</summary>
-        public string TargetIdentifier
-        {
-            get;
-            set;
-        }
+        public string TargetIdentifier { get; set; }
 
         /// <summary>获取或设置幂等键回显。</summary>
-        public string IdempotencyKey
-        {
-            get;
-            set;
-        }
+        public string IdempotencyKey { get; set; }
 
         /// <summary>获取或设置执行状态（Accepted / Executed）。</summary>
-        public string Status
-        {
-            get;
-            set;
-        }
+        public string Status { get; set; }
 
         /// <summary>获取或设置执行时刻（UTC 毫秒）。</summary>
-        public long ExecutedAt
-        {
-            get;
-            set;
-        }
+        public long ExecutedAt { get; set; }
 
         /// <summary>获取或设置摘要。</summary>
-        public string Summary
-        {
-            get;
-            set;
-        }
+        public string Summary { get; set; }
     }
 }

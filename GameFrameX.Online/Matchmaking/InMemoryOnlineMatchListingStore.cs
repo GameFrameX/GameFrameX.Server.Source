@@ -38,10 +38,10 @@ namespace GameFrameX.Online.Matchmaking;
 public sealed class InMemoryOnlineMatchListingStore : IOnlineMatchListingStore
 {
     /// <summary>全局读写锁。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>列表项表：键 = (TenantId, AppId, ListingId)。</summary>
-    private readonly Dictionary<string, OnlineMatchListing> _listings = new Dictionary<string, OnlineMatchListing>();
+    private readonly Dictionary<string, OnlineMatchListing> _listings = new();
 
     /// <summary>保存列表项（深拷贝入库）。</summary>
     /// <param name="listing">列表项。</param>

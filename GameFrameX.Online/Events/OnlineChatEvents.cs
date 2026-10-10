@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Events;
 
 using System.Text.Json;
-using GameFrameX.Online.Social;
+using Social;
 
 /// <summary>
 /// 聊天域事件工厂（消息发送、撤回、已读、审核失败供下游与 Admin 消费）。
@@ -231,46 +231,22 @@ public static class OnlineChatEvents
     private sealed class MessageSentPayload
     {
         /// <summary>消息标识。</summary>
-        public string MessageId
-        {
-            get;
-            set;
-        }
+        public string MessageId { get; set; }
 
         /// <summary>频道标识。</summary>
-        public string ChannelId
-        {
-            get;
-            set;
-        }
+        public string ChannelId { get; set; }
 
         /// <summary>频道类型名。</summary>
-        public string ChannelKind
-        {
-            get;
-            set;
-        }
+        public string ChannelKind { get; set; }
 
         /// <summary>发送者。</summary>
-        public long SenderId
-        {
-            get;
-            set;
-        }
+        public long SenderId { get; set; }
 
         /// <summary>发送时刻（UTC 毫秒）。</summary>
-        public long SentAtTime
-        {
-            get;
-            set;
-        }
+        public long SentAtTime { get; set; }
 
         /// <summary>频道内序号。</summary>
-        public long Sequence
-        {
-            get;
-            set;
-        }
+        public long Sequence { get; set; }
     }
 
     /// <summary>
@@ -279,39 +255,19 @@ public static class OnlineChatEvents
     private sealed class MessageRecalledPayload
     {
         /// <summary>消息标识。</summary>
-        public string MessageId
-        {
-            get;
-            set;
-        }
+        public string MessageId { get; set; }
 
         /// <summary>频道标识。</summary>
-        public string ChannelId
-        {
-            get;
-            set;
-        }
+        public string ChannelId { get; set; }
 
         /// <summary>原发送者。</summary>
-        public long SenderId
-        {
-            get;
-            set;
-        }
+        public long SenderId { get; set; }
 
         /// <summary>撤回人。</summary>
-        public long RecalledByPlayerId
-        {
-            get;
-            set;
-        }
+        public long RecalledByPlayerId { get; set; }
 
         /// <summary>撤回时刻（UTC 毫秒）。</summary>
-        public long RecalledAtTime
-        {
-            get;
-            set;
-        }
+        public long RecalledAtTime { get; set; }
     }
 
     /// <summary>
@@ -320,39 +276,19 @@ public static class OnlineChatEvents
     private sealed class ReadMarkUpdatedPayload
     {
         /// <summary>频道标识。</summary>
-        public string ChannelId
-        {
-            get;
-            set;
-        }
+        public string ChannelId { get; set; }
 
         /// <summary>玩家标识。</summary>
-        public long PlayerId
-        {
-            get;
-            set;
-        }
+        public long PlayerId { get; set; }
 
         /// <summary>最后已读消息标识。</summary>
-        public string LastReadMessageId
-        {
-            get;
-            set;
-        }
+        public string LastReadMessageId { get; set; }
 
         /// <summary>最后已读位置的发送时刻（UTC 毫秒）。</summary>
-        public long LastReadSentAtTime
-        {
-            get;
-            set;
-        }
+        public long LastReadSentAtTime { get; set; }
 
         /// <summary>最后已读位置的频道内序号。</summary>
-        public long LastReadSequence
-        {
-            get;
-            set;
-        }
+        public long LastReadSequence { get; set; }
     }
 
     /// <summary>
@@ -361,24 +297,12 @@ public static class OnlineChatEvents
     private sealed class ModerationFailedPayload
     {
         /// <summary>频道标识。</summary>
-        public string ChannelId
-        {
-            get;
-            set;
-        }
+        public string ChannelId { get; set; }
 
         /// <summary>发送者。</summary>
-        public long PlayerId
-        {
-            get;
-            set;
-        }
+        public long PlayerId { get; set; }
 
         /// <summary>插件失败原因。</summary>
-        public string Reason
-        {
-            get;
-            set;
-        }
+        public string Reason { get; set; }
     }
 }

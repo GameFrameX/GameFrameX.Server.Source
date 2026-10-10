@@ -43,47 +43,27 @@ public sealed class OnlineRequestContext
     /// <summary>
     /// 获取或设置请求标识（一次请求尝试的唯一标识，贯穿日志与响应回显）。
     /// </summary>
-    public string RequestId
-    {
-        get;
-        set;
-    }
+    public string RequestId { get; set; }
 
     /// <summary>
     /// 获取或设置协议版本（Online 公共契约协议版本号，从 1 起算；低于服务端最低支持版本将被拒绝）。
     /// </summary>
-    public int ProtocolVersion
-    {
-        get;
-        set;
-    }
+    public int ProtocolVersion { get; set; }
 
     /// <summary>
     /// 获取或设置客户端版本（调用方自报版本字符串，仅供灰度与兼容统计，不参与鉴权判定）。
     /// </summary>
-    public string ClientVersion
-    {
-        get;
-        set;
-    }
+    public string ClientVersion { get; set; }
 
     /// <summary>
     /// 获取或设置请求时间戳（UTC 毫秒；服务端按容忍窗口校验偏移，超窗拒绝防重放）。
     /// </summary>
-    public long Timestamp
-    {
-        get;
-        set;
-    }
+    public long Timestamp { get; set; }
 
     /// <summary>
     /// 获取或设置幂等键（一次业务意图的标识；仅副作用请求必填，格式见 <c>OnlineRequestContextValidator</c>）。
     /// </summary>
-    public string IdempotencyKey
-    {
-        get;
-        set;
-    }
+    public string IdempotencyKey { get; set; }
 
     /// <summary>
     /// 将上下文重置为默认值（复用场景）。

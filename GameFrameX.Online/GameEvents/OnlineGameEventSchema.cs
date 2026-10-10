@@ -126,7 +126,7 @@ public static class OnlineGameEventSchema
     {
         var descriptors = new List<OnlineGameEventDescriptor>();
         var names = new List<string>(Registry.Keys);
-        names.Sort(System.StringComparer.Ordinal);
+        names.Sort(StringComparer.Ordinal);
         foreach (var name in names)
         {
             descriptors.Add(Registry[name]);

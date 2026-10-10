@@ -278,53 +278,25 @@ public static class OnlineTournamentEvents
     private sealed class TournamentCreatedPayload
     {
         /// <summary>赛事标识。</summary>
-        public string TournamentId
-        {
-            get;
-            set;
-        }
+        public string TournamentId { get; set; }
 
         /// <summary>关联榜单标识。</summary>
-        public string LeaderboardId
-        {
-            get;
-            set;
-        }
+        public string LeaderboardId { get; set; }
 
         /// <summary>排期开始时刻（UTC 毫秒）。</summary>
-        public long StartTime
-        {
-            get;
-            set;
-        }
+        public long StartTime { get; set; }
 
         /// <summary>排期结束时刻（UTC 毫秒）。</summary>
-        public long EndTime
-        {
-            get;
-            set;
-        }
+        public long EndTime { get; set; }
 
         /// <summary>报名资格的名次上限（0 表示不限制）。</summary>
-        public int MinLeaderboardRank
-        {
-            get;
-            set;
-        }
+        public int MinLeaderboardRank { get; set; }
 
         /// <summary>奖励规则条数。</summary>
-        public int RewardRuleCount
-        {
-            get;
-            set;
-        }
+        public int RewardRuleCount { get; set; }
 
         /// <summary>创建后的状态名。</summary>
-        public string State
-        {
-            get;
-            set;
-        }
+        public string State { get; set; }
     }
 
     /// <summary>
@@ -333,32 +305,16 @@ public static class OnlineTournamentEvents
     private sealed class TournamentStartedPayload
     {
         /// <summary>赛事标识。</summary>
-        public string TournamentId
-        {
-            get;
-            set;
-        }
+        public string TournamentId { get; set; }
 
         /// <summary>关联榜单标识。</summary>
-        public string LeaderboardId
-        {
-            get;
-            set;
-        }
+        public string LeaderboardId { get; set; }
 
         /// <summary>排期开始时刻（UTC 毫秒）。</summary>
-        public long StartTime
-        {
-            get;
-            set;
-        }
+        public long StartTime { get; set; }
 
         /// <summary>排期结束时刻（UTC 毫秒）。</summary>
-        public long EndTime
-        {
-            get;
-            set;
-        }
+        public long EndTime { get; set; }
     }
 
     /// <summary>
@@ -367,39 +323,19 @@ public static class OnlineTournamentEvents
     private sealed class TournamentRegisteredPayload
     {
         /// <summary>赛事标识。</summary>
-        public string TournamentId
-        {
-            get;
-            set;
-        }
+        public string TournamentId { get; set; }
 
         /// <summary>报名玩家标识（与信封 PlayerId 同值）。</summary>
-        public long PlayerId
-        {
-            get;
-            set;
-        }
+        public long PlayerId { get; set; }
 
         /// <summary>报名时刻（UTC 毫秒）。</summary>
-        public long RegisteredTime
-        {
-            get;
-            set;
-        }
+        public long RegisteredTime { get; set; }
 
         /// <summary>报名时刻的名次（无资格门槛未查榜时为 0）。</summary>
-        public int RankAtRegistration
-        {
-            get;
-            set;
-        }
+        public int RankAtRegistration { get; set; }
 
         /// <summary>报名时刻的分数（无资格门槛未查榜时为 0）。</summary>
-        public long ScoreAtRegistration
-        {
-            get;
-            set;
-        }
+        public long ScoreAtRegistration { get; set; }
     }
 
     /// <summary>
@@ -408,32 +344,16 @@ public static class OnlineTournamentEvents
     private sealed class TournamentEndedPayload
     {
         /// <summary>赛事标识。</summary>
-        public string TournamentId
-        {
-            get;
-            set;
-        }
+        public string TournamentId { get; set; }
 
         /// <summary>关联榜单标识。</summary>
-        public string LeaderboardId
-        {
-            get;
-            set;
-        }
+        public string LeaderboardId { get; set; }
 
         /// <summary>冻结成绩的条目数（仅计已报名参赛者）。</summary>
-        public int StandingsEntryCount
-        {
-            get;
-            set;
-        }
+        public int StandingsEntryCount { get; set; }
 
         /// <summary>成绩冻结时刻（UTC 毫秒）。</summary>
-        public long FrozenTime
-        {
-            get;
-            set;
-        }
+        public long FrozenTime { get; set; }
     }
 
     /// <summary>
@@ -442,31 +362,15 @@ public static class OnlineTournamentEvents
     private sealed class TournamentSettledPayload
     {
         /// <summary>赛事标识。</summary>
-        public string TournamentId
-        {
-            get;
-            set;
-        }
+        public string TournamentId { get; set; }
 
         /// <summary>本次首次发放成功玩家数。</summary>
-        public int GrantedCount
-        {
-            get;
-            set;
-        }
+        public int GrantedCount { get; set; }
 
         /// <summary>本次命中幂等回放玩家数。</summary>
-        public int ReplayCount
-        {
-            get;
-            set;
-        }
+        public int ReplayCount { get; set; }
 
         /// <summary>本次发放失败玩家数（正常路径恒为 0）。</summary>
-        public int FailedCount
-        {
-            get;
-            set;
-        }
+        public int FailedCount { get; set; }
     }
 }

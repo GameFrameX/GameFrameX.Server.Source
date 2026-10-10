@@ -49,65 +49,37 @@ public sealed class OnlineChatChannel
     /// <summary>
     /// 获取或设置频道标识（确定性派生，全局唯一）。
     /// </summary>
-    public string ChannelId
-    {
-        get;
-        set;
-    }
+    public string ChannelId { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置频道类型。
     /// </summary>
-    public OnlineChatChannelKind Kind
-    {
-        get;
-        set;
-    }
+    public OnlineChatChannelKind Kind { get; set; }
 
     /// <summary>
     /// 获取或设置绑定主体标识（Party 绑 PartyId、Group 绑 GroupId；Direct 与 Global 为空字符串）。
     /// </summary>
-    public string BoundId
-    {
-        get;
-        set;
-    }
+    public string BoundId { get; set; }
 
     /// <summary>
     /// 获取或设置参与玩家集合（仅 Direct 频道权威；按大小排序的规范化对）。
     /// </summary>
-    public List<long> Participants
-    {
-        get;
-        set;
-    }
+    public List<long> Participants { get; set; }
 
     /// <summary>
     /// 获取或设置频道创建时刻（UTC 毫秒）。
     /// </summary>
-    public long CreatedAtTime
-    {
-        get;
-        set;
-    }
+    public long CreatedAtTime { get; set; }
 
     /// <summary>
     /// 判定玩家是否在频道内（仅 Direct 频道有权威结论；其余类型返回 <c>false</c>，

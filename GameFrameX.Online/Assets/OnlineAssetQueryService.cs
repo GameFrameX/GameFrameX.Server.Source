@@ -32,8 +32,8 @@ namespace GameFrameX.Online.Assets;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Scope;
+using Contracts;
+using Scope;
 
 /// <summary>
 /// 资产查询服务（余额/库存/流水的只读查询面，供 Admin 资产流水查询与客服追溯消费）。
@@ -85,7 +85,7 @@ public sealed class OnlineAssetQueryService
         var account = await _assetStore.FindWalletAsync(scope.TenantId, scope.AppId, scope.PlayerId, currencyId, cancellationToken);
         if (account == null)
         {
-            account = new OnlineWalletAccount { TenantId = scope.TenantId, AppId = scope.AppId, PlayerId = scope.PlayerId, CurrencyId = currencyId, Balance = 0, Version = 0, UpdatedTime = 0 };
+            account = new OnlineWalletAccount { TenantId = scope.TenantId, AppId = scope.AppId, PlayerId = scope.PlayerId, CurrencyId = currencyId, Balance = 0, Version = 0, UpdatedTime = 0, };
         }
 
         return OnlineResult<OnlineWalletAccount>.Ok(account);
@@ -154,13 +154,13 @@ public sealed class OnlineAssetQueryService
             return OnlineResult<OnlineLedgerPage>.Fail(OnlineErrorCode.ParameterInvalid, "游标格式非法（不透明令牌只回传不构造）");
         }
 
-        var entries = await _assetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = scope.TenantId, AppId = scope.AppId, PlayerId = scope.PlayerId, AfterSequenceNumber = afterSequenceNumber, MaxCount = maxCount }, cancellationToken);
+        var entries = await _assetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = scope.TenantId, AppId = scope.AppId, PlayerId = scope.PlayerId, AfterSequenceNumber = afterSequenceNumber, MaxCount = maxCount, }, cancellationToken);
         if (entries.Count < maxCount)
         {
             return OnlineResult<OnlineLedgerPage>.Ok(new OnlineLedgerPage(entries, new OnlinePageCursor(string.Empty, false)));
         }
 
-        var nextPage = await _assetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = scope.TenantId, AppId = scope.AppId, PlayerId = scope.PlayerId, AfterSequenceNumber = entries[entries.Count - 1].SequenceNumber, MaxCount = 1 }, cancellationToken);
+        var nextPage = await _assetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = scope.TenantId, AppId = scope.AppId, PlayerId = scope.PlayerId, AfterSequenceNumber = entries[entries.Count - 1].SequenceNumber, MaxCount = 1, }, cancellationToken);
         var hasMore = nextPage.Count > 0;
         return OnlineResult<OnlineLedgerPage>.Ok(new OnlineLedgerPage(entries, new OnlinePageCursor(hasMore ? entries[entries.Count - 1].SequenceNumber.ToString(System.Globalization.CultureInfo.InvariantCulture) : string.Empty, hasMore)));
     }

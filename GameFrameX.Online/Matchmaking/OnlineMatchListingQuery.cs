@@ -41,54 +41,30 @@ public sealed class OnlineMatchListingQuery
     /// <summary>
     /// 获取或设置玩法模式过滤（null 不过滤）。
     /// </summary>
-    public int? Mode
-    {
-        get;
-        set;
-    }
+    public int? Mode { get; set; }
 
     /// <summary>
     /// 获取或设置区域过滤（null 不过滤）。
     /// </summary>
-    public int? Region
-    {
-        get;
-        set;
-    }
+    public int? Region { get; set; }
 
     /// <summary>
     /// 获取或设置加入策略过滤（null 不过滤）。
     /// </summary>
-    public OnlineJoinPolicy? JoinPolicy
-    {
-        get;
-        set;
-    }
+    public OnlineJoinPolicy? JoinPolicy { get; set; }
 
     /// <summary>
     /// 获取或设置标签过滤（null 或空表示不过滤；命中任一标签即匹配）。
     /// </summary>
-    public List<string> Tags
-    {
-        get;
-        set;
-    }
+    public List<string> Tags { get; set; }
 
     /// <summary>
     /// 获取或设置是否包含已满/已关闭项（默认 <c>false</c>，只返回可加入项）。
     /// </summary>
-    public bool IncludeUnavailable
-    {
-        get;
-        set;
-    }
+    public bool IncludeUnavailable { get; set; }
 
     /// <summary>
     /// 获取或设置返回条数上限（默认 50，必须为正）。
     /// </summary>
-    public int Limit
-    {
-        get;
-        set;
-    }
+    public int Limit { get; set; }
 }

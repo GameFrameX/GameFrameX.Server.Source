@@ -75,43 +75,28 @@ public sealed class OnlineProtocolCompatibilityReport
     /// <summary>
     /// 获取差异行集合（三类差异全量；无差异返回空集合）。
     /// </summary>
-    public IReadOnlyList<OnlineProtocolCompatibilityIssue> Issues
-    {
-        get;
-    }
+    public IReadOnlyList<OnlineProtocolCompatibilityIssue> Issues { get; }
 
     /// <summary>
     /// 获取 Removed 差异数（不兼容差异）。
     /// </summary>
-    public int RemovedCount
-    {
-        get;
-    }
+    public int RemovedCount { get; }
 
     /// <summary>
     /// 获取 Changed 差异数（不兼容差异）。
     /// </summary>
-    public int ChangedCount
-    {
-        get;
-    }
+    public int ChangedCount { get; }
 
     /// <summary>
     /// 获取 Added 差异数（兼容差异）。
     /// </summary>
-    public int AddedCount
-    {
-        get;
-    }
+    public int AddedCount { get; }
 
     /// <summary>
     /// 获取是否兼容（Removed 与 Changed 均为 0 才允许回滚）。
     /// </summary>
     public bool IsCompatible
     {
-        get
-        {
-            return RemovedCount == 0 && ChangedCount == 0;
-        }
+        get { return RemovedCount == 0 && ChangedCount == 0; }
     }
 }

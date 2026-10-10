@@ -47,56 +47,32 @@ public sealed class OnlineNotification
     /// <summary>
     /// 获取或设置通知标识（全局唯一，格式 <c>ntf-{32 位十六进制}</c>）。
     /// </summary>
-    public string NotificationId
-    {
-        get;
-        set;
-    }
+    public string NotificationId { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识（数据隔离根边界）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识（数据隔离根边界）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置通知产生时的来源区服标识（仅审计与投递路由参考，不参与唯一键）。
     /// </summary>
-    public long ServerId
-    {
-        get;
-        set;
-    }
+    public long ServerId { get; set; }
 
     /// <summary>
     /// 获取或设置接收者玩家标识（通知的唯一属主；仅本人可读、可补发）。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置通知来源分类。
     /// </summary>
-    public OnlineNotificationKind Kind
-    {
-        get;
-        set;
-    }
+    public OnlineNotificationKind Kind { get; set; }
 
     /// <summary>
     /// 获取或设置去重键（来源域给出的业务幂等键，如 <c>invite:{inviteId}</c>）。
@@ -105,92 +81,52 @@ public sealed class OnlineNotification
     /// 的收敛点。
     /// </para>
     /// </summary>
-    public string DedupeKey
-    {
-        get;
-        set;
-    }
+    public string DedupeKey { get; set; }
 
     /// <summary>
     /// 获取或设置载荷（来源域提供的 JSON 文本，通知域视为不透明，推送时原样透传）。
     /// </summary>
-    public string Payload
-    {
-        get;
-        set;
-    }
+    public string Payload { get; set; }
 
     /// <summary>
     /// 获取或设置失效时刻（UTC 毫秒；&lt;= 0 表示永不失效，不参与超期扫描）。
     /// </summary>
-    public long ExpiresAtTime
-    {
-        get;
-        set;
-    }
+    public long ExpiresAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置通知状态。
     /// </summary>
-    public OnlineNotificationState State
-    {
-        get;
-        set;
-    }
+    public OnlineNotificationState State { get; set; }
 
     /// <summary>
     /// 获取或设置累计推送尝试次数（含首次；只增不减）。
     /// </summary>
-    public int AttemptCount
-    {
-        get;
-        set;
-    }
+    public int AttemptCount { get; set; }
 
     /// <summary>
     /// 获取或设置最近一次推送失败原因（成功时为空字符串；重试与排障的唯一依据）。
     /// </summary>
-    public string LastError
-    {
-        get;
-        set;
-    }
+    public string LastError { get; set; }
 
     /// <summary>
     /// 获取或设置创建时刻（UTC 毫秒）。
     /// </summary>
-    public long CreatedAtTime
-    {
-        get;
-        set;
-    }
+    public long CreatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置最近更新时刻（UTC 毫秒）。
     /// </summary>
-    public long UpdatedAtTime
-    {
-        get;
-        set;
-    }
+    public long UpdatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置投递成功时刻（UTC 毫秒；未投递为 0）。
     /// </summary>
-    public long DeliveredAtTime
-    {
-        get;
-        set;
-    }
+    public long DeliveredAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置玩家已读时刻（UTC 毫秒；未读为 0）。
     /// </summary>
-    public long ReadAtTime
-    {
-        get;
-        set;
-    }
+    public long ReadAtTime { get; set; }
 
     /// <summary>
     /// 生成防御性深拷贝（存储实现按「持久化行」语义返回副本，调用方改动不回写存储）。

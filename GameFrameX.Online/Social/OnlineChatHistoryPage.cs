@@ -29,7 +29,7 @@
 
 namespace GameFrameX.Online.Social;
 
-using GameFrameX.Online.Contracts;
+using Contracts;
 
 /// <summary>
 /// 聊天历史分页结果（游标契约）。
@@ -44,18 +44,10 @@ public sealed class OnlineChatHistoryPage
     /// <summary>
     /// 获取消息列表（按 <c>(SentAtTime, Sequence)</c> 升序；已撤回消息仍在列表中，内容为空）。
     /// </summary>
-    public IReadOnlyList<OnlineChatMessage> Messages
-    {
-        get;
-        set;
-    }
+    public IReadOnlyList<OnlineChatMessage> Messages { get; set; }
 
     /// <summary>
     /// 获取分页游标（末页 <see cref="OnlinePageCursor.HasMore"/> 为假）。
     /// </summary>
-    public OnlinePageCursor PageCursor
-    {
-        get;
-        set;
-    }
+    public OnlinePageCursor PageCursor { get; set; }
 }

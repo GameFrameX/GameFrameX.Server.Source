@@ -42,10 +42,7 @@ public sealed class OnlineServiceException : Exception
     /// <summary>
     /// 获取协议错误码（段位含义见 <see cref="OnlineErrorCode"/>）。
     /// </summary>
-    public OnlineErrorCode Code
-    {
-        get;
-    }
+    public OnlineErrorCode Code { get; }
 
     /// <summary>
     /// 初始化 <see cref="OnlineServiceException"/>。

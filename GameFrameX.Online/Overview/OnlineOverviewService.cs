@@ -379,7 +379,7 @@ public sealed class OnlineOverviewService
         var key = mode + ":" + region;
         if (!accumulator.TryGetValue(key, out var entry))
         {
-            entry = new QueueAccumulator { Mode = mode, Region = region };
+            entry = new QueueAccumulator { Mode = mode, Region = region, };
             accumulator[key] = entry;
         }
 
@@ -437,38 +437,18 @@ public sealed class OnlineOverviewService
     private sealed class QueueAccumulator
     {
         /// <summary>获取或设置玩法模式。</summary>
-        public int Mode
-        {
-            get;
-            set;
-        }
+        public int Mode { get; set; }
 
         /// <summary>获取或设置区域。</summary>
-        public int Region
-        {
-            get;
-            set;
-        }
+        public int Region { get; set; }
 
         /// <summary>获取或设置排队态票据数。</summary>
-        public int Depth
-        {
-            get;
-            set;
-        }
+        public int Depth { get; set; }
 
         /// <summary>获取或设置排队态票据等待时长合计（秒）。</summary>
-        public int TotalWaitSeconds
-        {
-            get;
-            set;
-        }
+        public int TotalWaitSeconds { get; set; }
 
         /// <summary>获取或设置最近一分钟达成匹配的票据数。</summary>
-        public int Throughput
-        {
-            get;
-            set;
-        }
+        public int Throughput { get; set; }
     }
 }

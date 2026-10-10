@@ -43,7 +43,7 @@ public static class OnlinePresenceStateMachine
     /// <summary>
     /// 合法转换邻接表：键 = 源状态，值 = 可达目标状态集合。
     /// </summary>
-    private static readonly Dictionary<OnlinePresenceState, OnlinePresenceState[]> Adjacency = new Dictionary<OnlinePresenceState, OnlinePresenceState[]>
+    private static readonly Dictionary<OnlinePresenceState, OnlinePresenceState[]> Adjacency = new()
     {
         {
             OnlinePresenceState.Offline,

@@ -47,13 +47,13 @@ using System.Threading.Tasks;
 public sealed class InMemoryOnlineNotificationStore : IOnlineNotificationStore
 {
     /// <summary>并发保护锁。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>通知表（键 = 作用域 + 接收者 + 通知标识）。</summary>
-    private readonly Dictionary<string, OnlineNotification> _notificationsByIdKey = new Dictionary<string, OnlineNotification>(StringComparer.Ordinal);
+    private readonly Dictionary<string, OnlineNotification> _notificationsByIdKey = new(StringComparer.Ordinal);
 
     /// <summary>去重索引（键 = 作用域 + 接收者 + 去重键，值 = 通知表键）。</summary>
-    private readonly Dictionary<string, string> _idKeyByDedupeKey = new Dictionary<string, string>(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _idKeyByDedupeKey = new(StringComparer.Ordinal);
 
     /// <summary>
     /// 以去重键为唯一键在内存表内「不存在则创建」：命中去重索引时返回既有通知副本且不写入，否则在同一临界区内同时落定标识索引与去重索引。

@@ -47,119 +47,67 @@ public sealed class OnlineGroup
     /// <summary>
     /// 获取或设置群组标识。
     /// </summary>
-    public string GroupId
-    {
-        get;
-        set;
-    }
+    public string GroupId { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识（作用域隔离键）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识（作用域隔离键）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置群主标识（建群者，群内唯一）。
     /// </summary>
-    public long OwnerId
-    {
-        get;
-        set;
-    }
+    public long OwnerId { get; set; }
 
     /// <summary>
     /// 获取或设置群组名称。
     /// </summary>
-    public string Name
-    {
-        get;
-        set;
-    }
+    public string Name { get; set; }
 
     /// <summary>
     /// 获取或设置自定义元数据（键值对，供业务侧扩展；键非空由服务层校验）。
     /// </summary>
-    public Dictionary<string, string> Metadata
-    {
-        get;
-        set;
-    }
+    public Dictionary<string, string> Metadata { get; set; }
 
     /// <summary>
     /// 获取或设置成员集合。
     /// </summary>
-    public List<OnlineGroupMember> Members
-    {
-        get;
-        set;
-    }
+    public List<OnlineGroupMember> Members { get; set; }
 
     /// <summary>
     /// 获取或设置邀请集合（含历史终态邀请；同一被邀请人同时刻至多一条待答复邀请）。
     /// </summary>
-    public List<OnlineGroupInvite> Invites
-    {
-        get;
-        set;
-    }
+    public List<OnlineGroupInvite> Invites { get; set; }
 
     /// <summary>
     /// 获取或设置成员数上限（建群时固定，不接受成员的请求改写）。
     /// </summary>
-    public int MaxMembers
-    {
-        get;
-        set;
-    }
+    public int MaxMembers { get; set; }
 
     /// <summary>
     /// 获取或设置群组状态。
     /// </summary>
-    public OnlineGroupState State
-    {
-        get;
-        set;
-    }
+    public OnlineGroupState State { get; set; }
 
     /// <summary>
     /// 获取或设置版本号（CAS 判据；仅存储层在提交成功时推进）。
     /// </summary>
-    public int Revision
-    {
-        get;
-        set;
-    }
+    public int Revision { get; set; }
 
     /// <summary>
     /// 获取或设置创建时刻（UTC 毫秒）。
     /// </summary>
-    public long CreatedAtTime
-    {
-        get;
-        set;
-    }
+    public long CreatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置最近变更时刻（UTC 毫秒）。
     /// </summary>
-    public long UpdatedAtTime
-    {
-        get;
-        set;
-    }
+    public long UpdatedAtTime { get; set; }
 
     /// <summary>
     /// 深拷贝群记录（成员、邀请、元数据逐条复制）。

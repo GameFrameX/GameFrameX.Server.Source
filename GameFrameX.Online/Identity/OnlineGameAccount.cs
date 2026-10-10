@@ -43,81 +43,45 @@ public sealed class OnlineGameAccount
     /// <summary>
     /// 获取或设置账号标识（服务端生成，全局唯一；存量迁移时沿用 LoginState.Id）。
     /// </summary>
-    public long Id
-    {
-        get;
-        set;
-    }
+    public long Id { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置应用标识。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置账号生命周期状态。
     /// </summary>
-    public OnlineGameAccountStatus Status
-    {
-        get;
-        set;
-    }
+    public OnlineGameAccountStatus Status { get; set; }
 
     /// <summary>
     /// 获取或设置创建时间（Unix 毫秒）。
     /// </summary>
-    public long CreatedAtTime
-    {
-        get;
-        set;
-    }
+    public long CreatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置最近更新时间（Unix 毫秒）。
     /// </summary>
-    public long UpdatedAtTime
-    {
-        get;
-        set;
-    }
+    public long UpdatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置注销时间（Unix 毫秒；0 = 未注销）。
     /// </summary>
-    public long DeactivatedAtTime
-    {
-        get;
-        set;
-    }
+    public long DeactivatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置数据保留截止时间（Unix 毫秒；0 = 按默认保留策略；注销后保留期内数据不可物理删除）。
     /// </summary>
-    public long DataRetentionUntilTime
-    {
-        get;
-        set;
-    }
+    public long DataRetentionUntilTime { get; set; }
 
     /// <summary>
     /// 获取或设置合并目标账号标识（Status == Merged 时必填；0 = 未合并）。
     /// </summary>
-    public long MergedIntoAccountId
-    {
-        get;
-        set;
-    }
+    public long MergedIntoAccountId { get; set; }
 }

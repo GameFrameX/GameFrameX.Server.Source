@@ -40,19 +40,19 @@ namespace GameFrameX.Online.Session;
 public sealed class InMemoryOnlineSessionStore : IOnlineSessionStore
 {
     /// <summary>全局读写锁。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>会话表：键 = SessionId。</summary>
-    private readonly Dictionary<string, OnlineSession> _sessions = new Dictionary<string, OnlineSession>();
+    private readonly Dictionary<string, OnlineSession> _sessions = new();
 
     /// <summary>Token 指纹索引：键 = TokenHash，值 = SessionId。</summary>
-    private readonly Dictionary<string, string> _tokenIndex = new Dictionary<string, string>();
+    private readonly Dictionary<string, string> _tokenIndex = new();
 
     /// <summary>
     /// 各会话当前已入册的指纹（索引维护的事实源）。
     /// ponytail: 调用方可能原位变更会话对象后回写（引用共享），不能拿实体当前字段反推旧索引键，必须另行记账。
     /// </summary>
-    private readonly Dictionary<string, string> _indexedHashBySessionId = new Dictionary<string, string>();
+    private readonly Dictionary<string, string> _indexedHashBySessionId = new();
 
     /// <summary>写入或覆盖会话（同步维护 Token 指纹索引：旧指纹失效）。</summary>
     /// <param name="session">会话实体。</param>

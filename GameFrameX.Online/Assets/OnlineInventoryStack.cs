@@ -42,63 +42,35 @@ public sealed class OnlineInventoryStack
     /// <summary>
     /// 获取或设置租户标识。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置道具标识。
     /// </summary>
-    public string ItemId
-    {
-        get;
-        set;
-    }
+    public string ItemId { get; set; }
 
     /// <summary>
     /// 获取或设置数量快照（下限 0；应用后值，与账本累加一致性由对账守护）。
     /// </summary>
-    public long Quantity
-    {
-        get;
-        set;
-    }
+    public long Quantity { get; set; }
 
     /// <summary>
     /// 获取或设置快照版本（每次资产变更递增；乐观锁与审计用）。
     /// </summary>
-    public long Version
-    {
-        get;
-        set;
-    }
+    public long Version { get; set; }
 
     /// <summary>
     /// 获取或设置最近一次更新时刻（UTC 毫秒）。
     /// </summary>
-    public long UpdatedTime
-    {
-        get;
-        set;
-    }
+    public long UpdatedTime { get; set; }
 }

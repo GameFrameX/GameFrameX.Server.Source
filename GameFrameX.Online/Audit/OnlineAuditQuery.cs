@@ -45,91 +45,51 @@ public sealed class OnlineAuditQuery
     /// <summary>
     /// 获取或设置审计域过滤集合（跨域联查：命中任一域即保留；空集合或 <see langword="null"/> 表示不限域）。
     /// </summary>
-    public IReadOnlyList<string> Domains
-    {
-        get;
-        set;
-    }
+    public IReadOnlyList<string> Domains { get; set; }
 
     /// <summary>
     /// 获取或设置玩家标识过滤（0 或 <see langword="null"/> 表示不限；系统级审计 PlayerId=0 不会被玩家过滤命中）。
     /// </summary>
-    public long? PlayerId
-    {
-        get;
-        set;
-    }
+    public long? PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置操作者标识过滤（空表示不限；按操作者定位其全部受控操作审计）。
     /// </summary>
-    public string OperatorId
-    {
-        get;
-        set;
-    }
+    public string OperatorId { get; set; }
 
     /// <summary>
     /// 获取或设置事件/操作类型过滤（空表示不限；大小写敏感原值匹配）。
     /// </summary>
-    public string EventType
-    {
-        get;
-        set;
-    }
+    public string EventType { get; set; }
 
     /// <summary>
     /// 获取或设置关联链路键过滤（空表示不限；按链路定位）。
     /// </summary>
-    public string CorrelationId
-    {
-        get;
-        set;
-    }
+    public string CorrelationId { get; set; }
 
     /// <summary>
     /// 获取或设置区服过滤（0 或 <see langword="null"/> 表示不限——含 App 级审计 ServerId=0；
     /// 审计是跨区服检索域，区服默认不过滤，避免 App 级审计被割裂出跨域联查）。
     /// </summary>
-    public long? ServerId
-    {
-        get;
-        set;
-    }
+    public long? ServerId { get; set; }
 
     /// <summary>
     /// 获取或设置时间窗起点（UTC 毫秒，闭区间；<see langword="null"/> 表示不限）。
     /// </summary>
-    public long? StartTime
-    {
-        get;
-        set;
-    }
+    public long? StartTime { get; set; }
 
     /// <summary>
     /// 获取或设置时间窗终点（UTC 毫秒，闭区间；<see langword="null"/> 表示不限）。
     /// </summary>
-    public long? EndTime
-    {
-        get;
-        set;
-    }
+    public long? EndTime { get; set; }
 
     /// <summary>
     /// 获取或设置分页游标（服务端编码的不透明令牌，只回传不构造；首页传空）。
     /// </summary>
-    public string Cursor
-    {
-        get;
-        set;
-    }
+    public string Cursor { get; set; }
 
     /// <summary>
     /// 获取或设置页大小（0 使用默认值；超过上限被拒绝，防止消费方一次拉走全量审计）。
     /// </summary>
-    public int PageSize
-    {
-        get;
-        set;
-    }
+    public int PageSize { get; set; }
 }

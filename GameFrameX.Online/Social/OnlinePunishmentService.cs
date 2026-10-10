@@ -31,8 +31,8 @@ namespace GameFrameX.Online.Social;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Events;
+using Contracts;
+using Events;
 
 /// <summary>
 /// 处罚施加 / 撤销 / 查询服务（Admin 命令面的服务端半边）。
@@ -223,7 +223,7 @@ public sealed class OnlinePunishmentService
         }
 
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : Now();
-        var active = await _graphStore.ListActivePunishmentsAsync(tenantId, appId, new ActivePunishmentQuery { PlayerId = playerId, NowUnixMilliseconds = now }, cancellationToken).ConfigureAwait(false);
+        var active = await _graphStore.ListActivePunishmentsAsync(tenantId, appId, new ActivePunishmentQuery { PlayerId = playerId, NowUnixMilliseconds = now, }, cancellationToken).ConfigureAwait(false);
         return OnlineResult<IReadOnlyList<OnlinePunishment>>.Ok(active);
     }
 

@@ -41,36 +41,20 @@ public sealed class OnlineLeaderboardCreateRequest
     /// <summary>
     /// 获取或设置榜单标识（App 内唯一，非空）。
     /// </summary>
-    public string LeaderboardId
-    {
-        get;
-        set;
-    }
+    public string LeaderboardId { get; set; }
 
     /// <summary>
     /// 获取或设置排序方向（默认高分优先）。
     /// </summary>
-    public OnlineLeaderboardSortOrder SortOrder
-    {
-        get;
-        set;
-    }
+    public OnlineLeaderboardSortOrder SortOrder { get; set; }
 
     /// <summary>
     /// 获取或设置分数累计策略（默认保留最优）。
     /// </summary>
-    public OnlineLeaderboardScoreUpdatePolicy ScoreUpdatePolicy
-    {
-        get;
-        set;
-    }
+    public OnlineLeaderboardScoreUpdatePolicy ScoreUpdatePolicy { get; set; }
 
     /// <summary>
     /// 获取或设置单次提交分数合理上限（0 = 使用全局默认值）。
     /// </summary>
-    public long MaxScorePerSubmission
-    {
-        get;
-        set;
-    }
+    public long MaxScorePerSubmission { get; set; }
 }

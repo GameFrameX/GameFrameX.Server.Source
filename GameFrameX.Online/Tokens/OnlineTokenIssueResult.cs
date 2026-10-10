@@ -37,27 +37,15 @@ public sealed class OnlineTokenIssueResult
     /// <summary>
     /// 获取或设置签发的会话令牌（不透明令牌，客户端只回传不解释）。
     /// </summary>
-    public string Token
-    {
-        get;
-        set;
-    }
+    public string Token { get; set; }
 
     /// <summary>
     /// 获取或设置会话标识（吊销/踢下线的目标键）。
     /// </summary>
-    public string SessionId
-    {
-        get;
-        set;
-    }
+    public string SessionId { get; set; }
 
     /// <summary>
     /// 获取或设置过期时刻（UTC 毫秒）。
     /// </summary>
-    public long ExpiresAtTime
-    {
-        get;
-        set;
-    }
+    public long ExpiresAtTime { get; set; }
 }

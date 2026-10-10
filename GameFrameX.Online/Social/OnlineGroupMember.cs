@@ -43,29 +43,17 @@ public sealed class OnlineGroupMember
     /// <summary>
     /// 获取或设置玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置成员角色。
     /// </summary>
-    public OnlineGroupRole Role
-    {
-        get;
-        set;
-    }
+    public OnlineGroupRole Role { get; set; }
 
     /// <summary>
     /// 获取或设置入群时刻（UTC 毫秒）。
     /// </summary>
-    public long JoinedAtTime
-    {
-        get;
-        set;
-    }
+    public long JoinedAtTime { get; set; }
 
     /// <summary>
     /// 复制成员条目（群记录深拷贝使用；成员条目随群记录整体提交，不共享引用）。

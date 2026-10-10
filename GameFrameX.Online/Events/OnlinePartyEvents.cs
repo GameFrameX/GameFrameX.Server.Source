@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Events;
 
 using System.Text.Json;
-using GameFrameX.Online.Party;
+using Party;
 
 /// <summary>
 /// 队伍域事件工厂（队伍状态与邀请变更事件供下游与 Admin 消费）。
@@ -145,46 +145,22 @@ public static class OnlinePartyEvents
     private sealed class PartyChangedPayload
     {
         /// <summary>队伍标识。</summary>
-        public string PartyId
-        {
-            get;
-            set;
-        }
+        public string PartyId { get; set; }
 
         /// <summary>队长标识。</summary>
-        public long LeaderId
-        {
-            get;
-            set;
-        }
+        public long LeaderId { get; set; }
 
         /// <summary>原状态名。</summary>
-        public string FromState
-        {
-            get;
-            set;
-        }
+        public string FromState { get; set; }
 
         /// <summary>目标状态名。</summary>
-        public string ToState
-        {
-            get;
-            set;
-        }
+        public string ToState { get; set; }
 
         /// <summary>变更原因名。</summary>
-        public string Reason
-        {
-            get;
-            set;
-        }
+        public string Reason { get; set; }
 
         /// <summary>变更后成员数。</summary>
-        public int MemberCount
-        {
-            get;
-            set;
-        }
+        public int MemberCount { get; set; }
     }
 
     /// <summary>
@@ -193,38 +169,18 @@ public static class OnlinePartyEvents
     private sealed class PartyInviteChangedPayload
     {
         /// <summary>邀请标识。</summary>
-        public string InviteId
-        {
-            get;
-            set;
-        }
+        public string InviteId { get; set; }
 
         /// <summary>队伍标识。</summary>
-        public string PartyId
-        {
-            get;
-            set;
-        }
+        public string PartyId { get; set; }
 
         /// <summary>邀请发起人。</summary>
-        public long InviterId
-        {
-            get;
-            set;
-        }
+        public long InviterId { get; set; }
 
         /// <summary>被邀请玩家。</summary>
-        public long InviteeId
-        {
-            get;
-            set;
-        }
+        public long InviteeId { get; set; }
 
         /// <summary>邀请状态名。</summary>
-        public string State
-        {
-            get;
-            set;
-        }
+        public string State { get; set; }
     }
 }

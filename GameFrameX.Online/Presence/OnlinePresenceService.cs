@@ -31,9 +31,9 @@ namespace GameFrameX.Online.Presence;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Events;
-using GameFrameX.Online.Scope;
+using Contracts;
+using Events;
+using Scope;
 
 /// <summary>
 /// 在线状态服务（Presence 事实源的唯一写者——所有状态写入必须经本服务并过状态机判定）。

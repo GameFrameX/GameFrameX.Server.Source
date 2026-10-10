@@ -71,34 +71,22 @@ public sealed class OnlineAdminApiRequest
     /// <summary>
     /// 获取 action 名。
     /// </summary>
-    public string Action
-    {
-        get;
-    }
+    public string Action { get; }
 
     /// <summary>
     /// 获取原始请求体 JSON 字符串（幂等请求摘要的规范化文本来源）。
     /// </summary>
-    public string BodyText
-    {
-        get;
-    }
+    public string BodyText { get; }
 
     /// <summary>
     /// 获取请求体根元素。
     /// </summary>
-    public JsonElement Root
-    {
-        get;
-    }
+    public JsonElement Root { get; }
 
     /// <summary>
     /// 获取请求体文档（空 body 时为 null——根元素来自内联空对象文档）。
     /// </summary>
-    public JsonDocument Document
-    {
-        get;
-    }
+    public JsonDocument Document { get; }
 
     /// <summary>
     /// 提取请求标识（未携带时由调用方生成；Admin 线缆不强制携带 RequestId）。

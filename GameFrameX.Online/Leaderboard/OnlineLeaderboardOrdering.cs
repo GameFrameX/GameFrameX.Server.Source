@@ -67,8 +67,8 @@ public static class OnlineLeaderboardOrdering
         }
 
         var scoreComparison = sortOrder == OnlineLeaderboardSortOrder.Ascending
-            ? left.Score.CompareTo(right.Score)
-            : right.Score.CompareTo(left.Score);
+                                  ? left.Score.CompareTo(right.Score)
+                                  : right.Score.CompareTo(left.Score);
         if (scoreComparison != 0)
         {
             return scoreComparison;
@@ -93,8 +93,8 @@ public static class OnlineLeaderboardOrdering
     public static bool IsBetter(OnlineLeaderboardSortOrder sortOrder, long candidateScore, long currentScore)
     {
         return sortOrder == OnlineLeaderboardSortOrder.Ascending
-            ? candidateScore < currentScore
-            : candidateScore > currentScore;
+                   ? candidateScore < currentScore
+                   : candidateScore > currentScore;
     }
 
     /// <summary>

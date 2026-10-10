@@ -29,7 +29,7 @@
 namespace GameFrameX.Online.Events;
 
 using System.Text.Json;
-using GameFrameX.Online.Presence;
+using Presence;
 
 /// <summary>
 /// 在线状态域事件工厂（Presence 状态转换事件供下游与 Admin 消费）。
@@ -101,38 +101,18 @@ public static class OnlinePresenceEvents
     private sealed class PresenceEventPayload
     {
         /// <summary>关联会话标识。</summary>
-        public string SessionId
-        {
-            get;
-            set;
-        }
+        public string SessionId { get; set; }
 
         /// <summary>玩家标识。</summary>
-        public long PlayerId
-        {
-            get;
-            set;
-        }
+        public long PlayerId { get; set; }
 
         /// <summary>原状态名。</summary>
-        public string FromState
-        {
-            get;
-            set;
-        }
+        public string FromState { get; set; }
 
         /// <summary>目标状态名。</summary>
-        public string ToState
-        {
-            get;
-            set;
-        }
+        public string ToState { get; set; }
 
         /// <summary>变更原因描述。</summary>
-        public string Reason
-        {
-            get;
-            set;
-        }
+        public string Reason { get; set; }
     }
 }

@@ -42,63 +42,35 @@ public sealed class OnlinePlayerDevice
     /// <summary>
     /// 获取或设置设备记录标识（服务端生成）。
     /// </summary>
-    public string Id
-    {
-        get;
-        set;
-    }
+    public string Id { get; set; }
 
     /// <summary>
     /// 获取或设置归属游戏账号标识。
     /// </summary>
-    public long GameAccountId
-    {
-        get;
-        set;
-    }
+    public long GameAccountId { get; set; }
 
     /// <summary>
     /// 获取或设置设备唯一标识串（由客户端上报，服务端规范化后比对）。
     /// </summary>
-    public string DeviceIdentifier
-    {
-        get;
-        set;
-    }
+    public string DeviceIdentifier { get; set; }
 
     /// <summary>
     /// 获取或设置设备平台描述（iOS/Android/Windows 等；审计用途）。
     /// </summary>
-    public string Platform
-    {
-        get;
-        set;
-    }
+    public string Platform { get; set; }
 
     /// <summary>
     /// 获取或设置绑定时间（Unix 毫秒）。
     /// </summary>
-    public long BoundAtTime
-    {
-        get;
-        set;
-    }
+    public long BoundAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置最近活跃时间（Unix 毫秒）。
     /// </summary>
-    public long LastActiveAtTime
-    {
-        get;
-        set;
-    }
+    public long LastActiveAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置失效时间（Unix 毫秒；0 = 有效；换绑/风控失效后置位）。
     /// </summary>
-    public long RevokedAtTime
-    {
-        get;
-        set;
-    }
+    public long RevokedAtTime { get; set; }
 }

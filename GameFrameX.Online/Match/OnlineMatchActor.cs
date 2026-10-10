@@ -55,7 +55,7 @@ namespace GameFrameX.Online.Match;
 public sealed class OnlineMatchActor
 {
     /// <summary>串行门（同一 Actor 的操作互斥；跨 Actor 互斥由存储 CAS 保证）。</summary>
-    private readonly SemaphoreSlim _gate = new SemaphoreSlim(1, 1);
+    private readonly SemaphoreSlim _gate = new(1, 1);
 
     /// <summary>对局存储。</summary>
     private readonly IOnlineMatchActorStore _store;
@@ -462,7 +462,7 @@ public sealed class OnlineMatchActor
 
             member.State = OnlineMatchMemberState.Disconnected;
             member.DisconnectedTime = nowUnixMilliseconds;
-            member.ReconnectDeadlineTime = nowUnixMilliseconds + (_options.ReconnectWindowSeconds * 1000L);
+            member.ReconnectDeadlineTime = nowUnixMilliseconds + _options.ReconnectWindowSeconds * 1000L;
             member.ReconnectToken = reconnectToken;
             member.StateChangedTime = nowUnixMilliseconds;
             AppendServerEvent(match, "MemberDisconnected", null, nowUnixMilliseconds);
@@ -845,7 +845,7 @@ public sealed class OnlineMatchActor
     private bool IsRetentionElapsed(OnlineMatch working, long nowUnixMilliseconds)
     {
         return OnlineMatchStateMachine.IsEnded(working.State) && working.State != OnlineMatchState.Closed
-               && nowUnixMilliseconds >= working.EndedTime + (_options.EndedRetentionSeconds * 1000L);
+                                                              && nowUnixMilliseconds >= working.EndedTime + _options.EndedRetentionSeconds * 1000L;
     }
 
     /// <summary>
@@ -979,13 +979,13 @@ public sealed class OnlineMatchActor
         if (OnlineMatchStateMachine.IsEnded(to))
         {
             match.EndedTime = nowUnixMilliseconds;
-            match.DeadlineTime = nowUnixMilliseconds + (_options.EndedRetentionSeconds * 1000L);
+            match.DeadlineTime = nowUnixMilliseconds + _options.EndedRetentionSeconds * 1000L;
             return;
         }
 
         if (to == OnlineMatchState.Running)
         {
-            match.DeadlineTime = nowUnixMilliseconds + (_options.RunningTimeoutSeconds * 1000L);
+            match.DeadlineTime = nowUnixMilliseconds + _options.RunningTimeoutSeconds * 1000L;
             return;
         }
 
@@ -995,7 +995,7 @@ public sealed class OnlineMatchActor
             return;
         }
 
-        match.DeadlineTime = match.CreatedTime + (_options.WaitingTimeoutSeconds * 1000L);
+        match.DeadlineTime = match.CreatedTime + _options.WaitingTimeoutSeconds * 1000L;
     }
 
     /// <summary>
@@ -1012,7 +1012,7 @@ public sealed class OnlineMatchActor
         }
 
         var timedStage = match.State == OnlineMatchState.Created || match.State == OnlineMatchState.Waiting
-                         || match.State == OnlineMatchState.Ready || match.State == OnlineMatchState.Running;
+                                                                 || match.State == OnlineMatchState.Ready || match.State == OnlineMatchState.Running;
         return timedStage && nowUnixMilliseconds >= match.DeadlineTime;
     }
 

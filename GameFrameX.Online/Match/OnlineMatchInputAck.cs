@@ -42,54 +42,30 @@ public sealed class OnlineMatchInputAck
     /// <summary>
     /// 获取或设置是否被接受。
     /// </summary>
-    public bool Accepted
-    {
-        get;
-        set;
-    }
+    public bool Accepted { get; set; }
 
     /// <summary>
     /// 获取或设置确认后的服务器序号（被拒绝时为对局当前序号，未被推进）。
     /// </summary>
-    public long ServerSequence
-    {
-        get;
-        set;
-    }
+    public long ServerSequence { get; set; }
 
     /// <summary>
     /// 获取或设置对应的客户端序号（回显，便于客户端配对）。
     /// </summary>
-    public long ClientSequence
-    {
-        get;
-        set;
-    }
+    public long ClientSequence { get; set; }
 
     /// <summary>
     /// 获取或设置拒绝原因（被接受时为 <see cref="OnlineMatchInputRejection.None"/>）。
     /// </summary>
-    public OnlineMatchInputRejection Rejection
-    {
-        get;
-        set;
-    }
+    public OnlineMatchInputRejection Rejection { get; set; }
 
     /// <summary>
     /// 获取或设置是否为重复包（重复包按幂等处理：不生效、不算失败）。
     /// </summary>
-    public bool IsDuplicate
-    {
-        get;
-        set;
-    }
+    public bool IsDuplicate { get; set; }
 
     /// <summary>
     /// 获取或设置可读说明（诊断用，不参与判定）。
     /// </summary>
-    public string Message
-    {
-        get;
-        set;
-    }
+    public string Message { get; set; }
 }

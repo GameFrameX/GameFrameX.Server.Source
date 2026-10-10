@@ -29,7 +29,7 @@
 
 namespace GameFrameX.Online.Social;
 
-using GameFrameX.Online.Contracts;
+using Contracts;
 
 /// <summary>
 /// 社交互动裁决结果（三通路共用的「是否允许 + 拒绝码 + 拒绝原因」）。
@@ -46,29 +46,17 @@ public sealed class OnlineSocialDecision
     /// <summary>
     /// 获取是否允许本次互动。
     /// </summary>
-    public bool Allowed
-    {
-        get;
-        private set;
-    }
+    public bool Allowed { get; private set; }
 
     /// <summary>
     /// 获取拒绝码（允许时为 <see cref="OnlineErrorCode.None"/>）。
     /// </summary>
-    public OnlineErrorCode Code
-    {
-        get;
-        private set;
-    }
+    public OnlineErrorCode Code { get; private set; }
 
     /// <summary>
     /// 获取拒绝原因（服务端内部语义；允许时为空字符串）。
     /// </summary>
-    public string Reason
-    {
-        get;
-        private set;
-    }
+    public string Reason { get; private set; }
 
     /// <summary>
     /// 初始化裁决结果（仅供工厂方法使用）。

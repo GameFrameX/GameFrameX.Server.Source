@@ -46,29 +46,17 @@ public sealed class OnlineSeasonRewardRule
     /// <summary>
     /// 获取或设置起始名次（含；从 1 开始）。
     /// </summary>
-    public int FromRank
-    {
-        get;
-        set;
-    }
+    public int FromRank { get; set; }
 
     /// <summary>
     /// 获取或设置结束名次（含；不得小于 <see cref="FromRank"/>）。
     /// </summary>
-    public int ToRank
-    {
-        get;
-        set;
-    }
+    public int ToRank { get; set; }
 
     /// <summary>
     /// 获取或设置奖励明细（资产域变更行；发放时逐行提交统一资产入口）。
     /// </summary>
-    public List<OnlineAssetChangeLine> Rewards
-    {
-        get;
-        set;
-    }
+    public List<OnlineAssetChangeLine> Rewards { get; set; }
 
     /// <summary>
     /// 判定名次是否命中本规则区间。

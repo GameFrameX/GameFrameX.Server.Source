@@ -45,45 +45,25 @@ public sealed class OnlineMatchGameStepResult
     /// <summary>
     /// 获取或设置是否接受本次输入。
     /// </summary>
-    public bool Accepted
-    {
-        get;
-        set;
-    }
+    public bool Accepted { get; set; }
 
     /// <summary>
     /// 获取或设置拒绝原因（被接受时为 <see cref="OnlineMatchInputRejection.None"/>）。
     /// </summary>
-    public OnlineMatchInputRejection Rejection
-    {
-        get;
-        set;
-    }
+    public OnlineMatchInputRejection Rejection { get; set; }
 
     /// <summary>
     /// 获取或设置裁决后的玩法状态载荷（被拒绝时为 null）。
     /// </summary>
-    public byte[] GameState
-    {
-        get;
-        set;
-    }
+    public byte[] GameState { get; set; }
 
     /// <summary>
     /// 获取或设置本次裁决产生的服务器事件（未分配序号）。
     /// </summary>
-    public List<OnlineMatchServerEvent> ServerEvents
-    {
-        get;
-        set;
-    }
+    public List<OnlineMatchServerEvent> ServerEvents { get; set; }
 
     /// <summary>
     /// 获取或设置可读说明（诊断用）。
     /// </summary>
-    public string Message
-    {
-        get;
-        set;
-    }
+    public string Message { get; set; }
 }

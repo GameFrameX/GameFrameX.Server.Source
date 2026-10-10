@@ -41,92 +41,52 @@ public sealed class OnlineGroupInvite
     /// <summary>
     /// 获取或设置邀请标识。
     /// </summary>
-    public string InviteId
-    {
-        get;
-        set;
-    }
+    public string InviteId { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识（作用域隔离键）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识（作用域隔离键）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置所属群组标识（邀请集合内冗余承载，便于事件载荷自解释，不参与唯一键）。
     /// </summary>
-    public string GroupId
-    {
-        get;
-        set;
-    }
+    public string GroupId { get; set; }
 
     /// <summary>
     /// 获取或设置邀请发起人（发出邀请时必须是群成员）。
     /// </summary>
-    public long InviterId
-    {
-        get;
-        set;
-    }
+    public long InviterId { get; set; }
 
     /// <summary>
     /// 获取或设置被邀请玩家（答复权限的唯一归属方；他人答复按反预言返回未找到）。
     /// </summary>
-    public long InviteeId
-    {
-        get;
-        set;
-    }
+    public long InviteeId { get; set; }
 
     /// <summary>
     /// 获取或设置邀请状态。
     /// </summary>
-    public OnlineGroupInviteState State
-    {
-        get;
-        set;
-    }
+    public OnlineGroupInviteState State { get; set; }
 
     /// <summary>
     /// 获取或设置创建时刻（UTC 毫秒）。
     /// </summary>
-    public long CreatedAtTime
-    {
-        get;
-        set;
-    }
+    public long CreatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置失效时刻（UTC 毫秒；到点由扫描或答复路径置为过期，不放过期邀请入群）。
     /// </summary>
-    public long ExpiresAtTime
-    {
-        get;
-        set;
-    }
+    public long ExpiresAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置最近一次裁决时刻（UTC 毫秒；未裁决与超期置位保持 0——超期是时间流逝而非答复）。
     /// </summary>
-    public long RespondedAtTime
-    {
-        get;
-        set;
-    }
+    public long RespondedAtTime { get; set; }
 
     /// <summary>
     /// 复制邀请条目（群记录深拷贝使用；邀请随群记录整体提交，不共享引用）。

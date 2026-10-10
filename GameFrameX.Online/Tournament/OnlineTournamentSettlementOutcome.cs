@@ -45,45 +45,25 @@ public sealed class OnlineTournamentSettlementOutcome
     /// <summary>
     /// 获取或设置被结算的赛事标识。
     /// </summary>
-    public string TournamentId
-    {
-        get;
-        set;
-    }
+    public string TournamentId { get; set; }
 
     /// <summary>
     /// 获取或设置本次是否为重复触发（赛事已处于结算完成态；重试返回首次结果，不再发放）。
     /// </summary>
-    public bool IsReplay
-    {
-        get;
-        set;
-    }
+    public bool IsReplay { get; set; }
 
     /// <summary>
     /// 获取或设置本次首次发放成功的玩家数（实际产生新账本条目）。
     /// </summary>
-    public int GrantedCount
-    {
-        get;
-        set;
-    }
+    public int GrantedCount { get; set; }
 
     /// <summary>
     /// 获取或设置本次命中幂等回放（此前已发放过）的玩家数。
     /// </summary>
-    public int ReplayCount
-    {
-        get;
-        set;
-    }
+    public int ReplayCount { get; set; }
 
     /// <summary>
     /// 获取或设置发放失败的玩家明细列表（非空表示本次结算未完成，赛事保持已结束态待重试）。
     /// </summary>
-    public List<OnlineTournamentSettlementFailure> FailedPlayers
-    {
-        get;
-        set;
-    } = new List<OnlineTournamentSettlementFailure>();
+    public List<OnlineTournamentSettlementFailure> FailedPlayers { get; set; } = new();
 }

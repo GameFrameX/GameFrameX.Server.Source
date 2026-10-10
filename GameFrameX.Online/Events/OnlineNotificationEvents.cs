@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Events;
 
 using System.Text.Json;
-using GameFrameX.Online.Social;
+using Social;
 
 /// <summary>
 /// 通知域事件工厂（通知状态变更事件供下游与 Admin 消费）。
@@ -96,38 +96,18 @@ public static class OnlineNotificationEvents
     private sealed class NotificationChangedPayload
     {
         /// <summary>通知标识。</summary>
-        public string NotificationId
-        {
-            get;
-            set;
-        }
+        public string NotificationId { get; set; }
 
         /// <summary>接收者玩家标识（通知的唯一属主）。</summary>
-        public long PlayerId
-        {
-            get;
-            set;
-        }
+        public long PlayerId { get; set; }
 
         /// <summary>通知来源分类名。</summary>
-        public string Kind
-        {
-            get;
-            set;
-        }
+        public string Kind { get; set; }
 
         /// <summary>通知状态名。</summary>
-        public string State
-        {
-            get;
-            set;
-        }
+        public string State { get; set; }
 
         /// <summary>累计推送尝试次数。</summary>
-        public int AttemptCount
-        {
-            get;
-            set;
-        }
+        public int AttemptCount { get; set; }
     }
 }

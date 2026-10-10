@@ -37,29 +37,17 @@ public sealed class OnlineGameEventValidationResult
     /// <summary>
     /// 获取或设置是否受理。
     /// </summary>
-    public bool IsAccepted
-    {
-        get;
-        set;
-    }
+    public bool IsAccepted { get; set; }
 
     /// <summary>
     /// 获取或设置拒绝码（受理时为 <see cref="OnlineGameEventRejectionReason.None"/>）。
     /// </summary>
-    public OnlineGameEventRejectionReason Reason
-    {
-        get;
-        set;
-    }
+    public OnlineGameEventRejectionReason Reason { get; set; }
 
     /// <summary>
     /// 获取或设置拒绝原因（脱敏可读描述，随死信记录留存供投递方排查）。
     /// </summary>
-    public string Message
-    {
-        get;
-        set;
-    }
+    public string Message { get; set; }
 
     /// <summary>
     /// 构造受理结果。

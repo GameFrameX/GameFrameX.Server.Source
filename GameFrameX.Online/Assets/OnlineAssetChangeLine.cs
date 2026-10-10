@@ -43,26 +43,17 @@ public sealed class OnlineAssetChangeLine
     /// <summary>
     /// 获取资产类别。
     /// </summary>
-    public OnlineAssetKind AssetKind
-    {
-        get;
-    }
+    public OnlineAssetKind AssetKind { get; }
 
     /// <summary>
     /// 获取资产标识（货币代码或道具 ID；类别内唯一）。
     /// </summary>
-    public string AssetId
-    {
-        get;
-    }
+    public string AssetId { get; }
 
     /// <summary>
     /// 获取带符号变更数额（正 = 增加，负 = 减少；不允许 0）。
     /// </summary>
-    public long Amount
-    {
-        get;
-    }
+    public long Amount { get; }
 
     /// <summary>
     /// 构造变更行。

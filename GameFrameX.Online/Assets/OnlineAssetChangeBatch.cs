@@ -43,106 +43,67 @@ public sealed class OnlineAssetChangeBatch
     /// <summary>
     /// 获取所属交易标识。
     /// </summary>
-    public string TransactionId
-    {
-        get;
-    }
+    public string TransactionId { get; }
 
     /// <summary>
     /// 获取租户标识。
     /// </summary>
-    public long TenantId
-    {
-        get;
-    }
+    public long TenantId { get; }
 
     /// <summary>
     /// 获取 App 标识。
     /// </summary>
-    public long AppId
-    {
-        get;
-    }
+    public long AppId { get; }
 
     /// <summary>
     /// 获取玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-    }
+    public long PlayerId { get; }
 
     /// <summary>
     /// 获取归属服标识。
     /// </summary>
-    public long HomeServerId
-    {
-        get;
-    }
+    public long HomeServerId { get; }
 
     /// <summary>
     /// 获取发起服标识。
     /// </summary>
-    public long InitiatingServerId
-    {
-        get;
-    }
+    public long InitiatingServerId { get; }
 
     /// <summary>
     /// 获取变更来源。
     /// </summary>
-    public OnlineAssetChangeSource Source
-    {
-        get;
-    }
+    public OnlineAssetChangeSource Source { get; }
 
     /// <summary>
     /// 获取操作类型。
     /// </summary>
-    public OnlineGrantOperation Operation
-    {
-        get;
-    }
+    public OnlineGrantOperation Operation { get; }
 
     /// <summary>
     /// 获取变更原因。
     /// </summary>
-    public string Reason
-    {
-        get;
-    }
+    public string Reason { get; }
 
     /// <summary>
     /// 获取业务单号。
     /// </summary>
-    public string BusinessOrderId
-    {
-        get;
-    }
+    public string BusinessOrderId { get; }
 
     /// <summary>
     /// 获取操作者。
     /// </summary>
-    public string OperatorId
-    {
-        get;
-    }
+    public string OperatorId { get; }
 
     /// <summary>
     /// 获取变更行列表（同一资产只一行）。
     /// </summary>
-    public IReadOnlyList<OnlineAssetChangeLine> Lines
-    {
-        get;
-    }
+    public IReadOnlyList<OnlineAssetChangeLine> Lines { get; }
 
     /// <summary>
     /// 获取补偿指向的原交易标识（反转批次非空；普通批次为空字符串）。
     /// </summary>
-    public string CompensatesTransactionId
-    {
-        get;
-    }
+    public string CompensatesTransactionId { get; }
 
     /// <summary>
     /// 构造变更批次（internal：只允许统一入口在本程序集内构造，杜绝旁路写入）。

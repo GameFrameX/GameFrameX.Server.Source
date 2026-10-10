@@ -43,101 +43,57 @@ public sealed class OnlineMatchAssignment
     /// <summary>
     /// 获取或设置分配标识。
     /// </summary>
-    public string AssignmentId
-    {
-        get;
-        set;
-    }
+    public string AssignmentId { get; set; }
 
     /// <summary>
     /// 获取或设置对局标识（对局创建方以此创建 Match）。
     /// </summary>
-    public string MatchId
-    {
-        get;
-        set;
-    }
+    public string MatchId { get; set; }
 
     /// <summary>
     /// 获取或设置本分配的玩家集合（队伍票据为整队成员）。
     /// </summary>
-    public List<long> PlayerIds
-    {
-        get;
-        set;
-    }
+    public List<long> PlayerIds { get; set; }
 
     /// <summary>
     /// 获取或设置玩法模式。
     /// </summary>
-    public int Mode
-    {
-        get;
-        set;
-    }
+    public int Mode { get; set; }
 
     /// <summary>
     /// 获取或设置区域。
     /// </summary>
-    public int Region
-    {
-        get;
-        set;
-    }
+    public int Region { get; set; }
 
     /// <summary>
     /// 获取或设置规则快照。
     /// </summary>
-    public OnlineMatchRuleSnapshot RuleSnapshot
-    {
-        get;
-        set;
-    }
+    public OnlineMatchRuleSnapshot RuleSnapshot { get; set; }
 
     /// <summary>
     /// 获取或设置产生时刻（UTC 毫秒）。
     /// </summary>
-    public long CreatedAtTime
-    {
-        get;
-        set;
-    }
+    public long CreatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置本分配消费的票据标识集合（唯一性追溯的依据）。
     /// </summary>
-    public List<string> TicketIds
-    {
-        get;
-        set;
-    }
+    public List<string> TicketIds { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识（作用域隔离键）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识（作用域隔离键）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置区服标识（作用域隔离键）。
     /// </summary>
-    public long ServerId
-    {
-        get;
-        set;
-    }
+    public long ServerId { get; set; }
 
     /// <summary>
     /// 复制分配（存储层防御性深拷贝使用）。

@@ -41,27 +41,15 @@ public sealed class OnlineStoragePage
     /// <summary>
     /// 获取或设置本页条目（按键字典序）。
     /// </summary>
-    public IReadOnlyList<OnlinePlayerStorageEntry> Entries
-    {
-        get;
-        set;
-    }
+    public IReadOnlyList<OnlinePlayerStorageEntry> Entries { get; set; }
 
     /// <summary>
     /// 获取或设置翻页游标（本页最后一条键；无更多页时为空字符串）。
     /// </summary>
-    public string Cursor
-    {
-        get;
-        set;
-    }
+    public string Cursor { get; set; }
 
     /// <summary>
     /// 获取或设置是否还有更多页。
     /// </summary>
-    public bool HasMore
-    {
-        get;
-        set;
-    }
+    public bool HasMore { get; set; }
 }

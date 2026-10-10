@@ -31,10 +31,10 @@ namespace GameFrameX.Online.Party;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Events;
-using GameFrameX.Online.Scope;
-using GameFrameX.Online.Social;
+using Contracts;
+using Events;
+using Scope;
+using Social;
 
 /// <summary>
 /// 队伍服务（队伍生命周期的唯一写者）。
@@ -140,7 +140,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             State = OnlinePartyState.Created,
             Members = new List<OnlinePartyMember>
             {
-                new OnlinePartyMember
+                new()
                 {
                     PlayerId = scope.PlayerId,
                     MemberState = OnlinePartyMemberState.Joined,
@@ -151,7 +151,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             MaxMembers = _maxMembers,
             CreatedAtTime = now,
             UpdatedAtTime = now,
-            ExpiresAtTime = now + (_idleTimeToLiveSeconds * 1000),
+            ExpiresAtTime = now + _idleTimeToLiveSeconds * 1000,
         };
         await _store.SavePartyAsync(party, cancellationToken);
         return OnlineResult<OnlineParty>.Ok(party);
@@ -225,7 +225,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             InviteeId = inviteeId,
             State = OnlinePartyInviteState.Pending,
             CreatedAtTime = now,
-            ExpiresAtTime = now + (_inviteTimeToLiveSeconds * 1000),
+            ExpiresAtTime = now + _inviteTimeToLiveSeconds * 1000,
         };
         await _store.SaveInviteAsync(invite, cancellationToken);
         await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite, party.ServerId, correlationId), cancellationToken);
@@ -478,7 +478,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
 
         party.LeaderId = newLeaderId;
         party.UpdatedAtTime = Now();
-        party.ExpiresAtTime = party.UpdatedAtTime + (_idleTimeToLiveSeconds * 1000);
+        party.ExpiresAtTime = party.UpdatedAtTime + _idleTimeToLiveSeconds * 1000;
         await _store.SavePartyAsync(party, cancellationToken);
         return OnlineResult<OnlineParty>.Ok(party);
     }
@@ -942,7 +942,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
         var from = party.State;
         party.State = target;
         party.UpdatedAtTime = Now();
-        party.ExpiresAtTime = party.UpdatedAtTime + (_idleTimeToLiveSeconds * 1000);
+        party.ExpiresAtTime = party.UpdatedAtTime + _idleTimeToLiveSeconds * 1000;
         await _store.SavePartyAsync(party, cancellationToken);
         await _eventPublisher.PublishAsync(OnlinePartyEvents.CreatePartyChanged(party, from, target, reason, correlationId), cancellationToken);
         return OnlineResult<OnlineParty>.Ok(party);
@@ -957,7 +957,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
     private async Task TouchAsync(OnlineParty party, CancellationToken cancellationToken)
     {
         party.UpdatedAtTime = Now();
-        party.ExpiresAtTime = party.UpdatedAtTime + (_idleTimeToLiveSeconds * 1000);
+        party.ExpiresAtTime = party.UpdatedAtTime + _idleTimeToLiveSeconds * 1000;
         await _store.SavePartyAsync(party, cancellationToken);
     }
 

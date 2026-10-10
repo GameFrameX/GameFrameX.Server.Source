@@ -41,20 +41,12 @@ public sealed class OnlineMatchSkillRange
     /// <summary>
     /// 获取或设置区间下界。
     /// </summary>
-    public int Min
-    {
-        get;
-        set;
-    }
+    public int Min { get; set; }
 
     /// <summary>
     /// 获取或设置区间上界。
     /// </summary>
-    public int Max
-    {
-        get;
-        set;
-    }
+    public int Max { get; set; }
 
     /// <summary>
     /// 判定区间是否覆盖指定值。

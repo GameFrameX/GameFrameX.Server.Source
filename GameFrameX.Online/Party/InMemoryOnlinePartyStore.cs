@@ -40,16 +40,16 @@ namespace GameFrameX.Online.Party;
 public sealed class InMemoryOnlinePartyStore : IOnlinePartyStore
 {
     /// <summary>全局读写锁。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>队伍表：键 = (TenantId, AppId, PartyId)。</summary>
-    private readonly Dictionary<string, OnlineParty> _parties = new Dictionary<string, OnlineParty>();
+    private readonly Dictionary<string, OnlineParty> _parties = new();
 
     /// <summary>玩家 → 队伍索引：键 = (TenantId, AppId, PlayerId)。</summary>
-    private readonly Dictionary<string, string> _partyIdByPlayer = new Dictionary<string, string>();
+    private readonly Dictionary<string, string> _partyIdByPlayer = new();
 
     /// <summary>邀请表：键 = (TenantId, AppId, InviteId)。</summary>
-    private readonly Dictionary<string, OnlinePartyInvite> _invites = new Dictionary<string, OnlinePartyInvite>();
+    private readonly Dictionary<string, OnlinePartyInvite> _invites = new();
 
     /// <summary>保存队伍（深拷贝入库并重建玩家索引）。</summary>
     /// <param name="party">队伍聚合。</param>

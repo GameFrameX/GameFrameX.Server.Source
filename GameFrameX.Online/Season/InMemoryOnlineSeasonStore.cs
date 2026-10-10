@@ -46,13 +46,13 @@ namespace GameFrameX.Online.Season;
 public sealed class InMemoryOnlineSeasonStore : IOnlineSeasonStore
 {
     /// <summary>全局锁（赛季定义与快照共用，保证出入参一致性）。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>赛季定义表：键 = (TenantId, AppId, SeasonId)。</summary>
-    private readonly Dictionary<string, OnlineSeason> _seasons = new Dictionary<string, OnlineSeason>();
+    private readonly Dictionary<string, OnlineSeason> _seasons = new();
 
     /// <summary>历史快照表：键 = (TenantId, AppId, SeasonId)。</summary>
-    private readonly Dictionary<string, OnlineSeasonSnapshot> _snapshots = new Dictionary<string, OnlineSeasonSnapshot>();
+    private readonly Dictionary<string, OnlineSeasonSnapshot> _snapshots = new();
 
     /// <summary>
     /// 初始化 <see cref="InMemoryOnlineSeasonStore"/>。

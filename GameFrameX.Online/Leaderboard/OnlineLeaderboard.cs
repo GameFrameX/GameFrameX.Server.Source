@@ -43,65 +43,37 @@ public sealed class OnlineLeaderboard
     /// <summary>
     /// 获取或设置榜单标识（App 内唯一，创建方提供）。
     /// </summary>
-    public string LeaderboardId
-    {
-        get;
-        set;
-    }
+    public string LeaderboardId { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识（作用域隔离键）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识（作用域隔离键）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置排序方向（创建后固化）。
     /// </summary>
-    public OnlineLeaderboardSortOrder SortOrder
-    {
-        get;
-        set;
-    }
+    public OnlineLeaderboardSortOrder SortOrder { get; set; }
 
     /// <summary>
     /// 获取或设置分数累计策略（创建后固化）。
     /// </summary>
-    public OnlineLeaderboardScoreUpdatePolicy ScoreUpdatePolicy
-    {
-        get;
-        set;
-    }
+    public OnlineLeaderboardScoreUpdatePolicy ScoreUpdatePolicy { get; set; }
 
     /// <summary>
     /// 获取或设置单次提交分数合理上限（防刷校验上界；0 = 使用 <see cref="OnlineLeaderboardOptions.DefaultMaxScorePerSubmission"/> 全局默认值）。
     /// </summary>
-    public long MaxScorePerSubmission
-    {
-        get;
-        set;
-    }
+    public long MaxScorePerSubmission { get; set; }
 
     /// <summary>
     /// 获取或设置创建时刻（UTC 毫秒）。
     /// </summary>
-    public long CreatedTime
-    {
-        get;
-        set;
-    }
+    public long CreatedTime { get; set; }
 
     /// <summary>
     /// 复制榜单定义（存储出入参防御性拷贝）。

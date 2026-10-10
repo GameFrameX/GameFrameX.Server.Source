@@ -43,172 +43,96 @@ public sealed class OnlineAssetTransaction
     /// <summary>
     /// 获取或设置交易标识（全局唯一，<c>tx-</c> 前缀；账本条目的交易外键）。
     /// </summary>
-    public string TransactionId
-    {
-        get;
-        set;
-    }
+    public string TransactionId { get; set; }
 
     /// <summary>
     /// 获取或设置幂等键（业务意图标识；与玩家作用域绑定）。
     /// </summary>
-    public string IdempotencyKey
-    {
-        get;
-        set;
-    }
+    public string IdempotencyKey { get; set; }
 
     /// <summary>
     /// 获取或设置规范化请求文本摘要（同键不同摘要判冲突的审计留痕；幂等判定由 Foundation 执行）。
     /// </summary>
-    public string RequestDigest
-    {
-        get;
-        set;
-    }
+    public string RequestDigest { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置归属服标识（资产所有者的家服）。
     /// </summary>
-    public long HomeServerId
-    {
-        get;
-        set;
-    }
+    public long HomeServerId { get; set; }
 
     /// <summary>
     /// 获取或设置发起服标识（执行本次变更的服务器）。
     /// </summary>
-    public long InitiatingServerId
-    {
-        get;
-        set;
-    }
+    public long InitiatingServerId { get; set; }
 
     /// <summary>
     /// 获取或设置变更来源。
     /// </summary>
-    public OnlineAssetChangeSource Source
-    {
-        get;
-        set;
-    }
+    public OnlineAssetChangeSource Source { get; set; }
 
     /// <summary>
     /// 获取或设置操作类型。
     /// </summary>
-    public OnlineGrantOperation Operation
-    {
-        get;
-        set;
-    }
+    public OnlineGrantOperation Operation { get; set; }
 
     /// <summary>
     /// 获取或设置变更原因（审计追溯）。
     /// </summary>
-    public string Reason
-    {
-        get;
-        set;
-    }
+    public string Reason { get; set; }
 
     /// <summary>
     /// 获取或设置业务单号（来源侧单号：支付订单/兑换流水/结算标识等）。
     /// </summary>
-    public string BusinessOrderId
-    {
-        get;
-        set;
-    }
+    public string BusinessOrderId { get; set; }
 
     /// <summary>
     /// 获取或设置操作者（人工资金动作必填）。
     /// </summary>
-    public string OperatorId
-    {
-        get;
-        set;
-    }
+    public string OperatorId { get; set; }
 
     /// <summary>
     /// 获取或设置期望变更行数（创建时按请求变更行数固化；恢复任务以
     /// 「已落账条目数 == 期望行数」区分完整落账后中断与部分应用的判定依据）。
     /// </summary>
-    public int ExpectedChangeCount
-    {
-        get;
-        set;
-    }
+    public int ExpectedChangeCount { get; set; }
 
     /// <summary>
     /// 获取或设置交易状态（迁移受状态机约束）。
     /// </summary>
-    public OnlineAssetTransactionState State
-    {
-        get;
-        set;
-    }
+    public OnlineAssetTransactionState State { get; set; }
 
     /// <summary>
     /// 获取或设置本交易落账的账本条目标识列表（补偿反转输入；未落账为空）。
     /// </summary>
-    public IReadOnlyList<string> AppliedLedgerEntryIds
-    {
-        get;
-        set;
-    }
+    public IReadOnlyList<string> AppliedLedgerEntryIds { get; set; }
 
     /// <summary>
     /// 获取或设置创建时刻（UTC 毫秒）。
     /// </summary>
-    public long CreatedTime
-    {
-        get;
-        set;
-    }
+    public long CreatedTime { get; set; }
 
     /// <summary>
     /// 获取或设置落定时刻（UTC 毫秒；未落定为 0）。
     /// </summary>
-    public long SettledTime
-    {
-        get;
-        set;
-    }
+    public long SettledTime { get; set; }
 
     /// <summary>
     /// 获取或设置失败描述（Failed/CompensationPending 时的内部语义说明）。
     /// </summary>
-    public string FailureMessage
-    {
-        get;
-        set;
-    }
+    public string FailureMessage { get; set; }
 }

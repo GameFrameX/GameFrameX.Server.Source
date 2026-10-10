@@ -31,9 +31,9 @@ namespace GameFrameX.Online.Social;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Events;
-using GameFrameX.Online.Scope;
+using Contracts;
+using Events;
+using Scope;
 
 /// <summary>
 /// 聊天服务（四类频道、发送裁决、历史游标、离线补拉、已读、撤回、举报入口）。
@@ -335,7 +335,7 @@ public sealed class OnlineChatService
         }
 
         // 多取一条用于判定 HasMore，避免为「是否还有下一页」再查一次存储。
-        var fetched = await _store.ReadAfterAsync(scope.TenantId, scope.AppId, new ChatReadCursor { ChannelId = channelId, AfterSentAtTime = afterSentAtTime, AfterSequence = afterSequence, Limit = effectivePageSize + 1 }, cancellationToken).ConfigureAwait(false);
+        var fetched = await _store.ReadAfterAsync(scope.TenantId, scope.AppId, new ChatReadCursor { ChannelId = channelId, AfterSentAtTime = afterSentAtTime, AfterSequence = afterSequence, Limit = effectivePageSize + 1, }, cancellationToken).ConfigureAwait(false);
         var hasMore = fetched.Count > effectivePageSize;
         var pageMessages = new List<OnlineChatMessage>();
         var lastMessageId = string.Empty;
@@ -380,7 +380,7 @@ public sealed class OnlineChatService
         var mark = await _store.FindReadMarkAsync(scope.TenantId, scope.AppId, scope.PlayerId, channelId, cancellationToken).ConfigureAwait(false);
         var afterSentAtTime = mark == null ? 0 : mark.LastReadSentAtTime;
         var afterSequence = mark == null ? 0 : mark.LastReadSequence;
-        var count = await _store.CountUnreadAsync(scope.TenantId, scope.AppId, new ChatReadCursor { ChannelId = channelId, AfterSentAtTime = afterSentAtTime, AfterSequence = afterSequence }, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        var count = await _store.CountUnreadAsync(scope.TenantId, scope.AppId, new ChatReadCursor { ChannelId = channelId, AfterSentAtTime = afterSentAtTime, AfterSequence = afterSequence, }, scope.PlayerId, cancellationToken).ConfigureAwait(false);
         return OnlineResult<int>.Ok(count);
     }
 
@@ -479,7 +479,7 @@ public sealed class OnlineChatService
             return OnlineResult<OnlineChatMessage>.Fail(OnlineErrorCode.StateOperationForbidden, "已超出撤回窗口");
         }
 
-        var updated = await _store.UpdateMessageStateAsync(scope.TenantId, scope.AppId, new ChatMessageStateTransition { ChannelId = channelId, MessageId = messageId, ExpectedState = OnlineChatMessageState.Normal, NewState = OnlineChatMessageState.Recalled, NowUnixMilliseconds = now, RecalledByPlayerId = scope.PlayerId }, cancellationToken).ConfigureAwait(false);
+        var updated = await _store.UpdateMessageStateAsync(scope.TenantId, scope.AppId, new ChatMessageStateTransition { ChannelId = channelId, MessageId = messageId, ExpectedState = OnlineChatMessageState.Normal, NewState = OnlineChatMessageState.Recalled, NowUnixMilliseconds = now, RecalledByPlayerId = scope.PlayerId, }, cancellationToken).ConfigureAwait(false);
         if (updated == null)
         {
             // CAS 失败 = 已被并发撤回；重读后按当前事实返回，保证收敛。
@@ -525,7 +525,7 @@ public sealed class OnlineChatService
             return OnlineResult<OnlineReportCase>.Fail(OnlineErrorCode.ParameterInvalid, "不能举报自己发送的消息");
         }
 
-        return await _decisionService.SubmitReportAsync(scope, new OnlineReportSubmission { ReportedPlayerId = message.SenderId, Scene = OnlineReportScene.Chat, Reason = reason, MatchId = null, ChatMessageId = messageId, ChannelId = channelId, Evidence = evidence, CorrelationId = null }, cancellationToken).ConfigureAwait(false);
+        return await _decisionService.SubmitReportAsync(scope, new OnlineReportSubmission { ReportedPlayerId = message.SenderId, Scene = OnlineReportScene.Chat, Reason = reason, MatchId = null, ChatMessageId = messageId, ChannelId = channelId, Evidence = evidence, CorrelationId = null, }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

@@ -228,46 +228,22 @@ public static class OnlineSeasonEvents
     private sealed class SeasonCreatedPayload
     {
         /// <summary>赛季标识。</summary>
-        public string SeasonId
-        {
-            get;
-            set;
-        }
+        public string SeasonId { get; set; }
 
         /// <summary>关联榜单标识。</summary>
-        public string LeaderboardId
-        {
-            get;
-            set;
-        }
+        public string LeaderboardId { get; set; }
 
         /// <summary>排期开始时刻（UTC 毫秒）。</summary>
-        public long StartTime
-        {
-            get;
-            set;
-        }
+        public long StartTime { get; set; }
 
         /// <summary>排期结束时刻（UTC 毫秒）。</summary>
-        public long EndTime
-        {
-            get;
-            set;
-        }
+        public long EndTime { get; set; }
 
         /// <summary>奖励规则条数。</summary>
-        public int RewardRuleCount
-        {
-            get;
-            set;
-        }
+        public int RewardRuleCount { get; set; }
 
         /// <summary>创建后的状态名。</summary>
-        public string State
-        {
-            get;
-            set;
-        }
+        public string State { get; set; }
     }
 
     /// <summary>
@@ -276,32 +252,16 @@ public static class OnlineSeasonEvents
     private sealed class SeasonStartedPayload
     {
         /// <summary>赛季标识。</summary>
-        public string SeasonId
-        {
-            get;
-            set;
-        }
+        public string SeasonId { get; set; }
 
         /// <summary>关联榜单标识。</summary>
-        public string LeaderboardId
-        {
-            get;
-            set;
-        }
+        public string LeaderboardId { get; set; }
 
         /// <summary>排期开始时刻（UTC 毫秒）。</summary>
-        public long StartTime
-        {
-            get;
-            set;
-        }
+        public long StartTime { get; set; }
 
         /// <summary>排期结束时刻（UTC 毫秒）。</summary>
-        public long EndTime
-        {
-            get;
-            set;
-        }
+        public long EndTime { get; set; }
     }
 
     /// <summary>
@@ -310,32 +270,16 @@ public static class OnlineSeasonEvents
     private sealed class SeasonEndedPayload
     {
         /// <summary>赛季标识。</summary>
-        public string SeasonId
-        {
-            get;
-            set;
-        }
+        public string SeasonId { get; set; }
 
         /// <summary>关联榜单标识。</summary>
-        public string LeaderboardId
-        {
-            get;
-            set;
-        }
+        public string LeaderboardId { get; set; }
 
         /// <summary>落档快照的条目数。</summary>
-        public int SnapshotEntryCount
-        {
-            get;
-            set;
-        }
+        public int SnapshotEntryCount { get; set; }
 
         /// <summary>快照生成时刻（UTC 毫秒）。</summary>
-        public long SnapshottedTime
-        {
-            get;
-            set;
-        }
+        public long SnapshottedTime { get; set; }
     }
 
     /// <summary>
@@ -344,31 +288,15 @@ public static class OnlineSeasonEvents
     private sealed class SeasonSettledPayload
     {
         /// <summary>赛季标识。</summary>
-        public string SeasonId
-        {
-            get;
-            set;
-        }
+        public string SeasonId { get; set; }
 
         /// <summary>本次首次发放成功玩家数。</summary>
-        public int GrantedCount
-        {
-            get;
-            set;
-        }
+        public int GrantedCount { get; set; }
 
         /// <summary>本次命中幂等回放玩家数。</summary>
-        public int ReplayCount
-        {
-            get;
-            set;
-        }
+        public int ReplayCount { get; set; }
 
         /// <summary>本次发放失败玩家数（正常路径恒为 0）。</summary>
-        public int FailedCount
-        {
-            get;
-            set;
-        }
+        public int FailedCount { get; set; }
     }
 }

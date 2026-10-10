@@ -30,7 +30,7 @@
 
 namespace GameFrameX.Online.Assets;
 
-using GameFrameX.Online.Scope;
+using Scope;
 
 /// <summary>
 /// 统一资产入口请求（所有资产发放/扣除/撤销/补发/人工调整的唯一提交形态）。
@@ -47,42 +47,27 @@ public sealed class OnlineGrantRequest
     /// <summary>
     /// 获取生效作用域（必须含玩家主体位）。
     /// </summary>
-    public OnlineScope Scope
-    {
-        get;
-    }
+    public OnlineScope Scope { get; }
 
     /// <summary>
     /// 获取变更来源（六类业务来源；系统补偿来源业务调用方禁止指定）。
     /// </summary>
-    public OnlineAssetChangeSource Source
-    {
-        get;
-    }
+    public OnlineAssetChangeSource Source { get; }
 
     /// <summary>
     /// 获取操作类型。
     /// </summary>
-    public OnlineGrantOperation Operation
-    {
-        get;
-    }
+    public OnlineGrantOperation Operation { get; }
 
     /// <summary>
     /// 获取变更原因（业务语义描述，审计追溯必填）。
     /// </summary>
-    public string Reason
-    {
-        get;
-    }
+    public string Reason { get; }
 
     /// <summary>
     /// 获取业务单号（支付订单号/兑换流水/结算标识等来源侧单号，审计追溯必填）。
     /// </summary>
-    public string BusinessOrderId
-    {
-        get;
-    }
+    public string BusinessOrderId { get; }
 
     /// <summary>
     /// 获取或设置操作者（撤销与人工调整必填；系统来源为空字符串）。
@@ -92,18 +77,12 @@ public sealed class OnlineGrantRequest
     /// <summary>
     /// 获取变更行列表（同一资产只一行，数额非 0）。
     /// </summary>
-    public IReadOnlyList<OnlineAssetChangeLine> Changes
-    {
-        get;
-    }
+    public IReadOnlyList<OnlineAssetChangeLine> Changes { get; }
 
     /// <summary>
     /// 获取幂等键（业务意图标识；重复回调/领取/兑换/结算以相同键重试只生效一次）。
     /// </summary>
-    public string IdempotencyKey
-    {
-        get;
-    }
+    public string IdempotencyKey { get; }
 
     /// <summary>
     /// 获取或设置归属服标识（玩家家服；0 = 取作用域区服。跨服发奖的路由判定输入）。

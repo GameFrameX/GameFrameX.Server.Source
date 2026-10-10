@@ -44,10 +44,10 @@ namespace GameFrameX.Online.Leaderboard;
 public sealed class OnlineLeaderboardRateLimiter
 {
     /// <summary>全局读写锁。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>窗口计数桶：键 = (TenantId, AppId, PlayerId)。</summary>
-    private readonly Dictionary<string, Window> _windows = new Dictionary<string, Window>();
+    private readonly Dictionary<string, Window> _windows = new();
 
     /// <summary>窗口内允许的提交次数。</summary>
     private readonly int _maxSubmissions;
@@ -112,17 +112,9 @@ public sealed class OnlineLeaderboardRateLimiter
     private sealed class Window
     {
         /// <summary>获取或设置窗口起始时刻（UTC 毫秒）。</summary>
-        public long StartedAtTime
-        {
-            get;
-            set;
-        }
+        public long StartedAtTime { get; set; }
 
         /// <summary>获取或设置窗口内已计数。</summary>
-        public int Count
-        {
-            get;
-            set;
-        }
+        public int Count { get; set; }
     }
 }

@@ -43,117 +43,65 @@ public sealed class OnlineMatchQueueSnapshot
     /// <summary>
     /// 获取或设置租户标识。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置观测时刻（UTC 毫秒）。
     /// </summary>
-    public long ObservedAtTime
-    {
-        get;
-        set;
-    }
+    public long ObservedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置排队中票据数。
     /// </summary>
-    public int QueuedTicketCount
-    {
-        get;
-        set;
-    }
+    public int QueuedTicketCount { get; set; }
 
     /// <summary>
     /// 获取或设置排队中玩家数（去重后）。
     /// </summary>
-    public int QueuedPlayerCount
-    {
-        get;
-        set;
-    }
+    public int QueuedPlayerCount { get; set; }
 
     /// <summary>
     /// 获取或设置已匹配票据数。
     /// </summary>
-    public int MatchedTicketCount
-    {
-        get;
-        set;
-    }
+    public int MatchedTicketCount { get; set; }
 
     /// <summary>
     /// 获取或设置已匹配玩家数（去重后）。
     /// </summary>
-    public int MatchedPlayerCount
-    {
-        get;
-        set;
-    }
+    public int MatchedPlayerCount { get; set; }
 
     /// <summary>
     /// 获取或设置已取消票据数。
     /// </summary>
-    public int CancelledTicketCount
-    {
-        get;
-        set;
-    }
+    public int CancelledTicketCount { get; set; }
 
     /// <summary>
     /// 获取或设置已过期票据数。
     /// </summary>
-    public int ExpiredTicketCount
-    {
-        get;
-        set;
-    }
+    public int ExpiredTicketCount { get; set; }
 
     /// <summary>
     /// 获取或设置失败票据数。
     /// </summary>
-    public int FailedTicketCount
-    {
-        get;
-        set;
-    }
+    public int FailedTicketCount { get; set; }
 
     /// <summary>
     /// 获取或设置对局分配总数。
     /// </summary>
-    public int AssignmentCount
-    {
-        get;
-        set;
-    }
+    public int AssignmentCount { get; set; }
 
     /// <summary>
     /// 获取或设置被 **多份** 分配同时消费的票据数（红指标，必须为 0）。
     /// </summary>
-    public int DuplicateAssignmentTicketCount
-    {
-        get;
-        set;
-    }
+    public int DuplicateAssignmentTicketCount { get; set; }
 
     /// <summary>
     /// 获取或设置票据摘要明细（按入队时刻升序）。
     /// </summary>
-    public List<OnlineMatchTicketSummary> Tickets
-    {
-        get;
-        set;
-    }
+    public List<OnlineMatchTicketSummary> Tickets { get; set; }
 }

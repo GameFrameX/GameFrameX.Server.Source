@@ -43,36 +43,20 @@ public sealed class OnlineLeaderboardAroundView
     /// <summary>
     /// 获取或设置目标玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置目标玩家名次（从 1 开始）。
     /// </summary>
-    public int Rank
-    {
-        get;
-        set;
-    }
+    public int Rank { get; set; }
 
     /// <summary>
     /// 获取或设置榜单条目总数（当前快照口径）。
     /// </summary>
-    public long TotalCount
-    {
-        get;
-        set;
-    }
+    public long TotalCount { get; set; }
 
     /// <summary>
     /// 获取或设置附近窗口条目（含目标玩家，按名次升序；窗口边界处截断）。
     /// </summary>
-    public List<OnlineLeaderboardEntryView> Around
-    {
-        get;
-        set;
-    }
+    public List<OnlineLeaderboardEntryView> Around { get; set; }
 }

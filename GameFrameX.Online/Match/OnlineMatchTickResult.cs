@@ -41,54 +41,30 @@ public sealed class OnlineMatchTickResult
     /// <summary>
     /// 获取或设置对局标识。
     /// </summary>
-    public string MatchId
-    {
-        get;
-        set;
-    }
+    public string MatchId { get; set; }
 
     /// <summary>
     /// 获取或设置本次 Tick 是否改写了对局（含状态迁移与成员清理）。
     /// </summary>
-    public bool Changed
-    {
-        get;
-        set;
-    }
+    public bool Changed { get; set; }
 
     /// <summary>
     /// 获取或设置是否因超时转入结束态。
     /// </summary>
-    public bool TimedOut
-    {
-        get;
-        set;
-    }
+    public bool TimedOut { get; set; }
 
     /// <summary>
     /// 获取或设置是否因重连窗口超时清理了断线成员。
     /// </summary>
-    public bool ReconnectWindowExpired
-    {
-        get;
-        set;
-    }
+    public bool ReconnectWindowExpired { get; set; }
 
     /// <summary>
     /// 获取或设置是否已到达结算阶段（玩法已分出结果）。
     /// </summary>
-    public bool EnteredSettling
-    {
-        get;
-        set;
-    }
+    public bool EnteredSettling { get; set; }
 
     /// <summary>
     /// 获取或设置是否已进入终态并可释放。
     /// </summary>
-    public bool Closable
-    {
-        get;
-        set;
-    }
+    public bool Closable { get; set; }
 }

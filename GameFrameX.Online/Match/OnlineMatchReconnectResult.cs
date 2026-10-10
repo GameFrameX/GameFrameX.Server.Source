@@ -43,81 +43,45 @@ public sealed class OnlineMatchReconnectResult
     /// <summary>
     /// 获取或设置是否重连成功。
     /// </summary>
-    public bool Succeeded
-    {
-        get;
-        set;
-    }
+    public bool Succeeded { get; set; }
 
     /// <summary>
     /// 获取或设置失败原因（成功时为 <see cref="Contracts.OnlineErrorCode.None"/>）。
     /// </summary>
-    public Contracts.OnlineErrorCode FailureCode
-    {
-        get;
-        set;
-    }
+    public Contracts.OnlineErrorCode FailureCode { get; set; }
 
     /// <summary>
     /// 获取或设置失败说明（诊断用）。
     /// </summary>
-    public string FailureMessage
-    {
-        get;
-        set;
-    }
+    public string FailureMessage { get; set; }
 
     /// <summary>
     /// 获取或设置对局标识。
     /// </summary>
-    public string MatchId
-    {
-        get;
-        set;
-    }
+    public string MatchId { get; set; }
 
     /// <summary>
     /// 获取或设置重连后的对局状态。
     /// </summary>
-    public OnlineMatchState State
-    {
-        get;
-        set;
-    }
+    public OnlineMatchState State { get; set; }
 
     /// <summary>
     /// 获取或设置重连后的服务器序号。
     /// </summary>
-    public long ServerSequence
-    {
-        get;
-        set;
-    }
+    public long ServerSequence { get; set; }
 
     /// <summary>
     /// 获取或设置完整快照（重连成功时非空）。
     /// </summary>
-    public OnlineMatchSnapshot Snapshot
-    {
-        get;
-        set;
-    }
+    public OnlineMatchSnapshot Snapshot { get; set; }
 
     /// <summary>
     /// 获取或设置缺失增量（为 null 表示增量不可用，客户端须以快照为准重建）。
     /// </summary>
-    public OnlineMatchDelta Delta
-    {
-        get;
-        set;
-    }
+    public OnlineMatchDelta Delta { get; set; }
 
     /// <summary>
     /// 获取或设置处置说明（如「转托管」「转退出」的确定态说明）。
     /// </summary>
-    public string Instruction
-    {
-        get;
-        set;
-    }
+    public string Instruction { get; set; }
 }

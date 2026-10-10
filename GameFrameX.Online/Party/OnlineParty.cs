@@ -42,110 +42,62 @@ public sealed class OnlineParty
     /// <summary>
     /// 获取或设置队伍标识。
     /// </summary>
-    public string PartyId
-    {
-        get;
-        set;
-    }
+    public string PartyId { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识（作用域隔离键）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识（作用域隔离键）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置区服标识（作用域隔离键）。
     /// </summary>
-    public long ServerId
-    {
-        get;
-        set;
-    }
+    public long ServerId { get; set; }
 
     /// <summary>
     /// 获取或设置队长标识。
     /// </summary>
-    public long LeaderId
-    {
-        get;
-        set;
-    }
+    public long LeaderId { get; set; }
 
     /// <summary>
     /// 获取或设置队伍状态。
     /// </summary>
-    public OnlinePartyState State
-    {
-        get;
-        set;
-    }
+    public OnlinePartyState State { get; set; }
 
     /// <summary>
     /// 获取或设置成员集合。
     /// </summary>
-    public List<OnlinePartyMember> Members
-    {
-        get;
-        set;
-    }
+    public List<OnlinePartyMember> Members { get; set; }
 
     /// <summary>
     /// 获取或设置人数下限（低于该值即人数不足）。
     /// </summary>
-    public int MinMembers
-    {
-        get;
-        set;
-    }
+    public int MinMembers { get; set; }
 
     /// <summary>
     /// 获取或设置人数上限。
     /// </summary>
-    public int MaxMembers
-    {
-        get;
-        set;
-    }
+    public int MaxMembers { get; set; }
 
     /// <summary>
     /// 获取或设置创建时刻（UTC 毫秒）。
     /// </summary>
-    public long CreatedAtTime
-    {
-        get;
-        set;
-    }
+    public long CreatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置最近变更时刻（UTC 毫秒）。
     /// </summary>
-    public long UpdatedAtTime
-    {
-        get;
-        set;
-    }
+    public long UpdatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置空闲过期时刻（UTC 毫秒；无成员变动且未进入匹配则到期转 Expired）。
     /// </summary>
-    public long ExpiresAtTime
-    {
-        get;
-        set;
-    }
+    public long ExpiresAtTime { get; set; }
 
     /// <summary>
     /// 复制队伍聚合（存储层防御性深拷贝使用；成员集合逐条复制，避免别名污染已存状态）。

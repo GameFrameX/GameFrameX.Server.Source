@@ -42,117 +42,65 @@ public sealed class OnlinePlayerStorageEntry
     /// <summary>
     /// 获取或设置租户标识。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置应用标识。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置集合名（同一玩家的数据分组，如 "settings"/"archive"）。
     /// </summary>
-    public string Collection
-    {
-        get;
-        set;
-    }
+    public string Collection { get; set; }
 
     /// <summary>
     /// 获取或设置条目键（集合内唯一）。
     /// </summary>
-    public string Key
-    {
-        get;
-        set;
-    }
+    public string Key { get; set; }
 
     /// <summary>
     /// 获取或设置负载数据（原始字节；格式由调用方约定）。
     /// </summary>
-    public byte[] Payload
-    {
-        get;
-        set;
-    }
+    public byte[] Payload { get; set; }
 
     /// <summary>
     /// 获取或设置版本（乐观锁；创建为 1，每次写递增）。
     /// </summary>
-    public long Version
-    {
-        get;
-        set;
-    }
+    public long Version { get; set; }
 
     /// <summary>
     /// 获取或设置创建时间（Unix 毫秒）。
     /// </summary>
-    public long CreatedAtTime
-    {
-        get;
-        set;
-    }
+    public long CreatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置创建者（会话标识或操作者标识）。
     /// </summary>
-    public string CreatedBy
-    {
-        get;
-        set;
-    }
+    public string CreatedBy { get; set; }
 
     /// <summary>
     /// 获取或设置最近更新时间（Unix 毫秒）。
     /// </summary>
-    public long UpdatedAtTime
-    {
-        get;
-        set;
-    }
+    public long UpdatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置最近更新者（会话标识或操作者标识）。
     /// </summary>
-    public string UpdatedBy
-    {
-        get;
-        set;
-    }
+    public string UpdatedBy { get; set; }
 
     /// <summary>
     /// 获取或设置过期时刻（Unix 毫秒；0 = 永不过期）。
     /// </summary>
-    public long ExpiresAtTime
-    {
-        get;
-        set;
-    }
+    public long ExpiresAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置软删时刻（Unix 毫秒；0 = 未删除）。
     /// </summary>
-    public long DeletedAtTime
-    {
-        get;
-        set;
-    }
+    public long DeletedAtTime { get; set; }
 }

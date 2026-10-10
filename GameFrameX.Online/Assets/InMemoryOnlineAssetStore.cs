@@ -32,7 +32,7 @@ namespace GameFrameX.Online.Assets;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Contracts;
+using Contracts;
 
 /// <summary>
 /// 资产存储内存默认实现（单进程/测试默认实现；生产装配以持久化实现替换）。
@@ -47,25 +47,25 @@ using GameFrameX.Online.Contracts;
 public sealed class InMemoryOnlineAssetStore : IOnlineAssetStore
 {
     /// <summary>分片锁注册表守卫锁。</summary>
-    private readonly object _registryLock = new object();
+    private readonly object _registryLock = new();
 
     /// <summary>玩家分片锁注册表：键 = tenant:app:player。</summary>
-    private readonly Dictionary<string, object> _playerLocks = new Dictionary<string, object>();
+    private readonly Dictionary<string, object> _playerLocks = new();
 
     /// <summary>货币账户快照：键 = tenant:app:player:货币代码。</summary>
-    private readonly Dictionary<string, OnlineWalletAccount> _wallets = new Dictionary<string, OnlineWalletAccount>();
+    private readonly Dictionary<string, OnlineWalletAccount> _wallets = new();
 
     /// <summary>道具库存快照：键 = tenant:app:player:道具标识。</summary>
-    private readonly Dictionary<string, OnlineInventoryStack> _inventories = new Dictionary<string, OnlineInventoryStack>();
+    private readonly Dictionary<string, OnlineInventoryStack> _inventories = new();
 
     /// <summary>账本条目（按玩家归组，组内按账本序升序）：键 = tenant:app:player。</summary>
-    private readonly Dictionary<string, List<OnlineLedgerEntry>> _ledgerByPlayer = new Dictionary<string, List<OnlineLedgerEntry>>();
+    private readonly Dictionary<string, List<OnlineLedgerEntry>> _ledgerByPlayer = new();
 
     /// <summary>交易 → 账本条目反查索引（追加时维护）。</summary>
-    private readonly Dictionary<string, List<OnlineLedgerEntry>> _ledgerByTransaction = new Dictionary<string, List<OnlineLedgerEntry>>();
+    private readonly Dictionary<string, List<OnlineLedgerEntry>> _ledgerByTransaction = new();
 
     /// <summary>玩家维度账本序计数器：键 = tenant:app:player。</summary>
-    private readonly Dictionary<string, long> _sequenceByPlayer = new Dictionary<string, long>();
+    private readonly Dictionary<string, long> _sequenceByPlayer = new();
 
     /// <summary>查找货币账户快照。</summary>
     /// <param name="tenantId">租户标识。</param>
@@ -279,7 +279,7 @@ public sealed class InMemoryOnlineAssetStore : IOnlineAssetStore
         var assetKey = BuildAssetKey(entry.TenantId, entry.AppId, entry.PlayerId, entry.AssetKind, entry.AssetId);
         if (!_wallets.TryGetValue(assetKey, out var wallet))
         {
-            wallet = new OnlineWalletAccount { TenantId = entry.TenantId, AppId = entry.AppId, PlayerId = entry.PlayerId, CurrencyId = entry.AssetId, Balance = 0, Version = 0 };
+            wallet = new OnlineWalletAccount { TenantId = entry.TenantId, AppId = entry.AppId, PlayerId = entry.PlayerId, CurrencyId = entry.AssetId, Balance = 0, Version = 0, };
             _wallets[assetKey] = wallet;
         }
 
@@ -296,7 +296,7 @@ public sealed class InMemoryOnlineAssetStore : IOnlineAssetStore
         var assetKey = BuildAssetKey(entry.TenantId, entry.AppId, entry.PlayerId, entry.AssetKind, entry.AssetId);
         if (!_inventories.TryGetValue(assetKey, out var stack))
         {
-            stack = new OnlineInventoryStack { TenantId = entry.TenantId, AppId = entry.AppId, PlayerId = entry.PlayerId, ItemId = entry.AssetId, Quantity = 0, Version = 0 };
+            stack = new OnlineInventoryStack { TenantId = entry.TenantId, AppId = entry.AppId, PlayerId = entry.PlayerId, ItemId = entry.AssetId, Quantity = 0, Version = 0, };
             _inventories[assetKey] = stack;
         }
 
@@ -449,7 +449,7 @@ public sealed class InMemoryOnlineAssetStore : IOnlineAssetStore
         _sequenceByPlayer.TryGetValue(playerKey, out var sequence);
         sequence++;
         _sequenceByPlayer[playerKey] = sequence;
-        return new OnlineLedgerEntry("led-" + Guid.NewGuid().ToString("N"), batch.TransactionId, new OnlineLedgerHeader { TenantId = batch.TenantId, AppId = batch.AppId, PlayerId = batch.PlayerId, HomeServerId = batch.HomeServerId, InitiatingServerId = batch.InitiatingServerId, Source = batch.Source, Operation = batch.Operation, Reason = batch.Reason, BusinessOrderId = batch.BusinessOrderId, OperatorId = batch.OperatorId }, line.AssetKind, line.AssetId, amountBefore, line.Amount, amountAfter, batch.CompensatesTransactionId, sequence, occurredTime);
+        return new OnlineLedgerEntry("led-" + Guid.NewGuid().ToString("N"), batch.TransactionId, new OnlineLedgerHeader { TenantId = batch.TenantId, AppId = batch.AppId, PlayerId = batch.PlayerId, HomeServerId = batch.HomeServerId, InitiatingServerId = batch.InitiatingServerId, Source = batch.Source, Operation = batch.Operation, Reason = batch.Reason, BusinessOrderId = batch.BusinessOrderId, OperatorId = batch.OperatorId, }, line.AssetKind, line.AssetId, amountBefore, line.Amount, amountAfter, batch.CompensatesTransactionId, sequence, occurredTime);
     }
 
     /// <summary>获取玩家分片锁（不存在则注册）。</summary>

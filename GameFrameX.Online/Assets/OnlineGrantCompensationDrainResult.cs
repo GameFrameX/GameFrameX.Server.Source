@@ -42,18 +42,12 @@ public sealed class OnlineGrantCompensationDrainResult
     /// <summary>
     /// 获取本次投递成功条数。
     /// </summary>
-    public int DeliveredCount
-    {
-        get;
-    }
+    public int DeliveredCount { get; }
 
     /// <summary>
     /// 获取仍滞留条数（含本次投递失败与 SLO 超时条目）。
     /// </summary>
-    public int RemainingCount
-    {
-        get;
-    }
+    public int RemainingCount { get; }
 
     /// <summary>
     /// 构造续投结果。

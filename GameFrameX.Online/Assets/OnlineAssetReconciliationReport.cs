@@ -43,26 +43,17 @@ public sealed class OnlineAssetReconciliationReport
     /// <summary>
     /// 获取对账覆盖玩家数。
     /// </summary>
-    public int PlayerCount
-    {
-        get;
-    }
+    public int PlayerCount { get; }
 
     /// <summary>
     /// 获取是否一致（差异数为 0）。
     /// </summary>
-    public bool IsConsistent
-    {
-        get;
-    }
+    public bool IsConsistent { get; }
 
     /// <summary>
     /// 获取差异列表（空 = 一致）。
     /// </summary>
-    public IReadOnlyList<Difference> Differences
-    {
-        get;
-    }
+    public IReadOnlyList<Difference> Differences { get; }
 
     /// <summary>
     /// 构造对账报告。
@@ -84,42 +75,27 @@ public sealed class OnlineAssetReconciliationReport
         /// <summary>
         /// 获取玩家标识。
         /// </summary>
-        public long PlayerId
-        {
-            get;
-        }
+        public long PlayerId { get; }
 
         /// <summary>
         /// 获取资产类别。
         /// </summary>
-        public OnlineAssetKind AssetKind
-        {
-            get;
-        }
+        public OnlineAssetKind AssetKind { get; }
 
         /// <summary>
         /// 获取资产标识。
         /// </summary>
-        public string AssetId
-        {
-            get;
-        }
+        public string AssetId { get; }
 
         /// <summary>
         /// 获取快照侧数值（余额/库存）。
         /// </summary>
-        public long SnapshotAmount
-        {
-            get;
-        }
+        public long SnapshotAmount { get; }
 
         /// <summary>
         /// 获取账本侧数值（带符号累加）。
         /// </summary>
-        public long LedgerSumAmount
-        {
-            get;
-        }
+        public long LedgerSumAmount { get; }
 
         /// <summary>
         /// 构造差异记录。

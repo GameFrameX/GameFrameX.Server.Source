@@ -44,36 +44,20 @@ public sealed class OnlineMatchDispatchOutcome
     /// <summary>
     /// 获取或设置结算结果标识（幂等边界）。
     /// </summary>
-    public string MatchResultId
-    {
-        get;
-        set;
-    }
+    public string MatchResultId { get; set; }
 
     /// <summary>
     /// 获取或设置成功分发的玩家数（含幂等重放）。
     /// </summary>
-    public int SucceededCount
-    {
-        get;
-        set;
-    }
+    public int SucceededCount { get; set; }
 
     /// <summary>
     /// 获取或设置被幂等重放的玩家数（奖励早已发放，本次未重复发放）。
     /// </summary>
-    public int ReplayCount
-    {
-        get;
-        set;
-    }
+    public int ReplayCount { get; set; }
 
     /// <summary>
     /// 获取或设置分发失败的玩家标识集合。
     /// </summary>
-    public List<long> FailedPlayerIds
-    {
-        get;
-        set;
-    }
+    public List<long> FailedPlayerIds { get; set; }
 }

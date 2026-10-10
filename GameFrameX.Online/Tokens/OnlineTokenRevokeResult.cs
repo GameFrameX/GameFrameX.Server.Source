@@ -37,9 +37,5 @@ public sealed class OnlineTokenRevokeResult
     /// <summary>
     /// 获取或设置是否实际执行了吊销。
     /// </summary>
-    public bool Revoked
-    {
-        get;
-        set;
-    }
+    public bool Revoked { get; set; }
 }

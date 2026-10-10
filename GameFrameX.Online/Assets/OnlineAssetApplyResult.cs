@@ -29,7 +29,7 @@
 
 namespace GameFrameX.Online.Assets;
 
-using GameFrameX.Online.Contracts;
+using Contracts;
 
 /// <summary>
 /// 资产批次应用结果（存储层原子应用的输出；失败携带段位化错误码供统一入口透传）。
@@ -44,34 +44,22 @@ public sealed class OnlineAssetApplyResult
     /// <summary>
     /// 获取应用是否成功。
     /// </summary>
-    public bool Success
-    {
-        get;
-    }
+    public bool Success { get; }
 
     /// <summary>
     /// 获取失败错误码（成功时为 <see cref="OnlineErrorCode.None"/>）。
     /// </summary>
-    public OnlineErrorCode ErrorCode
-    {
-        get;
-    }
+    public OnlineErrorCode ErrorCode { get; }
 
     /// <summary>
     /// 获取失败描述（服务端内部语义）。
     /// </summary>
-    public string Message
-    {
-        get;
-    }
+    public string Message { get; }
 
     /// <summary>
     /// 获取落账条目（成功时非空；失败时为空列表）。
     /// </summary>
-    public IReadOnlyList<OnlineLedgerEntry> Entries
-    {
-        get;
-    }
+    public IReadOnlyList<OnlineLedgerEntry> Entries { get; }
 
     /// <summary>
     /// 构造应用结果。

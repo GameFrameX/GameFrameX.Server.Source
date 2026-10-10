@@ -38,18 +38,12 @@ public sealed class OnlineAuditIngestOutcome
     /// <summary>
     /// 获取本次接入的审计标识（与接入条目 <c>EventId</c> 一致；重放时亦回传该标识，保证回执形状一致）。
     /// </summary>
-    public string EventId
-    {
-        get;
-    }
+    public string EventId { get; }
 
     /// <summary>
     /// 获取是否为重复接入（<c>true</c> = 该 <c>EventId</c> 此前已落档，本次为幂等重放，未产生任何新副作用）。
     /// </summary>
-    public bool IsDuplicate
-    {
-        get;
-    }
+    public bool IsDuplicate { get; }
 
     /// <summary>
     /// 构造接入回执。

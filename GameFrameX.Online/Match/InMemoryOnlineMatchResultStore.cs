@@ -50,10 +50,10 @@ namespace GameFrameX.Online.Match;
 public sealed class InMemoryOnlineMatchResultStore : IOnlineMatchResultStore
 {
     /// <summary>全局读写锁。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>结果表：键 = (TenantId, AppId, MatchId)。</summary>
-    private readonly Dictionary<string, OnlineMatchResult> _results = new Dictionary<string, OnlineMatchResult>();
+    private readonly Dictionary<string, OnlineMatchResult> _results = new();
 
     /// <summary>
     /// 在全局锁内按作用域与对局标识查找结算结果并返回副本；标识为空直接返回 null。

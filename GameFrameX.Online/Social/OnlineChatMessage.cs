@@ -44,120 +44,68 @@ public sealed class OnlineChatMessage
     /// <summary>
     /// 获取或设置消息标识。
     /// </summary>
-    public string MessageId
-    {
-        get;
-        set;
-    }
+    public string MessageId { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置所属频道标识。
     /// </summary>
-    public string ChannelId
-    {
-        get;
-        set;
-    }
+    public string ChannelId { get; set; }
 
     /// <summary>
     /// 获取或设置所属频道类型（冗余落库：历史补拉与审计不必回查频道记录）。
     /// </summary>
-    public OnlineChatChannelKind ChannelKind
-    {
-        get;
-        set;
-    }
+    public OnlineChatChannelKind ChannelKind { get; set; }
 
     /// <summary>
     /// 获取或设置发送者。
     /// </summary>
-    public long SenderId
-    {
-        get;
-        set;
-    }
+    public long SenderId { get; set; }
 
     /// <summary>
     /// 获取或设置消息内容（已撤回消息的内容不再下发，但字段本身保留以便审计）。
     /// </summary>
-    public string Content
-    {
-        get;
-        set;
-    }
+    public string Content { get; set; }
 
     /// <summary>
     /// 获取或设置发送时刻（UTC 毫秒；**由存储层在追加时落定并在频道内保证单调不减**，
     /// 落库后任何调用方都不得改写——改写会让既有的已读位点与游标失去含义）。
     /// </summary>
-    public long SentAtTime
-    {
-        get;
-        set;
-    }
+    public long SentAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置频道内单调递增的序号（**由存储层在追加时分配**；排序平局判定与游标偏移的唯一依据）。
     /// </summary>
-    public long Sequence
-    {
-        get;
-        set;
-    }
+    public long Sequence { get; set; }
 
     /// <summary>
     /// 获取或设置消息状态。
     /// </summary>
-    public OnlineChatMessageState State
-    {
-        get;
-        set;
-    }
+    public OnlineChatMessageState State { get; set; }
 
     /// <summary>
     /// 获取或设置撤回时刻（UTC 毫秒；未撤回为 <c>0</c>）。
     /// </summary>
-    public long RecalledAtTime
-    {
-        get;
-        set;
-    }
+    public long RecalledAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置撤回人（未撤回为 <c>0</c>；只有发送者本人可撤回，故非零时必等于发送者）。
     /// </summary>
-    public long RecalledByPlayerId
-    {
-        get;
-        set;
-    }
+    public long RecalledByPlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置发送方提供的去重键（可空；非空时存储层按频道内唯一约束做重发幂等）。
     /// </summary>
-    public string DedupeKey
-    {
-        get;
-        set;
-    }
+    public string DedupeKey { get; set; }
 
     /// <summary>
     /// 构造深拷贝（存储层与调用方不得共享同一实例）。

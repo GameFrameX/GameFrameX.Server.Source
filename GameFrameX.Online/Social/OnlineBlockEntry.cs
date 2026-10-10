@@ -49,75 +49,43 @@ public sealed class OnlineBlockEntry
     /// 从而不重复外发变更事件。不用「创建时刻是否等于本地时钟」当判据：同一毫秒内的两次调用会双双判定成功。
     /// </para>
     /// </summary>
-    public string EntryId
-    {
-        get;
-        set;
-    }
+    public string EntryId { get; set; }
 
     /// <summary>
     /// 获取或设置屏蔽发起人（本条记录的归属玩家，也是唯一有权解除的人）。
     /// </summary>
-    public long OwnerId
-    {
-        get;
-        set;
-    }
+    public long OwnerId { get; set; }
 
     /// <summary>
     /// 获取或设置被屏蔽玩家。
     /// </summary>
-    public long BlockedPlayerId
-    {
-        get;
-        set;
-    }
+    public long BlockedPlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置发起屏蔽时所在的区服标识（仅作事件信封与审计记录用；
     /// 屏蔽是玩家社交事实，跨区服成立，**不参与存储键**——「作用域 = 租户 + App」）。
     /// </summary>
-    public long ServerId
-    {
-        get;
-        set;
-    }
+    public long ServerId { get; set; }
 
     /// <summary>
     /// 获取或设置屏蔽原因（可空；玩家侧通常不填，Admin 代操作时用于留痕）。
     /// </summary>
-    public string Reason
-    {
-        get;
-        set;
-    }
+    public string Reason { get; set; }
 
     /// <summary>
     /// 获取或设置屏蔽生效时刻（UTC 毫秒）。
     /// </summary>
-    public long CreatedAtTime
-    {
-        get;
-        set;
-    }
+    public long CreatedAtTime { get; set; }
 
     /// <summary>
     /// 构造深拷贝（存储层与调用方不得共享同一实例）。

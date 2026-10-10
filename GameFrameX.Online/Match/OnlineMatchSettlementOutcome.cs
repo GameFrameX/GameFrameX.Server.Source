@@ -43,27 +43,15 @@ public sealed class OnlineMatchSettlementOutcome
     /// <summary>
     /// 获取或设置结算结果。
     /// </summary>
-    public OnlineMatchResult Result
-    {
-        get;
-        set;
-    }
+    public OnlineMatchResult Result { get; set; }
 
     /// <summary>
     /// 获取或设置是否重复结算（true = 复用已落定结果）。
     /// </summary>
-    public bool IsReplay
-    {
-        get;
-        set;
-    }
+    public bool IsReplay { get; set; }
 
     /// <summary>
     /// 获取或设置结算后对局状态。
     /// </summary>
-    public OnlineMatchState State
-    {
-        get;
-        set;
-    }
+    public OnlineMatchState State { get; set; }
 }

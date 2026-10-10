@@ -69,332 +69,173 @@ public sealed class OnlineRuntimeHost
     /// <summary>
     /// 装配选项。
     /// </summary>
-    public OnlineRuntimeOptions Options
-    {
-        get;
-    }
+    public OnlineRuntimeOptions Options { get; }
 
     /// <summary>
     /// 获取运行时授权作用域（本进程的服务端权威三元组）。
     /// </summary>
-    public OnlineScope AuthorizedScope
-    {
-        get;
-    }
+    public OnlineScope AuthorizedScope { get; }
 
     /// <summary>
     /// Foundation 进程内事件总线（Online 事件出口的传输实现）。
     /// </summary>
-    public InMemoryEventPublisher EventBus
-    {
-        get;
-    } = new InMemoryEventPublisher();
+    public InMemoryEventPublisher EventBus { get; } = new();
 
     /// <summary>
     /// 获取时间源。
     /// </summary>
-    public IClock Clock
-    {
-        get;
-    } = SystemClock.Instance;
+    public IClock Clock { get; } = SystemClock.Instance;
 
     // ---- 存储（InMemory 为单进程默认实现；生产持久化实现另行演进）----
 
     /// <summary>资产存储（钱包 / 库存 / 账本）。</summary>
-    public InMemoryOnlineAssetStore AssetStore
-    {
-        get;
-    } = new InMemoryOnlineAssetStore();
+    public InMemoryOnlineAssetStore AssetStore { get; } = new();
 
     /// <summary>资产交易存储。</summary>
-    public InMemoryOnlineAssetTransactionStore AssetTransactionStore
-    {
-        get;
-    } = new InMemoryOnlineAssetTransactionStore();
+    public InMemoryOnlineAssetTransactionStore AssetTransactionStore { get; } = new();
 
     /// <summary>统一审计存储。</summary>
-    public InMemoryOnlineAuditStore AuditStore
-    {
-        get;
-    } = new InMemoryOnlineAuditStore();
+    public InMemoryOnlineAuditStore AuditStore { get; } = new();
 
     /// <summary>游戏事件存储。</summary>
-    public InMemoryOnlineGameEventStore GameEventStore
-    {
-        get;
-    } = new InMemoryOnlineGameEventStore();
+    public InMemoryOnlineGameEventStore GameEventStore { get; } = new();
 
     /// <summary>游戏事件死信出口。</summary>
-    public InMemoryOnlineGameEventDeadLetterSink GameEventDeadLetterSink
-    {
-        get;
-    } = new InMemoryOnlineGameEventDeadLetterSink();
+    public InMemoryOnlineGameEventDeadLetterSink GameEventDeadLetterSink { get; } = new();
 
     /// <summary>Hotfix 版本存储。</summary>
-    public InMemoryOnlineHotfixVersionStore HotfixVersionStore
-    {
-        get;
-    } = new InMemoryOnlineHotfixVersionStore();
+    public InMemoryOnlineHotfixVersionStore HotfixVersionStore { get; } = new();
 
     /// <summary>身份存储。</summary>
-    public InMemoryOnlineIdentityStore IdentityStore
-    {
-        get;
-    } = new InMemoryOnlineIdentityStore();
+    public InMemoryOnlineIdentityStore IdentityStore { get; } = new();
 
     /// <summary>排行榜存储。</summary>
-    public InMemoryOnlineLeaderboardStore LeaderboardStore
-    {
-        get;
-    } = new InMemoryOnlineLeaderboardStore();
+    public InMemoryOnlineLeaderboardStore LeaderboardStore { get; } = new();
 
     /// <summary>对局 Actor 存储。</summary>
-    public InMemoryOnlineMatchActorStore MatchActorStore
-    {
-        get;
-    } = new InMemoryOnlineMatchActorStore();
+    public InMemoryOnlineMatchActorStore MatchActorStore { get; } = new();
 
     /// <summary>对局结果存储。</summary>
-    public InMemoryOnlineMatchResultStore MatchResultStore
-    {
-        get;
-    } = new InMemoryOnlineMatchResultStore();
+    public InMemoryOnlineMatchResultStore MatchResultStore { get; } = new();
 
     /// <summary>匹配大厅存储。</summary>
-    public InMemoryOnlineMatchListingStore MatchListingStore
-    {
-        get;
-    } = new InMemoryOnlineMatchListingStore();
+    public InMemoryOnlineMatchListingStore MatchListingStore { get; } = new();
 
     /// <summary>匹配票据存储。</summary>
-    public InMemoryOnlineMatchTicketStore MatchTicketStore
-    {
-        get;
-    } = new InMemoryOnlineMatchTicketStore();
+    public InMemoryOnlineMatchTicketStore MatchTicketStore { get; } = new();
 
     /// <summary>队伍存储。</summary>
-    public InMemoryOnlinePartyStore PartyStore
-    {
-        get;
-    } = new InMemoryOnlinePartyStore();
+    public InMemoryOnlinePartyStore PartyStore { get; } = new();
 
     /// <summary>在线状态存储。</summary>
-    public InMemoryOnlinePresenceStore PresenceStore
-    {
-        get;
-    } = new InMemoryOnlinePresenceStore();
+    public InMemoryOnlinePresenceStore PresenceStore { get; } = new();
 
     /// <summary>赛季存储。</summary>
-    public InMemoryOnlineSeasonStore SeasonStore
-    {
-        get;
-    } = new InMemoryOnlineSeasonStore();
+    public InMemoryOnlineSeasonStore SeasonStore { get; } = new();
 
     /// <summary>会话存储。</summary>
-    public InMemoryOnlineSessionStore SessionStore
-    {
-        get;
-    } = new InMemoryOnlineSessionStore();
+    public InMemoryOnlineSessionStore SessionStore { get; } = new();
 
     /// <summary>聊天存储。</summary>
-    public InMemoryOnlineChatStore ChatStore
-    {
-        get;
-    } = new InMemoryOnlineChatStore();
+    public InMemoryOnlineChatStore ChatStore { get; } = new();
 
     /// <summary>好友存储。</summary>
-    public InMemoryOnlineFriendStore FriendStore
-    {
-        get;
-    } = new InMemoryOnlineFriendStore();
+    public InMemoryOnlineFriendStore FriendStore { get; } = new();
 
     /// <summary>群组存储。</summary>
-    public InMemoryOnlineGroupStore GroupStore
-    {
-        get;
-    } = new InMemoryOnlineGroupStore();
+    public InMemoryOnlineGroupStore GroupStore { get; } = new();
 
     /// <summary>通知存储。</summary>
-    public InMemoryOnlineNotificationStore NotificationStore
-    {
-        get;
-    } = new InMemoryOnlineNotificationStore();
+    public InMemoryOnlineNotificationStore NotificationStore { get; } = new();
 
     /// <summary>举报存储。</summary>
-    public InMemoryOnlineReportStore ReportStore
-    {
-        get;
-    } = new InMemoryOnlineReportStore();
+    public InMemoryOnlineReportStore ReportStore { get; } = new();
 
     /// <summary>社交关系存储（处罚读取面）。</summary>
-    public InMemoryOnlineSocialGraphStore SocialGraphStore
-    {
-        get;
-    } = new InMemoryOnlineSocialGraphStore();
+    public InMemoryOnlineSocialGraphStore SocialGraphStore { get; } = new();
 
     /// <summary>玩家 KV 存储器。</summary>
-    public InMemoryOnlinePlayerStorageStore PlayerStorageStore
-    {
-        get;
-    } = new InMemoryOnlinePlayerStorageStore();
+    public InMemoryOnlinePlayerStorageStore PlayerStorageStore { get; } = new();
 
     /// <summary>锦标赛存储。</summary>
-    public InMemoryOnlineTournamentStore TournamentStore
-    {
-        get;
-    } = new InMemoryOnlineTournamentStore();
+    public InMemoryOnlineTournamentStore TournamentStore { get; } = new();
 
     // ---- 服务 ----
 
     /// <summary>Online 事件出口（映射 Foundation 信封后分发）。</summary>
-    public IOnlineEventPublisher EventPublisher
-    {
-        get;
-    }
+    public IOnlineEventPublisher EventPublisher { get; }
 
     /// <summary>幂等服务（admin 层副作用命令包裹）。</summary>
-    public OnlineIdempotencyService Idempotency
-    {
-        get;
-    }
+    public OnlineIdempotencyService Idempotency { get; }
 
     /// <summary>资产发放统一入口（内部自带幂等流）。</summary>
-    public OnlineGrantService GrantService
-    {
-        get;
-    }
+    public OnlineGrantService GrantService { get; }
 
     /// <summary>资产查询（钱包 / 账本 / 交易明细）。</summary>
-    public OnlineAssetQueryService AssetQuery
-    {
-        get;
-    }
+    public OnlineAssetQueryService AssetQuery { get; }
 
     /// <summary>统一审计服务。</summary>
-    public OnlineAuditService Audit
-    {
-        get;
-    }
+    public OnlineAuditService Audit { get; }
 
     /// <summary>身份服务。</summary>
-    public OnlineIdentityService Identity
-    {
-        get;
-    }
+    public OnlineIdentityService Identity { get; }
 
     /// <summary>会话管理。</summary>
-    public OnlineSessionManager Sessions
-    {
-        get;
-    }
+    public OnlineSessionManager Sessions { get; }
 
     /// <summary>会话令牌（签发 / 吊销 / 强踢）。</summary>
-    public OnlineSessionTokenService Tokens
-    {
-        get;
-    }
+    public OnlineSessionTokenService Tokens { get; }
 
     /// <summary>在线状态。</summary>
-    public OnlinePresenceService Presence
-    {
-        get;
-    }
+    public OnlinePresenceService Presence { get; }
 
     /// <summary>社交裁决（禁言 / 举报 / 拉黑）。</summary>
-    public OnlineSocialDecisionService SocialDecisions
-    {
-        get;
-    }
+    public OnlineSocialDecisionService SocialDecisions { get; }
 
     /// <summary>处罚（Mute / Ban 事实源）。</summary>
-    public OnlinePunishmentService Punishments
-    {
-        get;
-    }
+    public OnlinePunishmentService Punishments { get; }
 
     /// <summary>通知。</summary>
-    public OnlineNotificationService Notifications
-    {
-        get;
-    }
+    public OnlineNotificationService Notifications { get; }
 
     /// <summary>匹配票据。</summary>
-    public OnlineMatchTicketService MatchTickets
-    {
-        get;
-    }
+    public OnlineMatchTicketService MatchTickets { get; }
 
     /// <summary>撮合协调器。</summary>
-    public OnlineMatchmakerCoordinator Matchmaker
-    {
-        get;
-    }
+    public OnlineMatchmakerCoordinator Matchmaker { get; }
 
     /// <summary>匹配队列观察器。</summary>
-    public OnlineMatchQueueObserver MatchQueueObserver
-    {
-        get;
-    }
+    public OnlineMatchQueueObserver MatchQueueObserver { get; }
 
     /// <summary>对局运行时。</summary>
-    public OnlineMatchRuntime MatchRuntime
-    {
-        get;
-    }
+    public OnlineMatchRuntime MatchRuntime { get; }
 
     /// <summary>在线总览。</summary>
-    public OnlineOverviewService Overview
-    {
-        get;
-    }
+    public OnlineOverviewService Overview { get; }
 
     /// <summary>玩家时间线。</summary>
-    public OnlinePlayerTimelineService Timeline
-    {
-        get;
-    }
+    public OnlinePlayerTimelineService Timeline { get; }
 
     /// <summary>排行榜。</summary>
-    public OnlineLeaderboardService Leaderboards
-    {
-        get;
-    }
+    public OnlineLeaderboardService Leaderboards { get; }
 
     /// <summary>赛季。</summary>
-    public OnlineSeasonService Seasons
-    {
-        get;
-    }
+    public OnlineSeasonService Seasons { get; }
 
     /// <summary>锦标赛。</summary>
-    public OnlineTournamentService Tournaments
-    {
-        get;
-    }
+    public OnlineTournamentService Tournaments { get; }
 
     /// <summary>Hotfix 回滚。</summary>
-    public OnlineHotfixRollbackService HotfixRollback
-    {
-        get;
-    }
+    public OnlineHotfixRollbackService HotfixRollback { get; }
 
     /// <summary>聊天审计投影（订阅事件总线的 chat 审计查询面）。</summary>
-    public OnlineChatAuditProjection ChatAudit
-    {
-        get;
-    }
+    public OnlineChatAuditProjection ChatAudit { get; }
 
     /// <summary>LiveOps 最小承载（InMemory 版本登记表）。</summary>
-    public OnlineLiveOpsRegistry LiveOps
-    {
-        get;
-    }
+    public OnlineLiveOpsRegistry LiveOps { get; }
 
     /// <summary>后台调度器。</summary>
-    public OnlineRuntimeScheduler Scheduler
-    {
-        get;
-    }
+    public OnlineRuntimeScheduler Scheduler { get; }
 
     /// <summary>
     /// 初始化 <see cref="OnlineRuntimeHost"/>（组合根：集中装配全部存储与服务）。
@@ -414,7 +255,7 @@ public sealed class OnlineRuntimeHost
         EventPublisher = new OnlineEventPublisher(EventBus);
 
         var coordinator = new IdempotencyCoordinator(new InMemoryIdempotencyStore(), Clock,
-            new IdempotencyOptions { FailedReplayPolicy = FailedReplayPolicy.ReExecute, });
+                                                     new IdempotencyOptions { FailedReplayPolicy = FailedReplayPolicy.ReExecute, });
         Idempotency = new OnlineIdempotencyService(coordinator);
 
         AssetQuery = new OnlineAssetQueryService(AssetStore, AssetTransactionStore);

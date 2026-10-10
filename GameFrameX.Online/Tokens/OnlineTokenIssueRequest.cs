@@ -40,18 +40,10 @@ public sealed class OnlineTokenIssueRequest
     /// <summary>
     /// 获取或设置生效作用域（含玩家主体位）。
     /// </summary>
-    public OnlineScope Scope
-    {
-        get;
-        set;
-    }
+    public OnlineScope Scope { get; set; }
 
     /// <summary>
     /// 获取或设置有效期（秒；过期后需刷新或重新签发）。
     /// </summary>
-    public long TimeToLiveSeconds
-    {
-        get;
-        set;
-    }
+    public long TimeToLiveSeconds { get; set; }
 }

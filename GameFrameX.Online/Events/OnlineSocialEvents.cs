@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Events;
 
 using System.Text.Json;
-using GameFrameX.Online.Social;
+using Social;
 
 /// <summary>
 /// 社交域事件工厂（好友、屏蔽、静音、举报、处罚、群组变更供下游与 Admin 消费）。
@@ -389,39 +389,19 @@ public static class OnlineSocialEvents
     private sealed class FriendshipChangedPayload
     {
         /// <summary>关系标识。</summary>
-        public string FriendshipId
-        {
-            get;
-            set;
-        }
+        public string FriendshipId { get; set; }
 
         /// <summary>请求方。</summary>
-        public long RequesterId
-        {
-            get;
-            set;
-        }
+        public long RequesterId { get; set; }
 
         /// <summary>被请求方。</summary>
-        public long AddresseeId
-        {
-            get;
-            set;
-        }
+        public long AddresseeId { get; set; }
 
         /// <summary>关系状态名。</summary>
-        public string State
-        {
-            get;
-            set;
-        }
+        public string State { get; set; }
 
         /// <summary>变更动作名。</summary>
-        public string Action
-        {
-            get;
-            set;
-        }
+        public string Action { get; set; }
     }
 
     /// <summary>
@@ -430,25 +410,13 @@ public static class OnlineSocialEvents
     private sealed class BlockChangedPayload
     {
         /// <summary>屏蔽发起人。</summary>
-        public long OwnerId
-        {
-            get;
-            set;
-        }
+        public long OwnerId { get; set; }
 
         /// <summary>被屏蔽玩家。</summary>
-        public long BlockedPlayerId
-        {
-            get;
-            set;
-        }
+        public long BlockedPlayerId { get; set; }
 
         /// <summary>变更动作名。</summary>
-        public string Action
-        {
-            get;
-            set;
-        }
+        public string Action { get; set; }
     }
 
     /// <summary>
@@ -457,32 +425,16 @@ public static class OnlineSocialEvents
     private sealed class MuteChangedPayload
     {
         /// <summary>静音发起人。</summary>
-        public long OwnerId
-        {
-            get;
-            set;
-        }
+        public long OwnerId { get; set; }
 
         /// <summary>被静音玩家。</summary>
-        public long MutedPlayerId
-        {
-            get;
-            set;
-        }
+        public long MutedPlayerId { get; set; }
 
         /// <summary>静音失效时刻（UTC 毫秒；0 表示永久）。</summary>
-        public long ExpiresAtTime
-        {
-            get;
-            set;
-        }
+        public long ExpiresAtTime { get; set; }
 
         /// <summary>变更动作名。</summary>
-        public string Action
-        {
-            get;
-            set;
-        }
+        public string Action { get; set; }
     }
 
     /// <summary>
@@ -491,60 +443,28 @@ public static class OnlineSocialEvents
     private sealed class ReportChangedPayload
     {
         /// <summary>案件标识。</summary>
-        public string ReportId
-        {
-            get;
-            set;
-        }
+        public string ReportId { get; set; }
 
         /// <summary>举报人。</summary>
-        public long ReporterId
-        {
-            get;
-            set;
-        }
+        public long ReporterId { get; set; }
 
         /// <summary>被举报人。</summary>
-        public long ReportedPlayerId
-        {
-            get;
-            set;
-        }
+        public long ReportedPlayerId { get; set; }
 
         /// <summary>举报场景名。</summary>
-        public string Scene
-        {
-            get;
-            set;
-        }
+        public string Scene { get; set; }
 
         /// <summary>举报原因名。</summary>
-        public string Reason
-        {
-            get;
-            set;
-        }
+        public string Reason { get; set; }
 
         /// <summary>案件状态名。</summary>
-        public string State
-        {
-            get;
-            set;
-        }
+        public string State { get; set; }
 
         /// <summary>处置结果名。</summary>
-        public string Resolution
-        {
-            get;
-            set;
-        }
+        public string Resolution { get; set; }
 
         /// <summary>变更动作名（举报案件的全部变更都是状态迁移，故动作即迁移后的状态名，与 <see cref="State"/> 同值）。</summary>
-        public string Action
-        {
-            get;
-            set;
-        }
+        public string Action { get; set; }
     }
 
     /// <summary>
@@ -553,46 +473,22 @@ public static class OnlineSocialEvents
     private sealed class PunishmentChangedPayload
     {
         /// <summary>处罚标识。</summary>
-        public string PunishmentId
-        {
-            get;
-            set;
-        }
+        public string PunishmentId { get; set; }
 
         /// <summary>被处罚玩家。</summary>
-        public long PlayerId
-        {
-            get;
-            set;
-        }
+        public long PlayerId { get; set; }
 
         /// <summary>处罚种类名。</summary>
-        public string Kind
-        {
-            get;
-            set;
-        }
+        public string Kind { get; set; }
 
         /// <summary>生效时刻（UTC 毫秒）。</summary>
-        public long EffectiveAtTime
-        {
-            get;
-            set;
-        }
+        public long EffectiveAtTime { get; set; }
 
         /// <summary>失效时刻（UTC 毫秒；0 表示永久）。</summary>
-        public long ExpiresAtTime
-        {
-            get;
-            set;
-        }
+        public long ExpiresAtTime { get; set; }
 
         /// <summary>变更动作名。</summary>
-        public string Action
-        {
-            get;
-            set;
-        }
+        public string Action { get; set; }
     }
 
     /// <summary>
@@ -601,45 +497,21 @@ public static class OnlineSocialEvents
     private sealed class GroupChangedPayload
     {
         /// <summary>群组标识。</summary>
-        public string GroupId
-        {
-            get;
-            set;
-        }
+        public string GroupId { get; set; }
 
         /// <summary>群主标识。</summary>
-        public long OwnerId
-        {
-            get;
-            set;
-        }
+        public long OwnerId { get; set; }
 
         /// <summary>群组状态名。</summary>
-        public string State
-        {
-            get;
-            set;
-        }
+        public string State { get; set; }
 
         /// <summary>变更动作名。</summary>
-        public string Action
-        {
-            get;
-            set;
-        }
+        public string Action { get; set; }
 
         /// <summary>变更后成员数。</summary>
-        public int MemberCount
-        {
-            get;
-            set;
-        }
+        public int MemberCount { get; set; }
 
         /// <summary>变更后群记录版本号（消费端据此判断是否漏事件）。</summary>
-        public int Revision
-        {
-            get;
-            set;
-        }
+        public int Revision { get; set; }
     }
 }

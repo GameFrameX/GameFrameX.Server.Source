@@ -44,83 +44,47 @@ public sealed class OnlineMatchSnapshot
     /// <summary>
     /// 获取或设置对局标识。
     /// </summary>
-    public string MatchId
-    {
-        get;
-        set;
-    }
+    public string MatchId { get; set; }
 
     /// <summary>
     /// 获取或设置对局状态。
     /// </summary>
-    public OnlineMatchState State
-    {
-        get;
-        set;
-    }
+    public OnlineMatchState State { get; set; }
 
     /// <summary>
     /// 获取或设置快照对应的服务器序号。
     /// </summary>
-    public long ServerSequence
-    {
-        get;
-        set;
-    }
+    public long ServerSequence { get; set; }
 
     /// <summary>
     /// 获取或设置玩法模式。
     /// </summary>
-    public int Mode
-    {
-        get;
-        set;
-    }
+    public int Mode { get; set; }
 
     /// <summary>
     /// 获取或设置区域。
     /// </summary>
-    public int Region
-    {
-        get;
-        set;
-    }
+    public int Region { get; set; }
 
     /// <summary>
     /// 获取或设置创建时刻（UTC 毫秒）。
     /// </summary>
-    public long CreatedTime
-    {
-        get;
-        set;
-    }
+    public long CreatedTime { get; set; }
 
     /// <summary>
     /// 获取或设置快照生成时刻（UTC 毫秒）。
     /// </summary>
-    public long UpdatedTime
-    {
-        get;
-        set;
-    }
+    public long UpdatedTime { get; set; }
 
     /// <summary>
     /// 获取或设置成员列表（含断线成员——断线不立即等于退出）。
     /// </summary>
-    public List<OnlineMatchMember> Members
-    {
-        get;
-        set;
-    }
+    public List<OnlineMatchMember> Members { get; set; }
 
     /// <summary>
     /// 获取或设置玩法私有状态载荷（不透明字节；可为空）。
     /// </summary>
-    public byte[] GameState
-    {
-        get;
-        set;
-    }
+    public byte[] GameState { get; set; }
 
     /// <summary>
     /// 复制快照（成员逐项深拷贝，载荷逐字节拷贝）。

@@ -47,146 +47,82 @@ public sealed class OnlinePunishment
     /// <summary>
     /// 获取或设置处罚标识。
     /// </summary>
-    public string PunishmentId
-    {
-        get;
-        set;
-    }
+    public string PunishmentId { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置被处罚玩家。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置处罚种类。
     /// </summary>
-    public OnlinePunishmentKind Kind
-    {
-        get;
-        set;
-    }
+    public OnlinePunishmentKind Kind { get; set; }
 
     /// <summary>
     /// 获取或设置处罚原因（Admin 填写，必填——无原因的封禁不可复查）。
     /// </summary>
-    public string Reason
-    {
-        get;
-        set;
-    }
+    public string Reason { get; set; }
 
     /// <summary>
     /// 获取或设置生效时刻（UTC 毫秒；可设为未来时刻以预约处罚）。
     /// </summary>
-    public long EffectiveAtTime
-    {
-        get;
-        set;
-    }
+    public long EffectiveAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置失效时刻（UTC 毫秒；<c>0</c> 表示永久处罚）。
     /// </summary>
-    public long ExpiresAtTime
-    {
-        get;
-        set;
-    }
+    public long ExpiresAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置是否已被撤销。
     /// </summary>
-    public bool Revoked
-    {
-        get;
-        set;
-    }
+    public bool Revoked { get; set; }
 
     /// <summary>
     /// 获取或设置撤销时刻（UTC 毫秒；未撤销为 <c>0</c>）。
     /// </summary>
-    public long RevokedAtTime
-    {
-        get;
-        set;
-    }
+    public long RevokedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置执行撤销的 Admin 标识（未撤销为 <c>0</c>）。
     /// </summary>
-    public long RevokedByAdminId
-    {
-        get;
-        set;
-    }
+    public long RevokedByAdminId { get; set; }
 
     /// <summary>
     /// 获取或设置施加处罚的 Admin 标识。
     /// </summary>
-    public long CreatedByAdminId
-    {
-        get;
-        set;
-    }
+    public long CreatedByAdminId { get; set; }
 
     /// <summary>
     /// 获取或设置来源案件标识（Admin 侧案件编号；非举报来源为空字符串）。
     /// </summary>
-    public string AdminCaseId
-    {
-        get;
-        set;
-    }
+    public string AdminCaseId { get; set; }
 
     /// <summary>
     /// 获取或设置创建时刻（UTC 毫秒）。
     /// </summary>
-    public long CreatedAtTime
-    {
-        get;
-        set;
-    }
+    public long CreatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置最后变更时刻（UTC 毫秒）。
     /// </summary>
-    public long UpdatedAtTime
-    {
-        get;
-        set;
-    }
+    public long UpdatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置版本号（存储层 CAS 判据，随每次写入自增）。
     /// </summary>
-    public int Revision
-    {
-        get;
-        set;
-    }
+    public int Revision { get; set; }
 
     /// <summary>
     /// 判定处罚在给定时刻是否生效（生效区间 + 未撤销的唯一判据）。

@@ -31,7 +31,7 @@ namespace GameFrameX.Online.Events;
 
 using System.Text;
 using System.Text.Json;
-using GameFrameX.Online.Session;
+using Session;
 
 /// <summary>
 /// 会话域事件工厂（Session 生命周期事件经统一事件信封供 Party/Friend/Admin 消费）。
@@ -127,45 +127,21 @@ public static class OnlineSessionEvents
     private sealed class SessionEventPayload
     {
         /// <summary>会话标识。</summary>
-        public string SessionId
-        {
-            get;
-            set;
-        }
+        public string SessionId { get; set; }
 
         /// <summary>玩家标识。</summary>
-        public long PlayerId
-        {
-            get;
-            set;
-        }
+        public long PlayerId { get; set; }
 
         /// <summary>会话状态（数值字符串）。</summary>
-        public string State
-        {
-            get;
-            set;
-        }
+        public string State { get; set; }
 
         /// <summary>终态原因码（数值字符串；0 = 未终态）。</summary>
-        public string CloseReason
-        {
-            get;
-            set;
-        }
+        public string CloseReason { get; set; }
 
         /// <summary>Token 轮换代数。</summary>
-        public int TokenGeneration
-        {
-            get;
-            set;
-        }
+        public int TokenGeneration { get; set; }
 
         /// <summary>原因描述。</summary>
-        public string Reason
-        {
-            get;
-            set;
-        }
+        public string Reason { get; set; }
     }
 }

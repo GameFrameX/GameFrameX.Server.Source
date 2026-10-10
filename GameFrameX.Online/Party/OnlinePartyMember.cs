@@ -42,29 +42,17 @@ public sealed class OnlinePartyMember
     /// <summary>
     /// 获取或设置玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置成员状态（已加入/已准备）。
     /// </summary>
-    public OnlinePartyMemberState MemberState
-    {
-        get;
-        set;
-    }
+    public OnlinePartyMemberState MemberState { get; set; }
 
     /// <summary>
     /// 获取或设置入队时刻（UTC 毫秒；队长转移的确定性依据——转移给加入最早者）。
     /// </summary>
-    public long JoinedAtTime
-    {
-        get;
-        set;
-    }
+    public long JoinedAtTime { get; set; }
 
     /// <summary>
     /// 复制成员条目（存储层防御性深拷贝使用）。

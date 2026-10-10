@@ -42,36 +42,20 @@ public sealed class OnlineSessionStartResult
     /// <summary>
     /// 获取新建的会话实体（状态 Authenticated，Token 字段为指纹非明文）。
     /// </summary>
-    public OnlineSession Session
-    {
-        get;
-        set;
-    }
+    public OnlineSession Session { get; set; }
 
     /// <summary>
     /// 获取签发的明文 Token（仅此一次透出）。
     /// </summary>
-    public string Token
-    {
-        get;
-        set;
-    }
+    public string Token { get; set; }
 
     /// <summary>
     /// 获取 Token 过期时刻（Unix 毫秒）。
     /// </summary>
-    public long ExpiresAtTime
-    {
-        get;
-        set;
-    }
+    public long ExpiresAtTime { get; set; }
 
     /// <summary>
     /// 获取多端策略裁决中被顶替关闭的旧会话标识列表。
     /// </summary>
-    public IReadOnlyList<string> ReplacedSessionIds
-    {
-        get;
-        set;
-    }
+    public IReadOnlyList<string> ReplacedSessionIds { get; set; }
 }

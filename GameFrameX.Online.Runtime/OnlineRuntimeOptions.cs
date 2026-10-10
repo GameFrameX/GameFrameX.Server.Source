@@ -42,56 +42,32 @@ public sealed class OnlineRuntimeOptions
     /// <summary>
     /// 获取或设置授权租户标识（必须为正数，否则 admin 请求一律按作用域缺失拒绝）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置授权应用标识（必须为正数）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置授权区服标识（取宿主 <c>Setting.ServerId</c>，必须为正数）。
     /// </summary>
-    public long ServerId
-    {
-        get;
-        set;
-    }
+    public long ServerId { get; set; }
 
     /// <summary>
     /// 获取或设置 admin API 监听端口（默认 28090）。
     /// </summary>
-    public int AdminPort
-    {
-        get;
-        set;
-    } = 28090;
+    public int AdminPort { get; set; } = 28090;
 
     /// <summary>
     /// 获取或设置 admin API 路由前缀（默认 <c>online/admin</c>，与 Admin 侧 <c>OnlineAdminApiPrefix</c> 一致；空值非法）。
     /// </summary>
-    public string AdminApiPrefix
-    {
-        get;
-        set;
-    } = "online/admin";
+    public string AdminApiPrefix { get; set; } = "online/admin";
 
     /// <summary>
     /// 获取或设置后台调度器的驱动间隔毫秒数（默认 1000；对局 Tick / 撮合 / 过期清扫共用）。
     /// </summary>
-    public int SchedulerIntervalMilliseconds
-    {
-        get;
-        set;
-    } = 1000;
+    public int SchedulerIntervalMilliseconds { get; set; } = 1000;
 
     /// <summary>
     /// 校验选项合法性（作用域三元组与路由前缀）。

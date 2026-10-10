@@ -45,63 +45,35 @@ public sealed class OnlinePlayerTimelineEntry
     /// <summary>
     /// 获取或设置行标识（跨腿全局唯一，形如 <c>session:&lt;会话标识&gt;:&lt;状态&gt;</c>）。
     /// </summary>
-    public string EventId
-    {
-        get;
-        set;
-    }
+    public string EventId { get; set; }
 
     /// <summary>
     /// 获取或设置事件类型（事件型行复用各域既有事件常量；记录型行取值见 <see cref="OnlinePlayerTimelineEventTypes"/>）。
     /// </summary>
-    public string EventType
-    {
-        get;
-        set;
-    }
+    public string EventType { get; set; }
 
     /// <summary>
     /// 获取或设置事件分组（取值限于 <see cref="OnlinePlayerTimelineGroup"/> 六值，与消费方枚举同词表）。
     /// </summary>
-    public string Group
-    {
-        get;
-        set;
-    }
+    public string Group { get; set; }
 
     /// <summary>
     /// 获取或设置发生时刻（Unix 秒；0 表示来源记录时间戳缺失）。
     /// </summary>
-    public long OccurredAt
-    {
-        get;
-        set;
-    }
+    public long OccurredAt { get; set; }
 
     /// <summary>
     /// 获取或设置来源域标识（事件型行取各域既有 Source 常量；记录型行见 <see cref="OnlinePlayerTimelineEventTypes"/>）。
     /// </summary>
-    public string Source
-    {
-        get;
-        set;
-    }
+    public string Source { get; set; }
 
     /// <summary>
     /// 获取或设置关联标识（指向来源域原始记录，供按行定位到原始记录）。
     /// </summary>
-    public string CorrelationId
-    {
-        get;
-        set;
-    }
+    public string CorrelationId { get; set; }
 
     /// <summary>
     /// 获取或设置载荷摘要（由非敏感字段拼装：标识 / 状态 / 金额 / 原因；不含令牌、指纹、设备标识等敏感值）。
     /// </summary>
-    public string PayloadSummary
-    {
-        get;
-        set;
-    }
+    public string PayloadSummary { get; set; }
 }

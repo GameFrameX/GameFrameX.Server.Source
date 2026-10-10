@@ -43,10 +43,10 @@ namespace GameFrameX.Online.Social;
 public sealed class InMemoryOnlineGroupStore : IOnlineGroupStore
 {
     /// <summary>并发保护锁。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>群组表（键 = 作用域 + 群组标识）。</summary>
-    private readonly Dictionary<string, OnlineGroup> _groupsById = new Dictionary<string, OnlineGroup>(StringComparer.Ordinal);
+    private readonly Dictionary<string, OnlineGroup> _groupsById = new(StringComparer.Ordinal);
 
     /// <summary>
     /// 以群组标识为唯一键在内存表内「不存在则创建」：键已存在时返回既有记录副本且不写入，否则存入入参的防御性副本。

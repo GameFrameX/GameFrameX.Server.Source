@@ -31,9 +31,9 @@ namespace GameFrameX.Online.Social;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Events;
-using GameFrameX.Online.Scope;
+using Contracts;
+using Events;
+using Scope;
 
 /// <summary>
 /// Block / Mute / Report / 处罚的**唯一判定入口**。
@@ -539,7 +539,7 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
     /// <returns>裁决结果。</returns>
     private async Task<OnlineSocialDecision> EvaluatePunishmentsAsync(long tenantId, long appId, long playerId, OnlineSocialInteractionPurpose purpose, CancellationToken cancellationToken)
     {
-        var active = await _graphStore.ListActivePunishmentsAsync(tenantId, appId, new ActivePunishmentQuery { PlayerId = playerId, NowUnixMilliseconds = Now() }, cancellationToken).ConfigureAwait(false);
+        var active = await _graphStore.ListActivePunishmentsAsync(tenantId, appId, new ActivePunishmentQuery { PlayerId = playerId, NowUnixMilliseconds = Now(), }, cancellationToken).ConfigureAwait(false);
         foreach (var punishment in active)
         {
             if (punishment.Kind == OnlinePunishmentKind.Ban)

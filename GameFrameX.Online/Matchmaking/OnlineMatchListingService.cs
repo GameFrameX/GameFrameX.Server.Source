@@ -31,8 +31,8 @@ namespace GameFrameX.Online.Matchmaking;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Scope;
+using Contracts;
+using Scope;
 
 /// <summary>
 /// 对局列表项服务（发布、发现、按 JoinPolicy 加入）。
@@ -357,7 +357,7 @@ public sealed class OnlineMatchListingService
     /// <returns>去重后的成员集合。</returns>
     private static List<long> ResolveMembers(OnlineMatchListingJoinRequest request)
     {
-        var members = new List<long> { request.PlayerId };
+        var members = new List<long> { request.PlayerId, };
         if (request.MemberPlayerIds == null)
         {
             return members;

@@ -43,29 +43,17 @@ public sealed class OnlineNotificationDispatchOutcome
     /// <summary>
     /// 获取本次推送是否成功送达。
     /// </summary>
-    public bool Delivered
-    {
-        get;
-        private set;
-    }
+    public bool Delivered { get; private set; }
 
     /// <summary>
     /// 获取失败原因（成功时为空字符串；服务层写入 <see cref="OnlineNotification.LastError"/>）。
     /// </summary>
-    public string FailureReason
-    {
-        get;
-        private set;
-    }
+    public string FailureReason { get; private set; }
 
     /// <summary>
     /// 获取失败是否可重试（<c>false</c> = 重试也不会成功，服务层直接落终态）。
     /// </summary>
-    public bool Retryable
-    {
-        get;
-        private set;
-    }
+    public bool Retryable { get; private set; }
 
     /// <summary>
     /// 初始化推送回执（仅供工厂方法使用，外部不得构造「既成功又带失败原因」的畸形回执）。

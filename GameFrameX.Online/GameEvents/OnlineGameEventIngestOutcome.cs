@@ -44,54 +44,30 @@ public sealed class OnlineGameEventIngestOutcome
     /// <summary>
     /// 获取或设置事件标识（取自信封；拒绝时同样回填，便于投递方对账）。
     /// </summary>
-    public string EventId
-    {
-        get;
-        set;
-    }
+    public string EventId { get; set; }
 
     /// <summary>
     /// 获取或设置事件名（取自信封）。
     /// </summary>
-    public string EventName
-    {
-        get;
-        set;
-    }
+    public string EventName { get; set; }
 
     /// <summary>
     /// 获取或设置是否受理（true = 事件已在存储中可查）。
     /// </summary>
-    public bool IsAccepted
-    {
-        get;
-        set;
-    }
+    public bool IsAccepted { get; set; }
 
     /// <summary>
     /// 获取或设置是否为重复投递（受理为真时才有意义：true 表示此前已落档、本次未新增）。
     /// </summary>
-    public bool IsDuplicate
-    {
-        get;
-        set;
-    }
+    public bool IsDuplicate { get; set; }
 
     /// <summary>
     /// 获取或设置拒绝码（受理时为 <see cref="OnlineGameEventRejectionReason.None"/>）。
     /// </summary>
-    public OnlineGameEventRejectionReason RejectionReason
-    {
-        get;
-        set;
-    }
+    public OnlineGameEventRejectionReason RejectionReason { get; set; }
 
     /// <summary>
     /// 获取或设置拒绝原因（拒绝时的可读描述）。
     /// </summary>
-    public string RejectionMessage
-    {
-        get;
-        set;
-    }
+    public string RejectionMessage { get; set; }
 }

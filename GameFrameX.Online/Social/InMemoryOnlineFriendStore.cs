@@ -43,13 +43,13 @@ namespace GameFrameX.Online.Social;
 public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
 {
     /// <summary>并发保护锁。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>关系表（键 = 作用域 + 无向对）。</summary>
-    private readonly Dictionary<string, OnlineFriendship> _friendshipsByPair = new Dictionary<string, OnlineFriendship>(StringComparer.Ordinal);
+    private readonly Dictionary<string, OnlineFriendship> _friendshipsByPair = new(StringComparer.Ordinal);
 
     /// <summary>关系标识索引。</summary>
-    private readonly Dictionary<string, string> _pairKeyByFriendshipId = new Dictionary<string, string>(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _pairKeyByFriendshipId = new(StringComparer.Ordinal);
 
     /// <summary>
     /// 以内存字典实现无向对的「不存在则创建」：键已存在时返回既有记录的副本且不写入；新建时存入入参的深拷贝并登记关系标识索引。

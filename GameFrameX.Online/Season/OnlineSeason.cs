@@ -48,101 +48,57 @@ public sealed class OnlineSeason
     /// <summary>
     /// 获取或设置赛季标识（App 内唯一，创建方提供）。
     /// </summary>
-    public string SeasonId
-    {
-        get;
-        set;
-    }
+    public string SeasonId { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识（作用域隔离键）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识（作用域隔离键）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置关联榜单标识（赛季成绩的累积榜单；结束时的快照即取自该榜）。
     /// </summary>
-    public string LeaderboardId
-    {
-        get;
-        set;
-    }
+    public string LeaderboardId { get; set; }
 
     /// <summary>
     /// 获取或设置赛季开始时刻（UTC 毫秒；排期元数据，不触发隐式迁移）。
     /// </summary>
-    public long StartTime
-    {
-        get;
-        set;
-    }
+    public long StartTime { get; set; }
 
     /// <summary>
     /// 获取或设置赛季结束时刻（UTC 毫秒；排期元数据，不触发隐式迁移）。
     /// </summary>
-    public long EndTime
-    {
-        get;
-        set;
-    }
+    public long EndTime { get; set; }
 
     /// <summary>
     /// 获取或设置赛季奖励规则（名次区间 → 资产变更行；创建后固化）。
     /// </summary>
-    public List<OnlineSeasonRewardRule> RewardRules
-    {
-        get;
-        set;
-    }
+    public List<OnlineSeasonRewardRule> RewardRules { get; set; }
 
     /// <summary>
     /// 获取或设置当前生命周期状态（只经状态机迁移）。
     /// </summary>
-    public OnlineSeasonState State
-    {
-        get;
-        set;
-    }
+    public OnlineSeasonState State { get; set; }
 
     /// <summary>
     /// 获取或设置创建时刻（UTC 毫秒）。
     /// </summary>
-    public long CreatedTime
-    {
-        get;
-        set;
-    }
+    public long CreatedTime { get; set; }
 
     /// <summary>
     /// 获取或设置结束（重置）时刻（UTC 毫秒；未结束为 0）。
     /// </summary>
-    public long EndedTime
-    {
-        get;
-        set;
-    }
+    public long EndedTime { get; set; }
 
     /// <summary>
     /// 获取或设置结算完成时刻（UTC 毫秒；未结算为 0）。
     /// </summary>
-    public long SettledTime
-    {
-        get;
-        set;
-    }
+    public long SettledTime { get; set; }
 
     /// <summary>
     /// 复制赛季定义（奖励规则逐条深拷贝，存储出入参防御性拷贝）。

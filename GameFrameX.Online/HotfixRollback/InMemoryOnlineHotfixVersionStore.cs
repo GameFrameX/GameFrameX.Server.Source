@@ -53,12 +53,12 @@ public sealed class InMemoryOnlineHotfixVersionStore : IOnlineHotfixVersionStore
     /// <summary>
     /// 全局状态门（登记判重、落档与活跃切换的同一临界区）。
     /// </summary>
-    private readonly object _gate = new object();
+    private readonly object _gate = new();
 
     /// <summary>
     /// 作用域级状态索引（键 = "TenantId|AppId"；值为作用域内的版本登记簿与活跃指针）。
     /// </summary>
-    private readonly Dictionary<string, ScopeState> _statesByScope = new Dictionary<string, ScopeState>(StringComparer.Ordinal);
+    private readonly Dictionary<string, ScopeState> _statesByScope = new(StringComparer.Ordinal);
 
     /// <summary>
     /// 登记一份版本协议清单（锁内判重 + 落档同一临界区；重复登记不覆盖）。
@@ -235,18 +235,11 @@ public sealed class InMemoryOnlineHotfixVersionStore : IOnlineHotfixVersionStore
         /// <summary>
         /// 版本登记簿（版本号 → 清单；一经登记不可变更）。
         /// </summary>
-        public Dictionary<string, OnlineHotfixProtocolManifest> Manifests
-        {
-            get;
-        } = new Dictionary<string, OnlineHotfixProtocolManifest>(StringComparer.Ordinal);
+        public Dictionary<string, OnlineHotfixProtocolManifest> Manifests { get; } = new(StringComparer.Ordinal);
 
         /// <summary>
         /// 活跃版本号（空字符串 / null 表示从未激活）。
         /// </summary>
-        public string ActiveVersion
-        {
-            get;
-            set;
-        } = string.Empty;
+        public string ActiveVersion { get; set; } = string.Empty;
     }
 }

@@ -32,7 +32,7 @@ namespace GameFrameX.Online.Assets;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Contracts;
+using Contracts;
 
 /// <summary>
 /// 跨服资产投递传输（发起服 → 归属服的统一交易投递通道；真实传输由运行时装配提供）。

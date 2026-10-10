@@ -42,34 +42,22 @@ public sealed class OnlineScope
     /// <summary>
     /// 获取租户标识（鉴权上下文强制注入，请求任何入口都不可覆盖）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-    }
+    public long TenantId { get; }
 
     /// <summary>
     /// 获取 App 标识（必须归属当前租户，经租户归属校验）。
     /// </summary>
-    public long AppId
-    {
-        get;
-    }
+    public long AppId { get; }
 
     /// <summary>
     /// 获取区服标识（必须归属当前 AppId，经区服归属校验）。
     /// </summary>
-    public long ServerId
-    {
-        get;
-    }
+    public long ServerId { get; }
 
     /// <summary>
     /// 获取玩家标识（可选；玩家级操作的幂等键绑定与事件归属主体）。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-    }
+    public long PlayerId { get; }
 
     /// <summary>
     /// 构造作用域。

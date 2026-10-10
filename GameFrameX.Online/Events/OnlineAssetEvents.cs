@@ -32,7 +32,7 @@ namespace GameFrameX.Online.Events;
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using GameFrameX.Online.Assets;
+using Assets;
 
 /// <summary>
 /// 资产域事件工厂（统一入口成功落账后发布资产变更事实，供下游与 Admin 消费）。
@@ -79,13 +79,14 @@ public static class OnlineAssetEvents
                 eventType = AssetAdjusted;
                 break;
         }
+
         var payload = new AssetEventPayload
         {
             TransactionId = transaction.TransactionId,
             Operation = transaction.Operation.ToString(),
             ChangeSource = transaction.Source.ToString(),
             BusinessOrderId = transaction.BusinessOrderId ?? string.Empty,
-            Lines = entries.Select(entry => new AssetEventLine { AssetKind = entry.AssetKind.ToString(), AssetId = entry.AssetId, Delta = entry.Delta, AmountBefore = entry.AmountBefore, AmountAfter = entry.AmountAfter }).ToList(),
+            Lines = entries.Select(entry => new AssetEventLine { AssetKind = entry.AssetKind.ToString(), AssetId = entry.AssetId, Delta = entry.Delta, AmountBefore = entry.AmountBefore, AmountAfter = entry.AmountAfter, }).ToList(),
         };
         var auditFields = new Dictionary<string, string>
         {
@@ -118,40 +119,20 @@ public static class OnlineAssetEvents
     private sealed class AssetEventPayload
     {
         /// <summary>交易标识。</summary>
-        public string TransactionId
-        {
-            get;
-            set;
-        }
+        public string TransactionId { get; set; }
 
         /// <summary>操作类型名。</summary>
-        public string Operation
-        {
-            get;
-            set;
-        }
+        public string Operation { get; set; }
 
         /// <summary>变更来源名（wire 字段名固定为 Source，不随属性名演进）。</summary>
         [JsonPropertyName("Source")]
-        public string ChangeSource
-        {
-            get;
-            set;
-        }
+        public string ChangeSource { get; set; }
 
         /// <summary>业务单号。</summary>
-        public string BusinessOrderId
-        {
-            get;
-            set;
-        }
+        public string BusinessOrderId { get; set; }
 
         /// <summary>逐资产变更行。</summary>
-        public List<AssetEventLine> Lines
-        {
-            get;
-            set;
-        }
+        public List<AssetEventLine> Lines { get; set; }
     }
 
     /// <summary>
@@ -160,38 +141,18 @@ public static class OnlineAssetEvents
     private sealed class AssetEventLine
     {
         /// <summary>资产类别名。</summary>
-        public string AssetKind
-        {
-            get;
-            set;
-        }
+        public string AssetKind { get; set; }
 
         /// <summary>资产标识。</summary>
-        public string AssetId
-        {
-            get;
-            set;
-        }
+        public string AssetId { get; set; }
 
         /// <summary>带符号数额。</summary>
-        public long Delta
-        {
-            get;
-            set;
-        }
+        public long Delta { get; set; }
 
         /// <summary>变更前数量。</summary>
-        public long AmountBefore
-        {
-            get;
-            set;
-        }
+        public long AmountBefore { get; set; }
 
         /// <summary>变更后数量。</summary>
-        public long AmountAfter
-        {
-            get;
-            set;
-        }
+        public long AmountAfter { get; set; }
     }
 }

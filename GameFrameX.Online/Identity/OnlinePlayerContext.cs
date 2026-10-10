@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Identity;
 
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Online.Scope;
+using Scope;
 
 /// <summary>
 /// 统一玩家上下文（PlayerId + AppId + ServerId + SessionId，后续模块不再各自解析身份）。
@@ -45,50 +45,32 @@ public sealed class OnlinePlayerContext
     /// <summary>
     /// 获取租户标识。
     /// </summary>
-    public long TenantId
-    {
-        get;
-    }
+    public long TenantId { get; }
 
     /// <summary>
     /// 获取应用标识。
     /// </summary>
-    public long AppId
-    {
-        get;
-    }
+    public long AppId { get; }
 
     /// <summary>
     /// 获取区服标识。
     /// </summary>
-    public long ServerId
-    {
-        get;
-    }
+    public long ServerId { get; }
 
     /// <summary>
     /// 获取玩家标识（GameAccount 下属、App/Server 归属明确）。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-    }
+    public long PlayerId { get; }
 
     /// <summary>
     /// 获取游戏账号标识。
     /// </summary>
-    public long GameAccountId
-    {
-        get;
-    }
+    public long GameAccountId { get; }
 
     /// <summary>
     /// 获取会话标识。
     /// </summary>
-    public string SessionId
-    {
-        get;
-    }
+    public string SessionId { get; }
 
     /// <summary>
     /// 初始化 <see cref="OnlinePlayerContext"/>。

@@ -47,7 +47,7 @@ public static class OnlineMatchStateMachine
     /// <summary>
     /// 合法迁移邻接表：键 = 起态，值 = 可达目标态集合。
     /// </summary>
-    private static readonly Dictionary<OnlineMatchState, OnlineMatchState[]> Adjacency = new Dictionary<OnlineMatchState, OnlineMatchState[]>
+    private static readonly Dictionary<OnlineMatchState, OnlineMatchState[]> Adjacency = new()
     {
         {
             OnlineMatchState.Created, new[]

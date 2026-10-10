@@ -30,7 +30,7 @@
 
 namespace GameFrameX.Online.Assets;
 
-using GameFrameX.Online.Contracts;
+using Contracts;
 
 /// <summary>
 /// 统一资产入口执行结果（承载交易标识、终态与落账条目；重复请求回放首次结果的载荷）。
@@ -45,36 +45,20 @@ public sealed class OnlineGrantResult
     /// <summary>
     /// 获取或设置交易标识（幂等边界主键；审计与反查入口）。
     /// </summary>
-    public string TransactionId
-    {
-        get;
-        set;
-    }
+    public string TransactionId { get; set; }
 
     /// <summary>
     /// 获取或设置交易终态。
     /// </summary>
-    public OnlineAssetTransactionState State
-    {
-        get;
-        set;
-    }
+    public OnlineAssetTransactionState State { get; set; }
 
     /// <summary>
     /// 获取或设置是否为幂等回放（重复业务意图命中首次结果）。
     /// </summary>
-    public bool IsReplay
-    {
-        get;
-        set;
-    }
+    public bool IsReplay { get; set; }
 
     /// <summary>
     /// 获取或设置落账条目（含全部变更行；回放时从账本重取）。
     /// </summary>
-    public IReadOnlyList<OnlineLedgerEntry> Entries
-    {
-        get;
-        set;
-    }
+    public IReadOnlyList<OnlineLedgerEntry> Entries { get; set; }
 }

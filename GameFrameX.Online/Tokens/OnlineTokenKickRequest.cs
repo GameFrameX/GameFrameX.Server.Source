@@ -39,27 +39,15 @@ public sealed class OnlineTokenKickRequest
     /// <summary>
     /// 获取或设置生效作用域。
     /// </summary>
-    public OnlineScope Scope
-    {
-        get;
-        set;
-    }
+    public OnlineScope Scope { get; set; }
 
     /// <summary>
     /// 获取或设置目标会话标识。
     /// </summary>
-    public string SessionId
-    {
-        get;
-        set;
-    }
+    public string SessionId { get; set; }
 
     /// <summary>
     /// 获取或设置踢下线原因（审计留痕；不透出给客户端）。
     /// </summary>
-    public string Reason
-    {
-        get;
-        set;
-    }
+    public string Reason { get; set; }
 }

@@ -42,45 +42,25 @@ public sealed class OnlineMatchReconnectToken
     /// <summary>
     /// 获取或设置令牌值。
     /// </summary>
-    public string Token
-    {
-        get;
-        set;
-    }
+    public string Token { get; set; }
 
     /// <summary>
     /// 获取或设置对局标识。
     /// </summary>
-    public string MatchId
-    {
-        get;
-        set;
-    }
+    public string MatchId { get; set; }
 
     /// <summary>
     /// 获取或设置玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置签发时刻（UTC 毫秒）。
     /// </summary>
-    public long IssuedTime
-    {
-        get;
-        set;
-    }
+    public long IssuedTime { get; set; }
 
     /// <summary>
     /// 获取或设置过期时刻（UTC 毫秒；即重连窗口截止）。
     /// </summary>
-    public long ExpiresTime
-    {
-        get;
-        set;
-    }
+    public long ExpiresTime { get; set; }
 }

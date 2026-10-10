@@ -57,7 +57,7 @@ public sealed class OnlineAdminApiDispatcher
     /// <summary>
     /// action 注册表（大小写不敏感）。
     /// </summary>
-    private readonly Dictionary<string, ActionRegistration> _actions = new Dictionary<string, ActionRegistration>(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, ActionRegistration> _actions = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// 初始化 <see cref="OnlineAdminApiDispatcher"/> 并注册全部 action。
@@ -78,10 +78,7 @@ public sealed class OnlineAdminApiDispatcher
     /// </summary>
     public IReadOnlyCollection<string> ActionNames
     {
-        get
-        {
-            return _actions.Keys;
-        }
+        get { return _actions.Keys; }
     }
 
     /// <summary>
@@ -272,18 +269,12 @@ public sealed class OnlineAdminApiDispatcher
         /// <summary>
         /// 处理器。
         /// </summary>
-        public ActionHandler Handler
-        {
-            get;
-        }
+        public ActionHandler Handler { get; }
 
         /// <summary>
         /// 是否经调度器层幂等包裹。
         /// </summary>
-        public bool WrapIdempotency
-        {
-            get;
-        }
+        public bool WrapIdempotency { get; }
 
         /// <summary>
         /// 初始化注册项。

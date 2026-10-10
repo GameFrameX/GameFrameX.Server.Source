@@ -42,54 +42,30 @@ public sealed class OnlineLeaderboardOptions
     /// <summary>
     /// 获取或设置单次提交分数合理上限的全局默认值（榜单未显式配置时生效；取绝对值比较，正负同界）。
     /// </summary>
-    public long DefaultMaxScorePerSubmission
-    {
-        get;
-        set;
-    } = 1_000_000;
+    public long DefaultMaxScorePerSubmission { get; set; } = 1_000_000;
 
     /// <summary>
     /// 获取或设置限流窗口内允许的提交次数（按 玩家 分桶；仅首次执行分支计数，幂等重放不烧配额）。
     /// </summary>
-    public int RateLimitMaxSubmissions
-    {
-        get;
-        set;
-    } = 120;
+    public int RateLimitMaxSubmissions { get; set; } = 120;
 
     /// <summary>
     /// 获取或设置限流滑动窗口时长（秒）。
     /// </summary>
-    public int RateLimitWindowSeconds
-    {
-        get;
-        set;
-    } = 60;
+    public int RateLimitWindowSeconds { get; set; } = 60;
 
     /// <summary>
     /// 获取或设置是否启用 Top N 读缓存。
     /// </summary>
-    public bool CacheEnabled
-    {
-        get;
-        set;
-    } = true;
+    public bool CacheEnabled { get; set; } = true;
 
     /// <summary>
     /// 获取或设置读缓存 TTL（秒；过期后下次查询重建快照，写榜立即失效不受 TTL 约束）。
     /// </summary>
-    public int CacheTtlSeconds
-    {
-        get;
-        set;
-    } = 5;
+    public int CacheTtlSeconds { get; set; } = 5;
 
     /// <summary>
     /// 获取或设置单页条目数上限（防一次拉全榜；请求超出按上限截断）。
     /// </summary>
-    public int MaxPageSize
-    {
-        get;
-        set;
-    } = 200;
+    public int MaxPageSize { get; set; } = 200;
 }

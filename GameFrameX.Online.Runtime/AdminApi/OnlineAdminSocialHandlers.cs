@@ -157,12 +157,12 @@ public sealed class OnlineAdminSocialHandlers
         var cases = await CollectReportCasesAsync(scope, status, reporterPlayerId, cancellationToken).ConfigureAwait(false);
 
         var filtered = cases
-            .Where(item => (!reporterPlayerId.HasValue || item.ReporterId == reporterPlayerId.Value)
-                           && (!startTime.HasValue || item.CreatedAtTime >= startTime.Value)
-                           && (!endTime.HasValue || item.CreatedAtTime <= endTime.Value))
-            .OrderByDescending(item => item.CreatedAtTime)
-            .ThenByDescending(item => item.ReportId, StringComparer.Ordinal)
-            .ToList();
+                       .Where(item => (!reporterPlayerId.HasValue || item.ReporterId == reporterPlayerId.Value)
+                                      && (!startTime.HasValue || item.CreatedAtTime >= startTime.Value)
+                                      && (!endTime.HasValue || item.CreatedAtTime <= endTime.Value))
+                       .OrderByDescending(item => item.CreatedAtTime)
+                       .ThenByDescending(item => item.ReportId, StringComparer.Ordinal)
+                       .ToList();
         filtered = ApplyReportCursor(filtered, cursor);
 
         var hasMore = filtered.Count > pageSize;
@@ -249,7 +249,7 @@ public sealed class OnlineAdminSocialHandlers
         var content = OnlineAdminApiContract.RequireString(request, "Content");
         var payload = JsonHelper.Serialize(new NotificationPayload { Title = title, Content = content, });
         OnlineAdminApiContract.Unwrap(await _host.Notifications.EnqueueAsync(playerScope, OnlineNotificationKind.Announcement, null,
-            payload, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 604800000L, request.ReadRequestId(), cancellationToken).ConfigureAwait(false));
+                                                                             payload, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 604800000L, request.ReadRequestId(), cancellationToken).ConfigureAwait(false));
         return new EmptyAckResponse();
     }
 
@@ -466,11 +466,7 @@ public sealed class OnlineAdminSocialHandlers
     public sealed class LinkCommandAckResponse
     {
         /// <summary>获取或设置令牌是否已确认吊销。</summary>
-        public bool TokenRevokedConfirmed
-        {
-            get;
-            set;
-        }
+        public bool TokenRevokedConfirmed { get; set; }
     }
 
     /// <summary>
@@ -479,11 +475,7 @@ public sealed class OnlineAdminSocialHandlers
     public sealed class EmptyAckResponse
     {
         /// <summary>获取或设置确认标记。</summary>
-        public bool Accepted
-        {
-            get;
-            set;
-        } = true;
+        public bool Accepted { get; set; } = true;
     }
 
     /// <summary>
@@ -492,18 +484,10 @@ public sealed class OnlineAdminSocialHandlers
     public sealed class NotificationPayload
     {
         /// <summary>获取或设置标题。</summary>
-        public string Title
-        {
-            get;
-            set;
-        }
+        public string Title { get; set; }
 
         /// <summary>获取或设置正文。</summary>
-        public string Content
-        {
-            get;
-            set;
-        }
+        public string Content { get; set; }
     }
 
     /// <summary>
@@ -512,102 +496,46 @@ public sealed class OnlineAdminSocialHandlers
     public sealed class ReportCaseResponse
     {
         /// <summary>获取或设置案件标识。</summary>
-        public string CaseId
-        {
-            get;
-            set;
-        }
+        public string CaseId { get; set; }
 
         /// <summary>获取或设置 App 标识。</summary>
-        public long AppId
-        {
-            get;
-            set;
-        }
+        public long AppId { get; set; }
 
         /// <summary>获取或设置区服标识。</summary>
-        public long ServerId
-        {
-            get;
-            set;
-        }
+        public long ServerId { get; set; }
 
         /// <summary>获取或设置举报人（字符串形态）。</summary>
-        public string ReporterPlayerId
-        {
-            get;
-            set;
-        }
+        public string ReporterPlayerId { get; set; }
 
         /// <summary>获取或设置被举报人（字符串形态）。</summary>
-        public string ReportedPlayerId
-        {
-            get;
-            set;
-        }
+        public string ReportedPlayerId { get; set; }
 
         /// <summary>获取或设置场景名。</summary>
-        public string Scene
-        {
-            get;
-            set;
-        }
+        public string Scene { get; set; }
 
         /// <summary>获取或设置对局标识。</summary>
-        public string MatchId
-        {
-            get;
-            set;
-        }
+        public string MatchId { get; set; }
 
         /// <summary>获取或设置聊天消息标识。</summary>
-        public string ChatMessageId
-        {
-            get;
-            set;
-        }
+        public string ChatMessageId { get; set; }
 
         /// <summary>获取或设置举报原因名。</summary>
-        public string Reason
-        {
-            get;
-            set;
-        }
+        public string Reason { get; set; }
 
         /// <summary>获取或设置证据。</summary>
-        public string Evidence
-        {
-            get;
-            set;
-        }
+        public string Evidence { get; set; }
 
         /// <summary>获取或设置 Admin 状态码（1=Pending/2=Handling/3=Resolved/4=Rejected）。</summary>
-        public int Status
-        {
-            get;
-            set;
-        }
+        public int Status { get; set; }
 
         /// <summary>获取或设置处理结论名。</summary>
-        public string HandleResult
-        {
-            get;
-            set;
-        }
+        public string HandleResult { get; set; }
 
         /// <summary>获取或设置创建时刻（UTC 毫秒）。</summary>
-        public long CreatedAt
-        {
-            get;
-            set;
-        }
+        public long CreatedAt { get; set; }
 
         /// <summary>获取或设置更新时刻（UTC 毫秒）。</summary>
-        public long UpdatedAt
-        {
-            get;
-            set;
-        }
+        public long UpdatedAt { get; set; }
     }
 
     /// <summary>
@@ -616,25 +544,13 @@ public sealed class OnlineAdminSocialHandlers
     public sealed class ReportCaseQueryResponse
     {
         /// <summary>获取或设置案件列表。</summary>
-        public List<ReportCaseResponse> Items
-        {
-            get;
-            set;
-        }
+        public List<ReportCaseResponse> Items { get; set; }
 
         /// <summary>获取或设置下一页游标。</summary>
-        public string NextCursor
-        {
-            get;
-            set;
-        }
+        public string NextCursor { get; set; }
 
         /// <summary>获取或设置是否还有更多。</summary>
-        public bool HasMore
-        {
-            get;
-            set;
-        }
+        public bool HasMore { get; set; }
     }
 
     /// <summary>
@@ -643,39 +559,19 @@ public sealed class OnlineAdminSocialHandlers
     public sealed class ChatAuditMessageResponse
     {
         /// <summary>获取或设置消息标识。</summary>
-        public string MessageId
-        {
-            get;
-            set;
-        }
+        public string MessageId { get; set; }
 
         /// <summary>获取或设置频道类型。</summary>
-        public OnlineChatChannelKind ChannelKind
-        {
-            get;
-            set;
-        }
+        public OnlineChatChannelKind ChannelKind { get; set; }
 
         /// <summary>获取或设置参与者（字符串形态）。</summary>
-        public List<string> ParticipantPlayerIds
-        {
-            get;
-            set;
-        }
+        public List<string> ParticipantPlayerIds { get; set; }
 
         /// <summary>获取或设置正文原文。</summary>
-        public string Content
-        {
-            get;
-            set;
-        }
+        public string Content { get; set; }
 
         /// <summary>获取或设置发生时刻（UTC 毫秒）。</summary>
-        public long OccurredAt
-        {
-            get;
-            set;
-        }
+        public long OccurredAt { get; set; }
     }
 
     /// <summary>
@@ -684,24 +580,12 @@ public sealed class OnlineAdminSocialHandlers
     public sealed class ChatAuditQueryResponse
     {
         /// <summary>获取或设置消息列表。</summary>
-        public List<ChatAuditMessageResponse> Items
-        {
-            get;
-            set;
-        }
+        public List<ChatAuditMessageResponse> Items { get; set; }
 
         /// <summary>获取或设置下一页游标。</summary>
-        public string NextCursor
-        {
-            get;
-            set;
-        }
+        public string NextCursor { get; set; }
 
         /// <summary>获取或设置是否还有更多。</summary>
-        public bool HasMore
-        {
-            get;
-            set;
-        }
+        public bool HasMore { get; set; }
     }
 }

@@ -39,10 +39,10 @@ namespace GameFrameX.Online.Presence;
 public sealed class InMemoryOnlinePresenceStore : IOnlinePresenceStore
 {
     /// <summary>全局读写锁。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>在线状态表：键 = (TenantId, AppId, PlayerId)。</summary>
-    private readonly Dictionary<string, OnlinePresenceRecord> _records = new Dictionary<string, OnlinePresenceRecord>();
+    private readonly Dictionary<string, OnlinePresenceRecord> _records = new();
 
     /// <summary>写入或覆盖在线状态记录。</summary>
     /// <param name="record">在线状态记录。</param>

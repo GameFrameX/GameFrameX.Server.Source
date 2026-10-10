@@ -29,7 +29,7 @@
 
 namespace GameFrameX.Online.Runtime;
 
-using GameFrameX.Online.Social;
+using Social;
 
 /// <summary>
 /// 聊天审计检索条件（<see cref="OnlineChatAuditProjection.QueryAsync"/> 除作用域外的全部过滤维度，

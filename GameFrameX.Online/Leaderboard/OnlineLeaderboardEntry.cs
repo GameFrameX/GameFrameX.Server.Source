@@ -42,56 +42,32 @@ public sealed class OnlineLeaderboardEntry
     /// <summary>
     /// 获取或设置玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置榜上分数（按榜单累计策略聚合后的当前值）。
     /// </summary>
-    public long Score
-    {
-        get;
-        set;
-    }
+    public long Score { get; set; }
 
     /// <summary>
     /// 获取或设置最近一次写入的分数来源。
     /// </summary>
-    public OnlineLeaderboardScoreSource SourceKind
-    {
-        get;
-        set;
-    }
+    public OnlineLeaderboardScoreSource SourceKind { get; set; }
 
     /// <summary>
     /// 获取或设置最近一次写入的来源结算结果标识（追溯键）。
     /// </summary>
-    public string SourceMatchResultId
-    {
-        get;
-        set;
-    }
+    public string SourceMatchResultId { get; set; }
 
     /// <summary>
     /// 获取或设置最近一次写入时刻（UTC 毫秒；并列分数的次级排序键，先写入者靠前）。
     /// </summary>
-    public long LastUpdateTime
-    {
-        get;
-        set;
-    }
+    public long LastUpdateTime { get; set; }
 
     /// <summary>
     /// 获取或设置累计提交次数（含未改变分数的提交，如 Best 策略下的非更优分数）。
     /// </summary>
-    public int SubmissionCount
-    {
-        get;
-        set;
-    }
+    public int SubmissionCount { get; set; }
 
     /// <summary>
     /// 复制条目（存储出入参防御性拷贝）。

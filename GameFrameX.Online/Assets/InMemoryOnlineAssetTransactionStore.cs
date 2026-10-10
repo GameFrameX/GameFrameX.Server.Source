@@ -43,10 +43,10 @@ using System.Threading.Tasks;
 public sealed class InMemoryOnlineAssetTransactionStore : IOnlineAssetTransactionStore
 {
     /// <summary>全局读写锁。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>交易记录表：键 = 交易标识。</summary>
-    private readonly Dictionary<string, OnlineAssetTransaction> _transactions = new Dictionary<string, OnlineAssetTransaction>();
+    private readonly Dictionary<string, OnlineAssetTransaction> _transactions = new();
 
     /// <summary>按交易标识查找。</summary>
     /// <param name="transactionId">交易标识。</param>

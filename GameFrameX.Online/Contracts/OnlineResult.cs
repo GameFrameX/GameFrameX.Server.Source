@@ -44,36 +44,24 @@ public sealed class OnlineResult<TData>
     /// <summary>
     /// 获取协议错误码（<see cref="OnlineErrorCode.None"/> 表示成功）。
     /// </summary>
-    public OnlineErrorCode Code
-    {
-        get;
-    }
+    public OnlineErrorCode Code { get; }
 
     /// <summary>
     /// 获取失败描述（服务端内部语义；成功时为空字符串）。
     /// </summary>
-    public string Message
-    {
-        get;
-    }
+    public string Message { get; }
 
     /// <summary>
     /// 获取成功负载数据；失败时为 null。
     /// </summary>
-    public TData Data
-    {
-        get;
-    }
+    public TData Data { get; }
 
     /// <summary>
     /// 获取操作是否成功。
     /// </summary>
     public bool IsSuccess
     {
-        get
-        {
-            return Code == OnlineErrorCode.None;
-        }
+        get { return Code == OnlineErrorCode.None; }
     }
 
     /// <summary>
@@ -107,6 +95,6 @@ public sealed class OnlineResult<TData>
     /// <returns>失败结果实例。</returns>
     public static OnlineResult<TData> Fail(OnlineErrorCode code, string message)
     {
-        return new OnlineResult<TData>(code, message ?? string.Empty, default(TData));
+        return new OnlineResult<TData>(code, message ?? string.Empty, default);
     }
 }

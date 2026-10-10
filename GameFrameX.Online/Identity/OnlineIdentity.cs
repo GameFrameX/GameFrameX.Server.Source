@@ -42,81 +42,45 @@ public sealed class OnlineIdentity
     /// <summary>
     /// 获取或设置身份标识（服务端生成，全局唯一）。
     /// </summary>
-    public string Id
-    {
-        get;
-        set;
-    }
+    public string Id { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识（身份必须绑定明确租户）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置应用标识（身份必须绑定明确应用）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置身份类型。
     /// </summary>
-    public OnlineIdentityKind Kind
-    {
-        get;
-        set;
-    }
+    public OnlineIdentityKind Kind { get; set; }
 
     /// <summary>
     /// 获取或设置身份标识串（按 <see cref="Kind"/> 语义解释：用户名/邮箱/设备号/渠道标识/第三方 OpenId）。
     /// </summary>
-    public string Identifier
-    {
-        get;
-        set;
-    }
+    public string Identifier { get; set; }
 
     /// <summary>
     /// 获取或设置归属游戏账号标识。
     /// </summary>
-    public long GameAccountId
-    {
-        get;
-        set;
-    }
+    public long GameAccountId { get; set; }
 
     /// <summary>
     /// 获取或设置创建时间（Unix 毫秒）。
     /// </summary>
-    public long CreatedAtTime
-    {
-        get;
-        set;
-    }
+    public long CreatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置最近更新时间（Unix 毫秒）。
     /// </summary>
-    public long UpdatedAtTime
-    {
-        get;
-        set;
-    }
+    public long UpdatedAtTime { get; set; }
 
     /// <summary>
     /// 获取或设置解绑时间（Unix 毫秒；0 = 绑定中）。
     /// </summary>
-    public long UnboundAtTime
-    {
-        get;
-        set;
-    }
+    public long UnboundAtTime { get; set; }
 }

@@ -45,108 +45,60 @@ public sealed class OnlineEvent
     /// <summary>
     /// 获取或设置全局唯一事件标识（消费端去重键）。
     /// </summary>
-    public string EventId
-    {
-        get;
-        set;
-    }
+    public string EventId { get; set; }
 
     /// <summary>
     /// 获取或设置事件类型（调用方命名空间字符串，如 <c>online.session.created</c>）。
     /// </summary>
-    public string EventType
-    {
-        get;
-        set;
-    }
+    public string EventType { get; set; }
 
     /// <summary>
     /// 获取或设置事件发生时刻（UTC 毫秒）。
     /// </summary>
-    public long OccurredTime
-    {
-        get;
-        set;
-    }
+    public long OccurredTime { get; set; }
 
     /// <summary>
     /// 获取或设置载荷结构版本（不小于 1；结构演进时递增）。
     /// </summary>
-    public int SchemaVersion
-    {
-        get;
-        set;
-    }
+    public int SchemaVersion { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识（Online 作用域字段）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识（Online 作用域字段）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置区服标识（Online 作用域字段）。
     /// </summary>
-    public long ServerId
-    {
-        get;
-        set;
-    }
+    public long ServerId { get; set; }
 
     /// <summary>
     /// 获取或设置玩家标识（Online 作用域字段；系统级事件为 0）。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置来源模块标识（如 <c>online-identity</c>）。
     /// </summary>
-    public string Source
-    {
-        get;
-        set;
-    }
+    public string Source { get; set; }
 
     /// <summary>
     /// 获取或设置关联链路键（未参与链路时为 null）。
     /// </summary>
-    public string CorrelationId
-    {
-        get;
-        set;
-    }
+    public string CorrelationId { get; set; }
 
     /// <summary>
     /// 获取或设置事件载荷字节（调用方序列化契约产物）。
     /// </summary>
-    public ReadOnlyMemory<byte> Payload
-    {
-        get;
-        set;
-    }
+    public ReadOnlyMemory<byte> Payload { get; set; }
 
     /// <summary>
     /// 获取或设置载荷语义字段投影（键值对；仅用于审计视图脱敏，不进入传输信封）。
     /// </summary>
-    public IReadOnlyDictionary<string, string> PayloadAuditFields
-    {
-        get;
-        set;
-    }
+    public IReadOnlyDictionary<string, string> PayloadAuditFields { get; set; }
 }

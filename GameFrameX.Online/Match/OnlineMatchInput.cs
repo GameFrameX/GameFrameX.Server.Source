@@ -43,47 +43,27 @@ public sealed class OnlineMatchInput
     /// <summary>
     /// 获取或设置提交玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置客户端序号（该玩家视角下严格递增，从 1 开始）。
     /// </summary>
-    public long ClientSequence
-    {
-        get;
-        set;
-    }
+    public long ClientSequence { get; set; }
 
     /// <summary>
     /// 获取或设置动作标识（玩法私有语义，由 <see cref="IOnlineMatchGame"/> 校验合法性）。
     /// </summary>
-    public int ActionId
-    {
-        get;
-        set;
-    }
+    public int ActionId { get; set; }
 
     /// <summary>
     /// 获取或设置客户端时刻（UTC 毫秒；仅用于诊断与延迟测量，不参与判定）。
     /// </summary>
-    public long ClientTime
-    {
-        get;
-        set;
-    }
+    public long ClientTime { get; set; }
 
     /// <summary>
     /// 获取或设置关联标识（可空；用于端到端链路追踪）。
     /// </summary>
-    public string CorrelationId
-    {
-        get;
-        set;
-    }
+    public string CorrelationId { get; set; }
 
     /// <summary>
     /// 复制输入。

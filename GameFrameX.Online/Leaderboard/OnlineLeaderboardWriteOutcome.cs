@@ -41,45 +41,25 @@ internal sealed class OnlineLeaderboardWriteOutcome
     /// <summary>
     /// 获取或设置是否成功落榜。
     /// </summary>
-    public bool IsSuccess
-    {
-        get;
-        set;
-    }
+    public bool IsSuccess { get; set; }
 
     /// <summary>
     /// 获取或设置失败错误码（失败时有效）。
     /// </summary>
-    public OnlineErrorCode Code
-    {
-        get;
-        set;
-    }
+    public OnlineErrorCode Code { get; set; }
 
     /// <summary>
     /// 获取或设置失败原因（失败时有效）。
     /// </summary>
-    public string Message
-    {
-        get;
-        set;
-    }
+    public string Message { get; set; }
 
     /// <summary>
     /// 获取或设置落榜后的条目副本（成功时有效）。
     /// </summary>
-    public OnlineLeaderboardEntry Entry
-    {
-        get;
-        set;
-    }
+    public OnlineLeaderboardEntry Entry { get; set; }
 
     /// <summary>
     /// 获取或设置落榜前分数（成功时有效；事件载荷的 OldScore）。
     /// </summary>
-    public long OldScore
-    {
-        get;
-        set;
-    }
+    public long OldScore { get; set; }
 }

@@ -48,7 +48,7 @@ public sealed class OnlineRuntimeScheduler : IDisposable
     /// <summary>
     /// 停止令牌。
     /// </summary>
-    private readonly CancellationTokenSource _cancellation = new CancellationTokenSource();
+    private readonly CancellationTokenSource _cancellation = new();
 
     /// <summary>
     /// 循环任务（启动后非空）。
@@ -58,7 +58,7 @@ public sealed class OnlineRuntimeScheduler : IDisposable
     /// <summary>
     /// 同步锁（Start/Stop 竞态保护）。
     /// </summary>
-    private readonly object _sync = new object();
+    private readonly object _sync = new();
 
     /// <summary>
     /// 初始化 <see cref="OnlineRuntimeScheduler"/>。

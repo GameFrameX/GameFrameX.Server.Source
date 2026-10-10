@@ -43,10 +43,10 @@ namespace GameFrameX.Online.Social;
 public sealed class InMemoryOnlineReportStore : IOnlineReportStore
 {
     /// <summary>并发保护锁。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>案件表（键 = 作用域 + 案件标识）。</summary>
-    private readonly Dictionary<string, OnlineReportCase> _casesById = new Dictionary<string, OnlineReportCase>(StringComparer.Ordinal);
+    private readonly Dictionary<string, OnlineReportCase> _casesById = new(StringComparer.Ordinal);
 
     /// <summary>
     /// 以案件标识为唯一键在内存表内「不存在则创建」：键已存在时返回既有案件副本且不写入，否则存入入参的防御性副本。

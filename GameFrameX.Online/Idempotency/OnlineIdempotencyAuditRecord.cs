@@ -37,45 +37,25 @@ public sealed class OnlineIdempotencyAuditRecord
     /// <summary>
     /// 获取或设置判定类型。
     /// </summary>
-    public OnlineIdempotencyOutcomeKind OutcomeKind
-    {
-        get;
-        set;
-    }
+    public OnlineIdempotencyOutcomeKind OutcomeKind { get; set; }
 
     /// <summary>
     /// 获取或设置作用域绑定键（可追溯到租户/App/区服[/玩家]）。
     /// </summary>
-    public string ScopeKey
-    {
-        get;
-        set;
-    }
+    public string ScopeKey { get; set; }
 
     /// <summary>
     /// 获取或设置幂等键（业务意图标识）。
     /// </summary>
-    public string IdempotencyKey
-    {
-        get;
-        set;
-    }
+    public string IdempotencyKey { get; set; }
 
     /// <summary>
     /// 获取或设置请求摘要（SHA-256 十六进制，不可逆；用于冲突比对不还原内容）。
     /// </summary>
-    public string RequestDigest
-    {
-        get;
-        set;
-    }
+    public string RequestDigest { get; set; }
 
     /// <summary>
     /// 获取或设置判定时刻（UTC 毫秒）。
     /// </summary>
-    public long OccurredTime
-    {
-        get;
-        set;
-    }
+    public long OccurredTime { get; set; }
 }

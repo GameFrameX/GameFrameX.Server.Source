@@ -45,45 +45,25 @@ public sealed class OnlinePlayerTimelineQuery
     /// 空列表（与「该分组当前无数据」同构）不会泄露分组是否存在，也不会让管理台整页报错。
     /// </para>
     /// </summary>
-    public string Group
-    {
-        get;
-        set;
-    }
+    public string Group { get; set; }
 
     /// <summary>
     /// 获取或设置时间窗起点（Unix 秒，含边界；null = 不限）。
     /// </summary>
-    public long? StartTime
-    {
-        get;
-        set;
-    }
+    public long? StartTime { get; set; }
 
     /// <summary>
     /// 获取或设置时间窗终点（Unix 秒，含边界；null = 不限）。
     /// </summary>
-    public long? EndTime
-    {
-        get;
-        set;
-    }
+    public long? EndTime { get; set; }
 
     /// <summary>
     /// 获取或设置分页游标（由服务返回的不透明令牌原样回传；null 或空 = 取首页）。
     /// </summary>
-    public string Cursor
-    {
-        get;
-        set;
-    }
+    public string Cursor { get; set; }
 
     /// <summary>
     /// 获取或设置页大小（有效区间 1～200；小于 1 视为未指定并回落默认值 50；大于 200 返回参数非法）。
     /// </summary>
-    public int PageSize
-    {
-        get;
-        set;
-    }
+    public int PageSize { get; set; }
 }

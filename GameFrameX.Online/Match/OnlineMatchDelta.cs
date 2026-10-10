@@ -44,38 +44,22 @@ public sealed class OnlineMatchDelta
     /// <summary>
     /// 获取或设置对局标识。
     /// </summary>
-    public string MatchId
-    {
-        get;
-        set;
-    }
+    public string MatchId { get; set; }
 
     /// <summary>
     /// 获取或设置补发起点序号（不含）。
     /// </summary>
-    public long FromSequence
-    {
-        get;
-        set;
-    }
+    public long FromSequence { get; set; }
 
     /// <summary>
     /// 获取或设置补发终点序号（含；等于对局当前服务器序号）。
     /// </summary>
-    public long ToSequence
-    {
-        get;
-        set;
-    }
+    public long ToSequence { get; set; }
 
     /// <summary>
     /// 获取或设置区间内的事件（按序号升序）。
     /// </summary>
-    public List<OnlineMatchServerEvent> Events
-    {
-        get;
-        set;
-    }
+    public List<OnlineMatchServerEvent> Events { get; set; }
 
     /// <summary>
     /// 复制增量（事件逐项深拷贝）。

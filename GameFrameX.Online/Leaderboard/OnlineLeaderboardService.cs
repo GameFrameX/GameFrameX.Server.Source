@@ -64,10 +64,10 @@ public sealed class OnlineLeaderboardService
     private readonly OnlineLeaderboardRateLimiter _rateLimiter;
 
     /// <summary>读缓存与缓存锁。</summary>
-    private readonly object _cacheSyncRoot = new object();
+    private readonly object _cacheSyncRoot = new();
 
     /// <summary>Top N 快照读缓存：键 = 榜单存储键。</summary>
-    private readonly Dictionary<string, CacheSlot> _snapshotCache = new Dictionary<string, CacheSlot>();
+    private readonly Dictionary<string, CacheSlot> _snapshotCache = new();
 
     /// <summary>
     /// 初始化 <see cref="OnlineLeaderboardService"/>。
@@ -206,8 +206,8 @@ public sealed class OnlineLeaderboardService
 
         var hasMore = index < snapshot.Count;
         page.Cursor = hasMore && page.Entries.Count > 0
-            ? new OnlinePageCursor(EncodeCursor(page.Entries[page.Entries.Count - 1].Entry), true)
-            : new OnlinePageCursor(string.Empty, false);
+                          ? new OnlinePageCursor(EncodeCursor(page.Entries[page.Entries.Count - 1].Entry), true)
+                          : new OnlinePageCursor(string.Empty, false);
         return OnlineResult<OnlineLeaderboardPage>.Ok(page);
     }
 
@@ -520,7 +520,7 @@ public sealed class OnlineLeaderboardService
             return null;
         }
 
-        return new OnlineLeaderboardEntry { PlayerId = playerId, Score = score, LastUpdateTime = time };
+        return new OnlineLeaderboardEntry { PlayerId = playerId, Score = score, LastUpdateTime = time, };
     }
 
     /// <summary>
@@ -565,17 +565,9 @@ public sealed class OnlineLeaderboardService
     private sealed class CacheSlot
     {
         /// <summary>获取或设置全序条目快照。</summary>
-        public List<OnlineLeaderboardEntry> Snapshot
-        {
-            get;
-            set;
-        }
+        public List<OnlineLeaderboardEntry> Snapshot { get; set; }
 
         /// <summary>获取或设置过期时刻（UTC 毫秒）。</summary>
-        public long ExpiresAtTime
-        {
-            get;
-            set;
-        }
+        public long ExpiresAtTime { get; set; }
     }
 }

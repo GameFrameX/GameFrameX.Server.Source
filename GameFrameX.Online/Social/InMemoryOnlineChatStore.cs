@@ -45,25 +45,25 @@ namespace GameFrameX.Online.Social;
 public sealed class InMemoryOnlineChatStore : IOnlineChatStore
 {
     /// <summary>并发保护锁。</summary>
-    private readonly object _syncRoot = new object();
+    private readonly object _syncRoot = new();
 
     /// <summary>频道表（键 = 作用域 + 频道标识）。</summary>
-    private readonly Dictionary<string, OnlineChatChannel> _channelsById = new Dictionary<string, OnlineChatChannel>(StringComparer.Ordinal);
+    private readonly Dictionary<string, OnlineChatChannel> _channelsById = new(StringComparer.Ordinal);
 
     /// <summary>消息表（键 = 作用域 + 频道标识 + 消息标识）。</summary>
-    private readonly Dictionary<string, OnlineChatMessage> _messagesById = new Dictionary<string, OnlineChatMessage>(StringComparer.Ordinal);
+    private readonly Dictionary<string, OnlineChatMessage> _messagesById = new(StringComparer.Ordinal);
 
     /// <summary>去重索引（键 = 作用域 + 频道标识 + 去重键 → 消息标识）。</summary>
-    private readonly Dictionary<string, string> _messageIdByDedupeKey = new Dictionary<string, string>(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _messageIdByDedupeKey = new(StringComparer.Ordinal);
 
     /// <summary>频道内下一个可用序号（键 = 作用域 + 频道标识）。</summary>
-    private readonly Dictionary<string, long> _nextSequenceByChannel = new Dictionary<string, long>(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _nextSequenceByChannel = new(StringComparer.Ordinal);
 
     /// <summary>频道内最后一条消息的发送时刻（键 = 作用域 + 频道标识；用于落定单调不减的发送时刻）。</summary>
-    private readonly Dictionary<string, long> _lastSentAtTimeByChannel = new Dictionary<string, long>(StringComparer.Ordinal);
+    private readonly Dictionary<string, long> _lastSentAtTimeByChannel = new(StringComparer.Ordinal);
 
     /// <summary>已读位点表（键 = 作用域 + 玩家 + 频道标识）。</summary>
-    private readonly Dictionary<string, OnlineChatReadMark> _readMarksByPlayerChannel = new Dictionary<string, OnlineChatReadMark>(StringComparer.Ordinal);
+    private readonly Dictionary<string, OnlineChatReadMark> _readMarksByPlayerChannel = new(StringComparer.Ordinal);
 
     /// <summary>
     /// 以内存字典实现频道的「不存在则创建」：键已存在时返回既有记录的副本且不写入；新建时存入入参的深拷贝。

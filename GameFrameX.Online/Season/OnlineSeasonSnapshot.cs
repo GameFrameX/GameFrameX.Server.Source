@@ -49,56 +49,32 @@ public sealed class OnlineSeasonSnapshot
     /// <summary>
     /// 获取或设置赛季标识（快照的归属键）。
     /// </summary>
-    public string SeasonId
-    {
-        get;
-        set;
-    }
+    public string SeasonId { get; set; }
 
     /// <summary>
     /// 获取或设置租户标识（作用域隔离键）。
     /// </summary>
-    public long TenantId
-    {
-        get;
-        set;
-    }
+    public long TenantId { get; set; }
 
     /// <summary>
     /// 获取或设置 App 标识（作用域隔离键）。
     /// </summary>
-    public long AppId
-    {
-        get;
-        set;
-    }
+    public long AppId { get; set; }
 
     /// <summary>
     /// 获取或设置快照来源的榜单标识。
     /// </summary>
-    public string LeaderboardId
-    {
-        get;
-        set;
-    }
+    public string LeaderboardId { get; set; }
 
     /// <summary>
     /// 获取或设置快照生成时刻（UTC 毫秒；审计依据）。
     /// </summary>
-    public long SnapshottedTime
-    {
-        get;
-        set;
-    }
+    public long SnapshottedTime { get; set; }
 
     /// <summary>
     /// 获取或设置冻结的全序条目（含名次；空榜为合法快照，表示本届无成绩）。
     /// </summary>
-    public List<OnlineLeaderboardEntryView> Entries
-    {
-        get;
-        set;
-    }
+    public List<OnlineLeaderboardEntryView> Entries { get; set; }
 
     /// <summary>
     /// 复制快照（条目逐项深拷贝，存储出入参防御性拷贝）。

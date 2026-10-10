@@ -46,47 +46,27 @@ public sealed class OnlineMatchResultEntry
     /// <summary>
     /// 获取或设置玩家标识。
     /// </summary>
-    public long PlayerId
-    {
-        get;
-        set;
-    }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 获取或设置名次（从 1 开始；并列为同一名次）。
     /// </summary>
-    public int Rank
-    {
-        get;
-        set;
-    }
+    public int Rank { get; set; }
 
     /// <summary>
     /// 获取或设置是否为胜方。
     /// </summary>
-    public bool IsWinner
-    {
-        get;
-        set;
-    }
+    public bool IsWinner { get; set; }
 
     /// <summary>
     /// 获取或设置玩法得分（玩法私有语义）。
     /// </summary>
-    public long Score
-    {
-        get;
-        set;
-    }
+    public long Score { get; set; }
 
     /// <summary>
     /// 获取或设置奖励明细（资产域变更行；为空表示无奖励）。
     /// </summary>
-    public List<OnlineAssetChangeLine> Rewards
-    {
-        get;
-        set;
-    }
+    public List<OnlineAssetChangeLine> Rewards { get; set; }
 
     /// <summary>
     /// 复制条目（奖励行逐项重建）。
