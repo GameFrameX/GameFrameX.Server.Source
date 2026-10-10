@@ -358,9 +358,9 @@ var result = await bagAgent.AddItem(1001, 10);
 HTTP ハンドラは `BaseHttpHandler` を継承し、`[HttpMessageMapping]` 属性でルートを登録します。2 番目/3 番目のコンストラクター引数は省略可能な位置引数です（request/response 型。それぞれ `HttpMessageRequestBase` / `HttpMessageResponseBase` を継承する必要があります）。レスポンス型のみ宣言する場合は第 2 引数に `null` をプレースホルダーとして渡します。未指定の場合は通常の JSON パスが使用され、Swagger の data には汎用オブジェクトが使われます。
 
 ```csharp
-[HttpMessageMapping(typeof(GetPlayerInfoHandler), typeof(GetPlayerInfoRequest), typeof(GetPlayerInfoResponse))]
+[HttpMessageMapping(typeof(GetPlayerInfoHttpHandler), typeof(GetPlayerInfoRequest), typeof(GetPlayerInfoResponse))]
 [Description("プレイヤー情報を取得")]
-public sealed class GetPlayerInfoHandler : BaseHttpHandler
+public sealed class GetPlayerInfoHttpHandler : BaseHttpHandler
 {
     public override async Task<MessageObject> ActionMessageObject(HttpActionContext context)
     {

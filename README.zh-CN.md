@@ -361,9 +361,9 @@ var result = await bagAgent.AddItem(1001, 10);
 HTTP 处理器继承 `BaseHttpHandler`，使用 `[HttpMessageMapping]` 特性注册路由。第 2/3 个构造参数为可选位置参数（request/response 类型，分别须继承 `HttpMessageRequestBase` / `HttpMessageResponseBase`）；仅声明响应类型时第二参数用 `null` 占位。未提供时走普通 JSON 路径，Swagger 的 data 使用通用对象。
 
 ```csharp
-[HttpMessageMapping(typeof(GetPlayerInfoHandler), typeof(GetPlayerInfoRequest), typeof(GetPlayerInfoResponse))]
+[HttpMessageMapping(typeof(GetPlayerInfoHttpHandler), typeof(GetPlayerInfoRequest), typeof(GetPlayerInfoResponse))]
 [Description("获取玩家信息")]
-public sealed class GetPlayerInfoHandler : BaseHttpHandler
+public sealed class GetPlayerInfoHttpHandler : BaseHttpHandler
 {
     public override async Task<MessageObject> ActionMessageObject(HttpActionContext context)
     {

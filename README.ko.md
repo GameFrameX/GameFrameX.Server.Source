@@ -356,9 +356,9 @@ var result = await bagAgent.AddItem(1001, 10);
 HTTP 핸들러는 `BaseHttpHandler`를 상속하고 `[HttpMessageMapping]` 속성으로 라우트를 등록합니다. 2번째/3번째 생성자 매개변수는 선택적 위치 매개변수입니다(request/response 타입, 각각 `HttpMessageRequestBase` / `HttpMessageResponseBase`를 상속해야 함). 응답 타입만 선언할 경우 두 번째 매개변수에 `null`을 자리표시자로 넣습니다. 제공하지 않으면 일반 JSON 경로를 사용하고 Swagger의 data에는 범용 객체가 사용됩니다.
 
 ```csharp
-[HttpMessageMapping(typeof(GetPlayerInfoHandler), typeof(GetPlayerInfoRequest), typeof(GetPlayerInfoResponse))]
+[HttpMessageMapping(typeof(GetPlayerInfoHttpHandler), typeof(GetPlayerInfoRequest), typeof(GetPlayerInfoResponse))]
 [Description("플레이어 정보 가져오기")]
-public sealed class GetPlayerInfoHandler : BaseHttpHandler
+public sealed class GetPlayerInfoHttpHandler : BaseHttpHandler
 {
     public override async Task<MessageObject> ActionMessageObject(HttpActionContext context)
     {
