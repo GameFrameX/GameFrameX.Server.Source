@@ -53,8 +53,8 @@ public static class ProtoBufSerializerHelper
     /// </remarks>
     public static T Deserialize<T>(byte[] data, T instance)
     {
-        ArgumentNullException.ThrowIfNull(data, nameof(data));
-        ArgumentNullException.ThrowIfNull(instance, nameof(instance));
+        ArgumentNullException.ThrowIfNull(data);
+        ArgumentNullException.ThrowIfNull(instance);
 
         if (data.Length == 0)
         {
