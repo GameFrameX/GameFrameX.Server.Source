@@ -102,7 +102,7 @@ public static class ComponentRegister
             assembly = Assembly.GetEntryAssembly();
         }
 
-        ArgumentNullException.ThrowIfNull(assembly, nameof(assembly));
+        ArgumentNullException.ThrowIfNull(assembly);
         var baseCompName = typeof(BaseComponent);
         var types = assembly.GetTypes();
         foreach (var type in types)

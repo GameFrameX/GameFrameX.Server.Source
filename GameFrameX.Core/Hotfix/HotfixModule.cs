@@ -466,7 +466,7 @@ internal sealed class HotfixModule
     /// <returns>是否添加成功。</returns>
     private bool AddAgent(Type type)
     {
-        ArgumentNullException.ThrowIfNull(type, nameof(type));
+        ArgumentNullException.ThrowIfNull(type);
         if (!type.IsImplWithInterface(typeof(IComponentAgent)))
         {
             return false;

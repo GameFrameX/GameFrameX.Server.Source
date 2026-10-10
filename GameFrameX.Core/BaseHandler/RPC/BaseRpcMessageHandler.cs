@@ -72,8 +72,8 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
     /// <returns>返回是否初始化成功,true:成功,false:失败</returns>
     public virtual Task<bool> Init(INetworkMessage message, INetWorkChannel netWorkChannel)
     {
-        ArgumentNullException.ThrowIfNull(message, nameof(message));
-        ArgumentNullException.ThrowIfNull(netWorkChannel, nameof(netWorkChannel));
+        ArgumentNullException.ThrowIfNull(message);
+        ArgumentNullException.ThrowIfNull(netWorkChannel);
         if (message is not TRequest requestMessage)
         {
             // Localization: CoreExceptions.Message.TypeCastError - 消息类型错误, {0} to: {1}
@@ -156,8 +156,8 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
     /// <returns>动作执行任务</returns>
     internal async Task InnerActionAsync(TRequest request, TResponse response)
     {
-        ArgumentNullException.ThrowIfNull(request, nameof(request));
-        ArgumentNullException.ThrowIfNull(response, nameof(response));
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(response);
         if (GlobalSettings.CurrentSetting.IsMonitorMessageTimeOut)
         {
             _stopwatch.Restart();
