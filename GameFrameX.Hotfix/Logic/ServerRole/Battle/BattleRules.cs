@@ -115,30 +115,7 @@ internal static class BattleRules
 
         while (atkWins < winsNeeded && defWins < winsNeeded)
         {
-            double atkPower;
-            double defPower;
-            while (true)
-            {
-                attempts++;
-                if (attempts > maxAttempts)
-                {
-                    // 护栏触发：以尝试次数奇偶交替打破平局（攻/守交替受益），保证有界终止。
-                    atkPower = attempts % 2 == 1 ? 1 : -1;
-                    defPower = -atkPower;
-                    break;
-                }
-
-                var atkRoll = rollIndex < rolls.Count ? rolls[rollIndex] : 0.5;
-                rollIndex++;
-                var defRoll = rollIndex < rolls.Count ? rolls[rollIndex] : 0.5;
-                rollIndex++;
-                atkPower = RoundPower(atkRating, atkRoll);
-                defPower = RoundPower(defRating, defRoll);
-                if (atkPower != defPower)
-                {
-                    break;
-                }
-            }
+            var (atkPower, defPower) = ResolveRoundPower(atkRating, defRating, rolls, ref rollIndex, ref attempts, maxAttempts);
 
             var atkWin = atkPower > defPower;
             if (atkWin)
@@ -160,6 +137,50 @@ internal static class BattleRules
         }
 
         return (rounds, atkWins > defWins);
+    }
+
+    /// <summary>
+    /// 求解单回合双方战力：平局重掷（每次重掷仍前进 rolls 游标），护栏触发后按尝试次数奇偶交替破平局。
+    /// </summary>
+    /// <param name="atkRating">攻方评分。</param>
+    /// <param name="defRating">守方评分。</param>
+    /// <param name="rolls">注入的随机数序列（[0,1)）。</param>
+    /// <param name="rollIndex">rolls 消费游标（0.5 兜底消费也前进）。</param>
+    /// <param name="attempts">尝试次数累计（跨回合累计，含护栏触发判定）。</param>
+    /// <param name="maxAttempts">尝试次数硬上限。</param>
+    /// <returns>该回合双方战力（保证不相等）。</returns>
+    private static (double AtkPower, double DefPower) ResolveRoundPower(int atkRating, int defRating, IReadOnlyList<double> rolls, ref int rollIndex, ref int attempts, int maxAttempts)
+    {
+        while (true)
+        {
+            attempts++;
+            if (attempts > maxAttempts)
+            {
+                // 护栏触发：以尝试次数奇偶交替打破平局（攻/守交替受益），保证有界终止。
+                var guardAtkPower = attempts % 2 == 1 ? 1 : -1;
+                return (guardAtkPower, -guardAtkPower);
+            }
+
+            var atkPower = RoundPower(atkRating, NextRoll(rolls, ref rollIndex));
+            var defPower = RoundPower(defRating, NextRoll(rolls, ref rollIndex));
+            if (atkPower != defPower)
+            {
+                return (atkPower, defPower);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 取下一个随机数：序列耗尽后按 0.5 兜底（游标仍前进，保持消费计数一致）。
+    /// </summary>
+    /// <param name="rolls">注入的随机数序列（[0,1)）。</param>
+    /// <param name="rollIndex">rolls 消费游标。</param>
+    /// <returns>随机数（序列耗尽回落 0.5）。</returns>
+    private static double NextRoll(IReadOnlyList<double> rolls, ref int rollIndex)
+    {
+        var roll = rollIndex < rolls.Count ? rolls[rollIndex] : 0.5;
+        rollIndex++;
+        return roll;
     }
 
     /// <summary>
