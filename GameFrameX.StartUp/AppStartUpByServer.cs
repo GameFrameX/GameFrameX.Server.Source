@@ -81,20 +81,23 @@ public abstract partial class AppStartUpBase
     /// <param name="messageDecompressHandler">消息解码时使用的解压处理器；如果为空则不处理压缩消息 / Decompression handler used when decoding messages; no decompression processing if null</param>
     /// <param name="baseHandler">HTTP 处理器列表，用于处理不同的 HTTP 请求 / HTTP handler list for processing different HTTP requests</param>
     /// <param name="httpFactory">HTTP 处理器工厂，根据命令标识符创建对应的处理器实例 / HTTP handler factory that creates corresponding handler instances based on command identifiers</param>
-    /// <param name="aopHandlerTypes">AOP 处理器列表，用于在 HTTP 请求处理前后执行额外的逻辑 / AOP handler list for executing additional logic before and after HTTP request processing</param>
     /// <param name="minimumLevelLogLevel">日志记录的最小级别，用于控制日志输出 / Minimum level for logging to control log output</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     protected async Task StartServerAsync<TMessageDecoderHandler, TMessageEncoderHandler>(
         IMessageCompressHandler messageCompressHandler,
         IMessageDecompressHandler messageDecompressHandler,
-        List<BaseHttpHandler> baseHandler, Func<string, BaseHttpHandler> httpFactory, List<IHttpAopHandler> aopHandlerTypes = null, LogLevel minimumLevelLogLevel = LogLevel.Debug)
+        List<BaseHttpHandler> baseHandler, Func<string, BaseHttpHandler> httpFactory, LogLevel minimumLevelLogLevel = LogLevel.Debug)
         where TMessageDecoderHandler : class, IMessageDecoderHandler, new()
         where TMessageEncoderHandler : class, IMessageEncoderHandler, new()
     {
         MessageHelper.SetMessageDecoderHandler(Activator.CreateInstance<TMessageDecoderHandler>(), messageDecompressHandler);
         MessageHelper.SetMessageEncoderHandler(Activator.CreateInstance<TMessageEncoderHandler>(), messageCompressHandler);
+        // aop 处理器装配：反射收集 IHttpAopHandler 实现并按 Priority 升序，HTTP 拦截按声明优先级生效
+        var aopHandlers = AssemblyHelper.GetRuntimeImplementTypeNamesInstance<IHttpAopHandler>();
+        // 排序
+        aopHandlers.Sort((handlerX, handlerY) => handlerX.Priority.CompareTo(handlerY.Priority));
         // 启动服务器
-        await StartServer(baseHandler, httpFactory, aopHandlerTypes, minimumLevelLogLevel);
+        await StartServer(baseHandler, httpFactory, aopHandlers, minimumLevelLogLevel);
         // 设置全局启动状态
         GameAppRuntime.MarkStarted(DateTime.UtcNow);
     }

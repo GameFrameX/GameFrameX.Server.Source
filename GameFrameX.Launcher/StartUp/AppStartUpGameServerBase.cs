@@ -157,11 +157,8 @@ internal abstract class AppStartUpGameServerBase : AppStartUpRoleBase
     /// <returns>表示 hook 操作的异步任务 / A task representing the hook operation</returns>
     protected virtual async Task StartRoleServicesAsync()
     {
-        // aop 处理器装配：反射收集 IHttpAopHandler 实现并按 Priority 升序，HTTP 拦截按声明优先级生效
-        var aopHandlers = AssemblyHelper.GetRuntimeImplementTypeNamesInstance<IHttpAopHandler>();
-        aopHandlers.Sort((handlerX, handlerY) => handlerX.Priority.CompareTo(handlerY.Priority));
         HotfixManager.LoadHotfix(Setting);
-        await StartServerAsync<DefaultMessageDecoderHandler, DefaultMessageEncoderHandler>(new DefaultMessageCompressHandler(), new DefaultMessageDecompressHandler(), HotfixManager.GetListHttpHandler(), HotfixManager.GetHttpHandler, aopHandlers);
+        await StartServerAsync<DefaultMessageDecoderHandler, DefaultMessageEncoderHandler>(new DefaultMessageCompressHandler(), new DefaultMessageDecompressHandler(), HotfixManager.GetListHttpHandler(), HotfixManager.GetHttpHandler);
     }
 
     /// <summary>
