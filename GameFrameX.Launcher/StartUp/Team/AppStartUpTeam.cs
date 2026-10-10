@@ -28,35 +28,41 @@
 //  ==========================================================================================
 
 
-namespace GameFrameX.Launcher.StartUp.Social;
+namespace GameFrameX.Launcher.StartUp.Team;
 
 /// <summary>
-/// 社交服务器启动入口 —— 标准骨架 <see cref="AppStartUpStandardServerBase"/> 的参照实例。
+/// 组队服务器启动入口 —— 「社交通信」域标准 Role（骨架 <see cref="AppStartUpStandardServerBase"/>）。
 /// </summary>
 /// <remarks>
-/// The Social server startup entry — the reference instance of the standard skeleton
-/// <see cref="AppStartUpStandardServerBase"/>: the whole startup/stop/package sequence lives in
-/// the skeleton, and this class only declares the startup tag and the role-level default settings.
+/// The Team server startup entry — a standard role of the Communication domain on the
+/// <see cref="AppStartUpStandardServerBase"/> skeleton: the whole startup/stop/package sequence lives
+/// in the skeleton, and this class only declares the startup tag (name + domain-segment priority)
+/// and the role-level default settings.
+/// 启动优先级按域段约定分配（接入 3xx → 社交 4xx → 玩法 5xx → 经济 6xx → 治理 7xx，域内 ×10 递增），
+/// 保证全表唯一且多 Role 启动屏障顺序稳定。
 /// </remarks>
-// 显式优先级修复与 Game 同为缺省 1000 的冲突——Social 在主服务 Game 之后启动（值越小优先级越高）
-[StartUpTag(GameServerConst.Social.Name, 200)]
-internal sealed class AppStartUpSocial : AppStartUpStandardServerBase
+[StartUpTag(GameServerConst.Team.Name, 430)]
+internal sealed class AppStartUpTeam : AppStartUpStandardServerBase
 {
     /// <summary>
-    /// 创建 Social 服务器的缺省配置。
+    /// 创建 Team 服务器的缺省配置。
     /// </summary>
     /// <remarks>
-    /// Creates the Social role-level default settings.
-    /// 数据库连接地址优先从环境变量读取，避免在源码中硬编码凭证（消除 Sonar csharpsquid:S2068）。
+    /// Creates the Team role-level default settings.
+    /// 端口公式：InnerPort = 20000 + GameServerConst.Team.Id（5550）= 25550——Id 唯一 ⇒ 端口唯一，
+    /// 区间 [25000, 28000] 与既有 Game/Social/Http 端口零碰撞（C188 固化的端口分配约定）。
+    /// 数据库连接串优先从环境变量 GAMEFRAMEX_TEAM_DB_URL 读取（对齐 C75 / Sonar S2068 的
+    /// GAMEFRAMEX_&lt;SERVER&gt;_DB_URL 命名约定），未设置时回落不含凭证的本地占位地址；
+    /// 其余缺省对齐 Social 参照形态。
     /// </remarks>
-    /// <returns>Social 缺省配置 / The Social default settings</returns>
+    /// <returns>Team 缺省配置 / The Team default settings</returns>
     protected override AppSetting CreateDefaultSetting()
     {
         return new AppSetting
         {
-            ServerType = GameServerConst.Social.Name,
-            ServerId = GameServerConst.Social.Id,
-            InnerPort = 29400,
+            ServerType = GameServerConst.Team.Name,
+            ServerId = GameServerConst.Team.Id,
+            InnerPort = 20000 + GameServerConst.Team.Id,
             HttpIsDevelopment = true,
             IsDebug = true,
             IsDebugSend = true,
@@ -64,7 +70,7 @@ internal sealed class AppStartUpSocial : AppStartUpStandardServerBase
             IsDebugReceiveHeartBeat = false,
             IsDebugSendHeartBeat = false,
             // 数据库连接地址优先从环境变量读取，避免在源码中硬编码凭证（消除 Sonar csharpsquid:S2068）
-            DataBaseUrl = Environment.GetEnvironmentVariable("GAMEFRAMEX_SOCIAL_DB_URL") ?? "mongodb://127.0.0.1:27017/?authSource=admin",
+            DataBaseUrl = Environment.GetEnvironmentVariable("GAMEFRAMEX_TEAM_DB_URL") ?? "mongodb://127.0.0.1:27017/?authSource=admin",
             DataBaseName = "gameframex",
         };
     }

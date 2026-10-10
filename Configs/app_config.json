@@ -37,5 +37,192 @@
     "OnlineAppId": 1,
     "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
     "DataBaseName": "gameframex"
+  },
+  {
+    "ServerType": "Account",
+    "ServerId": 5050,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 25050,
+    "OnlineTenantId": 1,
+    "OnlineAppId": 1,
+    "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
+    "DataBaseName": "gameframex",
+    "HttpPort": 0
+  },
+  {
+    "ServerType": "Login",
+    "ServerId": 5030,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 25030,
+    "OnlineTenantId": 1,
+    "OnlineAppId": 1,
+    "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
+    "DataBaseName": "gameframex",
+    "HttpPort": 0
+  },
+  {
+    "ServerType": "Auth",
+    "ServerId": 5040,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 25040,
+    "OnlineTenantId": 1,
+    "OnlineAppId": 1,
+    "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
+    "DataBaseName": "gameframex",
+    "HttpPort": 0
+  },
+  {
+    "ServerType": "Gateway",
+    "ServerId": 5000,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 25000,
+    "OnlineTenantId": 1,
+    "OnlineAppId": 1,
+    "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
+    "DataBaseName": "gameframex",
+    "HttpPort": 0
+  },
+  {
+    "ServerType": "Chat",
+    "ServerId": 5510,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 25510,
+    "OnlineTenantId": 1,
+    "OnlineAppId": 1,
+    "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
+    "DataBaseName": "gameframex",
+    "HttpPort": 0
+  },
+  {
+    "ServerType": "Mail",
+    "ServerId": 5590,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 25590,
+    "OnlineTenantId": 1,
+    "OnlineAppId": 1,
+    "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
+    "DataBaseName": "gameframex",
+    "HttpPort": 0
+  },
+  {
+    "ServerType": "Friend",
+    "ServerId": 5540,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 25540,
+    "OnlineTenantId": 1,
+    "OnlineAppId": 1,
+    "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
+    "DataBaseName": "gameframex",
+    "HttpPort": 0
+  },
+  {
+    "ServerType": "Team",
+    "ServerId": 5550,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 25550,
+    "OnlineTenantId": 1,
+    "OnlineAppId": 1,
+    "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
+    "DataBaseName": "gameframex",
+    "HttpPort": 0
+  },
+  {
+    "ServerType": "Guild",
+    "ServerId": 5570,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 25570,
+    "OnlineTenantId": 1,
+    "OnlineAppId": 1,
+    "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
+    "DataBaseName": "gameframex",
+    "HttpPort": 0
+  },
+  {
+    "ServerType": "Match",
+    "ServerId": 7000,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 27000,
+    "OnlineTenantId": 1,
+    "OnlineAppId": 1,
+    "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
+    "DataBaseName": "gameframex",
+    "HttpPort": 0
+  },
+  {
+    "ServerType": "Room",
+    "ServerId": 7010,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 27010,
+    "OnlineTenantId": 1,
+    "OnlineAppId": 1,
+    "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
+    "DataBaseName": "gameframex",
+    "HttpPort": 0
+  },
+  {
+    "ServerType": "Scene",
+    "ServerId": 7020,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 27020,
+    "OnlineTenantId": 1,
+    "OnlineAppId": 1,
+    "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
+    "DataBaseName": "gameframex",
+    "HttpPort": 0
+  },
+  {
+    "ServerType": "World",
+    "ServerId": 7030,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 27030,
+    "OnlineTenantId": 1,
+    "OnlineAppId": 1,
+    "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
+    "DataBaseName": "gameframex",
+    "HttpPort": 0
+  },
+  {
+    "ServerType": "Battle",
+    "ServerId": 7040,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 27040,
+    "OnlineTenantId": 1,
+    "OnlineAppId": 1,
+    "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
+    "DataBaseName": "gameframex",
+    "HttpPort": 0
+  },
+  {
+    "ServerType": "Trade",
+    "ServerId": 7610,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 27610,
+    "OnlineTenantId": 1,
+    "OnlineAppId": 1,
+    "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
+    "DataBaseName": "gameframex",
+    "HttpPort": 0
+  },
+  {
+    "ServerType": "Auction",
+    "ServerId": 7620,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 27620,
+    "OnlineTenantId": 1,
+    "OnlineAppId": 1,
+    "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
+    "DataBaseName": "gameframex",
+    "HttpPort": 0
+  },
+  {
+    "ServerType": "Gm",
+    "ServerId": 8000,
+    "InnerHost": "0.0.0.0",
+    "InnerPort": 28000,
+    "OnlineTenantId": 1,
+    "OnlineAppId": 1,
+    "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
+    "DataBaseName": "gameframex",
+    "HttpPort": 0
   }
 ]
