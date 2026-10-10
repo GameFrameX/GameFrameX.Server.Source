@@ -35,7 +35,6 @@ using GameFrameX.Core.Session;
 using GameFrameX.Apps.Player.Player.Entity;
 using GameFrameX.DataBase;
 using GameFrameX.Hotfix.Logic.Server;
-using GameFrameX.Proto.BuiltIn;
 
 namespace GameFrameX.Hotfix.Logic.Player.Login;
 

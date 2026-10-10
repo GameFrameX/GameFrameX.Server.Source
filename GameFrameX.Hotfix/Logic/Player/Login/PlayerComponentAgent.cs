@@ -38,7 +38,6 @@ using GameFrameX.Hotfix.Logic.Player.Attribute;
 using GameFrameX.Hotfix.Logic.Player.Mail;
 using GameFrameX.Hotfix.Logic.Server;
 using GameFrameX.Core.Events;
-using GameFrameX.Proto.BuiltIn;
 
 namespace GameFrameX.Hotfix.Logic.Player.Login;
 
