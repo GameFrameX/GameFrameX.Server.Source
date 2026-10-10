@@ -98,7 +98,7 @@ public sealed class RoleRouteTable
     /// <returns>双视图快照 / The dual-view snapshot</returns>
     public static RoleRouteTable FromInstances(IEnumerable<InstanceDescriptor> liveInstances)
     {
-        ArgumentNullException.ThrowIfNull(liveInstances, nameof(liveInstances));
+        ArgumentNullException.ThrowIfNull(liveInstances);
 
         var instancesById = new Dictionary<string, InstanceDescriptor>(StringComparer.Ordinal);
         var activeByRole = new Dictionary<string, List<InstanceDescriptor>>(StringComparer.Ordinal);

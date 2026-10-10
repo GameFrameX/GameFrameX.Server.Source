@@ -92,7 +92,7 @@ public sealed class PlayerRouteResolver : IPlayerRouteResolver
     /// <param name="fastPath">Tier 1 快路径提供方（null 跳过 Tier 1）/ Tier 1 fast path (null skips Tier 1)</param>
     public PlayerRouteResolver(IPlayerRouteStore store, IPlayerRouteFastPath fastPath = null)
     {
-        ArgumentNullException.ThrowIfNull(store, nameof(store));
+        ArgumentNullException.ThrowIfNull(store);
         _store = store;
         _fastPath = fastPath;
     }

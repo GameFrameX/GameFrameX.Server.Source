@@ -181,7 +181,7 @@ public sealed class DiscoveryRegistry : IDisposable
     /// <param name="ttlCleanupInterval">过期清理周期；缺省 5s / The cleanup period; defaults to 5 s</param>
     public DiscoveryRegistry(IHeartbeatStore heartbeatStore, IPlayerRouteStore playerRouteStore = null, InstanceDescriptor selfDescriptor = null, TimeSpan? heartbeatInterval = null, TimeSpan? ttlCleanupInterval = null)
     {
-        ArgumentNullException.ThrowIfNull(heartbeatStore, nameof(heartbeatStore));
+        ArgumentNullException.ThrowIfNull(heartbeatStore);
 
         _heartbeatStore = heartbeatStore;
         _playerRouteStore = playerRouteStore;

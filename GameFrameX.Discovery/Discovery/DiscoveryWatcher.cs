@@ -169,7 +169,7 @@ public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
     /// <param name="stalenessThreshold">判活阈值；缺省 3 × 轮询间隔（15s）/ The staleness threshold; defaults to 3 × the poll interval (15 s)</param>
     public DiscoveryWatcher(IHeartbeatStore heartbeatStore, TimeSpan? pollInterval = null, TimeSpan? stalenessThreshold = null)
     {
-        ArgumentNullException.ThrowIfNull(heartbeatStore, nameof(heartbeatStore));
+        ArgumentNullException.ThrowIfNull(heartbeatStore);
 
         _heartbeatStore = heartbeatStore;
         _pollInterval = pollInterval ?? DefaultPollInterval;
@@ -201,7 +201,7 @@ public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
     /// <param name="events">事件订阅者 / The subscriber</param>
     public void Subscribe(IRoleInstanceEvents events)
     {
-        ArgumentNullException.ThrowIfNull(events, nameof(events));
+        ArgumentNullException.ThrowIfNull(events);
 
         lock (_subscribersLock)
         {

@@ -65,7 +65,7 @@ public static class ActiveDiscoveryRuntime
     /// <exception cref="ArgumentNullException">当 <paramref name="registry"/> 为 null 时抛出 / Thrown when <paramref name="registry"/> is null</exception>
     public static void Bind(DiscoveryRegistry registry)
     {
-        ArgumentNullException.ThrowIfNull(registry, nameof(registry));
+        ArgumentNullException.ThrowIfNull(registry);
 
         _registry = registry;
     }

@@ -65,7 +65,7 @@ public sealed class PlayerRouteSyncTarget : IPlayerRouteSyncTarget
     /// <param name="store">玩家路由存储适配 / The player-route storage seam</param>
     public PlayerRouteSyncTarget(IPlayerRouteStore store)
     {
-        ArgumentNullException.ThrowIfNull(store, nameof(store));
+        ArgumentNullException.ThrowIfNull(store);
         _store = store;
     }
 
@@ -85,7 +85,7 @@ public sealed class PlayerRouteSyncTarget : IPlayerRouteSyncTarget
     /// <exception cref="PlayerRouteStaleException">当控制库中的版本已不满足 current+1 时抛出 / Thrown when the persisted version no longer satisfies current+1</exception>
     public async Task UpsertAsync(PlayerRouteRecord record)
     {
-        ArgumentNullException.ThrowIfNull(record, nameof(record));
+        ArgumentNullException.ThrowIfNull(record);
 
         var playerId = record.PlayerId;
         var instanceId = record.InstanceId;

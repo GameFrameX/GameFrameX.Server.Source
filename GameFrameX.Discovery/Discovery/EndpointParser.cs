@@ -76,7 +76,7 @@ public static class EndpointParser
     /// <exception cref="EndpointFormatException">当 scheme 缺失/不受支持、host 缺失、端口缺失或越界时抛出 / Thrown on missing/unsupported scheme, missing host, or missing/out-of-range port</exception>
     public static ParsedEndpoint Parse(string endpoint)
     {
-        ArgumentNullException.ThrowIfNull(endpoint, nameof(endpoint));
+        ArgumentNullException.ThrowIfNull(endpoint);
 
         var trimmed = endpoint.Trim();
         if (trimmed.Length == 0)

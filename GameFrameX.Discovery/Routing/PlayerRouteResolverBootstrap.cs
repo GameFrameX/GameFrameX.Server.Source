@@ -94,7 +94,7 @@ public static class PlayerRouteResolverBootstrap
     /// <returns>是否为本进程首次装配（false 表示已激活，本次调用为 no-op） / true on first attach, false on subsequent calls</returns>
     public static async Task<bool> Attach(IPlayerRouteStore store, IPlayerRouteFastPath fastPath = null)
     {
-        ArgumentNullException.ThrowIfNull(store, nameof(store));
+        ArgumentNullException.ThrowIfNull(store);
 
         if (Interlocked.CompareExchange(ref _attached, 1, 0) != 0)
         {
