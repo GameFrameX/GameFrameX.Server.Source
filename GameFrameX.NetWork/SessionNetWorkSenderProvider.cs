@@ -40,7 +40,7 @@ internal sealed class SessionNetWorkSenderProvider : INetWorkSenderProvider
 
     public INetWorkSender Create(IGameAppSession session)
     {
-        ArgumentNullException.ThrowIfNull(session, nameof(session));
+        ArgumentNullException.ThrowIfNull(session);
         return new SessionNetWorkSender(session);
     }
 }

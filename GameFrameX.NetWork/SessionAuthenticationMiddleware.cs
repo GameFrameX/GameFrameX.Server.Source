@@ -94,7 +94,7 @@ public sealed class SessionAuthenticationMiddleware : MiddlewareBase
     /// <param name="options">鉴权配置 / The authentication options</param>
     public SessionAuthenticationMiddleware(SessionAuthenticationOptions options)
     {
-        ArgumentNullException.ThrowIfNull(options, nameof(options));
+        ArgumentNullException.ThrowIfNull(options);
         _options = options;
     }
 

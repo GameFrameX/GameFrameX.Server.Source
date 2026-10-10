@@ -78,7 +78,7 @@ public class DefaultMessageDecoderHandler : BaseMessageDecoderHandler
             reader.TryReadBytesValue((int)(totalLength - PackageHeaderLength), out var messageData);
             if (messageObjectHeader.ZipFlag > 0)
             {
-                ArgumentNullException.ThrowIfNull(DecompressHandler, nameof(DecompressHandler));
+                ArgumentNullException.ThrowIfNull(DecompressHandler);
                 messageData = DecompressHandler.Handler(messageData);
             }
 

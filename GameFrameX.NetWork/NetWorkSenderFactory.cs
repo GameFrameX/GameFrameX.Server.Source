@@ -40,7 +40,7 @@ internal static class NetWorkSenderFactory
 
     public static INetWorkSender Create(IGameAppSession session)
     {
-        ArgumentNullException.ThrowIfNull(session, nameof(session));
+        ArgumentNullException.ThrowIfNull(session);
         var sessionType = session.GetType();
         return ResolveProvider(sessionType).Create(session);
     }

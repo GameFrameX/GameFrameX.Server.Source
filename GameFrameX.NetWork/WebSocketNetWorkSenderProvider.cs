@@ -42,7 +42,7 @@ internal sealed class WebSocketNetWorkSenderProvider : INetWorkSenderProvider
 
     public INetWorkSender Create(IGameAppSession session)
     {
-        ArgumentNullException.ThrowIfNull(session, nameof(session));
+        ArgumentNullException.ThrowIfNull(session);
         var webSocketSession = session as WebSocketSession
                                // Localization: NetWork.SessionTypeCastInvalid - 会话类型 '{0}' 无法转换为 '{1}'
                                ?? throw new InvalidCastException(LocalizationService.GetString(Localization.Keys.NetWork.SessionTypeCastInvalid, session.GetType().FullName, typeof(WebSocketSession).FullName));

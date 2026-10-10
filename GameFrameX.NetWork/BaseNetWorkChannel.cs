@@ -74,9 +74,9 @@ public abstract class BaseNetWorkChannel : INetWorkChannel
     /// <param name="sender">网络发送器 / Network sender</param>
     public BaseNetWorkChannel(IGameAppSession session, AppSetting setting, INetWorkSender sender)
     {
-        ArgumentNullException.ThrowIfNull(session, nameof(session));
-        ArgumentNullException.ThrowIfNull(setting, nameof(setting));
-        ArgumentNullException.ThrowIfNull(sender, nameof(sender));
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(setting);
+        ArgumentNullException.ThrowIfNull(sender);
         GameAppSession = session;
         _sender = sender;
         Setting = setting;
@@ -165,7 +165,7 @@ public abstract class BaseNetWorkChannel : INetWorkChannel
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     public virtual async Task WriteAsync(INetworkMessage msg, int errorCode = 0)
     {
-        ArgumentNullException.ThrowIfNull(msg, nameof(msg));
+        ArgumentNullException.ThrowIfNull(msg);
         var responseErrorCode = 0;
         if (msg is IResponseMessage responseMessage)
         {

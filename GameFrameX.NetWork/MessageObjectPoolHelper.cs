@@ -118,7 +118,7 @@ public static class MessageObjectPoolHelper
     /// </remarks>
     public static IMessageObject Get(Type type)
     {
-        ArgumentNullException.ThrowIfNull(type, nameof(type));
+        ArgumentNullException.ThrowIfNull(type);
 
         // Validate that the type implements IMessageObject / 验证类型是否实现了 IMessageObject
         if (!typeof(IMessageObject).IsAssignableFrom(type))
@@ -211,7 +211,7 @@ public static class MessageObjectPoolHelper
     /// <exception cref="ArgumentNullException">Thrown when obj is null / 当 obj 为 null 时抛出</exception>
     public static void Return<T>(T obj) where T : class, IMessageObject, new()
     {
-        ArgumentNullException.ThrowIfNull(obj, nameof(obj));
+        ArgumentNullException.ThrowIfNull(obj);
         GetPool<T>().Return(obj);
     }
 
@@ -228,7 +228,7 @@ public static class MessageObjectPoolHelper
     /// </remarks>
     public static void Return(IMessageObject obj)
     {
-        ArgumentNullException.ThrowIfNull(obj, nameof(obj));
+        ArgumentNullException.ThrowIfNull(obj);
 
         var objType = obj.GetType();
 

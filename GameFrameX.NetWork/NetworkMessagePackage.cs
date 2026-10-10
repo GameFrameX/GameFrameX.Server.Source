@@ -163,8 +163,8 @@ public sealed class NetworkMessagePackage : INetworkMessagePackage
     /// <returns>新创建并初始化完成的 NetworkMessagePackage 实例 / The created network message package</returns>
     public static NetworkMessagePackage Create(INetworkMessage message, INetworkMessageHeader messageObjectHeader)
     {
-        ArgumentNullException.ThrowIfNull(messageObjectHeader, nameof(messageObjectHeader));
-        ArgumentNullException.ThrowIfNull(message, nameof(message));
+        ArgumentNullException.ThrowIfNull(messageObjectHeader);
+        ArgumentNullException.ThrowIfNull(message);
         var networkMessage = new NetworkMessagePackage();
         messageObjectHeader.OperationType = MessageProtoHelper.GetMessageOperationType(message);
         messageObjectHeader.MessageId = MessageProtoHelper.GetMessageIdByType(message);
@@ -197,9 +197,9 @@ public sealed class NetworkMessagePackage : INetworkMessagePackage
     /// <returns>新创建并初始化完成的 NetworkMessagePackage 实例 / The created network message package</returns>
     public static NetworkMessagePackage Create(INetworkMessageHeader messageObjectHeader, byte[] messageData, Type messageType)
     {
-        ArgumentNullException.ThrowIfNull(messageObjectHeader, nameof(messageObjectHeader));
-        ArgumentNullException.ThrowIfNull(messageData, nameof(messageData));
-        ArgumentNullException.ThrowIfNull(messageType, nameof(messageType));
+        ArgumentNullException.ThrowIfNull(messageObjectHeader);
+        ArgumentNullException.ThrowIfNull(messageData);
+        ArgumentNullException.ThrowIfNull(messageType);
         var networkMessagePackage = new NetworkMessagePackage();
         networkMessagePackage.SetMessageHeader(messageObjectHeader);
         networkMessagePackage.SetMessageData(messageData);
