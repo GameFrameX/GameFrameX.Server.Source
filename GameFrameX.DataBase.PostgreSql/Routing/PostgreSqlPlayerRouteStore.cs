@@ -72,7 +72,7 @@ public sealed class PostgreSqlPlayerRouteStore : IPlayerRouteStore
     /// <param name="dataSource">控制库数据源 / The control-database data source</param>
     public PostgreSqlPlayerRouteStore(NpgsqlDataSource dataSource)
     {
-        ArgumentNullException.ThrowIfNull(dataSource, nameof(dataSource));
+        ArgumentNullException.ThrowIfNull(dataSource);
         _dataSource = dataSource;
     }
 

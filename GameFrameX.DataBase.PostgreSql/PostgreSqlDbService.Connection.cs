@@ -52,7 +52,7 @@ public sealed partial class PostgreSqlDbService
     /// <exception cref="ArgumentNullException">当 <paramref name="dbOptions"/>、其 ConnectionString 或 Name 为 null 时抛出 / Thrown when <paramref name="dbOptions"/>, its ConnectionString, or its Name is null</exception>
     public async Task<bool> Open(DbOptions dbOptions)
     {
-        ArgumentNullException.ThrowIfNull(dbOptions, nameof(dbOptions));
+        ArgumentNullException.ThrowIfNull(dbOptions);
         ArgumentNullException.ThrowIfNull(dbOptions.ConnectionString, nameof(dbOptions.ConnectionString));
         ArgumentNullException.ThrowIfNull(dbOptions.Name, nameof(dbOptions.Name));
         var connectionTarget = BuildConnectionTargetTag(dbOptions.ConnectionString, dbOptions.Name);

@@ -567,7 +567,7 @@ public sealed partial class PostgreSqlDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
-        ArgumentNullException.ThrowIfNull(selector, nameof(selector));
+        ArgumentNullException.ThrowIfNull(selector);
         var states = await ExecuteReadWithRetryAsync(async token => await QueryDocumentListAsync<TState>(context => BuildRowQuery<TState>(context, filter, token), token).ConfigureAwait(false), cancellationToken, nameof(FindProjectedAsync), () => new List<TState>()).ConfigureAwait(false);
         var projector = selector.Compile();
         var result = new List<TResult>(states.Count);
@@ -724,7 +724,7 @@ public sealed partial class PostgreSqlDbService
     /// <returns>排序后的查询 / The ordered query</returns>
     private static IOrderedQueryable<StateRow<TState>> ApplySort<TState>(IQueryable<StateRow<TState>> source, Expression<Func<TState, object>> sortExpression, bool descending) where TState : BaseCacheState, new()
     {
-        ArgumentNullException.ThrowIfNull(sortExpression, nameof(sortExpression));
+        ArgumentNullException.ThrowIfNull(sortExpression);
         var sortSelector = PostgreSqlStateRowExpressionRewriter.RewriteSelector(sortExpression);
         var sortMember = sortSelector.Body is UnaryExpression { NodeType: ExpressionType.Convert, } convert ? convert.Operand : sortSelector.Body;
         // 非可空值类型键转 Nullable<T> 再判 null：jsonb 缺键行在 SQL 侧为 NULL，必须与引用/可空键同样处理。

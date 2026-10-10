@@ -71,7 +71,7 @@ public sealed class PostgreSqlHeartbeatStore : IHeartbeatStore
     /// <param name="dataSource">控制库数据源 / The control-database data source</param>
     public PostgreSqlHeartbeatStore(NpgsqlDataSource dataSource)
     {
-        ArgumentNullException.ThrowIfNull(dataSource, nameof(dataSource));
+        ArgumentNullException.ThrowIfNull(dataSource);
         _dataSource = dataSource;
     }
 
@@ -113,7 +113,7 @@ public sealed class PostgreSqlHeartbeatStore : IHeartbeatStore
     /// <returns>异步任务 / Async task</returns>
     public async Task UpsertAsync(InstanceDescriptor instance, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(instance, nameof(instance));
+        ArgumentNullException.ThrowIfNull(instance);
         for (var attempt = 0; attempt < 2; attempt++)
         {
             try

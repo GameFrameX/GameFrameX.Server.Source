@@ -179,7 +179,7 @@ public sealed partial class PostgreSqlDbService
     /// <exception cref="DatabaseUnavailableException">当所有重试都失败后抛出 / Thrown when all retry attempts fail</exception>
     private async Task<T> ExecuteWithRetryAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken cancellationToken, IReadOnlyList<int> retryDelaysMilliseconds, string operationName, string operationType)
     {
-        ArgumentNullException.ThrowIfNull(operation, nameof(operation));
+        ArgumentNullException.ThrowIfNull(operation);
         cancellationToken.ThrowIfCancellationRequested();
         var operationStopwatch = Stopwatch.StartNew();
         Exception lastException = null;

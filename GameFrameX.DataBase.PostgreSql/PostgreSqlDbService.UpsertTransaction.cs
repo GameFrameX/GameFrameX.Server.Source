@@ -299,7 +299,7 @@ public sealed partial class PostgreSqlDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
-        ArgumentNullException.ThrowIfNull(action, nameof(action));
+        ArgumentNullException.ThrowIfNull(action);
         Exception lastException = null;
         for (var attempt = 0; attempt <= _transactionRetryDelaysMilliseconds.Length; attempt++)
         {
