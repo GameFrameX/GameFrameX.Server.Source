@@ -37,6 +37,7 @@ namespace GameFrameX.NetWork.HTTP;
 /// </summary>
 /// <remarks>
 /// HTTP message handler attribute for marking HTTP message handler classes.
+/// 本特性是 HTTP 处理器的唯一声明入口：路由命令派生、HTTP 方法、强类型请求 / 响应消息类型均在此声明（请求 / 响应为可选命名属性）。
 /// </remarks>
 [AttributeUsage(AttributeTargets.Class)]
 public sealed class HttpMessageMappingAttribute : Attribute
@@ -70,7 +71,7 @@ public sealed class HttpMessageMappingAttribute : Attribute
     /// <exception cref="InvalidOperationException">当 <paramref name="classType"/> 不是密封类或不以 <see cref="HTTPsuffix"/> 结尾时抛出 / Thrown when <paramref name="classType"/> is not sealed or does not end with <see cref="HTTPsuffix"/></exception>
     public HttpMessageMappingAttribute(Type classType)
     {
-        ArgumentNullException.ThrowIfNull(classType, nameof(classType));
+        ArgumentNullException.ThrowIfNull(classType);
         var className = classType.Name;
         if (!classType.IsSealed)
         {
@@ -112,4 +113,52 @@ public sealed class HttpMessageMappingAttribute : Attribute
     /// </remarks>
     /// <value>HTTP 请求方法类型 / HTTP request method type</value>
     public HttpMethodType HttpMethod { get; init; } = HttpMethodType.POST;
+
+    private Type _requestType;
+
+    /// <summary>
+    /// 获取或设置强类型请求消息的类型；未设置（<c>null</c>）时处理器走普通 JSON 执行路径，设置后走请求绑定 + DataAnnotations 校验路径。
+    /// </summary>
+    /// <remarks>
+    /// Gets or sets the typed request message type. When <c>null</c> (default) the handler takes the plain JSON execution path; when set, the typed request-binding path with DataAnnotations validation applies. 命名实参在特性首次物化（启动期路由注册或 Swagger 扫描）时赋值并校验，非法类型立即抛出，保持启动期 fail-fast。
+    /// </remarks>
+    /// <value>请求消息类型 / Request message type</value>
+    /// <exception cref="InvalidCastException">当赋值类型未继承自 <see cref="HttpMessageRequestBase"/> 时抛出 / Thrown when the assigned type does not inherit from <see cref="HttpMessageRequestBase"/></exception>
+    public Type RequestType
+    {
+        get => _requestType;
+        init
+        {
+            if (value != null && !value.IsSubclassOf(typeof(HttpMessageRequestBase)))
+            {
+                throw new InvalidCastException(LocalizationService.GetString(Localization.Keys.NetWorkHttp.MessageTypeInheritanceError, value.Name));
+            }
+
+            _requestType = value;
+        }
+    }
+
+    private Type _responseType;
+
+    /// <summary>
+    /// 获取或设置强类型响应消息的类型；未设置（<c>null</c>）时 Swagger 文档的 data 字段使用通用对象。
+    /// </summary>
+    /// <remarks>
+    /// Gets or sets the typed response message type. When <c>null</c> (default) the Swagger document falls back to a generic object for the data field. 本类型仅用于 OpenAPI 文档生成，运行时不消费；命名实参校验时机同 <see cref="RequestType"/>。
+    /// </remarks>
+    /// <value>响应消息类型 / Response message type</value>
+    /// <exception cref="InvalidCastException">当赋值类型未继承自 <see cref="HttpMessageResponseBase"/> 时抛出 / Thrown when the assigned type does not inherit from <see cref="HttpMessageResponseBase"/></exception>
+    public Type ResponseType
+    {
+        get => _responseType;
+        init
+        {
+            if (value != null && !value.IsSubclassOf(typeof(HttpMessageResponseBase)))
+            {
+                throw new InvalidCastException(LocalizationService.GetString(Localization.Keys.NetWorkHttp.ResponseMessageTypeInheritanceError, value.Name));
+            }
+
+            _responseType = value;
+        }
+    }
 }
