@@ -358,10 +358,10 @@ var result = await bagAgent.AddItem(1001, 10);
 
 #### HTTP Handler
 
-HTTP handlers inherit `BaseHttpHandler` and use the `[HttpMessageMapping]` attribute to register routes.
+HTTP handlers inherit `BaseHttpHandler` and use the `[HttpMessageMapping]` attribute to register routes. The 2nd/3rd constructor parameters are optional (request/response types, which must inherit from `HttpMessageRequestBase` / `HttpMessageResponseBase` respectively); pass `null` as a placeholder to declare only a response type. When omitted, the handler takes the plain JSON path and Swagger uses a generic object for the data.
 
 ```csharp
-[HttpMessageMapping(typeof(GetPlayerInfoHandler))]
+[HttpMessageMapping(typeof(GetPlayerInfoHandler), typeof(GetPlayerInfoRequest), typeof(GetPlayerInfoResponse))]
 [Description("Get player info")]
 public sealed class GetPlayerInfoHandler : BaseHttpHandler
 {
