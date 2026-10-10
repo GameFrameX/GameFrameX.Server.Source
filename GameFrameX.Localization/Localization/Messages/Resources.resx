@@ -1892,7 +1892,7 @@
   </data>
 
   <data name="Hotfix.Bag.OfflineNotifySendFailed" xml:space="preserve">
-    <value>ReqPlayerSendItemHttpHandler offline notification send failed, roleId: {0}, status: {1}, error: {2}, traceId: {3}</value>
+    <value>ReqPlayerSendItemHttpHandler offline notification send failed, playerId: {0}, status: {1}, error: {2}, traceId: {3}</value>
   </data>
 
   <data name="Hotfix.Event.SelfHandleException" xml:space="preserve">

@@ -34,15 +34,15 @@ namespace GameFrameX.Apps.Player.Reward.Entity;
 /// 统一奖励发放接口的请求。
 /// </summary>
 /// <remarks>
-/// 调用方必须保证 <see cref="RoleId"/> 命中目标玩家、<see cref="SourceType"/>/<see cref="SourceId"/>/<see cref="TraceId"/> 三者共同唯一。
-/// 幂等键 = <c>RoleId:SourceType:SourceId:TraceId</c>（B6），重复提交不重复发奖、短路返回上次结果。
+/// 调用方必须保证 <see cref="PlayerId"/> 命中目标玩家、<see cref="SourceType"/>/<see cref="SourceId"/>/<see cref="TraceId"/> 三者共同唯一。
+/// 幂等键 = <c>RoleId:SourceType:SourceId:TraceId</c>（B6），重复提交不重复发奖、短路返回上次结果。键格式为持久化契约，勿随命名统一改动。
 /// </remarks>
 public sealed class RewardGrantRequest
 {
     /// <summary>
     /// 目标玩家 ID（玩家 Actor 的 <c>ActorId</c>，等同玩家 <c>PlayerState.Id</c>）。
     /// </summary>
-    public long RoleId { get; set; }
+    public long PlayerId { get; set; }
 
     /// <summary>
     /// 奖励来源类型。禁止使用 <see cref="RewardSourceType.None"/> 拼接幂等键。

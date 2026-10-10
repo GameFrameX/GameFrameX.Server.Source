@@ -262,7 +262,7 @@ namespace GameFrameX.Proto.Proto
 		/// </summary>
 		[ProtoMember(1)]
 		[System.ComponentModel.Description("玩家ID")]
-		public long RoleId { get; set; }
+		public long PlayerId { get; set; }
 
 		/// <summary>
 		/// 座位索引
@@ -368,7 +368,7 @@ namespace GameFrameX.Proto.Proto
 		/// </summary>
 		[ProtoMember(8)]
 		[System.ComponentModel.Description("房主玩家ID")]
-		public long OwnerRoleId { get; set; }
+		public long OwnerPlayerId { get; set; }
 
 		/// <summary>
 		/// 玩家列表

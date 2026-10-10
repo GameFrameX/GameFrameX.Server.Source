@@ -37,8 +37,8 @@ internal sealed class ReqJoinRoomHandler : GlobalRpcComponentHandler<RoomCompone
     {
         try
         {
-            var roleId = RoomHandlerHelper.GetCurrentRoleId(NetWorkChannel);
-            await ComponentAgent.OnJoinRoomAsync(roleId, request, response);
+            var playerId = RoomHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            await ComponentAgent.OnJoinRoomAsync(playerId, request, response);
         }
         catch (Exception e)
         {

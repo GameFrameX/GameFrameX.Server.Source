@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 
+using System.Text.Json.Serialization;
 using GameFrameX.Core.Session;
 
 namespace GameFrameX.Hotfix.Logic.Http.Player;
@@ -49,7 +50,7 @@ public sealed class KickOffLineByUserIdPlayerHttpHandler : BaseHttpHandler
     public override Task<string> Action(HttpActionContext context)
     {
         var kickOffRequest = (KickOffLineByUserIdPlayerRequest)context.Request;
-        PlayerSessionManager.Instance.KickOffLineByPlayerId(kickOffRequest.RoleId);
+        PlayerSessionManager.Instance.KickOffLineByPlayerId(kickOffRequest.PlayerId);
         return Task.FromResult(HttpJsonResultData<string>.SuccessString());
     }
 }
@@ -57,10 +58,11 @@ public sealed class KickOffLineByUserIdPlayerHttpHandler : BaseHttpHandler
 public sealed class KickOffLineByUserIdPlayerRequest : HttpMessageRequestBase
 {
     /// <summary>
-    /// 角色Id
+    /// 角色Id（wire 字段名固定为 RoleId，不随属性名演进）
     /// </summary>
     [Description("角色Id")]
     [Required]
     [Range(1, long.MaxValue)]
-    public long RoleId { get; set; }
+    [JsonPropertyName("RoleId")]
+    public long PlayerId { get; set; }
 }

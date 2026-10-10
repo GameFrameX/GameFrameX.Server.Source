@@ -82,9 +82,9 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
         }
     }
 
-    public async Task OnCreateRoomAsync(long roleId, ReqCreateRoom request, RespCreateRoom response)
+    public async Task OnCreateRoomAsync(long playerId, ReqCreateRoom request, RespCreateRoom response)
     {
-        if (!CheckRoleId(roleId, response))
+        if (!CheckPlayerId(playerId, response))
         {
             return;
         }
@@ -99,7 +99,7 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
             return;
         }
 
-        if (TryGetActiveRoom(roleId, out var activeRoom))
+        if (TryGetActiveRoom(playerId, out var activeRoom))
         {
             if (CanAutoCloseBeforeEnterNewRoom(activeRoom))
             {
@@ -121,7 +121,7 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
             RoomId = roomId,
             Name = roomName,
             GameType = request.GameType,
-            OwnerRoleId = roleId,
+            OwnerRoleId = playerId,
             Status = RoomStatus.Waiting,
             MinPlayerCount = minPlayerCount,
             MaxPlayerCount = maxPlayerCount,
@@ -129,18 +129,18 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
             CreatedTime = now,
             UpdatedTime = now,
         };
-        room.PlayerIds.Add(roleId);
+        room.PlayerIds.Add(playerId);
         State.Rooms[roomId] = room;
-        State.PlayerRoomMap[roleId] = roomId;
+        State.PlayerRoomMap[playerId] = roomId;
 
         response.Room = await ToMessageAsync(room);
         await OwnerComponent.WriteStateAsync();
         await NotifyRoomChangedAsync(room, RoomChangeType.Created);
     }
 
-    public async Task OnJoinRoomAsync(long roleId, ReqJoinRoom request, RespJoinRoom response)
+    public async Task OnJoinRoomAsync(long playerId, ReqJoinRoom request, RespJoinRoom response)
     {
-        if (!CheckRoleId(roleId, response))
+        if (!CheckPlayerId(playerId, response))
         {
             return;
         }
@@ -150,7 +150,7 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
             return;
         }
 
-        if (TryGetActiveRoom(roleId, out var activeRoom))
+        if (TryGetActiveRoom(playerId, out var activeRoom))
         {
             if (activeRoom.RoomId == request.RoomId)
             {
@@ -184,19 +184,19 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
             return;
         }
 
-        room.PlayerIds.Add(roleId);
+        room.PlayerIds.Add(playerId);
         room.Status = room.PlayerIds.Count >= room.MinPlayerCount ? RoomStatus.Ready : RoomStatus.Waiting;
         room.UpdatedTime = TimerHelper.UnixTimeSeconds();
-        State.PlayerRoomMap[roleId] = room.RoomId;
+        State.PlayerRoomMap[playerId] = room.RoomId;
 
         response.Room = await ToMessageAsync(room);
         await OwnerComponent.WriteStateAsync();
         await NotifyRoomChangedAsync(room, RoomChangeType.Joined);
     }
 
-    public async Task OnLeaveRoomAsync(long roleId, ReqLeaveRoom request, RespLeaveRoom response)
+    public async Task OnLeaveRoomAsync(long playerId, ReqLeaveRoom request, RespLeaveRoom response)
     {
-        if (!CheckRoleId(roleId, response))
+        if (!CheckPlayerId(playerId, response))
         {
             return;
         }
@@ -206,35 +206,35 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
             return;
         }
 
-        if (!room.PlayerIds.Contains(roleId))
+        if (!room.PlayerIds.Contains(playerId))
         {
             response.ErrorCode = (int)OperationStatusCode.NotFound;
             response.Room = await ToMessageAsync(room);
             return;
         }
 
-        LeaveRoom(roleId, room);
+        LeaveRoom(playerId, room);
         response.Room = await ToMessageAsync(room);
         await OwnerComponent.WriteStateAsync();
         await NotifyRoomChangedAsync(room, RoomChangeType.Left);
     }
 
     [Service]
-    public virtual Task MarkPlayerDisconnected(long roleId)
+    public virtual Task MarkPlayerDisconnected(long playerId)
     {
-        if (roleId <= 0 || !TryGetActiveRoom(roleId, out _))
+        if (playerId <= 0 || !TryGetActiveRoom(playerId, out _))
         {
             return Task.CompletedTask;
         }
 
-        State.DisconnectedPlayerTimeMap[roleId] = TimerHelper.UnixTimeSeconds();
+        State.DisconnectedPlayerTimeMap[playerId] = TimerHelper.UnixTimeSeconds();
         return OwnerComponent.WriteStateAsync();
     }
 
     [Service]
-    public virtual Task MarkPlayerReconnected(long roleId)
+    public virtual Task MarkPlayerReconnected(long playerId)
     {
-        if (roleId <= 0 || !State.DisconnectedPlayerTimeMap.Remove(roleId))
+        if (playerId <= 0 || !State.DisconnectedPlayerTimeMap.Remove(playerId))
         {
             return Task.CompletedTask;
         }
@@ -242,9 +242,9 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
         return OwnerComponent.WriteStateAsync();
     }
 
-    public async Task OnStartRoomGameAsync(long roleId, ReqStartRoomGame request, RespStartRoomGame response)
+    public async Task OnStartRoomGameAsync(long playerId, ReqStartRoomGame request, RespStartRoomGame response)
     {
-        if (!CheckRoleId(roleId, response))
+        if (!CheckPlayerId(playerId, response))
         {
             return;
         }
@@ -254,7 +254,7 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
             return;
         }
 
-        if (room.OwnerRoleId != roleId || room.Status != RoomStatus.Ready)
+        if (room.OwnerRoleId != playerId || room.Status != RoomStatus.Ready)
         {
             response.ErrorCode = (int)OperationStatusCode.Forbidden;
             response.Room = await ToMessageAsync(room);
@@ -276,12 +276,12 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
         await NotifyRoomChangedAsync(room, RoomChangeType.Started);
     }
 
-    private void LeaveRoom(long roleId, RoomState room)
+    private void LeaveRoom(long playerId, RoomState room)
     {
         var previousStatus = room.Status;
-        room.PlayerIds.Remove(roleId);
-        State.PlayerRoomMap.Remove(roleId);
-        State.DisconnectedPlayerTimeMap.Remove(roleId);
+        room.PlayerIds.Remove(playerId);
+        State.PlayerRoomMap.Remove(playerId);
+        State.DisconnectedPlayerTimeMap.Remove(playerId);
         room.UpdatedTime = TimerHelper.UnixTimeSeconds();
         if (room.PlayerIds.Count == 0)
         {
@@ -290,7 +290,7 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
         }
         else
         {
-            if (room.OwnerRoleId == roleId)
+            if (room.OwnerRoleId == playerId)
             {
                 room.OwnerRoleId = room.PlayerIds[0];
             }
@@ -306,10 +306,10 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
 
     private async Task CloseRoomAsync(RoomState room, RoomChangeType changeType)
     {
-        foreach (var roleId in room.PlayerIds)
+        foreach (var playerId in room.PlayerIds)
         {
-            State.PlayerRoomMap.Remove(roleId);
-            State.DisconnectedPlayerTimeMap.Remove(roleId);
+            State.PlayerRoomMap.Remove(playerId);
+            State.DisconnectedPlayerTimeMap.Remove(playerId);
         }
 
         room.PlayerIds.Clear();
@@ -385,9 +385,9 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
         return await ToMessageAsync(room);
     }
 
-    private static bool CheckRoleId(long roleId, IResponseMessage response)
+    private static bool CheckPlayerId(long playerId, IResponseMessage response)
     {
-        if (roleId > 0)
+        if (playerId > 0)
         {
             return true;
         }
@@ -432,17 +432,17 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
         return true;
     }
 
-    private bool TryGetActiveRoom(long roleId, out RoomState room)
+    private bool TryGetActiveRoom(long playerId, out RoomState room)
     {
         room = null;
-        if (!State.PlayerRoomMap.TryGetValue(roleId, out var roomId))
+        if (!State.PlayerRoomMap.TryGetValue(playerId, out var roomId))
         {
             return false;
         }
 
         if (!State.Rooms.TryGetValue(roomId, out room) || room.Status == RoomStatus.Closed || room.Status == RoomStatus.Disbanded)
         {
-            State.PlayerRoomMap.Remove(roleId);
+            State.PlayerRoomMap.Remove(playerId);
             room = null;
             return false;
         }
@@ -461,7 +461,7 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
             PlayerCount = room.PlayerIds.Count,
             MinPlayerCount = room.MinPlayerCount,
             MaxPlayerCount = room.MaxPlayerCount,
-            OwnerRoleId = room.OwnerRoleId,
+            OwnerPlayerId = room.OwnerRoleId,
             Players = new List<RoomPlayerInfo>(),
             Round = room.Round,
             CreatedTime = room.CreatedTime,
@@ -470,36 +470,36 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
 
         for (var index = 0; index < room.PlayerIds.Count; index++)
         {
-            var roleId = room.PlayerIds[index];
-            message.Players.Add(await ToPlayerMessageAsync(room, roleId, index));
+            var playerId = room.PlayerIds[index];
+            message.Players.Add(await ToPlayerMessageAsync(room, playerId, index));
         }
 
         return message;
     }
 
-    private async Task<RoomPlayerInfo> ToPlayerMessageAsync(RoomState room, long roleId, int seatIndex)
+    private async Task<RoomPlayerInfo> ToPlayerMessageAsync(RoomState room, long playerId, int seatIndex)
     {
-        var playerState = await GameDb.FindAsync<PlayerState>(roleId);
+        var playerState = await GameDb.FindAsync<PlayerState>(playerId);
         return new RoomPlayerInfo
         {
-            RoleId = roleId,
+            PlayerId = playerId,
             SeatIndex = seatIndex,
-            IsOwner = roleId == room.OwnerRoleId,
-            Name = string.IsNullOrWhiteSpace(playerState?.Name) ? $"玩家{roleId}" : playerState.Name,
+            IsOwner = playerId == room.OwnerRoleId,
+            Name = string.IsNullOrWhiteSpace(playerState?.Name) ? $"玩家{playerId}" : playerState.Name,
             Avatar = playerState?.Avatar ?? 0,
-            OnlineStatus = GetOnlineStatus(roleId),
+            OnlineStatus = GetOnlineStatus(playerId),
             PlayerStatus = GetPlayerStatus(room.Status),
         };
     }
 
-    private RoomPlayerOnlineStatus GetOnlineStatus(long roleId)
+    private RoomPlayerOnlineStatus GetOnlineStatus(long playerId)
     {
-        if (State.DisconnectedPlayerTimeMap.ContainsKey(roleId))
+        if (State.DisconnectedPlayerTimeMap.ContainsKey(playerId))
         {
             return RoomPlayerOnlineStatus.Reconnecting;
         }
 
-        return PlayerSessionManager.Instance.GetByPlayerId(roleId) == null ? RoomPlayerOnlineStatus.Offline : RoomPlayerOnlineStatus.Online;
+        return PlayerSessionManager.Instance.GetByPlayerId(playerId) == null ? RoomPlayerOnlineStatus.Offline : RoomPlayerOnlineStatus.Online;
     }
 
     private static RoomPlayerStatus GetPlayerStatus(RoomStatus roomStatus)
@@ -548,33 +548,33 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
     private async Task CleanupExpiredDisconnectedPlayersAsync()
     {
         var now = TimerHelper.UnixTimeSeconds();
-        var roleIds = State.DisconnectedPlayerTimeMap
+        var playerIds = State.DisconnectedPlayerTimeMap
             .Where(pair => now - pair.Value >= DisconnectedPlayerAutoLeaveSeconds)
             .Select(pair => pair.Key)
             .ToList();
-        if (roleIds.Count == 0)
+        if (playerIds.Count == 0)
         {
             return;
         }
 
         var changed = false;
-        foreach (var roleId in roleIds)
+        foreach (var playerId in playerIds)
         {
-            if (PlayerSessionManager.Instance.GetByPlayerId(roleId) != null)
+            if (PlayerSessionManager.Instance.GetByPlayerId(playerId) != null)
             {
-                State.DisconnectedPlayerTimeMap.Remove(roleId);
+                State.DisconnectedPlayerTimeMap.Remove(playerId);
                 changed = true;
                 continue;
             }
 
-            if (!TryGetActiveRoom(roleId, out var room))
+            if (!TryGetActiveRoom(playerId, out var room))
             {
-                State.DisconnectedPlayerTimeMap.Remove(roleId);
+                State.DisconnectedPlayerTimeMap.Remove(playerId);
                 changed = true;
                 continue;
             }
 
-            LeaveRoom(roleId, room);
+            LeaveRoom(playerId, room);
             changed = true;
             await NotifyRoomChangedAsync(room, RoomChangeType.Left);
         }
@@ -604,10 +604,10 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
                 continue;
             }
 
-            foreach (var roleId in room.PlayerIds)
+            foreach (var playerId in room.PlayerIds)
             {
-                State.PlayerRoomMap.Remove(roleId);
-                State.DisconnectedPlayerTimeMap.Remove(roleId);
+                State.PlayerRoomMap.Remove(playerId);
+                State.DisconnectedPlayerTimeMap.Remove(playerId);
             }
 
             State.Rooms.Remove(roomId);

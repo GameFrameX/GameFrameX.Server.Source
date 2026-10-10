@@ -189,17 +189,17 @@ public class ServerComponentAgent : StateComponentAgent<ServerComponent, ServerS
 
     [Service]
     [Discard]
-    public virtual ValueTask AddOnlineRole(long roleId)
+    public virtual ValueTask AddOnlinePlayer(long playerId)
     {
-        OwnerComponent.OnlineSet.TryAdd(roleId, 0);
+        OwnerComponent.OnlineSet.TryAdd(playerId, 0);
         return ValueTask.CompletedTask;
     }
 
     [Service]
     [Discard]
-    public virtual ValueTask RemoveOnlineRole(long roleId)
+    public virtual ValueTask RemoveOnlinePlayer(long playerId)
     {
-        OwnerComponent.OnlineSet.TryRemove(roleId, out _);
+        OwnerComponent.OnlineSet.TryRemove(playerId, out _);
         return ValueTask.CompletedTask;
     }
 
@@ -208,9 +208,9 @@ public class ServerComponentAgent : StateComponentAgent<ServerComponent, ServerS
         var serverComp = await ActorManager.GetComponentAgent<ServerComponentAgent>();
         serverComp.Tell(async () =>
         {
-            foreach (var roleId in serverComp.OwnerComponent.OnlineSet.Keys)
+            foreach (var playerId in serverComp.OwnerComponent.OnlineSet.Keys)
             {
-                var roleComp = await ActorManager.GetComponentAgent<PlayerComponentAgent>(roleId);
+                var roleComp = await ActorManager.GetComponentAgent<PlayerComponentAgent>(playerId);
                 roleComp.Tell(() => func(roleComp));
             }
         });
@@ -270,9 +270,9 @@ public class ServerComponentAgent : StateComponentAgent<ServerComponent, ServerS
     }
 
     [Service]
-    public virtual Task<bool> IsOnline(long roleId)
+    public virtual Task<bool> IsOnline(long playerId)
     {
-        return Task.FromResult(OwnerComponent.OnlineSet.ContainsKey(roleId));
+        return Task.FromResult(OwnerComponent.OnlineSet.ContainsKey(playerId));
     }
 
     /*******************演示代码**************************/

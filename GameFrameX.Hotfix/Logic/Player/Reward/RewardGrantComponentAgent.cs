@@ -116,7 +116,7 @@ public class RewardGrantComponentAgent : StateComponentAgent<RewardGrantComponen
         if (normalItemDic.Count > 0)
         {
             var bagAgent = await ActorManager.GetComponentAgent<BagComponentAgent>();
-            var channel = PlayerSessionManager.Instance.GetByPlayerId(request.RoleId)?.WorkChannel;
+            var channel = PlayerSessionManager.Instance.GetByPlayerId(request.PlayerId)?.WorkChannel;
             var bagState = await bagAgent.UpdateChanged(channel, normalItemDic);
             var bagFailed = bagState.IsNull();
 
@@ -194,11 +194,11 @@ public class RewardGrantComponentAgent : StateComponentAgent<RewardGrantComponen
     }
 
     /// <summary>
-    /// 构造幂等键 <c>RoleId:SourceType:SourceId:TraceId</c>。
+    /// 构造幂等键 <c>RoleId:SourceType:SourceId:TraceId</c>（键格式为持久化契约，勿随命名统一改动）。
     /// </summary>
     private static string BuildTraceKey(RewardGrantRequest request)
     {
-        return request.RoleId + ":" + (int)request.SourceType + ":" + request.SourceId + ":" + request.TraceId;
+        return request.PlayerId + ":" + (int)request.SourceType + ":" + request.SourceId + ":" + request.TraceId;
     }
 
     /// <summary>

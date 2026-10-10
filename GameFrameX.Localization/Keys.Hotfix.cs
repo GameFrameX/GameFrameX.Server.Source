@@ -280,12 +280,12 @@ public static partial class Keys
         public static class Bag
         {
             /// <summary>
-            /// ReqPlayerSendItemHttpHandler 离线通知发送失败, roleId: {0}, status: {1}, error: {2}, traceId: {3}
+            /// ReqPlayerSendItemHttpHandler 离线通知发送失败, playerId: {0}, status: {1}, error: {2}, traceId: {3}
             /// </summary>
             /// <remarks>
             /// 键名: Hotfix.Bag.OfflineNotifySendFailed
             /// 用途: 发放道具后离线通知发送失败（非离线原因）时记录。
-            /// 参数: {0} - 角色ID, {1} - 投递状态, {2} - 错误信息, {3} - 追踪ID
+            /// 参数: {0} - 玩家ID, {1} - 投递状态, {2} - 错误信息, {3} - 追踪ID
             /// </remarks>
             public const string OfflineNotifySendFailed = "Hotfix.Bag.OfflineNotifySendFailed";
         }

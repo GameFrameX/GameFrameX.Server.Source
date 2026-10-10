@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 
+using System.Text.Json.Serialization;
 using GameFrameX.Apps.Common.EventData;
 using GameFrameX.Core.Session;
 using GameFrameX.Apps.Player.Bag.Entity;
@@ -50,7 +51,7 @@ public sealed class ReqPlayerSendItemHttpHandler : BaseHttpHandler
     public override async Task<string> Action(HttpActionContext context)
     {
         var sendItemRequest = (ReqPlayerSendItemRequest)context.Request;
-        var playerSession = PlayerSessionManager.Instance.GetByPlayerId(sendItemRequest.RoleId);
+        var playerSession = PlayerSessionManager.Instance.GetByPlayerId(sendItemRequest.PlayerId);
         Dictionary<int, long> itemDic = new Dictionary<int, long>();
 
         var tbItemConfig = ConfigComponent.Instance.GetConfig<TbItemConfig>();
@@ -68,27 +69,27 @@ public sealed class ReqPlayerSendItemHttpHandler : BaseHttpHandler
         }
 
         // 发送道具事件
-        var playerSendItemEventData = new PlayerSendItemEventArgs(sendItemRequest.RoleId, itemDic);
-        EventDispatcher.Dispatch(sendItemRequest.RoleId, playerSendItemEventData);
+        var playerSendItemEventData = new PlayerSendItemEventArgs(sendItemRequest.PlayerId, itemDic);
+        EventDispatcher.Dispatch(sendItemRequest.PlayerId, playerSendItemEventData);
         if (playerSession.IsNotNull())
         {
             // 玩家在线
-            var bagComponentAgent = await ActorManager.GetComponentAgent<BagComponentAgent>(sendItemRequest.RoleId);
+            var bagComponentAgent = await ActorManager.GetComponentAgent<BagComponentAgent>(sendItemRequest.PlayerId);
             await bagComponentAgent.UpdateChanged(playerSession.WorkChannel, itemDic);
         }
         else
         {
             // 玩家不在线
-            await UpdateOfflineBagAsync(sendItemRequest.RoleId, itemDic);
+            await UpdateOfflineBagAsync(sendItemRequest.PlayerId, itemDic);
         }
 
         return HttpJsonResultData<string>.SuccessString(JsonHelper.Serialize(new ReqPlayerSendItemResponse { Items = itemDic, }));
     }
 
     // 玩家不在线：直接落库并尝试发送道具变更通知（若玩家刚上线可立即收到；仍离线则按策略丢弃）
-    private static async Task UpdateOfflineBagAsync(long roleId, Dictionary<int, long> itemDic)
+    private static async Task UpdateOfflineBagAsync(long playerId, Dictionary<int, long> itemDic)
     {
-        var bagState = await GameDb.FindAsync<BagState>(roleId);
+        var bagState = await GameDb.FindAsync<BagState>(playerId);
 
         foreach (var item in itemDic)
         {
@@ -128,15 +129,15 @@ public sealed class ReqPlayerSendItemHttpHandler : BaseHttpHandler
         var notifyOptions = PlayerSendOptions.Notification();
         notifyOptions.OfflineStrategy = PlayerOfflineStrategy.Discard;
         var notifyResult = await UnifiedMessageSenderHolder.Sender.SendToPlayerAsync(
-            roleId,
+            playerId,
             notifyBagInfoChanged,
             notifyOptions);
         if (!notifyResult.IsSuccess && notifyResult.Status != PlayerDeliverStatus.Offline)
         {
-            // Localization: Hotfix.Bag.OfflineNotifySendFailed - ReqPlayerSendItemHttpHandler 离线通知发送失败, roleId: {0}, status: {1}, error: {2}, traceId: {3}
+            // Localization: Hotfix.Bag.OfflineNotifySendFailed - ReqPlayerSendItemHttpHandler 离线通知发送失败, playerId: {0}, status: {1}, error: {2}, traceId: {3}
             LogHelper.Warning(
                 LocalizationService.GetString(Localization.Keys.Hotfix.Bag.OfflineNotifySendFailed,
-                    roleId,
+                    playerId,
                     notifyResult.Status,
                     notifyResult.ErrorMessage,
                     notifyResult.TraceId));
@@ -146,10 +147,14 @@ public sealed class ReqPlayerSendItemHttpHandler : BaseHttpHandler
 
 public sealed class ReqPlayerSendItemRequest : HttpMessageRequestBase
 {
+    /// <summary>
+    /// 角色ID（wire 字段名固定为 RoleId，不随属性名演进）
+    /// </summary>
     [Required]
     [Description("角色ID")]
     [Range(1, long.MaxValue)]
-    public long RoleId { get; set; }
+    [JsonPropertyName("RoleId")]
+    public long PlayerId { get; set; }
 
     [Required] [Description("道具列表")] public Dictionary<int, long> Items { get; set; } = new Dictionary<int, long>();
 }

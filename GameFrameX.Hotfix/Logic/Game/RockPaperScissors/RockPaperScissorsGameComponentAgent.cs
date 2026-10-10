@@ -50,9 +50,9 @@ public class RockPaperScissorsGameComponentAgent : StateComponentAgent<RockPaper
         response.GameInfo = ToMessage(game, room.PlayerIds, CanRevealGestures(room.Status));
     }
 
-    public async Task OnSubmitGestureAsync(long roleId, ReqSubmitRockPaperScissorsGesture request, RespSubmitRockPaperScissorsGesture response)
+    public async Task OnSubmitGestureAsync(long playerId, ReqSubmitRockPaperScissorsGesture request, RespSubmitRockPaperScissorsGesture response)
     {
-        if (!CheckRoleId(roleId, response))
+        if (!CheckPlayerId(playerId, response))
         {
             return;
         }
@@ -70,7 +70,7 @@ public class RockPaperScissorsGameComponentAgent : StateComponentAgent<RockPaper
             return;
         }
 
-        if (room.Status != RoomStatus.Playing || !room.PlayerIds.Contains(roleId))
+        if (room.Status != RoomStatus.Playing || !room.PlayerIds.Contains(playerId))
         {
             response.ErrorCode = (int)OperationStatusCode.Forbidden;
             response.GameInfo = BuildGameInfo(room, false);
@@ -78,14 +78,14 @@ public class RockPaperScissorsGameComponentAgent : StateComponentAgent<RockPaper
         }
 
         var game = GetOrCreateGame(room.RoomId, room.Round);
-        if (game.GestureMap.ContainsKey(roleId))
+        if (game.GestureMap.ContainsKey(playerId))
         {
             response.ErrorCode = (int)OperationStatusCode.HasExist;
             response.GameInfo = ToMessage(game, room.PlayerIds, false);
             return;
         }
 
-        game.GestureMap[roleId] = request.Gesture;
+        game.GestureMap[playerId] = request.Gesture;
         var revealGestures = false;
         if (game.GestureMap.Count == room.PlayerIds.Count)
         {
@@ -104,9 +104,9 @@ public class RockPaperScissorsGameComponentAgent : StateComponentAgent<RockPaper
         await NotifyGameChangedAsync(room.PlayerIds, response.GameInfo);
     }
 
-    public async Task OnRestartGameAsync(long roleId, ReqRestartRockPaperScissorsGame request, RespRestartRockPaperScissorsGame response)
+    public async Task OnRestartGameAsync(long playerId, ReqRestartRockPaperScissorsGame request, RespRestartRockPaperScissorsGame response)
     {
-        if (!CheckRoleId(roleId, response))
+        if (!CheckPlayerId(playerId, response))
         {
             return;
         }
@@ -118,7 +118,7 @@ public class RockPaperScissorsGameComponentAgent : StateComponentAgent<RockPaper
             return;
         }
 
-        if (room.OwnerRoleId != roleId || room.Status != RoomStatus.Settled)
+        if (room.OwnerRoleId != playerId || room.Status != RoomStatus.Settled)
         {
             response.ErrorCode = (int)OperationStatusCode.Forbidden;
             response.GameInfo = BuildGameInfo(room, CanRevealGestures(room.Status));
@@ -170,9 +170,9 @@ public class RockPaperScissorsGameComponentAgent : StateComponentAgent<RockPaper
         return game;
     }
 
-    private static bool CheckRoleId(long roleId, IResponseMessage response)
+    private static bool CheckPlayerId(long playerId, IResponseMessage response)
     {
-        if (roleId > 0)
+        if (playerId > 0)
         {
             return true;
         }
@@ -212,16 +212,16 @@ public class RockPaperScissorsGameComponentAgent : StateComponentAgent<RockPaper
             return 0;
         }
 
-        var firstRoleId = playerIds[0];
-        var secondRoleId = playerIds[1];
-        var firstGesture = game.GestureMap[firstRoleId];
-        var secondGesture = game.GestureMap[secondRoleId];
+        var firstPlayerId = playerIds[0];
+        var secondPlayerId = playerIds[1];
+        var firstGesture = game.GestureMap[firstPlayerId];
+        var secondGesture = game.GestureMap[secondPlayerId];
         if (firstGesture == secondGesture)
         {
             return 0;
         }
 
-        return IsFirstWin(firstGesture, secondGesture) ? firstRoleId : secondRoleId;
+        return IsFirstWin(firstGesture, secondGesture) ? firstPlayerId : secondPlayerId;
     }
 
     private static bool IsFirstWin(RockPaperScissorsGesture firstGesture, RockPaperScissorsGesture secondGesture)
@@ -242,12 +242,12 @@ public class RockPaperScissorsGameComponentAgent : StateComponentAgent<RockPaper
         {
             RoomId = game.RoomId,
             Round = game.Round,
-            WinnerRoleId = revealGestures ? game.WinnerRoleId : 0,
-            Players = playerIds.Select(roleId => new RockPaperScissorsPlayerInfo
+            WinnerPlayerId = revealGestures ? game.WinnerRoleId : 0,
+            Players = playerIds.Select(playerId => new RockPaperScissorsPlayerInfo
             {
-                RoleId = roleId,
-                HasGesture = game.GestureMap.ContainsKey(roleId),
-                Gesture = revealGestures && game.GestureMap.TryGetValue(roleId, out var gesture) ? gesture : RockPaperScissorsGesture.None,
+                PlayerId = playerId,
+                HasGesture = game.GestureMap.ContainsKey(playerId),
+                Gesture = revealGestures && game.GestureMap.TryGetValue(playerId, out var gesture) ? gesture : RockPaperScissorsGesture.None,
             }).ToList(),
         };
     }
@@ -268,9 +268,9 @@ public class RockPaperScissorsGameComponentAgent : StateComponentAgent<RockPaper
             GameInfo = gameInfo,
         };
 
-        foreach (var roleId in playerIds)
+        foreach (var playerId in playerIds)
         {
-            var session = PlayerSessionManager.Instance.GetByPlayerId(roleId);
+            var session = PlayerSessionManager.Instance.GetByPlayerId(playerId);
             if (session != null)
             {
                 await session.WriteAsync(notify);

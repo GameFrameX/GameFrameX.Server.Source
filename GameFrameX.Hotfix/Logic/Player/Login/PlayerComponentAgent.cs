@@ -48,7 +48,7 @@ public class PlayerComponentAgent : StateComponentAgent<PlayerComponent, PlayerS
     {
         //移除在线玩家
         var serverComp = await ActorManager.GetComponentAgent<ServerComponentAgent>();
-        await serverComp.RemoveOnlineRole(ActorId);
+        await serverComp.RemoveOnlinePlayer(ActorId);
         EventDispatcher.Dispatch(ActorId, new OnRoleOfflineEventArgs());
         //下线后会被自动回收
         SetAutoRecycle(true);
@@ -83,7 +83,7 @@ public class PlayerComponentAgent : StateComponentAgent<PlayerComponent, PlayerS
 
         //加入在线玩家
         var serverComp = await ActorManager.GetComponentAgent<ServerComponentAgent>();
-        await serverComp.AddOnlineRole(ActorId);
+        await serverComp.AddOnlinePlayer(ActorId);
         EventDispatcher.Dispatch(ActorId, new OnRoleOnlineEventArgs());
 
         // 房间断线重连标记（房间系统）

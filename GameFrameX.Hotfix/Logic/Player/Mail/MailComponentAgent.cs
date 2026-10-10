@@ -454,7 +454,7 @@ public class MailComponentAgent : StateComponentAgent<MailComponent, MailBoxStat
         var rewardAgent = await ActorManager.GetComponentAgent<RewardGrantComponentAgent>();
         return await rewardAgent.GrantAsync(new RewardGrantRequest
         {
-            RoleId = ActorId,
+            PlayerId = ActorId,
             SourceType = RewardSourceType.Mail,
             SourceId = "mail:" + mail.MailId + ":slot:" + att.SlotId,
             TraceId = MailAttachmentClaim.BuildTrace(mail.CampaignId, mail.CampaignVersion, mail.MailId, att.SlotId),

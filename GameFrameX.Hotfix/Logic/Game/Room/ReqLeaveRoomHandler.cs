@@ -37,8 +37,8 @@ internal sealed class ReqLeaveRoomHandler : GlobalRpcComponentHandler<RoomCompon
     {
         try
         {
-            var roleId = RoomHandlerHelper.GetCurrentRoleId(NetWorkChannel);
-            await ComponentAgent.OnLeaveRoomAsync(roleId, request, response);
+            var playerId = RoomHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            await ComponentAgent.OnLeaveRoomAsync(playerId, request, response);
         }
         catch (Exception e)
         {

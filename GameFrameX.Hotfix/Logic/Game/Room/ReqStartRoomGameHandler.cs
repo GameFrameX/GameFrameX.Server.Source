@@ -37,8 +37,8 @@ internal sealed class ReqStartRoomGameHandler : GlobalRpcComponentHandler<RoomCo
     {
         try
         {
-            var roleId = RoomHandlerHelper.GetCurrentRoleId(NetWorkChannel);
-            await ComponentAgent.OnStartRoomGameAsync(roleId, request, response);
+            var playerId = RoomHandlerHelper.GetCurrentPlayerId(NetWorkChannel);
+            await ComponentAgent.OnStartRoomGameAsync(playerId, request, response);
         }
         catch (Exception e)
         {
