@@ -28,9 +28,11 @@
 //  ==========================================================================================
 
 using GameFrameX.Client.Bot;
+using GameFrameX.Localization;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.Proto.Proto;
 using GameFrameX.ProtoBuf.Net;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 
 internal static class Program
@@ -47,9 +49,9 @@ internal static class Program
         MessageProtoHelper.Init(typeof(ReqLogin).Assembly);
         WarmUpProtoSerializer();
 
-        LogHelper.Info(
-            "Bot options: bot-count={botCount}, tcp={tcpHost}:{tcpPort}, scenario={scenario}, disconnect-loop={disconnectLoop}, disconnect-after-login-seconds={disconnectAfterLoginSeconds}, run-seconds={runSeconds}",
-            options.BotCount, options.TcpHost, options.TcpPort, options.Scenario, options.EnableDisconnectLoop, options.DisconnectAfterLoginSeconds, options.RunSeconds);
+        // Localization: Client.Program.BotOptions - 机器人选项: 机器人数量={0}, tcp={1}:{2}, 场景={3}, 断开循环={4}, 登录后断开秒数={5}, 运行秒数={6}
+        LogHelper.Info(LocalizationService.GetString(Keys.Client.Program.BotOptions,
+            options.BotCount, options.TcpHost, options.TcpPort, options.Scenario, options.EnableDisconnectLoop, options.DisconnectAfterLoginSeconds, options.RunSeconds));
 
         using (var cts = new CancellationTokenSource())
         {

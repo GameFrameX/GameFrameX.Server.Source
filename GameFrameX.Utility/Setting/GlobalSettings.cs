@@ -132,25 +132,29 @@ public static class GlobalSettings
 
         if (setting.SaveDataInterval < 5000)
         {
-            LogHelper.Warning<string>("GlobalSettings.SetCurrentSetting {setting}", LocalizationService.GetString(Localization.Keys.Utility.Settings.SaveDataIntervalTooSmall, GlobalConst.SaveIntervalInMilliSeconds));
+            // Localization: Utility.GlobalSettings.SaveDataIntervalTooSmallLog - GlobalSettings.SetCurrentSetting SaveDataInterval小于5000毫秒，使用默认值为:{0} 毫秒
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.SaveDataIntervalTooSmallLog, GlobalConst.SaveIntervalInMilliSeconds));
             setting.SaveDataInterval = GlobalConst.SaveIntervalInMilliSeconds;
         }
 
         if (setting.HttpUrl.IsNullOrEmptyOrWhiteSpace())
         {
-            LogHelper.Warning<string>("GlobalSettings.SetCurrentSetting {setting}", LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.HttpUrlEmptyUseDefault, "/game/api/"));
+            // Localization: Utility.GlobalSettings.HttpUrlEmptyUseDefaultLog - GlobalSettings.SetCurrentSetting HttpUrl为空，使用默认值：/game/api/
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.HttpUrlEmptyUseDefaultLog));
             setting.HttpUrl = "/game/api/";
         }
 
         if (setting.NetWorkSendTimeOutSeconds < 1)
         {
-            LogHelper.Warning<string>("GlobalSettings.SetCurrentSetting {setting}", LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.NetworkTimeoutTooShort, 5));
+            // Localization: Utility.GlobalSettings.NetworkTimeoutTooShortLog - GlobalSettings.SetCurrentSetting NetWorkSendTimeOutSeconds小于1秒，使用默认值5秒
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.NetworkTimeoutTooShortLog));
             setting.NetWorkSendTimeOutSeconds = 5;
         }
 
         if (setting.ActorRecycleTime < 1)
         {
-            LogHelper.Warning<string>("GlobalSettings.SetCurrentSetting {setting}", LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.ActorRecycleTimeTooShort, 5));
+            // Localization: Utility.GlobalSettings.ActorRecycleTimeTooShortLog - GlobalSettings.SetCurrentSetting ActorRecycleTime小于1分钟，使用默认值5分钟
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.ActorRecycleTimeTooShortLog));
             setting.ActorRecycleTime = 5;
         }
 

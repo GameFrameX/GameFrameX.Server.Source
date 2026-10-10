@@ -27,6 +27,8 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using GameFrameX.Foundation.Localization.Core;
+
 namespace GameFrameX.NetWork.RemoteMessaging.Observability;
 
 /// <summary>
@@ -48,7 +50,8 @@ internal sealed class LoggingRemoteCallInterceptor : IRemoteCallInterceptor
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     public Task OnBeforeCallAsync(RemoteCallContext context, MessageObject request)
     {
-        LogHelper.Debug("RemoteCall 开始, Service: {serviceName}, Message: {messageType}, Timeout: {timeoutMs}ms", context.ServiceName, request.GetType().Name, context.TimeoutMs);
+        // Localization: RemoteMessaging.Observability.RemoteCallStarted - RemoteCall 开始, Service: {0}, Message: {1}, Timeout: {2}ms
+        LogHelper.Debug(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Observability.RemoteCallStarted, context.ServiceName, request.GetType().Name, context.TimeoutMs));
         return Task.CompletedTask;
     }
 
@@ -65,7 +68,8 @@ internal sealed class LoggingRemoteCallInterceptor : IRemoteCallInterceptor
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     public Task OnAfterCallAsync(RemoteCallContext context, MessageObject request, MessageObject response, long elapsedMs)
     {
-        LogHelper.Debug("RemoteCall 完成, Service: {serviceName}, Message: {messageType}, Elapsed: {elapsedMs}ms", context.ServiceName, request.GetType().Name, elapsedMs);
+        // Localization: RemoteMessaging.Observability.RemoteCallCompleted - RemoteCall 完成, Service: {0}, Message: {1}, Elapsed: {2}ms
+        LogHelper.Debug(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Observability.RemoteCallCompleted, context.ServiceName, request.GetType().Name, elapsedMs));
         return Task.CompletedTask;
     }
 
@@ -82,7 +86,8 @@ internal sealed class LoggingRemoteCallInterceptor : IRemoteCallInterceptor
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     public Task OnExceptionAsync(RemoteCallContext context, MessageObject request, Exception exception, long elapsedMs)
     {
-        LogHelper.Error(exception, "RemoteCall 异常, Service: {serviceName}, Message: {messageType}, Elapsed: {elapsedMs}ms", context.ServiceName, request.GetType().Name, elapsedMs);
+        // Localization: RemoteMessaging.Observability.RemoteCallException - RemoteCall 异常, Service: {0}, Message: {1}, Elapsed: {2}ms
+        LogHelper.Error(exception, LocalizationService.GetString(Localization.Keys.RemoteMessaging.Observability.RemoteCallException, context.ServiceName, request.GetType().Name, elapsedMs));
         return Task.CompletedTask;
     }
 }

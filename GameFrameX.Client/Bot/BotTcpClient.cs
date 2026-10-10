@@ -185,17 +185,20 @@ public sealed class BotTcpClient
             return false;
         }
 
-        LogHelper.Warning("IsInConnecting timeout ({0}ms), recreating session", ConnectingTimeoutMs);
+        // Localization: Client.Bot.Tcp.ConnectingTimeoutRecreateSession - 连接中状态超时（{0}毫秒），重建会话
+        LogHelper.Warning(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.Bot.Tcp.ConnectingTimeoutRecreateSession, ConnectingTimeoutMs));
         RecreateTcpSession();
         _connectingSince = null;
 
         if (m_RetryCount >= MaxRetryCount)
         {
+            // Localization: Client.MaxRetryReached - 重连次数已达到上限，停止尝试。
             LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.MaxRetryReached));
             return true;
         }
 
         m_RetryCount++;
+        // Localization: Client.RetryConnect - 未连接到服务器, 尝试重连 (尝试次数: {0}/{1})
         LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.RetryConnect, m_RetryCount, MaxRetryCount));
         m_TcpClient.Connect(new IPEndPoint(IPAddress.Parse(_serverHost), _serverPort));
         await Task.Delay(DelayTimes, cancellationToken);
@@ -231,6 +234,7 @@ public sealed class BotTcpClient
     private async Task<bool> HandleDisconnectedStateAsync(CancellationToken cancellationToken)
     {
         _connectingSince = null;
+        // Localization: Client.AttemptingToConnect - 尝试连接到服务器...
         LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.AttemptingToConnect));
         m_TcpClient.Connect(new IPEndPoint(IPAddress.Parse(_serverHost), _serverPort));
         await Task.Delay(DelayTimes, cancellationToken);
@@ -242,11 +246,13 @@ public sealed class BotTcpClient
 
         if (m_RetryCount >= MaxRetryCount)
         {
+            // Localization: Client.MaxRetryReached - 重连次数已达到上限，停止尝试。
             LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.MaxRetryReached));
             return true;
         }
 
         m_RetryCount++;
+        // Localization: Client.RetryConnect - 未连接到服务器, 尝试重连 (尝试次数: {0}/{1})
         LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.RetryConnect, m_RetryCount, MaxRetryCount));
         await Task.Delay(m_RetryDelay, cancellationToken);
         m_RetryDelay *= 2;
@@ -264,7 +270,8 @@ public sealed class BotTcpClient
         }
         catch (Exception e)
         {
-            LogHelper.Warning("Disconnect failed: {message}", e.Message);
+            // Localization: Client.Bot.DisconnectFailed - 断开连接失败: {0}
+            LogHelper.Warning(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.Bot.DisconnectFailed, e.Message));
         }
     }
 
@@ -298,6 +305,7 @@ public sealed class BotTcpClient
     /// </summary>
     private void OnMTcpClientOnError(object client, ErrorEventArgs e)
     {
+        // Localization: Client.ErrorOccurred - 客户端发生错误: {0}
         LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.ErrorOccurred, e.Exception.Message));
         m_BotTcpClientEvent.OnErrorCallback(e);
     }
@@ -307,6 +315,7 @@ public sealed class BotTcpClient
     /// </summary>
     private void OnMTcpClientOnClosed(object client, EventArgs e)
     {
+        // Localization: Client.Disconnected - 客户端断开连接
         LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.Disconnected));
         m_BotTcpClientEvent.OnClosedCallback();
     }
@@ -316,6 +325,7 @@ public sealed class BotTcpClient
     /// </summary>
     private void OnMTcpClientOnConnected(object client, EventArgs e)
     {
+        // Localization: Client.ConnectedSuccessfully - 客户端成功连接到服务器
         LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.ConnectedSuccessfully));
         m_BotTcpClientEvent.OnConnectedCallback();
     }

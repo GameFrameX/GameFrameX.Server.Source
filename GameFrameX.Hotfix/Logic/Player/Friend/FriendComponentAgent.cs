@@ -33,6 +33,7 @@ using GameFrameX.Apps.Player.Friend.Entity;
 using GameFrameX.Apps.Player.Player.Entity;
 using GameFrameX.NetWork.RemoteMessaging.Contracts;
 using GameFrameX.NetWork.RemoteMessaging.Unified;
+using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Hotfix.Logic.Player.Friend;
 
@@ -75,14 +76,15 @@ public class FriendComponentAgent : StateComponentAgent<FriendComponent, FriendS
 
             response.Friends = new List<FriendInfo>();
             response.ErrorCode = MapToBusinessErrorCode(result.StatusCode);
-            LogHelper.Error("FriendComponentAgent.OnFriendList 统一消息发送失败, StatusCode: {statusCode}, Error: {errorMessage}, TraceId: {traceId}",
-                result.StatusCode, result.ErrorMessage, result.TraceId);
+            // Localization: Hotfix.Friend.FriendListSendFailed - FriendComponentAgent.OnFriendList 统一消息发送失败, StatusCode: {0}, Error: {1}, TraceId: {2}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Hotfix.Friend.FriendListSendFailed, result.StatusCode, result.ErrorMessage, result.TraceId));
         }
         catch (Exception exception)
         {
             response.Friends = new List<FriendInfo>();
             response.ErrorCode = -2;
-            LogHelper.Error(exception, "FriendComponentAgent.OnFriendList 统一消息发送异常");
+            // Localization: Hotfix.Friend.FriendListSendException - FriendComponentAgent.OnFriendList 统一消息发送异常
+            LogHelper.Error(exception, LocalizationService.GetString(Localization.Keys.Hotfix.Friend.FriendListSendException));
         }
         finally
         {
@@ -127,14 +129,15 @@ public class FriendComponentAgent : StateComponentAgent<FriendComponent, FriendS
 
             response.Success = false;
             response.ErrorCode = MapToBusinessErrorCode(result.StatusCode);
-            LogHelper.Error("FriendComponentAgent.OnAddFriend 统一消息发送失败, StatusCode: {statusCode}, Error: {errorMessage}, TraceId: {traceId}",
-                result.StatusCode, result.ErrorMessage, result.TraceId);
+            // Localization: Hotfix.Friend.AddFriendSendFailed - FriendComponentAgent.OnAddFriend 统一消息发送失败, StatusCode: {0}, Error: {1}, TraceId: {2}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Hotfix.Friend.AddFriendSendFailed, result.StatusCode, result.ErrorMessage, result.TraceId));
         }
         catch (Exception exception)
         {
             response.Success = false;
             response.ErrorCode = -2;
-            LogHelper.Error(exception, "FriendComponentAgent.OnAddFriend 统一消息发送异常");
+            // Localization: Hotfix.Friend.AddFriendSendException - FriendComponentAgent.OnAddFriend 统一消息发送异常
+            LogHelper.Error(exception, LocalizationService.GetString(Localization.Keys.Hotfix.Friend.AddFriendSendException));
         }
         finally
         {
@@ -179,14 +182,15 @@ public class FriendComponentAgent : StateComponentAgent<FriendComponent, FriendS
 
             response.Success = false;
             response.ErrorCode = MapToBusinessErrorCode(result.StatusCode);
-            LogHelper.Error("FriendComponentAgent.OnDeleteFriend 统一消息发送失败, StatusCode: {statusCode}, Error: {errorMessage}, TraceId: {traceId}",
-                result.StatusCode, result.ErrorMessage, result.TraceId);
+            // Localization: Hotfix.Friend.DeleteFriendSendFailed - FriendComponentAgent.OnDeleteFriend 统一消息发送失败, StatusCode: {0}, Error: {1}, TraceId: {2}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Hotfix.Friend.DeleteFriendSendFailed, result.StatusCode, result.ErrorMessage, result.TraceId));
         }
         catch (Exception exception)
         {
             response.Success = false;
             response.ErrorCode = -2;
-            LogHelper.Error(exception, "FriendComponentAgent.OnDeleteFriend 统一消息发送异常");
+            // Localization: Hotfix.Friend.DeleteFriendSendException - FriendComponentAgent.OnDeleteFriend 统一消息发送异常
+            LogHelper.Error(exception, LocalizationService.GetString(Localization.Keys.Hotfix.Friend.DeleteFriendSendException));
         }
         finally
         {
@@ -375,8 +379,8 @@ public class FriendComponentAgent : StateComponentAgent<FriendComponent, FriendS
             return errorCode;
         }
 
-        LogHelper.Error("FriendComponentAgent.{actionName} 返回语义异常: Success=false 且 ErrorCode=0, PlayerId={playerId}",
-            actionName, requestPlayerId);
+        // Localization: Hotfix.Friend.SemanticInvalidResult - FriendComponentAgent.{0} 返回语义异常: Success=false 且 ErrorCode=0, PlayerId={1}
+        LogHelper.Error(LocalizationService.GetString(Localization.Keys.Hotfix.Friend.SemanticInvalidResult, actionName, requestPlayerId));
         return -101;
     }
 }

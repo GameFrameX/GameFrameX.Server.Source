@@ -611,6 +611,7 @@ public static class QuartzTimer
                     }
                 }
 
+                // Localization: Core.Timer.InvalidHandlerType - 错误的ITimerHandler类型，回调失败 type:{0}
                 LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.Timer.InvalidHandlerType, handlerType));
             }
             catch (Exception e)
@@ -771,7 +772,8 @@ public static class QuartzTimer
 
                 if (exception != null)
                 {
-                    LogHelper.Error($"{message}{Environment.NewLine}{exception}");
+                // Localization: Core.Timer.LogError - {0}\n{1}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.Timer.LogError, message, exception));
                 }
                 else
                 {

@@ -143,6 +143,7 @@ internal static class AppExitHandler
     private static void ExitSignalRegistrationHandler(PosixSignalContext posixSignalContext)
     {
         posixSignalContext.Cancel = true;
+        // Localization: StartUp.Application.SigtermSignalReceived - 接收到SIGTERM信号并注册退出处理程序
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Application.SigtermSignalReceived));
         _exitCallBack?.Invoke("SIGTERM exit");
         //收到退出信号后应用进入退出流程，释放信号注册以避免重复触发并归还底层资源
@@ -200,6 +201,7 @@ internal static class AppExitHandler
         }
 
         //这里可以发送短信或者钉钉消息通知到运维
+        // Localization: StartUp.Application.GetUnhandledException - 获取未处理异常 标签:{0}
         LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.Application.GetUnhandledException, tag));
         if (e is IEnumerable arr)
         {
@@ -209,11 +211,13 @@ internal static class AppExitHandler
                 sb.Append(ex);
             }
 
+            // Localization: StartUp.Application.AllUnhandledExceptions - 所有未处理异常:{0}
             LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.Application.AllUnhandledExceptions, sb.ToString()));
             _exitCallBack?.Invoke(LocalizationService.GetString(Localization.Keys.StartUp.Application.AllUnhandledExceptions, sb.ToString()));
         }
         else
         {
+            // Localization: StartUp.Application.UnhandledException - 未处理异常:{0}
             LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.Application.UnhandledException, e?.ToString() ?? "Unknown exception"));
             _exitCallBack?.Invoke(LocalizationService.GetString(Localization.Keys.StartUp.Application.UnhandledExceptionCallback, e?.ToString() ?? "Unknown exception"));
         }

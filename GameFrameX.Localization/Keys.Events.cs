@@ -40,14 +40,5 @@ public static partial class Keys
     /// </summary>
     public static class Events
     {
-        /// <summary>
-        /// 事件类型：{0} 没有找到任何监听者
-        /// </summary>
-        /// <remarks>
-        /// 键名: Events.NoListenersFound
-        /// 用途: 当事件分发时没有找到任何监听者时记录
-        /// 参数: {0} - 事件参数类型名
-        /// </remarks>
-        public const string NoListenersFound = "Events.NoListenersFound";
     }
 }

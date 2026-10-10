@@ -114,7 +114,8 @@ public sealed partial class MongoDbService
                 }
 
                 DbOperationLatencyMilliseconds.Record(openStopwatch.Elapsed.TotalMilliseconds, new TagList { { "op", "open" }, { "name", nameof(Open) }, { "success", true }, });
-                LogHelper.Info("MongoDbService.Open {dbName} {target} {mongoDbInitializedSuccessfully}", dbOptions.Name, connectionTarget, LocalizationService.GetString(Localization.Keys.Database.MongoDbInitializedSuccessfully, connectionTarget, dbOptions.Name));
+                // Localization: Database.Mongo.OpenInitializedSuccessfully - MongoDbService.Open {0} {1} MongoDB服务初始化成功，连接字符串：{2}，数据库名称：{3}
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.Database.Mongo.OpenInitializedSuccessfully, dbOptions.Name, connectionTarget, connectionTarget, dbOptions.Name));
                 return true;
             }
             catch (Exception exception)
@@ -124,7 +125,8 @@ public sealed partial class MongoDbService
                 if (attempt < retryDelays.Length - 1)
                 {
                     DbOpenRetryTotal.Add(1, new TagList { { "db.target", connectionTarget }, });
-                    LogHelper.Warning("MongoDbService.Open Retry {attempt}/{maxRetry} {dbName} {target} {exception}", attempt + 1, retryDelays.Length, dbOptions.Name, connectionTarget, exception.Message);
+                    // Localization: Database.Mongo.OpenRetryWarning - MongoDbService.Open 重试 {0}/{1} {2} {3} {4}
+                    LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.Mongo.OpenRetryWarning, attempt + 1, retryDelays.Length, dbOptions.Name, connectionTarget, exception.Message));
                     var delay = retryDelays[attempt] + Random.Shared.Next(0, 200);
                     await Task.Delay(delay).ConfigureAwait(false);
                 }
@@ -133,12 +135,14 @@ public sealed partial class MongoDbService
 
         DbOperationFailTotal.Add(1, new TagList { { "op", "open" }, { "name", nameof(Open) }, { "reason", GetFailureReason(lastException) }, });
         DbOperationLatencyMilliseconds.Record(openStopwatch.Elapsed.TotalMilliseconds, new TagList { { "op", "open" }, { "name", nameof(Open) }, { "success", false }, });
-        LogHelper.Fatal("MongoDbService.Open Exception {dbName} {target} {exception}", dbOptions.Name, connectionTarget, lastException);
+        // Localization: Database.Mongo.OpenExceptionFatal - MongoDbService.Open 异常 {0} {1} {2}
+        LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Database.Mongo.OpenExceptionFatal, dbOptions.Name, connectionTarget, lastException));
         var message = LocalizationService.GetString(Localization.Keys.Database.MongoDbInitializationFailed, connectionTarget, dbOptions.Name);
         Console.ForegroundColor = ConsoleColor.Red;
         Console.WriteLine(message);
         Console.ResetColor();
-        LogHelper.Error("MongoDbService.Open Exception {dbName} {target} {message}", dbOptions.Name, connectionTarget, message);
+        // Localization: Database.Mongo.OpenExceptionError - MongoDbService.Open 异常 {0} {1} {2}
+        LogHelper.Error(LocalizationService.GetString(Localization.Keys.Database.Mongo.OpenExceptionError, dbOptions.Name, connectionTarget, message));
         lock (_availabilityLock)
         {
             ChangeAvailabilityState(DatabaseAvailabilityState.Unhealthy, "open_failed");

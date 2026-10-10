@@ -179,7 +179,8 @@ public sealed class NetworkMessagePackage : INetworkMessagePackage
         }
         catch (Exception e)
         {
-            LogHelper.Error("Create NetworkMessagePackage Error {messageId} {operationType} {uniqueId} {exception}", messageObjectHeader.MessageId, messageObjectHeader.OperationType, messageObjectHeader.UniqueId, e.Message);
+            // Localization: NetWork.CreateNetworkMessagePackageError - 创建网络消息包错误 {0} {1} {2} {3}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.NetWork.CreateNetworkMessagePackageError, messageObjectHeader.MessageId, messageObjectHeader.OperationType, messageObjectHeader.UniqueId, e.Message));
             throw;
         }
     }

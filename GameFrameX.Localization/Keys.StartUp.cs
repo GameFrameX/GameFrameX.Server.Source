@@ -346,6 +346,36 @@ public static partial class Keys
             /// 参数: {0} - 端口号
             /// </remarks>
             public const string PortOccupied = "StartUp.HttpServer.PortOccupied";
+
+            /// <summary>
+            /// HTTP端口[{0}]占用详情: {1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.HttpServer.PortOccupiedDetails
+            /// 用途: 当HTTP端口被占用时记录占用进程详情
+            /// 参数: {0} - 端口号, {1} - 占用进程列表
+            /// </remarks>
+            public const string PortOccupiedDetails = "StartUp.HttpServer.PortOccupiedDetails";
+
+            /// <summary>
+            /// HTTP端口[{0}]已被占用，但未能获取占用进程详情。
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.HttpServer.PortOccupiedNoProcessDetails
+            /// 用途: 当HTTP端口被占用但未能获取占用进程详情时记录警告
+            /// 参数: {0} - 端口号
+            /// </remarks>
+            public const string PortOccupiedNoProcessDetails = "StartUp.HttpServer.PortOccupiedNoProcessDetails";
+
+            /// <summary>
+            /// HTTP请求错误: {0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.HttpServer.HttpRequestError
+            /// 用途: 当HTTP请求处理发生异常时记录错误
+            /// 参数: {0} - 异常信息
+            /// </remarks>
+            public const string HttpRequestError = "StartUp.HttpServer.HttpRequestError";
         }
 
         /// <summary>
@@ -755,6 +785,72 @@ public static partial class Keys
             /// 用途: 应用程序启动入口收到空启动实例集合时抛出
             /// </remarks>
             public const string StartupInstanceRequired = "StartUp.Application.StartupInstanceRequired";
+
+            /// <summary>
+            /// 服务器异常停止:{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Application.AbnormalServerStop
+            /// 用途: 当服务器逆序停机过程失败时记录错误
+            /// 参数: {0} - 异常信息
+            /// </remarks>
+            public const string AbnormalServerStop = "StartUp.Application.AbnormalServerStop";
+
+            /// <summary>
+            /// 停止服务器角色 '{0}' 时出错:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Application.StopServerError
+            /// 用途: 当单个服务器角色停机失败时记录错误
+            /// 参数: {0} - 服务器角色类型, {1} - 异常信息
+            /// </remarks>
+            public const string StopServerError = "StartUp.Application.StopServerError";
+
+            /// <summary>
+            /// 检测到重复的启动优先级；这些角色之间的多角色启动顺序不稳定 (C143b) — {0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Application.DuplicateStartupPriorities
+            /// 用途: 当检测到重复的启动优先级时记录警告
+            /// 参数: {0} - 优先级冲突表
+            /// </remarks>
+            public const string DuplicateStartupPriorities = "StartUp.Application.DuplicateStartupPriorities";
+
+            /// <summary>
+            /// 未找到服务器类型 '{0}' 的已注册启动类型（多角色选择）；已跳过。
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Application.NoRegisteredStartupType
+            /// 用途: 当多角色选择中未找到已注册的服务器启动类型时记录警告
+            /// 参数: {0} - 服务器类型名称
+            /// </remarks>
+            public const string NoRegisteredStartupType = "StartUp.Application.NoRegisteredStartupType";
+        }
+
+        /// <summary>
+        /// 通用服务器启动相关消息
+        /// </summary>
+        public static class Server
+        {
+            /// <summary>
+            /// 消息处理器错误: {0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Server.MessageHandlerError
+            /// 用途: 当消息处理器执行发生异常时记录错误
+            /// 参数: {0} - 异常信息
+            /// </remarks>
+            public const string MessageHandlerError = "StartUp.Server.MessageHandlerError";
+
+            /// <summary>
+            /// {0}端口[{1}]占用详情: {2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Server.PortOccupiedDetails
+            /// 用途: 当服务器端口被占用时记录占用进程详情
+            /// 参数: {0} - 服务器名称, {1} - 端口号, {2} - 占用进程列表
+            /// </remarks>
+            public const string PortOccupiedDetails = "StartUp.Server.PortOccupiedDetails";
         }
     }
 }

@@ -87,7 +87,8 @@ public abstract class BaseComponentHandler<TRequest> : BaseMessageHandler<TReque
         {
             if (ActorId == default)
             {
-                LogHelper.Fatal<string>("BaseComponentHandler.Init, ActorId is zero, message type: {messageType}", message.GetType().FullName);
+                // Localization: Core.MessageHandler.ActorIdIsZero - ActorId为0，无法获取组件，{0}，关闭通道
+                LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.ActorIdIsZero, message.GetType().FullName));
                 NetWorkChannel.Close();
                 return false;
             }
@@ -98,7 +99,8 @@ public abstract class BaseComponentHandler<TRequest> : BaseMessageHandler<TReque
             }
             catch (Exception e)
             {
-                LogHelper.Fatal(e, "BaseComponentHandler.Init, get component failed, close channel, actorId: {actorId}, componentAgentType: {componentAgentType}", ActorId, ComponentAgentType.FullName);
+                // Localization: Core.MessageHandler.GetComponentFailed - BaseComponentHandler.Init 获取组件失败，关闭通道，actorId:{0}，组件代理类型:{1}，异常：\n{2}
+                LogHelper.Fatal(e, LocalizationService.GetString(Localization.Keys.Core.MessageHandler.GetComponentFailed, ActorId, ComponentAgentType.FullName, e));
                 NetWorkChannel.Close();
                 return false;
             }
@@ -117,7 +119,8 @@ public abstract class BaseComponentHandler<TRequest> : BaseMessageHandler<TReque
     {
         if (CacheComponent == null)
         {
-            LogHelper.Fatal<string>("BaseComponentHandler.InnerAction, CacheComponent is null, message type: {messageType}", Message.GetType().FullName);
+            // Localization: Core.MessageHandler.InnerActionCacheComponentNull - BaseComponentHandler.InnerAction 缓存组件为空，消息类型:{0}
+            LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.InnerActionCacheComponentNull, Message.GetType().FullName));
             NetWorkChannel.Close();
             return Task.CompletedTask;
         }
@@ -135,7 +138,8 @@ public abstract class BaseComponentHandler<TRequest> : BaseMessageHandler<TReque
     {
         if (CacheComponent == null)
         {
-            LogHelper.Fatal<string>("BaseComponentHandler.GetComponentAgent, CacheComponent is null, message type: {messageType}", Message.GetType().FullName);
+            // Localization: Core.MessageHandler.GetComponentAgentCacheComponentNull - BaseComponentHandler.GetComponentAgent 缓存组件为空，消息类型:{0}
+            LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.GetComponentAgentCacheComponentNull, Message.GetType().FullName));
             NetWorkChannel.Close();
             return default;
         }

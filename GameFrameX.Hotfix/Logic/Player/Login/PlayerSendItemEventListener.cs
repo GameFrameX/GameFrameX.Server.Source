@@ -30,6 +30,7 @@
 
 using GameFrameX.Apps.Common.EventData;
 using GameFrameX.Core.Abstractions.Events;
+using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Hotfix.Logic.Player.Login;
 
@@ -40,7 +41,8 @@ internal sealed class PlayerSendItemEventListener : EventListener<PlayerComponen
     {
         if (agent == null)
         {
-            LogHelper.Error("agent is null");
+            // Localization: Hotfix.Player.AgentIsNull - 代理对象为空
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Hotfix.Player.AgentIsNull));
             return Task.CompletedTask;
         }
 

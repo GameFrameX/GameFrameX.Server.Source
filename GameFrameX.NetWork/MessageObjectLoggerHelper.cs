@@ -30,6 +30,7 @@
 
 using System.Text;
 using GameFrameX.Foundation.Json;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.NetWork.Messages;
@@ -103,7 +104,8 @@ public static class MessageObjectLoggerHelper
         }
         catch (Exception e)
         {
-            LogHelper.Error("FormatMessage Error {messageId} {operationType} {uniqueId} {actorId} {exception}", messageId, operationType, uniqueId, actorId, e);
+            // Localization: NetWork.FormatMessageError - 格式化消息错误 {0} {1} {2} {3} {4}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.NetWork.FormatMessageError, messageId, operationType, uniqueId, actorId, e));
         }
 
         return string.Empty;

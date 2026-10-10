@@ -7,6 +7,7 @@
 //  ==========================================================================================
 
 
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.NetWork.Messages;
 using GameFrameX.NetWork.RemoteMessaging.Unified;
@@ -81,14 +82,16 @@ public sealed class LocalEnvelopeDispatcher : ILocalRoleMessageDispatcher
         var envelopeMessage = envelope.Message as RoleRouteEnvelopeMessage;
         if (envelopeMessage == null)
         {
-            LogHelper.Warning("[LocalEnvelopeDispatcher] envelope message is not RoleRouteEnvelopeMessage (actual type: {actual}); dropping", envelope.Message?.GetType().FullName ?? "null");
+            // Localization: RemoteMessaging.Routing.EnvelopeMessageWrongType - [LocalEnvelopeDispatcher] 信封消息不是 RoleRouteEnvelopeMessage（实际类型：{0}）；丢弃
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Routing.EnvelopeMessageWrongType, envelope.Message?.GetType().FullName ?? "null"));
             return;
         }
 
         var innerType = MessageProtoHelper.GetMessageTypeById(envelopeMessage.InnerMessageId);
         if (innerType == null)
         {
-            LogHelper.Warning("[LocalEnvelopeDispatcher] inner message id {innerMessageId} is not registered in MessageProtoHelper; dropping envelope for target {targetActorId}", envelopeMessage.InnerMessageId, envelope.TargetActorId);
+            // Localization: RemoteMessaging.Routing.InnerMessageIdNotRegistered - [LocalEnvelopeDispatcher] 内层消息 ID {0} 未在 MessageProtoHelper 注册；丢弃发往目标 {1} 的信封
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Routing.InnerMessageIdNotRegistered, envelopeMessage.InnerMessageId, envelope.TargetActorId));
             return;
         }
 
@@ -99,13 +102,15 @@ public sealed class LocalEnvelopeDispatcher : ILocalRoleMessageDispatcher
         }
         catch (Exception exception)
         {
-            LogHelper.Error(exception, "[LocalEnvelopeDispatcher] failed to deserialize inner message for target {targetActorId} (innerMessageId={innerMessageId}); dropping", envelope.TargetActorId, envelopeMessage.InnerMessageId);
+            // Localization: RemoteMessaging.Routing.InnerMessageDeserializeFailed - [LocalEnvelopeDispatcher] 为目标 {0} 反序列化内层消息失败（innerMessageId={1}）；丢弃
+            LogHelper.Error(exception, LocalizationService.GetString(Localization.Keys.RemoteMessaging.Routing.InnerMessageDeserializeFailed, envelope.TargetActorId, envelopeMessage.InnerMessageId));
             return;
         }
 
         if (envelope.TargetActorId <= 0)
         {
-            LogHelper.Warning("[LocalEnvelopeDispatcher] envelope has no TargetActorId (sender bug?); dropping inner message id={innerMessageId}", envelopeMessage.InnerMessageId);
+            // Localization: RemoteMessaging.Routing.EnvelopeMissingTargetActorId - [LocalEnvelopeDispatcher] 信封缺少 TargetActorId（发件方 bug？）；丢弃内层消息 id={0}
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Routing.EnvelopeMissingTargetActorId, envelopeMessage.InnerMessageId));
             return;
         }
 
@@ -114,13 +119,16 @@ public sealed class LocalEnvelopeDispatcher : ILocalRoleMessageDispatcher
             switch (_offlineStrategy)
             {
                 case PlayerOfflineStrategy.StoreOffline:
-                    LogHelper.Info("[LocalEnvelopeDispatcher] target {targetActorId} is offline; StoreOffline strategy placeholder — message dropped (no offline store yet)", envelope.TargetActorId);
+                    // Localization: RemoteMessaging.Routing.TargetOfflineStoreOfflineDropped - [LocalEnvelopeDispatcher] 目标 {0} 已离线；StoreOffline 策略占位——消息已丢弃（尚无离线存储）
+                    LogHelper.Info(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Routing.TargetOfflineStoreOfflineDropped, envelope.TargetActorId));
                     break;
                 case PlayerOfflineStrategy.Discard:
-                    LogHelper.Info("[LocalEnvelopeDispatcher] target {targetActorId} is offline; Discard strategy — message dropped", envelope.TargetActorId);
+                    // Localization: RemoteMessaging.Routing.TargetOfflineDiscardDropped - [LocalEnvelopeDispatcher] 目标 {0} 已离线；Discard 策略——消息已丢弃
+                    LogHelper.Info(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Routing.TargetOfflineDiscardDropped, envelope.TargetActorId));
                     break;
                 default:
-                    LogHelper.Info("[LocalEnvelopeDispatcher] target {targetActorId} is offline; default strategy — message dropped", envelope.TargetActorId);
+                    // Localization: RemoteMessaging.Routing.TargetOfflineDefaultDropped - [LocalEnvelopeDispatcher] 目标 {0} 已离线；默认策略——消息已丢弃
+                    LogHelper.Info(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Routing.TargetOfflineDefaultDropped, envelope.TargetActorId));
                     break;
             }
 

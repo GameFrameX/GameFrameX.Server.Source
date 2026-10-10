@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Discovery.Routing;
 
@@ -325,7 +326,8 @@ public sealed class DiscoveryRegistry : IDisposable
             }
             catch (Exception exception)
             {
-                LogHelper.Error(exception, "[DiscoveryRegistry] heartbeat upsert failed for instance {instanceId}; will retry next interval", _selfDescriptor.InstanceId);
+                // Localization: Discovery.Registry.HeartbeatUpsertFailed - [DiscoveryRegistry] 实例 {0} 心跳写入失败；将在下个间隔重试
+                LogHelper.Error(exception, LocalizationService.GetString(Localization.Keys.Discovery.Registry.HeartbeatUpsertFailed, _selfDescriptor.InstanceId));
             }
         }
     }
@@ -363,7 +365,8 @@ public sealed class DiscoveryRegistry : IDisposable
             }
             catch (Exception exception)
             {
-                LogHelper.Error(exception, "[DiscoveryRegistry] TTL cleanup pass failed; will retry next interval");
+                // Localization: Discovery.Registry.TtlCleanupFailed - [DiscoveryRegistry] TTL 清理失败；将在下个间隔重试
+                LogHelper.Error(exception, LocalizationService.GetString(Localization.Keys.Discovery.Registry.TtlCleanupFailed));
             }
         }
     }

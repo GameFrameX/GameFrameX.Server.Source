@@ -166,6 +166,7 @@ public abstract partial class AppStartUpBase : IAppStartUp
     public virtual async Task StopAsync(string message = "")
     {
         GameAppRuntime.MarkStopping();
+        // Localization: StartUp.ServerStopped - 服务器类型:{0} 停止! 终止原因：{1} 配置信息: {2}
         LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.ServerStopped, Setting.ServerType, message, Setting.ToFormatString()));
         try
         {

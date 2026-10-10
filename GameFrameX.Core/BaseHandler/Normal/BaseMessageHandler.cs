@@ -108,12 +108,14 @@ public abstract class BaseMessageHandler<TRequest> : IMessageHandler where TRequ
             }
             catch (TimeoutException timeoutException)
             {
-                LogHelper.Fatal("BaseMessageHandler.InnerAction, Execution timeout, message type: {messageType}, timeout: {timeout}, exception: {exception}", Message.GetType().FullName, timeout, timeoutException);
+                // Localization: Core.MessageHandler.InnerActionTimeout - BaseMessageHandler.InnerAction 执行超时，消息类型:{0}，超时:{1}，异常:{2}
+                LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.InnerActionTimeout, Message.GetType().FullName, timeout, timeoutException));
                 //强制设状态-取消该操作
             }
             catch (Exception exception)
             {
-                LogHelper.Fatal("BaseMessageHandler.InnerAction, Execution exception, message type: {messageType}, exception: {exception}", Message.GetType().FullName, exception);
+                // Localization: Core.MessageHandler.InnerActionException - BaseMessageHandler.InnerAction 执行异常，消息类型:{0}，异常:{1}
+                LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.InnerActionException, Message.GetType().FullName, exception));
             }
         }
         catch (Exception e)
@@ -144,7 +146,8 @@ public abstract class BaseMessageHandler<TRequest> : IMessageHandler where TRequ
             _stopwatch.Stop();
             if (_stopwatch.Elapsed.Seconds >= GlobalSettings.CurrentSetting.MonitorMessageTimeOutSeconds)
             {
-                LogHelper.Warning("BaseMessageHandler.InnerActionAsync, Execution time warning, handler type: {handlerType}, message unique id: {messageUniqueId}, elapsed milliseconds: {elapsedMilliseconds}", GetType().Name, Message.UniqueId, _stopwatch.ElapsedMilliseconds);
+                // Localization: Core.MessageHandler.ExecutionTimeWarning - 消息处理器：{0},UniqueId：{1} 执行耗时：{2} ms
+                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.ExecutionTimeWarning, GetType().Name, Message.UniqueId, _stopwatch.ElapsedMilliseconds));
             }
 
             return;
@@ -155,7 +158,8 @@ public abstract class BaseMessageHandler<TRequest> : IMessageHandler where TRequ
             _stopwatch.Restart();
             await ActionAsync(message);
             _stopwatch.Stop();
-            LogHelper.Debug("BaseMessageHandler.InnerActionAsync, Execution time debug, handler type: {handlerType}, message unique id: {messageUniqueId}, elapsed milliseconds: {elapsedMilliseconds}", GetType().Name, Message.UniqueId, _stopwatch.ElapsedMilliseconds);
+            // Localization: Core.MessageHandler.ExecutionTimeDebug - 消息处理器：{0},UniqueId：{1} 执行耗时：{2} ms
+            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.ExecutionTimeDebug, GetType().Name, Message.UniqueId, _stopwatch.ElapsedMilliseconds));
             return;
         }
 

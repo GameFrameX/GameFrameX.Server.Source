@@ -78,11 +78,13 @@ public sealed class StateComponent
             }
 
             await Task.WhenAll(tasks);
-            LogHelper.Info<string>("StateComponent.SaveAll StateTime {time}", LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveAllStateTime, (DateTime.Now - begin).TotalMilliseconds));
+            // Localization: Core.StateComponent.SaveAllStateTimeLog - StateComponent.SaveAll 保存所有状态，耗时: {0}毫秒
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveAllStateTimeLog, (DateTime.Now - begin).TotalMilliseconds));
         }
         catch (Exception e)
         {
-            LogHelper.Error<string>("StateComponent.SaveAll StateError {error}", LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveAllStateError, e));
+            // Localization: Core.StateComponent.SaveAllStateErrorLog - StateComponent.SaveAll 保存所有状态错误\n{0}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveAllStateErrorLog, e));
         }
     }
 
@@ -104,7 +106,8 @@ public sealed class StateComponent
         }
         catch (Exception e)
         {
-            LogHelper.Info<string>("StateComponent.TimerSave StateError {error}", LocalizationService.GetString(Localization.Keys.Core.StateComponent.TimerSaveStateError, e));
+            // Localization: Core.StateComponent.TimerSaveStateErrorLog - StateComponent.TimerSave 定时保存状态错误，异常:{0}
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.StateComponent.TimerSaveStateErrorLog, e));
         }
     }
 }
@@ -218,7 +221,8 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
         }
         catch (Exception e)
         {
-            LogHelper.Fatal("StateComponent.SaveState Failed StateId: {stateId} , Error: {error} , Message: {message}", State.Id, e, LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveStateFailed, State.Id, e));
+            // Localization: Core.StateComponent.SaveStateFailedLog - StateComponent.SaveState Failed 状态ID:{0} , 错误:{1} , 消息: 状态组件保存状态失败。状态ID:{2},{3}
+            LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveStateFailedLog, State.Id, e, State.Id, e));
         }
     }
 
@@ -330,7 +334,8 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
     {
         var stateName = typeof(TState).Name;
         StateComponent.StatisticsTool.Count(stateName, stateList.Count);
-        LogHelper.Debug("StateComponent.StateSaveBack StateName: {stateName} , Count: {count}", stateName, stateList.Count);
+        // Localization: Core.StateComponent.StateSaveBackDetail - StateComponent.StateSaveBack 状态回存 名称:{0} 数量:{1}
+        LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.StateComponent.StateSaveBackDetail, stateName, stateList.Count));
         // 批量保存统一走 GameDb.SaveBulkAsync（分批 upsert、逐批 ack/异常隔离在 DataBase 层实现）；
         // 门面默认库由业务库 DbOptions.IsDefault（缺省 true）在注册时声明式提名（C183），
         // Core 不再直接依赖 MongoDB.Driver / GameFrameX.DataBase.Mongo（取代原先的按名直连方案）。
@@ -339,7 +344,8 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
         NotifyBatchSaved(savedStates);
         if (savedStates.Count < stateList.Count && shutdown)
         {
-            LogHelper.Error("StateComponent.SaveDataFailed StateName: {stateName} , Message: {message}", stateName, LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveDataFailed, typeof(TState).FullName));
+            // Localization: Core.StateComponent.SaveDataFailedLog - StateComponent.SaveDataFailed 状态名称:{0} , 消息: 保存数据失败，类型:{1}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveDataFailedLog, stateName, typeof(TState).FullName));
         }
     }
 

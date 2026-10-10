@@ -87,7 +87,8 @@ public static class CompressionHelper
         }
         catch (Exception e)
         {
-            LogHelper.Fatal(e, "CompressionHelper.Compress {error}", LocalizationService.GetString(Localization.Keys.Utility.CompressionHelper.ExceptionError, e.ToString()));
+            // Localization: Utility.CompressionHelper.CompressFailed - CompressionHelper.Compress 压缩辅助类异常。错误：{0}。
+            LogHelper.Fatal(e, LocalizationService.GetString(Localization.Keys.Utility.CompressionHelper.CompressFailed, e.ToString()));
         }
         finally
         {
@@ -131,7 +132,8 @@ public static class CompressionHelper
         }
         catch (Exception e)
         {
-            LogHelper.Fatal(e, "CompressionHelper.Decompress {error}", LocalizationService.GetString(Localization.Keys.Utility.CompressionHelper.ExceptionError, e.ToString()));
+            // Localization: Utility.CompressionHelper.DecompressFailed - CompressionHelper.Decompress 压缩辅助类异常。错误：{0}。
+            LogHelper.Fatal(e, LocalizationService.GetString(Localization.Keys.Utility.CompressionHelper.DecompressFailed, e.ToString()));
         }
         finally
         {

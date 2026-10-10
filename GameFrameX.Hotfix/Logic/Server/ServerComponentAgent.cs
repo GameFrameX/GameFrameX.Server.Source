@@ -36,6 +36,7 @@ using GameFrameX.Core.Abstractions.Events;
 using GameFrameX.Core.Events;
 using GameFrameX.Core.Timer.Handler;
 using GameFrameX.Foundation.Utility;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Hotfix.Logic.Player.Login;
 using System.Collections;
 using System.Security.Cryptography;
@@ -218,13 +219,15 @@ public class ServerComponentAgent : StateComponentAgent<ServerComponent, ServerS
 
     private Task TestDelayTimer()
     {
-        LogHelper.Debug("ServerCompAgent.TestDelayTimer.延时3秒执行.执行一次");
+        // Localization: Hotfix.Server.TestDelayTimerExecuted - ServerCompAgent.TestDelayTimer.延时3秒执行.执行一次
+        LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Hotfix.Server.TestDelayTimerExecuted));
         return Task.CompletedTask;
     }
 
     private Task TestScheduleTimer()
     {
-        LogHelper.Debug("ServerCompAgent.TestSchedueTimer.延时1秒执行.每隔10秒执行");
+        // Localization: Hotfix.Server.TestScheduleTimerExecuted - ServerCompAgent.TestSchedueTimer.延时1秒执行.每隔10秒执行
+        LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Hotfix.Server.TestScheduleTimerExecuted));
         //
         // var states = await GameDb.FindListAsync<LoginState>(m => m.Id != 0);
         // LOGGER.Debug(states);
@@ -323,7 +326,8 @@ public class ServerComponentAgent : StateComponentAgent<ServerComponent, ServerS
     {
         protected override async Task HandleTimer(ServerComponentAgent agent, GameEventArgs gameEventArgs)
         {
-            LogHelper.Debug($"ServerCompAgent.CrossDayTimeHandler.跨天定时器执行{TimerHelper.CurrentDateTimeWithUtcFormat()}");
+            // Localization: Hotfix.Server.CrossDayTimerExecuted - ServerCompAgent.CrossDayTimeHandler.跨天定时器执行{0}
+            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Hotfix.Server.CrossDayTimerExecuted, TimerHelper.CurrentDateTimeWithUtcFormat()));
             var crossDays = TimerHelper.GetCrossDaysWithUtc(agent.State.FirstStartTime);
             
             await ActorManager.RoleCrossDay(crossDays);

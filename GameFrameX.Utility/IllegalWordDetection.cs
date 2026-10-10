@@ -125,7 +125,8 @@ public sealed class IllegalWordDetection
                 }
                 catch (Exception e)
                 {
-                    LogHelper.Error<string>("IllegalWordDetection.Init {error}", LocalizationService.GetString(Localization.Keys.Utility.ExceptionLogs.ExceptionDetails, e.ToString()));
+                    // Localization: Utility.IllegalWordDetection.InitException - IllegalWordDetection.Init 异常详情：{0}
+                    LogHelper.Error(LocalizationService.GetString(Localization.Keys.Utility.IllegalWordDetection.InitException, e.ToString()));
                 }
             });
         }
@@ -137,7 +138,8 @@ public sealed class IllegalWordDetection
             }
             catch (Exception e)
             {
-                LogHelper.Error<string>("IllegalWordDetection.Init {error}", LocalizationService.GetString(Localization.Keys.Utility.ExceptionLogs.ExceptionDetails, e.ToString()));
+                // Localization: Utility.IllegalWordDetection.InitException - IllegalWordDetection.Init 异常详情：{0}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Utility.IllegalWordDetection.InitException, e.ToString()));
             }
         }
     }
@@ -162,7 +164,8 @@ public sealed class IllegalWordDetection
                 }
                 catch (Exception e)
                 {
-                    LogHelper.Error<string>("IllegalWordDetection.Init {error}", LocalizationService.GetString(Localization.Keys.Utility.ExceptionLogs.ExceptionDetails, e.ToString()));
+                    // Localization: Utility.IllegalWordDetection.InitException - IllegalWordDetection.Init 异常详情：{0}
+                    LogHelper.Error(LocalizationService.GetString(Localization.Keys.Utility.IllegalWordDetection.InitException, e.ToString()));
                 }
             });
         }
@@ -174,7 +177,8 @@ public sealed class IllegalWordDetection
             }
             catch (Exception e)
             {
-                LogHelper.Error<string>("IllegalWordDetection.Init {error}", LocalizationService.GetString(Localization.Keys.Utility.ExceptionLogs.ExceptionDetails, e.ToString()));
+                // Localization: Utility.IllegalWordDetection.InitException - IllegalWordDetection.Init 异常详情：{0}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Utility.IllegalWordDetection.InitException, e.ToString()));
             }
         }
     }
@@ -223,7 +227,8 @@ public sealed class IllegalWordDetection
         // 记录应该跳过的不予检测的词
         InitSkipBitArray();
 
-        LogHelper.Info("IllegalWordDetection.Init {time} {activeNum}", (DateTime.UtcNow - startTime).TotalMilliseconds, activeNum);
+        // Localization: Utility.IllegalWordDetection.InitializationComplete - 敏感词初始化耗时:{0}ms, 有效数量:{1}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Utility.IllegalWordDetection.InitializationComplete, (DateTime.UtcNow - startTime).TotalMilliseconds, activeNum));
     }
 
     private static string ReadBadWordFromRecord(byte[] data, ref int offset, List<byte> typeList, int badIdx)
@@ -341,7 +346,8 @@ public sealed class IllegalWordDetection
             SkipBitArray[c] = true;
         }
 
-        LogHelper.Info("IllegalWordDetection.Init {time} {activeNum}", (DateTime.UtcNow - startTime).TotalMilliseconds, activeNum);
+        // Localization: Utility.IllegalWordDetection.InitializationComplete - 敏感词初始化耗时:{0}ms, 有效数量:{1}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Utility.IllegalWordDetection.InitializationComplete, (DateTime.UtcNow - startTime).TotalMilliseconds, activeNum));
     }
 
     private static string OriginalToLower(string text)

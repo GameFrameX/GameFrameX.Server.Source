@@ -93,7 +93,8 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
         {
             if (ActorId == default)
             {
-                LogHelper.Fatal<string>("BaseRpcComponentHandler.Init, ActorId is zero, message type: {messageType}", message.GetType().FullName);
+                // Localization: Core.MessageHandler.ActorIdIsZero - ActorId为0，无法获取组件，{0}，关闭通道
+                LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.ActorIdIsZero, message.GetType().FullName));
                 NetWorkChannel.Close();
                 return false;
             }
@@ -104,7 +105,8 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
             }
             catch (Exception e)
             {
-                LogHelper.Fatal(e, "BaseRpcComponentHandler.Init, get component failed, close channel, actorId: {actorId}, componentAgentType: {componentAgentType}", ActorId, ComponentAgentType.FullName);
+                // Localization: Core.MessageHandler.RpcGetComponentFailed - BaseRpcComponentHandler.Init 获取组件失败，关闭通道，actorId:{0}，组件代理类型:{1}，异常：\n{2}
+                LogHelper.Fatal(e, LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcGetComponentFailed, ActorId, ComponentAgentType.FullName, e));
                 NetWorkChannel.Close();
                 return false;
             }
@@ -123,7 +125,8 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
     {
         if (CacheComponent == null)
         {
-            LogHelper.Fatal<string>("BaseRpcComponentHandler.InnerAction, CacheComponent is null, message type: {messageType}", RequestMessage.GetType().FullName);
+            // Localization: Core.MessageHandler.RpcInnerActionCacheComponentNull - BaseRpcComponentHandler.InnerAction 缓存组件为空，消息类型:{0}
+            LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcInnerActionCacheComponentNull, RequestMessage.GetType().FullName));
             NetWorkChannel.Close();
             return Task.CompletedTask;
         }
@@ -146,7 +149,8 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
             }
             catch (Exception e)
             {
-                LogHelper.Error(e, "BaseRpcComponentHandler.InnerAction, InnerActionAsync error, message type: {messageType}, message: {message}", RequestMessage.GetType().FullName, RequestMessage);
+                // Localization: Core.MessageHandler.InnerActionError - 内部操作错误: {0} {1}
+                LogHelper.Error(e, LocalizationService.GetString(Localization.Keys.Core.MessageHandler.InnerActionError, RequestMessage.GetType().FullName, RequestMessage));
                 if (response != null && response.ErrorCode == 0)
                 {
                     response.ErrorCode = OperationErrorCode.InternalServerError;
@@ -175,7 +179,8 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
     {
         if (CacheComponent == null)
         {
-            LogHelper.Fatal<string>("BaseRpcComponentHandler.GetComponentAgent, CacheComponent is null, message type: {messageType}", RequestMessage.GetType().FullName);
+            // Localization: Core.MessageHandler.RpcGetComponentAgentCacheComponentNull - BaseRpcComponentHandler.GetComponentAgent 缓存组件为空，消息类型:{0}
+            LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcGetComponentAgentCacheComponentNull, RequestMessage.GetType().FullName));
             NetWorkChannel.Close();
             return default;
         }

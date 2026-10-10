@@ -160,11 +160,7 @@
   </data>
 
     <!-- Events module log keys -->
-    <data name="Events.NoListenersFound" xml:space="preserve">
-    <value>No listeners found for event type: {0}</value>
-  </data>
-
-    <data name="CoreExceptions.Hotfix.EventArgsTypeInvalid" xml:space="preserve">
+<data name="CoreExceptions.Hotfix.EventArgsTypeInvalid" xml:space="preserve">
     <value>Event listener:{0} the bound type {1} must be a subclass of GameEventArgs</value>
   </data>
     <!-- Storage module log keys -->
@@ -173,10 +169,7 @@
   </data>
 
     <!-- Database module log keys -->
-    <data name="Database.MongoDb.InitializedSuccessfully" xml:space="preserve">
-    <value>MongoDB service initialized successfully, ConnectionString: {0}, DatabaseName: {1}</value>
-  </data>
-    <data name="Database.MongoDb.InitializationFailed" xml:space="preserve">
+<data name="Database.MongoDb.InitializationFailed" xml:space="preserve">
     <value>MongoDB service initialization failed, ConnectionString: {0}, DatabaseName: {1}</value>
   </data>
     <data name="Database.MongoDb.ServiceUnavailable" xml:space="preserve">
@@ -191,21 +184,14 @@
     <data name="Database.MongoDb.OperationRetryFailed" xml:space="preserve">
     <value>MongoDbService.{0} failed with unknown retry exception.</value>
   </data>
-    <data name="Database.GameDb.ImplicitDefaultBindingWarning" xml:space="preserve">
-    <value>Multiple databases are registered ({0}) but none is nominated as the facade default (DbOptions.IsDefault); the static facade currently targets the first registered database. Nominate the business database at Init via DbOptions.IsDefault = true (default), or call GameDb.SetDefault(businessDatabaseName) explicitly.</value>
-  </data>
-
-    <!-- LNumber module log and error keys -->
+<!-- LNumber module log and error keys -->
     <data name="Utility.LNumber.CreateFailed" xml:space="preserve">
     <value>Xnumber creation failed! {0}.{1}</value>
   </data>
     <data name="Utility.LNumber.DataExceedsLimit" xml:space="preserve">
     <value>Number data exceeds limit {0} {1}</value>
   </data>
-    <data name="Utility.LNumber.MultiplicationOverflow" xml:space="preserve">
-    <value>LNumber multiplication overflow &gt; {0}</value>
-  </data>
-    <data name="Utility.LNumber.DivisionOverflow" xml:space="preserve">
+<data name="Utility.LNumber.DivisionOverflow" xml:space="preserve">
     <value>LNumber division overflow &gt; {0}</value>
   </data>
 
@@ -223,11 +209,7 @@
     <data name="Utility.Settings.AppAlreadyExited" xml:space="preserve">
     <value>AppRunning has already been set to exit, cannot be enabled again...</value>
   </data>
-    <data name="Utility.Settings.SaveDataIntervalTooSmall" xml:space="preserve">
-    <value>SaveDataInterval is less than 5000 milliseconds, using default value: {0} milliseconds</value>
-  </data>
-
-    <!-- NetWork.Message module log and error keys -->
+<!-- NetWork.Message module log and error keys -->
     <data name="NetWork.Message.MessageDecodeFatalError" xml:space="preserve">
     <value>Fatal exception occurred during message decoding: {0}</value>
   </data>
@@ -590,11 +572,7 @@
     <value>Actor recycle process exception actorId:{0} actorType:{1} exception:\n{2}</value>
   </data>
 
-    <data name="Core.Actor.Recycled" xml:space="preserve">
-    <value>actor recycled id:{0} type:{1}</value>
-  </data>
-
-    <!-- Actor limit related messages -->
+<!-- Actor limit related messages -->
     <data name="Core.ActorLimit.UnsupportedRuleType" xml:space="preserve">
     <value>Unsupported rule type:{0}</value>
   </data>
@@ -649,102 +627,26 @@
   </data>
 
     <!-- Actor manager related messages -->
-    <data name="Core.ActorManager.SaveAllStateTime" xml:space="preserve">
-    <value>save all state, use: {0}ms</value>
-  </data>
-
-    <data name="Core.ActorManager.SaveAllStateError" xml:space="preserve">
-    <value>save all state error\n{0}</value>
-  </data>
-
-    <data name="Core.ActorManager.TimerSaveStateError" xml:space="preserve">
-    <value>timer save state error</value>
-  </data>
-
-    <data name="Core.ActorManager.GlobalActorCrossDay" xml:space="preserve">
-    <value>Global Actor:{0} cross day execution</value>
-  </data>
-
-    <data name="Core.ActorManager.GlobalCompCrossDayTimeout" xml:space="preserve">
-    <value>Global comp cross day takes too long, will not block other comp cross day, current elapsed {0} seconds</value>
-  </data>
-
-    <data name="Core.ActorManager.GlobalCompCrossDayComplete" xml:space="preserve">
-    <value>Global comp cross day completed duration: {0}ms</value>
-  </data>
-
-    <data name="Core.ActorManager.NonPlayerCompCrossDayTimeout" xml:space="preserve">
-    <value>Non-player comp cross day takes too long, will not block player comp cross day, current elapsed {0} seconds</value>
-  </data>
-
-    <data name="Core.ActorManager.NonPlayerCompCrossDayComplete" xml:space="preserve">
-    <value>Non-player comp cross day completed duration: {0}ms</value>
-  </data>
-
-    <!-- Component registration related messages -->
+<!-- Component registration related messages -->
     <data name="Core.ComponentRegister.InitializationComplete" xml:space="preserve">
     <value>initialize component registration complete</value>
   </data>
 
-    <data name="Core.ComponentRegister.AgentNotImplemented" xml:space="preserve">
-    <value>{0} Agent not implemented, please check if business code is correct</value>
-  </data>
-
-    <data name="Core.ComponentRegister.ActivateGlobalComponent" xml:space="preserve">
+<data name="Core.ComponentRegister.ActivateGlobalComponent" xml:space="preserve">
     <value>Activate global component: {0} {1}</value>
   </data>
 
-    <data name="Core.ComponentRegister.ActivateGlobalActor" xml:space="preserve">
-    <value>activate the global actor: {0}</value>
-  </data>
-
-    <data name="Core.ComponentRegister.ActivateGlobalComponentCheckComplete" xml:space="preserve">
-    <value>Activate the global component and check if the components all contain the Agent implementation completion</value>
-  </data>
-
-    <data name="Core.ComponentRegister.ActivateGlobalComponentCheckFailed" xml:space="preserve">
-    <value>Activate the global component and detect if the components all contain the agent implementation failed</value>
-  </data>
-
-    <data name="Core.ComponentRegister.ActorNotBelongToThis" xml:space="preserve">
-    <value>get an actor that doesn't belong to this actor: [{0}] components</value>
-  </data>
-
-    <!-- State component related messages -->
-    <data name="Core.StateComponent.SaveAllStateTime" xml:space="preserve">
-    <value>save all state, use: {0}ms</value>
-  </data>
-
-    <data name="Core.StateComponent.SaveAllStateError" xml:space="preserve">
-    <value>save all state error\n{0}</value>
-  </data>
-
-    <data name="Core.StateComponent.TimerSaveStateError" xml:space="preserve">
-    <value>timer save state error</value>
-  </data>
-
-    <data name="Core.StateComponent.SaveStateFailed" xml:space="preserve">
-    <value>StateComp.SaveState.Failed.StateId:{0},{1}</value>
-  </data>
-
-    <data name="Core.StateComponent.StateSaveBack" xml:space="preserve">
+<!-- State component related messages -->
+<data name="Core.StateComponent.StateSaveBack" xml:space="preserve">
     <value>[StateComp] state save back {0} count:{1}</value>
   </data>
 
-    <data name="Core.StateComponent.SaveDataFailed" xml:space="preserve">
-    <value>Save data failed, type:{0}</value>
-  </data>
-
-    <data name="Core.StateComponent.SaveDataException" xml:space="preserve">
+<data name="Core.StateComponent.SaveDataException" xml:space="preserve">
     <value>Save data exception, type:{0}, {1}</value>
   </data>
 
     <!-- Message handler related messages -->
-    <data name="Core.MessageHandler.ExecutionTimeout" xml:space="preserve">
-    <value>Execution timeout:{0}</value>
-  </data>
-
-    <data name="Core.MessageHandler.ExecutionTimeWarning" xml:space="preserve">
+<data name="Core.MessageHandler.ExecutionTimeWarning" xml:space="preserve">
     <value>Message handler:{0},UniqueId:{1} execution duration: {2} ms</value>
   </data>
 
@@ -945,25 +847,8 @@
     <value>The current setting already exists, cannot be set again, and this setting has been ignored.</value>
   </data>
 
-    <data name="Utility.GlobalSettings.HttpUrlEmptyUseDefault" xml:space="preserve">
-    <value>HttpUrl is empty and uses the default value of : /game/api/</value>
-  </data>
-
-    <data name="Utility.GlobalSettings.NetworkTimeoutTooShort" xml:space="preserve">
-    <value>NetWorkSendTimeOutSeconds is less than 1 second, and the default value is 5 seconds</value>
-  </data>
-
-    <data name="Utility.GlobalSettings.ActorRecycleTimeTooShort" xml:space="preserve">
-    <value>ActorRecycleTime is less than 1 minute, and the default value is 5 minutes</value>
-  </data>
-
-    <!-- Utility.ExceptionLogs related messages -->
-    <data name="Utility.ExceptionLogs.ExceptionDetails" xml:space="preserve">
-    <value>Exception details: {0}</value>
-  </data>
-
-
-  <data name="Exceptions.BigInteger.ConstructorByteOverflow" xml:space="preserve">
+<!-- Utility.ExceptionLogs related messages -->
+<data name="Exceptions.BigInteger.ConstructorByteOverflow" xml:space="preserve">
     <value>BigInteger constructor byte overflow.</value>
   </data>
 
@@ -1244,11 +1129,7 @@
     <value>Server startup completed.</value>
   </data>
 
-  <data name="Utility.CompressionHelper.ExceptionError" xml:space="preserve">
-    <value>Compression helper exception. Error: {0}.</value>
-  </data>
-
-  <data name="Utility.Exceptions.ClockMovedBackwards" xml:space="preserve">
+<data name="Utility.Exceptions.ClockMovedBackwards" xml:space="preserve">
     <value>System clock moved backwards. Refusing to generate id for {0} milliseconds.</value>
   </data>
 
@@ -1324,10 +1205,7 @@
     <value>KCP server for {0} failed to start on {1}:{2}. Port unavailable or out of range.</value>
   </data>
 
-    <data name="Database.PostgreSql.InitializedSuccessfully" xml:space="preserve">
-    <value>PostgreSqlService initialized successfully. Connection target: {0}, registered name: {1}</value>
-  </data>
-    <data name="Database.PostgreSql.InitializationFailed" xml:space="preserve">
+<data name="Database.PostgreSql.InitializationFailed" xml:space="preserve">
     <value>PostgreSqlService initialization failed. Connection target: {0}, registered name: {1}</value>
   </data>
     <data name="Database.PostgreSql.ServiceUnavailable" xml:space="preserve">
@@ -1617,4 +1495,688 @@
   <data name="RemoteMessaging.Routing.LocalDispatcherNotConfigured" xml:space="preserve">
     <value>Target role &#39;{0}&#39; is hosted by this process but no local message dispatcher is configured (the actor-backed dispatcher is not available yet).</value>
   </data>
+  <data name="Client.Bot.AccountLoginFailed" xml:space="preserve">
+    <value>Bot-{0} account login failed, error code: {1}</value>
+  </data>
+
+  <data name="Client.Bot.AccountLoginSuccess" xml:space="preserve">
+    <value>Bot-{0} account verified successfully, id: {1}</value>
+  </data>
+
+  <data name="Client.Bot.DisconnectFailed" xml:space="preserve">
+    <value>Disconnect failed: {0}</value>
+  </data>
+
+  <data name="Client.Bot.DisconnectSimulated" xml:space="preserve">
+    <value>Bot-{0} disconnecting actively to simulate offline.</value>
+  </data>
+
+  <data name="Client.Bot.EntryAsyncError" xml:space="preserve">
+    <value>EntryAsync Error: {0}| Thread ID:{1} </value>
+  </data>
+
+  <data name="Client.Bot.FriendAddFailed" xml:space="preserve">
+    <value>Bot-{0} friend scenario - add friend failed, Success:{1}, ErrorCode:{2}</value>
+  </data>
+
+  <data name="Client.Bot.FriendAddSuccess" xml:space="preserve">
+    <value>Bot-{0} friend scenario - friend added successfully, fetching friend list.</value>
+  </data>
+
+  <data name="Client.Bot.FriendDeleteFailed" xml:space="preserve">
+    <value>Bot-{0} friend scenario - delete friend failed, Success:{1}, ErrorCode:{2}</value>
+  </data>
+
+  <data name="Client.Bot.FriendDeleteSuccess" xml:space="preserve">
+    <value>Bot-{0} friend scenario - friend deleted successfully, fetching friend list again.</value>
+  </data>
+
+  <data name="Client.Bot.FriendListFailed" xml:space="preserve">
+    <value>Bot-{0} friend scenario - fetch list failed, ErrorCode:{1}</value>
+  </data>
+
+  <data name="Client.Bot.FriendListFirstSuccess" xml:space="preserve">
+    <value>Bot-{0} friend scenario - first list fetched, count: {1}, starting friend deletion.</value>
+  </data>
+
+  <data name="Client.Bot.FriendScenarioCompleted" xml:space="preserve">
+    <value>Bot-{0} friend scenario completed, second list count: {1}.</value>
+  </data>
+
+  <data name="Client.Bot.FriendScenarioInvalidPlayerId" xml:space="preserve">
+    <value>Bot-{0} friend scenario failed to start, invalid player ID: {1}</value>
+  </data>
+
+  <data name="Client.Bot.FriendScenarioNoTarget" xml:space="preserve">
+    <value>Bot-{0} friend scenario failed to start, no available friend target found.</value>
+  </data>
+
+  <data name="Client.Bot.FriendScenarioStarted" xml:space="preserve">
+    <value>Bot-{0} starting friend scenario, target player: {1}</value>
+  </data>
+
+  <data name="Client.Bot.Http.ResponseTypeInvalid" xml:space="preserve">
+    <value>Response message type is invalid. Expected '{0}', actual '{1}'.</value>
+  </data>
+
+  <data name="Client.Bot.Kcp.ConnectProbeFailed" xml:space="preserve">
+    <value>KCP connect probe failed: {0}</value>
+  </data>
+
+  <data name="Client.Bot.Kcp.ConnectingTimeoutAbandonSession" xml:space="preserve">
+    <value>IsInConnecting timeout ({0}ms), abandoning session</value>
+  </data>
+
+  <data name="Client.Bot.Kcp.ReceiveError" xml:space="preserve">
+    <value>KCP receive error: {0}</value>
+  </data>
+
+  <data name="Client.Bot.Kcp.SendToServerFailed" xml:space="preserve">
+    <value>SendToServer failed: {0}</value>
+  </data>
+
+  <data name="Client.Bot.Metrics" xml:space="preserve">
+    <value>[METRICS] connect={0} auth={1} list={2} create={3} login={4} total={5}</value>
+  </data>
+
+  <data name="Client.Bot.PlayerCreateFailed" xml:space="preserve">
+    <value>Bot-{0} failed to create character, error code: {1}</value>
+  </data>
+
+  <data name="Client.Bot.PlayerCreated" xml:space="preserve">
+    <value>Created character Id:{0}-Name:{1}-Level:{2}-State:{3}</value>
+  </data>
+
+  <data name="Client.Bot.PlayerListEmpty" xml:space="preserve">
+    <value>Bot-{0} player list is empty, starting character creation.</value>
+  </data>
+
+  <data name="Client.Bot.PlayerListFailed" xml:space="preserve">
+    <value>Bot-{0} failed to request player list, error code: {1}</value>
+  </data>
+
+  <data name="Client.Bot.PlayerListItem" xml:space="preserve">
+    <value>Player list Id:{0}-Name:{1}-Level:{2}-State:{3}</value>
+  </data>
+
+  <data name="Client.Bot.PlayerLoginSuccess" xml:space="preserve">
+    <value>Bot-{0} logged in successfully, id: {1}</value>
+  </data>
+
+  <data name="Client.Bot.SendAccountLoginError" xml:space="preserve">
+    <value>SendAccountLoginMessage Error: {0}| Thread ID:{1} </value>
+  </data>
+
+  <data name="Client.Bot.Tcp.ConnectingTimeoutRecreateSession" xml:space="preserve">
+    <value>IsInConnecting timeout ({0}ms), recreating session</value>
+  </data>
+
+  <data name="Client.Program.BotOptions" xml:space="preserve">
+    <value>Bot options: bot-count={0}, tcp={1}:{2}, scenario={3}, disconnect-loop={4}, disconnect-after-login-seconds={5}, run-seconds={6}</value>
+  </data>
+
+  <data name="Config.Table.LoadConfigEnd" xml:space="preserve">
+    <value>Load Config End...</value>
+  </data>
+
+  <data name="Config.Table.LoadConfigStart" xml:space="preserve">
+    <value>Load Config Start...</value>
+  </data>
+
+  <data name="Core.Actor.ActiveComponentFailed" xml:space="preserve">
+    <value>Actor active component failed actorId:{0} componentType:{1} exception:\n{2}</value>
+  </data>
+
+  <data name="Core.ActorManager.ActorCrossDayLog" xml:space="preserve">
+    <value>ActorManager.CrossDay, CrossDay actor, actorId: {0}, actorType: {1}, message: Global Actor:{2} cross day execution</value>
+  </data>
+
+  <data name="Core.ActorManager.ActorForEachError" xml:space="preserve">
+    <value>ActorManager.ActorForEach, error, actorId: {0}, actorType: {1}, exception: {2}</value>
+  </data>
+
+  <data name="Core.ActorManager.CheckIdleRecycled" xml:space="preserve">
+    <value>ActorManager.CheckIdle, Actor recycled, actorId: {0}, actorType: {1}, message: actor recycled id:{2} type:{3}</value>
+  </data>
+
+  <data name="Core.ActorManager.GlobalCompCrossDayCompleteLog" xml:space="preserve">
+    <value>ActorManager.CrossDay, GlobalCompCrossDayComplete, cost: {0}ms, message: Global comp cross day completed duration: {1}ms</value>
+  </data>
+
+  <data name="Core.ActorManager.GlobalCompCrossDayTimeoutLog" xml:space="preserve">
+    <value>ActorManager.CrossDay, GlobalCompCrossDayTimeout, timeout: {0} seconds, message: Global comp cross day takes too long, will not block other comp cross day, current elapsed {1} seconds</value>
+  </data>
+
+  <data name="Core.ActorManager.NonPlayerCompCrossDayCompleteLog" xml:space="preserve">
+    <value>ActorManager.CrossDay, NonPlayerCompCrossDayComplete, cost: {0}ms, message: Non-player comp cross day completed duration: {1}ms</value>
+  </data>
+
+  <data name="Core.ActorManager.NonPlayerCompCrossDayTimeoutLog" xml:space="preserve">
+    <value>ActorManager.CrossDay, NonPlayerCompCrossDayTimeout, timeout: {0} seconds, message: Non-player comp cross day takes too long, will not block player comp cross day, current elapsed {1} seconds</value>
+  </data>
+
+  <data name="Core.ActorManager.SaveAllStateErrorLog" xml:space="preserve">
+    <value>ActorManager.SaveAll, Save all actor state, message: save all state error\n{0}, error: {1}</value>
+  </data>
+
+  <data name="Core.ActorManager.SaveAllStateTimeLog" xml:space="preserve">
+    <value>ActorManager.SaveAll, Save all actor state time: {0} ms, message: save all state, use: {1}ms</value>
+  </data>
+
+  <data name="Core.ActorManager.TimerSaveStateErrorLog" xml:space="preserve">
+    <value>ActorManager.TimerSave, Timer save all actor state error, message: timer save state error, error: {0}</value>
+  </data>
+
+  <data name="Core.ComponentRegister.ActivateComponentFailed" xml:space="preserve">
+    <value>ComponentRegister.ActiveComponents ActorType: {0} , ComponentType: {1} , Exception: {2}</value>
+  </data>
+
+  <data name="Core.ComponentRegister.GetNotBelongComponent" xml:space="preserve">
+    <value>ComponentRegister.ActiveComponents ActorType: {0} , Message: get an actor that doesn't belong to this actor: [{1}] components</value>
+  </data>
+
+  <data name="Core.ComponentRegister.GlobalActorActivated" xml:space="preserve">
+    <value>ComponentRegister.ActiveGlobalComponents ActorType: {0} , Message: activate the global actor: {1}</value>
+  </data>
+
+  <data name="Core.ComponentRegister.GlobalComponentAgentNotImplemented" xml:space="preserve">
+    <value>ComponentRegister.ActiveGlobalComponents ActorType: {0} , Message: {1} Agent not implemented, please check if business code is correct</value>
+  </data>
+
+  <data name="Core.ComponentRegister.GlobalComponentCheckComplete" xml:space="preserve">
+    <value>ComponentRegister.ActiveGlobalComponents Message: Activate the global component and check if the components all contain the Agent implementation completion</value>
+  </data>
+
+  <data name="Core.ComponentRegister.GlobalComponentCheckFailed" xml:space="preserve">
+    <value>ComponentRegister.ActiveGlobalComponents Message: Activate the global component and detect if the components all contain the agent implementation failed , Exception: {0}</value>
+  </data>
+
+  <data name="Core.EventDispatcher.DispatchError" xml:space="preserve">
+    <value>EventDispatcher.Dispatch Actor {0} {1} {2}</value>
+  </data>
+
+  <data name="Core.EventDispatcher.DispatchNoListeners" xml:space="preserve">
+    <value>EventDispatcher.Dispatch Actor {0} {1} No listeners found for event type: {2}</value>
+  </data>
+
+  <data name="Core.MessageHandler.GetComponentAgentCacheComponentNull" xml:space="preserve">
+    <value>BaseComponentHandler.GetComponentAgent, CacheComponent is null, message type: {0}</value>
+  </data>
+
+  <data name="Core.MessageHandler.GetComponentFailed" xml:space="preserve">
+    <value>BaseComponentHandler.Init, get component failed, close channel, actorId: {0}, componentAgentType: {1}, exception:\n{2}</value>
+  </data>
+
+  <data name="Core.MessageHandler.InnerActionCacheComponentNull" xml:space="preserve">
+    <value>BaseComponentHandler.InnerAction, CacheComponent is null, message type: {0}</value>
+  </data>
+
+  <data name="Core.MessageHandler.InnerActionException" xml:space="preserve">
+    <value>BaseMessageHandler.InnerAction, Execution exception, message type: {0}, exception: {1}</value>
+  </data>
+
+  <data name="Core.MessageHandler.InnerActionTimeout" xml:space="preserve">
+    <value>BaseMessageHandler.InnerAction, Execution timeout, message type: {0}, timeout: {1}, exception: {2}</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcExecutionTimeDebug" xml:space="preserve">
+    <value>BaseRpcMessageHandler.InnerActionAsync, Handler: {0} RequestMessage: {1} Message: Message handler:{2},UniqueId:{3} execution duration: {4} ms</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcExecutionTimeWarning" xml:space="preserve">
+    <value>BaseRpcMessageHandler.InnerActionAsync, Handler: {0} RequestMessage: {1} Message: Message handler:{2},UniqueId:{3} execution duration: {4} ms</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcExecutionTimeout" xml:space="preserve">
+    <value>BaseRpcMessageHandler.InnerAction RequestMessage: {0} Message: Execution timeout:{1}</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcGetComponentAgentCacheComponentNull" xml:space="preserve">
+    <value>BaseRpcComponentHandler.GetComponentAgent, CacheComponent is null, message type: {0}</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcGetComponentFailed" xml:space="preserve">
+    <value>BaseRpcComponentHandler.Init, get component failed, close channel, actorId: {0}, componentAgentType: {1}, exception:\n{2}</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcInnerActionCacheComponentNull" xml:space="preserve">
+    <value>BaseRpcComponentHandler.InnerAction, CacheComponent is null, message type: {0}</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcInnerActionException" xml:space="preserve">
+    <value>BaseRpcMessageHandler.InnerAction, Handler: {0} RequestMessage: {1} Message: {2}</value>
+  </data>
+
+  <data name="Core.StateComponent.SaveAllStateErrorLog" xml:space="preserve">
+    <value>StateComponent.SaveAll save all state error\n{0}</value>
+  </data>
+
+  <data name="Core.StateComponent.SaveAllStateTimeLog" xml:space="preserve">
+    <value>StateComponent.SaveAll save all state, use: {0}ms</value>
+  </data>
+
+  <data name="Core.StateComponent.SaveDataFailedLog" xml:space="preserve">
+    <value>StateComponent.SaveDataFailed StateName: {0} , Message: Save data failed, type:{1}</value>
+  </data>
+
+  <data name="Core.StateComponent.SaveStateFailedLog" xml:space="preserve">
+    <value>StateComponent.SaveState Failed StateId: {0} , Error: {1} , Message: StateComp.SaveState.Failed.StateId:{2},{3}</value>
+  </data>
+
+  <data name="Core.StateComponent.StateSaveBackDetail" xml:space="preserve">
+    <value>StateComponent.StateSaveBack StateName: {0} , Count: {1}</value>
+  </data>
+
+  <data name="Core.StateComponent.TimerSaveStateErrorLog" xml:space="preserve">
+    <value>StateComponent.TimerSave timer save state error, exception: {0}</value>
+  </data>
+
+  <data name="Core.Timer.LogError" xml:space="preserve">
+    <value>{0}\n{1}</value>
+  </data>
+
+  <data name="Database.GameDb.ImplicitDefaultBindingWarningLog" xml:space="preserve">
+    <value>GameDb.ImplicitDefaultBinding Multiple databases are registered ({0}) but none is nominated as the facade default (DbOptions.IsDefault); the static facade currently targets the first registered database. Nominate the business database at Init via DbOptions.IsDefault = true (default), or call GameDb.SetDefault(businessDatabaseName) explicitly.</value>
+  </data>
+
+  <data name="Database.Mongo.DiscoveryNoAdvertisePort" xml:space="preserve">
+    <value>[MongoDiscoveryRuntime] no advertise port configured ({0}); the heartbeat write side is skipped and this process only observes the topology</value>
+  </data>
+
+  <data name="Database.Mongo.ExecuteInTransactionTransientError" xml:space="preserve">
+    <value>MongoDbService.ExecuteInTransactionAsync transient error, retry {0}/{1}. error={2}</value>
+  </data>
+
+  <data name="Database.Mongo.OpenExceptionError" xml:space="preserve">
+    <value>MongoDbService.Open Exception {0} {1} {2}</value>
+  </data>
+
+  <data name="Database.Mongo.OpenExceptionFatal" xml:space="preserve">
+    <value>MongoDbService.Open Exception {0} {1} {2}</value>
+  </data>
+
+  <data name="Database.Mongo.OpenInitializedSuccessfully" xml:space="preserve">
+    <value>MongoDbService.Open {0} {1} MongoDB service initialized successfully, ConnectionString: {2}, DatabaseName: {3}</value>
+  </data>
+
+  <data name="Database.Mongo.OpenRetryWarning" xml:space="preserve">
+    <value>MongoDbService.Open Retry {0}/{1} {2} {3} {4}</value>
+  </data>
+
+  <data name="Database.Mongo.OperationTransientError" xml:space="preserve">
+    <value>MongoDbService.{0} transient error, retry {1}/{2}. error={3}</value>
+  </data>
+
+  <data name="Database.Mongo.ReadFallback" xml:space="preserve">
+    <value>MongoDbService.ReadFallback {0} state={1}</value>
+  </data>
+
+  <data name="Database.Mongo.SaveBulkBatchFailed" xml:space="preserve">
+    <value>MongoDbService.SaveBulkAsync batch failed. StateName: {0} , BatchIndex: {1} , BatchCount: {2} , Error: {3}</value>
+  </data>
+
+  <data name="Database.Mongo.SaveBulkBatchNotAcknowledged" xml:space="preserve">
+    <value>MongoDbService.SaveBulkAsync batch not acknowledged. StateName: {0} , BatchIndex: {1} , BatchCount: {2}</value>
+  </data>
+
+  <data name="Database.Mongo.StateTransition" xml:space="preserve">
+    <value>MongoDbService.StateTransition {0} -&gt; {1}. reason={2}</value>
+  </data>
+
+  <data name="Database.Mongo.TryReconnectAndPingFailed" xml:space="preserve">
+    <value>MongoDbService.TryReconnectAndPingAsync failed. error={0}</value>
+  </data>
+
+  <data name="Database.PostgreSql.DiscoveryNoAdvertisePort" xml:space="preserve">
+    <value>[PostgreSqlDiscoveryRuntime] no advertise port configured ({0}); the heartbeat write side is skipped and this process only observes the topology</value>
+  </data>
+
+  <data name="Database.PostgreSql.ExecuteInTransactionTransientError" xml:space="preserve">
+    <value>PostgreSqlDbService.ExecuteInTransactionAsync transient error, retry {0}/{1}. error={2}</value>
+  </data>
+
+  <data name="Database.PostgreSql.OpenExceptionError" xml:space="preserve">
+    <value>PostgreSqlDbService.Open Exception {0} {1} {2}</value>
+  </data>
+
+  <data name="Database.PostgreSql.OpenExceptionFatal" xml:space="preserve">
+    <value>PostgreSqlDbService.Open Exception {0} {1} {2}</value>
+  </data>
+
+  <data name="Database.PostgreSql.OpenInitializedSuccessfully" xml:space="preserve">
+    <value>PostgreSqlDbService.Open {0} {1} PostgreSQL service initialized successfully. Connection target: {2}, registered name: {3}</value>
+  </data>
+
+  <data name="Database.PostgreSql.OpenRetryWarning" xml:space="preserve">
+    <value>PostgreSqlDbService.Open Retry {0}/{1} {2} {3} {4}</value>
+  </data>
+
+  <data name="Database.PostgreSql.OperationTransientError" xml:space="preserve">
+    <value>PostgreSqlDbService.{0} transient error, retry {1}/{2}. error={3}</value>
+  </data>
+
+  <data name="Database.PostgreSql.ReadFallback" xml:space="preserve">
+    <value>PostgreSqlDbService.ReadFallback {0} state={1}</value>
+  </data>
+
+  <data name="Database.PostgreSql.SaveBulkBatchFailed" xml:space="preserve">
+    <value>PostgreSqlDbService.SaveBulkAsync batch failed. StateName: {0} , BatchIndex: {1} , BatchCount: {2} , Error: {3}</value>
+  </data>
+
+  <data name="Database.PostgreSql.SaveBulkBatchNotAcknowledged" xml:space="preserve">
+    <value>PostgreSqlDbService.SaveBulkAsync batch not acknowledged. StateName: {0} , BatchIndex: {1} , BatchCount: {2}</value>
+  </data>
+
+  <data name="Database.PostgreSql.StateTransition" xml:space="preserve">
+    <value>PostgreSqlDbService.StateTransition {0} -&gt; {1}. reason={2}</value>
+  </data>
+
+  <data name="Database.PostgreSql.TryReconnectAndPingFailed" xml:space="preserve">
+    <value>PostgreSqlDbService.TryReconnectAndPingAsync failed. error={0}</value>
+  </data>
+
+  <data name="Discovery.AdvertiseEndpoint.EgressDetectionFallbackMachineName" xml:space="preserve">
+    <value>[AdvertiseEndpointEnvironment] egress address detection failed; falling back to the machine name {0} as the advertise host. Set {1} explicitly when cross-process routing is required.</value>
+  </data>
+
+  <data name="Discovery.Registry.HeartbeatUpsertFailed" xml:space="preserve">
+    <value>[DiscoveryRegistry] heartbeat upsert failed for instance {0}; will retry next interval</value>
+  </data>
+
+  <data name="Discovery.Registry.TtlCleanupFailed" xml:space="preserve">
+    <value>[DiscoveryRegistry] TTL cleanup pass failed; will retry next interval</value>
+  </data>
+
+  <data name="Discovery.Watcher.PollRoundFailed" xml:space="preserve">
+    <value>[DiscoveryWatcher] poll round failed; keeping the previous route table and retrying next interval</value>
+  </data>
+
+  <data name="Hotfix.Bag.OfflineNotifySendFailed" xml:space="preserve">
+    <value>ReqPlayerSendItemHttpHandler offline notification send failed, roleId: {0}, status: {1}, error: {2}, traceId: {3}</value>
+  </data>
+
+  <data name="Hotfix.Event.SelfHandleException" xml:space="preserve">
+    <value>EventDispatcherExtensions.SelfHandle {0} {1}</value>
+  </data>
+
+  <data name="Hotfix.Event.SelfHandleNoListeners" xml:space="preserve">
+    <value>EventDispatcherExtensions.SelfHandle {0} No listeners found for event type: {1}</value>
+  </data>
+
+  <data name="Hotfix.Friend.AddFriendSendException" xml:space="preserve">
+    <value>FriendComponentAgent.OnAddFriend unified message send exception</value>
+  </data>
+
+  <data name="Hotfix.Friend.AddFriendSendFailed" xml:space="preserve">
+    <value>FriendComponentAgent.OnAddFriend unified message send failed, StatusCode: {0}, Error: {1}, TraceId: {2}</value>
+  </data>
+
+  <data name="Hotfix.Friend.DeleteFriendSendException" xml:space="preserve">
+    <value>FriendComponentAgent.OnDeleteFriend unified message send exception</value>
+  </data>
+
+  <data name="Hotfix.Friend.DeleteFriendSendFailed" xml:space="preserve">
+    <value>FriendComponentAgent.OnDeleteFriend unified message send failed, StatusCode: {0}, Error: {1}, TraceId: {2}</value>
+  </data>
+
+  <data name="Hotfix.Friend.FriendListSendException" xml:space="preserve">
+    <value>FriendComponentAgent.OnFriendList unified message send exception</value>
+  </data>
+
+  <data name="Hotfix.Friend.FriendListSendFailed" xml:space="preserve">
+    <value>FriendComponentAgent.OnFriendList unified message send failed, StatusCode: {0}, Error: {1}, TraceId: {2}</value>
+  </data>
+
+  <data name="Hotfix.Friend.SemanticInvalidResult" xml:space="preserve">
+    <value>FriendComponentAgent.{0} returned semantic error: Success=false and ErrorCode=0, PlayerId={1}</value>
+  </data>
+
+  <data name="Hotfix.Player.AgentIsNull" xml:space="preserve">
+    <value>agent is null</value>
+  </data>
+
+  <data name="Hotfix.Server.CrossDayTimerExecuted" xml:space="preserve">
+    <value>ServerCompAgent.CrossDayTimeHandler.Cross-day timer executed {0}</value>
+  </data>
+
+  <data name="Hotfix.Server.TestDelayTimerExecuted" xml:space="preserve">
+    <value>ServerCompAgent.TestDelayTimer.Delay 3 seconds. Execute once</value>
+  </data>
+
+  <data name="Hotfix.Server.TestScheduleTimerExecuted" xml:space="preserve">
+    <value>ServerCompAgent.TestSchedueTimer.Delay 1 second. Execute every 10 seconds</value>
+  </data>
+
+  <data name="Hotfix.StartUp.ClientDisconnected" xml:space="preserve">
+    <value>Client disconnected. SessionID: {0}, Reason: {1}</value>
+  </data>
+
+  <data name="Hotfix.StartUp.DataPackageReceive" xml:space="preserve">
+    <value>Data Package Receive: {0}</value>
+  </data>
+
+  <data name="Hotfix.StartUp.DataPackageReceiveHeartBeat" xml:space="preserve">
+    <value>Data Package Receive HeartBeat: {0}</value>
+  </data>
+
+  <data name="Hotfix.StartUp.MessageHandlerInvokeError" xml:space="preserve">
+    <value>Data Package Receive: Error when invoke message handler for message id: {0}, message type: {1}, exception: {2}</value>
+  </data>
+
+  <data name="Hotfix.StartUp.MessageHandlerNotFound" xml:space="preserve">
+    <value>Data Package Receive: Can not find handler for message id: {0}, message type: {1}</value>
+  </data>
+
+  <data name="Hotfix.Unified.DeliveryFailed" xml:space="preserve">
+    <value>SendToPlayerInnerHandler delivery failed, PlayerId:{0}</value>
+  </data>
+
+  <data name="NetWork.CloseAuthenticationTimeoutSessionFailed" xml:space="preserve">
+    <value>Failed to close authentication-timeout session: SessionId: {0}, exception: {1}</value>
+  </data>
+
+  <data name="NetWork.CloseAuthenticationTimeoutSessionsError" xml:space="preserve">
+    <value>Error happened when closing authentication timeout sessions: {0}</value>
+  </data>
+
+  <data name="NetWork.CloseUnauthenticatedSessionFailed" xml:space="preserve">
+    <value>Failed to close unauthenticated session: SessionId: {0}, exception: {1}</value>
+  </data>
+
+  <data name="NetWork.CreateNetworkMessagePackageError" xml:space="preserve">
+    <value>Create NetworkMessagePackage Error {0} {1} {2} {3}</value>
+  </data>
+
+  <data name="NetWork.FormatMessageError" xml:space="preserve">
+    <value>FormatMessage Error {0} {1} {2} {3} {4}</value>
+  </data>
+
+  <data name="NetWork.Http.ExecutionTimeNoResult" xml:space="preserve">
+    <value>{0}, execution time: {1}ms</value>
+  </data>
+
+  <data name="NetWork.Http.ProtoBufMessageEncodingException" xml:space="preserve">
+    <value>Message encoding exception: {0}</value>
+  </data>
+
+  <data name="NetWork.MessageObjectEncodeException" xml:space="preserve">
+    <value>MessageObjectEncodeException {0} {1} {2} {3}</value>
+  </data>
+
+  <data name="NetWork.ScanAuthenticationTimeoutSessionsError" xml:space="preserve">
+    <value>Error happened when scanning authentication timeout sessions: {0}</value>
+  </data>
+
+  <data name="NetWork.SendHeartBeatMessage" xml:space="preserve">
+    <value>Send HeartBeat Message:{0} {1}</value>
+  </data>
+
+  <data name="NetWork.SendMessage" xml:space="preserve">
+    <value>Send Message:{0} {1} {2}</value>
+  </data>
+
+  <data name="NetWork.SendMessageError" xml:space="preserve">
+    <value>Send Message Error:{0} {1}</value>
+  </data>
+
+  <data name="NetWork.SendMessageTimeout" xml:space="preserve">
+    <value>Send Message Timeout:{0} {1}</value>
+  </data>
+
+  <data name="NetWork.SessionAuthenticationRejected" xml:space="preserve">
+    <value>Session authentication rejected and closing: SessionId: {0}, RemoteEndPoint: {1}, MessageId: {2}</value>
+  </data>
+
+  <data name="NetWork.SessionAuthenticationTimeout" xml:space="preserve">
+    <value>Session authentication timeout, closing: SessionId: {0}, RemoteEndPoint: {1}</value>
+  </data>
+
+  <data name="RemoteMessaging.CircuitBreaker.TripClosedToOpen" xml:space="preserve">
+    <value>CircuitBreaker tripped (closed to open), Service: {0}, Failures: {1}</value>
+  </data>
+
+  <data name="RemoteMessaging.CircuitBreaker.TripHalfOpenToOpen" xml:space="preserve">
+    <value>CircuitBreaker tripped (half-open to open), Service: {0}, Failures: {1}</value>
+  </data>
+
+  <data name="RemoteMessaging.Client.InterceptorOnExceptionFailed" xml:space="preserve">
+    <value>Interceptor OnExceptionAsync failed</value>
+  </data>
+
+  <data name="RemoteMessaging.Client.SendOneWayCircuitBreakerOpen" xml:space="preserve">
+    <value>SendOneWayAsync: circuit breaker is open, Service: {0}</value>
+  </data>
+
+  <data name="RemoteMessaging.Client.SendOneWayHealthScoreLow" xml:space="preserve">
+    <value>SendOneWayAsync: service health score too low, Service: {0}, Score: {1}</value>
+  </data>
+
+  <data name="RemoteMessaging.Client.SendOneWayProtocolVersionIncompatible" xml:space="preserve">
+    <value>SendOneWayAsync: protocol version incompatible, MessageType: {0}</value>
+  </data>
+
+  <data name="RemoteMessaging.FaultInjection.SimulatedConnectionDropLog" xml:space="preserve">
+    <value>FaultInjection: simulated connection drop, Service: {0}</value>
+  </data>
+
+  <data name="RemoteMessaging.FaultInjection.SimulatedSlowResponseLog" xml:space="preserve">
+    <value>FaultInjection: simulated slow response, Service: {0}, Delay: {1}ms</value>
+  </data>
+
+  <data name="RemoteMessaging.FaultInjection.SimulatedTimeoutLog" xml:space="preserve">
+    <value>FaultInjection: simulated timeout, Service: {0}, Delay: {1}ms</value>
+  </data>
+
+  <data name="RemoteMessaging.Observability.RemoteCallCompleted" xml:space="preserve">
+    <value>RemoteCall completed, Service: {0}, Message: {1}, Elapsed: {2}ms</value>
+  </data>
+
+  <data name="RemoteMessaging.Observability.RemoteCallException" xml:space="preserve">
+    <value>RemoteCall exception, Service: {0}, Message: {1}, Elapsed: {2}ms</value>
+  </data>
+
+  <data name="RemoteMessaging.Observability.RemoteCallStarted" xml:space="preserve">
+    <value>RemoteCall started, Service: {0}, Message: {1}, Timeout: {2}ms</value>
+  </data>
+
+  <data name="RemoteMessaging.Routing.EnvelopeMessageWrongType" xml:space="preserve">
+    <value>[LocalEnvelopeDispatcher] envelope message is not RoleRouteEnvelopeMessage (actual type: {0}); dropping</value>
+  </data>
+
+  <data name="RemoteMessaging.Routing.EnvelopeMissingTargetActorId" xml:space="preserve">
+    <value>[LocalEnvelopeDispatcher] envelope has no TargetActorId (sender bug?); dropping inner message id={0}</value>
+  </data>
+
+  <data name="RemoteMessaging.Routing.InnerMessageDeserializeFailed" xml:space="preserve">
+    <value>[LocalEnvelopeDispatcher] failed to deserialize inner message for target {0} (innerMessageId={1}); dropping</value>
+  </data>
+
+  <data name="RemoteMessaging.Routing.InnerMessageIdNotRegistered" xml:space="preserve">
+    <value>[LocalEnvelopeDispatcher] inner message id {0} is not registered in MessageProtoHelper; dropping envelope for target {1}</value>
+  </data>
+
+  <data name="RemoteMessaging.Routing.TargetOfflineDefaultDropped" xml:space="preserve">
+    <value>[LocalEnvelopeDispatcher] target {0} is offline; default strategy — message dropped</value>
+  </data>
+
+  <data name="RemoteMessaging.Routing.TargetOfflineDiscardDropped" xml:space="preserve">
+    <value>[LocalEnvelopeDispatcher] target {0} is offline; Discard strategy — message dropped</value>
+  </data>
+
+  <data name="RemoteMessaging.Routing.TargetOfflineStoreOfflineDropped" xml:space="preserve">
+    <value>[LocalEnvelopeDispatcher] target {0} is offline; StoreOffline strategy placeholder — message dropped (no offline store yet)</value>
+  </data>
+
+  <data name="StartUp.Application.AbnormalServerStop" xml:space="preserve">
+    <value>abnormal server stop:{0}</value>
+  </data>
+
+  <data name="StartUp.Application.DuplicateStartupPriorities" xml:space="preserve">
+    <value>Duplicate startup priorities detected; multi-role launch order is unstable between these roles (C143b) — {0}</value>
+  </data>
+
+  <data name="StartUp.Application.NoRegisteredStartupType" xml:space="preserve">
+    <value>No registered startup type found for server type '{0}' (multi-role selection); skipped it.</value>
+  </data>
+
+  <data name="StartUp.Application.StopServerError" xml:space="preserve">
+    <value>error while stopping server role '{0}':{1}</value>
+  </data>
+
+  <data name="StartUp.HttpServer.HttpRequestError" xml:space="preserve">
+    <value>HTTP request error: {0}</value>
+  </data>
+
+  <data name="StartUp.HttpServer.PortOccupiedDetails" xml:space="preserve">
+    <value>HTTP port [{0}] occupation details: {1}</value>
+  </data>
+
+  <data name="StartUp.HttpServer.PortOccupiedNoProcessDetails" xml:space="preserve">
+    <value>HTTP port [{0}] is occupied, but the details of the occupying process could not be obtained.</value>
+  </data>
+
+  <data name="StartUp.Server.MessageHandlerError" xml:space="preserve">
+    <value>Message handler error: {0}</value>
+  </data>
+
+  <data name="StartUp.Server.PortOccupiedDetails" xml:space="preserve">
+    <value>{0} port [{1}] occupation details: {2}</value>
+  </data>
+
+  <data name="Utility.CompressionHelper.CompressFailed" xml:space="preserve">
+    <value>CompressionHelper.Compress Compression helper exception. Error: {0}.</value>
+  </data>
+
+  <data name="Utility.CompressionHelper.DecompressFailed" xml:space="preserve">
+    <value>CompressionHelper.Decompress Compression helper exception. Error: {0}.</value>
+  </data>
+
+  <data name="Utility.GlobalSettings.ActorRecycleTimeTooShortLog" xml:space="preserve">
+    <value>GlobalSettings.SetCurrentSetting ActorRecycleTime is less than 1 minute, and the default value is 5 minutes</value>
+  </data>
+
+  <data name="Utility.GlobalSettings.HttpUrlEmptyUseDefaultLog" xml:space="preserve">
+    <value>GlobalSettings.SetCurrentSetting HttpUrl is empty and uses the default value of : /game/api/</value>
+  </data>
+
+  <data name="Utility.GlobalSettings.NetworkTimeoutTooShortLog" xml:space="preserve">
+    <value>GlobalSettings.SetCurrentSetting NetWorkSendTimeOutSeconds is less than 1 second, and the default value is 5 seconds</value>
+  </data>
+
+  <data name="Utility.GlobalSettings.SaveDataIntervalTooSmallLog" xml:space="preserve">
+    <value>GlobalSettings.SetCurrentSetting SaveDataInterval is less than 5000 milliseconds, using default value: {0} milliseconds</value>
+  </data>
+
+  <data name="Utility.IllegalWordDetection.InitException" xml:space="preserve">
+    <value>IllegalWordDetection.Init Exception details: {0}</value>
+  </data>
+
+  <data name="Utility.LNumber.DivisionOverflowLog" xml:space="preserve">
+    <value>LNumber.DivisionOverflow LNumber division overflow &gt; {0}</value>
+  </data>
+
+  <data name="Utility.LNumber.MultiplicationOverflowLog" xml:space="preserve">
+    <value>LNumber.MultiplicationOverflow LNumber multiplication overflow &gt; {0}</value>
+  </data>
+
 </root>

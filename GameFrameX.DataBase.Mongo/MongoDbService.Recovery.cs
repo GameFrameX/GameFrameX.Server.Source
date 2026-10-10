@@ -29,6 +29,7 @@
 
 
 using GameFrameX.DataBase.Abstractions;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -151,7 +152,8 @@ public sealed partial class MongoDbService
         }
         catch (Exception exception)
         {
-            LogHelper.Warning("MongoDbService.TryReconnectAndPingAsync failed. error={error}", exception.Message);
+            // Localization: Database.Mongo.TryReconnectAndPingFailed - MongoDbService.TryReconnectAndPingAsync 失败。error={0}
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.Mongo.TryReconnectAndPingFailed, exception.Message));
             return false;
         }
     }

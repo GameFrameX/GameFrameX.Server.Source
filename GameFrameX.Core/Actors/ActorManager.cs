@@ -342,7 +342,8 @@ public static class ActorManager
                 await actor.Inactive();
                 await actor.OnRecycle();
                 ActorMap.TryRemove(actor.Id, out _);
-                LogHelper.Debug("ActorManager.CheckIdle, Actor recycled, actorId: {actorId}, actorType: {actorType}, message: {message}", actor.Id, actor.Type, LocalizationService.GetString(Localization.Keys.Core.Actor.Recycled, actor.Id, actor.Type));
+                // Localization: Core.ActorManager.CheckIdleRecycled - ActorManager.CheckIdle Actor已回收 actorId:{0} actorType:{1} , 消息: actor回收 id:{2} type:{3}
+                LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.ActorManager.CheckIdleRecycled, actor.Id, actor.Type, actor.Id, actor.Type));
             }
             else
             {
@@ -378,11 +379,13 @@ public static class ActorManager
             }
 
             await Task.WhenAll(taskList);
-            LogHelper.Info("ActorManager.SaveAll, Save all actor state time: {saveAllStateTime} ms, message: {message}", (DateTime.Now - begin).TotalMilliseconds, LocalizationService.GetString(Localization.Keys.Core.ActorManager.SaveAllStateTime, (DateTime.Now - begin).TotalMilliseconds));
+            // Localization: Core.ActorManager.SaveAllStateTimeLog - ActorManager.SaveAll 保存所有Actor状态耗时: {0} ms , 消息: 保存所有状态，用时: {1}ms
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.ActorManager.SaveAllStateTimeLog, (DateTime.Now - begin).TotalMilliseconds, (DateTime.Now - begin).TotalMilliseconds));
         }
         catch (Exception e)
         {
-            LogHelper.Error("ActorManager.SaveAll, Save all actor state, message: {message}, error: {exception}", LocalizationService.GetString(Localization.Keys.Core.ActorManager.SaveAllStateError, e), e);
+            // Localization: Core.ActorManager.SaveAllStateErrorLog - ActorManager.SaveAll 保存所有Actor状态 , 消息: 保存所有状态错误\n{0} , 错误: {1}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.ActorManager.SaveAllStateErrorLog, e, e));
             throw;
         }
     }
@@ -402,7 +405,8 @@ public static class ActorManager
         }
         catch (Exception exception)
         {
-            LogHelper.Error("ActorManager.TimerSave, Timer save all actor state error, message: {message}, error: {exception}", LocalizationService.GetString(Localization.Keys.Core.ActorManager.TimerSaveStateError), exception);
+            // Localization: Core.ActorManager.TimerSaveStateErrorLog - ActorManager.TimerSave 定时保存所有Actor状态错误 , 消息: 定时器保存状态错误 , 错误: {0}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.ActorManager.TimerSaveStateErrorLog, exception));
         }
     }
 
@@ -501,7 +505,8 @@ public static class ActorManager
 
                 async Task Work()
                 {
-                    LogHelper.Info("ActorManager.CrossDay, CrossDay actor, actorId: {actorId}, actorType: {actorType}, message: {message}", actor.Id, actor.Type, LocalizationService.GetString(Localization.Keys.Core.ActorManager.GlobalActorCrossDay, actor.Type));
+                    // Localization: Core.ActorManager.ActorCrossDayLog - ActorManager.CrossDay Actor跨天 actorId:{0} actorType:{1} , 消息: 全局Actor：{2}执行跨天
+                    LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.ActorManager.ActorCrossDayLog, actor.Id, actor.Type, actor.Type));
                     await actor.CrossDay(openServerDay);
                     Interlocked.Increment(ref a);
                 }
@@ -514,7 +519,8 @@ public static class ActorManager
         {
             if ((DateTime.Now - begin).TotalSeconds > CrossDayGlobalWaitSeconds)
             {
-                LogHelper.Warning("ActorManager.CrossDay, GlobalCompCrossDayTimeout, timeout: {timeout}, message: {message}", CrossDayGlobalWaitSeconds, LocalizationService.GetString(Localization.Keys.Core.ActorManager.GlobalCompCrossDayTimeout, CrossDayGlobalWaitSeconds));
+                // Localization: Core.ActorManager.GlobalCompCrossDayTimeoutLog - ActorManager.CrossDay 全局comp跨天超时 , 超时: {0}秒 , 消息: 全局comp跨天耗时过久，不阻止其他comp跨天，当前已过{1}秒
+                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.ActorManager.GlobalCompCrossDayTimeoutLog, CrossDayGlobalWaitSeconds, CrossDayGlobalWaitSeconds));
                 break;
             }
 
@@ -522,7 +528,8 @@ public static class ActorManager
         }
 
         var globalCost = (DateTime.Now - begin).TotalMilliseconds;
-        LogHelper.Info("ActorManager.CrossDay, GlobalCompCrossDayComplete, cost: {cost}, message: {message}", globalCost, LocalizationService.GetString(Localization.Keys.Core.ActorManager.GlobalCompCrossDayComplete, globalCost));
+        // Localization: Core.ActorManager.GlobalCompCrossDayCompleteLog - ActorManager.CrossDay 全局comp跨天完成 , 耗时: {0}ms , 消息: 全局comp跨天完成 耗时：{1}ms
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.ActorManager.GlobalCompCrossDayCompleteLog, globalCost, globalCost));
         a = 0;
         b = 0;
         foreach (var actor in ActorMap.Values)
@@ -545,7 +552,8 @@ public static class ActorManager
         {
             if ((DateTime.Now - begin).TotalSeconds > CrossDayNotRoleWaitSeconds)
             {
-                LogHelper.Warning("ActorManager.CrossDay, NonPlayerCompCrossDayTimeout, timeout: {timeout}, message: {message}", CrossDayNotRoleWaitSeconds, LocalizationService.GetString(Localization.Keys.Core.ActorManager.NonPlayerCompCrossDayTimeout, CrossDayNotRoleWaitSeconds));
+                // Localization: Core.ActorManager.NonPlayerCompCrossDayTimeoutLog - ActorManager.CrossDay 非玩家comp跨天超时 , 超时: {0}秒 , 消息: 非玩家comp跨天耗时过久，不阻止玩家comp跨天，当前已过{1}秒
+                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.ActorManager.NonPlayerCompCrossDayTimeoutLog, CrossDayNotRoleWaitSeconds, CrossDayNotRoleWaitSeconds));
                 break;
             }
 
@@ -553,7 +561,8 @@ public static class ActorManager
         }
 
         var otherCost = (DateTime.Now - begin).TotalMilliseconds - globalCost;
-        LogHelper.Info("ActorManager.CrossDay, NonPlayerCompCrossDayComplete, cost: {cost}, message: {message}", otherCost, LocalizationService.GetString(Localization.Keys.Core.ActorManager.NonPlayerCompCrossDayComplete, otherCost));
+        // Localization: Core.ActorManager.NonPlayerCompCrossDayCompleteLog - ActorManager.CrossDay 非玩家comp跨天完成 , 耗时: {0}ms , 消息: 非玩家comp跨天完成 耗时：{1}ms
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.ActorManager.NonPlayerCompCrossDayCompleteLog, otherCost, otherCost));
     }
 
     /// <summary>
@@ -609,7 +618,8 @@ public static class ActorManager
             }
             catch (Exception exception)
             {
-                LogHelper.Error("ActorManager.ActorForEach, error, actorId: {actorId}, actorType: {actorType}, exception: {exception}", actor.Id, actor.Type, exception);
+                // Localization: Core.ActorManager.ActorForEachError - ActorManager.ActorForEach 错误 actorId:{0} actorType:{1} 异常: {2}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.ActorManager.ActorForEachError, actor.Id, actor.Type, exception));
             }
         }
     }

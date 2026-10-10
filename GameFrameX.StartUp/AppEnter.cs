@@ -195,6 +195,7 @@ internal static class AppEnter
     /// <param name="message">退出消息 / Exit message</param>
     private static async Task HandleExitAsync(string message)
     {
+        // Localization: StartUp.Application.ListeningExitMessage - 监听程序退出消息
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Application.ListeningExitMessage));
         try
         {
@@ -209,11 +210,13 @@ internal static class AppEnter
                 {
                     // 逆序停机部分失败：全部失败已在 StopHostsInReverseOrderAsync 中逐个记录并聚合于此，
                     // 退出流程继续执行，确保 Kill 与日志冲刷仍然运行
-                    LogHelper.Error($"abnormal server stop:{e}");
+                    // Localization: StartUp.Application.AbnormalServerStop - 服务器异常停止:{0}
+                    LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.Application.AbnormalServerStop, e));
                 }
             }
 
             AppExitHandler.Kill();
+            // Localization: StartUp.Application.ExecutingExitProcedure - 执行退出程序
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Application.ExecutingExitProcedure));
             if (_gameLoopTask != null)
             {
@@ -256,7 +259,8 @@ internal static class AppEnter
             catch (Exception e)
             {
                 // 单个 Role 停机失败不阻断其余 Role 的逆序停机：记录后继续，最后统一聚合抛出
-                LogHelper.Error($"error while stopping server role '{appStartUp.ServerType}':{e}");
+                // Localization: StartUp.Application.StopServerError - 停止服务器角色 '{0}' 时出错:{1}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.Application.StopServerError, appStartUp.ServerType, e));
                 (stopFailures ??= new List<Exception>()).Add(e);
             }
         }

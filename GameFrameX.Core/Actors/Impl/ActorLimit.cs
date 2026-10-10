@@ -95,6 +95,7 @@ public static class ActorLimit
             case RuleType.None:
                 break;
             default:
+                // Localization: Core.ActorLimit.UnsupportedRuleType - 不支持的rule类型:{0}
                 LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.ActorLimit.UnsupportedRuleType, type));
                 break;
         }
@@ -146,6 +147,7 @@ public static class ActorLimit
                 //等级高的不能【等待】调用等级低的
                 if (currentValue > targetValue)
                 {
+                    // Localization: Core.ActorLimit.InvalidCallPath - 不合法的调用路径:{0}==&gt;{1}
                     LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.ActorLimit.InvalidCallPath, currentType, targetType));
                     return false;
                 }
@@ -192,6 +194,7 @@ public static class ActorLimit
 
             if (_crossDic.TryGetValue(target, out var set) && set.ContainsKey(self))
             {
+                // Localization: Core.ActorLimit.CrossDeadlock - 发生交叉死锁，ActorId1:{0} ActorType1:{1} ActorId2:{2} ActorType2:{3}
                 LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.ActorLimit.CrossDeadlock, self, ActorIdGenerator.GetActorType(self), target, ActorIdGenerator.GetActorType(target)));
                 return false;
             }

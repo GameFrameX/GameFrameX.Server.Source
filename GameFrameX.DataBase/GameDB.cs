@@ -114,7 +114,8 @@ public static partial class GameDb
             return;
         }
 
-        LogHelper.Warning<string>("GameDb.ImplicitDefaultBinding {message}", LocalizationService.GetString(Localization.Keys.Database.GameDbImplicitDefaultBindingWarning, string.Join(", ", MultiDbRegistry.GetRegisteredDatabaseNames())));
+        // Localization: Database.GameDb.ImplicitDefaultBindingWarningLog - GameDb.ImplicitDefaultBinding 已注册多个数据库（{0}）但无声明式默认库提名（DbOptions.IsDefault 均为 false），静态门面当前指向首个注册库；多库部署请在业务库 Init 时保留缺省 IsDefault = true（或显式调用 GameDb.SetDefault(业务库名)）。
+        LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.GameDbImplicitDefaultBindingWarningLog, string.Join(", ", MultiDbRegistry.GetRegisteredDatabaseNames())));
     }
 
     /// <summary>

@@ -79,7 +79,8 @@ public static class EventDispatcher
         var listeners = HotfixManager.FindListeners(actor.Type, eventArgs.GetType());
         if (listeners.IsNullOrEmpty())
         {
-            LogHelper.Warning("EventDispatcher.Dispatch Actor {actorId} {eventArgsType} {message}", actorId, eventArgs.GetType().Name, LocalizationService.GetString(Localization.Keys.Events.NoListenersFound, eventArgs.GetType().Name));
+            // Localization: Core.EventDispatcher.DispatchNoListeners - EventDispatcher.Dispatch Actor {0} {1} 事件类型：{2} 没有找到任何监听者
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.EventDispatcher.DispatchNoListeners, actorId, eventArgs.GetType().Name, eventArgs.GetType().Name));
             return;
         }
 
@@ -96,7 +97,8 @@ public static class EventDispatcher
             catch (Exception exception)
             {
                 // 捕获并记录事件处理过程中的异常
-                LogHelper.Error("EventDispatcher.Dispatch Actor {actorId} {eventArgsType} {exception}", actorId, eventArgs.GetType().Name, exception);
+                // Localization: Core.EventDispatcher.DispatchError - EventDispatcher.Dispatch Actor {0} {1} 异常: {2}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.EventDispatcher.DispatchError, actorId, eventArgs.GetType().Name, exception));
             }
         }
     }
@@ -114,7 +116,8 @@ public static class EventDispatcher
         var listeners = HotfixManager.FindListeners(eventArgs.GetType());
         if (listeners.IsNullOrEmpty())
         {
-            LogHelper.Warning("EventDispatcher.Dispatch Actor {actorId} {eventArgsType} {message}", actorId, eventArgs.GetType().Name, LocalizationService.GetString(Localization.Keys.Events.NoListenersFound, eventArgs.GetType().Name));
+            // Localization: Core.EventDispatcher.DispatchNoListeners - EventDispatcher.Dispatch Actor {0} {1} 事件类型：{2} 没有找到任何监听者
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.EventDispatcher.DispatchNoListeners, actorId, eventArgs.GetType().Name, eventArgs.GetType().Name));
             return;
         }
 
@@ -129,7 +132,8 @@ public static class EventDispatcher
             catch (Exception exception)
             {
                 // 捕获并记录事件处理过程中的异常
-                LogHelper.Error("EventDispatcher.Dispatch Actor {actorId} {eventArgsType} {exception}", actorId, eventArgs.GetType().Name, exception);
+                // Localization: Core.EventDispatcher.DispatchError - EventDispatcher.Dispatch Actor {0} {1} 异常: {2}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.EventDispatcher.DispatchError, actorId, eventArgs.GetType().Name, exception));
             }
         }
     }

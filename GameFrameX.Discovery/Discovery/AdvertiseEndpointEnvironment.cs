@@ -30,6 +30,7 @@
 
 using System.Net;
 using System.Net.Sockets;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 
 namespace GameFrameX.Discovery;
@@ -156,7 +157,8 @@ public static class AdvertiseEndpointEnvironment
         }
 
         var machineName = Dns.GetHostName();
-        LogHelper.Warning("[AdvertiseEndpointEnvironment] egress address detection failed; falling back to the machine name {machineName} as the advertise host. Set {environmentVariable} explicitly when cross-process routing is required.", machineName, AdvertiseHostEnvironmentVariable);
+        // Localization: Discovery.AdvertiseEndpoint.EgressDetectionFallbackMachineName - [AdvertiseEndpointEnvironment] 出口地址探测失败；回退使用机器名 {0} 作为广播主机。需要跨进程路由时请显式设置 {1}
+        LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Discovery.AdvertiseEndpoint.EgressDetectionFallbackMachineName, machineName, AdvertiseHostEnvironmentVariable));
         return (machineName, EndpointAddressKind.DnsName);
     }
 }

@@ -78,7 +78,8 @@ public static class EventDispatcherExtensions
             var listeners = HotfixManager.FindListeners(agent.OwnerType, eventArgs.GetType());
             if (listeners.IsNullOrEmpty())
             {
-                LogHelper.Warning("EventDispatcherExtensions.SelfHandle {eventArgsType} {noListenersFound}", eventArgs.GetType().Name, LocalizationService.GetString(GameFrameX.Localization.Keys.Events.NoListenersFound, eventArgs.GetType().Name));
+                // Localization: Hotfix.Event.SelfHandleNoListeners - EventDispatcherExtensions.SelfHandle {0} 事件类型：{1} 没有找到任何监听者
+                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Hotfix.Event.SelfHandleNoListeners, eventArgs.GetType().Name, eventArgs.GetType().Name));
                 return;
             }
 
@@ -91,7 +92,8 @@ public static class EventDispatcherExtensions
                 }
                 catch (Exception exception)
                 {
-                    LogHelper.Error("EventDispatcherExtensions.SelfHandle {eventArgsType} {exception}", eventArgs.GetType().Name, exception);
+                    // Localization: Hotfix.Event.SelfHandleException - EventDispatcherExtensions.SelfHandle 处理事件 {0} 时发生异常: {1}
+                    LogHelper.Error(LocalizationService.GetString(Localization.Keys.Hotfix.Event.SelfHandleException, eventArgs.GetType().Name, exception));
                 }
             }
         });

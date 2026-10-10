@@ -59,9 +59,11 @@ public static class GlobalTimer
     /// </summary>
     public static void Start()
     {
+        // Localization: Core.Timer.GlobalTimerInitializationStart - 初始化全局定时开始...
         LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.Timer.GlobalTimerInitializationStart));
         IsWorking = true;
         _loopTask = Task.Run(Loop);
+        // Localization: Core.Timer.GlobalTimerInitializationComplete - 初始化全局定时完成...
         LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.Timer.GlobalTimerInitializationComplete));
     }
 
@@ -75,6 +77,7 @@ public static class GlobalTimer
 
         while (IsWorking)
         {
+            // Localization: Core.Timer.NextSaveTime - 下次定时回存时间 {0}
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.NextSaveTime, TimerHelper.TimestampSecondsToDateTime(nextSaveTime).ToString("yyyy-MM-dd HH:mm:ss.fff K")));
             var currentTime = TimerHelper.UnixTimeMilliseconds();
             while (currentTime < nextSaveTime && IsWorking)
@@ -89,14 +92,18 @@ public static class GlobalTimer
             }
 
             var startTime = TimerHelper.UnixTimeMilliseconds();
+            // Localization: Core.Timer.SaveStart - 开始定时回存 时间:{0}
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.SaveStart, TimerHelper.CurrentDateTimeWithTimeZoneFormat()));
             await StateComponent.TimerSave();
             var endTime = TimerHelper.UnixTimeMilliseconds();
             var cost = endTime - startTime;
+            // Localization: Core.Timer.SaveEnd - 结束定时回存 时间:{0} 耗时: {1}ms
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.SaveEnd, TimerHelper.CurrentDateTimeWithTimeZoneFormat(), cost));
+            // Localization: Core.Timer.ActorRecycleStart - 开始回收空闲Actor 时间:{0}
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.ActorRecycleStart, TimerHelper.CurrentDateTimeWithTimeZoneFormat()));
             await ActorManager.CheckIdle();
             currentTime = TimerHelper.UnixTimeMilliseconds();
+            // Localization: Core.Timer.ActorRecycleEnd - 结束回收空闲Actor 时间:{0}
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.ActorRecycleEnd, TimerHelper.CurrentDateTimeWithTimeZoneFormat()));
             do
             {

@@ -161,7 +161,8 @@ public static class PostgreSqlDiscoveryRuntime
         ActiveDiscoveryRuntime.Bind(_registry);
         if (selfDescriptor == null)
         {
-            LogHelper.Warning("[PostgreSqlDiscoveryRuntime] no advertise port configured ({environmentVariable}); the heartbeat write side is skipped and this process only observes the topology", AdvertiseEndpointEnvironment.AdvertisePortEnvironmentVariable);
+            // Localization: Database.PostgreSql.DiscoveryNoAdvertisePort - [PostgreSqlDiscoveryRuntime] 未配置广播端口（{0}）；心跳写入侧被跳过，本进程仅观察拓扑
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.PostgreSql.DiscoveryNoAdvertisePort, AdvertiseEndpointEnvironment.AdvertisePortEnvironmentVariable));
         }
     }
 

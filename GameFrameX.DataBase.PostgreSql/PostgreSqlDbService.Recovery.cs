@@ -29,6 +29,7 @@
 
 
 using GameFrameX.DataBase.Abstractions;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 using Npgsql;
 
@@ -153,7 +154,8 @@ public sealed partial class PostgreSqlDbService
         }
         catch (Exception exception)
         {
-            LogHelper.Warning("PostgreSqlDbService.TryReconnectAndPingAsync failed. error={error}", exception.Message);
+            // Localization: Database.PostgreSql.TryReconnectAndPingFailed - PostgreSqlDbService.TryReconnectAndPingAsync 失败。error={0}
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.PostgreSql.TryReconnectAndPingFailed, exception.Message));
             return false;
         }
     }

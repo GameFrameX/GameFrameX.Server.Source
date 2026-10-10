@@ -29,6 +29,7 @@
 
 using System.Text.Json;
 using GameFrameX.Core.Config;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 
 namespace GameFrameX.Config;
@@ -50,10 +51,12 @@ public class ConfigComponent
     public async Task LoadConfig()
     {
         Tables.Init(Instance);
-        LogHelper.Debug("Load Config Start...");
+        // Localization: Config.Table.LoadConfigStart - 开始加载配置表...
+        LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Config.Table.LoadConfigStart));
         Instance.RemoveAllConfigs();
         await Tables.LoadAsync(Loader);
-        LogHelper.Debug("Load Config End...");
+        // Localization: Config.Table.LoadConfigEnd - 配置表加载完成...
+        LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Config.Table.LoadConfigEnd));
     }
 
     private static async Task<ByteBuf> Loader(string file, bool tag)

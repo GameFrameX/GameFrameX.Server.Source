@@ -102,7 +102,8 @@ public sealed partial class PostgreSqlDbService
                 }
 
                 DbOperationLatencyMilliseconds.Record(openStopwatch.Elapsed.TotalMilliseconds, new TagList { { "op", "open" }, { "name", nameof(Open) }, { "success", true }, });
-                LogHelper.Info("PostgreSqlDbService.Open {dbName} {target} {postgreSqlInitializedSuccessfully}", dbOptions.Name, connectionTarget, LocalizationService.GetString(Keys.Database.PostgreSqlInitializedSuccessfully, connectionTarget, dbOptions.Name));
+                // Localization: Database.PostgreSql.OpenInitializedSuccessfully - PostgreSqlDbService.Open {0} {1} PostgreSQL服务初始化成功，连接目标：{2}，注册名：{3}
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.Database.PostgreSql.OpenInitializedSuccessfully, dbOptions.Name, connectionTarget, connectionTarget, dbOptions.Name));
                 return true;
             }
             catch (Exception exception)
@@ -112,7 +113,8 @@ public sealed partial class PostgreSqlDbService
                 if (attempt < retryDelays.Length - 1)
                 {
                     DbOpenRetryTotal.Add(1, new TagList { { "db.target", connectionTarget }, });
-                    LogHelper.Warning("PostgreSqlDbService.Open Retry {attempt}/{maxRetry} {dbName} {target} {exception}", attempt + 1, retryDelays.Length, dbOptions.Name, connectionTarget, exception.Message);
+                    // Localization: Database.PostgreSql.OpenRetryWarning - PostgreSqlDbService.Open 重试 {0}/{1} {2} {3} {4}
+                    LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.PostgreSql.OpenRetryWarning, attempt + 1, retryDelays.Length, dbOptions.Name, connectionTarget, exception.Message));
                     var delay = retryDelays[attempt] + Random.Shared.Next(0, 200);
                     await Task.Delay(delay).ConfigureAwait(false);
                 }
@@ -121,12 +123,14 @@ public sealed partial class PostgreSqlDbService
 
         DbOperationFailTotal.Add(1, new TagList { { "op", "open" }, { "name", nameof(Open) }, { "reason", GetFailureReason(lastException) }, });
         DbOperationLatencyMilliseconds.Record(openStopwatch.Elapsed.TotalMilliseconds, new TagList { { "op", "open" }, { "name", nameof(Open) }, { "success", false }, });
-        LogHelper.Fatal("PostgreSqlDbService.Open Exception {dbName} {target} {exception}", dbOptions.Name, connectionTarget, lastException);
+        // Localization: Database.PostgreSql.OpenExceptionFatal - PostgreSqlDbService.Open 异常 {0} {1} {2}
+        LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Database.PostgreSql.OpenExceptionFatal, dbOptions.Name, connectionTarget, lastException));
         var message = LocalizationService.GetString(Keys.Database.PostgreSqlInitializationFailed, connectionTarget, dbOptions.Name);
         Console.ForegroundColor = ConsoleColor.Red;
         Console.WriteLine(message);
         Console.ResetColor();
-        LogHelper.Error("PostgreSqlDbService.Open Exception {dbName} {target} {message}", dbOptions.Name, connectionTarget, message);
+        // Localization: Database.PostgreSql.OpenExceptionError - PostgreSqlDbService.Open 异常 {0} {1} {2}
+        LogHelper.Error(LocalizationService.GetString(Localization.Keys.Database.PostgreSql.OpenExceptionError, dbOptions.Name, connectionTarget, message));
         lock (_availabilityLock)
         {
             ChangeAvailabilityState(DatabaseAvailabilityState.Unhealthy, "open_failed");

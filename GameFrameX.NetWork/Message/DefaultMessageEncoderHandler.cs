@@ -84,12 +84,14 @@ public sealed class DefaultMessageEncoderHandler : BaseMessageEncoderHandler
             }
             catch (Exception e)
             {
-                LogHelper.Error("MessageObjectEncodeException {messageId} {operationType} {uniqueId} {exception}", messageObject.MessageId, messageObject.OperationType, messageObject.UniqueId, e);
+                // Localization: NetWork.MessageObjectEncodeException - 消息对象编码异常 {0} {1} {2} {3}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.NetWork.MessageObjectEncodeException, messageObject.MessageId, messageObject.OperationType, messageObject.UniqueId, e));
                 return null;
             }
         }
 
-        LogHelper.Error<string>("MessageObjectNullEncodeException {message} ", LocalizationService.GetString(Localization.Keys.NetWorkMessage.MessageObjectNullEncodeException));
+        // Localization: NetWork.Message.MessageObjectNullEncodeException - 消息对象为空，编码异常
+        LogHelper.Error(LocalizationService.GetString(Localization.Keys.NetWorkMessage.MessageObjectNullEncodeException));
         return null;
     }
 }

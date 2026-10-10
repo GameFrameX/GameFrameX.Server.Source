@@ -80,9 +80,11 @@ public abstract partial class AppStartUpBase
             return;
         }
 
+        // Localization: StartUp.HttpServer.StartingServer - 启动 [HTTP] 服务器...
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.StartingServer));
         if (!Setting.HttpPort.IsRange(5000, ushort.MaxValue - 1))
         {
+            // Localization: StartUp.HttpServer.PortOutOfRange - 启动 [HTTP] 服务器端口 [{0}] 超出范围 [{1}-{2}]，HTTP服务无法启动，启动已忽略
             LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.PortOutOfRange, Setting.HttpPort, 5000, ushort.MaxValue - 1));
             return;
         }
@@ -108,6 +110,7 @@ public abstract partial class AppStartUpBase
         // 检查是否启用HTTP服务
         if (!Setting.IsEnableHttp)
         {
+            // Localization: StartUp.HttpServer.ServiceDisabled - HTTP服务已禁用，启动已忽略
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.ServiceDisabled));
             return false;
         }
@@ -132,15 +135,18 @@ public abstract partial class AppStartUpBase
     /// <remarks>Log the occupying process details when the HTTP port is occupied. Extracted from <see cref="StartHttpServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
     private void LogHttpPortOccupied()
     {
+        // Localization: StartUp.HttpServer.PortOccupied - HTTP服务器端口被占用。端口：{0}。
         LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.PortOccupied, Setting.HttpPort));
         var occupiedProcesses = NetHelper.GetPortOccupyingProcesses(Setting.HttpPort);
         if (occupiedProcesses.Count > 0)
         {
-            LogHelper.Error($"HTTP端口[{Setting.HttpPort}]占用详情: {string.Join(" | ", occupiedProcesses)}");
+            // Localization: StartUp.HttpServer.PortOccupiedDetails - HTTP端口[{0}]占用详情: {1}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.PortOccupiedDetails, Setting.HttpPort, string.Join(" | ", occupiedProcesses)));
         }
         else
         {
-            LogHelper.Warning($"HTTP端口[{Setting.HttpPort}]已被占用，但未能获取占用进程详情。");
+            // Localization: StartUp.HttpServer.PortOccupiedNoProcessDetails - HTTP端口[{0}]已被占用，但未能获取占用进程详情。
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.PortOccupiedNoProcessDetails, Setting.HttpPort));
         }
     }
 
@@ -173,6 +179,7 @@ public abstract partial class AppStartUpBase
         ConfigureHttpApplication(app, development, openApiInfo, corsAllowedOrigins, baseHandler, httpFactory, aopHandlerTypes);
 
         await app.StartAsync();
+        // Localization: StartUp.HttpServer.StartupComplete - HTTP服务器启动完成 - 端口: {0}
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.StartupComplete, Setting.HttpPort));
     }
 
@@ -258,6 +265,7 @@ public abstract partial class AppStartUpBase
         // 端口被占用：跳过附加监听，/metrics 端点因 RequireHost 端口限定随之失配，主服务继续运行
         if (!NetHelper.PortIsAvailable(Setting.MetricsPort))
         {
+            // Localization: StartUp.MetricsPortInUse - 指标端口 [{0}] 被占用，无法启动独立指标服务器
             LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.MetricsPortInUse, Setting.MetricsPort));
             return;
         }
@@ -294,6 +302,7 @@ public abstract partial class AppStartUpBase
 
             foreach (var ip in ipList)
             {
+                // Localization: StartUp.HttpServer.SwaggerUiAccess - Swagger UI 可通过 http://{0}:{1}/swagger 访问
                 LogHelper.Debug(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.SwaggerUiAccess, ip, Setting.HttpPort));
             }
         }
@@ -325,6 +334,7 @@ public abstract partial class AppStartUpBase
             app.MapPrometheusScrapingEndpoint();
             foreach (var ip in ipList)
             {
+                // Localization: StartUp.PrometheusMetricsEndpointEnabledInline - Prometheus指标端点已内联启用。
                 LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.PrometheusMetricsEndpointEnabledInline, ip, Setting.HttpPort));
             }
         }
@@ -336,6 +346,7 @@ public abstract partial class AppStartUpBase
             app.MapPrometheusScrapingEndpoint().RequireHost($"*:{Setting.MetricsPort}");
             foreach (var ip in ipList)
             {
+                // Localization: StartUp.PrometheusMetricsEndpointEnabled - 独立普罗米修斯指标端点已启用: http://{0}:{1}/metrics
                 LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.PrometheusMetricsEndpointEnabled, ip, Setting.MetricsPort));
             }
         }
@@ -441,7 +452,8 @@ public abstract partial class AppStartUpBase
             var exceptionHandlerPathFeature = context.Features.Get<IExceptionHandlerPathFeature>();
 
             // 记录详细错误日志
-            LogHelper.Error<string>("HTTP request error: {exception}", exceptionHandlerPathFeature?.Error.ToString() ?? "No exception available");
+            // Localization: StartUp.HttpServer.HttpRequestError - HTTP请求错误: {0}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.HttpRequestError, exceptionHandlerPathFeature?.Error.ToString() ?? "No exception available"));
 
             // 返回通用错误消息，避免泄露敏感信息
             await context.Response.WriteAsync("An error occurred while processing your request.");

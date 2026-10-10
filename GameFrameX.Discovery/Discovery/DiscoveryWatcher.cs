@@ -27,7 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 
 namespace GameFrameX.Discovery;
@@ -282,7 +282,8 @@ public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
             }
             catch (Exception exception)
             {
-                LogHelper.Error(exception, "[DiscoveryWatcher] poll round failed; keeping the previous route table and retrying next interval");
+                // Localization: Discovery.Watcher.PollRoundFailed - [DiscoveryWatcher] 轮询失败；保留上次路由表并在下个间隔重试
+                LogHelper.Error(exception, LocalizationService.GetString(Localization.Keys.Discovery.Watcher.PollRoundFailed));
             }
         }
     }

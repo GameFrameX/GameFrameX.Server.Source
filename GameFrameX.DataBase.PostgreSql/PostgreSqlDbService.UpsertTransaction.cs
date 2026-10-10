@@ -248,14 +248,16 @@ public sealed partial class PostgreSqlDbService
                 }
                 else
                 {
-                    LogHelper.Error("PostgreSqlDbService.SaveBulkAsync batch not acknowledged. StateName: {stateName} , BatchIndex: {batchIndex} , BatchCount: {batchCount}", stateName, index / batchSize + 1, batchCount);
+                    // Localization: Database.PostgreSql.SaveBulkBatchNotAcknowledged - PostgreSqlDbService.SaveBulkAsync 批次未被确认。状态名：{0}，批次索引：{1}，批次总数：{2}
+                    LogHelper.Error(LocalizationService.GetString(Localization.Keys.Database.PostgreSql.SaveBulkBatchNotAcknowledged, stateName, index / batchSize + 1, batchCount));
                 }
             }
             catch (Exception exception)
             {
                 // 逐批异常隔离：失败批次记日志后继续后续批次，避免单批故障放大为整批丢失
                 // Per-batch exception isolation (migrated semantics): a failed batch is logged and the loop continues with the remaining batches.
-                LogHelper.Error("PostgreSqlDbService.SaveBulkAsync batch failed. StateName: {stateName} , BatchIndex: {batchIndex} , BatchCount: {batchCount} , Error: {error}", stateName, index / batchSize + 1, batchCount, exception);
+                // Localization: Database.PostgreSql.SaveBulkBatchFailed - PostgreSqlDbService.SaveBulkAsync 批次失败。状态名：{0}，批次索引：{1}，批次总数：{2}，错误：{3}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Database.PostgreSql.SaveBulkBatchFailed, stateName, index / batchSize + 1, batchCount, exception));
             }
         }
 
@@ -315,7 +317,8 @@ public sealed partial class PostgreSqlDbService
             {
                 lastException = exception;
                 var delay = _transactionRetryDelaysMilliseconds[attempt] + Random.Shared.Next(0, 120);
-                LogHelper.Warning("PostgreSqlDbService.ExecuteInTransactionAsync transient error, retry {attempt}/{maxRetry}. error={error}", attempt + 1, _transactionRetryDelaysMilliseconds.Length, exception.Message);
+                // Localization: Database.PostgreSql.ExecuteInTransactionTransientError - PostgreSqlDbService.ExecuteInTransactionAsync 瞬时错误，重试 {0}/{1}。error={2}
+                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.PostgreSql.ExecuteInTransactionTransientError, attempt + 1, _transactionRetryDelaysMilliseconds.Length, exception.Message));
                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception)

@@ -77,7 +77,8 @@ public static class HttpHandler
         var logHeader = LocalizationService.GetString(Localization.Keys.NetWorkHttp.RequestLogHeader, context.TraceIdentifier, ip, url);
         if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp && GlobalSettings.CurrentSetting.IsDebugHttpRequest)
         {
-            LogHelper.Debug("HTTP RequestMethod {logHeader} {method}", logHeader, context.Request.Method);
+            // Localization: NetWork.Http.RequestMethod - {0}，请求方式:[{1}]
+            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.NetWorkHttp.RequestMethod, logHeader, context.Request.Method));
         }
 
         try
@@ -101,7 +102,8 @@ public static class HttpHandler
             // 记录请求参数
             if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp && GlobalSettings.CurrentSetting.IsDebugHttpRequest && paramMap.Count > 0)
             {
-                LogHelper.Debug<string>("HTTP RequestParameters {parameters}", JsonHelper.Serialize(paramMap));
+                // Localization: NetWork.Http.RequestParameters - 请求参数:{0}
+                LogHelper.Debug(LocalizationService.GetString(Localization.Keys.NetWorkHttp.RequestParameters, JsonHelper.Serialize(paramMap)));
             }
 
             var actionContext = new HttpActionContext { Ip = ip, Url = url, Parameters = paramMap, MessageObject = message };
@@ -135,7 +137,8 @@ public static class HttpHandler
         }
         catch (Exception e)
         {
-            LogHelper.Error("HTTP JSON ExceptionOccurred {logHeader} {message} {stackTrace}", logHeader, e.Message, e.StackTrace);
+            // Localization: NetWork.Http.ExceptionOccurred - {0}, 发生异常. {1} {2}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.NetWorkHttp.ExceptionOccurred, logHeader, e.Message, e.StackTrace));
             await context.Response.WriteAsync(HttpJsonResultData<string>.FailString(e.Message));
         }
     }
@@ -268,7 +271,8 @@ public static class HttpHandler
         var handler = baseHandler(command);
         if (handler == null)
         {
-            LogHelper.Warning<string>("HTTP CommandHandlerNotFound {command}", LocalizationService.GetString(Localization.Keys.NetWorkHttp.CommandHandlerNotFound, command));
+            // Localization: NetWork.Http.CommandHandlerNotFound - http cmd handler 不存在：{0}
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.NetWorkHttp.CommandHandlerNotFound, command));
             await httpContext.Response.WriteAsync(HttpJsonResultData<string>.NotFoundString());
             return (false, null);
         }
@@ -295,11 +299,13 @@ public static class HttpHandler
         stopwatch.Stop();
         if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp && GlobalSettings.CurrentSetting.IsDebugHttpResponse)
         {
-            LogHelper.Debug("HTTP ProtoBuf ExecutionTime {logHeader} {elapsedMilliseconds} {result}", logHeader, stopwatch.ElapsedMilliseconds, result);
+            // Localization: NetWork.Http.ExecutionTime - {0},执行时间：{1}ms, 结果: {2}
+            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.NetWorkHttp.ExecutionTime, logHeader, stopwatch.ElapsedMilliseconds, result));
         }
         else if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp)
         {
-            LogHelper.Debug("HTTP ProtoBuf ExecutionTime {logHeader} {elapsedMilliseconds}", logHeader, stopwatch.ElapsedMilliseconds);
+            // Localization: NetWork.Http.ExecutionTimeNoResult - {0},执行时间：{1}ms
+            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.NetWorkHttp.ExecutionTimeNoResult, logHeader, stopwatch.ElapsedMilliseconds));
         }
 
         if (result.IsNotNull())
@@ -314,7 +320,8 @@ public static class HttpHandler
             }
             catch (Exception e)
             {
-                LogHelper.Error<string>("HTTP ProtoBuf MessageEncodingException {exception}", e.ToString());
+                // Localization: NetWork.Http.ProtoBufMessageEncodingException - 消息编码异常: {0}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.NetWorkHttp.ProtoBufMessageEncodingException, e.ToString()));
             }
         }
     }
@@ -347,11 +354,13 @@ public static class HttpHandler
             stopwatch.Stop();
             if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp && GlobalSettings.CurrentSetting.IsDebugHttpResponse)
             {
-                LogHelper.Debug("HTTP JSON ExecutionTime {logHeader} {elapsedMilliseconds} {result}", logHeader, stopwatch.ElapsedMilliseconds, result);
+                // Localization: NetWork.Http.ExecutionTime - {0},执行时间：{1}ms, 结果: {2}
+                LogHelper.Debug(LocalizationService.GetString(Localization.Keys.NetWorkHttp.ExecutionTime, logHeader, stopwatch.ElapsedMilliseconds, result));
             }
             else if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp)
             {
-                LogHelper.Debug("HTTP JSON ExecutionTime {logHeader} {elapsedMilliseconds}", logHeader, stopwatch.ElapsedMilliseconds);
+                // Localization: NetWork.Http.ExecutionTimeNoResult - {0},执行时间：{1}ms
+                LogHelper.Debug(LocalizationService.GetString(Localization.Keys.NetWorkHttp.ExecutionTimeNoResult, logHeader, stopwatch.ElapsedMilliseconds));
             }
 
             await httpContext.Response.WriteAsync(result);
@@ -378,11 +387,13 @@ public static class HttpHandler
         stopwatch.Stop();
         if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp && GlobalSettings.CurrentSetting.IsDebugHttpResponse)
         {
-            LogHelper.Debug("HTTP JSON ExecutionTime {logHeader} {elapsedMilliseconds} {result}", logHeader, stopwatch.ElapsedMilliseconds, result);
+            // Localization: NetWork.Http.ExecutionTime - {0},执行时间：{1}ms, 结果: {2}
+            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.NetWorkHttp.ExecutionTime, logHeader, stopwatch.ElapsedMilliseconds, result));
         }
         else if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp)
         {
-            LogHelper.Debug("HTTP JSON ExecutionTime {logHeader} {elapsedMilliseconds}", logHeader, stopwatch.ElapsedMilliseconds);
+            // Localization: NetWork.Http.ExecutionTimeNoResult - {0},执行时间：{1}ms
+            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.NetWorkHttp.ExecutionTimeNoResult, logHeader, stopwatch.ElapsedMilliseconds));
         }
 
         await httpContext.Response.WriteAsync(result);

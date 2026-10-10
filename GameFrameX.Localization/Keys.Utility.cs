@@ -342,16 +342,6 @@ public static partial class Keys
             public const string DataExceedsLimit = "Utility.LNumber.DataExceedsLimit";
 
             /// <summary>
-            /// LNumber乘法越界的错误消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.LNumber.MultiplicationOverflow
-            /// 用途: 当LNumber乘法运算越界时记录
-            /// 参数: {0} - 计算结果
-            /// </remarks>
-            public const string MultiplicationOverflow = "Utility.LNumber.MultiplicationOverflow";
-
-            /// <summary>
             /// LNumber除法越界的错误消息
             /// </summary>
             /// <remarks>
@@ -360,6 +350,26 @@ public static partial class Keys
             /// 参数: {0} - 计算结果
             /// </remarks>
             public const string DivisionOverflow = "Utility.LNumber.DivisionOverflow";
+
+            /// <summary>
+            /// LNumber乘法越界的完整日志消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.LNumber.MultiplicationOverflowLog
+            /// 用途: 当LNumber乘法运算越界时记录完整日志
+            /// 参数: {0} - 计算结果
+            /// </remarks>
+            public const string MultiplicationOverflowLog = "Utility.LNumber.MultiplicationOverflowLog";
+
+            /// <summary>
+            /// LNumber除法越界的完整日志消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.LNumber.DivisionOverflowLog
+            /// 用途: 当LNumber除法运算越界时记录完整日志
+            /// 参数: {0} - 计算结果
+            /// </remarks>
+            public const string DivisionOverflowLog = "Utility.LNumber.DivisionOverflowLog";
         }
 
         /// <summary>
@@ -568,34 +578,41 @@ public static partial class Keys
             public const string SettingAlreadyExists = "Utility.GlobalSettings.SettingAlreadyExists";
 
             /// <summary>
-            /// HttpUrl为空使用默认值的警告消息
+            /// 设置SaveDataInterval过小的完整警告日志
             /// </summary>
             /// <remarks>
-            /// 键名: Utility.GlobalSettings.HttpUrlEmptyUseDefault
-            /// 用途: 当HttpUrl为空时记录使用默认值的警告
-            /// 参数: {0} - 使用的默认值
+            /// 键名: Utility.GlobalSettings.SaveDataIntervalTooSmallLog
+            /// 用途: 在SetCurrentSetting中SaveDataInterval小于5000毫秒时记录警告
+            /// 参数: {0} - 使用的默认值(毫秒)
             /// </remarks>
-            public const string HttpUrlEmptyUseDefault = "Utility.GlobalSettings.HttpUrlEmptyUseDefault";
+            public const string SaveDataIntervalTooSmallLog = "Utility.GlobalSettings.SaveDataIntervalTooSmallLog";
 
             /// <summary>
-            /// 网络发送超时时间过短的警告消息
+            /// HttpUrl为空的完整警告日志
             /// </summary>
             /// <remarks>
-            /// 键名: Utility.GlobalSettings.NetworkTimeoutTooShort
-            /// 用途: 当网络发送超时时间小于1秒时记录警告
-            /// 参数: {0} - 使用的默认值(秒)
+            /// 键名: Utility.GlobalSettings.HttpUrlEmptyUseDefaultLog
+            /// 用途: 在SetCurrentSetting中HttpUrl为空时记录警告
             /// </remarks>
-            public const string NetworkTimeoutTooShort = "Utility.GlobalSettings.NetworkTimeoutTooShort";
+            public const string HttpUrlEmptyUseDefaultLog = "Utility.GlobalSettings.HttpUrlEmptyUseDefaultLog";
 
             /// <summary>
-            /// Actor回收时间过短的警告消息
+            /// 网络发送超时时间过短的完整警告日志
             /// </summary>
             /// <remarks>
-            /// 键名: Utility.GlobalSettings.ActorRecycleTimeTooShort
-            /// 用途: 当Actor回收时间小于1分钟时记录警告
-            /// 参数: {0} - 使用的默认值(分钟)
+            /// 键名: Utility.GlobalSettings.NetworkTimeoutTooShortLog
+            /// 用途: 在SetCurrentSetting中网络发送超时时间小于1秒时记录警告
             /// </remarks>
-            public const string ActorRecycleTimeTooShort = "Utility.GlobalSettings.ActorRecycleTimeTooShort";
+            public const string NetworkTimeoutTooShortLog = "Utility.GlobalSettings.NetworkTimeoutTooShortLog";
+
+            /// <summary>
+            /// Actor回收时间过短的完整警告日志
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.GlobalSettings.ActorRecycleTimeTooShortLog
+            /// 用途: 在SetCurrentSetting中Actor回收时间小于1分钟时记录警告
+            /// </remarks>
+            public const string ActorRecycleTimeTooShortLog = "Utility.GlobalSettings.ActorRecycleTimeTooShortLog";
         }
 
         /// <summary>
@@ -603,15 +620,6 @@ public static partial class Keys
         /// </summary>
         public static class ExceptionLogs
         {
-            /// <summary>
-            /// 异常详情的错误消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.ExceptionLogs.ExceptionDetails
-            /// 用途: 记录异常详细信息的通用日志
-            /// 参数: {0} - 异常详细信息
-            /// </remarks>
-            public const string ExceptionDetails = "Utility.ExceptionLogs.ExceptionDetails";
         }
 
         /// <summary>
@@ -643,6 +651,16 @@ public static partial class Keys
             /// 参数: {0} - 耗时(毫秒), {1} - 有效数量
             /// </remarks>
             public const string InitializationComplete = "Utility.IllegalWordDetection.InitializationComplete";
+
+            /// <summary>
+            /// 敏感词检测器初始化异常的完整日志消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.IllegalWordDetection.InitException
+            /// 用途: 当敏感词检测器初始化发生异常时记录完整日志
+            /// 参数: {0} - 异常详情
+            /// </remarks>
+            public const string InitException = "Utility.IllegalWordDetection.InitException";
         }
 
         /// <summary>
@@ -650,15 +668,26 @@ public static partial class Keys
         /// </summary>
         public static class CompressionHelper
         {
+
             /// <summary>
-            /// 异常错误消息
+            /// 数据压缩失败的完整日志消息
             /// </summary>
             /// <remarks>
-            /// 键名: Utility.CompressionHelper.ExceptionError
-            /// 用途: 记录压缩操作中发生的异常
-            /// 参数: {0} - 异常消息
+            /// 键名: Utility.CompressionHelper.CompressFailed
+            /// 用途: 当数据压缩发生异常时记录完整日志
+            /// 参数: {0} - 异常详情
             /// </remarks>
-            public const string ExceptionError = "Utility.CompressionHelper.ExceptionError";
+            public const string CompressFailed = "Utility.CompressionHelper.CompressFailed";
+
+            /// <summary>
+            /// 数据解压失败的完整日志消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.CompressionHelper.DecompressFailed
+            /// 用途: 当数据解压发生异常时记录完整日志
+            /// 参数: {0} - 异常详情
+            /// </remarks>
+            public const string DecompressFailed = "Utility.CompressionHelper.DecompressFailed";
         }
 
         /// <summary>
@@ -674,16 +703,6 @@ public static partial class Keys
             /// 用途: 当尝试开启已经退出的应用程序时记录
             /// </remarks>
             public const string AppAlreadyExited = "Utility.Settings.AppAlreadyExited";
-
-            /// <summary>
-            /// 保存数据间隔过小的警告消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.Settings.SaveDataIntervalTooSmall
-            /// 用途: 当SaveDataInterval小于5000毫秒时记录警告
-            /// 参数: {0} - 使用的默认值(毫秒)
-            /// </remarks>
-            public const string SaveDataIntervalTooSmall = "Utility.Settings.SaveDataIntervalTooSmall";
 
             /// <summary>
             /// 加载配置文件失败的错误消息

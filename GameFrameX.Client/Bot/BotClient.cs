@@ -29,6 +29,7 @@
 
 using GameFrameX.NetWork.Messages;
 using GameFrameX.Proto.Proto;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 using System.Collections.Concurrent;
 using ErrorEventArgs = GameFrameX.SuperSocket.ClientEngine.ErrorEventArgs;
@@ -126,7 +127,8 @@ public sealed class BotClient
         }
         catch (Exception e)
         {
-            LogHelper.Info($"EntryAsync Error: {e.Message}| Thread ID:{Thread.CurrentThread.ManagedThreadId} ");
+            // Localization: Client.Bot.EntryAsyncError - 入口方法 EntryAsync 错误: {0}| 线程 ID:{1} 
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.EntryAsyncError, e.Message, Thread.CurrentThread.ManagedThreadId));
             EmitMetrics();
         }
     }
@@ -252,7 +254,8 @@ public sealed class BotClient
 
     private void EmitMetrics()
     {
-        LogHelper.Info($"[METRICS] connect={_connectMs} auth={_authMs} list={_listMs} create={_createMs} login={_loginMs} total={_totalMs}");
+        // Localization: Client.Bot.Metrics - [指标] connect={0} auth={1} list={2} create={3} login={4} total={5}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.Metrics, _connectMs, _authMs, _listMs, _createMs, _loginMs, _totalMs));
     }
 
     /// <summary>
@@ -272,7 +275,8 @@ public sealed class BotClient
         }
         catch (Exception e)
         {
-            LogHelper.Error($"SendAccountLoginMessage Error: {e.Message}| Thread ID:{Thread.CurrentThread.ManagedThreadId} ");
+            // Localization: Client.Bot.SendAccountLoginError - 发送账号登录消息错误: {0}| 线程 ID:{1} 
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Client.Bot.SendAccountLoginError, e.Message, Thread.CurrentThread.ManagedThreadId));
         }
     }
 
@@ -285,7 +289,8 @@ public sealed class BotClient
     {
         if (msg.ErrorCode != 0)
         {
-            LogHelper.Error($"机器人-{m_BotName}账号登录失败，错误码:{msg.ErrorCode}");
+            // Localization: Client.Bot.AccountLoginFailed - 机器人-{0}账号登录失败，错误码:{1}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Client.Bot.AccountLoginFailed, m_BotName, msg.ErrorCode));
             EmitMetrics();
             return;
         }
@@ -293,7 +298,8 @@ public sealed class BotClient
         _accountId = msg.Id;
         _authMs = Environment.TickCount64 - _authStartMs;
         _listStartMs = Environment.TickCount64;
-        LogHelper.Info($"机器人-{m_BotName}账号验证成功,id:{msg.Id}");
+        // Localization: Client.Bot.AccountLoginSuccess - 机器人-{0}账号验证成功,id:{1}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.AccountLoginSuccess, m_BotName, msg.Id));
         SendToTransport(new ReqPlayerList { Id = _accountId });
     }
 
@@ -301,7 +307,8 @@ public sealed class BotClient
     {
         if (msg.ErrorCode != 0)
         {
-            LogHelper.Error($"机器人-{m_BotName}请求角色列表失败，错误码:{msg.ErrorCode}");
+            // Localization: Client.Bot.PlayerListFailed - 机器人-{0}请求角色列表失败，错误码:{1}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Client.Bot.PlayerListFailed, m_BotName, msg.ErrorCode));
             EmitMetrics();
             return;
         }
@@ -310,7 +317,8 @@ public sealed class BotClient
 
         if (msg.PlayerList.Count <= 0)
         {
-            LogHelper.Info($"机器人-{m_BotName}角色列表为空，开始创建角色。");
+            // Localization: Client.Bot.PlayerListEmpty - 机器人-{0}角色列表为空，开始创建角色。
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.PlayerListEmpty, m_BotName));
             _createStartMs = Environment.TickCount64;
             SendToTransport(new ReqPlayerCreate
             {
@@ -321,7 +329,8 @@ public sealed class BotClient
         }
 
         var player = msg.PlayerList[0];
-        LogHelper.Info($"角色列表 Id:{player.Id}-昵称:{player.Name}-等级:{player.Level}-角色状态:{player.State}");
+        // Localization: Client.Bot.PlayerListItem - 角色列表 Id:{0}-昵称:{1}-等级:{2}-角色状态:{3}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.PlayerListItem, player.Id, player.Name, player.Level, player.State));
         _loginStartMs = Environment.TickCount64;
         SendToTransport(new ReqPlayerLogin { Id = player.Id });
     }
@@ -330,14 +339,16 @@ public sealed class BotClient
     {
         if (msg.ErrorCode != 0)
         {
-            LogHelper.Error($"机器人-{m_BotName}创建角色失败，错误码:{msg.ErrorCode}");
+            // Localization: Client.Bot.PlayerCreateFailed - 机器人-{0}创建角色失败，错误码:{1}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Client.Bot.PlayerCreateFailed, m_BotName, msg.ErrorCode));
             EmitMetrics();
             return;
         }
 
         var player = msg.PlayerInfo;
         _createMs = Environment.TickCount64 - _createStartMs;
-        LogHelper.Info($"创建角色 Id:{player.Id}-昵称:{player.Name}-等级:{player.Level}-角色状态:{player.State}");
+        // Localization: Client.Bot.PlayerCreated - 创建角色 Id:{0}-昵称:{1}-等级:{2}-角色状态:{3}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.PlayerCreated, player.Id, player.Name, player.Level, player.State));
         _loginStartMs = Environment.TickCount64;
         SendToTransport(new ReqPlayerLogin { Id = player.Id });
     }
@@ -352,7 +363,8 @@ public sealed class BotClient
         _loginMs = Environment.TickCount64 - _loginStartMs;
         _totalMs = Environment.TickCount64 - _connectStartMs;
         OnlinePlayerIds[m_BotName] = _playerId;
-        LogHelper.Info($"机器人-{m_BotName}登录成功,id:{_playerId}");
+        // Localization: Client.Bot.PlayerLoginSuccess - 机器人-{0}登录成功,id:{1}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.PlayerLoginSuccess, m_BotName, _playerId));
         EmitMetrics();
         if (_options.HasScenario("friend"))
         {
@@ -367,7 +379,8 @@ public sealed class BotClient
     {
         if (_playerId <= 0)
         {
-            LogHelper.Error($"机器人-{m_BotName}好友场景启动失败，玩家ID非法:{_playerId}");
+            // Localization: Client.Bot.FriendScenarioInvalidPlayerId - 机器人-{0}好友场景启动失败，玩家ID非法:{1}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Client.Bot.FriendScenarioInvalidPlayerId, m_BotName, _playerId));
             ScheduleDisconnectIfNeeded();
             return;
         }
@@ -377,7 +390,8 @@ public sealed class BotClient
             _friendTargetResolveAttempts++;
             if (_friendTargetResolveAttempts > 5)
             {
-                LogHelper.Error($"机器人-{m_BotName}好友场景启动失败，未找到可用好友目标。");
+                // Localization: Client.Bot.FriendScenarioNoTarget - 机器人-{0}好友场景启动失败，未找到可用好友目标。
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Client.Bot.FriendScenarioNoTarget, m_BotName));
                 ScheduleDisconnectIfNeeded();
                 return;
             }
@@ -391,7 +405,8 @@ public sealed class BotClient
         }
 
         _friendScenarioStage = FriendScenarioStage.WaitAdd;
-        LogHelper.Info($"机器人-{m_BotName}开始执行好友场景，目标玩家:{_friendTargetPlayerId}");
+        // Localization: Client.Bot.FriendScenarioStarted - 机器人-{0}开始执行好友场景，目标玩家:{1}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.FriendScenarioStarted, m_BotName, _friendTargetPlayerId));
         SendToTransport(new ReqFriendByAdd { PlayerId = _friendTargetPlayerId });
     }
 
@@ -404,13 +419,15 @@ public sealed class BotClient
 
         if (!msg.Success || msg.ErrorCode != 0)
         {
-            LogHelper.Error($"机器人-{m_BotName}好友场景-加好友失败，Success:{msg.Success}, ErrorCode:{msg.ErrorCode}");
+            // Localization: Client.Bot.FriendAddFailed - 机器人-{0}好友场景-加好友失败，Success:{1}, ErrorCode:{2}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Client.Bot.FriendAddFailed, m_BotName, msg.Success, msg.ErrorCode));
             ScheduleDisconnectIfNeeded();
             return;
         }
 
         _friendScenarioStage = FriendScenarioStage.WaitListAfterAdd;
-        LogHelper.Info($"机器人-{m_BotName}好友场景-加好友成功，开始拉取好友列表。");
+        // Localization: Client.Bot.FriendAddSuccess - 机器人-{0}好友场景-加好友成功，开始拉取好友列表。
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.FriendAddSuccess, m_BotName));
         SendToTransport(new ReqFriendList());
     }
 
@@ -423,13 +440,15 @@ public sealed class BotClient
 
         if (!msg.Success || msg.ErrorCode != 0)
         {
-            LogHelper.Error($"机器人-{m_BotName}好友场景-删好友失败，Success:{msg.Success}, ErrorCode:{msg.ErrorCode}");
+            // Localization: Client.Bot.FriendDeleteFailed - 机器人-{0}好友场景-删好友失败，Success:{1}, ErrorCode:{2}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Client.Bot.FriendDeleteFailed, m_BotName, msg.Success, msg.ErrorCode));
             ScheduleDisconnectIfNeeded();
             return;
         }
 
         _friendScenarioStage = FriendScenarioStage.WaitListAfterDelete;
-        LogHelper.Info($"机器人-{m_BotName}好友场景-删好友成功，开始二次拉取好友列表。");
+        // Localization: Client.Bot.FriendDeleteSuccess - 机器人-{0}好友场景-删好友成功，开始二次拉取好友列表。
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.FriendDeleteSuccess, m_BotName));
         SendToTransport(new ReqFriendList());
     }
 
@@ -443,7 +462,8 @@ public sealed class BotClient
 
         if (msg.ErrorCode != 0)
         {
-            LogHelper.Error($"机器人-{m_BotName}好友场景-拉取列表失败，ErrorCode:{msg.ErrorCode}");
+            // Localization: Client.Bot.FriendListFailed - 机器人-{0}好友场景-拉取列表失败，ErrorCode:{1}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Client.Bot.FriendListFailed, m_BotName, msg.ErrorCode));
             ScheduleDisconnectIfNeeded();
             return;
         }
@@ -451,13 +471,15 @@ public sealed class BotClient
         if (_friendScenarioStage == FriendScenarioStage.WaitListAfterAdd)
         {
             _friendScenarioStage = FriendScenarioStage.WaitDelete;
-            LogHelper.Info($"机器人-{m_BotName}好友场景-首次列表成功，数量:{msg.Friends?.Count ?? 0}，开始删好友。");
+            // Localization: Client.Bot.FriendListFirstSuccess - 机器人-{0}好友场景-首次列表成功，数量:{1}，开始删好友。
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.FriendListFirstSuccess, m_BotName, msg.Friends?.Count ?? 0));
             SendToTransport(new ReqDeleteFriend { PlayerId = _friendTargetPlayerId });
             return;
         }
 
         _friendScenarioStage = FriendScenarioStage.Completed;
-        LogHelper.Info($"机器人-{m_BotName}好友场景执行完成，二次列表数量:{msg.Friends?.Count ?? 0}。");
+        // Localization: Client.Bot.FriendScenarioCompleted - 机器人-{0}好友场景执行完成，二次列表数量:{1}。
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.FriendScenarioCompleted, m_BotName, msg.Friends?.Count ?? 0));
         ScheduleDisconnectIfNeeded();
     }
 
@@ -497,7 +519,8 @@ public sealed class BotClient
             try
             {
                 await Task.Delay(TimeSpan.FromSeconds(_options.DisconnectAfterLoginSeconds));
-                LogHelper.Info($"机器人-{m_BotName}主动断开连接，模拟离线。");
+                // Localization: Client.Bot.DisconnectSimulated - 机器人-{0}主动断开连接，模拟离线。
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.DisconnectSimulated, m_BotName));
                 DisconnectTransport();
             }
             finally

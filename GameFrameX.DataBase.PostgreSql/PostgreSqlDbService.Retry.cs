@@ -211,7 +211,8 @@ public sealed partial class PostgreSqlDbService
                 {
                     var delay = retryDelaysMilliseconds[attempt] + Random.Shared.Next(0, 100);
                     DbOperationRetryTotal.Add(1, new TagList { { "op", operationType }, { "name", operationName }, { "reason", GetFailureReason(exception) }, });
-                    LogHelper.Warning("PostgreSqlDbService.{operationName} transient error, retry {attempt}/{maxRetry}. error={error}", operationName, attempt + 1, retryDelaysMilliseconds.Count, exception.Message);
+                    // Localization: Database.PostgreSql.OperationTransientError - PostgreSqlDbService.{0} 瞬时错误，重试 {1}/{2}。error={3}
+                    LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.PostgreSql.OperationTransientError, operationName, attempt + 1, retryDelaysMilliseconds.Count, exception.Message));
                     await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
                     continue;
                 }

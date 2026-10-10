@@ -107,6 +107,7 @@ internal sealed class StateHash
     {
         if (CacheHash.high64 == ToSaveHash.high64 && CacheHash.low64 == ToSaveHash.low64)
         {
+            // Localization: Storage.CacheHashEquals - 调用AfterSaveToDB前CacheHash已经等于ToSaveHash {0}
             // LogHelper.Warning<string>("StateHash.SaveToDbPostHandler {cacheHashEquals}", LocalizationService.GetString(Localization.Keys.Storage.CacheHashEquals, State.GetType().FullName));
             return;
         }

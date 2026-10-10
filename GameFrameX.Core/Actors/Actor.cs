@@ -1,4 +1,4 @@
-﻿// ==========================================================================================
+// ==========================================================================================
 //   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
 //   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
 //   均受中华人民共和国及相关国际法律法规保护。
@@ -188,7 +188,8 @@ public sealed class Actor : IActor, IDisposable
         }
         catch (Exception e)
         {
-            LogHelper.Fatal(e, "Actor.GetComponentAgent, Active component failed, actorId: {actorId}, componentType: {componentType}", Id, compType.FullName);
+            // Localization: Core.Actor.ActiveComponentFailed - Actor激活组件失败 actorId:{0} 组件类型:{1} 异常：\n{2}
+            LogHelper.Fatal(e, LocalizationService.GetString(Localization.Keys.Core.Actor.ActiveComponentFailed, Id, compType.FullName, e));
         }
 
         try
@@ -199,7 +200,8 @@ public sealed class Actor : IActor, IDisposable
         }
         catch (Exception e)
         {
-            LogHelper.Fatal(e, "Actor.GetComponentAgent, Active component failed, actorId: {actorId}, componentType: {componentType}", Id, compType.FullName);
+            // Localization: Core.Actor.ActiveComponentFailed - Actor激活组件失败 actorId:{0} 组件类型:{1} 异常：\n{2}
+            LogHelper.Fatal(e, LocalizationService.GetString(Localization.Keys.Core.Actor.ActiveComponentFailed, Id, compType.FullName, e));
         }
     }
 
@@ -209,6 +211,7 @@ public sealed class Actor : IActor, IDisposable
     /// <param name="serverDay">开服天数</param>
     public async Task CrossDay(int serverDay)
     {
+        // Localization: Core.Actor.CrossDay - actor跨天 id:{0} type:{1}
         LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.Actor.CrossDay, Id, Type));
         foreach (var comp in _componentsMap.Values)
         {
@@ -222,7 +225,8 @@ public sealed class Actor : IActor, IDisposable
                 }
                 catch (Exception e)
                 {
-                    LogHelper.Error(e, "Actor.CrossDay, CrossDay failed, componentType: {componentType}, actorId: {actorId}, actorType: {actorType}", agent.GetType().FullName, Id, Type);
+                    // Localization: Core.Actor.CrossDayFailed - {0}跨天失败 actorId:{1} actorType:{2} 异常：\n{3}
+                    LogHelper.Error(e, LocalizationService.GetString(Localization.Keys.Core.Actor.CrossDayFailed, agent.GetType().FullName, Id, Type, e));
                 }
             }
         }
@@ -322,14 +326,16 @@ public sealed class Actor : IActor, IDisposable
                 catch (Exception ex)
                 {
                     // 记录回调执行异常但继续执行其他回调
-                    LogHelper.Error(ex, "Actor.OnRecycle, RecycleCallback failed, actorId: {actorId}, actorType: {actorType}", Id, Type);
+                    // Localization: Core.Actor.RecycleCallbackFailed - Actor回收回调执行异常 actorId:{0} actorType:{1} 异常：\n{2}
+                    LogHelper.Error(ex, LocalizationService.GetString(Localization.Keys.Core.Actor.RecycleCallbackFailed, Id, Type, ex));
                 }
             }
         }
         catch (Exception ex)
         {
             // 记录整体执行异常
-            LogHelper.Error(ex, "Actor.OnRecycle, Recycle failed, actorId: {actorId}, actorType: {actorType}", Id, Type);
+            // Localization: Core.Actor.RecycleFailed - Actor回收过程异常 actorId:{0} actorType:{1} 异常：\n{2}
+            LogHelper.Error(ex, LocalizationService.GetString(Localization.Keys.Core.Actor.RecycleFailed, Id, Type, ex));
         }
         finally
         {

@@ -179,5 +179,61 @@ public static partial class Keys
             /// </remarks>
             public const string InstanceIdEmpty = "Discovery.PlayerRouteSync.InstanceIdEmpty";
         }
+
+        /// <summary>
+        /// 发现服务监视器的本地化字符串键。
+        /// </summary>
+        public static class Watcher
+        {
+            /// <summary>
+            /// [DiscoveryWatcher] 轮询失败；保留上次路由表并在下个间隔重试
+            /// </summary>
+            /// <remarks>
+            /// 键名: Discovery.Watcher.PollRoundFailed
+            /// 用途: DiscoveryWatcher 轮询循环单轮执行异常时的错误日志
+            /// </remarks>
+            public const string PollRoundFailed = "Discovery.Watcher.PollRoundFailed";
+        }
+
+        /// <summary>
+        /// 广播端点环境探测的本地化字符串键。
+        /// </summary>
+        public static class AdvertiseEndpoint
+        {
+            /// <summary>
+            /// [AdvertiseEndpointEnvironment] 出口地址探测失败；回退使用机器名 {0} 作为广播主机。需要跨进程路由时请显式设置 {1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Discovery.AdvertiseEndpoint.EgressDetectionFallbackMachineName
+            /// 用途: 出口地址探测失败回退机器名时的警告日志
+            /// 参数: {0} - 机器名, {1} - 环境变量名
+            /// </remarks>
+            public const string EgressDetectionFallbackMachineName = "Discovery.AdvertiseEndpoint.EgressDetectionFallbackMachineName";
+        }
+
+        /// <summary>
+        /// 发现服务注册器的本地化字符串键。
+        /// </summary>
+        public static class Registry
+        {
+            /// <summary>
+            /// [DiscoveryRegistry] 实例 {0} 心跳写入失败；将在下个间隔重试
+            /// </summary>
+            /// <remarks>
+            /// 键名: Discovery.Registry.HeartbeatUpsertFailed
+            /// 用途: 心跳循环 UpsertHeartbeatAsync 异常时的错误日志
+            /// 参数: {0} - 实例 Id
+            /// </remarks>
+            public const string HeartbeatUpsertFailed = "Discovery.Registry.HeartbeatUpsertFailed";
+
+            /// <summary>
+            /// [DiscoveryRegistry] TTL 清理失败；将在下个间隔重试
+            /// </summary>
+            /// <remarks>
+            /// 键名: Discovery.Registry.TtlCleanupFailed
+            /// 用途: 过期清理循环单轮执行异常时的错误日志
+            /// </remarks>
+            public const string TtlCleanupFailed = "Discovery.Registry.TtlCleanupFailed";
+        }
     }
 }

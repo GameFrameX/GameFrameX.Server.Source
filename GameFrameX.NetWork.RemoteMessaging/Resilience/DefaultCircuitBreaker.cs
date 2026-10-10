@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 using System.Collections.Concurrent;
+using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.NetWork.RemoteMessaging.Resilience;
 
@@ -139,7 +140,8 @@ internal sealed class DefaultCircuitBreaker : ICircuitBreaker
                     {
                         tracker.State = CircuitState.Open;
                         tracker.OpenedAtTick = Environment.TickCount;
-                        LogHelper.Warning("CircuitBreaker 触发熔断(半开→打开), Service: {serviceName}, Failures: {failureCount}", serviceName, tracker.FailureCount);
+                        // Localization: RemoteMessaging.CircuitBreaker.TripHalfOpenToOpen - CircuitBreaker 触发熔断(半开→打开), Service: {0}, Failures: {1}
+                        LogHelper.Warning(LocalizationService.GetString(Localization.Keys.RemoteMessaging.CircuitBreaker.TripHalfOpenToOpen, serviceName, tracker.FailureCount));
                     }
 
                     break;
@@ -148,7 +150,8 @@ internal sealed class DefaultCircuitBreaker : ICircuitBreaker
                     {
                         tracker.State = CircuitState.Open;
                         tracker.OpenedAtTick = Environment.TickCount;
-                        LogHelper.Info("CircuitBreaker 触发熔断(关闭→打开), Service: {serviceName}, Failures: {failureCount}", serviceName, tracker.FailureCount);
+                        // Localization: RemoteMessaging.CircuitBreaker.TripClosedToOpen - CircuitBreaker 触发熔断(关闭→打开), Service: {0}, Failures: {1}
+                        LogHelper.Info(LocalizationService.GetString(Localization.Keys.RemoteMessaging.CircuitBreaker.TripClosedToOpen, serviceName, tracker.FailureCount));
                     }
 
                     break;

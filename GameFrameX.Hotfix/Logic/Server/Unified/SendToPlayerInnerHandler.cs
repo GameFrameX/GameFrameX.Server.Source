@@ -31,6 +31,7 @@ using GameFrameX.Apps.Common.Session;
 using GameFrameX.Core.BaseHandler;
 using GameFrameX.Hotfix.Logic.Server;
 using GameFrameX.NetWork.RemoteMessaging.Unified;
+using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Hotfix.Logic.Server.Unified;
 
@@ -81,7 +82,8 @@ internal sealed class SendToPlayerInnerHandler : PlayerRpcComponentHandler<Serve
         {
             response.Success = false;
             response.ErrorCode = -4;
-            LogHelper.Error(ex, "SendToPlayerInnerHandler delivery failed, PlayerId:{PlayerId}", request.TargetPlayerId);
+            // Localization: Hotfix.Unified.DeliveryFailed - SendToPlayerInnerHandler 投递失败, PlayerId:{0}
+            LogHelper.Error(ex, LocalizationService.GetString(Localization.Keys.Hotfix.Unified.DeliveryFailed, request.TargetPlayerId));
         }
     }
 }

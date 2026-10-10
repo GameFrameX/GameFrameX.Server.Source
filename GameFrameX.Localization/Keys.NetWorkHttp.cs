@@ -295,5 +295,25 @@ public static partial class Keys
         /// 用途: 服务器内部错误时的错误消息
         /// </remarks>
         public const string ServerError = "NetWork.Http.ServerError";
+
+        /// <summary>
+        /// {0},执行时间：{1}ms
+        /// </summary>
+        /// <remarks>
+        /// 键名: NetWork.Http.ExecutionTimeNoResult
+        /// 用途: 记录HTTP请求的执行时间（无结果输出）
+        /// 参数: {0} - 日志头, {1} - 执行时间(毫秒)
+        /// </remarks>
+        public const string ExecutionTimeNoResult = "NetWork.Http.ExecutionTimeNoResult";
+
+        /// <summary>
+        /// 消息编码异常: {0}
+        /// </summary>
+        /// <remarks>
+        /// 键名: NetWork.Http.ProtoBufMessageEncodingException
+        /// 用途: ProtoBuf响应消息序列化发生异常时记录错误
+        /// 参数: {0} - 异常详情
+        /// </remarks>
+        public const string ProtoBufMessageEncodingException = "NetWork.Http.ProtoBufMessageEncodingException";
     }
 }

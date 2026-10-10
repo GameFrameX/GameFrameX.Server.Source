@@ -189,20 +189,13 @@
   </data>
 
     <!-- 事件模块日志键名 -->
-    <data name="Events.NoListenersFound" xml:space="preserve">
-    <value>事件类型：{0} 没有找到任何监听者</value>
-  </data>
-
-    <!-- 存储模块日志键名 -->
+<!-- 存储模块日志键名 -->
     <data name="Storage.CacheHashEquals" xml:space="preserve">
     <value>调用AfterSaveToDB前CacheHash已经等于ToSaveHash {0}</value>
   </data>
 
     <!-- 数据库模块日志键名 -->
-    <data name="Database.MongoDb.InitializedSuccessfully" xml:space="preserve">
-    <value>MongoDB服务初始化成功，连接字符串：{0}，数据库名称：{1}</value>
-  </data>
-    <data name="Database.MongoDb.InitializationFailed" xml:space="preserve">
+<data name="Database.MongoDb.InitializationFailed" xml:space="preserve">
     <value>MongoDB服务初始化失败，连接字符串：{0}，数据库名称：{1}</value>
   </data>
     <data name="Database.MongoDb.ServiceUnavailable" xml:space="preserve">
@@ -217,21 +210,14 @@
     <data name="Database.MongoDb.OperationRetryFailed" xml:space="preserve">
     <value>MongoDbService.{0}重试失败，未知异常。</value>
   </data>
-    <data name="Database.GameDb.ImplicitDefaultBindingWarning" xml:space="preserve">
-    <value>已注册多个数据库（{0}）但无声明式默认库提名（DbOptions.IsDefault 均为 false），静态门面当前指向首个注册库；多库部署请在业务库 Init 时保留缺省 IsDefault = true（或显式调用 GameDb.SetDefault(业务库名)）。</value>
-  </data>
-
-    <!-- LNumber模块日志和错误键名 -->
+<!-- LNumber模块日志和错误键名 -->
     <data name="Utility.LNumber.CreateFailed" xml:space="preserve">
     <value>Xnumber 创建失败！ {0}.{1}</value>
   </data>
     <data name="Utility.LNumber.DataExceedsLimit" xml:space="preserve">
     <value>Number数据超上限了 {0} {1}</value>
   </data>
-    <data name="Utility.LNumber.MultiplicationOverflow" xml:space="preserve">
-    <value>LNumber乘法已越界 &gt; {0}</value>
-  </data>
-    <data name="Utility.LNumber.DivisionOverflow" xml:space="preserve">
+<data name="Utility.LNumber.DivisionOverflow" xml:space="preserve">
     <value>LNumber除法已越界 &gt; {0}</value>
   </data>
 
@@ -249,10 +235,7 @@
     <data name="Utility.Settings.AppAlreadyExited" xml:space="preserve">
     <value>AppRunning已经被设置为退出，不能再次开启...</value>
   </data>
-    <data name="Utility.Settings.SaveDataIntervalTooSmall" xml:space="preserve">
-    <value>SaveDataInterval小于5000毫秒，使用默认值为:{0} 毫秒</value>
-  </data>
-    <data name="Utility.Settings.LoadConfigurationFailed" xml:space="preserve">
+<data name="Utility.Settings.LoadConfigurationFailed" xml:space="preserve">
     <value>加载配置文件失败</value>
   </data>
 
@@ -619,11 +602,7 @@
     <value>Actor回收过程异常 actorId:{0} actorType:{1} 异常：\n{2}</value>
   </data>
 
-    <data name="Core.Actor.Recycled" xml:space="preserve">
-    <value>actor回收 id:{0} type:{1}</value>
-  </data>
-
-    <!-- Actor 限制相关消息 -->
+<!-- Actor 限制相关消息 -->
     <data name="Core.ActorLimit.UnsupportedRuleType" xml:space="preserve">
     <value>不支持的rule类型:{0}</value>
   </data>
@@ -678,102 +657,26 @@
   </data>
 
     <!-- Actor 管理器相关消息 -->
-    <data name="Core.ActorManager.SaveAllStateTime" xml:space="preserve">
-    <value>保存所有状态，用时: {0}ms</value>
-  </data>
-
-    <data name="Core.ActorManager.SaveAllStateError" xml:space="preserve">
-    <value>保存所有状态错误\n{0}</value>
-  </data>
-
-    <data name="Core.ActorManager.TimerSaveStateError" xml:space="preserve">
-    <value>定时器保存状态错误</value>
-  </data>
-
-    <data name="Core.ActorManager.GlobalActorCrossDay" xml:space="preserve">
-    <value>全局Actor：{0}执行跨天</value>
-  </data>
-
-    <data name="Core.ActorManager.GlobalCompCrossDayTimeout" xml:space="preserve">
-    <value>全局comp跨天耗时过久，不阻止其他comp跨天，当前已过{0}秒</value>
-  </data>
-
-    <data name="Core.ActorManager.GlobalCompCrossDayComplete" xml:space="preserve">
-    <value>全局comp跨天完成 耗时：{0}ms</value>
-  </data>
-
-    <data name="Core.ActorManager.NonPlayerCompCrossDayTimeout" xml:space="preserve">
-    <value>非玩家comp跨天耗时过久，不阻止玩家comp跨天，当前已过{0}秒</value>
-  </data>
-
-    <data name="Core.ActorManager.NonPlayerCompCrossDayComplete" xml:space="preserve">
-    <value>非玩家comp跨天完成 耗时：{0}ms</value>
-  </data>
-
-    <!-- 组件注册相关消息 -->
+<!-- 组件注册相关消息 -->
     <data name="Core.ComponentRegister.InitializationComplete" xml:space="preserve">
     <value>组件注册初始化完成</value>
   </data>
 
-    <data name="Core.ComponentRegister.AgentNotImplemented" xml:space="preserve">
-    <value>{0}未实现Agent,请检查业务代码是否正确</value>
-  </data>
-
-    <data name="Core.ComponentRegister.ActivateGlobalComponent" xml:space="preserve">
+<data name="Core.ComponentRegister.ActivateGlobalComponent" xml:space="preserve">
     <value>激活全局组件：{0} {1}</value>
   </data>
 
-    <data name="Core.ComponentRegister.ActivateGlobalActor" xml:space="preserve">
-    <value>激活全局Actor: {0}</value>
-  </data>
-
-    <data name="Core.ComponentRegister.ActivateGlobalComponentCheckComplete" xml:space="preserve">
-    <value>激活全局组件并检查所有组件是否都包含Agent实现完成</value>
-  </data>
-
-    <data name="Core.ComponentRegister.ActivateGlobalComponentCheckFailed" xml:space="preserve">
-    <value>激活全局组件并检测所有组件是否包含Agent实现失败</value>
-  </data>
-
-    <data name="Core.ComponentRegister.ActorNotBelongToThis" xml:space="preserve">
-    <value>获取了一个不属于此Actor的Actor: [{0}] 组件</value>
-  </data>
-
-    <!-- 状态组件相关消息 -->
-    <data name="Core.StateComponent.SaveAllStateTime" xml:space="preserve">
-    <value>保存所有状态，耗时: {0}毫秒</value>
-  </data>
-
-    <data name="Core.StateComponent.SaveAllStateError" xml:space="preserve">
-    <value>保存所有状态错误\n{0}</value>
-  </data>
-
-    <data name="Core.StateComponent.TimerSaveStateError" xml:space="preserve">
-    <value>定时保存状态错误</value>
-  </data>
-
-    <data name="Core.StateComponent.SaveStateFailed" xml:space="preserve">
-    <value>状态组件保存状态失败。状态ID:{0},{1}</value>
-  </data>
-
-    <data name="Core.StateComponent.StateSaveBack" xml:space="preserve">
+<!-- 状态组件相关消息 -->
+<data name="Core.StateComponent.StateSaveBack" xml:space="preserve">
     <value>[StateComp] 状态回存 {0} count:{1}</value>
   </data>
 
-    <data name="Core.StateComponent.SaveDataFailed" xml:space="preserve">
-    <value>保存数据失败，类型:{0}</value>
-  </data>
-
-    <data name="Core.StateComponent.SaveDataException" xml:space="preserve">
+<data name="Core.StateComponent.SaveDataException" xml:space="preserve">
     <value>保存数据异常，类型:{0}，{1}</value>
   </data>
 
     <!-- 消息处理器相关消息 -->
-    <data name="Core.MessageHandler.ExecutionTimeout" xml:space="preserve">
-    <value>执行超时:{0}</value>
-  </data>
-
-    <data name="Core.MessageHandler.ExecutionTimeWarning" xml:space="preserve">
+<data name="Core.MessageHandler.ExecutionTimeWarning" xml:space="preserve">
     <value>消息处理器：{0},UniqueId：{1} 执行耗时：{2} ms</value>
   </data>
 
@@ -977,24 +880,8 @@
     <value>当前设置已存在，无法再次设置，此设置已被忽略。</value>
   </data>
 
-    <data name="Utility.GlobalSettings.HttpUrlEmptyUseDefault" xml:space="preserve">
-    <value>HttpUrl为空，使用默认值：/game/api/</value>
-  </data>
-
-    <data name="Utility.GlobalSettings.NetworkTimeoutTooShort" xml:space="preserve">
-    <value>NetWorkSendTimeOutSeconds小于1秒，使用默认值5秒</value>
-  </data>
-
-    <data name="Utility.GlobalSettings.ActorRecycleTimeTooShort" xml:space="preserve">
-    <value>ActorRecycleTime小于1分钟，使用默认值5分钟</value>
-  </data>
-
-    <!-- Utility.ExceptionLogs 相关消息 -->
-    <data name="Utility.ExceptionLogs.ExceptionDetails" xml:space="preserve">
-    <value>异常详情：{0}</value>
-  </data>
-
-    <!-- StartUp.HealthCheck 相关消息 -->
+<!-- Utility.ExceptionLogs 相关消息 -->
+<!-- StartUp.HealthCheck 相关消息 -->
     <data name="StartUp.HealthCheck.EndpointEnabled" xml:space="preserve">
     <value>健康检查端点已启用:</value>
   </data>
@@ -1280,11 +1167,7 @@
     <value>服务器启动完成。</value>
   </data>
 
-  <data name="Utility.CompressionHelper.ExceptionError" xml:space="preserve">
-    <value>压缩辅助类异常。错误：{0}。</value>
-  </data>
-
-  <data name="Utility.GlobalSettings.LoadGlobalSettings" xml:space="preserve">
+<data name="Utility.GlobalSettings.LoadGlobalSettings" xml:space="preserve">
     <value>从配置加载全局设置。</value>
   </data>
 
@@ -1320,10 +1203,7 @@
     <value>{0} KCP 服务启动失败（{1}:{2}），端口不可用或越界。</value>
   </data>
 
-    <data name="Database.PostgreSql.InitializedSuccessfully" xml:space="preserve">
-    <value>PostgreSqlService初始化成功，连接目标：{0}，注册名：{1}</value>
-  </data>
-    <data name="Database.PostgreSql.InitializationFailed" xml:space="preserve">
+<data name="Database.PostgreSql.InitializationFailed" xml:space="preserve">
     <value>PostgreSqlService初始化失败，连接目标：{0}，注册名：{1}</value>
   </data>
     <data name="Database.PostgreSql.ServiceUnavailable" xml:space="preserve">
@@ -1613,4 +1493,688 @@
   <data name="RemoteMessaging.Routing.LocalDispatcherNotConfigured" xml:space="preserve">
     <value>目标角色「{0}」由本进程承载，但未配置本地消息派发器（actor 派发器尚未接入）。</value>
   </data>
+  <data name="Client.Bot.AccountLoginFailed" xml:space="preserve">
+    <value>机器人-{0}账号登录失败，错误码:{1}</value>
+  </data>
+
+  <data name="Client.Bot.AccountLoginSuccess" xml:space="preserve">
+    <value>机器人-{0}账号验证成功,id:{1}</value>
+  </data>
+
+  <data name="Client.Bot.DisconnectFailed" xml:space="preserve">
+    <value>断开连接失败: {0}</value>
+  </data>
+
+  <data name="Client.Bot.DisconnectSimulated" xml:space="preserve">
+    <value>机器人-{0}主动断开连接，模拟离线。</value>
+  </data>
+
+  <data name="Client.Bot.EntryAsyncError" xml:space="preserve">
+    <value>入口方法 EntryAsync 错误: {0}| 线程 ID:{1} </value>
+  </data>
+
+  <data name="Client.Bot.FriendAddFailed" xml:space="preserve">
+    <value>机器人-{0}好友场景-加好友失败，Success:{1}, ErrorCode:{2}</value>
+  </data>
+
+  <data name="Client.Bot.FriendAddSuccess" xml:space="preserve">
+    <value>机器人-{0}好友场景-加好友成功，开始拉取好友列表。</value>
+  </data>
+
+  <data name="Client.Bot.FriendDeleteFailed" xml:space="preserve">
+    <value>机器人-{0}好友场景-删好友失败，Success:{1}, ErrorCode:{2}</value>
+  </data>
+
+  <data name="Client.Bot.FriendDeleteSuccess" xml:space="preserve">
+    <value>机器人-{0}好友场景-删好友成功，开始二次拉取好友列表。</value>
+  </data>
+
+  <data name="Client.Bot.FriendListFailed" xml:space="preserve">
+    <value>机器人-{0}好友场景-拉取列表失败，ErrorCode:{1}</value>
+  </data>
+
+  <data name="Client.Bot.FriendListFirstSuccess" xml:space="preserve">
+    <value>机器人-{0}好友场景-首次列表成功，数量:{1}，开始删好友。</value>
+  </data>
+
+  <data name="Client.Bot.FriendScenarioCompleted" xml:space="preserve">
+    <value>机器人-{0}好友场景执行完成，二次列表数量:{1}。</value>
+  </data>
+
+  <data name="Client.Bot.FriendScenarioInvalidPlayerId" xml:space="preserve">
+    <value>机器人-{0}好友场景启动失败，玩家ID非法:{1}</value>
+  </data>
+
+  <data name="Client.Bot.FriendScenarioNoTarget" xml:space="preserve">
+    <value>机器人-{0}好友场景启动失败，未找到可用好友目标。</value>
+  </data>
+
+  <data name="Client.Bot.FriendScenarioStarted" xml:space="preserve">
+    <value>机器人-{0}开始执行好友场景，目标玩家:{1}</value>
+  </data>
+
+  <data name="Client.Bot.Http.ResponseTypeInvalid" xml:space="preserve">
+    <value>响应消息类型无效。期望“{0}”，实际为“{1}”。</value>
+  </data>
+
+  <data name="Client.Bot.Kcp.ConnectProbeFailed" xml:space="preserve">
+    <value>KCP 连接探测失败: {0}</value>
+  </data>
+
+  <data name="Client.Bot.Kcp.ConnectingTimeoutAbandonSession" xml:space="preserve">
+    <value>连接中状态超时（{0}毫秒），放弃当前会话</value>
+  </data>
+
+  <data name="Client.Bot.Kcp.ReceiveError" xml:space="preserve">
+    <value>KCP 接收错误: {0}</value>
+  </data>
+
+  <data name="Client.Bot.Kcp.SendToServerFailed" xml:space="preserve">
+    <value>发送消息到服务器失败: {0}</value>
+  </data>
+
+  <data name="Client.Bot.Metrics" xml:space="preserve">
+    <value>[指标] connect={0} auth={1} list={2} create={3} login={4} total={5}</value>
+  </data>
+
+  <data name="Client.Bot.PlayerCreateFailed" xml:space="preserve">
+    <value>机器人-{0}创建角色失败，错误码:{1}</value>
+  </data>
+
+  <data name="Client.Bot.PlayerCreated" xml:space="preserve">
+    <value>创建角色 Id:{0}-昵称:{1}-等级:{2}-角色状态:{3}</value>
+  </data>
+
+  <data name="Client.Bot.PlayerListEmpty" xml:space="preserve">
+    <value>机器人-{0}角色列表为空，开始创建角色。</value>
+  </data>
+
+  <data name="Client.Bot.PlayerListFailed" xml:space="preserve">
+    <value>机器人-{0}请求角色列表失败，错误码:{1}</value>
+  </data>
+
+  <data name="Client.Bot.PlayerListItem" xml:space="preserve">
+    <value>角色列表 Id:{0}-昵称:{1}-等级:{2}-角色状态:{3}</value>
+  </data>
+
+  <data name="Client.Bot.PlayerLoginSuccess" xml:space="preserve">
+    <value>机器人-{0}登录成功,id:{1}</value>
+  </data>
+
+  <data name="Client.Bot.SendAccountLoginError" xml:space="preserve">
+    <value>发送账号登录消息错误: {0}| 线程 ID:{1} </value>
+  </data>
+
+  <data name="Client.Bot.Tcp.ConnectingTimeoutRecreateSession" xml:space="preserve">
+    <value>连接中状态超时（{0}毫秒），重建会话</value>
+  </data>
+
+  <data name="Client.Program.BotOptions" xml:space="preserve">
+    <value>机器人选项: 机器人数量={0}, tcp={1}:{2}, 场景={3}, 断开循环={4}, 登录后断开秒数={5}, 运行秒数={6}</value>
+  </data>
+
+  <data name="Config.Table.LoadConfigEnd" xml:space="preserve">
+    <value>配置表加载完成...</value>
+  </data>
+
+  <data name="Config.Table.LoadConfigStart" xml:space="preserve">
+    <value>开始加载配置表...</value>
+  </data>
+
+  <data name="Core.Actor.ActiveComponentFailed" xml:space="preserve">
+    <value>Actor激活组件失败 actorId:{0} 组件类型:{1} 异常：\n{2}</value>
+  </data>
+
+  <data name="Core.ActorManager.ActorCrossDayLog" xml:space="preserve">
+    <value>ActorManager.CrossDay Actor跨天 actorId:{0} actorType:{1} , 消息: 全局Actor：{2}执行跨天</value>
+  </data>
+
+  <data name="Core.ActorManager.ActorForEachError" xml:space="preserve">
+    <value>ActorManager.ActorForEach 错误 actorId:{0} actorType:{1} 异常: {2}</value>
+  </data>
+
+  <data name="Core.ActorManager.CheckIdleRecycled" xml:space="preserve">
+    <value>ActorManager.CheckIdle Actor已回收 actorId:{0} actorType:{1} , 消息: actor回收 id:{2} type:{3}</value>
+  </data>
+
+  <data name="Core.ActorManager.GlobalCompCrossDayCompleteLog" xml:space="preserve">
+    <value>ActorManager.CrossDay 全局comp跨天完成 , 耗时: {0}ms , 消息: 全局comp跨天完成 耗时：{1}ms</value>
+  </data>
+
+  <data name="Core.ActorManager.GlobalCompCrossDayTimeoutLog" xml:space="preserve">
+    <value>ActorManager.CrossDay 全局comp跨天超时 , 超时: {0}秒 , 消息: 全局comp跨天耗时过久，不阻止其他comp跨天，当前已过{1}秒</value>
+  </data>
+
+  <data name="Core.ActorManager.NonPlayerCompCrossDayCompleteLog" xml:space="preserve">
+    <value>ActorManager.CrossDay 非玩家comp跨天完成 , 耗时: {0}ms , 消息: 非玩家comp跨天完成 耗时：{1}ms</value>
+  </data>
+
+  <data name="Core.ActorManager.NonPlayerCompCrossDayTimeoutLog" xml:space="preserve">
+    <value>ActorManager.CrossDay 非玩家comp跨天超时 , 超时: {0}秒 , 消息: 非玩家comp跨天耗时过久，不阻止玩家comp跨天，当前已过{1}秒</value>
+  </data>
+
+  <data name="Core.ActorManager.SaveAllStateErrorLog" xml:space="preserve">
+    <value>ActorManager.SaveAll 保存所有Actor状态 , 消息: 保存所有状态错误\n{0} , 错误: {1}</value>
+  </data>
+
+  <data name="Core.ActorManager.SaveAllStateTimeLog" xml:space="preserve">
+    <value>ActorManager.SaveAll 保存所有Actor状态耗时: {0} ms , 消息: 保存所有状态，用时: {1}ms</value>
+  </data>
+
+  <data name="Core.ActorManager.TimerSaveStateErrorLog" xml:space="preserve">
+    <value>ActorManager.TimerSave 定时保存所有Actor状态错误 , 消息: 定时器保存状态错误 , 错误: {0}</value>
+  </data>
+
+  <data name="Core.ComponentRegister.ActivateComponentFailed" xml:space="preserve">
+    <value>ComponentRegister.ActiveComponents Actor类型:{0} , 组件类型:{1} , 异常: {2}</value>
+  </data>
+
+  <data name="Core.ComponentRegister.GetNotBelongComponent" xml:space="preserve">
+    <value>ComponentRegister.ActiveComponents Actor类型:{0} , 消息: 获取了一个不属于此Actor的Actor: [{1}] 组件</value>
+  </data>
+
+  <data name="Core.ComponentRegister.GlobalActorActivated" xml:space="preserve">
+    <value>ComponentRegister.ActiveGlobalComponents Actor类型:{0} , 消息: 激活全局Actor: {1}</value>
+  </data>
+
+  <data name="Core.ComponentRegister.GlobalComponentAgentNotImplemented" xml:space="preserve">
+    <value>ComponentRegister.ActiveGlobalComponents Actor类型:{0} , 消息: {1}未实现Agent,请检查业务代码是否正确</value>
+  </data>
+
+  <data name="Core.ComponentRegister.GlobalComponentCheckComplete" xml:space="preserve">
+    <value>ComponentRegister.ActiveGlobalComponents 消息: 激活全局组件并检查所有组件是否都包含Agent实现完成</value>
+  </data>
+
+  <data name="Core.ComponentRegister.GlobalComponentCheckFailed" xml:space="preserve">
+    <value>ComponentRegister.ActiveGlobalComponents 消息: 激活全局组件并检测所有组件是否包含Agent实现失败 , 异常: {0}</value>
+  </data>
+
+  <data name="Core.EventDispatcher.DispatchError" xml:space="preserve">
+    <value>EventDispatcher.Dispatch Actor {0} {1} 异常: {2}</value>
+  </data>
+
+  <data name="Core.EventDispatcher.DispatchNoListeners" xml:space="preserve">
+    <value>EventDispatcher.Dispatch Actor {0} {1} 事件类型：{2} 没有找到任何监听者</value>
+  </data>
+
+  <data name="Core.MessageHandler.GetComponentAgentCacheComponentNull" xml:space="preserve">
+    <value>BaseComponentHandler.GetComponentAgent 缓存组件为空，消息类型:{0}</value>
+  </data>
+
+  <data name="Core.MessageHandler.GetComponentFailed" xml:space="preserve">
+    <value>BaseComponentHandler.Init 获取组件失败，关闭通道，actorId:{0}，组件代理类型:{1}，异常：\n{2}</value>
+  </data>
+
+  <data name="Core.MessageHandler.InnerActionCacheComponentNull" xml:space="preserve">
+    <value>BaseComponentHandler.InnerAction 缓存组件为空，消息类型:{0}</value>
+  </data>
+
+  <data name="Core.MessageHandler.InnerActionException" xml:space="preserve">
+    <value>BaseMessageHandler.InnerAction 执行异常，消息类型:{0}，异常:{1}</value>
+  </data>
+
+  <data name="Core.MessageHandler.InnerActionTimeout" xml:space="preserve">
+    <value>BaseMessageHandler.InnerAction 执行超时，消息类型:{0}，超时:{1}，异常:{2}</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcExecutionTimeDebug" xml:space="preserve">
+    <value>BaseRpcMessageHandler.InnerActionAsync 处理器:{0} 请求消息:{1} 消息: 消息处理器：{2},UniqueId：{3} 执行耗时：{4} ms</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcExecutionTimeWarning" xml:space="preserve">
+    <value>BaseRpcMessageHandler.InnerActionAsync 处理器:{0} 请求消息:{1} 消息: 消息处理器：{2},UniqueId：{3} 执行耗时：{4} ms</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcExecutionTimeout" xml:space="preserve">
+    <value>BaseRpcMessageHandler.InnerAction 请求消息:{0} 消息: 执行超时:{1}</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcGetComponentAgentCacheComponentNull" xml:space="preserve">
+    <value>BaseRpcComponentHandler.GetComponentAgent 缓存组件为空，消息类型:{0}</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcGetComponentFailed" xml:space="preserve">
+    <value>BaseRpcComponentHandler.Init 获取组件失败，关闭通道，actorId:{0}，组件代理类型:{1}，异常：\n{2}</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcInnerActionCacheComponentNull" xml:space="preserve">
+    <value>BaseRpcComponentHandler.InnerAction 缓存组件为空，消息类型:{0}</value>
+  </data>
+
+  <data name="Core.MessageHandler.RpcInnerActionException" xml:space="preserve">
+    <value>BaseRpcMessageHandler.InnerAction 处理器:{0} 请求消息:{1} 异常:{2}</value>
+  </data>
+
+  <data name="Core.StateComponent.SaveAllStateErrorLog" xml:space="preserve">
+    <value>StateComponent.SaveAll 保存所有状态错误\n{0}</value>
+  </data>
+
+  <data name="Core.StateComponent.SaveAllStateTimeLog" xml:space="preserve">
+    <value>StateComponent.SaveAll 保存所有状态，耗时: {0}毫秒</value>
+  </data>
+
+  <data name="Core.StateComponent.SaveDataFailedLog" xml:space="preserve">
+    <value>StateComponent.SaveDataFailed 状态名称:{0} , 消息: 保存数据失败，类型:{1}</value>
+  </data>
+
+  <data name="Core.StateComponent.SaveStateFailedLog" xml:space="preserve">
+    <value>StateComponent.SaveState Failed 状态ID:{0} , 错误:{1} , 消息: 状态组件保存状态失败。状态ID:{2},{3}</value>
+  </data>
+
+  <data name="Core.StateComponent.StateSaveBackDetail" xml:space="preserve">
+    <value>StateComponent.StateSaveBack 状态回存 名称:{0} 数量:{1}</value>
+  </data>
+
+  <data name="Core.StateComponent.TimerSaveStateErrorLog" xml:space="preserve">
+    <value>StateComponent.TimerSave 定时保存状态错误，异常:{0}</value>
+  </data>
+
+  <data name="Core.Timer.LogError" xml:space="preserve">
+    <value>{0}\n{1}</value>
+  </data>
+
+  <data name="Database.GameDb.ImplicitDefaultBindingWarningLog" xml:space="preserve">
+    <value>GameDb.ImplicitDefaultBinding 已注册多个数据库（{0}）但无声明式默认库提名（DbOptions.IsDefault 均为 false），静态门面当前指向首个注册库；多库部署请在业务库 Init 时保留缺省 IsDefault = true（或显式调用 GameDb.SetDefault(业务库名)）。</value>
+  </data>
+
+  <data name="Database.Mongo.DiscoveryNoAdvertisePort" xml:space="preserve">
+    <value>[MongoDiscoveryRuntime] 未配置广播端口（{0}）；心跳写入侧被跳过，本进程仅观察拓扑</value>
+  </data>
+
+  <data name="Database.Mongo.ExecuteInTransactionTransientError" xml:space="preserve">
+    <value>MongoDbService.ExecuteInTransactionAsync 瞬时错误，重试 {0}/{1}。error={2}</value>
+  </data>
+
+  <data name="Database.Mongo.OpenExceptionError" xml:space="preserve">
+    <value>MongoDbService.Open 异常 {0} {1} {2}</value>
+  </data>
+
+  <data name="Database.Mongo.OpenExceptionFatal" xml:space="preserve">
+    <value>MongoDbService.Open 异常 {0} {1} {2}</value>
+  </data>
+
+  <data name="Database.Mongo.OpenInitializedSuccessfully" xml:space="preserve">
+    <value>MongoDbService.Open {0} {1} MongoDB服务初始化成功，连接字符串：{2}，数据库名称：{3}</value>
+  </data>
+
+  <data name="Database.Mongo.OpenRetryWarning" xml:space="preserve">
+    <value>MongoDbService.Open 重试 {0}/{1} {2} {3} {4}</value>
+  </data>
+
+  <data name="Database.Mongo.OperationTransientError" xml:space="preserve">
+    <value>MongoDbService.{0} 瞬时错误，重试 {1}/{2}。error={3}</value>
+  </data>
+
+  <data name="Database.Mongo.ReadFallback" xml:space="preserve">
+    <value>MongoDbService 读降级 {0}，状态={1}</value>
+  </data>
+
+  <data name="Database.Mongo.SaveBulkBatchFailed" xml:space="preserve">
+    <value>MongoDbService.SaveBulkAsync 批次失败。状态名：{0}，批次索引：{1}，批次总数：{2}，错误：{3}</value>
+  </data>
+
+  <data name="Database.Mongo.SaveBulkBatchNotAcknowledged" xml:space="preserve">
+    <value>MongoDbService.SaveBulkAsync 批次未被确认。状态名：{0}，批次索引：{1}，批次总数：{2}</value>
+  </data>
+
+  <data name="Database.Mongo.StateTransition" xml:space="preserve">
+    <value>MongoDbService 状态迁移 {0} -&gt; {1}。原因：{2}</value>
+  </data>
+
+  <data name="Database.Mongo.TryReconnectAndPingFailed" xml:space="preserve">
+    <value>MongoDbService.TryReconnectAndPingAsync 失败。error={0}</value>
+  </data>
+
+  <data name="Database.PostgreSql.DiscoveryNoAdvertisePort" xml:space="preserve">
+    <value>[PostgreSqlDiscoveryRuntime] 未配置广播端口（{0}）；心跳写入侧被跳过，本进程仅观察拓扑</value>
+  </data>
+
+  <data name="Database.PostgreSql.ExecuteInTransactionTransientError" xml:space="preserve">
+    <value>PostgreSqlDbService.ExecuteInTransactionAsync 瞬时错误，重试 {0}/{1}。error={2}</value>
+  </data>
+
+  <data name="Database.PostgreSql.OpenExceptionError" xml:space="preserve">
+    <value>PostgreSqlDbService.Open 异常 {0} {1} {2}</value>
+  </data>
+
+  <data name="Database.PostgreSql.OpenExceptionFatal" xml:space="preserve">
+    <value>PostgreSqlDbService.Open 异常 {0} {1} {2}</value>
+  </data>
+
+  <data name="Database.PostgreSql.OpenInitializedSuccessfully" xml:space="preserve">
+    <value>PostgreSqlDbService.Open {0} {1} PostgreSQL服务初始化成功，连接目标：{2}，注册名：{3}</value>
+  </data>
+
+  <data name="Database.PostgreSql.OpenRetryWarning" xml:space="preserve">
+    <value>PostgreSqlDbService.Open 重试 {0}/{1} {2} {3} {4}</value>
+  </data>
+
+  <data name="Database.PostgreSql.OperationTransientError" xml:space="preserve">
+    <value>PostgreSqlDbService.{0} 瞬时错误，重试 {1}/{2}。error={3}</value>
+  </data>
+
+  <data name="Database.PostgreSql.ReadFallback" xml:space="preserve">
+    <value>PostgreSqlDbService 读降级 {0}，状态={1}</value>
+  </data>
+
+  <data name="Database.PostgreSql.SaveBulkBatchFailed" xml:space="preserve">
+    <value>PostgreSqlDbService.SaveBulkAsync 批次失败。状态名：{0}，批次索引：{1}，批次总数：{2}，错误：{3}</value>
+  </data>
+
+  <data name="Database.PostgreSql.SaveBulkBatchNotAcknowledged" xml:space="preserve">
+    <value>PostgreSqlDbService.SaveBulkAsync 批次未被确认。状态名：{0}，批次索引：{1}，批次总数：{2}</value>
+  </data>
+
+  <data name="Database.PostgreSql.StateTransition" xml:space="preserve">
+    <value>PostgreSqlDbService 状态迁移 {0} -&gt; {1}。原因：{2}</value>
+  </data>
+
+  <data name="Database.PostgreSql.TryReconnectAndPingFailed" xml:space="preserve">
+    <value>PostgreSqlDbService.TryReconnectAndPingAsync 失败。error={0}</value>
+  </data>
+
+  <data name="Discovery.AdvertiseEndpoint.EgressDetectionFallbackMachineName" xml:space="preserve">
+    <value>[AdvertiseEndpointEnvironment] 出口地址探测失败；回退使用机器名 {0} 作为广播主机。需要跨进程路由时请显式设置 {1}</value>
+  </data>
+
+  <data name="Discovery.Registry.HeartbeatUpsertFailed" xml:space="preserve">
+    <value>[DiscoveryRegistry] 实例 {0} 心跳写入失败；将在下个间隔重试</value>
+  </data>
+
+  <data name="Discovery.Registry.TtlCleanupFailed" xml:space="preserve">
+    <value>[DiscoveryRegistry] TTL 清理失败；将在下个间隔重试</value>
+  </data>
+
+  <data name="Discovery.Watcher.PollRoundFailed" xml:space="preserve">
+    <value>[DiscoveryWatcher] 轮询失败；保留上次路由表并在下个间隔重试</value>
+  </data>
+
+  <data name="Hotfix.Bag.OfflineNotifySendFailed" xml:space="preserve">
+    <value>ReqPlayerSendItemHttpHandler 离线通知发送失败, roleId: {0}, status: {1}, error: {2}, traceId: {3}</value>
+  </data>
+
+  <data name="Hotfix.Event.SelfHandleException" xml:space="preserve">
+    <value>EventDispatcherExtensions.SelfHandle 处理事件 {0} 时发生异常: {1}</value>
+  </data>
+
+  <data name="Hotfix.Event.SelfHandleNoListeners" xml:space="preserve">
+    <value>EventDispatcherExtensions.SelfHandle {0} 事件类型：{1} 没有找到任何监听者</value>
+  </data>
+
+  <data name="Hotfix.Friend.AddFriendSendException" xml:space="preserve">
+    <value>FriendComponentAgent.OnAddFriend 统一消息发送异常</value>
+  </data>
+
+  <data name="Hotfix.Friend.AddFriendSendFailed" xml:space="preserve">
+    <value>FriendComponentAgent.OnAddFriend 统一消息发送失败, StatusCode: {0}, Error: {1}, TraceId: {2}</value>
+  </data>
+
+  <data name="Hotfix.Friend.DeleteFriendSendException" xml:space="preserve">
+    <value>FriendComponentAgent.OnDeleteFriend 统一消息发送异常</value>
+  </data>
+
+  <data name="Hotfix.Friend.DeleteFriendSendFailed" xml:space="preserve">
+    <value>FriendComponentAgent.OnDeleteFriend 统一消息发送失败, StatusCode: {0}, Error: {1}, TraceId: {2}</value>
+  </data>
+
+  <data name="Hotfix.Friend.FriendListSendException" xml:space="preserve">
+    <value>FriendComponentAgent.OnFriendList 统一消息发送异常</value>
+  </data>
+
+  <data name="Hotfix.Friend.FriendListSendFailed" xml:space="preserve">
+    <value>FriendComponentAgent.OnFriendList 统一消息发送失败, StatusCode: {0}, Error: {1}, TraceId: {2}</value>
+  </data>
+
+  <data name="Hotfix.Friend.SemanticInvalidResult" xml:space="preserve">
+    <value>FriendComponentAgent.{0} 返回语义异常: Success=false 且 ErrorCode=0, PlayerId={1}</value>
+  </data>
+
+  <data name="Hotfix.Player.AgentIsNull" xml:space="preserve">
+    <value>代理对象为空</value>
+  </data>
+
+  <data name="Hotfix.Server.CrossDayTimerExecuted" xml:space="preserve">
+    <value>ServerCompAgent.CrossDayTimeHandler.跨天定时器执行{0}</value>
+  </data>
+
+  <data name="Hotfix.Server.TestDelayTimerExecuted" xml:space="preserve">
+    <value>ServerCompAgent.TestDelayTimer.延时3秒执行.执行一次</value>
+  </data>
+
+  <data name="Hotfix.Server.TestScheduleTimerExecuted" xml:space="preserve">
+    <value>ServerCompAgent.TestSchedueTimer.延时1秒执行.每隔10秒执行</value>
+  </data>
+
+  <data name="Hotfix.StartUp.ClientDisconnected" xml:space="preserve">
+    <value>客户端断开连接 - 会话ID: {0}, 断开原因: {1}</value>
+  </data>
+
+  <data name="Hotfix.StartUp.DataPackageReceive" xml:space="preserve">
+    <value>数据包接收: {0}</value>
+  </data>
+
+  <data name="Hotfix.StartUp.DataPackageReceiveHeartBeat" xml:space="preserve">
+    <value>数据包接收心跳: {0}</value>
+  </data>
+
+  <data name="Hotfix.StartUp.MessageHandlerInvokeError" xml:space="preserve">
+    <value>数据包接收: 调用消息处理器出错, 消息ID: {0}, 消息类型: {1}, 异常: {2}</value>
+  </data>
+
+  <data name="Hotfix.StartUp.MessageHandlerNotFound" xml:space="preserve">
+    <value>数据包接收: 找不到消息处理器, 消息ID: {0}, 消息类型: {1}</value>
+  </data>
+
+  <data name="Hotfix.Unified.DeliveryFailed" xml:space="preserve">
+    <value>SendToPlayerInnerHandler 投递失败, PlayerId:{0}</value>
+  </data>
+
+  <data name="NetWork.CloseAuthenticationTimeoutSessionFailed" xml:space="preserve">
+    <value>关闭认证超时会话失败: 会话Id: {0}, 异常: {1}</value>
+  </data>
+
+  <data name="NetWork.CloseAuthenticationTimeoutSessionsError" xml:space="preserve">
+    <value>关闭认证超时会话时发生错误: {0}</value>
+  </data>
+
+  <data name="NetWork.CloseUnauthenticatedSessionFailed" xml:space="preserve">
+    <value>关闭未认证会话失败: 会话Id: {0}, 异常: {1}</value>
+  </data>
+
+  <data name="NetWork.CreateNetworkMessagePackageError" xml:space="preserve">
+    <value>创建网络消息包错误 {0} {1} {2} {3}</value>
+  </data>
+
+  <data name="NetWork.FormatMessageError" xml:space="preserve">
+    <value>格式化消息错误 {0} {1} {2} {3} {4}</value>
+  </data>
+
+  <data name="NetWork.Http.ExecutionTimeNoResult" xml:space="preserve">
+    <value>{0},执行时间：{1}ms</value>
+  </data>
+
+  <data name="NetWork.Http.ProtoBufMessageEncodingException" xml:space="preserve">
+    <value>消息编码异常: {0}</value>
+  </data>
+
+  <data name="NetWork.MessageObjectEncodeException" xml:space="preserve">
+    <value>消息对象编码异常 {0} {1} {2} {3}</value>
+  </data>
+
+  <data name="NetWork.ScanAuthenticationTimeoutSessionsError" xml:space="preserve">
+    <value>扫描认证超时会话时发生错误: {0}</value>
+  </data>
+
+  <data name="NetWork.SendHeartBeatMessage" xml:space="preserve">
+    <value>发送心跳消息:{0} {1}</value>
+  </data>
+
+  <data name="NetWork.SendMessage" xml:space="preserve">
+    <value>发送消息:{0} {1} {2}</value>
+  </data>
+
+  <data name="NetWork.SendMessageError" xml:space="preserve">
+    <value>发送消息错误:{0} {1}</value>
+  </data>
+
+  <data name="NetWork.SendMessageTimeout" xml:space="preserve">
+    <value>发送消息超时:{0} {1}</value>
+  </data>
+
+  <data name="NetWork.SessionAuthenticationRejected" xml:space="preserve">
+    <value>会话认证被拒绝并关闭: 会话Id: {0}, 远程端点: {1}, 消息Id: {2}</value>
+  </data>
+
+  <data name="NetWork.SessionAuthenticationTimeout" xml:space="preserve">
+    <value>会话认证超时，正在关闭: 会话Id: {0}, 远程端点: {1}</value>
+  </data>
+
+  <data name="RemoteMessaging.CircuitBreaker.TripClosedToOpen" xml:space="preserve">
+    <value>CircuitBreaker 触发熔断(关闭→打开), Service: {0}, Failures: {1}</value>
+  </data>
+
+  <data name="RemoteMessaging.CircuitBreaker.TripHalfOpenToOpen" xml:space="preserve">
+    <value>CircuitBreaker 触发熔断(半开→打开), Service: {0}, Failures: {1}</value>
+  </data>
+
+  <data name="RemoteMessaging.Client.InterceptorOnExceptionFailed" xml:space="preserve">
+    <value>拦截器 OnExceptionAsync 失败</value>
+  </data>
+
+  <data name="RemoteMessaging.Client.SendOneWayCircuitBreakerOpen" xml:space="preserve">
+    <value>SendOneWayAsync: 熔断器已打开, Service: {0}</value>
+  </data>
+
+  <data name="RemoteMessaging.Client.SendOneWayHealthScoreLow" xml:space="preserve">
+    <value>SendOneWayAsync: 服务健康评分过低, Service: {0}, Score: {1}</value>
+  </data>
+
+  <data name="RemoteMessaging.Client.SendOneWayProtocolVersionIncompatible" xml:space="preserve">
+    <value>SendOneWayAsync: 协议版本不兼容, MessageType: {0}</value>
+  </data>
+
+  <data name="RemoteMessaging.FaultInjection.SimulatedConnectionDropLog" xml:space="preserve">
+    <value>FaultInjection: 模拟连接断开, Service: {0}</value>
+  </data>
+
+  <data name="RemoteMessaging.FaultInjection.SimulatedSlowResponseLog" xml:space="preserve">
+    <value>FaultInjection: 模拟慢响应, Service: {0}, Delay: {1}ms</value>
+  </data>
+
+  <data name="RemoteMessaging.FaultInjection.SimulatedTimeoutLog" xml:space="preserve">
+    <value>FaultInjection: 模拟超时, Service: {0}, Delay: {1}ms</value>
+  </data>
+
+  <data name="RemoteMessaging.Observability.RemoteCallCompleted" xml:space="preserve">
+    <value>RemoteCall 完成, Service: {0}, Message: {1}, Elapsed: {2}ms</value>
+  </data>
+
+  <data name="RemoteMessaging.Observability.RemoteCallException" xml:space="preserve">
+    <value>RemoteCall 异常, Service: {0}, Message: {1}, Elapsed: {2}ms</value>
+  </data>
+
+  <data name="RemoteMessaging.Observability.RemoteCallStarted" xml:space="preserve">
+    <value>RemoteCall 开始, Service: {0}, Message: {1}, Timeout: {2}ms</value>
+  </data>
+
+  <data name="RemoteMessaging.Routing.EnvelopeMessageWrongType" xml:space="preserve">
+    <value>[LocalEnvelopeDispatcher] 信封消息不是 RoleRouteEnvelopeMessage（实际类型：{0}）；丢弃</value>
+  </data>
+
+  <data name="RemoteMessaging.Routing.EnvelopeMissingTargetActorId" xml:space="preserve">
+    <value>[LocalEnvelopeDispatcher] 信封缺少 TargetActorId（发件方 bug？）；丢弃内层消息 id={0}</value>
+  </data>
+
+  <data name="RemoteMessaging.Routing.InnerMessageDeserializeFailed" xml:space="preserve">
+    <value>[LocalEnvelopeDispatcher] 为目标 {0} 反序列化内层消息失败（innerMessageId={1}）；丢弃</value>
+  </data>
+
+  <data name="RemoteMessaging.Routing.InnerMessageIdNotRegistered" xml:space="preserve">
+    <value>[LocalEnvelopeDispatcher] 内层消息 ID {0} 未在 MessageProtoHelper 注册；丢弃发往目标 {1} 的信封</value>
+  </data>
+
+  <data name="RemoteMessaging.Routing.TargetOfflineDefaultDropped" xml:space="preserve">
+    <value>[LocalEnvelopeDispatcher] 目标 {0} 已离线；默认策略——消息已丢弃</value>
+  </data>
+
+  <data name="RemoteMessaging.Routing.TargetOfflineDiscardDropped" xml:space="preserve">
+    <value>[LocalEnvelopeDispatcher] 目标 {0} 已离线；Discard 策略——消息已丢弃</value>
+  </data>
+
+  <data name="RemoteMessaging.Routing.TargetOfflineStoreOfflineDropped" xml:space="preserve">
+    <value>[LocalEnvelopeDispatcher] 目标 {0} 已离线；StoreOffline 策略占位——消息已丢弃（尚无离线存储）</value>
+  </data>
+
+  <data name="StartUp.Application.AbnormalServerStop" xml:space="preserve">
+    <value>服务器异常停止:{0}</value>
+  </data>
+
+  <data name="StartUp.Application.DuplicateStartupPriorities" xml:space="preserve">
+    <value>检测到重复的启动优先级；这些角色之间的多角色启动顺序不稳定 (C143b) — {0}</value>
+  </data>
+
+  <data name="StartUp.Application.NoRegisteredStartupType" xml:space="preserve">
+    <value>未找到服务器类型 '{0}' 的已注册启动类型（多角色选择）；已跳过。</value>
+  </data>
+
+  <data name="StartUp.Application.StopServerError" xml:space="preserve">
+    <value>停止服务器角色 '{0}' 时出错:{1}</value>
+  </data>
+
+  <data name="StartUp.HttpServer.HttpRequestError" xml:space="preserve">
+    <value>HTTP请求错误: {0}</value>
+  </data>
+
+  <data name="StartUp.HttpServer.PortOccupiedDetails" xml:space="preserve">
+    <value>HTTP端口[{0}]占用详情: {1}</value>
+  </data>
+
+  <data name="StartUp.HttpServer.PortOccupiedNoProcessDetails" xml:space="preserve">
+    <value>HTTP端口[{0}]已被占用，但未能获取占用进程详情。</value>
+  </data>
+
+  <data name="StartUp.Server.MessageHandlerError" xml:space="preserve">
+    <value>消息处理器错误: {0}</value>
+  </data>
+
+  <data name="StartUp.Server.PortOccupiedDetails" xml:space="preserve">
+    <value>{0}端口[{1}]占用详情: {2}</value>
+  </data>
+
+  <data name="Utility.CompressionHelper.CompressFailed" xml:space="preserve">
+    <value>CompressionHelper.Compress 压缩辅助类异常。错误：{0}。</value>
+  </data>
+
+  <data name="Utility.CompressionHelper.DecompressFailed" xml:space="preserve">
+    <value>CompressionHelper.Decompress 压缩辅助类异常。错误：{0}。</value>
+  </data>
+
+  <data name="Utility.GlobalSettings.ActorRecycleTimeTooShortLog" xml:space="preserve">
+    <value>GlobalSettings.SetCurrentSetting ActorRecycleTime小于1分钟，使用默认值5分钟</value>
+  </data>
+
+  <data name="Utility.GlobalSettings.HttpUrlEmptyUseDefaultLog" xml:space="preserve">
+    <value>GlobalSettings.SetCurrentSetting HttpUrl为空，使用默认值：/game/api/</value>
+  </data>
+
+  <data name="Utility.GlobalSettings.NetworkTimeoutTooShortLog" xml:space="preserve">
+    <value>GlobalSettings.SetCurrentSetting NetWorkSendTimeOutSeconds小于1秒，使用默认值5秒</value>
+  </data>
+
+  <data name="Utility.GlobalSettings.SaveDataIntervalTooSmallLog" xml:space="preserve">
+    <value>GlobalSettings.SetCurrentSetting SaveDataInterval小于5000毫秒，使用默认值为:{0} 毫秒</value>
+  </data>
+
+  <data name="Utility.IllegalWordDetection.InitException" xml:space="preserve">
+    <value>IllegalWordDetection.Init 异常详情：{0}</value>
+  </data>
+
+  <data name="Utility.LNumber.DivisionOverflowLog" xml:space="preserve">
+    <value>LNumber.DivisionOverflow LNumber除法已越界 &gt; {0}</value>
+  </data>
+
+  <data name="Utility.LNumber.MultiplicationOverflowLog" xml:space="preserve">
+    <value>LNumber.MultiplicationOverflow LNumber乘法已越界 &gt; {0}</value>
+  </data>
+
 </root>

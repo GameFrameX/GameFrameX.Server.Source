@@ -29,6 +29,7 @@
 
 
 using System.Collections.Concurrent;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.SuperSocket.Connection;
@@ -179,7 +180,8 @@ public sealed class SessionAuthenticationMiddleware : MiddlewareBase
             return ValueTask.FromResult(true);
         }
 
-        LogHelper.Warning("Session authentication rejected and closing: SessionId: {sessionId}, RemoteEndPoint: {remoteEndPoint}, MessageId: {messageId}", session.SessionId, session.RemoteEndPoint, messageId);
+        // Localization: NetWork.SessionAuthenticationRejected - 会话认证被拒绝并关闭: 会话Id: {0}, 远程端点: {1}, 消息Id: {2}
+        LogHelper.Warning(LocalizationService.GetString(Localization.Keys.NetWork.SessionAuthenticationRejected, session.SessionId, session.RemoteEndPoint, messageId));
         return CloseAndRejectAsync(session);
     }
 
@@ -218,7 +220,8 @@ public sealed class SessionAuthenticationMiddleware : MiddlewareBase
         catch (Exception exception)
         {
             // 会话可能已在关闭竞态中，关闭失败不影响拦截结论
-            LogHelper.Error("Failed to close unauthenticated session: SessionId: {sessionId}, exception: {exception}", session.SessionId, exception.Message);
+            // Localization: NetWork.CloseUnauthenticatedSessionFailed - 关闭未认证会话失败: 会话Id: {0}, 异常: {1}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.NetWork.CloseUnauthenticatedSessionFailed, session.SessionId, exception.Message));
         }
 
         return false;
@@ -239,7 +242,8 @@ public sealed class SessionAuthenticationMiddleware : MiddlewareBase
         }
         catch (Exception exception)
         {
-            LogHelper.Error("Error happened when scanning authentication timeout sessions: {exception}", exception.Message);
+            // Localization: NetWork.ScanAuthenticationTimeoutSessionsError - 扫描认证超时会话时发生错误: {0}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.NetWork.ScanAuthenticationTimeoutSessionsError, exception.Message));
             ResumeScanTimer();
         }
     }
@@ -264,20 +268,23 @@ public sealed class SessionAuthenticationMiddleware : MiddlewareBase
                     continue;
                 }
 
-                LogHelper.Warning("Session authentication timeout, closing: SessionId: {sessionId}, RemoteEndPoint: {remoteEndPoint}", tracked.Session.SessionId, tracked.Session.RemoteEndPoint);
+                // Localization: NetWork.SessionAuthenticationTimeout - 会话认证超时，正在关闭: 会话Id: {0}, 远程端点: {1}
+                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.NetWork.SessionAuthenticationTimeout, tracked.Session.SessionId, tracked.Session.RemoteEndPoint));
                 try
                 {
                     await tracked.Session.CloseAsync(CloseReason.TimeOut);
                 }
                 catch (Exception exception)
                 {
-                    LogHelper.Error("Failed to close authentication-timeout session: SessionId: {sessionId}, exception: {exception}", tracked.Session.SessionId, exception.Message);
+                    // Localization: NetWork.CloseAuthenticationTimeoutSessionFailed - 关闭认证超时会话失败: 会话Id: {0}, 异常: {1}
+                    LogHelper.Error(LocalizationService.GetString(Localization.Keys.NetWork.CloseAuthenticationTimeoutSessionFailed, tracked.Session.SessionId, exception.Message));
                 }
             }
         }
         catch (Exception exception)
         {
-            LogHelper.Error("Error happened when closing authentication timeout sessions: {exception}", exception.Message);
+            // Localization: NetWork.CloseAuthenticationTimeoutSessionsError - 关闭认证超时会话时发生错误: {0}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.NetWork.CloseAuthenticationTimeoutSessionsError, exception.Message));
         }
         finally
         {

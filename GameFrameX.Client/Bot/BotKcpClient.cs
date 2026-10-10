@@ -226,17 +226,20 @@ public sealed class BotKcpClient
             return false;
         }
 
-        LogHelper.Warning("IsInConnecting timeout ({0}ms), abandoning session", ConnectingTimeoutMs);
+        // Localization: Client.Bot.Kcp.ConnectingTimeoutAbandonSession - 连接中状态超时（{0}毫秒），放弃当前会话
+        LogHelper.Warning(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.Bot.Kcp.ConnectingTimeoutAbandonSession, ConnectingTimeoutMs));
         await AbandonConnectingSessionAsync();
         _connectingSince = null;
 
         if (m_RetryCount >= MaxRetryCount)
         {
+            // Localization: Client.MaxRetryReached - 重连次数已达到上限，停止尝试。
             LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.MaxRetryReached));
             return true;
         }
 
         m_RetryCount++;
+        // Localization: Client.RetryConnect - 未连接到服务器, 尝试重连 (尝试次数: {0}/{1})
         LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.RetryConnect, m_RetryCount, MaxRetryCount));
         TryConnectAsync(cancellationToken);
         await Task.Delay(DelayTimes, cancellationToken);
@@ -251,6 +254,7 @@ public sealed class BotKcpClient
     private async Task<bool> HandleDisconnectedStateAsync(CancellationToken cancellationToken)
     {
         _connectingSince = null;
+        // Localization: Client.AttemptingToConnect - 尝试连接到服务器...
         LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.AttemptingToConnect));
         TryConnectAsync(cancellationToken);
         await Task.Delay(DelayTimes, cancellationToken);
@@ -262,11 +266,13 @@ public sealed class BotKcpClient
 
         if (m_RetryCount >= MaxRetryCount)
         {
+            // Localization: Client.MaxRetryReached - 重连次数已达到上限，停止尝试。
             LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.MaxRetryReached));
             return true;
         }
 
         m_RetryCount++;
+        // Localization: Client.RetryConnect - 未连接到服务器, 尝试重连 (尝试次数: {0}/{1})
         LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.RetryConnect, m_RetryCount, MaxRetryCount));
         await Task.Delay(m_RetryDelay, cancellationToken);
         m_RetryDelay *= 2;
@@ -286,7 +292,8 @@ public sealed class BotKcpClient
         }
         catch (Exception e)
         {
-            LogHelper.Warning("Disconnect failed: {message}", e.Message);
+            // Localization: Client.Bot.DisconnectFailed - 断开连接失败: {0}
+            LogHelper.Warning(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.Bot.DisconnectFailed, e.Message));
         }
         finally
         {
@@ -326,7 +333,8 @@ public sealed class BotKcpClient
             }
             catch (Exception e)
             {
-                LogHelper.Warning("SendToServer failed: {message}", e.Message);
+                // Localization: Client.Bot.Kcp.SendToServerFailed - 发送消息到服务器失败: {0}
+                LogHelper.Warning(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.Bot.Kcp.SendToServerFailed, e.Message));
             }
         }
     }
@@ -384,6 +392,7 @@ public sealed class BotKcpClient
         }
         catch (Exception e)
         {
+            // Localization: Client.ErrorOccurred - 客户端发生错误: {0}
             LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.ErrorOccurred, e.Message));
             m_BotKcpClientEvent.OnErrorCallback?.Invoke(e);
         }
@@ -406,7 +415,8 @@ public sealed class BotKcpClient
         catch (Exception e)
         {
             // 探测失败（如服务端不可达导致的本地异常）不打断连接中状态：由超时路径统一兜底重试。
-            LogHelper.Warning("KCP connect probe failed: {message}", e.Message);
+            // Localization: Client.Bot.Kcp.ConnectProbeFailed - KCP 连接探测失败: {0}
+            LogHelper.Warning(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.Bot.Kcp.ConnectProbeFailed, e.Message));
         }
     }
 
@@ -478,7 +488,8 @@ public sealed class BotKcpClient
             }
             catch (Exception e)
             {
-                LogHelper.Warning("KCP receive error: {message}", e.Message);
+                // Localization: Client.Bot.Kcp.ReceiveError - KCP 接收错误: {0}
+                LogHelper.Warning(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.Bot.Kcp.ReceiveError, e.Message));
                 m_BotKcpClientEvent.OnErrorCallback?.Invoke(e);
                 await Task.Delay(100, cancellationToken);
             }
@@ -534,6 +545,7 @@ public sealed class BotKcpClient
     private void OnKcpClientOnClosed(object sender, EventArgs e)
     {
         _isConnectionAlive = false;
+        // Localization: Client.Disconnected - 客户端断开连接
         LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Client.Disconnected));
         m_BotKcpClientEvent.OnClosedCallback?.Invoke();
     }

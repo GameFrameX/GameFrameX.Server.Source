@@ -145,6 +145,7 @@ public abstract partial class AppStartUpBase
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     protected virtual ValueTask OnDisconnected(IAppSession appSession, CloseEventArgs disconnectEventArgs)
     {
+        // Localization: StartUp.TcpServer.ClientDisconnected - 客户端断开连接 - 会话ID: {0}, 远程终端: {1}, 断开原因: {2}
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.ClientDisconnected, appSession.SessionId, appSession.RemoteEndPoint, disconnectEventArgs.Reason));
         return ValueTask.CompletedTask;
     }
@@ -160,6 +161,7 @@ public abstract partial class AppStartUpBase
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     protected virtual ValueTask OnConnected(IAppSession appSession)
     {
+        // Localization: StartUp.TcpServer.NewClientConnection - 新客户端连接 - 会话ID: {0}, 远程终端: {1}
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.NewClientConnection, appSession.SessionId, appSession.RemoteEndPoint));
         return ValueTask.CompletedTask;
     }
@@ -178,6 +180,7 @@ public abstract partial class AppStartUpBase
     {
         if (Setting.IsDebug && Setting.IsDebugReceive)
         {
+            // Localization: StartUp.TcpServer.MessageReceived - 接收到消息 - 服务器类型: [{0}], 消息内容: {1}
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.MessageReceived, ServerType, message.ToFormatMessageString()));
         }
 
@@ -214,7 +217,8 @@ public abstract partial class AppStartUpBase
         }
         catch (Exception ex)
         {
-            LogHelper.Error<string>("Message handler error: {exception}", ex.ToString());
+            // Localization: StartUp.Server.MessageHandlerError - 消息处理器错误: {0}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.Server.MessageHandlerError, ex.ToString()));
         }
     }
 
@@ -272,6 +276,7 @@ public abstract partial class AppStartUpBase
     {
         if (!Setting.IsEnableTcp)
         {
+            // Localization: StartUp.TcpServer.ServerDisabled - 启动TCP服务器 类型: {0}, 地址: {1}, 端口: {2}, 原因: TCP服务器被禁用
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.ServerDisabled, ServerType, Setting.InnerHost, Setting.InnerPort));
             return;
         }
@@ -279,6 +284,7 @@ public abstract partial class AppStartUpBase
         // 检查TCP端口是否可用
         if (Setting.InnerPort > 0 && NetHelper.PortIsAvailable(Setting.InnerPort))
         {
+            // Localization: StartUp.TcpServer.StartingServer - 启动TCP服务器 类型: {0}, 地址: {1}, 端口: {2}
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.StartingServer, ServerType, Setting.InnerHost, Setting.InnerPort));
             multipleServerHostBuilder.AddServer<IMessage, MessageObjectPipelineFilter>(builder =>
             {
@@ -310,15 +316,18 @@ public abstract partial class AppStartUpBase
                     //     if (serviceDescriptor.ServiceType == typeof(IPackageDecoder<IMessage>))
                     //     {
                     //         serviceDescriptor.ImplementationInstance ;
+                    // Localization: StartUp.TcpServer.StartupComplete - 启动TCP服务器完成 类型: {0}, 地址: {1}, 端口: {2}
                     //         LogHelper.Info($"XX");
                     //     }
                     // }
                 });
             });
+            // Localization: StartUp.TcpServer.StartupComplete - 启动TCP服务器完成 类型: {0}, 地址: {1}, 端口: {2}
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.StartupComplete, ServerType, Setting.InnerHost, Setting.InnerPort));
         }
         else
         {
+            // Localization: StartUp.TcpServer.StartupFailed - 启动TCP服务器失败 类型: {0}, 地址: {1}, 端口: {2}, 原因: 端口无效或被占用
             LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.StartupFailed, ServerType, Setting.InnerHost, Setting.InnerPort));
             LogPortOccupationDetails("TCP", Setting.InnerPort);
         }
@@ -354,6 +363,7 @@ public abstract partial class AppStartUpBase
     {
         if (!Setting.IsEnableKcp)
         {
+            // Localization: StartUp.Kcp.ServerDisabled - {0} KCP 服务未启用（{1}:{2}），跳过监听器装配（需 IsEnableKcp 显式开启）。
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Kcp.ServerDisabled, ServerType, Setting.InnerHost, Setting.KcpPort));
             return;
         }
@@ -361,6 +371,7 @@ public abstract partial class AppStartUpBase
         // KCP 端口必须在 (0, ushort.MaxValue] 范围内（与 WsPort 守卫同构）
         if (Setting.KcpPort is > 0 and <= ushort.MaxValue && NetHelper.PortIsAvailable(Setting.KcpPort))
         {
+            // Localization: StartUp.Kcp.StartingServer - 正在启动 {0} KCP 服务，监听 {1}:{2}。
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Kcp.StartingServer, ServerType, Setting.InnerHost, Setting.KcpPort));
             var authenticationOptions = CreateKcpSessionAuthenticationOptions();
             var authenticationMiddleware = new SessionAuthenticationMiddleware(authenticationOptions);
@@ -394,10 +405,12 @@ public abstract partial class AppStartUpBase
                         });
                     });
             });
+            // Localization: StartUp.Kcp.StartupComplete - {0} KCP 服务已成功启动，监听 {1}:{2}。
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Kcp.StartupComplete, ServerType, Setting.InnerHost, Setting.KcpPort));
         }
         else
         {
+            // Localization: StartUp.Kcp.StartupFailed - {0} KCP 服务启动失败（{1}:{2}），端口不可用或越界。
             LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.Kcp.StartupFailed, ServerType, Setting.InnerHost, Setting.KcpPort));
             LogPortOccupationDetails("KCP", Setting.KcpPort);
         }
@@ -432,6 +445,7 @@ public abstract partial class AppStartUpBase
     {
         if (!Setting.IsEnableWebSocket)
         {
+            // Localization: StartUp.WebSocketServer.ServiceNotEnabled - 启动WebSocket服务器失败 类型: {0}, 端口: {1}, 原因: WebSocket服务未启用
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.WebSocketServer.ServiceNotEnabled, ServerType, Setting.WsPort));
             return;
         }
@@ -439,6 +453,7 @@ public abstract partial class AppStartUpBase
         // 检查WebSocket端口是否可用
         if (Setting.WsPort is > 0 and < ushort.MaxValue && NetHelper.PortIsAvailable(Setting.WsPort))
         {
+            // Localization: StartUp.WebSocketServer.StartingServer - 启动WebSocket服务器 类型: {0}, 端口: {1}
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.WebSocketServer.StartingServer, ServerType, Setting.WsPort));
 
             // 配置并启动WebSocket服务器
@@ -460,10 +475,12 @@ public abstract partial class AppStartUpBase
                         });
                     });
             });
+            // Localization: StartUp.WebSocketServer.StartupComplete - 启动WebSocket服务器完成 类型: {0}, 端口: {1}
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.WebSocketServer.StartupComplete, ServerType, Setting.WsPort));
         }
         else
         {
+            // Localization: StartUp.WebSocketServer.StartupFailed - 启动WebSocket服务器失败 类型: {0}, 端口: {1}, 原因: 端口无效或被占用
             LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.WebSocketServer.StartupFailed, ServerType, Setting.WsPort));
             LogPortOccupationDetails("WebSocket", Setting.WsPort);
         }
@@ -485,7 +502,8 @@ public abstract partial class AppStartUpBase
         var occupiedProcesses = NetHelper.GetPortOccupyingProcesses(port);
         if (occupiedProcesses.Count > 0)
         {
-            LogHelper.Warning($"{serverName}端口[{port}]占用详情: {string.Join(" | ", occupiedProcesses)}");
+            // Localization: StartUp.Server.PortOccupiedDetails - {0}端口[{1}]占用详情: {2}
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.Server.PortOccupiedDetails, serverName, port, string.Join(" | ", occupiedProcesses)));
         }
     }
 

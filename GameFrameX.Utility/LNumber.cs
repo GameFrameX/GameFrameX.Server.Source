@@ -304,12 +304,14 @@ public struct LNumber : IComparable<LNumber>, IEquatable<LNumber>
             }
             else if ((lhs > 0 && rhs > 0) || (lhs < 0 && rhs < 0))
             {
-                LogHelper.Error<string>("LNumber.MultiplicationOverflow {message}", LocalizationService.GetString(Localization.Keys.Utility.LNumber.MultiplicationOverflow, c));
+                // Localization: Utility.LNumber.MultiplicationOverflowLog - LNumber.MultiplicationOverflow LNumber乘法已越界 > {0}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Utility.LNumber.MultiplicationOverflowLog, c));
                 r.Raw = long.MaxValue;
             }
             else
             {
-                LogHelper.Error<string>("LNumber.MultiplicationOverflow {message}", LocalizationService.GetString(Localization.Keys.Utility.LNumber.MultiplicationOverflow, c));
+                // Localization: Utility.LNumber.MultiplicationOverflowLog - LNumber.MultiplicationOverflow LNumber乘法已越界 > {0}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Utility.LNumber.MultiplicationOverflowLog, c));
                 r.Raw = long.MinValue;
             }
         }
@@ -360,12 +362,14 @@ public struct LNumber : IComparable<LNumber>, IEquatable<LNumber>
             }
             else if ((lhs > 0 && rhs > 0) || (lhs < 0 && rhs < 0))
             {
-                LogHelper.Error<string>("LNumber.DivisionOverflow {message}", LocalizationService.GetString(Localization.Keys.Utility.LNumber.MultiplicationOverflow, c));
+                // Localization: Utility.LNumber.DivisionOverflowLog - LNumber.DivisionOverflow LNumber除法已越界 > {0}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Utility.LNumber.DivisionOverflowLog, c));
                 r.Raw = long.MaxValue;
             }
             else
             {
-                LogHelper.Error<string>("LNumber.DivisionOverflow {message}", LocalizationService.GetString(Localization.Keys.Utility.LNumber.MultiplicationOverflow, c));
+                // Localization: Utility.LNumber.DivisionOverflowLog - LNumber.DivisionOverflow LNumber除法已越界 > {0}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Utility.LNumber.DivisionOverflowLog, c));
                 r.Raw = long.MinValue;
             }
         }

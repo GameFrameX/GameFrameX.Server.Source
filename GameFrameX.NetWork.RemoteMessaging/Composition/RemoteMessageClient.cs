@@ -29,6 +29,7 @@
 
 using System.Diagnostics;
 using System.Net.Sockets;
+using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.NetWork.RemoteMessaging.Composition;
 
@@ -553,14 +554,16 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
     {
         if (!_circuitBreaker.IsAllowed(serviceName))
         {
-            LogHelper.Warning("SendOneWayAsync: 熔断器已打开, Service: {serviceName}", serviceName);
+            // Localization: RemoteMessaging.Client.SendOneWayCircuitBreakerOpen - SendOneWayAsync: 熔断器已打开, Service: {0}
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Client.SendOneWayCircuitBreakerOpen, serviceName));
             return;
         }
 
         var healthScore = _healthEvaluator.GetHealthScore(serviceName);
         if (healthScore <= 0)
         {
-            LogHelper.Warning("SendOneWayAsync: 服务健康评分过低, Service: {serviceName}, Score: {healthScore}", serviceName, healthScore);
+            // Localization: RemoteMessaging.Client.SendOneWayHealthScoreLow - SendOneWayAsync: 服务健康评分过低, Service: {0}, Score: {1}
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Client.SendOneWayHealthScoreLow, serviceName, healthScore));
             return;
         }
 
@@ -572,7 +575,8 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
 
             if (_protocolVersionNegotiator != null && !_protocolVersionNegotiator.IsCompatible(requestMessage.GetType()))
             {
-                LogHelper.Warning("SendOneWayAsync: 协议版本不兼容, MessageType: {messageType}", requestMessage.GetType().Name);
+                // Localization: RemoteMessaging.Client.SendOneWayProtocolVersionIncompatible - SendOneWayAsync: 协议版本不兼容, MessageType: {0}
+                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Client.SendOneWayProtocolVersionIncompatible, requestMessage.GetType().Name));
                 return;
             }
 
@@ -687,7 +691,8 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
             }
             catch (Exception ex)
             {
-                LogHelper.Error(ex, "Interceptor OnExceptionAsync failed");
+                // Localization: RemoteMessaging.Client.InterceptorOnExceptionFailed - 拦截器 OnExceptionAsync 失败
+                LogHelper.Error(ex, LocalizationService.GetString(Localization.Keys.RemoteMessaging.Client.InterceptorOnExceptionFailed));
             }
         }
     }

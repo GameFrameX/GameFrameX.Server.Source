@@ -166,11 +166,13 @@ internal sealed class HotfixModule
 
             ParseDll();
 
+            // Localization: Core.Hotfix.DllInitializationSuccess - 热更DLL初始化成功: {0}
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.HotfixModule.DllInitializationSuccess, _dllPath));
             success = true;
         }
         catch (Exception e)
         {
+            // Localization: Core.Hotfix.DllInitializationFailed - 热更DLL初始化失败...\n{0}
             LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.HotfixModule.DllInitializationFailed, e));
             if (!reload)
             {
@@ -205,6 +207,7 @@ internal sealed class HotfixModule
 #pragma warning restore S1215
                     }
 
+                    // Localization: Core.Hotfix.DllUninstall - 热更DLL卸载{0}
                     LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.HotfixModule.DllUninstall, weak.IsAlive ? "failure" : "successful"));
                 });
             }
@@ -336,6 +339,7 @@ internal sealed class HotfixModule
         var isHas = _rpcHandlerMap.TryGetValue(attribute.RequestMessage.GetType(), out var requestHandler);
         if (isHas && requestHandler?.GetType() == attribute.ResponseMessage.GetType())
         {
+            // Localization: CoreExceptions.Hotfix.HttpProcessorRepeatedlyRegistered - HTTP处理器命令重复注册，命令:{0}
             LogHelper.Error(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.HttpProcessorRepeatedlyRegistered, attribute.RequestMessage));
             return false;
         }
@@ -378,6 +382,7 @@ internal sealed class HotfixModule
 
         if (_tcpHandlerTypes.Contains(attribute.MessageType))
         {
+            // Localization: CoreExceptions.Hotfix.WrongTcpProcessorType - 错误的TCP处理器类型:{0}
             LogHelper.Error(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.WrongTcpProcessorType, type.FullName));
             return false;
         }
@@ -391,6 +396,7 @@ internal sealed class HotfixModule
         var msgId = msgIdField.MessageId;
         if (!_tcpHandlerMap.TryAdd(msgId, type))
         {
+            // Localization: CoreExceptions.Hotfix.WrongTcpProcessorType - 错误的TCP处理器类型:{0}
             LogHelper.Error(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.WrongTcpProcessorType, type));
         }
 

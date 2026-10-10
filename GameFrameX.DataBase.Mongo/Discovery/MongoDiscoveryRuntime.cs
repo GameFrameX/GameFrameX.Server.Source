@@ -149,7 +149,8 @@ public static class MongoDiscoveryRuntime
         ActiveDiscoveryRuntime.Bind(_registry);
         if (selfDescriptor == null)
         {
-            LogHelper.Warning("[MongoDiscoveryRuntime] no advertise port configured ({environmentVariable}); the heartbeat write side is skipped and this process only observes the topology", AdvertiseEndpointEnvironment.AdvertisePortEnvironmentVariable);
+            // Localization: Database.Mongo.DiscoveryNoAdvertisePort - [MongoDiscoveryRuntime] 未配置广播端口（{0}）；心跳写入侧被跳过，本进程仅观察拓扑
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.Mongo.DiscoveryNoAdvertisePort, AdvertiseEndpointEnvironment.AdvertisePortEnvironmentVariable));
         }
 
         // 玩家路由层装配（建索引 + 装 SyncTarget），通用 Bootstrap 单例。

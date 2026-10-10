@@ -199,11 +199,13 @@ public abstract class BaseNetWorkChannel : INetWorkChannel
             }
             catch (OperationCanceledException exception)
             {
-                LogHelper.Error("Send Message Timeout:{actorId} {message}", actorId, LocalizationService.GetString(Localization.Keys.NetWork.MessageSendTimeout, exception.Message));
+                // Localization: NetWork.SendMessageTimeout - 发送消息超时:{0} {1}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.NetWork.SendMessageTimeout, actorId, LocalizationService.GetString(Localization.Keys.NetWork.MessageSendTimeout, exception.Message)));
             }
             catch (Exception e)
             {
-                LogHelper.Error("Send Message Error:{actorId} {message}", actorId, e.Message);
+                // Localization: NetWork.SendMessageError - 发送消息错误:{0} {1}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.NetWork.SendMessageError, actorId, e.Message));
             }
         }
     }
@@ -230,12 +232,14 @@ public abstract class BaseNetWorkChannel : INetWorkChannel
             // 判断是否打印心跳消息的发送
             if (Setting.IsDebugSendHeartBeat)
             {
-                LogHelper.Debug("Send HeartBeat Message:{actorId} {message}", actorId, LocalizationService.GetString(Localization.Keys.NetWork.MessageSent, msg.ToFormatMessageString(actorId)));
+                // Localization: NetWork.SendHeartBeatMessage - 发送心跳消息:{0} {1}
+                LogHelper.Debug(LocalizationService.GetString(Localization.Keys.NetWork.SendHeartBeatMessage, actorId, LocalizationService.GetString(Localization.Keys.NetWork.MessageSent, msg.ToFormatMessageString(actorId))));
             }
         }
         else
         {
-            LogHelper.Debug("Send Message:{actorId} {errorCode} {message}", actorId, responseErrorCode, LocalizationService.GetString(Localization.Keys.NetWork.MessageSent, msg.ToFormatMessageString(actorId)));
+            // Localization: NetWork.SendMessage - 发送消息:{0} {1} {2}
+            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.NetWork.SendMessage, actorId, responseErrorCode, LocalizationService.GetString(Localization.Keys.NetWork.MessageSent, msg.ToFormatMessageString(actorId))));
         }
     }
 

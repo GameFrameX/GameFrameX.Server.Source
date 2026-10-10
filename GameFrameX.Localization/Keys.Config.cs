@@ -53,6 +53,24 @@ public static partial class Keys
             /// 用途: 配置表未加载完成时调用 SetTranslateText 抛出
             /// </remarks>
             public const string NotLoaded = "Config.Table.NotLoaded";
+
+            /// <summary>
+            /// 开始加载配置表...
+            /// </summary>
+            /// <remarks>
+            /// 键名: Config.Table.LoadConfigStart
+            /// 用途: 加载配置表流程开始时输出调试日志
+            /// </remarks>
+            public const string LoadConfigStart = "Config.Table.LoadConfigStart";
+
+            /// <summary>
+            /// 配置表加载完成...
+            /// </summary>
+            /// <remarks>
+            /// 键名: Config.Table.LoadConfigEnd
+            /// 用途: 加载配置表流程结束时输出调试日志
+            /// </remarks>
+            public const string LoadConfigEnd = "Config.Table.LoadConfigEnd";
         }
     }
 }

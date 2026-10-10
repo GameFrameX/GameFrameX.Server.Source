@@ -138,5 +138,135 @@ public static partial class Keys
         /// 参数: {0} - 实际会话类型全名; {1} - 目标会话类型全名
         /// </remarks>
         public const string SessionTypeCastInvalid = "NetWork.SessionTypeCastInvalid";
+
+        /// <summary>
+        /// Send Message Timeout:{0} {1}
+        /// </summary>
+        /// <remarks>
+        /// 键名: NetWork.SendMessageTimeout
+        /// 用途: 发送消息超时被取消时记录错误
+        /// 参数: {0} - 角色Id, {1} - 超时消息
+        /// </remarks>
+        public const string SendMessageTimeout = "NetWork.SendMessageTimeout";
+
+        /// <summary>
+        /// Send Message Error:{0} {1}
+        /// </summary>
+        /// <remarks>
+        /// 键名: NetWork.SendMessageError
+        /// 用途: 发送消息发生异常时记录错误
+        /// 参数: {0} - 角色Id, {1} - 异常消息
+        /// </remarks>
+        public const string SendMessageError = "NetWork.SendMessageError";
+
+        /// <summary>
+        /// Send HeartBeat Message:{0} {1}
+        /// </summary>
+        /// <remarks>
+        /// 键名: NetWork.SendHeartBeatMessage
+        /// 用途: 开启调试时记录心跳消息发送日志
+        /// 参数: {0} - 角色Id, {1} - 格式化的消息内容
+        /// </remarks>
+        public const string SendHeartBeatMessage = "NetWork.SendHeartBeatMessage";
+
+        /// <summary>
+        /// Send Message:{0} {1} {2}
+        /// </summary>
+        /// <remarks>
+        /// 键名: NetWork.SendMessage
+        /// 用途: 开启调试时记录非心跳消息发送日志
+        /// 参数: {0} - 角色Id, {1} - 响应错误码, {2} - 格式化的消息内容
+        /// </remarks>
+        public const string SendMessage = "NetWork.SendMessage";
+
+        /// <summary>
+        /// Session authentication rejected and closing: SessionId: {0}, RemoteEndPoint: {1}, MessageId: {2}
+        /// </summary>
+        /// <remarks>
+        /// 键名: NetWork.SessionAuthenticationRejected
+        /// 用途: 会话认证被拒绝并关闭时记录警告
+        /// 参数: {0} - 会话Id, {1} - 远程端点, {2} - 消息Id
+        /// </remarks>
+        public const string SessionAuthenticationRejected = "NetWork.SessionAuthenticationRejected";
+
+        /// <summary>
+        /// Failed to close unauthenticated session: SessionId: {0}, exception: {1}
+        /// </summary>
+        /// <remarks>
+        /// 键名: NetWork.CloseUnauthenticatedSessionFailed
+        /// 用途: 关闭未认证会话失败时记录错误
+        /// 参数: {0} - 会话Id, {1} - 异常消息
+        /// </remarks>
+        public const string CloseUnauthenticatedSessionFailed = "NetWork.CloseUnauthenticatedSessionFailed";
+
+        /// <summary>
+        /// Error happened when scanning authentication timeout sessions: {0}
+        /// </summary>
+        /// <remarks>
+        /// 键名: NetWork.ScanAuthenticationTimeoutSessionsError
+        /// 用途: 扫描认证超时会话发生异常时记录错误
+        /// 参数: {0} - 异常消息
+        /// </remarks>
+        public const string ScanAuthenticationTimeoutSessionsError = "NetWork.ScanAuthenticationTimeoutSessionsError";
+
+        /// <summary>
+        /// Session authentication timeout, closing: SessionId: {0}, RemoteEndPoint: {1}
+        /// </summary>
+        /// <remarks>
+        /// 键名: NetWork.SessionAuthenticationTimeout
+        /// 用途: 会话认证超时关闭时记录警告
+        /// 参数: {0} - 会话Id, {1} - 远程端点
+        /// </remarks>
+        public const string SessionAuthenticationTimeout = "NetWork.SessionAuthenticationTimeout";
+
+        /// <summary>
+        /// Failed to close authentication-timeout session: SessionId: {0}, exception: {1}
+        /// </summary>
+        /// <remarks>
+        /// 键名: NetWork.CloseAuthenticationTimeoutSessionFailed
+        /// 用途: 关闭认证超时会话失败时记录错误
+        /// 参数: {0} - 会话Id, {1} - 异常消息
+        /// </remarks>
+        public const string CloseAuthenticationTimeoutSessionFailed = "NetWork.CloseAuthenticationTimeoutSessionFailed";
+
+        /// <summary>
+        /// Error happened when closing authentication timeout sessions: {0}
+        /// </summary>
+        /// <remarks>
+        /// 键名: NetWork.CloseAuthenticationTimeoutSessionsError
+        /// 用途: 批量关闭认证超时会话发生异常时记录错误
+        /// 参数: {0} - 异常消息
+        /// </remarks>
+        public const string CloseAuthenticationTimeoutSessionsError = "NetWork.CloseAuthenticationTimeoutSessionsError";
+
+        /// <summary>
+        /// Create NetworkMessagePackage Error {0} {1} {2} {3}
+        /// </summary>
+        /// <remarks>
+        /// 键名: NetWork.CreateNetworkMessagePackageError
+        /// 用途: 创建网络消息包失败时记录错误
+        /// 参数: {0} - 消息Id, {1} - 操作类型, {2} - 唯一Id, {3} - 异常消息
+        /// </remarks>
+        public const string CreateNetworkMessagePackageError = "NetWork.CreateNetworkMessagePackageError";
+
+        /// <summary>
+        /// FormatMessage Error {0} {1} {2} {3} {4}
+        /// </summary>
+        /// <remarks>
+        /// 键名: NetWork.FormatMessageError
+        /// 用途: 格式化消息日志失败时记录错误
+        /// 参数: {0} - 消息Id, {1} - 操作类型, {2} - 唯一Id, {3} - 角色Id, {4} - 异常对象
+        /// </remarks>
+        public const string FormatMessageError = "NetWork.FormatMessageError";
+
+        /// <summary>
+        /// MessageObjectEncodeException {0} {1} {2} {3}
+        /// </summary>
+        /// <remarks>
+        /// 键名: NetWork.MessageObjectEncodeException
+        /// 用途: 消息对象编码发生异常时记录错误
+        /// 参数: {0} - 消息Id, {1} - 操作类型, {2} - 唯一Id, {3} - 异常对象
+        /// </remarks>
+        public const string MessageObjectEncodeException = "NetWork.MessageObjectEncodeException";
     }
 }

@@ -78,19 +78,22 @@ internal sealed class FaultInjectionRemoteCallInterceptor : IRemoteCallIntercept
         switch (_injectionType)
         {
             case FaultInjectionType.Timeout:
-                LogHelper.Info("FaultInjection: 模拟超时, Service: {serviceName}, Delay: {delayMs}ms", context.ServiceName, context.TimeoutMs + 1000);
+                // Localization: RemoteMessaging.FaultInjection.SimulatedTimeoutLog - FaultInjection: 模拟超时, Service: {0}, Delay: {1}ms
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.RemoteMessaging.FaultInjection.SimulatedTimeoutLog, context.ServiceName, context.TimeoutMs + 1000));
                 await Task.Delay(context.TimeoutMs + 1000);
                 // Localization: RemoteMessaging.FaultInjection.SimulatedTimeout - 故障注入：模拟超时
                 throw new TimeoutException(LocalizationService.GetString(Localization.Keys.RemoteMessaging.FaultInjection.SimulatedTimeout));
 
             case FaultInjectionType.ConnectionDrop:
-                LogHelper.Info("FaultInjection: 模拟连接断开, Service: {serviceName}", context.ServiceName);
+                // Localization: RemoteMessaging.FaultInjection.SimulatedConnectionDropLog - FaultInjection: 模拟连接断开, Service: {0}
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.RemoteMessaging.FaultInjection.SimulatedConnectionDropLog, context.ServiceName));
                 // Localization: RemoteMessaging.FaultInjection.SimulatedConnectionDrop - 故障注入：模拟连接断开
                 throw new IOException(LocalizationService.GetString(Localization.Keys.RemoteMessaging.FaultInjection.SimulatedConnectionDrop));
 
             case FaultInjectionType.SlowResponse:
                 var slowDelay = _delayMs > 0 ? _delayMs : 2000;
-                LogHelper.Info("FaultInjection: 模拟慢响应, Service: {serviceName}, Delay: {delayMs}ms", context.ServiceName, slowDelay);
+                // Localization: RemoteMessaging.FaultInjection.SimulatedSlowResponseLog - FaultInjection: 模拟慢响应, Service: {0}, Delay: {1}ms
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.RemoteMessaging.FaultInjection.SimulatedSlowResponseLog, context.ServiceName, slowDelay));
                 await Task.Delay(slowDelay);
                 break;
         }

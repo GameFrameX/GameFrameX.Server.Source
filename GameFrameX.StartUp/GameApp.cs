@@ -131,6 +131,7 @@ public static class GameApp
 
             if (!LogOptions.Default.GrafanaLokiLabels.TryAdd(property.Name, value))
             {
+                // Localization: StartUp.GrafanaLokiLabelExists - Grafana Loki标签已存在。标签：{0}。
                 LogHelper.Warning(LocalizationService.GetString(Keys.StartUp.GrafanaLokiLabelExists, property.Name));
             }
         }
@@ -268,6 +269,7 @@ public static class GameApp
         var allInOneOptions = AllInOneOptions.Parse(args);
         TryLaunchServer(args, allInOneOptions, sortedStartUpTypes, launcherOptions);
 
+        // Localization: StartUp.StartupOver - 服务器启动完成。
         LogHelper.Info(LocalizationService.GetString(Keys.StartUp.StartupOver));
         ConsoleHelper.ConsoleLogo();
 
@@ -395,6 +397,7 @@ public static class GameApp
 
         if (warnOnMissingConfiguration)
         {
+            // Localization: StartUp.NoConfigurationUseDefault - 未找到配置，使用默认值。
             LogHelper.Warning(LocalizationService.GetString(Keys.StartUp.NoConfigurationUseDefault, serverType));
         }
 
@@ -460,7 +463,8 @@ public static class GameApp
             return;
         }
 
-        LogHelper.Warning($"Duplicate startup priorities detected; multi-role launch order is unstable between these roles (C143b) — {conflictTable}");
+        // Localization: StartUp.Application.DuplicateStartupPriorities - 检测到重复的启动优先级；这些角色之间的多角色启动顺序不稳定 (C143b) — {0}
+        LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.Application.DuplicateStartupPriorities, conflictTable));
     }
 
     /// <summary>
@@ -578,7 +582,8 @@ public static class GameApp
             {
                 if (selected.All(pair => pair.Value.ServerType != serverTypeName))
                 {
-                    LogHelper.Warning($"No registered startup type found for server type '{serverTypeName}' (multi-role selection); skipped it.");
+                    // Localization: StartUp.Application.NoRegisteredStartupType - 未找到服务器类型 '{0}' 的已注册启动类型（多角色选择）；已跳过。
+                    LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.Application.NoRegisteredStartupType, serverTypeName));
                 }
             }
 

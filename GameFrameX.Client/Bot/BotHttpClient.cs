@@ -64,7 +64,8 @@ public sealed class BotHttpClient
                 var messageType = MessageProtoHelper.GetMessageTypeById(messageObjectHttp.Id);
                 if (messageType != typeof(T))
                 {
-                    LogHelper.Error($"Response message type is invalid. Expected '{typeof(T).FullName}', actual '{messageType.FullName}'.");
+                    // Localization: Client.Bot.Http.ResponseTypeInvalid - 响应消息类型无效。期望“{0}”，实际为“{1}”。
+                    LogHelper.Error(LocalizationService.GetString(Localization.Keys.Client.Bot.Http.ResponseTypeInvalid, typeof(T).FullName, messageType.FullName));
                     return default!;
                 }
 

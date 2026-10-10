@@ -33,6 +33,7 @@ using GameFrameX.Apps.Common.Session;
 using GameFrameX.Apps.Player.Bag.Entity;
 using GameFrameX.Hotfix.Logic.Player.Bag;
 using GameFrameX.NetWork.RemoteMessaging.Unified;
+using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Hotfix.Logic.Http.Bag;
 
@@ -132,12 +133,13 @@ public sealed class ReqPlayerSendItemHttpHandler : BaseHttpHandler
             notifyOptions);
         if (!notifyResult.IsSuccess && notifyResult.Status != PlayerDeliverStatus.Offline)
         {
+            // Localization: Hotfix.Bag.OfflineNotifySendFailed - ReqPlayerSendItemHttpHandler 离线通知发送失败, roleId: {0}, status: {1}, error: {2}, traceId: {3}
             LogHelper.Warning(
-                "ReqPlayerSendItemHttpHandler 离线通知发送失败, roleId: {roleId}, status: {status}, error: {error}, traceId: {traceId}",
-                roleId,
-                notifyResult.Status,
-                notifyResult.ErrorMessage,
-                notifyResult.TraceId);
+                LocalizationService.GetString(Localization.Keys.Hotfix.Bag.OfflineNotifySendFailed,
+                    roleId,
+                    notifyResult.Status,
+                    notifyResult.ErrorMessage,
+                    notifyResult.TraceId));
         }
     }
 }

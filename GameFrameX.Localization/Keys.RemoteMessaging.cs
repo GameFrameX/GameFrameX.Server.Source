@@ -174,6 +174,143 @@ public static partial class Keys
             /// 用途: 故障注入拦截器模拟连接断开故障时抛出
             /// </remarks>
             public const string SimulatedConnectionDrop = "RemoteMessaging.FaultInjection.SimulatedConnectionDrop";
+
+            /// <summary>
+            /// FaultInjection: 模拟超时, Service: {0}, Delay: {1}ms
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.FaultInjection.SimulatedTimeoutLog
+            /// 用途: 故障注入拦截器模拟超时故障时记录日志
+            /// 参数: {0} - 服务名, {1} - 模拟延迟毫秒数
+            /// </remarks>
+            public const string SimulatedTimeoutLog = "RemoteMessaging.FaultInjection.SimulatedTimeoutLog";
+
+            /// <summary>
+            /// FaultInjection: 模拟连接断开, Service: {0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.FaultInjection.SimulatedConnectionDropLog
+            /// 用途: 故障注入拦截器模拟连接断开故障时记录日志
+            /// 参数: {0} - 服务名
+            /// </remarks>
+            public const string SimulatedConnectionDropLog = "RemoteMessaging.FaultInjection.SimulatedConnectionDropLog";
+
+            /// <summary>
+            /// FaultInjection: 模拟慢响应, Service: {0}, Delay: {1}ms
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.FaultInjection.SimulatedSlowResponseLog
+            /// 用途: 故障注入拦截器模拟慢响应故障时记录日志
+            /// 参数: {0} - 服务名, {1} - 模拟延迟毫秒数
+            /// </remarks>
+            public const string SimulatedSlowResponseLog = "RemoteMessaging.FaultInjection.SimulatedSlowResponseLog";
+        }
+
+        /// <summary>
+        /// 可观测性（远程调用拦截器日志）类别键
+        /// </summary>
+        public static class Observability
+        {
+            /// <summary>
+            /// RemoteCall 开始, Service: {0}, Message: {1}, Timeout: {2}ms
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Observability.RemoteCallStarted
+            /// 用途: 日志拦截器在远程调用开始时记录日志
+            /// 参数: {0} - 服务名, {1} - 请求消息类型名, {2} - 超时毫秒数
+            /// </remarks>
+            public const string RemoteCallStarted = "RemoteMessaging.Observability.RemoteCallStarted";
+
+            /// <summary>
+            /// RemoteCall 完成, Service: {0}, Message: {1}, Elapsed: {2}ms
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Observability.RemoteCallCompleted
+            /// 用途: 日志拦截器在远程调用完成时记录日志
+            /// 参数: {0} - 服务名, {1} - 请求消息类型名, {2} - 耗时毫秒数
+            /// </remarks>
+            public const string RemoteCallCompleted = "RemoteMessaging.Observability.RemoteCallCompleted";
+
+            /// <summary>
+            /// RemoteCall 异常, Service: {0}, Message: {1}, Elapsed: {2}ms
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Observability.RemoteCallException
+            /// 用途: 日志拦截器在远程调用异常时记录日志
+            /// 参数: {0} - 服务名, {1} - 请求消息类型名, {2} - 耗时毫秒数
+            /// </remarks>
+            public const string RemoteCallException = "RemoteMessaging.Observability.RemoteCallException";
+        }
+
+        /// <summary>
+        /// 远程消息客户端类别键
+        /// </summary>
+        public static class Client
+        {
+            /// <summary>
+            /// SendOneWayAsync: 熔断器已打开, Service: {0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Client.SendOneWayCircuitBreakerOpen
+            /// 用途: 单向发送时熔断器已打开而放弃发送的警告日志
+            /// 参数: {0} - 服务名
+            /// </remarks>
+            public const string SendOneWayCircuitBreakerOpen = "RemoteMessaging.Client.SendOneWayCircuitBreakerOpen";
+
+            /// <summary>
+            /// SendOneWayAsync: 服务健康评分过低, Service: {0}, Score: {1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Client.SendOneWayHealthScoreLow
+            /// 用途: 单向发送时服务健康评分过低而放弃发送的警告日志
+            /// 参数: {0} - 服务名, {1} - 健康评分
+            /// </remarks>
+            public const string SendOneWayHealthScoreLow = "RemoteMessaging.Client.SendOneWayHealthScoreLow";
+
+            /// <summary>
+            /// SendOneWayAsync: 协议版本不兼容, MessageType: {0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Client.SendOneWayProtocolVersionIncompatible
+            /// 用途: 单向发送时协议版本不兼容而放弃发送的警告日志
+            /// 参数: {0} - 请求消息类型名
+            /// </remarks>
+            public const string SendOneWayProtocolVersionIncompatible = "RemoteMessaging.Client.SendOneWayProtocolVersionIncompatible";
+
+            /// <summary>
+            /// 拦截器 OnExceptionAsync 失败
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Client.InterceptorOnExceptionFailed
+            /// 用途: 执行异常拦截器回调自身抛出异常时的错误日志
+            /// </remarks>
+            public const string InterceptorOnExceptionFailed = "RemoteMessaging.Client.InterceptorOnExceptionFailed";
+        }
+
+        /// <summary>
+        /// 熔断器类别键
+        /// </summary>
+        public static class CircuitBreaker
+        {
+            /// <summary>
+            /// CircuitBreaker 触发熔断(半开→打开), Service: {0}, Failures: {1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.CircuitBreaker.TripHalfOpenToOpen
+            /// 用途: 半开状态下探测失败次数达到上限触发熔断时的警告日志
+            /// 参数: {0} - 服务名, {1} - 失败次数
+            /// </remarks>
+            public const string TripHalfOpenToOpen = "RemoteMessaging.CircuitBreaker.TripHalfOpenToOpen";
+
+            /// <summary>
+            /// CircuitBreaker 触发熔断(关闭→打开), Service: {0}, Failures: {1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.CircuitBreaker.TripClosedToOpen
+            /// 用途: 关闭状态下连续失败达到阈值触发熔断时的日志
+            /// 参数: {0} - 服务名, {1} - 失败次数
+            /// </remarks>
+            public const string TripClosedToOpen = "RemoteMessaging.CircuitBreaker.TripClosedToOpen";
         }
 
         /// <summary>
@@ -246,6 +383,76 @@ public static partial class Keys
             /// 参数: {0} - 目标角色名
             /// </remarks>
             public const string LocalDispatcherNotConfigured = "RemoteMessaging.Routing.LocalDispatcherNotConfigured";
+
+            /// <summary>
+            /// [LocalEnvelopeDispatcher] 信封消息不是 RoleRouteEnvelopeMessage（实际类型：{0}）；丢弃
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Routing.EnvelopeMessageWrongType
+            /// 用途: 本地信封派发器发现信封消息类型不正确而丢弃时记录警告日志
+            /// 参数: {0} - 实际消息类型全名
+            /// </remarks>
+            public const string EnvelopeMessageWrongType = "RemoteMessaging.Routing.EnvelopeMessageWrongType";
+
+            /// <summary>
+            /// [LocalEnvelopeDispatcher] 内层消息 ID {0} 未在 MessageProtoHelper 注册；丢弃发往目标 {1} 的信封
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Routing.InnerMessageIdNotRegistered
+            /// 用途: 内层消息 ID 未注册导致信封被丢弃时记录警告日志
+            /// 参数: {0} - 内层消息 ID, {1} - 目标 Actor ID
+            /// </remarks>
+            public const string InnerMessageIdNotRegistered = "RemoteMessaging.Routing.InnerMessageIdNotRegistered";
+
+            /// <summary>
+            /// [LocalEnvelopeDispatcher] 为目标 {0} 反序列化内层消息失败（innerMessageId={1}）；丢弃
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Routing.InnerMessageDeserializeFailed
+            /// 用途: 内层消息反序列化失败导致信封被丢弃时记录错误日志
+            /// 参数: {0} - 目标 Actor ID, {1} - 内层消息 ID
+            /// </remarks>
+            public const string InnerMessageDeserializeFailed = "RemoteMessaging.Routing.InnerMessageDeserializeFailed";
+
+            /// <summary>
+            /// [LocalEnvelopeDispatcher] 信封缺少 TargetActorId（发件方 bug？）；丢弃内层消息 id={0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Routing.EnvelopeMissingTargetActorId
+            /// 用途: 信封缺少有效目标 Actor ID 而丢弃时记录警告日志
+            /// 参数: {0} - 内层消息 ID
+            /// </remarks>
+            public const string EnvelopeMissingTargetActorId = "RemoteMessaging.Routing.EnvelopeMissingTargetActorId";
+
+            /// <summary>
+            /// [LocalEnvelopeDispatcher] 目标 {0} 已离线；StoreOffline 策略占位——消息已丢弃（尚无离线存储）
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Routing.TargetOfflineStoreOfflineDropped
+            /// 用途: 目标离线且采用 StoreOffline 策略丢弃消息时记录日志
+            /// 参数: {0} - 目标 Actor ID
+            /// </remarks>
+            public const string TargetOfflineStoreOfflineDropped = "RemoteMessaging.Routing.TargetOfflineStoreOfflineDropped";
+
+            /// <summary>
+            /// [LocalEnvelopeDispatcher] 目标 {0} 已离线；Discard 策略——消息已丢弃
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Routing.TargetOfflineDiscardDropped
+            /// 用途: 目标离线且采用 Discard 策略丢弃消息时记录日志
+            /// 参数: {0} - 目标 Actor ID
+            /// </remarks>
+            public const string TargetOfflineDiscardDropped = "RemoteMessaging.Routing.TargetOfflineDiscardDropped";
+
+            /// <summary>
+            /// [LocalEnvelopeDispatcher] 目标 {0} 已离线；默认策略——消息已丢弃
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Routing.TargetOfflineDefaultDropped
+            /// 用途: 目标离线且采用默认策略丢弃消息时记录日志
+            /// 参数: {0} - 目标 Actor ID
+            /// </remarks>
+            public const string TargetOfflineDefaultDropped = "RemoteMessaging.Routing.TargetOfflineDefaultDropped";
         }
     }
 }

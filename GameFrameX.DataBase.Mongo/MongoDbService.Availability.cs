@@ -29,6 +29,7 @@
 
 
 using GameFrameX.DataBase.Abstractions;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 using System.Diagnostics;
 
@@ -141,7 +142,8 @@ public sealed partial class MongoDbService
         }
 
         DbHealthStateTransitionTotal.Add(1, new TagList { { "from", oldState.ToString() }, { "to", newState.ToString() }, { "reason", reason ?? "unknown" }, });
-        LogHelper.Warning("MongoDbService.StateTransition {from} -> {to}. reason={reason}", oldState, newState, reason);
+        // Localization: Database.Mongo.StateTransition - MongoDbService 状态迁移 {0} -> {1}。原因：{2}
+        LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.Mongo.StateTransition, oldState, newState, reason));
     }
 
     /// <summary>
@@ -198,7 +200,8 @@ public sealed partial class MongoDbService
 
         fallbackValue = fallbackValueFactory != null ? fallbackValueFactory() : default;
         DbDegradeActionTotal.Add(1, new TagList { { "kind", "read_fallback" }, { "state", state.ToString() }, { "name", operationName }, });
-        LogHelper.Warning("MongoDbService.ReadFallback {operationName} state={state}", operationName, state);
+        // Localization: Database.Mongo.ReadFallback - MongoDbService 读降级 {0}，状态={1}
+        LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.Mongo.ReadFallback, operationName, state));
         return true;
     }
 

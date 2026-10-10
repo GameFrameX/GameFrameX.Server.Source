@@ -40,15 +40,6 @@ public static partial class Keys
     /// </summary>
     public static class Database
     {
-        /// <summary>
-        /// MongoDB服务初始化成功，连接字符串：{0}，数据库名称：{1}
-        /// </summary>
-        /// <remarks>
-        /// 键名: Database.MongoDb.InitializedSuccessfully
-        /// 用途: MongoDB服务成功初始化时记录
-        /// 参数: {0} - 连接字符串, {1} - 数据库名称
-        /// </remarks>
-        public const string MongoDbInitializedSuccessfully = "Database.MongoDb.InitializedSuccessfully";
 
         /// <summary>
         /// MongoDB服务初始化失败，连接字符串：{0}，数据库名称：{1}
@@ -96,24 +87,6 @@ public static partial class Keys
         /// 参数: {0} - 操作名称
         /// </remarks>
         public const string MongoDbOperationRetryFailed = "Database.MongoDb.OperationRetryFailed";
-        /// <summary>
-        /// 已注册多个数据库（{0}）但无 IsDefault 提名，门面指向首个注册库。
-        /// </summary>
-        /// <remarks>
-        /// 键名: Database.GameDb.ImplicitDefaultBindingWarning
-        /// 用途: 多库注册且无声明式提名（DbOptions.IsDefault 均为 false）时，首次门面调用打一次性 Warning
-        /// 参数: {0} - 已注册库名列表
-        /// </remarks>
-        public const string GameDbImplicitDefaultBindingWarning = "Database.GameDb.ImplicitDefaultBindingWarning";
-        /// <summary>
-        /// PostgreSQL服务初始化成功，连接目标：{0}，注册名：{1}
-        /// </summary>
-        /// <remarks>
-        /// 键名: Database.PostgreSql.InitializedSuccessfully
-        /// 用途: PostgreSQL服务成功初始化时记录
-        /// 参数: {0} - 连接目标, {1} - 注册名
-        /// </remarks>
-        public const string PostgreSqlInitializedSuccessfully = "Database.PostgreSql.InitializedSuccessfully";
 
         /// <summary>
         /// PostgreSQL服务初始化失败，连接目标：{0}，注册名：{1}
@@ -249,5 +222,266 @@ public static partial class Keys
         /// 参数: {0} - 文档类型名, {1} - 属性名, {2} - 属性类型名
         /// </remarks>
         public const string EfDocumentDictionaryPropertyNotSupported = "Database.Ef.DocumentDictionaryPropertyNotSupported";
+        /// <summary>
+        /// GameDb.ImplicitDefaultBinding 已注册多个数据库（{0}）但无声明式默认库提名（DbOptions.IsDefault 均为 false），静态门面当前指向首个注册库；多库部署请在业务库 Init 时保留缺省 IsDefault = true（或显式调用 GameDb.SetDefault(业务库名)）。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.GameDb.ImplicitDefaultBindingWarningLog
+        /// 用途: 多库注册且无声明式提名时首次门面调用的一次性 Warning 日志（合并原外壳模板与隐式绑定警告文案）
+        /// 参数: {0} - 已注册库名列表
+        /// </remarks>
+        public const string GameDbImplicitDefaultBindingWarningLog = "Database.GameDb.ImplicitDefaultBindingWarningLog";
+
+        /// <summary>
+        /// PostgreSQL 载体日志键名（Database.PostgreSql.*）
+        /// </summary>
+        public static class PostgreSql
+        {
+            /// <summary>
+            /// PostgreSqlDbService.Open {0} {1} PostgreSQL服务初始化成功，连接目标：{2}，注册名：{3}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.PostgreSql.OpenInitializedSuccessfully
+            /// 用途: PostgreSqlDbService.Open 成功时的 Info 日志（含外壳与初始化成功文案的完整模板）
+            /// 参数: {0} - 注册名, {1} - 连接目标, {2} - 连接目标, {3} - 注册名
+            /// </remarks>
+            public const string OpenInitializedSuccessfully = "Database.PostgreSql.OpenInitializedSuccessfully";
+
+            /// <summary>
+            /// PostgreSqlDbService.Open 重试 {0}/{1} {2} {3} {4}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.PostgreSql.OpenRetryWarning
+            /// 用途: PostgreSqlDbService.Open 连接重试时的 Warning 日志
+            /// 参数: {0} - 当前重试次数, {1} - 最大重试次数, {2} - 注册名, {3} - 连接目标, {4} - 异常消息
+            /// </remarks>
+            public const string OpenRetryWarning = "Database.PostgreSql.OpenRetryWarning";
+
+            /// <summary>
+            /// PostgreSqlDbService.Open 异常 {0} {1} {2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.PostgreSql.OpenExceptionFatal
+            /// 用途: PostgreSqlDbService.Open 最终失败时的 Fatal 日志
+            /// 参数: {0} - 注册名, {1} - 连接目标, {2} - 最后异常
+            /// </remarks>
+            public const string OpenExceptionFatal = "Database.PostgreSql.OpenExceptionFatal";
+
+            /// <summary>
+            /// PostgreSqlDbService.Open 异常 {0} {1} {2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.PostgreSql.OpenExceptionError
+            /// 用途: PostgreSqlDbService.Open 最终失败时的 Error 日志（输出本地化失败消息）
+            /// 参数: {0} - 注册名, {1} - 连接目标, {2} - 本地化失败消息
+            /// </remarks>
+            public const string OpenExceptionError = "Database.PostgreSql.OpenExceptionError";
+
+            /// <summary>
+            /// PostgreSqlDbService.TryReconnectAndPingAsync 失败。error={0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.PostgreSql.TryReconnectAndPingFailed
+            /// 用途: 重连与探活失败时的 Warning 日志
+            /// 参数: {0} - 异常消息
+            /// </remarks>
+            public const string TryReconnectAndPingFailed = "Database.PostgreSql.TryReconnectAndPingFailed";
+
+            /// <summary>
+            /// PostgreSqlDbService 状态迁移 {0} -&gt; {1}。原因：{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.PostgreSql.StateTransition
+            /// 用途: 可用性状态机迁移时的 Warning 日志
+            /// 参数: {0} - 原状态, {1} - 新状态, {2} - 迁移原因
+            /// </remarks>
+            public const string StateTransition = "Database.PostgreSql.StateTransition";
+
+            /// <summary>
+            /// PostgreSqlDbService 读降级 {0}，状态={1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.PostgreSql.ReadFallback
+            /// 用途: 降级状态下读操作回退时的 Warning 日志
+            /// 参数: {0} - 操作名称, {1} - 当前状态
+            /// </remarks>
+            public const string ReadFallback = "Database.PostgreSql.ReadFallback";
+
+            /// <summary>
+            /// PostgreSqlDbService.SaveBulkAsync 批次未被确认。状态名：{0}，批次索引：{1}，批次总数：{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.PostgreSql.SaveBulkBatchNotAcknowledged
+            /// 用途: SaveBulkAsync 批次写入未获确认时的 Error 日志
+            /// 参数: {0} - 状态名, {1} - 批次索引, {2} - 批次总数
+            /// </remarks>
+            public const string SaveBulkBatchNotAcknowledged = "Database.PostgreSql.SaveBulkBatchNotAcknowledged";
+
+            /// <summary>
+            /// PostgreSqlDbService.SaveBulkAsync 批次失败。状态名：{0}，批次索引：{1}，批次总数：{2}，错误：{3}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.PostgreSql.SaveBulkBatchFailed
+            /// 用途: SaveBulkAsync 批次写入异常时的 Error 日志（逐批隔离继续）
+            /// 参数: {0} - 状态名, {1} - 批次索引, {2} - 批次总数, {3} - 异常
+            /// </remarks>
+            public const string SaveBulkBatchFailed = "Database.PostgreSql.SaveBulkBatchFailed";
+
+            /// <summary>
+            /// PostgreSqlDbService.ExecuteInTransactionAsync 瞬时错误，重试 {0}/{1}。error={2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.PostgreSql.ExecuteInTransactionTransientError
+            /// 用途: 事务执行遇瞬时错误重试时的 Warning 日志
+            /// 参数: {0} - 当前重试次数, {1} - 最大重试次数, {2} - 异常消息
+            /// </remarks>
+            public const string ExecuteInTransactionTransientError = "Database.PostgreSql.ExecuteInTransactionTransientError";
+
+            /// <summary>
+            /// PostgreSqlDbService.{0} 瞬时错误，重试 {1}/{2}。error={3}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.PostgreSql.OperationTransientError
+            /// 用途: 通用操作遇瞬时错误重试时的 Warning 日志
+            /// 参数: {0} - 操作名称, {1} - 当前重试次数, {2} - 最大重试次数, {3} - 异常消息
+            /// </remarks>
+            public const string OperationTransientError = "Database.PostgreSql.OperationTransientError";
+
+            /// <summary>
+            /// [PostgreSqlDiscoveryRuntime] 未配置广播端口（{0}）；心跳写入侧被跳过，本进程仅观察拓扑
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.PostgreSql.DiscoveryNoAdvertisePort
+            /// 用途: 发现层激活时未配置广播端口环境变量的 Warning 日志
+            /// 参数: {0} - 广播端口环境变量名
+            /// </remarks>
+            public const string DiscoveryNoAdvertisePort = "Database.PostgreSql.DiscoveryNoAdvertisePort";
+        }
+
+        /// <summary>
+        /// MongoDB 载体日志键名（Database.Mongo.*）
+        /// </summary>
+        public static class Mongo
+        {
+            /// <summary>
+            /// MongoDbService.Open {0} {1} MongoDB服务初始化成功，连接字符串：{2}，数据库名称：{3}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.Mongo.OpenInitializedSuccessfully
+            /// 用途: MongoDbService.Open 成功时的 Info 日志（含外壳与初始化成功文案的完整模板）
+            /// 参数: {0} - 注册名, {1} - 连接目标, {2} - 连接目标, {3} - 注册名
+            /// </remarks>
+            public const string OpenInitializedSuccessfully = "Database.Mongo.OpenInitializedSuccessfully";
+
+            /// <summary>
+            /// MongoDbService.Open 重试 {0}/{1} {2} {3} {4}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.Mongo.OpenRetryWarning
+            /// 用途: MongoDbService.Open 连接重试时的 Warning 日志
+            /// 参数: {0} - 当前重试次数, {1} - 最大重试次数, {2} - 注册名, {3} - 连接目标, {4} - 异常消息
+            /// </remarks>
+            public const string OpenRetryWarning = "Database.Mongo.OpenRetryWarning";
+
+            /// <summary>
+            /// MongoDbService.Open 异常 {0} {1} {2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.Mongo.OpenExceptionFatal
+            /// 用途: MongoDbService.Open 最终失败时的 Fatal 日志
+            /// 参数: {0} - 注册名, {1} - 连接目标, {2} - 最后异常
+            /// </remarks>
+            public const string OpenExceptionFatal = "Database.Mongo.OpenExceptionFatal";
+
+            /// <summary>
+            /// MongoDbService.Open 异常 {0} {1} {2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.Mongo.OpenExceptionError
+            /// 用途: MongoDbService.Open 最终失败时的 Error 日志（输出本地化失败消息）
+            /// 参数: {0} - 注册名, {1} - 连接目标, {2} - 本地化失败消息
+            /// </remarks>
+            public const string OpenExceptionError = "Database.Mongo.OpenExceptionError";
+
+            /// <summary>
+            /// MongoDbService.TryReconnectAndPingAsync 失败。error={0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.Mongo.TryReconnectAndPingFailed
+            /// 用途: 重连与探活失败时的 Warning 日志
+            /// 参数: {0} - 异常消息
+            /// </remarks>
+            public const string TryReconnectAndPingFailed = "Database.Mongo.TryReconnectAndPingFailed";
+
+            /// <summary>
+            /// MongoDbService 状态迁移 {0} -&gt; {1}。原因：{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.Mongo.StateTransition
+            /// 用途: 可用性状态机迁移时的 Warning 日志
+            /// 参数: {0} - 原状态, {1} - 新状态, {2} - 迁移原因
+            /// </remarks>
+            public const string StateTransition = "Database.Mongo.StateTransition";
+
+            /// <summary>
+            /// MongoDbService 读降级 {0}，状态={1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.Mongo.ReadFallback
+            /// 用途: 降级状态下读操作回退时的 Warning 日志
+            /// 参数: {0} - 操作名称, {1} - 当前状态
+            /// </remarks>
+            public const string ReadFallback = "Database.Mongo.ReadFallback";
+
+            /// <summary>
+            /// MongoDbService.SaveBulkAsync 批次未被确认。状态名：{0}，批次索引：{1}，批次总数：{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.Mongo.SaveBulkBatchNotAcknowledged
+            /// 用途: SaveBulkAsync 批次写入未获确认时的 Error 日志
+            /// 参数: {0} - 状态名, {1} - 批次索引, {2} - 批次总数
+            /// </remarks>
+            public const string SaveBulkBatchNotAcknowledged = "Database.Mongo.SaveBulkBatchNotAcknowledged";
+
+            /// <summary>
+            /// MongoDbService.SaveBulkAsync 批次失败。状态名：{0}，批次索引：{1}，批次总数：{2}，错误：{3}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.Mongo.SaveBulkBatchFailed
+            /// 用途: SaveBulkAsync 批次写入异常时的 Error 日志（逐批隔离继续）
+            /// 参数: {0} - 状态名, {1} - 批次索引, {2} - 批次总数, {3} - 异常
+            /// </remarks>
+            public const string SaveBulkBatchFailed = "Database.Mongo.SaveBulkBatchFailed";
+
+            /// <summary>
+            /// MongoDbService.ExecuteInTransactionAsync 瞬时错误，重试 {0}/{1}。error={2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.Mongo.ExecuteInTransactionTransientError
+            /// 用途: 事务执行遇瞬时错误重试时的 Warning 日志
+            /// 参数: {0} - 当前重试次数, {1} - 最大重试次数, {2} - 异常消息
+            /// </remarks>
+            public const string ExecuteInTransactionTransientError = "Database.Mongo.ExecuteInTransactionTransientError";
+
+            /// <summary>
+            /// MongoDbService.{0} 瞬时错误，重试 {1}/{2}。error={3}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.Mongo.OperationTransientError
+            /// 用途: 通用操作遇瞬时错误重试时的 Warning 日志
+            /// 参数: {0} - 操作名称, {1} - 当前重试次数, {2} - 最大重试次数, {3} - 异常消息
+            /// </remarks>
+            public const string OperationTransientError = "Database.Mongo.OperationTransientError";
+
+            /// <summary>
+            /// [MongoDiscoveryRuntime] 未配置广播端口（{0}）；心跳写入侧被跳过，本进程仅观察拓扑
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.Mongo.DiscoveryNoAdvertisePort
+            /// 用途: 发现层激活时未配置广播端口环境变量的 Warning 日志
+            /// 参数: {0} - 广播端口环境变量名
+            /// </remarks>
+            public const string DiscoveryNoAdvertisePort = "Database.Mongo.DiscoveryNoAdvertisePort";
+        }
     }
 }

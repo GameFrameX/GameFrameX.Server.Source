@@ -31,6 +31,7 @@ using System.Buffers;
 using GameFrameX.NetWork.Abstractions;
 using GameFrameX.NetWork.Messages;
 using GameFrameX.Foundation.Extensions;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 
 namespace GameFrameX.NetWork.Message;
@@ -94,7 +95,8 @@ public class DefaultMessageDecoderHandler : BaseMessageDecoderHandler
         }
         catch (Exception e)
         {
-            LogHelper.Fatal<string>("MessageObjectDecodeException: {exception}", e.ToString());
+            // Localization: NetWork.Message.MessageDecodeFatalError - 消息解码过程中发生致命异常: {0}
+            LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.NetWorkMessage.MessageDecodeFatalError, e.ToString()));
             return null;
         }
     }

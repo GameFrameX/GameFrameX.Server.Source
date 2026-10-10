@@ -137,6 +137,7 @@ public static class ComponentRegister
             }
         }
 
+        // Localization: Core.ComponentRegister.InitializationComplete - 组件注册初始化完成
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.InitializationComplete));
         return Task.CompletedTask;
     }
@@ -156,11 +157,13 @@ public static class ComponentRegister
                     var agentType = HotfixManager.GetAgentType(compType);
                     if (agentType == null)
                     {
-                        LogHelper.Warning("ComponentRegister.ActiveGlobalComponents ActorType: {actorType} , Message: {message}", actorType, LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.AgentNotImplemented, compType));
+                        // Localization: Core.ComponentRegister.GlobalComponentAgentNotImplemented - ComponentRegister.ActiveGlobalComponents Actor类型:{0} , 消息: {1}未实现Agent,请检查业务代码是否正确
+                        LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.GlobalComponentAgentNotImplemented, actorType, compType));
                     }
 
                     /*if (actorType > ActorType.Separator)
                     {
+                        // Localization: Core.ComponentRegister.ActivateGlobalComponent - 激活全局组件：{0} {1}
                         LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Core.ComponentRegister.ActivateGlobalComponent, actorType, compType));
                         await ActorManager.GetComponentAgent(agentType, actorType);
                     }*/
@@ -168,16 +171,19 @@ public static class ComponentRegister
 
                 if (actorType > GlobalConst.ActorTypeSeparator)
                 {
-                    LogHelper.Debug("ComponentRegister.ActiveGlobalComponents ActorType: {actorType} , Message: {message}", actorType, LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.ActivateGlobalActor, actorType));
+                    // Localization: Core.ComponentRegister.GlobalActorActivated - ComponentRegister.ActiveGlobalComponents Actor类型:{0} , 消息: 激活全局Actor: {1}
+                    LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.GlobalActorActivated, actorType, actorType));
                     await ActorManager.GetOrNew(ActorIdGenerator.GetActorId(actorType));
                 }
             }
 
-            LogHelper.Debug<string>("ComponentRegister.ActiveGlobalComponents Message: {message}", LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.ActivateGlobalComponentCheckComplete));
+            // Localization: Core.ComponentRegister.GlobalComponentCheckComplete - ComponentRegister.ActiveGlobalComponents 消息: 激活全局组件并检查所有组件是否都包含Agent实现完成
+            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.GlobalComponentCheckComplete));
         }
         catch (Exception exception)
         {
-            LogHelper.Error("ComponentRegister.ActiveGlobalComponents Message: {message} , Exception: {exception}", LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.ActivateGlobalComponentCheckFailed), exception);
+            // Localization: Core.ComponentRegister.GlobalComponentCheckFailed - ComponentRegister.ActiveGlobalComponents 消息: 激活全局组件并检测所有组件是否包含Agent实现失败 , 异常: {0}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.GlobalComponentCheckFailed, exception));
             throw;
         }
     }
@@ -235,7 +241,8 @@ public static class ComponentRegister
                     }
                     catch (Exception exception)
                     {
-                        LogHelper.Fatal("ComponentRegister.ActiveComponents ActorType: {actorType} , ComponentType: {componentType} , Exception: {error}", actor.Type, compType, exception);
+                        // Localization: Core.ComponentRegister.ActivateComponentFailed - ComponentRegister.ActiveComponents Actor类型:{0} , 组件类型:{1} , 异常: {2}
+                        LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.ActivateComponentFailed, actor.Type, compType, exception));
                         // throw;
                     }
                 }
@@ -243,7 +250,8 @@ public static class ComponentRegister
         }
         else
         {
-            LogHelper.Fatal("ComponentRegister.ActiveComponents ActorType: {actorType} , Message: {message}", actor.Type, LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.ActorNotBelongToThis, actor.Type));
+            // Localization: Core.ComponentRegister.GetNotBelongComponent - ComponentRegister.ActiveComponents Actor类型:{0} , 消息: 获取了一个不属于此Actor的Actor: [{1}] 组件
+            LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.GetNotBelongComponent, actor.Type, actor.Type));
         }
     }
 

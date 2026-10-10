@@ -233,7 +233,8 @@ public sealed partial class MongoDbService
             {
                 lastException = exception;
                 var delay = _transactionRetryDelaysMilliseconds[attempt] + Random.Shared.Next(0, 120);
-                LogHelper.Warning("MongoDbService.ExecuteInTransactionAsync transient error, retry {attempt}/{maxRetry}. error={error}", attempt + 1, _transactionRetryDelaysMilliseconds.Length, exception.Message);
+                // Localization: Database.Mongo.ExecuteInTransactionTransientError - MongoDbService.ExecuteInTransactionAsync 瞬时错误，重试 {0}/{1}。error={2}
+                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.Mongo.ExecuteInTransactionTransientError, attempt + 1, _transactionRetryDelaysMilliseconds.Length, exception.Message));
                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception)
