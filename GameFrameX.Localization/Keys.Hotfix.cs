@@ -73,7 +73,7 @@ public static partial class Keys
         /// <summary>
         /// StartUp 启动流程消息键。
         /// </summary>
-        public static class StartUp
+        public static class StartUpModule
         {
             /// <summary>
             /// 客户端断开连接 - 会话ID: {0}, 断开原因: {1}

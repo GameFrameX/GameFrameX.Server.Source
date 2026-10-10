@@ -105,7 +105,7 @@ internal partial class AppStartUpHotfixGame
     protected override async ValueTask OnDisconnected(IAppSession appSession, CloseEventArgs disconnectEventArgs)
     {
         // Localization: Hotfix.StartUp.ClientDisconnected - 客户端断开连接 - 会话ID: {0}, 断开原因: {1}
-        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Hotfix.StartUp.ClientDisconnected, appSession.SessionId, disconnectEventArgs.Reason));
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Hotfix.StartUpModule.ClientDisconnected, appSession.SessionId, disconnectEventArgs.Reason));
         var session = PlayerSessionManager.Instance.Remove(appSession.SessionId);
         if (session != null && session.PlayerId > 0)
         {
@@ -167,7 +167,7 @@ internal partial class AppStartUpHotfixGame
             if (Setting.IsDebug && Setting.IsDebugReceive && Setting.IsDebugReceiveHeartBeat)
             {
                 // Localization: Hotfix.StartUp.DataPackageReceiveHeartBeat - 数据包接收心跳: {0}
-                LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Hotfix.StartUp.DataPackageReceiveHeartBeat, messagePackage.ToFormatMessageString(actorId)));
+                LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Hotfix.StartUpModule.DataPackageReceiveHeartBeat, messagePackage.ToFormatMessageString(actorId)));
             }
 
             // 心跳消息回复
@@ -178,14 +178,14 @@ internal partial class AppStartUpHotfixGame
         if (Setting.IsDebug && Setting.IsDebugReceive)
         {
             // Localization: Hotfix.StartUp.DataPackageReceive - 数据包接收: {0}
-            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Hotfix.StartUp.DataPackageReceive, messagePackage.ToFormatMessageString(actorId)));
+            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Hotfix.StartUpModule.DataPackageReceive, messagePackage.ToFormatMessageString(actorId)));
         }
 
         var handler = HotfixManager.GetTcpHandler(messagePackage.Header.MessageId);
         if (handler == null)
         {
             // Localization: Hotfix.StartUp.MessageHandlerNotFound - 数据包接收: 找不到消息处理器, 消息ID: {0}, 消息类型: {1}
-            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Hotfix.StartUp.MessageHandlerNotFound, messagePackage.Header.MessageId, messagePackage.MessageType));
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Hotfix.StartUpModule.MessageHandlerNotFound, messagePackage.Header.MessageId, messagePackage.MessageType));
             return;
         }
 
@@ -197,7 +197,7 @@ internal partial class AppStartUpHotfixGame
         catch (Exception exception)
         {
             // Localization: Hotfix.StartUp.MessageHandlerInvokeError - 数据包接收: 调用消息处理器出错, 消息ID: {0}, 消息类型: {1}, 异常: {2}
-            LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Hotfix.StartUp.MessageHandlerInvokeError, messagePackage.Header.MessageId, messagePackage.MessageType, exception));
+            LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Hotfix.StartUpModule.MessageHandlerInvokeError, messagePackage.Header.MessageId, messagePackage.MessageType, exception));
         }
     }
 
