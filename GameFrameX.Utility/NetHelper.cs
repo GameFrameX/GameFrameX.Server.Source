@@ -535,7 +535,7 @@ public static class NetHelper
             !IPAddress.TryParse(networkAddress, out var network) ||
             !IPAddress.TryParse(subnetMask, out var mask))
         {
-            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.Network.InvalidIpAddressFormat));
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.NetworkModule.InvalidIpAddressFormat));
         }
 
         var ipBytes = ip.GetAddressBytes();
@@ -680,7 +680,7 @@ public static class NetHelper
 
         if (!IsValidIpAddress(ipAddress, out var ip))
         {
-            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.Network.InvalidIpAddressFormat), nameof(ipAddress));
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.NetworkModule.InvalidIpAddressFormat), nameof(ipAddress));
         }
 
         var bytes = ip.GetAddressBytes();
