@@ -558,7 +558,6 @@ public sealed class BotKcpClient
     private byte[] Handler(MessageObject message)
     {
         MessageProtoHelper.SetMessageId(message);
-        message.SetOperationType(MessageProtoHelper.GetMessageOperationType(message));
 
         var messageData = ProtoBufSerializerHelper.Serialize(message);
         byte zipFlag = 0;
@@ -572,7 +571,8 @@ public sealed class BotKcpClient
         var buffer = new byte[totalLength];
         var offset = 0;
         buffer.WriteIntBigEndianValue(totalLength, ref offset);
-        buffer.WriteByteValue(message.OperationType, ref offset);
+        // 保留字节（原操作类型，已退役；恒 0 以保持 14 字节帧长度不变）
+        buffer.WriteByteValue(0, ref offset);
         buffer.WriteByteValue(zipFlag, ref offset);
         buffer.WriteIntBigEndianValue(message.UniqueId, ref offset);
         buffer.WriteIntBigEndianValue(message.MessageId, ref offset);

@@ -63,8 +63,7 @@ blocks: []
 #### 3.1 模块与协议编号（钉死）
 
 - 邮件模块占位编号约定：玩家邮件 PlayerRpc 协议归入 `Player` 模块（`-10`，沿用 `Player_-10.cs`）；具体协议号在 derived change C9 中按现有 `Bag_100.cs` / `Player_-10.cs` 连续分配，并在本 umbrella 3.6 表登记，禁止与现有协议号冲突。
-- Proto 消息一律 `[MessageTypeHandler((moduleId << 16) + opCode, (byte)MessageOperationType.Xxx)]` + `MessageObject, IRequestMessage/IResponseMessage` + `[ProtoMember(n)]`，沿用现有 `Player_-10.cs` 风格。
-- 每个协议必须有 `MessageOperationType` 枚举名（如 `ReqMailList` / `RespMailList` / `NotifyMailChanged`），枚举名与类名一致，由 derived change 在 `GameFrameX.Proto` 补齐。
+- Proto 消息一律 `[MessageTypeHandler((moduleId << 16) + opCode)]` + `MessageObject, IRequestMessage/IResponseMessage` + `[ProtoMember(n)]`，沿用现有 `Player_-10.cs` 风格（`MessageOperationType` 已随 C205 完全退役，不再存在第二参数）。
 
 #### 3.2 运营邮件发布记录 `MailCampaignState`（不可变快照）
 

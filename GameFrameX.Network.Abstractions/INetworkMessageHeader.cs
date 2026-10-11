@@ -56,15 +56,6 @@ public interface INetworkMessageHeader : IMessageObject
     int UniqueId { get; set; }
 
     /// <summary>
-    /// 获取或设置操作类型。
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets the operation type.
-    /// </remarks>
-    /// <value>操作类型 / Operation type</value>
-    byte OperationType { get; set; }
-
-    /// <summary>
     /// 获取或设置压缩标记。
     /// </summary>
     /// <remarks>

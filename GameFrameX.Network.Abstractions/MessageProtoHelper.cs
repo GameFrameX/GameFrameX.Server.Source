@@ -46,7 +46,6 @@ public static class MessageProtoHelper
     private static readonly BidirectionalDictionary<int, Type> RequestDictionary = new();
     private static readonly BidirectionalDictionary<int, Type> AllMessageDictionary = new();
     private static readonly BidirectionalDictionary<int, Type> ResponseDictionary = new();
-    private static readonly ConcurrentDictionary<Type, byte> OperationType = new();
     private static readonly HashSet<Type> HeartBeatList = new();
 
     /// <summary>
@@ -97,48 +96,10 @@ public static class MessageProtoHelper
     }
 
     /// <summary>
-    /// 获取消息操作类型。
+    /// 设置消息ID。
     /// </summary>
     /// <remarks>
-    /// Gets the message operation type by message object.
-    /// </remarks>
-    /// <param name="message">消息对象 / Message object</param>
-    /// <returns>消息操作类型 / Message operation type</returns>
-    public static byte GetMessageOperationType(INetworkMessage message)
-    {
-        ArgumentNullException.ThrowIfNull(message);
-        var messageType = message.GetType();
-        return GetMessageOperationType(messageType);
-    }
-
-    /// <summary>
-    /// 获取消息操作类型。
-    /// </summary>
-    /// <remarks>
-    /// Gets the message operation type by message type.
-    /// </remarks>
-    /// <param name="type">消息类型 / Message type</param>
-    /// <returns>消息操作类型 / Message operation type</returns>
-    public static byte GetMessageOperationType(Type type)
-    {
-        if (IsHeartbeat(type))
-        {
-            return (byte)MessageOperationType.HeartBeat;
-        }
-
-        if (OperationType.TryGetValue(type, out var value))
-        {
-            return value;
-        }
-
-        return default;
-    }
-
-    /// <summary>
-    /// 设置消息ID和操作类型。
-    /// </summary>
-    /// <remarks>
-    /// Sets the message identifier and operation type.
+    /// Sets the message identifier.
     /// </remarks>
     /// <param name="message">消息对象 / Message object</param>
     public static void SetMessageId(INetworkMessage message)
@@ -192,7 +153,6 @@ public static class MessageProtoHelper
         RequestDictionary.Clear();
         ResponseDictionary.Clear();
         HeartBeatList.Clear();
-        OperationType.Clear();
 
         foreach (var assembly in assemblies)
         {
@@ -211,7 +171,7 @@ public static class MessageProtoHelper
     /// 注册单个消息协议类型到各映射字典。
     /// </summary>
     /// <remarks>
-    /// Registers a single message protocol type into the message identifier, operation type, heartbeat, request and response mappings. Throws <see cref="ArgumentAlreadyException"/> on duplicate identifiers.
+    /// Registers a single message protocol type into the message identifier, heartbeat, request and response mappings. Throws <see cref="ArgumentAlreadyException"/> on duplicate identifiers.
     /// </remarks>
     /// <param name="type">消息类型 / Message type</param>
     /// <param name="messageTypeHandler">消息类型处理器特性 / Message type handler attribute</param>
@@ -222,8 +182,6 @@ public static class MessageProtoHelper
             RequestDictionary.TryGetValue(messageTypeHandler.MessageId, out var value);
             throw new ArgumentAlreadyException(LocalizationService.GetString(Localization.Keys.NetworkAbstractions.MessageIdDuplicate, messageTypeHandler.MessageId, value?.FullName ?? "Unknown"));
         }
-
-        OperationType.TryAdd(type, messageTypeHandler.OperationType);
 
         if (type.IsImplWithInterface(typeof(IHeartBeatMessage)))
         {

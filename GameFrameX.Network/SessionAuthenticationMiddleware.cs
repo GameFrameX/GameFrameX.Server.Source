@@ -163,7 +163,7 @@ public sealed class SessionAuthenticationMiddleware : MiddlewareBase
         }
 
         // 心跳是框架级保活语义，未鉴权期也必须放行（否则误伤合法客户端探活）
-        if (package.Header.OperationType == (byte)MessageOperationType.HeartBeat)
+        if (MessageProtoHelper.IsHeartbeat(package.MessageType))
         {
             return ValueTask.FromResult(true);
         }

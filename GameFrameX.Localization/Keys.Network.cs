@@ -240,32 +240,32 @@ public static partial class Keys
         public const string CloseAuthenticationTimeoutSessionsError = "Network.CloseAuthenticationTimeoutSessionsError";
 
         /// <summary>
-        /// Create NetworkMessagePackage Error {0} {1} {2} {3}
+        /// Create NetworkMessagePackage Error {0} {1} {2}
         /// </summary>
         /// <remarks>
         /// 键名: Network.CreateNetworkMessagePackageError
         /// 用途: 创建网络消息包失败时记录错误
-        /// 参数: {0} - 消息Id, {1} - 操作类型, {2} - 唯一Id, {3} - 异常消息
+        /// 参数: {0} - 消息Id, {1} - 唯一Id, {2} - 异常消息
         /// </remarks>
         public const string CreateNetworkMessagePackageError = "Network.CreateNetworkMessagePackageError";
 
         /// <summary>
-        /// FormatMessage Error {0} {1} {2} {3} {4}
+        /// FormatMessage Error {0} {1} {2} {3}
         /// </summary>
         /// <remarks>
         /// 键名: Network.FormatMessageError
         /// 用途: 格式化消息日志失败时记录错误
-        /// 参数: {0} - 消息Id, {1} - 操作类型, {2} - 唯一Id, {3} - 角色Id, {4} - 异常对象
+        /// 参数: {0} - 消息Id, {1} - 唯一Id, {2} - 角色Id, {3} - 异常对象
         /// </remarks>
         public const string FormatMessageError = "Network.FormatMessageError";
 
         /// <summary>
-        /// MessageObjectEncodeException {0} {1} {2} {3}
+        /// MessageObjectEncodeException {0} {1} {2}
         /// </summary>
         /// <remarks>
         /// 键名: Network.MessageObjectEncodeException
         /// 用途: 消息对象编码发生异常时记录错误
-        /// 参数: {0} - 消息Id, {1} - 操作类型, {2} - 唯一Id, {3} - 异常对象
+        /// 参数: {0} - 消息Id, {1} - 唯一Id, {2} - 异常对象
         /// </remarks>
         public const string MessageObjectEncodeException = "Network.MessageObjectEncodeException";
     }

@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Breaking
+
+* MessageOperationType 完全退役（C205）：删除枚举与特性第二参数、MessageProtoHelper.OperationType 注册表与 GetMessageOperationType、INetworkMessageHeader/MessageObjectHeader/MessageObject 的 OperationType 属性链与日志 OpType 字段；心跳判定统一改型为 MessageProtoHelper.IsHeartbeat(MessageType)（IHeartBeatMessage 标记派生）。包头 14 字节长度不变，第 5 字节退役为保留字节（恒 0），线上字节级兼容；对外为源码级破坏性（公共属性/方法/枚举删除）
 ### Refactor
 
 * 统一 CacheState 为 Provider 中立基类：业务状态类改继承 BaseCacheState，Mongo 序列化指令（ConventionPack + ClassMap 懒注册）内聚到 GameFrameX.DataBase.Mongo（C171）

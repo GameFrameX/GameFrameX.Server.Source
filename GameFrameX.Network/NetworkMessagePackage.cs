@@ -82,11 +82,6 @@ public sealed class NetworkMessagePackage : INetworkMessagePackage
         var message = (INetworkMessage)ProtoBufSerializerHelper.Deserialize(MessageData, MessageType);
         message.SetUniqueId(Header.UniqueId);
         MessageProtoHelper.SetMessageId(message);
-        if (message is MessageObject messageObject)
-        {
-            messageObject.SetOperationType(Header.OperationType);
-        }
-
         return message;
     }
 
@@ -112,7 +107,7 @@ public sealed class NetworkMessagePackage : INetworkMessagePackage
     /// <returns>格式化后的消息字符串，包含消息ID、操作类型、唯一ID、消息对象及ActorId / The formatted message string</returns>
     public string ToFormatMessageString(long actorId = default)
     {
-        return MessageObjectLoggerHelper.FormatMessage(Header.MessageId, Header.OperationType, Header.UniqueId, DeserializeMessageObject(), actorId);
+        return MessageObjectLoggerHelper.FormatMessage(Header.MessageId, Header.UniqueId, DeserializeMessageObject(), actorId);
     }
 
     /// <summary>
@@ -166,7 +161,6 @@ public sealed class NetworkMessagePackage : INetworkMessagePackage
         ArgumentNullException.ThrowIfNull(messageObjectHeader);
         ArgumentNullException.ThrowIfNull(message);
         var networkMessage = new NetworkMessagePackage();
-        messageObjectHeader.OperationType = MessageProtoHelper.GetMessageOperationType(message);
         messageObjectHeader.MessageId = MessageProtoHelper.GetMessageIdByType(message);
         messageObjectHeader.UniqueId = message.UniqueId;
         networkMessage.SetMessageType(message.GetType());
@@ -179,8 +173,8 @@ public sealed class NetworkMessagePackage : INetworkMessagePackage
         }
         catch (Exception e)
         {
-            // Localization: Network.CreateNetworkMessagePackageError - 创建网络消息包错误 {0} {1} {2} {3}
-            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Network.CreateNetworkMessagePackageError, messageObjectHeader.MessageId, messageObjectHeader.OperationType, messageObjectHeader.UniqueId, e.Message));
+            // Localization: Network.CreateNetworkMessagePackageError - 创建网络消息包错误 {0} {1} {2}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Network.CreateNetworkMessagePackageError, messageObjectHeader.MessageId, messageObjectHeader.UniqueId, e.Message));
             throw;
         }
     }

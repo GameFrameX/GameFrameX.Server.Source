@@ -53,12 +53,11 @@ public static class MessageObjectLoggerHelper
     /// Formats a network message into a human-readable string for logging purposes.
     /// </remarks>
     /// <param name="messageId">消息ID / The message identifier</param>
-    /// <param name="operationType">操作类型 / The operation type</param>
     /// <param name="uniqueId">唯一标识ID / The unique identifier</param>
     /// <param name="messageObject">网络消息对象 / The network message object</param>
     /// <param name="actorId">ActorId，用于标识消息所属的角色 / The actor ID associated with the message</param>
     /// <returns>格式化后的消息字符串 / The formatted message string</returns>
-    public static string FormatMessage(int messageId, byte operationType, int uniqueId, INetworkMessage messageObject, long actorId)
+    public static string FormatMessage(int messageId, int uniqueId, INetworkMessage messageObject, long actorId)
     {
         try
         {
@@ -75,8 +74,6 @@ public static class MessageObjectLoggerHelper
                 stringBuilder.Append($"---MessageType:[{messageObject.GetType().Name.CenterAlignedText(30)}]");
                 // 消息ID
                 stringBuilder.Append($"--MsgId:[{messageId.ToString().CenterAlignedText(11)}]({MessageIdUtility.GetMainId(messageId).ToString().CenterAlignedText(6)},{MessageIdUtility.GetSubId(messageId).ToString().CenterAlignedText(6)})");
-                // 操作类型
-                stringBuilder.Append($"--OpType:[{operationType.ToString().CenterAlignedText(20)}]");
                 // 唯一ID
                 stringBuilder.Append($"--UniqueId:[{uniqueId.ToString().CenterAlignedText(13)}]---");
                 // 消息的内容 分割
@@ -98,14 +95,14 @@ public static class MessageObjectLoggerHelper
             }
 
             // 非控制台输出模式下，将消息序列化为JSON格式
-            var messageObjectLogObject = new MessageObjectLogObject(messageObject.GetType().Name, messageId, operationType, uniqueId, messageObject, actorId);
+            var messageObjectLogObject = new MessageObjectLogObject(messageObject.GetType().Name, messageId, uniqueId, messageObject, actorId);
             var json = JsonHelper.Serialize(messageObjectLogObject);
             return json;
         }
         catch (Exception e)
         {
-            // Localization: Network.FormatMessageError - 格式化消息错误 {0} {1} {2} {3} {4}
-            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Network.FormatMessageError, messageId, operationType, uniqueId, actorId, e));
+            // Localization: Network.FormatMessageError - 格式化消息错误 {0} {1} {2} {3}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Network.FormatMessageError, messageId, uniqueId, actorId, e));
         }
 
         return string.Empty;

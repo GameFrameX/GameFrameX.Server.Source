@@ -48,7 +48,7 @@ public abstract class BaseMessageEncoderHandler : IMessageEncoderHandler
 
     /// <summary>
     /// 消息头长度（默认值，可被子类重写）
-    /// <para>默认结构: totalLength(4) + operationType(1) + zipFlag(1) + uniqueId(4) + messageId(4) = 14 字节</para>
+    /// <para>默认结构: totalLength(4) + 保留字节(1，原操作类型，已退役恒 0) + zipFlag(1) + uniqueId(4) + messageId(4) = 14 字节</para>
     /// </summary>
     public virtual ushort PackageHeaderLength { get; } = sizeof(uint) + sizeof(byte) + sizeof(byte) + sizeof(int) + sizeof(int);
 

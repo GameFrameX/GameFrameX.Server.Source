@@ -698,15 +698,14 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
     }
 
     /// <summary>
-    /// 准备请求消息的元数据（消息ID、操作类型、唯一ID）。
+    /// 准备请求消息的元数据（消息ID、唯一ID）。
     /// </summary>
     /// <remarks>
-    /// Prepares request message metadata (message ID, operation type, unique ID).
+    /// Prepares request message metadata (message ID, unique ID).
     /// </remarks>
     private static void PrepareRequestMessage(MessageObject message, int uniqueId)
     {
         MessageProtoHelper.SetMessageId(message);
-        message.SetOperationType(MessageProtoHelper.GetMessageOperationType(message));
         message.SetUniqueId(uniqueId);
     }
 }

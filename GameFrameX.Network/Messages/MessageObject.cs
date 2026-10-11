@@ -67,16 +67,6 @@ public abstract class MessageObject : INetworkMessage
     public int MessageId { get; private set; }
 
     /// <summary>
-    /// 获取消息业务类型。
-    /// </summary>
-    /// <remarks>
-    /// Gets the operation type of the message.
-    /// </remarks>
-    /// <value>消息业务类型 / The operation type</value>
-    [JsonIgnore]
-    public byte OperationType { get; private set; }
-
-    /// <summary>
     /// 设置消息ID。
     /// </summary>
     /// <remarks>
@@ -131,7 +121,7 @@ public abstract class MessageObject : INetworkMessage
     /// <returns>格式化后的消息字符串 / The formatted message string</returns>
     public string ToFormatMessageString(long actorId = default)
     {
-        return MessageObjectLoggerHelper.FormatMessage(MessageId, OperationType, UniqueId, this, actorId);
+        return MessageObjectLoggerHelper.FormatMessage(MessageId, UniqueId, this, actorId);
     }
 
     /// <summary>
@@ -144,18 +134,6 @@ public abstract class MessageObject : INetworkMessage
     public string ToJsonString()
     {
         return JsonHelper.SerializeFormat(this);
-    }
-
-    /// <summary>
-    /// 设置消息业务类型。
-    /// </summary>
-    /// <remarks>
-    /// Sets the operation type for this message.
-    /// </remarks>
-    /// <param name="messageOperationType">消息业务类型 / The operation type to set</param>
-    public void SetOperationType(byte messageOperationType)
-    {
-        OperationType = messageOperationType;
     }
 
     /// <summary>

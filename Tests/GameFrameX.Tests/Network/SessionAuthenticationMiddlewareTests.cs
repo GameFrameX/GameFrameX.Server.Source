@@ -33,6 +33,7 @@ using System.Net;
 using GameFrameX.Network;
 using GameFrameX.Network.Abstractions;
 using GameFrameX.Network.Messages;
+using GameFrameX.Proto.Proto;
 using GameFrameX.SuperSocket.Connection;
 using GameFrameX.SuperSocket.Primitives;
 using GameFrameX.SuperSocket.ProtoBase;
@@ -56,6 +57,13 @@ public class SessionAuthenticationMiddlewareTests : IDisposable
 
     public SessionAuthenticationMiddlewareTests()
     {
+        // 心跳判定自 C205 退役后为类型派生（IHeartBeatMessage 标记经 MessageProtoHelper 注册）；
+        // Init 是全程序集的非线程安全静态注册，且本类每用例各建实例——进程内双检：已注册（如 KCP e2e 先 Init 过）则跳过，
+        // 避免与并行测试类对注册表的并发读写
+        if (MessageProtoHelper.GetMessageTypeById((10 << 16) + 10) == null)
+        {
+            MessageProtoHelper.Init(typeof(ReqHeartBeat).Assembly);
+        }
         _options = new SessionAuthenticationOptions
         {
             Timeout = TimeSpan.FromMilliseconds(150),
@@ -80,7 +88,7 @@ public class SessionAuthenticationMiddlewareTests : IDisposable
         var session = new FakeAppSession("session-1");
         await _middleware.RegisterSession(session);
 
-        var allowed = await _middleware.ShouldAllowPackageAsync(session, CreatePackage(3000));
+        var allowed = await _middleware.ShouldAllowPackageAsync(session, CreatePackage(3000, typeof(object)));
 
         Assert.True(allowed);
         Assert.Equal(0, session.CloseCallCount);
@@ -95,7 +103,7 @@ public class SessionAuthenticationMiddlewareTests : IDisposable
         var session = new FakeAppSession("session-2");
         await _middleware.RegisterSession(session);
 
-        var allowed = await _middleware.ShouldAllowPackageAsync(session, CreatePackage(99999));
+        var allowed = await _middleware.ShouldAllowPackageAsync(session, CreatePackage(99999, typeof(object)));
 
         Assert.False(allowed);
         Assert.Equal(1, session.CloseCallCount);
@@ -111,8 +119,7 @@ public class SessionAuthenticationMiddlewareTests : IDisposable
         var session = new FakeAppSession("session-3");
         await _middleware.RegisterSession(session);
 
-        var heartBeat = CreatePackage(99999);
-        heartBeat.Header.OperationType = (byte)MessageOperationType.HeartBeat;
+        var heartBeat = CreatePackage(655370, typeof(ReqHeartBeat));
 
         var allowed = await _middleware.ShouldAllowPackageAsync(session, heartBeat);
 
@@ -129,9 +136,9 @@ public class SessionAuthenticationMiddlewareTests : IDisposable
         var session = new FakeAppSession("session-4");
         await _middleware.RegisterSession(session);
 
-        var firstAllowed = await _middleware.ShouldAllowPackageAsync(session, CreatePackage(3001));
-        var businessAllowed = await _middleware.ShouldAllowPackageAsync(session, CreatePackage(88888));
-        var repeatedWhitelistAllowed = await _middleware.ShouldAllowPackageAsync(session, CreatePackage(3000));
+        var firstAllowed = await _middleware.ShouldAllowPackageAsync(session, CreatePackage(3001, typeof(object)));
+        var businessAllowed = await _middleware.ShouldAllowPackageAsync(session, CreatePackage(88888, typeof(object)));
+        var repeatedWhitelistAllowed = await _middleware.ShouldAllowPackageAsync(session, CreatePackage(3000, typeof(object)));
 
         Assert.True(firstAllowed);
         Assert.True(businessAllowed);
@@ -151,7 +158,7 @@ public class SessionAuthenticationMiddlewareTests : IDisposable
         _middleware.MarkAuthenticated("session-5");
         _middleware.MarkAuthenticated("session-5");
 
-        var allowed = await _middleware.ShouldAllowPackageAsync(session, CreatePackage(77777));
+        var allowed = await _middleware.ShouldAllowPackageAsync(session, CreatePackage(77777, typeof(object)));
 
         Assert.True(allowed);
         Assert.Equal(0, session.CloseCallCount);
@@ -196,10 +203,10 @@ public class SessionAuthenticationMiddlewareTests : IDisposable
     /// <summary>
     /// 构造指定消息码的测试消息包。
     /// </summary>
-    private static FakeNetworkMessagePackage CreatePackage(int messageId)
+    private static FakeNetworkMessagePackage CreatePackage(int messageId, Type messageType = null)
     {
         var package = new FakeNetworkMessagePackage();
-        package.SetHeader(messageId);
+        package.SetHeader(messageId, messageType);
         return package;
     }
 
@@ -320,12 +327,15 @@ public class SessionAuthenticationMiddlewareTests : IDisposable
     {
         private readonly MessageObjectHeader _header = new MessageObjectHeader();
 
-        public void SetHeader(int messageId)
+        public void SetHeader(int messageId, Type messageType = null)
         {
             _header.MessageId = messageId;
+            _messageType = messageType;
         }
 
-        public Type MessageType => typeof(object);
+        private Type _messageType;
+
+        public Type MessageType => _messageType ?? throw new InvalidOperationException("SetHeader 必须显式传入消息类型（测试替身无静默兜底）");
 
         public byte[] MessageData => Array.Empty<byte>();
 

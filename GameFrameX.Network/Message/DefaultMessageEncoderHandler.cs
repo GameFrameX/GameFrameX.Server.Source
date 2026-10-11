@@ -48,7 +48,7 @@ public sealed class DefaultMessageEncoderHandler : BaseMessageEncoderHandler
     public override ushort PackageHeaderLength { get; } = sizeof(uint) + sizeof(byte) + sizeof(byte) + sizeof(int) + sizeof(int);
 
     /// <summary>
-    /// 和客户端之间的消息 数据长度(2)+消息唯一ID(4)+消息ID(4)+消息内容
+    /// 和客户端之间的消息 总长度(4)+保留字节(1，原操作类型，已退役恒 0)+压缩标记(1)+消息唯一ID(4)+消息ID(4)+消息内容
     /// </summary>
     /// <param name="message"></param>
     /// <returns></returns>
@@ -57,7 +57,6 @@ public sealed class DefaultMessageEncoderHandler : BaseMessageEncoderHandler
         if (message is MessageObject messageObject)
         {
             MessageProtoHelper.SetMessageId(messageObject);
-            messageObject.SetOperationType(MessageProtoHelper.GetMessageOperationType(messageObject));
             try
             {
                 var messageBodyData = ProtoBufSerializerHelper.Serialize(messageObject);
@@ -68,8 +67,8 @@ public sealed class DefaultMessageEncoderHandler : BaseMessageEncoderHandler
                 var offset = 0;
                 // 总长度
                 buffer.WriteUIntBigEndianValue((uint)totalLength, ref offset);
-                // operationType 操作类型
-                buffer.WriteByteValue(messageObject.OperationType, ref offset);
+                // 保留字节（原操作类型，已退役；恒 0 以保持 14 字节帧长度不变）
+                buffer.WriteByteValue(0, ref offset);
                 // zipFlag 压缩标记
                 buffer.WriteByteValue(zipFlag, ref offset);
                 // uniqueId 唯一ID
@@ -84,8 +83,8 @@ public sealed class DefaultMessageEncoderHandler : BaseMessageEncoderHandler
             }
             catch (Exception e)
             {
-                // Localization: Network.MessageObjectEncodeException - 消息对象编码异常 {0} {1} {2} {3}
-                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Network.MessageObjectEncodeException, messageObject.MessageId, messageObject.OperationType, messageObject.UniqueId, e));
+                // Localization: Network.MessageObjectEncodeException - 消息对象编码异常 {0} {1} {2}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Network.MessageObjectEncodeException, messageObject.MessageId, messageObject.UniqueId, e));
                 return null;
             }
         }

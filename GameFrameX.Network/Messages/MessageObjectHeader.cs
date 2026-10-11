@@ -53,16 +53,6 @@ public class MessageObjectHeader : INetworkMessageHeader
     public int MessageId { get; set; }
 
     /// <summary>
-    /// 获取或设置操作类型。
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets the operation type of the message.
-    /// </remarks>
-    /// <value>操作类型 / The operation type</value>
-    [ProtoMember(2)]
-    public byte OperationType { get; set; }
-
-    /// <summary>
     /// 获取或设置压缩标记。
     /// </summary>
     /// <remarks>
@@ -91,7 +81,6 @@ public class MessageObjectHeader : INetworkMessageHeader
     public void Clear()
     {
         MessageId = default;
-        OperationType = default;
         ZipFlag = default;
         UniqueId = default;
     }

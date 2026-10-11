@@ -44,7 +44,7 @@ namespace GameFrameX.Network.RemoteMessaging.Transport;
 internal sealed class DefaultMessageCodec : IMessageCodec
 {
     /// <summary>
-    /// 包头长度（不含自身4字节）：1(operationType) + 1(algorithmId) + 4(uniqueId) + 4(messageId) = 10
+    /// 包头长度（不含自身4字节）：1(保留字节，原操作类型已退役恒 0) + 1(algorithmId) + 4(uniqueId) + 4(messageId) = 10
     /// 总包头含长度字段：4 + 10 = 14
     /// </summary>
     private const int InnerPackageHeaderLength = 14;
@@ -146,7 +146,8 @@ internal sealed class DefaultMessageCodec : IMessageCodec
         var totalLength = messageData.Length + InnerPackageHeaderLength;
         var buffer = ArrayPool<byte>.Shared.Rent(totalLength);
         BinaryPrimitives.WriteInt32BigEndian(buffer.AsSpan(0, 4), totalLength);
-        buffer[4] = message.OperationType;
+        // 保留字节（原操作类型，已退役；恒 0 以保持 14 字节帧长度不变）
+        buffer[4] = 0;
         buffer[5] = algorithmId;
         BinaryPrimitives.WriteInt32BigEndian(buffer.AsSpan(6, 4), message.UniqueId);
         BinaryPrimitives.WriteInt32BigEndian(buffer.AsSpan(10, 4), message.MessageId);
@@ -180,7 +181,6 @@ internal sealed class DefaultMessageCodec : IMessageCodec
             try
             {
                 await ReadExactAsync(stream, bodyBuffer.AsMemory(0, bodyLength), cancellationToken);
-                var operationType = bodyBuffer[0];
                 var algorithmId = bodyBuffer[1];
                 var uniqueId = BinaryPrimitives.ReadInt32BigEndian(bodyBuffer.AsSpan(2, 4));
                 var messageId = BinaryPrimitives.ReadInt32BigEndian(bodyBuffer.AsSpan(6, 4));
@@ -207,7 +207,6 @@ internal sealed class DefaultMessageCodec : IMessageCodec
                 }
 
                 var message = (MessageObject)ProtoBufSerializerHelper.Deserialize(messageData, messageType);
-                message.SetOperationType(operationType);
                 message.SetUniqueId(uniqueId);
                 message.SetMessageId(messageId);
                 return message;

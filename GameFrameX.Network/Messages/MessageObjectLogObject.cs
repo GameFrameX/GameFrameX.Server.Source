@@ -48,15 +48,13 @@ public sealed class MessageObjectLogObject
     /// </remarks>
     /// <param name="name">消息类型名称 / The message type name</param>
     /// <param name="messageId">消息ID / The message identifier</param>
-    /// <param name="operationType">操作类型 / The operation type</param>
     /// <param name="uniqueId">唯一ID / The unique identifier</param>
     /// <param name="messageObject">消息对象 / The message object</param>
     /// <param name="actorId">ActorId / The actor identifier</param>
-    public MessageObjectLogObject(string name, int messageId, int operationType, int uniqueId, INetworkMessage messageObject, long actorId)
+    public MessageObjectLogObject(string name, int messageId, int uniqueId, INetworkMessage messageObject, long actorId)
     {
         MessageType = name;
         MessageId = messageId;
-        OpType = operationType;
         UniqueId = uniqueId;
         Data = messageObject;
         ActorId = actorId;
@@ -88,15 +86,6 @@ public sealed class MessageObjectLogObject
     /// </remarks>
     /// <value>消息ID / The message identifier</value>
     public int MessageId { get; set; }
-
-    /// <summary>
-    /// 获取或设置操作类型。
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets the operation type.
-    /// </remarks>
-    /// <value>操作类型 / The operation type</value>
-    public int OpType { get; set; }
 
     /// <summary>
     /// 获取或设置唯一ID。

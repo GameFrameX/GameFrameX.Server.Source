@@ -58,8 +58,8 @@ public class DefaultMessageDecoderHandler : BaseMessageDecoderHandler
         {
             // 消息总长度
             reader.TryReadBigEndianValue(out uint totalLength);
-            // 操作类型
-            reader.TryReadBigEndianValue(out byte operationType);
+            // 保留字节（原操作类型，已退役；读侧跳过以保持 14 字节帧长度不变）
+            reader.TryReadBigEndianValue(out byte _);
             // 压缩标记
             reader.TryReadBigEndianValue(out byte zipFlag);
             // 唯一ID
@@ -69,7 +69,6 @@ public class DefaultMessageDecoderHandler : BaseMessageDecoderHandler
             // 消息对象头
             var messageObjectHeader = new MessageObjectHeader
             {
-                OperationType = operationType,
                 ZipFlag = zipFlag,
                 UniqueId = uniqueId,
                 MessageId = messageId,

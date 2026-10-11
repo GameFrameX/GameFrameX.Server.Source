@@ -45,10 +45,8 @@ public class MessageTypeHandlerAttribute : Attribute
     /// Constructs the message type handler attribute.
     /// </remarks>
     /// <param name="messageId">消息ID / Message identifier</param>
-    /// <param name="operationType">消息类型 / Message operation type</param>
-    public MessageTypeHandlerAttribute(int messageId, byte operationType = default)
+    public MessageTypeHandlerAttribute(int messageId)
     {
-        OperationType = operationType;
         MessageId = messageId;
         MainId = MessageIdUtility.GetMainId(MessageId);
         SubId = MessageIdUtility.GetSubId(MessageId);
@@ -80,13 +78,4 @@ public class MessageTypeHandlerAttribute : Attribute
     /// </remarks>
     /// <value>子消息ID / Sub message identifier</value>
     public int SubId { get; }
-
-    /// <summary>
-    /// 获取消息操作类型。
-    /// </summary>
-    /// <remarks>
-    /// Gets the message operation type.
-    /// </remarks>
-    /// <value>消息操作类型 / Message operation type</value>
-    public byte OperationType { get; }
 }
