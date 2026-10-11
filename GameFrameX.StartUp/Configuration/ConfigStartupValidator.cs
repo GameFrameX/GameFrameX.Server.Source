@@ -53,7 +53,7 @@ namespace GameFrameX.StartUp.Configuration;
 /// <item><see cref="ConfigConflictKind.CliFileValueConflict"/>：CLI 显式提供（从原始参数提取实际出现的选项键判定，
 /// 显式传等于默认值的值同样参与比较）且与所用文件段值不同的 AppSetting 字段即冲突——文件段是单源，
 /// CLI 角色级/进程级字段仅在无段回落形态生效；
-/// ServerType（段选择键）与 IsAllInOne/IsSingleMode（开关，声明于 StartupOptions）豁免。</item>
+/// ServerType（段选择键）与 IsSingleMode（开关，声明于 StartupOptions）豁免。</item>
 /// </list>
 /// 检出任何冲突即抛 <see cref="ConfigConflictException"/>，消息列出全部冲突字段与来源段。
 /// </remarks>
@@ -108,13 +108,13 @@ public static class ConfigStartupValidator
     /// <summary>
     /// 参与 CLI-文件冲突检测的 AppSetting 公共读写属性。
     /// ServerType 为段选择键、ServerName 为其 init setter 派生标签（复数 CLI 值 "Game,Social" 永不与逐段值一致），二者豁免；
-    /// IsAllInOne/IsSingleMode 声明于 StartupOptions，天然不在 typeof(AppSetting) 属性集内。
+    /// IsSingleMode 声明于 StartupOptions，天然不在 typeof(AppSetting) 属性集内。
     /// </summary>
     /// <remarks>
     /// The public read-write AppSetting properties participating in the CLI-file conflict check.
     /// ServerType is the section selection key and ServerName is a label derived from it by its init setter
     /// (a plural CLI value "Game,Social" never matches a per-section value), so both are exempt;
-    /// IsAllInOne/IsSingleMode are declared on StartupOptions and never appear in the typeof(AppSetting) property set.
+    /// IsSingleMode is declared on StartupOptions and never appears in the typeof(AppSetting) property set.
     /// </remarks>
     private static readonly PropertyInfo[] MergeCheckProperties = typeof(AppSetting)
         .GetProperties(BindingFlags.Public | BindingFlags.Instance)

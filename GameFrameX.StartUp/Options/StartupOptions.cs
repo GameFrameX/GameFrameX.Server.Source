@@ -28,7 +28,6 @@
 //  ==========================================================================================
 
 
-using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Options.Attributes;
 using GameFrameX.Utility.Setting;
 
@@ -47,49 +46,13 @@ public partial class StartupOptions : AppSetting
     /// </summary>
     /// <value>如果启用单进程模式则为 <c>true</c>；否则为 <c>false</c>（多进程模式）。默认值为 <c>false</c> / <c>true</c> if single-process mode is enabled; otherwise, <c>false</c> (multi-process mode). Default is <c>false</c></value>
     /// <remarks>
-    /// Whether to enable single-process mode. Default is <c>false</c> (multi-process mode).
-    /// When <c>true</c>, only one service type will be started in the current process.
-    /// When <c>false</c>, multiple service types will be orchestrated based on ServerType comma-separated list.
+    /// Reserved placeholder for a future orchestration form; it currently has no runtime consumer
+    /// (its former consumer, the AppHost orchestration layer, was removed with AppHost in C153).
+    /// Its meaning sits at the opposite end of All-in-One ("only one role in this process" vs
+    /// "every registered role in one process"), so it must not be reused as the All-in-One switch;
+    /// the launch decision reads <see cref="AllInOneOptions"/> exclusively.
     /// </remarks>
     [Option(nameof(IsSingleMode), DefaultValue = false, Description = "是否单进程模式,默认值为false(多进程)")]
     [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public bool IsSingleMode { get; set; }
-
-    /// <summary>
-    /// 是否 All-in-One 单进程拉起全部已注册 Role。
-    /// </summary>
-    /// <value>All-in-One 则为 <c>true</c>；否则为 <c>false</c>。默认值为 <c>false</c> / <c>true</c> for all-in-one; otherwise, <c>false</c>. Default is <c>false</c></value>
-    /// <remarks>
-    /// Whether to launch every registered role in one process (all-in-one).
-    /// This flag is process-level: every role of the process shares one kernel.
-    /// It intentionally coexists with (and is NOT replaced by) <see cref="IsSingleMode"/>, which is consumed
-    /// by the AppHost orchestration layer with the opposite meaning ("one AppHost orchestrating all roles").
-    /// The launch decision reads <see cref="AllInOneOptions"/> (which also recognizes the bare <c>--AllInOne</c> switch).
-    /// </remarks>
-    [Option(nameof(IsAllInOne), DefaultValue = false, Description = "是否单进程拉起全部已注册 Role(All-in-One),默认值为false")]
-    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
-    public bool IsAllInOne { get; set; }
-
-    /// <summary>
-    /// 获取由 <see cref="AppSetting.ServerType"/> 逗号拆分出的 Role 名列表。
-    /// </summary>
-    /// <remarks>
-    /// Derived view of the comma-separated <c>--ServerType</c> value (e.g. "Game,Social" → ["Game", "Social"]).
-    /// Read-only projection, not an independent CLI option; the launch decision reads <see cref="AllInOneOptions"/>.
-    /// Modeled as a method rather than a property because each call derives a new array (Sonar S2365:
-    /// properties should not copy collections).
-    /// </remarks>
-    /// <returns>Role 名数组（trim、去空、去重）；未指定时为空数组 / The role names (trimmed, non-empty, deduplicated); an empty array when unspecified</returns>
-    public string[] GetServerTypes()
-    {
-        if (ServerType.IsNullOrEmpty())
-        {
-            return Array.Empty<string>();
-        }
-
-        return ServerType.Split(',').Select(serverType => serverType.Trim())
-            .Where(serverType => serverType.Length > 0)
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-    }
 }

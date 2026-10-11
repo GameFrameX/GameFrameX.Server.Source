@@ -43,17 +43,19 @@ namespace GameFrameX.StartUp;
 /// <c>--ServerType=Game,Social</c> (comma-separated roles, also <c>--ServerType Game,Social</c>),
 /// <c>--AllInOne</c> (bare switch, or <c>--AllInOne=true|false</c>) which launches every registered role.
 /// The launch decision reads this parse instead of relying on how the generic option binder treats bare switches.
-/// <see cref="StartupOptions.IsSingleMode"/> is intentionally NOT reused: it is consumed by the AppHost
-/// orchestration layer with the opposite meaning.
+///<see cref="StartupOptions.IsSingleMode"/> is intentionally NOT reused: its meaning sits at the
+///opposite end of All-in-One ("only one role" vs "every registered role"), and it is currently a
+///reserved placeholder with no runtime consumer (its former consumer, the AppHost orchestration
+///layer, was removed with AppHost in C153).
 /// </remarks>
 public sealed class AllInOneOptions
 {
     /// <summary>
-    /// All-in-One 开关的 CLI 参数名（裸开关 --AllInOne；属性名为 StartupOptions.IsAllInOne，二者不同名）。
+    /// All-in-One 开关的 CLI 参数名（裸开关 --AllInOne）；该名不对应任何绑定属性，由本类自持识别。
     /// </summary>
     /// <remarks>
-    /// The CLI argument name of the all-in-one switch (bare switch <c>--AllInOne</c>;
-    /// note the property is <c>StartupOptions.IsAllInOne</c> — the two names differ).
+    /// The CLI argument name of the all-in-one switch (bare switch <c>--AllInOne</c>);
+    /// no bound property carries this name — this class owns the switch end to end.
     /// </remarks>
     private const string AllInOneArgumentName = "AllInOne";
 

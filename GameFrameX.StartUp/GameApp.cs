@@ -569,7 +569,13 @@ public static class GameApp
 
         if (allInOneOptions.IsAllInOne)
         {
-            // All-in-One：拉起全部已注册 Role（D2）
+            // All-in-One：拉起全部已注册 Role（D2）；--ServerType 并存时不参与选择，提示被覆盖
+            if (allInOneOptions.ServerTypes.Count > 0)
+            {
+                // Localization: StartUp.Application.ServerTypeOverriddenByAllInOne - --AllInOne 已生效；指定的 --ServerType 值 '{0}' 被忽略，将拉起全部已注册 Role。
+                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.Application.ServerTypeOverriddenByAllInOne, string.Join(",", allInOneOptions.ServerTypes)));
+            }
+
             return sortedList;
         }
 

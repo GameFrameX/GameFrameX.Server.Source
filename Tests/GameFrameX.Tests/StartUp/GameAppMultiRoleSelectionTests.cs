@@ -64,6 +64,17 @@ public class GameAppMultiRoleSelectionTests
     }
 
     /// <summary>
+    /// AllInOne 与 ServerType 并存：AllInOne 覆盖选择，仍返回全部已注册 Role（--ServerType 不参与）。
+    /// </summary>
+    [Fact]
+    public void SelectStartUpTypes_AllInOneWithServerType_OverridesServerTypeSelection()
+    {
+        var selected = GameApp.SelectStartUpTypes(AllInOneOptions.Parse(["--ServerType=Game", "--AllInOne"]), CreateSortedStartUpTypes());
+
+        Assert.Equal(new[] { "Alpha", "Beta", "Gamma" }, selected.Select(pair => pair.Value.ServerType));
+    }
+
+    /// <summary>
     /// 复数：按名匹配并保持优先级序，CLI 输入顺序不影响启动顺序。
     /// </summary>
     [Fact]
