@@ -176,7 +176,6 @@ GameFrameX 使用命令列參數 (`--Key=Value`) 進行配置，所有配置項�
 | `ServerType` | 伺服器類型（必填） | 無 | `Game`、`Social` |
 | `ServerId` | 伺服器唯一標識 ID | 無 | `1000` |
 | `ServerInstanceId` | 伺服器實例 ID（區分同類型不同實例） | `0` | `1001` |
-| `IsSingleMode` | 是否單程序模式 | `false` | `true` |
 | `MinModuleId` | 業務模組起始 ID（模組分片） | `0` | `100` |
 | `MaxModuleId` | 業務模組結束 ID（模組分片） | `0` | `1000` |
 | `TimeZone` | 伺服器時區 | `Asia/Shanghai` | `UTC` |
@@ -794,7 +793,7 @@ GameFrameX.Server.Source/
    確保共享核心不會收到相互矛盾的程序配置；
 4. 命令列顯式提供的欄位與正在使用的檔案配置節不一致（檔案配置節是唯一事實來源；CLI 角色級數值僅在無配置節的回退形式下生效）。
    「是否顯式提供」依原始參數 token 判斷，因此傳入與預設值相同的值（如 `--HttpPort=0`）仍會參與比較。
-   `ServerType`（配置節鍵）與 `IsSingleMode` 開關豁免。
+   `ServerType`（配置節鍵）豁免。
 
 單角色與預設啟動命令保持現有行為（缺少配置節時回退到啟動器預設值）。
 

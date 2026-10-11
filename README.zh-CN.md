@@ -176,7 +176,6 @@ GameFrameX 使用命令行参数 (`--Key=Value`) 进行配置，所有配置项�
 | `ServerType` | 服务器类型（必填） | 无 | `Game`、`Social` |
 | `ServerId` | 服务器唯一标识 ID | 无 | `1000` |
 | `ServerInstanceId` | 服务器实例 ID（区分同类型不同实例） | `0` | `1001` |
-| `IsSingleMode` | 是否单进程模式 | `false` | `true` |
 | `MinModuleId` | 业务模块起始 ID（模块分片） | `0` | `100` |
 | `MaxModuleId` | 业务模块结束 ID（模块分片） | `0` | `1000` |
 | `TimeZone` | 服务器时区 | `Asia/Shanghai` | `UTC` |
@@ -802,8 +801,7 @@ All-in-One 进程运行，而无需修改 Role 代码。
    （按运行时归一化规则处理后），确保共享内核不会收到相互矛盾的进程配置；
 4. 命令行显式传入的字段与正在使用的文件配置节不一致（文件配置节是唯一事实来源；命令行的 Role 级
    取值仅在无配置节的回退形式下生效）。“是否显式传入”由原始参数词元判定，因此传入与默认值相同的值
-   （如 `--HttpPort=0`）也会参与比较。`ServerType`（配置节键）及 `IsSingleMode`
-   开关豁免。
+   （如 `--HttpPort=0`）也会参与比较。`ServerType`（配置节键）豁免。
 
 单 Role 与默认启动命令保持现有行为不变（缺失配置节时回退到启动器默认值）。
 

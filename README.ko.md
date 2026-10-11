@@ -176,7 +176,6 @@ GameFrameX는 명령줄 인수(`--Key=Value`)로 설정합니다. 모든 설정 
 | `ServerType` | 서버 유형(필수) | 없음 | `Game`, `Social` |
 | `ServerId` | 서버 고유 ID | 없음 | `1000` |
 | `ServerInstanceId` | 서버 인스턴스 ID(동일 유형의 다른 인스턴스 구분) | `0` | `1001` |
-| `IsSingleMode` | 단일 프로세스 모드 여부 | `false` | `true` |
 | `MinModuleId` | 비즈니스 모듈 시작 ID(모듈 샤딩) | `0` | `100` |
 | `MaxModuleId` | 비즈니스 모듈 종료 ID(모듈 샤딩) | `0` | `1000` |
 | `TimeZone` | 서버 시간대 | `Asia/Shanghai` | `UTC` |
@@ -793,7 +792,7 @@ GameFrameX.Server.Source/
 2. 동일한 프로세스의 두 역할이 활성화된 0이 아닌 동일한 리스닝 엔드포인트에 바인딩하려는 경우 — 엔드포인트는 포트 필드와 전송(TCP vs UDP)을 걸쳐 비교되므로, 예를 들어 `Game.InnerPort == Social.HttpPort`도 fail-fast됩니다. 한 역할의 `InnerPort`/`OuterPort` 공유는 합법적인 동일 역할 형태입니다;
 3. 프로세스 수준 필드(`SettingFieldLevel(ProcessLevel)`, 예: `DataBaseUrl`)가 선택된 섹션들 간에 (런타임 정규화 규칙 적용 후) 서로 다른 경우 — 공유 커널이 모순된 프로세스 설정을 받지 않도록 합니다;
 4. 명령줄에서 명시적으로 지정된 필드가 사용 중인 파일 섹션과 다른 경우(파일 섹션이 단일 진실 공급원이며, CLI 역할 수준 값은 섹션 없는 폴백 형태에서만 적용됩니다).
-   "명시적으로 지정됨" 여부는 원시 인자 토큰으로 판정되므로, 기본값과 같은 값을 전달해도(예: `--HttpPort=0`) 여전히 비교됩니다. `ServerType`(섹션 키)과 `IsSingleMode` 스위치는 예외입니다.
+   "명시적으로 지정됨" 여부는 원시 인자 토큰으로 판정되므로, 기본값과 같은 값을 전달해도(예: `--HttpPort=0`) 여전히 비교됩니다. `ServerType`(섹션 키)는 예외입니다.
 
 단일 역할 및 기본 시작 명령은 현재 동작을 유지합니다(섹션이 없으면 런처 기본값으로 폴백).
 

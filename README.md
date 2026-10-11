@@ -176,7 +176,6 @@ GameFrameX uses command-line arguments (`--Key=Value`) for configuration. All co
 | `ServerType`       | Server type (required)                                                  | None            | `Game`, `Social` |
 | `ServerId`         | Unique server ID                                                        | None            | `1000`           |
 | `ServerInstanceId` | Server instance ID (distinguishes different instances of the same type) | `0`             | `1001`           |
-| `IsSingleMode`     | Single process mode                                                     | `false`         | `true`           |
 | `MinModuleId`      | Business module start ID (module sharding)                              | `0`             | `100`            |
 | `MaxModuleId`      | Business module end ID (module sharding)                                | `0`             | `1000`           |
 | `TimeZone`         | Server timezone                                                         | `Asia/Shanghai` | `UTC`            |
@@ -805,8 +804,7 @@ source section — when:
 4. a field explicitly supplied on the command line differs from the file section in use (the file section
    is the single source of truth; CLI role-level values only apply in the section-less fallback form).
    "Explicitly supplied" is decided from the raw argument tokens, so passing a value equal to the default
-   (e.g. `--HttpPort=0`) is still compared. `ServerType` (section key) and the `IsSingleMode`
-   switch are exempt.
+   (e.g. `--HttpPort=0`) is still compared. `ServerType` (section key) is exempt.
 
 Single-role and default startup commands keep their current behaviour (missing sections fall back to
 launcher defaults).
