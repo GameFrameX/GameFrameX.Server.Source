@@ -76,7 +76,7 @@ public static class AppBootstrapper
     /// <remarks>
     /// The initialization gate: serializes state transitions and lets concurrent waiters block until the initialization result is published.
     /// </remarks>
-    private static readonly object InitializationGate = new object();
+    private static readonly Lock InitializationGate = new Lock();
 
     /// <summary>
     /// 初始化状态（0 = 未初始化，1 = 已初始化，2 = 初始化中）。
@@ -98,6 +98,8 @@ public static class AppBootstrapper
     /// <value>已初始化则为 <c>true</c>；否则为 <c>false</c> / <c>true</c> if initialized; otherwise, <c>false</c></value>
     public static bool IsInitialized
     {
+        // 无锁 volatile 直读：EnsureInitialized 的等待方在持有 InitializationGate 期间等待在途初始化完成，
+        // 此时任何锁内读（含本属性）都会与门闩锁死锁（C205/C209 verify 期实证的三方锁序死锁根因）
         get { return Volatile.Read(ref _initializationState) == Initialized; }
     }
 
@@ -181,6 +183,7 @@ public static class AppBootstrapper
     /// </remarks>
     internal static void Reset()
     {
+        // 测试钩子：无锁 volatile 直写——等待方持锁期间 Reset 若取同一门闩锁同样死锁
         Volatile.Write(ref _initializationState, NotInitialized);
     }
 }
