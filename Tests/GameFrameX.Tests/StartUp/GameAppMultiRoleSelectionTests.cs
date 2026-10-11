@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 
+using GameFrameX.Foundation.Options;
 using GameFrameX.StartUp;
 using GameFrameX.StartUp.Options;
 using GameFrameX.Utility.Setting;
@@ -58,7 +59,7 @@ public class GameAppMultiRoleSelectionTests
     [Fact]
     public void SelectStartUpTypes_AllInOne_ReturnsAllRegisteredRolesInPriorityOrder()
     {
-        var selected = GameApp.SelectStartUpTypes(AllInOneOptions.Parse(["--AllInOne"]), CreateSortedStartUpTypes());
+        var selected = GameApp.SelectStartUpTypes(OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--AllInOne"]), CreateSortedStartUpTypes());
 
         Assert.Equal(new[] { "Alpha", "Beta", "Gamma" }, selected.Select(pair => pair.Value.ServerType));
     }
@@ -69,7 +70,7 @@ public class GameAppMultiRoleSelectionTests
     [Fact]
     public void SelectStartUpTypes_AllInOneWithServerType_OverridesServerTypeSelection()
     {
-        var selected = GameApp.SelectStartUpTypes(AllInOneOptions.Parse(["--ServerType=Game", "--AllInOne"]), CreateSortedStartUpTypes());
+        var selected = GameApp.SelectStartUpTypes(OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--ServerType=Game", "--AllInOne"]), CreateSortedStartUpTypes());
 
         Assert.Equal(new[] { "Alpha", "Beta", "Gamma" }, selected.Select(pair => pair.Value.ServerType));
     }
@@ -80,7 +81,7 @@ public class GameAppMultiRoleSelectionTests
     [Fact]
     public void SelectStartUpTypes_PluralServerTypes_ReturnsMatchesInPriorityOrderRegardlessOfInputOrder()
     {
-        var selected = GameApp.SelectStartUpTypes(AllInOneOptions.Parse(["--ServerType=Gamma,Alpha"]), CreateSortedStartUpTypes());
+        var selected = GameApp.SelectStartUpTypes(OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--ServerType=Gamma,Alpha"]), CreateSortedStartUpTypes());
 
         Assert.Equal(new[] { "Alpha", "Gamma" }, selected.Select(pair => pair.Value.ServerType));
     }
@@ -97,7 +98,7 @@ public class GameAppMultiRoleSelectionTests
             new(typeof(MultiRoleSelectionTestsRoleBeta), new StartUpTagAttribute("Social", 200)),
         };
 
-        var selected = GameApp.SelectStartUpTypes(AllInOneOptions.Parse(["--ServerType=Social,Game"]), sorted);
+        var selected = GameApp.SelectStartUpTypes(OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--ServerType=Social,Game"]), sorted);
 
         Assert.Equal(new[] { "Game", "Social" }, selected.Select(pair => pair.Value.ServerType));
     }
@@ -108,7 +109,7 @@ public class GameAppMultiRoleSelectionTests
     [Fact]
     public void SelectStartUpTypes_PluralWithUnregisteredName_SkipsUnregistered()
     {
-        var selected = GameApp.SelectStartUpTypes(AllInOneOptions.Parse(["--ServerType=Alpha,Ghost"]), CreateSortedStartUpTypes());
+        var selected = GameApp.SelectStartUpTypes(OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--ServerType=Alpha,Ghost"]), CreateSortedStartUpTypes());
 
         Assert.Equal(new[] { "Alpha" }, selected.Select(pair => pair.Value.ServerType));
     }
@@ -119,7 +120,7 @@ public class GameAppMultiRoleSelectionTests
     [Fact]
     public void SelectStartUpTypes_SingleServerType_ReturnsSingleMatch()
     {
-        var selected = GameApp.SelectStartUpTypes(AllInOneOptions.Parse(["--ServerType=Beta"]), CreateSortedStartUpTypes());
+        var selected = GameApp.SelectStartUpTypes(OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--ServerType=Beta"]), CreateSortedStartUpTypes());
 
         Assert.Equal(new[] { "Beta" }, selected.Select(pair => pair.Value.ServerType));
     }
@@ -130,7 +131,7 @@ public class GameAppMultiRoleSelectionTests
     [Fact]
     public void SelectStartUpTypes_SingleUnregisteredServerType_ReturnsEmpty()
     {
-        var selected = GameApp.SelectStartUpTypes(AllInOneOptions.Parse(["--ServerType=Ghost"]), CreateSortedStartUpTypes());
+        var selected = GameApp.SelectStartUpTypes(OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--ServerType=Ghost"]), CreateSortedStartUpTypes());
 
         Assert.Empty(selected);
     }
@@ -141,7 +142,7 @@ public class GameAppMultiRoleSelectionTests
     [Fact]
     public void SelectStartUpTypes_Default_ReturnsFirstAvailableInPriorityOrder()
     {
-        var selected = GameApp.SelectStartUpTypes(AllInOneOptions.Parse(Array.Empty<string>()), CreateSortedStartUpTypes());
+        var selected = GameApp.SelectStartUpTypes(OptionsBuilder.CreateFromArgsOnly<StartupOptions>(Array.Empty<string>()), CreateSortedStartUpTypes());
 
         Assert.Equal(new[] { "Alpha" }, selected.Select(pair => pair.Value.ServerType));
     }

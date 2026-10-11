@@ -79,9 +79,8 @@ public class ConfigStartupValidatorTests
         var exception = Record.Exception(() => ConfigStartupValidator.Validate(
             new[] { "Game", "Social" },
             sections,
-            OptionsBuilder.CreateDefault<StartupOptions>(),
-            Array.Empty<string>(),
-            AllInOneOptions.Parse(["--AllInOne"])));
+            OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--AllInOne"]),
+            Array.Empty<string>()));
 
         Assert.Null(exception);
     }
@@ -104,8 +103,7 @@ public class ConfigStartupValidatorTests
             new[] { "Game", "Social" },
             sections,
             launcherOptions,
-            args,
-            AllInOneOptions.Parse(args)));
+            args));
 
         Assert.Null(exception);
     }
@@ -121,9 +119,8 @@ public class ConfigStartupValidatorTests
         var exception = Assert.Throws<ConfigConflictException>(() => ConfigStartupValidator.Validate(
             new[] { "Game", "Social" },
             sections,
-            OptionsBuilder.CreateDefault<StartupOptions>(),
-            Array.Empty<string>(),
-            AllInOneOptions.Parse(["--ServerType=Game,Social"])));
+            OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--ServerType=Game,Social"]),
+            Array.Empty<string>()));
 
         var conflict = Assert.Single(exception.Conflicts);
         Assert.Equal(ConfigConflictKind.MissingSection, conflict.Kind);
@@ -141,9 +138,8 @@ public class ConfigStartupValidatorTests
         var exception = Record.Exception(() => ConfigStartupValidator.Validate(
             new[] { "Game" },
             new List<AppSetting>(),
-            OptionsBuilder.CreateDefault<StartupOptions>(),
-            Array.Empty<string>(),
-            AllInOneOptions.Parse(["--ServerType=Game"])));
+            OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--ServerType=Game"]),
+            Array.Empty<string>()));
 
         Assert.Null(exception);
     }
@@ -163,9 +159,8 @@ public class ConfigStartupValidatorTests
         var exception = Assert.Throws<ConfigConflictException>(() => ConfigStartupValidator.Validate(
             new[] { "Game", "Social" },
             sections,
-            OptionsBuilder.CreateDefault<StartupOptions>(),
-            Array.Empty<string>(),
-            AllInOneOptions.Parse(["--AllInOne"])));
+            OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--AllInOne"]),
+            Array.Empty<string>()));
 
         var conflict = Assert.Single(exception.Conflicts);
         Assert.Equal(ConfigConflictKind.PortConflict, conflict.Kind);
@@ -190,9 +185,8 @@ public class ConfigStartupValidatorTests
         var exception = Assert.Throws<ConfigConflictException>(() => ConfigStartupValidator.Validate(
             new[] { "Game", "Social" },
             sections,
-            OptionsBuilder.CreateDefault<StartupOptions>(),
-            Array.Empty<string>(),
-            AllInOneOptions.Parse(["--AllInOne"])));
+            OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--AllInOne"]),
+            Array.Empty<string>()));
 
         var conflict = Assert.Single(exception.Conflicts);
         Assert.Equal(ConfigConflictKind.PortConflict, conflict.Kind);
@@ -218,9 +212,8 @@ public class ConfigStartupValidatorTests
         var exception = Record.Exception(() => ConfigStartupValidator.Validate(
             new[] { "Game", "Social" },
             sections,
-            OptionsBuilder.CreateDefault<StartupOptions>(),
-            Array.Empty<string>(),
-            AllInOneOptions.Parse(["--AllInOne"])));
+            OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--AllInOne"]),
+            Array.Empty<string>()));
 
         Assert.Null(exception);
     }
@@ -242,9 +235,8 @@ public class ConfigStartupValidatorTests
         var exception = Assert.Throws<ConfigConflictException>(() => ConfigStartupValidator.Validate(
             new[] { "Game", "Social", "Chat" },
             sections,
-            OptionsBuilder.CreateDefault<StartupOptions>(),
-            Array.Empty<string>(),
-            AllInOneOptions.Parse(["--AllInOne"])));
+            OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--AllInOne"]),
+            Array.Empty<string>()));
 
         var conflict = Assert.Single(exception.Conflicts);
         Assert.Equal(ConfigConflictKind.PortConflict, conflict.Kind);
@@ -264,9 +256,8 @@ public class ConfigStartupValidatorTests
         var exception = Record.Exception(() => ConfigStartupValidator.Validate(
             new[] { "Game" },
             sections,
-            OptionsBuilder.CreateDefault<StartupOptions>(),
-            Array.Empty<string>(),
-            AllInOneOptions.Parse(["--ServerType=Game"])));
+            OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--ServerType=Game"]),
+            Array.Empty<string>()));
 
         Assert.Null(exception);
     }
@@ -286,9 +277,8 @@ public class ConfigStartupValidatorTests
         var exception = Assert.Throws<ConfigConflictException>(() => ConfigStartupValidator.Validate(
             new[] { "Game", "Social" },
             sections,
-            OptionsBuilder.CreateDefault<StartupOptions>(),
-            Array.Empty<string>(),
-            AllInOneOptions.Parse(["--AllInOne"])));
+            OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--AllInOne"]),
+            Array.Empty<string>()));
 
         var conflict = Assert.Single(exception.Conflicts);
         Assert.Equal(ConfigConflictKind.PortConflict, conflict.Kind);
@@ -311,9 +301,8 @@ public class ConfigStartupValidatorTests
         var exception = Assert.Throws<ConfigConflictException>(() => ConfigStartupValidator.Validate(
             new[] { "Game", "Social" },
             sections,
-            OptionsBuilder.CreateDefault<StartupOptions>(),
-            Array.Empty<string>(),
-            AllInOneOptions.Parse(["--AllInOne"])));
+            OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--AllInOne"]),
+            Array.Empty<string>()));
 
         var conflict = Assert.Single(exception.Conflicts);
         Assert.Equal(ConfigConflictKind.ProcessFieldConflict, conflict.Kind);
@@ -340,9 +329,8 @@ public class ConfigStartupValidatorTests
         var exception = Record.Exception(() => ConfigStartupValidator.Validate(
             new[] { "Game", "Social" },
             sections,
-            OptionsBuilder.CreateDefault<StartupOptions>(),
-            Array.Empty<string>(),
-            AllInOneOptions.Parse(["--AllInOne"])));
+            OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--AllInOne"]),
+            Array.Empty<string>()));
 
         Assert.Null(exception);
     }
@@ -362,8 +350,7 @@ public class ConfigStartupValidatorTests
             new[] { "Game" },
             sections,
             launcherOptions,
-            args,
-            AllInOneOptions.Parse(args)));
+            args));
 
         var conflict = Assert.Single(exception.Conflicts);
         Assert.Equal(ConfigConflictKind.CliFileValueConflict, conflict.Kind);
@@ -389,8 +376,7 @@ public class ConfigStartupValidatorTests
             new[] { "Game" },
             sections,
             launcherOptions,
-            args,
-            AllInOneOptions.Parse(args)));
+            args));
 
         var conflict = Assert.Single(exception.Conflicts);
         Assert.Equal(ConfigConflictKind.CliFileValueConflict, conflict.Kind);
@@ -413,8 +399,7 @@ public class ConfigStartupValidatorTests
             new[] { "Game" },
             sections,
             launcherOptions,
-            args,
-            AllInOneOptions.Parse(args)));
+            args));
 
         Assert.Null(exception);
     }
@@ -433,8 +418,7 @@ public class ConfigStartupValidatorTests
             new[] { "Game" },
             sections,
             launcherOptions,
-            args,
-            AllInOneOptions.Parse(args)));
+            args));
 
         Assert.Contains(nameof(AppSetting.HttpPort), exception.Message);
         Assert.Contains("CLI", exception.Message);

@@ -68,4 +68,113 @@ public class StartupOptionsTests
         Assert.True(options.IsSingleMode);
         Assert.False(options.LogIsConsole);
     }
+
+    /// <summary>
+    /// ServerType 绑定与 GetServerTypes 投影：单值与复数形态按逗号拆分。
+    /// </summary>
+    [Fact]
+    public void GetServerTypes_BindsAndProjects_SingleAndPlural()
+    {
+        var single = OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--ServerType=Game"]);
+        var plural = OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--ServerType=Game,Social"]);
+
+        Assert.Equal("Game", single.ServerType);
+        Assert.Equal(new[] { "Game" }, single.GetServerTypes());
+        Assert.Equal(new[] { "Game", "Social" }, plural.GetServerTypes());
+    }
+
+    /// <summary>
+    /// 投影语义：trim、去空段、去重、保序。
+    /// </summary>
+    [Fact]
+    public void GetServerTypes_TrimsDropsEmptyAndDeduplicates()
+    {
+        var options = OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--ServerType= Game , Social ,, Game "]);
+
+        Assert.Equal(new[] { "Game", "Social" }, options.GetServerTypes());
+    }
+
+    /// <summary>
+    /// 空格分隔形态：--ServerType Game,Social 由 binder 消费下一 token。
+    /// </summary>
+    [Fact]
+    public void Create_SpaceSeparatedServerType_BindsNextToken()
+    {
+        var options = OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--ServerType", "Game,Social"]);
+
+        Assert.Equal(new[] { "Game", "Social" }, options.GetServerTypes());
+    }
+
+    /// <summary>
+    /// AllInOne 开关形态：裸开关（含大小写变体）与 =true|=false 均可绑定。
+    /// </summary>
+    [Theory]
+    [InlineData("--AllInOne", true)]
+    [InlineData("--allinone", true)]
+    [InlineData("--AllInOne=true", true)]
+    [InlineData("--AllInOne=false", false)]
+    public void Create_AllInOneArgumentForms_BindExpectedValue(string argument, bool expected)
+    {
+        var options = OptionsBuilder.CreateFromArgsOnly<StartupOptions>([argument]);
+
+        Assert.Equal(expected, options.AllInOne);
+    }
+
+    /// <summary>
+    /// AllInOne 与 ServerType 并存：两者均绑定，覆盖判定在启动决策处。
+    /// </summary>
+    [Fact]
+    public void Create_AllInOneWithServerType_BindsBoth()
+    {
+        var options = OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--ServerType=Game", "--AllInOne"]);
+
+        Assert.True(options.AllInOne);
+        Assert.Equal(new[] { "Game" }, options.GetServerTypes());
+    }
+
+    /// <summary>
+    /// 重复 --ServerType：last-wins（与既有 CLI 语义一致）。
+    /// </summary>
+    [Fact]
+    public void Create_RepeatedServerType_LastWins()
+    {
+        var options = OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--ServerType=Game", "--ServerType=Social"]);
+
+        Assert.Equal(new[] { "Social" }, options.GetServerTypes());
+    }
+
+    /// <summary>
+    /// 裸 --ServerType 后随选项标记：不消费标记为值，ServerType 保持未设置。
+    /// </summary>
+    [Fact]
+    public void Create_ServerTypeBeforeOptionToken_StaysUnset()
+    {
+        var options = OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--ServerType", "--AllInOne"]);
+
+        Assert.True(options.AllInOne);
+        Assert.Empty(options.GetServerTypes());
+    }
+
+    /// <summary>
+    /// 混杂未知参数与大小写变体键：未知参数忽略，键大小写不敏感。
+    /// </summary>
+    [Fact]
+    public void Create_UnknownArgsAndCaseInsensitiveKeys_IgnoredOrBound()
+    {
+        var options = OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--Foo=bar", "--serverType=Game,Social", "--Baz"]);
+
+        Assert.Equal(new[] { "Game", "Social" }, options.GetServerTypes());
+    }
+
+    /// <summary>
+    /// 缺省：AllInOne 为 false，投影为空数组。
+    /// </summary>
+    [Fact]
+    public void Create_NoArguments_AllInOneFalseAndEmptyProjection()
+    {
+        var options = OptionsBuilder.CreateFromArgsOnly<StartupOptions>(Array.Empty<string>());
+
+        Assert.False(options.AllInOne);
+        Assert.Empty(options.GetServerTypes());
+    }
 }
