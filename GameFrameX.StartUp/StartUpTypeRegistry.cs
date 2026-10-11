@@ -30,6 +30,9 @@
 
 using System.Reflection;
 using GameFrameX.Foundation.Extensions;
+using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Foundation.Logger;
+using GameFrameX.Localization;
 using GameFrameX.StartUp.Abstractions;
 using GameFrameX.Utility;
 
@@ -77,10 +80,20 @@ public sealed class StartUpTypeRegistry : Singleton<StartUpTypeRegistry>
             }
 
             var startUpTag = type.GetCustomAttribute<StartUpTagAttribute>();
-            if (startUpTag != null)
+            if (startUpTag == null)
             {
-                _startUpTypes.Add(type, startUpTag);
+                continue;
             }
+
+            if (startUpTag.ServerType.Contains(','))
+            {
+                // Role 名为标识符、不得含逗号（--ServerType 列表分隔符）；显式拒绝注册，把领域不变量钉在入口
+                // Localization: StartUp.Application.ServerTypeCommaNotAllowed - 服务器类型 '{0}' 含逗号，已拒绝注册；Role 名为标识符，不得包含逗号（--ServerType 列表分隔符）。
+                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.Application.ServerTypeCommaNotAllowed, startUpTag.ServerType));
+                continue;
+            }
+
+            _startUpTypes.Add(type, startUpTag);
         }
     }
 

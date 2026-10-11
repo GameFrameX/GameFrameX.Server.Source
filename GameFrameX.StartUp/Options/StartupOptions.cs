@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 
+using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Options.Attributes;
 using GameFrameX.Utility.Setting;
 
@@ -50,9 +51,52 @@ public partial class StartupOptions : AppSetting
     /// (its former consumer, the AppHost orchestration layer, was removed with AppHost in C153).
     /// Its meaning sits at the opposite end of All-in-One ("only one role in this process" vs
     /// "every registered role in one process"), so it must not be reused as the All-in-One switch;
-    /// the launch decision reads <see cref="AllInOneOptions"/> exclusively.
+    /// the launch decision reads the <see cref="AllInOne"/> switch and the <see cref="GetServerTypes"/> projection exclusively.
     /// </remarks>
     [Option(nameof(IsSingleMode), DefaultValue = false, Description = "是否单进程模式,默认值为false(多进程)")]
     [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public bool IsSingleMode { get; set; }
+
+    /// <summary>
+    /// 是否 All-in-One 单进程拉起全部已注册 Role。
+    /// </summary>
+    /// <value>All-in-One 则为 <c>true</c>；否则为 <c>false</c>。默认值为 <c>false</c> / <c>true</c> for all-in-one; otherwise, <c>false</c>. Default is <c>false</c></value>
+    /// <remarks>
+    /// Whether to launch every registered role in one process (all-in-one). This flag is
+    /// process-level: every role of the process shares one kernel.
+    /// The property name is the CLI switch name: the binder recognizes the bare <c>--AllInOne</c>
+    /// switch (and <c>--AllInOne=true|false</c>) directly; command-line arguments are parsed
+    /// exactly once by <c>OptionsBuilder</c> — there is no secondary raw-args parsing.
+    /// It sits at the opposite end of <see cref="IsSingleMode"/> ("every registered role" vs
+    /// "only one role in this process"); when both <c>--AllInOne</c> and <c>--ServerType</c>
+    /// are given, All-in-One overrides the selection and a warning is logged.
+    /// </remarks>
+    [Option(nameof(AllInOne), DefaultValue = false, Description = "是否单进程拉起全部已注册 Role(All-in-One),默认值为false")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
+    public bool AllInOne { get; set; }
+
+    /// <summary>
+    /// 获取由 <see cref="AppSetting.ServerType"/> 逗号拆分出的 Role 名列表。
+    /// </summary>
+    /// <remarks>
+    /// Derived view of the comma-separated <c>--ServerType</c> value (e.g. "Game,Social" → ["Game", "Social"]).
+    /// The value itself is bound once by <c>OptionsBuilder</c>; this projection only splits the
+    /// already-bound string (trim, drop empties, deduplicate, preserve input order) — it never
+    /// re-scans the command line (no secondary parsing).
+    /// Modeled as a method rather than a property because each call derives a new array (Sonar S2365:
+    /// properties should not copy collections).
+    /// </remarks>
+    /// <returns>Role 名数组（trim、去空、去重）；未指定时为空数组 / The role names (trimmed, non-empty, deduplicated); an empty array when unspecified</returns>
+    public string[] GetServerTypes()
+    {
+        if (ServerType.IsNullOrEmpty())
+        {
+            return Array.Empty<string>();
+        }
+
+        return ServerType.Split(',').Select(serverType => serverType.Trim())
+            .Where(serverType => serverType.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
 }

@@ -129,15 +129,14 @@ public static class ConfigStartupValidator
     /// <remarks>
     /// Validates the startup configuration and throws <see cref="ConfigConflictException"/> on any conflict (fail fast).
     /// Runs before any role instantiation: the caller passes the selected role collection, the file-layer
-    /// sections, the parsed CLI options together with the raw arguments, and the all-in-one parse result.
+    /// sections, and the single OptionsBuilder parse result (<see cref="StartupOptions"/>) together with the raw arguments.
     /// </remarks>
     /// <param name="selectedServerTypes">选中的 Role 名集合（优先级序）/ The selected role names in priority order</param>
     /// <param name="fileSettings">文件层配置段（Configs/app_config.json 反序列化结果）/ The file-layer sections deserialized from Configs/app_config.json</param>
     /// <param name="launcherOptions">CLI 解析结果；解析失败为 null 时跳过 CLI-文件冲突检测 / The parsed CLI options; the CLI-file check is skipped when null (argument parsing failed)</param>
     /// <param name="args">原始命令行参数，用于判定 CLI 字段是否显式提供 / The raw command-line arguments, used to determine which CLI fields were explicitly supplied</param>
-    /// <param name="allInOneOptions">多 Role / All-in-One 解析结果 / The all-in-one parse result</param>
     /// <exception cref="ConfigConflictException">检出任何冲突时抛出 / Thrown when any conflict is detected</exception>
-    public static void Validate(IReadOnlyList<string> selectedServerTypes, IEnumerable<AppSetting> fileSettings, StartupOptions launcherOptions, string[] args, AllInOneOptions allInOneOptions)
+    public static void Validate(IReadOnlyList<string> selectedServerTypes, IEnumerable<AppSetting> fileSettings, StartupOptions launcherOptions, string[] args)
     {
         ArgumentNullException.ThrowIfNull(selectedServerTypes);
 
@@ -162,7 +161,7 @@ public static class ConfigStartupValidator
             .Select(serverType => (ServerType: serverType, Setting: sectionsByServerType[serverType]))
             .ToList();
 
-        CollectMissingSectionConflicts(conflicts, selectedServerTypes, sectionsByServerType, allInOneOptions);
+        CollectMissingSectionConflicts(conflicts, selectedServerTypes, sectionsByServerType, launcherOptions);
         CollectPortConflicts(conflicts, selectedSections);
         CollectProcessFieldConflicts(conflicts, selectedSections);
         CollectCliFileConflicts(conflicts, selectedServerTypes, sectionsByServerType, launcherOptions, args);
@@ -183,10 +182,10 @@ public static class ConfigStartupValidator
     /// <param name="conflicts">冲突收集列表 / The conflict sink</param>
     /// <param name="selectedServerTypes">选中的 Role 名集合 / The selected role names</param>
     /// <param name="sectionsByServerType">文件层段索引 / The file-layer section index</param>
-    /// <param name="allInOneOptions">多 Role / All-in-One 解析结果 / The all-in-one parse result</param>
-    private static void CollectMissingSectionConflicts(List<ConfigFieldConflict> conflicts, IReadOnlyList<string> selectedServerTypes, Dictionary<string, AppSetting> sectionsByServerType, AllInOneOptions allInOneOptions)
+    /// <param name="launcherOptions">单一 OptionsBuilder 解析产物（AllInOne 开关 + GetServerTypes 投影）/ The single OptionsBuilder parse result (AllInOne switch + GetServerTypes projection)</param>
+    private static void CollectMissingSectionConflicts(List<ConfigFieldConflict> conflicts, IReadOnlyList<string> selectedServerTypes, Dictionary<string, AppSetting> sectionsByServerType, StartupOptions launcherOptions)
     {
-        var isMultiRoleExplicitForm = allInOneOptions != null && (allInOneOptions.IsAllInOne || allInOneOptions.ServerTypes.Count > 1);
+        var isMultiRoleExplicitForm = launcherOptions != null && (launcherOptions.AllInOne || launcherOptions.GetServerTypes().Length > 1);
         if (!isMultiRoleExplicitForm)
         {
             return;
@@ -489,6 +488,8 @@ public static class ConfigStartupValidator
 
         // 显式提供判定：从原始参数提取实际出现的选项键（--key=value / --key value / 布尔标志），
         // 仅对这些字段执行 CLI-文件值比较，避免“显式传等于默认值的值”被默认值比较漏掉
+        // （Foundation 冻结：OptionsBuilder 无 supplied-keys API，此 token 存在性扫描是检出
+        //  「显式传等于默认值」的唯一手段——值解析已由 OptionsBuilder 单次完成，此处不复析值）
         var explicitOptionNames = CollectExplicitCliOptionNames(args);
         foreach (var serverType in selectedServerTypes)
         {
@@ -530,6 +531,9 @@ public static class ConfigStartupValidator
     /// (ordinal-ignore-case): the tokens are standardized with the same
     /// <see cref="CommandLineArgumentConverter"/> used by <see cref="OptionsBuilder"/>, so key extraction
     /// matches the parser's interpretation of every supported form (--key=value, --key value, boolean flags).
+    /// Foundation is frozen (no supplied-keys API on OptionsBuilder), so this presence scan is the
+    /// only way to detect explicitly-supplied-equals-default values; it checks key presence only and
+    /// never re-parses values.
     /// </remarks>
     /// <param name="args">原始命令行参数 / The raw command-line arguments</param>
     /// <returns>实际出现的选项键集合 / The set of explicitly supplied option keys</returns>

@@ -84,7 +84,7 @@ public static class GameApp
     /// Parse launcher options.
     /// </remarks>
     /// <param name="args">命令行参数 / Command line arguments</param>
-    /// <returns>解析后的启动器选项 / Parsed launcher options</returns>
+    /// <returns>解析后的启动器选项；解析失败时回落全缺省实例（启动决策 = 缺省档） / The parsed launcher options, or an all-defaults instance when parsing fails (launch decision falls back to the default tier)</returns>
     private static StartupOptions ParseLauncherOptions(string[] args)
     {
         try
@@ -94,7 +94,9 @@ public static class GameApp
         catch (Exception e)
         {
             LogHelper.Error(e.Message);
-            return null;
+
+            // 解析失败回落全缺省实例：启动决策等价"无多 Role 参数"的缺省档，不再向下游透传 null
+            return OptionsBuilder.CreateDefault<StartupOptions>();
         }
     }
 
@@ -266,8 +268,7 @@ public static class GameApp
         // 5. 发现并启动服务器（--ServerType 复数 + --AllInOne 开关）
         StartUpTypeRegistry.Instance.DiscoverAndRegister();
         var sortedStartUpTypes = StartUpTypeRegistry.Instance.GetSortedByPriority();
-        var allInOneOptions = AllInOneOptions.Parse(args);
-        TryLaunchServer(args, allInOneOptions, sortedStartUpTypes, launcherOptions);
+        TryLaunchServer(args, sortedStartUpTypes, launcherOptions);
 
         // Localization: StartUp.StartupOver - 服务器启动完成。
         LogHelper.Info(LocalizationService.GetString(Keys.StartUp.StartupOver));
@@ -522,13 +523,12 @@ public static class GameApp
     /// roles in priority order; a single value or no value keeps the current single-role behaviour unchanged.
     /// </remarks>
     /// <param name="args">命令行参数 / Command line arguments</param>
-    /// <param name="allInOneOptions">多 Role / All-in-One 解析结果 / The all-in-one parse result</param>
     /// <param name="sortedStartUpTypes">按优先级排序的启动类型集合 / Collection of startup types sorted by priority</param>
-    /// <param name="launcherOptions">包含默认配置的启动器选项 / Launcher options containing default configuration</param>
-    private static void TryLaunchServer(string[] args, AllInOneOptions allInOneOptions, IEnumerable<KeyValuePair<Type, StartUpTagAttribute>> sortedStartUpTypes, StartupOptions launcherOptions)
+    /// <param name="launcherOptions">单一 OptionsBuilder 解析产物，同时承载默认配置与启动决策（AllInOne / GetServerTypes 投影）/ The single OptionsBuilder parse result carrying both default configuration and the launch decision (AllInOne / GetServerTypes projection)</param>
+    private static void TryLaunchServer(string[] args, IEnumerable<KeyValuePair<Type, StartUpTagAttribute>> sortedStartUpTypes, StartupOptions launcherOptions)
     {
         var appSettings = GlobalSettings.GetSettings();
-        var selectedStartUpTypes = SelectStartUpTypes(allInOneOptions, sortedStartUpTypes);
+        var selectedStartUpTypes = SelectStartUpTypes(launcherOptions, sortedStartUpTypes);
 
         // Role 实例化前的唯一收口点做启动期校验（选中集合 + 文件段 + CLI 选项 + 原始参数齐备），
         // 冲突 fail fast 抛 ConfigConflictException，先于任何 Role 拉起
@@ -536,11 +536,10 @@ public static class GameApp
             selectedStartUpTypes.Select(pair => pair.Value.ServerType).ToList(),
             appSettings,
             launcherOptions,
-            args,
-            allInOneOptions);
+            args);
 
         // 缺省回退形态（无 --ServerType）保留现状：对首个可用 Role 无配置段记 Warning 并使用默认配置
-        var warnOnMissingConfiguration = !allInOneOptions.IsAllInOne && allInOneOptions.ServerTypes.Count == 0;
+        var warnOnMissingConfiguration = !launcherOptions.AllInOne && launcherOptions.GetServerTypes().Length == 0;
 
         Launcher(args, selectedStartUpTypes, appSettings, launcherOptions, warnOnMissingConfiguration);
     }
@@ -558,33 +557,34 @@ public static class GameApp
     /// <item>no value → the first available role in priority order (current behaviour).</item>
     /// </list>
     /// </remarks>
-    /// <param name="allInOneOptions">多 Role / All-in-One 解析结果 / The all-in-one parse result</param>
+    /// <param name="launcherOptions">单一 OptionsBuilder 解析产物（AllInOne 开关 + GetServerTypes 投影）/ The single OptionsBuilder parse result (AllInOne switch + GetServerTypes projection)</param>
     /// <param name="sortedStartUpTypes">按优先级排序的启动类型集合 / Collection of startup types sorted by priority</param>
     /// <returns>选定的启动类型集合（优先级序）/ The selected startup types in priority order</returns>
-    internal static IReadOnlyList<KeyValuePair<Type, StartUpTagAttribute>> SelectStartUpTypes(AllInOneOptions allInOneOptions, IEnumerable<KeyValuePair<Type, StartUpTagAttribute>> sortedStartUpTypes)
+    internal static IReadOnlyList<KeyValuePair<Type, StartUpTagAttribute>> SelectStartUpTypes(StartupOptions launcherOptions, IEnumerable<KeyValuePair<Type, StartUpTagAttribute>> sortedStartUpTypes)
     {
-        ArgumentNullException.ThrowIfNull(allInOneOptions);
+        ArgumentNullException.ThrowIfNull(launcherOptions);
 
         var sortedList = sortedStartUpTypes as IReadOnlyList<KeyValuePair<Type, StartUpTagAttribute>> ?? sortedStartUpTypes.ToList();
+        var serverTypes = launcherOptions.GetServerTypes();
 
-        if (allInOneOptions.IsAllInOne)
+        if (launcherOptions.AllInOne)
         {
             // All-in-One：拉起全部已注册 Role（D2）；--ServerType 并存时不参与选择，提示被覆盖
-            if (allInOneOptions.ServerTypes.Count > 0)
+            if (serverTypes.Length > 0)
             {
                 // Localization: StartUp.Application.ServerTypeOverriddenByAllInOne - --AllInOne 已生效；指定的 --ServerType 值 '{0}' 被忽略，将拉起全部已注册 Role。
-                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.Application.ServerTypeOverriddenByAllInOne, string.Join(",", allInOneOptions.ServerTypes)));
+                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.Application.ServerTypeOverriddenByAllInOne, string.Join(",", serverTypes)));
             }
 
             return sortedList;
         }
 
-        if (allInOneOptions.ServerTypes.Count > 1)
+        if (serverTypes.Length > 1)
         {
             // 复数形态：按名匹配，保持优先级序；未注册名跳过并记 Warning
-            var serverTypeNames = new HashSet<string>(allInOneOptions.ServerTypes, StringComparer.Ordinal);
+            var serverTypeNames = new HashSet<string>(serverTypes, StringComparer.Ordinal);
             var selected = sortedList.Where(pair => serverTypeNames.Contains(pair.Value.ServerType)).ToList();
-            foreach (var serverTypeName in allInOneOptions.ServerTypes)
+            foreach (var serverTypeName in serverTypes)
             {
                 if (selected.All(pair => pair.Value.ServerType != serverTypeName))
                 {
@@ -596,10 +596,10 @@ public static class GameApp
             return selected;
         }
 
-        if (allInOneOptions.ServerTypes.Count == 1)
+        if (serverTypes.Length == 1)
         {
             // 单 Role 现状形态：未注册时静默跳过（保留现状行为）
-            var startKv = sortedList.FirstOrDefault(m => m.Value.ServerType == allInOneOptions.ServerTypes[0]);
+            var startKv = sortedList.FirstOrDefault(m => m.Value.ServerType == serverTypes[0]);
             if (startKv.Value == null)
             {
                 return Array.Empty<KeyValuePair<Type, StartUpTagAttribute>>();
