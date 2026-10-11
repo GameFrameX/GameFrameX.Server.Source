@@ -51,7 +51,6 @@ public class StartupOptionsTests
             "--ServerId=1001",
             "--IsMonitorMessageTimeOut=true",
             "--MonitorMessageTimeOutSeconds=7",
-            "--IsSingleMode=true",
             "--LogIsConsole=false"
         ];
 
@@ -65,7 +64,6 @@ public class StartupOptionsTests
         Assert.Equal(1001, options.ServerId);
         Assert.True(options.IsMonitorMessageTimeOut);
         Assert.Equal(7, options.MonitorMessageTimeOutSeconds);
-        Assert.True(options.IsSingleMode);
         Assert.False(options.LogIsConsole);
     }
 

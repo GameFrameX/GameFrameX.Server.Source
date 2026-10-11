@@ -43,21 +43,6 @@ namespace GameFrameX.StartUp.Options;
 public partial class StartupOptions : AppSetting
 {
     /// <summary>
-    /// 是否启用单进程模式。
-    /// </summary>
-    /// <value>如果启用单进程模式则为 <c>true</c>；否则为 <c>false</c>（多进程模式）。默认值为 <c>false</c> / <c>true</c> if single-process mode is enabled; otherwise, <c>false</c> (multi-process mode). Default is <c>false</c></value>
-    /// <remarks>
-    /// Reserved placeholder for a future orchestration form; it currently has no runtime consumer
-    /// (its former consumer, the AppHost orchestration layer, was removed with AppHost in C153).
-    /// Its meaning sits at the opposite end of All-in-One ("only one role in this process" vs
-    /// "every registered role in one process"), so it must not be reused as the All-in-One switch;
-    /// the launch decision reads the <see cref="AllInOne"/> switch and the <see cref="GetServerTypes"/> projection exclusively.
-    /// </remarks>
-    [Option(nameof(IsSingleMode), DefaultValue = false, Description = "是否单进程模式,默认值为false(多进程)")]
-    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
-    public bool IsSingleMode { get; set; }
-
-    /// <summary>
     /// 是否 All-in-One 单进程拉起全部已注册 Role。
     /// </summary>
     /// <value>All-in-One 则为 <c>true</c>；否则为 <c>false</c>。默认值为 <c>false</c> / <c>true</c> for all-in-one; otherwise, <c>false</c>. Default is <c>false</c></value>
@@ -67,9 +52,8 @@ public partial class StartupOptions : AppSetting
     /// The property name is the CLI switch name: the binder recognizes the bare <c>--AllInOne</c>
     /// switch (and <c>--AllInOne=true|false</c>) directly; command-line arguments are parsed
     /// exactly once by <c>OptionsBuilder</c> — there is no secondary raw-args parsing.
-    /// It sits at the opposite end of <see cref="IsSingleMode"/> ("every registered role" vs
-    /// "only one role in this process"); when both <c>--AllInOne</c> and <c>--ServerType</c>
-    /// are given, All-in-One overrides the selection and a warning is logged.
+    /// When both <c>--AllInOne</c> and <c>--ServerType</c> are given, All-in-One overrides
+    /// the selection and a warning is logged.
     /// </remarks>
     [Option(nameof(AllInOne), DefaultValue = false, Description = "是否单进程拉起全部已注册 Role(All-in-One),默认值为false")]
     [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
