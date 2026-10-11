@@ -2119,6 +2119,10 @@
     <value>No registered startup type found for server type '{0}' (multi-role selection); skipped it.</value>
   </data>
 
+  <data name="StartUp.Application.ServerTypeOverriddenByAllInOne" xml:space="preserve">
+    <value>--AllInOne is active; the specified --ServerType value(s) '{0}' are ignored and every registered role will be launched.</value>
+  </data>
+
   <data name="StartUp.Application.StopServerError" xml:space="preserve">
     <value>error while stopping server role '{0}':{1}</value>
   </data>
