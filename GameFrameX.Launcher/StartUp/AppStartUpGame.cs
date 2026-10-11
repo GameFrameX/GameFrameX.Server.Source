@@ -129,18 +129,32 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     /// <summary>
     /// Game 型中性化覆写：仅保留基类调试日志行为，不做 TCP 热更分发——Game 的网络监听由
     /// Hotfix 模块实例（自持 PackageHandler 的 <c>AppStartUpHotfixGame</c>）承载，宿主实例无监听面。
+    /// 心跳日志门控与基类漏斗对齐：在接收调试之上额外要求 <c>IsDebugReceiveHeartBeat</c> 专用开关。
     /// </summary>
     /// <remarks>
     /// Game-shape neutralizing override: keeps only the base debug-logging behaviour without the
-    /// hotfix TCP dispatch — Game's network listeners live inside the hotfix module instance
-    /// (<c>AppStartUpHotfixGame</c> with its own <c>PackageHandler</c>), so the host instance has no
-    /// listener surface.
+    /// funnel dispatch — Game's network listeners live inside the hotfix module instance
+    /// (<c>AppStartUpHotfixGame</c> with its own <c>PackageHandler</c>), so the host instance has
+    /// no listener surface. The heartbeat log gating mirrors the base funnel: an extra
+    /// <c>IsDebugReceiveHeartBeat</c> flag on top of receive debugging.
     /// </remarks>
     /// <param name="session">会话对象 / The session</param>
     /// <param name="message">网络消息 / The network message</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     protected override ValueTask PackageHandler(IAppSession session, IMessage message)
     {
+        // 心跳是框架级保活语义，日志门控与基类漏斗对齐：额外要求 IsDebugReceiveHeartBeat 专用开关
+        if (message is INetworkMessagePackage messagePackage && MessageProtoHelper.IsHeartbeat(messagePackage.MessageType))
+        {
+            if (Setting.IsDebug && Setting.IsDebugReceive && Setting.IsDebugReceiveHeartBeat)
+            {
+                // Localization: StartUp.TcpServer.MessageReceived - 接收到消息 - 服务器类型: [{0}], 消息内容: {1}
+                LogHelper.Debug(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.MessageReceived, ServerType, message.ToFormatMessageString()));
+            }
+
+            return ValueTask.CompletedTask;
+        }
+
         if (Setting.IsDebug && Setting.IsDebugReceive)
         {
             // Localization: StartUp.TcpServer.MessageReceived - 接收到消息 - 服务器类型: [{0}], 消息内容: {1}

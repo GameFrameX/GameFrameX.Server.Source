@@ -214,26 +214,50 @@ internal abstract class AppStartUpGameServerBase : AppStartUpRoleBase
     }
 
     /// <summary>
-    /// 网络消息处理（Social 型）：基类调试日志处理后，将 <see cref="INetworkMessagePackage"/> 交热更 TCP handler 分发。
-    /// Game 型覆写还原为仅基类行为（其网络监听由 Hotfix 模块实例自持 PackageHandler 承载）。
+    /// TCP 消息处理器解析（Social 型）：接热更注册表按消息 ID 解析处理器。
     /// </summary>
     /// <remarks>
-    /// Network package handling (Social shape): after the base debug logging, dispatches
-    /// <see cref="INetworkMessagePackage"/> messages to the hotfix TCP handler resolved by
-    /// <c>HotfixManager.GetTcpHandler</c>; a message without a registered handler hits the existing
-    /// "handler not found" logging path. The Game shape overrides this back to the base behaviour
-    /// only (its listeners live inside the hotfix module instance with their own package handler).
+    /// The Social-shape resolution hook of the base package funnel: bridges the hotfix TCP
+    /// handler registry (<c>HotfixManager.GetTcpHandler</c>). Messages without a registered
+    /// handler return <c>null</c> and hit the funnel's "handler not found" error log. The Game
+    /// shape keeps its base default (no resolution source) — its listeners live inside the
+    /// hotfix module instance with their own package handler.
     /// </remarks>
-    /// <param name="session">会话对象 / The session</param>
-    /// <param name="message">网络消息 / The network message</param>
-    /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
-    protected override async ValueTask PackageHandler(IAppSession session, IMessage message)
+    /// <param name="messageId">消息ID / The message identifier</param>
+    /// <returns>处理器实例；未注册时为 <c>null</c> / The handler instance, or <c>null</c> when unregistered</returns>
+    protected override IMessageHandler ResolveTcpHandler(int messageId)
     {
-        await base.PackageHandler(session, message);
-        if (message is INetworkMessagePackage messageObject)
+        return HotfixManager.GetTcpHandler(messageId);
+    }
+
+    /// <summary>
+    /// 回复心跳消息（Social 型）：回显请求 UniqueId 的池化 NotifyHeartBeat 保活回包。
+    /// </summary>
+    /// <remarks>
+    /// The Social-shape keepalive reply: echoes the request's UniqueId in a pooled
+    /// <c>NotifyHeartBeat</c> carrying the server timestamp, mirroring the Game shape's
+    /// <c>AppStartUpHotfixGame.ReplyHeartBeatAsync</c> semantics. The receive-time stamping
+    /// happens in the base funnel before this hook.
+    /// </remarks>
+    /// <param name="networkChannel">会话网络通道 / The session network channel</param>
+    /// <param name="messagePackage">心跳消息包 / The heartbeat message package</param>
+    /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
+    protected override async ValueTask ReplyHeartBeatAsync(INetworkChannel networkChannel, INetworkMessagePackage messagePackage)
+    {
+        if (messagePackage.DeserializeMessageObject() is ReqHeartBeat request)
         {
-            var handler = HotfixManager.GetTcpHandler(messageObject.Header.MessageId);
-            await InvokeMessageHandler(handler, messageObject.DeserializeMessageObject(), new DefaultNetworkChannel(session, Setting));
+            var notifyHeartBeat = MessageObjectPoolHelper.Get<NotifyHeartBeat>();
+            try
+            {
+                notifyHeartBeat.Timestamp = TimerHelper.UnixTimeMilliseconds();
+                notifyHeartBeat.UniqueId = request.UniqueId;
+                await networkChannel.WriteAsync(notifyHeartBeat);
+            }
+            finally
+            {
+                // 池化消息用毕归还（WriteAsync 在首个 await 前完成编码消费，归还安全）
+                MessageObjectPoolHelper.Return(notifyHeartBeat);
+            }
         }
     }
 }

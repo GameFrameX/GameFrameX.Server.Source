@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 
+using System.Runtime.CompilerServices;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Network;
@@ -170,24 +171,158 @@ public abstract partial class AppStartUpBase
     }
 
     /// <summary>
-    /// 收到消息包的处理方法。
+    /// 收到消息包的处理方法（漏斗缺省：完整 TCP 分发）。
     /// </summary>
     /// <remarks>
-    /// Handler for received message packages.
-    /// Handles received message packages; in debug mode, message content will be logged.
+    /// Handler for received message packages — the single funnel shared by the TCP, KCP and
+    /// WebSocket listeners. Non-package messages only hit the debug log. Package messages go
+    /// through the full dispatch: the session-cached network channel, the framework-level
+    /// heartbeat short-circuit (<see cref="ReplyHeartBeatAsync"/>), handler resolution via
+    /// <see cref="ResolveTcpHandler"/> with a clean "handler not found" error log, and finally
+    /// <see cref="InvokeMessageHandler"/>.
     /// </remarks>
     /// <param name="session">会话对象 / Session object</param>
     /// <param name="message">接收到的消息 / Received message</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
-    protected virtual ValueTask PackageHandler(IAppSession session, IMessage message)
+    protected virtual async ValueTask PackageHandler(IAppSession session, IMessage message)
+    {
+        if (message is not INetworkMessagePackage messagePackage)
+        {
+            LogReceiveMessageDebug(message);
+            return;
+        }
+
+        var networkChannel = GetSessionNetworkChannel(session);
+
+        // 心跳是框架级保活语义（鉴权中间件亦白名单放行），优先短路直接回包，不进入业务 handler 分发
+        if (MessageProtoHelper.IsHeartbeat(messagePackage.MessageType))
+        {
+            // 畸形心跳包（合法心跳 msgId + 非法 protobuf 体）可令日志反序列化（ToFormatMessageString）或回包路径抛异常，
+            // 分支整体兜底对齐 InvokeMessageHandler 的错误日志契约，避免异常逸出被传输层关闭会话
+            try
+            {
+                // 心跳日志门控与两处覆写对齐：三开关单点检（IsDebug + IsDebugReceive + IsDebugReceiveHeartBeat）
+                if (Setting.IsDebug && Setting.IsDebugReceive && Setting.IsDebugReceiveHeartBeat)
+                {
+                    // Localization: StartUp.TcpServer.MessageReceived - 接收到消息 - 服务器类型: [{0}], 消息内容: {1}
+                    LogHelper.Debug(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.MessageReceived, ServerType, message.ToFormatMessageString()));
+                }
+
+                networkChannel.UpdateReceiveMessageTime();
+                await ReplyHeartBeatAsync(networkChannel, messagePackage);
+            }
+            catch (Exception e)
+            {
+                // Localization: StartUp.Server.MessageHandlerError - 消息处理器错误: {0}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.Server.MessageHandlerError, e.ToString()));
+            }
+
+            return;
+        }
+
+        LogReceiveMessageDebug(message);
+
+        var handler = ResolveTcpHandler(messagePackage.Header.MessageId);
+        if (handler == null)
+        {
+            // Localization: StartUp.Server.MessageHandlerNotFound - 接收消息: 找不到消息处理器, 消息ID: {0}, 消息类型: {1}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.Server.MessageHandlerNotFound, messagePackage.Header.MessageId, messagePackage.MessageType));
+            return;
+        }
+
+        await InvokeMessageHandler(handler, messagePackage.DeserializeMessageObject(), networkChannel);
+    }
+
+    /// <summary>
+    /// 在开启接收调试时打印收包日志。
+    /// </summary>
+    /// <remarks>
+    /// Logs the received message when receive debugging is enabled.
+    /// </remarks>
+    /// <param name="message">接收到的消息 / The received message</param>
+    private void LogReceiveMessageDebug(IMessage message)
     {
         if (Setting.IsDebug && Setting.IsDebugReceive)
         {
             // Localization: StartUp.TcpServer.MessageReceived - 接收到消息 - 服务器类型: [{0}], 消息内容: {1}
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.MessageReceived, ServerType, message.ToFormatMessageString()));
         }
+    }
 
+    /// <summary>
+    /// 解析 TCP 消息处理器（分发 seam，缺省无解析源）。
+    /// </summary>
+    /// <remarks>
+    /// The TCP handler resolution seam of the package funnel. This project sits below the
+    /// hotfix registry (Core) and cannot resolve handlers itself, so the default returns
+    /// <c>null</c> (dispatch-ready but source-less); composition layers above (Launcher)
+    /// override this to bridge <c>HotfixManager.GetTcpHandler</c>. A <c>null</c> result hits
+    /// the funnel's "handler not found" error log instead of a NullReferenceException.
+    /// </remarks>
+    /// <param name="messageId">消息ID / The message identifier</param>
+    /// <returns>处理器实例；未注册或无解析源时为 <c>null</c> / The handler instance, or <c>null</c> when unregistered or unresolved</returns>
+    protected virtual IMessageHandler ResolveTcpHandler(int messageId)
+    {
+        return null;
+    }
+
+    /// <summary>
+    /// 回复心跳消息（协议 seam，缺省不回复）。
+    /// </summary>
+    /// <remarks>
+    /// The heartbeat reply seam of the package funnel. The concrete keepalive protocol types
+    /// (<c>ReqHeartBeat</c>/<c>NotifyHeartBeat</c>) live in the Proto project above Core,
+    /// which is invisible from here, so the default is a no-op; composition layers above
+    /// (Launcher) override this to emit the actual reply. The receive-time stamping
+    /// (<c>UpdateReceiveMessageTime</c>) happens in the funnel before this hook.
+    /// </remarks>
+    /// <param name="networkChannel">会话网络通道 / The session network channel</param>
+    /// <param name="messagePackage">心跳消息包 / The heartbeat message package</param>
+    /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
+    protected virtual ValueTask ReplyHeartBeatAsync(INetworkChannel networkChannel, INetworkMessagePackage messagePackage)
+    {
         return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// 会话级网络通道缓存：每会话恰一个通道，随会话对象回收而释放。
+    /// </summary>
+    /// <remarks>
+    /// The session-scoped channel cache: exactly one channel per session, released when the
+    /// session object is collected. Channel user data (e.g. the actor binding written at login)
+    /// survives across the messages of the same session — the per-message channel of the
+    /// previous shape dropped it on every package.
+    /// </remarks>
+    private readonly ConditionalWeakTable<IAppSession, INetworkChannel> _sessionNetworkChannels = new();
+
+    /// <summary>
+    /// 取会话级网络通道（无则创建）。
+    /// </summary>
+    /// <remarks>
+    /// Gets the session-scoped network channel, creating it on first use. The creation
+    /// factory may run more than once under a race, but only one channel instance wins.
+    /// </remarks>
+    /// <param name="session">会话对象 / The session</param>
+    /// <returns>该会话的网络通道 / The session's network channel</returns>
+    private INetworkChannel GetSessionNetworkChannel(IAppSession session)
+    {
+        // 通道用户数据（如登录时的 ActorId 绑定）跨消息存活；会话回收时通道随之释放，无需显式清理
+        return _sessionNetworkChannels.GetValue(session, CreateSessionNetworkChannel);
+    }
+
+    /// <summary>
+    /// 创建指定会话的网络通道。
+    /// </summary>
+    /// <remarks>
+    /// Creates the network channel for the specified session. This is a virtual factory method
+    /// that can be overridden by derived classes to customize the channel creation behavior,
+    /// using the current startup settings to initialize the default channel.
+    /// </remarks>
+    /// <param name="session">会话对象 / The session</param>
+    /// <returns>该会话的网络通道 / The session's network channel</returns>
+    protected virtual INetworkChannel CreateSessionNetworkChannel(IAppSession session)
+    {
+        return new DefaultNetworkChannel(session, Setting);
     }
 
     /// <summary>

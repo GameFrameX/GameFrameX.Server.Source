@@ -843,6 +843,16 @@ public static partial class Keys
             public const string MessageHandlerError = "StartUp.Server.MessageHandlerError";
 
             /// <summary>
+            /// 接收消息: 找不到消息处理器, 消息ID: {0}, 消息类型: {1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Server.MessageHandlerNotFound
+            /// 用途: 分发漏斗按消息ID解析 TCP 处理器失败时记录
+            /// 参数: {0} - 消息ID, {1} - 消息类型
+            /// </remarks>
+            public const string MessageHandlerNotFound = "StartUp.Server.MessageHandlerNotFound";
+
+            /// <summary>
             /// {0}端口[{1}]占用详情: {2}
             /// </summary>
             /// <remarks>
