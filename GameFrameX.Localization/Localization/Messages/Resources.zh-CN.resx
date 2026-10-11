@@ -1982,11 +1982,11 @@
   </data>
 
   <data name="Network.CreateNetworkMessagePackageError" xml:space="preserve">
-    <value>创建网络消息包错误 {0} {1} {2} {3}</value>
+    <value>创建网络消息包错误 {0} {1} {2}</value>
   </data>
 
   <data name="Network.FormatMessageError" xml:space="preserve">
-    <value>格式化消息错误 {0} {1} {2} {3} {4}</value>
+    <value>格式化消息错误 {0} {1} {2} {3}</value>
   </data>
 
   <data name="Network.Http.ExecutionTimeNoResult" xml:space="preserve">
@@ -1998,7 +1998,7 @@
   </data>
 
   <data name="Network.MessageObjectEncodeException" xml:space="preserve">
-    <value>消息对象编码异常 {0} {1} {2} {3}</value>
+    <value>消息对象编码异常 {0} {1} {2}</value>
   </data>
 
   <data name="Network.ScanAuthenticationTimeoutSessionsError" xml:space="preserve">
@@ -2135,6 +2135,10 @@
 
   <data name="StartUp.Server.MessageHandlerError" xml:space="preserve">
     <value>消息处理器错误: {0}</value>
+  </data>
+
+  <data name="StartUp.Server.MessageHandlerNotFound" xml:space="preserve">
+    <value>接收消息: 找不到消息处理器, 消息ID: {0}, 消息类型: {1}</value>
   </data>
 
   <data name="StartUp.Server.PortOccupiedDetails" xml:space="preserve">

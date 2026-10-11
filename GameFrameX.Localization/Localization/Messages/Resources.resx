@@ -1984,11 +1984,11 @@
   </data>
 
   <data name="Network.CreateNetworkMessagePackageError" xml:space="preserve">
-    <value>Create NetworkMessagePackage Error {0} {1} {2} {3}</value>
+    <value>Create NetworkMessagePackage Error {0} {1} {2}</value>
   </data>
 
   <data name="Network.FormatMessageError" xml:space="preserve">
-    <value>FormatMessage Error {0} {1} {2} {3} {4}</value>
+    <value>FormatMessage Error {0} {1} {2} {3}</value>
   </data>
 
   <data name="Network.Http.ExecutionTimeNoResult" xml:space="preserve">
@@ -2000,7 +2000,7 @@
   </data>
 
   <data name="Network.MessageObjectEncodeException" xml:space="preserve">
-    <value>MessageObjectEncodeException {0} {1} {2} {3}</value>
+    <value>MessageObjectEncodeException {0} {1} {2}</value>
   </data>
 
   <data name="Network.ScanAuthenticationTimeoutSessionsError" xml:space="preserve">
@@ -2137,6 +2137,10 @@
 
   <data name="StartUp.Server.MessageHandlerError" xml:space="preserve">
     <value>Message handler error: {0}</value>
+  </data>
+
+  <data name="StartUp.Server.MessageHandlerNotFound" xml:space="preserve">
+    <value>Message received: handler not found, message id: {0}, message type: {1}</value>
   </data>
 
   <data name="StartUp.Server.PortOccupiedDetails" xml:space="preserve">
