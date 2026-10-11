@@ -782,7 +782,8 @@ GameFrameX.Server.Source/
 ### 멀티 역할 시작
 
 - `--ServerType=Game,Social` — 하나의 프로세스에서 여러 등록된 역할을 시작(우선순위 순).
-- `--AllInOne` — 하나의 프로세스에서 등록된 모든 역할을 시작.
+- `--AllInOne` — 하나의 프로세스에서 등록된 모든 역할을 시작. `--ServerType`와 함께 지정하면
+  All-in-One 스위치가 선택을 덮어씁니다(`--ServerType`는 무시되며 Warning 기록).
 - `Configs/app_config.json` — 사전 정의된 각 역할마다 한 섹션을 제공(총 19개: Game, Social 및 나머지 17개 표준 역할).
   각 역할은 자신의 섹션을 해석하며, 프로세스 수준 필드는 섹션 간에 동일해야 합니다.
 
@@ -792,7 +793,7 @@ GameFrameX.Server.Source/
 2. 동일한 프로세스의 두 역할이 활성화된 0이 아닌 동일한 리스닝 엔드포인트에 바인딩하려는 경우 — 엔드포인트는 포트 필드와 전송(TCP vs UDP)을 걸쳐 비교되므로, 예를 들어 `Game.InnerPort == Social.HttpPort`도 fail-fast됩니다. 한 역할의 `InnerPort`/`OuterPort` 공유는 합법적인 동일 역할 형태입니다;
 3. 프로세스 수준 필드(`SettingFieldLevel(ProcessLevel)`, 예: `DataBaseUrl`)가 선택된 섹션들 간에 (런타임 정규화 규칙 적용 후) 서로 다른 경우 — 공유 커널이 모순된 프로세스 설정을 받지 않도록 합니다;
 4. 명령줄에서 명시적으로 지정된 필드가 사용 중인 파일 섹션과 다른 경우(파일 섹션이 단일 진실 공급원이며, CLI 역할 수준 값은 섹션 없는 폴백 형태에서만 적용됩니다).
-   "명시적으로 지정됨" 여부는 원시 인자 토큰으로 판정되므로, 기본값과 같은 값을 전달해도(예: `--HttpPort=0`) 여전히 비교됩니다. `ServerType`(섹션 키)과 `IsAllInOne` / `IsSingleMode` 스위치는 예외입니다.
+   "명시적으로 지정됨" 여부는 원시 인자 토큰으로 판정되므로, 기본값과 같은 값을 전달해도(예: `--HttpPort=0`) 여전히 비교됩니다. `ServerType`(섹션 키)과 `IsSingleMode` 스위치는 예외입니다.
 
 단일 역할 및 기본 시작 명령은 현재 동작을 유지합니다(섹션이 없으면 런처 기본값으로 폴백).
 

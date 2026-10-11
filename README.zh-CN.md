@@ -786,7 +786,8 @@ All-in-One 进程运行，而无需修改 Role 代码。
 ### 多角色启动
 
 - `--ServerType=Game,Social` —— 在一个进程中启动多个已注册的 Role（按优先级顺序）。
-- `--AllInOne` —— 在一个进程中启动所有已注册的 Role。
+- `--AllInOne` —— 在一个进程中启动所有已注册的 Role。与 `--ServerType` 同时给出时，
+  All-in-One 开关覆盖选择（`--ServerType` 被忽略并记录 Warning）。
 - `Configs/app_config.json` —— 为每个预定义 Role 提供一节配置（共 19 节：Game、Social 及其余 17 个标准 Role）。
   每个 Role 解析自己的配置节；进程级字段在各节之间必须一致。
 
@@ -801,7 +802,7 @@ All-in-One 进程运行，而无需修改 Role 代码。
    （按运行时归一化规则处理后），确保共享内核不会收到相互矛盾的进程配置；
 4. 命令行显式传入的字段与正在使用的文件配置节不一致（文件配置节是唯一事实来源；命令行的 Role 级
    取值仅在无配置节的回退形式下生效）。“是否显式传入”由原始参数词元判定，因此传入与默认值相同的值
-   （如 `--HttpPort=0`）也会参与比较。`ServerType`（配置节键）及 `IsAllInOne` / `IsSingleMode`
+   （如 `--HttpPort=0`）也会参与比较。`ServerType`（配置节键）及 `IsSingleMode`
    开关豁免。
 
 单 Role 与默认启动命令保持现有行为不变（缺失配置节时回退到启动器默认值）。

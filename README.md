@@ -787,7 +787,8 @@ process per role, or as a single all-in-one process, without changing role code.
 ### Multi-Role Startup
 
 - `--ServerType=Game,Social` — launch multiple registered roles in one process (priority order).
-- `--AllInOne` — launch every registered role in one process.
+- `--AllInOne` — launch every registered role in one process. When given together with `--ServerType`,
+  the All-in-One switch overrides the selection (`--ServerType` is ignored with a warning).
 - `Configs/app_config.json` — ships a section per predefined role (19 in total: Game, Social, and the 17 other standard roles).
   Each role resolves its own section; process-level fields must be identical across sections.
 
@@ -804,8 +805,8 @@ source section — when:
 4. a field explicitly supplied on the command line differs from the file section in use (the file section
    is the single source of truth; CLI role-level values only apply in the section-less fallback form).
    "Explicitly supplied" is decided from the raw argument tokens, so passing a value equal to the default
-   (e.g. `--HttpPort=0`) is still compared. `ServerType` (section key) and the `IsAllInOne` /
-   `IsSingleMode` switches are exempt.
+   (e.g. `--HttpPort=0`) is still compared. `ServerType` (section key) and the `IsSingleMode`
+   switch are exempt.
 
 Single-role and default startup commands keep their current behaviour (missing sections fall back to
 launcher defaults).

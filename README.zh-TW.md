@@ -780,7 +780,8 @@ GameFrameX.Server.Source/
 ### 多角色啟動
 
 - `--ServerType=Game,Social` — 在單一程序中啟動多個已註冊角色（按優先順序）。
-- `--AllInOne` — 在單一程序中啟動全部已註冊角色。
+- `--AllInOne` — 在單一程序中啟動全部已註冊角色。與 `--ServerType` 同時給定時，
+  All-in-One 開關會覆蓋選擇（`--ServerType` 被忽略並記錄 Warning）。
 - `Configs/app_config.json` — 為每個預定義 Role 提供一節配置（共 19 節：Game、Social 及其他 17 個標準角色）。
   每個角色解析自己的配置節；程序級欄位在各節之間必須一致。
 
@@ -793,7 +794,7 @@ GameFrameX.Server.Source/
    確保共享核心不會收到相互矛盾的程序配置；
 4. 命令列顯式提供的欄位與正在使用的檔案配置節不一致（檔案配置節是唯一事實來源；CLI 角色級數值僅在無配置節的回退形式下生效）。
    「是否顯式提供」依原始參數 token 判斷，因此傳入與預設值相同的值（如 `--HttpPort=0`）仍會參與比較。
-   `ServerType`（配置節鍵）與 `IsAllInOne` / `IsSingleMode` 開關豁免。
+   `ServerType`（配置節鍵）與 `IsSingleMode` 開關豁免。
 
 單角色與預設啟動命令保持現有行為（缺少配置節時回退到啟動器預設值）。
 
