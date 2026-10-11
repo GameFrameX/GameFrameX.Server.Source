@@ -2119,6 +2119,10 @@
     <value>No registered startup type found for server type '{0}' (multi-role selection); skipped it.</value>
   </data>
 
+  <data name="StartUp.Application.ServerTypeCommaNotAllowed" xml:space="preserve">
+    <value>Server type '{0}' contains a comma and was not registered; role names are identifiers and must not contain commas (the --ServerType list separator).</value>
+  </data>
+
   <data name="StartUp.Application.ServerTypeOverriddenByAllInOne" xml:space="preserve">
     <value>--AllInOne is active; the specified --ServerType value(s) '{0}' are ignored and every registered role will be launched.</value>
   </data>

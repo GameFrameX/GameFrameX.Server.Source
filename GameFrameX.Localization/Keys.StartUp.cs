@@ -835,6 +835,16 @@ public static partial class Keys
             /// 参数: {0} - 被忽略的 ServerType 值（逗号连接）
             /// </remarks>
             public const string ServerTypeOverriddenByAllInOne = "StartUp.Application.ServerTypeOverriddenByAllInOne";
+
+            /// <summary>
+            /// 服务器类型 '{0}' 含逗号，已拒绝注册；Role 名为标识符，不得包含逗号（--ServerType 列表分隔符）。
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Application.ServerTypeCommaNotAllowed
+            /// 用途: 注册表发现含逗号的 StartUpTag ServerType 时记警告并拒绝注册
+            /// 参数: {0} - 被拒绝的 ServerType 值
+            /// </remarks>
+            public const string ServerTypeCommaNotAllowed = "StartUp.Application.ServerTypeCommaNotAllowed";
         }
 
         /// <summary>
