@@ -625,7 +625,7 @@ public static partial class Keys
         /// <summary>
         /// 网络模块相关错误消息资源键
         /// </summary>
-        public static class Network
+        public static class NetworkModule
         {
             /// <summary>
             /// 无效IP地址格式的错误消息
