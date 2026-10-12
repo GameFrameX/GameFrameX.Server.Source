@@ -32,7 +32,7 @@ namespace GameFrameX.Online.Assets;
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Events;
+using GameFrameX.Capability.Online.Events;
 
 /// <summary>
 /// 资产域事件工厂（统一入口成功落账后发布资产变更事实，供下游与 Admin 消费）。

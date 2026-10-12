@@ -25,10 +25,11 @@
 //  ==========================================================================================
 
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Online.Contracts;
+using GameFrameX.Capability.Hosting.AdminApi;
+using GameFrameX.Capability.Online.Contracts;
 using GameFrameX.Online.Matchmaking;
-using GameFrameX.Online.Presence;
-using GameFrameX.Online.Scope;
+using GameFrameX.Capability.Online.Presence;
+using GameFrameX.Capability.Online.Scope;
 using GameFrameX.Online.Social;
 
 namespace GameFrameX.Online.Runtime.AdminApi;
@@ -61,18 +62,42 @@ public sealed class OnlineAdminMatchHandlers
     }
 
     /// <summary>
-    /// 注册匹配域 action。
+    /// 注册匹配域 action（匹配队列与票据查询 / 取消）。
     /// </summary>
-    /// <param name="dispatcher">调度器。</param>
-    public void Register(OnlineAdminApiDispatcher dispatcher)
+    /// <param name="registry">动作注册表。</param>
+    public void Register(AdminActionRegistry registry)
     {
-        dispatcher.Register("query_match_queue_overview", QueryMatchQueueOverviewAsync, false);
-        dispatcher.Register("query_match_ticket_failures", QueryMatchTicketFailuresAsync, false);
-        dispatcher.Register("query_match_abnormal_tickets", QueryMatchAbnormalTicketsAsync, false);
-        dispatcher.Register("cancel_match_ticket", CancelMatchTicketAsync, true);
-        dispatcher.Register("end_abnormal_match", EndAbnormalMatchAsync, false);
-        dispatcher.Register("suspend_resume_player", SuspendResumePlayerAsync, true);
-        dispatcher.Register("match_isolation", MatchIsolationAsync, true);
+        registry.Register("query_match_queue_overview", OnlineAdminApiAdapters.Wrap(QueryMatchQueueOverviewAsync), false);
+        registry.Register("query_match_ticket_failures", OnlineAdminApiAdapters.Wrap(QueryMatchTicketFailuresAsync), false);
+        registry.Register("query_match_abnormal_tickets", OnlineAdminApiAdapters.Wrap(QueryMatchAbnormalTicketsAsync), false);
+        registry.Register("cancel_match_ticket", OnlineAdminApiAdapters.Wrap(CancelMatchTicketAsync), true);
+    }
+
+    /// <summary>
+    /// 注册对局域 action（结束异常对局）。
+    /// </summary>
+    /// <param name="registry">动作注册表。</param>
+    public void RegisterEndAbnormalMatch(AdminActionRegistry registry)
+    {
+        registry.Register("end_abnormal_match", OnlineAdminApiAdapters.Wrap(EndAbnormalMatchAsync), false);
+    }
+
+    /// <summary>
+    /// 注册玩家管制域 action（封禁 / 解禁）。
+    /// </summary>
+    /// <param name="registry">动作注册表。</param>
+    public void RegisterSuspendResume(AdminActionRegistry registry)
+    {
+        registry.Register("suspend_resume_player", OnlineAdminApiAdapters.Wrap(SuspendResumePlayerAsync), true);
+    }
+
+    /// <summary>
+    /// 注册隔离域 action（对局隔离）。
+    /// </summary>
+    /// <param name="registry">动作注册表。</param>
+    public void RegisterMatchIsolation(AdminActionRegistry registry)
+    {
+        registry.Register("match_isolation", OnlineAdminApiAdapters.Wrap(MatchIsolationAsync), true);
     }
 
     /// <summary>
@@ -82,7 +107,7 @@ public sealed class OnlineAdminMatchHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>队列概况。</returns>
-    public async Task<object> QueryMatchQueueOverviewAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public async Task<object> QueryMatchQueueOverviewAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var modeFilter = OnlineAdminApiContract.ReadOptionalString(request, "Mode");
         var regionFilter = OnlineAdminApiContract.ReadOptionalString(request, "Region");
@@ -131,7 +156,7 @@ public sealed class OnlineAdminMatchHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>失败票据页。</returns>
-    public async Task<object> QueryMatchTicketFailuresAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public async Task<object> QueryMatchTicketFailuresAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var reasonCodeFilter = OnlineAdminApiContract.ReadOptionalString(request, "ReasonCode");
         var startTime = OnlineAdminApiContract.ReadOptionalInt64(request, "StartTime");
@@ -201,7 +226,7 @@ public sealed class OnlineAdminMatchHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>异常票据页。</returns>
-    public async Task<object> QueryMatchAbnormalTicketsAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public async Task<object> QueryMatchAbnormalTicketsAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var abnormalKind = request.ReadNullableInt32("AbnormalKind");
         if (!abnormalKind.HasValue || abnormalKind.Value < 1 || abnormalKind.Value > 3)
@@ -276,7 +301,7 @@ public sealed class OnlineAdminMatchHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>受控命令回执。</returns>
-    public async Task<object> CancelMatchTicketAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public async Task<object> CancelMatchTicketAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var ticketId = OnlineAdminApiContract.RequireString(request, "TicketId");
         var reason = OnlineAdminApiContract.RequireString(request, "Reason");
@@ -301,7 +326,7 @@ public sealed class OnlineAdminMatchHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>不返回（恒抛 5003）。</returns>
-    public Task<object> EndAbnormalMatchAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public Task<object> EndAbnormalMatchAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         // Localization: Online.AdminApi.EndAbnormalMatchForbidden - 管理面不支持结束异常对局；对局生命周期归游戏进程所有。
         throw new OnlineServiceException(OnlineErrorCode.StateOperationForbidden,
@@ -315,7 +340,7 @@ public sealed class OnlineAdminMatchHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>受控命令回执。</returns>
-    public async Task<object> SuspendResumePlayerAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public async Task<object> SuspendResumePlayerAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var playerScope = OnlineAdminApiContract.ReadPlayerScope(request, scope);
         var direction = ReadDirection(request);
@@ -339,7 +364,7 @@ public sealed class OnlineAdminMatchHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>受控命令回执。</returns>
-    public async Task<object> MatchIsolationAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public async Task<object> MatchIsolationAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var playerScope = OnlineAdminApiContract.ReadPlayerScope(request, scope);
         var direction = ReadDirection(request);
@@ -378,7 +403,7 @@ public sealed class OnlineAdminMatchHandlers
     /// <param name="targetIdentifier">目标标识。</param>
     /// <param name="summary">摘要文本。</param>
     /// <returns>受控命令回执。</returns>
-    private static ControlledCommandAckResponse BuildControlledAck(OnlineAdminApiRequest request, string targetIdentifier, string summary)
+    private static ControlledCommandAckResponse BuildControlledAck(AdminApiRequest request, string targetIdentifier, string summary)
     {
         return new ControlledCommandAckResponse
         {
@@ -396,7 +421,7 @@ public sealed class OnlineAdminMatchHandlers
     /// </summary>
     /// <param name="request">请求。</param>
     /// <returns>正数管理员标识。</returns>
-    private static long ReadReviewerAdminId(OnlineAdminApiRequest request)
+    private static long ReadReviewerAdminId(AdminApiRequest request)
     {
         var reviewer = OnlineAdminApiContract.ReadOptionalString(request, "ReviewerOperatorId");
         var value = 1L;
@@ -429,7 +454,7 @@ public sealed class OnlineAdminMatchHandlers
     /// </summary>
     /// <param name="request">请求。</param>
     /// <returns>方向文本。</returns>
-    private static string ReadDirection(OnlineAdminApiRequest request)
+    private static string ReadDirection(AdminApiRequest request)
     {
         var direction = OnlineAdminApiContract.ReadOptionalString(request, "Direction");
         if (string.Equals(direction, "Apply", StringComparison.OrdinalIgnoreCase) || string.Equals(direction, "Lift", StringComparison.OrdinalIgnoreCase))

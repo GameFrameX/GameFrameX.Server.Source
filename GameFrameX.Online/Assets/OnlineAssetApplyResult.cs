@@ -29,7 +29,7 @@
 
 namespace GameFrameX.Online.Assets;
 
-using Contracts;
+using GameFrameX.Capability.Online.Contracts;
 
 /// <summary>
 /// 资产批次应用结果（存储层原子应用的输出；失败携带段位化错误码供统一入口透传）。

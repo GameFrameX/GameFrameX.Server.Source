@@ -19,4 +19,15 @@
         <ProjectReference Include="../GameFrameX.Online/GameFrameX.Online.csproj"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <ProjectReference Include="../Capability/GameFrameX.Capability.Online.Abstractions/GameFrameX.Capability.Online.Abstractions.csproj"/>
+        <ProjectReference Include="../Capability/GameFrameX.Capability.Online.Foundation/GameFrameX.Capability.Online.Foundation.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../Capability/GameFrameX.Capability.Hosting.Abstractions/GameFrameX.Capability.Hosting.Abstractions.csproj"/>
+        <ProjectReference Include="../Capability/GameFrameX.Capability.Hosting.Core/GameFrameX.Capability.Hosting.Core.csproj"/>
+        <ProjectReference Include="../Capability/GameFrameX.Capability.Hosting.AdminApi/GameFrameX.Capability.Hosting.AdminApi.csproj"/>
+    </ItemGroup>
+
 </Project>

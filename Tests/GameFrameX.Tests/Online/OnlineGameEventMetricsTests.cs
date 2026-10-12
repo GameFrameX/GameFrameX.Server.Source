@@ -29,10 +29,10 @@
 
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using GameFrameX.Online.Events;
+using GameFrameX.Capability.Online.Events;
 using GameFrameX.Online.GameEvents;
 using GameFrameX.Online.Match;
-using GameFrameX.Online.Session;
+using GameFrameX.Capability.Online.Session;
 using Xunit;
 
 namespace GameFrameX.Tests.Online

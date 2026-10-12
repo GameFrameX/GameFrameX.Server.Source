@@ -31,7 +31,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json;
-using GameFrameX.Online.Events;
+using GameFrameX.Capability.Online.Events;
 
 namespace GameFrameX.Online.Leaderboard;
 

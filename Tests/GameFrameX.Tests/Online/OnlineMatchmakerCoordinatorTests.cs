@@ -29,9 +29,9 @@
 
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using GameFrameX.Online.Events;
+using GameFrameX.Capability.Online.Events;
 using GameFrameX.Online.Matchmaking;
-using GameFrameX.Online.Scope;
+using GameFrameX.Capability.Online.Scope;
 using Xunit;
 
 namespace GameFrameX.Tests.Online

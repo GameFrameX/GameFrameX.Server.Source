@@ -33,7 +33,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json;
-using Events;
+using GameFrameX.Capability.Online.Events;
 
 /// <summary>
 /// 赛事域事件工厂（复用 <see cref="OnlineEvent"/> 信封，<c>Source = "online-tournament"</c>）。

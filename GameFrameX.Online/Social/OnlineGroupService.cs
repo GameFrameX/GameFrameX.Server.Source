@@ -31,9 +31,9 @@ namespace GameFrameX.Online.Social;
 
 using System.Threading;
 using System.Threading.Tasks;
-using Contracts;
-using Events;
-using Scope;
+using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Events;
+using GameFrameX.Capability.Online.Scope;
 
 /// <summary>
 /// 群组服务（群组生命周期的唯一写者）。

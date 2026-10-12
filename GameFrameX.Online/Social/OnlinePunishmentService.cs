@@ -31,8 +31,8 @@ namespace GameFrameX.Online.Social;
 
 using System.Threading;
 using System.Threading.Tasks;
-using Contracts;
-using Events;
+using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Events;
 
 /// <summary>
 /// 处罚施加 / 撤销 / 查询服务（Admin 命令面的服务端半边）。

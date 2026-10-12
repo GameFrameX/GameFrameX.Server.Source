@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Online.Contracts;
+using GameFrameX.Capability.Online.Contracts;
 using Xunit;
 
 namespace GameFrameX.Tests.Online
@@ -133,7 +133,8 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证全量成员的协议数值快照（23 个错误成员与 Admin 错误码表快照一一同构，段内顺延，禁止漂移）。
+        /// 验证全量成员的协议数值快照（24 个错误成员与 Admin 错误码表快照一一同构，段内顺延，禁止漂移；
+        /// 4003 CapabilityNotInstalled 为 C228 注册反转新增，既有 23 成员语义冻结不变）。
         /// </summary>
         [Fact]
         public void OnlineErrorCode_ProtocolValues_ShouldMatchSnapshot()
@@ -153,6 +154,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(3005, (int)OnlineErrorCode.ScopeMissing);
             Assert.Equal(4001, (int)OnlineErrorCode.ParameterInvalid);
             Assert.Equal(4002, (int)OnlineErrorCode.ResourceNotFound);
+            Assert.Equal(4003, (int)OnlineErrorCode.CapabilityNotInstalled);
             Assert.Equal(5001, (int)OnlineErrorCode.StateNotReady);
             Assert.Equal(5002, (int)OnlineErrorCode.StateEnded);
             Assert.Equal(5003, (int)OnlineErrorCode.StateOperationForbidden);
@@ -163,7 +165,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(7003, (int)OnlineErrorCode.AccountBanned);
             Assert.Equal(8001, (int)OnlineErrorCode.ServiceBusy);
             Assert.Equal(8002, (int)OnlineErrorCode.DependencyUnavailable);
-            Assert.Equal(23, Enum.GetValues(typeof(OnlineErrorCode)).Length - 1);
+            Assert.Equal(24, Enum.GetValues(typeof(OnlineErrorCode)).Length - 1);
         }
     }
 }

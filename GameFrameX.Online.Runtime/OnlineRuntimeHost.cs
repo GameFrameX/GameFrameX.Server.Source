@@ -27,49 +27,56 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using GameFrameX.Capability.Hosting;
 using GameFrameX.Foundation.Idempotency;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Online.Assets;
 using GameFrameX.Online.Audit;
-using GameFrameX.Online.Events;
+using GameFrameX.Capability.Online.Events;
 using GameFrameX.Online.GameEvents;
 using GameFrameX.Online.HotfixRollback;
-using GameFrameX.Online.Identity;
-using GameFrameX.Online.Idempotency;
+using GameFrameX.Capability.Online.Identity;
+using GameFrameX.Capability.Online.Idempotency;
 using GameFrameX.Online.Leaderboard;
 using GameFrameX.Online.Match;
 using GameFrameX.Online.Matchmaking;
 using GameFrameX.Online.Overview;
 using GameFrameX.Online.Party;
-using GameFrameX.Online.Presence;
+using GameFrameX.Capability.Online.Presence;
 using GameFrameX.Online.Runtime.AdminApi;
-using GameFrameX.Online.Scope;
+using GameFrameX.Capability.Online.Scope;
 using GameFrameX.Online.Season;
-using GameFrameX.Online.Session;
+using GameFrameX.Capability.Online.Session;
 using GameFrameX.Online.Social;
-using GameFrameX.Online.Storage;
+using GameFrameX.Capability.Online.Storage;
 using GameFrameX.Online.Timeline;
 using GameFrameX.Online.Tournament;
 
 namespace GameFrameX.Online.Runtime;
 
 /// <summary>
-/// Online Runtime 组合根（把已交付的 Online 能力装配为可运行整体——
-/// InMemory 存储 + 全域服务 + 事件桥 + 幂等 + 审计桥 + 后台调度器 + LiveOps 最小承载）。
+/// Online Runtime 过渡组合根（P1：机制半边已迁出至 <see cref="CapabilityHost"/>，本类保留
+/// typed 服务图与装配语句；P3/P4 各域随能力包迁出后本工程删除）。
 /// <para>
 /// 维护约束（装配红线）：单一接缝集中 <c>new</c> 全部 store 与服务（内存存储为单进程默认实现），
 /// 生产级 Mongo/PSQL 持久化实现另行演进；事件出口统一 Foundation <see cref="InMemoryEventPublisher"/>
 /// （订阅端做审计投影与聊天审计投影）；副作用命令经 <see cref="OnlineIdempotencyService"/>
 /// （<see cref="IdempotencyOptions.FailedReplayPolicy"/> = <see cref="FailedReplayPolicy.ReExecute"/>）；
-/// Hotfix 回滚执行器为可选注入位（admin 面暂无触发 action，默认空实现）。
+/// Hotfix 回滚执行器为可选注入位（admin 面暂无触发 action，默认空实现）；
+/// 后台调度经能力模块注册进 <see cref="CapabilityHost"/>（显式链式装配）。
 /// </para>
 /// </summary>
 public sealed class OnlineRuntimeHost
 {
     /// <summary>
-    /// 装配选项。
+    /// 装配选项（作用域三元组与调度间隔）。
     /// </summary>
-    public OnlineRuntimeOptions Options { get; }
+    public CapabilityHostOptions Options { get; }
+
+    /// <summary>
+    /// 获取机制宿主（注册表 / 调度壳 / 能力报告 / 事件爆发口）。
+    /// </summary>
+    public CapabilityHost CapabilityHost { get; }
 
     /// <summary>
     /// 获取运行时授权作用域（本进程的服务端权威三元组）。
@@ -234,21 +241,24 @@ public sealed class OnlineRuntimeHost
     /// <summary>LiveOps 最小承载（InMemory 版本登记表）。</summary>
     public OnlineLiveOpsRegistry LiveOps { get; }
 
-    /// <summary>后台调度器。</summary>
-    public OnlineRuntimeScheduler Scheduler { get; }
+    /// <summary>后台调度壳（机制宿主承载；一次性生命周期）。</summary>
+    public CapabilityScheduler Scheduler
+    {
+        get { return CapabilityHost.Scheduler; }
+    }
 
     /// <summary>
     /// 初始化 <see cref="OnlineRuntimeHost"/>（组合根：集中装配全部存储与服务）。
     /// </summary>
     /// <param name="options">装配选项（必须合法，否则抛 <see cref="InvalidOperationException"/>）。</param>
     /// <param name="hotfixRollbackExecutor">Hotfix 回滚执行器（可选；admin 面暂无触发 action，默认空实现）。</param>
-    public OnlineRuntimeHost(OnlineRuntimeOptions options, IOnlineHotfixRollbackExecutor hotfixRollbackExecutor = null)
+    public OnlineRuntimeHost(CapabilityHostOptions options, IOnlineHotfixRollbackExecutor hotfixRollbackExecutor = null)
     {
         Options = options ?? throw new ArgumentNullException(nameof(options));
         if (!options.IsValid())
         {
-            // Localization: Online.Runtime.OptionsInvalid - Online 运行时选项非法（作用域三元组 / 端口 / 前缀）。
-            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Online.Runtime.OptionsInvalid));
+            // Localization: Capability.Hosting.OptionsInvalid - 能力宿主选项非法（作用域三元组 / 调度间隔）。
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Capability.Hosting.OptionsInvalid));
         }
 
         AuthorizedScope = new OnlineScope(options.TenantId, options.AppId, options.ServerId);
@@ -282,19 +292,26 @@ public sealed class OnlineRuntimeHost
 
         ChatAudit = new OnlineChatAuditProjection(ChatStore);
         LiveOps = new OnlineLiveOpsRegistry();
-        Scheduler = new OnlineRuntimeScheduler(this);
+
+        var builder = new CapabilityHostBuilder();
+        foreach (var module in OnlineCapabilityModules.CreateAll(this))
+        {
+            builder.AddModule(module);
+        }
+
+        CapabilityHost = builder.Build(options);
     }
 
     /// <summary>
-    /// 启动运行时（事件桥接线：C105 审计桥 + 聊天审计投影；随后启动后台调度器）。
+    /// 启动运行时（事件桥接线：C105 审计桥 + 聊天审计投影；随后启动机制宿主与调度壳）。
     /// <para>可重复调用（幂等）：重复启动不重复接线。</para>
     /// </summary>
     /// <returns>异步任务。</returns>
-    public Task StartAsync()
+    public async Task StartAsync()
     {
         if (_started)
         {
-            return Task.CompletedTask;
+            return;
         }
 
         _started = true;
@@ -319,18 +336,17 @@ public sealed class OnlineRuntimeHost
                 // 这里吞掉投影侧异常以保证宿主写链路不受投影缺陷影响；投影片段丢失由审计查询面暴露）。
             }
         });
-        Scheduler.Start();
-        return Task.CompletedTask;
+        await CapabilityHost.StartAsync().ConfigureAwait(false);
     }
 
     /// <summary>
-    /// 停止运行时（停调度器；事件总线保留——进程退出即消亡）。
+    /// 停止运行时（停机制宿主（含调度壳，等待当轮完成）；事件总线保留——进程退出即消亡）。
     /// </summary>
     /// <returns>异步任务。</returns>
     public async Task StopAsync()
     {
         _started = false;
-        await Scheduler.StopAsync();
+        await CapabilityHost.StopAsync().ConfigureAwait(false);
     }
 
     /// <summary>

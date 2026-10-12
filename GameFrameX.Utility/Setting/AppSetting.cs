@@ -586,13 +586,30 @@ public class AppSetting
     public string HttpCorsAllowedOrigins { get; set; }
 
     /// <summary>
+    /// 是否启用 Online 平台业务运行时
+    /// <para>开启后 Game 服进程在本进程内装配 Online Runtime（InMemory 存储 + 各域服务 + 事件桥 + 幂等 + 后台调度）</para>
+    /// <para>与管理面开关 IsEnableOnlineAdmin 正交（C228 拆分：业务与管理面可独立启停）；默认值为 false</para>
+    /// </summary>
+    /// <remarks>
+    /// Whether to enable the Online business runtime.
+    /// When enabled, the Game process hosts the Online Runtime in-process (in-memory stores, domain
+    /// services, event bridge, idempotency and the background scheduler).
+    /// Orthogonal to the admin-plane switch <c>IsEnableOnlineAdmin</c> (C228 split: business and
+    /// admin planes can be toggled independently). Default value is false.
+    /// </remarks>
+    [Option(nameof(IsEnableOnline), DefaultValue = false, Description = "是否启用 Online 平台业务运行时,默认值为 false;与管理面开关 IsEnableOnlineAdmin 正交")]
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
+    public bool IsEnableOnline { get; set; }
+
+    /// <summary>
     /// 是否启用 Online 平台管理面（admin API）
-    /// <para>开启后 Game 服进程在本进程内装配 Online Runtime（InMemory 存储 + 各域服务 + 事件桥 + 幂等），并按 OnlineAdminPort 暴露 Admin 管理端点</para>
+    /// <para>开启后按 OnlineAdminPort 暴露 Admin 管理端点；业务运行时未启时以 admin-only 形态监听（全部能力 action 按未安装裁决）</para>
     /// <para>默认值为 false，存量部署零影响</para>
     /// </summary>
     /// <remarks>
     /// Whether to enable the Online platform admin API.
-    /// When enabled, the Game process hosts the Online Runtime in-process and exposes admin endpoints on OnlineAdminPort.
+    /// When enabled, admin endpoints are exposed on OnlineAdminPort; without the business runtime
+    /// it listens in admin-only shape (every capability action is answered as not installed).
     /// Default value is false.
     /// </remarks>
     [Option(nameof(IsEnableOnlineAdmin), DefaultValue = false, Description = "是否启用 Online 平台管理面(admin API),默认值为 false")]

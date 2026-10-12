@@ -32,8 +32,8 @@ namespace GameFrameX.Online.Assets;
 
 using System.Threading;
 using System.Threading.Tasks;
-using Contracts;
-using Scope;
+using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Scope;
 
 /// <summary>
 /// 资产查询服务（余额/库存/流水的只读查询面，供 Admin 资产流水查询与客服追溯消费）。

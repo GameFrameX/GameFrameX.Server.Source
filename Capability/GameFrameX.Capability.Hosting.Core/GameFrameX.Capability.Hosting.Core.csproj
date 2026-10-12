@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="../../Version.props" Label="版本号定义"/>
+
+    <PropertyGroup>
+        <Description>GameFrameX.Capability.Hosting.Core,GFX 能力组件机制实现:能力注册表与拓扑装配(显式链式+程序集扫描)/闭包校验 fail-fast/注册制调度壳(间隔+逐滴答+事件驱动三类 job)/启动能力报告. Capability hosting core: registry, manifest topological assembly with closure validation, registration-based scheduler shell (interval/tick/event-driven jobs) and startup capability report. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Capability,Hosting,Core,Registry,Scheduler,GameServer</PackageTags>
+        <LangVersion>10</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../GameFrameX.Capability.Hosting.Abstractions/GameFrameX.Capability.Hosting.Abstractions.csproj"/>
+        <ProjectReference Include="../../GameFrameX.Localization/GameFrameX.Localization.csproj"/>
+    </ItemGroup>
+
+</Project>

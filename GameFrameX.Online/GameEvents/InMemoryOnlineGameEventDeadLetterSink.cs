@@ -31,7 +31,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Events;
+using GameFrameX.Capability.Online.Events;
 
 namespace GameFrameX.Online.GameEvents;
 

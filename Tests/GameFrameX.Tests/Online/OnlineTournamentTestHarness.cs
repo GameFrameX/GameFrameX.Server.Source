@@ -32,11 +32,11 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using GameFrameX.Foundation.Idempotency;
 using GameFrameX.Online.Assets;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Idempotency;
+using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Idempotency;
 using GameFrameX.Online.Leaderboard;
 using GameFrameX.Online.Match;
-using GameFrameX.Online.Scope;
+using GameFrameX.Capability.Online.Scope;
 using GameFrameX.Online.Tournament;
 using Xunit;
 

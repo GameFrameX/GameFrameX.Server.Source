@@ -30,7 +30,7 @@
 
 namespace GameFrameX.Online.Assets;
 
-using Scope;
+using GameFrameX.Capability.Online.Scope;
 
 /// <summary>
 /// 统一资产入口请求（所有资产发放/扣除/撤销/补发/人工调整的唯一提交形态）。

@@ -30,8 +30,8 @@
 using System.Collections.Generic;
 using GameFrameX.Online.Match;
 using GameFrameX.Online.Party;
-using GameFrameX.Online.Presence;
-using GameFrameX.Online.Session;
+using GameFrameX.Capability.Online.Presence;
+using GameFrameX.Capability.Online.Session;
 
 namespace GameFrameX.Online.Overview;
 

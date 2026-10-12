@@ -25,8 +25,9 @@
 //  ==========================================================================================
 
 using GameFrameX.Online.Audit;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Scope;
+using GameFrameX.Capability.Hosting.AdminApi;
+using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Scope;
 using GameFrameX.Online.Timeline;
 
 namespace GameFrameX.Online.Runtime.AdminApi;
@@ -57,12 +58,12 @@ public sealed class OnlineAdminConsoleHandlers
     /// <summary>
     /// 注册运维台查询域 action。
     /// </summary>
-    /// <param name="dispatcher">调度器。</param>
-    public void Register(OnlineAdminApiDispatcher dispatcher)
+    /// <param name="registry">动作注册表。</param>
+    public void Register(AdminActionRegistry registry)
     {
-        dispatcher.Register("query_online_overview", QueryOnlineOverviewAsync, false);
-        dispatcher.Register("query_player_timeline", QueryPlayerTimelineAsync, false);
-        dispatcher.Register("query_online_audit_events", QueryOnlineAuditEventsAsync, false);
+        registry.Register("query_online_overview", OnlineAdminApiAdapters.Wrap(QueryOnlineOverviewAsync), false);
+        registry.Register("query_player_timeline", OnlineAdminApiAdapters.Wrap(QueryPlayerTimelineAsync), false);
+        registry.Register("query_online_audit_events", OnlineAdminApiAdapters.Wrap(QueryOnlineAuditEventsAsync), false);
     }
 
     /// <summary>
@@ -72,7 +73,7 @@ public sealed class OnlineAdminConsoleHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>在线总览。</returns>
-    public async Task<object> QueryOnlineOverviewAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public async Task<object> QueryOnlineOverviewAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var snapshot = OnlineAdminApiContract.Unwrap(await _host.Overview.ReviewAsync(scope, 0, cancellationToken).ConfigureAwait(false));
         var queues = new List<OverviewQueueResponse>();
@@ -109,7 +110,7 @@ public sealed class OnlineAdminConsoleHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>时间线页。</returns>
-    public async Task<object> QueryPlayerTimelineAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public async Task<object> QueryPlayerTimelineAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var playerScope = OnlineAdminApiContract.ReadPlayerScope(request, scope);
         var query = new OnlinePlayerTimelineQuery
@@ -154,7 +155,7 @@ public sealed class OnlineAdminConsoleHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>审计事件页。</returns>
-    public async Task<object> QueryOnlineAuditEventsAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public async Task<object> QueryOnlineAuditEventsAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var targetPlayerId = request.ReadNullableInt64("TargetPlayerId");
         var query = new OnlineAuditQuery

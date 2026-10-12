@@ -12,6 +12,13 @@
     <Project Path="Tests/GameFrameX.Tests/GameFrameX.Tests.csproj" />
     <Project Path="Tests/GameFrameX.Hotfix.Tests/GameFrameX.Hotfix.Tests.csproj" />
   </Folder>
+  <Folder Name="/Capability/">
+    <Project Path="Capability/GameFrameX.Capability.Hosting.Abstractions/GameFrameX.Capability.Hosting.Abstractions.csproj" />
+    <Project Path="Capability/GameFrameX.Capability.Hosting.Core/GameFrameX.Capability.Hosting.Core.csproj" />
+    <Project Path="Capability/GameFrameX.Capability.Hosting.AdminApi/GameFrameX.Capability.Hosting.AdminApi.csproj" />
+    <Project Path="Capability/GameFrameX.Capability.Online.Abstractions/GameFrameX.Capability.Online.Abstractions.csproj" />
+    <Project Path="Capability/GameFrameX.Capability.Online.Foundation/GameFrameX.Capability.Online.Foundation.csproj" />
+  </Folder>
   <Project Path="GameFrameX.Apps/GameFrameX.Apps.csproj" />
   <Project Path="GameFrameX.Discovery/GameFrameX.Discovery.csproj" />
   <Project Path="GameFrameX.Client/GameFrameX.Client.csproj" />

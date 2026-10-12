@@ -26,7 +26,7 @@ set -euo pipefail
 #                                   --ServerType=Game --ServerId=1001 --ServerInstanceId=1
 #                                   --InnerPort=29100 --OuterPort=29100 --HttpPort=28080 --WsPort=29110
 #                                   --MetricsPort=29090 --MinModuleId=10 --MaxModuleId=9999
-#                                   --IsEnableOnlineAdmin=true --OnlineTenantId=1 --OnlineAppId=1
+#                                   --IsEnableOnline=true --IsEnableOnlineAdmin=true --OnlineTenantId=1 --OnlineAppId=1
 #                                   --DataBaseUrl=<MongoDB 连接串> --DataBaseName=gameframex)
 # =============================================================================
 

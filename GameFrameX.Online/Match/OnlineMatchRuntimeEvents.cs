@@ -33,7 +33,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json;
-using Events;
+using GameFrameX.Capability.Online.Events;
 
 /// <summary>
 /// 对局域事件工厂（「只有可信的服务端结果事件才能触发 Wallet、Reward、Leaderboard 和 Notification」）。

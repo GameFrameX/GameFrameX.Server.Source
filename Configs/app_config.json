@@ -14,6 +14,7 @@
     "OnlineAdminPort": 28090,
     "MetricsPort": 29090,
     "IsEnableOnlineAdmin": true,
+    "IsEnableOnline": true,
     "MinModuleId": 10,
     "MaxModuleId": 9999,
     "OnlineTenantId": 1,

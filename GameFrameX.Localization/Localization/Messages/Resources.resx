@@ -1334,6 +1334,36 @@
   <data name="Hotfix.Startup.LoginMessageTypeMissingAttribute" xml:space="preserve">
     <value>Login message type {0} is missing {1}.</value>
   </data>
+  <data name="Capability.Hosting.OptionsInvalid" xml:space="preserve">
+    <value>Capability host options are invalid (scope triple or scheduler interval).</value>
+  </data>
+  <data name="Capability.Hosting.DuplicateCapability" xml:space="preserve">
+    <value>Duplicate capability registration for id: {0}</value>
+  </data>
+  <data name="Capability.Hosting.FilterTargetMissing" xml:space="preserve">
+    <value>Assembly filter references an unknown capability id: {0}</value>
+  </data>
+  <data name="Capability.Hosting.RequirementMissing" xml:space="preserve">
+    <value>Capability {0} requires capability {1} which is not assembled.</value>
+  </data>
+  <data name="Capability.Hosting.RequirementCycle" xml:space="preserve">
+    <value>Capability requirements form a cycle; topological ordering failed.</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ActionNameRequired" xml:space="preserve">
+    <value>Action name must not be null or empty.</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.PrefixRequired" xml:space="preserve">
+    <value>Admin API prefix must not be empty.</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.InnerJsonRequired" xml:space="preserve">
+    <value>Inner response JSON must not be null or empty.</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ActionNotRegistered" xml:space="preserve">
+    <value>Capability {1} declares action {0} but it is not registered.</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.OptionsInvalid" xml:space="preserve">
+    <value>Admin API listening options are invalid (port / prefix).</value>
+  </data>
   <data name="Online.Identity.ScopeMissingPlayerId" xml:space="preserve">
     <value>Scope is missing the player identity slot (PlayerId &lt;= 0); cannot derive player context.</value>
   </data>
@@ -1366,15 +1396,6 @@
   </data>
   <data name="Online.Session.SessionTerminal" xml:space="preserve">
     <value>The session has already reached a terminal state.</value>
-  </data>
-  <data name="Online.AdminApi.ActionNameRequired" xml:space="preserve">
-    <value>Action name must not be null or empty.</value>
-  </data>
-  <data name="Online.AdminApi.InnerJsonRequired" xml:space="preserve">
-    <value>Inner response JSON must not be null or empty.</value>
-  </data>
-  <data name="Online.AdminApi.PrefixRequired" xml:space="preserve">
-    <value>Online admin API prefix must not be empty.</value>
   </data>
   <data name="Online.AdminApi.PlayerIdInvalid" xml:space="preserve">
     <value>PlayerId must be a positive value (wire form: string).</value>
@@ -1414,9 +1435,6 @@
   </data>
   <data name="Online.AdminApi.GrantItemInvalid" xml:space="preserve">
     <value>GrantItems entries require ItemOrCurrencyType (string) and Quantity (positive number).</value>
-  </data>
-  <data name="Online.Runtime.OptionsInvalid" xml:space="preserve">
-    <value>Online runtime options are invalid (scope triple / port / prefix).</value>
   </data>
   <data name="RemoteMessaging.Codec.CompressionThresholdInvalid" xml:space="preserve">
     <value>Compression threshold must be greater than or equal to 0.</value>

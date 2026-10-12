@@ -31,8 +31,8 @@ using System;
 using System.Threading;
 using System.Linq;
 using System.Threading.Tasks;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Events;
+using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Events;
 
 namespace GameFrameX.Online.Match;
 

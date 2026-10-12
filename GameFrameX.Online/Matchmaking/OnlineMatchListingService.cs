@@ -31,8 +31,8 @@ namespace GameFrameX.Online.Matchmaking;
 
 using System.Threading;
 using System.Threading.Tasks;
-using Contracts;
-using Scope;
+using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Scope;
 
 /// <summary>
 /// 对局列表项服务（发布、发现、按 JoinPolicy 加入）。

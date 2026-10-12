@@ -25,7 +25,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Online.Contracts;
+using GameFrameX.Capability.Online.Contracts;
 
 namespace GameFrameX.Online.Leaderboard;
 

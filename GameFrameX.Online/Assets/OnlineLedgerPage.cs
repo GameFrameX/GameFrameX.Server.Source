@@ -30,7 +30,7 @@
 
 namespace GameFrameX.Online.Assets;
 
-using Contracts;
+using GameFrameX.Capability.Online.Contracts;
 
 /// <summary>
 /// 资产账本分页结果（游标 = 末条账本序；稳定排序 = SequenceNumber 升序，翻页不重复不漏项）。

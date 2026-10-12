@@ -26,8 +26,9 @@
 
 using GameFrameX.Foundation.Json;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Scope;
+using GameFrameX.Capability.Hosting.AdminApi;
+using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Scope;
 
 namespace GameFrameX.Online.Runtime.AdminApi;
 
@@ -59,16 +60,16 @@ public sealed class OnlineAdminLiveOpsHandlers
     /// <summary>
     /// 注册 LiveOps 域 action。
     /// </summary>
-    /// <param name="dispatcher">调度器。</param>
-    public void Register(OnlineAdminApiDispatcher dispatcher)
+    /// <param name="registry">动作注册表。</param>
+    public void Register(AdminActionRegistry registry)
     {
-        dispatcher.Register("publishRemoteConfig", PublishRemoteConfigAsync, false);
-        dispatcher.Register("syncDeviceGroup", SyncDeviceGroupAsync, false);
-        dispatcher.Register("syncScheduledTask", SyncScheduledTaskAsync, false);
-        dispatcher.Register("pushAnnouncement", PushAnnouncementAsync, false);
-        dispatcher.Register("syncPlayerSegment", SyncPlayerSegmentAsync, false);
-        dispatcher.Register("publishConfigRollout", PublishConfigRolloutAsync, false);
-        dispatcher.Register("rollbackConfigRollout", RollbackConfigRolloutAsync, false);
+        registry.Register("publishRemoteConfig", OnlineAdminApiAdapters.Wrap(PublishRemoteConfigAsync), false);
+        registry.Register("syncDeviceGroup", OnlineAdminApiAdapters.Wrap(SyncDeviceGroupAsync), false);
+        registry.Register("syncScheduledTask", OnlineAdminApiAdapters.Wrap(SyncScheduledTaskAsync), false);
+        registry.Register("pushAnnouncement", OnlineAdminApiAdapters.Wrap(PushAnnouncementAsync), false);
+        registry.Register("syncPlayerSegment", OnlineAdminApiAdapters.Wrap(SyncPlayerSegmentAsync), false);
+        registry.Register("publishConfigRollout", OnlineAdminApiAdapters.Wrap(PublishConfigRolloutAsync), false);
+        registry.Register("rollbackConfigRollout", OnlineAdminApiAdapters.Wrap(RollbackConfigRolloutAsync), false);
     }
 
     /// <summary>
@@ -78,7 +79,7 @@ public sealed class OnlineAdminLiveOpsHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>LiveOps 回执。</returns>
-    public Task<object> PublishRemoteConfigAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public Task<object> PublishRemoteConfigAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var configId = RequireId(request, "ConfigId");
         var reason = OnlineAdminApiContract.RequireString(request, "Reason");
@@ -101,7 +102,7 @@ public sealed class OnlineAdminLiveOpsHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>LiveOps 回执。</returns>
-    public Task<object> SyncDeviceGroupAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public Task<object> SyncDeviceGroupAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var deviceGroupId = RequireId(request, "DeviceGroupId");
         var reason = OnlineAdminApiContract.RequireString(request, "Reason");
@@ -123,7 +124,7 @@ public sealed class OnlineAdminLiveOpsHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>LiveOps 回执。</returns>
-    public Task<object> SyncScheduledTaskAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public Task<object> SyncScheduledTaskAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var jobId = RequireId(request, "JobId");
         var reason = OnlineAdminApiContract.RequireString(request, "Reason");
@@ -145,7 +146,7 @@ public sealed class OnlineAdminLiveOpsHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>LiveOps 回执。</returns>
-    public Task<object> PushAnnouncementAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public Task<object> PushAnnouncementAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var announcementId = RequireId(request, "AnnouncementId");
         var reason = OnlineAdminApiContract.RequireString(request, "Reason");
@@ -168,7 +169,7 @@ public sealed class OnlineAdminLiveOpsHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>LiveOps 回执。</returns>
-    public Task<object> SyncPlayerSegmentAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public Task<object> SyncPlayerSegmentAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var segmentId = RequireId(request, "SegmentId");
         var name = OnlineAdminApiContract.RequireString(request, "Name");
@@ -193,7 +194,7 @@ public sealed class OnlineAdminLiveOpsHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>LiveOps 回执。</returns>
-    public Task<object> PublishConfigRolloutAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public Task<object> PublishConfigRolloutAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var configKind = ReadConfigKind(request);
         var configKey = OnlineAdminApiContract.RequireString(request, "ConfigKey");
@@ -227,7 +228,7 @@ public sealed class OnlineAdminLiveOpsHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>LiveOps 回执。</returns>
-    public Task<object> RollbackConfigRolloutAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public Task<object> RollbackConfigRolloutAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var configKind = ReadConfigKind(request);
         var configKey = OnlineAdminApiContract.RequireString(request, "ConfigKey");
@@ -251,7 +252,7 @@ public sealed class OnlineAdminLiveOpsHandlers
     /// <param name="request">请求。</param>
     /// <param name="name">字段名。</param>
     /// <returns>标识。</returns>
-    private static long RequireId(OnlineAdminApiRequest request, string name)
+    private static long RequireId(AdminApiRequest request, string name)
     {
         var value = request.ReadNullableInt64(name);
         if (value.HasValue && value.Value > 0)
@@ -269,7 +270,7 @@ public sealed class OnlineAdminLiveOpsHandlers
     /// <param name="request">请求。</param>
     /// <param name="name">字段名。</param>
     /// <returns>版本号。</returns>
-    private static int RequireVersion(OnlineAdminApiRequest request, string name)
+    private static int RequireVersion(AdminApiRequest request, string name)
     {
         var value = request.ReadNullableInt32(name);
         if (value.HasValue && value.Value > 0)
@@ -286,7 +287,7 @@ public sealed class OnlineAdminLiveOpsHandlers
     /// </summary>
     /// <param name="request">请求。</param>
     /// <returns>ConfigKind 数字。</returns>
-    private static int ReadConfigKind(OnlineAdminApiRequest request)
+    private static int ReadConfigKind(AdminApiRequest request)
     {
         var value = request.ReadNullableInt32("ConfigKind");
         if (value.HasValue && value.Value >= 1 && value.Value <= 4)

@@ -25,9 +25,10 @@
 //  ==========================================================================================
 
 using System.Text.Json;
-using GameFrameX.Online.Contracts;
+using GameFrameX.Capability.Hosting;
+using GameFrameX.Capability.Hosting.AdminApi;
+using GameFrameX.Capability.Online.Contracts;
 using GameFrameX.Online.Runtime;
-using GameFrameX.Online.Runtime.AdminApi;
 
 namespace GameFrameX.Tests.Online
 {
@@ -38,20 +39,26 @@ namespace GameFrameX.Tests.Online
     public class OnlineAdminApiDispatcherTests
     {
         /// <summary>
-        /// 构造授权作用域为 租户 1 / 应用 1 / 区服 1001 的调度器。
+        /// 构造授权作用域为 租户 1 / 应用 1 / 区服 1001 的组合根与调度器。
         /// </summary>
-        /// <returns>调度器。</returns>
-        private static OnlineAdminApiDispatcher CreateDispatcher()
+        /// <returns>组合根。</returns>
+        private static OnlineRuntimeHost CreateHost()
         {
-            var host = new OnlineRuntimeHost(new OnlineRuntimeOptions
+            return new OnlineRuntimeHost(new CapabilityHostOptions
             {
                 TenantId = 1,
                 AppId = 1,
                 ServerId = 1001,
-                AdminPort = 28090,
-                AdminApiPrefix = "online/admin",
             });
-            return new OnlineAdminApiDispatcher(host);
+        }
+
+        /// <summary>
+        /// 构造经注册反转组装的调度器（29 action + list_capabilities 元端点）。
+        /// </summary>
+        /// <returns>调度器。</returns>
+        private static AdminApiDispatcher CreateDispatcher()
+        {
+            return OnlineAdminApiComposition.CreateDispatcher(CreateHost());
         }
 
         /// <summary>
@@ -84,16 +91,17 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 29 个 action 全部注册。
+        /// 验证 29 个业务 action 全部经注册反转注册，且 list_capabilities 元端点在列。
         /// </summary>
         [Fact]
-        public void ActionNames_ShouldRegisterAllTwentyNineActions()
+        public void ActionNames_ShouldRegisterAllTwentyNineActionsPlusMeta()
         {
             var dispatcher = CreateDispatcher();
-            Assert.Equal(29, dispatcher.ActionNames.Count);
+            Assert.Equal(30, dispatcher.ActionNames.Count);
             Assert.Contains("grant_asset", dispatcher.ActionNames);
             Assert.Contains("rollbackConfigRollout", dispatcher.ActionNames);
             Assert.Contains("query_online_audit_events", dispatcher.ActionNames);
+            Assert.Contains("list_capabilities", dispatcher.ActionNames);
         }
 
         /// <summary>

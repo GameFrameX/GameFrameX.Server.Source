@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="../../Version.props" Label="版本号定义"/>
+
+    <PropertyGroup>
+        <Description>GameFrameX.Capability.Hosting.Abstractions,GFX 能力组件机制契约:能力 manifest/模块注册契约/三类调度 job 契约/装配过滤器/能力报告类型. Capability hosting mechanism contracts for the GFX capability packages: manifests, module registration, three scheduler job kinds, assembly filter and capability report types. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Capability,Hosting,Abstractions,Manifest,Scheduler,GameServer</PackageTags>
+        <LangVersion>10</LangVersion>
+    </PropertyGroup>
+
+</Project>

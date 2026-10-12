@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Social;
 
 using System.Text.Json;
-using Events;
+using GameFrameX.Capability.Online.Events;
 
 /// <summary>
 /// 通知域事件工厂（通知状态变更事件供下游与 Admin 消费）。

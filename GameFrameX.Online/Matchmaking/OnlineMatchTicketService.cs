@@ -31,9 +31,9 @@ namespace GameFrameX.Online.Matchmaking;
 
 using System.Threading;
 using System.Threading.Tasks;
-using Contracts;
-using Events;
-using Scope;
+using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Events;
+using GameFrameX.Capability.Online.Scope;
 
 /// <summary>
 /// 匹配票据服务（入队、取消、查询；票据状态的**唯一裁决入口**）。

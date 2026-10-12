@@ -25,12 +25,12 @@
 //  ==========================================================================================
 
 using System.Text.Json;
-using GameFrameX.Online.Events;
+using GameFrameX.Capability.Online.Events;
 using GameFrameX.Online.Social;
 
 namespace GameFrameX.Online.Runtime;
 
-using GameFrameX.Online.Contracts;
+using GameFrameX.Capability.Online.Contracts;
 
 /// <summary>
 /// 聊天审计投影（<c>query_chat_messages</c> 依赖事件投影——聊天 store 无跨频道枚举 API，

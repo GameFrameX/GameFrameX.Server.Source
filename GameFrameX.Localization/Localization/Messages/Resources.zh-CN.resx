@@ -1332,6 +1332,36 @@
   <data name="Hotfix.Startup.LoginMessageTypeMissingAttribute" xml:space="preserve">
     <value>登录消息类型 {0} 缺少 {1}。</value>
   </data>
+  <data name="Capability.Hosting.OptionsInvalid" xml:space="preserve">
+    <value>能力宿主选项非法（作用域三元组或调度间隔）。</value>
+  </data>
+  <data name="Capability.Hosting.DuplicateCapability" xml:space="preserve">
+    <value>能力 Id 重复注册：{0}</value>
+  </data>
+  <data name="Capability.Hosting.FilterTargetMissing" xml:space="preserve">
+    <value>装配过滤器引用了未发现的能力：{0}</value>
+  </data>
+  <data name="Capability.Hosting.RequirementMissing" xml:space="preserve">
+    <value>能力 {0} 依赖的能力未装配：{1}</value>
+  </data>
+  <data name="Capability.Hosting.RequirementCycle" xml:space="preserve">
+    <value>能力依赖成环，无法完成拓扑定序。</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ActionNameRequired" xml:space="preserve">
+    <value>Action 名称不能为 null 或为空。</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.PrefixRequired" xml:space="preserve">
+    <value>admin API 路由前缀不能为空。</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.InnerJsonRequired" xml:space="preserve">
+    <value>内层响应 JSON 不能为 null 或为空。</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ActionNotRegistered" xml:space="preserve">
+    <value>能力 {1} 声明的 action 未注册：{0}</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.OptionsInvalid" xml:space="preserve">
+    <value>管理面监听选项非法（端口 / 前缀）。</value>
+  </data>
   <data name="Online.Identity.ScopeMissingPlayerId" xml:space="preserve">
     <value>作用域缺少玩家主体位（PlayerId &lt;= 0），不能派生玩家上下文。</value>
   </data>
@@ -1364,15 +1394,6 @@
   </data>
   <data name="Online.Session.SessionTerminal" xml:space="preserve">
     <value>会话已进入终态</value>
-  </data>
-  <data name="Online.AdminApi.ActionNameRequired" xml:space="preserve">
-    <value>Action 名称不能为 null 或为空。</value>
-  </data>
-  <data name="Online.AdminApi.InnerJsonRequired" xml:space="preserve">
-    <value>内层响应 JSON 不能为 null 或为空。</value>
-  </data>
-  <data name="Online.AdminApi.PrefixRequired" xml:space="preserve">
-    <value>Online admin API 前缀不能为空。</value>
   </data>
   <data name="Online.AdminApi.PlayerIdInvalid" xml:space="preserve">
     <value>PlayerId 必须为正数（线缆形态：字符串）。</value>
@@ -1412,9 +1433,6 @@
   </data>
   <data name="Online.AdminApi.GrantItemInvalid" xml:space="preserve">
     <value>GrantItems 条目要求 ItemOrCurrencyType（字符串）且 Quantity（正数）。</value>
-  </data>
-  <data name="Online.Runtime.OptionsInvalid" xml:space="preserve">
-    <value>Online 运行时选项非法（作用域三元组 / 端口 / 前缀）。</value>
   </data>
   <data name="RemoteMessaging.Codec.CompressionThresholdInvalid" xml:space="preserve">
     <value>压缩阈值必须大于等于 0。</value>

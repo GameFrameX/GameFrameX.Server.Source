@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Online.Events;
+using GameFrameX.Capability.Online.Events;
 
 namespace GameFrameX.Online.GameEvents;
 

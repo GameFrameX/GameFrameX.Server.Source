@@ -33,10 +33,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Foundation.Idempotency;
 using GameFrameX.Online.Assets;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Events;
-using GameFrameX.Online.Idempotency;
-using GameFrameX.Online.Scope;
+using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Events;
+using GameFrameX.Capability.Online.Idempotency;
+using GameFrameX.Capability.Online.Scope;
 using Xunit;
 
 namespace GameFrameX.Tests.Online

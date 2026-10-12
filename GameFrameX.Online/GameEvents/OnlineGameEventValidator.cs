@@ -29,7 +29,7 @@
 
 using System.Collections.Generic;
 using System.Globalization;
-using GameFrameX.Online.Events;
+using GameFrameX.Capability.Online.Events;
 
 namespace GameFrameX.Online.GameEvents;
 

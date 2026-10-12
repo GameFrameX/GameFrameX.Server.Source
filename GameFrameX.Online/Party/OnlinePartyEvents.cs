@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Party;
 
 using System.Text.Json;
-using Events;
+using GameFrameX.Capability.Online.Events;
 
 /// <summary>
 /// 队伍域事件工厂（队伍状态与邀请变更事件供下游与 Admin 消费）。

@@ -26,10 +26,11 @@
 
 using GameFrameX.Foundation.Json;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Scope;
+using GameFrameX.Capability.Hosting.AdminApi;
+using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Scope;
 using GameFrameX.Online.Social;
-using GameFrameX.Online.Tokens;
+using GameFrameX.Capability.Online.Tokens;
 
 namespace GameFrameX.Online.Runtime.AdminApi;
 
@@ -62,16 +63,16 @@ public sealed class OnlineAdminSocialHandlers
     /// <summary>
     /// 注册社交域 action。
     /// </summary>
-    /// <param name="dispatcher">调度器。</param>
-    public void Register(OnlineAdminApiDispatcher dispatcher)
+    /// <param name="registry">动作注册表。</param>
+    public void Register(AdminActionRegistry registry)
     {
-        dispatcher.Register("kick_player", KickPlayerAsync, true);
-        dispatcher.Register("revoke_token", RevokeTokenAsync, true);
-        dispatcher.Register("mute_player", MutePlayerAsync, true);
-        dispatcher.Register("query_report_cases", QueryReportCasesAsync, false);
-        dispatcher.Register("update_report_case", UpdateReportCaseAsync, false);
-        dispatcher.Register("send_admin_notification", SendAdminNotificationAsync, false);
-        dispatcher.Register("query_chat_messages", QueryChatMessagesAsync, false);
+        registry.Register("kick_player", OnlineAdminApiAdapters.Wrap(KickPlayerAsync), true);
+        registry.Register("revoke_token", OnlineAdminApiAdapters.Wrap(RevokeTokenAsync), true);
+        registry.Register("mute_player", OnlineAdminApiAdapters.Wrap(MutePlayerAsync), true);
+        registry.Register("query_report_cases", OnlineAdminApiAdapters.Wrap(QueryReportCasesAsync), false);
+        registry.Register("update_report_case", OnlineAdminApiAdapters.Wrap(UpdateReportCaseAsync), false);
+        registry.Register("send_admin_notification", OnlineAdminApiAdapters.Wrap(SendAdminNotificationAsync), false);
+        registry.Register("query_chat_messages", OnlineAdminApiAdapters.Wrap(QueryChatMessagesAsync), false);
     }
 
     /// <summary>
@@ -81,7 +82,7 @@ public sealed class OnlineAdminSocialHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>受理回执。</returns>
-    public async Task<object> KickPlayerAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public async Task<object> KickPlayerAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var playerScope = OnlineAdminApiContract.ReadPlayerScope(request, scope);
         var reason = BuildPenaltyReason(request);
@@ -101,7 +102,7 @@ public sealed class OnlineAdminSocialHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>受理回执。</returns>
-    public async Task<object> RevokeTokenAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public async Task<object> RevokeTokenAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var playerScope = OnlineAdminApiContract.ReadPlayerScope(request, scope);
         var reason = BuildPenaltyReason(request);
@@ -121,7 +122,7 @@ public sealed class OnlineAdminSocialHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>受理回执。</returns>
-    public async Task<object> MutePlayerAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public async Task<object> MutePlayerAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var playerScope = OnlineAdminApiContract.ReadPlayerScope(request, scope);
         var adminId = request.ReadNullableInt64("PenaltyId") ?? 0;
@@ -145,7 +146,7 @@ public sealed class OnlineAdminSocialHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>案件页。</returns>
-    public async Task<object> QueryReportCasesAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public async Task<object> QueryReportCasesAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var status = ReadAdminStatus(request);
         var reporterPlayerId = ReadOptionalPlayerId(request, "ReporterPlayerId");
@@ -211,7 +212,7 @@ public sealed class OnlineAdminSocialHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>确认载荷（Admin 契约要求 Data 非 null）。</returns>
-    public async Task<object> UpdateReportCaseAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public async Task<object> UpdateReportCaseAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var caseId = OnlineAdminApiContract.RequireString(request, "CaseId");
         var status = ReadAdminStatus(request);
@@ -242,7 +243,7 @@ public sealed class OnlineAdminSocialHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>确认载荷。</returns>
-    public async Task<object> SendAdminNotificationAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public async Task<object> SendAdminNotificationAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var playerScope = OnlineAdminApiContract.ReadPlayerScope(request, scope);
         var title = OnlineAdminApiContract.RequireString(request, "Title");
@@ -260,7 +261,7 @@ public sealed class OnlineAdminSocialHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>消息页。</returns>
-    public async Task<object> QueryChatMessagesAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public async Task<object> QueryChatMessagesAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var channelKind = ReadChannelKind(request);
         var participantPlayerId = ReadOptionalPlayerId(request, "ParticipantPlayerId");
@@ -358,7 +359,7 @@ public sealed class OnlineAdminSocialHandlers
     /// </summary>
     /// <param name="request">请求。</param>
     /// <returns>原因文本。</returns>
-    private static string BuildPenaltyReason(OnlineAdminApiRequest request)
+    private static string BuildPenaltyReason(AdminApiRequest request)
     {
         var penaltyId = request.ReadNullableInt64("PenaltyId");
         return "admin-penalty:" + (penaltyId.HasValue ? penaltyId.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "unknown") +
@@ -370,7 +371,7 @@ public sealed class OnlineAdminSocialHandlers
     /// </summary>
     /// <param name="request">请求。</param>
     /// <returns>Online 举报状态；缺失返回 null。</returns>
-    private static OnlineReportState? ReadAdminStatus(OnlineAdminApiRequest request)
+    private static OnlineReportState? ReadAdminStatus(AdminApiRequest request)
     {
         var value = request.ReadNullableInt32("Status");
         if (!value.HasValue)
@@ -419,7 +420,7 @@ public sealed class OnlineAdminSocialHandlers
     /// <param name="request">请求。</param>
     /// <param name="name">字段名。</param>
     /// <returns>玩家标识；缺失返回 null。</returns>
-    private static long? ReadOptionalPlayerId(OnlineAdminApiRequest request, string name)
+    private static long? ReadOptionalPlayerId(AdminApiRequest request, string name)
     {
         return request.ReadNullableInt64(name);
     }
@@ -429,7 +430,7 @@ public sealed class OnlineAdminSocialHandlers
     /// </summary>
     /// <param name="request">请求。</param>
     /// <returns>频道类型；缺失返回 null。</returns>
-    private static OnlineChatChannelKind? ReadChannelKind(OnlineAdminApiRequest request)
+    private static OnlineChatChannelKind? ReadChannelKind(AdminApiRequest request)
     {
         var value = request.ReadNullableInt32("ChannelKind");
         if (!value.HasValue)

@@ -203,33 +203,6 @@ public static partial class Keys
         public static class AdminApi
         {
             /// <summary>
-            /// Action 名称不能为 null 或空。
-            /// </summary>
-            /// <remarks>
-            /// 键名: Online.AdminApi.ActionNameRequired
-            /// 用途: 调度器注册 action 时名称为空
-            /// </remarks>
-            public const string ActionNameRequired = "Online.AdminApi.ActionNameRequired";
-
-            /// <summary>
-            /// 内层响应 JSON 不能为 null 或空。
-            /// </summary>
-            /// <remarks>
-            /// 键名: Online.AdminApi.InnerJsonRequired
-            /// 用途: WriteRaw 包装已序列化内层响应时内容为空
-            /// </remarks>
-            public const string InnerJsonRequired = "Online.AdminApi.InnerJsonRequired";
-
-            /// <summary>
-            /// Online admin API 前缀不能为空。
-            /// </summary>
-            /// <remarks>
-            /// 键名: Online.AdminApi.PrefixRequired
-            /// 用途: 启动 Admin API 服务时前缀为空
-            /// </remarks>
-            public const string PrefixRequired = "Online.AdminApi.PrefixRequired";
-
-            /// <summary>
             /// PlayerId 必须为正数（线缆形态：字符串）。
             /// </summary>
             /// <remarks>
@@ -349,21 +322,6 @@ public static partial class Keys
             /// 用途: 解析单条 GrantItems 变更行时字段非法
             /// </remarks>
             public const string GrantItemInvalid = "Online.AdminApi.GrantItemInvalid";
-        }
-
-        /// <summary>
-        /// 运行时宿主相关消息
-        /// </summary>
-        public static class Runtime
-        {
-            /// <summary>
-            /// Online 运行时选项非法（作用域三元组 / 端口 / 前缀）。
-            /// </summary>
-            /// <remarks>
-            /// 键名: Online.Runtime.OptionsInvalid
-            /// 用途: 构造 OnlineRuntimeHost 时装配选项未通过校验
-            /// </remarks>
-            public const string OptionsInvalid = "Online.Runtime.OptionsInvalid";
         }
     }
 }

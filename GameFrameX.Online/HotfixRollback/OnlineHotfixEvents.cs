@@ -33,7 +33,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json;
-using Events;
+using GameFrameX.Capability.Online.Events;
 
 /// <summary>
 /// Hotfix 域事件工厂（统一信封事件，<c>Source = "online-hotfix"</c>，CorrelationId = 版本号）。

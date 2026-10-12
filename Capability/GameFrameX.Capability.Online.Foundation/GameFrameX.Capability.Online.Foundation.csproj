@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="../../Version.props" Label="版本号定义"/>
+
+    <PropertyGroup>
+        <Description>GameFrameX.Capability.Online.Foundation,GFX Online 平台能力地基:身份/会话/令牌/在线状态/玩家 KV 存储四域实现(InMemory 默认存储). Platform foundation for the GFX Online capability family: identity, session, token, presence and player-storage domains with in-memory default stores. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Capability,Online,Foundation,Identity,Session,Presence,Storage,GameServer</PackageTags>
+        <LangVersion>10</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Abstractions/GameFrameX.Capability.Online.Abstractions.csproj"/>
+    </ItemGroup>
+
+</Project>

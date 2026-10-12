@@ -28,8 +28,8 @@
 //  ==========================================================================================
 
 using System.Collections.Generic;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Scope;
+using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Scope;
 using Xunit;
 
 namespace GameFrameX.Tests.Online

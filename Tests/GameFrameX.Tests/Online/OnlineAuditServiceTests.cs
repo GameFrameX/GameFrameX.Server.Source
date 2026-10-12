@@ -31,9 +31,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using GameFrameX.Online.Audit;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Events;
-using GameFrameX.Online.Scope;
+using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Events;
+using GameFrameX.Capability.Online.Scope;
 using Xunit;
 
 namespace GameFrameX.Tests.Online

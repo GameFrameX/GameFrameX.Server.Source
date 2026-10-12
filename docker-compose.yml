@@ -23,7 +23,7 @@ services:
       mongo:
         condition: service_healthy
     environment:
-      GAMEFRAMEX_SERVER_ARGS: "--ServerType=Game --ServerId=1001 --ServerInstanceId=1 --InnerPort=29100 --OuterPort=29100 --HttpPort=28080 --WsPort=29110 --MetricsPort=29090 --MinModuleId=10 --MaxModuleId=9999 --IsEnableOnlineAdmin=true --OnlineTenantId=1 --OnlineAppId=1 --DataBaseUrl=mongodb://mongo:27017/?authSource=admin --DataBaseName=gameframex"
+      GAMEFRAMEX_SERVER_ARGS: "--ServerType=Game --ServerId=1001 --ServerInstanceId=1 --InnerPort=29100 --OuterPort=29100 --HttpPort=28080 --WsPort=29110 --MetricsPort=29090 --MinModuleId=10 --MaxModuleId=9999 --IsEnableOnlineAdmin=true --IsEnableOnline=true --OnlineTenantId=1 --OnlineAppId=1 --DataBaseUrl=mongodb://mongo:27017/?authSource=admin --DataBaseName=gameframex"
     ports:
       - "39100:29100"
       - "38080:28080"

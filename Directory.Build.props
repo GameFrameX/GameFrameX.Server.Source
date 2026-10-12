@@ -32,7 +32,7 @@
         <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <PackageId>$(AssemblyName)</PackageId>
-        <AssemblyOriginatorKeyFile Condition="'$(IsTestProject)' != 'true'">$(MSBuildProjectDirectory)/../gameframex.key.snk</AssemblyOriginatorKeyFile>
+        <AssemblyOriginatorKeyFile Condition="'$(IsTestProject)' != 'true'">$(MSBuildThisFileDirectory)gameframex.key.snk</AssemblyOriginatorKeyFile>
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
 
@@ -60,12 +60,12 @@
 
     <!-- 通用文件项 (仅对非测试项目) -->
     <ItemGroup Condition="'$(IsTestProject)' != 'true'">
-        <None Include="$(MSBuildProjectDirectory)/../logo.png" Condition="Exists('$(MSBuildProjectDirectory)/../logo.png')">
+        <None Include="$(MSBuildThisFileDirectory)logo.png" Condition="Exists('$(MSBuildThisFileDirectory)logo.png')">
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
             <Link>logo.png</Link>
         </None>
-        <None Include="$(MSBuildProjectDirectory)/../README.md" Condition="Exists('$(MSBuildProjectDirectory)/../README.md')">
+        <None Include="$(MSBuildThisFileDirectory)README.md" Condition="Exists('$(MSBuildThisFileDirectory)README.md')">
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>

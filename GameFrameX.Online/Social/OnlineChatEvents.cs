@@ -30,7 +30,7 @@
 namespace GameFrameX.Online.Social;
 
 using System.Text.Json;
-using Events;
+using GameFrameX.Capability.Online.Events;
 
 /// <summary>
 /// 聊天域事件工厂（消息发送、撤回、已读、审核失败供下游与 Admin 消费）。

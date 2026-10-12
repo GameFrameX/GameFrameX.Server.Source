@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="../../Version.props" Label="版本号定义"/>
+
+    <PropertyGroup>
+        <Description>GameFrameX.Capability.Online.Abstractions,GFX Online 平台能力脊柱:公共契约/错误码/作用域/幂等 Server 侧/Token 契约/事件总线抽象. Platform spine abstractions for the GFX Online capability family: contracts, error codes, scope, server-side idempotency, token contracts and the event bus abstraction. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Capability,Online,Abstractions,Contracts,Events,Scope,GameServer</PackageTags>
+        <LangVersion>10</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="GameFrameX.Foundation.Idempotency" Version="5.0.0"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../GameFrameX.Localization/GameFrameX.Localization.csproj"/>
+    </ItemGroup>
+
+</Project>

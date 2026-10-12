@@ -28,9 +28,10 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
-using GameFrameX.Online.Contracts;
+using GameFrameX.Capability.Hosting;
+using GameFrameX.Capability.Hosting.AdminApi;
+using GameFrameX.Capability.Online.Contracts;
 using GameFrameX.Online.Runtime;
-using GameFrameX.Online.Runtime.AdminApi;
 
 namespace GameFrameX.Tests.Online
 {
@@ -54,7 +55,7 @@ namespace GameFrameX.Tests.Online
         /// <summary>
         /// 当前测试的 HTTP 服务实例。
         /// </summary>
-        private OnlineAdminApiServer _server;
+        private AdminApiServer _server;
 
         /// <summary>
         /// 验证真实 HTTP 往返：POST {prefix}/{action} 返回 200 + 双层信封（外层 0 / 内层 0 / Data 非 null）。
@@ -108,12 +109,11 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task StopAsync_ThenRestart_ShouldReleasePort()
         {
-            var options = BuildOptions();
-            var host = new OnlineRuntimeHost(options);
-            var first = new OnlineAdminApiServer(options, new OnlineAdminApiDispatcher(host));
+            var host = new OnlineRuntimeHost(BuildHostOptions());
+            var first = OnlineAdminApiComposition.CreateServer(host, BuildAdminOptions());
             await first.StartAsync();
             await first.StopAsync();
-            var second = new OnlineAdminApiServer(options, new OnlineAdminApiDispatcher(new OnlineRuntimeHost(options)));
+            var second = OnlineAdminApiComposition.CreateServer(new OnlineRuntimeHost(BuildHostOptions()), BuildAdminOptions());
             await second.StartAsync();
             var content = new StringContent("{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001}", Encoding.UTF8, "application/json");
             var response = await SharedHttpClient.PostAsync("http://127.0.0.1:" + TestPort + "/online/admin/no_such_action", content);
@@ -127,23 +127,32 @@ namespace GameFrameX.Tests.Online
         /// <returns>异步任务。</returns>
         private async Task StartServerAsync()
         {
-            var options = BuildOptions();
-            var host = new OnlineRuntimeHost(options);
-            _server = new OnlineAdminApiServer(options, new OnlineAdminApiDispatcher(host));
+            _server = OnlineAdminApiComposition.CreateServer(new OnlineRuntimeHost(BuildHostOptions()), BuildAdminOptions());
             await _server.StartAsync();
         }
 
         /// <summary>
-        /// 构造测试选项（授权三元组 1/1/1001，测试端口 28190）。
+        /// 构造机制宿主选项（授权三元组 1/1/1001）。
         /// </summary>
-        /// <returns>装配选项。</returns>
-        private static OnlineRuntimeOptions BuildOptions()
+        /// <returns>机制宿主选项。</returns>
+        private static CapabilityHostOptions BuildHostOptions()
         {
-            return new OnlineRuntimeOptions
+            return new CapabilityHostOptions
             {
                 TenantId = 1,
                 AppId = 1,
                 ServerId = 1001,
+            };
+        }
+
+        /// <summary>
+        /// 构造管理面选项（测试端口 28190）。
+        /// </summary>
+        /// <returns>管理面选项。</returns>
+        private static AdminApiOptions BuildAdminOptions()
+        {
+            return new AdminApiOptions
+            {
                 AdminPort = TestPort,
                 AdminApiPrefix = "online/admin",
             };

@@ -31,9 +31,9 @@ namespace GameFrameX.Online.Party;
 
 using System.Threading;
 using System.Threading.Tasks;
-using Contracts;
-using Events;
-using Scope;
+using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Events;
+using GameFrameX.Capability.Online.Scope;
 
 /// <summary>
 /// 队伍服务（队伍生命周期的唯一写者）。

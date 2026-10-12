@@ -31,11 +31,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Identity;
-using GameFrameX.Online.Scope;
-using GameFrameX.Online.Session;
-using GameFrameX.Online.Storage;
+using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Identity;
+using GameFrameX.Capability.Online.Scope;
+using GameFrameX.Capability.Online.Session;
+using GameFrameX.Capability.Online.Storage;
 using Xunit;
 
 namespace GameFrameX.Tests.Online

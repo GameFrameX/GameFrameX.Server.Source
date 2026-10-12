@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="../../Version.props" Label="版本号定义"/>
+
+    <PropertyGroup>
+        <Description>GameFrameX.Capability.Hosting.AdminApi,GFX 能力组件管理面 HTTP 管道:独立 Kestrel 监听/双层信封/去域化 action 调度器/list_capabilities 元端点,零能力逻辑. Capability hosting admin HTTP pipeline: standalone Kestrel listener, double envelope, domain-free action dispatcher and list_capabilities meta endpoint. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Capability,Hosting,AdminApi,Kestrel,GameServer</PackageTags>
+        <LangVersion>10</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="GameFrameX.Foundation.Json" Version="5.0.0"/>
+        <PackageReference Include="GameFrameX.Foundation.Localization" Version="5.0.0"/>
+        <PackageReference Include="GameFrameX.Foundation.Http.Normalization" Version="5.0.0"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../GameFrameX.Capability.Hosting.Abstractions/GameFrameX.Capability.Hosting.Abstractions.csproj"/>
+        <ProjectReference Include="../../GameFrameX.Localization/GameFrameX.Localization.csproj"/>
+    </ItemGroup>
+
+</Project>

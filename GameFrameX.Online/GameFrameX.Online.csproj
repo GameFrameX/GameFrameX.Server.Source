@@ -15,4 +15,9 @@
         <ProjectReference Include="..\GameFrameX.Localization\GameFrameX.Localization.csproj"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <ProjectReference Include="../Capability/GameFrameX.Capability.Online.Abstractions/GameFrameX.Capability.Online.Abstractions.csproj"/>
+        <ProjectReference Include="../Capability/GameFrameX.Capability.Online.Foundation/GameFrameX.Capability.Online.Foundation.csproj"/>
+    </ItemGroup>
+
 </Project>

@@ -32,10 +32,10 @@ using System.Globalization;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Idempotency;
+using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Idempotency;
 using GameFrameX.Online.Match;
-using GameFrameX.Online.Scope;
+using GameFrameX.Capability.Online.Scope;
 
 namespace GameFrameX.Online.Leaderboard;
 

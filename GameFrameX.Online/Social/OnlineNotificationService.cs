@@ -31,9 +31,9 @@ namespace GameFrameX.Online.Social;
 
 using System.Threading;
 using System.Threading.Tasks;
-using Contracts;
-using Events;
-using Scope;
+using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Events;
+using GameFrameX.Capability.Online.Scope;
 
 /// <summary>
 /// 通知服务（通知队列、推送出口与离线补发的唯一写者）。

@@ -25,9 +25,10 @@
 //  ==========================================================================================
 
 using System.Text.Json;
+using GameFrameX.Capability.Hosting.AdminApi;
+using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Scope;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Scope;
 
 namespace GameFrameX.Online.Runtime.AdminApi;
 
@@ -72,7 +73,7 @@ public static class OnlineAdminApiContract
     /// </summary>
     /// <param name="request">请求。</param>
     /// <returns>玩家标识。</returns>
-    public static long ReadPlayerId(OnlineAdminApiRequest request)
+    public static long ReadPlayerId(AdminApiRequest request)
     {
         if (request.TryReadInt64("PlayerId", out var playerId) && playerId > 0)
         {
@@ -89,7 +90,7 @@ public static class OnlineAdminApiContract
     /// <param name="request">请求。</param>
     /// <param name="scope">已通过守卫的作用域。</param>
     /// <returns>含玩家位的作用域。</returns>
-    public static OnlineScope ReadPlayerScope(OnlineAdminApiRequest request, OnlineScope scope)
+    public static OnlineScope ReadPlayerScope(AdminApiRequest request, OnlineScope scope)
     {
         return new OnlineScope(scope.TenantId, scope.AppId, scope.ServerId, ReadPlayerId(request));
     }
@@ -100,7 +101,7 @@ public static class OnlineAdminApiContract
     /// <param name="request">请求。</param>
     /// <param name="name">字段名。</param>
     /// <returns>非空字符串。</returns>
-    public static string RequireString(OnlineAdminApiRequest request, string name)
+    public static string RequireString(AdminApiRequest request, string name)
     {
         var value = request.ReadString(name);
         if (!string.IsNullOrEmpty(value))
@@ -118,7 +119,7 @@ public static class OnlineAdminApiContract
     /// <param name="request">请求。</param>
     /// <param name="name">字段名。</param>
     /// <returns>字符串值。</returns>
-    public static string ReadOptionalString(OnlineAdminApiRequest request, string name)
+    public static string ReadOptionalString(AdminApiRequest request, string name)
     {
         var value = request.ReadString(name);
         return string.IsNullOrEmpty(value) ? null : value;
@@ -129,7 +130,7 @@ public static class OnlineAdminApiContract
     /// </summary>
     /// <param name="request">请求。</param>
     /// <returns>分页大小。</returns>
-    public static int ReadPageSize(OnlineAdminApiRequest request)
+    public static int ReadPageSize(AdminApiRequest request)
     {
         var pageSize = request.ReadNullableInt32("PageSize");
         if (!pageSize.HasValue || pageSize.Value <= 0)
@@ -145,7 +146,7 @@ public static class OnlineAdminApiContract
     /// </summary>
     /// <param name="request">请求。</param>
     /// <returns>游标。</returns>
-    public static string ReadCursor(OnlineAdminApiRequest request)
+    public static string ReadCursor(AdminApiRequest request)
     {
         return ReadOptionalString(request, "Cursor");
     }
@@ -156,7 +157,7 @@ public static class OnlineAdminApiContract
     /// <param name="request">请求。</param>
     /// <param name="name">字段名。</param>
     /// <returns>值；缺失为 null。</returns>
-    public static long? ReadOptionalInt64(OnlineAdminApiRequest request, string name)
+    public static long? ReadOptionalInt64(AdminApiRequest request, string name)
     {
         var value = request.ReadNullableInt64(name);
         return value;

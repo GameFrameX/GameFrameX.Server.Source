@@ -33,12 +33,12 @@ using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Online.Assets;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Events;
-using GameFrameX.Online.Identity;
+using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Events;
+using GameFrameX.Capability.Online.Identity;
 using GameFrameX.Online.Match;
-using GameFrameX.Online.Scope;
-using GameFrameX.Online.Session;
+using GameFrameX.Capability.Online.Scope;
+using GameFrameX.Capability.Online.Session;
 using GameFrameX.Online.Social;
 
 namespace GameFrameX.Online.Timeline;

@@ -28,8 +28,9 @@ using System.Text.Json;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Online.Assets;
 using GameFrameX.Online.Audit;
-using GameFrameX.Online.Contracts;
-using GameFrameX.Online.Scope;
+using GameFrameX.Capability.Hosting.AdminApi;
+using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Scope;
 
 namespace GameFrameX.Online.Runtime.AdminApi;
 
@@ -60,14 +61,14 @@ public sealed class OnlineAdminAssetHandlers
     /// <summary>
     /// 注册资产域 action。
     /// </summary>
-    /// <param name="dispatcher">调度器。</param>
-    public void Register(OnlineAdminApiDispatcher dispatcher)
+    /// <param name="registry">动作注册表。</param>
+    public void Register(AdminActionRegistry registry)
     {
-        dispatcher.Register("grant_asset", GrantAssetAsync, false);
-        dispatcher.Register("revoke_asset", RevokeAssetAsync, false);
-        dispatcher.Register("query_wallet_ledger", QueryWalletLedgerAsync, false);
-        dispatcher.Register("query_asset_audit", QueryAssetAuditAsync, false);
-        dispatcher.Register("query_transaction_detail", QueryTransactionDetailAsync, false);
+        registry.Register("grant_asset", OnlineAdminApiAdapters.Wrap(GrantAssetAsync), false);
+        registry.Register("revoke_asset", OnlineAdminApiAdapters.Wrap(RevokeAssetAsync), false);
+        registry.Register("query_wallet_ledger", OnlineAdminApiAdapters.Wrap(QueryWalletLedgerAsync), false);
+        registry.Register("query_asset_audit", OnlineAdminApiAdapters.Wrap(QueryAssetAuditAsync), false);
+        registry.Register("query_transaction_detail", OnlineAdminApiAdapters.Wrap(QueryTransactionDetailAsync), false);
     }
 
     /// <summary>
@@ -81,7 +82,7 @@ public sealed class OnlineAdminAssetHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>受理回执。</returns>
-    public async Task<object> GrantAssetAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public async Task<object> GrantAssetAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var playerScope = OnlineAdminApiContract.ReadPlayerScope(request, scope);
         var changes = ReadGrantItems(request);
@@ -112,7 +113,7 @@ public sealed class OnlineAdminAssetHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>受理回执。</returns>
-    public async Task<object> RevokeAssetAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public async Task<object> RevokeAssetAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var playerScope = OnlineAdminApiContract.ReadPlayerScope(request, scope);
         var transactionId = OnlineAdminApiContract.RequireString(request, "TransactionId");
@@ -156,7 +157,7 @@ public sealed class OnlineAdminAssetHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>账本页。</returns>
-    public async Task<object> QueryWalletLedgerAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public async Task<object> QueryWalletLedgerAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var playerScope = OnlineAdminApiContract.ReadPlayerScope(request, scope);
         var cursor = OnlineAdminApiContract.ReadCursor(request);
@@ -213,7 +214,7 @@ public sealed class OnlineAdminAssetHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>审计页。</returns>
-    public async Task<object> QueryAssetAuditAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public async Task<object> QueryAssetAuditAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var query = new OnlineAuditQuery
         {
@@ -260,7 +261,7 @@ public sealed class OnlineAdminAssetHandlers
     /// <param name="scope">作用域。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>交易明细。</returns>
-    public async Task<object> QueryTransactionDetailAsync(OnlineAdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    public async Task<object> QueryTransactionDetailAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
     {
         var transactionId = OnlineAdminApiContract.RequireString(request, "TransactionId");
         var storedTransaction = await _host.AssetTransactionStore.FindAsync(transactionId, cancellationToken).ConfigureAwait(false);
@@ -314,7 +315,7 @@ public sealed class OnlineAdminAssetHandlers
     /// <param name="businessOrderNumber">线缆业务单号。</param>
     /// <param name="idempotencyKey">线缆幂等键。</param>
     /// <returns>非空业务单号。</returns>
-    private static string ReadBusinessOrderId(OnlineAdminApiRequest request, string businessOrderNumber, string idempotencyKey)
+    private static string ReadBusinessOrderId(AdminApiRequest request, string businessOrderNumber, string idempotencyKey)
     {
         if (!string.IsNullOrEmpty(businessOrderNumber))
         {
@@ -334,7 +335,7 @@ public sealed class OnlineAdminAssetHandlers
     /// </summary>
     /// <param name="request">请求。</param>
     /// <returns>变更行列表。</returns>
-    private static List<OnlineAssetChangeLine> ReadGrantItems(OnlineAdminApiRequest request)
+    private static List<OnlineAssetChangeLine> ReadGrantItems(AdminApiRequest request)
     {
         var changes = new List<OnlineAssetChangeLine>();
         if (OnlineAdminApiContract.TryGetElement(request.Root, "GrantItems", out var arrayElement) && arrayElement.ValueKind == JsonValueKind.Array)

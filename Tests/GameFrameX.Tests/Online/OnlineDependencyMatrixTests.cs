@@ -33,8 +33,10 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// Online 依赖矩阵门禁测试（C223）：扫描 <c>GameFrameX.Online</c> 全部源码的 using 指令
-    /// （含外围命名空间相对 using 的语义解析），按允许方向表断言目录依赖为严格向下 DAG。
+    /// Online 依赖矩阵门禁测试（C223 立项，C228 升维）：扫描 <c>GameFrameX.Online</c> 残量目录
+    /// （P1 后 = 13 个肢体目录；脊柱/地基已拆至 Capability.Online.Abstractions/Foundation，包级方向断言
+    /// 见 <see cref="CapabilityPackageStructureTests"/>）的 using 指令（含外围命名空间相对 using 的语义解析），
+    /// 按允许方向表断言目录依赖为严格向下 DAG。
     /// <para>
     /// 维护约束：新增跨目录引用必须先修改 <see cref="AllowedEdges"/> 允许方向表，否则本测试红；
     /// 同层横向（叶子能力簇 Assets/Social/Matchmaking/Party 互引）恒为零；
@@ -49,45 +51,36 @@ namespace GameFrameX.Tests.Online
         private const string OnlineProjectDirectory = "GameFrameX.Online";
 
         /// <summary>
-        /// 受矩阵治理的目录全集（22 个，与包族拓扑一一对应）。
+        /// 受矩阵治理的残量目录全集（13 个肢体目录；C228 P1 拆出 9 目录后）。
         /// </summary>
         private static readonly HashSet<string> Directories = new()
         {
-            "Assets", "Audit", "Contracts", "Events", "GameEvents", "HotfixRollback", "Idempotency",
-            "Identity", "Leaderboard", "Match", "Matchmaking", "Overview", "Party", "Presence",
-            "Scope", "Season", "Session", "Social", "Storage", "Timeline", "Tokens", "Tournament",
+            "Assets", "Audit", "GameEvents", "HotfixRollback", "Leaderboard", "Match",
+            "Matchmaking", "Overview", "Party", "Season", "Social", "Timeline", "Tournament",
         };
 
         /// <summary>
-        /// 允许方向表（src → 允许引用的目录集合）。镜像目标包族拓扑：
-        /// 脊柱（Contracts/Scope/Idempotency/Tokens/Events）→ 地基（Identity/Session/Presence/Storage，
-        /// 簇内允许）→ 叶子肢体（Assets/Social/Matchmaking/Party，互引恒零）→ 上层肢体
-        /// （Match；Competition 簇 Leaderboard/Season/Tournament 簇内允许）→ 聚合
-        /// （Audit/HotfixRollback/GameEvents/Timeline/Overview，Operations 簇内允许）。
+        /// 允许方向表（src → 允许引用的残量目录集合）。镜像包族拓扑（C228 P1 残量半边）：
+        /// 脊柱/地基已拆包（引用走 ProjectReference，包级断言见 CapabilityPackageStructureTests）；
+        /// 叶子肢体（Assets/Social/Matchmaking/Party，互引恒零）→ 上层肢体（Match；Competition 簇
+        /// Leaderboard/Season/Tournament 簇内允许）→ 聚合（Audit/HotfixRollback/GameEvents/Timeline/Overview，
+        /// Operations 簇内允许）。
         /// </summary>
         private static readonly Dictionary<string, string[]> AllowedEdges = new()
         {
-            ["Scope"] = new[] { "Contracts" },
-            ["Idempotency"] = new[] { "Contracts", "Scope" },
-            ["Tokens"] = new[] { "Scope" },
-            ["Events"] = Array.Empty<string>(),
-            ["Identity"] = new[] { "Contracts", "Scope" },
-            ["Session"] = new[] { "Contracts", "Events", "Identity", "Scope", "Tokens" },
-            ["Presence"] = new[] { "Contracts", "Events", "Scope" },
-            ["Storage"] = new[] { "Contracts", "Scope" },
-            ["Assets"] = new[] { "Contracts", "Events", "Idempotency", "Scope" },
-            ["Social"] = new[] { "Contracts", "Events", "Scope" },
-            ["Matchmaking"] = new[] { "Contracts", "Events", "Scope" },
-            ["Party"] = new[] { "Contracts", "Events", "Scope" },
-            ["Match"] = new[] { "Assets", "Contracts", "Events", "Matchmaking", "Scope" },
-            ["Leaderboard"] = new[] { "Contracts", "Events", "Idempotency", "Match", "Scope" },
-            ["Season"] = new[] { "Assets", "Contracts", "Events", "Leaderboard", "Scope" },
-            ["Tournament"] = new[] { "Assets", "Contracts", "Events", "Leaderboard", "Scope" },
-            ["Audit"] = new[] { "Contracts", "Events", "Scope" },
-            ["HotfixRollback"] = new[] { "Audit", "Contracts", "Events", "Idempotency", "Scope" },
-            ["GameEvents"] = new[] { "Assets", "Contracts", "Events", "Match", "Matchmaking", "Session", "Social" },
-            ["Timeline"] = new[] { "Assets", "Contracts", "Events", "Identity", "Match", "Scope", "Session", "Social" },
-            ["Overview"] = new[] { "Contracts", "Match", "Matchmaking", "Party", "Presence", "Scope", "Session" },
+            ["Assets"] = Array.Empty<string>(),
+            ["Social"] = Array.Empty<string>(),
+            ["Matchmaking"] = Array.Empty<string>(),
+            ["Party"] = Array.Empty<string>(),
+            ["Match"] = new[] { "Assets", "Matchmaking" },
+            ["Leaderboard"] = new[] { "Match" },
+            ["Season"] = new[] { "Assets", "Leaderboard" },
+            ["Tournament"] = new[] { "Assets", "Leaderboard" },
+            ["Audit"] = Array.Empty<string>(),
+            ["HotfixRollback"] = new[] { "Audit" },
+            ["GameEvents"] = new[] { "Assets", "Match", "Matchmaking", "Social" },
+            ["Timeline"] = new[] { "Assets", "Match", "Social" },
+            ["Overview"] = new[] { "Match", "Matchmaking", "Party" },
         };
 
         /// <summary>
@@ -146,26 +139,6 @@ namespace GameFrameX.Tests.Online
             Assert.True(violations.Count == 0, "叶子能力簇横向互引必须为零：" + Environment.NewLine + string.Join(Environment.NewLine, violations.Select(edge => $"{edge.From} -> {edge.To}（{edge.Location}）")));
         }
 
-        /// <summary>
-        /// 断言 Events 目录对全部域目录零类型引用（含 using 之外的限定名形态，防相对 using 绕过）。
-        /// </summary>
-        [Fact]
-        public void EventsDirectory_HasNoDomainTypeReferences()
-        {
-            var domainDirs = Directories.Where(dir => dir != "Events" && dir != "Contracts" && dir != "Scope" && dir != "Idempotency" && dir != "Tokens").ToList();
-            var pattern = new Regex(@"\b(" + string.Join("|", domainDirs) + @")\.[A-Z]\w*");
-            var violations = new List<string>();
-            foreach (var file in EnumerateOnlineSourceFiles().Where(file => Path.GetDirectoryName(file)?.Split(Path.DirectorySeparatorChar).Last() == "Events"))
-            {
-                var code = StripCommentsAndStrings(File.ReadAllText(file));
-                foreach (Match match in pattern.Matches(code))
-                {
-                    violations.Add($"{Path.GetFileName(file)}: {match.Value}");
-                }
-            }
-
-            Assert.True(violations.Count == 0, "Events 目录残留域类型限定引用：" + Environment.NewLine + string.Join(Environment.NewLine, violations));
-        }
 
         /// <summary>
         /// 断言事件 topic 常量与来源标识逐字节冻结（C223 零行为变更红线；值 = 2026-10-12 迁移前基线）。
@@ -201,23 +174,23 @@ namespace GameFrameX.Tests.Online
                 (GameFrameX.Online.Party.OnlinePartyEvents.PartyChanged, "Online.Party.Changed"),
                 (GameFrameX.Online.Party.OnlinePartyEvents.PartyInviteChanged, "Online.Party.InviteChanged"),
                 (GameFrameX.Online.Party.OnlinePartyEvents.Source, "online-party"),
-                (GameFrameX.Online.Presence.OnlinePresenceEvents.PresenceChanged, "Online.Presence.Changed"),
-                (GameFrameX.Online.Presence.OnlinePresenceEvents.Source, "online-presence"),
+                (GameFrameX.Capability.Online.Presence.OnlinePresenceEvents.PresenceChanged, "Online.Presence.Changed"),
+                (GameFrameX.Capability.Online.Presence.OnlinePresenceEvents.Source, "online-presence"),
                 (GameFrameX.Online.Season.OnlineSeasonEvents.SeasonCreated, "Online.Season.Created"),
                 (GameFrameX.Online.Season.OnlineSeasonEvents.SeasonStarted, "Online.Season.Started"),
                 (GameFrameX.Online.Season.OnlineSeasonEvents.SeasonEnded, "Online.Season.Ended"),
                 (GameFrameX.Online.Season.OnlineSeasonEvents.SeasonSettled, "Online.Season.Settled"),
                 (GameFrameX.Online.Season.OnlineSeasonEvents.Source, "online-season"),
-                (GameFrameX.Online.Session.OnlineSessionEvents.SessionCreated, "Online.Session.Created"),
-                (GameFrameX.Online.Session.OnlineSessionEvents.SessionAuthenticated, "Online.Session.Authenticated"),
-                (GameFrameX.Online.Session.OnlineSessionEvents.SessionConnected, "Online.Session.Connected"),
-                (GameFrameX.Online.Session.OnlineSessionEvents.SessionActive, "Online.Session.Active"),
-                (GameFrameX.Online.Session.OnlineSessionEvents.SessionReconnecting, "Online.Session.Reconnecting"),
-                (GameFrameX.Online.Session.OnlineSessionEvents.SessionClosed, "Online.Session.Closed"),
-                (GameFrameX.Online.Session.OnlineSessionEvents.SessionKicked, "Online.Session.Kicked"),
-                (GameFrameX.Online.Session.OnlineSessionEvents.SessionExpired, "Online.Session.Expired"),
-                (GameFrameX.Online.Session.OnlineSessionEvents.SessionTokenRefreshed, "Online.Session.TokenRefreshed"),
-                (GameFrameX.Online.Session.OnlineSessionEvents.Source, "online-session"),
+                (GameFrameX.Capability.Online.Session.OnlineSessionEvents.SessionCreated, "Online.Session.Created"),
+                (GameFrameX.Capability.Online.Session.OnlineSessionEvents.SessionAuthenticated, "Online.Session.Authenticated"),
+                (GameFrameX.Capability.Online.Session.OnlineSessionEvents.SessionConnected, "Online.Session.Connected"),
+                (GameFrameX.Capability.Online.Session.OnlineSessionEvents.SessionActive, "Online.Session.Active"),
+                (GameFrameX.Capability.Online.Session.OnlineSessionEvents.SessionReconnecting, "Online.Session.Reconnecting"),
+                (GameFrameX.Capability.Online.Session.OnlineSessionEvents.SessionClosed, "Online.Session.Closed"),
+                (GameFrameX.Capability.Online.Session.OnlineSessionEvents.SessionKicked, "Online.Session.Kicked"),
+                (GameFrameX.Capability.Online.Session.OnlineSessionEvents.SessionExpired, "Online.Session.Expired"),
+                (GameFrameX.Capability.Online.Session.OnlineSessionEvents.SessionTokenRefreshed, "Online.Session.TokenRefreshed"),
+                (GameFrameX.Capability.Online.Session.OnlineSessionEvents.Source, "online-session"),
                 (GameFrameX.Online.Social.OnlineSocialEvents.FriendshipChanged, "Online.Social.FriendshipChanged"),
                 (GameFrameX.Online.Social.OnlineSocialEvents.BlockChanged, "Online.Social.BlockChanged"),
                 (GameFrameX.Online.Social.OnlineSocialEvents.MuteChanged, "Online.Social.MuteChanged"),
