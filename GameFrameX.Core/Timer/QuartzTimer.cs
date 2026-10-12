@@ -31,7 +31,6 @@ using GameFrameX.Core.Abstractions.Events;
 using GameFrameX.Core.Actors;
 using GameFrameX.Core.Hotfix;
 using GameFrameX.Core.Timer.Handler;
-using GameFrameX.Core.Utility;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Utility;
@@ -47,11 +46,6 @@ namespace GameFrameX.Core.Timer;
 /// </summary>
 public static class QuartzTimer
 {
-    /// <summary>
-    /// 统计工具实例,用于记录定时器的使用情况
-    /// </summary>
-    private static readonly StatisticsTool StatisticsTool = new();
-
     /// <summary>
     /// 删除指定的定时任务
     /// </summary>
@@ -648,7 +642,6 @@ public static class QuartzTimer
     private static IJobDetail GetJobDetail<T>(long id, long actorId, GameEventArgs eventArgs) where T : ITimerHandler
     {
         var handlerType = typeof(T);
-        StatisticsTool.Count(handlerType.FullName);
         if (handlerType.Assembly != HotfixManager.Resolver.HotfixAssembly)
         {
             // Localization: CoreExceptions.Timer.CodeMustBeInHotfix - 定时器代码需要在热更项目里
@@ -676,7 +669,6 @@ public static class QuartzTimer
     /// <returns>作业详情对象</returns>
     private static IJobDetail GetJobDetail<T>(long id, GameEventArgs gameEventArgs) where T : NotHotfixTimerHandler
     {
-        StatisticsTool.Count(typeof(T).FullName);
         var job = JobBuilder.Create<T>().WithIdentity(id + string.Empty).Build();
         if (gameEventArgs == null)
         {

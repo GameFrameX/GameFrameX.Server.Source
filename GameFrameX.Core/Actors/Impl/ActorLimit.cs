@@ -29,7 +29,6 @@
 
 using System.Collections.Concurrent;
 using GameFrameX.Core.Abstractions;
-using GameFrameX.Core.Utility;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Utility;

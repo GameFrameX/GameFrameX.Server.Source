@@ -31,7 +31,6 @@
 global using System;
 global using System.Threading.Tasks;
 global using GameFrameX.Core;
-global using GameFrameX.Core.Utility;
 global using GameFrameX.Core.Components;
 global using GameFrameX.Core.Events;
 global using GameFrameX.Core.Hotfix.Agent;

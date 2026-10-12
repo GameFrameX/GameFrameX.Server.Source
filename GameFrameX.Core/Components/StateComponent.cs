@@ -30,7 +30,6 @@
 using System.Collections.Concurrent;
 using GameFrameX.Core.Actors;
 using GameFrameX.Core.Timer;
-using GameFrameX.Core.Utility;
 using GameFrameX.DataBase;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Logger;
@@ -45,11 +44,6 @@ namespace GameFrameX.Core.Components;
 public sealed class StateComponent
 {
     private static readonly ConcurrentBag<Func<bool, bool, Task>> SaveFuncMap = new();
-
-    /// <summary>
-    /// 统计工具
-    /// </summary>
-    public static readonly StatisticsTool StatisticsTool = new();
 
     /// <summary>
     /// 注册回存
@@ -333,7 +327,6 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
     private static async Task ExecuteBatchWritesAsync(List<TState> stateList, bool shutdown)
     {
         var stateName = typeof(TState).Name;
-        StateComponent.StatisticsTool.Count(stateName, stateList.Count);
         // Localization: Core.StateComponent.StateSaveBackDetail - StateComponent.StateSaveBack 状态回存 名称:{0} 数量:{1}
         LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.StateComponent.StateSaveBackDetail, stateName, stateList.Count));
         // 批量保存统一走 GameDb.SaveBulkAsync（分批 upsert、逐批 ack/异常隔离在 DataBase 层实现）；
