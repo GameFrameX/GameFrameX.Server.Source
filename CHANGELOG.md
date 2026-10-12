@@ -10,7 +10,7 @@
 
 ### Known Issues
 
-* GameFrameX.Foundation.Logger ≥ 4.1.1 的 nuspec 无条件声明 MongoDB.Driver 与 Serilog.Sinks.MongoDB（运行时 IsWriteToMongoDb 默认关闭）。验证用 feed 内替换为去除该依赖的同版本补丁包；正式清理需 Foundation 仓库将 Mongo sink 拆为可选包
+* GameFrameX.Foundation.Logger ≥ 4.1.1 的 nuspec 无条件声明 MongoDB.Driver 与 Serilog.Sinks.MongoDB（运行时 IsWriteToMongoDb 默认关闭）。已解除——Foundation 5.0.0 将 Mongo/Loki sink 拆为可选组件包，随 C224 全量升级后传递依赖归零，验证 feed 补丁包不再需要
 
 ## [Unreleased]
 
@@ -41,6 +41,10 @@
 * BaseCacheState.ToBytes 由抽象改为 JSON/UTF8 默认实现，StateHash 脏检查与持久化格式解耦；删除无引用的 BeforeSaveToDb
 * Apps/Hotfix 移除数据库实现程序集引用与 MongoDB GlobalUsings；移除 BsonClassMapHelper / CacheStateTypeManager 与孤儿本地化键
 * 架构分析器移除 Mongo CacheState 符号豁免（GFX0001）；GFX0016 不变
+
+### Changed
+
+* 升级 GameFrameX.Foundation 全部包引用 4.1.1 → 5.0.0（C224，7 项目 13 处）；StartUp 新增 GameFrameX.Foundation.Logger.GrafanaLoki 组件包，GameApp 的 Grafana Loki 接线迁移为 UseGrafanaLoki 显式注册（Url/用户名/密码取自 CLI 选项、Labels 取自 GrafanaLokiLabelTag 反射收集，LogIsGrafanaLoki=false 时零注册；CLI 选项面与 sink 默认值与 4.1.1 一致）。Foundation.Logger 5.0.0 起不再传递 MongoDB.Driver / Serilog.Sinks.MongoDB（Serilog.Sinks.Grafana.Loki 仅由 Logger.GrafanaLoki 组件包引入）
 ## [1.13.7] - 2026-08-05
 
 ### Bug Fixes
