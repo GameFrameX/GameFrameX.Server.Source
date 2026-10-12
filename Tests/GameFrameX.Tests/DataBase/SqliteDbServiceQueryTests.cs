@@ -561,6 +561,36 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
     }
 
     /// <summary>
+    /// 测试软删后的部分更新：仅可见行可更新，软删行返回 0 且不改动库（对齐 Mongo/PG 可见性口径）。
+    /// </summary>
+    [Fact]
+    public async Task UpdatePartialAsync_AfterSoftDelete_ShouldReturnZeroAndNotModifyRow()
+    {
+        await ExecuteWithServiceAsync(async service =>
+        {
+            var state = CreateState("partial-deleted", group: 20, score: 5);
+            await service.AddAsync(state);
+            Assert.Equal(1, await service.DeleteAsync(state));
+
+            var modified = await service.UpdatePartialAsync<SqliteQueryTestState>(state.Id, new Dictionary<string, object>
+            {
+                { nameof(SqliteQueryTestState.Score), 999 },
+            });
+            Assert.Equal(0, modified);
+
+            var includeDeleted = await service.CountAsync<SqliteQueryTestState>(x => x.Id == state.Id, includeDeleted: true);
+            Assert.Equal(1, includeDeleted);
+            var visible = await service.CountAsync<SqliteQueryTestState>(x => x.Id == state.Id);
+            Assert.Equal(0, visible);
+
+            var restored = await service.RestoreAsync<SqliteQueryTestState>(x => x.Id == state.Id);
+            Assert.Equal(1, restored);
+            var revived = await service.FindAsync<SqliteQueryTestState>(state.Id, isCreateIfNotExists: false);
+            Assert.Equal(5, revived.Score);
+        });
+    }
+
+    /// <summary>
     /// 测试 SaveBulk 批量 upsert：逐批 ack、不触碰时间戳、重复保存幂等、batchSize&lt;=0 抛 ArgumentOutOfRangeException。
     /// </summary>
     [Fact]

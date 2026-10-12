@@ -568,6 +568,14 @@ public sealed partial class SqliteDbService
             }
 
             var document = rows[0];
+            // 软删默认过滤生效：仅可见行可被部分更新（对齐 Mongo GetDefaultFindExpression / PG global query filter）。
+            // The soft-delete filter applies: only visible rows can be partially updated (aligned with the Mongo default
+            // find expression and the PG global query filter).
+            if (document.IsDeleted == true)
+            {
+                return 0;
+            }
+
             var stateType = typeof(TState);
             foreach (var item in setFields)
             {

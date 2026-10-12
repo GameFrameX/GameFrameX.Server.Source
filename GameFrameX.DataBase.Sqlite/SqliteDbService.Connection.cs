@@ -98,7 +98,7 @@ public sealed partial class SqliteDbService
             CloseCore();
 
             _connection = new SqliteConnection(dbOptions.ConnectionString);
-            _connection.Open();
+            await _connection.OpenAsync().ConfigureAwait(false);
             _options = dbOptions;
 
             if (!isMemory)
