@@ -63,6 +63,7 @@ internal static class DbProviderResolver
     {
         [DatabaseProviderType.Mongo] = "GameFrameX.DataBase.Mongo.MongoDbService, GameFrameX.DataBase.Mongo",
         [DatabaseProviderType.PostgreSql] = "GameFrameX.DataBase.PostgreSql.PostgreSqlDbService, GameFrameX.DataBase.PostgreSql",
+        [DatabaseProviderType.Sqlite] = "GameFrameX.DataBase.Sqlite.SqliteDbService, GameFrameX.DataBase.Sqlite",
     };
 
     /// <summary>

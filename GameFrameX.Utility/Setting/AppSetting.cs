@@ -749,13 +749,14 @@ public class AppSetting
 
     /// <summary>
     /// 数据库实现提供者
-    /// <para>默认 Mongo；配置为 PostgreSql 时装配点切换为 PostgreSQL 实现</para>
+    /// <para>默认 Mongo；配置为 PostgreSql 时装配点切换为 PostgreSQL 实现；配置为 Sqlite 时切换为嵌入式 SQLite 实现（单进程拓扑，启动打印边界警告）</para>
     /// </summary>
     /// <remarks>
     /// Database implementation provider.
-    /// Defaults to Mongo; setting PostgreSql switches the assembly points to the PostgreSQL implementation.
+    /// Defaults to Mongo; setting PostgreSql switches the assembly points to the PostgreSQL implementation;
+    /// setting Sqlite switches to the embedded SQLite implementation (single-process topology with a startup boundary warning).
     /// </remarks>
-    [Option(nameof(DatabaseProvider), DefaultValue = "Mongo", Description = "数据库实现提供者：Mongo（默认）/ PostgreSql")]
+    [Option(nameof(DatabaseProvider), DefaultValue = "Mongo", Description = "数据库实现提供者：Mongo（默认）/ PostgreSql / Sqlite（嵌入式，单进程拓扑，启动有边界警告）")]
     [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public DatabaseProviderType DatabaseProvider { get; set; } = DatabaseProviderType.Mongo;
 

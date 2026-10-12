@@ -50,4 +50,14 @@ public enum DatabaseProviderType
     /// PostgreSQL 实现（<c>PostgreSqlDbService</c>，全拼命名）。
     /// </summary>
     PostgreSql = 1,
+
+    /// <summary>
+    /// SQLite 嵌入式实现（<c>SqliteDbService</c>，单进程拓扑，启动打印边界警告）。
+    /// </summary>
+    /// <remarks>
+    /// SQLite embedded implementation (<c>SqliteDbService</c>): single-process topology,
+    /// zero external dependencies, startup boundary warning (C222). Production-scale usage
+    /// is the caller's own risk; the framework gates nothing at runtime by design.
+    /// </remarks>
+    Sqlite = 2,
 }

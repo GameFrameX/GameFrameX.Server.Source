@@ -66,6 +66,7 @@ public static class DiscoveryRuntimeResolver
     {
         [DatabaseProviderType.Mongo] = "GameFrameX.DataBase.Mongo.Discovery.MongoDiscoveryRuntime, GameFrameX.DataBase.Mongo",
         [DatabaseProviderType.PostgreSql] = "GameFrameX.DataBase.PostgreSql.Discovery.PostgreSqlDiscoveryRuntime, GameFrameX.DataBase.PostgreSql",
+        [DatabaseProviderType.Sqlite] = "GameFrameX.Discovery.InProcDiscoveryRuntime, GameFrameX.Discovery",
     };
 
     /// <summary>
