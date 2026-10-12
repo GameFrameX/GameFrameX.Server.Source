@@ -491,11 +491,6 @@ internal sealed class HotfixModule : ICollectibleAssemblyModule
             return false;
         }
 
-        if (fullName == "GameFrameX.Launcher.Logic.Server.ServerComp")
-        {
-            return false;
-        }
-
         // 这里处理SourceGeneratedCode 生成的代码的 Warp 对象,注意命名空间的识别
         if (fullName.StartsWith(GlobalConst.HotfixNameSpaceNamePrefix) && fullName.EndsWith(GlobalConst.ComponentAgentWrapperNameSuffix))
         {
@@ -568,7 +563,7 @@ internal sealed class HotfixModule : ICollectibleAssemblyModule
     internal List<BaseHttpHandler> GetListHttpHandler()
     {
         var values = _httpHandlerMap.Values;
-        List<BaseHttpHandler> list = new List<BaseHttpHandler>(values.Count / 2);
+        var list = new List<BaseHttpHandler>(values.Count / 2);
         foreach (var handler in values)
         {
             if (list.Contains(handler))

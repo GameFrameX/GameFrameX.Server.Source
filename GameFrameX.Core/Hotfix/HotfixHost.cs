@@ -79,21 +79,13 @@ internal sealed class HotfixHost : IHotfixResolver
     /// 获取当前热更模块。
     /// Gets the current hotfix module.
     /// </summary>
-    internal HotfixModule CurrentModule
-    {
-        get;
-        private set;
-    }
+    internal HotfixModule CurrentModule { get; private set; }
 
     /// <summary>
     /// 获取最近一次热更新重载的时间。
     /// Gets the time of the most recent hot reload.
     /// </summary>
-    internal DateTime ReloadTime
-    {
-        get;
-        private set;
-    }
+    internal DateTime ReloadTime { get; private set; }
 
     /// <summary>
     /// 获取当前热更程序集（未装载过为 <c>null</c>）。

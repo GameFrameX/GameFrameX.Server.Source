@@ -63,37 +63,25 @@ public sealed class HotfixLoadOptions
     /// 版本目录名（默认空）：非空时整体替代 <see cref="AssemblyDirectory"/> 作为装载目录段。
     /// The version directory name (empty by default): when non-empty it replaces <see cref="AssemblyDirectory"/> as the load directory segment.
     /// </summary>
-    public string Version
-    {
-        get;
-        init;
-    } = string.Empty;
+    public string Version { get; init; } = string.Empty;
 
     /// <summary>
     /// 装载目录（默认 "hotfix"，相对当前工作目录）。
     /// The load directory (default "hotfix", relative to the current working directory).
     /// </summary>
-    public string AssemblyDirectory
-    {
-        get;
-        init;
-    } = "hotfix";
+    public string AssemblyDirectory { get; init; } = "hotfix";
 
     /// <summary>
     /// 热更程序集文件名（默认 "GameFrameX.Hotfix.dll"）。
     /// The hotfix assembly file name (default "GameFrameX.Hotfix.dll").
     /// </summary>
-    public string AssemblyFileName
-    {
-        get;
-        init;
-    } = "GameFrameX.Hotfix.dll";
+    public string AssemblyFileName { get; init; } = "GameFrameX.Hotfix.dll";
 
     /// <summary>
     /// 版本值禁止出现的路径相关字符（分隔符与卷分隔符）。
     /// Path-relevant characters (separators and the volume separator) forbidden in version values.
     /// </summary>
-    private static readonly char[] ForbiddenVersionChars = { '/', '\\', ':' };
+    private static readonly char[] ForbiddenVersionChars = { '/', '\\', ':', };
 
     /// <summary>
     /// 解析热更程序集完整装载路径（语义见类备注；含集中校验）。
