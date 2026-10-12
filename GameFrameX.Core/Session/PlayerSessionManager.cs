@@ -347,9 +347,29 @@ public sealed class PlayerSessionManager : IPlayerSessionManager
 
         // 钩子实例 ID：进程未注册发现层时退化为主机名 + 时间戳（与 MongoEndpointRegistry.CreateSelfDescriptorFromEnvironment 同形态）。
         var instanceId = ResolveSyncInstanceId(resolvedServerType);
+        // 丢弃的是完全自愈的 SafeAsync 任务：异步失败也被观测（catch + warning），不进 UnobservedTaskException
+        _ = SyncUpsertSafeAsync(syncTarget, playerId, instanceId, resolvedServerType, snapshot);
+    }
+
+    /// <summary>
+    /// 路由同步 upsert 钩子的全程观测包装：同步与异步失败统一 swallow + warning，主链路不挂。
+    /// </summary>
+    /// <remarks>
+    /// Fully-observed wrapper for the route-sync upsert hook: both synchronous and
+    /// asynchronous failures are swallowed with a warning log, so the discarded task
+    /// never surfaces as an <c>UnobservedTaskException</c> and the in-memory
+    /// <c>PlayerRouteMap</c> stays authoritative until the next SetOnline converges.
+    /// </remarks>
+    /// <param name="syncTarget">控制库同步目标 / The control-database sync target</param>
+    /// <param name="playerId">玩家ID / The player id</param>
+    /// <param name="instanceId">钩子实例标识 / The hook instance identifier</param>
+    /// <param name="role">归属服务类型 / The owning server type</param>
+    /// <param name="snapshot">会话路由快照 / The session route snapshot</param>
+    private static async Task SyncUpsertSafeAsync(IPlayerRouteSyncTarget syncTarget, long playerId, string instanceId, string role, SessionRouteSnapshot snapshot)
+    {
         try
         {
-            _ = syncTarget.UpsertAsync(new PlayerRouteRecord { PlayerId = playerId, InstanceId = instanceId, Role = resolvedServerType, Version = snapshot.Version, });
+            await syncTarget.UpsertAsync(new PlayerRouteRecord { PlayerId = playerId, InstanceId = instanceId, Role = role, Version = snapshot.Version, });
         }
         catch (Exception exception)
         {
@@ -365,9 +385,25 @@ public sealed class PlayerSessionManager : IPlayerSessionManager
             return;
         }
 
+        // 同 upsert：丢弃完全自愈的 SafeAsync 任务，异步失败同样被观测
+        _ = SyncDeleteSafeAsync(syncTarget, playerId);
+    }
+
+    /// <summary>
+    /// 路由同步 delete 钩子的全程观测包装：同步与异步失败统一 swallow + warning，主链路不挂。
+    /// </summary>
+    /// <remarks>
+    /// Fully-observed wrapper for the route-sync delete hook: both synchronous and
+    /// asynchronous failures are swallowed with a warning log, so the discarded task
+    /// never surfaces as an <c>UnobservedTaskException</c>.
+    /// </remarks>
+    /// <param name="syncTarget">控制库同步目标 / The control-database sync target</param>
+    /// <param name="playerId">玩家ID / The player id</param>
+    private static async Task SyncDeleteSafeAsync(IPlayerRouteSyncTarget syncTarget, long playerId)
+    {
         try
         {
-            _ = syncTarget.DeleteAsync(playerId);
+            await syncTarget.DeleteAsync(playerId);
         }
         catch (Exception exception)
         {

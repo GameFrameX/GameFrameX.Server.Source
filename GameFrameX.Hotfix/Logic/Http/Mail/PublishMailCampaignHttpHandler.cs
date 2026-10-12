@@ -42,6 +42,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
     /// 校验通过后写入不可变 <see cref="MailCampaignState"/> 快照（B1：发布后主体字段不可修改）。
     /// </summary>
     [HttpMessageMapping(typeof(PublishMailCampaignHttpHandler), typeof(PublishMailCampaignRequest), typeof(PublishMailCampaignResponse))]
+    [RequireHttpSignature]
     [Description("Admin 发布运营邮件 Campaign")]
     public sealed class PublishMailCampaignHttpHandler : BaseHttpHandler
     {
