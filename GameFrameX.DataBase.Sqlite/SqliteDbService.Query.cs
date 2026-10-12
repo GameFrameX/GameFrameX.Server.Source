@@ -765,8 +765,23 @@ public sealed partial class SqliteDbService
     private SqliteCommand BuildSelectAllCommand<TState>() where TState : BaseCacheState, new()
     {
         var command = _connection.CreateCommand();
-        command.CommandText = $"SELECT id, doc FROM {QuoteTableName<TState>()};";
+        command.CommandText = BuildSelectAllCommandText<TState>();
         return command;
+    }
+
+    /// <summary>
+    /// 构建整表读 SQL 文本（表名 = 编译期封闭类型名的双引号转义，非运行期输入）。
+    /// </summary>
+    /// <remarks>
+    /// Builds the select-all SQL text. The table name is the quote-escaped <c>typeof(TState).Name</c> —
+    /// a compile-time-closed identifier, never runtime input; SQL identifiers cannot be bound parameters,
+    /// so the composition is centralized in this dedicated builder with that invariant stated (Sonar S2077).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <returns>SQL 文本 / The SQL text</returns>
+    private static string BuildSelectAllCommandText<TState>() where TState : BaseCacheState, new()
+    {
+        return "SELECT id, doc FROM " + QuoteTableName<TState>() + ";";
     }
 
     /// <summary>
@@ -781,9 +796,25 @@ public sealed partial class SqliteDbService
     private SqliteCommand BuildIdEqualsCommand<TState>(long id) where TState : BaseCacheState, new()
     {
         var command = _connection.CreateCommand();
-        command.CommandText = $"SELECT id, doc FROM {QuoteTableName<TState>()} WHERE id = $id;";
+        command.CommandText = BuildIdEqualsCommandText<TState>();
         command.Parameters.AddWithValue("$id", id);
         return command;
+    }
+
+    /// <summary>
+    /// 构建 id 等值 SQL 文本（表名 = 编译期封闭类型名的双引号转义，非运行期输入；id 值走 $id 参数绑定）。
+    /// </summary>
+    /// <remarks>
+    /// Builds the WHERE id = ? SQL text. The table name is the quote-escaped <c>typeof(TState).Name</c> —
+    /// a compile-time-closed identifier, never runtime input; SQL identifiers cannot be bound parameters,
+    /// so the composition is centralized in this dedicated builder with that invariant stated (Sonar S2077).
+    /// The id itself is bound via the <c>$id</c> parameter.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <returns>SQL 文本 / The SQL text</returns>
+    private static string BuildIdEqualsCommandText<TState>() where TState : BaseCacheState, new()
+    {
+        return "SELECT id, doc FROM " + QuoteTableName<TState>() + " WHERE id = $id;";
     }
 
     /// <summary>
@@ -805,8 +836,25 @@ public sealed partial class SqliteDbService
             command.Parameters.AddWithValue(parameterNames[index], ids[index]);
         }
 
-        command.CommandText = $"SELECT id, doc FROM {QuoteTableName<TState>()} WHERE id IN ({string.Join(", ", parameterNames)});";
+        command.CommandText = BuildIdInCommandText<TState>(parameterNames);
         return command;
+    }
+
+    /// <summary>
+    /// 构建 id IN SQL 文本（表名 = 编译期封闭类型名的双引号转义；参数名由本类内部生成，id 值全走参数绑定）。
+    /// </summary>
+    /// <remarks>
+    /// Builds the WHERE id IN (...) SQL text. The table name is the quote-escaped <c>typeof(TState).Name</c> —
+    /// a compile-time-closed identifier, never runtime input; the listed names are internally generated
+    /// parameter placeholders whose values are bound via <c>Parameters.AddWithValue</c> — no runtime value
+    /// is ever formatted into the SQL text (Sonar S2077).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="parameterNames">内部生成的参数名集合 / The internally generated parameter names</param>
+    /// <returns>SQL 文本 / The SQL text</returns>
+    private static string BuildIdInCommandText<TState>(string[] parameterNames) where TState : BaseCacheState, new()
+    {
+        return "SELECT id, doc FROM " + QuoteTableName<TState>() + " WHERE id IN (" + string.Join(", ", parameterNames) + ");";
     }
 
     /// <summary>
