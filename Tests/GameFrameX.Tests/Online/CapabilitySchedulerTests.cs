@@ -31,7 +31,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Hosting;
-using GameFrameX.Online.Runtime;
+using GameFrameX.Launcher.Online;
 using Xunit;
 
 namespace GameFrameX.Tests.Online
@@ -43,19 +43,20 @@ namespace GameFrameX.Tests.Online
     public class CapabilitySchedulerTests
     {
         /// <summary>
-        /// 构造测试用调度器（Online 过渡组合根承载，最小驱动间隔）。
+        /// 构造测试用调度器（Online 单入口组合根承载，最小驱动间隔）。
         /// </summary>
         /// <returns>待测调度器。</returns>
         private static CapabilityScheduler CreateScheduler()
         {
-            var host = new OnlineRuntimeHost(new CapabilityHostOptions
+            var composition = OnlineCapabilityComposition.AddOnlineCapabilities(options =>
             {
-                TenantId = 1,
-                AppId = 1,
-                ServerId = 1,
-                SchedulerIntervalMilliseconds = 100,
+                options.TenantId = 1;
+                options.AppId = 1;
+                options.ServerId = 1;
+                options.SchedulerIntervalMilliseconds = 100;
+                options.EnableRuntime = true;
             });
-            return host.Scheduler;
+            return composition.Runtime.Scheduler;
         }
 
         /// <summary>

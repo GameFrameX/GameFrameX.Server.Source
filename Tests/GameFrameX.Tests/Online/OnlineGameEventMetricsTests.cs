@@ -30,8 +30,8 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Events;
-using GameFrameX.Online.GameEvents;
-using GameFrameX.Online.Match;
+using GameFrameX.Capability.Online.Operations.GameEvents;
+using GameFrameX.Capability.Online.Match;
 using GameFrameX.Capability.Online.Session;
 using Xunit;
 

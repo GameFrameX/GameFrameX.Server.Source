@@ -34,10 +34,10 @@ using GameFrameX.Foundation.Idempotency;
 using GameFrameX.Capability.Online.Assets;
 using GameFrameX.Capability.Online.Contracts;
 using GameFrameX.Capability.Online.Idempotency;
-using GameFrameX.Online.Leaderboard;
-using GameFrameX.Online.Match;
+using GameFrameX.Capability.Online.Competition.Leaderboard;
+using GameFrameX.Capability.Online.Match;
 using GameFrameX.Capability.Online.Scope;
-using GameFrameX.Online.Tournament;
+using GameFrameX.Capability.Online.Competition.Tournament;
 using Xunit;
 
 namespace GameFrameX.Tests.Online

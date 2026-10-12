@@ -29,7 +29,7 @@
 
 using System;
 using System.Collections.Generic;
-using GameFrameX.Online.Match;
+using GameFrameX.Capability.Online.Match;
 using Xunit;
 
 namespace GameFrameX.Tests.Online

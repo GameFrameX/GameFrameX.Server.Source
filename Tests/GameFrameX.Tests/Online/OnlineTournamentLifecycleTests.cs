@@ -31,7 +31,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Contracts;
 using GameFrameX.Capability.Online.Events;
-using GameFrameX.Online.Tournament;
+using GameFrameX.Capability.Online.Competition.Tournament;
 using Xunit;
 
 namespace GameFrameX.Tests.Online

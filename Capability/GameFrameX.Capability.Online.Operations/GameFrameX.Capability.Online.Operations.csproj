@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="../../Version.props" Label="版本号定义"/>
+
+    <PropertyGroup>
+        <Description>GameFrameX.Capability.Online.Operations,GFX Online 运营聚合能力包:统一审计/游戏事件/Hotfix 回滚/在线总览/玩家时间线 + 事件桥与审计桥装配(InMemory 默认存储,UseOnlineOperationsStore 族替换缝)+ hosting 扩展(AddOnlineOperationsRuntime)+ admin handlers(Console 三 action). Operations aggregate capability package for the GFX Online family: unified audit, game events, hotfix rollback, overview and player timeline plus the event/audit bridge wiring with in-memory default stores, the hosting extension and admin handlers. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Capability,Online,Operations,Audit,Timeline,Overview,HotfixRollback,GameEvents,GameServer</PackageTags>
+        <LangVersion>10</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Abstractions/GameFrameX.Capability.Online.Abstractions.csproj"/>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Foundation/GameFrameX.Capability.Online.Foundation.csproj"/>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Assets/GameFrameX.Capability.Online.Assets.csproj"/>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Social/GameFrameX.Capability.Online.Social.csproj"/>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Matchmaking/GameFrameX.Capability.Online.Matchmaking.csproj"/>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Match/GameFrameX.Capability.Online.Match.csproj"/>
+        <ProjectReference Include="../GameFrameX.Capability.Hosting.Core/GameFrameX.Capability.Hosting.Core.csproj"/>
+    </ItemGroup>
+
+</Project>

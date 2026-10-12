@@ -30,7 +30,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Leaderboard;
+using GameFrameX.Capability.Online.Competition.Leaderboard;
 
 namespace GameFrameX.Tests.Online
 {

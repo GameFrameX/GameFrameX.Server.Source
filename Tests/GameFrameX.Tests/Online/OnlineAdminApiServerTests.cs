@@ -31,7 +31,7 @@ using System.Text.Json;
 using GameFrameX.Capability.Hosting;
 using GameFrameX.Capability.Hosting.AdminApi;
 using GameFrameX.Capability.Online.Contracts;
-using GameFrameX.Online.Runtime;
+using GameFrameX.Launcher.Online;
 
 namespace GameFrameX.Tests.Online
 {
@@ -109,11 +109,10 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task StopAsync_ThenRestart_ShouldReleasePort()
         {
-            var host = new OnlineRuntimeHost(BuildHostOptions());
-            var first = OnlineAdminApiComposition.CreateServer(host, BuildAdminOptions());
+            var first = OnlineAdminApiComposition.CreateServer(CreateComposition().Runtime, BuildAdminOptions());
             await first.StartAsync();
             await first.StopAsync();
-            var second = OnlineAdminApiComposition.CreateServer(new OnlineRuntimeHost(BuildHostOptions()), BuildAdminOptions());
+            var second = OnlineAdminApiComposition.CreateServer(CreateComposition().Runtime, BuildAdminOptions());
             await second.StartAsync();
             var content = new StringContent("{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001}", Encoding.UTF8, "application/json");
             var response = await SharedHttpClient.PostAsync("http://127.0.0.1:" + TestPort + "/online/admin/no_such_action", content);
@@ -127,22 +126,23 @@ namespace GameFrameX.Tests.Online
         /// <returns>异步任务。</returns>
         private async Task StartServerAsync()
         {
-            _server = OnlineAdminApiComposition.CreateServer(new OnlineRuntimeHost(BuildHostOptions()), BuildAdminOptions());
+            _server = OnlineAdminApiComposition.CreateServer(CreateComposition().Runtime, BuildAdminOptions());
             await _server.StartAsync();
         }
 
         /// <summary>
-        /// 构造机制宿主选项（授权三元组 1/1/1001）。
+        /// 构造 Online 单入口组合产物（业务运行时形态；授权三元组 1/1/1001，C232 P6 起真扫描装配）。
         /// </summary>
-        /// <returns>机制宿主选项。</returns>
-        private static CapabilityHostOptions BuildHostOptions()
+        /// <returns>组合产物。</returns>
+        private static OnlineCapabilityComposition CreateComposition()
         {
-            return new CapabilityHostOptions
+            return OnlineCapabilityComposition.AddOnlineCapabilities(options =>
             {
-                TenantId = 1,
-                AppId = 1,
-                ServerId = 1001,
-            };
+                options.TenantId = 1;
+                options.AppId = 1;
+                options.ServerId = 1001;
+                options.EnableRuntime = true;
+            });
         }
 
         /// <summary>

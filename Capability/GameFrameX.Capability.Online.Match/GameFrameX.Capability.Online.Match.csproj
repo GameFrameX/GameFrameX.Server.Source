@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="../../Version.props" Label="版本号定义"/>
+
+    <PropertyGroup>
+        <Description>GameFrameX.Capability.Online.Match,GFX Online 对局能力包:权威对局 Actor/同步协议/重连/幂等结算/样例玩法(InMemory 默认存储,UseOnlineMatchStore 替换缝)+ hosting 扩展(AddOnlineMatchRuntime)+ admin handlers(end_abnormal_match). Match capability package for the GFX Online family: authoritative match actor, sync protocol, reconnect, idempotent settlement and the sample game with in-memory default stores, the hosting extension and admin handlers. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Capability,Online,Match,Authoritative,Settlement,Reconnect,GameServer</PackageTags>
+        <LangVersion>10</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Abstractions/GameFrameX.Capability.Online.Abstractions.csproj"/>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Assets/GameFrameX.Capability.Online.Assets.csproj"/>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Matchmaking/GameFrameX.Capability.Online.Matchmaking.csproj"/>
+        <ProjectReference Include="../GameFrameX.Capability.Hosting.Core/GameFrameX.Capability.Hosting.Core.csproj"/>
+    </ItemGroup>
+
+</Project>

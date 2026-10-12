@@ -31,7 +31,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Contracts;
 using GameFrameX.Capability.Online.Events;
-using GameFrameX.Online.Leaderboard;
+using GameFrameX.Capability.Online.Competition.Leaderboard;
 using GameFrameX.Capability.Online.Scope;
 using Xunit;
 

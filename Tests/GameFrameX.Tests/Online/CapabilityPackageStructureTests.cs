@@ -49,14 +49,11 @@ namespace GameFrameX.Tests.Online
             ["GameFrameX.Capability.Online.Assets"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Hosting.Core" },
             ["GameFrameX.Capability.Online.Social"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation", "GameFrameX.Capability.Hosting.Core" },
             ["GameFrameX.Capability.Online.Matchmaking"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Hosting.Core" },
+            ["GameFrameX.Capability.Online.Match"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Online.Matchmaking", "GameFrameX.Capability.Hosting.Core" },
+            ["GameFrameX.Capability.Online.Competition"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Online.Match", "GameFrameX.Capability.Hosting.Core" },
+            ["GameFrameX.Capability.Online.Operations"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Online.Social", "GameFrameX.Capability.Online.Matchmaking", "GameFrameX.Capability.Online.Match", "GameFrameX.Capability.Hosting.Core" },
             ["GameFrameX.Capability.Online.Abstractions"] = new[] { "GameFrameX.Localization", "GameFrameX.Capability.Hosting.AdminApi" },
-            ["GameFrameX.Capability.Online.Foundation"] = new[] { "GameFrameX.Capability.Online.Abstractions" },
-            ["GameFrameX.Online"] = new[] { "GameFrameX.Localization", "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Online.Social", "GameFrameX.Capability.Online.Matchmaking" },
-            ["GameFrameX.Online.Runtime"] = new[]
-            {
-                "GameFrameX.Online", "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Online.Social", "GameFrameX.Capability.Online.Matchmaking",
-                "GameFrameX.Capability.Hosting.Abstractions", "GameFrameX.Capability.Hosting.Core", "GameFrameX.Capability.Hosting.AdminApi",
-            },
+            ["GameFrameX.Capability.Online.Foundation"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Hosting.Core" },
         };
 
         /// <summary>
@@ -106,15 +103,28 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 断言组合根（Launcher）对 Online 能力面的引用只经 Runtime 壳过渡（P2 迁移到 AddOnlineCapabilities 后随期调整）。
+        /// 断言组合根（Launcher）直引全部 Online 能力包（C232 P6 终态：单体与 Runtime 壳退役，
+        /// 编排回归 Launcher 组合根 + BuildHost 真扫描生产采用——扫描面 = Launcher 程序集引用面）。
         /// </summary>
         [Fact]
-        public void Launcher_ReferencesOnlineCapabilities_OnlyThroughRuntimeShell()
+        public void Launcher_ReferencesOnlineCapabilityPackages_Directly()
         {
             var actual = ReadProjectReferences("GameFrameX.Launcher");
-            var capabilityRelated = actual.Where(reference => CapabilityNamePrefixes.Any(prefix => reference.StartsWith(prefix, StringComparison.Ordinal))).ToList();
+            var capabilityRelated = actual.Where(reference => CapabilityNamePrefixes.Any(prefix => reference.StartsWith(prefix, StringComparison.Ordinal)))
+                .OrderBy(reference => reference, StringComparer.Ordinal)
+                .ToList();
 
-            Assert.Equal(new[] { "GameFrameX.Online.Runtime" }, capabilityRelated);
+            Assert.Equal(new[]
+            {
+                "GameFrameX.Capability.Online.Abstractions",
+                "GameFrameX.Capability.Online.Assets",
+                "GameFrameX.Capability.Online.Competition",
+                "GameFrameX.Capability.Online.Foundation",
+                "GameFrameX.Capability.Online.Match",
+                "GameFrameX.Capability.Online.Matchmaking",
+                "GameFrameX.Capability.Online.Operations",
+                "GameFrameX.Capability.Online.Social",
+            }, capabilityRelated);
         }
 
         /// <summary>

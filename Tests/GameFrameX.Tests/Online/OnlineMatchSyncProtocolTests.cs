@@ -30,7 +30,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Contracts;
-using GameFrameX.Online.Match;
+using GameFrameX.Capability.Online.Match;
 using GameFrameX.Capability.Online.Matchmaking;
 using GameFrameX.Capability.Online.Scope;
 using Xunit;

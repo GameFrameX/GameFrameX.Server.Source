@@ -35,15 +35,15 @@ using GameFrameX.Foundation.Idempotency;
 using GameFrameX.Capability.Online.Assets;
 using GameFrameX.Capability.Online.Identity;
 using GameFrameX.Capability.Online.Idempotency;
-using GameFrameX.Online.Match;
+using GameFrameX.Capability.Online.Match;
 using GameFrameX.Capability.Online.Matchmaking;
-using GameFrameX.Online.Overview;
+using GameFrameX.Capability.Online.Operations.Overview;
 using GameFrameX.Capability.Online.Party;
 using GameFrameX.Capability.Online.Presence;
 using GameFrameX.Capability.Online.Scope;
 using GameFrameX.Capability.Online.Session;
 using GameFrameX.Capability.Online.Social;
-using GameFrameX.Online.Timeline;
+using GameFrameX.Capability.Online.Operations.Timeline;
 using Xunit;
 
 namespace GameFrameX.Tests.Online

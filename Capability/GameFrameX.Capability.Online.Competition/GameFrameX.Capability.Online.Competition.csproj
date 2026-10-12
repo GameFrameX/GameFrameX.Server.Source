@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="../../Version.props" Label="版本号定义"/>
+
+    <PropertyGroup>
+        <Description>GameFrameX.Capability.Online.Competition,GFX Online 竞技能力包:排行榜/赛季/锦标赛/LiveOps 承载(InMemory 默认存储,UseOnlineCompetitionStore 族替换缝)+ hosting 扩展(AddOnlineCompetitionRuntime)+ admin handlers(LiveOps 七 action). Competition capability package for the GFX Online family: leaderboards, seasons, tournaments and the LiveOps registry with in-memory default stores, the hosting extension and admin handlers. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Capability,Online,Competition,Leaderboard,Season,Tournament,LiveOps,GameServer</PackageTags>
+        <LangVersion>10</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Abstractions/GameFrameX.Capability.Online.Abstractions.csproj"/>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Assets/GameFrameX.Capability.Online.Assets.csproj"/>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Match/GameFrameX.Capability.Online.Match.csproj"/>
+        <ProjectReference Include="../GameFrameX.Capability.Hosting.Core/GameFrameX.Capability.Hosting.Core.csproj"/>
+    </ItemGroup>
+
+</Project>

@@ -33,11 +33,11 @@ using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Assets;
 using GameFrameX.Capability.Online.Contracts;
 using GameFrameX.Capability.Online.Events;
-using GameFrameX.Online.Match;
+using GameFrameX.Capability.Online.Match;
 using GameFrameX.Capability.Online.Scope;
 using GameFrameX.Capability.Online.Session;
 using GameFrameX.Capability.Online.Social;
-using GameFrameX.Online.Timeline;
+using GameFrameX.Capability.Online.Operations.Timeline;
 using Xunit;
 
 namespace GameFrameX.Tests.Online

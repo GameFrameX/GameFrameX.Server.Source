@@ -34,7 +34,7 @@ using GameFrameX.Capability.Online.Assets;
 using GameFrameX.Capability.Online.Contracts;
 using GameFrameX.Capability.Online.Events;
 using GameFrameX.Capability.Online.Idempotency;
-using GameFrameX.Online.Match;
+using GameFrameX.Capability.Online.Match;
 using GameFrameX.Capability.Online.Matchmaking;
 using GameFrameX.Capability.Online.Scope;
 using Xunit;
