@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <!-- dotnet new 模板包项目（C221）：仅承载 templates/gfx-role 源树与 .template.config，零代码、零运行时触面。 -->
+        <!-- 本地路径安装：dotnet new install ./GameFrameX.Templates（folder 安装直接读取 .template.config，无需打包 nupkg）。 -->
+        <!-- IsPackable=false：不产出 nupkg，不进入手动发布流水线（C220 后发布一律手动触发，模板包永不发布）。 -->
+        <IsPackable>false</IsPackable>
+        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+        <GenerateDocumentationFile>false</GenerateDocumentationFile>
+        <PackageType>Template</PackageType>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- templates/ 源树是 dotnet new 的素材（含 {{Name}}/{{Domain}} 占位符，非合法 C#），禁止参与编译 -->
+        <Compile Remove="templates/**/*.cs" />
+    </ItemGroup>
+
+</Project>

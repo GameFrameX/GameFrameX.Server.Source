@@ -34,5 +34,6 @@
   <Project Path="GameFrameX.Proto/GameFrameX.Proto.csproj" />
   <Project Path="GameFrameX.ProtoBuf.Net/GameFrameX.ProtoBuf.Net.csproj" />
   <Project Path="GameFrameX.StartUp/GameFrameX.StartUp.csproj" />
+  <Project Path="GameFrameX.Templates/GameFrameX.Templates.csproj" />
   <Project Path="GameFrameX.Utility/GameFrameX.Utility.csproj" />
 </Solution>

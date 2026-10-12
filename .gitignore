@@ -17,3 +17,6 @@ CLAUDE.md
 # gfx-project
 gfx-doc
 .codegraph
+
+# C221：gfx-role 模板产出的 .proto 源暂存（移入 Protobuf 仓后即弃，不入库）
+scripts/scaffold-out/

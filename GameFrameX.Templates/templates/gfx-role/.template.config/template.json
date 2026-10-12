@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "GameFrameX",
+  "classifications": [ "GameFrameX", "ServerRole" ],
+  "identity": "GameFrameX.RoleSlice",
+  "name": "GameFrameX ServerRole 垂直切片",
+  "shortName": "gfx-role",
+  "tags": {
+    "language": "C#",
+    "type": "item"
+  },
+  "description": "按 C197 垂直切片约定生成 ServerRole 全切片骨架：.proto 源（落 scripts/scaffold-out/）+ Apps Entity/Component + Hotfix Agent/Handlers/Rules + Rules 单测 + 域内护栏测试。必须在 Server.Source 仓根执行。",
+  "symbols": {
+    "Name": {
+      "type": "parameter",
+      "datatype": "string",
+      "description": "切片名（PascalCase，如 Demo）；参与类型名、目录名与文件名替换",
+      "isRequired": true,
+      "replaces": "{{Name}}",
+      "fileRename": "{{Name}}"
+    },
+    "Domain": {
+      "type": "parameter",
+      "datatype": "int",
+      "description": "消息域号（3 位正整数 100-999；避开已用域号与 Online 预留段 600-649/700-799，治理表见 GameFrameX.Templates/README.md）",
+      "isRequired": true,
+      "replaces": "{{Domain}}",
+      "fileRename": "{{Domain}}"
+    }
+  }
+}

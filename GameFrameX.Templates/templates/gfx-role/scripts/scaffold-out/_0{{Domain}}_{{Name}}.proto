@@ -1,0 +1,21 @@
+syntax = "proto3";
+package {{Name}};
+
+// {{Name}} 业务错误码（6 位 = 模块ID {{Domain}} + 3 位编号）。客户端协议 ErrorCode 以 int 透传：发生错误时赋具体码，成功不赋值（框架默认 0）。
+enum {{Name}}ErrorCode
+{
+  NotLoggedIn = {{Domain}}001; // 会话未绑定玩家（未登录）
+  TextInvalid = {{Domain}}002; // 文本非法（空或超过长度上限）——样板错误码，按业务替换
+}
+
+// 请求回显（样板消息对：跑通三层链路后按业务替换字段与消息对；域内序号 10 起，导出器按文件内顺序成对递增）
+message Req{{Name}}Echo
+{
+  string Text = 1; // 回显文本（1-200 字符，见 {{Name}}Rules.MaxTextLength）
+}
+
+// 返回回显
+message Resp{{Name}}Echo
+{
+  string Text = 1; // 回显文本
+}
