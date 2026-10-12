@@ -1,0 +1,1228 @@
+// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file at the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes and liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository:  https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+
+using System.Linq.Expressions;
+using System.Text.Json;
+using GameFrameX.DataBase.Abstractions;
+using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Foundation.Logger;
+using GameFrameX.Localization;
+using Microsoft.Data.Sqlite;
+
+namespace GameFrameX.DataBase.Sqlite;
+
+/// <summary>
+/// SQLite 写路径（整文档写回 + 时间戳语义对齐 Mongo/PG；事务壳单连接单事务，嵌套加入环境事务）。
+/// </summary>
+/// <remarks>
+/// Write paths: whole-document write-back with the Mongo/PG timestamp semantics (Add stamps both
+/// times and seeds UpdateCount; Update advances them; upserts replace whole documents and revive
+/// soft-deleted rows; SaveBulkAsync persists timestamps verbatim). Transactions run on the single
+/// connection — a nested transaction shell joins the ambient transaction instead of opening a
+/// second one (SQLite cannot nest); retry policy is single-pass by design (degraded member, C222).
+/// </remarks>
+public sealed partial class SqliteDbService
+{
+    /// <summary>
+    /// 增加一条数据（适配器补齐时间戳与更新计数，对齐 Mongo/PG；主键冲突原样上抛）。
+    /// </summary>
+    /// <remarks>
+    /// Adds a single document (the adapter fills timestamps and update count; a primary-key conflict
+    /// propagates as a SQLite unique-constraint error, mirroring Mongo/PG insert semantics).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="state">要新增的数据 / The state to add</param>
+    /// <returns>异步任务 / Async task</returns>
+    public async Task AddAsync<TState>(TState state) where TState : BaseCacheState, new()
+    {
+        await AddAsync(state, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 增加一条数据（适配器补齐时间戳与更新计数，对齐 Mongo/PG；主键冲突原样上抛）。
+    /// </summary>
+    /// <remarks>
+    /// Adds a single document (the adapter fills timestamps and update count; a primary-key conflict
+    /// propagates as a SQLite unique-constraint error, mirroring Mongo/PG insert semantics).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="state">要新增的数据 / The state to add</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>异步任务 / Async task</returns>
+    public async Task AddAsync<TState>(TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureOpen();
+        var currentTime = GetCurrentTimestamp();
+        state.CreatedTime = currentTime;
+        state.UpdateTime = currentTime;
+        state.UpdateCount ??= 0;
+        await ExecuteGatedAsync(async () =>
+        {
+            await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+            using var command = BuildInsertCommand<TState>(state);
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 增加一个列表数据（单事务整批原子；空集合直接返回，对齐 Mongo/PG）。
+    /// </summary>
+    /// <remarks>
+    /// Adds a list of documents — one implicit transaction wraps every insert so the batch is
+    /// atomic; empty collections return directly.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="states">要新增的数据列表 / The states to add</param>
+    /// <returns>异步任务 / Async task</returns>
+    public async Task AddListAsync<TState>(IEnumerable<TState> states) where TState : BaseCacheState, new()
+    {
+        await AddListAsync(states, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 增加一个列表数据（单事务整批原子；空集合直接返回，对齐 Mongo/PG）。
+    /// </summary>
+    /// <remarks>
+    /// Adds a list of documents — one implicit transaction wraps every insert so the batch is
+    /// atomic; empty collections return directly.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="states">要新增的数据列表 / The states to add</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>异步任务 / Async task</returns>
+    public async Task AddListAsync<TState>(IEnumerable<TState> states, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureOpen();
+        var cacheStates = states?.ToList();
+        if (cacheStates == null || cacheStates.Count == 0)
+        {
+            return;
+        }
+
+        var currentTime = GetCurrentTimestamp();
+        foreach (var cacheState in cacheStates)
+        {
+            cacheState.CreatedTime = currentTime;
+            cacheState.UpdateTime = currentTime;
+            cacheState.UpdateCount ??= 0;
+        }
+
+        await ExecuteGatedAsync(async () =>
+        {
+            await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+            await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+            foreach (var cacheState in cacheStates)
+            {
+                using var command = BuildInsertCommand<TState>(cacheState);
+                command.Transaction = transaction;
+                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 增加或更新数据（原子 upsert 整文档替换，软删行复活，对齐 Mongo ReplaceOne+IsUpsert）。
+    /// </summary>
+    /// <remarks>
+    /// Adds or updates a single document via the atomic <c>INSERT ... ON CONFLICT(id) DO UPDATE</c>
+    /// whole-document replacement (soft-deleted rows revive, aligned with Mongo's ReplaceOne + IsUpsert).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="state">要增加或更新的状态对象 / The state to upsert</param>
+    /// <returns>已持久化的状态对象 / The persisted state</returns>
+    public async Task<TState> AddOrUpdateAsync<TState>(TState state) where TState : BaseCacheState, new()
+    {
+        return await AddOrUpdateAsync(state, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 增加或更新数据（原子 upsert 整文档替换，软删行复活，对齐 Mongo ReplaceOne+IsUpsert）。
+    /// </summary>
+    /// <remarks>
+    /// Adds or updates a single document via the atomic <c>INSERT ... ON CONFLICT(id) DO UPDATE</c>
+    /// whole-document replacement (soft-deleted rows revive, aligned with Mongo's ReplaceOne + IsUpsert).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="state">要增加或更新的状态对象 / The state to upsert</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>已持久化的状态对象 / The persisted state</returns>
+    public async Task<TState> AddOrUpdateAsync<TState>(TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureOpen();
+        var currentTime = GetCurrentTimestamp();
+        if (state.CreatedTime == 0)
+        {
+            state.CreatedTime = currentTime;
+        }
+
+        state.UpdateTime = currentTime;
+        state.UpdateCount = (state.UpdateCount ?? 0) + 1;
+        await ExecuteGatedAsync(async () =>
+        {
+            await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+            using var command = BuildUpsertCommand<TState>(state);
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+        state.SaveToDbPostHandler();
+        return state;
+    }
+
+    /// <summary>
+    /// 批量增加或更新数据（单事务原子批次；返回处理记录数，对齐 Mongo BulkWrite ReplaceOne 语义）。
+    /// </summary>
+    /// <remarks>
+    /// Bulk adds or updates documents as one atomic transaction (whole-document replacement);
+    /// returns the number of processed records.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="states">要增加或更新的状态集合 / The states to upsert</param>
+    /// <returns>处理的记录数 / The processed count</returns>
+    public async Task<long> AddOrUpdateListAsync<TState>(IEnumerable<TState> states) where TState : BaseCacheState, new()
+    {
+        return await AddOrUpdateListAsync(states, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 批量增加或更新数据（单事务原子批次；返回处理记录数，对齐 Mongo BulkWrite ReplaceOne 语义）。
+    /// </summary>
+    /// <remarks>
+    /// Bulk adds or updates documents as one atomic transaction (whole-document replacement);
+    /// returns the number of processed records.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="states">要增加或更新的状态集合 / The states to upsert</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>处理的记录数 / The processed count</returns>
+    public async Task<long> AddOrUpdateListAsync<TState>(IEnumerable<TState> states, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureOpen();
+        var stateArray = states as TState[] ?? states?.ToArray();
+        if (stateArray == null || stateArray.Length == 0)
+        {
+            return 0;
+        }
+
+        var currentTime = GetCurrentTimestamp();
+        foreach (var state in stateArray)
+        {
+            if (state.CreatedTime == 0)
+            {
+                state.CreatedTime = currentTime;
+            }
+
+            state.UpdateTime = currentTime;
+            state.UpdateCount = (state.UpdateCount ?? 0) + 1;
+        }
+
+        await ExecuteGatedAsync(async () =>
+        {
+            await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+            await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+            foreach (var state in stateArray)
+            {
+                using var command = BuildUpsertCommand<TState>(state);
+                command.Transaction = transaction;
+                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+        foreach (var state in stateArray)
+        {
+            state.SaveToDbPostHandler();
+        }
+
+        return stateArray.Length;
+    }
+
+    /// <summary>
+    /// 按批次大小分批执行批量 upsert 保存（关服保存路径，逐批 ack / 异常隔离，时间戳不触碰，对齐 Mongo/PG SaveBulkAsync）。
+    /// </summary>
+    /// <remarks>
+    /// Bulk-upserts in batches of <paramref name="batchSize"/> with per-batch ack and exception
+    /// isolation — a failed batch is logged and the remaining batches still execute. This deliberately
+    /// does NOT touch <c>CreatedTime/UpdateTime/UpdateCount</c>: state timestamps are persisted exactly
+    /// as handed in (the caller owns timestamp semantics, migrated verbatim from the Mongo/PG adapters).
+    /// </remarks>
+    /// <param name="states">待保存的状态集合 / The states to save</param>
+    /// <param name="batchSize">每批数量（&lt;= 0 抛出 ArgumentOutOfRangeException）/ Batch size (values &lt;= 0 throw)</param>
+    /// <returns>全部成功 ack 批次的状态列表 / The states of all acknowledged batches</returns>
+    /// <exception cref="ArgumentOutOfRangeException">当 <paramref name="batchSize"/> &lt;= 0 时抛出 / Thrown when batchSize is &lt;= 0</exception>
+    public async Task<IReadOnlyList<TState>> SaveBulkAsync<TState>(IEnumerable<TState> states, int batchSize) where TState : BaseCacheState, new()
+    {
+        if (batchSize <= 0)
+        {
+            // Localization: Database.BatchSizeInvalid - 批处理大小必须大于 0。
+            throw new ArgumentOutOfRangeException(nameof(batchSize), batchSize, LocalizationService.GetString(Keys.Database.BatchSizeInvalid));
+        }
+
+        EnsureOpen();
+        var stateList = states as IReadOnlyList<TState> ?? states?.ToList();
+        if (stateList == null || stateList.Count == 0)
+        {
+            return Array.Empty<TState>();
+        }
+
+        var stateName = typeof(TState).Name;
+        var acknowledgedStates = new List<TState>(stateList.Count);
+        await ExecuteGatedAsync(async () =>
+        {
+            await EnsureTableAsync<TState>(CancellationToken.None).ConfigureAwait(false);
+            for (var index = 0; index < stateList.Count; index += batchSize)
+            {
+                var batchCount = Math.Min(batchSize, stateList.Count - index);
+                try
+                {
+                    var acknowledged = 0;
+                    await using (var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(CancellationToken.None).ConfigureAwait(false))
+                    {
+                        for (var offset = 0; offset < batchCount; offset++)
+                        {
+                            using var command = BuildUpsertCommand<TState>(stateList[index + offset]);
+                            command.Transaction = transaction;
+                            acknowledged += await command.ExecuteNonQueryAsync(CancellationToken.None).ConfigureAwait(false);
+                        }
+
+                        await transaction.CommitAsync(CancellationToken.None).ConfigureAwait(false);
+                    }
+
+                    // 每条 upsert 计一行；受影响行数 >= 批大小即视为整批 ack
+                    // Each upsert counts one row; affected >= batch size means the whole batch was acknowledged.
+                    if (acknowledged >= batchCount)
+                    {
+                        var batch = new TState[batchCount];
+                        for (var offset = 0; offset < batchCount; offset++)
+                        {
+                            batch[offset] = stateList[index + offset];
+                        }
+
+                        acknowledgedStates.AddRange(batch);
+                    }
+                    else
+                    {
+                        // Localization: Database.Sqlite.SaveBulkBatchNotAcknowledged - SqliteDbService.SaveBulkAsync 批次未被确认。状态名：{0}，批次索引：{1}，批次总数：{2}
+                        LogHelper.Error(LocalizationService.GetString(Localization.Keys.Database.Sqlite.SaveBulkBatchNotAcknowledged, stateName, index / batchSize + 1, batchCount));
+                    }
+                }
+                catch (Exception exception)
+                {
+                    // 逐批异常隔离：失败批次记日志后继续后续批次，避免单批故障放大为整批丢失
+                    // Per-batch exception isolation: a failed batch is logged and the loop continues with the remaining batches.
+                    // Localization: Database.Sqlite.SaveBulkBatchFailed - SqliteDbService.SaveBulkAsync 批次失败。状态名：{0}，批次索引：{1}，批次总数：{2}，错误：{3}
+                    LogHelper.Error(LocalizationService.GetString(Localization.Keys.Database.Sqlite.SaveBulkBatchFailed, stateName, index / batchSize + 1, batchCount, exception));
+                }
+            }
+        }).ConfigureAwait(false);
+
+        return acknowledgedStates;
+    }
+
+    /// <summary>
+    /// 保存数据（仅当 StateHash 判定已修改才写库；整文档重写，新档为准；行缺失静默 no-op，对齐 Mongo/PG）。
+    /// </summary>
+    /// <remarks>
+    /// Saves a document (only writes when the StateHash marks it modified). The whole document is
+    /// rewritten from the state object; a missing row is a silent no-op (aligned with the
+    /// <c>UPDATE ... WHERE id</c> row-count behavior of the Mongo/PG adapters).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="state">要保存的数据 / The state to save</param>
+    /// <returns>保存后的数据 / The saved state</returns>
+    public async Task<TState> UpdateAsync<TState>(TState state) where TState : BaseCacheState, new()
+    {
+        return await UpdateAsync(state, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 保存数据（仅当 StateHash 判定已修改才写库；整文档重写，新档为准；行缺失静默 no-op，对齐 Mongo/PG）。
+    /// </summary>
+    /// <remarks>
+    /// Saves a document (only writes when the StateHash marks it modified). The whole document is
+    /// rewritten from the state object; a missing row is a silent no-op (aligned with the
+    /// <c>UPDATE ... WHERE id</c> row-count behavior of the Mongo/PG adapters).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="state">要保存的数据 / The state to save</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>保存后的数据 / The saved state</returns>
+    public async Task<TState> UpdateAsync<TState>(TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureOpen();
+        if (state.IsModify())
+        {
+            state.UpdateTime = GetCurrentTimestamp();
+            state.UpdateCount = (state.UpdateCount ?? 0) + 1;
+            var updated = await ExecuteGatedAsync(async () =>
+            {
+                await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+                using var command = BuildReplaceDocumentCommand<TState>(state);
+                return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) > 0;
+            }).ConfigureAwait(false);
+            if (updated)
+            {
+                state.SaveToDbPostHandler();
+            }
+        }
+
+        return state;
+    }
+
+    /// <summary>
+    /// 保存多条数据（返回实际变更数；未变更项跳过，单事务原子，对齐 Mongo/PG 批量语义）。
+    /// </summary>
+    /// <remarks>
+    /// Saves multiple documents (returns the actually-changed count; unchanged items are skipped).
+    /// All writes share one transaction; when at least one row was written, every item receives
+    /// <c>SaveToDbPostHandler</c> (aligned with the Mongo/PG flow).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="stateList">要保存的数据列表 / The states to save</param>
+    /// <returns>实际更新的数量 / The updated count</returns>
+    public async Task<long> UpdateAsync<TState>(IEnumerable<TState> stateList) where TState : BaseCacheState, new()
+    {
+        return await UpdateAsync(stateList, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 保存多条数据（返回实际变更数；未变更项跳过，单事务原子，对齐 Mongo/PG 批量语义）。
+    /// </summary>
+    /// <remarks>
+    /// Saves multiple documents (returns the actually-changed count; unchanged items are skipped).
+    /// All writes share one transaction; when at least one row was written, every item receives
+    /// <c>SaveToDbPostHandler</c> (aligned with the Mongo/PG flow).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="stateList">要保存的数据列表 / The states to save</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>实际更新的数量 / The updated count</returns>
+    public async Task<long> UpdateAsync<TState>(IEnumerable<TState> stateList, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureOpen();
+        var cacheStates = stateList as TState[] ?? stateList?.ToArray();
+        if (cacheStates == null || cacheStates.Length == 0)
+        {
+            return 0;
+        }
+
+        var changedStates = new List<TState>(cacheStates.Length);
+        var currentTime = GetCurrentTimestamp();
+        foreach (var state in cacheStates)
+        {
+            if (state.IsModify())
+            {
+                state.UpdateTime = currentTime;
+                state.UpdateCount = (state.UpdateCount ?? 0) + 1;
+                changedStates.Add(state);
+            }
+        }
+
+        if (changedStates.Count == 0)
+        {
+            return 0;
+        }
+
+        var anyRowWritten = await ExecuteGatedAsync(async () =>
+        {
+            await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+            var written = false;
+            await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+            foreach (var state in changedStates)
+            {
+                using var command = BuildReplaceDocumentCommand<TState>(state);
+                command.Transaction = transaction;
+                written |= await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) > 0;
+            }
+
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            return written;
+        }).ConfigureAwait(false);
+        if (anyRowWritten)
+        {
+            foreach (var state in cacheStates)
+            {
+                state.SaveToDbPostHandler();
+            }
+        }
+
+        return changedStates.Count;
+    }
+
+    /// <summary>
+    /// 根据ID部分更新数据（读改写整档：字段写入 / null 移除 + UpdateTime 写入 + UpdateCount 自增；仅可见行，对齐 Mongo/PG）。
+    /// </summary>
+    /// <remarks>
+    /// Partially updates by ID (load-modify-save whole document: non-null fields written, null-valued
+    /// fields removed/zeroed; <c>UpdateTime</c> stamped and <c>UpdateCount</c> incremented).
+    /// <c>Id/CreatedTime/CreatedId</c> are not updatable; only visible (non-soft-deleted) rows update;
+    /// the return value aligns with ModifiedCount — 1 when a visible row was written, 0 otherwise.
+    /// The null-removal of value-type members lands as the CLR default (JSON <c>0/false</c> reads
+    /// equivalent to a missing key).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="id">数据ID / The document ID</param>
+    /// <param name="updateFields">要更新的字段字典 / The fields to update</param>
+    /// <returns>实际更新的行数 / The updated count</returns>
+    public async Task<long> UpdatePartialAsync<TState>(long id, IReadOnlyDictionary<string, object> updateFields) where TState : BaseCacheState, new()
+    {
+        return await UpdatePartialAsync<TState>(id, updateFields, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 根据ID部分更新数据（读改写整档：字段写入 / null 移除 + UpdateTime 写入 + UpdateCount 自增；仅可见行，对齐 Mongo/PG）。
+    /// </summary>
+    /// <remarks>
+    /// Partially updates by ID (load-modify-save whole document: non-null fields written, null-valued
+    /// fields removed/zeroed; <c>UpdateTime</c> stamped and <c>UpdateCount</c> incremented).
+    /// <c>Id/CreatedTime/CreatedId</c> are not updatable; only visible (non-soft-deleted) rows update;
+    /// the return value aligns with ModifiedCount — 1 when a visible row was written, 0 otherwise.
+    /// The null-removal of value-type members lands as the CLR default (JSON <c>0/false</c> reads
+    /// equivalent to a missing key).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="id">数据ID / The document ID</param>
+    /// <param name="updateFields">要更新的字段字典 / The fields to update</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>实际更新的行数 / The updated count</returns>
+    public async Task<long> UpdatePartialAsync<TState>(long id, IReadOnlyDictionary<string, object> updateFields, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureOpen();
+        if (updateFields == null || updateFields.Count == 0)
+        {
+            return 0;
+        }
+
+        var excludedKeys = new HashSet<string>
+        {
+            nameof(BaseCacheState.Id),
+            nameof(BaseCacheState.CreatedTime),
+            nameof(BaseCacheState.CreatedId),
+        };
+        var setFields = new Dictionary<string, object>(StringComparer.Ordinal);
+        var removedKeys = new List<string>();
+        foreach (var item in updateFields)
+        {
+            if (string.IsNullOrWhiteSpace(item.Key) || excludedKeys.Contains(item.Key))
+            {
+                continue;
+            }
+
+            if (item.Value == null)
+            {
+                removedKeys.Add(item.Key);
+                continue;
+            }
+
+            setFields[item.Key] = item.Value;
+        }
+
+        if (setFields.Count == 0 && removedKeys.Count == 0)
+        {
+            return 0;
+        }
+
+        return await ExecuteGatedAsync(async () =>
+        {
+            await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+            // 软删默认过滤生效：仅可见行可被部分更新
+            // The soft-delete filter applies: only visible rows can be partially updated.
+            var rows = await ReadRowsRawAsync<TState>(BuildIdEqualsCommand<TState>(id), cancellationToken).ConfigureAwait(false);
+            if (rows.Count == 0)
+            {
+                return 0;
+            }
+
+            var document = rows[0];
+            var stateType = typeof(TState);
+            foreach (var item in setFields)
+            {
+                ApplyFieldValue(stateType, document, item.Key, item.Value);
+            }
+
+            foreach (var removedKey in removedKeys)
+            {
+                ApplyFieldValue(stateType, document, removedKey, null);
+            }
+
+            // UpdateTime/UpdateCount 恒推进：命中可见行且字段非空即视为修改（对齐 Mongo/PG 三方一致口径）。
+            // UpdateTime/UpdateCount always advance: a visible row with non-empty fields always counts as modified.
+            document.UpdateTime = GetCurrentTimestamp();
+            document.UpdateCount = (document.UpdateCount ?? 0) + 1;
+            using var command = BuildReplaceDocumentCommand<TState>(document);
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            return 1L;
+        }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 根据条件删除单条数据（软删除；先查再改，重复删除幂等返回 0，对齐 Mongo/PG）。
+    /// </summary>
+    /// <remarks>
+    /// Soft-deletes the first visible document matching the filter (find-then-mark; repeated
+    /// deletes idempotently return 0).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="filter">过滤表达式 / The filter expression</param>
+    /// <returns>实际删除的数量 / The deleted count</returns>
+    public async Task<long> DeleteAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
+    {
+        return await DeleteAsync(filter, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 根据条件删除单条数据（软删除；先查再改，重复删除幂等返回 0，对齐 Mongo/PG）。
+    /// </summary>
+    /// <remarks>
+    /// Soft-deletes the first visible document matching the filter (find-then-mark; repeated
+    /// deletes idempotently return 0).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="filter">过滤表达式 / The filter expression</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>实际删除的数量 / The deleted count</returns>
+    public async Task<long> DeleteAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureOpen();
+        var state = await FindAsync(filter, false, cancellationToken).ConfigureAwait(false);
+        if (state == null)
+        {
+            return 0;
+        }
+
+        state.DeleteTime = GetCurrentTimestamp();
+        state.IsDeleted = true;
+        return await ExecuteSoftDeleteByIdAsync<TState>(state.Id, state.DeleteTime.GetValueOrDefault(), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 删除指定对象（软删除）。
+    /// </summary>
+    /// <remarks>
+    /// Soft-deletes the given state object.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="state">要删除的数据 / The state to delete</param>
+    /// <returns>实际删除的数量 / The deleted count</returns>
+    public async Task<long> DeleteAsync<TState>(TState state) where TState : BaseCacheState, new()
+    {
+        return await DeleteAsync(state, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 删除指定对象（软删除）。
+    /// </summary>
+    /// <remarks>
+    /// Soft-deletes the given state object.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="state">要删除的数据 / The state to delete</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>实际删除的数量 / The deleted count</returns>
+    public async Task<long> DeleteAsync<TState>(TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureOpen();
+        state.DeleteTime = GetCurrentTimestamp();
+        state.IsDeleted = true;
+        return await ExecuteSoftDeleteByIdAsync<TState>(state.Id, state.DeleteTime.GetValueOrDefault(), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 根据条件批量删除数据（软删除；先查再逐条改，对齐 Mongo/PG 流程）。
+    /// </summary>
+    /// <remarks>
+    /// Soft-deletes the visible documents matching the filter (find-then-mark each).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="filter">过滤表达式 / The filter expression</param>
+    /// <returns>实际删除的数量 / The deleted count</returns>
+    public async Task<long> DeleteListAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
+    {
+        return await DeleteListAsync(filter, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 根据条件批量删除数据（软删除；先查再逐条改，对齐 Mongo/PG 流程）。
+    /// </summary>
+    /// <remarks>
+    /// Soft-deletes the visible documents matching the filter (find-then-mark each).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="filter">过滤表达式 / The filter expression</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>实际删除的数量 / The deleted count</returns>
+    public async Task<long> DeleteListAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureOpen();
+        var list = await FindListAsync(filter, cancellationToken).ConfigureAwait(false);
+        if (list == null || list.Count == 0)
+        {
+            return 0;
+        }
+
+        long modifiedCount = 0;
+        var deleteTime = GetCurrentTimestamp();
+        foreach (var state in list)
+        {
+            state.DeleteTime = deleteTime;
+            state.IsDeleted = true;
+            modifiedCount += await ExecuteSoftDeleteByIdAsync<TState>(state.Id, deleteTime, cancellationToken).ConfigureAwait(false);
+        }
+
+        return modifiedCount;
+    }
+
+    /// <summary>
+    /// 根据ID列表批量删除数据（软删除；单事务批次，时间戳每次变化故重复调用仍计行，对齐 Mongo/PG）。
+    /// </summary>
+    /// <remarks>
+    /// Soft-deletes documents by ID list (one transaction; the fresh timestamp means repeated
+    /// calls still count rows, consistent with Mongo $set / PG SaveChanges behavior).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="ids">要删除的数据ID列表 / The IDs to delete</param>
+    /// <returns>实际删除的数量 / The deleted count</returns>
+    public async Task<long> DeleteListIdAsync<TState>(IEnumerable<long> ids) where TState : BaseCacheState, new()
+    {
+        return await DeleteListIdAsync<TState>(ids, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 根据ID列表批量删除数据（软删除；单事务批次，时间戳每次变化故重复调用仍计行，对齐 Mongo/PG）。
+    /// </summary>
+    /// <remarks>
+    /// Soft-deletes documents by ID list (one transaction; the fresh timestamp means repeated
+    /// calls still count rows, consistent with Mongo $set / PG SaveChanges behavior).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="ids">要删除的数据ID列表 / The IDs to delete</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>实际删除的数量 / The deleted count</returns>
+    public async Task<long> DeleteListIdAsync<TState>(IEnumerable<long> ids, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureOpen();
+        var idArray = ids as long[] ?? ids?.ToArray();
+        if (idArray == null || idArray.Length == 0)
+        {
+            return 0;
+        }
+
+        var distinctIds = idArray.Distinct().ToArray();
+        var deleteTime = GetCurrentTimestamp();
+        return await ExecuteGatedAsync(async () =>
+        {
+            await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+            var rows = await ReadRowsRawAsync<TState>(BuildIdInCommand<TState>(distinctIds), cancellationToken).ConfigureAwait(false);
+            if (rows.Count == 0)
+            {
+                return 0L;
+            }
+
+            await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+            foreach (var document in rows)
+            {
+                document.IsDeleted = true;
+                document.DeleteTime = deleteTime;
+                using var command = BuildReplaceDocumentCommand<TState>(document);
+                command.Transaction = transaction;
+                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            return (long)rows.Count;
+        }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 根据条件物理删除数据（忽略软删可见性，客户端求值 filter）。
+    /// </summary>
+    /// <remarks>
+    /// Hard-deletes ALL rows matching the filter (soft-deleted included).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="filter">过滤表达式 / The filter expression</param>
+    /// <returns>实际删除的数量 / The deleted count</returns>
+    public async Task<long> HardDeleteAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
+    {
+        return await HardDeleteAsync<TState>(filter, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 根据条件物理删除数据（忽略软删可见性，客户端求值 filter）。
+    /// </summary>
+    /// <remarks>
+    /// Hard-deletes ALL rows matching the filter (soft-deleted included).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="filter">过滤表达式 / The filter expression</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>实际删除的数量 / The deleted count</returns>
+    public async Task<long> HardDeleteAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureOpen();
+        var predicate = BuildPredicate(filter, includeDeleted: true, out _);
+        return await ExecuteGatedAsync(async () =>
+        {
+            await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+            var rows = await ReadRowsRawAsync<TState>(BuildSelectAllCommand<TState>(), cancellationToken).ConfigureAwait(false);
+            var ids = new List<long>();
+            foreach (var state in rows)
+            {
+                if (predicate(state))
+                {
+                    ids.Add(state.Id);
+                }
+            }
+
+            if (ids.Count == 0)
+            {
+                return 0L;
+            }
+
+            await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+            foreach (var id in ids)
+            {
+                using var command = _connection.CreateCommand();
+                command.Transaction = transaction;
+                command.CommandText = $"DELETE FROM {QuoteTableName<TState>()} WHERE id = $id;";
+                command.Parameters.AddWithValue("$id", id);
+                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            return (long)ids.Count;
+        }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 根据条件恢复软删除数据（IsDeleted 置 false 且 DeleteTime 置 null，对齐 Mongo $unset）。
+    /// </summary>
+    /// <remarks>
+    /// Restores soft-deleted documents matching the filter (sets IsDeleted to false and DeleteTime
+    /// to null). Only rows currently marked deleted are touched (restore must see deleted rows).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="filter">过滤表达式 / The filter expression</param>
+    /// <returns>实际恢复的数量 / The restored count</returns>
+    public async Task<long> RestoreAsync<TState>(Expression<Func<TState, bool>> filter) where TState : BaseCacheState, new()
+    {
+        return await RestoreAsync<TState>(filter, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 根据条件恢复软删除数据（IsDeleted 置 false 且 DeleteTime 置 null，对齐 Mongo $unset）。
+    /// </summary>
+    /// <remarks>
+    /// Restores soft-deleted documents matching the filter (sets IsDeleted to false and DeleteTime
+    /// to null). Only rows currently marked deleted are touched (restore must see deleted rows).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="filter">过滤表达式 / The filter expression</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>实际恢复的数量 / The restored count</returns>
+    public async Task<long> RestoreAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureOpen();
+        var compiled = filter?.Compile();
+        return await ExecuteGatedAsync(async () =>
+        {
+            await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+            var rows = await ReadRowsRawAsync<TState>(BuildSelectAllCommand<TState>(), cancellationToken).ConfigureAwait(false);
+            var restored = new List<TState>();
+            foreach (var state in rows)
+            {
+                if (state.IsDeleted == true && (compiled == null || compiled(state)))
+                {
+                    restored.Add(state);
+                }
+            }
+
+            if (restored.Count == 0)
+            {
+                return 0L;
+            }
+
+            await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+            foreach (var document in restored)
+            {
+                document.IsDeleted = false;
+                document.DeleteTime = null;
+                using var command = BuildReplaceDocumentCommand<TState>(document);
+                command.Transaction = transaction;
+                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            return (long)restored.Count;
+        }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 在事务中执行操作（单连接事务壳 BEGIN → action → COMMIT；嵌套事务壳加入环境事务；单次直通不重试，退化语义）。
+    /// </summary>
+    /// <remarks>
+    /// Executes the action inside a transaction on the single connection (BEGIN → action → COMMIT).
+    /// A nested shell inside an active transaction simply joins it (SQLite cannot nest transactions;
+    /// the ambient operations already run on the same connection). Retry policy is single-pass direct
+    /// execution by design — the degraded SQLite semantics documented in the class remarks.
+    /// </remarks>
+    /// <param name="action">要在事务中执行的操作 / The action to execute inside the transaction</param>
+    /// <returns>异步任务 / Async task</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="action"/> 为 null 时抛出 / Thrown when action is null</exception>
+    public async Task ExecuteInTransactionAsync(Func<Task> action)
+    {
+        await ExecuteInTransactionAsync(action, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 在事务中执行操作（单连接事务壳 BEGIN → action → COMMIT；嵌套事务壳加入环境事务；单次直通不重试，退化语义）。
+    /// </summary>
+    /// <remarks>
+    /// Executes the action inside a transaction on the single connection (BEGIN → action → COMMIT).
+    /// A nested shell inside an active transaction simply joins it (SQLite cannot nest transactions;
+    /// the ambient operations already run on the same connection). Retry policy is single-pass direct
+    /// execution by design — the degraded SQLite semantics documented in the class remarks.
+    /// </remarks>
+    /// <param name="action">要在事务中执行的操作 / The action to execute inside the transaction</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>异步任务 / Async task</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="action"/> 为 null 时抛出 / Thrown when action is null</exception>
+    public async Task ExecuteInTransactionAsync(Func<Task> action, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureOpen();
+        ArgumentNullException.ThrowIfNull(action);
+        if (AmbientTransaction.Value)
+        {
+            // 嵌套事务壳：加入环境事务（对齐 Mongo/PG「action 内操作不绑本事务快照」的既有限制语义）。
+            // Nested shell: join the ambient transaction.
+            await action().ConfigureAwait(false);
+            return;
+        }
+
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            AmbientTransaction.Value = true;
+            try
+            {
+                await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+                await action().ConfigureAwait(false);
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                AmbientTransaction.Value = false;
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// 按 id 软删除（读改写整档；重复同毫秒删除幂等返回 0，对齐 Mongo ModifiedCount / PG 变更检测）。
+    /// </summary>
+    /// <remarks>
+    /// Soft-deletes by id: the stored document is loaded (bypassing visibility) and its
+    /// IsDeleted/DeleteTime set; a same-timestamp repeat against already-identical values counts as
+    /// unchanged and returns 0; a fresh delete timestamp always counts. Missing rows return 0.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="id">数据ID / The document ID</param>
+    /// <param name="deleteTime">删除时间戳 / The deletion timestamp</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>实际删除的数量 / The deleted count</returns>
+    private async Task<long> ExecuteSoftDeleteByIdAsync<TState>(long id, long deleteTime, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        return await ExecuteGatedAsync(async () =>
+        {
+            await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+            var rows = await ReadRowsRawAsync<TState>(BuildIdEqualsCommand<TState>(id), cancellationToken).ConfigureAwait(false);
+            if (rows.Count == 0)
+            {
+                return 0L;
+            }
+
+            var document = rows[0];
+            if (document.IsDeleted == true && document.DeleteTime == deleteTime)
+            {
+                // 同毫秒重复删除：文档不变返回 0（幂等，对齐 Mongo ModifiedCount / EF 变更检测）。
+                // Same-timestamp repeat: the document is unchanged and counts as 0 (idempotent).
+                return 0L;
+            }
+
+            document.IsDeleted = true;
+            document.DeleteTime = deleteTime;
+            using var command = BuildReplaceDocumentCommand<TState>(document);
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            return 1L;
+        }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 反射写入文档字段值（null → 引用/可空置 null，值类型置 CLR 默认值；类型不匹配时按 IConvertible 转换；对齐 PG）。
+    /// </summary>
+    /// <remarks>
+    /// Reflectively assigns a document field (null assigns null to reference/nullable members and the CLR
+    /// default to value types; mismatched runtime types convert via <see cref="IConvertible"/>). Unknown
+    /// property names are ignored. Migrated verbatim from the PostgreSQL adapter.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="stateType">状态类型 / The state type</param>
+    /// <param name="document">文档实例 / The document instance</param>
+    /// <param name="fieldName">字段名 / The field name</param>
+    /// <param name="value">字段值 / The field value</param>
+    private static void ApplyFieldValue<TState>(Type stateType, TState document, string fieldName, object value) where TState : BaseCacheState, new()
+    {
+        var property = stateType.GetProperty(fieldName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.FlattenHierarchy);
+        if (property == null || !property.CanWrite)
+        {
+            return;
+        }
+
+        var propertyType = property.PropertyType;
+        var underlyingType = Nullable.GetUnderlyingType(propertyType) ?? propertyType;
+        if (value == null)
+        {
+            property.SetValue(document, propertyType.IsValueType && Nullable.GetUnderlyingType(propertyType) == null ? Activator.CreateInstance(propertyType) : null);
+            return;
+        }
+
+        var valueType = Nullable.GetUnderlyingType(value.GetType()) ?? value.GetType();
+        if (valueType != underlyingType)
+        {
+            if (value is IConvertible && typeof(IConvertible).IsAssignableFrom(underlyingType))
+            {
+                value = Convert.ChangeType(value, underlyingType, System.Globalization.CultureInfo.InvariantCulture);
+            }
+            else
+            {
+                return;
+            }
+        }
+
+        property.SetValue(document, value);
+    }
+
+    /// <summary>
+    /// 在串行闸下执行操作（环境事务内直接放行——事务壳已持有闸）。
+    /// </summary>
+    /// <remarks>
+    /// Runs the operation under the serialization gate; inside an ambient transaction it runs
+    /// directly (the transaction shell already holds the gate).
+    /// </remarks>
+    /// <param name="operation">要执行的操作 / The operation</param>
+    /// <returns>异步任务 / Async task</returns>
+    private async Task ExecuteGatedAsync(Func<Task> operation)
+    {
+        if (AmbientTransaction.Value)
+        {
+            await operation().ConfigureAwait(false);
+            return;
+        }
+
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            await operation().ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// 在串行闸下执行带返回值的操作（环境事务内直接放行）。
+    /// </summary>
+    /// <remarks>
+    /// Runs the value-returning operation under the serialization gate; inside an ambient
+    /// transaction it runs directly.
+    /// </remarks>
+    /// <typeparam name="T">返回值类型 / The result type</typeparam>
+    /// <param name="operation">要执行的操作 / The operation</param>
+    /// <returns>操作结果 / The result</returns>
+    private async Task<T> ExecuteGatedAsync<T>(Func<Task<T>> operation)
+    {
+        if (AmbientTransaction.Value)
+        {
+            return await operation().ConfigureAwait(false);
+        }
+
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            return await operation().ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// 惰性建表（首访问单飞；CREATE TABLE IF NOT EXISTS，对齐 PG 的 42P07 容忍语义）。
+    /// </summary>
+    /// <remarks>
+    /// Lazily creates the state table on first access (single-flight per table; the
+    /// IF NOT EXISTS clause makes a concurrent create a no-op, the SQLite equivalent of the
+    /// PostgreSQL adapter's duplicate-table tolerance).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>异步任务 / Async task</returns>
+    private Task EnsureTableAsync<TState>(CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        var tableName = typeof(TState).Name;
+        var lazy = _tableReady.GetOrAdd(tableName, _ => new Lazy<Task>(CreateTableAsync<TState>, LazyThreadSafetyMode.ExecutionAndPublication));
+        if (lazy.Value.IsFaulted)
+        {
+            // 失败任务驱逐：下次调用重建单飞（对齐 PG 适配器的故障重试语义）。
+            // Evict the faulted task so the next call retries (aligned with the PG adapter).
+            _tableReady.TryRemove(new KeyValuePair<string, Lazy<Task>>(tableName, lazy));
+            lazy = _tableReady.GetOrAdd(tableName, _ => new Lazy<Task>(CreateTableAsync<TState>, LazyThreadSafetyMode.ExecutionAndPublication));
+        }
+
+        return lazy.Value;
+    }
+
+    /// <summary>
+    /// 建表 DDL 执行（调用方须持有 <see cref="_gate"/>；CREATE TABLE IF NOT EXISTS 幂等）。
+    /// </summary>
+    /// <remarks>
+    /// Runs the CREATE TABLE IF NOT EXISTS DDL (the caller must hold <see cref="_gate"/>).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <returns>异步任务 / Async task</returns>
+    private async Task CreateTableAsync<TState>() where TState : BaseCacheState, new()
+    {
+        using var command = _connection.CreateCommand();
+        command.CommandText = $"CREATE TABLE IF NOT EXISTS {QuoteTableName<TState>()} (id INTEGER PRIMARY KEY, doc TEXT NOT NULL);";
+        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 引用状态类型表名（双引号转义标识符）。
+    /// </summary>
+    /// <remarks>
+    /// Quotes the state-type table name as a SQLite identifier.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <returns>转义后的表名 / The quoted table name</returns>
+    private static string QuoteTableName<TState>() where TState : BaseCacheState, new()
+    {
+        return "\"" + typeof(TState).Name.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
+    }
+
+    /// <summary>
+    /// 构建插入命令（主键冲突原样上抛）。
+    /// </summary>
+    /// <remarks>
+    /// Builds the INSERT command (unique-constraint conflicts propagate).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="state">要插入的状态 / The state to insert</param>
+    /// <returns>插入命令 / The insert command</returns>
+    private SqliteCommand BuildInsertCommand<TState>(TState state) where TState : BaseCacheState, new()
+    {
+        var command = _connection.CreateCommand();
+        command.CommandText = $"INSERT INTO {QuoteTableName<TState>()} (id, doc) VALUES ($id, $doc);";
+        command.Parameters.AddWithValue("$id", state.Id);
+        command.Parameters.AddWithValue("$doc", SerializeDocument(state));
+        return command;
+    }
+
+    /// <summary>
+    /// 构建原子 upsert 命令（整文档替换，软删行复活）。
+    /// </summary>
+    /// <remarks>
+    /// Builds the atomic INSERT ... ON CONFLICT(id) DO UPDATE whole-document replacement
+    /// (soft-deleted rows revive).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="state">要 upsert 的状态 / The state to upsert</param>
+    /// <returns>upsert 命令 / The upsert command</returns>
+    private SqliteCommand BuildUpsertCommand<TState>(TState state) where TState : BaseCacheState, new()
+    {
+        var command = _connection.CreateCommand();
+        command.CommandText = $"INSERT INTO {QuoteTableName<TState>()} (id, doc) VALUES ($id, $doc) ON CONFLICT(id) DO UPDATE SET doc = excluded.doc;";
+        command.Parameters.AddWithValue("$id", state.Id);
+        command.Parameters.AddWithValue("$doc", SerializeDocument(state));
+        return command;
+    }
+
+    /// <summary>
+    /// 构建整文档替换命令（UPDATE ... WHERE id，行缺失返回 0）。
+    /// </summary>
+    /// <remarks>
+    /// Builds the whole-document UPDATE ... WHERE id command (returns 0 affected for a missing row).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="state">要写回的状态 / The state to write back</param>
+    /// <returns>替换命令 / The replace command</returns>
+    private SqliteCommand BuildReplaceDocumentCommand<TState>(TState state) where TState : BaseCacheState, new()
+    {
+        var command = _connection.CreateCommand();
+        command.CommandText = $"UPDATE {QuoteTableName<TState>()} SET doc = $doc WHERE id = $id;";
+        command.Parameters.AddWithValue("$id", state.Id);
+        command.Parameters.AddWithValue("$doc", SerializeDocument(state));
+        return command;
+    }
+
+    /// <summary>
+    /// 序列化状态对象为 doc 文本。
+    /// </summary>
+    /// <remarks>
+    /// Serializes a state object to its doc text.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="state">状态对象 / The state</param>
+    /// <returns>doc 文本 / The doc text</returns>
+    private static string SerializeDocument<TState>(TState state) where TState : BaseCacheState, new()
+    {
+        return JsonSerializer.Serialize(state, DocumentJsonOptions);
+    }
+}
