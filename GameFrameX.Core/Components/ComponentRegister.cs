@@ -160,12 +160,6 @@ public static class ComponentRegister
                         LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.GlobalComponentAgentNotImplemented, actorType, compType));
                     }
 
-                    /*if (actorType > ActorType.Separator)
-                    {
-                        // Localization: Core.ComponentRegister.ActivateGlobalComponent - 激活全局组件：{0} {1}
-                        LogHelper.Info(LocalizationService.GetString(GameFrameX.Localization.Keys.Core.ComponentRegister.ActivateGlobalComponent, actorType, compType));
-                        await ActorManager.GetComponentAgent(agentType, actorType);
-                    }*/
                 }
 
                 if (actorType > GlobalConst.ActorTypeSeparator)
@@ -198,23 +192,6 @@ public static class ComponentRegister
         return ActiveComponents(componentAgent.Owner.Actor,
                                 t => !ComponentFuncDic.TryGetValue(t, out var func)
                                      || openFuncSet.Contains(func));
-        //foreach (var compType in GetComps(ActorType.Role))
-        //{
-        //    bool active;
-        //    if (CompFuncDic.TryGetValue(compType, out var func))
-        //    {
-        //        active = openFuncSet.Contains(func);
-        //    }
-        //    else
-        //    {
-        //        active = true;
-        //    }
-        //    if (active)
-        //    {
-        //        var agentType = HotfixMgr.GetAgentType(compType);
-        //        await compAgent.GetCompAgent(agentType);
-        //    }
-        //}
     }
 
     /// <summary>

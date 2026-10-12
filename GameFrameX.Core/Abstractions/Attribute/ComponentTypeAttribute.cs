@@ -41,7 +41,7 @@ public class ComponentTypeAttribute : System.Attribute
     /// <summary>
     /// 组件类型
     /// </summary>
-    /// <param name="type">组件类型,值应大于0且小于ActorType.Max并且不为ActorType.Separator</param>
+    /// <param name="type">组件类型。区间规则：0 &lt; type &lt; 128 为每实体多实例（如玩家）；128 &lt; type &lt; 999 为每服单例（如服务器）；0 与 128 为保留值，不可用于业务逻辑</param>
     public ComponentTypeAttribute(ushort type)
     {
         if (type is 0 or GlobalConst.ActorTypeSeparator || type >= GlobalConst.ActorTypeMax)

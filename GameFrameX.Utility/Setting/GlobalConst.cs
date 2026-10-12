@@ -217,34 +217,34 @@ public static class GlobalConst
     public const ushort ActorTypeNone = 0;
 
     /// <summary>
-    /// 角色
+    /// 角色（每实体多实例 Actor 类型）
     /// </summary>
     /// <remarks>
-    /// Player actor type.
+    /// Player actor type. Types in the range 0 &lt; type &lt; 128 allow multiple instances per entity (e.g. players, guilds).
     /// </remarks>
     public const ushort ActorTypePlayer = 1;
 
     /// <summary>
-    /// Actor类型-分割线(勿调整,勿用于业务逻辑)
+    /// Actor类型-分割线(勿调整,勿用于业务逻辑)。区间规则：type &lt; 128 为每实体多实例，type &gt; 128 为每服单例
     /// </summary>
     /// <remarks>
-    /// Actor type separator (do not adjust, do not use in business logic).
+    /// Actor type separator (do not adjust, do not use in business logic). Range rules: type &lt; 128 means multiple instances per entity; type &gt; 128 means singleton per server.
     /// </remarks>
     public const int ActorTypeSeparator = 128;
 
     /// <summary>
-    /// 服务器系统的Actor类型
+    /// 服务器系统的Actor类型（每服单例 Actor 类型）
     /// </summary>
     /// <remarks>
-    /// Server system actor type.
+    /// Server system actor type. Types in the range 128 &lt; type &lt; 999 are singleton per server (e.g. server systems).
     /// </remarks>
     public const int ActorTypeServer = 129;
 
     /// <summary>
-    /// Actor类型的最大值
+    /// Actor类型的最大值。外部扩展在此区间内自定义类型值，并在自己项目内防重复
     /// </summary>
     /// <remarks>
-    /// Maximum actor type value (999).
+    /// Maximum actor type value (999). External projects may define custom type values within the range and keep them unique within their own project.
     /// </remarks>
     public const int ActorTypeMax = 999;
 
