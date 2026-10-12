@@ -40,6 +40,7 @@
         <ProjectReference Include="..\GameFrameX.StartUp\GameFrameX.StartUp.csproj"/>
         <ProjectReference Include="..\GameFrameX.DataBase.Mongo\GameFrameX.DataBase.Mongo.csproj"/>
         <ProjectReference Include="..\GameFrameX.DataBase.PostgreSql\GameFrameX.DataBase.PostgreSql.csproj"/>
+        <ProjectReference Include="..\GameFrameX.DataBase.Sqlite\GameFrameX.DataBase.Sqlite.csproj"/>
         <ProjectReference Include="..\GameFrameX.Network.RemoteMessaging\GameFrameX.Network.RemoteMessaging.csproj"/>
         <ProjectReference Include="..\GameFrameX.Utility\GameFrameX.Utility.csproj"/>
     </ItemGroup>
