@@ -499,13 +499,13 @@
     <data name="StartUp.HttpServer.SwaggerUiAccess" xml:space="preserve">
     <value>Swagger UI can be accessed via http://{0}:{1}/swagger</value>
   </data>
-    <data name="StartUp.TcpServer.ClientDisconnected" xml:space="preserve">
+    <data name="StartUp.Server.ClientDisconnected" xml:space="preserve">
     <value>Client disconnects - SessionID: {0}, remote terminal: {1}, disconnect cause: {2}</value>
   </data>
-    <data name="StartUp.TcpServer.NewClientConnection" xml:space="preserve">
+    <data name="StartUp.Server.NewClientConnection" xml:space="preserve">
     <value>New client connection - SessionID: {0}, remote terminal: {1}</value>
   </data>
-    <data name="StartUp.TcpServer.MessageReceived" xml:space="preserve">
+    <data name="StartUp.Server.MessageReceived" xml:space="preserve">
     <value>Message received - server type: [{0}], message content: {1}</value>
   </data>
     <data name="StartUp.TcpServer.StartingServer" xml:space="preserve">
@@ -2196,5 +2196,12 @@
   <data name="Utility.LNumber.MultiplicationOverflowLog" xml:space="preserve">
     <value>LNumber.MultiplicationOverflow LNumber multiplication overflow &gt; {0}</value>
   </data>
-
-</root>
+    
+    
+    
+    
+    
+    
+    
+    
+    </root>

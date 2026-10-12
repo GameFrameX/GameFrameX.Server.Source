@@ -148,8 +148,8 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
         {
             if (Setting.IsDebug && Setting.IsDebugReceive && Setting.IsDebugReceiveHeartBeat)
             {
-                // Localization: StartUp.TcpServer.MessageReceived - 接收到消息 - 服务器类型: [{0}], 消息内容: {1}
-                LogHelper.Debug(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.MessageReceived, ServerType, message.ToFormatMessageString()));
+                // Localization: StartUp.Server.MessageReceived - 接收到消息 - 服务器类型: [{0}], 消息内容: {1}
+                LogHelper.Debug(LocalizationService.GetString(Localization.Keys.StartUp.Server.MessageReceived, ServerType, message.ToFormatMessageString()));
             }
 
             return ValueTask.CompletedTask;
@@ -157,8 +157,8 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
 
         if (Setting.IsDebug && Setting.IsDebugReceive)
         {
-            // Localization: StartUp.TcpServer.MessageReceived - 接收到消息 - 服务器类型: [{0}], 消息内容: {1}
-            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.MessageReceived, ServerType, message.ToFormatMessageString()));
+            // Localization: StartUp.Server.MessageReceived - 接收到消息 - 服务器类型: [{0}], 消息内容: {1}
+            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.StartUp.Server.MessageReceived, ServerType, message.ToFormatMessageString()));
         }
 
         return ValueTask.CompletedTask;

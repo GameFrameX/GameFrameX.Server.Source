@@ -529,13 +529,13 @@
     <data name="StartUp.HttpServer.SwaggerUiAccess" xml:space="preserve">
     <value>Swagger UI 可通过 http://{0}:{1}/swagger 访问</value>
   </data>
-    <data name="StartUp.TcpServer.ClientDisconnected" xml:space="preserve">
+    <data name="StartUp.Server.ClientDisconnected" xml:space="preserve">
     <value>客户端断开连接 - 会话ID: {0}, 远程终端: {1}, 断开原因: {2}</value>
   </data>
-    <data name="StartUp.TcpServer.NewClientConnection" xml:space="preserve">
+    <data name="StartUp.Server.NewClientConnection" xml:space="preserve">
     <value>新客户端连接 - 会话ID: {0}, 远程终端: {1}</value>
   </data>
-    <data name="StartUp.TcpServer.MessageReceived" xml:space="preserve">
+    <data name="StartUp.Server.MessageReceived" xml:space="preserve">
     <value>接收到消息 - 服务器类型: [{0}], 消息内容: {1}</value>
   </data>
     <data name="StartUp.TcpServer.StartingServer" xml:space="preserve">
@@ -2193,6 +2193,42 @@
 
   <data name="Utility.LNumber.MultiplicationOverflowLog" xml:space="preserve">
     <value>LNumber.MultiplicationOverflow LNumber乘法已越界 &gt; {0}</value>
+  </data>
+
+  <data name="CoreExceptions.HotfixModule.ClassMustBeSealed" xml:space="preserve">
+    <value>[待翻译] CoreExceptions.HotfixModule.ClassMustBeSealed</value>
+  </data>
+
+  <data name="CoreExceptions.HotfixModule.ComponentAgentWrongSuffix" xml:space="preserve">
+    <value>[待翻译] CoreExceptions.HotfixModule.ComponentAgentWrongSuffix</value>
+  </data>
+
+  <data name="CoreExceptions.HotfixModule.EventArgsTypeInvalid" xml:space="preserve">
+    <value>[待翻译] CoreExceptions.HotfixModule.EventArgsTypeInvalid</value>
+  </data>
+
+  <data name="CoreExceptions.HotfixModule.EventHandlerWrongSuffix" xml:space="preserve">
+    <value>[待翻译] CoreExceptions.HotfixModule.EventHandlerWrongSuffix</value>
+  </data>
+
+  <data name="CoreExceptions.HotfixModule.HttpProcessorRepeatedlyRegistered" xml:space="preserve">
+    <value>[待翻译] CoreExceptions.HotfixModule.HttpProcessorRepeatedlyRegistered</value>
+  </data>
+
+  <data name="CoreExceptions.HotfixModule.MessageProcessorWrongSuffix" xml:space="preserve">
+    <value>[待翻译] CoreExceptions.HotfixModule.MessageProcessorWrongSuffix</value>
+  </data>
+
+  <data name="CoreExceptions.HotfixModule.MultipleAgents" xml:space="preserve">
+    <value>[待翻译] CoreExceptions.HotfixModule.MultipleAgents</value>
+  </data>
+
+  <data name="CoreExceptions.HotfixModule.NoEventsToListen" xml:space="preserve">
+    <value>[待翻译] CoreExceptions.HotfixModule.NoEventsToListen</value>
+  </data>
+
+  <data name="CoreExceptions.HotfixModule.WrongMessageHandlerType" xml:space="preserve">
+    <value>[待翻译] CoreExceptions.HotfixModule.WrongMessageHandlerType</value>
   </data>
 
 </root>

@@ -118,8 +118,8 @@ internal partial class AppStartUpHotfixGame
 
     protected override async ValueTask OnConnected(IAppSession appSession)
     {
-        // Localization: StartUp.TcpServer.NewClientConnection - 新客户端连接 - 会话ID: {0}, 远程终端: {1}
-        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.NewClientConnection, appSession.SessionId, appSession.RemoteEndPoint));
+        // Localization: StartUp.Server.NewClientConnection - 新客户端连接 - 会话ID: {0}, 远程终端: {1}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Server.NewClientConnection, appSession.SessionId, appSession.RemoteEndPoint));
         var netChannel = new DefaultNetworkChannel(appSession, Setting);
         var count = PlayerSessionManager.Instance.Count();
         if (count > Setting.MaxClientCount)

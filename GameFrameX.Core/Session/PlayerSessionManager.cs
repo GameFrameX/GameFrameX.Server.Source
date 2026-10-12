@@ -410,10 +410,13 @@ public sealed class PlayerSessionManager : IPlayerSessionManager
             LogHelper.Warning(exception, "[PlayerSessionManager] player_route delete hook failed for player {playerId}", playerId);
         }
     }
-
+    /// <summary>
+    /// 解析路由同步钩子的实例标识：当前恒为「服务类型-十六进制时间戳」的进程内退化形态
+    /// （跨进程重启后变化，用于路由记录的归属展示，不参与路由判定）。
+    /// </summary>
     private string ResolveSyncInstanceId(string resolvedServerType)
     {
-        // 优先用 Mongo 发现层实例 ID（运行时通过 PlayerRouteSyncTarget 注入点的实例字段不可见——保留退化路径）。
+        // 退化形态：不尝试读取发现层实例 ID（该信息对路由判定无意义，见方法注释）
         return $"{resolvedServerType}-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds():x}";
     }
 }

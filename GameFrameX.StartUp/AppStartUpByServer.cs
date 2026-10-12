@@ -149,8 +149,8 @@ public abstract partial class AppStartUpBase
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     protected virtual ValueTask OnDisconnected(IAppSession appSession, CloseEventArgs disconnectEventArgs)
     {
-        // Localization: StartUp.TcpServer.ClientDisconnected - 客户端断开连接 - 会话ID: {0}, 远程终端: {1}, 断开原因: {2}
-        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.ClientDisconnected, appSession.SessionId, appSession.RemoteEndPoint, disconnectEventArgs.Reason));
+        // Localization: StartUp.Server.ClientDisconnected - 客户端断开连接 - 会话ID: {0}, 远程终端: {1}, 断开原因: {2}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Server.ClientDisconnected, appSession.SessionId, appSession.RemoteEndPoint, disconnectEventArgs.Reason));
         return ValueTask.CompletedTask;
     }
 
@@ -165,8 +165,8 @@ public abstract partial class AppStartUpBase
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     protected virtual ValueTask OnConnected(IAppSession appSession)
     {
-        // Localization: StartUp.TcpServer.NewClientConnection - 新客户端连接 - 会话ID: {0}, 远程终端: {1}
-        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.NewClientConnection, appSession.SessionId, appSession.RemoteEndPoint));
+        // Localization: StartUp.Server.NewClientConnection - 新客户端连接 - 会话ID: {0}, 远程终端: {1}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Server.NewClientConnection, appSession.SessionId, appSession.RemoteEndPoint));
         return ValueTask.CompletedTask;
     }
 
@@ -204,8 +204,8 @@ public abstract partial class AppStartUpBase
                 // 心跳日志门控与两处覆写对齐：三开关单点检（IsDebug + IsDebugReceive + IsDebugReceiveHeartBeat）
                 if (Setting.IsDebug && Setting.IsDebugReceive && Setting.IsDebugReceiveHeartBeat)
                 {
-                    // Localization: StartUp.TcpServer.MessageReceived - 接收到消息 - 服务器类型: [{0}], 消息内容: {1}
-                    LogHelper.Debug(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.MessageReceived, ServerType, message.ToFormatMessageString()));
+                    // Localization: StartUp.Server.MessageReceived - 接收到消息 - 服务器类型: [{0}], 消息内容: {1}
+                    LogHelper.Debug(LocalizationService.GetString(Localization.Keys.StartUp.Server.MessageReceived, ServerType, message.ToFormatMessageString()));
                 }
 
                 networkChannel.UpdateReceiveMessageTime();
@@ -244,8 +244,8 @@ public abstract partial class AppStartUpBase
     {
         if (Setting.IsDebug && Setting.IsDebugReceive)
         {
-            // Localization: StartUp.TcpServer.MessageReceived - 接收到消息 - 服务器类型: [{0}], 消息内容: {1}
-            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.StartUp.TcpServer.MessageReceived, ServerType, message.ToFormatMessageString()));
+            // Localization: StartUp.Server.MessageReceived - 接收到消息 - 服务器类型: [{0}], 消息内容: {1}
+            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.StartUp.Server.MessageReceived, ServerType, message.ToFormatMessageString()));
         }
     }
 

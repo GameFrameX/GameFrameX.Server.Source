@@ -61,7 +61,7 @@ public abstract class BaseNetworkChannel : INetworkChannel
     /// <remarks>
     /// Timeout duration for network send operations.
     /// </remarks>
-    protected readonly TimeSpan NetworkSendTimeOutSecondsTimeSpan;
+    protected readonly TimeSpan NetworkSendTimeout;
 
     /// <summary>
     /// 初始化基础网络通道。
@@ -84,7 +84,7 @@ public abstract class BaseNetworkChannel : INetworkChannel
         SendBytesLength = default;
         ReceivePacketLength = default;
         ReceiveBytesLength = default;
-        NetworkSendTimeOutSecondsTimeSpan = TimeSpan.FromSeconds(Setting.NetworkSendTimeOutSeconds);
+        NetworkSendTimeout = TimeSpan.FromSeconds(Setting.NetworkSendTimeOutSeconds);
     }
 
     /// <summary>
@@ -191,7 +191,7 @@ public abstract class BaseNetworkChannel : INetworkChannel
 
         SendBytesLength += (ulong)messageData.Length;
         SendPacketLength++;
-        using (var cancellationTokenSource = new CancellationTokenSource(NetworkSendTimeOutSecondsTimeSpan))
+        using (var cancellationTokenSource = new CancellationTokenSource(NetworkSendTimeout))
         {
             try
             {

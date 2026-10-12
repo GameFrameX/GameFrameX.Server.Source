@@ -418,36 +418,6 @@ public static partial class Keys
         public static class TcpServer
         {
             /// <summary>
-            /// 客户端断开连接 - 会话ID: {0}, 远程终端: {1}, 断开原因: {2}
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.TcpServer.ClientDisconnected
-            /// 用途: 当客户端断开连接时记录
-            /// 参数: {0} - 会话ID, {1} - 远程端点, {2} - 断开原因
-            /// </remarks>
-            public const string ClientDisconnected = "StartUp.TcpServer.ClientDisconnected";
-
-            /// <summary>
-            /// 新客户端连接 - 会话ID: {0}, 远程终端: {1}
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.TcpServer.NewClientConnection
-            /// 用途: 当新客户端连接时记录
-            /// 参数: {0} - 会话ID, {1} - 远程端点
-            /// </remarks>
-            public const string NewClientConnection = "StartUp.TcpServer.NewClientConnection";
-
-            /// <summary>
-            /// 接收到消息 - 服务器类型: [{0}], 消息内容: {1}
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.TcpServer.MessageReceived
-            /// 用途: 当接收到消息时记录调试信息
-            /// 参数: {0} - 服务器类型, {1} - 消息内容
-            /// </remarks>
-            public const string MessageReceived = "StartUp.TcpServer.MessageReceived";
-
-            /// <summary>
             /// 启动TCP服务器 类型: {0}, 地址: {1}, 端口: {2}
             /// </summary>
             /// <remarks>
@@ -861,6 +831,36 @@ public static partial class Keys
             /// 参数: {0} - 异常信息
             /// </remarks>
             public const string MessageHandlerError = "StartUp.Server.MessageHandlerError";
+
+            /// <summary>
+            /// 客户端断开连接 - 会话ID: {0}, 远程终端: {1}, 断开原因: {2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Server.ClientDisconnected
+            /// 用途: 当客户端断开连接时记录（TCP/KCP/WS 共用回调）
+            /// 参数: {0} - 会话ID, {1} - 远程端点, {2} - 断开原因
+            /// </remarks>
+            public const string ClientDisconnected = "StartUp.Server.ClientDisconnected";
+
+            /// <summary>
+            /// 新客户端连接 - 会话ID: {0}, 远程终端: {1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Server.NewClientConnection
+            /// 用途: 当新客户端连接时记录（TCP/KCP/WS 共用回调）
+            /// 参数: {0} - 会话ID, {1} - 远程端点
+            /// </remarks>
+            public const string NewClientConnection = "StartUp.Server.NewClientConnection";
+
+            /// <summary>
+            /// 接收到消息 - 服务器类型: [{0}], 消息内容: {1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Server.MessageReceived
+            /// 用途: 当接收到消息时记录调试信息（TCP/KCP/WS 共用回调）
+            /// 参数: {0} - 服务器类型, {1} - 消息内容
+            /// </remarks>
+            public const string MessageReceived = "StartUp.Server.MessageReceived";
 
             /// <summary>
             /// 接收消息: 找不到消息处理器, 消息ID: {0}, 消息类型: {1}
