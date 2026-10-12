@@ -52,6 +52,11 @@ public sealed class CapabilityHostBuilder
     private CapabilityAssemblyFilter _filter;
 
     /// <summary>
+    /// 宿主共享服务注册表（组合根预置与模块注册共用；装配后经 <see cref="CapabilityHost.Services"/> 取用）。
+    /// </summary>
+    private readonly CapabilityServices _services = new();
+
+    /// <summary>
     /// 加入一个能力模块。
     /// </summary>
     /// <param name="module">能力模块。</param>
@@ -75,6 +80,19 @@ public sealed class CapabilityHostBuilder
     public CapabilityHostBuilder SetFilter(CapabilityAssemblyFilter filter)
     {
         _filter = filter;
+        return this;
+    }
+
+    /// <summary>
+    /// 预置一个服务（组合根侧的服务共享面：平台服务 / 包级 options / store 替换缝共用；
+    /// 同类型重复注册即装配失败）。
+    /// </summary>
+    /// <typeparam name="TService">服务类型（调用点书写形态，可为接口）。</typeparam>
+    /// <param name="service">服务实例（不可为 null）。</param>
+    /// <returns>本装配器（链式）。</returns>
+    public CapabilityHostBuilder UseService<TService>(TService service)
+    {
+        _services.AddService(service);
         return this;
     }
 
@@ -125,7 +143,7 @@ public sealed class CapabilityHostBuilder
         var eventJobs = new List<CapabilityEventJob>();
         foreach (var module in ordered)
         {
-            var context = new CapabilityRegistrationContext(module.Manifest);
+            var context = new CapabilityRegistrationContext(module.Manifest, _services);
             module.Register(context);
             tickJobs.AddRange(context.TickJobs);
             intervalJobs.AddRange(context.IntervalJobs);
@@ -134,7 +152,7 @@ public sealed class CapabilityHostBuilder
 
         var report = new CapabilityReport(entries, ordered.Select(m => m.Manifest.Id).ToArray());
         var scheduler = new CapabilityScheduler(options.SchedulerIntervalMilliseconds, tickJobs, intervalJobs, eventJobs);
-        return new CapabilityHost(options, report, scheduler);
+        return new CapabilityHost(options, report, scheduler, _services, ordered);
     }
 
     /// <summary>

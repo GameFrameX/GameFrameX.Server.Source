@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="../../Version.props" Label="版本号定义"/>
+
+    <PropertyGroup>
+        <Description>GameFrameX.Capability.Online.Matchmaking,GFX Online 匹配能力包(含 Party 域):大厅/票据/撮合协调器/队列观测 + 队伍域(InMemory 默认存储,UseOnlineMatchmakingStore 族替换缝)+ hosting 扩展(AddOnlineMatchmakingRuntime)+ admin handlers(队列观测/票据处置族). Matchmaking capability package for the GFX Online family, including the party domain: listings, tickets, the matchmaker coordinator and queue observation with in-memory default stores, the hosting extension and admin handlers. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Capability,Online,Matchmaking,Party,Ticket,GameServer</PackageTags>
+        <LangVersion>10</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Abstractions/GameFrameX.Capability.Online.Abstractions.csproj"/>
+        <ProjectReference Include="../GameFrameX.Capability.Hosting.Core/GameFrameX.Capability.Hosting.Core.csproj"/>
+    </ItemGroup>
+
+</Project>

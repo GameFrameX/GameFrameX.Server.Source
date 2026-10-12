@@ -27,10 +27,11 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using GameFrameX.Capability.Online.Contracts;
 using GameFrameX.Capability.Hosting;
 using GameFrameX.Foundation.Idempotency;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Online.Assets;
+using GameFrameX.Capability.Online.Assets;
 using GameFrameX.Online.Audit;
 using GameFrameX.Capability.Online.Events;
 using GameFrameX.Online.GameEvents;
@@ -39,15 +40,15 @@ using GameFrameX.Capability.Online.Identity;
 using GameFrameX.Capability.Online.Idempotency;
 using GameFrameX.Online.Leaderboard;
 using GameFrameX.Online.Match;
-using GameFrameX.Online.Matchmaking;
+using GameFrameX.Capability.Online.Matchmaking;
 using GameFrameX.Online.Overview;
-using GameFrameX.Online.Party;
+using GameFrameX.Capability.Online.Party;
 using GameFrameX.Capability.Online.Presence;
 using GameFrameX.Online.Runtime.AdminApi;
 using GameFrameX.Capability.Online.Scope;
 using GameFrameX.Online.Season;
 using GameFrameX.Capability.Online.Session;
-using GameFrameX.Online.Social;
+using GameFrameX.Capability.Online.Social;
 using GameFrameX.Capability.Online.Storage;
 using GameFrameX.Online.Timeline;
 using GameFrameX.Online.Tournament;
@@ -95,11 +96,6 @@ public sealed class OnlineRuntimeHost
 
     // ---- 存储（InMemory 为单进程默认实现；生产持久化实现另行演进）----
 
-    /// <summary>资产存储（钱包 / 库存 / 账本）。</summary>
-    public InMemoryOnlineAssetStore AssetStore { get; } = new();
-
-    /// <summary>资产交易存储。</summary>
-    public InMemoryOnlineAssetTransactionStore AssetTransactionStore { get; } = new();
 
     /// <summary>统一审计存储。</summary>
     public InMemoryOnlineAuditStore AuditStore { get; } = new();
@@ -125,15 +121,6 @@ public sealed class OnlineRuntimeHost
     /// <summary>对局结果存储。</summary>
     public InMemoryOnlineMatchResultStore MatchResultStore { get; } = new();
 
-    /// <summary>匹配大厅存储。</summary>
-    public InMemoryOnlineMatchListingStore MatchListingStore { get; } = new();
-
-    /// <summary>匹配票据存储。</summary>
-    public InMemoryOnlineMatchTicketStore MatchTicketStore { get; } = new();
-
-    /// <summary>队伍存储。</summary>
-    public InMemoryOnlinePartyStore PartyStore { get; } = new();
-
     /// <summary>在线状态存储。</summary>
     public InMemoryOnlinePresenceStore PresenceStore { get; } = new();
 
@@ -143,23 +130,6 @@ public sealed class OnlineRuntimeHost
     /// <summary>会话存储。</summary>
     public InMemoryOnlineSessionStore SessionStore { get; } = new();
 
-    /// <summary>聊天存储。</summary>
-    public InMemoryOnlineChatStore ChatStore { get; } = new();
-
-    /// <summary>好友存储。</summary>
-    public InMemoryOnlineFriendStore FriendStore { get; } = new();
-
-    /// <summary>群组存储。</summary>
-    public InMemoryOnlineGroupStore GroupStore { get; } = new();
-
-    /// <summary>通知存储。</summary>
-    public InMemoryOnlineNotificationStore NotificationStore { get; } = new();
-
-    /// <summary>举报存储。</summary>
-    public InMemoryOnlineReportStore ReportStore { get; } = new();
-
-    /// <summary>社交关系存储（处罚读取面）。</summary>
-    public InMemoryOnlineSocialGraphStore SocialGraphStore { get; } = new();
 
     /// <summary>玩家 KV 存储器。</summary>
     public InMemoryOnlinePlayerStorageStore PlayerStorageStore { get; } = new();
@@ -175,11 +145,6 @@ public sealed class OnlineRuntimeHost
     /// <summary>幂等服务（admin 层副作用命令包裹）。</summary>
     public OnlineIdempotencyService Idempotency { get; }
 
-    /// <summary>资产发放统一入口（内部自带幂等流）。</summary>
-    public OnlineGrantService GrantService { get; }
-
-    /// <summary>资产查询（钱包 / 账本 / 交易明细）。</summary>
-    public OnlineAssetQueryService AssetQuery { get; }
 
     /// <summary>统一审计服务。</summary>
     public OnlineAuditService Audit { get; }
@@ -195,24 +160,6 @@ public sealed class OnlineRuntimeHost
 
     /// <summary>在线状态。</summary>
     public OnlinePresenceService Presence { get; }
-
-    /// <summary>社交裁决（禁言 / 举报 / 拉黑）。</summary>
-    public OnlineSocialDecisionService SocialDecisions { get; }
-
-    /// <summary>处罚（Mute / Ban 事实源）。</summary>
-    public OnlinePunishmentService Punishments { get; }
-
-    /// <summary>通知。</summary>
-    public OnlineNotificationService Notifications { get; }
-
-    /// <summary>匹配票据。</summary>
-    public OnlineMatchTicketService MatchTickets { get; }
-
-    /// <summary>撮合协调器。</summary>
-    public OnlineMatchmakerCoordinator Matchmaker { get; }
-
-    /// <summary>匹配队列观察器。</summary>
-    public OnlineMatchQueueObserver MatchQueueObserver { get; }
 
     /// <summary>对局运行时。</summary>
     public OnlineMatchRuntime MatchRuntime { get; }
@@ -234,9 +181,6 @@ public sealed class OnlineRuntimeHost
 
     /// <summary>Hotfix 回滚。</summary>
     public OnlineHotfixRollbackService HotfixRollback { get; }
-
-    /// <summary>聊天审计投影（订阅事件总线的 chat 审计查询面）。</summary>
-    public OnlineChatAuditProjection ChatAudit { get; }
 
     /// <summary>LiveOps 最小承载（InMemory 版本登记表）。</summary>
     public OnlineLiveOpsRegistry LiveOps { get; }
@@ -269,32 +213,29 @@ public sealed class OnlineRuntimeHost
                                                      new IdempotencyOptions { FailedReplayPolicy = FailedReplayPolicy.ReExecute, });
         Idempotency = new OnlineIdempotencyService(coordinator);
 
-        AssetQuery = new OnlineAssetQueryService(AssetStore, AssetTransactionStore);
-        GrantService = new OnlineGrantService(AssetStore, AssetTransactionStore, Idempotency, EventPublisher);
         Audit = new OnlineAuditService(AuditStore);
         Identity = new OnlineIdentityService(IdentityStore);
         Sessions = new OnlineSessionManager(SessionStore, EventPublisher);
         Tokens = new OnlineSessionTokenService(SessionStore, EventPublisher);
         Presence = new OnlinePresenceService(PresenceStore, EventPublisher);
-        SocialDecisions = new OnlineSocialDecisionService(SocialGraphStore, ReportStore, EventPublisher);
-        Punishments = new OnlinePunishmentService(SocialGraphStore, EventPublisher);
-        Notifications = new OnlineNotificationService(NotificationStore, EventPublisher);
-        MatchTickets = new OnlineMatchTicketService(MatchTicketStore, EventPublisher);
-        Matchmaker = new OnlineMatchmakerCoordinator(MatchTicketStore, MatchTickets, EventPublisher, null, SocialDecisions);
-        MatchQueueObserver = new OnlineMatchQueueObserver(MatchTicketStore);
         MatchRuntime = new OnlineMatchRuntime(MatchActorStore, EventPublisher);
         MatchRuntime.RegisterGame(new OnlineRockPaperScissorsGame());
-        Overview = new OnlineOverviewService(PresenceStore, SessionStore, PartyStore, MatchTicketStore, MatchActorStore);
-        Timeline = new OnlinePlayerTimelineService(IdentityStore, SessionStore, AssetQuery, MatchActorStore, SocialGraphStore);
         Leaderboards = new OnlineLeaderboardService(LeaderboardStore, null, EventPublisher);
-        Seasons = new OnlineSeasonService(SeasonStore, Leaderboards, GrantService, EventPublisher);
-        Tournaments = new OnlineTournamentService(TournamentStore, Leaderboards, GrantService, EventPublisher);
         HotfixRollback = new OnlineHotfixRollbackService(HotfixVersionStore, Idempotency, Audit, hotfixRollbackExecutor, EventPublisher);
 
-        ChatAudit = new OnlineChatAuditProjection(ChatStore);
         LiveOps = new OnlineLiveOpsRegistry();
 
+        // 能力装配（P3 起：叶子能力经包扩展自装配，跨域依赖经共享服务面；剩余域由壳构造并取用叶子产物）。
         var builder = new CapabilityHostBuilder();
+        builder.UseService(AuthorizedScope);
+        builder.UseService<IOnlineEventPublisher>(EventPublisher);
+        builder.UseService(Idempotency);
+        builder.UseService<IOnlineAuditReader>(Audit);
+        builder.UseService<IOnlineSessionStore>(SessionStore);
+        builder.UseService(Tokens);
+        builder.AddOnlineAssetsRuntime();
+        builder.AddOnlineSocialRuntime();
+        builder.AddOnlineMatchmakingRuntime();
         foreach (var module in OnlineCapabilityModules.CreateAll(this))
         {
             builder.AddModule(module);
@@ -302,6 +243,20 @@ public sealed class OnlineRuntimeHost
 
         builder.SetFilter(filter);
         CapabilityHost = builder.Build(options);
+
+        // 叶子产物取用（assets / social / matchmaking(+Party) 域由能力包装配；闭包校验保证启用模块的依赖产物在场，
+        // 禁用能力的下游服务置 null——其 handler/job 均随模块禁用，不可达）。
+        var hasGrantService = CapabilityHost.Services.TryGetService(out OnlineGrantService grantService);
+        var hasAssetQuery = CapabilityHost.Services.TryGetService(out OnlineAssetQueryService assetQuery);
+        var hasSocialGraphStore = CapabilityHost.Services.TryGetService(out IOnlineSocialGraphStore socialGraphStore);
+        var hasMatchTicketStore = CapabilityHost.Services.TryGetService(out IOnlineMatchTicketStore matchTicketStore);
+        var hasPartyStore = CapabilityHost.Services.TryGetService(out IOnlinePartyStore partyStore);
+        Overview = hasMatchTicketStore && hasPartyStore
+            ? new OnlineOverviewService(PresenceStore, SessionStore, partyStore, matchTicketStore, MatchActorStore)
+            : null;
+        Timeline = hasAssetQuery && hasSocialGraphStore ? new OnlinePlayerTimelineService(IdentityStore, SessionStore, assetQuery, MatchActorStore, socialGraphStore) : null;
+        Seasons = hasGrantService ? new OnlineSeasonService(SeasonStore, Leaderboards, grantService, EventPublisher) : null;
+        Tournaments = hasGrantService ? new OnlineTournamentService(TournamentStore, Leaderboards, grantService, EventPublisher) : null;
     }
 
     /// <summary>
@@ -317,6 +272,7 @@ public sealed class OnlineRuntimeHost
         }
 
         _started = true;
+        var chatAudit = CapabilityHost.Services.TryGetService(out OnlineChatAuditProjection chatAuditProjection) ? chatAuditProjection : null;
         var consumer = new OnlineEventConsumer(new InMemoryEventDeduplicator());
         var sanitizer = new OnlineEventSanitizer();
         EventBus.Subscribe(envelope =>
@@ -329,7 +285,7 @@ public sealed class OnlineRuntimeHost
                     return;
                 }
 
-                ChatAudit.OnEvent(onlineEvent);
+                chatAudit?.OnEvent(onlineEvent);
                 IngestAuditFromEvent(onlineEvent, sanitizer);
             }
             catch (Exception)

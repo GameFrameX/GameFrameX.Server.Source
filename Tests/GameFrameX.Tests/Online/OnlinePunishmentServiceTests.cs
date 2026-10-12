@@ -31,7 +31,7 @@ using System;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Contracts;
 using GameFrameX.Capability.Online.Events;
-using GameFrameX.Online.Social;
+using GameFrameX.Capability.Online.Social;
 using Xunit;
 
 namespace GameFrameX.Tests.Online

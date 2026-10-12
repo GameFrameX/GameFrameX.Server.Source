@@ -30,13 +30,13 @@
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
-using GameFrameX.Online.Assets;
+using GameFrameX.Capability.Online.Assets;
 using GameFrameX.Capability.Online.Events;
 using GameFrameX.Online.GameEvents;
 using GameFrameX.Online.Match;
-using GameFrameX.Online.Matchmaking;
+using GameFrameX.Capability.Online.Matchmaking;
 using GameFrameX.Capability.Online.Session;
-using GameFrameX.Online.Social;
+using GameFrameX.Capability.Online.Social;
 using Xunit;
 
 namespace GameFrameX.Tests.Online

@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 using System.Collections.Generic;
-using GameFrameX.Online.Matchmaking;
+using GameFrameX.Capability.Online.Matchmaking;
 
 namespace GameFrameX.Online.Match;
 

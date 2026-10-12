@@ -18,6 +18,9 @@
     <Project Path="Capability/GameFrameX.Capability.Hosting.AdminApi/GameFrameX.Capability.Hosting.AdminApi.csproj" />
     <Project Path="Capability/GameFrameX.Capability.Online.Abstractions/GameFrameX.Capability.Online.Abstractions.csproj" />
     <Project Path="Capability/GameFrameX.Capability.Online.Foundation/GameFrameX.Capability.Online.Foundation.csproj" />
+    <Project Path="Capability/GameFrameX.Capability.Online.Assets/GameFrameX.Capability.Online.Assets.csproj" />
+    <Project Path="Capability/GameFrameX.Capability.Online.Social/GameFrameX.Capability.Online.Social.csproj" />
+    <Project Path="Capability/GameFrameX.Capability.Online.Matchmaking/GameFrameX.Capability.Online.Matchmaking.csproj" />
   </Folder>
   <Project Path="GameFrameX.Apps/GameFrameX.Apps.csproj" />
   <Project Path="GameFrameX.Discovery/GameFrameX.Discovery.csproj" />

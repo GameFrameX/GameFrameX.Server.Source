@@ -51,12 +51,12 @@ namespace GameFrameX.Tests.Online
         private const string OnlineProjectDirectory = "GameFrameX.Online";
 
         /// <summary>
-        /// 受矩阵治理的残量目录全集（13 个肢体目录；C228 P1 拆出 9 目录后）。
+        /// 受矩阵治理的残量目录全集（C231 P3 终态 = 9 个肢体目录；Assets/Social/Matchmaking/Party 已拆至 Capability.Online.*）。
         /// </summary>
         private static readonly HashSet<string> Directories = new()
         {
-            "Assets", "Audit", "GameEvents", "HotfixRollback", "Leaderboard", "Match",
-            "Matchmaking", "Overview", "Party", "Season", "Social", "Timeline", "Tournament",
+            "Audit", "GameEvents", "HotfixRollback", "Leaderboard", "Match",
+            "Overview", "Season", "Timeline", "Tournament",
         };
 
         /// <summary>
@@ -68,26 +68,20 @@ namespace GameFrameX.Tests.Online
         /// </summary>
         private static readonly Dictionary<string, string[]> AllowedEdges = new()
         {
-            ["Assets"] = Array.Empty<string>(),
-            ["Social"] = Array.Empty<string>(),
-            ["Matchmaking"] = Array.Empty<string>(),
-            ["Party"] = Array.Empty<string>(),
-            ["Match"] = new[] { "Assets", "Matchmaking" },
+            ["Match"] = Array.Empty<string>(),
             ["Leaderboard"] = new[] { "Match" },
-            ["Season"] = new[] { "Assets", "Leaderboard" },
-            ["Tournament"] = new[] { "Assets", "Leaderboard" },
+            ["Season"] = new[] { "Leaderboard" },
+            ["Tournament"] = new[] { "Leaderboard" },
             ["Audit"] = Array.Empty<string>(),
             ["HotfixRollback"] = new[] { "Audit" },
-            ["GameEvents"] = new[] { "Assets", "Match", "Matchmaking", "Social" },
-            ["Timeline"] = new[] { "Assets", "Match", "Social" },
-            ["Overview"] = new[] { "Match", "Matchmaking", "Party" },
+            ["GameEvents"] = new[] { "Match" },
+            ["Timeline"] = new[] { "Match" },
+            ["Overview"] = new[] { "Match" },
         };
 
         /// <summary>
         /// 叶子能力簇目录（包族中互为独立叶子包，横向互引恒为零）。
         /// </summary>
-        private static readonly string[] LeafCapabilityDirectories = { "Assets", "Social", "Matchmaking", "Party" };
-
         /// <summary>
         /// 过渡期豁免名单（解环看板）：每条 = 一条现存 Events→域环边；
         /// 对应环解除后必须同步删除豁免行（测试对「豁免仍被引用」做强校验，防止看板腐化）。
@@ -128,19 +122,6 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 断言叶子能力簇（Assets/Social/Matchmaking/Party）横向互引恒为零。
-        /// </summary>
-        [Fact]
-        public void LeafCapabilityDirectories_HaveNoCrossClusterReferences()
-        {
-            var edges = CollectDirectoryEdges();
-            var violations = edges.Where(edge => LeafCapabilityDirectories.Contains(edge.From) && LeafCapabilityDirectories.Contains(edge.To)).ToList();
-
-            Assert.True(violations.Count == 0, "叶子能力簇横向互引必须为零：" + Environment.NewLine + string.Join(Environment.NewLine, violations.Select(edge => $"{edge.From} -> {edge.To}（{edge.Location}）")));
-        }
-
-
-        /// <summary>
         /// 断言事件 topic 常量与来源标识逐字节冻结（C223 零行为变更红线；值 = 2026-10-12 迁移前基线）。
         /// </summary>
         [Fact]
@@ -148,32 +129,32 @@ namespace GameFrameX.Tests.Online
         {
             var expected = new (string Actual, string Frozen)[]
             {
-                (GameFrameX.Online.Assets.OnlineAssetEvents.AssetGranted, "Online.Asset.Granted"),
-                (GameFrameX.Online.Assets.OnlineAssetEvents.AssetDeducted, "Online.Asset.Deducted"),
-                (GameFrameX.Online.Assets.OnlineAssetEvents.AssetAdjusted, "Online.Asset.Adjusted"),
-                (GameFrameX.Online.Assets.OnlineAssetEvents.Source, "online-assets"),
-                (GameFrameX.Online.Social.OnlineChatEvents.MessageSent, "Online.Chat.MessageSent"),
-                (GameFrameX.Online.Social.OnlineChatEvents.MessageRecalled, "Online.Chat.MessageRecalled"),
-                (GameFrameX.Online.Social.OnlineChatEvents.ReadMarkUpdated, "Online.Chat.ReadMarkUpdated"),
-                (GameFrameX.Online.Social.OnlineChatEvents.ModerationFailed, "Online.Chat.ModerationFailed"),
-                (GameFrameX.Online.Social.OnlineChatEvents.Source, "online-chat"),
+                (GameFrameX.Capability.Online.Assets.OnlineAssetEvents.AssetGranted, "Online.Asset.Granted"),
+                (GameFrameX.Capability.Online.Assets.OnlineAssetEvents.AssetDeducted, "Online.Asset.Deducted"),
+                (GameFrameX.Capability.Online.Assets.OnlineAssetEvents.AssetAdjusted, "Online.Asset.Adjusted"),
+                (GameFrameX.Capability.Online.Assets.OnlineAssetEvents.Source, "online-assets"),
+                (GameFrameX.Capability.Online.Social.OnlineChatEvents.MessageSent, "Online.Chat.MessageSent"),
+                (GameFrameX.Capability.Online.Social.OnlineChatEvents.MessageRecalled, "Online.Chat.MessageRecalled"),
+                (GameFrameX.Capability.Online.Social.OnlineChatEvents.ReadMarkUpdated, "Online.Chat.ReadMarkUpdated"),
+                (GameFrameX.Capability.Online.Social.OnlineChatEvents.ModerationFailed, "Online.Chat.ModerationFailed"),
+                (GameFrameX.Capability.Online.Social.OnlineChatEvents.Source, "online-chat"),
                 (GameFrameX.Online.HotfixRollback.OnlineHotfixEvents.VersionRegistered, "Online.Hotfix.VersionRegistered"),
                 (GameFrameX.Online.HotfixRollback.OnlineHotfixEvents.RolledBack, "Online.Hotfix.RolledBack"),
                 (GameFrameX.Online.HotfixRollback.OnlineHotfixEvents.Source, "online-hotfix"),
                 (GameFrameX.Online.Leaderboard.OnlineLeaderboardEvents.LeaderboardCreated, "Online.Leaderboard.Created"),
                 (GameFrameX.Online.Leaderboard.OnlineLeaderboardEvents.ScoreUpdated, "Online.Leaderboard.ScoreUpdated"),
                 (GameFrameX.Online.Leaderboard.OnlineLeaderboardEvents.Source, "online-leaderboard"),
-                (GameFrameX.Online.Matchmaking.OnlineMatchEvents.TicketChanged, "Online.Match.TicketChanged"),
-                (GameFrameX.Online.Matchmaking.OnlineMatchEvents.AssignmentCreated, "Online.Match.AssignmentCreated"),
-                (GameFrameX.Online.Matchmaking.OnlineMatchEvents.Source, "online-matchmaker"),
+                (GameFrameX.Capability.Online.Matchmaking.OnlineMatchEvents.TicketChanged, "Online.Match.TicketChanged"),
+                (GameFrameX.Capability.Online.Matchmaking.OnlineMatchEvents.AssignmentCreated, "Online.Match.AssignmentCreated"),
+                (GameFrameX.Capability.Online.Matchmaking.OnlineMatchEvents.Source, "online-matchmaker"),
                 (GameFrameX.Online.Match.OnlineMatchRuntimeEvents.MatchStateChanged, "Online.Match.StateChanged"),
                 (GameFrameX.Online.Match.OnlineMatchRuntimeEvents.MatchSettled, "Online.Match.Settled"),
                 (GameFrameX.Online.Match.OnlineMatchRuntimeEvents.Source, "online-match"),
-                (GameFrameX.Online.Social.OnlineNotificationEvents.NotificationChanged, "Online.Notification.Changed"),
-                (GameFrameX.Online.Social.OnlineNotificationEvents.Source, "online-notification"),
-                (GameFrameX.Online.Party.OnlinePartyEvents.PartyChanged, "Online.Party.Changed"),
-                (GameFrameX.Online.Party.OnlinePartyEvents.PartyInviteChanged, "Online.Party.InviteChanged"),
-                (GameFrameX.Online.Party.OnlinePartyEvents.Source, "online-party"),
+                (GameFrameX.Capability.Online.Social.OnlineNotificationEvents.NotificationChanged, "Online.Notification.Changed"),
+                (GameFrameX.Capability.Online.Social.OnlineNotificationEvents.Source, "online-notification"),
+                (GameFrameX.Capability.Online.Party.OnlinePartyEvents.PartyChanged, "Online.Party.Changed"),
+                (GameFrameX.Capability.Online.Party.OnlinePartyEvents.PartyInviteChanged, "Online.Party.InviteChanged"),
+                (GameFrameX.Capability.Online.Party.OnlinePartyEvents.Source, "online-party"),
                 (GameFrameX.Capability.Online.Presence.OnlinePresenceEvents.PresenceChanged, "Online.Presence.Changed"),
                 (GameFrameX.Capability.Online.Presence.OnlinePresenceEvents.Source, "online-presence"),
                 (GameFrameX.Online.Season.OnlineSeasonEvents.SeasonCreated, "Online.Season.Created"),
@@ -191,13 +172,13 @@ namespace GameFrameX.Tests.Online
                 (GameFrameX.Capability.Online.Session.OnlineSessionEvents.SessionExpired, "Online.Session.Expired"),
                 (GameFrameX.Capability.Online.Session.OnlineSessionEvents.SessionTokenRefreshed, "Online.Session.TokenRefreshed"),
                 (GameFrameX.Capability.Online.Session.OnlineSessionEvents.Source, "online-session"),
-                (GameFrameX.Online.Social.OnlineSocialEvents.FriendshipChanged, "Online.Social.FriendshipChanged"),
-                (GameFrameX.Online.Social.OnlineSocialEvents.BlockChanged, "Online.Social.BlockChanged"),
-                (GameFrameX.Online.Social.OnlineSocialEvents.MuteChanged, "Online.Social.MuteChanged"),
-                (GameFrameX.Online.Social.OnlineSocialEvents.ReportChanged, "Online.Social.ReportChanged"),
-                (GameFrameX.Online.Social.OnlineSocialEvents.PunishmentChanged, "Online.Social.PunishmentChanged"),
-                (GameFrameX.Online.Social.OnlineSocialEvents.GroupChanged, "Online.Social.GroupChanged"),
-                (GameFrameX.Online.Social.OnlineSocialEvents.Source, "online-social"),
+                (GameFrameX.Capability.Online.Social.OnlineSocialEvents.FriendshipChanged, "Online.Social.FriendshipChanged"),
+                (GameFrameX.Capability.Online.Social.OnlineSocialEvents.BlockChanged, "Online.Social.BlockChanged"),
+                (GameFrameX.Capability.Online.Social.OnlineSocialEvents.MuteChanged, "Online.Social.MuteChanged"),
+                (GameFrameX.Capability.Online.Social.OnlineSocialEvents.ReportChanged, "Online.Social.ReportChanged"),
+                (GameFrameX.Capability.Online.Social.OnlineSocialEvents.PunishmentChanged, "Online.Social.PunishmentChanged"),
+                (GameFrameX.Capability.Online.Social.OnlineSocialEvents.GroupChanged, "Online.Social.GroupChanged"),
+                (GameFrameX.Capability.Online.Social.OnlineSocialEvents.Source, "online-social"),
                 (GameFrameX.Online.Tournament.OnlineTournamentEvents.TournamentCreated, "Online.Tournament.Created"),
                 (GameFrameX.Online.Tournament.OnlineTournamentEvents.TournamentStarted, "Online.Tournament.Started"),
                 (GameFrameX.Online.Tournament.OnlineTournamentEvents.TournamentRegistered, "Online.Tournament.Registered"),

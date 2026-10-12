@@ -32,7 +32,7 @@ using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Contracts;
 using GameFrameX.Capability.Online.Events;
 using GameFrameX.Online.Match;
-using GameFrameX.Online.Matchmaking;
+using GameFrameX.Capability.Online.Matchmaking;
 using GameFrameX.Capability.Online.Scope;
 using Xunit;
 

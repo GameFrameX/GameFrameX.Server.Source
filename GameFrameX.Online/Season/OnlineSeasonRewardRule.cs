@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 using System.Collections.Generic;
-using GameFrameX.Online.Assets;
+using GameFrameX.Capability.Online.Assets;
 
 namespace GameFrameX.Online.Season;
 

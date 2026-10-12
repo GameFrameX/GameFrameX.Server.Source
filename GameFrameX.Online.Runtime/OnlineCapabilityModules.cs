@@ -57,10 +57,7 @@ public static class OnlineCapabilityModules
 
         return new ICapabilityModule[]
         {
-            new OnlineAssetsCapabilityModule(host),
             new OnlineFoundationCapabilityModule(host),
-            new OnlineSocialCapabilityModule(host),
-            new OnlineMatchmakingCapabilityModule(host),
             new OnlineMatchCapabilityModule(host),
             new OnlineCompetitionCapabilityModule(host),
             new OnlineOperationsCapabilityModule(host),
@@ -68,20 +65,24 @@ public static class OnlineCapabilityModules
     }
 
     /// <summary>
-    /// 能力目录（admin-only 形态的未安装判定数据面：全部 Online 能力的 manifest 声明）。
+    /// 能力目录（admin-only 形态的未安装判定数据面：全部 Online 能力的 manifest 声明；
+    /// P3 起叶子能力 manifest 随包，来源程序集如实归属）。
     /// </summary>
-    /// <returns>manifest 目录。</returns>
-    public static IReadOnlyList<CapabilityManifest> Catalog()
+    /// <returns>manifest 目录（manifest + 来源程序集名）。</returns>
+    public static IReadOnlyList<(CapabilityManifest Manifest, string SourceAssemblyName)> Catalog()
     {
-        return new[]
+        return new (CapabilityManifest, string)[]
         {
-            OnlineAssetsCapabilityModule.ManifestInstance,
-            OnlineFoundationCapabilityModule.ManifestInstance,
-            OnlineSocialCapabilityModule.ManifestInstance,
-            OnlineMatchmakingCapabilityModule.ManifestInstance,
-            OnlineMatchCapabilityModule.ManifestInstance,
-            OnlineCompetitionCapabilityModule.ManifestInstance,
-            OnlineOperationsCapabilityModule.ManifestInstance,
+            (GameFrameX.Capability.Online.Assets.OnlineAssetsCapabilityModule.ManifestInstance,
+                typeof(GameFrameX.Capability.Online.Assets.OnlineAssetsCapabilityModule).Assembly.GetName().Name),
+            (OnlineFoundationCapabilityModule.ManifestInstance, typeof(OnlineCapabilityModules).Assembly.GetName().Name),
+            (GameFrameX.Capability.Online.Social.OnlineSocialCapabilityModule.ManifestInstance,
+                typeof(GameFrameX.Capability.Online.Social.OnlineSocialCapabilityModule).Assembly.GetName().Name),
+            (GameFrameX.Capability.Online.Matchmaking.OnlineMatchmakingCapabilityModule.ManifestInstance,
+                typeof(GameFrameX.Capability.Online.Matchmaking.OnlineMatchmakingCapabilityModule).Assembly.GetName().Name),
+            (OnlineMatchCapabilityModule.ManifestInstance, typeof(OnlineCapabilityModules).Assembly.GetName().Name),
+            (OnlineCompetitionCapabilityModule.ManifestInstance, typeof(OnlineCapabilityModules).Assembly.GetName().Name),
+            (OnlineOperationsCapabilityModule.ManifestInstance, typeof(OnlineCapabilityModules).Assembly.GetName().Name),
         };
     }
 }
@@ -136,160 +137,6 @@ internal sealed class OnlineFoundationCapabilityModule : ICapabilityModule, IAdm
         new OnlineAdminMatchHandlers(_host).RegisterSuspendResume(registry);
     }
 }
-
-/// <summary>
-/// 资产能力（钱包 / 库存 / 账本 / 统一发放）。
-/// </summary>
-internal sealed class OnlineAssetsCapabilityModule : ICapabilityModule, IAdminActionContributor
-{
-    /// <summary>
-    /// 资产能力清单。
-    /// </summary>
-    public static readonly CapabilityManifest ManifestInstance = new(
-        "online-assets",
-        "1.0.0",
-        new[] { "grant_asset", "revoke_asset", "query_wallet_ledger", "query_asset_audit", "query_transaction_detail" });
-
-    /// <summary>
-    /// 过渡组合根。
-    /// </summary>
-    private readonly OnlineRuntimeHost _host;
-
-    /// <summary>
-    /// 初始化模块。
-    /// </summary>
-    /// <param name="host">过渡组合根。</param>
-    public OnlineAssetsCapabilityModule(OnlineRuntimeHost host)
-    {
-        _host = host;
-    }
-
-    /// <inheritdoc />
-    public CapabilityManifest Manifest
-    {
-        get { return ManifestInstance; }
-    }
-
-    /// <inheritdoc />
-    public void Register(CapabilityRegistrationContext context)
-    {
-    }
-
-    /// <inheritdoc />
-    public void RegisterAdminActions(AdminActionRegistry registry)
-    {
-        new OnlineAdminAssetHandlers(_host).Register(registry);
-    }
-}
-
-/// <summary>
-/// 社交能力（好友 / 群组 / 聊天 / 通知 / 处罚 / 举报裁决）。
-/// </summary>
-internal sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActionContributor
-{
-    /// <summary>
-    /// 社交能力清单。
-    /// </summary>
-    public static readonly CapabilityManifest ManifestInstance = new(
-        "online-social",
-        "1.0.0",
-        new[] { "kick_player", "revoke_token", "mute_player", "query_report_cases", "update_report_case", "send_admin_notification", "query_chat_messages", "match_isolation" },
-        new[] { "online-foundation" });
-
-    /// <summary>
-    /// 过渡组合根。
-    /// </summary>
-    private readonly OnlineRuntimeHost _host;
-
-    /// <summary>
-    /// 初始化模块。
-    /// </summary>
-    /// <param name="host">过渡组合根。</param>
-    public OnlineSocialCapabilityModule(OnlineRuntimeHost host)
-    {
-        _host = host;
-    }
-
-    /// <inheritdoc />
-    public CapabilityManifest Manifest
-    {
-        get { return ManifestInstance; }
-    }
-
-    /// <inheritdoc />
-    public void Register(CapabilityRegistrationContext context)
-    {
-        context.AddTickJob("notification-expiry-sweep", async ct =>
-        {
-            var scope = _host.AuthorizedScope;
-            await _host.Notifications.SweepExpiredAsync(scope.TenantId, scope.AppId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
-        });
-    }
-
-    /// <inheritdoc />
-    public void RegisterAdminActions(AdminActionRegistry registry)
-    {
-        new OnlineAdminSocialHandlers(_host).Register(registry);
-        new OnlineAdminMatchHandlers(_host).RegisterMatchIsolation(registry);
-    }
-}
-
-/// <summary>
-/// 匹配能力（大厅 / 票据 / 撮合 / 队伍）。
-/// </summary>
-internal sealed class OnlineMatchmakingCapabilityModule : ICapabilityModule, IAdminActionContributor
-{
-    /// <summary>
-    /// 匹配能力清单。
-    /// </summary>
-    public static readonly CapabilityManifest ManifestInstance = new(
-        "online-matchmaking",
-        "1.0.0",
-        new[] { "query_match_queue_overview", "query_match_ticket_failures", "query_match_abnormal_tickets", "cancel_match_ticket" },
-        new[] { "online-social" });
-
-    /// <summary>
-    /// 过渡组合根。
-    /// </summary>
-    private readonly OnlineRuntimeHost _host;
-
-    /// <summary>
-    /// 初始化模块。
-    /// </summary>
-    /// <param name="host">过渡组合根。</param>
-    public OnlineMatchmakingCapabilityModule(OnlineRuntimeHost host)
-    {
-        _host = host;
-    }
-
-    /// <inheritdoc />
-    public CapabilityManifest Manifest
-    {
-        get { return ManifestInstance; }
-    }
-
-    /// <inheritdoc />
-    public void Register(CapabilityRegistrationContext context)
-    {
-        context.AddTickJob("matchmaker-run", async ct =>
-        {
-            var scope = _host.AuthorizedScope;
-            await _host.Matchmaker.RunOnceAsync(scope.TenantId, scope.AppId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
-        });
-        context.AddTickJob("match-ticket-expiry-sweep", async ct =>
-        {
-            var scope = _host.AuthorizedScope;
-            await _host.MatchTickets.SweepExpiredAsync(scope.TenantId, scope.AppId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
-        });
-    }
-
-    /// <inheritdoc />
-    public void RegisterAdminActions(AdminActionRegistry registry)
-    {
-        new OnlineAdminMatchHandlers(_host).Register(registry);
-    }
-}
-
 /// <summary>
 /// 对局能力（权威对局 Actor / 重连 / 幂等结算）。
 /// </summary>

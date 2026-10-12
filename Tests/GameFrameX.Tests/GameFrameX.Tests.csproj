@@ -61,6 +61,9 @@
       <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Hosting.AdminApi\GameFrameX.Capability.Hosting.AdminApi.csproj" />
       <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Abstractions\GameFrameX.Capability.Online.Abstractions.csproj" />
       <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Foundation\GameFrameX.Capability.Online.Foundation.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Assets\GameFrameX.Capability.Online.Assets.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Social\GameFrameX.Capability.Online.Social.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Matchmaking\GameFrameX.Capability.Online.Matchmaking.csproj" />
       <ProjectReference Include="..\..\GameFrameX.Architecture.Analyzers\GameFrameX.Architecture.Analyzers.csproj" />
       <ProjectReference Include="..\..\GameFrameX.Client\GameFrameX.Client.csproj" />
     </ItemGroup>

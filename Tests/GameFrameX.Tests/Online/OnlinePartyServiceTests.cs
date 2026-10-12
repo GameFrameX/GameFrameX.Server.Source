@@ -32,7 +32,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Contracts;
 using GameFrameX.Capability.Online.Events;
-using GameFrameX.Online.Party;
+using GameFrameX.Capability.Online.Party;
 using GameFrameX.Capability.Online.Scope;
 using Xunit;
 

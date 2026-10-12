@@ -56,7 +56,7 @@ namespace GameFrameX.Online.Audit;
 /// 可选过滤；scope.ServerId/scope.PlayerId 不参与审计过滤，防止误把跨域联查切割成单区服视角。
 /// </para>
 /// </summary>
-public sealed class OnlineAuditService
+public sealed class OnlineAuditService : IOnlineAuditReader
 {
     /// <summary>未指定页大小时使用的默认页大小。</summary>
     private const int DefaultPageSize = 50;

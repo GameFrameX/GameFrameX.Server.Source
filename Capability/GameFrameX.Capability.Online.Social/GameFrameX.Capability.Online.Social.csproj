@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Import Project="../../Version.props" Label="版本号定义"/>
+
+    <PropertyGroup>
+        <Description>GameFrameX.Capability.Online.Social,GFX Online 社交能力包:好友/群组/聊天/通知/处罚/举报裁决六域 + 聊天审计投影(InMemory 默认存储,UseOnlineSocialStore 族替换缝)+ hosting 扩展(AddOnlineSocialRuntime)+ admin handlers(kick/revoke/mute/查询族). Social capability package for the GFX Online family: friends, groups, chat, notifications, punishments and report adjudication plus the chat-audit projection with in-memory default stores, the hosting extension and admin handlers. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <PackageTags>GameFrameX,Capability,Online,Social,Friend,Chat,Punishment,GameServer</PackageTags>
+        <LangVersion>10</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Abstractions/GameFrameX.Capability.Online.Abstractions.csproj"/>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Foundation/GameFrameX.Capability.Online.Foundation.csproj"/>
+        <ProjectReference Include="../GameFrameX.Capability.Hosting.Core/GameFrameX.Capability.Hosting.Core.csproj"/>
+    </ItemGroup>
+
+</Project>

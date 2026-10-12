@@ -30,7 +30,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Assets;
+using GameFrameX.Capability.Online.Assets;
 using GameFrameX.Capability.Online.Contracts;
 
 namespace GameFrameX.Tests.Online

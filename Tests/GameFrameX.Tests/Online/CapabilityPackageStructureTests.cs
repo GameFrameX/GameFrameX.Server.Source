@@ -40,18 +40,21 @@ namespace GameFrameX.Tests.Online
     public class CapabilityPackageStructureTests
     {
         /// <summary>
-        /// 期望的 ProjectReference 精确集合（工程 → 允许引用的工程名集合；C228 P1 终态）。
+        /// 期望的 ProjectReference 精确集合（工程 → 允许引用的工程名集合；C228 P1 终态 + C231 P3 增量：三叶子包 + 脊柱 admin 线缆契约边 + 单体/壳叶子引用）。
         private static readonly Dictionary<string, string[]> ExpectedProjectReferences = new()
         {
             ["GameFrameX.Capability.Hosting.Abstractions"] = Array.Empty<string>(),
             ["GameFrameX.Capability.Hosting.Core"] = new[] { "GameFrameX.Capability.Hosting.Abstractions", "GameFrameX.Localization" },
             ["GameFrameX.Capability.Hosting.AdminApi"] = new[] { "GameFrameX.Capability.Hosting.Abstractions", "GameFrameX.Localization" },
-            ["GameFrameX.Capability.Online.Abstractions"] = new[] { "GameFrameX.Localization" },
+            ["GameFrameX.Capability.Online.Assets"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Hosting.Core" },
+            ["GameFrameX.Capability.Online.Social"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation", "GameFrameX.Capability.Hosting.Core" },
+            ["GameFrameX.Capability.Online.Matchmaking"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Hosting.Core" },
+            ["GameFrameX.Capability.Online.Abstractions"] = new[] { "GameFrameX.Localization", "GameFrameX.Capability.Hosting.AdminApi" },
             ["GameFrameX.Capability.Online.Foundation"] = new[] { "GameFrameX.Capability.Online.Abstractions" },
-            ["GameFrameX.Online"] = new[] { "GameFrameX.Localization", "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation" },
+            ["GameFrameX.Online"] = new[] { "GameFrameX.Localization", "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Online.Social", "GameFrameX.Capability.Online.Matchmaking" },
             ["GameFrameX.Online.Runtime"] = new[]
             {
-                "GameFrameX.Online", "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation",
+                "GameFrameX.Online", "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Online.Social", "GameFrameX.Capability.Online.Matchmaking",
                 "GameFrameX.Capability.Hosting.Abstractions", "GameFrameX.Capability.Hosting.Core", "GameFrameX.Capability.Hosting.AdminApi",
             },
         };
@@ -135,6 +138,53 @@ namespace GameFrameX.Tests.Online
 
             Assert.True(violations.Count == 0, "机制包出现能力包引用（机制开放红线）：" + Environment.NewLine + string.Join(Environment.NewLine, violations));
         }
+
+        /// <summary>
+        /// 断言叶子能力包（Assets / Social / Matchmaking(+Party)）横向互引恒为零（C231 P3 终态的包级红线；
+        /// 源级扫描 using 指令与限定名，包间 ProjectReference 面由 CapabilityPackageStructureTests 精确集合断言）。
+        /// </summary>
+        [Fact]
+        public void LeafCapabilityPackages_HaveNoCrossPackageReferences()
+        {
+            var packageRoots = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["GameFrameX.Capability.Online.Assets"] = "Assets",
+                ["GameFrameX.Capability.Online.Social"] = "Social",
+                ["GameFrameX.Capability.Online.Matchmaking"] = "Matchmaking",
+            };
+            var usingDirective = new Regex(@"^[ \t]*using\s+(?:static\s+)?([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s*;", RegexOptions.Multiline);
+            var violations = new List<string>();
+            foreach (var (package, leaf) in packageRoots)
+            {
+                foreach (var file in EnumeratePackageSourceFiles(package))
+                {
+                    var code = StripCommentsAndStrings(File.ReadAllText(file));
+                    foreach (Match match in usingDirective.Matches(code))
+                    {
+                        var target = match.Groups[1].Value;
+                        foreach (var (otherPackage, otherLeaf) in packageRoots)
+                        {
+                            if (!string.Equals(otherLeaf, leaf, StringComparison.Ordinal)
+                                && (target.StartsWith(otherPackage + ".", StringComparison.Ordinal) || string.Equals(target, otherPackage, StringComparison.Ordinal)))
+                            {
+                                violations.Add($"{Path.GetFileName(file)}: {target}");
+                            }
+                        }
+                    }
+
+                    foreach (var (otherPackage, otherLeaf) in packageRoots)
+                    {
+                        if (!string.Equals(otherLeaf, leaf, StringComparison.Ordinal) && code.Contains(otherPackage + ".", StringComparison.Ordinal))
+                        {
+                            violations.Add($"{Path.GetFileName(file)}: {otherPackage}.*（限定名）");
+                        }
+                    }
+                }
+            }
+
+            Assert.True(violations.Count == 0, "叶子能力包横向互引必须为零：" + Environment.NewLine + string.Join(Environment.NewLine, violations.Distinct()));
+        }
+
 
         /// <summary>
         /// 断言工程引用图无环（Kahn 拓扑消耗全部节点）。

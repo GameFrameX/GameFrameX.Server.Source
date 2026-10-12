@@ -29,7 +29,7 @@
 
 using System.Collections.Generic;
 using System.Text.Json;
-using GameFrameX.Online.Assets;
+using GameFrameX.Capability.Online.Assets;
 
 namespace GameFrameX.Online.Match;
 

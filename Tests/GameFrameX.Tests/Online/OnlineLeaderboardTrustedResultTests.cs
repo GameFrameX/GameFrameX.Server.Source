@@ -30,13 +30,13 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using GameFrameX.Foundation.Idempotency;
-using GameFrameX.Online.Assets;
+using GameFrameX.Capability.Online.Assets;
 using GameFrameX.Capability.Online.Contracts;
 using GameFrameX.Capability.Online.Events;
 using GameFrameX.Capability.Online.Idempotency;
 using GameFrameX.Online.Leaderboard;
 using GameFrameX.Online.Match;
-using GameFrameX.Online.Matchmaking;
+using GameFrameX.Capability.Online.Matchmaking;
 using GameFrameX.Capability.Online.Scope;
 using Xunit;
 

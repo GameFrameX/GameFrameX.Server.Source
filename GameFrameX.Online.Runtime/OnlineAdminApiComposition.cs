@@ -26,6 +26,7 @@
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
+using GameFrameX.Capability.Online.Contracts;
 using GameFrameX.Capability.Hosting;
 using GameFrameX.Capability.Hosting.AdminApi;
 using GameFrameX.Capability.Online.Scope;
@@ -58,9 +59,9 @@ public static class OnlineAdminApiComposition
         }
 
         var registry = new AdminActionRegistry();
-        foreach (var module in OnlineCapabilityModules.CreateAll(host))
+        foreach (var module in host.CapabilityHost.Modules)
         {
-            if (module is IAdminActionContributor contributor && IsEnabled(host, module))
+            if (module is IAdminActionContributor contributor)
             {
                 contributor.RegisterAdminActions(registry);
             }
@@ -97,7 +98,7 @@ public static class OnlineAdminApiComposition
         }
 
         var entries = OnlineCapabilityModules.Catalog()
-            .Select(manifest => new CapabilityReportEntry(manifest, typeof(OnlineCapabilityModules).Assembly.GetName().Name, MapCatalogState(filter, manifest)))
+            .Select(catalog => new CapabilityReportEntry(catalog.Manifest, catalog.SourceAssemblyName, MapCatalogState(filter, catalog.Manifest)))
             .ToArray();
         var report = new CapabilityReport(entries, Array.Empty<string>());
         return new AdminApiDispatcher(
@@ -165,16 +166,6 @@ public static class OnlineAdminApiComposition
         };
     }
 
-    /// <summary>
-    /// 判定模块在宿主报告中是否启用。
-    /// </summary>
-    /// <param name="host">过渡组合根。</param>
-    /// <param name="module">能力模块。</param>
-    /// <returns>启用返回 true。</returns>
-    private static bool IsEnabled(OnlineRuntimeHost host, ICapabilityModule module)
-    {
-        return host.CapabilityHost.Report.Entries.Any(entry => entry.State == CapabilityFilterState.Enabled && ReferenceEquals(entry.Manifest, module.Manifest));
-    }
 
     /// <summary>
     /// 组合期对账（声明 ⊆ 实注册；fail-fast）。

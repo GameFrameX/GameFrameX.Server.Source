@@ -22,6 +22,9 @@
     <ItemGroup>
         <ProjectReference Include="../Capability/GameFrameX.Capability.Online.Abstractions/GameFrameX.Capability.Online.Abstractions.csproj"/>
         <ProjectReference Include="../Capability/GameFrameX.Capability.Online.Foundation/GameFrameX.Capability.Online.Foundation.csproj"/>
+        <ProjectReference Include="../Capability/GameFrameX.Capability.Online.Assets/GameFrameX.Capability.Online.Assets.csproj"/>
+        <ProjectReference Include="../Capability/GameFrameX.Capability.Online.Social/GameFrameX.Capability.Online.Social.csproj"/>
+        <ProjectReference Include="../Capability/GameFrameX.Capability.Online.Matchmaking/GameFrameX.Capability.Online.Matchmaking.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
