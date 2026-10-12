@@ -20,7 +20,8 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="GameFrameX.Foundation.Options" Version="4.1.1"/>
+        <PackageReference Include="GameFrameX.Foundation.Logger.GrafanaLoki" Version="5.0.0"/>
+        <PackageReference Include="GameFrameX.Foundation.Options" Version="5.0.0"/>
         <PackageReference Include="GameFrameX.SuperSocket.ClientEngine" Version="1.3.0"/>
         <PackageReference Include="GameFrameX.SuperSocket.Kcp" Version="1.3.0"/>
         <PackageReference Include="GameFrameX.SuperSocket.Server" Version="1.3.0"/>

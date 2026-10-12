@@ -31,6 +31,7 @@
 using System.Reflection;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Logger;
+using GameFrameX.Foundation.Logger.GrafanaLoki;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Localization.Providers;
 using GameFrameX.Foundation.Options;
@@ -101,19 +102,23 @@ public static class GameApp
     }
 
     /// <summary>
-    /// 配置 Grafana Loki 标签。
+    /// 收集 Grafana Loki 标签。
     /// </summary>
     /// <remarks>
-    /// Configure Grafana Loki labels.
+    /// Collect Grafana Loki labels.
+    /// 标签来源 = <see cref="StartupOptions"/> 属性上 <see cref="GrafanaLokiLabelTagAttribute"/> 标注的反射扫描结果；
+    /// 收集到本地字典返回，由 <see cref="ConfigureLogOptions"/> 注册 Loki sink 时作为 Labels 传入
+    /// （Foundation 5.0.0 起 Loki 参数已随 sink 组件化从 <see cref="LogOptions"/> 移除，不再写入全局日志选项）。
     /// </remarks>
     /// <param name="launcherOptions">启动器选项 / Launcher options</param>
-    private static void ConfigureGrafanaLokiLabels(StartupOptions launcherOptions)
+    /// <returns>标签字典；启动器选项为 null 或标注属性无有效值时返回空字典 / The label dictionary; empty when launcher options is null or no attributed property has a value</returns>
+    internal static Dictionary<string, string> CollectGrafanaLokiLabels(StartupOptions launcherOptions)
     {
-        LogOptions.Default.GrafanaLokiLabels = new Dictionary<string, string>();
+        var labels = new Dictionary<string, string>();
 
         if (launcherOptions == null)
         {
-            return;
+            return labels;
         }
 
         var properties = typeof(StartupOptions).GetProperties();
@@ -131,12 +136,14 @@ public static class GameApp
                 continue;
             }
 
-            if (!LogOptions.Default.GrafanaLokiLabels.TryAdd(property.Name, value))
+            if (!labels.TryAdd(property.Name, value))
             {
                 // Localization: StartUp.GrafanaLokiLabelExists - Grafana Loki标签已存在。标签：{0}。
                 LogHelper.Warning(LocalizationService.GetString(Keys.StartUp.GrafanaLokiLabelExists, property.Name));
             }
         }
+
+        return labels;
     }
 
     /// <summary>
@@ -144,9 +151,14 @@ public static class GameApp
     /// </summary>
     /// <remarks>
     /// Configure log options.
+    /// Grafana Loki 接线（Foundation 5.0.0 sink 组件化后）：仅当 <c>LogIsGrafanaLoki=true</c> 时经
+    /// <see cref="LogOptionsGrafanaLokiExtensions.UseGrafanaLoki(GameFrameX.Foundation.Logger.LogOptions, System.Action{GrafanaLokiSinkOptions})"/> 注册组件 sink——Url/用户名/密码取自启动器 CLI 选项
+    /// （选项面与默认值不变），Labels 取自 <see cref="CollectGrafanaLokiLabels"/> 的反射收集结果；
+    /// 为 false 时不注册任何 Loki sink，等价 4.1.1 <c>IsGrafanaLoki=false</c> 的默认关闭语义。
     /// </remarks>
     /// <param name="launcherOptions">启动器选项 / Launcher options</param>
-    private static void ConfigureLogOptions(StartupOptions launcherOptions)
+    /// <param name="grafanaLokiLabels">反射收集的 Loki 标签字典 / The reflected Loki label dictionary</param>
+    internal static void ConfigureLogOptions(StartupOptions launcherOptions, Dictionary<string, string> grafanaLokiLabels)
     {
         if (launcherOptions == null)
         {
@@ -162,10 +174,19 @@ public static class GameApp
         // 设置日志配置信息
         LogOptions.Default.IsConsole = launcherOptions.LogIsConsole;
         LogOptions.Default.IsWriteToFile = launcherOptions.LogIsWriteToFile;
-        LogOptions.Default.IsGrafanaLoki = launcherOptions.LogIsGrafanaLoki;
-        LogOptions.Default.GrafanaLokiUrl = launcherOptions.LogGrafanaLokiUrl;
-        LogOptions.Default.GrafanaLokiUserName = launcherOptions.LogGrafanaLokiUserName;
-        LogOptions.Default.GrafanaLokiPassword = launcherOptions.LogGrafanaLokiPassword;
+
+        // Foundation 5.0.0 起 Loki sink 组件化拆分：仅显式开启时经 UseGrafanaLoki 注册组件 sink，
+        // LogIsGrafanaLoki=false 时不注册任何 Loki sink（等价 4.1.1 IsGrafanaLoki=false 默认关闭）。
+        if (launcherOptions.LogIsGrafanaLoki)
+        {
+            LogOptions.Default.UseGrafanaLoki(sinkOptions =>
+            {
+                sinkOptions.Url = launcherOptions.LogGrafanaLokiUrl;
+                sinkOptions.UserName = launcherOptions.LogGrafanaLokiUserName;
+                sinkOptions.Password = launcherOptions.LogGrafanaLokiPassword;
+                sinkOptions.Labels = grafanaLokiLabels;
+            });
+        }
         LogOptions.Default.RetainedFileCountLimit = launcherOptions.LogRetainedFileCountLimit;
         LogOptions.Default.IsFileSizeLimit = launcherOptions.LogIsFileSizeLimit;
         LogOptions.Default.FileSizeLimitBytes = launcherOptions.LogFileSizeLimitBytes;
@@ -257,8 +278,8 @@ public static class GameApp
         }
 
         // 3. 配置日志
-        ConfigureGrafanaLokiLabels(launcherOptions);
-        ConfigureLogOptions(launcherOptions);
+        var grafanaLokiLabels = CollectGrafanaLokiLabels(launcherOptions);
+        ConfigureLogOptions(launcherOptions, grafanaLokiLabels);
         logConfiguration?.Invoke(LogOptions.Default);
 
         // 4. 初始化

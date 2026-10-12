@@ -11,8 +11,8 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="GameFrameX.Foundation.Http.Normalization" Version="4.1.1"/>
-        <PackageReference Include="GameFrameX.Foundation.Json" Version="4.1.1"/>
+        <PackageReference Include="GameFrameX.Foundation.Http.Normalization" Version="5.0.0"/>
+        <PackageReference Include="GameFrameX.Foundation.Json" Version="5.0.0"/>
     </ItemGroup>
 
     <ItemGroup>
