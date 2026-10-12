@@ -34,7 +34,6 @@ using System.Buffers.Binary;
 using GameFrameX.Network.Messages;
 using GameFrameX.Discovery;
 using GameFrameX.Discovery.Routing;
-using GameFrameX.Discovery.Routing;
 using GameFrameX.Network.RemoteMessaging.Routing;
 using GameFrameX.ProtoBuf.Net;
 using ProtoBuf;

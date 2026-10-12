@@ -64,10 +64,8 @@ public sealed class ReqLoginHttpHandler : BaseHttpHandler
 
         // 构建账号登录返回信息
         respLogin.Code = loginState.State;
-        if (loginState.CreatedTime != null)
-        {
-            respLogin.CreateTime = (long)loginState.CreatedTime;
-        }
+        // CreatedTime 为非空 long（Foundation EntityBase），直接赋值
+        respLogin.CreateTime = loginState.CreatedTime;
 
         respLogin.Level = loginState.Level;
         respLogin.Id = loginState.Id;
