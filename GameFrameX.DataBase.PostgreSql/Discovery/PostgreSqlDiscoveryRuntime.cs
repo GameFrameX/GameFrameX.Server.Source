@@ -51,13 +51,14 @@ namespace GameFrameX.DataBase.PostgreSql.Discovery;
 /// registry's cleanup loop replaces the former standalone TTL cleanup job —
 /// the AC-4 equivalent of the Mongo TTL index), then attaches the generic
 /// player-route bootstrap. Router wiring is NOT performed here — the
-/// composition side calls
-/// <c>DiscoveryRoutingWire.Initialize(RoleSet.Current, PostgreSqlDiscoveryRuntime.TableProvider)</c>
-/// after. Activation is idempotent per process; the hotfix wiring point later
-/// calls <c>DiscoveryRoutingWire.AttachLocalDispatcher</c> to fill the case 1
-/// slot. The started registry is published to the process-wide
-/// <see cref="ActiveDiscoveryRuntime"/> slot so provider-agnostic startup flows
-/// flip Booting → Active without provider dispatch.
+/// composition side reads <see cref="ActiveDiscoveryRuntime.RouteTableProvider"/>
+/// (bound at the end of <c>Activate</c>, C213) and calls
+/// <c>DiscoveryRoutingWire.Initialize</c> after. Activation is idempotent per
+/// process; the hotfix wiring point later calls
+/// <c>DiscoveryRoutingWire.AttachLocalDispatcher</c> to fill the case 1
+/// slot. The started registry and route-table reader are published to the
+/// process-wide <see cref="ActiveDiscoveryRuntime"/> slots so provider-agnostic
+/// startup flows flip Booting → Active without provider dispatch.
 /// </remarks>
 public static class PostgreSqlDiscoveryRuntime
 {
@@ -159,6 +160,8 @@ public static class PostgreSqlDiscoveryRuntime
         _registry.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
         // 激活完成即登记公共槽位：宿主就绪时经 ActiveDiscoveryRuntime.MarkActiveAsync 无分派切 Active。
         ActiveDiscoveryRuntime.Bind(_registry);
+        // 读侧路由表成对登记同一槽位（C213）：组合根经 RouteTableProvider 无分派回读装配路由缝。
+        ActiveDiscoveryRuntime.BindRouteTable(_watcher);
         if (selfDescriptor == null)
         {
             // Localization: Database.PostgreSql.DiscoveryNoAdvertisePort - [PostgreSqlDiscoveryRuntime] 未配置广播端口（{0}）；心跳写入侧被跳过，本进程仅观察拓扑

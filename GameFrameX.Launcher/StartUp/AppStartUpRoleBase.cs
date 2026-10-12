@@ -29,8 +29,6 @@
 
 
 using GameFrameX.DataBase.Abstractions;
-using GameFrameX.DataBase.Mongo.Discovery;
-using GameFrameX.DataBase.PostgreSql.Discovery;
 using GameFrameX.Discovery;
 using GameFrameX.Foundation.Localization.Core;
 
@@ -166,8 +164,10 @@ internal abstract class AppStartUpRoleBase : AppStartUpBase
     /// 并以真实 case 2/3 转发器重装跨 Role 路由缝。幂等：多 Role 进程首个调用生效。
     /// 再激活玩家路由层（建 player_route 索引 + 装 SyncTarget），Tier 1 fast-path 注入 SessionManager 适配器。
     /// 控制库句柄解析下沉到发现层内部，收敛为激活参数对象。
-    /// Provider 装配分支——PostgreSql 时激活 PG 平行发现层（控制库 NpgsqlDataSource 经 GameDb 按名解析）。
-    /// 路由胶水装配自 Runtime 拆至组合侧 DiscoveryRoutingWire（发现层 Runtime 不再引用消息胶水程序集）。
+    /// Provider 装配经 DiscoveryRuntimeResolver 约定解析——按 DiscoveryActivationOptions.Provider
+    /// 反射定位并激活目标 Runtime（C213），组合根零分支。
+    /// 路由胶水装配自 Runtime 拆至组合侧 DiscoveryRoutingWire（发现层 Runtime 不再引用消息胶水程序集），
+    /// 路由表经 ActiveDiscoveryRuntime.RouteTableProvider 槽位无分派回读。
     /// </summary>
     /// <remarks>
     /// Activates the discovery layer once the control database is ready — the read-side watcher
@@ -175,35 +175,29 @@ internal abstract class AppStartUpRoleBase : AppStartUpBase
     /// and the cross-role routing seam re-wired with the real case 2/3 forwarders. Idempotent: in
     /// a multi-role process the first call wins. It then activates the player-routing layer
     /// (creates the player_route index and installs the sync target) and injects the Tier 1
-    /// fast-path adapter into the session manager. The provider branch activates the PostgreSQL
-    /// twin discovery layer when configured; the routing glue assembly lives in the composition-side
-    /// DiscoveryRoutingWire instead of the runtime.
+    /// fast-path adapter into the session manager. The provider dispatch lives in the
+    /// <c>DiscoveryRuntimeResolver</c> convention (reflecting the target runtime from
+    /// <c>DiscoveryActivationOptions.Provider</c>, C213) so this composition root holds no
+    /// provider branch; the routing glue assembly lives in the composition-side
+    /// <c>DiscoveryRoutingWire</c>, its route table read back branch-free through the
+    /// <c>ActiveDiscoveryRuntime.RouteTableProvider</c> slot.
     /// </remarks>
     protected virtual void ActivateDiscoveryLayer()
     {
-        if (Setting.DatabaseProvider == DatabaseProviderType.PostgreSql)
+        // 约定激活：Provider 元数据随 options 走，目标 Runtime 由 DiscoveryRuntimeResolver 反射定位（镜像 GameDb.Init 的 DbOptions.Provider）。
+        DiscoveryRuntimeResolver.Activate(new DiscoveryActivationOptions
         {
-            PostgreSqlDiscoveryRuntime.Activate(new DiscoveryActivationOptions
-            {
-                ConnectionName = GameDb.ControlDatabaseName,
-                HostedRoleNames = RoleSet.Current,
-                PlayerRouteFastPath = GameFrameX.Core.Session.PlayerSessionFastPathAdapter.Instance,
-            });
-        }
-        else
-        {
-            MongoDiscoveryRuntime.Activate(new DiscoveryActivationOptions
-            {
-                ConnectionName = GameDb.ControlDatabaseName,
-                HostedRoleNames = RoleSet.Current,
-                PlayerRouteFastPath = GameFrameX.Core.Session.PlayerSessionFastPathAdapter.Instance,
-            });
-        }
+            Provider = Setting.DatabaseProvider,
+            ConnectionName = GameDb.ControlDatabaseName,
+            HostedRoleNames = RoleSet.Current,
+            PlayerRouteFastPath = GameFrameX.Core.Session.PlayerSessionFastPathAdapter.Instance,
+        });
 
-        // 两分支取值相同（ResolverBootstrap.SyncTarget），提出到分支后统一装配（等值重排）
+        // 玩家路由 SyncTarget 与 Provider 无关（ResolverBootstrap 单例），激活后统一装配。
         GameFrameX.Core.Session.PlayerSessionManager.Instance.PlayerRouteSyncTarget = GameFrameX.Discovery.Routing.PlayerRouteResolverBootstrap.SyncTarget;
-        // 路由胶水装配自 Runtime 拆至组合侧 DiscoveryRoutingWire（发现层 Runtime 不再引用消息胶水程序集）
-        GameFrameX.Network.RemoteMessaging.Routing.DiscoveryRoutingWire.Initialize(RoleSet.Current, Setting.DatabaseProvider == DatabaseProviderType.PostgreSql ? PostgreSqlDiscoveryRuntime.TableProvider : MongoDiscoveryRuntime.TableProvider);
+        // 路由胶水装配自 Runtime 拆至组合侧 DiscoveryRoutingWire（发现层 Runtime 不再引用消息胶水程序集）；
+        // 路由表经公共槽位无分派回读，未激活时 null 触发 Initialize 的 ArgumentNullException fail-fast（既有语义）。
+        GameFrameX.Network.RemoteMessaging.Routing.DiscoveryRoutingWire.Initialize(RoleSet.Current, ActiveDiscoveryRuntime.RouteTableProvider);
     }
 
     /// <summary>

@@ -28,6 +28,7 @@
 
 
 using GameFrameX.Discovery.Routing;
+using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Discovery;
 
@@ -41,9 +42,27 @@ namespace GameFrameX.Discovery;
 /// <c>NpgsqlDataSource</c> carrier members) were removed in C185: both runtimes
 /// now resolve the control database by <see cref="ConnectionName"/> through the
 /// unified <c>GameDb</c> entry, leaving no carrier direct-injection path.
+/// Since C213 the provider enum <see cref="Provider"/> rides along as dispatch
+/// metadata: <c>DiscoveryRuntimeResolver.Activate</c> resolves the runtime by
+/// convention from it (mirroring <c>DbOptions.Provider</c>), while direct
+/// <c>*DiscoveryRuntime.Activate</c> calls ignore the member.
 /// </remarks>
 public sealed class DiscoveryActivationOptions
 {
+    /// <summary>
+    /// 获取或设置发现层实现提供者（<c>DiscoveryRuntimeResolver.Activate</c> 的约定解析依据；直调
+    /// <c>*DiscoveryRuntime.Activate</c>（测试/自定义宿主逃生门）忽略此成员——直调目标即提供者，C213）。
+    /// </summary>
+    /// <remarks>
+    /// Discovery implementation provider, resolved by convention in
+    /// <c>DiscoveryRuntimeResolver.Activate(DiscoveryActivationOptions)</c>; ignored by direct
+    /// <c>*DiscoveryRuntime.Activate</c> calls (the test / custom-host escape hatch) where the
+    /// called runtime is itself the provider — mirroring <c>DbOptions.Provider</c> versus the
+    /// generic <c>Init&lt;T&gt;</c> (C183).
+    /// </remarks>
+    /// <value>提供者枚举，缺省 <see cref="DatabaseProviderType.Mongo"/> / Provider enum, defaults to <see cref="DatabaseProviderType.Mongo"/></value>
+    public DatabaseProviderType Provider { get; init; } = DatabaseProviderType.Mongo;
+
     /// <summary>
     /// 获取或设置控制库注册名（必填）。
     /// 控制库必须先经统一入口 <c>GameDb.Init(DbOptions)</c> 注册（生产启动流固定使用

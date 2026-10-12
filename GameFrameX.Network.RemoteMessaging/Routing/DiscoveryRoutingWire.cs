@@ -62,7 +62,7 @@ public static class DiscoveryRoutingWire
     /// and the half-written fields are rolled back so a later call can retry initialization cleanly.
     /// </remarks>
     /// <param name="hostedRoleNames">本进程承载的 Role 名集合（构造期快照）/ Hosted role names (construct-time snapshot)</param>
-    /// <param name="tableProvider">发现层路由表提供者（各 *DiscoveryRuntime.TableProvider）/ The discovery route table provider</param>
+    /// <param name="tableProvider">发现层路由表提供者（<see cref="ActiveDiscoveryRuntime.RouteTableProvider"/>）/ The discovery route table provider</param>
     public static void Initialize(IReadOnlyCollection<string> hostedRoleNames, IRoleRouteTableProvider tableProvider)
     {
         ArgumentNullException.ThrowIfNull(hostedRoleNames);

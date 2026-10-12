@@ -31,16 +31,20 @@
 namespace GameFrameX.Discovery;
 
 /// <summary>
-/// 当前进程已激活发现层的公共槽位：Provider Runtime 激活时登记写侧，宿主就绪时无分派地把心跳从 Booting 切到 Active。
+/// 当前进程已激活发现层的公共槽位（双槽）：Provider Runtime 激活时登记写侧心跳与读侧路由表，
+/// 宿主就绪时无分派地把心跳从 Booting 切到 Active，组合根无分派地回读路由表装配路由缝。
 /// </summary>
 /// <remarks>
-/// The process-wide slot for the activated discovery layer. Provider runtimes
-/// (Mongo / PostgreSQL) publish their started <see cref="DiscoveryRegistry"/> here
-/// at the end of <c>Activate</c>, so startup flows flip the announced status from
-/// Booting to Active through <see cref="MarkActiveAsync"/> without branching on the
-/// database provider enum. The slot holds whichever runtime actually activated
-/// (rather than what a setting claims) and stays null when the discovery layer was
-/// never activated — <see cref="MarkActiveAsync"/> is then a harmless no-op.
+/// The process-wide slots for the activated discovery layer. Provider runtimes
+/// (Mongo / PostgreSQL) publish their started <see cref="DiscoveryRegistry"/> and their
+/// route-table reader here at the end of <c>Activate</c>: startup flows flip the announced
+/// status from Booting to Active through <see cref="MarkActiveAsync"/> and the composition
+/// root reads <see cref="RouteTableProvider"/> for <c>DiscoveryRoutingWire.Initialize</c>,
+/// both without branching on the database provider enum (C213). The slots hold whichever
+/// runtime actually activated (rather than what a setting claims) and stay null when the
+/// discovery layer was never activated — <see cref="MarkActiveAsync"/> is then a harmless
+/// no-op, and a null <see cref="RouteTableProvider"/> keeps the routing seam's
+/// <c>ArgumentNullException</c> fail-fast semantics.
 /// </remarks>
 public static class ActiveDiscoveryRuntime
 {
@@ -51,6 +55,14 @@ public static class ActiveDiscoveryRuntime
     /// The bound heartbeat write side, published by the provider runtime once its activation completes.
     /// </remarks>
     private static volatile DiscoveryRegistry _registry;
+
+    /// <summary>
+    /// 已登记的读侧路由表（激活完成时由 Provider Runtime 写入）。
+    /// </summary>
+    /// <remarks>
+    /// The bound route-table read side, published by the provider runtime once its activation completes.
+    /// </remarks>
+    private static volatile IRoleRouteTableProvider _routeTableProvider;
 
     /// <summary>
     /// 登记激活完成的心跳写侧（由 Provider Runtime 在 Activate 末尾调用）。
@@ -69,6 +81,36 @@ public static class ActiveDiscoveryRuntime
 
         _registry = registry;
     }
+
+    /// <summary>
+    /// 登记激活完成的读侧路由表（由 Provider Runtime 在 Activate 末尾与 <see cref="Bind"/> 成对调用，C213）。
+    /// </summary>
+    /// <remarks>
+    /// Publishes the route-table reader. Production activation is mutually exclusive
+    /// per process (the provider runtimes' first-call-wins guard), so this runs at
+    /// most once; a later write replaces an earlier one so test-isolation flows
+    /// that reset and re-activate keep the slot consistent — mirroring <see cref="Bind"/>.
+    /// </remarks>
+    /// <param name="routeTableProvider">激活完成的读侧路由表 / The started route-table reader</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="routeTableProvider"/> 为 null 时抛出 / Thrown when <paramref name="routeTableProvider"/> is null</exception>
+    public static void BindRouteTable(IRoleRouteTableProvider routeTableProvider)
+    {
+        ArgumentNullException.ThrowIfNull(routeTableProvider);
+
+        _routeTableProvider = routeTableProvider;
+    }
+
+    /// <summary>
+    /// 已激活发现层的读侧路由表（未激活时 null——与 <see cref="MarkActiveAsync"/> 的 no-op 口径一致）。
+    /// </summary>
+    /// <remarks>
+    /// The route-table reader of the activated discovery layer, or null when the layer was never
+    /// activated. The composition root passes this to <c>DiscoveryRoutingWire.Initialize</c>,
+    /// whose null-check fail-fast semantics stay identical to the former provider ternary.
+    /// Volatile-backed: the provider runtime writes it before <c>Activate</c> returns and the
+    /// composition root reads it right after, on the same thread.
+    /// </remarks>
+    public static IRoleRouteTableProvider RouteTableProvider => _routeTableProvider;
 
     /// <summary>
     /// 把本进程心跳从 Booting 切换为 Active（启动阶段真正完成、服务就绪后调用）。

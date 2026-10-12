@@ -110,6 +110,10 @@ public sealed class PostgreSqlDiscoveryRuntimeTests
             Assert.Null(exception);
             Assert.NotNull(PostgreSqlDiscoveryRuntime.TableProvider);
 
+            // C213 成对槽位：Activate 末尾 BindRouteTable 后，公共读侧槽位非空且与 TableProvider 同一实例。
+            Assert.NotNull(ActiveDiscoveryRuntime.RouteTableProvider);
+            Assert.Same(PostgreSqlDiscoveryRuntime.TableProvider, ActiveDiscoveryRuntime.RouteTableProvider);
+
             // player_route 由 Bootstrap.Attach 在 Activate 内建好（TTL 清理 job 启动前）。
             await using (var connection = await testDatabase.DataSource.OpenConnectionAsync())
             {

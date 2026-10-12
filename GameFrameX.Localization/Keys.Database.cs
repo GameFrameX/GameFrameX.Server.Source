@@ -214,6 +214,24 @@ public static partial class Keys
         /// </remarks>
         public const string DiscoveryConnectionNameRequired = "Database.Discovery.ConnectionNameRequired";
         /// <summary>
+        /// 发现层提供者枚举值“{0}”未配置解析映射。已支持：[{1}]。新增 DatabaseProviderType 成员时必须同步在 DiscoveryRuntimeResolver 映射表登记 *DiscoveryRuntime。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.Discovery.ProviderNotSupported
+        /// 用途: DatabaseProviderType 成员未在 DiscoveryRuntimeResolver 映射表登记时抛出（新增枚举成员必须同步配映射）
+        /// 参数: {0} - 枚举值名, {1} - 已支持的枚举值列表
+        /// </remarks>
+        public const string DiscoveryProviderNotSupported = "Database.Discovery.ProviderNotSupported";
+        /// <summary>
+        /// 无法定位发现层提供者“{0}”的激活入口“{1}”：宿主进程可能未引用对应的 Provider 工程，或该类型不再暴露 public static void Activate(DiscoveryActivationOptions)。请添加工程引用，或改为直调 *DiscoveryRuntime.Activate(...) 显式激活（AOT/裁剪场景逃生门）。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.Discovery.ProviderNotInstalled
+        /// 用途: 按命名约定反射定位 *DiscoveryRuntime 激活入口失败（类型不可解析或入口签名不符）时抛出，消息含自诊断与逃生门指引
+        /// 参数: {0} - 枚举值名, {1} - 期望的程序集限定类型名
+        /// </remarks>
+        public const string DiscoveryProviderNotInstalled = "Database.Discovery.ProviderNotInstalled";
+        /// <summary>
         /// PostgreSqlDbContext：文档类型“{0}”声明了字典属性“{1}”（{2}）。EF owned JSON 列无法以兼容形状映射字典；请将其重构为 owned entries 集合或标量载荷。
         /// </summary>
         /// <remarks>
