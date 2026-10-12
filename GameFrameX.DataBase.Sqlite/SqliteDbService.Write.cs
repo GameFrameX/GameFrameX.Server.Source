@@ -304,50 +304,71 @@ public sealed partial class SqliteDbService
             for (var index = 0; index < stateList.Count; index += batchSize)
             {
                 var batchCount = Math.Min(batchSize, stateList.Count - index);
-                try
-                {
-                    var acknowledged = 0;
-                    await using (var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(CancellationToken.None).ConfigureAwait(false))
-                    {
-                        for (var offset = 0; offset < batchCount; offset++)
-                        {
-                            using var command = BuildUpsertCommand<TState>(stateList[index + offset]);
-                            command.Transaction = transaction;
-                            acknowledged += await command.ExecuteNonQueryAsync(CancellationToken.None).ConfigureAwait(false);
-                        }
-
-                        await transaction.CommitAsync(CancellationToken.None).ConfigureAwait(false);
-                    }
-
-                    // 每条 upsert 计一行；受影响行数 >= 批大小即视为整批 ack
-                    // Each upsert counts one row; affected >= batch size means the whole batch was acknowledged.
-                    if (acknowledged >= batchCount)
-                    {
-                        var batch = new TState[batchCount];
-                        for (var offset = 0; offset < batchCount; offset++)
-                        {
-                            batch[offset] = stateList[index + offset];
-                        }
-
-                        acknowledgedStates.AddRange(batch);
-                    }
-                    else
-                    {
-                        // Localization: Database.Sqlite.SaveBulkBatchNotAcknowledged - SqliteDbService.SaveBulkAsync 批次未被确认。状态名：{0}，批次索引：{1}，批次总数：{2}
-                        LogHelper.Error(LocalizationService.GetString(Localization.Keys.Database.Sqlite.SaveBulkBatchNotAcknowledged, stateName, index / batchSize + 1, batchCount));
-                    }
-                }
-                catch (Exception exception)
-                {
-                    // 逐批异常隔离：失败批次记日志后继续后续批次，避免单批故障放大为整批丢失
-                    // Per-batch exception isolation: a failed batch is logged and the loop continues with the remaining batches.
-                    // Localization: Database.Sqlite.SaveBulkBatchFailed - SqliteDbService.SaveBulkAsync 批次失败。状态名：{0}，批次索引：{1}，批次总数：{2}，错误：{3}
-                    LogHelper.Error(LocalizationService.GetString(Localization.Keys.Database.Sqlite.SaveBulkBatchFailed, stateName, index / batchSize + 1, batchCount, exception));
-                }
+                var batch = await SaveBulkBatchAsync<TState>(stateList, index, batchCount, stateName, index / batchSize + 1).ConfigureAwait(false);
+                acknowledgedStates.AddRange(batch);
             }
         }).ConfigureAwait(false);
 
         return acknowledgedStates;
+    }
+
+    /// <summary>
+    /// SaveBulk 单批执行体（事务内逐条 upsert 并计数；未确认/失败批次记日志并返回空批——异常隔离由本方法承接，外层循环继续后续批次）。
+    /// </summary>
+    /// <remarks>
+    /// Executes one SaveBulk batch inside its own transaction, counting acknowledged upserts; an
+    /// unacknowledged or failed batch is logged here and yields an empty batch (per-batch exception
+    /// isolation — the caller's loop continues with the remaining batches).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="stateList">全部待保存状态 / All states to save</param>
+    /// <param name="index">本批起始下标 / The batch start index</param>
+    /// <param name="batchCount">本批数量 / The batch size</param>
+    /// <param name="stateName">状态类型名（日志用）/ The state type name (for logging)</param>
+    /// <param name="batchNumber">批次序号（日志用，1 起）/ The 1-based batch number (for logging)</param>
+    /// <returns>本批确认成功的状态；未确认/失败返回空数组 / The acknowledged states of this batch; empty when unacknowledged or failed</returns>
+    private async Task<TState[]> SaveBulkBatchAsync<TState>(IReadOnlyList<TState> stateList, int index, int batchCount, string stateName, int batchNumber) where TState : BaseCacheState, new()
+    {
+        try
+        {
+            var acknowledged = 0;
+            await using (var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(CancellationToken.None).ConfigureAwait(false))
+            {
+                for (var offset = 0; offset < batchCount; offset++)
+                {
+                    using var command = BuildUpsertCommand<TState>(stateList[index + offset]);
+                    command.Transaction = transaction;
+                    acknowledged += await command.ExecuteNonQueryAsync(CancellationToken.None).ConfigureAwait(false);
+                }
+
+                await transaction.CommitAsync(CancellationToken.None).ConfigureAwait(false);
+            }
+
+            // 每条 upsert 计一行；受影响行数 >= 批大小即视为整批 ack
+            // Each upsert counts one row; affected >= batch size means the whole batch was acknowledged.
+            if (acknowledged >= batchCount)
+            {
+                var batch = new TState[batchCount];
+                for (var offset = 0; offset < batchCount; offset++)
+                {
+                    batch[offset] = stateList[index + offset];
+                }
+
+                return batch;
+            }
+
+            // Localization: Database.Sqlite.SaveBulkBatchNotAcknowledged - SqliteDbService.SaveBulkAsync 批次未被确认。状态名：{0}，批次索引：{1}，批次总数：{2}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Database.Sqlite.SaveBulkBatchNotAcknowledged, stateName, batchNumber, batchCount));
+            return Array.Empty<TState>();
+        }
+        catch (Exception exception)
+        {
+            // 逐批异常隔离：失败批次记日志后继续后续批次，避免单批故障放大为整批丢失
+            // Per-batch exception isolation: a failed batch is logged and the loop continues with the remaining batches.
+            // Localization: Database.Sqlite.SaveBulkBatchFailed - SqliteDbService.SaveBulkAsync 批次失败。状态名：{0}，批次索引：{1}，批次总数：{2}，错误：{3}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Database.Sqlite.SaveBulkBatchFailed, stateName, batchNumber, batchCount, exception));
+            return Array.Empty<TState>();
+        }
     }
 
     /// <summary>
@@ -556,45 +577,61 @@ public sealed partial class SqliteDbService
             return 0;
         }
 
-        return await ExecuteGatedAsync(async () =>
+        return await ExecuteGatedAsync(() => ExecuteUpdatePartialCoreAsync<TState>(id, setFields, removedKeys, cancellationToken)).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// UpdatePartialAsync 读改写核心（可见行读入 → set/removed 字段写入 → 时间戳推进 → 整档写回；行缺失/软删行返回 0）。
+    /// </summary>
+    /// <remarks>
+    /// The load-modify-save core of UpdatePartialAsync: loads the visible row, applies set/removed
+    /// fields, advances UpdateTime/UpdateCount and writes the whole document back; a missing or
+    /// soft-deleted row returns 0.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="id">数据ID / The document ID</param>
+    /// <param name="setFields">待写入字段 / The fields to set</param>
+    /// <param name="removedKeys">待移除字段 / The keys to remove</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>实际更新的行数 / The updated count</returns>
+    private async Task<long> ExecuteUpdatePartialCoreAsync<TState>(long id, Dictionary<string, object> setFields, List<string> removedKeys, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+        // 软删默认过滤生效：仅可见行可被部分更新
+        // The soft-delete filter applies: only visible rows can be partially updated.
+        var rows = await ReadRowsRawAsync<TState>(BuildIdEqualsCommand<TState>(id), cancellationToken).ConfigureAwait(false);
+        if (rows.Count == 0)
         {
-            await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
-            // 软删默认过滤生效：仅可见行可被部分更新
-            // The soft-delete filter applies: only visible rows can be partially updated.
-            var rows = await ReadRowsRawAsync<TState>(BuildIdEqualsCommand<TState>(id), cancellationToken).ConfigureAwait(false);
-            if (rows.Count == 0)
-            {
-                return 0;
-            }
+            return 0;
+        }
 
-            var document = rows[0];
-            // 软删默认过滤生效：仅可见行可被部分更新（对齐 Mongo GetDefaultFindExpression / PG global query filter）。
-            // The soft-delete filter applies: only visible rows can be partially updated (aligned with the Mongo default
-            // find expression and the PG global query filter).
-            if (document.IsDeleted == true)
-            {
-                return 0;
-            }
+        var document = rows[0];
+        // 软删默认过滤生效：仅可见行可被部分更新（对齐 Mongo GetDefaultFindExpression / PG global query filter）。
+        // The soft-delete filter applies: only visible rows can be partially updated (aligned with the Mongo default
+        // find expression and the PG global query filter).
+        if (document.IsDeleted == true)
+        {
+            return 0;
+        }
 
-            var stateType = typeof(TState);
-            foreach (var item in setFields)
-            {
-                ApplyFieldValue(stateType, document, item.Key, item.Value);
-            }
+        var stateType = typeof(TState);
+        foreach (var item in setFields)
+        {
+            ApplyFieldValue(stateType, document, item.Key, item.Value);
+        }
 
-            foreach (var removedKey in removedKeys)
-            {
-                ApplyFieldValue(stateType, document, removedKey, null);
-            }
+        foreach (var removedKey in removedKeys)
+        {
+            ApplyFieldValue(stateType, document, removedKey, null);
+        }
 
-            // UpdateTime/UpdateCount 恒推进：命中可见行且字段非空即视为修改（对齐 Mongo/PG 三方一致口径）。
-            // UpdateTime/UpdateCount always advance: a visible row with non-empty fields always counts as modified.
-            document.UpdateTime = GetCurrentTimestamp();
-            document.UpdateCount = (document.UpdateCount ?? 0) + 1;
-            using var command = BuildReplaceDocumentCommand<TState>(document);
-            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-            return 1L;
-        }).ConfigureAwait(false);
+        // UpdateTime/UpdateCount 恒推进：命中可见行且字段非空即视为修改（对齐 Mongo/PG 三方一致口径）。
+        // UpdateTime/UpdateCount always advance: a visible row with non-empty fields always counts as modified.
+        document.UpdateTime = GetCurrentTimestamp();
+        document.UpdateCount = (document.UpdateCount ?? 0) + 1;
+        using var command = BuildReplaceDocumentCommand<TState>(document);
+        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        return 1L;
     }
 
     /// <summary>
@@ -831,7 +868,7 @@ public sealed partial class SqliteDbService
             {
                 using var command = _connection.CreateCommand();
                 command.Transaction = transaction;
-                command.CommandText = $"DELETE FROM {QuoteTableName<TState>()} WHERE id = $id;";
+                command.CommandText = BuildDeleteByIdCommandText<TState>();
                 command.Parameters.AddWithValue("$id", id);
                 await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
             }
@@ -1148,7 +1185,7 @@ public sealed partial class SqliteDbService
     private async Task CreateTableAsync<TState>() where TState : BaseCacheState, new()
     {
         using var command = _connection.CreateCommand();
-        command.CommandText = $"CREATE TABLE IF NOT EXISTS {QuoteTableName<TState>()} (id INTEGER PRIMARY KEY, doc TEXT NOT NULL);";
+        command.CommandText = BuildCreateTableCommandText<TState>();
         await command.ExecuteNonQueryAsync().ConfigureAwait(false);
     }
 
@@ -1166,6 +1203,75 @@ public sealed partial class SqliteDbService
     }
 
     /// <summary>
+    /// 构建建表 DDL 文本（表名 = 编译期封闭类型名双引号转义，非运行期输入；标识符不可绑定参数，SQL 文本组合集中于此）。
+    /// </summary>
+    /// <remarks>
+    /// Builds the CREATE TABLE IF NOT EXISTS text. The table name is the compile-time closed generic
+    /// type name double-quote escaped (never runtime input); SQLite identifiers cannot be bound as
+    /// parameters, so SQL text composition is centralized in these builders.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <returns>DDL 文本 / The DDL text</returns>
+    private static string BuildCreateTableCommandText<TState>() where TState : BaseCacheState, new()
+    {
+        return "CREATE TABLE IF NOT EXISTS " + QuoteTableName<TState>() + " (id INTEGER PRIMARY KEY, doc TEXT NOT NULL);";
+    }
+
+    /// <summary>
+    /// 构建按 id 物理删除的 SQL 文本（表名不变量同上，id 值经绑定参数传递）。
+    /// </summary>
+    /// <remarks>
+    /// Builds the DELETE-by-id text (same table-name invariant as above; the id value is bound as a parameter).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <returns>SQL 文本 / The SQL text</returns>
+    private static string BuildDeleteByIdCommandText<TState>() where TState : BaseCacheState, new()
+    {
+        return "DELETE FROM " + QuoteTableName<TState>() + " WHERE id = $id;";
+    }
+
+    /// <summary>
+    /// 构建插入 SQL 文本（表名不变量同上，id/doc 均经绑定参数传递）。
+    /// </summary>
+    /// <remarks>
+    /// Builds the INSERT text (same table-name invariant as above; id and doc are bound as parameters).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <returns>SQL 文本 / The SQL text</returns>
+    private static string BuildInsertCommandText<TState>() where TState : BaseCacheState, new()
+    {
+        return "INSERT INTO " + QuoteTableName<TState>() + " (id, doc) VALUES ($id, $doc);";
+    }
+
+    /// <summary>
+    /// 构建原子 upsert SQL 文本（表名不变量同上，id/doc 均经绑定参数传递）。
+    /// </summary>
+    /// <remarks>
+    /// Builds the atomic INSERT ... ON CONFLICT(id) DO UPDATE text (same table-name invariant as
+    /// above; id and doc are bound as parameters).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <returns>SQL 文本 / The SQL text</returns>
+    private static string BuildUpsertCommandText<TState>() where TState : BaseCacheState, new()
+    {
+        return "INSERT INTO " + QuoteTableName<TState>() + " (id, doc) VALUES ($id, $doc) ON CONFLICT(id) DO UPDATE SET doc = excluded.doc;";
+    }
+
+    /// <summary>
+    /// 构建整文档替换 SQL 文本（表名不变量同上，id/doc 均经绑定参数传递）。
+    /// </summary>
+    /// <remarks>
+    /// Builds the whole-document UPDATE text (same table-name invariant as above; id and doc are
+    /// bound as parameters).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <returns>SQL 文本 / The SQL text</returns>
+    private static string BuildReplaceDocumentCommandText<TState>() where TState : BaseCacheState, new()
+    {
+        return "UPDATE " + QuoteTableName<TState>() + " SET doc = $doc WHERE id = $id;";
+    }
+
+    /// <summary>
     /// 构建插入命令（主键冲突原样上抛）。
     /// </summary>
     /// <remarks>
@@ -1177,7 +1283,7 @@ public sealed partial class SqliteDbService
     private SqliteCommand BuildInsertCommand<TState>(TState state) where TState : BaseCacheState, new()
     {
         var command = _connection.CreateCommand();
-        command.CommandText = $"INSERT INTO {QuoteTableName<TState>()} (id, doc) VALUES ($id, $doc);";
+        command.CommandText = BuildInsertCommandText<TState>();
         command.Parameters.AddWithValue("$id", state.Id);
         command.Parameters.AddWithValue("$doc", SerializeDocument(state));
         return command;
@@ -1196,7 +1302,7 @@ public sealed partial class SqliteDbService
     private SqliteCommand BuildUpsertCommand<TState>(TState state) where TState : BaseCacheState, new()
     {
         var command = _connection.CreateCommand();
-        command.CommandText = $"INSERT INTO {QuoteTableName<TState>()} (id, doc) VALUES ($id, $doc) ON CONFLICT(id) DO UPDATE SET doc = excluded.doc;";
+        command.CommandText = BuildUpsertCommandText<TState>();
         command.Parameters.AddWithValue("$id", state.Id);
         command.Parameters.AddWithValue("$doc", SerializeDocument(state));
         return command;
@@ -1214,7 +1320,7 @@ public sealed partial class SqliteDbService
     private SqliteCommand BuildReplaceDocumentCommand<TState>(TState state) where TState : BaseCacheState, new()
     {
         var command = _connection.CreateCommand();
-        command.CommandText = $"UPDATE {QuoteTableName<TState>()} SET doc = $doc WHERE id = $id;";
+        command.CommandText = BuildReplaceDocumentCommandText<TState>();
         command.Parameters.AddWithValue("$id", state.Id);
         command.Parameters.AddWithValue("$doc", SerializeDocument(state));
         return command;
