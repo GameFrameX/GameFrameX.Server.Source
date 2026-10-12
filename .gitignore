@@ -9,6 +9,7 @@ bin
 *.user
 docs/_site
 running
+data
 .claude
 Blog
 AGENTS.md

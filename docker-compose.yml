@@ -29,6 +29,10 @@ services:
       - "38080:28080"
       - "28090:28090"
     volumes:
+      # SQLite 场景（--DatabaseProvider=Sqlite --DataBaseUrl="Data Source=data/gameframex.db"）：
+      # 缺省数据文件落 /app/data/gameframex.db（镜像 VOLUME 数据根），要持久化就给 /app/data 挂具名卷或 bind 卷，例如
+      # - "gameframex_data:/app/data"
+      # 注意 WAL 模式不建议放网络卷/SMB（有损坏风险），本地卷优先。
       - "./running/game/logs:/app/data/logs"
     networks:
       - gameframex

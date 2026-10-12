@@ -34,9 +34,9 @@ COPY --from=publish /app/build/hotfix/ /app/hotfix/
 # 热更依赖加载逻辑默认从 /app 根目录查找引用程序集，这里同步 DLL 到根目录
 RUN cp -f /app/hotfix/*.dll /app/ || true
 
-# 切换到root用户：创建数据目录、写入入口脚本并赋权
+# 切换到root用户：创建数据目录（归属 $APP_UID，非 root 运行用户可写——SQLite 缺省文件 data/gameframex.db 落此）、写入入口脚本并赋权
 USER root
-RUN mkdir -p /app/data && chmod 755 /app/data
+RUN mkdir -p /app/data && chmod 755 /app/data && chown $APP_UID:0 /app/data
 
 # 复制发布文件
 COPY --from=publish /app/publish .
