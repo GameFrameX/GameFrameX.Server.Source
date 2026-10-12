@@ -154,14 +154,7 @@ public sealed class OnlineMatchmakerCoordinator
     {
         var ticketIds = new List<string>(group.Count);
         var players = new SortedSet<long>();
-        foreach (var ticket in group)
-        {
-            ticketIds.Add(ticket.TicketId);
-            foreach (var playerId in ticket.PlayerIds)
-            {
-                players.Add(playerId);
-            }
-        }
+        CollectTicketIdsAndPlayers(group, ticketIds, players);
 
         var assignment = new OnlineMatchAssignment
         {
@@ -184,8 +177,50 @@ public sealed class OnlineMatchmakerCoordinator
             return null;
         }
 
-        await _eventPublisher.PublishAsync(OnlineMatchEvents.CreateAssignmentCreated(committed.TenantId, committed.AppId, committed.ServerId, committed.AssignmentId, committed.MatchId, committed.Mode, committed.Region, committed.PlayerIds == null ? 0 : committed.PlayerIds.Count, committed.PlayerIds != null && committed.PlayerIds.Count > 0 ? committed.PlayerIds[0] : 0, committed.TicketIds), cancellationToken).ConfigureAwait(false);
+        await PublishAssignmentCreatedAsync(committed, cancellationToken).ConfigureAwait(false);
 
+        await PublishMatchedTicketEventsAsync(committed, ticketIds, cancellationToken).ConfigureAwait(false);
+
+        return committed;
+    }
+
+    /// <summary>
+    /// 累加成组票据的标识与成员（成员去重进有序集合，保证分配的玩家列表稳定有序）。
+    /// </summary>
+    /// <param name="group">成组票据。</param>
+    /// <param name="ticketIds">票据标识输出（按组内顺序累加）。</param>
+    /// <param name="players">玩家集合输出（去重累加）。</param>
+    private static void CollectTicketIdsAndPlayers(List<OnlineMatchTicket> group, List<string> ticketIds, SortedSet<long> players)
+    {
+        foreach (var ticket in group)
+        {
+            ticketIds.Add(ticket.TicketId);
+            foreach (var playerId in ticket.PlayerIds)
+            {
+                players.Add(playerId);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 发布对局分配创建事件（先于逐票据事件；空安全实参与既有口径逐字一致）。
+    /// </summary>
+    /// <param name="committed">已落档的分配。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    private async Task PublishAssignmentCreatedAsync(OnlineMatchAssignment committed, CancellationToken cancellationToken)
+    {
+        await _eventPublisher.PublishAsync(OnlineMatchEvents.CreateAssignmentCreated(committed.TenantId, committed.AppId, committed.ServerId, committed.AssignmentId, committed.MatchId, committed.Mode, committed.Region, committed.PlayerIds == null ? 0 : committed.PlayerIds.Count, committed.PlayerIds != null && committed.PlayerIds.Count > 0 ? committed.PlayerIds[0] : 0, committed.TicketIds), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 逐票据补发匹配态变更事件（按提交票据序 <see cref="IOnlineMatchTicketStore.FindAsync"/>，查得才发；
+    /// 竞态下票据缺失则静默跳过该张，与提交后重查口径一致）。
+    /// </summary>
+    /// <param name="committed">已落档的分配。</param>
+    /// <param name="ticketIds">本组票据标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    private async Task PublishMatchedTicketEventsAsync(OnlineMatchAssignment committed, List<string> ticketIds, CancellationToken cancellationToken)
+    {
         foreach (var ticketId in ticketIds)
         {
             var matched = await _store.FindAsync(committed.TenantId, committed.AppId, ticketId, cancellationToken).ConfigureAwait(false);
@@ -194,8 +229,6 @@ public sealed class OnlineMatchmakerCoordinator
                 await _eventPublisher.PublishAsync(OnlineMatchEvents.CreateTicketChanged(matched.TenantId, matched.AppId, matched.ServerId, matched.TicketId, matched.PartyId, matched.FailureReason.ToString(), matched.AssignmentId, matched.PlayerIds == null ? 0 : matched.PlayerIds.Count, matched.PlayerIds != null && matched.PlayerIds.Count > 0 ? matched.PlayerIds[0] : 0, OnlineMatchTicketState.Queued.ToString(), OnlineMatchTicketState.Matched.ToString()), cancellationToken).ConfigureAwait(false);
             }
         }
-
-        return committed;
     }
 
     /// <summary>
