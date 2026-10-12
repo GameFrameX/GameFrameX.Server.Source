@@ -29,6 +29,8 @@
 
 namespace GameFrameX.Online.Social;
 
+using Contracts;
+
 /// <summary>
 /// 聊天频道（频道 = 消息的归属与权限边界）。
 /// <para>

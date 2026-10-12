@@ -944,7 +944,8 @@ public sealed class OnlineMatchActor
             return;
         }
 
-        await _eventPublisher.PublishAsync(OnlineMatchRuntimeEvents.CreateMatchStateChanged(_match, fromState, toState), cancellationToken).ConfigureAwait(false);
+        var memberCount = _match.Members == null ? 0 : _match.Members.Count;
+        await _eventPublisher.PublishAsync(OnlineMatchRuntimeEvents.CreateMatchStateChanged(_match.TenantId, _match.AppId, _match.ServerId, _match.MatchId, _match.AssignmentId, fromState.ToString(), toState.ToString(), _match.ServerSequence, memberCount), cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

@@ -28,11 +28,11 @@
 //  ==========================================================================================
 
 
-namespace GameFrameX.Online.Events;
+namespace GameFrameX.Online.Assets;
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Assets;
+using Events;
 
 /// <summary>
 /// 资产域事件工厂（统一入口成功落账后发布资产变更事实，供下游与 Admin 消费）。
@@ -57,22 +57,29 @@ public static class OnlineAssetEvents
     public const string Source = "online-assets";
 
     /// <summary>
-    /// 构造资产变更事件（按操作类型选择事件类型；混合批次以操作类型为准，逐资产前后值在载荷内）。
+    /// 构造资产变更事件（按操作类型名选择事件类型；混合批次以操作类型为准，逐资产前后值在载荷内）。
     /// </summary>
-    /// <param name="transaction">资产交易（成功终态）。</param>
-    /// <param name="entries">落账条目。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="serverId">发起区服标识。</param>
+    /// <param name="playerId">玩家标识。</param>
+    /// <param name="transactionId">交易标识。</param>
+    /// <param name="operation">操作类型名（Grant/Reissue → AssetGranted；Deduct/Revoke → AssetDeducted；其余 → AssetAdjusted）。</param>
+    /// <param name="changeSource">变更来源名。</param>
+    /// <param name="businessOrderId">业务单号（可空；载荷落空字符串）。</param>
+    /// <param name="lines">逐资产变更行（类别名 / 标识 / 带符号数额 / 变更前后值）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent Create(OnlineAssetTransaction transaction, IReadOnlyList<OnlineLedgerEntry> entries)
+    public static OnlineEvent Create(long tenantId, long appId, long serverId, long playerId, string transactionId, string operation, string changeSource, string businessOrderId, IReadOnlyList<(string AssetKind, string AssetId, long Delta, long AmountBefore, long AmountAfter)> lines)
     {
         string eventType;
-        switch (transaction.Operation)
+        switch (operation)
         {
-            case OnlineGrantOperation.Grant:
-            case OnlineGrantOperation.Reissue:
+            case "Grant":
+            case "Reissue":
                 eventType = AssetGranted;
                 break;
-            case OnlineGrantOperation.Deduct:
-            case OnlineGrantOperation.Revoke:
+            case "Deduct":
+            case "Revoke":
                 eventType = AssetDeducted;
                 break;
             default:
@@ -82,19 +89,19 @@ public static class OnlineAssetEvents
 
         var payload = new AssetEventPayload
         {
-            TransactionId = transaction.TransactionId,
-            Operation = transaction.Operation.ToString(),
-            ChangeSource = transaction.Source.ToString(),
-            BusinessOrderId = transaction.BusinessOrderId ?? string.Empty,
-            Lines = entries.Select(entry => new AssetEventLine { AssetKind = entry.AssetKind.ToString(), AssetId = entry.AssetId, Delta = entry.Delta, AmountBefore = entry.AmountBefore, AmountAfter = entry.AmountAfter, }).ToList(),
+            TransactionId = transactionId,
+            Operation = operation,
+            ChangeSource = changeSource,
+            BusinessOrderId = businessOrderId ?? string.Empty,
+            Lines = lines.Select(line => new AssetEventLine { AssetKind = line.AssetKind, AssetId = line.AssetId, Delta = line.Delta, AmountBefore = line.AmountBefore, AmountAfter = line.AmountAfter, }).ToList(),
         };
         var auditFields = new Dictionary<string, string>
         {
-            { "TransactionId", transaction.TransactionId },
-            { "PlayerId", transaction.PlayerId.ToString(System.Globalization.CultureInfo.InvariantCulture) },
-            { "Operation", transaction.Operation.ToString() },
-            { "ChangeSource", transaction.Source.ToString() },
-            { "BusinessOrderId", transaction.BusinessOrderId ?? string.Empty },
+            { "TransactionId", transactionId },
+            { "PlayerId", playerId.ToString(System.Globalization.CultureInfo.InvariantCulture) },
+            { "Operation", operation },
+            { "ChangeSource", changeSource },
+            { "BusinessOrderId", businessOrderId ?? string.Empty },
         };
         return new OnlineEvent
         {
@@ -102,10 +109,10 @@ public static class OnlineAssetEvents
             EventType = eventType,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = transaction.TenantId,
-            AppId = transaction.AppId,
-            ServerId = transaction.InitiatingServerId,
-            PlayerId = transaction.PlayerId,
+            TenantId = tenantId,
+            AppId = appId,
+            ServerId = serverId,
+            PlayerId = playerId,
             Source = Source,
             CorrelationId = null,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),

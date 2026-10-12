@@ -27,11 +27,11 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Online.Events;
+namespace GameFrameX.Online.Session;
 
 using System.Text;
 using System.Text.Json;
-using Session;
+using Events;
 
 /// <summary>
 /// 会话域事件工厂（Session 生命周期事件经统一事件信封供 Party/Friend/Admin 消费）。
@@ -78,30 +78,32 @@ public static class OnlineSessionEvents
     /// 构造会话生命周期事件。
     /// </summary>
     /// <param name="eventType">事件类型（本类常量）。</param>
-    /// <param name="session">目标会话。</param>
+    /// <param name="sessionId">会话标识。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="serverId">区服标识。</param>
+    /// <param name="playerId">玩家标识。</param>
+    /// <param name="state">会话状态码（<see cref="OnlineSessionState"/> 数值）。</param>
+    /// <param name="closeReason">终态原因码（<see cref="OnlineSessionCloseReason"/> 数值；0 = 未终态）。</param>
+    /// <param name="tokenGeneration">Token 轮换代数。</param>
     /// <param name="reason">原因描述（审计承载；踢下线事件由装配层写入操作者）。</param>
     /// <param name="correlationId">关联标识（可空；接续请求上下文）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent Create(string eventType, OnlineSession session, string reason, string correlationId = null)
+    public static OnlineEvent Create(string eventType, string sessionId, long tenantId, long appId, long serverId, long playerId, int state, int closeReason, int tokenGeneration, string reason, string correlationId = null)
     {
-        if (session == null)
-        {
-            throw new ArgumentNullException(nameof(session));
-        }
-
         var payload = new SessionEventPayload
         {
-            SessionId = session.Id,
-            PlayerId = session.PlayerId,
-            State = ((int)session.State).ToString(System.Globalization.CultureInfo.InvariantCulture),
-            CloseReason = ((int)session.CloseReason).ToString(System.Globalization.CultureInfo.InvariantCulture),
-            TokenGeneration = session.TokenGeneration,
+            SessionId = sessionId,
+            PlayerId = playerId,
+            State = state.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            CloseReason = closeReason.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            TokenGeneration = tokenGeneration,
             Reason = reason ?? string.Empty,
         };
         var auditFields = new Dictionary<string, string>
         {
-            { "SessionId", session.Id },
-            { "PlayerId", session.PlayerId.ToString(System.Globalization.CultureInfo.InvariantCulture) },
+            { "SessionId", sessionId },
+            { "PlayerId", playerId.ToString(System.Globalization.CultureInfo.InvariantCulture) },
             { "Reason", reason ?? string.Empty },
         };
         return new OnlineEvent
@@ -110,10 +112,10 @@ public static class OnlineSessionEvents
             EventType = eventType,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = session.TenantId,
-            AppId = session.AppId,
-            ServerId = session.ServerId,
-            PlayerId = session.PlayerId,
+            TenantId = tenantId,
+            AppId = appId,
+            ServerId = serverId,
+            PlayerId = playerId,
             Source = Source,
             CorrelationId = correlationId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),

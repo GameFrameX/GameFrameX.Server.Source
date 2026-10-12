@@ -27,10 +27,10 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Online.Events;
+namespace GameFrameX.Online.Social;
 
 using System.Text.Json;
-using Social;
+using Events;
 
 /// <summary>
 /// 社交域事件工厂（好友、屏蔽、静音、举报、处罚、群组变更供下游与 Admin 消费）。
@@ -125,18 +125,24 @@ public static class OnlineSocialEvents
     /// <summary>
     /// 构造好友关系变更事件。
     /// </summary>
-    /// <param name="friendship">变更后的关系快照。</param>
+    /// <param name="friendshipId">关系标识（可空；载荷落空字符串）。</param>
+    /// <param name="requesterId">请求方。</param>
+    /// <param name="addresseeId">被请求方。</param>
+    /// <param name="state">关系状态名。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="serverId">发起区服标识。</param>
     /// <param name="action">变更动作（取本类型的 <c>Friendship*</c> 常量）。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateFriendshipChanged(OnlineFriendship friendship, string action, string correlationId = null)
+    public static OnlineEvent CreateFriendshipChanged(string friendshipId, long requesterId, long addresseeId, string state, long tenantId, long appId, long serverId, string action, string correlationId = null)
     {
         var payload = new FriendshipChangedPayload
         {
-            FriendshipId = friendship.FriendshipId ?? string.Empty,
-            RequesterId = friendship.RequesterId,
-            AddresseeId = friendship.AddresseeId,
-            State = friendship.State.ToString(),
+            FriendshipId = friendshipId ?? string.Empty,
+            RequesterId = requesterId,
+            AddresseeId = addresseeId,
+            State = state,
             Action = action ?? string.Empty,
         };
         var auditFields = new Dictionary<string, string>
@@ -153,12 +159,12 @@ public static class OnlineSocialEvents
             EventType = FriendshipChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = friendship.TenantId,
-            AppId = friendship.AppId,
-            ServerId = friendship.ServerId,
+            TenantId = tenantId,
+            AppId = appId,
+            ServerId = serverId,
             // 关系是双边的，信封只放得下一个玩家位，取请求方（方向所有者）；
             // 双方标识都在载荷与审计字段中，消费端不得只看 PlayerId。
-            PlayerId = friendship.RequesterId,
+            PlayerId = requesterId,
             Source = Source,
             CorrelationId = correlationId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),
@@ -169,16 +175,20 @@ public static class OnlineSocialEvents
     /// <summary>
     /// 构造屏蔽变更事件。
     /// </summary>
-    /// <param name="entry">变更涉及的屏蔽记录。</param>
+    /// <param name="ownerId">屏蔽发起人。</param>
+    /// <param name="blockedPlayerId">被屏蔽玩家。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="serverId">发起区服标识。</param>
     /// <param name="action">变更动作（取本文 <see cref="BlockAdded"/> / <see cref="BlockRemoved"/>）。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateBlockChanged(OnlineBlockEntry entry, string action, string correlationId = null)
+    public static OnlineEvent CreateBlockChanged(long ownerId, long blockedPlayerId, long tenantId, long appId, long serverId, string action, string correlationId = null)
     {
         var payload = new BlockChangedPayload
         {
-            OwnerId = entry.OwnerId,
-            BlockedPlayerId = entry.BlockedPlayerId,
+            OwnerId = ownerId,
+            BlockedPlayerId = blockedPlayerId,
             Action = action ?? string.Empty,
         };
         var auditFields = new Dictionary<string, string>
@@ -193,11 +203,11 @@ public static class OnlineSocialEvents
             EventType = BlockChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = entry.TenantId,
-            AppId = entry.AppId,
-            ServerId = entry.ServerId,
+            TenantId = tenantId,
+            AppId = appId,
+            ServerId = serverId,
             // 屏蔽是单向私密事实：事件只投递给屏蔽发起人，不通知被屏蔽方（否则等于告知「你被谁屏蔽了」）。
-            PlayerId = entry.OwnerId,
+            PlayerId = ownerId,
             Source = Source,
             CorrelationId = correlationId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),
@@ -208,17 +218,22 @@ public static class OnlineSocialEvents
     /// <summary>
     /// 构造静音变更事件。
     /// </summary>
-    /// <param name="entry">变更涉及的静音记录。</param>
+    /// <param name="ownerId">静音发起人。</param>
+    /// <param name="mutedPlayerId">被静音玩家。</param>
+    /// <param name="expiresAtTime">静音失效时刻（UTC 毫秒；0 表示永久）。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="serverId">发起区服标识。</param>
     /// <param name="action">变更动作（取本文 <see cref="MuteAdded"/> / <see cref="MuteRemoved"/>）。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateMuteChanged(OnlineMuteEntry entry, string action, string correlationId = null)
+    public static OnlineEvent CreateMuteChanged(long ownerId, long mutedPlayerId, long expiresAtTime, long tenantId, long appId, long serverId, string action, string correlationId = null)
     {
         var payload = new MuteChangedPayload
         {
-            OwnerId = entry.OwnerId,
-            MutedPlayerId = entry.MutedPlayerId,
-            ExpiresAtTime = entry.ExpiresAtTime,
+            OwnerId = ownerId,
+            MutedPlayerId = mutedPlayerId,
+            ExpiresAtTime = expiresAtTime,
             Action = action ?? string.Empty,
         };
         var auditFields = new Dictionary<string, string>
@@ -234,10 +249,10 @@ public static class OnlineSocialEvents
             EventType = MuteChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = entry.TenantId,
-            AppId = entry.AppId,
-            ServerId = entry.ServerId,
-            PlayerId = entry.OwnerId,
+            TenantId = tenantId,
+            AppId = appId,
+            ServerId = serverId,
+            PlayerId = ownerId,
             Source = Source,
             CorrelationId = correlationId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),
@@ -248,21 +263,29 @@ public static class OnlineSocialEvents
     /// <summary>
     /// 构造举报案件变更事件。
     /// </summary>
-    /// <param name="reportCase">变更后的案件快照。</param>
+    /// <param name="reportId">案件标识（可空；载荷落空字符串）。</param>
+    /// <param name="reporterId">举报人。</param>
+    /// <param name="reportedPlayerId">被举报人。</param>
+    /// <param name="scene">举报场景名。</param>
+    /// <param name="reason">举报原因名。</param>
+    /// <param name="state">案件状态名（举报案件的全部变更都是状态迁移，故动作即迁移后的状态名，与 <paramref name="state"/> 同值）。</param>
+    /// <param name="resolution">处置结果名。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateReportChanged(OnlineReportCase reportCase, string correlationId = null)
+    public static OnlineEvent CreateReportChanged(string reportId, long reporterId, long reportedPlayerId, string scene, string reason, string state, string resolution, long tenantId, long appId, string correlationId = null)
     {
         var payload = new ReportChangedPayload
         {
-            ReportId = reportCase.ReportId ?? string.Empty,
-            ReporterId = reportCase.ReporterId,
-            ReportedPlayerId = reportCase.ReportedPlayerId,
-            Scene = reportCase.Scene.ToString(),
-            Reason = reportCase.Reason.ToString(),
-            State = reportCase.State.ToString(),
-            Resolution = reportCase.Resolution.ToString(),
-            Action = reportCase.State.ToString(),
+            ReportId = reportId ?? string.Empty,
+            ReporterId = reporterId,
+            ReportedPlayerId = reportedPlayerId,
+            Scene = scene,
+            Reason = reason,
+            State = state,
+            Resolution = resolution,
+            Action = state,
         };
         var auditFields = new Dictionary<string, string>
         {
@@ -281,11 +304,11 @@ public static class OnlineSocialEvents
             EventType = ReportChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = reportCase.TenantId,
-            AppId = reportCase.AppId,
+            TenantId = tenantId,
+            AppId = appId,
             ServerId = 0,
             // 举报是 App 级事实，事件面向 Admin 待办队列聚合，不按区服切分。
-            PlayerId = reportCase.ReporterId,
+            PlayerId = reporterId,
             Source = Source,
             CorrelationId = correlationId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),
@@ -296,19 +319,25 @@ public static class OnlineSocialEvents
     /// <summary>
     /// 构造处罚变更事件（运行时消费 <see cref="PunishmentApplied"/> 处置被处罚玩家的当前连接）。
     /// </summary>
-    /// <param name="punishment">变更后的处罚快照。</param>
+    /// <param name="punishmentId">处罚标识（可空；载荷落空字符串）。</param>
+    /// <param name="playerId">被处罚玩家。</param>
+    /// <param name="kind">处罚种类名。</param>
+    /// <param name="effectiveAtTime">生效时刻（UTC 毫秒）。</param>
+    /// <param name="expiresAtTime">失效时刻（UTC 毫秒；0 表示永久）。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
     /// <param name="action">变更动作（取本文 <see cref="PunishmentApplied"/> / <see cref="PunishmentRevoked"/>）。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreatePunishmentChanged(OnlinePunishment punishment, string action, string correlationId = null)
+    public static OnlineEvent CreatePunishmentChanged(string punishmentId, long playerId, string kind, long effectiveAtTime, long expiresAtTime, long tenantId, long appId, string action, string correlationId = null)
     {
         var payload = new PunishmentChangedPayload
         {
-            PunishmentId = punishment.PunishmentId ?? string.Empty,
-            PlayerId = punishment.PlayerId,
-            Kind = punishment.Kind.ToString(),
-            EffectiveAtTime = punishment.EffectiveAtTime,
-            ExpiresAtTime = punishment.ExpiresAtTime,
+            PunishmentId = punishmentId ?? string.Empty,
+            PlayerId = playerId,
+            Kind = kind,
+            EffectiveAtTime = effectiveAtTime,
+            ExpiresAtTime = expiresAtTime,
             Action = action ?? string.Empty,
         };
         var auditFields = new Dictionary<string, string>
@@ -326,10 +355,10 @@ public static class OnlineSocialEvents
             EventType = PunishmentChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = punishment.TenantId,
-            AppId = punishment.AppId,
+            TenantId = tenantId,
+            AppId = appId,
             ServerId = 0,
-            PlayerId = punishment.PlayerId,
+            PlayerId = playerId,
             Source = Source,
             CorrelationId = correlationId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),
@@ -340,21 +369,26 @@ public static class OnlineSocialEvents
     /// <summary>
     /// 构造群组变更事件。
     /// </summary>
-    /// <param name="group">变更后的群组快照。</param>
+    /// <param name="groupId">群组标识（可空；载荷落空字符串）。</param>
+    /// <param name="ownerId">群主标识。</param>
+    /// <param name="state">群组状态名。</param>
+    /// <param name="memberCount">变更后成员数。</param>
+    /// <param name="revision">变更后群记录版本号（消费端据此判断是否漏事件）。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
     /// <param name="action">变更动作（取本类型的 <c>Group*</c> 常量）。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateGroupChanged(OnlineGroup group, string action, string correlationId = null)
+    public static OnlineEvent CreateGroupChanged(string groupId, long ownerId, string state, int memberCount, int revision, long tenantId, long appId, string action, string correlationId = null)
     {
-        var memberCount = group.Members == null ? 0 : group.Members.Count;
         var payload = new GroupChangedPayload
         {
-            GroupId = group.GroupId ?? string.Empty,
-            OwnerId = group.OwnerId,
-            State = group.State.ToString(),
+            GroupId = groupId ?? string.Empty,
+            OwnerId = ownerId,
+            State = state,
             Action = action ?? string.Empty,
             MemberCount = memberCount,
-            Revision = group.Revision,
+            Revision = revision,
         };
         var auditFields = new Dictionary<string, string>
         {
@@ -371,11 +405,11 @@ public static class OnlineSocialEvents
             EventType = GroupChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = group.TenantId,
-            AppId = group.AppId,
+            TenantId = tenantId,
+            AppId = appId,
             ServerId = 0,
             // 群组是 App 级事实（跨区服成立），信封 PlayerId 取群主作为归属锚点。
-            PlayerId = group.OwnerId,
+            PlayerId = ownerId,
             Source = Source,
             CorrelationId = correlationId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),

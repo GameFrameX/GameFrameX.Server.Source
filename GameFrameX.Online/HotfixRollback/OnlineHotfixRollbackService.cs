@@ -124,7 +124,7 @@ public sealed class OnlineHotfixRollbackService
         var isNew = await _store.RegisterAsync(manifest, cancellationToken).ConfigureAwait(false);
         if (isNew && _eventPublisher != null)
         {
-            await _eventPublisher.PublishAsync(OnlineHotfixEvents.CreateVersionRegistered(manifest), cancellationToken).ConfigureAwait(false);
+            await _eventPublisher.PublishAsync(OnlineHotfixEvents.CreateVersionRegistered(manifest.TenantId, manifest.AppId, manifest.Version, manifest.RegisteredTime, manifest.Messages?.Count ?? 0), cancellationToken).ConfigureAwait(false);
         }
 
         return OnlineResult<bool>.Ok(isNew);

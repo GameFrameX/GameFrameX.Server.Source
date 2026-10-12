@@ -34,7 +34,6 @@ using System.Threading.Tasks;
 using Contracts;
 using Events;
 using Scope;
-using Social;
 
 /// <summary>
 /// 队伍服务（队伍生命周期的唯一写者）。
@@ -228,7 +227,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
             ExpiresAtTime = now + _inviteTimeToLiveSeconds * 1000,
         };
         await _store.SaveInviteAsync(invite, cancellationToken);
-        await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite, party.ServerId, correlationId), cancellationToken);
+        await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite.TenantId, invite.AppId, invite.InviteeId, invite.InviteId, invite.PartyId, invite.InviterId, invite.State.ToString(), party.ServerId, correlationId), cancellationToken);
 
         var invited = await TransitionAsync(party, OnlinePartyState.Inviting, OnlinePartyLeaveReason.Left, correlationId, cancellationToken);
         if (!invited.IsSuccess)
@@ -281,7 +280,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
         {
             invite.State = OnlinePartyInviteState.Expired;
             await _store.SaveInviteAsync(invite, cancellationToken);
-            await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite, party.ServerId, correlationId), cancellationToken);
+            await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite.TenantId, invite.AppId, invite.InviteeId, invite.InviteId, invite.PartyId, invite.InviterId, invite.State.ToString(), party.ServerId, correlationId), cancellationToken);
             return OnlineResult<OnlineParty>.Fail(OnlineErrorCode.StateEnded, "邀请已过期");
         }
 
@@ -289,7 +288,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
         {
             invite.State = OnlinePartyInviteState.Rejected;
             await _store.SaveInviteAsync(invite, cancellationToken);
-            await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite, party.ServerId, correlationId), cancellationToken);
+            await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite.TenantId, invite.AppId, invite.InviteeId, invite.InviteId, invite.PartyId, invite.InviterId, invite.State.ToString(), party.ServerId, correlationId), cancellationToken);
             return OnlineResult<OnlineParty>.Ok(party);
         }
 
@@ -324,7 +323,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
 
         invite.State = OnlinePartyInviteState.Accepted;
         await _store.SaveInviteAsync(invite, cancellationToken);
-        await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite, party.ServerId, correlationId), cancellationToken);
+        await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite.TenantId, invite.AppId, invite.InviteeId, invite.InviteId, invite.PartyId, invite.InviterId, invite.State.ToString(), party.ServerId, correlationId), cancellationToken);
         return await RefreshAfterMemberChangeAsync(party, OnlinePartyLeaveReason.Left, correlationId, cancellationToken);
     }
 
@@ -823,7 +822,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
 
             invite.State = OnlinePartyInviteState.Expired;
             await _store.SaveInviteAsync(invite, cancellationToken);
-            await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite, 0), cancellationToken);
+            await _eventPublisher.PublishAsync(OnlinePartyEvents.CreateInviteChanged(invite.TenantId, invite.AppId, invite.InviteeId, invite.InviteId, invite.PartyId, invite.InviterId, invite.State.ToString(), 0), cancellationToken);
             affected++;
         }
 
@@ -944,7 +943,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
         party.UpdatedAtTime = Now();
         party.ExpiresAtTime = party.UpdatedAtTime + _idleTimeToLiveSeconds * 1000;
         await _store.SavePartyAsync(party, cancellationToken);
-        await _eventPublisher.PublishAsync(OnlinePartyEvents.CreatePartyChanged(party, from, target, reason, correlationId), cancellationToken);
+        await _eventPublisher.PublishAsync(OnlinePartyEvents.CreatePartyChanged(party.TenantId, party.AppId, party.ServerId, party.PartyId, party.LeaderId, from.ToString(), target.ToString(), reason.ToString(), party.Members == null ? 0 : party.Members.Count, correlationId), cancellationToken);
         return OnlineResult<OnlineParty>.Ok(party);
     }
 

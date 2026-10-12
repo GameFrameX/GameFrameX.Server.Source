@@ -167,7 +167,7 @@ public sealed class OnlineTournamentService
             return OnlineResult<OnlineTournament>.Fail(OnlineErrorCode.ParameterInvalid, "赛事标识已存在");
         }
 
-        await PublishAsync(OnlineTournamentEvents.CreateTournamentCreated(created), cancellationToken).ConfigureAwait(false);
+        await PublishAsync(OnlineTournamentEvents.CreateTournamentCreated(created.TenantId, created.AppId, created.TournamentId, created.LeaderboardId, created.StartTime, created.EndTime, created.Eligibility == null ? 0 : created.Eligibility.MinLeaderboardRank, created.RewardRules == null ? 0 : created.RewardRules.Count, created.State.ToString(), created.CreatedTime), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineTournament>.Ok(created);
     }
 
@@ -196,7 +196,7 @@ public sealed class OnlineTournamentService
         tournament.State = OnlineTournamentState.Active;
         tournament.StartedTime = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         await _tournamentStore.SaveAsync(tournament, cancellationToken).ConfigureAwait(false);
-        await PublishAsync(OnlineTournamentEvents.CreateTournamentStarted(tournament), cancellationToken).ConfigureAwait(false);
+        await PublishAsync(OnlineTournamentEvents.CreateTournamentStarted(tournament.TenantId, tournament.AppId, tournament.TournamentId, tournament.LeaderboardId, tournament.StartTime, tournament.EndTime, tournament.StartedTime), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineTournament>.Ok(tournament);
     }
 
@@ -280,7 +280,7 @@ public sealed class OnlineTournamentService
 
         if (!isReplay)
         {
-            await PublishAsync(OnlineTournamentEvents.CreateTournamentRegistered(tournament, stored), cancellationToken).ConfigureAwait(false);
+            await PublishAsync(OnlineTournamentEvents.CreateTournamentRegistered(tournament.TenantId, tournament.AppId, tournament.TournamentId, stored.PlayerId, stored.RegisteredTime, stored.RankAtRegistration, stored.ScoreAtRegistration), cancellationToken).ConfigureAwait(false);
         }
 
         return OnlineResult<OnlineTournamentRegistrationOutcome>.Ok(new OnlineTournamentRegistrationOutcome
@@ -335,7 +335,7 @@ public sealed class OnlineTournamentService
         tournament.State = OnlineTournamentState.Ended;
         tournament.EndedTime = now;
         await _tournamentStore.SaveAsync(tournament, cancellationToken).ConfigureAwait(false);
-        await PublishAsync(OnlineTournamentEvents.CreateTournamentEnded(tournament, standings), cancellationToken).ConfigureAwait(false);
+        await PublishAsync(OnlineTournamentEvents.CreateTournamentEnded(tournament.TenantId, tournament.AppId, tournament.TournamentId, tournament.LeaderboardId, standings.Entries == null ? 0 : standings.Entries.Count, standings.FrozenTime, tournament.EndedTime), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineTournamentStandings>.Ok(standings);
     }
 
@@ -436,7 +436,7 @@ public sealed class OnlineTournamentService
             tournament.State = OnlineTournamentState.Settled;
             tournament.SettledTime = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             await _tournamentStore.SaveAsync(tournament, cancellationToken).ConfigureAwait(false);
-            await PublishAsync(OnlineTournamentEvents.CreateTournamentSettled(tournament, outcome), cancellationToken).ConfigureAwait(false);
+            await PublishAsync(OnlineTournamentEvents.CreateTournamentSettled(tournament.TenantId, tournament.AppId, tournament.TournamentId, outcome.GrantedCount, outcome.ReplayCount, outcome.FailedPlayers == null ? 0 : outcome.FailedPlayers.Count, tournament.SettledTime), cancellationToken).ConfigureAwait(false);
         }
 
         return OnlineResult<OnlineTournamentSettlementOutcome>.Ok(outcome);

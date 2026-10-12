@@ -213,7 +213,7 @@ public sealed class OnlineMatchTicketService
             return OnlineResult<OnlineMatchTicket>.Ok(receipt);
         }
 
-        await _eventPublisher.PublishAsync(OnlineMatchEvents.CreateTicketChanged(cancelled, OnlineMatchTicketState.Queued, OnlineMatchTicketState.Cancelled), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineMatchEvents.CreateTicketChanged(cancelled.TenantId, cancelled.AppId, cancelled.ServerId, cancelled.TicketId, cancelled.PartyId, cancelled.FailureReason.ToString(), cancelled.AssignmentId, cancelled.PlayerIds == null ? 0 : cancelled.PlayerIds.Count, cancelled.PlayerIds != null && cancelled.PlayerIds.Count > 0 ? cancelled.PlayerIds[0] : 0, OnlineMatchTicketState.Queued.ToString(), OnlineMatchTicketState.Cancelled.ToString()), cancellationToken).ConfigureAwait(false);
 
         return OnlineResult<OnlineMatchTicket>.Ok(cancelled);
     }
@@ -295,7 +295,7 @@ public sealed class OnlineMatchTicketService
 
         foreach (var ticket in expired)
         {
-            await _eventPublisher.PublishAsync(OnlineMatchEvents.CreateTicketChanged(ticket, OnlineMatchTicketState.Queued, OnlineMatchTicketState.Expired), cancellationToken).ConfigureAwait(false);
+            await _eventPublisher.PublishAsync(OnlineMatchEvents.CreateTicketChanged(ticket.TenantId, ticket.AppId, ticket.ServerId, ticket.TicketId, ticket.PartyId, ticket.FailureReason.ToString(), ticket.AssignmentId, ticket.PlayerIds == null ? 0 : ticket.PlayerIds.Count, ticket.PlayerIds != null && ticket.PlayerIds.Count > 0 ? ticket.PlayerIds[0] : 0, OnlineMatchTicketState.Queued.ToString(), OnlineMatchTicketState.Expired.ToString()), cancellationToken).ConfigureAwait(false);
         }
 
         return OnlineResult<int>.Ok(expired.Count);

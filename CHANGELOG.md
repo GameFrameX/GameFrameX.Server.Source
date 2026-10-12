@@ -27,6 +27,16 @@
 * 删除 GameFrameX.Apps.ActorType 死枚举（C219）：运行时零引用（账号 id 实际由 ActorIdGenerator.GetUniqueId() 生成），作用域机制维持 GlobalConst.ActorType* 常量现状，并在 GlobalConst 与 ComponentTypeAttribute 的 XML doc 补区间规则（<128 每实体多实例 / >128 每服单例）；非破坏性——两仓成员引用已验证为零，Apps 工程不进 NuGet 发布面
 ### Refactor
 
+* Online 依赖解环与方向治理（C223，能力簇拆包前置 P0）：`Events/` 收窄为事件总线抽象（OnlineEvent / IOnlineEventPublisher / OnlineEventPublisher / OnlineEventConsumer / OnlineEventSanitizer / OnlineEventEnvelopeMapper / OnlineEventAuditView，与域类型零引用）；13 个域事件工厂随域迁移并载荷原始化（工厂签名领域类型参数 → 原始字段参数，topic 常量与信封语义逐字节不变）；跨叶子协作契约上移 Contracts（IOnlineSocialGate / OnlineSocialInteractionPurpose / OnlineSocialDecision / IOnlineChannelMembershipProbe / OnlineChatChannelKind）。程序集内目录依赖成为严格向下 DAG（含三节点环 Events→HotfixRollback→Audit→Events 解除），新增依赖矩阵门禁测试（OnlineDependencyMatrixTests：using 语义解析 + 允许方向表 + 叶子簇横向零互引 + topic 常量冻结断言，零豁免）。公共类型命名空间迁移映射（程序集内迁移，无 NuGet 包消费者，破坏面纯源码级，消费者仅 GameFrameX.Online.Runtime 与 Tests）：
+  `GameFrameX.Online.Events.OnlineAssetEvents → GameFrameX.Online.Assets`；
+  `OnlineChatEvents / OnlineNotificationEvents / OnlineSocialEvents → GameFrameX.Online.Social`；
+  `OnlineMatchEvents → GameFrameX.Online.Matchmaking`；
+  `OnlineMatchRuntimeEvents → GameFrameX.Online.Match`；
+  `OnlinePartyEvents → GameFrameX.Online.Party`；`OnlinePresenceEvents → GameFrameX.Online.Presence`；
+  `OnlineSeasonEvents → GameFrameX.Online.Season`；`OnlineSessionEvents → GameFrameX.Online.Session`；
+  `OnlineLeaderboardEvents → GameFrameX.Online.Leaderboard`；`OnlineTournamentEvents → GameFrameX.Online.Tournament`；
+  `OnlineHotfixEvents → GameFrameX.Online.HotfixRollback`；
+  `GameFrameX.Online.Social.{IOnlineSocialGate, OnlineSocialInteractionPurpose, OnlineSocialDecision, IOnlineChannelMembershipProbe, OnlineChatChannelKind} → GameFrameX.Online.Contracts`
 * 统一 CacheState 为 Provider 中立基类：业务状态类改继承 BaseCacheState，Mongo 序列化指令（ConventionPack + ClassMap 懒注册）内聚到 GameFrameX.DataBase.Mongo（C171）
 * BaseCacheState.ToBytes 由抽象改为 JSON/UTF8 默认实现，StateHash 脏检查与持久化格式解耦；删除无引用的 BeforeSaveToDb
 * Apps/Hotfix 移除数据库实现程序集引用与 MongoDB GlobalUsings；移除 BsonClassMapHelper / CacheStateTypeManager 与孤儿本地化键

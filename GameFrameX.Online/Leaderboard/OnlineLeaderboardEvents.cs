@@ -31,9 +31,9 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json;
-using GameFrameX.Online.Leaderboard;
+using GameFrameX.Online.Events;
 
-namespace GameFrameX.Online.Events;
+namespace GameFrameX.Online.Leaderboard;
 
 /// <summary>
 /// 排行域事件工厂（统一信封事件，<c>Source = "online-leaderboard"</c>）。
@@ -57,32 +57,37 @@ public static class OnlineLeaderboardEvents
     /// <summary>
     /// 构造榜单创建事件。
     /// </summary>
-    /// <param name="leaderboard">创建后的榜单定义。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="leaderboardId">榜单标识（可空；载荷落空字符串）。</param>
+    /// <param name="sortOrder">排序方向名。</param>
+    /// <param name="scoreUpdatePolicy">累计策略名。</param>
+    /// <param name="createdTime">创建时刻（UTC 毫秒）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateLeaderboardCreated(OnlineLeaderboard leaderboard)
+    public static OnlineEvent CreateLeaderboardCreated(long tenantId, long appId, string leaderboardId, string sortOrder, string scoreUpdatePolicy, long createdTime)
     {
         var payload = new LeaderboardCreatedPayload
         {
-            LeaderboardId = leaderboard.LeaderboardId ?? string.Empty,
-            SortOrder = leaderboard.SortOrder.ToString(),
-            ScoreUpdatePolicy = leaderboard.ScoreUpdatePolicy.ToString(),
-            CreatedTime = leaderboard.CreatedTime,
+            LeaderboardId = leaderboardId ?? string.Empty,
+            SortOrder = sortOrder,
+            ScoreUpdatePolicy = scoreUpdatePolicy,
+            CreatedTime = createdTime,
         };
         var auditFields = new Dictionary<string, string>
         {
-            { "LeaderboardId", leaderboard.LeaderboardId ?? string.Empty },
-            { "SortOrder", leaderboard.SortOrder.ToString() },
-            { "ScoreUpdatePolicy", leaderboard.ScoreUpdatePolicy.ToString() },
-            { "CreatedTime", leaderboard.CreatedTime.ToString(CultureInfo.InvariantCulture) },
+            { "LeaderboardId", leaderboardId ?? string.Empty },
+            { "SortOrder", sortOrder },
+            { "ScoreUpdatePolicy", scoreUpdatePolicy },
+            { "CreatedTime", createdTime.ToString(CultureInfo.InvariantCulture) },
         };
         return new OnlineEvent
         {
             EventId = "evt-" + Guid.NewGuid().ToString("N"),
             EventType = LeaderboardCreated,
-            OccurredTime = leaderboard.CreatedTime > 0 ? leaderboard.CreatedTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            OccurredTime = createdTime > 0 ? createdTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = leaderboard.TenantId,
-            AppId = leaderboard.AppId,
+            TenantId = tenantId,
+            AppId = appId,
             ServerId = 0,
             PlayerId = 0,
             Source = Source,
@@ -95,18 +100,20 @@ public static class OnlineLeaderboardEvents
     /// <summary>
     /// 构造榜上分数更新事件。
     /// </summary>
-    /// <param name="leaderboard">目标榜单定义。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="leaderboardId">榜单标识（可空；载荷落空字符串）。</param>
     /// <param name="playerId">玩家标识。</param>
     /// <param name="oldScore">变更前分数。</param>
     /// <param name="newScore">变更后分数。</param>
     /// <param name="sourceMatchResultId">来源结算结果标识（追溯键，兼作 CorrelationId）。</param>
     /// <param name="updatedTime">变更时刻（UTC 毫秒）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateScoreUpdated(OnlineLeaderboard leaderboard, long playerId, long oldScore, long newScore, string sourceMatchResultId, long updatedTime)
+    public static OnlineEvent CreateScoreUpdated(long tenantId, long appId, string leaderboardId, long playerId, long oldScore, long newScore, string sourceMatchResultId, long updatedTime)
     {
         var payload = new ScoreUpdatedPayload
         {
-            LeaderboardId = leaderboard.LeaderboardId ?? string.Empty,
+            LeaderboardId = leaderboardId ?? string.Empty,
             PlayerId = playerId,
             OldScore = oldScore,
             NewScore = newScore,
@@ -116,7 +123,7 @@ public static class OnlineLeaderboardEvents
         };
         var auditFields = new Dictionary<string, string>
         {
-            { "LeaderboardId", leaderboard.LeaderboardId ?? string.Empty },
+            { "LeaderboardId", leaderboardId ?? string.Empty },
             { "PlayerId", playerId.ToString(CultureInfo.InvariantCulture) },
             { "OldScore", oldScore.ToString(CultureInfo.InvariantCulture) },
             { "NewScore", newScore.ToString(CultureInfo.InvariantCulture) },
@@ -130,8 +137,8 @@ public static class OnlineLeaderboardEvents
             EventType = ScoreUpdated,
             OccurredTime = updatedTime > 0 ? updatedTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = leaderboard.TenantId,
-            AppId = leaderboard.AppId,
+            TenantId = tenantId,
+            AppId = appId,
             ServerId = 0,
             PlayerId = playerId,
             Source = Source,

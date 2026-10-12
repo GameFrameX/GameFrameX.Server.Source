@@ -27,10 +27,10 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Online.Events;
+namespace GameFrameX.Online.Social;
 
 using System.Text.Json;
-using Social;
+using Events;
 
 /// <summary>
 /// 聊天域事件工厂（消息发送、撤回、已读、审核失败供下游与 Admin 消费）。
@@ -65,19 +65,26 @@ public static class OnlineChatEvents
     /// <summary>
     /// 构造消息发送事件。
     /// </summary>
-    /// <param name="message">已落库的消息快照。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="messageId">消息标识（可空；载荷落空字符串）。</param>
+    /// <param name="channelId">频道标识（可空；载荷落空字符串）。</param>
+    /// <param name="channelKind">频道类型名。</param>
+    /// <param name="senderId">发送者。</param>
+    /// <param name="sentAtTime">发送时刻（UTC 毫秒）。</param>
+    /// <param name="sequence">频道内序号。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateMessageSent(OnlineChatMessage message, string correlationId = null)
+    public static OnlineEvent CreateMessageSent(long tenantId, long appId, string messageId, string channelId, string channelKind, long senderId, long sentAtTime, long sequence, string correlationId = null)
     {
         var payload = new MessageSentPayload
         {
-            MessageId = message.MessageId ?? string.Empty,
-            ChannelId = message.ChannelId ?? string.Empty,
-            ChannelKind = message.ChannelKind.ToString(),
-            SenderId = message.SenderId,
-            SentAtTime = message.SentAtTime,
-            Sequence = message.Sequence,
+            MessageId = messageId ?? string.Empty,
+            ChannelId = channelId ?? string.Empty,
+            ChannelKind = channelKind,
+            SenderId = senderId,
+            SentAtTime = sentAtTime,
+            Sequence = sequence,
         };
         var auditFields = new Dictionary<string, string>
         {
@@ -93,10 +100,10 @@ public static class OnlineChatEvents
             EventType = MessageSent,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = message.TenantId,
-            AppId = message.AppId,
+            TenantId = tenantId,
+            AppId = appId,
             ServerId = 0,
-            PlayerId = message.SenderId,
+            PlayerId = senderId,
             Source = Source,
             CorrelationId = correlationId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),
@@ -107,18 +114,24 @@ public static class OnlineChatEvents
     /// <summary>
     /// 构造消息撤回事件。
     /// </summary>
-    /// <param name="message">撤回后的消息快照。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="messageId">消息标识（可空；载荷落空字符串）。</param>
+    /// <param name="channelId">频道标识（可空；载荷落空字符串）。</param>
+    /// <param name="senderId">原发送者。</param>
+    /// <param name="recalledByPlayerId">撤回人。</param>
+    /// <param name="recalledAtTime">撤回时刻（UTC 毫秒）。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateMessageRecalled(OnlineChatMessage message, string correlationId = null)
+    public static OnlineEvent CreateMessageRecalled(long tenantId, long appId, string messageId, string channelId, long senderId, long recalledByPlayerId, long recalledAtTime, string correlationId = null)
     {
         var payload = new MessageRecalledPayload
         {
-            MessageId = message.MessageId ?? string.Empty,
-            ChannelId = message.ChannelId ?? string.Empty,
-            SenderId = message.SenderId,
-            RecalledByPlayerId = message.RecalledByPlayerId,
-            RecalledAtTime = message.RecalledAtTime,
+            MessageId = messageId ?? string.Empty,
+            ChannelId = channelId ?? string.Empty,
+            SenderId = senderId,
+            RecalledByPlayerId = recalledByPlayerId,
+            RecalledAtTime = recalledAtTime,
         };
         var auditFields = new Dictionary<string, string>
         {
@@ -133,10 +146,10 @@ public static class OnlineChatEvents
             EventType = MessageRecalled,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = message.TenantId,
-            AppId = message.AppId,
+            TenantId = tenantId,
+            AppId = appId,
             ServerId = 0,
-            PlayerId = message.RecalledByPlayerId,
+            PlayerId = recalledByPlayerId,
             Source = Source,
             CorrelationId = correlationId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),
@@ -147,18 +160,24 @@ public static class OnlineChatEvents
     /// <summary>
     /// 构造已读位点更新事件（消费端据此清红点）。
     /// </summary>
-    /// <param name="readMark">更新后的已读位点。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="channelId">频道标识（可空；载荷落空字符串）。</param>
+    /// <param name="playerId">玩家标识。</param>
+    /// <param name="lastReadMessageId">最后已读消息标识（可空；载荷落空字符串）。</param>
+    /// <param name="lastReadSentAtTime">最后已读位置的发送时刻（UTC 毫秒）。</param>
+    /// <param name="lastReadSequence">最后已读位置的频道内序号。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateReadMarkUpdated(OnlineChatReadMark readMark, string correlationId = null)
+    public static OnlineEvent CreateReadMarkUpdated(long tenantId, long appId, string channelId, long playerId, string lastReadMessageId, long lastReadSentAtTime, long lastReadSequence, string correlationId = null)
     {
         var payload = new ReadMarkUpdatedPayload
         {
-            ChannelId = readMark.ChannelId ?? string.Empty,
-            PlayerId = readMark.PlayerId,
-            LastReadMessageId = readMark.LastReadMessageId ?? string.Empty,
-            LastReadSentAtTime = readMark.LastReadSentAtTime,
-            LastReadSequence = readMark.LastReadSequence,
+            ChannelId = channelId ?? string.Empty,
+            PlayerId = playerId,
+            LastReadMessageId = lastReadMessageId ?? string.Empty,
+            LastReadSentAtTime = lastReadSentAtTime,
+            LastReadSequence = lastReadSequence,
         };
         var auditFields = new Dictionary<string, string>
         {
@@ -173,10 +192,10 @@ public static class OnlineChatEvents
             EventType = ReadMarkUpdated,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = readMark.TenantId,
-            AppId = readMark.AppId,
+            TenantId = tenantId,
+            AppId = appId,
             ServerId = 0,
-            PlayerId = readMark.PlayerId,
+            PlayerId = playerId,
             Source = Source,
             CorrelationId = correlationId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),

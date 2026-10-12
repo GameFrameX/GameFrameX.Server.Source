@@ -288,7 +288,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
                 CloseReason = OnlineSessionCloseReason.None,
             };
             await _store.AddOrUpdateAsync(session, cancellationToken);
-            await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(OnlineSessionEvents.SessionAuthenticated, session, "token issued", correlationId), cancellationToken);
+            await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(OnlineSessionEvents.SessionAuthenticated, session.Id, session.TenantId, session.AppId, session.ServerId, session.PlayerId, (int)session.State, (int)session.CloseReason, session.TokenGeneration, "token issued", correlationId), cancellationToken);
 
             return OnlineResult<OnlineSessionStartResult>.Ok(new OnlineSessionStartResult
             {
@@ -341,7 +341,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
             session.CurrentTokenHash = HashToken(newToken);
             session.TokenExpiresAtTime = now + session.TokenTimeToLiveSeconds * 1000L;
             await _store.AddOrUpdateAsync(session, cancellationToken);
-            await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(OnlineSessionEvents.SessionTokenRefreshed, session, "token rotated", correlationId), cancellationToken);
+            await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(OnlineSessionEvents.SessionTokenRefreshed, session.Id, session.TenantId, session.AppId, session.ServerId, session.PlayerId, (int)session.State, (int)session.CloseReason, session.TokenGeneration, "token rotated", correlationId), cancellationToken);
 
             return OnlineResult<OnlineTokenRefreshResult>.Ok(new OnlineTokenRefreshResult
             {
@@ -468,7 +468,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
         session.CurrentTokenHash = string.Empty;
         session.ConnectionId = string.Empty;
         await _store.AddOrUpdateAsync(session, cancellationToken);
-        await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(eventType, session, reasonText, correlationId), cancellationToken);
+        await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(eventType, session.Id, session.TenantId, session.AppId, session.ServerId, session.PlayerId, (int)session.State, (int)session.CloseReason, session.TokenGeneration, reasonText, correlationId), cancellationToken);
     }
 
     /// <summary>

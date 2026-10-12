@@ -30,10 +30,13 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using GameFrameX.Online.Assets;
 using GameFrameX.Online.Contracts;
 using GameFrameX.Online.Events;
 using GameFrameX.Online.Match;
 using GameFrameX.Online.Scope;
+using GameFrameX.Online.Session;
+using GameFrameX.Online.Social;
 using GameFrameX.Online.Timeline;
 using Xunit;
 

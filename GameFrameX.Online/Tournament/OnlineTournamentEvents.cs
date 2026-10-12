@@ -27,13 +27,13 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+namespace GameFrameX.Online.Tournament;
+
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json;
-using GameFrameX.Online.Tournament;
-
-namespace GameFrameX.Online.Events;
+using Events;
 
 /// <summary>
 /// 赛事域事件工厂（复用 <see cref="OnlineEvent"/> 信封，<c>Source = "online-tournament"</c>）。
@@ -71,43 +71,51 @@ public static class OnlineTournamentEvents
     /// <summary>
     /// 构造赛事创建事件。
     /// </summary>
-    /// <param name="tournament">创建后的赛事定义。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="tournamentId">赛事标识。</param>
+    /// <param name="leaderboardId">关联榜单标识。</param>
+    /// <param name="startTime">排期开始时刻（UTC 毫秒）。</param>
+    /// <param name="endTime">排期结束时刻（UTC 毫秒）。</param>
+    /// <param name="minLeaderboardRank">报名资格的名次上限（0 表示不限制）。</param>
+    /// <param name="rewardRuleCount">奖励规则条数。</param>
+    /// <param name="state">创建后的状态名。</param>
+    /// <param name="createdTime">创建时刻（UTC 毫秒）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateTournamentCreated(OnlineTournament tournament)
+    public static OnlineEvent CreateTournamentCreated(long tenantId, long appId, string tournamentId, string leaderboardId, long startTime, long endTime, int minLeaderboardRank, int rewardRuleCount, string state, long createdTime)
     {
-        var rewardRuleCount = tournament.RewardRules == null ? 0 : tournament.RewardRules.Count;
         var payload = new TournamentCreatedPayload
         {
-            TournamentId = tournament.TournamentId ?? string.Empty,
-            LeaderboardId = tournament.LeaderboardId ?? string.Empty,
-            StartTime = tournament.StartTime,
-            EndTime = tournament.EndTime,
-            MinLeaderboardRank = tournament.Eligibility == null ? 0 : tournament.Eligibility.MinLeaderboardRank,
+            TournamentId = tournamentId ?? string.Empty,
+            LeaderboardId = leaderboardId ?? string.Empty,
+            StartTime = startTime,
+            EndTime = endTime,
+            MinLeaderboardRank = minLeaderboardRank,
             RewardRuleCount = rewardRuleCount,
-            State = tournament.State.ToString(),
+            State = state,
         };
         var auditFields = new Dictionary<string, string>
         {
-            { "TournamentId", tournament.TournamentId ?? string.Empty },
-            { "LeaderboardId", tournament.LeaderboardId ?? string.Empty },
-            { "StartTime", tournament.StartTime.ToString(CultureInfo.InvariantCulture) },
-            { "EndTime", tournament.EndTime.ToString(CultureInfo.InvariantCulture) },
+            { "TournamentId", tournamentId ?? string.Empty },
+            { "LeaderboardId", leaderboardId ?? string.Empty },
+            { "StartTime", startTime.ToString(CultureInfo.InvariantCulture) },
+            { "EndTime", endTime.ToString(CultureInfo.InvariantCulture) },
             { "MinLeaderboardRank", payload.MinLeaderboardRank.ToString(CultureInfo.InvariantCulture) },
             { "RewardRuleCount", rewardRuleCount.ToString(CultureInfo.InvariantCulture) },
-            { "State", tournament.State.ToString() },
+            { "State", state },
         };
         return new OnlineEvent
         {
             EventId = "evt-" + Guid.NewGuid().ToString("N"),
             EventType = TournamentCreated,
-            OccurredTime = tournament.CreatedTime > 0 ? tournament.CreatedTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            OccurredTime = createdTime > 0 ? createdTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tournament.TenantId,
-            AppId = tournament.AppId,
+            TenantId = tenantId,
+            AppId = appId,
             ServerId = 0,
             PlayerId = 0,
             Source = Source,
-            CorrelationId = tournament.TournamentId ?? string.Empty,
+            CorrelationId = tournamentId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),
             PayloadAuditFields = auditFields,
         };
@@ -116,36 +124,42 @@ public static class OnlineTournamentEvents
     /// <summary>
     /// 构造赛事开始事件。
     /// </summary>
-    /// <param name="tournament">开始后的赛事定义。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="tournamentId">赛事标识。</param>
+    /// <param name="leaderboardId">关联榜单标识。</param>
+    /// <param name="startTime">排期开始时刻（UTC 毫秒）。</param>
+    /// <param name="endTime">排期结束时刻（UTC 毫秒）。</param>
+    /// <param name="startedTime">开始时刻（UTC 毫秒）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateTournamentStarted(OnlineTournament tournament)
+    public static OnlineEvent CreateTournamentStarted(long tenantId, long appId, string tournamentId, string leaderboardId, long startTime, long endTime, long startedTime)
     {
         var payload = new TournamentStartedPayload
         {
-            TournamentId = tournament.TournamentId ?? string.Empty,
-            LeaderboardId = tournament.LeaderboardId ?? string.Empty,
-            StartTime = tournament.StartTime,
-            EndTime = tournament.EndTime,
+            TournamentId = tournamentId ?? string.Empty,
+            LeaderboardId = leaderboardId ?? string.Empty,
+            StartTime = startTime,
+            EndTime = endTime,
         };
         var auditFields = new Dictionary<string, string>
         {
-            { "TournamentId", tournament.TournamentId ?? string.Empty },
-            { "LeaderboardId", tournament.LeaderboardId ?? string.Empty },
-            { "StartTime", tournament.StartTime.ToString(CultureInfo.InvariantCulture) },
-            { "EndTime", tournament.EndTime.ToString(CultureInfo.InvariantCulture) },
+            { "TournamentId", tournamentId ?? string.Empty },
+            { "LeaderboardId", leaderboardId ?? string.Empty },
+            { "StartTime", startTime.ToString(CultureInfo.InvariantCulture) },
+            { "EndTime", endTime.ToString(CultureInfo.InvariantCulture) },
         };
         return new OnlineEvent
         {
             EventId = "evt-" + Guid.NewGuid().ToString("N"),
             EventType = TournamentStarted,
-            OccurredTime = tournament.StartedTime > 0 ? tournament.StartedTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            OccurredTime = startedTime > 0 ? startedTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tournament.TenantId,
-            AppId = tournament.AppId,
+            TenantId = tenantId,
+            AppId = appId,
             ServerId = 0,
             PlayerId = 0,
             Source = Source,
-            CorrelationId = tournament.TournamentId ?? string.Empty,
+            CorrelationId = tournamentId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),
             PayloadAuditFields = auditFields,
         };
@@ -154,39 +168,44 @@ public static class OnlineTournamentEvents
     /// <summary>
     /// 构造玩家报名事件（玩家维度；仅在**首次**落档报名时发布，重放报名不重发）。
     /// </summary>
-    /// <param name="tournament">赛事定义。</param>
-    /// <param name="registration">落档的报名登记。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="tournamentId">赛事标识。</param>
+    /// <param name="playerId">报名玩家标识。</param>
+    /// <param name="registeredTime">报名时刻（UTC 毫秒）。</param>
+    /// <param name="rankAtRegistration">报名时刻的名次（无资格门槛未查榜时为 0）。</param>
+    /// <param name="scoreAtRegistration">报名时刻的分数（无资格门槛未查榜时为 0）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateTournamentRegistered(OnlineTournament tournament, OnlineTournamentRegistration registration)
+    public static OnlineEvent CreateTournamentRegistered(long tenantId, long appId, string tournamentId, long playerId, long registeredTime, int rankAtRegistration, long scoreAtRegistration)
     {
         var payload = new TournamentRegisteredPayload
         {
-            TournamentId = tournament.TournamentId ?? string.Empty,
-            PlayerId = registration.PlayerId,
-            RegisteredTime = registration.RegisteredTime,
-            RankAtRegistration = registration.RankAtRegistration,
-            ScoreAtRegistration = registration.ScoreAtRegistration,
+            TournamentId = tournamentId ?? string.Empty,
+            PlayerId = playerId,
+            RegisteredTime = registeredTime,
+            RankAtRegistration = rankAtRegistration,
+            ScoreAtRegistration = scoreAtRegistration,
         };
         var auditFields = new Dictionary<string, string>
         {
-            { "TournamentId", tournament.TournamentId ?? string.Empty },
-            { "PlayerId", registration.PlayerId.ToString(CultureInfo.InvariantCulture) },
-            { "RegisteredTime", registration.RegisteredTime.ToString(CultureInfo.InvariantCulture) },
-            { "RankAtRegistration", registration.RankAtRegistration.ToString(CultureInfo.InvariantCulture) },
-            { "ScoreAtRegistration", registration.ScoreAtRegistration.ToString(CultureInfo.InvariantCulture) },
+            { "TournamentId", tournamentId ?? string.Empty },
+            { "PlayerId", playerId.ToString(CultureInfo.InvariantCulture) },
+            { "RegisteredTime", registeredTime.ToString(CultureInfo.InvariantCulture) },
+            { "RankAtRegistration", rankAtRegistration.ToString(CultureInfo.InvariantCulture) },
+            { "ScoreAtRegistration", scoreAtRegistration.ToString(CultureInfo.InvariantCulture) },
         };
         return new OnlineEvent
         {
             EventId = "evt-" + Guid.NewGuid().ToString("N"),
             EventType = TournamentRegistered,
-            OccurredTime = registration.RegisteredTime > 0 ? registration.RegisteredTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            OccurredTime = registeredTime > 0 ? registeredTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tournament.TenantId,
-            AppId = tournament.AppId,
+            TenantId = tenantId,
+            AppId = appId,
             ServerId = 0,
-            PlayerId = registration.PlayerId,
+            PlayerId = playerId,
             Source = Source,
-            CorrelationId = tournament.TournamentId ?? string.Empty,
+            CorrelationId = tournamentId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),
             PayloadAuditFields = auditFields,
         };
@@ -195,38 +214,42 @@ public static class OnlineTournamentEvents
     /// <summary>
     /// 构造赛事结束事件（成绩冻结先行已完成的落定点；关联榜单未被本流程修改）。
     /// </summary>
-    /// <param name="tournament">结束后的赛事定义（<c>EndedTime</c> 已落档）。</param>
-    /// <param name="standings">冻结的赛事成绩。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="tournamentId">赛事标识。</param>
+    /// <param name="leaderboardId">关联榜单标识。</param>
+    /// <param name="standingsEntryCount">冻结成绩的条目数（仅计已报名参赛者）。</param>
+    /// <param name="frozenTime">成绩冻结时刻（UTC 毫秒）。</param>
+    /// <param name="endedTime">结束时刻（UTC 毫秒）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateTournamentEnded(OnlineTournament tournament, OnlineTournamentStandings standings)
+    public static OnlineEvent CreateTournamentEnded(long tenantId, long appId, string tournamentId, string leaderboardId, int standingsEntryCount, long frozenTime, long endedTime)
     {
-        var entryCount = standings.Entries == null ? 0 : standings.Entries.Count;
         var payload = new TournamentEndedPayload
         {
-            TournamentId = tournament.TournamentId ?? string.Empty,
-            LeaderboardId = tournament.LeaderboardId ?? string.Empty,
-            StandingsEntryCount = entryCount,
-            FrozenTime = standings.FrozenTime,
+            TournamentId = tournamentId ?? string.Empty,
+            LeaderboardId = leaderboardId ?? string.Empty,
+            StandingsEntryCount = standingsEntryCount,
+            FrozenTime = frozenTime,
         };
         var auditFields = new Dictionary<string, string>
         {
-            { "TournamentId", tournament.TournamentId ?? string.Empty },
-            { "LeaderboardId", tournament.LeaderboardId ?? string.Empty },
-            { "StandingsEntryCount", entryCount.ToString(CultureInfo.InvariantCulture) },
-            { "FrozenTime", standings.FrozenTime.ToString(CultureInfo.InvariantCulture) },
+            { "TournamentId", tournamentId ?? string.Empty },
+            { "LeaderboardId", leaderboardId ?? string.Empty },
+            { "StandingsEntryCount", standingsEntryCount.ToString(CultureInfo.InvariantCulture) },
+            { "FrozenTime", frozenTime.ToString(CultureInfo.InvariantCulture) },
         };
         return new OnlineEvent
         {
             EventId = "evt-" + Guid.NewGuid().ToString("N"),
             EventType = TournamentEnded,
-            OccurredTime = tournament.EndedTime > 0 ? tournament.EndedTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            OccurredTime = endedTime > 0 ? endedTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tournament.TenantId,
-            AppId = tournament.AppId,
+            TenantId = tenantId,
+            AppId = appId,
             ServerId = 0,
             PlayerId = 0,
             Source = Source,
-            CorrelationId = tournament.TournamentId ?? string.Empty,
+            CorrelationId = tournamentId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),
             PayloadAuditFields = auditFields,
         };
@@ -235,38 +258,42 @@ public static class OnlineTournamentEvents
     /// <summary>
     /// 构造赛事结算事件（仅在全量发放成功、赛事推进到结算完成态时发布）。
     /// </summary>
-    /// <param name="tournament">结算后的赛事定义（<c>SettledTime</c> 已落档）。</param>
-    /// <param name="outcome">逐玩家结算回执。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="tournamentId">赛事标识。</param>
+    /// <param name="grantedCount">本次首次发放成功玩家数。</param>
+    /// <param name="replayCount">本次命中幂等回放玩家数。</param>
+    /// <param name="failedCount">本次发放失败玩家数（正常路径恒为 0）。</param>
+    /// <param name="settledTime">结算时刻（UTC 毫秒）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateTournamentSettled(OnlineTournament tournament, OnlineTournamentSettlementOutcome outcome)
+    public static OnlineEvent CreateTournamentSettled(long tenantId, long appId, string tournamentId, int grantedCount, int replayCount, int failedCount, long settledTime)
     {
-        var failedCount = outcome.FailedPlayers == null ? 0 : outcome.FailedPlayers.Count;
         var payload = new TournamentSettledPayload
         {
-            TournamentId = tournament.TournamentId ?? string.Empty,
-            GrantedCount = outcome.GrantedCount,
-            ReplayCount = outcome.ReplayCount,
+            TournamentId = tournamentId ?? string.Empty,
+            GrantedCount = grantedCount,
+            ReplayCount = replayCount,
             FailedCount = failedCount,
         };
         var auditFields = new Dictionary<string, string>
         {
-            { "TournamentId", tournament.TournamentId ?? string.Empty },
-            { "GrantedCount", outcome.GrantedCount.ToString(CultureInfo.InvariantCulture) },
-            { "ReplayCount", outcome.ReplayCount.ToString(CultureInfo.InvariantCulture) },
+            { "TournamentId", tournamentId ?? string.Empty },
+            { "GrantedCount", grantedCount.ToString(CultureInfo.InvariantCulture) },
+            { "ReplayCount", replayCount.ToString(CultureInfo.InvariantCulture) },
             { "FailedCount", failedCount.ToString(CultureInfo.InvariantCulture) },
         };
         return new OnlineEvent
         {
             EventId = "evt-" + Guid.NewGuid().ToString("N"),
             EventType = TournamentSettled,
-            OccurredTime = tournament.SettledTime > 0 ? tournament.SettledTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            OccurredTime = settledTime > 0 ? settledTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = tournament.TenantId,
-            AppId = tournament.AppId,
+            TenantId = tenantId,
+            AppId = appId,
             ServerId = 0,
             PlayerId = 0,
             Source = Source,
-            CorrelationId = tournament.TournamentId ?? string.Empty,
+            CorrelationId = tournamentId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),
             PayloadAuditFields = auditFields,
         };

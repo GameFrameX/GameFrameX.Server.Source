@@ -27,13 +27,13 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+namespace GameFrameX.Online.Season;
+
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json;
-using GameFrameX.Online.Season;
-
-namespace GameFrameX.Online.Events;
+using Events;
 
 /// <summary>
 /// 赛季域事件工厂（统一信封事件，<c>Source = "online-season"</c>）。
@@ -64,41 +64,48 @@ public static class OnlineSeasonEvents
     /// <summary>
     /// 构造赛季创建事件。
     /// </summary>
-    /// <param name="season">创建后的赛季定义。</param>
+    /// <param name="seasonId">赛季标识。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="leaderboardId">关联榜单标识。</param>
+    /// <param name="startTime">排期开始时刻（UTC 毫秒）。</param>
+    /// <param name="endTime">排期结束时刻（UTC 毫秒）。</param>
+    /// <param name="rewardRuleCount">奖励规则条数。</param>
+    /// <param name="state">创建后的状态名。</param>
+    /// <param name="createdTime">创建时刻（UTC 毫秒；非正数取当前时钟）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateSeasonCreated(OnlineSeason season)
+    public static OnlineEvent CreateSeasonCreated(string seasonId, long tenantId, long appId, string leaderboardId, long startTime, long endTime, int rewardRuleCount, string state, long createdTime)
     {
-        var rewardRuleCount = season.RewardRules == null ? 0 : season.RewardRules.Count;
         var payload = new SeasonCreatedPayload
         {
-            SeasonId = season.SeasonId ?? string.Empty,
-            LeaderboardId = season.LeaderboardId ?? string.Empty,
-            StartTime = season.StartTime,
-            EndTime = season.EndTime,
+            SeasonId = seasonId ?? string.Empty,
+            LeaderboardId = leaderboardId ?? string.Empty,
+            StartTime = startTime,
+            EndTime = endTime,
             RewardRuleCount = rewardRuleCount,
-            State = season.State.ToString(),
+            State = state,
         };
         var auditFields = new Dictionary<string, string>
         {
-            { "SeasonId", season.SeasonId ?? string.Empty },
-            { "LeaderboardId", season.LeaderboardId ?? string.Empty },
-            { "StartTime", season.StartTime.ToString(CultureInfo.InvariantCulture) },
-            { "EndTime", season.EndTime.ToString(CultureInfo.InvariantCulture) },
+            { "SeasonId", seasonId ?? string.Empty },
+            { "LeaderboardId", leaderboardId ?? string.Empty },
+            { "StartTime", startTime.ToString(CultureInfo.InvariantCulture) },
+            { "EndTime", endTime.ToString(CultureInfo.InvariantCulture) },
             { "RewardRuleCount", rewardRuleCount.ToString(CultureInfo.InvariantCulture) },
-            { "State", season.State.ToString() },
+            { "State", state },
         };
         return new OnlineEvent
         {
             EventId = "evt-" + Guid.NewGuid().ToString("N"),
             EventType = SeasonCreated,
-            OccurredTime = season.CreatedTime > 0 ? season.CreatedTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            OccurredTime = createdTime > 0 ? createdTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = season.TenantId,
-            AppId = season.AppId,
+            TenantId = tenantId,
+            AppId = appId,
             ServerId = 0,
             PlayerId = 0,
             Source = Source,
-            CorrelationId = season.SeasonId ?? string.Empty,
+            CorrelationId = seasonId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),
             PayloadAuditFields = auditFields,
         };
@@ -107,36 +114,41 @@ public static class OnlineSeasonEvents
     /// <summary>
     /// 构造赛季开始事件。
     /// </summary>
-    /// <param name="season">开始后的赛季定义。</param>
+    /// <param name="seasonId">赛季标识。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="leaderboardId">关联榜单标识。</param>
+    /// <param name="startTime">排期开始时刻（UTC 毫秒）。</param>
+    /// <param name="endTime">排期结束时刻（UTC 毫秒）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateSeasonStarted(OnlineSeason season)
+    public static OnlineEvent CreateSeasonStarted(string seasonId, long tenantId, long appId, string leaderboardId, long startTime, long endTime)
     {
         var payload = new SeasonStartedPayload
         {
-            SeasonId = season.SeasonId ?? string.Empty,
-            LeaderboardId = season.LeaderboardId ?? string.Empty,
-            StartTime = season.StartTime,
-            EndTime = season.EndTime,
+            SeasonId = seasonId ?? string.Empty,
+            LeaderboardId = leaderboardId ?? string.Empty,
+            StartTime = startTime,
+            EndTime = endTime,
         };
         var auditFields = new Dictionary<string, string>
         {
-            { "SeasonId", season.SeasonId ?? string.Empty },
-            { "LeaderboardId", season.LeaderboardId ?? string.Empty },
-            { "StartTime", season.StartTime.ToString(CultureInfo.InvariantCulture) },
-            { "EndTime", season.EndTime.ToString(CultureInfo.InvariantCulture) },
+            { "SeasonId", seasonId ?? string.Empty },
+            { "LeaderboardId", leaderboardId ?? string.Empty },
+            { "StartTime", startTime.ToString(CultureInfo.InvariantCulture) },
+            { "EndTime", endTime.ToString(CultureInfo.InvariantCulture) },
         };
         return new OnlineEvent
         {
             EventId = "evt-" + Guid.NewGuid().ToString("N"),
             EventType = SeasonStarted,
-            OccurredTime = season.StartTime > 0 ? season.StartTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            OccurredTime = startTime > 0 ? startTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = season.TenantId,
-            AppId = season.AppId,
+            TenantId = tenantId,
+            AppId = appId,
             ServerId = 0,
             PlayerId = 0,
             Source = Source,
-            CorrelationId = season.SeasonId ?? string.Empty,
+            CorrelationId = seasonId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),
             PayloadAuditFields = auditFields,
         };
@@ -145,38 +157,42 @@ public static class OnlineSeasonEvents
     /// <summary>
     /// 构造赛季结束事件（快照先行已完成的落定点）。
     /// </summary>
-    /// <param name="season">结束后的赛季定义（<c>EndedTime</c> 已落档）。</param>
-    /// <param name="snapshot">落档的历史快照。</param>
+    /// <param name="seasonId">赛季标识。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="leaderboardId">关联榜单标识。</param>
+    /// <param name="endedTime">结束时刻（UTC 毫秒；非正数取当前时钟）。</param>
+    /// <param name="snapshotEntryCount">落档快照的条目数。</param>
+    /// <param name="snapshottedTime">快照生成时刻（UTC 毫秒）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateSeasonEnded(OnlineSeason season, OnlineSeasonSnapshot snapshot)
+    public static OnlineEvent CreateSeasonEnded(string seasonId, long tenantId, long appId, string leaderboardId, long endedTime, int snapshotEntryCount, long snapshottedTime)
     {
-        var entryCount = snapshot.Entries == null ? 0 : snapshot.Entries.Count;
         var payload = new SeasonEndedPayload
         {
-            SeasonId = season.SeasonId ?? string.Empty,
-            LeaderboardId = season.LeaderboardId ?? string.Empty,
-            SnapshotEntryCount = entryCount,
-            SnapshottedTime = snapshot.SnapshottedTime,
+            SeasonId = seasonId ?? string.Empty,
+            LeaderboardId = leaderboardId ?? string.Empty,
+            SnapshotEntryCount = snapshotEntryCount,
+            SnapshottedTime = snapshottedTime,
         };
         var auditFields = new Dictionary<string, string>
         {
-            { "SeasonId", season.SeasonId ?? string.Empty },
-            { "LeaderboardId", season.LeaderboardId ?? string.Empty },
-            { "SnapshotEntryCount", entryCount.ToString(CultureInfo.InvariantCulture) },
-            { "SnapshottedTime", snapshot.SnapshottedTime.ToString(CultureInfo.InvariantCulture) },
+            { "SeasonId", seasonId ?? string.Empty },
+            { "LeaderboardId", leaderboardId ?? string.Empty },
+            { "SnapshotEntryCount", snapshotEntryCount.ToString(CultureInfo.InvariantCulture) },
+            { "SnapshottedTime", snapshottedTime.ToString(CultureInfo.InvariantCulture) },
         };
         return new OnlineEvent
         {
             EventId = "evt-" + Guid.NewGuid().ToString("N"),
             EventType = SeasonEnded,
-            OccurredTime = season.EndedTime > 0 ? season.EndedTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            OccurredTime = endedTime > 0 ? endedTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = season.TenantId,
-            AppId = season.AppId,
+            TenantId = tenantId,
+            AppId = appId,
             ServerId = 0,
             PlayerId = 0,
             Source = Source,
-            CorrelationId = season.SeasonId ?? string.Empty,
+            CorrelationId = seasonId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),
             PayloadAuditFields = auditFields,
         };
@@ -185,38 +201,42 @@ public static class OnlineSeasonEvents
     /// <summary>
     /// 构造赛季结算事件（仅在全量发放成功、赛季推进到结算完成态时发布）。
     /// </summary>
-    /// <param name="season">结算后的赛季定义（<c>SettledTime</c> 已落档）。</param>
-    /// <param name="outcome">逐玩家结算回执。</param>
+    /// <param name="seasonId">赛季标识。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="settledTime">结算完成时刻（UTC 毫秒；非正数取当前时钟）。</param>
+    /// <param name="grantedCount">本次首次发放成功玩家数。</param>
+    /// <param name="replayCount">本次命中幂等回放玩家数。</param>
+    /// <param name="failedCount">本次发放失败玩家数（正常路径恒为 0）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateSeasonSettled(OnlineSeason season, OnlineSeasonSettlementOutcome outcome)
+    public static OnlineEvent CreateSeasonSettled(string seasonId, long tenantId, long appId, long settledTime, int grantedCount, int replayCount, int failedCount)
     {
-        var failedCount = outcome.FailedPlayers == null ? 0 : outcome.FailedPlayers.Count;
         var payload = new SeasonSettledPayload
         {
-            SeasonId = season.SeasonId ?? string.Empty,
-            GrantedCount = outcome.GrantedCount,
-            ReplayCount = outcome.ReplayCount,
+            SeasonId = seasonId ?? string.Empty,
+            GrantedCount = grantedCount,
+            ReplayCount = replayCount,
             FailedCount = failedCount,
         };
         var auditFields = new Dictionary<string, string>
         {
-            { "SeasonId", season.SeasonId ?? string.Empty },
-            { "GrantedCount", outcome.GrantedCount.ToString(CultureInfo.InvariantCulture) },
-            { "ReplayCount", outcome.ReplayCount.ToString(CultureInfo.InvariantCulture) },
+            { "SeasonId", seasonId ?? string.Empty },
+            { "GrantedCount", grantedCount.ToString(CultureInfo.InvariantCulture) },
+            { "ReplayCount", replayCount.ToString(CultureInfo.InvariantCulture) },
             { "FailedCount", failedCount.ToString(CultureInfo.InvariantCulture) },
         };
         return new OnlineEvent
         {
             EventId = "evt-" + Guid.NewGuid().ToString("N"),
             EventType = SeasonSettled,
-            OccurredTime = season.SettledTime > 0 ? season.SettledTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            OccurredTime = settledTime > 0 ? settledTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = season.TenantId,
-            AppId = season.AppId,
+            TenantId = tenantId,
+            AppId = appId,
             ServerId = 0,
             PlayerId = 0,
             Source = Source,
-            CorrelationId = season.SeasonId ?? string.Empty,
+            CorrelationId = seasonId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),
             PayloadAuditFields = auditFields,
         };

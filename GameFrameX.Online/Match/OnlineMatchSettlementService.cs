@@ -29,6 +29,7 @@
 
 using System;
 using System.Threading;
+using System.Linq;
 using System.Threading.Tasks;
 using GameFrameX.Online.Contracts;
 using GameFrameX.Online.Events;
@@ -128,7 +129,10 @@ public sealed class OnlineMatchSettlementService
         if (!isReplay)
         {
             await actor.CompleteSettlementAsync(committed, nowUnixMilliseconds, cancellationToken).ConfigureAwait(false);
-            await PublishAsync(OnlineMatchRuntimeEvents.CreateMatchSettled(committed), cancellationToken).ConfigureAwait(false);
+            var entries = committed.Entries == null
+                ? null
+                : committed.Entries.Where(entry => entry != null).Select(entry => (entry.PlayerId, entry.Rank, entry.IsWinner, entry.Score, entry.Rewards == null ? 0 : entry.Rewards.Count)).ToList();
+            await PublishAsync(OnlineMatchRuntimeEvents.CreateMatchSettled(committed.TenantId, committed.AppId, committed.ServerId, committed.MatchResultId, committed.MatchId, committed.Mode, committed.Region, committed.Outcome.ToString(), committed.SettledTime, entries), cancellationToken).ConfigureAwait(false);
         }
 
         return OnlineResult<OnlineMatchSettlementOutcome>.Ok(new OnlineMatchSettlementOutcome

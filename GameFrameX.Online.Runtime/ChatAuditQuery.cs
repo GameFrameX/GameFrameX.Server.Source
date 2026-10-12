@@ -29,6 +29,8 @@
 
 namespace GameFrameX.Online.Runtime;
 
+using GameFrameX.Online.Contracts;
+
 using Social;
 
 /// <summary>

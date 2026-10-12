@@ -27,10 +27,10 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Online.Events;
+namespace GameFrameX.Online.Matchmaking;
 
 using System.Text.Json;
-using Matchmaking;
+using Events;
 
 /// <summary>
 /// 匹配域事件工厂（票据状态与对局分配事件供下游与 Admin 消费）。
@@ -55,32 +55,39 @@ public static class OnlineMatchEvents
     /// <summary>
     /// 构造票据状态变更事件。
     /// </summary>
-    /// <param name="ticket">变更后的票据快照。</param>
-    /// <param name="fromState">原状态。</param>
-    /// <param name="toState">目标状态。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="serverId">发起区服标识。</param>
+    /// <param name="ticketId">票据标识（可空；载荷落空字符串）。</param>
+    /// <param name="partyId">来源队伍标识（可空；载荷落空字符串）。</param>
+    /// <param name="failureReason">失败原因名。</param>
+    /// <param name="assignmentId">产出的分配标识（可空；载荷落空字符串）。</param>
+    /// <param name="playerCount">票据携带玩家数（空集合为 0）。</param>
+    /// <param name="firstPlayerId">首位玩家标识（无成员为 0）。</param>
+    /// <param name="fromState">原状态名。</param>
+    /// <param name="toState">目标状态名。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateTicketChanged(OnlineMatchTicket ticket, OnlineMatchTicketState fromState, OnlineMatchTicketState toState, string correlationId = null)
+    public static OnlineEvent CreateTicketChanged(long tenantId, long appId, long serverId, string ticketId, string partyId, string failureReason, string assignmentId, int playerCount, long firstPlayerId, string fromState, string toState, string correlationId = null)
     {
-        var playerCount = ticket.PlayerIds == null ? 0 : ticket.PlayerIds.Count;
         var payload = new TicketChangedPayload
         {
-            TicketId = ticket.TicketId ?? string.Empty,
-            PartyId = ticket.PartyId ?? string.Empty,
-            FromState = fromState.ToString(),
-            ToState = toState.ToString(),
-            FailureReason = ticket.FailureReason.ToString(),
-            AssignmentId = ticket.AssignmentId ?? string.Empty,
+            TicketId = ticketId ?? string.Empty,
+            PartyId = partyId ?? string.Empty,
+            FromState = fromState,
+            ToState = toState,
+            FailureReason = failureReason,
+            AssignmentId = assignmentId ?? string.Empty,
             PlayerCount = playerCount,
         };
         var auditFields = new Dictionary<string, string>
         {
-            { "TicketId", ticket.TicketId ?? string.Empty },
-            { "PartyId", ticket.PartyId ?? string.Empty },
-            { "FromState", fromState.ToString() },
-            { "ToState", toState.ToString() },
-            { "FailureReason", ticket.FailureReason.ToString() },
-            { "AssignmentId", ticket.AssignmentId ?? string.Empty },
+            { "TicketId", ticketId ?? string.Empty },
+            { "PartyId", partyId ?? string.Empty },
+            { "FromState", fromState },
+            { "ToState", toState },
+            { "FailureReason", failureReason },
+            { "AssignmentId", assignmentId ?? string.Empty },
             { "PlayerCount", playerCount.ToString(System.Globalization.CultureInfo.InvariantCulture) },
         };
         return new OnlineEvent
@@ -89,10 +96,10 @@ public static class OnlineMatchEvents
             EventType = TicketChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = ticket.TenantId,
-            AppId = ticket.AppId,
-            ServerId = ticket.ServerId,
-            PlayerId = playerCount > 0 ? ticket.PlayerIds[0] : 0,
+            TenantId = tenantId,
+            AppId = appId,
+            ServerId = serverId,
+            PlayerId = firstPlayerId,
             Source = Source,
             CorrelationId = correlationId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),
@@ -103,28 +110,36 @@ public static class OnlineMatchEvents
     /// <summary>
     /// 构造对局分配事件。
     /// </summary>
-    /// <param name="assignment">分配快照。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="serverId">发起区服标识。</param>
+    /// <param name="assignmentId">分配标识（可空；载荷落空字符串）。</param>
+    /// <param name="matchId">对局标识（可空；载荷落空字符串）。</param>
+    /// <param name="mode">玩法模式。</param>
+    /// <param name="region">区域。</param>
+    /// <param name="playerCount">参与玩家数（空集合为 0）。</param>
+    /// <param name="firstPlayerId">首位玩家标识（无成员为 0）。</param>
+    /// <param name="ticketIds">消费的票据集合（可空；载荷落空集合）。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateAssignmentCreated(OnlineMatchAssignment assignment, string correlationId = null)
+    public static OnlineEvent CreateAssignmentCreated(long tenantId, long appId, long serverId, string assignmentId, string matchId, int mode, int region, int playerCount, long firstPlayerId, IReadOnlyList<string> ticketIds, string correlationId = null)
     {
-        var playerCount = assignment.PlayerIds == null ? 0 : assignment.PlayerIds.Count;
-        var ticketCount = assignment.TicketIds == null ? 0 : assignment.TicketIds.Count;
+        var ticketCount = ticketIds == null ? 0 : ticketIds.Count;
         var payload = new AssignmentCreatedPayload
         {
-            AssignmentId = assignment.AssignmentId ?? string.Empty,
-            MatchId = assignment.MatchId ?? string.Empty,
-            Mode = assignment.Mode,
-            Region = assignment.Region,
+            AssignmentId = assignmentId ?? string.Empty,
+            MatchId = matchId ?? string.Empty,
+            Mode = mode,
+            Region = region,
             PlayerCount = playerCount,
-            TicketIds = assignment.TicketIds == null ? new List<string>() : new List<string>(assignment.TicketIds),
+            TicketIds = ticketIds == null ? new List<string>() : new List<string>(ticketIds),
         };
         var auditFields = new Dictionary<string, string>
         {
-            { "AssignmentId", assignment.AssignmentId ?? string.Empty },
-            { "MatchId", assignment.MatchId ?? string.Empty },
-            { "Mode", assignment.Mode.ToString(System.Globalization.CultureInfo.InvariantCulture) },
-            { "Region", assignment.Region.ToString(System.Globalization.CultureInfo.InvariantCulture) },
+            { "AssignmentId", assignmentId ?? string.Empty },
+            { "MatchId", matchId ?? string.Empty },
+            { "Mode", mode.ToString(System.Globalization.CultureInfo.InvariantCulture) },
+            { "Region", region.ToString(System.Globalization.CultureInfo.InvariantCulture) },
             { "PlayerCount", playerCount.ToString(System.Globalization.CultureInfo.InvariantCulture) },
             { "TicketCount", ticketCount.ToString(System.Globalization.CultureInfo.InvariantCulture) },
         };
@@ -134,10 +149,10 @@ public static class OnlineMatchEvents
             EventType = AssignmentCreated,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = assignment.TenantId,
-            AppId = assignment.AppId,
-            ServerId = assignment.ServerId,
-            PlayerId = playerCount > 0 ? assignment.PlayerIds[0] : 0,
+            TenantId = tenantId,
+            AppId = appId,
+            ServerId = serverId,
+            PlayerId = firstPlayerId,
             Source = Source,
             CorrelationId = correlationId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),

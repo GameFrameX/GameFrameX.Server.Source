@@ -1222,7 +1222,16 @@ public sealed class OnlineGroupService : IOnlineChannelMembershipProbe
     /// <returns>完成通知。</returns>
     private async Task PublishGroupChangedAsync(OnlineGroup group, string action, string correlationId, CancellationToken cancellationToken)
     {
-        await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateGroupChanged(group, action, correlationId), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateGroupChanged(
+            group.GroupId,
+            group.OwnerId,
+            group.State.ToString(),
+            group.Members == null ? 0 : group.Members.Count,
+            group.Revision,
+            group.TenantId,
+            group.AppId,
+            action,
+            correlationId), cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

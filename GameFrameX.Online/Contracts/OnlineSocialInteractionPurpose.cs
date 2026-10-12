@@ -27,38 +27,33 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Online.Social;
+namespace GameFrameX.Online.Contracts;
 
 /// <summary>
-/// 频道成员资格探针（Party / Group 频道成员资格的**唯一**来源）。
+/// 定向社交互动的目的分类（Block 必须在三处统一生效的**枚举载体**）。
 /// <para>
-/// 维护约束（为什么是探针而不是把成员抄进频道记录）：队伍与群组的成员随时在变，
-/// 把成员集合冗余进频道记录就必须在每次成员变动时同步刷新——漏一次刷新，
-/// 已退队的玩家就还能读到队伍频道消息（隐私泄漏），且没有任何错误会暴露它。
-/// 因此每次读取都向归属域取**当前事实**。
-/// </para>
-/// <para>
-/// 维护约束（依赖方向）：探针由归属域实现（队伍域、群组域各自实现本接口），
-/// Chat 域只依赖本接口，不反向依赖二者——依赖箭头单向，无环。
-/// </para>
-/// <para>
-/// 维护约束（未装配 = 拒绝，fail closed）：注入为 <c>null</c> 时 Party / Group 频道的成员资格
-/// **无法验证**，服务层必须拒绝（<c>StateNotReady</c>）而不是放行。放行等于把频道内容
-/// 广播给任意知道频道标识的玩家——成员资格不可验证时必须按「不可访问」处理。
+/// 维护约束：本枚举是「同一份裁决覆盖三条通路」的落点——Chat 私聊、Party 邀请、Matchmaker 成组
+/// 都携带本枚举调用 <see cref="IOnlineSocialGate.EvaluateAsync"/>。
+/// 新增定向互动通路**必须**扩展本枚举并走同一裁决入口，禁止在通路内自建判定
+/// （那正是要防的「行为不一致，出现绕过」）。
+/// 三种目的的裁决力度差异由 <see cref="GameFrameX.Online.Social.OnlineSocialDecisionService"/> 承载：
+/// 禁言只拒绝 <see cref="DirectMessage"/>，封禁拒绝三者，屏蔽拒绝三者。
 /// </para>
 /// </summary>
-public interface IOnlineChannelMembershipProbe
+public enum OnlineSocialInteractionPurpose
 {
     /// <summary>
-    /// 判定玩家当前是否为绑定主体的成员。
+    /// 定向私聊消息（含 Direct 频道发送；受屏蔽、禁言、封禁三重裁决）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="kind">频道类型（只会是 <see cref="OnlineChatChannelKind.Party"/> 或
-    /// <see cref="OnlineChatChannelKind.Group"/>；Direct 与 Global 不走本探针）。</param>
-    /// <param name="boundId">绑定主体标识（PartyId 或 GroupId）。</param>
-    /// <param name="playerId">待判定的玩家。</param>
-    /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>当前是成员返回 <c>true</c>。</returns>
-    Task<bool> IsChannelMemberAsync(long tenantId, long appId, OnlineChatChannelKind kind, string boundId, long playerId, CancellationToken cancellationToken = default);
+    DirectMessage = 0,
+
+    /// <summary>
+    /// 队伍邀请（受屏蔽、封禁裁决；不受禁言影响——禁言不剥夺组队能力）。
+    /// </summary>
+    PartyInvite = 1,
+
+    /// <summary>
+    /// 匹配成组（受屏蔽、封禁裁决；不受禁言影响）。
+    /// </summary>
+    Matchmaking = 2,
 }

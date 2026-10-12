@@ -33,7 +33,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Contracts;
 using Events;
-using Social;
 
 /// <summary>
 /// 匹配协调器（按模式/区域/规模/等级区间成组，产出 assignment）。
@@ -185,14 +184,14 @@ public sealed class OnlineMatchmakerCoordinator
             return null;
         }
 
-        await _eventPublisher.PublishAsync(OnlineMatchEvents.CreateAssignmentCreated(committed), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineMatchEvents.CreateAssignmentCreated(committed.TenantId, committed.AppId, committed.ServerId, committed.AssignmentId, committed.MatchId, committed.Mode, committed.Region, committed.PlayerIds == null ? 0 : committed.PlayerIds.Count, committed.PlayerIds != null && committed.PlayerIds.Count > 0 ? committed.PlayerIds[0] : 0, committed.TicketIds), cancellationToken).ConfigureAwait(false);
 
         foreach (var ticketId in ticketIds)
         {
             var matched = await _store.FindAsync(committed.TenantId, committed.AppId, ticketId, cancellationToken).ConfigureAwait(false);
             if (matched != null)
             {
-                await _eventPublisher.PublishAsync(OnlineMatchEvents.CreateTicketChanged(matched, OnlineMatchTicketState.Queued, OnlineMatchTicketState.Matched), cancellationToken).ConfigureAwait(false);
+                await _eventPublisher.PublishAsync(OnlineMatchEvents.CreateTicketChanged(matched.TenantId, matched.AppId, matched.ServerId, matched.TicketId, matched.PartyId, matched.FailureReason.ToString(), matched.AssignmentId, matched.PlayerIds == null ? 0 : matched.PlayerIds.Count, matched.PlayerIds != null && matched.PlayerIds.Count > 0 ? matched.PlayerIds[0] : 0, OnlineMatchTicketState.Queued.ToString(), OnlineMatchTicketState.Matched.ToString()), cancellationToken).ConfigureAwait(false);
             }
         }
 

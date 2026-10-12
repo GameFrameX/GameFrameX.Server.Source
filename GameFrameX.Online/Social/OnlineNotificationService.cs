@@ -159,7 +159,7 @@ public sealed class OnlineNotificationService
             return OnlineResult<OnlineNotification>.Ok(effective);
         }
 
-        await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(effective, correlationId), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(effective.TenantId, effective.AppId, effective.ServerId, effective.PlayerId, effective.NotificationId, effective.Kind.ToString(), effective.State.ToString(), effective.AttemptCount, correlationId), cancellationToken).ConfigureAwait(false);
 
         var dispatched = await TryDispatchAsync(scope.TenantId, scope.AppId, scope.PlayerId, effective.NotificationId, cancellationToken).ConfigureAwait(false);
         if (dispatched.IsSuccess && dispatched.Data != null)
@@ -243,7 +243,7 @@ public sealed class OnlineNotificationService
             return await ConvergeAsync(tenantId, appId, playerId, notificationId, cancellationToken).ConfigureAwait(false);
         }
 
-        await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(queued, null), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(queued.TenantId, queued.AppId, queued.ServerId, queued.PlayerId, queued.NotificationId, queued.Kind.ToString(), queued.State.ToString(), queued.AttemptCount, null), cancellationToken).ConfigureAwait(false);
 
         var outcome = await DispatchAsync(queued, cancellationToken).ConfigureAwait(false);
         var settled = SettleDispatchOutcome(queued, outcome);
@@ -259,7 +259,7 @@ public sealed class OnlineNotificationService
             return await ConvergeAsync(tenantId, appId, playerId, notificationId, cancellationToken).ConfigureAwait(false);
         }
 
-        await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(result, null), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(result.TenantId, result.AppId, result.ServerId, result.PlayerId, result.NotificationId, result.Kind.ToString(), result.State.ToString(), result.AttemptCount, null), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineNotification>.Ok(result);
     }
 
@@ -318,7 +318,7 @@ public sealed class OnlineNotificationService
             return await ConvergeAsync(scope.TenantId, scope.AppId, scope.PlayerId, notificationId, cancellationToken).ConfigureAwait(false);
         }
 
-        await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(updated, correlationId), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(updated.TenantId, updated.AppId, updated.ServerId, updated.PlayerId, updated.NotificationId, updated.Kind.ToString(), updated.State.ToString(), updated.AttemptCount, correlationId), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineNotification>.Ok(updated);
     }
 
@@ -435,7 +435,7 @@ public sealed class OnlineNotificationService
                     continue;
                 }
 
-                await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(updated, null), cancellationToken).ConfigureAwait(false);
+                await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(updated.TenantId, updated.AppId, updated.ServerId, updated.PlayerId, updated.NotificationId, updated.Kind.ToString(), updated.State.ToString(), updated.AttemptCount, null), cancellationToken).ConfigureAwait(false);
                 affected++;
             }
         }
@@ -504,7 +504,7 @@ public sealed class OnlineNotificationService
             return await ConvergeAsync(tenantId, appId, playerId, current.NotificationId, cancellationToken).ConfigureAwait(false);
         }
 
-        await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(terminated, null), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineNotificationEvents.CreateNotificationChanged(terminated.TenantId, terminated.AppId, terminated.ServerId, terminated.PlayerId, terminated.NotificationId, terminated.Kind.ToString(), terminated.State.ToString(), terminated.AttemptCount, null), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineNotification>.Ok(terminated);
     }
 

@@ -169,7 +169,7 @@ public sealed class OnlineSeasonService
             return OnlineResult<OnlineSeason>.Fail(OnlineErrorCode.ParameterInvalid, "赛季标识已存在");
         }
 
-        await PublishAsync(OnlineSeasonEvents.CreateSeasonCreated(created), cancellationToken).ConfigureAwait(false);
+        await PublishAsync(OnlineSeasonEvents.CreateSeasonCreated(created.SeasonId, created.TenantId, created.AppId, created.LeaderboardId, created.StartTime, created.EndTime, created.RewardRules == null ? 0 : created.RewardRules.Count, created.State.ToString(), created.CreatedTime), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineSeason>.Ok(created);
     }
 
@@ -197,7 +197,7 @@ public sealed class OnlineSeasonService
 
         season.State = OnlineSeasonState.Active;
         await _seasonStore.SaveAsync(season, cancellationToken).ConfigureAwait(false);
-        await PublishAsync(OnlineSeasonEvents.CreateSeasonStarted(season), cancellationToken).ConfigureAwait(false);
+        await PublishAsync(OnlineSeasonEvents.CreateSeasonStarted(season.SeasonId, season.TenantId, season.AppId, season.LeaderboardId, season.StartTime, season.EndTime), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineSeason>.Ok(season);
     }
 
@@ -249,7 +249,7 @@ public sealed class OnlineSeasonService
             season.State = OnlineSeasonState.Ended;
             season.EndedTime = now;
             await _seasonStore.SaveAsync(season, cancellationToken).ConfigureAwait(false);
-            await PublishAsync(OnlineSeasonEvents.CreateSeasonEnded(season, snapshot), cancellationToken).ConfigureAwait(false);
+            await PublishAsync(OnlineSeasonEvents.CreateSeasonEnded(season.SeasonId, season.TenantId, season.AppId, season.LeaderboardId, season.EndedTime, snapshot.Entries == null ? 0 : snapshot.Entries.Count, snapshot.SnapshottedTime), cancellationToken).ConfigureAwait(false);
             return OnlineResult<OnlineSeasonSnapshot>.Ok(snapshot);
         }
 
@@ -328,7 +328,7 @@ public sealed class OnlineSeasonService
             season.State = OnlineSeasonState.Settled;
             season.SettledTime = now;
             await _seasonStore.SaveAsync(season, cancellationToken).ConfigureAwait(false);
-            await PublishAsync(OnlineSeasonEvents.CreateSeasonSettled(season, outcome), cancellationToken).ConfigureAwait(false);
+            await PublishAsync(OnlineSeasonEvents.CreateSeasonSettled(season.SeasonId, season.TenantId, season.AppId, season.SettledTime, outcome.GrantedCount, outcome.ReplayCount, outcome.FailedPlayers == null ? 0 : outcome.FailedPlayers.Count), cancellationToken).ConfigureAwait(false);
         }
 
         return OnlineResult<OnlineSeasonSettlementOutcome>.Ok(outcome);

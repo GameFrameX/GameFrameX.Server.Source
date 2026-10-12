@@ -210,7 +210,16 @@ public sealed class OnlineFriendService
             return await ConvergeExistingAsync(effective, scope, correlationId, now, cancellationToken).ConfigureAwait(false);
         }
 
-        await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateFriendshipChanged(effective, OnlineSocialEvents.FriendshipRequested, correlationId), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateFriendshipChanged(
+            effective.FriendshipId,
+            effective.RequesterId,
+            effective.AddresseeId,
+            effective.State.ToString(),
+            effective.TenantId,
+            effective.AppId,
+            effective.ServerId,
+            OnlineSocialEvents.FriendshipRequested,
+            correlationId), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineFriendship>.Ok(effective);
     }
 
@@ -286,7 +295,16 @@ public sealed class OnlineFriendService
             return OnlineResult<OnlineFriendship>.Ok(current);
         }
 
-        await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateFriendshipChanged(removed, OnlineSocialEvents.FriendshipRemoved, correlationId), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateFriendshipChanged(
+            removed.FriendshipId,
+            removed.RequesterId,
+            removed.AddresseeId,
+            removed.State.ToString(),
+            removed.TenantId,
+            removed.AppId,
+            removed.ServerId,
+            OnlineSocialEvents.FriendshipRemoved,
+            correlationId), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineFriendship>.Ok(removed);
     }
 
@@ -464,7 +482,16 @@ public sealed class OnlineFriendService
             var expired = await _store.UpdateStateAsync(tenantId, appId, new FriendshipStateTransition { FriendshipId = friendship.FriendshipId, ExpectedState = OnlineFriendshipState.Requested, NewState = OnlineFriendshipState.Expired, NowUnixMilliseconds = now, Responded = false, }, cancellationToken).ConfigureAwait(false);
             if (expired != null)
             {
-                await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateFriendshipChanged(expired, OnlineSocialEvents.FriendshipExpired, null), cancellationToken).ConfigureAwait(false);
+                await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateFriendshipChanged(
+                    expired.FriendshipId,
+                    expired.RequesterId,
+                    expired.AddresseeId,
+                    expired.State.ToString(),
+                    expired.TenantId,
+                    expired.AppId,
+                    expired.ServerId,
+                    OnlineSocialEvents.FriendshipExpired,
+                    null), cancellationToken).ConfigureAwait(false);
                 affected++;
             }
         }
@@ -592,7 +619,16 @@ public sealed class OnlineFriendService
         }
 
         var eventKind = accept ? OnlineSocialEvents.FriendshipAccepted : OnlineSocialEvents.FriendshipRejected;
-        await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateFriendshipChanged(updated, eventKind, correlationId), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateFriendshipChanged(
+            updated.FriendshipId,
+            updated.RequesterId,
+            updated.AddresseeId,
+            updated.State.ToString(),
+            updated.TenantId,
+            updated.AppId,
+            updated.ServerId,
+            eventKind,
+            correlationId), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineFriendship>.Ok(updated);
     }
 
@@ -667,7 +703,16 @@ public sealed class OnlineFriendService
             return OnlineResult<OnlineFriendship>.Ok(current);
         }
 
-        await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateFriendshipChanged(renewed, OnlineSocialEvents.FriendshipRequested, correlationId), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateFriendshipChanged(
+            renewed.FriendshipId,
+            renewed.RequesterId,
+            renewed.AddresseeId,
+            renewed.State.ToString(),
+            renewed.TenantId,
+            renewed.AppId,
+            renewed.ServerId,
+            OnlineSocialEvents.FriendshipRequested,
+            correlationId), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineFriendship>.Ok(renewed);
     }
 

@@ -140,7 +140,7 @@ public sealed class OnlineLeaderboardService
             return OnlineResult<OnlineLeaderboard>.Fail(OnlineErrorCode.ParameterInvalid, "榜单标识已存在");
         }
 
-        await PublishAsync(OnlineLeaderboardEvents.CreateLeaderboardCreated(created), cancellationToken).ConfigureAwait(false);
+        await PublishAsync(OnlineLeaderboardEvents.CreateLeaderboardCreated(created.TenantId, created.AppId, created.LeaderboardId, created.SortOrder.ToString(), created.ScoreUpdatePolicy.ToString(), created.CreatedTime), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineLeaderboard>.Ok(created);
     }
 
@@ -368,7 +368,7 @@ public sealed class OnlineLeaderboardService
 
         var applied = await _store.ApplySubmissionAsync(leaderboard, submission, cancellationToken).ConfigureAwait(false);
         InvalidateCache(leaderboard);
-        await PublishAsync(OnlineLeaderboardEvents.CreateScoreUpdated(leaderboard, submission.PlayerId, applied.OldScore, applied.Entry.Score, submission.SourceMatchResultId, applied.Entry.LastUpdateTime), cancellationToken).ConfigureAwait(false);
+        await PublishAsync(OnlineLeaderboardEvents.CreateScoreUpdated(leaderboard.TenantId, leaderboard.AppId, leaderboard.LeaderboardId, submission.PlayerId, applied.OldScore, applied.Entry.Score, submission.SourceMatchResultId, applied.Entry.LastUpdateTime), cancellationToken).ConfigureAwait(false);
 
         return new OnlineLeaderboardWriteOutcome
         {

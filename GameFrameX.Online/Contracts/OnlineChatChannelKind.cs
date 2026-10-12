@@ -27,33 +27,46 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Online.Social;
+namespace GameFrameX.Online.Contracts;
 
 /// <summary>
-/// 定向社交互动的目的分类（Block 必须在三处统一生效的**枚举载体**）。
+/// 聊天频道类型（四类频道，成员资格来源各不相同，隐私边界由此划开）。
 /// <para>
-/// 维护约束：本枚举是「同一份裁决覆盖三条通路」的落点——Chat 私聊、Party 邀请、Matchmaker 成组
-/// 都携带本枚举调用 <see cref="IOnlineSocialGate.EvaluateAsync"/>。
-/// 新增定向互动通路**必须**扩展本枚举并走同一裁决入口，禁止在通路内自建判定
-/// （那正是要防的「行为不一致，出现绕过」）。
-/// 三种目的的裁决力度差异由 <see cref="OnlineSocialDecisionService"/> 承载：
-/// 禁言只拒绝 <see cref="DirectMessage"/>，封禁拒绝三者，屏蔽拒绝三者。
+/// 维护约束（成员资格来源）：
+/// <list type="table">
+/// <item><term><see cref="Direct"/></term><description>成员 = 参与双方（无向对，A→B 与 B→A 落在**同一频道**，
+/// 否则历史会裂成两条单向流）；成员集合随频道记录落库。</description></item>
+/// <item><term><see cref="Party"/></term><description>成员 = 队伍成员，由队伍域通过
+/// <see cref="IOnlineChannelMembershipProbe"/> 提供（Chat 域不反向依赖队伍域）。</description></item>
+/// <item><term><see cref="Group"/></term><description>成员 = 群组成员，同一探针提供。</description></item>
+/// <item><term><see cref="Global"/></term><description>成员 = 同租户同 App 的全体玩家，**不看 ServerId**——
+/// 全局频道是 App 级公共空间，按区服切分会割裂公共舆论场。</description></item>
+/// </list>
+/// </para>
+/// <para>
+/// 维护约束：成员资格是**读取前置**，非成员一律 <c>ResourceNotFound</c>（反预言，不泄露频道存在性）；
+/// 新增频道类型必须同时给出成员资格来源与隐私边界，否则不得落地。
 /// </para>
 /// </summary>
-public enum OnlineSocialInteractionPurpose
+public enum OnlineChatChannelKind
 {
     /// <summary>
-    /// 定向私聊消息（含 Direct 频道发送；受屏蔽、禁言、封禁三重裁决）。
+    /// 定向私聊频道（参与双方；受屏蔽、禁言、封禁三重裁决）。
     /// </summary>
-    DirectMessage = 0,
+    Direct = 0,
 
     /// <summary>
-    /// 队伍邀请（受屏蔽、封禁裁决；不受禁言影响——禁言不剥夺组队能力）。
+    /// 队伍频道（绑定 PartyId；受禁言、封禁裁决，不受屏蔽影响——同队已成事实，屏蔽不拆队）。
     /// </summary>
-    PartyInvite = 1,
+    Party = 1,
 
     /// <summary>
-    /// 匹配成组（受屏蔽、封禁裁决；不受禁言影响）。
+    /// 群组频道（绑定 GroupId；受禁言、封禁裁决）。
     /// </summary>
-    Matchmaking = 2,
+    Group = 2,
+
+    /// <summary>
+    /// 全局频道（App 级公共空间；受禁言、封禁、频控与内容审核裁决）。
+    /// </summary>
+    Global = 3,
 }

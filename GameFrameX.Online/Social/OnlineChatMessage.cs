@@ -29,6 +29,8 @@
 
 namespace GameFrameX.Online.Social;
 
+using Contracts;
+
 /// <summary>
 /// 聊天消息。
 /// <para>

@@ -27,10 +27,10 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Online.Events;
+namespace GameFrameX.Online.Party;
 
 using System.Text.Json;
-using Party;
+using Events;
 
 /// <summary>
 /// 队伍域事件工厂（队伍状态与邀请变更事件供下游与 Admin 消费）。
@@ -54,31 +54,36 @@ public static class OnlinePartyEvents
     /// <summary>
     /// 构造队伍状态变更事件。
     /// </summary>
-    /// <param name="party">变更后的队伍快照。</param>
-    /// <param name="fromState">原状态。</param>
-    /// <param name="toState">目标状态。</param>
-    /// <param name="reason">变更原因。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="serverId">区服标识。</param>
+    /// <param name="partyId">队伍标识（可空；载荷落空字符串）。</param>
+    /// <param name="leaderId">队长标识。</param>
+    /// <param name="fromState">原状态名。</param>
+    /// <param name="toState">目标状态名。</param>
+    /// <param name="reason">变更原因名。</param>
+    /// <param name="memberCount">变更后成员数快照。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreatePartyChanged(OnlineParty party, OnlinePartyState fromState, OnlinePartyState toState, OnlinePartyLeaveReason reason, string correlationId = null)
+    public static OnlineEvent CreatePartyChanged(long tenantId, long appId, long serverId, string partyId, long leaderId, string fromState, string toState, string reason, int memberCount, string correlationId = null)
     {
         var payload = new PartyChangedPayload
         {
-            PartyId = party.PartyId ?? string.Empty,
-            LeaderId = party.LeaderId,
-            FromState = fromState.ToString(),
-            ToState = toState.ToString(),
-            Reason = reason.ToString(),
-            MemberCount = party.Members == null ? 0 : party.Members.Count,
+            PartyId = partyId ?? string.Empty,
+            LeaderId = leaderId,
+            FromState = fromState,
+            ToState = toState,
+            Reason = reason,
+            MemberCount = memberCount,
         };
         var auditFields = new Dictionary<string, string>
         {
-            { "PartyId", party.PartyId ?? string.Empty },
-            { "LeaderId", party.LeaderId.ToString(System.Globalization.CultureInfo.InvariantCulture) },
-            { "FromState", fromState.ToString() },
-            { "ToState", toState.ToString() },
-            { "Reason", reason.ToString() },
-            { "MemberCount", payload.MemberCount.ToString(System.Globalization.CultureInfo.InvariantCulture) },
+            { "PartyId", partyId ?? string.Empty },
+            { "LeaderId", leaderId.ToString(System.Globalization.CultureInfo.InvariantCulture) },
+            { "FromState", fromState },
+            { "ToState", toState },
+            { "Reason", reason },
+            { "MemberCount", memberCount.ToString(System.Globalization.CultureInfo.InvariantCulture) },
         };
         return new OnlineEvent
         {
@@ -86,10 +91,10 @@ public static class OnlinePartyEvents
             EventType = PartyChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = party.TenantId,
-            AppId = party.AppId,
-            ServerId = party.ServerId,
-            PlayerId = party.LeaderId,
+            TenantId = tenantId,
+            AppId = appId,
+            ServerId = serverId,
+            PlayerId = leaderId,
             Source = Source,
             CorrelationId = correlationId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),
@@ -100,27 +105,33 @@ public static class OnlinePartyEvents
     /// <summary>
     /// 构造邀请状态变更事件。
     /// </summary>
-    /// <param name="invite">变更后的邀请快照。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="inviteeId">被邀请玩家标识。</param>
+    /// <param name="inviteId">邀请标识（可空；载荷落空字符串）。</param>
+    /// <param name="partyId">队伍标识（可空；载荷落空字符串）。</param>
+    /// <param name="inviterId">邀请发起人标识。</param>
+    /// <param name="state">邀请状态名。</param>
     /// <param name="serverId">区服标识。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateInviteChanged(OnlinePartyInvite invite, long serverId, string correlationId = null)
+    public static OnlineEvent CreateInviteChanged(long tenantId, long appId, long inviteeId, string inviteId, string partyId, long inviterId, string state, long serverId, string correlationId = null)
     {
         var payload = new PartyInviteChangedPayload
         {
-            InviteId = invite.InviteId ?? string.Empty,
-            PartyId = invite.PartyId ?? string.Empty,
-            InviterId = invite.InviterId,
-            InviteeId = invite.InviteeId,
-            State = invite.State.ToString(),
+            InviteId = inviteId ?? string.Empty,
+            PartyId = partyId ?? string.Empty,
+            InviterId = inviterId,
+            InviteeId = inviteeId,
+            State = state,
         };
         var auditFields = new Dictionary<string, string>
         {
-            { "InviteId", invite.InviteId ?? string.Empty },
-            { "PartyId", invite.PartyId ?? string.Empty },
-            { "InviterId", invite.InviterId.ToString(System.Globalization.CultureInfo.InvariantCulture) },
-            { "InviteeId", invite.InviteeId.ToString(System.Globalization.CultureInfo.InvariantCulture) },
-            { "State", invite.State.ToString() },
+            { "InviteId", inviteId ?? string.Empty },
+            { "PartyId", partyId ?? string.Empty },
+            { "InviterId", inviterId.ToString(System.Globalization.CultureInfo.InvariantCulture) },
+            { "InviteeId", inviteeId.ToString(System.Globalization.CultureInfo.InvariantCulture) },
+            { "State", state },
         };
         return new OnlineEvent
         {
@@ -128,10 +139,10 @@ public static class OnlinePartyEvents
             EventType = PartyInviteChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = invite.TenantId,
-            AppId = invite.AppId,
+            TenantId = tenantId,
+            AppId = appId,
             ServerId = serverId,
-            PlayerId = invite.InviteeId,
+            PlayerId = inviteeId,
             Source = Source,
             CorrelationId = correlationId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),

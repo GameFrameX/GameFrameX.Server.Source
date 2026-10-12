@@ -141,7 +141,16 @@ public sealed class OnlinePunishmentService
         var stored = await _graphStore.SavePunishmentIfAbsentAsync(prototype, cancellationToken).ConfigureAwait(false);
         if (string.Equals(stored.PunishmentId, prototype.PunishmentId, StringComparison.Ordinal))
         {
-            await _eventPublisher.PublishAsync(OnlineSocialEvents.CreatePunishmentChanged(stored, OnlineSocialEvents.PunishmentApplied, correlationId), cancellationToken).ConfigureAwait(false);
+            await _eventPublisher.PublishAsync(OnlineSocialEvents.CreatePunishmentChanged(
+                stored.PunishmentId,
+                stored.PlayerId,
+                stored.Kind.ToString(),
+                stored.EffectiveAtTime,
+                stored.ExpiresAtTime,
+                stored.TenantId,
+                stored.AppId,
+                OnlineSocialEvents.PunishmentApplied,
+                correlationId), cancellationToken).ConfigureAwait(false);
         }
 
         return OnlineResult<OnlinePunishment>.Ok(stored);
@@ -201,7 +210,16 @@ public sealed class OnlinePunishmentService
             return OnlineResult<OnlinePunishment>.Ok(current);
         }
 
-        await _eventPublisher.PublishAsync(OnlineSocialEvents.CreatePunishmentChanged(effective, OnlineSocialEvents.PunishmentRevoked, correlationId), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineSocialEvents.CreatePunishmentChanged(
+            effective.PunishmentId,
+            effective.PlayerId,
+            effective.Kind.ToString(),
+            effective.EffectiveAtTime,
+            effective.ExpiresAtTime,
+            effective.TenantId,
+            effective.AppId,
+            OnlineSocialEvents.PunishmentRevoked,
+            correlationId), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlinePunishment>.Ok(effective);
     }
 

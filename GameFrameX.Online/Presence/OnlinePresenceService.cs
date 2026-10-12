@@ -492,7 +492,7 @@ public sealed class OnlinePresenceService
     /// <param name="cancellationToken">取消令牌。</param>
     private Task PublishChangeAsync(OnlinePresenceRecord record, OnlinePresenceState fromState, OnlinePresenceState toState, OnlinePresenceChangeReason reason, string correlationId, CancellationToken cancellationToken)
     {
-        var changeEvent = OnlinePresenceEvents.Create(record.TenantId, record.AppId, record.ServerId, record.PlayerId, record.SessionId, fromState, toState, reason.ToString(), correlationId);
+        var changeEvent = OnlinePresenceEvents.Create(record.TenantId, record.AppId, record.ServerId, record.PlayerId, record.SessionId, fromState.ToString(), toState.ToString(), reason.ToString(), correlationId);
         return _eventPublisher.PublishAsync(changeEvent, cancellationToken);
     }
 

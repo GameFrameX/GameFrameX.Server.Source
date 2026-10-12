@@ -27,13 +27,13 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+namespace GameFrameX.Online.Match;
+
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json;
-using GameFrameX.Online.Match;
-
-namespace GameFrameX.Online.Events;
+using Events;
 
 /// <summary>
 /// 对局域事件工厂（「只有可信的服务端结果事件才能触发 Wallet、Reward、Leaderboard 和 Notification」）。
@@ -58,29 +58,34 @@ public static class OnlineMatchRuntimeEvents
     /// <summary>
     /// 构造对局生命周期状态变更事件。
     /// </summary>
-    /// <param name="match">变更后的对局快照。</param>
-    /// <param name="fromState">原状态。</param>
-    /// <param name="toState">目标状态。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="serverId">区服标识。</param>
+    /// <param name="matchId">对局标识（可空；载荷落空字符串）。</param>
+    /// <param name="assignmentId">来源分配标识（可空；载荷落空字符串）。</param>
+    /// <param name="fromState">原状态名。</param>
+    /// <param name="toState">目标状态名。</param>
+    /// <param name="serverSequence">变更时的服务器序号。</param>
+    /// <param name="memberCount">成员数（含断线成员）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateMatchStateChanged(OnlineMatch match, OnlineMatchState fromState, OnlineMatchState toState)
+    public static OnlineEvent CreateMatchStateChanged(long tenantId, long appId, long serverId, string matchId, string assignmentId, string fromState, string toState, long serverSequence, int memberCount)
     {
-        var memberCount = match.Members == null ? 0 : match.Members.Count;
         var payload = new MatchStateChangedPayload
         {
-            MatchId = match.MatchId ?? string.Empty,
-            AssignmentId = match.AssignmentId ?? string.Empty,
-            FromState = fromState.ToString(),
-            ToState = toState.ToString(),
-            ServerSequence = match.ServerSequence,
+            MatchId = matchId ?? string.Empty,
+            AssignmentId = assignmentId ?? string.Empty,
+            FromState = fromState,
+            ToState = toState,
+            ServerSequence = serverSequence,
             MemberCount = memberCount,
         };
         var auditFields = new Dictionary<string, string>
         {
-            { "MatchId", match.MatchId ?? string.Empty },
-            { "AssignmentId", match.AssignmentId ?? string.Empty },
-            { "FromState", fromState.ToString() },
-            { "ToState", toState.ToString() },
-            { "ServerSequence", match.ServerSequence.ToString(CultureInfo.InvariantCulture) },
+            { "MatchId", matchId ?? string.Empty },
+            { "AssignmentId", assignmentId ?? string.Empty },
+            { "FromState", fromState },
+            { "ToState", toState },
+            { "ServerSequence", serverSequence.ToString(CultureInfo.InvariantCulture) },
             { "MemberCount", memberCount.ToString(CultureInfo.InvariantCulture) },
         };
         return new OnlineEvent
@@ -89,9 +94,9 @@ public static class OnlineMatchRuntimeEvents
             EventType = MatchStateChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = match.TenantId,
-            AppId = match.AppId,
-            ServerId = match.ServerId,
+            TenantId = tenantId,
+            AppId = appId,
+            ServerId = serverId,
             PlayerId = 0,
             Source = Source,
             CorrelationId = string.Empty,
@@ -103,67 +108,71 @@ public static class OnlineMatchRuntimeEvents
     /// <summary>
     /// 构造对局结算完成事件（可信结果事件）。
     /// </summary>
-    /// <param name="result">已落定的结算结果。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="serverId">区服标识。</param>
+    /// <param name="matchResultId">结果标识（可空；载荷落空字符串）。</param>
+    /// <param name="matchId">对局标识（可空；载荷落空字符串）。</param>
+    /// <param name="mode">玩法模式。</param>
+    /// <param name="region">区域。</param>
+    /// <param name="outcome">结束方式名。</param>
+    /// <param name="settledTime">结算时刻（UTC 毫秒）。</param>
+    /// <param name="entries">玩家条目集合（标识 / 名次 / 是否胜方 / 得分 / 奖励条目数；空元素被跳过）。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateMatchSettled(OnlineMatchResult result, string correlationId = null)
+    public static OnlineEvent CreateMatchSettled(long tenantId, long appId, long serverId, string matchResultId, string matchId, int mode, int region, string outcome, long settledTime, IReadOnlyList<(long PlayerId, int Rank, bool IsWinner, long Score, int RewardCount)> entries, string correlationId = null)
     {
-        var entries = new List<MatchSettledEntryPayload>();
+        var entryPayloads = new List<MatchSettledEntryPayload>();
         var winnerCount = 0;
-        if (result.Entries != null)
+        if (entries != null)
         {
-            foreach (var entry in result.Entries)
+            foreach (var entry in entries)
             {
-                if (entry == null)
-                {
-                    continue;
-                }
-
                 if (entry.IsWinner)
                 {
                     winnerCount++;
                 }
 
-                entries.Add(new MatchSettledEntryPayload
+                entryPayloads.Add(new MatchSettledEntryPayload
                 {
                     PlayerId = entry.PlayerId,
                     Rank = entry.Rank,
                     IsWinner = entry.IsWinner,
                     Score = entry.Score,
-                    RewardCount = entry.Rewards == null ? 0 : entry.Rewards.Count,
+                    RewardCount = entry.RewardCount,
                 });
             }
         }
 
         var payload = new MatchSettledPayload
         {
-            MatchResultId = result.MatchResultId ?? string.Empty,
-            MatchId = result.MatchId ?? string.Empty,
-            Mode = result.Mode,
-            Region = result.Region,
-            Outcome = result.Outcome.ToString(),
-            SettledTime = result.SettledTime,
-            Entries = entries,
+            MatchResultId = matchResultId ?? string.Empty,
+            MatchId = matchId ?? string.Empty,
+            Mode = mode,
+            Region = region,
+            Outcome = outcome,
+            SettledTime = settledTime,
+            Entries = entryPayloads,
         };
         var auditFields = new Dictionary<string, string>
         {
-            { "MatchResultId", result.MatchResultId ?? string.Empty },
-            { "MatchId", result.MatchId ?? string.Empty },
-            { "Mode", result.Mode.ToString(CultureInfo.InvariantCulture) },
-            { "Region", result.Region.ToString(CultureInfo.InvariantCulture) },
-            { "Outcome", result.Outcome.ToString() },
-            { "EntryCount", entries.Count.ToString(CultureInfo.InvariantCulture) },
+            { "MatchResultId", matchResultId ?? string.Empty },
+            { "MatchId", matchId ?? string.Empty },
+            { "Mode", mode.ToString(CultureInfo.InvariantCulture) },
+            { "Region", region.ToString(CultureInfo.InvariantCulture) },
+            { "Outcome", outcome },
+            { "EntryCount", entryPayloads.Count.ToString(CultureInfo.InvariantCulture) },
             { "WinnerCount", winnerCount.ToString(CultureInfo.InvariantCulture) },
         };
         return new OnlineEvent
         {
             EventId = "evt-" + Guid.NewGuid().ToString("N"),
             EventType = MatchSettled,
-            OccurredTime = result.SettledTime > 0 ? result.SettledTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            OccurredTime = settledTime > 0 ? settledTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = result.TenantId,
-            AppId = result.AppId,
-            ServerId = result.ServerId,
+            TenantId = tenantId,
+            AppId = appId,
+            ServerId = serverId,
             PlayerId = 0,
             Source = Source,
             CorrelationId = correlationId ?? string.Empty,

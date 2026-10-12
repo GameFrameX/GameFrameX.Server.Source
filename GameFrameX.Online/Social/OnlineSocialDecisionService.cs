@@ -186,7 +186,14 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
             return OnlineResult<OnlineBlockEntry>.Ok(effective);
         }
 
-        await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateBlockChanged(effective, OnlineSocialEvents.BlockAdded, correlationId), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateBlockChanged(
+            effective.OwnerId,
+            effective.BlockedPlayerId,
+            effective.TenantId,
+            effective.AppId,
+            effective.ServerId,
+            OnlineSocialEvents.BlockAdded,
+            correlationId), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineBlockEntry>.Ok(effective);
     }
 
@@ -210,7 +217,14 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
         var removed = await _graphStore.RemoveBlockAsync(scope.TenantId, scope.AppId, scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
         if (removed && entry != null)
         {
-            await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateBlockChanged(entry, OnlineSocialEvents.BlockRemoved, correlationId), cancellationToken).ConfigureAwait(false);
+            await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateBlockChanged(
+                entry.OwnerId,
+                entry.BlockedPlayerId,
+                entry.TenantId,
+                entry.AppId,
+                entry.ServerId,
+                OnlineSocialEvents.BlockRemoved,
+                correlationId), cancellationToken).ConfigureAwait(false);
         }
 
         return OnlineResult<bool>.Ok(removed);
@@ -281,7 +295,15 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
             return OnlineResult<OnlineMuteEntry>.Ok(effective);
         }
 
-        await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateMuteChanged(effective, OnlineSocialEvents.MuteAdded, correlationId), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateMuteChanged(
+            effective.OwnerId,
+            effective.MutedPlayerId,
+            effective.ExpiresAtTime,
+            effective.TenantId,
+            effective.AppId,
+            effective.ServerId,
+            OnlineSocialEvents.MuteAdded,
+            correlationId), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineMuteEntry>.Ok(effective);
     }
 
@@ -305,7 +327,15 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
         var removed = await _graphStore.RemoveMuteAsync(scope.TenantId, scope.AppId, scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
         if (removed && entry != null)
         {
-            await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateMuteChanged(entry, OnlineSocialEvents.MuteRemoved, correlationId), cancellationToken).ConfigureAwait(false);
+            await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateMuteChanged(
+                entry.OwnerId,
+                entry.MutedPlayerId,
+                entry.ExpiresAtTime,
+                entry.TenantId,
+                entry.AppId,
+                entry.ServerId,
+                OnlineSocialEvents.MuteRemoved,
+                correlationId), cancellationToken).ConfigureAwait(false);
         }
 
         return OnlineResult<bool>.Ok(removed);
@@ -423,7 +453,17 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
         var effective = await _reportStore.SaveIfAbsentAsync(prototype, cancellationToken).ConfigureAwait(false);
         if (string.Equals(effective.ReportId, prototype.ReportId, StringComparison.Ordinal))
         {
-            await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateReportChanged(effective, correlationId), cancellationToken).ConfigureAwait(false);
+            await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateReportChanged(
+                effective.ReportId,
+                effective.ReporterId,
+                effective.ReportedPlayerId,
+                effective.Scene.ToString(),
+                effective.Reason.ToString(),
+                effective.State.ToString(),
+                effective.Resolution.ToString(),
+                effective.TenantId,
+                effective.AppId,
+                correlationId), cancellationToken).ConfigureAwait(false);
         }
 
         return OnlineResult<OnlineReportCase>.Ok(effective);
@@ -623,7 +663,17 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
             return OnlineResult<OnlineReportCase>.Ok(current);
         }
 
-        await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateReportChanged(effective, correlationId), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineSocialEvents.CreateReportChanged(
+            effective.ReportId,
+            effective.ReporterId,
+            effective.ReportedPlayerId,
+            effective.Scene.ToString(),
+            effective.Reason.ToString(),
+            effective.State.ToString(),
+            effective.Resolution.ToString(),
+            effective.TenantId,
+            effective.AppId,
+            correlationId), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineReportCase>.Ok(effective);
     }
 

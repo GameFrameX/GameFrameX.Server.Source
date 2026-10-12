@@ -30,6 +30,8 @@ using GameFrameX.Online.Social;
 
 namespace GameFrameX.Online.Runtime;
 
+using GameFrameX.Online.Contracts;
+
 /// <summary>
 /// 聊天审计投影（<c>query_chat_messages</c> 依赖事件投影——聊天 store 无跨频道枚举 API，
 /// 本投影订阅 <c>Online.Chat.MessageSent</c> 事件建立跨频道索引，查询时回读 store 补全正文与参与者）。

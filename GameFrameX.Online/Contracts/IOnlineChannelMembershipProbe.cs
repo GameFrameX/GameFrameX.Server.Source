@@ -27,46 +27,38 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Online.Social;
+namespace GameFrameX.Online.Contracts;
 
 /// <summary>
-/// 聊天频道类型（四类频道，成员资格来源各不相同，隐私边界由此划开）。
+/// 频道成员资格探针（Party / Group 频道成员资格的**唯一**来源）。
 /// <para>
-/// 维护约束（成员资格来源）：
-/// <list type="table">
-/// <item><term><see cref="Direct"/></term><description>成员 = 参与双方（无向对，A→B 与 B→A 落在**同一频道**，
-/// 否则历史会裂成两条单向流）；成员集合随频道记录落库。</description></item>
-/// <item><term><see cref="Party"/></term><description>成员 = 队伍成员，由队伍域通过
-/// <see cref="IOnlineChannelMembershipProbe"/> 提供（Chat 域不反向依赖队伍域）。</description></item>
-/// <item><term><see cref="Group"/></term><description>成员 = 群组成员，同一探针提供。</description></item>
-/// <item><term><see cref="Global"/></term><description>成员 = 同租户同 App 的全体玩家，**不看 ServerId**——
-/// 全局频道是 App 级公共空间，按区服切分会割裂公共舆论场。</description></item>
-/// </list>
+/// 维护约束（为什么是探针而不是把成员抄进频道记录）：队伍与群组的成员随时在变，
+/// 把成员集合冗余进频道记录就必须在每次成员变动时同步刷新——漏一次刷新，
+/// 已退队的玩家就还能读到队伍频道消息（隐私泄漏），且没有任何错误会暴露它。
+/// 因此每次读取都向归属域取**当前事实**。
 /// </para>
 /// <para>
-/// 维护约束：成员资格是**读取前置**，非成员一律 <c>ResourceNotFound</c>（反预言，不泄露频道存在性）；
-/// 新增频道类型必须同时给出成员资格来源与隐私边界，否则不得落地。
+/// 维护约束（依赖方向）：探针由归属域实现（队伍域、群组域各自实现本接口），
+/// Chat 域只依赖本接口，不反向依赖二者——依赖箭头单向，无环。
+/// </para>
+/// <para>
+/// 维护约束（未装配 = 拒绝，fail closed）：注入为 <c>null</c> 时 Party / Group 频道的成员资格
+/// **无法验证**，服务层必须拒绝（<c>StateNotReady</c>）而不是放行。放行等于把频道内容
+/// 广播给任意知道频道标识的玩家——成员资格不可验证时必须按「不可访问」处理。
 /// </para>
 /// </summary>
-public enum OnlineChatChannelKind
+public interface IOnlineChannelMembershipProbe
 {
     /// <summary>
-    /// 定向私聊频道（参与双方；受屏蔽、禁言、封禁三重裁决）。
+    /// 判定玩家当前是否为绑定主体的成员。
     /// </summary>
-    Direct = 0,
-
-    /// <summary>
-    /// 队伍频道（绑定 PartyId；受禁言、封禁裁决，不受屏蔽影响——同队已成事实，屏蔽不拆队）。
-    /// </summary>
-    Party = 1,
-
-    /// <summary>
-    /// 群组频道（绑定 GroupId；受禁言、封禁裁决）。
-    /// </summary>
-    Group = 2,
-
-    /// <summary>
-    /// 全局频道（App 级公共空间；受禁言、封禁、频控与内容审核裁决）。
-    /// </summary>
-    Global = 3,
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="kind">频道类型（只会是 <see cref="OnlineChatChannelKind.Party"/> 或
+    /// <see cref="OnlineChatChannelKind.Group"/>；Direct 与 Global 不走本探针）。</param>
+    /// <param name="boundId">绑定主体标识（PartyId 或 GroupId）。</param>
+    /// <param name="playerId">待判定的玩家。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>当前是成员返回 <c>true</c>。</returns>
+    Task<bool> IsChannelMemberAsync(long tenantId, long appId, OnlineChatChannelKind kind, string boundId, long playerId, CancellationToken cancellationToken = default);
 }

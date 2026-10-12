@@ -108,7 +108,7 @@ public sealed class OnlineSessionManager
         session.ConnectionId = connectionId;
         session.ConnectedAtTime = Now();
         await _store.AddOrUpdateAsync(session, cancellationToken);
-        await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(OnlineSessionEvents.SessionConnected, session, "connection established"), cancellationToken);
+        await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(OnlineSessionEvents.SessionConnected, session.Id, session.TenantId, session.AppId, session.ServerId, session.PlayerId, (int)session.State, (int)session.CloseReason, session.TokenGeneration, "connection established"), cancellationToken);
         return OnlineResult<bool>.Ok(true);
     }
 
@@ -149,7 +149,7 @@ public sealed class OnlineSessionManager
 
         session.State = OnlineSessionState.Active;
         await _store.AddOrUpdateAsync(session, cancellationToken);
-        await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(OnlineSessionEvents.SessionActive, session, "session active"), cancellationToken);
+        await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(OnlineSessionEvents.SessionActive, session.Id, session.TenantId, session.AppId, session.ServerId, session.PlayerId, (int)session.State, (int)session.CloseReason, session.TokenGeneration, "session active"), cancellationToken);
         return OnlineResult<bool>.Ok(true);
     }
 
@@ -237,7 +237,7 @@ public sealed class OnlineSessionManager
         session.ReconnectDeadlineAtTime = now + reconnectWindowSeconds * 1000L;
         session.ConnectionId = string.Empty;
         await _store.AddOrUpdateAsync(session, cancellationToken);
-        await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(OnlineSessionEvents.SessionReconnecting, session, "connection lost, reconnect window opened"), cancellationToken);
+        await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(OnlineSessionEvents.SessionReconnecting, session.Id, session.TenantId, session.AppId, session.ServerId, session.PlayerId, (int)session.State, (int)session.CloseReason, session.TokenGeneration, "connection lost, reconnect window opened"), cancellationToken);
         return OnlineResult<bool>.Ok(true);
     }
 
@@ -281,7 +281,7 @@ public sealed class OnlineSessionManager
         session.ConnectionId = connectionId;
         session.ReconnectDeadlineAtTime = 0;
         await _store.AddOrUpdateAsync(session, cancellationToken);
-        await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(OnlineSessionEvents.SessionConnected, session, "reconnected"), cancellationToken);
+        await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(OnlineSessionEvents.SessionConnected, session.Id, session.TenantId, session.AppId, session.ServerId, session.PlayerId, (int)session.State, (int)session.CloseReason, session.TokenGeneration, "reconnected"), cancellationToken);
         return OnlineResult<bool>.Ok(true);
     }
 
@@ -341,7 +341,7 @@ public sealed class OnlineSessionManager
         session.CurrentTokenHash = string.Empty;
         session.ConnectionId = string.Empty;
         await _store.AddOrUpdateAsync(session, cancellationToken);
-        await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(eventType, session, reason ?? string.Empty), cancellationToken);
+        await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(eventType, session.Id, session.TenantId, session.AppId, session.ServerId, session.PlayerId, (int)session.State, (int)session.CloseReason, session.TokenGeneration, reason ?? string.Empty), cancellationToken);
         return OnlineResult<bool>.Ok(true);
     }
 

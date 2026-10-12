@@ -218,7 +218,7 @@ public sealed class OnlineGrantService
         var scope = new OnlineScope(transaction.TenantId, transaction.AppId, transaction.InitiatingServerId, transaction.PlayerId);
         await _idempotencyService.CompleteAsync(scope, transaction.IdempotencyKey, EncodeReplayToken(transaction.TransactionId, OnlineAssetTransactionState.Succeeded), true, cancellationToken);
 
-        var changeEvent = OnlineAssetEvents.Create(transaction, entries);
+        var changeEvent = OnlineAssetEvents.Create(transaction.TenantId, transaction.AppId, transaction.InitiatingServerId, transaction.PlayerId, transaction.TransactionId, transaction.Operation.ToString(), transaction.Source.ToString(), transaction.BusinessOrderId, entries.Select(entry => (AssetKind: entry.AssetKind.ToString(), AssetId: entry.AssetId, Delta: entry.Delta, AmountBefore: entry.AmountBefore, AmountAfter: entry.AmountAfter)).ToList());
         await _eventPublisher.PublishAsync(changeEvent, cancellationToken);
 
         return OnlineResult<OnlineGrantResult>.Ok(new OnlineGrantResult { TransactionId = transaction.TransactionId, State = transaction.State, IsReplay = false, Entries = entries, });

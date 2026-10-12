@@ -26,10 +26,10 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Online.Events;
+namespace GameFrameX.Online.Presence;
 
 using System.Text.Json;
-using Presence;
+using Events;
 
 /// <summary>
 /// 在线状态域事件工厂（Presence 状态转换事件供下游与 Admin 消费）。
@@ -60,22 +60,22 @@ public static class OnlinePresenceEvents
     /// <param name="reason">变更原因描述。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent Create(long tenantId, long appId, long serverId, long playerId, string sessionId, OnlinePresenceState fromState, OnlinePresenceState toState, string reason, string correlationId = null)
+    public static OnlineEvent Create(long tenantId, long appId, long serverId, long playerId, string sessionId, string fromState, string toState, string reason, string correlationId = null)
     {
         var payload = new PresenceEventPayload
         {
             SessionId = sessionId ?? string.Empty,
             PlayerId = playerId,
-            FromState = fromState.ToString(),
-            ToState = toState.ToString(),
+            FromState = fromState ?? string.Empty,
+            ToState = toState ?? string.Empty,
             Reason = reason ?? string.Empty,
         };
         var auditFields = new Dictionary<string, string>
         {
             { "SessionId", sessionId ?? string.Empty },
             { "PlayerId", playerId.ToString(System.Globalization.CultureInfo.InvariantCulture) },
-            { "FromState", fromState.ToString() },
-            { "ToState", toState.ToString() },
+            { "FromState", fromState ?? string.Empty },
+            { "ToState", toState ?? string.Empty },
             { "Reason", reason ?? string.Empty },
         };
         return new OnlineEvent

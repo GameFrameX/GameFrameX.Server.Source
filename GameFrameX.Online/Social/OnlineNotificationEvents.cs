@@ -27,10 +27,10 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Online.Events;
+namespace GameFrameX.Online.Social;
 
 using System.Text.Json;
-using Social;
+using Events;
 
 /// <summary>
 /// 通知域事件工厂（通知状态变更事件供下游与 Admin 消费）。
@@ -52,26 +52,33 @@ public static class OnlineNotificationEvents
     /// <summary>
     /// 构造通知状态变更事件。
     /// </summary>
-    /// <param name="notification">变更后的通知快照。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="serverId">来源区服标识。</param>
+    /// <param name="playerId">接收者玩家标识。</param>
+    /// <param name="notificationId">通知标识（可空；载荷落空字符串）。</param>
+    /// <param name="kind">通知来源分类名。</param>
+    /// <param name="state">通知状态名。</param>
+    /// <param name="attemptCount">累计推送尝试次数。</param>
     /// <param name="correlationId">关联标识（可空）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateNotificationChanged(OnlineNotification notification, string correlationId = null)
+    public static OnlineEvent CreateNotificationChanged(long tenantId, long appId, long serverId, long playerId, string notificationId, string kind, string state, int attemptCount, string correlationId = null)
     {
         var payload = new NotificationChangedPayload
         {
-            NotificationId = notification.NotificationId ?? string.Empty,
-            PlayerId = notification.PlayerId,
-            Kind = notification.Kind.ToString(),
-            State = notification.State.ToString(),
-            AttemptCount = notification.AttemptCount,
+            NotificationId = notificationId ?? string.Empty,
+            PlayerId = playerId,
+            Kind = kind,
+            State = state,
+            AttemptCount = attemptCount,
         };
         var auditFields = new Dictionary<string, string>
         {
             { "NotificationId", payload.NotificationId },
-            { "PlayerId", notification.PlayerId.ToString(System.Globalization.CultureInfo.InvariantCulture) },
-            { "Kind", payload.Kind },
-            { "State", payload.State },
-            { "AttemptCount", payload.AttemptCount.ToString(System.Globalization.CultureInfo.InvariantCulture) },
+            { "PlayerId", playerId.ToString(System.Globalization.CultureInfo.InvariantCulture) },
+            { "Kind", kind },
+            { "State", state },
+            { "AttemptCount", attemptCount.ToString(System.Globalization.CultureInfo.InvariantCulture) },
         };
         return new OnlineEvent
         {
@@ -79,10 +86,10 @@ public static class OnlineNotificationEvents
             EventType = NotificationChanged,
             OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = notification.TenantId,
-            AppId = notification.AppId,
-            ServerId = notification.ServerId,
-            PlayerId = notification.PlayerId,
+            TenantId = tenantId,
+            AppId = appId,
+            ServerId = serverId,
+            PlayerId = playerId,
             Source = Source,
             CorrelationId = correlationId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),

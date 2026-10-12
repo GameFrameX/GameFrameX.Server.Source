@@ -26,13 +26,14 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+
+namespace GameFrameX.Online.HotfixRollback;
+
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json;
-using GameFrameX.Online.HotfixRollback;
-
-namespace GameFrameX.Online.Events;
+using Events;
 
 /// <summary>
 /// Hotfix 域事件工厂（统一信封事件，<c>Source = "online-hotfix"</c>，CorrelationId = 版本号）。
@@ -57,35 +58,38 @@ public static class OnlineHotfixEvents
     /// <summary>
     /// 构造版本清单登记事件。
     /// </summary>
-    /// <param name="manifest">已登记的版本清单。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="version">版本号。</param>
+    /// <param name="registeredTime">登记时刻（UTC 毫秒）。</param>
+    /// <param name="messageCount">协议消息契约行数（清单行集合为空时传 0）。</param>
     /// <returns>事件信封实例。</returns>
-    public static OnlineEvent CreateVersionRegistered(OnlineHotfixProtocolManifest manifest)
+    public static OnlineEvent CreateVersionRegistered(long tenantId, long appId, string version, long registeredTime, int messageCount)
     {
-        var messageCount = manifest.Messages == null ? 0 : manifest.Messages.Count;
         var payload = new VersionRegisteredPayload
         {
-            Version = manifest.Version ?? string.Empty,
+            Version = version ?? string.Empty,
             MessageCount = messageCount,
-            RegisteredTime = manifest.RegisteredTime,
+            RegisteredTime = registeredTime,
         };
         var auditFields = new Dictionary<string, string>
         {
-            { "Version", manifest.Version ?? string.Empty },
+            { "Version", version ?? string.Empty },
             { "MessageCount", messageCount.ToString(CultureInfo.InvariantCulture) },
-            { "RegisteredTime", manifest.RegisteredTime.ToString(CultureInfo.InvariantCulture) },
+            { "RegisteredTime", registeredTime.ToString(CultureInfo.InvariantCulture) },
         };
         return new OnlineEvent
         {
             EventId = "evt-" + Guid.NewGuid().ToString("N"),
             EventType = VersionRegistered,
-            OccurredTime = manifest.RegisteredTime > 0 ? manifest.RegisteredTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            OccurredTime = registeredTime > 0 ? registeredTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             SchemaVersion = 1,
-            TenantId = manifest.TenantId,
-            AppId = manifest.AppId,
+            TenantId = tenantId,
+            AppId = appId,
             ServerId = 0,
             PlayerId = 0,
             Source = Source,
-            CorrelationId = manifest.Version ?? string.Empty,
+            CorrelationId = version ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),
             PayloadAuditFields = auditFields,
         };

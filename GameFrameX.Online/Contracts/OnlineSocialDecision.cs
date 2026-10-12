@@ -27,9 +27,8 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Online.Social;
+namespace GameFrameX.Online.Contracts;
 
-using Contracts;
 
 /// <summary>
 /// 社交互动裁决结果（三通路共用的「是否允许 + 拒绝码 + 拒绝原因」）。

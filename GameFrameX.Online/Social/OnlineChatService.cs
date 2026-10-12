@@ -298,7 +298,7 @@ public sealed class OnlineChatService
         {
             // 只有真的新增才发事件：并发重放会在存储临界区内被去重键拦下并返回既有消息，
             // 无条件发布会让「消息已存在」这件事对外表现为第二次 MessageSent。
-            await _eventPublisher.PublishAsync(OnlineChatEvents.CreateMessageSent(stored, correlationId), cancellationToken).ConfigureAwait(false);
+            await _eventPublisher.PublishAsync(OnlineChatEvents.CreateMessageSent(stored.TenantId, stored.AppId, stored.MessageId, stored.ChannelId, stored.ChannelKind.ToString(), stored.SenderId, stored.SentAtTime, stored.Sequence, correlationId), cancellationToken).ConfigureAwait(false);
         }
 
         return OnlineResult<OnlineChatMessage>.Ok(stored);
@@ -439,7 +439,7 @@ public sealed class OnlineChatService
             return OnlineResult<OnlineChatReadMark>.Ok(converged);
         }
 
-        await _eventPublisher.PublishAsync(OnlineChatEvents.CreateReadMarkUpdated(stored, correlationId), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineChatEvents.CreateReadMarkUpdated(stored.TenantId, stored.AppId, stored.ChannelId, stored.PlayerId, stored.LastReadMessageId, stored.LastReadSentAtTime, stored.LastReadSequence, correlationId), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineChatReadMark>.Ok(stored);
     }
 
@@ -492,7 +492,7 @@ public sealed class OnlineChatService
             return OnlineResult<OnlineChatMessage>.Ok(RedactRecalled(current));
         }
 
-        await _eventPublisher.PublishAsync(OnlineChatEvents.CreateMessageRecalled(updated, correlationId), cancellationToken).ConfigureAwait(false);
+        await _eventPublisher.PublishAsync(OnlineChatEvents.CreateMessageRecalled(updated.TenantId, updated.AppId, updated.MessageId, updated.ChannelId, updated.SenderId, updated.RecalledByPlayerId, updated.RecalledAtTime, correlationId), cancellationToken).ConfigureAwait(false);
         return OnlineResult<OnlineChatMessage>.Ok(RedactRecalled(updated));
     }
 
