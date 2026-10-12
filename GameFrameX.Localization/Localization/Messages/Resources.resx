@@ -1250,6 +1250,33 @@
   <data name="Database.Provider.NotDatabaseService" xml:space="preserve">
     <value>The database provider type '{0}' does not implement the IDatabaseService interface.</value>
   </data>
+  <data name="Database.Provider.SqliteBoundaryWarning" xml:space="preserve">
+    <value>SQLite boundary warning: (1) complex conditional queries are client-evaluated and may full-scan; (2) the write path is single-connection serialized; (3) the topology boundary is single-process (cross-process discovery/routing unavailable, heartbeat no-op); (4) availability monitoring always reports Healthy. Production-scale usage is at the operator's own risk.</value>
+  </data>
+  <data name="Database.Provider.SqliteBanner" xml:space="preserve">
+    <value>Database provider=Sqlite (embedded, single-process topology, startup boundary warning).</value>
+  </data>
+  <data name="Database.Provider.SqliteDataFileInfo" xml:space="preserve">
+    <value>SQLite data file: {0} (directory writable ✓ / file read-write ✓).</value>
+  </data>
+  <data name="Database.Provider.SqliteDataFileInfoMemory" xml:space="preserve">
+    <value>SQLite in-memory mode: no data file and nothing is persisted — all data is lost when the process exits.</value>
+  </data>
+  <data name="Database.Provider.SqliteDataSourceMissing" xml:space="preserve">
+    <value>The SQLite connection string is missing 'Data Source=' (examples: Data Source=:memory: or Data Source=/abs/path/game.db). Current connection string: {0}</value>
+  </data>
+  <data name="Database.Provider.SqlitePathNotAccessible" xml:space="preserve">
+    <value>The SQLite data file path is not accessible: {0} (failing stage: {1}).</value>
+  </data>
+  <data name="Database.Sqlite.SaveBulkBatchNotAcknowledged" xml:space="preserve">
+    <value>SqliteDbService.SaveBulkAsync batch not acknowledged. State name: {0}, batch index: {1}, batch count: {2}</value>
+  </data>
+  <data name="Database.Sqlite.SaveBulkBatchFailed" xml:space="preserve">
+    <value>SqliteDbService.SaveBulkAsync batch failed. State name: {0}, batch index: {1}, batch count: {2}, error: {3}</value>
+  </data>
+  <data name="Database.Sqlite.ServiceUnavailable" xml:space="preserve">
+    <value>SqliteDbService is not open yet (call Open first).</value>
+  </data>
   <data name="Database.BatchSizeInvalid" xml:space="preserve">
     <value>Batch size must be greater than zero.</value>
   </data>

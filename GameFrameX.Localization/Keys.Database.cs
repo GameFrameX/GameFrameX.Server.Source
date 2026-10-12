@@ -198,6 +198,57 @@ public static partial class Keys
         /// </remarks>
         public const string ProviderNotDatabaseService = "Database.Provider.NotDatabaseService";
         /// <summary>
+        /// SQLite 边界警告：① 复杂条件查询为客户端求值（可能全表扫描）；② 写路径单连接串行；③ 拓扑边界为单进程（跨进程发现/路由不可用，心跳 no-op）；④ 可用性监控恒报 Healthy。生产规模化使用风险由使用方自担。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.Provider.SqliteBoundaryWarning
+        /// 用途: SqliteDbService.Open 成功路径的启动边界警告（Warning 级，进程内仅一次；Amendment 3 警告制核心）
+        /// </remarks>
+        public const string SqliteBoundaryWarning = "Database.Provider.SqliteBoundaryWarning";
+        /// <summary>
+        /// 当前数据库提供者 provider=Sqlite（嵌入式，单进程拓扑，启动有边界警告）。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.Provider.SqliteBanner
+        /// 用途: SQLite 启用时常规启动 banner 的 provider 字样（运维面板/日志头可见，误配缓解）
+        /// </remarks>
+        public const string SqliteBanner = "Database.Provider.SqliteBanner";
+        /// <summary>
+        /// SQLite 数据文件：{0}（目录可写 ✓ / 文件可读写 ✓）。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.Provider.SqliteDataFileInfo
+        /// 用途: SqliteDbService.Open 成功后的数据文件全路径信息行（Info 级，每次 Open 各一条；Amendment 4）
+        /// 参数: {0} - 解析后的数据文件全路径
+        /// </remarks>
+        public const string SqliteDataFileInfo = "Database.Provider.SqliteDataFileInfo";
+        /// <summary>
+        /// SQLite 内存模式：无数据文件，数据不持久化——进程退出即全部丢失。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.Provider.SqliteDataFileInfoMemory
+        /// 用途: :memory: 连接串的 Open 信息行变体（后果显式化，防「跑完教程以为有存档」；跳过文件校验）
+        /// </remarks>
+        public const string SqliteDataFileInfoMemory = "Database.Provider.SqliteDataFileInfoMemory";
+        /// <summary>
+        /// SQLite 连接串缺少“Data Source=”（示例：Data Source=:memory: 或 Data Source=/abs/path/game.db）。当前连接串：{0}
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.Provider.SqliteDataSourceMissing
+        /// 用途: 连接串缺 Data Source 时的本地化 fail-fast（报错即文档，附两示例；Amendment 4）
+        /// 参数: {0} - 当前连接串
+        /// </remarks>
+        public const string SqliteDataSourceMissing = "Database.Provider.SqliteDataSourceMissing";
+        /// <summary>
+        /// SQLite 数据文件路径不可用：{0}（失败环节：{1}）。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.Provider.SqlitePathNotAccessible
+        /// 用途: 目录不可创建/不可写或文件不可读写/被占用时的本地化 fail-fast（含全路径与失败环节，不等到首次写失败；Amendment 4）
+        /// 参数: {0} - 数据文件全路径, {1} - 失败环节标记（directory-create / directory-write-probe / file-read-write-probe / path-resolve）
+        /// </remarks>
+        public const string SqlitePathNotAccessible = "Database.Provider.SqlitePathNotAccessible";
+        /// <summary>
         /// 批处理大小必须大于 0。
         /// </summary>
         /// <remarks>
@@ -500,6 +551,44 @@ public static partial class Keys
             /// 参数: {0} - 广播端口环境变量名
             /// </remarks>
             public const string DiscoveryNoAdvertisePort = "Database.Mongo.DiscoveryNoAdvertisePort";
+        }
+
+        /// <summary>
+        /// SQLite 载体日志键（C222）。
+        /// </summary>
+        /// <remarks>
+        /// Carrier log keys for the SQLite adapter (C222).
+        /// </remarks>
+        public static class Sqlite
+        {
+            /// <summary>
+            /// SqliteDbService.SaveBulkAsync 批次未被确认。状态名：{0}，批次索引：{1}，批次总数：{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.Sqlite.SaveBulkBatchNotAcknowledged
+            /// 用途: SaveBulkAsync 批次受影响行数不足时的 Error 日志（逐批隔离继续）
+            /// 参数: {0} - 状态名, {1} - 批次索引, {2} - 批次总数
+            /// </remarks>
+            public const string SaveBulkBatchNotAcknowledged = "Database.Sqlite.SaveBulkBatchNotAcknowledged";
+
+            /// <summary>
+            /// SqliteDbService.SaveBulkAsync 批次失败。状态名：{0}，批次索引：{1}，批次总数：{2}，错误：{3}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.Sqlite.SaveBulkBatchFailed
+            /// 用途: SaveBulkAsync 批次写入异常时的 Error 日志（逐批隔离继续）
+            /// 参数: {0} - 状态名, {1} - 批次索引, {2} - 批次总数, {3} - 异常
+            /// </remarks>
+            public const string SaveBulkBatchFailed = "Database.Sqlite.SaveBulkBatchFailed";
+
+            /// <summary>
+            /// SqliteDbService 尚未打开（请先调用 Open）。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.Sqlite.ServiceUnavailable
+            /// 用途: Open 之前调用读写的编程错误护栏（启动路径 Open 失败即 fail-fast，正常不可达）
+            /// </remarks>
+            public const string ServiceUnavailable = "Database.Sqlite.ServiceUnavailable";
         }
     }
 }

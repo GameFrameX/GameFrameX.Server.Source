@@ -272,6 +272,11 @@ public static class GameApp
 
         // Localization: StartUp.StartupOver - 服务器启动完成。
         LogHelper.Info(LocalizationService.GetString(Keys.StartUp.StartupOver));
+        if (launcherOptions != null && launcherOptions.DatabaseProvider == DatabaseProviderType.Sqlite)
+        {
+            // Localization: Database.Provider.SqliteBanner - 当前数据库提供者 provider=Sqlite（嵌入式，单进程拓扑，启动有边界警告）。
+            LogHelper.Info(LocalizationService.GetString(Keys.Database.SqliteBanner));
+        }
         ConsoleHelper.ConsoleLogo();
 
         // 6. 等待启动任务完成
