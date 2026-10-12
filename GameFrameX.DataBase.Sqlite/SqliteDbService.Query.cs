@@ -1075,6 +1075,7 @@ public sealed partial class SqliteDbService
     /// check compares against the loaded snapshot instead of lazily baselining after mutations).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="state">读取到的状态，可为 null / The loaded state, may be null</param>
     /// <param name="isCreateIfNotExists">未找到时是否创建新实例 / Whether to create when not found</param>
     /// <param name="id">数据ID / The document ID</param>
     /// <param name="createWithExplicitId">创建时是否使用显式 ID / Whether to create with an explicit ID</param>
