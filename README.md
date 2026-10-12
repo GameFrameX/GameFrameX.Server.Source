@@ -112,7 +112,7 @@ GameFrameX Server is a high-performance, cross-platform game server framework bu
 ### Requirements
 
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) only. .NET 8/9 are not supported.
-- [MongoDB 4.x+](https://www.mongodb.com/try/download/community) (default provider; alternatively PostgreSQL via `--DatabaseProvider=PostgreSql`)
+- Zero-dependency start: nothing else (SQLite is embedded). Full production providers remain MongoDB (default) or PostgreSQL via `--DatabaseProvider`.
 - Visual Studio 2022 or JetBrains Rider (recommended)
 
 ### Installation
@@ -123,27 +123,30 @@ GameFrameX Server is a high-performance, cross-platform game server framework bu
    cd GameFrameX.Server.Source
    ```
 
-2. **Restore Dependencies**
+2. **Five-Minute Zero-Dependency Start (SQLite)**
+
+   No database install, no Docker — one command boots all roles in a single process:
    ```bash
-   dotnet restore
+   dotnet run --project GameFrameX.Launcher -- \
+       --AllInOne \
+       --DatabaseProvider=Sqlite \
+       --DataBaseUrl="Data Source=data/gameframex.db"
    ```
+   - The startup log prints the HTTP entry (`http://localhost:28080/health` for the health check) and the resolved **absolute path of the data file** with its read/write checks.
+   - Data lands in `data/gameframex.db` under the working directory (aligned with the Docker `/app/data` volume root). Stop and restart the process — accounts and state are still there.
+   - Want an ephemeral scratch database instead? Use `--DataBaseUrl="Data Source=:memory:"` — the startup log then warns that **nothing is persisted** (everything is lost when the process exits).
+   - See [SQLite Provider Boundaries](#sqlite-provider-boundaries) before scaling this beyond a single process.
 
 3. **Build the Project**
    ```bash
    dotnet build
    ```
 
-4. **Start MongoDB**
+4. **Start with MongoDB / PostgreSQL (full providers)**
    ```bash
-   # Local installation
-   mongod --dbpath /path/to/data
-
-   # Or use Docker
+   # MongoDB (default provider)
    docker run -d -p 27017:27017 --name mongo mongo:8.2
-   ```
 
-5. **Run the Server**
-   ```bash
    dotnet run --project GameFrameX.Launcher -- \
        --ServerType=Game \
        --ServerId=1000 \
@@ -152,10 +155,29 @@ GameFrameX Server is a high-performance, cross-platform game server framework bu
        --DataBaseUrl=mongodb://127.0.0.1:27017 \
        --DataBaseName=gameframex
    ```
+   PostgreSQL: add `--DatabaseProvider=PostgreSql` and point `--DataBaseUrl` at your instance.
 
-6. **Verify Startup**
+5. **Verify Startup**
     - Health check: `http://localhost:28080/health` (liveness probe: `/alive`)
     - Check console logs to confirm successful startup
+
+### SQLite Provider Boundaries
+
+SQLite (`--DatabaseProvider=Sqlite`) is positioned for quick starts, development evaluation, and
+small single-machine deployments. Every startup prints a one-time boundary warning; the hard
+boundaries are:
+
+1. **Client-side query evaluation** — complex conditional queries evaluate in C# (a superset of the
+   Mongo/PG translatable set) and may full-scan.
+2. **Single-connection serialized writes** — the write path runs on one connection.
+3. **Single-process topology** — cross-process discovery/routing is unavailable (the discovery layer
+   runs in-process with a self-referential route table; heartbeats are no-ops).
+4. **Availability always reports Healthy** — an embedded engine has no remote-failure semantics.
+
+Production-scale usage is at the operator's own risk. File-mode tips: prefer a local volume (WAL on
+network/SMB shares risks corruption), and prefer forward slashes in custom absolute paths
+(`Data Source=/abs/path/game.db`) — one syntax that works on every platform; drive-letter backslash
+paths are Windows-only and a wrong one surfaces immediately in the startup full-path log.
 
 ---
 

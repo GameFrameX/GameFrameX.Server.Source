@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Added
+
+* SQLite 嵌入式零依赖起步 Provider（C222）：新工程 GameFrameX.DataBase.Sqlite（手写 Microsoft.Data.Sqlite，无 EF；每状态类型一张 (id INTEGER PRIMARY KEY, doc TEXT)，id 等值提取下推 + 剩余 filter 客户端求值，软删/时间戳语义对齐 Mongo/PG）；DatabaseProviderType.Sqlite + 双 resolver 映射；GameFrameX.Discovery 增 InProcDiscoveryRuntime（单进程自指路由表，心跳 no-op）；启动警告制（四条硬边界 + 风险自担，进程内仅一次）+ 数据文件全路径信息行 + 路径可写校验 fail-fast；启动 banner 携带 provider=Sqlite；两仓 quick_start-game.bat 改零依赖命令并清除 Atlas 凭据；Dockerfile /app/data 归属 $APP_UID。定位：快速入门 / 开发评估 / 单机小规模（单进程拓扑），一条命令起服：`--AllInOne --DatabaseProvider=Sqlite --DataBaseUrl="Data Source=data/gameframex.db"`
+
 ### Breaking
 
 * MessageOperationType 完全退役（C205）：删除枚举与特性第二参数、MessageProtoHelper.OperationType 注册表与 GetMessageOperationType、INetworkMessageHeader/MessageObjectHeader/MessageObject 的 OperationType 属性链与日志 OpType 字段；心跳判定统一改型为 MessageProtoHelper.IsHeartbeat(MessageType)（IHeartBeatMessage 标记派生）。包头 14 字节长度不变，第 5 字节退役为保留字节（恒 0），线上字节级兼容；对外为源码级破坏性（公共属性/方法/枚举删除）
