@@ -304,49 +304,49 @@ public sealed class OnlineMatchListingService
         switch (listing.JoinPolicy)
         {
             case OnlineJoinPolicy.Public:
-            {
-                return null;
-            }
+                {
+                    return null;
+                }
 
             case OnlineJoinPolicy.PartyOnly:
-            {
-                if (members.Count < 2)
                 {
-                    return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.StateOperationForbidden, "该列表项仅接受整队加入");
-                }
+                    if (members.Count < 2)
+                    {
+                        return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.StateOperationForbidden, "该列表项仅接受整队加入");
+                    }
 
-                return null;
-            }
+                    return null;
+                }
 
             case OnlineJoinPolicy.InviteOnly:
-            {
-                foreach (var memberId in members)
                 {
-                    if (!listing.InvitedPlayerIds.Contains(memberId))
+                    foreach (var memberId in members)
                     {
-                        return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.StateOperationForbidden, "加入名单未包含全部成员");
+                        if (!listing.InvitedPlayerIds.Contains(memberId))
+                        {
+                            return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.StateOperationForbidden, "加入名单未包含全部成员");
+                        }
                     }
-                }
 
-                return null;
-            }
+                    return null;
+                }
 
             case OnlineJoinPolicy.Password:
-            {
-                if (string.IsNullOrEmpty(password) || password != listing.Password)
                 {
-                    return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.ParameterInvalid, "加入密码不正确");
+                    if (string.IsNullOrEmpty(password) || password != listing.Password)
+                    {
+                        return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.ParameterInvalid, "加入密码不正确");
+                    }
+
+                    return null;
                 }
 
-                return null;
-            }
-
             default:
-            {
-                // 未登记策略一律拒绝，且与其余三条拒绝分支同码：这是列表项自身的配置问题，
-                // 不是调用方参数问题——用 4xxx 会让客户端误以为改请求就能通过。
-                return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.StateOperationForbidden, "未知的加入策略");
-            }
+                {
+                    // 未登记策略一律拒绝，且与其余三条拒绝分支同码：这是列表项自身的配置问题，
+                    // 不是调用方参数问题——用 4xxx 会让客户端误以为改请求就能通过。
+                    return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.StateOperationForbidden, "未知的加入策略");
+                }
         }
     }
 

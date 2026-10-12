@@ -329,7 +329,7 @@ public class ServerComponentAgent : StateComponentAgent<ServerComponent, ServerS
             // Localization: Hotfix.Server.CrossDayTimerExecuted - ServerCompAgent.CrossDayTimeHandler.跨天定时器执行{0}
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Hotfix.Server.CrossDayTimerExecuted, TimerHelper.CurrentDateTimeWithUtcFormat()));
             var crossDays = TimerHelper.GetCrossDaysWithUtc(agent.State.FirstStartTime);
-            
+
             await ActorManager.RoleCrossDay(crossDays);
             await ActorManager.CrossDay(crossDays, GlobalConst.ActorTypeServer);
         }

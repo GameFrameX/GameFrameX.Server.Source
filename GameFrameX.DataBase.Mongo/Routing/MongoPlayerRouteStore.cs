@@ -73,7 +73,7 @@ public sealed class MongoPlayerRouteStore : IPlayerRouteStore
     /// <remarks>
     /// Creates the playerId unique index and drops the legacy lastSeenAt TTL index
     /// (client-side expiry replaced the server-side one), idempotently.
-/// </remarks>
+    /// </remarks>
     /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
     /// <returns>异步任务 / Async task</returns>
     public Task EnsureSchemaAsync(CancellationToken cancellationToken = default)

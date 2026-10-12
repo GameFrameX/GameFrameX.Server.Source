@@ -29,6 +29,7 @@
 
 
 namespace GameFrameX.Hotfix.Logic.Http;
+
 using GameFrameX.Hotfix.Logic.Player.Friend;
 
 /// <summary>

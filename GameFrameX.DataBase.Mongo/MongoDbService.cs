@@ -105,7 +105,7 @@ public sealed partial class MongoDbService : IDatabaseService
     /// <remarks>
     /// Gets or sets the currently used MongoDB database configuration options.
     /// </remarks>
-    public DbOptions Options{ get; private set; }
+    public DbOptions Options { get; private set; }
 
     /// <summary>
     /// 获取当前数据库可用性状态。

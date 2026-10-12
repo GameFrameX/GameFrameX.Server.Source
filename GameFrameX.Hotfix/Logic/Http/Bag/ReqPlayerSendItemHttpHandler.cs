@@ -149,7 +149,7 @@ public sealed class ReqPlayerSendItemRequest : HttpMessageRequestBase
     [Range(1, long.MaxValue)]
     public long PlayerId { get; set; }
 
-    [Required] [Description("道具列表")] public Dictionary<int, long> Items { get; set; } = new Dictionary<int, long>();
+    [Required][Description("道具列表")] public Dictionary<int, long> Items { get; set; } = new Dictionary<int, long>();
 }
 
 public sealed class ReqPlayerSendItemResponse : HttpMessageResponseBase

@@ -227,7 +227,7 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
         }
 
         var controlDatabase = CreateControlDatabase();
-            var collection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(DiscoveryStorageNaming.TableName<ServerHeartbeatEntity>());
+        var collection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(DiscoveryStorageNaming.TableName<ServerHeartbeatEntity>());
         var events = new RecordingInstanceEvents();
         using (var watcher = new DiscoveryWatcher(new MongoHeartbeatStore(controlDatabase), TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(5)))
         {
@@ -267,7 +267,7 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
         }
 
         var controlDatabase = CreateControlDatabase();
-            var collection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(DiscoveryStorageNaming.TableName<ServerHeartbeatEntity>());
+        var collection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(DiscoveryStorageNaming.TableName<ServerHeartbeatEntity>());
         var events = new RecordingInstanceEvents();
         using (var watcher = new DiscoveryWatcher(new MongoHeartbeatStore(controlDatabase), TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(5)))
         {
@@ -326,7 +326,7 @@ public sealed class MongoEndpointIntegrationTests : IDisposable
         }
 
         var controlDatabase = CreateControlDatabase();
-            var collection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(DiscoveryStorageNaming.TableName<ServerHeartbeatEntity>());
+        var collection = controlDatabase.GetCollection<MongoDB.Bson.BsonDocument>(DiscoveryStorageNaming.TableName<ServerHeartbeatEntity>());
         var events = new RecordingInstanceEvents();
         using (var watcher = new DiscoveryWatcher(new MongoHeartbeatStore(controlDatabase), TimeSpan.FromMilliseconds(150), TimeSpan.FromSeconds(5)))
         {

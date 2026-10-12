@@ -115,7 +115,7 @@ public sealed class TcpEnvelopeForwarder : IEnvelopeForwarder, IDisposable
         ArgumentNullException.ThrowIfNull(envelope);
 
         var endpointKey = $"{endpoint.Host}:{endpoint.Port}";
-        var connection = _endpointConnections.GetOrAdd(endpointKey, delegate(string key) { return new EndpointConnection(); });
+        var connection = _endpointConnections.GetOrAdd(endpointKey, delegate (string key) { return new EndpointConnection(); });
         var envelopeMessage = new RoleRouteEnvelopeMessage
         {
             TargetRole = envelope.TargetRole,

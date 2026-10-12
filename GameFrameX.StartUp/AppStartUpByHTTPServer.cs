@@ -520,6 +520,7 @@ public abstract partial class AppStartUpBase
     /// <param name="httpFactory">HTTP 处理器工厂 / HTTP handler factory</param>
     /// <param name="aopHandlerTypes">AOP 处理器列表 / AOP handler list</param>
     /// <param name="development">是否为开发环境 / Whether it is development environment</param>
+    /// <param name="registeredRouteKeys">已注册路由键集合，用于去重 / The set of registered route keys, used for deduplication</param>
     private static void RegisterHandlerRoute(WebApplication app, HttpMessageMappingAttribute mappingAttribute, string cmd, Func<string, BaseHttpHandler> httpFactory, List<IHttpAopHandler> aopHandlerTypes, bool development, ISet<string> registeredRouteKeys)
     {
         var apiPath = $"{GlobalSettings.CurrentSetting.HttpUrl}{cmd}";

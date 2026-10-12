@@ -1099,33 +1099,33 @@ public sealed class MongoDbServiceQueryTests
                 switch (i % 3)
                 {
                     case 0:
-                    {
-                        var loaded = await writer.FindAsync<MongoQueryTestState>(targetId, isCreateIfNotExists: false);
-                        if (loaded != null)
                         {
-                            loaded.LoadFromDbPostHandler();
-                            loaded.Score = 5000 + i;
-                            await writer.UpdateAsync(loaded);
-                        }
+                            var loaded = await writer.FindAsync<MongoQueryTestState>(targetId, isCreateIfNotExists: false);
+                            if (loaded != null)
+                            {
+                                loaded.LoadFromDbPostHandler();
+                                loaded.Score = 5000 + i;
+                                await writer.UpdateAsync(loaded);
+                            }
 
-                        break;
-                    }
+                            break;
+                        }
                     case 1:
-                    {
-                        await writer.DeleteListIdAsync<MongoQueryTestState>(new[] { targetId });
-                        break;
-                    }
-                    default:
-                    {
-                        await writer.AddOrUpdateAsync(new MongoQueryTestState
                         {
-                            Id = targetId,
-                            Name = $"seeded-revive-{targetId}",
-                            Group = 100,
-                            Score = 8000 + i,
-                        });
-                        break;
-                    }
+                            await writer.DeleteListIdAsync<MongoQueryTestState>(new[] { targetId });
+                            break;
+                        }
+                    default:
+                        {
+                            await writer.AddOrUpdateAsync(new MongoQueryTestState
+                            {
+                                Id = targetId,
+                                Name = $"seeded-revive-{targetId}",
+                                Group = 100,
+                                Score = 8000 + i,
+                            });
+                            break;
+                        }
                 }
             }
 

@@ -17,8 +17,8 @@ namespace GameFrameX.Discovery.Routing;
 /// implementation in <c>GameFrameX.Apps</c> is the in-process
 /// <c>SessionManager.PlayerRouteMap</c>; it is injected into
 /// the Mongo/PostgreSql player-route resolvers at launch time so the resolver does
-/// not depend on the host application layer. Returning <c>false</c> (or
-/// <paramref name="info"/> with <see cref="PlayerRouteInfo.IsOnline"/> = false)
+/// not depend on the host application layer. Returning <c>false</c> (or the
+/// <c>info</c> result of <see cref="TryGetOnline"/> with <see cref="PlayerRouteInfo.IsOnline"/> = false)
 /// makes the resolver fall through to the Tier 2 control-database lookup.
 /// </remarks>
 public interface IPlayerRouteFastPath

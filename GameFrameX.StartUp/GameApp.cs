@@ -381,7 +381,7 @@ public static class GameApp
     /// <c>Setting.ServerType</c> always observe the single current role name instead of the raw
     /// comma-separated CLI value (e.g. "Game,Social"). When the launcher options themselves are
     /// unavailable (argument parsing failed), <c>null</c> is returned so the role's
-    /// <see cref="AppStartUpBase.Init"/> override creates its own role-level defaults.
+    /// <see cref="AppStartUpBase.Init()"/> override creates its own role-level defaults.
     /// </remarks>
     /// <param name="serverType">服务器类型标识符 / The server type identifier</param>
     /// <param name="appSettings">配置中的应用程序设置集合 / Collection of application settings from configuration</param>

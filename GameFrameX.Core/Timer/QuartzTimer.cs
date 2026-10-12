@@ -739,7 +739,6 @@ public static class QuartzTimer
             /// <summary>
             /// 判断日志级别是否启用（Warning 及以上）
             /// </summary>
-            /// <typeparam name="TState">状态类型 / State type</typeparam>
             /// <param name="logLevel">日志级别 / Log level</param>
             /// <returns>Warning 及以上返回 true / true for Warning and above</returns>
             public bool IsEnabled(LogLevel logLevel)
@@ -772,8 +771,8 @@ public static class QuartzTimer
 
                 if (exception != null)
                 {
-                // Localization: Core.Timer.LogError - {0}\n{1}
-                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.Timer.LogError, message, exception));
+                    // Localization: Core.Timer.LogError - {0}\n{1}
+                    LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.Timer.LogError, message, exception));
                 }
                 else
                 {

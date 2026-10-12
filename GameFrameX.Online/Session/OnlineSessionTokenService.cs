@@ -239,30 +239,30 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
                 switch (multiDevicePolicy)
                 {
                     case OnlineMultiDevicePolicy.SingleDevice:
-                    {
-                        return OnlineResult<OnlineSessionStartResult>.Fail(OnlineErrorCode.StateOperationForbidden, "已存在活跃会话，单设备策略拒绝新登录");
-                    }
-
-                    case OnlineMultiDevicePolicy.LatestWins:
-                    {
-                        foreach (var activeSession in activeSessions)
                         {
-                            await CloseSessionAsync(activeSession, OnlineSessionState.Kicked, OnlineSessionCloseReason.ReplacedByNewSession, OnlineSessionEvents.SessionKicked, "replaced by new session", correlationId, cancellationToken);
-                            replacedSessionIds.Add(activeSession.Id);
+                            return OnlineResult<OnlineSessionStartResult>.Fail(OnlineErrorCode.StateOperationForbidden, "已存在活跃会话，单设备策略拒绝新登录");
                         }
 
-                        break;
-                    }
+                    case OnlineMultiDevicePolicy.LatestWins:
+                        {
+                            foreach (var activeSession in activeSessions)
+                            {
+                                await CloseSessionAsync(activeSession, OnlineSessionState.Kicked, OnlineSessionCloseReason.ReplacedByNewSession, OnlineSessionEvents.SessionKicked, "replaced by new session", correlationId, cancellationToken);
+                                replacedSessionIds.Add(activeSession.Id);
+                            }
+
+                            break;
+                        }
 
                     case OnlineMultiDevicePolicy.Coexist:
-                    {
-                        break;
-                    }
+                        {
+                            break;
+                        }
 
                     default:
-                    {
-                        return OnlineResult<OnlineSessionStartResult>.Fail(OnlineErrorCode.ParameterInvalid, "未知多端登录策略：" + (int)multiDevicePolicy);
-                    }
+                        {
+                            return OnlineResult<OnlineSessionStartResult>.Fail(OnlineErrorCode.ParameterInvalid, "未知多端登录策略：" + (int)multiDevicePolicy);
+                        }
                 }
             }
 

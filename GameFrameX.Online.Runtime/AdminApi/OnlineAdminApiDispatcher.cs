@@ -43,7 +43,7 @@ namespace GameFrameX.Online.Runtime.AdminApi;
 /// （外层信封非 0 会被 Admin 判为基础设施异常）；未知 action → 内层 4002；
 /// 副作用命令（kick / revoke_token / mute / 受控四命令）经 <see cref="OnlineIdempotencyService"/> 包裹
 /// （ReExecute 策略：失败重试重执行，Replay 原样透传首次响应原文）；grant/revoke 走
-/// <see cref="OnlineGrantService"/> 内建幂等（避免双重包裹）；<see cref="OnlineAdminApiResponse.ServerTime"/>
+/// <see cref="GameFrameX.Online.Assets.OnlineGrantService"/> 内建幂等（避免双重包裹）；<see cref="OnlineAdminApiResponse.ServerTime"/>
 /// 为 Unix 秒（Admin 线缆契约）。
 /// </para>
 /// </summary>

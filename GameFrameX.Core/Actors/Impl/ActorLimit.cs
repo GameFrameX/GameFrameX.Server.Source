@@ -88,9 +88,9 @@ public static class ActorLimit
             }
                 break;*/
             case RuleType.NoBidirectionCall:
-            {
-                _rule = new NoBidirectionCallRule();
-            }
+                {
+                    _rule = new NoBidirectionCallRule();
+                }
                 break;
             case RuleType.None:
                 break;

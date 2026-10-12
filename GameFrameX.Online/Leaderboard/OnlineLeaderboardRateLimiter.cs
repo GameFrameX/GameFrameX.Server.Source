@@ -67,6 +67,16 @@ public sealed class OnlineLeaderboardRateLimiter
     }
 
     /// <summary>
+    /// 尝试为玩家获取一次提交配额（滑动窗口限流）。
+    /// </summary>
+    /// <remarks>
+    /// Tries to acquire one submission slot for the player within the sliding window.
+    /// </remarks>
+    /// <param name="tenantId">租户 ID / The tenant id</param>
+    /// <param name="appId">应用 ID / The app id</param>
+    /// <param name="playerId">玩家 ID / The player id</param>
+    /// <param name="nowUnixMilliseconds">当前 Unix 毫秒时间戳（0 表示取当前时间）/ The current Unix time in milliseconds (0 for now)</param>
+    /// <returns>窗口未满获取成功返回 <c>true</c>；已满返回 <c>false</c> / <c>true</c> if acquired within the window; <c>false</c> when the window is full</returns>
     public bool TryAcquire(long tenantId, long appId, long playerId, long nowUnixMilliseconds = 0)
     {
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();

@@ -238,13 +238,13 @@ public sealed partial class PostgreSqlDbService
     {
         return exception switch
         {
-            null                                                             => "unknown",
-            TimeoutException                                                 => "timeout",
-            PostgresException postgresException                              => $"postgres_{postgresException.SqlState}",
+            null => "unknown",
+            TimeoutException => "timeout",
+            PostgresException postgresException => $"postgres_{postgresException.SqlState}",
             NpgsqlException npgsqlException when npgsqlException.IsTransient => "connection",
-            NpgsqlException                                                  => "npgsql_exception",
-            DatabaseUnavailableException                                     => "database_unavailable",
-            _                                                                => "unknown",
+            NpgsqlException => "npgsql_exception",
+            DatabaseUnavailableException => "database_unavailable",
+            _ => "unknown",
         };
     }
 }

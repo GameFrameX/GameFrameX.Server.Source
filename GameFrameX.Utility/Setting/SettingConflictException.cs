@@ -37,6 +37,7 @@ namespace GameFrameX.Utility.Setting;
 /// of the incoming setting differs from the current setting.
 /// The message lists every conflicting field with its source segments and both values;
 /// sensitive fields (e.g. <see cref="AppSetting.DataBasePassword"/>) omit their values from the message.
+/// </remarks>
 public sealed class SettingConflictException : Exception
 {
     /// <summary>
