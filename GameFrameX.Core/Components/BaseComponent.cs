@@ -77,12 +77,12 @@ public abstract class BaseComponent : IComponent, IState
     {
         lock (_cacheAgentLock)
         {
-            if (_cacheAgent != null && !HotfixManager.DoingHotfix)
+            if (_cacheAgent != null && !HotfixManager.Resolver.InTransition)
             {
                 return _cacheAgent;
             }
 
-            var agent = HotfixManager.GetAgent<IComponentAgent>(this, refAssemblyType);
+            var agent = HotfixManager.Resolver.GetAgent<IComponentAgent>(this, refAssemblyType);
             _cacheAgent = agent;
             return agent;
         }

@@ -48,7 +48,7 @@ public sealed class ReloadHttpHandler : BaseHttpHandler
         var paramMap = context.Parameters;
         if (paramMap.TryGetValue("version", out var version))
         {
-            await HotfixManager.LoadHotfixModule(null, version.ToString());
+            await HotfixManager.LoadHotfixModule(null, new HotfixLoadOptions { Version = version.ToString() });
             return Task.FromResult(HttpJsonResultData<string>.SuccessString(null)).Result;
         }
 

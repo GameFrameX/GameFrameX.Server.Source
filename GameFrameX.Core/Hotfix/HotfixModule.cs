@@ -38,6 +38,7 @@ using GameFrameX.Network.HTTP;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Utility.Hotload;
 using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Core.Hotfix;
@@ -45,7 +46,7 @@ namespace GameFrameX.Core.Hotfix;
 /// <summary>
 /// 热更模块，负责热更新相关的初始化、卸载、解析DLL等工作。
 /// </summary>
-internal sealed class HotfixModule
+internal sealed class HotfixModule : ICollectibleAssemblyModule
 {
     /// <summary>
     /// 角色类型到事件参数类型到监听者的映射（事件绑定键为 GameEventArgs 子类的 Type）。
@@ -103,14 +104,25 @@ internal sealed class HotfixModule
     private readonly bool _useAgentWrapper = true;
 
     /// <summary>
-    /// DLL加载器。
+    /// 可收集加载上下文（模块生命周期与卸载验证经 <see cref="ICollectibleAssemblyModule"/> 契约由模块链驱动）。
+    /// The collectible load context (module lifecycle and unload verification are driven by the module chain via the <see cref="ICollectibleAssemblyModule"/> contract).
     /// </summary>
-    private DllLoader _dllLoader;
+    private CollectibleAssemblyLoadContext _loadContext;
 
     /// <summary>
     /// 热更程序集。
     /// </summary>
     internal Assembly HotfixAssembly;
+
+    /// <summary>
+    /// 获取模块装载的程序集（<see cref="ICollectibleAssemblyModule"/> 契约成员，供退役链按程序集身份路由）。
+    /// Gets the assembly loaded by this module (the <see cref="ICollectibleAssemblyModule"/> contract member used
+    /// for assembly-identity routing on the retirement chain).
+    /// </summary>
+    Assembly ICollectibleAssemblyModule.LoadedAssembly
+    {
+        get { return HotfixAssembly; }
+    }
 
     /// <summary>
     /// 构造函数，接受DLL路径。
@@ -168,8 +180,8 @@ internal sealed class HotfixModule
         var success = false;
         try
         {
-            _dllLoader = new DllLoader(_dllPath);
-            HotfixAssembly = _dllLoader.HotfixDll;
+            _loadContext = new CollectibleAssemblyLoadContext();
+            HotfixAssembly = _loadContext.LoadFromAssemblyPath(_dllPath);
             if (!reload)
             {
                 // 启动服务器时加载关联的DLL
@@ -196,34 +208,23 @@ internal sealed class HotfixModule
     }
 
     /// <summary>
-    /// 卸载热更模块。
+    /// 卸载热更模块底层的可收集上下文（契约成员）。
+    /// Unloads the module's underlying collectible context (contract member).
     /// </summary>
-    public void Unload()
+    /// <returns>
+    /// 指向已卸载上下文的弱引用（供模块链做 GC 释放验证）；未持有上下文（如测试构造）时返回 <c>null</c>。
+    /// A weak reference to the unloaded context (for the module chain's GC release verification); <c>null</c>
+    /// when no context is owned (e.g. test-constructed modules).
+    /// </returns>
+    public WeakReference Unload()
     {
-        if (_dllLoader != null)
+        if (_loadContext == null)
         {
-            var weak = _dllLoader.Unload();
-            if (GlobalSettings.CurrentSetting.IsDebug)
-            {
-                // 检查热更DLL是否已经释放
-                Task.Run(async () =>
-                {
-                    var tryCount = 0;
-                    while (weak.IsAlive && tryCount++ < 10)
-                    {
-                        await Task.Delay(100);
-                        // 可回收 AssemblyLoadContext 卸载后需强制 GC 以回收可卸载程序集并判定其是否真正释放，是 .NET 官方推荐模式，故此处有意保留 GC.Collect
-#pragma warning disable S1215 // 垃圾回收器不应被显式调用
-                        GC.Collect();
-                        GC.WaitForPendingFinalizers();
-#pragma warning restore S1215
-                    }
-
-                    // Localization: Core.Hotfix.DllUninstall - 热更DLL卸载{0}
-                    LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.HotfixModule.DllUninstall, weak.IsAlive ? "failure" : "successful"));
-                });
-            }
+            return null;
         }
+
+        _loadContext.Unload();
+        return new WeakReference(_loadContext);
     }
 
     /// <summary>

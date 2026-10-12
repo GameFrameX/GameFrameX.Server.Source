@@ -154,7 +154,7 @@ public static class ComponentRegister
             {
                 foreach (var compType in value)
                 {
-                    var agentType = HotfixManager.GetAgentType(compType);
+                    var agentType = HotfixManager.Resolver.GetAgentType(compType);
                     if (agentType == null)
                     {
                         // Localization: Core.ComponentRegister.GlobalComponentAgentNotImplemented - ComponentRegister.ActiveGlobalComponents Actor类型:{0} , 消息: {1}未实现Agent,请检查业务代码是否正确
@@ -234,7 +234,7 @@ public static class ComponentRegister
             {
                 if (predict == null || predict(compType))
                 {
-                    var agentType = HotfixManager.GetAgentType(compType);
+                    var agentType = HotfixManager.Resolver.GetAgentType(compType);
                     try
                     {
                         await actor.GetComponentAgent(agentType);

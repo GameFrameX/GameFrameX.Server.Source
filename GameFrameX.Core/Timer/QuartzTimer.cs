@@ -592,7 +592,7 @@ public static class QuartzTimer
             {
                 if (context.JobDetail.JobDataMap.TryGetValue(ParamKey, out var param))
                 {
-                    var handler = HotfixManager.GetInstance<ITimerHandler>(handlerType);
+                    var handler = HotfixManager.Resolver.GetInstance<ITimerHandler>(handlerType);
                     if (handler != null)
                     {
                         var actorId = context.JobDetail.JobDataMap.GetLong(ActorIdKey);
@@ -649,7 +649,7 @@ public static class QuartzTimer
     {
         var handlerType = typeof(T);
         StatisticsTool.Count(handlerType.FullName);
-        if (handlerType.Assembly != HotfixManager.HotfixAssembly)
+        if (handlerType.Assembly != HotfixManager.Resolver.HotfixAssembly)
         {
             // Localization: CoreExceptions.Timer.CodeMustBeInHotfix - 定时器代码需要在热更项目里
             throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Timer.CodeMustBeInHotfix));

@@ -76,7 +76,7 @@ public static class EventDispatcher
     {
         // 事件需要在本actor内执行，不可多线程执行，所以不能使用Task.WhenAll来处理
         // 获取该Actor类型下注册的所有事件监听器
-        var listeners = HotfixManager.FindListeners(actor.Type, eventArgs.GetType());
+        var listeners = HotfixManager.Resolver.FindListeners(actor.Type, eventArgs.GetType());
         if (listeners.IsNullOrEmpty())
         {
             // Localization: Core.EventDispatcher.DispatchNoListeners - EventDispatcher.Dispatch Actor {0} {1} 事件类型：{2} 没有找到任何监听者
@@ -113,7 +113,7 @@ public static class EventDispatcher
     {
         // 事件需要在本actor内执行，不可多线程执行，所以不能使用Task.WhenAll来处理
         // 获取全局注册的事件监听器
-        var listeners = HotfixManager.FindListeners(eventArgs.GetType());
+        var listeners = HotfixManager.Resolver.FindListeners(eventArgs.GetType());
         if (listeners.IsNullOrEmpty())
         {
             // Localization: Core.EventDispatcher.DispatchNoListeners - EventDispatcher.Dispatch Actor {0} {1} 事件类型：{2} 没有找到任何监听者
