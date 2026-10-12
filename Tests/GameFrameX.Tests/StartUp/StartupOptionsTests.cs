@@ -27,6 +27,8 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using GameFrameX.StartUp;
+using GameFrameX.Utility.Setting;
 using GameFrameX.Foundation.Options;
 using GameFrameX.StartUp.Options;
 using Xunit;
@@ -174,5 +176,74 @@ public class StartupOptionsTests
 
         Assert.False(options.AllInOne);
         Assert.Empty(options.GetServerTypes());
+    }
+
+    /// <summary>
+    /// Online 能力过滤 CLI 别名：--OnlineCapabilities / --OnlineDisable 绑定并按逗号投影（C229）。
+    /// </summary>
+    [Fact]
+    public void Create_OnlineCapabilityAliases_BindAndProject()
+    {
+        var options = OptionsBuilder.CreateFromArgsOnly<StartupOptions>(
+        [
+            "--OnlineCapabilities=online-assets,online-social",
+            "--OnlineDisable=online-match",
+        ]);
+
+        Assert.Equal("online-assets,online-social", options.OnlineCapabilities);
+        Assert.Equal("online-match", options.OnlineDisable);
+        Assert.Equal(new[] { "online-assets", "online-social" }, options.GetOnlineCapabilities());
+        Assert.Equal(new[] { "online-match" }, options.GetOnlineDisable());
+    }
+
+    /// <summary>
+    /// Online 别名投影语义：trim、去空段、去重、保序（GetServerTypes 同款）。
+    /// </summary>
+    [Fact]
+    public void GetOnlineCapabilities_TrimsDropsEmptyAndDeduplicates()
+    {
+        var options = OptionsBuilder.CreateFromArgsOnly<StartupOptions>(
+        [
+            "--OnlineCapabilities= online-assets ,, online-social , online-assets ",
+            "--OnlineDisable= , online-match ,,",
+        ]);
+
+        Assert.Equal(new[] { "online-assets", "online-social" }, options.GetOnlineCapabilities());
+        Assert.Equal(new[] { "online-match" }, options.GetOnlineDisable());
+    }
+
+    /// <summary>
+    /// 无配置段 Role 的回落档：CLI 别名投影进嵌套强类型段（CreateRoleDefaultSetting 路径，C229）。
+    /// </summary>
+    [Fact]
+    public void ResolveAppSetting_ProjectsOnlineAliasesIntoNestedSection()
+    {
+        var launcherOptions = OptionsBuilder.CreateFromArgsOnly<StartupOptions>(
+        [
+            "--OnlineCapabilities=online-assets,online-social",
+            "--OnlineDisable=online-match",
+        ]);
+
+        var resolved = GameApp.ResolveAppSetting("Game", Array.Empty<AppSetting>(), launcherOptions, false);
+
+        Assert.NotNull(resolved);
+        Assert.Equal("Game", resolved.ServerType);
+        Assert.NotNull(resolved.Online);
+        Assert.Equal(new[] { "online-assets", "online-social" }, resolved.Online.Capabilities);
+        Assert.Equal(new[] { "online-match" }, resolved.Online.Disable);
+    }
+
+    /// <summary>
+    /// 别名缺省：回落档 Online 段保持 null（全装配缺省语义）。
+    /// </summary>
+    [Fact]
+    public void ResolveAppSetting_WithoutAliases_LeavesOnlineNull()
+    {
+        var launcherOptions = OptionsBuilder.CreateFromArgsOnly<StartupOptions>(["--ServerType=Game"]);
+
+        var resolved = GameApp.ResolveAppSetting("Game", Array.Empty<AppSetting>(), launcherOptions, false);
+
+        Assert.NotNull(resolved);
+        Assert.Null(resolved.Online);
     }
 }

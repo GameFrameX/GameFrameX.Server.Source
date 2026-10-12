@@ -1359,6 +1359,9 @@
   <data name="Capability.Hosting.AdminApi.ActionNotRegistered" xml:space="preserve">
     <value>能力 {1} 声明的 action 未注册：{0}</value>
   </data>
+  <data name="Capability.Hosting.Composition.NoPlaneEnabled" xml:space="preserve">
+    <value>未启用任何 Online 能力面：EnableRuntime 与 EnableAdminApi 均为 false,请至少启用其一。</value>
+  </data>
   <data name="Capability.Hosting.AdminApi.OptionsInvalid" xml:space="preserve">
     <value>管理面监听选项非法（端口 / 前缀）。</value>
   </data>

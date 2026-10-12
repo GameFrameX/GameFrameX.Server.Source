@@ -657,6 +657,22 @@ public class AppSetting
     public long OnlineAppId { get; set; }
 
     /// <summary>
+    /// Online 能力配置段（角色配置内嵌套 "Online" 节点的强类型绑定，C229）
+    /// <para>Capabilities 白名单 / Disable 排除表；null 或空 = 全装配（缺省全装配红线）；白名单未含依赖时组合期闭包校验 fail-fast</para>
+    /// <para>CLI 侧经 StartupOptions.OnlineCapabilities / OnlineDisable 平铺别名投影（仅无配置段 Role 的回落档生效，配置段优先链不变）</para>
+    /// </summary>
+    /// <remarks>
+    /// Strong-typed binding of the nested "Online" node inside this role's configuration section (C229):
+    /// Capabilities is the enable whitelist and Disable the exclusion list; null or empty assembles
+    /// everything (the empty-filter-assembles-all guarantee), and a whitelist that omits a required
+    /// dependency fails fast at composition time. The CLI surface is the flat alias pair
+    /// StartupOptions.OnlineCapabilities / OnlineDisable, projected only on the launcher fallback
+    /// path for roles without a config section (the config-section-first chain is unchanged).
+    /// </remarks>
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
+    public OnlineCapabilityOptions Online { get; set; }
+
+    /// <summary>
     /// Prometheus指标端口（如果为0则使用HTTP端口）
     /// </summary>
     /// <remarks>

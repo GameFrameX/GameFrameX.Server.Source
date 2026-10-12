@@ -18,6 +18,8 @@
 
 * SQLite 嵌入式零依赖起步 Provider（C222）：新工程 GameFrameX.DataBase.Sqlite（手写 Microsoft.Data.Sqlite，无 EF；每状态类型一张 (id INTEGER PRIMARY KEY, doc TEXT)，id 等值提取下推 + 剩余 filter 客户端求值，软删/时间戳语义对齐 Mongo/PG）；DatabaseProviderType.Sqlite + 双 resolver 映射；GameFrameX.Discovery 增 InProcDiscoveryRuntime（单进程自指路由表，心跳 no-op）；启动警告制（四条硬边界 + 风险自担，进程内仅一次）+ 数据文件全路径信息行 + 路径可写校验 fail-fast；启动 banner 携带 provider=Sqlite；两仓 quick_start-game.bat 改零依赖命令并清除 Atlas 凭据；Dockerfile /app/data 归属 $APP_UID。定位：快速入门 / 开发评估 / 单机小规模（单进程拓扑），一条命令起服：`--AllInOne --DatabaseProvider=Sqlite --DataBaseUrl="Data Source=data/gameframex.db"`
 
+* Online 能力组合单入口与 "Online" 配置段（C229 / C227 P2a）：新增 `AddOnlineCapabilities(Action<OnlineCapabilityCompositionOptions>)` 单入口（GameFrameX.Online.Runtime 过渡壳静态入口，P4 随壳退役换各包 AddXxx）——作用域三元组/调度间隔/双闸（EnableRuntime/EnableAdminApi）/管理面监听/能力过滤器统一经回调承载，一次调用产出业务运行时与管理面双产物；admin-only 形态接入同一配置段（排除/白名单外条目在目录报告如实反映，业务 action 仍一律 4003）；`AppSetting.Online` 嵌套强类型配置段（OnlineCapabilityOptions POCO：Capabilities 白名单/Disable 排除表，null 或空=全装配红线；未知 Id 与白名单闭包缺口组合期 fail-fast）经既有 json 反序列化通道捕获；CLI 平铺别名 `--OnlineCapabilities` / `--OnlineDisable`（逗号列表，GetServerTypes 同款投影，仅无配置段 Role 回落档生效）；Launcher 双闸迁移到单入口（四组合行为与 C228 交付态逐项等价，启停顺序与边界日志语句级保持）；P2 期入口内部仍显式链式装配（过渡模块有参构造，反射扫描发现不了），模块无参化后同一入口自然升级为真扫描（P4 终态）
+
 ### Breaking
 
 * MessageOperationType 完全退役（C205）：删除枚举与特性第二参数、MessageProtoHelper.OperationType 注册表与 GetMessageOperationType、INetworkMessageHeader/MessageObjectHeader/MessageObject 的 OperationType 属性链与日志 OpType 字段；心跳判定统一改型为 MessageProtoHelper.IsHeartbeat(MessageType)（IHeartBeatMessage 标记派生）。包头 14 字节长度不变，第 5 字节退役为保留字节（恒 0），线上字节级兼容；对外为源码级破坏性（公共属性/方法/枚举删除）

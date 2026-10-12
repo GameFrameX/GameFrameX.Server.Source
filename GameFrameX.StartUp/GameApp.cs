@@ -470,6 +470,19 @@ public static class GameApp
             property.SetValue(roleSetting, property.GetValue(launcherOptions));
         }
 
+        // CLI 启动决策面的能力过滤投影：仅当别名显式提供时落嵌套强类型段（C229）；
+        // 配置段优先链不变——有 json 配置段的 Role 不会走到本回落档。
+        var onlineCapabilities = launcherOptions.GetOnlineCapabilities();
+        var onlineDisable = launcherOptions.GetOnlineDisable();
+        if (onlineCapabilities.Length > 0 || onlineDisable.Length > 0)
+        {
+            roleSetting.Online = new OnlineCapabilityOptions
+            {
+                Capabilities = onlineCapabilities,
+                Disable = onlineDisable,
+            };
+        }
+
         return roleSetting;
     }
 

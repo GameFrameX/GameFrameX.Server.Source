@@ -46,22 +46,24 @@ namespace GameFrameX.Launcher.StartUp;
 internal sealed class AppStartUpGame : AppStartUpGameServerBase
 {
     /// <summary>
-    /// Online Runtime 过渡组合根（<see cref="AppSetting.IsEnableOnline"/> 开启时装配；进程退出时随主流程停止）。
+    /// Online Runtime 过渡组合根（<see cref="AppStartUpGame"/> 经 AddOnlineCapabilities 单入口装配的产物；
+    /// 业务闸关闭时为 null；进程退出时随主流程停止）。
     /// </summary>
     /// <remarks>
-    /// The Online runtime host (assembled when <c>IsEnableOnline</c> is on; stopped with the main
-    /// flow at process exit).
+    /// The Online runtime host — the runtime face of the AddOnlineCapabilities composition (null
+    /// when the business gate is off; stopped with the main flow at process exit).
     /// </remarks>
     private OnlineRuntimeHost _onlineRuntime;
 
     /// <summary>
-    /// Online admin HTTP 服务（与协议端口独立的 Kestrel 监听；<see cref="AppSetting.IsEnableOnlineAdmin"/>
-    /// 开启时装配——业务未启时以 admin-only 形态独立监听，全部能力 action 按未安装裁决）。
+    /// Online admin HTTP 服务（与协议端口独立的 Kestrel 监听；管理面闸开启时由单入口装配——
+    /// 业务运行时在则全能力形态，不在则 admin-only 形态，全部能力 action 按未安装裁决）。
     /// </summary>
     /// <remarks>
-    /// The Online admin HTTP service (a Kestrel listener independent of the protocol ports,
-    /// assembled when <c>IsEnableOnlineAdmin</c> is on; without the business runtime it listens in
-    /// admin-only shape and every capability action is answered as not installed).
+    /// The Online admin HTTP service (a Kestrel listener independent of the protocol ports),
+    /// composed by the single entry when the admin gate is on — full-capability shape with the
+    /// business runtime, admin-only shape without it (every capability action answered as not
+    /// installed).
     /// </remarks>
     private AdminApiServer _onlineAdminApi;
 
@@ -170,34 +172,63 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     }
 
     /// <summary>
-    /// 可选启动 Online 业务运行时（<see cref="AppSetting.IsEnableOnline"/> 为 true 时装配过渡组合根；
-    /// 管理面是否监听由 <see cref="AppSetting.IsEnableOnlineAdmin"/> 独立决定）。
+    /// 经单入口装配 Online 能力（双闸任一开启即组合；<see cref="AppSetting.IsEnableOnline"/> 关且
+    /// <see cref="AppSetting.IsEnableOnlineAdmin"/> 关时零装配零日志直接返回——现状等价）。
+    /// <para>业务运行时与管理面一次回调编排装配（作用域三元组 / 调度间隔缺省 / 双闸 / 管理面监听 /
+    /// "Online" 配置段过滤器）；本方法只启动业务面，管理面启动由
+    /// <see cref="StartOnlineAdminIfEnabledAsync"/> 按闸独立决定。</para>
     /// </summary>
     /// <remarks>
-    /// Starts the Online business runtime optionally — assembles the Online runtime host only when
-    /// <see cref="AppSetting.IsEnableOnline"/> is true; whether the admin plane listens is decided
-    /// independently by <see cref="AppSetting.IsEnableOnlineAdmin"/>.
+    /// Composes the Online capabilities through the single entry point (composition runs when either
+    /// gate is on; when both <see cref="AppSetting.IsEnableOnline"/> and
+    /// <see cref="AppSetting.IsEnableOnlineAdmin"/> are off nothing is assembled and no log fires —
+    /// behaviour-equivalent to the pre-C229 shape). The runtime and the admin plane are orchestrated
+    /// by one callback (scope triple / default scheduler interval / both gates / admin listening /
+    /// the "Online" config-section filter); this method only starts the business plane — whether the
+    /// admin plane starts is still decided independently by
+    /// <see cref="StartOnlineAdminIfEnabledAsync"/>.
     /// </remarks>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     private async Task StartOnlineIfEnabledAsync()
     {
-        if (!Setting.IsEnableOnline)
+        if (!Setting.IsEnableOnline && !Setting.IsEnableOnlineAdmin)
         {
             return;
         }
 
-        _onlineRuntime = new OnlineRuntimeHost(CreateOnlineHostOptions());
-        await _onlineRuntime.StartAsync();
+        var composition = OnlineCapabilityComposition.AddOnlineCapabilities(options =>
+        {
+            options.TenantId = Setting.OnlineTenantId;
+            options.AppId = Setting.OnlineAppId;
+            options.ServerId = Setting.ServerId;
+            options.EnableRuntime = Setting.IsEnableOnline;
+            options.EnableAdminApi = Setting.IsEnableOnlineAdmin;
+            options.AdminApi = new AdminApiOptions
+            {
+                AdminPort = Setting.OnlineAdminPort,
+                AdminApiPrefix = Setting.OnlineAdminApiPrefix,
+            };
+            options.Capabilities = Setting.Online?.Capabilities;
+            options.Disable = Setting.Online?.Disable;
+        });
+        _onlineRuntime = composition.Runtime;
+        _onlineAdminApi = composition.AdminApi;
+
+        if (_onlineRuntime != null)
+        {
+            await _onlineRuntime.StartAsync();
+        }
     }
 
     /// <summary>
     /// 可选启动 Online admin HTTP 服务（<see cref="AppSetting.IsEnableOnlineAdmin"/> 为 true 时监听；
-    /// 业务运行时在则全能力形态，不在则 admin-only 形态）。
+    /// 业务运行时在则全能力形态，不在则 admin-only 形态——组合已由单入口完成，此处只负责启动与日志）。
     /// </summary>
     /// <remarks>
     /// Starts the Online admin HTTP service optionally — listens when
     /// <see cref="AppSetting.IsEnableOnlineAdmin"/> is true; full-capability shape when the business
-    /// runtime is running, admin-only shape otherwise.
+    /// runtime is running, admin-only shape otherwise. The composition itself already happened in
+    /// the single entry call; this method only starts the listener and emits the boundary logs.
     /// </remarks>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     private async Task StartOnlineAdminIfEnabledAsync()
@@ -208,51 +239,8 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
         }
 
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.OnlineAdminStartBegin, Setting.OnlineAdminPort));
-        if (_onlineRuntime != null)
-        {
-            _onlineAdminApi = OnlineAdminApiComposition.CreateServer(_onlineRuntime, CreateOnlineAdminApiOptions());
-        }
-        else
-        {
-            _onlineAdminApi = OnlineAdminApiComposition.CreateAdminOnlyServer(CreateOnlineHostOptions(), CreateOnlineAdminApiOptions());
-        }
-
         await _onlineAdminApi.StartAsync();
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.Launcher.OnlineAdminStartEnd, Setting.OnlineTenantId, Setting.OnlineAppId, Setting.ServerId));
-    }
-
-    /// <summary>
-    /// 构建 Online 机制宿主选项（授权作用域三元组来自进程配置；ServerId 取宿主权威值）。
-    /// </summary>
-    /// <remarks>
-    /// Builds the capability host options for the Online runtime (scope triple from process
-    /// settings; ServerId takes the authoritative host value).
-    /// </remarks>
-    /// <returns>机制宿主选项 / The capability host options</returns>
-    private CapabilityHostOptions CreateOnlineHostOptions()
-    {
-        return new CapabilityHostOptions
-        {
-            TenantId = Setting.OnlineTenantId,
-            AppId = Setting.OnlineAppId,
-            ServerId = Setting.ServerId,
-        };
-    }
-
-    /// <summary>
-    /// 构建 Online 管理面监听选项。
-    /// </summary>
-    /// <remarks>
-    /// Builds the Online admin plane listening options.
-    /// </remarks>
-    /// <returns>管理面选项 / The admin plane options</returns>
-    private AdminApiOptions CreateOnlineAdminApiOptions()
-    {
-        return new AdminApiOptions
-        {
-            AdminPort = Setting.OnlineAdminPort,
-            AdminApiPrefix = Setting.OnlineAdminApiPrefix,
-        };
     }
 
     /// <summary>

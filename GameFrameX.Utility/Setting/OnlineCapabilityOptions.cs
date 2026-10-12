@@ -1,0 +1,62 @@
+// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the PRC and relevant international regulations.
+//   使用本项目须严格遵守相关法律法规与开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录的 LICENSE 文件。
+//   please refer to the LICENSE file at the root of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legal rights and interests of others as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes or liabilities arising from secondary development,
+//   本组织与贡献者概不承担任何责任。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gite Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://www.cnb.cool/GameFrameX
+//   CNB Repository: https://www.cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+
+namespace GameFrameX.Utility.Setting;
+
+/// <summary>
+/// Online 能力配置段（角色配置内嵌套 <c>"Online"</c> 节点的强类型绑定，C229）
+/// <para>白名单 <c>Capabilities</c> 与排除表 <c>Disable</c> 承载能力 Id 列表；null 或空 = 全装配 / 无排除（缺省全装配红线）</para>
+/// <para>本类型为配置只读数据：装载后不得变更（多 Role 回落档可能共享同一实例引用）</para>
+/// </summary>
+/// <remarks>
+/// Strong-typed binding of the nested <c>"Online"</c> node inside a role configuration section (C229).
+/// <c>Capabilities</c> is the enable whitelist and <c>Disable</c> the exclusion list, both carrying
+/// capability ids; null or empty means "assemble everything" / "exclude nothing" (the
+/// empty-filter-assembles-all guarantee). Treat instances as read-only after loading — multiple
+/// roles on the launcher fallback path may share one instance reference.
+/// </remarks>
+public sealed class OnlineCapabilityOptions
+{
+    /// <summary>
+    /// 能力白名单（能力 Id 列表，如 online-assets）；null 或空 = 全装配
+    /// </summary>
+    /// <remarks>
+    /// Capability enable whitelist (capability ids, e.g. online-assets); null or empty assembles everything.
+    /// </remarks>
+    public IReadOnlyList<string> Capabilities { get; set; }
+
+    /// <summary>
+    /// 能力排除表（能力 Id 列表）；null 或空 = 无排除
+    /// </summary>
+    /// <remarks>
+    /// Capability exclusion list (capability ids); null or empty excludes nothing.
+    /// </remarks>
+    public IReadOnlyList<string> Disable { get; set; }
+}

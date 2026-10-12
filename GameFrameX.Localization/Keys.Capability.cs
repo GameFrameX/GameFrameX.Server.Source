@@ -143,6 +143,21 @@ public static partial class Keys
                 /// </remarks>
                 public const string OptionsInvalid = "Capability.Hosting.AdminApi.OptionsInvalid";
             }
+
+            /// <summary>
+            /// 组合入口相关消息
+            /// </summary>
+            public static class Composition
+            {
+                /// <summary>
+                /// 未启用任何能力面（业务与管理面至少启用其一）。
+                /// </summary>
+                /// <remarks>
+                /// 键名: Capability.Hosting.Composition.NoPlaneEnabled
+                /// 用途: AddOnlineCapabilities 组合回调后 EnableRuntime 与 EnableAdminApi 均为 false
+                /// </remarks>
+                public const string NoPlaneEnabled = "Capability.Hosting.Composition.NoPlaneEnabled";
+            }
         }
     }
 }

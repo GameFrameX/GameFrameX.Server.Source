@@ -251,8 +251,9 @@ public sealed class OnlineRuntimeHost
     /// 初始化 <see cref="OnlineRuntimeHost"/>（组合根：集中装配全部存储与服务）。
     /// </summary>
     /// <param name="options">装配选项（必须合法，否则抛 <see cref="InvalidOperationException"/>）。</param>
+    /// <param name="filter">能力装配过滤器（null = 全装配；来自 "Online" 配置段，C229 起经 AddOnlineCapabilities 注入）。</param>
     /// <param name="hotfixRollbackExecutor">Hotfix 回滚执行器（可选；admin 面暂无触发 action，默认空实现）。</param>
-    public OnlineRuntimeHost(CapabilityHostOptions options, IOnlineHotfixRollbackExecutor hotfixRollbackExecutor = null)
+    public OnlineRuntimeHost(CapabilityHostOptions options, CapabilityAssemblyFilter filter = null, IOnlineHotfixRollbackExecutor hotfixRollbackExecutor = null)
     {
         Options = options ?? throw new ArgumentNullException(nameof(options));
         if (!options.IsValid())
@@ -299,6 +300,7 @@ public sealed class OnlineRuntimeHost
             builder.AddModule(module);
         }
 
+        builder.SetFilter(filter);
         CapabilityHost = builder.Build(options);
     }
 

@@ -1361,6 +1361,9 @@
   <data name="Capability.Hosting.AdminApi.ActionNotRegistered" xml:space="preserve">
     <value>Capability {1} declares action {0} but it is not registered.</value>
   </data>
+  <data name="Capability.Hosting.Composition.NoPlaneEnabled" xml:space="preserve">
+    <value>No capability plane is enabled: both EnableRuntime and EnableAdminApi are false; enable at least one of them.</value>
+  </data>
   <data name="Capability.Hosting.AdminApi.OptionsInvalid" xml:space="preserve">
     <value>Admin API listening options are invalid (port / prefix).</value>
   </data>

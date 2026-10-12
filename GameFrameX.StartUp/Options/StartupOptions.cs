@@ -83,4 +83,83 @@ public partial class StartupOptions : AppSetting
             .Distinct(StringComparer.Ordinal)
             .ToArray();
     }
+
+    /// <summary>
+    /// Online 能力白名单（CLI 平铺别名，逗号分隔能力 Id，如 online-assets,online-social）。
+    /// <para>缺省或空 = 全装配；仅对无配置段的 Role 回落档生效——配置段（含其嵌套 "Online" 节点）优先链不变</para>
+    /// <para>经 <see cref="GetOnlineCapabilities"/> 投影为强类型能力配置段（C229）</para>
+    /// </summary>
+    /// <value>逗号分隔的能力 Id 白名单 / The comma-separated capability id whitelist</value>
+    /// <remarks>
+    /// Flat CLI alias of the Online capability whitelist (comma-separated capability ids, e.g.
+    /// online-assets,online-social). Default or empty assembles everything. It only takes effect on
+    /// the launcher fallback path for roles without a config section — the config-section-first
+    /// chain (including its nested "Online" node) is unchanged. Projected into the strong-typed
+    /// capability section via <see cref="GetOnlineCapabilities"/> (C229).
+    /// </remarks>
+    [Option(nameof(OnlineCapabilities), DefaultValue = "", Description = "Online 能力白名单(逗号分隔能力 Id,如 online-assets,online-social),缺省或空=全装配;仅无配置段 Role 回落档生效")]
+    public string OnlineCapabilities { get; set; }
+
+    /// <summary>
+    /// Online 能力排除表（CLI 平铺别名，逗号分隔能力 Id）；缺省或空 = 无排除；生效条件同 <see cref="OnlineCapabilities"/>。
+    /// </summary>
+    /// <value>逗号分隔的能力 Id 排除表 / The comma-separated capability id exclusion list</value>
+    /// <remarks>
+    /// Flat CLI alias of the Online capability exclusion list (comma-separated capability ids);
+    /// default or empty excludes nothing. Effectiveness conditions match <see cref="OnlineCapabilities"/>.
+    /// </remarks>
+    [Option(nameof(OnlineDisable), DefaultValue = "", Description = "Online 能力排除表(逗号分隔能力 Id),缺省或空=无排除;仅无配置段 Role 回落档生效")]
+    public string OnlineDisable { get; set; }
+
+    /// <summary>
+    /// 获取由 <see cref="OnlineCapabilities"/> 逗号拆分出的能力 Id 白名单（trim、去空、去重、保序）。
+    /// </summary>
+    /// <remarks>
+    /// Derived view of the comma-separated <c>--OnlineCapabilities</c> value, following the
+    /// <see cref="GetServerTypes"/> projection pattern (trim, drop empties, deduplicate, preserve
+    /// input order) — it never re-scans the command line. Modeled as a method rather than a property
+    /// because each call derives a new array (Sonar S2365).
+    /// </remarks>
+    /// <returns>能力 Id 白名单数组（trim、去空、去重）；未指定时为空数组 / The capability ids (trimmed, non-empty, deduplicated); an empty array when unspecified</returns>
+    public string[] GetOnlineCapabilities()
+    {
+        return SplitCapabilityList(OnlineCapabilities);
+    }
+
+    /// <summary>
+    /// 获取由 <see cref="OnlineDisable"/> 逗号拆分出的能力 Id 排除表（trim、去空、去重、保序）。
+    /// </summary>
+    /// <remarks>
+    /// Derived view of the comma-separated <c>--OnlineDisable</c> value, following the
+    /// <see cref="GetServerTypes"/> projection pattern (trim, drop empties, deduplicate, preserve
+    /// input order) — it never re-scans the command line. Modeled as a method rather than a property
+    /// because each call derives a new array (Sonar S2365).
+    /// </remarks>
+    /// <returns>能力 Id 排除表数组（trim、去空、去重）；未指定时为空数组 / The capability ids (trimmed, non-empty, deduplicated); an empty array when unspecified</returns>
+    public string[] GetOnlineDisable()
+    {
+        return SplitCapabilityList(OnlineDisable);
+    }
+
+    /// <summary>
+    /// 逗号拆分能力 Id 列表（trim、去空、去重、保序；不重扫命令行）。
+    /// </summary>
+    /// <remarks>
+    /// Splits a comma-separated capability id list (trim, drop empties, deduplicate, preserve input
+    /// order; never re-scans the command line).
+    /// </remarks>
+    /// <param name="value">CLI 绑定的原始值 / The raw CLI-bound value</param>
+    /// <returns>规整后的能力 Id 数组；未指定时为空数组 / The normalized capability ids; an empty array when unspecified</returns>
+    private static string[] SplitCapabilityList(string value)
+    {
+        if (value.IsNullOrEmpty())
+        {
+            return Array.Empty<string>();
+        }
+
+        return value.Split(',').Select(capabilityId => capabilityId.Trim())
+            .Where(capabilityId => capabilityId.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
 }
