@@ -85,12 +85,12 @@ internal sealed class HotfixModule
     /// <summary>
     /// 消息ID到处理器类型的映射。
     /// </summary>
-    private readonly ConcurrentDictionary<int, Type> _tcpHandlerMap = new ConcurrentDictionary<int, Type>();
+    private readonly ConcurrentDictionary<int, Type> _messageHandlerMap = new ConcurrentDictionary<int, Type>();
 
     /// <summary>
     /// 消息处理类型列表
     /// </summary>
-    private readonly List<Type> _tcpHandlerTypes = new List<Type>(512);
+    private readonly List<Type> _messageHandlerTypes = new List<Type>(512);
 
     /// <summary>
     /// 类型缓存。
@@ -260,7 +260,7 @@ internal sealed class HotfixModule
         {
             if (!AddAgent(type)
                 && !AddEvent(type)
-                && !AddTcpHandler(type)
+                && !AddMessageHandler(type)
                 && !AddHttpHandler(type))
             {
                 if (HotfixBridge.IsNull() && type.GetInterface(fullName) != null)
@@ -331,8 +331,8 @@ internal sealed class HotfixModule
             return handler;
         }
 
-        // Localization: CoreExceptions.Hotfix.WrongTcpProcessorType - 错误的TCP处理器类型:{0}
-        throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.WrongTcpProcessorType, instance.GetType().FullName));
+        // Localization: CoreExceptions.Hotfix.WrongMessageHandlerType - 错误的消息处理器类型:{0}
+        throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.WrongMessageHandlerType, instance.GetType().FullName));
     }
 
     /// <summary>
@@ -362,11 +362,11 @@ internal sealed class HotfixModule
     }
 
     /// <summary>
-    /// 添加TCP处理器。
+    /// 添加消息处理器。
     /// </summary>
     /// <param name="type">处理器类型。</param>
     /// <returns>是否添加成功。</returns>
-    private bool AddTcpHandler(Type type)
+    private bool AddMessageHandler(Type type)
     {
         var attribute = (MessageMappingAttribute)type.GetCustomAttribute(typeof(MessageMappingAttribute), true);
         if (attribute == null)
@@ -392,10 +392,10 @@ internal sealed class HotfixModule
             throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.MessageProcessorWrongSuffix, GlobalConst.ComponentHandlerNameSuffix, classFullName));
         }
 
-        if (_tcpHandlerTypes.Contains(attribute.MessageType))
+        if (_messageHandlerTypes.Contains(attribute.MessageType))
         {
-            // Localization: CoreExceptions.Hotfix.WrongTcpProcessorType - 错误的TCP处理器类型:{0}
-            LogHelper.Error(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.WrongTcpProcessorType, type.FullName));
+            // Localization: CoreExceptions.Hotfix.WrongMessageHandlerType - 错误的消息处理器类型:{0}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.WrongMessageHandlerType, type.FullName));
             return false;
         }
 
@@ -406,13 +406,13 @@ internal sealed class HotfixModule
         }
 
         var msgId = msgIdField.MessageId;
-        if (!_tcpHandlerMap.TryAdd(msgId, type))
+        if (!_messageHandlerMap.TryAdd(msgId, type))
         {
-            // Localization: CoreExceptions.Hotfix.WrongTcpProcessorType - 错误的TCP处理器类型:{0}
-            LogHelper.Error(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.WrongTcpProcessorType, type));
+            // Localization: CoreExceptions.Hotfix.WrongMessageHandlerType - 错误的消息处理器类型:{0}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.WrongMessageHandlerType, type));
         }
 
-        _tcpHandlerTypes.Add(attribute.MessageType);
+        _messageHandlerTypes.Add(attribute.MessageType);
         return true;
     }
 
@@ -521,13 +521,13 @@ internal sealed class HotfixModule
 
 
     /// <summary>
-    /// 获取TCP处理器。
+    /// 获取消息处理器。
     /// </summary>
     /// <param name="msgId">消息ID。</param>
-    /// <returns>TCP处理器实例。</returns>
-    internal IMessageHandler GetTcpHandler(int msgId)
+    /// <returns>消息处理器实例。</returns>
+    internal IMessageHandler GetMessageHandler(int msgId)
     {
-        if (!_tcpHandlerMap.TryGetValue(msgId, out var handlerType))
+        if (!_messageHandlerMap.TryGetValue(msgId, out var handlerType))
         {
             return default;
         }
@@ -538,8 +538,8 @@ internal sealed class HotfixModule
             return handler;
         }
 
-        // Localization: CoreExceptions.Hotfix.WrongTcpProcessorType - 错误的TCP处理器类型:{0}
-        throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.WrongTcpProcessorType, instance.GetType().FullName));
+        // Localization: CoreExceptions.Hotfix.WrongMessageHandlerType - 错误的消息处理器类型:{0}
+        throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.WrongMessageHandlerType, instance.GetType().FullName));
 
         //throw new HandlerNotFoundException($"消息ID：{msgId}");
     }

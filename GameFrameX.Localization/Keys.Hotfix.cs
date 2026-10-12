@@ -110,7 +110,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Hotfix.StartUp.MessageHandlerNotFound
-            /// 用途: 按消息ID查找TCP处理器失败时记录。
+            /// 用途: 按消息ID查找消息处理器失败时记录。
             /// 参数: {0} - 消息ID, {1} - 消息类型
             /// </remarks>
             public const string MessageHandlerNotFound = "Hotfix.StartUp.MessageHandlerNotFound";

@@ -746,8 +746,8 @@
     <value>HTTP处理器命令重复注册，命令:{0}</value>
   </data>
 
-    <data name="CoreExceptions.Hotfix.WrongTcpProcessorType" xml:space="preserve">
-    <value>错误的TCP处理器类型:{0}</value>
+    <data name="CoreExceptions.Hotfix.WrongMessageHandlerType" xml:space="preserve">
+    <value>错误的消息处理器类型:{0}</value>
   </data>
 
     <data name="CoreExceptions.Hotfix.ClassMustBeSealed" xml:space="preserve">

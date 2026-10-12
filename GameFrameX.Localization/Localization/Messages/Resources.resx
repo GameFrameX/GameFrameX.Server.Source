@@ -716,8 +716,8 @@
     <value>HTTP processor command repeatedly registers, command:{0}</value>
   </data>
 
-    <data name="CoreExceptions.Hotfix.WrongTcpProcessorType" xml:space="preserve">
-    <value>wrong tcp processor type:{0}</value>
+    <data name="CoreExceptions.Hotfix.WrongMessageHandlerType" xml:space="preserve">
+    <value>wrong message handler type:{0}</value>
   </data>
 
     <data name="CoreExceptions.Hotfix.ClassMustBeSealed" xml:space="preserve">

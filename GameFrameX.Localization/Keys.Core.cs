@@ -888,14 +888,14 @@ public static partial class Keys
             public const string HttpProcessorRepeatedlyRegistered = "CoreExceptions.Hotfix.HttpProcessorRepeatedlyRegistered";
 
             /// <summary>
-            /// wrong tcp processor type:{0}
+            /// wrong message handler type:{0}
             /// </summary>
             /// <remarks>
-            /// 键名: CoreExceptions.Hotfix.WrongTcpProcessorType
-            /// 用途: TCP处理器类型错误时抛出异常
+            /// 键名: CoreExceptions.Hotfix.WrongMessageHandlerType
+            /// 用途: 消息处理器类型错误时抛出异常
             /// 参数: {0} - 处理器类型
             /// </remarks>
-            public const string WrongTcpProcessorType = "CoreExceptions.Hotfix.WrongTcpProcessorType";
+            public const string WrongMessageHandlerType = "CoreExceptions.Hotfix.WrongMessageHandlerType";
 
             /// <summary>
             /// {0} must be a class marked as sealed

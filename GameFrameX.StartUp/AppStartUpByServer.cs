@@ -65,7 +65,7 @@ namespace GameFrameX.StartUp;
 /// </summary>
 /// <remarks>
 /// Application startup base class - provides server basic functionality implementation.
-/// This partial class specifically handles TCP and WebSocket server startup and configuration functionality.
+/// This partial class specifically handles TCP, KCP and WebSocket server startup and configuration functionality.
 /// </remarks>
 public abstract partial class AppStartUpBase
 {
@@ -171,14 +171,14 @@ public abstract partial class AppStartUpBase
     }
 
     /// <summary>
-    /// 收到消息包的处理方法（漏斗缺省：完整 TCP 分发）。
+    /// 收到消息包的处理方法（漏斗缺省：完整消息分发）。
     /// </summary>
     /// <remarks>
     /// Handler for received message packages — the single funnel shared by the TCP, KCP and
     /// WebSocket listeners. Non-package messages only hit the debug log. Package messages go
     /// through the full dispatch: the session-cached network channel, the framework-level
     /// heartbeat short-circuit (<see cref="ReplyHeartBeatAsync"/>), handler resolution via
-    /// <see cref="ResolveTcpHandler"/> with a clean "handler not found" error log, and finally
+    /// <see cref="ResolveMessageHandler"/> with a clean "handler not found" error log, and finally
     /// <see cref="InvokeMessageHandler"/>.
     /// </remarks>
     /// <param name="session">会话对象 / Session object</param>
@@ -222,7 +222,7 @@ public abstract partial class AppStartUpBase
 
         LogReceiveMessageDebug(message);
 
-        var handler = ResolveTcpHandler(messagePackage.Header.MessageId);
+        var handler = ResolveMessageHandler(messagePackage.Header.MessageId);
         if (handler == null)
         {
             // Localization: StartUp.Server.MessageHandlerNotFound - 接收消息: 找不到消息处理器, 消息ID: {0}, 消息类型: {1}
@@ -250,18 +250,19 @@ public abstract partial class AppStartUpBase
     }
 
     /// <summary>
-    /// 解析 TCP 消息处理器（分发 seam，缺省无解析源）。
+    /// 解析消息处理器（分发 seam，缺省无解析源）。
     /// </summary>
     /// <remarks>
-    /// The TCP handler resolution seam of the package funnel. This project sits below the
-    /// hotfix registry (Core) and cannot resolve handlers itself, so the default returns
-    /// <c>null</c> (dispatch-ready but source-less); composition layers above (Launcher)
-    /// override this to bridge <c>HotfixManager.GetTcpHandler</c>. A <c>null</c> result hits
-    /// the funnel's "handler not found" error log instead of a NullReferenceException.
+    /// The message-handler resolution seam of the package funnel (protocol-agnostic: the same
+    /// funnel serves TCP, KCP and WebSocket). This project sits below the hotfix registry
+    /// (Core) and cannot resolve handlers itself, so the default returns <c>null</c>
+    /// (dispatch-ready but source-less); composition layers above (Launcher) override this to
+    /// bridge <c>HotfixManager.GetMessageHandler</c>. A <c>null</c> result hits the funnel's
+    /// "handler not found" error log instead of a NullReferenceException.
     /// </remarks>
     /// <param name="messageId">消息ID / The message identifier</param>
     /// <returns>处理器实例；未注册或无解析源时为 <c>null</c> / The handler instance, or <c>null</c> when unregistered or unresolved</returns>
-    protected virtual IMessageHandler ResolveTcpHandler(int messageId)
+    protected virtual IMessageHandler ResolveMessageHandler(int messageId)
     {
         return null;
     }

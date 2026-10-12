@@ -181,7 +181,7 @@ internal partial class AppStartUpHotfixGame
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Hotfix.StartUpModule.DataPackageReceive, messagePackage.ToFormatMessageString(actorId)));
         }
 
-        var handler = HotfixManager.GetTcpHandler(messagePackage.Header.MessageId);
+        var handler = HotfixManager.GetMessageHandler(messagePackage.Header.MessageId);
         if (handler == null)
         {
             // Localization: Hotfix.StartUp.MessageHandlerNotFound - 数据包接收: 找不到消息处理器, 消息ID: {0}, 消息类型: {1}

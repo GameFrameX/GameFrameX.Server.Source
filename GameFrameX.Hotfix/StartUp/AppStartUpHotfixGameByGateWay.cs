@@ -149,7 +149,7 @@ internal partial class AppStartUpHotfixGame
                 LogHelper.Info($"收到网关服务器消息：{messageObject.ToReceiveMessageString(ServerType.Gateway, ServerType)}");
             }
 
-            var handler = HotfixManager.GetTcpHandler(message.MessageId);
+            var handler = HotfixManager.GetMessageHandler(message.MessageId);
             if (handler == null)
             {
                 LogHelper.Error($"找不到[{message.MessageId}][{messageObject.GetType()}]对应的handler");

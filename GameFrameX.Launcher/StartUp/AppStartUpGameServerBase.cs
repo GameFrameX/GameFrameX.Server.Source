@@ -214,20 +214,20 @@ internal abstract class AppStartUpGameServerBase : AppStartUpRoleBase
     }
 
     /// <summary>
-    /// TCP 消息处理器解析（Social 型）：接热更注册表按消息 ID 解析处理器。
+    /// 消息处理器解析（Social 型）：接热更注册表按消息 ID 解析处理器。
     /// </summary>
     /// <remarks>
-    /// The Social-shape resolution hook of the base package funnel: bridges the hotfix TCP
-    /// handler registry (<c>HotfixManager.GetTcpHandler</c>). Messages without a registered
-    /// handler return <c>null</c> and hit the funnel's "handler not found" error log. The Game
-    /// shape keeps its base default (no resolution source) — its listeners live inside the
-    /// hotfix module instance with their own package handler.
+    /// The Social-shape resolution hook of the base package funnel: bridges the hotfix
+    /// message-handler registry (<c>HotfixManager.GetMessageHandler</c>). Messages without a
+    /// registered handler return <c>null</c> and hit the funnel's "handler not found" error
+    /// log. The Game shape keeps its base default (no resolution source) — its listeners live
+    /// inside the hotfix module instance with their own package handler.
     /// </remarks>
     /// <param name="messageId">消息ID / The message identifier</param>
     /// <returns>处理器实例；未注册时为 <c>null</c> / The handler instance, or <c>null</c> when unregistered</returns>
-    protected override IMessageHandler ResolveTcpHandler(int messageId)
+    protected override IMessageHandler ResolveMessageHandler(int messageId)
     {
-        return HotfixManager.GetTcpHandler(messageId);
+        return HotfixManager.GetMessageHandler(messageId);
     }
 
     /// <summary>

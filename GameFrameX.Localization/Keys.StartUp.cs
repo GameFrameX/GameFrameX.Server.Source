@@ -867,7 +867,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: StartUp.Server.MessageHandlerNotFound
-            /// 用途: 分发漏斗按消息ID解析 TCP 处理器失败时记录
+            /// 用途: 分发漏斗按消息ID解析消息处理器失败时记录
             /// 参数: {0} - 消息ID, {1} - 消息类型
             /// </remarks>
             public const string MessageHandlerNotFound = "StartUp.Server.MessageHandlerNotFound";

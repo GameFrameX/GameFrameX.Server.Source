@@ -336,13 +336,13 @@ public static class HotfixManager
     }
 
     /// <summary>
-    /// 获取TCP消息处理器
+    /// 获取消息处理器
     /// </summary>
     /// <param name="msgId">消息ID</param>
     /// <returns>返回对应的消息处理器</returns>
-    public static IMessageHandler GetTcpHandler(int msgId)
+    public static IMessageHandler GetMessageHandler(int msgId)
     {
-        return _module.GetTcpHandler(msgId);
+        return _module.GetMessageHandler(msgId);
     }
 
     /// <summary>
