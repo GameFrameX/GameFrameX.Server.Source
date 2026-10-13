@@ -550,7 +550,7 @@ docker compose -f docker-compose.multi.yml down
 | Social | 2 | ソーシャルサーバー（social-1, social-2） |
 | Game | 10 | ゲームサーバー（game-1 ~ game-10） |
 
-全インスタンスは Aspire スタイルの環境変数でサービスディスカバリを行います：
+全インスタンスは環境変数による静的ブートストラップでサービスディスカバリを行います（`services__{Role}__tcp__0`）：
 
 ```yaml
 environment:
@@ -649,7 +649,7 @@ docker compose -f docker-compose.multi.yml up -d --build
 
 | エンドポイント | 説明 |
 |:-------------|:-----|
-| `http://<host>:<HttpPort>/health` | ヘルスチェック（Aspire デフォルト。`/alive` ライブネスプローブも利用可能） |
+| `http://<host>:<HttpPort>/health` | ヘルスチェック（`/alive` ライブネスプローブも利用可能） |
 | `http://<host>:<MetricsPort>/metrics` | Prometheus メトリクス |
 
 #### メトリクスカテゴリ
@@ -757,7 +757,7 @@ GameFrameX.Server.Source/
 ├── GameFrameX.Network.Abstractions/  # ネットワークインターフェース（IMessage、IMessageHandler、メッセージマッピング）
 ├── GameFrameX.Network.HTTP/          # HTTP サーバー（Swagger、Kestrel、BaseHttpHandler）
 ├── GameFrameX.Network.RemoteMessaging/ # クロスプロセスリモートメッセージ（サーキットブレーカー、リトライ、コンシステントハッシング）
-├── GameFrameX.Discovery/             # Aspire スタイルのサービスディスカバリー（services__{Role}__tcp__0 ブートストラップマップ）
+├── GameFrameX.Discovery/             # 環境変数による静的ブートストラップのサービスディスカバリー（services__{Role}__tcp__0 ブートストラップマップ）
 ├── GameFrameX.DataBase/              # データベース抽象レイヤー（マルチ Provider レジストリ、GameDb クエリ/更新/削除）
 ├── GameFrameX.DataBase.Mongo/        # MongoDB Provider（ヘルスモニタリング、リトライ、バッチ操作）
 ├── GameFrameX.DataBase.PostgreSql/   # PostgreSQL Provider（Npgsql、MongoDB Provider と同等の耐障害性）
@@ -817,7 +817,6 @@ GameFrameX.Server.Source/
 | `Npgsql` | PostgreSQL 永続化ドライバー |
 | `OpenTelemetry.*` + `Grafana.OpenTelemetry` | メトリクス、分散トレーシング、ランタイム計装 |
 | `OpenTelemetry.Exporter.Prometheus.AspNetCore` | Prometheus `/metrics` スクレイピングエンドポイント |
-| `Microsoft.Extensions.ServiceDiscovery` | Aspire スタイルのサービスディスカバリー |
 | `Mapster` | オブジェクトマッピング |
 | `Lib.Harmony` | ランタイムメソッドパッチ |
 | `Quartz` | スケジュールタスク |

@@ -548,7 +548,7 @@ docker compose -f docker-compose.multi.yml down
 | Social | 2 | 社交伺服器（social-1, social-2） |
 | Game | 10 | 遊戲伺服器（game-1 ~ game-10） |
 
-所有實例透過 Aspire 風格的環境變數進行服務發現：
+所有實例透過環境變數靜態引導進行服務發現（`services__{Role}__tcp__0`）：
 
 ```yaml
 environment:
@@ -647,7 +647,7 @@ docker compose -f docker-compose.multi.yml up -d --build
 
 | 端點 | 說明 |
 |:----|:-----|
-| `http://<host>:<HttpPort>/health` | 健康檢查（Aspire 預設；另有 `/alive` 存活探針） |
+| `http://<host>:<HttpPort>/health` | 健康檢查（另有 `/alive` 存活探針） |
 | `http://<host>:<MetricsPort>/metrics` | Prometheus 指標 |
 
 #### 指標分類
@@ -754,7 +754,7 @@ GameFrameX.Server.Source/
 ├── GameFrameX.Network.Abstractions/  # 網路介面（IMessage、IMessageHandler、訊息映射）
 ├── GameFrameX.Network.HTTP/          # HTTP 伺服器（Swagger、Kestrel、BaseHttpHandler）
 ├── GameFrameX.Network.RemoteMessaging/ # 跨程序遠端訊息（斷路器、重試、一致性雜湊）
-├── GameFrameX.Discovery/             # Aspire 風格服務發現（services__{Role}__tcp__0 引導映射）
+├── GameFrameX.Discovery/             # 環境變數靜態引導服務發現（services__{Role}__tcp__0 引導映射）
 ├── GameFrameX.DataBase/              # 資料庫抽象層（多 Provider 註冊表、GameDb 查詢/更新/刪除）
 ├── GameFrameX.DataBase.Mongo/        # MongoDB Provider（健康監控、重試、批次操作）
 ├── GameFrameX.DataBase.PostgreSql/   # PostgreSQL Provider（Npgsql，具備與 MongoDB Provider 同等的韌性）
@@ -822,7 +822,6 @@ compose 檔案與各實例配置是否與產生器輸出一致）。未啟用驗
 | `Npgsql` | PostgreSQL 持久化驅動 |
 | `OpenTelemetry.*` + `Grafana.OpenTelemetry` | 指標、分散式鏈路追蹤、執行階段插樁 |
 | `OpenTelemetry.Exporter.Prometheus.AspNetCore` | Prometheus `/metrics` 抓取端點 |
-| `Microsoft.Extensions.ServiceDiscovery` | Aspire 風格服務發現 |
 | `Mapster` | 物件映射 |
 | `Lib.Harmony` | 執行階段方法修補 |
 | `Quartz` | 排程任務調度 |

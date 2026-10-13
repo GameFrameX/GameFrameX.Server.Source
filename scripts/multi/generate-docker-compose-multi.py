@@ -4,7 +4,7 @@
 按拓扑定义（Role 名 / 实例数 / 端口基址）展开每个实例，并注入：
 
 - ``services__{Role}__tcp__0`` / ``services__{Role}_{InstanceId}__tcp__0``：
-  AspireEndpointResolver 静态引导契约（全实例共享同一张映射）。
+  EnvironmentVariableEndpointResolver 静态引导契约（全实例共享同一张映射）。
 - ``GameFrameX__AdvertiseHost`` / ``GameFrameX__AdvertisePort`` / ``GameFrameX__RoleInstanceId``：
   MongoEndpointRegistry 地址自报引导变量（逐实例注入，D12）。
 

@@ -207,7 +207,7 @@ public sealed class RemoteMessagingBuilder
     /// <returns>远程消息客户端实例 / The configured remote message client instance</returns>
     public IRemoteMessageClient Build()
     {
-        var endpointResolver = new AspireEndpointResolver();
+        var endpointResolver = new EnvironmentVariableEndpointResolver();
         var connectionProvider = new TcpConnectionProvider();
         var transportProtocolAdapter = _transportAdapterFactory?.Invoke(endpointResolver, connectionProvider)
                                        ?? new TcpTransportProtocolAdapter(endpointResolver, connectionProvider);

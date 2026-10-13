@@ -30,11 +30,11 @@
 namespace GameFrameX.Network.RemoteMessaging.Resilience;
 
 /// <summary>
-/// 端点健康评估器。结合 Aspire 健康状态对目标服务进行可用性评分。
+/// 端点健康评估器。结合心跳健康状态对目标服务进行可用性评分。
 /// </summary>
 /// <remarks>
 /// Endpoint health evaluator. Computes an availability score for target services
-/// based on Aspire health status.
+/// based on heartbeat health status.
 /// </remarks>
 public interface IEndpointHealthEvaluator
 {

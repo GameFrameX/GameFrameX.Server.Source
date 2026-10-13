@@ -575,7 +575,7 @@ Cluster topology:
 | Social    | 2         | Social servers (social-1, social-2) |
 | Game      | 10        | Game servers (game-1 ~ game-10)     |
 
-All instances use Aspire-style environment variables for service discovery:
+All instances use environment variables for static-bootstrap service discovery (`services__{Role}__tcp__0`):
 
 ```yaml
 environment:
@@ -675,7 +675,7 @@ docker compose -f docker-compose.multi.yml up -d --build
 
 | Endpoint                                   | Description        |
 |:-------------------------------------------|:-------------------|
-| `http://<host>:<HttpPort>/health`          | Health check (Aspire default; `/alive` liveness probe also available) |
+| `http://<host>:<HttpPort>/health`          | Health check (`/alive` liveness probe also available) |
 | `http://<host>:<MetricsPort>/metrics`      | Prometheus metrics |
 
 #### Metrics Categories
@@ -782,7 +782,7 @@ GameFrameX.Server.Source/
 ├── GameFrameX.Network.Abstractions/  # Network interfaces (IMessage, IMessageHandler, message mapping)
 ├── GameFrameX.Network.HTTP/          # HTTP server (Swagger, Kestrel, BaseHttpHandler)
 ├── GameFrameX.Network.RemoteMessaging/ # Cross-process remote messaging (circuit breaker, retry, consistent hashing)
-├── GameFrameX.Discovery/             # Aspire-style service discovery (services__{Role}__tcp__0 bootstrap map)
+├── GameFrameX.Discovery/             # Environment variable static-bootstrap service discovery (services__{Role}__tcp__0 bootstrap map)
 ├── GameFrameX.DataBase/              # Database abstraction layer (multi-provider registry, GameDb query/update/delete)
 ├── GameFrameX.DataBase.Mongo/        # MongoDB provider (health monitoring, retry, batch operations)
 ├── GameFrameX.DataBase.PostgreSql/   # PostgreSQL provider (Npgsql, same resilience as the MongoDB provider)
@@ -857,7 +857,6 @@ other hosts.
 | `Npgsql` | PostgreSQL persistence driver |
 | `OpenTelemetry.*` + `Grafana.OpenTelemetry` | Metrics, distributed tracing, runtime instrumentation |
 | `OpenTelemetry.Exporter.Prometheus.AspNetCore` | Prometheus `/metrics` scraping endpoint |
-| `Microsoft.Extensions.ServiceDiscovery` | Aspire-style service discovery |
 | `Mapster` | Object mapping |
 | `Lib.Harmony` | Runtime method patching |
 | `Quartz` | Scheduled task scheduling |

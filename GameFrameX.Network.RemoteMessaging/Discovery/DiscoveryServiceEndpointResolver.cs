@@ -35,7 +35,7 @@ namespace GameFrameX.Network.RemoteMessaging.Discovery;
 /// </summary>
 /// <remarks>
 /// The dynamic IServiceEndpointResolver backed by the discovery layer.
-/// <see cref="AspireEndpointResolver"/> stays as the static-bootstrap implementation
+/// <see cref="EnvironmentVariableEndpointResolver"/> stays as the static-bootstrap implementation
 /// (frozen, not removed); this counterpart resolves a service name — which in the
 /// dynamic topology is the role name — to the advertise endpoint of one of its
 /// Active instances from the watcher's dual-view table. It lets the existing RPC
@@ -75,7 +75,7 @@ internal sealed class DiscoveryServiceEndpointResolver : IServiceEndpointResolve
     /// instances of the dual-view table. Same deterministic first-choice policy as
     /// the router's case 3 (any active instance; and the same ConsistentHashServerInstanceSelector
     /// upgrade path); no Active instance resolves to an empty string, matching the
-    /// Aspire resolver contract.
+    /// environment variable resolver contract.
     /// </remarks>
     /// <param name="serviceName">目标服务名（动态拓扑下即 Role 名）/ The target service name (the role name in the dynamic topology)</param>
     /// <returns>端点地址字符串（scheme://host:port）；未找到时返回空字符串 / The endpoint string, or an empty string when not found</returns>

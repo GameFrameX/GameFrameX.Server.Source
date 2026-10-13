@@ -549,7 +549,7 @@ docker compose -f docker-compose.multi.yml down
 | Social | 2 | 소셜 서버(social-1, social-2) |
 | Game | 10 | 게임 서버(game-1 ~ game-10) |
 
-모든 인스턴스는 Aspire 스타일 환경 변수로 서비스 디스커버리를 수행합니다:
+모든 인스턴스는 환경 변수 정적 부트스트랩으로 서비스 디스커버리를 수행합니다(`services__{Role}__tcp__0`):
 
 ```yaml
 environment:
@@ -648,7 +648,7 @@ docker compose -f docker-compose.multi.yml up -d --build
 
 | 엔드포인트 | 설명 |
 |:---------|:-----|
-| `http://<host>:<HttpPort>/health` | 헬스 체크(Aspire 기본. `/alive` 라이브니스 프로브도 제공) |
+| `http://<host>:<HttpPort>/health` | 헬스 체크(`/alive` 라이브니스 프로브도 제공) |
 | `http://<host>:<MetricsPort>/metrics` | Prometheus 메트릭 |
 
 #### 메트릭 카테고리
@@ -756,7 +756,7 @@ GameFrameX.Server.Source/
 ├── GameFrameX.Network.Abstractions/  # 네트워크 인터페이스(IMessage, IMessageHandler, 메시지 매핑)
 ├── GameFrameX.Network.HTTP/          # HTTP 서버(Swagger, Kestrel, BaseHttpHandler)
 ├── GameFrameX.Network.RemoteMessaging/ # 크로스 프로세스 원격 메시지(서킷 브레이커, 재시도, 일관 해싱)
-├── GameFrameX.Discovery/             # Aspire 스타일 서비스 디스커버리(services__{Role}__tcp__0 부트스트랩 맵)
+├── GameFrameX.Discovery/             # 환경 변수 정적 부트스트랩 서비스 디스커버리(services__{Role}__tcp__0 부트스트랩 맵)
 ├── GameFrameX.DataBase/              # 데이터베이스 추상 레이어(멀티 Provider 레지스트리, GameDb 쿼리/업데이트/삭제)
 ├── GameFrameX.DataBase.Mongo/        # MongoDB Provider(헬스 모니터링, 재시도, 배치 작업)
 ├── GameFrameX.DataBase.PostgreSql/   # PostgreSQL Provider(Npgsql, MongoDB Provider와 동일한 복원력)
@@ -818,7 +818,6 @@ GameFrameX.Server.Source/
 | `Npgsql` | PostgreSQL 영속화 드라이버 |
 | `OpenTelemetry.*` + `Grafana.OpenTelemetry` | 메트릭, 분산 추적, 런타임 계측 |
 | `OpenTelemetry.Exporter.Prometheus.AspNetCore` | Prometheus `/metrics` 스크래핑 엔드포인트 |
-| `Microsoft.Extensions.ServiceDiscovery` | Aspire 스타일 서비스 디스커버리 |
 | `Mapster` | 객체 매핑 |
 | `Lib.Harmony` | 런타임 메서드 패치 |
 | `Quartz` | 예약 작업 스케줄링 |

@@ -47,8 +47,7 @@ namespace GameFrameX.StartUp.ServiceDefaults
 {
 
     /// <summary>
-    /// 服务默认配置扩展（原 Aspire ServiceDefaults 项目，C153 迁入本模块）：服务发现、弹性、健康检查和 OpenTelemetry。
-    /// 参考文档：https://aka.ms/dotnet/aspire/service-defaults
+    /// 服务默认配置扩展（C153 迁入本模块）：弹性、健康检查和 OpenTelemetry。
     /// </summary>
     public static class ServiceDefaultsExtensions
     {
@@ -68,7 +67,7 @@ namespace GameFrameX.StartUp.ServiceDefaults
         private static string _mongoHealthConnectionString;
 
         /// <summary>
-        /// 为应用程序构建器添加默认服务，包括服务发现、弹性、健康检查和OpenTelemetry
+        /// 为应用程序构建器添加默认服务，包括弹性、健康检查和OpenTelemetry
         /// </summary>
         /// <typeparam name="TBuilder">主机应用程序构建器类型</typeparam>
         /// <param name="builder">主机应用程序构建器实例</param>
@@ -89,33 +88,23 @@ namespace GameFrameX.StartUp.ServiceDefaults
             // 添加默认健康检查
             builder.AddDefaultHealthChecks();
 
-            // 添加服务发现功能
-            builder.Services.AddServiceDiscovery();
-
             // 配置HTTP客户端默认值
             builder.Services.ConfigureHttpClientDefaults(http =>
             {
                 // 默认启用弹性处理
                 http.AddStandardResilienceHandler();
 
-                // 默认启用服务发现
-                http.AddServiceDiscovery();
             });
 
             // 配置Prometheus端点
             // builder.Services.MapPrometheusScrapingEndpoint();
-            // 取消以下注释以限制服务发现允许使用的协议方案
-            // builder.Services.Configure<ServiceDiscoveryOptions>(options =>
-            // {
-            //     options.AllowedSchemes = ["https"];
-            // });
 
             return builder;
         }
 
 
         /// <summary>
-        /// 为应用程序构建器添加默认服务，包括服务发现、弹性、健康检查和OpenTelemetry
+        /// 为应用程序构建器添加默认服务，包括弹性、健康检查和OpenTelemetry
         /// </summary>
         /// <param name="builder">主机应用程序构建器实例</param>
         /// <param name="isOpenTelemetry">是否启用OpenTelemetry</param>
@@ -133,26 +122,16 @@ namespace GameFrameX.StartUp.ServiceDefaults
             // 添加默认健康检查
             builder.AddDefaultHealthChecks();
 
-            // 添加服务发现功能
-            builder.AddServiceDiscovery();
-
             // 配置HTTP客户端默认值
             builder.ConfigureHttpClientDefaults(http =>
             {
                 // 默认启用弹性处理
                 http.AddStandardResilienceHandler();
 
-                // 默认启用服务发现
-                http.AddServiceDiscovery();
             });
 
             // 配置Prometheus端点
             // builder.Services.MapPrometheusScrapingEndpoint();
-            // 取消以下注释以限制服务发现允许使用的协议方案
-            // builder.Services.Configure<ServiceDiscoveryOptions>(options =>
-            // {
-            //     options.AllowedSchemes = ["https"];
-            // });
 
             return builder;
         }

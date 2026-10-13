@@ -30,10 +30,10 @@
 namespace GameFrameX.Network.RemoteMessaging.Discovery;
 
 /// <summary>
-/// 服务端点解析器。统一从 Aspire 或环境变量中解析目标服务的 TCP 地址。
+/// 服务端点解析器。统一从环境变量中解析目标服务的 TCP 地址。
 /// </summary>
 /// <remarks>
-/// Service endpoint resolver. Uniformly resolves target service TCP addresses from Aspire or environment variables.
+/// Service endpoint resolver. Uniformly resolves target service TCP addresses from environment variables.
 /// </remarks>
 public interface IServiceEndpointResolver
 {

@@ -33,11 +33,11 @@ namespace GameFrameX.Network.RemoteMessaging.Unified;
 
 /// <summary>
 /// 基于环境变量发现同名服务实例。
-/// 支持 Aspire 变量格式：services__{serviceName}_{instanceId}__tcp__0。
+/// 支持环境变量格式：services__{serviceName}_{instanceId}__tcp__0。
 /// </summary>
 /// <remarks>
 /// Discovers same-name service instances from environment variables.
-/// Supports Aspire variable format: services__{serviceName}_{instanceId}__tcp__0.
+/// Supports the environment variable format: services__{serviceName}_{instanceId}__tcp__0.
 /// </remarks>
 public static class EnvironmentServiceInstanceDiscovery
 {

@@ -385,7 +385,7 @@ public class MessageSendMetricsTests
 public class EnvironmentServiceInstanceDiscoveryTests
 {
     [Fact]
-    public void DiscoverInstanceIds_WithAspireVariables_ReturnsDistinctSortedInstanceIds()
+    public void DiscoverInstanceIds_WithEnvironmentVariables_ReturnsDistinctSortedInstanceIds()
     {
         var vars = new Hashtable
         {
