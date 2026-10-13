@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <RootNamespace>{{Name}}</RootNamespace>
+        <!-- 最小组合根宿主（gfx-online 模板生成，C230）：不打包、不入 Server.slnx，独立 dotnet build。 -->
+        <IsPackable>false</IsPackable>
+        <!-- 覆写仓根 Directory.Build.props 的共享输出（../bin/app_debug），产物隔离在本工程 bin/ 下。 -->
+        <OutputPath>bin</OutputPath>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- 引啥装配啥（编译期保证）：本工程只引用所选能力包；机制面（Hosting 三件 / Online.Abstractions /
+             Foundation.Idempotency NuGet）经 Online.Foundation 传递获得。增减能力 = 增减 ProjectReference
+             并在 Program.cs 同步增减 AddOnlineXxxRuntime 装配语句（两者必须成对）。 -->
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Foundation\GameFrameX.Capability.Online.Foundation.csproj"/>
+        <!--#if (Assets)-->
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Assets\GameFrameX.Capability.Online.Assets.csproj"/>
+        <!--#endif-->
+        <!--#if (Social)-->
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Social\GameFrameX.Capability.Online.Social.csproj"/>
+        <!--#endif-->
+        <!--#if (Matchmaking)-->
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Matchmaking\GameFrameX.Capability.Online.Matchmaking.csproj"/>
+        <!--#endif-->
+        <!--#if (Match)-->
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Match\GameFrameX.Capability.Online.Match.csproj"/>
+        <!--#endif-->
+        <!--#if (Competition)-->
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Competition\GameFrameX.Capability.Online.Competition.csproj"/>
+        <!--#endif-->
+        <!--#if (Operations)-->
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Operations\GameFrameX.Capability.Online.Operations.csproj"/>
+        <!--#endif-->
+    </ItemGroup>
+
+</Project>

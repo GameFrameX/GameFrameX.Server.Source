@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "GameFrameX",
+  "classifications": [ "GameFrameX", "Capability", "CompositionRoot" ],
+  "identity": "GameFrameX.OnlineMinimalComposition",
+  "name": "GameFrameX Online 最小组合根宿主",
+  "shortName": "gfx-online",
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  },
+  "description": "生成最小 Online 能力组合根宿主工程（C230）：按开关只引所选 Capability.Online 能力包，经各包 AddOnlineXxxRuntime 回调式显式链式装配——引啥装配啥（编译期保证）；未装配能力的 admin action 不可执行（未部署 → 4002 UnknownAction；已引用被 SetFilter/Disable 排除 → 4003 CapabilityNotInstalled）。必须在 Server.Source 仓根执行。",
+  "symbols": {
+    "Name": {
+      "type": "parameter",
+      "datatype": "string",
+      "description": "宿主工程名（PascalCase，如 MyOnlineHost）；参与工程名/目录与 Program 装配代码替换",
+      "isRequired": true,
+      "replaces": "{{Name}}",
+      "fileRename": "{{Name}}"
+    },
+    "Assets": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "true",
+      "description": "引用并装配 online-assets 能力包（缺省最小集 Foundation+Assets 的示例叶子；--Assets:false 可去除）"
+    },
+    "Social": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "false",
+      "description": "引用并装配 online-social 能力包（闭包含 Foundation）"
+    },
+    "Matchmaking": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "false",
+      "description": "引用并装配 online-matchmaking 能力包（含 Party 域；闭包含 Foundation+Social）"
+    },
+    "Match": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "false",
+      "description": "引用并装配 online-match 能力包（闭包含 Foundation+Assets）"
+    },
+    "Competition": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "false",
+      "description": "引用并装配 online-competition 能力包（闭包含 Foundation+Assets）"
+    },
+    "Operations": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "false",
+      "description": "引用并装配 online-operations 能力包（聚合审计/回滚/总览；闭包含 Foundation）"
+    }
+  }
+}
