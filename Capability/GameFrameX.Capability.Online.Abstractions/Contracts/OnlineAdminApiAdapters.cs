@@ -63,11 +63,11 @@ public static class OnlineAdminApiAdapters
     /// <summary>
     /// 构造作用域适配器（线缆三元组提取 + <see cref="OnlineScopeGuard"/> 比对）。
     /// </summary>
-    /// <param name="authorizedScope">宿主授权作用域。</param>
+    /// <param name="authorizedScope">保留参数（既有公共签名兼容）：比对用授权作用域由 AdminApiDispatcher 单独持有，经 <see cref="IAdminApiScopeAdapter.ValidateClaimed"/> 实参传入。</param>
     /// <returns>作用域适配器。</returns>
     public static IAdminApiScopeAdapter CreateScopeAdapter(OnlineScope authorizedScope)
     {
-        return new ScopeAdapter(authorizedScope);
+        return new ScopeAdapter();
     }
 
     /// <summary>
@@ -127,24 +127,10 @@ public static class OnlineAdminApiAdapters
     }
 
     /// <summary>
-    /// 作用域适配器实现。
+    /// 作用域适配器实现（无状态：比对用授权作用域经 <see cref="IAdminApiScopeAdapter.ValidateClaimed"/> 实参注入）。
     /// </summary>
     private sealed class ScopeAdapter : IAdminApiScopeAdapter
     {
-        /// <summary>
-        /// 宿主授权作用域。
-        /// </summary>
-        private readonly OnlineScope _authorizedScope;
-
-        /// <summary>
-        /// 初始化适配器。
-        /// </summary>
-        /// <param name="authorizedScope">宿主授权作用域。</param>
-        public ScopeAdapter(OnlineScope authorizedScope)
-        {
-            _authorizedScope = authorizedScope;
-        }
-
         /// <inheritdoc />
         public bool TryReadClaimedScope(AdminApiRequest request, out AdminApiClaimedScope claimedScope)
         {
