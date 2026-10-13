@@ -143,7 +143,7 @@ public static class OnlineAdminApiComposition
         if (options == null || !options.IsValid())
         {
             // Localization: Capability.Hosting.AdminApi.OptionsInvalid - 管理面监听选项非法（端口 / 前缀）。
-            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Capability.Hosting.AdminApi.OptionsInvalid));
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Capability.Hosting.AdminApi.AdminApiOptionsInvalid));
         }
     }
 

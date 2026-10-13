@@ -141,7 +141,7 @@ public static partial class Keys
                 /// 键名: Capability.Hosting.AdminApi.OptionsInvalid
                 /// 用途: 管理面组合工厂校验 AdminApiOptions 未通过
                 /// </remarks>
-                public const string OptionsInvalid = "Capability.Hosting.AdminApi.OptionsInvalid";
+                public const string AdminApiOptionsInvalid = "Capability.Hosting.AdminApi.OptionsInvalid";
             }
 
             /// <summary>
