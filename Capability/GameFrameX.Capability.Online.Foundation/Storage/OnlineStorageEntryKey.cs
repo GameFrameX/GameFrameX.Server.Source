@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Storage;
+namespace GameFrameX.Capability.Online.Foundation.Storage;
 
 /// <summary>
 /// 玩家云存储条目键（<see cref="IOnlinePlayerStorageStore.FindAsync"/> 的唯一提交形态；

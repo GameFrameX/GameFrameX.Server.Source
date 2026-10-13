@@ -29,10 +29,10 @@
 
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using GameFrameX.Capability.Online.Events;
-using GameFrameX.Online.GameEvents;
-using GameFrameX.Online.Match;
-using GameFrameX.Capability.Online.Session;
+using GameFrameX.Capability.Online.Abstractions.Events;
+using GameFrameX.Capability.Online.Operations.GameEvents;
+using GameFrameX.Capability.Online.Match;
+using GameFrameX.Capability.Online.Foundation.Session;
 using Xunit;
 
 namespace GameFrameX.Tests.Online
@@ -190,9 +190,9 @@ namespace GameFrameX.Tests.Online
             events.AddRange(harness.Projector.ProjectSessionEvents(OnlineGameEventTestHarness.Session(OnlineSessionState.Active)));
             events.AddRange(harness.Projector.ProjectMatchQueueEvents(OnlineGameEventTestHarness.Ticket()));
             events.AddRange(harness.Projector.ProjectMatchResultEvents(OnlineGameEventTestHarness.MatchResult(OnlineMatchState.Completed, (OnlineGameEventTestHarness.PlayerOne, true), (OnlineGameEventTestHarness.PlayerTwo, false))));
-            events.AddRange(harness.Projector.ProjectAssetTransactionEvents(OnlineGameEventTestHarness.Transaction(GameFrameX.Online.Assets.OnlineAssetChangeSource.PaymentConfirm, GameFrameX.Online.Assets.OnlineGrantOperation.Grant)));
-            events.AddRange(harness.Projector.ProjectAssetTransactionEvents(OnlineGameEventTestHarness.Transaction(GameFrameX.Online.Assets.OnlineAssetChangeSource.MatchReward, GameFrameX.Online.Assets.OnlineGrantOperation.Deduct)));
-            events.AddRange(harness.Projector.ProjectReportCaseEvents(OnlineGameEventTestHarness.ReportCase(GameFrameX.Online.Social.OnlineReportScene.Chat)));
+            events.AddRange(harness.Projector.ProjectAssetTransactionEvents(OnlineGameEventTestHarness.Transaction(GameFrameX.Capability.Online.Assets.OnlineAssetChangeSource.PaymentConfirm, GameFrameX.Capability.Online.Assets.OnlineGrantOperation.Grant)));
+            events.AddRange(harness.Projector.ProjectAssetTransactionEvents(OnlineGameEventTestHarness.Transaction(GameFrameX.Capability.Online.Assets.OnlineAssetChangeSource.MatchReward, GameFrameX.Capability.Online.Assets.OnlineGrantOperation.Deduct)));
+            events.AddRange(harness.Projector.ProjectReportCaseEvents(OnlineGameEventTestHarness.ReportCase(GameFrameX.Capability.Online.Social.OnlineReportScene.Chat)));
 
             var outcomes = await harness.Projector.ProjectAsync(events, OnlineGameEventTestHarness.Now);
             Assert.All(outcomes, outcome => Assert.True(outcome.IsAccepted, outcome.RejectionMessage));

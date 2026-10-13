@@ -29,8 +29,8 @@
 
 using System.Collections.Generic;
 using System.Text.Json;
-using GameFrameX.Online.Assets;
-using GameFrameX.Online.Match;
+using GameFrameX.Capability.Online.Assets;
+using GameFrameX.Capability.Online.Match;
 using Xunit;
 
 namespace GameFrameX.Tests.Online

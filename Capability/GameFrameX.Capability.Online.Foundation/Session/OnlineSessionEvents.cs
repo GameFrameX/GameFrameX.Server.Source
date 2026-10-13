@@ -27,11 +27,11 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Session;
+namespace GameFrameX.Capability.Online.Foundation.Session;
 
 using System.Text;
 using System.Text.Json;
-using GameFrameX.Capability.Online.Events;
+using GameFrameX.Capability.Online.Abstractions.Events;
 
 /// <summary>
 /// 会话域事件工厂（Session 生命周期事件经统一事件信封供 Party/Friend/Admin 消费）。

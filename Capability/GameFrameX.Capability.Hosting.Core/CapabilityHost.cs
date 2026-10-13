@@ -29,7 +29,8 @@
 
 using GameFrameX.Foundation.Localization.Core;
 
-namespace GameFrameX.Capability.Hosting;
+using GameFrameX.Capability.Hosting.Abstractions;
+namespace GameFrameX.Capability.Hosting.Core;
 
 /// <summary>
 /// 能力宿主（装配完成的运行时承载：授权作用域 + 调度壳 + 能力报告 + 事件爆发口）。
@@ -40,6 +41,27 @@ namespace GameFrameX.Capability.Hosting;
 /// </summary>
 public sealed class CapabilityHost
 {
+
+    /// <summary>
+    /// 宿主共享服务注册表（组合根预置 + 能力模块注册的产物；「壳取用叶子包装配产物」的服务共享面，C231）。
+    /// </summary>
+    /// <remarks>
+    /// The host-wide shared service registry (composition-root pre-seeds plus capability-module products;
+    /// the service-sharing face for the shell consuming leaf-package assembly products, C231).
+    /// </remarks>
+    public CapabilityServices Services { get; }
+
+    /// <summary>
+    /// 启用能力模块实例表（Requires 拓扑序；admin 组装的唯一模块来源——模块自装配后携带域状态，
+    /// 必须与 Register 共用同一实例，禁止二次实例化）。
+    /// </summary>
+    /// <remarks>
+    /// The enabled capability module instances in Requires topological order; the single module source for
+    /// admin assembly — modules carry domain state after self-assembly and must reuse the same instances that
+    /// registered, never a second instantiation.
+    /// </remarks>
+    public IReadOnlyList<ICapabilityModule> Modules { get; }
+
     /// <summary>
     /// 装配选项。
     /// </summary>
@@ -60,24 +82,6 @@ public sealed class CapabilityHost
     /// </summary>
     private bool _started;
 
-    /// <summary>
-    /// 初始化 <see cref="CapabilityHost"/>（必须合法选项，否则抛 <see cref="InvalidOperationException"/>）。
-    /// </summary>
-    /// <param name="options">装配选项。</param>
-    /// <param name="report">能力报告。</param>
-    /// <param name="scheduler">调度壳（承载本宿主的全部注册 job）。</param>
-    public CapabilityHost(CapabilityHostOptions options, CapabilityReport report, CapabilityScheduler scheduler)
-    {
-        Options = options ?? throw new ArgumentNullException(nameof(options));
-        if (!options.IsValid())
-        {
-            // Localization: Capability.Hosting.OptionsInvalid - 能力宿主选项非法（作用域三元组 / 调度间隔）。
-            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Capability.Hosting.OptionsInvalid));
-        }
-
-        Report = report ?? throw new ArgumentNullException(nameof(report));
-        Scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
-    }
 
     /// <summary>
     /// 获取授权租户标识。
@@ -103,6 +107,39 @@ public sealed class CapabilityHost
         get { return Options.ServerId; }
     }
 
+    /// <summary>
+    /// 初始化 <see cref="CapabilityHost"/>（共享服务注册表与模块实例缺省自建形态）。
+    /// </summary>
+    /// <param name="options">装配选项。</param>
+    /// <param name="report">能力报告。</param>
+    /// <param name="scheduler">调度壳（承载本宿主的全部注册 job）。</param>
+    public CapabilityHost(CapabilityHostOptions options, CapabilityReport report, CapabilityScheduler scheduler)
+        : this(options, report, scheduler, new CapabilityServices(), Array.Empty<ICapabilityModule>())
+    {
+    }
+
+    /// <summary>
+    /// 初始化 <see cref="CapabilityHost"/>（完整形态：装配器注入共享服务注册表与启用模块实例表）。
+    /// </summary>
+    /// <param name="options">装配选项。</param>
+    /// <param name="report">能力报告。</param>
+    /// <param name="scheduler">调度壳（承载本宿主的全部注册 job）。</param>
+    /// <param name="services">宿主共享服务注册表。</param>
+    /// <param name="modules">启用能力模块实例表（拓扑序）。</param>
+    public CapabilityHost(CapabilityHostOptions options, CapabilityReport report, CapabilityScheduler scheduler, CapabilityServices services, IReadOnlyList<ICapabilityModule> modules)
+    {
+        Options = options ?? throw new ArgumentNullException(nameof(options));
+        if (!options.IsValid())
+        {
+            // Localization: Capability.Hosting.OptionsInvalid - 能力宿主选项非法（作用域三元组 / 调度间隔）。
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Capability.Hosting.OptionsInvalid));
+        }
+
+        Report = report ?? throw new ArgumentNullException(nameof(report));
+        Scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
+        Services = services ?? throw new ArgumentNullException(nameof(services));
+        Modules = modules ?? throw new ArgumentNullException(nameof(modules));
+    }
     /// <summary>
     /// 分发一条能力事件（同步驱动事件 job；P1 机制预留爆发口）。
     /// </summary>

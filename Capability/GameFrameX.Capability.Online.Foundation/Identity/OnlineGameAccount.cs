@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Identity;
+namespace GameFrameX.Capability.Online.Foundation.Identity;
 
 /// <summary>
 /// 游戏账号实体（Tenant → App → Identity / GameAccount → Player 层级中的账号层）。

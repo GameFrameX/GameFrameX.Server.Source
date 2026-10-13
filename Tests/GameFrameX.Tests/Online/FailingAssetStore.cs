@@ -30,8 +30,8 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Online.Assets;
-using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Assets;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 
 namespace GameFrameX.Tests.Online
 {

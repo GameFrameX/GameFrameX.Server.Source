@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 // ==========================================================================================
 
-using GameFrameX.Online.Party;
+using GameFrameX.Capability.Online.Matchmaking.Party;
 using Xunit;
 
 namespace GameFrameX.Tests.Online

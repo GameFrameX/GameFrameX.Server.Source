@@ -18,6 +18,12 @@
     <Project Path="Capability/GameFrameX.Capability.Hosting.AdminApi/GameFrameX.Capability.Hosting.AdminApi.csproj" />
     <Project Path="Capability/GameFrameX.Capability.Online.Abstractions/GameFrameX.Capability.Online.Abstractions.csproj" />
     <Project Path="Capability/GameFrameX.Capability.Online.Foundation/GameFrameX.Capability.Online.Foundation.csproj" />
+    <Project Path="Capability/GameFrameX.Capability.Online.Assets/GameFrameX.Capability.Online.Assets.csproj" />
+    <Project Path="Capability/GameFrameX.Capability.Online.Social/GameFrameX.Capability.Online.Social.csproj" />
+    <Project Path="Capability/GameFrameX.Capability.Online.Matchmaking/GameFrameX.Capability.Online.Matchmaking.csproj" />
+    <Project Path="Capability/GameFrameX.Capability.Online.Match/GameFrameX.Capability.Online.Match.csproj" />
+    <Project Path="Capability/GameFrameX.Capability.Online.Competition/GameFrameX.Capability.Online.Competition.csproj" />
+    <Project Path="Capability/GameFrameX.Capability.Online.Operations/GameFrameX.Capability.Online.Operations.csproj" />
   </Folder>
   <Project Path="GameFrameX.Apps/GameFrameX.Apps.csproj" />
   <Project Path="GameFrameX.Discovery/GameFrameX.Discovery.csproj" />
@@ -36,8 +42,6 @@
   <Project Path="GameFrameX.Network.Abstractions/GameFrameX.Network.Abstractions.csproj" />
   <Project Path="GameFrameX.Network.HTTP/GameFrameX.Network.HTTP.csproj" />
   <Project Path="GameFrameX.Network.RemoteMessaging/GameFrameX.Network.RemoteMessaging.csproj" />
-  <Project Path="GameFrameX.Online/GameFrameX.Online.csproj" />
-  <Project Path="GameFrameX.Online.Runtime/GameFrameX.Online.Runtime.csproj" />
   <Project Path="GameFrameX.Network/GameFrameX.Network.csproj" />
   <Project Path="GameFrameX.Proto/GameFrameX.Proto.csproj" />
   <Project Path="GameFrameX.ProtoBuf.Net/GameFrameX.ProtoBuf.Net.csproj" />

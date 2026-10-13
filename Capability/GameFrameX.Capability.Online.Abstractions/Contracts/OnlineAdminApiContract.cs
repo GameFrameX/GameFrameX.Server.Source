@@ -1,0 +1,290 @@
+// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应开源许可证与规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   Any legal disputes or liabilities arising from secondary development based on this project
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository: https://cnb.cool/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository: https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+using System.Text.Json;
+using GameFrameX.Capability.Hosting.AdminApi;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Scope;
+using GameFrameX.Foundation.Localization.Core;
+
+namespace GameFrameX.Capability.Online.Abstractions.Contracts;
+
+/// <summary>
+/// admin 线缆解析助手（Admin 请求体的既有事实：标识类字段为字符串、枚举为数字、可空过滤字段缺失为 null）。
+/// <para>
+/// 维护约束：本类只做「线缆形态 → Online 域形态」的机械转换，不做业务判定；
+/// 参数非法一律抛 <see cref="OnlineServiceException"/>（4xxx 段），由调度器统一映射内层协议码。
+/// </para>
+/// </summary>
+public static class OnlineAdminApiContract
+{
+    /// <summary>
+    /// 按属性名大小写不敏感地取子元素。
+    /// </summary>
+    /// <param name="root">根元素。</param>
+    /// <param name="name">属性名。</param>
+    /// <param name="element">输出：子元素。</param>
+    /// <returns>命中返回 true。</returns>
+    public static bool TryGetElement(JsonElement root, string name, out JsonElement element)
+    {
+        element = default;
+        if (root.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        foreach (var property in root.EnumerateObject())
+        {
+            if (string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                element = property.Value;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 读取玩家标识（线缆字符串形态；必填正数）。
+    /// </summary>
+    /// <param name="request">请求。</param>
+    /// <returns>玩家标识。</returns>
+    public static long ReadPlayerId(AdminApiRequest request)
+    {
+        if (request.TryReadInt64("PlayerId", out var playerId) && playerId > 0)
+        {
+            return playerId;
+        }
+
+        // Localization: Online.AdminApi.PlayerIdInvalid - PlayerId 必须为正数（线缆形态：字符串）。
+        throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, LocalizationService.GetString(Localization.Keys.Online.AdminApi.PlayerIdInvalid));
+    }
+
+    /// <summary>
+    /// 读取玩家作用域（守卫通过的作用域 + 玩家主体位）。
+    /// </summary>
+    /// <param name="request">请求。</param>
+    /// <param name="scope">已通过守卫的作用域。</param>
+    /// <returns>含玩家位的作用域。</returns>
+    public static OnlineScope ReadPlayerScope(AdminApiRequest request, OnlineScope scope)
+    {
+        return new OnlineScope(scope.TenantId, scope.AppId, scope.ServerId, ReadPlayerId(request));
+    }
+
+    /// <summary>
+    /// 读取必填字符串。
+    /// </summary>
+    /// <param name="request">请求。</param>
+    /// <param name="name">字段名。</param>
+    /// <returns>非空字符串。</returns>
+    public static string RequireString(AdminApiRequest request, string name)
+    {
+        var value = request.ReadString(name);
+        if (!string.IsNullOrEmpty(value))
+        {
+            return value;
+        }
+
+        // Localization: Online.AdminApi.NonEmptyStringRequired - {0} 必须为非空字符串。
+        throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, LocalizationService.GetString(Localization.Keys.Online.AdminApi.NonEmptyStringRequired, name));
+    }
+
+    /// <summary>
+    /// 读取可选字符串（缺失返回 null）。
+    /// </summary>
+    /// <param name="request">请求。</param>
+    /// <param name="name">字段名。</param>
+    /// <returns>字符串值。</returns>
+    public static string ReadOptionalString(AdminApiRequest request, string name)
+    {
+        var value = request.ReadString(name);
+        return string.IsNullOrEmpty(value) ? null : value;
+    }
+
+    /// <summary>
+    /// 读取分页大小（默认 20，钳制 1～100）。
+    /// </summary>
+    /// <param name="request">请求。</param>
+    /// <returns>分页大小。</returns>
+    public static int ReadPageSize(AdminApiRequest request)
+    {
+        var pageSize = request.ReadNullableInt32("PageSize");
+        if (!pageSize.HasValue || pageSize.Value <= 0)
+        {
+            return 20;
+        }
+
+        return Math.Min(100, pageSize.Value);
+    }
+
+    /// <summary>
+    /// 读取分页游标（缺失返回 null）。
+    /// </summary>
+    /// <param name="request">请求。</param>
+    /// <returns>游标。</returns>
+    public static string ReadCursor(AdminApiRequest request)
+    {
+        return ReadOptionalString(request, "Cursor");
+    }
+
+    /// <summary>
+    /// 读取可选长整型（线缆字符串 / 数字双形态）。
+    /// </summary>
+    /// <param name="request">请求。</param>
+    /// <param name="name">字段名。</param>
+    /// <returns>值；缺失为 null。</returns>
+    public static long? ReadOptionalInt64(AdminApiRequest request, string name)
+    {
+        var value = request.ReadNullableInt64(name);
+        return value;
+    }
+
+    /// <summary>
+    /// 解开 <see cref="OnlineResult{TData}"/>（失败抛 <see cref="OnlineServiceException"/>，协议码透传）。
+    /// </summary>
+    /// <typeparam name="TData">数据类型。</typeparam>
+    /// <param name="result">服务结果。</param>
+    /// <returns>数据载荷。</returns>
+    public static TData Unwrap<TData>(OnlineResult<TData> result)
+    {
+        if (result == null)
+        {
+            // Localization: Online.AdminApi.ServiceNoResult - 服务未返回任何结果。
+            throw new OnlineServiceException(OnlineErrorCode.InternalError, LocalizationService.GetString(Localization.Keys.Online.AdminApi.ServiceNoResult));
+        }
+
+        if (result.IsSuccess)
+        {
+            return result.Data;
+        }
+
+        throw new OnlineServiceException(result.Code, result.Message);
+    }
+
+    /// <summary>
+    /// 当前 Unix 秒。
+    /// </summary>
+    /// <returns>Unix 秒。</returns>
+    public static long NowSeconds()
+    {
+        return DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+    }
+
+    /// <summary>
+    /// 构造受控命令回执（Command 回显线缆值，缺失回退 action 名）。
+    /// </summary>
+    /// <param name="request">请求。</param>
+    /// <param name="targetIdentifier">目标标识。</param>
+    /// <param name="summary">摘要文本。</param>
+    /// <returns>受控命令回执。</returns>
+    public static ControlledCommandAckResponse BuildControlledAck(AdminApiRequest request, string targetIdentifier, string summary)
+    {
+        return new ControlledCommandAckResponse
+        {
+            Command = request.ReadString("Command") ?? request.Action,
+            TargetIdentifier = targetIdentifier,
+            IdempotencyKey = request.ReadIdempotencyKey() ?? string.Empty,
+            Status = "Executed",
+            ExecutedAt = NowSeconds() * 1000,
+            Summary = summary,
+        };
+    }
+
+    /// <summary>
+    /// 读取方向（Apply / Lift；受控双向命令必填）。
+    /// </summary>
+    /// <param name="request">请求。</param>
+    /// <returns>方向文本。</returns>
+    public static string ReadDirection(AdminApiRequest request)
+    {
+        var direction = ReadOptionalString(request, "Direction");
+        if (string.Equals(direction, "Apply", StringComparison.OrdinalIgnoreCase) || string.Equals(direction, "Lift", StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Equals(direction, "Apply", StringComparison.OrdinalIgnoreCase) ? "Apply" : "Lift";
+        }
+
+        // Localization: Online.AdminApi.DirectionInvalid - Direction 必须为 'Apply' 或 'Lift'。
+        throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, LocalizationService.GetString(Localization.Keys.Online.AdminApi.DirectionInvalid));
+    }
+
+    /// <summary>
+    /// 解析审核操作者的数值管理员标识（处罚服务审计红线要求非 0：ReviewerOperatorId 稳定散射为正 long，缺省 1 = admin 面系统位）。
+    /// </summary>
+    /// <param name="request">请求。</param>
+    /// <returns>正数管理员标识。</returns>
+    public static long ReadReviewerAdminId(AdminApiRequest request)
+    {
+        var reviewer = ReadOptionalString(request, "ReviewerOperatorId");
+        var value = 1L;
+        if (!string.IsNullOrEmpty(reviewer))
+        {
+            foreach (var character in reviewer)
+            {
+                unchecked
+                {
+                    value = value * 31 + character;
+                }
+            }
+
+            if (value <= 0)
+            {
+                value = -value;
+            }
+
+            if (value == 0)
+            {
+                value = 1;
+            }
+        }
+
+        return value;
+    }
+
+    /// <summary>
+    /// 受控命令回执（对齐 Admin OnlineControlledCommandAckResponse）。
+    /// </summary>
+    public sealed class ControlledCommandAckResponse
+    {
+        /// <summary>获取或设置命令名（回显线缆值，缺失回退 action 名）。</summary>
+        public string Command { get; set; }
+
+        /// <summary>获取或设置目标标识。</summary>
+        public string TargetIdentifier { get; set; }
+
+        /// <summary>获取或设置幂等键回显。</summary>
+        public string IdempotencyKey { get; set; }
+
+        /// <summary>获取或设置执行状态（恒 Executed）。</summary>
+        public string Status { get; set; }
+
+        /// <summary>获取或设置执行时刻（UTC 毫秒）。</summary>
+        public long ExecutedAt { get; set; }
+
+        /// <summary>获取或设置摘要文本。</summary>
+        public string Summary { get; set; }
+    }
+}

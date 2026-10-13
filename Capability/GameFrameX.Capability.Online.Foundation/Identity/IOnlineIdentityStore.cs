@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Identity;
+namespace GameFrameX.Capability.Online.Foundation.Identity;
 
 /// <summary>
 /// 身份域存储接口（Identity/GameAccount/Player/Device 数据关系的持久化契约）。

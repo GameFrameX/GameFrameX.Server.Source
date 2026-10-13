@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Idempotency;
+namespace GameFrameX.Capability.Online.Abstractions.Idempotency;
 
 /// <summary>
 /// Online 幂等审计出口（过期、重放和跨作用域请求必须被拒绝并记录审计；留痕率量化基线 100%）。

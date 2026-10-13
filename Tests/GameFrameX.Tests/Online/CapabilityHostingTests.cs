@@ -32,10 +32,11 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Capability.Hosting;
+using GameFrameX.Capability.Hosting.Abstractions;
+using GameFrameX.Capability.Hosting.Core;
 using GameFrameX.Capability.Hosting.AdminApi;
-using GameFrameX.Capability.Online.Contracts;
-using GameFrameX.Online.Runtime;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Launcher.Online;
 using Xunit;
 
 namespace GameFrameX.Tests.Online
@@ -77,6 +78,21 @@ namespace GameFrameX.Tests.Online
         private static CapabilityHostOptions ValidOptions()
         {
             return new CapabilityHostOptions { TenantId = 1, AppId = 1, ServerId = 1 };
+        }
+
+        /// <summary>
+        /// 构造 Online 单入口组合产物（业务运行时形态；授权三元组 1/1/1001，C232 P6 起真扫描装配）。
+        /// </summary>
+        /// <returns>组合产物。</returns>
+        private static OnlineCapabilityComposition CreateComposition()
+        {
+            return OnlineCapabilityComposition.AddOnlineCapabilities(options =>
+            {
+                options.TenantId = 1;
+                options.AppId = 1;
+                options.ServerId = 1001;
+                options.EnableRuntime = true;
+            });
         }
 
         /// <summary>
@@ -188,17 +204,24 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// Online 过渡装配报告：7 个终态包 Id 全部启用，拓扑序满足 Requires 方向（依赖方后置）。
+        /// Online 真扫描装配报告：7 个终态包 Id 全部启用，拓扑序满足 Requires 方向（依赖方后置；
+        /// C232 P6 起经 Launcher 单入口扫描装配，装配序 = 扫描发现序 + Requires 拓扑）。
         /// </summary>
         [Fact]
         public void OnlineHost_ReportEnablesAllSevenCapabilitiesInTopologicalOrder()
         {
-            var host = new OnlineRuntimeHost(new CapabilityHostOptions { TenantId = 1, AppId = 1, ServerId = 1001 });
+            var composition = OnlineCapabilityComposition.AddOnlineCapabilities(options =>
+            {
+                options.TenantId = 1;
+                options.AppId = 1;
+                options.ServerId = 1001;
+                options.EnableRuntime = true;
+            });
 
-            var order = host.CapabilityHost.Report.EnabledIdsInOrder;
+            var order = composition.Runtime.Report.EnabledIdsInOrder;
             Assert.Equal(new[]
             {
-                "online-assets", "online-foundation", "online-match", "online-competition",
+                "online-assets", "online-foundation", "online-competition", "online-match",
                 "online-social", "online-matchmaking", "online-operations",
             }, order);
         }
@@ -267,7 +290,7 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task FullComposition_ListCapabilities_ReportsEnabledOrderAsync()
         {
-            var dispatcher = OnlineAdminApiComposition.CreateDispatcher(new OnlineRuntimeHost(new CapabilityHostOptions { TenantId = 1, AppId = 1, ServerId = 1001 }));
+            var dispatcher = OnlineAdminApiComposition.CreateDispatcher(CreateComposition().Runtime);
 
             var response = await dispatcher.DispatchAsync("list_capabilities", "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001}");
             using (var outer = JsonDocument.Parse(response))
@@ -279,7 +302,7 @@ namespace GameFrameX.Tests.Online
                     Assert.Equal(7, data.GetProperty("Capabilities").GetArrayLength());
                     Assert.Equal(new[]
                     {
-                        "online-assets", "online-foundation", "online-match", "online-competition",
+                        "online-assets", "online-foundation", "online-competition", "online-match",
                         "online-social", "online-matchmaking", "online-operations",
                     }, data.GetProperty("EnabledIdsInOrder").EnumerateArray().Select(e => e.GetString()).ToArray());
                 }

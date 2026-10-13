@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Session;
+namespace GameFrameX.Capability.Online.Foundation.Session;
 
 /// <summary>
 /// 会话生命周期状态（Created → Authenticated → Connected → Active，断线入 Reconnecting，终态 Closed/Kicked/Expired）。

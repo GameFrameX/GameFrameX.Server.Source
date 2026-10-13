@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Tokens;
+namespace GameFrameX.Capability.Online.Abstractions.Tokens;
 
 /// <summary>
 /// Token 签发结果（契约承载；<c>ExpiresAtTime</c> 为 UTC 毫秒绝对时刻，到期映射 2xxx 段 <c>TokenExpired</c>）。

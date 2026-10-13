@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Tokens;
+namespace GameFrameX.Capability.Online.Abstractions.Tokens;
 
 /// <summary>
 /// Token 吊销结果（目标会话不存在或已吊销时 <c>Revoked</c> 为 <c>false</c>，调用方按幂等语义接受，不映射错误码）。

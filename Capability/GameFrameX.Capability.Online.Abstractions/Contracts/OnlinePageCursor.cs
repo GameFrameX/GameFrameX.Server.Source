@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Contracts;
+namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
 /// Online 分页游标契约（分页统一使用明确的 <c>Cursor</c>、<c>HasMore</c> 和稳定排序，

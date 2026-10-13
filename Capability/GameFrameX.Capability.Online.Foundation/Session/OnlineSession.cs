@@ -27,9 +27,9 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Session;
+namespace GameFrameX.Capability.Online.Foundation.Session;
 
-using GameFrameX.Capability.Online.Identity;
+using GameFrameX.Capability.Online.Foundation.Identity;
 
 /// <summary>
 /// 会话实体（一次连接与鉴权上下文，含连接映射、Token 指纹与重连窗口）。

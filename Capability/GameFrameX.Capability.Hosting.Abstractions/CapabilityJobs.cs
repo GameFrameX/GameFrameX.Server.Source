@@ -27,7 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Hosting;
+namespace GameFrameX.Capability.Hosting.Abstractions;
 
 /// <summary>
 /// 逐滴答 job（每个调度滴算按装配序执行一次）。

@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Contracts;
+namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
 /// Online 公共请求上下文（任何 Online 请求至少包含 <c>RequestId</c>、<c>ProtocolVersion</c>、

@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Identity;
+namespace GameFrameX.Capability.Online.Foundation.Identity;
 
 /// <summary>
 /// 玩家档案实体（GameAccount 下属的 Server/玩法角色层，区别于 User/GameAccount/Device/Identity/Session）。

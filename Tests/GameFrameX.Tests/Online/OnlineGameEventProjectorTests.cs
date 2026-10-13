@@ -31,12 +31,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using GameFrameX.Online.Assets;
-using GameFrameX.Capability.Online.Events;
-using GameFrameX.Online.GameEvents;
-using GameFrameX.Online.Match;
-using GameFrameX.Capability.Online.Session;
-using GameFrameX.Online.Social;
+using GameFrameX.Capability.Online.Assets;
+using GameFrameX.Capability.Online.Abstractions.Events;
+using GameFrameX.Capability.Online.Operations.GameEvents;
+using GameFrameX.Capability.Online.Match;
+using GameFrameX.Capability.Online.Foundation.Session;
+using GameFrameX.Capability.Online.Social;
 using Xunit;
 
 namespace GameFrameX.Tests.Online

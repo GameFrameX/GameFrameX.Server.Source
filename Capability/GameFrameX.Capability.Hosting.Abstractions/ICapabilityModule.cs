@@ -27,7 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Hosting;
+namespace GameFrameX.Capability.Hosting.Abstractions;
 
 /// <summary>
 /// 能力模块契约（一个能力包对机制的全部贡献入口）。

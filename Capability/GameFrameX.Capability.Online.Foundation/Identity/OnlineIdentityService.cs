@@ -27,9 +27,9 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Identity;
+namespace GameFrameX.Capability.Online.Foundation.Identity;
 
-using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
 /// 身份域服务（登录解析、绑定/换绑/解绑、合并与注销的显式操作）。

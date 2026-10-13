@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Presence;
+namespace GameFrameX.Capability.Online.Foundation.Presence;
 
 /// <summary>
 /// 在线状态内存默认存储（单进程/测试默认实现；生产装配以持久化实现替换）。

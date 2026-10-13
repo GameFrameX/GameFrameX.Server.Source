@@ -27,9 +27,9 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 
-namespace GameFrameX.Capability.Online.Scope;
+namespace GameFrameX.Capability.Online.Abstractions.Scope;
 
 /// <summary>
 /// Online 作用域解析器（作用域在 Server / Client API / Hub API / Admin API 四端间传递，

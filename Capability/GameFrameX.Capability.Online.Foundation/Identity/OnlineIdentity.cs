@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Identity;
+namespace GameFrameX.Capability.Online.Foundation.Identity;
 
 /// <summary>
 /// 外源身份实体（邮箱/设备/渠道/第三方身份，绑定明确的 TenantId + AppId）。

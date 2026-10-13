@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Contracts;
+namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
 /// Online 公共请求上下文校验器（缺上下文请求被拒，副作用请求缺幂等键被拒）。

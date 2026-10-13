@@ -31,11 +31,11 @@ using System;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using GameFrameX.Capability.Hosting;
+using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Hosting.AdminApi;
-using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Online.Runtime;
+using GameFrameX.Launcher.Online;
 using Xunit;
 
 namespace GameFrameX.Tests.Online;
@@ -74,9 +74,9 @@ public class OnlineCapabilityCompositionTests
         Assert.Null(composition.AdminApi);
         Assert.Equal(new[]
         {
-            "online-assets", "online-foundation", "online-match", "online-competition",
+            "online-assets", "online-foundation", "online-competition", "online-match",
             "online-social", "online-matchmaking", "online-operations",
-        }, composition.Runtime.CapabilityHost.Report.EnabledIdsInOrder);
+        }, composition.Runtime.Report.EnabledIdsInOrder);
     }
 
     /// <summary>
@@ -120,7 +120,7 @@ public class OnlineCapabilityCompositionTests
             options.Disable = Array.Empty<string>();
         }));
 
-        Assert.Equal(7, composition.Runtime.CapabilityHost.Report.Entries.Count(entry => entry.State == CapabilityFilterState.Enabled));
+        Assert.Equal(7, composition.Runtime.Report.Entries.Count(entry => entry.State == CapabilityFilterState.Enabled));
     }
 
     /// <summary>
@@ -136,7 +136,7 @@ public class OnlineCapabilityCompositionTests
             options.Disable = new[] { " " };
         }));
 
-        Assert.Equal(7, composition.Runtime.CapabilityHost.Report.Entries.Count(entry => entry.State == CapabilityFilterState.Enabled));
+        Assert.Equal(7, composition.Runtime.Report.Entries.Count(entry => entry.State == CapabilityFilterState.Enabled));
     }
     /// <summary>
     /// 排除表生效：被排除能力（叶子能力 online-operations，无下游依赖）在运行时报告中为
@@ -151,10 +151,10 @@ public class OnlineCapabilityCompositionTests
             options.Disable = new[] { "online-operations" };
         }));
 
-        var entries = composition.Runtime.CapabilityHost.Report.Entries.ToDictionary(entry => entry.Manifest.Id);
+        var entries = composition.Runtime.Report.Entries.ToDictionary(entry => entry.Manifest.Id);
         Assert.Equal(CapabilityFilterState.ExcludedByDisableList, entries["online-operations"].State);
-        Assert.Equal(6, composition.Runtime.CapabilityHost.Report.EnabledIdsInOrder.Count);
-        Assert.DoesNotContain("online-operations", composition.Runtime.CapabilityHost.Report.EnabledIdsInOrder);
+        Assert.Equal(6, composition.Runtime.Report.EnabledIdsInOrder.Count);
+        Assert.DoesNotContain("online-operations", composition.Runtime.Report.EnabledIdsInOrder);
     }
 
     /// <summary>
@@ -235,7 +235,7 @@ public class OnlineCapabilityCompositionTests
         }));
 
         Assert.Equal(new[] { "online-foundation", "online-social", "online-matchmaking" },
-            composition.Runtime.CapabilityHost.Report.EnabledIdsInOrder);
+            composition.Runtime.Report.EnabledIdsInOrder);
     }
 
     /// <summary>

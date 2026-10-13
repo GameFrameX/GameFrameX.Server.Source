@@ -25,10 +25,9 @@
 //  ==========================================================================================
 
 using System.Text.Json;
-using GameFrameX.Capability.Hosting;
 using GameFrameX.Capability.Hosting.AdminApi;
-using GameFrameX.Capability.Online.Contracts;
-using GameFrameX.Online.Runtime;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Launcher.Online;
 
 namespace GameFrameX.Tests.Online
 {
@@ -39,16 +38,17 @@ namespace GameFrameX.Tests.Online
     public class OnlineAdminApiDispatcherTests
     {
         /// <summary>
-        /// 构造授权作用域为 租户 1 / 应用 1 / 区服 1001 的组合根与调度器。
+        /// 构造授权作用域为 租户 1 / 应用 1 / 区服 1001 的组合产物（C232 P6 起真扫描装配）。
         /// </summary>
-        /// <returns>组合根。</returns>
-        private static OnlineRuntimeHost CreateHost()
+        /// <returns>组合产物。</returns>
+        private static OnlineCapabilityComposition CreateComposition()
         {
-            return new OnlineRuntimeHost(new CapabilityHostOptions
+            return OnlineCapabilityComposition.AddOnlineCapabilities(options =>
             {
-                TenantId = 1,
-                AppId = 1,
-                ServerId = 1001,
+                options.TenantId = 1;
+                options.AppId = 1;
+                options.ServerId = 1001;
+                options.EnableRuntime = true;
             });
         }
 
@@ -58,7 +58,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>调度器。</returns>
         private static AdminApiDispatcher CreateDispatcher()
         {
-            return OnlineAdminApiComposition.CreateDispatcher(CreateHost());
+            return OnlineAdminApiComposition.CreateDispatcher(CreateComposition().Runtime);
         }
 
         /// <summary>

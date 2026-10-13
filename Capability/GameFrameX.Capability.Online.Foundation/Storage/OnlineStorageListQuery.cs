@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Storage;
+namespace GameFrameX.Capability.Online.Foundation.Storage;
 
 /// <summary>
 /// 玩家云存储列举查询载荷（<see cref="IOnlinePlayerStorageStore.ListAsync"/> 的唯一提交形态；

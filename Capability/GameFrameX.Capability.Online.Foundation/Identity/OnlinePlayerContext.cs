@@ -27,10 +27,10 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Identity;
+namespace GameFrameX.Capability.Online.Foundation.Identity;
 
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Capability.Online.Scope;
+using GameFrameX.Capability.Online.Abstractions.Scope;
 
 /// <summary>
 /// 统一玩家上下文（PlayerId + AppId + ServerId + SessionId，后续模块不再各自解析身份）。

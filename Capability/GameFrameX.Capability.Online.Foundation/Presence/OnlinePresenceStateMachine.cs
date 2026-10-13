@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Presence;
+namespace GameFrameX.Capability.Online.Foundation.Presence;
 
 /// <summary>
 /// 在线状态机（转换表固化为可断言常量，下游直接消费不得旁路）。

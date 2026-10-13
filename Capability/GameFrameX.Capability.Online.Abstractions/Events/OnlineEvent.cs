@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Events;
+namespace GameFrameX.Capability.Online.Abstractions.Events;
 
 /// <summary>
 /// Online 事件信封（事件契约：EventId/EventType/OccurredAt/SchemaVersion +

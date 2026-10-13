@@ -29,7 +29,7 @@
 
 using System.Text;
 using System.Text.Json;
-using GameFrameX.Capability.Hosting;
+using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Foundation.Json;
 
 namespace GameFrameX.Capability.Hosting.AdminApi;

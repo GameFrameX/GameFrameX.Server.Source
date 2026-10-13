@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Presence;
+namespace GameFrameX.Capability.Online.Foundation.Presence;
 
 /// <summary>
 /// 在线状态存储接口（Presence 事实源的持久化契约）。

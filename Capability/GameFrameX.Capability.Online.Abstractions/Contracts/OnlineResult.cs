@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Contracts;
+namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
 /// Online 服务层统一操作结果（服务端半边：业务可预期失败段位化返回，不抛异常）。

@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Presence;
+namespace GameFrameX.Capability.Online.Foundation.Presence;
 
 /// <summary>
 /// 在线状态变更原因码（状态转换必须有确定原因码，无永久 Reconnecting）。

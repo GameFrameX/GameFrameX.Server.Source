@@ -30,10 +30,10 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using GameFrameX.Foundation.Idempotency;
-using GameFrameX.Online.Assets;
-using GameFrameX.Capability.Online.Contracts;
-using GameFrameX.Capability.Online.Events;
-using GameFrameX.Online.Season;
+using GameFrameX.Capability.Online.Assets;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Events;
+using GameFrameX.Capability.Online.Competition.Season;
 using Xunit;
 
 namespace GameFrameX.Tests.Online

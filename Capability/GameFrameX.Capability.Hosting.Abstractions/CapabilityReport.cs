@@ -27,7 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Hosting;
+namespace GameFrameX.Capability.Hosting.Abstractions;
 
 /// <summary>
 /// 启动能力报告条目（一个能力的装配结果）。

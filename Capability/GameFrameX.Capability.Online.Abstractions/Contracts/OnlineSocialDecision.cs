@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Contracts;
+namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 
 /// <summary>

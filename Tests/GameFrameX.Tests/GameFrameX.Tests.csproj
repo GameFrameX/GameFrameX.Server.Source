@@ -54,13 +54,18 @@
       <ProjectReference Include="..\..\GameFrameX.Utility\GameFrameX.Utility.csproj" />
       <ProjectReference Include="..\..\GameFrameX.Hotfix\GameFrameX.Hotfix.csproj" />
       <ProjectReference Include="..\..\GameFrameX.Network\GameFrameX.Network.csproj" />
-      <ProjectReference Include="..\..\GameFrameX.Online\GameFrameX.Online.csproj" />
-      <ProjectReference Include="..\..\GameFrameX.Online.Runtime\GameFrameX.Online.Runtime.csproj" />
+      <ProjectReference Include="..\..\GameFrameX.Launcher\GameFrameX.Launcher.csproj" />
       <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Hosting.Abstractions\GameFrameX.Capability.Hosting.Abstractions.csproj" />
       <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Hosting.Core\GameFrameX.Capability.Hosting.Core.csproj" />
       <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Hosting.AdminApi\GameFrameX.Capability.Hosting.AdminApi.csproj" />
       <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Abstractions\GameFrameX.Capability.Online.Abstractions.csproj" />
       <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Foundation\GameFrameX.Capability.Online.Foundation.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Assets\GameFrameX.Capability.Online.Assets.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Social\GameFrameX.Capability.Online.Social.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Matchmaking\GameFrameX.Capability.Online.Matchmaking.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Match\GameFrameX.Capability.Online.Match.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Competition\GameFrameX.Capability.Online.Competition.csproj" />
+      <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Operations\GameFrameX.Capability.Online.Operations.csproj" />
       <ProjectReference Include="..\..\GameFrameX.Architecture.Analyzers\GameFrameX.Architecture.Analyzers.csproj" />
       <ProjectReference Include="..\..\GameFrameX.Client\GameFrameX.Client.csproj" />
     </ItemGroup>

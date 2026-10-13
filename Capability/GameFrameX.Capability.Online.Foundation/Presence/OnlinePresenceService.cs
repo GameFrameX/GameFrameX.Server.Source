@@ -27,13 +27,13 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Presence;
+namespace GameFrameX.Capability.Online.Foundation.Presence;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Capability.Online.Contracts;
-using GameFrameX.Capability.Online.Events;
-using GameFrameX.Capability.Online.Scope;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Events;
+using GameFrameX.Capability.Online.Abstractions.Scope;
 
 /// <summary>
 /// 在线状态服务（Presence 事实源的唯一写者——所有状态写入必须经本服务并过状态机判定）。

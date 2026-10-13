@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Contracts;
+namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
 /// 定向社交互动的目的分类（Block 必须在三处统一生效的**枚举载体**）。
@@ -36,7 +36,7 @@ namespace GameFrameX.Capability.Online.Contracts;
 /// 都携带本枚举调用 <see cref="IOnlineSocialGate.EvaluateAsync"/>。
 /// 新增定向互动通路**必须**扩展本枚举并走同一裁决入口，禁止在通路内自建判定
 /// （那正是要防的「行为不一致，出现绕过」）。
-/// 三种目的的裁决力度差异由 <see cref="GameFrameX.Online.Social.OnlineSocialDecisionService"/> 承载：
+/// 三种目的的裁决力度差异由 <see cref="GameFrameX.Capability.Online.Social.OnlineSocialDecisionService"/> 承载：
 /// 禁言只拒绝 <see cref="DirectMessage"/>，封禁拒绝三者，屏蔽拒绝三者。
 /// </para>
 /// </summary>

@@ -28,12 +28,12 @@
 //  ==========================================================================================
 
 
-using GameFrameX.Capability.Hosting;
+using GameFrameX.Capability.Hosting.Core;
 using GameFrameX.Capability.Hosting.AdminApi;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Utility;
 using GameFrameX.Network.Abstractions;
-using GameFrameX.Online.Runtime;
+using GameFrameX.Launcher.Online;
 using GameFrameX.Utility.Runtime;
 
 namespace GameFrameX.Launcher.StartUp;
@@ -53,7 +53,7 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     /// The Online runtime host — the runtime face of the AddOnlineCapabilities composition (null
     /// when the business gate is off; stopped with the main flow at process exit).
     /// </remarks>
-    private OnlineRuntimeHost _onlineRuntime;
+    private CapabilityHost _onlineRuntime;
 
     /// <summary>
     /// Online admin HTTP 服务（与协议端口独立的 Kestrel 监听；管理面闸开启时由单入口装配——

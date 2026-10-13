@@ -27,7 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Hosting;
+namespace GameFrameX.Capability.Hosting.Abstractions;
 
 /// <summary>
 /// 能力宿主装配选项（本进程的运行时授权作用域身份 + 调度壳驱动参数；

@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Events;
+namespace GameFrameX.Capability.Online.Abstractions.Events;
 
 /// <summary>
 /// Online 事件审计视图（审计字段与脱敏规则的落点；敏感字段必须脱敏）。

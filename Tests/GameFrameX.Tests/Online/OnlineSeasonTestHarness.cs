@@ -31,13 +31,13 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using GameFrameX.Foundation.Idempotency;
-using GameFrameX.Online.Assets;
-using GameFrameX.Capability.Online.Contracts;
-using GameFrameX.Capability.Online.Idempotency;
-using GameFrameX.Online.Leaderboard;
-using GameFrameX.Online.Match;
-using GameFrameX.Capability.Online.Scope;
-using GameFrameX.Online.Season;
+using GameFrameX.Capability.Online.Assets;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Idempotency;
+using GameFrameX.Capability.Online.Competition.Leaderboard;
+using GameFrameX.Capability.Online.Match;
+using GameFrameX.Capability.Online.Abstractions.Scope;
+using GameFrameX.Capability.Online.Competition.Season;
 using Xunit;
 
 namespace GameFrameX.Tests.Online

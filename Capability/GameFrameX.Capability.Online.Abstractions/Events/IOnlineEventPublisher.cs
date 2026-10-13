@@ -30,7 +30,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace GameFrameX.Capability.Online.Events;
+namespace GameFrameX.Capability.Online.Abstractions.Events;
 
 /// <summary>
 /// Online 事件发布契约（业务侧只允许经本契约发布 Online 事件，

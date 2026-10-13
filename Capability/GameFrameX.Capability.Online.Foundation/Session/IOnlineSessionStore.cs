@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Session;
+namespace GameFrameX.Capability.Online.Foundation.Session;
 
 /// <summary>
 /// 会话域存储接口（会话与 Token 指纹索引的持久化契约）。

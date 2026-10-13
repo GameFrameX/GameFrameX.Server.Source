@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Tokens;
+namespace GameFrameX.Capability.Online.Abstractions.Tokens;
 
 /// <summary>
 /// Token 刷新结果（返回新 Token 与新的过期时刻；原 Token 随刷新失效，重复刷新原 Token 映射 <c>TokenRevoked</c>）。

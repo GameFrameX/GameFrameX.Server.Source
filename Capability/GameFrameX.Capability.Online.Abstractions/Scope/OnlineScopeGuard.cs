@@ -27,9 +27,9 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 
-namespace GameFrameX.Capability.Online.Scope;
+namespace GameFrameX.Capability.Online.Abstractions.Scope;
 
 /// <summary>
 /// Online 作用域守卫（跨 Tenant/App/Server 请求被稳定拒绝且留审计）。

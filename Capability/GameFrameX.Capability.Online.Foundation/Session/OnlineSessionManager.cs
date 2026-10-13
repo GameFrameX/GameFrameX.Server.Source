@@ -27,12 +27,12 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Session;
+namespace GameFrameX.Capability.Online.Foundation.Session;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Capability.Online.Contracts;
-using GameFrameX.Capability.Online.Events;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Events;
 
 /// <summary>
 /// 会话生命周期管理器（Session 状态推进的单写者——本类之外不得直改

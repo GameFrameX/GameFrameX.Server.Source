@@ -29,7 +29,7 @@
 
 using GameFrameX.Foundation.Idempotency;
 
-namespace GameFrameX.Capability.Online.Events;
+namespace GameFrameX.Capability.Online.Abstractions.Events;
 
 /// <summary>
 /// Online 事件与 Foundation 事件信封的双向映射（红线：Online 领域语义不进 Foundation，
