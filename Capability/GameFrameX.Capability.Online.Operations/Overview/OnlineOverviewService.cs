@@ -31,13 +31,13 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Match;
 using GameFrameX.Capability.Online.Matchmaking;
-using GameFrameX.Capability.Online.Party;
-using GameFrameX.Capability.Online.Presence;
-using GameFrameX.Capability.Online.Scope;
-using GameFrameX.Capability.Online.Session;
+using GameFrameX.Capability.Online.Matchmaking.Party;
+using GameFrameX.Capability.Online.Foundation.Presence;
+using GameFrameX.Capability.Online.Abstractions.Scope;
+using GameFrameX.Capability.Online.Foundation.Session;
 
 namespace GameFrameX.Capability.Online.Operations.Overview;
 

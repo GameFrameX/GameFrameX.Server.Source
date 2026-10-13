@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Session;
+namespace GameFrameX.Capability.Online.Foundation.Session;
 
 /// <summary>
 /// 会话终态原因码（断网超窗等场景必须有确定原因码，无永久 Reconnecting）。

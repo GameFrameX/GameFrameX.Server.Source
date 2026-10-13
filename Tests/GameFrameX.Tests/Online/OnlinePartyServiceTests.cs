@@ -30,10 +30,10 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Capability.Online.Contracts;
-using GameFrameX.Capability.Online.Events;
-using GameFrameX.Capability.Online.Party;
-using GameFrameX.Capability.Online.Scope;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Events;
+using GameFrameX.Capability.Online.Matchmaking.Party;
+using GameFrameX.Capability.Online.Abstractions.Scope;
 using Xunit;
 
 namespace GameFrameX.Tests.Online

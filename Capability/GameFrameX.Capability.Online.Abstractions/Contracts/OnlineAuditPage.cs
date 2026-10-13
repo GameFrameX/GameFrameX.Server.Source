@@ -28,9 +28,9 @@
 //  ==========================================================================================
 
 using System.Collections.Generic;
-using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 
-namespace GameFrameX.Capability.Online.Contracts;
+namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
 /// 统一审计跨域检索分页结果（行按 (OccurredTime 毫秒倒序, EventId 序数升序) 全序排列；

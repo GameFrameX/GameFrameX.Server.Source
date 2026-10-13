@@ -31,7 +31,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Capability.Online.Events;
+using GameFrameX.Capability.Online.Abstractions.Events;
 
 namespace GameFrameX.Capability.Online.Operations.GameEvents;
 

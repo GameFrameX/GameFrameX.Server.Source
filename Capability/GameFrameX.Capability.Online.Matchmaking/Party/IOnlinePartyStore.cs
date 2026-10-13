@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Party;
+namespace GameFrameX.Capability.Online.Matchmaking.Party;
 
 /// <summary>
 /// 队伍存储契约（队伍聚合的读写契约）。

@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 using System.Collections.Generic;
-using GameFrameX.Capability.Online.Scope;
+using GameFrameX.Capability.Online.Abstractions.Scope;
 
 namespace GameFrameX.Capability.Online.Competition.Season;
 

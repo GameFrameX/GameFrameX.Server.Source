@@ -24,7 +24,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Hosting;
+namespace GameFrameX.Capability.Hosting.Abstractions;
 
 /// <summary>
 /// 能力服务注册表（能力族的服务共享协议载体，C231）：组合根预置（<see cref="CapabilityHostBuilder.UseService{TService}"/>）

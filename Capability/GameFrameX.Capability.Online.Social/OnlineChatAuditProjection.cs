@@ -25,11 +25,11 @@
 //  ==========================================================================================
 
 using System.Text.Json;
-using GameFrameX.Capability.Online.Events;
+using GameFrameX.Capability.Online.Abstractions.Events;
 
 namespace GameFrameX.Capability.Online.Social;
 
-using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
 /// 聊天审计投影（<c>query_chat_messages</c> 依赖事件投影——聊天 store 无跨频道枚举 API，

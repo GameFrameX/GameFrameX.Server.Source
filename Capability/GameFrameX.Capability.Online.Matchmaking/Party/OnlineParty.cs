@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Party;
+namespace GameFrameX.Capability.Online.Matchmaking.Party;
 
 /// <summary>
 /// 队伍聚合（Party 是「希望一起行动的玩家集合」的唯一事实源）。

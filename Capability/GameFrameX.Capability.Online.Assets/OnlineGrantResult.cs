@@ -30,7 +30,7 @@
 
 namespace GameFrameX.Capability.Online.Assets;
 
-using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
 /// 统一资产入口执行结果（承载交易标识、终态与落账条目；重复请求回放首次结果的载荷）。

@@ -26,7 +26,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Capability.Online.Scope;
+using GameFrameX.Capability.Online.Abstractions.Scope;
 
 namespace GameFrameX.Capability.Online.Operations.HotfixRollback;
 

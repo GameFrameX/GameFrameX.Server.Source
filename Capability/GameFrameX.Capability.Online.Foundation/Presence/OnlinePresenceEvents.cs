@@ -26,10 +26,10 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Presence;
+namespace GameFrameX.Capability.Online.Foundation.Presence;
 
 using System.Text.Json;
-using GameFrameX.Capability.Online.Events;
+using GameFrameX.Capability.Online.Abstractions.Events;
 
 /// <summary>
 /// 在线状态域事件工厂（Presence 状态转换事件供下游与 Admin 消费）。

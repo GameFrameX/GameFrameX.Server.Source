@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Identity;
+namespace GameFrameX.Capability.Online.Foundation.Identity;
 
 /// <summary>
 /// 登录解析请求（<see cref="OnlineIdentityService.ResolveLoginAsync"/> 的唯一提交形态，客户端登录主路径）。

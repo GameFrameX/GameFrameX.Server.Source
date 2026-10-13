@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Party;
+namespace GameFrameX.Capability.Online.Matchmaking.Party;
 
 /// <summary>
 /// 队伍内存默认存储（单进程/测试默认实现；持久化实现归运行时装配）。

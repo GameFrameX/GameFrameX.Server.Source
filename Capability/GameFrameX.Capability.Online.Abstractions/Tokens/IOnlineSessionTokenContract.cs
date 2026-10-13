@@ -30,7 +30,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace GameFrameX.Capability.Online.Tokens;
+namespace GameFrameX.Capability.Online.Abstractions.Tokens;
 
 /// <summary>
 /// 会话 Token 契约承载。

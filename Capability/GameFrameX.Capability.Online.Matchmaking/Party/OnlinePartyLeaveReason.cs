@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Party;
+namespace GameFrameX.Capability.Online.Matchmaking.Party;
 
 /// <summary>
 /// 队伍成员离开原因（退出/踢出/队长退出/解散/离线移除必须可区分）。

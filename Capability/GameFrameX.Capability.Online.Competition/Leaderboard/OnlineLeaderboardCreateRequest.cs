@@ -32,7 +32,7 @@ namespace GameFrameX.Capability.Online.Competition.Leaderboard;
 /// <summary>
 /// 排行榜创建请求（服务端运营 / 运行时装配入口；客户端无此入口）。
 /// <para>
-/// 维护约束：作用域取鉴权上下文的 <see cref="Scope.OnlineScope"/>，请求体不携带 TenantId / AppId（服务端不信任请求体作用域）；
+/// 维护约束：作用域取鉴权上下文的 <see cref="Abstractions.Scope.OnlineScope"/>，请求体不携带 TenantId / AppId（服务端不信任请求体作用域）；
 /// 同名榜单在 (TenantId, AppId) 内已存在时创建被拒绝（ParameterInvalid），不覆盖既有榜单。
 /// </para>
 /// </summary>

@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Storage;
+namespace GameFrameX.Capability.Online.Foundation.Storage;
 
 /// <summary>
 /// 玩家云存储限制选项（单值上限、单集合键数上限、分页上限）。

@@ -27,9 +27,9 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Capability.Online.Scope;
+using GameFrameX.Capability.Online.Abstractions.Scope;
 
-namespace GameFrameX.Capability.Online.Tokens;
+namespace GameFrameX.Capability.Online.Abstractions.Tokens;
 
 /// <summary>
 /// Token 刷新请求（刷新必须校验原 Token 未吊销且未过刷新窗口，否则映射 2xxx 段拒绝）。

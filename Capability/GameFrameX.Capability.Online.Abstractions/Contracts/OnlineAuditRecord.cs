@@ -29,7 +29,7 @@
 
 using System.Collections.Generic;
 
-namespace GameFrameX.Capability.Online.Contracts;
+namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
 /// 统一审计落档记录（<c>OnlineAuditService.IngestAsync</c> 落入 <c>IOnlineAuditStore</c> 的**持久化行**；

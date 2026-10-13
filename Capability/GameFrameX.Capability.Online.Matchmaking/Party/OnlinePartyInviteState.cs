@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Party;
+namespace GameFrameX.Capability.Online.Matchmaking.Party;
 
 /// <summary>
 /// 队伍邀请状态（邀请必须有确定终态）。

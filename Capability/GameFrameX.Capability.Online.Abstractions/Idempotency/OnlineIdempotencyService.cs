@@ -29,10 +29,10 @@
 
 using System.Text;
 using GameFrameX.Foundation.Idempotency;
-using GameFrameX.Capability.Online.Contracts;
-using GameFrameX.Capability.Online.Scope;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Scope;
 
-namespace GameFrameX.Capability.Online.Idempotency;
+namespace GameFrameX.Capability.Online.Abstractions.Idempotency;
 
 /// <summary>
 /// Online 幂等 Server 侧组装（只组装 Foundation 原语，不实现第二套存储）。

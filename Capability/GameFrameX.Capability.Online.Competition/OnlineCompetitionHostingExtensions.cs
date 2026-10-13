@@ -27,7 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Capability.Hosting;
+using GameFrameX.Capability.Hosting.Core;
 using GameFrameX.Capability.Online.Competition.Leaderboard;
 using GameFrameX.Capability.Online.Competition.Season;
 using GameFrameX.Capability.Online.Competition.Tournament;

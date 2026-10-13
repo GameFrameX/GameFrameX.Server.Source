@@ -29,7 +29,7 @@
 
 using GameFrameX.Foundation.Idempotency;
 
-namespace GameFrameX.Capability.Online.Events;
+namespace GameFrameX.Capability.Online.Abstractions.Events;
 
 /// <summary>
 /// Online 事件消费去重基座（同一 <c>EventId</c> 投递两次只处理一次，第二次丢弃并记录）。

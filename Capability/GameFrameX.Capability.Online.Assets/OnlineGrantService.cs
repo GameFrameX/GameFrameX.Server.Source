@@ -33,10 +33,10 @@ namespace GameFrameX.Capability.Online.Assets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Capability.Online.Contracts;
-using GameFrameX.Capability.Online.Events;
-using GameFrameX.Capability.Online.Idempotency;
-using GameFrameX.Capability.Online.Scope;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Events;
+using GameFrameX.Capability.Online.Abstractions.Idempotency;
+using GameFrameX.Capability.Online.Abstractions.Scope;
 
 /// <summary>
 /// 统一资产入口服务（发放/扣除/撤销/补发/人工调整的唯一提交管道）。

@@ -1,10 +1,11 @@
 using System;
-using GameFrameX.Capability.Hosting;
-using GameFrameX.Capability.Online.Contracts;
-using GameFrameX.Capability.Online.Events;
-using GameFrameX.Capability.Online.Idempotency;
-using GameFrameX.Capability.Online.Scope;
-using GameFrameX.Capability.Online.Session;
+using GameFrameX.Capability.Hosting.Abstractions;
+using GameFrameX.Capability.Hosting.Core;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Events;
+using GameFrameX.Capability.Online.Abstractions.Idempotency;
+using GameFrameX.Capability.Online.Abstractions.Scope;
+using GameFrameX.Capability.Online.Foundation.Session;
 using GameFrameX.Capability.Online.Social;
 using Xunit;
 

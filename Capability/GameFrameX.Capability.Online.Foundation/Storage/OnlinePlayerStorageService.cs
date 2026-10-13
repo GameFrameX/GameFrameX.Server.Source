@@ -27,12 +27,12 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Storage;
+namespace GameFrameX.Capability.Online.Foundation.Storage;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Capability.Online.Contracts;
-using GameFrameX.Capability.Online.Scope;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Scope;
 
 /// <summary>
 /// 玩家云存储服务（玩家 + App 作用域隔离的 KV 读写/分页/软删/过期清理）。

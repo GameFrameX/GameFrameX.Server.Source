@@ -25,9 +25,8 @@
 //  ==========================================================================================
 
 using System.Text.Json;
-using GameFrameX.Capability.Hosting;
 using GameFrameX.Capability.Hosting.AdminApi;
-using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Launcher.Online;
 
 namespace GameFrameX.Tests.Online

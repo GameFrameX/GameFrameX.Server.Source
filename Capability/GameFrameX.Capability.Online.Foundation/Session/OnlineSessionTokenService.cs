@@ -27,17 +27,17 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Session;
+namespace GameFrameX.Capability.Online.Foundation.Session;
 
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Capability.Online.Contracts;
-using GameFrameX.Capability.Online.Events;
-using GameFrameX.Capability.Online.Identity;
-using GameFrameX.Capability.Online.Scope;
-using GameFrameX.Capability.Online.Tokens;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Events;
+using GameFrameX.Capability.Online.Foundation.Identity;
+using GameFrameX.Capability.Online.Abstractions.Scope;
+using GameFrameX.Capability.Online.Abstractions.Tokens;
 
 /// <summary>
 /// 会话 Token 服务（<see cref="IOnlineSessionTokenContract"/> 的默认实现）。

@@ -27,13 +27,12 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Capability.Hosting;
 using GameFrameX.Capability.Hosting.AdminApi;
-using GameFrameX.Capability.Online.Contracts;
-using GameFrameX.Capability.Online.Idempotency;
-using GameFrameX.Capability.Online.Scope;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Idempotency;
+using GameFrameX.Capability.Online.Abstractions.Scope;
 
-namespace GameFrameX.Capability.Online.Contracts;
+namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
 /// Online 能力簇对通用 admin 管道的适配层（作用域守卫 / 幂等服务 / 错误码映射 / handler 包装）。

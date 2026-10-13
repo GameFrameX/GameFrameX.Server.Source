@@ -33,7 +33,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json;
-using GameFrameX.Capability.Online.Events;
+using GameFrameX.Capability.Online.Abstractions.Events;
 
 /// <summary>
 /// 赛季域事件工厂（统一信封事件，<c>Source = "online-season"</c>）。

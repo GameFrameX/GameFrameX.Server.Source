@@ -31,9 +31,9 @@ namespace GameFrameX.Capability.Online.Social;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Capability.Online.Contracts;
-using GameFrameX.Capability.Online.Events;
-using GameFrameX.Capability.Online.Scope;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Events;
+using GameFrameX.Capability.Online.Abstractions.Scope;
 
 /// <summary>
 /// Block / Mute / Report / 处罚的**唯一判定入口**。

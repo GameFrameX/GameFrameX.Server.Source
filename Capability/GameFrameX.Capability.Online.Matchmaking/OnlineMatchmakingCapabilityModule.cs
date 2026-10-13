@@ -27,13 +27,13 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Capability.Hosting;
+using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Hosting.AdminApi;
-using GameFrameX.Capability.Online.Contracts;
-using GameFrameX.Capability.Online.Events;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Events;
 using GameFrameX.Capability.Online.Matchmaking.AdminApi;
-using GameFrameX.Capability.Online.Party;
-using GameFrameX.Capability.Online.Scope;
+using GameFrameX.Capability.Online.Matchmaking.Party;
+using GameFrameX.Capability.Online.Abstractions.Scope;
 
 namespace GameFrameX.Capability.Online.Matchmaking;
 

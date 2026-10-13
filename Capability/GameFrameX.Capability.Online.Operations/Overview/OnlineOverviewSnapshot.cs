@@ -29,9 +29,9 @@
 
 using System.Collections.Generic;
 using GameFrameX.Capability.Online.Match;
-using GameFrameX.Capability.Online.Party;
-using GameFrameX.Capability.Online.Presence;
-using GameFrameX.Capability.Online.Session;
+using GameFrameX.Capability.Online.Matchmaking.Party;
+using GameFrameX.Capability.Online.Foundation.Presence;
+using GameFrameX.Capability.Online.Foundation.Session;
 
 namespace GameFrameX.Capability.Online.Operations.Overview;
 

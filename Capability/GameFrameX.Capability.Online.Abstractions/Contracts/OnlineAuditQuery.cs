@@ -29,7 +29,7 @@
 
 using System.Collections.Generic;
 
-namespace GameFrameX.Capability.Online.Contracts;
+namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
 /// 统一审计跨域检索条件（「跨域检索」：一次查询跨 支付/奖励/邮件/兑换码/远程配置/处罚/受控操作

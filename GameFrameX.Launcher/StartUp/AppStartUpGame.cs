@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 
-using GameFrameX.Capability.Hosting;
+using GameFrameX.Capability.Hosting.Core;
 using GameFrameX.Capability.Hosting.AdminApi;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Utility;

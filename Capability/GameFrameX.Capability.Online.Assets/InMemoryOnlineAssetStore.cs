@@ -32,7 +32,7 @@ namespace GameFrameX.Capability.Online.Assets;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
 /// 资产存储内存默认实现（单进程/测试默认实现；生产装配以持久化实现替换）。

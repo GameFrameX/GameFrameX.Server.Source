@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Scope;
+namespace GameFrameX.Capability.Online.Abstractions.Scope;
 
 /// <summary>
 /// Online 作用域（TenantId/AppId/ServerId 以鉴权或服务端路由为准，不能由客户端字段直接覆盖）。

@@ -27,8 +27,8 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Capability.Hosting;
-using GameFrameX.Capability.Online.Party;
+using GameFrameX.Capability.Hosting.Core;
+using GameFrameX.Capability.Online.Matchmaking.Party;
 
 namespace GameFrameX.Capability.Online.Matchmaking;
 

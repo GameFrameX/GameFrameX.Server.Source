@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Capability.Hosting;
+using GameFrameX.Capability.Hosting.Core;
 
 namespace GameFrameX.Capability.Online.Assets;
 

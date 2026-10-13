@@ -29,7 +29,8 @@
 
 using GameFrameX.Foundation.Localization.Core;
 
-namespace GameFrameX.Capability.Hosting;
+using GameFrameX.Capability.Hosting.Abstractions;
+namespace GameFrameX.Capability.Hosting.Core;
 
 /// <summary>
 /// 能力宿主（装配完成的运行时承载：授权作用域 + 调度壳 + 能力报告 + 事件爆发口）。

@@ -27,7 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Capability.Hosting;
+using GameFrameX.Capability.Hosting.Core;
 using GameFrameX.Capability.Online.Operations.Audit;
 using GameFrameX.Capability.Online.Operations.HotfixRollback;
 

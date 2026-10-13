@@ -31,11 +31,11 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Assets;
-using GameFrameX.Capability.Online.Events;
+using GameFrameX.Capability.Online.Abstractions.Events;
 using GameFrameX.Capability.Online.Operations.GameEvents;
 using GameFrameX.Capability.Online.Match;
 using GameFrameX.Capability.Online.Matchmaking;
-using GameFrameX.Capability.Online.Session;
+using GameFrameX.Capability.Online.Foundation.Session;
 using GameFrameX.Capability.Online.Social;
 using Xunit;
 

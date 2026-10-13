@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Idempotency;
+namespace GameFrameX.Capability.Online.Abstractions.Idempotency;
 
 /// <summary>
 /// Online 幂等判定结果类型（相同键相同请求返回原结果；相同键不同请求返回冲突错误 6xxx）。

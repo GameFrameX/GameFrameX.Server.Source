@@ -46,9 +46,9 @@ public sealed class OnlineMatchReconnectResult
     public bool Succeeded { get; set; }
 
     /// <summary>
-    /// 获取或设置失败原因（成功时为 <see cref="GameFrameX.Capability.Online.Contracts.OnlineErrorCode.None"/>）。
+    /// 获取或设置失败原因（成功时为 <see cref="GameFrameX.Capability.Online.Abstractions.Contracts.OnlineErrorCode.None"/>）。
     /// </summary>
-    public GameFrameX.Capability.Online.Contracts.OnlineErrorCode FailureCode { get; set; }
+    public GameFrameX.Capability.Online.Abstractions.Contracts.OnlineErrorCode FailureCode { get; set; }
 
     /// <summary>
     /// 获取或设置失败说明（诊断用）。

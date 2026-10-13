@@ -40,7 +40,7 @@ namespace GameFrameX.Capability.Online.Operations.GameEvents;
 /// （守护测试锁定，漏登记 = 该事件名投递时被判未知）；
 /// (2) **版本策略**：版本号只增不减；投递版本 <c>1..CurrentVersion</c> 均受理（新旧并存期），
 /// 超出范围即拒绝；破坏性变更走「升版本 + 登记表保留旧版本声明」，非破坏性变更不升版本；
-/// (3) 本表只登记，**不定义第二套信封**——事件一律走 <see cref="Events.OnlineEvent"/>；
+/// (3) 本表只登记，**不定义第二套信封**——事件一律走 <see cref="Abstractions.Events.OnlineEvent"/>；
 /// (4) 当前只登记 17 个事件名的 Schema，投影只覆盖六类中的 Server 半边可得事件
 /// （Install / Register / MailOpen 由客户端 SDK 与邮件域投递，暂不投影）。
 /// </para>

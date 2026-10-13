@@ -1,10 +1,11 @@
 using System;
 using System.Linq;
 using System.Reflection;
-using GameFrameX.Capability.Hosting;
-using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Hosting.Abstractions;
+using GameFrameX.Capability.Hosting.Core;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Assets;
-using GameFrameX.Capability.Online.Idempotency;
+using GameFrameX.Capability.Online.Abstractions.Idempotency;
 using Xunit;
 
 namespace GameFrameX.Tests.Online
@@ -48,7 +49,7 @@ namespace GameFrameX.Tests.Online
             public Task<GameFrameX.Capability.Online.Assets.OnlineAssetApplyResult> ApplyAsync(GameFrameX.Capability.Online.Assets.OnlineAssetChangeBatch batch, CancellationToken cancellationToken = default)
             {
                 var entries = new List<GameFrameX.Capability.Online.Assets.OnlineLedgerEntry>();
-                return Task.FromResult(new GameFrameX.Capability.Online.Assets.OnlineAssetApplyResult(true, GameFrameX.Capability.Online.Contracts.OnlineErrorCode.None, string.Empty, entries));
+                return Task.FromResult(new GameFrameX.Capability.Online.Assets.OnlineAssetApplyResult(true, GameFrameX.Capability.Online.Abstractions.Contracts.OnlineErrorCode.None, string.Empty, entries));
             }
 
             /// <inheritdoc />
@@ -83,8 +84,8 @@ namespace GameFrameX.Tests.Online
         private static CapabilityHostBuilder MinimalRoot()
         {
             var builder = new CapabilityHostBuilder();
-            builder.UseService(new GameFrameX.Capability.Online.Scope.OnlineScope(1, 1, 1));
-            builder.UseService<GameFrameX.Capability.Online.Events.IOnlineEventPublisher>(new GameFrameX.Capability.Online.Events.OnlineEventPublisher(new GameFrameX.Foundation.Idempotency.InMemoryEventPublisher()));
+            builder.UseService(new GameFrameX.Capability.Online.Abstractions.Scope.OnlineScope(1, 1, 1));
+            builder.UseService<GameFrameX.Capability.Online.Abstractions.Events.IOnlineEventPublisher>(new GameFrameX.Capability.Online.Abstractions.Events.OnlineEventPublisher(new GameFrameX.Foundation.Idempotency.InMemoryEventPublisher()));
             builder.UseService(new OnlineIdempotencyService(new GameFrameX.Foundation.Idempotency.IdempotencyCoordinator(
                 new GameFrameX.Foundation.Idempotency.InMemoryIdempotencyStore(),
                 GameFrameX.Foundation.Idempotency.SystemClock.Instance,

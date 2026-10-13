@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 using System.Collections.Generic;
-using GameFrameX.Capability.Online.Events;
+using GameFrameX.Capability.Online.Abstractions.Events;
 using Xunit;
 
 namespace GameFrameX.Tests.Online

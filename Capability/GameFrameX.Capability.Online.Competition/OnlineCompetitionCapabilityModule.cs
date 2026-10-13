@@ -27,7 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Capability.Hosting;
+using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Hosting.AdminApi;
 using GameFrameX.Capability.Online.Assets;
 using GameFrameX.Capability.Online.Competition.AdminApi;
@@ -35,7 +35,7 @@ using GameFrameX.Capability.Online.Competition.Leaderboard;
 using GameFrameX.Capability.Online.Competition.LiveOps;
 using GameFrameX.Capability.Online.Competition.Season;
 using GameFrameX.Capability.Online.Competition.Tournament;
-using GameFrameX.Capability.Online.Events;
+using GameFrameX.Capability.Online.Abstractions.Events;
 
 namespace GameFrameX.Capability.Online.Competition;
 

@@ -29,7 +29,7 @@
 
 using GameFrameX.Foundation.Idempotency;
 
-namespace GameFrameX.Capability.Online.Events;
+namespace GameFrameX.Capability.Online.Abstractions.Events;
 
 /// <summary>
 /// Online 事件发布基座（组装 Foundation <c>IEventPublisher</c> 通用原语，

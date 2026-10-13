@@ -27,23 +27,23 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Capability.Hosting;
+using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Hosting.AdminApi;
 using GameFrameX.Capability.Online.Assets;
-using GameFrameX.Capability.Online.Events;
-using GameFrameX.Capability.Online.Identity;
-using GameFrameX.Capability.Online.Presence;
-using GameFrameX.Capability.Online.Session;
-using GameFrameX.Capability.Online.Idempotency;
+using GameFrameX.Capability.Online.Abstractions.Events;
+using GameFrameX.Capability.Online.Foundation.Identity;
+using GameFrameX.Capability.Online.Foundation.Presence;
+using GameFrameX.Capability.Online.Foundation.Session;
+using GameFrameX.Capability.Online.Abstractions.Idempotency;
 using GameFrameX.Capability.Online.Match;
 using GameFrameX.Capability.Online.Matchmaking;
 using GameFrameX.Capability.Online.Operations.AdminApi;
-using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Operations.Audit;
 using GameFrameX.Capability.Online.Operations.HotfixRollback;
 using GameFrameX.Capability.Online.Operations.Overview;
 using GameFrameX.Capability.Online.Operations.Timeline;
-using GameFrameX.Capability.Online.Party;
+using GameFrameX.Capability.Online.Matchmaking.Party;
 using GameFrameX.Capability.Online.Social;
 using GameFrameX.Foundation.Idempotency;
 

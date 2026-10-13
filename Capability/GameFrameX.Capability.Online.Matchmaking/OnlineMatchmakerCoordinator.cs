@@ -31,8 +31,8 @@ namespace GameFrameX.Capability.Online.Matchmaking;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Capability.Online.Contracts;
-using GameFrameX.Capability.Online.Events;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Events;
 
 /// <summary>
 /// 匹配协调器（按模式/区域/规模/等级区间成组，产出 assignment）。

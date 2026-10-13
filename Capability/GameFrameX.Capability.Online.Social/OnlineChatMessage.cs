@@ -29,7 +29,7 @@
 
 namespace GameFrameX.Capability.Online.Social;
 
-using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
 /// 聊天消息。

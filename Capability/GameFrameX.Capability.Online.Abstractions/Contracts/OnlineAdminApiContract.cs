@@ -26,11 +26,11 @@
 
 using System.Text.Json;
 using GameFrameX.Capability.Hosting.AdminApi;
-using GameFrameX.Capability.Online.Contracts;
-using GameFrameX.Capability.Online.Scope;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Scope;
 using GameFrameX.Foundation.Localization.Core;
 
-namespace GameFrameX.Capability.Online.Contracts;
+namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
 /// admin 线缆解析助手（Admin 请求体的既有事实：标识类字段为字符串、枚举为数字、可空过滤字段缺失为 null）。

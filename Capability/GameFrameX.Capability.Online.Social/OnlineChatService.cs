@@ -31,9 +31,9 @@ namespace GameFrameX.Capability.Online.Social;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Capability.Online.Contracts;
-using GameFrameX.Capability.Online.Events;
-using GameFrameX.Capability.Online.Scope;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Events;
+using GameFrameX.Capability.Online.Abstractions.Scope;
 
 /// <summary>
 /// 聊天服务（四类频道、发送裁决、历史游标、离线补拉、已读、撤回、举报入口）。

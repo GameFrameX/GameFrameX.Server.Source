@@ -29,7 +29,8 @@
 
 using GameFrameX.Foundation.Localization.Core;
 
-namespace GameFrameX.Capability.Hosting;
+using GameFrameX.Capability.Hosting.Abstractions;
+namespace GameFrameX.Capability.Hosting.Core;
 
 /// <summary>
 /// 能力装配器（显式链式装配入口；自动扫描经 <see cref="CapabilityAssembly"/> 发现模块后同样走本装配器）。

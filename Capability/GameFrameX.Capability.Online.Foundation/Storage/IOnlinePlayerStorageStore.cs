@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Storage;
+namespace GameFrameX.Capability.Online.Foundation.Storage;
 
 using System.Threading;
 using System.Threading.Tasks;

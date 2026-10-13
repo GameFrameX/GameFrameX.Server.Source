@@ -27,7 +27,8 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Hosting;
+using GameFrameX.Capability.Hosting.Abstractions;
+namespace GameFrameX.Capability.Hosting.Core;
 
 /// <summary>
 /// 能力调度壳（注册制后台驱动：逐滴答 job 按装配序顺序执行 + 间隔 job 独立周期 + 事件驱动 job 爆发口）。

@@ -28,7 +28,7 @@
 //  ==========================================================================================
 
 using System.Collections.Generic;
-using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 
 namespace GameFrameX.Capability.Online.Operations.Timeline;
 

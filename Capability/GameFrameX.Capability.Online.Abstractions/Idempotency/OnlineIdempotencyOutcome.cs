@@ -27,9 +27,9 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 
-namespace GameFrameX.Capability.Online.Idempotency;
+namespace GameFrameX.Capability.Online.Abstractions.Idempotency;
 
 /// <summary>
 /// Online 幂等判定结果（Foundation 决策的 Online 语义封装，含协议错误码映射与首次响应透出）。

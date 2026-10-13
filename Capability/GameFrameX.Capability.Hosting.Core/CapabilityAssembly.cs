@@ -28,8 +28,9 @@
 //  ==========================================================================================
 
 using System.Reflection;
+using GameFrameX.Capability.Hosting.Abstractions;
 
-namespace GameFrameX.Capability.Hosting;
+namespace GameFrameX.Capability.Hosting.Core;
 
 /// <summary>
 /// 能力自动装配扫描器（组合根反射扫描已加载程序集发现 <see cref="ICapabilityModule"/> 实现；

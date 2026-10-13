@@ -30,9 +30,9 @@
 using System;
 using System.Text;
 using System.Threading.Tasks;
-using GameFrameX.Capability.Online.Contracts;
-using GameFrameX.Capability.Online.Scope;
-using GameFrameX.Capability.Online.Storage;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Scope;
+using GameFrameX.Capability.Online.Foundation.Storage;
 using Xunit;
 
 namespace GameFrameX.Tests.Online

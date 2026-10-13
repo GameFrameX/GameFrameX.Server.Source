@@ -32,7 +32,7 @@ namespace GameFrameX.Capability.Online.Assets;
 
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Capability.Online.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
 /// 跨服补偿队列（归属服不可用时的续投承载；恢复后自动完成且不重复）。

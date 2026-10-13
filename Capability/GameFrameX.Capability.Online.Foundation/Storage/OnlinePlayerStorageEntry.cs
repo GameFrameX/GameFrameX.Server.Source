@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Storage;
+namespace GameFrameX.Capability.Online.Foundation.Storage;
 
 /// <summary>
 /// 玩家云存储条目（玩家 + App 作用域的 KV 实体；区服不参与隔离——换服数据随身）。

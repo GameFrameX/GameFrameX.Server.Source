@@ -30,7 +30,7 @@
 namespace GameFrameX.Capability.Online.Matchmaking;
 
 using System.Text.Json;
-using GameFrameX.Capability.Online.Events;
+using GameFrameX.Capability.Online.Abstractions.Events;
 
 /// <summary>
 /// 匹配域事件工厂（票据状态与对局分配事件供下游与 Admin 消费）。

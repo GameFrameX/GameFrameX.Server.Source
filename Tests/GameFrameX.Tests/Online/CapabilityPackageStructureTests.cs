@@ -243,7 +243,7 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public void SpinePackage_HasNoUpwardOrDomainTypeReferences()
         {
-            var upwardPattern = new Regex(@"GameFrameX\.Capability\.Online\.(Identity|Session|Presence|Storage)\.[A-Z]|GameFrameX\.Online\.(Assets|Audit|GameEvents|HotfixRollback|Leaderboard|Match|Matchmaking|Overview|Party|Season|Social|Timeline|Tournament)\.[A-Z]");
+            var upwardPattern = new Regex(@"GameFrameX\.Capability\.Online\.Foundation\.(Identity|Session|Presence|Storage)\.[A-Z]|GameFrameX\.Online\.(Assets|Audit|GameEvents|HotfixRollback|Leaderboard|Match|Matchmaking|Overview|Party|Season|Social|Timeline|Tournament)\.[A-Z]");
             var violations = new List<string>();
             foreach (var file in EnumeratePackageSourceFiles("GameFrameX.Capability.Online.Abstractions"))
             {
@@ -288,9 +288,9 @@ namespace GameFrameX.Tests.Online
                 {
                     var target = match.Groups[1].Value;
                     string to;
-                    if (target.StartsWith("GameFrameX.Capability.Online.", StringComparison.Ordinal))
+                    if (target.StartsWith("GameFrameX.Capability.Online.Foundation.", StringComparison.Ordinal))
                     {
-                        to = target.Split('.')[3];
+                        to = target.Substring("GameFrameX.Capability.Online.Foundation.".Length).Split('.')[0];
                     }
                     else if (namespaceMatch.Success && namespaceMatch.Groups[1].Value.StartsWith("GameFrameX.Capability.Online", StringComparison.Ordinal) && !target.Contains('.'))
                     {

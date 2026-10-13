@@ -27,14 +27,15 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Capability.Hosting;
+using GameFrameX.Capability.Hosting.Abstractions;
+using GameFrameX.Capability.Hosting.Core;
 using GameFrameX.Capability.Hosting.AdminApi;
-using GameFrameX.Capability.Online.Events;
+using GameFrameX.Capability.Online.Abstractions.Events;
 using GameFrameX.Capability.Online.Foundation.AdminApi;
-using GameFrameX.Capability.Online.Identity;
-using GameFrameX.Capability.Online.Presence;
-using GameFrameX.Capability.Online.Scope;
-using GameFrameX.Capability.Online.Session;
+using GameFrameX.Capability.Online.Foundation.Identity;
+using GameFrameX.Capability.Online.Foundation.Presence;
+using GameFrameX.Capability.Online.Abstractions.Scope;
+using GameFrameX.Capability.Online.Foundation.Session;
 
 namespace GameFrameX.Capability.Online.Foundation;
 

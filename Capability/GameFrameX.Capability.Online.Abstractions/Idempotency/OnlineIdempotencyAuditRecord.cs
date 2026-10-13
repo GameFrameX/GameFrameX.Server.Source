@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Idempotency;
+namespace GameFrameX.Capability.Online.Abstractions.Idempotency;
 
 /// <summary>
 /// Online 幂等审计记录（谁在什么时候、以什么键、得到什么判定；不含明文请求/响应体）。
