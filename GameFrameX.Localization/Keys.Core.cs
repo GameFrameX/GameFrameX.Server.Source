@@ -94,6 +94,42 @@ public static partial class Keys
             /// 参数: {0} - Actor ID, {1} - 组件类型, {2} - 异常信息
             /// </remarks>
             public const string ActiveComponentFailed = "Core.Actor.ActiveComponentFailed";
+
+            /// <summary>
+            /// WorkerActor工作单元相关消息
+            /// </summary>
+            public static class WorkerActor
+            {
+            /// <summary>
+            /// 工作单元执行超时 trace:{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.Actor.WorkerActor.Timeout
+            /// 用途: Actor工作单元执行超时（等待方以超时异常放行）时记录
+            /// 参数: {0} - 调用链追踪信息
+            /// </remarks>
+            public const string Timeout = "Core.Actor.WorkerActor.Timeout";
+
+            /// <summary>
+            /// Actor已隔离（孤儿任务超过硬上限，放弃跟踪） actorId:{0} reason:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.Actor.WorkerActor.Quarantined
+            /// 用途: 孤儿任务超过硬上限、Actor被隔离时记录
+            /// 参数: {0} - Actor ID, {1} - 隔离原因
+            /// </remarks>
+            public const string Quarantined = "Core.Actor.WorkerActor.Quarantined";
+
+            /// <summary>
+            /// Actor已隔离，丢弃Tell工作单元 actorId:{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.Actor.WorkerActor.QuarantinedTellDropped
+            /// 用途: 隔离后的Tell（fire-and-forget）工作单元被丢弃时记录
+            /// 参数: {0} - Actor ID
+            /// </remarks>
+            public const string QuarantinedTellDropped = "Core.Actor.WorkerActor.QuarantinedTellDropped";
+            }
         }
 
         /// <summary>
@@ -767,6 +803,52 @@ public static partial class Keys
     /// </summary>
     public static class CoreExceptions
     {
+
+        /// <summary>
+        /// WorkerActor工作单元相关异常
+        /// </summary>
+        public static class WorkerActor
+        {
+            /// <summary>
+            /// WorkerActor工作单元执行超时({0}ms) actorId:{1} trace:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.WorkerActor.Timeout
+            /// 用途: 工作单元超时、以异常放行等待方时使用
+            /// 参数: {0} - 超时时间(毫秒), {1} - Actor ID, {2} - 调用链追踪信息
+            /// </remarks>
+            public const string Timeout = "CoreExceptions.WorkerActor.Timeout";
+
+            /// <summary>
+            /// WorkerActor已隔离，工作单元被拒绝 actorId:{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.WorkerActor.Quarantined
+            /// 用途: 已隔离的Actor收到新工作单元时抛出
+            /// 参数: {0} - Actor ID
+            /// </remarks>
+            public const string Quarantined = "CoreExceptions.WorkerActor.Quarantined";
+
+            /// <summary>
+            /// WorkerActor已隔离，工作单元被拒绝 actorId:{0} trace:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.WorkerActor.QuarantinedWithTrace
+            /// 用途: 已隔离的Actor排出排队中的工作单元时抛出
+            /// 参数: {0} - Actor ID, {1} - 调用链追踪信息
+            /// </remarks>
+            public const string QuarantinedWithTrace = "CoreExceptions.WorkerActor.QuarantinedWithTrace";
+
+            /// <summary>
+            /// trace不可用：{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.WorkerActor.TraceUnavailable
+            /// 用途: 构建超时消息时获取调用链追踪信息失败的后备内容
+            /// 参数: {0} - 获取追踪信息时发生的异常消息
+            /// </remarks>
+            public const string TraceUnavailable = "CoreExceptions.WorkerActor.TraceUnavailable";
+        }
         /// <summary>
         /// 定时器相关异常
         /// </summary>

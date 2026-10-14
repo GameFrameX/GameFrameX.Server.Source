@@ -723,6 +723,23 @@
     <value>定时器代码需要在热更项目里</value>
   </data>
 
+    <!-- WorkerActor 工作单元相关异常 -->
+    <data name="CoreExceptions.WorkerActor.Timeout" xml:space="preserve">
+    <value>WorkerActor工作单元执行超时({0}ms) actorId:{1} trace:{2}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.Quarantined" xml:space="preserve">
+    <value>WorkerActor已隔离，工作单元被拒绝 actorId:{0}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.QuarantinedWithTrace" xml:space="preserve">
+    <value>WorkerActor已隔离，工作单元被拒绝 actorId:{0} trace:{1}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.TraceUnavailable" xml:space="preserve">
+    <value>trace不可用：{0}</value>
+  </data>
+
     <!-- 组件相关异常 -->
     <data name="CoreExceptions.Component.ActorTypeNotBound" xml:space="preserve">
     <value>组件:[{0}] Actor类型未绑定</value>
@@ -1677,6 +1694,18 @@
 
   <data name="Core.Actor.ActiveComponentFailed" xml:space="preserve">
     <value>Actor激活组件失败 actorId:{0} 组件类型:{1} 异常：\n{2}</value>
+  </data>
+
+  <data name="Core.Actor.WorkerActor.Timeout" xml:space="preserve">
+    <value>工作单元执行超时 trace:{0}</value>
+  </data>
+
+  <data name="Core.Actor.WorkerActor.Quarantined" xml:space="preserve">
+    <value>Actor已隔离（孤儿任务超过硬上限，放弃跟踪） actorId:{0} reason:{1}</value>
+  </data>
+
+  <data name="Core.Actor.WorkerActor.QuarantinedTellDropped" xml:space="preserve">
+    <value>Actor已隔离，丢弃Tell工作单元 actorId:{0}</value>
   </data>
 
   <data name="Core.ActorManager.ActorCrossDayLog" xml:space="preserve">

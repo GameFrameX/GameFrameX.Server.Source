@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 using GameFrameX.Core.Abstractions;
+using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Core.Actors.Impl;
 
@@ -42,7 +43,7 @@ public abstract class WorkWrapper
     public WorkerActor Owner { get; set; }
 
     /// <summary>
-    /// 超时时间
+    /// 超时时间（毫秒）
     /// </summary>
     public int TimeOut { get; set; }
 
@@ -52,9 +53,20 @@ public abstract class WorkWrapper
     public long CallChainId { get; set; }
 
     /// <summary>
-    /// 执行
+    /// 调用方传入的取消令牌。
+    /// 入队阶段用于取消排队；执行阶段与超时合并为执行期取消源（见 <see cref="BeginExecution"/>）。
     /// </summary>
-    /// <returns></returns>
+    public CancellationToken CallerToken { get; set; }
+
+    /// <summary>
+    /// 执行期取消源。超时（CancelAfter）或调用方取消时触发，
+    /// 令牌经 <see cref="RuntimeContext.CurrentCancellationToken"/> 向下流转供协作式取消。
+    /// </summary>
+    private CancellationTokenSource executionCancellationTokenSource;
+    /// <summary>
+    /// 执行工作单元。子类实现不得向外抛出异常（异常一律经 TrySetException 传递给等待方）。
+    /// </summary>
+    /// <returns>工作单元任务</returns>
     public abstract Task DoTask();
 
     /// <summary>
@@ -67,6 +79,76 @@ public abstract class WorkWrapper
     /// 强制设置结果
     /// </summary>
     public abstract void ForceSetResult();
+
+    /// <summary>
+    /// 开始执行生命周期：创建执行期取消源（联动调用方令牌 + 超时 CancelAfter），
+    /// 并将令牌写入 <see cref="RuntimeContext"/> 供业务代码协作式取消。
+    /// </summary>
+    /// <returns>执行期取消令牌</returns>
+    public CancellationToken BeginExecution()
+    {
+        var cancellationSource = CallerToken.CanBeCanceled
+            ? CancellationTokenSource.CreateLinkedTokenSource(CallerToken)
+            : new CancellationTokenSource();
+
+        // int.MaxValue 表示未显式配置超时（生成器默认），视为不限时，不挂取消定时器
+        if (TimeOut > 0 && TimeOut != int.MaxValue)
+        {
+            cancellationSource.CancelAfter(TimeSpan.FromMilliseconds(TimeOut));
+        }
+
+        executionCancellationTokenSource = cancellationSource;
+        RuntimeContext.SetCancellationToken(cancellationSource.Token);
+        return cancellationSource.Token;
+    }
+
+    /// <summary>
+    /// 结束执行生命周期：复位取消上下文并按需释放执行期取消源。
+    /// </summary>
+    /// <param name="disposeCancellationSource">
+    /// 是否释放执行期取消源。工作单元已被放弃跟踪（Actor 被隔离）时必须传 false——
+    /// 孤儿任务可能仍持有令牌注册，释放会破坏其取消信令。
+    /// </param>
+    public void EndExecution(bool disposeCancellationSource)
+    {
+        RuntimeContext.ResetCancellationToken();
+
+        if (!disposeCancellationSource)
+        {
+            return;
+        }
+
+        var cancellationSource = Interlocked.Exchange(ref executionCancellationTokenSource, null);
+        cancellationSource?.Dispose();
+    }
+
+    /// <summary>
+    /// 超时回调：以 <see cref="TimeoutException"/> 完成等待方任务。
+    /// 注意：此处不重置链上下文——孤儿任务仍在执行，链上下文由其 finally 经
+    /// <see cref="ResetContext"/>（条件重置）安全清理；提前清零会让孤儿内部的重入调用误判自死锁。
+    /// </summary>
+    public void OnTimeout()
+    {
+        string trace;
+        try
+        {
+            trace = GetTrace();
+        }
+        catch (Exception exception)
+        {
+            // Localization: CoreExceptions.WorkerActor.TraceUnavailable - trace不可用：{0}
+            trace = LocalizationService.GetString(Localization.Keys.CoreExceptions.WorkerActor.TraceUnavailable, exception.Message);
+        }
+
+        // Localization: CoreExceptions.WorkerActor.Timeout - WorkerActor工作单元执行超时({0}ms) actorId:{1} trace:{2}
+        SetTimeoutException(new TimeoutException(LocalizationService.GetString(Localization.Keys.CoreExceptions.WorkerActor.Timeout, TimeOut, Owner?.Id, trace)));
+    }
+
+    /// <summary>
+    /// 以超时异常完成等待方任务（子类实现，不做任何上下文重置）
+    /// </summary>
+    /// <param name="exception">超时异常</param>
+    protected abstract void SetTimeoutException(Exception exception);
 
     /// <summary>
     /// 尝试设置取消状态
@@ -90,10 +172,12 @@ public abstract class WorkWrapper
     }
 
     /// <summary>
-    /// 重置上下文
+    /// 重置上下文。
+    /// 条件重置：仅当 Actor 当前链 ID 仍归属本工作单元时才清零，
+    /// 避免孤儿任务或被拒绝入队的工作单元误清后继消息的链上下文（重入判定依赖该值）。
     /// </summary>
     public void ResetContext()
     {
-        Owner.CurrentChainId = 0;
+        Owner?.ResetChainIdIfCurrent(CallChainId);
     }
 }

@@ -29,6 +29,7 @@
 
 using System.Threading.Tasks.Dataflow;
 using GameFrameX.Core.Abstractions;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Utility;
 using GameFrameX.Utility.Setting;
 using Serilog;
@@ -77,6 +78,56 @@ public class WorkerActor : IWorkerActor
     }
 
     /// <summary>
+    /// 条件重置链 ID：仅当当前值仍为指定链 ID 时才清零。
+    /// 工作单元安全清理用——避免孤儿任务或被拒绝入队的工作单元误清后继消息的链上下文（重入判定依赖该值）。
+    /// </summary>
+    /// <param name="chainId">链 ID</param>
+    internal void ResetChainIdIfCurrent(long chainId)
+    {
+        Interlocked.CompareExchange(ref _currentChainId, 0, chainId);
+    }
+
+    /// <summary>
+    /// 隔离标记（0=正常，1=已隔离）
+    /// </summary>
+    private int _quarantined;
+
+    /// <summary>
+    /// Actor 是否已隔离。
+    /// 孤儿任务超过硬上限仍无结束迹象时置位：串行不变量已无法保证，本 Actor 不再接受与执行任何工作单元，
+    /// 排队中的工作单元以隔离异常快速失败，需经宿主（如 ActorManager 回收重建）恢复。
+    /// </summary>
+    public bool IsQuarantined => Volatile.Read(ref _quarantined) != 0;
+
+    /// <summary>
+    /// 隔离本 Actor：停止接收新工作单元并放弃对孤儿任务的跟踪
+    /// </summary>
+    /// <param name="reason">隔离原因</param>
+    private void Quarantine(string reason)
+    {
+        if (Interlocked.Exchange(ref _quarantined, 1) != 0)
+        {
+            return;
+        }
+
+        // Localization: Core.Actor.WorkerActor.Quarantined - Actor已隔离（孤儿任务超过硬上限，放弃跟踪） actorId:{0} reason:{1}
+        Log.Fatal(LocalizationService.GetString(Localization.Keys.Core.Actor.WorkerActor.Quarantined, Id, reason));
+        ActionBlock.Complete();
+    }
+
+    private InvalidOperationException CreateQuarantinedException()
+    {
+        // Localization: CoreExceptions.WorkerActor.Quarantined - WorkerActor已隔离，工作单元被拒绝 actorId:{0}
+        return new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.WorkerActor.Quarantined, Id));
+    }
+
+    private static InvalidOperationException CreateQuarantinedException(WorkWrapper wrapper)
+    {
+        // Localization: CoreExceptions.WorkerActor.QuarantinedWithTrace - WorkerActor已隔离，工作单元被拒绝 actorId:{0} trace:{1}
+        return new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.WorkerActor.QuarantinedWithTrace, wrapper.Owner?.Id, GetTraceSafely(wrapper)));
+    }
+
+    /// <summary>
     /// Actor的唯一标识
     /// </summary>
     internal long Id { get; init; }
@@ -105,21 +156,63 @@ public class WorkerActor : IWorkerActor
     }
 
     /// <summary>
-    /// 内部执行方法,处理工作包装器
+    /// 内部执行方法,处理工作包装器。
+    /// 超时语义：等待方以 TimeoutException 放行；邮箱继续等待孤儿任务完成（串行不变量），
+    /// 孤儿超过硬上限（<see cref="OrphanHardCapMultiplier"/> × TimeOut）才隔离本 Actor。
     /// </summary>
     /// <param name="wrapper">工作包装器</param>
-    private static async Task InnerRun(WorkWrapper wrapper)
+    private async Task InnerRun(WorkWrapper wrapper)
     {
+        if (IsQuarantined)
+        {
+            wrapper.TrySetException(CreateQuarantinedException(wrapper));
+            return;
+        }
+
+        wrapper.BeginExecution();
         var task = wrapper.DoTask();
+        var abandoned = false;
         try
         {
-            await task.WaitAsync(TimeSpan.FromMilliseconds(wrapper.TimeOut));
+            try
+            {
+                if (wrapper.TimeOut > 0)
+                {
+                    await task.WaitAsync(TimeSpan.FromMilliseconds(wrapper.TimeOut));
+                }
+                else
+                {
+                    await task;
+                }
+            }
+            catch (TimeoutException)
+            {
+                // Localization: Core.Actor.WorkerActor.Timeout - 工作单元执行超时 trace:{0}
+                Log.Fatal(LocalizationService.GetString(Localization.Keys.Core.Actor.WorkerActor.Timeout, GetTraceSafely(wrapper)));
+                // 等待方以超时异常放行；链上下文留给孤儿任务的 finally 条件清理，不得在此清零
+                wrapper.OnTimeout();
+
+                try
+                {
+                    // 串行不变量：邮箱继续等待孤儿任务完成，期间不取下一条消息
+                    await task.WaitAsync(TimeSpan.FromMilliseconds((long)wrapper.TimeOut * OrphanHardCapMultiplier));
+                }
+                catch (TimeoutException)
+                {
+                    // 孤儿超过硬上限仍无结束迹象：放弃跟踪并隔离本 Actor
+                    abandoned = true;
+                    Quarantine("孤儿任务超过硬上限: " + GetTraceSafely(wrapper));
+                }
+                catch
+                {
+                    // 孤儿已结束（其异常已由 DoTask 传递给等待方），邮箱恢复正常
+                }
+            }
         }
-        catch (TimeoutException)
+        finally
         {
-            Log.Fatal("wrapper执行超时:" + wrapper.GetTrace());
-            //强制设状态-取消该操作
-            wrapper.ForceSetResult();
+            // 孤儿被放弃跟踪时不得释放其执行期取消源（可能仍被持有注册）
+            wrapper.EndExecution(!abandoned);
         }
     }
 
@@ -140,8 +233,15 @@ public class WorkerActor : IWorkerActor
         }
     }
 
+    /// <summary>
+    /// 孤儿任务硬上限倍数：超时放行等待方后，邮箱最多再等待 TimeOut × 该倍数，超过则隔离本 Actor
+    /// </summary>
+    private const long OrphanHardCapMultiplier = 10;
+
     private void SendToActionBlock(WorkWrapper wrapper, CancellationToken cancellationToken, bool completeOnFailure)
     {
+        // 调用方令牌联动执行期取消：排队期取消投递，执行期与超时合并触发协作式取消
+        wrapper.CallerToken = cancellationToken;
         var sendTask = ActionBlock.SendAsync(wrapper, cancellationToken);
         if (sendTask.IsCompleted)
         {
@@ -259,9 +359,14 @@ public class WorkerActor : IWorkerActor
     /// <returns>返回一个Task对象，表示异步操作的完成状态</returns>
     public Task Enqueue(Action work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default)
     {
+        if (IsQuarantined)
+        {
+            return Task.FromException(CreateQuarantinedException());
+        }
+
         if (!discard && GlobalSettings.CurrentSetting.IsDebug && !ActorLimit.AllowCall(Id))
         {
-            return default;
+            return Task.CompletedTask;
         }
 
         if (timeOut <= 0)
@@ -291,9 +396,14 @@ public class WorkerActor : IWorkerActor
     /// <returns>返回一个Task<T/>对象，表示异步操作的完成状态和结果</returns>
     public Task<T> Enqueue<T>(Func<T> work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default)
     {
+        if (IsQuarantined)
+        {
+            return Task.FromException<T>(CreateQuarantinedException());
+        }
+
         if (!discard && GlobalSettings.CurrentSetting.IsDebug && !ActorLimit.AllowCall(Id))
         {
-            return default;
+            return Task.FromResult(default(T));
         }
 
         if (timeOut <= 0)
@@ -322,9 +432,14 @@ public class WorkerActor : IWorkerActor
     /// <returns>返回一个Task对象，表示异步操作的完成状态</returns>
     public Task Enqueue(Func<Task> work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default)
     {
+        if (IsQuarantined)
+        {
+            return Task.FromException(CreateQuarantinedException());
+        }
+
         if (!discard && GlobalSettings.CurrentSetting.IsDebug && !ActorLimit.AllowCall(Id))
         {
-            return default;
+            return Task.CompletedTask;
         }
 
         if (timeOut <= 0)
@@ -354,9 +469,14 @@ public class WorkerActor : IWorkerActor
     /// <returns>返回一个Task<T/>对象，表示异步操作的完成状态和结果</returns>
     public Task<T> Enqueue<T>(Func<Task<T>> work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default)
     {
+        if (IsQuarantined)
+        {
+            return Task.FromException<T>(CreateQuarantinedException());
+        }
+
         if (!discard && GlobalSettings.CurrentSetting.IsDebug && !ActorLimit.AllowCall(Id))
         {
-            return default;
+            return Task.FromResult(default(T));
         }
 
         if (timeOut <= 0)
@@ -386,6 +506,13 @@ public class WorkerActor : IWorkerActor
     /// <param name="cancellationToken">用于取消任务执行的令牌</param>
     public void Tell(Action work, int timeOut = -1, CancellationToken cancellationToken = default)
     {
+        if (IsQuarantined)
+        {
+            // Localization: Core.Actor.WorkerActor.QuarantinedTellDropped - Actor已隔离，丢弃Tell工作单元 actorId:{0}
+            Log.Warning(LocalizationService.GetString(Localization.Keys.Core.Actor.WorkerActor.QuarantinedTellDropped, Id));
+            return;
+        }
+
         if (timeOut <= 0)
         {
             timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
@@ -408,6 +535,13 @@ public class WorkerActor : IWorkerActor
     /// <param name="cancellationToken">用于取消任务执行的令牌</param>
     public void Tell(Func<Task> work, int timeOut = -1, CancellationToken cancellationToken = default)
     {
+        if (IsQuarantined)
+        {
+            // Localization: Core.Actor.WorkerActor.QuarantinedTellDropped - Actor已隔离，丢弃Tell工作单元 actorId:{0}
+            Log.Warning(LocalizationService.GetString(Localization.Keys.Core.Actor.WorkerActor.QuarantinedTellDropped, Id));
+            return;
+        }
+
         if (timeOut <= 0)
         {
             timeOut = GlobalSettings.CurrentSetting.ActorTimeOut;
@@ -432,12 +566,17 @@ public class WorkerActor : IWorkerActor
     /// <returns>返回表示异步操作的Task对象</returns>
     public Task SendAsync(Action work, int timeOut = -1, CancellationToken cancellationToken = default)
     {
+        if (IsQuarantined)
+        {
+            return Task.FromException(CreateQuarantinedException());
+        }
+
         var (needEnqueue, chainId) = IsNeedEnqueue();
         if (needEnqueue)
         {
             if (GlobalSettings.CurrentSetting.IsDebug && !ActorLimit.AllowCall(Id))
             {
-                return default;
+                return Task.CompletedTask;
             }
 
             if (timeOut <= 0)
@@ -469,12 +608,17 @@ public class WorkerActor : IWorkerActor
     /// <returns>返回包含执行结果的Task<T/>对象</returns>
     public Task<T> SendAsync<T>(Func<T> work, int timeOut = -1, CancellationToken cancellationToken = default)
     {
+        if (IsQuarantined)
+        {
+            return Task.FromException<T>(CreateQuarantinedException());
+        }
+
         var (needEnqueue, chainId) = IsNeedEnqueue();
         if (needEnqueue)
         {
             if (GlobalSettings.CurrentSetting.IsDebug && !ActorLimit.AllowCall(Id))
             {
-                return default;
+                return Task.FromResult(default(T));
             }
 
             if (timeOut <= 0)
@@ -522,12 +666,17 @@ public class WorkerActor : IWorkerActor
     /// <returns>返回表示异步操作的Task对象</returns>
     public Task SendAsync(Func<Task> work, int timeOut = -1, bool checkLock = true, CancellationToken cancellationToken = default)
     {
+        if (IsQuarantined)
+        {
+            return Task.FromException(CreateQuarantinedException());
+        }
+
         var (needEnqueue, chainId) = IsNeedEnqueue();
         if (needEnqueue)
         {
             if (checkLock && GlobalSettings.CurrentSetting.IsDebug && !ActorLimit.AllowCall(Id))
             {
-                return default;
+                return Task.CompletedTask;
             }
 
             if (timeOut <= 0)
@@ -558,12 +707,17 @@ public class WorkerActor : IWorkerActor
     /// <returns>返回包含执行结果的Task<T/>对象</returns>
     public Task<T> SendAsync<T>(Func<Task<T>> work, int timeOut = -1, CancellationToken cancellationToken = default)
     {
+        if (IsQuarantined)
+        {
+            return Task.FromException<T>(CreateQuarantinedException());
+        }
+
         var (needEnqueue, chainId) = IsNeedEnqueue();
         if (needEnqueue)
         {
             if (GlobalSettings.CurrentSetting.IsDebug && !ActorLimit.AllowCall(Id))
             {
-                return default;
+                return Task.FromResult(default(T));
             }
 
             if (timeOut <= 0)

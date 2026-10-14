@@ -66,15 +66,16 @@ public class ActionAsyncWrapper : WorkWrapper
         {
             SetContext();
             await Work();
+            Tcs.TrySetResult(true);
         }
         catch (Exception e)
         {
             LogHelper.Error(e.ToString());
+            Tcs.TrySetException(e);
         }
         finally
         {
             ResetContext();
-            Tcs.TrySetResult(true);
         }
     }
 
@@ -85,6 +86,15 @@ public class ActionAsyncWrapper : WorkWrapper
     public override string GetTrace()
     {
         return $"{Work.Target}|{Work.Method.GetType().FullName}|{Work.Method.Name}";
+    }
+
+    /// <summary>
+    /// 以超时异常完成等待方任务（不重置上下文，见 <see cref="WorkWrapper.OnTimeout"/>）
+    /// </summary>
+    /// <param name="exception">超时异常</param>
+    protected override void SetTimeoutException(Exception exception)
+    {
+        Tcs.TrySetException(exception);
     }
 
     /// <summary>

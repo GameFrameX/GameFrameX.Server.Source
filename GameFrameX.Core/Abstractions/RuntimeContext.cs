@@ -62,6 +62,42 @@ public static class RuntimeContext
         get { return ActorContext.Value; }
     }
 
+    /// <summary>
+    /// 当前执行取消上下文
+    /// </summary>
+    private static readonly AsyncLocal<CancellationToken> CancellationContext = new();
+
+    /// <summary>
+    /// 当前正在执行的 Actor 工作单元取消令牌。
+    /// 由 WorkerActor 在执行期设置：超时（CancelAfter）或调用方取消时触发，
+    /// 协作式取消的业务代码与 IO 层应读取本令牌以尽快收尾。
+    /// 默认值为 <see cref="CancellationToken.None"/>（不可取消）。
+    /// </summary>
+    public static CancellationToken CurrentCancellationToken
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get { return CancellationContext.Value; }
+    }
+
+    /// <summary>
+    /// 设置执行期取消令牌（仅供 Actor 工作单元生命周期使用）
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void SetCancellationToken(CancellationToken cancellationToken)
+    {
+        CancellationContext.Value = cancellationToken;
+    }
+
+    /// <summary>
+    /// 重置执行期取消令牌为不可取消（仅供 Actor 工作单元生命周期使用）
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void ResetCancellationToken()
+    {
+        CancellationContext.Value = CancellationToken.None;
+    }
+
 
     /// <summary>
     /// 设置上下文

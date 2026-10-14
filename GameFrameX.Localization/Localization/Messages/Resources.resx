@@ -693,6 +693,23 @@
     <value>Timer code must be in hotfix project</value>
   </data>
 
+    <!-- WorkerActor work unit related exceptions -->
+    <data name="CoreExceptions.WorkerActor.Timeout" xml:space="preserve">
+    <value>WorkerActor work unit timed out ({0}ms) actorId:{1} trace:{2}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.Quarantined" xml:space="preserve">
+    <value>WorkerActor quarantined, work rejected. actorId:{0}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.QuarantinedWithTrace" xml:space="preserve">
+    <value>WorkerActor quarantined, work rejected. actorId:{0} trace:{1}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.TraceUnavailable" xml:space="preserve">
+    <value>trace unavailable: {0}</value>
+  </data>
+
     <!-- Component related exceptions -->
     <data name="CoreExceptions.Component.ActorTypeNotBound" xml:space="preserve">
     <value>component:[{0}] the actor type is not bound</value>
@@ -1679,6 +1696,18 @@
 
   <data name="Core.Actor.ActiveComponentFailed" xml:space="preserve">
     <value>Actor active component failed actorId:{0} componentType:{1} exception:\n{2}</value>
+  </data>
+
+  <data name="Core.Actor.WorkerActor.Timeout" xml:space="preserve">
+    <value>work unit execution timed out trace:{0}</value>
+  </data>
+
+  <data name="Core.Actor.WorkerActor.Quarantined" xml:space="preserve">
+    <value>Actor quarantined (orphan task exceeded hard cap, tracking abandoned) actorId:{0} reason:{1}</value>
+  </data>
+
+  <data name="Core.Actor.WorkerActor.QuarantinedTellDropped" xml:space="preserve">
+    <value>Actor quarantined, Tell work unit dropped actorId:{0}</value>
   </data>
 
   <data name="Core.ActorManager.ActorCrossDayLog" xml:space="preserve">
