@@ -2130,6 +2130,10 @@
     <value>SendOneWayAsync: circuit breaker is open, Service: {0}</value>
   </data>
 
+  <data name="RemoteMessaging.Client.ConnectionClosed" xml:space="preserve">
+    <value>Connection closed</value>
+  </data>
+
   <data name="RemoteMessaging.Client.SendOneWayHealthScoreLow" xml:space="preserve">
     <value>SendOneWayAsync: service health score too low, Service: {0}, Score: {1}</value>
   </data>

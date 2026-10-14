@@ -76,4 +76,13 @@ public interface ITransportProtocolAdapter : IDisposable
     /// Invalidates current connection so next request can recreate it.
     /// </remarks>
     void Invalidate();
+
+    /// <summary>
+    /// 标记指定流所属连接失效（仅影响该连接，不影响其它连接）。
+    /// </summary>
+    /// <remarks>
+    /// Invalidates the connection owning the specified stream (affects only that connection).
+    /// </remarks>
+    /// <param name="stream">连接流 / The connection stream</param>
+    void Invalidate(Stream stream);
 }

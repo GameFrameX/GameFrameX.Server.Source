@@ -111,6 +111,19 @@ internal sealed class KcpTransportProtocolAdapter : ITransportProtocolAdapter
     }
 
     /// <summary>
+    /// 按流标记连接失效的占位实现：占位适配器无持久连接状态，本方法不执行任何操作。
+    /// </summary>
+    /// <remarks>
+    /// Placeholder implementation of stream-scoped invalidation: the placeholder adapter holds
+    /// no persistent connection state, so this method does nothing.
+    /// </remarks>
+    /// <param name="stream">连接流 / The connection stream</param>
+    public void Invalidate(Stream stream)
+    {
+        // 占位实现无持久连接状态，保留接口以兼容统一调用流程。
+    }
+
+    /// <summary>
     /// 释放资源的占位实现：占位适配器不持有任何托管或非托管资源，本方法不执行任何操作。
     /// </summary>
     /// <remarks>

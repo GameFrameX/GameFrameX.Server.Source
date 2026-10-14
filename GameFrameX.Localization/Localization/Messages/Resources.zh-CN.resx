@@ -2128,6 +2128,10 @@
     <value>SendOneWayAsync: 熔断器已打开, Service: {0}</value>
   </data>
 
+  <data name="RemoteMessaging.Client.ConnectionClosed" xml:space="preserve">
+    <value>连接已关闭</value>
+  </data>
+
   <data name="RemoteMessaging.Client.SendOneWayHealthScoreLow" xml:space="preserve">
     <value>SendOneWayAsync: 服务健康评分过低, Service: {0}, Score: {1}</value>
   </data>

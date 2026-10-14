@@ -258,6 +258,15 @@ public static partial class Keys
             public const string SendOneWayCircuitBreakerOpen = "RemoteMessaging.Client.SendOneWayCircuitBreakerOpen";
 
             /// <summary>
+            /// 连接已关闭
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Client.ConnectionClosed
+            /// 用途: 连接接收泵退出或向已死亡连接写入时抛出的连接级异常消息
+            /// </remarks>
+            public const string ConnectionClosed = "RemoteMessaging.Client.ConnectionClosed";
+
+            /// <summary>
             /// SendOneWayAsync: 服务健康评分过低, Service: {0}, Score: {1}
             /// </summary>
             /// <remarks>

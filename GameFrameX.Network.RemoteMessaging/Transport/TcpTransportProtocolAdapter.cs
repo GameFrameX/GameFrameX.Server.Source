@@ -118,6 +118,19 @@ internal sealed class TcpTransportProtocolAdapter : ITransportProtocolAdapter
     }
 
     /// <summary>
+    /// 标记指定流所属连接失效：委托连接提供器仅丢弃该连接，其余连接保持可用。
+    /// </summary>
+    /// <remarks>
+    /// Invalidates the connection owning the given stream by delegating to the connection provider,
+    /// which drops only that connection while others stay usable.
+    /// </remarks>
+    /// <param name="stream">连接流 / The connection stream</param>
+    public void Invalidate(Stream stream)
+    {
+        _connectionProvider.Invalidate(stream);
+    }
+
+    /// <summary>
     /// 释放适配器持有的资源：委托连接提供器释放其管理的连接。
     /// </summary>
     /// <remarks>

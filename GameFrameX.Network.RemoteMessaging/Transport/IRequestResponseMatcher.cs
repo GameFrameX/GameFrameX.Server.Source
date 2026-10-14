@@ -70,6 +70,17 @@ public interface IRequestResponseMatcher
     bool TryComplete(int uniqueId, MessageObject response);
 
     /// <summary>
+    /// 以异常完成指定请求（连接断开等传输层失败时快速失败等待方）。
+    /// </summary>
+    /// <remarks>
+    /// Fails the corresponding pending request with an exception (used to fail waiters fast on transport failures such as connection loss).
+    /// </remarks>
+    /// <param name="uniqueId">请求唯一 ID / The unique ID of the request</param>
+    /// <param name="exception">失败原因异常 / The failure exception</param>
+    /// <returns>是否成功匹配到等待中的请求 / Whether a pending request was successfully matched</returns>
+    bool TryFail(int uniqueId, Exception exception);
+
+    /// <summary>
     /// 清理已超时的待处理请求。
     /// </summary>
     /// <remarks>

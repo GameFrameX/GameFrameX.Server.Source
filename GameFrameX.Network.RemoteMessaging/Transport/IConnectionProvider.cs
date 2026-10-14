@@ -56,4 +56,14 @@ public interface IConnectionProvider : IDisposable
     /// Marks the current connection as invalid so it will be re-established on the next call.
     /// </remarks>
     void Invalidate();
+
+    /// <summary>
+    /// 标记指定流所属连接为失效（仅影响该连接，不影响同池其它连接与其它 endpoint）。
+    /// </summary>
+    /// <remarks>
+    /// Marks the connection owning the specified stream as invalid (affects only that connection,
+    /// not other pooled connections or other endpoints).
+    /// </remarks>
+    /// <param name="stream">要失效的连接流 / The connection stream to invalidate</param>
+    void Invalidate(Stream stream);
 }

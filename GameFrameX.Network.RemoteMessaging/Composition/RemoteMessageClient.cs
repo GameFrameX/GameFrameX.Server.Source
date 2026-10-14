@@ -27,10 +27,10 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net.Sockets;
 using GameFrameX.Foundation.Localization.Core;
-
 namespace GameFrameX.Network.RemoteMessaging.Composition;
 
 /// <summary>
@@ -41,7 +41,7 @@ namespace GameFrameX.Network.RemoteMessaging.Composition;
 /// </remarks>
 internal sealed class RemoteMessageClient : IRemoteMessageClient
 {
-    private readonly SemaphoreSlim _callSemaphore = new(1, 1);
+    private readonly ConcurrentDictionary<Stream, ConnectionContext> _connections = new();
     private readonly ICircuitBreaker _circuitBreaker;
     private readonly IEndpointHealthEvaluator _healthEvaluator;
     private readonly IRemoteCallInterceptor[] _interceptors;
@@ -77,7 +77,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
     {
         _transportProtocolAdapter = transportProtocolAdapter;
         _messageCodec = messageCodec;
-        _requestResponseMatcher = requestResponseMatcher;
+        _requestResponseMatcher = requestResponseMatcher ?? throw new ArgumentNullException(nameof(requestResponseMatcher));
         _protocolVersionNegotiator = protocolVersionNegotiator;
         _interceptors = interceptors ?? Array.Empty<IRemoteCallInterceptor>();
         _retryPolicy = retryPolicy;
@@ -377,6 +377,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
         RemoteCallContext context, MessageObject requestMessage, Stopwatch stopwatch, int attemptCount)
         where TResponse : class, IResponseMessage
     {
+        Stream stream = null;
         try
         {
             await RunBeforeInterceptorsAsync(context, requestMessage);
@@ -392,35 +393,31 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
                            false);
             }
 
-            await _callSemaphore.WaitAsync(context.CancellationToken);
-            try
+            stream = await _transportProtocolAdapter.GetOrCreateStreamAsync(context.ServiceName, context.CancellationToken);
+            if (stream == null)
             {
-                var stream = await _transportProtocolAdapter.GetOrCreateStreamAsync(context.ServiceName, context.CancellationToken);
-                if (stream == null)
-                {
-                    RecordFailures(context.ServiceName, "Failed to create connection");
-                    return (
-                               RemoteCallResult<TResponse>.Fail(
-                                   RemoteStatusCode.ConnectionFailed,
-                                   "Failed to create connection",
-                                   stopwatch.ElapsedMilliseconds,
-                                   context.TraceId),
-                               false);
-                }
-
-                var requestUniqueId = _requestResponseMatcher?.RegisterPendingRequest(context.TimeoutMs) ?? IdGenerator.GetNextUniqueIntId();
-                PrepareRequestMessage(requestMessage, requestUniqueId);
-
-                using (var requestBuffer = _messageCodec.Encode(requestMessage))
-                {
-                    await stream.WriteAsync(requestBuffer.Memory, context.CancellationToken);
-                    return (await ReadMatchedResponseAsync<TResponse>(stream, context, requestMessage, stopwatch, attemptCount), false);
-                }
+                RecordFailures(context.ServiceName, "Failed to create connection");
+                return (
+                           RemoteCallResult<TResponse>.Fail(
+                               RemoteStatusCode.ConnectionFailed,
+                               "Failed to create connection",
+                               stopwatch.ElapsedMilliseconds,
+                               context.TraceId),
+                           false);
             }
-            finally
+
+            var connection = GetOrCreateConnection(stream);
+            var requestUniqueId = _requestResponseMatcher.RegisterPendingRequest(context.TimeoutMs);
+            PrepareRequestMessage(requestMessage, requestUniqueId);
+
+            using (var requestBuffer = _messageCodec.Encode(requestMessage))
             {
-                _callSemaphore.Release();
+                // 写入门控按连接独立：同一连接上的并发写串行化，不同连接完全并行
+                await connection.WriteAsync(requestBuffer.Memory, context.CancellationToken);
             }
+
+            // 响应由该连接的接收泵经请求-响应匹配器投递，等待方不再内联占用连接读取
+            return (await WaitForResponseAsync<TResponse>(connection, requestUniqueId, context, requestMessage, stopwatch, attemptCount), false);
         }
         catch (RemoteEndpointNotFoundException endpointNotFoundException)
         {
@@ -450,7 +447,17 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
         catch (Exception ex)
         {
             stopwatch.Stop();
-            _transportProtocolAdapter.Invalidate();
+
+            // 连接级异常仅失效当前连接（池内其余连接与其它 endpoint 不受影响）；其余异常保守全量失效
+            if (stream != null && IsConnectionException(ex))
+            {
+                _transportProtocolAdapter.Invalidate(stream);
+            }
+            else
+            {
+                _transportProtocolAdapter.Invalidate();
+            }
+
 
             RecordFailures(context.ServiceName, ex.Message);
             await RunExceptionInterceptorsAsync(context, requestMessage, ex, stopwatch.ElapsedMilliseconds);
@@ -459,61 +466,206 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
             return (
                        RemoteCallResult<TResponse>.Fail(statusCode, ex.Message, stopwatch.ElapsedMilliseconds, context.TraceId),
                        ShouldRetry(context, statusCode, attemptCount));
+
         }
     }
 
     /// <summary>
-    /// 在链接取消令牌的超时窗口内循环读取并匹配响应。
+    /// 在超时窗口内等待请求-响应匹配器投递的响应（响应由连接接收泵解码并路由）。
     /// </summary>
     /// <remarks>
-    /// Reads and matches the response within a linked-token timeout window.
+    /// Waits within the timeout window for the response delivered by the request-response matcher
+    /// (responses are decoded and routed by the connection receive pump).
     /// </remarks>
     /// <typeparam name="TResponse">响应消息类型 / The response message type</typeparam>
-    /// <param name="stream">传输流 / The transport stream</param>
+    /// <param name="connection">连接上下文 / The connection context</param>
+    /// <param name="requestUniqueId">请求唯一 ID / The unique ID of the request</param>
     /// <param name="context">调用上下文 / The call context</param>
     /// <param name="requestMessage">请求消息对象 / The request message object</param>
     /// <param name="stopwatch">计时器 / The elapsed-time stopwatch</param>
     /// <param name="attemptCount">当前尝试序号（从 1 起）/ The current attempt number (1-based)</param>
     /// <returns>匹配到的响应结果 / The matched response result</returns>
-    private async Task<RemoteCallResult<TResponse>> ReadMatchedResponseAsync<TResponse>(
-        Stream stream, RemoteCallContext context, MessageObject requestMessage, Stopwatch stopwatch, int attemptCount)
+    private async Task<RemoteCallResult<TResponse>> WaitForResponseAsync<TResponse>(
+        ConnectionContext connection, int requestUniqueId, RemoteCallContext context, MessageObject requestMessage, Stopwatch stopwatch, int attemptCount)
         where TResponse : class, IResponseMessage
     {
-        using (var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken))
+        connection.TrackPending(requestUniqueId);
+        try
         {
-            timeoutCts.CancelAfter(context.TimeoutMs);
-            while (true)
+            MessageObject responseMessage;
+            using (var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken))
             {
-                var responseMessage = await _messageCodec.DecodeAsync(stream, timeoutCts.Token);
-                if (responseMessage == null)
-                {
-                    RecordFailures(context.ServiceName, "Connection closed during response");
-                    return RemoteCallResult<TResponse>.Fail(
-                        RemoteStatusCode.ConnectionClosed,
-                        "Connection closed during response",
-                        stopwatch.ElapsedMilliseconds,
-                        context.TraceId);
-                }
+                timeoutCts.CancelAfter(context.TimeoutMs);
+                responseMessage = await _requestResponseMatcher.WaitResponseAsync(requestUniqueId, timeoutCts.Token);
+            }
 
-                _requestResponseMatcher?.TryComplete(responseMessage.UniqueId, responseMessage);
-                if (responseMessage.UniqueId != requestMessage.UniqueId)
-                {
-                    continue;
-                }
+            stopwatch.Stop();
+            if (responseMessage == null)
+            {
+                // 挂起条目丢失（连接死亡竞态）：按连接关闭处理
+                RecordFailures(context.ServiceName, "Connection closed during response");
+                return RemoteCallResult<TResponse>.Fail(
+                    RemoteStatusCode.ConnectionClosed,
+                    "Connection closed during response",
+                    stopwatch.ElapsedMilliseconds,
+                    context.TraceId);
+            }
 
-                stopwatch.Stop();
-                if (responseMessage is TResponse typedResponse)
-                {
-                    RecordSuccess(context.ServiceName);
-                    await RunAfterInterceptorsAsync(context, requestMessage, responseMessage, stopwatch.ElapsedMilliseconds);
-                    return RemoteCallResult<TResponse>.Ok(typedResponse, stopwatch.ElapsedMilliseconds, context.TraceId, attemptCount - 1);
-                }
-
+            if (responseMessage is not TResponse typedResponse)
+            {
                 return RemoteCallResult<TResponse>.Fail(
                     RemoteStatusCode.UnexpectedResponse,
                     "Response type mismatch",
                     stopwatch.ElapsedMilliseconds,
                     context.TraceId);
+            }
+
+            RecordSuccess(context.ServiceName);
+            await RunAfterInterceptorsAsync(context, requestMessage, responseMessage, stopwatch.ElapsedMilliseconds);
+            return RemoteCallResult<TResponse>.Ok(typedResponse, stopwatch.ElapsedMilliseconds, context.TraceId, attemptCount - 1);
+        }
+        finally
+        {
+            connection.UntrackPending(requestUniqueId);
+        }
+    }
+
+    /// <summary>
+    /// 获取或创建指定流的连接上下文。首次见到某条连接时启动其专属接收泵。
+    /// </summary>
+    /// <remarks>
+    /// Gets or creates the connection context for the given stream. A dedicated receive pump is started
+    /// the first time a connection is seen.
+    /// </remarks>
+    /// <param name="stream">传输流 / The transport stream</param>
+    /// <returns>连接上下文 / The connection context</returns>
+    private ConnectionContext GetOrCreateConnection(Stream stream)
+    {
+        return _connections.GetOrAdd(stream, addedStream =>
+        {
+            var connection = new ConnectionContext(addedStream, _requestResponseMatcher);
+            _ = RunReceivePumpAsync(connection);
+            return connection;
+        });
+    }
+
+    /// <summary>
+    /// 连接接收泵：持续解码该连接上的响应帧并经请求-响应匹配器投递给等待方。
+    /// 泵退出（连接关闭或解码异常）时精准失效该连接，并快速失败其上全部挂起请求。
+    /// </summary>
+    /// <remarks>
+    /// Connection receive pump: continuously decodes response frames on the connection and delivers them
+    /// to waiters via the request-response matcher. When the pump exits (connection closed or decode failure),
+    /// the connection is invalidated precisely and all its pending requests fail fast.
+    /// </remarks>
+    /// <param name="connection">连接上下文 / The connection context</param>
+    private async Task RunReceivePumpAsync(ConnectionContext connection)
+    {
+        try
+        {
+            while (true)
+            {
+                var message = await _messageCodec.DecodeAsync(connection.Stream, CancellationToken.None);
+                if (message == null)
+                {
+                    break;
+                }
+
+                _requestResponseMatcher.TryComplete(message.UniqueId, message);
+            }
+        }
+        catch
+        {
+            // 解码失败（含连接关闭时的读异常）一律按连接死亡处理
+        }
+        finally
+        {
+            connection.MarkDead();
+            _connections.TryRemove(connection.Stream, out _);
+            _transportProtocolAdapter.Invalidate(connection.Stream);
+            connection.FailAllPending(new IOException(LocalizationService.GetString(Localization.Keys.RemoteMessaging.ClientModule.ConnectionClosed)));
+        }
+    }
+
+    /// <summary>
+    /// 连接上下文：封装单条连接的写入门控与该连接上的挂起请求追踪。
+    /// </summary>
+    /// <remarks>
+    /// Connection context: encapsulates the write gate of a single connection and tracking of its pending requests.
+    /// </remarks>
+    private sealed class ConnectionContext
+    {
+        private readonly SemaphoreSlim _writeGate = new(1, 1);
+        private readonly IRequestResponseMatcher _matcher;
+        private readonly ConcurrentDictionary<int, byte> _pendingUniqueIds = new();
+        private volatile bool _dead;
+
+        public ConnectionContext(Stream stream, IRequestResponseMatcher matcher)
+        {
+            Stream = stream;
+            _matcher = matcher;
+        }
+
+        public Stream Stream { get; }
+
+        /// <summary>
+        /// 向连接写入一个完整帧。同一连接上的并发写经写入门控串行化，帧间不交错。
+        /// </summary>
+        /// <remarks>
+        /// Writes one complete frame to the connection. Concurrent writes on the same connection are
+        /// serialized through the write gate so frames never interleave.
+        /// </remarks>
+        /// <param name="buffer">已编码帧缓冲 / The encoded frame buffer</param>
+        /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
+        public async Task WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (_dead)
+            {
+                throw new IOException(LocalizationService.GetString(Localization.Keys.RemoteMessaging.ClientModule.ConnectionClosed));
+            }
+
+            await _writeGate.WaitAsync(cancellationToken);
+            try
+            {
+                await Stream.WriteAsync(buffer, cancellationToken);
+            }
+            finally
+            {
+                _writeGate.Release();
+            }
+        }
+
+        public void TrackPending(int uniqueId)
+        {
+            _pendingUniqueIds[uniqueId] = 0;
+        }
+
+        public void UntrackPending(int uniqueId)
+        {
+            _pendingUniqueIds.TryRemove(uniqueId, out _);
+        }
+
+        public void MarkDead()
+        {
+            _dead = true;
+        }
+
+        /// <summary>
+        /// 以连接关闭异常快速失败该连接上全部挂起请求（等待方立即收到可重试的连接级错误）。
+        /// </summary>
+        /// <remarks>
+        /// Fails all pending requests on this connection fast with a connection-closed exception
+        /// (waiters immediately receive a retryable connection-level error).
+        /// </remarks>
+        /// <param name="exception">失败原因异常 / The failure exception</param>
+        public void FailAllPending(Exception exception)
+        {
+            foreach (var uniqueId in _pendingUniqueIds.Keys)
+            {
+                if (_pendingUniqueIds.TryRemove(uniqueId, out _))
+                {
+                    _matcher.TryFail(uniqueId, exception);
+                }
             }
         }
     }
@@ -580,29 +732,22 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
                 return;
             }
 
-            await _callSemaphore.WaitAsync(cancellationToken);
-            try
+            var stream = await _transportProtocolAdapter.GetOrCreateStreamAsync(serviceName, cancellationToken);
+            if (stream == null)
             {
-                var stream = await _transportProtocolAdapter.GetOrCreateStreamAsync(serviceName, cancellationToken);
-                if (stream == null)
-                {
-                    RecordFailures(serviceName, "SendOneWayAsync: Failed to create connection");
-                    return;
-                }
-
-                var requestUniqueId = _requestResponseMatcher?.RegisterPendingRequest(timeoutMs) ?? IdGenerator.GetNextUniqueIntId();
-                PrepareRequestMessage(requestMessage, requestUniqueId);
-
-                using var requestBuffer = _messageCodec.Encode(requestMessage);
-                await stream.WriteAsync(requestBuffer.Memory, cancellationToken);
-
-                RecordSuccess(serviceName);
-                await RunAfterInterceptorsAsync(context, requestMessage, null, 0);
+                RecordFailures(serviceName, "SendOneWayAsync: Failed to create connection");
+                return;
             }
-            finally
-            {
-                _callSemaphore.Release();
-            }
+
+            var connection = GetOrCreateConnection(stream);
+            var requestUniqueId = _requestResponseMatcher.RegisterPendingRequest(timeoutMs);
+            PrepareRequestMessage(requestMessage, requestUniqueId);
+
+            using var requestBuffer = _messageCodec.Encode(requestMessage);
+            await connection.WriteAsync(requestBuffer.Memory, cancellationToken);
+
+            RecordSuccess(serviceName);
+            await RunAfterInterceptorsAsync(context, requestMessage, null, 0);
         }
         catch (OperationCanceledException)
         {
@@ -614,6 +759,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
         }
         catch (Exception ex)
         {
+            // 单向发送无等待方与流引用，写失败保守全量失效（与旧行为一致）
             _transportProtocolAdapter.Invalidate();
             RecordFailures(serviceName, $"SendOneWayAsync error: {ex.Message}");
         }
