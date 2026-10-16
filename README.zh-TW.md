@@ -558,6 +558,8 @@ environment:
   # ...
 ```
 
+端點取值為 `scheme://host:port` URI。鍵的 scheme 段（`tcp` / `kcp` / `ws` / `wss`）宣告傳輸方式：撥號期遠端訊息客戶端解析端點並按 scheme 分發至對應已註冊介接器。同一服務可同時發布 tcp 與 kcp 端點（`services__{Role}__kcp__0`）——kcp 端點優先，未註冊 KCP 介接器的呼叫方回落 tcp 端點並僅告警一次。
+
 #### 自訂建置
 
 ```bash

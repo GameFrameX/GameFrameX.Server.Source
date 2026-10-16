@@ -585,6 +585,8 @@ environment:
   # ...
 ```
 
+Endpoint values are `scheme://host:port` URIs. The scheme segment of the key (`tcp` / `kcp` / `ws` / `wss`) declares the transport: at dial time the remote-messaging client parses the endpoint and dispatches to the adapter registered for that scheme. A service may publish both a tcp and a kcp endpoint (`services__{Role}__kcp__0`) — the kcp endpoint is preferred, and callers without a registered KCP adapter fall back to the tcp endpoint with a one-time warning.
+
 #### Custom Build
 
 ```bash

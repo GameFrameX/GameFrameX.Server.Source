@@ -562,6 +562,8 @@ environment:
   # ...
 ```
 
+端点取值为 `scheme://host:port` URI。键的 scheme 段（`tcp` / `kcp` / `ws` / `wss`）声明传输方式：拨号期远程消息客户端解析端点并按 scheme 分发到对应已注册适配器。同一服务可同时发布 tcp 与 kcp 端点（`services__{Role}__kcp__0`）——kcp 端点优先，未注册 KCP 适配器的调用方回落 tcp 端点并仅告警一次。
+
 #### 自定义构建
 
 ```bash
