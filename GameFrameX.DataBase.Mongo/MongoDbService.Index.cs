@@ -56,6 +56,16 @@ public sealed partial class MongoDbService
     private readonly ConcurrentDictionary<string, bool> _indexCache = new();
 
     /// <summary>
+    /// 索引引导的进程级单飞锁（冷缓存并发首调串行化：先到者建索引，后到者等待后见缓存即跳过，索引存在性对并发调用者可判）。
+    /// </summary>
+    /// <remarks>
+    /// Process-wide single-flight lock for index bootstrap (concurrent cold-cache first calls are
+    /// serialized: the first caller builds the index and later callers observe the cache afterwards,
+    /// so index existence is deterministically observable for concurrent callers).
+    /// </remarks>
+    private readonly object _indexCreationLock = new();
+
+    /// <summary>
     /// 检查待创建的索引与已创建的索引是否一致。
     /// </summary>
     /// <remarks>
@@ -99,10 +109,15 @@ public sealed partial class MongoDbService
     }
 
     /// <summary>
-    /// 为指定集合创建索引。
+    /// 为指定集合创建索引（单飞：并发冷缓存首调在 <see cref="_indexCreationLock"/> 上串行化，索引建成才落缓存；失败不缓存、后续调用重试）。
     /// </summary>
     /// <remarks>
-    /// Creates indexes for the specified collection.
+    /// Creates indexes for the specified collection. Bootstrap is single-flighted on
+    /// <see cref="_indexCreationLock"/>: concurrent cold-cache first calls wait for the winner, and the
+    /// per-type cache entry is published only after a successful build — a failed build (e.g. a unique
+    /// index colliding with pre-existing duplicates) leaves the cache untouched so a later call retries.
+    /// Without this serialization, a concurrent first-touch could pass the cache check while the index
+    /// build is still in flight and insert documents the unique index was meant to reject.
     /// </remarks>
     /// <typeparam name="T">文档类型 / Document type</typeparam>
     /// <param name="collection">MongoDB集合 / MongoDB collection</param>
@@ -114,31 +129,44 @@ public sealed partial class MongoDbService
             return;
         }
 
-        _indexCache.TryAdd(entityType.Name, true);
-        var properties = entityType.GetProperties();
-        // 索引列表
-        var result = collection.Indexes.List().ToList();
-
-        var indexModels = new List<CreateIndexModel<T>>();
-        foreach (var property in properties)
+        lock (_indexCreationLock)
         {
-            var indexAttribute = property.GetCustomAttribute<EntityIndexAttribute>();
-            if (indexAttribute != null)
+            // 双检：等待锁期间先到者可能已完成本类型索引引导。
+            // Double check: the lock winner may have completed this type's bootstrap while we waited.
+            if (_indexCache.ContainsKey(entityType.Name))
             {
-                var indexKeys = indexAttribute.IsAscending ? Builders<T>.IndexKeys.Ascending(property.Name) : Builders<T>.IndexKeys.Descending(property.Name);
-
-                var indexModel = new CreateIndexModel<T>(indexKeys, new CreateIndexOptions
-                {
-                    Unique = indexAttribute.Unique,
-                    Name = indexAttribute.Name,
-                });
-                indexModels.Add(indexModel);
+                return;
             }
-        }
 
-        if (indexModels.Count > 0 && !AreIndexesConsistent(indexModels, result))
-        {
-            collection.Indexes.CreateMany(indexModels);
+            var properties = entityType.GetProperties();
+            // 索引列表
+            var result = collection.Indexes.List().ToList();
+
+            var indexModels = new List<CreateIndexModel<T>>();
+            foreach (var property in properties)
+            {
+                var indexAttribute = property.GetCustomAttribute<EntityIndexAttribute>();
+                if (indexAttribute != null)
+                {
+                    var indexKeys = indexAttribute.IsAscending ? Builders<T>.IndexKeys.Ascending(property.Name) : Builders<T>.IndexKeys.Descending(property.Name);
+
+                    var indexModel = new CreateIndexModel<T>(indexKeys, new CreateIndexOptions
+                    {
+                        Unique = indexAttribute.Unique,
+                        Name = indexAttribute.Name,
+                    });
+                    indexModels.Add(indexModel);
+                }
+            }
+
+            if (indexModels.Count > 0 && !AreIndexesConsistent(indexModels, result))
+            {
+                collection.Indexes.CreateMany(indexModels);
+            }
+
+            // 建成才落缓存（失败路径不缓存：下次调用重试引导）。
+            // Publish only after a successful build (a failure leaves the cache untouched so the next call retries).
+            _indexCache.TryAdd(entityType.Name, true);
         }
     }
 
