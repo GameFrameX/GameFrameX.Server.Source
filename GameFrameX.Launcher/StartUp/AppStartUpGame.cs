@@ -210,6 +210,7 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
             };
             options.Capabilities = Setting.Online?.Capabilities;
             options.Disable = Setting.Online?.Disable;
+            options.UseGameDbStores = Setting.Online?.UseGameDbStores ?? false;
         });
         _onlineRuntime = composition.Runtime;
         _onlineAdminApi = composition.AdminApi;

@@ -59,4 +59,17 @@ public sealed class OnlineCapabilityOptions
     /// Capability exclusion list (capability ids); null or empty excludes nothing.
     /// </remarks>
     public IReadOnlyList<string> Disable { get; set; }
+
+    /// <summary>
+    /// 是否预置 Online 一级 store 的 GameDb 持久化实现（C249，D3 = 3A 分级混合）
+    /// <para>true = Identity / 玩家云存储 / 资产账本与交易四 store 预置进共享服务面（重启数据不丢）；false（缺省）= InMemory 默认不变</para>
+    /// <para>前置约束：开启前数据库必须已完成初始化（GameDb 门面 Init）；Session / Presence 保持易失（Redis 演进位）</para>
+    /// </summary>
+    /// <remarks>
+    /// Whether to pre-seed the GameDb persistence adapters for the Online level-one stores (C249, D3 = 3A):
+    /// true pre-seeds identity / player storage / asset ledger and transaction stores into the shared
+    /// service face (data survives restarts); false (default) keeps the in-memory defaults unchanged.
+    /// The database must be initialized (GameDb facade Init) before enabling; sessions and presence stay volatile.
+    /// </remarks>
+    public bool UseGameDbStores { get; set; }
 }

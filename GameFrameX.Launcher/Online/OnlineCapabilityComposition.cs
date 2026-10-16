@@ -36,6 +36,7 @@ using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Events;
 using GameFrameX.Capability.Online.Abstractions.Idempotency;
 using GameFrameX.Capability.Online.Operations.Audit;
+using GameFrameX.Capability.Online.Persistence;
 using GameFrameX.Capability.Online.Abstractions.Scope;
 using GameFrameX.Foundation.Idempotency;
 using GameFrameX.Foundation.Localization.Core;
@@ -132,6 +133,21 @@ public sealed class OnlineCapabilityCompositionOptions
     /// Capability exclusion list (capability ids); null or empty excludes nothing.
     /// </remarks>
     public IReadOnlyList<string> Disable { get; set; }
+
+    /// <summary>
+    /// 是否预置 Online 一级 store 的 GameDb 持久化实现（C249，D3 = 3A 分级混合）
+    /// <para>true = Identity / 玩家云存储 / 资产账本与交易四 store 经 <c>UseOnlineGameDbStores</c> 预置进共享服务面（模块 Register 期探测命中）；false（缺省）= InMemory 默认不变（零依赖起跑红线）</para>
+    /// <para>前置约束：数据库须先于能力装配完成初始化（GameDb 门面 Init）；Session / Presence 二级易失 store 不受本开关影响</para>
+    /// </summary>
+    /// <remarks>
+    /// Whether to pre-seed the GameDb persistence adapters for the Online level-one stores (C249,
+    /// D3 = 3A): true pre-seeds the identity / player-storage / asset-ledger and asset-transaction
+    /// stores through <c>UseOnlineGameDbStores</c> into the shared service face (probed at module
+    /// Register time); false (default) keeps the in-memory defaults unchanged (the zero-dependency
+    /// boot guarantee). The database must be initialized before capability assembly; the volatile
+    /// level-two stores (sessions / presence) are unaffected by this switch.
+    /// </remarks>
+    public bool UseGameDbStores { get; set; }
 }
 
 /// <summary>
@@ -224,7 +240,7 @@ public sealed class OnlineCapabilityComposition
         };
         var filter = BuildFilter(options.Capabilities, options.Disable);
 
-        var runtime = options.EnableRuntime ? BuildScannedRuntime(hostOptions, filter) : null;
+        var runtime = options.EnableRuntime ? BuildScannedRuntime(hostOptions, filter, options.UseGameDbStores) : null;
         var adminOptions = options.AdminApi ?? new AdminApiOptions();
         var adminApi = options.EnableAdminApi
             ? (runtime != null
@@ -255,8 +271,9 @@ public sealed class OnlineCapabilityComposition
     /// </remarks>
     /// <param name="hostOptions">宿主选项（已通过合法性校验）。</param>
     /// <param name="filter">能力装配过滤器（null = 全装配）。</param>
+    /// <param name="useGameDbStores">是否预置一级 store 的 GameDb 持久化实现（C249；false = InMemory 默认不变）。</param>
     /// <returns>业务能力宿主。</returns>
-    private static CapabilityHost BuildScannedRuntime(CapabilityHostOptions hostOptions, CapabilityAssemblyFilter filter)
+    private static CapabilityHost BuildScannedRuntime(CapabilityHostOptions hostOptions, CapabilityAssemblyFilter filter, bool useGameDbStores)
     {
         var authorizedScope = new OnlineScope(hostOptions.TenantId, hostOptions.AppId, hostOptions.ServerId);
         var eventBus = new InMemoryEventPublisher();
@@ -273,6 +290,11 @@ public sealed class OnlineCapabilityComposition
         builder.UseService(idempotency);
         builder.UseService(audit);
         builder.UseService<IOnlineAuditReader>(audit);
+        if (useGameDbStores)
+        {
+            // C249 一级 store 持久化预置（D3 = 3A）：模块 Register 期探测共享面命中即采用；Session / Presence 保持 InMemory。
+            builder.UseOnlineGameDbStores();
+        }
         foreach (var module in CapabilityAssembly.DiscoverModules(LoadCapabilityAssemblies()))
         {
             builder.AddModule(module);

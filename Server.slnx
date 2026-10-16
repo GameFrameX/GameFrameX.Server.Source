@@ -24,6 +24,7 @@
     <Project Path="Capability/GameFrameX.Capability.Online.Match/GameFrameX.Capability.Online.Match.csproj" />
     <Project Path="Capability/GameFrameX.Capability.Online.Competition/GameFrameX.Capability.Online.Competition.csproj" />
     <Project Path="Capability/GameFrameX.Capability.Online.Operations/GameFrameX.Capability.Online.Operations.csproj" />
+    <Project Path="Capability/GameFrameX.Capability.Online.Persistence/GameFrameX.Capability.Online.Persistence.csproj" />
   </Folder>
   <Project Path="GameFrameX.Apps/GameFrameX.Apps.csproj" />
   <Project Path="GameFrameX.Discovery/GameFrameX.Discovery.csproj" />

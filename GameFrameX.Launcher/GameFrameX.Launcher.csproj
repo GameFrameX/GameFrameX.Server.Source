@@ -46,6 +46,7 @@
         <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Match\GameFrameX.Capability.Online.Match.csproj"/>
         <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Competition\GameFrameX.Capability.Online.Competition.csproj"/>
         <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Operations\GameFrameX.Capability.Online.Operations.csproj"/>
+        <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Persistence\GameFrameX.Capability.Online.Persistence.csproj"/>
         <ProjectReference Include="..\GameFrameX.Proto\GameFrameX.Proto.csproj"/>
         <ProjectReference Include="..\GameFrameX.StartUp\GameFrameX.StartUp.csproj"/>
         <ProjectReference Include="..\GameFrameX.DataBase.Mongo\GameFrameX.DataBase.Mongo.csproj"/>
