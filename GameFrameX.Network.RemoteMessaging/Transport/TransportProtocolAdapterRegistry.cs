@@ -106,25 +106,23 @@ internal sealed class TransportProtocolAdapterRegistry
     /// </summary>
     /// <remarks>
     /// Gets all registered adapters (a de-duplicated snapshot, used for Dispose/Invalidate
-    /// broadcasting).
+    /// broadcasting). Exposed as a method rather than a property because every call
+    /// allocates a fresh snapshot (Sonar S2365: properties should not copy collections).
     /// </remarks>
-    /// <value>去重后的适配器数组 / The de-duplicated adapter array</value>
-    public ITransportProtocolAdapter[] Adapters
+    /// <returns>去重后的适配器数组 / The de-duplicated adapter array</returns>
+    public ITransportProtocolAdapter[] GetAdapters()
     {
-        get
+        if (_universalAdapter != null)
         {
-            if (_universalAdapter != null)
-            {
-                return new[] { _universalAdapter };
-            }
-
-            var distinct = new HashSet<ITransportProtocolAdapter>();
-            foreach (var adapter in _adapters.Values)
-            {
-                distinct.Add(adapter);
-            }
-
-            return distinct.ToArray();
+            return new[] { _universalAdapter };
         }
+
+        var distinct = new HashSet<ITransportProtocolAdapter>();
+        foreach (var adapter in _adapters.Values)
+        {
+            distinct.Add(adapter);
+        }
+
+        return distinct.ToArray();
     }
 }
