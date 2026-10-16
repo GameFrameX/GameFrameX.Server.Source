@@ -40,13 +40,31 @@ namespace GameFrameX.Network.Message;
 public sealed class MessageObjectPipelineFilter : PipelineFilterBase<IMessage>
 {
     /// <summary>
-    /// 解析函数
+    /// 解析函数。按 4 字节大端总长切帧：
+    /// 缓冲不足时返回 null 且不消费字节（等待管线累积后续数据后重入，C251 部分帧安全化），
+    /// 仅在长度前缀真为 0 时跳过全部已缓冲字节（沿用历史零长丢弃行为）。
     /// </summary>
-    /// <param name="reader"></param>
-    /// <returns></returns>
+    /// <remarks>
+    /// Frame parsing by the 4-byte big-endian total length: when the buffer holds fewer bytes
+    /// than a full frame (or fewer than the 4 header bytes), returns null WITHOUT consuming so the
+    /// pipeline waits for more data and re-enters (partial-frame safety, C251). Skipping the whole
+    /// buffered sequence only happens for a genuine zero length prefix (legacy behavior).
+    /// <para>此前实现对部分帧先按 totalLength 切片（越界抛
+    /// <see cref="ArgumentOutOfRangeException"/>）或 AdvanceToEnd（吞掉半个帧导致后续字节错位），
+    /// 分段/分块到达后成为必现路径（发现期形态：调试链路曾以 StreamMode 分块送达复现，块边界任意、
+    /// 接收侧连续排水；终版为消息模式，缺陷对 TCP 分段到达仍真实存在）。该修复同时消除
+    /// TCP 路径下分段到达时丢半帧的潜在反序列化错位。</para>
+    /// </remarks>
+    /// <param name="reader">序列读取器 / The sequence reader</param>
+    /// <returns>解码出的消息；缓冲不足时为 null / The decoded message, or null while awaiting more data</returns>
     public override IMessage Filter(ref SequenceReader<byte> reader)
     {
-        var pack = reader.Sequence;
+        // 头部不足 4 字节：等待管线累积，不消费（消费会吞掉半个长度前缀）
+        if (reader.Remaining < sizeof(uint))
+        {
+            return default;
+        }
+
         reader.TryPeekBigEndianValue(out uint totalLength);
         if (totalLength == 0)
         {
@@ -54,16 +72,15 @@ public sealed class MessageObjectPipelineFilter : PipelineFilterBase<IMessage>
             return default;
         }
 
-        var readBuffer = pack.Slice(pack.Start, totalLength);
+        // 整帧未到齐：等待管线累积，不消费（此前实现在此处越界切片或整段吞掉）
         if (reader.Remaining < totalLength)
         {
-            reader.AdvanceToEnd();
-        }
-        else
-        {
-            reader.Advance(totalLength);
+            return default;
         }
 
+        var pack = reader.Sequence;
+        var readBuffer = pack.Slice(pack.Start, totalLength);
+        reader.Advance(totalLength);
         return MessageHelper.DecoderHandler.Handler(ref readBuffer);
     }
 }
