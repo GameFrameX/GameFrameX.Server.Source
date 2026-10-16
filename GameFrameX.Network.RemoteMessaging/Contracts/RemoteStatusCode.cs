@@ -126,6 +126,15 @@ public enum RemoteStatusCode
     ServiceUnavailable = 11,
 
     /// <summary>
+    /// 协议版本不兼容（握手 major 比对失败，连接被显式拒绝）
+    /// </summary>
+    /// <remarks>
+    /// Protocol version incompatible (the handshake major comparison failed and the
+    /// connection was explicitly rejected).
+    /// </remarks>
+    ProtocolVersionIncompatible = 12,
+
+    /// <summary>
     /// 未知错误
     /// </summary>
     /// <remarks>

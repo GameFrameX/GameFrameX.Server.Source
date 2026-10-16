@@ -348,6 +348,42 @@ public static partial class Keys
         }
 
         /// <summary>
+        /// 协议版本协商类别键
+        /// </summary>
+        public static class Versioning
+        {
+            /// <summary>
+            /// 协议版本握手被拒绝：本端 {0}，远端 {1}。连接已关闭（跨 major 混布禁止）
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Versioning.HandshakeRejected
+            /// 用途: 客户端握手收到拒绝（或远端 major 与本端不一致）时的错误消息
+            /// 参数: {0} - 本端版本, {1} - 远端版本
+            /// </remarks>
+            public const string HandshakeRejected = "RemoteMessaging.Versioning.HandshakeRejected";
+
+            /// <summary>
+            /// 服务 '{0}' 的协议版本握手在 {1}ms 后超时；按旧版本节点（{2}）放行
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Versioning.HandshakeLegacyFallback
+            /// 用途: 握手超时判定对端为未实现协商的旧节点而放行时的告警（每连接一次；滚动升级窗口内属预期）
+            /// 参数: {0} - 服务名, {1} - 超时毫秒数, {2} - 旧版本节点等效版本
+            /// </remarks>
+            public const string HandshakeLegacyFallback = "RemoteMessaging.Versioning.HandshakeLegacyFallback";
+
+            /// <summary>
+            /// 拒绝协议 major 不符的连接：对端 {0}，本端 {1}。回包后关闭会话
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Versioning.ServerRejectedIncompatibleClient
+            /// 用途: 服务端漏斗握手短路判定 major 不符拒绝连接时的告警日志
+            /// 参数: {0} - 对端版本, {1} - 本端版本
+            /// </remarks>
+            public const string ServerRejectedIncompatibleClient = "RemoteMessaging.Versioning.ServerRejectedIncompatibleClient";
+        }
+
+        /// <summary>
         /// 路由类别键
         /// </summary>
         public static class Routing

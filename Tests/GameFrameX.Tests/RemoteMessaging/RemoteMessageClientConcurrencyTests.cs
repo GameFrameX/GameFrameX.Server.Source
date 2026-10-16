@@ -49,7 +49,7 @@ public sealed class RemoteMessageClientConcurrencyTests : IDisposable
     static RemoteMessageClientConcurrencyTests()
     {
         // 消息类型注册表需显式初始化（与 SuperSocketKcpE2ETests 同模式）
-        MessageProtoHelper.Init(typeof(ReqAccountQuery).Assembly);
+        MessageProtoHelper.Init(typeof(ReqAccountQuery).Assembly, typeof(GameFrameX.Network.RemoteMessaging.Routing.RoleRouteEnvelopeMessage).Assembly);
     }
 
     private readonly List<string> _environmentKeys = new();
@@ -214,7 +214,18 @@ public sealed class RemoteMessageClientConcurrencyTests : IDisposable
                 {
                     while (!_closed)
                     {
-                        var uniqueId = await ReadFrameUniqueIdAsync(stream);
+                        var (uniqueId, messageId) = await ReadFrameHeaderAsync(stream);
+                        if (uniqueId == null)
+                        {
+                            return;
+                        }
+
+                        // 协议版本握手帧（C252）：立即按同版本节点回包，不计入业务屏障
+                        if (messageId == GameFrameX.Network.RemoteMessaging.Versioning.ReqProtocolVersionNegotiation.ReservedMessageId)
+                        {
+                            await WriteHandshakeResponseAsync(stream, uniqueId.Value);
+                            continue;
+                        }
                         if (uniqueId == null)
                         {
                             return;
@@ -259,14 +270,14 @@ public sealed class RemoteMessageClientConcurrencyTests : IDisposable
         }
 
         /// <summary>
-        /// 读取一帧并返回其 UniqueId（帧头偏移 6）。连接关闭返回 null。
+        /// 读取一帧并返回其 UniqueId（帧头偏移 6）与消息 ID（帧头偏移 10）。连接关闭返回 null。
         /// </summary>
-        private static async Task<int?> ReadFrameUniqueIdAsync(NetworkStream stream)
+        private static async Task<(int? UniqueId, int MessageId)> ReadFrameHeaderAsync(NetworkStream stream)
         {
             var header = new byte[14];
             if (!await ReadExactlyAsync(stream, header))
             {
-                return null;
+                return (null, 0);
             }
 
             var totalLength = BinaryPrimitives.ReadInt32BigEndian(header);
@@ -276,11 +287,11 @@ public sealed class RemoteMessageClientConcurrencyTests : IDisposable
                 var payload = new byte[remaining];
                 if (!await ReadExactlyAsync(stream, payload))
                 {
-                    return null;
+                    return (null, 0);
                 }
             }
 
-            return BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(6));
+            return (BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(6)), BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(10)));
         }
 
         private static async Task<bool> ReadExactlyAsync(NetworkStream stream, byte[] buffer)
@@ -298,6 +309,24 @@ public sealed class RemoteMessageClientConcurrencyTests : IDisposable
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// 按同版本节点回协议版本握手包（接受，1.0）。
+        /// </summary>
+        private async Task WriteHandshakeResponseAsync(NetworkStream stream, int uniqueId)
+        {
+            var response = new GameFrameX.Network.RemoteMessaging.Versioning.RespProtocolVersionNegotiation
+            {
+                Major = GameFrameX.Network.RemoteMessaging.Versioning.RemoteMessagingProtocolVersion.Current.Major,
+                Minor = GameFrameX.Network.RemoteMessaging.Versioning.RemoteMessagingProtocolVersion.Current.Minor,
+                Accepted = true,
+            };
+            MessageProtoHelper.SetMessageId(response);
+            response.SetUniqueId(uniqueId);
+            using var buffer = _codec.Encode(response);
+            await stream.WriteAsync(buffer.Memory);
+            await stream.FlushAsync();
         }
 
         private async Task WriteResponseAsync(NetworkStream stream, int uniqueId)

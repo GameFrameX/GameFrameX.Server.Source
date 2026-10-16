@@ -1511,6 +1511,15 @@
   <data name="RemoteMessaging.Transport.KcpFrameSizeExceeded" xml:space="preserve">
     <value>KCP transport per-frame bound is {1} bytes; this frame is {0} bytes. Use a tcp endpoint for larger payloads.</value>
   </data>
+  <data name="RemoteMessaging.Versioning.HandshakeRejected" xml:space="preserve">
+    <value>Protocol version handshake rejected: local {0}, remote {1}. The connection is closed (cross-major mixed deployment is forbidden).</value>
+  </data>
+  <data name="RemoteMessaging.Versioning.HandshakeLegacyFallback" xml:space="preserve">
+    <value>Protocol version handshake timed out after {1}ms for service '{0}'; treating the peer as a legacy ({2}) node and proceeding. Expected only inside a rolling-upgrade window; it should disappear once the rollout completes.</value>
+  </data>
+  <data name="RemoteMessaging.Versioning.ServerRejectedIncompatibleClient" xml:space="preserve">
+    <value>Rejected a connection with an incompatible protocol major: peer {0}, local {1}. The session is closed after replying.</value>
+  </data>
 
   <data name="RemoteMessaging.Unified.SenderNotInitialized" xml:space="preserve">
     <value>UnifiedMessageSenderHolder has not been initialized. Call Initialize() first during startup.</value>

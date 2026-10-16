@@ -147,6 +147,21 @@ public sealed class RemoteMessagingBuilder
     }
 
     /// <summary>
+    /// 设置协议版本握手超时（毫秒）。超时按旧版本节点放行并告警（滚动升级窗口内属预期）。
+    /// </summary>
+    /// <remarks>
+    /// Sets the protocol version handshake timeout in milliseconds. A timeout falls back to
+    /// treating the peer as a legacy node with a warning (expected only inside a rolling-upgrade window).
+    /// </remarks>
+    /// <param name="handshakeTimeoutMs">握手超时毫秒数 / The handshake timeout in milliseconds</param>
+    /// <returns>构建器实例 / The builder instance</returns>
+    public RemoteMessagingBuilder WithHandshakeTimeoutMs(int handshakeTimeoutMs)
+    {
+        _options.HandshakeTimeoutMs = handshakeTimeoutMs;
+        return this;
+    }
+
+    /// <summary>
     /// 配置传输协议适配器工厂（兼容旧「全局唯一传输」语义）：产出的适配器作为通用适配器命中任意 scheme，不参与回落。
     /// </summary>
     /// <remarks>
@@ -293,7 +308,8 @@ public sealed class RemoteMessagingBuilder
             interceptors.ToArray(),
             retryPolicy,
             circuitBreaker,
-            healthEvaluator);
+            healthEvaluator,
+            _options.HandshakeTimeoutMs);
     }
 
     /// <summary>

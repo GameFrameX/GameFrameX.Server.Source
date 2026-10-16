@@ -158,6 +158,20 @@ public sealed class RemoteMessagingOptions
     public IMessageCompressionRegistry CompressionRegistry { get; set; }
 
     /// <summary>
+    /// 协议版本握手超时毫秒数（默认 2000）。超时视为对端为未实现协商的旧节点，
+    /// 按 <see cref="GameFrameX.Network.RemoteMessaging.Versioning.RemoteMessagingProtocolVersion.Legacy"/>
+    /// 放行并记录告警（每连接一次；滚动升级窗口内属预期）。
+    /// </summary>
+    /// <remarks>
+    /// The protocol version handshake timeout in milliseconds (default 2000). A timeout means the
+    /// peer is a legacy node without negotiation; the connection proceeds under
+    /// <see cref="GameFrameX.Network.RemoteMessaging.Versioning.RemoteMessagingProtocolVersion.Legacy"/>
+    /// with a warning logged once per connection (expected only inside a rolling-upgrade window).
+    /// </remarks>
+    /// <value>握手超时毫秒数 / The handshake timeout in milliseconds</value>
+    public int HandshakeTimeoutMs { get; set; } = 2000;
+
+    /// <summary>
     /// 是否启用故障注入（默认 false）。仅开发环境使用。
     /// </summary>
     /// <remarks>
@@ -209,6 +223,7 @@ public sealed class RemoteMessagingOptions
             EnableFaultInjection = GetEnvBool("EnableFaultInjection", false),
             FaultInjectionType = Environment.GetEnvironmentVariable("RemoteMessaging__FaultInjection__Type") ?? "None",
             FaultInjectionDelayMs = GetEnvInt("FaultInjectionDelayMs", 0),
+            HandshakeTimeoutMs = GetEnvInt("HandshakeTimeoutMs", 2000),
         };
         return options;
     }

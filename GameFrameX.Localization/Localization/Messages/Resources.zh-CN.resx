@@ -1509,6 +1509,15 @@
   <data name="RemoteMessaging.Transport.KcpFrameSizeExceeded" xml:space="preserve">
     <value>KCP 传输单帧上限 {1} 字节，本次帧 {0} 字节；更大载荷请使用 tcp 端点。</value>
   </data>
+  <data name="RemoteMessaging.Versioning.HandshakeRejected" xml:space="preserve">
+    <value>协议版本握手被拒绝：本端 {0}，远端 {1}。连接已关闭（跨 major 混布禁止）。</value>
+  </data>
+  <data name="RemoteMessaging.Versioning.HandshakeLegacyFallback" xml:space="preserve">
+    <value>服务 '{0}' 的协议版本握手在 {1}ms 后超时；按旧版本节点（{2}）放行。该告警仅滚动升级窗口内属预期，全量升级完成后应消失。</value>
+  </data>
+  <data name="RemoteMessaging.Versioning.ServerRejectedIncompatibleClient" xml:space="preserve">
+    <value>拒绝协议 major 不符的连接：对端 {0}，本端 {1}。回包后关闭会话。</value>
+  </data>
 
   <data name="RemoteMessaging.Unified.SenderNotInitialized" xml:space="preserve">
     <value>UnifiedMessageSenderHolder 尚未初始化。请在启动期间先调用 Initialize()。</value>

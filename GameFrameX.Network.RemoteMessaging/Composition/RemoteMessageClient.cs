@@ -50,6 +50,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
     private readonly IRequestResponseMatcher _requestResponseMatcher;
     private readonly IRetryPolicy _retryPolicy;
     private readonly ITransportProtocolAdapter _transportProtocolAdapter;
+    private readonly int _handshakeTimeoutMs;
 
     /// <summary>
     /// 初始化统一远程消息调用客户端。
@@ -64,7 +65,6 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
     /// <param name="interceptors">远程调用拦截器数组 / Array of remote call interceptors</param>
     /// <param name="retryPolicy">重试策略（可为 null） / Retry policy (can be null)</param>
     /// <param name="circuitBreaker">熔断器 / Circuit breaker</param>
-    /// <param name="healthEvaluator">端点健康评估器 / Endpoint health evaluator</param>
     public RemoteMessageClient(
         ITransportProtocolAdapter transportProtocolAdapter,
         IMessageCodec messageCodec,
@@ -73,7 +73,8 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
         IRemoteCallInterceptor[] interceptors,
         IRetryPolicy retryPolicy,
         ICircuitBreaker circuitBreaker,
-        IEndpointHealthEvaluator healthEvaluator)
+        IEndpointHealthEvaluator healthEvaluator,
+        int handshakeTimeoutMs)
     {
         _transportProtocolAdapter = transportProtocolAdapter;
         _messageCodec = messageCodec;
@@ -83,6 +84,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
         _retryPolicy = retryPolicy;
         _circuitBreaker = circuitBreaker;
         _healthEvaluator = healthEvaluator;
+        _handshakeTimeoutMs = handshakeTimeoutMs > 0 ? handshakeTimeoutMs : 2000;
     }
 
     /// <summary>
@@ -382,16 +384,6 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
         {
             await RunBeforeInterceptorsAsync(context, requestMessage);
 
-            if (_protocolVersionNegotiator != null && !_protocolVersionNegotiator.IsCompatible(requestMessage.GetType()))
-            {
-                return (
-                           RemoteCallResult<TResponse>.Fail(
-                               RemoteStatusCode.UnexpectedResponse,
-                               $"Protocol version incompatible for message type: {requestMessage.GetType().Name}",
-                               stopwatch.ElapsedMilliseconds,
-                               context.TraceId),
-                           false);
-            }
 
             stream = await _transportProtocolAdapter.GetOrCreateStreamAsync(context.ServiceName, context.CancellationToken);
             if (stream == null)
@@ -407,6 +399,20 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
             }
 
             var connection = GetOrCreateConnection(stream);
+
+            // 连接级协议版本握手（每连接单飞一次）：拒绝抛 ProtocolVersionMismatchException，混布超时回落旧版本
+            await EnsureHandshakeAsync(connection, context.ServiceName);
+
+            if (_protocolVersionNegotiator != null && !_protocolVersionNegotiator.IsMessageCompatible(requestMessage.GetType(), connection.NegotiatedRemoteVersion))
+            {
+                return (
+                           RemoteCallResult<TResponse>.Fail(
+                               RemoteStatusCode.ProtocolVersionIncompatible,
+                               $"Protocol version incompatible for message type: {requestMessage.GetType().Name}",
+                               stopwatch.ElapsedMilliseconds,
+                               context.TraceId),
+                           false);
+            }
             var requestUniqueId = _requestResponseMatcher.RegisterPendingRequest(context.TimeoutMs);
             PrepareRequestMessage(requestMessage, requestUniqueId);
 
@@ -443,6 +449,27 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
             return (
                        RemoteCallResult<TResponse>.Fail(cancellation.statusCode, cancellation.errorMessage, stopwatch.ElapsedMilliseconds, context.TraceId),
                        ShouldRetry(context, cancellation.statusCode, attemptCount));
+        }
+
+        catch (GameFrameX.Network.RemoteMessaging.Versioning.ProtocolVersionMismatchException versionMismatch)
+        {
+            stopwatch.Stop();
+
+            // 拒绝即断连：失效该连接避免半开复用（服务端回拒绝包后亦已关闭会话）
+            if (stream != null)
+            {
+                _transportProtocolAdapter.Invalidate(stream);
+            }
+
+            RecordFailures(context.ServiceName, versionMismatch.Message);
+            await RunExceptionInterceptorsAsync(context, requestMessage, versionMismatch, stopwatch.ElapsedMilliseconds);
+            return (
+                       RemoteCallResult<TResponse>.Fail(
+                           RemoteStatusCode.ProtocolVersionIncompatible,
+                           versionMismatch.Message,
+                           stopwatch.ElapsedMilliseconds,
+                           context.TraceId),
+                       false);
         }
         catch (Exception ex)
         {
@@ -550,6 +577,102 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
     }
 
     /// <summary>
+    /// 确保连接完成协议版本握手（每连接单飞一次）。major 不符抛 <see cref="GameFrameX.Network.RemoteMessaging.Versioning.ProtocolVersionMismatchException"/>；
+    /// 握手超时按旧版本节点放行（混布窗口兼容，告警一次）。
+    /// </summary>
+    /// <remarks>
+    /// Ensures the connection has completed the protocol version handshake (single-flight per
+    /// connection). A major mismatch throws <see cref="GameFrameX.Network.RemoteMessaging.Versioning.ProtocolVersionMismatchException"/>;
+    /// a handshake timeout falls back to the legacy peer version (mixed-window compatibility, one warning).
+    /// </remarks>
+    /// <param name="connection">连接上下文 / The connection context</param>
+    /// <param name="serviceName">目标服务名（用于告警） / The target service name (for warning logs)</param>
+    private async Task EnsureHandshakeAsync(ConnectionContext connection, string serviceName)
+    {
+        await connection.GetOrStartHandshake(() => PerformHandshakeAsync(connection, serviceName));
+    }
+
+    /// <summary>
+    /// 执行一次协议版本握手：发送本端版本 → 等待响应 → major 比对。
+    /// </summary>
+    /// <remarks>
+    /// Performs one protocol version handshake: send the local version, await the reply,
+    /// and compare majors.
+    /// </remarks>
+    /// <param name="connection">连接上下文 / The connection context</param>
+    /// <param name="serviceName">目标服务名 / The target service name</param>
+    private async Task PerformHandshakeAsync(ConnectionContext connection, string serviceName)
+    {
+        var local = GameFrameX.Network.RemoteMessaging.Versioning.RemoteMessagingProtocolVersion.Current;
+        var request = new GameFrameX.Network.RemoteMessaging.Versioning.ReqProtocolVersionNegotiation
+        {
+            Major = local.Major,
+            Minor = local.Minor,
+        };
+        var requestUniqueId = _requestResponseMatcher.RegisterPendingRequest(_handshakeTimeoutMs);
+        PrepareRequestMessage(request, requestUniqueId);
+        connection.TrackPending(requestUniqueId);
+        try
+        {
+            using (var requestBuffer = _messageCodec.Encode(request))
+            {
+                // 握手帧与业务帧共用写入门控与 14 字节编解码帧（传输无关）
+                await connection.WriteAsync(requestBuffer.Memory, CancellationToken.None);
+            }
+
+            MessageObject response;
+            using (var handshakeCts = new CancellationTokenSource(_handshakeTimeoutMs))
+            {
+                response = await _requestResponseMatcher.WaitResponseAsync(requestUniqueId, handshakeCts.Token);
+            }
+
+            if (response is GameFrameX.Network.RemoteMessaging.Versioning.RespProtocolVersionNegotiation handshakeResponse)
+            {
+                var remote = new GameFrameX.Network.RemoteMessaging.Versioning.ProtocolVersion(handshakeResponse.Major, handshakeResponse.Minor);
+                if (!handshakeResponse.Accepted ||
+                    (_protocolVersionNegotiator != null && !_protocolVersionNegotiator.IsConnectionCompatible(local, remote)))
+                {
+                    // Localization: RemoteMessaging.Versioning.HandshakeRejected - 协议版本握手被拒绝：本端 {0}，远端 {1}。连接已关闭（跨 major 混布禁止）。
+                    throw new GameFrameX.Network.RemoteMessaging.Versioning.ProtocolVersionMismatchException(
+                        LocalizationService.GetString(Localization.Keys.RemoteMessaging.Versioning.HandshakeRejected, local, remote),
+                        local,
+                        remote);
+                }
+
+                connection.SetNegotiatedRemoteVersion(remote);
+                return;
+            }
+
+            if (response == null)
+            {
+                // 挂起条目丢失（连接死亡竞态）：按连接关闭处理，由外层既有异常路径失效重试
+                throw new IOException(LocalizationService.GetString(Localization.Keys.RemoteMessaging.ClientModule.ConnectionClosed));
+            }
+
+            // 对握手唯一 ID 返回了非握手响应：协议异常，按不兼容拒绝（避免误放行）
+            throw new GameFrameX.Network.RemoteMessaging.Versioning.ProtocolVersionMismatchException(
+                LocalizationService.GetString(Localization.Keys.RemoteMessaging.Versioning.HandshakeRejected, local, new GameFrameX.Network.RemoteMessaging.Versioning.ProtocolVersion(0, 0)),
+                local,
+                new GameFrameX.Network.RemoteMessaging.Versioning.ProtocolVersion(0, 0));
+        }
+        catch (OperationCanceledException)
+        {
+            // 混布窗口：旧节点不识别握手消息 ID（丢帧不回包），超时按旧版本放行并告警（每连接一次）
+            // Localization: RemoteMessaging.Versioning.HandshakeLegacyFallback - 服务 '{0}' 的协议版本握手在 {1}ms 后超时；按旧版本节点（{2}）放行。该告警仅滚动升级窗口内属预期，全量升级完成后应消失。
+            LogHelper.Warning(LocalizationService.GetString(
+                Localization.Keys.RemoteMessaging.Versioning.HandshakeLegacyFallback,
+                serviceName,
+                _handshakeTimeoutMs,
+                GameFrameX.Network.RemoteMessaging.Versioning.RemoteMessagingProtocolVersion.Legacy));
+            connection.SetNegotiatedRemoteVersion(GameFrameX.Network.RemoteMessaging.Versioning.RemoteMessagingProtocolVersion.Legacy);
+        }
+        finally
+        {
+            connection.UntrackPending(requestUniqueId);
+        }
+    }
+
+    /// <summary>
     /// 连接接收泵：持续解码该连接上的响应帧并经请求-响应匹配器投递给等待方。
     /// 泵退出（连接关闭或解码异常）时精准失效该连接，并快速失败其上全部挂起请求。
     /// </summary>
@@ -596,6 +719,8 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
     private sealed class ConnectionContext
     {
         private readonly SemaphoreSlim _writeGate = new(1, 1);
+        private readonly object _handshakeLock = new();
+        private Task _handshakeTask;
         private readonly IRequestResponseMatcher _matcher;
         private readonly ConcurrentDictionary<int, byte> _pendingUniqueIds = new();
         private volatile bool _dead;
@@ -605,8 +730,47 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
             Stream = stream;
             _matcher = matcher;
         }
-
         public Stream Stream { get; }
+
+        /// <summary>
+        /// 获取握手协商出的远端协议版本（握手完成前为 <see cref="GameFrameX.Network.RemoteMessaging.Versioning.RemoteMessagingProtocolVersion.Legacy"/> 占位；
+        /// <see cref="RemoteMessageClient"/> 保证消息级检查发生在握手之后）。
+        /// </summary>
+        /// <remarks>
+        /// Gets the remote protocol version negotiated by the handshake (the
+        /// <see cref="GameFrameX.Network.RemoteMessaging.Versioning.RemoteMessagingProtocolVersion.Legacy"/>
+        /// placeholder before the handshake completes; <see cref="RemoteMessageClient"/> guarantees the
+        /// message-level check runs after the handshake).
+        /// </remarks>
+        public GameFrameX.Network.RemoteMessaging.Versioning.ProtocolVersion NegotiatedRemoteVersion { get; private set; } = GameFrameX.Network.RemoteMessaging.Versioning.RemoteMessagingProtocolVersion.Legacy;
+
+        /// <summary>
+        /// 记录握手协商出的远端协议版本（仅握手流程调用）。
+        /// </summary>
+        /// <remarks>
+        /// Records the remote protocol version negotiated by the handshake (called by the handshake flow only).
+        /// </remarks>
+        public void SetNegotiatedRemoteVersion(GameFrameX.Network.RemoteMessaging.Versioning.ProtocolVersion version)
+        {
+            NegotiatedRemoteVersion = version;
+        }
+
+        /// <summary>
+        /// 获取或启动本连接的单飞握手任务：首个调用者执行握手，并发调用者等待同一任务结果。
+        /// </summary>
+        /// <remarks>
+        /// Gets or starts this connection's single-flight handshake task: the first caller performs
+        /// the handshake while concurrent callers await the same task's outcome.
+        /// </remarks>
+        public Task GetOrStartHandshake(Func<Task> starter)
+        {
+            lock (_handshakeLock)
+            {
+                // 单飞：GetOrAdd 工厂竞态与并发首调用都收敛到同一个握手任务，握手帧每连接恰发一次
+                _handshakeTask ??= starter();
+                return _handshakeTask;
+            }
+        }
 
         /// <summary>
         /// 向连接写入一个完整帧。同一连接上的并发写经写入门控串行化，帧间不交错。
@@ -725,12 +889,6 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
         {
             await RunBeforeInterceptorsAsync(context, requestMessage);
 
-            if (_protocolVersionNegotiator != null && !_protocolVersionNegotiator.IsCompatible(requestMessage.GetType()))
-            {
-                // Localization: RemoteMessaging.Client.SendOneWayProtocolVersionIncompatible - SendOneWayAsync: 协议版本不兼容, MessageType: {0}
-                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.RemoteMessaging.ClientModule.SendOneWayProtocolVersionIncompatible, requestMessage.GetType().Name));
-                return;
-            }
 
             var stream = await _transportProtocolAdapter.GetOrCreateStreamAsync(serviceName, cancellationToken);
             if (stream == null)
@@ -740,6 +898,27 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
             }
 
             var connection = GetOrCreateConnection(stream);
+
+            // 连接级协议版本握手（与 RPC 路径同一单飞门）；拒绝时按单向发送口径记告警并放弃本次发送
+            try
+            {
+                await EnsureHandshakeAsync(connection, serviceName);
+            }
+            catch (GameFrameX.Network.RemoteMessaging.Versioning.ProtocolVersionMismatchException versionMismatch)
+            {
+                _transportProtocolAdapter.Invalidate(stream);
+                RecordFailures(serviceName, versionMismatch.Message);
+                // Localization: RemoteMessaging.Versioning.HandshakeRejected - 协议版本握手被拒绝：本端 {0}，远端 {1}。连接已关闭（跨 major 混布禁止）。
+                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Versioning.HandshakeRejected, versionMismatch.Local, versionMismatch.Remote));
+                return;
+            }
+
+            if (_protocolVersionNegotiator != null && !_protocolVersionNegotiator.IsMessageCompatible(requestMessage.GetType(), connection.NegotiatedRemoteVersion))
+            {
+                // Localization: RemoteMessaging.Client.SendOneWayProtocolVersionIncompatible - SendOneWayAsync: 协议版本不兼容, MessageType: {0}
+                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.RemoteMessaging.ClientModule.SendOneWayProtocolVersionIncompatible, requestMessage.GetType().Name));
+                return;
+            }
             var requestUniqueId = _requestResponseMatcher.RegisterPendingRequest(timeoutMs);
             PrepareRequestMessage(requestMessage, requestUniqueId);
 

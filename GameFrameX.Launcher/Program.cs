@@ -40,7 +40,9 @@ internal static class Program
             // CacheStateTypeManager（BSON Class Map 预注册）已随 Mongo 序列化指令内聚到 Provider 内，
             // Launcher 不再承担序列化准备；Mongo/PostgreSQL 互斥退化为纯部署配置选择
             // (the Launcher no longer prepares serialization; the provider choice becomes a pure deployment choice).
-            MessageProtoHelper.Init(typeof(MessageProtoHandler).Assembly);
+            // C252：注册 RemoteMessaging 程序集——握手消息对（-130/11、-130/12）与路由信封（-130/10）
+            // 需进入消息注册表才能被服务端漏斗解码（未注册 ID 走未知消息丢弃路径）
+            MessageProtoHelper.Init(typeof(MessageProtoHandler).Assembly, typeof(GameFrameX.Network.RemoteMessaging.Routing.RoleRouteEnvelopeMessage).Assembly);
         }, LogConfiguration);
     }
 

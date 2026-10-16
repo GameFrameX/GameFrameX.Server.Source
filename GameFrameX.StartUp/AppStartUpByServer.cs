@@ -35,6 +35,7 @@ using GameFrameX.Network;
 using GameFrameX.Network.Abstractions;
 using GameFrameX.Network.HTTP;
 using GameFrameX.Network.Message;
+using GameFrameX.Network.RemoteMessaging.Versioning;
 using GameFrameX.SuperSocket.Connection;
 using GameFrameX.SuperSocket.Primitives;
 using GameFrameX.SuperSocket.ProtoBase;
@@ -210,6 +211,24 @@ public abstract partial class AppStartUpBase
 
                 networkChannel.UpdateReceiveMessageTime();
                 await ReplyHeartBeatAsync(networkChannel, messagePackage);
+            }
+            catch (Exception e)
+            {
+                // Localization: StartUp.Server.MessageHandlerError - 消息处理器错误: {0}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.Server.MessageHandlerError, e.ToString()));
+            }
+
+            return;
+        }
+
+        // 协议版本握手短路（C252，框架级，位于业务 handler 分发之前）：major 不符回拒绝包并关闭会话；
+        // 旧拨号端不发握手帧，此处不触发，行为与升级前等价
+        if (ProtocolVersionNegotiationServer.IsHandshakeRequest(messagePackage))
+        {
+            try
+            {
+                networkChannel.UpdateReceiveMessageTime();
+                await ProtocolVersionNegotiationServer.ReplyAsync(networkChannel, messagePackage);
             }
             catch (Exception e)
             {
