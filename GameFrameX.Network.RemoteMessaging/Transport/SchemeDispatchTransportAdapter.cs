@@ -138,7 +138,7 @@ internal sealed class SchemeDispatchTransportAdapter : ITransportProtocolAdapter
     /// </remarks>
     public void Invalidate()
     {
-        foreach (var adapter in _registry.Adapters)
+        foreach (var adapter in _registry.GetAdapters())
         {
             adapter.Invalidate();
         }
@@ -154,7 +154,7 @@ internal sealed class SchemeDispatchTransportAdapter : ITransportProtocolAdapter
     /// <param name="stream">连接流 / The connection stream</param>
     public void Invalidate(Stream stream)
     {
-        foreach (var adapter in _registry.Adapters)
+        foreach (var adapter in _registry.GetAdapters())
         {
             adapter.Invalidate(stream);
         }
@@ -168,7 +168,7 @@ internal sealed class SchemeDispatchTransportAdapter : ITransportProtocolAdapter
     /// </remarks>
     public void Dispose()
     {
-        foreach (var adapter in _registry.Adapters)
+        foreach (var adapter in _registry.GetAdapters())
         {
             adapter.Dispose();
         }
