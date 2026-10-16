@@ -92,6 +92,21 @@ public class OnlineCapabilityCompositionTests
     }
 
     /// <summary>
+    /// 生产装配面（C248）：业务运行时组合产物内 Hotfix 切换执行器与登记期制品获取器均为生产实现非空
+    ///（消除「生产路径恒缺席 8002」；替换缝仍开放）。
+    /// </summary>
+    [Fact]
+    public void AddOnlineCapabilities_Runtime_PreSeedsHotfixExecutorAndArtifactFetcher()
+    {
+        var composition = OnlineCapabilityComposition.AddOnlineCapabilities(Compose(options => options.EnableRuntime = true));
+
+        var executor = composition.Runtime.Services.GetService<GameFrameX.Capability.Online.Operations.HotfixRollback.IOnlineHotfixRollbackExecutor>();
+        var fetcher = composition.Runtime.Services.GetService<GameFrameX.Capability.Online.Operations.HotfixRollback.IOnlineHotfixArtifactFetcher>();
+        Assert.IsType<HotfixManagerRollbackExecutor>(executor);
+        Assert.IsType<GameFrameX.Capability.Online.Operations.HotfixRollback.OnlineHotfixArtifactFetcher>(fetcher);
+    }
+
+    /// <summary>
     /// 双闸齐开：一次回调同时产出运行时与管理面（admin 复用同一入口产物）。
     /// </summary>
     [Fact]

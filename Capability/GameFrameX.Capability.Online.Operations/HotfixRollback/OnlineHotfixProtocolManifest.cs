@@ -40,13 +40,15 @@ namespace GameFrameX.Capability.Online.Operations.HotfixRollback;
 /// ServerId 固定 0（对齐统一审计「远程配置等 App 级操作」口径）；
 /// ② 清单一经登记<b>不可变更</b>（存储按版本号判重，重复登记幂等回执、不覆盖既有行——
 /// 回滚兼容判定的前提是历史清单稳定）；版本号须与 Hotfix 程序集版本（<c>HotfixManager.dllVersion</c> 契约）一致；
-/// ③ 版本号禁止包含竖线 <c>|</c>（幂等回放令牌与规范化请求文本的分隔符，防止回放令牌损坏）。
+/// ③ 版本号禁止包含竖线 <c>|</c>（幂等回放令牌与规范化请求文本的分隔符，防止回放令牌损坏），
+/// 且禁止路径分隔符 / 卷分隔符与「..」上跳段（制品落盘与装载路径共用版本目录段，注入面与
+/// <c>HotfixLoadOptions.ResolveAssemblyFilePath</c> 同防线）。
 /// </para>
 /// </summary>
 public sealed class OnlineHotfixProtocolManifest
 {
     /// <summary>
-    /// 获取或设置版本号（与 Hotfix 程序集版本一致；同作用域内唯一，禁止包含 <c>|</c>）。
+    /// 获取或设置版本号（与 Hotfix 程序集版本一致；同作用域内唯一，禁止包含 <c>|</c> 与路径分隔符 /「..」段）。
     /// </summary>
     public string Version { get; set; }
 
@@ -69,4 +71,28 @@ public sealed class OnlineHotfixProtocolManifest
     /// 获取或设置登记时刻（UTC 毫秒；发布流水线簿记字段）。
     /// </summary>
     public long RegisteredTime { get; set; }
+
+    /// <summary>
+    /// 获取或设置制品下载地址（可选；绝对 http/https）。与 <see cref="ArtifactSha256"/> <b>成对提供</b>：
+    /// 只给本字段不给校验和 = 4001 拒绝；两者皆缺 = 纯本地登记（现状语义，行为不变）。
+    /// <para>携带本字段时，登记落簿前由制品获取器下载、SHA-256 校验并原子落盘至
+    /// <c>{CWD}/{Version}/GameFrameX.Hotfix.dll</c>——「已登记」与「已落盘」同时成立，
+    /// 切换命令只消费已落盘版本（切换时刻零下载红线）。</para>
+    /// </summary>
+    public string ArtifactSourceUrl
+    {
+        get;
+        set;
+    }
+
+    /// <summary>
+    /// 获取或设置制品 SHA-256（可选；64 位十六进制字符串）。
+    /// 与 <see cref="ArtifactSourceUrl"/> 成对提供（获取器下载后的完整性闸门）；
+    /// 只给本字段不给下载地址 = 校验已在盘制品一致性（在盘缺失或不符 → 拒绝登记）。
+    /// </summary>
+    public string ArtifactSha256
+    {
+        get;
+        set;
+    }
 }

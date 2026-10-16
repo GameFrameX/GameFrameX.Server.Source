@@ -33,10 +33,9 @@ using GameFrameX.Capability.Online.Operations.HotfixRollback;
 
 namespace GameFrameX.Capability.Online.Operations;
 
-/// <summary>
 /// 运营聚合能力包的 hosting 扩展（C232 P5）：<see cref="AddOnlineOperationsRuntime"/> 装配入口（回调式，
-/// 注册自装配模块）与三个存储替换缝（<see cref="UseOnlineAuditStore"/> / <see cref="UseOnlineHotfixVersionStore"/> /
-/// <see cref="UseOnlineHotfixRollbackExecutor"/>）。
+/// 注册自装配模块）、三个存储替换缝（<see cref="UseOnlineAuditStore"/> / <see cref="UseOnlineHotfixVersionStore"/> /
+/// <see cref="UseOnlineHotfixRollbackExecutor"/>）与登记期制品获取器缝（<see cref="UseOnlineHotfixArtifactFetcher"/>，C248）。
 /// <para>
 /// 维护约束：options 经共享服务面预置（模块无参构造，显式链式与 P4 真扫描共用同一模块类）；
 /// 替换缝在模块 <c>Register</c> 期探测命中，未命中构造 InMemory 默认。
@@ -95,7 +94,8 @@ public static class OnlineOperationsHostingExtensions
     }
 
     /// <summary>
-    /// 注入 Hotfix 回滚执行器（可选注入位；admin 面暂无触发 action，默认空实现）。
+    /// 注入 Hotfix 回滚执行器（生产组合根经 C248 注入 <see cref="IOnlineHotfixRollbackExecutor"/> 的
+    /// Launcher 侧实现 <c>HotfixManagerRollbackExecutor</c>；替换缝开放，测试注入替身）。
     /// </summary>
     /// <param name="builder">能力装配器。</param>
     /// <param name="executor">回滚执行器。</param>
@@ -105,6 +105,21 @@ public static class OnlineOperationsHostingExtensions
         ArgumentNullException.ThrowIfNull(builder);
 
         builder.UseService(executor);
+        return builder;
+    }
+
+    /// <summary>
+    /// 注入登记期制品获取器（可选注入位；清单携带 <c>ArtifactSourceUrl</c>/<c>ArtifactSha256</c> 时
+    /// 登记落簿前经其下载、校验并原子落盘，生产组合根注入 <see cref="OnlineHotfixArtifactFetcher"/>，C248）。
+    /// </summary>
+    /// <param name="builder">能力装配器。</param>
+    /// <param name="fetcher">制品获取器。</param>
+    /// <returns>本装配器（链式）。</returns>
+    public static CapabilityHostBuilder UseOnlineHotfixArtifactFetcher(this CapabilityHostBuilder builder, IOnlineHotfixArtifactFetcher fetcher)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        builder.UseService(fetcher);
         return builder;
     }
 }

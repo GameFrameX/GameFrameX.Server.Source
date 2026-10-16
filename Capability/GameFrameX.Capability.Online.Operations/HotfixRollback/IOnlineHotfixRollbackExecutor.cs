@@ -33,7 +33,8 @@ namespace GameFrameX.Capability.Online.Operations.HotfixRollback;
 
 /// <summary>
 /// Hotfix 回滚执行器契约（服务端配合面的装配面：实际 Hotfix 程序集加载切换
-/// 由运行时装配提供实现——Server 仓装配层调用 <c>HotfixManager.LoadHotfix(dllVersion)</c>）。
+/// 由运行时装配提供实现——C248 起生产组合根注入 Launcher 侧 <c>HotfixManagerRollbackExecutor</c>，
+/// 组合既有 <c>HotfixManager.LoadHotfixModule(version)</c> 原语完成方向无关版本切换）。
 /// <para>
 /// 维护约束（红线）：
 /// ① <b>依赖方向</b>——<c>GameFrameX.Online</c> 不引用 <c>GameFrameX.Core</c>，

@@ -115,6 +115,41 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 记录型制品获取器（记录调用参数；可注入失败模式）。
+        /// </summary>
+        private sealed class RecordingFetcher : IOnlineHotfixArtifactFetcher
+        {
+            public int CallCount
+            {
+                get;
+                private set;
+            }
+
+            public List<(string Version, string SourceUrl, string Sha256)> Calls
+            {
+                get;
+            } = new List<(string, string, string)>();
+
+            public string FailMessage
+            {
+                get;
+                set;
+            }
+
+            public Task EnsureArtifactAsync(string version, string sourceUrl, string artifactSha256, CancellationToken cancellationToken = default)
+            {
+                CallCount++;
+                Calls.Add((version, sourceUrl, artifactSha256));
+                if (!string.IsNullOrEmpty(FailMessage))
+                {
+                    throw new InvalidOperationException(FailMessage);
+                }
+
+                return Task.CompletedTask;
+            }
+        }
+
+        /// <summary>
         /// 抛异常审计存储（验证「无审计不执行」：审计链路异常时拒绝回滚且切换未发生）。
         /// </summary>
         private sealed class ThrowingAuditStore : IOnlineAuditStore
@@ -160,7 +195,7 @@ namespace GameFrameX.Tests.Online
                 get;
             } = new OnlineEventRecorder();
 
-            public Harness(OnlineAuditService auditService, bool withoutExecutor = false)
+            public Harness(OnlineAuditService auditService, bool withoutExecutor = false, IOnlineHotfixArtifactFetcher fetcher = null)
             {
                 AuditService = auditService;
                 var options = new IdempotencyOptions
@@ -171,7 +206,7 @@ namespace GameFrameX.Tests.Online
                 };
                 var coordinator = new IdempotencyCoordinator(new InMemoryIdempotencyStore(), new StepClock(), options);
                 var idempotencyService = new OnlineIdempotencyService(coordinator, null);
-                Service = new OnlineHotfixRollbackService(Store, idempotencyService, auditService, withoutExecutor ? null : Executor, EventRecorder);
+                Service = new OnlineHotfixRollbackService(Store, idempotencyService, auditService, withoutExecutor ? null : Executor, fetcher, EventRecorder);
             }
         }
 
@@ -677,6 +712,142 @@ namespace GameFrameX.Tests.Online
             Assert.False(result.IsSuccess);
             Assert.Equal(OnlineErrorCode.ResourceNotFound, result.Code);
             Assert.Equal(0, harness.Executor.CallCount);
+        }
+
+        /// <summary>
+        /// 登记携带制品字段（SourceUrl + Sha256 成对）：获取器先行（登记先于清单落簿），登记成功。
+        /// </summary>
+        [Fact]
+        public async Task RegisterAsync_WithArtifactFields_FetchesThenRegisters()
+        {
+            var fetcher = new RecordingFetcher();
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()), fetcher: fetcher);
+            var manifest = CreateManifest("3.0.0", Msg("LoginReq", 1));
+            manifest.ArtifactSourceUrl = "http://artifacts.test/3.0.0/GameFrameX.Hotfix.dll";
+            manifest.ArtifactSha256 = new string('a', 64);
+
+            var result = await harness.Service.RegisterAsync(manifest);
+
+            Assert.True(result.IsSuccess);
+            Assert.True(result.Data);
+            Assert.Equal(1, fetcher.CallCount);
+            Assert.Equal(("3.0.0", "http://artifacts.test/3.0.0/GameFrameX.Hotfix.dll", new string('a', 64)), fetcher.Calls[0]);
+            Assert.NotNull(await harness.Store.FindAsync(TenantId, AppId, "3.0.0"));
+        }
+
+        /// <summary>
+        /// 获取器失败 → 8002（登记未生效可重试：清单不落簿；修复后同版本登记成功）。
+        /// </summary>
+        [Fact]
+        public async Task RegisterAsync_FetchFailure_RejectedWithDependencyUnavailableAndRetryable()
+        {
+            var fetcher = new RecordingFetcher { FailMessage = "download failed", };
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()), fetcher: fetcher);
+            var manifest = CreateManifest("3.0.0", Msg("LoginReq", 1));
+            manifest.ArtifactSourceUrl = "http://artifacts.test/3.0.0/GameFrameX.Hotfix.dll";
+            manifest.ArtifactSha256 = new string('a', 64);
+
+            var failure = await harness.Service.RegisterAsync(manifest);
+
+            Assert.False(failure.IsSuccess);
+            Assert.Equal(OnlineErrorCode.DependencyUnavailable, failure.Code);
+            Assert.Null(await harness.Store.FindAsync(TenantId, AppId, "3.0.0"));
+
+            fetcher.FailMessage = null;
+            var retry = await harness.Service.RegisterAsync(manifest);
+            Assert.True(retry.IsSuccess);
+            Assert.True(retry.Data);
+            Assert.Equal(2, fetcher.CallCount);
+        }
+
+        /// <summary>
+        /// 只给 SourceUrl 不给 ArtifactSha256 → 4001（成对提供红线），获取器不被触达。
+        /// </summary>
+        [Fact]
+        public async Task RegisterAsync_UrlOnlyWithoutSha_RejectedWithParameterInvalid()
+        {
+            var fetcher = new RecordingFetcher();
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()), fetcher: fetcher);
+            var manifest = CreateManifest("3.0.0", Msg("LoginReq", 1));
+            manifest.ArtifactSourceUrl = "http://artifacts.test/3.0.0/GameFrameX.Hotfix.dll";
+
+            var result = await harness.Service.RegisterAsync(manifest);
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(OnlineErrorCode.ParameterInvalid, result.Code);
+            Assert.Equal(0, fetcher.CallCount);
+            Assert.Null(await harness.Store.FindAsync(TenantId, AppId, "3.0.0"));
+        }
+
+        /// <summary>
+        /// 制品字段形状非法（校验和非 64 位 hex / URL 非 http(s) / 版本含路径字符）逐维 4001。
+        /// </summary>
+        [Theory]
+        [InlineData("bad-sha")]
+        [InlineData(null)]
+        public async Task RegisterAsync_MalformedArtifactFields_RejectedWithParameterInvalid(string brokenDimension)
+        {
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()), fetcher: new RecordingFetcher());
+            var manifest = CreateManifest("3.0.0", Msg("LoginReq", 1));
+            manifest.ArtifactSourceUrl = brokenDimension == "bad-sha" ? "http://artifacts.test/3.0.0/GameFrameX.Hotfix.dll" : "ftp://artifacts.test/3.0.0/GameFrameX.Hotfix.dll";
+            manifest.ArtifactSha256 = brokenDimension == "bad-sha" ? "not-hex" : new string('a', 64);
+
+            var result = await harness.Service.RegisterAsync(manifest);
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(OnlineErrorCode.ParameterInvalid, result.Code);
+        }
+
+        /// <summary>
+        /// 版本号含路径注入字符 → 4001（制品落盘/装载路径注入面，与 HotfixLoadOptions 同防线）。
+        /// </summary>
+        [Theory]
+        [InlineData("3/0.0")]
+        [InlineData("3\\0.0")]
+        [InlineData("3:0.0")]
+        [InlineData("3..0.0")]
+        public async Task RegisterAsync_ForbiddenVersionChars_RejectedWithParameterInvalid(string version)
+        {
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()));
+
+            var result = await harness.Service.RegisterAsync(CreateManifest(version, Msg("LoginReq", 1)));
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(OnlineErrorCode.ParameterInvalid, result.Code);
+        }
+
+        /// <summary>
+        /// 纯本地登记（无制品字段）不触达获取器——现状行为逐字节不变红线。
+        /// </summary>
+        [Fact]
+        public async Task RegisterAsync_WithoutArtifactFields_DoesNotInvokeFetcher()
+        {
+            var fetcher = new RecordingFetcher();
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()), fetcher: fetcher);
+
+            var result = await harness.Service.RegisterAsync(CreateManifest("3.0.0", Msg("LoginReq", 1)));
+
+            Assert.True(result.IsSuccess);
+            Assert.True(result.Data);
+            Assert.Equal(0, fetcher.CallCount);
+        }
+
+        /// <summary>
+        /// 携带制品字段但获取器未装配 → 8002（宁拒不静默——无获取器的登记会让制品永不落盘）。
+        /// </summary>
+        [Fact]
+        public async Task RegisterAsync_ArtifactFieldsWithoutFetcher_RejectedWithDependencyUnavailable()
+        {
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()));
+            var manifest = CreateManifest("3.0.0", Msg("LoginReq", 1));
+            manifest.ArtifactSourceUrl = "http://artifacts.test/3.0.0/GameFrameX.Hotfix.dll";
+            manifest.ArtifactSha256 = new string('a', 64);
+
+            var result = await harness.Service.RegisterAsync(manifest);
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal(OnlineErrorCode.DependencyUnavailable, result.Code);
+            Assert.Null(await harness.Store.FindAsync(TenantId, AppId, "3.0.0"));
         }
     }
 }

@@ -35,6 +35,8 @@ using GameFrameX.Capability.Hosting.AdminApi;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Events;
 using GameFrameX.Capability.Online.Abstractions.Idempotency;
+using GameFrameX.Capability.Online.Operations;
+using GameFrameX.Capability.Online.Operations.HotfixRollback;
 using GameFrameX.Capability.Online.Operations.Audit;
 using GameFrameX.Capability.Online.Persistence;
 using GameFrameX.Capability.Online.Abstractions.Scope;
@@ -255,8 +257,9 @@ public sealed class OnlineCapabilityComposition
     /// 真扫描装配业务能力宿主（C232 P6 生产采用收口）：组合根基建预置 + 模块扫描发现 + 机制构建。
     /// <para>基建预置与壳时代 <c>OnlineRuntimeHost</c> 构造段逐语句等价——授权作用域 / 事件总线 /
     /// 事件出口 / 幂等 / 统一审计（具型 + 读面）；地基三 store 与会话令牌下沉 Foundation 模块自装配
-    /// （共享面经 <c>AddService</c> 回注，后序能力探测同源）；Hotfix 回滚执行器为可选注入位
-    /// （生产路径恒缺席，Operations 模块探测后置 null——壳时代等价语义）。</para>
+    /// （共享面经 <c>AddService</c> 回注，后序能力探测同源）；Hotfix 切换执行器与登记期制品获取器
+    /// 为生产装配面（C248 注入 <c>HotfixManagerRollbackExecutor</c> / <c>OnlineHotfixArtifactFetcher</c>，
+    /// Operations 模块探测即得非 null，替换缝仍开放）。</para>
     /// </summary>
     /// <remarks>
     /// Builds the business capability host through real scanning (the C232 P6 production adoption):
@@ -265,9 +268,10 @@ public sealed class OnlineCapabilityComposition
     /// constructor — the authorized scope, event bus, event outlet, idempotency and unified audit
     /// (concrete type plus read face); the three foundation stores and the session-token service
     /// sink into the Foundation module's self-assembly (registered back into the shared face so later
-    /// capabilities resolve the same instances); the hotfix-rollback executor stays an optional
-    /// injection slot that production paths leave absent (the Operations module probes and falls
-    /// back to null, matching the shell-era semantics).
+    /// capabilities resolve the same instances); since C248 the hotfix switch executor and the
+    /// registration-time artifact fetcher are production-wired (<c>HotfixManagerRollbackExecutor</c> /
+    /// <c>OnlineHotfixArtifactFetcher</c>, probed non-null by the Operations module, replacement
+    /// seams still open).
     /// </remarks>
     /// <param name="hostOptions">宿主选项（已通过合法性校验）。</param>
     /// <param name="filter">能力装配过滤器（null = 全装配）。</param>
@@ -290,6 +294,10 @@ public sealed class OnlineCapabilityComposition
         builder.UseService(idempotency);
         builder.UseService(audit);
         builder.UseService<IOnlineAuditReader>(audit);
+        // C248：Hotfix 版本切换执行器 + 登记期制品获取器生产装配（消除「生产路径恒缺席」）——
+        // Operations 模块 Register 期探测命中，切换命令不再恒 8002；切换时刻零下载红线由执行器路径静态保证。
+        builder.UseOnlineHotfixRollbackExecutor(new HotfixManagerRollbackExecutor());
+        builder.UseOnlineHotfixArtifactFetcher(new OnlineHotfixArtifactFetcher());
         if (useGameDbStores)
         {
             // C249 一级 store 持久化预置（D3 = 3A）：模块 Register 期探测共享面命中即采用；Session / Presence 保持 InMemory。

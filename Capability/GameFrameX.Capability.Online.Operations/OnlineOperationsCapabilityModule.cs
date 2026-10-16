@@ -133,12 +133,13 @@ public sealed class OnlineOperationsCapabilityModule : ICapabilityModule, IAdmin
 
         _audit = audit;
 
-        // Hotfix 回滚（幂等基建缺席时不装配——壳「下游置 null」的模块化等价；执行器为可选注入位）。
+        // Hotfix 回滚（幂等基建缺席时不装配——壳「下游置 null」的模块化等价；执行器与制品获取器为可选注入位，C248）。
         if (context.TryGetService(out OnlineIdempotencyService idempotency))
         {
             var hotfixVersionStore = ResolveStore<IOnlineHotfixVersionStore>(context, static () => new InMemoryOnlineHotfixVersionStore());
             var rollbackExecutor = context.TryGetService(out IOnlineHotfixRollbackExecutor hotfixRollbackExecutor) ? hotfixRollbackExecutor : null;
-            context.AddService(new OnlineHotfixRollbackService(hotfixVersionStore, idempotency, audit, rollbackExecutor, eventPublisher));
+            var artifactFetcher = context.TryGetService(out IOnlineHotfixArtifactFetcher hotfixArtifactFetcher) ? hotfixArtifactFetcher : null;
+            context.AddService(new OnlineHotfixRollbackService(hotfixVersionStore, idempotency, audit, rollbackExecutor, artifactFetcher, eventPublisher));
         }
 
         // 总览 / 时间线（叶子产物探测；地基三 store 经替换缝探测，未命中构造 InMemory 默认）。

@@ -81,6 +81,16 @@ public sealed class OnlineHotfixRollbackService
     private readonly IOnlineHotfixRollbackExecutor _executor;
 
     /// <summary>
+    /// 登记期制品获取器（可空 = 未装配；清单携带制品字段时登记先行获取制品，未装配则拒绝登记）。
+    /// </summary>
+    private readonly IOnlineHotfixArtifactFetcher _artifactFetcher;
+
+    /// <summary>
+    /// 版本号禁止出现的路径相关字符（镜像 <c>HotfixLoadOptions.ResolveAssemblyFilePath</c> 注入防线）。
+    /// </summary>
+    private static readonly char[] ForbiddenVersionPathChars = { '/', '\\', ':', };
+
+    /// <summary>
     /// 事件发布出口（可空 = 未接线时跳过，C103 先例）。
     /// </summary>
     private readonly IOnlineEventPublisher _eventPublisher;
@@ -92,22 +102,29 @@ public sealed class OnlineHotfixRollbackService
     /// <param name="idempotencyService">幂等判定服务。</param>
     /// <param name="auditService">统一审计服务（回滚审计先行的必要依赖，不可为空）。</param>
     /// <param name="executor">回滚执行器（运行时装配注入；未装配时回滚命令拒绝）。</param>
+    /// <param name="artifactFetcher">登记期制品获取器（运行时装配注入；清单携带制品字段时必须装配，否则登记拒绝）。</param>
     /// <param name="eventPublisher">事件发布出口（未接线时跳过事件发布）。</param>
-    public OnlineHotfixRollbackService(IOnlineHotfixVersionStore store, OnlineIdempotencyService idempotencyService, OnlineAuditService auditService, IOnlineHotfixRollbackExecutor executor = null, IOnlineEventPublisher eventPublisher = null)
+    public OnlineHotfixRollbackService(IOnlineHotfixVersionStore store, OnlineIdempotencyService idempotencyService, OnlineAuditService auditService, IOnlineHotfixRollbackExecutor executor = null, IOnlineHotfixArtifactFetcher artifactFetcher = null, IOnlineEventPublisher eventPublisher = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _idempotencyService = idempotencyService ?? throw new ArgumentNullException(nameof(idempotencyService));
         _auditService = auditService ?? throw new ArgumentNullException(nameof(auditService));
         _executor = executor;
+        _artifactFetcher = artifactFetcher;
         _eventPublisher = eventPublisher;
     }
 
     /// <summary>
     /// 登记一份版本协议清单（发布流水线簿记：不改变活跃版本、不落审计；重复登记幂等回执不覆盖）。
+    /// <para>清单携带制品字段（<see cref="OnlineHotfixProtocolManifest.ArtifactSourceUrl"/> /
+    /// <see cref="OnlineHotfixProtocolManifest.ArtifactSha256"/>）时，登记落簿前先经制品获取器
+    /// 把制品取到版本目录（下载 / 校验 / 原子落盘）——「已登记」与「已落盘」同时成立，
+    /// 切换命令只消费已落盘版本（切换时刻零下载红线，C248）；获取失败登记未生效、可重试。</para>
     /// </summary>
     /// <param name="manifest">待登记清单。</param>
     /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>新登记返回 <c>true</c>；同 (作用域, 版本号) 已存在返回 <c>false</c>；清单非法返回 4001。</returns>
+    /// <returns>新登记返回 <c>true</c>；同 (作用域, 版本号) 已存在返回 <c>false</c>；清单非法返回 4001；
+    /// 制品获取失败或获取器未装配返回 8002（登记未生效）。</returns>
     public async Task<OnlineResult<bool>> RegisterAsync(OnlineHotfixProtocolManifest manifest, CancellationToken cancellationToken = default)
     {
         if (manifest == null)
@@ -119,6 +136,12 @@ public sealed class OnlineHotfixRollbackService
         if (validation != null)
         {
             return validation;
+        }
+
+        var artifactFailure = await EnsureArtifactAsync(manifest, cancellationToken).ConfigureAwait(false);
+        if (artifactFailure != null)
+        {
+            return artifactFailure;
         }
 
         var isNew = await _store.RegisterAsync(manifest, cancellationToken).ConfigureAwait(false);
@@ -517,6 +540,29 @@ public sealed class OnlineHotfixRollbackService
             return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "清单版本号必填且禁止包含竖线（回放令牌分隔符）");
         }
 
+        // 版本号是制品落盘与装载路径的目录段（{CWD}/{Version}/GameFrameX.Hotfix.dll），注入防线与 HotfixLoadOptions 同源。
+        if (manifest.Version.IndexOfAny(ForbiddenVersionPathChars) >= 0 || manifest.Version.Contains("..", StringComparison.Ordinal))
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "清单版本号禁止包含路径分隔符、卷分隔符或「..」段（制品落盘/装载路径注入面）");
+        }
+
+        var sourceUrl = NormalizeOptionalField(manifest.ArtifactSourceUrl);
+        var artifactSha256 = NormalizeOptionalField(manifest.ArtifactSha256);
+        if (sourceUrl != null && artifactSha256 == null)
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "ArtifactSourceUrl 与 ArtifactSha256 必须成对提供（只给下载地址不给校验和 = 拒绝）");
+        }
+
+        if (sourceUrl != null && (!Uri.TryCreate(sourceUrl, UriKind.Absolute, out var sourceUri) || (sourceUri.Scheme != Uri.UriSchemeHttp && sourceUri.Scheme != Uri.UriSchemeHttps)))
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "ArtifactSourceUrl 必须是绝对 http/https 地址：" + manifest.ArtifactSourceUrl);
+        }
+
+        if (artifactSha256 != null && !IsSha256Hex(artifactSha256))
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "ArtifactSha256 必须是 64 位十六进制字符串");
+        }
+
         if (manifest.TenantId <= 0 || manifest.AppId <= 0)
         {
             return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "清单必须锚定租户与 App（TenantId / AppId 大于 0）");
@@ -548,6 +594,74 @@ public sealed class OnlineHotfixRollbackService
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// 登记期制品获取（清单携带制品字段时的登记前置：获取器先行，失败 = 登记未生效 8002 可重试；
+    /// 无制品字段 = 纯本地登记路径，不触达获取器——现状行为逐字节不变）。
+    /// </summary>
+    /// <param name="manifest">待登记清单（已通过形状校验）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>失败时返回 8002 错误结果；通过返回 <see langword="null"/>。</returns>
+    private async Task<OnlineResult<bool>> EnsureArtifactAsync(OnlineHotfixProtocolManifest manifest, CancellationToken cancellationToken)
+    {
+        var sourceUrl = NormalizeOptionalField(manifest.ArtifactSourceUrl);
+        var artifactSha256 = NormalizeOptionalField(manifest.ArtifactSha256);
+        if (sourceUrl == null && artifactSha256 == null)
+        {
+            return null;
+        }
+
+        if (_artifactFetcher == null)
+        {
+            // 宁拒不静默：无获取器的登记会让制品永不落盘，切换时的零下载红线反被兑现成必然失败。
+            return OnlineResult<bool>.Fail(OnlineErrorCode.DependencyUnavailable, "清单携带制品字段但登记面未装配 IOnlineHotfixArtifactFetcher（运行时装配须注入制品获取器）");
+        }
+
+        try
+        {
+            await _artifactFetcher.EnsureArtifactAsync(manifest.Version, sourceUrl, artifactSha256, cancellationToken).ConfigureAwait(false);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.DependencyUnavailable, "登记期制品获取失败（登记未生效，可重试）：" + ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// 规整可选制品字段（trim；空白视为缺省 null）。
+    /// </summary>
+    /// <param name="value">原始字段值。</param>
+    /// <returns>规整后值或 <c>null</c>。</returns>
+    private static string NormalizeOptionalField(string value)
+    {
+        var normalized = value?.Trim();
+        return string.IsNullOrEmpty(normalized) ? null : normalized;
+    }
+
+    /// <summary>
+    /// 判定字符串是否为 64 位十六进制（SHA-256 hex）。
+    /// </summary>
+    /// <param name="value">待判定字符串。</param>
+    /// <returns>合法返回 <c>true</c>。</returns>
+    private static bool IsSha256Hex(string value)
+    {
+        if (value.Length != 64)
+        {
+            return false;
+        }
+
+        foreach (var c in value)
+        {
+            var isHex = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+            if (!isHex)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>
