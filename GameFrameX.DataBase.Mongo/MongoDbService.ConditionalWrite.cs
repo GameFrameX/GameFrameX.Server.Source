@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 using System;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -292,7 +293,7 @@ public sealed partial class MongoDbService
         // category locally with a bounded loop (20/50ms backoff) and rethrow once exhausted;
         // ExecuteWriteWithRetryAsync is intentionally not used to avoid double-layer retries.
         var retryDelays = new[] { 20, 50 };
-        for (var attempt = 0; ; attempt++)
+        for (var attempt = 0; attempt <= SequenceDuplicateKeyRetryTotal; attempt++)
         {
             try
             {
@@ -307,6 +308,13 @@ public sealed partial class MongoDbService
                 }
             }
         }
+
+        // 循环上界只是编译器要求的显式出口：成功即 return，重试耗尽后最后一次 DuplicateKey
+        // 因 catch 过滤器不匹配直接外抛，正常路径不可能落到这里。
+        // The loop bound exists only as the compiler-required exit: success returns, and the
+        // final DuplicateKey after exhaustion propagates via the catch filter miss, so this
+        // endpoint is unreachable on any real path.
+        throw new UnreachableException();
     }
 
     #endregion 条件写
