@@ -144,7 +144,7 @@ public sealed class RemoteMessageClientConcurrencyTests : IDisposable
         server.Start();
         _servers.Add(server);
         var key = $"services__{serviceName}__tcp__0";
-        Environment.SetEnvironmentVariable(key, $"127.0.0.1:{server.Port}");
+        Environment.SetEnvironmentVariable(key, $"tcp://127.0.0.1:{server.Port}");
         _environmentKeys.Add(key);
         return server;
     }

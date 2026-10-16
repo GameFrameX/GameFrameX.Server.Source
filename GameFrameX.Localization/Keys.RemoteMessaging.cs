@@ -323,6 +323,32 @@ public static partial class Keys
         }
 
         /// <summary>
+        /// 传输类别键
+        /// </summary>
+        public static class Transport
+        {
+            /// <summary>
+            /// 端点 scheme '{0}' 未注册传输适配器，服务 '{1}' 回落使用 TCP 端点
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Transport.SchemeFallbackToTcp
+            /// 用途: 拨号期按端点 scheme 分发时，端点 scheme 无已注册适配器而回落 TCP 端点的一次性告警
+            /// 参数: {0} - 端点 scheme, {1} - 服务名
+            /// </remarks>
+            public const string SchemeFallbackToTcp = "RemoteMessaging.Transport.SchemeFallbackToTcp";
+
+            /// <summary>
+            /// KCP 传输实现尚未接入（另行 change 跟进），服务 '{0}' 本次调用命中占位适配器
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Transport.KcpTransportNotImplemented
+            /// 用途: KCP 占位适配器创建流时抛出的 NotSupportedException 消息
+            /// 参数: {0} - 服务名
+            /// </remarks>
+            public const string KcpTransportNotImplemented = "RemoteMessaging.Transport.KcpTransportNotImplemented";
+        }
+
+        /// <summary>
         /// 路由类别键
         /// </summary>
         public static class Routing

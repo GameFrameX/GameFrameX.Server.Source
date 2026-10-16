@@ -50,6 +50,7 @@ namespace GameFrameX.Network.RemoteMessaging;
 public sealed class RemoteMessagingBuilder
 {
     private RemoteMessagingOptions _options = new();
+    private readonly Dictionary<string, Func<IServiceEndpointResolver, IConnectionProvider, ITransportProtocolAdapter>> _transportAdapters = new(StringComparer.OrdinalIgnoreCase);
     private Func<IServiceEndpointResolver, IConnectionProvider, ITransportProtocolAdapter> _transportAdapterFactory;
 
     /// <summary>
@@ -146,10 +147,13 @@ public sealed class RemoteMessagingBuilder
     }
 
     /// <summary>
-    /// 配置传输协议适配器工厂。可用于切换 TCP/KCP/QUIC 等不同协议实现。
+    /// 配置传输协议适配器工厂（兼容旧「全局唯一传输」语义）：产出的适配器作为通用适配器命中任意 scheme，不参与回落。
     /// </summary>
     /// <remarks>
-    /// Configures the transport protocol adapter factory. Can be used to switch protocol implementations like TCP/KCP/QUIC.
+    /// Configures the transport protocol adapter factory (the legacy "globally unique transport"
+    /// semantics): the produced adapter is registered as the universal adapter serving every
+    /// endpoint scheme, so it never triggers the tcp fallback. Calling this replaces all
+    /// <c>UseXxxTransportAdapter</c> registrations; later <c>UseXxx</c> calls register on top of it.
     /// </remarks>
     /// <param name="factory">适配器工厂 / Adapter factory</param>
     /// <returns>构建器实例 / The builder instance</returns>
@@ -160,28 +164,33 @@ public sealed class RemoteMessagingBuilder
     }
 
     /// <summary>
-    /// 显式使用默认 TCP 适配器。
+    /// 注册默认 TCP 适配器（可与其他 <c>UseXxx</c> 叠加注册；TCP 同时也是回落传输）。
     /// </summary>
     /// <remarks>
-    /// Explicitly uses the default TCP adapter.
+    /// Registers the default TCP adapter (stackable with other <c>UseXxx</c> registrations;
+    /// tcp is also the fallback transport). Calling it twice or after building keeps a single
+    /// tcp registration (last one wins).
     /// </remarks>
     /// <returns>构建器实例 / The builder instance</returns>
     public RemoteMessagingBuilder UseTcpTransportAdapter()
     {
-        _transportAdapterFactory = static (resolver, provider) => new TcpTransportProtocolAdapter(resolver, provider);
+        _transportAdapters[TransportSchemes.Tcp] = static (resolver, provider) => new TcpTransportProtocolAdapter(resolver, provider);
         return this;
     }
 
     /// <summary>
-    /// 使用 KCP 适配器占位实现（当前仅用于接线验证，不可用于生产流量）。
+    /// 注册 KCP 适配器占位实现（仅接线验证：<c>IsServiceAvailable</c> 恒 false，调用即抛 <see cref="NotSupportedException"/>；KCP 真实现另行 change）。
     /// </summary>
     /// <remarks>
-    /// Uses the placeholder KCP adapter (for wiring verification only, not for production traffic).
+    /// Registers the placeholder KCP adapter (wiring verification only: <c>IsServiceAvailable</c>
+    /// always returns false and calls throw <see cref="NotSupportedException"/>; the real KCP
+    /// transport arrives in a separate change). Stackable with other <c>UseXxx</c> registrations;
+    /// the default tcp registration stays active as the fallback transport.
     /// </remarks>
     /// <returns>构建器实例 / The builder instance</returns>
     public RemoteMessagingBuilder UseKcpTransportAdapterPlaceholder()
     {
-        _transportAdapterFactory = static (resolver, _) => new KcpTransportProtocolAdapter(resolver);
+        _transportAdapters[TransportSchemes.Kcp] = static (_, _) => new KcpTransportProtocolAdapter();
         return this;
     }
 
@@ -209,8 +218,25 @@ public sealed class RemoteMessagingBuilder
     {
         var endpointResolver = new EnvironmentVariableEndpointResolver();
         var connectionProvider = new TcpConnectionProvider();
-        var transportProtocolAdapter = _transportAdapterFactory?.Invoke(endpointResolver, connectionProvider)
-                                       ?? new TcpTransportProtocolAdapter(endpointResolver, connectionProvider);
+        var transportRegistry = new TransportProtocolAdapterRegistry();
+        if (_transportAdapterFactory != null)
+        {
+            transportRegistry.RegisterUniversal(_transportAdapterFactory(endpointResolver, connectionProvider));
+        }
+        else
+        {
+            if (!_transportAdapters.ContainsKey(TransportSchemes.Tcp))
+            {
+                transportRegistry.Register(TransportSchemes.Tcp, new TcpTransportProtocolAdapter(endpointResolver, connectionProvider));
+            }
+
+            foreach (var adapterFactory in _transportAdapters)
+            {
+                transportRegistry.Register(adapterFactory.Key, adapterFactory.Value(endpointResolver, connectionProvider));
+            }
+        }
+
+        var transportProtocolAdapter = new SchemeDispatchTransportAdapter(endpointResolver, transportRegistry);
         var compressionRegistry = _options.CompressionRegistry ?? new DefaultMessageCompressionRegistry();
         var messageCodec = new DefaultMessageCodec(
             compressionRegistry,

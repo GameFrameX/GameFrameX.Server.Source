@@ -27,33 +27,26 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using GameFrameX.Foundation.Localization.Core;
+
 namespace GameFrameX.Network.RemoteMessaging.Transport;
 
 /// <summary>
 /// KCP 协议适配器占位实现。
-/// 当前仅提供抽象接入点，便于在不改业务调用层的前提下逐步接入 KCP 传输。
+/// 占位与真实现的边界：占位仅完成注册接线（让 kcp:// 端点能命中本适配器、参与拨号期 scheme 分发），
+/// <see cref="IsServiceAvailable"/> 按真实能力恒返回 false，流创建恒抛 <see cref="NotSupportedException"/>；
+/// KCP 传输真实现（数据报会话 → Stream 适配层）由另行 change 提供。
 /// </summary>
 /// <remarks>
 /// Placeholder implementation for the KCP protocol adapter.
-/// It only provides an integration point so KCP transport can be introduced incrementally
-/// without changing business-side call code.
+/// Boundary between the placeholder and the real implementation: the placeholder only completes
+/// the registration wiring (so <c>kcp://</c> endpoints can hit this adapter and join the
+/// dial-time scheme dispatch), <see cref="IsServiceAvailable"/> always returns false to reflect
+/// the real capability, and stream creation always throws <see cref="NotSupportedException"/>;
+/// the real KCP transport (datagram session → Stream adaptation) arrives in a separate change.
 /// </remarks>
 internal sealed class KcpTransportProtocolAdapter : ITransportProtocolAdapter
 {
-    private readonly IServiceEndpointResolver _endpointResolver;
-
-    /// <summary>
-    /// 初始化 KCP 协议适配器占位实现。
-    /// </summary>
-    /// <remarks>
-    /// Initializes the placeholder KCP protocol adapter.
-    /// </remarks>
-    /// <param name="endpointResolver">服务端点解析器 / Service endpoint resolver</param>
-    public KcpTransportProtocolAdapter(IServiceEndpointResolver endpointResolver)
-    {
-        _endpointResolver = endpointResolver;
-    }
-
     /// <summary>
     /// 获取协议名称，固定返回 KCP。
     /// </summary>
@@ -66,36 +59,37 @@ internal sealed class KcpTransportProtocolAdapter : ITransportProtocolAdapter
     }
 
     /// <summary>
-    /// 获取或创建流的占位实现：仅解析出服务端点即抛出 <see cref="NotSupportedException"/>，KCP 传输尚未接入。
+    /// 获取或创建流的占位实现：KCP 传输真实现尚未注册（另行 change），恒抛出 <see cref="NotSupportedException"/>。
     /// </summary>
     /// <remarks>
-    /// Placeholder implementation for getting or creating a stream: it only resolves the service endpoint
-    /// and then throws <see cref="NotSupportedException"/> because KCP transport is not wired yet.
+    /// Placeholder implementation for getting or creating a stream: the real KCP transport is not
+    /// wired yet (tracked by a separate change), so this always throws <see cref="NotSupportedException"/>.
+    /// Callers observing <see cref="IsServiceAvailable"/> = false should never reach this path.
     /// </remarks>
     /// <param name="serviceName">目标服务名 / Target service name</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
-    /// <exception cref="NotSupportedException">KCP 传输尚未接入，恒抛出 / Always thrown since KCP transport is not wired yet</exception>
+    /// <exception cref="NotSupportedException">KCP 传输实现尚未接入，恒抛出 / Always thrown since the KCP transport implementation is not wired yet</exception>
     public Task<Stream> GetOrCreateStreamAsync(string serviceName, CancellationToken cancellationToken = default)
     {
-        var endpoint = _endpointResolver.ResolveTcpEndpoint(serviceName);
+        // Localization: RemoteMessaging.Transport.KcpTransportNotImplemented - KCP 传输实现尚未接入（另行 change 跟进），服务 '{0}' 本次调用命中占位适配器
         throw new NotSupportedException(
-            $"KCP adapter is not wired yet for service '{serviceName}'. Raw endpoint: '{endpoint}'.");
+            LocalizationService.GetString(Localization.Keys.RemoteMessaging.Transport.KcpTransportNotImplemented, serviceName));
     }
 
     /// <summary>
-    /// 检查目标服务是否可用：沿用 TCP 发现键解析端点，端点非空白即视为可用。
+    /// 检查目标服务是否可用：按占位适配器的真实能力恒返回 false（KCP 传输未接入）。
     /// </summary>
     /// <remarks>
-    /// Checks whether the target service is available: it reuses the TCP discovery key to resolve the endpoint
-    /// and treats any non-whitespace endpoint as available.
+    /// Checks whether the target service is available: always returns false, reflecting the
+    /// placeholder's real capability (the KCP transport is not wired yet). The pre-C250
+    /// placeholder answered true based on a TCP endpoint probe, which made the availability
+    /// pre-check lie about a path that always throws on use.
     /// </remarks>
     /// <param name="serviceName">目标服务名 / Target service name</param>
-    /// <returns>端点解析结果非空白时返回 true / Returns true when the resolved endpoint is non-whitespace</returns>
+    /// <returns>恒为 false / Always false</returns>
     public bool IsServiceAvailable(string serviceName)
     {
-        // 当前沿用现有发现键做可用性预判，后续接入 KCP 专属端点后可替换。
-        var endpoint = _endpointResolver.ResolveTcpEndpoint(serviceName);
-        return !string.IsNullOrWhiteSpace(endpoint);
+        return false;
     }
 
     /// <summary>

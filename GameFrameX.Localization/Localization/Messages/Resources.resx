@@ -1477,6 +1477,12 @@
   <data name="RemoteMessaging.Codec.PayloadLengthExceedsLimit" xml:space="preserve">
     <value>Remote message payload length exceeds limit. Payload length: {0}, max: {1}.</value>
   </data>
+  <data name="RemoteMessaging.Transport.SchemeFallbackToTcp" xml:space="preserve">
+    <value>Endpoint scheme '{0}' has no registered transport adapter; service '{1}' falls back to the TCP endpoint.</value>
+  </data>
+  <data name="RemoteMessaging.Transport.KcpTransportNotImplemented" xml:space="preserve">
+    <value>The KCP transport implementation is not wired yet (tracked by a separate change); the call for service '{0}' hit the placeholder adapter.</value>
+  </data>
   <data name="RemoteMessaging.Unified.SenderNotInitialized" xml:space="preserve">
     <value>UnifiedMessageSenderHolder has not been initialized. Call Initialize() first during startup.</value>
   </data>

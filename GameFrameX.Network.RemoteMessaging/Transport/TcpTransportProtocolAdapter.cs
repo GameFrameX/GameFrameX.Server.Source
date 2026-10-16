@@ -68,22 +68,24 @@ internal sealed class TcpTransportProtocolAdapter : ITransportProtocolAdapter
     }
 
     /// <summary>
-    /// 获取或创建目标服务对应的可用 TCP 流：解析服务端点并拆分主机与端口，
+    /// 获取或创建目标服务对应的可用 TCP 流：解析服务的 TCP 端点 URI 并提取主机与端口，
     /// 端点非法时抛出 <see cref="RemoteEndpointNotFoundException"/>，否则委托连接提供器获取或建立流。
     /// </summary>
     /// <remarks>
-    /// Gets an existing or creates a new usable TCP stream for the target service: it resolves the service endpoint
-    /// and splits it into host and port, throws <see cref="RemoteEndpointNotFoundException"/> when the endpoint is invalid,
-    /// and otherwise delegates to the connection provider to get or create the stream.
+    /// Gets an existing or creates a new usable TCP stream for the target service: it resolves the
+    /// service's TCP endpoint URI (<c>services__{ServiceName}__tcp__*</c> key or the advertise
+    /// endpoint) and extracts the host and port through the authoritative <c>EndpointParser</c>,
+    /// throws <see cref="RemoteEndpointNotFoundException"/> when the endpoint is invalid, and
+    /// otherwise delegates to the connection provider to get or create the stream.
     /// </remarks>
     /// <param name="serviceName">目标服务名 / Target service name</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>可用流 / Usable stream</returns>
-    /// <exception cref="RemoteEndpointNotFoundException">服务端点无法解析为主机与端口时抛出 / Thrown when the service endpoint cannot be parsed into host and port</exception>
+    /// <exception cref="RemoteEndpointNotFoundException">服务端点无法解析为合法主机与端口时抛出 / Thrown when the service endpoint cannot be parsed into a valid host and port</exception>
     public async Task<Stream> GetOrCreateStreamAsync(string serviceName, CancellationToken cancellationToken = default)
     {
-        var endpoint = _endpointResolver.ResolveTcpEndpoint(serviceName);
-        if (!TryParseTcpEndpoint(endpoint, out var host, out var port))
+        var endpoint = _endpointResolver.ResolveEndpoint(serviceName, TransportSchemes.Tcp);
+        if (!TryParseEndpoint(endpoint, out var host, out var port))
         {
             throw new RemoteEndpointNotFoundException(serviceName, endpoint);
         }
@@ -92,18 +94,18 @@ internal sealed class TcpTransportProtocolAdapter : ITransportProtocolAdapter
     }
 
     /// <summary>
-    /// 检查目标服务是否可用：解析服务端点并尝试拆分主机与端口，解析成功即视为可用。
+    /// 检查目标服务是否可用：解析服务的 TCP 端点 URI 并尝试提取主机与端口，解析成功即视为可用。
     /// </summary>
     /// <remarks>
-    /// Checks whether the target service is available: it resolves the service endpoint and tries to split it
-    /// into host and port; a successful parse means the service is available.
+    /// Checks whether the target service is available: it resolves the service's TCP endpoint URI
+    /// and tries to extract the host and port; a successful parse means the service is available.
     /// </remarks>
     /// <param name="serviceName">目标服务名 / Target service name</param>
     /// <returns>端点可解析为合法主机与端口时返回 true / Returns true when the endpoint parses into a valid host and port</returns>
     public bool IsServiceAvailable(string serviceName)
     {
-        var endpoint = _endpointResolver.ResolveTcpEndpoint(serviceName);
-        return TryParseTcpEndpoint(endpoint, out _, out _);
+        var endpoint = _endpointResolver.ResolveEndpoint(serviceName, TransportSchemes.Tcp);
+        return TryParseEndpoint(endpoint, out _, out _);
     }
 
     /// <summary>
@@ -142,7 +144,21 @@ internal sealed class TcpTransportProtocolAdapter : ITransportProtocolAdapter
         _connectionProvider.Dispose();
     }
 
-    private static bool TryParseTcpEndpoint(string endpoint, out string host, out int port)
+    /// <summary>
+    /// 通过权威解析面 <see cref="EndpointParser"/> 提取主机与端口；结构非法（缺 scheme、裸 host:port、端口 0 等）返回 false。
+    /// </summary>
+    /// <remarks>
+    /// Extracts the host and port through the authoritative <see cref="EndpointParser"/>; any
+    /// structural violation (missing scheme, bare host:port, port 0, unbracketed IPv6, ...)
+    /// returns false. This retires the previous dual parsing surface (<c>System.Uri</c> with a
+    /// bare host:port fallback and last-colon recovery) in favor of the single endpoint contract
+    /// (AC-4a): a missing scheme or a zero port is now rejected instead of silently repaired.
+    /// </remarks>
+    /// <param name="endpoint">未解析端点 URI 字符串 / The unparsed endpoint URI string</param>
+    /// <param name="host">解析出的主机 / The parsed host</param>
+    /// <param name="port">解析出的端口 / The parsed port</param>
+    /// <returns>解析成功返回 true；否则 false / true when parsed; otherwise false</returns>
+    private static bool TryParseEndpoint(string endpoint, out string host, out int port)
     {
         host = string.Empty;
         port = 0;
@@ -151,26 +167,16 @@ internal sealed class TcpTransportProtocolAdapter : ITransportProtocolAdapter
             return false;
         }
 
-        var normalized = endpoint.Trim();
-        if (!normalized.Contains("://", StringComparison.Ordinal))
+        try
         {
-            normalized = $"tcp://{normalized}";
+            var parsedEndpoint = EndpointParser.Parse(endpoint);
+            host = parsedEndpoint.Host;
+            port = parsedEndpoint.Port;
+            return true;
         }
-
-        if (Uri.TryCreate(normalized, UriKind.Absolute, out var uri))
-        {
-            host = uri.Host;
-            port = uri.Port;
-            return !string.IsNullOrWhiteSpace(host) && port > 0;
-        }
-
-        var lastSeparatorIndex = endpoint.LastIndexOf(':');
-        if (lastSeparatorIndex <= 0 || lastSeparatorIndex >= endpoint.Length - 1)
+        catch (EndpointFormatException)
         {
             return false;
         }
-
-        host = endpoint[..lastSeparatorIndex];
-        return int.TryParse(endpoint[(lastSeparatorIndex + 1)..], out port) && port > 0;
     }
 }

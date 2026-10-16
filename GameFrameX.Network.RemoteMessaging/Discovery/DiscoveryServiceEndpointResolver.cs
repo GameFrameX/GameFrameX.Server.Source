@@ -68,18 +68,20 @@ internal sealed class DiscoveryServiceEndpointResolver : IServiceEndpointResolve
     }
 
     /// <summary>
-    /// 解析指定服务（Role 名）的 TCP 端点地址。
+    /// 解析指定服务（Role 名）的端点 URI：返回首个 Active 实例的 advertiseEndpoint（scheme 由实例声明）。
     /// </summary>
     /// <remarks>
-    /// Resolves the TCP endpoint for the given service (role) name from the Active
-    /// instances of the dual-view table. Same deterministic first-choice policy as
-    /// the router's case 3 (any active instance; and the same ConsistentHashServerInstanceSelector
-    /// upgrade path); no Active instance resolves to an empty string, matching the
-    /// environment variable resolver contract.
+    /// Resolves the endpoint URI for the given service (role) name: returns the advertise
+    /// endpoint of the first Active instance from the dual-view table (the scheme is whatever
+    /// the instance declares; discovery today always advertises <c>tcp://</c>). Same
+    /// deterministic first-choice policy as the router's case 3 (any active instance; and the
+    /// same ConsistentHashServerInstanceSelector upgrade path); no Active instance resolves
+    /// to an empty string, matching the environment variable resolver contract. The value is
+    /// returned unparsed — dial-time consumers parse it with <c>EndpointParser</c>.
     /// </remarks>
     /// <param name="serviceName">目标服务名（动态拓扑下即 Role 名）/ The target service name (the role name in the dynamic topology)</param>
-    /// <returns>端点地址字符串（scheme://host:port）；未找到时返回空字符串 / The endpoint string, or an empty string when not found</returns>
-    public string ResolveTcpEndpoint(string serviceName)
+    /// <returns>未解析端点 URI 字符串（scheme://host:port）；未找到时返回空字符串 / The unparsed endpoint URI string, or an empty string when not found</returns>
+    public string ResolveEndpoint(string serviceName)
     {
         var activeInstances = _tableProvider.Current.GetActiveInstances(serviceName);
         if (activeInstances.Count == 0)
@@ -88,5 +90,33 @@ internal sealed class DiscoveryServiceEndpointResolver : IServiceEndpointResolve
         }
 
         return activeInstances[0].AdvertiseEndpoint;
+    }
+
+    /// <summary>
+    /// 解析指定服务在指定 scheme 下的端点 URI：仅当首个 Active 实例的 advertiseEndpoint scheme 匹配时返回。
+    /// </summary>
+    /// <remarks>
+    /// Resolves the endpoint URI of the given service for the specified scheme: returns the
+    /// first Active instance's advertise endpoint only when its declared scheme matches
+    /// (compared case-insensitively after <c>EndpointParser</c> normalization); otherwise an
+    /// empty string. A dynamic instance advertises exactly one endpoint, so there is no
+    /// same-service multi-scheme selection here.
+    /// </remarks>
+    /// <param name="serviceName">目标服务名（动态拓扑下即 Role 名）/ The target service name (the role name in the dynamic topology)</param>
+    /// <param name="scheme">端点 scheme / The endpoint scheme</param>
+    /// <returns>未解析端点 URI 字符串；scheme 不匹配或未找到时返回空字符串 / The unparsed endpoint URI string; an empty string on scheme mismatch or not found</returns>
+    public string ResolveEndpoint(string serviceName, string scheme)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(scheme);
+
+        var endpoint = ResolveEndpoint(serviceName);
+        if (endpoint.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        return string.Equals(EndpointParser.Parse(endpoint).Scheme, scheme.Trim(), StringComparison.OrdinalIgnoreCase)
+            ? endpoint
+            : string.Empty;
     }
 }

@@ -1475,6 +1475,12 @@
   <data name="RemoteMessaging.Codec.PayloadLengthExceedsLimit" xml:space="preserve">
     <value>远程消息载荷长度超限。载荷长度：{0}，最大：{1}。</value>
   </data>
+  <data name="RemoteMessaging.Transport.SchemeFallbackToTcp" xml:space="preserve">
+    <value>端点 scheme '{0}' 未注册传输适配器，服务 '{1}' 回落使用 TCP 端点。</value>
+  </data>
+  <data name="RemoteMessaging.Transport.KcpTransportNotImplemented" xml:space="preserve">
+    <value>KCP 传输实现尚未接入（另行 change 跟进），服务 '{0}' 本次调用命中占位适配器。</value>
+  </data>
   <data name="RemoteMessaging.Unified.SenderNotInitialized" xml:space="preserve">
     <value>UnifiedMessageSenderHolder 尚未初始化。请在启动期间先调用 Initialize()。</value>
   </data>

@@ -30,20 +30,42 @@
 namespace GameFrameX.Network.RemoteMessaging.Discovery;
 
 /// <summary>
-/// 服务端点解析器。统一从环境变量中解析目标服务的 TCP 地址。
+/// 服务端点解析器。统一把目标服务名解析为未解析的端点 URI（<c>scheme://host:port</c>）。
 /// </summary>
 /// <remarks>
-/// Service endpoint resolver. Uniformly resolves target service TCP addresses from environment variables.
+/// Service endpoint resolver. Uniformly resolves a target service name into an unparsed
+/// endpoint URI (<c>scheme://host:port</c>). The scheme is declared by the endpoint itself
+/// (environment variable key segment, or the advertise endpoint of a discovered instance);
+/// consumers parse it at dial time with <c>EndpointParser</c> and dispatch to the transport
+/// registered for that scheme (C250).
 /// </remarks>
 public interface IServiceEndpointResolver
 {
     /// <summary>
-    /// 解析指定服务的 TCP 端点地址。
+    /// 解析指定服务的端点 URI（确定性偏好序：kcp &gt; ws &gt; wss &gt; tcp）。
     /// </summary>
     /// <remarks>
-    /// Resolves the TCP endpoint address for the specified service.
+    /// Resolves the endpoint URI for the specified service with the deterministic preference
+    /// order kcp &gt; ws &gt; wss &gt; tcp: when the service declares endpoints of several
+    /// schemes at once, the non-tcp scheme wins and tcp stays the universal fallback
+    /// (gradual-migration semantics). Deployments that only configure a tcp endpoint resolve
+    /// exactly that endpoint, byte for byte identical to the previous tcp-only behavior.
     /// </remarks>
     /// <param name="serviceName">目标服务名 / The target service name</param>
-    /// <returns>端点地址字符串（如 "tcp://host:port"）；未找到时返回空字符串 / The endpoint address string (e.g. "tcp://host:port"); returns an empty string when not found</returns>
-    string ResolveTcpEndpoint(string serviceName);
+    /// <returns>未解析端点 URI 字符串（如 "tcp://host:port"）；未找到时返回空字符串 / The unparsed endpoint URI string (e.g. "tcp://host:port"); returns an empty string when not found</returns>
+    string ResolveEndpoint(string serviceName);
+
+    /// <summary>
+    /// 解析指定服务在指定 scheme（tcp/kcp/ws/wss）下的端点 URI。
+    /// </summary>
+    /// <remarks>
+    /// Resolves the endpoint URI of the specified service for the given scheme
+    /// (tcp/kcp/ws/wss, compared case-insensitively). Used by scheme-specific transports and
+    /// by the tcp fallback path; returns an empty string when the service declares no
+    /// endpoint of that scheme.
+    /// </remarks>
+    /// <param name="serviceName">目标服务名 / The target service name</param>
+    /// <param name="scheme">端点 scheme（小写或大小写不敏感）/ The endpoint scheme (case-insensitive)</param>
+    /// <returns>未解析端点 URI 字符串；该 scheme 未声明时返回空字符串 / The unparsed endpoint URI string; returns an empty string when no endpoint of that scheme is declared</returns>
+    string ResolveEndpoint(string serviceName, string scheme);
 }
