@@ -390,6 +390,7 @@ public abstract partial class AppStartUpBase
         var multipleServerHostBuilder = MultipleServerHostBuilder.Create();
         ConfigureTcpServer(multipleServerHostBuilder);
         ConfigureKcpServer(multipleServerHostBuilder);
+        ConfigureInnerKcpServer(multipleServerHostBuilder);
         ConfigureWebSocketServer(multipleServerHostBuilder);
 
         // await StartHttpServerAsync(hostBuilder,baseHandler, httpFactory, aopHandlerTypes, minimumLevelLogLevel);
@@ -573,6 +574,79 @@ public abstract partial class AppStartUpBase
         }
 
         await PackageHandler(session, message);
+    }
+
+    /// <summary>
+    /// 配置服务器间 KCP 监听（C251）：与 <see cref="ConfigureKcpServer"/> 同构（共用消息漏斗与管线过滤器），
+    /// 差异 = 独立端口与开关（<c>IsEnableInnerKcp</c>/<c>InnerKcpPort</c>）、不挂会话鉴权中间件
+    /// （信任级对齐 Inner TCP：内网端点）、挂空闲会话清理（清理窗 300s 严格大于客户端陈旧淘汰阈 240s）。
+    /// </summary>
+    /// <remarks>
+    /// Configures the inter-server KCP listener (C251): structurally identical to
+    /// <see cref="ConfigureKcpServer"/> (shared message funnel and pipeline filter), differing in
+    /// the dedicated port and switch (<c>IsEnableInnerKcp</c>/<c>InnerKcpPort</c>), no session
+    /// authentication middleware (trust level aligned with the inner TCP listener: internal
+    /// endpoints), and idle-session clearing (the 300s clearing window is strictly greater than the
+    /// RemoteMessaging client's 240s stale-eviction threshold). Enabling KCP here does not affect
+    /// deployments that only configure tcp keys (the default dial path stays tcp).
+    /// </remarks>
+    /// <param name="multipleServerHostBuilder">多服务器主机构建器 / Multiple server host builder</param>
+    private void ConfigureInnerKcpServer(MultipleServerHostBuilder multipleServerHostBuilder)
+    {
+        if (!Setting.IsEnableInnerKcp)
+        {
+            // Localization: StartUp.InnerKcp.ServerDisabled - {0} 服务器间 KCP 服务未启用（{1}:{2}），跳过监听器装配（需 IsEnableInnerKcp 显式开启）。
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.InnerKcp.ServerDisabled, ServerType, Setting.InnerHost, Setting.InnerKcpPort));
+            return;
+        }
+
+        // 与客户端接入面同构的端口守卫（0 视为未设置跳过；KCP 为 UDP）
+        if (Setting.InnerKcpPort is > 0 and <= ushort.MaxValue && NetHelper.PortIsAvailable(Setting.InnerKcpPort))
+        {
+            // Localization: StartUp.InnerKcp.StartingServer - 正在启动 {0} 服务器间 KCP 服务，监听 {1}:{2}。
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.InnerKcp.StartingServer, ServerType, Setting.InnerHost, Setting.InnerKcpPort));
+            multipleServerHostBuilder.AddServer<IMessage, MessageObjectPipelineFilter>(builder =>
+            {
+                builder
+                    .UseKcp(o =>
+                    {
+                        // 与 RemoteMessaging 客户端会话对称：消息模式（内核缺省，单帧 ≤8 段整帧交付）；
+                        // 显式窗口 128（内核缺省 32 在多段帧下接收窗口枯竭）；单帧上限守卫见 KcpStream
+                        o.NoDelay = true;
+                        o.Interval = 10;
+                        o.Mtu = 1400;
+                        o.SendWindow = 128;
+                        o.ReceiveWindow = 128;
+                    })
+                    // 空闲会话清理兜底：清理窗 300s 必须大于客户端陈旧淘汰阈 240s（KcpConnectionProvider 时序不变量）
+                    .UseClearIdleSession()
+                    .UseSessionHandler(OnConnected, OnDisconnected)
+                    .UsePackageHandler(PackageHandler, PackageErrorHandler)
+                    .UseInProcSessionContainer()
+                    .ConfigureServices((context, serviceCollection) =>
+                    {
+                        serviceCollection.Configure<ServerOptions>(options =>
+                        {
+                            options.IdleSessionTimeOut = 300;
+                            options.ClearIdleSessionInterval = 60;
+                            var listenOptions = new ListenOptions
+                            {
+                                Ip = "Any",
+                                Port = Setting.InnerKcpPort,
+                            };
+                            options.AddListener(listenOptions);
+                        });
+                    });
+            });
+            // Localization: StartUp.InnerKcp.StartupComplete - {0} 服务器间 KCP 服务已成功启动，监听 {1}:{2}。
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.InnerKcp.StartupComplete, ServerType, Setting.InnerHost, Setting.InnerKcpPort));
+        }
+        else
+        {
+            // Localization: StartUp.InnerKcp.StartupFailed - {0} 服务器间 KCP 服务启动失败（{1}:{2}），端口不可用或越界。
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.InnerKcp.StartupFailed, ServerType, Setting.InnerHost, Setting.InnerKcpPort));
+            LogPortOccupationDetails("InnerKcp", Setting.InnerKcpPort);
+        }
     }
 
     /// <summary>

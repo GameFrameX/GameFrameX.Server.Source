@@ -72,6 +72,7 @@ public static class ConfigStartupValidator
     private static readonly (string PortFieldName, string[] EnableFieldNames, string Transport)[] PortChecks =
     {
         (nameof(AppSetting.KcpPort), new[] { nameof(AppSetting.IsEnableKcp) }, TransportUdp),
+        (nameof(AppSetting.InnerKcpPort), new[] { nameof(AppSetting.IsEnableInnerKcp) }, TransportUdp),
         (nameof(AppSetting.InnerPort), new[] { nameof(AppSetting.IsEnableTcp) }, TransportTcp),
         (nameof(AppSetting.OuterPort), new[] { nameof(AppSetting.IsEnableTcp) }, TransportTcp),
         (nameof(AppSetting.HttpPort), new[] { nameof(AppSetting.IsEnableHttp) }, TransportTcp),

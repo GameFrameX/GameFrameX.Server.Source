@@ -553,6 +553,53 @@ public static partial class Keys
         }
 
         /// <summary>
+        /// 服务器间 KCP 传输（C251 InnerKcpPort 监听）生命周期消息。
+        /// 与客户端接入面 <see cref="Kcp"/> 键组分立：本面无会话鉴权中间件，端口与开关独立（IsEnableInnerKcp / InnerKcpPort）。
+        /// </summary>
+        public static class InnerKcp
+        {
+            /// <summary>
+            /// 服务器间 KCP 服务未启用（需 IsEnableInnerKcp 显式开启） 类型: {0}, 地址: {1}, 端口: {2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.InnerKcp.ServerDisabled
+            /// 用途: 服务器间 KCP 监听未启用时记录（与客户端接入面的 IsEnableKcp 开关互不影响）
+            /// 参数: {0} - 服务器类型, {1} - 地址, {2} - 端口
+            /// </remarks>
+            public const string ServerDisabled = "StartUp.InnerKcp.ServerDisabled";
+
+            /// <summary>
+            /// 正在启动 {0} 服务器间 KCP 服务，监听 {1}:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.InnerKcp.StartingServer
+            /// 用途: 当开始启动服务器间 KCP 监听时记录
+            /// 参数: {0} - 服务器类型, {1} - 地址, {2} - 端口
+            /// </remarks>
+            public const string StartingServer = "StartUp.InnerKcp.StartingServer";
+
+            /// <summary>
+            /// {0} 服务器间 KCP 服务已成功启动，监听 {1}:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.InnerKcp.StartupComplete
+            /// 用途: 当服务器间 KCP 监听启动完成时记录
+            /// 参数: {0} - 服务器类型, {1} - 地址, {2} - 端口
+            /// </remarks>
+            public const string StartupComplete = "StartUp.InnerKcp.StartupComplete";
+
+            /// <summary>
+            /// {0} 服务器间 KCP 服务启动失败（{1}:{2}），端口不可用或越界
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.InnerKcp.StartupFailed
+            /// 用途: 当服务器间 KCP 监听启动失败时记录警告
+            /// 参数: {0} - 服务器类型, {1} - 地址, {2} - 端口
+            /// </remarks>
+            public const string StartupFailed = "StartUp.InnerKcp.StartupFailed";
+        }
+
+        /// <summary>
         /// HTTP服务器相关异常消息
         /// </summary>
         public static class HttpExceptions

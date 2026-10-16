@@ -1219,6 +1219,22 @@
   <data name="StartUp.Kcp.StartupFailed" xml:space="preserve">
     <value>{0} KCP 服务启动失败（{1}:{2}），端口不可用或越界。</value>
   </data>
+  <data name="StartUp.InnerKcp.ServerDisabled" xml:space="preserve">
+    <value>{0} 服务器间 KCP 服务未启用（{1}:{2}），跳过监听器装配（需 IsEnableInnerKcp 显式开启）。</value>
+  </data>
+
+  <data name="StartUp.InnerKcp.StartingServer" xml:space="preserve">
+    <value>正在启动 {0} 服务器间 KCP 服务，监听 {1}:{2}。</value>
+  </data>
+
+  <data name="StartUp.InnerKcp.StartupComplete" xml:space="preserve">
+    <value>{0} 服务器间 KCP 服务已成功启动，监听 {1}:{2}。</value>
+  </data>
+
+  <data name="StartUp.InnerKcp.StartupFailed" xml:space="preserve">
+    <value>{0} 服务器间 KCP 服务启动失败（{1}:{2}），端口不可用或越界。</value>
+  </data>
+
 
 <data name="Database.PostgreSql.InitializationFailed" xml:space="preserve">
     <value>PostgreSqlService初始化失败，连接目标：{0}，注册名：{1}</value>
@@ -1490,9 +1506,10 @@
   <data name="RemoteMessaging.Transport.SchemeFallbackToTcp" xml:space="preserve">
     <value>端点 scheme '{0}' 未注册传输适配器，服务 '{1}' 回落使用 TCP 端点。</value>
   </data>
-  <data name="RemoteMessaging.Transport.KcpTransportNotImplemented" xml:space="preserve">
-    <value>KCP 传输实现尚未接入（另行 change 跟进），服务 '{0}' 本次调用命中占位适配器。</value>
+  <data name="RemoteMessaging.Transport.KcpFrameSizeExceeded" xml:space="preserve">
+    <value>KCP 传输单帧上限 {1} 字节，本次帧 {0} 字节；更大载荷请使用 tcp 端点。</value>
   </data>
+
   <data name="RemoteMessaging.Unified.SenderNotInitialized" xml:space="preserve">
     <value>UnifiedMessageSenderHolder 尚未初始化。请在启动期间先调用 Initialize()。</value>
   </data>

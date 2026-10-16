@@ -426,6 +426,25 @@ public class AppSetting
     public int KcpPort { get; set; } = 0;
 
     /// <summary>
+    /// 是否启用服务器间 KCP 传输（C251 InnerKcpPort 监听面；与客户端接入面的 IsEnableKcp 互不影响）
+    /// </summary>
+    /// <remarks>
+    /// Whether to enable the inter-server KCP transport (the InnerKcpPort listener face;
+    /// independent of the client-access IsEnableKcp switch). Default is false.
+    /// </remarks>
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
+    public bool IsEnableInnerKcp { get; set; } = false;
+
+    /// <summary>
+    /// 服务器间 KCP 监听端口（UDP；0 = 不启用）
+    /// </summary>
+    /// <remarks>
+    /// Inter-server KCP listener port (UDP). Default is 0 (disabled).
+    /// </remarks>
+    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
+    public int InnerKcpPort { get; set; } = 0;
+
+    /// <summary>
     /// 内部主机地址
     /// </summary>
     /// <remarks>

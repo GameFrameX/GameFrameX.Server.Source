@@ -16,7 +16,11 @@
          由 DiscoveryRoutingWire 在组合侧装配。 -->
     <ItemGroup>
         <ProjectReference Include="..\GameFrameX.Discovery\GameFrameX.Discovery.csproj"/>
+        <!-- C251：服务器间 KCP 传输内核（与客户端接入面 StartUp/Client 同版本同源；
+             仅消费 KcpPipeConnection 内核与选项类型，不引入 SuperSocket 服务端宿主依赖方向） -->
+        <PackageReference Include="GameFrameX.SuperSocket.Kcp" Version="1.3.0"/>
     </ItemGroup>
+
 
     <!-- 依赖方向裁定（用户决策）：本程序集禁止引用数据库实现程序集（GameFrameX.DataBase.Mongo / GameFrameX.DataBase.PostgreSql），
          也不直接引用驱动包；发现层的驱动相关实现（*EndpointRegistry / *EndpointWatcher / *DiscoveryRuntime / *PlayerRoute*）

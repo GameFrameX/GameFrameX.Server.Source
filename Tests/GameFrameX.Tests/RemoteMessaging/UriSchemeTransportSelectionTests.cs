@@ -314,25 +314,26 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  ④ KCP 占位真实可用性
+    //  ④ KCP 真实现注册语义（C251 起占位退役；占位期「恒 false/恒抛」语义随之删除，不重钉）
     // ─────────────────────────────────────────────────────────────
 
     [Fact]
-    public void KcpPlaceholder_IsServiceAvailable_ShouldAlwaysReturnFalse()
+    public async Task Builder_KcpKeyOnly_UseKcpTransportAdapter_AvailableThroughKcpAdapter()
     {
-        var adapter = new KcpTransportProtocolAdapter();
+        // 注册真 kcp 适配器后 kcp 端点由其服务（对照：未注册时同键不可用，见 Builder_KcpKeyOnly_DefaultBuild_UnresolvableThroughFallback）
+        SetEnvironmentEndpoint("C250BuilderKcpReal", "kcp", "kcp://10.0.0.2:7002");
+        var client = new RemoteMessagingBuilder().UseKcpTransportAdapter().Build();
 
-        Assert.False(adapter.IsServiceAvailable("C250Any"));
+        Assert.True(await client.IsServiceAvailableAsync("C250BuilderKcpReal"));
     }
 
     [Fact]
-    public async Task KcpPlaceholder_GetOrCreateStream_ShouldThrowNotSupportedException()
+    public async Task Builder_TcpKeyOnly_UseKcpTransportAdapter_TcpPathUnaffected()
     {
-        var adapter = new KcpTransportProtocolAdapter();
+        SetEnvironmentEndpoint("C250BuilderTcpReal", "tcp", "tcp://10.0.0.1:7001");
+        var client = new RemoteMessagingBuilder().UseKcpTransportAdapter().Build();
 
-        var exception = await Assert.ThrowsAsync<NotSupportedException>(
-            () => adapter.GetOrCreateStreamAsync("C250Any"));
-        Assert.Contains("C250Any", exception.Message);
+        Assert.True(await client.IsServiceAvailableAsync("C250BuilderTcpReal"));
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -418,25 +419,6 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
         Assert.False(await client.IsServiceAvailableAsync("C250BuilderKcp"));
     }
 
-    [Fact]
-    public async Task Builder_TcpAndKcpKeys_UseKcpPlaceholder_HitsPlaceholderInsteadOfTcpFallback()
-    {
-        // AC：注册 kcp 占位后，kcp 端点命中占位（IsServiceAvailable=false），不再回落 tcp（否则应为 true）。
-        SetEnvironmentEndpoint("C250BuilderPh", "tcp", "tcp://10.0.0.1:7001");
-        SetEnvironmentEndpoint("C250BuilderPh", "kcp", "kcp://10.0.0.2:7002");
-        var client = new RemoteMessagingBuilder().UseKcpTransportAdapterPlaceholder().Build();
-
-        Assert.False(await client.IsServiceAvailableAsync("C250BuilderPh"));
-    }
-
-    [Fact]
-    public async Task Builder_TcpKeyOnly_UseKcpPlaceholder_TcpPathUnaffected()
-    {
-        SetEnvironmentEndpoint("C250BuilderTcp", "tcp", "tcp://10.0.0.1:7001");
-        var client = new RemoteMessagingBuilder().UseKcpTransportAdapterPlaceholder().Build();
-
-        Assert.True(await client.IsServiceAvailableAsync("C250BuilderTcp"));
-    }
 
     [Fact]
     public async Task Builder_WithTransportAdapterFactory_UniversalAdapterServesKcpEndpoint()

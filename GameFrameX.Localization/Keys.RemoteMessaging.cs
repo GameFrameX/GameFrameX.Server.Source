@@ -336,16 +336,15 @@ public static partial class Keys
             /// 参数: {0} - 端点 scheme, {1} - 服务名
             /// </remarks>
             public const string SchemeFallbackToTcp = "RemoteMessaging.Transport.SchemeFallbackToTcp";
-
             /// <summary>
-            /// KCP 传输实现尚未接入（另行 change 跟进），服务 '{0}' 本次调用命中占位适配器
+            /// KCP 传输单帧上限 {1} 字节，本次帧 {0} 字节；更大载荷请使用 tcp 端点
             /// </summary>
             /// <remarks>
-            /// 键名: RemoteMessaging.Transport.KcpTransportNotImplemented
-            /// 用途: KCP 占位适配器创建流时抛出的 NotSupportedException 消息
-            /// 参数: {0} - 服务名
+            /// 键名: RemoteMessaging.Transport.KcpFrameSizeExceeded
+            /// 用途: KCP 传输适配器写侧的单帧上限守卫（内核多段吞吐病态边界，超限快速失败优于分钟级爬行）
+            /// 参数: {0} - 帧字节数, {1} - 单帧上限
             /// </remarks>
-            public const string KcpTransportNotImplemented = "RemoteMessaging.Transport.KcpTransportNotImplemented";
+            public const string KcpFrameSizeExceeded = "RemoteMessaging.Transport.KcpFrameSizeExceeded";
         }
 
         /// <summary>

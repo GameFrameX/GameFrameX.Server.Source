@@ -216,6 +216,8 @@ GameFrameX uses command-line arguments (`--Key=Value`) for configuration. All co
 | `IsEnableUdp`       | Enable UDP service                        | `false`      | `true`       |
 | `IsEnableKcp`       | Enable KCP service (config file only)     | `false`       | `true`       |
 | `KcpPort`           | KCP port (`0` shares the TCP port)        | `0`           | `29120`      |
+| `IsEnableInnerKcp`  | Enable inter-server KCP listener (C251)    | `false`      | `false`      |
+| `InnerKcpPort`      | Inter-server KCP port (UDP, `0` = off)     | `0`          | `29220`      |
 | `IsEnableWebSocket` | Enable WebSocket                          | `false`      | `true`       |
 | `WsPort`            | WebSocket port                            | `8889`       | `29300`      |
 | `IsEnableHttp`      | Enable HTTP service                       | `true`       | `true`       |
@@ -586,6 +588,9 @@ environment:
 ```
 
 Endpoint values are `scheme://host:port` URIs. The scheme segment of the key (`tcp` / `kcp` / `ws` / `wss`) declares the transport: at dial time the remote-messaging client parses the endpoint and dispatches to the adapter registered for that scheme. A service may publish both a tcp and a kcp endpoint (`services__{Role}__kcp__0`) — the kcp endpoint is preferred, and callers without a registered KCP adapter fall back to the tcp endpoint with a one-time warning.
+
+**Inter-server KCP transport (C251).** The `kcp` scheme is a real transport since C251: register the adapter with `UseKcpTransportAdapter()` on `RemoteMessagingBuilder` and point a service at `kcp://host:port`. The receiving side is a dedicated inter-server KCP listener (`IsEnableInnerKcp` + `InnerKcpPort`, independent of the client-access `IsEnableKcp`/`KcpPort` face; no session authentication middleware — inner-endpoint trust level matches the inner TCP listener). Sizing contract: KCP targets latency-critical small RPC frames — a single frame is bounded at 8 KCP segments (11,008 bytes at Mtu 1400); larger frames are rejected fast with an explicit connection-level error and should declare a tcp endpoint instead (the receiving funnel caps single frames at ~64KB on both transports anyway). Loopback baseline (200 serial round trips, C251 benchmark): kcp ≈ 27ms/round + 4.7ms CPU/round vs tcp ≈ 0.34ms/round + 0.5ms CPU/round — KCP pays for its reliability machinery and is the choice for lossy/cross-DC links, not for loopback-style low-latency LANs where TCP dominates.
+
 
 #### Custom Build
 

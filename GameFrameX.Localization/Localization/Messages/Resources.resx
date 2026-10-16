@@ -1221,6 +1221,22 @@
   <data name="StartUp.Kcp.StartupFailed" xml:space="preserve">
     <value>KCP server for {0} failed to start on {1}:{2}. Port unavailable or out of range.</value>
   </data>
+  <data name="StartUp.InnerKcp.ServerDisabled" xml:space="preserve">
+    <value>Inter-server KCP listener is disabled for {0} on {1}:{2}. Skipping listener setup (opt-in via IsEnableInnerKcp).</value>
+  </data>
+
+  <data name="StartUp.InnerKcp.StartingServer" xml:space="preserve">
+    <value>Starting inter-server KCP listener for {0} on {1}:{2}.</value>
+  </data>
+
+  <data name="StartUp.InnerKcp.StartupComplete" xml:space="preserve">
+    <value>Inter-server KCP listener for {0} started successfully on {1}:{2}.</value>
+  </data>
+
+  <data name="StartUp.InnerKcp.StartupFailed" xml:space="preserve">
+    <value>Inter-server KCP listener for {0} failed to start on {1}:{2}. Port unavailable or out of range.</value>
+  </data>
+
 
 <data name="Database.PostgreSql.InitializationFailed" xml:space="preserve">
     <value>PostgreSqlService initialization failed. Connection target: {0}, registered name: {1}</value>
@@ -1492,9 +1508,10 @@
   <data name="RemoteMessaging.Transport.SchemeFallbackToTcp" xml:space="preserve">
     <value>Endpoint scheme '{0}' has no registered transport adapter; service '{1}' falls back to the TCP endpoint.</value>
   </data>
-  <data name="RemoteMessaging.Transport.KcpTransportNotImplemented" xml:space="preserve">
-    <value>The KCP transport implementation is not wired yet (tracked by a separate change); the call for service '{0}' hit the placeholder adapter.</value>
+  <data name="RemoteMessaging.Transport.KcpFrameSizeExceeded" xml:space="preserve">
+    <value>KCP transport per-frame bound is {1} bytes; this frame is {0} bytes. Use a tcp endpoint for larger payloads.</value>
   </data>
+
   <data name="RemoteMessaging.Unified.SenderNotInitialized" xml:space="preserve">
     <value>UnifiedMessageSenderHolder has not been initialized. Call Initialize() first during startup.</value>
   </data>

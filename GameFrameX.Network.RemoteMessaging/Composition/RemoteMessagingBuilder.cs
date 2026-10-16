@@ -179,18 +179,22 @@ public sealed class RemoteMessagingBuilder
     }
 
     /// <summary>
-    /// 注册 KCP 适配器占位实现（仅接线验证：<c>IsServiceAvailable</c> 恒 false，调用即抛 <see cref="NotSupportedException"/>；KCP 真实现另行 change）。
+    /// 注册 KCP 适配器真实现（服务器间 KCP 传输：每会话独占 UDP Socket 与 conv，
+    /// 消息模式（内核缺省）整帧交付 + 单帧上限 8 段守卫，帧语义与 TCP 路径一致；可与其他 <c>UseXxx</c> 叠加注册）。
     /// </summary>
     /// <remarks>
-    /// Registers the placeholder KCP adapter (wiring verification only: <c>IsServiceAvailable</c>
-    /// always returns false and calls throw <see cref="NotSupportedException"/>; the real KCP
-    /// transport arrives in a separate change). Stackable with other <c>UseXxx</c> registrations;
-    /// the default tcp registration stays active as the fallback transport.
+    /// Registers the real KCP adapter (the inter-server KCP transport: one dedicated UDP socket and
+    /// conversation id per session, message mode (kernel default) whole-frame delivery with a
+    /// single-frame 8-segment bound, framing identical to the TCP path;
+    /// stackable with other <c>UseXxx</c> registrations). The KCP session pool is independent of
+    /// the TCP connection provider passed to the factory (UDP lifecycles are not shared); the
+    /// default tcp registration stays active as the fallback transport.
     /// </remarks>
     /// <returns>构建器实例 / The builder instance</returns>
-    public RemoteMessagingBuilder UseKcpTransportAdapterPlaceholder()
+    public RemoteMessagingBuilder UseKcpTransportAdapter()
     {
-        _transportAdapters[TransportSchemes.Kcp] = static (_, _) => new KcpTransportProtocolAdapter();
+        // KCP 会话池与共享的 TCP 连接提供器独立（第二参数不消费）：每会话独占 UDP Socket，生命周期互不共享
+        _transportAdapters[TransportSchemes.Kcp] = static (resolver, _) => new KcpTransportProtocolAdapter(resolver, new KcpConnectionProvider());
         return this;
     }
 
