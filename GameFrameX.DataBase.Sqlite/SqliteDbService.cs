@@ -51,10 +51,12 @@ namespace GameFrameX.DataBase.Sqlite;
 /// （跨进程发现/路由不可用，发现层由 <c>InProcDiscoveryRuntime</c> 以自指路由表替代）；
 /// ④ Availability 恒报 Healthy。生产规模化使用风险由使用方自担。
 ///
-/// Degraded members (documented on purpose, C222 裁定):
+/// Degraded members (documented on purpose, C222 裁定; C253 修订):
 /// <see cref="AvailabilityState"/> always reports <see cref="DatabaseAvailabilityState.Healthy"/> (embedded
-/// engine, no network partition semantics); retry policy is single-pass direct execution (no retry loops);
-/// there is no background recovery task (a local file either opens or fails fast during <c>Open</c>).
+/// engine, no network partition semantics); data operations retry transient busy/locked/timeout failures
+/// through the shared <c>DbResilienceExecutor</c> (C253) while the transaction shell stays single-pass
+/// (ambient joins make blind retries unsafe); there is no background recovery task (a local file
+/// either opens or fails fast during <c>Open</c>).
 /// </remarks>
 public sealed partial class SqliteDbService : IDatabaseService
 {

@@ -229,7 +229,7 @@ public sealed partial class MongoDbService
                 await action().ConfigureAwait(false);
                 return;
             }
-            catch (Exception exception) when (ShouldRetryTransactionException(exception) && attempt < _transactionRetryDelaysMilliseconds.Length)
+            catch (Exception exception) when (ExceptionClassifier.ShouldRetryTransaction(exception) && attempt < _transactionRetryDelaysMilliseconds.Length)
             {
                 lastException = exception;
                 var delay = _transactionRetryDelaysMilliseconds[attempt] + Random.Shared.Next(0, 120);
@@ -270,7 +270,7 @@ public sealed partial class MongoDbService
                 await session.CommitTransactionAsync(cancellationToken).ConfigureAwait(false);
                 return;
             }
-            catch (Exception exception) when (ShouldRetryTransactionCommit(exception) && attempt < _transactionRetryDelaysMilliseconds.Length)
+            catch (Exception exception) when (ExceptionClassifier.ShouldRetryTransactionCommit(exception) && attempt < _transactionRetryDelaysMilliseconds.Length)
             {
                 lastException = exception;
                 var delay = _transactionRetryDelaysMilliseconds[attempt] + Random.Shared.Next(0, 120);

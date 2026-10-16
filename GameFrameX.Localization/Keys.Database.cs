@@ -589,6 +589,26 @@ public static partial class Keys
             /// 用途: Open 之前调用读写的编程错误护栏（启动路径 Open 失败即 fail-fast，正常不可达）
             /// </remarks>
             public const string ServiceUnavailable = "Database.Sqlite.ServiceUnavailable";
+
+            /// <summary>
+            /// SqliteDbService.{0} 瞬时错误，重试 {1}/{2}。error={3}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.Sqlite.OperationTransientError
+            /// 用途: 共享弹性引擎（C253）遇 busy/locked/timeout 瞬时错误重试时的 Warning 日志
+            /// 参数: {0} - 操作名称, {1} - 当前重试次数, {2} - 最大重试次数, {3} - 异常消息
+            /// </remarks>
+            public const string OperationTransientError = "Database.Sqlite.OperationTransientError";
+
+            /// <summary>
+            /// SqliteDbService.{0}重试失败，未知异常。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.Sqlite.OperationRetryFailed
+            /// 用途: 共享弹性引擎（C253）全部重试耗尽后抛出的 DatabaseUnavailableException 消息
+            /// 参数: {0} - 操作名称
+            /// </remarks>
+            public const string OperationRetryFailed = "Database.Sqlite.OperationRetryFailed";
         }
     }
 }

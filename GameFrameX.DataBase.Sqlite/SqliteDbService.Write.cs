@@ -46,7 +46,8 @@ namespace GameFrameX.DataBase.Sqlite;
 /// times and seeds UpdateCount; Update advances them; upserts replace whole documents and revive
 /// soft-deleted rows; SaveBulkAsync persists timestamps verbatim). Transactions run on the single
 /// connection — a nested transaction shell joins the ambient transaction instead of opening a
-/// second one (SQLite cannot nest); retry policy is single-pass by design (degraded member, C222).
+/// second one (SQLite cannot nest); data operations retry via the shared resilience engine (C253)
+/// while the transaction shell itself stays single-pass (ambient joins make blind retries unsafe).
 /// </remarks>
 public sealed partial class SqliteDbService
 {
@@ -84,12 +85,12 @@ public sealed partial class SqliteDbService
         state.CreatedTime = currentTime;
         state.UpdateTime = currentTime;
         state.UpdateCount ??= 0;
-        await ExecuteGatedAsync(async () =>
+        await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
             using var command = BuildInsertCommand<TState>(state);
             await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        }).ConfigureAwait(false);
+        }), cancellationToken, nameof(AddAsync), false).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -136,7 +137,7 @@ public sealed partial class SqliteDbService
             cacheState.UpdateCount ??= 0;
         }
 
-        await ExecuteGatedAsync(async () =>
+        await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
             await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
@@ -148,7 +149,7 @@ public sealed partial class SqliteDbService
             }
 
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-        }).ConfigureAwait(false);
+        }), cancellationToken, nameof(AddListAsync), false).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -189,12 +190,12 @@ public sealed partial class SqliteDbService
 
         state.UpdateTime = currentTime;
         state.UpdateCount = (state.UpdateCount ?? 0) + 1;
-        await ExecuteGatedAsync(async () =>
+        await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
             using var command = BuildUpsertCommand<TState>(state);
             await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        }).ConfigureAwait(false);
+        }), cancellationToken, nameof(AddOrUpdateAsync), true).ConfigureAwait(false);
         state.SaveToDbPostHandler();
         return state;
     }
@@ -247,7 +248,7 @@ public sealed partial class SqliteDbService
             state.UpdateCount = (state.UpdateCount ?? 0) + 1;
         }
 
-        await ExecuteGatedAsync(async () =>
+        await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
             await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
@@ -259,7 +260,7 @@ public sealed partial class SqliteDbService
             }
 
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-        }).ConfigureAwait(false);
+        }), cancellationToken, nameof(AddOrUpdateListAsync), true).ConfigureAwait(false);
         foreach (var state in stateArray)
         {
             state.SaveToDbPostHandler();
@@ -407,12 +408,12 @@ public sealed partial class SqliteDbService
         {
             state.UpdateTime = GetCurrentTimestamp();
             state.UpdateCount = (state.UpdateCount ?? 0) + 1;
-            var updated = await ExecuteGatedAsync(async () =>
+            var updated = await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
             {
                 await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
                 using var command = BuildReplaceDocumentCommand<TState>(state);
                 return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) > 0;
-            }).ConfigureAwait(false);
+            }), cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
             if (updated)
             {
                 state.SaveToDbPostHandler();
@@ -477,7 +478,7 @@ public sealed partial class SqliteDbService
             return 0;
         }
 
-        var anyRowWritten = await ExecuteGatedAsync(async () =>
+        var anyRowWritten = await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
             var written = false;
@@ -491,7 +492,7 @@ public sealed partial class SqliteDbService
 
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
             return written;
-        }).ConfigureAwait(false);
+        }), cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
         if (anyRowWritten)
         {
             foreach (var state in cacheStates)
@@ -577,7 +578,7 @@ public sealed partial class SqliteDbService
             return 0;
         }
 
-        return await ExecuteGatedAsync(() => ExecuteUpdatePartialCoreAsync<TState>(id, setFields, removedKeys, cancellationToken)).ConfigureAwait(false);
+        return await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(() => ExecuteUpdatePartialCoreAsync<TState>(id, setFields, removedKeys, cancellationToken)), cancellationToken, nameof(UpdatePartialAsync), true).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -672,7 +673,7 @@ public sealed partial class SqliteDbService
 
         state.DeleteTime = GetCurrentTimestamp();
         state.IsDeleted = true;
-        return await ExecuteSoftDeleteByIdAsync<TState>(state.Id, state.DeleteTime.GetValueOrDefault(), cancellationToken).ConfigureAwait(false);
+        return await ExecuteSoftDeleteByIdAsync<TState>(state.Id, state.DeleteTime.GetValueOrDefault(), cancellationToken, nameof(DeleteAsync)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -705,7 +706,7 @@ public sealed partial class SqliteDbService
         EnsureOpen();
         state.DeleteTime = GetCurrentTimestamp();
         state.IsDeleted = true;
-        return await ExecuteSoftDeleteByIdAsync<TState>(state.Id, state.DeleteTime.GetValueOrDefault(), cancellationToken).ConfigureAwait(false);
+        return await ExecuteSoftDeleteByIdAsync<TState>(state.Id, state.DeleteTime.GetValueOrDefault(), cancellationToken, nameof(DeleteAsync)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -748,7 +749,7 @@ public sealed partial class SqliteDbService
         {
             state.DeleteTime = deleteTime;
             state.IsDeleted = true;
-            modifiedCount += await ExecuteSoftDeleteByIdAsync<TState>(state.Id, deleteTime, cancellationToken).ConfigureAwait(false);
+            modifiedCount += await ExecuteSoftDeleteByIdAsync<TState>(state.Id, deleteTime, cancellationToken, nameof(DeleteListAsync)).ConfigureAwait(false);
         }
 
         return modifiedCount;
@@ -792,7 +793,7 @@ public sealed partial class SqliteDbService
 
         var distinctIds = idArray.Distinct().ToArray();
         var deleteTime = GetCurrentTimestamp();
-        return await ExecuteGatedAsync(async () =>
+        return await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
             var rows = await ReadRowsRawAsync<TState>(BuildIdInCommand<TState>(distinctIds), cancellationToken).ConfigureAwait(false);
@@ -813,7 +814,7 @@ public sealed partial class SqliteDbService
 
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
             return (long)rows.Count;
-        }).ConfigureAwait(false);
+        }), cancellationToken, nameof(DeleteListIdAsync), true).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -845,7 +846,7 @@ public sealed partial class SqliteDbService
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
         var predicate = BuildPredicate(filter, includeDeleted: true, out _);
-        return await ExecuteGatedAsync(async () =>
+        return await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
             var rows = await ReadRowsRawAsync<TState>(BuildSelectAllCommand<TState>(), cancellationToken).ConfigureAwait(false);
@@ -875,7 +876,7 @@ public sealed partial class SqliteDbService
 
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
             return (long)ids.Count;
-        }).ConfigureAwait(false);
+        }), cancellationToken, nameof(HardDeleteAsync), true).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -909,7 +910,7 @@ public sealed partial class SqliteDbService
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
         var compiled = filter?.Compile();
-        return await ExecuteGatedAsync(async () =>
+        return await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
             var rows = await ReadRowsRawAsync<TState>(BuildSelectAllCommand<TState>(), cancellationToken).ConfigureAwait(false);
@@ -939,17 +940,19 @@ public sealed partial class SqliteDbService
 
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
             return (long)restored.Count;
-        }).ConfigureAwait(false);
+        }), cancellationToken, nameof(RestoreAsync), true).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// 在事务中执行操作（单连接事务壳 BEGIN → action → COMMIT；嵌套事务壳加入环境事务；单次直通不重试，退化语义）。
+    /// 在事务中执行操作（单连接事务壳 BEGIN → action → COMMIT；嵌套事务壳加入环境事务；事务壳单次直通，数据操作另经共享弹性引擎重试）。
     /// </summary>
     /// <remarks>
     /// Executes the action inside a transaction on the single connection (BEGIN → action → COMMIT).
     /// A nested shell inside an active transaction simply joins it (SQLite cannot nest transactions;
-    /// the ambient operations already run on the same connection). Retry policy is single-pass direct
-    /// execution by design — the degraded SQLite semantics documented in the class remarks.
+    /// the ambient operations already run on the same connection). The shell itself runs single-pass
+    /// by design — retrying a shell that joined an ambient transaction would replay the action inside
+    /// the outer transaction; the data operations it wraps retry individually via the shared
+    /// resilience engine (C253).
     /// </remarks>
     /// <param name="action">要在事务中执行的操作 / The action to execute inside the transaction</param>
     /// <returns>异步任务 / Async task</returns>
@@ -960,13 +963,15 @@ public sealed partial class SqliteDbService
     }
 
     /// <summary>
-    /// 在事务中执行操作（单连接事务壳 BEGIN → action → COMMIT；嵌套事务壳加入环境事务；单次直通不重试，退化语义）。
+    /// 在事务中执行操作（单连接事务壳 BEGIN → action → COMMIT；嵌套事务壳加入环境事务；事务壳单次直通，数据操作另经共享弹性引擎重试）。
     /// </summary>
     /// <remarks>
     /// Executes the action inside a transaction on the single connection (BEGIN → action → COMMIT).
     /// A nested shell inside an active transaction simply joins it (SQLite cannot nest transactions;
-    /// the ambient operations already run on the same connection). Retry policy is single-pass direct
-    /// execution by design — the degraded SQLite semantics documented in the class remarks.
+    /// the ambient operations already run on the same connection). The shell itself runs single-pass
+    /// by design — retrying a shell that joined an ambient transaction would replay the action inside
+    /// the outer transaction; the data operations it wraps retry individually via the shared
+    /// resilience engine (C253).
     /// </remarks>
     /// <param name="action">要在事务中执行的操作 / The action to execute inside the transaction</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
@@ -1019,10 +1024,11 @@ public sealed partial class SqliteDbService
     /// <param name="id">数据ID / The document ID</param>
     /// <param name="deleteTime">删除时间戳 / The deletion timestamp</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <param name="operationName">操作名称（指标与日志）/ Operation name for metrics and logging</param>
     /// <returns>实际删除的数量 / The deleted count</returns>
-    private async Task<long> ExecuteSoftDeleteByIdAsync<TState>(long id, long deleteTime, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    private async Task<long> ExecuteSoftDeleteByIdAsync<TState>(long id, long deleteTime, CancellationToken cancellationToken, string operationName) where TState : BaseCacheState, new()
     {
-        return await ExecuteGatedAsync(async () =>
+        return await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
             var rows = await ReadRowsRawAsync<TState>(BuildIdEqualsCommand<TState>(id), cancellationToken).ConfigureAwait(false);
@@ -1044,7 +1050,7 @@ public sealed partial class SqliteDbService
             using var command = BuildReplaceDocumentCommand<TState>(document);
             await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
             return 1L;
-        }).ConfigureAwait(false);
+            }), cancellationToken, operationName, true).ConfigureAwait(false);
     }
 
     /// <summary>

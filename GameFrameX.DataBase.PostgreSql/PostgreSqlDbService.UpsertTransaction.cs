@@ -313,7 +313,7 @@ public sealed partial class PostgreSqlDbService
                 await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
                 return;
             }
-            catch (Exception exception) when (ShouldRetryTransactionException(exception) && attempt < _transactionRetryDelaysMilliseconds.Length)
+            catch (Exception exception) when (ExceptionClassifier.ShouldRetryTransaction(exception) && attempt < _transactionRetryDelaysMilliseconds.Length)
             {
                 lastException = exception;
                 var delay = _transactionRetryDelaysMilliseconds[attempt] + Random.Shared.Next(0, 120);

@@ -80,7 +80,7 @@ public sealed partial class SqliteDbService
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
         var predicate = BuildPredicate(filter, includeDeleted: false, out _);
-        var states = await ReadRowsAsync<TState>(id, cancellationToken).ConfigureAwait(false);
+        var states = await ReadRowsAsync<TState>(id, cancellationToken, nameof(FindAsync)).ConfigureAwait(false);
         TState state = null;
         foreach (var candidate in states)
         {
@@ -124,7 +124,7 @@ public sealed partial class SqliteDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
-        var states = await ReadMatchingAsync(filter, includeDeleted: false, cancellationToken).ConfigureAwait(false);
+        var states = await ReadMatchingAsync(filter, includeDeleted: false, cancellationToken, nameof(FindAsync)).ConfigureAwait(false);
         TState state = null;
         if (states.Count > 0)
         {
@@ -162,7 +162,7 @@ public sealed partial class SqliteDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
-        var result = await ReadMatchingAsync(filter, includeDeleted: false, cancellationToken).ConfigureAwait(false);
+        var result = await ReadMatchingAsync(filter, includeDeleted: false, cancellationToken, nameof(FindListAsync)).ConfigureAwait(false);
         foreach (var state in result)
         {
             state?.LoadFromDbPostHandler();
@@ -207,7 +207,7 @@ public sealed partial class SqliteDbService
 
         var visible = BuildPredicate<TState>(null, includeDeleted: false, out _);
         var result = new List<TState>(idArray.Length);
-        await ExecuteGatedAsync(async () =>
+        await ExecuteReadWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
             var rows = await ReadRowsRawAsync<TState>(BuildIdInCommand<TState>(idArray), cancellationToken).ConfigureAwait(false);
@@ -218,7 +218,7 @@ public sealed partial class SqliteDbService
                     result.Add(state);
                 }
             }
-        }).ConfigureAwait(false);
+        }), cancellationToken, nameof(FindByIdsAsync)).ConfigureAwait(false);
         foreach (var state in result)
         {
             state?.LoadFromDbPostHandler();
@@ -264,7 +264,7 @@ public sealed partial class SqliteDbService
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
         NormalizePaging(ref pageIndex, ref pageSize);
-        var matched = await ReadMatchingAsync(filter, includeDeleted: false, cancellationToken).ConfigureAwait(false);
+        var matched = await ReadMatchingAsync(filter, includeDeleted: false, cancellationToken, nameof(FindPageAsync)).ConfigureAwait(false);
         var total = matched.Count;
         var items = ApplySort(matched, sortExpression, descending).Skip(pageIndex * pageSize).Take(pageSize).ToList();
         foreach (var state in items)
@@ -309,7 +309,7 @@ public sealed partial class SqliteDbService
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
         ArgumentNullException.ThrowIfNull(selector);
-        var states = await ReadMatchingAsync(filter, includeDeleted: false, cancellationToken).ConfigureAwait(false);
+        var states = await ReadMatchingAsync(filter, includeDeleted: false, cancellationToken, nameof(FindProjectedAsync)).ConfigureAwait(false);
         var projector = selector.Compile();
         var result = new List<TResult>(states.Count);
         foreach (var state in states)
@@ -348,7 +348,7 @@ public sealed partial class SqliteDbService
     /// <returns>第一个匹配的元素 / The first matching element</returns>
     public async Task<TState> FindSortAscendingFirstOneAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        return await FindSortFirstOneAsync<TState>(filter, sortExpression, false, cancellationToken).ConfigureAwait(false);
+        return await FindSortFirstOneAsync<TState>(filter, sortExpression, false, cancellationToken, nameof(FindSortAscendingFirstOneAsync)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -379,7 +379,7 @@ public sealed partial class SqliteDbService
     /// <returns>第一个匹配的元素 / The first matching element</returns>
     public async Task<TState> FindSortDescendingFirstOneAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        return await FindSortFirstOneAsync<TState>(filter, sortExpression, true, cancellationToken).ConfigureAwait(false);
+        return await FindSortFirstOneAsync<TState>(filter, sortExpression, true, cancellationToken, nameof(FindSortDescendingFirstOneAsync)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -414,7 +414,7 @@ public sealed partial class SqliteDbService
     /// <returns>缓存状态列表 / The state list</returns>
     public async Task<List<TState>> FindSortDescendingAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, int pageIndex, int pageSize, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        return await FindSortPagedAsync<TState>(filter, sortExpression, true, pageIndex, pageSize, cancellationToken).ConfigureAwait(false);
+        return await FindSortPagedAsync<TState>(filter, sortExpression, true, pageIndex, pageSize, cancellationToken, nameof(FindSortDescendingAsync)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -449,7 +449,7 @@ public sealed partial class SqliteDbService
     /// <returns>缓存状态列表 / The state list</returns>
     public async Task<List<TState>> FindSortAscendingAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, int pageIndex, int pageSize, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        return await FindSortPagedAsync<TState>(filter, sortExpression, false, pageIndex, pageSize, cancellationToken).ConfigureAwait(false);
+        return await FindSortPagedAsync<TState>(filter, sortExpression, false, pageIndex, pageSize, cancellationToken, nameof(FindSortAscendingAsync)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -478,7 +478,7 @@ public sealed partial class SqliteDbService
     /// <returns>数据数量 / The count</returns>
     public async Task<long> CountAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        return await CountCoreAsync<TState>(filter, includeDeleted: false, cancellationToken).ConfigureAwait(false);
+        return await CountCoreAsync<TState>(filter, includeDeleted: false, cancellationToken, nameof(CountAsync)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -509,7 +509,7 @@ public sealed partial class SqliteDbService
     /// <returns>数据数量 / The count</returns>
     public async Task<long> CountAsync<TState>(Expression<Func<TState, bool>> filter, bool includeDeleted, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
-        return await CountCoreAsync<TState>(filter, includeDeleted, cancellationToken).ConfigureAwait(false);
+        return await CountCoreAsync<TState>(filter, includeDeleted, cancellationToken, nameof(CountAsync)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -540,7 +540,7 @@ public sealed partial class SqliteDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
-        var states = await ReadMatchingAsync(filter, includeDeleted: false, cancellationToken).ConfigureAwait(false);
+        var states = await ReadMatchingAsync(filter, includeDeleted: false, cancellationToken, nameof(AnyAsync)).ConfigureAwait(false);
         return states.Count > 0;
     }
 
@@ -574,7 +574,7 @@ public sealed partial class SqliteDbService
         EnsureOpen();
         var visible = BuildPredicate<TState>(null, includeDeleted: false, out _);
         var found = false;
-        await ExecuteGatedAsync(async () =>
+        await ExecuteReadWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
             var rows = await ReadRowsRawAsync<TState>(BuildIdEqualsCommand<TState>(id), cancellationToken).ConfigureAwait(false);
@@ -586,7 +586,7 @@ public sealed partial class SqliteDbService
                     break;
                 }
             }
-        }).ConfigureAwait(false);
+        }), cancellationToken, nameof(ExistsByIdAsync)).ConfigureAwait(false);
         return found;
     }
 
@@ -601,12 +601,12 @@ public sealed partial class SqliteDbService
     /// <param name="sortExpression">排序表达式 / The sort expression</param>
     /// <param name="descending">是否降序 / Whether descending</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
-    /// <returns>第一个匹配的元素 / The first matching element</returns>
-    private async Task<TState> FindSortFirstOneAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, bool descending, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    /// <param name="operationName">操作名称（指标与日志）/ Operation name for metrics and logging</param>
+    private async Task<TState> FindSortFirstOneAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, bool descending, CancellationToken cancellationToken, string operationName) where TState : BaseCacheState, new()
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
-        var matched = await ReadMatchingAsync(filter, includeDeleted: false, cancellationToken).ConfigureAwait(false);
+        var matched = await ReadMatchingAsync(filter, includeDeleted: false, cancellationToken, operationName).ConfigureAwait(false);
         var state = ApplySort(matched, sortExpression, descending).FirstOrDefault();
         state?.LoadFromDbPostHandler();
         return state;
@@ -625,13 +625,13 @@ public sealed partial class SqliteDbService
     /// <param name="pageIndex">页索引（从 0 开始）/ The page index (0-based)</param>
     /// <param name="pageSize">页大小 / The page size</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
-    /// <returns>缓存状态列表 / The state list</returns>
-    private async Task<List<TState>> FindSortPagedAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, bool descending, int pageIndex, int pageSize, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    /// <param name="operationName">操作名称（指标与日志）/ Operation name for metrics and logging</param>
+    private async Task<List<TState>> FindSortPagedAsync<TState>(Expression<Func<TState, bool>> filter, Expression<Func<TState, object>> sortExpression, bool descending, int pageIndex, int pageSize, CancellationToken cancellationToken, string operationName) where TState : BaseCacheState, new()
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
         NormalizePaging(ref pageIndex, ref pageSize);
-        var matched = await ReadMatchingAsync(filter, includeDeleted: false, cancellationToken).ConfigureAwait(false);
+        var matched = await ReadMatchingAsync(filter, includeDeleted: false, cancellationToken, operationName).ConfigureAwait(false);
         var result = ApplySort(matched, sortExpression, descending).Skip(pageIndex * pageSize).Take(pageSize).ToList();
         foreach (var state in result)
         {
@@ -651,12 +651,12 @@ public sealed partial class SqliteDbService
     /// <param name="filter">过滤表达式 / The filter expression</param>
     /// <param name="includeDeleted">是否包含软删数据 / Whether to include soft-deleted documents</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
-    /// <returns>数据数量 / The count</returns>
-    private async Task<long> CountCoreAsync<TState>(Expression<Func<TState, bool>> filter, bool includeDeleted, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    /// <param name="operationName">操作名称（指标与日志）/ Operation name for metrics and logging</param>
+    private async Task<long> CountCoreAsync<TState>(Expression<Func<TState, bool>> filter, bool includeDeleted, CancellationToken cancellationToken, string operationName) where TState : BaseCacheState, new()
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
-        var states = await ReadMatchingAsync(filter, includeDeleted, cancellationToken).ConfigureAwait(false);
+        var states = await ReadMatchingAsync(filter, includeDeleted, cancellationToken, operationName).ConfigureAwait(false);
         return states.Count;
     }
 
@@ -672,26 +672,26 @@ public sealed partial class SqliteDbService
     /// <param name="filter">契约过滤表达式 / The contract filter</param>
     /// <param name="includeDeleted">是否包含软删数据 / Whether to include soft-deleted documents</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
-    /// <returns>匹配的状态列表 / The matching states</returns>
-    private async Task<List<TState>> ReadMatchingAsync<TState>(Expression<Func<TState, bool>> filter, bool includeDeleted, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    /// <param name="operationName">操作名称（指标与日志）/ Operation name for metrics and logging</param>
+    private async Task<List<TState>> ReadMatchingAsync<TState>(Expression<Func<TState, bool>> filter, bool includeDeleted, CancellationToken cancellationToken, string operationName) where TState : BaseCacheState, new()
     {
         var predicate = BuildPredicate(filter, includeDeleted, out var pushedDownId);
         List<TState> rows;
         if (pushedDownId.HasValue)
         {
-            rows = await ExecuteGatedAsync<List<TState>>(async () =>
+            rows = await ExecuteReadWithRetryAsync(async _ => await ExecuteGatedAsync<List<TState>>(async () =>
             {
                 await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
                 return await ReadRowsRawAsync<TState>(BuildIdEqualsCommand<TState>(pushedDownId.Value), cancellationToken).ConfigureAwait(false);
-            }).ConfigureAwait(false);
+            }), cancellationToken, operationName).ConfigureAwait(false);
         }
         else
         {
-            rows = await ExecuteGatedAsync<List<TState>>(async () =>
+            rows = await ExecuteReadWithRetryAsync(async _ => await ExecuteGatedAsync<List<TState>>(async () =>
             {
                 await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
                 return await ReadRowsRawAsync<TState>(BuildSelectAllCommand<TState>(), cancellationToken).ConfigureAwait(false);
-            }).ConfigureAwait(false);
+            }), cancellationToken, operationName).ConfigureAwait(false);
         }
 
         var result = new List<TState>(rows.Count);
@@ -715,14 +715,14 @@ public sealed partial class SqliteDbService
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="id">数据ID / The document ID</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
-    /// <returns>该 id 的行（0 或 1 条）/ The rows for the id (0 or 1)</returns>
-    private async Task<List<TState>> ReadRowsAsync<TState>(long id, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    /// <param name="operationName">操作名称（指标与日志）/ Operation name for metrics and logging</param>
+    private async Task<List<TState>> ReadRowsAsync<TState>(long id, CancellationToken cancellationToken, string operationName) where TState : BaseCacheState, new()
     {
-        return await ExecuteGatedAsync<List<TState>>(async () =>
+        return await ExecuteReadWithRetryAsync(async _ => await ExecuteGatedAsync<List<TState>>(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
             return await ReadRowsRawAsync<TState>(BuildIdEqualsCommand<TState>(id), cancellationToken).ConfigureAwait(false);
-        }).ConfigureAwait(false);
+        }), cancellationToken, operationName).ConfigureAwait(false);
     }
 
     /// <summary>

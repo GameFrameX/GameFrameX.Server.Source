@@ -16,6 +16,8 @@
 
 ### Added
 
+* DB 弹性收敛为共享弹性引擎（C253）：新增 `GameFrameX.DataBase/Abstractions/DbResilienceExecutor`——降级读前置检查、写门控（入口 + 每次尝试复检）、指数延迟 + jitter 重试核心环、三指标（`db_operation_retry_total` / `db_operation_fail_total` / `db_operation_latency_ms`）与最终失败包装的单一事实源；契约面 = `IDbResilienceHost`（可用性状态参数化，Mongo/PG 私有嵌套适配器零公共 API 增长，Abstractions 另供恒 Healthy 宿主）+ `IDbOperationExceptionClassifier`（语句级 `IsRetryable` / 事务级 `ShouldRetryTransaction*` / `GetFailureReason`）+ `DbResilienceExecutorOptions`（文案工厂与测试缝注入）。Mongo/PG `*.Retry.cs` 收敛为分类器（`MongoDbExceptionClassifier` / `PostgreSqlDbExceptionClassifier`，`TransientSqlStates` 随迁）+ 薄包装接线，行为等价（指标仪表名/tag 逐字节不变，provider 维度由既有 Meter 名承载，不新增 tag）；SQLite 全套弹性首次生效：`SqliteDbExceptionClassifier`（busy=5/locked=6 + timeout）+ `SqliteDbService.Retry.cs` + 21 处数据操作点接入（operationName 与幂等旗标对齐 Mongo/PG；事务壳保持单次直通，嵌套壳语义下盲目重试不安全）。契约矩阵 `DbResilienceExecutorContractTests`：同一延迟序列/异常注入下三家重试次数、退避序列、降级读触发、写门控拒绝、三指标计数逐项一致（假时钟 + 脚本化宿主，无外部依赖）
+
 * SQLite 嵌入式零依赖起步 Provider（C222）：新工程 GameFrameX.DataBase.Sqlite（手写 Microsoft.Data.Sqlite，无 EF；每状态类型一张 (id INTEGER PRIMARY KEY, doc TEXT)，id 等值提取下推 + 剩余 filter 客户端求值，软删/时间戳语义对齐 Mongo/PG）；DatabaseProviderType.Sqlite + 双 resolver 映射；GameFrameX.Discovery 增 InProcDiscoveryRuntime（单进程自指路由表，心跳 no-op）；启动警告制（四条硬边界 + 风险自担，进程内仅一次）+ 数据文件全路径信息行 + 路径可写校验 fail-fast；启动 banner 携带 provider=Sqlite；两仓 quick_start-game.bat 改零依赖命令并清除 Atlas 凭据；Dockerfile /app/data 归属 $APP_UID。定位：快速入门 / 开发评估 / 单机小规模（单进程拓扑），一条命令起服：`--AllInOne --DatabaseProvider=Sqlite --DataBaseUrl="Data Source=data/gameframex.db"`
 
 * Online 能力组合单入口与 "Online" 配置段（C229 / C227 P2a）：新增 `AddOnlineCapabilities(Action<OnlineCapabilityCompositionOptions>)` 单入口（GameFrameX.Online.Runtime 过渡壳静态入口，P4 随壳退役换各包 AddXxx）——作用域三元组/调度间隔/双闸（EnableRuntime/EnableAdminApi）/管理面监听/能力过滤器统一经回调承载，一次调用产出业务运行时与管理面双产物；admin-only 形态接入同一配置段（排除/白名单外条目在目录报告如实反映，业务 action 仍一律 4003）；`AppSetting.Online` 嵌套强类型配置段（OnlineCapabilityOptions POCO：Capabilities 白名单/Disable 排除表，null 或空=全装配红线；未知 Id 与白名单闭包缺口组合期 fail-fast）经既有 json 反序列化通道捕获；CLI 平铺别名 `--OnlineCapabilities` / `--OnlineDisable`（逗号列表，GetServerTypes 同款投影，仅无配置段 Role 回落档生效）；Launcher 双闸迁移到单入口（四组合行为与 C228 交付态逐项等价，启停顺序与边界日志语句级保持）；P2 期入口内部仍显式链式装配（过渡模块有参构造，反射扫描发现不了），模块无参化后同一入口自然升级为真扫描（P4 终态）
@@ -59,6 +61,18 @@
 ### Changed
 
 * 升级 GameFrameX.Foundation 全部包引用 4.1.1 → 5.0.0（C224，7 项目 13 处）；StartUp 新增 GameFrameX.Foundation.Logger.GrafanaLoki 组件包，GameApp 的 Grafana Loki 接线迁移为 UseGrafanaLoki 显式注册（Url/用户名/密码取自 CLI 选项、Labels 取自 GrafanaLokiLabelTag 反射收集，LogIsGrafanaLoki=false 时零注册；CLI 选项面与 sink 默认值与 4.1.1 一致）。Foundation.Logger 5.0.0 起不再传递 MongoDB.Driver / Serilog.Sinks.MongoDB（Serilog.Sinks.Grafana.Loki 仅由 Logger.GrafanaLoki 组件包引入）
+
+### Bug Fixes
+
+* WorkerActor 超时不再破坏 Actor 串行不变量（P0-A#1 / C238）：`InnerRun` 超时放行等待方后邮箱继续等待孤儿任务完成，而非放任下一条消息并发进入同一 Actor（数据竞争根因）；孤儿超过硬上限（10×TimeOut）仍无结束迹象才隔离该 Actor——新增 `WorkerActor.IsQuarantined`，隔离后新入队与排队中工作单元以 InvalidOperationException 快速失败，需经宿主回收重建恢复。同批修复三类同源故障掩蔽/污染（等待方契约变更，消息泵 BaseMessageHandler 三层 catch 兜底不受影响）：超时改以 TimeoutException 传递等待方（原为 TrySetResult(false/default) 假成功，调用方拿到 null 当正常值用）；工作单元异常改传播给等待方（原吞异常后以 default(T) 假成功）；`WorkWrapper.ResetContext` 改条件重置（仅链 ID 仍归属本工作单元时清零），孤儿任务/被拒入队工作单元不再误清后继消息的链上下文（原会令重入调用误判入队自等待 → 级联超时）。另修复 Enqueue/SendAsync 调试限流路径 `return default`（null Task）在调用方 await 时必然 NRE 的问题，改为跳过语义的已完成任务
+* Actor 工作单元执行期协作取消（P0-A#1 / C238）：新增 `RuntimeContext.CurrentCancellationToken`（AsyncLocal，随异步流流转，默认 CancellationToken.None）——WorkerActor 执行期为每个工作单元创建联动取消源（调用方令牌 + 超时 CancelAfter 合并），业务代码与 IO 层读取该令牌即可在超时或调用方取消时快速收尾，缩短孤儿任务占用邮箱的窗口；`Enqueue/SendAsync/Tell` 的 `cancellationToken` 参数由此同时具备「取消排队」与「取消执行」两层语义
+
+### Performance
+
+* RemoteMessageClient 移除全局串行信号量，服务器间 RPC 全面并发化（P0-A#2 / C239）：原 `SemaphoreSlim(1,1)` 使 `CallAsync`/`SendOneWayAsync` 全进程串行（连接获取+响应等待全程持锁，多进程拓扑下所有服务器间 RPC 吞吐被锁死且无死锁保护）。新模型：每条连接一个专属接收泵（`DecodeAsync` 循环 → 请求-响应匹配器 `TryComplete` 路由）+ 每连接写入门控（同连接帧写入串行化、跨连接完全并行）；等待方经既有 `WaitResponseAsync`（此前为死代码）按 UniqueId 收响应，同一连接可承载任意多并发在途请求
+* TcpConnectionProvider 单条 TCP 长连接改为按 endpoint 连接池（P0-A#3 / C239）：每 endpoint 独立成池（默认上限 4 条，构造参数可调），并发需求驱动懒建（顺序调用保持单连接复用，并发调用按需扩展），轮询分发；连接级故障仅精准移除该连接（`IConnectionProvider.Invalidate(Stream)`/`ITransportProtocolAdapter.Invalidate(Stream)` 增量接口），不再全量断连。顺带修复旧实现隐藏缺陷：全进程单连接槽位在多 endpoint 交替调用时每次断连重连
+* 连接死亡快速失败（P0-A#2#3 / C239）：接收泵退出时经新增 `IRequestResponseMatcher.TryFail` 立即以 IOException 失败该连接上全部挂起请求（等待方收到可重试的 ConnectionFailed 而非干等超时），连接级异常（IO/Socket）仅失效当前连接、其余异常保守全量失效；新增本地化键 `RemoteMessaging.Client.ConnectionClosed`
+* 新增 `RemoteMessageClientConcurrencyTests`（3 用例）：屏障式假服务端证明并发请求不再全局串行（旧实现必然全体超时）且扇出多连接；连接读后即断场景验证快速失败 + 池仅移除死亡连接后重建成功；双服务交替调用验证按 endpoint 连接复用（各 1 条连接，旧实现每次断连重连）
 ## [1.13.7] - 2026-08-05
 
 ### Bug Fixes

@@ -1292,6 +1292,12 @@
   <data name="Database.Sqlite.ServiceUnavailable" xml:space="preserve">
     <value>SqliteDbService 尚未打开（请先调用 Open）。</value>
   </data>
+  <data name="Database.Sqlite.OperationTransientError" xml:space="preserve">
+    <value>SqliteDbService.{0} 瞬时错误，重试 {1}/{2}。error={3}</value>
+  </data>
+  <data name="Database.Sqlite.OperationRetryFailed" xml:space="preserve">
+    <value>SqliteDbService.{0}重试失败，未知异常。</value>
+  </data>
   <data name="Database.BatchSizeInvalid" xml:space="preserve">
     <value>批处理大小必须大于 0。</value>
   </data>

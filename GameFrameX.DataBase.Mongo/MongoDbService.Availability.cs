@@ -106,7 +106,7 @@ public sealed partial class MongoDbService
 
             if (_consecutiveFailures >= _degradedToUnhealthyFailureThreshold)
             {
-                ChangeAvailabilityState(DatabaseAvailabilityState.Unhealthy, $"consecutive_failures={_consecutiveFailures};reason={GetFailureReason(exception)}");
+                ChangeAvailabilityState(DatabaseAvailabilityState.Unhealthy, $"consecutive_failures={_consecutiveFailures};reason={ExceptionClassifier.GetFailureReason(exception)}");
                 EnsureRecoveryTaskStarted();
             }
         }

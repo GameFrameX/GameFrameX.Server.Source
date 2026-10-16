@@ -1294,6 +1294,12 @@
   <data name="Database.Sqlite.ServiceUnavailable" xml:space="preserve">
     <value>SqliteDbService is not open yet (call Open first).</value>
   </data>
+  <data name="Database.Sqlite.OperationTransientError" xml:space="preserve">
+    <value>SqliteDbService.{0} transient error, retry {1}/{2}. error={3}</value>
+  </data>
+  <data name="Database.Sqlite.OperationRetryFailed" xml:space="preserve">
+    <value>SqliteDbService.{0} failed after all retries with unknown exception.</value>
+  </data>
   <data name="Database.BatchSizeInvalid" xml:space="preserve">
     <value>Batch size must be greater than zero.</value>
   </data>

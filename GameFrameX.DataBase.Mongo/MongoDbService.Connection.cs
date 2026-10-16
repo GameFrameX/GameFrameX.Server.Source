@@ -133,7 +133,7 @@ public sealed partial class MongoDbService
             }
         }
 
-        DbOperationFailTotal.Add(1, new TagList { { "op", "open" }, { "name", nameof(Open) }, { "reason", GetFailureReason(lastException) }, });
+        DbOperationFailTotal.Add(1, new TagList { { "op", "open" }, { "name", nameof(Open) }, { "reason", ExceptionClassifier.GetFailureReason(lastException) }, });
         DbOperationLatencyMilliseconds.Record(openStopwatch.Elapsed.TotalMilliseconds, new TagList { { "op", "open" }, { "name", nameof(Open) }, { "success", false }, });
         // Localization: Database.Mongo.OpenExceptionFatal - MongoDbService.Open 异常 {0} {1} {2}
         LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Database.Mongo.OpenExceptionFatal, dbOptions.Name, connectionTarget, lastException));
