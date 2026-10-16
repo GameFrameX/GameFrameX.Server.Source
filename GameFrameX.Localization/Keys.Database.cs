@@ -257,6 +257,23 @@ public static partial class Keys
         /// </remarks>
         public const string BatchSizeInvalid = "Database.BatchSizeInvalid";
         /// <summary>
+        /// 状态对象的 Id（{0}）与目标 id（{1}）不一致。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.ConditionalWrite.StateIdMismatch
+        /// 用途: UpdateIfRowVersionAsync 的 state.Id 与入参 id 不一致时抛出（三 provider 共用，C247）
+        /// 参数: {0} - state.Id, {1} - 目标 id
+        /// </remarks>
+        public const string ConditionalWriteStateIdMismatch = "Database.ConditionalWrite.StateIdMismatch";
+        /// <summary>
+        /// 序列名不能为 null 或空白。
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.ConditionalWrite.SequenceNameRequired
+        /// 用途: NextSequenceAsync 的 sequenceName 为 null 或空白时抛出（三 provider 共用，C247）
+        /// </remarks>
+        public const string ConditionalWriteSequenceNameRequired = "Database.ConditionalWrite.SequenceNameRequired";
+        /// <summary>
         /// 必须设置 ConnectionName。
         /// </summary>
         /// <remarks>

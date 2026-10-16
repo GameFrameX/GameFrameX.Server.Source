@@ -1301,6 +1301,12 @@
   <data name="Database.BatchSizeInvalid" xml:space="preserve">
     <value>批处理大小必须大于 0。</value>
   </data>
+  <data name="Database.ConditionalWrite.StateIdMismatch" xml:space="preserve">
+    <value>状态对象的 Id（{0}）与目标 id（{1}）不一致。</value>
+  </data>
+  <data name="Database.ConditionalWrite.SequenceNameRequired" xml:space="preserve">
+    <value>序列名不能为 null 或空白。</value>
+  </data>
   <data name="Database.Discovery.ConnectionNameRequired" xml:space="preserve">
     <value>必须设置 ConnectionName。</value>
   </data>

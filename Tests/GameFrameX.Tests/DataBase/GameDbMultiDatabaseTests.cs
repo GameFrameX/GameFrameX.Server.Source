@@ -581,5 +581,35 @@ public class GameDbMultiDatabaseTests : IDisposable
             throw new NotSupportedException($"NoConnectionDatabaseService does not implement AnyAsync.");
         }
 
+        public Task<bool> UpdateIfRowVersionAsync<TState>(long id, long expectedRowVersion, TState state) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement UpdateIfRowVersionAsync.");
+        }
+
+        public Task<bool> UpdateIfRowVersionAsync<TState>(long id, long expectedRowVersion, TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement UpdateIfRowVersionAsync.");
+        }
+
+        public Task<bool> TryAddUniqueAsync<TState>(TState state, Expression<Func<TState, bool>> uniqueFilter) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement TryAddUniqueAsync.");
+        }
+
+        public Task<bool> TryAddUniqueAsync<TState>(TState state, Expression<Func<TState, bool>> uniqueFilter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement TryAddUniqueAsync.");
+        }
+
+        public Task<long> NextSequenceAsync<TState>(string sequenceName) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement NextSequenceAsync.");
+        }
+
+        public Task<long> NextSequenceAsync<TState>(string sequenceName, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement NextSequenceAsync.");
+        }
+
     }
 }

@@ -1303,6 +1303,12 @@
   <data name="Database.BatchSizeInvalid" xml:space="preserve">
     <value>Batch size must be greater than zero.</value>
   </data>
+  <data name="Database.ConditionalWrite.StateIdMismatch" xml:space="preserve">
+    <value>The state Id ({0}) does not match the target id ({1}).</value>
+  </data>
+  <data name="Database.ConditionalWrite.SequenceNameRequired" xml:space="preserve">
+    <value>The sequence name must not be null or whitespace.</value>
+  </data>
   <data name="Database.Discovery.ConnectionNameRequired" xml:space="preserve">
     <value>ConnectionName must be set.</value>
   </data>
