@@ -21,10 +21,7 @@ namespace GameFrameX.Tests.Discovery;
 /// consumes from the host application layer, and the <see cref="PlayerRouteInfo"/>
 /// factory methods. Tier 2 control-database and Tier 3 offline paths run against
 /// Mongo and live in <c>MongoPlayerRouteIntegrationTests</c>; the resolver's
-/// per-instance CAS upsert is also covered there. The dedupe primitive
-/// (<c>PerInstanceDedupe</c>) is left to its native callers — its behavior is
-/// already covered by integration tests that exercise the real cross-server
-/// send path.
+/// per-instance CAS upsert is also covered there.
 /// </remarks>
 public sealed class MongoPlayerRouteResolverTests
 {
