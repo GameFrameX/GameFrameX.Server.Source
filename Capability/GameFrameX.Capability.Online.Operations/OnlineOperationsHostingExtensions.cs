@@ -33,6 +33,7 @@ using GameFrameX.Capability.Online.Operations.HotfixRollback;
 
 namespace GameFrameX.Capability.Online.Operations;
 
+/// <summary>
 /// 运营聚合能力包的 hosting 扩展（C232 P5）：<see cref="AddOnlineOperationsRuntime"/> 装配入口（回调式，
 /// 注册自装配模块）、三个存储替换缝（<see cref="UseOnlineAuditStore"/> / <see cref="UseOnlineHotfixVersionStore"/> /
 /// <see cref="UseOnlineHotfixRollbackExecutor"/>）与登记期制品获取器缝（<see cref="UseOnlineHotfixArtifactFetcher"/>，C248）。

@@ -500,7 +500,7 @@ The hot update system implements runtime loading and unloading of assemblies thr
 
 1. **Compile New Logic**: Build the updated `GameFrameX.Hotfix.dll`
 2. **Deploy Assembly**: Copy to the server's specified directory
-3. **Trigger Reload**: Initiate a hot update request via HTTP endpoint
+3. **Trigger Switch**: Issue the controlled switch command via the Online admin API (see below)
 4. **Assembly Loading**: `HotfixManager` loads the new DLL using a collectible `AssemblyLoadContext`
 5. **Type Scanning**: `HotfixModule` scans the new assembly for agents, handlers, and event listeners
 6. **Agent Switching**: `ActorManager.ClearAgent()` clears cached agent instances
@@ -508,12 +508,25 @@ The hot update system implements runtime loading and unloading of assemblies thr
 
 #### Hot Update API
 
+Runtime hot-update version switching is exposed **only** through the Online admin API (the legacy
+`game/api/Reload` HTTP endpoint has been retired):
+
 ```bash
-# Trigger hot update (with specified version)
-curl -X POST "http://localhost:28080/game/api/Reload?version=1.7.2"
+# Register the new version manifest (optional artifact fields: ArtifactSourceUrl + ArtifactSha256)
+curl -X POST "http://localhost:28090/online/admin/register_hotfix_manifest" \
+  -H "Content-Type: application/json" \
+  -d '{"TenantId":1,"AppId":1,"ServerId":1001,"Version":"1.7.2"}'
+
+# Controlled switch to the target version (audit-first, protocol-compatibility gated, idempotent)
+curl -X POST "http://localhost:28090/online/admin/rollback_hotfix_version" \
+  -H "Content-Type: application/json" \
+  -d '{"TenantId":1,"AppId":1,"ServerId":1001,"TargetVersion":"1.7.2","OperatorId":"admin-001","Reason":"deploy 1.7.2","IdempotencyKey":"switch-1.7.2-001"}'
 ```
 
-> Note: the `Reload` handler is marked `[RequireHttpSignature]` — the request must pass HTTP signature validation before it is accepted.
+> Note: the admin plane (`online/admin/*`, port 28090) has **no** HTTP signature validation yet — it
+> relies on deployment-side port isolation (keep the admin port off the public game-port exposure).
+> Related read-only/drill actions: `activate_hotfix_version` (baseline activation) and
+> `check_hotfix_compatibility` (read-only pre-check).
 
 ---
 
@@ -550,7 +563,7 @@ Service port mapping:
 
 When `IsEnableOnlineAdmin=true`, the Game process assembles the Online Runtime (in-process capability library: asset / session / match / social / LiveOps services on in-memory stores) and exposes the admin HTTP API on an independent Kestrel listener:
 
-- Endpoint: `POST http://<server-host>:28090/online/admin/{action}` (all 29 admin actions, HTTP status is always 200; business results travel in the inner envelope `Code`)
+- Endpoint: `POST http://<server-host>:28090/online/admin/{action}` (all 33 admin actions plus the `list_capabilities` meta endpoint, HTTP status is always 200; business results travel in the inner envelope `Code`)
 - Scope triple: each request carries `TenantId` / `AppId` / `ServerId`; requests that do not match the authorized `OnlineTenantId` / `OnlineAppId` / `ServerId` are rejected with 3002/3003/3004, missing triple with 3005
 - Registering the server in the GameFrameX Admin console: set the area's `HttpManageUrl` to `http://<server-host>:28090` (the `online/admin` prefix and the action name are appended by the Admin client, per its wire contract)
 

@@ -83,12 +83,12 @@ namespace GameFrameX.Capability.Online.Operations;
 public sealed class OnlineOperationsCapabilityModule : ICapabilityModule, IAdminActionContributor
 {
     /// <summary>
-    /// 运营聚合能力清单（Id 冻结 = 终态包名；action 集合与幂等包裹位逐字迁移自壳过渡模块）。
+    /// 运营聚合能力清单（Id 冻结 = 终态包名；查询域 action 迁移自壳过渡模块，Hotfix 受控操作族为 C256 新增）。
     /// </summary>
     public static readonly CapabilityManifest ManifestInstance = new(
         "online-operations",
         "1.0.0",
-        new[] { "query_online_overview", "query_player_timeline", "query_online_audit_events" },
+        new[] { "query_online_overview", "query_player_timeline", "query_online_audit_events", "register_hotfix_manifest", "activate_hotfix_version", "check_hotfix_compatibility", "rollback_hotfix_version" },
         new[] { "online-foundation", "online-assets", "online-social", "online-match", "online-matchmaking" });
 
     /// <summary>
@@ -105,6 +105,11 @@ public sealed class OnlineOperationsCapabilityModule : ICapabilityModule, IAdmin
     /// 玩家时间线（Register 期构造；叶子能力缺席时为 null，handler 不可达语义对齐壳时代）。
     /// </summary>
     private OnlinePlayerTimelineService _timeline;
+
+    /// <summary>
+    /// Hotfix 回滚受控服务（Register 期构造；幂等基建缺席时不装配 = null，admin action 不可达）。
+    /// </summary>
+    private OnlineHotfixRollbackService _hotfixRollback;
 
     /// <inheritdoc />
     public CapabilityManifest Manifest
@@ -139,7 +144,8 @@ public sealed class OnlineOperationsCapabilityModule : ICapabilityModule, IAdmin
             var hotfixVersionStore = ResolveStore<IOnlineHotfixVersionStore>(context, static () => new InMemoryOnlineHotfixVersionStore());
             var rollbackExecutor = context.TryGetService(out IOnlineHotfixRollbackExecutor hotfixRollbackExecutor) ? hotfixRollbackExecutor : null;
             var artifactFetcher = context.TryGetService(out IOnlineHotfixArtifactFetcher hotfixArtifactFetcher) ? hotfixArtifactFetcher : null;
-            context.AddService(new OnlineHotfixRollbackService(hotfixVersionStore, idempotency, audit, rollbackExecutor, artifactFetcher, eventPublisher));
+            _hotfixRollback = new OnlineHotfixRollbackService(hotfixVersionStore, idempotency, audit, rollbackExecutor, artifactFetcher, eventPublisher);
+            context.AddService(_hotfixRollback);
         }
 
         // 总览 / 时间线（叶子产物探测；地基三 store 经替换缝探测，未命中构造 InMemory 默认）。
@@ -188,6 +194,7 @@ public sealed class OnlineOperationsCapabilityModule : ICapabilityModule, IAdmin
     public void RegisterAdminActions(AdminActionRegistry registry)
     {
         OnlineAdminConsoleHandlers.RegisterConsoleActions(registry, _overview, _timeline, _audit);
+        OnlineAdminHotfixHandlers.RegisterHotfixActions(registry, _hotfixRollback);
     }
 
     /// <summary>

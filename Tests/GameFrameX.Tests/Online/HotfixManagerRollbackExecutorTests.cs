@@ -56,6 +56,7 @@ namespace GameFrameX.Tests.Online;
 /// 版本目录以 GUID 命名落测试 bin 目录；同类内测试串行（共享 <see cref="HotfixManager"/> 进程级状态）。
 /// </para>
 /// </summary>
+[Collection(HotfixManagerStaticStateCollection.Name)]
 public sealed class HotfixManagerRollbackExecutorTests : IDisposable
 {
     /// <summary>测试用租户标识。</summary>

@@ -475,7 +475,7 @@ internal sealed class PlayerLoginEventHandler : EventListener<PlayerComponentAge
 
 1. **编译新逻辑**：构建更新后的 `GameFrameX.Hotfix.dll`
 2. **部署程序集**：复制到服务器指定目录
-3. **触发重载**：通过 HTTP 端点发起热更新请求
+3. **触发切换**：经 Online admin 通道发起受控切换命令（见下）
 4. **程序集加载**：`HotfixManager` 使用可回收的 `AssemblyLoadContext` 加载新 DLL
 5. **类型扫描**：`HotfixModule` 扫描新程序集中的代理、处理器、事件监听器
 6. **代理切换**：`ActorManager.ClearAgent()` 清除缓存的代理实例
@@ -483,12 +483,23 @@ internal sealed class PlayerLoginEventHandler : EventListener<PlayerComponentAge
 
 #### 热更新 API
 
+运行期热更版本切换**仅**经 Online admin 通道触发（旧 `game/api/Reload` HTTP 端点已退役）：
+
 ```bash
-# 触发热更新（指定版本号）
-curl -X POST "http://localhost:28080/game/api/Reload?version=1.7.2"
+# 登记新版本清单（可携制品字段：ArtifactSourceUrl + ArtifactSha256）
+curl -X POST "http://localhost:28090/online/admin/register_hotfix_manifest" \
+  -H "Content-Type: application/json" \
+  -d '{"TenantId":1,"AppId":1,"ServerId":1001,"Version":"1.7.2"}'
+
+# 受控切换到目标版本（审计先行、协议兼容闸、幂等）
+curl -X POST "http://localhost:28090/online/admin/rollback_hotfix_version" \
+  -H "Content-Type: application/json" \
+  -d '{"TenantId":1,"AppId":1,"ServerId":1001,"TargetVersion":"1.7.2","OperatorId":"admin-001","Reason":"发布 1.7.2","IdempotencyKey":"switch-1.7.2-001"}'
 ```
 
-> 注：`Reload` 处理器已标记 `[RequireHttpSignature]`，请求必须通过 HTTP 签名校验后才会被接受。
+> 注：admin 面（`online/admin/*`，端口 28090）暂无 HTTP 签名校验——依赖部署侧端口隔离（admin 端口不得与
+> 公网游戏端口同面暴露）。相关只读 / 演练 action：`activate_hotfix_version`（激活基线）与
+> `check_hotfix_compatibility`（只读兼容预检）。
 
 ---
 
@@ -525,7 +536,7 @@ docker compose down
 
 当 `IsEnableOnlineAdmin=true` 时，Game 进程会组装 Online Runtime（进程内能力库：基于内存存储的资产 / 会话 / 匹配 / 社交 / LiveOps 服务），并在独立的 Kestrel 监听器上暴露管理 HTTP API：
 
-- 端点：`POST http://<server-host>:28090/online/admin/{action}`（全部 29 个管理动作，HTTP 状态码恒为 200；业务结果通过内层信封 `Code` 返回）
+- 端点：`POST http://<server-host>:28090/online/admin/{action}`（全部 33 个管理动作 + `list_capabilities` 元端点，HTTP 状态码恒为 200；业务结果通过内层信封 `Code` 返回）
 - 作用域三元组：每个请求携带 `TenantId` / `AppId` / `ServerId`；与授权的 `OnlineTenantId` / `OnlineAppId` / `ServerId` 不匹配的请求分别以 3002/3003/3004 拒绝，缺失三元组则以 3005 拒绝
 - 在 GameFrameX Admin 控制台注册服务器：将大区的 `HttpManageUrl` 指向 `http://<server-host>:28090`（`online/admin` 前缀与动作名由 Admin 客户端按其通信协议自动追加）
 

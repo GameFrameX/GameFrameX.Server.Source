@@ -64,8 +64,7 @@ public sealed class HotfixManagerRollbackExecutor : IOnlineHotfixRollbackExecuto
     private readonly SemaphoreSlim _switchGate = new SemaphoreSlim(1, 1);
 
     /// <summary>
-    /// 应用配置（可空：null 沿用 <see cref="HotfixManager"/> 启动期落定的进程级配置，
-    /// 与既有 <c>ReloadHttpHandler</c> 通道同口径）。
+    /// 应用配置（切换与失败恢复统一传本配置；null = 沿用 <see cref="HotfixManager"/> 启动期落定的进程级配置）。
     /// </summary>
     private readonly AppSetting _setting;
 
@@ -135,16 +134,17 @@ public sealed class HotfixManagerRollbackExecutor : IOnlineHotfixRollbackExecuto
     /// <summary>
     /// 失败恢复：按切换前装载路径重载原版本（同路径时入口幂等守卫短路成功）；
     /// 无原版本（首次装载前失败）无可恢复；重载未被确认即抛（信息合并由调用方承担）。
+    /// 恢复装载与主路径同口径传 <see cref="_setting"/>（C256 统一，此前误传 null）。
     /// </summary>
     /// <param name="originalAssemblyPath">切换前的实际装载程序集路径。</param>
-    private static async Task RecoverOriginalAsync(string originalAssemblyPath)
+    private async Task RecoverOriginalAsync(string originalAssemblyPath)
     {
         if (originalAssemblyPath == null)
         {
             return;
         }
 
-        var recovered = await HotfixManager.LoadHotfixModule(null, BuildOptionsFromLoadedPath(originalAssemblyPath)).ConfigureAwait(false);
+        var recovered = await HotfixManager.LoadHotfixModule(_setting, BuildOptionsFromLoadedPath(originalAssemblyPath)).ConfigureAwait(false);
         if (!recovered || !string.Equals(HotfixManager.HotfixAssembly?.Location, originalAssemblyPath, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("原版本重载未确认（装载路径不符）：" + originalAssemblyPath);

@@ -470,7 +470,7 @@ internal sealed class PlayerLoginEventHandler : EventListener<PlayerComponentAge
 
 1. **編譯新邏輯**：建置更新後的 `GameFrameX.Hotfix.dll`
 2. **部署組件**：複製到伺服器指定目錄
-3. **觸發重新載入**：透過 HTTP 端點發起熱更新請求
+3. **觸發切換**：經 Online admin 通道發起受控切換命令（見下）
 4. **組件載入**：`HotfixManager` 使用可回收的 `AssemblyLoadContext` 載入新 DLL
 5. **型別掃描**：`HotfixModule` 掃描新組件中的代理、處理器和事件監聽器
 6. **代理切換**：`ActorManager.ClearAgent()` 清除快取的代理實例
@@ -478,12 +478,23 @@ internal sealed class PlayerLoginEventHandler : EventListener<PlayerComponentAge
 
 #### 熱更新 API
 
+執行期熱更版本切換**僅**經 Online admin 通道觸發（舊 `game/api/Reload` HTTP 端點已退役）：
+
 ```bash
-# 觸發熱更新（指定版本號）
-curl -X POST "http://localhost:28080/game/api/Reload?version=1.7.2"
+# 登記新版本清單（可攜製品欄位：ArtifactSourceUrl + ArtifactSha256）
+curl -X POST "http://localhost:28090/online/admin/register_hotfix_manifest" \
+  -H "Content-Type: application/json" \
+  -d '{"TenantId":1,"AppId":1,"ServerId":1001,"Version":"1.7.2"}'
+
+# 受控切換到目標版本（審計先行、協議兼容閘、冪等）
+curl -X POST "http://localhost:28090/online/admin/rollback_hotfix_version" \
+  -H "Content-Type: application/json" \
+  -d '{"TenantId":1,"AppId":1,"ServerId":1001,"TargetVersion":"1.7.2","OperatorId":"admin-001","Reason":"發布 1.7.2","IdempotencyKey":"switch-1.7.2-001"}'
 ```
 
-> 注意：`Reload` 處理器標記了 `[RequireHttpSignature]`，請求必須通過 HTTP 簽名校驗才會被接受。
+> 注：admin 面（`online/admin/*`，連接埠 28090）暫無 HTTP 簽名校驗——依賴部署側連接埠隔離（admin 埠不得與
+> 公網遊戲埠同面暴露）。相關唯讀 / 演練 action：`activate_hotfix_version`（啟用基準）與
+> `check_hotfix_compatibility`（唯讀兼容預檢）。
 
 ---
 
@@ -521,7 +532,7 @@ docker compose down
 
 當 `IsEnableOnlineAdmin=true` 時，Game 程序會組裝 Online Runtime（程序內能力庫：基於記憶體儲存的資產 / 工作階段 / 配對 / 社交 / LiveOps 服務），並在獨立的 Kestrel 監聽器上暴露管理 HTTP API：
 
-- 端點：`POST http://<server-host>:28090/online/admin/{action}`（全部 29 個管理動作，HTTP 狀態碼恆為 200；業務結果透過內層封套 `Code` 傳回）
+- 端點：`POST http://<server-host>:28090/online/admin/{action}`（全部 33 個管理動作 + `list_capabilities` 元端點，HTTP 狀態碼恆為 200；業務結果透過內層封套 `Code` 傳回）
 - 作用域三元組：每個請求攜帶 `TenantId` / `AppId` / `ServerId`；與授權的 `OnlineTenantId` / `OnlineAppId` / `ServerId` 不匹配的請求分別以 3002/3003/3004 拒絕，缺少三元組則以 3005 拒絕
 - 在 GameFrameX Admin 控制檯註冊伺服器：將區服的 `HttpManageUrl` 指向 `http://<server-host>:28090`（`online/admin` 前綴與動作名由 Admin 客戶端依其線路約定附加）
 

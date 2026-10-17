@@ -471,7 +471,7 @@ internal sealed class PlayerLoginEventHandler : EventListener<PlayerComponentAge
 
 1. **새 로직 컴파일**: 업데이트된 `GameFrameX.Hotfix.dll` 빌드
 2. **어셈블리 배포**: 서버의 지정된 디렉토리에 복사
-3. **리로드 트리거**: HTTP 엔드포인트를 통해 핫 업데이트 요청 발행
+3. **전환 트리거**: Online admin 채널을 통해 제어된 전환 명령 발행(아래 참조)
 4. **어셈블리 로드**: `HotfixManager`가 수집 가능한 `AssemblyLoadContext`로 새 DLL 로드
 5. **타입 스캔**: `HotfixModule`이 새 어셈블리에서 에이전트, 핸들러, 이벤트 리스너를 스캔
 6. **에이전트 전환**: `ActorManager.ClearAgent()`가 캐시된 에이전트 인스턴스를 클리어
@@ -479,12 +479,25 @@ internal sealed class PlayerLoginEventHandler : EventListener<PlayerComponentAge
 
 #### 핫 업데이트 API
 
+런타임 핫 업데이트 버전 전환은 Online admin 채널**통해서만** 트리거됩니다
+(구 `game/api/Reload` HTTP 엔드포인트는 폐기됨):
+
 ```bash
-# 핫 업데이트 트리거(버전 지정)
-curl -X POST "http://localhost:28080/game/api/Reload?version=1.7.2"
+# 신규 버전 매니페스트 등록 (선택적 아티팩트 필드: ArtifactSourceUrl + ArtifactSha256)
+curl -X POST "http://localhost:28090/online/admin/register_hotfix_manifest" \
+  -H "Content-Type: application/json" \
+  -d '{"TenantId":1,"AppId":1,"ServerId":1001,"Version":"1.7.2"}'
+
+# 대상 버전으로 제어된 전환 (감사 선행, 프로토콜 호환 게이트, 멱등)
+curl -X POST "http://localhost:28090/online/admin/rollback_hotfix_version" \
+  -H "Content-Type: application/json" \
+  -d '{"TenantId":1,"AppId":1,"ServerId":1001,"TargetVersion":"1.7.2","OperatorId":"admin-001","Reason":"1.7.2 배포","IdempotencyKey":"switch-1.7.2-001"}'
 ```
 
-> 참고: `Reload` 핸들러에는 `[RequireHttpSignature]`가 표시되어 있으며, 요청은 HTTP 서명 검증을 통과해야 승인됩니다.
+> 참고: admin 면(`online/admin/*`, 포트 28090)에는 현재 HTTP 서명 검증이 없습니다 — 배포 측
+> 포트 분리에 의존합니다(admin 포트를 공개 게임 포트와 동일 면에 노출하지 마십시오).
+> 관련 읽기 전용 / 리허설 action: `activate_hotfix_version`(베이스라인 활성화) 및
+> `check_hotfix_compatibility`(읽기 전용 호환 사전 점검).
 
 ---
 
@@ -522,7 +535,7 @@ docker compose down
 
 `IsEnableOnlineAdmin=true`이면 Game 프로세스가 Online Runtime(인메모리 저장소 기반의 에셋 / 세션 / 매치메이킹 / 소셜 / LiveOps 서비스를 갖춘 인프로세스 역량 라이브러리)을 구성하고, 관리 HTTP API를 독립된 Kestrel 리스너에서 노출합니다:
 
-- 엔드포인트: `POST http://<server-host>:28090/online/admin/{action}`(관리 액션 29개 전체, HTTP 상태는 항상 200. 비즈니스 결과는 내부 엔벨로프 `Code`로 전달)
+- 엔드포인트: `POST http://<server-host>:28090/online/admin/{action}`(관리 액션 33개 전체 + `list_capabilities` 메타 엔드포인트, HTTP 상태는 항상 200. 비즈니스 결과는 내부 엔벨로프 `Code`로 전달)
 - 스코프 삼중항: 각 요청은 `TenantId` / `AppId` / `ServerId`를 전달하며, 인가된 `OnlineTenantId` / `OnlineAppId` / `ServerId`와 불일치하면 3002/3003/3004, 삼중항 누락 시 3005로 거부
 - GameFrameX Admin 콘솔 서버 등록: 대상 영역의 `HttpManageUrl`을 `http://<server-host>:28090`로 설정(`online/admin` 접두사와 액션 이름은 Admin 클라이언트가 와이어 계약에 따라 추가)
 

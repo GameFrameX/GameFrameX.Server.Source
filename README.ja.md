@@ -473,7 +473,7 @@ internal sealed class PlayerLoginEventHandler : EventListener<PlayerComponentAge
 
 1. **新ロジックのコンパイル**: 更新された `GameFrameX.Hotfix.dll` をビルド
 2. **アセンブリのデプロイ**: サーバーの指定ディレクトリにコピー
-3. **リロードのトリガー**: HTTP エンドポイント経由でホットアップデートリクエストを発行
+3. **切り替えのトリガー**: Online admin チャネル経由で制御付き切り替えコマンドを発行（下記参照）
 4. **アセンブリロード**: `HotfixManager` が回収可能な `AssemblyLoadContext` で新 DLL をロード
 5. **タイプスキャン**: `HotfixModule` が新アセンブリ内のエージェント、ハンドラ、イベントリスナーをスキャン
 6. **エージェント切り替え**: `ActorManager.ClearAgent()` がキャッシュされたエージェントインスタンスをクリア
@@ -481,12 +481,25 @@ internal sealed class PlayerLoginEventHandler : EventListener<PlayerComponentAge
 
 #### ホットアップデート API
 
+ランタイムのホットアップデートバージョン切り替えは Online admin チャネル**のみ**からトリガーします
+（旧 `game/api/Reload` HTTP エンドポイントは廃止済み）：
+
 ```bash
-# ホットアップデートのトリガー（バージョン指定）
-curl -X POST "http://localhost:28080/game/api/Reload?version=1.7.2"
+# 新バージョンのマニフェスト登録（制品フィールド省略可：ArtifactSourceUrl + ArtifactSha256）
+curl -X POST "http://localhost:28090/online/admin/register_hotfix_manifest" \
+  -H "Content-Type: application/json" \
+  -d '{"TenantId":1,"AppId":1,"ServerId":1001,"Version":"1.7.2"}'
+
+# 対象バージョンへの制御付き切り替え（監査先行・プロトコル互換ゲート・冪等）
+curl -X POST "http://localhost:28090/online/admin/rollback_hotfix_version" \
+  -H "Content-Type: application/json" \
+  -d '{"TenantId":1,"AppId":1,"ServerId":1001,"TargetVersion":"1.7.2","OperatorId":"admin-001","Reason":"1.7.2 をリリース","IdempotencyKey":"switch-1.7.2-001"}'
 ```
 
-> 補足: `Reload` ハンドラには `[RequireHttpSignature]` が付与されており、リクエストは HTTP 署名検証を通過する必要があります。
+> 補足: admin 面（`online/admin/*`、ポート 28090）には現時点で HTTP 署名検証がありません——
+> デプロイ側のポート分離に依存します（admin ポートを公開ゲームポートと同面に露出しないでください）。
+> 関連する読み取り / リハーサル action: `activate_hotfix_version`（ベースライン有効化）と
+> `check_hotfix_compatibility`（読み取り専用の互換事前チェック）。
 
 ---
 
@@ -523,7 +536,7 @@ docker compose down
 
 `IsEnableOnlineAdmin=true` の場合、Game プロセスは Online Runtime（インメモリストア上のアセット / セッション / マッチング / ソーシャル / LiveOps サービスを含むプロセス内機能ライブラリ）を組み立て、管理用 HTTP API を独立した Kestrel リスナーで公開します：
 
-- エンドポイント: `POST http://<server-host>:28090/online/admin/{action}`（全 29 の管理アクション。HTTP ステータスは常に 200、業務結果は内部エンベロープの `Code` で返却）
+- エンドポイント: `POST http://<server-host>:28090/online/admin/{action}`（全 33 の管理アクション + `list_capabilities` メタエンドポイント。HTTP ステータスは常に 200、業務結果は内部エンベロープの `Code` で返却）
 - スコープトリプル: 各リクエストは `TenantId` / `AppId` / `ServerId` を携行し、認可された `OnlineTenantId` / `OnlineAppId` / `ServerId` と不一致の場合は 3002/3003/3004、トリプル欠落の場合は 3005 で拒否されます
 - GameFrameX Admin コンソールへのサーバー登録: エリアの `HttpManageUrl` を `http://<server-host>:28090` に設定します（`online/admin` プレフィックスとアクション名は Admin クライアント側のワイヤ契約に従って付加されます）
 
