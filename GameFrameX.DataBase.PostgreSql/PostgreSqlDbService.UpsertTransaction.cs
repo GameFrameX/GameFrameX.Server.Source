@@ -86,6 +86,10 @@ public sealed partial class PostgreSqlDbService
         state.UpdateTime = currentTime;
         state.UpdateCount = (state.UpdateCount ?? 0) + 1;
 
+        // 写库前捕获字节快照（bump 后），成功后按该快照精确提交基线（C263），
+        // 避免参数less 提交读到并发检查推进后的未落库 ToSaveHash。
+        var persistedData = state.ToBytes();
+
         await ExecuteWriteWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
@@ -107,7 +111,7 @@ public sealed partial class PostgreSqlDbService
             return true;
         }, cancellationToken, nameof(AddOrUpdateAsync), true).ConfigureAwait(false);
 
-        state.SaveToDbPostHandler();
+        state.SaveToDbPostHandler(persistedData);
         return state;
     }
 
@@ -148,6 +152,8 @@ public sealed partial class PostgreSqlDbService
         }
 
         var currentTime = GetCurrentTimestamp();
+        // 写库前逐个捕获字节快照（bump 后），成功后按快照精确提交基线（C263）
+        var persistedSnapshots = new List<(TState State, byte[] Data)>(stateArray.Length);
         foreach (var state in stateArray)
         {
             if (state.CreatedTime == 0)
@@ -157,6 +163,7 @@ public sealed partial class PostgreSqlDbService
 
             state.UpdateTime = currentTime;
             state.UpdateCount = (state.UpdateCount ?? 0) + 1;
+            persistedSnapshots.Add((state, state.ToBytes()));
         }
 
         await ExecuteWriteWithRetryAsync(async token =>
@@ -179,9 +186,9 @@ public sealed partial class PostgreSqlDbService
             }
             return true;
         }, cancellationToken, nameof(AddOrUpdateListAsync), true).ConfigureAwait(false);
-        foreach (var state in stateArray)
+        foreach (var (state, persistedData) in persistedSnapshots)
         {
-            state.SaveToDbPostHandler();
+            state.SaveToDbPostHandler(persistedData);
         }
 
         return stateArray.Length;
@@ -224,9 +231,13 @@ public sealed partial class PostgreSqlDbService
         {
             var batchCount = Math.Min(batchSize, stateList.Count - index);
             var batch = new TState[batchCount];
+            // 写库前逐状态捕获送库字节快照，ack 批次内逐状态精确提交基线（C263）：
+            // 提交权从 Core 的 NotifyBatchSaved 收进 Provider，且只提交实际送库快照的 hash。
+            var batchSnapshots = new (TState State, byte[] Data)[batchCount];
             for (var offset = 0; offset < batchCount; offset++)
             {
                 batch[offset] = stateList[index + offset];
+                batchSnapshots[offset] = (batch[offset], batch[offset].ToBytes());
             }
 
             try
@@ -245,6 +256,10 @@ public sealed partial class PostgreSqlDbService
                 if (acknowledged)
                 {
                     acknowledgedStates.AddRange(batch);
+                    foreach (var (state, persistedData) in batchSnapshots)
+                    {
+                        state.SaveToDbPostHandler(persistedData);
+                    }
                 }
                 else
                 {

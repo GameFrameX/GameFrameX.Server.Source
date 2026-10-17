@@ -190,13 +190,17 @@ public sealed partial class SqliteDbService
 
         state.UpdateTime = currentTime;
         state.UpdateCount = (state.UpdateCount ?? 0) + 1;
+
+        // 写库前捕获字节快照（bump 后），成功后按该快照精确提交基线（C263），
+        // 避免参数less 提交读到并发检查推进后的未落库 ToSaveHash。
+        var persistedData = state.ToBytes();
         await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
             using var command = BuildUpsertCommand<TState>(state);
             await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }), cancellationToken, nameof(AddOrUpdateAsync), true).ConfigureAwait(false);
-        state.SaveToDbPostHandler();
+        state.SaveToDbPostHandler(persistedData);
         return state;
     }
 
@@ -237,6 +241,8 @@ public sealed partial class SqliteDbService
         }
 
         var currentTime = GetCurrentTimestamp();
+        // 写库前逐个捕获字节快照（bump 后），成功后按快照精确提交基线（C263）
+        var persistedSnapshots = new List<(TState State, byte[] Data)>(stateArray.Length);
         foreach (var state in stateArray)
         {
             if (state.CreatedTime == 0)
@@ -246,13 +252,14 @@ public sealed partial class SqliteDbService
 
             state.UpdateTime = currentTime;
             state.UpdateCount = (state.UpdateCount ?? 0) + 1;
+            persistedSnapshots.Add((state, state.ToBytes()));
         }
 
         await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
             await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-            foreach (var state in stateArray)
+            foreach (var (state, _) in persistedSnapshots)
             {
                 using var command = BuildUpsertCommand<TState>(state);
                 command.Transaction = transaction;
@@ -261,9 +268,9 @@ public sealed partial class SqliteDbService
 
             await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         }), cancellationToken, nameof(AddOrUpdateListAsync), true).ConfigureAwait(false);
-        foreach (var state in stateArray)
+        foreach (var (state, persistedData) in persistedSnapshots)
         {
-            state.SaveToDbPostHandler();
+            state.SaveToDbPostHandler(persistedData);
         }
 
         return stateArray.Length;
@@ -333,11 +340,16 @@ public sealed partial class SqliteDbService
         try
         {
             var acknowledged = 0;
+            // 写库前逐状态捕获送库字节快照，ack 批次内逐状态精确提交基线（C263）：
+            // 提交权从 Core 的 NotifyBatchSaved 收进 Provider，且只提交实际送库快照的 hash。
+            var batchSnapshots = new (TState State, byte[] Data)[batchCount];
             await using (var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(CancellationToken.None).ConfigureAwait(false))
             {
                 for (var offset = 0; offset < batchCount; offset++)
                 {
-                    using var command = BuildUpsertCommand<TState>(stateList[index + offset]);
+                    var state = stateList[index + offset];
+                    batchSnapshots[offset] = (state, state.ToBytes());
+                    using var command = BuildUpsertCommand<TState>(state);
                     command.Transaction = transaction;
                     acknowledged += await command.ExecuteNonQueryAsync(CancellationToken.None).ConfigureAwait(false);
                 }
@@ -353,6 +365,11 @@ public sealed partial class SqliteDbService
                 for (var offset = 0; offset < batchCount; offset++)
                 {
                     batch[offset] = stateList[index + offset];
+                }
+
+                foreach (var (state, persistedData) in batchSnapshots)
+                {
+                    state.SaveToDbPostHandler(persistedData);
                 }
 
                 return batch;
@@ -404,7 +421,8 @@ public sealed partial class SqliteDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
-        if (state.IsModify())
+        var (isChanged, changedData) = state.IsChanged();
+        if (isChanged)
         {
             state.UpdateTime = GetCurrentTimestamp();
             state.UpdateCount = (state.UpdateCount ?? 0) + 1;
@@ -416,7 +434,8 @@ public sealed partial class SqliteDbService
             }), cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
             if (updated)
             {
-                state.SaveToDbPostHandler();
+                // 精确提交（C263）：以检查时快照推进基线，避免并发 IsChanged 把基线推进到未落库快照
+                state.SaveToDbPostHandler(changedData);
             }
         }
 
@@ -428,8 +447,8 @@ public sealed partial class SqliteDbService
     /// </summary>
     /// <remarks>
     /// Saves multiple documents (returns the actually-changed count; unchanged items are skipped).
-    /// All writes share one transaction; when at least one row was written, every item receives
-    /// <c>SaveToDbPostHandler</c> (aligned with the Mongo/PG flow).
+    /// All writes share one transaction; when at least one row was written, each changed state receives
+    /// the exact-snapshot <c>SaveToDbPostHandler(byte[])</c> commit (C263; aligned with the Mongo/PG flow).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="stateList">要保存的数据列表 / The states to save</param>
@@ -444,8 +463,8 @@ public sealed partial class SqliteDbService
     /// </summary>
     /// <remarks>
     /// Saves multiple documents (returns the actually-changed count; unchanged items are skipped).
-    /// All writes share one transaction; when at least one row was written, every item receives
-    /// <c>SaveToDbPostHandler</c> (aligned with the Mongo/PG flow).
+    /// All writes share one transaction; when at least one row was written, each changed state receives
+    /// the exact-snapshot <c>SaveToDbPostHandler(byte[])</c> commit (C263; aligned with the Mongo/PG flow).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="stateList">要保存的数据列表 / The states to save</param>
@@ -461,15 +480,16 @@ public sealed partial class SqliteDbService
             return 0;
         }
 
-        var changedStates = new List<TState>(cacheStates.Length);
+        var changedStates = new List<(TState State, byte[] Data)>(cacheStates.Length);
         var currentTime = GetCurrentTimestamp();
         foreach (var state in cacheStates)
         {
-            if (state.IsModify())
+            var (isChanged, changedData) = state.IsChanged();
+            if (isChanged)
             {
                 state.UpdateTime = currentTime;
                 state.UpdateCount = (state.UpdateCount ?? 0) + 1;
-                changedStates.Add(state);
+                changedStates.Add((state, changedData));
             }
         }
 
@@ -483,7 +503,7 @@ public sealed partial class SqliteDbService
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
             var written = false;
             await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-            foreach (var state in changedStates)
+            foreach (var (state, _) in changedStates)
             {
                 using var command = BuildReplaceDocumentCommand<TState>(state);
                 command.Transaction = transaction;
@@ -495,9 +515,10 @@ public sealed partial class SqliteDbService
         }), cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
         if (anyRowWritten)
         {
-            foreach (var state in cacheStates)
+            foreach (var (state, changedData) in changedStates)
             {
-                state.SaveToDbPostHandler();
+                // 精确提交（C263）：只提交实际送库快照，未变更项不再触碰基线
+                state.SaveToDbPostHandler(changedData);
             }
         }
 
