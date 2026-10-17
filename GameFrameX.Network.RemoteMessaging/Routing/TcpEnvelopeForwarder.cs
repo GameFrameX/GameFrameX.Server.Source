@@ -28,7 +28,6 @@
 //  ==========================================================================================
 
 
-using System.Collections.Concurrent;
 using System.Net.Sockets;
 using GameFrameX.Network.RemoteMessaging.Transport;
 using GameFrameX.ProtoBuf.Net;
@@ -39,17 +38,16 @@ namespace GameFrameX.Network.RemoteMessaging.Routing;
 /// TCP 信封转发器（case 2/3 默认发送通道）。
 /// </summary>
 /// <remarks>
-/// The default TCP send channel for case 2/3.
-/// One connection bundle per target endpoint (a provider owning a single pooled
-/// connection plus a whole-frame write lock), so different instances stay on
-/// independent connections while concurrent forwards to the same endpoint are
-/// serialized — a frame's Write+Flush always runs inside the endpoint's write
-/// lock, so frame bytes never interleave. Frames reuse the standard codec
-/// layout, making the bytes compatible with the existing protocol stack; a
-/// write failure invalidates that endpoint's connection so the next forward
-/// reconnects.
+/// The default TCP send channel for case 2/3. It dials through the process-level shared
+/// TCP connection pool (<see cref="Transport.SharedTcpConnectionPool"/>, C270) — the very
+/// pool the RPC client consumes — so the routing layer and the RPC layer share one set of
+/// outbound connections per endpoint instead of doubling them. Whole-frame atomicity on a
+/// shared connection is guaranteed by the pool's per-connection write-gated streams; frames
+/// reuse the standard codec layout, making the bytes compatible with the existing protocol
+/// stack. A write failure invalidates only the connection that failed (stream-scoped), so the
+/// next forward reconnects without disturbing the RPC layer's other connections.
 /// </remarks>
-public sealed class TcpEnvelopeForwarder : IEnvelopeForwarder, IDisposable
+public sealed class TcpEnvelopeForwarder : IEnvelopeForwarder
 {
     /// <summary>
     /// 消息编解码器（标准帧格式）。
@@ -60,40 +58,56 @@ public sealed class TcpEnvelopeForwarder : IEnvelopeForwarder, IDisposable
     private readonly IMessageCodec _messageCodec;
 
     /// <summary>
-    /// 目标端点 → 连接束（连接提供器 + 整帧写锁）。
+    /// 连接提供器（进程共享池；转发层不拥有连接资源）。
     /// </summary>
     /// <remarks>
-    /// The per-endpoint bundles: a connection provider (owning a single pooled
-    /// connection) plus the write lock that serializes whole-frame writes on
-    /// that connection, so concurrent forwards to the same endpoint can never
-    /// interleave frame bytes.
+    /// The connection provider (the process-shared pool; the forwarder owns no connection
+    /// resources of its own).
     /// </remarks>
-    private readonly ConcurrentDictionary<string, EndpointConnection> _endpointConnections = new(StringComparer.Ordinal);
+    private readonly IConnectionProvider _connectionProvider;
 
     /// <summary>
-    /// 初始化 TCP 信封转发器（标准编解码器）。
+    /// 初始化 TCP 信封转发器（标准编解码器 + 进程共享连接池）。
     /// </summary>
     /// <remarks>
-    /// Initializes the forwarder with the default codec.
+    /// Initializes the forwarder with the default codec and the process-shared connection pool.
     /// </remarks>
     public TcpEnvelopeForwarder()
+        : this(new DefaultMessageCodec())
     {
-        _messageCodec = new DefaultMessageCodec();
     }
 
     /// <summary>
     /// 初始化 TCP 信封转发器（指定编解码器；注入用）。
     /// </summary>
     /// <remarks>
-    /// Initializes the forwarder with a specific codec (injection point).
+    /// Initializes the forwarder with a specific codec (injection point) on the
+    /// process-shared connection pool.
     /// </remarks>
     /// <param name="messageCodec">消息编解码器 / The message codec</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="messageCodec"/> 为 null 时抛出 / Thrown when <paramref name="messageCodec"/> is null</exception>
     public TcpEnvelopeForwarder(IMessageCodec messageCodec)
+        : this(messageCodec, Transport.SharedTcpConnectionPool.Provider)
+    {
+    }
+
+    /// <summary>
+    /// 初始化 TCP 信封转发器（指定编解码器与连接提供器；隔离测试用注入缝）。
+    /// </summary>
+    /// <remarks>
+    /// Initializes the forwarder with a specific codec and connection provider (an injection
+    /// seam for isolated tests). Production wiring always passes the process-shared pool.
+    /// </remarks>
+    /// <param name="messageCodec">消息编解码器 / The message codec</param>
+    /// <param name="connectionProvider">连接提供器 / The connection provider</param>
+    /// <exception cref="ArgumentNullException">当 <paramref name="messageCodec"/> 或 <paramref name="connectionProvider"/> 为 null 时抛出 / Thrown when message codec or connection provider is null</exception>
+    public TcpEnvelopeForwarder(IMessageCodec messageCodec, IConnectionProvider connectionProvider)
     {
         ArgumentNullException.ThrowIfNull(messageCodec);
+        ArgumentNullException.ThrowIfNull(connectionProvider);
 
         _messageCodec = messageCodec;
+        _connectionProvider = connectionProvider;
     }
 
     /// <summary>
@@ -101,8 +115,9 @@ public sealed class TcpEnvelopeForwarder : IEnvelopeForwarder, IDisposable
     /// </summary>
     /// <remarks>
     /// Encodes the envelope into a standard frame and writes it to the target
-    /// endpoint's pooled stream. Transport failures invalidate the connection
-    /// (so the next attempt reconnects) and propagate to the caller.
+    /// endpoint's pooled stream. Transport failures invalidate only the affected connection
+    /// (stream-scoped, so the RPC layer's other pooled connections stay untouched) and
+    /// propagate to the caller.
     /// </remarks>
     /// <param name="endpoint">已解析的目标端点 / The parsed target endpoint</param>
     /// <param name="envelope">路由信封 / The routing envelope</param>
@@ -114,8 +129,6 @@ public sealed class TcpEnvelopeForwarder : IEnvelopeForwarder, IDisposable
         ArgumentNullException.ThrowIfNull(endpoint);
         ArgumentNullException.ThrowIfNull(envelope);
 
-        var endpointKey = $"{endpoint.Host}:{endpoint.Port}";
-        var connection = _endpointConnections.GetOrAdd(endpointKey, delegate (string key) { return new EndpointConnection(); });
         var envelopeMessage = new RoleRouteEnvelopeMessage
         {
             TargetRole = envelope.TargetRole,
@@ -128,84 +141,19 @@ public sealed class TcpEnvelopeForwarder : IEnvelopeForwarder, IDisposable
 
         using (var frame = _messageCodec.Encode(envelopeMessage))
         {
+            var stream = await _connectionProvider.GetOrCreateStreamAsync(endpoint.Host, endpoint.Port, cancellationToken);
             try
             {
-                // 整帧串行化：提供器的信号量只保护连接获取/创建，Write+Flush 必须在同一把写锁的临界区内完成，
-                // 否则同端点的并发 ForwardAsync 会交错帧字节，接收端无法解析长度前缀。
-                await connection.WriteLock.WaitAsync(cancellationToken);
-                try
-                {
-                    var stream = await connection.Provider.GetOrCreateStreamAsync(endpoint.Host, endpoint.Port, cancellationToken);
-                    await stream.WriteAsync(frame.Memory, cancellationToken);
-                    await stream.FlushAsync(cancellationToken);
-                }
-                finally
-                {
-                    connection.WriteLock.Release();
-                }
+                // 整帧原子性由池内写门控流保证（共享池下 RPC 客户端与转发层可能命中同一条连接）
+                await stream.WriteAsync(frame.Memory, cancellationToken);
+                await stream.FlushAsync(cancellationToken);
             }
             catch (Exception exception) when (exception is IOException || exception is SocketException || exception is OperationCanceledException)
             {
-                connection.Provider.Invalidate();
+                // 流粒度失效：共享池上全量失效会误杀 RPC 层在途连接
+                _connectionProvider.Invalidate(stream);
                 throw;
             }
-        }
-    }
-
-    /// <summary>
-    /// 释放全部端点连接束。
-    /// </summary>
-    /// <remarks>
-    /// Disposes every per-endpoint bundle (connection provider and write lock).
-    /// </remarks>
-    public void Dispose()
-    {
-        foreach (var pair in _endpointConnections)
-        {
-            pair.Value.Dispose();
-        }
-
-        _endpointConnections.Clear();
-    }
-
-    /// <summary>
-    /// 单端点连接束：连接提供器 + 整帧写锁。
-    /// </summary>
-    /// <remarks>
-    /// The per-endpoint bundle: the connection provider (a single pooled
-    /// connection) plus the SemaphoreSlim write lock serializing whole-frame
-    /// writes on that connection.
-    /// </remarks>
-    private sealed class EndpointConnection : IDisposable
-    {
-        /// <summary>
-        /// 连接提供器（单连接池）。
-        /// </summary>
-        /// <remarks>
-        /// The connection provider (one pooled connection).
-        /// </remarks>
-        /// <value>连接提供器 / The connection provider</value>
-        public IConnectionProvider Provider { get; } = new TcpConnectionProvider();
-
-        /// <summary>
-        /// 整帧写锁。
-        /// </summary>
-        /// <remarks>
-        /// The whole-frame write lock.
-        /// </remarks>
-        /// <value>整帧写锁 / The whole-frame write lock</value>
-        public SemaphoreSlim WriteLock { get; } = new(1, 1);
-
-        /// <summary>
-        /// 释放连接与写锁。
-        /// </summary>
-        /// <remarks>
-        /// Releases the connection and the write lock.
-        /// </remarks>
-        public void Dispose()
-        {
-            Provider.Dispose();
-            WriteLock.Dispose();
         }
     }
 }
