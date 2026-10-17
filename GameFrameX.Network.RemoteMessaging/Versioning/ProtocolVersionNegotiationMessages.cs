@@ -74,15 +74,40 @@ public sealed class ReqProtocolVersionNegotiation : MessageObject, IRequestMessa
     public int Minor { get; set; }
 
     /// <summary>
-    /// 清空消息内容。重置 Major 与 Minor 为 0。
+    /// 获取或设置拨号端每连接随机 nonce（C272 节点间鉴权启用时必填）。
     /// </summary>
     /// <remarks>
-    /// Clears the message content. Resets Major and Minor to 0.
+    /// Gets or sets the dialing side's per-connection random nonce (required when the C272
+    /// inter-node authentication is enabled).
+    /// </remarks>
+    [ProtoMember(3)]
+    public string Nonce { get; set; }
+
+    /// <summary>
+    /// 获取或设置节点间鉴权凭据：HMAC-SHA256(secret, nonce|Major|Minor) 十六进制小写（C272）；
+    /// 鉴权未启用（共享密钥为空）时为空，旧节点不识别新字段按缺省反序列化为 null，线缆向后兼容。
+    /// </summary>
+    /// <remarks>
+    /// Gets or sets the inter-node authentication credential: a lowercase-hex
+    /// HMAC-SHA256(secret, nonce|Major|Minor) (C272); empty when authentication is disabled
+    /// (empty shared secret). Older peers do not know the new field and deserialize it as
+    /// default(null) — wire-compatible both directions.
+    /// </remarks>
+    [ProtoMember(4)]
+    public string AuthCredential { get; set; }
+
+    /// <summary>
+    /// 清空消息内容。重置 Major、Minor、Nonce 与 AuthCredential。
+    /// </summary>
+    /// <remarks>
+    /// Clears the message content. Resets Major, Minor, Nonce and AuthCredential.
     /// </remarks>
     public override void Clear()
     {
         Major = 0;
         Minor = 0;
+        Nonce = null;
+        AuthCredential = null;
     }
 }
 
@@ -137,11 +162,13 @@ public sealed class RespProtocolVersionNegotiation : MessageObject, IResponseMes
     public bool Accepted { get; set; }
 
     /// <summary>
-    /// 获取或设置错误码（IResponseMessage 契约）：0 表示接受；1 表示 major 不符拒绝。
+    /// 获取或设置错误码（IResponseMessage 契约）：0 表示接受；1 表示 major 不符拒绝；2 表示节点间鉴权失败拒绝（C272：共享密钥已配置而对端凭据缺失或验签失败）。
     /// </summary>
     /// <remarks>
     /// Gets or sets the error code (the IResponseMessage contract): 0 means accepted;
-    /// 1 means rejected due to a major mismatch.
+    /// 1 means rejected due to a major mismatch; 2 means rejected due to inter-node authentication
+    /// failure (C272: the shared secret is configured but the peer's credential is missing or
+    /// failed verification).
     /// </remarks>
     [ProtoMember(4)]
     public int ErrorCode { get; set; }
