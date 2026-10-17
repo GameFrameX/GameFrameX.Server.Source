@@ -122,20 +122,8 @@ public sealed class OnlineOperationsCapabilityModule : ICapabilityModule, IAdmin
     {
         var eventPublisher = context.GetService<IOnlineEventPublisher>();
 
-        // 审计（具型探测缝——组合根预置命中共享同一实例；未命中构造 InMemory 默认并回注具型 + 读面）。
-        OnlineAuditService audit;
-        if (context.TryGetService(out OnlineAuditService preloadedAudit))
-        {
-            audit = preloadedAudit;
-        }
-        else
-        {
-            var auditStore = ResolveStore<IOnlineAuditStore>(context, static () => new InMemoryOnlineAuditStore());
-            audit = new OnlineAuditService(auditStore);
-            context.AddService(audit);
-            context.AddService<IOnlineAuditReader>(audit);
-        }
-
+        // 审计（具型探测缝——探测与回注语义见 ResolveAuditService）。
+        var audit = ResolveAuditService(context);
         _audit = audit;
 
         // Hotfix 回滚（幂等基建缺席时不装配——壳「下游置 null」的模块化等价；执行器与制品获取器为可选注入位，C248）。
@@ -223,6 +211,25 @@ public sealed class OnlineOperationsCapabilityModule : ICapabilityModule, IAdmin
             PayloadAuditFields = view.SanitizedFields,
         };
         var _ = audit.IngestAsync(entry);
+    }
+
+    /// <summary>
+    /// 解析统一审计服务（具型探测缝——组合根预置命中共享同一实例；未命中构造 InMemory 默认并回注具型 + <see cref="IOnlineAuditReader"/> 读面）。
+    /// </summary>
+    /// <param name="context">注册上下文。</param>
+    /// <returns>统一审计服务实例。</returns>
+    private static OnlineAuditService ResolveAuditService(CapabilityRegistrationContext context)
+    {
+        if (context.TryGetService(out OnlineAuditService preloadedAudit))
+        {
+            return preloadedAudit;
+        }
+
+        var auditStore = ResolveStore<IOnlineAuditStore>(context, static () => new InMemoryOnlineAuditStore());
+        var audit = new OnlineAuditService(auditStore);
+        context.AddService(audit);
+        context.AddService<IOnlineAuditReader>(audit);
+        return audit;
     }
 
     /// <summary>
