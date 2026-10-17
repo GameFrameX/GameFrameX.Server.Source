@@ -153,7 +153,7 @@ public sealed class OnlineHotfixArtifactFetcher : IOnlineHotfixArtifactFetcher
     private async Task DownloadWithRetryAsync(string stagingPath, string sourceUrl, CancellationToken cancellationToken)
     {
         var totalAttempts = 1 + Math.Max(0, _options.MaxRetryCount);
-        for (var attempt = 1; ; attempt++)
+        for (var attempt = 1; attempt <= totalAttempts; attempt++)
         {
             try
             {
