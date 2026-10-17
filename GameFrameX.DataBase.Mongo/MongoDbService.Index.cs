@@ -33,6 +33,7 @@ using System.Reflection;
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.Foundation.Orm.Attribute;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 
 namespace GameFrameX.DataBase.Mongo;
@@ -56,14 +57,16 @@ public sealed partial class MongoDbService
     private readonly ConcurrentDictionary<string, bool> _indexCache = new();
 
     /// <summary>
-    /// 索引引导的进程级单飞锁（冷缓存并发首调串行化：先到者建索引，后到者等待后见缓存即跳过，索引存在性对并发调用者可判）。
+    /// 索引引导的进程级异步单飞锁（冷缓存并发首调串行化：先到者建索引，后到者等待后见缓存即跳过，索引存在性对并发调用者可判）。
     /// </summary>
     /// <remarks>
-    /// Process-wide single-flight lock for index bootstrap (concurrent cold-cache first calls are
-    /// serialized: the first caller builds the index and later callers observe the cache afterwards,
-    /// so index existence is deterministically observable for concurrent callers).
+    /// Process-wide asynchronous single-flight gate for index bootstrap (concurrent cold-cache
+    /// first calls are serialized: the first caller builds the index and later callers observe
+    /// the cache afterwards, so index existence is deterministically observable for concurrent
+    /// callers). Waiters suspend asynchronously instead of blocking request threads while the
+    /// bootstrap performs driver I/O.
     /// </remarks>
-    private readonly object _indexCreationLock = new();
+    private readonly SemaphoreSlim _indexCreationLock = new(1, 1);
 
     /// <summary>
     /// 检查待创建的索引与已创建的索引是否一致。
@@ -109,19 +112,22 @@ public sealed partial class MongoDbService
     }
 
     /// <summary>
-    /// 为指定集合创建索引（单飞：并发冷缓存首调在 <see cref="_indexCreationLock"/> 上串行化，索引建成才落缓存；失败不缓存、后续调用重试）。
+    /// 为指定集合创建属性声明的索引（异步单飞：并发冷缓存首调在 <see cref="_indexCreationLock"/> 上异步串行化，索引建成才落缓存；失败不缓存、后续调用重试）。
     /// </summary>
     /// <remarks>
-    /// Creates indexes for the specified collection. Bootstrap is single-flighted on
-    /// <see cref="_indexCreationLock"/>: concurrent cold-cache first calls wait for the winner, and the
-    /// per-type cache entry is published only after a successful build — a failed build (e.g. a unique
-    /// index colliding with pre-existing duplicates) leaves the cache untouched so a later call retries.
-    /// Without this serialization, a concurrent first-touch could pass the cache check while the index
-    /// build is still in flight and insert documents the unique index was meant to reject.
+    /// Creates the attribute-declared indexes for the specified collection. Bootstrap is
+    /// single-flighted on <see cref="_indexCreationLock"/>: concurrent cold-cache first calls
+    /// asynchronously wait for the winner, and the per-type cache entry is published only after a
+    /// successful build — a failed build (e.g. a unique index colliding with pre-existing duplicates)
+    /// leaves the cache untouched so a later call retries. Without this serialization, a concurrent
+    /// first-touch could pass the cache check while the index build is still in flight and insert
+    /// documents the unique index was meant to reject. All bootstrap driver I/O is asynchronous
+    /// (<c>ListAsync</c> / <c>CreateManyAsync</c>) so cold-path waiters never block request threads.
     /// </remarks>
     /// <typeparam name="T">文档类型 / Document type</typeparam>
     /// <param name="collection">MongoDB集合 / MongoDB collection</param>
-    private void CreateIndexes<T>(IMongoCollection<T> collection)
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    private async Task CreateIndexesAsync<T>(IMongoCollection<T> collection, CancellationToken cancellationToken)
     {
         var entityType = typeof(T);
         if (_indexCache.ContainsKey(entityType.Name))
@@ -129,9 +135,10 @@ public sealed partial class MongoDbService
             return;
         }
 
-        lock (_indexCreationLock)
+        await _indexCreationLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            // 双检：等待锁期间先到者可能已完成本类型索引引导。
+            // 双检：等待期间先到者可能已完成本类型索引引导。
             // Double check: the lock winner may have completed this type's bootstrap while we waited.
             if (_indexCache.ContainsKey(entityType.Name))
             {
@@ -140,7 +147,11 @@ public sealed partial class MongoDbService
 
             var properties = entityType.GetProperties();
             // 索引列表
-            var result = collection.Indexes.List().ToList();
+            List<BsonDocument> result;
+            using (var cursor = await collection.Indexes.ListAsync(cancellationToken).ConfigureAwait(false))
+            {
+                result = await cursor.ToListAsync(cancellationToken).ConfigureAwait(false);
+            }
 
             var indexModels = new List<CreateIndexModel<T>>();
             foreach (var property in properties)
@@ -161,12 +172,16 @@ public sealed partial class MongoDbService
 
             if (indexModels.Count > 0 && !AreIndexesConsistent(indexModels, result))
             {
-                collection.Indexes.CreateMany(indexModels);
+                await collection.Indexes.CreateManyAsync(indexModels, cancellationToken).ConfigureAwait(false);
             }
 
             // 建成才落缓存（失败路径不缓存：下次调用重试引导）。
             // Publish only after a successful build (a failure leaves the cache untouched so the next call retries).
             _indexCache.TryAdd(entityType.Name, true);
+        }
+        finally
+        {
+            _indexCreationLock.Release();
         }
     }
 
@@ -185,16 +200,24 @@ public sealed partial class MongoDbService
     {
         ArgumentNullException.ThrowIfNull(definition);
         var mgr = GetCollection(collectionName).Indexes;
-        var list = mgr.List();
-        while (list.MoveNext())
+        var indexKeys = definition.Ascending ? Builders<BsonDocument>.IndexKeys.Ascending(doc => doc[definition.Key]) : Builders<BsonDocument>.IndexKeys.Descending(doc => doc[definition.Key]);
+        var expectedName = ResolveExpectedIndexName(indexKeys, definition.Name, BsonSerializer.SerializerRegistry.GetSerializer<BsonDocument>());
+
+        // 精确名匹配判重：遍历完整游标，任一批命中期望名即视为已存在（不建、返回空字符串）。
+        // Exact-name dedup: traverse the full cursor; a match in any batch means the index exists
+        // (skip creation and return the empty string).
+        using (var cursor = mgr.List())
         {
-            if (!list.Current.Any(doc => doc["name"].AsString.StartsWith(definition.Key)))
+            while (cursor.MoveNext())
             {
-                return mgr.CreateOne(new CreateIndexModel<BsonDocument>(definition.Ascending ? Builders<BsonDocument>.IndexKeys.Ascending(doc => doc[definition.Key]) : Builders<BsonDocument>.IndexKeys.Descending(doc => doc[definition.Key]), BuildIndexOptions(definition)));
+                if (cursor.Current.Any(doc => doc.Contains("name") && doc["name"].AsString == expectedName))
+                {
+                    return string.Empty;
+                }
             }
         }
 
-        return string.Empty;
+        return mgr.CreateOne(new CreateIndexModel<BsonDocument>(indexKeys, BuildIndexOptions(definition)));
     }
 
     /// <summary>
@@ -210,16 +233,24 @@ public sealed partial class MongoDbService
     {
         ArgumentNullException.ThrowIfNull(definition);
         var mgr = GetCollection(collectionName).Indexes;
-        var list = await mgr.ListAsync();
-        while (await list.MoveNextAsync())
+        var indexKeys = definition.Ascending ? Builders<BsonDocument>.IndexKeys.Ascending(doc => doc[definition.Key]) : Builders<BsonDocument>.IndexKeys.Descending(doc => doc[definition.Key]);
+        var expectedName = ResolveExpectedIndexName(indexKeys, definition.Name, BsonSerializer.SerializerRegistry.GetSerializer<BsonDocument>());
+
+        // 精确名匹配判重：遍历完整游标，任一批命中期望名即视为已存在（不建、返回空字符串）。
+        // Exact-name dedup: traverse the full cursor; a match in any batch means the index exists
+        // (skip creation and return the empty string).
+        using (var cursor = await mgr.ListAsync().ConfigureAwait(false))
         {
-            if (!list.Current.Any(doc => doc["name"].AsString.StartsWith(definition.Key)))
+            while (await cursor.MoveNextAsync().ConfigureAwait(false))
             {
-                return await mgr.CreateOneAsync(new CreateIndexModel<BsonDocument>(definition.Ascending ? Builders<BsonDocument>.IndexKeys.Ascending(doc => doc[definition.Key]) : Builders<BsonDocument>.IndexKeys.Descending(doc => doc[definition.Key]), BuildIndexOptions(definition)));
+                if (cursor.Current.Any(doc => doc.Contains("name") && doc["name"].AsString == expectedName))
+                {
+                    return string.Empty;
+                }
             }
         }
 
-        return string.Empty;
+        return await mgr.CreateOneAsync(new CreateIndexModel<BsonDocument>(indexKeys, BuildIndexOptions(definition))).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -294,16 +325,24 @@ public sealed partial class MongoDbService
     {
         ArgumentNullException.ThrowIfNull(definition);
         var mgr = GetCollection<TState>().Indexes;
-        var list = mgr.List();
-        while (list.MoveNext())
+        var indexKeys = definition.Ascending ? Builders<TState>.IndexKeys.Ascending(definition.Key) : Builders<TState>.IndexKeys.Descending(definition.Key);
+        var expectedName = ResolveExpectedIndexName(indexKeys, definition.Name, BsonSerializer.SerializerRegistry.GetSerializer<TState>());
+
+        // 精确名匹配判重：遍历完整游标，任一批命中期望名即视为已存在（不建、返回空字符串）。
+        // Exact-name dedup: traverse the full cursor; a match in any batch means the index exists
+        // (skip creation and return the empty string).
+        using (var cursor = mgr.List())
         {
-            if (!list.Current.Any(doc => doc["name"].AsString.StartsWith(definition.Name)))
+            while (cursor.MoveNext())
             {
-                return mgr.CreateOne(new CreateIndexModel<TState>(definition.Ascending ? Builders<TState>.IndexKeys.Ascending(definition.Key) : Builders<TState>.IndexKeys.Descending(definition.Key), BuildIndexOptions(definition)));
+                if (cursor.Current.Any(doc => doc.Contains("name") && doc["name"].AsString == expectedName))
+                {
+                    return string.Empty;
+                }
             }
         }
 
-        return string.Empty;
+        return mgr.CreateOne(new CreateIndexModel<TState>(indexKeys, BuildIndexOptions(definition)));
     }
 
     /// <summary>
@@ -318,17 +357,32 @@ public sealed partial class MongoDbService
     public async Task<string> CreateIndexAsync<TState>(IndexDefinition<TState> definition) where TState : class, ICacheState, new()
     {
         ArgumentNullException.ThrowIfNull(definition);
-        var mgr = GetCollection<TState>().Indexes;
-        var list = await mgr.ListAsync();
-        while (await list.MoveNextAsync())
+        var collection = GetCollection<TState>();
+
+        // 属性声明的索引引导先于显式索引操作（沿用原类型化入口的引导语义，异步单飞）。
+        // Attribute-declared index bootstrap runs before the explicit index operation
+        // (the former typed-entry bootstrap semantics, now an asynchronous single flight).
+        await CreateIndexesAsync(collection, CancellationToken.None).ConfigureAwait(false);
+
+        var mgr = collection.Indexes;
+        var indexKeys = definition.Ascending ? Builders<TState>.IndexKeys.Ascending(definition.Key) : Builders<TState>.IndexKeys.Descending(definition.Key);
+        var expectedName = ResolveExpectedIndexName(indexKeys, definition.Name, BsonSerializer.SerializerRegistry.GetSerializer<TState>());
+
+        // 精确名匹配判重：遍历完整游标，任一批命中期望名即视为已存在（不建、返回空字符串）。
+        // Exact-name dedup: traverse the full cursor; a match in any batch means the index exists
+        // (skip creation and return the empty string).
+        using (var cursor = await mgr.ListAsync().ConfigureAwait(false))
         {
-            if (!list.Current.Any(doc => doc["name"].AsString.StartsWith(definition.Name)))
+            while (await cursor.MoveNextAsync().ConfigureAwait(false))
             {
-                return await mgr.CreateOneAsync(new CreateIndexModel<TState>(definition.Ascending ? Builders<TState>.IndexKeys.Ascending(definition.Key) : Builders<TState>.IndexKeys.Descending(definition.Key), BuildIndexOptions(definition)));
+                if (cursor.Current.Any(doc => doc.Contains("name") && doc["name"].AsString == expectedName))
+                {
+                    return string.Empty;
+                }
             }
         }
 
-        return string.Empty;
+        return await mgr.CreateOneAsync(new CreateIndexModel<TState>(indexKeys, BuildIndexOptions(definition))).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -359,8 +413,38 @@ public sealed partial class MongoDbService
     public async Task<string> UpdateIndexAsync<TState>(IndexDefinition<TState> definition) where TState : class, ICacheState, new()
     {
         ArgumentNullException.ThrowIfNull(definition);
-        var mgr = GetCollection<TState>().Indexes;
-        return await mgr.CreateOneAsync(new CreateIndexModel<TState>(definition.Ascending ? Builders<TState>.IndexKeys.Ascending(definition.Key) : Builders<TState>.IndexKeys.Descending(definition.Key), BuildIndexOptions(definition)));
+        var collection = GetCollection<TState>();
+
+        // 属性声明的索引引导先于显式索引操作（沿用原类型化入口的引导语义，异步单飞）。
+        // Attribute-declared index bootstrap runs before the explicit index operation
+        // (the former typed-entry bootstrap semantics, now an asynchronous single flight).
+        await CreateIndexesAsync(collection, CancellationToken.None).ConfigureAwait(false);
+
+        return await collection.Indexes.CreateOneAsync(new CreateIndexModel<TState>(definition.Ascending ? Builders<TState>.IndexKeys.Ascending(definition.Key) : Builders<TState>.IndexKeys.Descending(definition.Key), BuildIndexOptions(definition))).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 解析索引判重用的期望索引名：显式名优先；无名定义按渲染后的键文档推导服务端默认名（单键 <c>字段_1</c> / <c>字段_-1</c>，多键以下划线连接）。
+    /// </summary>
+    /// <remarks>
+    /// Resolves the expected index name for exact-name dedup: the declared name wins; for
+    /// unnamed definitions the server-side default name is derived from the rendered key
+    /// document (single key <c>field_1</c> / <c>field_-1</c>, multiple keys joined by underscores).
+    /// </remarks>
+    /// <typeparam name="TDocument">文档类型 / Document type</typeparam>
+    /// <param name="indexKeys">索引键定义 / The index key definition</param>
+    /// <param name="declaredName">显式声明的索引名，可为空 / The declared index name, possibly empty</param>
+    /// <param name="serializer">文档序列化器 / The document serializer</param>
+    /// <returns>判重用的期望索引名 / The expected index name used for dedup</returns>
+    private static string ResolveExpectedIndexName<TDocument>(IndexKeysDefinition<TDocument> indexKeys, string declaredName, IBsonSerializer<TDocument> serializer)
+    {
+        if (!string.IsNullOrWhiteSpace(declaredName))
+        {
+            return declaredName;
+        }
+
+        var renderedKeys = indexKeys.Render(new RenderArgs<TDocument>(serializer, BsonSerializer.SerializerRegistry));
+        return string.Join("_", renderedKeys.Elements.Select(element => $"{element.Name}_{element.Value}"));
     }
 
     /// <summary>

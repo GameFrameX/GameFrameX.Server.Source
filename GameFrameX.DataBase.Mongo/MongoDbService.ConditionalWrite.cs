@@ -141,6 +141,11 @@ public sealed partial class MongoDbService
         state.IncrementRowVersion();
 
         var collection = GetCollection<TState>();
+
+        // 属性索引引导（异步单飞）：沿用原类型化入口的引导语义，先于本次条件写完成。
+        // Attribute-index bootstrap (asynchronous single flight): keeps the former typed-entry
+        // bootstrap semantics and completes before this conditional write.
+        await CreateIndexesAsync(collection, cancellationToken).ConfigureAwait(false);
         var filter = Builders<TState>.Filter.And(
             Builders<TState>.Filter.Eq(m => m.Id, id),
             Builders<TState>.Filter.Eq(m => m.RowVersion, (long?)expectedRowVersion));
@@ -167,6 +172,14 @@ public sealed partial class MongoDbService
     /// uniqueness filter (conflicts return false instead of throwing).
     /// The uniqueness probe deliberately ignores soft-delete visibility, matching
     /// <see cref="IDatabaseService.TryAddUniqueAsync{TState}(TState, Expression{Func{TState, bool}})"/>.
+    /// 完全竞态安全的前置条件：唯一性条件引用的字段必须存在 provider 唯一索引
+    /// （如 <c>EntityIndexAttribute(Unique = true)</c> 声明，调用即引导先于查插完成）；
+    /// 缺失该索引时先查后插仅兜底顺序冲突，并发同键可能双双入表而非返回 false。
+    /// Full race-safety precondition: the fields referenced by the uniqueness filter must be
+    /// covered by a provider unique index (e.g. declared via <c>EntityIndexAttribute(Unique = true)</c>;
+    /// the bootstrap on this call completes before probe-and-insert). Without such an index the
+    /// check-then-insert sequence only covers sequential conflicts — concurrent same-key callers
+    /// may both insert instead of one receiving false.
     /// </remarks>
     /// <typeparam name="TState">文档的类型，必须继承自 BaseCacheState / Document type, must inherit from BaseCacheState</typeparam>
     /// <param name="state">要插入的数据对象 / The data object to insert</param>
@@ -185,6 +198,14 @@ public sealed partial class MongoDbService
     /// uniqueness filter (conflicts return false instead of throwing).
     /// The uniqueness probe deliberately ignores soft-delete visibility, matching
     /// <see cref="IDatabaseService.TryAddUniqueAsync{TState}(TState, Expression{Func{TState, bool}}, CancellationToken)"/>.
+    /// 完全竞态安全的前置条件：唯一性条件引用的字段必须存在 provider 唯一索引
+    /// （如 <c>EntityIndexAttribute(Unique = true)</c> 声明，调用即引导先于查插完成）；
+    /// 缺失该索引时先查后插仅兜底顺序冲突，并发同键可能双双入表而非返回 false。
+    /// Full race-safety precondition: the fields referenced by the uniqueness filter must be
+    /// covered by a provider unique index (e.g. declared via <c>EntityIndexAttribute(Unique = true)</c>;
+    /// the bootstrap on this call completes before probe-and-insert). Without such an index the
+    /// check-then-insert sequence only covers sequential conflicts — concurrent same-key callers
+    /// may both insert instead of one receiving false.
     /// </remarks>
     /// <typeparam name="TState">文档的类型，必须继承自 BaseCacheState / Document type, must inherit from BaseCacheState</typeparam>
     /// <param name="state">要插入的数据对象 / The data object to insert</param>
@@ -202,6 +223,14 @@ public sealed partial class MongoDbService
         state.UpdateCount ??= 0;
 
         var collection = GetCollection<TState>();
+
+        // 唯一索引引导必须先于查插（异步单飞）：并发首触不得在索引在建时穿透，
+        // 否则唯一键窗口内重复文档将被放行。原类型化入口内联引导语义保持。
+        // Bootstrap the unique indexes BEFORE probe-and-insert (asynchronous single flight):
+        // a concurrent first touch must not slip through while the index build is in flight,
+        // or duplicate documents would pass through the uniqueness window. This preserves the
+        // former typed-entry inline bootstrap semantics.
+        await CreateIndexesAsync(collection, cancellationToken).ConfigureAwait(false);
         var uniquenessFilter = new ExpressionFilterDefinition<TState>(uniqueFilter);
         return await ExecuteWriteWithRetryAsync(async token =>
         {

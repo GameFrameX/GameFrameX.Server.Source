@@ -100,14 +100,15 @@ public sealed partial class MongoDbService
     /// <returns>指定类型的MongoDB集合 / MongoDB collection of the specified type</returns>
     private IMongoCollection<TState> GetCollection<TState>(MongoCollectionSettings settings = null) where TState : class, ICacheState, new()
     {
-        // 索引管理等类型化入口同样需要先完成 ClassMap 懒注册（与 MongoDbContext.GetCollection 合起来覆盖全部路径）。
-        // Typed entries such as index management also require lazy ClassMap registration first
-        // (together with MongoDbContext.GetCollection this covers every path).
+        // 类型化入口只做 ClassMap 懒注册与集合解析；属性索引引导由数据/索引调用方显式异步完成
+        // （CreateIndexesAsync 单飞，见 ConditionalWrite 与泛型索引 API），不在同步属性索引入口内做驱动 I/O。
+        // Typed entries only perform lazy ClassMap registration and collection resolution here;
+        // attribute-index bootstrap is an explicit asynchronous step at the data / index call sites
+        // (single-flighted by CreateIndexesAsync — see ConditionalWrite and the generic index APIs),
+        // keeping this synchronous property out of any driver I/O.
         MongoSerializationRegistry.EnsureClassMapRegistered<TState>();
         var collectionName = typeof(TState).Name;
-        var collection = CurrentDatabase.GetCollection<TState>(collectionName, settings);
-        CreateIndexes(collection);
-        return collection;
+        return CurrentDatabase.GetCollection<TState>(collectionName, settings);
     }
 
     /// <summary>
