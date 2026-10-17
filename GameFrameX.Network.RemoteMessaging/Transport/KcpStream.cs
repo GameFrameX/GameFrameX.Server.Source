@@ -110,6 +110,9 @@ internal sealed class KcpStream : Stream
     /// <remarks>
     /// Reads sequentially from the KCP-reassembled byte stream: copies whatever bytes are
     /// currently available in the pipe; returns 0 once the pipe is completed (session-closed semantics).
+    /// <para>「空结果且未完结」分支（上游管道无数据返回空缓冲）必须 <see cref="Task.Yield"/> 让出后再等：
+    /// 同步重入 <see cref="System.IO.Pipelines.PipeReader.ReadAsync"/> 会形成紧环忙等；
+    /// 循环顶的取消检查覆盖管道实现不消费取消令牌的形态，保证读侧可被取消终止。</para>
     /// </remarks>
     /// <param name="buffer">目标缓冲 / The target buffer</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
@@ -118,6 +121,8 @@ internal sealed class KcpStream : Stream
     {
         while (true)
         {
+            // 循环顶检查取消：下游管道读不保证消费令牌时，读侧仍可被取消终止（防「空+未完结」环空转）
+            cancellationToken.ThrowIfCancellationRequested();
             var result = await _reader.ReadAsync(cancellationToken);
             var sequence = result.Buffer;
             var bytesToCopy = (int)Math.Min(buffer.Length, sequence.Length);
@@ -136,7 +141,8 @@ internal sealed class KcpStream : Stream
                 return 0;
             }
 
-            // 空结果且未完结（防御分支）：继续等待后续字节
+            // 空结果且未完结（防御分支）：先让出时间片再等待后续字节，避免同步重入忙等
+            await Task.Yield();
         }
     }
 
