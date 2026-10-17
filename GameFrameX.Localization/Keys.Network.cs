@@ -200,6 +200,26 @@ public static partial class Keys
         public const string CloseUnauthenticatedSessionFailed = "Network.CloseUnauthenticatedSessionFailed";
 
         /// <summary>
+        /// Session credential validation failed, closing session: SessionId: {0}, RemoteEndPoint: {1}, MessageId: {2}
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.SessionAuthenticationCredentialRejected
+        /// 用途: 会话凭据校验未通过按协议违规关闭会话时记录警告
+        /// 参数: {0} - 会话Id, {1} - 远程端点, {2} - 消息Id
+        /// </remarks>
+        public const string SessionAuthenticationCredentialRejected = "Network.SessionAuthenticationCredentialRejected";
+
+        /// <summary>
+        /// Session credential validator threw an exception: SessionId: {0}, MessageId: {1}, exception: {2}
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.SessionAuthenticationCredentialError
+        /// 用途: 会话凭据校验器抛出异常（按拒绝处理）时记录警告
+        /// 参数: {0} - 会话Id, {1} - 消息Id, {2} - 异常消息
+        /// </remarks>
+        public const string SessionAuthenticationCredentialError = "Network.SessionAuthenticationCredentialError";
+
+        /// <summary>
         /// Error happened when scanning authentication timeout sessions: {0}
         /// </summary>
         /// <remarks>

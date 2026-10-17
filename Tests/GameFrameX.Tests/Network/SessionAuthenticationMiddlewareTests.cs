@@ -165,6 +165,62 @@ public class SessionAuthenticationMiddlewareTests : IDisposable
     }
 
     /// <summary>
+    /// 配置凭据校验器且校验通过时：鉴权完成消息放行并标记会话已鉴权（此后任意消息放行）。
+    /// </summary>
+    [Fact]
+    public async Task ShouldAllowPackageAsync_CredentialValidatorPass_ShouldAuthenticate()
+    {
+        _options.CredentialValidator = _ => ValueTask.FromResult(true);
+        var session = new FakeAppSession("session-cred-1");
+        await _middleware.RegisterSession(session);
+
+        var firstAllowed = await _middleware.ShouldAllowPackageAsync(session, CreatePackage(3001, typeof(object)));
+        var businessAllowed = await _middleware.ShouldAllowPackageAsync(session, CreatePackage(88888, typeof(object)));
+
+        Assert.True(firstAllowed);
+        Assert.True(businessAllowed);
+        Assert.Equal(0, session.CloseCallCount);
+    }
+
+    /// <summary>
+    /// 凭据校验器返回 false（凭据缺失/验签失败）应视为协议违规：拦截当前消息并关闭会话，不标记鉴权。
+    /// </summary>
+    [Fact]
+    public async Task ShouldAllowPackageAsync_CredentialValidatorReject_ShouldCloseAndStayUnauthenticated()
+    {
+        _options.CredentialValidator = _ => ValueTask.FromResult(false);
+        var session = new FakeAppSession("session-cred-2");
+        await _middleware.RegisterSession(session);
+
+        var allowed = await _middleware.ShouldAllowPackageAsync(session, CreatePackage(3001, typeof(object)));
+
+        Assert.False(allowed);
+        Assert.Equal(1, session.CloseCallCount);
+        Assert.Equal(CloseReason.ProtocolError, session.LastCloseReason);
+
+        // 会话仍处未鉴权态：白名单外消息继续被拦截（凭据失败不得放行升级）
+        var stillBlocked = await _middleware.ShouldAllowPackageAsync(session, CreatePackage(88888, typeof(object)));
+        Assert.False(stillBlocked);
+    }
+
+    /// <summary>
+    /// 凭据校验器抛异常应按拒绝处理（fail-closed），不进入业务处理。
+    /// </summary>
+    [Fact]
+    public async Task ShouldAllowPackageAsync_CredentialValidatorThrows_ShouldClose()
+    {
+        _options.CredentialValidator = _ => throw new InvalidOperationException("boom");
+        var session = new FakeAppSession("session-cred-3");
+        await _middleware.RegisterSession(session);
+
+        var allowed = await _middleware.ShouldAllowPackageAsync(session, CreatePackage(3001, typeof(object)));
+
+        Assert.False(allowed);
+        Assert.Equal(1, session.CloseCallCount);
+        Assert.Equal(CloseReason.ProtocolError, session.LastCloseReason);
+    }
+
+    /// <summary>
     /// 超时窗口内未完成鉴权的会话应被周期扫描主动关闭（CloseReason.TimeOut），追踪状态注销。
     /// </summary>
     [Fact]

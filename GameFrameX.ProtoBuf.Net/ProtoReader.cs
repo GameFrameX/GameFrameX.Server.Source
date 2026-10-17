@@ -46,6 +46,15 @@ public sealed class ProtoReader : IDisposable
     internal const long TO_EOF = -1;
 
     /// <summary>
+    /// Gets or sets the maximum permitted nesting depth when reading nested sub-items
+    /// (group or length-delimited). Reading past this depth throws a <see cref="ProtoException"/>,
+    /// converting a potential stack overflow from hostile deeply-nested payloads into a
+    /// fast-failing exception. Default 100, aligning with mainstream protobuf implementations.
+    /// Types with legitimately deeper graphs may raise this process-wide before deserializing.
+    /// </summary>
+    public static int MaxDepth { get; set; } = 100;
+
+    /// <summary>
     /// Gets / sets a flag indicating whether strings should be checked for repetition; if
     /// true, any repeated UTF-8 byte sequence will result in the same String instance, rather
     /// than a second instance of the same string. Enabled by default. Note that this uses
@@ -773,6 +782,11 @@ public sealed class ProtoReader : IDisposable
         if (reader == null)
         {
             throw new ArgumentNullException("reader");
+        }
+
+        if (reader.depth >= MaxDepth)
+        {
+            throw reader.CreateException("Recursion depth limit exceeded: " + reader.depth);
         }
 
         switch (reader.WireType)

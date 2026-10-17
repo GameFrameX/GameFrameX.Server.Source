@@ -194,6 +194,7 @@ GameFrameX 使用命令列參數 (`--Key=Value`) 進行配置，所有配置項�
 | `IsEnableUdp` | 是否啟用 UDP 服務 | `false` | `true` |
 | `IsEnableKcp` | 是否啟用 KCP 服務（僅配置檔案） | `false` | `true` |
 | `KcpPort` | KCP 埠（`0` 時與 TCP 共用埠） | `0` | `29120` |
+| `InterNodeAuthSecret` | 節點間 RPC 鑑權共享密鑰（協議握手幀 HMAC；空 = 不啟用）。叢集內所有節點必須配置一致 | 無 | `s3cr3t` |
 | `IsEnableWebSocket` | 是否啟用 WebSocket | `false` | `true` |
 | `WsPort` | WebSocket 埠 | `8889` | `29300` |
 | `IsEnableHttp` | 是否啟用 HTTP 服務 | `true` | `true` |

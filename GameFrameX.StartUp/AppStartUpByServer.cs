@@ -597,17 +597,26 @@ public abstract partial class AppStartUpBase
 
     /// <summary>
     /// 配置服务器间 KCP 监听（C251）：与 <see cref="ConfigureKcpServer"/> 同构（共用消息漏斗与管线过滤器），
-    /// 差异 = 独立端口与开关（<c>IsEnableInnerKcp</c>/<c>InnerKcpPort</c>）、不挂会话鉴权中间件
-    /// （信任级对齐 Inner TCP：内网端点）、挂空闲会话清理（清理窗 300s 严格大于客户端陈旧淘汰阈 240s）。
+    /// 差异 = 独立端口与开关（<c>IsEnableInnerKcp</c>/<c>InnerKcpPort</c>）；
+    /// C272 起 <see cref="GameFrameX.Network.RemoteMessaging.Versioning.InterNodeAuthentication"/> 共享密钥
+    /// 已配置时挂会话鉴权中间件作为凭据闸门：以协议版本握手帧为鉴权完成消息，凭据经 HMAC 验签，
+    /// 未完成握手前白名单外消息一律按协议违规关闭（该专用面按构造无玩家流量，fail-closed）；
+    /// 密钥为空时不挂中间件（信任级对齐 Inner TCP：内网端点）、挂空闲会话清理（清理窗 300s 严格大于客户端陈旧淘汰阈 240s）。
     /// </summary>
     /// <remarks>
     /// Configures the inter-server KCP listener (C251): structurally identical to
-    /// <see cref="ConfigureKcpServer"/> (shared message funnel and pipeline filter), differing in
-    /// the dedicated port and switch (<c>IsEnableInnerKcp</c>/<c>InnerKcpPort</c>), no session
-    /// authentication middleware (trust level aligned with the inner TCP listener: internal
-    /// endpoints), and idle-session clearing (the 300s clearing window is strictly greater than the
-    /// RemoteMessaging client's 240s stale-eviction threshold). Enabling KCP here does not affect
-    /// deployments that only configure tcp keys (the default dial path stays tcp).
+    /// <see cref="ConfigureKcpServer"/> (shared message funnel and pipeline filter), differing in the
+    /// dedicated port and switch (<c>IsEnableInnerKcp</c>/<c>InnerKcpPort</c>).
+    /// Since C272, when the <see cref="GameFrameX.Network.RemoteMessaging.Versioning.InterNodeAuthentication"/>
+    /// shared secret is configured, the session authentication middleware is mounted as a credential
+    /// gate: the protocol version handshake frame is the authentication-completion message, its
+    /// credential is verified via HMAC, and messages outside the whitelist are closed as protocol
+    /// violations until the handshake completes (this dedicated face carries no player traffic by
+    /// construction — fail-closed). With an empty secret no middleware is mounted (trust level
+    /// aligned with the inner TCP listener: internal endpoints), and idle-session clearing is
+    /// mounted (the 300s clearing window is strictly greater than the RemoteMessaging client's 240s
+    /// stale-eviction threshold). Enabling KCP here does not affect deployments that only configure
+    /// tcp keys (the default dial path stays tcp).
     /// </remarks>
     /// <param name="multipleServerHostBuilder">多服务器主机构建器 / Multiple server host builder</param>
     private void ConfigureInnerKcpServer(MultipleServerHostBuilder multipleServerHostBuilder)
@@ -624,6 +633,18 @@ public abstract partial class AppStartUpBase
         {
             // Localization: StartUp.InnerKcp.StartingServer - 正在启动 {0} 服务器间 KCP 服务，监听 {1}:{2}。
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.InnerKcp.StartingServer, ServerType, Setting.InnerHost, Setting.InnerKcpPort));
+            var interNodeAuthenticationEnabled = GameFrameX.Network.RemoteMessaging.Versioning.InterNodeAuthentication.IsEnabled;
+            SessionAuthenticationMiddleware authenticationMiddleware = null;
+            if (interNodeAuthenticationEnabled)
+            {
+                // C272 凭据闸门：握手帧为鉴权完成消息，凭据 HMAC 验签；未完成握手前白名单外消息按协议违规关闭
+                var authenticationOptions = new SessionAuthenticationOptions();
+                authenticationOptions.AllowedMessageIds.Add(GameFrameX.Network.RemoteMessaging.Versioning.ReqProtocolVersionNegotiation.ReservedMessageId);
+                authenticationOptions.AuthenticatedByMessageIds.Add(GameFrameX.Network.RemoteMessaging.Versioning.ReqProtocolVersionNegotiation.ReservedMessageId);
+                authenticationOptions.CredentialValidator = VerifyInterNodeHandshakeCredentialAsync;
+                authenticationMiddleware = new SessionAuthenticationMiddleware(authenticationOptions);
+            }
+
             multipleServerHostBuilder.AddServer<IMessage, MessageObjectPipelineFilter>(builder =>
             {
                 builder
@@ -640,22 +661,30 @@ public abstract partial class AppStartUpBase
                     // 空闲会话清理兜底：清理窗 300s 必须大于客户端陈旧淘汰阈 240s（KcpConnectionProvider 时序不变量）
                     .UseClearIdleSession()
                     .UseSessionHandler(OnConnected, OnDisconnected)
-                    .UsePackageHandler(PackageHandler, PackageErrorHandler)
-                    .UseInProcSessionContainer()
-                    .ConfigureServices((context, serviceCollection) =>
+                    .UsePackageHandler(interNodeAuthenticationEnabled
+                        ? (session, message) => HandleKcpPackageWithAuthenticationAsync(authenticationMiddleware, session, message)
+                        : (session, message) => PackageHandler(session, message), PackageErrorHandler)
+                    .UseInProcSessionContainer();
+                if (interNodeAuthenticationEnabled)
+                {
+                    // UseMiddleware 返回非泛型 ISuperSocketHostBuilder，须置于泛型链末尾（与客户端 KCP 面同构）
+                    builder.UseMiddleware<SessionAuthenticationMiddleware>(_ => authenticationMiddleware);
+                }
+
+                builder.ConfigureServices((context, serviceCollection) =>
+                {
+                    serviceCollection.Configure<ServerOptions>(options =>
                     {
-                        serviceCollection.Configure<ServerOptions>(options =>
+                        options.IdleSessionTimeOut = 300;
+                        options.ClearIdleSessionInterval = 60;
+                        var listenOptions = new ListenOptions
                         {
-                            options.IdleSessionTimeOut = 300;
-                            options.ClearIdleSessionInterval = 60;
-                            var listenOptions = new ListenOptions
-                            {
-                                Ip = "Any",
-                                Port = Setting.InnerKcpPort,
-                            };
-                            options.AddListener(listenOptions);
-                        });
+                            Ip = "Any",
+                            Port = Setting.InnerKcpPort,
+                        };
+                        options.AddListener(listenOptions);
                     });
+                });
             });
             // Localization: StartUp.InnerKcp.StartupComplete - {0} 服务器间 KCP 服务已成功启动，监听 {1}:{2}。
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.InnerKcp.StartupComplete, ServerType, Setting.InnerHost, Setting.InnerKcpPort));
@@ -666,6 +695,27 @@ public abstract partial class AppStartUpBase
             LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.InnerKcp.StartupFailed, ServerType, Setting.InnerHost, Setting.InnerKcpPort));
             LogPortOccupationDetails("InnerKcp", Setting.InnerKcpPort);
         }
+    }
+
+    /// <summary>
+    /// 服务器间凭据闸门校验器：解包协议版本握手帧并校验节点间 HMAC 凭据（C272）。
+    /// </summary>
+    /// <remarks>
+    /// The inter-server credential gate validator: deserializes the protocol version handshake
+    /// frame and verifies the inter-node HMAC credential (C272).
+    /// 非握手消息（不应到达——闸门白名单仅放行握手帧与心跳）或验签失败返回 <c>false</c>，
+    /// 由 <see cref="SessionAuthenticationMiddleware"/> 按协议违规关闭会话。
+    /// </remarks>
+    /// <param name="package">收到的消息包 / The received message package</param>
+    /// <returns>凭据校验通过返回 <c>true</c> / true when the credential verifies</returns>
+    private static ValueTask<bool> VerifyInterNodeHandshakeCredentialAsync(INetworkMessagePackage package)
+    {
+        if (package.DeserializeMessageObject() is not GameFrameX.Network.RemoteMessaging.Versioning.ReqProtocolVersionNegotiation request)
+        {
+            return ValueTask.FromResult(false);
+        }
+
+        return ValueTask.FromResult(GameFrameX.Network.RemoteMessaging.Versioning.InterNodeAuthentication.Verify(request.Nonce, request.Major, request.Minor, request.AuthCredential));
     }
 
     /// <summary>
