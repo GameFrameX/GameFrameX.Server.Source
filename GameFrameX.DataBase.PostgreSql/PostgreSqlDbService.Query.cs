@@ -74,6 +74,7 @@ public sealed partial class PostgreSqlDbService
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
             using var context = CreateContext<TState>();
+            JoinAmbientTransaction(context);
             var query = BuildRowQuery<TState>(context, filter, token);
             var row = await query.FirstOrDefaultAsync(row => row.Id == id, token).ConfigureAwait(false);
             return row?.Doc;
@@ -116,6 +117,7 @@ public sealed partial class PostgreSqlDbService
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
             using var context = CreateContext<TState>();
+            JoinAmbientTransaction(context);
             var query = BuildRowQuery<TState>(context, filter, token);
             var row = await query.FirstOrDefaultAsync(token).ConfigureAwait(false);
             return row?.Doc;
@@ -250,6 +252,7 @@ public sealed partial class PostgreSqlDbService
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
             using var context = CreateContext<TState>();
+            JoinAmbientTransaction(context);
             return await BuildRowQuery<TState>(context, filter, token).LongCountAsync(token).ConfigureAwait(false);
         }, cancellationToken, nameof(FindPageAsync), () => 0L).ConfigureAwait(false);
 
@@ -344,6 +347,7 @@ public sealed partial class PostgreSqlDbService
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
             using var context = CreateContext<TState>();
+            JoinAmbientTransaction(context);
             var row = await ApplySort(BuildRowQuery<TState>(context, filter, token), sortExpression, descending).FirstOrDefaultAsync(token).ConfigureAwait(false);
             return row?.Doc;
         }, cancellationToken, descending ? nameof(FindSortDescendingFirstOneAsync) : nameof(FindSortAscendingFirstOneAsync)).ConfigureAwait(false);
@@ -529,6 +533,7 @@ public sealed partial class PostgreSqlDbService
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
             using var context = CreateContext<TState>();
+            JoinAmbientTransaction(context);
             var query = BuildRowQuery<TState>(context, filter, token, includeDeleted);
             return await query.LongCountAsync(token).ConfigureAwait(false);
         }, cancellationToken, nameof(CountAsync), () => 0L).ConfigureAwait(false);
@@ -611,6 +616,7 @@ public sealed partial class PostgreSqlDbService
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
             using var context = CreateContext<TState>();
+            JoinAmbientTransaction(context);
             return await BuildRowQuery<TState>(context, filter, token).AnyAsync(token).ConfigureAwait(false);
         }, cancellationToken, nameof(AnyAsync), () => false).ConfigureAwait(false);
     }
@@ -647,6 +653,7 @@ public sealed partial class PostgreSqlDbService
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
             using var context = CreateContext<TState>();
+            JoinAmbientTransaction(context);
             return await BuildRowQuery<TState>(context, null, token).AnyAsync(row => row.Id == id, token).ConfigureAwait(false);
         }, cancellationToken, nameof(ExistsByIdAsync), () => false).ConfigureAwait(false);
     }
@@ -696,6 +703,7 @@ public sealed partial class PostgreSqlDbService
     {
         await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
         using var context = CreateContext<TState>();
+        JoinAmbientTransaction(context);
         var rows = await buildQuery(context).ToListAsync(cancellationToken).ConfigureAwait(false);
         var result = new List<TState>(rows.Count);
         foreach (var row in rows)

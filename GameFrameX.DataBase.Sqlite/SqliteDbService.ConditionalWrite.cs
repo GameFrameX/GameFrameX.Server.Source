@@ -196,7 +196,7 @@ public sealed partial class SqliteDbService
         return await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
-            await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+            var (transaction, owned) = await BeginOrJoinTransactionAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 var rows = await ReadRowsRawAsync<TState>(BuildSelectAllCommand<TState>(), cancellationToken).ConfigureAwait(false);
@@ -204,7 +204,11 @@ public sealed partial class SqliteDbService
                 {
                     if (existing.Id == state.Id || predicate(existing))
                     {
-                        await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+                        if (owned)
+                        {
+                            await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+                        }
+
                         return false;
                     }
                 }
@@ -212,14 +216,25 @@ public sealed partial class SqliteDbService
                 using var insertCommand = BuildInsertCommand<TState>(state);
                 insertCommand.Transaction = transaction;
                 await insertCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                if (owned)
+                {
+                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                }
+
                 return true;
             }
             catch (SqliteException ex) when (ex.SqliteErrorCode is 19 or 2067)
             {
-                // 唯一约束冲突：事务 Dispose 即回滚，转译为 false 而非上抛。
-                // Unique-constraint conflict: disposing the transaction rolls it back; translate to false.
+                // 唯一约束冲突：自持事务 Dispose 即回滚；环境事务保持（语句级失败不中止事务），转译为 false 而非上抛。
+                // Unique-constraint conflict: an owned transaction rolls back on dispose; an ambient one stays usable (statement failure does not abort it) — translate to false.
                 return false;
+            }
+            finally
+            {
+                if (owned)
+                {
+                    await transaction.DisposeAsync().ConfigureAwait(false);
+                }
             }
         }), cancellationToken, nameof(TryAddUniqueAsync), false).ConfigureAwait(false);
     }

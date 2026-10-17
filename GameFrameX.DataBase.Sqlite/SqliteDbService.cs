@@ -100,13 +100,15 @@ public sealed partial class SqliteDbService : IDatabaseService
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     /// <summary>
-    /// 环境事务标记（事务壳内嵌套操作/嵌套事务壳直接加入当前事务，不再重复拿闸/开事务）。
+    /// 环境事务（事务壳内嵌套操作/嵌套事务壳直接加入当前事务，不再重复拿闸/开事务；null = 无环境事务）。
     /// </summary>
     /// <remarks>
-    /// Ambient transaction flag: nested operations and nested transaction shells inside an active
-    /// transaction join it instead of acquiring the gate / opening a second transaction.
+    /// Ambient transaction: nested operations and nested transaction shells inside an active shell
+    /// join it instead of acquiring the gate / starting a second transaction (SQLite cannot nest
+    /// transactions on a single connection). Instance-level so concurrent service instances never
+    /// cross-pollinate each other's shells.
     /// </remarks>
-    private static readonly AsyncLocal<bool> AmbientTransaction = new();
+    private readonly AsyncLocal<SqliteTransaction> AmbientTransaction = new();
 
     /// <summary>
     /// 表结构就绪缓存（表名 → 单飞建表任务；失败任务驱逐以便重试，对齐 PG 适配器语义）。

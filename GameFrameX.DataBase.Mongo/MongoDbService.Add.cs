@@ -102,7 +102,7 @@ public sealed partial class MongoDbService
         state.UpdateTime = currentTime;
         state.UpdateCount ??= 0;
         var collection = _mongoDbContext.GetCollection<TState>();
-        await ExecuteWriteWithRetryAsync(token => collection.InsertOneAsync(state, cancellationToken: token), cancellationToken, nameof(AddAsync), false).ConfigureAwait(false);
+        await ExecuteWriteWithRetryAsync(token => InsertOneWithAmbientSessionAsync(collection, state, token), cancellationToken, nameof(AddAsync), false).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -148,7 +148,7 @@ public sealed partial class MongoDbService
         }
 
         var collection = _mongoDbContext.GetCollection<TState>();
-        await ExecuteWriteWithRetryAsync(token => collection.InsertManyAsync(cacheStates, cancellationToken: token), cancellationToken, nameof(AddListAsync), false).ConfigureAwait(false);
+        await ExecuteWriteWithRetryAsync(token => InsertManyWithAmbientSessionAsync(collection, cacheStates, token), cancellationToken, nameof(AddListAsync), false).ConfigureAwait(false);
     }
 
     #endregion 插入

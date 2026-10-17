@@ -82,6 +82,7 @@ public sealed partial class PostgreSqlDbService
             {
                 await EnsureTableAsync<TState>(token).ConfigureAwait(false);
                 using var context = CreateContext<TState>();
+                JoinAmbientTransaction(context);
                 var updatedRow = await ReplaceDocumentAsync(context, state, token).ConfigureAwait(false);
                 if (updatedRow)
                 {
@@ -158,6 +159,7 @@ public sealed partial class PostgreSqlDbService
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
             using var context = CreateContext<TState>();
+            JoinAmbientTransaction(context);
             var written = false;
             foreach (var state in changedStates)
             {
@@ -284,6 +286,7 @@ public sealed partial class PostgreSqlDbService
         // The soft-delete query filter applies: only visible rows can be partially updated.
         using (var context = CreateContext<TState>())
         {
+            JoinAmbientTransaction(context);
             var row = await context.Rows.FirstOrDefaultAsync(row => row.Id == id, cancellationToken).ConfigureAwait(false);
             if (row == null)
             {

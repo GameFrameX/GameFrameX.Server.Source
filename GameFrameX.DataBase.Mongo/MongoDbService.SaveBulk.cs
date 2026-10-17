@@ -108,7 +108,7 @@ public sealed partial class MongoDbService
 
             try
             {
-                var result = await collection.BulkWriteAsync(writeModels, BulkWriteOptions).ConfigureAwait(false);
+                var result = await BulkWriteWithAmbientSessionAsync(collection, writeModels, BulkWriteOptions).ConfigureAwait(false);
                 if (result.IsAcknowledged)
                 {
                     for (var offset = 0; offset < batchCount; offset++)

@@ -140,15 +140,28 @@ public sealed partial class SqliteDbService
         await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
-            await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-            foreach (var cacheState in cacheStates)
+            var (transaction, owned) = await BeginOrJoinTransactionAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                using var command = BuildInsertCommand<TState>(cacheState);
-                command.Transaction = transaction;
-                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-            }
+                foreach (var cacheState in cacheStates)
+                {
+                    using var command = BuildInsertCommand<TState>(cacheState);
+                    command.Transaction = transaction;
+                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                }
 
-            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                if (owned)
+                {
+                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                if (owned)
+                {
+                    await transaction.DisposeAsync().ConfigureAwait(false);
+                }
+            }
         }), cancellationToken, nameof(AddListAsync), false).ConfigureAwait(false);
     }
 
@@ -251,15 +264,28 @@ public sealed partial class SqliteDbService
         await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
-            await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-            foreach (var state in stateArray)
+            var (transaction, owned) = await BeginOrJoinTransactionAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                using var command = BuildUpsertCommand<TState>(state);
-                command.Transaction = transaction;
-                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-            }
+                foreach (var state in stateArray)
+                {
+                    using var command = BuildUpsertCommand<TState>(state);
+                    command.Transaction = transaction;
+                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                }
 
-            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                if (owned)
+                {
+                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                if (owned)
+                {
+                    await transaction.DisposeAsync().ConfigureAwait(false);
+                }
+            }
         }), cancellationToken, nameof(AddOrUpdateListAsync), true).ConfigureAwait(false);
         foreach (var state in stateArray)
         {
@@ -333,7 +359,8 @@ public sealed partial class SqliteDbService
         try
         {
             var acknowledged = 0;
-            await using (var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(CancellationToken.None).ConfigureAwait(false))
+            var (transaction, owned) = await BeginOrJoinTransactionAsync(CancellationToken.None).ConfigureAwait(false);
+            try
             {
                 for (var offset = 0; offset < batchCount; offset++)
                 {
@@ -342,7 +369,17 @@ public sealed partial class SqliteDbService
                     acknowledged += await command.ExecuteNonQueryAsync(CancellationToken.None).ConfigureAwait(false);
                 }
 
-                await transaction.CommitAsync(CancellationToken.None).ConfigureAwait(false);
+                if (owned)
+                {
+                    await transaction.CommitAsync(CancellationToken.None).ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                if (owned)
+                {
+                    await transaction.DisposeAsync().ConfigureAwait(false);
+                }
             }
 
             // 每条 upsert 计一行；受影响行数 >= 批大小即视为整批 ack
@@ -482,16 +519,30 @@ public sealed partial class SqliteDbService
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
             var written = false;
-            await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-            foreach (var state in changedStates)
+            var (transaction, owned) = await BeginOrJoinTransactionAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                using var command = BuildReplaceDocumentCommand<TState>(state);
-                command.Transaction = transaction;
-                written |= await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) > 0;
-            }
+                foreach (var state in changedStates)
+                {
+                    using var command = BuildReplaceDocumentCommand<TState>(state);
+                    command.Transaction = transaction;
+                    written |= await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) > 0;
+                }
 
-            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-            return written;
+                if (owned)
+                {
+                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                }
+
+                return written;
+            }
+            finally
+            {
+                if (owned)
+                {
+                    await transaction.DisposeAsync().ConfigureAwait(false);
+                }
+            }
         }), cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
         if (anyRowWritten)
         {
@@ -802,18 +853,32 @@ public sealed partial class SqliteDbService
                 return 0L;
             }
 
-            await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-            foreach (var document in rows)
+            var (transaction, owned) = await BeginOrJoinTransactionAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                document.IsDeleted = true;
-                document.DeleteTime = deleteTime;
-                using var command = BuildReplaceDocumentCommand<TState>(document);
-                command.Transaction = transaction;
-                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-            }
+                foreach (var document in rows)
+                {
+                    document.IsDeleted = true;
+                    document.DeleteTime = deleteTime;
+                    using var command = BuildReplaceDocumentCommand<TState>(document);
+                    command.Transaction = transaction;
+                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                }
 
-            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-            return (long)rows.Count;
+                if (owned)
+                {
+                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                }
+
+                return (long)rows.Count;
+            }
+            finally
+            {
+                if (owned)
+                {
+                    await transaction.DisposeAsync().ConfigureAwait(false);
+                }
+            }
         }), cancellationToken, nameof(DeleteListIdAsync), true).ConfigureAwait(false);
     }
 
@@ -864,18 +929,32 @@ public sealed partial class SqliteDbService
                 return 0L;
             }
 
-            await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-            foreach (var id in ids)
+            var (transaction, owned) = await BeginOrJoinTransactionAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                using var command = _connection.CreateCommand();
-                command.Transaction = transaction;
-                command.CommandText = BuildDeleteByIdCommandText<TState>();
-                command.Parameters.AddWithValue("$id", id);
-                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-            }
+                foreach (var id in ids)
+                {
+                    using var command = _connection.CreateCommand();
+                    command.Transaction = transaction;
+                    command.CommandText = BuildDeleteByIdCommandText<TState>();
+                    command.Parameters.AddWithValue("$id", id);
+                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                }
 
-            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-            return (long)ids.Count;
+                if (owned)
+                {
+                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                }
+
+                return (long)ids.Count;
+            }
+            finally
+            {
+                if (owned)
+                {
+                    await transaction.DisposeAsync().ConfigureAwait(false);
+                }
+            }
         }), cancellationToken, nameof(HardDeleteAsync), true).ConfigureAwait(false);
     }
 
@@ -928,30 +1007,45 @@ public sealed partial class SqliteDbService
                 return 0L;
             }
 
-            await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-            foreach (var document in restored)
+            var (transaction, owned) = await BeginOrJoinTransactionAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                document.IsDeleted = false;
-                document.DeleteTime = null;
-                using var command = BuildReplaceDocumentCommand<TState>(document);
-                command.Transaction = transaction;
-                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-            }
+                foreach (var document in restored)
+                {
+                    document.IsDeleted = false;
+                    document.DeleteTime = null;
+                    using var command = BuildReplaceDocumentCommand<TState>(document);
+                    command.Transaction = transaction;
+                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                }
 
-            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-            return (long)restored.Count;
+                if (owned)
+                {
+                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                }
+
+                return (long)restored.Count;
+            }
+            finally
+            {
+                if (owned)
+                {
+                    await transaction.DisposeAsync().ConfigureAwait(false);
+                }
+            }
         }), cancellationToken, nameof(RestoreAsync), true).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// 在事务中执行操作（单连接事务壳 BEGIN → action → COMMIT；嵌套事务壳加入环境事务；事务壳单次直通，数据操作另经共享弹性引擎重试）。
+    /// 在事务中执行操作（单连接事务壳 BEGIN → action → COMMIT；action 内全部数据操作经环境事务加入本事务，壳唯一负责提交；嵌套事务壳加入环境事务）。
     /// </summary>
     /// <remarks>
     /// Executes the action inside a transaction on the single connection (BEGIN → action → COMMIT).
-    /// A nested shell inside an active transaction simply joins it (SQLite cannot nest transactions;
-    /// the ambient operations already run on the same connection). The shell itself runs single-pass
-    /// by design — retrying a shell that joined an ambient transaction would replay the action inside
-    /// the outer transaction; the data operations it wraps retry individually via the shared
+    /// Every data operation issued by the action joins the shell's transaction through the ambient
+    /// transaction (owned write paths skip their own BEGIN/COMMIT and enlist in it), so the shell is
+    /// the single commit point. A nested shell inside an active transaction simply joins it (SQLite
+    /// cannot nest transactions). The shell itself runs single-pass by design — retrying a shell
+    /// would replay the action; the data operations it wraps retry individually via the shared
     /// resilience engine (C253).
     /// </remarks>
     /// <param name="action">要在事务中执行的操作 / The action to execute inside the transaction</param>
@@ -963,14 +1057,15 @@ public sealed partial class SqliteDbService
     }
 
     /// <summary>
-    /// 在事务中执行操作（单连接事务壳 BEGIN → action → COMMIT；嵌套事务壳加入环境事务；事务壳单次直通，数据操作另经共享弹性引擎重试）。
+    /// 在事务中执行操作（单连接事务壳 BEGIN → action → COMMIT；action 内全部数据操作经环境事务加入本事务，壳唯一负责提交；嵌套事务壳加入环境事务）。
     /// </summary>
     /// <remarks>
     /// Executes the action inside a transaction on the single connection (BEGIN → action → COMMIT).
-    /// A nested shell inside an active transaction simply joins it (SQLite cannot nest transactions;
-    /// the ambient operations already run on the same connection). The shell itself runs single-pass
-    /// by design — retrying a shell that joined an ambient transaction would replay the action inside
-    /// the outer transaction; the data operations it wraps retry individually via the shared
+    /// Every data operation issued by the action joins the shell's transaction through the ambient
+    /// transaction (owned write paths skip their own BEGIN/COMMIT and enlist in it), so the shell is
+    /// the single commit point. A nested shell inside an active transaction simply joins it (SQLite
+    /// cannot nest transactions). The shell itself runs single-pass by design — retrying a shell
+    /// would replay the action; the data operations it wraps retry individually via the shared
     /// resilience engine (C253).
     /// </remarks>
     /// <param name="action">要在事务中执行的操作 / The action to execute inside the transaction</param>
@@ -982,10 +1077,10 @@ public sealed partial class SqliteDbService
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
         ArgumentNullException.ThrowIfNull(action);
-        if (AmbientTransaction.Value)
+        if (AmbientTransaction.Value != null)
         {
-            // 嵌套事务壳：加入环境事务（对齐 Mongo/PG「action 内操作不绑本事务快照」的既有限制语义）。
-            // Nested shell: join the ambient transaction.
+            // 嵌套事务壳：加入环境事务（操作已绑同一事务，提交权归最外层壳）。
+            // Nested shell: join the ambient transaction (the outermost shell owns the commit).
             await action().ConfigureAwait(false);
             return;
         }
@@ -993,17 +1088,17 @@ public sealed partial class SqliteDbService
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            AmbientTransaction.Value = true;
+            await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+            AmbientTransaction.Value = transaction;
             try
             {
-                await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
                 cancellationToken.ThrowIfCancellationRequested();
                 await action().ConfigureAwait(false);
                 await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
             }
             finally
             {
-                AmbientTransaction.Value = false;
+                AmbientTransaction.Value = null;
             }
         }
         finally
@@ -1109,7 +1204,7 @@ public sealed partial class SqliteDbService
     /// <returns>异步任务 / Async task</returns>
     private async Task ExecuteGatedAsync(Func<Task> operation)
     {
-        if (AmbientTransaction.Value)
+        if (AmbientTransaction.Value != null)
         {
             await operation().ConfigureAwait(false);
             return;
@@ -1138,7 +1233,7 @@ public sealed partial class SqliteDbService
     /// <returns>操作结果 / The result</returns>
     private async Task<T> ExecuteGatedAsync<T>(Func<Task<T>> operation)
     {
-        if (AmbientTransaction.Value)
+        if (AmbientTransaction.Value != null)
         {
             return await operation().ConfigureAwait(false);
         }
@@ -1152,6 +1247,27 @@ public sealed partial class SqliteDbService
         {
             _gate.Release();
         }
+    }
+
+    /// <summary>
+    /// 获取本操作应使用的事务：环境事务存在则加入（不 BEGIN/COMMIT，提交权归事务壳），否则新开自持事务。
+    /// </summary>
+    /// <remarks>
+    /// Resolves the transaction for the calling write path: inside an ambient transaction shell the
+    /// ambient transaction is joined (no BEGIN/COMMIT — the shell owns the final commit); otherwise a
+    /// new owned transaction is started and the caller must commit and dispose it.
+    /// </remarks>
+    /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
+    /// <returns>事务与是否自持（自持时调用方负责 Commit 与 Dispose）/ The transaction and whether the caller owns it</returns>
+    private async Task<(SqliteTransaction Transaction, bool Owned)> BeginOrJoinTransactionAsync(CancellationToken cancellationToken)
+    {
+        var ambient = AmbientTransaction.Value;
+        if (ambient != null)
+        {
+            return (ambient, false);
+        }
+
+        return ((SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false), true);
     }
 
     /// <summary>

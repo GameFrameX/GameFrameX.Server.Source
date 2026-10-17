@@ -114,6 +114,7 @@ public sealed partial class MongoDbService : IDatabaseService
 
     private MongoDbContext _mongoDbContext;
     private MongoClient _mongoClient;
+    private readonly AsyncLocal<IClientSessionHandle> _ambientSession = new();
     private readonly object _availabilityLock = new();
     private int _availabilityState = (int)DatabaseAvailabilityState.Healthy;
     private int _consecutiveFailures;
