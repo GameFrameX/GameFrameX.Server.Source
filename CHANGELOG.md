@@ -35,6 +35,22 @@
 * P4 上层簇与聚合三包落地（C232 / C227 P4）：新工程 `GameFrameX.Capability.Online.{Match,Competition,Operations}`——Match 对局域单域平面（end_abnormal_match + match-tick job）；Competition = Leaderboard/Season/Tournament/LiveOps 四域簇（LiveOps 自 Runtime 壳迁入，7 action）；Operations = Audit/HotfixRollback/GameEvents/Timeline/Overview 聚合五域 + Console 3 action + 事件桥/审计桥装配期接线进模块 `Register`（桥体逐语句保留，订阅时点装配期提前已披露为行为等价，C105 审计桥语义不变）；域实现 git mv 迁包 + 各包自装配模块（无参构造）与 hosting 扩展 `AddOnlineXxxRuntime`；`OnlineFoundationCapabilityModule` 自 Runtime 壳过渡模块无参化迁入 Foundation 包（三 store 替换缝探测 + 四域服务注册回共享面 + 两清扫滴答 job；suspend_resume_player handler 更名 `OnlineAdminFoundationHandlers` 随包——壳类名 Match 域名系历史误植，实为在线状态阻断位）
 
 * Launcher 真扫描组合根（C232 / C227 P4 终态）：`AddOnlineCapabilities` 编排随壳退役迁入 `GameFrameX.Launcher.Online`（入口签名 / "Online" 配置段 / CLI 别名零变化）——`BuildScannedRuntime` 组合根基建预置（授权作用域 / 事件总线 / 事件出口 / 幂等 / 统一审计具型+读面）+ `CapabilityAssembly.DiscoverModules` 部署目录命名约定扫描（`AppContext.BaseDirectory` 下 `GameFrameX.Capability.*.dll`；反射装配的组合根 AssemblyRef 表只记代码实际引用的类型、靠不住，新增能力 = 部署产物落地即被发现，宿主零改动）+ admin-only 目录改 `DiscoverModules` 驱动（手工 `Catalog()` 退役）；装配序由显式链 Add 序换扫描发现序（competition/match 互换，拓扑性质不变）；门禁终态 = 11 包精确引用表 + `Launcher_ReferencesOnlineCapabilityPackages_Directly` 直引 8 包断言（替换 OnlyThroughRuntimeShell）+ Hosting=0 红线保持 + topic 冻结面保留（目录依赖矩阵退役，包级断言由 CapabilityPackageStructureTests 全量接管）
+* Online 能力包族拆包总览（C227 umbrella 收口，2026-10-17；P1~P4 = C228 / C229+C230 / C231 / C232，C235 命名空间对齐补遗）：`GameFrameX.Online` 单体与 `GameFrameX.Online.Runtime` 过渡壳退役，能力全量收纳 `Capability/` 12 包（同版本族 Version.props 单源，全部注册 slnx）：
+
+  | 包 | 分层 | 域与 admin action |
+  |---|---|---|
+  | Capability.Hosting.{Abstractions,Core,AdminApi} | 机制 | manifest/模块契约/三类 job 调度、Builder+Assembly 扫描+闭包校验、Admin 管道（去域化，对能力包引用恒零） |
+  | Capability.Online.Abstractions | 脊柱 | Contracts/Events/Scope/Idempotency/Tokens + admin 线缆契约与审计读契约 |
+  | Capability.Online.Foundation | 地基 | Identity/Session/Presence/Storage 四域 + 无参自装配模块（suspend_resume_player） |
+  | Capability.Online.Assets | 叶子 | 钱包/库存/账本/发放（5 action） |
+  | Capability.Online.Social | 叶子 | 好友/群组/聊天/通知/管制（8 action 含 match_isolation） |
+  | Capability.Online.Matchmaking | 叶子 | 匹配 + Party 域（4 action） |
+  | Capability.Online.Match | 上层 | 对局域（end_abnormal_match + match-tick job） |
+  | Capability.Online.Competition | 上层 | Leaderboard/Season/Tournament/LiveOps（7 action） |
+  | Capability.Online.Operations | 聚合 | Audit/HotfixRollback/GameEvents/Timeline/Overview + 事件桥/审计桥（Console 3 action） |
+  | Capability.Online.Persistence | 持久化 | C249 增设：一级 store GameDb 适配（Identity/PlayerStorage/资产账本+交易），二级易失 store 保持 InMemory |
+
+  P4 终态 admin 面 = 29 业务 action + list_capabilities 元端点（分布 5/8/4/1/7/3+foundation1；C256 起 hotfix 受控族 +4）；组合根双轨 = Launcher 真扫描（`AddOnlineCapabilities` 直引 9 Online 包 + Hosting 三件）与 dotnet new `gfx-online` 模板最小装配；门禁 = `CapabilityPackageStructureTests` 12 包精确引用表 + Hosting=0 红线 + 事件 topic 字节冻结（`OnlineDependencyMatrixTests` 目录矩阵已随双工程退役）。
 
 ### Breaking
 
