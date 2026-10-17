@@ -127,6 +127,28 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     }
 
     /// <summary>
+    /// 测试 CAS 失败不污染调用方对象：stale / 缺行失败路径回滚写前的临时版本递增，
+    /// 调用方 state.RowVersion 保持调用前值（写前递增不回滚会使后续 CAS 持续 Stale）。
+    /// </summary>
+    [Fact]
+    public async Task UpdateIfRowVersion_StaleFailure_ShouldNotPolluteCallerRowVersion()
+    {
+        await ForEachProviderAsync(async service =>
+        {
+            var state = new ConditionalWriteTestState { Id = NextId(), Identifier = "pollute", Level = 10 };
+            await service.AddAsync(state);
+
+            var staleWriter = new ConditionalWriteTestState { Id = state.Id, Identifier = "pollute", Level = 99, RowVersion = 7L };
+            Assert.False(await service.UpdateIfRowVersionAsync(state.Id, 42L, staleWriter));
+            Assert.Equal(7L, staleWriter.RowVersion);
+
+            var missingWriter = new ConditionalWriteTestState { Id = NextId(), Identifier = "missing", Level = 1, RowVersion = 5L };
+            Assert.False(await service.UpdateIfRowVersionAsync(missingWriter.Id, 0L, missingWriter));
+            Assert.Equal(5L, missingWriter.RowVersion);
+        });
+    }
+
+    /// <summary>
     /// 测试 CAS 参数守卫：state 的 Id 与 id 不一致抛 ArgumentException。
     /// </summary>
     [Fact]
