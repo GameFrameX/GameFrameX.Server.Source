@@ -1518,6 +1518,9 @@
   <data name="RemoteMessaging.Versioning.ServerRejectedIncompatibleClient" xml:space="preserve">
     <value>拒绝协议 major 不符的连接：对端 {0}，本端 {1}。回包后关闭会话。</value>
   </data>
+  <data name="RemoteMessaging.Versioning.ServerRejectCloseFailed" xml:space="preserve">
+    <value>拒绝握手后延迟关闭通道失败（对端可能已先行关闭；拒绝包已送达，语义不受影响）。</value>
+  </data>
 
   <data name="RemoteMessaging.Unified.SenderNotInitialized" xml:space="preserve">
     <value>UnifiedMessageSenderHolder 尚未初始化。请在启动期间先调用 Initialize()。</value>
@@ -2166,6 +2169,13 @@
 
   <data name="RemoteMessaging.Client.InterceptorOnExceptionFailed" xml:space="preserve">
     <value>拦截器 OnExceptionAsync 失败</value>
+  </data>
+  <data name="RemoteMessaging.Client.ReceivePumpDecodeFailure" xml:space="preserve">
+    <value>连接接收泵解码失败（帧损坏或协议异常），连接已按死亡处理并快速失败挂起请求。</value>
+  </data>
+
+  <data name="RemoteMessaging.Client.ReceivePumpFatalError" xml:space="preserve">
+    <value>连接接收泵遭遇未分类异常（不吞掉，记录后向上抛出）。</value>
   </data>
 
   <data name="RemoteMessaging.Client.SendOneWayCircuitBreakerOpen" xml:space="preserve">
