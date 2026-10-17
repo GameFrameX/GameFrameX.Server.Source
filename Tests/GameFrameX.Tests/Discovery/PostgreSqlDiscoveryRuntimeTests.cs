@@ -130,6 +130,50 @@ public sealed class PostgreSqlDiscoveryRuntimeTests
     }
 
     /// <summary>
+    /// 部分建库场景收敛：脚本首表存在、次表缺失时重跑 EnsureSchema 应补建缺失表（回归：整批脚本首语句即
+    /// 42P07 中止且被吞，后续建表/建索引静默漏建，存量库心跳 42P01）。
+    /// </summary>
+    /// <remarks>
+    /// Convergence on a partially provisioned control database: with the script's first table
+    /// (player_route) present but server_heartbeat dropped, re-running EnsureSchema must recreate the missing
+    /// table. The EF create script orders player_route first, so the former single-batch execution aborted on
+    /// its very first statement (42P07) and swallowed the error — every later statement, including the
+    /// missing heartbeat table, was silently skipped.
+    /// </remarks>
+    [Fact]
+    public async Task EnsureSchema_OnPartiallyProvisionedDatabase_ShouldRecreateMissingTables()
+    {
+        if (ShouldSkip)
+        {
+            return;
+        }
+
+        await using (var testDatabase = await PostgreSqlTestDatabase.CreateAsync(_connectionString))
+        {
+            var store = new PostgreSqlHeartbeatStore(testDatabase.DataSource);
+            await store.EnsureSchemaAsync();
+
+            // 制造「部分建库」：仅删 server_heartbeat（脚本首表 player_route 保留），复现存量库部分建表场景。
+            // Fabricate the partial schema: drop only server_heartbeat (the script's first table player_route
+            // stays), mirroring a control database provisioned halfway.
+            await using (var connection = await testDatabase.DataSource.OpenConnectionAsync())
+            {
+                await using var dropCommand = new NpgsqlCommand("DROP TABLE server_heartbeat", connection);
+                await dropCommand.ExecuteNonQueryAsync();
+            }
+
+            await store.EnsureSchemaAsync();
+
+            await using (var connection = await testDatabase.DataSource.OpenConnectionAsync())
+            {
+                await using var command = new NpgsqlCommand("SELECT to_regclass('public.server_heartbeat')::text", connection);
+                var serverHeartbeat = await command.ExecuteScalarAsync() as string;
+                Assert.Equal("server_heartbeat", serverHeartbeat);
+            }
+        }
+    }
+
+    /// <summary>
     /// 重复调用 Activate：第二次为 no-op——守卫短路，不重建 watcher/registry（TableProvider 引用不变）。
     /// </summary>
     /// <remarks>

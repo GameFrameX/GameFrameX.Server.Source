@@ -76,11 +76,13 @@ public sealed class PostgreSqlHeartbeatStore : IHeartbeatStore
     }
 
     /// <summary>
-    /// 幂等建表 / 建索引（EF 模型 DDL；表已存在视为成功，供装配层与测试复用）。
+    /// 幂等建表 / 建索引（EF 模型 DDL 逐语句执行；表 / 对象已存在视为成功，供装配层与测试复用）。
     /// </summary>
     /// <remarks>
     /// Idempotently creates the discovery schema (heartbeat + player-route tables and their indexes) through
-    /// the EF model-generated DDL; pre-existing tables count as success. The model covers both discovery
+    /// the EF model-generated DDL, executed statement by statement with independent tolerance for
+    /// pre-existing objects (42P07 / 42710) — a partially provisioned control database converges on the
+    /// full schema instead of silently skipping the missing tables. The model covers both discovery
     /// tables, so the first store's bootstrap creates the full control-schema shape.
     /// </remarks>
     /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
@@ -89,15 +91,7 @@ public sealed class PostgreSqlHeartbeatStore : IHeartbeatStore
     {
         using var context = CreateContext();
         var createScript = context.Database.GenerateCreateScript();
-        try
-        {
-            await context.Database.ExecuteSqlRawAsync(createScript, cancellationToken).ConfigureAwait(false);
-        }
-        catch (PostgresException exception) when (exception.SqlState == PostgreSqlSqlState.DuplicateTable)
-        {
-            // 表已存在（存量控制库 / 并发装配）：视作成功，存量表结构零迁移。
-            // Tables already exist (stored control database or concurrent bootstrap): success.
-        }
+        await PostgreSqlDiscoverySchema.ExecuteIdempotentCreateAsync(context, createScript, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
