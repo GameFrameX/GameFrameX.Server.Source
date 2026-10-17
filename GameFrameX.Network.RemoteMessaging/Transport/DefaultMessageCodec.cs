@@ -145,14 +145,23 @@ internal sealed class DefaultMessageCodec : IMessageCodec
 
         var totalLength = messageData.Length + InnerPackageHeaderLength;
         var buffer = ArrayPool<byte>.Shared.Rent(totalLength);
-        BinaryPrimitives.WriteInt32BigEndian(buffer.AsSpan(0, 4), totalLength);
-        // 保留字节（原操作类型，已退役；恒 0 以保持 14 字节帧长度不变）
-        buffer[4] = 0;
-        buffer[5] = algorithmId;
-        BinaryPrimitives.WriteInt32BigEndian(buffer.AsSpan(6, 4), message.UniqueId);
-        BinaryPrimitives.WriteInt32BigEndian(buffer.AsSpan(10, 4), message.MessageId);
-        Buffer.BlockCopy(messageData, 0, buffer, InnerPackageHeaderLength, messageData.Length);
-        return new PooledBuffer(buffer, totalLength);
+        try
+        {
+            BinaryPrimitives.WriteInt32BigEndian(buffer.AsSpan(0, 4), totalLength);
+            // 保留字节（原操作类型，已退役；恒 0 以保持 14 字节帧长度不变）
+            buffer[4] = 0;
+            buffer[5] = algorithmId;
+            BinaryPrimitives.WriteInt32BigEndian(buffer.AsSpan(6, 4), message.UniqueId);
+            BinaryPrimitives.WriteInt32BigEndian(buffer.AsSpan(10, 4), message.MessageId);
+            Buffer.BlockCopy(messageData, 0, buffer, InnerPackageHeaderLength, messageData.Length);
+            return new PooledBuffer(buffer, totalLength);
+        }
+        catch (Exception)
+        {
+            // 异常路径归还租借缓冲；成功路径所有权移交 PooledBuffer
+            ArrayPool<byte>.Shared.Return(buffer);
+            throw;
+        }
     }
 
     /// <summary>

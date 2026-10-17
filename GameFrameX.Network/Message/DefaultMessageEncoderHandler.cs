@@ -64,22 +64,28 @@ public sealed class DefaultMessageEncoderHandler : BaseMessageEncoderHandler
                 BytesCompressHandler(ref messageBodyData, ref zipFlag);
                 var totalLength = PackageHeaderLength + messageBodyData.Length;
                 var buffer = ArrayPool<byte>.Shared.Rent(totalLength);
-                var offset = 0;
-                // 总长度
-                buffer.WriteUIntBigEndianValue((uint)totalLength, ref offset);
-                // 保留字节（原操作类型，已退役；恒 0 以保持 14 字节帧长度不变）
-                buffer.WriteByteValue(0, ref offset);
-                // zipFlag 压缩标记
-                buffer.WriteByteValue(zipFlag, ref offset);
-                // uniqueId 唯一ID
-                buffer.WriteIntBigEndianValue(messageObject.UniqueId, ref offset);
-                // MessageId 消息ID
-                buffer.WriteIntBigEndianValue(messageObject.MessageId, ref offset);
-                // 消息内容
-                buffer.WriteBytesWithoutLengthBigEndian(messageBodyData, ref offset);
-                var result = buffer.AsSpan(0, totalLength).ToArray();
-                ArrayPool<byte>.Shared.Return(buffer);
-                return result;
+                try
+                {
+                    var offset = 0;
+                    // 总长度
+                    buffer.WriteUIntBigEndianValue((uint)totalLength, ref offset);
+                    // 保留字节（原操作类型，已退役；恒 0 以保持 14 字节帧长度不变）
+                    buffer.WriteByteValue(0, ref offset);
+                    // zipFlag 压缩标记
+                    buffer.WriteByteValue(zipFlag, ref offset);
+                    // uniqueId 唯一ID
+                    buffer.WriteIntBigEndianValue(messageObject.UniqueId, ref offset);
+                    // MessageId 消息ID
+                    buffer.WriteIntBigEndianValue(messageObject.MessageId, ref offset);
+                    // 消息内容
+                    buffer.WriteBytesWithoutLengthBigEndian(messageBodyData, ref offset);
+                    return buffer.AsSpan(0, totalLength).ToArray();
+                }
+                finally
+                {
+                    // 异常路径同样归还租借缓冲，避免 ArrayPool 泄漏
+                    ArrayPool<byte>.Shared.Return(buffer);
+                }
             }
             catch (Exception e)
             {
