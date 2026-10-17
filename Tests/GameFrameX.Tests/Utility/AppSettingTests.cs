@@ -121,7 +121,9 @@ public class AppSettingTests
         Assert.Equal(1_048_576, appSetting.HttpMaxJsonBodyBytes);
         Assert.Equal(1_048_576, appSetting.HttpMaxProtoBodyBytes);
         Assert.False(appSetting.HttpRequireSign);
-        Assert.Null(appSetting.HttpCorsAllowedOrigins);
+        Assert.Equal(string.Empty, appSetting.HttpSignSecret);
+        Assert.Equal(string.Empty, appSetting.HttpsCertPath);
+        Assert.Equal(string.Empty, appSetting.HttpsCertPassword);
     }
 
     /// <summary>
@@ -192,6 +194,8 @@ public class AppSettingTests
         appSetting.HttpIsDevelopment = true;
         appSetting.HttpPort = 80;
         appSetting.HttpsPort = 443;
+        appSetting.HttpsCertPath = "/path/to/https-cert.pfx";
+        appSetting.HttpsCertPassword = "cert-password";
         appSetting.MetricsPort = 9091;
         appSetting.WsPort = 8081;
         appSetting.WssPort = 8443;
@@ -206,6 +210,8 @@ public class AppSettingTests
         Assert.True(appSetting.HttpIsDevelopment);
         Assert.Equal((ushort)80, appSetting.HttpPort);
         Assert.Equal((ushort)443, appSetting.HttpsPort);
+        Assert.Equal("/path/to/https-cert.pfx", appSetting.HttpsCertPath);
+        Assert.Equal("cert-password", appSetting.HttpsCertPassword);
         Assert.Equal((ushort)9091, appSetting.MetricsPort);
         Assert.Equal((ushort)8081, appSetting.WsPort);
         Assert.Equal((ushort)8443, appSetting.WssPort);
