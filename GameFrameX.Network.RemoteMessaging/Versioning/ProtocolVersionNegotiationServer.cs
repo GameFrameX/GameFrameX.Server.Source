@@ -102,8 +102,10 @@ public static class ProtocolVersionNegotiationServer
                 new ProtocolVersion(request.Major, request.Minor),
                 RemoteMessagingProtocolVersion.Current));
 
-            // 宽限期后再关闭：立即关闭会与在途发送竞争，可能丢弃刚写出的拒绝包
-            _ = CloseAfterGraceAsync(networkChannel);
+            // 宽限期后再关闭：立即关闭会与在途发送竞争，可能丢弃刚写出的拒绝包。
+            // 显式 await（C270）：拒绝路径是该漏斗的终结分支（回包→关连接），等待 250ms 不影响其它会话；
+            // 关闭期异常由此处可见（不再 fire-and-forget 吞掉）。
+            await CloseAfterGraceAsync(networkChannel);
         }
     }
 
@@ -133,11 +135,12 @@ public static class ProtocolVersionNegotiationServer
     }
 
     /// <summary>
-    /// 宽限期后关闭通道（对端可能已先行关闭，关闭失败静默）。
+    /// 宽限期后关闭通道（对端可能已先行关闭；关闭失败不吞——留 Warning 供排障，语义不受影响）。
     /// </summary>
     /// <remarks>
-    /// Closes the channel after the grace period (the peer may have closed first; a failed
-    /// close is swallowed silently).
+    /// Closes the channel after the grace period. The peer may have closed first; a failed
+    /// close is logged as a warning instead of being swallowed — the rejection has already
+    /// been delivered, so the semantics are unaffected.
     /// </remarks>
     /// <param name="networkChannel">会话网络通道 / The session network channel</param>
     private static async Task CloseAfterGraceAsync(INetworkChannel networkChannel)
@@ -147,9 +150,11 @@ public static class ProtocolVersionNegotiationServer
             await Task.Delay(RejectCloseGraceMs);
             networkChannel.Close();
         }
-        catch (Exception)
+        catch (Exception exception)
         {
-            // 通道可能已在对端关闭竞态中释放；拒绝结论已回包，关闭失败不影响语义
+            // 通道可能已在对端关闭竞态中释放；拒绝结论已回包，关闭失败不影响语义——留告警可见（C270）
+            // Localization: RemoteMessaging.Versioning.ServerRejectCloseFailed - 拒绝握手后延迟关闭通道失败（对端可能已先行关闭；拒绝包已送达，语义不受影响）
+            LogHelper.Warning(exception, LocalizationService.GetString(Localization.Keys.RemoteMessaging.Versioning.ServerRejectCloseFailed));
         }
     }
 }

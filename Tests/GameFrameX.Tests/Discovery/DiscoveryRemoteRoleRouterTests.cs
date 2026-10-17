@@ -35,6 +35,7 @@ using GameFrameX.Network.Messages;
 using GameFrameX.Discovery;
 using GameFrameX.Discovery.Routing;
 using GameFrameX.Network.RemoteMessaging.Routing;
+using GameFrameX.Network.RemoteMessaging.Transport;
 using GameFrameX.ProtoBuf.Net;
 using ProtoBuf;
 
@@ -199,12 +200,10 @@ public sealed class DiscoveryRemoteRoleRouterTests
                 new InstanceDescriptor("Game", "game-tcp-1", $"tcp://127.0.0.1:{port}", InstanceStatus.Active, 0, EndpointAddressKind.IPv4, 105, DateTime.UtcNow),
             });
 
-            using (var forwarder = new TcpEnvelopeForwarder())
-            {
-                var router = new DiscoveryRemoteRoleRouter(new FixedTableProvider(table), forwarder);
-                var delivery = await router.ForwardAsync(BuildEnvelope("Game", "game-tcp-1"));
-                Assert.Equal(RoleRouteDelivery.RemoteForwarded, delivery);
-            }
+            var forwarder = new TcpEnvelopeForwarder();
+            var router = new DiscoveryRemoteRoleRouter(new FixedTableProvider(table), forwarder);
+            var delivery = await router.ForwardAsync(BuildEnvelope("Game", "game-tcp-1"));
+            Assert.Equal(RoleRouteDelivery.RemoteForwarded, delivery);
 
             var envelope = await receiveTask;
             Assert.Equal("Game", envelope.TargetRole);
@@ -230,17 +229,17 @@ public sealed class DiscoveryRemoteRoleRouterTests
                 new InstanceDescriptor("Game", "game-tcp-1", $"tcp://127.0.0.1:{port}", InstanceStatus.Active, 0, EndpointAddressKind.IPv4, 106, DateTime.UtcNow),
             });
 
-            using (var forwarder = new TcpEnvelopeForwarder())
+            // 单连接池钉住「同一条连接上的并发整帧写」场景：共享池缺省会随并发扩到多条连接，
+            // 分摊后每条连接各自整帧即可；本用例专验同连接整帧不交错（写门控流路径）。
+            var forwarder = new TcpEnvelopeForwarder(new DefaultMessageCodec(), new TcpConnectionProvider(1));
+            var router = new DiscoveryRemoteRoleRouter(new FixedTableProvider(table), forwarder);
+            var sends = new List<Task<RoleRouteDelivery>>();
+            for (var index = 0; index < frameCount; index++)
             {
-                var router = new DiscoveryRemoteRoleRouter(new FixedTableProvider(table), forwarder);
-                var sends = new List<Task<RoleRouteDelivery>>();
-                for (var index = 0; index < frameCount; index++)
-                {
-                    sends.Add(router.ForwardAsync(BuildEnvelope("Game", "game-tcp-1")));
-                }
-
-                await Task.WhenAll(sends);
+                sends.Add(router.ForwardAsync(BuildEnvelope("Game", "game-tcp-1")));
             }
+
+            await Task.WhenAll(sends);
 
             // 同端点并发整帧写入必须串行化：每一帧的长度前缀与载荷都完整可解析，不允许交错破坏。
             var completed = await Task.WhenAny(receiveTask, Task.Delay(TimeSpan.FromSeconds(15)));
