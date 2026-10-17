@@ -1908,6 +1908,9 @@
     <value>[MongoDiscoveryRuntime] 未配置广播端口（{0}）；心跳写入侧被跳过，本进程仅观察拓扑</value>
   </data>
 
+  <data name="Database.Mongo.BulkWritePartialAcknowledged" xml:space="preserve">
+    <value>MongoDbService.{0} 无序批量写部分确认。状态名：{1}，期望：{2}，实际确认：{3}；未确认文档不提交哈希基线</value>
+  </data>
   <data name="Database.Mongo.ExecuteInTransactionTransientError" xml:space="preserve">
     <value>MongoDbService.ExecuteInTransactionAsync 瞬时错误，重试 {0}/{1}。error={2}</value>
   </data>

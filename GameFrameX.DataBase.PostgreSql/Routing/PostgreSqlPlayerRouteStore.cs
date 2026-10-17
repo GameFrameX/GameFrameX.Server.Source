@@ -77,12 +77,13 @@ public sealed class PostgreSqlPlayerRouteStore : IPlayerRouteStore
     }
 
     /// <summary>
-    /// 幂等建表 / 建索引（EF 模型 DDL；表已存在视为成功）。
+    /// 幂等建表 / 建索引（EF 模型 DDL 逐语句执行；表 / 对象已存在视为成功）。
     /// </summary>
     /// <remarks>
-    /// Idempotently creates the player-route table and its role index (EF model DDL; pre-existing tables
-    /// count as success). The discovery model covers both control tables, so this also ensures the
-    /// heartbeat shape when called first.
+    /// Idempotently creates the player-route table and its role index (EF model DDL, executed statement
+    /// by statement with independent tolerance for pre-existing objects — 42P07 / 42710 — so a partially
+    /// provisioned control database converges on the full schema). The discovery model covers both
+    /// control tables, so this also ensures the heartbeat shape when called first.
     /// </remarks>
     /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
     /// <returns>异步任务 / Async task</returns>
@@ -90,15 +91,7 @@ public sealed class PostgreSqlPlayerRouteStore : IPlayerRouteStore
     {
         using var context = CreateContext();
         var createScript = context.Database.GenerateCreateScript();
-        try
-        {
-            await context.Database.ExecuteSqlRawAsync(createScript, cancellationToken).ConfigureAwait(false);
-        }
-        catch (PostgresException exception) when (exception.SqlState == PostgreSqlSqlState.DuplicateTable)
-        {
-            // 表已存在（存量控制库 / 并发装配）：视作成功。
-            // Tables already exist: success.
-        }
+        await PostgreSqlDiscoverySchema.ExecuteIdempotentCreateAsync(context, createScript, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

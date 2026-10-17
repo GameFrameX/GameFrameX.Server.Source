@@ -53,6 +53,15 @@ internal static class PostgreSqlSqlState
     public const string DuplicateTable = "42P07";
 
     /// <summary>
+    /// PostgreSQL「同型对象已存在」SQLSTATE（42710 duplicate_object）：建索引 / 加约束等 DDL 逐条幂等执行的容错依据。
+    /// </summary>
+    /// <remarks>
+    /// The PostgreSQL "duplicate object" SQLSTATE (42710): what makes per-statement DDL
+    /// (CREATE INDEX / ADD CONSTRAINT and the like) idempotent at runtime.
+    /// </remarks>
+    public const string DuplicateObject = "42710";
+
+    /// <summary>
     /// PostgreSQL「唯一约束冲突」SQLSTATE（23505 unique_violation）。
     /// </summary>
     /// <remarks>
