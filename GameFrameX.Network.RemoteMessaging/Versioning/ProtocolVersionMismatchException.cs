@@ -35,9 +35,10 @@ namespace GameFrameX.Network.RemoteMessaging.Versioning;
 /// <remarks>
 /// Thrown when the protocol version handshake is rejected (a major mismatch). The client
 /// fails the call explicitly and invalidates the connection on this exception (half-open
-/// reuse is forbidden).
+/// reuse is forbidden). The type is public so package consumers and exception interceptors
+/// can identify protocol version rejections by type.
 /// </remarks>
-internal sealed class ProtocolVersionMismatchException : Exception
+public sealed class ProtocolVersionMismatchException : Exception
 {
     /// <summary>
     /// 初始化协议版本不匹配异常。
