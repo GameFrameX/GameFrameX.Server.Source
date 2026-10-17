@@ -1086,8 +1086,17 @@
     <value>Address must start with slash. Address: {0}.</value>
   </data>
 
-  <data name="StartUp.HttpExceptions.HttpsNotImplemented" xml:space="preserve">
-    <value>HTTPS is not implemented yet.</value>
+  <data name="StartUp.HttpExceptions.HttpsCertPathMissing" xml:space="preserve">
+    <value>HTTPS port [{0}] is configured but HttpsCertPath (PFX file path) is missing; cannot enable HTTPS listening.</value>
+  </data>
+  <data name="StartUp.HttpExceptions.HttpsCertFileNotFound" xml:space="preserve">
+    <value>HTTPS certificate file not found: {0}</value>
+  </data>
+  <data name="StartUp.HttpExceptions.HttpsCertLoadFailed" xml:space="preserve">
+    <value>HTTPS certificate failed to load (wrong password or corrupted file): {0}</value>
+  </data>
+  <data name="Network.Http.SignSecretMissing" xml:space="preserve">
+    <value>HTTP signature validation is enabled but HttpSignSecret is not configured; every request is rejected (fail-closed).</value>
   </data>
 
   <data name="StartUp.HttpServer.ApiContactName" xml:space="preserve">

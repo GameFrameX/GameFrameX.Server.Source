@@ -29,6 +29,7 @@
 
 
 using System.Reflection;
+using System.Security.Cryptography.X509Certificates;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Network.HTTP;
@@ -193,7 +194,6 @@ public abstract partial class AppStartUpBase
     /// <param name="openApiInfo">OpenAPI 信息 / OpenAPI information</param>
     /// <param name="corsAllowedOrigins">允许的跨域来源 / Allowed CORS origins</param>
     /// <param name="minimumLevelLogLevel">日志记录的最小级别 / Minimum level for logging</param>
-    /// <exception cref="NotImplementedException">当启用 HTTPS 但未实现时抛出 / Thrown when HTTPS is enabled but not implemented</exception>
     private void ConfigureHttpBuilder(WebApplicationBuilder builder, List<BaseHttpHandler> baseHandler, bool development, OpenApiInfo openApiInfo, string[] corsAllowedOrigins, LogLevel minimumLevelLogLevel)
     {
         if (corsAllowedOrigins.Length > 0)
@@ -223,14 +223,17 @@ public abstract partial class AppStartUpBase
         }
 
         // 配置Web主机
+        var httpsCertificate = Setting.HttpsPort > 0 ? LoadHttpsCertificate(Setting) : null;
         var hostBuilder = builder.WebHost.UseKestrel(options =>
         {
             options.Limits.MaxRequestBodySize = Setting.HttpMaxRequestBodyBytes;
             options.ListenAnyIP(Setting.HttpPort);
 
-            if (Setting.HttpsPort > 0 && NetHelper.PortIsAvailable(Setting.HttpsPort))
+            if (httpsCertificate != null)
             {
-                throw new NotImplementedException(LocalizationService.GetString(Localization.Keys.StartUp.HttpExceptions.HttpsNotImplemented));
+                // HTTPS 真监听（C271）：证书在 Kestrel 配置回调外预加载并 fail-fast；
+                // 端口被占用时由 Kestrel bind 失败直接阻断启动，不再静默跳过（静默降级面移除）。
+                options.ListenAnyIP(Setting.HttpsPort, listenOptions => listenOptions.UseHttps(httpsCertificate));
             }
 
             ConfigureMetricsPortListen(options);
@@ -271,6 +274,44 @@ public abstract partial class AppStartUpBase
         }
 
         options.ListenAnyIP(Setting.MetricsPort);
+    }
+
+    /// <summary>
+    /// 加载 HTTPS 证书（PFX），供 <see cref="AppSetting.HttpsPort"/> 监听使用；任一配置错误在 Kestrel 监听前 fail-fast。
+    /// </summary>
+    /// <remarks>
+    /// Loads the HTTPS certificate (PFX) for the <see cref="AppSetting.HttpsPort"/> listener; any configuration error
+    /// fails fast before Kestrel starts listening (C271).
+    /// 调用前提：<paramref name="setting"/> 的 <c>HttpsPort</c> 大于 0。
+    /// </remarks>
+    /// <param name="setting">应用配置 / Application setting</param>
+    /// <returns>已加载的证书 / The loaded certificate</returns>
+    /// <exception cref="InvalidOperationException">证书路径为空 / The certificate path is empty</exception>
+    /// <exception cref="InvalidOperationException">证书文件不存在 / The certificate file does not exist</exception>
+    /// <exception cref="InvalidOperationException">证书加载失败（密码错误或文件损坏）/ The certificate failed to load (wrong password or corrupted file)</exception>
+    internal static X509Certificate2 LoadHttpsCertificate(AppSetting setting)
+    {
+        if (setting.HttpsCertPath.IsNullOrWhiteSpace())
+        {
+            // Localization: StartUp.HttpExceptions.HttpsCertPathMissing - 已配置 HTTPS 端口 [{0}]，但 HttpsCertPath 未配置（PFX 文件路径），无法启用 HTTPS 监听
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.StartUp.HttpExceptions.HttpsCertPathMissing, setting.HttpsPort));
+        }
+
+        if (!File.Exists(setting.HttpsCertPath))
+        {
+            // Localization: StartUp.HttpExceptions.HttpsCertFileNotFound - HTTPS 证书文件不存在: {0}
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.StartUp.HttpExceptions.HttpsCertFileNotFound, setting.HttpsCertPath));
+        }
+
+        try
+        {
+            return X509CertificateLoader.LoadPkcs12FromFile(setting.HttpsCertPath, setting.HttpsCertPassword, X509KeyStorageFlags.DefaultKeySet, Pkcs12LoaderLimits.Defaults);
+        }
+        catch (Exception e)
+        {
+            // Localization: StartUp.HttpExceptions.HttpsCertLoadFailed - HTTPS 证书加载失败（密码错误或文件损坏）: {0}
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.StartUp.HttpExceptions.HttpsCertLoadFailed, setting.HttpsCertPath), e);
+        }
     }
 
     /// <summary>

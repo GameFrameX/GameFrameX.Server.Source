@@ -28,8 +28,11 @@
 //  ==========================================================================================
 
 
+using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Hash;
 using GameFrameX.Foundation.Http.Normalization;
+using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Utility;
 using GameFrameX.Network.Messages;
 using GameFrameX.Utility.Setting;
@@ -46,31 +49,15 @@ namespace GameFrameX.Network.HTTP;
 public abstract class BaseHttpHandler : IHttpHandler
 {
     /// <summary>
-    /// 获取校验时间差，用于生成签名时的时间偏移量。
+    /// 签名有效期窗口（分钟）：timestamp 与当前时间差超过该窗口即拒绝。
     /// </summary>
     /// <remarks>
-    /// Gets the check code time offset used for signature generation.
+    /// Signature validity window in minutes: a timestamp whose difference from now exceeds this window is rejected.
     /// </remarks>
-    /// <value>校验时间差值 / Check code time offset</value>
-    protected virtual int CheckCodeTime { get; } = 38848;
-
-    /// <summary>
-    /// 获取头校验码，用于生成签名时的头部校验码。
-    /// </summary>
-    /// <remarks>
-    /// Gets the header check code used for signature generation.
-    /// </remarks>
-    /// <value>头校验码 / Header check code</value>
-    protected virtual ushort CheckCodeStart { get; } = 88;
-
-    /// <summary>
-    /// 获取尾校验码，用于生成签名时的尾部校验码。
-    /// </summary>
-    /// <remarks>
-    /// Gets the tail check code used for signature generation.
-    /// </remarks>
-    /// <value>尾校验码 / Tail check code</value>
-    protected virtual ushort CheckCodeEnd { get; } = 66;
+    protected virtual int SignValidityWindowMinutes
+    {
+        get { return 5; }
+    }
 
     /// <summary>
     /// 获取是否需要校验签名，默认为不需要校验。
@@ -113,42 +100,28 @@ public abstract class BaseHttpHandler : IHttpHandler
     }
 
     /// <summary>
-    /// 获取签名字符串。
+    /// 计算请求签名：Base64(HMAC-SHA256(UTF8(timestamp), UTF8(HttpSignSecret)))。
     /// </summary>
     /// <remarks>
-    /// Generates signature string from the input.
+    /// Computes the request signature: Base64(HMAC-SHA256(UTF8(timestamp), UTF8(HttpSignSecret))).
+    /// C271 起取代 md5+校验码旧方案（旧方案零秘密、任何读者可伪造，已删除）。
     /// </remarks>
-    /// <param name="str">待签名的字符串 / String to be signed</param>
-    /// <returns>签名后的字符串 / Signed string</returns>
-    public string GetStringSign(string str)
+    /// <param name="timestamp">unix 秒时间戳字符串 / Unix-second timestamp string</param>
+    /// <returns>Base64 编码的签名 / Base64-encoded signature</returns>
+    public string GetStringSign(string timestamp)
     {
-        // 计算MD5哈希值
-        var md5 = Md5Helper.Hash(str);
-
-        var checkCode1 = CheckCodeStart; // 头校验码
-        var checkCode2 = CheckCodeEnd; // 尾校验码
-        foreach (var t in md5)
-        {
-            if (t >= 'a')
-            {
-                checkCode1 += t;
-            }
-            else
-            {
-                checkCode2 += t;
-            }
-        }
-
-        md5 = checkCode1 + md5 + checkCode2;
-
-        return md5;
+        return HmacSha256Helper.Hash(timestamp, GlobalSettings.CurrentSetting.HttpSignSecret);
     }
 
     /// <summary>
     /// 校验签名是否有效。
+    /// <para>签名口径：sign = Base64(HMAC-SHA256(UTF8(timestamp), UTF8(HttpSignSecret)))，固定时间比较。</para>
+    /// <para>密钥未配置（空白）时 fail-closed：一律拒绝并记录错误日志，绝不放行。</para>
     /// </summary>
     /// <remarks>
     /// Validates whether the signature is valid.
+    /// Format: sign = Base64(HMAC-SHA256(UTF8(timestamp), UTF8(HttpSignSecret))), compared in constant time.
+    /// Fail-closed when the secret is blank: every request is rejected with an error log, none is let through.
     /// </remarks>
     /// <param name="paramMap">请求参数字典 / Request parameter dictionary</param>
     /// <param name="error">错误消息，如果校验失败则返回具体的错误信息 / Error message, returns specific error information if validation fails</param>
@@ -169,19 +142,27 @@ public abstract class BaseHttpHandler : IHttpHandler
             return false;
         }
 
+        var secret = GlobalSettings.CurrentSetting?.HttpSignSecret;
+        if (secret.IsNullOrWhiteSpace())
+        {
+            // 密钥未配置：fail-closed，开启校验却无密钥时绝不放行
+            // Localization: Network.Http.SignSecretMissing - HTTP签名校验已开启，但 HttpSignSecret 未配置，请求一律拒绝
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.NetworkHttp.SignSecretMissing));
+            error = HttpJsonResultData<string>.ValidationErrorString();
+            return false;
+        }
+
         var sign = paramMap[GlobalConst.HttpSignKey].ToString();
         var time = paramMap[GlobalConst.HttpTimestampKey].ToString();
         long.TryParse(time, out var timeTick);
         var span = TimerHelper.GetTimeDifferenceFromNow(timeTick);
-        // 5分钟内有效
-        if (span.TotalMinutes > 5)
+        if (span.TotalMinutes > SignValidityWindowMinutes)
         {
             error = HttpJsonResultData<string>.IllegalString();
             return false;
         }
 
-        var str = CheckCodeTime + time;
-        if (sign == GetStringSign(str))
+        if (HmacSha256Helper.Verify(time, secret, sign))
         {
             return true;
         }
