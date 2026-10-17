@@ -44,7 +44,8 @@ namespace GameFrameX.DataBase.Sqlite;
 /// <remarks>
 /// Write paths: whole-document write-back with the Mongo/PG timestamp semantics (Add stamps both
 /// times and seeds UpdateCount; Update advances them; upserts replace whole documents and revive
-/// soft-deleted rows; SaveBulkAsync persists timestamps verbatim). Transactions run on the single
+/// soft-deleted rows; SaveBulkAsync persists timestamps verbatim; DeleteListAsync marks its matched
+/// rows in one gated single-transaction batch — C265). Transactions run on the single
 /// connection — a nested transaction shell joins the ambient transaction instead of opening a
 /// second one (SQLite cannot nest); data operations retry via the shared resilience engine (C253)
 /// while the transaction shell itself stays single-pass (ambient joins make blind retries unsafe).
@@ -710,10 +711,10 @@ public sealed partial class SqliteDbService
     }
 
     /// <summary>
-    /// 根据条件批量删除数据（软删除；先查再逐条改，对齐 Mongo/PG 流程）。
+    /// 根据条件批量删除数据（软删除；先查再单闸单事务批删，对齐 Mongo/PG 流程）。
     /// </summary>
     /// <remarks>
-    /// Soft-deletes the visible documents matching the filter (find-then-mark each).
+    /// Soft-deletes the visible documents matching the filter (find, then one gated single-transaction batch — C265).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="filter">过滤表达式 / The filter expression</param>
@@ -724,10 +725,10 @@ public sealed partial class SqliteDbService
     }
 
     /// <summary>
-    /// 根据条件批量删除数据（软删除；先查再逐条改，对齐 Mongo/PG 流程）。
+    /// 根据条件批量删除数据（软删除；先查再单闸单事务批删，对齐 Mongo/PG 流程）。
     /// </summary>
     /// <remarks>
-    /// Soft-deletes the visible documents matching the filter (find-then-mark each).
+    /// Soft-deletes the visible documents matching the filter (find, then one gated single-transaction batch — C265).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="filter">过滤表达式 / The filter expression</param>
@@ -743,16 +744,14 @@ public sealed partial class SqliteDbService
             return 0;
         }
 
-        long modifiedCount = 0;
-        var deleteTime = GetCurrentTimestamp();
-        foreach (var state in list)
+        var ids = new long[list.Count];
+        for (var index = 0; index < list.Count; index++)
         {
-            state.DeleteTime = deleteTime;
-            state.IsDeleted = true;
-            modifiedCount += await ExecuteSoftDeleteByIdAsync<TState>(state.Id, deleteTime, cancellationToken, nameof(DeleteListAsync)).ConfigureAwait(false);
+            ids[index] = list[index].Id;
         }
 
-        return modifiedCount;
+        var deleteTime = GetCurrentTimestamp();
+        return await ExecuteSoftDeleteBatchAsync<TState>(ids, deleteTime, cancellationToken, nameof(DeleteListAsync)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -796,7 +795,7 @@ public sealed partial class SqliteDbService
         return await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
-            var rows = await ReadRowsRawAsync<TState>(BuildIdInCommand<TState>(distinctIds), cancellationToken).ConfigureAwait(false);
+            var rows = await ReadRowsByIdsAsync<TState>(distinctIds, cancellationToken).ConfigureAwait(false);
             if (rows.Count == 0)
             {
                 return 0L;
@@ -1051,6 +1050,56 @@ public sealed partial class SqliteDbService
             await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
             return 1L;
             }), cancellationToken, operationName, true).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 按 id 批量软删除（单闸单事务批写：闸内按 id 分块重读 → 同毫秒幂等跳过 → 单事务写回；逐条计数语义与单条路径一致）。
+    /// </summary>
+    /// <remarks>
+    /// Soft-deletes the given ids as ONE gated, single-transaction batch: the rows are re-read by id
+    /// inside the gate (chunked id-IN), a same-timestamp already-deleted row counts as unchanged (0),
+    /// and every other re-read row is marked and written inside one transaction — the per-row counting
+    /// semantics are identical to the single-row path (C265; N rows used to cost N transactions).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="ids">去重后的ID集合 / The distinct IDs</param>
+    /// <param name="deleteTime">删除时间戳 / The deletion timestamp</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <param name="operationName">操作名称（指标与日志）/ Operation name for metrics and logging</param>
+    /// <returns>实际删除的数量 / The deleted count</returns>
+    private async Task<long> ExecuteSoftDeleteBatchAsync<TState>(long[] ids, long deleteTime, CancellationToken cancellationToken, string operationName) where TState : BaseCacheState, new()
+    {
+        return await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
+        {
+            await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+            var rows = await ReadRowsByIdsAsync<TState>(ids, cancellationToken).ConfigureAwait(false);
+            if (rows.Count == 0)
+            {
+                return 0L;
+            }
+
+            long modifiedCount = 0;
+            await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+            foreach (var document in rows)
+            {
+                if (document.IsDeleted == true && document.DeleteTime == deleteTime)
+                {
+                    // 同毫秒重复删除：文档不变计 0（幂等，对齐单条路径）。
+                    // Same-timestamp repeat: the document is unchanged and counts as 0 (idempotent, single-row parity).
+                    continue;
+                }
+
+                document.IsDeleted = true;
+                document.DeleteTime = deleteTime;
+                using var command = BuildReplaceDocumentCommand<TState>(document);
+                command.Transaction = transaction;
+                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                modifiedCount++;
+            }
+
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+            return modifiedCount;
+        }), cancellationToken, operationName, true).ConfigureAwait(false);
     }
 
     /// <summary>
