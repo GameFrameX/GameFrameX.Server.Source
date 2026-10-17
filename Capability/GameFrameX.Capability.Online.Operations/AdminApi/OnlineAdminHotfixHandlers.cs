@@ -173,30 +173,41 @@ public static class OnlineAdminHotfixHandlers
                     continue;
                 }
 
-                string messageName = null;
-                var messageId = 0;
-                foreach (var property in item.EnumerateObject())
-                {
-                    if (string.Equals(property.Name, "MessageName", StringComparison.OrdinalIgnoreCase))
-                    {
-                        messageName = property.Value.ValueKind == JsonValueKind.String ? property.Value.GetString() : property.Value.GetRawText();
-                    }
-                    else if (string.Equals(property.Name, "MessageId", StringComparison.OrdinalIgnoreCase)
-                             && property.Value.ValueKind == JsonValueKind.Number && property.Value.TryGetInt32(out messageId))
-                    {
-                        // MessageId 数字解析成功即保留；失败保持 0（登记处校验拒绝）。
-                    }
-                }
-
-                messages.Add(new OnlineHotfixProtocolMessage
-                {
-                    MessageName = messageName,
-                    MessageId = messageId,
-                });
+                messages.Add(ReadProtocolMessage(item));
             }
         }
 
         return messages;
+    }
+
+    /// <summary>
+    /// 解析单条协议消息契约行（属性名大小写不敏感匹配；MessageName 非 String 取原始 JSON 文本；
+    /// MessageId 仅认数字且 Int32 解析失败保持 0——由登记处校验拒绝，本方法不抛错）。
+    /// </summary>
+    /// <param name="item">契约行 JSON 元素（调用方保证为 Object）。</param>
+    /// <returns>消息契约行。</returns>
+    private static OnlineHotfixProtocolMessage ReadProtocolMessage(JsonElement item)
+    {
+        string messageName = null;
+        var messageId = 0;
+        foreach (var property in item.EnumerateObject())
+        {
+            if (string.Equals(property.Name, "MessageName", StringComparison.OrdinalIgnoreCase))
+            {
+                messageName = property.Value.ValueKind == JsonValueKind.String ? property.Value.GetString() : property.Value.GetRawText();
+            }
+            else if (string.Equals(property.Name, "MessageId", StringComparison.OrdinalIgnoreCase)
+                     && property.Value.ValueKind == JsonValueKind.Number && property.Value.TryGetInt32(out messageId))
+            {
+                // MessageId 数字解析成功即保留；失败保持 0（登记处校验拒绝）。
+            }
+        }
+
+        return new OnlineHotfixProtocolMessage
+        {
+            MessageName = messageName,
+            MessageId = messageId,
+        };
     }
 
     /// <summary>
