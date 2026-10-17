@@ -535,32 +535,16 @@ public sealed class OnlineHotfixRollbackService
     /// <returns>非法时返回失败结果；合法返回 <see langword="null"/>。</returns>
     private static OnlineResult<bool> ValidateManifest(OnlineHotfixProtocolManifest manifest)
     {
-        if (string.IsNullOrWhiteSpace(manifest.Version) || manifest.Version.IndexOf('|') >= 0)
+        var versionFailure = ValidateManifestVersion(manifest.Version);
+        if (versionFailure != null)
         {
-            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "清单版本号必填且禁止包含竖线（回放令牌分隔符）");
+            return versionFailure;
         }
 
-        // 版本号是制品落盘与装载路径的目录段（{CWD}/{Version}/GameFrameX.Hotfix.dll），注入防线与 HotfixLoadOptions 同源。
-        if (manifest.Version.IndexOfAny(ForbiddenVersionPathChars) >= 0 || manifest.Version.Contains("..", StringComparison.Ordinal))
+        var artifactFailure = ValidateManifestArtifactFields(manifest.ArtifactSourceUrl, manifest.ArtifactSha256);
+        if (artifactFailure != null)
         {
-            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "清单版本号禁止包含路径分隔符、卷分隔符或「..」段（制品落盘/装载路径注入面）");
-        }
-
-        var sourceUrl = NormalizeOptionalField(manifest.ArtifactSourceUrl);
-        var artifactSha256 = NormalizeOptionalField(manifest.ArtifactSha256);
-        if (sourceUrl != null && artifactSha256 == null)
-        {
-            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "ArtifactSourceUrl 与 ArtifactSha256 必须成对提供（只给下载地址不给校验和 = 拒绝）");
-        }
-
-        if (sourceUrl != null && (!Uri.TryCreate(sourceUrl, UriKind.Absolute, out var sourceUri) || (sourceUri.Scheme != Uri.UriSchemeHttp && sourceUri.Scheme != Uri.UriSchemeHttps)))
-        {
-            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "ArtifactSourceUrl 必须是绝对 http/https 地址：" + manifest.ArtifactSourceUrl);
-        }
-
-        if (artifactSha256 != null && !IsSha256Hex(artifactSha256))
-        {
-            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "ArtifactSha256 必须是 64 位十六进制字符串");
+            return artifactFailure;
         }
 
         if (manifest.TenantId <= 0 || manifest.AppId <= 0)
@@ -568,6 +552,71 @@ public sealed class OnlineHotfixRollbackService
             return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "清单必须锚定租户与 App（TenantId / AppId 大于 0）");
         }
 
+        var messagesFailure = ValidateManifestMessages(manifest);
+        if (messagesFailure != null)
+        {
+            return messagesFailure;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 校验清单版本号（必填且禁竖线 + 路径注入防线，4001 宁拒毋缺）。
+    /// </summary>
+    /// <param name="version">清单版本号。</param>
+    /// <returns>非法时返回失败结果；合法返回 <see langword="null"/>。</returns>
+    private static OnlineResult<bool> ValidateManifestVersion(string version)
+    {
+        if (string.IsNullOrWhiteSpace(version) || version.IndexOf('|') >= 0)
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "清单版本号必填且禁止包含竖线（回放令牌分隔符）");
+        }
+
+        // 版本号是制品落盘与装载路径的目录段（{CWD}/{Version}/GameFrameX.Hotfix.dll），注入防线与 HotfixLoadOptions 同源。
+        if (version.IndexOfAny(ForbiddenVersionPathChars) >= 0 || version.Contains("..", StringComparison.Ordinal))
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "清单版本号禁止包含路径分隔符、卷分隔符或「..」段（制品落盘/装载路径注入面）");
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 校验清单制品字段（成对提供 + 绝对 http/https 地址 + 64 位十六进制校验和，4001 宁拒毋缺）。
+    /// </summary>
+    /// <param name="artifactSourceUrl">制品下载地址（原始字段，空白视同缺省）。</param>
+    /// <param name="artifactSha256">制品校验和（原始字段，空白视同缺省）。</param>
+    /// <returns>非法时返回失败结果；合法返回 <see langword="null"/>。</returns>
+    private static OnlineResult<bool> ValidateManifestArtifactFields(string artifactSourceUrl, string artifactSha256)
+    {
+        var sourceUrl = NormalizeOptionalField(artifactSourceUrl);
+        var sha256 = NormalizeOptionalField(artifactSha256);
+        if (sourceUrl != null && sha256 == null)
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "ArtifactSourceUrl 与 ArtifactSha256 必须成对提供（只给下载地址不给校验和 = 拒绝）");
+        }
+
+        if (sourceUrl != null && (!Uri.TryCreate(sourceUrl, UriKind.Absolute, out var sourceUri) || (sourceUri.Scheme != Uri.UriSchemeHttp && sourceUri.Scheme != Uri.UriSchemeHttps)))
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "ArtifactSourceUrl 必须是绝对 http/https 地址：" + artifactSourceUrl);
+        }
+
+        if (sha256 != null && !IsSha256Hex(sha256))
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "ArtifactSha256 必须是 64 位十六进制字符串");
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 校验清单契约行（消息名必填 / 消息号大于 0 / 名与号全清单唯一，4001 宁拒毋缺）。
+    /// </summary>
+    /// <param name="manifest">待登记清单（版本号已通过校验）。</param>
+    /// <returns>非法时返回失败结果；合法返回 <see langword="null"/>。</returns>
+    private static OnlineResult<bool> ValidateManifestMessages(OnlineHotfixProtocolManifest manifest)
+    {
         var names = new HashSet<string>(StringComparer.Ordinal);
         var ids = new HashSet<int>();
         foreach (var message in manifest.Messages ?? Array.Empty<OnlineHotfixProtocolMessage>())
