@@ -60,6 +60,7 @@
 * MessageOperationType 完全退役（C205）：删除枚举与特性第二参数、MessageProtoHelper.OperationType 注册表与 GetMessageOperationType、INetworkMessageHeader/MessageObjectHeader/MessageObject 的 OperationType 属性链与日志 OpType 字段；心跳判定统一改型为 MessageProtoHelper.IsHeartbeat(MessageType)（IHeartBeatMessage 标记派生）。包头 14 字节长度不变，第 5 字节退役为保留字节（恒 0），线上字节级兼容；对外为源码级破坏性（公共属性/方法/枚举删除）
 
 ### Removal
+* 删除同步 `GameDb.Close()`（C267 / GFX-907）：sync-over-async（`GetAwaiter().GetResult()`）阻塞缺陷本体，全仓与消费仓零调用；异步 `GameDb.CloseAsync()` 为唯一关停入口（现含注册表卸载语义）
 
 * 删除 GameFrameX.Apps.ActorType 死枚举（C219）：运行时零引用（账号 id 实际由 ActorIdGenerator.GetUniqueId() 生成），作用域机制维持 GlobalConst.ActorType* 常量现状，并在 GlobalConst 与 ComponentTypeAttribute 的 XML doc 补区间规则（<128 每实体多实例 / >128 每服单例）；非破坏性——两仓成员引用已验证为零，Apps 工程不进 NuGet 发布面
 * 删除 GameFrameX.Online 与 GameFrameX.Online.Runtime 双工程（C232 / C227 P4 终态）：单体剩余 9 上层/聚合目录与过渡壳内容已全量随 P3/P4 迁入 11 包（Hosting 3 + Online 8）；slnx 摘除、csproj 与源文件物理删除（git rm）；`bin/` 18 个陈旧产物（工程已不在 slnx，dotnet clean 无视）手动清除后 rebuild 零再生（lesson `msbuild-stale-output-after-project-removal` 正反断言）；`OnlineDependencyMatrixTests` 目录依赖矩阵随目录消失退役（topic 字节冻结断言保留）
@@ -85,6 +86,7 @@
 * 升级 GameFrameX.Foundation 全部包引用 4.1.1 → 5.0.0（C224，7 项目 13 处）；StartUp 新增 GameFrameX.Foundation.Logger.GrafanaLoki 组件包，GameApp 的 Grafana Loki 接线迁移为 UseGrafanaLoki 显式注册（Url/用户名/密码取自 CLI 选项、Labels 取自 GrafanaLokiLabelTag 反射收集，LogIsGrafanaLoki=false 时零注册；CLI 选项面与 sink 默认值与 4.1.1 一致）。Foundation.Logger 5.0.0 起不再传递 MongoDB.Driver / Serilog.Sinks.MongoDB（Serilog.Sinks.Grafana.Loki 仅由 Logger.GrafanaLoki 组件包引入）
 
 ### Bug Fixes
+* GameDb 门面生命周期三修（C267 / GFX-907）：①`GameDb.CloseAsync()` 关停即卸载——关闭全部注册库后清空 `MultiDbRegistry` 与门面静态状态（个别库 Close 抛出也经 finally 完成卸载，异常照常传播），close→reopen 同名重注册不再被残留注册表挡在 `AlreadyRegistered`，关停后门面 CRUD 回到未初始化快速失败而非使用已关停服务；②`InitCore` 的 `IsDefault` 提名 set-once 异名冲突回滚——`MultiDbRegistry.Unregister` + 释放已打开连接后重抛原异常，废除「冲突在注册后传播、靠进程退出兜底」旧语义，Init 失败不在注册表/门面留半初始化残留（新增 `MultiDbRegistry.Unregister(string)` internal，统一入口铁律：消费方仍只经 GameDb）；③删除同步 `GameDb.Close()`（`GetAwaiter().GetResult()` sync-over-async，线程饥饿/死锁面；全仓与消费仓零调用实证），异步 `CloseAsync` 为唯一关停入口。
 
 * WorkerActor 超时不再破坏 Actor 串行不变量（P0-A#1 / C238）：`InnerRun` 超时放行等待方后邮箱继续等待孤儿任务完成，而非放任下一条消息并发进入同一 Actor（数据竞争根因）；孤儿超过硬上限（10×TimeOut）仍无结束迹象才隔离该 Actor——新增 `WorkerActor.IsQuarantined`，隔离后新入队与排队中工作单元以 InvalidOperationException 快速失败，需经宿主回收重建恢复。同批修复三类同源故障掩蔽/污染（等待方契约变更，消息泵 BaseMessageHandler 三层 catch 兜底不受影响）：超时改以 TimeoutException 传递等待方（原为 TrySetResult(false/default) 假成功，调用方拿到 null 当正常值用）；工作单元异常改传播给等待方（原吞异常后以 default(T) 假成功）；`WorkWrapper.ResetContext` 改条件重置（仅链 ID 仍归属本工作单元时清零），孤儿任务/被拒入队工作单元不再误清后继消息的链上下文（原会令重入调用误判入队自等待 → 级联超时）。另修复 Enqueue/SendAsync 调试限流路径 `return default`（null Task）在调用方 await 时必然 NRE 的问题，改为跳过语义的已完成任务
 * Actor 工作单元执行期协作取消（P0-A#1 / C238）：新增 `RuntimeContext.CurrentCancellationToken`（AsyncLocal，随异步流流转，默认 CancellationToken.None）——WorkerActor 执行期为每个工作单元创建联动取消源（调用方令牌 + 超时 CancelAfter 合并），业务代码与 IO 层读取该令牌即可在超时或调用方取消时快速收尾，缩短孤儿任务占用邮箱的窗口；`Enqueue/SendAsync/Tell` 的 `cancellationToken` 参数由此同时具备「取消排队」与「取消执行」两层语义

@@ -173,9 +173,8 @@ public static partial class GameDb
     /// Shared execution path of both Init overloads: argument validation, Open, registration with
     /// close-on-failure rollback, first-registered facade binding, and the <see cref="DbOptions.IsDefault"/>
     /// nomination (C183: the connection string and the default nomination each have a single source —
-    /// DbOptions). A nomination conflict propagates after the database has already been registered:
-    /// startup is expected to abort on it (fail-fast) and the process tears down, mirroring the legacy
-    /// behavior of SetDefault throwing after a successful Init.
+    /// DbOptions). A nomination conflict rolls the registration back (unregister + close) before the
+    /// exception propagates (C267), so a failed Init leaves no residue in the registry or the facade.
     /// </remarks>
     /// <param name="service">已创建的数据库实现实例（泛型重载由 new() 创建，非泛型重载由 <see cref="DbProviderResolver"/> 反射创建） / The already created database service instance (new() in the generic overload, reflection in the non-generic overload)</param>
     /// <param name="dbOptions">数据库配置选项（Name 同时作为注册名） / Database configuration options (Name doubles as the registry name)</param>
@@ -214,7 +213,22 @@ public static partial class GameDb
 
         if (dbOptions.IsDefault)
         {
-            NominateDefaultDatabase(dbOptions.Name, service);
+            try
+            {
+                NominateDefaultDatabase(dbOptions.Name, service);
+            }
+            catch (InvalidOperationException)
+            {
+                // 提名冲突（set-once 异名）：回滚本次注册并释放已打开的服务，Init 失败不在注册表/门面留残留（C267）。
+                // 冲突路径上方门面首绑必为 no-op：提名成功必写首绑，故默认名非空 ⇒ 门面绑定非空。
+                // Nomination conflict (set-once, different name): roll back this registration and release the opened
+                // service so a failed Init leaves no residue in the registry or the facade (C267). The first-registered
+                // binding above is provably a no-op on this path: every successful nomination writes the binding, so a
+                // non-null default name implies a non-null facade binding.
+                MultiDbRegistry.Unregister(dbOptions.Name);
+                await service.Close();
+                throw;
+            }
         }
 
         return true;
@@ -344,31 +358,47 @@ public static partial class GameDb
     }
 
     /// <summary>
-    /// 关闭数据库连接。
+    /// 异步关闭数据库连接并卸载门面（关闭全部已注册数据库，随后清空注册表与门面静态状态，C143a D20#2 / C267）。
     /// </summary>
     /// <remarks>
-    /// Close the database connection.
-    /// </remarks>
-    public static void Close()
-    {
-        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
-        CloseAsync().GetAwaiter().GetResult();
-    }
-
-    /// <summary>
-    /// 异步关闭数据库连接（关闭全部已注册数据库，C143a D20#2）。
-    /// </summary>
-    /// <remarks>
-    /// Asynchronously closes every registered database connection.
+    /// Asynchronously closes every registered database connection and tears the facade down: the registry and the
+    /// facade static state are cleared after the close loop even when an individual close throws (the exception still
+    /// propagates), so a close→Init cycle can re-register the same names instead of hitting the duplicate-name guard
+    /// on stale entries (C267). This async member is the sole close entry point — the former sync-over-async
+    /// <c>Close()</c> was removed.
     /// </remarks>
     /// <returns>表示异步关闭操作的任务 / Task representing the asynchronous close operation</returns>
     public static async Task CloseAsync()
     {
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
-        foreach (var databaseService in MultiDbRegistry.GetRegisteredDatabaseServices())
+        try
         {
-            await databaseService.Close();
+            foreach (var databaseService in MultiDbRegistry.GetRegisteredDatabaseServices())
+            {
+                await databaseService.Close();
+            }
         }
+        finally
+        {
+            // 关停即卸载：个别库 Close 抛出也完成卸载，注册表不残留已关停的库（C267）
+            // Tear down on close: uninstall even when an individual close throws, so no closed database is left registered (C267).
+            ResetFacadeState();
+        }
+    }
+
+    /// <summary>
+    /// 重置门面静态状态与多库注册表（<see cref="CloseAsync"/> 关停卸载与单元测试隔离共用核心）。
+    /// </summary>
+    /// <remarks>
+    /// Resets the facade static state and the multi-database registry — the shared core of the
+    /// <see cref="CloseAsync"/> teardown and the unit-test isolation entry below.
+    /// </remarks>
+    private static void ResetFacadeState()
+    {
+        _dbServiceImplementation = null;
+        _defaultDatabaseName = null;
+        Volatile.Write(ref _implicitBindingWarningLogged, 0);
+        MultiDbRegistry.Clear();
     }
 
     /// <summary>
@@ -379,10 +409,7 @@ public static partial class GameDb
     /// </remarks>
     internal static void ResetForTesting()
     {
-        _dbServiceImplementation = null;
-        _defaultDatabaseName = null;
-        Volatile.Write(ref _implicitBindingWarningLogged, 0);
-        MultiDbRegistry.Clear();
+        ResetFacadeState();
     }
 
 }
