@@ -122,20 +122,30 @@ public sealed partial class PostgreSqlDbService
         return await ExecuteWriteWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            await using var connection = DataSource.CreateConnection();
-            await connection.OpenAsync(token).ConfigureAwait(false);
-            await using var command = new NpgsqlCommand($"UPDATE {GetTableName<TState>()} SET doc = @doc::jsonb WHERE id = @id AND doc->>'RowVersion' = @expected", connection);
-            command.Parameters.Add(new NpgsqlParameter("doc", NpgsqlDbType.Jsonb) { Value = documentJson, });
-            command.Parameters.AddWithValue("id", id);
-            command.Parameters.Add(new NpgsqlParameter("expected", NpgsqlDbType.Text) { Value = expectedRowVersion.ToString(CultureInfo.InvariantCulture), });
-            var affectedRows = await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
-            if (affectedRows == 1)
+            var (connection, ambientTransaction, ownedConnection) = await OpenConnectionForWriteAsync(token).ConfigureAwait(false);
+            try
             {
-                state.SaveToDbPostHandler();
-                return true;
-            }
+                await using var command = new NpgsqlCommand($"UPDATE {GetTableName<TState>()} SET doc = @doc::jsonb WHERE id = @id AND doc->>'RowVersion' = @expected", connection);
+                command.Transaction = ambientTransaction;
+                command.Parameters.Add(new NpgsqlParameter("doc", NpgsqlDbType.Jsonb) { Value = documentJson, });
+                command.Parameters.AddWithValue("id", id);
+                command.Parameters.Add(new NpgsqlParameter("expected", NpgsqlDbType.Text) { Value = expectedRowVersion.ToString(CultureInfo.InvariantCulture), });
+                var affectedRows = await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
+                if (affectedRows == 1)
+                {
+                    state.SaveToDbPostHandler();
+                    return true;
+                }
 
-            return false;
+                return false;
+            }
+            finally
+            {
+                if (ownedConnection)
+                {
+                    await connection.DisposeAsync().ConfigureAwait(false);
+                }
+            }
         }, cancellationToken, nameof(UpdateIfRowVersionAsync), false).ConfigureAwait(false);
     }
 
@@ -185,6 +195,7 @@ public sealed partial class PostgreSqlDbService
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
             using var context = CreateContext<TState>();
+            JoinAmbientTransaction(context);
             // 唯一性判定无视软删可见性：IgnoreQueryFilters 查全量档（物理唯一索引口径）。
             // Uniqueness ignores soft-delete visibility: IgnoreQueryFilters scans every row (physical unique-index semantics).
             if (await context.Rows.IgnoreQueryFilters().AnyAsync(rowFilter, token).ConfigureAwait(false))
@@ -258,14 +269,24 @@ public sealed partial class PostgreSqlDbService
         return await ExecuteWriteWithRetryAsync(async token =>
         {
             await EnsureSequenceTableAsync(token).ConfigureAwait(false);
-            await using var connection = DataSource.CreateConnection();
-            await connection.OpenAsync(token).ConfigureAwait(false);
-            await using var command = new NpgsqlCommand(
-                $"INSERT INTO {QuoteIdentifier(SequenceTableName)} (\"key\", \"value\") VALUES (@key, 1) ON CONFLICT (\"key\") DO UPDATE SET \"value\" = {QuoteIdentifier(SequenceTableName)}.\"value\" + 1 RETURNING \"value\"",
-                connection);
-            command.Parameters.AddWithValue("key", counterKey);
-            var result = await command.ExecuteScalarAsync(token).ConfigureAwait(false);
-            return Convert.ToInt64(result, CultureInfo.InvariantCulture);
+            var (connection, ambientTransaction, ownedConnection) = await OpenConnectionForWriteAsync(token).ConfigureAwait(false);
+            try
+            {
+                await using var command = new NpgsqlCommand(
+                    $"INSERT INTO {QuoteIdentifier(SequenceTableName)} (\"key\", \"value\") VALUES (@key, 1) ON CONFLICT (\"key\") DO UPDATE SET \"value\" = {QuoteIdentifier(SequenceTableName)}.\"value\" + 1 RETURNING \"value\"",
+                    connection);
+                command.Transaction = ambientTransaction;
+                command.Parameters.AddWithValue("key", counterKey);
+                var result = await command.ExecuteScalarAsync(token).ConfigureAwait(false);
+                return Convert.ToInt64(result, CultureInfo.InvariantCulture);
+            }
+            finally
+            {
+                if (ownedConnection)
+                {
+                    await connection.DisposeAsync().ConfigureAwait(false);
+                }
+            }
         }, cancellationToken, nameof(NextSequenceAsync), false).ConfigureAwait(false);
     }
 

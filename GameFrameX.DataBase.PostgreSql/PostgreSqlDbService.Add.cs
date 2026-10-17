@@ -71,6 +71,7 @@ public sealed partial class PostgreSqlDbService
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
             using var context = CreateContext<TState>();
+            JoinAmbientTransaction(context);
             context.Rows.Add(new StateRow<TState> { Id = state.Id, Doc = state, });
             await context.SaveChangesAsync(token).ConfigureAwait(false);
             return true;
@@ -123,6 +124,7 @@ public sealed partial class PostgreSqlDbService
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
             using var context = CreateContext<TState>();
+            JoinAmbientTransaction(context);
             foreach (var cacheState in cacheStates)
             {
                 context.Rows.Add(new StateRow<TState> { Id = cacheState.Id, Doc = cacheState, });

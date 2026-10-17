@@ -33,6 +33,7 @@ using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Localization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace GameFrameX.DataBase.PostgreSql;
 
@@ -94,6 +95,7 @@ public sealed partial class PostgreSqlDbService
                 try
                 {
                     using var context = CreateContext<TState>();
+                    JoinAmbientTransaction(context);
                     await StageUpsertAsync(context, new[] { state, }, token).ConfigureAwait(false);
                     await context.SaveChangesAsync(token).ConfigureAwait(false);
                     return true;
@@ -167,6 +169,7 @@ public sealed partial class PostgreSqlDbService
                 try
                 {
                     using var context = CreateContext<TState>();
+                    JoinAmbientTransaction(context);
                     await StageUpsertAsync(context, stateArray, token).ConfigureAwait(false);
                     await context.SaveChangesAsync(token).ConfigureAwait(false);
                     return true;
@@ -235,6 +238,7 @@ public sealed partial class PostgreSqlDbService
                 var acknowledged = false;
                 using (var context = CreateContext<TState>())
                 {
+                    JoinAmbientTransaction(context);
                     await StageUpsertAsync(context, batch, CancellationToken.None).ConfigureAwait(false);
                     var affected = await context.SaveChangesAsync(CancellationToken.None).ConfigureAwait(false);
                     // 每条 staged 文档各计一行；受影响行数 >= 批大小即视为整批 ack
@@ -265,14 +269,16 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 在事务中执行操作（EF 事务壳 BEGIN → action → COMMIT；SQLSTATE 40001/40P01 重试分类，对齐 Mongo 事务语义）。
+    /// 在事务中执行操作（EF 事务壳 BEGIN → action → COMMIT；action 内全部操作上下文经 UseTransaction 加入本事务，壳唯一负责提交；SQLSTATE 40001/40P01 重试分类，对齐 Mongo 事务语义）。
     /// </summary>
     /// <remarks>
     /// Executes the action inside a transaction shell (<c>BeginTransactionAsync</c> → action → commit),
     /// retrying on PostgreSQL serialization failures (SQLSTATE <c>40001</c> serialization_failure /
     /// <c>40P01</c> deadlock_detected — aligned with Mongo's <c>TransientTransactionError</c> retry
-    /// classification). As with the Mongo adapter, the action's own operations use their pooled connections
-    /// and are not bound to this transaction's snapshot.
+    /// classification). Every context the action creates enlists in the shell's transaction via the
+    /// ambient transaction (<c>UseTransaction</c>), so the shell is the single commit point;
+    /// <c>SaveChanges</c> failures roll back to an automatic savepoint, keeping the 23505 one-shot
+    /// upsert retry working inside the transaction.
     /// </remarks>
     /// <param name="action">要在事务中执行的操作 / The action to execute inside the transaction</param>
     /// <exception cref="DatabaseUnavailableException">当事务重试全部失败后抛出 / Thrown when all transaction retry attempts fail</exception>
@@ -282,14 +288,16 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 在事务中执行操作（EF 事务壳 BEGIN → action → COMMIT；SQLSTATE 40001/40P01 重试分类，对齐 Mongo 事务语义）。
+    /// 在事务中执行操作（EF 事务壳 BEGIN → action → COMMIT；action 内全部操作上下文经 UseTransaction 加入本事务，壳唯一负责提交；SQLSTATE 40001/40P01 重试分类，对齐 Mongo 事务语义）。
     /// </summary>
     /// <remarks>
     /// Executes the action inside a transaction shell (<c>BeginTransactionAsync</c> → action → commit),
     /// retrying on PostgreSQL serialization failures (SQLSTATE <c>40001</c> serialization_failure /
     /// <c>40P01</c> deadlock_detected — aligned with Mongo's <c>TransientTransactionError</c> retry
-    /// classification). As with the Mongo adapter, the action's own operations use their pooled connections
-    /// and are not bound to this transaction's snapshot.
+    /// classification). Every context the action creates enlists in the shell's transaction via the
+    /// ambient transaction (<c>UseTransaction</c>), so the shell is the single commit point;
+    /// <c>SaveChanges</c> failures roll back to an automatic savepoint, keeping the 23505 one-shot
+    /// upsert retry working inside the transaction.
     /// </remarks>
     /// <param name="action">要在事务中执行的操作 / The action to execute inside the transaction</param>
     /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
@@ -300,6 +308,14 @@ public sealed partial class PostgreSqlDbService
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
         ArgumentNullException.ThrowIfNull(action);
+        if (_ambientTransaction.Value != null)
+        {
+            // 嵌套事务壳：加入环境事务（操作上下文已绑同一事务，提交权归最外层壳）。
+            // Nested shell: join the ambient transaction (the outermost shell owns the commit).
+            await action().ConfigureAwait(false);
+            return;
+        }
+
         Exception lastException = null;
         for (var attempt = 0; attempt <= _transactionRetryDelaysMilliseconds.Length; attempt++)
         {
@@ -308,9 +324,18 @@ public sealed partial class PostgreSqlDbService
             {
                 using var context = CreateShellContext();
                 await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-                cancellationToken.ThrowIfCancellationRequested();
-                await action().ConfigureAwait(false);
-                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                _ambientTransaction.Value = transaction.GetDbTransaction();
+                try
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await action().ConfigureAwait(false);
+                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    _ambientTransaction.Value = null;
+                }
+
                 return;
             }
             catch (Exception exception) when (ExceptionClassifier.ShouldRetryTransaction(exception) && attempt < _transactionRetryDelaysMilliseconds.Length)
