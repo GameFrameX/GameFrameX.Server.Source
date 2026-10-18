@@ -200,6 +200,9 @@ GameFrameX 使用命令行参数 (`--Key=Value`) 进行配置，所有配置项�
 | `IsEnableHttp` | 是否启用 HTTP 服务 | `true` | `true` |
 | `HttpPort` | HTTP 服务端口 | `8080` | `28080` |
 | `HttpsPort` | HTTPS 服务端口 | 无 | `443` |
+| `HttpsCertPath` | HTTPS 证书文件路径（PFX），`HttpsPort > 0` 时必填 | 无 | `/path/cert.pfx` |
+| `HttpsCertPassword` | HTTPS 证书密码（可选） | 无 | |
+| `HttpSignSecret` | HTTP 签名密钥（HMAC-SHA256），开启签名校验后必填；为空时一律拒绝（fail-closed） | 无 | `a-strong-secret` |
 | `HttpUrl` | API 接口根路径 | `/game/api/` | `/game/api/` |
 | `HttpIsDevelopment` | HTTP 开发模式（启用 Swagger） | `false` | `true` |
 | `IsEnableOnlineAdmin` | 是否在进程内托管 Online Runtime 与管理 API | `false` | `true` |

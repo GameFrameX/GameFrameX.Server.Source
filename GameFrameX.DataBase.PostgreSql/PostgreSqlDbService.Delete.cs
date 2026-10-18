@@ -110,10 +110,13 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 根据条件批量删除数据（软删除；先查再逐条改，对齐 Mongo 先 FindList 再 BulkWrite 的流程）。
+    /// 根据条件批量删除数据（软删除；先查后单批写回，对齐 Mongo 先 FindList 再 BulkWrite 的流程）。
     /// </summary>
     /// <remarks>
-    /// Soft-deletes documents matching the filter (find-then-mark each, aligned with Mongo's FindList-then-BulkWrite flow).
+    /// Soft-deletes documents matching the filter: find matching ids, then one tracked batch
+    /// (C266: the former find-then-mark-each loop issued one SELECT + SaveChanges per document —
+    /// an order of magnitude slower than <c>DeleteListIdAsync</c>; the per-id counting semantics
+    /// are unchanged).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="filter">过滤表达式 / The filter expression</param>
@@ -124,14 +127,17 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 根据条件批量删除数据（软删除；先查再逐条改，对齐 Mongo 先 FindList 再 BulkWrite 的流程）。
+    /// 根据条件批量删除数据（软删除；先查后单批写回，对齐 Mongo 先 FindList 再 BulkWrite 的流程）。
     /// </summary>
     /// <remarks>
-    /// Soft-deletes documents matching the filter (find-then-mark each, aligned with Mongo's FindList-then-BulkWrite flow).
+    /// Soft-deletes documents matching the filter: find matching ids, then one tracked batch
+    /// (C266: the former find-then-mark-each loop issued one SELECT + SaveChanges per document —
+    /// an order of magnitude slower than <c>DeleteListIdAsync</c>; the per-id counting semantics
+    /// are unchanged).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="filter">过滤表达式 / The filter expression</param>
-    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
     /// <returns>实际删除的数量 / The number of actually deleted documents</returns>
     public async Task<long> DeleteListAsync<TState>(Expression<Func<TState, bool>> filter, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
@@ -143,16 +149,15 @@ public sealed partial class PostgreSqlDbService
             return 0;
         }
 
-        long modifiedCount = 0;
-        var deleteTime = GetCurrentTimestamp();
-        foreach (var state in list)
+        var ids = new long[list.Count];
+        for (var index = 0; index < list.Count; index++)
         {
-            state.DeleteTime = deleteTime;
-            state.IsDeleted = true;
-            modifiedCount += await ExecuteSoftDeleteByIdAsync<TState>(state.Id, deleteTime, nameof(DeleteListAsync), cancellationToken).ConfigureAwait(false);
+            ids[index] = list[index].Id;
         }
 
-        return modifiedCount;
+        // 与 DeleteListIdAsync 共用单批软删核心：一次跟踪批 + 单次 SaveChanges（C266）
+        // Shares the single-batch soft-delete core with DeleteListIdAsync: one tracked batch, one SaveChanges (C266).
+        return await ExecuteSoftDeleteByIdsAsync<TState>(ids, GetCurrentTimestamp(), nameof(DeleteListAsync), cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -175,7 +180,8 @@ public sealed partial class PostgreSqlDbService
     /// </summary>
     /// <remarks>
     /// Soft-deletes documents by ID list (one tracked batch; the timestamp changes every call so repeated calls
-    /// still count rows, consistent with Mongo $set).
+    /// still count rows, consistent with Mongo $set). Since C266 the batch body lives in
+    /// <see cref="ExecuteSoftDeleteByIdsAsync{TState}"/>, shared with the filter-based <c>DeleteListAsync</c>.
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="ids">要删除的数据ID列表 / The IDs to delete</param>
@@ -191,27 +197,7 @@ public sealed partial class PostgreSqlDbService
             return 0;
         }
 
-        var distinctIds = idArray.Distinct().ToArray();
-        var deleteTime = GetCurrentTimestamp();
-        return await ExecuteWriteWithRetryAsync(async token =>
-        {
-            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            using var context = CreateContext<TState>();
-            var rows = await context.Rows.IgnoreQueryFilters().Where(row => distinctIds.Contains(row.Id)).ToListAsync(token).ConfigureAwait(false);
-            foreach (var row in rows)
-            {
-                row.Doc.IsDeleted = true;
-                row.Doc.DeleteTime = deleteTime;
-            }
-
-            if (rows.Count == 0)
-            {
-                return 0;
-            }
-
-            var affected = await context.SaveChangesAsync(token).ConfigureAwait(false);
-            return (long)affected;
-        }, cancellationToken, nameof(DeleteListIdAsync), true).ConfigureAwait(false);
+        return await ExecuteSoftDeleteByIdsAsync<TState>(idArray.Distinct().ToArray(), GetCurrentTimestamp(), nameof(DeleteListIdAsync), cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -343,6 +329,46 @@ public sealed partial class PostgreSqlDbService
 
             row.Doc.IsDeleted = true;
             row.Doc.DeleteTime = deleteTime;
+            var affected = await context.SaveChangesAsync(token).ConfigureAwait(false);
+            return (long)affected;
+        }, cancellationToken, operationName, true).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 按 id 集合单批软删除（整档写回；同毫秒重复幂等返回 0，逐 id 计数语义与单条路径逐项等价——C266）。
+    /// </summary>
+    /// <remarks>
+    /// Soft-deletes by id set in one tracked batch (<c>IgnoreQueryFilters + id IN</c> + a single
+    /// <c>SaveChangesAsync</c>, retried through the shared resilience engine). Same-millisecond repeats against
+    /// already-identical documents count as unchanged rows (returning 0), matching
+    /// <see cref="ExecuteSoftDeleteByIdAsync{TState}"/> per id. Shared by <c>DeleteListIdAsync</c> and the
+    /// filter-based <c>DeleteListAsync</c> (C266: the filter variant previously issued one SELECT + SaveChanges
+    /// per document).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
+    /// <param name="distinctIds">去重后的数据ID集合 / The deduplicated document IDs</param>
+    /// <param name="deleteTime">删除时间戳 / The deletion timestamp</param>
+    /// <param name="operationName">操作名（用于遥测） / The operation name (used for telemetry)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>实际删除的数量 / The number of actually deleted documents</returns>
+    private async Task<long> ExecuteSoftDeleteByIdsAsync<TState>(long[] distinctIds, long deleteTime, string operationName, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        return await ExecuteWriteWithRetryAsync(async token =>
+        {
+            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+            using var context = CreateContext<TState>();
+            var rows = await context.Rows.IgnoreQueryFilters().Where(row => distinctIds.Contains(row.Id)).ToListAsync(token).ConfigureAwait(false);
+            foreach (var row in rows)
+            {
+                row.Doc.IsDeleted = true;
+                row.Doc.DeleteTime = deleteTime;
+            }
+
+            if (rows.Count == 0)
+            {
+                return 0;
+            }
+
             var affected = await context.SaveChangesAsync(token).ConfigureAwait(false);
             return (long)affected;
         }, cancellationToken, operationName, true).ConfigureAwait(false);

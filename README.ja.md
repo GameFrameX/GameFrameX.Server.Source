@@ -197,6 +197,9 @@ GameFrameX はコマンドライン引数（`--Key=Value`）で設定を行い�
 | `IsEnableHttp` | HTTP サービスを有効化 | `true` | `true` |
 | `HttpPort` | HTTP サービスポート | `8080` | `28080` |
 | `HttpsPort` | HTTPS サービスポート | なし | `443` |
+| `HttpsCertPath` | HTTPS 証明書ファイルパス（PFX）、`HttpsPort > 0` の場合は必須 | なし | `/path/cert.pfx` |
+| `HttpsCertPassword` | HTTPS 証明書パスワード（任意） | なし | |
+| `HttpSignSecret` | HTTP 署名シークレット（HMAC-SHA256）、署名検証有効時は必須。空の場合はすべて拒否（fail-closed） | なし | `a-strong-secret` |
 | `HttpUrl` | API ルートパス | `/game/api/` | `/game/api/` |
 | `HttpIsDevelopment` | HTTP 開発モード（Swagger を有効化） | `false` | `true` |
 | `IsEnableOnlineAdmin` | Online Runtime + 管理 API をプロセス内でホスト | `false` | `true` |

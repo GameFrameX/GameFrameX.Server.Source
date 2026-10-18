@@ -313,24 +313,181 @@ internal sealed class TcpConnectionProvider : IConnectionProvider
     private sealed class ConnectionEntry : IDisposable
     {
         private readonly TcpClient _tcpClient;
+        private readonly GatedWriteStream _gatedStream;
 
         public ConnectionEntry(TcpClient tcpClient)
         {
             _tcpClient = tcpClient;
-            Stream = tcpClient.GetStream();
+            // 池内连接以写门控流出池（C270）：共享池后 RPC 客户端与信封转发层可能轮询命中同一条连接，
+            // 两把不同锁域的并发 WriteAsync 会在帧内交错、毁掉长度前缀帧；每条物理连接一道叶子写门
+            // 保证「一次 WriteAsync = 一条完整帧」原子，上层各自的锁只能嵌套其上（锁序单向，无死锁）。
+            _gatedStream = new GatedWriteStream(tcpClient.GetStream());
         }
 
-        public Stream Stream { get; }
+        public Stream Stream
+        {
+            get { return _gatedStream; }
+        }
 
         public bool IsAlive
         {
-            get { return _tcpClient.Connected && Stream != null; }
+            get { return _tcpClient.Connected && _gatedStream != null; }
         }
 
         public void Dispose()
         {
-            Stream?.Dispose();
+            _gatedStream?.Dispose();
             _tcpClient?.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// 池内单条 TCP 连接的写门控流：读/定位直通底层流，写路径（Write/Flush 同步与异步面）经每连接
+    /// <see cref="SemaphoreSlim"/>(1,1) 串行化。共享池的消费方（RPC 客户端、信封转发层）各自持有写锁，
+    /// 唯有池内这道叶子门能保证同一物理连接上「一次写入 = 一条完整帧」不被帧内交错。
+    /// </summary>
+    /// <remarks>
+    /// The write-gated stream of a pooled TCP connection: reads and seeking pass through to the
+    /// underlying stream while write paths (both sync and async Write/Flush) are serialized by a
+    /// per-connection <see cref="SemaphoreSlim"/>(1,1). Consumers of the shared pool (the RPC client
+    /// and the envelope forwarder) each hold their own locks; only this leaf-level gate inside the
+    /// pool can guarantee that "one write call = one complete frame" is never interleaved mid-frame
+    /// on the same physical connection.
+    /// </remarks>
+    private sealed class GatedWriteStream : Stream
+    {
+        private readonly Stream _underlying;
+        private readonly SemaphoreSlim _writeGate = new(1, 1);
+
+        public GatedWriteStream(Stream underlying)
+        {
+            _underlying = underlying;
+        }
+
+        /// <summary>底层流是否可读。</summary>
+        public override bool CanRead
+        {
+            get { return _underlying.CanRead; }
+        }
+
+        /// <summary>底层流是否可写。</summary>
+        public override bool CanWrite
+        {
+            get { return _underlying.CanWrite; }
+        }
+
+        /// <summary>底层流是否支持定位。</summary>
+        public override bool CanSeek
+        {
+            get { return _underlying.CanSeek; }
+        }
+
+        /// <summary>底层流长度（不支持时抛出）。</summary>
+        public override long Length
+        {
+            get { return _underlying.Length; }
+        }
+
+        /// <summary>底层流位置（不支持时抛出）。</summary>
+        public override long Position
+        {
+            get { return _underlying.Position; }
+            set { _underlying.Position = value; }
+        }
+
+        /// <summary>读直通底层流（读侧无串行化需求：每连接仅一个接收泵）。</summary>
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            return _underlying.Read(buffer, offset, count);
+        }
+
+        /// <summary>异步读直通底层流。</summary>
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            return _underlying.ReadAsync(buffer, cancellationToken);
+        }
+
+        /// <summary>定位直通底层流。</summary>
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            return _underlying.Seek(offset, origin);
+        }
+
+        /// <summary>设置长度直通底层流。</summary>
+        public override void SetLength(long value)
+        {
+            _underlying.SetLength(value);
+        }
+
+        /// <summary>同步写：持写门整段写出。</summary>
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            _writeGate.Wait();
+            try
+            {
+                _underlying.Write(buffer, offset, count);
+            }
+            finally
+            {
+                _writeGate.Release();
+            }
+        }
+
+        /// <summary>异步写：持写门整帧写出（取消令牌作用于等待写门阶段）。</summary>
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            await _writeGate.WaitAsync(cancellationToken);
+            try
+            {
+                await _underlying.WriteAsync(buffer, cancellationToken);
+            }
+            finally
+            {
+                _writeGate.Release();
+            }
+        }
+
+        /// <summary>同步刷新：与写共用同一道门。</summary>
+        public override void Flush()
+        {
+            _writeGate.Wait();
+            try
+            {
+                _underlying.Flush();
+            }
+            finally
+            {
+                _writeGate.Release();
+            }
+        }
+
+        /// <summary>异步刷新：与写共用同一道门。</summary>
+        public override async Task FlushAsync(CancellationToken cancellationToken)
+        {
+            await _writeGate.WaitAsync(cancellationToken);
+            try
+            {
+                await _underlying.FlushAsync(cancellationToken);
+            }
+            finally
+            {
+                _writeGate.Release();
+            }
+        }
+
+        /// <summary>
+        /// 释放底层流。写门不随释放销毁：释放时仍可能有等待者在门上排队，销毁门会使等待者的
+        /// <see cref="SemaphoreSlim.Release()"/> 抛 <see cref="ObjectDisposedException"/>；未销毁的
+        /// <see cref="SemaphoreSlim"/> 无非托管资源，随条目一起被回收。
+        /// </summary>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _underlying.Dispose();
+            }
+
+            base.Dispose(disposing);
         }
     }
 }

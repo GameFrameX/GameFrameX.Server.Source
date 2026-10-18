@@ -111,6 +111,28 @@ public static class MultiDbRegistry
 
         Interlocked.Increment(ref _registeredCount);
     }
+
+    /// <summary>
+    /// 按注册名移除已注册的数据库服务（InitCore 提名冲突回滚用；计数同步递减）。
+    /// </summary>
+    /// <remarks>
+    /// Removes the registered database service by name (used by the GameDb InitCore nomination-conflict
+    /// rollback, C267); the registered count is decremented accordingly. Internal on purpose: consumers
+    /// go through the <c>GameDb</c> facade instead of mutating the registry directly.
+    /// </remarks>
+    /// <param name="databaseName">注册名 / Registry name</param>
+    /// <returns>移除成功返回 true；注册名不存在返回 false / true when a service was removed; false when the name is not registered</returns>
+    internal static bool Unregister(string databaseName)
+    {
+        ArgumentNullException.ThrowIfNull(databaseName);
+        if (!Databases.TryRemove(databaseName, out _))
+        {
+            return false;
+        }
+
+        Interlocked.Decrement(ref _registeredCount);
+        return true;
+    }
     /// <summary>
     /// 按注册名获取数据库服务。
     /// </summary>
@@ -187,10 +209,10 @@ public static class MultiDbRegistry
     }
 
     /// <summary>
-    /// 清空注册表（仅供单元测试隔离静态状态使用）。
+    /// 清空注册表（GameDb.CloseAsync 关停卸载与单元测试隔离静态状态共用）。
     /// </summary>
     /// <remarks>
-    /// Clears the registry. For unit test isolation of static state only.
+    /// Clears the registry — shared by the <c>GameDb.CloseAsync</c> teardown and unit test isolation of static state.
     /// </remarks>
     internal static void Clear()
     {

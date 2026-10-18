@@ -140,12 +140,68 @@ public class GameDbMultiDatabaseTests : IDisposable
     [Fact]
     public async Task CloseAsync_ClosesAllRegisteredDatabases()
     {
+        var closeCountBefore = NoConnectionDatabaseService.TotalCloseCallCount;
         await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://first", Name = "first_database", IsDefault = false });
         await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://second", Name = "second_database", IsDefault = false });
 
         await GameDb.CloseAsync();
 
-        Assert.Equal(2, NoConnectionDatabaseService.TotalCloseCallCount);
+        Assert.Equal(closeCountBefore + 2, NoConnectionDatabaseService.TotalCloseCallCount);
+    }
+
+    /// <summary>
+    /// CloseAsync 关停即卸载：关闭全部库后注册表清空，同名库可重新注册（close→reopen 循环，C267 修复注册表残留）。
+    /// </summary>
+    [Fact]
+    public async Task CloseAsync_TearsDownRegistry_AllowsReRegisterSameName()
+    {
+        await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://first", Name = "first_database" });
+        Assert.True(GameDb.Contains("first_database"));
+
+        await GameDb.CloseAsync();
+
+        Assert.False(GameDb.Contains("first_database"));
+        Assert.Empty(MultiDbRegistry.GetRegisteredDatabaseNames());
+
+        var reopened = await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://first", Name = "first_database" });
+
+        Assert.True(reopened);
+        Assert.True(GameDb.Contains("first_database"));
+    }
+
+    /// <summary>
+    /// CloseAsync 后门面回到未初始化态：CRUD 入口抛 ArgumentNullException，而不是继续使用已关停服务。
+    /// </summary>
+    [Fact]
+    public async Task CloseAsync_UninitializesFacade()
+    {
+        await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://first", Name = "first_database" });
+
+        await GameDb.CloseAsync();
+
+        Assert.Throws<ArgumentNullException>(() => GameDb.As<NoConnectionDatabaseService>());
+        await Assert.ThrowsAsync<ArgumentNullException>(GameDb.CloseAsync);
+    }
+
+    /// <summary>
+    /// InitCore 提名冲突回滚：第二个 IsDefault=true 异名注册抛 set-once 冲突后，注册表不残留冲突库、
+    /// 冲突服务连接被关闭、门面与默认提名仍指向原默认库（C267 修复失败不回滚）。
+    /// </summary>
+    [Fact]
+    public async Task Init_NominationConflict_RollsBackRegistration()
+    {
+        await GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://first", Name = "first_database" });
+        var closeCountBefore = NoConnectionDatabaseService.TotalCloseCallCount;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            GameDb.Init<NoConnectionDatabaseService>(new DbOptions { ConnectionString = "mongodb://second", Name = "second_database" }));
+
+        Assert.False(GameDb.Contains("second_database"));
+        Assert.Equal(closeCountBefore + 1, NoConnectionDatabaseService.TotalCloseCallCount);
+        Assert.Equal("first_database", GameDb.As<NoConnectionDatabaseService>().LastOpenedOptions.Name);
+
+        // 原默认提名保持：同名幂等放行
+        GameDb.SetDefault("first_database");
     }
 
     /// <summary>

@@ -29,6 +29,7 @@
 
 using System.Reflection;
 using System.Text;
+using GameFrameX.Foundation.Hash;
 using GameFrameX.Network.HTTP;
 using GameFrameX.StartUp;
 using GameFrameX.Tests.Utility;
@@ -92,6 +93,223 @@ public class HttpSecurityDefaultsTests
 
         Assert.False(handlerCalled);
         Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
+    }
+    [Fact]
+    public async Task HandleRequest_ShouldExecuteHandler_WhenHmacSignatureIsValid()
+    {
+        EnsureSettings();
+        var setting = GlobalSettings.CurrentSetting;
+        var originalRequireSign = setting.HttpRequireSign;
+        var originalSecret = setting.HttpSignSecret;
+        try
+        {
+            setting.HttpRequireSign = true;
+            setting.HttpSignSecret = "unit-test-secret";
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+            var sign = HmacSha256Helper.Hash(timestamp, setting.HttpSignSecret);
+            var handlerCalled = false;
+            var context = CreateJsonContext("{}");
+            context.Request.QueryString = new QueryString($"?sign={Uri.EscapeDataString(sign)}&timestamp={timestamp}");
+
+            await HttpHandler.HandleRequest(context, _ => new SignedTestHttpHandler(() => handlerCalled = true));
+
+            Assert.True(handlerCalled);
+            Assert.Equal(StatusCodes.Status200OK, context.Response.StatusCode);
+        }
+        finally
+        {
+            setting.HttpRequireSign = originalRequireSign;
+            setting.HttpSignSecret = originalSecret;
+        }
+    }
+
+    [Fact]
+    public async Task HandleRequest_ShouldReturnUnauthorized_WhenSignatureUsesForgedLegacyScheme()
+    {
+        EnsureSettings();
+        var setting = GlobalSettings.CurrentSetting;
+        var originalRequireSign = setting.HttpRequireSign;
+        var originalSecret = setting.HttpSignSecret;
+        try
+        {
+            setting.HttpRequireSign = true;
+            setting.HttpSignSecret = "unit-test-secret";
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+            // 旧方案（C271 已废除）：sign = c1 + md5("38848" + ts) + c2，c1/c2 自公开常量 88/66 累加——零秘密，任何读者可伪造。
+            // 伪造者按旧算法构造签名，新实现必须拒绝。
+            var sign = ForgeLegacySignature(timestamp);
+            var handlerCalled = false;
+            var context = CreateJsonContext("{}");
+            context.Request.QueryString = new QueryString($"?sign={Uri.EscapeDataString(sign)}&timestamp={timestamp}");
+
+            await HttpHandler.HandleRequest(context, _ => new SignedTestHttpHandler(() => handlerCalled = true));
+
+            Assert.False(handlerCalled);
+            Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
+        }
+        finally
+        {
+            setting.HttpRequireSign = originalRequireSign;
+            setting.HttpSignSecret = originalSecret;
+        }
+    }
+
+    [Fact]
+    public async Task HandleRequest_ShouldReturnUnauthorized_WhenSignatureMismatches()
+    {
+        EnsureSettings();
+        var setting = GlobalSettings.CurrentSetting;
+        var originalRequireSign = setting.HttpRequireSign;
+        var originalSecret = setting.HttpSignSecret;
+        try
+        {
+            setting.HttpRequireSign = true;
+            setting.HttpSignSecret = "unit-test-secret";
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+            var handlerCalled = false;
+            var context = CreateJsonContext("{}");
+            context.Request.QueryString = new QueryString($"?sign=not-a-valid-signature&timestamp={timestamp}");
+
+            await HttpHandler.HandleRequest(context, _ => new SignedTestHttpHandler(() => handlerCalled = true));
+
+            Assert.False(handlerCalled);
+            Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
+        }
+        finally
+        {
+            setting.HttpRequireSign = originalRequireSign;
+            setting.HttpSignSecret = originalSecret;
+        }
+    }
+
+    [Fact]
+    public async Task HandleRequest_ShouldReturnUnauthorized_WhenTimestampIsExpired()
+    {
+        EnsureSettings();
+        var setting = GlobalSettings.CurrentSetting;
+        var originalRequireSign = setting.HttpRequireSign;
+        var originalSecret = setting.HttpSignSecret;
+        try
+        {
+            setting.HttpRequireSign = true;
+            setting.HttpSignSecret = "unit-test-secret";
+            var timestamp = DateTimeOffset.UtcNow.AddMinutes(-10).ToUnixTimeSeconds().ToString();
+            var sign = HmacSha256Helper.Hash(timestamp, setting.HttpSignSecret);
+            var handlerCalled = false;
+            var context = CreateJsonContext("{}");
+            context.Request.QueryString = new QueryString($"?sign={Uri.EscapeDataString(sign)}&timestamp={timestamp}");
+
+            await HttpHandler.HandleRequest(context, _ => new SignedTestHttpHandler(() => handlerCalled = true));
+
+            Assert.False(handlerCalled);
+            Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
+        }
+        finally
+        {
+            setting.HttpRequireSign = originalRequireSign;
+            setting.HttpSignSecret = originalSecret;
+        }
+    }
+
+    [Fact]
+    public async Task HandleRequest_ShouldFailClosed_WhenSecretIsNotConfigured()
+    {
+        EnsureSettings();
+        var setting = GlobalSettings.CurrentSetting;
+        var originalRequireSign = setting.HttpRequireSign;
+        var originalSecret = setting.HttpSignSecret;
+        try
+        {
+            setting.HttpRequireSign = false;
+            setting.HttpSignSecret = string.Empty;
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+            // 即便按空密钥算出“正确”HMAC，密钥缺失时也一律拒绝（fail-closed）
+            var sign = HmacSha256Helper.Hash(timestamp, string.Empty);
+            var handlerCalled = false;
+            var context = CreateJsonContext("{}");
+            context.Request.QueryString = new QueryString($"?sign={Uri.EscapeDataString(sign)}&timestamp={timestamp}");
+
+            await HttpHandler.HandleRequest(context, _ => new SignedTestHttpHandler(() => handlerCalled = true));
+
+            Assert.False(handlerCalled);
+            Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
+        }
+        finally
+        {
+            setting.HttpRequireSign = originalRequireSign;
+            setting.HttpSignSecret = originalSecret;
+        }
+    }
+
+    [Fact]
+    public void CheckSign_ShouldFailClosed_WhenGlobalSignEnabledWithoutSecret()
+    {
+        EnsureSettings();
+        var setting = GlobalSettings.CurrentSetting;
+        var originalRequireSign = setting.HttpRequireSign;
+        var originalSecret = setting.HttpSignSecret;
+        try
+        {
+            setting.HttpRequireSign = true;
+            setting.HttpSignSecret = "  ";
+            var handler = new SecureTestHttpHandler();
+            var paramMap = new Dictionary<string, object>
+            {
+                { GlobalConst.HttpSignKey, "anything" },
+                { GlobalConst.HttpTimestampKey, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString() },
+            };
+
+            var isValid = handler.CheckSign(paramMap, out var error);
+
+            Assert.False(isValid);
+            Assert.False(string.IsNullOrEmpty(error));
+        }
+        finally
+        {
+            setting.HttpRequireSign = originalRequireSign;
+            setting.HttpSignSecret = originalSecret;
+        }
+    }
+
+    [Fact]
+    public async Task HandleRequest_ShouldNotLeakExceptionDetailsToClient()
+    {
+        EnsureSettings();
+        const string secretMarker = "SECRET-INTERNAL-DETAIL-7f3a";
+        var handler = new SecureTestHttpHandler(() => throw new InvalidOperationException(secretMarker));
+        var context = CreateJsonContext("{}");
+
+        await HttpHandler.HandleRequest(context, _ => handler);
+
+        context.Response.Body.Seek(0, SeekOrigin.Begin);
+        using var reader = new StreamReader(context.Response.Body, Encoding.UTF8);
+        var responseBody = await reader.ReadToEndAsync();
+        Assert.DoesNotContain(secretMarker, responseBody);
+        Assert.DoesNotContain("InvalidOperationException", responseBody);
+        Assert.DoesNotContain("StackTrace", responseBody);
+    }
+
+    /// <summary>
+    /// 按已废除的旧算法（C271 前的 md5+校验码方案）伪造签名，用于回归断言：新实现必须拒绝旧方案伪造。
+    /// </summary>
+    private static string ForgeLegacySignature(string timestamp)
+    {
+        var md5 = Md5Helper.Hash("38848" + timestamp);
+        var checkCode1 = 88;
+        var checkCode2 = 66;
+        foreach (var t in md5)
+        {
+            if (t >= 'a')
+            {
+                checkCode1 += t;
+            }
+            else
+            {
+                checkCode2 += t;
+            }
+        }
+
+        return checkCode1 + md5 + checkCode2;
     }
 
     [Fact]

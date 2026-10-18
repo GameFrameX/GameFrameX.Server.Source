@@ -1156,8 +1156,17 @@
     <value>地址必须以斜杠开头。地址：{0}。</value>
   </data>
 
-  <data name="StartUp.HttpExceptions.HttpsNotImplemented" xml:space="preserve">
-    <value>HTTPS尚未实现。</value>
+  <data name="StartUp.HttpExceptions.HttpsCertPathMissing" xml:space="preserve">
+    <value>已配置 HTTPS 端口 [{0}]，但 HttpsCertPath（PFX 文件路径）未配置，无法启用 HTTPS 监听。</value>
+  </data>
+  <data name="StartUp.HttpExceptions.HttpsCertFileNotFound" xml:space="preserve">
+    <value>HTTPS 证书文件不存在：{0}</value>
+  </data>
+  <data name="StartUp.HttpExceptions.HttpsCertLoadFailed" xml:space="preserve">
+    <value>HTTPS 证书加载失败（密码错误或文件损坏）：{0}</value>
+  </data>
+  <data name="Network.Http.SignSecretMissing" xml:space="preserve">
+    <value>HTTP 签名校验已开启，但 HttpSignSecret 未配置，请求一律拒绝（fail-closed）。</value>
   </data>
 
   <data name="StartUp.HttpServer.PortOccupied" xml:space="preserve">
@@ -1517,6 +1526,9 @@
   </data>
   <data name="RemoteMessaging.Versioning.ServerRejectedIncompatibleClient" xml:space="preserve">
     <value>拒绝协议 major 不符的连接：对端 {0}，本端 {1}。回包后关闭会话。</value>
+  </data>
+  <data name="RemoteMessaging.Versioning.ServerRejectCloseFailed" xml:space="preserve">
+    <value>拒绝握手后延迟关闭通道失败（对端可能已先行关闭；拒绝包已送达，语义不受影响）。</value>
   </data>
 
   <data name="RemoteMessaging.Unified.SenderNotInitialized" xml:space="preserve">
@@ -2182,6 +2194,13 @@
 
   <data name="RemoteMessaging.Client.InterceptorOnExceptionFailed" xml:space="preserve">
     <value>拦截器 OnExceptionAsync 失败</value>
+  </data>
+  <data name="RemoteMessaging.Client.ReceivePumpDecodeFailure" xml:space="preserve">
+    <value>连接接收泵解码失败（帧损坏或协议异常），连接已按死亡处理并快速失败挂起请求。</value>
+  </data>
+
+  <data name="RemoteMessaging.Client.ReceivePumpFatalError" xml:space="preserve">
+    <value>连接接收泵遭遇未分类异常（不吞掉，记录后向上抛出）。</value>
   </data>
 
   <data name="RemoteMessaging.Client.SendOneWayCircuitBreakerOpen" xml:space="preserve">

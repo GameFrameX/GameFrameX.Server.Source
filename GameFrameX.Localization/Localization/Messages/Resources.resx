@@ -1086,8 +1086,17 @@
     <value>Address must start with slash. Address: {0}.</value>
   </data>
 
-  <data name="StartUp.HttpExceptions.HttpsNotImplemented" xml:space="preserve">
-    <value>HTTPS is not implemented yet.</value>
+  <data name="StartUp.HttpExceptions.HttpsCertPathMissing" xml:space="preserve">
+    <value>HTTPS port [{0}] is configured but HttpsCertPath (PFX file path) is missing; cannot enable HTTPS listening.</value>
+  </data>
+  <data name="StartUp.HttpExceptions.HttpsCertFileNotFound" xml:space="preserve">
+    <value>HTTPS certificate file not found: {0}</value>
+  </data>
+  <data name="StartUp.HttpExceptions.HttpsCertLoadFailed" xml:space="preserve">
+    <value>HTTPS certificate failed to load (wrong password or corrupted file): {0}</value>
+  </data>
+  <data name="Network.Http.SignSecretMissing" xml:space="preserve">
+    <value>HTTP signature validation is enabled but HttpSignSecret is not configured; every request is rejected (fail-closed).</value>
   </data>
 
   <data name="StartUp.HttpServer.ApiContactName" xml:space="preserve">
@@ -1519,6 +1528,9 @@
   </data>
   <data name="RemoteMessaging.Versioning.ServerRejectedIncompatibleClient" xml:space="preserve">
     <value>Rejected a connection with an incompatible protocol major: peer {0}, local {1}. The session is closed after replying.</value>
+  </data>
+  <data name="RemoteMessaging.Versioning.ServerRejectCloseFailed" xml:space="preserve">
+    <value>Failed to close the channel after the grace period following a rejected handshake (the peer may have closed first; the rejection has been delivered, so the semantics are unaffected).</value>
   </data>
 
   <data name="RemoteMessaging.Versioning.ServerRejectedUnauthenticatedNode" xml:space="preserve">
@@ -2183,6 +2195,13 @@
 
   <data name="RemoteMessaging.Client.InterceptorOnExceptionFailed" xml:space="preserve">
     <value>Interceptor OnExceptionAsync failed</value>
+  </data>
+  <data name="RemoteMessaging.Client.ReceivePumpDecodeFailure" xml:space="preserve">
+    <value>Connection receive pump failed to decode a frame (corrupt frame or protocol error); the connection is treated as dead and all its pending requests fail fast.</value>
+  </data>
+
+  <data name="RemoteMessaging.Client.ReceivePumpFatalError" xml:space="preserve">
+    <value>Connection receive pump hit an unclassified exception (not swallowed; logged and rethrown).</value>
   </data>
 
   <data name="RemoteMessaging.Client.SendOneWayCircuitBreakerOpen" xml:space="preserve">

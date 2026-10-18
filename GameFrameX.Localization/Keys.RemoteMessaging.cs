@@ -294,6 +294,24 @@ public static partial class Keys
             /// 用途: 执行异常拦截器回调自身抛出异常时的错误日志
             /// </remarks>
             public const string InterceptorOnExceptionFailed = "RemoteMessaging.Client.InterceptorOnExceptionFailed";
+
+            /// <summary>
+            /// 连接接收泵解码失败（帧损坏或协议异常），连接已按死亡处理并快速失败挂起请求
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Client.ReceivePumpDecodeFailure
+            /// 用途: 连接接收泵遭遇解码/协议异常（InvalidDataException / NotSupportedException）时的连接级告警日志
+            /// </remarks>
+            public const string ReceivePumpDecodeFailure = "RemoteMessaging.Client.ReceivePumpDecodeFailure";
+
+            /// <summary>
+            /// 连接接收泵遭遇未分类异常（不吞掉，记录后向上抛出）
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Client.ReceivePumpFatalError
+            /// 用途: 连接接收泵遭遇连接级/解码级之外的异常（如 OOM）时记录后重抛的错误日志
+            /// </remarks>
+            public const string ReceivePumpFatalError = "RemoteMessaging.Client.ReceivePumpFatalError";
         }
 
         /// <summary>
@@ -401,6 +419,15 @@ public static partial class Keys
             /// 参数: {0} - 服务名, {1} - 超时毫秒数
             /// </remarks>
             public const string HandshakeAuthTimeoutFailClosed = "RemoteMessaging.Versioning.HandshakeAuthTimeoutFailClosed";
+
+            /// <summary>
+            /// 拒绝握手后延迟关闭通道失败（对端可能已先行关闭；拒绝包已送达，语义不受影响）
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Versioning.ServerRejectCloseFailed
+            /// 用途: 拒绝 major 不符连接后按宽限期延迟关闭通道抛出异常时的告警日志
+            /// </remarks>
+            public const string ServerRejectCloseFailed = "RemoteMessaging.Versioning.ServerRejectCloseFailed";
         }
 
         /// <summary>

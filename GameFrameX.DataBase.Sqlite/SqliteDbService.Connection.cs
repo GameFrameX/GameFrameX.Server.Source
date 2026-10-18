@@ -45,6 +45,9 @@ namespace GameFrameX.DataBase.Sqlite;
 /// create+delete probe, file ReadWrite probe) and fails fast with localized errors carrying
 /// the full path and the failing stage; the per-Open info line prints the resolved data file
 /// (or the in-memory no-persistence notice), and the boundary warning fires once per process.
+/// The file-mode WAL pragma runs asynchronously and retries transient busy/locked conflicts
+/// through the shared resilience engine; <see cref="Close"/> is fully asynchronous
+/// (<c>WaitAsync</c> + <c>DisposeAsync</c>) — C265.
 /// </remarks>
 public sealed partial class SqliteDbService
 {
@@ -95,7 +98,7 @@ public sealed partial class SqliteDbService
                 return true;
             }
 
-            CloseCore();
+            await CloseCoreAsync().ConfigureAwait(false);
 
             _connection = new SqliteConnection(dbOptions.ConnectionString);
             await _connection.OpenAsync().ConfigureAwait(false);
@@ -103,9 +106,17 @@ public sealed partial class SqliteDbService
 
             if (!isMemory)
             {
-                using var command = _connection.CreateCommand();
-                command.CommandText = "PRAGMA journal_mode=WAL;";
-                command.ExecuteNonQuery();
+                // journal_mode=WAL 幂等：busy/locked 瞬时冲突经共享弹性引擎重试（多进程文件访问场景）；
+                // Open 已持有 _gate，这里不再套 ExecuteGatedAsync（信号量不可重入）。
+                // journal_mode=WAL is idempotent: transient busy/locked conflicts retry through the shared
+                // resilience engine (multi-process file access); Open already holds _gate, so no
+                // ExecuteGatedAsync wrapper here (the semaphore is not reentrant).
+                await ExecuteWriteWithRetryAsync(async _ =>
+                {
+                    using var command = _connection.CreateCommand();
+                    command.CommandText = "PRAGMA journal_mode=WAL;";
+                    await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+                }, CancellationToken.None, nameof(Open), true).ConfigureAwait(false);
             }
 
             if (isMemory)
@@ -135,13 +146,12 @@ public sealed partial class SqliteDbService
     /// Closes the connection and clears the table-readiness cache.
     /// </remarks>
     /// <returns>异步任务 / Async task</returns>
-    public Task Close()
+    public async Task Close()
     {
-        _gate.Wait();
+        await _gate.WaitAsync().ConfigureAwait(false);
         try
         {
-            CloseCore();
-            return Task.CompletedTask;
+            await CloseCoreAsync().ConfigureAwait(false);
         }
         finally
         {
@@ -318,9 +328,13 @@ public sealed partial class SqliteDbService
     /// <remarks>
     /// Disposes the connection and clears the table cache (the caller must hold <see cref="_gate"/>).
     /// </remarks>
-    private void CloseCore()
+    private async Task CloseCoreAsync()
     {
-        _connection?.Dispose();
+        if (_connection != null)
+        {
+            await _connection.DisposeAsync().ConfigureAwait(false);
+        }
+
         _connection = null;
         _options = null;
         _tableReady.Clear();

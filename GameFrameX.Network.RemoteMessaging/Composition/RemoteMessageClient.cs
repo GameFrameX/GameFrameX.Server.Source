@@ -717,9 +717,23 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
                 _requestResponseMatcher.TryComplete(message.UniqueId, message);
             }
         }
-        catch
+        catch (Exception exception) when (exception is IOException || exception is SocketException || exception is ObjectDisposedException || exception is OperationCanceledException)
         {
-            // 解码失败（含连接关闭时的读异常）一律按连接死亡处理
+            // 连接级失败（对端关闭 / 网络异常 / 关闭竞态 / 取消）：按连接死亡处理（finally 已精准失效并快速失败挂起请求，
+            // 受影响调用的指标经既有链路上报：FailAllPending → 等待方异常 → 调用方拦截器 OnException）
+        }
+        catch (Exception exception) when (exception is InvalidDataException || exception is NotSupportedException)
+        {
+            // 解码/协议失败（帧损坏、未注册压缩算法）：连接死亡处理 + 连接级可见性（C270，原裸 catch 全吞）
+            // Localization: RemoteMessaging.ClientModule.ReceivePumpDecodeFailure - 连接接收泵解码失败（帧损坏或协议异常），连接已按死亡处理并快速失败挂起请求
+            LogHelper.Warning(exception, LocalizationService.GetString(Localization.Keys.RemoteMessaging.ClientModule.ReceivePumpDecodeFailure));
+        }
+        catch (Exception exception)
+        {
+            // 未分类异常（如 OOM）不吞：记录后向上抛出（C270）——泵任务 fault，可经 UnobservedTaskException/崩溃转储观测
+            // Localization: RemoteMessaging.ClientModule.ReceivePumpFatalError - 连接接收泵遭遇未分类异常（不吞掉，记录后向上抛出）
+            LogHelper.Error(exception, LocalizationService.GetString(Localization.Keys.RemoteMessaging.ClientModule.ReceivePumpFatalError));
+            throw;
         }
         finally
         {

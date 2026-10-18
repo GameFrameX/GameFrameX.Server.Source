@@ -200,6 +200,9 @@ GameFrameX는 명령줄 인수(`--Key=Value`)로 설정합니다. 모든 설정 
 | `IsEnableHttp` | HTTP 서비스 활성화 | `true` | `true` |
 | `HttpPort` | HTTP 서비스 포트 | `8080` | `28080` |
 | `HttpsPort` | HTTPS 서비스 포트 | 없음 | `443` |
+| `HttpsCertPath` | HTTPS 인증서 파일 경로(PFX), `HttpsPort > 0`이면 필수 | 없음 | `/path/cert.pfx` |
+| `HttpsCertPassword` | HTTPS 인증서 비밀번호(선택) | 없음 | |
+| `HttpSignSecret` | HTTP 서명 시크릿(HMAC-SHA256), 서명 검증 활성화 시 필수. 비어 있으면 모두 거부(fail-closed) | 없음 | `a-strong-secret` |
 | `HttpUrl` | API 루트 경로 | `/game/api/` | `/game/api/` |
 | `HttpIsDevelopment` | HTTP 개발 모드(Swagger 활성화) | `false` | `true` |
 
