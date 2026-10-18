@@ -1520,6 +1520,9 @@
   <data name="RemoteMessaging.Versioning.ServerRejectedIncompatibleClient" xml:space="preserve">
     <value>Rejected a connection with an incompatible protocol major: peer {0}, local {1}. The session is closed after replying.</value>
   </data>
+  <data name="RemoteMessaging.Versioning.ServerRejectCloseFailed" xml:space="preserve">
+    <value>Failed to close the channel after the grace period following a rejected handshake (the peer may have closed first; the rejection has been delivered, so the semantics are unaffected).</value>
+  </data>
 
   <data name="RemoteMessaging.Unified.SenderNotInitialized" xml:space="preserve">
     <value>UnifiedMessageSenderHolder has not been initialized. Call Initialize() first during startup.</value>
@@ -2168,6 +2171,13 @@
 
   <data name="RemoteMessaging.Client.InterceptorOnExceptionFailed" xml:space="preserve">
     <value>Interceptor OnExceptionAsync failed</value>
+  </data>
+  <data name="RemoteMessaging.Client.ReceivePumpDecodeFailure" xml:space="preserve">
+    <value>Connection receive pump failed to decode a frame (corrupt frame or protocol error); the connection is treated as dead and all its pending requests fail fast.</value>
+  </data>
+
+  <data name="RemoteMessaging.Client.ReceivePumpFatalError" xml:space="preserve">
+    <value>Connection receive pump hit an unclassified exception (not swallowed; logged and rethrown).</value>
   </data>
 
   <data name="RemoteMessaging.Client.SendOneWayCircuitBreakerOpen" xml:space="preserve">

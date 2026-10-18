@@ -345,6 +345,100 @@ namespace GameFrameX.Tests.Utility
             Assert.Throws<ArgumentOutOfRangeException>(() => NetHelper.IsNetworkReachable("127.0.0.1", -1));
         }
 
+        /// <summary>
+        /// 测试异步网络连通性检查（本地回环）
+        /// </summary>
+        [Fact]
+        public async Task IsNetworkReachableAsync_WithLocalhost_ShouldReturnTrue()
+        {
+            // Act
+            var isReachable = await NetHelper.IsNetworkReachableAsync("127.0.0.1", 1000);
+
+            // Assert
+            Assert.True(isReachable);
+        }
+
+        /// <summary>
+        /// 测试异步网络连通性检查（无效主机返回 false 而非抛出）
+        /// </summary>
+        [Fact]
+        public async Task IsNetworkReachableAsync_WithInvalidHost_ShouldReturnFalse()
+        {
+            // Act
+            var isReachable = await NetHelper.IsNetworkReachableAsync("999.999.999.999", 1000);
+
+            // Assert
+            Assert.False(isReachable);
+        }
+
+        /// <summary>
+        /// 测试异步网络连通性检查参数校验（与同步契约一致）
+        /// </summary>
+        [Fact]
+        public async Task IsNetworkReachableAsync_WithInvalidArguments_ShouldThrow()
+        {
+            // Act & Assert
+            await Assert.ThrowsAsync<ArgumentNullException>(() => NetHelper.IsNetworkReachableAsync(null));
+            await Assert.ThrowsAsync<ArgumentException>(() => NetHelper.IsNetworkReachableAsync(""));
+            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => NetHelper.IsNetworkReachableAsync("127.0.0.1", -1));
+        }
+
+        /// <summary>
+        /// 测试异步端点解析（IP 直入与回环主机名解析）
+        /// </summary>
+        [Fact]
+        public async Task ParseEndPointAsync_WithIpAndLoopback_ShouldResolve()
+        {
+            // Act
+            var byIp = await NetHelper.ParseEndPointAsync("127.0.0.1", 8080);
+            var byHost = await NetHelper.ParseEndPointAsync("localhost", 8080);
+
+            // Assert
+            var ipEndpoint = Assert.IsType<IPEndPoint>(byIp);
+            Assert.Equal(IPAddress.Loopback, ipEndpoint.Address);
+            Assert.Equal(8080, ipEndpoint.Port);
+            Assert.NotNull(byHost);
+            Assert.Equal(8080, ((IPEndPoint)byHost).Port);
+        }
+
+        /// <summary>
+        /// 测试异步端点解析参数校验（与同步契约一致）
+        /// </summary>
+        [Fact]
+        public async Task ParseEndPointAsync_WithInvalidArguments_ShouldThrow()
+        {
+            // Act & Assert
+            await Assert.ThrowsAsync<ArgumentException>(() => NetHelper.ParseEndPointAsync("", 8080));
+            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => NetHelper.ParseEndPointAsync("127.0.0.1", 0));
+        }
+
+        /// <summary>
+        /// 测试异步域名解析（回环主机名至少可解析出一个地址；取消令牌可终止等待）
+        /// </summary>
+        [Fact]
+        public async Task GetHostIPv4Async_WithLoopback_ShouldResolveOrEmpty()
+        {
+            // Act
+            var address = await NetHelper.GetHostIPv4Async("localhost");
+
+            // Assert：localhost 必可解析（回环 IPv4），断言非空钉住成功路径
+            Assert.False(string.IsNullOrEmpty(address));
+        }
+
+        /// <summary>
+        /// 测试异步域名解析取消路径（预取消令牌使 DNS 等待立即终止）
+        /// </summary>
+        [Fact]
+        public async Task GetHostIPv4Async_WithCancelledToken_ShouldThrowOperationCanceledException()
+        {
+            // Arrange
+            using var cancelled = new CancellationTokenSource();
+            await cancelled.CancelAsync();
+
+            // Act & Assert
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => NetHelper.GetHostIPv4Async("localhost", cancelled.Token));
+        }
+
         #endregion
 
         #region GetMacAddresses 方法测试
