@@ -203,7 +203,8 @@ public sealed partial class PostgreSqlDbService
     /// <c>AddOrUpdateListAsync</c> this deliberately does NOT touch <c>CreatedTime/UpdateTime/UpdateCount</c>:
     /// state timestamps are persisted exactly as handed in (the caller owns timestamp semantics, migrated
     /// verbatim from the Mongo adapter).
-    /// one affected row per staged document.
+    /// Acknowledgement = one affected row per staged (deduplicated) document; duplicate ids within a batch
+    /// collapse onto one staged row (last-writer-wins) and count once (C266).
     /// </remarks>
     /// <param name="states">待保存的状态集合 / The states to save</param>
     /// <param name="batchSize">每批数量（&lt;= 0 抛出 ArgumentOutOfRangeException）/ Batch size (values &lt;= 0 throw)</param>
@@ -248,9 +249,22 @@ public sealed partial class PostgreSqlDbService
                 {
                     await StageUpsertAsync(context, batch, CancellationToken.None).ConfigureAwait(false);
                     var affected = await context.SaveChangesAsync(CancellationToken.None).ConfigureAwait(false);
-                    // 每条 staged 文档各计一行；受影响行数 >= 批大小即视为整批 ack
-                    // Each staged document counts one row; affected >= batch size means the whole batch was acknowledged.
-                    acknowledged = affected >= batchCount;
+                    // 每个 staged（去重后）文档各计一行；受影响行数 >= 去重后 id 数即视为整批 ack
+                    //（批内重复 id 已在暂存时合并为单行，按批元素数比较会把已写库的批次误判为未确认——C266）
+                    // Each staged (deduplicated) document counts one row; affected >= the deduplicated id count means the
+                    // whole batch was acknowledged (duplicate ids collapse onto one staged row — comparing against the raw
+                    // element count would flag written batches as unacknowledged — C266).
+                    var distinctIdCount = 0;
+                    var seenIds = new HashSet<long>(batchCount);
+                    for (var offset = 0; offset < batchCount; offset++)
+                    {
+                        if (seenIds.Add(batch[offset].Id))
+                        {
+                            distinctIdCount++;
+                        }
+                    }
+
+                    acknowledged = affected >= distinctIdCount;
                 }
 
                 if (acknowledged)
@@ -348,12 +362,17 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 暂存一批整文档替换 upsert（既有行替换 Doc 引用，缺失行 Add；调用方负责 SaveChanges）。
+    /// 暂存一批整文档替换 upsert（既有行桩更新 doc 列，缺失行 Add；调用方负责 SaveChanges）。
     /// </summary>
     /// <remarks>
-    /// Stages a whole-document-replacement upsert for a batch: existing rows (bypassing the soft-delete filter —
-    /// upsert intentionally revives soft-deleted documents, aligned with Mongo ReplaceOne semantics) get their
-    /// <c>Doc</c> reference replaced; missing rows are staged as inserts. The caller owns the atomic
+    /// Stages a whole-document-replacement upsert for a batch. Existence is probed with a non-tracking
+    /// <c>id</c>-only projection (C266: the former full-row <c>ToDictionaryAsync</c> read the whole jsonb
+    /// document batch back — an N× read amplification on the SaveBulk/shutdown path). Existing rows
+    /// (bypassing the soft-delete filter — upsert intentionally revives soft-deleted documents, aligned
+    /// with Mongo ReplaceOne semantics) are updated via a stub entity: <c>Attach</c> + owned entry
+    /// <see cref="EntityState.Modified"/> emits <c>UPDATE ... SET doc = @p WHERE id = @id</c> without
+    /// reading the original document. Duplicate ids within the batch collapse onto one staged row
+    /// (last-writer-wins, matching the former tracked-row behavior). The caller owns the atomic
     /// <c>SaveChangesAsync</c>.
     /// </remarks>
     /// <typeparam name="TState">状态类型 / The state type</typeparam>
@@ -368,16 +387,32 @@ public sealed partial class PostgreSqlDbService
             ids[index] = states[index].Id;
         }
 
-        var existingRows = await context.Rows.IgnoreQueryFilters().Where(row => ids.Contains(row.Id)).ToDictionaryAsync(row => row.Id, cancellationToken).ConfigureAwait(false);
+        var existingIds = await context.Rows.IgnoreQueryFilters().Where(row => ids.Contains(row.Id)).Select(row => row.Id).ToHashSetAsync(cancellationToken).ConfigureAwait(false);
+        var stagedRows = new Dictionary<long, StateRow<TState>>(states.Count);
         foreach (var state in states)
         {
-            if (existingRows.TryGetValue(state.Id, out var row))
+            if (stagedRows.TryGetValue(state.Id, out var staged))
             {
-                row.Doc = state;
+                // 批内重复 id：后写覆盖（last-writer-wins），与既有整批回读版行为一致
+                // Duplicate id within the batch: last writer wins, matching the former full-row-read behavior.
+                staged.Doc = state;
+                continue;
+            }
+
+            if (existingIds.Contains(state.Id))
+            {
+                // 存在行：桩实体 Attach + owned 整档 entry 置 Modified → UPDATE 仅 doc 列，无需回读原 jsonb
+                // Existing row: attach a stub and mark the owned document entry Modified → UPDATE touches only the doc column, no original-jsonb readback.
+                var stub = new StateRow<TState> { Id = state.Id, Doc = state, };
+                context.Attach(stub);
+                context.Entry(stub).Reference(row => row.Doc).TargetEntry.State = EntityState.Modified;
+                stagedRows.Add(state.Id, stub);
             }
             else
             {
-                context.Rows.Add(new StateRow<TState> { Id = state.Id, Doc = state, });
+                var added = new StateRow<TState> { Id = state.Id, Doc = state, };
+                context.Rows.Add(added);
+                stagedRows.Add(state.Id, added);
             }
         }
     }
