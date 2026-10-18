@@ -234,67 +234,91 @@ public sealed partial class PostgreSqlDbService
         for (var index = 0; index < stateList.Count; index += batchSize)
         {
             var batchCount = Math.Min(batchSize, stateList.Count - index);
-            var batch = new TState[batchCount];
-            // 写库前逐状态捕获送库字节快照，ack 批次内逐状态精确提交基线（C263）：
-            // 提交权从 Core 的 NotifyBatchSaved 收进 Provider，且只提交实际送库快照的 hash。
-            var batchSnapshots = new (TState State, byte[] Data)[batchCount];
-            for (var offset = 0; offset < batchCount; offset++)
-            {
-                batch[offset] = stateList[index + offset];
-                batchSnapshots[offset] = (batch[offset], batch[offset].ToBytes());
-            }
-
-            try
-            {
-                await EnsureTableAsync<TState>(CancellationToken.None).ConfigureAwait(false);
-                var acknowledged = false;
-                using (var context = CreateContext<TState>())
-                {
-                    JoinAmbientTransaction(context);
-                    await StageUpsertAsync(context, batch, CancellationToken.None).ConfigureAwait(false);
-                    var affected = await context.SaveChangesAsync(CancellationToken.None).ConfigureAwait(false);
-                    // 每个 staged（去重后）文档各计一行；受影响行数 >= 去重后 id 数即视为整批 ack
-                    //（批内重复 id 已在暂存时合并为单行，按批元素数比较会把已写库的批次误判为未确认——C266）
-                    // Each staged (deduplicated) document counts one row; affected >= the deduplicated id count means the
-                    // whole batch was acknowledged (duplicate ids collapse onto one staged row — comparing against the raw
-                    // element count would flag written batches as unacknowledged — C266).
-                    var distinctIdCount = 0;
-                    var seenIds = new HashSet<long>(batchCount);
-                    for (var offset = 0; offset < batchCount; offset++)
-                    {
-                        if (seenIds.Add(batch[offset].Id))
-                        {
-                            distinctIdCount++;
-                        }
-                    }
-
-                    acknowledged = affected >= distinctIdCount;
-                }
-
-                if (acknowledged)
-                {
-                    acknowledgedStates.AddRange(batch);
-                    foreach (var (state, persistedData) in batchSnapshots)
-                    {
-                        state.SaveToDbPostHandler(persistedData);
-                    }
-                }
-                else
-                {
-                    // Localization: Database.PostgreSql.SaveBulkBatchNotAcknowledged - PostgreSqlDbService.SaveBulkAsync 批次未被确认。状态名：{0}，批次索引：{1}，批次总数：{2}
-                    LogHelper.Error(LocalizationService.GetString(Localization.Keys.Database.PostgreSql.SaveBulkBatchNotAcknowledged, stateName, index / batchSize + 1, batchCount));
-                }
-            }
-            catch (Exception exception)
-            {
-                // 逐批异常隔离：失败批次记日志后继续后续批次，避免单批故障放大为整批丢失
-                // Per-batch exception isolation (migrated semantics): a failed batch is logged and the loop continues with the remaining batches.
-                // Localization: Database.PostgreSql.SaveBulkBatchFailed - PostgreSqlDbService.SaveBulkAsync 批次失败。状态名：{0}，批次索引：{1}，批次总数：{2}，错误：{3}
-                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Database.PostgreSql.SaveBulkBatchFailed, stateName, index / batchSize + 1, batchCount, exception));
-            }
+            var batch = await SaveBulkBatchAsync<TState>(stateList, index, batchCount, stateName, index / batchSize + 1).ConfigureAwait(false);
+            acknowledgedStates.AddRange(batch);
         }
 
         return acknowledgedStates;
+    }
+
+    /// <summary>
+    /// SaveBulk 单批执行体（暂存整文档替换 upsert 并按去重后 id 数判 ack；未确认/失败批次记日志并返回空批——异常隔离由本方法承接，外层循环继续后续批次）。
+    /// </summary>
+    /// <remarks>
+    /// Executes one SaveBulk batch: stages the whole-document-replacement upsert and acknowledges when the
+    /// affected row count covers the deduplicated id set (C266: duplicate ids within a batch collapse onto one
+    /// staged row). An unacknowledged or failed batch is logged here and yields an empty batch (per-batch
+    /// exception isolation — the caller's loop continues with the remaining batches). Acknowledged batches
+    /// commit their pre-captured byte snapshots via <c>SaveToDbPostHandler</c> (C263) before being returned.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="stateList">全部待保存状态 / All states to save</param>
+    /// <param name="index">本批起始下标 / The batch start index</param>
+    /// <param name="batchCount">本批数量 / The batch size</param>
+    /// <param name="stateName">状态类型名（日志用）/ The state type name (for logging)</param>
+    /// <param name="batchNumber">批次序号（日志用，1 起）/ The 1-based batch number (for logging)</param>
+    /// <returns>本批确认成功的状态；未确认/失败返回空数组 / The acknowledged states of this batch; empty when unacknowledged or failed</returns>
+    private async Task<TState[]> SaveBulkBatchAsync<TState>(IReadOnlyList<TState> stateList, int index, int batchCount, string stateName, int batchNumber) where TState : BaseCacheState, new()
+    {
+        var batch = new TState[batchCount];
+        // 写库前逐状态捕获送库字节快照，ack 批次内逐状态精确提交基线（C263）：
+        // 提交权从 Core 的 NotifyBatchSaved 收进 Provider，且只提交实际送库快照的 hash。
+        var batchSnapshots = new (TState State, byte[] Data)[batchCount];
+        for (var offset = 0; offset < batchCount; offset++)
+        {
+            batch[offset] = stateList[index + offset];
+            batchSnapshots[offset] = (batch[offset], batch[offset].ToBytes());
+        }
+
+        try
+        {
+            await EnsureTableAsync<TState>(CancellationToken.None).ConfigureAwait(false);
+            var acknowledged = false;
+            using (var context = CreateContext<TState>())
+            {
+                JoinAmbientTransaction(context);
+                await StageUpsertAsync(context, batch, CancellationToken.None).ConfigureAwait(false);
+                var affected = await context.SaveChangesAsync(CancellationToken.None).ConfigureAwait(false);
+                // 每个 staged（去重后）文档各计一行；受影响行数 >= 去重后 id 数即视为整批 ack
+                //（批内重复 id 已在暂存时合并为单行，按批元素数比较会把已写库的批次误判为未确认——C266）
+                // Each staged (deduplicated) document counts one row; affected >= the deduplicated id count means the
+                // whole batch was acknowledged (duplicate ids collapse onto one staged row — comparing against the raw
+                // element count would flag written batches as unacknowledged — C266).
+                var distinctIdCount = 0;
+                var seenIds = new HashSet<long>(batchCount);
+                for (var offset = 0; offset < batchCount; offset++)
+                {
+                    if (seenIds.Add(batch[offset].Id))
+                    {
+                        distinctIdCount++;
+                    }
+                }
+
+                acknowledged = affected >= distinctIdCount;
+            }
+
+            if (acknowledged)
+            {
+                foreach (var (state, persistedData) in batchSnapshots)
+                {
+                    state.SaveToDbPostHandler(persistedData);
+                }
+
+                return batch;
+            }
+
+            // Localization: Database.PostgreSql.SaveBulkBatchNotAcknowledged - PostgreSqlDbService.SaveBulkAsync 批次未被确认。状态名：{0}，批次索引：{1}，批次总数：{2}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Database.PostgreSql.SaveBulkBatchNotAcknowledged, stateName, batchNumber, batchCount));
+            return Array.Empty<TState>();
+        }
+        catch (Exception exception)
+        {
+            // 逐批异常隔离：失败批次记日志后继续后续批次，避免单批故障放大为整批丢失
+            // Per-batch exception isolation (migrated semantics): a failed batch is logged and the loop continues with the remaining batches.
+            // Localization: Database.PostgreSql.SaveBulkBatchFailed - PostgreSqlDbService.SaveBulkAsync 批次失败。状态名：{0}，批次索引：{1}，批次总数：{2}，错误：{3}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Database.PostgreSql.SaveBulkBatchFailed, stateName, batchNumber, batchCount, exception));
+            return Array.Empty<TState>();
+        }
     }
 
     /// <summary>
