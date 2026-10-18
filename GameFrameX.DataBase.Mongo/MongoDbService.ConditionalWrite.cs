@@ -137,6 +137,13 @@ public sealed partial class MongoDbService
             throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Database.ConditionalWriteStateIdMismatch, state.Id, id), nameof(state));
         }
 
+        // 版本准备：先对齐到期望版本，再吃 checked 递增语义；失败（false）路径回滚内存版本——写前递增若不回滚
+        // 会污染调用方 state.RowVersion，后续 CAS 持续 Stale；异常路径不回滚（写结果未知，回滚可能反向脱节）。
+        // Version preparation: align to the expected version first, then take the checked increment. The
+        // pre-write increment is rolled back on the false path — leaving it in place would pollute the caller's
+        // state.RowVersion and starve every later CAS; it is NOT rolled back on exceptions (the write outcome
+        // is unknown, and rolling back could desync the other way).
+        var originalRowVersion = state.RowVersion;
         state.RowVersion = expectedRowVersion;
         state.IncrementRowVersion();
 
@@ -160,6 +167,9 @@ public sealed partial class MongoDbService
 
         if (replaced == null)
         {
+            // 版本不符或行缺失：未写库，回滚写前递增的内存版本。
+            // Version mismatch or missing row: nothing was written — roll back the pre-write in-memory increment.
+            state.RowVersion = originalRowVersion;
             return false;
         }
 

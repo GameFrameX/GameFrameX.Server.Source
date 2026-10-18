@@ -135,9 +135,10 @@ public sealed partial class PostgreSqlDbService
             return false;
         }
 
+        NpgsqlDataSource newDataSource = null;
         try
         {
-            var newDataSource = CreateDataSource(options.ConnectionString);
+            newDataSource = CreateDataSource(options.ConnectionString);
             await using (var connection = newDataSource.CreateConnection())
             {
                 await ExecutePingAsync(connection, cancellationToken).ConfigureAwait(false);
@@ -147,13 +148,26 @@ public sealed partial class PostgreSqlDbService
             {
                 var oldDataSource = DataSource;
                 DataSource = newDataSource;
+                // 换源后必须清空 per-TState EF 上下文选项缓存：缓存 options 绑定旧（下方即将 Dispose）数据源，
+                // 不失效则恢复成功后全部操作仍走死池（对齐 ResetConnectionState 的既有清缓存语义）。
+                // The per-TState EF context options cache must be cleared on source swap: cached options
+                // bind the old data source (disposed right below) — without invalidation every post-recovery
+                // operation would keep hitting the dead pool (same semantics as ResetConnectionState).
+                _contextOptionsCache.Clear();
                 oldDataSource?.Dispose();
             }
 
+            // 换源成功：newDataSource 已交付给 DataSource 字段，不再属于本方法，防止 catch 误 Dispose 活源。
+            // Swap succeeded: newDataSource now belongs to the DataSource field; null it so the catch never disposes the live source.
+            newDataSource = null;
             return true;
         }
         catch (Exception exception)
         {
+            // 探活失败：释放本轮新建的数据源（含其连接池），否则恢复循环每轮泄漏一个。
+            // Probe failed: release this round's freshly built data source (connection pool included),
+            // otherwise the recovery loop leaks one per probe.
+            newDataSource?.Dispose();
             // Localization: Database.PostgreSql.TryReconnectAndPingFailed - PostgreSqlDbService.TryReconnectAndPingAsync 失败。error={0}
             LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.PostgreSql.TryReconnectAndPingFailed, exception.Message));
             return false;
