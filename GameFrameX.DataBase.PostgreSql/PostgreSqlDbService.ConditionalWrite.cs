@@ -115,30 +115,55 @@ public sealed partial class PostgreSqlDbService
         }
 
         // 版本准备：先对齐到期望版本，再吃 checked 递增语义（MaxValue 溢出在写库前抛出）。
-        // Version preparation: align to the expected version first, then take the checked increment (MaxValue overflows before any write).
+        // 失败（false）路径回滚内存版本——写前递增若不回滚会污染调用方 state.RowVersion，后续 CAS 持续 Stale；
+        // 异常路径不回滚（写结果未知，回滚可能反向脱节）。
+        // Version preparation: align to the expected version first, then take the checked increment (MaxValue
+        // overflows before any write). The pre-write increment is rolled back on the false path — leaving it in
+        // place would pollute the caller's state.RowVersion and starve every later CAS; it is NOT rolled back on
+        // exceptions (the write outcome is unknown, and rolling back could desync the other way).
+        var originalRowVersion = state.RowVersion;
         state.RowVersion = expectedRowVersion;
         state.IncrementRowVersion();
         // 写库前捕获字节快照（行版本递增后），成功后按该快照精确提交基线（C263）
         var persistedData = state.ToBytes();
         var documentJson = JsonSerializer.Serialize(state, DocumentJsonOptions);
-        return await ExecuteWriteWithRetryAsync(async token =>
+        var replaced = await ExecuteWriteWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            await using var connection = DataSource.CreateConnection();
-            await connection.OpenAsync(token).ConfigureAwait(false);
-            await using var command = new NpgsqlCommand($"UPDATE {GetTableName<TState>()} SET doc = @doc::jsonb WHERE id = @id AND doc->>'RowVersion' = @expected", connection);
-            command.Parameters.Add(new NpgsqlParameter("doc", NpgsqlDbType.Jsonb) { Value = documentJson, });
-            command.Parameters.AddWithValue("id", id);
-            command.Parameters.Add(new NpgsqlParameter("expected", NpgsqlDbType.Text) { Value = expectedRowVersion.ToString(CultureInfo.InvariantCulture), });
-            var affectedRows = await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
-            if (affectedRows == 1)
+            var (connection, ambientTransaction, ownedConnection) = await OpenConnectionForWriteAsync(token).ConfigureAwait(false);
+            try
             {
-                state.SaveToDbPostHandler(persistedData);
-                return true;
+                // 版本谓词用数值比较：doc->>'RowVersion' 是 jsonb 文本投影，text=text 等值对非规范表示（如前导零）误判；
+                // ::bigint 两侧数值化后与 @expected（bigint）严格等值。
+                // The version predicate compares numerically: doc->>'RowVersion' is the jsonb text projection, and a
+                // text=text equality misjudges non-canonical representations (leading zeros and the like); ::bigint
+                // coerces both sides to numbers compared strictly against @expected (bigint).
+                await using var command = new NpgsqlCommand($"UPDATE {GetTableName<TState>()} SET doc = @doc::jsonb WHERE id = @id AND (doc->>'RowVersion')::bigint = @expected", connection);
+                command.Transaction = ambientTransaction;
+                command.Parameters.Add(new NpgsqlParameter("doc", NpgsqlDbType.Jsonb) { Value = documentJson, });
+                command.Parameters.AddWithValue("id", id);
+                command.Parameters.AddWithValue("expected", expectedRowVersion);
+                var affectedRows = await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
+                return affectedRows == 1;
             }
-
-            return false;
+            finally
+            {
+                if (ownedConnection)
+                {
+                    await connection.DisposeAsync().ConfigureAwait(false);
+                }
+            }
         }, cancellationToken, nameof(UpdateIfRowVersionAsync), false).ConfigureAwait(false);
+        if (replaced)
+        {
+            state.SaveToDbPostHandler(persistedData);
+            return true;
+        }
+
+        // 版本不符或行缺失：未写库，回滚写前递增的内存版本。
+        // Version mismatch or missing row: nothing was written — roll back the pre-write in-memory increment.
+        state.RowVersion = originalRowVersion;
+        return false;
     }
 
     /// <summary>
@@ -187,6 +212,7 @@ public sealed partial class PostgreSqlDbService
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
             using var context = CreateContext<TState>();
+            JoinAmbientTransaction(context);
             // 唯一性判定无视软删可见性：IgnoreQueryFilters 查全量档（物理唯一索引口径）。
             // Uniqueness ignores soft-delete visibility: IgnoreQueryFilters scans every row (physical unique-index semantics).
             if (await context.Rows.IgnoreQueryFilters().AnyAsync(rowFilter, token).ConfigureAwait(false))
@@ -260,14 +286,24 @@ public sealed partial class PostgreSqlDbService
         return await ExecuteWriteWithRetryAsync(async token =>
         {
             await EnsureSequenceTableAsync(token).ConfigureAwait(false);
-            await using var connection = DataSource.CreateConnection();
-            await connection.OpenAsync(token).ConfigureAwait(false);
-            await using var command = new NpgsqlCommand(
-                $"INSERT INTO {QuoteIdentifier(SequenceTableName)} (\"key\", \"value\") VALUES (@key, 1) ON CONFLICT (\"key\") DO UPDATE SET \"value\" = {QuoteIdentifier(SequenceTableName)}.\"value\" + 1 RETURNING \"value\"",
-                connection);
-            command.Parameters.AddWithValue("key", counterKey);
-            var result = await command.ExecuteScalarAsync(token).ConfigureAwait(false);
-            return Convert.ToInt64(result, CultureInfo.InvariantCulture);
+            var (connection, ambientTransaction, ownedConnection) = await OpenConnectionForWriteAsync(token).ConfigureAwait(false);
+            try
+            {
+                await using var command = new NpgsqlCommand(
+                    $"INSERT INTO {QuoteIdentifier(SequenceTableName)} (\"key\", \"value\") VALUES (@key, 1) ON CONFLICT (\"key\") DO UPDATE SET \"value\" = {QuoteIdentifier(SequenceTableName)}.\"value\" + 1 RETURNING \"value\"",
+                    connection);
+                command.Transaction = ambientTransaction;
+                command.Parameters.AddWithValue("key", counterKey);
+                var result = await command.ExecuteScalarAsync(token).ConfigureAwait(false);
+                return Convert.ToInt64(result, CultureInfo.InvariantCulture);
+            }
+            finally
+            {
+                if (ownedConnection)
+                {
+                    await connection.DisposeAsync().ConfigureAwait(false);
+                }
+            }
         }, cancellationToken, nameof(NextSequenceAsync), false).ConfigureAwait(false);
     }
 

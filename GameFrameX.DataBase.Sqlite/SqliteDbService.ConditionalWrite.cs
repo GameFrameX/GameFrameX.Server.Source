@@ -113,6 +113,13 @@ public sealed partial class SqliteDbService
             throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Database.ConditionalWriteStateIdMismatch, state.Id, id), nameof(state));
         }
 
+        // 版本准备：先对齐到期望版本，再吃 checked 递增语义；失败（false）路径回滚内存版本——写前递增若不回滚
+        // 会污染调用方 state.RowVersion，后续 CAS 持续 Stale；异常路径不回滚（写结果未知，回滚可能反向脱节）。
+        // Version preparation: align to the expected version first, then take the checked increment. The
+        // pre-write increment is rolled back on the false path — leaving it in place would pollute the caller's
+        // state.RowVersion and starve every later CAS; it is NOT rolled back on exceptions (the write outcome
+        // is unknown, and rolling back could desync the other way).
+        var originalRowVersion = state.RowVersion;
         state.RowVersion = expectedRowVersion;
         VersionedEntityHelper.IncrementRowVersion(state);
         // 写库前捕获字节快照（行版本递增后），成功后按该快照精确提交基线（C263）
@@ -131,9 +138,13 @@ public sealed partial class SqliteDbService
         if (updated)
         {
             state.SaveToDbPostHandler(persistedData);
+            return updated;
         }
 
-        return updated;
+        // 版本不符或行缺失：未写库，回滚写前递增的内存版本。
+        // Version mismatch or missing row: nothing was written — roll back the pre-write in-memory increment.
+        state.RowVersion = originalRowVersion;
+        return false;
     }
 
     /// <summary>
@@ -198,7 +209,7 @@ public sealed partial class SqliteDbService
         return await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
-            await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+            var (transaction, owned) = await BeginOrJoinTransactionAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 var rows = await ReadRowsRawAsync<TState>(BuildSelectAllCommand<TState>(), cancellationToken).ConfigureAwait(false);
@@ -206,7 +217,11 @@ public sealed partial class SqliteDbService
                 {
                     if (existing.Id == state.Id || predicate(existing))
                     {
-                        await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+                        if (owned)
+                        {
+                            await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+                        }
+
                         return false;
                     }
                 }
@@ -214,14 +229,25 @@ public sealed partial class SqliteDbService
                 using var insertCommand = BuildInsertCommand<TState>(state);
                 insertCommand.Transaction = transaction;
                 await insertCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                if (owned)
+                {
+                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                }
+
                 return true;
             }
             catch (SqliteException ex) when (ex.SqliteErrorCode is 19 or 2067)
             {
-                // 唯一约束冲突：事务 Dispose 即回滚，转译为 false 而非上抛。
-                // Unique-constraint conflict: disposing the transaction rolls it back; translate to false.
+                // 唯一约束冲突：自持事务 Dispose 即回滚；环境事务保持（语句级失败不中止事务），转译为 false 而非上抛。
+                // Unique-constraint conflict: an owned transaction rolls back on dispose; an ambient one stays usable (statement failure does not abort it) — translate to false.
                 return false;
+            }
+            finally
+            {
+                if (owned)
+                {
+                    await transaction.DisposeAsync().ConfigureAwait(false);
+                }
             }
         }), cancellationToken, nameof(TryAddUniqueAsync), false).ConfigureAwait(false);
     }

@@ -116,7 +116,7 @@ public sealed partial class MongoDbService
         // (typed collection entries need lazy ClassMap registration first).
         MongoSerializationRegistry.EnsureClassMapRegistered<TState>();
         var filter = Builders<TState>.Filter.Eq(m => m.Id, state.Id);
-        await ExecuteWriteWithRetryAsync(token => CurrentDatabase.GetCollection<TState>(typeof(TState).Name).ReplaceOneAsync(filter, state, ReplaceOptions, token), cancellationToken, nameof(AddOrUpdateAsync), true).ConfigureAwait(false);
+        await ExecuteWriteWithRetryAsync(token => ReplaceOneWithAmbientSessionAsync(CurrentDatabase.GetCollection<TState>(typeof(TState).Name), filter, state, ReplaceOptions, token), cancellationToken, nameof(AddOrUpdateAsync), true).ConfigureAwait(false);
 
         state.SaveToDbPostHandler(persistedData);
         return state;
@@ -130,22 +130,27 @@ public sealed partial class MongoDbService
     /// </remarks>
     /// <typeparam name="TState">数据类型，必须继承自 BaseCacheState / Data type, must inherit from BaseCacheState</typeparam>
     /// <param name="states">数据对象集合 / Collection of data objects</param>
-    /// <returns>返回处理的记录数 / Number of processed records</returns>
+    /// <returns>返回实际确认的记录数 / The actually acknowledged record count</returns>
     public async Task<long> AddOrUpdateListAsync<TState>(IEnumerable<TState> states) where TState : BaseCacheState, new()
     {
         return await AddOrUpdateListAsync(states, CancellationToken.None).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// 批量增加或更新数据（使用 Upsert 优化，批量数据库操作）。
+    /// 批量增加或更新数据（使用 Upsert 优化，批量数据库操作；无序 BulkWrite 以整批计数判定确认面）。
     /// </summary>
     /// <remarks>
-    /// Batch add or update data (using Upsert optimization, bulk database operation).
+    /// Batch add or update data (using Upsert optimization, bulk database operation). The unordered
+    /// <see cref="MongoDbService.BulkWriteOptions"/> batch may leave some documents unwritten without throwing
+    /// (IsAcknowledged stays true), so the acknowledged surface is decided by batch-level counts: only a fully
+    /// acknowledged batch commits <c>SaveToDbPostHandler</c> for every state and returns the batch size; a
+    /// partially acknowledged batch commits no baseline (unwritten documents stay dirty and re-save next
+    /// round) and returns the actually acknowledged count; an unacknowledged batch returns 0.
     /// </remarks>
     /// <typeparam name="TState">数据类型，必须继承自 BaseCacheState / Data type, must inherit from BaseCacheState</typeparam>
     /// <param name="states">数据对象集合 / Collection of data objects</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
-    /// <returns>返回处理的记录数 / Number of processed records</returns>
+    /// <returns>返回实际确认的记录数 / The actually acknowledged record count</returns>
     public async Task<long> AddOrUpdateListAsync<TState>(IEnumerable<TState> states, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -178,23 +183,60 @@ public sealed partial class MongoDbService
             persistedSnapshots.Add((state, state.ToBytes()));
         }
 
-        var result = await ExecuteWriteWithRetryAsync(token => collection.BulkWriteAsync(writeModels, BulkWriteOptions, token), cancellationToken, nameof(AddOrUpdateListAsync), true).ConfigureAwait(false);
+        var result = await ExecuteWriteWithRetryAsync(token => BulkWriteWithAmbientSessionAsync(collection, writeModels, BulkWriteOptions, token), cancellationToken, nameof(AddOrUpdateListAsync), true).ConfigureAwait(false);
         if (result.IsAcknowledged)
         {
-            foreach (var (state, persistedData) in persistedSnapshots)
+            // 无序 BulkWrite 部分文档失败不必然抛异常（IsAcknowledged 仍 true）：以整批计数判定真实确认面。
+            // An unordered BulkWrite may leave some documents unwritten without throwing (IsAcknowledged
+            // stays true): the batch-level counts define the actually acknowledged surface.
+            var acknowledgedCount = result.MatchedCount + result.Upserts.Count;
+            if (IsFullyAcknowledged(result, stateArray.Length))
             {
-                state.SaveToDbPostHandler(persistedData);
+                foreach (var (state, persistedData) in persistedSnapshots)
+                {
+                    state.SaveToDbPostHandler(persistedData);
+                }
+
+                return stateArray.Length;
             }
+
+            // 部分确认：全批不提交哈希基线（未落库文档保持脏、下轮回存），返回实际确认数。
+            // Partially acknowledged: commit no hash baseline for the batch (unwritten documents stay dirty
+            // and re-save next round) and return the actually acknowledged count.
+            // Localization: Database.Mongo.BulkWritePartialAcknowledged - MongoDbService.{0} 无序批量写部分确认。状态名：{1}，期望：{2}，实际确认：{3}；未确认文档不提交哈希基线
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.Mongo.BulkWritePartialAcknowledged, nameof(AddOrUpdateListAsync), typeof(TState).Name, stateArray.Length, acknowledgedCount));
+            return acknowledgedCount;
         }
 
-        return stateArray.Length;
+        return 0;
+    }
+
+    /// <summary>
+    /// 判定无序 BulkWrite 整批确认（ReplaceOne+upsert 批次口径：RequestCount 与 Matched+Upserts 均达批大小）。
+    /// </summary>
+    /// <remarks>
+    /// Determines whether an unordered BulkWrite batch of ReplaceOne-with-upsert models is fully
+    /// acknowledged: processed requests and matched+upserted documents must both reach the batch size.
+    /// Partial document failures (which keep <c>IsAcknowledged</c> true without throwing) fail this check.
+    /// </remarks>
+    /// <param name="result">BulkWrite 结果 / The bulk write result</param>
+    /// <param name="expectedCount">批大小 / The expected batch size</param>
+    /// <returns>整批确认返回 true / True when the whole batch is acknowledged</returns>
+    private static bool IsFullyAcknowledged(BulkWriteResult result, int expectedCount)
+    {
+        return result.IsAcknowledged
+               && result.RequestCount == expectedCount
+               && result.MatchedCount + result.Upserts.Count == expectedCount;
     }
 
     /// <summary>
     /// 在事务中执行操作。
     /// </summary>
     /// <remarks>
-    /// Execute operation in a transaction.
+    /// Execute operation in a transaction: the shell's session becomes the ambient session, every
+    /// collection operation issued by the action joins the transaction, and the shell owns the single
+    /// commit. On a standalone (non-replica-set) server the shell degrades to a single non-transactional
+    /// pass (the ambient session is cleared first, so the action never executes twice).
     /// </remarks>
     /// <param name="action">事务内执行逻辑 / Action to execute within transaction</param>
     /// <returns>表示异步操作的任务 / Task representing asynchronous operation</returns>
@@ -207,7 +249,10 @@ public sealed partial class MongoDbService
     /// 在事务中执行操作。
     /// </summary>
     /// <remarks>
-    /// Execute operation in a transaction.
+    /// Execute operation in a transaction: the shell's session becomes the ambient session, every
+    /// collection operation issued by the action joins the transaction, and the shell owns the single
+    /// commit. On a standalone (non-replica-set) server the shell degrades to a single non-transactional
+    /// pass (the ambient session is cleared first, so the action never executes twice).
     /// </remarks>
     /// <param name="action">事务内执行逻辑 / Action to execute within transaction</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
@@ -217,6 +262,14 @@ public sealed partial class MongoDbService
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
         ArgumentNullException.ThrowIfNull(action);
+        if (_ambientSession.Value != null)
+        {
+            // 嵌套事务壳：加入环境会话事务（提交权归最外层壳）。
+            // Nested shell: join the ambient session's transaction (the outermost shell owns the commit).
+            await action().ConfigureAwait(false);
+            return;
+        }
+
         Exception lastException = null;
         for (var attempt = 0; attempt <= _transactionRetryDelaysMilliseconds.Length; attempt++)
         {
@@ -225,14 +278,26 @@ public sealed partial class MongoDbService
             {
                 using var session = await _mongoClient.StartSessionAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
                 session.StartTransaction();
-                cancellationToken.ThrowIfCancellationRequested();
-                await action().ConfigureAwait(false);
-                await CommitTransactionWithRetryAsync(session, cancellationToken).ConfigureAwait(false);
+                _ambientSession.Value = session;
+                try
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await action().ConfigureAwait(false);
+                    await CommitTransactionWithRetryAsync(session, cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    _ambientSession.Value = null;
+                }
+
                 return;
             }
-            catch (MongoCommandException exception) when (exception.Message.Contains("Transaction numbers are only allowed on a replica set member or mongos"))
+            catch (Exception exception) when (IsStandaloneTransactionUnsupported(exception))
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                // standalone（非副本集）回退：环境会话已清空，单次直通执行（首轮 session 绑定操作在 standalone 上已失败，无双写）。
+                // Standalone (non-replica-set) fallback: the ambient session is already cleared, so this
+                // single pass is the only execution (the session-bound first attempt failed outright).
                 await action().ConfigureAwait(false);
                 return;
             }
@@ -253,6 +318,24 @@ public sealed partial class MongoDbService
 
         // Localization: Database.MongoDb.ExecuteInTransactionFailed - ExecuteInTransactionAsync重试失败，未知异常
         throw new DatabaseUnavailableException(LocalizationService.GetString(Keys.Database.MongoDbExecuteInTransactionFailed), lastException ?? new InvalidOperationException(LocalizationService.GetString(Keys.Database.MongoDbExecuteInTransactionFailed)));
+    }
+
+    /// <summary>
+    /// 判定异常是否为 standalone（非副本集/非 mongos）不支持多文档事务的错误（客户端侧拓扑拒绝与服务端拒绝双形态）。
+    /// </summary>
+    /// <remarks>
+    /// Detects the standalone-server multi-document-transaction rejection in both shapes: the
+    /// driver's client-side topology check (<c>NotSupportedException: Standalone servers do not
+    /// support transactions</c>, raised before any server round-trip) and the server-side rejection
+    /// ("Transaction numbers are only allowed on a replica set member or mongos") surfaced by the
+    /// first session-bound operation or the commit.
+    /// </remarks>
+    /// <param name="exception">待判定异常 / The exception to classify</param>
+    /// <returns>是 standalone 事务不支持错误返回 true / True when the error is the standalone transaction rejection</returns>
+    private static bool IsStandaloneTransactionUnsupported(Exception exception)
+    {
+        return (exception is NotSupportedException && exception.Message.Contains("Standalone servers do not support transactions", StringComparison.Ordinal))
+            || (exception is MongoServerException && exception.Message.Contains("Transaction numbers are only allowed on a replica set member or mongos", StringComparison.Ordinal));
     }
 
     /// <summary>

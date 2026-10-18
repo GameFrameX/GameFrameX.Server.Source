@@ -771,6 +771,11 @@ public interface IDatabaseService
     /// On success the stored document carries <c>RowVersion = expectedRowVersion + 1</c> (the increment uses
     /// <c>VersionedEntityHelper.IncrementRowVersion</c>'s checked semantics — <c>long.MaxValue</c> overflows
     /// instead of silently wrapping)</description></item>
+    /// <item><description>失败（<c>false</c>）路径不污染调用方对象：写前的临时版本递增在返回前回滚，
+    /// <paramref name="state"/> 的 <c>RowVersion</c> 保持调用前的值；异常路径不回滚（写结果未知）/
+    /// The <c>false</c> path does not pollute the caller's object: the temporary pre-write increment is
+    /// rolled back before returning, so <paramref name="state"/>'s <c>RowVersion</c> keeps its pre-call value;
+    /// exceptions do not roll back (the write outcome is unknown)</description></item>
     /// <item><description>版本不符或行缺失返回 <c>false</c>，不抛异常（并发竞态下双写仅一个成功）/
     /// A version mismatch or a missing row returns <c>false</c> without throwing (under a race exactly one of two writers succeeds)</description></item>
     /// <item><description>存量文档缺失 <c>RowVersion</c> 字段或值为 null 时恒不匹配 /

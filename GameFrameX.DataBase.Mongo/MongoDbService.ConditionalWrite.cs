@@ -137,6 +137,13 @@ public sealed partial class MongoDbService
             throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Database.ConditionalWriteStateIdMismatch, state.Id, id), nameof(state));
         }
 
+        // 版本准备：先对齐到期望版本，再吃 checked 递增语义；失败（false）路径回滚内存版本——写前递增若不回滚
+        // 会污染调用方 state.RowVersion，后续 CAS 持续 Stale；异常路径不回滚（写结果未知，回滚可能反向脱节）。
+        // Version preparation: align to the expected version first, then take the checked increment. The
+        // pre-write increment is rolled back on the false path — leaving it in place would pollute the caller's
+        // state.RowVersion and starve every later CAS; it is NOT rolled back on exceptions (the write outcome
+        // is unknown, and rolling back could desync the other way).
+        var originalRowVersion = state.RowVersion;
         state.RowVersion = expectedRowVersion;
         state.IncrementRowVersion();
 
@@ -155,11 +162,14 @@ public sealed partial class MongoDbService
         var replaced = await ExecuteWriteWithRetryAsync(async token =>
         {
             var options = new FindOneAndReplaceOptions<TState> { ReturnDocument = ReturnDocument.Before };
-            return await collection.FindOneAndReplaceAsync(filter, state, options, token).ConfigureAwait(false);
+            return await FindOneAndReplaceWithAmbientSessionAsync(collection, filter, state, options, token).ConfigureAwait(false);
         }, cancellationToken, nameof(UpdateIfRowVersionAsync), false).ConfigureAwait(false);
 
         if (replaced == null)
         {
+            // 版本不符或行缺失：未写库，回滚写前递增的内存版本。
+            // Version mismatch or missing row: nothing was written — roll back the pre-write in-memory increment.
+            state.RowVersion = originalRowVersion;
             return false;
         }
 
@@ -239,7 +249,7 @@ public sealed partial class MongoDbService
         {
             // 唯一性预查与插入放在同一个操作内：弹性层重试时重新预查，保证重试后仍然冲突安全。
             // Probe and insert live in one operation so a resilience retry re-runs the probe first.
-            var existing = await collection.Find(uniquenessFilter).Limit(1).FirstOrDefaultAsync(token).ConfigureAwait(false);
+            var existing = await FindWithAmbientSession(collection, uniquenessFilter).Limit(1).FirstOrDefaultAsync(token).ConfigureAwait(false);
             if (existing != null)
             {
                 return false;
@@ -247,7 +257,7 @@ public sealed partial class MongoDbService
 
             try
             {
-                await collection.InsertOneAsync(state, cancellationToken: token).ConfigureAwait(false);
+                await InsertOneWithAmbientSessionAsync(collection, state, token).ConfigureAwait(false);
                 return true;
             }
             catch (MongoWriteException we) when (we.WriteError?.Category == ServerErrorCategory.DuplicateKey)
@@ -329,7 +339,7 @@ public sealed partial class MongoDbService
         {
             try
             {
-                var document = await collection.FindOneAndUpdateAsync(filter, update, options, cancellationToken).ConfigureAwait(false);
+                var document = await FindOneAndUpdateWithAmbientSessionAsync(collection, filter, update, options, cancellationToken).ConfigureAwait(false);
                 return document[SequenceValueFieldName].ToInt64();
             }
             catch (MongoWriteException we) when (we.WriteError?.Category == ServerErrorCategory.DuplicateKey && attempt < SequenceDuplicateKeyRetryTotal)
