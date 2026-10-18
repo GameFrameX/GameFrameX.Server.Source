@@ -931,51 +931,65 @@ public sealed partial class SqliteDbService
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
         var predicate = BuildPredicate(filter, includeDeleted: true, out _);
-        return await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
+        return await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(() => ExecuteHardDeleteCoreAsync<TState>(predicate, cancellationToken)), cancellationToken, nameof(HardDeleteAsync), true).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// HardDeleteAsync 核心执行体（读全表 → 客户端谓词筛 id → 事务内逐条物理删除）。
+    /// </summary>
+    /// <remarks>
+    /// The core of HardDeleteAsync: reads all rows, selects matching ids via the client-side
+    /// predicate (soft-deleted rows included), then hard-deletes each one inside a begin-or-join
+    /// transaction.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="predicate">客户端求值谓词 / The client-side predicate (includes soft-deleted rows)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>实际删除的数量 / The deleted count</returns>
+    private async Task<long> ExecuteHardDeleteCoreAsync<TState>(Func<TState, bool> predicate, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+        var rows = await ReadRowsRawAsync<TState>(BuildSelectAllCommand<TState>(), cancellationToken).ConfigureAwait(false);
+        var ids = new List<long>();
+        foreach (var state in rows)
         {
-            await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
-            var rows = await ReadRowsRawAsync<TState>(BuildSelectAllCommand<TState>(), cancellationToken).ConfigureAwait(false);
-            var ids = new List<long>();
-            foreach (var state in rows)
+            if (predicate(state))
             {
-                if (predicate(state))
-                {
-                    ids.Add(state.Id);
-                }
+                ids.Add(state.Id);
+            }
+        }
+
+        if (ids.Count == 0)
+        {
+            return 0L;
+        }
+
+        var (transaction, owned) = await BeginOrJoinTransactionAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            foreach (var id in ids)
+            {
+                using var command = _connection.CreateCommand();
+                command.Transaction = transaction;
+                command.CommandText = BuildDeleteByIdCommandText<TState>();
+                command.Parameters.AddWithValue("$id", id);
+                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
             }
 
-            if (ids.Count == 0)
+            if (owned)
             {
-                return 0L;
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
             }
 
-            var (transaction, owned) = await BeginOrJoinTransactionAsync(cancellationToken).ConfigureAwait(false);
-            try
+            return (long)ids.Count;
+        }
+        finally
+        {
+            if (owned)
             {
-                foreach (var id in ids)
-                {
-                    using var command = _connection.CreateCommand();
-                    command.Transaction = transaction;
-                    command.CommandText = BuildDeleteByIdCommandText<TState>();
-                    command.Parameters.AddWithValue("$id", id);
-                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-                }
-
-                if (owned)
-                {
-                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-                }
-
-                return (long)ids.Count;
+                await transaction.DisposeAsync().ConfigureAwait(false);
             }
-            finally
-            {
-                if (owned)
-                {
-                    await transaction.DisposeAsync().ConfigureAwait(false);
-                }
-            }
-        }), cancellationToken, nameof(HardDeleteAsync), true).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -1009,51 +1023,65 @@ public sealed partial class SqliteDbService
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
         var compiled = filter?.Compile();
-        return await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
+        return await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(() => ExecuteRestoreCoreAsync<TState>(compiled, cancellationToken)), cancellationToken, nameof(RestoreAsync), true).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// RestoreAsync 核心执行体（读全表 → 软删行按谓词筛入 → 事务内整档写回复活）。
+    /// </summary>
+    /// <remarks>
+    /// The core of RestoreAsync: reads all rows, selects soft-deleted rows matching the compiled
+    /// filter (a null filter matches every soft-deleted row), then writes each restored document
+    /// back inside a begin-or-join transaction.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="compiled">已编译过滤表达式；null 表示匹配全部软删行 / The compiled filter; null matches every soft-deleted row</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>实际恢复的数量 / The restored count</returns>
+    private async Task<long> ExecuteRestoreCoreAsync<TState>(Func<TState, bool> compiled, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+        var rows = await ReadRowsRawAsync<TState>(BuildSelectAllCommand<TState>(), cancellationToken).ConfigureAwait(false);
+        var restored = new List<TState>();
+        foreach (var state in rows)
         {
-            await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
-            var rows = await ReadRowsRawAsync<TState>(BuildSelectAllCommand<TState>(), cancellationToken).ConfigureAwait(false);
-            var restored = new List<TState>();
-            foreach (var state in rows)
+            if (state.IsDeleted == true && (compiled == null || compiled(state)))
             {
-                if (state.IsDeleted == true && (compiled == null || compiled(state)))
-                {
-                    restored.Add(state);
-                }
+                restored.Add(state);
+            }
+        }
+
+        if (restored.Count == 0)
+        {
+            return 0L;
+        }
+
+        var (transaction, owned) = await BeginOrJoinTransactionAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            foreach (var document in restored)
+            {
+                document.IsDeleted = false;
+                document.DeleteTime = null;
+                using var command = BuildReplaceDocumentCommand<TState>(document);
+                command.Transaction = transaction;
+                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
             }
 
-            if (restored.Count == 0)
+            if (owned)
             {
-                return 0L;
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
             }
 
-            var (transaction, owned) = await BeginOrJoinTransactionAsync(cancellationToken).ConfigureAwait(false);
-            try
+            return (long)restored.Count;
+        }
+        finally
+        {
+            if (owned)
             {
-                foreach (var document in restored)
-                {
-                    document.IsDeleted = false;
-                    document.DeleteTime = null;
-                    using var command = BuildReplaceDocumentCommand<TState>(document);
-                    command.Transaction = transaction;
-                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-                }
-
-                if (owned)
-                {
-                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-                }
-
-                return (long)restored.Count;
+                await transaction.DisposeAsync().ConfigureAwait(false);
             }
-            finally
-            {
-                if (owned)
-                {
-                    await transaction.DisposeAsync().ConfigureAwait(false);
-                }
-            }
-        }), cancellationToken, nameof(RestoreAsync), true).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
