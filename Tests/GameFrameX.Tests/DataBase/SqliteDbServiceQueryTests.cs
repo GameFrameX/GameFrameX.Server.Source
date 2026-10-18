@@ -374,6 +374,51 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
     }
 
     /// <summary>
+    /// 测试批量条件软删除重复调用幂等：首次计满匹配行，重复调用可见集为空计 0（C265 单事务批删语义）。
+    /// </summary>
+    [Fact]
+    public async Task DeleteListAsync_RepeatedCalls_ShouldBeIdempotent()
+    {
+        await ExecuteWithServiceAsync(async service =>
+        {
+            await service.AddListAsync(new[]
+            {
+                CreateState("batch-repeat-a", group: 13, score: 1),
+                CreateState("batch-repeat-b", group: 13, score: 2),
+            });
+
+            Assert.Equal(2, await service.DeleteListAsync<SqliteQueryTestState>(x => x.Group == 13));
+            Assert.Equal(0, await service.DeleteListAsync<SqliteQueryTestState>(x => x.Group == 13));
+            Assert.Equal(0, await service.CountAsync<SqliteQueryTestState>(x => x.Group == 13));
+        });
+    }
+
+    /// <summary>
+    /// 测试按 ID 列表软删除超过 IN 分块上限（999）的集合：跨块并集全删（C265 参数上限分块）。
+    /// </summary>
+    [Fact]
+    public async Task DeleteListIdAsync_MoreIdsThanInChunkLimit_ShouldSoftDeleteAll()
+    {
+        await ExecuteWithServiceAsync(async service =>
+        {
+            const int total = 1100;
+            var states = new SqliteQueryTestState[total];
+            for (var index = 0; index < total; index++)
+            {
+                states[index] = CreateState($"idchunk-{index}", group: 14, score: index);
+            }
+
+            await service.AddListAsync(states);
+
+            var deleted = await service.DeleteListIdAsync<SqliteQueryTestState>(states.Select(static s => s.Id));
+            Assert.Equal(total, deleted);
+            Assert.Equal(0, await service.CountAsync<SqliteQueryTestState>(x => x.Group == 14));
+            Assert.Equal(total, await service.CountAsync<SqliteQueryTestState>(x => x.Group == 14, includeDeleted: true));
+        });
+    }
+
+
+    /// <summary>
     /// 测试按 ID 列表软删除与空集合返回 0。
     /// </summary>
     [Fact]
@@ -523,6 +568,67 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
 
             var found = await service.FindByIdsAsync<SqliteQueryTestState>(new[] { a.Id, b.Id, c.Id, a.Id });
             Assert.Equal(new[] { a.Id, c.Id }.OrderBy(static id => id), found.Select(static s => s.Id).OrderBy(static id => id));
+        });
+    }
+
+    /// <summary>
+    /// 测试 FindByIds 超过 IN 分块上限（999）：跨块并集返回全部命中（C265 参数上限分块）。
+    /// </summary>
+    [Fact]
+    public async Task FindByIdsAsync_MoreIdsThanInChunkLimit_ShouldReturnAllMatches()
+    {
+        await ExecuteWithServiceAsync(async service =>
+        {
+            const int total = 1100;
+            var states = new SqliteQueryTestState[total];
+            for (var index = 0; index < total; index++)
+            {
+                states[index] = CreateState($"byids-chunk-{index}", group: 26, score: index);
+            }
+
+            await service.AddListAsync(states);
+
+            var found = await service.FindByIdsAsync<SqliteQueryTestState>(states.Select(static s => s.Id));
+            Assert.Equal(total, found.Count);
+            Assert.Equal(
+                states.Select(static s => s.Id).OrderBy(static id => id),
+                found.Select(static s => s.Id).OrderBy(static id => id));
+        });
+    }
+
+    /// <summary>
+    /// 测试 AND 链过滤：id 等值作为顶层合取项（含嵌套括号与反向操作数）时语义正确（C265 合取链下推）。
+    /// </summary>
+    [Fact]
+    public async Task FindListAsync_AndChainIdConjunct_ShouldFilterCorrectly()
+    {
+        await ExecuteWithServiceAsync(async service =>
+        {
+            var a = CreateState("andchain-a", group: 27, score: 1);
+            var b = CreateState("andchain-b", group: 27, score: 2);
+            var c = CreateState("andchain-c", group: 27, score: 3);
+            await service.AddListAsync(new[] { a, b, c });
+
+            // id 等值 + 其余条件（局部捕获 id，命中合取链下推路径）
+            var targetId = b.Id;
+            var direct = await service.FindListAsync<SqliteQueryTestState>(x => x.Id == targetId && x.Group == 27);
+            Assert.Equal(new[] { b.Id }, direct.Select(static s => s.Id));
+
+            // id 等值反向操作数 + 嵌套括号
+            var nested = await service.FindListAsync<SqliteQueryTestState>(x => 27 == x.Group && (targetId == x.Id && x.Score == 2));
+            Assert.Equal(new[] { b.Id }, nested.Select(static s => s.Id));
+
+            // id 命中但其余条件不满足 → 空
+            Assert.Empty(await service.FindListAsync<SqliteQueryTestState>(x => x.Id == targetId && x.Score == 99));
+
+            // id 不存在 + 其余条件恒真 → 空
+            var missingId = Interlocked.Increment(ref _idSeed);
+            Assert.Empty(await service.FindListAsync<SqliteQueryTestState>(x => x.Id == missingId && x.Group == 27));
+
+            // 软删行在 AND 链下不可见
+            await service.DeleteAsync(b);
+            Assert.Empty(await service.FindListAsync<SqliteQueryTestState>(x => x.Id == targetId && x.Group == 27));
+            Assert.Single(await service.FindListAsync<SqliteQueryTestState>(x => x.Group == 27 && x.Score == 3));
         });
     }
 
