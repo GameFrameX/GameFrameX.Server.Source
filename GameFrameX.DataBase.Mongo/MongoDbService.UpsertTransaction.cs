@@ -116,7 +116,7 @@ public sealed partial class MongoDbService
         // (typed collection entries need lazy ClassMap registration first).
         MongoSerializationRegistry.EnsureClassMapRegistered<TState>();
         var filter = Builders<TState>.Filter.Eq(m => m.Id, state.Id);
-        await ExecuteWriteWithRetryAsync(token => CurrentDatabase.GetCollection<TState>(typeof(TState).Name).ReplaceOneAsync(filter, state, ReplaceOptions, token), cancellationToken, nameof(AddOrUpdateAsync), true).ConfigureAwait(false);
+        await ExecuteWriteWithRetryAsync(token => ReplaceOneWithAmbientSessionAsync(CurrentDatabase.GetCollection<TState>(typeof(TState).Name), filter, state, ReplaceOptions, token), cancellationToken, nameof(AddOrUpdateAsync), true).ConfigureAwait(false);
 
         state.SaveToDbPostHandler(persistedData);
         return state;
@@ -183,7 +183,7 @@ public sealed partial class MongoDbService
             persistedSnapshots.Add((state, state.ToBytes()));
         }
 
-        var result = await ExecuteWriteWithRetryAsync(token => collection.BulkWriteAsync(writeModels, BulkWriteOptions, token), cancellationToken, nameof(AddOrUpdateListAsync), true).ConfigureAwait(false);
+        var result = await ExecuteWriteWithRetryAsync(token => BulkWriteWithAmbientSessionAsync(collection, writeModels, BulkWriteOptions, token), cancellationToken, nameof(AddOrUpdateListAsync), true).ConfigureAwait(false);
         if (result.IsAcknowledged)
         {
             // 无序 BulkWrite 部分文档失败不必然抛异常（IsAcknowledged 仍 true）：以整批计数判定真实确认面。
@@ -233,7 +233,10 @@ public sealed partial class MongoDbService
     /// 在事务中执行操作。
     /// </summary>
     /// <remarks>
-    /// Execute operation in a transaction.
+    /// Execute operation in a transaction: the shell's session becomes the ambient session, every
+    /// collection operation issued by the action joins the transaction, and the shell owns the single
+    /// commit. On a standalone (non-replica-set) server the shell degrades to a single non-transactional
+    /// pass (the ambient session is cleared first, so the action never executes twice).
     /// </remarks>
     /// <param name="action">事务内执行逻辑 / Action to execute within transaction</param>
     /// <returns>表示异步操作的任务 / Task representing asynchronous operation</returns>
@@ -246,7 +249,10 @@ public sealed partial class MongoDbService
     /// 在事务中执行操作。
     /// </summary>
     /// <remarks>
-    /// Execute operation in a transaction.
+    /// Execute operation in a transaction: the shell's session becomes the ambient session, every
+    /// collection operation issued by the action joins the transaction, and the shell owns the single
+    /// commit. On a standalone (non-replica-set) server the shell degrades to a single non-transactional
+    /// pass (the ambient session is cleared first, so the action never executes twice).
     /// </remarks>
     /// <param name="action">事务内执行逻辑 / Action to execute within transaction</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
@@ -256,6 +262,14 @@ public sealed partial class MongoDbService
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
         ArgumentNullException.ThrowIfNull(action);
+        if (_ambientSession.Value != null)
+        {
+            // 嵌套事务壳：加入环境会话事务（提交权归最外层壳）。
+            // Nested shell: join the ambient session's transaction (the outermost shell owns the commit).
+            await action().ConfigureAwait(false);
+            return;
+        }
+
         Exception lastException = null;
         for (var attempt = 0; attempt <= _transactionRetryDelaysMilliseconds.Length; attempt++)
         {
@@ -264,14 +278,26 @@ public sealed partial class MongoDbService
             {
                 using var session = await _mongoClient.StartSessionAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
                 session.StartTransaction();
-                cancellationToken.ThrowIfCancellationRequested();
-                await action().ConfigureAwait(false);
-                await CommitTransactionWithRetryAsync(session, cancellationToken).ConfigureAwait(false);
+                _ambientSession.Value = session;
+                try
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await action().ConfigureAwait(false);
+                    await CommitTransactionWithRetryAsync(session, cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    _ambientSession.Value = null;
+                }
+
                 return;
             }
-            catch (MongoCommandException exception) when (exception.Message.Contains("Transaction numbers are only allowed on a replica set member or mongos"))
+            catch (Exception exception) when (IsStandaloneTransactionUnsupported(exception))
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                // standalone（非副本集）回退：环境会话已清空，单次直通执行（首轮 session 绑定操作在 standalone 上已失败，无双写）。
+                // Standalone (non-replica-set) fallback: the ambient session is already cleared, so this
+                // single pass is the only execution (the session-bound first attempt failed outright).
                 await action().ConfigureAwait(false);
                 return;
             }
@@ -292,6 +318,24 @@ public sealed partial class MongoDbService
 
         // Localization: Database.MongoDb.ExecuteInTransactionFailed - ExecuteInTransactionAsync重试失败，未知异常
         throw new DatabaseUnavailableException(LocalizationService.GetString(Keys.Database.MongoDbExecuteInTransactionFailed), lastException ?? new InvalidOperationException(LocalizationService.GetString(Keys.Database.MongoDbExecuteInTransactionFailed)));
+    }
+
+    /// <summary>
+    /// 判定异常是否为 standalone（非副本集/非 mongos）不支持多文档事务的错误（客户端侧拓扑拒绝与服务端拒绝双形态）。
+    /// </summary>
+    /// <remarks>
+    /// Detects the standalone-server multi-document-transaction rejection in both shapes: the
+    /// driver's client-side topology check (<c>NotSupportedException: Standalone servers do not
+    /// support transactions</c>, raised before any server round-trip) and the server-side rejection
+    /// ("Transaction numbers are only allowed on a replica set member or mongos") surfaced by the
+    /// first session-bound operation or the commit.
+    /// </remarks>
+    /// <param name="exception">待判定异常 / The exception to classify</param>
+    /// <returns>是 standalone 事务不支持错误返回 true / True when the error is the standalone transaction rejection</returns>
+    private static bool IsStandaloneTransactionUnsupported(Exception exception)
+    {
+        return (exception is NotSupportedException && exception.Message.Contains("Standalone servers do not support transactions", StringComparison.Ordinal))
+            || (exception is MongoServerException && exception.Message.Contains("Transaction numbers are only allowed on a replica set member or mongos", StringComparison.Ordinal));
     }
 
     /// <summary>

@@ -92,7 +92,7 @@ public sealed partial class MongoDbService
             // 构建更新定义，排除 CreatedTime, CreatedId, Id, IsDeleted, DeleteTime 字段
             var updateDefinition = BuildUpdateDefinition(state);
 
-            var result = await ExecuteWriteWithRetryAsync(token => collection.UpdateOneAsync(filter, updateDefinition, cancellationToken: token), cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
+            var result = await ExecuteWriteWithRetryAsync(token => UpdateOneWithAmbientSessionAsync(collection, filter, updateDefinition, token), cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
             if (result.IsAcknowledged)
             {
                 // 精确提交（C263）：以检查时快照推进基线，避免并发 IsChanged 把基线推进到未落库快照
@@ -160,7 +160,7 @@ public sealed partial class MongoDbService
         if (writeModels.Count > 0)
         {
             var collection = _mongoDbContext.GetCollection<TState>();
-            var result = await ExecuteWriteWithRetryAsync(token => collection.BulkWriteAsync(writeModels, BulkWriteOptions, token), cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
+            var result = await ExecuteWriteWithRetryAsync(token => BulkWriteWithAmbientSessionAsync(collection, writeModels, BulkWriteOptions, token), cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
             if (result.IsAcknowledged)
             {
                 foreach (var (state, changedData) in changedSnapshots)
@@ -248,7 +248,7 @@ public sealed partial class MongoDbService
         var collection = _mongoDbContext.GetCollection<TState>();
         var filter = Builders<TState>.Filter.Eq(m => m.Id, id) & Builders<TState>.Filter.Where(GetDefaultFindExpression<TState>(null));
         var update = Builders<TState>.Update.Combine(updates);
-        var result = await ExecuteWriteWithRetryAsync(token => collection.UpdateOneAsync(filter, update, cancellationToken: token), cancellationToken, nameof(UpdatePartialAsync), false).ConfigureAwait(false);
+        var result = await ExecuteWriteWithRetryAsync(token => UpdateOneWithAmbientSessionAsync(collection, filter, update, token), cancellationToken, nameof(UpdatePartialAsync), false).ConfigureAwait(false);
         return result.ModifiedCount;
     }
 

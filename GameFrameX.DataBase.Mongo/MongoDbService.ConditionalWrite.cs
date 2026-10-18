@@ -162,7 +162,7 @@ public sealed partial class MongoDbService
         var replaced = await ExecuteWriteWithRetryAsync(async token =>
         {
             var options = new FindOneAndReplaceOptions<TState> { ReturnDocument = ReturnDocument.Before };
-            return await collection.FindOneAndReplaceAsync(filter, state, options, token).ConfigureAwait(false);
+            return await FindOneAndReplaceWithAmbientSessionAsync(collection, filter, state, options, token).ConfigureAwait(false);
         }, cancellationToken, nameof(UpdateIfRowVersionAsync), false).ConfigureAwait(false);
 
         if (replaced == null)
@@ -249,7 +249,7 @@ public sealed partial class MongoDbService
         {
             // 唯一性预查与插入放在同一个操作内：弹性层重试时重新预查，保证重试后仍然冲突安全。
             // Probe and insert live in one operation so a resilience retry re-runs the probe first.
-            var existing = await collection.Find(uniquenessFilter).Limit(1).FirstOrDefaultAsync(token).ConfigureAwait(false);
+            var existing = await FindWithAmbientSession(collection, uniquenessFilter).Limit(1).FirstOrDefaultAsync(token).ConfigureAwait(false);
             if (existing != null)
             {
                 return false;
@@ -257,7 +257,7 @@ public sealed partial class MongoDbService
 
             try
             {
-                await collection.InsertOneAsync(state, cancellationToken: token).ConfigureAwait(false);
+                await InsertOneWithAmbientSessionAsync(collection, state, token).ConfigureAwait(false);
                 return true;
             }
             catch (MongoWriteException we) when (we.WriteError?.Category == ServerErrorCategory.DuplicateKey)
@@ -339,7 +339,7 @@ public sealed partial class MongoDbService
         {
             try
             {
-                var document = await collection.FindOneAndUpdateAsync(filter, update, options, cancellationToken).ConfigureAwait(false);
+                var document = await FindOneAndUpdateWithAmbientSessionAsync(collection, filter, update, options, cancellationToken).ConfigureAwait(false);
                 return document[SequenceValueFieldName].ToInt64();
             }
             catch (MongoWriteException we) when (we.WriteError?.Category == ServerErrorCategory.DuplicateKey && attempt < SequenceDuplicateKeyRetryTotal)

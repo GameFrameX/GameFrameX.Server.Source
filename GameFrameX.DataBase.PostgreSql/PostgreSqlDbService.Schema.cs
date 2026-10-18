@@ -62,6 +62,16 @@ public sealed partial class PostgreSqlDbService
     private readonly ConcurrentDictionary<Type, object> _contextOptionsCache = new();
 
     /// <summary>
+    /// 环境事务（<c>ExecuteInTransactionAsync</c> 事务壳持有；操作上下文/裸命令经 UseTransaction/借用连接加入，null = 无环境事务）。
+    /// </summary>
+    /// <remarks>
+    /// Ambient transaction held by the <c>ExecuteInTransactionAsync</c> shell; per-operation contexts
+    /// enlist via <c>UseTransaction</c> and raw-command paths borrow its connection. Instance-level
+    /// so concurrent service instances never cross-pollinate each other's shells.
+    /// </remarks>
+    private readonly AsyncLocal<System.Data.Common.DbTransaction> _ambientTransaction = new();
+
+    /// <summary>
     /// 获取当前时间戳（毫秒）。
     /// </summary>
     /// <remarks>
@@ -146,6 +156,51 @@ public sealed partial class PostgreSqlDbService
             typeof(DbContext),
             _ => new DbContextOptionsBuilder<DbContext>().UseNpgsql(DataSource).Options);
         return new DbContext(options);
+    }
+
+    /// <summary>
+    /// 将操作上下文加入环境事务（先绑定事务的连接再 UseTransaction——EF 要求两者同连接；无环境事务时空操作）。
+    /// </summary>
+    /// <remarks>
+    /// Enlists the per-operation context in the ambient transaction: the context first adopts the
+    /// transaction's connection (<c>SetDbConnection</c> with <c>contextOwnsConnection: false</c>, so
+    /// disposing the context never closes the shell's connection) and then enlists via
+    /// <c>UseTransaction</c> — EF requires the transaction and the context's connection to be the
+    /// same connection. Committing stays with the shell. No-op without an ambient transaction.
+    /// </remarks>
+    /// <param name="context">要加入环境事务的上下文 / The context to enlist</param>
+    private void JoinAmbientTransaction(DbContext context)
+    {
+        var ambient = _ambientTransaction.Value;
+        if (ambient == null)
+        {
+            return;
+        }
+
+        context.Database.SetDbConnection(ambient.Connection, contextOwnsConnection: false);
+        context.Database.UseTransaction(ambient);
+    }
+
+    /// <summary>
+    /// 打开本操作应使用的连接：环境事务存在时借用其连接（随事务提交），否则从数据源新开（调用方负责释放）。
+    /// </summary>
+    /// <remarks>
+    /// Resolves the connection for a raw-command write path: inside an ambient transaction the
+    /// transaction's connection is borrowed (the shell owns its lifetime); otherwise a fresh pooled
+    /// connection is opened and the caller owns it.
+    /// </remarks>
+    /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
+    /// <returns>连接、其上活跃事务（环境事务或 null）与是否调用方持有连接 / The connection, its active transaction (ambient or null), and whether the caller owns the connection</returns>
+    private async Task<(NpgsqlConnection Connection, NpgsqlTransaction Transaction, bool Owned)> OpenConnectionForWriteAsync(CancellationToken cancellationToken)
+    {
+        if (_ambientTransaction.Value is NpgsqlTransaction ambientTransaction)
+        {
+            return (ambientTransaction.Connection!, ambientTransaction, false);
+        }
+
+        var connection = DataSource.CreateConnection();
+        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+        return (connection, null, true);
     }
 
     /// <summary>

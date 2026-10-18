@@ -232,6 +232,7 @@ public sealed partial class PostgreSqlDbService
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
             using var context = CreateContext<TState>();
+            JoinAmbientTransaction(context);
             var query = context.Rows.IgnoreQueryFilters().AsQueryable();
             if (filter != null)
             {
@@ -278,6 +279,7 @@ public sealed partial class PostgreSqlDbService
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
             using var context = CreateContext<TState>();
+            JoinAmbientTransaction(context);
             var query = context.Rows.IgnoreQueryFilters().Where(row => row.Doc.IsDeleted == true);
             if (filter != null)
             {
@@ -321,6 +323,7 @@ public sealed partial class PostgreSqlDbService
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
             using var context = CreateContext<TState>();
+            JoinAmbientTransaction(context);
             var row = await context.Rows.IgnoreQueryFilters().FirstOrDefaultAsync(row => row.Id == id, token).ConfigureAwait(false);
             if (row == null)
             {
@@ -357,6 +360,7 @@ public sealed partial class PostgreSqlDbService
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
             using var context = CreateContext<TState>();
+            JoinAmbientTransaction(context);
             var rows = await context.Rows.IgnoreQueryFilters().Where(row => distinctIds.Contains(row.Id)).ToListAsync(token).ConfigureAwait(false);
             foreach (var row in rows)
             {
