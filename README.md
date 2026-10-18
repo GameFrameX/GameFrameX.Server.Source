@@ -222,7 +222,10 @@ GameFrameX uses command-line arguments (`--Key=Value`) for configuration. All co
 | `WsPort`            | WebSocket port                            | `8889`       | `29300`      |
 | `IsEnableHttp`      | Enable HTTP service                       | `true`       | `true`       |
 | `HttpPort`          | HTTP service port                         | `8080`       | `28080`      |
-| `HttpsPort`         | HTTPS service port                        | None         | `443`        |
+| `HttpsPort`         | HTTPS service port (real TLS listener; certificate required) | None | `443` |
+| `HttpsCertPath`     | HTTPS certificate file path (PFX), required when `HttpsPort > 0` | None | `/path/cert.pfx` |
+| `HttpsCertPassword` | HTTPS certificate password (optional)     | None         | ``           |
+| `HttpSignSecret`    | HMAC-SHA256 secret for HTTP signature validation (required once signing is enabled; blank = fail-closed) | None | `a-strong-secret` |
 | `HttpUrl`           | API root path                             | `/game/api/` | `/game/api/` |
 | `HttpIsDevelopment` | HTTP development mode (enables Swagger)   | `false`      | `true`       |
 | `IsEnableOnlineAdmin` | Host the Online Runtime + admin API in-process | `false` | `true` |

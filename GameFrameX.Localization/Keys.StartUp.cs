@@ -623,13 +623,34 @@ public static partial class Keys
             public const string AddressMustEndWithSlash = "StartUp.HttpExceptions.AddressMustEndWithSlash";
 
             /// <summary>
-            /// If HTTPS is not implemented, cancel the HTTPS port configuration
+            /// HTTPS port [{0}] is configured but HttpsCertPath (PFX file path) is missing
             /// </summary>
             /// <remarks>
-            /// 键名: StartUp.HttpExceptions.HttpsNotImplemented
-            /// 用途: 当尝试配置HTTPS但HTTPS功能未实现时抛出异常
+            /// 键名: StartUp.HttpExceptions.HttpsCertPathMissing
+            /// 用途: 配置了 HTTPS 端口但未配置证书路径时抛出异常
+            /// 参数: {0} - HTTPS 端口
             /// </remarks>
-            public const string HttpsNotImplemented = "StartUp.HttpExceptions.HttpsNotImplemented";
+            public const string HttpsCertPathMissing = "StartUp.HttpExceptions.HttpsCertPathMissing";
+
+            /// <summary>
+            /// HTTPS certificate file not found: {0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.HttpExceptions.HttpsCertFileNotFound
+            /// 用途: HTTPS 证书文件不存在时抛出异常
+            /// 参数: {0} - 证书文件路径
+            /// </remarks>
+            public const string HttpsCertFileNotFound = "StartUp.HttpExceptions.HttpsCertFileNotFound";
+
+            /// <summary>
+            /// HTTPS certificate failed to load (wrong password or corrupted file): {0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.HttpExceptions.HttpsCertLoadFailed
+            /// 用途: HTTPS 证书加载失败时抛出异常
+            /// 参数: {0} - 证书文件路径
+            /// </remarks>
+            public const string HttpsCertLoadFailed = "StartUp.HttpExceptions.HttpsCertLoadFailed";
         }
 
         /// <summary>

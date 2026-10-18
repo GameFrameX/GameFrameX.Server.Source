@@ -1156,8 +1156,17 @@
     <value>地址必须以斜杠开头。地址：{0}。</value>
   </data>
 
-  <data name="StartUp.HttpExceptions.HttpsNotImplemented" xml:space="preserve">
-    <value>HTTPS尚未实现。</value>
+  <data name="StartUp.HttpExceptions.HttpsCertPathMissing" xml:space="preserve">
+    <value>已配置 HTTPS 端口 [{0}]，但 HttpsCertPath（PFX 文件路径）未配置，无法启用 HTTPS 监听。</value>
+  </data>
+  <data name="StartUp.HttpExceptions.HttpsCertFileNotFound" xml:space="preserve">
+    <value>HTTPS 证书文件不存在：{0}</value>
+  </data>
+  <data name="StartUp.HttpExceptions.HttpsCertLoadFailed" xml:space="preserve">
+    <value>HTTPS 证书加载失败（密码错误或文件损坏）：{0}</value>
+  </data>
+  <data name="Network.Http.SignSecretMissing" xml:space="preserve">
+    <value>HTTP 签名校验已开启，但 HttpSignSecret 未配置，请求一律拒绝（fail-closed）。</value>
   </data>
 
   <data name="StartUp.HttpServer.PortOccupied" xml:space="preserve">
