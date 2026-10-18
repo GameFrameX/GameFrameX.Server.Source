@@ -206,50 +206,68 @@ public sealed partial class SqliteDbService
         state.UpdateTime = currentTime;
         state.UpdateCount ??= 0;
         var predicate = uniqueFilter.Compile();
-        return await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
+        return await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(() => ExecuteTryAddUniqueCoreAsync<TState>(state, predicate, cancellationToken)), cancellationToken, nameof(TryAddUniqueAsync), false).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// TryAddUniqueAsync 事务核心（读全表冲突扫描 → 命中回滚返 false → 插入提交；唯一约束冲突 19/2067 转译 false）。
+    /// </summary>
+    /// <remarks>
+    /// The gated transaction core of TryAddUniqueAsync: scans the full table (soft-deleted documents
+    /// included) for an Id occupant or uniqueness-predicate match and rolls back to <c>false</c> on a
+    /// hit; otherwise inserts and commits. A SQLite unique-constraint violation (error codes 19 / 2067)
+    /// is translated to <c>false</c> instead of propagating. The caller must hold <see cref="_gate"/>
+    /// (via <c>ExecuteGatedAsync</c>) and run under <c>ExecuteWriteWithRetryAsync</c> with
+    /// <c>isIdempotent: false</c> — the pre-check-then-insert core restarts as a whole on retry.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="state">待插入的新档 / The new state to insert</param>
+    /// <param name="predicate">已编译的唯一性判定 / The compiled uniqueness predicate</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>插入成功返回 <c>true</c>；唯一键冲突或 Id 已占用返回 <c>false</c> / <c>true</c> when inserted; <c>false</c> on a unique-key or Id conflict</returns>
+    private async Task<bool> ExecuteTryAddUniqueCoreAsync<TState>(TState state, Func<TState, bool> predicate, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+        var (transaction, owned) = await BeginOrJoinTransactionAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
-            var (transaction, owned) = await BeginOrJoinTransactionAsync(cancellationToken).ConfigureAwait(false);
-            try
+            var rows = await ReadRowsRawAsync<TState>(BuildSelectAllCommand<TState>(), cancellationToken).ConfigureAwait(false);
+            foreach (var existing in rows)
             {
-                var rows = await ReadRowsRawAsync<TState>(BuildSelectAllCommand<TState>(), cancellationToken).ConfigureAwait(false);
-                foreach (var existing in rows)
+                if (existing.Id == state.Id || predicate(existing))
                 {
-                    if (existing.Id == state.Id || predicate(existing))
+                    if (owned)
                     {
-                        if (owned)
-                        {
-                            await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
-                        }
-
-                        return false;
+                        await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
                     }
-                }
 
-                using var insertCommand = BuildInsertCommand<TState>(state);
-                insertCommand.Transaction = transaction;
-                await insertCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-                if (owned)
-                {
-                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                    return false;
                 }
+            }
 
-                return true;
-            }
-            catch (SqliteException ex) when (ex.SqliteErrorCode is 19 or 2067)
+            using var insertCommand = BuildInsertCommand<TState>(state);
+            insertCommand.Transaction = transaction;
+            await insertCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            if (owned)
             {
-                // 唯一约束冲突：自持事务 Dispose 即回滚；环境事务保持（语句级失败不中止事务），转译为 false 而非上抛。
-                // Unique-constraint conflict: an owned transaction rolls back on dispose; an ambient one stays usable (statement failure does not abort it) — translate to false.
-                return false;
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
             }
-            finally
+
+            return true;
+        }
+        catch (SqliteException ex) when (ex.SqliteErrorCode is 19 or 2067)
+        {
+            // 唯一约束冲突：自持事务 Dispose 即回滚；环境事务保持（语句级失败不中止事务），转译为 false 而非上抛。
+            // Unique-constraint conflict: an owned transaction rolls back on dispose; an ambient one stays usable (statement failure does not abort it) — translate to false.
+            return false;
+        }
+        finally
+        {
+            if (owned)
             {
-                if (owned)
-                {
-                    await transaction.DisposeAsync().ConfigureAwait(false);
-                }
+                await transaction.DisposeAsync().ConfigureAwait(false);
             }
-        }), cancellationToken, nameof(TryAddUniqueAsync), false).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
