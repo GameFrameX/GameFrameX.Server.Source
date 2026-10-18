@@ -294,6 +294,24 @@ public static partial class Keys
             /// 用途: 执行异常拦截器回调自身抛出异常时的错误日志
             /// </remarks>
             public const string InterceptorOnExceptionFailed = "RemoteMessaging.Client.InterceptorOnExceptionFailed";
+
+            /// <summary>
+            /// 连接接收泵解码失败（帧损坏或协议异常），连接已按死亡处理并快速失败挂起请求
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Client.ReceivePumpDecodeFailure
+            /// 用途: 连接接收泵遭遇解码/协议异常（InvalidDataException / NotSupportedException）时的连接级告警日志
+            /// </remarks>
+            public const string ReceivePumpDecodeFailure = "RemoteMessaging.Client.ReceivePumpDecodeFailure";
+
+            /// <summary>
+            /// 连接接收泵遭遇未分类异常（不吞掉，记录后向上抛出）
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Client.ReceivePumpFatalError
+            /// 用途: 连接接收泵遭遇连接级/解码级之外的异常（如 OOM）时记录后重抛的错误日志
+            /// </remarks>
+            public const string ReceivePumpFatalError = "RemoteMessaging.Client.ReceivePumpFatalError";
         }
 
         /// <summary>
@@ -381,6 +399,35 @@ public static partial class Keys
             /// 参数: {0} - 对端版本, {1} - 本端版本
             /// </remarks>
             public const string ServerRejectedIncompatibleClient = "RemoteMessaging.Versioning.ServerRejectedIncompatibleClient";
+
+            /// <summary>
+            /// 拒绝节点间鉴权失败的连接：对端 {0}，凭据缺失或验签失败。回包后关闭会话
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Versioning.ServerRejectedUnauthenticatedNode
+            /// 用途: 服务端漏斗握手短路判定节点间 HMAC 凭据校验失败拒绝连接时的告警日志
+            /// 参数: {0} - 对端版本
+            /// </remarks>
+            public const string ServerRejectedUnauthenticatedNode = "RemoteMessaging.Versioning.ServerRejectedUnauthenticatedNode";
+
+            /// <summary>
+            /// 服务 '{0}' 的协议版本握手在 {1}ms 后超时；节点间鉴权已启用，不回落旧版本，按连接失败处理
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Versioning.HandshakeAuthTimeoutFailClosed
+            /// 用途: 节点间鉴权启用时握手超时的 fail-closed 错误消息（防回落降级面）
+            /// 参数: {0} - 服务名, {1} - 超时毫秒数
+            /// </remarks>
+            public const string HandshakeAuthTimeoutFailClosed = "RemoteMessaging.Versioning.HandshakeAuthTimeoutFailClosed";
+
+            /// <summary>
+            /// 拒绝握手后延迟关闭通道失败（对端可能已先行关闭；拒绝包已送达，语义不受影响）
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Versioning.ServerRejectCloseFailed
+            /// 用途: 拒绝 major 不符连接后按宽限期延迟关闭通道抛出异常时的告警日志
+            /// </remarks>
+            public const string ServerRejectCloseFailed = "RemoteMessaging.Versioning.ServerRejectCloseFailed";
         }
 
         /// <summary>

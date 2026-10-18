@@ -38,6 +38,8 @@ namespace GameFrameX.Network.RemoteMessaging.Versioning;
 /// 收到 <see cref="ReqProtocolVersionNegotiation"/> 时按本端 <see cref="RemoteMessagingProtocolVersion"/>
 /// 回 <see cref="RespProtocolVersionNegotiation"/>；major 不符回拒绝包、告警并在宽限期后关闭会话
 /// （拒绝包先送达，避免与在途发送竞争；无半开残留）。旧拨号端不发握手帧，短路不触发，行为与升级前等价。
+/// C272 起 <see cref="InterNodeAuthentication"/> 共享密钥已配置时，握手还须携带 HMAC 凭据：
+/// 凭据缺失或验签失败回 ErrorCode=2 拒绝包并同样关闭会话（fail-closed）。
 /// </summary>
 /// <remarks>
 /// The server funnel's protocol version handshake short circuit. It sits before business handler
@@ -59,6 +61,21 @@ public static class ProtocolVersionNegotiationServer
     /// rejection reaches the peer ahead of the connection teardown.
     /// </remarks>
     private const int RejectCloseGraceMs = 250;
+
+    /// <summary>
+    /// 节点间鉴权失败拒绝错误码（C272，线缆契约 <see cref="RespProtocolVersionNegotiation.ErrorCode"/>）。
+    /// </summary>
+    private const int AuthFailureErrorCode = 2;
+
+    /// <summary>
+    /// 握手接受错误码（0）。
+    /// </summary>
+    private const int AcceptedErrorCode = 0;
+
+    /// <summary>
+    /// major 不符拒绝错误码（1）。
+    /// </summary>
+    private const int MajorMismatchErrorCode = 1;
 
     /// <summary>
     /// 判断消息包是否为协议版本握手请求。
@@ -95,24 +112,39 @@ public static class ProtocolVersionNegotiationServer
 
         if (!reply.Accepted)
         {
-            // 拒绝路径：回包后关闭会话，避免跨 major 半开连接残留
-            // Localization: RemoteMessaging.Versioning.ServerRejectedIncompatibleClient - 拒绝协议 major 不符的连接：对端 {0}，本端 {1}。回包后关闭会话。
-            LogHelper.Warning(LocalizationService.GetString(
-                Localization.Keys.RemoteMessaging.Versioning.ServerRejectedIncompatibleClient,
-                new ProtocolVersion(request.Major, request.Minor),
-                RemoteMessagingProtocolVersion.Current));
+            // 拒绝路径：回包后关闭会话，避免跨 major 半开连接/未鉴权连接残留
+            if (reply.ErrorCode == AuthFailureErrorCode)
+            {
+                // C272 节点间鉴权：共享密钥已配置而对端凭据缺失或验签失败，按鉴权失败拒绝并关闭
+                // Localization: RemoteMessaging.Versioning.ServerRejectedUnauthenticatedNode - 拒绝节点间鉴权失败的连接：对端 {0}，凭据缺失或验签失败。回包后关闭会话。
+                LogHelper.Warning(LocalizationService.GetString(
+                    Localization.Keys.RemoteMessaging.Versioning.ServerRejectedUnauthenticatedNode,
+                    new ProtocolVersion(request.Major, request.Minor)));
+            }
+            else
+            {
+                // Localization: RemoteMessaging.Versioning.ServerRejectedIncompatibleClient - 拒绝协议 major 不符的连接：对端 {0}，本端 {1}。回包后关闭会话。
+                LogHelper.Warning(LocalizationService.GetString(
+                    Localization.Keys.RemoteMessaging.Versioning.ServerRejectedIncompatibleClient,
+                    new ProtocolVersion(request.Major, request.Minor),
+                    RemoteMessagingProtocolVersion.Current));
+            }
 
-            // 宽限期后再关闭：立即关闭会与在途发送竞争，可能丢弃刚写出的拒绝包
-            _ = CloseAfterGraceAsync(networkChannel);
+            // 宽限期后再关闭：立即关闭会与在途发送竞争，可能丢弃刚写出的拒绝包。
+            // 显式 await（C270）：拒绝路径是该漏斗的终结分支（回包→关连接），等待 250ms 不影响其它会话；
+            // 关闭期异常由此处可见（不再 fire-and-forget 吞掉）。
+            await CloseAfterGraceAsync(networkChannel);
         }
     }
 
     /// <summary>
-    /// 构建握手响应：携带本端版本与 major 比对结论（ErrorCode 0=接受 / 1=major 不符拒绝）。
+    /// 构建握手响应：携带本端版本、major 比对结论与节点间鉴权结论。
     /// </summary>
     /// <remarks>
-    /// Builds the handshake reply: it carries the local version and the major-comparison verdict
-    /// (ErrorCode 0 = accepted, 1 = rejected due to a major mismatch).
+    /// Builds the handshake reply: it carries the local version, the major-comparison verdict
+    /// and the inter-node authentication verdict.
+    /// ErrorCode：0 = 接受；1 = major 不符拒绝；2 = 节点间鉴权失败拒绝（C272：共享密钥已配置而
+    /// 对端凭据缺失或验签失败；major 不符时优先报 1，版本与鉴权双重不符以版本结论为准）。
     /// </remarks>
     /// <param name="request">握手请求 / The handshake request</param>
     /// <param name="localVersion">本端协议版本（默认 <see cref="RemoteMessagingProtocolVersion.Current"/>）/ The local protocol version (defaults to <see cref="RemoteMessagingProtocolVersion.Current"/>)</param>
@@ -123,21 +155,32 @@ public static class ProtocolVersionNegotiationServer
 
         // 连接级拒绝语义与协商器一致：major 相等即接受（minor 差异属向后兼容演进）
         var accepted = peer.Major == localVersion.Major;
+        var errorCode = accepted ? AcceptedErrorCode : MajorMismatchErrorCode;
+
+        // C272：共享密钥已配置时，major 通过后还须验签（凭据缺失/验签失败 → ErrorCode=2 拒绝）；
+        // 密钥为空（未启用）时 Verify 恒真，行为与升级前逐语义等价
+        if (accepted && !InterNodeAuthentication.Verify(request.Nonce, request.Major, request.Minor, request.AuthCredential))
+        {
+            accepted = false;
+            errorCode = AuthFailureErrorCode;
+        }
+
         return new RespProtocolVersionNegotiation
         {
             Major = localVersion.Major,
             Minor = localVersion.Minor,
             Accepted = accepted,
-            ErrorCode = accepted ? 0 : 1,
+            ErrorCode = errorCode,
         };
     }
 
     /// <summary>
-    /// 宽限期后关闭通道（对端可能已先行关闭，关闭失败静默）。
+    /// 宽限期后关闭通道（对端可能已先行关闭；关闭失败不吞——留 Warning 供排障，语义不受影响）。
     /// </summary>
     /// <remarks>
-    /// Closes the channel after the grace period (the peer may have closed first; a failed
-    /// close is swallowed silently).
+    /// Closes the channel after the grace period. The peer may have closed first; a failed
+    /// close is logged as a warning instead of being swallowed — the rejection has already
+    /// been delivered, so the semantics are unaffected.
     /// </remarks>
     /// <param name="networkChannel">会话网络通道 / The session network channel</param>
     private static async Task CloseAfterGraceAsync(INetworkChannel networkChannel)
@@ -147,9 +190,11 @@ public static class ProtocolVersionNegotiationServer
             await Task.Delay(RejectCloseGraceMs);
             networkChannel.Close();
         }
-        catch (Exception)
+        catch (Exception exception)
         {
-            // 通道可能已在对端关闭竞态中释放；拒绝结论已回包，关闭失败不影响语义
+            // 通道可能已在对端关闭竞态中释放；拒绝结论已回包，关闭失败不影响语义——留告警可见（C270）
+            // Localization: RemoteMessaging.Versioning.ServerRejectCloseFailed - 拒绝握手后延迟关闭通道失败（对端可能已先行关闭；拒绝包已送达，语义不受影响）
+            LogHelper.Warning(exception, LocalizationService.GetString(Localization.Keys.RemoteMessaging.Versioning.ServerRejectCloseFailed));
         }
     }
 }

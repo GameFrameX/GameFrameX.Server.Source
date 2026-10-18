@@ -504,6 +504,130 @@ public sealed class PostgreSqlDbServiceQueryTests
     }
 
     /// <summary>
+    /// 测试批内重复 Id 的 SaveBulk 批次仍整批 ack 且库内为最后写入值（C266：ack 按去重后 id 数判定）。
+    /// </summary>
+    /// <remarks>
+    /// A batch holding duplicate ids must still be acknowledged as a whole (aligned with Mongo's
+    /// <c>IsAcknowledged</c>) and the last write must win; the former <c>affected >= batchCount</c> check
+    /// flagged such batches as unacknowledged although the rows were written.
+    /// </remarks>
+    [Fact]
+    public async Task SaveBulkAsync_WithDuplicateIdsInBatch_ShouldAcknowledgeBatchAndPersistLastWrite()
+    {
+        await ExecuteWithServiceAsync(async service =>
+        {
+            var first = CreateState("dup-first", group: 22, score: 1);
+            var second = CreateState("dup-second", group: 22, score: 2);
+            var duplicateOfFirst = new PostgreSqlQueryTestState { Id = first.Id, Name = "dup-last", Group = 22, Score = 999, };
+
+            // 批内重复 Id：3 元素 / 2 去重 id——ack 必须覆盖整批元素（对齐 Mongo IsAcknowledged 语义）
+            // Duplicate ids in one batch: 3 elements / 2 distinct ids — acknowledgement must cover the whole batch.
+            var acknowledged = await service.SaveBulkAsync(new[] { first, second, duplicateOfFirst, }, batchSize: 10);
+            Assert.Equal(3, acknowledged.Count);
+            Assert.Equal(2, await service.CountAsync<PostgreSqlQueryTestState>(x => x.Group == 22));
+
+            var stored = await service.FindAsync<PostgreSqlQueryTestState>(first.Id, isCreateIfNotExists: false);
+            Assert.Equal(999, stored.Score);
+            Assert.Equal("dup-last", stored.Name);
+
+            // 第二轮（全部已存在，纯更新路径 + 跨批重复）：同样整批 ack，值仍为最后写入
+            // Second round (all rows exist — pure update path plus a cross-batch duplicate): whole batch acked, last write wins.
+            duplicateOfFirst.Score = 1000;
+            var acknowledgedAgain = await service.SaveBulkAsync(new[] { first, second, duplicateOfFirst, }, batchSize: 2);
+            Assert.Equal(3, acknowledgedAgain.Count);
+            var updated = await service.FindAsync<PostgreSqlQueryTestState>(first.Id, isCreateIfNotExists: false);
+            Assert.Equal(1000, updated.Score);
+        });
+    }
+
+    /// <summary>
+    /// 测试批量 upsert 对软删行的整档替换复活（C266：id 投影探测 + 桩更新路径，不回读原 jsonb）。
+    /// </summary>
+    /// <remarks>
+    /// The existence probe bypasses the soft-delete filter, so a soft-deleted row is updated via the stub
+    /// path and the whole-document replacement revives it (aligned with Mongo ReplaceOne upsert semantics).
+    /// </remarks>
+    [Fact]
+    public async Task SaveBulkAsync_AfterSoftDelete_ShouldReviveDocumentViaWholeDocReplacement()
+    {
+        await ExecuteWithServiceAsync(async service =>
+        {
+            var victim = CreateState("revive", group: 23, score: 5);
+            await service.AddAsync(victim);
+            await service.DeleteAsync(victim);
+            Assert.Equal(0, await service.CountAsync<PostgreSqlQueryTestState>(x => x.Group == 23));
+
+            var replacement = new PostgreSqlQueryTestState { Id = victim.Id, Name = "revived", Group = 23, Score = 55, };
+            var acknowledged = await service.SaveBulkAsync(new[] { replacement, }, batchSize: 10);
+            Assert.Single(acknowledged);
+
+            var stored = await service.FindAsync<PostgreSqlQueryTestState>(victim.Id, isCreateIfNotExists: false);
+            Assert.NotNull(stored);
+            Assert.Equal(55, stored.Score);
+            Assert.Equal(1, await service.CountAsync<PostgreSqlQueryTestState>(x => x.Group == 23));
+        });
+    }
+
+    /// <summary>
+    /// 测试并发冷启动单飞合并建表与等待方取消后缓存仍健康（C266 token 隔离）。
+    /// </summary>
+    /// <remarks>
+    /// Concurrent cold-cache first calls must merge onto one DDL single-flight and all succeed; a caller
+    /// cancelling mid-flight only detaches itself (the shared task runs on <c>CancellationToken.None</c>),
+    /// leaving the cached entry usable for the next write.
+    /// </remarks>
+    [Fact]
+    public async Task SchemaSingleFlight_ConcurrentColdStartAndWaiterCancellation_ShouldStayHealthy()
+    {
+        await ExecuteWithServiceAsync(async service =>
+        {
+            // 冷缓存并发首调：三条并发写入共享同一次建表单飞，全部成功
+            // Cold-cache concurrent first calls: three parallel writes share one single-flight DDL and all succeed.
+            var states = new[] { CreateState("sf-a", group: 24, score: 1), CreateState("sf-b", group: 24, score: 2), CreateState("sf-c", group: 24, score: 3), };
+            await Task.WhenAll(states.Select(state => service.AddAsync(state)));
+            Assert.Equal(3, await service.CountAsync<PostgreSqlQueryTestState>(x => x.Group == 24));
+
+            // 飞行中取消（独立冷类型：调用返回时同步段已推进至 DDL I/O 挂起、WaitAsync 已注册）：
+            // 仅该等待方解除并抛 OCE，共享单飞任务不受牵连
+            // Mid-flight cancellation on a separate cold type (by the time the call returns, the synchronous
+            // part has advanced to the suspended DDL I/O and WaitAsync is registered): only that waiter
+            // detaches with OCE — the shared single-flight task is unaffected.
+            var probe = new SingleFlightProbeState { Id = Interlocked.Increment(ref _idSeed), Name = "cancel", };
+            using var canceled = new CancellationTokenSource();
+            var inFlight = service.AddAsync(probe, canceled.Token);
+            await canceled.CancelAsync();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => inFlight);
+
+            // 后续写入即刻成功：单飞条目未被等待方取消逐出/污染
+            // The very next write succeeds: the cached entry was neither evicted nor poisoned by the waiter-side cancellation.
+            var afterCancel = new SingleFlightProbeState { Id = Interlocked.Increment(ref _idSeed), Name = "after", };
+            await service.AddAsync(afterCancel);
+            Assert.NotNull(await service.FindAsync<SingleFlightProbeState>(afterCancel.Id, isCreateIfNotExists: false));
+            // 被取消的等待方在建表等待阶段即中止，其数据不落库；表中仅存后续成功写入的一行
+            // The cancelled waiter aborted while awaiting the DDL, so its row is never written; only the subsequent write persisted.
+            Assert.Equal(1, await service.CountAsync<SingleFlightProbeState>(x => true, includeDeleted: true));
+        });
+    }
+
+    /// <summary>
+    /// 测试按 ID 列表软删除对重复 Id 输入按行计数一次（C266 批量软删核心）。
+    /// </summary>
+    [Fact]
+    public async Task DeleteListIdAsync_WithDuplicateIds_ShouldCountEachRowOnce()
+    {
+        await ExecuteWithServiceAsync(async service =>
+        {
+            var a = CreateState("dupid-a", group: 25, score: 1);
+            var b = CreateState("dupid-b", group: 25, score: 2);
+            await service.AddListAsync(new[] { a, b, });
+
+            var deleted = await service.DeleteListIdAsync<PostgreSqlQueryTestState>(new[] { a.Id, a.Id, b.Id, });
+            Assert.Equal(2, deleted);
+            Assert.Equal(0, await service.CountAsync<PostgreSqlQueryTestState>(x => x.Group == 25));
+        });
+    }
+
+    /// <summary>
     /// 测试事务壳：action 成功提交、失败不产生 DatabaseUnavailableException 且 action 已执行。
     /// </summary>
     [Fact]
@@ -727,5 +851,20 @@ public sealed class PostgreSqlDbServiceQueryTests
             var data = $"{Id}|{Name}|{Group}|{Score}|{OptionalNote}|{IsDeleted}|{DeleteTime}|{UpdateCount}|{UpdateTime}";
             return Encoding.UTF8.GetBytes(data);
         }
+    }
+
+    /// <summary>
+    /// 单飞取消测试专用冷类型（与主测试类型隔离建表单飞缓存）。
+    /// </summary>
+    /// <remarks>
+    /// A dedicated cold type isolating the schema single-flight cache entry from the main test state
+    /// so a mid-flight cancellation deterministically lands on an in-flight DDL task.
+    /// </remarks>
+    private sealed class SingleFlightProbeState : BaseCacheState
+    {
+        /// <summary>
+        /// 名称字段。
+        /// </summary>
+        public string Name { get; set; }
     }
 }

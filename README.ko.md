@@ -194,11 +194,15 @@ GameFrameX는 명령줄 인수(`--Key=Value`)로 설정합니다. 모든 설정 
 | `IsEnableUdp` | UDP 서비스 활성화 | `false` | `true` |
 | `IsEnableKcp` | KCP 서비스 활성화(설정 파일에서만) | `false` | `true` |
 | `KcpPort` | KCP 포트(`0`이면 TCP 포트 공유) | `0` | `29120` |
+| `InterNodeAuthSecret` | 노드 간 RPC 인증 공유 시크릿(프로토콜 핸드셰이크 HMAC. 비어 있으면 비활성). 클러스터 내 모든 노드가 동일값을 설정해야 함 | 없음 | `s3cr3t` |
 | `IsEnableWebSocket` | WebSocket 활성화 | `false` | `true` |
 | `WsPort` | WebSocket 포트 | `8889` | `29300` |
 | `IsEnableHttp` | HTTP 서비스 활성화 | `true` | `true` |
 | `HttpPort` | HTTP 서비스 포트 | `8080` | `28080` |
 | `HttpsPort` | HTTPS 서비스 포트 | 없음 | `443` |
+| `HttpsCertPath` | HTTPS 인증서 파일 경로(PFX), `HttpsPort > 0`이면 필수 | 없음 | `/path/cert.pfx` |
+| `HttpsCertPassword` | HTTPS 인증서 비밀번호(선택) | 없음 | |
+| `HttpSignSecret` | HTTP 서명 시크릿(HMAC-SHA256), 서명 검증 활성화 시 필수. 비어 있으면 모두 거부(fail-closed) | 없음 | `a-strong-secret` |
 | `HttpUrl` | API 루트 경로 | `/game/api/` | `/game/api/` |
 | `HttpIsDevelopment` | HTTP 개발 모드(Swagger 활성화) | `false` | `true` |
 

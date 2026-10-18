@@ -194,11 +194,15 @@ GameFrameX 使用命令行参数 (`--Key=Value`) 进行配置，所有配置项�
 | `IsEnableUdp` | 是否启用 UDP 服务 | `false` | `true` |
 | `IsEnableKcp` | 是否启用 KCP 服务（仅配置文件） | `false` | `true` |
 | `KcpPort` | KCP 端口（`0` 时与 TCP 共用端口） | `0` | `29120` |
+| `InterNodeAuthSecret` | 节点间 RPC 鉴权共享密钥（协议握手帧 HMAC；空 = 不启用）。集群内所有节点必须配置一致 | 无 | `s3cr3t` |
 | `IsEnableWebSocket` | 是否启用 WebSocket | `false` | `true` |
 | `WsPort` | WebSocket 端口 | `8889` | `29300` |
 | `IsEnableHttp` | 是否启用 HTTP 服务 | `true` | `true` |
 | `HttpPort` | HTTP 服务端口 | `8080` | `28080` |
 | `HttpsPort` | HTTPS 服务端口 | 无 | `443` |
+| `HttpsCertPath` | HTTPS 证书文件路径（PFX），`HttpsPort > 0` 时必填 | 无 | `/path/cert.pfx` |
+| `HttpsCertPassword` | HTTPS 证书密码（可选） | 无 | |
+| `HttpSignSecret` | HTTP 签名密钥（HMAC-SHA256），开启签名校验后必填；为空时一律拒绝（fail-closed） | 无 | `a-strong-secret` |
 | `HttpUrl` | API 接口根路径 | `/game/api/` | `/game/api/` |
 | `HttpIsDevelopment` | HTTP 开发模式（启用 Swagger） | `false` | `true` |
 | `IsEnableOnlineAdmin` | 是否在进程内托管 Online Runtime 与管理 API | `false` | `true` |

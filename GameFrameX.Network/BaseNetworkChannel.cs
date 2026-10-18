@@ -248,11 +248,19 @@ public abstract class BaseNetworkChannel : INetworkChannel
     /// </summary>
     /// <remarks>
     /// Closes the network channel and releases associated resources.
+    /// 幂等：首次关闭取消并释放通道级关闭源；已关闭的通道重复调用不再触碰已释放资源。
     /// </remarks>
     public virtual void Close()
     {
         ClearData();
+        if (CancellationTokenSource.IsCancellationRequested)
+        {
+            // 已关闭：关闭源已取消并释放，重复关闭直接返回
+            return;
+        }
+
         CancellationTokenSource.Cancel();
+        CancellationTokenSource.Dispose();
     }
 
     /// <summary>

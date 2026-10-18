@@ -315,5 +315,14 @@ public static partial class Keys
         /// 参数: {0} - 异常详情
         /// </remarks>
         public const string ProtoBufMessageEncodingException = "Network.Http.ProtoBufMessageEncodingException";
+
+        /// <summary>
+        /// HTTP签名校验已开启，但 HttpSignSecret 未配置，请求一律拒绝
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.SignSecretMissing
+        /// 用途: 开启签名校验但签名密钥为空时记录错误（fail-closed，绝不放行）
+        /// </remarks>
+        public const string SignSecretMissing = "Network.Http.SignSecretMissing";
     }
 }

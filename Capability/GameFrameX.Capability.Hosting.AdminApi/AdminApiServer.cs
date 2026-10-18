@@ -28,10 +28,12 @@
 //  ==========================================================================================
 
 using System.Net;
+using System.Threading.RateLimiting;
 using GameFrameX.Foundation.Localization.Core;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
 
 namespace GameFrameX.Capability.Hosting.AdminApi;
@@ -47,6 +49,11 @@ namespace GameFrameX.Capability.Hosting.AdminApi;
 /// </summary>
 public sealed class AdminApiServer
 {
+    /// <summary>
+    /// 限流策略名（按客户端 IP 分区的固定窗口）。
+    /// </summary>
+    private const string RateLimitPolicyName = "admin-api-fixed-window";
+
     /// <summary>
     /// 调度器。
     /// </summary>
@@ -87,6 +94,25 @@ public sealed class AdminApiServer
         var builder = WebApplication.CreateBuilder();
         builder.Logging.ClearProviders();
         builder.WebHost.ConfigureKestrel(kestrelOptions => { kestrelOptions.Listen(IPAddress.Any, _options.AdminPort); });
+
+        // 按 IP 固定窗口限流（C272）：登录爆破 / admin 重放 / 消息洪泛的闸门；PermitLimit <= 0 显式关闭
+        var rateLimitEnabled = _options.RateLimitPermitLimit > 0;
+        if (rateLimitEnabled)
+        {
+            builder.Services.AddRateLimiter(rateLimiterOptions =>
+            {
+                rateLimiterOptions.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                rateLimiterOptions.AddPolicy(RateLimitPolicyName, context => RateLimitPartition.GetFixedWindowLimiter(
+                    context.Connection.RemoteIpAddress ?? IPAddress.Any,
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = _options.RateLimitPermitLimit,
+                        Window = TimeSpan.FromSeconds(_options.RateLimitWindowSeconds),
+                        QueueLimit = 0,
+                    }));
+            });
+        }
+
         var application = builder.Build();
         var prefix = (_options.AdminApiPrefix ?? string.Empty).Trim('/');
         if (prefix.Length == 0)
@@ -95,7 +121,12 @@ public sealed class AdminApiServer
             throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Capability.Hosting.AdminApi.PrefixRequired));
         }
 
-        application.MapPost(prefix + "/{action}", async (string action, HttpRequest httpRequest) =>
+        if (rateLimitEnabled)
+        {
+            application.UseRateLimiter();
+        }
+
+        var route = application.MapPost(prefix + "/{action}", async (string action, HttpRequest httpRequest) =>
         {
             string bodyJson;
             using (var reader = new StreamReader(httpRequest.Body))
@@ -106,6 +137,11 @@ public sealed class AdminApiServer
             var responseJson = await _dispatcher.DispatchAsync(action, bodyJson).ConfigureAwait(false);
             return Results.Text(responseJson, "application/json");
         });
+
+        if (rateLimitEnabled)
+        {
+            route.RequireRateLimiting(RateLimitPolicyName);
+        }
 
         _application = application;
         await application.StartAsync().ConfigureAwait(false);

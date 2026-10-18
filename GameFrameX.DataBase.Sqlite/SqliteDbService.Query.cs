@@ -40,13 +40,25 @@ namespace GameFrameX.DataBase.Sqlite;
 /// SQLite 读路径（id 等值提取下推 + 剩余 filter 客户端求值 + 软删可见性对齐）。
 /// </summary>
 /// <remarks>
-/// Read paths: the id-equality of a filter (when the whole body is <c>x.Id == c</c> / <c>c == x.Id</c>)
-/// is pushed down as <c>WHERE id = ?</c>; everything else evaluates client-side via
-/// <c>filter.Compile()</c> (full C# semantics, a superset of the Mongo/PG translatable set — C222).
-/// Soft-delete visibility matches Mongo's <c>IsDeleted == null || IsDeleted == false</c> wrapper.
+/// Read paths: an id equality of the filter — the whole body (<c>x.Id == c</c> / <c>c == x.Id</c>)
+/// or any top-level AndAlso conjunct of it (C265) — is pushed down as <c>WHERE id = ?</c>;
+/// everything else evaluates client-side via <c>filter.Compile()</c> (full C# semantics, a superset
+/// of the Mongo/PG translatable set — C222; the client-side predicate stays authoritative so the
+/// result set is unchanged). The id-IN lookup chunks at <see cref="MaxIdsPerInCommand"/> bound
+/// parameters per command (C265). Soft-delete visibility matches Mongo's
+/// <c>IsDeleted == null || IsDeleted == false</c> wrapper.
 /// </remarks>
 public sealed partial class SqliteDbService
 {
+    /// <summary>
+    /// id IN 下推的单命令宿参分块上限（旧/自定义原生构建 SQLITE_MAX_VARIABLE_NUMBER=999，现代构建 32766——取保守兼容值）。
+    /// </summary>
+    /// <remarks>
+    /// The per-command host-parameter chunk bound for id-IN pushdown (legacy/custom native builds cap
+    /// SQLITE_MAX_VARIABLE_NUMBER at 999, modern builds at 32766 — the conservative compatible value).
+    /// </remarks>
+    private const int MaxIdsPerInCommand = 999;
+
     /// <summary>
     /// 异步加载指定ID的缓存状态；未找到且允许创建时返回新实例（对齐 Mongo/PG 语义）。
     /// </summary>
@@ -172,10 +184,12 @@ public sealed partial class SqliteDbService
     }
 
     /// <summary>
-    /// 根据ID列表查询数据列表（id IN 下推 + 软删可见性，空列表直返空表）。
+    /// 根据ID列表查询数据列表（id IN 下推按宿参上限分块 + 软删可见性，空列表直返空表）。
     /// </summary>
     /// <remarks>
-    /// Finds the list of documents with the specified (distinct) IDs; an empty list returns an empty result.
+    /// Finds the list of documents with the specified (distinct) IDs; an empty list returns an empty
+    /// result. The id-IN pushdown runs in chunks of at most <see cref="MaxIdsPerInCommand"/> bound
+    /// parameters per command (C265), the union of the chunks being equivalent to a single IN.
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="ids">数据ID列表 / The document IDs</param>
@@ -186,10 +200,12 @@ public sealed partial class SqliteDbService
     }
 
     /// <summary>
-    /// 根据ID列表查询数据列表（id IN 下推 + 软删可见性，空列表直返空表）。
+    /// 根据ID列表查询数据列表（id IN 下推按宿参上限分块 + 软删可见性，空列表直返空表）。
     /// </summary>
     /// <remarks>
-    /// Finds the list of documents with the specified (distinct) IDs; an empty list returns an empty result.
+    /// Finds the list of documents with the specified (distinct) IDs; an empty list returns an empty
+    /// result. The id-IN pushdown runs in chunks of at most <see cref="MaxIdsPerInCommand"/> bound
+    /// parameters per command (C265), the union of the chunks being equivalent to a single IN.
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="ids">数据ID列表 / The document IDs</param>
@@ -210,7 +226,7 @@ public sealed partial class SqliteDbService
         await ExecuteReadWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
-            var rows = await ReadRowsRawAsync<TState>(BuildIdInCommand<TState>(idArray), cancellationToken).ConfigureAwait(false);
+            var rows = await ReadRowsByIdsAsync<TState>(idArray, cancellationToken).ConfigureAwait(false);
             foreach (var state in rows)
             {
                 if (visible(state))
@@ -661,12 +677,13 @@ public sealed partial class SqliteDbService
     }
 
     /// <summary>
-    /// 读取匹配行（id 等值可提取时下推 WHERE id = ?，否则整表读；随后客户端求值软删可见性 + filter）。
+    /// 读取匹配行（id 等值可从整体或顶层合取链提取时下推 WHERE id = ?，否则整表读；随后客户端求值软删可见性 + filter）。
     /// </summary>
     /// <remarks>
-    /// Reads the matching states: when the whole filter body is an id equality it is pushed down
-    /// as <c>WHERE id = ?</c>; otherwise the whole table is read. The client-side predicate then
-    /// applies soft-delete visibility (unless <paramref name="includeDeleted"/>) plus the full filter.
+    /// Reads the matching states: when an id equality is extractable from the whole filter body or
+    /// any of its top-level AndAlso conjuncts (C265) it is pushed down as <c>WHERE id = ?</c>;
+    /// otherwise the whole table is read. The client-side predicate then applies soft-delete
+    /// visibility (unless <paramref name="includeDeleted"/>) plus the full filter.
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="filter">契约过滤表达式 / The contract filter</param>
@@ -818,26 +835,53 @@ public sealed partial class SqliteDbService
     }
 
     /// <summary>
-    /// 构建 id IN 命令。
+    /// 构建 id IN 命令（区间签名：绑定 [offset, offset+count) 的 id，count 须 ≤ <see cref="MaxIdsPerInCommand"/>）。
     /// </summary>
     /// <remarks>
-    /// Builds the WHERE id IN (...) command.
+    /// Builds the WHERE id IN (...) command for the slice <c>[offset, offset + count)</c> of the given
+    /// (distinct) IDs; the slice length must stay within <see cref="MaxIdsPerInCommand"/> bound parameters.
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="ids">去重后的ID集合 / The distinct IDs</param>
+    /// <param name="offset">本块起始下标 / The chunk start index</param>
+    /// <param name="count">本块数量 / The chunk size</param>
     /// <returns>查询命令 / The query command</returns>
-    private SqliteCommand BuildIdInCommand<TState>(long[] ids) where TState : BaseCacheState, new()
+    private SqliteCommand BuildIdInCommand<TState>(long[] ids, int offset, int count) where TState : BaseCacheState, new()
     {
         var command = _connection.CreateCommand();
-        var parameterNames = new string[ids.Length];
-        for (var index = 0; index < ids.Length; index++)
+        var parameterNames = new string[count];
+        for (var index = 0; index < count; index++)
         {
             parameterNames[index] = "$id" + index;
-            command.Parameters.AddWithValue(parameterNames[index], ids[index]);
+            command.Parameters.AddWithValue(parameterNames[index], ids[offset + index]);
         }
 
         command.CommandText = BuildIdInCommandText<TState>(parameterNames);
         return command;
+    }
+
+    /// <summary>
+    /// 按 id 集合分块读取行（每块 ≤ <see cref="MaxIdsPerInCommand"/> 宿参，跨块并集等价单 IN；调用方须持有 <see cref="_gate"/>）。
+    /// </summary>
+    /// <remarks>
+    /// Reads the rows of the given ids in chunks of at most <see cref="MaxIdsPerInCommand"/> bound
+    /// parameters per command, returning the union — equivalent to a single IN over all ids (C265).
+    /// The caller must hold <see cref="_gate"/>.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="ids">去重后的ID集合 / The distinct IDs</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>命中的行 / The matched rows</returns>
+    private async Task<List<TState>> ReadRowsByIdsAsync<TState>(long[] ids, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        var rows = new List<TState>();
+        for (var offset = 0; offset < ids.Length; offset += MaxIdsPerInCommand)
+        {
+            var chunkCount = Math.Min(MaxIdsPerInCommand, ids.Length - offset);
+            rows.AddRange(await ReadRowsRawAsync<TState>(BuildIdInCommand<TState>(ids, offset, chunkCount), cancellationToken).ConfigureAwait(false));
+        }
+
+        return rows;
     }
 
     /// <summary>
@@ -858,17 +902,18 @@ public sealed partial class SqliteDbService
     }
 
     /// <summary>
-    /// 构建客户端谓词（软删可见性 + filter.Compile()；id 等值可整提取时顺带返回下推值）。
+    /// 构建客户端谓词（软删可见性 + filter.Compile()；id 等值可从合取链提取时顺带返回下推值）。
     /// </summary>
     /// <remarks>
     /// Builds the client-side predicate: soft-delete visibility (<c>IsDeleted == null || IsDeleted == false</c>,
-    /// matching Mongo's wrapper) AND the compiled contract filter. When the whole filter body is an id
-    /// equality, its value is also returned for SQL pushdown (the predicate still re-evaluates it — harmless).
+    /// matching Mongo's wrapper) AND the compiled contract filter. When an id equality can be extracted
+    /// from the whole filter body or any of its top-level AndAlso conjuncts, its value is also returned
+    /// for SQL pushdown (the predicate still re-evaluates the full filter — authoritative, C265).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="filter">契约过滤表达式 / The contract filter</param>
     /// <param name="includeDeleted">是否包含软删数据（true 时不加可见性谓词）/ Whether to include soft-deleted documents</param>
-    /// <param name="pushedDownId">filter 整体为 id 等值时的下推值 / The pushdown value when the whole filter is an id equality</param>
+    /// <param name="pushedDownId">id 等值可提取时的下推值 / The pushdown value when an id equality is extractable</param>
     /// <returns>客户端谓词 / The client-side predicate</returns>
     private static Func<TState, bool> BuildPredicate<TState>(Expression<Func<TState, bool>> filter, bool includeDeleted, out long? pushedDownId) where TState : BaseCacheState, new()
     {
@@ -886,26 +931,51 @@ public sealed partial class SqliteDbService
     }
 
     /// <summary>
-    /// 提取 filter 整体的 id 等值（x.Id == c / c == x.Id；闭包成员/常量/Convert 均可求值；提不出返回 false）。
+    /// 提取 filter 顶层合取链中的 id 等值（整体或任一 AndAlso 合取项；x.Id == c / c == x.Id，闭包成员/常量/Convert 均可求值；提不出返回 false）。
     /// </summary>
     /// <remarks>
-    /// Attempts to extract an id equality when it is the WHOLE filter body (either operand order;
-    /// constants, Convert nodes and closure-captured members are evaluated). Anything else returns
-    /// false — the caller then falls back to a full table read.
+    /// Attempts to extract an id equality from the WHOLE filter body or any top-level AndAlso conjunct
+    /// of it (nested parentheses included; either operand order; constants, Convert nodes and
+    /// closure-captured members are evaluated). Pushing the extracted equality down only prunes rows
+    /// that cannot satisfy that conjunct — the client-side predicate re-evaluates the full filter, so
+    /// the result set is unchanged. Anything else returns false — the caller then falls back to a
+    /// full table read.
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="filter">契约过滤表达式 / The contract filter</param>
     /// <param name="id">提取出的ID / The extracted id</param>
-    /// <returns>是否整体为 id 等值 / Whether the whole body is an id equality</returns>
+    /// <returns>是否提取到 id 等值 / Whether an id equality was extracted</returns>
     private static bool TryExtractIdEquality<TState>(Expression<Func<TState, bool>> filter, out long id) where TState : BaseCacheState, new()
     {
         id = 0;
-        if (filter?.Body is not BinaryExpression { NodeType: ExpressionType.Equal } binary)
+        return filter != null && TryExtractIdEqualityFromConjunct(filter.Body, filter.Parameters[0], out id);
+    }
+
+    /// <summary>
+    /// 在顶层合取项（含嵌套 AndAlso）中递归提取 id 等值（首个命中即返回）。
+    /// </summary>
+    /// <remarks>
+    /// Recursively extracts an id equality from a top-level conjunct: the body itself, or either
+    /// operand of an AndAlso chain (nested parentheses included); the first hit wins.
+    /// </remarks>
+    /// <param name="body">当前合取项表达式 / The current conjunct expression</param>
+    /// <param name="parameter">lambda 参数 / The lambda parameter</param>
+    /// <param name="id">提取出的ID / The extracted id</param>
+    /// <returns>是否提取到 id 等值 / Whether an id equality was extracted</returns>
+    private static bool TryExtractIdEqualityFromConjunct(Expression body, ParameterExpression parameter, out long id)
+    {
+        if (body is BinaryExpression { NodeType: ExpressionType.AndAlso } andAlso)
+        {
+            return TryExtractIdEqualityFromConjunct(andAlso.Left, parameter, out id)
+                || TryExtractIdEqualityFromConjunct(andAlso.Right, parameter, out id);
+        }
+
+        id = 0;
+        if (body is not BinaryExpression { NodeType: ExpressionType.Equal } binary)
         {
             return false;
         }
 
-        var parameter = filter.Parameters[0];
         var leftIsId = IsParameterIdMember(binary.Left, parameter);
         var rightIsId = IsParameterIdMember(binary.Right, parameter);
         if (leftIsId == rightIsId)
@@ -913,8 +983,7 @@ public sealed partial class SqliteDbService
             return false;
         }
 
-        var valueExpression = leftIsId ? binary.Right : binary.Left;
-        return TryEvaluateLongConstant(valueExpression, out id);
+        return TryEvaluateLongConstant(leftIsId ? binary.Right : binary.Left, out id);
     }
 
     /// <summary>

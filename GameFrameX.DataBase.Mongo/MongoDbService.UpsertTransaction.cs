@@ -108,13 +108,17 @@ public sealed partial class MongoDbService
         state.UpdateTime = currentTime;
         state.UpdateCount = (state.UpdateCount ?? 0) + 1;
 
+        // 写库前捕获字节快照（bump 后），ack 后按该快照精确提交基线（C263），
+        // 避免参数less 提交读到并发检查推进后的未落库 ToSaveHash。
+        var persistedData = state.ToBytes();
+
         // 使用 ReplaceOne with Upsert - 单次数据库操作；类型化集合入口需先完成 ClassMap 懒注册
         // (typed collection entries need lazy ClassMap registration first).
         MongoSerializationRegistry.EnsureClassMapRegistered<TState>();
         var filter = Builders<TState>.Filter.Eq(m => m.Id, state.Id);
         await ExecuteWriteWithRetryAsync(token => ReplaceOneWithAmbientSessionAsync(CurrentDatabase.GetCollection<TState>(typeof(TState).Name), filter, state, ReplaceOptions, token), cancellationToken, nameof(AddOrUpdateAsync), true).ConfigureAwait(false);
 
-        state.SaveToDbPostHandler();
+        state.SaveToDbPostHandler(persistedData);
         return state;
     }
 
@@ -158,6 +162,8 @@ public sealed partial class MongoDbService
         MongoSerializationRegistry.EnsureClassMapRegistered<TState>();
         var collection = CurrentDatabase.GetCollection<TState>(typeof(TState).Name);
         var writeModels = new List<WriteModel<TState>>(stateArray.Length);
+        // 写库前逐个捕获字节快照（bump 后），ack 后按快照精确提交基线（C263）
+        var persistedSnapshots = new List<(TState State, byte[] Data)>(stateArray.Length);
         foreach (var state in stateArray)
         {
             if (state.CreatedTime == 0)
@@ -169,14 +175,15 @@ public sealed partial class MongoDbService
             state.UpdateCount = (state.UpdateCount ?? 0) + 1;
             var filter = Builders<TState>.Filter.Eq(m => m.Id, state.Id);
             writeModels.Add(new ReplaceOneModel<TState>(filter, state) { IsUpsert = true, });
+            persistedSnapshots.Add((state, state.ToBytes()));
         }
 
         var result = await ExecuteWriteWithRetryAsync(token => BulkWriteWithAmbientSessionAsync(collection, writeModels, BulkWriteOptions, token), cancellationToken, nameof(AddOrUpdateListAsync), true).ConfigureAwait(false);
         if (result.IsAcknowledged)
         {
-            foreach (var state in stateArray)
+            foreach (var (state, persistedData) in persistedSnapshots)
             {
-                state.SaveToDbPostHandler();
+                state.SaveToDbPostHandler(persistedData);
             }
         }
 

@@ -115,6 +115,8 @@ public sealed partial class SqliteDbService
 
         state.RowVersion = expectedRowVersion;
         VersionedEntityHelper.IncrementRowVersion(state);
+        // 写库前捕获字节快照（行版本递增后），成功后按该快照精确提交基线（C263）
+        var persistedData = state.ToBytes();
         var doc = SerializeDocument(state);
         var updated = await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
@@ -128,7 +130,7 @@ public sealed partial class SqliteDbService
         }), cancellationToken, nameof(UpdateIfRowVersionAsync), false).ConfigureAwait(false);
         if (updated)
         {
-            state.SaveToDbPostHandler();
+            state.SaveToDbPostHandler(persistedData);
         }
 
         return updated;

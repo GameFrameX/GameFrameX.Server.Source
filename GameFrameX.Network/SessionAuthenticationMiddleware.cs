@@ -50,7 +50,7 @@ namespace GameFrameX.Network;
 /// <list type="bullet">
 /// <item>会话建立（<see cref="RegisterSession"/>）登记未鉴权状态与鉴权超时 deadline；deadline 自建立起算、不因收发消息重置。</item>
 /// <item>未鉴权期间仅放行心跳与白名单消息（<see cref="ShouldAllowPackageAsync"/>）；白名单外消息按协议违规立即关闭会话，不进入业务消息处理。</item>
-/// <item>收到 <c>AuthenticatedByMessageIds</c> 内的消息即标记鉴权完成，此后所有消息正常放行；重复白名单消息幂等放行。</item>
+/// <item>收到 <c>AuthenticatedByMessageIds</c> 内的消息即标记鉴权完成，此后所有消息正常放行；重复白名单消息幂等放行。C272 起若配置了 <see cref="SessionAuthenticationOptions.CredentialValidator"/>，标记鉴权前先过凭据校验，未通过按协议违规关闭（fail-closed）。</item>
 /// <item>超时窗口内未完成鉴权的会话由周期扫描（Timer）主动关闭（<see cref="CloseReason.TimeOut"/>）。</item>
 /// </list>
 /// 与 <c>UseClearIdleSession</c> 空闲清理协同：本超时（默认 30s）是短窗主动防线，空闲清理（默认 60s）是长窗兜底。
@@ -148,41 +148,67 @@ public sealed class SessionAuthenticationMiddleware : MiddlewareBase
     /// <param name="session">会话对象 / The session</param>
     /// <param name="message">收到的消息 / The received message</param>
     /// <returns><c>true</c> 表示放行进入业务 PackageHandler；<c>false</c> 表示拦截（会话已按协议违规关闭）</returns>
-    public ValueTask<bool> ShouldAllowPackageAsync(IAppSession session, IMessage message)
+    public async ValueTask<bool> ShouldAllowPackageAsync(IAppSession session, IMessage message)
     {
         if (!_states.TryGetValue(session.SessionId, out var state) || state.Authenticated)
         {
             // 无追踪状态（会话已注销的竞态窗口）或已鉴权：放行
-            return ValueTask.FromResult(true);
+            return true;
         }
 
         if (message is not INetworkMessagePackage package)
         {
             // 非 NetworkMessagePackage 的 IMessage 不携带消息头，无法按消息码鉴权，直接放行交由业务处理
-            return ValueTask.FromResult(true);
+            return true;
         }
 
         // 心跳是框架级保活语义，未鉴权期也必须放行（否则误伤合法客户端探活）
         if (MessageProtoHelper.IsHeartbeat(package.MessageType))
         {
-            return ValueTask.FromResult(true);
+            return true;
         }
 
         var messageId = package.Header.MessageId;
         if (_options.AuthenticatedByMessageIds.Contains(messageId))
         {
+            // C272：凭据校验缝——「鉴权完成」消息命中后、标记鉴权前先过可选校验器；
+            // null 保持既有消息号白名单语义（凭据校验由业务层承担），false = 协议违规关闭
+            var validator = _options.CredentialValidator;
+            if (validator != null)
+            {
+                bool credentialValid;
+                try
+                {
+                    credentialValid = await validator(package).ConfigureAwait(false);
+                }
+                catch (Exception exception)
+                {
+                    // 校验器抛异常按拒绝处理（fail-closed），不进入业务处理
+                    // Localization: Network.SessionAuthenticationCredentialError - 会话凭据校验器抛出异常: 会话Id: {0}, 消息Id: {1}, 异常: {2}
+                    LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Network.SessionAuthenticationCredentialError, session.SessionId, messageId, exception.Message));
+                    credentialValid = false;
+                }
+
+                if (!credentialValid)
+                {
+                    // Localization: Network.SessionAuthenticationCredentialRejected - 会话凭据校验未通过，关闭会话: 会话Id: {0}, 远程端点: {1}, 消息Id: {2}
+                    LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Network.SessionAuthenticationCredentialRejected, session.SessionId, session.RemoteEndPoint, messageId));
+                    return await CloseAndRejectAsync(session).ConfigureAwait(false);
+                }
+            }
+
             state.Authenticated = true;
-            return ValueTask.FromResult(true);
+            return true;
         }
 
         if (_options.AllowedMessageIds.Contains(messageId))
         {
-            return ValueTask.FromResult(true);
+            return true;
         }
 
         // Localization: Network.SessionAuthenticationRejected - 会话认证被拒绝并关闭: 会话Id: {0}, 远程端点: {1}, 消息Id: {2}
         LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Network.SessionAuthenticationRejected, session.SessionId, session.RemoteEndPoint, messageId));
-        return CloseAndRejectAsync(session);
+        return await CloseAndRejectAsync(session).ConfigureAwait(false);
     }
 
     /// <summary>

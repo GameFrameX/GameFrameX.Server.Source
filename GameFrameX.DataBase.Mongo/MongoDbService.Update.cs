@@ -80,7 +80,7 @@ public sealed partial class MongoDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
-        var isChanged = state.IsModify();
+        var (isChanged, changedData) = state.IsChanged();
         if (isChanged)
         {
             state.UpdateTime = GetCurrentTimestamp();
@@ -95,7 +95,8 @@ public sealed partial class MongoDbService
             var result = await ExecuteWriteWithRetryAsync(token => UpdateOneWithAmbientSessionAsync(collection, filter, updateDefinition, token), cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
             if (result.IsAcknowledged)
             {
-                state.SaveToDbPostHandler();
+                // 精确提交（C263）：以检查时快照推进基线，避免并发 IsChanged 把基线推进到未落库快照
+                state.SaveToDbPostHandler(changedData);
             }
         }
 
@@ -137,11 +138,13 @@ public sealed partial class MongoDbService
         }
 
         var writeModels = new List<WriteModel<TState>>();
+        // 检查时快照与状态配对，ack 后逐个精确提交（C263）：只提交实际送库快照的 hash
+        var changedSnapshots = new List<(TState State, byte[] Data)>();
         var currentTime = GetCurrentTimestamp();
 
         foreach (var state in cacheStates)
         {
-            var isChanged = state.IsModify();
+            var (isChanged, changedData) = state.IsChanged();
             if (isChanged)
             {
                 state.UpdateTime = currentTime;
@@ -150,6 +153,7 @@ public sealed partial class MongoDbService
                 var filter = Builders<TState>.Filter.Eq(m => m.Id, state.Id);
                 var updateDefinition = BuildUpdateDefinition(state);
                 writeModels.Add(new UpdateOneModel<TState>(filter, updateDefinition));
+                changedSnapshots.Add((state, changedData));
             }
         }
 
@@ -159,9 +163,9 @@ public sealed partial class MongoDbService
             var result = await ExecuteWriteWithRetryAsync(token => BulkWriteWithAmbientSessionAsync(collection, writeModels, BulkWriteOptions, token), cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
             if (result.IsAcknowledged)
             {
-                foreach (var state in cacheStates)
+                foreach (var (state, changedData) in changedSnapshots)
                 {
-                    state.SaveToDbPostHandler();
+                    state.SaveToDbPostHandler(changedData);
                 }
             }
 
