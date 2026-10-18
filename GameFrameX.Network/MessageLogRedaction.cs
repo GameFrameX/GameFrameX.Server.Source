@@ -167,39 +167,56 @@ public static class MessageLogRedaction
     }
 
     /// <summary>
-    /// 递归脱敏节点：对象按属性名判定并下钻，数组逐元素下钻，字符串值命中即遮蔽。
+    /// 递归脱敏分派：对象与数组各交给专用遍历，字符串值命中即遮蔽（C274 拆分，行为不变）。
     /// </summary>
     /// <param name="node">当前节点 / The current node</param>
     private static void RedactNode(JsonNode node)
     {
         if (node is JsonObject jsonObject)
         {
-            foreach (var property in jsonObject)
-            {
-                if (property.Value is JsonValue value && value.TryGetValue<string>(out _))
-                {
-                    if (IsSensitive(property.Key))
-                    {
-                        jsonObject[property.Key] = Mask;
-                    }
-                }
-                else if (property.Value != null)
-                {
-                    RedactNode(property.Value);
-                }
-            }
-
+            RedactObject(jsonObject);
             return;
         }
 
         if (node is JsonArray jsonArray)
         {
-            foreach (var element in jsonArray)
+            RedactArray(jsonArray);
+        }
+    }
+
+    /// <summary>
+    /// 对象脱敏：字符串值属性命中敏感词表即遮蔽，非字符串非空属性值下钻递归。
+    /// </summary>
+    /// <param name="jsonObject">当前对象节点 / The current object node</param>
+    private static void RedactObject(JsonObject jsonObject)
+    {
+        foreach (var property in jsonObject)
+        {
+            if (property.Value is JsonValue value && value.TryGetValue<string>(out _))
             {
-                if (element != null)
+                if (IsSensitive(property.Key))
                 {
-                    RedactNode(element);
+                    jsonObject[property.Key] = Mask;
                 }
+            }
+            else if (property.Value != null)
+            {
+                RedactNode(property.Value);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 数组脱敏：逐非空元素下钻递归。
+    /// </summary>
+    /// <param name="jsonArray">当前数组节点 / The current array node</param>
+    private static void RedactArray(JsonArray jsonArray)
+    {
+        foreach (var element in jsonArray)
+        {
+            if (element != null)
+            {
+                RedactNode(element);
             }
         }
     }
