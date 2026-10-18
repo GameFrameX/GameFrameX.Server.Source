@@ -540,6 +540,16 @@ public static partial class Keys
             public const string SaveBulkBatchFailed = "Database.Mongo.SaveBulkBatchFailed";
 
             /// <summary>
+            /// MongoDbService.{0} 无序批量写部分确认。状态名：{1}，期望：{2}，实际确认：{3}；未确认文档不提交哈希基线
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.Mongo.BulkWritePartialAcknowledged
+            /// 用途: 无序 BulkWrite 整批确认计数不齐时的 Warning/Error 日志
+            /// 参数: {0} - 操作名称, {1} - 状态名, {2} - 期望条数, {3} - 实际确认条数
+            /// </remarks>
+            public const string BulkWritePartialAcknowledged = "Database.Mongo.BulkWritePartialAcknowledged";
+
+            /// <summary>
             /// MongoDbService.ExecuteInTransactionAsync 瞬时错误，重试 {0}/{1}。error={2}
             /// </summary>
             /// <remarks>

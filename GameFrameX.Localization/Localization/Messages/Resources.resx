@@ -1929,6 +1929,9 @@
     <value>[MongoDiscoveryRuntime] no advertise port configured ({0}); the heartbeat write side is skipped and this process only observes the topology</value>
   </data>
 
+  <data name="Database.Mongo.BulkWritePartialAcknowledged" xml:space="preserve">
+    <value>MongoDbService.{0} unordered bulk write partially acknowledged. StateName: {1} , Expected: {2} , Acknowledged: {3} ; unacknowledged documents keep their dirty hash baselines</value>
+  </data>
   <data name="Database.Mongo.ExecuteInTransactionTransientError" xml:space="preserve">
     <value>MongoDbService.ExecuteInTransactionAsync transient error, retry {0}/{1}. error={2}</value>
   </data>

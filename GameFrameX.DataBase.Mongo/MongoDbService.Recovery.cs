@@ -127,6 +127,7 @@ public sealed partial class MongoDbService
             return false;
         }
 
+        MongoClient newClient = null;
         try
         {
             var settings = MongoClientSettings.FromConnectionString(options.ConnectionString);
@@ -135,7 +136,7 @@ public sealed partial class MongoDbService
             settings.SocketTimeout = _socketTimeout;
             settings.RetryReads = true;
             settings.RetryWrites = true;
-            var newClient = new MongoClient(settings);
+            newClient = new MongoClient(settings);
             var newDatabase = newClient.GetDatabase(options.Name);
             await newDatabase.RunCommandAsync((Command<BsonDocument>)"{ping:1}", cancellationToken: cancellationToken).ConfigureAwait(false);
 
@@ -148,10 +149,17 @@ public sealed partial class MongoDbService
                 oldClient?.Dispose();
             }
 
+            // 换源成功：newClient 已交付给 _mongoClient 字段，不再属于本方法，防止 catch 误 Dispose 活 client。
+            // Swap succeeded: newClient now belongs to the _mongoClient field; null it so the catch never disposes the live client.
+            newClient = null;
             return true;
         }
         catch (Exception exception)
         {
+            // 探活失败：释放本轮新建的 client（含连接池与集群定时器），否则恢复循环每轮泄漏一个。
+            // Probe failed: release this round's freshly built client (connection pool and cluster timers included),
+            // otherwise the recovery loop leaks one per probe.
+            newClient?.Dispose();
             // Localization: Database.Mongo.TryReconnectAndPingFailed - MongoDbService.TryReconnectAndPingAsync 失败。error={0}
             LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.Mongo.TryReconnectAndPingFailed, exception.Message));
             return false;

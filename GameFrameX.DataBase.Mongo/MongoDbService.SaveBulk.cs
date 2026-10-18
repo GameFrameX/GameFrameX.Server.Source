@@ -60,8 +60,9 @@ public sealed partial class MongoDbService
     /// from <c>StateComponent.ExecuteBatchWritesAsync</c> (C159) so the shutdown-save path keeps its
     /// exact write mechanism: <see cref="ReplaceOneModel{BsonDocument}"/> with an <c>_id</c> equality
     /// filter and <c>IsUpsert=true</c>, unordered <see cref="MongoDbService.BulkWriteOptions"/>, and
-    /// per-batch ack/exception isolation (a failed batch is logged and the remaining batches still
-    /// execute). Unlike <c>AddOrUpdateListAsync</c> this deliberately does NOT touch
+    /// per-batch ack/exception isolation (a batch counts as acknowledged only when the batch-level counts
+    /// confirm every document — partially acknowledged batches are logged and excluded, matching failed
+    /// batches; the remaining batches still execute). Unlike <c>AddOrUpdateListAsync</c> this deliberately does NOT touch
     /// <c>CreatedTime/UpdateTime/UpdateCount</c>: state timestamps are persisted exactly as handed in
     /// (the caller owns timestamp semantics).
     /// </remarks>
@@ -113,7 +114,7 @@ public sealed partial class MongoDbService
             try
             {
                 var result = await BulkWriteWithAmbientSessionAsync(collection, writeModels, BulkWriteOptions).ConfigureAwait(false);
-                if (result.IsAcknowledged)
+                if (IsFullyAcknowledged(result, batchCount))
                 {
                     for (var offset = 0; offset < batchCount; offset++)
                     {
@@ -124,6 +125,16 @@ public sealed partial class MongoDbService
                     {
                         state.SaveToDbPostHandler(persistedData);
                     }
+                }
+                else if (result.IsAcknowledged)
+                {
+                    // 无序 BulkWrite 部分确认（IsAcknowledged true 但计数不齐）：按既有「批次未确认」语义处理——
+                    // 记 Error、整批不计入 acknowledged 列表（该批基线由调用方按返回列表提交，未落库文档保持脏）。
+                    // Partially acknowledged unordered batch (IsAcknowledged true but counts short): treated as the
+                    // existing "batch not acknowledged" outcome — logged as Error and excluded from the
+                    // acknowledged list (baselines follow the returned list, so unwritten documents stay dirty).
+                    // Localization: Database.Mongo.BulkWritePartialAcknowledged - MongoDbService.{0} 无序批量写部分确认。状态名：{1}，期望：{2}，实际确认：{3}；未确认文档不提交哈希基线
+                    LogHelper.Error(LocalizationService.GetString(Localization.Keys.Database.Mongo.BulkWritePartialAcknowledged, nameof(SaveBulkAsync), stateName, batchCount, result.MatchedCount + result.Upserts.Count));
                 }
                 else
                 {
