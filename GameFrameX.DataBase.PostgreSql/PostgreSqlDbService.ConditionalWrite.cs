@@ -118,6 +118,8 @@ public sealed partial class PostgreSqlDbService
         // Version preparation: align to the expected version first, then take the checked increment (MaxValue overflows before any write).
         state.RowVersion = expectedRowVersion;
         state.IncrementRowVersion();
+        // 写库前捕获字节快照（行版本递增后），成功后按该快照精确提交基线（C263）
+        var persistedData = state.ToBytes();
         var documentJson = JsonSerializer.Serialize(state, DocumentJsonOptions);
         return await ExecuteWriteWithRetryAsync(async token =>
         {
@@ -131,7 +133,7 @@ public sealed partial class PostgreSqlDbService
             var affectedRows = await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
             if (affectedRows == 1)
             {
-                state.SaveToDbPostHandler();
+                state.SaveToDbPostHandler(persistedData);
                 return true;
             }
 

@@ -140,6 +140,9 @@ public sealed partial class MongoDbService
         state.RowVersion = expectedRowVersion;
         state.IncrementRowVersion();
 
+        // 写库前捕获字节快照（行版本递增后），成功后按该快照精确提交基线（C263）
+        var persistedData = state.ToBytes();
+
         var collection = GetCollection<TState>();
         var filter = Builders<TState>.Filter.And(
             Builders<TState>.Filter.Eq(m => m.Id, id),
@@ -155,7 +158,7 @@ public sealed partial class MongoDbService
             return false;
         }
 
-        state.SaveToDbPostHandler();
+        state.SaveToDbPostHandler(persistedData);
         return true;
     }
 
