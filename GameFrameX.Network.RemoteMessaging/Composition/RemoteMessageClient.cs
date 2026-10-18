@@ -609,6 +609,15 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
             Major = local.Major,
             Minor = local.Minor,
         };
+
+        // C272 节点间鉴权：共享密钥已配置时附带每连接随机 nonce 与 HMAC 凭据；
+        // 未配置时保持无凭据字段（与旧版本节点线缆逐字节等价）
+        if (GameFrameX.Network.RemoteMessaging.Versioning.InterNodeAuthentication.IsEnabled)
+        {
+            request.Nonce = GameFrameX.Network.RemoteMessaging.Versioning.InterNodeAuthentication.CreateNonce();
+            request.AuthCredential = GameFrameX.Network.RemoteMessaging.Versioning.InterNodeAuthentication.ComputeCredential(request.Nonce, local.Major, local.Minor);
+        }
+
         var requestUniqueId = _requestResponseMatcher.RegisterPendingRequest(_handshakeTimeoutMs);
         PrepareRequestMessage(request, requestUniqueId);
         connection.TrackPending(requestUniqueId);
@@ -657,6 +666,17 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
         }
         catch (OperationCanceledException)
         {
+            if (GameFrameX.Network.RemoteMessaging.Versioning.InterNodeAuthentication.IsEnabled)
+            {
+                // C272：鉴权启用时超时不再回落旧版本——回落是可利用的降级面（丢弃握手响应即可绕过凭据协商），
+                // 按连接失败处理，由外层既有异常路径失效重试
+                // Localization: RemoteMessaging.Versioning.HandshakeAuthTimeoutFailClosed - 服务 '{0}' 的协议版本握手在 {1}ms 后超时；节点间鉴权已启用，不回落旧版本，按连接失败处理。
+                throw new IOException(LocalizationService.GetString(
+                    Localization.Keys.RemoteMessaging.Versioning.HandshakeAuthTimeoutFailClosed,
+                    serviceName,
+                    _handshakeTimeoutMs));
+            }
+
             // 混布窗口：旧节点不识别握手消息 ID（丢帧不回包），超时按旧版本放行并告警（每连接一次）
             // Localization: RemoteMessaging.Versioning.HandshakeLegacyFallback - 服务 '{0}' 的协议版本握手在 {1}ms 后超时；按旧版本节点（{2}）放行。该告警仅滚动升级窗口内属预期，全量升级完成后应消失。
             LogHelper.Warning(LocalizationService.GetString(

@@ -191,6 +191,7 @@ GameFrameX はコマンドライン引数（`--Key=Value`）で設定を行い�
 | `IsEnableUdp` | UDP サービスを有効化 | `false` | `true` |
 | `IsEnableKcp` | KCP サービスを有効化（設定ファイルのみ） | `false` | `true` |
 | `KcpPort` | KCP ポート（`0` で TCP ポートを共用） | `0` | `29120` |
+| `InterNodeAuthSecret` | ノード間 RPC 認証 共有シークレット（プロトコルハンドシェイク HMAC。空 = 無効）。クラスタ内の全ノードで同一値を設定 | なし | `s3cr3t` |
 | `IsEnableWebSocket` | WebSocket を有効化 | `false` | `true` |
 | `WsPort` | WebSocket ポート | `8889` | `29300` |
 | `IsEnableHttp` | HTTP サービスを有効化 | `true` | `true` |

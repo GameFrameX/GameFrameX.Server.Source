@@ -2164,6 +2164,22 @@
     <value>会话认证被拒绝并关闭: 会话Id: {0}, 远程端点: {1}, 消息Id: {2}</value>
   </data>
 
+  <data name="Network.SessionAuthenticationCredentialRejected" xml:space="preserve">
+    <value>会话凭据校验未通过，关闭会话: 会话Id: {0}, 远程端点: {1}, 消息Id: {2}</value>
+  </data>
+
+  <data name="Network.SessionAuthenticationCredentialError" xml:space="preserve">
+    <value>会话凭据校验器抛出异常: 会话Id: {0}, 消息Id: {1}, 异常: {2}</value>
+  </data>
+
+  <data name="RemoteMessaging.Versioning.ServerRejectedUnauthenticatedNode" xml:space="preserve">
+    <value>拒绝节点间鉴权失败的连接：对端 {0}，凭据缺失或验签失败。回包后关闭会话。</value>
+  </data>
+
+  <data name="RemoteMessaging.Versioning.HandshakeAuthTimeoutFailClosed" xml:space="preserve">
+    <value>服务 '{0}' 的协议版本握手在 {1}ms 后超时；节点间鉴权已启用，不回落旧版本，按连接失败处理。</value>
+  </data>
+
   <data name="Network.SessionAuthenticationTimeout" xml:space="preserve">
     <value>会话认证超时，正在关闭: 会话Id: {0}, 远程端点: {1}</value>
   </data>

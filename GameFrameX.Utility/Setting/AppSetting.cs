@@ -645,6 +645,24 @@ public class AppSetting
     public string HttpCorsAllowedOrigins { get; set; }
 
     /// <summary>
+    /// 节点间 RPC 鉴权共享密钥（C272）。
+    /// <para>非空时启用节点间鉴权：RemoteMessaging 协议版本握手帧携带 HMAC-SHA256(secret, nonce|major|minor) 凭据，服务端验签失败回拒绝包并关闭连接；握手超时不再回落旧版本（fail-closed）；服务器间 KCP 专用监听面同时挂凭据闸门。集群内所有节点必须配置同一密钥。</para>
+    /// <para>为空（默认）表示不启用，节点间链路行为与未引入鉴权前等价。</para>
+    /// </summary>
+    /// <remarks>
+    /// Shared secret for inter-node RPC authentication (C272).
+    /// When non-empty, inter-node authentication is enabled: the RemoteMessaging protocol version
+    /// handshake frame carries an HMAC-SHA256(secret, nonce|major|minor) credential; the server
+    /// rejects and closes connections failing verification; handshake timeouts no longer fall back
+    /// to the legacy version (fail-closed); the dedicated inter-server KCP listener also mounts the
+    /// credential gate. All nodes in a cluster must share the same secret.
+    /// Empty (default) disables authentication; inter-node behavior stays identical to before.
+    /// </remarks>
+    [Option(nameof(InterNodeAuthSecret), DefaultValue = "", Description = "节点间RPC鉴权共享密钥(HMAC-SHA256)。非空时启用节点间握手凭据校验,集群内所有节点必须一致;默认空=不启用")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
+    public string InterNodeAuthSecret { get; set; } = "";
+
+    /// <summary>
     /// 是否启用 Online 平台业务运行时
     /// <para>开启后 Game 服进程在本进程内装配 Online Runtime（InMemory 存储 + 各域服务 + 事件桥 + 幂等 + 后台调度）</para>
     /// <para>与管理面开关 IsEnableOnlineAdmin 正交（C228 拆分：业务与管理面可独立启停）；默认值为 false</para>

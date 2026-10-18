@@ -1533,6 +1533,13 @@
     <value>Failed to close the channel after the grace period following a rejected handshake (the peer may have closed first; the rejection has been delivered, so the semantics are unaffected).</value>
   </data>
 
+  <data name="RemoteMessaging.Versioning.ServerRejectedUnauthenticatedNode" xml:space="preserve">
+    <value>Rejected a connection failing inter-node authentication: peer {0}, credential missing or verification failed. The session is closed after replying.</value>
+  </data>
+  <data name="RemoteMessaging.Versioning.HandshakeAuthTimeoutFailClosed" xml:space="preserve">
+    <value>Protocol version handshake timed out after {1}ms for service '{0}'; inter-node authentication is enabled, so the legacy fallback is suppressed and the connection is treated as failed.</value>
+  </data>
+
   <data name="RemoteMessaging.Unified.SenderNotInitialized" xml:space="preserve">
     <value>UnifiedMessageSenderHolder has not been initialized. Call Initialize() first during startup.</value>
   </data>
@@ -2164,6 +2171,14 @@
 
   <data name="Network.SessionAuthenticationRejected" xml:space="preserve">
     <value>Session authentication rejected and closing: SessionId: {0}, RemoteEndPoint: {1}, MessageId: {2}</value>
+  </data>
+
+  <data name="Network.SessionAuthenticationCredentialRejected" xml:space="preserve">
+    <value>Session credential validation failed, closing session: SessionId: {0}, RemoteEndPoint: {1}, MessageId: {2}</value>
+  </data>
+
+  <data name="Network.SessionAuthenticationCredentialError" xml:space="preserve">
+    <value>Session credential validator threw an exception: SessionId: {0}, MessageId: {1}, exception: {2}</value>
   </data>
 
   <data name="Network.SessionAuthenticationTimeout" xml:space="preserve">
