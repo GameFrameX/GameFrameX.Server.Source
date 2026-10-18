@@ -99,12 +99,16 @@ public sealed partial class MongoDbService
         {
             var batchCount = Math.Min(batchSize, stateList.Count - index);
             var writeModels = new List<ReplaceOneModel<BsonDocument>>(batchCount);
+            // 逐状态捕获送库字节快照，ack 批次内逐状态精确提交基线（C263）：
+            // 提交权从 Core 的 NotifyBatchSaved 收进 Provider，且只提交实际送库快照的 hash。
+            var batchSnapshots = new List<(TState State, byte[] Data)>(batchCount);
             for (var offset = 0; offset < batchCount; offset++)
             {
                 var state = stateList[index + offset];
                 var bsonDocument = state.ToBsonDocument();
                 var filter = Builders<BsonDocument>.Filter.Eq("_id", state.Id);
                 writeModels.Add(new ReplaceOneModel<BsonDocument>(filter, bsonDocument) { IsUpsert = true, });
+                batchSnapshots.Add((state, state.ToBytes()));
             }
 
             try
@@ -115,6 +119,11 @@ public sealed partial class MongoDbService
                     for (var offset = 0; offset < batchCount; offset++)
                     {
                         acknowledgedStates.Add(stateList[index + offset]);
+                    }
+
+                    foreach (var (state, persistedData) in batchSnapshots)
+                    {
+                        state.SaveToDbPostHandler(persistedData);
                     }
                 }
                 else if (result.IsAcknowledged)

@@ -282,6 +282,45 @@ public static class NetHelper
     }
 
     /// <summary>
+    /// 异步解析主机名或IP地址和端口号为EndPoint对象（DNS 解析可取消，不阻塞线程池线程）。
+    /// </summary>
+    /// <param name="host">主机名或IP地址字符串</param>
+    /// <param name="port">端口号</param>
+    /// <param name="cancellationToken">取消令牌（约束 DNS 解析等待上限）</param>
+    /// <returns>解析成功的EndPoint对象；如果解析失败，返回null</returns>
+    /// <exception cref="ArgumentException">当host为null或空字符串时抛出此异常</exception>
+    /// <exception cref="ArgumentOutOfRangeException">当port小于等于0时抛出此异常</exception>
+    public static async Task<EndPoint> ParseEndPointAsync(string host, int port, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(host);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(port);
+
+        if (IPAddress.TryParse(host, out var ipAddress))
+        {
+            return new IPEndPoint(ipAddress, port);
+        }
+
+        var addressList = await Dns.GetHostAddressesAsync(host, cancellationToken);
+        foreach (var address in addressList)
+        {
+            if (address.AddressFamily == AddressFamily.InterNetwork)
+            {
+                return new IPEndPoint(address, port);
+            }
+        }
+
+        foreach (var address in addressList)
+        {
+            if (address.AddressFamily == AddressFamily.InterNetworkV6)
+            {
+                return new IPEndPoint(address, port);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// 判断IP地址是否合法
     /// </summary>
     /// <param name="ipAddress">IP地址字符串</param>
@@ -480,6 +519,31 @@ public static class NetHelper
     }
 
     /// <summary>
+    /// 异步检测网络连通性（ICMP 等待由 <paramref name="timeout"/> 自身约束，不阻塞线程池线程）。
+    /// </summary>
+    /// <param name="host">目标主机地址</param>
+    /// <param name="timeout">超时时间（毫秒），默认5000毫秒</param>
+    /// <returns>如果网络连通，返回true；否则false</returns>
+    /// <exception cref="ArgumentException">当host为null或空字符串时抛出此异常</exception>
+    /// <exception cref="ArgumentOutOfRangeException">当timeout小于0时抛出此异常</exception>
+    public static async Task<bool> IsNetworkReachableAsync(string host, int timeout = 5000)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(host);
+        ArgumentOutOfRangeException.ThrowIfNegative(timeout);
+
+        try
+        {
+            using var ping = new Ping();
+            var reply = await ping.SendPingAsync(host, timeout);
+            return reply.Status == IPStatus.Success;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// 获取本机MAC地址列表
     /// </summary>
     /// <returns>MAC地址字符串列表</returns>
@@ -650,6 +714,26 @@ public static class NetHelper
     }
 
     /// <summary>
+    /// 异步获取指定域名的IPv4地址（DNS 解析可取消，不阻塞线程池线程）。
+    /// </summary>
+    /// <param name="domainName">域名</param>
+    /// <param name="cancellationToken">取消令牌（约束 DNS 解析等待上限）</param>
+    /// <returns>IPv4地址字符串，获取失败返回空字符串</returns>
+    public static async Task<string> GetHostIPv4Async(string domainName, CancellationToken cancellationToken = default)
+    {
+        var addressList = await Dns.GetHostAddressesAsync(domainName, cancellationToken);
+        foreach (var address in addressList)
+        {
+            if (address.AddressFamily == AddressFamily.InterNetwork)
+            {
+                return address.ToString();
+            }
+        }
+
+        return string.Empty;
+    }
+
+    /// <summary>
     /// 获取指定域名的IPv6地址
     /// </summary>
     /// <param name="domainName">域名</param>
@@ -658,6 +742,26 @@ public static class NetHelper
     {
         var iPHostEntry = Dns.GetHostEntry(domainName);
         foreach (var address in iPHostEntry.AddressList)
+        {
+            if (address.AddressFamily == AddressFamily.InterNetworkV6)
+            {
+                return address.ToString();
+            }
+        }
+
+        return string.Empty;
+    }
+
+    /// <summary>
+    /// 异步获取指定域名的IPv6地址（DNS 解析可取消，不阻塞线程池线程）。
+    /// </summary>
+    /// <param name="domainName">域名</param>
+    /// <param name="cancellationToken">取消令牌（约束 DNS 解析等待上限）</param>
+    /// <returns>IPv6地址字符串，获取失败返回空字符串</returns>
+    public static async Task<string> GetHostIPv6Async(string domainName, CancellationToken cancellationToken = default)
+    {
+        var addressList = await Dns.GetHostAddressesAsync(domainName, cancellationToken);
+        foreach (var address in addressList)
         {
             if (address.AddressFamily == AddressFamily.InterNetworkV6)
             {

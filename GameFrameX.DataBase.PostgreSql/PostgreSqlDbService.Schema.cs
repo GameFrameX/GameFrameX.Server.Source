@@ -181,23 +181,36 @@ public sealed partial class PostgreSqlDbService
     /// Ensures the jsonb document table and its expression indexes exist for the given state type
     /// (idempotent; executed once per type per process, mirroring the Mongo adapter's index-on-first-collection-access).
     /// Single-flight: concurrent cold-cache first calls publish one <see cref="Lazy{T}"/> task via
-    /// <c>GetOrAdd</c> and all await it; if that task faults or is canceled, the entry is evicted so a
-    /// later call retries instead of caching the failure forever.
+    /// <c>GetOrAdd</c> and all await it. The underlying task runs on <see cref="CancellationToken.None"/>
+    /// (C266): it must not be tied to any single caller — a first caller cancelling would otherwise
+    /// cancel the shared DDL for every waiter. Callers detach via <c>WaitAsync(cancellationToken)</c>;
+    /// a waiter-side cancellation does NOT evict the entry, while a genuine task failure is evicted
+    /// so a later call retries instead of caching the failure forever.
     /// </remarks>
     /// <typeparam name="TState">文档类型 / Document type</typeparam>
-    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <param name="cancellationToken">取消令牌（仅解除等待，不传入单飞任务）/ Cancellation token (detaches the waiter only; never flows into the single-flight task)</param>
     private async Task EnsureTableAsync<TState>(CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         var entityType = typeof(TState);
-        var entry = _schemaCache.GetOrAdd(entityType.Name, _ => new Lazy<Task>(() => EnsureTableCoreAsync<TState>(cancellationToken), LazyThreadSafetyMode.ExecutionAndPublication));
+        var entry = _schemaCache.GetOrAdd(entityType.Name, _ => new Lazy<Task>(() => EnsureTableCoreAsync<TState>(CancellationToken.None), LazyThreadSafetyMode.ExecutionAndPublication));
         try
         {
-            await entry.Value.ConfigureAwait(false);
+            await entry.Value.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // 等待方自身取消：单飞任务运行于 CancellationToken.None 不受牵连，缓存条目保留
+            // The waiter itself was cancelled: the single-flight task (running on CancellationToken.None) is unaffected; keep the cached entry.
+            throw;
         }
         catch
         {
-            // 单飞任务失败（faulted/canceled）：仅当缓存仍是本条目时逐出，允许后续调用重新发起
-            // The single-flight task failed (faulted/canceled): evict only if the cache still holds this exact entry, allowing later calls to retry.
+            // 单飞任务失败（faulted）：仅当缓存仍是本条目时逐出，允许后续调用重新发起。
+            // 注意：此 bare catch 是有意的——上方 OCE 过滤分支已吸收等待方取消，到达这里的必为底层任务
+            // 自身的真实故障；收紧为具型 catch 会破坏「故障逐出重试」契约。
+            // The single-flight task failed (faulted): evict only if the cache still holds this exact entry, allowing later calls to retry.
+            // Note: the bare catch is intentional — the OCE filter above absorbs waiter-side cancellation, so only genuine
+            // task faults reach here; tightening it into typed clauses would break the eviction-on-fault contract.
             _schemaCache.TryRemove(new KeyValuePair<string, Lazy<Task>>(entityType.Name, entry));
             throw;
         }
@@ -214,7 +227,7 @@ public sealed partial class PostgreSqlDbService
     /// bootstrap DDL (the only raw-statement category left in this adapter).
     /// </remarks>
     /// <typeparam name="TState">文档类型 / Document type</typeparam>
-    /// <param name="cancellationToken">首调传入的取消令牌 / The cancellation token supplied by the first caller</param>
+    /// <param name="cancellationToken">单飞任务执行所用令牌（C266 起恒为 CancellationToken.None，不隶属任何调用者）/ The token the single-flight task runs under (always CancellationToken.None since C266, owned by no caller)</param>
     private async Task EnsureTableCoreAsync<TState>(CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         using (var context = CreateContext<TState>())

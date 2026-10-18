@@ -72,7 +72,7 @@ public sealed partial class PostgreSqlDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
-        var isChanged = state.IsModify();
+        var (isChanged, changedData) = state.IsChanged();
         if (isChanged)
         {
             state.UpdateTime = GetCurrentTimestamp();
@@ -92,7 +92,8 @@ public sealed partial class PostgreSqlDbService
             }, cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
             if (updated)
             {
-                state.SaveToDbPostHandler();
+                // 精确提交（C263）：以检查时快照推进基线，避免并发 IsChanged 把基线推进到未落库快照
+                state.SaveToDbPostHandler(changedData);
             }
         }
 
@@ -105,7 +106,8 @@ public sealed partial class PostgreSqlDbService
     /// <remarks>
     /// Saves multiple documents (returns the actually-changed count; unchanged items are skipped, aligned with
     /// Mongo BulkWrite semantics). All writes go through one <c>SaveChanges</c> (atomic batch); when at least
-    /// one row was written, every item receives <c>SaveToDbPostHandler</c> (aligned with the previous flow).
+    /// one row was written, each changed state receives the exact-snapshot <c>SaveToDbPostHandler(byte[])</c>
+    /// commit (C263; unchanged items no longer touch the baseline).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="stateList">要保存的数据列表 / The states to save</param>
@@ -121,7 +123,8 @@ public sealed partial class PostgreSqlDbService
     /// <remarks>
     /// Saves multiple documents (returns the actually-changed count; unchanged items are skipped, aligned with
     /// Mongo BulkWrite semantics). All writes go through one <c>SaveChanges</c> (atomic batch); when at least
-    /// one row was written, every item receives <c>SaveToDbPostHandler</c> (aligned with the previous flow).
+    /// one row was written, each changed state receives the exact-snapshot <c>SaveToDbPostHandler(byte[])</c>
+    /// commit (C263; unchanged items no longer touch the baseline).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="stateList">要保存的数据列表 / The states to save</param>
@@ -137,15 +140,16 @@ public sealed partial class PostgreSqlDbService
             return 0;
         }
 
-        var changedStates = new List<TState>(cacheStates.Length);
+        var changedStates = new List<(TState State, byte[] Data)>(cacheStates.Length);
         var currentTime = GetCurrentTimestamp();
         foreach (var state in cacheStates)
         {
-            if (state.IsModify())
+            var (isChanged, changedData) = state.IsChanged();
+            if (isChanged)
             {
                 state.UpdateTime = currentTime;
                 state.UpdateCount = (state.UpdateCount ?? 0) + 1;
-                changedStates.Add(state);
+                changedStates.Add((state, changedData));
             }
         }
 
@@ -159,7 +163,7 @@ public sealed partial class PostgreSqlDbService
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
             using var context = CreateContext<TState>();
             var written = false;
-            foreach (var state in changedStates)
+            foreach (var (state, _) in changedStates)
             {
                 written |= await ReplaceDocumentAsync(context, state, token).ConfigureAwait(false);
             }
@@ -173,9 +177,10 @@ public sealed partial class PostgreSqlDbService
         }, cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
         if (anyRowWritten)
         {
-            foreach (var state in cacheStates)
+            foreach (var (state, changedData) in changedStates)
             {
-                state.SaveToDbPostHandler();
+                // 精确提交（C263）：只提交实际送库快照，未变更项不再触碰基线
+                state.SaveToDbPostHandler(changedData);
             }
         }
 

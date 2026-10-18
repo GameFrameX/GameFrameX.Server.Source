@@ -27,6 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using GameFrameX.Network.Abstractions;
 
 namespace GameFrameX.Network;
 
@@ -83,4 +84,17 @@ public sealed class SessionAuthenticationOptions
     /// 由业务 handler 完成绑定，如角色登录消息在业务层绑定 ActorId）。
     /// </remarks>
     public HashSet<int> AuthenticatedByMessageIds { get; } = new HashSet<int>();
+
+    /// <summary>
+    /// 获取或设置「鉴权完成」消息的凭据校验器（C272；null = 不校验，保持既有消息号白名单语义）。
+    /// </summary>
+    /// <remarks>
+    /// Gets or sets the credential validator for authentication-completion messages (C272;
+    /// null = no verification, keeping the existing message-id whitelist semantics).
+    /// <see cref="AuthenticatedByMessageIds"/> 消息命中时先过本校验器：通过才标记会话已鉴权；
+    /// 返回 <c>false</c>（凭据缺失/验签失败）视为协议违规——会话被关闭并拦截当前消息，不进入业务处理。
+    /// 校验器负责解包与验签（如校验登录消息内 token、握手帧 HMAC），实现应快速失败且不抛异常
+    /// （抛异常按拒绝处理，由中间件兜底捕获）。默认 null 表示凭据校验仍由业务层承担（向后兼容）。
+    /// </remarks>
+    public Func<INetworkMessagePackage, ValueTask<bool>> CredentialValidator { get; set; }
 }

@@ -236,7 +236,8 @@ public sealed class RemoteMessagingBuilder
     public IRemoteMessageClient Build()
     {
         var endpointResolver = new EnvironmentVariableEndpointResolver();
-        var connectionProvider = new TcpConnectionProvider();
+        // C270：TCP 连接池进程级单例（RPC 客户端与信封转发层共享同一出站连接面；多 Build 共享一池）
+        var connectionProvider = SharedTcpConnectionPool.Provider;
         var transportRegistry = new TransportProtocolAdapterRegistry();
         if (_transportAdapterFactory != null)
         {

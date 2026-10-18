@@ -555,6 +555,29 @@ public class AppSetting
     public ushort HttpsPort { get; set; }
 
     /// <summary>
+    /// HTTPS 证书文件路径（PFX 格式）。
+    /// <para>HttpsPort 大于 0 时必填；启动期校验，路径为空 / 文件缺失 / 加载失败均 fail fast。</para>
+    /// </summary>
+    /// <remarks>
+    /// HTTPS certificate file path (PFX format).
+    /// Required when HttpsPort is greater than 0; validated at startup — empty path, missing file
+    /// or load failure all fail fast.
+    /// </remarks>
+    [Option(nameof(HttpsCertPath), DefaultValue = "", Description = "HTTPS 证书文件路径(PFX格式),HttpsPort>0 时必填")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
+    public string HttpsCertPath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// HTTPS 证书文件密码（PFX 格式，可为空）。
+    /// </summary>
+    /// <remarks>
+    /// HTTPS certificate file password (PFX format, may be empty).
+    /// </remarks>
+    [Option(nameof(HttpsCertPassword), DefaultValue = "", Description = "HTTPS 证书文件密码,可为空")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
+    public string HttpsCertPassword { get; set; } = string.Empty;
+
+    /// <summary>
     /// HTTP 请求体最大字节数。
     /// </summary>
     /// <remarks>
@@ -595,6 +618,23 @@ public class AppSetting
     public bool HttpRequireSign { get; set; }
 
     /// <summary>
+    /// HTTP 签名密钥（HMAC-SHA256）。
+    /// <para>开启签名校验（HttpRequireSign 或 [RequireHttpSignature]）后必须配置非空白值；
+    /// 为空时签名校验一律拒绝（fail-closed），不会放行任何请求。</para>
+    /// <para>签名口径：sign = Base64(HMAC-SHA256(UTF8(timestamp), UTF8(HttpSignSecret)))，timestamp 为 unix 秒。</para>
+    /// </summary>
+    /// <remarks>
+    /// HTTP signature secret (HMAC-SHA256).
+    /// A non-blank value is required once signature validation is enabled (HttpRequireSign or
+    /// [RequireHttpSignature]); when blank every signature check is rejected (fail-closed) and no
+    /// request is let through.
+    /// Signature format: sign = Base64(HMAC-SHA256(UTF8(timestamp), UTF8(HttpSignSecret))), timestamp in unix seconds.
+    /// </remarks>
+    [Option(nameof(HttpSignSecret), DefaultValue = "", Description = "HTTP签名密钥(HMAC-SHA256),开启签名校验后必填,为空时签名校验一律拒绝")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
+    public string HttpSignSecret { get; set; } = string.Empty;
+
+    /// <summary>
     /// HTTP CORS 允许的 Origin 白名单，多个值用逗号或分号分隔。
     /// </summary>
     /// <remarks>
@@ -603,6 +643,24 @@ public class AppSetting
     [Option(nameof(HttpCorsAllowedOrigins), DefaultValue = "", Description = "HTTP CORS允许的Origin白名单,多个值用逗号或分号分隔。生产环境空值时不启用CORS")]
     [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
     public string HttpCorsAllowedOrigins { get; set; }
+
+    /// <summary>
+    /// 节点间 RPC 鉴权共享密钥（C272）。
+    /// <para>非空时启用节点间鉴权：RemoteMessaging 协议版本握手帧携带 HMAC-SHA256(secret, nonce|major|minor) 凭据，服务端验签失败回拒绝包并关闭连接；握手超时不再回落旧版本（fail-closed）；服务器间 KCP 专用监听面同时挂凭据闸门。集群内所有节点必须配置同一密钥。</para>
+    /// <para>为空（默认）表示不启用，节点间链路行为与未引入鉴权前等价。</para>
+    /// </summary>
+    /// <remarks>
+    /// Shared secret for inter-node RPC authentication (C272).
+    /// When non-empty, inter-node authentication is enabled: the RemoteMessaging protocol version
+    /// handshake frame carries an HMAC-SHA256(secret, nonce|major|minor) credential; the server
+    /// rejects and closes connections failing verification; handshake timeouts no longer fall back
+    /// to the legacy version (fail-closed); the dedicated inter-server KCP listener also mounts the
+    /// credential gate. All nodes in a cluster must share the same secret.
+    /// Empty (default) disables authentication; inter-node behavior stays identical to before.
+    /// </remarks>
+    [Option(nameof(InterNodeAuthSecret), DefaultValue = "", Description = "节点间RPC鉴权共享密钥(HMAC-SHA256)。非空时启用节点间握手凭据校验,集群内所有节点必须一致;默认空=不启用")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
+    public string InterNodeAuthSecret { get; set; } = "";
 
     /// <summary>
     /// 是否启用 Online 平台业务运行时

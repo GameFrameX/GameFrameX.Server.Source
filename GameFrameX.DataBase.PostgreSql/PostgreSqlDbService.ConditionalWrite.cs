@@ -124,6 +124,8 @@ public sealed partial class PostgreSqlDbService
         var originalRowVersion = state.RowVersion;
         state.RowVersion = expectedRowVersion;
         state.IncrementRowVersion();
+        // 写库前捕获字节快照（行版本递增后），成功后按该快照精确提交基线（C263）
+        var persistedData = state.ToBytes();
         var documentJson = JsonSerializer.Serialize(state, DocumentJsonOptions);
         var replaced = await ExecuteWriteWithRetryAsync(async token =>
         {
@@ -144,7 +146,7 @@ public sealed partial class PostgreSqlDbService
         }, cancellationToken, nameof(UpdateIfRowVersionAsync), false).ConfigureAwait(false);
         if (replaced)
         {
-            state.SaveToDbPostHandler();
+            state.SaveToDbPostHandler(persistedData);
             return true;
         }
 
@@ -290,20 +292,33 @@ public sealed partial class PostgreSqlDbService
     /// <remarks>
     /// Ensures the sequence counter table exists (single-flight via <c>_schemaCache</c>, created once per
     /// process; a faulted entry is evicted so a later call can retry — same semantics as
-    /// <see cref="EnsureTableAsync{TState}"/>).
+    /// <see cref="EnsureTableAsync{TState}"/>). The single-flight task runs on
+    /// <see cref="CancellationToken.None"/> (C266) so a first caller cancelling cannot cancel the shared
+    /// DDL for every waiter; callers detach via <c>WaitAsync(cancellationToken)</c> and a waiter-side
+    /// cancellation does not evict the entry.
     /// </remarks>
-    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <param name="cancellationToken">取消令牌（仅解除等待，不传入单飞任务）/ Cancellation token (detaches the waiter only; never flows into the single-flight task)</param>
     private async Task EnsureSequenceTableAsync(CancellationToken cancellationToken)
     {
-        var entry = _schemaCache.GetOrAdd(SequenceTableName, _ => new Lazy<Task>(() => EnsureSequenceTableCoreAsync(cancellationToken), LazyThreadSafetyMode.ExecutionAndPublication));
+        var entry = _schemaCache.GetOrAdd(SequenceTableName, _ => new Lazy<Task>(() => EnsureSequenceTableCoreAsync(CancellationToken.None), LazyThreadSafetyMode.ExecutionAndPublication));
         try
         {
-            await entry.Value.ConfigureAwait(false);
+            await entry.Value.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // 等待方自身取消：单飞任务运行于 CancellationToken.None 不受牵连，缓存条目保留。
+            // The waiter itself was cancelled: the single-flight task (running on CancellationToken.None) is unaffected; keep the cached entry.
+            throw;
         }
         catch
         {
-            // 单飞任务失败（faulted/canceled）：仅当缓存仍是本条目时逐出，允许后续调用重新发起。
-            // The single-flight task failed (faulted/canceled): evict only if the cache still holds this exact entry, allowing later calls to retry.
+            // 单飞任务失败（faulted）：仅当缓存仍是本条目时逐出，允许后续调用重新发起。
+            // 注意：此 bare catch 是有意的——上方 OCE 过滤分支已吸收等待方取消，到达这里的必为底层任务
+            // 自身的真实故障；收紧为具型 catch 会破坏「故障逐出重试」契约。
+            // The single-flight task failed (faulted): evict only if the cache still holds this exact entry, allowing later calls to retry.
+            // Note: the bare catch is intentional — the OCE filter above absorbs waiter-side cancellation, so only genuine
+            // task faults reach here; tightening it into typed clauses would break the eviction-on-fault contract.
             _schemaCache.TryRemove(new KeyValuePair<string, Lazy<Task>>(SequenceTableName, entry));
             throw;
         }

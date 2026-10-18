@@ -56,6 +56,14 @@ internal class ResetObjectPolicy<T> : IPooledObjectPolicy<T> where T : class, IM
 
         // Reset object to default values / 将对象重置为默认值
         obj.Clear();
+        if (obj is INetworkMessage networkMessage)
+        {
+            // 身份字段不在各消息自身 Clear() 覆盖范围内：归零 MessageId（发送/接收链路上线缆前都会重设）
+            // 并重生成 UniqueId，使池复用与 new T() 身份语义等价，避免复用消息携带上一条消息的 UniqueId 串台
+            networkMessage.SetMessageId(0);
+            networkMessage.UpdateUniqueId();
+        }
+
         return true;
     }
 }
