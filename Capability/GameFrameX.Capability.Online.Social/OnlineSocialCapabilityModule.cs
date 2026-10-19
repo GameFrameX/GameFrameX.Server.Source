@@ -43,7 +43,8 @@ namespace GameFrameX.Capability.Online.Social;
 /// 维护约束（服务共享协议）：模块无参构造（扫描可发现）；<c>Register</c> 自装配本域——六个 store 经
 /// <see cref="CapabilityRegistrationContext.TryGetService{TService}"/> 探测替换缝，未命中构造 InMemory 默认；
 /// 跨域硬依赖（事件出口 / Foundation 会话面）经上下文解析；对外产物（store 接口 + 好友 / 裁决 / 处罚 / 通知服务 +
-/// <see cref="IOnlineSocialGate"/> 裁决面 + 聊天审计投影）注册回共享面；两个过期清扫滴答 job
+/// <see cref="IOnlineSocialGate"/> 裁决面 + <see cref="IOnlineFriendQuery"/> 好友查询契约面（C243 桥接缝，
+/// <see cref="OnlineFriendQueryFace"/> 薄映射实现）+ 聊天审计投影）注册回共享面；两个过期清扫滴答 job
 ///（通知 + 好友请求）经组合根授权作用域锚定租户 / App。
 /// </para>
 /// <para>
@@ -158,6 +159,7 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
         context.AddService(_punishments);
         context.AddService(_notifications);
         context.AddService(_chatAudit);
+        context.AddService<IOnlineFriendQuery>(new OnlineFriendQueryFace(_friends));
         context.AddService<IOnlineSocialGate>(_socialDecisions);
 
         var scope = context.GetService<OnlineScope>();

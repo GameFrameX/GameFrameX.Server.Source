@@ -257,6 +257,36 @@ public static partial class Keys
             /// 参数: {0} - 操作名, {1} - 玩家ID
             /// </remarks>
             public const string SemanticInvalidResult = "Hotfix.Friend.SemanticInvalidResult";
+
+            /// <summary>
+            /// 好友查询桥不可用（未发布或已撤销）, ActorId: {0}, Code: {1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Hotfix.Friend.FriendListBridgeUnavailable
+            /// 用途: C243 好友查询桥开关开启但租约不可用（宿主未启/已停/已撤销）时记录。
+            /// 参数: {0} - 请求主体ID, {1} - 协议错误码
+            /// </remarks>
+            public const string FriendListBridgeUnavailable = "Hotfix.Friend.FriendListBridgeUnavailable";
+
+            /// <summary>
+            /// 好友查询桥返回失败, Code: {0}, Message: {1}, ActorId: {2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Hotfix.Friend.FriendListBridgeQueryFailed
+            /// 用途: C243 好友查询桥契约面返回失败结果时记录。
+            /// 参数: {0} - 协议错误码, {1} - 失败描述, {2} - 请求主体ID
+            /// </remarks>
+            public const string FriendListBridgeQueryFailed = "Hotfix.Friend.FriendListBridgeQueryFailed";
+
+            /// <summary>
+            /// 好友查询桥调用异常, ActorId: {0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Hotfix.Friend.FriendListBridgeException
+            /// 用途: C243 好友查询桥调用抛出异常时记录。
+            /// 参数: {0} - 请求主体ID
+            /// </remarks>
+            public const string FriendListBridgeException = "Hotfix.Friend.FriendListBridgeException";
         }
 
         /// <summary>

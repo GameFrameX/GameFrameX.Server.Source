@@ -394,6 +394,24 @@
     <data name="Launcher.OnlineAdminStartEnd" xml:space="preserve">
     <value>Online admin API assembly completed (tenant {0}, app {1}, server {2})...</value>
   </data>
+    <data name="Launcher.OnlineFriendBridgePublished" xml:space="preserve">
+    <value>Online friend-query bridge published (tenant {0}, app {1}, server {2})...</value>
+  </data>
+    <data name="Launcher.OnlineFriendBridgeRetracted" xml:space="preserve">
+    <value>Online friend-query bridge retracted...</value>
+  </data>
+    <data name="Launcher.OnlineFriendBridgeSeeded" xml:space="preserve">
+    <value>Online friend-query bridge verification seeds established (deployment verification only): requester {0}, seeded friends {1}</value>
+  </data>
+    <data name="Launcher.OnlineFriendBridgeRuntimeGateMissing" xml:space="preserve">
+    <value>The friend-query bridge switch is on but the business runtime gate is off (IsEnableOnline=false) - unsupported topology, startup aborted</value>
+  </data>
+    <data name="Launcher.OnlineFriendBridgeScopeMissing" xml:space="preserve">
+    <value>The friend-query bridge switch is on but the authorized scope triple is missing (OnlineTenantId/OnlineAppId/ServerId) - startup aborted</value>
+  </data>
+    <data name="Launcher.OnlineFriendBridgeFaceMissing" xml:space="preserve">
+    <value>The friend-query bridge contract face is missing (the online-social capability is excluded or not assembled) - unsupported topology, startup aborted</value>
+  </data>
     <data name="Launcher.EnterMainLoop" xml:space="preserve">
     <value>Entering game main loop...</value>
   </data>
@@ -2078,6 +2096,15 @@
 
   <data name="Hotfix.Friend.SemanticInvalidResult" xml:space="preserve">
     <value>FriendComponentAgent.{0} returned semantic error: Success=false and ErrorCode=0, PlayerId={1}</value>
+  </data>
+  <data name="Hotfix.Friend.FriendListBridgeUnavailable" xml:space="preserve">
+    <value>The friend-query bridge is unavailable (not published or retracted), ActorId: {0}, Code: {1}</value>
+  </data>
+  <data name="Hotfix.Friend.FriendListBridgeQueryFailed" xml:space="preserve">
+    <value>The friend-query bridge returned a failure, Code: {0}, Message: {1}, ActorId: {2}</value>
+  </data>
+  <data name="Hotfix.Friend.FriendListBridgeException" xml:space="preserve">
+    <value>The friend-query bridge call threw an exception, ActorId: {0}</value>
   </data>
 
   <data name="Hotfix.Player.AgentIsNull" xml:space="preserve">

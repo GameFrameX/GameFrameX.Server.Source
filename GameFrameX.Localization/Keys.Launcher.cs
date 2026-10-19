@@ -152,6 +152,62 @@ public static partial class Keys
         public const string OnlineAdminStartEnd = "Launcher.OnlineAdminStartEnd";
 
         /// <summary>
+        /// Online 好友查询桥已发布（租户 {0}，应用 {1}，区服 {2}）...
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineFriendBridgePublished
+        /// 用途: 记录好友查询桥租约发布（C243 组合根接线）
+        /// 参数: {0} - 租户标识；{1} - 应用标识；{2} - 区服标识
+        /// </remarks>
+        public const string OnlineFriendBridgePublished = "Launcher.OnlineFriendBridgePublished";
+
+        /// <summary>
+        /// Online 好友查询桥已撤销...
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineFriendBridgeRetracted
+        /// 用途: 记录好友查询桥租约撤销（进程停止路径）
+        /// </remarks>
+        public const string OnlineFriendBridgeRetracted = "Launcher.OnlineFriendBridgeRetracted";
+
+        /// <summary>
+        /// Online 好友查询桥验证种子已建立（仅供部署验证）：请求主体 {0}，种子好友数 {1}
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineFriendBridgeSeeded
+        /// 用途: 披露验证种子经真实服务写路径建立的好友关系（C243）
+        /// 参数: {0} - 请求主体（玩家全局 actor）标识；{1} - 建立成功的好友数
+        /// </remarks>
+        public const string OnlineFriendBridgeSeeded = "Launcher.OnlineFriendBridgeSeeded";
+
+        /// <summary>
+        /// 好友查询桥开关开启但业务运行时未启用（IsEnableOnline=false）——不支持该拓扑，启动终止
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineFriendBridgeRuntimeGateMissing
+        /// 用途: C243 组合根 fail-fast：桥开关与业务运行时开关矛盾
+        /// </remarks>
+        public const string OnlineFriendBridgeRuntimeGateMissing = "Launcher.OnlineFriendBridgeRuntimeGateMissing";
+
+        /// <summary>
+        /// 好友查询桥开关开启但作用域三元组缺失（OnlineTenantId/OnlineAppId/ServerId）——启动终止
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineFriendBridgeScopeMissing
+        /// 用途: C243 组合根 fail-fast：桥开关开启但授权作用域不完整
+        /// </remarks>
+        public const string OnlineFriendBridgeScopeMissing = "Launcher.OnlineFriendBridgeScopeMissing";
+
+        /// <summary>
+        /// 好友查询桥契约面缺失（online-social 能力被排除或未装配）——不支持该拓扑，启动终止
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineFriendBridgeFaceMissing
+        /// 用途: C243 组合根 fail-fast：发布期无法解析好友查询契约面或授权作用域
+        /// </remarks>
+        public const string OnlineFriendBridgeFaceMissing = "Launcher.OnlineFriendBridgeFaceMissing";
+
+        /// <summary>
         /// 进入游戏主循环...
         /// </summary>
         /// <remarks>

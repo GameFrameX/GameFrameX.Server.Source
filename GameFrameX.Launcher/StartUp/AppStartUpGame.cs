@@ -41,6 +41,21 @@ namespace GameFrameX.Launcher.StartUp;
 /// <summary>
 /// 游戏服务器
 /// </summary>
+/// <remarks>
+/// 组合根边界（C240 声明随 C243 交付）：本类所在启动模板序列（<see cref="AppStartUpGameServerBase"/>
+/// 模板钩子 + 各 Role 差异覆写）负责基础设施装配——网络监听、GameDb 数据库、发现层、热更模块装载与退出编排；
+/// 平台业务域服务（好友 / 资产 / 对局等）的唯一组合根是 <c>AddOnlineCapabilities</c> 单入口装配的
+/// <c>CapabilityHost</c>（本类持有并按启停序编排）。两层边界经 C243 好友查询桥实证：
+/// Hotfix 协议面薄适配器经 Online 契约面进程内消费平台服务，不经本地注册表绕行。
+/// Composition-root boundary (declared by C240, delivered with C243): the startup template sequence
+/// (the <see cref="AppStartUpGameServerBase"/> template hooks plus per-role overrides) assembles the
+/// infrastructure — network listeners, the GameDb database, the discovery layer, hotfix module loading
+/// and exit orchestration — while the sole composition root for platform domain services (friends,
+/// assets, matches, ...) is the <c>CapabilityHost</c> assembled by the single
+/// <c>AddOnlineCapabilities</c> entry (held and lifecycle-orchestrated by this class). The two-layer
+/// boundary is proven by the C243 friend-query bridge: the Hotfix protocol thin adapter consumes the
+/// platform services in-process through the Online contract face, never through the local registry.
+/// </remarks>
 // 显式优先级修复与 Social 同为缺省 1000 的冲突——Game 为主服务先起（值越小优先级越高）
 [StartUpTag(GameServerConst.Game.Name, 100)]
 internal sealed class AppStartUpGame : AppStartUpGameServerBase
@@ -176,7 +191,12 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     /// <see cref="AppSetting.IsEnableOnlineAdmin"/> 关时零装配零日志直接返回——现状等价）。
     /// <para>业务运行时与管理面一次回调编排装配（作用域三元组 / 调度间隔缺省 / 双闸 / 管理面监听 /
     /// "Online" 配置段过滤器）；本方法只启动业务面，管理面启动由
-    /// <see cref="StartOnlineAdminIfEnabledAsync"/> 按闸独立决定。</para>
+    /// <see cref="StartOnlineAdminIfEnabledAsync"/> 按闸独立决定。
+    /// <para>
+    /// C243 桥接：<c>Online.EnableFriendQueryBridge</c> 开启时，装配前先做拓扑 fail-fast，
+    /// 业务运行时启动后发布好友查询桥租约并按配置建立验证种子；撤销由退出路径
+    /// <see cref="ShutdownOnlineAdminAsync"/> 承担。
+    /// </para>
     /// </summary>
     /// <remarks>
     /// Composes the Online capabilities through the single entry point (composition runs when either
@@ -193,8 +213,12 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     {
         if (!Setting.IsEnableOnline && !Setting.IsEnableOnlineAdmin)
         {
+            OnlineFriendBridgeWiring.EnsureFriendQueryBridgeConfigured(Setting);
             return;
         }
+
+        // C243 桥接 fail-fast：开关开启而拓扑不支持（业务运行时关/作用域缺失）在装配前终止。
+        OnlineFriendBridgeWiring.EnsureFriendQueryBridgeConfigured(Setting);
 
         var composition = OnlineCapabilityComposition.AddOnlineCapabilities(options =>
         {
@@ -218,6 +242,13 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
         if (_onlineRuntime != null)
         {
             await _onlineRuntime.StartAsync();
+
+            // C243 桥接：业务运行时启动后发布好友查询桥租约（开关开启时），并按配置建立验证种子。
+            if (Setting.Online?.EnableFriendQueryBridge == true)
+            {
+                OnlineFriendBridgeWiring.PublishFriendQueryBridge(_onlineRuntime);
+                await OnlineFriendBridgeWiring.SeedFriendQueryBridgeVerificationAsync(_onlineRuntime, Setting.Online?.FriendQueryBridgeSeedPlayerIds);
+            }
         }
     }
 
@@ -255,6 +286,9 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     private async Task ShutdownOnlineAdminAsync()
     {
+        // C243 桥接：先撤销好友查询桥租约（旧引用显式失效），再停 Online admin 与 runtime 宿主。
+        OnlineFriendBridgeWiring.RetractFriendQueryBridge();
+
         if (_onlineAdminApi != null)
         {
             await _onlineAdminApi.StopAsync();

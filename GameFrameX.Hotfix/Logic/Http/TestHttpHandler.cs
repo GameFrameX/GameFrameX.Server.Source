@@ -63,6 +63,12 @@ public sealed class TestHttpHandler : BaseHttpHandler
             return HttpJsonResultData<string>.SuccessString(JsonHelper.Serialize(crossResponse));
         }
 
+        // C243 验证入口：好友查询桥穿透复核（显式 playerId 为验证请求主体；作用域三元组仍由 lease 授权供给）。
+        if (TryGetMode(paramMap, out var bridgeMode) && string.Equals(bridgeMode, "online-bridge-friend", StringComparison.OrdinalIgnoreCase))
+        {
+            return HandleOnlineBridgeFriend(paramMap);
+        }
+
         var response = new HttpTestResponse
         {
             Message = "hello",
@@ -87,6 +93,35 @@ public sealed class TestHttpHandler : BaseHttpHandler
         mode = modeValue.ToString() ?? string.Empty;
         return !string.IsNullOrWhiteSpace(mode);
     }
+
+    /// <summary>
+    /// 好友查询桥穿透验证入口（C243）：以显式 <c>playerId</c> 为验证请求主体走桥路径
+    ///（与协议入口 ReqFriendList 相同的薄适配器代码路径）；桥开关未开启时显式回
+    /// <c>BridgeEnabled=false</c>，不伪装成功。
+    /// </summary>
+    /// <param name="parameters">请求参数。</param>
+    /// <returns>序列化响应。</returns>
+    private static string HandleOnlineBridgeFriend(Dictionary<string, object> parameters)
+    {
+        long playerId = 0;
+        if (parameters.TryGetValue("playerId", out var playerIdValue) && playerIdValue != null)
+        {
+            long.TryParse(playerIdValue.ToString(), out playerId);
+        }
+
+        var bridgeResponse = new RespFriendList();
+        var handled = playerId > 0 && FriendQueryBridge.TryQueryFriendListAsync(playerId, bridgeResponse).GetAwaiter().GetResult();
+        var response = new HttpOnlineBridgeFriendResponse
+        {
+            Mode = "online-bridge-friend",
+            PlayerId = playerId,
+            BridgeEnabled = handled,
+            ErrorCode = handled ? bridgeResponse.ErrorCode : 0,
+            FriendCount = handled ? bridgeResponse.Friends?.Count ?? 0 : 0,
+            Friends = handled ? bridgeResponse.Friends ?? new List<FriendInfo>() : new List<FriendInfo>(),
+        };
+        return HttpJsonResultData<string>.SuccessString(JsonHelper.Serialize(response));
+    }
 }
 
 public sealed class HttpTestResponse : HttpMessageResponseBase
@@ -97,6 +132,16 @@ public sealed class HttpTestResponse : HttpMessageResponseBase
 public sealed class HttpCrossProcessFriendResponse : HttpMessageResponseBase
 {
     [Description("测试模式")] public string Mode { get; set; }
+    [Description("错误码")] public int ErrorCode { get; set; }
+    [Description("好友数量")] public int FriendCount { get; set; }
+    [Description("好友列表")] public List<FriendInfo> Friends { get; set; }
+}
+
+public sealed class HttpOnlineBridgeFriendResponse : HttpMessageResponseBase
+{
+    [Description("测试模式")] public string Mode { get; set; }
+    [Description("验证请求主体")] public long PlayerId { get; set; }
+    [Description("桥开关是否开启并接管")] public bool BridgeEnabled { get; set; }
     [Description("错误码")] public int ErrorCode { get; set; }
     [Description("好友数量")] public int FriendCount { get; set; }
     [Description("好友列表")] public List<FriendInfo> Friends { get; set; }

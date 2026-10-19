@@ -424,6 +424,24 @@
     <data name="Launcher.OnlineAdminStartEnd" xml:space="preserve">
     <value>Online 平台管理面装配完成（租户 {0}，应用 {1}，区服 {2}）...</value>
   </data>
+    <data name="Launcher.OnlineFriendBridgePublished" xml:space="preserve">
+    <value>Online 好友查询桥已发布（租户 {0}，应用 {1}，区服 {2}）...</value>
+  </data>
+    <data name="Launcher.OnlineFriendBridgeRetracted" xml:space="preserve">
+    <value>Online 好友查询桥已撤销...</value>
+  </data>
+    <data name="Launcher.OnlineFriendBridgeSeeded" xml:space="preserve">
+    <value>Online 好友查询桥验证种子已建立（仅供部署验证）：请求主体 {0}，种子好友数 {1}</value>
+  </data>
+    <data name="Launcher.OnlineFriendBridgeRuntimeGateMissing" xml:space="preserve">
+    <value>好友查询桥开关开启但业务运行时未启用（IsEnableOnline=false）——不支持该拓扑，启动终止</value>
+  </data>
+    <data name="Launcher.OnlineFriendBridgeScopeMissing" xml:space="preserve">
+    <value>好友查询桥开关开启但作用域三元组缺失（OnlineTenantId/OnlineAppId/ServerId）——启动终止</value>
+  </data>
+    <data name="Launcher.OnlineFriendBridgeFaceMissing" xml:space="preserve">
+    <value>好友查询桥契约面缺失（online-social 能力被排除或未装配）——不支持该拓扑，启动终止</value>
+  </data>
     <data name="Launcher.EnterMainLoop" xml:space="preserve">
     <value>进入游戏主循环...</value>
   </data>
@@ -2069,6 +2087,15 @@
 
   <data name="Hotfix.Friend.SemanticInvalidResult" xml:space="preserve">
     <value>FriendComponentAgent.{0} 返回语义异常: Success=false 且 ErrorCode=0, PlayerId={1}</value>
+  </data>
+  <data name="Hotfix.Friend.FriendListBridgeUnavailable" xml:space="preserve">
+    <value>好友查询桥不可用（未发布或已撤销）, ActorId: {0}, Code: {1}</value>
+  </data>
+  <data name="Hotfix.Friend.FriendListBridgeQueryFailed" xml:space="preserve">
+    <value>好友查询桥返回失败, Code: {0}, Message: {1}, ActorId: {2}</value>
+  </data>
+  <data name="Hotfix.Friend.FriendListBridgeException" xml:space="preserve">
+    <value>好友查询桥调用异常, ActorId: {0}</value>
   </data>
 
   <data name="Hotfix.Player.AgentIsNull" xml:space="preserve">

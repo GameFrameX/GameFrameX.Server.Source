@@ -72,4 +72,43 @@ public sealed class OnlineCapabilityOptions
     /// The database must be initialized (GameDb facade Init) before enabling; sessions and presence stay volatile.
     /// </remarks>
     public bool UseGameDbStores { get; set; }
+
+    /// <summary>
+    /// 是否启用好友查询桥接验证路径（C243）
+    /// <para>true = Game 进程的 ReqFriendList 协议入口改经 Online 好友契约面（进程内桥接）读取；
+    /// false（缺省）= 旧链行为逐字节保持（Social GameDb 读写归属不变）</para>
+    /// <para>前置约束：开启时进程必须同时开启 <c>IsEnableOnline</c> 且装配 online-social 能力（组合根启动期 fail-fast）；
+    /// 桥失败（宿主未启 / 已停 / 服务错误）按显式错误返回，绝不静默回落旧链或空列表；本开关只应配置在 Game 角色段</para>
+    /// </summary>
+    /// <remarks>
+    /// Whether the friend-query bridge verification path is enabled (C243): true routes the Game
+    /// process's ReqFriendList protocol entry through the Online friend contract face (an in-process
+    /// bridge read); false (default) keeps the legacy chain byte-identical (the Social GameDb
+    /// read/write ownership unchanged). Enabling requires <c>IsEnableOnline</c> and the
+    /// online-social capability (composition-root fail-fast at startup); bridge failures (host not
+    /// started / stopped / service errors) answer with explicit error codes and never fall back to
+    /// the legacy chain or an empty list; configure this switch on the Game role section only.
+    /// </remarks>
+    public bool EnableFriendQueryBridge { get; set; }
+
+    /// <summary>
+    /// 好友查询桥验证种子玩家标识列表（C243；元素 &lt; 2 = 不种子）
+    /// <para>首元素为请求方、其余为好友：组合根在业务运行时启动后，经真实 <c>OnlineFriendService</c> 写路径
+    /// 两两建立好友（幂等收敛），验证入口（HTTP <c>mode=online-bridge-friend&amp;playerId=首元素</c>）据此读到
+    /// 预置非空好友状态——仅供部署验证，生产常开须显式知情（Warning 日志披露）</para>
+    /// <para>请求方取配置 id 而非进程 actor 派生 id：玩家型组件 actor id 为多实例逐次唯一生成，
+    /// 不存在可预置的确定性请求主体</para>
+    /// </summary>
+    /// <remarks>
+    /// The friend-query bridge verification seed player ids (C243; fewer than 2 entries = no seeding):
+    /// the first entry is the requester and the rest the friends — after the business runtime starts
+    /// the composition root establishes the friendships pairwise through the real
+    /// <c>OnlineFriendService</c> write path (idempotent convergence), so the verification entry
+    /// (HTTP <c>mode=online-bridge-friend&amp;playerId=first-id</c>) can read preset non-empty friend
+    /// state. Deployment verification only; keeping it on in production requires informed consent (a
+    /// Warning log discloses every seed). The requester comes from configuration rather than a
+    /// process-derived actor id: player-type component actor ids are per-call unique multi ids with no
+    /// deterministic request subject to preset.
+    /// </remarks>
+    public IReadOnlyList<long> FriendQueryBridgeSeedPlayerIds { get; set; }
 }

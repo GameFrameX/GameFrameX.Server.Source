@@ -44,12 +44,24 @@ public class FriendComponentAgent : StateComponentAgent<FriendComponent, FriendS
     /// <summary>
     /// 获取好友列表（通过统一消息发送器调用 Social 服务）。
     /// 好友列表查询为幂等操作，允许重试。
+    /// <para>
+    /// C243 桥接：<c>Online.EnableFriendQueryBridge</c> 开启时本查询改经 Online 好友契约面（进程内桥），
+    /// 成功或显式失败均由桥分支裁决（不回落旧链）；关闭（缺省）走下方既有链路，行为逐字节保持。
+    /// </para>
     /// </summary>
     /// <param name="networkChannel">网络通道</param>
     /// <param name="request">请求</param>
     /// <param name="response">响应</param>
     public async Task OnFriendList(INetworkChannel networkChannel, ReqFriendList request, RespFriendList response)
     {
+        // C243 桥接：开关开启时查询路径独占经 Online 契约面（成功或显式失败）；
+        // 开关关闭（缺省）不触碰本分支，旧链行为逐字节保持。
+        if (FriendQueryBridge.IsBridgeEnabled)
+        {
+            await FriendQueryBridge.TryQueryFriendListAsync(ActorId, response);
+            return;
+        }
+
         if (string.Equals(GlobalSettings.CurrentSetting?.ServerType, GameServerConst.Social.Name, StringComparison.OrdinalIgnoreCase))
         {
             var innerResponse = new RespInnerFriendList();
