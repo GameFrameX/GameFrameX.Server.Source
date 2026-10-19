@@ -111,4 +111,40 @@ public sealed class OnlineCapabilityOptions
     /// deterministic request subject to preset.
     /// </remarks>
     public IReadOnlyList<long> FriendQueryBridgeSeedPlayerIds { get; set; }
+
+    /// <summary>
+    /// 对局样例桥开关（C245，D4 RPS 垂直切片）：true = Game 进程的房间制开局 / 出拳 / 查询 / 再来一局
+    /// 协议入口经 Online 对局桥转发平台对局运行时（进程内桥读写），出拳裁决 / 结算 / 发奖 / 排行由平台编排；
+    /// false（缺省）= 旧链行为逐字节保持（Apps 本地对局执行不变）。
+    /// <para>前置约束：开启时进程必须同时开启 <c>IsEnableOnline</c> 且装配 online-match 能力（组合根启动期
+    /// fail-fast）；桥失败（宿主未启 / 已停 / 服务错误）按显式错误返回，绝不静默回落旧链；本开关只应配置在
+    /// Game 角色段</para>
+    /// </summary>
+    /// <remarks>
+    /// Whether the sample match bridge is enabled (C245, the D4 RPS vertical slice): true routes the
+    /// Game process's room-shaped start / gesture / query / restart protocol entries through the
+    /// Online match bridge into the platform match runtime (an in-process bridge), with gesture
+    /// adjudication, settlement, rewards and leaderboards orchestrated by the platform; false
+    /// (default) keeps the legacy chain byte-identical (the local Apps match execution unchanged).
+    /// Enabling requires <c>IsEnableOnline</c> and the online-match capability (composition-root
+    /// fail-fast at startup); bridge failures (host not started / stopped / service errors) answer
+    /// with explicit error codes and never fall back to the legacy chain; configure this switch on
+    /// the Game role section only.
+    /// </remarks>
+    public bool EnableMatchGameBridge { get; set; }
+
+    /// <summary>
+    /// 对局结算写榜榜单标识（C245）：非空 = 订阅 <c>Online.Match.Settled</c> 的可信结果投影目标榜单
+    ///（要求 online-competition 能力；组合根确保榜单存在）；空（缺省）= 不投影（仅结算发奖）。
+    /// <para>榜单存储当前为 InMemory（D3 现状）——进程重启后积分易失，样例能力边界</para>
+    /// </summary>
+    /// <remarks>
+    /// The leaderboard id that settled match results project onto (C245): non-empty = the target
+    /// board for trusted-result projection subscribed from <c>Online.Match.Settled</c> (requires the
+    /// online-competition capability; the composition root ensures the board exists); empty
+    /// (default) = no projection (settlement and rewards only). The board store is currently
+    /// in-memory (the D3 status quo) — scores are volatile across process restarts, a documented
+    /// sample boundary.
+    /// </remarks>
+    public string MatchBridgeLeaderboardId { get; set; }
 }

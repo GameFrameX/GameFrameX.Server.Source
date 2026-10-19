@@ -74,8 +74,8 @@ public class OnlineCapabilityCompositionTests
         Assert.Null(composition.AdminApi);
         Assert.Equal(new[]
         {
-            "online-assets", "online-foundation", "online-competition", "online-match",
-            "online-social", "online-matchmaking", "online-operations",
+            "online-assets", "online-foundation", "online-match", "online-social",
+            "online-competition", "online-matchmaking", "online-operations",
         }, composition.Runtime.Report.EnabledIdsInOrder);
     }
 

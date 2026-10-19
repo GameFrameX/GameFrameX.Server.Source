@@ -56,10 +56,12 @@ internal static class Program
         using (var cts = new CancellationTokenSource())
         {
             var botTasks = new List<Task>(options.BotCount);
+            var clients = new List<BotClient>(options.BotCount);
             for (int k = 0; k < options.BotCount; k++)
             {
                 string botName = $"{options.BotNamePrefix}_{k + 1}";
                 var client = new BotClient(botName, options);
+                clients.Add(client);
                 botTasks.Add(client.EntryAsync(cts.Token));
                 if (options.ConnectStaggerMilliseconds > 0)
                 {
@@ -70,6 +72,16 @@ internal static class Program
             if (options.RunSeconds > 0)
             {
                 await Task.Delay(TimeSpan.FromSeconds(options.RunSeconds), cts.Token);
+                cts.Cancel();
+                await Task.WhenAll(botTasks);
+                return;
+            }
+
+            if (options.HasRpsRole)
+            {
+                // RPS 脚本流：等待所有机器人终局/失败，按结果设置进程退出码后退出，无需人工回车。
+                await Task.WhenAll(clients.Select(c => c.RpsCompletion).ToArray());
+                Environment.ExitCode = clients.Any(c => c.RpsExitCode != 0) ? 1 : 0;
                 cts.Cancel();
                 await Task.WhenAll(botTasks);
                 return;

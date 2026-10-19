@@ -412,6 +412,27 @@
     <data name="Launcher.OnlineFriendBridgeFaceMissing" xml:space="preserve">
     <value>The friend-query bridge contract face is missing (the online-social capability is excluded or not assembled) - unsupported topology, startup aborted</value>
   </data>
+    <data name="Launcher.OnlineMatchBridgePublished" xml:space="preserve">
+    <value>Online match bridge published (tenant {0}, app {1}, server {2})...</value>
+  </data>
+    <data name="Launcher.OnlineMatchBridgeRetracted" xml:space="preserve">
+    <value>Online match bridge retracted...</value>
+  </data>
+    <data name="Launcher.OnlineMatchBridgeBoardEnsured" xml:space="preserve">
+    <value>Online match bridge leaderboard ensured to exist (sample verification only): {0}</value>
+  </data>
+    <data name="Launcher.OnlineMatchBridgeRuntimeGateMissing" xml:space="preserve">
+    <value>The match bridge switch is on but the business runtime gate is off (IsEnableOnline=false) - unsupported topology, startup aborted</value>
+  </data>
+    <data name="Launcher.OnlineMatchBridgeScopeMissing" xml:space="preserve">
+    <value>The match bridge switch is on but the authorized scope triple is missing (OnlineTenantId/OnlineAppId/ServerId) - startup aborted</value>
+  </data>
+    <data name="Launcher.OnlineMatchBridgeFaceMissing" xml:space="preserve">
+    <value>The match bridge contract face is missing (the online-match capability is excluded or not assembled) - unsupported topology, startup aborted</value>
+  </data>
+    <data name="Launcher.OnlineMatchBridgeBoardEnsureFailed" xml:space="preserve">
+    <value>Failed to ensure the match bridge leaderboard exists: {0}, Code: {1}, Message: {2}</value>
+  </data>
     <data name="Launcher.EnterMainLoop" xml:space="preserve">
     <value>Entering game main loop...</value>
   </data>
@@ -1694,6 +1715,48 @@
   <data name="Client.Bot.FriendScenarioCompleted" xml:space="preserve">
     <value>Bot-{0} friend scenario completed, second list count: {1}.</value>
   </data>
+  <data name="Client.Bot.RpsScenarioInvalidOptions" xml:space="preserve">
+    <value>Bot-{0} RPS scenario failed to start, invalid playerId: {1}, gestures count: {2}</value>
+  </data>
+  <data name="Client.Bot.RpsRoomCreated" xml:space="preserve">
+    <value>Bot-{0} RPS scenario room created, roomId: {1}, waiting for opponent to join.</value>
+  </data>
+  <data name="Client.Bot.RpsCreateRoomFailed" xml:space="preserve">
+    <value>Bot-{0} RPS scenario create room failed, errorCode: {1}</value>
+  </data>
+  <data name="Client.Bot.RpsJoinerWaiting" xml:space="preserve">
+    <value>Bot-{0} RPS scenario starts polling joinable rock-paper-scissors rooms.</value>
+  </data>
+  <data name="Client.Bot.RpsJoinedRoom" xml:space="preserve">
+    <value>Bot-{0} RPS scenario joined room: {1}, waiting for game start.</value>
+  </data>
+  <data name="Client.Bot.RpsJoinRoomFailed" xml:space="preserve">
+    <value>Bot-{0} RPS scenario join room failed, roomId: {1}, errorCode: {2}</value>
+  </data>
+  <data name="Client.Bot.RpsStartGameFailed" xml:space="preserve">
+    <value>Bot-{0} RPS scenario start game failed, errorCode: {1}</value>
+  </data>
+  <data name="Client.Bot.RpsGameStarted" xml:space="preserve">
+    <value>Bot-{0} RPS scenario game started, roomId: {1}.</value>
+  </data>
+  <data name="Client.Bot.RpsSubmitGesture" xml:space="preserve">
+    <value>Bot-{0} RPS scenario round {1} gesture: {2}</value>
+  </data>
+  <data name="Client.Bot.RpsSubmitFailed" xml:space="preserve">
+    <value>Bot-{0} RPS scenario submit gesture failed, errorCode: {1}</value>
+  </data>
+  <data name="Client.Bot.RpsGameFinished" xml:space="preserve">
+    <value>Bot-{0} RPS scenario game finished, rounds: {1}, winnerPlayerId: {2}, players: {3}</value>
+  </data>
+  <data name="Client.Bot.RpsGameFinishedByRoomStatus" xml:space="preserve">
+    <value>Bot-{0} RPS scenario finished by room status: {1}, rounds: {2}</value>
+  </data>
+  <data name="Client.Bot.RpsPollNoProgress" xml:space="preserve">
+    <value>Bot-{0} RPS scenario aborted after {1} polls without progress.</value>
+  </data>
+  <data name="Client.Bot.RpsPollLoopError" xml:space="preserve">
+    <value>Bot-{0} RPS scenario poll loop error: {1}</value>
+  </data>
 
   <data name="Client.Bot.FriendScenarioInvalidPlayerId" xml:space="preserve">
     <value>Bot-{0} friend scenario failed to start, invalid player ID: {1}</value>
@@ -2106,6 +2169,16 @@
   <data name="Hotfix.Friend.FriendListBridgeException" xml:space="preserve">
     <value>The friend-query bridge call threw an exception, ActorId: {0}</value>
   </data>
+  <data name="Hotfix.Game.MatchBridgeUnavailable" xml:space="preserve">
+    <value>The match bridge is unavailable (not published or retracted), ActorId: {0}, Code: {1}</value>
+  </data>
+  <data name="Hotfix.Game.MatchBridgeFailed" xml:space="preserve">
+    <value>The match bridge returned a failure, Code: {0}, Message: {1}, ActorId: {2}</value>
+  </data>
+  <data name="Hotfix.Game.MatchBridgeException" xml:space="preserve">
+    <value>The match bridge call threw an exception, ActorId: {0}</value>
+  </data>
+
 
   <data name="Hotfix.Player.AgentIsNull" xml:space="preserve">
     <value>agent is null</value>

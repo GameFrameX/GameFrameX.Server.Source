@@ -28,9 +28,10 @@
 //  ==========================================================================================
 
 
-namespace GameFrameX.Hotfix.Logic.Http;
-
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Hotfix.Logic.Game.RockPaperScissors;
 using GameFrameX.Hotfix.Logic.Player.Friend;
+
 
 /// <summary>
 /// 测试
@@ -68,6 +69,14 @@ public sealed class TestHttpHandler : BaseHttpHandler
         {
             return HandleOnlineBridgeFriend(paramMap);
         }
+
+        // C245 验证入口：对局桥穿透复核（显式 playerId 为验证请求主体；roomId/round/gesture 定位对局与意图；
+        // 作用域三元组仍由 lease 授权供给）。
+        if (TryGetMode(paramMap, out var matchBridgeMode) && string.Equals(matchBridgeMode, "online-bridge-match", StringComparison.OrdinalIgnoreCase))
+        {
+            return HandleOnlineBridgeMatch(paramMap);
+        }
+
 
         var response = new HttpTestResponse
         {
@@ -122,6 +131,85 @@ public sealed class TestHttpHandler : BaseHttpHandler
         };
         return HttpJsonResultData<string>.SuccessString(JsonHelper.Serialize(response));
     }
+
+    /// <summary>
+    /// 对局桥穿透验证入口（C245）：以显式 <c>playerId</c> 为验证请求主体、<c>roomId</c>/<c>round</c> 定位对局，
+    /// <c>gesture</c> 提交出拳（缺省仅查询视图）——与协议入口相同的薄适配器代码路径；
+    /// 桥开关未开启时显式回 <c>BridgeEnabled=false</c>，不伪装成功。
+    /// </summary>
+    /// <param name="parameters">请求参数。</param>
+    /// <returns>序列化响应。</returns>
+    private static string HandleOnlineBridgeMatch(Dictionary<string, object> parameters)
+    {
+        long playerId = 0;
+        long roomId = 0;
+        var round = 1;
+        var gesture = 0;
+        if (parameters.TryGetValue("playerId", out var playerIdValue) && playerIdValue != null)
+        {
+            long.TryParse(playerIdValue.ToString(), out playerId);
+        }
+
+        if (parameters.TryGetValue("roomId", out var roomIdValue) && roomIdValue != null)
+        {
+            long.TryParse(roomIdValue.ToString(), out roomId);
+        }
+
+        if (parameters.TryGetValue("round", out var roundValue) && int.TryParse(roundValue?.ToString(), out var parsedRound) && parsedRound > 0)
+        {
+            round = parsedRound;
+        }
+
+        if (parameters.TryGetValue("gesture", out var gestureValue) && int.TryParse(gestureValue?.ToString(), out var parsedGesture))
+        {
+            gesture = parsedGesture;
+        }
+
+        var bridgeEnabled = RockPaperScissorsMatchBridge.IsBridgeEnabled;
+        var handled = false;
+        OnlineMatchBridgeGameView view = null;
+        var errorCode = 0;
+        if (bridgeEnabled && playerId > 0 && roomId > 0)
+        {
+            if (gesture > 0)
+            {
+                var bridgeResponse = new RespSubmitRockPaperScissorsGesture();
+                (handled, view) = RockPaperScissorsMatchBridge.TrySubmitGestureAsync(playerId, roomId, round, gesture, bridgeResponse).GetAwaiter().GetResult();
+                errorCode = bridgeResponse.ErrorCode;
+            }
+            else
+            {
+                var bridgeResponse = new RespRockPaperScissorsGameInfo();
+                (handled, view) = RockPaperScissorsMatchBridge.TryGetGameInfoAsync(playerId, roomId, round, bridgeResponse).GetAwaiter().GetResult();
+                errorCode = bridgeResponse.ErrorCode;
+            }
+        }
+
+        var response = new HttpOnlineBridgeMatchResponse
+        {
+            Mode = "online-bridge-match",
+            PlayerId = playerId,
+            RoomId = roomId,
+            Round = round,
+            BridgeEnabled = bridgeEnabled,
+            Handled = handled,
+            ErrorCode = errorCode,
+            GameState = view == null ? null : view.State.ToString(),
+            MatchId = view?.MatchId,
+            ViewRound = view?.Round ?? 0,
+            WinnerPlayerId = view?.WinnerPlayerId ?? 0,
+            Players = view == null
+                ? new List<HttpOnlineBridgeMatchPlayer>()
+                : view.Players.Select(player => new HttpOnlineBridgeMatchPlayer
+                {
+                    PlayerId = player.PlayerId,
+                    HasGesture = player.HasGesture,
+                    Gesture = player.Gesture,
+                    Wins = player.Wins,
+                }).ToList(),
+        };
+        return HttpJsonResultData<string>.SuccessString(JsonHelper.Serialize(response));
+    }
 }
 
 public sealed class HttpTestResponse : HttpMessageResponseBase
@@ -145,4 +233,28 @@ public sealed class HttpOnlineBridgeFriendResponse : HttpMessageResponseBase
     [Description("错误码")] public int ErrorCode { get; set; }
     [Description("好友数量")] public int FriendCount { get; set; }
     [Description("好友列表")] public List<FriendInfo> Friends { get; set; }
+}
+
+public sealed class HttpOnlineBridgeMatchResponse : HttpMessageResponseBase
+{
+    [Description("测试模式")] public string Mode { get; set; }
+    [Description("验证请求主体")] public long PlayerId { get; set; }
+    [Description("房间标识")] public long RoomId { get; set; }
+    [Description("请求局号")] public int Round { get; set; }
+    [Description("桥开关是否开启")] public bool BridgeEnabled { get; set; }
+    [Description("桥是否接管本次请求")] public bool Handled { get; set; }
+    [Description("错误码")] public int ErrorCode { get; set; }
+    [Description("对局状态")] public string GameState { get; set; }
+    [Description("平台对局标识")] public string MatchId { get; set; }
+    [Description("视图局数")] public int ViewRound { get; set; }
+    [Description("整局胜者（未终局为 0）")] public long WinnerPlayerId { get; set; }
+    [Description("玩家视图（保密投影）")] public List<HttpOnlineBridgeMatchPlayer> Players { get; set; }
+}
+
+public sealed class HttpOnlineBridgeMatchPlayer
+{
+    [Description("玩家ID")] public long PlayerId { get; set; }
+    [Description("本局是否已出拳")] public bool HasGesture { get; set; }
+    [Description("出拳（未结算局为 0）")] public int Gesture { get; set; }
+    [Description("累计胜局数")] public int Wins { get; set; }
 }

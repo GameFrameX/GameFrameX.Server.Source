@@ -79,6 +79,40 @@ public sealed class BotRunOptions
     /// </summary>
     public string Transport { get; init; } = DefaultTransport;
 
+    /// <summary>
+    /// RPS（石头剪刀布）角色：<c>owner</c> 房主 / <c>joiner</c> 加入者。缺省为空字符串，不启用 RPS 流，行为与历史完全一致。
+    /// </summary>
+    public string RpsRole { get; init; } = string.Empty;
+
+    /// <summary>
+    /// RPS 出拳序列（1=Rock/2=Scissors/3=Paper），按局推进取值（超出序列长度时循环）。
+    /// 缺省 owner=1,1（每局石头）、joiner=2,2（每局剪刀），owner 两连胜终局。
+    /// </summary>
+    public IReadOnlyList<int> RpsGestures { get; init; } = Array.Empty<int>();
+
+    /// <summary>
+    /// RPS 房间列表/对局信息轮询间隔（毫秒），缺省 500。
+    /// </summary>
+    public int RpsPollIntervalMs { get; init; } = 500;
+
+    /// <summary>
+    /// 是否启用了 RPS 脚本流（<see cref="RpsRole"/> 为 owner 或 joiner）。
+    /// </summary>
+    public bool HasRpsRole
+    {
+        get
+        {
+            return string.Equals(RpsRole, RpsRoleOwner, StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(RpsRole, RpsRoleJoiner, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    /// <summary>角色常量：房主。</summary>
+    public const string RpsRoleOwner = "owner";
+
+    /// <summary>角色常量：加入者。</summary>
+    public const string RpsRoleJoiner = "joiner";
+
     public static BotRunOptions Parse(string[] args)
     {
         var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -104,6 +138,7 @@ public sealed class BotRunOptions
             }
         }
 
+        var rpsRole = ReadRpsRole(values);
         return new BotRunOptions
         {
             BotCount = ReadInt(values, "bot-count", 50),
@@ -120,6 +155,9 @@ public sealed class BotRunOptions
             RunSeconds = ReadInt(values, "run-seconds", 0),
             Scenario = ReadString(values, "scenario", "login"),
             Transport = ReadTransport(values, "transport", DefaultTransport),
+            RpsRole = rpsRole,
+            RpsGestures = ReadRpsGestures(values, rpsRole),
+            RpsPollIntervalMs = ReadInt(values, "rps-poll-interval-ms", 500),
         };
     }
 
@@ -183,6 +221,65 @@ public sealed class BotRunOptions
         }
 
         throw new ArgumentException($"Unsupported --transport value '{value}'. Valid values: {string.Join(", ", BotTransport.SupportedValues)}.", key);
+    }
+
+    /// <summary>
+    /// 读取 RPS 角色。缺省返回空串（不启用 RPS 流）；非法值显式抛 <see cref="ArgumentException"/>。
+    /// </summary>
+    private static string ReadRpsRole(IDictionary<string, string> values)
+    {
+        if (!values.TryGetValue("rps-role", out var value))
+        {
+            return string.Empty;
+        }
+
+        if (string.Equals(value, RpsRoleOwner, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, RpsRoleJoiner, StringComparison.OrdinalIgnoreCase))
+        {
+            return value.ToLowerInvariant();
+        }
+
+        throw new ArgumentException($"Unsupported --rps-role value '{value}'. Valid values: {RpsRoleOwner}, {RpsRoleJoiner}.", "rps-role");
+    }
+
+    /// <summary>
+    /// 读取 RPS 出拳序列（逗号分隔的 1/2/3）。缺省 owner=1,1、joiner=2,2；非法分片显式抛 <see cref="ArgumentException"/>。
+    /// </summary>
+    private static IReadOnlyList<int> ReadRpsGestures(IDictionary<string, string> values, string rpsRole)
+    {
+        if (!values.TryGetValue("rps-gestures", out var value))
+        {
+            if (string.Equals(rpsRole, RpsRoleOwner, StringComparison.Ordinal))
+            {
+                return new[] { 1, 1 };
+            }
+
+            if (string.Equals(rpsRole, RpsRoleJoiner, StringComparison.Ordinal))
+            {
+                return new[] { 2, 2 };
+            }
+
+            return Array.Empty<int>();
+        }
+
+        var parts = value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var gestures = new List<int>(parts.Length);
+        foreach (var part in parts)
+        {
+            if (!int.TryParse(part, out var gesture) || gesture is < 1 or > 3)
+            {
+                throw new ArgumentException($"Invalid --rps-gestures entry '{part}'. Valid values are 1 (Rock), 2 (Scissors), 3 (Paper).", "rps-gestures");
+            }
+
+            gestures.Add(gesture);
+        }
+
+        if (gestures.Count == 0)
+        {
+            throw new ArgumentException("--rps-gestures must contain at least one entry.", "rps-gestures");
+        }
+
+        return gestures;
     }
 
     private static string EnsureEndWithSlash(string value)

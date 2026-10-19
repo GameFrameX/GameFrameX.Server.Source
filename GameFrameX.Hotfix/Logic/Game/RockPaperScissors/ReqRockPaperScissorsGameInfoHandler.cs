@@ -37,7 +37,8 @@ internal sealed class ReqRockPaperScissorsGameInfoHandler : GlobalRpcComponentHa
     {
         try
         {
-            await ComponentAgent.OnReqGameInfoAsync(request, response);
+            var playerId = RockPaperScissorsHandlerHelper.GetCurrentPlayerId(NetworkChannel);
+            await ComponentAgent.OnReqGameInfoAsync(playerId, request, response);
         }
         catch (Exception e)
         {

@@ -91,13 +91,15 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 33 个业务 action（C256 后 = 29 + hotfix 受控操作族 4）全部经注册反转注册，且 list_capabilities 元端点在列。
+        /// 验证 35 个业务 action（C256 后 = 29 + hotfix 受控操作族 4 + C245 结算 / 榜单查询 2）全部经注册反转注册，且 list_capabilities 元端点在列。
         /// </summary>
         [Fact]
         public void ActionNames_ShouldRegisterAllThirtyThreeActionsPlusMeta()
         {
             var dispatcher = CreateDispatcher();
-            Assert.Equal(34, dispatcher.ActionNames.Count);
+            Assert.Equal(36, dispatcher.ActionNames.Count);
+            Assert.Contains("query_match_settlement", dispatcher.ActionNames);
+            Assert.Contains("query_leaderboard", dispatcher.ActionNames);
             Assert.Contains("grant_asset", dispatcher.ActionNames);
             Assert.Contains("rollbackConfigRollout", dispatcher.ActionNames);
             Assert.Contains("query_online_audit_events", dispatcher.ActionNames);

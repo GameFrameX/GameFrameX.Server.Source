@@ -36,6 +36,7 @@ using GameFrameX.Core.Abstractions.Attribute;
 using GameFrameX.Core.Abstractions.Events;
 using GameFrameX.Core.Timer.Handler;
 using GameFrameX.Foundation.Utility;
+using GameFrameX.Hotfix.Logic.Game.RockPaperScissors;
 
 namespace GameFrameX.Hotfix.Logic.Game.Room;
 
@@ -247,6 +248,36 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
         if (!CheckPlayerId(playerId, response))
         {
             return;
+        }
+
+        // C245 对局桥路径（开关开启 + RPS 房间时独占先行；其余房间走旧链）：
+        // 轻量前置校验（只读 GetRoom，与旧链同判语义）→ 桥先行创建平台对局（幂等）→
+        // 失败显式负值错误码返回（不推进房间）；成功回落旧链完成 Room → Playing 推进。
+        if (RockPaperScissorsMatchBridge.IsBridgeEnabled)
+        {
+            var bridgeRoom = await GetRoom(request.RoomId);
+            if (bridgeRoom != null && bridgeRoom.GameType == GameType.RockPaperScissors)
+            {
+                if (bridgeRoom.OwnerRoleId != playerId || bridgeRoom.Status != RoomStatus.Ready)
+                {
+                    response.ErrorCode = (int)OperationStatusCode.Forbidden;
+                    response.Room = await ToMessageAsync(bridgeRoom);
+                    return;
+                }
+
+                if (bridgeRoom.PlayerIds.Count < bridgeRoom.MinPlayerCount || bridgeRoom.PlayerIds.Count > bridgeRoom.MaxPlayerCount)
+                {
+                    response.ErrorCode = (int)OperationStatusCode.Unprocessable;
+                    response.Room = await ToMessageAsync(bridgeRoom);
+                    return;
+                }
+
+                var bridgeHandled = await RockPaperScissorsMatchBridge.TryStartRoomGameAsync(playerId, bridgeRoom.RoomId, bridgeRoom.Round, bridgeRoom.PlayerIds, response);
+                if (!bridgeHandled || response.ErrorCode != 0)
+                {
+                    return;
+                }
+            }
         }
 
         if (!TryGetRoom(request.RoomId, response, out var room))

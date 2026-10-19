@@ -39,7 +39,7 @@ namespace GameFrameX.Client.Bot;
 /// <summary>
 /// 机器人客户端类,用于模拟玩家行为进行测试
 /// </summary>
-public sealed class BotClient
+public sealed partial class BotClient
 {
     private static readonly ConcurrentDictionary<string, long> OnlinePlayerIds = new(StringComparer.Ordinal);
 
@@ -159,8 +159,29 @@ public sealed class BotClient
             case RespDeleteFriend msg:
                 OnDeleteFriendSuccess(msg);
                 break;
-            case RespFriendList msg:
-                OnFriendListSuccess(msg);
+            case RespCreateRoom msg:
+                OnRpsCreateRoomResponse(msg);
+                break;
+            case RespRoomList msg:
+                OnRpsRoomListResponse(msg);
+                break;
+            case RespJoinRoom msg:
+                OnRpsJoinRoomResponse(msg);
+                break;
+            case RespStartRoomGame msg:
+                OnRpsStartRoomGameResponse(msg);
+                break;
+            case RespSubmitRockPaperScissorsGesture msg:
+                OnRpsSubmitGestureResponse(msg);
+                break;
+            case RespRockPaperScissorsGameInfo msg:
+                OnRpsGameInfoResponse(msg);
+                break;
+            case NotifyRockPaperScissorsGameChanged msg:
+                OnRpsGameInfoResponse(msg);
+                break;
+            case NotifyRoomChanged msg:
+                OnRpsRoomChangedNotify(msg);
                 break;
         }
     }
@@ -369,6 +390,12 @@ public sealed class BotClient
         if (_options.HasScenario("friend"))
         {
             StartFriendScenario();
+            return;
+        }
+
+        if (_options.HasRpsRole)
+        {
+            StartRpsScenario();
             return;
         }
 

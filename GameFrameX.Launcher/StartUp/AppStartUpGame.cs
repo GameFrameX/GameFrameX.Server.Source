@@ -213,12 +213,12 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     {
         if (!Setting.IsEnableOnline && !Setting.IsEnableOnlineAdmin)
         {
-            OnlineFriendBridgeWiring.EnsureFriendQueryBridgeConfigured(Setting);
+            OnlineMatchBridgeWiring.EnsureMatchGameBridgeConfigured(Setting);
             return;
         }
 
         // C243 桥接 fail-fast：开关开启而拓扑不支持（业务运行时关/作用域缺失）在装配前终止。
-        OnlineFriendBridgeWiring.EnsureFriendQueryBridgeConfigured(Setting);
+        OnlineMatchBridgeWiring.EnsureMatchGameBridgeConfigured(Setting);
 
         var composition = OnlineCapabilityComposition.AddOnlineCapabilities(options =>
         {
@@ -235,6 +235,7 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
             options.Capabilities = Setting.Online?.Capabilities;
             options.Disable = Setting.Online?.Disable;
             options.UseGameDbStores = Setting.Online?.UseGameDbStores ?? false;
+            options.MatchBridgeLeaderboardId = Setting.Online?.MatchBridgeLeaderboardId;
         });
         _onlineRuntime = composition.Runtime;
         _onlineAdminApi = composition.AdminApi;
@@ -248,6 +249,13 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
             {
                 OnlineFriendBridgeWiring.PublishFriendQueryBridge(_onlineRuntime);
                 await OnlineFriendBridgeWiring.SeedFriendQueryBridgeVerificationAsync(_onlineRuntime, Setting.Online?.FriendQueryBridgeSeedPlayerIds);
+            }
+
+            // C245 桥接：业务运行时启动后发布对局桥租约（开关开启时），并确保写榜目标榜单存在。
+            if (Setting.Online?.EnableMatchGameBridge == true)
+            {
+                OnlineMatchBridgeWiring.PublishMatchGameBridge(_onlineRuntime);
+                await OnlineMatchBridgeWiring.EnsureMatchLeaderboardBoardAsync(_onlineRuntime, Setting.Online?.MatchBridgeLeaderboardId);
             }
         }
     }
@@ -287,7 +295,9 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     private async Task ShutdownOnlineAdminAsync()
     {
         // C243 桥接：先撤销好友查询桥租约（旧引用显式失效），再停 Online admin 与 runtime 宿主。
+        // C245 桥接：先撤销对局桥租约（旧引用显式失效），顺序同上（撤桥 → 停 admin → 停 runtime）。
         OnlineFriendBridgeWiring.RetractFriendQueryBridge();
+        OnlineMatchBridgeWiring.RetractMatchGameBridge();
 
         if (_onlineAdminApi != null)
         {

@@ -332,6 +332,146 @@ public static partial class Keys
             public const string FriendScenarioCompleted = "Client.Bot.FriendScenarioCompleted";
 
             /// <summary>
+            /// 机器人-{0}RPS场景启动失败，玩家ID:{1}，出拳序列数量:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsScenarioInvalidOptions
+            /// 用途: RPS 场景启动参数非法（玩家ID或出拳序列）时记录
+            /// 参数: {0} - 机器人名称, {1} - 玩家ID, {2} - 出拳序列数量
+            /// </remarks>
+            public const string RpsScenarioInvalidOptions = "Client.Bot.RpsScenarioInvalidOptions";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-创建房间成功，房间ID:{1}，等待对手加入。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsRoomCreated
+            /// 用途: RPS 房主创建房间成功时记录
+            /// 参数: {0} - 机器人名称, {1} - 房间ID
+            /// </remarks>
+            public const string RpsRoomCreated = "Client.Bot.RpsRoomCreated";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-创建房间失败，错误码:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsCreateRoomFailed
+            /// 用途: RPS 房主创建房间失败时记录
+            /// 参数: {0} - 机器人名称, {1} - 错误码
+            /// </remarks>
+            public const string RpsCreateRoomFailed = "Client.Bot.RpsCreateRoomFailed";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-开始轮询可加入的石头剪刀布房间。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsJoinerWaiting
+            /// 用途: RPS 加入者开始轮询房间列表时记录
+            /// 参数: {0} - 机器人名称
+            /// </remarks>
+            public const string RpsJoinerWaiting = "Client.Bot.RpsJoinerWaiting";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-已加入房间:{1}，等待开局。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsJoinedRoom
+            /// 用途: RPS 加入者加入房间成功时记录
+            /// 参数: {0} - 机器人名称, {1} - 房间ID
+            /// </remarks>
+            public const string RpsJoinedRoom = "Client.Bot.RpsJoinedRoom";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-加入房间失败，房间ID:{1}，错误码:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsJoinRoomFailed
+            /// 用途: RPS 加入者加入房间失败时记录
+            /// 参数: {0} - 机器人名称, {1} - 房间ID, {2} - 错误码
+            /// </remarks>
+            public const string RpsJoinRoomFailed = "Client.Bot.RpsJoinRoomFailed";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-开局失败，错误码:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsStartGameFailed
+            /// 用途: RPS 房主开局失败时记录
+            /// 参数: {0} - 机器人名称, {1} - 错误码
+            /// </remarks>
+            public const string RpsStartGameFailed = "Client.Bot.RpsStartGameFailed";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-对局开始，房间ID:{1}。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsGameStarted
+            /// 用途: RPS 对局开始时记录
+            /// 参数: {0} - 机器人名称, {1} - 房间ID
+            /// </remarks>
+            public const string RpsGameStarted = "Client.Bot.RpsGameStarted";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-第{1}局出拳:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsSubmitGesture
+            /// 用途: RPS 每局提交出拳时记录
+            /// 参数: {0} - 机器人名称, {1} - 局数, {2} - 出拳
+            /// </remarks>
+            public const string RpsSubmitGesture = "Client.Bot.RpsSubmitGesture";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-出拳失败，错误码:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsSubmitFailed
+            /// 用途: RPS 提交出拳失败时记录
+            /// 参数: {0} - 机器人名称, {1} - 错误码
+            /// </remarks>
+            public const string RpsSubmitFailed = "Client.Bot.RpsSubmitFailed";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-对局终局，总局数:{1}，胜者玩家ID:{2}，玩家出拳:{3}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsGameFinished
+            /// 用途: RPS 对局终局时记录
+            /// 参数: {0} - 机器人名称, {1} - 总局数, {2} - 胜者玩家ID, {3} - 玩家出拳明细
+            /// </remarks>
+            public const string RpsGameFinished = "Client.Bot.RpsGameFinished";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-房间状态终局:{1}，总局数:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsGameFinishedByRoomStatus
+            /// 用途: RPS 通过房间状态判定终局时记录
+            /// 参数: {0} - 机器人名称, {1} - 房间状态, {2} - 总局数
+            /// </remarks>
+            public const string RpsGameFinishedByRoomStatus = "Client.Bot.RpsGameFinishedByRoomStatus";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-连续{1}次轮询无进展，终止。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsPollNoProgress
+            /// 用途: RPS 轮询长期无进展失败终止时记录
+            /// 参数: {0} - 机器人名称, {1} - 无进展轮询次数
+            /// </remarks>
+            public const string RpsPollNoProgress = "Client.Bot.RpsPollNoProgress";
+
+            /// <summary>
+            /// 机器人-{0}RPS场景-轮询循环异常:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.RpsPollLoopError
+            /// 用途: RPS 轮询后台循环异常时记录
+            /// 参数: {0} - 机器人名称, {1} - 异常信息
+            /// </remarks>
+            public const string RpsPollLoopError = "Client.Bot.RpsPollLoopError";
+
+            /// <summary>
             /// 机器人-{0}主动断开连接，模拟离线。
             /// </summary>
             /// <remarks>

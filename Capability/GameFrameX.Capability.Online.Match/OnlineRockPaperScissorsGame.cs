@@ -29,6 +29,7 @@
 
 using System.Collections.Generic;
 using System.Text.Json;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Assets;
 
 namespace GameFrameX.Capability.Online.Match;
@@ -305,6 +306,165 @@ public sealed class OnlineRockPaperScissorsGame : IOnlineMatchGame
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// 构造对局桥视图（C245 保密投影）：玩法属主自行决定对外可见性——
+    /// 当前局未结算一律不回显真实出拳，已结算局回显最近一次 <c>RoundResolved</c> 事件载荷中的真实出拳；
+    /// 整局胜者仅终局非 0（平局为 0）。
+    /// <para>
+    /// 维护约束（红线）：本投影只读快照与事件流，不改写任何对局状态；
+    /// 终局判定复用本类规则（<see cref="MaxRounds"/> / <see cref="WinTarget"/>），不引入第二套判定。
+    /// </para>
+    /// </summary>
+    /// <param name="roomId">房间标识（回显请求侧关联键）。</param>
+    /// <param name="snapshot">对局快照（权威状态切片）。</param>
+    /// <param name="events">事件流（取自 Actor 增量；用于回显最近一次已结算局的真实出拳）。</param>
+    /// <returns>桥接视图；玩法状态缺失时返回仅含生命周期状态的空投影视图。</returns>
+    public OnlineMatchBridgeGameView BuildBridgeView(long roomId, OnlineMatchSnapshot snapshot, IReadOnlyList<OnlineMatchServerEvent> events)
+    {
+        var state = Deserialize(snapshot == null ? null : snapshot.GameState);
+        var view = new OnlineMatchBridgeGameView
+        {
+            RoomId = roomId,
+            MatchId = snapshot == null ? string.Empty : snapshot.MatchId,
+            Mode = snapshot == null ? MatchMode : snapshot.Mode,
+            State = ProjectState(snapshot == null ? OnlineMatchState.Created : snapshot.State),
+            Round = 1,
+            WinnerPlayerId = 0,
+            Players = new List<OnlineMatchBridgePlayerView>(),
+        };
+
+        if (state == null || state.Players == null || state.Players.Count == 0)
+        {
+            return view;
+        }
+
+        view.Round = state.Round;
+        if (IsFinal(state))
+        {
+            view.WinnerPlayerId = FindWinner(state);
+        }
+
+        var revealed = FindLatestResolvedPlays(events, state.Round);
+        foreach (var player in state.Players)
+        {
+            if (player == null)
+            {
+                continue;
+            }
+
+            view.Players.Add(new OnlineMatchBridgePlayerView
+            {
+                PlayerId = player.PlayerId,
+                HasGesture = player.Gesture != OnlineRockPaperScissorsMove.None,
+                Wins = player.Wins,
+                Gesture = revealed != null && revealed.TryGetValue(player.PlayerId, out var gesture) ? (int)gesture : 0,
+            });
+        }
+
+        return view;
+    }
+
+    /// <summary>
+    /// 判定玩法是否已终局（复用本类规则：局数超上限或任一玩家达到胜局数）。
+    /// </summary>
+    /// <param name="state">玩法状态。</param>
+    /// <returns>终局返回 <c>true</c>。</returns>
+    private static bool IsFinal(OnlineRockPaperScissorsState state)
+    {
+        if (state.Round > MaxRounds)
+        {
+            return true;
+        }
+
+        foreach (var player in state.Players)
+        {
+            if (player != null && player.Wins >= WinTarget)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 回显最近一次已结算局的真实出拳（仅当该局正是当前局的上一局——当前局进行中不回显任何真实出拳）。
+    /// </summary>
+    /// <param name="events">事件流。</param>
+    /// <param name="currentRound">当前局数。</param>
+    /// <returns>玩家 → 真实出拳映射；无可回显局返回 null。</returns>
+    private static Dictionary<long, OnlineRockPaperScissorsMove> FindLatestResolvedPlays(IReadOnlyList<OnlineMatchServerEvent> events, int currentRound)
+    {
+        if (events == null)
+        {
+            return null;
+        }
+
+        for (var index = events.Count - 1; index >= 0; index--)
+        {
+            var item = events[index];
+            if (item == null || !string.Equals(item.EventType, RoundResolvedEventType, System.StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            RoundResolvedPayload payload;
+            try
+            {
+                payload = item.Payload == null ? null : JsonSerializer.Deserialize<RoundResolvedPayload>(item.Payload);
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
+
+            if (payload == null || payload.Plays == null || payload.Round != currentRound - 1)
+            {
+                return null;
+            }
+
+            var plays = new Dictionary<long, OnlineRockPaperScissorsMove>();
+            foreach (var play in payload.Plays)
+            {
+                if (play != null)
+                {
+                    plays[play.PlayerId] = play.Gesture;
+                }
+            }
+
+            return plays;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 平台对局状态 → 桥接生命周期状态投影。
+    /// </summary>
+    /// <param name="state">平台对局状态。</param>
+    /// <returns>桥接状态。</returns>
+    private static OnlineMatchBridgeGameState ProjectState(OnlineMatchState state)
+    {
+        switch (state)
+        {
+            case OnlineMatchState.Created:
+            case OnlineMatchState.Waiting:
+                return OnlineMatchBridgeGameState.Waiting;
+            case OnlineMatchState.Ready:
+                return OnlineMatchBridgeGameState.Ready;
+            case OnlineMatchState.Running:
+                return OnlineMatchBridgeGameState.Running;
+            case OnlineMatchState.Settling:
+                return OnlineMatchBridgeGameState.Settling;
+            case OnlineMatchState.Completed:
+                return OnlineMatchBridgeGameState.Completed;
+            case OnlineMatchState.SettlementFailed:
+                return OnlineMatchBridgeGameState.SettlementFailed;
+            default:
+                return OnlineMatchBridgeGameState.Terminated;
+        }
     }
 
     /// <summary>

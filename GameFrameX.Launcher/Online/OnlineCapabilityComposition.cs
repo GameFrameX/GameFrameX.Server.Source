@@ -35,6 +35,7 @@ using GameFrameX.Capability.Hosting.AdminApi;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Events;
 using GameFrameX.Capability.Online.Abstractions.Idempotency;
+using GameFrameX.Capability.Online.Competition.Leaderboard;
 using GameFrameX.Capability.Online.Operations;
 using GameFrameX.Capability.Online.Operations.HotfixRollback;
 using GameFrameX.Capability.Online.Operations.Audit;
@@ -150,6 +151,20 @@ public sealed class OnlineCapabilityCompositionOptions
     /// level-two stores (sessions / presence) are unaffected by this switch.
     /// </remarks>
     public bool UseGameDbStores { get; set; }
+
+    /// <summary>
+    /// 对局结算写榜榜单标识（C245）：非空 = 预置 <c>OnlineLeaderboardProjectionOptions</c> 共享服务，
+    /// online-competition 模块据此装配 Match.Settled 可信结果投影（要求 online-match / online-competition 能力在装配面）；
+    /// 空（缺省）= 不预置，投影不装配。
+    /// </summary>
+    /// <remarks>
+    /// The leaderboard id that settled match results project onto (C245): non-empty pre-seeds the
+    /// <c>OnlineLeaderboardProjectionOptions</c> shared service from which the online-competition
+    /// module assembles the Match.Settled trusted-result projection (requires the online-match /
+    /// online-competition capabilities on the assembly face); empty (default) pre-seeds nothing and
+    /// the projection stays unassembled.
+    /// </remarks>
+    public string MatchBridgeLeaderboardId { get; set; }
 }
 
 /// <summary>
@@ -242,7 +257,7 @@ public sealed class OnlineCapabilityComposition
         };
         var filter = BuildFilter(options.Capabilities, options.Disable);
 
-        var runtime = options.EnableRuntime ? BuildScannedRuntime(hostOptions, filter, options.UseGameDbStores) : null;
+        var runtime = options.EnableRuntime ? BuildScannedRuntime(hostOptions, filter, options.UseGameDbStores, options.MatchBridgeLeaderboardId) : null;
         var adminOptions = options.AdminApi ?? new AdminApiOptions();
         var adminApi = options.EnableAdminApi
             ? (runtime != null
@@ -276,8 +291,9 @@ public sealed class OnlineCapabilityComposition
     /// <param name="hostOptions">宿主选项（已通过合法性校验）。</param>
     /// <param name="filter">能力装配过滤器（null = 全装配）。</param>
     /// <param name="useGameDbStores">是否预置一级 store 的 GameDb 持久化实现（C249；false = InMemory 默认不变）。</param>
+    /// <param name="matchBridgeLeaderboardId">对局结算写榜榜单标识（空白 = 不预置投影选项；C245）。</param>
     /// <returns>业务能力宿主。</returns>
-    private static CapabilityHost BuildScannedRuntime(CapabilityHostOptions hostOptions, CapabilityAssemblyFilter filter, bool useGameDbStores)
+    private static CapabilityHost BuildScannedRuntime(CapabilityHostOptions hostOptions, CapabilityAssemblyFilter filter, bool useGameDbStores, string matchBridgeLeaderboardId)
     {
         var authorizedScope = new OnlineScope(hostOptions.TenantId, hostOptions.AppId, hostOptions.ServerId);
         var eventBus = new InMemoryEventPublisher();
@@ -302,6 +318,12 @@ public sealed class OnlineCapabilityComposition
         {
             // C249 一级 store 持久化预置（D3 = 3A）：模块 Register 期探测共享面命中即采用；Session / Presence 保持 InMemory。
             builder.UseOnlineGameDbStores();
+        }
+
+        if (!string.IsNullOrWhiteSpace(matchBridgeLeaderboardId))
+        {
+            // C245 对局结算写榜投影目标预置：online-competition 模块 Register 期探测命中即装配 Match.Settled 投影订阅。
+            builder.UseService(new OnlineLeaderboardProjectionOptions { MatchSettledBoardId = matchBridgeLeaderboardId });
         }
         foreach (var module in CapabilityAssembly.DiscoverModules(LoadCapabilityAssemblies()))
         {

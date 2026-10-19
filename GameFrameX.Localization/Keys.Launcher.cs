@@ -208,6 +208,73 @@ public static partial class Keys
         public const string OnlineFriendBridgeFaceMissing = "Launcher.OnlineFriendBridgeFaceMissing";
 
         /// <summary>
+        /// Online 对局桥已发布（租户 {0}，应用 {1}，区服 {2}）...
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineMatchBridgePublished
+        /// 用途: 记录对局桥租约发布（C245 组合根接线）
+        /// 参数: {0} - 租户标识；{1} - 应用标识；{2} - 区服标识
+        /// </remarks>
+        public const string OnlineMatchBridgePublished = "Launcher.OnlineMatchBridgePublished";
+
+        /// <summary>
+        /// Online 对局桥已撤销...
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineMatchBridgeRetracted
+        /// 用途: 记录对局桥租约撤销（进程停止路径）
+        /// </remarks>
+        public const string OnlineMatchBridgeRetracted = "Launcher.OnlineMatchBridgeRetracted";
+
+        /// <summary>
+        /// Online 对局桥榜单已确保存在（仅供样例验证）：{0}
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineMatchBridgeBoardEnsured
+        /// 用途: 披露组合根经真实榜单服务确保写榜目标存在（C245）；已存在时幂等跳过
+        /// 参数: {0} - 榜单标识
+        /// </remarks>
+        public const string OnlineMatchBridgeBoardEnsured = "Launcher.OnlineMatchBridgeBoardEnsured";
+
+        /// <summary>
+        /// 对局桥开关开启但业务运行时未启用（IsEnableOnline=false）——不支持该拓扑，启动终止
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineMatchBridgeRuntimeGateMissing
+        /// 用途: C245 组合根 fail-fast：桥开关与业务运行时开关矛盾
+        /// </remarks>
+        public const string OnlineMatchBridgeRuntimeGateMissing = "Launcher.OnlineMatchBridgeRuntimeGateMissing";
+
+        /// <summary>
+        /// 对局桥开关开启但作用域三元组缺失（OnlineTenantId/OnlineAppId/ServerId）——启动终止
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineMatchBridgeScopeMissing
+        /// 用途: C245 组合根 fail-fast：桥开关开启但授权作用域不完整
+        /// </remarks>
+        public const string OnlineMatchBridgeScopeMissing = "Launcher.OnlineMatchBridgeScopeMissing";
+
+        /// <summary>
+        /// 对局桥契约面缺失（online-match 能力被排除或未装配）——不支持该拓扑，启动终止
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineMatchBridgeFaceMissing
+        /// 用途: C245 组合根 fail-fast：发布期无法解析对局桥契约面或授权作用域
+        /// </remarks>
+        public const string OnlineMatchBridgeFaceMissing = "Launcher.OnlineMatchBridgeFaceMissing";
+
+        /// <summary>
+        /// 对局桥榜单确保失败：{0}，代码：{1}，消息：{2}
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineMatchBridgeBoardEnsureFailed
+        /// 用途: C245 组合根：写榜目标榜单确保失败（配置矛盾或榜单服务不可用），启动终止
+        /// 参数: {0} - 榜单标识；{1} - 错误码；{2} - 错误消息
+        /// </remarks>
+        public const string OnlineMatchBridgeBoardEnsureFailed = "Launcher.OnlineMatchBridgeBoardEnsureFailed";
+
+
+        /// <summary>
         /// 进入游戏主循环...
         /// </summary>
         /// <remarks>

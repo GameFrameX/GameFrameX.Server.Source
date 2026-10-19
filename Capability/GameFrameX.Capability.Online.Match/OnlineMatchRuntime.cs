@@ -116,6 +116,18 @@ public sealed class OnlineMatchRuntime
     }
 
     /// <summary>
+    /// 取登记表快照（锁内拷贝；结算 tick 等巡检方据此枚举，不持锁访问）。
+    /// </summary>
+    /// <returns>在册 Actor 列表副本（引用有效；各 Actor 自身的串行化由其门保证）。</returns>
+    public IReadOnlyList<OnlineMatchActor> SnapshotActors()
+    {
+        lock (_syncRoot)
+        {
+            return new List<OnlineMatchActor>(_actors.Values);
+        }
+    }
+
+    /// <summary>
     /// 注册玩法实现（每个模式至多一个；重复注册以后者为准）。
     /// </summary>
     /// <param name="game">玩法实现。</param>

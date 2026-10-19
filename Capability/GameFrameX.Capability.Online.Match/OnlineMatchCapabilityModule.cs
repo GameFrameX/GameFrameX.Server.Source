@@ -31,6 +31,7 @@ using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Hosting.AdminApi;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Events;
+using GameFrameX.Capability.Online.Assets;
 using GameFrameX.Capability.Online.Match.AdminApi;
 
 namespace GameFrameX.Capability.Online.Match;
@@ -68,6 +69,16 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
     /// </summary>
     private OnlineMatchRuntime _matchRuntime;
 
+    /// <summary>
+    /// 结算管线（Register 期构造；tick 驱动「结算 → 发奖 → 失败重投」，C245）。
+    /// </summary>
+    private OnlineMatchSettlementPipeline _settlementPipeline;
+
+    /// <summary>
+    /// 对局桥服务（Register 期构造；对 <c>IOnlineMatchGameBridge</c> 契约面的本域实现，C245）。
+    /// </summary>
+    private OnlineMatchGameBridgeService _bridgeService;
+
     /// <inheritdoc />
     public CapabilityManifest Manifest
     {
@@ -81,16 +92,28 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
         var matchActorStore = ResolveStore<IOnlineMatchActorStore>(context, static () => new InMemoryOnlineMatchActorStore());
         var matchResultStore = ResolveStore<IOnlineMatchResultStore>(context, static () => new InMemoryOnlineMatchResultStore());
 
+        var rpsGame = new OnlineRockPaperScissorsGame();
         _matchRuntime = new OnlineMatchRuntime(matchActorStore, eventPublisher);
-        _matchRuntime.RegisterGame(new OnlineRockPaperScissorsGame());
+        _matchRuntime.RegisterGame(rpsGame);
         context.AddService(_matchRuntime);
         context.AddTickJob("match-tick", ct => _matchRuntime.TickAllAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct));
+
+        // 结算编排（C245）：settlement + 可空 dispatcher（assets 缺席仅结算）+ tick 重投；桥服务注册回共享面。
+        var grantService = context.TryGetService(out OnlineGrantService grant) ? grant : null;
+        var settlementService = new OnlineMatchSettlementService(_matchRuntime, matchResultStore, eventPublisher);
+        var dispatcher = grantService == null ? null : new OnlineMatchResultDispatcher(grantService);
+        _settlementPipeline = new OnlineMatchSettlementPipeline(_matchRuntime, settlementService, dispatcher);
+        context.AddTickJob("match-settlement-tick", ct => _settlementPipeline.TickAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct));
+
+        _bridgeService = new OnlineMatchGameBridgeService(_matchRuntime, rpsGame);
+        context.AddService<IOnlineMatchGameBridge>(_bridgeService);
     }
 
     /// <inheritdoc />
     public void RegisterAdminActions(AdminActionRegistry registry)
     {
         OnlineAdminMatchHandlers.RegisterEndAbnormalMatch(registry);
+        OnlineAdminMatchSettlementHandlers.RegisterMatchSettlementQuery(registry, _settlementPipeline);
     }
 
     /// <summary>

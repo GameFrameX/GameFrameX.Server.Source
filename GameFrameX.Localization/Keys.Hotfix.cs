@@ -290,6 +290,43 @@ public static partial class Keys
         }
 
         /// <summary>
+        /// Game 游戏模块消息键。
+        /// </summary>
+        public static class Game
+        {
+            /// <summary>
+            /// 对局桥不可用（未发布或已撤销）, ActorId: {0}, Code: {1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Hotfix.Game.MatchBridgeUnavailable
+            /// 用途: C245 对局桥开关开启但租约不可用（宿主未启/已停/已撤销）时记录。
+            /// 参数: {0} - 请求主体ID, {1} - 协议错误码
+            /// </remarks>
+            public const string MatchBridgeUnavailable = "Hotfix.Game.MatchBridgeUnavailable";
+
+            /// <summary>
+            /// 对局桥返回失败, Code: {0}, Message: {1}, ActorId: {2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Hotfix.Game.MatchBridgeFailed
+            /// 用途: C245 对局桥契约面返回失败结果时记录。
+            /// 参数: {0} - 协议错误码, {1} - 失败描述, {2} - 请求主体ID
+            /// </remarks>
+            public const string MatchBridgeFailed = "Hotfix.Game.MatchBridgeFailed";
+
+            /// <summary>
+            /// 对局桥调用异常, ActorId: {0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Hotfix.Game.MatchBridgeException
+            /// 用途: C245 对局桥调用抛出异常时记录。
+            /// 参数: {0} - 请求主体ID
+            /// </remarks>
+            public const string MatchBridgeException = "Hotfix.Game.MatchBridgeException";
+        }
+
+
+        /// <summary>
         /// Player 玩家模块消息键。
         /// </summary>
         public static class Player

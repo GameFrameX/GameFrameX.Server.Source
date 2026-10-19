@@ -442,6 +442,27 @@
     <data name="Launcher.OnlineFriendBridgeFaceMissing" xml:space="preserve">
     <value>好友查询桥契约面缺失（online-social 能力被排除或未装配）——不支持该拓扑，启动终止</value>
   </data>
+    <data name="Launcher.OnlineMatchBridgePublished" xml:space="preserve">
+    <value>Online 对局桥已发布（租户 {0}，应用 {1}，区服 {2}）...</value>
+  </data>
+    <data name="Launcher.OnlineMatchBridgeRetracted" xml:space="preserve">
+    <value>Online 对局桥已撤销...</value>
+  </data>
+    <data name="Launcher.OnlineMatchBridgeBoardEnsured" xml:space="preserve">
+    <value>Online 对局桥榜单已确保存在（仅供样例验证）：{0}</value>
+  </data>
+    <data name="Launcher.OnlineMatchBridgeRuntimeGateMissing" xml:space="preserve">
+    <value>对局桥开关开启但业务运行时未启用（IsEnableOnline=false）——不支持该拓扑，启动终止</value>
+  </data>
+    <data name="Launcher.OnlineMatchBridgeScopeMissing" xml:space="preserve">
+    <value>对局桥开关开启但作用域三元组缺失（OnlineTenantId/OnlineAppId/ServerId）——启动终止</value>
+  </data>
+    <data name="Launcher.OnlineMatchBridgeFaceMissing" xml:space="preserve">
+    <value>对局桥契约面缺失（online-match 能力被排除或未装配）——不支持该拓扑，启动终止</value>
+  </data>
+    <data name="Launcher.OnlineMatchBridgeBoardEnsureFailed" xml:space="preserve">
+    <value>对局桥榜单确保失败：{0}，代码：{1}，消息：{2}</value>
+  </data>
     <data name="Launcher.EnterMainLoop" xml:space="preserve">
     <value>进入游戏主循环...</value>
   </data>
@@ -1685,6 +1706,48 @@
   <data name="Client.Bot.FriendScenarioCompleted" xml:space="preserve">
     <value>机器人-{0}好友场景执行完成，二次列表数量:{1}。</value>
   </data>
+  <data name="Client.Bot.RpsScenarioInvalidOptions" xml:space="preserve">
+    <value>机器人-{0}RPS场景启动失败，玩家ID:{1}，出拳序列数量:{2}</value>
+  </data>
+  <data name="Client.Bot.RpsRoomCreated" xml:space="preserve">
+    <value>机器人-{0}RPS场景-创建房间成功，房间ID:{1}，等待对手加入。</value>
+  </data>
+  <data name="Client.Bot.RpsCreateRoomFailed" xml:space="preserve">
+    <value>机器人-{0}RPS场景-创建房间失败，错误码:{1}</value>
+  </data>
+  <data name="Client.Bot.RpsJoinerWaiting" xml:space="preserve">
+    <value>机器人-{0}RPS场景-开始轮询可加入的石头剪刀布房间。</value>
+  </data>
+  <data name="Client.Bot.RpsJoinedRoom" xml:space="preserve">
+    <value>机器人-{0}RPS场景-已加入房间:{1}，等待开局。</value>
+  </data>
+  <data name="Client.Bot.RpsJoinRoomFailed" xml:space="preserve">
+    <value>机器人-{0}RPS场景-加入房间失败，房间ID:{1}，错误码:{2}</value>
+  </data>
+  <data name="Client.Bot.RpsStartGameFailed" xml:space="preserve">
+    <value>机器人-{0}RPS场景-开局失败，错误码:{1}</value>
+  </data>
+  <data name="Client.Bot.RpsGameStarted" xml:space="preserve">
+    <value>机器人-{0}RPS场景-对局开始，房间ID:{1}。</value>
+  </data>
+  <data name="Client.Bot.RpsSubmitGesture" xml:space="preserve">
+    <value>机器人-{0}RPS场景-第{1}局出拳:{2}</value>
+  </data>
+  <data name="Client.Bot.RpsSubmitFailed" xml:space="preserve">
+    <value>机器人-{0}RPS场景-出拳失败，错误码:{1}</value>
+  </data>
+  <data name="Client.Bot.RpsGameFinished" xml:space="preserve">
+    <value>机器人-{0}RPS场景-对局终局，总局数:{1}，胜者玩家ID:{2}，玩家出拳:{3}</value>
+  </data>
+  <data name="Client.Bot.RpsGameFinishedByRoomStatus" xml:space="preserve">
+    <value>机器人-{0}RPS场景-房间状态终局:{1}，总局数:{2}</value>
+  </data>
+  <data name="Client.Bot.RpsPollNoProgress" xml:space="preserve">
+    <value>机器人-{0}RPS场景-连续{1}次轮询无进展，终止。</value>
+  </data>
+  <data name="Client.Bot.RpsPollLoopError" xml:space="preserve">
+    <value>机器人-{0}RPS场景-轮询循环异常:{1}</value>
+  </data>
 
   <data name="Client.Bot.FriendScenarioInvalidPlayerId" xml:space="preserve">
     <value>机器人-{0}好友场景启动失败，玩家ID非法:{1}</value>
@@ -2097,6 +2160,16 @@
   <data name="Hotfix.Friend.FriendListBridgeException" xml:space="preserve">
     <value>好友查询桥调用异常, ActorId: {0}</value>
   </data>
+  <data name="Hotfix.Game.MatchBridgeUnavailable" xml:space="preserve">
+    <value>对局桥不可用（未发布或已撤销）, ActorId: {0}, Code: {1}</value>
+  </data>
+  <data name="Hotfix.Game.MatchBridgeFailed" xml:space="preserve">
+    <value>对局桥返回失败, Code: {0}, Message: {1}, ActorId: {2}</value>
+  </data>
+  <data name="Hotfix.Game.MatchBridgeException" xml:space="preserve">
+    <value>对局桥调用异常, ActorId: {0}</value>
+  </data>
+
 
   <data name="Hotfix.Player.AgentIsNull" xml:space="preserve">
     <value>代理对象为空</value>
