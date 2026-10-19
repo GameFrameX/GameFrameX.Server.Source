@@ -42,8 +42,15 @@ namespace GameFrameX.Capability.Online.Social;
 /// <para>
 /// 维护约束（服务共享协议）：模块无参构造（扫描可发现）；<c>Register</c> 自装配本域——六个 store 经
 /// <see cref="CapabilityRegistrationContext.TryGetService{TService}"/> 探测替换缝，未命中构造 InMemory 默认；
-/// 跨域硬依赖（事件出口 / Foundation 会话面）经上下文解析；对外产物（store 接口 + 裁决 / 处罚 / 通知服务 +
-/// <see cref="IOnlineSocialGate"/> 裁决面 + 聊天审计投影）注册回共享面。
+/// 跨域硬依赖（事件出口 / Foundation 会话面）经上下文解析；对外产物（store 接口 + 好友 / 裁决 / 处罚 / 通知服务 +
+/// <see cref="IOnlineSocialGate"/> 裁决面 + 聊天审计投影）注册回共享面；两个过期清扫滴答 job
+///（通知 + 好友请求）经组合根授权作用域锚定租户 / App。
+/// </para>
+/// <para>
+/// 好友服务装配披露（C242）：<see cref="IOnlinePlayerDirectory"/> 玩家目录与
+/// <see cref="IOnlineSocialPresenceProbe"/> 在线探针当前全仓无实现，经共享面通用缝探测、缺席为披露态——
+/// 搜索降级为空结果（空 ≠ 无匹配）、展示名回退标识字面量、在线状态恒 false，均不构成可用功能；
+/// 好友存储默认 InMemory（进程重启即丢），C249 的 GameDb 分级持久化不含好友（生产持久化归 C244）。
 /// </para>
 /// </summary>
 /// <remarks>
@@ -52,8 +59,18 @@ namespace GameFrameX.Capability.Online.Social;
 /// by scanning); <c>Register</c> self-assembles the domain — the six stores probe the replacement seams via
 /// <see cref="CapabilityRegistrationContext.TryGetService{TService}"/> with in-memory fallbacks; cross-domain
 /// hard dependencies (the event outlet / the Foundation session face) resolve through the context; outward
-/// products (store interfaces, the adjudication / punishment / notification services, the
-/// <see cref="IOnlineSocialGate"/> face and the chat-audit projection) are registered back into the shared face.
+/// products (store interfaces, the friend / adjudication / punishment / notification services, the
+/// <see cref="IOnlineSocialGate"/> face and the chat-audit projection) are registered back into the shared face;
+/// the two expiry-sweep tick jobs (notifications and friend requests) anchor their tenant / app on the
+/// composition root's authorized scope.
+/// <para>
+/// Friend assembly disclosure (C242): no implementation of <see cref="IOnlinePlayerDirectory"/> or
+/// <see cref="IOnlineSocialPresenceProbe"/> exists in the repository today; both are probed through the shared-face
+/// generic seam and their absence is a disclosed state — search degrades to empty results (empty is not
+/// "no match"), display names fall back to id literals and presence reads as offline; none of these constitute
+/// working features. The friend store defaults to in-memory (lost on restart); the C249 tiered GameDb
+/// persistence does not cover friends (production persistence belongs to C244).
+/// </para>
 /// </remarks>
 public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActionContributor
 {
@@ -92,6 +109,11 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
     private OnlineChatAuditProjection _chatAudit;
 
     /// <summary>
+    /// 好友服务（好友关系生命周期的唯一写者；C242 首个消费链装配）。
+    /// </summary>
+    private OnlineFriendService _friends;
+
+    /// <summary>
     /// 会话存储（Foundation 面；kick / revoke 逐会话执行）。
     /// </summary>
     private IOnlineSessionStore _sessionStore;
@@ -120,10 +142,18 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
         _reportStore = ResolveStore<IOnlineReportStore>(context, static () => new InMemoryOnlineReportStore());
         var socialGraphStore = ResolveStore<IOnlineSocialGraphStore>(context, static () => new InMemoryOnlineSocialGraphStore());
 
+        // 好友服务（C242 首个消费链装配）：玩家目录与在线探针当前全仓无实现，经共享面通用缝
+        //（CapabilityHostBuilder.UseService&lt;T&gt;）探测，缺席为披露态——搜索降级为空结果、
+        // 展示名回退标识字面量、在线状态恒 false，均不构成可用功能（注入实现即生效）。
+        context.TryGetService(out IOnlinePlayerDirectory directory);
+        context.TryGetService(out IOnlineSocialPresenceProbe presenceProbe);
+        _friends = new OnlineFriendService(friendStore, eventPublisher, directory, presenceProbe);
+
         _socialDecisions = new OnlineSocialDecisionService(socialGraphStore, _reportStore, eventPublisher);
         _punishments = new OnlinePunishmentService(socialGraphStore, eventPublisher);
         _notifications = new OnlineNotificationService(notificationStore, eventPublisher);
         _chatAudit = new OnlineChatAuditProjection(chatStore);
+        context.AddService(_friends);
         context.AddService(_socialDecisions);
         context.AddService(_punishments);
         context.AddService(_notifications);
@@ -134,6 +164,10 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
         context.AddTickJob("notification-expiry-sweep", async ct =>
         {
             await _notifications.SweepExpiredAsync(scope.TenantId, scope.AppId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
+        });
+        context.AddTickJob("friend-request-expiry-sweep", async ct =>
+        {
+            await _friends.SweepExpiredAsync(scope.TenantId, scope.AppId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
         });
     }
 
