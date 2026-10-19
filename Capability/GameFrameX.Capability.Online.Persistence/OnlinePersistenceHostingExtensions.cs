@@ -60,10 +60,13 @@ public static class OnlinePersistenceHostingExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        builder.UseService(new GameDbOnlineIdentityStore());
-        builder.UseService(new GameDbOnlinePlayerStorageStore());
-        builder.UseService(new GameDbOnlineAssetStore());
-        builder.UseService(new GameDbOnlineAssetTransactionStore());
+        // 接口键显式注册（C245 修复）：服务键 = 调用点 TService 类型（无接口自动映射）——
+        // 此前以具体类型注册导致模块 Register 期的 IOnline*Store 接口探测永不命中，
+        // GameDb 持久化在生产组合根下静默回落 InMemory（C249 spec「探测命中即采用」声明被背离）。
+        builder.UseService<IOnlineIdentityStore>(new GameDbOnlineIdentityStore());
+        builder.UseService<IOnlinePlayerStorageStore>(new GameDbOnlinePlayerStorageStore());
+        builder.UseService<IOnlineAssetStore>(new GameDbOnlineAssetStore());
+        builder.UseService<IOnlineAssetTransactionStore>(new GameDbOnlineAssetTransactionStore());
         return builder;
     }
 }
