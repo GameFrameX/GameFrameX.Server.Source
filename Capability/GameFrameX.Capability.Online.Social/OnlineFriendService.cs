@@ -460,6 +460,52 @@ public sealed class OnlineFriendService
     }
 
     /// <summary>
+    /// 列出玩家的全量关系记录（任意状态；C244 域桥契约 <c>ListRelations</c> 的输入）。
+    /// <para>
+    /// 与 <see cref="ListFriendsAsync"/>（只含已建立）和 <see cref="ListPendingRequestsAsync"/>
+    ///（只含本人为被请求方的待答）不同，本方法返回原始关系全集，由调用方（域面薄适配）
+    /// 按玩家视角分类投影；只读操作，不触碰状态机。
+    /// </para>
+    /// </summary>
+    /// <param name="scope">生效作用域（必须含玩家主体位）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>关系记录全集副本。</returns>
+    public async Task<OnlineResult<IReadOnlyList<OnlineFriendship>>> ListRelationsAsync(OnlineScope scope, CancellationToken cancellationToken = default)
+    {
+        var failure = ValidateScope<IReadOnlyList<OnlineFriendship>>(scope);
+        if (failure != null)
+        {
+            return failure;
+        }
+
+        var all = await _store.ListByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        return OnlineResult<IReadOnlyList<OnlineFriendship>>.Ok(all);
+    }
+
+    /// <summary>
+    /// 按玩家对查找关系记录（任意状态；C244 域桥契约「玩家对定位 → 关系标识编排」的输入）。
+    /// <para>
+    /// 只读操作：不做状态机判定、不区分方向——方向事实由调用方按
+    /// <see cref="OnlineFriendship.RequesterId"/> / <see cref="OnlineFriendship.AddresseeId"/> 投影。
+    /// </para>
+    /// </summary>
+    /// <param name="scope">生效作用域（必须含玩家主体位）。</param>
+    /// <param name="targetPlayerId">对方玩家标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>关系副本；不存在时成功负载为 null。</returns>
+    public async Task<OnlineResult<OnlineFriendship>> FindAsync(OnlineScope scope, long targetPlayerId, CancellationToken cancellationToken = default)
+    {
+        var failure = ValidateScope<OnlineFriendship>(scope);
+        if (failure != null)
+        {
+            return failure;
+        }
+
+        var found = await _store.FindAsync(scope.TenantId, scope.AppId, scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false);
+        return OnlineResult<OnlineFriendship>.Ok(found);
+    }
+
+    /// <summary>
     /// 扫描并终结超期未答复的好友请求（置 <see cref="OnlineFriendshipState.Expired"/>，可重新发起）。
     /// </summary>
     /// <param name="tenantId">租户标识。</param>

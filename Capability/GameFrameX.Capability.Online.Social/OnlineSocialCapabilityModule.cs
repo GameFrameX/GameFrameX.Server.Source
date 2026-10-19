@@ -43,15 +43,15 @@ namespace GameFrameX.Capability.Online.Social;
 /// 维护约束（服务共享协议）：模块无参构造（扫描可发现）；<c>Register</c> 自装配本域——六个 store 经
 /// <see cref="CapabilityRegistrationContext.TryGetService{TService}"/> 探测替换缝，未命中构造 InMemory 默认；
 /// 跨域硬依赖（事件出口 / Foundation 会话面）经上下文解析；对外产物（store 接口 + 好友 / 裁决 / 处罚 / 通知服务 +
-/// <see cref="IOnlineSocialGate"/> 裁决面 + <see cref="IOnlineFriendQuery"/> 好友查询契约面（C243 桥接缝，
-/// <see cref="OnlineFriendQueryFace"/> 薄映射实现）+ 聊天审计投影）注册回共享面；两个过期清扫滴答 job
+/// <see cref="IOnlineSocialGate"/> 裁决面 + <see cref="IOnlineFriendDomain"/> 好友域桥契约面（C244 域桥缝，
+/// <see cref="OnlineFriendDomainFace"/> 薄编排实现）+ 聊天审计投影）注册回共享面；两个过期清扫滴答 job
 ///（通知 + 好友请求）经组合根授权作用域锚定租户 / App。
 /// </para>
 /// <para>
 /// 好友服务装配披露（C242）：<see cref="IOnlinePlayerDirectory"/> 玩家目录与
 /// <see cref="IOnlineSocialPresenceProbe"/> 在线探针当前全仓无实现，经共享面通用缝探测、缺席为披露态——
 /// 搜索降级为空结果（空 ≠ 无匹配）、展示名回退标识字面量、在线状态恒 false，均不构成可用功能；
-/// 好友存储默认 InMemory（进程重启即丢），C249 的 GameDb 分级持久化不含好友（生产持久化归 C244）。
+/// 好友存储默认 InMemory（进程重启即丢）；GameDb 持久化经 <c>UseOnlineGameDbStores</c> 预置替换（C244 起随一级 store 族）。
 /// </para>
 /// </summary>
 /// <remarks>
@@ -61,7 +61,8 @@ namespace GameFrameX.Capability.Online.Social;
 /// <see cref="CapabilityRegistrationContext.TryGetService{TService}"/> with in-memory fallbacks; cross-domain
 /// hard dependencies (the event outlet / the Foundation session face) resolve through the context; outward
 /// products (store interfaces, the friend / adjudication / punishment / notification services, the
-/// <see cref="IOnlineSocialGate"/> face and the chat-audit projection) are registered back into the shared face;
+/// <see cref="IOnlineSocialGate"/> face, the <see cref="IOnlineFriendDomain"/> friend bridge face and
+/// the chat-audit projection) are registered back into the shared face;
 /// the two expiry-sweep tick jobs (notifications and friend requests) anchor their tenant / app on the
 /// composition root's authorized scope.
 /// <para>
@@ -69,8 +70,8 @@ namespace GameFrameX.Capability.Online.Social;
 /// <see cref="IOnlineSocialPresenceProbe"/> exists in the repository today; both are probed through the shared-face
 /// generic seam and their absence is a disclosed state — search degrades to empty results (empty is not
 /// "no match"), display names fall back to id literals and presence reads as offline; none of these constitute
-/// working features. The friend store defaults to in-memory (lost on restart); the C249 tiered GameDb
-/// persistence does not cover friends (production persistence belongs to C244).
+/// working features. The friend store defaults to in-memory (lost on restart); the GameDb persistence
+/// adapter is preset through <c>UseOnlineGameDbStores</c> (joining the level-one store family since C244).
 /// </para>
 /// </remarks>
 public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActionContributor
@@ -159,7 +160,7 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
         context.AddService(_punishments);
         context.AddService(_notifications);
         context.AddService(_chatAudit);
-        context.AddService<IOnlineFriendQuery>(new OnlineFriendQueryFace(_friends));
+        context.AddService<IOnlineFriendDomain>(new OnlineFriendDomainFace(_friends));
         context.AddService<IOnlineSocialGate>(_socialDecisions);
 
         var scope = context.GetService<OnlineScope>();

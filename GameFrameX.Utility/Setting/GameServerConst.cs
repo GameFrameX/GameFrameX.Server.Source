@@ -92,22 +92,6 @@ public static class GameServerConst
     }
 
     /// <summary>
-    /// 好友服务
-    /// </summary>
-    public static class Friend
-    {
-        /// <summary>
-        /// 服务名称
-        /// </summary>
-        public const string Name = "Friend";
-
-        /// <summary>
-        /// 服务ID
-        /// </summary>
-        public const int Id = 5540;
-    }
-
-    /// <summary>
     /// 鉴权服务
     /// </summary>
     public static class Auth

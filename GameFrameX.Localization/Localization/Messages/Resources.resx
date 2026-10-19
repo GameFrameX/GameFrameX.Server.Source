@@ -403,13 +403,7 @@
     <data name="Launcher.OnlineFriendBridgeSeeded" xml:space="preserve">
     <value>Online friend-query bridge verification seeds established (deployment verification only): requester {0}, seeded friends {1}</value>
   </data>
-    <data name="Launcher.OnlineFriendBridgeRuntimeGateMissing" xml:space="preserve">
-    <value>The friend-query bridge switch is on but the business runtime gate is off (IsEnableOnline=false) - unsupported topology, startup aborted</value>
-  </data>
-    <data name="Launcher.OnlineFriendBridgeScopeMissing" xml:space="preserve">
-    <value>The friend-query bridge switch is on but the authorized scope triple is missing (OnlineTenantId/OnlineAppId/ServerId) - startup aborted</value>
-  </data>
-    <data name="Launcher.OnlineFriendBridgeFaceMissing" xml:space="preserve">
+        <data name="Launcher.OnlineFriendBridgeFaceMissing" xml:space="preserve">
     <value>The friend-query bridge contract face is missing (the online-social capability is excluded or not assembled) - unsupported topology, startup aborted</value>
   </data>
     <data name="Launcher.OnlineMatchBridgePublished" xml:space="preserve">
@@ -2133,42 +2127,12 @@
     <value>EventDispatcherExtensions.SelfHandle {0} No listeners found for event type: {1}</value>
   </data>
 
-  <data name="Hotfix.Friend.AddFriendSendException" xml:space="preserve">
-    <value>FriendComponentAgent.OnAddFriend unified message send exception</value>
-  </data>
 
-  <data name="Hotfix.Friend.AddFriendSendFailed" xml:space="preserve">
-    <value>FriendComponentAgent.OnAddFriend unified message send failed, StatusCode: {0}, Error: {1}, TraceId: {2}</value>
-  </data>
 
-  <data name="Hotfix.Friend.DeleteFriendSendException" xml:space="preserve">
-    <value>FriendComponentAgent.OnDeleteFriend unified message send exception</value>
-  </data>
 
-  <data name="Hotfix.Friend.DeleteFriendSendFailed" xml:space="preserve">
-    <value>FriendComponentAgent.OnDeleteFriend unified message send failed, StatusCode: {0}, Error: {1}, TraceId: {2}</value>
-  </data>
 
-  <data name="Hotfix.Friend.FriendListSendException" xml:space="preserve">
-    <value>FriendComponentAgent.OnFriendList unified message send exception</value>
-  </data>
 
-  <data name="Hotfix.Friend.FriendListSendFailed" xml:space="preserve">
-    <value>FriendComponentAgent.OnFriendList unified message send failed, StatusCode: {0}, Error: {1}, TraceId: {2}</value>
-  </data>
 
-  <data name="Hotfix.Friend.SemanticInvalidResult" xml:space="preserve">
-    <value>FriendComponentAgent.{0} returned semantic error: Success=false and ErrorCode=0, PlayerId={1}</value>
-  </data>
-  <data name="Hotfix.Friend.FriendListBridgeUnavailable" xml:space="preserve">
-    <value>The friend-query bridge is unavailable (not published or retracted), ActorId: {0}, Code: {1}</value>
-  </data>
-  <data name="Hotfix.Friend.FriendListBridgeQueryFailed" xml:space="preserve">
-    <value>The friend-query bridge returned a failure, Code: {0}, Message: {1}, ActorId: {2}</value>
-  </data>
-  <data name="Hotfix.Friend.FriendListBridgeException" xml:space="preserve">
-    <value>The friend-query bridge call threw an exception, ActorId: {0}</value>
-  </data>
   <data name="Hotfix.Game.MatchBridgeUnavailable" xml:space="preserve">
     <value>The match bridge is unavailable (not published or retracted), ActorId: {0}, Code: {1}</value>
   </data>
@@ -2466,4 +2430,19 @@
     
     
     
-    </root>
+      <data name="Hotfix.Friend.DomainBridgeUnavailable" xml:space="preserve">
+    <value>The friend-domain bridge is unavailable (not published or retracted), PlayerId: {0}, Code: {1}</value>
+  </data>
+  <data name="Hotfix.Friend.DomainBridgeFailed" xml:space="preserve">
+    <value>The friend-domain bridge returned a failure, Code: {0}, Message: {1}, PlayerId: {2}</value>
+  </data>
+  <data name="Hotfix.Friend.DomainBridgeException" xml:space="preserve">
+    <value>The friend-domain bridge call threw an exception, PlayerId: {0}</value>
+  </data>
+  <data name="Launcher.OnlineFriendLegacyMigrationEntryFailed" xml:space="preserve">
+    <value>Legacy friend-relation migration failed for one entry: {0} &lt;-&gt; {1}, Code: {2}, Message: {3}</value>
+  </data>
+  <data name="Launcher.OnlineFriendLegacyMigrationDone" xml:space="preserve">
+    <value>Legacy friend-data migration finished: established {0}, pending requests {1}, failed {2} (legacy data untouched)</value>
+  </data>
+</root>

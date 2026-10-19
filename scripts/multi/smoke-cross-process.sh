@@ -17,7 +17,7 @@ call_test() {
   local response
   response="$(curl -sS -X POST "${url}" \
     -H 'Content-Type: application/json' \
-    -d '{"mode":"cross-process-friend"}')"
+    -d '{"mode":"cross-process-friend","playerId":900001}')"
 
   python3 - "$label" "$response" <<'PY'
 import json

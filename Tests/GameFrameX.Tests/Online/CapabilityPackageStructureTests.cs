@@ -54,7 +54,7 @@ namespace GameFrameX.Tests.Online
             ["GameFrameX.Capability.Online.Operations"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Online.Social", "GameFrameX.Capability.Online.Matchmaking", "GameFrameX.Capability.Online.Match", "GameFrameX.Capability.Hosting.Core" },
             ["GameFrameX.Capability.Online.Abstractions"] = new[] { "GameFrameX.Localization", "GameFrameX.Capability.Hosting.AdminApi" },
             ["GameFrameX.Capability.Online.Foundation"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Hosting.Core" },
-            ["GameFrameX.Capability.Online.Persistence"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Hosting.Core", "GameFrameX.DataBase" },
+            ["GameFrameX.Capability.Online.Persistence"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Online.Social", "GameFrameX.Capability.Hosting.Core", "GameFrameX.DataBase" },
         };
 
         /// <summary>

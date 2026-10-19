@@ -1,8 +1,6 @@
-﻿// ==========================================================================================
+// ==========================================================================================
 //  GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
 //  GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
-//  均受中华人民共和国及相关国际法律法规保护。
-//  are protected by the laws of the People's Republic of China and relevant international regulations.
 // 
 //  使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //  Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
@@ -16,45 +14,47 @@
 //  It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
 //  侵犯他人合法权益等法律法规所禁止的行为！
 //  or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+// 
 //  因基于本项目二次开发所产生的一切法律纠纷与责任，
 //  Any legal disputes and liabilities arising from secondary development based on this project
-//  本项目组织与贡献者概不承担。
-//  shall be borne solely by the developer; the project organization and contributors assume no responsibility.
-// 
+//  本组织及其贡献者概不承担。
+//  shall be borne by the developer; the project organization and contributors assume no responsibility.
 //  GitHub 仓库：https://github.com/GameFrameX
 //  GitHub Repository: https://github.com/GameFrameX
 //  Gitee  仓库：https://gitee.com/GameFrameX
 //  Gitee Repository:  https://gitee.com/GameFrameX
+//  CNB  仓库：https://cnb.cool/GameFrameX
+//  CNB Repository:    https://cnb.cool/GameFrameX
 //  官方文档：https://gameframex.doc.alianblank.com/
 //  Official Documentation: https://gameframex.doc.alianblank.com/
 // ==========================================================================================
 
+using System.Threading.Tasks;
+using GameFrameX.Core.BaseHandler.RPC;
+
 namespace GameFrameX.Hotfix.Logic.ServerRole.Friend;
 
 /// <summary>
-/// 发送好友申请处理器（好友关系，与社交域好友消息 120 域无关）。
+/// 好友关系协议族（域号 660）薄适配处理器（C244 起经好友域桥转发 Online 契约面；
+/// 旧 Friend Role 内存状态机随切换退役）。
+/// <para>
+/// 身份语义保持：请求主体 = 会话绑定玩家 id，未登录回 <see cref="FriendErrorCode.NotLoggedIn"/>；
+/// 错误码 660002..660005 由 <c>FriendDomainBridge</c> 按 T2 裁定 R5/R6/R7 映射。
+/// </para>
 /// </summary>
 [MessageMapping(typeof(ReqFriendSendRequest))]
-internal sealed class ReqFriendSendRequestHandler : GlobalRpcComponentHandler<FriendComponentAgent, ReqFriendSendRequest, RespFriendSendRequest>
+internal sealed class ReqFriendSendRequestHandler : BaseRpcMessageHandler<ReqFriendSendRequest, RespFriendSendRequest>
 {
     protected override async Task ActionAsync(ReqFriendSendRequest request, RespFriendSendRequest response)
     {
-        try
+        var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
+        if (playerId == 0)
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
-            if (playerId == 0)
-            {
-                response.ErrorCode = (int)FriendErrorCode.NotLoggedIn;
-                return;
-            }
+            response.ErrorCode = (int)FriendErrorCode.NotLoggedIn;
+            return;
+        }
 
-            await ComponentAgent.OnSendRequestAsync(playerId, request, response);
-        }
-        catch (Exception e)
-        {
-            LogHelper.Fatal(e);
-            response.ErrorCode = (int)OperationStatusCode.InternalServerError;
-        }
+        await GameFrameX.Hotfix.Logic.Player.Friend.FriendDomainBridge.SendRequestAsync(playerId, request.ToPlayerId, response);
     }
 }
 
@@ -62,26 +62,18 @@ internal sealed class ReqFriendSendRequestHandler : GlobalRpcComponentHandler<Fr
 /// 接受好友申请处理器。
 /// </summary>
 [MessageMapping(typeof(ReqFriendAccept))]
-internal sealed class ReqFriendAcceptHandler : GlobalRpcComponentHandler<FriendComponentAgent, ReqFriendAccept, RespFriendAccept>
+internal sealed class ReqFriendAcceptHandler : BaseRpcMessageHandler<ReqFriendAccept, RespFriendAccept>
 {
     protected override async Task ActionAsync(ReqFriendAccept request, RespFriendAccept response)
     {
-        try
+        var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
+        if (playerId == 0)
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
-            if (playerId == 0)
-            {
-                response.ErrorCode = (int)FriendErrorCode.NotLoggedIn;
-                return;
-            }
+            response.ErrorCode = (int)FriendErrorCode.NotLoggedIn;
+            return;
+        }
 
-            await ComponentAgent.OnAcceptAsync(playerId, request, response);
-        }
-        catch (Exception e)
-        {
-            LogHelper.Fatal(e);
-            response.ErrorCode = (int)OperationStatusCode.InternalServerError;
-        }
+        await GameFrameX.Hotfix.Logic.Player.Friend.FriendDomainBridge.AcceptAsync(playerId, request.FromPlayerId, response);
     }
 }
 
@@ -89,26 +81,18 @@ internal sealed class ReqFriendAcceptHandler : GlobalRpcComponentHandler<FriendC
 /// 拒绝好友申请处理器。
 /// </summary>
 [MessageMapping(typeof(ReqFriendReject))]
-internal sealed class ReqFriendRejectHandler : GlobalRpcComponentHandler<FriendComponentAgent, ReqFriendReject, RespFriendReject>
+internal sealed class ReqFriendRejectHandler : BaseRpcMessageHandler<ReqFriendReject, RespFriendReject>
 {
     protected override async Task ActionAsync(ReqFriendReject request, RespFriendReject response)
     {
-        try
+        var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
+        if (playerId == 0)
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
-            if (playerId == 0)
-            {
-                response.ErrorCode = (int)FriendErrorCode.NotLoggedIn;
-                return;
-            }
+            response.ErrorCode = (int)FriendErrorCode.NotLoggedIn;
+            return;
+        }
 
-            await ComponentAgent.OnRejectAsync(playerId, request, response);
-        }
-        catch (Exception e)
-        {
-            LogHelper.Fatal(e);
-            response.ErrorCode = (int)OperationStatusCode.InternalServerError;
-        }
+        await GameFrameX.Hotfix.Logic.Player.Friend.FriendDomainBridge.RejectAsync(playerId, request.FromPlayerId, response);
     }
 }
 
@@ -116,26 +100,18 @@ internal sealed class ReqFriendRejectHandler : GlobalRpcComponentHandler<FriendC
 /// 解除好友关系处理器。
 /// </summary>
 [MessageMapping(typeof(ReqFriendRemove))]
-internal sealed class ReqFriendRemoveHandler : GlobalRpcComponentHandler<FriendComponentAgent, ReqFriendRemove, RespFriendRemove>
+internal sealed class ReqFriendRemoveHandler : BaseRpcMessageHandler<ReqFriendRemove, RespFriendRemove>
 {
     protected override async Task ActionAsync(ReqFriendRemove request, RespFriendRemove response)
     {
-        try
+        var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
+        if (playerId == 0)
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
-            if (playerId == 0)
-            {
-                response.ErrorCode = (int)FriendErrorCode.NotLoggedIn;
-                return;
-            }
+            response.ErrorCode = (int)FriendErrorCode.NotLoggedIn;
+            return;
+        }
 
-            await ComponentAgent.OnRemoveAsync(playerId, request, response);
-        }
-        catch (Exception e)
-        {
-            LogHelper.Fatal(e);
-            response.ErrorCode = (int)OperationStatusCode.InternalServerError;
-        }
+        await GameFrameX.Hotfix.Logic.Player.Friend.FriendDomainBridge.RemoveAsync(playerId, request.FriendPlayerId, response);
     }
 }
 
@@ -143,25 +119,17 @@ internal sealed class ReqFriendRemoveHandler : GlobalRpcComponentHandler<FriendC
 /// 拉取好友关系列表处理器。
 /// </summary>
 [MessageMapping(typeof(ReqFriendRelationList))]
-internal sealed class ReqFriendRelationListHandler : GlobalRpcComponentHandler<FriendComponentAgent, ReqFriendRelationList, RespFriendRelationList>
+internal sealed class ReqFriendRelationListHandler : BaseRpcMessageHandler<ReqFriendRelationList, RespFriendRelationList>
 {
     protected override async Task ActionAsync(ReqFriendRelationList request, RespFriendRelationList response)
     {
-        try
+        var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
+        if (playerId == 0)
         {
-            var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
-            if (playerId == 0)
-            {
-                response.ErrorCode = (int)FriendErrorCode.NotLoggedIn;
-                return;
-            }
+            response.ErrorCode = (int)FriendErrorCode.NotLoggedIn;
+            return;
+        }
 
-            await ComponentAgent.OnListAsync(playerId, request, response);
-        }
-        catch (Exception e)
-        {
-            LogHelper.Fatal(e);
-            response.ErrorCode = (int)OperationStatusCode.InternalServerError;
-        }
+        await GameFrameX.Hotfix.Logic.Player.Friend.FriendDomainBridge.ListRelationsAsync(playerId, response);
     }
 }

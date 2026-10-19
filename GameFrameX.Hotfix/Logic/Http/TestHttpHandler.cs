@@ -51,23 +51,15 @@ public sealed class TestHttpHandler : BaseHttpHandler
         var paramMap = context.Parameters;
         if (TryGetMode(paramMap, out var mode) && string.Equals(mode, "cross-process-friend", StringComparison.OrdinalIgnoreCase))
         {
-            var friendComponentAgent = await ActorManager.GetComponentAgent<FriendComponentAgent>();
-            var friendResponse = new RespFriendList();
-            await friendComponentAgent.OnFriendList(null, new ReqFriendList(), friendResponse);
-            var crossResponse = new HttpCrossProcessFriendResponse
-            {
-                Mode = mode,
-                ErrorCode = friendResponse.ErrorCode,
-                FriendCount = friendResponse.Friends?.Count ?? 0,
-                Friends = friendResponse.Friends ?? new List<FriendInfo>(),
-            };
-            return HttpJsonResultData<string>.SuccessString(JsonHelper.Serialize(crossResponse));
+            // C244 起好友查询统一经好友域桥（旧 Social Inner 转发链退役）；显式 playerId 为验证请求主体。
+            return HandleFriendDomainQuery(paramMap, "cross-process-friend");
         }
 
-        // C243 验证入口：好友查询桥穿透复核（显式 playerId 为验证请求主体；作用域三元组仍由 lease 授权供给）。
+        // C243 验证入口（C244 起与上一模式同路径）：好友域桥穿透复核（显式 playerId 为验证请求主体；
+        // 作用域三元组仍由 lease 授权供给）。
         if (TryGetMode(paramMap, out var bridgeMode) && string.Equals(bridgeMode, "online-bridge-friend", StringComparison.OrdinalIgnoreCase))
         {
-            return HandleOnlineBridgeFriend(paramMap);
+            return HandleFriendDomainQuery(paramMap, "online-bridge-friend");
         }
 
         // C245 验证入口：对局桥穿透复核（显式 playerId 为验证请求主体；roomId/round/gesture 定位对局与意图；
@@ -104,13 +96,14 @@ public sealed class TestHttpHandler : BaseHttpHandler
     }
 
     /// <summary>
-    /// 好友查询桥穿透验证入口（C243）：以显式 <c>playerId</c> 为验证请求主体走桥路径
-    ///（与协议入口 ReqFriendList 相同的薄适配器代码路径）；桥开关未开启时显式回
-    /// <c>BridgeEnabled=false</c>，不伪装成功。
+    /// 好友域桥穿透验证入口（C244）：以显式 <c>playerId</c> 为验证请求主体走域桥路径
+    ///（与协议入口 ReqFriendList 相同的薄适配器代码路径）；playerId 缺省或非法（≤0）时显式回
+    /// 会话无效错误码，不伪装成功。
     /// </summary>
     /// <param name="parameters">请求参数。</param>
+    /// <param name="modeName">回显模式名。</param>
     /// <returns>序列化响应。</returns>
-    private static string HandleOnlineBridgeFriend(Dictionary<string, object> parameters)
+    private static string HandleFriendDomainQuery(Dictionary<string, object> parameters, string modeName)
     {
         long playerId = 0;
         if (parameters.TryGetValue("playerId", out var playerIdValue) && playerIdValue != null)
@@ -118,18 +111,121 @@ public sealed class TestHttpHandler : BaseHttpHandler
             long.TryParse(playerIdValue.ToString(), out playerId);
         }
 
+        // 写路径验证（C244）：action + peer 参数存在时走 660 族薄适配器代码路径（request/accept/reject/remove/relations）。
+        if (parameters.TryGetValue("action", out var actionValue) && actionValue != null && !string.IsNullOrWhiteSpace(actionValue.ToString()))
+        {
+            return HandleFriendDomainAction(parameters, modeName, playerId, actionValue.ToString());
+        }
+
         var bridgeResponse = new RespFriendList();
-        var handled = playerId > 0 && FriendQueryBridge.TryQueryFriendListAsync(playerId, bridgeResponse).GetAwaiter().GetResult();
+        if (playerId > 0)
+        {
+            FriendDomainBridge.QueryFriendListAsync(playerId, bridgeResponse).GetAwaiter().GetResult();
+        }
+        else
+        {
+            bridgeResponse.Friends = new List<FriendInfo>();
+            bridgeResponse.ErrorCode = -(int)OnlineErrorCode.SessionInvalid;
+        }
+
         var response = new HttpOnlineBridgeFriendResponse
         {
-            Mode = "online-bridge-friend",
+            Mode = modeName,
             PlayerId = playerId,
-            BridgeEnabled = handled,
-            ErrorCode = handled ? bridgeResponse.ErrorCode : 0,
-            FriendCount = handled ? bridgeResponse.Friends?.Count ?? 0 : 0,
-            Friends = handled ? bridgeResponse.Friends ?? new List<FriendInfo>() : new List<FriendInfo>(),
+            BridgeEnabled = playerId > 0,
+            ErrorCode = bridgeResponse.ErrorCode,
+            FriendCount = bridgeResponse.Friends?.Count ?? 0,
+            Friends = bridgeResponse.Friends ?? new List<FriendInfo>(),
         };
         return HttpJsonResultData<string>.SuccessString(JsonHelper.Serialize(response));
+    }
+
+    /// <summary>
+    /// 好友域桥写路径验证入口（C244）：以显式 <c>playerId</c> 为验证请求主体、<c>peer</c> 为对方，
+    /// <c>action</c> 路由 660 族薄适配器（SendRequest/Accept/Reject/Remove/ListRelations 同一映射代码路径）。
+    /// </summary>
+    /// <param name="parameters">请求参数。</param>
+    /// <param name="modeName">回显模式名。</param>
+    /// <param name="playerId">验证请求主体。</param>
+    /// <param name="action">动作名。</param>
+    /// <returns>序列化响应。</returns>
+    private static string HandleFriendDomainAction(Dictionary<string, object> parameters, string modeName, long playerId, string action)
+    {
+        long peerId = 0;
+        if (parameters.TryGetValue("peer", out var peerValue) && peerValue != null)
+        {
+            long.TryParse(peerValue.ToString(), out peerId);
+        }
+
+        var errorCode = playerId > 0 ? 0 : -(int)OnlineErrorCode.SessionInvalid;
+        List<long> friends = null;
+        List<long> incoming = null;
+        List<long> outgoing = null;
+        if (playerId > 0)
+        {
+            switch (action.ToLowerInvariant())
+            {
+                case "request":
+                {
+                    var response = new RespFriendSendRequest();
+                    FriendDomainBridge.SendRequestAsync(playerId, peerId, response).GetAwaiter().GetResult();
+                    errorCode = response.ErrorCode;
+                    break;
+                }
+
+                case "accept":
+                {
+                    var response = new RespFriendAccept();
+                    FriendDomainBridge.AcceptAsync(playerId, peerId, response).GetAwaiter().GetResult();
+                    errorCode = response.ErrorCode;
+                    break;
+                }
+
+                case "reject":
+                {
+                    var response = new RespFriendReject();
+                    FriendDomainBridge.RejectAsync(playerId, peerId, response).GetAwaiter().GetResult();
+                    errorCode = response.ErrorCode;
+                    break;
+                }
+
+                case "remove":
+                {
+                    var response = new RespFriendRemove();
+                    FriendDomainBridge.RemoveAsync(playerId, peerId, response).GetAwaiter().GetResult();
+                    errorCode = response.ErrorCode;
+                    break;
+                }
+
+                case "relations":
+                {
+                    var response = new RespFriendRelationList();
+                    FriendDomainBridge.ListRelationsAsync(playerId, response).GetAwaiter().GetResult();
+                    errorCode = response.ErrorCode;
+                    friends = response.Friends;
+                    incoming = response.IncomingRequests;
+                    outgoing = response.OutgoingRequests;
+                    break;
+                }
+
+                default:
+                    errorCode = -(int)OnlineErrorCode.ParameterInvalid;
+                    break;
+            }
+        }
+
+        var result = new HttpOnlineFriendActionResponse
+        {
+            Mode = modeName,
+            Action = action,
+            PlayerId = playerId,
+            PeerId = peerId,
+            ErrorCode = errorCode,
+            Friends = friends,
+            IncomingRequests = incoming,
+            OutgoingRequests = outgoing,
+        };
+        return HttpJsonResultData<string>.SuccessString(JsonHelper.Serialize(result));
     }
 
     /// <summary>
@@ -217,14 +313,6 @@ public sealed class HttpTestResponse : HttpMessageResponseBase
     [Description("返回信息")] public string Message { get; set; }
 }
 
-public sealed class HttpCrossProcessFriendResponse : HttpMessageResponseBase
-{
-    [Description("测试模式")] public string Mode { get; set; }
-    [Description("错误码")] public int ErrorCode { get; set; }
-    [Description("好友数量")] public int FriendCount { get; set; }
-    [Description("好友列表")] public List<FriendInfo> Friends { get; set; }
-}
-
 public sealed class HttpOnlineBridgeFriendResponse : HttpMessageResponseBase
 {
     [Description("测试模式")] public string Mode { get; set; }
@@ -233,6 +321,18 @@ public sealed class HttpOnlineBridgeFriendResponse : HttpMessageResponseBase
     [Description("错误码")] public int ErrorCode { get; set; }
     [Description("好友数量")] public int FriendCount { get; set; }
     [Description("好友列表")] public List<FriendInfo> Friends { get; set; }
+}
+
+public sealed class HttpOnlineFriendActionResponse : HttpMessageResponseBase
+{
+    [Description("测试模式")] public string Mode { get; set; }
+    [Description("动作名")] public string Action { get; set; }
+    [Description("验证请求主体")] public long PlayerId { get; set; }
+    [Description("对方玩家")] public long PeerId { get; set; }
+    [Description("错误码")] public int ErrorCode { get; set; }
+    [Description("好友列表（relations 动作）")] public List<long> Friends { get; set; }
+    [Description("收到申请（relations 动作）")] public List<long> IncomingRequests { get; set; }
+    [Description("发出申请（relations 动作）")] public List<long> OutgoingRequests { get; set; }
 }
 
 public sealed class HttpOnlineBridgeMatchResponse : HttpMessageResponseBase

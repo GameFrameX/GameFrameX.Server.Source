@@ -134,6 +134,12 @@ public class ServerRoleMessageDomainTests
     [MemberData(nameof(RoleMessageCases))]
     public void RoleRequestHandlers_ExactlyOneWithAgentComponentChain(string role, int domain, string requestNames)
     {
+        if (role == "Friend")
+        {
+            // C244 好友域接管：660 族退役 Agent/Component 链，改由独立事实断言 plain 薄适配器形态。
+            return;
+        }
+
         var agentsSeen = new HashSet<Type>();
         foreach (var requestName in requestNames.Split('|'))
         {
@@ -162,6 +168,32 @@ public class ServerRoleMessageDomainTests
         var componentTypeAttribute = componentType.GetCustomAttribute<ComponentTypeAttribute>();
         Assert.True(componentTypeAttribute != null, $"{role}Component 缺少 ComponentType");
         Assert.Equal(GlobalConst.ActorTypeServer, componentTypeAttribute!.Type);
+    }
+
+    /// <summary>
+    /// 好友域（660）请求消息在 Hotfix 程序集恰好装配一个 MessageMapping handler，
+    /// 且为 plain <c>BaseRpcMessageHandler</c> 薄适配器（C244 好友域接管：经 FriendDomainBridge
+    /// 转发 Online 契约面，不再挂 Role 内存状态机 Agent/Component 链）。
+    /// </summary>
+    [Fact]
+    public void FriendRequestHandlers_ArePlainDomainBridgeAdapters()
+    {
+        var friend = RoleMessages.Single(entry => entry.Role == "Friend");
+        foreach (var requestName in friend.Requests)
+        {
+            var reqType = ProtoAssemblyAnchor.Assembly.GetType($"GameFrameX.Proto.Proto.{requestName}");
+            Assert.True(reqType != null, $"缺少 {requestName} 消息");
+
+            var handlers = HotfixAssemblyAnchor.Assembly.GetTypes()
+                .Where(type => type.GetCustomAttribute<MessageMappingAttribute>()?.MessageType == reqType)
+                .ToList();
+            Assert.True(handlers.Count == 1, $"{requestName} 的 MessageMapping handler 数量应为 1，实际 {handlers.Count}");
+            var handler = handlers[0];
+            var baseGeneric = handler.BaseType;
+            Assert.NotNull(baseGeneric);
+            Assert.True(baseGeneric!.IsGenericType, $"{requestName}Handler 应为 BaseRpcMessageHandler 派生");
+            Assert.Equal("BaseRpcMessageHandler`2", baseGeneric.GetGenericTypeDefinition().Name);
+        }
     }
 
     public static IEnumerable<object[]> RoleMessageCases()

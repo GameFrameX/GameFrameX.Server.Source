@@ -11,6 +11,7 @@
         <ProjectReference Include="../GameFrameX.Capability.Online.Abstractions/GameFrameX.Capability.Online.Abstractions.csproj"/>
         <ProjectReference Include="../GameFrameX.Capability.Online.Foundation/GameFrameX.Capability.Online.Foundation.csproj"/>
         <ProjectReference Include="../GameFrameX.Capability.Online.Assets/GameFrameX.Capability.Online.Assets.csproj"/>
+        <ProjectReference Include="../GameFrameX.Capability.Online.Social/GameFrameX.Capability.Online.Social.csproj"/>
         <ProjectReference Include="../GameFrameX.Capability.Hosting.Core/GameFrameX.Capability.Hosting.Core.csproj"/>
         <ProjectReference Include="../../GameFrameX.DataBase/GameFrameX.DataBase.csproj"/>
     </ItemGroup>

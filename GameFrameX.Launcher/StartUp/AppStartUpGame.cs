@@ -193,9 +193,9 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     /// "Online" 配置段过滤器）；本方法只启动业务面，管理面启动由
     /// <see cref="StartOnlineAdminIfEnabledAsync"/> 按闸独立决定。
     /// <para>
-    /// C243 桥接：<c>Online.EnableFriendQueryBridge</c> 开启时，装配前先做拓扑 fail-fast，
-    /// 业务运行时启动后发布好友查询桥租约并按配置建立验证种子；撤销由退出路径
-    /// <see cref="ShutdownOnlineAdminAsync"/> 承担。
+    /// C244 好友域接管：业务运行时启动后无条件发布好友域桥租约（旧 120/660 链已退役，无回落目标），
+    /// 按配置执行旧好友数据一次性迁移（<c>Online.MigrateLegacyFriendData</c>）与验证种子
+    ///（<c>Online.FriendBridgeSeedPlayerIds</c>）；撤销由退出路径 <see cref="ShutdownOnlineAdminAsync"/> 承担。
     /// </para>
     /// </summary>
     /// <remarks>
@@ -244,12 +244,14 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
         {
             await _onlineRuntime.StartAsync();
 
-            // C243 桥接：业务运行时启动后发布好友查询桥租约（开关开启时），并按配置建立验证种子。
-            if (Setting.Online?.EnableFriendQueryBridge == true)
+            // C244 好友域接管：业务运行时启动后发布好友域桥租约（无回落目标），按配置执行旧数据迁移与验证种子。
+            OnlineFriendDomainBridgeWiring.PublishFriendDomainBridge(_onlineRuntime);
+            if (Setting.Online?.MigrateLegacyFriendData == true)
             {
-                OnlineFriendBridgeWiring.PublishFriendQueryBridge(_onlineRuntime);
-                await OnlineFriendBridgeWiring.SeedFriendQueryBridgeVerificationAsync(_onlineRuntime, Setting.Online?.FriendQueryBridgeSeedPlayerIds);
+                await OnlineFriendLegacyMigration.MigrateAsync(_onlineRuntime);
             }
+
+            await OnlineFriendDomainBridgeWiring.SeedFriendDomainBridgeVerificationAsync(_onlineRuntime, Setting.Online?.FriendBridgeSeedPlayerIds);
 
             // C245 桥接：业务运行时启动后发布对局桥租约（开关开启时），并确保写榜目标榜单存在。
             if (Setting.Online?.EnableMatchGameBridge == true)
@@ -294,9 +296,9 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     private async Task ShutdownOnlineAdminAsync()
     {
-        // C243 桥接：先撤销好友查询桥租约（旧引用显式失效），再停 Online admin 与 runtime 宿主。
+        // C244 好友域接管：先撤销好友域桥租约（旧引用显式失效），再停 Online admin 与 runtime 宿主。
         // C245 桥接：先撤销对局桥租约（旧引用显式失效），顺序同上（撤桥 → 停 admin → 停 runtime）。
-        OnlineFriendBridgeWiring.RetractFriendQueryBridge();
+        OnlineFriendDomainBridgeWiring.RetractFriendDomainBridge();
         OnlineMatchBridgeWiring.RetractMatchGameBridge();
 
         if (_onlineAdminApi != null)

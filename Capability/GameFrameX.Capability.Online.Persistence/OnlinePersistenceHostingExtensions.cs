@@ -36,13 +36,15 @@ using GameFrameX.Capability.Online.Persistence.Assets;
 using GameFrameX.Capability.Online.Persistence.Identity;
 using GameFrameX.Capability.Online.Persistence.Storage;
 using GameFrameX.Capability.Online.Foundation.Identity;
+using GameFrameX.Capability.Online.Persistence.Social;
+using GameFrameX.Capability.Online.Social;
 
 /// <summary>
-/// Online 分级持久化适配包的 hosting 扩展（C249，D3 = 3A）：
-/// <see cref="UseOnlineGameDbStores"/> 一次性预置四个一级 store 的 GameDb 实现进共享服务面。
+/// Online 分级持久化适配包的 hosting 扩展（C249，D3 = 3A；C244 增补好友域）：
+/// <see cref="UseOnlineGameDbStores"/> 一次性预置五个一级 store 的 GameDb 实现进共享服务面。
 /// <para>
 /// 装配语义（对齐 C231 替换缝族）：预置发生在能力模块 <c>Register</c> 之前——Foundation /
-/// Assets 模块探测共享面命中即采用，未命中仍构造 InMemory 默认（缺省路径零变化红线）；
+/// Assets / Social 模块探测共享面命中即采用，未命中仍构造 InMemory 默认（缺省路径零变化红线）；
 /// 预置的 store 实例无进程内状态缓存（读路径恒直达数据库，实例重建即等价进程重启）。
 /// 前置约束：调用前 <see cref="GameFrameX.DataBase.GameDb"/> 静态门面必须已完成 Init
 ///（组合根先初始化数据库再装配 Online 能力；未 Init 时的首次读写按门面契约 fail fast）。
@@ -52,7 +54,7 @@ using GameFrameX.Capability.Online.Foundation.Identity;
 public static class OnlinePersistenceHostingExtensions
 {
     /// <summary>
-    /// 预置 Online 一级 store 的 GameDb 实现（Identity / PlayerStorage / 资产账本 / 资产交易）进共享服务面。
+    /// 预置 Online 一级 store 的 GameDb 实现（Identity / PlayerStorage / 资产账本 / 资产交易 / 好友关系）进共享服务面。
     /// </summary>
     /// <param name="builder">能力装配器。</param>
     /// <returns>本装配器（链式）。</returns>
@@ -67,6 +69,7 @@ public static class OnlinePersistenceHostingExtensions
         builder.UseService<IOnlinePlayerStorageStore>(new GameDbOnlinePlayerStorageStore());
         builder.UseService<IOnlineAssetStore>(new GameDbOnlineAssetStore());
         builder.UseService<IOnlineAssetTransactionStore>(new GameDbOnlineAssetTransactionStore());
+        builder.UseService<IOnlineFriendStore>(new GameDbOnlineFriendStore());
         return builder;
     }
 }

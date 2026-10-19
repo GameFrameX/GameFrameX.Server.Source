@@ -12,63 +12,48 @@
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
 //   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
 //   侵犯他人合法权益等法律法规所禁止的行为！
-//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations.
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
-//   Any legal disputes and liabilities arising from secondary development based on this project
-//   本项目组织与贡献者概不承担。
-//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   Any legal disputes or liabilities arising from secondary development based on this project
+//   本组织及其贡献者不承担任何责任，开发者应自行承担。
+//   The organization and contributors assume no responsibility; developers shall bear the responsibility themselves.
 //   GitHub 仓库：https://github.com/GameFrameX
 //   GitHub Repository: https://github.com/GameFrameX
 //   Gitee  仓库：https://gitee.com/GameFrameX
 //   Gitee Repository:  https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
-//   CNB Repository:  https://cnb.cool/GameFrameX
+//   CNB Repository:    https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
-namespace GameFrameX.Apps.Player.Friend;
-
-public sealed class FriendState : BaseCacheState
+/// <summary>
+/// 好友域操作的关系变更结果（C244 域桥契约）：操作前后的玩家视角关系分类。
+/// <para>
+/// 维护约束：<see cref="Before"/> 是适配层复刻旧协议错误码的判据
+///（重复申请 / 已是好友 / 申请不存在），<see cref="After"/> 是操作生效后的当前事实；
+/// 幂等命中（操作前已是目标态）不改写 <see cref="Before"/>——重放与首次必须可区分。
+/// </para>
+/// </summary>
+/// <remarks>
+/// The relation-change result of a friend-domain operation (the C244 domain-bridge contract): the
+/// player-view classification before and after the operation. <see cref="Before"/> is the basis for
+/// the adapter to reproduce legacy protocol error codes (duplicate request / already friends /
+/// request absent) while <see cref="After"/> carries the current fact; an idempotent hit (the
+/// relation already in the target state) never rewrites <see cref="Before"/> — replays must stay
+/// distinguishable from first executions.
+/// </remarks>
+public sealed class OnlineFriendRelationChange
 {
     /// <summary>
-    /// 账号ID
+    /// 获取或设置操作前的关系分类。
     /// </summary>
-    public long AccountId { get; set; }
+    public OnlineFriendRelationKind Before { get; set; }
 
     /// <summary>
-    /// 玩家名
+    /// 获取或设置操作后的关系分类。
     /// </summary>
-    public string Name { get; set; }
-
-    /// <summary>
-    /// 玩家等级
-    /// </summary>
-    public uint Level { get; set; }
-
-    /// <summary>
-    /// 性别
-    /// </summary>
-    public int Gender { get; set; }
-
-    /// <summary>
-    /// 头像
-    /// </summary>
-    public uint Avatar { get; set; }
-
-    /// <summary>
-    /// 玩家状态
-    /// </summary>
-    public int State { get; set; }
-
-    /// <summary>
-    /// 登录时间
-    /// </summary>
-    public DateTime LoginTime { get; set; }
-
-    /// <summary>
-    /// 离线时间
-    /// </summary>
-    public DateTime OfflineTime { get; set; }
+    public OnlineFriendRelationKind After { get; set; }
 }

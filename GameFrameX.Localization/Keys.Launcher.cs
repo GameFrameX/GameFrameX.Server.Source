@@ -181,31 +181,33 @@ public static partial class Keys
         public const string OnlineFriendBridgeSeeded = "Launcher.OnlineFriendBridgeSeeded";
 
         /// <summary>
-        /// 好友查询桥开关开启但业务运行时未启用（IsEnableOnline=false）——不支持该拓扑，启动终止
-        /// </summary>
-        /// <remarks>
-        /// 键名: Launcher.OnlineFriendBridgeRuntimeGateMissing
-        /// 用途: C243 组合根 fail-fast：桥开关与业务运行时开关矛盾
-        /// </remarks>
-        public const string OnlineFriendBridgeRuntimeGateMissing = "Launcher.OnlineFriendBridgeRuntimeGateMissing";
-
-        /// <summary>
-        /// 好友查询桥开关开启但作用域三元组缺失（OnlineTenantId/OnlineAppId/ServerId）——启动终止
-        /// </summary>
-        /// <remarks>
-        /// 键名: Launcher.OnlineFriendBridgeScopeMissing
-        /// 用途: C243 组合根 fail-fast：桥开关开启但授权作用域不完整
-        /// </remarks>
-        public const string OnlineFriendBridgeScopeMissing = "Launcher.OnlineFriendBridgeScopeMissing";
-
-        /// <summary>
-        /// 好友查询桥契约面缺失（online-social 能力被排除或未装配）——不支持该拓扑，启动终止
+        /// Online 好友域桥契约面缺失（online-social 能力被排除或未装配）——好友消息将显式失败
         /// </summary>
         /// <remarks>
         /// 键名: Launcher.OnlineFriendBridgeFaceMissing
-        /// 用途: C243 组合根 fail-fast：发布期无法解析好友查询契约面或授权作用域
+        /// 用途: C244 好友域接管：发布期无法解析好友域契约面或授权作用域（Error 披露，不终止启动）
         /// </remarks>
         public const string OnlineFriendBridgeFaceMissing = "Launcher.OnlineFriendBridgeFaceMissing";
+
+        /// <summary>
+        /// 旧好友关系迁移单条失败：{0} &lt;-&gt; {1}, Code: {2}, Message: {3}
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineFriendLegacyMigrationEntryFailed
+        /// 用途: C244 旧好友数据迁移单条收敛失败时逐条披露（containment，不中断整体迁移）
+        /// 参数: {0} - 一侧玩家ID；{1} - 另一侧玩家ID；{2} - 协议错误码；{3} - 失败描述
+        /// </remarks>
+        public const string OnlineFriendLegacyMigrationEntryFailed = "Launcher.OnlineFriendLegacyMigrationEntryFailed";
+
+        /// <summary>
+        /// 旧好友数据迁移完成：已建立 {0}，待答申请 {1}，失败 {2}（旧数据零改动）
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineFriendLegacyMigrationDone
+        /// 用途: C244 旧好友数据一次性迁移的汇总披露
+        /// 参数: {0} - 已建立关系数；{1} - 待答申请数；{2} - 失败数
+        /// </remarks>
+        public const string OnlineFriendLegacyMigrationDone = "Launcher.OnlineFriendLegacyMigrationDone";
 
         /// <summary>
         /// Online 对局桥已发布（租户 {0}，应用 {1}，区服 {2}）...

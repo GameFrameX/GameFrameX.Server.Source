@@ -192,101 +192,34 @@ public static partial class Keys
         public static class Friend
         {
             /// <summary>
-            /// FriendComponentAgent.OnFriendList 统一消息发送失败, StatusCode: {0}, Error: {1}, TraceId: {2}
+            /// 好友域桥不可用（未发布或已撤销）, PlayerId: {0}, Code: {1}
             /// </summary>
             /// <remarks>
-            /// 键名: Hotfix.Friend.FriendListSendFailed
-            /// 用途: 好友列表统一消息发送失败时记录。
-            /// 参数: {0} - 状态码, {1} - 错误信息, {2} - 追踪ID
-            /// </remarks>
-            public const string FriendListSendFailed = "Hotfix.Friend.FriendListSendFailed";
-
-            /// <summary>
-            /// FriendComponentAgent.OnFriendList 统一消息发送异常
-            /// </summary>
-            /// <remarks>
-            /// 键名: Hotfix.Friend.FriendListSendException
-            /// 用途: 好友列表统一消息发送抛出异常时记录。
-            /// </remarks>
-            public const string FriendListSendException = "Hotfix.Friend.FriendListSendException";
-
-            /// <summary>
-            /// FriendComponentAgent.OnAddFriend 统一消息发送失败, StatusCode: {0}, Error: {1}, TraceId: {2}
-            /// </summary>
-            /// <remarks>
-            /// 键名: Hotfix.Friend.AddFriendSendFailed
-            /// 用途: 添加好友统一消息发送失败时记录。
-            /// 参数: {0} - 状态码, {1} - 错误信息, {2} - 追踪ID
-            /// </remarks>
-            public const string AddFriendSendFailed = "Hotfix.Friend.AddFriendSendFailed";
-
-            /// <summary>
-            /// FriendComponentAgent.OnAddFriend 统一消息发送异常
-            /// </summary>
-            /// <remarks>
-            /// 键名: Hotfix.Friend.AddFriendSendException
-            /// 用途: 添加好友统一消息发送抛出异常时记录。
-            /// </remarks>
-            public const string AddFriendSendException = "Hotfix.Friend.AddFriendSendException";
-
-            /// <summary>
-            /// FriendComponentAgent.OnDeleteFriend 统一消息发送失败, StatusCode: {0}, Error: {1}, TraceId: {2}
-            /// </summary>
-            /// <remarks>
-            /// 键名: Hotfix.Friend.DeleteFriendSendFailed
-            /// 用途: 删除好友统一消息发送失败时记录。
-            /// 参数: {0} - 状态码, {1} - 错误信息, {2} - 追踪ID
-            /// </remarks>
-            public const string DeleteFriendSendFailed = "Hotfix.Friend.DeleteFriendSendFailed";
-
-            /// <summary>
-            /// FriendComponentAgent.OnDeleteFriend 统一消息发送异常
-            /// </summary>
-            /// <remarks>
-            /// 键名: Hotfix.Friend.DeleteFriendSendException
-            /// 用途: 删除好友统一消息发送抛出异常时记录。
-            /// </remarks>
-            public const string DeleteFriendSendException = "Hotfix.Friend.DeleteFriendSendException";
-
-            /// <summary>
-            /// FriendComponentAgent.{0} 返回语义异常: Success=false 且 ErrorCode=0, PlayerId={1}
-            /// </summary>
-            /// <remarks>
-            /// 键名: Hotfix.Friend.SemanticInvalidResult
-            /// 用途: 好友操作返回 Success=false 且 ErrorCode=0 的语义异常时记录。
-            /// 参数: {0} - 操作名, {1} - 玩家ID
-            /// </remarks>
-            public const string SemanticInvalidResult = "Hotfix.Friend.SemanticInvalidResult";
-
-            /// <summary>
-            /// 好友查询桥不可用（未发布或已撤销）, ActorId: {0}, Code: {1}
-            /// </summary>
-            /// <remarks>
-            /// 键名: Hotfix.Friend.FriendListBridgeUnavailable
-            /// 用途: C243 好友查询桥开关开启但租约不可用（宿主未启/已停/已撤销）时记录。
+            /// 键名: Hotfix.Friend.DomainBridgeUnavailable
+            /// 用途: C244 好友域桥租约不可用（宿主未启/已停/已撤销）时记录。
             /// 参数: {0} - 请求主体ID, {1} - 协议错误码
             /// </remarks>
-            public const string FriendListBridgeUnavailable = "Hotfix.Friend.FriendListBridgeUnavailable";
+            public const string DomainBridgeUnavailable = "Hotfix.Friend.DomainBridgeUnavailable";
 
             /// <summary>
-            /// 好友查询桥返回失败, Code: {0}, Message: {1}, ActorId: {2}
+            /// 好友域桥返回失败, Code: {0}, Message: {1}, PlayerId: {2}
             /// </summary>
             /// <remarks>
-            /// 键名: Hotfix.Friend.FriendListBridgeQueryFailed
-            /// 用途: C243 好友查询桥契约面返回失败结果时记录。
+            /// 键名: Hotfix.Friend.DomainBridgeFailed
+            /// 用途: C244 好友域桥契约面返回失败结果时记录。
             /// 参数: {0} - 协议错误码, {1} - 失败描述, {2} - 请求主体ID
             /// </remarks>
-            public const string FriendListBridgeQueryFailed = "Hotfix.Friend.FriendListBridgeQueryFailed";
+            public const string DomainBridgeFailed = "Hotfix.Friend.DomainBridgeFailed";
 
             /// <summary>
-            /// 好友查询桥调用异常, ActorId: {0}
+            /// 好友域桥调用异常, PlayerId: {0}
             /// </summary>
             /// <remarks>
-            /// 键名: Hotfix.Friend.FriendListBridgeException
-            /// 用途: C243 好友查询桥调用抛出异常时记录。
+            /// 键名: Hotfix.Friend.DomainBridgeException
+            /// 用途: C244 好友域桥调用抛出异常时记录。
             /// 参数: {0} - 请求主体ID
             /// </remarks>
-            public const string FriendListBridgeException = "Hotfix.Friend.FriendListBridgeException";
+            public const string DomainBridgeException = "Hotfix.Friend.DomainBridgeException";
         }
 
         /// <summary>

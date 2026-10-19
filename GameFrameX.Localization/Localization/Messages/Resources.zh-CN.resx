@@ -433,13 +433,7 @@
     <data name="Launcher.OnlineFriendBridgeSeeded" xml:space="preserve">
     <value>Online 好友查询桥验证种子已建立（仅供部署验证）：请求主体 {0}，种子好友数 {1}</value>
   </data>
-    <data name="Launcher.OnlineFriendBridgeRuntimeGateMissing" xml:space="preserve">
-    <value>好友查询桥开关开启但业务运行时未启用（IsEnableOnline=false）——不支持该拓扑，启动终止</value>
-  </data>
-    <data name="Launcher.OnlineFriendBridgeScopeMissing" xml:space="preserve">
-    <value>好友查询桥开关开启但作用域三元组缺失（OnlineTenantId/OnlineAppId/ServerId）——启动终止</value>
-  </data>
-    <data name="Launcher.OnlineFriendBridgeFaceMissing" xml:space="preserve">
+        <data name="Launcher.OnlineFriendBridgeFaceMissing" xml:space="preserve">
     <value>好友查询桥契约面缺失（online-social 能力被排除或未装配）——不支持该拓扑，启动终止</value>
   </data>
     <data name="Launcher.OnlineMatchBridgePublished" xml:space="preserve">
@@ -2124,42 +2118,12 @@
     <value>EventDispatcherExtensions.SelfHandle {0} 事件类型：{1} 没有找到任何监听者</value>
   </data>
 
-  <data name="Hotfix.Friend.AddFriendSendException" xml:space="preserve">
-    <value>FriendComponentAgent.OnAddFriend 统一消息发送异常</value>
-  </data>
 
-  <data name="Hotfix.Friend.AddFriendSendFailed" xml:space="preserve">
-    <value>FriendComponentAgent.OnAddFriend 统一消息发送失败, StatusCode: {0}, Error: {1}, TraceId: {2}</value>
-  </data>
 
-  <data name="Hotfix.Friend.DeleteFriendSendException" xml:space="preserve">
-    <value>FriendComponentAgent.OnDeleteFriend 统一消息发送异常</value>
-  </data>
 
-  <data name="Hotfix.Friend.DeleteFriendSendFailed" xml:space="preserve">
-    <value>FriendComponentAgent.OnDeleteFriend 统一消息发送失败, StatusCode: {0}, Error: {1}, TraceId: {2}</value>
-  </data>
 
-  <data name="Hotfix.Friend.FriendListSendException" xml:space="preserve">
-    <value>FriendComponentAgent.OnFriendList 统一消息发送异常</value>
-  </data>
 
-  <data name="Hotfix.Friend.FriendListSendFailed" xml:space="preserve">
-    <value>FriendComponentAgent.OnFriendList 统一消息发送失败, StatusCode: {0}, Error: {1}, TraceId: {2}</value>
-  </data>
 
-  <data name="Hotfix.Friend.SemanticInvalidResult" xml:space="preserve">
-    <value>FriendComponentAgent.{0} 返回语义异常: Success=false 且 ErrorCode=0, PlayerId={1}</value>
-  </data>
-  <data name="Hotfix.Friend.FriendListBridgeUnavailable" xml:space="preserve">
-    <value>好友查询桥不可用（未发布或已撤销）, ActorId: {0}, Code: {1}</value>
-  </data>
-  <data name="Hotfix.Friend.FriendListBridgeQueryFailed" xml:space="preserve">
-    <value>好友查询桥返回失败, Code: {0}, Message: {1}, ActorId: {2}</value>
-  </data>
-  <data name="Hotfix.Friend.FriendListBridgeException" xml:space="preserve">
-    <value>好友查询桥调用异常, ActorId: {0}</value>
-  </data>
   <data name="Hotfix.Game.MatchBridgeUnavailable" xml:space="preserve">
     <value>对局桥不可用（未发布或已撤销）, ActorId: {0}, Code: {1}</value>
   </data>
@@ -2494,4 +2458,19 @@
     <value>[待翻译] CoreExceptions.HotfixModule.WrongMessageHandlerType</value>
   </data>
 
+  <data name="Hotfix.Friend.DomainBridgeUnavailable" xml:space="preserve">
+    <value>好友域桥不可用（未发布或已撤销）, PlayerId: {0}, Code: {1}</value>
+  </data>
+  <data name="Hotfix.Friend.DomainBridgeFailed" xml:space="preserve">
+    <value>好友域桥返回失败, Code: {0}, Message: {1}, PlayerId: {2}</value>
+  </data>
+  <data name="Hotfix.Friend.DomainBridgeException" xml:space="preserve">
+    <value>好友域桥调用异常, PlayerId: {0}</value>
+  </data>
+  <data name="Launcher.OnlineFriendLegacyMigrationEntryFailed" xml:space="preserve">
+    <value>旧好友关系迁移单条失败：{0} &lt;-&gt; {1}, Code: {2}, Message: {3}</value>
+  </data>
+  <data name="Launcher.OnlineFriendLegacyMigrationDone" xml:space="preserve">
+    <value>旧好友数据迁移完成：已建立 {0}，待答申请 {1}，失败 {2}（旧数据零改动）</value>
+  </data>
 </root>

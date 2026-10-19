@@ -110,17 +110,6 @@
     "HttpPort": 0
   },
   {
-    "ServerType": "Friend",
-    "ServerId": 5540,
-    "InnerHost": "0.0.0.0",
-    "InnerPort": 25540,
-    "OnlineTenantId": 1,
-    "OnlineAppId": 1,
-    "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
-    "DataBaseName": "gameframex",
-    "HttpPort": 0
-  },
-  {
     "ServerType": "Team",
     "ServerId": 5550,
     "InnerHost": "0.0.0.0",

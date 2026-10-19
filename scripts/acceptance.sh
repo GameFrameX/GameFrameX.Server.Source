@@ -128,10 +128,10 @@ run_check_no_match \
   "rg -n 'new\\s+TcpClient\\(|NetworkStream|Socket\\(' GameFrameX.Hotfix/Logic"
 
 run_check_contains \
-  "Friend 重试语义检查" \
-  "rg -n 'AllowRetry|CallWithResultAsync' GameFrameX.Hotfix/Logic/Player/Friend/FriendComponentAgent.cs" \
-  "AllowRetry = true" \
-  "AllowRetry = false"
+  "Friend 域桥独占检查" \
+  "rg -n 'FriendDomainBridge' GameFrameX.Hotfix/Logic/Player/Friend GameFrameX.Hotfix/Logic/ServerRole/Friend" \
+  "FriendDomainBridge.QueryFriendListAsync" \
+  "FriendDomainBridge.SendRequestAsync"
 
 run_cmd \
   "回滚开关验证 EnableUnifiedClient=false" \

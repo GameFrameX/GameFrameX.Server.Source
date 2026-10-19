@@ -156,6 +156,9 @@ public sealed partial class BotClient
             case RespFriendByAdd msg:
                 OnFriendAddSuccess(msg);
                 break;
+            case RespFriendList msg:
+                OnFriendListSuccess(msg);
+                break;
             case RespDeleteFriend msg:
                 OnDeleteFriendSuccess(msg);
                 break;

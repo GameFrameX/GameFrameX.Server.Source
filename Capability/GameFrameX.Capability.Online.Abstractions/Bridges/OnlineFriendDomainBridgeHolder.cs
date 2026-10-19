@@ -2,8 +2,8 @@
 //   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
 //   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
 //   均受中华人民共和国及相关国际法律法规保护。
-//   are protected by the laws of the People's Republic of China and applicable international regulations.
-//   使用本项目须严格遵守相应法律法规与开源许可证之规定。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
 //   This project is licensed solely under the Apache License 2.0,
@@ -12,11 +12,19 @@
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
 //   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
 //   侵犯他人合法权益等法律法规所禁止的行为！
-//   or infringe upon the legal rights and interests of others as prohibited by laws and regulations!
-//   因基于本项目二次开发所产生的一切纠纷与责任，
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations.
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
 //   Any legal disputes or liabilities arising from secondary development based on this project
-//   本组织不承担任何责任，开发者应自行承担。
-//   The organization and contributors shall not be responsible; developers shall bear the responsibility themselves.
+//   本组织及其贡献者不承担任何责任，开发者应自行承担。
+//   The organization and contributors assume no responsibility; developers shall bear the responsibility themselves.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository:    https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
 using GameFrameX.Capability.Online.Abstractions.Contracts;
@@ -25,33 +33,33 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Abstractions.Bridges;
 
 /// <summary>
-/// 好友查询桥发布器（C243）：进程级类型化 holder（RoleRouterHolder / UnifiedMessageSenderHolder 先例）——
-/// 组合根（Game 型启动）在业务运行时启动后发布 <see cref="OnlineFriendBridgeLease"/>，
+/// 好友域桥发布器（C244，沿 C243/C245 holder 形态）：进程级类型化 holder——
+/// 组合根（Game 型启动）在业务运行时启动后发布 <see cref="OnlineFriendDomainBridgeLease"/>，
 /// 进程停止前撤销；消费方（Hotfix 薄适配器）逐请求读取 <see cref="Current"/>，不缓存引用。
 /// <para>
-/// 维护约束：发布即替换（旧 lease 自动撤销）——宿主重启语义下旧引用不存活；
-/// 撤销清空当前位并吊销全部既有 lease；本 holder 不做能力装配、不做路由，只承载「发布 / 撤销」这对生命周期动作。
+/// 维护约束：发布 / 撤销必须成对出现在同一组合根（AppStartUpGame）；再发布替换并吊销既有租约，
+/// 使任何历史引用立即显式失效；holder 不承载能力装配与路由——只有发布 / 撤销生命周期对。
 /// </para>
 /// </summary>
 /// <remarks>
-/// The friend-query bridge publisher (C243): the process-wide typed holder (following the
-/// RoleRouterHolder / UnifiedMessageSenderHolder precedent) — the composition root (the Game-shape
-/// startup) publishes an <see cref="OnlineFriendBridgeLease"/> after the business runtime starts and
-/// retracts it before process shutdown; consumers (the Hotfix thin adapter) read
-/// <see cref="Current"/> per request and never cache the reference. Publishing replaces (and revokes)
-/// any previous lease so no stale reference survives a host restart; retracting clears the current
-/// slot and revokes every lease ever handed out. The holder carries no capability assembly and no
-/// routing — only the publish / retract lifecycle pair.
+/// The friend-domain bridge publisher (C244, following the C243/C245 holder shape): the process-wide
+/// typed holder — the composition root (the Game-shape startup) publishes an
+/// <see cref="OnlineFriendDomainBridgeLease"/> after the business runtime starts and retracts it
+/// before process shutdown; consumers (the Hotfix thin adapter) read <see cref="Current"/> per
+/// request without caching. Publish and retract must stay paired inside the same composition root
+/// (AppStartUpGame); republishing replaces and revokes the previous lease so that any historical
+/// reference fails explicitly at once; the holder carries no capability assembly and no routing —
+/// only the publish / retract lifecycle pair.
 /// </remarks>
-public static class OnlineFriendBridgeHolder
+public static class OnlineFriendDomainBridgeHolder
 {
     /// <summary>当前租约（volatile 读；未发布 / 已撤销为 null）。</summary>
-    private static volatile OnlineFriendBridgeLease current;
+    private static volatile OnlineFriendDomainBridgeLease current;
 
     /// <summary>
     /// 获取当前租约（未发布或已撤销时为 <c>null</c>；调用方不得跨请求缓存本值）。
     /// </summary>
-    public static OnlineFriendBridgeLease Current
+    public static OnlineFriendDomainBridgeLease Current
     {
         get { return current; }
     }
@@ -67,12 +75,12 @@ public static class OnlineFriendBridgeHolder
     /// <summary>
     /// 发布租约（组合根在业务运行时启动后调用）：替换并撤销既有租约，返回新租约。
     /// </summary>
-    /// <param name="query">契约面。</param>
+    /// <param name="domain">域契约面。</param>
     /// <param name="authorizedScope">授权作用域（三元组）。</param>
     /// <returns>新发布的租约。</returns>
-    public static OnlineFriendBridgeLease Publish(IOnlineFriendQuery query, OnlineScope authorizedScope)
+    public static OnlineFriendDomainBridgeLease Publish(IOnlineFriendDomain domain, OnlineScope authorizedScope)
     {
-        var lease = new OnlineFriendBridgeLease(query, authorizedScope);
+        var lease = new OnlineFriendDomainBridgeLease(domain, authorizedScope);
         var previous = current;
         current = lease;
         previous?.Deactivate();

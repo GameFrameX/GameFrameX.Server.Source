@@ -62,7 +62,7 @@ public sealed class OnlineCapabilityOptions
 
     /// <summary>
     /// 是否预置 Online 一级 store 的 GameDb 持久化实现（C249，D3 = 3A 分级混合）
-    /// <para>true = Identity / 玩家云存储 / 资产账本与交易四 store 预置进共享服务面（重启数据不丢）；false（缺省）= InMemory 默认不变</para>
+    /// <para>true = Identity / 玩家云存储 / 资产账本与交易 / 好友关系五 store 预置进共享服务面（重启数据不丢，好友为 C244 增补）；false（缺省）= InMemory 默认不变</para>
     /// <para>前置约束：开启前数据库必须已完成初始化（GameDb 门面 Init）；Session / Presence 保持易失（Redis 演进位）</para>
     /// </summary>
     /// <remarks>
@@ -74,25 +74,7 @@ public sealed class OnlineCapabilityOptions
     public bool UseGameDbStores { get; set; }
 
     /// <summary>
-    /// 是否启用好友查询桥接验证路径（C243）
-    /// <para>true = Game 进程的 ReqFriendList 协议入口改经 Online 好友契约面（进程内桥接）读取；
-    /// false（缺省）= 旧链行为逐字节保持（Social GameDb 读写归属不变）</para>
-    /// <para>前置约束：开启时进程必须同时开启 <c>IsEnableOnline</c> 且装配 online-social 能力（组合根启动期 fail-fast）；
-    /// 桥失败（宿主未启 / 已停 / 服务错误）按显式错误返回，绝不静默回落旧链或空列表；本开关只应配置在 Game 角色段</para>
-    /// </summary>
-    /// <remarks>
-    /// Whether the friend-query bridge verification path is enabled (C243): true routes the Game
-    /// process's ReqFriendList protocol entry through the Online friend contract face (an in-process
-    /// bridge read); false (default) keeps the legacy chain byte-identical (the Social GameDb
-    /// read/write ownership unchanged). Enabling requires <c>IsEnableOnline</c> and the
-    /// online-social capability (composition-root fail-fast at startup); bridge failures (host not
-    /// started / stopped / service errors) answer with explicit error codes and never fall back to
-    /// the legacy chain or an empty list; configure this switch on the Game role section only.
-    /// </remarks>
-    public bool EnableFriendQueryBridge { get; set; }
-
-    /// <summary>
-    /// 好友查询桥验证种子玩家标识列表（C243；元素 &lt; 2 = 不种子）
+    /// 好友域桥验证种子玩家标识列表（C243 引入、C244 域接管后沿用；元素 &lt; 2 = 不种子）
     /// <para>首元素为请求方、其余为好友：组合根在业务运行时启动后，经真实 <c>OnlineFriendService</c> 写路径
     /// 两两建立好友（幂等收敛），验证入口（HTTP <c>mode=online-bridge-friend&amp;playerId=首元素</c>）据此读到
     /// 预置非空好友状态——仅供部署验证，生产常开须显式知情（Warning 日志披露）</para>
@@ -100,17 +82,40 @@ public sealed class OnlineCapabilityOptions
     /// 不存在可预置的确定性请求主体</para>
     /// </summary>
     /// <remarks>
-    /// The friend-query bridge verification seed player ids (C243; fewer than 2 entries = no seeding):
-    /// the first entry is the requester and the rest the friends — after the business runtime starts
-    /// the composition root establishes the friendships pairwise through the real
-    /// <c>OnlineFriendService</c> write path (idempotent convergence), so the verification entry
-    /// (HTTP <c>mode=online-bridge-friend&amp;playerId=first-id</c>) can read preset non-empty friend
-    /// state. Deployment verification only; keeping it on in production requires informed consent (a
-    /// Warning log discloses every seed). The requester comes from configuration rather than a
+    /// The friend-domain bridge verification seed player ids (introduced by C243, kept by the C244
+    /// domain takeover; fewer than 2 entries = no seeding): the first entry is the requester and the
+    /// rest the friends — after the business runtime starts the composition root establishes the
+    /// friendships pairwise through the real <c>OnlineFriendService</c> write path (idempotent
+    /// convergence), so the verification entry (HTTP
+    /// <c>mode=online-bridge-friend&amp;playerId=first-id</c>) can read preset non-empty friend state.
+    /// Deployment verification only; keeping it on in production requires informed consent (a Warning
+    /// log discloses every seed). The requester comes from configuration rather than a
     /// process-derived actor id: player-type component actor ids are per-call unique multi ids with no
     /// deterministic request subject to preset.
     /// </remarks>
-    public IReadOnlyList<long> FriendQueryBridgeSeedPlayerIds { get; set; }
+    public IReadOnlyList<long> FriendBridgeSeedPlayerIds { get; set; }
+
+    /// <summary>
+    /// 是否在业务运行时启动后执行旧好友数据一次性迁移（C244，T3；缺省 false = 不迁移）
+    /// <para>true = 组合根读取本进程 GameDb 的旧 <c>FriendRelationState</c>（域 120 旧链，Status=0）与
+    /// 旧 660 <c>FriendState</c> 档案文档（Outgoing 待答申请），经 <c>OnlineFriendService</c> 真实写路径
+    /// 幂等收敛为 Online 好友关系（已建立 / 待答）；旧数据零改动（只读单向复制，回退 = 重部署旧版即回旧链旧数据）</para>
+    /// <para>分进程旧数据在 Social 库时，须在 GameDb 指向该库的进程上执行（AllInOne 天然满足）；
+    /// 重复执行幂等（SaveIfAbsent 收敛，不产生第二条关系）</para>
+    /// </summary>
+    /// <remarks>
+    /// Whether to run the one-shot legacy friend-data migration after the business runtime starts
+    /// (C244, T3; default false = no migration): true makes the composition root read this process's
+    /// GameDb — the legacy <c>FriendRelationState</c> rows (the domain-120 chain, Status=0) and the
+    /// legacy domain-660 <c>FriendState</c> profile document (Outgoing pending requests) — and
+    /// converge them into Online friendships through the real <c>OnlineFriendService</c> write path
+    /// (established / pending). The legacy data is never modified (a read-only one-way copy;
+    /// rollback = redeploying the legacy version restores the legacy chain over the legacy data).
+    /// When split-process legacy data lives in the Social database, run the migration on a process
+    /// whose GameDb points there (AllInOne satisfies this naturally); repeated runs are idempotent
+    /// (SaveIfAbsent convergence, never a second record).
+    /// </remarks>
+    public bool MigrateLegacyFriendData { get; set; }
 
     /// <summary>
     /// 对局样例桥开关（C245，D4 RPS 垂直切片）：true = Game 进程的房间制开局 / 出拳 / 查询 / 再来一局

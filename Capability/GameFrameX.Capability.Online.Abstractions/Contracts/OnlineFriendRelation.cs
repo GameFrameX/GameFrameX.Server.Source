@@ -12,28 +12,39 @@
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
 //   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
 //   侵犯他人合法权益等法律法规所禁止的行为！
-//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations.
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
 //   Any legal disputes and liabilities arising from secondary development based on this project
-//   本项目组织与贡献者概不承担。
-//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   本组织及其贡献者不承担任何责任，开发者应自行承担。
+//   The organization and contributors assume no responsibility; developers shall bear the responsibility themselves.
 //   GitHub 仓库：https://github.com/GameFrameX
 //   GitHub Repository: https://github.com/GameFrameX
 //   Gitee  仓库：https://gitee.com/GameFrameX
 //   Gitee Repository:  https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
-//   CNB Repository:  https://cnb.cool/GameFrameX
+//   CNB Repository:    https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Hotfix.Logic.Player.Friend;
+namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
-[MessageMapping(typeof(ReqInnerFriendByAdd))]
-internal sealed class ReqInnerFriendByAddHandler : GlobalRpcComponentHandler<FriendComponentAgent, ReqInnerFriendByAdd, RespInnerFriendByAdd>
+/// <summary>
+/// 玩家视角的单条好友关系（C244 域桥契约）：对方标识 + 关系分类。
+/// </summary>
+/// <remarks>
+/// One player-view friendship relation (the C244 domain-bridge contract): the other player's id plus
+/// the relation classification.
+/// </remarks>
+public sealed class OnlineFriendRelation
 {
-    protected override async Task ActionAsync(ReqInnerFriendByAdd request, RespInnerFriendByAdd response)
-    {
-        await ComponentAgent.OnInnerAddFriend(NetworkChannel, request, response);
-    }
+    /// <summary>
+    /// 获取或设置对方玩家标识。
+    /// </summary>
+    public long OtherPlayerId { get; set; }
+
+    /// <summary>
+    /// 获取或设置关系分类。
+    /// </summary>
+    public OnlineFriendRelationKind Kind { get; set; }
 }
