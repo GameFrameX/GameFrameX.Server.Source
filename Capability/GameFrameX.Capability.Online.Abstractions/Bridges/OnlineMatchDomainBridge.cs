@@ -166,4 +166,39 @@ public sealed class OnlineMatchDomainBridgeLease : IOnlineMatchDomain
 
         return domain.ResolveAssignmentAsync(tenantId, appId, assignmentId, cancellationToken);
     }
+
+    /// <summary>
+    /// 经租约会话中介断线通知：活跃位复查后委托契约面；已撤销返回显式失败。
+    /// </summary>
+    /// <param name="scope">生效作用域（必须含玩家主体位）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>断线标记回执。</returns>
+    public Task<OnlineResult<OnlineMatchDomainDisconnect>> NotifyPlayerDisconnectedAsync(OnlineScope scope, CancellationToken cancellationToken = default)
+    {
+        if (!active)
+        {
+            return Task.FromResult(OnlineResult<OnlineMatchDomainDisconnect>.Fail(
+                OnlineErrorCode.DependencyUnavailable, "匹配域桥已撤销（宿主未运行或已停止）"));
+        }
+
+        return domain.NotifyPlayerDisconnectedAsync(scope, cancellationToken);
+    }
+
+    /// <summary>
+    /// 经租约会话中介恢复：活跃位复查后委托契约面；已撤销返回显式失败。
+    /// </summary>
+    /// <param name="scope">生效作用域（必须含玩家主体位）。</param>
+    /// <param name="lastAcknowledgedSequence">客户端最后确认的服务器序号。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>恢复回执。</returns>
+    public Task<OnlineResult<OnlineMatchDomainResume>> TryResumeForPlayerAsync(OnlineScope scope, long lastAcknowledgedSequence, CancellationToken cancellationToken = default)
+    {
+        if (!active)
+        {
+            return Task.FromResult(OnlineResult<OnlineMatchDomainResume>.Fail(
+                OnlineErrorCode.DependencyUnavailable, "匹配域桥已撤销（宿主未运行或已停止）"));
+        }
+
+        return domain.TryResumeForPlayerAsync(scope, lastAcknowledgedSequence, cancellationToken);
+    }
 }

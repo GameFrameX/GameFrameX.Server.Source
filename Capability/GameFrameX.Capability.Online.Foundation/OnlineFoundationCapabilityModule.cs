@@ -30,6 +30,7 @@
 using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Hosting.Core;
 using GameFrameX.Capability.Hosting.AdminApi;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Events;
 using GameFrameX.Capability.Online.Foundation.AdminApi;
 using GameFrameX.Capability.Online.Foundation.Identity;
@@ -77,6 +78,11 @@ public sealed class OnlineFoundationCapabilityModule : ICapabilityModule, IAdmin
     private OnlineSessionTokenService _tokens;
 
     /// <summary>
+    /// 会话生命周期管理器（Register 期构造；C204 会话中介恢复与重连窗清扫的消费面）。
+    /// </summary>
+    private OnlineSessionManager _sessions;
+
+    /// <summary>
     /// 在线状态（Register 期构造；清扫滴答 job 与 admin 管制命令的消费面）。
     /// </summary>
     private OnlinePresenceService _presence;
@@ -101,11 +107,15 @@ public sealed class OnlineFoundationCapabilityModule : ICapabilityModule, IAdmin
         // 四域服务构造并注册回共享面（与壳时代集中 new 逐语句等价；壳未预置具型共享的 Identity / Sessions /
         // Presence 此处一并注册——服务面按需解析，注册超集无行为影响）。
         context.AddService(new OnlineIdentityService(identityStore));
-        context.AddService(new OnlineSessionManager(sessionStore, eventPublisher));
+        _sessions = new OnlineSessionManager(sessionStore, eventPublisher);
+        context.AddService(_sessions);
         _tokens = new OnlineSessionTokenService(sessionStore, eventPublisher);
         context.AddService(_tokens);
         _presence = new OnlinePresenceService(presenceStore, eventPublisher);
         context.AddService(_presence);
+
+        // 会话恢复服务（C204）：Core 物理连接会话与 Online 逻辑会话协同的契约面实现，注册回共享面供组合根发桥。
+        context.AddService<IOnlineSessionReconnectContract>(new OnlineSessionReconnectService(_tokens, _sessions, sessionStore));
 
         // 清扫滴答 job（归属地基域；作用域三元组经组合根预置的授权作用域解析——壳时代 host.AuthorizedScope 等价）。
         context.AddTickJob("presence-timeout-sweep", async ct =>
@@ -113,6 +123,9 @@ public sealed class OnlineFoundationCapabilityModule : ICapabilityModule, IAdmin
             await _presence.SweepTimeoutsAsync(scope.TenantId, scope.AppId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct).ConfigureAwait(false);
         });
         context.AddTickJob("session-token-expiry-sweep", ct => _tokens.SweepExpiredAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct));
+
+        // 会话重连窗清扫（C204）：Reconnecting 超窗 → Closed（ReconnectWindowExpired），无永久 Reconnecting。
+        context.AddTickJob("session-reconnect-window-sweep", ct => _sessions.SweepAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct));
     }
 
     /// <inheritdoc />

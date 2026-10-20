@@ -286,6 +286,57 @@ public sealed class OnlineSessionManager
     }
 
     /// <summary>
+    /// 会话中介恢复（C204）：新物理连接凭已验证凭据接管会话——Authenticated / Connected / Active /
+    /// Reconnecting 一律收敛到 Connected 并替换连接标识、关闭重连窗口。
+    /// <para>
+    /// 与 <see cref="MarkReconnectedAsync"/> 的区别：后者只接受 Reconnecting 态（窗口内重连的严格面），
+    /// 本面供恢复链路使用——恢复到达时会话可能仍在 Connected / Active（旧连接未及断开回调）或
+    /// Authenticated（从未建连），一律以新连接为准（单玩家单连接的最终裁决在 Core 会话层，
+    /// 本层只维护逻辑会话与连接的绑定事实）。终态会话不可恢复。
+    /// </para>
+    /// </summary>
+    /// <param name="sessionId">会话标识。</param>
+    /// <param name="connectionId">新连接通道标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>操作结果。</returns>
+    public async Task<OnlineResult<bool>> MarkResumedAsync(string sessionId, string connectionId, CancellationToken cancellationToken = default)
+    {
+        var failure = ValidateSessionId(sessionId);
+        if (failure != null)
+        {
+            return failure;
+        }
+
+        if (string.IsNullOrEmpty(connectionId))
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.ParameterInvalid, "连接通道标识不得为空");
+        }
+
+        var session = await _store.FindAsync(sessionId, cancellationToken);
+        if (session == null)
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.ResourceNotFound, "会话不存在");
+        }
+
+        if (session.State.IsTerminal())
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.SessionInvalid, "会话已进入终态");
+        }
+
+        if (session.State == OnlineSessionState.Created)
+        {
+            return OnlineResult<bool>.Fail(OnlineErrorCode.StateNotReady, "会话尚未通过鉴权，不能恢复连接");
+        }
+
+        session.State = OnlineSessionState.Connected;
+        session.ConnectionId = connectionId;
+        session.ReconnectDeadlineAtTime = 0;
+        await _store.AddOrUpdateAsync(session, cancellationToken);
+        await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(OnlineSessionEvents.SessionConnected, session.Id, session.TenantId, session.AppId, session.ServerId, session.PlayerId, (int)session.State, (int)session.CloseReason, session.TokenGeneration, "session resumed"), cancellationToken);
+        return OnlineResult<bool>.Ok(true);
+    }
+
+    /// <summary>
     /// 关闭会话（任意非终态 → 终态；终态下幂等成功）。
     /// <para>
     /// 终态映射：<see cref="OnlineSessionCloseReason.KickedByOperator"/> /

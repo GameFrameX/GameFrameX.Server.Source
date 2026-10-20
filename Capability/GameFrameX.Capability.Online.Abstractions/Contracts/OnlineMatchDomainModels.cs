@@ -85,3 +85,59 @@ public sealed class OnlineMatchDomainAssignment
     /// <summary>分配成员表。</summary>
     public IReadOnlyList<long> PlayerIds { get; set; }
 }
+
+/// <summary>
+/// 匹配域断线通知回执（C204）：Marked=false 表示玩家无进行中对局（或对局已结束 / 成员已离局），
+/// 非失败——断线通知是 best-effort 协同事件。
+/// </summary>
+public sealed class OnlineMatchDomainDisconnect
+{
+    /// <summary>是否标记了断线成员（服务端留存 rt- 令牌，不下发客户端）。</summary>
+    public bool Marked { get; set; }
+
+    /// <summary>被标记的协议数值对局标识（未标记为 0）。</summary>
+    public long MatchId { get; set; }
+}
+
+/// <summary>
+/// 匹配域恢复成员项（C204）：恢复快照中的成员状态投影。
+/// </summary>
+public sealed class OnlineMatchDomainResumeMember
+{
+    /// <summary>玩家标识。</summary>
+    public long PlayerId { get; set; }
+
+    /// <summary>成员状态（OnlineMatchMemberState 数值）。</summary>
+    public int State { get; set; }
+}
+
+/// <summary>
+/// 匹配域恢复回执（C204）：按「票据 → 分配登记 → 运行时对局成员表」逐级核对后的恢复产物
+///（快照 + 可用增量 / 回退说明）。
+/// </summary>
+public sealed class OnlineMatchDomainResume
+{
+    /// <summary>是否恢复（或幂等确认）了对局成员——false 仅在无对局可恢复时出现。</summary>
+    public bool Resumed { get; set; }
+
+    /// <summary>协议数值对局标识。</summary>
+    public long MatchId { get; set; }
+
+    /// <summary>对局状态（OnlineMatchState 数值）。</summary>
+    public int MatchState { get; set; }
+
+    /// <summary>恢复点服务器序号（快照切片序号）。</summary>
+    public long ServerSequence { get; set; }
+
+    /// <summary>增量是否可用（false = 客户端必须以快照重建本地状态）。</summary>
+    public bool DeltaAvailable { get; set; }
+
+    /// <summary>成员状态投影（含各成员当前状态）。</summary>
+    public IReadOnlyList<OnlineMatchDomainResumeMember> Members { get; set; }
+
+    /// <summary>玩法私有状态载荷（不透明字节；服务端权威快照切片）。</summary>
+    public byte[] GameState { get; set; }
+
+    /// <summary>处置说明（增量 / 快照使用方式）。</summary>
+    public string Instruction { get; set; }
+}

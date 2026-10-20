@@ -69,12 +69,14 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
     /// <summary>对局运行时（入场 create-or-reuse 的 Actor 属主）。</summary>
     private readonly OnlineMatchRuntime _runtime;
 
+    /// <summary>重连服务（C204 会话中介断线标记 / 恢复的唯一令牌签发与快照增量组装点）。</summary>
+    private readonly OnlineMatchReconnectService _reconnect;
+
     /// <summary>入场绑定的玩法实现（模式与最小人数取自玩法声明）。</summary>
     private readonly IOnlineMatchGame _game;
 
     /// <summary>登记表锁（数值分配与双向索引的临界区）。</summary>
     private readonly object _registryLock = new object();
-
     /// <summary>assignment → 登记项。</summary>
     private readonly Dictionary<string, AssignmentRegistration> _byAssignment = new Dictionary<string, AssignmentRegistration>(StringComparer.Ordinal);
 
@@ -98,6 +100,7 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
         _tickets = tickets ?? throw new ArgumentNullException(nameof(tickets));
         _coordinator = coordinator ?? throw new ArgumentNullException(nameof(coordinator));
         _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
+        _reconnect = new OnlineMatchReconnectService(runtime);
         _game = game ?? throw new ArgumentNullException(nameof(game));
     }
 
@@ -340,6 +343,188 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
             Mode = registration.Mode,
             PlayerIds = new List<long>(registration.PlayerIds),
         });
+    }
+
+    /// <inheritdoc />
+    public async Task<OnlineResult<OnlineMatchDomainDisconnect>> NotifyPlayerDisconnectedAsync(OnlineScope scope, CancellationToken cancellationToken = default)
+    {
+        var scopeFailure = ValidateScope(scope);
+        if (scopeFailure.HasValue)
+        {
+            return OnlineResult<OnlineMatchDomainDisconnect>.Fail(scopeFailure.Value.Code, scopeFailure.Value.Message);
+        }
+
+        // 归属定位：票据 → 分配登记 → 运行时成员表（不以最新票据直接冒充归属）。
+        var located = await LocatePlayerMatchAsync(scope, cancellationToken).ConfigureAwait(false);
+        if (located == null)
+        {
+            return OnlineResult<OnlineMatchDomainDisconnect>.Ok(new OnlineMatchDomainDisconnect { Marked = false });
+        }
+
+        var (numericMatchId, actor, member) = located.Value;
+        var snapshot = actor.GetSnapshot();
+        if (OnlineMatchStateMachine.IsEnded(snapshot.State))
+        {
+            return OnlineResult<OnlineMatchDomainDisconnect>.Ok(new OnlineMatchDomainDisconnect { Marked = false });
+        }
+
+        if (member == null || member.State == OnlineMatchMemberState.Left || member.State == OnlineMatchMemberState.Kicked)
+        {
+            return OnlineResult<OnlineMatchDomainDisconnect>.Ok(new OnlineMatchDomainDisconnect { Marked = false });
+        }
+
+        // rt- 令牌经重连服务唯一签发点产生并留存成员表，不下发客户端（通道已断）。
+        var marked = await _reconnect.DisconnectAsync(scope, actor.MatchId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), cancellationToken).ConfigureAwait(false);
+        if (!marked.IsSuccess)
+        {
+            return OnlineResult<OnlineMatchDomainDisconnect>.Fail(marked.Code, marked.Message);
+        }
+
+        return OnlineResult<OnlineMatchDomainDisconnect>.Ok(new OnlineMatchDomainDisconnect { Marked = true, MatchId = numericMatchId });
+    }
+
+    /// <inheritdoc />
+    public async Task<OnlineResult<OnlineMatchDomainResume>> TryResumeForPlayerAsync(OnlineScope scope, long lastAcknowledgedSequence, CancellationToken cancellationToken = default)
+    {
+        var scopeFailure = ValidateScope(scope);
+        if (scopeFailure.HasValue)
+        {
+            return OnlineResult<OnlineMatchDomainResume>.Fail(scopeFailure.Value.Code, scopeFailure.Value.Message);
+        }
+
+        var located = await LocatePlayerMatchAsync(scope, cancellationToken).ConfigureAwait(false);
+        if (located == null)
+        {
+            // 无对局可恢复 = 身份恢复不受影响的空回执（Resumed=false 的成功）。
+            return OnlineResult<OnlineMatchDomainResume>.Ok(new OnlineMatchDomainResume { Resumed = false });
+        }
+
+        var (numericMatchId, actor, member) = located.Value;
+        if (member == null || member.State == OnlineMatchMemberState.Left || member.State == OnlineMatchMemberState.Kicked)
+        {
+            return OnlineResult<OnlineMatchDomainResume>.Fail(OnlineErrorCode.ScopeDenied, "玩家不在对局中或已退出");
+        }
+
+        var snapshot = actor.GetSnapshot();
+        if (OnlineMatchStateMachine.IsEnded(snapshot.State))
+        {
+            return OnlineResult<OnlineMatchDomainResume>.Fail(OnlineErrorCode.StateEnded, "对局已结束");
+        }
+
+        OnlineMatchReconnectResult resumed;
+        if (member.State == OnlineMatchMemberState.Disconnected)
+        {
+            // 服务端留存令牌回灌：成员表令牌只回灌给 Actor 的既有三重校验，身份证明由更高层会话凭据承担。
+            var context = new OnlineMatchReconnectContext
+            {
+                MatchId = actor.MatchId,
+                PlayerId = scope.PlayerId,
+                ReconnectToken = member.ReconnectToken,
+                LastAcknowledgedSequence = lastAcknowledgedSequence,
+            };
+            var outcome = await _reconnect.ReconnectAsync(scope, context, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), cancellationToken).ConfigureAwait(false);
+            if (!outcome.IsSuccess)
+            {
+                return OnlineResult<OnlineMatchDomainResume>.Fail(outcome.Code, outcome.Message);
+            }
+
+            resumed = outcome.Data;
+        }
+        else
+        {
+            // 活跃成员的重复恢复：幂等确认（不动状态机，快照即恢复产物）。
+            resumed = new OnlineMatchReconnectResult
+            {
+                Succeeded = true,
+                MatchId = actor.MatchId,
+                State = snapshot.State,
+                ServerSequence = snapshot.ServerSequence,
+                Snapshot = snapshot,
+                Delta = null,
+                Instruction = "成员在线，快照即恢复产物",
+            };
+        }
+
+        var resultSnapshot = resumed.Snapshot ?? actor.GetSnapshot();
+        var members = new List<OnlineMatchDomainResumeMember>();
+        if (resultSnapshot.Members != null)
+        {
+            foreach (var resumeMember in resultSnapshot.Members)
+            {
+                if (resumeMember == null)
+                {
+                    continue;
+                }
+
+                members.Add(new OnlineMatchDomainResumeMember { PlayerId = resumeMember.PlayerId, State = (int)resumeMember.State });
+            }
+        }
+
+        return OnlineResult<OnlineMatchDomainResume>.Ok(new OnlineMatchDomainResume
+        {
+            Resumed = true,
+            MatchId = numericMatchId,
+            MatchState = (int)resultSnapshot.State,
+            ServerSequence = resultSnapshot.ServerSequence,
+            DeltaAvailable = resumed.Delta != null,
+            Members = members,
+            GameState = resultSnapshot.GameState,
+            Instruction = resumed.Instruction,
+        });
+    }
+
+    /// <summary>
+    /// 定位玩家当前对局（票据 → 分配登记 → 运行时 Actor → 成员表核对）。
+    /// </summary>
+    /// <param name="scope">生效作用域（含玩家主体位）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>(数值对局标识, Actor, 成员)；无归属返回 null。</returns>
+    private async Task<(long NumericMatchId, OnlineMatchActor Actor, OnlineMatchMember Member)?> LocatePlayerMatchAsync(OnlineScope scope, CancellationToken cancellationToken)
+    {
+        var latest = await _store.FindLatestByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+        if (latest == null || latest.State != OnlineMatchTicketState.Matched || string.IsNullOrEmpty(latest.AssignmentId))
+        {
+            return null;
+        }
+
+        var registration = FindRegistration(latest.AssignmentId);
+        if (registration == null || !registration.PlayerIds.Contains(scope.PlayerId))
+        {
+            return null;
+        }
+
+        var runtimeMatchId = DeriveRuntimeMatchId(scope.ServerId, registration.NumericMatchId);
+        var actor = await _runtime.ResolveActorAsync(scope.TenantId, scope.AppId, runtimeMatchId, cancellationToken).ConfigureAwait(false);
+        if (actor == null)
+        {
+            return null;
+        }
+
+        return (registration.NumericMatchId, actor, FindMember(actor.GetSnapshot(), scope.PlayerId));
+    }
+
+    /// <summary>
+    /// 从快照成员表中定位玩家成员。
+    /// </summary>
+    /// <param name="snapshot">对局快照。</param>
+    /// <param name="playerId">玩家标识。</param>
+    /// <returns>成员；不在表中返回 null。</returns>
+    private static OnlineMatchMember FindMember(OnlineMatchSnapshot snapshot, long playerId)
+    {
+        if (snapshot?.Members == null)
+        {
+            return null;
+        }
+
+        foreach (var member in snapshot.Members)
+        {
+            if (member != null && member.PlayerId == playerId)
+            {
+                return member;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

@@ -86,4 +86,25 @@ public interface IOnlineMatchDomain
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>分配解析视图。</returns>
     Task<OnlineResult<OnlineMatchDomainAssignment>> ResolveAssignmentAsync(long tenantId, long appId, string assignmentId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 会话中介断线通知（C204）：物理连接断开时按「票据 → 分配登记 → 运行时成员表」定位玩家当前对局，
+    /// 标记成员断线并开重连窗（rt- 令牌服务端留存，不下发客户端）。
+    /// </summary>
+    /// <param name="scope">生效作用域（必须含玩家主体位 = 断线成员）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>断线标记回执（无进行中对局为 Marked=false，非失败）。</returns>
+    Task<OnlineResult<OnlineMatchDomainDisconnect>> NotifyPlayerDisconnectedAsync(OnlineScope scope, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 会话中介恢复（C204）：身份已在更高层凭会话凭据证明，本面按成员表核对该玩家当前对局归属——
+    /// 断线成员窗口内恢复（服务端留存令牌回灌，Actor 三重校验原样生效），活跃成员幂等确认；
+    /// 不重新匹配、不另开对局、不重复结算。
+    /// </summary>
+    /// <param name="scope">生效作用域（必须含玩家主体位 = 恢复成员）。</param>
+    /// <param name="lastAcknowledgedSequence">客户端最后确认的服务器序号（增量下界；不可服务时回退快照）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>恢复回执；失败码——无对局回 <c>Resumed=false</c> 成功，超窗 <see cref="OnlineErrorCode.NetworkTimeout"/>，
+    /// 已结束 <see cref="OnlineErrorCode.StateEnded"/>，成员已离局 <see cref="OnlineErrorCode.ScopeDenied"/>。</returns>
+    Task<OnlineResult<OnlineMatchDomainResume>> TryResumeForPlayerAsync(OnlineScope scope, long lastAcknowledgedSequence, CancellationToken cancellationToken = default);
 }
