@@ -54,6 +54,7 @@ internal partial class AppStartUpHotfixGame
     /// Creates the KCP session first-message authentication options for the game server.
     /// 白名单为现有 TCP 登录流全链路（账号登录 → 角色列表/角色创建 → 角色登录）；
     /// <see cref="ReqPlayerLogin"/> 是鉴权终态——业务侧 OnPlayerLogin 处理该消息并绑定 ActorId，此后会话消息全放行。
+    /// C204 起 <see cref="ReqSessionResume"/>（会话恢复）与角色登录同为鉴权完成信号——恢复即绑定 ActorId。
     /// </remarks>
     /// <returns>KCP 会话鉴权配置 / The KCP session authentication options</returns>
     protected override SessionAuthenticationOptions CreateKcpSessionAuthenticationOptions()
@@ -63,7 +64,9 @@ internal partial class AppStartUpHotfixGame
         options.AllowedMessageIds.Add(GetLoginMessageId(typeof(ReqPlayerList)));
         options.AllowedMessageIds.Add(GetLoginMessageId(typeof(ReqPlayerCreate)));
         options.AllowedMessageIds.Add(GetLoginMessageId(typeof(ReqPlayerLogin)));
+        options.AllowedMessageIds.Add(GetLoginMessageId(typeof(ReqSessionResume)));
         options.AuthenticatedByMessageIds.Add(GetLoginMessageId(typeof(ReqPlayerLogin)));
+        options.AuthenticatedByMessageIds.Add(GetLoginMessageId(typeof(ReqSessionResume)));
         return options;
     }
 
@@ -112,7 +115,11 @@ internal partial class AppStartUpHotfixGame
             // 房间系统：标记玩家断线，等待重连或超时清理
             var roomAgent = await ActorManager.GetComponentAgent<RoomComponentAgent>();
             await roomAgent.MarkPlayerDisconnected(session.PlayerId);
+
+            // C204 两层会话协同：Online 会话域开重连窗 + 对局域标记断线成员（含旧回调迟到守卫）。
+            await Logic.ServerRole.SessionResume.SessionResumeDomainBridge.NotifyPlayerDisconnectedAsync(session.PlayerId, appSession.SessionId);
         }
+
         return;
     }
 

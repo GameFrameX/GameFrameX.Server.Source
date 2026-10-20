@@ -57,7 +57,7 @@ public class ServerRoleMessageDomainTests
     {
         ("Account", 200, new[] { "ReqAccountRegister", "ReqAccountQuery", "ReqAccountChangePassword" }),
         ("Login", 210, new[] { "ReqLoginIssueToken", "ReqLoginVerifyToken", "ReqLoginRevokeToken" }),
-        ("Auth", 220, new[] { "ReqAuthGrant", "ReqAuthRevoke", "ReqAuthHas", "ReqAuthListPermissions" }),
+        ("Auth", 220, new[] { "ReqAuthGrant", "ReqAuthRevoke", "ReqAuthHas", "ReqAuthListPermissions", "ReqSessionResume" }),
         ("Gateway", 230, new[] { "ReqGatewayRegisterTarget", "ReqGatewayHeartbeat", "ReqGatewayResolveTarget", "ReqGatewayUnregisterTarget" }),
         ("Match", 420, new[] { "ReqMatchEnqueue", "ReqMatchCancel", "ReqMatchStatus", "ReqMatchEnter" }),
         ("Room", 430, new[] { "ReqRoomAllocate", "ReqRoomRelease", "ReqRoomQuery" }),
@@ -153,6 +153,13 @@ public class ServerRoleMessageDomainTests
         var agentsSeen = new HashSet<Type>();
         foreach (var requestName in requestNames.Split('|'))
         {
+            if (requestName == "ReqSessionResume")
+            {
+                // C204 会话恢复：退役 Agent/Component 链，plain 薄适配器形态由专项断言钉住
+                //（SessionResumeHandler_IsPlainDomainBridgeAdapter）。
+                continue;
+            }
+
             var reqType = ProtoAssemblyAnchor.Assembly.GetType($"GameFrameX.Proto.Proto.{requestName}");
             Assert.True(reqType != null, $"缺少 {requestName} 消息");
 
@@ -178,6 +185,28 @@ public class ServerRoleMessageDomainTests
         var componentTypeAttribute = componentType.GetCustomAttribute<ComponentTypeAttribute>();
         Assert.True(componentTypeAttribute != null, $"{role}Component 缺少 ComponentType");
         Assert.Equal(GlobalConst.ActorTypeServer, componentTypeAttribute!.Type);
+    }
+
+    /// <summary>
+    /// 会话恢复（220-18，C204）请求消息在 Hotfix 程序集恰好装配一个 MessageMapping handler，
+    /// 且为 plain <c>BaseRpcMessageHandler</c> 薄适配器（经会话域桥 / 匹配域桥转发 Online 契约面，
+    /// 不挂 Role 内存状态机 Agent/Component 链——身份权威在 Online 会话域）。
+    /// </summary>
+    [Fact]
+    public void SessionResumeHandler_IsPlainDomainBridgeAdapter()
+    {
+        var reqType = ProtoAssemblyAnchor.Assembly.GetType("GameFrameX.Proto.Proto.ReqSessionResume");
+        Assert.True(reqType != null, "缺少 ReqSessionResume 消息");
+
+        var handlers = HotfixAssemblyAnchor.Assembly.GetTypes()
+            .Where(type => type.GetCustomAttribute<MessageMappingAttribute>()?.MessageType == reqType)
+            .ToList();
+        Assert.True(handlers.Count == 1, $"ReqSessionResume 的 MessageMapping handler 数量应为 1，实际 {handlers.Count}");
+
+        var baseGeneric = handlers[0].BaseType;
+        Assert.NotNull(baseGeneric);
+        Assert.True(baseGeneric!.IsGenericType, "ReqSessionResumeHandler 应为 BaseRpcMessageHandler 派生");
+        Assert.Equal("BaseRpcMessageHandler`2", baseGeneric.GetGenericTypeDefinition().Name);
     }
 
     /// <summary>

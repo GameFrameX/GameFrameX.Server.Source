@@ -331,5 +331,15 @@ public sealed class MatchDomainBridgeTests : IDisposable
         {
             return Task.FromResult(OnlineResult<OnlineMatchDomainAssignment>.Fail(OnlineErrorCode.ResourceNotFound, "stub"));
         }
+
+        public Task<OnlineResult<OnlineMatchDomainDisconnect>> NotifyPlayerDisconnectedAsync(OnlineScope scope, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(OnlineResult<OnlineMatchDomainDisconnect>.Ok(new OnlineMatchDomainDisconnect { Marked = false }));
+        }
+
+        public Task<OnlineResult<OnlineMatchDomainResume>> TryResumeForPlayerAsync(OnlineScope scope, long lastAcknowledgedSequence, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(OnlineResult<OnlineMatchDomainResume>.Ok(new OnlineMatchDomainResume { Resumed = false }));
+        }
     }
 }
