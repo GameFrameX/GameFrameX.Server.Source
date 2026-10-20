@@ -368,6 +368,13 @@ namespace GameFrameX.Proto.Proto
 		public PlayerInfo PlayerInfo { get; set; }
 
 		/// <summary>
+		/// 会话恢复凭据（C204：断线后凭此值经 ReqSessionResume 恢复身份；Online 未装配时为空）
+		/// </summary>
+		[ProtoMember(4)]
+		[System.ComponentModel.Description("会话恢复凭据（C204：断线后凭此值经 ReqSessionResume 恢复身份；Online 未装配时为空）")]
+		public string SessionToken { get; set; }
+
+		/// <summary>
 		/// 返回的错误码
 		/// </summary>
 		[ProtoMember(2047)]
@@ -379,6 +386,7 @@ namespace GameFrameX.Proto.Proto
 			Code = default;
 			CreateTime = default;
 			PlayerInfo = default;
+			SessionToken = default;
 			ErrorCode = default;
 		}
 	}

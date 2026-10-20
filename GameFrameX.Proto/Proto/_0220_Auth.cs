@@ -307,4 +307,162 @@ namespace GameFrameX.Proto.Proto
 		}
 	}
 
+	/// <summary>
+	/// 会话恢复成员快照项（C204）
+	/// </summary>
+	[ProtoContract]
+	[System.ComponentModel.Description("会话恢复成员快照项（C204）")]
+	public sealed class SessionResumeMemberInfo : MessageObject
+	{
+		/// <summary>
+		/// 玩家ID
+		/// </summary>
+		[ProtoMember(1)]
+		[System.ComponentModel.Description("玩家ID")]
+		public long PlayerId { get; set; }
+
+		/// <summary>
+		/// 成员状态（OnlineMatchMemberState：0=Joined 1=Ready 2=Playing 3=Disconnected 4=Left 5=Kicked）
+		/// </summary>
+		[ProtoMember(2)]
+		[System.ComponentModel.Description("成员状态（OnlineMatchMemberState：0=Joined 1=Ready 2=Playing 3=Disconnected 4=Left 5=Kicked）")]
+		public int State { get; set; }
+
+		public override void Clear()
+		{
+			PlayerId = default;
+			State = default;
+		}
+	}
+
+	/// <summary>
+	/// 请求会话恢复（C204：新物理连接携带登录时获得的会话凭据恢复身份与对局）
+	/// </summary>
+	[ProtoContract]
+	[System.ComponentModel.Description("请求会话恢复（C204：新物理连接携带登录时获得的会话凭据恢复身份与对局）")]
+	[MessageTypeHandler(((220) << 16) + 18)]
+	public sealed class ReqSessionResume : MessageObject, IRequestMessage
+	{
+		/// <summary>
+		/// 会话凭据（登录响应下发的 SessionToken 明文）
+		/// </summary>
+		[ProtoMember(1)]
+		[System.ComponentModel.Description("会话凭据（登录响应下发的 SessionToken 明文）")]
+		public string Token { get; set; }
+
+		/// <summary>
+		/// 客户端最后确认的服务器序号（恢复增量的下界；0 = 无进度，回退全量快照）
+		/// </summary>
+		[ProtoMember(2)]
+		[System.ComponentModel.Description("客户端最后确认的服务器序号（恢复增量的下界；0 = 无进度，回退全量快照）")]
+		public long LastAcknowledgedSequence { get; set; }
+
+		public override void Clear()
+		{
+			Token = default;
+			LastAcknowledgedSequence = default;
+		}
+	}
+
+	/// <summary>
+	/// 返回会话恢复（C204：恢复后的身份绑定、轮换新凭据与对局快照/增量）
+	/// </summary>
+	[ProtoContract]
+	[System.ComponentModel.Description("返回会话恢复（C204：恢复后的身份绑定、轮换新凭据与对局快照/增量）")]
+	[MessageTypeHandler(((220) << 16) + 19)]
+	public sealed class RespSessionResume : MessageObject, IResponseMessage
+	{
+		/// <summary>
+		/// 恢复的玩家ID
+		/// </summary>
+		[ProtoMember(1)]
+		[System.ComponentModel.Description("恢复的玩家ID")]
+		public long PlayerId { get; set; }
+
+		/// <summary>
+		/// 轮换后的新会话凭据（旧凭据即刻失效；后续恢复须使用本值）
+		/// </summary>
+		[ProtoMember(2)]
+		[System.ComponentModel.Description("轮换后的新会话凭据（旧凭据即刻失效；后续恢复须使用本值）")]
+		public string NewSessionToken { get; set; }
+
+		/// <summary>
+		/// 是否恢复了进行中的对局（false = 无可恢复对局，身份恢复仍成功）
+		/// </summary>
+		[ProtoMember(3)]
+		[System.ComponentModel.Description("是否恢复了进行中的对局（false = 无可恢复对局，身份恢复仍成功）")]
+		public bool Recovered { get; set; }
+
+		/// <summary>
+		/// 恢复的对局数值标识（未恢复为 0）
+		/// </summary>
+		[ProtoMember(4)]
+		[System.ComponentModel.Description("恢复的对局数值标识（未恢复为 0）")]
+		public long MatchId { get; set; }
+
+		/// <summary>
+		/// 对局状态（OnlineMatchState：0=Created 1=Waiting 2=Ready 3=Running 4=Settling 5=Completed 6=Closed 7=Cancelled 8=Timeout 9=Failed 10=Aborted 11=SettlementFailed）
+		/// </summary>
+		[ProtoMember(5)]
+		[System.ComponentModel.Description("对局状态（OnlineMatchState：0=Created 1=Waiting 2=Ready 3=Running 4=Settling 5=Completed 6=Closed 7=Cancelled 8=Timeout 9=Failed 10=Aborted 11=SettlementFailed）")]
+		public int MatchState { get; set; }
+
+		/// <summary>
+		/// 恢复点服务器序号（快照切片序号，后续增量起点）
+		/// </summary>
+		[ProtoMember(6)]
+		[System.ComponentModel.Description("恢复点服务器序号（快照切片序号，后续增量起点）")]
+		public long ServerSequence { get; set; }
+
+		/// <summary>
+		/// 增量是否可用（false = 客户端必须以快照重建本地状态）
+		/// </summary>
+		[ProtoMember(7)]
+		[System.ComponentModel.Description("增量是否可用（false = 客户端必须以快照重建本地状态）")]
+		public bool DeltaAvailable { get; set; }
+
+		/// <summary>
+		/// 对局成员快照（含各成员当前状态）
+		/// </summary>
+		[ProtoMember(8)]
+		[System.ComponentModel.Description("对局成员快照（含各成员当前状态）")]
+		public List<SessionResumeMemberInfo> Members { get; set; } = new List<SessionResumeMemberInfo>();
+
+		/// <summary>
+		/// 玩法私有状态载荷（不透明字节；服务端权威快照切片）
+		/// </summary>
+		[ProtoMember(9)]
+		[System.ComponentModel.Description("玩法私有状态载荷（不透明字节；服务端权威快照切片）")]
+		public byte[] GameState { get; set; }
+
+		/// <summary>
+		/// 处置说明（增量/快照使用方式）
+		/// </summary>
+		[ProtoMember(10)]
+		[System.ComponentModel.Description("处置说明（增量/快照使用方式）")]
+		public string Instruction { get; set; }
+
+		/// <summary>
+		/// 返回的错误码
+		/// </summary>
+		[ProtoMember(2047)]
+		[System.ComponentModel.Description("返回的错误码")]
+		public int ErrorCode { get; set; }
+
+		public override void Clear()
+		{
+			PlayerId = default;
+			NewSessionToken = default;
+			Recovered = default;
+			MatchId = default;
+			MatchState = default;
+			ServerSequence = default;
+			DeltaAvailable = default;
+			Members.Clear();
+			GameState = default;
+			Instruction = default;
+			ErrorCode = default;
+		}
+	}
+
 }
