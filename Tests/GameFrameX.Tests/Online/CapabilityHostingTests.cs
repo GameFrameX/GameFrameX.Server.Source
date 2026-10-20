@@ -221,8 +221,8 @@ namespace GameFrameX.Tests.Online
             var order = composition.Runtime.Report.EnabledIdsInOrder;
             Assert.Equal(new[]
             {
-                "online-assets", "online-foundation", "online-match", "online-social",
-                "online-competition", "online-matchmaking", "online-operations",
+                "online-assets", "online-foundation", "online-social", "online-matchmaking",
+                "online-match", "online-competition", "online-operations",
             }, order);
         }
 
@@ -302,8 +302,8 @@ namespace GameFrameX.Tests.Online
                     Assert.Equal(7, data.GetProperty("Capabilities").GetArrayLength());
                     Assert.Equal(new[]
                     {
-                        "online-assets", "online-foundation", "online-match", "online-social",
-                        "online-competition", "online-matchmaking", "online-operations",
+                        "online-assets", "online-foundation", "online-social", "online-matchmaking",
+                        "online-match", "online-competition", "online-operations",
                     }, data.GetProperty("EnabledIdsInOrder").EnumerateArray().Select(e => e.GetString()).ToArray());
                 }
             }

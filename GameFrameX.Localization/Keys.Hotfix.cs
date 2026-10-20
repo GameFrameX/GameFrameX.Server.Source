@@ -223,6 +223,42 @@ public static partial class Keys
         }
 
         /// <summary>
+        /// Match 匹配模块消息键。
+        /// </summary>
+        public static class Match
+        {
+            /// <summary>
+            /// 匹配域桥不可用（未发布或已撤销）, PlayerId: {0}, Code: {1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Hotfix.Match.DomainBridgeUnavailable
+            /// 用途: C246 匹配域桥租约不可用（宿主未启/已停/已撤销）时记录。
+            /// 参数: {0} - 请求主体ID, {1} - 协议错误码
+            /// </remarks>
+            public const string DomainBridgeUnavailable = "Hotfix.Match.DomainBridgeUnavailable";
+
+            /// <summary>
+            /// 匹配域桥返回失败, Code: {0}, Message: {1}, PlayerId: {2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Hotfix.Match.DomainBridgeFailed
+            /// 用途: C246 匹配域桥契约面返回失败结果时记录。
+            /// 参数: {0} - 协议错误码, {1} - 失败描述, {2} - 请求主体ID
+            /// </remarks>
+            public const string DomainBridgeFailed = "Hotfix.Match.DomainBridgeFailed";
+
+            /// <summary>
+            /// 匹配域桥调用异常, PlayerId: {0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Hotfix.Match.DomainBridgeException
+            /// 用途: C246 匹配域桥调用抛出异常时记录。
+            /// 参数: {0} - 请求主体ID
+            /// </remarks>
+            public const string DomainBridgeException = "Hotfix.Match.DomainBridgeException";
+        }
+
+        /// <summary>
         /// Game 游戏模块消息键。
         /// </summary>
         public static class Game

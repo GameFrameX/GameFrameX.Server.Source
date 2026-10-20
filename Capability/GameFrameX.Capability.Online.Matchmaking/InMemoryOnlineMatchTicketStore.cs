@@ -156,6 +156,43 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
     }
 
     /// <summary>
+    /// 经玩家反查索引定位票据标识，不校验状态直接返回其副本（最近一次匹配尝试；C246 匹配域桥状态面读）。
+    /// </summary>
+    /// <remarks>
+    /// Locates the ticket id through the player reverse-lookup index and returns its copy regardless of state
+    /// (the latest matching attempt; the C246 match-domain bridge status face).
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="playerId">玩家标识 / Player id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>最近票据副本；从未入队返回 null / A copy of the latest ticket, or null when the player never enqueued</returns>
+    public Task<OnlineMatchTicket> FindLatestByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+    {
+        lock (_syncRoot)
+        {
+            OnlineMatchTicket latest = null;
+            foreach (var ticket in _tickets.Values)
+            {
+                if (ticket.TenantId != tenantId || ticket.AppId != appId || ticket.PlayerIds == null || !ticket.PlayerIds.Contains(playerId))
+                {
+                    continue;
+                }
+
+                // 成组提交会释放玩家反查索引（立即可再入队），故此处按票据表扫描：
+                // 取创建时刻最新者，同刻以票据标识兜底（同输入同输出）。
+                if (latest == null || ticket.CreatedAtTime > latest.CreatedAtTime
+                    || (ticket.CreatedAtTime == latest.CreatedAtTime && string.CompareOrdinal(ticket.TicketId, latest.TicketId) > 0))
+                {
+                    latest = ticket;
+                }
+            }
+
+            return Task.FromResult(latest == null ? null : latest.Copy());
+        }
+    }
+
+    /// <summary>
     /// 遍历内存票据表，收集作用域内全部处于排队态的票据副本。
     /// </summary>
     /// <remarks>

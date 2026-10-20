@@ -764,7 +764,7 @@ dotnet test --logger "console;verbosity=detailed"
 
 ```
 GameFrameX.Server.Source/
-├── GameFrameX.Launcher/              # 应用入口点（Game + 18 个标准 Role 启动入口）
+├── GameFrameX.Launcher/              # 应用入口点（Game + 17 个标准 Role 启动入口）
 ├── GameFrameX.StartUp/               # 启动编排和初始化
 ├── GameFrameX.Core/                  # 核心框架（Actor 系统、组件、事件、热更新管理）
 ├── GameFrameX.Apps/                  # 状态数据层（Account、Player、Game、ServerRole 模块）— 不可热更
@@ -804,7 +804,7 @@ All-in-One 进程运行，而无需修改 Role 代码。
 - `--ServerType=Game,Social` —— 在一个进程中启动多个已注册的 Role（按优先级顺序）。
 - `--AllInOne` —— 在一个进程中启动所有已注册的 Role。与 `--ServerType` 同时给出时，
   All-in-One 开关覆盖选择（`--ServerType` 被忽略并记录 Warning）。
-- `Configs/app_config.json` —— 为每个预定义 Role 提供一节配置（共 19 节：Game、Social 及其余 17 个标准 Role）。
+- `Configs/app_config.json` —— 为每个预定义 Role 提供一节配置（共 18 节：Game、Social 及其余 16 个标准 Role）。
   每个 Role 解析自己的配置节；进程级字段在各节之间必须一致。
 
 启动时校验器（`ConfigStartupValidator`）会在以下情况快速失败（fail-fast）——并逐一列出冲突字段及其

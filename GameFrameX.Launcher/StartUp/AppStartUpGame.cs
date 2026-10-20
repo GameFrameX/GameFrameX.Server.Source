@@ -259,6 +259,10 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
                 OnlineMatchBridgeWiring.PublishMatchGameBridge(_onlineRuntime);
                 await OnlineMatchBridgeWiring.EnsureMatchLeaderboardBoardAsync(_onlineRuntime, Setting.Online?.MatchBridgeLeaderboardId);
             }
+
+            // C246 匹配域接管：发布匹配域桥租约（420 族唯一转发面，无回落目标）并订阅撮合分配事件推送匹配成功通知。
+            OnlineMatchDomainBridgeWiring.PublishMatchDomainBridge(_onlineRuntime);
+            OnlineMatchDomainBridgeWiring.SubscribeMatchMadeNotifications(_onlineRuntime);
         }
     }
 
@@ -300,6 +304,7 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
         // C245 桥接：先撤销对局桥租约（旧引用显式失效），顺序同上（撤桥 → 停 admin → 停 runtime）。
         OnlineFriendDomainBridgeWiring.RetractFriendDomainBridge();
         OnlineMatchBridgeWiring.RetractMatchGameBridge();
+        OnlineMatchDomainBridgeWiring.RetractMatchDomainBridge();
 
         if (_onlineAdminApi != null)
         {

@@ -30,6 +30,7 @@
 using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Hosting.AdminApi;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Matchmaking;
 using GameFrameX.Capability.Online.Abstractions.Events;
 using GameFrameX.Capability.Online.Assets;
 using GameFrameX.Capability.Online.Match.AdminApi;
@@ -62,7 +63,7 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
         "online-match",
         "1.0.0",
         new[] { "end_abnormal_match" },
-        new[] { "online-assets" });
+        new[] { "online-assets", "online-matchmaking" });
 
     /// <summary>
     /// 对局运行时（Register 期构造；样例玩法随迁移注册，与壳时代装配语句逐语句等价）。
@@ -107,6 +108,16 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
 
         _bridgeService = new OnlineMatchGameBridgeService(_matchRuntime, rpsGame);
         context.AddService<IOnlineMatchGameBridge>(_bridgeService);
+
+        // 匹配域桥服务（C246）：桥接票据撮合域（入队 / 取消 / 状态 / 即时窗口）与对局运行时（入场 create-or-reuse）。
+        // 票据服务 / 撮合协调器经上下文解析（manifest 依赖 online-matchmaking 保证拓扑先序在场）；
+        // online-matchmaking 被过滤时不装配不报错（grant 缺席装配先例）——420 协议面经 holder 得显式失败。
+        if (context.TryGetService(out OnlineMatchTicketService domainTickets)
+            && context.TryGetService(out OnlineMatchmakerCoordinator domainCoordinator)
+            && context.TryGetService(out IOnlineMatchTicketStore domainTicketStore))
+        {
+            context.AddService<IOnlineMatchDomain>(new OnlineMatchDomainService(domainTicketStore, domainTickets, domainCoordinator, _matchRuntime, rpsGame));
+        }
     }
 
     /// <inheritdoc />

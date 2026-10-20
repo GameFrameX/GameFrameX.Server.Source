@@ -161,6 +161,28 @@ public static class OnlineMatchEvents
     }
 
     /// <summary>
+    /// 只读解析对局分配事件负载（C246 通知推送方消费；类型不符或载荷不可解析返回 null，不抛异常）。
+    /// </summary>
+    /// <param name="onlineEvent">事件。</param>
+    /// <returns>分配负载视图；非分配事件或解析失败返回 null。</returns>
+    public static AssignmentCreatedPayload ReadAssignmentCreated(OnlineEvent onlineEvent)
+    {
+        if (onlineEvent == null || onlineEvent.EventType != AssignmentCreated || onlineEvent.Payload.IsEmpty)
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<AssignmentCreatedPayload>(onlineEvent.Payload.Span);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
     /// 票据状态变更事件负载（SchemaVersion=1）。
     /// </summary>
     private sealed class TicketChangedPayload
@@ -188,9 +210,9 @@ public static class OnlineMatchEvents
     }
 
     /// <summary>
-    /// 对局分配事件负载（SchemaVersion=1）。
+    /// 对局分配事件负载（SchemaVersion=1；C246 起公共化供订阅方只读解析）。
     /// </summary>
-    private sealed class AssignmentCreatedPayload
+    public sealed class AssignmentCreatedPayload
     {
         /// <summary>分配标识。</summary>
         public string AssignmentId { get; set; }

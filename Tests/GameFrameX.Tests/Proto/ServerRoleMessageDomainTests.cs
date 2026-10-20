@@ -59,7 +59,7 @@ public class ServerRoleMessageDomainTests
         ("Login", 210, new[] { "ReqLoginIssueToken", "ReqLoginVerifyToken", "ReqLoginRevokeToken" }),
         ("Auth", 220, new[] { "ReqAuthGrant", "ReqAuthRevoke", "ReqAuthHas", "ReqAuthListPermissions" }),
         ("Gateway", 230, new[] { "ReqGatewayRegisterTarget", "ReqGatewayHeartbeat", "ReqGatewayResolveTarget", "ReqGatewayUnregisterTarget" }),
-        ("Match", 420, new[] { "ReqMatchEnqueue", "ReqMatchCancel", "ReqMatchStatus" }),
+        ("Match", 420, new[] { "ReqMatchEnqueue", "ReqMatchCancel", "ReqMatchStatus", "ReqMatchEnter" }),
         ("Room", 430, new[] { "ReqRoomAllocate", "ReqRoomRelease", "ReqRoomQuery" }),
         ("Scene", 440, new[] { "ReqSceneEnter", "ReqSceneLeave", "ReqSceneQuery" }),
         ("World", 450, new[] { "ReqWorldPublish", "ReqWorldRevoke", "ReqWorldQuery" }),
@@ -72,6 +72,14 @@ public class ServerRoleMessageDomainTests
         ("Trade", 800, new[] { "ReqTradePlace", "ReqTradeCancel", "ReqTradeBook" }),
         ("Auction", 810, new[] { "ReqAuctionListLot", "ReqAuctionBid", "ReqAuctionBuyout", "ReqAuctionSettle", "ReqAuctionQueryLots" }),
         ("Gm", 900, new[] { "ReqGmAddPenalty", "ReqGmRevokePenalty", "ReqGmQueryPenalties" }),
+    };
+
+    /// <summary>
+    /// 域内单向通知消息（Req/Resp 对之外的服务端推送；C246 匹配域新增 NotifyMatchMade）。
+    /// </summary>
+    private static readonly (string Role, string[] Notifies)[] RoleNotifies =
+    {
+        ("Match", new[] { "NotifyMatchMade" }),
     };
 
     private static readonly Type HotfixAssemblyAnchor = typeof(GameFrameX.Hotfix.HotfixHandler);
@@ -116,9 +124,11 @@ public class ServerRoleMessageDomainTests
             .OrderBy(name => name)
             .ToList();
 
-        // 域内消息全部归属该 Role 的消息清单（Req/Resp 成对，Resp 名 = "Resp" + Req 名去 "Req" 前缀）
+        // 域内消息全部归属该 Role 的消息清单（Req/Resp 成对，Resp 名 = "Resp" + Req 名去 "Req" 前缀；
+        // 另含该 Role 的单向通知消息）。
         var expectedAll = expectedRequests
             .SelectMany(name => new[] { name, "Resp" + name.Substring(3) })
+            .Concat(RoleNotifies.Where(entry => entry.Role == role).SelectMany(entry => entry.Notifies))
             .OrderBy(name => name)
             .ToList();
 
@@ -134,9 +144,9 @@ public class ServerRoleMessageDomainTests
     [MemberData(nameof(RoleMessageCases))]
     public void RoleRequestHandlers_ExactlyOneWithAgentComponentChain(string role, int domain, string requestNames)
     {
-        if (role == "Friend")
+        if (role == "Friend" || role == "Match")
         {
-            // C244 好友域接管：660 族退役 Agent/Component 链，改由独立事实断言 plain 薄适配器形态。
+            // C244 好友域 / C246 匹配域接管：退役 Agent/Component 链，改由独立事实断言 plain 薄适配器形态。
             return;
         }
 
@@ -180,6 +190,32 @@ public class ServerRoleMessageDomainTests
     {
         var friend = RoleMessages.Single(entry => entry.Role == "Friend");
         foreach (var requestName in friend.Requests)
+        {
+            var reqType = ProtoAssemblyAnchor.Assembly.GetType($"GameFrameX.Proto.Proto.{requestName}");
+            Assert.True(reqType != null, $"缺少 {requestName} 消息");
+
+            var handlers = HotfixAssemblyAnchor.Assembly.GetTypes()
+                .Where(type => type.GetCustomAttribute<MessageMappingAttribute>()?.MessageType == reqType)
+                .ToList();
+            Assert.True(handlers.Count == 1, $"{requestName} 的 MessageMapping handler 数量应为 1，实际 {handlers.Count}");
+            var handler = handlers[0];
+            var baseGeneric = handler.BaseType;
+            Assert.NotNull(baseGeneric);
+            Assert.True(baseGeneric!.IsGenericType, $"{requestName}Handler 应为 BaseRpcMessageHandler 派生");
+            Assert.Equal("BaseRpcMessageHandler`2", baseGeneric.GetGenericTypeDefinition().Name);
+        }
+    }
+
+    /// <summary>
+    /// 匹配域（420）请求消息在 Hotfix 程序集恰好装配一个 MessageMapping handler，
+    /// 且为 plain <c>BaseRpcMessageHandler</c> 薄适配器（C246 匹配域接管：经 MatchDomainBridge
+    /// 转发 Online 契约面，不再挂 Role 内存池 Agent/Component 链）。
+    /// </summary>
+    [Fact]
+    public void MatchRequestHandlers_ArePlainDomainBridgeAdapters()
+    {
+        var match = RoleMessages.Single(entry => entry.Role == "Match");
+        foreach (var requestName in match.Requests)
         {
             var reqType = ProtoAssemblyAnchor.Assembly.GetType($"GameFrameX.Proto.Proto.{requestName}");
             Assert.True(reqType != null, $"缺少 {requestName} 消息");

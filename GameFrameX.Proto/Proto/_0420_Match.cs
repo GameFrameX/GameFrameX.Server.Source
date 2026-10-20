@@ -237,4 +237,91 @@ namespace GameFrameX.Proto.Proto
 		}
 	}
 
+	/// <summary>
+	/// 请求按匹配所得对局标识入场（C246 新增；双方各自到达同一对局）
+	/// </summary>
+	[ProtoContract]
+	[System.ComponentModel.Description("请求按匹配所得对局标识入场（C246 新增；双方各自到达同一对局）")]
+	[MessageTypeHandler(((420) << 16) + 16)]
+	public sealed class ReqMatchEnter : MessageObject, IRequestMessage
+	{
+		/// <summary>
+		/// 匹配所得对局ID（来自入队响应 / 状态查询 / 匹配成功通知）
+		/// </summary>
+		[ProtoMember(1)]
+		[System.ComponentModel.Description("匹配所得对局ID（来自入队响应 / 状态查询 / 匹配成功通知）")]
+		public long MatchId { get; set; }
+
+		public override void Clear()
+		{
+			MatchId = default;
+		}
+	}
+
+	/// <summary>
+	/// 返回入场结果（Started=true 表示对局已就双方就绪启动）
+	/// </summary>
+	[ProtoContract]
+	[System.ComponentModel.Description("返回入场结果（Started=true 表示对局已就双方就绪启动）")]
+	[MessageTypeHandler(((420) << 16) + 17)]
+	public sealed class RespMatchEnter : MessageObject, IResponseMessage
+	{
+		/// <summary>
+		/// 对局ID（回显请求标识）
+		/// </summary>
+		[ProtoMember(1)]
+		[System.ComponentModel.Description("对局ID（回显请求标识）")]
+		public long MatchId { get; set; }
+
+		/// <summary>
+		/// 对局是否已进入运行态
+		/// </summary>
+		[ProtoMember(2)]
+		[System.ComponentModel.Description("对局是否已进入运行态")]
+		public bool Started { get; set; }
+
+		/// <summary>
+		/// 返回的错误码
+		/// </summary>
+		[ProtoMember(2047)]
+		[System.ComponentModel.Description("返回的错误码")]
+		public int ErrorCode { get; set; }
+
+		public override void Clear()
+		{
+			MatchId = default;
+			Started = default;
+			ErrorCode = default;
+		}
+	}
+
+	/// <summary>
+	/// 匹配成功通知（C246 新增服务端推送；best-effort，离线方经状态查询兜底）
+	/// </summary>
+	[ProtoContract]
+	[System.ComponentModel.Description("匹配成功通知（C246 新增服务端推送；best-effort，离线方经状态查询兜底）")]
+	[MessageTypeHandler(((420) << 16) + 18)]
+	public sealed class NotifyMatchMade : MessageObject, INotifyMessage
+	{
+		/// <summary>
+		/// 匹配所得对局ID
+		/// </summary>
+		[ProtoMember(1)]
+		[System.ComponentModel.Description("匹配所得对局ID")]
+		public long MatchId { get; set; }
+
+		/// <summary>
+		/// 匹配模式（协议标签）
+		/// </summary>
+		[ProtoMember(2)]
+		[System.ComponentModel.Description("匹配模式（协议标签）")]
+		public int Mode { get; set; }
+
+		public override void Clear()
+		{
+			MatchId = default;
+			Mode = default;
+		}
+	}
+
 }

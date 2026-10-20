@@ -224,22 +224,6 @@ public static class GameServerConst
     }
 
     /// <summary>
-    /// 匹配服务
-    /// </summary>
-    public static class Match
-    {
-        /// <summary>
-        /// 服务名称
-        /// </summary>
-        public const string Name = "Match";
-
-        /// <summary>
-        /// 服务ID
-        /// </summary>
-        public const int Id = 7000;
-    }
-
-    /// <summary>
     /// 场景服务
     /// </summary>
     public static class Scene

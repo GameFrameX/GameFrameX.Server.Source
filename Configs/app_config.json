@@ -132,17 +132,6 @@
     "HttpPort": 0
   },
   {
-    "ServerType": "Match",
-    "ServerId": 7000,
-    "InnerHost": "0.0.0.0",
-    "InnerPort": 27000,
-    "OnlineTenantId": 1,
-    "OnlineAppId": 1,
-    "DataBaseUrl": "mongodb://127.0.0.1:37017/?authSource=admin",
-    "DataBaseName": "gameframex",
-    "HttpPort": 0
-  },
-  {
     "ServerType": "Room",
     "ServerId": 7010,
     "InnerHost": "0.0.0.0",

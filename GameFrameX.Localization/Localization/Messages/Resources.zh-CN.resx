@@ -457,6 +457,18 @@
     <data name="Launcher.OnlineMatchBridgeBoardEnsureFailed" xml:space="preserve">
     <value>对局桥榜单确保失败：{0}，代码：{1}，消息：{2}</value>
   </data>
+  <data name="Launcher.OnlineMatchDomainBridgeFaceMissing" xml:space="preserve">
+    <value>Online 匹配域桥契约面不可解析（online-match/matchmaking 未装配或被排除），420 匹配消息将显式失败</value>
+  </data>
+  <data name="Launcher.OnlineMatchDomainBridgePublished" xml:space="preserve">
+    <value>Online 匹配域桥已发布（租户 {0}，应用 {1}，区服 {2}）</value>
+  </data>
+  <data name="Launcher.OnlineMatchDomainBridgeNotifyMissing" xml:space="preserve">
+    <value>Online 匹配成功通知未装配（事件总线或契约面不可解析），等待方经状态查询兜底</value>
+  </data>
+  <data name="Launcher.OnlineMatchDomainBridgeRetracted" xml:space="preserve">
+    <value>Online 匹配域桥已撤销</value>
+  </data>
     <data name="Launcher.EnterMainLoop" xml:space="preserve">
     <value>进入游戏主循环...</value>
   </data>
@@ -2466,6 +2478,15 @@
   </data>
   <data name="Hotfix.Friend.DomainBridgeException" xml:space="preserve">
     <value>好友域桥调用异常, PlayerId: {0}</value>
+  </data>
+  <data name="Hotfix.Match.DomainBridgeUnavailable" xml:space="preserve">
+    <value>匹配域桥不可用（未发布或已撤销）, PlayerId: {0}, Code: {1}</value>
+  </data>
+  <data name="Hotfix.Match.DomainBridgeFailed" xml:space="preserve">
+    <value>匹配域桥返回失败, Code: {0}, Message: {1}, PlayerId: {2}</value>
+  </data>
+  <data name="Hotfix.Match.DomainBridgeException" xml:space="preserve">
+    <value>匹配域桥调用异常, PlayerId: {0}</value>
   </data>
   <data name="Launcher.OnlineFriendLegacyMigrationEntryFailed" xml:space="preserve">
     <value>旧好友关系迁移单条失败：{0} &lt;-&gt; {1}, Code: {2}, Message: {3}</value>

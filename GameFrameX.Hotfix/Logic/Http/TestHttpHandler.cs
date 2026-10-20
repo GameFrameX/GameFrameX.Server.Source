@@ -30,6 +30,7 @@
 
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Hotfix.Logic.Game.RockPaperScissors;
+using GameFrameX.Hotfix.Logic.ServerRole.Match;
 using GameFrameX.Hotfix.Logic.Player.Friend;
 
 
@@ -67,6 +68,13 @@ public sealed class TestHttpHandler : BaseHttpHandler
         if (TryGetMode(paramMap, out var matchBridgeMode) && string.Equals(matchBridgeMode, "online-bridge-match", StringComparison.OrdinalIgnoreCase))
         {
             return HandleOnlineBridgeMatch(paramMap);
+        }
+
+        // C246 验证入口：匹配域桥穿透复核（显式 playerId 为验证请求主体；action 定位入队/取消/状态/入场；
+        // 与 420 协议入口相同的薄适配器代码路径）。
+        if (TryGetMode(paramMap, out var matchDomainMode) && string.Equals(matchDomainMode, "online-bridge-matchdomain", StringComparison.OrdinalIgnoreCase))
+        {
+            return HandleOnlineBridgeMatchDomain(paramMap);
         }
 
 
@@ -306,6 +314,119 @@ public sealed class TestHttpHandler : BaseHttpHandler
         };
         return HttpJsonResultData<string>.SuccessString(JsonHelper.Serialize(response));
     }
+
+    /// <summary>
+    /// 匹配域桥穿透验证入口（C246）：以显式 <c>playerId</c> 为验证请求主体、<c>action</c> 定位
+    /// enqueue/cancel/status/enter（enter 携 <c>matchId</c>；enqueue 携 mode/rating）——
+    /// 与 420 协议入口相同的薄适配器代码路径；桥不可用时显式回错误码，不伪装成功。
+    /// </summary>
+    /// <param name="parameters">请求参数。</param>
+    /// <returns>序列化响应。</returns>
+    private static string HandleOnlineBridgeMatchDomain(Dictionary<string, object> parameters)
+    {
+        long playerId = 0;
+        long matchId = 0;
+        var mode = 1;
+        var rating = 1000;
+        var action = "status";
+        if (parameters.TryGetValue("playerId", out var playerIdValue) && playerIdValue != null)
+        {
+            long.TryParse(playerIdValue.ToString(), out playerId);
+        }
+
+        if (parameters.TryGetValue("matchId", out var matchIdValue) && matchIdValue != null)
+        {
+            long.TryParse(matchIdValue.ToString(), out matchId);
+        }
+
+        if (parameters.TryGetValue("mode", out var modeValue) && int.TryParse(modeValue?.ToString(), out var parsedMode) && parsedMode > 0)
+        {
+            mode = parsedMode;
+        }
+
+        if (parameters.TryGetValue("rating", out var ratingValue) && int.TryParse(ratingValue?.ToString(), out var parsedRating) && parsedRating > 0)
+        {
+            rating = parsedRating;
+        }
+
+        if (parameters.TryGetValue("action", out var actionValue) && actionValue != null && !string.IsNullOrWhiteSpace(actionValue.ToString()))
+        {
+            action = actionValue.ToString();
+        }
+
+        var errorCode = 0;
+        var queuing = false;
+        var started = false;
+        if (playerId > 0)
+        {
+            switch (action.ToLowerInvariant())
+            {
+                case "enqueue":
+                {
+                    var response = new RespMatchEnqueue();
+                    MatchDomainBridge.EnqueueAsync(playerId, new ReqMatchEnqueue { Mode = (MatchMode)mode, Rating = rating }, response).GetAwaiter().GetResult();
+                    errorCode = response.ErrorCode;
+                    matchId = response.MatchId;
+                    break;
+                }
+
+                case "cancel":
+                {
+                    var response = new RespMatchCancel();
+                    MatchDomainBridge.CancelAsync(playerId, response).GetAwaiter().GetResult();
+                    errorCode = response.ErrorCode;
+                    break;
+                }
+
+                case "enter":
+                {
+                    var response = new RespMatchEnter();
+                    MatchDomainBridge.EnterAsync(playerId, new ReqMatchEnter { MatchId = matchId }, response).GetAwaiter().GetResult();
+                    errorCode = response.ErrorCode;
+                    matchId = response.MatchId;
+                    started = response.Started;
+                    break;
+                }
+
+                default:
+                {
+                    var response = new RespMatchStatus();
+                    MatchDomainBridge.StatusAsync(playerId, response).GetAwaiter().GetResult();
+                    errorCode = response.ErrorCode;
+                    queuing = response.Queuing;
+                    matchId = response.MatchId;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            errorCode = (int)MatchErrorCode.NotLoggedIn;
+        }
+
+        var result = new HttpOnlineBridgeMatchDomainResponse
+        {
+            Mode = "online-bridge-matchdomain",
+            Action = action,
+            PlayerId = playerId,
+            MatchId = matchId,
+            Queuing = queuing,
+            Started = started,
+            ErrorCode = errorCode,
+        };
+        return HttpJsonResultData<string>.SuccessString(JsonHelper.Serialize(result));
+    }
+}
+
+public sealed class HttpOnlineBridgeMatchDomainResponse : HttpMessageResponseBase
+{
+    [Description("测试模式")] public string Mode { get; set; }
+    [Description("动作名")] public string Action { get; set; }
+    [Description("验证请求主体")] public long PlayerId { get; set; }
+    [Description("数值对局标识（排队中为 0）")] public long MatchId { get; set; }
+    [Description("是否排队中（status 动作）")] public bool Queuing { get; set; }
+    [Description("对局是否运行态（enter 动作）")] public bool Started { get; set; }
+    [Description("错误码")] public int ErrorCode { get; set; }
 }
 
 public sealed class HttpTestResponse : HttpMessageResponseBase

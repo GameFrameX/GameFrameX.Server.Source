@@ -275,6 +275,43 @@ public static partial class Keys
         /// </remarks>
         public const string OnlineMatchBridgeBoardEnsureFailed = "Launcher.OnlineMatchBridgeBoardEnsureFailed";
 
+        /// <summary>
+        /// 匹配域桥契约面不可解析（online-match/matchmaking 未装配或被排除），420 匹配消息将显式失败
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineMatchDomainBridgeFaceMissing
+        /// 用途: C246 组合根：发布期无法解析匹配域契约面或授权作用域，Error 披露不抛出
+        /// </remarks>
+        public const string OnlineMatchDomainBridgeFaceMissing = "Launcher.OnlineMatchDomainBridgeFaceMissing";
+
+        /// <summary>
+        /// Online 匹配域桥已发布（租户 {0}，应用 {1}，区服 {2}）
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineMatchDomainBridgePublished
+        /// 用途: C246 组合根：匹配域桥租约发布确认
+        /// 参数: {0} - 租户标识；{1} - 应用标识；{2} - 区服标识
+        /// </remarks>
+        public const string OnlineMatchDomainBridgePublished = "Launcher.OnlineMatchDomainBridgePublished";
+
+        /// <summary>
+        /// Online 匹配成功通知未装配（事件总线或契约面不可解析），等待方经状态查询兜底
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineMatchDomainBridgeNotifyMissing
+        /// 用途: C246 组合根：匹配成功通知订阅装配缺席披露
+        /// </remarks>
+        public const string OnlineMatchDomainBridgeNotifyMissing = "Launcher.OnlineMatchDomainBridgeNotifyMissing";
+
+        /// <summary>
+        /// Online 匹配域桥已撤销
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineMatchDomainBridgeRetracted
+        /// 用途: C246 组合根：匹配域桥租约撤销确认
+        /// </remarks>
+        public const string OnlineMatchDomainBridgeRetracted = "Launcher.OnlineMatchDomainBridgeRetracted";
+
 
         /// <summary>
         /// 进入游戏主循环...

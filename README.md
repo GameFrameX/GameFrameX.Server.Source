@@ -794,7 +794,7 @@ The test suites are based on **xUnit** — `Tests/GameFrameX.Tests` covers the f
 
 ```
 GameFrameX.Server.Source/
-├── GameFrameX.Launcher/              # Application entry point (Game + 18 standard per-role startup entries)
+├── GameFrameX.Launcher/              # Application entry point (Game + 17 standard per-role startup entries)
 ├── GameFrameX.StartUp/               # Startup orchestration and initialization
 ├── GameFrameX.Core/                  # Core framework (Actor system, components, events, hot update management)
 ├── GameFrameX.Apps/                  # State data layer (Account, Player, Game, ServerRole modules) — not hot-updatable
@@ -834,7 +834,7 @@ process per role, or as a single all-in-one process, without changing role code.
 - `--ServerType=Game,Social` — launch multiple registered roles in one process (priority order).
 - `--AllInOne` — launch every registered role in one process. When given together with `--ServerType`,
   the All-in-One switch overrides the selection (`--ServerType` is ignored with a warning).
-- `Configs/app_config.json` — ships a section per predefined role (19 in total: Game, Social, and the 17 other standard roles).
+- `Configs/app_config.json` — ships a section per predefined role (18 in total: Game, Social, and the 16 other standard roles).
   Each role resolves its own section; process-level fields must be identical across sections.
 
 A startup-time validator (`ConfigStartupValidator`) fails fast — listing every conflicting field and its

@@ -759,7 +759,7 @@ dotnet test --logger "console;verbosity=detailed"
 
 ```
 GameFrameX.Server.Source/
-├── GameFrameX.Launcher/              # 應用程式入口（Game + 18 個標準 Role 啟動入口）
+├── GameFrameX.Launcher/              # 應用程式入口（Game + 17 個標準 Role 啟動入口）
 ├── GameFrameX.StartUp/               # 啟動編排和初始化
 ├── GameFrameX.Core/                  # 核心框架（Actor 系統、元件、事件、熱更新管理）
 ├── GameFrameX.Apps/                  # 狀態資料層（Account、Player、Game、ServerRole 模組）— 不可熱更
@@ -798,7 +798,7 @@ GameFrameX.Server.Source/
 - `--ServerType=Game,Social` — 在單一程序中啟動多個已註冊角色（按優先順序）。
 - `--AllInOne` — 在單一程序中啟動全部已註冊角色。與 `--ServerType` 同時給定時，
   All-in-One 開關會覆蓋選擇（`--ServerType` 被忽略並記錄 Warning）。
-- `Configs/app_config.json` — 為每個預定義 Role 提供一節配置（共 19 節：Game、Social 及其他 17 個標準角色）。
+- `Configs/app_config.json` — 為每個預定義 Role 提供一節配置（共 18 節：Game、Social 及其他 16 個標準角色）。
   每個角色解析自己的配置節；程序級欄位在各節之間必須一致。
 
 啟動時的驗證器（`ConfigStartupValidator`）會 fail-fast —— 列出所有衝突欄位及其來源配置節 —— 觸發條件如下：

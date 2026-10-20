@@ -427,6 +427,18 @@
     <data name="Launcher.OnlineMatchBridgeBoardEnsureFailed" xml:space="preserve">
     <value>Failed to ensure the match bridge leaderboard exists: {0}, Code: {1}, Message: {2}</value>
   </data>
+  <data name="Launcher.OnlineMatchDomainBridgeFaceMissing" xml:space="preserve">
+    <value>The match-domain bridge contract face cannot be resolved (online-match/matchmaking not assembled or excluded); the domain-420 match messages will fail explicitly</value>
+  </data>
+  <data name="Launcher.OnlineMatchDomainBridgePublished" xml:space="preserve">
+    <value>Online match-domain bridge published (tenant {0}, app {1}, server {2})</value>
+  </data>
+  <data name="Launcher.OnlineMatchDomainBridgeNotifyMissing" xml:space="preserve">
+    <value>Online match-made notification is not wired (event bus or contract face unresolvable); waiting players fall back to status polling</value>
+  </data>
+  <data name="Launcher.OnlineMatchDomainBridgeRetracted" xml:space="preserve">
+    <value>Online match-domain bridge retracted</value>
+  </data>
     <data name="Launcher.EnterMainLoop" xml:space="preserve">
     <value>Entering game main loop...</value>
   </data>
@@ -2438,6 +2450,15 @@
   </data>
   <data name="Hotfix.Friend.DomainBridgeException" xml:space="preserve">
     <value>The friend-domain bridge call threw an exception, PlayerId: {0}</value>
+  </data>
+  <data name="Hotfix.Match.DomainBridgeUnavailable" xml:space="preserve">
+    <value>The match-domain bridge is unavailable (not published or retracted), PlayerId: {0}, Code: {1}</value>
+  </data>
+  <data name="Hotfix.Match.DomainBridgeFailed" xml:space="preserve">
+    <value>The match-domain bridge returned a failure, Code: {0}, Message: {1}, PlayerId: {2}</value>
+  </data>
+  <data name="Hotfix.Match.DomainBridgeException" xml:space="preserve">
+    <value>The match-domain bridge call threw an exception, PlayerId: {0}</value>
   </data>
   <data name="Launcher.OnlineFriendLegacyMigrationEntryFailed" xml:space="preserve">
     <value>Legacy friend-relation migration failed for one entry: {0} &lt;-&gt; {1}, Code: {2}, Message: {3}</value>

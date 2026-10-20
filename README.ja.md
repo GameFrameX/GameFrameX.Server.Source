@@ -764,7 +764,7 @@ dotnet test --logger "console;verbosity=detailed"
 
 ```
 GameFrameX.Server.Source/
-├── GameFrameX.Launcher/              # アプリケーションエントリポイント（Game + 18 個の標準 Role 起動エントリ）
+├── GameFrameX.Launcher/              # アプリケーションエントリポイント（Game + 17 個の標準 Role 起動エントリ）
 ├── GameFrameX.StartUp/               # 起動オーケストレーションと初期化
 ├── GameFrameX.Core/                  # コアフレームワーク（Actor システム、コンポーネント、イベント、ホット更新管理）
 ├── GameFrameX.Apps/                  # 状態データ層（Account、Player、Game、ServerRole モジュール）— ホット更新不可
@@ -803,7 +803,7 @@ GameFrameX.Server.Source/
 - `--ServerType=Game,Social` — 登録済みの複数ロールを 1 プロセスで起動（優先順）。
 - `--AllInOne` — 登録済みの全ロールを 1 プロセスで起動。`--ServerType` と同時に指定した場合、
   All-in-One スイッチが選択を上書きします（`--ServerType` は無視され Warning を記録）。
-- `Configs/app_config.json` — 定義済みの各ロールごとに 1 セクションを同梱（全 19 セクション: Game、Social、その他 17 個の標準ロール）。各ロールは自身のセクションを解決し、プロセスレベルのフィールドはセクション間で一致している必要があります。
+- `Configs/app_config.json` — 定義済みの各ロールごとに 1 セクションを同梱（全 18 セクション: Game、Social、その他 16 個の標準ロール）。各ロールは自身のセクションを解決し、プロセスレベルのフィールドはセクション間で一致している必要があります。
 
 起動時バリデーター（`ConfigStartupValidator`）は以下の場合にフェイルファスト（競合フィールドとそのセクションをすべて列挙）します：
 

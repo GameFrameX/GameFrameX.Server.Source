@@ -763,7 +763,7 @@ dotnet test --logger "console;verbosity=detailed"
 
 ```
 GameFrameX.Server.Source/
-├── GameFrameX.Launcher/              # 애플리케이션 진입점(Game + 18개 표준 역할별 시작 진입점)
+├── GameFrameX.Launcher/              # 애플리케이션 진입점(Game + 17개 표준 역할별 시작 진입점)
 ├── GameFrameX.StartUp/               # 시작 오케스트레이션 및 초기화
 ├── GameFrameX.Core/                  # 코어 프레임워크(Actor 시스템, 컴포넌트, 이벤트, 핫 업데이트 관리)
 ├── GameFrameX.Apps/                  # 상태 데이터 레이어(Account, Player, Game, ServerRole 모듈) — 핫 업데이트 불가
@@ -802,7 +802,7 @@ GameFrameX.Server.Source/
 - `--ServerType=Game,Social` — 하나의 프로세스에서 여러 등록된 역할을 시작(우선순위 순).
 - `--AllInOne` — 하나의 프로세스에서 등록된 모든 역할을 시작. `--ServerType`와 함께 지정하면
   All-in-One 스위치가 선택을 덮어씁니다(`--ServerType`는 무시되며 Warning 기록).
-- `Configs/app_config.json` — 사전 정의된 각 역할마다 한 섹션을 제공(총 19개: Game, Social 및 나머지 17개 표준 역할).
+- `Configs/app_config.json` — 사전 정의된 각 역할마다 한 섹션을 제공(총 18개: Game, Social 및 나머지 16개 표준 역할).
   각 역할은 자신의 섹션을 해석하며, 프로세스 수준 필드는 섹션 간에 동일해야 합니다.
 
 시작 시점의 검증기(`ConfigStartupValidator`)는 다음 경우에 fail-fast로 실패하며, 충돌하는 모든 필드와 그 출처 섹션을 나열합니다:
