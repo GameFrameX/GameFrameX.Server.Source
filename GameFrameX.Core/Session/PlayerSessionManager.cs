@@ -184,12 +184,24 @@ public sealed class PlayerSessionManager : IPlayerSessionManager
             EventDispatcher.Dispatch(value.PlayerId, new SessionRemovedEventArgs());
         }
 
-        if (value != null && value.PlayerId > 0)
+        if (value != null && value.PlayerId > 0 && !HasAnySession(value.PlayerId))
         {
             SetPlayerRouteOffline(value.PlayerId);
         }
 
         return value;
+    }
+
+    /// <summary>
+    /// 判断玩家在会话表中是否仍有剩余会话（C204 断线路由守卫）：
+    /// 旧连接迟到的 OnDisconnected 回调 Remove(旧会话) 时，若新会话（顶号/重连后绑定）仍在场，
+    /// 则不得将玩家路由打成离线。
+    /// </summary>
+    /// <param name="playerId">玩家ID。</param>
+    /// <returns>是否仍有剩余会话。</returns>
+    private bool HasAnySession(long playerId)
+    {
+        return Get(m => m.PlayerId == playerId) != null;
     }
 
     /// <summary>
