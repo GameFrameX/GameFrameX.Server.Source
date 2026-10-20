@@ -64,6 +64,8 @@ public sealed partial class BotClient
     private long _friendTargetPlayerId;
     private int _friendTargetResolveAttempts;
     private FriendScenarioStage _friendScenarioStage;
+    private int _matchStatusPollAttempts;
+    private bool _matchEntered;
 
     // Timing fields
     private long _connectStartMs;
@@ -161,6 +163,18 @@ public sealed partial class BotClient
                 break;
             case RespDeleteFriend msg:
                 OnDeleteFriendSuccess(msg);
+                break;
+            case RespMatchEnqueue msg:
+                OnMatchEnqueueResponse(msg);
+                break;
+            case RespMatchStatus msg:
+                OnMatchStatusResponse(msg);
+                break;
+            case RespMatchEnter msg:
+                OnMatchEnterResponse(msg);
+                break;
+            case NotifyMatchMade msg:
+                OnMatchMadePush(msg);
                 break;
             case RespCreateRoom msg:
                 OnRpsCreateRoomResponse(msg);
@@ -390,6 +404,12 @@ public sealed partial class BotClient
         // Localization: Client.Bot.PlayerLoginSuccess - 机器人-{0}登录成功,id:{1}
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.PlayerLoginSuccess, m_BotName, _playerId));
         EmitMetrics();
+        if (_options.HasScenario("match"))
+        {
+            StartMatchScenario();
+            return;
+        }
+
         if (_options.HasScenario("friend"))
         {
             StartFriendScenario();

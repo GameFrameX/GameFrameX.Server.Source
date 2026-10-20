@@ -472,6 +472,66 @@ public static partial class Keys
             public const string RpsPollLoopError = "Client.Bot.RpsPollLoopError";
 
             /// <summary>
+            /// 机器人-{0}匹配场景启动（1v1，评分 1000）
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.MatchScenarioStarted
+            /// 用途: C246 匹配场景真会话 E2E 启动时记录
+            /// 参数: {0} - 机器人名称
+            /// </remarks>
+            public const string MatchScenarioStarted = "Client.Bot.MatchScenarioStarted";
+
+            /// <summary>
+            /// 机器人-{0}入队响应 MatchId={1} ErrorCode={2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.MatchEnqueue
+            /// 用途: C246 匹配场景入队响应（即时窗口成组时 MatchId 非 0）
+            /// 参数: {0} - 机器人名称, {1} - 对局标识, {2} - 错误码
+            /// </remarks>
+            public const string MatchEnqueue = "Client.Bot.MatchEnqueue";
+
+            /// <summary>
+            /// 机器人-{0}收到匹配成功推送 MatchId={1} Mode={2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.MatchPush
+            /// 用途: C246 匹配场景真会话推送实证（NotifyMatchMade 单向通知）
+            /// 参数: {0} - 机器人名称, {1} - 对局标识, {2} - 匹配模式
+            /// </remarks>
+            public const string MatchPush = "Client.Bot.MatchPush";
+
+            /// <summary>
+            /// 机器人-{0}状态查询 Queuing={1} MatchId={2} ErrorCode={3}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.MatchStatus
+            /// 用途: C246 匹配场景状态轮询响应
+            /// 参数: {0} - 机器人名称, {1} - 是否排队中, {2} - 对局标识, {3} - 错误码
+            /// </remarks>
+            public const string MatchStatus = "Client.Bot.MatchStatus";
+
+            /// <summary>
+            /// 机器人-{0}入场响应 MatchId={1} Started={2} ErrorCode={3}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.MatchEnter
+            /// 用途: C246 匹配场景入场响应（双方到达同一运行态对局断言）
+            /// 参数: {0} - 机器人名称, {1} - 对局标识, {2} - 是否运行态, {3} - 错误码
+            /// </remarks>
+            public const string MatchEnter = "Client.Bot.MatchEnter";
+
+            /// <summary>
+            /// 机器人-{0}匹配场景-状态轮询异常:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.MatchPollError
+            /// 用途: C246 匹配场景状态轮询后台循环异常时记录
+            /// 参数: {0} - 机器人名称, {1} - 异常信息
+            /// </remarks>
+            public const string MatchPollError = "Client.Bot.MatchPollError";
+
+            /// <summary>
             /// 机器人-{0}主动断开连接，模拟离线。
             /// </summary>
             /// <remarks>

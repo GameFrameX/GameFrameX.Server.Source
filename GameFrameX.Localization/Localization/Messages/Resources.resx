@@ -1763,6 +1763,24 @@
   <data name="Client.Bot.RpsPollLoopError" xml:space="preserve">
     <value>Bot-{0} RPS scenario poll loop error: {1}</value>
   </data>
+  <data name="Client.Bot.MatchScenarioStarted" xml:space="preserve">
+    <value>Bot-{0} match scenario started (1v1, rating 1000)</value>
+  </data>
+  <data name="Client.Bot.MatchEnqueue" xml:space="preserve">
+    <value>Bot-{0} enqueue response MatchId={1} ErrorCode={2}</value>
+  </data>
+  <data name="Client.Bot.MatchPush" xml:space="preserve">
+    <value>Bot-{0} received match-made push MatchId={1} Mode={2}</value>
+  </data>
+  <data name="Client.Bot.MatchStatus" xml:space="preserve">
+    <value>Bot-{0} status poll Queuing={1} MatchId={2} ErrorCode={3}</value>
+  </data>
+  <data name="Client.Bot.MatchEnter" xml:space="preserve">
+    <value>Bot-{0} enter response MatchId={1} Started={2} ErrorCode={3}</value>
+  </data>
+  <data name="Client.Bot.MatchPollError" xml:space="preserve">
+    <value>Bot-{0} match scenario - status poll error: {1}</value>
+  </data>
 
   <data name="Client.Bot.FriendScenarioInvalidPlayerId" xml:space="preserve">
     <value>Bot-{0} friend scenario failed to start, invalid player ID: {1}</value>

@@ -288,6 +288,19 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
             var started = await actor.StartAsync(WithPlayer(scope, registration.PlayerIds[0]), now, cancellationToken).ConfigureAwait(false);
             if (!started.IsSuccess)
             {
+                // 并发入场竞态：对手已抢先完成开局（对局已 Running）= 双方均已到达，按幂等成功收敛，
+                // 不把「已被开局」误报为失败（双端同时入场是常态路径，非异常）。
+                var afterStart = actor.GetSnapshot();
+                if (afterStart.State == OnlineMatchState.Running)
+                {
+                    return OnlineResult<OnlineMatchDomainEntry>.Ok(new OnlineMatchDomainEntry
+                    {
+                        MatchId = matchId,
+                        Started = true,
+                        PlayerIds = new List<long>(registration.PlayerIds),
+                    });
+                }
+
                 return OnlineResult<OnlineMatchDomainEntry>.Fail(started.Code, started.Message);
             }
         }

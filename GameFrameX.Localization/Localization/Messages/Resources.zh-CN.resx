@@ -1754,6 +1754,24 @@
   <data name="Client.Bot.RpsPollLoopError" xml:space="preserve">
     <value>机器人-{0}RPS场景-轮询循环异常:{1}</value>
   </data>
+  <data name="Client.Bot.MatchScenarioStarted" xml:space="preserve">
+    <value>机器人-{0}匹配场景启动（1v1，评分 1000）</value>
+  </data>
+  <data name="Client.Bot.MatchEnqueue" xml:space="preserve">
+    <value>机器人-{0}入队响应 MatchId={1} ErrorCode={2}</value>
+  </data>
+  <data name="Client.Bot.MatchPush" xml:space="preserve">
+    <value>机器人-{0}收到匹配成功推送 MatchId={1} Mode={2}</value>
+  </data>
+  <data name="Client.Bot.MatchStatus" xml:space="preserve">
+    <value>机器人-{0}状态查询 Queuing={1} MatchId={2} ErrorCode={3}</value>
+  </data>
+  <data name="Client.Bot.MatchEnter" xml:space="preserve">
+    <value>机器人-{0}入场响应 MatchId={1} Started={2} ErrorCode={3}</value>
+  </data>
+  <data name="Client.Bot.MatchPollError" xml:space="preserve">
+    <value>机器人-{0}匹配场景-状态轮询异常:{1}</value>
+  </data>
 
   <data name="Client.Bot.FriendScenarioInvalidPlayerId" xml:space="preserve">
     <value>机器人-{0}好友场景启动失败，玩家ID非法:{1}</value>

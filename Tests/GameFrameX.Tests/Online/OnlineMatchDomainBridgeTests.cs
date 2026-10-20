@@ -434,6 +434,31 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// R13/T4 并发回归：双端同时入场（真会话 E2E 实证过的竞态）——双方都必须成功且 Started=true。
+        /// </summary>
+        [Fact]
+        public async Task Enter_ConcurrentlyFromBothPlayers_BothSucceed()
+        {
+            var host = BuildHost();
+            var domain = host.Services.GetService<IOnlineMatchDomain>();
+
+            await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
+            var second = await domain.EnqueueAsync(PlayerScope(PlayerTwo), 1, 1050);
+            var matchId = second.Data.MatchId;
+
+            var firstEnter = Task.Run(() => domain.EnterAsync(PlayerScope(PlayerOne), matchId));
+            var secondEnter = Task.Run(() => domain.EnterAsync(PlayerScope(PlayerTwo), matchId));
+            var results = await Task.WhenAll(firstEnter, secondEnter);
+
+            Assert.True(results[0].IsSuccess, results[0].Message);
+            Assert.True(results[1].IsSuccess, results[1].Message);
+            Assert.True(results[0].Data.Started);
+            Assert.True(results[1].Data.Started);
+            Assert.Equal(matchId, results[0].Data.MatchId);
+            Assert.Equal(matchId, results[1].Data.MatchId);
+        }
+
+        /// <summary>
         /// 作用域校验：缺玩家主体位 → ParameterInvalid。
         /// </summary>
         [Fact]
