@@ -532,6 +532,56 @@ public static partial class Keys
             public const string MatchPollError = "Client.Bot.MatchPollError";
 
             /// <summary>
+            /// 机器人-{0}入场完成，安排 {1} 秒后断线演练（match 恢复场景）
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.MatchReconnectArmed
+            /// 用途: C204 match 场景入场成功后安排断线恢复演练时记录
+            /// 参数: {0} - 机器人名称, {1} - 延迟秒数
+            /// </remarks>
+            public const string MatchReconnectArmed = "Client.Bot.MatchReconnectArmed";
+
+            /// <summary>
+            /// 机器人-{0}会话恢复请求已发送（携带登录凭据）
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.SessionResumeRequested
+            /// 用途: C204 断线后新连接发起会话恢复时记录
+            /// 参数: {0} - 机器人名称
+            /// </remarks>
+            public const string SessionResumeRequested = "Client.Bot.SessionResumeRequested";
+
+            /// <summary>
+            /// 机器人-{0}会话恢复响应 PlayerId={1} Recovered={2} MatchId={3} ErrorCode={4}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.SessionResumeResponse
+            /// 用途: C204 会话恢复响应（身份与对局恢复断言证据）
+            /// 参数: {0} - 机器人名称, {1} - 恢复的玩家ID, {2} - 是否恢复对局, {3} - 对局标识, {4} - 错误码
+            /// </remarks>
+            public const string SessionResumeResponse = "Client.Bot.SessionResumeResponse";
+
+            /// <summary>
+            /// 机器人-{0}旧凭据重放被拒（ErrorCode={1}，符合预期）
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.SessionResumeReplayRejected
+            /// 用途: C204 重放已轮换旧凭据被显式拒绝的证据
+            /// 参数: {0} - 机器人名称, {1} - 错误码
+            /// </remarks>
+            public const string SessionResumeReplayRejected = "Client.Bot.SessionResumeReplayRejected";
+
+            /// <summary>
+            /// 机器人-{0}恢复后重入场响应 MatchId={1} Started={2} ErrorCode={3}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Client.Bot.MatchResumeEnterResponse
+            /// 用途: C204 恢复后在新连接上重入同一对局（幂等）的可观测业务交互证据
+            /// 参数: {0} - 机器人名称, {1} - 对局标识, {2} - 是否运行态, {3} - 错误码
+            /// </remarks>
+            public const string MatchResumeEnterResponse = "Client.Bot.MatchResumeEnterResponse";
+
+            /// <summary>
             /// 机器人-{0}主动断开连接，模拟离线。
             /// </summary>
             /// <remarks>

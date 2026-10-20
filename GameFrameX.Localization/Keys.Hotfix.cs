@@ -259,6 +259,82 @@ public static partial class Keys
         }
 
         /// <summary>
+        /// SessionResume 会话恢复模块消息键（C204）。
+        /// </summary>
+        public static class SessionResume
+        {
+            /// <summary>
+            /// 会话域桥不可用（未发布或已撤销）, PlayerId: {0}, Code: {1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Hotfix.SessionResume.BridgeUnavailable
+            /// 用途: C204 会话域桥租约不可用（宿主未启/已停/已撤销）时记录。
+            /// 参数: {0} - 请求主体ID, {1} - 协议错误码
+            /// </remarks>
+            public const string BridgeUnavailable = "Hotfix.SessionResume.BridgeUnavailable";
+
+            /// <summary>
+            /// 登录签发会话恢复凭据失败, Code: {0}, PlayerId: {1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Hotfix.SessionResume.IssueFailed
+            /// 用途: C204 登录时经会话域桥签发恢复凭据返回失败时记录（登录主流程不受影响）。
+            /// 参数: {0} - 协议错误码, {1} - 玩家ID
+            /// </remarks>
+            public const string IssueFailed = "Hotfix.SessionResume.IssueFailed";
+
+            /// <summary>
+            /// 会话恢复请求, 会话ID: {0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Hotfix.SessionResume.ResumeRequested
+            /// 用途: C204 收到新连接会话恢复请求时记录。
+            /// 参数: {0} - 会话ID
+            /// </remarks>
+            public const string ResumeRequested = "Hotfix.SessionResume.ResumeRequested";
+
+            /// <summary>
+            /// 会话恢复成功, PlayerId: {0}, 新会话ID: {1}, 对局恢复: {2}, MatchId: {3}, ServerSequence: {4}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Hotfix.SessionResume.ResumeSucceeded
+            /// 用途: C204 会话恢复（身份 + 对局）成功时记录。
+            /// 参数: {0} - 玩家ID, {1} - 新会话ID, {2} - 是否恢复对局, {3} - 对局标识, {4} - 服务器序号
+            /// </remarks>
+            public const string ResumeSucceeded = "Hotfix.SessionResume.ResumeSucceeded";
+
+            /// <summary>
+            /// 会话恢复失败, Code: {0}, Message: {1}, 会话ID: {2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Hotfix.SessionResume.ResumeFailed
+            /// 用途: C204 会话恢复显式失败（凭据无效/过期/错主体等）时记录。
+            /// 参数: {0} - 协议错误码, {1} - 失败描述, {2} - 会话ID
+            /// </remarks>
+            public const string ResumeFailed = "Hotfix.SessionResume.ResumeFailed";
+
+            /// <summary>
+            /// 断线两层协同, PlayerId: {0}, 会话域结果: {1}, 对局域结果: {2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Hotfix.SessionResume.DisconnectCoordination
+            /// 用途: C204 物理断线后 Online 会话域 / 对局域协同通知结果时记录。
+            /// 参数: {0} - 玩家ID, {1} - 会话域通知结果, {2} - 对局域通知结果
+            /// </remarks>
+            public const string DisconnectCoordination = "Hotfix.SessionResume.DisconnectCoordination";
+
+            /// <summary>
+            /// 断线跳过协同（旧回调迟到，玩家已有新会话）, PlayerId: {0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Hotfix.SessionResume.DisconnectStaleSkipped
+            /// 用途: C204 旧连接断线回调迟到且玩家已持新会话时跳过 Online 侧开窗记录。
+            /// 参数: {0} - 玩家ID
+            /// </remarks>
+            public const string DisconnectStaleSkipped = "Hotfix.SessionResume.DisconnectStaleSkipped";
+        }
+
+        /// <summary>
         /// Game 游戏模块消息键。
         /// </summary>
         public static class Game

@@ -312,6 +312,34 @@ public static partial class Keys
         /// </remarks>
         public const string OnlineMatchDomainBridgeRetracted = "Launcher.OnlineMatchDomainBridgeRetracted";
 
+        /// <summary>
+        /// Online 会话域桥已发布（租户 {0}，应用 {1}，区服 {2}）
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineSessionDomainBridgePublished
+        /// 用途: C204 组合根：会话域桥租约发布确认
+        /// 参数: {0} - 租户标识；{1} - 应用标识；{2} - 区服标识
+        /// </remarks>
+        public const string OnlineSessionDomainBridgePublished = "Launcher.OnlineSessionDomainBridgePublished";
+
+        /// <summary>
+        /// Online 会话域桥契约面不可解析（online-foundation 未装配或被排除），会话恢复不可用
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineSessionDomainBridgeFaceMissing
+        /// 用途: C204 组合根：会话域桥契约面缺席披露（登录不下发凭据、恢复请求显式失败）
+        /// </remarks>
+        public const string OnlineSessionDomainBridgeFaceMissing = "Launcher.OnlineSessionDomainBridgeFaceMissing";
+
+        /// <summary>
+        /// Online 会话域桥已撤销
+        /// </summary>
+        /// <remarks>
+        /// 键名: Launcher.OnlineSessionDomainBridgeRetracted
+        /// 用途: C204 组合根：会话域桥租约撤销确认
+        /// </remarks>
+        public const string OnlineSessionDomainBridgeRetracted = "Launcher.OnlineSessionDomainBridgeRetracted";
+
 
         /// <summary>
         /// 进入游戏主循环...

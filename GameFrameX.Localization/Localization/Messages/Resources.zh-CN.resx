@@ -2512,4 +2512,49 @@
   <data name="Launcher.OnlineFriendLegacyMigrationDone" xml:space="preserve">
     <value>旧好友数据迁移完成：已建立 {0}，待答申请 {1}，失败 {2}（旧数据零改动）</value>
   </data>
+  <data name="Hotfix.SessionResume.BridgeUnavailable" xml:space="preserve">
+    <value>会话域桥不可用（未发布或已撤销）, PlayerId: {0}, Code: {1}</value>
+  </data>
+  <data name="Hotfix.SessionResume.IssueFailed" xml:space="preserve">
+    <value>登录签发会话恢复凭据失败, Code: {0}, PlayerId: {1}</value>
+  </data>
+  <data name="Hotfix.SessionResume.ResumeRequested" xml:space="preserve">
+    <value>会话恢复请求, 会话ID: {0}</value>
+  </data>
+  <data name="Hotfix.SessionResume.ResumeSucceeded" xml:space="preserve">
+    <value>会话恢复成功, PlayerId: {0}, 新会话ID: {1}, 对局恢复: {2}, MatchId: {3}, ServerSequence: {4}</value>
+  </data>
+  <data name="Hotfix.SessionResume.ResumeFailed" xml:space="preserve">
+    <value>会话恢复失败, Code: {0}, Message: {1}, 会话ID: {2}</value>
+  </data>
+  <data name="Hotfix.SessionResume.DisconnectCoordination" xml:space="preserve">
+    <value>断线两层协同, PlayerId: {0}, 会话域结果: {1}, 对局域结果: {2}</value>
+  </data>
+  <data name="Hotfix.SessionResume.DisconnectStaleSkipped" xml:space="preserve">
+    <value>断线跳过协同（旧回调迟到，玩家已有新会话）, PlayerId: {0}</value>
+  </data>
+  <data name="Launcher.OnlineSessionDomainBridgePublished" xml:space="preserve">
+    <value>Online 会话域桥已发布（租户 {0}，应用 {1}，区服 {2}）</value>
+  </data>
+  <data name="Launcher.OnlineSessionDomainBridgeFaceMissing" xml:space="preserve">
+    <value>Online 会话域桥契约面不可解析（online-foundation 未装配或被排除），会话恢复不可用</value>
+  </data>
+  <data name="Launcher.OnlineSessionDomainBridgeRetracted" xml:space="preserve">
+    <value>Online 会话域桥已撤销</value>
+  </data>
+  <data name="Client.Bot.MatchReconnectArmed" xml:space="preserve">
+    <value>机器人-{0}入场完成，安排 {1} 秒后断线演练（match 恢复场景）</value>
+  </data>
+  <data name="Client.Bot.SessionResumeRequested" xml:space="preserve">
+    <value>机器人-{0}会话恢复请求已发送（携带登录凭据）</value>
+  </data>
+  <data name="Client.Bot.SessionResumeResponse" xml:space="preserve">
+    <value>机器人-{0}会话恢复响应 PlayerId={1} Recovered={2} MatchId={3} ErrorCode={4}</value>
+  </data>
+  <data name="Client.Bot.SessionResumeReplayRejected" xml:space="preserve">
+    <value>机器人-{0}旧凭据重放被拒（ErrorCode={1}，符合预期）</value>
+  </data>
+  <data name="Client.Bot.MatchResumeEnterResponse" xml:space="preserve">
+    <value>机器人-{0}恢复后重入场响应 MatchId={1} Started={2} ErrorCode={3}</value>
+  </data>
 </root>

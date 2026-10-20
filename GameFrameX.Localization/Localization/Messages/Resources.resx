@@ -2484,4 +2484,49 @@
   <data name="Launcher.OnlineFriendLegacyMigrationDone" xml:space="preserve">
     <value>Legacy friend-data migration finished: established {0}, pending requests {1}, failed {2} (legacy data untouched)</value>
   </data>
+  <data name="Hotfix.SessionResume.BridgeUnavailable" xml:space="preserve">
+    <value>The session-domain bridge is unavailable (not published or retracted), PlayerId: {0}, Code: {1}</value>
+  </data>
+  <data name="Hotfix.SessionResume.IssueFailed" xml:space="preserve">
+    <value>Failed to issue the session recovery credential at login, Code: {0}, PlayerId: {1}</value>
+  </data>
+  <data name="Hotfix.SessionResume.ResumeRequested" xml:space="preserve">
+    <value>Session resume requested, SessionId: {0}</value>
+  </data>
+  <data name="Hotfix.SessionResume.ResumeSucceeded" xml:space="preserve">
+    <value>Session resumed, PlayerId: {0}, NewSessionId: {1}, MatchRecovered: {2}, MatchId: {3}, ServerSequence: {4}</value>
+  </data>
+  <data name="Hotfix.SessionResume.ResumeFailed" xml:space="preserve">
+    <value>Session resume failed, Code: {0}, Message: {1}, SessionId: {2}</value>
+  </data>
+  <data name="Hotfix.SessionResume.DisconnectCoordination" xml:space="preserve">
+    <value>Disconnect coordination, PlayerId: {0}, session-domain: {1}, match-domain: {2}</value>
+  </data>
+  <data name="Hotfix.SessionResume.DisconnectStaleSkipped" xml:space="preserve">
+    <value>Stale disconnect callback skipped online coordination (player already holds a newer session), PlayerId: {0}</value>
+  </data>
+  <data name="Launcher.OnlineSessionDomainBridgePublished" xml:space="preserve">
+    <value>The Online session-domain bridge has been published (tenant {0}, app {1}, server {2})</value>
+  </data>
+  <data name="Launcher.OnlineSessionDomainBridgeFaceMissing" xml:space="preserve">
+    <value>The Online session-domain bridge contract face cannot be resolved (online-foundation not assembled or excluded); session recovery is unavailable</value>
+  </data>
+  <data name="Launcher.OnlineSessionDomainBridgeRetracted" xml:space="preserve">
+    <value>The Online session-domain bridge has been retracted</value>
+  </data>
+  <data name="Client.Bot.MatchReconnectArmed" xml:space="preserve">
+    <value>Bot-{0} entered the match; disconnect drill scheduled in {1} seconds (match recovery scenario)</value>
+  </data>
+  <data name="Client.Bot.SessionResumeRequested" xml:space="preserve">
+    <value>Bot-{0} sent the session-resume request with the login credential</value>
+  </data>
+  <data name="Client.Bot.SessionResumeResponse" xml:space="preserve">
+    <value>Bot-{0} session-resume response PlayerId={1} Recovered={2} MatchId={3} ErrorCode={4}</value>
+  </data>
+  <data name="Client.Bot.SessionResumeReplayRejected" xml:space="preserve">
+    <value>Bot-{0} replay of the rotated credential was rejected (ErrorCode={1}, as expected)</value>
+  </data>
+  <data name="Client.Bot.MatchResumeEnterResponse" xml:space="preserve">
+    <value>Bot-{0} post-resume re-enter response MatchId={1} Started={2} ErrorCode={3}</value>
+  </data>
 </root>
