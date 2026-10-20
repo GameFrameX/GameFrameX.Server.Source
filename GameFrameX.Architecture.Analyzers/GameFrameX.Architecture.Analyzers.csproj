@@ -12,7 +12,8 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
+        <!-- 对齐 global.json 的 .NET 10 SDK 基线；引用更新的 Roslyn 会令宿主以 CS9057 跳过全部规则。 -->
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
     </ItemGroup>
 
 </Project>

@@ -4,4 +4,9 @@
         <GenerateDocumentationFile>false</GenerateDocumentationFile>
         <DocumentationFile></DocumentationFile>
     </PropertyGroup>
+    <!-- C241：能力模块与 hosting 扩展也接受符号级装配检查；分析器工程自身无此反向依赖。 -->
+    <ItemGroup Condition="$([System.String]::Copy('$(MSBuildProjectName)').StartsWith('GameFrameX.Capability.'))">
+        <ProjectReference Include="$(MSBuildThisFileDirectory)GameFrameX.Architecture.Analyzers/GameFrameX.Architecture.Analyzers.csproj"
+                          OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+    </ItemGroup>
 </Project>
