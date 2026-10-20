@@ -30,12 +30,12 @@
 // ==========================================================================================
 
 using System;
+using System.Threading;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Proto.Proto;
 
 namespace GameFrameX.Client.Bot;
-
 /// <summary>
 /// 匹配场景脚本（C246 匹配域接管真会话 E2E 载体，沿好友 / RPS 场景形态）：
 /// 登录成功后入队（1v1 / 评分 1000）——即时窗口成组者响应直接带对局标识，
@@ -48,6 +48,9 @@ public sealed partial class BotClient
 
     /// <summary>匹配状态轮询间隔（毫秒）。</summary>
     private const int MatchStatusPollIntervalMs = 500;
+
+    /// <summary>match 场景断线恢复演练延迟（秒；入场成功后到主动断开的间隔，须显著小于 30 秒重连窗）。</summary>
+    private const int MatchReconnectDrillDelaySeconds = 3;
 
     /// <summary>
     /// 启动匹配场景：发送入队请求。
@@ -115,13 +118,99 @@ public sealed partial class BotClient
     }
 
     /// <summary>
-    /// 入场响应：断言双方到达同一运行态对局。
+    /// 入场响应：断言双方到达同一运行态对局；match 场景下首次入场成功后安排断线恢复演练（C204）。
     /// </summary>
     /// <param name="msg">入场响应。</param>
     private void OnMatchEnterResponse(RespMatchEnter msg)
     {
         // Localization: Client.Bot.MatchEnter - 机器人-{0}入场响应 MatchId={1} Started={2} ErrorCode={3}
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.MatchEnter, m_BotName, msg.MatchId, msg.Started, msg.ErrorCode));
+        if (msg.ErrorCode != 0 || msg.MatchId == 0)
+        {
+            return;
+        }
+
+        if (_resumedOnce)
+        {
+            // C204 恢复后重入同一对局（幂等）——新连接上"继续同一局"的可观测业务交互证据。
+            // Localization: Client.Bot.MatchResumeEnterResponse - 机器人-{0}恢复后重入场响应 MatchId={1} Started={2} ErrorCode={3}
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.MatchResumeEnterResponse, m_BotName, msg.MatchId, msg.Started, msg.ErrorCode));
+            return;
+        }
+
+        ScheduleMatchReconnectDrill();
+    }
+
+    /// <summary>
+    /// 会话恢复响应（C204）：断线后新连接恢复身份与对局的断言与证据链——
+    /// 首次恢复断言同玩家 / 同对局 / 凭据已轮换；随后重放旧凭据取证拒绝；再幂等重入同一局。
+    /// </summary>
+    /// <param name="msg">恢复响应。</param>
+    private void OnSessionResumeResponse(RespSessionResume msg)
+    {
+        // Localization: Client.Bot.SessionResumeResponse - 机器人-{0}会话恢复响应 PlayerId={1} Recovered={2} MatchId={3} ErrorCode={4}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.SessionResumeResponse, m_BotName, msg.PlayerId, msg.Recovered, msg.MatchId, msg.ErrorCode));
+
+        if (Interlocked.CompareExchange(ref _resumeReplaySent, 1, 0) == 0)
+        {
+            if (msg.ErrorCode != 0 || !msg.Recovered || msg.PlayerId != _playerId || msg.MatchId != _currentMatchId)
+            {
+                // 首次恢复失败 / 身份或对局不一致 = 演练失败，留 Error 证据后不再继续。
+                return;
+            }
+
+            _resumedOnce = true;
+            var rotatedOutToken = _sessionToken;
+            _sessionToken = msg.NewSessionToken;
+
+            if (!string.IsNullOrWhiteSpace(rotatedOutToken))
+            {
+                // 重放已轮换旧凭据：预期显式拒绝（TokenRevoked 负值错误码）。
+                SendToTransport(new ReqSessionResume { Token = rotatedOutToken });
+            }
+
+            return;
+        }
+
+        // 第二次响应 = 旧凭据重放结果：非 0 错误码即拒绝证据（E2E 断言口径）。
+        if (msg.ErrorCode != 0)
+        {
+            // Localization: Client.Bot.SessionResumeReplayRejected - 机器人-{0}旧凭据重放被拒（ErrorCode={1}，符合预期）
+            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.SessionResumeReplayRejected, m_BotName, msg.ErrorCode));
+        }
+
+        // 恢复后在新连接上重入同一对局（幂等 create-or-reuse；成员表核对的业务交互证据）。
+        SendToTransport(new ReqMatchEnter { MatchId = _currentMatchId });
+    }
+
+    /// <summary>
+    /// 安排 match 场景断线恢复演练：入场成功后延迟断开，由传输层自动重连并携凭据恢复。
+    /// </summary>
+    private void ScheduleMatchReconnectDrill()
+    {
+        if (Interlocked.CompareExchange(ref _matchReconnectScheduled, 1, 0) != 0)
+        {
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                // Localization: Client.Bot.MatchReconnectArmed - 机器人-{0}入场完成，安排 {1} 秒后断线演练（match 恢复场景）
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.MatchReconnectArmed, m_BotName, MatchReconnectDrillDelaySeconds));
+                await Task.Delay(TimeSpan.FromSeconds(MatchReconnectDrillDelaySeconds));
+                _awaitingSessionResume = true;
+                // Localization: Client.Bot.DisconnectSimulated - 机器人-{0}主动断开连接，模拟离线。
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.DisconnectSimulated, m_BotName));
+                DisconnectTransport();
+            }
+            catch (Exception e)
+            {
+                // Localization: Client.Bot.MatchPollError - 机器人-{0}匹配场景-状态轮询异常:{1}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Client.Bot.MatchPollError, m_BotName, e.Message));
+            }
+        });
     }
 
     /// <summary>
@@ -136,6 +225,7 @@ public sealed partial class BotClient
         }
 
         _matchEntered = true;
+        _currentMatchId = matchId;
         SendToTransport(new ReqMatchEnter { MatchId = matchId });
     }
 
