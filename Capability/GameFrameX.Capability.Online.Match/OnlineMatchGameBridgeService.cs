@@ -75,58 +75,22 @@ public sealed class OnlineMatchGameBridgeService : IOnlineMatchGameBridge
 
     /// <inheritdoc />
     public async Task<OnlineResult<OnlineMatchBridgeGameView>> StartRoomGameAsync(OnlineScope scope, long roomId, int round, IReadOnlyList<long> playerIds, CancellationToken cancellationToken = default)
-    {
-        if (scope == null || scope.PlayerId <= 0)
+{
+        var invalidRequest = ValidateStartRequest(scope, roomId, round, playerIds);
+        if (invalidRequest != null)
         {
-            return Fail(OnlineErrorCode.ScopeMissing, "作用域缺失或缺少玩家标识");
-        }
-
-        if (roomId <= 0 || round <= 0 || playerIds == null || playerIds.Count != _game.MinPlayers)
-        {
-            return Fail(OnlineErrorCode.ParameterInvalid, "房间标识、局号非法或玩家数不是两人");
-        }
-
-        if (!playerIds.Contains(scope.PlayerId))
-        {
-            return Fail(OnlineErrorCode.ScopeDenied, "开局请求者不在本局玩家集合中");
+            return invalidRequest;
         }
 
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var matchId = DeriveMatchId(scope.ServerId, roomId, round);
-        var actor = await _runtime.ResolveActorAsync(scope.TenantId, scope.AppId, matchId, cancellationToken).ConfigureAwait(false);
-        if (actor == null)
+        var actorResult = await ResolveOrCreateActorAsync(scope, roomId, matchId, playerIds, now, cancellationToken).ConfigureAwait(false);
+        if (!actorResult.IsSuccess)
         {
-            var assignment = new OnlineMatchAssignment
-            {
-                TenantId = scope.TenantId,
-                AppId = scope.AppId,
-                ServerId = scope.ServerId,
-                MatchId = matchId,
-                AssignmentId = BuildAssignmentId(scope.ServerId, roomId),
-                Mode = OnlineRockPaperScissorsGame.MatchMode,
-                Region = 1,
-                CreatedAtTime = now,
-                TicketIds = new List<string>(),
-                PlayerIds = new List<long>(playerIds),
-            };
-
-            var created = await _runtime.CreateFromAssignmentAsync(assignment, now, cancellationToken).ConfigureAwait(false);
-            if (!created.IsSuccess)
-            {
-                // 并发同键创建：store 唯一约束裁决后重解析一次（幂等并发路径）。
-                if (created.Code != OnlineErrorCode.VersionConflict)
-                {
-                    return Fail(created.Code, created.Message);
-                }
-            }
-
-            actor = await _runtime.ResolveActorAsync(scope.TenantId, scope.AppId, matchId, cancellationToken).ConfigureAwait(false);
-            if (actor == null)
-            {
-                return Fail(created.IsSuccess ? OnlineErrorCode.InternalError : created.Code, created.Message);
-            }
+            return Fail(actorResult.Code, actorResult.Message);
         }
 
+        var actor = actorResult.Data;
         var snapshot = actor.GetSnapshot();
         if (OnlineMatchStateMachine.IsEnded(snapshot.State))
         {
@@ -140,20 +104,10 @@ public sealed class OnlineMatchGameBridgeService : IOnlineMatchGameBridge
 
         if (snapshot.State == OnlineMatchState.Created || snapshot.State == OnlineMatchState.Waiting || snapshot.State == OnlineMatchState.Ready)
         {
-            foreach (var member in snapshot.Members)
+            var prepared = await PrepareMembersAndStartAsync(actor, snapshot, scope, playerIds, now, cancellationToken).ConfigureAwait(false);
+            if (!prepared.IsSuccess)
             {
-                if (member == null || member.State == OnlineMatchMemberState.Left || member.State == OnlineMatchMemberState.Kicked)
-                {
-                    continue;
-                }
-
-                await actor.SetReadyAsync(WithPlayer(scope, member.PlayerId), true, now, cancellationToken).ConfigureAwait(false);
-            }
-
-            var started = await actor.StartAsync(WithPlayer(scope, playerIds[0]), now, cancellationToken).ConfigureAwait(false);
-            if (!started.IsSuccess)
-            {
-                return Fail(started.Code, started.Message);
+                return Fail(prepared.Code, prepared.Message);
             }
         }
 
@@ -252,6 +206,114 @@ public sealed class OnlineMatchGameBridgeService : IOnlineMatchGameBridge
         }
 
         return OnlineResult<OnlineMatchBridgeGameView>.Ok(BuildView(roomId, actor));
+    }
+
+    /// <summary>
+    /// 校验开局请求（求值顺序固定：作用域 → 房间参数 → 请求者成员身份）。
+    /// </summary>
+    /// <param name="scope">请求作用域。</param>
+    /// <param name="roomId">房间标识。</param>
+    /// <param name="round">局号。</param>
+    /// <param name="playerIds">房间成员表。</param>
+    /// <returns>校验失败返回失败结果；通过返回 <c>null</c>。</returns>
+    private OnlineResult<OnlineMatchBridgeGameView> ValidateStartRequest(OnlineScope scope, long roomId, int round, IReadOnlyList<long> playerIds)
+    {
+        if (scope == null || scope.PlayerId <= 0)
+        {
+            return Fail(OnlineErrorCode.ScopeMissing, "作用域缺失或缺少玩家标识");
+        }
+
+        if (roomId <= 0 || round <= 0 || playerIds == null || playerIds.Count != _game.MinPlayers)
+        {
+            return Fail(OnlineErrorCode.ParameterInvalid, "房间标识、局号非法或玩家数不是两人");
+        }
+
+        if (!playerIds.Contains(scope.PlayerId))
+        {
+            return Fail(OnlineErrorCode.ScopeDenied, "开局请求者不在本局玩家集合中");
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 解析或创建对局 Actor（create-or-reuse：并发同键创建经 store 唯一约束裁决后重解析一次）。
+    /// </summary>
+    /// <param name="scope">请求作用域。</param>
+    /// <param name="roomId">房间标识。</param>
+    /// <param name="matchId">对局标识。</param>
+    /// <param name="playerIds">房间成员表。</param>
+    /// <param name="now">当前毫秒时间戳。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>对局 Actor 结果（失败携带错误码与描述）。</returns>
+    private async Task<OnlineResult<OnlineMatchActor>> ResolveOrCreateActorAsync(OnlineScope scope, long roomId, string matchId, IReadOnlyList<long> playerIds, long now, CancellationToken cancellationToken)
+    {
+        var actor = await _runtime.ResolveActorAsync(scope.TenantId, scope.AppId, matchId, cancellationToken).ConfigureAwait(false);
+        if (actor == null)
+        {
+            var assignment = new OnlineMatchAssignment
+            {
+                TenantId = scope.TenantId,
+                AppId = scope.AppId,
+                ServerId = scope.ServerId,
+                MatchId = matchId,
+                AssignmentId = BuildAssignmentId(scope.ServerId, roomId),
+                Mode = OnlineRockPaperScissorsGame.MatchMode,
+                Region = 1,
+                CreatedAtTime = now,
+                TicketIds = new List<string>(),
+                PlayerIds = new List<long>(playerIds),
+            };
+
+            var created = await _runtime.CreateFromAssignmentAsync(assignment, now, cancellationToken).ConfigureAwait(false);
+            if (!created.IsSuccess)
+            {
+                // 并发同键创建：store 唯一约束裁决后重解析一次（幂等并发路径）。
+                if (created.Code != OnlineErrorCode.VersionConflict)
+                {
+                    return OnlineResult<OnlineMatchActor>.Fail(created.Code, created.Message);
+                }
+            }
+
+            actor = await _runtime.ResolveActorAsync(scope.TenantId, scope.AppId, matchId, cancellationToken).ConfigureAwait(false);
+            if (actor == null)
+            {
+                return OnlineResult<OnlineMatchActor>.Fail(created.IsSuccess ? OnlineErrorCode.InternalError : created.Code, created.Message);
+            }
+        }
+
+        return OnlineResult<OnlineMatchActor>.Ok(actor);
+    }
+
+    /// <summary>
+    /// 未开局对局逐活跃成员就绪并由房主启动（活跃成员 = 非 null 且非 Left/Kicked；启动失败即失败返回）。
+    /// </summary>
+    /// <param name="actor">对局 Actor。</param>
+    /// <param name="snapshot">对局快照。</param>
+    /// <param name="scope">请求作用域。</param>
+    /// <param name="playerIds">房间成员表。</param>
+    /// <param name="now">当前毫秒时间戳。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>启动结果（成功携带对局 Actor，失败携带错误码与描述）。</returns>
+    private static async Task<OnlineResult<OnlineMatchActor>> PrepareMembersAndStartAsync(OnlineMatchActor actor, OnlineMatchSnapshot snapshot, OnlineScope scope, IReadOnlyList<long> playerIds, long now, CancellationToken cancellationToken)
+    {
+        foreach (var member in snapshot.Members)
+        {
+            if (member == null || member.State == OnlineMatchMemberState.Left || member.State == OnlineMatchMemberState.Kicked)
+            {
+                continue;
+            }
+
+            await actor.SetReadyAsync(WithPlayer(scope, member.PlayerId), true, now, cancellationToken).ConfigureAwait(false);
+        }
+
+        var started = await actor.StartAsync(WithPlayer(scope, playerIds[0]), now, cancellationToken).ConfigureAwait(false);
+        if (!started.IsSuccess)
+        {
+            return OnlineResult<OnlineMatchActor>.Fail(started.Code, started.Message);
+        }
+
+        return OnlineResult<OnlineMatchActor>.Ok(actor);
     }
 
     /// <summary>
