@@ -250,34 +250,9 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
             return;
         }
 
-        // C245 对局桥路径（开关开启 + RPS 房间时独占先行；其余房间走旧链）：
-        // 轻量前置校验（只读 GetRoom，与旧链同判语义）→ 桥先行创建平台对局（幂等）→
-        // 失败显式负值错误码返回（不推进房间）；成功回落旧链完成 Room → Playing 推进。
-        if (RockPaperScissorsMatchBridge.IsBridgeEnabled)
+        if (await TryStartRoomGameViaBridgeAsync(playerId, request, response))
         {
-            var bridgeRoom = await GetRoom(request.RoomId);
-            if (bridgeRoom != null && bridgeRoom.GameType == GameType.RockPaperScissors)
-            {
-                if (bridgeRoom.OwnerRoleId != playerId || bridgeRoom.Status != RoomStatus.Ready)
-                {
-                    response.ErrorCode = (int)OperationStatusCode.Forbidden;
-                    response.Room = await ToMessageAsync(bridgeRoom);
-                    return;
-                }
-
-                if (bridgeRoom.PlayerIds.Count < bridgeRoom.MinPlayerCount || bridgeRoom.PlayerIds.Count > bridgeRoom.MaxPlayerCount)
-                {
-                    response.ErrorCode = (int)OperationStatusCode.Unprocessable;
-                    response.Room = await ToMessageAsync(bridgeRoom);
-                    return;
-                }
-
-                var bridgeHandled = await RockPaperScissorsMatchBridge.TryStartRoomGameAsync(playerId, bridgeRoom.RoomId, bridgeRoom.Round, bridgeRoom.PlayerIds, response);
-                if (!bridgeHandled || response.ErrorCode != 0)
-                {
-                    return;
-                }
-            }
+            return;
         }
 
         if (!TryGetRoom(request.RoomId, response, out var room))
@@ -285,16 +260,8 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
             return;
         }
 
-        if (room.OwnerRoleId != playerId || room.Status != RoomStatus.Ready)
+        if (!ValidateRoomForStart(playerId, room, response))
         {
-            response.ErrorCode = (int)OperationStatusCode.Forbidden;
-            response.Room = await ToMessageAsync(room);
-            return;
-        }
-
-        if (room.PlayerIds.Count < room.MinPlayerCount || room.PlayerIds.Count > room.MaxPlayerCount)
-        {
-            response.ErrorCode = (int)OperationStatusCode.Unprocessable;
             response.Room = await ToMessageAsync(room);
             return;
         }
@@ -305,6 +272,52 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
         response.Room = await ToMessageAsync(room);
         await OwnerComponent.WriteStateAsync();
         await NotifyRoomChangedAsync(room, RoomChangeType.Started);
+    }
+
+    // C245 对局桥路径（开关开启 + RPS 房间时独占先行；其余房间走旧链）：
+    // 轻量前置校验（只读 GetRoom，与旧链同判语义）→ 桥先行创建平台对局（幂等）→
+    // 失败显式负值错误码返回（不推进房间）；成功回落旧链完成 Room → Playing 推进。
+    // 返回 true 表示已写响应（或桥已完整处理），调用方应立即返回；false 表示走旧链。
+    private async Task<bool> TryStartRoomGameViaBridgeAsync(long playerId, ReqStartRoomGame request, RespStartRoomGame response)
+    {
+        if (!RockPaperScissorsMatchBridge.IsBridgeEnabled)
+        {
+            return false;
+        }
+
+        var bridgeRoom = await GetRoom(request.RoomId);
+        if (bridgeRoom == null || bridgeRoom.GameType != GameType.RockPaperScissors)
+        {
+            return false;
+        }
+
+        if (!ValidateRoomForStart(playerId, bridgeRoom, response))
+        {
+            response.Room = await ToMessageAsync(bridgeRoom);
+            return true;
+        }
+
+        var bridgeHandled = await RockPaperScissorsMatchBridge.TryStartRoomGameAsync(playerId, bridgeRoom.RoomId, bridgeRoom.Round, bridgeRoom.PlayerIds, response);
+        return !bridgeHandled || response.ErrorCode != 0;
+    }
+
+    // 开局前的属主/状态与人数校验（桥路径与旧链同判语义）：
+    // 校验失败时已写入 ErrorCode（Forbidden/Unprocessable），调用方需补写 response.Room 后返回。
+    private bool ValidateRoomForStart(long playerId, RoomState room, RespStartRoomGame response)
+    {
+        if (room.OwnerRoleId != playerId || room.Status != RoomStatus.Ready)
+        {
+            response.ErrorCode = (int)OperationStatusCode.Forbidden;
+            return false;
+        }
+
+        if (room.PlayerIds.Count < room.MinPlayerCount || room.PlayerIds.Count > room.MaxPlayerCount)
+        {
+            response.ErrorCode = (int)OperationStatusCode.Unprocessable;
+            return false;
+        }
+
+        return true;
     }
 
     private void LeaveRoom(long playerId, RoomState room)
