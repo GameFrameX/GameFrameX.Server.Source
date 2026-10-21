@@ -205,66 +205,21 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
     /// <inheritdoc />
     public async Task<OnlineResult<OnlineMatchDomainEntry>> EnterAsync(OnlineScope scope, long matchId, CancellationToken cancellationToken = default)
     {
-        var failureCode = ValidateScope(scope);
-        if (failureCode.HasValue)
+        var invalidEntry = ValidateEntry(scope, matchId, out var registration);
+        if (invalidEntry != null)
         {
-            return OnlineResult<OnlineMatchDomainEntry>.Fail(failureCode.Value.Code, failureCode.Value.Message);
-        }
-
-        if (matchId <= 0)
-        {
-            return OnlineResult<OnlineMatchDomainEntry>.Fail(OnlineErrorCode.ParameterInvalid, "对局标识非法");
-        }
-
-        var registration = FindRegistration(matchId);
-        if (registration == null)
-        {
-            return OnlineResult<OnlineMatchDomainEntry>.Fail(OnlineErrorCode.ResourceNotFound, "对局标识不存在或已失效");
-        }
-
-        if (!registration.PlayerIds.Contains(scope.PlayerId))
-        {
-            return OnlineResult<OnlineMatchDomainEntry>.Fail(OnlineErrorCode.ScopeDenied, "入场者不在本局玩家集合中");
-        }
-
-        if (registration.PlayerIds.Count != _game.MinPlayers)
-        {
-            return OnlineResult<OnlineMatchDomainEntry>.Fail(OnlineErrorCode.ParameterInvalid, "对局成员数与玩法最小人数不一致");
+            return invalidEntry;
         }
 
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var runtimeMatchId = DeriveRuntimeMatchId(scope.ServerId, matchId);
-        var actor = await _runtime.ResolveActorAsync(scope.TenantId, scope.AppId, runtimeMatchId, cancellationToken).ConfigureAwait(false);
-        if (actor == null)
+        var actorResult = await ResolveOrCreateActorAsync(scope, registration, runtimeMatchId, now, cancellationToken).ConfigureAwait(false);
+        if (!actorResult.IsSuccess)
         {
-            var assignment = new OnlineMatchAssignment
-            {
-                TenantId = scope.TenantId,
-                AppId = scope.AppId,
-                ServerId = scope.ServerId,
-                MatchId = runtimeMatchId,
-                AssignmentId = registration.AssignmentId,
-                Mode = _game.Mode,
-                Region = registration.Region,
-                CreatedAtTime = registration.CreatedAtTime,
-                TicketIds = new List<string>(registration.TicketIds),
-                PlayerIds = new List<long>(registration.PlayerIds),
-            };
-
-            var created = await _runtime.CreateFromAssignmentAsync(assignment, now, cancellationToken).ConfigureAwait(false);
-            if (!created.IsSuccess && created.Code != OnlineErrorCode.VersionConflict)
-            {
-                return OnlineResult<OnlineMatchDomainEntry>.Fail(created.Code, created.Message);
-            }
-
-            // 并发同键创建：store 唯一约束裁决后重解析一次（幂等并发路径，C245 同型）。
-            actor = await _runtime.ResolveActorAsync(scope.TenantId, scope.AppId, runtimeMatchId, cancellationToken).ConfigureAwait(false);
-            if (actor == null)
-            {
-                return OnlineResult<OnlineMatchDomainEntry>.Fail(created.IsSuccess ? OnlineErrorCode.InternalError : created.Code, created.Message);
-            }
+            return OnlineResult<OnlineMatchDomainEntry>.Fail(actorResult.Code, actorResult.Message);
         }
 
+        var actor = actorResult.Data;
         var snapshot = actor.GetSnapshot();
         if (OnlineMatchStateMachine.IsEnded(snapshot.State))
         {
@@ -278,33 +233,10 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
 
         if (snapshot.State == OnlineMatchState.Created || snapshot.State == OnlineMatchState.Waiting || snapshot.State == OnlineMatchState.Ready)
         {
-            foreach (var member in snapshot.Members)
+            var earlyResult = await MarkMembersReadyAndStartAsync(scope, actor, snapshot, registration, matchId, now, cancellationToken).ConfigureAwait(false);
+            if (earlyResult != null)
             {
-                if (member == null || member.State == OnlineMatchMemberState.Left || member.State == OnlineMatchMemberState.Kicked)
-                {
-                    continue;
-                }
-
-                await actor.SetReadyAsync(WithPlayer(scope, member.PlayerId), true, now, cancellationToken).ConfigureAwait(false);
-            }
-
-            var started = await actor.StartAsync(WithPlayer(scope, registration.PlayerIds[0]), now, cancellationToken).ConfigureAwait(false);
-            if (!started.IsSuccess)
-            {
-                // 并发入场竞态：对手已抢先完成开局（对局已 Running）= 双方均已到达，按幂等成功收敛，
-                // 不把「已被开局」误报为失败（双端同时入场是常态路径，非异常）。
-                var afterStart = actor.GetSnapshot();
-                if (afterStart.State == OnlineMatchState.Running)
-                {
-                    return OnlineResult<OnlineMatchDomainEntry>.Ok(new OnlineMatchDomainEntry
-                    {
-                        MatchId = matchId,
-                        Started = true,
-                        PlayerIds = new List<long>(registration.PlayerIds),
-                    });
-                }
-
-                return OnlineResult<OnlineMatchDomainEntry>.Fail(started.Code, started.Message);
+                return earlyResult;
             }
         }
 
@@ -471,6 +403,136 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
             GameState = resultSnapshot.GameState,
             Instruction = resumed.Instruction,
         });
+    }
+
+    /// <summary>
+    /// 校验入场请求（求值顺序固定：作用域 → 对局标识 → 登记存在 → 入场者成员身份 → 成员数与玩法最小人数一致）。
+    /// </summary>
+    /// <param name="scope">请求作用域。</param>
+    /// <param name="matchId">数值对局标识。</param>
+    /// <param name="registration">登记项（校验通过时非空）。</param>
+    /// <returns>校验失败返回失败结果；通过返回 <c>null</c>。</returns>
+    private OnlineResult<OnlineMatchDomainEntry> ValidateEntry(OnlineScope scope, long matchId, out AssignmentRegistration registration)
+    {
+        registration = null;
+        var failureCode = ValidateScope(scope);
+        if (failureCode.HasValue)
+        {
+            return OnlineResult<OnlineMatchDomainEntry>.Fail(failureCode.Value.Code, failureCode.Value.Message);
+        }
+
+        if (matchId <= 0)
+        {
+            return OnlineResult<OnlineMatchDomainEntry>.Fail(OnlineErrorCode.ParameterInvalid, "对局标识非法");
+        }
+
+        registration = FindRegistration(matchId);
+        if (registration == null)
+        {
+            return OnlineResult<OnlineMatchDomainEntry>.Fail(OnlineErrorCode.ResourceNotFound, "对局标识不存在或已失效");
+        }
+
+        if (!registration.PlayerIds.Contains(scope.PlayerId))
+        {
+            return OnlineResult<OnlineMatchDomainEntry>.Fail(OnlineErrorCode.ScopeDenied, "入场者不在本局玩家集合中");
+        }
+
+        if (registration.PlayerIds.Count != _game.MinPlayers)
+        {
+            return OnlineResult<OnlineMatchDomainEntry>.Fail(OnlineErrorCode.ParameterInvalid, "对局成员数与玩法最小人数不一致");
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 解析或创建对局 Actor（create-or-reuse：并发同键创建经 store 唯一约束裁决后重解析一次）。
+    /// </summary>
+    /// <param name="scope">请求作用域。</param>
+    /// <param name="registration">分配登记项。</param>
+    /// <param name="runtimeMatchId">运行时对局标识。</param>
+    /// <param name="now">当前毫秒时间戳。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>对局 Actor 结果（失败携带错误码与描述）。</returns>
+    private async Task<OnlineResult<OnlineMatchActor>> ResolveOrCreateActorAsync(OnlineScope scope, AssignmentRegistration registration, string runtimeMatchId, long now, CancellationToken cancellationToken)
+    {
+        var actor = await _runtime.ResolveActorAsync(scope.TenantId, scope.AppId, runtimeMatchId, cancellationToken).ConfigureAwait(false);
+        if (actor == null)
+        {
+            var assignment = new OnlineMatchAssignment
+            {
+                TenantId = scope.TenantId,
+                AppId = scope.AppId,
+                ServerId = scope.ServerId,
+                MatchId = runtimeMatchId,
+                AssignmentId = registration.AssignmentId,
+                Mode = _game.Mode,
+                Region = registration.Region,
+                CreatedAtTime = registration.CreatedAtTime,
+                TicketIds = new List<string>(registration.TicketIds),
+                PlayerIds = new List<long>(registration.PlayerIds),
+            };
+
+            var created = await _runtime.CreateFromAssignmentAsync(assignment, now, cancellationToken).ConfigureAwait(false);
+            if (!created.IsSuccess && created.Code != OnlineErrorCode.VersionConflict)
+            {
+                return OnlineResult<OnlineMatchActor>.Fail(created.Code, created.Message);
+            }
+
+            // 并发同键创建：store 唯一约束裁决后重解析一次（幂等并发路径，C245 同型）。
+            actor = await _runtime.ResolveActorAsync(scope.TenantId, scope.AppId, runtimeMatchId, cancellationToken).ConfigureAwait(false);
+            if (actor == null)
+            {
+                return OnlineResult<OnlineMatchActor>.Fail(created.IsSuccess ? OnlineErrorCode.InternalError : created.Code, created.Message);
+            }
+        }
+
+        return OnlineResult<OnlineMatchActor>.Ok(actor);
+    }
+
+    /// <summary>
+    /// 未开局对局逐活跃成员就绪并启动（活跃成员 = 非 null 且非 Left/Kicked）。
+    /// </summary>
+    /// <param name="scope">请求作用域。</param>
+    /// <param name="actor">对局 Actor。</param>
+    /// <param name="snapshot">对局快照（就绪遍历的成员表来源）。</param>
+    /// <param name="registration">分配登记项。</param>
+    /// <param name="matchId">数值对局标识。</param>
+    /// <param name="now">当前毫秒时间戳。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>定论结果（并发竞态幂等成功或启动失败）；启动成功返回 <c>null</c>，由调用方以最终快照收口。</returns>
+    private static async Task<OnlineResult<OnlineMatchDomainEntry>> MarkMembersReadyAndStartAsync(OnlineScope scope, OnlineMatchActor actor, OnlineMatchSnapshot snapshot, AssignmentRegistration registration, long matchId, long now, CancellationToken cancellationToken)
+    {
+        foreach (var member in snapshot.Members)
+        {
+            if (member == null || member.State == OnlineMatchMemberState.Left || member.State == OnlineMatchMemberState.Kicked)
+            {
+                continue;
+            }
+
+            await actor.SetReadyAsync(WithPlayer(scope, member.PlayerId), true, now, cancellationToken).ConfigureAwait(false);
+        }
+
+        var started = await actor.StartAsync(WithPlayer(scope, registration.PlayerIds[0]), now, cancellationToken).ConfigureAwait(false);
+        if (!started.IsSuccess)
+        {
+            // 并发入场竞态：对手已抢先完成开局（对局已 Running）= 双方均已到达，按幂等成功收敛，
+            // 不把「已被开局」误报为失败（双端同时入场是常态路径，非异常）。
+            var afterStart = actor.GetSnapshot();
+            if (afterStart.State == OnlineMatchState.Running)
+            {
+                return OnlineResult<OnlineMatchDomainEntry>.Ok(new OnlineMatchDomainEntry
+                {
+                    MatchId = matchId,
+                    Started = true,
+                    PlayerIds = new List<long>(registration.PlayerIds),
+                });
+            }
+
+            return OnlineResult<OnlineMatchDomainEntry>.Fail(started.Code, started.Message);
+        }
+
+        return null;
     }
 
     /// <summary>
