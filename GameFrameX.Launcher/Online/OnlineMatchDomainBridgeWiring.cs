@@ -100,52 +100,61 @@ public static class OnlineMatchDomainBridgeWiring
             return;
         }
 
-        eventBus.Subscribe(envelope =>
+        eventBus.Subscribe(envelope => HandleMatchAssignmentEvent(domain, envelope));
+    }
+
+    /// <summary>
+    /// 匹配分配事件回调体（订阅入口见 <see cref="SubscribeMatchMadeNotifications"/>）：
+    /// <c>Online.Match.AssignmentCreated</c> → 域服务解析数值对局标识 → 向双方在线会话 best-effort 推送
+    /// <see cref="NotifyMatchMade"/>；过滤/校验失败即静默跳过，订阅体异常吞掉不阻断事件分发。
+    /// </summary>
+    /// <param name="domain">匹配域契约面。</param>
+    /// <param name="envelope">Foundation 事件信封。</param>
+    private static void HandleMatchAssignmentEvent(IOnlineMatchDomain domain, GameFrameX.Foundation.Idempotency.EventEnvelope envelope)
+    {
+        try
         {
-            try
+            var onlineEvent = OnlineEventEnvelopeMapper.FromEnvelope(envelope);
+            if (onlineEvent == null || onlineEvent.EventType != OnlineMatchEvents.AssignmentCreated)
             {
-                var onlineEvent = OnlineEventEnvelopeMapper.FromEnvelope(envelope);
-                if (onlineEvent == null || onlineEvent.EventType != OnlineMatchEvents.AssignmentCreated)
-                {
-                    return;
-                }
-
-                var payload = OnlineMatchEvents.ReadAssignmentCreated(onlineEvent);
-                if (payload == null || string.IsNullOrEmpty(payload.AssignmentId))
-                {
-                    return;
-                }
-
-                var resolved = domain.ResolveAssignmentAsync(onlineEvent.TenantId, onlineEvent.AppId, payload.AssignmentId).GetAwaiter().GetResult();
-                if (!resolved.IsSuccess || resolved.Data == null || resolved.Data.MatchId == 0)
-                {
-                    return;
-                }
-
-                var notify = new NotifyMatchMade { MatchId = resolved.Data.MatchId, Mode = resolved.Data.Mode };
-                if (resolved.Data.PlayerIds == null)
-                {
-                    return;
-                }
-
-                foreach (var playerId in resolved.Data.PlayerIds)
-                {
-                    var session = PlayerSessionManager.Instance.GetByPlayerId(playerId);
-                    if (session == null)
-                    {
-                        // 离线方静默跳过：best-effort 推送，等待方经状态轮询兜底。
-                        continue;
-                    }
-
-                    session.WriteAsync(notify).GetAwaiter().GetResult();
-                }
+                return;
             }
-            catch (Exception)
+
+            var payload = OnlineMatchEvents.ReadAssignmentCreated(onlineEvent);
+            if (payload == null || string.IsNullOrEmpty(payload.AssignmentId))
             {
-                // 订阅体异常不得阻断业务事件分发（InMemoryEventPublisher 异常策略向上传播，此处吞掉；
-                // 通知是 best-effort 增益路径，失败不影响撮合事实，等待方经状态查询兜底）。
+                return;
             }
-        });
+
+            var resolved = domain.ResolveAssignmentAsync(onlineEvent.TenantId, onlineEvent.AppId, payload.AssignmentId).GetAwaiter().GetResult();
+            if (!resolved.IsSuccess || resolved.Data == null || resolved.Data.MatchId == 0)
+            {
+                return;
+            }
+
+            var notify = new NotifyMatchMade { MatchId = resolved.Data.MatchId, Mode = resolved.Data.Mode };
+            if (resolved.Data.PlayerIds == null)
+            {
+                return;
+            }
+
+            foreach (var playerId in resolved.Data.PlayerIds)
+            {
+                var session = PlayerSessionManager.Instance.GetByPlayerId(playerId);
+                if (session == null)
+                {
+                    // 离线方静默跳过：best-effort 推送，等待方经状态轮询兜底。
+                    continue;
+                }
+
+                session.WriteAsync(notify).GetAwaiter().GetResult();
+            }
+        }
+        catch (Exception)
+        {
+            // 订阅体异常不得阻断业务事件分发（InMemoryEventPublisher 异常策略向上传播，此处吞掉；
+            // 通知是 best-effort 增益路径，失败不影响撮合事实，等待方经状态查询兜底）。
+        }
     }
 
     /// <summary>
