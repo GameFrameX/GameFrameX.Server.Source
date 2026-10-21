@@ -28,8 +28,11 @@
 //  ==========================================================================================
 
 
+using System.Reflection;
 using GameFrameX.Capability.Hosting.Core;
 using GameFrameX.Capability.Hosting.AdminApi;
+using GameFrameX.Core.Events;
+using GameFrameX.Core.Session;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Utility;
 using GameFrameX.Network.Abstractions;
@@ -83,104 +86,141 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     private AdminApiServer _onlineAdminApi;
 
     /// <summary>
-    /// Game 型 Role 服务：热更模块装载 + Online admin 可选启动（共享装配由模板序列承载）。
+    /// Game 型 Role 服务：缺省统一形态（热更生命周期激活 + 宿主监听，经 base hook）+ Online 双闸附加启动
+    ///（共享装配由模板序列承载）。
     /// </summary>
     /// <remarks>
-    /// Game-shape role services: hotfix module loading plus the optional Online admin; the shared
+    /// Game-shape role services: the unified default (hotfix lifecycle activation plus the host
+    /// listener startup, both via the base hook) followed by the optional Online gates — the shared
     /// wiring (control database, discovery layer, business database, components) is carried by the
-    /// template sequence. 热更目录确保由 <c>HotfixManager</c> 装载入口自身兜底，非 Game 型差异。
-    /// The hotfix-directory ensuring is covered by the <c>HotfixManager</c> load entry itself and
-    /// is not a Game-shape difference.
+    /// template sequence. C284 起 Game 不再自拟启动序列：热更装载与监听均由缺省 hook 承载，
+    /// 本覆写只追加 Online 面（Online 属范围外，装配必须保留）。
+    /// Since C284 Game no longer rolls its own startup sequence — hotfix loading and listener
+    /// ownership both live in the default hook; this override only appends the Online surface
+    /// (Online is out of scope and its assembly must be preserved).
     /// </remarks>
     /// <returns>表示 hook 操作的异步任务 / A task representing the hook operation</returns>
     protected override async Task StartRoleServicesAsync()
     {
-        LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.HotfixModuleLoadBegin));
-        await HotfixManager.LoadHotfixModule(Setting);
-        LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.HotfixModuleLoadEnd));
-
+        await base.StartRoleServicesAsync();
         await StartOnlineIfEnabledAsync();
         await StartOnlineAdminIfEnabledAsync();
     }
 
     /// <summary>
-    /// Game 型启动完成：业务装配全就绪，标记进程运行时已启动（退出令牌随之复位，进入运行至退出周期）。
+    /// Game 型退出清理（三段逆序编排）：Online 撤桥并停 admin/runtime → 宿主停机（护栏内
+    /// <c>ServiceOffline</c> 分发 + 网络监听停止）→ 热更模块业务清理。
     /// </summary>
     /// <remarks>
-    /// Game-shape startup completion: with every assembly step done, the process runtime is marked
-    /// started (which also resets the exit token for a fresh run-until-exit cycle).
-    /// </remarks>
-    /// <returns>表示 hook 操作的异步任务 / A task representing the hook operation</returns>
-    protected override Task OnStartupCompletedAsync()
-    {
-        GameAppRuntime.MarkStarted(TimerHelper.GetNowWithUtc());
-        return Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// Game 型退出清理：按反向顺序停 Online admin HTTP 服务与 Online runtime 宿主，再停热更模块。
-    /// </summary>
-    /// <remarks>
-    /// Game-shape exit cleanup: stops the Online admin HTTP service and the Online runtime host in
-    /// reverse order, then stops the hotfix module.
+    /// Game-shape exit cleanup (three reverse phases): Online bridge retraction with the admin and
+    /// runtime stops, then the host stop (the guarded <c>ServiceOffline</c> dispatch plus the
+    /// network listener shutdown), then the hotfix module's business cleanup. C284 起监听所有权
+    /// 归宿主：宿主 <c>StopAsync</c> 停监听并翻转运行时状态，热更 <c>Stop</c> 只清 Actor/定时器/会话。
+    /// Since C284 listener ownership stays with the host — the host <c>StopAsync</c> stops the
+    /// listeners and flips the runtime state while the hotfix <c>Stop</c> only clears actors,
+    /// timers and sessions.
     /// </remarks>
     /// <param name="exitMessage">退出原因（可能为 null——启动失败路径未获得退出消息）/ The exit reason (may be null on the startup-failure path)</param>
     /// <returns>表示 hook 操作的异步任务 / A task representing the hook operation</returns>
     protected override async Task ShutdownAsync(string exitMessage)
     {
         await ShutdownOnlineAdminAsync();
+        await StopAsync(exitMessage ?? "");
         await HotfixManager.Stop(exitMessage);
     }
 
     /// <summary>
-    /// Game 型中性化覆写：空实现——不参与 <c>ServiceOffline</c> 分发（HEAD 行为，Game 无上下线事件面；
-    /// 模板缺省面向 Social 型多数形态）。
+    /// 创建 Game 服务器的 KCP 会话首消息鉴权配置：放行登录流程消息，以角色登录为鉴权完成信号。
     /// </summary>
     /// <remarks>
-    /// Game-shape neutralizing override: a no-op — Game does not join the <c>ServiceOffline</c>
-    /// dispatch (the HEAD behaviour; Game has no online/offline event surface, while the template
-    /// default follows the Social-shape majority).
+    /// Creates the KCP session first-message authentication options for the game server.
+    /// 白名单为现有 TCP 登录流全链路（账号登录 → 角色列表/角色创建 → 角色登录）；
+    /// <see cref="ReqPlayerLogin"/> 是鉴权终态——业务侧 OnPlayerLogin 处理该消息并绑定 ActorId，此后会话消息全放行。
+    /// C204 起 <see cref="ReqSessionResume"/>（会话恢复）与角色登录同为鉴权完成信号——恢复即绑定 ActorId。
+    /// C284 起监听面归宿主，本覆写自热更侧 <c>AppStartUpHotfixGame</c> 上移，语句逐字保持。
+    /// Since C284 the listener surface lives with the host; this override moved up from the
+    /// hotfix-side <c>AppStartUpHotfixGame</c> with the statements kept verbatim.
     /// </remarks>
-    /// <param name="message">终止原因（护栏透传）/ The termination reason passed through by the guard</param>
-    /// <returns>表示钩子操作的异步任务 / A task representing the hook operation</returns>
-    protected override Task OnStoppingAsync(string message)
+    /// <returns>KCP 会话鉴权配置 / The KCP session authentication options</returns>
+    protected override SessionAuthenticationOptions CreateKcpSessionAuthenticationOptions()
     {
-        return Task.CompletedTask;
+        var options = base.CreateKcpSessionAuthenticationOptions();
+        options.AllowedMessageIds.Add(GetLoginMessageId(typeof(ReqLogin)));
+        options.AllowedMessageIds.Add(GetLoginMessageId(typeof(ReqPlayerList)));
+        options.AllowedMessageIds.Add(GetLoginMessageId(typeof(ReqPlayerCreate)));
+        options.AllowedMessageIds.Add(GetLoginMessageId(typeof(ReqPlayerLogin)));
+        options.AllowedMessageIds.Add(GetLoginMessageId(typeof(ReqSessionResume)));
+        options.AuthenticatedByMessageIds.Add(GetLoginMessageId(typeof(ReqPlayerLogin)));
+        options.AuthenticatedByMessageIds.Add(GetLoginMessageId(typeof(ReqSessionResume)));
+        return options;
     }
 
     /// <summary>
-    /// Game 型中性化覆写：仅保留基类调试日志行为，不做 TCP 热更分发——Game 的网络监听由
-    /// Hotfix 模块实例（自持 PackageHandler 的 <c>AppStartUpHotfixGame</c>）承载，宿主实例无监听面。
-    /// 心跳日志门控与基类漏斗对齐：在接收调试之上额外要求 <c>IsDebugReceiveHeartBeat</c> 专用开关。
+    /// 从消息类型的 <see cref="MessageTypeHandlerAttribute"/> 读取消息码（编译期固定值，不依赖运行时协议注册表初始化）。
+    /// </summary>
+    /// <param name="messageType">登录流程消息类型 / The login-flow message type</param>
+    /// <returns>消息码 / The message id</returns>
+    private static int GetLoginMessageId(Type messageType)
+    {
+        return messageType.GetCustomAttribute<MessageTypeHandlerAttribute>()?.MessageId
+               // Localization: Hotfix.Startup.LoginMessageTypeMissingAttribute - 登录消息类型 {0} 缺少 {1}。
+               ?? throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Hotfix.LoginMessageTypeMissingAttribute, messageType.FullName, nameof(MessageTypeHandlerAttribute)));
+    }
+
+    /// <summary>
+    /// Game 型会话建立钩子：达到最大在线数即拒绝并关闭，否则建立 <see cref="PlayerSession"/>
+    ///（语句自热更侧 <c>AppStartUpHotfixGame.OnConnected</c> 上移，C284）。
     /// </summary>
     /// <remarks>
-    /// Game-shape neutralizing override: keeps only the base debug-logging behaviour without the
-    /// funnel dispatch — Game's network listeners live inside the hotfix module instance
-    /// (<c>AppStartUpHotfixGame</c> with its own <c>PackageHandler</c>), so the host instance has
-    /// no listener surface. The heartbeat log gating mirrors the base funnel: an extra
-    /// <c>IsDebugReceiveHeartBeat</c> flag on top of receive debugging.
+    /// The Game-shape session-established hook: rejects and closes the connection once the maximum
+    /// client count is exceeded, otherwise registers the <see cref="PlayerSession"/> (moved up
+    /// verbatim from the hotfix-side <c>AppStartUpHotfixGame.OnConnected</c>, C284).
     /// </remarks>
-    /// <param name="session">会话对象 / The session</param>
-    /// <param name="message">网络消息 / The network message</param>
+    /// <param name="appSession">新建立的会话对象 / Newly established session object</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
-    protected override ValueTask PackageHandler(IAppSession session, IMessage message)
+    protected override async ValueTask OnConnected(IAppSession appSession)
     {
-        // 心跳是框架级保活语义，日志门控与基类漏斗对齐：额外要求 IsDebugReceiveHeartBeat 专用开关
-        if (message is INetworkMessagePackage messagePackage && MessageProtoHelper.IsHeartbeat(messagePackage.MessageType))
+        // Localization: StartUp.Server.NewClientConnection - 新客户端连接 - 会话ID: {0}, 远程终端: {1}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Server.NewClientConnection, appSession.SessionId, appSession.RemoteEndPoint));
+        var netChannel = new DefaultNetworkChannel(appSession, Setting);
+        var count = PlayerSessionManager.Instance.Count();
+        if (count > Setting.MaxClientCount)
         {
-            if (Setting.IsDebug && Setting.IsDebugReceive && Setting.IsDebugReceiveHeartBeat)
-            {
-                // Localization: StartUp.Server.MessageReceived - 接收到消息 - 服务器类型: [{0}], 消息内容: {1}
-                LogHelper.Debug(LocalizationService.GetString(Localization.Keys.StartUp.Server.MessageReceived, ServerType, message.ToFormatMessageString()));
-            }
-
-            return ValueTask.CompletedTask;
+            // 达到最大在线人数限制
+            await netChannel.WriteAsync(new NotifyServerFullyLoaded(), (int)OperationStatusCode.ServerFullyLoaded);
+            netChannel.Close();
+            return;
         }
 
-        if (Setting.IsDebug && Setting.IsDebugReceive)
+        var session = new PlayerSession(appSession.SessionId, netChannel);
+        PlayerSessionManager.Instance.Add(session);
+    }
+
+    /// <summary>
+    /// Game 型会话断开钩子：摘除会话并对已绑定玩家分发 <see cref="PlayerDisconnectedEventArgs"/>
+    ///——房间断线标记与会话恢复通知由热更侧全局监听器承接（C284 事件桥接契约，
+    /// 与消息漏斗的热更注册表桥接同形态）。
+    /// </summary>
+    /// <remarks>
+    /// The Game-shape session-disconnected hook: removes the session and, for a bound player,
+    /// dispatches <see cref="PlayerDisconnectedEventArgs"/> — the hotfix-side global listener
+    /// carries the room disconnected-marking and the session-resume notification (the C284
+    /// event-bridging contract, mirroring the hotfix-registry bridging of the message funnel).
+    /// The dispatch is fire-and-forget, the same shape as the <c>SessionRemovedEventArgs</c>
+    /// logout cleanup dispatched inside <c>PlayerSessionManager.Remove</c>.
+    /// </summary>
+    /// <param name="appSession">断开连接的会话对象 / Session object that disconnected</param>
+    /// <param name="disconnectEventArgs">断开连接的相关参数 / Parameters related to disconnection</param>
+    /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
+    protected override ValueTask OnDisconnected(IAppSession appSession, CloseEventArgs disconnectEventArgs)
+    {
+        // Localization: Hotfix.StartUp.ClientDisconnected - 客户端断开连接 - 会话ID: {0}, 断开原因: {1}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Hotfix.StartUpModule.ClientDisconnected, appSession.SessionId, disconnectEventArgs.Reason));
+        var session = PlayerSessionManager.Instance.Remove(appSession.SessionId);
+        if (session != null && session.PlayerId > 0)
         {
-            // Localization: StartUp.Server.MessageReceived - 接收到消息 - 服务器类型: [{0}], 消息内容: {1}
-            LogHelper.Debug(LocalizationService.GetString(Localization.Keys.StartUp.Server.MessageReceived, ServerType, message.ToFormatMessageString()));
+            // 房间断线标记 + 会话恢复通知（C204 两层协同）经事件桥接由热更侧监听器承接
+            EventDispatcher.Dispatch(0, new PlayerDisconnectedEventArgs(session.PlayerId, appSession.SessionId));
         }
 
         return ValueTask.CompletedTask;

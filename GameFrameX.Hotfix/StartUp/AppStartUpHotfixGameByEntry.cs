@@ -3,7 +3,7 @@
 //   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
 //   均受中华人民共和国及相关国际法律法规保护。
 //   are protected by the laws of the People's Republic of China and relevant international regulations.
-//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   使用本项目须严格遵守相应法律法规与开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
 //   This project is licensed solely under the Apache License 2.0,
@@ -12,24 +12,24 @@
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
 //   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
 //   侵犯他人合法权益等法律法规所禁止的行为！
-//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   or infringe upon the legitimate rights and interests of others as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
-//   Any legal disputes and liabilities arising from secondary development based on this project
-//   本项目组织与贡献者概不承担。
+//   Any legal disputes or liabilities arising from secondary development based on this project
+//   本组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
-//   GitHub Repository: https://github.com/GameFrameX
+//   GitHub Repository:  https://github.com/GameFrameX
 //   Gitee  仓库：https://gitee.com/GameFrameX
 //   Gitee Repository:  https://gitee.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
-//   CNB Repository:  https://cnb.cool/GameFrameX
+//   CNB Repository:    https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
 
 using GameFrameX.StartUp;
-using GameFrameX.Apps.Common.EventData;
+using GameFrameX.Core.Session;
 using GameFrameX.Network.RemoteMessaging;
 using GameFrameX.Discovery.Routing;
 using GameFrameX.Network.RemoteMessaging.Routing;
@@ -38,8 +38,36 @@ using GameFrameX.Network.RemoteMessaging.Unified;
 
 namespace GameFrameX.Hotfix.StartUp;
 
-internal partial class AppStartUpHotfixGame : AppStartUpBase, IHotfixBridge
+/// <summary>
+/// 热更桥接实例（C284 统一形态）：热更域只持业务生命周期——装载成功激活配置表/定时器/全局组件，
+/// 停止只清 Actor/定时器/会话；网络监听与运行至退出周期归宿主（<c>AppStartUpGameServerBase</c> 模板）。
+/// </summary>
+/// <remarks>
+/// The hotfix bridge instance (the C284 unified shape): the hotfix domain holds only the business
+/// lifecycle — a successful load activates the config tables, timers and global components while
+/// the stop clears actors, timers and sessions; the network listeners and the run-until-exit cycle
+/// stay with the host (<c>AppStartUpGameServerBase</c> template).
+/// </remarks>
+internal class AppStartUpHotfixGame : AppStartUpBase, IHotfixBridge
 {
+    /// <summary>
+    /// 热更模块装载成功回调：纯业务生命周期激活（初始化 + 统一消息发送器装配 + 配置表 + 定时器 +
+    /// 全局组件）。热更重载（<paramref name="reload"/> = true）只清空代理缓存，不重复激活。
+    /// </summary>
+    /// <remarks>
+    /// The hotfix-module load-success callback: pure business-lifecycle activation (initialization,
+    /// the unified-message-sender wiring, config tables, timers and global components). A hot
+    /// reload (<paramref name="reload"/> = true) only clears the agent cache without re-activating.
+    /// C284 起不再起网络监听（监听所有权归宿主），也不分发 <c>ServiceOnline</c>（宿主
+    /// <c>OnStartupCompletedAsync</c> 是唯一分发点，避免与宿主缺省分发双派发）。
+    /// Since C284 this callback no longer starts network listeners (listener ownership stays with
+    /// the host) and no longer dispatches <c>ServiceOnline</c> (the host's
+    /// <c>OnStartupCompletedAsync</c> is the single dispatch point, avoiding a double dispatch
+    /// against the host default).
+    /// </remarks>
+    /// <param name="setting">应用程序配置 / The application setting.</param>
+    /// <param name="reload">是否为热更重载 / Whether this is a hot reload.</param>
+    /// <returns>一个任务，表示异步操作的结果，并返回加载是否成功的布尔值 / A task that completes with whether the load succeeded</returns>
     public async Task<bool> OnLoadSuccess(AppSetting setting, bool reload)
     {
         if (reload)
@@ -70,17 +98,56 @@ internal partial class AppStartUpHotfixGame : AppStartUpBase, IHotfixBridge
             GameFrameX.Network.RemoteMessaging.Routing.DiscoveryRoutingWire.AttachLocalDispatcher(new LocalEnvelopeDispatcher(localSender));
         }
 
-        await RunServer();
+        // 不管是不是重启服务器，都要加载配置（原 RunServer 首段；C284 起监听由宿主持有，热更只保纯生命周期激活）
+        await ConfigComponent.Instance.LoadConfig();
         // 启动定时器
         await QuartzTimer.Start();
         GlobalTimer.Start();
         await ComponentRegister.ActiveGlobalComponents();
-        EventDispatcher.Dispatch(0, new ServiceOnlineEventArgs(setting.ServerType, setting.ServerInstanceId, DateTime.UtcNow));
         return true;
     }
 
+    /// <summary>
+    /// 热更模块停止回调：纯业务清理——断开全部会话、停定时器、排空并回收 Actor。
+    /// </summary>
+    /// <remarks>
+    /// The hotfix-module stop callback: pure business cleanup — disconnects every session, stops
+    /// the timers, then drains and removes the actors. C284 起不再分发 <c>ServiceOffline</c>、
+    /// 不再触碰网络监听与运行时状态（宿主 <c>StopAsync</c> 是停机与 <c>ServiceOffline</c>
+    /// 分发的唯一入口；本回调只清热更域内业务状态）。
+    /// Since C284 this callback no longer dispatches <c>ServiceOffline</c> and no longer touches
+    /// the network listeners or the runtime state (the host <c>StopAsync</c> is the single entry
+    /// for the shutdown flow and the <c>ServiceOffline</c> dispatch; this callback only clears the
+    /// hotfix-domain business state).
+    /// </remarks>
+    /// <param name="message">停止原因 / The stop reason.</param>
+    /// <returns>一个任务，表示异步操作的结果 / A task that completes when the cleanup is done</returns>
     public async Task Stop(string message = "")
     {
-        await StopAsync(message);
+        // 断开所有连接
+        await PlayerSessionManager.Instance.RemoveAll();
+        // 取消所有未执行定时器
+        await QuartzTimer.Stop();
+        // 保证actor之前的任务都执行完毕
+        await ActorManager.AllFinish();
+        // 存储所有数据
+        await GlobalTimer.Stop();
+        // 删除所有actor
+        await ActorManager.RemoveAll();
+    }
+
+    /// <summary>
+    /// 基类抽象成员的最小实现：C284 统一形态下监听与「运行至退出」周期归宿主，热更实例不再自持
+    /// 运行循环，宿主不调用本方法。
+    /// </summary>
+    /// <remarks>
+    /// The minimal implementation of the base abstract member: under the C284 unified shape the
+    /// listeners and the run-until-exit cycle stay with the host, the hotfix instance no longer
+    /// runs its own loop, and the host never calls this method.
+    /// </remarks>
+    /// <returns>已完成的任务 / A completed task</returns>
+    public override Task StartAsync()
+    {
+        return Task.CompletedTask;
     }
 }
