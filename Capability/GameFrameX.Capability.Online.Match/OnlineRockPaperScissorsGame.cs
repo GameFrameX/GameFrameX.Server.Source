@@ -397,6 +397,24 @@ public sealed class OnlineRockPaperScissorsGame : IOnlineMatchGame
     /// <returns>玩家 → 真实出拳映射；无可回显局返回 null。</returns>
     private static Dictionary<long, OnlineRockPaperScissorsMove> FindLatestResolvedPlays(IReadOnlyList<OnlineMatchServerEvent> events, int currentRound)
     {
+        var payload = FindLatestResolvedPayload(events, currentRound);
+        if (payload == null)
+        {
+            return null;
+        }
+
+        return CollectPlays(payload);
+    }
+
+    /// <summary>
+    /// 倒序定位最近一次已结算局载荷：仅当其局数恰为当前局的上一局才返回；
+    /// 载荷解析失败或校验不通过即返回 null 终止（不再回扫更早事件）。
+    /// </summary>
+    /// <param name="events">事件流。</param>
+    /// <param name="currentRound">当前局数。</param>
+    /// <returns>可回显的单局结算载荷；无可回显局返回 null。</returns>
+    private static RoundResolvedPayload FindLatestResolvedPayload(IReadOnlyList<OnlineMatchServerEvent> events, int currentRound)
+    {
         if (events == null)
         {
             return null;
@@ -425,19 +443,29 @@ public sealed class OnlineRockPaperScissorsGame : IOnlineMatchGame
                 return null;
             }
 
-            var plays = new Dictionary<long, OnlineRockPaperScissorsMove>();
-            foreach (var play in payload.Plays)
-            {
-                if (play != null)
-                {
-                    plays[play.PlayerId] = play.Gesture;
-                }
-            }
-
-            return plays;
+            return payload;
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// 将已结算局载荷中的双方出拳收集为玩家 → 出拳映射（null 出拳条目跳过）。
+    /// </summary>
+    /// <param name="payload">已通过局数校验的单局结算载荷。</param>
+    /// <returns>玩家 → 真实出拳映射。</returns>
+    private static Dictionary<long, OnlineRockPaperScissorsMove> CollectPlays(RoundResolvedPayload payload)
+    {
+        var plays = new Dictionary<long, OnlineRockPaperScissorsMove>();
+        foreach (var play in payload.Plays)
+        {
+            if (play != null)
+            {
+                plays[play.PlayerId] = play.Gesture;
+            }
+        }
+
+        return plays;
     }
 
     /// <summary>
