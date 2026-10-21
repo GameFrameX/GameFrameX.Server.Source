@@ -148,34 +148,38 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
     }
 
     /// <summary>
-    /// Role 服务启动 hook（缺省 = Social 型）：aop 反射装配 → 进程内热更加载 → 网络监听启动。
-    /// 缺省取向 = 18/19 多数形态（Social + 17 个标准 Role）；Game 型覆写为热更模块装载 + Online admin。
+    /// Role 服务启动 hook（缺省 = 统一形态）：热更模块装载（激活热更业务生命周期）→ 网络监听启动。
     /// </summary>
     /// <remarks>
-    /// The role-services hook (default = the Social shape): aop assembly by reflection, in-process
-    /// hotfix loading and network listener startup. The default follows the 18-of-19 majority shape
-    /// (Social plus the 17 predefined roles); the Game shape overrides it with hotfix module loading
-    /// and the optional Online admin. aop 装配自序列最前段挪入本 hook 首段：唯一消费方是
-    /// <c>StartServerAsync</c>，纯反射收集无 DB/状态依赖，位置后移效果等价。
+    /// The role-services hook (default = the unified shape): hotfix module loading (which activates the
+    /// hotfix business lifecycle) followed by the host network listener startup. 装载走
+    /// <see cref="HotfixManager.LoadHotfixModule(AppSetting, HotfixLoadOptions)"/>（异步入口）：装载成功经
+    /// 桥接 <c>IHotfixBridge.OnLoadSuccess</c> 激活热更生命周期（配置表/定时器/全局组件），
+    /// 监听所有权在宿主；同路径幂等守卫使 --AllInOne 多 Role 的重复装载短路返回。
+    /// Loading goes through <see cref="HotfixManager.LoadHotfixModule(AppSetting, HotfixLoadOptions)"/>
+    /// (the async entry): a successful load activates the hotfix lifecycle (config tables, timers, global
+    /// components) through the <c>IHotfixBridge.OnLoadSuccess</c> callback while listener ownership stays
+    /// with the host; the same-path idempotency guard short-circuits repeated loads by extra roles in
+    /// --AllInOne. aop 装配自序列最前段挪入本 hook 首段：唯一消费方是 <c>StartServerAsync</c>，
+    /// 纯反射收集无 DB/状态依赖。
     /// The aop assembly moved here from the very front of the sequence: its only consumer is
-    /// <c>StartServerAsync</c>, it is pure reflection with no database or state dependency, so the
-    /// relocation is effect-equivalent.
+    /// <c>StartServerAsync</c>, it is pure reflection with no database or state dependency.
     /// </remarks>
     /// <returns>表示 hook 操作的异步任务 / A task representing the hook operation</returns>
     protected virtual async Task StartRoleServicesAsync()
     {
-        HotfixManager.LoadHotfix(Setting);
+        await HotfixManager.LoadHotfixModule(Setting);
         await StartServerAsync<DefaultMessageDecoderHandler, DefaultMessageEncoderHandler>(new DefaultMessageCompressHandler(), new DefaultMessageDecompressHandler(), HotfixManager.GetListHttpHandler(), HotfixManager.GetHttpHandler);
     }
 
     /// <summary>
-    /// 启动完成 hook（缺省 = Social 型）：网络监听就绪后分发 <c>ServiceOnline</c> 事件。
-    /// Game 型覆写为 <c>GameAppRuntime.MarkStarted</c>（无上下线事件面）。
+    /// 启动完成 hook（缺省 = 统一形态，全 Role 生效）：网络监听就绪后分发 <c>ServiceOnline</c> 事件
+    ///（唯一分发点——热更侧不分发，C284 单源化）。
     /// </summary>
     /// <remarks>
-    /// The startup-completed hook (default = the Social shape): dispatches the <c>ServiceOnline</c>
-    /// event once the network listeners are up. The Game shape overrides it with
-    /// <c>GameAppRuntime.MarkStarted</c> (no online/offline event surface).
+    /// The startup-completed hook (default = the unified shape, effective for every role): dispatches the
+    /// <c>ServiceOnline</c> event once the network listeners are up — the single dispatch point (the
+    /// hotfix side no longer dispatches it, unified by C284).
     /// </remarks>
     /// <returns>表示 hook 操作的异步任务 / A task representing the hook operation</returns>
     protected virtual Task OnStartupCompletedAsync()
@@ -220,14 +224,13 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
     }
 
     /// <summary>
-    /// 停机钩子：护栏放行后、基类停机流程前回调恰好一次，缺省 = Social 型 <c>ServiceOffline</c> 事件分发。
-    /// Game 型覆写为空实现（HEAD 行为——Game 无上下线事件面）。
+    /// 停机钩子：护栏放行后、基类停机流程前回调恰好一次，缺省 = <c>ServiceOffline</c> 事件分发
+    ///（唯一分发点——热更侧不分发，C284 单源化）。
     /// </summary>
     /// <remarks>
     /// The stopping hook invoked exactly once after the guard admits the first stop and before the
-    /// base stop flow; the default follows the Social-shape majority and dispatches the
-    /// <c>ServiceOffline</c> event. The Game shape overrides it with a no-op (the HEAD behaviour —
-    /// Game has no online/offline event surface).
+    /// base stop flow; the default dispatches the <c>ServiceOffline</c> event — the single dispatch
+    /// point (the hotfix side no longer dispatches it, unified by C284).
     /// </remarks>
     /// <param name="message">终止原因（首个 <see cref="StopAsync(string)"/> 调用透传）/ The termination reason passed through by the first stop call</param>
     /// <returns>表示钩子操作的异步任务 / A task representing the hook operation</returns>
@@ -238,15 +241,16 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
     }
 
     /// <summary>
-    /// 退出清理 hook（缺省 = Social 型）：自停——护栏内的 <see cref="StopAsync(string)"/>，
+    /// 退出清理 hook（缺省 = 统一形态）：自停——护栏内的 <see cref="StopAsync(string)"/>，
     /// 宿主逆序停机先到时本调用被护栏吸收，<c>ServiceOffline</c> 仍恰好一次。
-    /// Game 型覆写为 Online admin 停 + 热更模块停。
+    /// Game 型覆写为「Online 撤桥停 admin → 宿主停机 → 热更模块业务清理」三段编排。
     /// </summary>
     /// <remarks>
-    /// The exit-cleanup hook (default = the Social shape): self-stop through the guarded
+    /// The exit-cleanup hook (default = the unified shape): self-stop through the guarded
     /// <see cref="StopAsync(string)"/> — when the host's reverse-order stop wins
     /// the race, the guard absorbs this call and <c>ServiceOffline</c> still fires exactly once.
-    /// The Game shape overrides it with the Online admin stop plus the hotfix module stop.
+    /// The Game shape overrides it with the three-phase orchestration: Online bridge retraction and
+    /// admin stop, the host stop, then the hotfix module's business cleanup.
     /// </remarks>
     /// <param name="exitMessage">退出原因（可能为 null——启动失败路径未获得退出消息）/ The exit reason (may be null on the startup-failure path)</param>
     /// <returns>表示 hook 操作的异步任务 / A task representing the hook operation</returns>
@@ -383,14 +387,13 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
     }
 
     /// <summary>
-    /// 消息处理器解析（Social 型）：接热更注册表按消息 ID 解析处理器。
+    /// 消息处理器解析（统一形态，全 Role 生效）：接热更注册表按消息 ID 解析处理器。
     /// </summary>
     /// <remarks>
-    /// The Social-shape resolution hook of the base package funnel: bridges the hotfix
-    /// message-handler registry (<c>HotfixManager.GetMessageHandler</c>). Messages without a
-    /// registered handler return <c>null</c> and hit the funnel's "handler not found" error
-    /// log. The Game shape keeps its base default (no resolution source) — its listeners live
-    /// inside the hotfix module instance with their own package handler.
+    /// The resolution hook of the base package funnel (the unified shape, effective for every role):
+    /// bridges the hotfix message-handler registry (<c>HotfixManager.GetMessageHandler</c>).
+    /// Messages without a registered handler return <c>null</c> and hit the funnel's
+    /// "handler not found" error log.
     /// </remarks>
     /// <param name="messageId">消息ID / The message identifier</param>
     /// <returns>处理器实例；未注册时为 <c>null</c> / The handler instance, or <c>null</c> when unregistered</returns>
@@ -400,13 +403,12 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
     }
 
     /// <summary>
-    /// 回复心跳消息（Social 型）：回显请求 UniqueId 的池化 NotifyHeartBeat 保活回包。
+    /// 回复心跳消息（统一形态，全 Role 生效）：回显请求 UniqueId 的池化 NotifyHeartBeat 保活回包。
     /// </summary>
     /// <remarks>
-    /// The Social-shape keepalive reply: echoes the request's UniqueId in a pooled
-    /// <c>NotifyHeartBeat</c> carrying the server timestamp, mirroring the Game shape's
-    /// <c>AppStartUpHotfixGame.ReplyHeartBeatAsync</c> semantics. The receive-time stamping
-    /// happens in the base funnel before this hook.
+    /// The keepalive reply (the unified shape, effective for every role): echoes the request's
+    /// UniqueId in a pooled <c>NotifyHeartBeat</c> carrying the server timestamp. The receive-time
+    /// stamping happens in the base funnel before this hook.
     /// </remarks>
     /// <param name="networkChannel">会话网络通道 / The session network channel</param>
     /// <param name="messagePackage">心跳消息包 / The heartbeat message package</param>
