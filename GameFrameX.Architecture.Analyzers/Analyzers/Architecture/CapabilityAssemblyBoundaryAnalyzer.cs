@@ -113,14 +113,8 @@ public sealed class CapabilityAssemblyBoundaryAnalyzer : DiagnosticAnalyzer
             return false;
         }
 
-        // 机制类型内部转交服务注册；不可用同名命名空间伪装这个身份。
         var type = caller as INamedTypeSymbol ?? caller.ContainingType;
-        if (SymbolEqualityComparer.Default.Equals(type, registration) || SymbolEqualityComparer.Default.Equals(type, builder))
-        {
-            return true;
-        }
-
-        if (kind == BoundaryKind.Builder && SymbolEqualityComparer.Default.Equals(type, assemblyLoader))
+        if (IsMechanismType(type, kind, registration, builder, assemblyLoader))
         {
             return true;
         }
@@ -130,6 +124,29 @@ public sealed class CapabilityAssemblyBoundaryAnalyzer : DiagnosticAnalyzer
             return false;
         }
 
+        if (ImplementsCapabilityModule(type, module))
+        {
+            return true;
+        }
+
+        // 组合根调用的能力包 hosting 扩展可预置 store/options；不把普通工具类一并豁免。
+        return kind == BoundaryKind.Builder && IsBuilderHostExtension(caller, builder);
+    }
+
+    // 机制类型内部转交服务注册；不可用同名命名空间伪装这个身份。
+    private static bool IsMechanismType(INamedTypeSymbol type, BoundaryKind kind, INamedTypeSymbol registration,
+        INamedTypeSymbol builder, INamedTypeSymbol assemblyLoader)
+    {
+        if (SymbolEqualityComparer.Default.Equals(type, registration) || SymbolEqualityComparer.Default.Equals(type, builder))
+        {
+            return true;
+        }
+
+        return kind == BoundaryKind.Builder && SymbolEqualityComparer.Default.Equals(type, assemblyLoader);
+    }
+
+    private static bool ImplementsCapabilityModule(INamedTypeSymbol type, INamedTypeSymbol module)
+    {
         for (var current = type; current != null; current = current.ContainingType)
         {
             if (module != null && current.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i, module)))
@@ -138,17 +155,18 @@ public sealed class CapabilityAssemblyBoundaryAnalyzer : DiagnosticAnalyzer
             }
         }
 
-        // 组合根调用的能力包 hosting 扩展可预置 store/options；不把普通工具类一并豁免。
-        if (kind == BoundaryKind.Builder)
+        return false;
+    }
+
+    private static bool IsBuilderHostExtension(ISymbol caller, INamedTypeSymbol builder)
+    {
+        for (var current = caller; current != null; current = current.ContainingSymbol)
         {
-            for (var current = caller; current != null; current = current.ContainingSymbol)
+            if (current is IMethodSymbol { IsExtensionMethod: true } extension
+                && extension.Parameters.Length > 0
+                && SymbolEqualityComparer.Default.Equals(extension.Parameters[0].Type, builder))
             {
-                if (current is IMethodSymbol { IsExtensionMethod: true } extension
-                    && extension.Parameters.Length > 0
-                    && SymbolEqualityComparer.Default.Equals(extension.Parameters[0].Type, builder))
-                {
-                    return true;
-                }
+                return true;
             }
         }
 
