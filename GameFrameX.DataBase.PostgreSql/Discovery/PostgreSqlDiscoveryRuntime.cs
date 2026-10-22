@@ -154,7 +154,7 @@ public static class PostgreSqlDiscoveryRuntime
         var selfDescriptor = DiscoveryRegistry.CreateSelfDescriptorFromEnvironment(primaryRoleName);
 
         // 玩家路由层装配（建表 / 建索引 + 装 SyncTarget）先于 Registry 启动：清理循环首轮要求 player_route 已建。
-        PlayerRouteResolverBootstrap.Attach(playerRouteStore, options.PlayerRouteFastPath).GetAwaiter().GetResult();
+        PlayerRouteResolverBootstrap.AttachAsync(playerRouteStore, options.PlayerRouteFastPath).GetAwaiter().GetResult();
 
         _registry = new DiscoveryRegistry(heartbeatStore, playerRouteStore, selfDescriptor, null, options.TtlCleanupInterval);
         _registry.StartAsync(CancellationToken.None).GetAwaiter().GetResult();

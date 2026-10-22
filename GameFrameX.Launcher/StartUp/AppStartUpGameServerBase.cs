@@ -104,7 +104,7 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
             LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartEnd));
 
             LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.ComponentRegisterBegin));
-            await ComponentRegister.Init(typeof(AppsHandler).Assembly);
+            await ComponentRegister.InitAsync(typeof(AppsHandler).Assembly);
             LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.ComponentRegisterEnd));
 
             await StartRoleServicesAsync();
@@ -153,10 +153,10 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
     /// <remarks>
     /// The role-services hook (default = the unified shape): hotfix module loading (which activates the
     /// hotfix business lifecycle) followed by the host network listener startup. 装载走
-    /// <see cref="HotfixManager.LoadHotfixModule(AppSetting, HotfixLoadOptions)"/>（异步入口）：装载成功经
+    /// <see cref="HotfixManager.LoadHotfixModuleAsync(AppSetting, HotfixLoadOptions)"/>（异步入口）：装载成功经
     /// 桥接 <c>IHotfixBridge.OnLoadSuccess</c> 激活热更生命周期（配置表/定时器/全局组件），
     /// 监听所有权在宿主；同路径幂等守卫使 --AllInOne 多 Role 的重复装载短路返回。
-    /// Loading goes through <see cref="HotfixManager.LoadHotfixModule(AppSetting, HotfixLoadOptions)"/>
+    /// Loading goes through <see cref="HotfixManager.LoadHotfixModuleAsync(AppSetting, HotfixLoadOptions)"/>
     /// (the async entry): a successful load activates the hotfix lifecycle (config tables, timers, global
     /// components) through the <c>IHotfixBridge.OnLoadSuccess</c> callback while listener ownership stays
     /// with the host; the same-path idempotency guard short-circuits repeated loads by extra roles in
@@ -168,7 +168,7 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
     /// <returns>表示 hook 操作的异步任务 / A task representing the hook operation</returns>
     protected virtual async Task StartRoleServicesAsync()
     {
-        await HotfixManager.LoadHotfixModule(Setting);
+        await HotfixManager.LoadHotfixModuleAsync(Setting);
         await StartServerAsync<DefaultMessageDecoderHandler, DefaultMessageEncoderHandler>(new DefaultMessageCompressHandler(), new DefaultMessageDecompressHandler(), HotfixManager.GetListHttpHandler(), HotfixManager.GetHttpHandler);
     }
 
@@ -308,7 +308,7 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
         // Contains 判重护栏：多 Role 进程（--AllInOne）下首个 Role 注册控制库，后续 Role 直接复用
         if (!GameDb.Contains(GameDb.ControlDatabaseName))
         {
-            var controlDatabaseInitResult = await GameDb.Init(new DbOptions { Provider = Setting.DatabaseProvider, ConnectionString = Setting.DataBaseUrl, Name = GameDb.ControlDatabaseName, IsDefault = false, IsUseTimeZone = Setting.IsUseTimeZone, });
+            var controlDatabaseInitResult = await GameDb.InitAsync(new DbOptions { Provider = Setting.DatabaseProvider, ConnectionString = Setting.DataBaseUrl, Name = GameDb.ControlDatabaseName, IsDefault = false, IsUseTimeZone = Setting.IsUseTimeZone, });
             if (controlDatabaseInitResult == false)
             {
                 throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));
@@ -378,7 +378,7 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
     {
         if (!GameDb.Contains(Setting.DataBaseName))
         {
-            var initResult = await GameDb.Init(new DbOptions { Provider = Setting.DatabaseProvider, ConnectionString = Setting.DataBaseUrl, Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
+            var initResult = await GameDb.InitAsync(new DbOptions { Provider = Setting.DatabaseProvider, ConnectionString = Setting.DataBaseUrl, Name = Setting.DataBaseName, IsUseTimeZone = Setting.IsUseTimeZone, });
             if (initResult == false)
             {
                 throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartFailed));

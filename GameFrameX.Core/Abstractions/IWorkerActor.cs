@@ -52,7 +52,7 @@ public interface IWorkerActor : IWorker
     /// <param name="timeOut">任务执行的超时时间(毫秒),默认为-1,将采用配置时间ActorQueueTimeOut</param>
     /// <param name="cancellationToken">用于取消操作的令牌</param>
     /// <returns>表示异步操作的Task对象</returns>
-    Task Enqueue(Action work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default);
+    Task EnqueueAsync(Action work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 将有返回值的委托入队
@@ -65,7 +65,7 @@ public interface IWorkerActor : IWorker
     /// <param name="cancellationToken">用于取消操作的令牌</param>
     /// <typeparam name="T">委托返回值的类型</typeparam>
     /// <returns>表示异步操作的Task<T/>对象，其结果为委托的返回值</returns>
-    Task<T> Enqueue<T>(Func<T> work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default);
+    Task<T> EnqueueAsync<T>(Func<T> work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 将返回Task的委托入队
@@ -77,7 +77,7 @@ public interface IWorkerActor : IWorker
     /// <param name="timeOut">任务执行的超时时间(毫秒),默认为-1,将采用配置时间ActorQueueTimeOut</param>
     /// <param name="cancellationToken">用于取消操作的令牌</param>
     /// <returns>表示异步操作的Task对象</returns>
-    Task Enqueue(Func<Task> work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default);
+    Task EnqueueAsync(Func<Task> work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 将返回Task<T/>的委托入队
@@ -90,5 +90,5 @@ public interface IWorkerActor : IWorker
     /// <param name="cancellationToken">用于取消操作的令牌</param>
     /// <typeparam name="T">异步操作返回值的类型</typeparam>
     /// <returns>表示异步操作的Task<T/>对象，其结果为委托的返回值</returns>
-    Task<T> Enqueue<T>(Func<Task<T>> work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default);
+    Task<T> EnqueueAsync<T>(Func<Task<T>> work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default);
 }

@@ -52,7 +52,7 @@ public interface IEventListener
     /// <param name="agent">组件代理，提供对组件的访问能力</param>
     /// <param name="gameEventArgs">需要处理的事件对象</param>
     /// <returns>一个表示异步操作的任务，当事件处理完成时完成</returns>
-    Task HandleEvent(IComponentAgent agent, GameEventArgs gameEventArgs);
+    Task HandleEventAsync(IComponentAgent agent, GameEventArgs gameEventArgs);
 
     /// <summary>
     /// 事件处理函数
@@ -60,5 +60,5 @@ public interface IEventListener
     /// </summary>
     /// <param name="gameEventArgs">需要处理的事件对象</param>
     /// <returns>一个表示异步操作的任务，当事件处理完成时完成</returns>
-    Task HandleEvent(GameEventArgs gameEventArgs);
+    Task HandleEventAsync(GameEventArgs gameEventArgs);
 }

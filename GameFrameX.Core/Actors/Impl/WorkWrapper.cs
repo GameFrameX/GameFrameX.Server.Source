@@ -67,7 +67,7 @@ public abstract class WorkWrapper
     /// 执行工作单元。子类实现不得向外抛出异常（异常一律经 TrySetException 传递给等待方）。
     /// </summary>
     /// <returns>工作单元任务</returns>
-    public abstract Task DoTask();
+    public abstract Task DoTaskAsync();
 
     /// <summary>
     /// 获取调用链

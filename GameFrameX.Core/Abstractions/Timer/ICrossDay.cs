@@ -39,5 +39,5 @@ public interface ICrossDay
     /// </summary>
     /// <param name="openServerDay">开服天数</param>
     /// <returns>表示异步操作的任务</returns>
-    public Task OnCrossDay(int openServerDay);
+    public Task OnCrossDayAsync(int openServerDay);
 }

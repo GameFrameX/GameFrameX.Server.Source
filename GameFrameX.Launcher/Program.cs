@@ -35,7 +35,7 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
-        await GameApp.Entry(args, () =>
+        await GameApp.EntryAsync(args, () =>
         {
             // CacheStateTypeManager（BSON Class Map 预注册）已随 Mongo 序列化指令内聚到 Provider 内，
             // Launcher 不再承担序列化准备；Mongo/PostgreSQL 互斥退化为纯部署配置选择

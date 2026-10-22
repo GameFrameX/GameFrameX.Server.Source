@@ -82,7 +82,7 @@ public sealed class ComponentAgentEventDispatchTests : IDisposable
         {
             if (!_componentsRegistered)
             {
-                ComponentRegister.Init(typeof(PlayerComponent).Assembly).GetAwaiter().GetResult();
+                ComponentRegister.InitAsync(typeof(PlayerComponent).Assembly).GetAwaiter().GetResult();
                 _componentsRegistered = true;
             }
 
@@ -116,14 +116,14 @@ public sealed class ComponentAgentEventDispatchTests : IDisposable
         Assert.NotEqual(playerActorType, serverActorType);
 
         var actorId = ActorIdGenerator.GetActorId(playerActorType, 1);
-        var agent = await ActorManager.GetComponentAgent<PlayerComponentAgent>(actorId);
+        var agent = await ActorManager.GetComponentAgentAsync<PlayerComponentAgent>(actorId);
         Assert.NotNull(agent);
 
         PlayerActorDispatchProbeEventListener.Reset();
         ServerActorDispatchProbeEventListener.Reset();
 
         agent.Dispatch(new ComponentAgentDispatchProbeEventArgs());
-        await ActorManager.AllFinish();
+        await ActorManager.AllFinishAsync();
 
         var recordedAgent = PlayerActorDispatchProbeEventListener.ReceivedAgent;
         Assert.NotNull(recordedAgent);
@@ -165,7 +165,7 @@ public sealed class ComponentAgentEventDispatchTests : IDisposable
         }
 
         /// <inheritdoc />
-        protected override Task HandleEvent(PlayerComponentAgent agent, GameEventArgs gameEventArgs)
+        protected override Task HandleEventAsync(PlayerComponentAgent agent, GameEventArgs gameEventArgs)
         {
             ReceivedAgent = agent;
             return Task.CompletedTask;
@@ -188,7 +188,7 @@ public sealed class ComponentAgentEventDispatchTests : IDisposable
         }
 
         /// <inheritdoc />
-        protected override Task HandleEvent(ServerComponentAgent agent, GameEventArgs gameEventArgs)
+        protected override Task HandleEventAsync(ServerComponentAgent agent, GameEventArgs gameEventArgs)
         {
             Triggered = true;
             return Task.CompletedTask;

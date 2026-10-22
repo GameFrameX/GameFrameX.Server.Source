@@ -482,7 +482,7 @@ public static class QuartzTimer
         {
             if (_scheduler == null)
             {
-                // Localization: CoreExceptions.Timer.StartNotAwaited - 使用定时器操作前必须先等待 QuartzTimer.Start 完成
+                // Localization: CoreExceptions.Timer.StartNotAwaited - 使用定时器操作前必须先等待 QuartzTimer.StartAsync 完成
                 throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.Timer.StartNotAwaited));
             }
 
@@ -517,7 +517,7 @@ public static class QuartzTimer
     /// <remarks>
     /// 启动调度器,使其开始处理已安排的任务
     /// </remarks>
-    public static async Task Start()
+    public static async Task StartAsync()
     {
         _scheduler = await SchedulerInitializer.Value;
         if (_scheduler.Status != SchedulerStatus.Running)
@@ -533,17 +533,17 @@ public static class QuartzTimer
     /// <remarks>
     /// 关闭调度器,停止所有正在运行的任务,并阻止新任务的触发
     /// </remarks>
-    public static Task Stop()
+    public static Task StopAsync()
     {
         if (!SchedulerInitializer.IsValueCreated && _scheduler == null)
         {
             return Task.CompletedTask;
         }
 
-        return StopAsync();
+        return StopCoreAsync();
     }
 
-    private static async Task StopAsync()
+    private static async Task StopCoreAsync()
     {
         var scheduler = _scheduler ?? await SchedulerInitializer.Value;
         if (scheduler.Status is not (SchedulerStatus.Shutdown or SchedulerStatus.ShuttingDown))
@@ -594,11 +594,11 @@ public static class QuartzTimer
                         if (baseType != null && baseType.GenericTypeArguments.Length > 0)
                         {
                             var agentType = baseType.GenericTypeArguments[0];
-                            var componentAgent = await ActorManager.GetComponentAgent(actorId, agentType);
+                            var componentAgent = await ActorManager.GetComponentAgentAsync(actorId, agentType);
                             if (componentAgent != null)
                             {
                                 GameEventArgs eventArgs = param as GameEventArgs;
-                                componentAgent.Tell(() => handler.InnerHandleTimer(componentAgent, eventArgs));
+                                componentAgent.Tell(() => handler.InnerHandleTimerAsync(componentAgent, eventArgs));
                                 return;
                             }
                         }

@@ -40,7 +40,7 @@ namespace GameFrameX.Hotfix.Logic.Player.Attribute;
 [Event(typeof(AttributeChangedEventArgs))]
 internal sealed class PlayerAttributeChangedEventListener : EventListener<PlayerAttributeComponentAgent>
 {
-    protected override async Task HandleEvent(PlayerAttributeComponentAgent agent, GameEventArgs gameEventArgs)
+    protected override async Task HandleEventAsync(PlayerAttributeComponentAgent agent, GameEventArgs gameEventArgs)
     {
         if (agent == null || !(gameEventArgs is AttributeChangedEventArgs args))
         {

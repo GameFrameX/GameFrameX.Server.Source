@@ -115,9 +115,9 @@ public class RewardGrantComponentAgent : StateComponentAgent<RewardGrantComponen
         // 普通道具批量写背包（在线推 notify、离线只持久化）。
         if (normalItemDic.Count > 0)
         {
-            var bagAgent = await ActorManager.GetComponentAgent<BagComponentAgent>();
+            var bagAgent = await ActorManager.GetComponentAgentAsync<BagComponentAgent>();
             var channel = PlayerSessionManager.Instance.GetByPlayerId(request.PlayerId)?.WorkChannel;
-            var bagState = await bagAgent.UpdateChanged(channel, normalItemDic);
+            var bagState = await bagAgent.UpdateChangedAsync(channel, normalItemDic);
             var bagFailed = bagState.IsNull();
 
             foreach (var idx in bagItemResultIndex)

@@ -40,7 +40,7 @@ internal sealed class ReqAddItemHandler : PlayerRpcComponentHandler<BagComponent
     {
         try
         {
-            await ComponentAgent.OnAddBagItem(NetworkChannel, request, response);
+            await ComponentAgent.OnAddBagItemAsync(NetworkChannel, request, response);
         }
         catch (Exception e)
         {

@@ -49,9 +49,9 @@ public class ServerComponentAgent : StateComponentAgent<ServerComponent, ServerS
     private readonly Dictionary<string, int> _offlineConfirmCounter = new(StringComparer.OrdinalIgnoreCase);
     private static readonly string[] TopologyServiceNames = { GameServerConst.Game.Name, GameServerConst.Social.Name, GameServerConst.Gateway.Name };
 
-    public override async Task<bool> Active()
+    public override async Task<bool> ActiveAsync()
     {
-        var isContinue = await base.Active();
+        var isContinue = await base.ActiveAsync();
         if (isContinue)
         {
             // 跨天定时器
@@ -67,7 +67,7 @@ public class ServerComponentAgent : StateComponentAgent<ServerComponent, ServerS
         return isContinue;
     }
 
-    private Task WatchServiceTopology()
+    private Task WatchServiceTopologyAsync()
     {
         var currentSnapshot = BuildCurrentTopologySnapshot();
         foreach (var currentPair in currentSnapshot)
@@ -186,14 +186,14 @@ public class ServerComponentAgent : StateComponentAgent<ServerComponent, ServerS
         return Math.Abs(BitConverter.ToInt64(hash, 0));
     }
 
-    private Task TestDelayTimer()
+    private Task TestDelayTimerAsync()
     {
         // Localization: Hotfix.Server.TestDelayTimerExecuted - ServerCompAgent.TestDelayTimer.延时3秒执行.执行一次
         LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Hotfix.Server.TestDelayTimerExecuted));
         return Task.CompletedTask;
     }
 
-    private Task TestScheduleTimer()
+    private Task TestScheduleTimerAsync()
     {
         // Localization: Hotfix.Server.TestScheduleTimerExecuted - ServerCompAgent.TestSchedueTimer.延时1秒执行.每隔10秒执行
         LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Hotfix.Server.TestScheduleTimerExecuted));
@@ -233,7 +233,7 @@ public class ServerComponentAgent : StateComponentAgent<ServerComponent, ServerS
 
     [Service]
     [ThreadSafe]
-    public virtual Task<int> GetWorldLevel()
+    public virtual Task<int> GetWorldLevelAsync()
     {
         return Task.FromResult(State.WorldLevel);
     }
@@ -248,7 +248,7 @@ public class ServerComponentAgent : StateComponentAgent<ServerComponent, ServerS
 
     [Discard]
     [ThreadSafe]
-    protected virtual Task DoSomething1()
+    protected virtual Task DoSomething1Async()
     {
         return Task.CompletedTask;
     }
@@ -261,24 +261,24 @@ public class ServerComponentAgent : StateComponentAgent<ServerComponent, ServerS
 
     [Discard]
     [TimeOut(12000)]
-    protected virtual Task DoSomething3()
+    protected virtual Task DoSomething3Async()
     {
         return Task.CompletedTask;
     }
 
     private class DelayTimer : TimerHandler<ServerComponentAgent>
     {
-        protected override Task HandleTimer(ServerComponentAgent agent, GameEventArgs gameEventArgs)
+        protected override Task HandleTimerAsync(ServerComponentAgent agent, GameEventArgs gameEventArgs)
         {
-            return agent.TestDelayTimer();
+            return agent.TestDelayTimerAsync();
         }
     }
 
     private class ScheduleTimer : TimerHandler<ServerComponentAgent>
     {
-        protected override Task HandleTimer(ServerComponentAgent agent, GameEventArgs gameEventArgs)
+        protected override Task HandleTimerAsync(ServerComponentAgent agent, GameEventArgs gameEventArgs)
         {
-            return agent.TestScheduleTimer();
+            return agent.TestScheduleTimerAsync();
         }
     }
 
@@ -287,22 +287,22 @@ public class ServerComponentAgent : StateComponentAgent<ServerComponent, ServerS
     /// </summary>
     private class CrossDayTimeHandler : TimerHandler<ServerComponentAgent>
     {
-        protected override async Task HandleTimer(ServerComponentAgent agent, GameEventArgs gameEventArgs)
+        protected override async Task HandleTimerAsync(ServerComponentAgent agent, GameEventArgs gameEventArgs)
         {
             // Localization: Hotfix.Server.CrossDayTimerExecuted - ServerCompAgent.CrossDayTimeHandler.跨天定时器执行{0}
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Hotfix.Server.CrossDayTimerExecuted, TimerHelper.CurrentDateTimeWithUtcFormat()));
             var crossDays = TimerHelper.GetCrossDaysWithUtc(agent.State.FirstStartTime);
 
-            await ActorManager.RoleCrossDay(crossDays);
-            await ActorManager.CrossDay(crossDays, GlobalConst.ActorTypeServer);
+            await ActorManager.RoleCrossDayAsync(crossDays);
+            await ActorManager.CrossDayAsync(crossDays, GlobalConst.ActorTypeServer);
         }
     }
 
     private class ServiceTopologyWatcherHandler : TimerHandler<ServerComponentAgent>
     {
-        protected override Task HandleTimer(ServerComponentAgent agent, GameEventArgs gameEventArgs)
+        protected override Task HandleTimerAsync(ServerComponentAgent agent, GameEventArgs gameEventArgs)
         {
-            return agent.WatchServiceTopology();
+            return agent.WatchServiceTopologyAsync();
         }
     }
     /*******************演示代码**************************/

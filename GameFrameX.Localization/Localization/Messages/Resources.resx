@@ -1311,7 +1311,7 @@
     <value>A known attribute value slot must be provided.</value>
   </data>
   <data name="CoreExceptions.Timer.StartNotAwaited" xml:space="preserve">
-    <value>QuartzTimer.Start must be awaited before using timer operations.</value>
+    <value>QuartzTimer.StartAsync must be awaited before using timer operations.</value>
   </data>
   <data name="CoreConfig.ByteBuf.ExceedMaxSize" xml:space="preserve">
     <value>exceed max size</value>
@@ -1879,7 +1879,7 @@
   </data>
 
   <data name="Core.ActorManager.ActorCrossDayLog" xml:space="preserve">
-    <value>ActorManager.CrossDay, CrossDay actor, actorId: {0}, actorType: {1}, message: Global Actor:{2} cross day execution</value>
+    <value>ActorManager.CrossDayAsync, CrossDay actor, actorId: {0}, actorType: {1}, message: Global Actor:{2} cross day execution</value>
   </data>
 
   <data name="Core.ActorManager.ActorForEachError" xml:space="preserve">
@@ -1887,35 +1887,35 @@
   </data>
 
   <data name="Core.ActorManager.CheckIdleRecycled" xml:space="preserve">
-    <value>ActorManager.CheckIdle, Actor recycled, actorId: {0}, actorType: {1}, message: actor recycled id:{2} type:{3}</value>
+    <value>ActorManager.CheckIdleAsync, Actor recycled, actorId: {0}, actorType: {1}, message: actor recycled id:{2} type:{3}</value>
   </data>
 
   <data name="Core.ActorManager.GlobalCompCrossDayCompleteLog" xml:space="preserve">
-    <value>ActorManager.CrossDay, GlobalCompCrossDayComplete, cost: {0}ms, message: Global comp cross day completed duration: {1}ms</value>
+    <value>ActorManager.CrossDayAsync, GlobalCompCrossDayComplete, cost: {0}ms, message: Global comp cross day completed duration: {1}ms</value>
   </data>
 
   <data name="Core.ActorManager.GlobalCompCrossDayTimeoutLog" xml:space="preserve">
-    <value>ActorManager.CrossDay, GlobalCompCrossDayTimeout, timeout: {0} seconds, message: Global comp cross day takes too long, will not block other comp cross day, current elapsed {1} seconds</value>
+    <value>ActorManager.CrossDayAsync, GlobalCompCrossDayTimeout, timeout: {0} seconds, message: Global comp cross day takes too long, will not block other comp cross day, current elapsed {1} seconds</value>
   </data>
 
   <data name="Core.ActorManager.NonPlayerCompCrossDayCompleteLog" xml:space="preserve">
-    <value>ActorManager.CrossDay, NonPlayerCompCrossDayComplete, cost: {0}ms, message: Non-player comp cross day completed duration: {1}ms</value>
+    <value>ActorManager.CrossDayAsync, NonPlayerCompCrossDayComplete, cost: {0}ms, message: Non-player comp cross day completed duration: {1}ms</value>
   </data>
 
   <data name="Core.ActorManager.NonPlayerCompCrossDayTimeoutLog" xml:space="preserve">
-    <value>ActorManager.CrossDay, NonPlayerCompCrossDayTimeout, timeout: {0} seconds, message: Non-player comp cross day takes too long, will not block player comp cross day, current elapsed {1} seconds</value>
+    <value>ActorManager.CrossDayAsync, NonPlayerCompCrossDayTimeout, timeout: {0} seconds, message: Non-player comp cross day takes too long, will not block player comp cross day, current elapsed {1} seconds</value>
   </data>
 
   <data name="Core.ActorManager.SaveAllStateErrorLog" xml:space="preserve">
-    <value>ActorManager.SaveAll, Save all actor state, message: save all state error\n{0}, error: {1}</value>
+    <value>ActorManager.SaveAllAsync, Save all actor state, message: save all state error\n{0}, error: {1}</value>
   </data>
 
   <data name="Core.ActorManager.SaveAllStateTimeLog" xml:space="preserve">
-    <value>ActorManager.SaveAll, Save all actor state time: {0} ms, message: save all state, use: {1}ms</value>
+    <value>ActorManager.SaveAllAsync, Save all actor state time: {0} ms, message: save all state, use: {1}ms</value>
   </data>
 
   <data name="Core.ActorManager.TimerSaveStateErrorLog" xml:space="preserve">
-    <value>ActorManager.TimerSave, Timer save all actor state error, message: timer save state error, error: {0}</value>
+    <value>ActorManager.TimerSaveAsync, Timer save all actor state error, message: timer save state error, error: {0}</value>
   </data>
 
   <data name="Core.ComponentRegister.ActivateComponentFailed" xml:space="preserve">
@@ -1951,59 +1951,59 @@
   </data>
 
   <data name="Core.MessageHandler.GetComponentAgentCacheComponentNull" xml:space="preserve">
-    <value>BaseComponentHandler.GetComponentAgent, CacheComponent is null, message type: {0}</value>
+    <value>BaseComponentHandler.GetComponentAgentAsync, CacheComponent is null, message type: {0}</value>
   </data>
 
   <data name="Core.MessageHandler.GetComponentFailed" xml:space="preserve">
-    <value>BaseComponentHandler.Init, get component failed, close channel, actorId: {0}, componentAgentType: {1}, exception:\n{2}</value>
+    <value>BaseComponentHandler.InitAsync, get component failed, close channel, actorId: {0}, componentAgentType: {1}, exception:\n{2}</value>
   </data>
 
   <data name="Core.MessageHandler.InnerActionCacheComponentNull" xml:space="preserve">
-    <value>BaseComponentHandler.InnerAction, CacheComponent is null, message type: {0}</value>
+    <value>BaseComponentHandler.InnerActionAsync, CacheComponent is null, message type: {0}</value>
   </data>
 
   <data name="Core.MessageHandler.InnerActionException" xml:space="preserve">
-    <value>BaseMessageHandler.InnerAction, Execution exception, message type: {0}, exception: {1}</value>
+    <value>BaseMessageHandler.InnerActionAsync, Execution exception, message type: {0}, exception: {1}</value>
   </data>
 
   <data name="Core.MessageHandler.InnerActionTimeout" xml:space="preserve">
-    <value>BaseMessageHandler.InnerAction, Execution timeout, message type: {0}, timeout: {1}, exception: {2}</value>
+    <value>BaseMessageHandler.InnerActionAsync, Execution timeout, message type: {0}, timeout: {1}, exception: {2}</value>
   </data>
 
   <data name="Core.MessageHandler.RpcExecutionTimeDebug" xml:space="preserve">
-    <value>BaseRpcMessageHandler.InnerActionAsync, Handler: {0} RequestMessage: {1} Message: Message handler:{2},UniqueId:{3} execution duration: {4} ms</value>
+    <value>BaseRpcMessageHandler.InnerActionCoreAsync, Handler: {0} RequestMessage: {1} Message: Message handler:{2},UniqueId:{3} execution duration: {4} ms</value>
   </data>
 
   <data name="Core.MessageHandler.RpcExecutionTimeWarning" xml:space="preserve">
-    <value>BaseRpcMessageHandler.InnerActionAsync, Handler: {0} RequestMessage: {1} Message: Message handler:{2},UniqueId:{3} execution duration: {4} ms</value>
+    <value>BaseRpcMessageHandler.InnerActionCoreAsync, Handler: {0} RequestMessage: {1} Message: Message handler:{2},UniqueId:{3} execution duration: {4} ms</value>
   </data>
 
   <data name="Core.MessageHandler.RpcExecutionTimeout" xml:space="preserve">
-    <value>BaseRpcMessageHandler.InnerAction RequestMessage: {0} Message: Execution timeout:{1}</value>
+    <value>BaseRpcMessageHandler.InnerActionAsync RequestMessage: {0} Message: Execution timeout:{1}</value>
   </data>
 
   <data name="Core.MessageHandler.RpcGetComponentAgentCacheComponentNull" xml:space="preserve">
-    <value>BaseRpcComponentHandler.GetComponentAgent, CacheComponent is null, message type: {0}</value>
+    <value>BaseRpcComponentHandler.GetComponentAgentAsync, CacheComponent is null, message type: {0}</value>
   </data>
 
   <data name="Core.MessageHandler.RpcGetComponentFailed" xml:space="preserve">
-    <value>BaseRpcComponentHandler.Init, get component failed, close channel, actorId: {0}, componentAgentType: {1}, exception:\n{2}</value>
+    <value>BaseRpcComponentHandler.InitAsync, get component failed, close channel, actorId: {0}, componentAgentType: {1}, exception:\n{2}</value>
   </data>
 
   <data name="Core.MessageHandler.RpcInnerActionCacheComponentNull" xml:space="preserve">
-    <value>BaseRpcComponentHandler.InnerAction, CacheComponent is null, message type: {0}</value>
+    <value>BaseRpcComponentHandler.InnerActionAsync, CacheComponent is null, message type: {0}</value>
   </data>
 
   <data name="Core.MessageHandler.RpcInnerActionException" xml:space="preserve">
-    <value>BaseRpcMessageHandler.InnerAction, Handler: {0} RequestMessage: {1} Message: {2}</value>
+    <value>BaseRpcMessageHandler.InnerActionAsync, Handler: {0} RequestMessage: {1} Message: {2}</value>
   </data>
 
   <data name="Core.StateComponent.SaveAllStateErrorLog" xml:space="preserve">
-    <value>StateComponent.SaveAll save all state error\n{0}</value>
+    <value>StateComponent.SaveAllAsync save all state error\n{0}</value>
   </data>
 
   <data name="Core.StateComponent.SaveAllStateTimeLog" xml:space="preserve">
-    <value>StateComponent.SaveAll save all state, use: {0}ms</value>
+    <value>StateComponent.SaveAllAsync save all state, use: {0}ms</value>
   </data>
 
   <data name="Core.StateComponent.SaveDataFailedLog" xml:space="preserve">
@@ -2011,7 +2011,7 @@
   </data>
 
   <data name="Core.StateComponent.SaveStateFailedLog" xml:space="preserve">
-    <value>StateComponent.SaveState Failed StateId: {0} , Error: {1} , Message: StateComp.SaveState.Failed.StateId:{2},{3}</value>
+    <value>StateComponent.SaveStateAsync Failed StateId: {0} , Error: {1} , Message: StateComp.SaveState.Failed.StateId:{2},{3}</value>
   </data>
 
   <data name="Core.StateComponent.StateSaveBackDetail" xml:space="preserve">
@@ -2019,7 +2019,7 @@
   </data>
 
   <data name="Core.StateComponent.TimerSaveStateErrorLog" xml:space="preserve">
-    <value>StateComponent.TimerSave timer save state error, exception: {0}</value>
+    <value>StateComponent.TimerSaveAsync timer save state error, exception: {0}</value>
   </data>
 
   <data name="Core.Timer.LogError" xml:space="preserve">

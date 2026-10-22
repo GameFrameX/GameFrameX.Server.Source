@@ -86,7 +86,7 @@ public class HttpSecurityDefaultsTests
         var handlerCalled = false;
         var context = CreateJsonContext("{}");
 
-        await HttpHandler.HandleRequest(context, _ =>
+        await HttpHandler.HandleRequestAsync(context, _ =>
         {
             return new SignedTestHttpHandler(() => handlerCalled = true);
         });
@@ -111,7 +111,7 @@ public class HttpSecurityDefaultsTests
             var context = CreateJsonContext("{}");
             context.Request.QueryString = new QueryString($"?sign={Uri.EscapeDataString(sign)}&timestamp={timestamp}");
 
-            await HttpHandler.HandleRequest(context, _ => new SignedTestHttpHandler(() => handlerCalled = true));
+            await HttpHandler.HandleRequestAsync(context, _ => new SignedTestHttpHandler(() => handlerCalled = true));
 
             Assert.True(handlerCalled);
             Assert.Equal(StatusCodes.Status200OK, context.Response.StatusCode);
@@ -142,7 +142,7 @@ public class HttpSecurityDefaultsTests
             var context = CreateJsonContext("{}");
             context.Request.QueryString = new QueryString($"?sign={Uri.EscapeDataString(sign)}&timestamp={timestamp}");
 
-            await HttpHandler.HandleRequest(context, _ => new SignedTestHttpHandler(() => handlerCalled = true));
+            await HttpHandler.HandleRequestAsync(context, _ => new SignedTestHttpHandler(() => handlerCalled = true));
 
             Assert.False(handlerCalled);
             Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
@@ -170,7 +170,7 @@ public class HttpSecurityDefaultsTests
             var context = CreateJsonContext("{}");
             context.Request.QueryString = new QueryString($"?sign=not-a-valid-signature&timestamp={timestamp}");
 
-            await HttpHandler.HandleRequest(context, _ => new SignedTestHttpHandler(() => handlerCalled = true));
+            await HttpHandler.HandleRequestAsync(context, _ => new SignedTestHttpHandler(() => handlerCalled = true));
 
             Assert.False(handlerCalled);
             Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
@@ -199,7 +199,7 @@ public class HttpSecurityDefaultsTests
             var context = CreateJsonContext("{}");
             context.Request.QueryString = new QueryString($"?sign={Uri.EscapeDataString(sign)}&timestamp={timestamp}");
 
-            await HttpHandler.HandleRequest(context, _ => new SignedTestHttpHandler(() => handlerCalled = true));
+            await HttpHandler.HandleRequestAsync(context, _ => new SignedTestHttpHandler(() => handlerCalled = true));
 
             Assert.False(handlerCalled);
             Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
@@ -229,7 +229,7 @@ public class HttpSecurityDefaultsTests
             var context = CreateJsonContext("{}");
             context.Request.QueryString = new QueryString($"?sign={Uri.EscapeDataString(sign)}&timestamp={timestamp}");
 
-            await HttpHandler.HandleRequest(context, _ => new SignedTestHttpHandler(() => handlerCalled = true));
+            await HttpHandler.HandleRequestAsync(context, _ => new SignedTestHttpHandler(() => handlerCalled = true));
 
             Assert.False(handlerCalled);
             Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
@@ -279,7 +279,7 @@ public class HttpSecurityDefaultsTests
         var handler = new SecureTestHttpHandler(() => throw new InvalidOperationException(secretMarker));
         var context = CreateJsonContext("{}");
 
-        await HttpHandler.HandleRequest(context, _ => handler);
+        await HttpHandler.HandleRequestAsync(context, _ => handler);
 
         context.Response.Body.Seek(0, SeekOrigin.Begin);
         using var reader = new StreamReader(context.Response.Body, Encoding.UTF8);
@@ -385,7 +385,7 @@ public class HttpSecurityDefaultsTests
             _onAction = onAction;
         }
 
-        public override Task<string> Action(HttpActionContext context)
+        public override Task<string> ActionAsync(HttpActionContext context)
         {
             _onAction?.Invoke();
             return Task.FromResult("{}");

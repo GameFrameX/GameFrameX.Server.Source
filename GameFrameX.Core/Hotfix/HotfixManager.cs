@@ -168,7 +168,7 @@ public static class HotfixManager
     /// <param name="setting">应用程序配置 / The application setting.</param>
     /// <param name="options">装载参数（<c>null</c> 走默认值） / Load options (<c>null</c> for defaults).</param>
     /// <returns>返回是否加载成功 / Whether the load succeeded.</returns>
-    public static async Task<bool> LoadHotfixModule(AppSetting setting, HotfixLoadOptions options = null)
+    public static async Task<bool> LoadHotfixModuleAsync(AppSetting setting, HotfixLoadOptions options = null)
     {
         var loadOptions = options ?? new HotfixLoadOptions();
         var path = loadOptions.ResolveAssemblyFilePath();
@@ -195,7 +195,7 @@ public static class HotfixManager
             return false;
         }
 
-        return await Host.Load(hotfixModule, _baseSetting, reload);
+        return await Host.LoadAsync(hotfixModule, _baseSetting, reload);
     }
 
     /// <summary>
@@ -204,9 +204,9 @@ public static class HotfixManager
     /// </summary>
     /// <param name="message">停止原因 / The stop reason.</param>
     /// <returns>停止任务 / The stop task.</returns>
-    public static Task Stop(string message = "")
+    public static Task StopAsync(string message = "")
     {
-        return Host.Stop(message);
+        return Host.StopAsync(message);
     }
 
     /// <summary>

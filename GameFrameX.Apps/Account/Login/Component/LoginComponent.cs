@@ -37,7 +37,7 @@ public sealed class LoginComponent : StateComponent<LoginState>
 {
     protected override bool IsCreateDefaultState { get; set; } = false;
 
-    public async Task<PlayerState> OnPlayerLogin(ReqPlayerLogin reqLogin)
+    public async Task<PlayerState> OnPlayerLoginAsync(ReqPlayerLogin reqLogin)
     {
         AppMetrics.PlayerLogin.Add(1);
         return await GameDb.FindAsync<PlayerState>(m => m.Id == reqLogin.Id, false);

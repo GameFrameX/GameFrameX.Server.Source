@@ -100,7 +100,7 @@ public abstract class BaseComponent : IComponent, IState
     /// 激活组件
     /// </summary>
     /// <returns>激活任务</returns>
-    public virtual Task Active()
+    public virtual Task ActiveAsync()
     {
         if (IsActive)
         {
@@ -115,14 +115,14 @@ public abstract class BaseComponent : IComponent, IState
     /// 反激活组件
     /// </summary>
     /// <returns>反激活任务</returns>
-    public virtual async Task Inactive()
+    public virtual async Task InactiveAsync()
     {
         var agent = GetAgent();
         if (agent != null)
         {
-            await agent.BeforeInActivation();
-            await agent.Inactive();
-            await agent.AfterInActivation();
+            await agent.BeforeInActivationAsync();
+            await agent.InactiveAsync();
+            await agent.AfterInActivationAsync();
         }
 
         IsActive = false;

@@ -62,7 +62,7 @@ public static class GlobalTimer
         // Localization: Core.Timer.GlobalTimerInitializationStart - 初始化全局定时开始...
         LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.Timer.GlobalTimerInitializationStart));
         IsWorking = true;
-        _loopTask = Task.Run(Loop);
+        _loopTask = Task.Run(LoopAsync);
         // Localization: Core.Timer.GlobalTimerInitializationComplete - 初始化全局定时完成...
         LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.Timer.GlobalTimerInitializationComplete));
     }
@@ -70,7 +70,7 @@ public static class GlobalTimer
     /// <summary>
     /// 循环执行的方法
     /// </summary>
-    private static async Task Loop()
+    private static async Task LoopAsync()
     {
         var nextSaveTime = NextSaveTime();
         var onceDelay = TimeSpan.FromSeconds(5);
@@ -94,14 +94,14 @@ public static class GlobalTimer
             var startTime = TimerHelper.UnixTimeMilliseconds();
             // Localization: Core.Timer.SaveStart - 开始定时回存 时间:{0}
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.SaveStart, TimerHelper.CurrentDateTimeWithTimeZoneFormat()));
-            await StateComponent.TimerSave();
+            await StateComponent.TimerSaveAsync();
             var endTime = TimerHelper.UnixTimeMilliseconds();
             var cost = endTime - startTime;
             // Localization: Core.Timer.SaveEnd - 结束定时回存 时间:{0} 耗时: {1}ms
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.SaveEnd, TimerHelper.CurrentDateTimeWithTimeZoneFormat(), cost));
             // Localization: Core.Timer.ActorRecycleStart - 开始回收空闲Actor 时间:{0}
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.ActorRecycleStart, TimerHelper.CurrentDateTimeWithTimeZoneFormat()));
-            await ActorManager.CheckIdle();
+            await ActorManager.CheckIdleAsync();
             currentTime = TimerHelper.UnixTimeMilliseconds();
             // Localization: Core.Timer.ActorRecycleEnd - 结束回收空闲Actor 时间:{0}
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.ActorRecycleEnd, TimerHelper.CurrentDateTimeWithTimeZoneFormat()));
@@ -124,7 +124,7 @@ public static class GlobalTimer
     /// <summary>
     /// 停止全局定时
     /// </summary>
-    public static async Task Stop()
+    public static async Task StopAsync()
     {
         Console.WriteLine(LocalizationService.GetString(Localization.Keys.Core.Timer.GlobalTimerStopStart));
         IsWorking = false;
@@ -133,7 +133,7 @@ public static class GlobalTimer
             await _loopTask;
         }
 
-        await StateComponent.SaveAll(true);
+        await StateComponent.SaveAllAsync(true);
         await GameDb.CloseAsync();
         Console.WriteLine(LocalizationService.GetString(Localization.Keys.Core.Timer.GlobalTimerStopComplete));
     }

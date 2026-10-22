@@ -122,17 +122,17 @@ internal static class SessionResumeDomainBridge
 
         // Core 绑定：通道 ActorId + 会话玩家位（含旧僵尸连接的顶号编排：通知 → Close → Remove → 绑定）。
         networkChannel.SetData(GlobalConst.ActorIdKey, playerId);
-        await PlayerSessionManager.Instance.UpdateSession(sessionId, playerId, playerId.ToString(), NotifyDuplicateLoginAsync);
+        await PlayerSessionManager.Instance.UpdateSessionAsync(sessionId, playerId, playerId.ToString(), NotifyDuplicateLoginAsync);
 
         // 业务在线还原（镜像登录尾段：OnRoleOnline + Room 重连标记）。
         EventDispatcher.Dispatch(playerId, new OnRoleOnlineEventArgs());
-        var roomComp = await ActorManager.GetComponentAgent<RoomComponentAgent>();
-        await roomComp.MarkPlayerReconnected(playerId);
+        var roomComp = await ActorManager.GetComponentAgentAsync<RoomComponentAgent>();
+        await roomComp.MarkPlayerReconnectedAsync(playerId);
 
         // 属性快照 + 邮件懒同步（客户端重连后状态重建，与登录同口径）。
-        var attributeComponentAgent = await ActorManager.GetComponentAgent<PlayerAttributeComponentAgent>(playerId);
+        var attributeComponentAgent = await ActorManager.GetComponentAgentAsync<PlayerAttributeComponentAgent>(playerId);
         await networkChannel.WriteAsync(attributeComponentAgent.BuildSyncSnapshot());
-        var mailAgent = await ActorManager.GetComponentAgent<MailComponentAgent>(playerId);
+        var mailAgent = await ActorManager.GetComponentAgentAsync<MailComponentAgent>(playerId);
         await mailAgent.SyncAsync();
 
         // 对局归属核对与恢复（无对局 = Resumed=false 空回执，非失败；失败只降级 Recovered）。

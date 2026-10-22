@@ -40,7 +40,7 @@ internal sealed class ReqRemoveItemHandler : PlayerRpcComponentHandler<BagCompon
     {
         try
         {
-            await ComponentAgent.OnRemoveBagItem(NetworkChannel, request, rsponse);
+            await ComponentAgent.OnRemoveBagItemAsync(NetworkChannel, request, rsponse);
         }
         catch (Exception e)
         {

@@ -42,7 +42,7 @@ namespace GameFrameX.Launcher.Online;
 /// <c>UseOnlineHotfixRollbackExecutor</c> 注入（Operations 侧服务探测即得非 null，消除恒缺席 8002）。
 /// <para>
 /// 切换时序不变量（红线）：
-/// ① <b>单次装载入口</b>——切换 = 单次 <see cref="HotfixManager.LoadHotfixModule(AppSetting, HotfixLoadOptions)"/>：
+/// ① <b>单次装载入口</b>——切换 = 单次 <see cref="HotfixManager.LoadHotfixModuleAsync(AppSetting, HotfixLoadOptions)"/>：
 /// 入口内部完成 同路径幂等守卫 → 目录兜底 → <c>Init(reload)</c> → 旧模块 <c>Retire</c>（10 分钟退役宽限，
 /// 宽限期内 in-flight 请求按程序集身份路由到原模块，宽限排空后由退役链 Unload + GC 验证，C216 契约）→
 /// 当前指针同步切换 → 桥接 <c>OnLoadSuccess</c>。本执行器<b>不直接调用 <c>Unload()</c></b>——
@@ -98,7 +98,7 @@ public sealed class HotfixManagerRollbackExecutor : IOnlineHotfixRollbackExecuto
             }
 
             var originalAssemblyPath = HotfixManager.HotfixAssembly?.Location;
-            var loaded = await HotfixManager.LoadHotfixModule(_setting, new HotfixLoadOptions { Version = targetVersion, }).ConfigureAwait(false);
+            var loaded = await HotfixManager.LoadHotfixModuleAsync(_setting, new HotfixLoadOptions { Version = targetVersion, }).ConfigureAwait(false);
             if (!loaded || !IsTargetLoaded(targetPath))
             {
                 var switchFailure = loaded ? "装载路径校验不符" : "装载入口返回失败";
@@ -144,7 +144,7 @@ public sealed class HotfixManagerRollbackExecutor : IOnlineHotfixRollbackExecuto
             return;
         }
 
-        var recovered = await HotfixManager.LoadHotfixModule(_setting, BuildOptionsFromLoadedPath(originalAssemblyPath)).ConfigureAwait(false);
+        var recovered = await HotfixManager.LoadHotfixModuleAsync(_setting, BuildOptionsFromLoadedPath(originalAssemblyPath)).ConfigureAwait(false);
         if (!recovered || !string.Equals(HotfixManager.HotfixAssembly?.Location, originalAssemblyPath, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("原版本重载未确认（装载路径不符）：" + originalAssemblyPath);

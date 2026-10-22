@@ -45,7 +45,7 @@ public sealed class GetOnlinePlayerListHttpHandler : BaseHttpHandler
     /// </summary>
     /// <param name="context"></param>
     /// <returns></returns>
-    public override Task<string> Action(HttpActionContext context)
+    public override Task<string> ActionAsync(HttpActionContext context)
     {
         GetOnlinePlayerListRequest parameters = (GetOnlinePlayerListRequest)context.Request;
         var response = PlayerSessionManager.Instance.GetPageList(parameters.PageSize, parameters.PageIndex);

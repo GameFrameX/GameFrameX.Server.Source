@@ -222,7 +222,7 @@ public sealed class HotfixManagerRollbackExecutorTests : IDisposable
     /// <param name="version">版本目录名。</param>
     private static async Task LoadVersion(string version)
     {
-        Assert.True(await HotfixManager.LoadHotfixModule(null, new HotfixLoadOptions { Version = version, }));
+        Assert.True(await HotfixManager.LoadHotfixModuleAsync(null, new HotfixLoadOptions { Version = version, }));
     }
 
     /// <summary>

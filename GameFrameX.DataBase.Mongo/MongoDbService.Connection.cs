@@ -48,7 +48,7 @@ public sealed partial class MongoDbService
     /// </remarks>
     /// <param name="dbOptions">数据库配置选项 / Database configuration options</param>
     /// <returns>返回数据库是否初始化成功 / Returns whether the database was initialized successfully</returns>
-    public async Task<bool> Open(DbOptions dbOptions)
+    public async Task<bool> OpenAsync(DbOptions dbOptions)
     {
         ArgumentNullException.ThrowIfNull(dbOptions);
         ArgumentNullException.ThrowIfNull(dbOptions.ConnectionString, nameof(dbOptions.ConnectionString));
@@ -113,7 +113,7 @@ public sealed partial class MongoDbService
                     ChangeAvailabilityState(DatabaseAvailabilityState.Healthy, "open_success");
                 }
 
-                DbOperationLatencyMilliseconds.Record(openStopwatch.Elapsed.TotalMilliseconds, new TagList { { "op", "open" }, { "name", nameof(Open) }, { "success", true }, });
+                DbOperationLatencyMilliseconds.Record(openStopwatch.Elapsed.TotalMilliseconds, new TagList { { "op", "open" }, { "name", nameof(OpenAsync) }, { "success", true }, });
                 // Localization: Database.Mongo.OpenInitializedSuccessfully - MongoDbService.Open {0} {1} MongoDB服务初始化成功，连接字符串：{2}，数据库名称：{3}
                 LogHelper.Info(LocalizationService.GetString(Localization.Keys.Database.Mongo.OpenInitializedSuccessfully, dbOptions.Name, connectionTarget, connectionTarget, dbOptions.Name));
                 return true;
@@ -133,8 +133,8 @@ public sealed partial class MongoDbService
             }
         }
 
-        DbOperationFailTotal.Add(1, new TagList { { "op", "open" }, { "name", nameof(Open) }, { "reason", ExceptionClassifier.GetFailureReason(lastException) }, });
-        DbOperationLatencyMilliseconds.Record(openStopwatch.Elapsed.TotalMilliseconds, new TagList { { "op", "open" }, { "name", nameof(Open) }, { "success", false }, });
+        DbOperationFailTotal.Add(1, new TagList { { "op", "open" }, { "name", nameof(OpenAsync) }, { "reason", ExceptionClassifier.GetFailureReason(lastException) }, });
+        DbOperationLatencyMilliseconds.Record(openStopwatch.Elapsed.TotalMilliseconds, new TagList { { "op", "open" }, { "name", nameof(OpenAsync) }, { "success", false }, });
         // Localization: Database.Mongo.OpenExceptionFatal - MongoDbService.Open 异常 {0} {1} {2}
         LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Database.Mongo.OpenExceptionFatal, dbOptions.Name, connectionTarget, lastException));
         var message = LocalizationService.GetString(Localization.Keys.Database.MongoDbInitializationFailed, connectionTarget, dbOptions.Name);
@@ -158,7 +158,7 @@ public sealed partial class MongoDbService
     /// <remarks>
     /// Closes the MongoDB connection.
     /// </remarks>
-    public async Task Close()
+    public async Task CloseAsync()
     {
         await StopRecoveryTaskAsync().ConfigureAwait(false);
         ResetConnectionState();

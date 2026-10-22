@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.Player.Login;
 [Event(typeof(PlayerSendItemEventArgs))]
 internal sealed class PlayerSendItemEventListener : EventListener<PlayerComponentAgent>
 {
-    protected override Task HandleEvent(PlayerComponentAgent agent, GameEventArgs gameEventArgs)
+    protected override Task HandleEventAsync(PlayerComponentAgent agent, GameEventArgs gameEventArgs)
     {
         if (agent == null)
         {
@@ -46,6 +46,6 @@ internal sealed class PlayerSendItemEventListener : EventListener<PlayerComponen
             return Task.CompletedTask;
         }
 
-        return agent.OnLogout();
+        return agent.OnLogoutAsync();
     }
 }

@@ -39,5 +39,5 @@ public interface ICrossHour
     /// </summary>
     /// <param name="hour">当前24小时制的小时数</param>
     /// <returns>表示异步操作的任务</returns>
-    public Task OnCrossHour(int hour);
+    public Task OnCrossHourAsync(int hour);
 }

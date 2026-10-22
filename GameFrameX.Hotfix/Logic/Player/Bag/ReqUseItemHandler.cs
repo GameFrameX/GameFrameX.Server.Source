@@ -40,7 +40,7 @@ internal sealed class ReqUseItemHandler : PlayerRpcComponentHandler<BagComponent
     {
         try
         {
-            await ComponentAgent.OnUseBagItem(NetworkChannel, request, response);
+            await ComponentAgent.OnUseBagItemAsync(NetworkChannel, request, response);
         }
         catch (Exception e)
         {

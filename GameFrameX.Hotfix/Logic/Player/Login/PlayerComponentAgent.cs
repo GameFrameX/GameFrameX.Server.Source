@@ -42,7 +42,7 @@ namespace GameFrameX.Hotfix.Logic.Player.Login;
 
 public class PlayerComponentAgent : StateComponentAgent<PlayerComponent, PlayerState>
 {
-    public async Task OnLogout()
+    public async Task OnLogoutAsync()
     {
         EventDispatcher.Dispatch(ActorId, new OnRoleOfflineEventArgs());
         //下线后会被自动回收
@@ -57,10 +57,10 @@ public class PlayerComponentAgent : StateComponentAgent<PlayerComponent, PlayerS
     /// <param name="playerState"></param>
     /// <param name="reqLoginUniqueId"></param>
     /// <param name="response"></param>
-    public async Task OnPlayerLogin(INetworkChannel workChannel, PlayerState playerState, RespPlayerLogin response)
+    public async Task OnPlayerLoginAsync(INetworkChannel workChannel, PlayerState playerState, RespPlayerLogin response)
     {
         // 更新连接会话数据
-        await PlayerSessionManager.Instance.UpdateSession(workChannel.GameAppSession.SessionId, playerState.Id, playerState.Id.ToString(), NotifyDuplicateLoginAsync);
+        await PlayerSessionManager.Instance.UpdateSessionAsync(workChannel.GameAppSession.SessionId, playerState.Id, playerState.Id.ToString(), NotifyDuplicateLoginAsync);
         response.Code = playerState.State;
         response.CreateTime = playerState.CreatedTime;
         response.PlayerInfo = new PlayerInfo
@@ -75,18 +75,18 @@ public class PlayerComponentAgent : StateComponentAgent<PlayerComponent, PlayerS
         // C204 断线前凭据交付：登录成功即随响应下发会话恢复凭据（桥不可用 / 签发失败为 null，登录主流程不受影响）。
         response.SessionToken = await Logic.ServerRole.SessionResume.SessionResumeDomainBridge.IssueLoginCredentialAsync(playerState.Id, workChannel.GameAppSession?.SessionId);
 
-        var attributeComponentAgent = await ActorManager.GetComponentAgent<PlayerAttributeComponentAgent>(playerState.Id);
-        await attributeComponentAgent.InitializeDefaultsSilent();
+        var attributeComponentAgent = await ActorManager.GetComponentAgentAsync<PlayerAttributeComponentAgent>(playerState.Id);
+        await attributeComponentAgent.InitializeDefaultsSilentAsync();
 
         EventDispatcher.Dispatch(ActorId, new OnRoleOnlineEventArgs());
 
         // 房间断线重连标记（房间系统）
-        var roomComp = await ActorManager.GetComponentAgent<RoomComponentAgent>();
-        await roomComp.MarkPlayerReconnected(ActorId);
+        var roomComp = await ActorManager.GetComponentAgentAsync<RoomComponentAgent>();
+        await roomComp.MarkPlayerReconnectedAsync(ActorId);
 
         // 推送属性快照 + 邮件懒同步（邮件系统）
         await workChannel.WriteAsync(attributeComponentAgent.BuildSyncSnapshot());
-        var mailAgent = await ActorManager.GetComponentAgent<MailComponentAgent>(playerState.Id);
+        var mailAgent = await ActorManager.GetComponentAgentAsync<MailComponentAgent>(playerState.Id);
         await mailAgent.SyncAsync();
     }
 

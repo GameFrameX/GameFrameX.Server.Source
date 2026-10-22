@@ -49,7 +49,7 @@ public interface IDatabaseService
     /// </remarks>
     /// <param name="dbOptions">数据库配置选项 / Database configuration options</param>
     /// <returns>返回数据库是否初始化成功 / Returns whether the database was initialized successfully</returns>
-    Task<bool> Open(DbOptions dbOptions);
+    Task<bool> OpenAsync(DbOptions dbOptions);
 
     /// <summary>
     /// 关闭数据库连接。
@@ -58,7 +58,7 @@ public interface IDatabaseService
     /// Close the database connection.
     /// </remarks>
     /// <returns>异步任务 / Async task</returns>
-    Task Close();
+    Task CloseAsync();
 
     /// <summary>
     /// 查询单条数据。

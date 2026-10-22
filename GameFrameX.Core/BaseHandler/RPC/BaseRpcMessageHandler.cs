@@ -70,7 +70,7 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
     /// <param name="message">消息对象</param>
     /// <param name="networkChannel">网络渠道</param>
     /// <returns>返回是否初始化成功,true:成功,false:失败</returns>
-    public virtual Task<bool> Init(INetworkMessage message, INetworkChannel networkChannel)
+    public virtual Task<bool> InitAsync(INetworkMessage message, INetworkChannel networkChannel)
     {
         ArgumentNullException.ThrowIfNull(message);
         ArgumentNullException.ThrowIfNull(networkChannel);
@@ -93,7 +93,7 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
     /// <param name="timeout">执行超时时间，单位毫秒，默认30秒</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>执行任务</returns>
-    public virtual async Task InnerAction(int timeout = 30000, CancellationToken cancellationToken = default)
+    public virtual async Task InnerActionAsync(int timeout = 30000, CancellationToken cancellationToken = default)
     {
         if (_isInit == false)
         {
@@ -111,7 +111,7 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
                 return;
             }
 
-            var task = InnerActionAsync(RequestMessage, response);
+            var task = InnerActionCoreAsync(RequestMessage, response);
 
             try
             {
@@ -124,7 +124,7 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
             }
             catch (TimeoutException timeoutException)
             {
-                // Localization: Core.MessageHandler.RpcExecutionTimeout - BaseRpcMessageHandler.InnerAction 请求消息:{0} 消息: 执行超时:{1}
+                // Localization: Core.MessageHandler.RpcExecutionTimeout - BaseRpcMessageHandler.InnerActionAsync 请求消息:{0} 消息: 执行超时:{1}
                 LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcExecutionTimeout, RequestMessage, timeoutException.Message));
 
                 // 设置超时错误码并发送错误响应给客户端 / Set timeout error code and send error response to client
@@ -138,7 +138,7 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
         catch (Exception e)
         {
             var fullName = GetType().FullName;
-            // Localization: Core.MessageHandler.RpcInnerActionException - BaseRpcMessageHandler.InnerAction 处理器:{0} 请求消息:{1} 异常:{2}
+            // Localization: Core.MessageHandler.RpcInnerActionException - BaseRpcMessageHandler.InnerActionAsync 处理器:{0} 请求消息:{1} 异常:{2}
             LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcInnerActionException, fullName, RequestMessage, e));
         }
     }
@@ -154,7 +154,7 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
     /// 记录执行时间并调用 <see cref="ActionAsync" />
     /// </summary>
     /// <returns>动作执行任务</returns>
-    internal async Task InnerActionAsync(TRequest request, TResponse response)
+    internal async Task InnerActionCoreAsync(TRequest request, TResponse response)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(response);
@@ -166,7 +166,7 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
             if (_stopwatch.Elapsed.Seconds >= GlobalSettings.CurrentSetting.MonitorMessageTimeOutSeconds)
             {
                 var fullName = GetType().FullName;
-                // Localization: Core.MessageHandler.RpcExecutionTimeWarning - BaseRpcMessageHandler.InnerActionAsync 处理器:{0} 请求消息:{1} 消息: 消息处理器：{2},UniqueId：{3} 执行耗时：{4} ms
+                // Localization: Core.MessageHandler.RpcExecutionTimeWarning - BaseRpcMessageHandler.InnerActionCoreAsync 处理器:{0} 请求消息:{1} 消息: 消息处理器：{2},UniqueId：{3} 执行耗时：{4} ms
                 LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcExecutionTimeWarning, fullName, RequestMessage, GetType().Name, RequestMessage.UniqueId, _stopwatch.ElapsedMilliseconds));
             }
 
@@ -179,7 +179,7 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
             await ActionAsync(request, response);
             _stopwatch.Stop();
             var fullName = GetType().FullName;
-            // Localization: Core.MessageHandler.RpcExecutionTimeDebug - BaseRpcMessageHandler.InnerActionAsync 处理器:{0} 请求消息:{1} 消息: 消息处理器：{2},UniqueId：{3} 执行耗时：{4} ms
+            // Localization: Core.MessageHandler.RpcExecutionTimeDebug - BaseRpcMessageHandler.InnerActionCoreAsync 处理器:{0} 请求消息:{1} 消息: 消息处理器：{2},UniqueId：{3} 执行耗时：{4} ms
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcExecutionTimeDebug, fullName, RequestMessage, fullName, RequestMessage.UniqueId, _stopwatch.ElapsedMilliseconds));
             return;
         }

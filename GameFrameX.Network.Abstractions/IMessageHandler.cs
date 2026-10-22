@@ -47,7 +47,7 @@ public interface IMessageHandler : IBaseMessageHandler
     /// <param name="message">消息对象 / Message object</param>
     /// <param name="networkChannel">网络渠道 / Network channel</param>
     /// <returns>返回是否初始化成功，<c>true</c> 表示成功，<c>false</c> 表示失败 / Returns <c>true</c> if initialization succeeds, <c>false</c> otherwise</returns>
-    Task<bool> Init(INetworkMessage message, INetworkChannel networkChannel);
+    Task<bool> InitAsync(INetworkMessage message, INetworkChannel networkChannel);
 
     /// <summary>
     /// 内部执行。
@@ -58,5 +58,5 @@ public interface IMessageHandler : IBaseMessageHandler
     /// <param name="timeout">执行超时时间，单位毫秒，默认30秒 / Execution timeout in milliseconds, default is 30 seconds</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
-    Task InnerAction(int timeout = 30000, CancellationToken cancellationToken = default);
+    Task InnerActionAsync(int timeout = 30000, CancellationToken cancellationToken = default);
 }

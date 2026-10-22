@@ -90,7 +90,7 @@ public sealed class PostgreSqlDiscoveryRuntimeTests
         {
             // 与生产一致的真实注册路径：测试库经统一入口 GameDb.Init 注册（Provider 反射解析 +
             // PostgreSqlDbService.Open 自建连接池），再按 ConnectionName 激活（C185）。
-            var opened = await GameDb.Init(new DbOptions
+            var opened = await GameDb.InitAsync(new DbOptions
             {
                 Provider = DatabaseProviderType.PostgreSql,
                 ConnectionString = testDatabase.ConnectionString,
@@ -193,7 +193,7 @@ public sealed class PostgreSqlDiscoveryRuntimeTests
         GameDb.ResetForTesting();
         await using (var testDatabase = await PostgreSqlTestDatabase.CreateAsync(_connectionString))
         {
-            var opened = await GameDb.Init(new DbOptions
+            var opened = await GameDb.InitAsync(new DbOptions
             {
                 Provider = DatabaseProviderType.PostgreSql,
                 ConnectionString = testDatabase.ConnectionString,
@@ -250,7 +250,7 @@ public sealed class PostgreSqlDiscoveryRuntimeTests
             GameDb.ResetForTesting();
             await using (var testDatabase = await PostgreSqlTestDatabase.CreateAsync(_connectionString))
             {
-                var opened = await GameDb.Init(new DbOptions
+                var opened = await GameDb.InitAsync(new DbOptions
                 {
                     Provider = DatabaseProviderType.PostgreSql,
                     ConnectionString = testDatabase.ConnectionString,

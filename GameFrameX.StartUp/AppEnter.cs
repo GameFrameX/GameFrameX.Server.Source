@@ -94,7 +94,7 @@ internal static class AppEnter
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="appStartUps"/> 为 null 时抛出 / Thrown when <paramref name="appStartUps"/> is null</exception>
     /// <exception cref="ArgumentException">当 <paramref name="appStartUps"/> 为空集合时抛出 / Thrown when <paramref name="appStartUps"/> is empty</exception>
-    internal static async Task Entry(IReadOnlyList<IAppStartUp> appStartUps)
+    internal static async Task EntryAsync(IReadOnlyList<IAppStartUp> appStartUps)
     {
         ArgumentNullException.ThrowIfNull(appStartUps);
         if (appStartUps.Count == 0)

@@ -130,7 +130,7 @@ public static partial class GameDb
     /// Non-default databases (e.g. the control database registered first by the launch flow) must
     /// pass <c>IsDefault = false</c> explicitly, otherwise a later default registration fails fast
     /// with a set-once conflict. Startup composition roots resolving the provider from configuration
-    /// should use the non-generic <see cref="Init(DbOptions)"/> overload instead.
+    /// should use the non-generic <see cref="InitAsync(DbOptions)"/> overload instead.
     /// </remarks>
     /// <typeparam name="T">数据库服务的具体实现类型,必须实现IDatabaseService接口且有无参构造函数 / Database service implementation type, must implement IDatabaseService interface and have a parameterless constructor</typeparam>
     /// <param name="dbOptions">数据库配置选项（ConnectionString 唯一来源；Name 同时作为注册名；IsDefault 提名门面默认库） / Database configuration options (ConnectionString is the single source; Name doubles as the registry name; IsDefault nominates the facade default)</param>
@@ -138,9 +138,9 @@ public static partial class GameDb
     /// <exception cref="ArgumentException">当 ConnectionString 为空白时抛出 / Thrown when ConnectionString is blank</exception>
     /// <exception cref="InvalidOperationException">当同名库已注册，或 IsDefault 提名与既有默认库冲突时抛出（拒绝静默覆盖） / Thrown when a database with the same name is already registered, or the IsDefault nomination conflicts with the existing default (silent overwrite rejected)</exception>
     /// <returns>返回数据库是否初始化成功 / Returns whether the database was initialized successfully</returns>
-    public static Task<bool> Init<T>(DbOptions dbOptions) where T : IDatabaseService, new()
+    public static Task<bool> InitAsync<T>(DbOptions dbOptions) where T : IDatabaseService, new()
     {
-        return InitCore(new T(), dbOptions);
+        return InitCoreAsync(new T(), dbOptions);
     }
 
     /// <summary>
@@ -151,7 +151,7 @@ public static partial class GameDb
     /// the convention mapping table (the composition root stays free of provider-type generics and
     /// ternaries), then runs the exact same validation→Open→Register→rollback→nomination→facade path as
     /// the generic overload through the shared <c>InitCore</c>. The generic
-    /// <see cref="Init{T}(DbOptions)"/> remains the explicit escape hatch for AOT/trimming scenarios,
+    /// <see cref="InitAsync{T}(DbOptions)"/> remains the explicit escape hatch for AOT/trimming scenarios,
     /// custom <see cref="IDatabaseService"/> implementations and test fakes.
     /// </remarks>
     /// <param name="dbOptions">数据库配置选项（Provider 约定解析依据；ConnectionString 唯一来源；Name 同时作为注册名；IsDefault 提名门面默认库） / Database configuration options (Provider drives convention resolution; ConnectionString is the single source; Name doubles as the registry name; IsDefault nominates the facade default)</param>
@@ -160,10 +160,10 @@ public static partial class GameDb
     /// <exception cref="InvalidOperationException">当枚举未配映射、宿主缺 Provider 工程引用、实例化失败、同名库已注册，或 IsDefault 提名与既有默认库冲突时抛出 / Thrown when the enum is unmapped, the provider assembly is not referenced by the host, instantiation fails, a database with the same name is already registered, or the IsDefault nomination conflicts with the existing default</exception>
     /// <returns>返回数据库是否初始化成功 / Returns whether the database was initialized successfully</returns>
     [RequiresUnreferencedCode("按命名约定反射创建提供者；AOT/裁剪场景请改用 Init<T> 显式指定实现类型")]
-    public static Task<bool> Init(DbOptions dbOptions)
+    public static Task<bool> InitAsync(DbOptions dbOptions)
     {
         ArgumentNullException.ThrowIfNull(dbOptions);
-        return InitCore(DbProviderResolver.Create(dbOptions.Provider), dbOptions);
+        return InitCoreAsync(DbProviderResolver.Create(dbOptions.Provider), dbOptions);
     }
 
     /// <summary>
@@ -182,13 +182,13 @@ public static partial class GameDb
     /// <exception cref="ArgumentException">当 ConnectionString 为空白时抛出 / Thrown when ConnectionString is blank</exception>
     /// <exception cref="InvalidOperationException">当同名库已注册，或 IsDefault 提名与既有默认库冲突时抛出（拒绝静默覆盖） / Thrown when a database with the same name is already registered, or the IsDefault nomination conflicts with the existing default (silent overwrite rejected)</exception>
     /// <returns>返回数据库是否初始化成功 / Returns whether the database was initialized successfully</returns>
-    private static async Task<bool> InitCore(IDatabaseService service, DbOptions dbOptions)
+    private static async Task<bool> InitCoreAsync(IDatabaseService service, DbOptions dbOptions)
     {
         ArgumentNullException.ThrowIfNull(dbOptions);
         ArgumentException.ThrowIfNullOrWhiteSpace(dbOptions.ConnectionString, nameof(DbOptions.ConnectionString));
         ArgumentNullException.ThrowIfNull(dbOptions.Name, nameof(dbOptions.Name));
 
-        var isOpened = await service.Open(dbOptions);
+        var isOpened = await service.OpenAsync(dbOptions);
         if (!isOpened)
         {
             return false;
@@ -202,7 +202,7 @@ public static partial class GameDb
         {
             // 注册失败（如同名库已注册）：先释放已打开的服务，再抛出原异常，避免泄漏已建立的连接
             // Registration failed (e.g. duplicate name): release the opened service before rethrowing to avoid leaking the established connection.
-            await service.Close();
+            await service.CloseAsync();
             throw;
         }
 
@@ -226,7 +226,7 @@ public static partial class GameDb
                 // binding above is provably a no-op on this path: every successful nomination writes the binding, so a
                 // non-null default name implies a non-null facade binding.
                 MultiDbRegistry.Unregister(dbOptions.Name);
-                await service.Close();
+                await service.CloseAsync();
                 throw;
             }
         }
@@ -375,7 +375,7 @@ public static partial class GameDb
         {
             foreach (var databaseService in MultiDbRegistry.GetRegisteredDatabaseServices())
             {
-                await databaseService.Close();
+                await databaseService.CloseAsync();
             }
         }
         finally

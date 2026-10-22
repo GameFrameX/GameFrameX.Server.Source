@@ -56,7 +56,7 @@ public class HttpMessageMappingAttributeTests
         HttpActionContext capturedContext = null;
         var context = CreateJsonPostContext("{\"Name\":\"alice\",\"Age\":18,\"RequiredField\":\"ok\"}");
 
-        await HttpHandler.HandleRequest(context, _ => new TypedPostHttpHandler(ctx =>
+        await HttpHandler.HandleRequestAsync(context, _ => new TypedPostHttpHandler(ctx =>
         {
             capturedContext = ctx;
             return HandlerResultJson;
@@ -77,7 +77,7 @@ public class HttpMessageMappingAttributeTests
         var handlerCalled = false;
         var context = CreateJsonPostContext("{\"Name\":\"bob\"}");
 
-        await HttpHandler.HandleRequest(context, _ => new TypedPostHttpHandler(_ =>
+        await HttpHandler.HandleRequestAsync(context, _ => new TypedPostHttpHandler(_ =>
         {
             handlerCalled = true;
             return HandlerResultJson;
@@ -101,7 +101,7 @@ public class HttpMessageMappingAttributeTests
         context.Request.QueryString = new QueryString("?Name=carol&Age=20&RequiredField=ok");
         context.Response.Body = new MemoryStream();
 
-        await HttpHandler.HandleRequest(context, _ => new TypedPostHttpHandler(ctx =>
+        await HttpHandler.HandleRequestAsync(context, _ => new TypedPostHttpHandler(ctx =>
         {
             capturedContext = ctx;
             return HandlerResultJson;
@@ -149,7 +149,7 @@ public class HttpMessageMappingAttributeTests
         HttpActionContext capturedContext = null;
         var context = CreateJsonPostContext("{\"Name\":\"dave\"}");
 
-        await HttpHandler.HandleRequest(context, _ => new PlainJsonHttpHandler(ctx =>
+        await HttpHandler.HandleRequestAsync(context, _ => new PlainJsonHttpHandler(ctx =>
         {
             capturedContext = ctx;
             return HandlerResultJson;
@@ -238,7 +238,7 @@ public class HttpMessageMappingAttributeTests
             _action = action;
         }
 
-        public override Task<string> Action(HttpActionContext context)
+        public override Task<string> ActionAsync(HttpActionContext context)
         {
             return Task.FromResult(_action(context));
         }
@@ -254,7 +254,7 @@ public class HttpMessageMappingAttributeTests
             _action = action;
         }
 
-        public override Task<string> Action(HttpActionContext context)
+        public override Task<string> ActionAsync(HttpActionContext context)
         {
             return Task.FromResult(_action(context));
         }
@@ -271,7 +271,7 @@ public class HttpMessageMappingAttributeTests
     [HttpMessageMapping(typeof(BadRequestTypeHttpHandler), typeof(NotAMessageRequest))]
     private sealed class BadRequestTypeHttpHandler : BaseHttpHandler
     {
-        public override Task<string> Action(HttpActionContext context)
+        public override Task<string> ActionAsync(HttpActionContext context)
         {
             return Task.FromResult("{}");
         }
@@ -280,7 +280,7 @@ public class HttpMessageMappingAttributeTests
     [HttpMessageMapping(typeof(BadResponseTypeHttpHandler), null, typeof(NotAMessageResponse))]
     private sealed class BadResponseTypeHttpHandler : BaseHttpHandler
     {
-        public override Task<string> Action(HttpActionContext context)
+        public override Task<string> ActionAsync(HttpActionContext context)
         {
             return Task.FromResult("{}");
         }

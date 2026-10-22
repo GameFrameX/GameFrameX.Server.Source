@@ -66,7 +66,7 @@ public sealed class Actor : IActor, IDisposable
         }
         else
         {
-            Tell(() => ComponentRegister.ActiveComponents(this));
+            Tell(() => ComponentRegister.ActiveComponentsAsync(this));
         }
     }
 
@@ -118,9 +118,9 @@ public sealed class Actor : IActor, IDisposable
     /// <typeparam name="T">组件代理类型</typeparam>
     /// <param name="isNew">当组件不存在时是否创建新实例,默认为true</param>
     /// <returns>返回指定类型的组件代理实例</returns>
-    public async Task<T> GetComponentAgent<T>(bool isNew = true) where T : IComponentAgent
+    public async Task<T> GetComponentAgentAsync<T>(bool isNew = true) where T : IComponentAgent
     {
-        return (T)await GetComponentAgent(typeof(T), isNew);
+        return (T)await GetComponentAgentAsync(typeof(T), isNew);
     }
 
     /// <summary>
@@ -151,7 +151,7 @@ public sealed class Actor : IActor, IDisposable
     /// <param name="agentType">代理类型</param>
     /// <param name="isNew">当组件不存在时是否创建新实例,默认为true</param>
     /// <returns>返回指定类型的组件代理实例</returns>
-    public async Task<IComponentAgent> GetComponentAgent(Type agentType, bool isNew = true)
+    public async Task<IComponentAgent> GetComponentAgentAsync(Type agentType, bool isNew = true)
     {
         var compType = agentType.BaseType.GetGenericArguments()[0];
         BaseComponent component;
@@ -184,7 +184,7 @@ public sealed class Actor : IActor, IDisposable
     {
         try
         {
-            await component.Active();
+            await component.ActiveAsync();
         }
         catch (Exception e)
         {
@@ -194,9 +194,9 @@ public sealed class Actor : IActor, IDisposable
 
         try
         {
-            await agent.BeforeActivation();
-            await agent.Active();
-            await agent.AfterActivation();
+            await agent.BeforeActivationAsync();
+            await agent.ActiveAsync();
+            await agent.AfterActivationAsync();
         }
         catch (Exception e)
         {
@@ -209,7 +209,7 @@ public sealed class Actor : IActor, IDisposable
     /// 处理跨天逻辑,遍历所有组件并执行跨天操作
     /// </summary>
     /// <param name="serverDay">开服天数</param>
-    public async Task CrossDay(int serverDay)
+    public async Task CrossDayAsync(int serverDay)
     {
         // Localization: Core.Actor.CrossDay - actor跨天 id:{0} type:{1}
         LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.Actor.CrossDay, Id, Type));
@@ -221,7 +221,7 @@ public sealed class Actor : IActor, IDisposable
                 // 使用try-catch缩小异常影响范围
                 try
                 {
-                    await crossDay.OnCrossDay(serverDay);
+                    await crossDay.OnCrossDayAsync(serverDay);
                 }
                 catch (Exception e)
                 {
@@ -311,7 +311,7 @@ public sealed class Actor : IActor, IDisposable
     /// - 断开网络连接等
     /// </remarks>
     /// <returns>表示异步操作的任务</returns>
-    public Task OnRecycle()
+    public Task OnRecycleAsync()
     {
         try
         {
@@ -366,11 +366,11 @@ public sealed class Actor : IActor, IDisposable
     /// <summary>
     /// 反激活所有组件,使其进入非活动状态
     /// </summary>
-    public async Task Inactive()
+    public async Task InactiveAsync()
     {
         foreach (var item in _componentsMap.Values)
         {
-            await item.Inactive();
+            await item.InactiveAsync();
         }
     }
 
@@ -398,7 +398,7 @@ public sealed class Actor : IActor, IDisposable
     /// <summary>
     /// 保存所有组件的当前状态
     /// </summary>
-    internal async Task SaveAllState()
+    internal async Task SaveAllStateAsync()
     {
         foreach (var item in _componentsMap)
         {

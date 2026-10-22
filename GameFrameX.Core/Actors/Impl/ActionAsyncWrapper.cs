@@ -60,7 +60,7 @@ public class ActionAsyncWrapper : WorkWrapper
     /// 执行
     /// </summary>
     /// <returns></returns>
-    public override async Task DoTask()
+    public override async Task DoTaskAsync()
     {
         try
         {

@@ -89,11 +89,11 @@ public static class EventDispatcher
         foreach (var listener in listeners)
         {
             // 获取监听器对应的组件代理
-            var componentAgent = await actor.GetComponentAgent(listener.AgentType, false);
+            var componentAgent = await actor.GetComponentAgentAsync(listener.AgentType, false);
             try
             {
                 // 调用监听器的事件处理方法
-                await listener.HandleEvent(componentAgent, eventArgs);
+                await listener.HandleEventAsync(componentAgent, eventArgs);
             }
             catch (Exception exception)
             {
@@ -128,7 +128,7 @@ public static class EventDispatcher
             try
             {
                 // 调用监听器的事件处理方法
-                await listener.HandleEvent(eventArgs);
+                await listener.HandleEventAsync(eventArgs);
             }
             catch (Exception exception)
             {

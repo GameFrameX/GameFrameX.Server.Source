@@ -42,7 +42,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Player;
 [Description("获取角色列表,仅限前端调用")]
 public sealed class ReqPlayerListHttpHandler : BaseHttpHandler
 {
-    public override async Task<MessageObject> ActionMessageObject(HttpActionContext context)
+    public override async Task<MessageObject> ActionMessageObjectAsync(HttpActionContext context)
     {
         var messageObject = context.MessageObject;
         var reqPlayerList = (ReqPlayerList)messageObject;
@@ -58,7 +58,7 @@ public sealed class ReqPlayerListHttpHandler : BaseHttpHandler
             return respPlayerList;
         }
 
-        var playerList = await GetPlayerList(reqPlayerList);
+        var playerList = await GetPlayerListAsync(reqPlayerList);
 
         if (playerList != null)
         {
@@ -79,7 +79,7 @@ public sealed class ReqPlayerListHttpHandler : BaseHttpHandler
         return respPlayerList;
     }
 
-    private async Task<List<PlayerState>> GetPlayerList(ReqPlayerList reqPlayerList)
+    private async Task<List<PlayerState>> GetPlayerListAsync(ReqPlayerList reqPlayerList)
     {
         AppMetrics.PlayerListQuery.Add(1);
         return await GameDb.FindListAsync<PlayerState>(m => m.AccountId == reqPlayerList.Id);

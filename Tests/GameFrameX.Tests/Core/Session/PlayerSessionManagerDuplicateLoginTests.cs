@@ -55,7 +55,7 @@ public sealed class PlayerSessionManagerDuplicateLoginTests
         IPlayerSession notified = null;
         var channelOpenAtNotify = false;
 
-        await manager.UpdateSession("c192-dup-new", 910001, "sign-1", old =>
+        await manager.UpdateSessionAsync("c192-dup-new", 910001, "sign-1", old =>
         {
             notified = old;
             channelOpenAtNotify = !oldChannel.IsClosed();
@@ -83,7 +83,7 @@ public sealed class PlayerSessionManagerDuplicateLoginTests
         manager.Add(new PlayerSession("c192-solo", new FakeNetworkChannel()));
 
         var called = false;
-        await manager.UpdateSession("c192-solo", 910002, "sign-2", _ =>
+        await manager.UpdateSessionAsync("c192-solo", 910002, "sign-2", _ =>
         {
             called = true;
             return Task.CompletedTask;

@@ -47,7 +47,7 @@ public sealed class TestHttpHandler : BaseHttpHandler
     /// </summary>
     /// <param name="context"></param>
     /// <returns></returns>
-    public override async Task<string> Action(HttpActionContext context)
+    public override async Task<string> ActionAsync(HttpActionContext context)
     {
         var paramMap = context.Parameters;
         if (TryGetMode(paramMap, out var mode) && string.Equals(mode, "cross-process-friend", StringComparison.OrdinalIgnoreCase))

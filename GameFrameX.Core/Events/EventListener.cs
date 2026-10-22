@@ -47,9 +47,9 @@ public abstract class EventListener<T> : IEventListener where T : class, ICompon
     /// <remarks>
     /// 该方法会将传入的IComponentAgent类型转换为泛型类型T后调用保护方法HandleEvent
     /// </remarks>
-    public Task HandleEvent(IComponentAgent agent, GameEventArgs gameEventArgs)
+    public Task HandleEventAsync(IComponentAgent agent, GameEventArgs gameEventArgs)
     {
-        return HandleEvent(agent as T, gameEventArgs);
+        return HandleEventAsync(agent as T, gameEventArgs);
     }
 
     /// <summary>
@@ -60,9 +60,9 @@ public abstract class EventListener<T> : IEventListener where T : class, ICompon
     /// <remarks>
     /// 该方法会以null作为agent参数调用另一个HandleEvent重载
     /// </remarks>
-    public Task HandleEvent(GameEventArgs gameEventArgs)
+    public Task HandleEventAsync(GameEventArgs gameEventArgs)
     {
-        return HandleEvent(null, gameEventArgs);
+        return HandleEventAsync(null, gameEventArgs);
     }
 
     /// <summary>
@@ -82,5 +82,5 @@ public abstract class EventListener<T> : IEventListener where T : class, ICompon
     /// <remarks>
     /// 派生类必须实现该抽象方法来提供具体的事件处理逻辑
     /// </remarks>
-    protected abstract Task HandleEvent(T agent, GameEventArgs gameEventArgs);
+    protected abstract Task HandleEventAsync(T agent, GameEventArgs gameEventArgs);
 }

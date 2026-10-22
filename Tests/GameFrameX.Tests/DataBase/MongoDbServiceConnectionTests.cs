@@ -63,17 +63,17 @@ public sealed class MongoDbServiceConnectionTests
 
         try
         {
-            var firstOpen = await service.Open(options);
+            var firstOpen = await service.OpenAsync(options);
             Assert.True(firstOpen);
             var firstDb = service.CurrentDatabase;
 
-            var secondOpen = await service.Open(options);
+            var secondOpen = await service.OpenAsync(options);
             Assert.True(secondOpen);
             Assert.Same(firstDb, service.CurrentDatabase);
         }
         finally
         {
-            await service.Close();
+            await service.CloseAsync();
             await DropDatabaseQuietlyAsync(connectionString, dbName);
         }
     }

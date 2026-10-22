@@ -53,9 +53,9 @@ public sealed class BotHttpClient
     /// <remarks>
     /// 此方法用于向指定的URL发送POST请求，并接收响应。请求的消息体由参数message提供，而响应则会被解析为指定的泛型类型T。
     /// </remarks>
-    public async Task<T> Post<T>(string url, MessageObject message) where T : MessageObject, IResponseMessage, new()
+    public async Task<T> PostAsync<T>(string url, MessageObject message) where T : MessageObject, IResponseMessage, new()
     {
-        var webBufferResult = await PostInner(url, message);
+        var webBufferResult = await PostInnerAsync(url, message);
         if (webBufferResult.IsSuccessStatusCode)
         {
             var messageObjectHttp = ProtoBufSerializerHelper.Deserialize<MessageHttpObject>(await webBufferResult.Content.ReadAsByteArrayAsync());
@@ -81,7 +81,7 @@ public sealed class BotHttpClient
         return default!;
     }
 
-    private Task<HttpResponseMessage> PostInner(string url, MessageObject message, object userData = null!)
+    private Task<HttpResponseMessage> PostInnerAsync(string url, MessageObject message, object userData = null!)
     {
         url = UrlHandler(url);
         var id = MessageProtoHelper.GetMessageIdByType(message.GetType());

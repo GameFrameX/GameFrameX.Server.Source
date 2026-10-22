@@ -131,9 +131,9 @@ public class LoginComponentAgent : StateComponentAgent<LoginComponent, LoginStat
     /// <param name="workChannel"></param>
     /// <param name="reqLogin"></param>
     /// <param name="response"></param>
-    public async Task OnPlayerLogin(INetworkChannel workChannel, ReqPlayerLogin reqLogin, RespPlayerLogin response)
+    public async Task OnPlayerLoginAsync(INetworkChannel workChannel, ReqPlayerLogin reqLogin, RespPlayerLogin response)
     {
-        var playerState = await OwnerComponent.OnPlayerLogin(reqLogin);
+        var playerState = await OwnerComponent.OnPlayerLoginAsync(reqLogin);
         if (playerState == null)
         {
             //角色找不到？
@@ -142,7 +142,7 @@ public class LoginComponentAgent : StateComponentAgent<LoginComponent, LoginStat
 
         // 绑定玩家ID
         workChannel.SetData(GlobalConst.ActorIdKey, playerState.Id);
-        var playerComponentAgent = await ActorManager.GetComponentAgent<PlayerComponentAgent>(playerState.Id);
-        await playerComponentAgent.OnPlayerLogin(workChannel, playerState, response);
+        var playerComponentAgent = await ActorManager.GetComponentAgentAsync<PlayerComponentAgent>(playerState.Id);
+        await playerComponentAgent.OnPlayerLoginAsync(workChannel, playerState, response);
     }
 }

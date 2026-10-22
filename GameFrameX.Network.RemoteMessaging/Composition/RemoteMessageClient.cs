@@ -589,7 +589,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
     /// <param name="serviceName">目标服务名（用于告警） / The target service name (for warning logs)</param>
     private async Task EnsureHandshakeAsync(ConnectionContext connection, string serviceName)
     {
-        await connection.GetOrStartHandshake(() => PerformHandshakeAsync(connection, serviceName));
+        await connection.GetOrStartHandshakeAsync(() => PerformHandshakeAsync(connection, serviceName));
     }
 
     /// <summary>
@@ -796,7 +796,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
         /// Gets or starts this connection's single-flight handshake task: the first caller performs
         /// the handshake while concurrent callers await the same task's outcome.
         /// </remarks>
-        public Task GetOrStartHandshake(Func<Task> starter)
+        public Task GetOrStartHandshakeAsync(Func<Task> starter)
         {
             lock (_handshakeLock)
             {

@@ -50,7 +50,7 @@ public sealed partial class PostgreSqlDbService
     /// <param name="dbOptions">数据库配置选项 / Database configuration options</param>
     /// <returns>返回数据库是否初始化成功 / Returns whether the database was initialized successfully</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="dbOptions"/>、其 ConnectionString 或 Name 为 null 时抛出 / Thrown when <paramref name="dbOptions"/>, its ConnectionString, or its Name is null</exception>
-    public async Task<bool> Open(DbOptions dbOptions)
+    public async Task<bool> OpenAsync(DbOptions dbOptions)
     {
         ArgumentNullException.ThrowIfNull(dbOptions);
         ArgumentNullException.ThrowIfNull(dbOptions.ConnectionString, nameof(dbOptions.ConnectionString));
@@ -101,7 +101,7 @@ public sealed partial class PostgreSqlDbService
                     ChangeAvailabilityState(DatabaseAvailabilityState.Healthy, "open_success");
                 }
 
-                DbOperationLatencyMilliseconds.Record(openStopwatch.Elapsed.TotalMilliseconds, new TagList { { "op", "open" }, { "name", nameof(Open) }, { "success", true }, });
+                DbOperationLatencyMilliseconds.Record(openStopwatch.Elapsed.TotalMilliseconds, new TagList { { "op", "open" }, { "name", nameof(OpenAsync) }, { "success", true }, });
                 // Localization: Database.PostgreSql.OpenInitializedSuccessfully - PostgreSqlDbService.Open {0} {1} PostgreSQL服务初始化成功，连接目标：{2}，注册名：{3}
                 LogHelper.Info(LocalizationService.GetString(Localization.Keys.Database.PostgreSql.OpenInitializedSuccessfully, dbOptions.Name, connectionTarget, connectionTarget, dbOptions.Name));
                 return true;
@@ -121,8 +121,8 @@ public sealed partial class PostgreSqlDbService
             }
         }
 
-        DbOperationFailTotal.Add(1, new TagList { { "op", "open" }, { "name", nameof(Open) }, { "reason", ExceptionClassifier.GetFailureReason(lastException) }, });
-        DbOperationLatencyMilliseconds.Record(openStopwatch.Elapsed.TotalMilliseconds, new TagList { { "op", "open" }, { "name", nameof(Open) }, { "success", false }, });
+        DbOperationFailTotal.Add(1, new TagList { { "op", "open" }, { "name", nameof(OpenAsync) }, { "reason", ExceptionClassifier.GetFailureReason(lastException) }, });
+        DbOperationLatencyMilliseconds.Record(openStopwatch.Elapsed.TotalMilliseconds, new TagList { { "op", "open" }, { "name", nameof(OpenAsync) }, { "success", false }, });
         // Localization: Database.PostgreSql.OpenExceptionFatal - PostgreSqlDbService.Open 异常 {0} {1} {2}
         LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Database.PostgreSql.OpenExceptionFatal, dbOptions.Name, connectionTarget, lastException));
         var message = LocalizationService.GetString(Keys.Database.PostgreSqlInitializationFailed, connectionTarget, dbOptions.Name);
@@ -146,7 +146,7 @@ public sealed partial class PostgreSqlDbService
     /// <remarks>
     /// Closes the PostgreSQL connection (disposes the data source and stops the recovery task).
     /// </remarks>
-    public async Task Close()
+    public async Task CloseAsync()
     {
         await StopRecoveryTaskAsync().ConfigureAwait(false);
         ResetConnectionState();

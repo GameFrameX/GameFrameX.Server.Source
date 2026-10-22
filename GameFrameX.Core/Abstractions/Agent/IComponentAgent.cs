@@ -74,7 +74,7 @@ public interface IComponentAgent : IWorker
     /// <remarks>
     /// 在组件开始激活流程前执行，可以用于进行一些预处理操作
     /// </remarks>
-    Task<bool> BeforeActivation();
+    Task<bool> BeforeActivationAsync();
 
     /// <summary>
     /// 激活组件代理
@@ -82,7 +82,7 @@ public interface IComponentAgent : IWorker
     /// 用于初始化并启用组件代理的功能
     /// </remarks>
     /// </summary>
-    Task<bool> Active();
+    Task<bool> ActiveAsync();
 
     /// <summary>
     /// 组件激活后的回调方法
@@ -91,7 +91,7 @@ public interface IComponentAgent : IWorker
     /// <remarks>
     /// 在组件完成激活流程后执行，可以用于处理一些初始化后的逻辑
     /// </remarks>
-    Task<bool> AfterActivation();
+    Task<bool> AfterActivationAsync();
 
     /// <summary>
     /// 组件反激活前的回调方法
@@ -100,7 +100,7 @@ public interface IComponentAgent : IWorker
     /// <remarks>
     /// 在组件开始反激活流程前执行，可以用于保存状态或清理资源
     /// </remarks>
-    Task<bool> BeforeInActivation();
+    Task<bool> BeforeInActivationAsync();
 
     /// <summary>
     /// 反激活组件代理
@@ -109,7 +109,7 @@ public interface IComponentAgent : IWorker
     /// <remarks>
     /// 用于停用组件代理并清理相关资源，这是一个异步操作
     /// </remarks>
-    Task Inactive();
+    Task InactiveAsync();
 
     /// <summary>
     /// 组件反激活后的回调方法
@@ -118,7 +118,7 @@ public interface IComponentAgent : IWorker
     /// <remarks>
     /// 在组件完成反激活流程后执行，可以用于确认清理完成或执行最终操作
     /// </remarks>
-    Task<bool> AfterInActivation();
+    Task<bool> AfterInActivationAsync();
 
     /// <summary>
     /// 根据代理类型获取代理组件
@@ -129,7 +129,7 @@ public interface IComponentAgent : IWorker
     /// <remarks>
     /// 通过Type类型参数获取或创建对应的组件代理实例
     /// </remarks>
-    public Task<IComponentAgent> GetComponentAgent(Type agentType, bool isNew = true);
+    public Task<IComponentAgent> GetComponentAgentAsync(Type agentType, bool isNew = true);
 
     /// <summary>
     /// 根据泛型代理类型获取代理组件
@@ -140,5 +140,5 @@ public interface IComponentAgent : IWorker
     /// <remarks>
     /// 泛型方法版本，用于获取或创建指定类型的组件代理实例
     /// </remarks>
-    public Task<T> GetComponentAgent<T>(bool isNew = true) where T : IComponentAgent;
+    public Task<T> GetComponentAgentAsync<T>(bool isNew = true) where T : IComponentAgent;
 }

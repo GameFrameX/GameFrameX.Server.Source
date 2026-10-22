@@ -75,7 +75,7 @@ public sealed class OnlineFriendLegacyMigrationTests
     /// </summary>
     private static async Task WithSqliteFacadeAsync(Func<Task> action)
     {
-        var opened = await GameDb.Init<SqliteDbService>(new DbOptions
+        var opened = await GameDb.InitAsync<SqliteDbService>(new DbOptions
         {
             ConnectionString = "Data Source=:memory:",
             Name = "c244-friend-migration-tests",

@@ -257,7 +257,7 @@ public sealed class DatabaseExecuteInTransactionAtomicityTests
     private static async Task ExecuteWithSqliteAsync(Func<IDatabaseService, ProviderKind, bool, Task> action)
     {
         var service = new SqliteDbService();
-        var opened = await service.Open(new DbOptions
+        var opened = await service.OpenAsync(new DbOptions
         {
             ConnectionString = "Data Source=:memory:",
             Name = "c262-transaction-atomicity-tests",
@@ -270,7 +270,7 @@ public sealed class DatabaseExecuteInTransactionAtomicityTests
         }
         finally
         {
-            await service.Close();
+            await service.CloseAsync();
         }
     }
 
@@ -293,7 +293,7 @@ public sealed class DatabaseExecuteInTransactionAtomicityTests
             Name = dbName,
         };
 
-        var opened = await service.Open(options);
+        var opened = await service.OpenAsync(options);
         Assert.True(opened);
 
         try
@@ -304,7 +304,7 @@ public sealed class DatabaseExecuteInTransactionAtomicityTests
         }
         finally
         {
-            await service.Close();
+            await service.CloseAsync();
             try
             {
                 var client = new MongoClient(connectionString);
@@ -343,7 +343,7 @@ public sealed class DatabaseExecuteInTransactionAtomicityTests
             Name = dbName,
         };
 
-        var opened = await service.Open(options);
+        var opened = await service.OpenAsync(options);
         Assert.True(opened);
 
         try
@@ -352,7 +352,7 @@ public sealed class DatabaseExecuteInTransactionAtomicityTests
         }
         finally
         {
-            await service.Close();
+            await service.CloseAsync();
             try
             {
                 await using var admin = new NpgsqlConnection(adminConnectionString);

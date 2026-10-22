@@ -122,7 +122,7 @@ public static class AgentTemplate
         else
         {
             TemplateStringBuilder.AppendLine("\t\t\tlong callChainId = GameFrameX.Core.Actors.Impl.WorkerActor.NextChainId();");
-            TemplateStringBuilder.AppendLine($"\t\t\t_ = base.Actor.WorkerActor.Enqueue(()=>base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), callChainId, true, {infoMethod.TimeOut});");
+            TemplateStringBuilder.AppendLine($"\t\t\t_ = base.Actor.WorkerActor.EnqueueAsync(()=>base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), callChainId, true, {infoMethod.TimeOut});");
         }
 
         TemplateStringBuilder.AppendLine($"\t\t\treturn {infoMethod.ReturnType}.CompletedTask;");
@@ -143,6 +143,6 @@ public static class AgentTemplate
         TemplateStringBuilder.AppendLine("\t\t\t{");
         TemplateStringBuilder.AppendLine($"\t\t\t\treturn {(needAwait ? "await " : string.Empty)} base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString});");
         TemplateStringBuilder.AppendLine("\t\t\t}");
-        TemplateStringBuilder.AppendLine($"\t\t\treturn {(needAwait ? "await " : string.Empty)} base.Actor.WorkerActor.Enqueue(()=>base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), chainId, {(infoMethod.Discard ? "true" : "false")}, {infoMethod.TimeOut});");
+        TemplateStringBuilder.AppendLine($"\t\t\treturn {(needAwait ? "await " : string.Empty)} base.Actor.WorkerActor.EnqueueAsync(()=>base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), chainId, {(infoMethod.Discard ? "true" : "false")}, {infoMethod.TimeOut});");
     }
 }

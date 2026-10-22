@@ -138,7 +138,7 @@ internal sealed class HotfixHost : IHotfixResolver
     /// <param name="setting">应用程序配置 / The application setting.</param>
     /// <param name="reload">是否为重新加载 / Whether this is a reload.</param>
     /// <returns>装载是否成功 / Whether the load succeeded.</returns>
-    internal async Task<bool> Load(HotfixModule newModule, AppSetting setting, bool reload)
+    internal async Task<bool> LoadAsync(HotfixModule newModule, AppSetting setting, bool reload)
     {
         ReloadTime = TimerHelper.GetNowWithUtc();
         if (reload)
@@ -153,7 +153,7 @@ internal sealed class HotfixHost : IHotfixResolver
         _moduleChain.Register(newModule);
         if (newModule.HotfixBridge != null)
         {
-            return await newModule.HotfixBridge.OnLoadSuccess(setting, reload);
+            return await newModule.HotfixBridge.OnLoadSuccessAsync(setting, reload);
         }
 
         return true;
@@ -165,9 +165,9 @@ internal sealed class HotfixHost : IHotfixResolver
     /// </summary>
     /// <param name="message">停止原因 / The stop reason.</param>
     /// <returns>停止任务 / The stop task.</returns>
-    internal Task Stop(string message)
+    internal Task StopAsync(string message)
     {
-        return CurrentModule?.HotfixBridge?.Stop(message) ?? Task.CompletedTask;
+        return CurrentModule?.HotfixBridge?.StopAsync(message) ?? Task.CompletedTask;
     }
 
     /// <summary>

@@ -45,7 +45,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Bag;
 [Description("请求给玩家发送道具")]
 public sealed class ReqPlayerSendItemHttpHandler : BaseHttpHandler
 {
-    public override async Task<string> Action(HttpActionContext context)
+    public override async Task<string> ActionAsync(HttpActionContext context)
     {
         var sendItemRequest = (ReqPlayerSendItemRequest)context.Request;
         var playerSession = PlayerSessionManager.Instance.GetByPlayerId(sendItemRequest.PlayerId);
@@ -71,8 +71,8 @@ public sealed class ReqPlayerSendItemHttpHandler : BaseHttpHandler
         if (playerSession.IsNotNull())
         {
             // 玩家在线
-            var bagComponentAgent = await ActorManager.GetComponentAgent<BagComponentAgent>(sendItemRequest.PlayerId);
-            await bagComponentAgent.UpdateChanged(playerSession.WorkChannel, itemDic);
+            var bagComponentAgent = await ActorManager.GetComponentAgentAsync<BagComponentAgent>(sendItemRequest.PlayerId);
+            await bagComponentAgent.UpdateChangedAsync(playerSession.WorkChannel, itemDic);
         }
         else
         {

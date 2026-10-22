@@ -243,7 +243,7 @@ public sealed class MongoDbServiceIndexTests
             Name = dbName,
         };
 
-        var opened = await service.Open(options);
+        var opened = await service.OpenAsync(options);
         Assert.True(opened);
 
         try
@@ -253,7 +253,7 @@ public sealed class MongoDbServiceIndexTests
         }
         finally
         {
-            await service.Close();
+            await service.CloseAsync();
             try
             {
                 var client = new MongoClient(connectionString);

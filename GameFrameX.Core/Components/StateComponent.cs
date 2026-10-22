@@ -60,7 +60,7 @@ public sealed class StateComponent
     /// </summary>
     /// <param name="force"></param>
     /// <returns></returns>
-    public static async Task SaveAll(bool force = false)
+    public static async Task SaveAllAsync(bool force = false)
     {
         try
         {
@@ -72,12 +72,12 @@ public sealed class StateComponent
             }
 
             await Task.WhenAll(tasks);
-            // Localization: Core.StateComponent.SaveAllStateTimeLog - StateComponent.SaveAll 保存所有状态，耗时: {0}毫秒
+            // Localization: Core.StateComponent.SaveAllStateTimeLog - StateComponent.SaveAllAsync 保存所有状态，耗时: {0}毫秒
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveAllStateTimeLog, (DateTime.Now - begin).TotalMilliseconds));
         }
         catch (Exception e)
         {
-            // Localization: Core.StateComponent.SaveAllStateErrorLog - StateComponent.SaveAll 保存所有状态错误\n{0}
+            // Localization: Core.StateComponent.SaveAllStateErrorLog - StateComponent.SaveAllAsync 保存所有状态错误\n{0}
             LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveAllStateErrorLog, e));
         }
     }
@@ -85,7 +85,7 @@ public sealed class StateComponent
     /// <summary>
     /// 定时回存所有数据
     /// </summary>
-    public static async Task TimerSave()
+    public static async Task TimerSaveAsync()
     {
         try
         {
@@ -100,7 +100,7 @@ public sealed class StateComponent
         }
         catch (Exception e)
         {
-            // Localization: Core.StateComponent.TimerSaveStateErrorLog - StateComponent.TimerSave 定时保存状态错误，异常:{0}
+            // Localization: Core.StateComponent.TimerSaveStateErrorLog - StateComponent.TimerSaveAsync 定时保存状态错误，异常:{0}
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.StateComponent.TimerSaveStateErrorLog, e));
         }
     }
@@ -116,7 +116,7 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
 
     static StateComponent()
     {
-        StateComponent.AddShutdownSaveFunc(SaveAll);
+        StateComponent.AddShutdownSaveFunc(SaveAllAsync);
     }
 
     /// <summary>
@@ -179,9 +179,9 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
     /// 激活组件，如果状态为空则读取状态数据
     /// </summary>
     /// <returns>异步任务</returns>
-    public override async Task Active()
+    public override async Task ActiveAsync()
     {
-        await base.Active();
+        await base.ActiveAsync();
         if (State != null)
         {
             return;
@@ -194,17 +194,17 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
     /// 反激活组件，从状态字典中移除当前Actor的状态
     /// </summary>
     /// <returns>异步任务</returns>
-    public override Task Inactive()
+    public override Task InactiveAsync()
     {
         StateDic.TryRemove(ActorId, out _);
-        return base.Inactive();
+        return base.InactiveAsync();
     }
 
     /// <summary>
     /// 保存状态到数据库
     /// </summary>
     /// <returns>异步任务</returns>
-    protected async Task SaveState()
+    protected async Task SaveStateAsync()
     {
         try
         {
@@ -215,7 +215,7 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
         }
         catch (Exception e)
         {
-            // Localization: Core.StateComponent.SaveStateFailedLog - StateComponent.SaveState Failed 状态ID:{0} , 错误:{1} , 消息: 状态组件保存状态失败。状态ID:{2},{3}
+            // Localization: Core.StateComponent.SaveStateFailedLog - StateComponent.SaveStateAsync Failed 状态ID:{0} , 错误:{1} , 消息: 状态组件保存状态失败。状态ID:{2},{3}
             LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveStateFailedLog, State.Id, e, State.Id, e));
         }
     }
@@ -226,7 +226,7 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
     /// <returns>异步任务</returns>
     public override async Task WriteStateAsync()
     {
-        await SaveState();
+        await SaveStateAsync();
     }
 
     #region 仅DBModel.Mongodb调用
@@ -237,7 +237,7 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
     /// <param name="shutdown">是否为关服保存</param>
     /// <param name="force">是否强制保存所有数据</param>
     /// <returns>异步任务</returns>
-    public static async Task SaveAll(bool shutdown, bool force = false)
+    public static async Task SaveAllAsync(bool shutdown, bool force = false)
     {
         var stateList = new List<TState>();
 

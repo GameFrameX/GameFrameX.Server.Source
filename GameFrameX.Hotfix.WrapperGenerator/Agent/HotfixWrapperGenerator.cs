@@ -260,7 +260,8 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
             return;
         }
 
-        if (method.Identifier.Text.Equals("Active") || method.Identifier.Text.Equals("Inactive"))
+        // C290：生命周期方法已改名 ActiveAsync / InactiveAsync，沿用原跳过语义。
+        if (method.Identifier.Text.Equals("ActiveAsync") || method.Identifier.Text.Equals("InactiveAsync"))
         {
             return;
         }

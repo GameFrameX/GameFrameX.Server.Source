@@ -287,7 +287,7 @@ public static partial class Keys
         {
 
             /// <summary>
-            /// ActorManager.CheckIdle Actor已回收 actorId:{0} actorType:{1} , 消息: actor回收 id:{2} type:{3}
+            /// ActorManager.CheckIdleAsync Actor已回收 actorId:{0} actorType:{1} , 消息: actor回收 id:{2} type:{3}
             /// </summary>
             /// <remarks>
             /// 键名: Core.ActorManager.CheckIdleRecycled
@@ -297,7 +297,7 @@ public static partial class Keys
             public const string CheckIdleRecycled = "Core.ActorManager.CheckIdleRecycled";
 
             /// <summary>
-            /// ActorManager.SaveAll 保存所有Actor状态耗时: {0} ms , 消息: 保存所有状态，用时: {1}ms
+            /// ActorManager.SaveAllAsync 保存所有Actor状态耗时: {0} ms , 消息: 保存所有状态，用时: {1}ms
             /// </summary>
             /// <remarks>
             /// 键名: Core.ActorManager.SaveAllStateTimeLog
@@ -307,7 +307,7 @@ public static partial class Keys
             public const string SaveAllStateTimeLog = "Core.ActorManager.SaveAllStateTimeLog";
 
             /// <summary>
-            /// ActorManager.SaveAll 保存所有Actor状态 , 消息: 保存所有状态错误\n{0} , 错误: {1}
+            /// ActorManager.SaveAllAsync 保存所有Actor状态 , 消息: 保存所有状态错误\n{0} , 错误: {1}
             /// </summary>
             /// <remarks>
             /// 键名: Core.ActorManager.SaveAllStateErrorLog
@@ -317,7 +317,7 @@ public static partial class Keys
             public const string SaveAllStateErrorLog = "Core.ActorManager.SaveAllStateErrorLog";
 
             /// <summary>
-            /// ActorManager.TimerSave 定时保存所有Actor状态错误 , 消息: 定时器保存状态错误 , 错误: {0}
+            /// ActorManager.TimerSaveAsync 定时保存所有Actor状态错误 , 消息: 定时器保存状态错误 , 错误: {0}
             /// </summary>
             /// <remarks>
             /// 键名: Core.ActorManager.TimerSaveStateErrorLog
@@ -327,7 +327,7 @@ public static partial class Keys
             public const string TimerSaveStateErrorLog = "Core.ActorManager.TimerSaveStateErrorLog";
 
             /// <summary>
-            /// ActorManager.CrossDay Actor跨天 actorId:{0} actorType:{1} , 消息: 全局Actor：{2}执行跨天
+            /// ActorManager.CrossDayAsync Actor跨天 actorId:{0} actorType:{1} , 消息: 全局Actor：{2}执行跨天
             /// </summary>
             /// <remarks>
             /// 键名: Core.ActorManager.ActorCrossDayLog
@@ -337,7 +337,7 @@ public static partial class Keys
             public const string ActorCrossDayLog = "Core.ActorManager.ActorCrossDayLog";
 
             /// <summary>
-            /// ActorManager.CrossDay 全局comp跨天超时 , 超时: {0}秒 , 消息: 全局comp跨天耗时过久，不阻止其他comp跨天，当前已过{1}秒
+            /// ActorManager.CrossDayAsync 全局comp跨天超时 , 超时: {0}秒 , 消息: 全局comp跨天耗时过久，不阻止其他comp跨天，当前已过{1}秒
             /// </summary>
             /// <remarks>
             /// 键名: Core.ActorManager.GlobalCompCrossDayTimeoutLog
@@ -347,7 +347,7 @@ public static partial class Keys
             public const string GlobalCompCrossDayTimeoutLog = "Core.ActorManager.GlobalCompCrossDayTimeoutLog";
 
             /// <summary>
-            /// ActorManager.CrossDay 全局comp跨天完成 , 耗时: {0}ms , 消息: 全局comp跨天完成 耗时：{1}ms
+            /// ActorManager.CrossDayAsync 全局comp跨天完成 , 耗时: {0}ms , 消息: 全局comp跨天完成 耗时：{1}ms
             /// </summary>
             /// <remarks>
             /// 键名: Core.ActorManager.GlobalCompCrossDayCompleteLog
@@ -357,7 +357,7 @@ public static partial class Keys
             public const string GlobalCompCrossDayCompleteLog = "Core.ActorManager.GlobalCompCrossDayCompleteLog";
 
             /// <summary>
-            /// ActorManager.CrossDay 非玩家comp跨天超时 , 超时: {0}秒 , 消息: 非玩家comp跨天耗时过久，不阻止玩家comp跨天，当前已过{1}秒
+            /// ActorManager.CrossDayAsync 非玩家comp跨天超时 , 超时: {0}秒 , 消息: 非玩家comp跨天耗时过久，不阻止玩家comp跨天，当前已过{1}秒
             /// </summary>
             /// <remarks>
             /// 键名: Core.ActorManager.NonPlayerCompCrossDayTimeoutLog
@@ -367,7 +367,7 @@ public static partial class Keys
             public const string NonPlayerCompCrossDayTimeoutLog = "Core.ActorManager.NonPlayerCompCrossDayTimeoutLog";
 
             /// <summary>
-            /// ActorManager.CrossDay 非玩家comp跨天完成 , 耗时: {0}ms , 消息: 非玩家comp跨天完成 耗时：{1}ms
+            /// ActorManager.CrossDayAsync 非玩家comp跨天完成 , 耗时: {0}ms , 消息: 非玩家comp跨天完成 耗时：{1}ms
             /// </summary>
             /// <remarks>
             /// 键名: Core.ActorManager.NonPlayerCompCrossDayCompleteLog
@@ -498,7 +498,7 @@ public static partial class Keys
             public const string SaveDataException = "Core.StateComponent.SaveDataException";
 
             /// <summary>
-            /// StateComponent.SaveAll 保存所有状态，耗时: {0}毫秒
+            /// StateComponent.SaveAllAsync 保存所有状态，耗时: {0}毫秒
             /// </summary>
             /// <remarks>
             /// 键名: Core.StateComponent.SaveAllStateTimeLog
@@ -508,7 +508,7 @@ public static partial class Keys
             public const string SaveAllStateTimeLog = "Core.StateComponent.SaveAllStateTimeLog";
 
             /// <summary>
-            /// StateComponent.SaveAll 保存所有状态错误\n{0}
+            /// StateComponent.SaveAllAsync 保存所有状态错误\n{0}
             /// </summary>
             /// <remarks>
             /// 键名: Core.StateComponent.SaveAllStateErrorLog
@@ -518,7 +518,7 @@ public static partial class Keys
             public const string SaveAllStateErrorLog = "Core.StateComponent.SaveAllStateErrorLog";
 
             /// <summary>
-            /// StateComponent.TimerSave 定时保存状态错误，异常:{0}
+            /// StateComponent.TimerSaveAsync 定时保存状态错误，异常:{0}
             /// </summary>
             /// <remarks>
             /// 键名: Core.StateComponent.TimerSaveStateErrorLog
@@ -528,7 +528,7 @@ public static partial class Keys
             public const string TimerSaveStateErrorLog = "Core.StateComponent.TimerSaveStateErrorLog";
 
             /// <summary>
-            /// StateComponent.SaveState Failed 状态ID:{0} , 错误:{1} , 消息: 状态组件保存状态失败。状态ID:{2},{3}
+            /// StateComponent.SaveStateAsync Failed 状态ID:{0} , 错误:{1} , 消息: 状态组件保存状态失败。状态ID:{2},{3}
             /// </summary>
             /// <remarks>
             /// 键名: Core.StateComponent.SaveStateFailedLog
@@ -614,7 +614,7 @@ public static partial class Keys
             public const string InnerActionError = "Core.MessageHandler.InnerActionError";
 
             /// <summary>
-            /// BaseComponentHandler.Init 获取组件失败，关闭通道，actorId:{0}，组件代理类型:{1}，异常：\n{2}
+            /// BaseComponentHandler.InitAsync 获取组件失败，关闭通道，actorId:{0}，组件代理类型:{1}，异常：\n{2}
             /// </summary>
             /// <remarks>
             /// 键名: Core.MessageHandler.GetComponentFailed
@@ -624,7 +624,7 @@ public static partial class Keys
             public const string GetComponentFailed = "Core.MessageHandler.GetComponentFailed";
 
             /// <summary>
-            /// BaseRpcComponentHandler.Init 获取组件失败，关闭通道，actorId:{0}，组件代理类型:{1}，异常：\n{2}
+            /// BaseRpcComponentHandler.InitAsync 获取组件失败，关闭通道，actorId:{0}，组件代理类型:{1}，异常：\n{2}
             /// </summary>
             /// <remarks>
             /// 键名: Core.MessageHandler.RpcGetComponentFailed
@@ -634,7 +634,7 @@ public static partial class Keys
             public const string RpcGetComponentFailed = "Core.MessageHandler.RpcGetComponentFailed";
 
             /// <summary>
-            /// BaseComponentHandler.InnerAction 缓存组件为空，消息类型:{0}
+            /// BaseComponentHandler.InnerActionAsync 缓存组件为空，消息类型:{0}
             /// </summary>
             /// <remarks>
             /// 键名: Core.MessageHandler.InnerActionCacheComponentNull
@@ -644,7 +644,7 @@ public static partial class Keys
             public const string InnerActionCacheComponentNull = "Core.MessageHandler.InnerActionCacheComponentNull";
 
             /// <summary>
-            /// BaseComponentHandler.GetComponentAgent 缓存组件为空，消息类型:{0}
+            /// BaseComponentHandler.GetComponentAgentAsync 缓存组件为空，消息类型:{0}
             /// </summary>
             /// <remarks>
             /// 键名: Core.MessageHandler.GetComponentAgentCacheComponentNull
@@ -654,7 +654,7 @@ public static partial class Keys
             public const string GetComponentAgentCacheComponentNull = "Core.MessageHandler.GetComponentAgentCacheComponentNull";
 
             /// <summary>
-            /// BaseRpcComponentHandler.InnerAction 缓存组件为空，消息类型:{0}
+            /// BaseRpcComponentHandler.InnerActionAsync 缓存组件为空，消息类型:{0}
             /// </summary>
             /// <remarks>
             /// 键名: Core.MessageHandler.RpcInnerActionCacheComponentNull
@@ -664,7 +664,7 @@ public static partial class Keys
             public const string RpcInnerActionCacheComponentNull = "Core.MessageHandler.RpcInnerActionCacheComponentNull";
 
             /// <summary>
-            /// BaseRpcComponentHandler.GetComponentAgent 缓存组件为空，消息类型:{0}
+            /// BaseRpcComponentHandler.GetComponentAgentAsync 缓存组件为空，消息类型:{0}
             /// </summary>
             /// <remarks>
             /// 键名: Core.MessageHandler.RpcGetComponentAgentCacheComponentNull
@@ -674,7 +674,7 @@ public static partial class Keys
             public const string RpcGetComponentAgentCacheComponentNull = "Core.MessageHandler.RpcGetComponentAgentCacheComponentNull";
 
             /// <summary>
-            /// BaseMessageHandler.InnerAction 执行超时，消息类型:{0}，超时:{1}，异常:{2}
+            /// BaseMessageHandler.InnerActionAsync 执行超时，消息类型:{0}，超时:{1}，异常:{2}
             /// </summary>
             /// <remarks>
             /// 键名: Core.MessageHandler.InnerActionTimeout
@@ -684,7 +684,7 @@ public static partial class Keys
             public const string InnerActionTimeout = "Core.MessageHandler.InnerActionTimeout";
 
             /// <summary>
-            /// BaseMessageHandler.InnerAction 执行异常，消息类型:{0}，异常:{1}
+            /// BaseMessageHandler.InnerActionAsync 执行异常，消息类型:{0}，异常:{1}
             /// </summary>
             /// <remarks>
             /// 键名: Core.MessageHandler.InnerActionException
@@ -694,7 +694,7 @@ public static partial class Keys
             public const string InnerActionException = "Core.MessageHandler.InnerActionException";
 
             /// <summary>
-            /// BaseRpcMessageHandler.InnerAction 请求消息:{0} 消息: 执行超时:{1}
+            /// BaseRpcMessageHandler.InnerActionAsync 请求消息:{0} 消息: 执行超时:{1}
             /// </summary>
             /// <remarks>
             /// 键名: Core.MessageHandler.RpcExecutionTimeout
@@ -704,7 +704,7 @@ public static partial class Keys
             public const string RpcExecutionTimeout = "Core.MessageHandler.RpcExecutionTimeout";
 
             /// <summary>
-            /// BaseRpcMessageHandler.InnerAction 处理器:{0} 请求消息:{1} 异常:{2}
+            /// BaseRpcMessageHandler.InnerActionAsync 处理器:{0} 请求消息:{1} 异常:{2}
             /// </summary>
             /// <remarks>
             /// 键名: Core.MessageHandler.RpcInnerActionException
@@ -714,7 +714,7 @@ public static partial class Keys
             public const string RpcInnerActionException = "Core.MessageHandler.RpcInnerActionException";
 
             /// <summary>
-            /// BaseRpcMessageHandler.InnerActionAsync 处理器:{0} 请求消息:{1} 消息: 消息处理器：{2},UniqueId：{3} 执行耗时：{4} ms
+            /// BaseRpcMessageHandler.InnerActionCoreAsync 处理器:{0} 请求消息:{1} 消息: 消息处理器：{2},UniqueId：{3} 执行耗时：{4} ms
             /// </summary>
             /// <remarks>
             /// 键名: Core.MessageHandler.RpcExecutionTimeWarning
@@ -724,7 +724,7 @@ public static partial class Keys
             public const string RpcExecutionTimeWarning = "Core.MessageHandler.RpcExecutionTimeWarning";
 
             /// <summary>
-            /// BaseRpcMessageHandler.InnerActionAsync 处理器:{0} 请求消息:{1} 消息: 消息处理器：{2},UniqueId：{3} 执行耗时：{4} ms
+            /// BaseRpcMessageHandler.InnerActionCoreAsync 处理器:{0} 请求消息:{1} 消息: 消息处理器：{2},UniqueId：{3} 执行耗时：{4} ms
             /// </summary>
             /// <remarks>
             /// 键名: Core.MessageHandler.RpcExecutionTimeDebug
@@ -894,7 +894,7 @@ public static partial class Keys
             public const string InvalidDayOfMonth = "CoreExceptions.Timer.InvalidDayOfMonth";
 
             /// <summary>
-            /// 使用定时器操作前必须先等待 QuartzTimer.Start 完成
+            /// 使用定时器操作前必须先等待 QuartzTimer.StartAsync 完成
             /// </summary>
             /// <remarks>
             /// 键名: CoreExceptions.Timer.StartNotAwaited

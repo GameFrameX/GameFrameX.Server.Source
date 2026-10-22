@@ -68,7 +68,7 @@ public abstract class BaseMessageHandler<TRequest> : IMessageHandler where TRequ
     /// <param name="message">消息对象</param>
     /// <param name="networkChannel">网络渠道</param>
     /// <returns>返回是否初始化成功,true:成功,false:失败</returns>
-    public virtual Task<bool> Init(INetworkMessage message, INetworkChannel networkChannel)
+    public virtual Task<bool> InitAsync(INetworkMessage message, INetworkChannel networkChannel)
     {
         ArgumentNullException.ThrowIfNull(message);
         ArgumentNullException.ThrowIfNull(networkChannel);
@@ -91,7 +91,7 @@ public abstract class BaseMessageHandler<TRequest> : IMessageHandler where TRequ
     /// <param name="timeout">执行超时时间，单位毫秒，默认30秒</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>执行任务</returns>
-    public virtual async Task InnerAction(int timeout = 30000, CancellationToken cancellationToken = default)
+    public virtual async Task InnerActionAsync(int timeout = 30000, CancellationToken cancellationToken = default)
     {
         if (_isInit == false)
         {
@@ -101,20 +101,20 @@ public abstract class BaseMessageHandler<TRequest> : IMessageHandler where TRequ
 
         try
         {
-            var task = InnerActionAsync(Message);
+            var task = InnerActionCoreAsync(Message);
             try
             {
                 await task.WaitAsync(TimeSpan.FromMilliseconds(timeout), cancellationToken);
             }
             catch (TimeoutException timeoutException)
             {
-                // Localization: Core.MessageHandler.InnerActionTimeout - BaseMessageHandler.InnerAction 执行超时，消息类型:{0}，超时:{1}，异常:{2}
+                // Localization: Core.MessageHandler.InnerActionTimeout - BaseMessageHandler.InnerActionAsync 执行超时，消息类型:{0}，超时:{1}，异常:{2}
                 LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.InnerActionTimeout, Message.GetType().FullName, timeout, timeoutException));
                 //强制设状态-取消该操作
             }
             catch (Exception exception)
             {
-                // Localization: Core.MessageHandler.InnerActionException - BaseMessageHandler.InnerAction 执行异常，消息类型:{0}，异常:{1}
+                // Localization: Core.MessageHandler.InnerActionException - BaseMessageHandler.InnerActionAsync 执行异常，消息类型:{0}，异常:{1}
                 LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.InnerActionException, Message.GetType().FullName, exception));
             }
         }
@@ -137,7 +137,7 @@ public abstract class BaseMessageHandler<TRequest> : IMessageHandler where TRequ
     /// </summary>
     /// <param name="message"></param>
     /// <returns>动作执行任务</returns>
-    protected async Task InnerActionAsync(TRequest message)
+    protected async Task InnerActionCoreAsync(TRequest message)
     {
         if (GlobalSettings.CurrentSetting.IsMonitorMessageTimeOut)
         {

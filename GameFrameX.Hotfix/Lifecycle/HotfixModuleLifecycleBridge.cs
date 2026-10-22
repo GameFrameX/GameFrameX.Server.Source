@@ -76,7 +76,7 @@ internal sealed class HotfixModuleLifecycleBridge : IHotfixBridge
     /// <param name="setting">应用程序配置 / The application setting.</param>
     /// <param name="reload">是否为热更重载 / Whether this is a hot reload.</param>
     /// <returns>一个任务，表示异步操作的结果，并返回加载是否成功的布尔值 / A task that completes with whether the load succeeded</returns>
-    public async Task<bool> OnLoadSuccess(AppSetting setting, bool reload)
+    public async Task<bool> OnLoadSuccessAsync(AppSetting setting, bool reload)
     {
         if (reload)
         {
@@ -118,11 +118,11 @@ internal sealed class HotfixModuleLifecycleBridge : IHotfixBridge
         }
 
         // 不管是不是重启服务器，都要加载配置（原 RunServer 首段；C284 起监听由宿主持有，热更只保纯生命周期激活）
-        await ConfigComponent.Instance.LoadConfig();
+        await ConfigComponent.Instance.LoadConfigAsync();
         // 启动定时器
-        await QuartzTimer.Start();
+        await QuartzTimer.StartAsync();
         GlobalTimer.Start();
-        await ComponentRegister.ActiveGlobalComponents();
+        await ComponentRegister.ActiveGlobalComponentsAsync();
         return true;
     }
 
@@ -141,18 +141,18 @@ internal sealed class HotfixModuleLifecycleBridge : IHotfixBridge
     /// </remarks>
     /// <param name="message">停止原因 / The stop reason.</param>
     /// <returns>一个任务，表示异步操作的结果 / A task that completes when the cleanup is done</returns>
-    public async Task Stop(string message = "")
+    public async Task StopAsync(string message = "")
     {
         // 断开所有连接
-        await PlayerSessionManager.Instance.RemoveAll();
+        await PlayerSessionManager.Instance.RemoveAllAsync();
         // 取消所有未执行定时器
-        await QuartzTimer.Stop();
+        await QuartzTimer.StopAsync();
         // 保证actor之前的任务都执行完毕
-        await ActorManager.AllFinish();
+        await ActorManager.AllFinishAsync();
         // 存储所有数据
-        await GlobalTimer.Stop();
+        await GlobalTimer.StopAsync();
         // 删除所有actor
-        await ActorManager.RemoveAll();
+        await ActorManager.RemoveAllAsync();
     }
 
 }

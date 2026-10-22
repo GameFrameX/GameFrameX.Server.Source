@@ -75,7 +75,7 @@ public sealed class EventBindingTests
             {
                 if (!_componentsRegistered)
                 {
-                    ComponentRegister.Init(typeof(PlayerComponent).Assembly).GetAwaiter().GetResult();
+                    ComponentRegister.InitAsync(typeof(PlayerComponent).Assembly).GetAwaiter().GetResult();
                     _componentsRegistered = true;
                 }
             }
@@ -141,7 +141,7 @@ public sealed class EventBindingTests
     [Event(typeof(SessionRemovedEventArgs))]
     internal sealed class ExtraSessionRemovedEventListener : EventListener<PlayerComponentAgent>
     {
-        protected override Task HandleEvent(PlayerComponentAgent agent, GameEventArgs gameEventArgs)
+        protected override Task HandleEventAsync(PlayerComponentAgent agent, GameEventArgs gameEventArgs)
         {
             return Task.CompletedTask;
         }

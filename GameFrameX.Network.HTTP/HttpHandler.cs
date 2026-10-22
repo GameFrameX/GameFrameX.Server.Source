@@ -78,7 +78,7 @@ public static class HttpHandler
     /// <param name="baseHandler">基础 HTTP 处理器工厂方法，根据命令名称返回对应的处理器 / Base HTTP handler factory method that returns the corresponding handler based on command name</param>
     /// <param name="aopHandlerTypes">AOP 处理器列表，可选 / AOP handler list, optional</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
-    public static async Task HandleRequest(HttpContext context, Func<string, BaseHttpHandler> baseHandler, List<IHttpAopHandler> aopHandlerTypes = null)
+    public static async Task HandleRequestAsync(HttpContext context, Func<string, BaseHttpHandler> baseHandler, List<IHttpAopHandler> aopHandlerTypes = null)
     {
         var ip = context.Connection.RemoteIpAddress?.ToString();
         string url = context.Request.PathBase + context.Request.Path;
@@ -191,7 +191,7 @@ public static class HttpHandler
         if (isProtoBuf)
         {
             var maxBodyBytes = GetEffectiveRequestBodyLimit(GlobalSettings.CurrentSetting.HttpMaxProtoBodyBytes);
-            var readResult = await TryReadRequestBodyBytes(context, maxBodyBytes);
+            var readResult = await TryReadRequestBodyBytesAsync(context, maxBodyBytes);
             if (!readResult.Success)
             {
                 return (true, null, null, false);
@@ -213,7 +213,7 @@ public static class HttpHandler
         }
 
         var maxJsonBodyBytes = GetEffectiveRequestBodyLimit(GlobalSettings.CurrentSetting.HttpMaxJsonBodyBytes);
-        var jsonReadResult = await TryReadRequestBodyBytes(context, maxJsonBodyBytes);
+        var jsonReadResult = await TryReadRequestBodyBytesAsync(context, maxJsonBodyBytes);
         if (!jsonReadResult.Success)
         {
             return (true, null, null, false);
@@ -306,7 +306,7 @@ public static class HttpHandler
     {
         var stopwatch = new Stopwatch();
         stopwatch.Start();
-        var result = await handler.ActionMessageObject(context);
+        var result = await handler.ActionMessageObjectAsync(context);
         stopwatch.Stop();
         if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp && GlobalSettings.CurrentSetting.IsDebugHttpResponse)
         {
@@ -361,7 +361,7 @@ public static class HttpHandler
         {
             var stopwatch = new Stopwatch();
             stopwatch.Start();
-            var result = await handler.Action(context);
+            var result = await handler.ActionAsync(context);
             stopwatch.Stop();
             if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp && GlobalSettings.CurrentSetting.IsDebugHttpResponse)
             {
@@ -394,7 +394,7 @@ public static class HttpHandler
     {
         var stopwatch = new Stopwatch();
         stopwatch.Start();
-        var result = await handler.Action(context);
+        var result = await handler.ActionAsync(context);
         stopwatch.Stop();
         if (GlobalSettings.CurrentSetting.IsDebug && GlobalSettings.CurrentSetting.IsDebugHttp && GlobalSettings.CurrentSetting.IsDebugHttpResponse)
         {
@@ -421,11 +421,11 @@ public static class HttpHandler
         return Math.Min(requestLimit, contentTypeLimit);
     }
 
-    private static async Task<(bool Success, byte[] Buffer)> TryReadRequestBodyBytes(HttpContext context, long maxBodyBytes)
+    private static async Task<(bool Success, byte[] Buffer)> TryReadRequestBodyBytesAsync(HttpContext context, long maxBodyBytes)
     {
         if (context.Request.ContentLength > maxBodyBytes)
         {
-            await WriteRequestBodyTooLarge(context, maxBodyBytes);
+            await WriteRequestBodyTooLargeAsync(context, maxBodyBytes);
             return (false, null);
         }
 
@@ -443,7 +443,7 @@ public static class HttpHandler
             totalRead += read;
             if (totalRead > maxBodyBytes)
             {
-                await WriteRequestBodyTooLarge(context, maxBodyBytes);
+                await WriteRequestBodyTooLargeAsync(context, maxBodyBytes);
                 return (false, null);
             }
 
@@ -453,7 +453,7 @@ public static class HttpHandler
         return (true, memoryStream.ToArray());
     }
 
-    private static Task WriteRequestBodyTooLarge(HttpContext context, long maxBodyBytes)
+    private static Task WriteRequestBodyTooLargeAsync(HttpContext context, long maxBodyBytes)
     {
         context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
         return context.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(StatusCodes.Status413PayloadTooLarge, $"HTTP request body is too large. Max allowed bytes: {maxBodyBytes}."));

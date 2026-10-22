@@ -56,7 +56,7 @@ public interface IHttpHandler
     /// </remarks>
     /// <param name="context">HTTP 处理管线统一请求上下文 / Unified request context for the HTTP handling pipeline</param>
     /// <returns>处理结果的字符串 / String result of the processing</returns>
-    Task<string> Action(HttpActionContext context);
+    Task<string> ActionAsync(HttpActionContext context);
 
 
     /// <summary>
@@ -67,5 +67,5 @@ public interface IHttpHandler
     /// </remarks>
     /// <param name="context">HTTP 处理管线统一请求上下文 / Unified request context for the HTTP handling pipeline</param>
     /// <returns>处理结果的 <see cref="MessageObject"/> 对象 / <see cref="MessageObject"/> result of the processing</returns>
-    Task<MessageObject> ActionMessageObject(HttpActionContext context);
+    Task<MessageObject> ActionMessageObjectAsync(HttpActionContext context);
 }

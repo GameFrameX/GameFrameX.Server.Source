@@ -46,7 +46,7 @@ namespace GameFrameX.DataBase.Sqlite;
 /// the full path and the failing stage; the per-Open info line prints the resolved data file
 /// (or the in-memory no-persistence notice), and the boundary warning fires once per process.
 /// The file-mode WAL pragma runs asynchronously and retries transient busy/locked conflicts
-/// through the shared resilience engine; <see cref="Close"/> is fully asynchronous
+/// through the shared resilience engine; <see cref="CloseAsync"/> is fully asynchronous
 /// (<c>WaitAsync</c> + <c>DisposeAsync</c>) — C265.
 /// </remarks>
 public sealed partial class SqliteDbService
@@ -74,7 +74,7 @@ public sealed partial class SqliteDbService
     /// <exception cref="ArgumentNullException">当 dbOptions / ConnectionString / Name 为 null 时抛出 / Thrown when dbOptions, ConnectionString or Name is null</exception>
     /// <exception cref="InvalidOperationException">当连接串缺 Data Source 或路径预检失败时抛出（含全路径与失败环节）/ Thrown when the connection string lacks Data Source or a path pre-check fails (carrying the full path and the failing stage)</exception>
     /// <returns>打开是否成功（嵌入式引擎为 true 或抛出）/ Whether the open succeeded (an embedded engine returns true or throws)</returns>
-    public async Task<bool> Open(DbOptions dbOptions)
+    public async Task<bool> OpenAsync(DbOptions dbOptions)
     {
         ArgumentNullException.ThrowIfNull(dbOptions);
         ArgumentNullException.ThrowIfNull(dbOptions.ConnectionString);
@@ -116,7 +116,7 @@ public sealed partial class SqliteDbService
                     using var command = _connection.CreateCommand();
                     command.CommandText = "PRAGMA journal_mode=WAL;";
                     await command.ExecuteNonQueryAsync().ConfigureAwait(false);
-                }, CancellationToken.None, nameof(Open), true).ConfigureAwait(false);
+                }, CancellationToken.None, nameof(OpenAsync), true).ConfigureAwait(false);
             }
 
             if (isMemory)
@@ -146,7 +146,7 @@ public sealed partial class SqliteDbService
     /// Closes the connection and clears the table-readiness cache.
     /// </remarks>
     /// <returns>异步任务 / Async task</returns>
-    public async Task Close()
+    public async Task CloseAsync()
     {
         await _gate.WaitAsync().ConfigureAwait(false);
         try

@@ -35,7 +35,7 @@ namespace GameFrameX.Discovery.Routing;
 /// </summary>
 /// <remarks>
 /// The generic player-route layer wiring point (unified from the Mongo /
-/// PostgreSQL parallel bootstraps). The launch flow calls <see cref="Attach"/>
+/// PostgreSQL parallel bootstraps). The launch flow calls <see cref="AttachAsync"/>
 /// once after the control database is registered: it ensures the
 /// <c>player_route</c> schema (idempotent — the driver's index / DDL
 /// bootstrap), constructs the resolver and sync target as process singletons,
@@ -68,7 +68,7 @@ public static class PlayerRouteResolverBootstrap
     /// 已装配的玩家路由解析器（Attach 之前为 null）。
     /// </summary>
     /// <remarks>
-    /// The wired resolver (null before <see cref="Attach"/>).
+    /// The wired resolver (null before <see cref="AttachAsync"/>).
     /// </remarks>
     public static PlayerRouteResolver Resolver { get; private set; }
 
@@ -76,7 +76,7 @@ public static class PlayerRouteResolverBootstrap
     /// 已装配的同步目标（Attach 之前为 null）。
     /// </summary>
     /// <remarks>
-    /// The wired sync target (null before <see cref="Attach"/>).
+    /// The wired sync target (null before <see cref="AttachAsync"/>).
     /// </remarks>
     public static PlayerRouteSyncTarget SyncTarget { get; private set; }
 
@@ -92,7 +92,7 @@ public static class PlayerRouteResolverBootstrap
     /// <param name="store">玩家路由存储适配 / The player-route storage seam</param>
     /// <param name="fastPath">Tier 1 快路径提供方（null 跳过 Tier 1）/ Tier 1 fast path (null skips Tier 1)</param>
     /// <returns>是否为本进程首次装配（false 表示已激活，本次调用为 no-op） / true on first attach, false on subsequent calls</returns>
-    public static async Task<bool> Attach(IPlayerRouteStore store, IPlayerRouteFastPath fastPath = null)
+    public static async Task<bool> AttachAsync(IPlayerRouteStore store, IPlayerRouteFastPath fastPath = null)
     {
         ArgumentNullException.ThrowIfNull(store);
 

@@ -79,7 +79,7 @@ public sealed class OnlineGameDbStorePersistenceTests
     /// </summary>
     private static async Task WithSqliteFacadeAsync(Func<Task> action, string name = "c249-store-tests")
     {
-        var opened = await GameDb.Init<SqliteDbService>(new DbOptions
+        var opened = await GameDb.InitAsync<SqliteDbService>(new DbOptions
         {
             ConnectionString = "Data Source=:memory:",
             Name = name,
@@ -526,7 +526,7 @@ public sealed class OnlineGameDbStorePersistenceTests
     /// </summary>
     private static async Task WithSqliteFileFacadeAsync(string dataFile, Func<Task> action)
     {
-        var opened = await GameDb.Init<SqliteDbService>(new DbOptions
+        var opened = await GameDb.InitAsync<SqliteDbService>(new DbOptions
         {
             ConnectionString = "Data Source=" + dataFile,
             Name = "c249-restart",

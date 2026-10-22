@@ -78,7 +78,7 @@ public interface IActor : IWorker
     /// 使当前Actor的所有组件进入非激活状态，通常在Actor被回收前调用
     /// </summary>
     /// <returns>一个表示异步操作的任务</returns>
-    Task Inactive();
+    Task InactiveAsync();
 
     /// <summary>
     /// 根据组件类型获取对应的 IComponentAgent
@@ -87,7 +87,7 @@ public interface IActor : IWorker
     /// <param name="agentType">组件类型，指定要获取的组件的具体类型</param>
     /// <param name="isNew">是否当获取为空的时候默认创建，默认值为true</param>
     /// <returns>一个表示异步操作的任务，返回 IComponentAgent 实例</returns>
-    Task<IComponentAgent> GetComponentAgent(Type agentType, bool isNew = true);
+    Task<IComponentAgent> GetComponentAgentAsync(Type agentType, bool isNew = true);
 
     /// <summary>
     /// 根据组件类型获取对应的 IComponentAgent
@@ -96,7 +96,7 @@ public interface IActor : IWorker
     /// <typeparam name="T">组件类型，必须实现IComponentAgent接口</typeparam>
     /// <param name="isNew">是否当获取为空的时候默认创建，默认值为true</param>
     /// <returns>一个表示异步操作的任务，返回指定类型的 IComponentAgent 实例</returns>
-    Task<T> GetComponentAgent<T>(bool isNew = true) where T : IComponentAgent;
+    Task<T> GetComponentAgentAsync<T>(bool isNew = true) where T : IComponentAgent;
 
     /// <summary>
     /// 获取所有已激活的组件代理实例
@@ -121,7 +121,7 @@ public interface IActor : IWorker
     /// </summary>
     /// <param name="serverDay">服务器运行天数，表示服务器运行的累计天数</param>
     /// <returns>一个表示异步操作的任务</returns>
-    Task CrossDay(int serverDay);
+    Task CrossDayAsync(int serverDay);
 
     /// <summary>
     /// 设置Actor的数据
@@ -181,7 +181,7 @@ public interface IActor : IWorker
     /// - 断开网络连接等
     /// </remarks>
     /// <returns>表示异步操作的任务</returns>
-    Task OnRecycle();
+    Task OnRecycleAsync();
 
     /// <summary>
     /// 添加一个在Actor回收时执行一次的回调事件

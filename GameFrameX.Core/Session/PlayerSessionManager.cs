@@ -208,7 +208,7 @@ public sealed class PlayerSessionManager : IPlayerSessionManager
     /// 移除所有在线玩家的会话。
     /// </summary>
     /// <returns>一个表示异步操作的任务。</returns>
-    public Task RemoveAll()
+    public Task RemoveAllAsync()
     {
         foreach (var session in SessionMap.Values)
         {
@@ -264,7 +264,7 @@ public sealed class PlayerSessionManager : IPlayerSessionManager
     /// 事件派发（Tell 入队）与 Close 存在竞态，异步入队可能晚于断连导致通知丢失；
     /// 顶号提示 RespPrompt 属游戏协议（Proto 在 Core 之上），故由调用方注入构造逻辑。必填参数使漏注入成为编译错误。
     /// </param>
-    public async Task UpdateSession(string sessionId, long playerId, string sign, Func<IPlayerSession, Task> duplicateLoginNotifier)
+    public async Task UpdateSessionAsync(string sessionId, long playerId, string sign, Func<IPlayerSession, Task> duplicateLoginNotifier)
     {
         // 获取与玩家ID关联的旧会话
         var oldSession = GetByPlayerId(playerId);

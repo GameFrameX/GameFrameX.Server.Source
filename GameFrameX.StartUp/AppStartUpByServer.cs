@@ -99,7 +99,7 @@ public abstract partial class AppStartUpBase
         // 排序
         aopHandlers.Sort((handlerX, handlerY) => handlerX.Priority.CompareTo(handlerY.Priority));
         // 启动服务器
-        await StartServer(baseHandler, httpFactory, aopHandlers, minimumLevelLogLevel);
+        await StartServerCoreAsync(baseHandler, httpFactory, aopHandlers, minimumLevelLogLevel);
         // 设置全局启动状态
         GameAppRuntime.MarkStarted(DateTime.UtcNow);
     }
@@ -133,7 +133,7 @@ public abstract partial class AppStartUpBase
     /// <param name="appSession">会话对象 / Session object</param>
     /// <param name="exception">异常信息 / Exception information</param>
     /// <returns>返回 <c>true</c> 表示继续处理；返回 <c>false</c> 表示终止处理 / Returns <c>true</c> to continue processing; returns <c>false</c> to terminate processing</returns>
-    protected virtual ValueTask<bool> PackageErrorHandler(IAppSession appSession, PackageHandlingException<IMessage> exception)
+    protected virtual ValueTask<bool> PackageErrorHandlerAsync(IAppSession appSession, PackageHandlingException<IMessage> exception)
     {
         return ValueTask.FromResult(true);
     }
@@ -148,7 +148,7 @@ public abstract partial class AppStartUpBase
     /// <param name="appSession">断开连接的会话对象 / Session object that disconnected</param>
     /// <param name="disconnectEventArgs">断开连接的相关参数 / Parameters related to disconnection</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
-    protected virtual ValueTask OnDisconnected(IAppSession appSession, CloseEventArgs disconnectEventArgs)
+    protected virtual ValueTask OnDisconnectedAsync(IAppSession appSession, CloseEventArgs disconnectEventArgs)
     {
         // Localization: StartUp.Server.ClientDisconnected - 客户端断开连接 - 会话ID: {0}, 远程终端: {1}, 断开原因: {2}
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Server.ClientDisconnected, appSession.SessionId, appSession.RemoteEndPoint, disconnectEventArgs.Reason));
@@ -164,7 +164,7 @@ public abstract partial class AppStartUpBase
     /// </remarks>
     /// <param name="appSession">新建立的会话对象 / Newly established session object</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
-    protected virtual ValueTask OnConnected(IAppSession appSession)
+    protected virtual ValueTask OnConnectedAsync(IAppSession appSession)
     {
         // Localization: StartUp.Server.NewClientConnection - 新客户端连接 - 会话ID: {0}, 远程终端: {1}
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Server.NewClientConnection, appSession.SessionId, appSession.RemoteEndPoint));
@@ -180,12 +180,12 @@ public abstract partial class AppStartUpBase
     /// through the full dispatch: the session-cached network channel, the framework-level
     /// heartbeat short-circuit (<see cref="ReplyHeartBeatAsync"/>), handler resolution via
     /// <see cref="ResolveMessageHandler"/> with a clean "handler not found" error log, and finally
-    /// <see cref="InvokeMessageHandler"/>.
+    /// <see cref="InvokeMessageHandlerAsync"/>.
     /// </remarks>
     /// <param name="session">会话对象 / Session object</param>
     /// <param name="message">接收到的消息 / Received message</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
-    protected virtual async ValueTask PackageHandler(IAppSession session, IMessage message)
+    protected virtual async ValueTask PackageHandlerAsync(IAppSession session, IMessage message)
     {
         if (message is not INetworkMessagePackage messagePackage)
         {
@@ -249,7 +249,7 @@ public abstract partial class AppStartUpBase
             return;
         }
 
-        await InvokeMessageHandler(handler, messagePackage.DeserializeMessageObject(), networkChannel);
+        await InvokeMessageHandlerAsync(handler, messagePackage.DeserializeMessageObject(), networkChannel);
     }
 
     /// <summary>
@@ -358,19 +358,19 @@ public abstract partial class AppStartUpBase
     /// <param name="timeout">超时时间（毫秒）/ Timeout (milliseconds)</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
-    protected async Task InvokeMessageHandler(IMessageHandler handler, INetworkMessage message, INetworkChannel networkChannel, int timeout = 30000, CancellationToken cancellationToken = default)
+    protected async Task InvokeMessageHandlerAsync(IMessageHandler handler, INetworkMessage message, INetworkChannel networkChannel, int timeout = 30000, CancellationToken cancellationToken = default)
     {
         try
         {
             await Task.Run(async () =>
             {
-                var initSuccess = await handler.Init(message, networkChannel);
+                var initSuccess = await handler.InitAsync(message, networkChannel);
                 if (!initSuccess)
                 {
                     return;
                 }
 
-                await handler.InnerAction(timeout, cancellationToken);
+                await handler.InnerActionAsync(timeout, cancellationToken);
             }, cancellationToken);
         }
         catch (Exception ex)
@@ -404,7 +404,7 @@ public abstract partial class AppStartUpBase
     /// <param name="aopHandlerTypes">AOP 处理器列表，用于在 HTTP 请求处理前后执行额外的逻辑 / AOP handler list for executing additional logic before and after HTTP request processing</param>
     /// <param name="minimumLevelLogLevel">日志记录的最小级别，用于控制日志输出 / Minimum level for logging to control log output</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
-    private async Task StartServer(List<BaseHttpHandler> baseHandler, Func<string, BaseHttpHandler> httpFactory, List<IHttpAopHandler> aopHandlerTypes = null, LogLevel minimumLevelLogLevel = LogLevel.Debug)
+    private async Task StartServerCoreAsync(List<BaseHttpHandler> baseHandler, Func<string, BaseHttpHandler> httpFactory, List<IHttpAopHandler> aopHandlerTypes = null, LogLevel minimumLevelLogLevel = LogLevel.Debug)
     {
         var multipleServerHostBuilder = MultipleServerHostBuilder.Create();
         ConfigureTcpServer(multipleServerHostBuilder);
@@ -413,7 +413,7 @@ public abstract partial class AppStartUpBase
         ConfigureWebSocketServer(multipleServerHostBuilder);
 
         // await StartHttpServerAsync(hostBuilder,baseHandler, httpFactory, aopHandlerTypes, minimumLevelLogLevel);
-        await StartHttpServer(baseHandler, httpFactory, aopHandlerTypes, minimumLevelLogLevel);
+        await StartHttpServerAsync(baseHandler, httpFactory, aopHandlerTypes, minimumLevelLogLevel);
 
         // 配置日志
         ConfigureHostLogging(multipleServerHostBuilder, minimumLevelLogLevel);
@@ -429,7 +429,7 @@ public abstract partial class AppStartUpBase
     /// <summary>
     /// 配置 TCP 服务器（含可选 UDP）。
     /// </summary>
-    /// <remarks>Configure the TCP server (with optional UDP). Extracted from <see cref="StartServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <remarks>Configure the TCP server (with optional UDP). Extracted from <see cref="StartServerCoreAsync"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
     /// <param name="multipleServerHostBuilder">多服务器主机构建器 / Multiple server host builder</param>
     private void ConfigureTcpServer(MultipleServerHostBuilder multipleServerHostBuilder)
     {
@@ -449,8 +449,8 @@ public abstract partial class AppStartUpBase
             {
                 var serverBuilder = builder
                                     .UseClearIdleSession()
-                                    .UseSessionHandler(OnConnected, OnDisconnected)
-                                    .UsePackageHandler(PackageHandler, PackageErrorHandler)
+                                    .UseSessionHandler(OnConnectedAsync, OnDisconnectedAsync)
+                                    .UsePackageHandler(PackageHandlerAsync, PackageErrorHandlerAsync)
                                     .UseInProcSessionContainer();
 
                 // 启用UDP 检查是否可用
@@ -546,8 +546,8 @@ public abstract partial class AppStartUpBase
                         o.IdleTimeout = 60000;
                     })
                     .UseClearIdleSession()
-                    .UseSessionHandler(OnConnected, OnDisconnected)
-                    .UsePackageHandler((session, message) => HandleKcpPackageWithAuthenticationAsync(authenticationMiddleware, session, message), PackageErrorHandler)
+                    .UseSessionHandler(OnConnectedAsync, OnDisconnectedAsync)
+                    .UsePackageHandler((session, message) => HandleKcpPackageWithAuthenticationAsync(authenticationMiddleware, session, message), PackageErrorHandlerAsync)
                     .UseInProcSessionContainer()
                     // UseMiddleware 返回非泛型 ISuperSocketHostBuilder，须置于泛型链末尾（其后仅剩 IHostBuilder 级调用）
                     .UseMiddleware<SessionAuthenticationMiddleware>(_ => authenticationMiddleware)
@@ -592,7 +592,7 @@ public abstract partial class AppStartUpBase
             return;
         }
 
-        await PackageHandler(session, message);
+        await PackageHandlerAsync(session, message);
     }
 
     /// <summary>
@@ -660,10 +660,10 @@ public abstract partial class AppStartUpBase
                     })
                     // 空闲会话清理兜底：清理窗 300s 必须大于客户端陈旧淘汰阈 240s（KcpConnectionProvider 时序不变量）
                     .UseClearIdleSession()
-                    .UseSessionHandler(OnConnected, OnDisconnected)
+                    .UseSessionHandler(OnConnectedAsync, OnDisconnectedAsync)
                     .UsePackageHandler(interNodeAuthenticationEnabled
                         ? (session, message) => HandleKcpPackageWithAuthenticationAsync(authenticationMiddleware, session, message)
-                        : (session, message) => PackageHandler(session, message), PackageErrorHandler)
+                        : (session, message) => PackageHandlerAsync(session, message), PackageErrorHandlerAsync)
                     .UseInProcSessionContainer();
                 if (interNodeAuthenticationEnabled)
                 {
@@ -721,7 +721,7 @@ public abstract partial class AppStartUpBase
     /// <summary>
     /// 配置 WebSocket 服务器。
     /// </summary>
-    /// <remarks>Configure the WebSocket server. Extracted from <see cref="StartServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <remarks>Configure the WebSocket server. Extracted from <see cref="StartServerCoreAsync"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
     /// <param name="multipleServerHostBuilder">多服务器主机构建器 / Multiple server host builder</param>
     private void ConfigureWebSocketServer(MultipleServerHostBuilder multipleServerHostBuilder)
     {
@@ -742,8 +742,8 @@ public abstract partial class AppStartUpBase
             multipleServerHostBuilder.AddWebSocketServer(builder =>
             {
                 builder
-                    .UseWebSocketMessageHandler(WebSocketMessageHandler)
-                    .UseSessionHandler(OnConnected, OnDisconnected)
+                    .UseWebSocketMessageHandler(WebSocketMessageHandlerAsync)
+                    .UseSessionHandler(OnConnectedAsync, OnDisconnectedAsync)
                     .ConfigureServices((context, serviceCollection) =>
                     {
                         serviceCollection.Configure<ServerOptions>(options =>
@@ -792,7 +792,7 @@ public abstract partial class AppStartUpBase
     /// <summary>
     /// 配置服务器主机的日志记录。
     /// </summary>
-    /// <remarks>Configure host logging for the multiple server host builder. Extracted from <see cref="StartServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <remarks>Configure host logging for the multiple server host builder. Extracted from <see cref="StartServerCoreAsync"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
     /// <param name="multipleServerHostBuilder">多服务器主机构建器 / Multiple server host builder</param>
     /// <param name="minimumLevelLogLevel">日志记录的最小级别，用于控制日志输出 / Minimum level for logging to control log output</param>
     private void ConfigureHostLogging(MultipleServerHostBuilder multipleServerHostBuilder, LogLevel minimumLevelLogLevel)
@@ -821,7 +821,7 @@ public abstract partial class AppStartUpBase
     /// <param name="session">WebSocket 会话对象 / WebSocket session object</param>
     /// <param name="messagePackage">接收到的消息包 / Received message package</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
-    private async ValueTask WebSocketMessageHandler(WebSocketSession session, WebSocketPackage messagePackage)
+    private async ValueTask WebSocketMessageHandlerAsync(WebSocketSession session, WebSocketPackage messagePackage)
     {
         // 只处理二进制消息
         if (messagePackage.OpCode != OpCode.Binary)
@@ -832,7 +832,7 @@ public abstract partial class AppStartUpBase
 
         var readOnlySequence = messagePackage.Data;
         var message = MessageHelper.DecoderHandler.Handler(ref readOnlySequence);
-        await PackageHandler(session, message);
+        await PackageHandlerAsync(session, message);
     }
 
     #endregion

@@ -72,7 +72,7 @@ public class MailComponentAgent : StateComponentAgent<MailComponent, MailBoxStat
 
     private async Task SyncAsyncImpl()
     {
-        var (playerLevel, playerCreatedTime) = await GetPlayerFilterContext();
+        var (playerLevel, playerCreatedTime) = await GetPlayerFilterContextAsync();
         var serverId = GameServerConst.Game.Id;
         var state = OwnerComponent.State;
         var changedMailIds = new List<long>();
@@ -451,7 +451,7 @@ public class MailComponentAgent : StateComponentAgent<MailComponent, MailBoxStat
     /// </summary>
     private async Task<RewardGrantResult> GrantAttachmentAsync(MailState mail, MailAttachmentInstance att)
     {
-        var rewardAgent = await ActorManager.GetComponentAgent<RewardGrantComponentAgent>();
+        var rewardAgent = await ActorManager.GetComponentAgentAsync<RewardGrantComponentAgent>();
         return await rewardAgent.GrantAsync(new RewardGrantRequest
         {
             PlayerId = ActorId,
@@ -602,9 +602,9 @@ public class MailComponentAgent : StateComponentAgent<MailComponent, MailBoxStat
     /// <summary>
     /// 读取玩家筛选上下文（等级、创建时间）。从同 Actor 的 <see cref="PlayerComponentAgent"/> 状态读取。
     /// </summary>
-    private async Task<(long level, long createdTime)> GetPlayerFilterContext()
+    private async Task<(long level, long createdTime)> GetPlayerFilterContextAsync()
     {
-        var playerAgent = await ActorManager.GetComponentAgent<PlayerComponentAgent>();
+        var playerAgent = await ActorManager.GetComponentAgentAsync<PlayerComponentAgent>();
         var playerState = playerAgent.OwnerComponent.State;
         return (playerState.Level, playerState.CreatedTime);
     }

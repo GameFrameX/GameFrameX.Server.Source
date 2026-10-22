@@ -49,7 +49,7 @@ public class HttpHandlerRequestBodyLimitTests
         var handlerCalled = false;
         var context = CreateContext("application/json", Stream.Null, MaxBodyBytes + 1);
 
-        await HttpHandler.HandleRequest(context, _ =>
+        await HttpHandler.HandleRequestAsync(context, _ =>
         {
             handlerCalled = true;
             return null;
@@ -66,7 +66,7 @@ public class HttpHandlerRequestBodyLimitTests
         var handlerCalled = false;
         var context = CreateContext("application/x-protobuf", Stream.Null, MaxBodyBytes + 1);
 
-        await HttpHandler.HandleRequest(context, _ =>
+        await HttpHandler.HandleRequestAsync(context, _ =>
         {
             handlerCalled = true;
             return null;
@@ -84,7 +84,7 @@ public class HttpHandlerRequestBodyLimitTests
         var body = new MemoryStream(Encoding.UTF8.GetBytes(new string('a', MaxBodyBytes + 1)));
         var context = CreateContext("application/json", body, null);
 
-        await HttpHandler.HandleRequest(context, _ =>
+        await HttpHandler.HandleRequestAsync(context, _ =>
         {
             handlerCalled = true;
             return null;

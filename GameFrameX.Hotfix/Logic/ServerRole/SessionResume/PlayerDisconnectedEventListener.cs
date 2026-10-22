@@ -63,13 +63,13 @@ internal sealed class PlayerDisconnectedEventListener : EventListener<RoomCompon
     /// <param name="agent">全局分发下恒为 null（代理在处理内自取）/ Always null under the global dispatch (the agent is fetched inside)</param>
     /// <param name="gameEventArgs">断开事件参数 / The disconnect event args</param>
     /// <returns>异步任务 / The async task</returns>
-    protected override async Task HandleEvent(RoomComponentAgent agent, GameEventArgs gameEventArgs)
+    protected override async Task HandleEventAsync(RoomComponentAgent agent, GameEventArgs gameEventArgs)
     {
         var eventArgs = (PlayerDisconnectedEventArgs)gameEventArgs;
 
         // 房间系统：标记玩家断线，等待重连或超时清理
-        var roomAgent = await ActorManager.GetComponentAgent<RoomComponentAgent>();
-        await roomAgent.MarkPlayerDisconnected(eventArgs.PlayerId);
+        var roomAgent = await ActorManager.GetComponentAgentAsync<RoomComponentAgent>();
+        await roomAgent.MarkPlayerDisconnectedAsync(eventArgs.PlayerId);
 
         // C204 两层会话协同：Online 会话域开重连窗 + 对局域标记断线成员（含旧回调迟到守卫）。
         await SessionResumeDomainBridge.NotifyPlayerDisconnectedAsync(eventArgs.PlayerId, eventArgs.SessionId);

@@ -39,8 +39,8 @@ public class RockPaperScissorsGameComponentAgent : StateComponentAgent<RockPaper
 {
     public async Task OnReqGameInfoAsync(long playerId, ReqRockPaperScissorsGameInfo request, RespRockPaperScissorsGameInfo response)
     {
-        var roomAgent = await ActorManager.GetComponentAgent<RoomComponentAgent>();
-        var room = await roomAgent.GetRoom(request.RoomId);
+        var roomAgent = await ActorManager.GetComponentAgentAsync<RoomComponentAgent>();
+        var room = await roomAgent.GetRoomAsync(request.RoomId);
 
         // C245 对局桥路径（开关开启 + RPS 房间时独占；不含 Playing 判定——Settling/Settled 也可查）：
         // 校验请求主体为房间成员 → 桥查询（保密投影）→ 视图映射回填 + Room 状态映射（无推送）。
@@ -92,8 +92,8 @@ public class RockPaperScissorsGameComponentAgent : StateComponentAgent<RockPaper
             return;
         }
 
-        var roomAgent = await ActorManager.GetComponentAgent<RoomComponentAgent>();
-        var room = await roomAgent.GetRoom(request.RoomId);
+        var roomAgent = await ActorManager.GetComponentAgentAsync<RoomComponentAgent>();
+        var room = await roomAgent.GetRoomAsync(request.RoomId);
 
         if (await TrySubmitGestureViaBridgeAsync(playerId, request, room, roomAgent, response))
         {
@@ -124,10 +124,10 @@ public class RockPaperScissorsGameComponentAgent : StateComponentAgent<RockPaper
         var revealGestures = false;
         if (game.GestureMap.Count == room.PlayerIds.Count)
         {
-            await roomAgent.EnterSettling(room.RoomId);
+            await roomAgent.EnterSettlingAsync(room.RoomId);
             game.WinnerRoleId = CalculateWinner(room.PlayerIds, game);
             await OwnerComponent.WriteStateAsync();
-            await roomAgent.MarkSettled(room.RoomId);
+            await roomAgent.MarkSettledAsync(room.RoomId);
             revealGestures = true;
         }
         else
@@ -146,8 +146,8 @@ public class RockPaperScissorsGameComponentAgent : StateComponentAgent<RockPaper
             return;
         }
 
-        var roomAgent = await ActorManager.GetComponentAgent<RoomComponentAgent>();
-        var room = await roomAgent.GetRoom(request.RoomId);
+        var roomAgent = await ActorManager.GetComponentAgentAsync<RoomComponentAgent>();
+        var room = await roomAgent.GetRoomAsync(request.RoomId);
 
         if (await TryRestartGameViaBridgeAsync(playerId, room, roomAgent, response))
         {
@@ -166,7 +166,7 @@ public class RockPaperScissorsGameComponentAgent : StateComponentAgent<RockPaper
             return;
         }
 
-        var roomInfo = await roomAgent.RestartRoomGame(room.RoomId);
+        var roomInfo = await roomAgent.RestartRoomGameAsync(room.RoomId);
         if (roomInfo == null || roomInfo.Status != RoomStatus.Playing)
         {
             response.ErrorCode = (int)OperationStatusCode.Unprocessable;
@@ -236,7 +236,7 @@ public class RockPaperScissorsGameComponentAgent : StateComponentAgent<RockPaper
                     return true;
                 }
 
-                var restarted = await roomAgent.RestartRoomGame(room.RoomId);
+                var restarted = await roomAgent.RestartRoomGameAsync(room.RoomId);
                 response.GameInfo = RockPaperScissorsMatchBridge.MapGameInfo(nextRoundResult.View);
                 if (restarted == null || restarted.Status != RoomStatus.Playing)
                 {

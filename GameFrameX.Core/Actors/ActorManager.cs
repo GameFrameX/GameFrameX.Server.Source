@@ -81,19 +81,19 @@ public static class ActorManager
     /// <param name="isNew">是否当获取为空时默认创建，默认值为true / Whether to create by default when not found, default is true</param>
     /// <typeparam name="T">组件代理类型 / Component agent type</typeparam>
     /// <returns>组件代理对象的异步任务 / Async task of the component agent object</returns>
-    public static async Task<T> GetComponentAgent<T>(long actorId, bool isNew = true) where T : IComponentAgent
+    public static async Task<T> GetComponentAgentAsync<T>(long actorId, bool isNew = true) where T : IComponentAgent
     {
         Actor actor;
         if (isNew)
         {
-            actor = await GetOrNew(actorId);
-            return await actor.GetComponentAgent<T>();
+            actor = await GetOrNewAsync(actorId);
+            return await actor.GetComponentAgentAsync<T>();
         }
 
         actor = Get(actorId);
         if (actor != null)
         {
-            return await actor.GetComponentAgent<T>();
+            return await actor.GetComponentAgentAsync<T>();
         }
 
         return await Task.FromResult<T>(default);
@@ -136,19 +136,19 @@ public static class ActorManager
     /// <param name="agentType">组件代理的类型 / Type of the component agent</param>
     /// <param name="isNew">是否当获取为空时默认创建，默认值为true / Whether to create by default when not found, default is true</param>
     /// <returns>组件代理对象的异步任务 / Async task of the component agent object</returns>
-    internal static async Task<IComponentAgent> GetComponentAgent(long actorId, Type agentType, bool isNew = true)
+    internal static async Task<IComponentAgent> GetComponentAgentAsync(long actorId, Type agentType, bool isNew = true)
     {
         Actor actor;
         if (isNew)
         {
-            actor = await GetOrNew(actorId);
-            return await actor.GetComponentAgent(agentType);
+            actor = await GetOrNewAsync(actorId);
+            return await actor.GetComponentAgentAsync(agentType);
         }
 
         actor = Get(actorId);
         if (actor != null)
         {
-            return await actor.GetComponentAgent(agentType);
+            return await actor.GetComponentAgentAsync(agentType);
         }
 
         return await Task.FromResult<IComponentAgent>(default);
@@ -185,12 +185,12 @@ public static class ActorManager
     /// <typeparam name="T">组件代理类型 / Component agent type</typeparam>
     /// <param name="isNew">是否当获取为空时默认创建，默认值为true / Whether to create by default when not found, default is true</param>
     /// <returns>组件代理对象的异步任务 / Async task of the component agent object</returns>
-    public static Task<T> GetComponentAgent<T>(bool isNew = true) where T : IComponentAgent
+    public static Task<T> GetComponentAgentAsync<T>(bool isNew = true) where T : IComponentAgent
     {
         var compType = HotfixManager.Resolver.GetComponentType(typeof(T));
         var actorType = ComponentRegister.GetActorType(compType);
         var actorId = ActorIdGenerator.GetActorId(actorType);
-        return GetComponentAgent<T>(actorId, isNew);
+        return GetComponentAgentAsync<T>(actorId, isNew);
     }
 
     /// <summary>
@@ -201,7 +201,7 @@ public static class ActorManager
     /// </remarks>
     /// <param name="actorId">Actor唯一标识 / Actor unique identifier</param>
     /// <returns>Actor对象的异步任务 / Async task of the Actor object</returns>
-    internal static async Task<Actor> GetOrNew(long actorId)
+    internal static async Task<Actor> GetOrNewAsync(long actorId)
     {
         var actorType = ActorIdGenerator.GetActorType(actorId);
         if (actorType < GlobalConst.ActorTypeSeparator)
@@ -260,7 +260,7 @@ public static class ActorManager
     /// Waits for all Actors to finish their currently executing operations.
     /// </remarks>
     /// <returns>表示所有Actor操作完成的异步任务 / Async task representing completion of all Actor operations</returns>
-    public static Task AllFinish()
+    public static Task AllFinishAsync()
     {
         var tasks = new List<Task>();
         foreach (var actor in ActorMap.Values)
@@ -288,7 +288,7 @@ public static class ActorManager
     /// Checks and recycles idle Actors based on the configured recycle time.
     /// </remarks>
     /// <returns>表示回收操作的异步任务 / Async task representing the recycle operation</returns>
-    public static Task CheckIdle()
+    public static Task CheckIdleAsync()
     {
         foreach (var actor in ActorMap.Values)
         {
@@ -308,7 +308,7 @@ public static class ActorManager
     /// </summary>
     /// <remarks>
     /// Re-checks the recycle window on the Actor's own worker; if overdue, dispatches the
-    /// actual recycle work to the life-actor (mutex) worker. 提取自 <see cref="CheckIdle"/>
+    /// actual recycle work to the life-actor (mutex) worker. 提取自 <see cref="CheckIdleAsync"/>
     /// 外层闭包，条件表达式与原实现逐字保留，仅把闭包提升为带 <paramref name="actor"/> 参数的方法以降低嵌套层级。
     /// </remarks>
     /// <param name="actor">待检查的Actor / The Actor to check</param>
@@ -338,10 +338,10 @@ public static class ActorManager
             // 防止定时回存失败时State被直接移除
             if (actor.ReadyToDeActive)
             {
-                await actor.Inactive();
-                await actor.OnRecycle();
+                await actor.InactiveAsync();
+                await actor.OnRecycleAsync();
                 ActorMap.TryRemove(actor.Id, out _);
-                // Localization: Core.ActorManager.CheckIdleRecycled - ActorManager.CheckIdle Actor已回收 actorId:{0} actorType:{1} , 消息: actor回收 id:{2} type:{3}
+                // Localization: Core.ActorManager.CheckIdleRecycled - ActorManager.CheckIdleAsync Actor已回收 actorId:{0} actorType:{1} , 消息: actor回收 id:{2} type:{3}
                 LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.ActorManager.CheckIdleRecycled, actor.Id, actor.Type, actor.Id, actor.Type));
             }
             else
@@ -361,7 +361,7 @@ public static class ActorManager
     /// Saves the state data of all Actors.
     /// </remarks>
     /// <returns>表示保存操作的异步任务 / Async task representing the save operation</returns>
-    public static async Task SaveAll()
+    public static async Task SaveAllAsync()
     {
         try
         {
@@ -371,19 +371,19 @@ public static class ActorManager
             {
                 async Task Save()
                 {
-                    await actor.SaveAllState();
+                    await actor.SaveAllStateAsync();
                 }
 
                 taskList.Add(actor.SendAsync((Func<Task>)Save, checkLock: true));
             }
 
             await Task.WhenAll(taskList);
-            // Localization: Core.ActorManager.SaveAllStateTimeLog - ActorManager.SaveAll 保存所有Actor状态耗时: {0} ms , 消息: 保存所有状态，用时: {1}ms
+            // Localization: Core.ActorManager.SaveAllStateTimeLog - ActorManager.SaveAllAsync 保存所有Actor状态耗时: {0} ms , 消息: 保存所有状态，用时: {1}ms
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.ActorManager.SaveAllStateTimeLog, (DateTime.Now - begin).TotalMilliseconds, (DateTime.Now - begin).TotalMilliseconds));
         }
         catch (Exception e)
         {
-            // Localization: Core.ActorManager.SaveAllStateErrorLog - ActorManager.SaveAll 保存所有Actor状态 , 消息: 保存所有状态错误\n{0} , 错误: {1}
+            // Localization: Core.ActorManager.SaveAllStateErrorLog - ActorManager.SaveAllAsync 保存所有Actor状态 , 消息: 保存所有状态错误\n{0} , 错误: {1}
             LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.ActorManager.SaveAllStateErrorLog, e, e));
             throw;
         }
@@ -396,15 +396,15 @@ public static class ActorManager
     /// Periodically saves the state data of all Actors in batches.
     /// </remarks>
     /// <returns>表示定时回存操作的异步任务 / Async task representing the timed save operation</returns>
-    public static async Task TimerSave()
+    public static async Task TimerSaveAsync()
     {
         try
         {
-            await TimerSaveInBatches(ActorMap.Values, SaveActorStateAsync, static () => GlobalTimer.IsWorking, static () => Task.Delay(1000));
+            await TimerSaveInBatchesAsync(ActorMap.Values, SaveActorStateAsync, static () => GlobalTimer.IsWorking, static () => Task.Delay(1000));
         }
         catch (Exception exception)
         {
-            // Localization: Core.ActorManager.TimerSaveStateErrorLog - ActorManager.TimerSave 定时保存所有Actor状态错误 , 消息: 定时器保存状态错误 , 错误: {0}
+            // Localization: Core.ActorManager.TimerSaveStateErrorLog - ActorManager.TimerSaveAsync 定时保存所有Actor状态错误 , 消息: 定时器保存状态错误 , 错误: {0}
             LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.ActorManager.TimerSaveStateErrorLog, exception));
         }
     }
@@ -413,14 +413,14 @@ public static class ActorManager
     {
         async Task Work()
         {
-            await actor.SaveAllState();
+            await actor.SaveAllStateAsync();
         }
 
         return actor.SendAsync((Func<Task>)Work, checkLock: true);
     }
 
 
-    private static async Task TimerSaveInBatches<T>(IEnumerable<T> items, Func<T, Task> saveAsync, Func<bool> isWorking, Func<Task> delayAsync)
+    private static async Task TimerSaveInBatchesAsync<T>(IEnumerable<T> items, Func<T, Task> saveAsync, Func<bool> isWorking, Func<Task> delayAsync)
     {
         var taskList = new List<Task>(2048);
         foreach (var item in items)
@@ -464,13 +464,13 @@ public static class ActorManager
     /// </remarks>
     /// <param name="openServerDay">开服天数 / Number of days since server opened</param>
     /// <returns>表示跨天操作的异步任务 / Async task representing the cross-day operation</returns>
-    public static Task RoleCrossDay(int openServerDay)
+    public static Task RoleCrossDayAsync(int openServerDay)
     {
         foreach (var actor in ActorMap.Values)
         {
             if (actor.Type < GlobalConst.ActorTypeSeparator)
             {
-                actor.Tell(() => actor.CrossDay(openServerDay));
+                actor.Tell(() => actor.CrossDayAsync(openServerDay));
             }
         }
 
@@ -486,12 +486,12 @@ public static class ActorManager
     /// <param name="openServerDay">开服天数 / Number of days since server opened</param>
     /// <param name="driverActorType">驱动Actor类型 / Driver Actor type</param>
     /// <returns>表示跨天操作的异步任务 / Async task representing the cross-day operation</returns>
-    public static async Task CrossDay(int openServerDay, ushort driverActorType)
+    public static async Task CrossDayAsync(int openServerDay, ushort driverActorType)
     {
         // 驱动actor优先执行跨天
         var id = ActorIdGenerator.GetActorId(driverActorType);
         var driverActor = ActorMap[id];
-        await driverActor.CrossDay(openServerDay);
+        await driverActor.CrossDayAsync(openServerDay);
 
         var begin = DateTime.Now;
         var a = 0;
@@ -504,9 +504,9 @@ public static class ActorManager
 
                 async Task Work()
                 {
-                    // Localization: Core.ActorManager.ActorCrossDayLog - ActorManager.CrossDay Actor跨天 actorId:{0} actorType:{1} , 消息: 全局Actor：{2}执行跨天
+                    // Localization: Core.ActorManager.ActorCrossDayLog - ActorManager.CrossDayAsync Actor跨天 actorId:{0} actorType:{1} , 消息: 全局Actor：{2}执行跨天
                     LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.ActorManager.ActorCrossDayLog, actor.Id, actor.Type, actor.Type));
-                    await actor.CrossDay(openServerDay);
+                    await actor.CrossDayAsync(openServerDay);
                     Interlocked.Increment(ref a);
                 }
 
@@ -518,7 +518,7 @@ public static class ActorManager
         {
             if ((DateTime.Now - begin).TotalSeconds > CrossDayGlobalWaitSeconds)
             {
-                // Localization: Core.ActorManager.GlobalCompCrossDayTimeoutLog - ActorManager.CrossDay 全局comp跨天超时 , 超时: {0}秒 , 消息: 全局comp跨天耗时过久，不阻止其他comp跨天，当前已过{1}秒
+                // Localization: Core.ActorManager.GlobalCompCrossDayTimeoutLog - ActorManager.CrossDayAsync 全局comp跨天超时 , 超时: {0}秒 , 消息: 全局comp跨天耗时过久，不阻止其他comp跨天，当前已过{1}秒
                 LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.ActorManager.GlobalCompCrossDayTimeoutLog, CrossDayGlobalWaitSeconds, CrossDayGlobalWaitSeconds));
                 break;
             }
@@ -527,7 +527,7 @@ public static class ActorManager
         }
 
         var globalCost = (DateTime.Now - begin).TotalMilliseconds;
-        // Localization: Core.ActorManager.GlobalCompCrossDayCompleteLog - ActorManager.CrossDay 全局comp跨天完成 , 耗时: {0}ms , 消息: 全局comp跨天完成 耗时：{1}ms
+        // Localization: Core.ActorManager.GlobalCompCrossDayCompleteLog - ActorManager.CrossDayAsync 全局comp跨天完成 , 耗时: {0}ms , 消息: 全局comp跨天完成 耗时：{1}ms
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.ActorManager.GlobalCompCrossDayCompleteLog, globalCost, globalCost));
         a = 0;
         b = 0;
@@ -539,7 +539,7 @@ public static class ActorManager
 
                 async Task Work()
                 {
-                    await actor.CrossDay(openServerDay);
+                    await actor.CrossDayAsync(openServerDay);
                     Interlocked.Increment(ref a);
                 }
 
@@ -551,7 +551,7 @@ public static class ActorManager
         {
             if ((DateTime.Now - begin).TotalSeconds > CrossDayNotRoleWaitSeconds)
             {
-                // Localization: Core.ActorManager.NonPlayerCompCrossDayTimeoutLog - ActorManager.CrossDay 非玩家comp跨天超时 , 超时: {0}秒 , 消息: 非玩家comp跨天耗时过久，不阻止玩家comp跨天，当前已过{1}秒
+                // Localization: Core.ActorManager.NonPlayerCompCrossDayTimeoutLog - ActorManager.CrossDayAsync 非玩家comp跨天超时 , 超时: {0}秒 , 消息: 非玩家comp跨天耗时过久，不阻止玩家comp跨天，当前已过{1}秒
                 LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.ActorManager.NonPlayerCompCrossDayTimeoutLog, CrossDayNotRoleWaitSeconds, CrossDayNotRoleWaitSeconds));
                 break;
             }
@@ -560,7 +560,7 @@ public static class ActorManager
         }
 
         var otherCost = (DateTime.Now - begin).TotalMilliseconds - globalCost;
-        // Localization: Core.ActorManager.NonPlayerCompCrossDayCompleteLog - ActorManager.CrossDay 非玩家comp跨天完成 , 耗时: {0}ms , 消息: 非玩家comp跨天完成 耗时：{1}ms
+        // Localization: Core.ActorManager.NonPlayerCompCrossDayCompleteLog - ActorManager.CrossDayAsync 非玩家comp跨天完成 , 耗时: {0}ms , 消息: 非玩家comp跨天完成 耗时：{1}ms
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.ActorManager.NonPlayerCompCrossDayCompleteLog, otherCost, otherCost));
     }
 
@@ -571,12 +571,12 @@ public static class ActorManager
     /// Removes all Actors and deactivates them.
     /// </remarks>
     /// <returns>表示删除操作的异步任务 / Async task representing the removal operation</returns>
-    public static async Task RemoveAll()
+    public static async Task RemoveAllAsync()
     {
         var tasks = new List<Task>();
         foreach (var actor in ActorMap.Values)
         {
-            tasks.Add(actor.Inactive());
+            tasks.Add(actor.InactiveAsync());
         }
 
         await Task.WhenAll(tasks);
@@ -590,11 +590,11 @@ public static class ActorManager
     /// </remarks>
     /// <param name="actorId">Actor唯一标识 / Actor unique identifier</param>
     /// <returns>表示删除操作的异步任务 / Async task representing the removal operation</returns>
-    public static Task Remove(long actorId)
+    public static Task RemoveAsync(long actorId)
     {
         if (ActorMap.Remove(actorId, out var actor))
         {
-            actor.Tell(actor.Inactive);
+            actor.Tell(actor.InactiveAsync);
         }
 
         return Task.CompletedTask;
@@ -645,7 +645,7 @@ public static class ActorManager
 
             async Task Work()
             {
-                var comp = await actor.GetComponentAgent<T>();
+                var comp = await actor.GetComponentAgentAsync<T>();
                 await func(comp);
             }
 
@@ -672,7 +672,7 @@ public static class ActorManager
             {
                 async Task Work()
                 {
-                    var comp = await actor.GetComponentAgent<T>();
+                    var comp = await actor.GetComponentAgentAsync<T>();
                     action(comp);
                 }
 

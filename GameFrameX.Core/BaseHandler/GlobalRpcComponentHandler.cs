@@ -52,7 +52,7 @@ public abstract class GlobalRpcComponentHandler<TRequest, TResponse> : BaseRpcCo
     /// 初始化
     /// </summary>
     /// <returns></returns>
-    protected override Task<bool> InitActor()
+    protected override Task<bool> InitActorAsync()
     {
         if (ActorId <= 0)
         {

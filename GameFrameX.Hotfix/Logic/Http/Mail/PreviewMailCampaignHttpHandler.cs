@@ -54,7 +54,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
         /// </remarks>
         /// <param name="context">HTTP 处理管线统一请求载荷 / Unified request payload for the HTTP handling pipeline</param>
         /// <returns>处理结果的 JSON 字符串 / JSON string of the processing result</returns>
-        public override async Task<string> Action(HttpActionContext context)
+        public override async Task<string> ActionAsync(HttpActionContext context)
         {
             var previewRequest = (PreviewMailCampaignRequest)context.Request;
             var response = new PreviewMailCampaignResponse();

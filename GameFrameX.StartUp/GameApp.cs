@@ -263,7 +263,7 @@ public static class GameApp
     ///     });
     /// </code>
     /// </example>
-    public static async Task Entry(string[] args, Action initAction, Action<LogOptions> logConfiguration = null)
+    public static async Task EntryAsync(string[] args, Action initAction, Action<LogOptions> logConfiguration = null)
     {
         LocalizationService.Instance.RegisterProvider(new AssemblyResourceProvider(typeof(Keys).Assembly));
 
@@ -319,7 +319,7 @@ public static class GameApp
     /// Builds one startup instance per selected role (priority order), resolves each role's configuration
     /// (config file section first, launcher options as the default fallback), reports priority conflicts,
     /// publishes the <see cref="RoleSet"/> snapshot, and hands the host collection to
-    /// <see cref="AppEnter.Entry(IReadOnlyList{IAppStartUp})"/> which starts them in order and stops them in reverse order.
+    /// <see cref="AppEnter.EntryAsync(IReadOnlyList{IAppStartUp})"/> which starts them in order and stops them in reverse order.
     /// </remarks>
     /// <param name="args">命令行参数 / Command line arguments</param>
     /// <param name="startUpTypes">按优先级排序选定的启动类型集合 / The selected startup types in priority order</param>
@@ -360,7 +360,7 @@ public static class GameApp
         // Role 快照发布后装配跨 Role 路由缝。本地投递器暂不配置（等待接入 Actor 投递），
         // 远程转发暂用占位实现——过早路由会在缝上显式抛异常，不会静默丢消息。
         RoleRouterHolder.Initialize(new InProcessRoleRouter(RoleSet.Current, null, new RemoteRoleRouter()));
-        _launchTask = AppEnter.Entry(appStartUps);
+        _launchTask = AppEnter.EntryAsync(appStartUps);
     }
 
     /// <summary>

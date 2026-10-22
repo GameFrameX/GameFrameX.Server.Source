@@ -61,7 +61,7 @@ public abstract class BaseComponentHandler<TRequest> : BaseMessageHandler<TReque
     /// 初始化
     /// </summary>
     /// <returns>初始化任务</returns>
-    protected abstract Task<bool> InitActor();
+    protected abstract Task<bool> InitActorAsync();
 
     /// <summary>
     /// 初始化
@@ -69,15 +69,15 @@ public abstract class BaseComponentHandler<TRequest> : BaseMessageHandler<TReque
     /// <param name="message">网络消息</param>
     /// <param name="networkChannel">网络通道</param>
     /// <returns>返回是否初始化成功,true:成功,false:失败</returns>
-    public override async Task<bool> Init(INetworkMessage message, INetworkChannel networkChannel)
+    public override async Task<bool> InitAsync(INetworkMessage message, INetworkChannel networkChannel)
     {
-        var initSuccess = await base.Init(message, networkChannel);
+        var initSuccess = await base.InitAsync(message, networkChannel);
         if (!initSuccess)
         {
             return false;
         }
 
-        initSuccess = await InitActor();
+        initSuccess = await InitActorAsync();
         if (!initSuccess)
         {
             return false;
@@ -95,11 +95,11 @@ public abstract class BaseComponentHandler<TRequest> : BaseMessageHandler<TReque
 
             try
             {
-                CacheComponent = await ActorManager.GetComponentAgent(ActorId, ComponentAgentType);
+                CacheComponent = await ActorManager.GetComponentAgentAsync(ActorId, ComponentAgentType);
             }
             catch (Exception e)
             {
-                // Localization: Core.MessageHandler.GetComponentFailed - BaseComponentHandler.Init 获取组件失败，关闭通道，actorId:{0}，组件代理类型:{1}，异常：\n{2}
+                // Localization: Core.MessageHandler.GetComponentFailed - BaseComponentHandler.InitAsync 获取组件失败，关闭通道，actorId:{0}，组件代理类型:{1}，异常：\n{2}
                 LogHelper.Fatal(e, LocalizationService.GetString(Localization.Keys.Core.MessageHandler.GetComponentFailed, ActorId, ComponentAgentType.FullName, e));
                 NetworkChannel.Close();
                 return false;
@@ -115,17 +115,17 @@ public abstract class BaseComponentHandler<TRequest> : BaseMessageHandler<TReque
     /// <param name="timeout">执行超时时间，单位毫秒，默认30秒</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>内部执行任务</returns>
-    public override Task InnerAction(int timeout = 30000, CancellationToken cancellationToken = default)
+    public override Task InnerActionAsync(int timeout = 30000, CancellationToken cancellationToken = default)
     {
         if (CacheComponent == null)
         {
-            // Localization: Core.MessageHandler.InnerActionCacheComponentNull - BaseComponentHandler.InnerAction 缓存组件为空，消息类型:{0}
+            // Localization: Core.MessageHandler.InnerActionCacheComponentNull - BaseComponentHandler.InnerActionAsync 缓存组件为空，消息类型:{0}
             LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.InnerActionCacheComponentNull, Message.GetType().FullName));
             NetworkChannel.Close();
             return Task.CompletedTask;
         }
 
-        CacheComponent.Tell(() => InnerActionAsync(Message), timeout, cancellationToken);
+        CacheComponent.Tell(() => InnerActionCoreAsync(Message), timeout, cancellationToken);
         return Task.CompletedTask;
     }
 
@@ -134,16 +134,16 @@ public abstract class BaseComponentHandler<TRequest> : BaseMessageHandler<TReque
     /// </summary>
     /// <typeparam name="TOtherAgent">组件代理类型</typeparam>
     /// <returns>组件代理任务</returns>
-    protected Task<TOtherAgent> GetComponentAgent<TOtherAgent>() where TOtherAgent : IComponentAgent
+    protected Task<TOtherAgent> GetComponentAgentAsync<TOtherAgent>() where TOtherAgent : IComponentAgent
     {
         if (CacheComponent == null)
         {
-            // Localization: Core.MessageHandler.GetComponentAgentCacheComponentNull - BaseComponentHandler.GetComponentAgent 缓存组件为空，消息类型:{0}
+            // Localization: Core.MessageHandler.GetComponentAgentCacheComponentNull - BaseComponentHandler.GetComponentAgentAsync 缓存组件为空，消息类型:{0}
             LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.GetComponentAgentCacheComponentNull, Message.GetType().FullName));
             NetworkChannel.Close();
             return default;
         }
 
-        return CacheComponent.GetComponentAgent<TOtherAgent>();
+        return CacheComponent.GetComponentAgentAsync<TOtherAgent>();
     }
 }

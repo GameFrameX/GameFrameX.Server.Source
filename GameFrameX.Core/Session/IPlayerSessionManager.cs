@@ -103,7 +103,7 @@ public interface IPlayerSessionManager
     /// 移除所有在线玩家的会话。
     /// </summary>
     /// <returns>一个表示异步操作的任务。</returns>
-    Task RemoveAll();
+    Task RemoveAllAsync();
 
     /// <summary>
     /// 获取指定会话ID的网络连接通道。
@@ -130,7 +130,7 @@ public interface IPlayerSessionManager
     /// 事件派发（Tell 入队）与 Close 存在竞态，异步入队可能晚于断连导致通知丢失；
     /// 顶号提示 RespPrompt 属游戏协议（Proto 在 Core 之上），故由调用方注入构造逻辑。必填参数使漏注入成为编译错误。
     /// </param>
-    Task UpdateSession(string sessionId, long playerId, string sign, Func<IPlayerSession, Task> duplicateLoginNotifier);
+    Task UpdateSessionAsync(string sessionId, long playerId, string sign, Func<IPlayerSession, Task> duplicateLoginNotifier);
 
     /// <summary>
     /// 获取玩家路由快照（内存态）。

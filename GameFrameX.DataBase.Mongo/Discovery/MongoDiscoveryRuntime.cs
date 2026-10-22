@@ -157,6 +157,6 @@ public static class MongoDiscoveryRuntime
         }
 
         // 玩家路由层装配（建索引 + 装 SyncTarget），通用 Bootstrap 单例。
-        PlayerRouteResolverBootstrap.Attach(playerRouteStore, options.PlayerRouteFastPath).GetAwaiter().GetResult();
+        PlayerRouteResolverBootstrap.AttachAsync(playerRouteStore, options.PlayerRouteFastPath).GetAwaiter().GetResult();
     }
 }

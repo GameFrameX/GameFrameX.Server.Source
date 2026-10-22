@@ -126,7 +126,7 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     {
         await ShutdownOnlineAdminAsync();
         await StopAsync(exitMessage ?? "");
-        await HotfixManager.Stop(exitMessage);
+        await HotfixManager.StopAsync(exitMessage);
     }
 
     /// <summary>
@@ -181,7 +181,7 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     /// </remarks>
     /// <param name="appSession">新建立的会话对象 / Newly established session object</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
-    protected override async ValueTask OnConnected(IAppSession appSession)
+    protected override async ValueTask OnConnectedAsync(IAppSession appSession)
     {
         // Localization: StartUp.Server.NewClientConnection - 新客户端连接 - 会话ID: {0}, 远程终端: {1}
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Server.NewClientConnection, appSession.SessionId, appSession.RemoteEndPoint));
@@ -215,7 +215,7 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     /// <param name="appSession">断开连接的会话对象 / Session object that disconnected</param>
     /// <param name="disconnectEventArgs">断开连接的相关参数 / Parameters related to disconnection</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
-    protected override ValueTask OnDisconnected(IAppSession appSession, CloseEventArgs disconnectEventArgs)
+    protected override ValueTask OnDisconnectedAsync(IAppSession appSession, CloseEventArgs disconnectEventArgs)
     {
         // Localization: Hotfix.StartUp.ClientDisconnected - 客户端断开连接 - 会话ID: {0}, 断开原因: {1}
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.Hotfix.StartUpModule.ClientDisconnected, appSession.SessionId, disconnectEventArgs.Reason));

@@ -411,7 +411,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     public async Task GameDb_Facade_ShouldForwardConditionalWritePrimitives()
     {
         var service = new SqliteDbService();
-        var opened = await GameDb.Init<SqliteDbService>(new DbOptions
+        var opened = await GameDb.InitAsync<SqliteDbService>(new DbOptions
         {
             ConnectionString = "Data Source=:memory:",
             Name = "c247-facade-smoke",
@@ -470,7 +470,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     private static async Task ExecuteWithSqliteAsync(Func<IDatabaseService, Task> action)
     {
         var service = new SqliteDbService();
-        var opened = await service.Open(new DbOptions
+        var opened = await service.OpenAsync(new DbOptions
         {
             ConnectionString = "Data Source=:memory:",
             Name = "c247-conditional-write-tests",
@@ -483,7 +483,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
         }
         finally
         {
-            await service.Close();
+            await service.CloseAsync();
         }
     }
 
@@ -506,7 +506,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
             Name = dbName,
         };
 
-        var opened = await service.Open(options);
+        var opened = await service.OpenAsync(options);
         Assert.True(opened);
 
         try
@@ -515,7 +515,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
         }
         finally
         {
-            await service.Close();
+            await service.CloseAsync();
             try
             {
                 var client = new MongoClient(connectionString);
@@ -554,7 +554,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
             Name = dbName,
         };
 
-        var opened = await service.Open(options);
+        var opened = await service.OpenAsync(options);
         Assert.True(opened);
 
         try
@@ -563,7 +563,7 @@ public sealed class DatabaseConditionalWritePrimitivesTests
         }
         finally
         {
-            await service.Close();
+            await service.CloseAsync();
             try
             {
                 await using var admin = new NpgsqlConnection(adminConnectionString);

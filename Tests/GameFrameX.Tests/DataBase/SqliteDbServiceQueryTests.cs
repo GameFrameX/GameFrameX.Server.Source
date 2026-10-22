@@ -844,13 +844,13 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
 
         try
         {
-            Assert.True(await service.Open(options));
+            Assert.True(await service.OpenAsync(options));
             var expectedFullPath = Path.GetFullPath(Path.Combine(root, "deep", "nested", "game.db"));
             Assert.True(File.Exists(expectedFullPath), $"data file should exist at {expectedFullPath}");
         }
         finally
         {
-            await service.Close();
+            await service.CloseAsync();
         }
     }
 
@@ -866,7 +866,7 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
         try
         {
             Environment.CurrentDirectory = root;
-            Assert.True(await service.Open(new DbOptions
+            Assert.True(await service.OpenAsync(new DbOptions
             {
                 ConnectionString = "Data Source=rel/deep/dir/rel.db",
                 Name = "sqlite-relative",
@@ -875,7 +875,7 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
         }
         finally
         {
-            await service.Close();
+            await service.CloseAsync();
             Environment.CurrentDirectory = previous;
         }
     }
@@ -890,7 +890,7 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
         var service = new SqliteDbService();
         try
         {
-            Assert.True(await service.Open(new DbOptions
+            Assert.True(await service.OpenAsync(new DbOptions
             {
                 ConnectionString = "Data Source=:memory:",
                 Name = "sqlite-memory-mode",
@@ -899,7 +899,7 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
         }
         finally
         {
-            await service.Close();
+            await service.CloseAsync();
         }
     }
 
@@ -918,12 +918,12 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
                 var second = new SqliteDbService();
                 try
                 {
-                    Assert.True(await second.Open(CreateMemoryOptions("sqlite-boundary-second")));
+                    Assert.True(await second.OpenAsync(CreateMemoryOptions("sqlite-boundary-second")));
                     Assert.Equal(1, SqliteDbService.BoundaryWarningEmitCount);
                 }
                 finally
                 {
-                    await second.Close();
+                    await second.CloseAsync();
                 }
             });
 
@@ -947,7 +947,7 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
     public async Task Open_MissingDataSource_ShouldThrowWithExamples()
     {
         var service = new SqliteDbService();
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.Open(new DbOptions
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.OpenAsync(new DbOptions
         {
             ConnectionString = "Mode=ReadOnly",
             Name = "sqlite-missing-datasource",
@@ -975,7 +975,7 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
                 MakeReadOnly(root);
             }
 
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.Open(new DbOptions
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.OpenAsync(new DbOptions
             {
                 ConnectionString = $"Data Source={dataFile}",
                 Name = "sqlite-readonly-dir",
@@ -991,7 +991,7 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
                 MakeWritable(root);
             }
 
-            await service.Close();
+            await service.CloseAsync();
         }
     }
 
@@ -1009,7 +1009,7 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
         var service = new SqliteDbService();
         try
         {
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.Open(new DbOptions
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.OpenAsync(new DbOptions
             {
                 ConnectionString = $"Data Source={dataFile}",
                 Name = "sqlite-locked-file",
@@ -1020,7 +1020,7 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
         }
         finally
         {
-            await service.Close();
+            await service.CloseAsync();
         }
     }
 
@@ -1045,7 +1045,7 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
     private static async Task ExecuteWithServiceAsync(Func<SqliteDbService, Task> action, string name = "sqlite-query-tests")
     {
         var service = new SqliteDbService();
-        var opened = await service.Open(CreateMemoryOptions(name));
+        var opened = await service.OpenAsync(CreateMemoryOptions(name));
         Assert.True(opened);
 
         try
@@ -1054,7 +1054,7 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
         }
         finally
         {
-            await service.Close();
+            await service.CloseAsync();
         }
     }
 

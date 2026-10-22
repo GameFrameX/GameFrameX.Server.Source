@@ -94,7 +94,7 @@ public static class ComponentRegister
     /// <param name="assembly">目标程序集</param>
     /// <returns>初始化任务</returns>
     /// <exception cref="Exception">当程序集为 null 时抛出</exception>
-    public static Task Init(Assembly assembly = null)
+    public static Task InitAsync(Assembly assembly = null)
     {
         if (assembly == null)
         {
@@ -145,7 +145,7 @@ public static class ComponentRegister
     /// 激活全局组件
     /// </summary>
     /// <returns>激活任务</returns>
-    public static async Task ActiveGlobalComponents()
+    public static async Task ActiveGlobalComponentsAsync()
     {
         try
         {
@@ -166,7 +166,7 @@ public static class ComponentRegister
                 {
                     // Localization: Core.ComponentRegister.GlobalActorActivated - ComponentRegister.ActiveGlobalComponents Actor类型:{0} , 消息: 激活全局Actor: {1}
                     LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.GlobalActorActivated, actorType, actorType));
-                    await ActorManager.GetOrNew(ActorIdGenerator.GetActorId(actorType));
+                    await ActorManager.GetOrNewAsync(ActorIdGenerator.GetActorId(actorType));
                 }
             }
 
@@ -187,9 +187,9 @@ public static class ComponentRegister
     /// <param name="componentAgent">组件代理</param>
     /// <param name="openFuncSet">开放的功能集合</param>
     /// <returns>激活任务</returns>
-    public static Task ActiveRoleComponents(IComponentAgent componentAgent, HashSet<short> openFuncSet)
+    public static Task ActiveRoleComponentsAsync(IComponentAgent componentAgent, HashSet<short> openFuncSet)
     {
-        return ActiveComponents(componentAgent.Owner.Actor,
+        return ActiveComponentsAsync(componentAgent.Owner.Actor,
                                 t => !ComponentFuncDic.TryGetValue(t, out var func)
                                      || openFuncSet.Contains(func));
     }
@@ -200,7 +200,7 @@ public static class ComponentRegister
     /// <param name="actor">演员</param>
     /// <param name="predict">条件判断函数</param>
     /// <returns>激活任务</returns>
-    internal static async Task ActiveComponents(IActor actor, Func<Type, bool> predict = null)
+    internal static async Task ActiveComponentsAsync(IActor actor, Func<Type, bool> predict = null)
     {
         var compTypes = GetComponents(actor.Type);
 
@@ -213,7 +213,7 @@ public static class ComponentRegister
                     var agentType = HotfixManager.Resolver.GetAgentType(compType);
                     try
                     {
-                        await actor.GetComponentAgent(agentType);
+                        await actor.GetComponentAgentAsync(agentType);
                     }
                     catch (Exception exception)
                     {

@@ -51,7 +51,7 @@ public abstract class NotHotfixTimerHandler : IJob
             return ValueTask.CompletedTask;
         }
 
-        return new ValueTask(HandleTimer(value as GameEventArgs));
+        return new ValueTask(HandleTimerAsync(value as GameEventArgs));
     }
 
     /// <summary>
@@ -59,5 +59,5 @@ public abstract class NotHotfixTimerHandler : IJob
     /// </summary>
     /// <param name="gameEventArgs">传递给处理器的参数</param>
     /// <returns>一个任务，表示异步操作的结果</returns>
-    protected abstract Task HandleTimer(GameEventArgs gameEventArgs);
+    protected abstract Task HandleTimerAsync(GameEventArgs gameEventArgs);
 }

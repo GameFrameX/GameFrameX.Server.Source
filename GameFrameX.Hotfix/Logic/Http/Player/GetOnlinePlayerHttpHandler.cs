@@ -45,7 +45,7 @@ public sealed class GetOnlinePlayerHttpHandler : BaseHttpHandler
     /// </summary>
     /// <param name="context"></param>
     /// <returns></returns>
-    public override Task<string> Action(HttpActionContext context)
+    public override Task<string> ActionAsync(HttpActionContext context)
     {
         var response = new GetOnlinePlayerResponse
         {

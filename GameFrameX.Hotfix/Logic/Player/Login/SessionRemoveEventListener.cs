@@ -35,8 +35,8 @@ namespace GameFrameX.Hotfix.Logic.Player.Login;
 [Event(typeof(SessionRemovedEventArgs))]
 internal sealed class SessionRemoveEventListener : EventListener<PlayerComponentAgent>
 {
-    protected override Task HandleEvent(PlayerComponentAgent agent, GameEventArgs gameEventArgs)
+    protected override Task HandleEventAsync(PlayerComponentAgent agent, GameEventArgs gameEventArgs)
     {
-        return agent.OnLogout();
+        return agent.OnLogoutAsync();
     }
 }

@@ -1594,7 +1594,7 @@ public sealed class MongoDbServiceQueryTests
             Name = dbName,
         };
 
-        var opened = await service.Open(options);
+        var opened = await service.OpenAsync(options);
         Assert.True(opened);
 
         try
@@ -1603,7 +1603,7 @@ public sealed class MongoDbServiceQueryTests
         }
         finally
         {
-            await service.Close();
+            await service.CloseAsync();
             try
             {
                 var client = new MongoClient(connectionString);
@@ -1636,8 +1636,8 @@ public sealed class MongoDbServiceQueryTests
         var serviceA = new MongoDbService();
         var serviceB = new MongoDbService();
 
-        var openedA = await serviceA.Open(options);
-        var openedB = await serviceB.Open(options);
+        var openedA = await serviceA.OpenAsync(options);
+        var openedB = await serviceB.OpenAsync(options);
         Assert.True(openedA);
         Assert.True(openedB);
 
@@ -1647,8 +1647,8 @@ public sealed class MongoDbServiceQueryTests
         }
         finally
         {
-            await serviceA.Close();
-            await serviceB.Close();
+            await serviceA.CloseAsync();
+            await serviceB.CloseAsync();
             try
             {
                 var client = new MongoClient(connectionString);
@@ -1678,7 +1678,7 @@ public sealed class MongoDbServiceQueryTests
             Name = dbName,
         };
 
-        var opened = await GameDb.Init<MongoDbService>(options);
+        var opened = await GameDb.InitAsync<MongoDbService>(options);
         Assert.True(opened);
 
         try

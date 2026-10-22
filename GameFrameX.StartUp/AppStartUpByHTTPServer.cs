@@ -73,7 +73,7 @@ public abstract partial class AppStartUpBase
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     /// <exception cref="ArgumentException">当 HTTP URL 格式不正确时抛出 / Thrown when HTTP URL format is incorrect</exception>
     /// <exception cref="NotImplementedException">当启用 HTTPS 但未实现时抛出 / Thrown when HTTPS is enabled but not implemented</exception>
-    private async Task StartHttpServer(List<BaseHttpHandler> baseHandler, Func<string, BaseHttpHandler> httpFactory, List<IHttpAopHandler> aopHandlerTypes = null, LogLevel minimumLevelLogLevel = LogLevel.Debug)
+    private async Task StartHttpServerAsync(List<BaseHttpHandler> baseHandler, Func<string, BaseHttpHandler> httpFactory, List<IHttpAopHandler> aopHandlerTypes = null, LogLevel minimumLevelLogLevel = LogLevel.Debug)
     {
         // 前置校验：启用状态与 HTTP URL 格式
         if (!EnsureHttpServerEnabled())
@@ -103,7 +103,7 @@ public abstract partial class AppStartUpBase
     /// <summary>
     /// 校验 HTTP 服务器是否启用及 URL 格式是否合法。
     /// </summary>
-    /// <remarks>Validate whether the HTTP server is enabled and the URL format is valid. Extracted from <see cref="StartHttpServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <remarks>Validate whether the HTTP server is enabled and the URL format is valid. Extracted from <see cref="StartHttpServerAsync"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
     /// <returns>启用且 URL 合法返回 true；未启用返回 false；URL 不合法时抛出 <see cref="ArgumentException"/> / Returns true if enabled and URL is valid; returns false if disabled; throws <see cref="ArgumentException"/> for invalid URL</returns>
     /// <exception cref="ArgumentException">当 HTTP URL 格式不正确时抛出 / Thrown when HTTP URL format is incorrect</exception>
     private bool EnsureHttpServerEnabled()
@@ -133,7 +133,7 @@ public abstract partial class AppStartUpBase
     /// <summary>
     /// 记录 HTTP 端口被占用时的占用进程详情。
     /// </summary>
-    /// <remarks>Log the occupying process details when the HTTP port is occupied. Extracted from <see cref="StartHttpServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <remarks>Log the occupying process details when the HTTP port is occupied. Extracted from <see cref="StartHttpServerAsync"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
     private void LogHttpPortOccupied()
     {
         // Localization: StartUp.HttpServer.PortOccupied - HTTP服务器端口被占用。端口：{0}。
@@ -154,7 +154,7 @@ public abstract partial class AppStartUpBase
     /// <summary>
     /// 构建、配置并启动 HTTP 服务器。
     /// </summary>
-    /// <remarks>Build, configure and start the HTTP server. Extracted from <see cref="StartHttpServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <remarks>Build, configure and start the HTTP server. Extracted from <see cref="StartHttpServerAsync"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
     /// <param name="baseHandler">HTTP 处理器列表，用于处理不同的 HTTP 请求 / HTTP handler list for processing different HTTP requests</param>
     /// <param name="httpFactory">HTTP 处理器工厂，根据命令标识符创建对应的处理器实例 / HTTP handler factory that creates corresponding handler instances based on command identifiers</param>
     /// <param name="aopHandlerTypes">AOP 处理器列表，用于在 HTTP 请求处理前后执行额外的逻辑 / AOP handler list for executing additional logic before and after HTTP request processing</param>
@@ -187,7 +187,7 @@ public abstract partial class AppStartUpBase
     /// <summary>
     /// 配置 HTTP 服务器的 <see cref="WebApplicationBuilder"/> 侧服务（CORS、Swagger、Kestrel、日志、OpenTelemetry）。
     /// </summary>
-    /// <remarks>Configure the builder-side services of the HTTP server (CORS, Swagger, Kestrel, logging, OpenTelemetry). Extracted from <see cref="StartHttpServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <remarks>Configure the builder-side services of the HTTP server (CORS, Swagger, Kestrel, logging, OpenTelemetry). Extracted from <see cref="StartHttpServerAsync"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
     /// <param name="builder">Web 应用程序构建器 / Web application builder</param>
     /// <param name="baseHandler">HTTP 处理器列表 / HTTP handler list</param>
     /// <param name="development">是否为开发环境 / Whether it is development environment</param>
@@ -317,7 +317,7 @@ public abstract partial class AppStartUpBase
     /// <summary>
     /// 配置 HTTP 服务器的 <see cref="WebApplication"/> 请求管道（Swagger UI、CORS、异常处理、Prometheus、路由）。
     /// </summary>
-    /// <remarks>Configure the request pipeline of the HTTP server (Swagger UI, CORS, exception handling, Prometheus, routing). Extracted from <see cref="StartHttpServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <remarks>Configure the request pipeline of the HTTP server (Swagger UI, CORS, exception handling, Prometheus, routing). Extracted from <see cref="StartHttpServerAsync"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
     /// <param name="app">Web 应用程序实例 / Web application instance</param>
     /// <param name="development">是否为开发环境 / Whether it is development environment</param>
     /// <param name="openApiInfo">OpenAPI 信息 / OpenAPI information</param>
@@ -364,7 +364,7 @@ public abstract partial class AppStartUpBase
     /// <summary>
     /// 配置 OpenTelemetry Prometheus 指标端点（内联形态或 MetricsPort 端口限定形态）。
     /// </summary>
-    /// <remarks>Configure the OpenTelemetry Prometheus metrics endpoint (inline form or the MetricsPort host-restricted form). Extracted from <see cref="StartHttpServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <remarks>Configure the OpenTelemetry Prometheus metrics endpoint (inline form or the MetricsPort host-restricted form). Extracted from <see cref="StartHttpServerAsync"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
     /// <param name="app">Web 应用程序实例 / Web application instance</param>
     /// <param name="ipList">本机 IP 列表 / Local IP list</param>
     private void ConfigureHttpPrometheusEndpoint(WebApplication app, List<string> ipList)
@@ -396,7 +396,7 @@ public abstract partial class AppStartUpBase
     /// <summary>
     /// 注册全部 HTTP 处理器路由（驼峰与下划线两种格式）。
     /// </summary>
-    /// <remarks>Register routes for all HTTP handlers (both camelCase and underscore forms). Extracted from <see cref="StartHttpServer"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
+    /// <remarks>Register routes for all HTTP handlers (both camelCase and underscore forms). Extracted from <see cref="StartHttpServerAsync"/> to keep cognitive complexity under the Sonar S3776 threshold.</remarks>
     /// <param name="app">Web 应用程序实例 / Web application instance</param>
     /// <param name="baseHandler">HTTP 处理器列表 / HTTP handler list</param>
     /// <param name="httpFactory">HTTP 处理器工厂 / HTTP handler factory</param>
@@ -575,16 +575,16 @@ public abstract partial class AppStartUpBase
         switch (httpMethod)
         {
             case HttpMethodType.GET:
-                route = app.MapGet(apiPath, async (HttpContext context) => { await HttpHandler.HandleRequest(context, httpFactory, aopHandlerTypes); });
+                route = app.MapGet(apiPath, async (HttpContext context) => { await HttpHandler.HandleRequestAsync(context, httpFactory, aopHandlerTypes); });
                 break;
             case HttpMethodType.PUT:
-                route = app.MapPut(apiPath, async (HttpContext context, string _) => { await HttpHandler.HandleRequest(context, httpFactory, aopHandlerTypes); });
+                route = app.MapPut(apiPath, async (HttpContext context, string _) => { await HttpHandler.HandleRequestAsync(context, httpFactory, aopHandlerTypes); });
                 break;
             case HttpMethodType.DELETE:
-                route = app.MapDelete(apiPath, async (HttpContext context, string _) => { await HttpHandler.HandleRequest(context, httpFactory, aopHandlerTypes); });
+                route = app.MapDelete(apiPath, async (HttpContext context, string _) => { await HttpHandler.HandleRequestAsync(context, httpFactory, aopHandlerTypes); });
                 break;
             default:
-                route = app.MapPost(apiPath, async (HttpContext context, string _) => { await HttpHandler.HandleRequest(context, httpFactory, aopHandlerTypes); });
+                route = app.MapPost(apiPath, async (HttpContext context, string _) => { await HttpHandler.HandleRequestAsync(context, httpFactory, aopHandlerTypes); });
                 break;
         }
 

@@ -103,7 +103,7 @@ public sealed class ActorManagerTimerSaveTests
         Func<bool> isWorking,
         Func<Task> delayAsync)
     {
-        var method = typeof(ActorManager).GetMethod("TimerSaveInBatches", BindingFlags.Static | BindingFlags.NonPublic);
+        var method = typeof(ActorManager).GetMethod("TimerSaveInBatchesAsync", BindingFlags.Static | BindingFlags.NonPublic);
         Assert.NotNull(method);
 
         var task = method!

@@ -45,7 +45,7 @@ public class BagComponentAgent : StateComponentAgent<BagComponent, BagState>
     /// <param name="message"></param>
     /// <param name="response"></param>
     /// <exception cref="NotImplementedException"></exception>
-    public async Task OnAddBagItem(INetworkChannel networkChannel, ReqAddItem message, RespAddItem response)
+    public async Task OnAddBagItemAsync(INetworkChannel networkChannel, ReqAddItem message, RespAddItem response)
     {
         // 校验物品是否存在
         foreach (var item in message.ItemDic)
@@ -59,7 +59,7 @@ public class BagComponentAgent : StateComponentAgent<BagComponent, BagState>
             return;
         }
 
-        var result = await UpdateChanged(networkChannel, message.ItemDic);
+        var result = await UpdateChangedAsync(networkChannel, message.ItemDic);
         if (result.IsNull())
         {
             response.ErrorCode = (int)OperationStatusCode.Unprocessable;
@@ -72,7 +72,7 @@ public class BagComponentAgent : StateComponentAgent<BagComponent, BagState>
     /// <param name="networkChannel"></param>
     /// <param name="itemDic"></param>
     /// <returns></returns>
-    public async Task<BagState> UpdateChanged(INetworkChannel networkChannel, Dictionary<int, long> itemDic)
+    public async Task<BagState> UpdateChangedAsync(INetworkChannel networkChannel, Dictionary<int, long> itemDic)
     {
         //将物品添加到背包
         var bagState = OwnerComponent.State;
@@ -117,7 +117,7 @@ public class BagComponentAgent : StateComponentAgent<BagComponent, BagState>
     /// <param name="networkChannel"></param>
     /// <param name="message"></param>
     /// <param name="response"></param>
-    public async Task OnRemoveBagItem(INetworkChannel networkChannel, ReqRemoveItem message, RespRemoveItem response)
+    public async Task OnRemoveBagItemAsync(INetworkChannel networkChannel, ReqRemoveItem message, RespRemoveItem response)
     {
         // 校验物品是否存在
         foreach (var item in message.ItemDic)
@@ -163,7 +163,7 @@ public class BagComponentAgent : StateComponentAgent<BagComponent, BagState>
     /// <param name="networkChannel"></param>
     /// <param name="message"></param>
     /// <param name="response"></param>
-    public async Task OnUseBagItem(INetworkChannel networkChannel, ReqUseItem message, RespUseItem response)
+    public async Task OnUseBagItemAsync(INetworkChannel networkChannel, ReqUseItem message, RespUseItem response)
     {
         // 校验物品是否存在
         if (!ConfigComponent.Instance.GetConfig<TbItemConfig>().TryGet(message.ItemId, out var tbItemConfig))

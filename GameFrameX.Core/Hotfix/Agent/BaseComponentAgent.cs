@@ -110,7 +110,7 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// - true：表示预处理成功且是首次执行
     /// - false：表示已经执行过预处理
     /// </returns>
-    public virtual Task<bool> BeforeActivation()
+    public virtual Task<bool> BeforeActivationAsync()
     {
         if (IsInvokedBeforeActivation)
         {
@@ -135,7 +135,7 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// - true：表示激活成功且是首次执行
     /// - false：表示组件已经被激活过
     /// </returns>
-    public virtual Task<bool> Active()
+    public virtual Task<bool> ActiveAsync()
     {
         if (IsInvokedActivation)
         {
@@ -160,7 +160,7 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// - true：表示后处理成功且是首次执行
     /// - false：表示已经执行过后处理
     /// </returns>
-    public virtual Task<bool> AfterActivation()
+    public virtual Task<bool> AfterActivationAsync()
     {
         if (IsInvokedAfterActivation)
         {
@@ -185,7 +185,7 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// - true：表示预处理成功且是首次执行
     /// - false：表示已经执行过预处理
     /// </returns>
-    public virtual Task<bool> BeforeInActivation()
+    public virtual Task<bool> BeforeInActivationAsync()
     {
         if (IsInvokedBeforeInActivation)
         {
@@ -204,7 +204,7 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// 返回一个已完成的 Task 对象。
     /// 注意：此方法不检查执行状态，可以多次调用
     /// </returns>
-    public virtual Task Inactive()
+    public virtual Task InactiveAsync()
     {
         return Task.CompletedTask;
     }
@@ -222,7 +222,7 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// - true：表示后处理成功且是首次执行
     /// - false：表示已经执行过后处理
     /// </returns>
-    public virtual Task<bool> AfterInActivation()
+    public virtual Task<bool> AfterInActivationAsync()
     {
         if (IsInvokedAfterInActivation)
         {
@@ -240,9 +240,9 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// <param name="agentType">要获取的代理类型</param>
     /// <param name="isNew">是否创建新的实例，true表示创建新实例，false表示获取已存在的实例</param>
     /// <returns>返回一个异步任务，该任务完成时将返回指定类型的组件代理实例</returns>
-    public Task<IComponentAgent> GetComponentAgent(Type agentType, bool isNew = true)
+    public Task<IComponentAgent> GetComponentAgentAsync(Type agentType, bool isNew = true)
     {
-        return Actor.GetComponentAgent(agentType, isNew);
+        return Actor.GetComponentAgentAsync(agentType, isNew);
     }
 
     /// <summary>
@@ -251,9 +251,9 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// <typeparam name="T">要获取的组件代理类型，必须实现IComponentAgent接口</typeparam>
     /// <param name="isNew">是否创建新的实例，true表示创建新实例，false表示获取已存在的实例</param>
     /// <returns>返回一个异步任务，该任务完成时将返回指定泛型类型的组件代理实例</returns>
-    public Task<T> GetComponentAgent<T>(bool isNew = true) where T : IComponentAgent
+    public Task<T> GetComponentAgentAsync<T>(bool isNew = true) where T : IComponentAgent
     {
-        return Actor.GetComponentAgent<T>(isNew);
+        return Actor.GetComponentAgentAsync<T>(isNew);
     }
 
     /// <summary>
@@ -373,8 +373,8 @@ public abstract partial class BaseComponentAgent<TComponent> : IComponentAgent w
     /// </summary>
     /// <param name="serverDay">服务器运行的天数，从启动开始计数</param>
     /// <returns>表示异步操作的Task对象</returns>
-    public Task ActorCrossDay(int serverDay)
+    public Task ActorCrossDayAsync(int serverDay)
     {
-        return Actor.CrossDay(serverDay);
+        return Actor.CrossDayAsync(serverDay);
     }
 }

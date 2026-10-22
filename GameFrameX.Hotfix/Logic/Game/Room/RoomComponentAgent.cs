@@ -57,9 +57,9 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
         },
     };
 
-    public override async Task<bool> Active()
+    public override async Task<bool> ActiveAsync()
     {
-        var isContinue = await base.Active();
+        var isContinue = await base.ActiveAsync();
         if (isContinue)
         {
             WithCronExpression<RoomMaintenanceTimer>(RoomMaintenanceCronExpression);
@@ -221,7 +221,7 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
     }
 
     [Service]
-    public virtual Task MarkPlayerDisconnected(long playerId)
+    public virtual Task MarkPlayerDisconnectedAsync(long playerId)
     {
         if (playerId <= 0 || !TryGetActiveRoom(playerId, out _))
         {
@@ -233,7 +233,7 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
     }
 
     [Service]
-    public virtual Task MarkPlayerReconnected(long playerId)
+    public virtual Task MarkPlayerReconnectedAsync(long playerId)
     {
         if (playerId <= 0 || !State.DisconnectedPlayerTimeMap.Remove(playerId))
         {
@@ -285,7 +285,7 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
             return false;
         }
 
-        var bridgeRoom = await GetRoom(request.RoomId);
+        var bridgeRoom = await GetRoomAsync(request.RoomId);
         if (bridgeRoom == null || bridgeRoom.GameType != GameType.RockPaperScissors)
         {
             return false;
@@ -365,21 +365,21 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
     }
 
     [Service]
-    public virtual Task<RoomState> GetRoom(long roomId)
+    public virtual Task<RoomState> GetRoomAsync(long roomId)
     {
         State.Rooms.TryGetValue(roomId, out var room);
         return Task.FromResult(room);
     }
 
     [Service]
-    public virtual async Task<RoomInfo> GetRoomInfo(long roomId)
+    public virtual async Task<RoomInfo> GetRoomInfoAsync(long roomId)
     {
         State.Rooms.TryGetValue(roomId, out var room);
         return room == null ? null : await ToMessageAsync(room);
     }
 
     [Service]
-    public virtual async Task<RoomInfo> EnterSettling(long roomId)
+    public virtual async Task<RoomInfo> EnterSettlingAsync(long roomId)
     {
         if (!State.Rooms.TryGetValue(roomId, out var room))
         {
@@ -394,7 +394,7 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
     }
 
     [Service]
-    public virtual async Task<RoomInfo> MarkSettled(long roomId)
+    public virtual async Task<RoomInfo> MarkSettledAsync(long roomId)
     {
         if (!State.Rooms.TryGetValue(roomId, out var room))
         {
@@ -409,7 +409,7 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
     }
 
     [Service]
-    public virtual async Task<RoomInfo> RestartRoomGame(long roomId)
+    public virtual async Task<RoomInfo> RestartRoomGameAsync(long roomId)
     {
         if (!State.Rooms.TryGetValue(roomId, out var room))
         {
@@ -678,7 +678,7 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
 
     private sealed class RoomMaintenanceTimer : TimerHandler<RoomComponentAgent>
     {
-        protected override Task HandleTimer(RoomComponentAgent agent, GameEventArgs gameEventArgs)
+        protected override Task HandleTimerAsync(RoomComponentAgent agent, GameEventArgs gameEventArgs)
         {
             return agent.RunRoomMaintenanceAsync();
         }

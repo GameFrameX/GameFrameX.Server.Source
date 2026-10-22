@@ -260,10 +260,10 @@ public static class RockPaperScissorsMatchBridge
         switch (ComputeRoomAction(view.State, room.Status))
         {
             case RockPaperScissorsMatchRoomAction.EnterSettling:
-                await roomAgent.EnterSettling(room.RoomId);
+                await roomAgent.EnterSettlingAsync(room.RoomId);
                 break;
             case RockPaperScissorsMatchRoomAction.MarkSettled:
-                await roomAgent.MarkSettled(room.RoomId);
+                await roomAgent.MarkSettledAsync(room.RoomId);
                 break;
         }
     }

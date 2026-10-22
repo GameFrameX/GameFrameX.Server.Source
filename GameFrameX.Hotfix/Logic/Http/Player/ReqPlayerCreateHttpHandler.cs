@@ -42,12 +42,12 @@ namespace GameFrameX.Hotfix.Logic.Http.Player;
 [Description("角色创建,仅限前端调用")]
 public sealed class ReqPlayerCreateHttpHandler : BaseHttpHandler
 {
-    public override async Task<MessageObject> ActionMessageObject(HttpActionContext context)
+    public override async Task<MessageObject> ActionMessageObjectAsync(HttpActionContext context)
     {
         var messageObject = context.MessageObject;
         var reqPlayerCreate = messageObject as ReqPlayerCreate;
 
-        var playerState = await OnPlayerCreate(reqPlayerCreate);
+        var playerState = await OnPlayerCreateAsync(reqPlayerCreate);
         var respPlayerCreate = new RespPlayerCreate
         {
             UniqueId = reqPlayerCreate.UniqueId,
@@ -63,7 +63,7 @@ public sealed class ReqPlayerCreateHttpHandler : BaseHttpHandler
         return respPlayerCreate;
     }
 
-    private async Task<PlayerState> OnPlayerCreate(ReqPlayerCreate reqPlayerCreate)
+    private async Task<PlayerState> OnPlayerCreateAsync(ReqPlayerCreate reqPlayerCreate)
     {
         var playerState = new PlayerState
         {

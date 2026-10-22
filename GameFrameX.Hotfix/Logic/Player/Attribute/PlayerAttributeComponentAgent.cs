@@ -53,9 +53,9 @@ public class PlayerAttributeComponentAgent : StateComponentAgent<PlayerAttribute
     /// </summary>
     /// <param name="attributeType">属性编号。</param>
     /// <param name="value">新属性值。</param>
-    public Task Set(AttributeType attributeType, long value)
+    public Task SetAsync(AttributeType attributeType, long value)
     {
-        return Set(attributeType, value, false);
+        return SetAsync(attributeType, value, false);
     }
 
     /// <summary>
@@ -63,9 +63,9 @@ public class PlayerAttributeComponentAgent : StateComponentAgent<PlayerAttribute
     /// </summary>
     /// <param name="attributeType">属性编号。</param>
     /// <param name="value">新属性值。</param>
-    public Task SetSilent(AttributeType attributeType, long value)
+    public Task SetSilentAsync(AttributeType attributeType, long value)
     {
-        return Set(attributeType, value, true);
+        return SetAsync(attributeType, value, true);
     }
 
     /// <summary>
@@ -73,16 +73,16 @@ public class PlayerAttributeComponentAgent : StateComponentAgent<PlayerAttribute
     /// </summary>
     /// <param name="attributeType">属性编号。</param>
     /// <param name="value">累加值。</param>
-    public Task Add(AttributeType attributeType, long value)
+    public Task AddAsync(AttributeType attributeType, long value)
     {
-        return Set(attributeType, Get(attributeType) + value, false);
+        return SetAsync(attributeType, Get(attributeType) + value, false);
     }
 
     /// <summary>
     /// 静默初始化多项属性，只写回状态，不派发业务事件。
     /// </summary>
     /// <param name="attributes">属性初始值。</param>
-    public async Task InitializeSilent(Dictionary<AttributeType, long> attributes)
+    public async Task InitializeSilentAsync(Dictionary<AttributeType, long> attributes)
     {
         if (attributes == null)
         {
@@ -104,7 +104,7 @@ public class PlayerAttributeComponentAgent : StateComponentAgent<PlayerAttribute
     /// <summary>
     /// 静默补齐玩家第一版基础属性默认值。已有基础属性槽不会被覆盖，避免重复登录重置成长结果。
     /// </summary>
-    public async Task InitializeDefaultsSilent()
+    public async Task InitializeDefaultsSilentAsync()
     {
         if (PlayerInitialAttributeDefaults.ApplyMissing(OwnerComponent.State.Values))
         {
@@ -121,7 +121,7 @@ public class PlayerAttributeComponentAgent : StateComponentAgent<PlayerAttribute
         return PlayerAttributeSyncBuilder.BuildSnapshot(OwnerComponent.State);
     }
 
-    private async Task Set(AttributeType attributeType, long value, bool silent)
+    private async Task SetAsync(AttributeType attributeType, long value, bool silent)
     {
         var result = PlayerAttributeMutation.ApplyValue(OwnerComponent.State.Values, attributeType, value, silent);
         if (!result.StateChanged)

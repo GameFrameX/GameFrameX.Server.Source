@@ -43,5 +43,5 @@ public interface ITimerHandler
     /// <param name="agent">组件代理对象，用于与系统其他部分交互</param>
     /// <param name="gameEventArgs">传递给处理器的参数</param>
     /// <returns>一个任务，表示异步操作的结果</returns>
-    Task InnerHandleTimer(IComponentAgent agent, GameEventArgs gameEventArgs);
+    Task InnerHandleTimerAsync(IComponentAgent agent, GameEventArgs gameEventArgs);
 }

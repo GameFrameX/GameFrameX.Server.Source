@@ -42,7 +42,7 @@ namespace GameFrameX.Hotfix.Logic.Http.Player;
 [Description("账号登录,仅限前端调用")]
 public sealed class ReqLoginHttpHandler : BaseHttpHandler
 {
-    public override async Task<MessageObject> ActionMessageObject(HttpActionContext context)
+    public override async Task<MessageObject> ActionMessageObjectAsync(HttpActionContext context)
     {
         var messageObject = context.MessageObject;
         var reqLogin = (ReqLogin)messageObject;
@@ -54,12 +54,12 @@ public sealed class ReqLoginHttpHandler : BaseHttpHandler
         }
 
         AppMetrics.AccountLogin.Add(1);
-        var loginState = await OnLogin(reqLogin);
+        var loginState = await OnLoginAsync(reqLogin);
 
         if (loginState == null)
         {
             var accountId = ActorIdGenerator.GetUniqueId();
-            loginState = await Register(accountId, reqLogin);
+            loginState = await RegisterAsync(accountId, reqLogin);
         }
 
         // 构建账号登录返回信息
@@ -73,13 +73,13 @@ public sealed class ReqLoginHttpHandler : BaseHttpHandler
         return respLogin;
     }
 
-    public async Task<LoginState> OnLogin(ReqLogin reqLogin)
+    public async Task<LoginState> OnLoginAsync(ReqLogin reqLogin)
     {
         AppMetrics.AccountLogin.Add(1);
         return await GameDb.FindAsync<LoginState>(m => m.UserName == reqLogin.UserName && m.Password == reqLogin.Password, false);
     }
 
-    public async Task<LoginState> Register(long accountId, ReqLogin reqLogin)
+    public async Task<LoginState> RegisterAsync(long accountId, ReqLogin reqLogin)
     {
         AppMetrics.AccountRegister.Add(1);
         var loginState = new LoginState { Id = accountId, UserName = reqLogin.UserName, Password = reqLogin.Password, };

@@ -63,7 +63,7 @@ public class WorkerActor : IWorkerActor
         }
 
         Id = id;
-        ActionBlock = new ActionBlock<WorkWrapper>(InnerRun, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 1, });
+        ActionBlock = new ActionBlock<WorkWrapper>(InnerRunAsync, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 1, });
     }
 
     /// <summary>
@@ -161,7 +161,7 @@ public class WorkerActor : IWorkerActor
     /// 孤儿超过硬上限（<see cref="OrphanHardCapMultiplier"/> × TimeOut）才隔离本 Actor。
     /// </summary>
     /// <param name="wrapper">工作包装器</param>
-    private async Task InnerRun(WorkWrapper wrapper)
+    private async Task InnerRunAsync(WorkWrapper wrapper)
     {
         if (IsQuarantined)
         {
@@ -170,7 +170,7 @@ public class WorkerActor : IWorkerActor
         }
 
         wrapper.BeginExecution();
-        var task = wrapper.DoTask();
+        var task = wrapper.DoTaskAsync();
         var abandoned = false;
         try
         {
@@ -357,7 +357,7 @@ public class WorkerActor : IWorkerActor
     /// <param name="timeOut">任务执行的超时时间(毫秒),默认为-1,将采用配置时间ActorQueueTimeOut</param>
     /// <param name="cancellationToken">用于取消任务的令牌</param>
     /// <returns>返回一个Task对象，表示异步操作的完成状态</returns>
-    public Task Enqueue(Action work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default)
+    public Task EnqueueAsync(Action work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default)
     {
         if (IsQuarantined)
         {
@@ -394,7 +394,7 @@ public class WorkerActor : IWorkerActor
     /// <param name="timeOut">任务执行的超时时间(毫秒),默认为-1,将采用配置时间ActorQueueTimeOut</param>
     /// <param name="cancellationToken">用于取消任务的令牌</param>
     /// <returns>返回一个Task<T/>对象，表示异步操作的完成状态和结果</returns>
-    public Task<T> Enqueue<T>(Func<T> work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default)
+    public Task<T> EnqueueAsync<T>(Func<T> work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default)
     {
         if (IsQuarantined)
         {
@@ -430,7 +430,7 @@ public class WorkerActor : IWorkerActor
     /// <param name="timeOut">任务执行的超时时间(毫秒),默认为-1,将采用配置时间ActorQueueTimeOut</param>
     /// <param name="cancellationToken">用于取消任务的令牌</param>
     /// <returns>返回一个Task对象，表示异步操作的完成状态</returns>
-    public Task Enqueue(Func<Task> work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default)
+    public Task EnqueueAsync(Func<Task> work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default)
     {
         if (IsQuarantined)
         {
@@ -467,7 +467,7 @@ public class WorkerActor : IWorkerActor
     /// <param name="timeOut">任务执行的超时时间(毫秒),默认为-1,将采用配置时间ActorQueueTimeOut</param>
     /// <param name="cancellationToken">用于取消任务的令牌</param>
     /// <returns>返回一个Task<T/>对象，表示异步操作的完成状态和结果</returns>
-    public Task<T> Enqueue<T>(Func<Task<T>> work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default)
+    public Task<T> EnqueueAsync<T>(Func<Task<T>> work, long callChainId, bool discard = false, int timeOut = -1, CancellationToken cancellationToken = default)
     {
         if (IsQuarantined)
         {

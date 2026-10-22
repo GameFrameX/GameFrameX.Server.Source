@@ -48,24 +48,24 @@ public class ConfigComponent
 
     private TablesComponent Tables { get; }
 
-    public async Task LoadConfig()
+    public async Task LoadConfigAsync()
     {
         Tables.Init(Instance);
         // Localization: Config.Table.LoadConfigStart - 开始加载配置表...
         LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Config.Table.LoadConfigStart));
         Instance.RemoveAllConfigs();
-        await Tables.LoadAsync(Loader);
+        await Tables.LoadAsync(LoaderAsync);
         // Localization: Config.Table.LoadConfigEnd - 配置表加载完成...
         LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Config.Table.LoadConfigEnd));
     }
 
-    private static async Task<ByteBuf> Loader(string file, bool tag)
+    private static async Task<ByteBuf> LoaderAsync(string file, bool tag)
     {
         var configBytes = await File.ReadAllBytesAsync($"json/{file}.bytes");
         return ByteBuf.Wrap(configBytes);
     }
 
-    private static async Task<JsonElement> Loader(string file)
+    private static async Task<JsonElement> LoaderAsync(string file)
     {
         var configJson = await File.ReadAllTextAsync($"json/{file}.json");
         var jsonElement = JsonDocument.Parse(configJson).RootElement;

@@ -251,7 +251,7 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
             Name = dbName,
         };
 
-        var opened = await service.Open(options);
+        var opened = await service.OpenAsync(options);
         Assert.True(opened);
 
         try
@@ -260,7 +260,7 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
         }
         finally
         {
-            await service.Close();
+            await service.CloseAsync();
             try
             {
                 await using var admin = new NpgsqlConnection(adminConnectionString);
