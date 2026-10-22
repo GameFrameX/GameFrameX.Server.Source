@@ -121,19 +121,27 @@ public static class UnifiedMessageSenderHolder
     }
 
     /// <summary>
-    /// 使用默认组件初始化。适用于标准启动流程。
+    /// 使用默认组件初始化。适用于标准启动流程。本服身份由调用方显式传入并透传给发送器，
+    /// 不读取全局配置。
     /// </summary>
     /// <remarks>
     /// Initializes with default components. Suitable for standard startup flow.
+    /// The local-server identity is passed in by the caller and forwarded to the sender
+    /// instead of being read from global settings.
     /// </remarks>
     /// <param name="routeResolver">玩家路由解析器 / Player route resolver</param>
     /// <param name="localSender">本服玩家发送器 / Local player sender</param>
     /// <param name="remoteClient">远程消息客户端 / Remote message client</param>
+    /// <param name="localServerType">本服服务器类型（透传给发送器的本服判定基准） / Local server type forwarded to the sender as the local-server identity</param>
+    /// <param name="localServerId">本服服务器编号（透传给发送器的本服判定基准） / Local server id forwarded to the sender as the local-server identity</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="remoteClient"/> 为 null 时抛出 / Thrown when <paramref name="remoteClient"/> is null</exception>
+    /// <exception cref="ArgumentException">当 <paramref name="localServerType"/> 为 null、空串或空白时抛出（发送器构造器校验） / Thrown when <paramref name="localServerType"/> is null, empty, or whitespace (validated by the sender constructor)</exception>
     public static void InitializeWithDefaults(
         IPlayerRouteResolver routeResolver,
         IPlayerLocalSender localSender,
-        IRemoteMessageClient remoteClient)
+        IRemoteMessageClient remoteClient,
+        string localServerType,
+        int localServerId)
     {
         if (remoteClient == null)
         {
@@ -142,7 +150,7 @@ public static class UnifiedMessageSenderHolder
 
         var instanceSelector = new ConsistentHashServerInstanceSelector();
         var metrics = new MessageSendMetrics();
-        var sender = new UnifiedMessageSender(remoteClient, routeResolver, localSender, instanceSelector, metrics);
+        var sender = new UnifiedMessageSender(remoteClient, routeResolver, localSender, instanceSelector, localServerType, localServerId, metrics);
         Initialize(sender);
     }
 }
