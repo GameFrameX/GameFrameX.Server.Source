@@ -137,9 +137,11 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     /// 白名单为现有 TCP 登录流全链路（账号登录 → 角色列表/角色创建 → 角色登录）；
     /// <see cref="ReqPlayerLogin"/> 是鉴权终态——业务侧 OnPlayerLogin 处理该消息并绑定 ActorId，此后会话消息全放行。
     /// C204 起 <see cref="ReqSessionResume"/>（会话恢复）与角色登录同为鉴权完成信号——恢复即绑定 ActorId。
-    /// C284 起监听面归宿主，本覆写自热更侧 <c>AppStartUpHotfixGame</c> 上移，语句逐字保持。
+    /// C284 起监听面归宿主，本覆写自热更侧 <c>AppStartUpHotfixGame</c> 上移，语句逐字保持
+    ///（原名，C285 更名为 HotfixModuleLifecycleBridge）。
     /// Since C284 the listener surface lives with the host; this override moved up from the
-    /// hotfix-side <c>AppStartUpHotfixGame</c> with the statements kept verbatim.
+    /// hotfix-side <c>AppStartUpHotfixGame</c> with the statements kept verbatim (renamed
+    /// <c>HotfixModuleLifecycleBridge</c> in C285).
     /// </remarks>
     /// <returns>KCP 会话鉴权配置 / The KCP session authentication options</returns>
     protected override SessionAuthenticationOptions CreateKcpSessionAuthenticationOptions()
@@ -169,12 +171,13 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
 
     /// <summary>
     /// Game 型会话建立钩子：达到最大在线数即拒绝并关闭，否则建立 <see cref="PlayerSession"/>
-    ///（语句自热更侧 <c>AppStartUpHotfixGame.OnConnected</c> 上移，C284）。
+    ///（语句自热更侧 <c>AppStartUpHotfixGame.OnConnected</c> 上移，C284；原名，C285 更名为 HotfixModuleLifecycleBridge）。
     /// </summary>
     /// <remarks>
     /// The Game-shape session-established hook: rejects and closes the connection once the maximum
     /// client count is exceeded, otherwise registers the <see cref="PlayerSession"/> (moved up
-    /// verbatim from the hotfix-side <c>AppStartUpHotfixGame.OnConnected</c>, C284).
+    /// verbatim from the hotfix-side <c>AppStartUpHotfixGame.OnConnected</c>, C284; renamed
+    /// <c>HotfixModuleLifecycleBridge</c> in C285).
     /// </remarks>
     /// <param name="appSession">新建立的会话对象 / Newly established session object</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
