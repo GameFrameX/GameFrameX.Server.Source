@@ -2140,15 +2140,6 @@
     <value>ReqPlayerSendItemHttpHandler 离线通知发送失败, playerId: {0}, status: {1}, error: {2}, traceId: {3}</value>
   </data>
 
-  <data name="Hotfix.Event.SelfHandleException" xml:space="preserve">
-    <value>EventDispatcherExtensions.SelfHandle 处理事件 {0} 时发生异常: {1}</value>
-  </data>
-
-  <data name="Hotfix.Event.SelfHandleNoListeners" xml:space="preserve">
-    <value>EventDispatcherExtensions.SelfHandle {0} 事件类型：{1} 没有找到任何监听者</value>
-  </data>
-
-
 
 
 

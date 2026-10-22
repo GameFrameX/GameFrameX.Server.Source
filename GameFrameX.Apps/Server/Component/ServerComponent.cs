@@ -28,7 +28,6 @@
 //  ==========================================================================================
 
 
-using System.Collections.Concurrent;
 using GameFrameX.Apps.Server.Entity;
 
 namespace GameFrameX.Apps.Server.Component;
@@ -36,8 +35,4 @@ namespace GameFrameX.Apps.Server.Component;
 [ComponentType(GlobalConst.ActorTypeServer)]
 public class ServerComponent : StateComponent<ServerState>
 {
-    /// <summary>
-    /// 存放在此处的数据不会回存到数据库
-    /// </summary>
-    public ConcurrentDictionary<long, byte> OnlineSet = new();
 }

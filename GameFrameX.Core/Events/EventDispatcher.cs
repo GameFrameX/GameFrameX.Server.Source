@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 using GameFrameX.Core.Abstractions.Events;
+using GameFrameX.Core.Abstractions;
 using GameFrameX.Core.Actors;
 using GameFrameX.Core.Hotfix;
 using GameFrameX.Foundation.Extensions;
@@ -72,7 +73,7 @@ public static class EventDispatcher
     /// <param name="actorId">目标Actor的唯一标识符</param>
     /// <param name="eventArgs">事件携带的参数数据，不为null</param>
     /// <returns>异步任务</returns>
-    private static async Task DispatchToActorAsync(Actor actor, long actorId, GameEventArgs eventArgs)
+    internal static async Task DispatchToActorAsync(IActor actor, long actorId, GameEventArgs eventArgs)
     {
         // 事件需要在本actor内执行，不可多线程执行，所以不能使用Task.WhenAll来处理
         // 获取该Actor类型下注册的所有事件监听器

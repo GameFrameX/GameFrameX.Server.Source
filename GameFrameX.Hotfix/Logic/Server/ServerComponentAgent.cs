@@ -37,7 +37,6 @@ using GameFrameX.Core.Events;
 using GameFrameX.Core.Timer.Handler;
 using GameFrameX.Foundation.Utility;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Hotfix.Logic.Player.Login;
 using System.Collections;
 using System.Security.Cryptography;
 using System.Text;
@@ -187,36 +186,6 @@ public class ServerComponentAgent : StateComponentAgent<ServerComponent, ServerS
         return Math.Abs(BitConverter.ToInt64(hash, 0));
     }
 
-    [Service]
-    [Discard]
-    public virtual ValueTask AddOnlinePlayer(long playerId)
-    {
-        OwnerComponent.OnlineSet.TryAdd(playerId, 0);
-        return ValueTask.CompletedTask;
-    }
-
-    [Service]
-    [Discard]
-    public virtual ValueTask RemoveOnlinePlayer(long playerId)
-    {
-        OwnerComponent.OnlineSet.TryRemove(playerId, out _);
-        return ValueTask.CompletedTask;
-    }
-
-    public static async Task OnlineRoleForeach(Action<PlayerComponentAgent> func)
-    {
-        var serverComp = await ActorManager.GetComponentAgent<ServerComponentAgent>();
-        serverComp.Tell(async () =>
-        {
-            foreach (var playerId in serverComp.OwnerComponent.OnlineSet.Keys)
-            {
-                var roleComp = await ActorManager.GetComponentAgent<PlayerComponentAgent>(playerId);
-                roleComp.Tell(() => func(roleComp));
-            }
-        });
-    }
-
-
     private Task TestDelayTimer()
     {
         // Localization: Hotfix.Server.TestDelayTimerExecuted - ServerCompAgent.TestDelayTimer.延时3秒执行.执行一次
@@ -267,12 +236,6 @@ public class ServerComponentAgent : StateComponentAgent<ServerComponent, ServerS
     public virtual Task<int> GetWorldLevel()
     {
         return Task.FromResult(State.WorldLevel);
-    }
-
-    [Service]
-    public virtual Task<bool> IsOnline(long playerId)
-    {
-        return Task.FromResult(OwnerComponent.OnlineSet.ContainsKey(playerId));
     }
 
     /*******************演示代码**************************/

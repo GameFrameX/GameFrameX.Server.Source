@@ -46,6 +46,7 @@ namespace GameFrameX.Hotfix.Tests;
 /// <see cref="HotfixManager.SetResolverForTesting"/>, the facade and Core subsystem consumption paths
 /// must all route through it (substitutability evidence).
 /// </summary>
+[Collection(HotfixManagerStaticStateCollection.Name)]
 public sealed class HotfixResolverInjectionTests
 {
     /// <summary>
