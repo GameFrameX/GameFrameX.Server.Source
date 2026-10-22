@@ -33,6 +33,7 @@ using GameFrameX.Network.Abstractions;
 using GameFrameX.Network.RemoteMessaging;
 using GameFrameX.Network.Messages;
 using System.Collections;
+using GameFrameX.Utility.Setting;
 using Xunit;
 
 namespace GameFrameX.Tests.UnifiedMessaging;
@@ -428,6 +429,8 @@ public class UnifiedMessageSenderMetricsIntegrationTests
             new FakePlayerRouteResolver(PlayerRouteInfo.Offline()),
             new FakePlayerLocalSender(isOnline: true, sendResult: true),
             new ConsistentHashServerInstanceSelector(),
+            GameServerConst.Game.Name,
+            GameServerConst.Game.Id,
             metrics);
 
         var result = await sender.SendToPlayerAsync(1001, new ReqSendToPlayerInner());
@@ -448,6 +451,8 @@ public class UnifiedMessageSenderMetricsIntegrationTests
             new FakePlayerRouteResolver(PlayerRouteInfo.Offline()),
             new FakePlayerLocalSender(isOnline: false, sendResult: false),
             new ConsistentHashServerInstanceSelector(),
+            GameServerConst.Game.Name,
+            GameServerConst.Game.Id,
             metrics);
 
         var result = await sender.SendToServerAsync<RespSendToPlayerInner>("social-service", new ReqSendToPlayerInner());
@@ -457,6 +462,127 @@ public class UnifiedMessageSenderMetricsIntegrationTests
         Assert.Equal("server:social-service", snapshot.Key);
         Assert.Equal(1, snapshot.TotalCalls);
         Assert.Equal(1, snapshot.SuccessCalls);
+    }
+}
+
+public class UnifiedMessageSenderLocalIdentityTests
+{
+    [Fact]
+    public async Task SendToPlayerAsync_RouteOnlineDiffersOnlyByCase_TreatedAsLocalServerWithoutRemoteCall()
+    {
+        // 注入 ("Social", 77)、路由 ("social", 77)：ServerType 仅大小写不同 → 本服；本服投递失败 → 离线，不跨服转发。
+        var remoteClient = new CountingRemoteMessageClient();
+        var sender = new UnifiedMessageSender(
+            remoteClient,
+            new FakePlayerRouteResolver(PlayerRouteInfo.Online("social", 77)),
+            new FakePlayerLocalSender(isOnline: true, sendResult: false),
+            new ConsistentHashServerInstanceSelector(),
+            "Social",
+            77);
+
+        var result = await sender.SendToPlayerAsync(2001, new ReqSendToPlayerInner());
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(PlayerDeliverStatus.Offline, result.Status);
+        Assert.Equal(0, remoteClient.CallWithResultCount);
+    }
+
+    [Fact]
+    public async Task SendToPlayerAsync_ExactIdentityMatch_TreatedAsLocalServerWithoutRemoteCall()
+    {
+        // 注入 ("Social", 77) 且路由 ("Social", 77)：构造期读 CurrentSetting 的旧实现（测试内为 null，
+        // 回落 Game/1000）会误判为他服并跨服转发；构造注入后判定为本服。
+        var remoteClient = new CountingRemoteMessageClient();
+        var sender = new UnifiedMessageSender(
+            remoteClient,
+            new FakePlayerRouteResolver(PlayerRouteInfo.Online("Social", 77)),
+            new FakePlayerLocalSender(isOnline: true, sendResult: false),
+            new ConsistentHashServerInstanceSelector(),
+            "Social",
+            77);
+
+        var result = await sender.SendToPlayerAsync(2002, new ReqSendToPlayerInner());
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(PlayerDeliverStatus.Offline, result.Status);
+        Assert.Equal(0, remoteClient.CallWithResultCount);
+    }
+
+    [Fact]
+    public async Task SendToPlayerAsync_SameServerTypeDifferentServerId_ForwardsToRemoteServer()
+    {
+        // 注入 ("Social", 77)、路由 ("Social", 78)：ServerId 不同 → 非本服 → 跨服转发。
+        var remoteClient = new CountingRemoteMessageClient();
+        var sender = new UnifiedMessageSender(
+            remoteClient,
+            new FakePlayerRouteResolver(PlayerRouteInfo.Online("Social", 78)),
+            new FakePlayerLocalSender(isOnline: false, sendResult: false),
+            new ConsistentHashServerInstanceSelector(),
+            "Social",
+            77);
+
+        var result = await sender.SendToPlayerAsync(2003, new ReqSendToPlayerInner());
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(PlayerDeliverStatus.RemoteDelivered, result.Status);
+        Assert.Equal(1, remoteClient.CallWithResultCount);
+    }
+
+    [Fact]
+    public async Task SendToPlayerAsync_SameServerIdDifferentServerType_ForwardsToRemoteServer()
+    {
+        // 注入 ("Social", 77)、路由 ("GateWay", 77)：ServerType 不同 → 非本服 → 跨服转发。
+        var remoteClient = new CountingRemoteMessageClient();
+        var sender = new UnifiedMessageSender(
+            remoteClient,
+            new FakePlayerRouteResolver(PlayerRouteInfo.Online("GateWay", 77)),
+            new FakePlayerLocalSender(isOnline: false, sendResult: false),
+            new ConsistentHashServerInstanceSelector(),
+            "Social",
+            77);
+
+        var result = await sender.SendToPlayerAsync(2004, new ReqSendToPlayerInner());
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(PlayerDeliverStatus.RemoteDelivered, result.Status);
+        Assert.Equal(1, remoteClient.CallWithResultCount);
+    }
+
+    [Fact]
+    public async Task SendToPlayerAsync_LocalDelivered_MetricsUseInjectedServerType()
+    {
+        // 指标服务名兜底取注入身份：注入 "Social" → 本地投递成功指标键 player:Social。
+        var metrics = new MessageSendMetrics();
+        var sender = new UnifiedMessageSender(
+            new CountingRemoteMessageClient(),
+            new FakePlayerRouteResolver(PlayerRouteInfo.Offline()),
+            new FakePlayerLocalSender(isOnline: true, sendResult: true),
+            new ConsistentHashServerInstanceSelector(),
+            "Social",
+            77,
+            metrics);
+
+        var result = await sender.SendToPlayerAsync(2005, new ReqSendToPlayerInner());
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(PlayerDeliverStatus.LocalDelivered, result.Status);
+        var snapshot = Assert.Single(metrics.GetSnapshots());
+        Assert.Equal("player:Social", snapshot.Key);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Constructor_NullOrWhiteSpaceLocalServerType_ThrowsArgumentException(string localServerType)
+    {
+        Assert.ThrowsAny<ArgumentException>(() => new UnifiedMessageSender(
+            new CountingRemoteMessageClient(),
+            new FakePlayerRouteResolver(PlayerRouteInfo.Offline()),
+            new FakePlayerLocalSender(isOnline: true, sendResult: true),
+            new ConsistentHashServerInstanceSelector(),
+            localServerType,
+            77));
     }
 }
 
@@ -624,5 +750,87 @@ internal sealed class FakeRemoteMessageClient : IRemoteMessageClient
         };
 
         return RemoteCallResult<TResponse>.Ok((TResponse)(object)response, elapsedMs: 5, traceId: "trace-test", retryCount: 1);
+    }
+}
+
+/// <summary>
+/// 计数间谍远程客户端：仅 <c>CallWithResultAsync(RemoteCallContext, …)</c> 计数并返回
+/// <c>RespSendToPlayerInner</c> 成功结果（本服判定/跨服转发测试唯一走到的成员），其余成员直接抛
+/// <see cref="NotImplementedException"/> 兜底。
+/// </summary>
+internal sealed class CountingRemoteMessageClient : IRemoteMessageClient
+{
+    public int CallWithResultCount { get; private set; }
+
+    public Task<TResponse> CallAsync<TResponse>(string serviceName, MessageObject requestMessage) where TResponse : class, GameFrameX.Network.Abstractions.IResponseMessage
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<TResponse> CallAsync<TResponse>(string serviceName, MessageObject requestMessage, CancellationToken cancellationToken) where TResponse : class, GameFrameX.Network.Abstractions.IResponseMessage
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<TResponse> CallAsync<TResponse>(string serviceName, MessageObject requestMessage, int timeoutMs, CancellationToken cancellationToken = default) where TResponse : class, GameFrameX.Network.Abstractions.IResponseMessage
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<RemoteCallResult<TResponse>> CallWithResultAsync<TResponse>(string serviceName, MessageObject requestMessage) where TResponse : class, GameFrameX.Network.Abstractions.IResponseMessage
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<RemoteCallResult<TResponse>> CallWithResultAsync<TResponse>(string serviceName, MessageObject requestMessage, int timeoutMs) where TResponse : class, GameFrameX.Network.Abstractions.IResponseMessage
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<RemoteCallResult<TResponse>> CallWithResultAsync<TResponse>(string serviceName, MessageObject requestMessage, int timeoutMs, CancellationToken cancellationToken) where TResponse : class, GameFrameX.Network.Abstractions.IResponseMessage
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<RemoteCallResult<TResponse>> CallWithResultAsync<TResponse>(RemoteCallContext context, MessageObject requestMessage) where TResponse : class, GameFrameX.Network.Abstractions.IResponseMessage
+    {
+        CallWithResultCount++;
+        if (typeof(TResponse) != typeof(RespSendToPlayerInner))
+        {
+            throw new NotSupportedException($"Unsupported response type: {typeof(TResponse).Name}");
+        }
+
+        var response = new RespSendToPlayerInner
+        {
+            Success = true,
+            PlayerOffline = false,
+        };
+
+        return Task.FromResult(RemoteCallResult<TResponse>.Ok((TResponse)(object)response, elapsedMs: 5, traceId: "trace-test", retryCount: 1));
+    }
+
+    public Task<RemoteCallResult<TResponse>> CallWithRetryAsync<TResponse>(string serviceName, MessageObject requestMessage, int timeoutMs = RemoteCallContext.DefaultTimeoutMs, int maxRetryCount = RemoteCallContext.DefaultMaxRetryCount, CancellationToken cancellationToken = default) where TResponse : class, GameFrameX.Network.Abstractions.IResponseMessage
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<RemoteCallResult<TResponse>> CallWithoutRetryAsync<TResponse>(string serviceName, MessageObject requestMessage, int timeoutMs = RemoteCallContext.DefaultTimeoutMs, CancellationToken cancellationToken = default) where TResponse : class, GameFrameX.Network.Abstractions.IResponseMessage
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<RemoteCallResult<TResponse>> CallWithMetadataAsync<TResponse>(string serviceName, MessageObject requestMessage, Dictionary<string, string> metadata, int timeoutMs = RemoteCallContext.DefaultTimeoutMs, CancellationToken cancellationToken = default) where TResponse : class, GameFrameX.Network.Abstractions.IResponseMessage
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task SendOneWayAsync(string serviceName, MessageObject requestMessage, int timeoutMs = RemoteCallContext.DefaultTimeoutMs, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<bool> IsServiceAvailableAsync(string serviceName)
+    {
+        throw new NotImplementedException();
     }
 }

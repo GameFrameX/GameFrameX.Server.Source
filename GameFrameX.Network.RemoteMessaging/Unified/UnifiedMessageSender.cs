@@ -31,7 +31,6 @@ using System.Diagnostics;
 using System.Collections.Concurrent;
 using GameFrameX.Network.Abstractions;
 using GameFrameX.Network.RemoteMessaging.Contracts;
-using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Network.RemoteMessaging.Unified;
 
@@ -58,34 +57,44 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
     private readonly int _currentServerId;
 
     /// <summary>
-    /// 初始化统一消息发送器。
+    /// 初始化统一消息发送器。本服身份（本服判定与指标服务名兜底的基准）由调用方在构造时显式注入，
+    /// 不读取全局配置——多 Role 进程中应传入触发装配的 Role 的 <c>ServerType</c> / <c>ServerId</c>。
     /// </summary>
     /// <remarks>
-    /// Initializes the unified message sender.
+    /// Initializes the unified message sender. The local-server identity (the basis for the
+    /// local-server check and the metrics service-name fallback) is explicitly injected by the caller
+    /// at construction time instead of reading global settings — in a multi-role process, pass the
+    /// <c>ServerType</c> / <c>ServerId</c> of the role that triggers the wiring.
     /// </remarks>
     /// <param name="remoteClient">远程消息客户端 / Remote message client</param>
     /// <param name="routeResolver">玩家路由解析器 / Player route resolver</param>
     /// <param name="localSender">本服玩家发送器 / Local player sender</param>
     /// <param name="instanceSelector">服务实例选择器 / Server instance selector</param>
+    /// <param name="localServerType">本服服务器类型（本服判定基准，忽略大小写） / Local server type (basis of the local-server check, case-insensitive)</param>
+    /// <param name="localServerId">本服服务器编号（本服判定基准） / Local server id (basis of the local-server check)</param>
     /// <param name="metrics">发送指标聚合器；为空时自动创建 / Metrics recorder; auto-created when null</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="remoteClient"/> 为 null 时抛出 / Thrown when <paramref name="remoteClient"/> is null</exception>
     /// <exception cref="ArgumentNullException">当 <paramref name="routeResolver"/> 为 null 时抛出 / Thrown when <paramref name="routeResolver"/> is null</exception>
     /// <exception cref="ArgumentNullException">当 <paramref name="localSender"/> 为 null 时抛出 / Thrown when <paramref name="localSender"/> is null</exception>
     /// <exception cref="ArgumentNullException">当 <paramref name="instanceSelector"/> 为 null 时抛出 / Thrown when <paramref name="instanceSelector"/> is null</exception>
+    /// <exception cref="ArgumentException">当 <paramref name="localServerType"/> 为 null、空串或空白时抛出 / Thrown when <paramref name="localServerType"/> is null, empty, or whitespace</exception>
     public UnifiedMessageSender(
         IRemoteMessageClient remoteClient,
         IPlayerRouteResolver routeResolver,
         IPlayerLocalSender localSender,
         IServerInstanceSelector instanceSelector,
+        string localServerType,
+        int localServerId,
         MessageSendMetrics metrics = null)
     {
         _remoteClient = remoteClient ?? throw new ArgumentNullException(nameof(remoteClient));
         _routeResolver = routeResolver ?? throw new ArgumentNullException(nameof(routeResolver));
         _localSender = localSender ?? throw new ArgumentNullException(nameof(localSender));
         _instanceSelector = instanceSelector ?? throw new ArgumentNullException(nameof(instanceSelector));
+        ArgumentException.ThrowIfNullOrWhiteSpace(localServerType, nameof(localServerType));
         _metrics = metrics ?? new MessageSendMetrics();
-        _currentServerType = GlobalSettings.CurrentSetting?.ServerType ?? GameServerConst.Game.Name;
-        _currentServerId = GlobalSettings.CurrentSetting?.ServerId ?? GameServerConst.Game.Id;
+        _currentServerType = localServerType;
+        _currentServerId = localServerId;
     }
 
     /// <summary>
@@ -315,6 +324,16 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
         }
     }
 
+    /// <summary>
+    /// 判定路由是否指向本服：路由 <c>ServerType</c>（忽略大小写）与 <c>ServerId</c> 同时等于
+    /// 构造时注入的本服身份。多 Role 进程中「本服」为单一身份（触发装配的 Role）。
+    /// </summary>
+    /// <remarks>
+    /// Determines whether the route points to the local server: both the route's
+    /// <c>ServerType</c> (case-insensitive) and <c>ServerId</c> equal the identity injected at
+    /// construction. In a multi-role process the "local server" is a single identity
+    /// (the role that triggered the wiring).
+    /// </remarks>
     private bool IsCurrentServer(PlayerRouteInfo routeInfo)
     {
         if (routeInfo == null)
