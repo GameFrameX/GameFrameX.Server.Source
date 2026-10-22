@@ -52,7 +52,7 @@ namespace GameFrameX.Tests.Online;
 ///（向前 + 向后，活跃版本指针与实际装载路径双断言）、切换时刻零下载（目标未落盘即拒、原版本不动）、
 /// 损坏制品失败恢复原版本、并发切换互斥、同路径幂等短路、服务全链（登记 → 切换 → 审计 → 事件）。
 /// <para>
-/// 载体 = Operations 程序集本体（不引 Core ⇒ 无热更注册面类型，ParseDll 零副作用）；
+/// 载体 = Operations 程序集本体（不引 Core ⇒ 无热更注册面类型，ConvertHotfixAssembly 零副作用）；
 /// 版本目录以 GUID 命名落测试 bin 目录；同类内测试串行（共享 <see cref="HotfixManager"/> 进程级状态）。
 /// </para>
 /// </summary>
