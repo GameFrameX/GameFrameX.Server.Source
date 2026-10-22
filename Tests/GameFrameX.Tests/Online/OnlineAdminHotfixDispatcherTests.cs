@@ -40,7 +40,7 @@ namespace GameFrameX.Tests.Online;
 /// rollback_hotfix_version）经 dispatcher 可达且与直调 <see cref="OnlineHotfixRollbackService"/> 行为一致
 ///（rollback 全链断言审计 / 幂等回放 / 活跃指针 / 实际装载路径）+ 错误码面经 admin 面透传。
 /// <para>
-/// 载体 = Operations 程序集本体（不引 Core ⇒ 无热更注册面类型，ParseDll 零副作用）；
+/// 载体 = Operations 程序集本体（不引 Core ⇒ 无热更注册面类型，ConvertHotfixAssembly 零副作用）；
 /// 版本目录以 GUID 命名落测试 bin 目录；与 <see cref="HotfixManagerRollbackExecutorTests"/> 同 Collection
 /// 串行（共享 <see cref="HotfixManager"/> 进程级状态）。
 /// </para>

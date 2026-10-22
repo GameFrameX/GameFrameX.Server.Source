@@ -151,7 +151,7 @@ internal sealed class HotfixModule : ICollectibleAssemblyModule
     internal HotfixModule()
     {
         HotfixAssembly = Assembly.GetEntryAssembly();
-        ParseDll();
+        ConvertHotfixAssembly();
     }
 
     /// <summary>
@@ -162,7 +162,7 @@ internal sealed class HotfixModule : ICollectibleAssemblyModule
     {
         ArgumentNullException.ThrowIfNull(assembly);
         HotfixAssembly = assembly;
-        ParseDll();
+        ConvertHotfixAssembly();
     }
 
     /// <summary>
@@ -188,7 +188,7 @@ internal sealed class HotfixModule : ICollectibleAssemblyModule
                 LoadRefAssemblies();
             }
 
-            ParseDll();
+            ConvertHotfixAssembly();
 
             // Localization: Core.Hotfix.DllInitializationSuccess - 热更DLL初始化成功: {0}
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.HotfixModule.DllInitializationSuccess, _dllPath));
@@ -253,7 +253,7 @@ internal sealed class HotfixModule : ICollectibleAssemblyModule
     /// <summary>
     /// 解析DLL中的类型并进行注册。
     /// </summary>
-    private void ParseDll()
+    private void ConvertHotfixAssembly()
     {
         var fullName = typeof(IHotfixBridge).FullName;
         var types = HotfixAssembly.GetTypes();

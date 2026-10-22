@@ -41,7 +41,7 @@ namespace GameFrameX.Hotfix.Lifecycle;
 /// 热更模块生命周期桥接（原名 <c>AppStartUpHotfixGame</c>，C285 去启动基类继承并更名迁移）：
 /// 热更域只持业务生命周期——装载成功激活配置表/定时器/全局组件，停止只清 Actor/定时器/会话；
 /// 网络监听与运行至退出周期归宿主（<c>AppStartUpGameServerBase</c> 模板）。
-/// 本类是 <see cref="IHotfixBridge"/> 的唯一实现，由 <c>HotfixModule.ParseDll</c> 按接口定位并创建，
+/// 本类是 <see cref="IHotfixBridge"/> 的唯一实现，由 <c>HotfixModule.ConvertHotfixAssembly</c> 按接口定位并创建，
 /// 不属于启动 Role 体系（不进 <c>StartUpTypeRegistry</c> / <c>AppEnter</c>，不继承任何启动基类）。
 /// </summary>
 /// <remarks>
@@ -51,7 +51,7 @@ namespace GameFrameX.Hotfix.Lifecycle;
 /// while the stop clears actors, timers and sessions; the network listeners and the run-until-exit
 /// cycle stay with the host (<c>AppStartUpGameServerBase</c> template).
 /// This class is the sole implementation of <see cref="IHotfixBridge"/>, located and instantiated
-/// by <c>HotfixModule.ParseDll</c> via the interface; it does not belong to the startup-role
+/// by <c>HotfixModule.ConvertHotfixAssembly</c> via the interface; it does not belong to the startup-role
 /// system (never enters <c>StartUpTypeRegistry</c> / <c>AppEnter</c> and inherits no startup base).
 /// </remarks>
 internal sealed class HotfixModuleLifecycleBridge : IHotfixBridge
