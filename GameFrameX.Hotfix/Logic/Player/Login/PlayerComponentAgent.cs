@@ -36,7 +36,6 @@ using GameFrameX.Apps.Player.Player.Entity;
 using GameFrameX.Hotfix.Logic.Game.Room;
 using GameFrameX.Hotfix.Logic.Player.Attribute;
 using GameFrameX.Hotfix.Logic.Player.Mail;
-using GameFrameX.Hotfix.Logic.Server;
 using GameFrameX.Core.Events;
 
 namespace GameFrameX.Hotfix.Logic.Player.Login;
@@ -45,9 +44,6 @@ public class PlayerComponentAgent : StateComponentAgent<PlayerComponent, PlayerS
 {
     public async Task OnLogout()
     {
-        //移除在线玩家
-        var serverComp = await ActorManager.GetComponentAgent<ServerComponentAgent>();
-        await serverComp.RemoveOnlinePlayer(ActorId);
         EventDispatcher.Dispatch(ActorId, new OnRoleOfflineEventArgs());
         //下线后会被自动回收
         SetAutoRecycle(true);
@@ -82,9 +78,6 @@ public class PlayerComponentAgent : StateComponentAgent<PlayerComponent, PlayerS
         var attributeComponentAgent = await ActorManager.GetComponentAgent<PlayerAttributeComponentAgent>(playerState.Id);
         await attributeComponentAgent.InitializeDefaultsSilent();
 
-        //加入在线玩家
-        var serverComp = await ActorManager.GetComponentAgent<ServerComponentAgent>();
-        await serverComp.AddOnlinePlayer(ActorId);
         EventDispatcher.Dispatch(ActorId, new OnRoleOnlineEventArgs());
 
         // 房间断线重连标记（房间系统）

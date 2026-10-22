@@ -31,7 +31,6 @@ using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Hotfix.Logic.Game.Room;
 using GameFrameX.Hotfix.Logic.Player.Attribute;
 using GameFrameX.Hotfix.Logic.Player.Mail;
-using GameFrameX.Hotfix.Logic.Server;
 using GameFrameX.Network.Abstractions;
 using GameFrameX.Proto.Proto;
 using GameFrameX.Utility.Setting;
@@ -125,9 +124,7 @@ internal static class SessionResumeDomainBridge
         networkChannel.SetData(GlobalConst.ActorIdKey, playerId);
         await PlayerSessionManager.Instance.UpdateSession(sessionId, playerId, playerId.ToString(), NotifyDuplicateLoginAsync);
 
-        // 业务在线簿记还原（镜像登录尾段；断线路径曾 RemoveOnlinePlayer + OnRoleOffline + Room 标记断线）。
-        var serverComp = await ActorManager.GetComponentAgent<ServerComponentAgent>();
-        await serverComp.AddOnlinePlayer(playerId);
+        // 业务在线还原（镜像登录尾段：OnRoleOnline + Room 重连标记）。
         EventDispatcher.Dispatch(playerId, new OnRoleOnlineEventArgs());
         var roomComp = await ActorManager.GetComponentAgent<RoomComponentAgent>();
         await roomComp.MarkPlayerReconnected(playerId);

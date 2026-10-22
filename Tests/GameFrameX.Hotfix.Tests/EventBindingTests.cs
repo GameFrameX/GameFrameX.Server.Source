@@ -44,6 +44,7 @@ namespace GameFrameX.Hotfix.Tests;
 /// 事件系统 Type 键绑定单测：同一 EventArgs 类型多监听器全部命中、按类型身份核对注册结果、
 /// 未注册类型查找为空（派发走 NoListeners 告警路径）、null 载荷 fail fast。
 /// </summary>
+[Collection(HotfixManagerStaticStateCollection.Name)]
 public sealed class EventBindingTests
 {
     private static readonly object ModuleLock = new object();

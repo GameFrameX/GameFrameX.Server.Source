@@ -127,32 +127,6 @@ public static partial class Keys
         }
 
         /// <summary>
-        /// Event 事件分发消息键。
-        /// </summary>
-        public static class Event
-        {
-            /// <summary>
-            /// EventDispatcherExtensions.SelfHandle {0} 事件类型：{1} 没有找到任何监听者
-            /// </summary>
-            /// <remarks>
-            /// 键名: Hotfix.Event.SelfHandleNoListeners
-            /// 用途: actor 自处理事件时未找到任何监听者的警告（收编原 Events.NoListenersFound 混合外壳）。
-            /// 参数: {0} - 事件参数类型名, {1} - 事件参数类型名（监听者查找）
-            /// </remarks>
-            public const string SelfHandleNoListeners = "Hotfix.Event.SelfHandleNoListeners";
-
-            /// <summary>
-            /// EventDispatcherExtensions.SelfHandle 处理事件 {0} 时发生异常: {1}
-            /// </summary>
-            /// <remarks>
-            /// 键名: Hotfix.Event.SelfHandleException
-            /// 用途: actor 自处理事件时监听器执行抛出异常的记录。
-            /// 参数: {0} - 事件参数类型名, {1} - 异常信息
-            /// </remarks>
-            public const string SelfHandleException = "Hotfix.Event.SelfHandleException";
-        }
-
-        /// <summary>
         /// Server 服务器组件消息键。
         /// </summary>
         public static class Server

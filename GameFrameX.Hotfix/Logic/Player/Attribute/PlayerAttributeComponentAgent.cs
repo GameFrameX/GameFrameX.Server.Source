@@ -32,7 +32,6 @@ using GameFrameX.Apps.Common.EventData;
 using GameFrameX.Apps.Player.Attribute;
 using GameFrameX.Apps.Player.Attribute.Component;
 using GameFrameX.Apps.Player.Attribute.Entity;
-using GameFrameX.Hotfix.Common.Events;
 using GameFrameX.Proto.Proto;
 
 namespace GameFrameX.Hotfix.Logic.Player.Attribute;
