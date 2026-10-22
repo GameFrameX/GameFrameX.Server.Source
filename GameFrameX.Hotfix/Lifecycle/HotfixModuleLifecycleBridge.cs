@@ -28,7 +28,6 @@
 //  ==========================================================================================
 
 
-using GameFrameX.StartUp;
 using GameFrameX.Core.Session;
 using GameFrameX.Network.RemoteMessaging;
 using GameFrameX.Discovery.Routing;
@@ -36,28 +35,37 @@ using GameFrameX.Network.RemoteMessaging.Routing;
 using GameFrameX.Hotfix.Logic.Server.Unified;
 using GameFrameX.Network.RemoteMessaging.Unified;
 
-namespace GameFrameX.Hotfix.StartUp;
+namespace GameFrameX.Hotfix.Lifecycle;
 
 /// <summary>
-/// 热更桥接实例（C284 统一形态）：热更域只持业务生命周期——装载成功激活配置表/定时器/全局组件，
-/// 停止只清 Actor/定时器/会话；网络监听与运行至退出周期归宿主（<c>AppStartUpGameServerBase</c> 模板）。
+/// 热更模块生命周期桥接（原名 <c>AppStartUpHotfixGame</c>，C285 去启动基类继承并更名迁移）：
+/// 热更域只持业务生命周期——装载成功激活配置表/定时器/全局组件，停止只清 Actor/定时器/会话；
+/// 网络监听与运行至退出周期归宿主（<c>AppStartUpGameServerBase</c> 模板）。
+/// 本类是 <see cref="IHotfixBridge"/> 的唯一实现，由 <c>HotfixModule.ParseDll</c> 按接口定位并创建，
+/// 不属于启动 Role 体系（不进 <c>StartUpTypeRegistry</c> / <c>AppEnter</c>，不继承任何启动基类）。
 /// </summary>
 /// <remarks>
-/// The hotfix bridge instance (the C284 unified shape): the hotfix domain holds only the business
-/// lifecycle — a successful load activates the config tables, timers and global components while
-/// the stop clears actors, timers and sessions; the network listeners and the run-until-exit cycle
-/// stay with the host (<c>AppStartUpGameServerBase</c> template).
+/// The hotfix-module lifecycle bridge (formerly <c>AppStartUpHotfixGame</c>; C285 dropped the
+/// startup-base inheritance, renamed and relocated the type): the hotfix domain holds only the
+/// business lifecycle — a successful load activates the config tables, timers and global components
+/// while the stop clears actors, timers and sessions; the network listeners and the run-until-exit
+/// cycle stay with the host (<c>AppStartUpGameServerBase</c> template).
+/// This class is the sole implementation of <see cref="IHotfixBridge"/>, located and instantiated
+/// by <c>HotfixModule.ParseDll</c> via the interface; it does not belong to the startup-role
+/// system (never enters <c>StartUpTypeRegistry</c> / <c>AppEnter</c> and inherits no startup base).
 /// </remarks>
-internal class AppStartUpHotfixGame : AppStartUpBase, IHotfixBridge
+internal sealed class HotfixModuleLifecycleBridge : IHotfixBridge
 {
     /// <summary>
-    /// 热更模块装载成功回调：纯业务生命周期激活（初始化 + 统一消息发送器装配 + 配置表 + 定时器 +
-    /// 全局组件）。热更重载（<paramref name="reload"/> = true）只清空代理缓存，不重复激活。
+    /// 热更模块装载成功回调：纯业务生命周期激活（CurrentSetting 钉住 + 统一消息发送器装配 +
+    /// 配置表 + 定时器 + 全局组件）。热更重载（<paramref name="reload"/> = true）只清空代理缓存，
+    /// 不重复激活。
     /// </summary>
     /// <remarks>
-    /// The hotfix-module load-success callback: pure business-lifecycle activation (initialization,
-    /// the unified-message-sender wiring, config tables, timers and global components). A hot
-    /// reload (<paramref name="reload"/> = true) only clears the agent cache without re-activating.
+    /// The hotfix-module load-success callback: pure business-lifecycle activation (the
+    /// CurrentSetting pin, the unified-message-sender wiring, config tables, timers and global
+    /// components). A hot reload (<paramref name="reload"/> = true) only clears the agent cache
+    /// without re-activating.
     /// C284 起不再起网络监听（监听所有权归宿主），也不分发 <c>ServiceOnline</c>（宿主
     /// <c>OnStartupCompletedAsync</c> 是唯一分发点，避免与宿主缺省分发双派发）。
     /// Since C284 this callback no longer starts network listeners (listener ownership stays with
@@ -76,7 +84,13 @@ internal class AppStartUpHotfixGame : AppStartUpBase, IHotfixBridge
             return true;
         }
 
-        Init(setting.ServerType, setting);
+        // 多 Role 进程（--AllInOne）中钉住 CurrentSetting（C285 自 AppStartUpBase.Init 显式化）：
+        // Launcher 的创建循环先对全部 Role 逐个 Init，SetCurrentSetting 对 Role 级字段接受最新值，
+        // 循环结束时 CurrentSetting 指向最后创建的 Role；热更首次装载由首个启动的 Role 触发，
+        // 这里把 CurrentSetting 钉回该首启动 Role，且必须早于 UnifiedMessageSender 构造——
+        // 其构造器读取 CurrentSetting 固化本服身份（另有路由/会话等调用期读取方）。
+        // 单 Role 形态无差异；直接删除会让上述消费方的服务器身份漂移。
+        GlobalSettings.SetCurrentSetting(setting);
         // 初始化统一消息发送器：resolver 按发现层可用性选择——
         // 启动流程先 Activate 发现层（含 player_route 读侧），后加载 Hotfix，故此处
         // Bootstrap.Resolver 必然已就绪；未激活发现层的形态回落 DefaultPlayerRouteResolver。
@@ -136,18 +150,4 @@ internal class AppStartUpHotfixGame : AppStartUpBase, IHotfixBridge
         await ActorManager.RemoveAll();
     }
 
-    /// <summary>
-    /// 基类抽象成员的最小实现：C284 统一形态下监听与「运行至退出」周期归宿主，热更实例不再自持
-    /// 运行循环，宿主不调用本方法。
-    /// </summary>
-    /// <remarks>
-    /// The minimal implementation of the base abstract member: under the C284 unified shape the
-    /// listeners and the run-until-exit cycle stay with the host, the hotfix instance no longer
-    /// runs its own loop, and the host never calls this method.
-    /// </remarks>
-    /// <returns>已完成的任务 / A completed task</returns>
-    public override Task StartAsync()
-    {
-        return Task.CompletedTask;
-    }
 }

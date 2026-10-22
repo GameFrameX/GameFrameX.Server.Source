@@ -35,13 +35,15 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.SessionResume;
 
 /// <summary>
 /// 玩家物理断开业务监听器（C284 宿主→热更事件桥接承接方）：房间断线标记 + 会话恢复两层协同通知
-///（语句自原热更侧 <c>AppStartUpHotfixGame.OnDisconnected</c> 内联段搬移，语义逐字保持）。
+///（语句自原热更侧 <c>AppStartUpHotfixGame.OnDisconnected</c> 内联段搬移，语义逐字保持；
+/// 原名，C285 更名为 HotfixModuleLifecycleBridge）。
 /// </summary>
 /// <remarks>
 /// The player-disconnect business listener (the C284 host-to-hotfix event-bridging sink): marks the
 /// player disconnected in the room system and notifies the session-resume two-layer coordination
 /// (statements moved verbatim from the inlined block of the former hotfix-side
-/// <c>AppStartUpHotfixGame.OnDisconnected</c>). 全局分发（actorId = 0）下代理参数为 null，
+/// <c>AppStartUpHotfixGame.OnDisconnected</c>; renamed <c>HotfixModuleLifecycleBridge</c> in C285).
+/// 全局分发（actorId = 0）下代理参数为 null，
 /// 房间代理在处理内自取（与原内联段同源 <c>ActorManager.GetComponentAgent</c> 全局重载）；
 /// <see cref="SessionResumeDomainBridge.NotifyPlayerDisconnectedAsync"/> 自带旧回调迟到守卫，
 /// 恢复先于旧断开回调到达时安全跳过。
