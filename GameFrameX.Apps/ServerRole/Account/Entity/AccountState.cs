@@ -50,34 +50,3 @@ public sealed class AccountState : BaseCacheState
     /// </summary>
     public long NextAccountId { get; set; } = 10001;
 }
-
-/// <summary>
-/// 单个账号档案状态。
-/// </summary>
-public sealed class AccountProfileState
-{
-    /// <summary>
-    /// 账号ID。
-    /// </summary>
-    public long AccountId { get; set; }
-
-    /// <summary>
-    /// 密码哈希（SHA256(salt + password) 的十六进制串）。
-    /// </summary>
-    public string PasswordHash { get; set; }
-
-    /// <summary>
-    /// 每账号随机盐（Guid N 格式）。
-    /// </summary>
-    public string Salt { get; set; }
-
-    /// <summary>
-    /// 创建 Unix 秒。
-    /// </summary>
-    public long CreatedUnixTime { get; set; }
-
-    /// <summary>
-    /// 最近一次登录 Unix 秒（从未登录为 0）。
-    /// </summary>
-    public long LastLoginUnixTime { get; set; }
-}

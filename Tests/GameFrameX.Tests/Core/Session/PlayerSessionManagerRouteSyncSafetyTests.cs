@@ -44,12 +44,13 @@ public sealed class PlayerSessionManagerRouteSyncSafetyTests
     public void SetPlayerRouteOnline_UpsertHookThrowsSynchronously_ShouldNotPropagate()
     {
         var manager = PlayerSessionManager.Instance;
-        using var scope = SyncTargetScope.Use(new FailingRouteSyncTarget(failSynchronously: true));
+        using (var scope = SyncTargetScope.Use(new FailingRouteSyncTarget(failSynchronously: true)))
+        {
+            manager.SetPlayerRouteOnline(921001, "Game");
 
-        manager.SetPlayerRouteOnline(921001, "Game");
-
-        Assert.True(manager.TryGetPlayerRoute(921001, out var snapshot));
-        Assert.True(snapshot.IsOnline);
+            Assert.True(manager.TryGetPlayerRoute(921001, out var snapshot));
+            Assert.True(snapshot.IsOnline);
+        }
     }
 
     [Fact]
@@ -57,12 +58,13 @@ public sealed class PlayerSessionManagerRouteSyncSafetyTests
     {
         var manager = PlayerSessionManager.Instance;
         manager.SetPlayerRouteOnline(921002, "Game");
-        using var scope = SyncTargetScope.Use(new FailingRouteSyncTarget(failSynchronously: true));
+        using (var scope = SyncTargetScope.Use(new FailingRouteSyncTarget(failSynchronously: true)))
+        {
+            manager.SetPlayerRouteOffline(921002);
 
-        manager.SetPlayerRouteOffline(921002);
-
-        Assert.True(manager.TryGetPlayerRoute(921002, out var snapshot));
-        Assert.False(snapshot.IsOnline);
+            Assert.True(manager.TryGetPlayerRoute(921002, out var snapshot));
+            Assert.False(snapshot.IsOnline);
+        }
     }
 
     [Fact]
@@ -81,24 +83,25 @@ public sealed class PlayerSessionManagerRouteSyncSafetyTests
         try
         {
             var manager = PlayerSessionManager.Instance;
-            using var scope = SyncTargetScope.Use(new FailingRouteSyncTarget(failSynchronously: false));
-
-            manager.SetPlayerRouteOnline(921003, "Game");
-
-            // 内存态立即生效（不等待钩子）
-            Assert.True(manager.TryGetPlayerRoute(921003, out var snapshot));
-            Assert.True(snapshot.IsOnline);
-
-            // 强制回收并等待 finalizer，让潜在未观测异常路径充分暴露
-            for (var attempt = 0; attempt < 3 && !unobservedSeen; attempt++)
+            using (var scope = SyncTargetScope.Use(new FailingRouteSyncTarget(failSynchronously: false)))
             {
-                await Task.Delay(20);
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-                GC.Collect();
-            }
+                manager.SetPlayerRouteOnline(921003, "Game");
 
-            Assert.False(unobservedSeen);
+                // 内存态立即生效（不等待钩子）
+                Assert.True(manager.TryGetPlayerRoute(921003, out var snapshot));
+                Assert.True(snapshot.IsOnline);
+
+                // 强制回收并等待 finalizer，让潜在未观测异常路径充分暴露
+                for (var attempt = 0; attempt < 3 && !unobservedSeen; attempt++)
+                {
+                    await Task.Delay(20);
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    GC.Collect();
+                }
+
+                Assert.False(unobservedSeen);
+            }
         }
         finally
         {
@@ -123,22 +126,23 @@ public sealed class PlayerSessionManagerRouteSyncSafetyTests
         {
             var manager = PlayerSessionManager.Instance;
             manager.SetPlayerRouteOnline(921004, "Game");
-            using var scope = SyncTargetScope.Use(new FailingRouteSyncTarget(failSynchronously: false));
-
-            manager.SetPlayerRouteOffline(921004);
-
-            Assert.True(manager.TryGetPlayerRoute(921004, out var snapshot));
-            Assert.False(snapshot.IsOnline);
-
-            for (var attempt = 0; attempt < 3 && !unobservedSeen; attempt++)
+            using (var scope = SyncTargetScope.Use(new FailingRouteSyncTarget(failSynchronously: false)))
             {
-                await Task.Delay(20);
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-                GC.Collect();
-            }
+                manager.SetPlayerRouteOffline(921004);
 
-            Assert.False(unobservedSeen);
+                Assert.True(manager.TryGetPlayerRoute(921004, out var snapshot));
+                Assert.False(snapshot.IsOnline);
+
+                for (var attempt = 0; attempt < 3 && !unobservedSeen; attempt++)
+                {
+                    await Task.Delay(20);
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    GC.Collect();
+                }
+
+                Assert.False(unobservedSeen);
+            }
         }
         finally
         {

@@ -73,29 +73,31 @@ public static class CompressionHelper
         compressor.SetInput(bytes);
         compressor.Finish();
 
-        using var compressorMemoryStream = new MemoryStream(bytes.Length);
-        var buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
-        try
+        using (var compressorMemoryStream = new MemoryStream(bytes.Length))
         {
-            while (!compressor.IsFinished)
+            var buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
+            try
             {
-                var count = compressor.Deflate(buffer);
-                compressorMemoryStream.Write(buffer, 0, count);
+                while (!compressor.IsFinished)
+                {
+                    var count = compressor.Deflate(buffer);
+                    compressorMemoryStream.Write(buffer, 0, count);
+                }
+
+                return compressorMemoryStream.ToArray();
+            }
+            catch (Exception e)
+            {
+                // Localization: Utility.CompressionHelper.CompressFailed - CompressionHelper.Compress 压缩辅助类异常。错误：{0}。
+                LogHelper.Fatal(e, LocalizationService.GetString(Localization.Keys.Utility.CompressionHelper.CompressFailed, e.ToString()));
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
             }
 
-            return compressorMemoryStream.ToArray();
+            return bytes;
         }
-        catch (Exception e)
-        {
-            // Localization: Utility.CompressionHelper.CompressFailed - CompressionHelper.Compress 压缩辅助类异常。错误：{0}。
-            LogHelper.Fatal(e, LocalizationService.GetString(Localization.Keys.Utility.CompressionHelper.CompressFailed, e.ToString()));
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(buffer);
-        }
-
-        return bytes;
     }
 
     /// <summary>
@@ -118,28 +120,30 @@ public static class CompressionHelper
 
         var decompressor = new Inflater();
         decompressor.SetInput(bytes, 0, bytes.Length);
-        using var decompressMemoryStream = new MemoryStream(bytes.Length);
-        var buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
-        try
+        using (var decompressMemoryStream = new MemoryStream(bytes.Length))
         {
-            while (!decompressor.IsFinished)
+            var buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
+            try
             {
-                var count = decompressor.Inflate(buffer);
-                decompressMemoryStream.Write(buffer, 0, count);
+                while (!decompressor.IsFinished)
+                {
+                    var count = decompressor.Inflate(buffer);
+                    decompressMemoryStream.Write(buffer, 0, count);
+                }
+
+                return decompressMemoryStream.ToArray();
+            }
+            catch (Exception e)
+            {
+                // Localization: Utility.CompressionHelper.DecompressFailed - CompressionHelper.Decompress 压缩辅助类异常。错误：{0}。
+                LogHelper.Fatal(e, LocalizationService.GetString(Localization.Keys.Utility.CompressionHelper.DecompressFailed, e.ToString()));
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer, true);
             }
 
-            return decompressMemoryStream.ToArray();
+            return bytes;
         }
-        catch (Exception e)
-        {
-            // Localization: Utility.CompressionHelper.DecompressFailed - CompressionHelper.Decompress 压缩辅助类异常。错误：{0}。
-            LogHelper.Fatal(e, LocalizationService.GetString(Localization.Keys.Utility.CompressionHelper.DecompressFailed, e.ToString()));
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(buffer, true);
-        }
-
-        return bytes;
     }
 }

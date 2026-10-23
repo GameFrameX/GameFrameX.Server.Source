@@ -98,11 +98,13 @@ public sealed partial class PostgreSqlDbService
             {
                 try
                 {
-                    using var context = CreateContext<TState>();
-                    JoinAmbientTransaction(context);
-                    await StageUpsertAsync(context, new[] { state, }, token).ConfigureAwait(false);
-                    await context.SaveChangesAsync(token).ConfigureAwait(false);
-                    return true;
+                    using (var context = CreateContext<TState>())
+                    {
+                        JoinAmbientTransaction(context);
+                        await StageUpsertAsync(context, new[] { state, }, token).ConfigureAwait(false);
+                        await context.SaveChangesAsync(token).ConfigureAwait(false);
+                        return true;
+                    }
                 }
                 catch (DbUpdateException exception) when (attempt == 0 && PostgreSqlSqlState.IsUniqueViolation(exception))
                 {
@@ -175,11 +177,13 @@ public sealed partial class PostgreSqlDbService
             {
                 try
                 {
-                    using var context = CreateContext<TState>();
-                    JoinAmbientTransaction(context);
-                    await StageUpsertAsync(context, stateArray, token).ConfigureAwait(false);
-                    await context.SaveChangesAsync(token).ConfigureAwait(false);
-                    return true;
+                    using (var context = CreateContext<TState>())
+                    {
+                        JoinAmbientTransaction(context);
+                        await StageUpsertAsync(context, stateArray, token).ConfigureAwait(false);
+                        await context.SaveChangesAsync(token).ConfigureAwait(false);
+                        return true;
+                    }
                 }
                 catch (DbUpdateException exception) when (attempt == 0 && PostgreSqlSqlState.IsUniqueViolation(exception))
                 {
@@ -375,21 +379,25 @@ public sealed partial class PostgreSqlDbService
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                using var context = CreateShellContext();
-                await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-                _ambientTransaction.Value = transaction.GetDbTransaction();
-                try
+                using (var context = CreateShellContext())
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    await action().ConfigureAwait(false);
-                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-                }
-                finally
-                {
-                    _ambientTransaction.Value = null;
-                }
+                    await using (var transaction = await context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false))
+                    {
+                        _ambientTransaction.Value = transaction.GetDbTransaction();
+                        try
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            await action().ConfigureAwait(false);
+                            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                        }
+                        finally
+                        {
+                            _ambientTransaction.Value = null;
+                        }
 
-                return;
+                        return;
+                    }
+                }
             }
             catch (Exception exception) when (ExceptionClassifier.ShouldRetryTransaction(exception) && attempt < _transactionRetryDelaysMilliseconds.Length)
             {

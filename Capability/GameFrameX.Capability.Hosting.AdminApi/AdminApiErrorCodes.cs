@@ -30,33 +30,6 @@
 namespace GameFrameX.Capability.Hosting.AdminApi;
 
 /// <summary>
-/// admin API 错误码条目（协议码 + 可本地化消息键；数值语义由能力侧错误码表注入，机制层不解释）。
-/// </summary>
-public sealed class AdminApiErrorCode
-{
-    /// <summary>
-    /// 初始化 <see cref="AdminApiErrorCode"/>。
-    /// </summary>
-    /// <param name="code">协议错误码。</param>
-    /// <param name="messageKey">可本地化消息键。</param>
-    public AdminApiErrorCode(int code, string messageKey)
-    {
-        Code = code;
-        MessageKey = messageKey ?? string.Empty;
-    }
-
-    /// <summary>
-    /// 获取协议错误码。
-    /// </summary>
-    public int Code { get; }
-
-    /// <summary>
-    /// 获取可本地化消息键。
-    /// </summary>
-    public string MessageKey { get; }
-}
-
-/// <summary>
 /// admin API 管道错误码映射（组合根注入：把能力侧错误码表的机制用位映射进通用管道）。
 /// <para>
 /// 维护约束：五个机制用位缺一不可（构造校验 fail-fast）——

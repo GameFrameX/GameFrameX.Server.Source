@@ -543,8 +543,10 @@ public sealed class DatabaseConditionalWritePrimitivesTests
         await using (var admin = new NpgsqlConnection(adminConnectionString))
         {
             await admin.OpenAsync();
-            await using var createCommand = new NpgsqlCommand($"CREATE DATABASE \"{dbName}\"", admin);
-            await createCommand.ExecuteNonQueryAsync();
+            await using (var createCommand = new NpgsqlCommand($"CREATE DATABASE \"{dbName}\"", admin))
+            {
+                await createCommand.ExecuteNonQueryAsync();
+            }
         }
 
         var service = new PostgreSqlDbService();
@@ -566,10 +568,14 @@ public sealed class DatabaseConditionalWritePrimitivesTests
             await service.CloseAsync();
             try
             {
-                await using var admin = new NpgsqlConnection(adminConnectionString);
-                await admin.OpenAsync();
-                await using var dropCommand = new NpgsqlCommand($"DROP DATABASE IF EXISTS \"{dbName}\" WITH (FORCE)", admin);
-                await dropCommand.ExecuteNonQueryAsync();
+                await using (var admin = new NpgsqlConnection(adminConnectionString))
+                {
+                    await admin.OpenAsync();
+                    await using (var dropCommand = new NpgsqlCommand($"DROP DATABASE IF EXISTS \"{dbName}\" WITH (FORCE)", admin))
+                    {
+                        await dropCommand.ExecuteNonQueryAsync();
+                    }
+                }
             }
             catch
             {

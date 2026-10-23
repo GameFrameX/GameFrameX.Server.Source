@@ -136,7 +136,9 @@ public struct LNumber : IComparable<LNumber>, IEquatable<LNumber>
     {
 #if XNUMBER_CHECK
         if (i > Max || i < -Max || f > FMax || f < -FMax)
+        {
             Debug.LogError(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.LNumber.CreateFailed, i, f));
+        }
 #endif
 
         // 确定符号：如果整数部分为负，则结果为负；如果整数部分为0且小数部分为负，则结果为负
@@ -288,7 +290,9 @@ public struct LNumber : IComparable<LNumber>, IEquatable<LNumber>
 #if XNUMBER_CHECK
         var tmp = (int)lhs * (int)rhs;
         if (tmp > max || tmp < -max)
+        {
             Debug.LogError(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.LNumber.DataExceedsLimit, lhs + " * " + rhs, ""));
+        }
 #endif
         LNumber r;
         if (lhs.Raw > int.MaxValue || rhs.Raw > int.MaxValue || lhs.Raw < int.MinValue || rhs.Raw < int.MinValue)
@@ -519,7 +523,9 @@ public struct LNumber : IComparable<LNumber>, IEquatable<LNumber>
 #if XNUMBER_CHECK
         var tmp = value;
         if (tmp > Max || tmp < -Max)
+        {
             Debug.LogError(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.LNumber.DataExceedsLimit, "value", value.ToString()));
+        }
 #endif
         //LNumber r;
         //r.raw = value << FRACTION_BITS;
@@ -537,7 +543,9 @@ public struct LNumber : IComparable<LNumber>, IEquatable<LNumber>
 #if XNUMBER_CHECK
         var tmp = value;
         if (tmp > Max || tmp < -Max)
+        {
             Debug.LogError(LocalizationService.GetString(GameFrameX.Localization.Keys.Utility.LNumber.DataExceedsLimit, "value", value.ToString()));
+        }
 #endif
         //LNumber r;
         //r.raw = value << FRACTION_BITS;

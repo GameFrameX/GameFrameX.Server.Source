@@ -46,36 +46,6 @@ using GameFrameX.SuperSocket.Kcp;
 namespace GameFrameX.Client.Bot;
 
 /// <summary>
-/// 机器人 KCP 客户端事件结构体,包含各种回调事件。
-/// </summary>
-/// <remarks>
-/// 与 <see cref="BotTcpClientEvent"/> 同构，便于 <see cref="BotClient"/> 在两种传输间共享事件接线，
-/// 不为 KCP 引入独立事件签名。命名沿用 BotTcpClientEvent 以保持与现有代码一致。
-/// </remarks>
-public struct BotKcpClientEvent
-{
-    /// <summary>
-    /// 连接成功时的回调
-    /// </summary>
-    public Action OnConnectedCallback { get; set; }
-
-    /// <summary>
-    /// 连接关闭时的回调
-    /// </summary>
-    public Action OnClosedCallback { get; set; }
-
-    /// <summary>
-    /// 发生错误时的回调
-    /// </summary>
-    public Action<Exception> OnErrorCallback { get; set; }
-
-    /// <summary>
-    /// 接收到消息时的回调
-    /// </summary>
-    public Action<MessageObject> OnReceiveMsgCallback { get; set; }
-}
-
-/// <summary>
 /// 机器人 KCP 客户端类,用于处理与服务器的 KCP 连接和消息收发。
 /// </summary>
 /// <remarks>

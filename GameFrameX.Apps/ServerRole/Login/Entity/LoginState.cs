@@ -45,29 +45,3 @@ public sealed class LoginState : BaseCacheState
     /// </summary>
     public Dictionary<string, TokenEntryState> Tokens { get; set; } = new Dictionary<string, TokenEntryState>();
 }
-
-/// <summary>
-/// 单个登录令牌条目状态。
-/// </summary>
-public sealed class TokenEntryState
-{
-    /// <summary>
-    /// 令牌字符串（Guid N 格式）。
-    /// </summary>
-    public string Token { get; set; }
-
-    /// <summary>
-    /// 归属账号ID。
-    /// </summary>
-    public long AccountId { get; set; }
-
-    /// <summary>
-    /// 过期 Unix 秒。
-    /// </summary>
-    public long ExpireUnixTime { get; set; }
-
-    /// <summary>
-    /// 签发 Unix 秒。
-    /// </summary>
-    public long CreatedUnixTime { get; set; }
-}

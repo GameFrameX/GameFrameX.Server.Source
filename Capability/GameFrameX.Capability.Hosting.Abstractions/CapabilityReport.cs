@@ -30,40 +30,6 @@
 namespace GameFrameX.Capability.Hosting.Abstractions;
 
 /// <summary>
-/// 启动能力报告条目（一个能力的装配结果）。
-/// </summary>
-public sealed class CapabilityReportEntry
-{
-    /// <summary>
-    /// 初始化 <see cref="CapabilityReportEntry"/>。
-    /// </summary>
-    /// <param name="manifest">能力清单。</param>
-    /// <param name="sourceAssemblyName">来源程序集名。</param>
-    /// <param name="state">装配判定。</param>
-    public CapabilityReportEntry(CapabilityManifest manifest, string sourceAssemblyName, CapabilityFilterState state)
-    {
-        Manifest = manifest;
-        SourceAssemblyName = sourceAssemblyName;
-        State = state;
-    }
-
-    /// <summary>
-    /// 获取能力清单。
-    /// </summary>
-    public CapabilityManifest Manifest { get; }
-
-    /// <summary>
-    /// 获取来源程序集名。
-    /// </summary>
-    public string SourceAssemblyName { get; }
-
-    /// <summary>
-    /// 获取装配判定（启用才参与拓扑定序）。
-    /// </summary>
-    public CapabilityFilterState State { get; }
-}
-
-/// <summary>
 /// 启动能力报告（装配完成后的全量能力快照：启用清单 / 装配顺序 / 禁用项）。
 /// </summary>
 public sealed class CapabilityReport

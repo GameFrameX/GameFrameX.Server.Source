@@ -72,37 +72,3 @@ public enum HttpMethodType
     /// </remarks>
     DELETE = 4,
 }
-
-/// <summary>
-/// <see cref="HttpMethodType"/> 的扩展方法类。
-/// </summary>
-/// <remarks>
-/// Extension methods for <see cref="HttpMethodType"/>.
-/// </remarks>
-public static class HttpMethodTypeExtensions
-{
-    /// <summary>
-    /// 将 <see cref="HttpMethodType"/> 转换为标准的 HTTP 方法字符串。
-    /// </summary>
-    /// <remarks>
-    /// Converts <see cref="HttpMethodType"/> to standard HTTP method string.
-    /// </remarks>
-    /// <param name="httpMethodType">要转换的 HTTP 方法类型 / HTTP method type to convert</param>
-    /// <returns>标准的 HTTP 方法字符串（使用系统常量） / Standard HTTP method string (using system constants)</returns>
-    public static string ToHttpMethodString(this HttpMethodType httpMethodType)
-    {
-        switch (httpMethodType)
-        {
-            case HttpMethodType.GET:
-                return HttpMethods.Get;
-            case HttpMethodType.POST:
-                return HttpMethods.Post;
-            case HttpMethodType.PUT:
-                return HttpMethods.Put;
-            case HttpMethodType.DELETE:
-                return HttpMethods.Delete;
-            default:
-                return HttpMethods.Post;
-        }
-    }
-}

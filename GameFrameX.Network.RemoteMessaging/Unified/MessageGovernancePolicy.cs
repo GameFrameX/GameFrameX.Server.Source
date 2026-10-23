@@ -30,39 +30,6 @@
 namespace GameFrameX.Network.RemoteMessaging.Unified;
 
 /// <summary>
-/// 消息语义分层。
-/// </summary>
-/// <remarks>
-/// Message semantic classification.
-/// </remarks>
-public enum MessageSemantics
-{
-    /// <summary>
-    /// 查询（允许重试）
-    /// </summary>
-    /// <remarks>
-    /// Query (retry allowed).
-    /// </remarks>
-    Query = 0,
-
-    /// <summary>
-    /// 命令（默认不重试，必须幂等键）
-    /// </summary>
-    /// <remarks>
-    /// Command (no retry by default, idempotency key required).
-    /// </remarks>
-    Command = 1,
-
-    /// <summary>
-    /// 通知（OneWay，失败告警）
-    /// </summary>
-    /// <remarks>
-    /// Notification (one-way, alert on failure).
-    /// </remarks>
-    Notification = 2,
-}
-
-/// <summary>
 /// 消息治理策略配置。每类消息都应有对应的策略。
 /// </summary>
 /// <remarks>

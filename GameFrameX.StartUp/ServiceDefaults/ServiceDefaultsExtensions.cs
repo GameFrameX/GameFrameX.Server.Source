@@ -318,22 +318,26 @@ namespace GameFrameX.StartUp.ServiceDefaults
 
             healthChecksBuilder.AddCheck("mongodb", cancellationToken =>
             {
-                using var timeoutCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                timeoutCancellationSource.CancelAfter(MongoHealthCheckTimeout);
-                try
+                using (var timeoutCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
                 {
-                    var mongoClient = GetOrCreateMongoHealthClient(connectionString);
-                    using var databases = mongoClient.ListDatabaseNamesAsync(timeoutCancellationSource.Token).GetAwaiter().GetResult();
-                    if (databases.AnyAsync(timeoutCancellationSource.Token).GetAwaiter().GetResult())
+                    timeoutCancellationSource.CancelAfter(MongoHealthCheckTimeout);
+                    try
                     {
-                        return HealthCheckResult.Healthy("MongoDB connection is healthy");
-                    }
+                        var mongoClient = GetOrCreateMongoHealthClient(connectionString);
+                        using (var databases = mongoClient.ListDatabaseNamesAsync(timeoutCancellationSource.Token).GetAwaiter().GetResult())
+                        {
+                            if (databases.AnyAsync(timeoutCancellationSource.Token).GetAwaiter().GetResult())
+                            {
+                                return HealthCheckResult.Healthy("MongoDB connection is healthy");
+                            }
 
-                    return HealthCheckResult.Degraded("MongoDB connection is degraded: no databases found");
-                }
-                catch (Exception ex)
-                {
-                    return HealthCheckResult.Degraded("MongoDB connection is temporarily unavailable", ex);
+                            return HealthCheckResult.Degraded("MongoDB connection is degraded: no databases found");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        return HealthCheckResult.Degraded("MongoDB connection is temporarily unavailable", ex);
+                    }
                 }
             }, tags: new[] { "db", "ready", });
         }

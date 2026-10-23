@@ -61,68 +61,73 @@ public sealed class RemoteMessageClientConcurrencyTests : IDisposable
         // 服务端屏障：收到全部 6 个请求后才统一响应。
         // 旧实现（全局信号量 + 内联读）下第一个请求独占收发，屏障永远凑不齐 → 全体超时失败。
         const int requestCount = 6;
-        using var server = StartServer($"RMTestBarrier", requestCount, respondAfterCount: requestCount);
-
-        var client = new RemoteMessagingBuilder().Build();
-        var calls = Enumerable.Range(0, requestCount)
-            .Select(_ => client.CallWithResultAsync<RespAccountQuery>(
-                "RMTestBarrier",
-                new ReqAccountQuery { AccountName = "tester" },
-                timeoutMs: 15000))
-            .ToArray();
-
-        var results = await Task.WhenAll(calls);
-
-        Assert.All(results, result =>
+        using (var server = StartServer($"RMTestBarrier", requestCount, respondAfterCount: requestCount))
         {
-            Assert.True(result.IsSuccess, $"call failed: {result.StatusCode} {result.ErrorMessage}");
-            Assert.NotNull(result.Response);
-        });
-        Assert.True(server.ConnectionCount >= 2, $"并发调用应扇出多条连接，实际 {server.ConnectionCount}");
+            var client = new RemoteMessagingBuilder().Build();
+            var calls = Enumerable.Range(0, requestCount)
+                .Select(_ => client.CallWithResultAsync<RespAccountQuery>(
+                    "RMTestBarrier",
+                    new ReqAccountQuery { AccountName = "tester" },
+                    timeoutMs: 15000))
+                .ToArray();
+
+            var results = await Task.WhenAll(calls);
+
+            Assert.All(results, result =>
+            {
+                Assert.True(result.IsSuccess, $"call failed: {result.StatusCode} {result.ErrorMessage}");
+                Assert.NotNull(result.Response);
+            });
+            Assert.True(server.ConnectionCount >= 2, $"并发调用应扇出多条连接，实际 {server.ConnectionCount}");
+        }
     }
 
     [Fact]
     public async Task ConnectionClosed_ShouldFailPendingCallFast_AndPoolShouldRebuild()
     {
         // 首个连接收到一个请求后立即断开；后续连接正常响应。
-        using var server = StartServer("RMTestClose", 2, respondAfterCount: 1, closeFirstConnection: true);
+        using (var server = StartServer("RMTestClose", 2, respondAfterCount: 1, closeFirstConnection: true))
+        {
+            var client = new RemoteMessagingBuilder().Build();
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-        var client = new RemoteMessagingBuilder().Build();
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var first = await client.CallWithResultAsync<RespAccountQuery>(
+                "RMTestClose", new ReqAccountQuery { AccountName = "a" }, timeoutMs: 15000);
+            stopwatch.Stop();
 
-        var first = await client.CallWithResultAsync<RespAccountQuery>(
-            "RMTestClose", new ReqAccountQuery { AccountName = "a" }, timeoutMs: 15000);
-        stopwatch.Stop();
+            // 连接死亡经接收泵快速失败等待方：ConnectionFailed 而非等满超时
+            Assert.False(first.IsSuccess);
+            Assert.Equal(RemoteStatusCode.ConnectionFailed, first.StatusCode);
+            Assert.True(stopwatch.ElapsedMilliseconds < 10000, $"应快速失败，实际耗时 {stopwatch.ElapsedMilliseconds}ms");
 
-        // 连接死亡经接收泵快速失败等待方：ConnectionFailed 而非等满超时
-        Assert.False(first.IsSuccess);
-        Assert.Equal(RemoteStatusCode.ConnectionFailed, first.StatusCode);
-        Assert.True(stopwatch.ElapsedMilliseconds < 10000, $"应快速失败，实际耗时 {stopwatch.ElapsedMilliseconds}ms");
-
-        // 池仅移除死亡连接，下一次调用应重建连接并成功
-        var second = await client.CallWithResultAsync<RespAccountQuery>(
-            "RMTestClose", new ReqAccountQuery { AccountName = "b" }, timeoutMs: 15000);
-        Assert.True(second.IsSuccess, $"重建连接后调用应成功: {second.StatusCode} {second.ErrorMessage}");
+            // 池仅移除死亡连接，下一次调用应重建连接并成功
+            var second = await client.CallWithResultAsync<RespAccountQuery>(
+                "RMTestClose", new ReqAccountQuery { AccountName = "b" }, timeoutMs: 15000);
+            Assert.True(second.IsSuccess, $"重建连接后调用应成功: {second.StatusCode} {second.ErrorMessage}");
+        }
     }
 
     [Fact]
     public async Task AlternatingServices_ShouldReuseConnectionPerEndpoint()
     {
         // 旧实现的单连接槽位在两个 endpoint 间交替时每次断连重连；按 endpoint 池化后各自长期复用。
-        using var serverA = StartServer("RMTestAltA", 16, respondAfterCount: 1);
-        using var serverB = StartServer("RMTestAltB", 16, respondAfterCount: 1);
-
-        var client = new RemoteMessagingBuilder().Build();
-        for (var i = 0; i < 8; i++)
+        using (var serverA = StartServer("RMTestAltA", 16, respondAfterCount: 1))
         {
-            var serviceName = i % 2 == 0 ? "RMTestAltA" : "RMTestAltB";
-            var result = await client.CallWithResultAsync<RespAccountQuery>(
-                serviceName, new ReqAccountQuery { AccountName = $"n{i}" }, timeoutMs: 15000);
-            Assert.True(result.IsSuccess, $"第 {i} 次调用({serviceName})失败: {result.StatusCode} {result.ErrorMessage}");
-        }
+            using (var serverB = StartServer("RMTestAltB", 16, respondAfterCount: 1))
+            {
+                var client = new RemoteMessagingBuilder().Build();
+                for (var i = 0; i < 8; i++)
+                {
+                    var serviceName = i % 2 == 0 ? "RMTestAltA" : "RMTestAltB";
+                    var result = await client.CallWithResultAsync<RespAccountQuery>(
+                        serviceName, new ReqAccountQuery { AccountName = $"n{i}" }, timeoutMs: 15000);
+                    Assert.True(result.IsSuccess, $"第 {i} 次调用({serviceName})失败: {result.StatusCode} {result.ErrorMessage}");
+                }
 
-        Assert.Equal(1, serverA.ConnectionCount);
-        Assert.Equal(1, serverB.ConnectionCount);
+                Assert.Equal(1, serverA.ConnectionCount);
+                Assert.Equal(1, serverB.ConnectionCount);
+            }
+        }
     }
 
     public void Dispose()
@@ -324,9 +329,11 @@ public sealed class RemoteMessageClientConcurrencyTests : IDisposable
             };
             MessageProtoHelper.SetMessageId(response);
             response.SetUniqueId(uniqueId);
-            using var buffer = _codec.Encode(response);
-            await stream.WriteAsync(buffer.Memory);
-            await stream.FlushAsync();
+            using (var buffer = _codec.Encode(response))
+            {
+                await stream.WriteAsync(buffer.Memory);
+                await stream.FlushAsync();
+            }
         }
 
         private async Task WriteResponseAsync(NetworkStream stream, int uniqueId)
@@ -334,9 +341,11 @@ public sealed class RemoteMessageClientConcurrencyTests : IDisposable
             var response = new RespAccountQuery { AccountId = 7 };
             MessageProtoHelper.SetMessageId(response);
             response.SetUniqueId(uniqueId);
-            using var buffer = _codec.Encode(response);
-            await stream.WriteAsync(buffer.Memory);
-            await stream.FlushAsync();
+            using (var buffer = _codec.Encode(response))
+            {
+                await stream.WriteAsync(buffer.Memory);
+                await stream.FlushAsync();
+            }
         }
 
         public void Dispose()

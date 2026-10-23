@@ -299,9 +299,11 @@ public sealed partial class PostgreSqlDbService
             }
         }
 
-        await using var connection = DataSource.CreateConnection();
-        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-        await EnsureIndexesAsync(connection, GetTableName<TState>(), typeof(TState), cancellationToken).ConfigureAwait(false);
+        await using (var connection = DataSource.CreateConnection())
+        {
+            await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+            await EnsureIndexesAsync(connection, GetTableName<TState>(), typeof(TState), cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -371,15 +373,19 @@ public sealed partial class PostgreSqlDbService
     {
         var unquotedTableName = tableName.Trim('"');
         var result = new Dictionary<string, string>(StringComparer.Ordinal);
-        await using var command = new NpgsqlCommand("SELECT indexname, indexdef FROM pg_indexes WHERE tablename = @tableName", connection);
-        command.Parameters.AddWithValue("tableName", unquotedTableName);
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
-        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+        await using (var command = new NpgsqlCommand("SELECT indexname, indexdef FROM pg_indexes WHERE tablename = @tableName", connection))
         {
-            result[reader.GetString(0)] = reader.GetString(1);
-        }
+            command.Parameters.AddWithValue("tableName", unquotedTableName);
+            await using (var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
+            {
+                while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    result[reader.GetString(0)] = reader.GetString(1);
+                }
 
-        return result;
+                return result;
+            }
+        }
     }
 
     /// <summary>
@@ -513,7 +519,9 @@ public sealed partial class PostgreSqlDbService
     /// </remarks>
     private static async Task<int> ExecuteNonQueryAsync(NpgsqlConnection connection, string commandText, CancellationToken cancellationToken)
     {
-        await using var command = new NpgsqlCommand(commandText, connection);
-        return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        await using (var command = new NpgsqlCommand(commandText, connection))
+        {
+            return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 }

@@ -795,12 +795,14 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
     {
         await ExecuteWithServiceAsync(async service =>
         {
-            using var canceled = new CancellationTokenSource();
-            await canceled.CancelAsync();
+            using (var canceled = new CancellationTokenSource())
+            {
+                await canceled.CancelAsync();
 
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.FindListAsync<SqliteQueryTestState>(x => x.Group == 24, canceled.Token));
-            var state = CreateState("cancel", group: 24, score: 1);
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.AddAsync(state, canceled.Token));
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.FindListAsync<SqliteQueryTestState>(x => x.Group == 24, canceled.Token));
+                var state = CreateState("cancel", group: 24, score: 1);
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.AddAsync(state, canceled.Token));
+            }
         });
     }
 
@@ -1005,22 +1007,24 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
         var dataFile = Path.Combine(root, "locked.db");
         await File.WriteAllTextAsync(dataFile, "placeholder");
 
-        using var _ = File.Open(dataFile, FileMode.Open, FileAccess.Read, FileShare.None);
-        var service = new SqliteDbService();
-        try
+        using (var _ = File.Open(dataFile, FileMode.Open, FileAccess.Read, FileShare.None))
         {
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.OpenAsync(new DbOptions
+            var service = new SqliteDbService();
+            try
             {
-                ConnectionString = $"Data Source={dataFile}",
-                Name = "sqlite-locked-file",
-            }));
+                var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.OpenAsync(new DbOptions
+                {
+                    ConnectionString = $"Data Source={dataFile}",
+                    Name = "sqlite-locked-file",
+                }));
 
-            Assert.Contains(Path.GetFullPath(dataFile), exception.Message);
-            Assert.Contains("file-read-write-probe", exception.Message);
-        }
-        finally
-        {
-            await service.CloseAsync();
+                Assert.Contains(Path.GetFullPath(dataFile), exception.Message);
+                Assert.Contains("file-read-write-probe", exception.Message);
+            }
+            finally
+            {
+                await service.CloseAsync();
+            }
         }
     }
 
@@ -1102,11 +1106,10 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
     /// </summary>
     private static void chmod(string path, string mode)
     {
-        using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("chmod", $"{mode} {path}")
+        using (var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("chmod", $"{mode} {path}") { UseShellExecute = false, }))
         {
-            UseShellExecute = false,
-        });
-        process?.WaitForExit(5000);
+            process?.WaitForExit(5000);
+        }
     }
 
     /// <summary>

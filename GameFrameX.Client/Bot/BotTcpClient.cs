@@ -44,32 +44,6 @@ using ErrorEventArgs = GameFrameX.SuperSocket.ClientEngine.ErrorEventArgs;
 namespace GameFrameX.Client.Bot;
 
 /// <summary>
-/// 机器人TCP客户端事件结构体,包含各种回调事件
-/// </summary>
-public struct BotTcpClientEvent
-{
-    /// <summary>
-    /// 连接成功时的回调
-    /// </summary>
-    public Action OnConnectedCallback;
-
-    /// <summary>
-    /// 连接关闭时的回调
-    /// </summary>
-    public Action OnClosedCallback;
-
-    /// <summary>
-    /// 发生错误时的回调
-    /// </summary>
-    public Action<ErrorEventArgs> OnErrorCallback;
-
-    /// <summary>
-    /// 接收到消息时的回调
-    /// </summary>
-    public Action<MessageObject> OnReceiveMsgCallback;
-}
-
-/// <summary>
 /// 机器人TCP客户端类,用于处理与服务器的TCP连接和消息收发
 /// </summary>
 public sealed class BotTcpClient

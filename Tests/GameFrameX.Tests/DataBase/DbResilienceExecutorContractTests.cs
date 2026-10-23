@@ -80,155 +80,169 @@ public sealed class DbResilienceExecutorContractTests
     [MemberData(nameof(ProviderClassifiers))]
     public void RetryableThenSuccess_ShouldRetryOnceWithExactBackoffAndCountMetrics(IDbOperationExceptionClassifier classifier)
     {
-        using var harness = CreateHarness(classifier, readDelays: new[] { 50, 60, 70 }, writeDelays: new[] { 80, 90 });
-        var attempts = 0;
-
-        var result = harness.Executor.ExecuteReadWithRetryAsync(_ =>
+        using (var harness = CreateHarness(classifier, readDelays: new[] { 50, 60, 70 }, writeDelays: new[] { 80, 90 }))
         {
-            attempts++;
-            return attempts == 1 ? Task.FromException<int>(new TimeoutException("transient-1")) : Task.FromResult(42);
-        }, CancellationToken.None, ReadOperationName).GetAwaiter().GetResult();
+            var attempts = 0;
 
-        Assert.Equal(42, result);
-        Assert.Equal(2, attempts);
-        Assert.Equal(new[] { 50 }, harness.Delays);
-        Assert.Single(harness.ValuesOf("db_operation_retry_total"), 1D);
-        Assert.Empty(harness.ValuesOf("db_operation_fail_total"));
-        Assert.Single(harness.ValuesOf("db_operation_latency_ms"));
-        Assert.Equal(1, harness.Host.SuccessRecorded);
-        Assert.Equal(1, harness.Host.FailuresRecorded);
-        Assert.Single(harness.Warnings, warning => warning.Contains(ReadOperationName) && warning.Contains("1/3"));
+            var result = harness.Executor.ExecuteReadWithRetryAsync(_ =>
+            {
+                attempts++;
+                return attempts == 1 ? Task.FromException<int>(new TimeoutException("transient-1")) : Task.FromResult(42);
+            }, CancellationToken.None, ReadOperationName).GetAwaiter().GetResult();
+
+            Assert.Equal(42, result);
+            Assert.Equal(2, attempts);
+            Assert.Equal(new[] { 50 }, harness.Delays);
+            Assert.Single(harness.ValuesOf("db_operation_retry_total"), 1D);
+            Assert.Empty(harness.ValuesOf("db_operation_fail_total"));
+            Assert.Single(harness.ValuesOf("db_operation_latency_ms"));
+            Assert.Equal(1, harness.Host.SuccessRecorded);
+            Assert.Equal(1, harness.Host.FailuresRecorded);
+            Assert.Single(harness.Warnings, warning => warning.Contains(ReadOperationName) && warning.Contains("1/3"));
+        }
     }
 
     [Theory]
     [MemberData(nameof(ProviderClassifiers))]
     public void NonRetryableFailure_ShouldRethrowImmediatelyWithoutMetricsOrStateChange(IDbOperationExceptionClassifier classifier)
     {
-        using var harness = CreateHarness(classifier);
-        var original = new ArgumentNullException("op");
-        var attempts = 0;
-
-        var thrown = Assert.Throws<ArgumentNullException>(() => harness.Executor.ExecuteReadWithRetryAsync(_ =>
+        using (var harness = CreateHarness(classifier))
         {
-            attempts++;
-            return Task.FromException<int>(original);
-        }, CancellationToken.None, ReadOperationName).GetAwaiter().GetResult());
+            var original = new ArgumentNullException("op");
+            var attempts = 0;
 
-        Assert.Same(original, thrown);
-        Assert.Equal(1, attempts);
-        Assert.Empty(harness.Delays);
-        Assert.Empty(harness.Events);
-        Assert.Equal(0, harness.Host.SuccessRecorded);
-        Assert.Equal(0, harness.Host.FailuresRecorded);
-        Assert.Empty(harness.Warnings);
+            var thrown = Assert.Throws<ArgumentNullException>(() => harness.Executor.ExecuteReadWithRetryAsync(_ =>
+            {
+                attempts++;
+                return Task.FromException<int>(original);
+            }, CancellationToken.None, ReadOperationName).GetAwaiter().GetResult());
+
+            Assert.Same(original, thrown);
+            Assert.Equal(1, attempts);
+            Assert.Empty(harness.Delays);
+            Assert.Empty(harness.Events);
+            Assert.Equal(0, harness.Host.SuccessRecorded);
+            Assert.Equal(0, harness.Host.FailuresRecorded);
+            Assert.Empty(harness.Warnings);
+        }
     }
 
     [Theory]
     [MemberData(nameof(ProviderClassifiers))]
     public void ExhaustedRetries_ShouldThrowDatabaseUnavailableWithExactSequenceAndFailureMetrics(IDbOperationExceptionClassifier classifier)
     {
-        using var harness = CreateHarness(classifier, readDelays: new[] { 10, 20, 30 }, writeDelays: new[] { 40, 50, 60 });
-        var attempts = 0;
-
-        var thrown = Assert.Throws<DatabaseUnavailableException>(() => harness.Executor.ExecuteReadWithRetryAsync(_ =>
+        using (var harness = CreateHarness(classifier, readDelays: new[] { 10, 20, 30 }, writeDelays: new[] { 40, 50, 60 }))
         {
-            attempts++;
-            return Task.FromException<int>(new TimeoutException("boom-" + attempts));
-        }, CancellationToken.None, ReadOperationName).GetAwaiter().GetResult());
+            var attempts = 0;
 
-        Assert.Equal("retry-failed " + ReadOperationName, thrown.Message);
-        var lastFailure = Assert.IsType<TimeoutException>(thrown.InnerException);
-        Assert.Equal("boom-4", lastFailure.Message);
-        Assert.Equal(4, attempts);
-        Assert.Equal(new[] { 10, 20, 30 }, harness.Delays);
-        Assert.Equal(3, harness.ValuesOf("db_operation_retry_total").Count);
-        Assert.Single(harness.ValuesOf("db_operation_fail_total"), 1D);
-        Assert.Single(harness.ValuesOf("db_operation_latency_ms"));
-        Assert.Equal(4, harness.Host.FailuresRecorded);
-        Assert.Equal(0, harness.Host.SuccessRecorded);
-        Assert.Equal(3, harness.Warnings.Count);
+            var thrown = Assert.Throws<DatabaseUnavailableException>(() => harness.Executor.ExecuteReadWithRetryAsync(_ =>
+            {
+                attempts++;
+                return Task.FromException<int>(new TimeoutException("boom-" + attempts));
+            }, CancellationToken.None, ReadOperationName).GetAwaiter().GetResult());
+
+            Assert.Equal("retry-failed " + ReadOperationName, thrown.Message);
+            var lastFailure = Assert.IsType<TimeoutException>(thrown.InnerException);
+            Assert.Equal("boom-4", lastFailure.Message);
+            Assert.Equal(4, attempts);
+            Assert.Equal(new[] { 10, 20, 30 }, harness.Delays);
+            Assert.Equal(3, harness.ValuesOf("db_operation_retry_total").Count);
+            Assert.Single(harness.ValuesOf("db_operation_fail_total"), 1D);
+            Assert.Single(harness.ValuesOf("db_operation_latency_ms"));
+            Assert.Equal(4, harness.Host.FailuresRecorded);
+            Assert.Equal(0, harness.Host.SuccessRecorded);
+            Assert.Equal(3, harness.Warnings.Count);
+        }
     }
 
     [Theory]
     [MemberData(nameof(ProviderClassifiers))]
     public void WriteGateRejection_ShouldFailFastBeforeFirstAttempt(IDbOperationExceptionClassifier classifier)
     {
-        using var harness = CreateHarness(classifier);
-        harness.Host.AllowWrite = false;
-        var attempts = 0;
-
-        var thrown = Assert.Throws<DatabaseUnavailableException>(() => harness.Executor.ExecuteWriteWithRetryAsync(_ =>
+        using (var harness = CreateHarness(classifier))
         {
-            attempts++;
-            return Task.FromResult(true);
-        }, CancellationToken.None, WriteOperationName, true).GetAwaiter().GetResult());
+            harness.Host.AllowWrite = false;
+            var attempts = 0;
 
-        Assert.Equal("service-unavailable", thrown.Message);
-        Assert.Equal(0, attempts);
-        Assert.Empty(harness.Delays);
-        Assert.Empty(harness.Events);
+            var thrown = Assert.Throws<DatabaseUnavailableException>(() => harness.Executor.ExecuteWriteWithRetryAsync(_ =>
+            {
+                attempts++;
+                return Task.FromResult(true);
+            }, CancellationToken.None, WriteOperationName, true).GetAwaiter().GetResult());
+
+            Assert.Equal("service-unavailable", thrown.Message);
+            Assert.Equal(0, attempts);
+            Assert.Empty(harness.Delays);
+            Assert.Empty(harness.Events);
+        }
     }
 
     [Theory]
     [MemberData(nameof(ProviderClassifiers))]
     public void DegradedRead_ShouldReturnFallbackIdentityWithoutTouchingDatabase(IDbOperationExceptionClassifier classifier)
     {
-        using var harness = CreateHarness(classifier);
-        harness.Host.DegradeReads = true;
-        var sentinel = new List<string> { "fallback" };
-        var attempts = 0;
-
-        var result = harness.Executor.ExecuteReadWithRetryAsync(_ =>
+        using (var harness = CreateHarness(classifier))
         {
-            attempts++;
-            return Task.FromResult(new List<string> { "database" });
-        }, CancellationToken.None, ReadOperationName, () => sentinel).GetAwaiter().GetResult();
+            harness.Host.DegradeReads = true;
+            var sentinel = new List<string> { "fallback" };
+            var attempts = 0;
 
-        Assert.Same(sentinel, result);
-        Assert.Equal(0, attempts);
-        Assert.Empty(harness.Delays);
-        Assert.Empty(harness.Events);
+            var result = harness.Executor.ExecuteReadWithRetryAsync(_ =>
+            {
+                attempts++;
+                return Task.FromResult(new List<string> { "database" });
+            }, CancellationToken.None, ReadOperationName, () => sentinel).GetAwaiter().GetResult();
+
+            Assert.Same(sentinel, result);
+            Assert.Equal(0, attempts);
+            Assert.Empty(harness.Delays);
+            Assert.Empty(harness.Events);
+        }
     }
 
     [Theory]
     [MemberData(nameof(ProviderClassifiers))]
     public void NonIdempotentWrite_ShouldAttemptOnceWithoutRetries(IDbOperationExceptionClassifier classifier)
     {
-        using var harness = CreateHarness(classifier, readDelays: new[] { 10, 20 }, writeDelays: new[] { 40, 50 });
-        var attempts = 0;
-
-        Assert.Throws<DatabaseUnavailableException>(() => harness.Executor.ExecuteWriteWithRetryAsync(_ =>
+        using (var harness = CreateHarness(classifier, readDelays: new[] { 10, 20 }, writeDelays: new[] { 40, 50 }))
         {
-            attempts++;
-            return Task.FromException<bool>(new TimeoutException("write-once"));
-        }, CancellationToken.None, WriteOperationName, false).GetAwaiter().GetResult());
+            var attempts = 0;
 
-        Assert.Equal(1, attempts);
-        Assert.Empty(harness.Delays);
-        Assert.Empty(harness.ValuesOf("db_operation_retry_total"));
-        Assert.Single(harness.ValuesOf("db_operation_fail_total"), 1D);
-        Assert.Equal(1, harness.Host.FailuresRecorded);
+            Assert.Throws<DatabaseUnavailableException>(() => harness.Executor.ExecuteWriteWithRetryAsync(_ =>
+            {
+                attempts++;
+                return Task.FromException<bool>(new TimeoutException("write-once"));
+            }, CancellationToken.None, WriteOperationName, false).GetAwaiter().GetResult());
+
+            Assert.Equal(1, attempts);
+            Assert.Empty(harness.Delays);
+            Assert.Empty(harness.ValuesOf("db_operation_retry_total"));
+            Assert.Single(harness.ValuesOf("db_operation_fail_total"), 1D);
+            Assert.Equal(1, harness.Host.FailuresRecorded);
+        }
     }
 
     [Theory]
     [MemberData(nameof(ProviderClassifiers))]
     public void WriteGateRecheckBetweenAttempts_ShouldSurfaceGateRejectionAfterRetry(IDbOperationExceptionClassifier classifier)
     {
-        using var harness = CreateHarness(classifier, readDelays: new[] { 10, 20 }, writeDelays: new[] { 30, 40 });
-        var attempts = 0;
-
-        var thrown = Assert.Throws<DatabaseUnavailableException>(() => harness.Executor.ExecuteWriteWithRetryAsync(_ =>
+        using (var harness = CreateHarness(classifier, readDelays: new[] { 10, 20 }, writeDelays: new[] { 30, 40 }))
         {
-            attempts++;
-            harness.Host.AllowWrite = false;
-            return Task.FromException<bool>(new TimeoutException("then-gated"));
-        }, CancellationToken.None, WriteOperationName, true).GetAwaiter().GetResult());
+            var attempts = 0;
 
-        // 第二次尝试前的门控复检抛出 DatabaseUnavailableException；三家分类器均不将其判为可重试，故原样上抛而非包装。
-        Assert.Equal("service-unavailable", thrown.Message);
-        Assert.Equal(1, attempts);
-        Assert.Equal(new[] { 30 }, harness.Delays);
-        Assert.Single(harness.ValuesOf("db_operation_retry_total"), 1D);
+            var thrown = Assert.Throws<DatabaseUnavailableException>(() => harness.Executor.ExecuteWriteWithRetryAsync(_ =>
+            {
+                attempts++;
+                harness.Host.AllowWrite = false;
+                return Task.FromException<bool>(new TimeoutException("then-gated"));
+            }, CancellationToken.None, WriteOperationName, true).GetAwaiter().GetResult());
+
+            // 第二次尝试前的门控复检抛出 DatabaseUnavailableException；三家分类器均不将其判为可重试，故原样上抛而非包装。
+            Assert.Equal("service-unavailable", thrown.Message);
+            Assert.Equal(1, attempts);
+            Assert.Equal(new[] { 30 }, harness.Delays);
+            Assert.Single(harness.ValuesOf("db_operation_retry_total"), 1D);
+        }
     }
 
     [Theory]

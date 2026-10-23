@@ -141,9 +141,11 @@ public sealed class MongoDbServiceQueryTests
     {
         await ExecuteWithServiceAsync(async service =>
         {
-            using var cts = new CancellationTokenSource();
-            await cts.CancelAsync();
-            await Assert.ThrowsAsync<OperationCanceledException>(() => service.FindListAsync<MongoQueryTestState>(x => x.Group == 1, cts.Token));
+            using (var cts = new CancellationTokenSource())
+            {
+                await cts.CancelAsync();
+                await Assert.ThrowsAsync<OperationCanceledException>(() => service.FindListAsync<MongoQueryTestState>(x => x.Group == 1, cts.Token));
+            }
         });
     }
 
@@ -156,11 +158,13 @@ public sealed class MongoDbServiceQueryTests
         await ExecuteWithServiceAsync(async service =>
         {
             var state = CreateState("cancel-write", group: 3, score: 3);
-            using var cts = new CancellationTokenSource();
-            await cts.CancelAsync();
+            using (var cts = new CancellationTokenSource())
+            {
+                await cts.CancelAsync();
 
-            await Assert.ThrowsAsync<OperationCanceledException>(() => service.AddOrUpdateListAsync(new[] { state, }, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => service.UpdatePartialAsync<MongoQueryTestState>(state.Id, new Dictionary<string, object> { [nameof(MongoQueryTestState.Score)] = 99, }, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => service.AddOrUpdateListAsync(new[] { state, }, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => service.UpdatePartialAsync<MongoQueryTestState>(state.Id, new Dictionary<string, object> { [nameof(MongoQueryTestState.Score)] = 99, }, cts.Token));
+            }
         });
     }
 
@@ -169,11 +173,13 @@ public sealed class MongoDbServiceQueryTests
     {
         await ExecuteWithServiceAsync(async service =>
         {
-            using var cts = new CancellationTokenSource();
-            await cts.CancelAsync();
-            await Assert.ThrowsAsync<OperationCanceledException>(() => service.CountAsync<MongoQueryTestState>(x => x.Group == 1, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => service.AnyAsync<MongoQueryTestState>(x => x.Group == 1, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => service.DeleteAsync<MongoQueryTestState>(x => x.Group == 1, cts.Token));
+            using (var cts = new CancellationTokenSource())
+            {
+                await cts.CancelAsync();
+                await Assert.ThrowsAsync<OperationCanceledException>(() => service.CountAsync<MongoQueryTestState>(x => x.Group == 1, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => service.AnyAsync<MongoQueryTestState>(x => x.Group == 1, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => service.DeleteAsync<MongoQueryTestState>(x => x.Group == 1, cts.Token));
+            }
         });
     }
 
@@ -182,12 +188,14 @@ public sealed class MongoDbServiceQueryTests
     {
         await ExecuteWithServiceAsync(async service =>
         {
-            using var cts = new CancellationTokenSource();
-            await cts.CancelAsync();
-            await Assert.ThrowsAsync<OperationCanceledException>(() => service.DeleteListAsync<MongoQueryTestState>(x => x.Group == 1, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => service.DeleteListIdAsync<MongoQueryTestState>(new[] { 1L, 2L, }, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => service.HardDeleteAsync<MongoQueryTestState>(x => x.Group == 1, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => service.RestoreAsync<MongoQueryTestState>(x => x.Group == 1, cts.Token));
+            using (var cts = new CancellationTokenSource())
+            {
+                await cts.CancelAsync();
+                await Assert.ThrowsAsync<OperationCanceledException>(() => service.DeleteListAsync<MongoQueryTestState>(x => x.Group == 1, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => service.DeleteListIdAsync<MongoQueryTestState>(new[] { 1L, 2L, }, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => service.HardDeleteAsync<MongoQueryTestState>(x => x.Group == 1, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => service.RestoreAsync<MongoQueryTestState>(x => x.Group == 1, cts.Token));
+            }
         });
     }
 
@@ -197,18 +205,20 @@ public sealed class MongoDbServiceQueryTests
         await ExecuteWithServiceAsync(async service =>
         {
             var state = CreateState("cancel-more", group: 5, score: 5);
-            using var cts = new CancellationTokenSource();
-            await cts.CancelAsync();
-            await Assert.ThrowsAsync<OperationCanceledException>(() => service.FindAsync<MongoQueryTestState>(x => x.Group == 5, true, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => service.FindSortAscendingFirstOneAsync<MongoQueryTestState>(x => x.Group == 5, x => x.Score, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => service.FindSortDescendingFirstOneAsync<MongoQueryTestState>(x => x.Group == 5, x => x.Score, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => service.FindSortAscendingAsync<MongoQueryTestState>(x => x.Group == 5, x => x.Score, 0, 10, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => service.FindSortDescendingAsync<MongoQueryTestState>(x => x.Group == 5, x => x.Score, 0, 10, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => service.AddAsync(state, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => service.AddListAsync(new[] { state, }, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => service.AddOrUpdateAsync(state, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => service.UpdateAsync(state, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => service.UpdateAsync(new[] { state, }, cts.Token));
+            using (var cts = new CancellationTokenSource())
+            {
+                await cts.CancelAsync();
+                await Assert.ThrowsAsync<OperationCanceledException>(() => service.FindAsync<MongoQueryTestState>(x => x.Group == 5, true, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => service.FindSortAscendingFirstOneAsync<MongoQueryTestState>(x => x.Group == 5, x => x.Score, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => service.FindSortDescendingFirstOneAsync<MongoQueryTestState>(x => x.Group == 5, x => x.Score, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => service.FindSortAscendingAsync<MongoQueryTestState>(x => x.Group == 5, x => x.Score, 0, 10, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => service.FindSortDescendingAsync<MongoQueryTestState>(x => x.Group == 5, x => x.Score, 0, 10, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => service.AddAsync(state, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => service.AddListAsync(new[] { state, }, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => service.AddOrUpdateAsync(state, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => service.UpdateAsync(state, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => service.UpdateAsync(new[] { state, }, cts.Token));
+            }
         });
     }
 
@@ -223,21 +233,23 @@ public sealed class MongoDbServiceQueryTests
             var seed = CreateState("gamedb-query-seed", group: 130, score: 1);
             await GameDb.SaveOneAsync(seed);
 
-            using var cts = new CancellationTokenSource();
-            await cts.CancelAsync();
+            using (var cts = new CancellationTokenSource())
+            {
+                await cts.CancelAsync();
 
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.FindByIdsAsync<MongoQueryTestState>(new[] { seed.Id, }, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.FindPageAsync<MongoQueryTestState>(x => x.Group == 130, x => x.Score, descending: true, pageIndex: 0, pageSize: 10, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.FindProjectedAsync<MongoQueryTestState, int>(x => x.Group == 130, x => x.Score, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.CountAsync<MongoQueryTestState>(x => x.Group == 130, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.CountAsync<MongoQueryTestState>(x => x.Group == 130, includeDeleted: true, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.FindAsync<MongoQueryTestState>(x => x.Group == 130, true, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.FindSortAscendingFirstOneAsync<MongoQueryTestState>(x => x.Group == 130, x => x.Score, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.FindSortDescendingFirstOneAsync<MongoQueryTestState>(x => x.Group == 130, x => x.Score, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.FindSortAscendingAsync<MongoQueryTestState>(x => x.Group == 130, x => x.Score, 0, 10, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.FindSortDescendingAsync<MongoQueryTestState>(x => x.Group == 130, x => x.Score, 0, 10, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.AnyAsync<MongoQueryTestState>(x => x.Group == 130, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.ExistsByIdAsync<MongoQueryTestState>(seed.Id, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.FindByIdsAsync<MongoQueryTestState>(new[] { seed.Id, }, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.FindPageAsync<MongoQueryTestState>(x => x.Group == 130, x => x.Score, descending: true, pageIndex: 0, pageSize: 10, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.FindProjectedAsync<MongoQueryTestState, int>(x => x.Group == 130, x => x.Score, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.CountAsync<MongoQueryTestState>(x => x.Group == 130, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.CountAsync<MongoQueryTestState>(x => x.Group == 130, includeDeleted: true, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.FindAsync<MongoQueryTestState>(x => x.Group == 130, true, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.FindSortAscendingFirstOneAsync<MongoQueryTestState>(x => x.Group == 130, x => x.Score, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.FindSortDescendingFirstOneAsync<MongoQueryTestState>(x => x.Group == 130, x => x.Score, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.FindSortAscendingAsync<MongoQueryTestState>(x => x.Group == 130, x => x.Score, 0, 10, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.FindSortDescendingAsync<MongoQueryTestState>(x => x.Group == 130, x => x.Score, 0, 10, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.AnyAsync<MongoQueryTestState>(x => x.Group == 130, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.ExistsByIdAsync<MongoQueryTestState>(seed.Id, cts.Token));
+            }
         });
     }
 
@@ -252,23 +264,25 @@ public sealed class MongoDbServiceQueryTests
             var state = CreateState("gamedb-write-seed", group: 131, score: 10);
             await GameDb.SaveOneAsync(state);
 
-            using var cts = new CancellationTokenSource();
-            await cts.CancelAsync();
+            using (var cts = new CancellationTokenSource())
+            {
+                await cts.CancelAsync();
 
-            var newState = CreateState("gamedb-new", group: 131, score: 11);
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.SaveOneAsync(newState, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.AddListAsync(new[] { newState, }, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.AddOrUpdateAsync(newState, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.UpdateAsync(newState, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.UpdateAsync(new[] { newState, }, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.UpdatePartialAsync<MongoQueryTestState>(state.Id, new Dictionary<string, object> { [nameof(MongoQueryTestState.Score)] = 999, }, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.DeleteAsync<MongoQueryTestState>(x => x.Group == 131, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.DeleteAsync(state, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.DeleteListAsync<MongoQueryTestState>(x => x.Group == 131, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.DeleteListIdAsync<MongoQueryTestState>(new[] { state.Id, }, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.HardDeleteAsync<MongoQueryTestState>(x => x.Group == 131, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.RestoreAsync<MongoQueryTestState>(x => x.Group == 131, cts.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.ExecuteInTransactionAsync(() => Task.CompletedTask, cts.Token));
+                var newState = CreateState("gamedb-new", group: 131, score: 11);
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.SaveOneAsync(newState, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.AddListAsync(new[] { newState, }, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.AddOrUpdateAsync(newState, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.UpdateAsync(newState, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.UpdateAsync(new[] { newState, }, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.UpdatePartialAsync<MongoQueryTestState>(state.Id, new Dictionary<string, object> { [nameof(MongoQueryTestState.Score)] = 999, }, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.DeleteAsync<MongoQueryTestState>(x => x.Group == 131, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.DeleteAsync(state, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.DeleteListAsync<MongoQueryTestState>(x => x.Group == 131, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.DeleteListIdAsync<MongoQueryTestState>(new[] { state.Id, }, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.HardDeleteAsync<MongoQueryTestState>(x => x.Group == 131, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.RestoreAsync<MongoQueryTestState>(x => x.Group == 131, cts.Token));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => GameDb.ExecuteInTransactionAsync(() => Task.CompletedTask, cts.Token));
+            }
         });
     }
 
@@ -280,46 +294,47 @@ public sealed class MongoDbServiceQueryTests
     {
         await ExecuteWithGameDbAsync(async () =>
         {
-            using var cts = new CancellationTokenSource();
+            using (var cts = new CancellationTokenSource())
+            {
+                var a = CreateState("gamedb-query-a", group: 132, score: 10);
+                var b = CreateState("gamedb-query-b", group: 132, score: 20);
+                var c = CreateState("gamedb-query-c", group: 132, score: 30);
+                await GameDb.AddListAsync(new[] { a, b, c, }, cts.Token);
 
-            var a = CreateState("gamedb-query-a", group: 132, score: 10);
-            var b = CreateState("gamedb-query-b", group: 132, score: 20);
-            var c = CreateState("gamedb-query-c", group: 132, score: 30);
-            await GameDb.AddListAsync(new[] { a, b, c, }, cts.Token);
+                var byIds = await GameDb.FindByIdsAsync<MongoQueryTestState>(new[] { a.Id, b.Id, c.Id, }, cts.Token);
+                var page = await GameDb.FindPageAsync<MongoQueryTestState>(x => x.Group == 132, x => x.Score, descending: true, pageIndex: 0, pageSize: 2, cts.Token);
+                var projected = await GameDb.FindProjectedAsync<MongoQueryTestState, int>(x => x.Group == 132, x => x.Score, cts.Token);
+                var count = await GameDb.CountAsync<MongoQueryTestState>(x => x.Group == 132, cts.Token);
+                var countIncludeDeleted = await GameDb.CountAsync<MongoQueryTestState>(x => x.Group == 132, includeDeleted: true, cts.Token);
+                var ascFirst = await GameDb.FindSortAscendingFirstOneAsync<MongoQueryTestState>(x => x.Group == 132, x => x.Score, cts.Token);
+                var descFirst = await GameDb.FindSortDescendingFirstOneAsync<MongoQueryTestState>(x => x.Group == 132, x => x.Score, cts.Token);
+                var ascPage = await GameDb.FindSortAscendingAsync<MongoQueryTestState>(x => x.Group == 132, x => x.Score, 1, 2, cts.Token);
+                var descPage = await GameDb.FindSortDescendingAsync<MongoQueryTestState>(x => x.Group == 132, x => x.Score, 0, 2, cts.Token);
+                var any = await GameDb.AnyAsync<MongoQueryTestState>(x => x.Group == 132, cts.Token);
+                var exists = await GameDb.ExistsByIdAsync<MongoQueryTestState>(b.Id, cts.Token);
+                var byFilter = await GameDb.FindAsync<MongoQueryTestState>(x => x.Id == b.Id, isCreateIfNotExists: false, cts.Token);
 
-            var byIds = await GameDb.FindByIdsAsync<MongoQueryTestState>(new[] { a.Id, b.Id, c.Id, }, cts.Token);
-            var page = await GameDb.FindPageAsync<MongoQueryTestState>(x => x.Group == 132, x => x.Score, descending: true, pageIndex: 0, pageSize: 2, cts.Token);
-            var projected = await GameDb.FindProjectedAsync<MongoQueryTestState, int>(x => x.Group == 132, x => x.Score, cts.Token);
-            var count = await GameDb.CountAsync<MongoQueryTestState>(x => x.Group == 132, cts.Token);
-            var countIncludeDeleted = await GameDb.CountAsync<MongoQueryTestState>(x => x.Group == 132, includeDeleted: true, cts.Token);
-            var ascFirst = await GameDb.FindSortAscendingFirstOneAsync<MongoQueryTestState>(x => x.Group == 132, x => x.Score, cts.Token);
-            var descFirst = await GameDb.FindSortDescendingFirstOneAsync<MongoQueryTestState>(x => x.Group == 132, x => x.Score, cts.Token);
-            var ascPage = await GameDb.FindSortAscendingAsync<MongoQueryTestState>(x => x.Group == 132, x => x.Score, 1, 2, cts.Token);
-            var descPage = await GameDb.FindSortDescendingAsync<MongoQueryTestState>(x => x.Group == 132, x => x.Score, 0, 2, cts.Token);
-            var any = await GameDb.AnyAsync<MongoQueryTestState>(x => x.Group == 132, cts.Token);
-            var exists = await GameDb.ExistsByIdAsync<MongoQueryTestState>(b.Id, cts.Token);
-            var byFilter = await GameDb.FindAsync<MongoQueryTestState>(x => x.Id == b.Id, isCreateIfNotExists: false, cts.Token);
-
-            byIds = byIds.OrderBy(x => x.Id).ToList();
-            projected = projected.OrderBy(x => x).ToList();
-            Assert.Equal(3, byIds.Count);
-            Assert.Equal(new[] { a.Id, b.Id, c.Id, }, byIds.Select(x => x.Id).ToArray());
-            Assert.Equal(3, page.Total);
-            Assert.Equal(new[] { 30, 20, }, page.Items.Select(x => x.Score).ToArray());
-            Assert.Equal(new[] { 10, 20, 30, }, projected.ToArray());
-            Assert.Equal(3, count);
-            Assert.Equal(3, countIncludeDeleted);
-            Assert.NotNull(ascFirst);
-            Assert.NotNull(descFirst);
-            Assert.Equal(10, ascFirst.Score);
-            Assert.Equal(30, descFirst.Score);
-            Assert.Single(ascPage);
-            Assert.Equal(30, ascPage[0].Score);
-            Assert.Equal(new[] { 30, 20, }, descPage.Select(x => x.Score).ToArray());
-            Assert.True(any);
-            Assert.True(exists);
-            Assert.NotNull(byFilter);
-            Assert.Equal(b.Id, byFilter.Id);
+                byIds = byIds.OrderBy(x => x.Id).ToList();
+                projected = projected.OrderBy(x => x).ToList();
+                Assert.Equal(3, byIds.Count);
+                Assert.Equal(new[] { a.Id, b.Id, c.Id, }, byIds.Select(x => x.Id).ToArray());
+                Assert.Equal(3, page.Total);
+                Assert.Equal(new[] { 30, 20, }, page.Items.Select(x => x.Score).ToArray());
+                Assert.Equal(new[] { 10, 20, 30, }, projected.ToArray());
+                Assert.Equal(3, count);
+                Assert.Equal(3, countIncludeDeleted);
+                Assert.NotNull(ascFirst);
+                Assert.NotNull(descFirst);
+                Assert.Equal(10, ascFirst.Score);
+                Assert.Equal(30, descFirst.Score);
+                Assert.Single(ascPage);
+                Assert.Equal(30, ascPage[0].Score);
+                Assert.Equal(new[] { 30, 20, }, descPage.Select(x => x.Score).ToArray());
+                Assert.True(any);
+                Assert.True(exists);
+                Assert.NotNull(byFilter);
+                Assert.Equal(b.Id, byFilter.Id);
+            }
         });
     }
 
@@ -331,40 +346,41 @@ public sealed class MongoDbServiceQueryTests
     {
         await ExecuteWithGameDbAsync(async () =>
         {
-            using var cts = new CancellationTokenSource();
+            using (var cts = new CancellationTokenSource())
+            {
+                var state = CreateState("gamedb-life-a", group: 133, score: 10);
+                var stateB = CreateState("gamedb-life-b", 133, 20);
+                var stateC = CreateState("gamedb-life-c", 133, 30);
+                await GameDb.SaveOneAsync(state, cts.Token);
+                await GameDb.AddListAsync(new[] { stateB, stateC, }, cts.Token);
 
-            var state = CreateState("gamedb-life-a", group: 133, score: 10);
-            var stateB = CreateState("gamedb-life-b", 133, 20);
-            var stateC = CreateState("gamedb-life-c", 133, 30);
-            await GameDb.SaveOneAsync(state, cts.Token);
-            await GameDb.AddListAsync(new[] { stateB, stateC, }, cts.Token);
+                state.Score = 99;
+                await GameDb.AddOrUpdateAsync(state, cts.Token);
+                var loaded = await GameDb.FindAsync<MongoQueryTestState>(x => x.Id == state.Id, isCreateIfNotExists: false, cts.Token);
+                Assert.NotNull(loaded);
+                loaded.LoadFromDbPostHandler();
+                loaded.Score = 101;
+                loaded.OptionalNote = "patched";
+                await GameDb.UpdateAsync(loaded, cts.Token);
+                await GameDb.UpdateAsync(new[] { loaded, }, cts.Token);
+                await GameDb.UpdatePartialAsync<MongoQueryTestState>(loaded.Id, new Dictionary<string, object> { [nameof(MongoQueryTestState.OptionalNote)] = null, }, cts.Token);
 
-            state.Score = 99;
-            await GameDb.AddOrUpdateAsync(state, cts.Token);
-            var loaded = await GameDb.FindAsync<MongoQueryTestState>(x => x.Id == state.Id, isCreateIfNotExists: false, cts.Token);
-            Assert.NotNull(loaded);
-            loaded.LoadFromDbPostHandler();
-            loaded.Score = 101;
-            loaded.OptionalNote = "patched";
-            await GameDb.UpdateAsync(loaded, cts.Token);
-            await GameDb.UpdateAsync(new[] { loaded, }, cts.Token);
-            await GameDb.UpdatePartialAsync<MongoQueryTestState>(loaded.Id, new Dictionary<string, object> { [nameof(MongoQueryTestState.OptionalNote)] = null, }, cts.Token);
+                var deletedByFilter = await GameDb.DeleteAsync<MongoQueryTestState>(x => x.Name == "gamedb-life-b", cts.Token);
+                var deletedByState = await GameDb.DeleteAsync(loaded, cts.Token);
+                var deletedByIds = await GameDb.DeleteListIdAsync<MongoQueryTestState>(new[] { stateC.Id, }, cts.Token);
+                var restored = await GameDb.RestoreAsync<MongoQueryTestState>(x => x.Id == loaded.Id, cts.Token);
+                var hardDeleted = await GameDb.HardDeleteAsync<MongoQueryTestState>(x => x.Name == "gamedb-life-b", cts.Token);
+                var remainVisible = await GameDb.CountAsync<MongoQueryTestState>(x => x.Group == 133, cts.Token);
+                var remainIncludeDeleted = await GameDb.CountAsync<MongoQueryTestState>(x => x.Group == 133, includeDeleted: true, cts.Token);
 
-            var deletedByFilter = await GameDb.DeleteAsync<MongoQueryTestState>(x => x.Name == "gamedb-life-b", cts.Token);
-            var deletedByState = await GameDb.DeleteAsync(loaded, cts.Token);
-            var deletedByIds = await GameDb.DeleteListIdAsync<MongoQueryTestState>(new[] { stateC.Id, }, cts.Token);
-            var restored = await GameDb.RestoreAsync<MongoQueryTestState>(x => x.Id == loaded.Id, cts.Token);
-            var hardDeleted = await GameDb.HardDeleteAsync<MongoQueryTestState>(x => x.Name == "gamedb-life-b", cts.Token);
-            var remainVisible = await GameDb.CountAsync<MongoQueryTestState>(x => x.Group == 133, cts.Token);
-            var remainIncludeDeleted = await GameDb.CountAsync<MongoQueryTestState>(x => x.Group == 133, includeDeleted: true, cts.Token);
-
-            Assert.Equal(1, deletedByFilter);
-            Assert.Equal(1, deletedByState);
-            Assert.Equal(1, deletedByIds);
-            Assert.Equal(1, restored);
-            Assert.Equal(1, hardDeleted);
-            Assert.Equal(1, remainVisible);
-            Assert.Equal(2, remainIncludeDeleted);
+                Assert.Equal(1, deletedByFilter);
+                Assert.Equal(1, deletedByState);
+                Assert.Equal(1, deletedByIds);
+                Assert.Equal(1, restored);
+                Assert.Equal(1, hardDeleted);
+                Assert.Equal(1, remainVisible);
+                Assert.Equal(2, remainIncludeDeleted);
+            }
         });
     }
 

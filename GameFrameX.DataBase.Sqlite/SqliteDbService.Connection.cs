@@ -113,9 +113,11 @@ public sealed partial class SqliteDbService
                 // ExecuteGatedAsync wrapper here (the semaphore is not reentrant).
                 await ExecuteWriteWithRetryAsync(async _ =>
                 {
-                    using var command = _connection.CreateCommand();
-                    command.CommandText = "PRAGMA journal_mode=WAL;";
-                    await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+                    using (var command = _connection.CreateCommand())
+                    {
+                        command.CommandText = "PRAGMA journal_mode=WAL;";
+                        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+                    }
                 }, CancellationToken.None, nameof(OpenAsync), true).ConfigureAwait(false);
             }
 
@@ -248,7 +250,9 @@ public sealed partial class SqliteDbService
         {
             try
             {
-                using var _ = File.Open(fullPath, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+                using (var _ = File.Open(fullPath, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite))
+                {
+                }
             }
             catch (Exception exception) when (exception is UnauthorizedAccessException or IOException)
             {
@@ -290,10 +294,12 @@ public sealed partial class SqliteDbService
     {
         try
         {
-            using var command = _connection.CreateCommand();
-            command.CommandText = "SELECT 1;";
-            var result = await command.ExecuteScalarAsync().ConfigureAwait(false);
-            return result is int or long && Convert.ToInt64(result) == 1L;
+            using (var command = _connection.CreateCommand())
+            {
+                command.CommandText = "SELECT 1;";
+                var result = await command.ExecuteScalarAsync().ConfigureAwait(false);
+                return result is int or long && Convert.ToInt64(result) == 1L;
+            }
         }
         catch (SqliteException)
         {

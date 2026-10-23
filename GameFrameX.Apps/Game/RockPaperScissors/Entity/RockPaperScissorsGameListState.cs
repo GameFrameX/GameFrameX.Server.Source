@@ -37,26 +37,3 @@ public sealed class RockPaperScissorsGameListState : BaseCacheState
     /// </summary>
     public Dictionary<long, RockPaperScissorsGameState> Games { get; set; } = new Dictionary<long, RockPaperScissorsGameState>();
 }
-
-public sealed class RockPaperScissorsGameState
-{
-    /// <summary>
-    /// 房间ID。
-    /// </summary>
-    public long RoomId { get; set; }
-
-    /// <summary>
-    /// 当前局数。
-    /// </summary>
-    public int Round { get; set; } = 1;
-
-    /// <summary>
-    /// 玩家出拳记录。Key: 玩家ID, Value: 出拳。
-    /// </summary>
-    public Dictionary<long, RockPaperScissorsGesture> GestureMap { get; set; } = new Dictionary<long, RockPaperScissorsGesture>();
-
-    /// <summary>
-    /// 胜利玩家ID。平局为0。
-    /// </summary>
-    public long WinnerRoleId { get; set; }
-}

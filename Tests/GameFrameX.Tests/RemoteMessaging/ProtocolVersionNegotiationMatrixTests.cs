@@ -333,10 +333,12 @@ public sealed class ProtocolVersionNegotiationMatrixTests : IAsyncLifetime
 
     private static int GetAvailableTcpPort()
     {
-        using var tcpClient = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
-        tcpClient.Start();
-        var port = ((IPEndPoint)tcpClient.LocalEndpoint).Port;
-        tcpClient.Stop();
-        return port;
+        using (var tcpClient = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0))
+        {
+            tcpClient.Start();
+            var port = ((IPEndPoint)tcpClient.LocalEndpoint).Port;
+            tcpClient.Stop();
+            return port;
+        }
     }
 }

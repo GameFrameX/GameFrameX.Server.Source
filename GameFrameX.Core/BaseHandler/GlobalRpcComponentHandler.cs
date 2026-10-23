@@ -64,34 +64,3 @@ public abstract class GlobalRpcComponentHandler<TRequest, TResponse> : BaseRpcCo
         return Task.FromResult(true);
     }
 }
-
-/// <summary>
-/// 全局组件处理器（RPC 版本）——泛型三参版本
-/// </summary>
-/// <typeparam name="T">组件代理类型，必须实现 <see cref="IComponentAgent"/> 接口，用于提供强类型的组件代理访问能力</typeparam>
-/// <typeparam name="TRequest">请求消息类型，必须实现 <see cref="IRequestMessage"/> 接口，且具备无参构造函数</typeparam>
-/// <typeparam name="TResponse">响应消息类型，必须实现 <see cref="IResponseMessage"/> 接口，且具备无参构造函数</typeparam>
-/// <remarks>
-/// 在双参版本基础上，额外提供泛型组件代理类型参数，使业务层可直接操作具体组件代理而无需强制转换，提升代码可读性与类型安全性。
-/// </remarks>
-public abstract class GlobalRpcComponentHandler<T, TRequest, TResponse> : GlobalRpcComponentHandler<TRequest, TResponse>
-    where T : IComponentAgent
-    where TRequest : class, IRequestMessage, new()
-    where TResponse : class, IResponseMessage, new()
-{
-    /// <summary>
-    /// 组件代理类型
-    /// </summary>
-    protected override Type ComponentAgentType
-    {
-        get { return typeof(T); }
-    }
-
-    /// <summary>
-    /// 缓存组件代理对象
-    /// </summary>
-    protected T ComponentAgent
-    {
-        get { return (T)CacheComponent; }
-    }
-}

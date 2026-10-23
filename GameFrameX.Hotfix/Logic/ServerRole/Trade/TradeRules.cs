@@ -185,34 +185,3 @@ internal static class TradeRules
         }
     }
 }
-
-/// <summary>
-/// 撮合成交明细（Rules 层中间结果，由 Agent 转为协议回执与流水落库）。
-/// </summary>
-public sealed class TradeMatchDeal
-{
-    /// <summary>
-    /// 对手挂单（maker）订单ID。
-    /// </summary>
-    public long OrderId { get; set; }
-
-    /// <summary>
-    /// 对手方玩家ID。
-    /// </summary>
-    public long CounterpartyPlayerId { get; set; }
-
-    /// <summary>
-    /// 成交数量。
-    /// </summary>
-    public int Quantity { get; set; }
-
-    /// <summary>
-    /// 成交单价（maker 价格）。
-    /// </summary>
-    public long UnitPrice { get; set; }
-
-    /// <summary>
-    /// 撮合后对手挂单剩余量（0 表示该挂单已全部成交并从订单簿移除）。
-    /// </summary>
-    public int MakerRemaining { get; set; }
-}

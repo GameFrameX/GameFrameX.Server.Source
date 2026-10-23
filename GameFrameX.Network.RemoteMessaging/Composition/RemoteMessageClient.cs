@@ -956,11 +956,13 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
             var requestUniqueId = _requestResponseMatcher.RegisterPendingRequest(timeoutMs);
             PrepareRequestMessage(requestMessage, requestUniqueId);
 
-            using var requestBuffer = _messageCodec.Encode(requestMessage);
-            await connection.WriteAsync(requestBuffer.Memory, cancellationToken);
+            using (var requestBuffer = _messageCodec.Encode(requestMessage))
+            {
+                await connection.WriteAsync(requestBuffer.Memory, cancellationToken);
 
-            RecordSuccess(serviceName);
-            await RunAfterInterceptorsAsync(context, requestMessage, null, 0);
+                RecordSuccess(serviceName);
+                await RunAfterInterceptorsAsync(context, requestMessage, null, 0);
+            }
         }
         catch (OperationCanceledException)
         {

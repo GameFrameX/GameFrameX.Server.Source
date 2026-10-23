@@ -53,23 +53,3 @@ public sealed class GetOnlinePlayerListHttpHandler : BaseHttpHandler
         return Task.FromResult(res);
     }
 }
-
-public sealed class GetOnlinePlayerListResponse : HttpMessageResponseBase
-{
-    [Description("当前在线玩家列表")] public List<PlayerSession> List { get; set; }
-}
-
-public sealed class GetOnlinePlayerListRequest : HttpMessageRequestBase
-{
-    /// <summary>
-    /// 当前页
-    /// </summary>
-    [Required, Range(0, int.MaxValue)]
-    public int PageIndex { get; set; }
-
-    /// <summary>
-    /// 每页显示数量
-    /// </summary>
-    [Required, Range(1, 100)]
-    public int PageSize { get; set; }
-}

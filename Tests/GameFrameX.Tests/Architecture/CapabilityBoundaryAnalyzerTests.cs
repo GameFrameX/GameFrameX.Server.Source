@@ -422,10 +422,12 @@ public sealed class CapabilityBoundaryAnalyzerTests
 
     private static MetadataReference Emit(string name, string source, params MetadataReference[] references)
     {
-        using var stream = new MemoryStream();
-        var result = Compile(name, source, references).Emit(stream);
-        Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics));
-        return MetadataReference.CreateFromImage(stream.ToArray());
+        using (var stream = new MemoryStream())
+        {
+            var result = Compile(name, source, references).Emit(stream);
+            Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics));
+            return MetadataReference.CreateFromImage(stream.ToArray());
+        }
     }
 
     private static void AssertNoErrors(Compilation compilation)

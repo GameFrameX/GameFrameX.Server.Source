@@ -50,39 +50,3 @@ public sealed class TeamState : BaseCacheState
     /// </summary>
     public long NextTeamId { get; set; } = 10001;
 }
-
-/// <summary>
-/// 单个队伍状态。
-/// </summary>
-public sealed class TeamStateItem
-{
-    /// <summary>
-    /// 队伍ID。
-    /// </summary>
-    public long TeamId { get; set; }
-
-    /// <summary>
-    /// 队伍名称。
-    /// </summary>
-    public string Name { get; set; }
-
-    /// <summary>
-    /// 队长玩家ID。
-    /// </summary>
-    public long LeaderId { get; set; }
-
-    /// <summary>
-    /// 成员列表（玩家ID，按加入顺序，首位为最早加入）。
-    /// </summary>
-    public List<long> Members { get; set; } = new List<long>();
-
-    /// <summary>
-    /// 成员数上限。
-    /// </summary>
-    public int MaxMemberCount { get; set; }
-
-    /// <summary>
-    /// 创建 Unix 秒。
-    /// </summary>
-    public long CreatedUnixTime { get; set; }
-}

@@ -1,0 +1,26 @@
+root = true
+
+[*.cs]
+# csharp-braces：所有控制流语句必须使用大括号（rules/csharp-braces.md），构建期按错误处理
+csharp_prefer_braces = true:error
+# 关闭「using 块 → using 声明」的简化建议；反方向（禁止 using 声明）由 GFX0021 强制
+csharp_prefer_simple_using_statement = false
+
+# 代码风格分析器（GameFrameX.Architecture.Analyzers 内 GFX0019/0020/0021）：严重级别统一在 .editorconfig 管理
+dotnet_diagnostic.GFX0019.severity = error
+dotnet_diagnostic.GFX0020.severity = error
+dotnet_diagnostic.GFX0021.severity = error
+
+# PB 库（vendored 生态移植，不按本仓风格改造，整目录排除）
+[GameFrameX.ProtoBuf.Net/**.cs]
+csharp_prefer_braces = true:none
+dotnet_diagnostic.IDE0011.severity = none
+dotnet_diagnostic.GFX0019.severity = none
+dotnet_diagnostic.GFX0020.severity = none
+dotnet_diagnostic.GFX0021.severity = none
+
+# Proto 协议生成物（ProtoExport 导出，手改会被整体清空；模板 README 明示）
+[GameFrameX.Proto/Proto/**.cs]
+dotnet_diagnostic.GFX0019.severity = none
+dotnet_diagnostic.GFX0020.severity = none
+dotnet_diagnostic.GFX0021.severity = none

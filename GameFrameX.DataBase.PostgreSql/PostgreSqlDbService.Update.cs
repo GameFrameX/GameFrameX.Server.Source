@@ -81,15 +81,17 @@ public sealed partial class PostgreSqlDbService
             var updated = await ExecuteWriteWithRetryAsync(async token =>
             {
                 await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-                using var context = CreateContext<TState>();
-                JoinAmbientTransaction(context);
-                var updatedRow = await ReplaceDocumentAsync(context, state, token).ConfigureAwait(false);
-                if (updatedRow)
+                using (var context = CreateContext<TState>())
                 {
-                    await context.SaveChangesAsync(token).ConfigureAwait(false);
-                }
+                    JoinAmbientTransaction(context);
+                    var updatedRow = await ReplaceDocumentAsync(context, state, token).ConfigureAwait(false);
+                    if (updatedRow)
+                    {
+                        await context.SaveChangesAsync(token).ConfigureAwait(false);
+                    }
 
-                return updatedRow;
+                    return updatedRow;
+                }
             }, cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
             if (updated)
             {
@@ -162,20 +164,22 @@ public sealed partial class PostgreSqlDbService
         var anyRowWritten = await ExecuteWriteWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            using var context = CreateContext<TState>();
-            JoinAmbientTransaction(context);
-            var written = false;
-            foreach (var (state, _) in changedStates)
+            using (var context = CreateContext<TState>())
             {
-                written |= await ReplaceDocumentAsync(context, state, token).ConfigureAwait(false);
-            }
+                JoinAmbientTransaction(context);
+                var written = false;
+                foreach (var (state, _) in changedStates)
+                {
+                    written |= await ReplaceDocumentAsync(context, state, token).ConfigureAwait(false);
+                }
 
-            if (written)
-            {
-                await context.SaveChangesAsync(token).ConfigureAwait(false);
-            }
+                if (written)
+                {
+                    await context.SaveChangesAsync(token).ConfigureAwait(false);
+                }
 
-            return written;
+                return written;
+            }
         }, cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
         if (anyRowWritten)
         {

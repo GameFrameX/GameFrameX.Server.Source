@@ -47,18 +47,6 @@ using Xunit;
 namespace GameFrameX.Hotfix.Tests;
 
 /// <summary>
-/// 共享 <see cref="HotfixManager" /> / <see cref="ComponentRegister" /> 进程级静态状态的测试禁并行 Collection
-///（<c>ComponentAgentEventDispatchTests</c> / <c>EventBindingTests</c> / <c>HotfixResolverInjectionTests</c> 串行，
-/// 与主套件 <c>OnlineAdminHotfixDispatcherTests</c> 同名 Collection 隔离口径一致）。
-/// </summary>
-[CollectionDefinition(Name, DisableParallelization = true)]
-public sealed class HotfixManagerStaticStateCollection
-{
-    /// <summary>Collection 名。</summary>
-    public const string Name = "HotfixManagerStaticState";
-}
-
-/// <summary>
 /// 组件代理侧事件派发单测（C289 扩展下沉 Core 后的 <c>agent.Dispatch(...)</c> 链路）：
 /// 派发只触发代理所属 actor 类型的监听器、监听器收到该 actor 的组件代理；
 /// 绑定同一事件类型但属于其他 actor 类型的监听器不触发。

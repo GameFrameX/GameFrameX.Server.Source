@@ -89,9 +89,11 @@ public sealed class PostgreSqlPlayerRouteStore : IPlayerRouteStore
     /// <returns>异步任务 / Async task</returns>
     public async Task EnsureSchemaAsync(CancellationToken cancellationToken = default)
     {
-        using var context = CreateContext();
-        var createScript = context.Database.GenerateCreateScript();
-        await PostgreSqlDiscoverySchema.ExecuteIdempotentCreateAsync(context, createScript, cancellationToken).ConfigureAwait(false);
+        using (var context = CreateContext())
+        {
+            var createScript = context.Database.GenerateCreateScript();
+            await PostgreSqlDiscoverySchema.ExecuteIdempotentCreateAsync(context, createScript, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -105,9 +107,11 @@ public sealed class PostgreSqlPlayerRouteStore : IPlayerRouteStore
     /// <returns>路由记录；缺失时为 null / The record, or null when absent</returns>
     public async Task<PlayerRouteRecord> GetAsync(long playerId, CancellationToken cancellationToken = default)
     {
-        using var context = CreateContext();
-        var row = await context.PlayerRoutes.AsNoTracking().FirstOrDefaultAsync(row => row.PlayerId == playerId, cancellationToken).ConfigureAwait(false);
-        return row == null ? null : ToRecord(row);
+        using (var context = CreateContext())
+        {
+            var row = await context.PlayerRoutes.AsNoTracking().FirstOrDefaultAsync(row => row.PlayerId == playerId, cancellationToken).ConfigureAwait(false);
+            return row == null ? null : ToRecord(row);
+        }
     }
 
     /// <summary>
@@ -174,22 +178,24 @@ public sealed class PostgreSqlPlayerRouteStore : IPlayerRouteStore
         {
             try
             {
-                using var context = CreateContext();
-                var row = await context.PlayerRoutes.FirstOrDefaultAsync(row => row.PlayerId == record.PlayerId, cancellationToken).ConfigureAwait(false);
-                if (row == null)
+                using (var context = CreateContext())
                 {
-                    context.PlayerRoutes.Add(new PlayerRouteRow { PlayerId = record.PlayerId, InstanceId = record.InstanceId ?? string.Empty, Role = record.Role ?? string.Empty, Version = 1, LastSeenAt = DateTime.UtcNow, });
-                }
-                else
-                {
-                    row.InstanceId = record.InstanceId ?? string.Empty;
-                    row.Role = record.Role ?? string.Empty;
-                    row.Version = 1;
-                    row.LastSeenAt = DateTime.UtcNow;
-                }
+                    var row = await context.PlayerRoutes.FirstOrDefaultAsync(row => row.PlayerId == record.PlayerId, cancellationToken).ConfigureAwait(false);
+                    if (row == null)
+                    {
+                        context.PlayerRoutes.Add(new PlayerRouteRow { PlayerId = record.PlayerId, InstanceId = record.InstanceId ?? string.Empty, Role = record.Role ?? string.Empty, Version = 1, LastSeenAt = DateTime.UtcNow, });
+                    }
+                    else
+                    {
+                        row.InstanceId = record.InstanceId ?? string.Empty;
+                        row.Role = record.Role ?? string.Empty;
+                        row.Version = 1;
+                        row.LastSeenAt = DateTime.UtcNow;
+                    }
 
-                await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-                return;
+                    await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                    return;
+                }
             }
             catch (DbUpdateException exception) when (attempt == 0 && (PostgreSqlSqlState.IsUniqueViolation(exception) || exception is DbUpdateConcurrencyException))
             {
@@ -210,8 +216,10 @@ public sealed class PostgreSqlPlayerRouteStore : IPlayerRouteStore
     /// <returns>异步任务 / Async task</returns>
     public async Task DeleteAsync(long playerId, CancellationToken cancellationToken = default)
     {
-        using var context = CreateContext();
-        await context.PlayerRoutes.Where(row => row.PlayerId == playerId).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+        using (var context = CreateContext())
+        {
+            await context.PlayerRoutes.Where(row => row.PlayerId == playerId).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -227,8 +235,10 @@ public sealed class PostgreSqlPlayerRouteStore : IPlayerRouteStore
     public async Task DeleteExpiredAsync(TimeSpan timeToLive, CancellationToken cancellationToken = default)
     {
         var cutoff = DateTime.UtcNow - timeToLive;
-        using var context = CreateContext();
-        await context.PlayerRoutes.Where(row => row.LastSeenAt < cutoff).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+        using (var context = CreateContext())
+        {
+            await context.PlayerRoutes.Where(row => row.LastSeenAt < cutoff).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>

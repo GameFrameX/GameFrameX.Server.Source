@@ -89,8 +89,10 @@ public sealed partial class SqliteDbService
         await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
-            using var command = BuildInsertCommand<TState>(state);
-            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            using (var command = BuildInsertCommand<TState>(state))
+            {
+                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            }
         }), cancellationToken, nameof(AddAsync), false).ConfigureAwait(false);
     }
 
@@ -146,9 +148,11 @@ public sealed partial class SqliteDbService
             {
                 foreach (var cacheState in cacheStates)
                 {
-                    using var command = BuildInsertCommand<TState>(cacheState);
-                    command.Transaction = transaction;
-                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                    using (var command = BuildInsertCommand<TState>(cacheState))
+                    {
+                        command.Transaction = transaction;
+                        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                    }
                 }
 
                 if (owned)
@@ -211,8 +215,10 @@ public sealed partial class SqliteDbService
         await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
-            using var command = BuildUpsertCommand<TState>(state);
-            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            using (var command = BuildUpsertCommand<TState>(state))
+            {
+                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            }
         }), cancellationToken, nameof(AddOrUpdateAsync), true).ConfigureAwait(false);
         state.SaveToDbPostHandler(persistedData);
         return state;
@@ -277,9 +283,11 @@ public sealed partial class SqliteDbService
             {
                 foreach (var state in stateArray)
                 {
-                    using var command = BuildUpsertCommand<TState>(state);
-                    command.Transaction = transaction;
-                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                    using (var command = BuildUpsertCommand<TState>(state))
+                    {
+                        command.Transaction = transaction;
+                        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                    }
                 }
 
                 if (owned)
@@ -377,9 +385,11 @@ public sealed partial class SqliteDbService
                 {
                     var state = stateList[index + offset];
                     batchSnapshots[offset] = (state, state.ToBytes());
-                    using var command = BuildUpsertCommand<TState>(state);
-                    command.Transaction = transaction;
-                    acknowledged += await command.ExecuteNonQueryAsync(CancellationToken.None).ConfigureAwait(false);
+                    using (var command = BuildUpsertCommand<TState>(state))
+                    {
+                        command.Transaction = transaction;
+                        acknowledged += await command.ExecuteNonQueryAsync(CancellationToken.None).ConfigureAwait(false);
+                    }
                 }
 
                 if (owned)
@@ -467,8 +477,10 @@ public sealed partial class SqliteDbService
             var updated = await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
             {
                 await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
-                using var command = BuildReplaceDocumentCommand<TState>(state);
-                return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) > 0;
+                using (var command = BuildReplaceDocumentCommand<TState>(state))
+                {
+                    return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) > 0;
+                }
             }), cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
             if (updated)
             {
@@ -545,9 +557,11 @@ public sealed partial class SqliteDbService
             {
                 foreach (var (state, _) in changedStates)
                 {
-                    using var command = BuildReplaceDocumentCommand<TState>(state);
-                    command.Transaction = transaction;
-                    written |= await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) > 0;
+                    using (var command = BuildReplaceDocumentCommand<TState>(state))
+                    {
+                        command.Transaction = transaction;
+                        written |= await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) > 0;
+                    }
                 }
 
                 if (owned)
@@ -703,9 +717,11 @@ public sealed partial class SqliteDbService
         // UpdateTime/UpdateCount always advance: a visible row with non-empty fields always counts as modified.
         document.UpdateTime = GetCurrentTimestamp();
         document.UpdateCount = (document.UpdateCount ?? 0) + 1;
-        using var command = BuildReplaceDocumentCommand<TState>(document);
-        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        return 1L;
+        using (var command = BuildReplaceDocumentCommand<TState>(document))
+        {
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            return 1L;
+        }
     }
 
     /// <summary>
@@ -880,9 +896,11 @@ public sealed partial class SqliteDbService
                 {
                     document.IsDeleted = true;
                     document.DeleteTime = deleteTime;
-                    using var command = BuildReplaceDocumentCommand<TState>(document);
-                    command.Transaction = transaction;
-                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                    using (var command = BuildReplaceDocumentCommand<TState>(document))
+                    {
+                        command.Transaction = transaction;
+                        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                    }
                 }
 
                 if (owned)
@@ -969,11 +987,13 @@ public sealed partial class SqliteDbService
         {
             foreach (var id in ids)
             {
-                using var command = _connection.CreateCommand();
-                command.Transaction = transaction;
-                command.CommandText = BuildDeleteByIdCommandText<TState>();
-                command.Parameters.AddWithValue("$id", id);
-                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                using (var command = _connection.CreateCommand())
+                {
+                    command.Transaction = transaction;
+                    command.CommandText = BuildDeleteByIdCommandText<TState>();
+                    command.Parameters.AddWithValue("$id", id);
+                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                }
             }
 
             if (owned)
@@ -1063,9 +1083,11 @@ public sealed partial class SqliteDbService
             {
                 document.IsDeleted = false;
                 document.DeleteTime = null;
-                using var command = BuildReplaceDocumentCommand<TState>(document);
-                command.Transaction = transaction;
-                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                using (var command = BuildReplaceDocumentCommand<TState>(document))
+                {
+                    command.Transaction = transaction;
+                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                }
             }
 
             if (owned)
@@ -1136,17 +1158,19 @@ public sealed partial class SqliteDbService
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-            AmbientTransaction.Value = transaction;
-            try
+            await using (var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false))
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                await action().ConfigureAwait(false);
-                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                AmbientTransaction.Value = null;
+                AmbientTransaction.Value = transaction;
+                try
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await action().ConfigureAwait(false);
+                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    AmbientTransaction.Value = null;
+                }
             }
         }
         finally
@@ -1190,9 +1214,11 @@ public sealed partial class SqliteDbService
 
             document.IsDeleted = true;
             document.DeleteTime = deleteTime;
-            using var command = BuildReplaceDocumentCommand<TState>(document);
-            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-            return 1L;
+            using (var command = BuildReplaceDocumentCommand<TState>(document))
+            {
+                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                return 1L;
+            }
             }), cancellationToken, operationName, true).ConfigureAwait(false);
     }
 
@@ -1223,26 +1249,30 @@ public sealed partial class SqliteDbService
             }
 
             long modifiedCount = 0;
-            await using var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-            foreach (var document in rows)
+            await using (var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false))
             {
-                if (document.IsDeleted == true && document.DeleteTime == deleteTime)
+                foreach (var document in rows)
                 {
-                    // 同毫秒重复删除：文档不变计 0（幂等，对齐单条路径）。
-                    // Same-timestamp repeat: the document is unchanged and counts as 0 (idempotent, single-row parity).
-                    continue;
+                    if (document.IsDeleted == true && document.DeleteTime == deleteTime)
+                    {
+                        // 同毫秒重复删除：文档不变计 0（幂等，对齐单条路径）。
+                        // Same-timestamp repeat: the document is unchanged and counts as 0 (idempotent, single-row parity).
+                        continue;
+                    }
+
+                    document.IsDeleted = true;
+                    document.DeleteTime = deleteTime;
+                    using (var command = BuildReplaceDocumentCommand<TState>(document))
+                    {
+                        command.Transaction = transaction;
+                        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                        modifiedCount++;
+                    }
                 }
 
-                document.IsDeleted = true;
-                document.DeleteTime = deleteTime;
-                using var command = BuildReplaceDocumentCommand<TState>(document);
-                command.Transaction = transaction;
-                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-                modifiedCount++;
+                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                return modifiedCount;
             }
-
-            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-            return modifiedCount;
         }), cancellationToken, operationName, true).ConfigureAwait(false);
     }
 
@@ -1404,9 +1434,11 @@ public sealed partial class SqliteDbService
     /// <returns>异步任务 / Async task</returns>
     private async Task CreateTableAsync<TState>() where TState : BaseCacheState, new()
     {
-        using var command = _connection.CreateCommand();
-        command.CommandText = BuildCreateTableCommandText<TState>();
-        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+        using (var command = _connection.CreateCommand())
+        {
+            command.CommandText = BuildCreateTableCommandText<TState>();
+            await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+        }
     }
 
     /// <summary>

@@ -39,122 +39,6 @@ using MongoDB.Bson.Serialization.Options;
 namespace GameFrameX.DataBase.Mongo;
 
 /// <summary>
-/// 字典序列化形态约定：统一使用 <see cref="DictionaryRepresentation.ArrayOfDocuments"/>（存量数据兼容形态）。
-/// </summary>
-/// <remarks>
-/// Dictionary representation convention: forces <see cref="DictionaryRepresentation.ArrayOfDocuments"/>
-/// (the legacy-compatible on-disk form).
-/// </remarks>
-internal sealed class DictionaryRepresentationConvention : ConventionBase, IMemberMapConvention
-{
-    private readonly DictionaryRepresentation _dictionaryRepresentation;
-
-    /// <summary>
-    /// 初始化字典序列化形态约定。
-    /// </summary>
-    /// <remarks>
-    /// Initializes the dictionary representation convention.
-    /// </remarks>
-    /// <param name="dictionaryRepresentation">字典序列化形态 / Dictionary representation</param>
-    public DictionaryRepresentationConvention(DictionaryRepresentation dictionaryRepresentation = DictionaryRepresentation.ArrayOfDocuments)
-    {
-        _dictionaryRepresentation = dictionaryRepresentation;
-    }
-
-    /// <summary>
-    /// 应用约定到成员映射。
-    /// </summary>
-    /// <remarks>
-    /// Applies the convention to the member map.
-    /// </remarks>
-    /// <param name="memberMap">成员映射 / Member map</param>
-    public void Apply(BsonMemberMap memberMap)
-    {
-        var serializer = memberMap.GetSerializer();
-        if (serializer is IDictionaryRepresentationConfigurable dictionaryRepresentationConfigurable)
-        {
-            var reconfiguredSerializer = dictionaryRepresentationConfigurable.WithDictionaryRepresentation(_dictionaryRepresentation);
-            memberMap.SetSerializer(reconfiguredSerializer);
-        }
-    }
-}
-
-/// <summary>
-/// 空容器跳过约定：空 <see cref="List{T}"/> / 字典成员不写入文档（保持存量文档形态）。
-/// </summary>
-/// <remarks>
-/// Empty-container skipping convention: empty <see cref="List{T}"/> / dictionary members are omitted
-/// from the document (preserves the legacy on-disk form).
-/// </remarks>
-internal sealed class EmptyContainerSerializeMethodConvention : ConventionBase, IMemberMapConvention
-{
-    /// <summary>
-    /// 应用约定到成员映射。
-    /// </summary>
-    /// <remarks>
-    /// Applies the convention to the member map.
-    /// </remarks>
-    /// <param name="memberMap">成员映射 / Member map</param>
-    public void Apply(BsonMemberMap memberMap)
-    {
-        if (!memberMap.MemberType.IsGenericType)
-        {
-            return;
-        }
-
-        var genType = memberMap.MemberType.GetGenericTypeDefinition();
-        if (genType == typeof(List<>))
-        {
-            SetListShouldSerializeWhenNonEmpty(memberMap);
-        }
-        else if (genType == typeof(ConcurrentDictionary<,>) || genType == typeof(Dictionary<,>))
-        {
-            SetDictionaryShouldSerializeWhenNonEmpty(memberMap);
-        }
-    }
-
-    private static void SetListShouldSerializeWhenNonEmpty(BsonMemberMap memberMap)
-    {
-        memberMap.SetShouldSerializeMethod(o =>
-        {
-            var value = memberMap.Getter(o);
-            if (value is IList list)
-            {
-                return list.Count > 0;
-            }
-
-            return true;
-        });
-    }
-
-    private static void SetDictionaryShouldSerializeWhenNonEmpty(BsonMemberMap memberMap)
-    {
-        memberMap.SetShouldSerializeMethod(o =>
-        {
-            if (o == null)
-            {
-                return true;
-            }
-
-            var value = memberMap.Getter(o);
-            if (value == null)
-            {
-                return true;
-            }
-
-            var countProperty = value.GetType().GetProperty("Count");
-            if (countProperty == null)
-            {
-                return true;
-            }
-
-            var count = (int)countProperty.GetValue(value, null);
-            return count > 0;
-        });
-    }
-}
-
-/// <summary>
 /// Mongo 序列化准备注册器：把全部 BSON 序列化指令（ConventionPack 与 ClassMap）内聚在 Mongo Provider 模块内，
 /// 业务状态对象零 Mongo 特性、零 Mongo 基类即可获得与旧 <c>CacheState</c> 子类一致的序列化行为。
 /// </summary>
@@ -251,6 +135,122 @@ internal static class MongoSerializationRegistry
             bsonClassMap.SetIgnoreExtraElements(true);
             bsonClassMap.SetIgnoreExtraElementsIsInherited(true);
             BsonClassMap.RegisterClassMap(bsonClassMap);
+        }
+    }
+
+    /// <summary>
+    /// 字典序列化形态约定：统一使用 <see cref="DictionaryRepresentation.ArrayOfDocuments"/>（存量数据兼容形态）。
+    /// </summary>
+    /// <remarks>
+    /// Dictionary representation convention: forces <see cref="DictionaryRepresentation.ArrayOfDocuments"/>
+    /// (the legacy-compatible on-disk form).
+    /// </remarks>
+    internal sealed class DictionaryRepresentationConvention : ConventionBase, IMemberMapConvention
+    {
+        private readonly DictionaryRepresentation _dictionaryRepresentation;
+
+        /// <summary>
+        /// 初始化字典序列化形态约定。
+        /// </summary>
+        /// <remarks>
+        /// Initializes the dictionary representation convention.
+        /// </remarks>
+        /// <param name="dictionaryRepresentation">字典序列化形态 / Dictionary representation</param>
+        public DictionaryRepresentationConvention(DictionaryRepresentation dictionaryRepresentation = DictionaryRepresentation.ArrayOfDocuments)
+        {
+            _dictionaryRepresentation = dictionaryRepresentation;
+        }
+
+        /// <summary>
+        /// 应用约定到成员映射。
+        /// </summary>
+        /// <remarks>
+        /// Applies the convention to the member map.
+        /// </remarks>
+        /// <param name="memberMap">成员映射 / Member map</param>
+        public void Apply(BsonMemberMap memberMap)
+        {
+            var serializer = memberMap.GetSerializer();
+            if (serializer is IDictionaryRepresentationConfigurable dictionaryRepresentationConfigurable)
+            {
+                var reconfiguredSerializer = dictionaryRepresentationConfigurable.WithDictionaryRepresentation(_dictionaryRepresentation);
+                memberMap.SetSerializer(reconfiguredSerializer);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 空容器跳过约定：空 <see cref="List{T}"/> / 字典成员不写入文档（保持存量文档形态）。
+    /// </summary>
+    /// <remarks>
+    /// Empty-container skipping convention: empty <see cref="List{T}"/> / dictionary members are omitted
+    /// from the document (preserves the legacy on-disk form).
+    /// </remarks>
+    internal sealed class EmptyContainerSerializeMethodConvention : ConventionBase, IMemberMapConvention
+    {
+        /// <summary>
+        /// 应用约定到成员映射。
+        /// </summary>
+        /// <remarks>
+        /// Applies the convention to the member map.
+        /// </remarks>
+        /// <param name="memberMap">成员映射 / Member map</param>
+        public void Apply(BsonMemberMap memberMap)
+        {
+            if (!memberMap.MemberType.IsGenericType)
+            {
+                return;
+            }
+
+            var genType = memberMap.MemberType.GetGenericTypeDefinition();
+            if (genType == typeof(List<>))
+            {
+                SetListShouldSerializeWhenNonEmpty(memberMap);
+            }
+            else if (genType == typeof(ConcurrentDictionary<,>) || genType == typeof(Dictionary<,>))
+            {
+                SetDictionaryShouldSerializeWhenNonEmpty(memberMap);
+            }
+        }
+
+        private static void SetListShouldSerializeWhenNonEmpty(BsonMemberMap memberMap)
+        {
+            memberMap.SetShouldSerializeMethod(o =>
+            {
+                var value = memberMap.Getter(o);
+                if (value is IList list)
+                {
+                    return list.Count > 0;
+                }
+
+                return true;
+            });
+        }
+
+        private static void SetDictionaryShouldSerializeWhenNonEmpty(BsonMemberMap memberMap)
+        {
+            memberMap.SetShouldSerializeMethod(o =>
+            {
+                if (o == null)
+                {
+                    return true;
+                }
+
+                var value = memberMap.Getter(o);
+                if (value == null)
+                {
+                    return true;
+                }
+
+                var countProperty = value.GetType().GetProperty("Count");
+                if (countProperty == null)
+                {
+                    return true;
+                }
+
+                var count = (int)countProperty.GetValue(value, null);
+                return count > 0;
+            });
         }
     }
 }

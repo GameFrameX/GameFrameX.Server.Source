@@ -320,15 +320,19 @@ public sealed class PostgreSqlPlayerRouteIntegrationTests : IDisposable
     /// </remarks>
     private static async Task<(string InstanceId, string Role, long Version)?> ReadRouteAsync(NpgsqlDataSource dataSource, long playerId)
     {
-        await using var command = dataSource.CreateCommand("SELECT instance_id, role, version FROM player_route WHERE player_id = $1;");
-        command.Parameters.AddWithValue(playerId);
-        await using var reader = await command.ExecuteReaderAsync();
-        if (!await reader.ReadAsync())
+        await using (var command = dataSource.CreateCommand("SELECT instance_id, role, version FROM player_route WHERE player_id = $1;"))
         {
-            return null;
-        }
+            command.Parameters.AddWithValue(playerId);
+            await using (var reader = await command.ExecuteReaderAsync())
+            {
+                if (!await reader.ReadAsync())
+                {
+                    return null;
+                }
 
-        return (reader.GetString(0), reader.GetString(1), reader.GetInt64(2));
+                return (reader.GetString(0), reader.GetString(1), reader.GetInt64(2));
+            }
+        }
     }
 
     /// <summary>
@@ -339,11 +343,13 @@ public sealed class PostgreSqlPlayerRouteIntegrationTests : IDisposable
     /// </remarks>
     private static async Task InsertRouteAsync(NpgsqlDataSource dataSource, long playerId, string instanceId, string role)
     {
-        await using var command = dataSource.CreateCommand("INSERT INTO player_route (player_id, instance_id, role, version, last_seen_at) VALUES ($1, $2, $3, 1, now());");
-        command.Parameters.AddWithValue(playerId);
-        command.Parameters.AddWithValue(instanceId);
-        command.Parameters.AddWithValue(role);
-        await command.ExecuteNonQueryAsync();
+        await using (var command = dataSource.CreateCommand("INSERT INTO player_route (player_id, instance_id, role, version, last_seen_at) VALUES ($1, $2, $3, 1, now());"))
+        {
+            command.Parameters.AddWithValue(playerId);
+            command.Parameters.AddWithValue(instanceId);
+            command.Parameters.AddWithValue(role);
+            await command.ExecuteNonQueryAsync();
+        }
     }
 
     /// <summary>
@@ -355,15 +361,19 @@ public sealed class PostgreSqlPlayerRouteIntegrationTests : IDisposable
     private static async Task<List<string>> ReadIndexNamesAsync(NpgsqlDataSource dataSource, string tableName)
     {
         var names = new List<string>();
-        await using var command = dataSource.CreateCommand("SELECT indexname FROM pg_indexes WHERE tablename = $1;");
-        command.Parameters.AddWithValue(tableName);
-        await using var reader = await command.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
+        await using (var command = dataSource.CreateCommand("SELECT indexname FROM pg_indexes WHERE tablename = $1;"))
         {
-            names.Add(reader.GetString(0));
-        }
+            command.Parameters.AddWithValue(tableName);
+            await using (var reader = await command.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    names.Add(reader.GetString(0));
+                }
 
-        return names;
+                return names;
+            }
+        }
     }
 
     /// <summary>

@@ -476,17 +476,21 @@ public sealed class InterServerKcpTransportTests : IAsyncLifetime
 
     private static int GetAvailableUdpPort()
     {
-        using var udpClient = new System.Net.Sockets.UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
-        return ((IPEndPoint)udpClient.Client.LocalEndPoint).Port;
+        using (var udpClient = new System.Net.Sockets.UdpClient(new IPEndPoint(IPAddress.Loopback, 0)))
+        {
+            return ((IPEndPoint)udpClient.Client.LocalEndPoint).Port;
+        }
     }
 
     private static int GetAvailableTcpPort()
     {
-        using var tcpClient = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
-        tcpClient.Start();
-        var port = ((IPEndPoint)tcpClient.LocalEndpoint).Port;
-        tcpClient.Stop();
-        return port;
+        using (var tcpClient = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0))
+        {
+            tcpClient.Start();
+            var port = ((IPEndPoint)tcpClient.LocalEndpoint).Port;
+            tcpClient.Stop();
+            return port;
+        }
     }
 }
 

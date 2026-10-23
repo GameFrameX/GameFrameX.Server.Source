@@ -103,9 +103,11 @@ internal sealed class PostgreSqlTestDatabase : IAsyncDisposable
         await using (var maintenanceConnection = new NpgsqlConnection(maintenanceConnectionString))
         {
             await maintenanceConnection.OpenAsync();
-            await using var createCommand = maintenanceConnection.CreateCommand();
-            createCommand.CommandText = $"CREATE DATABASE {databaseName};";
-            await createCommand.ExecuteNonQueryAsync();
+            await using (var createCommand = maintenanceConnection.CreateCommand())
+            {
+                createCommand.CommandText = $"CREATE DATABASE {databaseName};";
+                await createCommand.ExecuteNonQueryAsync();
+            }
         }
 
         var testBuilder = new NpgsqlConnectionStringBuilder(connectionString) { Database = databaseName };
@@ -125,11 +127,15 @@ internal sealed class PostgreSqlTestDatabase : IAsyncDisposable
         await DataSource.DisposeAsync();
         try
         {
-            await using var maintenanceConnection = new NpgsqlConnection(_maintenanceConnectionString);
-            await maintenanceConnection.OpenAsync();
-            await using var dropCommand = maintenanceConnection.CreateCommand();
-            dropCommand.CommandText = $"DROP DATABASE {_databaseName} WITH (FORCE);";
-            await dropCommand.ExecuteNonQueryAsync();
+            await using (var maintenanceConnection = new NpgsqlConnection(_maintenanceConnectionString))
+            {
+                await maintenanceConnection.OpenAsync();
+                await using (var dropCommand = maintenanceConnection.CreateCommand())
+                {
+                    dropCommand.CommandText = $"DROP DATABASE {_databaseName} WITH (FORCE);";
+                    await dropCommand.ExecuteNonQueryAsync();
+                }
+            }
         }
         catch (Exception)
         {

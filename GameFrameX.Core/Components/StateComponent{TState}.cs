@@ -1,0 +1,278 @@
+// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes and liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository: https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:  https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository:  https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+using System.Collections.Concurrent;
+using GameFrameX.Core.Actors;
+using GameFrameX.Core.Timer;
+using GameFrameX.DataBase;
+using GameFrameX.Foundation.Extensions;
+using GameFrameX.Foundation.Logger;
+using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Utility.Setting;
+
+namespace GameFrameX.Core.Components;
+
+/// <summary>
+/// 数据状态组件
+/// </summary>
+/// <typeparam name="TState"></typeparam>
+public abstract class StateComponent<TState> : BaseComponent where TState : BaseCacheState, new()
+{
+    private static readonly ConcurrentDictionary<long, TState> StateDic = new ConcurrentDictionary<long, TState>();
+
+    static StateComponent()
+    {
+        StateComponent.AddShutdownSaveFunc(SaveAllAsync);
+    }
+
+    /// <summary>
+    /// 数据对象
+    /// </summary>
+    public TState State { get; private set; }
+
+    /// <summary>
+    /// 判断组件是否准备好进入非激活状态
+    /// 当State为空或State未被修改时返回true,表示可以进入非激活状态
+    /// </summary>
+    internal override bool ReadyToInactive
+    {
+        get { return State == null || !State.IsModify(); }
+    }
+
+    /// <summary>
+    /// 激活状态的时候异步读取数据
+    /// </summary>
+    /// <returns>返回查询的数据结果对象，没有数据返回null</returns>
+    protected virtual Task<TState> ActiveReadStateAsync()
+    {
+        return Task.FromResult<TState>(null);
+    }
+
+    /// <summary>
+    /// 是否创建默认数据
+    /// </summary>
+    protected virtual bool IsCreateDefaultState { get; set; } = true;
+
+    /// <summary>
+    /// 准备并读取状态数据
+    /// 子类不要重写该函数，而是重写ActiveReadStateAsync函数
+    /// </summary>
+    /// <returns>异步任务</returns>
+    public override async Task ReadStateAsync()
+    {
+        try
+        {
+            State = await ActiveReadStateAsync();
+        }
+        catch (Exception e)
+        {
+            LogHelper.Error(e);
+        }
+
+        if (State.IsNull())
+        {
+            State = await GameDb.FindAsync<TState>(ActorId, default, IsCreateDefaultState);
+        }
+
+        if (State.IsNotNull())
+        {
+            StateDic.TryRemove(State.Id, out _);
+            StateDic.TryAdd(State.Id, State);
+        }
+    }
+
+    /// <summary>
+    /// 激活组件，如果状态为空则读取状态数据
+    /// </summary>
+    /// <returns>异步任务</returns>
+    public override async Task ActiveAsync()
+    {
+        await base.ActiveAsync();
+        if (State != null)
+        {
+            return;
+        }
+
+        await ReadStateAsync();
+    }
+
+    /// <summary>
+    /// 反激活组件，从状态字典中移除当前Actor的状态
+    /// </summary>
+    /// <returns>异步任务</returns>
+    public override Task InactiveAsync()
+    {
+        StateDic.TryRemove(ActorId, out _);
+        return base.InactiveAsync();
+    }
+
+    /// <summary>
+    /// 保存状态到数据库
+    /// </summary>
+    /// <returns>异步任务</returns>
+    protected async Task SaveStateAsync()
+    {
+        try
+        {
+            if (State.IsNotNull())
+            {
+                await GameDb.UpdateAsync(State);
+            }
+        }
+        catch (Exception e)
+        {
+            // Localization: Core.StateComponent.SaveStateFailedLog - StateComponent.SaveStateAsync Failed 状态ID:{0} , 错误:{1} , 消息: 状态组件保存状态失败。状态ID:{2},{3}
+            LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveStateFailedLog, State.Id, e, State.Id, e));
+        }
+    }
+
+    /// <summary>
+    /// 异步写入状态到数据库
+    /// </summary>
+    /// <returns>异步任务</returns>
+    public override async Task WriteStateAsync()
+    {
+        await SaveStateAsync();
+    }
+
+    #region 仅DBModel.Mongodb调用
+
+    /// <summary>
+    /// 保存所有状态数据到数据库
+    /// </summary>
+    /// <param name="shutdown">是否为关服保存</param>
+    /// <param name="force">是否强制保存所有数据</param>
+    /// <returns>异步任务</returns>
+    public static async Task SaveAllAsync(bool shutdown, bool force = false)
+    {
+        var stateList = new List<TState>();
+
+        if (shutdown)
+        {
+            CollectShutdownWrites(stateList);
+        }
+        else
+        {
+            await CollectActorWritesAsync(stateList, force);
+        }
+
+        if (!stateList.IsNullOrEmpty())
+        {
+            await ExecuteBatchWritesAsync(stateList, shutdown);
+        }
+    }
+
+    /// <summary>
+    /// 关服保存：顺序遍历所有已修改的状态，收集待写入状态
+    /// </summary>
+    /// <param name="stateList">待写入的状态列表</param>
+    private static void CollectShutdownWrites(List<TState> stateList)
+    {
+        foreach (var state in StateDic.Values)
+        {
+            if (!state.IsModify())
+            {
+                continue;
+            }
+
+            AppendWrite(stateList, state);
+        }
+    }
+
+    /// <summary>
+    /// 非关服保存：将各状态的写入操作派发到对应 Actor 上并发执行，回填待写入状态
+    /// </summary>
+    /// <param name="stateList">待写入的状态列表</param>
+    /// <param name="force">是否强制保存</param>
+    /// <returns>异步任务</returns>
+    private static async Task CollectActorWritesAsync(List<TState> stateList, bool force)
+    {
+        var tasks = new List<Task>();
+
+        foreach (var state in StateDic.Values)
+        {
+            var actor = ActorManager.GetActor(state.Id);
+            if (actor == null)
+            {
+                continue;
+            }
+
+            tasks.Add(actor.SendAsync(() =>
+            {
+                if (!force && !state.IsModify())
+                {
+                    return;
+                }
+
+                AppendWrite(stateList, state);
+            }, GlobalSettings.CurrentSetting.SaveDataBatchTimeOut));
+        }
+
+        await Task.WhenAll(tasks);
+    }
+
+    /// <summary>
+    /// 将单个状态追加到批量写入列表（线程安全，关服/非关服分支共用）
+    /// </summary>
+    /// <param name="stateList">待写入的状态列表</param>
+    /// <param name="state">要写入的状态</param>
+    private static void AppendWrite(List<TState> stateList, TState state)
+    {
+        lock (stateList)
+        {
+            stateList.Add(state);
+        }
+    }
+
+    /// <summary>
+    /// 经 GameDb 统一入口按配置批量大小执行批量 upsert 保存，并处理写入结果
+    /// </summary>
+    /// <param name="stateList">待写入的状态列表</param>
+    /// <param name="shutdown">是否为关服保存</param>
+    /// <returns>异步任务</returns>
+    private static async Task ExecuteBatchWritesAsync(List<TState> stateList, bool shutdown)
+    {
+        var stateName = typeof(TState).Name;
+        // Localization: Core.StateComponent.StateSaveBackDetail - StateComponent.StateSaveBack 状态回存 名称:{0} 数量:{1}
+        LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.StateComponent.StateSaveBackDetail, stateName, stateList.Count));
+        // 批量保存统一走 GameDb.SaveBulkAsync（分批 upsert、逐批 ack/异常隔离在 DataBase 层实现）；
+        // ack 批次内逐状态按送库快照精确提交脏检查基线（C263，原 NotifyBatchSaved 参数less 提交有无锁竞态，已退役）；
+        // 门面默认库由业务库 DbOptions.IsDefault（缺省 true）在注册时声明式提名（C183），
+        // Core 不再直接依赖 MongoDB.Driver / GameFrameX.DataBase.Mongo（取代原先的按名直连方案）。
+        var savedStates = await GameDb.SaveBulkAsync(stateList, GlobalSettings.CurrentSetting.SaveDataBatchCount);
+
+        if (savedStates.Count < stateList.Count && shutdown)
+        {
+            // Localization: Core.StateComponent.SaveDataFailedLog - StateComponent.SaveDataFailed 状态名称:{0} , 消息: 保存数据失败，类型:{1}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveDataFailedLog, stateName, typeof(TState).FullName));
+        }
+    }
+
+    #endregion
+}

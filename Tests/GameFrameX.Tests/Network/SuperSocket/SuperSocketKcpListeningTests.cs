@@ -117,15 +117,17 @@ public class SuperSocketKcpListeningTests : IAsyncLifetime
     [Fact]
     public async Task KcpServer_AfterStart_ShouldListenOnUdpPort()
     {
-        using var udpClient = new UdpClient();
-        var datagram = CreateMinimalKcpDatagram(1001u);
+        using (var udpClient = new UdpClient())
+        {
+            var datagram = CreateMinimalKcpDatagram(1001u);
 
-        // 真实 UDP 发送：服务器对未知 conv 的合法 KCP 包建连并触发 OnConnected
-        await udpClient.SendAsync(datagram, datagram.Length, new IPEndPoint(IPAddress.Loopback, _kcpPort));
+            // 真实 UDP 发送：服务器对未知 conv 的合法 KCP 包建连并触发 OnConnected
+            await udpClient.SendAsync(datagram, datagram.Length, new IPEndPoint(IPAddress.Loopback, _kcpPort));
 
-        var connectedTask = _sessionConnected.Task;
-        await Task.WhenAny(connectedTask, Task.Delay(TimeSpan.FromSeconds(5)));
-        Assert.True(connectedTask.IsCompleted, $"Expected a session to be established on UDP port {_kcpPort} after sending a minimal KCP datagram.");
+            var connectedTask = _sessionConnected.Task;
+            await Task.WhenAny(connectedTask, Task.Delay(TimeSpan.FromSeconds(5)));
+            Assert.True(connectedTask.IsCompleted, $"Expected a session to be established on UDP port {_kcpPort} after sending a minimal KCP datagram.");
+        }
     }
 
     /// <summary>
@@ -152,8 +154,10 @@ public class SuperSocketKcpListeningTests : IAsyncLifetime
     /// </summary>
     private static int GetAvailableUdpPort()
     {
-        using var udpClient = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
-        return ((IPEndPoint)udpClient.Client.LocalEndPoint).Port;
+        using (var udpClient = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0)))
+        {
+            return ((IPEndPoint)udpClient.Client.LocalEndPoint).Port;
+        }
     }
 
     private ValueTask OnConnected(IAppSession session)

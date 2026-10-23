@@ -83,42 +83,4 @@ namespace GameFrameX.Hotfix.Logic.Http.Mail
             return HttpJsonResultData<string>.SuccessString(JsonHelper.Serialize(response));
         }
     }
-
-    /// <summary>
-    /// 撤回 Campaign 请求体。
-    /// </summary>
-    public sealed class RevokeMailCampaignRequest : HttpMessageRequestBase
-    {
-        /// <summary>Campaign ID。</summary>
-        [Required]
-        [Range(1, long.MaxValue)]
-        [Description("Campaign ID")]
-        public long CampaignId { get; set; }
-
-        /// <summary>撤回操作人（Admin 账号）。</summary>
-        [Description("撤回操作人")]
-        public string Operator { get; set; }
-    }
-
-    /// <summary>
-    /// 撤回 Campaign 响应体。
-    /// </summary>
-    public sealed class RevokeMailCampaignResponse : HttpMessageResponseBase
-    {
-        /// <summary>业务码。</summary>
-        [Description("业务码")]
-        public MailCampaignErrorCode Code { get; set; }
-
-        /// <summary>Campaign ID。</summary>
-        [Description("CampaignId")]
-        public long CampaignId { get; set; }
-
-        /// <summary>撤回时间（Unix 秒，UTC）。撤回失败时为 0。</summary>
-        [Description("撤回时间")]
-        public long RevokedAt { get; set; }
-
-        /// <summary>提示信息。</summary>
-        [Description("提示信息")]
-        public string Message { get; set; }
-    }
 }

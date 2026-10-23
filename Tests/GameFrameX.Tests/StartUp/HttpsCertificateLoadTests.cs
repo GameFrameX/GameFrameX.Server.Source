@@ -48,10 +48,14 @@ public class HttpsCertificateLoadTests : IDisposable
     public HttpsCertificateLoadTests()
     {
         _pfxPath = Path.Combine(Path.GetTempPath(), $"gfx911-{Guid.NewGuid():N}.pfx");
-        using var rsa = RSA.Create(2048);
-        var request = new CertificateRequest("CN=gameframex-https-test", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-        using var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1));
-        File.WriteAllBytes(_pfxPath, certificate.Export(X509ContentType.Pfx, "test-password"));
+        using (var rsa = RSA.Create(2048))
+        {
+            var request = new CertificateRequest("CN=gameframex-https-test", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+            using (var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1)))
+            {
+                File.WriteAllBytes(_pfxPath, certificate.Export(X509ContentType.Pfx, "test-password"));
+            }
+        }
     }
 
     public void Dispose()
@@ -98,10 +102,11 @@ public class HttpsCertificateLoadTests : IDisposable
     {
         var setting = new AppSetting { HttpsPort = 8443, HttpsCertPath = _pfxPath, HttpsCertPassword = "test-password" };
 
-        using var certificate = AppStartUpBase.LoadHttpsCertificate(setting);
-
-        Assert.NotNull(certificate);
-        Assert.Equal("CN=gameframex-https-test", certificate.Subject);
-        Assert.True(certificate.HasPrivateKey);
+        using (var certificate = AppStartUpBase.LoadHttpsCertificate(setting))
+        {
+            Assert.NotNull(certificate);
+            Assert.Equal("CN=gameframex-https-test", certificate.Subject);
+            Assert.True(certificate.HasPrivateKey);
+        }
     }
 }

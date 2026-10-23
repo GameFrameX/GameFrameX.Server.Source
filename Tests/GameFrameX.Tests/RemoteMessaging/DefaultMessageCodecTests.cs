@@ -39,18 +39,20 @@ public class DefaultMessageCodecTests
     public async Task DecodeAsync_ShouldThrowInvalidDataException_WhenPacketLengthIsSmallerThanHeader()
     {
         var codec = CreateCodec(maxPacketSize: 64, maxDecompressedSize: 64);
-        await using var stream = CreateLengthOnlyStream(13);
-
-        await Assert.ThrowsAsync<InvalidDataException>(() => codec.DecodeAsync(stream, CancellationToken.None));
+        await using (var stream = CreateLengthOnlyStream(13))
+        {
+            await Assert.ThrowsAsync<InvalidDataException>(() => codec.DecodeAsync(stream, CancellationToken.None));
+        }
     }
 
     [Fact]
     public async Task DecodeAsync_ShouldThrowInvalidDataException_BeforeReadingBody_WhenPacketLengthExceedsLimit()
     {
         var codec = CreateCodec(maxPacketSize: 64, maxDecompressedSize: 64);
-        await using var stream = CreateLengthOnlyStream(65);
-
-        await Assert.ThrowsAsync<InvalidDataException>(() => codec.DecodeAsync(stream, CancellationToken.None));
+        await using (var stream = CreateLengthOnlyStream(65))
+        {
+            await Assert.ThrowsAsync<InvalidDataException>(() => codec.DecodeAsync(stream, CancellationToken.None));
+        }
     }
 
     [Fact]
@@ -60,9 +62,10 @@ public class DefaultMessageCodecTests
         var registry = new DefaultMessageCompressionRegistry();
         registry.Register(new ExpandingCompressionAlgorithm(algorithmId, new byte[9]));
         var codec = CreateCodec(registry, maxPacketSize: 64, maxDecompressedSize: 8);
-        await using var stream = CreatePacketStream(algorithmId, new byte[] { 1 });
-
-        await Assert.ThrowsAsync<InvalidDataException>(() => codec.DecodeAsync(stream, CancellationToken.None));
+        await using (var stream = CreatePacketStream(algorithmId, new byte[] { 1 }))
+        {
+            await Assert.ThrowsAsync<InvalidDataException>(() => codec.DecodeAsync(stream, CancellationToken.None));
+        }
     }
 
     private static IMessageCodec CreateCodec(int maxPacketSize, int maxDecompressedSize)

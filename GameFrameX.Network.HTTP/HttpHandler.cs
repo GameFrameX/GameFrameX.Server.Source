@@ -429,28 +429,30 @@ public static class HttpHandler
             return (false, null);
         }
 
-        using var memoryStream = new MemoryStream();
-        var readBuffer = new byte[RequestBodyBufferSize];
-        long totalRead = 0;
-        while (true)
+        using (var memoryStream = new MemoryStream())
         {
-            var read = await context.Request.Body.ReadAsync(readBuffer);
-            if (read == 0)
+            var readBuffer = new byte[RequestBodyBufferSize];
+            long totalRead = 0;
+            while (true)
             {
-                break;
+                var read = await context.Request.Body.ReadAsync(readBuffer);
+                if (read == 0)
+                {
+                    break;
+                }
+
+                totalRead += read;
+                if (totalRead > maxBodyBytes)
+                {
+                    await WriteRequestBodyTooLargeAsync(context, maxBodyBytes);
+                    return (false, null);
+                }
+
+                memoryStream.Write(readBuffer, 0, read);
             }
 
-            totalRead += read;
-            if (totalRead > maxBodyBytes)
-            {
-                await WriteRequestBodyTooLargeAsync(context, maxBodyBytes);
-                return (false, null);
-            }
-
-            memoryStream.Write(readBuffer, 0, read);
+            return (true, memoryStream.ToArray());
         }
-
-        return (true, memoryStream.ToArray());
     }
 
     private static Task WriteRequestBodyTooLargeAsync(HttpContext context, long maxBodyBytes)

@@ -46,14 +46,16 @@ public sealed class WorkerActorTests
     {
         EnsureSettings();
         var worker = new WorkerActor(1);
-        using var cancellationTokenSource = new CancellationTokenSource();
-        cancellationTokenSource.Cancel();
-        var executed = false;
+        using (var cancellationTokenSource = new CancellationTokenSource())
+        {
+            cancellationTokenSource.Cancel();
+            var executed = false;
 
-        var task = worker.SendAsync(() => executed = true, cancellationToken: cancellationTokenSource.Token);
+            var task = worker.SendAsync(() => executed = true, cancellationToken: cancellationTokenSource.Token);
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task.WaitAsync(TimeSpan.FromSeconds(1)));
-        Assert.False(executed);
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task.WaitAsync(TimeSpan.FromSeconds(1)));
+            Assert.False(executed);
+        }
     }
 
     [Fact]
@@ -221,18 +223,20 @@ public sealed class WorkerActorTests
     {
         EnsureSettings();
         var worker = new WorkerActor(107);
-        using var cancellationTokenSource = new CancellationTokenSource();
-        var workStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        var task = worker.SendAsync(async () =>
+        using (var cancellationTokenSource = new CancellationTokenSource())
         {
-            workStarted.TrySetResult();
-            await Task.Delay(TimeSpan.FromSeconds(30), RuntimeContext.CurrentCancellationToken);
-        }, 30000, true, cancellationTokenSource.Token);
+            var workStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        await workStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        cancellationTokenSource.Cancel();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task.WaitAsync(TimeSpan.FromSeconds(5)));
+            var task = worker.SendAsync(async () =>
+            {
+                workStarted.TrySetResult();
+                await Task.Delay(TimeSpan.FromSeconds(30), RuntimeContext.CurrentCancellationToken);
+            }, 30000, true, cancellationTokenSource.Token);
+
+            await workStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            cancellationTokenSource.Cancel();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task.WaitAsync(TimeSpan.FromSeconds(5)));
+        }
     }
 
     private static IDataflowBlock GetQueue(WorkerActor worker)

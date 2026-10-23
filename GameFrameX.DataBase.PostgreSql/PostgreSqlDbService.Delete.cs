@@ -231,15 +231,17 @@ public sealed partial class PostgreSqlDbService
         return await ExecuteWriteWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            using var context = CreateContext<TState>();
-            JoinAmbientTransaction(context);
-            var query = context.Rows.IgnoreQueryFilters().AsQueryable();
-            if (filter != null)
+            using (var context = CreateContext<TState>())
             {
-                query = query.Where(PostgreSqlStateRowExpressionRewriter.RewriteFilter(filter));
-            }
+                JoinAmbientTransaction(context);
+                var query = context.Rows.IgnoreQueryFilters().AsQueryable();
+                if (filter != null)
+                {
+                    query = query.Where(PostgreSqlStateRowExpressionRewriter.RewriteFilter(filter));
+                }
 
-            return await query.ExecuteDeleteAsync(token).ConfigureAwait(false);
+                return await query.ExecuteDeleteAsync(token).ConfigureAwait(false);
+            }
         }, cancellationToken, nameof(HardDeleteAsync), true).ConfigureAwait(false);
     }
 
@@ -278,28 +280,30 @@ public sealed partial class PostgreSqlDbService
         return await ExecuteWriteWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            using var context = CreateContext<TState>();
-            JoinAmbientTransaction(context);
-            var query = context.Rows.IgnoreQueryFilters().Where(row => row.Doc.IsDeleted == true);
-            if (filter != null)
+            using (var context = CreateContext<TState>())
             {
-                query = query.Where(PostgreSqlStateRowExpressionRewriter.RewriteFilter(filter));
-            }
+                JoinAmbientTransaction(context);
+                var query = context.Rows.IgnoreQueryFilters().Where(row => row.Doc.IsDeleted == true);
+                if (filter != null)
+                {
+                    query = query.Where(PostgreSqlStateRowExpressionRewriter.RewriteFilter(filter));
+                }
 
-            var rows = await query.ToListAsync(token).ConfigureAwait(false);
-            foreach (var row in rows)
-            {
-                row.Doc.IsDeleted = false;
-                row.Doc.DeleteTime = null;
-            }
+                var rows = await query.ToListAsync(token).ConfigureAwait(false);
+                foreach (var row in rows)
+                {
+                    row.Doc.IsDeleted = false;
+                    row.Doc.DeleteTime = null;
+                }
 
-            if (rows.Count == 0)
-            {
-                return 0;
-            }
+                if (rows.Count == 0)
+                {
+                    return 0;
+                }
 
-            var affected = await context.SaveChangesAsync(token).ConfigureAwait(false);
-            return (long)affected;
+                var affected = await context.SaveChangesAsync(token).ConfigureAwait(false);
+                return (long)affected;
+            }
         }, cancellationToken, nameof(RestoreAsync), true).ConfigureAwait(false);
     }
 
@@ -322,18 +326,20 @@ public sealed partial class PostgreSqlDbService
         return await ExecuteWriteWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            using var context = CreateContext<TState>();
-            JoinAmbientTransaction(context);
-            var row = await context.Rows.IgnoreQueryFilters().FirstOrDefaultAsync(row => row.Id == id, token).ConfigureAwait(false);
-            if (row == null)
+            using (var context = CreateContext<TState>())
             {
-                return 0;
-            }
+                JoinAmbientTransaction(context);
+                var row = await context.Rows.IgnoreQueryFilters().FirstOrDefaultAsync(row => row.Id == id, token).ConfigureAwait(false);
+                if (row == null)
+                {
+                    return 0;
+                }
 
-            row.Doc.IsDeleted = true;
-            row.Doc.DeleteTime = deleteTime;
-            var affected = await context.SaveChangesAsync(token).ConfigureAwait(false);
-            return (long)affected;
+                row.Doc.IsDeleted = true;
+                row.Doc.DeleteTime = deleteTime;
+                var affected = await context.SaveChangesAsync(token).ConfigureAwait(false);
+                return (long)affected;
+            }
         }, cancellationToken, operationName, true).ConfigureAwait(false);
     }
 
@@ -359,22 +365,24 @@ public sealed partial class PostgreSqlDbService
         return await ExecuteWriteWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            using var context = CreateContext<TState>();
-            JoinAmbientTransaction(context);
-            var rows = await context.Rows.IgnoreQueryFilters().Where(row => distinctIds.Contains(row.Id)).ToListAsync(token).ConfigureAwait(false);
-            foreach (var row in rows)
+            using (var context = CreateContext<TState>())
             {
-                row.Doc.IsDeleted = true;
-                row.Doc.DeleteTime = deleteTime;
-            }
+                JoinAmbientTransaction(context);
+                var rows = await context.Rows.IgnoreQueryFilters().Where(row => distinctIds.Contains(row.Id)).ToListAsync(token).ConfigureAwait(false);
+                foreach (var row in rows)
+                {
+                    row.Doc.IsDeleted = true;
+                    row.Doc.DeleteTime = deleteTime;
+                }
 
-            if (rows.Count == 0)
-            {
-                return 0;
-            }
+                if (rows.Count == 0)
+                {
+                    return 0;
+                }
 
-            var affected = await context.SaveChangesAsync(token).ConfigureAwait(false);
-            return (long)affected;
+                var affected = await context.SaveChangesAsync(token).ConfigureAwait(false);
+                return (long)affected;
+            }
         }, cancellationToken, operationName, true).ConfigureAwait(false);
     }
 }

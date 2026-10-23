@@ -102,25 +102,27 @@ public static class NetHelper
                 CreateNoWindow = true,
             };
 
-            using var process = Process.Start(startInfo);
-            if (process == null)
+            using (var process = Process.Start(startInfo))
             {
-                return new List<string>();
+                if (process == null)
+                {
+                    return new List<string>();
+                }
+
+                var output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit(1500);
+
+                if (string.IsNullOrWhiteSpace(output))
+                {
+                    return new List<string>();
+                }
+
+                return output
+                       .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                       .Where(line => !line.StartsWith("COMMAND", StringComparison.OrdinalIgnoreCase))
+                       .Take(maxCount)
+                       .ToList();
             }
-
-            var output = process.StandardOutput.ReadToEnd();
-            process.WaitForExit(1500);
-
-            if (string.IsNullOrWhiteSpace(output))
-            {
-                return new List<string>();
-            }
-
-            return output
-                   .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                   .Where(line => !line.StartsWith("COMMAND", StringComparison.OrdinalIgnoreCase))
-                   .Take(maxCount)
-                   .ToList();
         }
         catch
         {
@@ -148,43 +150,45 @@ public static class NetHelper
                 CreateNoWindow = true,
             };
 
-            using var process = Process.Start(startInfo);
-            if (process == null)
+            using (var process = Process.Start(startInfo))
             {
-                return new List<string>();
-            }
-
-            var output = process.StandardOutput.ReadToEnd();
-            process.WaitForExit(1500);
-            if (string.IsNullOrWhiteSpace(output))
-            {
-                return new List<string>();
-            }
-
-            var result = new List<string>();
-            var deDuplicate = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            foreach (var line in lines)
-            {
-                var item = TryBuildNetstatPortItem(line, port);
-                if (item == null)
+                if (process == null)
                 {
-                    continue;
+                    return new List<string>();
                 }
 
-                if (!deDuplicate.Add(item))
+                var output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit(1500);
+                if (string.IsNullOrWhiteSpace(output))
                 {
-                    continue;
+                    return new List<string>();
                 }
 
-                result.Add(item);
-                if (result.Count >= maxCount)
+                var result = new List<string>();
+                var deDuplicate = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                foreach (var line in lines)
                 {
-                    break;
+                    var item = TryBuildNetstatPortItem(line, port);
+                    if (item == null)
+                    {
+                        continue;
+                    }
+
+                    if (!deDuplicate.Add(item))
+                    {
+                        continue;
+                    }
+
+                    result.Add(item);
+                    if (result.Count >= maxCount)
+                    {
+                        break;
+                    }
                 }
+
+                return result;
             }
-
-            return result;
         }
         catch
         {
@@ -508,9 +512,11 @@ public static class NetHelper
 
         try
         {
-            using var ping = new Ping();
-            var reply = ping.Send(host, timeout);
-            return reply.Status == IPStatus.Success;
+            using (var ping = new Ping())
+            {
+                var reply = ping.Send(host, timeout);
+                return reply.Status == IPStatus.Success;
+            }
         }
         catch
         {
@@ -533,9 +539,11 @@ public static class NetHelper
 
         try
         {
-            using var ping = new Ping();
-            var reply = await ping.SendPingAsync(host, timeout);
-            return reply.Status == IPStatus.Success;
+            using (var ping = new Ping())
+            {
+                var reply = await ping.SendPingAsync(host, timeout);
+                return reply.Status == IPStatus.Success;
+            }
         }
         catch
         {
@@ -671,27 +679,29 @@ public static class NetHelper
             "https://ipinfo.io/ip",
         };
 
-        using var httpClient = new HttpClient { Timeout = TimeSpan.FromMilliseconds(timeout), };
-
-        foreach (var service in services)
+        using (var httpClient = new HttpClient { Timeout = TimeSpan.FromMilliseconds(timeout), })
         {
-            try
+
+            foreach (var service in services)
             {
-                var response = await httpClient.GetStringAsync(service);
-                var ip = response.Trim();
-                if (IsValidIpAddress(ip, out _))
+                try
                 {
-                    return ip;
+                    var response = await httpClient.GetStringAsync(service);
+                    var ip = response.Trim();
+                    if (IsValidIpAddress(ip, out _))
+                    {
+                        return ip;
+                    }
+                }
+                catch
+                {
+                    // 尝试下一个服务
+                    continue;
                 }
             }
-            catch
-            {
-                // 尝试下一个服务
-                continue;
-            }
-        }
 
-        return null;
+            return null;
+        }
     }
 
     /// <summary>

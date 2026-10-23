@@ -141,18 +141,3 @@ public sealed class ReqPlayerSendItemHttpHandler : BaseHttpHandler
         }
     }
 }
-
-public sealed class ReqPlayerSendItemRequest : HttpMessageRequestBase
-{
-    [Required]
-    [Description("玩家ID")]
-    [Range(1, long.MaxValue)]
-    public long PlayerId { get; set; }
-
-    [Required][Description("道具列表")] public Dictionary<int, long> Items { get; set; } = new Dictionary<int, long>();
-}
-
-public sealed class ReqPlayerSendItemResponse : HttpMessageResponseBase
-{
-    [Description("成功的道具列表")] public Dictionary<int, long> Items { get; set; } = new Dictionary<int, long>();
-}

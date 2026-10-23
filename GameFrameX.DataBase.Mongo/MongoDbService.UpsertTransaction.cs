@@ -276,21 +276,23 @@ public sealed partial class MongoDbService
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                using var session = await _mongoClient.StartSessionAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-                session.StartTransaction();
-                _ambientSession.Value = session;
-                try
+                using (var session = await _mongoClient.StartSessionAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    await action().ConfigureAwait(false);
-                    await CommitTransactionWithRetryAsync(session, cancellationToken).ConfigureAwait(false);
-                }
-                finally
-                {
-                    _ambientSession.Value = null;
-                }
+                    session.StartTransaction();
+                    _ambientSession.Value = session;
+                    try
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        await action().ConfigureAwait(false);
+                        await CommitTransactionWithRetryAsync(session, cancellationToken).ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        _ambientSession.Value = null;
+                    }
 
-                return;
+                    return;
+                }
             }
             catch (Exception exception) when (IsStandaloneTransactionUnsupported(exception))
             {

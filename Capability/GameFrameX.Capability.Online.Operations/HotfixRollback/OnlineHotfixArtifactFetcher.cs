@@ -175,34 +175,42 @@ public sealed class OnlineHotfixArtifactFetcher : IOnlineHotfixArtifactFetcher
     /// <param name="cancellationToken">取消令牌。</param>
     private async Task DownloadOnceAsync(string stagingPath, string sourceUrl, CancellationToken cancellationToken)
     {
-        using var attemptScope = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        attemptScope.CancelAfter(_options.AttemptTimeout);
-        using var response = await _httpClient.GetAsync(sourceUrl, HttpCompletionOption.ResponseHeadersRead, attemptScope.Token).ConfigureAwait(false);
-        if (!response.IsSuccessStatusCode)
+        using (var attemptScope = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
         {
-            // 状态失败面统一以 HttpRequestException(StatusCode) 表达；可重试判定读 StatusCode（5xx/408，传输层无状态码同样可重试）。
-            throw new HttpRequestException("HTTP " + (int)response.StatusCode + "（" + response.StatusCode + "）：" + sourceUrl, null, response.StatusCode);
-        }
-
-        if (response.Content.Headers.ContentLength.HasValue && response.Content.Headers.ContentLength.Value > _options.MaxArtifactBytes)
-        {
-            throw new InvalidOperationException("制品超过下载大小上限 " + _options.MaxArtifactBytes + " 字节（Content-Length = " + response.Content.Headers.ContentLength.Value + "）");
-        }
-
-        await using var httpStream = await response.Content.ReadAsStreamAsync(attemptScope.Token).ConfigureAwait(false);
-        await using var fileStream = new FileStream(stagingPath, FileMode.Create, FileAccess.Write, FileShare.None);
-        var buffer = new byte[81920];
-        long total = 0;
-        int read;
-        while ((read = await httpStream.ReadAsync(buffer, attemptScope.Token).ConfigureAwait(false)) > 0)
-        {
-            total += read;
-            if (total > _options.MaxArtifactBytes)
+            attemptScope.CancelAfter(_options.AttemptTimeout);
+            using (var response = await _httpClient.GetAsync(sourceUrl, HttpCompletionOption.ResponseHeadersRead, attemptScope.Token).ConfigureAwait(false))
             {
-                throw new InvalidOperationException("制品超过下载大小上限 " + _options.MaxArtifactBytes + " 字节（流式计数中断）");
-            }
+                if (!response.IsSuccessStatusCode)
+                {
+                    // 状态失败面统一以 HttpRequestException(StatusCode) 表达；可重试判定读 StatusCode（5xx/408，传输层无状态码同样可重试）。
+                    throw new HttpRequestException("HTTP " + (int)response.StatusCode + "（" + response.StatusCode + "）：" + sourceUrl, null, response.StatusCode);
+                }
 
-            await fileStream.WriteAsync(buffer, 0, read, attemptScope.Token).ConfigureAwait(false);
+                if (response.Content.Headers.ContentLength.HasValue && response.Content.Headers.ContentLength.Value > _options.MaxArtifactBytes)
+                {
+                    throw new InvalidOperationException("制品超过下载大小上限 " + _options.MaxArtifactBytes + " 字节（Content-Length = " + response.Content.Headers.ContentLength.Value + "）");
+                }
+
+                await using (var httpStream = await response.Content.ReadAsStreamAsync(attemptScope.Token).ConfigureAwait(false))
+                {
+                    await using (var fileStream = new FileStream(stagingPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    {
+                        var buffer = new byte[81920];
+                        long total = 0;
+                        int read;
+                        while ((read = await httpStream.ReadAsync(buffer, attemptScope.Token).ConfigureAwait(false)) > 0)
+                        {
+                            total += read;
+                            if (total > _options.MaxArtifactBytes)
+                            {
+                                throw new InvalidOperationException("制品超过下载大小上限 " + _options.MaxArtifactBytes + " 字节（流式计数中断）");
+                            }
+
+                            await fileStream.WriteAsync(buffer, 0, read, attemptScope.Token).ConfigureAwait(false);
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -286,9 +294,11 @@ public sealed class OnlineHotfixArtifactFetcher : IOnlineHotfixArtifactFetcher
     /// <returns>一致返回 <c>true</c>。</returns>
     private static async Task<bool> HashMatchesAsync(string path, string expectedSha256, CancellationToken cancellationToken)
     {
-        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-        var hash = await SHA256.HashDataAsync(stream, cancellationToken).ConfigureAwait(false);
-        return string.Equals(Convert.ToHexString(hash), expectedSha256, StringComparison.OrdinalIgnoreCase);
+        await using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            var hash = await SHA256.HashDataAsync(stream, cancellationToken).ConfigureAwait(false);
+            return string.Equals(Convert.ToHexString(hash), expectedSha256, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     /// <summary>

@@ -44,7 +44,7 @@ scripts/scaffold-out/_0240_Demo.proto                                  ← proto
 GameFrameX.Apps/ServerRole/Demo/Entity/DemoState.cs
 GameFrameX.Apps/ServerRole/Demo/Component/DemoComponent.cs             ← [ComponentType(GlobalConst.ActorTypeServer)]
 GameFrameX.Hotfix/Logic/ServerRole/Demo/DemoComponentAgent.cs
-GameFrameX.Hotfix/Logic/ServerRole/Demo/DemoHandlers.cs                ← 样板消息对 Req/RespDemoEcho（id = (240<<16)+10/11）
+GameFrameX.Hotfix/Logic/ServerRole/Demo/ReqDemoEchoHandler.cs          ← 样板消息对 Req/RespDemoEcho（id = (240<<16)+10/11）
 GameFrameX.Hotfix/Logic/ServerRole/Demo/DemoRules.cs
 Tests/GameFrameX.Hotfix.Tests/DemoRulesTests.cs
 Tests/GameFrameX.Tests/Proto/DemoMessageDomainTests.cs                 ← 域内护栏（清单 + handler 链路）
@@ -109,6 +109,6 @@ dotnet build MyOnlineHost && dotnet run --project MyOnlineHost  # 独立构建�
 
 ## 范围外（保持手工）
 
-- **向既有切片追加消息对**：dotnet new 只能新建文件、不能编辑既有 `.proto`/Handlers——按 C197 约定手工追加（消息对 `Req<X>`/`Resp<X>`、Resp 带 `ErrorCode`(ProtoMember 2047)、handler 三段式样板见任意 `*Handlers.cs`）。
+- **向既有切片追加消息对**：dotnet new 只能新建文件、不能编辑既有 `.proto`/`Req*Handler.cs`——按 C197 约定手工追加（消息对 `Req<X>`/`Resp<X>`、Resp 带 `ErrorCode`(ProtoMember 2047)、handler 三段式样板见任意 `Req*Handler.cs`）。
 - 新 ServerRole 启动入口（`AppStartUpXxx`）、Inner 负域号消息、HTTP handler 模板、配置表（Luban）：按需后补/既有流程。
 - NuGet 发布（模板包不发布，C221 约定）；Launcher 轨组合根（走 `AddOnlineCapabilities` 单入口，C229）。

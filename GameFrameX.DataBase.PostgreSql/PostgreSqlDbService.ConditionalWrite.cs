@@ -138,13 +138,15 @@ public sealed partial class PostgreSqlDbService
                 // The version predicate compares numerically: doc->>'RowVersion' is the jsonb text projection, and a
                 // text=text equality misjudges non-canonical representations (leading zeros and the like); ::bigint
                 // coerces both sides to numbers compared strictly against @expected (bigint).
-                await using var command = new NpgsqlCommand($"UPDATE {GetTableName<TState>()} SET doc = @doc::jsonb WHERE id = @id AND (doc->>'RowVersion')::bigint = @expected", connection);
-                command.Transaction = ambientTransaction;
-                command.Parameters.Add(new NpgsqlParameter("doc", NpgsqlDbType.Jsonb) { Value = documentJson, });
-                command.Parameters.AddWithValue("id", id);
-                command.Parameters.AddWithValue("expected", expectedRowVersion);
-                var affectedRows = await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
-                return affectedRows == 1;
+                await using (var command = new NpgsqlCommand($"UPDATE {GetTableName<TState>()} SET doc = @doc::jsonb WHERE id = @id AND (doc->>'RowVersion')::bigint = @expected", connection))
+                {
+                    command.Transaction = ambientTransaction;
+                    command.Parameters.Add(new NpgsqlParameter("doc", NpgsqlDbType.Jsonb) { Value = documentJson, });
+                    command.Parameters.AddWithValue("id", id);
+                    command.Parameters.AddWithValue("expected", expectedRowVersion);
+                    var affectedRows = await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
+                    return affectedRows == 1;
+                }
             }
             finally
             {
@@ -211,35 +213,37 @@ public sealed partial class PostgreSqlDbService
         return await ExecuteWriteWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            using var context = CreateContext<TState>();
-            JoinAmbientTransaction(context);
-            // 唯一性判定无视软删可见性：IgnoreQueryFilters 查全量档（物理唯一索引口径）。
-            // Uniqueness ignores soft-delete visibility: IgnoreQueryFilters scans every row (physical unique-index semantics).
-            if (await context.Rows.IgnoreQueryFilters().AnyAsync(rowFilter, token).ConfigureAwait(false))
+            using (var context = CreateContext<TState>())
             {
-                return false;
-            }
+                JoinAmbientTransaction(context);
+                // 唯一性判定无视软删可见性：IgnoreQueryFilters 查全量档（物理唯一索引口径）。
+                // Uniqueness ignores soft-delete visibility: IgnoreQueryFilters scans every row (physical unique-index semantics).
+                if (await context.Rows.IgnoreQueryFilters().AnyAsync(rowFilter, token).ConfigureAwait(false))
+                {
+                    return false;
+                }
 
-            if (await context.Rows.IgnoreQueryFilters().AnyAsync(row => row.Id == state.Id, token).ConfigureAwait(false))
-            {
-                return false;
-            }
+                if (await context.Rows.IgnoreQueryFilters().AnyAsync(row => row.Id == state.Id, token).ConfigureAwait(false))
+                {
+                    return false;
+                }
 
-            context.Rows.Add(new StateRow<TState> { Id = state.Id, Doc = state, });
-            try
-            {
-                await context.SaveChangesAsync(token).ConfigureAwait(false);
-                return true;
-            }
-            catch (DbUpdateException exception) when (PostgreSqlSqlState.IsUniqueViolation(exception))
-            {
-                // 预查与插入之间的竞态由 provider 唯一索引兜底：23505 转译为 false 而非上抛。
-                // The race between pre-check and insert is backstopped by the provider unique index: 23505 translates to false.
-                return false;
-            }
-            catch (PostgresException exception) when (exception.SqlState == PostgreSqlSqlState.UniqueViolation)
-            {
-                return false;
+                context.Rows.Add(new StateRow<TState> { Id = state.Id, Doc = state, });
+                try
+                {
+                    await context.SaveChangesAsync(token).ConfigureAwait(false);
+                    return true;
+                }
+                catch (DbUpdateException exception) when (PostgreSqlSqlState.IsUniqueViolation(exception))
+                {
+                    // 预查与插入之间的竞态由 provider 唯一索引兜底：23505 转译为 false 而非上抛。
+                    // The race between pre-check and insert is backstopped by the provider unique index: 23505 translates to false.
+                    return false;
+                }
+                catch (PostgresException exception) when (exception.SqlState == PostgreSqlSqlState.UniqueViolation)
+                {
+                    return false;
+                }
             }
         }, cancellationToken, nameof(TryAddUniqueAsync), false).ConfigureAwait(false);
     }
@@ -289,13 +293,15 @@ public sealed partial class PostgreSqlDbService
             var (connection, ambientTransaction, ownedConnection) = await OpenConnectionForWriteAsync(token).ConfigureAwait(false);
             try
             {
-                await using var command = new NpgsqlCommand(
+                await using (var command = new NpgsqlCommand(
                     $"INSERT INTO {QuoteIdentifier(SequenceTableName)} (\"key\", \"value\") VALUES (@key, 1) ON CONFLICT (\"key\") DO UPDATE SET \"value\" = {QuoteIdentifier(SequenceTableName)}.\"value\" + 1 RETURNING \"value\"",
-                    connection);
-                command.Transaction = ambientTransaction;
-                command.Parameters.AddWithValue("key", counterKey);
-                var result = await command.ExecuteScalarAsync(token).ConfigureAwait(false);
-                return Convert.ToInt64(result, CultureInfo.InvariantCulture);
+                    connection))
+                {
+                    command.Transaction = ambientTransaction;
+                    command.Parameters.AddWithValue("key", counterKey);
+                    var result = await command.ExecuteScalarAsync(token).ConfigureAwait(false);
+                    return Convert.ToInt64(result, CultureInfo.InvariantCulture);
+                }
             }
             finally
             {
@@ -354,9 +360,11 @@ public sealed partial class PostgreSqlDbService
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     private async Task EnsureSequenceTableCoreAsync(CancellationToken cancellationToken)
     {
-        await using var connection = DataSource.CreateConnection();
-        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-        await ExecuteNonQueryAsync(connection, $"CREATE TABLE IF NOT EXISTS {QuoteIdentifier(SequenceTableName)} (\"key\" text PRIMARY KEY, \"value\" bigint NOT NULL)", cancellationToken).ConfigureAwait(false);
+        await using (var connection = DataSource.CreateConnection())
+        {
+            await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+            await ExecuteNonQueryAsync(connection, $"CREATE TABLE IF NOT EXISTS {QuoteIdentifier(SequenceTableName)} (\"key\" text PRIMARY KEY, \"value\" bigint NOT NULL)", cancellationToken).ConfigureAwait(false);
+        }
     }
 
     #endregion 条件写

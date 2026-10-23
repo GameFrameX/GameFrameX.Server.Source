@@ -81,8 +81,10 @@ public sealed class BaseCacheStateToBytesTests
 
         var json = Encoding.UTF8.GetString(state.ToBytes());
 
-        using var document = System.Text.Json.JsonDocument.Parse(json);
-        Assert.Equal("json-probe", document.RootElement.GetProperty("Name").GetString());
+        using (var document = System.Text.Json.JsonDocument.Parse(json))
+        {
+            Assert.Equal("json-probe", document.RootElement.GetProperty("Name").GetString());
+        }
     }
 
     /// <summary>

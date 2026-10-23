@@ -288,14 +288,3 @@ public sealed class OnlineAdminHotfixDispatcherTests : System.IDisposable
         }
     }
 }
-
-/// <summary>
-/// 共享 <see cref="GameFrameX.Core.Hotfix.HotfixManager"/> 进程级状态的测试禁并行 Collection
-///（HotfixManagerRollbackExecutorTests 与 OnlineAdminHotfixDispatcherTests 串行）。
-/// </summary>
-[CollectionDefinition(Name, DisableParallelization = true)]
-public sealed class HotfixManagerStaticStateCollection
-{
-    /// <summary>Collection 名。</summary>
-    public const string Name = "HotfixManagerStaticState";
-}

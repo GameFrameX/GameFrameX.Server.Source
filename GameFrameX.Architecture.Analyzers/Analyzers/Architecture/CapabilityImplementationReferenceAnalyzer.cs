@@ -98,25 +98,3 @@ public sealed class CapabilityImplementationReferenceAnalyzer : DiagnosticAnalyz
         }
     }
 }
-
-/// <summary>Capability 边界共享事实；白名单来自已验证的 Online 契约编译闭包。</summary>
-internal static class CapabilityBoundaryFacts
-{
-    internal const string HostingAbstractions = "GameFrameX.Capability.Hosting.Abstractions";
-    internal const string HostingCore = "GameFrameX.Capability.Hosting.Core";
-    internal const string OnlineAbstractions = "GameFrameX.Capability.Online.Abstractions";
-    internal const string Launcher = "GameFrameX.Launcher";
-
-    internal static bool IsImplementation(string name)
-    {
-        return name.StartsWith("GameFrameX.Capability.", StringComparison.Ordinal)
-               && name != OnlineAbstractions
-               && name != HostingAbstractions
-               && name != "GameFrameX.Capability.Hosting.AdminApi";
-    }
-
-    internal static bool IsCompositionOrTest(string name)
-    {
-        return name == Launcher || name == "GameFrameX.Tests" || name == "GameFrameX.Hotfix.Tests";
-    }
-}

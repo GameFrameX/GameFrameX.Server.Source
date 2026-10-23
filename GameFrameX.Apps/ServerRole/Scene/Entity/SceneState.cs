@@ -45,24 +45,3 @@ public sealed class SceneState : BaseCacheState
     /// </summary>
     public Dictionary<long, SceneStateItem> Scenes { get; set; } = new Dictionary<long, SceneStateItem>();
 }
-
-/// <summary>
-/// 单个场景在线状态。
-/// </summary>
-public sealed class SceneStateItem
-{
-    /// <summary>
-    /// 场景ID。
-    /// </summary>
-    public long SceneId { get; set; }
-
-    /// <summary>
-    /// 场景容量（固定 100，见 SceneRules.Capacity）。
-    /// </summary>
-    public int Capacity { get; set; } = 100;
-
-    /// <summary>
-    /// 在线玩家ID列表。
-    /// </summary>
-    public List<long> Players { get; set; } = new List<long>();
-}

@@ -73,23 +73,27 @@ public sealed class PostgreSqlHealthCheck : IHealthCheck
     {
         try
         {
-            await using var connection = _dataSource.CreateConnection();
-            await connection.OpenAsync(cancellationToken);
-            await using var command = new NpgsqlCommand("SELECT 1", connection);
-            var scalar = await command.ExecuteScalarAsync(cancellationToken);
-            if (scalar is 1)
+            await using (var connection = _dataSource.CreateConnection())
             {
-                Interlocked.Exchange(ref _consecutiveFailures, 0);
-                return HealthCheckResult.Healthy("PostgreSQL connection is healthy");
-            }
+                await connection.OpenAsync(cancellationToken);
+                await using (var command = new NpgsqlCommand("SELECT 1", connection))
+                {
+                    var scalar = await command.ExecuteScalarAsync(cancellationToken);
+                    if (scalar is 1)
+                    {
+                        Interlocked.Exchange(ref _consecutiveFailures, 0);
+                        return HealthCheckResult.Healthy("PostgreSQL connection is healthy");
+                    }
 
-            var currentFailures = Interlocked.Increment(ref _consecutiveFailures);
-            if (currentFailures >= ConsecutiveFailureThreshold)
-            {
-                return HealthCheckResult.Unhealthy($"PostgreSQL connection is unhealthy after {currentFailures} consecutive failures");
-            }
+                    var currentFailures = Interlocked.Increment(ref _consecutiveFailures);
+                    if (currentFailures >= ConsecutiveFailureThreshold)
+                    {
+                        return HealthCheckResult.Unhealthy($"PostgreSQL connection is unhealthy after {currentFailures} consecutive failures");
+                    }
 
-            return HealthCheckResult.Degraded($"PostgreSQL connection is degraded: probe returned unexpected result. consecutiveFailures={currentFailures}");
+                    return HealthCheckResult.Degraded($"PostgreSQL connection is degraded: probe returned unexpected result. consecutiveFailures={currentFailures}");
+                }
+            }
         }
         catch (Exception ex)
         {

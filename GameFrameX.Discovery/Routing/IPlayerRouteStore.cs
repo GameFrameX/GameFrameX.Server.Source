@@ -31,41 +31,6 @@
 namespace GameFrameX.Discovery.Routing;
 
 /// <summary>
-/// 玩家路由 CAS 更新结果。
-/// </summary>
-/// <remarks>
-/// The outcome of a guarded player-route update. The three values drive
-/// the generic sync target's branch policy; the interpretation (not the
-/// detection) is business logic and lives in <see cref="PlayerRouteSyncTarget"/>.
-/// </remarks>
-public enum PlayerRouteCasOutcome
-{
-    /// <summary>
-    /// 守卫更新命中（持久版本 == 送入版本 - 1，已成功推进）。
-    /// </summary>
-    /// <remarks>
-    /// The guarded update matched (persisted version equals supplied minus one; the row advanced).
-    /// </remarks>
-    Updated = 0,
-
-    /// <summary>
-    /// 行 / 文档缺失（可能首登，可能已被删除）。
-    /// </summary>
-    /// <remarks>
-    /// The row/document is missing (either a first login or a deleted route).
-    /// </remarks>
-    Missing = 1,
-
-    /// <summary>
-    /// 版本守卫未命中且行存在（持久版本已被其它进程推进）。
-    /// </summary>
-    /// <remarks>
-    /// The version guard missed while the row exists (the persisted version was already advanced by another process).
-    /// </remarks>
-    Stale = 2,
-}
-
-/// <summary>
 /// 玩家路由存储适配契约（驱动语义的最小封闭面）。
 /// </summary>
 /// <remarks>

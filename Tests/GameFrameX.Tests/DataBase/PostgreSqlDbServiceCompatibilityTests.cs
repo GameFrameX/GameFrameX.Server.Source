@@ -110,28 +110,32 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
             var states = Enumerable.Range(0, 2000).Select(i => new IndexProbeState { Id = Interlocked.Increment(ref _idSeed), Score = i, Name = $"p{i}", }).ToArray();
             await service.AddListAsync(states);
 
-            await using var connection = new NpgsqlConnection(connectionString);
-            await connection.OpenAsync();
-
-            // 1. pg_indexes 定义核对：索引 cast 为 ::integer（EF 实测形状）
-            var indexDefinition = await ReadIndexDefinitionAsync(connection, nameof(IndexProbeState), "ix_probe_score");
-            Assert.Contains("::integer", indexDefinition, StringComparison.OrdinalIgnoreCase);
-
-            // 2. EXPLAIN：EF 形态谓词（CAST(... AS integer)）走该表达式索引
-            await using var explain = new NpgsqlCommand($"EXPLAIN SELECT doc FROM \"{nameof(IndexProbeState)}\" WHERE CAST(doc ->> 'Score' AS integer) = @v", connection);
-            explain.Parameters.AddWithValue("v", 1000);
-            var planBuilder = new StringBuilder();
-            await using (var reader = await explain.ExecuteReaderAsync())
+            await using (var connection = new NpgsqlConnection(connectionString))
             {
-                while (await reader.ReadAsync())
+                await connection.OpenAsync();
+
+                // 1. pg_indexes 定义核对：索引 cast 为 ::integer（EF 实测形状）
+                var indexDefinition = await ReadIndexDefinitionAsync(connection, nameof(IndexProbeState), "ix_probe_score");
+                Assert.Contains("::integer", indexDefinition, StringComparison.OrdinalIgnoreCase);
+
+                // 2. EXPLAIN：EF 形态谓词（CAST(... AS integer)）走该表达式索引
+                await using (var explain = new NpgsqlCommand($"EXPLAIN SELECT doc FROM \"{nameof(IndexProbeState)}\" WHERE CAST(doc ->> 'Score' AS integer) = @v", connection))
                 {
-                    planBuilder.Append(reader.GetString(0)).Append('\n');
+                    explain.Parameters.AddWithValue("v", 1000);
+                    var planBuilder = new StringBuilder();
+                    await using (var reader = await explain.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            planBuilder.Append(reader.GetString(0)).Append('\n');
+                        }
+                    }
+
+                    var plan = planBuilder.ToString();
+                    Assert.Contains("Index Scan", plan, StringComparison.OrdinalIgnoreCase);
+                    Assert.Contains("ix_probe_score", plan, StringComparison.OrdinalIgnoreCase);
                 }
             }
-
-            var plan = planBuilder.ToString();
-            Assert.Contains("Index Scan", plan, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("ix_probe_score", plan, StringComparison.OrdinalIgnoreCase);
         });
     }
 
@@ -159,15 +163,17 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
             var state = new RebuildProbeState { Id = Interlocked.Increment(ref _idSeed), Score = 7, Name = "rebuild", };
             await service.AddAsync(state);
 
-            await using var connection = new NpgsqlConnection(connectionString);
-            await connection.OpenAsync();
-            var indexDefinition = await ReadIndexDefinitionAsync(connection, nameof(RebuildProbeState), "ix_probe_score");
-            Assert.Contains("::integer", indexDefinition, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("::bigint", indexDefinition, StringComparison.OrdinalIgnoreCase);
+            await using (var connection = new NpgsqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+                var indexDefinition = await ReadIndexDefinitionAsync(connection, nameof(RebuildProbeState), "ix_probe_score");
+                Assert.Contains("::integer", indexDefinition, StringComparison.OrdinalIgnoreCase);
+                Assert.DoesNotContain("::bigint", indexDefinition, StringComparison.OrdinalIgnoreCase);
 
-            // 重建后功能不回退：读取 + 谓词查询仍正常
-            var loaded = await service.FindAsync<RebuildProbeState>(state.Id, isCreateIfNotExists: false);
-            Assert.Equal(7, loaded.Score);
+                // 重建后功能不回退：读取 + 谓词查询仍正常
+                var loaded = await service.FindAsync<RebuildProbeState>(state.Id, isCreateIfNotExists: false);
+                Assert.Equal(7, loaded.Score);
+            }
         });
     }
 
@@ -239,8 +245,10 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
         await using (var admin = new NpgsqlConnection(adminConnectionString))
         {
             await admin.OpenAsync();
-            await using var createCommand = new NpgsqlCommand($"CREATE DATABASE \"{dbName}\"", admin);
-            await createCommand.ExecuteNonQueryAsync();
+            await using (var createCommand = new NpgsqlCommand($"CREATE DATABASE \"{dbName}\"", admin))
+            {
+                await createCommand.ExecuteNonQueryAsync();
+            }
         }
 
         var testConnectionString = WithDatabase(connectionString, dbName);
@@ -263,10 +271,14 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
             await service.CloseAsync();
             try
             {
-                await using var admin = new NpgsqlConnection(adminConnectionString);
-                await admin.OpenAsync();
-                await using var dropCommand = new NpgsqlCommand($"DROP DATABASE IF EXISTS \"{dbName}\" WITH (FORCE)", admin);
-                await dropCommand.ExecuteNonQueryAsync();
+                await using (var admin = new NpgsqlConnection(adminConnectionString))
+                {
+                    await admin.OpenAsync();
+                    await using (var dropCommand = new NpgsqlCommand($"DROP DATABASE IF EXISTS \"{dbName}\" WITH (FORCE)", admin))
+                    {
+                        await dropCommand.ExecuteNonQueryAsync();
+                    }
+                }
             }
             catch
             {
@@ -279,12 +291,14 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
     /// </summary>
     private static async Task<string> ReadIndexDefinitionAsync(NpgsqlConnection connection, string tableName, string indexName)
     {
-        await using var command = new NpgsqlCommand("SELECT indexdef FROM pg_indexes WHERE tablename = @tableName AND indexname = @indexName", connection);
-        command.Parameters.AddWithValue("tableName", tableName);
-        command.Parameters.AddWithValue("indexName", indexName);
-        var definition = await command.ExecuteScalarAsync();
-        Assert.NotNull(definition);
-        return (string)definition;
+        await using (var command = new NpgsqlCommand("SELECT indexdef FROM pg_indexes WHERE tablename = @tableName AND indexname = @indexName", connection))
+        {
+            command.Parameters.AddWithValue("tableName", tableName);
+            command.Parameters.AddWithValue("indexName", indexName);
+            var definition = await command.ExecuteScalarAsync();
+            Assert.NotNull(definition);
+            return (string)definition;
+        }
     }
 
     /// <summary>

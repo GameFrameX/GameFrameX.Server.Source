@@ -377,18 +377,3 @@ public sealed class OnlineMatchSettledLeaderboardProjector
         public int Attempts { get; set; }
     }
 }
-
-/// <summary>
-/// 排行榜投影待重试条目状态（QueryStatus 投影形态）。
-/// </summary>
-public sealed class OnlineLeaderboardProjectionRetryStatus
-{
-    /// <summary>获取结算结果标识。</summary>
-    public string MatchResultId { get; set; }
-
-    /// <summary>获取对局标识。</summary>
-    public string MatchId { get; set; }
-
-    /// <summary>获取累计投递尝试次数。</summary>
-    public int Attempts { get; set; }
-}

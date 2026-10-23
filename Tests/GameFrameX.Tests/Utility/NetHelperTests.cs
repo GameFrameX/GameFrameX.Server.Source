@@ -432,11 +432,13 @@ namespace GameFrameX.Tests.Utility
         public async Task GetHostIPv4Async_WithCancelledToken_ShouldThrowOperationCanceledException()
         {
             // Arrange
-            using var cancelled = new CancellationTokenSource();
-            await cancelled.CancelAsync();
+            using (var cancelled = new CancellationTokenSource())
+            {
+                await cancelled.CancelAsync();
 
-            // Act & Assert
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => NetHelper.GetHostIPv4Async("localhost", cancelled.Token));
+                // Act & Assert
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => NetHelper.GetHostIPv4Async("localhost", cancelled.Token));
+            }
         }
 
         #endregion

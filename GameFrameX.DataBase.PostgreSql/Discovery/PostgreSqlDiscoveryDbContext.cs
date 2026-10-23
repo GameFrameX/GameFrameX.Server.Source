@@ -34,34 +34,6 @@ using Npgsql;
 namespace GameFrameX.DataBase.PostgreSql.Discovery;
 
 /// <summary>
-/// server_heartbeat 表的 EF 关系实体（发现层 EF 化）；属性形态继承自 <see cref="ServerHeartbeatEntity"/>。
-/// </summary>
-/// <remarks>
-/// The EF relational entity for the <c>server_heartbeat</c> table. Properties are
-/// declared once on the shared <see cref="ServerHeartbeatEntity"/> base; the snake_case column mapping lives in
-/// <see cref="PostgreSqlDiscoveryDbContext.OnModelCreating"/> and is kept byte-identical — zero migration for
-/// existing control databases, including the <c>server_heartbeat_pkey</c> primary-key constraint name.
-/// Enum-ish columns stay as raw strings so the watcher's defensive parsing (unknown names skipped) is preserved.
-/// </remarks>
-public sealed class ServerHeartbeatRow : ServerHeartbeatEntity
-{
-}
-
-/// <summary>
-/// player_route 表的 EF 关系实体（发现层 EF 化）；属性形态继承自 <see cref="PlayerRouteEntity"/>。
-/// </summary>
-/// <remarks>
-/// EF relational entity for the <c>player_route</c> table. Properties are declared
-/// once on the shared <see cref="PlayerRouteEntity"/> base; the snake_case column mapping lives in
-/// <see cref="PostgreSqlDiscoveryDbContext.OnModelCreating"/>. The <c>xmin</c> system
-/// column is mapped as the optimistic concurrency token — the CAS guard replacing the former hand-written
-/// atomic upsert SQL.
-/// </remarks>
-public sealed class PlayerRouteRow : PlayerRouteEntity
-{
-}
-
-/// <summary>
 /// 发现层控制库的 EF 上下文（心跳 + 玩家路由两张关系表；表结构经 EF 模型 API 创建，适配器内不再有建表 SQL）。
 /// </summary>
 /// <remarks>

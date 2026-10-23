@@ -12,6 +12,8 @@
         <Nullable>disable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <LangVersion>latest</LangVersion>
+        <!-- 让 .editorconfig 中的 IDE 风格规则（含 csharp_prefer_braces = true:error）在构建期生效 -->
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
         <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
 
         <!-- NuGet包通用属性 (仅对非测试项目) -->

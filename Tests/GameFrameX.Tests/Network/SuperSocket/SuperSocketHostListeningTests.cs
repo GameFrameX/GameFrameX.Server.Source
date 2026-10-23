@@ -127,12 +127,15 @@ public class SuperSocketHostListeningTests : IAsyncLifetime
     [Fact]
     public async Task TcpServer_AfterStart_ShouldAcceptConnection()
     {
-        using var tcpClient = new TcpClient();
-        using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        using (var tcpClient = new TcpClient())
+        {
+            using (var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5)))
+            {
+                await tcpClient.ConnectAsync(IPAddress.Loopback, _tcpPort, cancellationTokenSource.Token);
 
-        await tcpClient.ConnectAsync(IPAddress.Loopback, _tcpPort, cancellationTokenSource.Token);
-
-        Assert.True(tcpClient.Connected);
+                Assert.True(tcpClient.Connected);
+            }
+        }
     }
 
     /// <summary>
@@ -141,13 +144,17 @@ public class SuperSocketHostListeningTests : IAsyncLifetime
     [Fact]
     public async Task WebSocketServer_AfterStart_ShouldAcceptConnection()
     {
-        using var webSocket = new ClientWebSocket();
-        using var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        var uri = new Uri($"ws://{IPAddress.Loopback}:{_webSocketPort}/");
+        using (var webSocket = new ClientWebSocket())
+        {
+            using (var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(5)))
+            {
+                var uri = new Uri($"ws://{IPAddress.Loopback}:{_webSocketPort}/");
 
-        await webSocket.ConnectAsync(uri, cancellationTokenSource.Token);
+                await webSocket.ConnectAsync(uri, cancellationTokenSource.Token);
 
-        Assert.Equal(WebSocketState.Open, webSocket.State);
+                Assert.Equal(WebSocketState.Open, webSocket.State);
+            }
+        }
     }
 
     /// <summary>
@@ -155,9 +162,11 @@ public class SuperSocketHostListeningTests : IAsyncLifetime
     /// </summary>
     private static int GetAvailablePort()
     {
-        using var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
-        return ((IPEndPoint)listener.LocalEndpoint).Port;
+        using (var listener = new TcpListener(IPAddress.Loopback, 0))
+        {
+            listener.Start();
+            return ((IPEndPoint)listener.LocalEndpoint).Port;
+        }
     }
 
     private static ValueTask OnConnected(IAppSession session)

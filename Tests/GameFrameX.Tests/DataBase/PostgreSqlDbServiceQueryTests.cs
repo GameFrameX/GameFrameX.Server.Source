@@ -593,19 +593,21 @@ public sealed class PostgreSqlDbServiceQueryTests
             // part has advanced to the suspended DDL I/O and WaitAsync is registered): only that waiter
             // detaches with OCE — the shared single-flight task is unaffected.
             var probe = new SingleFlightProbeState { Id = Interlocked.Increment(ref _idSeed), Name = "cancel", };
-            using var canceled = new CancellationTokenSource();
-            var inFlight = service.AddAsync(probe, canceled.Token);
-            await canceled.CancelAsync();
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => inFlight);
+            using (var canceled = new CancellationTokenSource())
+            {
+                var inFlight = service.AddAsync(probe, canceled.Token);
+                await canceled.CancelAsync();
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => inFlight);
 
-            // 后续写入即刻成功：单飞条目未被等待方取消逐出/污染
-            // The very next write succeeds: the cached entry was neither evicted nor poisoned by the waiter-side cancellation.
-            var afterCancel = new SingleFlightProbeState { Id = Interlocked.Increment(ref _idSeed), Name = "after", };
-            await service.AddAsync(afterCancel);
-            Assert.NotNull(await service.FindAsync<SingleFlightProbeState>(afterCancel.Id, isCreateIfNotExists: false));
-            // 被取消的等待方在建表等待阶段即中止，其数据不落库；表中仅存后续成功写入的一行
-            // The cancelled waiter aborted while awaiting the DDL, so its row is never written; only the subsequent write persisted.
-            Assert.Equal(1, await service.CountAsync<SingleFlightProbeState>(x => true, includeDeleted: true));
+                // 后续写入即刻成功：单飞条目未被等待方取消逐出/污染
+                // The very next write succeeds: the cached entry was neither evicted nor poisoned by the waiter-side cancellation.
+                var afterCancel = new SingleFlightProbeState { Id = Interlocked.Increment(ref _idSeed), Name = "after", };
+                await service.AddAsync(afterCancel);
+                Assert.NotNull(await service.FindAsync<SingleFlightProbeState>(afterCancel.Id, isCreateIfNotExists: false));
+                // 被取消的等待方在建表等待阶段即中止，其数据不落库；表中仅存后续成功写入的一行
+                // The cancelled waiter aborted while awaiting the DDL, so its row is never written; only the subsequent write persisted.
+                Assert.Equal(1, await service.CountAsync<SingleFlightProbeState>(x => true, includeDeleted: true));
+            }
         });
     }
 
@@ -716,12 +718,14 @@ public sealed class PostgreSqlDbServiceQueryTests
     {
         await ExecuteWithServiceAsync(async service =>
         {
-            using var canceled = new CancellationTokenSource();
-            await canceled.CancelAsync();
+            using (var canceled = new CancellationTokenSource())
+            {
+                await canceled.CancelAsync();
 
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.FindListAsync<PostgreSqlQueryTestState>(x => x.Group == 20, canceled.Token));
-            var state = CreateState("cancel", group: 20, score: 1);
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.AddAsync(state, canceled.Token));
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.FindListAsync<PostgreSqlQueryTestState>(x => x.Group == 20, canceled.Token));
+                var state = CreateState("cancel", group: 20, score: 1);
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.AddAsync(state, canceled.Token));
+            }
         });
     }
 
@@ -775,8 +779,10 @@ public sealed class PostgreSqlDbServiceQueryTests
         await using (var admin = new NpgsqlConnection(adminConnectionString))
         {
             await admin.OpenAsync();
-            await using var createCommand = new NpgsqlCommand($"CREATE DATABASE \"{dbName}\"", admin);
-            await createCommand.ExecuteNonQueryAsync();
+            await using (var createCommand = new NpgsqlCommand($"CREATE DATABASE \"{dbName}\"", admin))
+            {
+                await createCommand.ExecuteNonQueryAsync();
+            }
         }
 
         var service = new PostgreSqlDbService();
@@ -798,10 +804,14 @@ public sealed class PostgreSqlDbServiceQueryTests
             await service.CloseAsync();
             try
             {
-                await using var admin = new NpgsqlConnection(adminConnectionString);
-                await admin.OpenAsync();
-                await using var dropCommand = new NpgsqlCommand($"DROP DATABASE IF EXISTS \"{dbName}\" WITH (FORCE)", admin);
-                await dropCommand.ExecuteNonQueryAsync();
+                await using (var admin = new NpgsqlConnection(adminConnectionString))
+                {
+                    await admin.OpenAsync();
+                    await using (var dropCommand = new NpgsqlCommand($"DROP DATABASE IF EXISTS \"{dbName}\" WITH (FORCE)", admin))
+                    {
+                        await dropCommand.ExecuteNonQueryAsync();
+                    }
+                }
             }
             catch
             {

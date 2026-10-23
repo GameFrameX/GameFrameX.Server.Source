@@ -181,17 +181,19 @@ public class HttpMessageMappingAttributeTests
 
     private static int GetResponseCode(DefaultHttpContext context)
     {
-        using var document = JsonDocument.Parse(GetResponseBody(context));
-        foreach (var property in document.RootElement.EnumerateObject())
+        using (var document = JsonDocument.Parse(GetResponseBody(context)))
         {
-            if (string.Equals(property.Name, "code", StringComparison.OrdinalIgnoreCase)
-                && property.Value.ValueKind == JsonValueKind.Number)
+            foreach (var property in document.RootElement.EnumerateObject())
             {
-                return property.Value.GetInt32();
+                if (string.Equals(property.Name, "code", StringComparison.OrdinalIgnoreCase)
+                    && property.Value.ValueKind == JsonValueKind.Number)
+                {
+                    return property.Value.GetInt32();
+                }
             }
-        }
 
-        return -1;
+            return -1;
+        }
     }
 
     private static void EnsureSettings()

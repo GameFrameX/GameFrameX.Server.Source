@@ -124,19 +124,21 @@ public class TopologyEquivalenceTests
     public async Task CrossRoleChain_WithTightTimeout_FailsInBothTopologies()
     {
         using (var allInOneWorld = CreateWorld(EquivalenceTopologyKind.AllInOne))
-        using (var multiProcessWorld = CreateWorld(EquivalenceTopologyKind.MultiProcess))
         {
-            // 本地跳（两拓扑内 Game→Social 均为 case 1）
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-                CrossRoleChains.RunGameToSocialFriendQueryAsync(allInOneWorld, TightHopTimeoutMilliseconds, HandlerDelayMilliseconds));
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-                CrossRoleChains.RunGameToSocialFriendQueryAsync(multiProcessWorld, TightHopTimeoutMilliseconds, HandlerDelayMilliseconds));
+            using (var multiProcessWorld = CreateWorld(EquivalenceTopologyKind.MultiProcess))
+            {
+                // 本地跳（两拓扑内 Game→Social 均为 case 1）
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                    CrossRoleChains.RunGameToSocialFriendQueryAsync(allInOneWorld, TightHopTimeoutMilliseconds, HandlerDelayMilliseconds));
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                    CrossRoleChains.RunGameToSocialFriendQueryAsync(multiProcessWorld, TightHopTimeoutMilliseconds, HandlerDelayMilliseconds));
 
-            // 跨进程跳（三进程拓扑内 Gate→Game 经环回转发缝）
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-                CrossRoleChains.RunGateToGameSessionEstablishAsync(allInOneWorld, TightHopTimeoutMilliseconds, HandlerDelayMilliseconds));
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-                CrossRoleChains.RunGateToGameSessionEstablishAsync(multiProcessWorld, TightHopTimeoutMilliseconds, HandlerDelayMilliseconds));
+                // 跨进程跳（三进程拓扑内 Gate→Game 经环回转发缝）
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                    CrossRoleChains.RunGateToGameSessionEstablishAsync(allInOneWorld, TightHopTimeoutMilliseconds, HandlerDelayMilliseconds));
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                    CrossRoleChains.RunGateToGameSessionEstablishAsync(multiProcessWorld, TightHopTimeoutMilliseconds, HandlerDelayMilliseconds));
+            }
         }
     }
 

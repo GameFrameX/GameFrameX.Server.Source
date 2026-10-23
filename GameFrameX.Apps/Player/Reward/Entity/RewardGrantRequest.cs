@@ -64,25 +64,3 @@ public sealed class RewardGrantRequest
     /// </summary>
     public List<RewardItem> Rewards { get; set; } = new List<RewardItem>();
 }
-
-/// <summary>
-/// 统一奖励发放接口的结果。
-/// </summary>
-public sealed class RewardGrantResult
-{
-    /// <summary>
-    /// 逐项发放结果。
-    /// </summary>
-    public List<RewardGrantItemResult> Items { get; set; } = new List<RewardGrantItemResult>();
-
-    /// <summary>
-    /// 整体错误码（<c>OperationStatusCode</c> 整数值）：
-    /// 全部成功 <c>Ok</c>；部分成功 <c>PartialSuccess</c>；全部失败取首个失败项错误码。
-    /// </summary>
-    public int ErrorCode { get; set; }
-
-    /// <summary>
-    /// 是否全部奖励发放成功。
-    /// </summary>
-    public bool AllSuccess { get; set; }
-}

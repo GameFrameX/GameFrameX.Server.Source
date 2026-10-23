@@ -45,6 +45,9 @@ internal static class ArchitectureAnalyzerConstants
     /// <summary>诊断类别标识，所有架构分析器共用此类别。</summary>
     public const string Category = "GameFrameX.Architecture";
 
+    /// <summary>代码风格诊断类别标识（GFX0019/0020/0021），对应单类型每文件、文件名一致与禁止 using 声明规则。</summary>
+    public const string CodeStyleCategory = "GameFrameX.CodeStyle";
+
     /// <summary>状态层程序集名称。CacheState 和 StateComponent 必须定义在此程序集中。</summary>
     public const string AppsAssembly = "GameFrameX.Apps";
 

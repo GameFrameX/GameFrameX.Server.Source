@@ -759,12 +759,14 @@ public sealed partial class SqliteDbService
         using (command)
         {
             command.Connection = _connection;
-            await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
-            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            await using (var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
             {
-                var doc = reader.GetString(1);
-                var state = JsonSerializer.Deserialize<TState>(doc, DocumentJsonOptions);
-                result.Add(state);
+                while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    var doc = reader.GetString(1);
+                    var state = JsonSerializer.Deserialize<TState>(doc, DocumentJsonOptions);
+                    result.Add(state);
+                }
             }
         }
 

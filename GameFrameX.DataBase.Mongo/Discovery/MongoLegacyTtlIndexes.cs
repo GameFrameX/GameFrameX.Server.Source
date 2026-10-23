@@ -62,26 +62,28 @@ internal static class MongoLegacyTtlIndexes
     {
         ArgumentNullException.ThrowIfNull(collection);
 
-        using var cursor = await collection.Indexes.ListAsync(cancellationToken).ConfigureAwait(false);
-        var indexes = await cursor.ToListAsync(cancellationToken).ConfigureAwait(false);
-        foreach (var index in indexes)
+        using (var cursor = await collection.Indexes.ListAsync(cancellationToken).ConfigureAwait(false))
         {
-            if (!index.TryGetElement("name", out var nameElement) || nameElement.Value.BsonType != BsonType.String)
+            var indexes = await cursor.ToListAsync(cancellationToken).ConfigureAwait(false);
+            foreach (var index in indexes)
             {
-                continue;
-            }
-
-            var name = nameElement.Value.AsString;
-            if (name.Contains("_ttl_", StringComparison.Ordinal))
-            {
-                try
+                if (!index.TryGetElement("name", out var nameElement) || nameElement.Value.BsonType != BsonType.String)
                 {
-                    await collection.Indexes.DropOneAsync(name, cancellationToken).ConfigureAwait(false);
+                    continue;
                 }
-                catch (MongoCommandException exception) when (exception.Code == IndexNotFoundCode)
+
+                var name = nameElement.Value.AsString;
+                if (name.Contains("_ttl_", StringComparison.Ordinal))
                 {
-                    // 并发装配（多进程共享控制库同时 EnsureSchema）时对方已删同名索引：视作本方完成。
-                    // A concurrent bootstrap already dropped it; treat as done.
+                    try
+                    {
+                        await collection.Indexes.DropOneAsync(name, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (MongoCommandException exception) when (exception.Code == IndexNotFoundCode)
+                    {
+                        // 并发装配（多进程共享控制库同时 EnsureSchema）时对方已删同名索引：视作本方完成。
+                        // A concurrent bootstrap already dropped it; treat as done.
+                    }
                 }
             }
         }

@@ -46,29 +46,3 @@ public sealed class FriendState : BaseCacheState
     /// </summary>
     public Dictionary<long, FriendProfileState> Profiles { get; set; } = new Dictionary<long, FriendProfileState>();
 }
-
-/// <summary>
-/// 单个玩家的好友档案状态。
-/// </summary>
-public sealed class FriendProfileState
-{
-    /// <summary>
-    /// 玩家ID。
-    /// </summary>
-    public long PlayerId { get; set; }
-
-    /// <summary>
-    /// 好友列表（玩家ID）。
-    /// </summary>
-    public List<long> Friends { get; set; } = new List<long>();
-
-    /// <summary>
-    /// 收到的好友申请列表（玩家ID）。
-    /// </summary>
-    public List<long> Incoming { get; set; } = new List<long>();
-
-    /// <summary>
-    /// 发出的好友申请列表（玩家ID）。
-    /// </summary>
-    public List<long> Outgoing { get; set; } = new List<long>();
-}

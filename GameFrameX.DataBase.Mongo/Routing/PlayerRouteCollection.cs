@@ -37,30 +37,6 @@ using MongoDB.Driver;
 namespace GameFrameX.DataBase.Mongo.Routing;
 
 /// <summary>
-/// 跨服玩家路由控制文档；属性形态继承自 <see cref="PlayerRouteEntity"/>。
-/// </summary>
-/// <remarks>
-/// The cross-server player route document in the control database.
-/// Properties are declared once on the shared <see cref="PlayerRouteEntity"/> base;
-/// the BSON wire mapping (camelCase elements) lives in
-/// <see cref="MongoDiscoverySerialization"/> and is byte-identical to the former
-/// attribute form. One document per player; the unique <see cref="PlayerRouteEntity.PlayerId"/>
-/// index is the lookup key, and the client-side cleanup loop's 30-day window on
-/// <see cref="PlayerRouteEntity.LastSeenAt"/> keeps long-offline players from
-/// accumulating forever. <see cref="PlayerRouteEntity.Version"/> is
-/// the CAS counter for the "踢号 + 重登" sequence: a new login must carry
-/// <c>oldVersion + 1</c>, otherwise <see>
-///     <cref>MongoPlayerRouteSyncTarget</cref>
-/// </see>
-/// refuses
-/// the upsert and throws <see cref="PlayerRouteStaleException"/>.
-/// </remarks>
-[BsonIgnoreExtraElements]
-public sealed class PlayerRouteDocument : PlayerRouteEntity
-{
-}
-
-/// <summary>
 /// player_route 集合契约（全名约定 + 索引工具）。
 /// </summary>
 /// <remarks>

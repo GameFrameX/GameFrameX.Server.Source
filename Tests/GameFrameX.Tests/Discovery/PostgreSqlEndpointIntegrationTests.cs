@@ -349,15 +349,17 @@ public sealed class PostgreSqlEndpointIntegrationTests : IDisposable
     /// </remarks>
     private static async Task InsertHeartbeatAsync(NpgsqlDataSource dataSource, string instanceId, string role, string advertiseEndpoint, string status, string addressKind, long incarnation, DateTime lastHeartbeat)
     {
-        await using var command = dataSource.CreateCommand("INSERT INTO server_heartbeat (instance_id, role, advertise_endpoint, status, load, address_kind, incarnation, last_heartbeat) VALUES ($1, $2, $3, $4, 0, $5, $6, $7);");
-        command.Parameters.AddWithValue(instanceId);
-        command.Parameters.AddWithValue(role);
-        command.Parameters.AddWithValue(advertiseEndpoint);
-        command.Parameters.AddWithValue(status);
-        command.Parameters.AddWithValue(addressKind);
-        command.Parameters.AddWithValue(incarnation);
-        command.Parameters.AddWithValue(lastHeartbeat.ToUniversalTime());
-        await command.ExecuteNonQueryAsync();
+        await using (var command = dataSource.CreateCommand("INSERT INTO server_heartbeat (instance_id, role, advertise_endpoint, status, load, address_kind, incarnation, last_heartbeat) VALUES ($1, $2, $3, $4, 0, $5, $6, $7);"))
+        {
+            command.Parameters.AddWithValue(instanceId);
+            command.Parameters.AddWithValue(role);
+            command.Parameters.AddWithValue(advertiseEndpoint);
+            command.Parameters.AddWithValue(status);
+            command.Parameters.AddWithValue(addressKind);
+            command.Parameters.AddWithValue(incarnation);
+            command.Parameters.AddWithValue(lastHeartbeat.ToUniversalTime());
+            await command.ExecuteNonQueryAsync();
+        }
     }
 
     /// <summary>
@@ -368,15 +370,19 @@ public sealed class PostgreSqlEndpointIntegrationTests : IDisposable
     /// </remarks>
     private static async Task<HeartbeatSnapshot> ReadRowAsync(NpgsqlDataSource dataSource, string instanceId)
     {
-        await using var command = dataSource.CreateCommand("SELECT status, role, advertise_endpoint, incarnation, last_heartbeat FROM server_heartbeat WHERE instance_id = $1;");
-        command.Parameters.AddWithValue(instanceId);
-        await using var reader = await command.ExecuteReaderAsync();
-        if (!await reader.ReadAsync())
+        await using (var command = dataSource.CreateCommand("SELECT status, role, advertise_endpoint, incarnation, last_heartbeat FROM server_heartbeat WHERE instance_id = $1;"))
         {
-            return null;
-        }
+            command.Parameters.AddWithValue(instanceId);
+            await using (var reader = await command.ExecuteReaderAsync())
+            {
+                if (!await reader.ReadAsync())
+                {
+                    return null;
+                }
 
-        return new HeartbeatSnapshot(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetInt64(3), reader.GetDateTime(4).ToUniversalTime());
+                return new HeartbeatSnapshot(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetInt64(3), reader.GetDateTime(4).ToUniversalTime());
+            }
+        }
     }
 
     /// <summary>
@@ -440,8 +446,10 @@ public sealed class PostgreSqlEndpointIntegrationTests : IDisposable
     /// </remarks>
     private static async Task ExecuteAsync(NpgsqlDataSource dataSource, string sql)
     {
-        await using var command = dataSource.CreateCommand(sql);
-        await command.ExecuteNonQueryAsync();
+        await using (var command = dataSource.CreateCommand(sql))
+        {
+            await command.ExecuteNonQueryAsync();
+        }
     }
 
     /// <summary>
@@ -452,8 +460,10 @@ public sealed class PostgreSqlEndpointIntegrationTests : IDisposable
     /// </remarks>
     private static async Task<object> ExecuteScalarAsync(NpgsqlDataSource dataSource, string sql)
     {
-        await using var command = dataSource.CreateCommand(sql);
-        return await command.ExecuteScalarAsync();
+        await using (var command = dataSource.CreateCommand(sql))
+        {
+            return await command.ExecuteScalarAsync();
+        }
     }
 
     /// <summary>

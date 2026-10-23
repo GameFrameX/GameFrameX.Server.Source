@@ -47,19 +47,3 @@ public sealed class AuthState : BaseCacheState
     /// </summary>
     public Dictionary<long, Dictionary<AuthPermission, GrantRecordState>> Grants { get; set; } = new Dictionary<long, Dictionary<AuthPermission, GrantRecordState>>();
 }
-
-/// <summary>
-/// 单条权限授予记录状态。
-/// </summary>
-public sealed class GrantRecordState
-{
-    /// <summary>
-    /// 授予操作者玩家ID。
-    /// </summary>
-    public long GrantorPlayerId { get; set; }
-
-    /// <summary>
-    /// 授予 Unix 秒。
-    /// </summary>
-    public long CreatedUnixTime { get; set; }
-}

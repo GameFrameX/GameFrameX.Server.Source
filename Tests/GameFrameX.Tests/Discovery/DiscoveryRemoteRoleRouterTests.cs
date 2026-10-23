@@ -263,24 +263,26 @@ public sealed class DiscoveryRemoteRoleRouterTests
     {
         var envelopes = new List<RoleRouteEnvelopeMessage>(frameCount);
         using (var client = await listener.AcceptTcpClientAsync())
-        using (var stream = client.GetStream())
         {
-            for (var index = 0; index < frameCount; index++)
+            using (var stream = client.GetStream())
             {
-                var header = new byte[14];
-                await ReadExactAsync(stream, header);
-                var totalLength = BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(0, 4));
-                var messageId = BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(10, 4));
-                Assert.Equal(RoleRouteEnvelopeMessage.ReservedMessageId, messageId);
+                for (var index = 0; index < frameCount; index++)
+                {
+                    var header = new byte[14];
+                    await ReadExactAsync(stream, header);
+                    var totalLength = BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(0, 4));
+                    var messageId = BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(10, 4));
+                    Assert.Equal(RoleRouteEnvelopeMessage.ReservedMessageId, messageId);
 
-                var payloadLength = totalLength - header.Length;
-                Assert.True(payloadLength > 0, $"The frame length prefix is corrupted: total length {totalLength}.");
-                var payload = new byte[payloadLength];
-                await ReadExactAsync(stream, payload);
-                envelopes.Add((RoleRouteEnvelopeMessage)ProtoBufSerializerHelper.Deserialize(payload, typeof(RoleRouteEnvelopeMessage)));
+                    var payloadLength = totalLength - header.Length;
+                    Assert.True(payloadLength > 0, $"The frame length prefix is corrupted: total length {totalLength}.");
+                    var payload = new byte[payloadLength];
+                    await ReadExactAsync(stream, payload);
+                    envelopes.Add((RoleRouteEnvelopeMessage)ProtoBufSerializerHelper.Deserialize(payload, typeof(RoleRouteEnvelopeMessage)));
+                }
+
+                listener.Stop();
             }
-
-            listener.Stop();
         }
 
         return envelopes;
@@ -292,19 +294,21 @@ public sealed class DiscoveryRemoteRoleRouterTests
     private static async Task<RoleRouteEnvelopeMessage> ReceiveOneFrameAsync(TcpListener listener)
     {
         using (var client = await listener.AcceptTcpClientAsync())
-        using (var stream = client.GetStream())
         {
-            var header = new byte[14];
-            await ReadExactAsync(stream, header);
-            var totalLength = BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(0, 4));
-            var messageId = BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(10, 4));
-            Assert.Equal(RoleRouteEnvelopeMessage.ReservedMessageId, messageId);
+            using (var stream = client.GetStream())
+            {
+                var header = new byte[14];
+                await ReadExactAsync(stream, header);
+                var totalLength = BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(0, 4));
+                var messageId = BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(10, 4));
+                Assert.Equal(RoleRouteEnvelopeMessage.ReservedMessageId, messageId);
 
-            var payloadLength = totalLength - header.Length;
-            var payload = new byte[payloadLength];
-            await ReadExactAsync(stream, payload);
-            listener.Stop();
-            return (RoleRouteEnvelopeMessage)ProtoBufSerializerHelper.Deserialize(payload, typeof(RoleRouteEnvelopeMessage));
+                var payloadLength = totalLength - header.Length;
+                var payload = new byte[payloadLength];
+                await ReadExactAsync(stream, payload);
+                listener.Stop();
+                return (RoleRouteEnvelopeMessage)ProtoBufSerializerHelper.Deserialize(payload, typeof(RoleRouteEnvelopeMessage));
+            }
         }
     }
 

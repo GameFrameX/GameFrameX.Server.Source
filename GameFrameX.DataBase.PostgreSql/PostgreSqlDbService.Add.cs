@@ -70,11 +70,13 @@ public sealed partial class PostgreSqlDbService
         await ExecuteWriteWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            using var context = CreateContext<TState>();
-            JoinAmbientTransaction(context);
-            context.Rows.Add(new StateRow<TState> { Id = state.Id, Doc = state, });
-            await context.SaveChangesAsync(token).ConfigureAwait(false);
-            return true;
+            using (var context = CreateContext<TState>())
+            {
+                JoinAmbientTransaction(context);
+                context.Rows.Add(new StateRow<TState> { Id = state.Id, Doc = state, });
+                await context.SaveChangesAsync(token).ConfigureAwait(false);
+                return true;
+            }
         }, cancellationToken, nameof(AddAsync), false).ConfigureAwait(false);
     }
 
@@ -123,15 +125,17 @@ public sealed partial class PostgreSqlDbService
         await ExecuteWriteWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            using var context = CreateContext<TState>();
-            JoinAmbientTransaction(context);
-            foreach (var cacheState in cacheStates)
+            using (var context = CreateContext<TState>())
             {
-                context.Rows.Add(new StateRow<TState> { Id = cacheState.Id, Doc = cacheState, });
-            }
+                JoinAmbientTransaction(context);
+                foreach (var cacheState in cacheStates)
+                {
+                    context.Rows.Add(new StateRow<TState> { Id = cacheState.Id, Doc = cacheState, });
+                }
 
-            await context.SaveChangesAsync(token).ConfigureAwait(false);
-            return true;
+                await context.SaveChangesAsync(token).ConfigureAwait(false);
+                return true;
+            }
         }, cancellationToken, nameof(AddListAsync), false).ConfigureAwait(false);
     }
 

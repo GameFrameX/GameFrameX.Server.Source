@@ -37,16 +37,3 @@ public sealed class BagState : BaseCacheState
     /// </summary>
     public Dictionary<int, BagItemState> List { get; set; } = new Dictionary<int, BagItemState>();
 }
-
-public sealed class BagItemState
-{
-    /// <summary>
-    /// 物品ID
-    /// </summary>
-    public long ItemId { get; set; }
-
-    /// <summary>
-    /// 物品数量
-    /// </summary>
-    public long Count { get; set; }
-}

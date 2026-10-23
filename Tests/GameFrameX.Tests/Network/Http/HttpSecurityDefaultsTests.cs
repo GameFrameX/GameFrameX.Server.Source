@@ -282,11 +282,13 @@ public class HttpSecurityDefaultsTests
         await HttpHandler.HandleRequestAsync(context, _ => handler);
 
         context.Response.Body.Seek(0, SeekOrigin.Begin);
-        using var reader = new StreamReader(context.Response.Body, Encoding.UTF8);
-        var responseBody = await reader.ReadToEndAsync();
-        Assert.DoesNotContain(secretMarker, responseBody);
-        Assert.DoesNotContain("InvalidOperationException", responseBody);
-        Assert.DoesNotContain("StackTrace", responseBody);
+        using (var reader = new StreamReader(context.Response.Body, Encoding.UTF8))
+        {
+            var responseBody = await reader.ReadToEndAsync();
+            Assert.DoesNotContain(secretMarker, responseBody);
+            Assert.DoesNotContain("InvalidOperationException", responseBody);
+            Assert.DoesNotContain("StackTrace", responseBody);
+        }
     }
 
     /// <summary>

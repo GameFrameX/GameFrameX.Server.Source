@@ -117,9 +117,11 @@ public sealed class PostgreSqlDiscoveryRuntimeTests
             // player_route 由 Bootstrap.Attach 在 Activate 内建好（TTL 清理 job 启动前）。
             await using (var connection = await testDatabase.DataSource.OpenConnectionAsync())
             {
-                await using var command = new NpgsqlCommand("SELECT to_regclass('public.player_route')::text", connection);
-                var playerRoute = await command.ExecuteScalarAsync();
-                Assert.NotNull(playerRoute);
+                await using (var command = new NpgsqlCommand("SELECT to_regclass('public.player_route')::text", connection))
+                {
+                    var playerRoute = await command.ExecuteScalarAsync();
+                    Assert.NotNull(playerRoute);
+                }
             }
 
             // 停机顺序：先停发现层（读/写侧，尽力写 Stopped 终态）→ 再清 GameDb 注册表；
@@ -158,17 +160,21 @@ public sealed class PostgreSqlDiscoveryRuntimeTests
             // stays), mirroring a control database provisioned halfway.
             await using (var connection = await testDatabase.DataSource.OpenConnectionAsync())
             {
-                await using var dropCommand = new NpgsqlCommand("DROP TABLE server_heartbeat", connection);
-                await dropCommand.ExecuteNonQueryAsync();
+                await using (var dropCommand = new NpgsqlCommand("DROP TABLE server_heartbeat", connection))
+                {
+                    await dropCommand.ExecuteNonQueryAsync();
+                }
             }
 
             await store.EnsureSchemaAsync();
 
             await using (var connection = await testDatabase.DataSource.OpenConnectionAsync())
             {
-                await using var command = new NpgsqlCommand("SELECT to_regclass('public.server_heartbeat')::text", connection);
-                var serverHeartbeat = await command.ExecuteScalarAsync() as string;
-                Assert.Equal("server_heartbeat", serverHeartbeat);
+                await using (var command = new NpgsqlCommand("SELECT to_regclass('public.server_heartbeat')::text", connection))
+                {
+                    var serverHeartbeat = await command.ExecuteScalarAsync() as string;
+                    Assert.Equal("server_heartbeat", serverHeartbeat);
+                }
             }
         }
     }
@@ -272,13 +278,17 @@ public sealed class PostgreSqlDiscoveryRuntimeTests
                 var deadline = DateTime.UtcNow.AddSeconds(10);
                 while (DateTime.UtcNow < deadline && status != "Active")
                 {
-                    await using var connection = await testDatabase.DataSource.OpenConnectionAsync();
-                    await using var command = new NpgsqlCommand("SELECT status FROM server_heartbeat WHERE instance_id = ($1)", connection);
-                    command.Parameters.AddWithValue(instanceId);
-                    status = await command.ExecuteScalarAsync() as string;
-                    if (status != "Active")
+                    await using (var connection = await testDatabase.DataSource.OpenConnectionAsync())
                     {
-                        await Task.Delay(100);
+                        await using (var command = new NpgsqlCommand("SELECT status FROM server_heartbeat WHERE instance_id = ($1)", connection))
+                        {
+                            command.Parameters.AddWithValue(instanceId);
+                            status = await command.ExecuteScalarAsync() as string;
+                            if (status != "Active")
+                            {
+                                await Task.Delay(100);
+                            }
+                        }
                     }
                 }
 

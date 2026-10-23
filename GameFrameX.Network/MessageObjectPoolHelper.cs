@@ -37,38 +37,6 @@ using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.Network;
 
 /// <summary>
-/// Custom pooled object policy that resets objects to default values / 自定义池化对象策略，将对象重置为默认值
-/// </summary>
-/// <typeparam name="T">The type of objects in the pool / 池中对象的类型</typeparam>
-internal class ResetObjectPolicy<T> : IPooledObjectPolicy<T> where T : class, IMessageObject, new()
-{
-    public T Create()
-    {
-        return new T();
-    }
-
-    public bool Return(T obj)
-    {
-        if (obj == null)
-        {
-            return false;
-        }
-
-        // Reset object to default values / 将对象重置为默认值
-        obj.Clear();
-        if (obj is INetworkMessage networkMessage)
-        {
-            // 身份字段不在各消息自身 Clear() 覆盖范围内：归零 MessageId（发送/接收链路上线缆前都会重设）
-            // 并重生成 UniqueId，使池复用与 new T() 身份语义等价，避免复用消息携带上一条消息的 UniqueId 串台
-            networkMessage.SetMessageId(0);
-            networkMessage.UpdateUniqueId();
-        }
-
-        return true;
-    }
-}
-
-/// <summary>
 /// Static message object pool helper class / 静态消息对象池帮助类
 /// Provides centralized management for object pools using Microsoft.Extensions.ObjectPool / 使用 Microsoft.Extensions.ObjectPool 提供对象池的集中管理
 /// </summary>

@@ -89,9 +89,11 @@ public sealed class PostgreSqlHeartbeatStore : IHeartbeatStore
     /// <returns>异步任务 / Async task</returns>
     public async Task EnsureSchemaAsync(CancellationToken cancellationToken = default)
     {
-        using var context = CreateContext();
-        var createScript = context.Database.GenerateCreateScript();
-        await PostgreSqlDiscoverySchema.ExecuteIdempotentCreateAsync(context, createScript, cancellationToken).ConfigureAwait(false);
+        using (var context = CreateContext())
+        {
+            var createScript = context.Database.GenerateCreateScript();
+            await PostgreSqlDiscoverySchema.ExecuteIdempotentCreateAsync(context, createScript, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -112,19 +114,21 @@ public sealed class PostgreSqlHeartbeatStore : IHeartbeatStore
         {
             try
             {
-                using var context = CreateContext();
-                var row = await context.Heartbeats.FirstOrDefaultAsync(row => row.InstanceId == instance.InstanceId, cancellationToken).ConfigureAwait(false);
-                if (row == null)
+                using (var context = CreateContext())
                 {
-                    context.Heartbeats.Add(CreateRow(instance));
-                }
-                else
-                {
-                    CopyToRow(instance, row);
-                }
+                    var row = await context.Heartbeats.FirstOrDefaultAsync(row => row.InstanceId == instance.InstanceId, cancellationToken).ConfigureAwait(false);
+                    if (row == null)
+                    {
+                        context.Heartbeats.Add(CreateRow(instance));
+                    }
+                    else
+                    {
+                        CopyToRow(instance, row);
+                    }
 
-                await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-                return;
+                    await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                    return;
+                }
             }
             catch (DbUpdateException exception) when (attempt == 0 && PostgreSqlSqlState.IsUniqueViolation(exception))
             {
@@ -145,19 +149,21 @@ public sealed class PostgreSqlHeartbeatStore : IHeartbeatStore
     /// <returns>全部可解析的实例描述符 / Every parsable instance descriptor</returns>
     public async Task<IReadOnlyList<InstanceDescriptor>> QueryAllAsync(CancellationToken cancellationToken = default)
     {
-        using var context = CreateContext();
-        var rows = await context.Heartbeats.AsNoTracking().ToListAsync(cancellationToken).ConfigureAwait(false);
-        var descriptors = new List<InstanceDescriptor>(rows.Count);
-        foreach (var row in rows)
+        using (var context = CreateContext())
         {
-            var descriptor = TryToDescriptor(row);
-            if (descriptor != null)
+            var rows = await context.Heartbeats.AsNoTracking().ToListAsync(cancellationToken).ConfigureAwait(false);
+            var descriptors = new List<InstanceDescriptor>(rows.Count);
+            foreach (var row in rows)
             {
-                descriptors.Add(descriptor);
+                var descriptor = TryToDescriptor(row);
+                if (descriptor != null)
+                {
+                    descriptors.Add(descriptor);
+                }
             }
-        }
 
-        return descriptors;
+            return descriptors;
+        }
     }
 
     /// <summary>
@@ -173,8 +179,10 @@ public sealed class PostgreSqlHeartbeatStore : IHeartbeatStore
     public async Task DeleteExpiredAsync(TimeSpan heartbeatTimeToLive, CancellationToken cancellationToken = default)
     {
         var cutoff = DateTime.UtcNow - heartbeatTimeToLive;
-        using var context = CreateContext();
-        await context.Heartbeats.Where(row => row.LastHeartbeat < cutoff).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+        using (var context = CreateContext())
+        {
+            await context.Heartbeats.Where(row => row.LastHeartbeat < cutoff).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>

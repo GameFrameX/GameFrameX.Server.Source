@@ -186,12 +186,18 @@ public class OnlineCapabilityCompositionTests
 
         var dispatcher = OnlineAdminApiComposition.CreateDispatcher(composition.Runtime);
         var response = await dispatcher.DispatchAsync("query_online_overview", "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001,\"RequestId\":\"r1\"}");
-        using var outer = JsonDocument.Parse(response);
-        var innerJson = outer.RootElement.GetProperty("data").GetString();
-        using var inner = JsonDocument.Parse(innerJson);
-        Assert.Equal((int)OnlineErrorCode.CapabilityNotInstalled, inner.RootElement.GetProperty("Code").GetInt32());
-        using var payload = JsonDocument.Parse(inner.RootElement.GetProperty("Data").GetRawText());
-        Assert.Equal("online-operations", payload.RootElement.GetProperty("NotInstalledCapability").GetString());
+        using (var outer = JsonDocument.Parse(response))
+        {
+            var innerJson = outer.RootElement.GetProperty("data").GetString();
+            using (var inner = JsonDocument.Parse(innerJson))
+            {
+                Assert.Equal((int)OnlineErrorCode.CapabilityNotInstalled, inner.RootElement.GetProperty("Code").GetInt32());
+                using (var payload = JsonDocument.Parse(inner.RootElement.GetProperty("Data").GetRawText()))
+                {
+                    Assert.Equal("online-operations", payload.RootElement.GetProperty("NotInstalledCapability").GetString());
+                }
+            }
+        }
     }
 
 
@@ -209,19 +215,25 @@ public class OnlineCapabilityCompositionTests
         using (var outer = JsonDocument.Parse(listing))
         {
             var innerJson = outer.RootElement.GetProperty("data").GetString();
-            using var inner = JsonDocument.Parse(innerJson);
-            var entries = inner.RootElement.GetProperty("Data").GetProperty("Capabilities").EnumerateArray()
-                .ToDictionary(entry => entry.GetProperty("Id").GetString());
-            Assert.Equal(7, entries.Count);
-            Assert.Equal("ExcludedByDisableList", entries["online-assets"].GetProperty("State").GetString());
-            Assert.Equal("NotAssembled", entries["online-foundation"].GetProperty("State").GetString());
+            using (var inner = JsonDocument.Parse(innerJson))
+            {
+                var entries = inner.RootElement.GetProperty("Data").GetProperty("Capabilities").EnumerateArray()
+                    .ToDictionary(entry => entry.GetProperty("Id").GetString());
+                Assert.Equal(7, entries.Count);
+                Assert.Equal("ExcludedByDisableList", entries["online-assets"].GetProperty("State").GetString());
+                Assert.Equal("NotAssembled", entries["online-foundation"].GetProperty("State").GetString());
+            }
         }
 
         var notInstalled = await dispatcher.DispatchAsync("grant_asset", "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001,\"RequestId\":\"r2\"}");
-        using var outerNotInstalled = JsonDocument.Parse(notInstalled);
-        var innerNotInstalledJson = outerNotInstalled.RootElement.GetProperty("data").GetString();
-        using var innerNotInstalled = JsonDocument.Parse(innerNotInstalledJson);
-        Assert.Equal((int)OnlineErrorCode.CapabilityNotInstalled, innerNotInstalled.RootElement.GetProperty("Code").GetInt32());
+        using (var outerNotInstalled = JsonDocument.Parse(notInstalled))
+        {
+            var innerNotInstalledJson = outerNotInstalled.RootElement.GetProperty("data").GetString();
+            using (var innerNotInstalled = JsonDocument.Parse(innerNotInstalledJson))
+            {
+                Assert.Equal((int)OnlineErrorCode.CapabilityNotInstalled, innerNotInstalled.RootElement.GetProperty("Code").GetInt32());
+            }
+        }
     }
 
     /// <summary>

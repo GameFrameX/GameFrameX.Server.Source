@@ -55,29 +55,3 @@ public sealed class RoomState : BaseCacheState
     /// </summary>
     public long NextRoomId { get; set; } = 10001;
 }
-
-/// <summary>
-/// 单个房间槽位状态。
-/// </summary>
-public sealed class RoomSlotState
-{
-    /// <summary>
-    /// 房间ID。
-    /// </summary>
-    public long RoomId { get; set; }
-
-    /// <summary>
-    /// 房间容量（1-20）。
-    /// </summary>
-    public int Capacity { get; set; }
-
-    /// <summary>
-    /// 当前占用数。
-    /// </summary>
-    public int PlayerCount { get; set; }
-
-    /// <summary>
-    /// 创建 Unix 秒。
-    /// </summary>
-    public long CreatedUnixTime { get; set; }
-}

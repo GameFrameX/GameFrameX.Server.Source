@@ -32,15 +32,6 @@ using GameFrameX.Utility.Runtime;
 namespace GameFrameX.Tests.Utility;
 
 /// <summary>
-/// GameAppRuntime 相关测试集合。
-/// </summary>
-[CollectionDefinition(Name, DisableParallelization = true)]
-public class GameAppRuntimeCollection
-{
-    public const string Name = "GameAppRuntime";
-}
-
-/// <summary>
 /// GameAppRuntime 运行期状态测试。
 /// </summary>
 [Collection(GameAppRuntimeCollection.Name)]

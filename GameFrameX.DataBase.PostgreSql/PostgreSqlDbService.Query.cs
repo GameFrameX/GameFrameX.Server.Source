@@ -73,11 +73,13 @@ public sealed partial class PostgreSqlDbService
         var state = await ExecuteReadWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            using var context = CreateContext<TState>();
-            JoinAmbientTransaction(context);
-            var query = BuildRowQuery<TState>(context, filter, token);
-            var row = await query.FirstOrDefaultAsync(row => row.Id == id, token).ConfigureAwait(false);
-            return row?.Doc;
+            using (var context = CreateContext<TState>())
+            {
+                JoinAmbientTransaction(context);
+                var query = BuildRowQuery<TState>(context, filter, token);
+                var row = await query.FirstOrDefaultAsync(row => row.Id == id, token).ConfigureAwait(false);
+                return row?.Doc;
+            }
         }, cancellationToken, nameof(FindAsync)).ConfigureAwait(false);
 
         return await MaterializeOrCreateAsync(state, isCreateIfNotExists, id, true, cancellationToken).ConfigureAwait(false);
@@ -116,11 +118,13 @@ public sealed partial class PostgreSqlDbService
         var state = await ExecuteReadWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            using var context = CreateContext<TState>();
-            JoinAmbientTransaction(context);
-            var query = BuildRowQuery<TState>(context, filter, token);
-            var row = await query.FirstOrDefaultAsync(token).ConfigureAwait(false);
-            return row?.Doc;
+            using (var context = CreateContext<TState>())
+            {
+                JoinAmbientTransaction(context);
+                var query = BuildRowQuery<TState>(context, filter, token);
+                var row = await query.FirstOrDefaultAsync(token).ConfigureAwait(false);
+                return row?.Doc;
+            }
         }, cancellationToken, nameof(FindAsync)).ConfigureAwait(false);
 
         return await MaterializeOrCreateAsync(state, isCreateIfNotExists, 0, false, cancellationToken).ConfigureAwait(false);
@@ -251,9 +255,11 @@ public sealed partial class PostgreSqlDbService
         var total = await ExecuteReadWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            using var context = CreateContext<TState>();
-            JoinAmbientTransaction(context);
-            return await BuildRowQuery<TState>(context, filter, token).LongCountAsync(token).ConfigureAwait(false);
+            using (var context = CreateContext<TState>())
+            {
+                JoinAmbientTransaction(context);
+                return await BuildRowQuery<TState>(context, filter, token).LongCountAsync(token).ConfigureAwait(false);
+            }
         }, cancellationToken, nameof(FindPageAsync), () => 0L).ConfigureAwait(false);
 
         var items = await ExecuteReadWithRetryAsync(async token => await QueryDocumentListAsync<TState>(context => ApplySort(BuildRowQuery<TState>(context, filter, token), sortExpression, descending).Skip(pageIndex * pageSize).Take(pageSize), token).ConfigureAwait(false), cancellationToken, nameof(FindPageAsync), () => new List<TState>()).ConfigureAwait(false);
@@ -346,10 +352,12 @@ public sealed partial class PostgreSqlDbService
         var state = await ExecuteReadWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            using var context = CreateContext<TState>();
-            JoinAmbientTransaction(context);
-            var row = await ApplySort(BuildRowQuery<TState>(context, filter, token), sortExpression, descending).FirstOrDefaultAsync(token).ConfigureAwait(false);
-            return row?.Doc;
+            using (var context = CreateContext<TState>())
+            {
+                JoinAmbientTransaction(context);
+                var row = await ApplySort(BuildRowQuery<TState>(context, filter, token), sortExpression, descending).FirstOrDefaultAsync(token).ConfigureAwait(false);
+                return row?.Doc;
+            }
         }, cancellationToken, descending ? nameof(FindSortDescendingFirstOneAsync) : nameof(FindSortAscendingFirstOneAsync)).ConfigureAwait(false);
         state?.LoadFromDbPostHandler();
         return state;
@@ -532,10 +540,12 @@ public sealed partial class PostgreSqlDbService
         return await ExecuteReadWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            using var context = CreateContext<TState>();
-            JoinAmbientTransaction(context);
-            var query = BuildRowQuery<TState>(context, filter, token, includeDeleted);
-            return await query.LongCountAsync(token).ConfigureAwait(false);
+            using (var context = CreateContext<TState>())
+            {
+                JoinAmbientTransaction(context);
+                var query = BuildRowQuery<TState>(context, filter, token, includeDeleted);
+                return await query.LongCountAsync(token).ConfigureAwait(false);
+            }
         }, cancellationToken, nameof(CountAsync), () => 0L).ConfigureAwait(false);
     }
 
@@ -615,9 +625,11 @@ public sealed partial class PostgreSqlDbService
         return await ExecuteReadWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            using var context = CreateContext<TState>();
-            JoinAmbientTransaction(context);
-            return await BuildRowQuery<TState>(context, filter, token).AnyAsync(token).ConfigureAwait(false);
+            using (var context = CreateContext<TState>())
+            {
+                JoinAmbientTransaction(context);
+                return await BuildRowQuery<TState>(context, filter, token).AnyAsync(token).ConfigureAwait(false);
+            }
         }, cancellationToken, nameof(AnyAsync), () => false).ConfigureAwait(false);
     }
 
@@ -652,9 +664,11 @@ public sealed partial class PostgreSqlDbService
         return await ExecuteReadWithRetryAsync(async token =>
         {
             await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            using var context = CreateContext<TState>();
-            JoinAmbientTransaction(context);
-            return await BuildRowQuery<TState>(context, null, token).AnyAsync(row => row.Id == id, token).ConfigureAwait(false);
+            using (var context = CreateContext<TState>())
+            {
+                JoinAmbientTransaction(context);
+                return await BuildRowQuery<TState>(context, null, token).AnyAsync(row => row.Id == id, token).ConfigureAwait(false);
+            }
         }, cancellationToken, nameof(ExistsByIdAsync), () => false).ConfigureAwait(false);
     }
 
@@ -702,16 +716,18 @@ public sealed partial class PostgreSqlDbService
     private async Task<List<TState>> QueryDocumentListAsync<TState>(Func<PostgreSqlDbContext<TState>, IQueryable<StateRow<TState>>> buildQuery, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
-        using var context = CreateContext<TState>();
-        JoinAmbientTransaction(context);
-        var rows = await buildQuery(context).ToListAsync(cancellationToken).ConfigureAwait(false);
-        var result = new List<TState>(rows.Count);
-        foreach (var row in rows)
+        using (var context = CreateContext<TState>())
         {
-            result.Add(row.Doc);
-        }
+            JoinAmbientTransaction(context);
+            var rows = await buildQuery(context).ToListAsync(cancellationToken).ConfigureAwait(false);
+            var result = new List<TState>(rows.Count);
+            foreach (var row in rows)
+            {
+                result.Add(row.Doc);
+            }
 
-        return result;
+            return result;
+        }
     }
 
     /// <summary>

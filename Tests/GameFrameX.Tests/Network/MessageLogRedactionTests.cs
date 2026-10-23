@@ -82,15 +82,17 @@ public class MessageLogRedactionTests : IDisposable
 
         var redacted = MessageLogRedaction.RedactJson(json);
 
-        using var document = JsonDocument.Parse(redacted);
-        var root = document.RootElement;
-        Assert.Equal("alice", root.GetProperty("AccountName").GetString());
-        Assert.Equal("***", root.GetProperty("Password").GetString());
-        Assert.Equal("***", root.GetProperty("Tokens")[0].GetProperty("AccessToken").GetString());
-        Assert.Equal(2, root.GetProperty("Tokens")[1].GetProperty("Kind").GetInt32());
-        Assert.Equal(7, root.GetProperty("Level").GetInt32());
-        Assert.DoesNotContain("p@ss", redacted);
-        Assert.DoesNotContain("abc", redacted);
+        using (var document = JsonDocument.Parse(redacted))
+        {
+            var root = document.RootElement;
+            Assert.Equal("alice", root.GetProperty("AccountName").GetString());
+            Assert.Equal("***", root.GetProperty("Password").GetString());
+            Assert.Equal("***", root.GetProperty("Tokens")[0].GetProperty("AccessToken").GetString());
+            Assert.Equal(2, root.GetProperty("Tokens")[1].GetProperty("Kind").GetInt32());
+            Assert.Equal(7, root.GetProperty("Level").GetInt32());
+            Assert.DoesNotContain("p@ss", redacted);
+            Assert.DoesNotContain("abc", redacted);
+        }
     }
 
     /// <summary>

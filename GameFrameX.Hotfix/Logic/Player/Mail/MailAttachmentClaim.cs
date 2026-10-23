@@ -168,18 +168,3 @@ public static class MailAttachmentClaim
         return null;
     }
 }
-
-/// <summary>
-/// <see cref="MailAttachmentClaim.Prepare"/> 的查找结果（仅承载命中的邮件 / 附件引用，不存储错误码）。
-/// </summary>
-public sealed class ClaimPrepareResult
-{
-    /// <summary>命中的邮件实例（未命中或已删除时为 null）。</summary>
-    public MailState Mail { get; set; }
-
-    /// <summary>命中的附件实例（未命中槽位时为 null）。</summary>
-    public MailAttachmentInstance Attachment { get; set; }
-
-    /// <summary>空结果（邮件未命中）。复用避免分配。</summary>
-    public static ClaimPrepareResult Empty { get; } = new ClaimPrepareResult();
-}

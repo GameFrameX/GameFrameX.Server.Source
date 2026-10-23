@@ -4,8 +4,14 @@
         <GenerateDocumentationFile>false</GenerateDocumentationFile>
         <DocumentationFile></DocumentationFile>
     </PropertyGroup>
-    <!-- C241：能力模块与 hosting 扩展也接受符号级装配检查；分析器工程自身无此反向依赖。 -->
-    <ItemGroup Condition="$([System.String]::Copy('$(MSBuildProjectName)').StartsWith('GameFrameX.Capability.'))">
+    <!-- GameFrameX.Architecture.Analyzers（架构约束 GFX0001–0018 + 代码风格 GFX0019/0020/0021）全仓统一注入。
+         排除分析器工程自身、源生成器工程、vendored PB 库、模板工程与自行引用分析器的测试工程；
+         Proto 生成物不做工程级排除，改由 .editorconfig 按路径关闭规则。 -->
+    <ItemGroup Condition="'$(MSBuildProjectName)' != 'GameFrameX.Architecture.Analyzers'
+                          And '$(MSBuildProjectName)' != 'GameFrameX.Hotfix.WrapperGenerator'
+                          And '$(MSBuildProjectName)' != 'GameFrameX.ProtoBuf.Net'
+                          And '$(MSBuildProjectName)' != 'GameFrameX.Templates'
+                          And '$(MSBuildProjectName)' != 'GameFrameX.Tests'">
         <ProjectReference Include="$(MSBuildThisFileDirectory)GameFrameX.Architecture.Analyzers/GameFrameX.Architecture.Analyzers.csproj"
                           OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
     </ItemGroup>

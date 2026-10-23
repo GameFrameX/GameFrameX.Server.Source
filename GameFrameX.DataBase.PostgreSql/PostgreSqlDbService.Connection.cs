@@ -66,11 +66,13 @@ public sealed partial class PostgreSqlDbService
             {
                 try
                 {
-                    await using var connection = DataSource.CreateConnection();
-                    await ExecutePingAsync(connection, CancellationToken.None).ConfigureAwait(false);
-                    Options = dbOptions;
-                    ApplyRuntimeOptions(dbOptions.RuntimeOptions);
-                    return true;
+                    await using (var connection = DataSource.CreateConnection())
+                    {
+                        await ExecutePingAsync(connection, CancellationToken.None).ConfigureAwait(false);
+                        Options = dbOptions;
+                        ApplyRuntimeOptions(dbOptions.RuntimeOptions);
+                        return true;
+                    }
                 }
                 catch
                 {
@@ -92,19 +94,21 @@ public sealed partial class PostgreSqlDbService
             try
             {
                 DataSource = CreateDataSource(Options.ConnectionString);
-                await using var connection = DataSource.CreateConnection();
-                await ExecutePingAsync(connection, CancellationToken.None).ConfigureAwait(false);
-                lock (_availabilityLock)
+                await using (var connection = DataSource.CreateConnection())
                 {
-                    _consecutiveFailures = 0;
-                    _consecutiveSuccesses = 0;
-                    ChangeAvailabilityState(DatabaseAvailabilityState.Healthy, "open_success");
-                }
+                    await ExecutePingAsync(connection, CancellationToken.None).ConfigureAwait(false);
+                    lock (_availabilityLock)
+                    {
+                        _consecutiveFailures = 0;
+                        _consecutiveSuccesses = 0;
+                        ChangeAvailabilityState(DatabaseAvailabilityState.Healthy, "open_success");
+                    }
 
-                DbOperationLatencyMilliseconds.Record(openStopwatch.Elapsed.TotalMilliseconds, new TagList { { "op", "open" }, { "name", nameof(OpenAsync) }, { "success", true }, });
-                // Localization: Database.PostgreSql.OpenInitializedSuccessfully - PostgreSqlDbService.Open {0} {1} PostgreSQL服务初始化成功，连接目标：{2}，注册名：{3}
-                LogHelper.Info(LocalizationService.GetString(Localization.Keys.Database.PostgreSql.OpenInitializedSuccessfully, dbOptions.Name, connectionTarget, connectionTarget, dbOptions.Name));
-                return true;
+                    DbOperationLatencyMilliseconds.Record(openStopwatch.Elapsed.TotalMilliseconds, new TagList { { "op", "open" }, { "name", nameof(OpenAsync) }, { "success", true }, });
+                    // Localization: Database.PostgreSql.OpenInitializedSuccessfully - PostgreSqlDbService.Open {0} {1} PostgreSQL服务初始化成功，连接目标：{2}，注册名：{3}
+                    LogHelper.Info(LocalizationService.GetString(Localization.Keys.Database.PostgreSql.OpenInitializedSuccessfully, dbOptions.Name, connectionTarget, connectionTarget, dbOptions.Name));
+                    return true;
+                }
             }
             catch (Exception exception)
             {
@@ -189,8 +193,10 @@ public sealed partial class PostgreSqlDbService
     private static async Task ExecutePingAsync(NpgsqlConnection connection, CancellationToken cancellationToken)
     {
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-        await using var command = new NpgsqlCommand("SELECT 1", connection);
-        await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+        await using (var command = new NpgsqlCommand("SELECT 1", connection))
+        {
+            await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>

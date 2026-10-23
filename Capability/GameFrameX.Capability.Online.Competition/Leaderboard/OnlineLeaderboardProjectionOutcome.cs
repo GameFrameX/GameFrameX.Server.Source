@@ -33,27 +33,6 @@ using GameFrameX.Capability.Online.Abstractions.Contracts;
 namespace GameFrameX.Capability.Online.Competition.Leaderboard;
 
 /// <summary>
-/// 单玩家投影失败明细（错误码 + 拒绝原因；逐玩家隔离，不阻塞其余玩家）。
-/// </summary>
-public sealed class OnlineLeaderboardProjectionFailure
-{
-    /// <summary>
-    /// 获取或设置玩家标识。
-    /// </summary>
-    public long PlayerId { get; set; }
-
-    /// <summary>
-    /// 获取或设置失败错误码（防刷拒绝 / 限流 / 幂等冲突 / 占位繁忙等）。
-    /// </summary>
-    public OnlineErrorCode Code { get; set; }
-
-    /// <summary>
-    /// 获取或设置失败原因（脱敏后的可读描述，供日志与排查）。
-    /// </summary>
-    public string Message { get; set; }
-}
-
-/// <summary>
 /// 可信结果投影回执（一次投递对一榜的逐玩家执行汇总）。
 /// <para>
 /// 维护约束：同结果事件重复投递时，首次 <see cref="AppliedCount"/> 计入、后续全部计入

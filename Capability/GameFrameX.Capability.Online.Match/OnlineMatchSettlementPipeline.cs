@@ -28,32 +28,6 @@ using GameFrameX.Capability.Online.Abstractions.Contracts;
 namespace GameFrameX.Capability.Online.Match;
 
 /// <summary>
-/// 结算重试视图（admin 可观测面）：一条待重试发奖记录的对外只读投影。
-/// </summary>
-public sealed class OnlineMatchSettlementRetryEntry
-{
-    /// <summary>
-    /// 获取或设置结算结果标识（幂等边界，待重试表按它去重）。
-    /// </summary>
-    public string MatchResultId { get; set; }
-
-    /// <summary>
-    /// 获取或设置对局标识。
-    /// </summary>
-    public string MatchId { get; set; }
-
-    /// <summary>
-    /// 获取或设置发奖失败玩家列表（逐玩家隔离）。
-    /// </summary>
-    public List<long> FailedPlayerIds { get; set; } = new List<long>();
-
-    /// <summary>
-    /// 获取或设置累计投递尝试次数。
-    /// </summary>
-    public int Attempts { get; set; }
-}
-
-/// <summary>
 /// 对局结算管线（C245）：Tick 驱动的「结算 → 发奖 → 失败重投」生产编排。
 /// <para>
 /// 维护约束（红线）：① Tick 互斥（并发双 Tick 串行安全）；② 不宣称「恰好一次」——结算幂等由

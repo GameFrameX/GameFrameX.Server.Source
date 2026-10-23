@@ -128,12 +128,14 @@ public sealed partial class SqliteDbService
         var updated = await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
-            using var command = _connection.CreateCommand();
-            command.CommandText = BuildCasUpdateCommandText<TState>();
-            command.Parameters.AddWithValue("$doc", doc);
-            command.Parameters.AddWithValue("$id", id);
-            command.Parameters.AddWithValue("$expected", expectedRowVersion);
-            return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) == 1;
+            using (var command = _connection.CreateCommand())
+            {
+                command.CommandText = BuildCasUpdateCommandText<TState>();
+                command.Parameters.AddWithValue("$doc", doc);
+                command.Parameters.AddWithValue("$id", id);
+                command.Parameters.AddWithValue("$expected", expectedRowVersion);
+                return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) == 1;
+            }
         }), cancellationToken, nameof(UpdateIfRowVersionAsync), false).ConfigureAwait(false);
         if (updated)
         {
@@ -245,15 +247,17 @@ public sealed partial class SqliteDbService
                 }
             }
 
-            using var insertCommand = BuildInsertCommand<TState>(state);
-            insertCommand.Transaction = transaction;
-            await insertCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-            if (owned)
+            using (var insertCommand = BuildInsertCommand<TState>(state))
             {
-                await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-            }
+                insertCommand.Transaction = transaction;
+                await insertCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                if (owned)
+                {
+                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                }
 
-            return true;
+                return true;
+            }
         }
         catch (SqliteException ex) when (ex.SqliteErrorCode is 19 or 2067)
         {
@@ -319,11 +323,13 @@ public sealed partial class SqliteDbService
         return await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
             await EnsureSequenceTableAsync(cancellationToken).ConfigureAwait(false);
-            using var command = _connection.CreateCommand();
-            command.CommandText = BuildNextSequenceCommandText();
-            command.Parameters.AddWithValue("$key", key);
-            var result = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
-            return (long)result;
+            using (var command = _connection.CreateCommand())
+            {
+                command.CommandText = BuildNextSequenceCommandText();
+                command.Parameters.AddWithValue("$key", key);
+                var result = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+                return (long)result;
+            }
         }), cancellationToken, nameof(NextSequenceAsync), false).ConfigureAwait(false);
     }
 
@@ -393,8 +399,10 @@ public sealed partial class SqliteDbService
     /// <returns>异步任务 / Async task</returns>
     private async Task CreateSequenceTableAsync()
     {
-        using var command = _connection.CreateCommand();
-        command.CommandText = "CREATE TABLE IF NOT EXISTS \"__sequences\" (\"key\" TEXT PRIMARY KEY, \"value\" INTEGER NOT NULL);";
-        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+        using (var command = _connection.CreateCommand())
+        {
+            command.CommandText = "CREATE TABLE IF NOT EXISTS \"__sequences\" (\"key\" TEXT PRIMARY KEY, \"value\" INTEGER NOT NULL);";
+            await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+        }
     }
 }

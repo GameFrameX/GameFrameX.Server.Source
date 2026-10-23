@@ -34,14 +34,6 @@ using Xunit;
 namespace GameFrameX.Tests.StartUp;
 
 /// <summary>
-/// AppBootstrapper 静态状态测试集合定义：进程级静态守卫状态要求测试间串行。
-/// </summary>
-[CollectionDefinition(nameof(StartUpStaticStateCollection), DisableParallelization = true)]
-public class StartUpStaticStateCollection
-{
-}
-
-/// <summary>
 /// AppBootstrapper 进程级共享内核幂等初始化测试。
 /// </summary>
 /// <remarks>

@@ -132,23 +132,25 @@ public class SuperSocketKcpAuthenticationTests : IAsyncLifetime
     [Fact]
     public async Task KcpServer_ForgedConvFlood_UnauthenticatedSessionsShouldBeClosedAfterTimeout()
     {
-        using var udpClient = new UdpClient();
-        udpClient.Connect(IPAddress.Loopback, _kcpPort);
-
-        // 洪泛：ForgedSessionCount 个不同 conv 的最小 KCP 头包（cmd=IKCP_CMD_PUSH，len=0）
-        for (var i = 0; i < ForgedSessionCount; i++)
+        using (var udpClient = new UdpClient())
         {
-            var datagram = CreateMinimalKcpDatagram(1000u + (uint)i);
-            await udpClient.SendAsync(datagram, datagram.Length);
+            udpClient.Connect(IPAddress.Loopback, _kcpPort);
+
+            // 洪泛：ForgedSessionCount 个不同 conv 的最小 KCP 头包（cmd=IKCP_CMD_PUSH，len=0）
+            for (var i = 0; i < ForgedSessionCount; i++)
+            {
+                var datagram = CreateMinimalKcpDatagram(1000u + (uint)i);
+                await udpClient.SendAsync(datagram, datagram.Length);
+            }
+
+            // 会话按 UDP 包到达异步建立：等待全部未鉴权会话进入鉴权追踪
+            var allTracked = await WaitUntilAsync(() => _authenticationMiddleware.GetTrackedSessionCount() >= ForgedSessionCount, TimeSpan.FromSeconds(5));
+            Assert.True(allTracked, $"Expected {ForgedSessionCount} tracked sessions, got {_authenticationMiddleware.GetTrackedSessionCount()}.");
+
+            // 超时窗口（500ms）+ 扫描周期后，全部未鉴权会话被服务端主动关闭并注销
+            var allClosed = await WaitUntilAsync(() => _authenticationMiddleware.GetTrackedSessionCount() == 0, TimeSpan.FromSeconds(10));
+            Assert.True(allClosed, $"Expected all sessions closed after authentication timeout, still tracking {_authenticationMiddleware.GetTrackedSessionCount()}.");
         }
-
-        // 会话按 UDP 包到达异步建立：等待全部未鉴权会话进入鉴权追踪
-        var allTracked = await WaitUntilAsync(() => _authenticationMiddleware.GetTrackedSessionCount() >= ForgedSessionCount, TimeSpan.FromSeconds(5));
-        Assert.True(allTracked, $"Expected {ForgedSessionCount} tracked sessions, got {_authenticationMiddleware.GetTrackedSessionCount()}.");
-
-        // 超时窗口（500ms）+ 扫描周期后，全部未鉴权会话被服务端主动关闭并注销
-        var allClosed = await WaitUntilAsync(() => _authenticationMiddleware.GetTrackedSessionCount() == 0, TimeSpan.FromSeconds(10));
-        Assert.True(allClosed, $"Expected all sessions closed after authentication timeout, still tracking {_authenticationMiddleware.GetTrackedSessionCount()}.");
     }
 
     /// <summary>
@@ -194,8 +196,10 @@ public class SuperSocketKcpAuthenticationTests : IAsyncLifetime
     /// </summary>
     private static int GetAvailableUdpPort()
     {
-        using var udpClient = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
-        return ((IPEndPoint)udpClient.Client.LocalEndPoint).Port;
+        using (var udpClient = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0)))
+        {
+            return ((IPEndPoint)udpClient.Client.LocalEndPoint).Port;
+        }
     }
 
     private static ValueTask OnConnected(IAppSession session)

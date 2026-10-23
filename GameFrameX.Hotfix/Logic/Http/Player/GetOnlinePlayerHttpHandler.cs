@@ -55,8 +55,3 @@ public sealed class GetOnlinePlayerHttpHandler : BaseHttpHandler
         return Task.FromResult(res);
     }
 }
-
-public sealed class GetOnlinePlayerResponse : HttpMessageResponseBase
-{
-    [Description("当前在线人数")] public int Count { get; set; }
-}

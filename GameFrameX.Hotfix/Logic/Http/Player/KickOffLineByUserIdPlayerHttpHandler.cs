@@ -52,11 +52,3 @@ public sealed class KickOffLineByUserIdPlayerHttpHandler : BaseHttpHandler
         return Task.FromResult(HttpJsonResultData<string>.SuccessString());
     }
 }
-
-public sealed class KickOffLineByUserIdPlayerRequest : HttpMessageRequestBase
-{
-    [Description("玩家ID")]
-    [Required]
-    [Range(1, long.MaxValue)]
-    public long PlayerId { get; set; }
-}

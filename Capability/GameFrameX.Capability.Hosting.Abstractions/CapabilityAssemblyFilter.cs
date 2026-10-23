@@ -85,29 +85,3 @@ public sealed class CapabilityAssemblyFilter
         return CapabilityFilterState.Enabled;
     }
 }
-
-/// <summary>
-/// 能力装配判定结果。
-/// </summary>
-public enum CapabilityFilterState
-{
-    /// <summary>
-    /// 启用装配。
-    /// </summary>
-    Enabled = 0,
-
-    /// <summary>
-    /// 能力清单段未收录（不装配）。
-    /// </summary>
-    NotInEnableList = 1,
-
-    /// <summary>
-    /// 配置排除表命中（不装配）。
-    /// </summary>
-    ExcludedByDisableList = 2,
-
-    /// <summary>
-    /// 未装配（能力目录条目：本进程未装配该能力）。
-    /// </summary>
-    NotAssembled = 3,
-}

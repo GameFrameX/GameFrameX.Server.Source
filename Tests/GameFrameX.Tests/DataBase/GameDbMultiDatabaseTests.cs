@@ -35,18 +35,6 @@ using Xunit;
 namespace GameFrameX.Tests.DataBase;
 
 /// <summary>
-/// 会修改进程级静态状态（GameDb 门面 / MultiDbRegistry）的测试类共享集合：禁用并行执行。
-/// </summary>
-/// <remarks>
-/// Shared xUnit collection for test classes that mutate process-level static state (GameDb facade / MultiDbRegistry);
-/// <see cref="CollectionDefinitionAttribute.DisableParallelization"/> ensures they never run in parallel.
-/// </remarks>
-[CollectionDefinition(nameof(GameDbStaticStateCollection), DisableParallelization = true)]
-public sealed class GameDbStaticStateCollection
-{
-}
-
-/// <summary>
 /// GameDb 多库注册与门面别名行为的单元测试。
 /// </summary>
 /// <remarks>

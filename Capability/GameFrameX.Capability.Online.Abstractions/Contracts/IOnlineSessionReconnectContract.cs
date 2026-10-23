@@ -68,36 +68,3 @@ public interface IOnlineSessionReconnectContract
     /// <returns>操作结果。</returns>
     Task<OnlineResult<bool>> NotifyPlayerDisconnectedAsync(OnlineScope scope, long reconnectWindowSeconds, CancellationToken cancellationToken = default);
 }
-
-/// <summary>
-/// 登录签发的会话恢复凭据（C204）：Token 明文只在签发响应出现一次，服务端仅存指纹。
-/// </summary>
-public sealed class OnlineSessionLoginCredential
-{
-    /// <summary>Token 明文（"otk-" 前缀）。</summary>
-    public string Token { get; set; }
-
-    /// <summary>逻辑会话标识（"sess-" 前缀）。</summary>
-    public string SessionId { get; set; }
-
-    /// <summary>Token 过期时刻（UTC 毫秒）。</summary>
-    public long ExpiresAtTime { get; set; }
-}
-
-/// <summary>
-/// 新连接恢复产物（C204）：轮换后的新凭据与恢复的身份绑定。
-/// </summary>
-public sealed class OnlineSessionResumeCredential
-{
-    /// <summary>轮换后的新 Token 明文（旧 Token 已即刻失效）。</summary>
-    public string NewToken { get; set; }
-
-    /// <summary>恢复的玩家标识。</summary>
-    public long PlayerId { get; set; }
-
-    /// <summary>逻辑会话标识。</summary>
-    public string SessionId { get; set; }
-
-    /// <summary>新 Token 过期时刻（UTC 毫秒）。</summary>
-    public long ExpiresAtTime { get; set; }
-}

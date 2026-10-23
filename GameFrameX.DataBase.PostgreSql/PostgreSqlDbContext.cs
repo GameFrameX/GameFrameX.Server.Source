@@ -37,34 +37,6 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace GameFrameX.DataBase.PostgreSql;
 
 /// <summary>
-/// jsonb 文档表包装实体：每 <c>CacheState</c> 类型一张 <c>(id bigint PK, doc jsonb)</c> 文档表的 EF 映射载体。
-/// </summary>
-/// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
-/// <remarks>
-/// Wrapper entity for the per-state-type jsonb document table: <c>Id</c> maps the <c>id</c> primary key
-/// column and <c>Doc</c> maps the whole state object as an EF owned JSON document on the <c>doc</c> jsonb column
-/// (table / column names identical to the legacy storage model — zero data migration).
-/// </remarks>
-public sealed class StateRow<TState> where TState : BaseCacheState, new()
-{
-    /// <summary>
-    /// 文档主键（映射 <c>id bigint PRIMARY KEY</c>，与状态对象 <c>Id</c> 同值）。
-    /// </summary>
-    /// <remarks>
-    /// The document primary key (mapped to <c>id bigint PRIMARY KEY</c>, same value as the state's <c>Id</c>).
-    /// </remarks>
-    public long Id { get; set; }
-
-    /// <summary>
-    /// 整文档状态对象（owned JSON 映射到 <c>doc</c> jsonb 列）。
-    /// </summary>
-    /// <remarks>
-    /// The whole-document state object (owned JSON mapped onto the <c>doc</c> jsonb column).
-    /// </remarks>
-    public TState Doc { get; set; }
-}
-
-/// <summary>
 /// 每 <c>TState</c> 一个闭式泛型 <c>DbContext</c>：模型静态可缓存，避免运行时类型注册带来的模型失效抖动。
 /// </summary>
 /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>

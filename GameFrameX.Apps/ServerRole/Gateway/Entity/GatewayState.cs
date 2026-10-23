@@ -50,39 +50,3 @@ public sealed class GatewayState : BaseCacheState
     /// </summary>
     public long NextTargetId { get; set; } = 1001;
 }
-
-/// <summary>
-/// 单个路由目标条目状态。
-/// </summary>
-public sealed class TargetEntryState
-{
-    /// <summary>
-    /// 路由目标ID。
-    /// </summary>
-    public long TargetId { get; set; }
-
-    /// <summary>
-    /// 角色类型（如 Trade/Chat）。
-    /// </summary>
-    public string RoleType { get; set; }
-
-    /// <summary>
-    /// 主机地址。
-    /// </summary>
-    public string Host { get; set; }
-
-    /// <summary>
-    /// 端口。
-    /// </summary>
-    public int Port { get; set; }
-
-    /// <summary>
-    /// 路由权重（大于 0）。
-    /// </summary>
-    public int Weight { get; set; }
-
-    /// <summary>
-    /// 最近一次心跳 Unix 秒（注册时初始化）。
-    /// </summary>
-    public long LastHeartbeatUnixTime { get; set; }
-}
