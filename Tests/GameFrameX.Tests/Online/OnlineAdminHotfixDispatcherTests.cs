@@ -24,9 +24,16 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
+using GameFrameX.Capability.Hosting.Abstractions;
+using GameFrameX.Capability.Hosting.AdminApi;
+using GameFrameX.Capability.Hosting.Core;
+using GameFrameX.Capability.Online.Abstractions;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Operations.HotfixRollback;
 using GameFrameX.Core.Hotfix;
 using GameFrameX.Launcher.Online;
@@ -40,34 +47,63 @@ namespace GameFrameX.Tests.Online;
 /// rollback_hotfix_version）经 dispatcher 可达且与直调 <see cref="OnlineHotfixRollbackService"/> 行为一致
 ///（rollback 全链断言审计 / 幂等回放 / 活跃指针 / 实际装载路径）+ 错误码面经 admin 面透传。
 /// <para>
+/// C294：组合选项自建（不用挂具的空操作执行器）——宿主扩展点 <see cref="IOnlineHotfixRollbackExecutor"/>
+/// 以生产 <see cref="HotfixManagerRollbackExecutor"/> Override 注入，玩家目录用空目录桩；业务面先启动
+///（热更登记 / 切换发布事件，事件总线 Activate 前拒绝发布），用例结束恒停止。
+/// </para>
+/// <para>
 /// 载体 = Operations 程序集本体（不引 Core ⇒ 无热更注册面类型，ConvertHotfixAssembly 零副作用）；
 /// 版本目录以 GUID 命名落测试 bin 目录；与 <see cref="HotfixManagerRollbackExecutorTests"/> 同 Collection
-/// 串行（共享 <see cref="HotfixManager"/> 进程级状态）。
+/// 串行（共享 <see cref="HotfixManager"/> 进程级状态；禁并行集合彼此独占执行，组合产物的桥 / 钩子槽位不与其它集合交叠）。
 /// </para>
 /// </summary>
 [Collection(HotfixManagerStaticStateCollection.Name)]
-public sealed class OnlineAdminHotfixDispatcherTests : System.IDisposable
+public sealed class OnlineAdminHotfixDispatcherTests : IDisposable
 {
     /// <summary>测试用作用域三元组（与组合产物授权作用域一致）。</summary>
     private const string ScopeBody = "\"TenantId\":1,\"AppId\":1,\"ServerId\":1001";
 
     /// <summary>本实例创建的版本目录（Dispose 统一最佳努力清理）。</summary>
-    private readonly System.Collections.Generic.List<string> _createdVersions = new System.Collections.Generic.List<string>();
+    private readonly List<string> _createdVersions = new List<string>();
 
     /// <summary>
-    /// 构造经注册反转组装的调度器（组合产物装配真执行器 + 真制品获取器，C248 生产接线）。
+    /// 构造生产接线的组合选项（族配置段 + 空玩家目录 + 生产热更切换执行器；制品获取器走 Operations 包内默认）。
     /// </summary>
-    /// <returns>调度器。</returns>
-    private static GameFrameX.Capability.Hosting.AdminApi.AdminApiDispatcher CreateDispatcher()
+    /// <returns>组合选项。</returns>
+    private static CapabilityCompositionOptions CreateProductionExecutorOptions()
     {
-        var composition = OnlineCapabilityComposition.AddOnlineCapabilities(options =>
+        var options = new CapabilityCompositionOptions(OnlineCapabilityTestHarness.FamilySection(), new CollectingCapabilityAssemblyLog())
         {
-            options.TenantId = 1;
-            options.AppId = 1;
-            options.ServerId = 1001;
-            options.EnableRuntime = true;
-        });
-        return OnlineAdminApiComposition.CreateDispatcher(composition.Runtime);
+            HostOptions = new CapabilityHostOptions
+            {
+                TenantId = OnlineCapabilityTestHarness.TenantId,
+                AppId = OnlineCapabilityTestHarness.AppId,
+                ServerId = OnlineCapabilityTestHarness.ServerId,
+            },
+        };
+        options.Override<IOnlinePlayerDirectory>(new OnlineCapabilityTestHarness.EmptyPlayerDirectory());
+        options.Override<IOnlineHotfixRollbackExecutor>(new HotfixManagerRollbackExecutor());
+        return options;
+    }
+
+    /// <summary>
+    /// 组合并启动 Online 族（生产执行器接线），以调度器执行用例主体，结束后恒停止（撤桥 + 释放钩子声明）。
+    /// </summary>
+    /// <param name="body">用例主体（入参为调度器）。</param>
+    /// <returns>异步任务。</returns>
+    private static async Task WithDispatcherAsync(Func<AdminApiDispatcher, Task> body)
+    {
+        var runtime = CapabilityComposition.Compose(new OnlineCapabilityFamily(), CreateProductionExecutorOptions());
+        try
+        {
+            Assert.IsType<HotfixManagerRollbackExecutor>(runtime.Host.Services.GetService<IOnlineHotfixRollbackExecutor>());
+            await runtime.Host.StartAsync();
+            await body(OnlineCapabilityTestHarness.CreateDispatcher(runtime.Host));
+        }
+        finally
+        {
+            await runtime.StopAsync();
+        }
     }
 
     /// <summary>
@@ -91,7 +127,7 @@ public sealed class OnlineAdminHotfixDispatcherTests : System.IDisposable
     /// </summary>
     /// <param name="innerJson">内层 JSON。</param>
     /// <param name="expectedCode">期望业务码。</param>
-    private static void AssertInnerCode(string innerJson, GameFrameX.Capability.Online.Abstractions.Contracts.OnlineErrorCode expectedCode)
+    private static void AssertInnerCode(string innerJson, OnlineErrorCode expectedCode)
     {
         using (var document = JsonDocument.Parse(innerJson))
         {
@@ -106,7 +142,7 @@ public sealed class OnlineAdminHotfixDispatcherTests : System.IDisposable
     /// <returns>制品完整路径。</returns>
     private static string ArtifactPath(string version)
     {
-        return Path.Combine(System.Environment.CurrentDirectory, version, "GameFrameX.Hotfix.dll");
+        return Path.Combine(Environment.CurrentDirectory, version, "GameFrameX.Hotfix.dll");
     }
 
     /// <summary>
@@ -115,8 +151,8 @@ public sealed class OnlineAdminHotfixDispatcherTests : System.IDisposable
     /// <returns>版本目录名。</returns>
     private string NewLoadableVersion()
     {
-        var version = "c256-admin-" + System.Guid.NewGuid().ToString("N");
-        Directory.CreateDirectory(Path.Combine(System.Environment.CurrentDirectory, version));
+        var version = "c256-admin-" + Guid.NewGuid().ToString("N");
+        Directory.CreateDirectory(Path.Combine(Environment.CurrentDirectory, version));
         File.Copy(typeof(OnlineHotfixProtocolManifest).Assembly.Location, ArtifactPath(version));
         _createdVersions.Add(version);
         return version;
@@ -126,6 +162,7 @@ public sealed class OnlineAdminHotfixDispatcherTests : System.IDisposable
     /// 真实装载指定版本（镜像生产启动装载）。
     /// </summary>
     /// <param name="version">版本目录名。</param>
+    /// <returns>异步任务。</returns>
     private static async Task LoadVersion(string version)
     {
         Assert.True(await HotfixManager.LoadHotfixModuleAsync(null, new HotfixLoadOptions { Version = version, }));
@@ -135,91 +172,98 @@ public sealed class OnlineAdminHotfixDispatcherTests : System.IDisposable
     /// 调度器级全链：register×2（dispatcher）→ activate v1 → 真装载 v1 → rollback 切到 v2——
     /// 活跃指针（幂等回放证活跃已切）与实际装载路径双断言 + 审计经 admin 查询面可查。
     /// </summary>
+    /// <returns>异步任务。</returns>
     [Fact]
     public async Task Dispatch_RollbackHotfixVersion_FullChain_AuditPointerAndLoadPathAsserted()
     {
-        var dispatcher = CreateDispatcher();
         var v1 = NewLoadableVersion();
         var v2 = NewLoadableVersion();
         const string idempotencyKey = "c256-admin-full-switch";
 
-        foreach (var version in new[] { v1, v2 })
+        await WithDispatcherAsync(async dispatcher =>
         {
-            var registerEnvelope = await dispatcher.DispatchAsync("register_hotfix_manifest",
-                "{" + ScopeBody + ",\"Version\":\"" + version + "\"}");
-            using (var document = JsonDocument.Parse(ReadInnerJson(registerEnvelope)))
+            foreach (var version in new[] { v1, v2 })
             {
-                Assert.Equal(0, document.RootElement.GetProperty("Code").GetInt32());
-                Assert.True(document.RootElement.GetProperty("Data").GetProperty("IsNewRegistered").GetBoolean());
+                var registerEnvelope = await dispatcher.DispatchAsync("register_hotfix_manifest",
+                    "{" + ScopeBody + ",\"Version\":\"" + version + "\"}");
+                using (var document = JsonDocument.Parse(ReadInnerJson(registerEnvelope)))
+                {
+                    Assert.Equal(0, document.RootElement.GetProperty("Code").GetInt32());
+                    Assert.True(document.RootElement.GetProperty("Data").GetProperty("IsNewRegistered").GetBoolean());
+                }
             }
-        }
 
-        var activateEnvelope = await dispatcher.DispatchAsync("activate_hotfix_version",
-            "{" + ScopeBody + ",\"Version\":\"" + v1 + "\"}");
-        using (var activateDocument = JsonDocument.Parse(ReadInnerJson(activateEnvelope)))
-        {
-            Assert.Equal(0, activateDocument.RootElement.GetProperty("Code").GetInt32());
-            Assert.True(activateDocument.RootElement.GetProperty("Data").GetProperty("Activated").GetBoolean());
-        }
+            var activateEnvelope = await dispatcher.DispatchAsync("activate_hotfix_version",
+                "{" + ScopeBody + ",\"Version\":\"" + v1 + "\"}");
+            using (var activateDocument = JsonDocument.Parse(ReadInnerJson(activateEnvelope)))
+            {
+                Assert.Equal(0, activateDocument.RootElement.GetProperty("Code").GetInt32());
+                Assert.True(activateDocument.RootElement.GetProperty("Data").GetProperty("Activated").GetBoolean());
+            }
 
-        await LoadVersion(v1);
+            await LoadVersion(v1);
 
-        var rollbackEnvelope = await dispatcher.DispatchAsync("rollback_hotfix_version",
-            "{" + ScopeBody + ",\"TargetVersion\":\"" + v2 + "\",\"OperatorId\":\"admin-001\",\"Reason\":\"c256 全链\",\"IdempotencyKey\":\"" + idempotencyKey + "\"}");
-        using (var rollbackDocument = JsonDocument.Parse(ReadInnerJson(rollbackEnvelope)))
-        {
-            var data = rollbackDocument.RootElement.GetProperty("Data");
-            Assert.Equal(v2, data.GetProperty("TargetVersion").GetString());
-            Assert.Equal(v1, data.GetProperty("PreviousVersion").GetString());
-            Assert.False(data.GetProperty("IsReplay").GetBoolean());
-        }
+            var rollbackEnvelope = await dispatcher.DispatchAsync("rollback_hotfix_version",
+                "{" + ScopeBody + ",\"TargetVersion\":\"" + v2 + "\",\"OperatorId\":\"admin-001\",\"Reason\":\"c256 全链\",\"IdempotencyKey\":\"" + idempotencyKey + "\"}");
+            using (var rollbackDocument = JsonDocument.Parse(ReadInnerJson(rollbackEnvelope)))
+            {
+                var data = rollbackDocument.RootElement.GetProperty("Data");
+                Assert.Equal(v2, data.GetProperty("TargetVersion").GetString());
+                Assert.Equal(v1, data.GetProperty("PreviousVersion").GetString());
+                Assert.False(data.GetProperty("IsReplay").GetBoolean());
+            }
 
-        // 活跃指针断言：同键重放透传首次结果（IsReplay = true）证明切换命令已落定；实际装载路径断言：真执行器已装载 v2。
-        var replayEnvelope = await dispatcher.DispatchAsync("rollback_hotfix_version",
-            "{" + ScopeBody + ",\"TargetVersion\":\"" + v2 + "\",\"OperatorId\":\"admin-001\",\"Reason\":\"c256 全链重放\",\"IdempotencyKey\":\"" + idempotencyKey + "\"}");
-        using (var replayDocument = JsonDocument.Parse(ReadInnerJson(replayEnvelope)))
-        {
-            var data = replayDocument.RootElement.GetProperty("Data");
-            Assert.True(data.GetProperty("IsReplay").GetBoolean());
-            Assert.Equal(v1, data.GetProperty("PreviousVersion").GetString());
-        }
+            // 活跃指针断言：同键重放透传首次结果（IsReplay = true）证明切换命令已落定；实际装载路径断言：真执行器已装载 v2。
+            var replayEnvelope = await dispatcher.DispatchAsync("rollback_hotfix_version",
+                "{" + ScopeBody + ",\"TargetVersion\":\"" + v2 + "\",\"OperatorId\":\"admin-001\",\"Reason\":\"c256 全链重放\",\"IdempotencyKey\":\"" + idempotencyKey + "\"}");
+            using (var replayDocument = JsonDocument.Parse(ReadInnerJson(replayEnvelope)))
+            {
+                var data = replayDocument.RootElement.GetProperty("Data");
+                Assert.True(data.GetProperty("IsReplay").GetBoolean());
+                Assert.Equal(v1, data.GetProperty("PreviousVersion").GetString());
+            }
 
-        Assert.Equal(ArtifactPath(v2), HotfixManager.HotfixAssembly.Location);
+            Assert.Equal(ArtifactPath(v2), HotfixManager.HotfixAssembly.Location);
 
-        // 审计断言：回滚审计先行留痕，经统一审计查询面按事件类型可查。
-        var auditEnvelope = await dispatcher.DispatchAsync("query_online_audit_events",
-            "{" + ScopeBody + ",\"CommandKind\":\"" + OnlineHotfixEvents.RolledBack + "\"}");
-        using (var auditDocument = JsonDocument.Parse(ReadInnerJson(auditEnvelope)))
-        {
-            var items = auditDocument.RootElement.GetProperty("Data").GetProperty("Items");
-            Assert.True(items.GetArrayLength() >= 1);
-        }
+            // 审计断言：回滚审计先行留痕，经统一审计查询面按事件类型可查。
+            var auditEnvelope = await dispatcher.DispatchAsync("query_online_audit_events",
+                "{" + ScopeBody + ",\"CommandKind\":\"" + OnlineHotfixEvents.RolledBack + "\"}");
+            using (var auditDocument = JsonDocument.Parse(ReadInnerJson(auditEnvelope)))
+            {
+                var items = auditDocument.RootElement.GetProperty("Data").GetProperty("Items");
+                Assert.True(items.GetArrayLength() >= 1);
+            }
+        });
     }
 
     /// <summary>
     /// check_hotfix_compatibility：只读预检返回兼容报告（切换前后均可演练）。
     /// </summary>
+    /// <returns>异步任务。</returns>
     [Fact]
     public async Task Dispatch_CheckHotfixCompatibility_ShouldReturnReport()
     {
-        var dispatcher = CreateDispatcher();
         var v1 = NewLoadableVersion();
         var v2 = NewLoadableVersion();
-        await dispatcher.DispatchAsync("register_hotfix_manifest", "{" + ScopeBody + ",\"Version\":\"" + v1 + "\"}");
-        await dispatcher.DispatchAsync("register_hotfix_manifest", "{" + ScopeBody + ",\"Version\":\"" + v2 + "\"}");
-        await dispatcher.DispatchAsync("activate_hotfix_version", "{" + ScopeBody + ",\"Version\":\"" + v1 + "\"}");
 
-        var envelope = await dispatcher.DispatchAsync("check_hotfix_compatibility",
-            "{" + ScopeBody + ",\"TargetVersion\":\"" + v2 + "\"}");
-
-        using (var document = JsonDocument.Parse(ReadInnerJson(envelope)))
+        await WithDispatcherAsync(async dispatcher =>
         {
-            Assert.Equal(0, document.RootElement.GetProperty("Code").GetInt32());
-            var data = document.RootElement.GetProperty("Data");
-            Assert.True(data.GetProperty("IsCompatible").GetBoolean());
-            Assert.Equal(0, data.GetProperty("RemovedCount").GetInt32());
-            Assert.Equal(0, data.GetProperty("ChangedCount").GetInt32());
-        }
+            await dispatcher.DispatchAsync("register_hotfix_manifest", "{" + ScopeBody + ",\"Version\":\"" + v1 + "\"}");
+            await dispatcher.DispatchAsync("register_hotfix_manifest", "{" + ScopeBody + ",\"Version\":\"" + v2 + "\"}");
+            await dispatcher.DispatchAsync("activate_hotfix_version", "{" + ScopeBody + ",\"Version\":\"" + v1 + "\"}");
+
+            var envelope = await dispatcher.DispatchAsync("check_hotfix_compatibility",
+                "{" + ScopeBody + ",\"TargetVersion\":\"" + v2 + "\"}");
+
+            using (var document = JsonDocument.Parse(ReadInnerJson(envelope)))
+            {
+                Assert.Equal(0, document.RootElement.GetProperty("Code").GetInt32());
+                var data = document.RootElement.GetProperty("Data");
+                Assert.True(data.GetProperty("IsCompatible").GetBoolean());
+                Assert.Equal(0, data.GetProperty("RemovedCount").GetInt32());
+                Assert.Equal(0, data.GetProperty("ChangedCount").GetInt32());
+            }
+        });
     }
 
     /// <summary>
@@ -228,56 +272,67 @@ public sealed class OnlineAdminHotfixDispatcherTests : System.IDisposable
     /// <param name="action">action 名。</param>
     /// <param name="body">请求体。</param>
     /// <param name="expectedCode">期望业务码。</param>
+    /// <returns>异步任务。</returns>
     [Theory]
-    [InlineData("rollback_hotfix_version", "{" + ScopeBody + ",\"TargetVersion\":\"c256-ghost\",\"OperatorId\":\"admin\",\"Reason\":\"c256\",\"IdempotencyKey\":\"c256-ghost-key\"}", GameFrameX.Capability.Online.Abstractions.Contracts.OnlineErrorCode.ResourceNotFound)]
-    [InlineData("activate_hotfix_version", "{" + ScopeBody + ",\"Version\":\"c256-ghost\"}", GameFrameX.Capability.Online.Abstractions.Contracts.OnlineErrorCode.ResourceNotFound)]
-    [InlineData("rollback_hotfix_version", "{" + ScopeBody + ",\"TargetVersion\":\"c256-x\",\"OperatorId\":\"admin\",\"Reason\":\"c256\"}", GameFrameX.Capability.Online.Abstractions.Contracts.OnlineErrorCode.ParameterInvalid)]
-    [InlineData("register_hotfix_manifest", "{" + ScopeBody + "}", GameFrameX.Capability.Online.Abstractions.Contracts.OnlineErrorCode.ParameterInvalid)]
-    [InlineData("check_hotfix_compatibility", "{" + ScopeBody + ",\"TargetVersion\":\"c256-x\"}", GameFrameX.Capability.Online.Abstractions.Contracts.OnlineErrorCode.ResourceNotFound)]
-    public async Task Dispatch_HotfixActions_ErrorCodesTransparent(string action, string body, GameFrameX.Capability.Online.Abstractions.Contracts.OnlineErrorCode expectedCode)
+    [InlineData("rollback_hotfix_version", "{" + ScopeBody + ",\"TargetVersion\":\"c256-ghost\",\"OperatorId\":\"admin\",\"Reason\":\"c256\",\"IdempotencyKey\":\"c256-ghost-key\"}", OnlineErrorCode.ResourceNotFound)]
+    [InlineData("activate_hotfix_version", "{" + ScopeBody + ",\"Version\":\"c256-ghost\"}", OnlineErrorCode.ResourceNotFound)]
+    [InlineData("rollback_hotfix_version", "{" + ScopeBody + ",\"TargetVersion\":\"c256-x\",\"OperatorId\":\"admin\",\"Reason\":\"c256\"}", OnlineErrorCode.ParameterInvalid)]
+    [InlineData("register_hotfix_manifest", "{" + ScopeBody + "}", OnlineErrorCode.ParameterInvalid)]
+    [InlineData("check_hotfix_compatibility", "{" + ScopeBody + ",\"TargetVersion\":\"c256-x\"}", OnlineErrorCode.ResourceNotFound)]
+    public async Task Dispatch_HotfixActions_ErrorCodesTransparent(string action, string body, OnlineErrorCode expectedCode)
     {
-        var dispatcher = CreateDispatcher();
-        var envelope = await dispatcher.DispatchAsync(action, body);
-        AssertInnerCode(ReadInnerJson(envelope), expectedCode);
+        await WithDispatcherAsync(async dispatcher =>
+        {
+            var envelope = await dispatcher.DispatchAsync(action, body);
+            AssertInnerCode(ReadInnerJson(envelope), expectedCode);
+        });
     }
 
     /// <summary>
     /// check_hotfix_compatibility 无活跃版本（已登记目标但未激活基线）：5001 透传。
     /// </summary>
+    /// <returns>异步任务。</returns>
     [Fact]
     public async Task Dispatch_CheckHotfixCompatibility_WithoutActiveVersion_ShouldReturn5001()
     {
-        var dispatcher = CreateDispatcher();
         var v1 = NewLoadableVersion();
-        await dispatcher.DispatchAsync("register_hotfix_manifest", "{" + ScopeBody + ",\"Version\":\"" + v1 + "\"}");
 
-        var envelope = await dispatcher.DispatchAsync("check_hotfix_compatibility",
-            "{" + ScopeBody + ",\"TargetVersion\":\"" + v1 + "\"}");
+        await WithDispatcherAsync(async dispatcher =>
+        {
+            await dispatcher.DispatchAsync("register_hotfix_manifest", "{" + ScopeBody + ",\"Version\":\"" + v1 + "\"}");
 
-        AssertInnerCode(ReadInnerJson(envelope), GameFrameX.Capability.Online.Abstractions.Contracts.OnlineErrorCode.StateNotReady);
+            var envelope = await dispatcher.DispatchAsync("check_hotfix_compatibility",
+                "{" + ScopeBody + ",\"TargetVersion\":\"" + v1 + "\"}");
+
+            AssertInnerCode(ReadInnerJson(envelope), OnlineErrorCode.StateNotReady);
+        });
     }
+
     /// <summary>
     /// 登记携带制品字段但制品源不可达：获取失败 8002 透传且登记未生效（「已登记」与「已落盘」同时成立红线）。
     /// </summary>
+    /// <returns>异步任务。</returns>
     [Fact]
     public async Task Dispatch_RegisterHotfixManifest_UnreachableArtifact_ShouldReturn8002()
     {
-        var dispatcher = CreateDispatcher();
-        var envelope = await dispatcher.DispatchAsync("register_hotfix_manifest",
-            "{" + ScopeBody + ",\"Version\":\"c256-broken-artifact\",\"ArtifactSourceUrl\":\"http://127.0.0.1:1/GameFrameX.Hotfix.dll\",\"ArtifactSha256\":\"" + new string('a', 64) + "\"}");
-        AssertInnerCode(ReadInnerJson(envelope), GameFrameX.Capability.Online.Abstractions.Contracts.OnlineErrorCode.DependencyUnavailable);
+        await WithDispatcherAsync(async dispatcher =>
+        {
+            var envelope = await dispatcher.DispatchAsync("register_hotfix_manifest",
+                "{" + ScopeBody + ",\"Version\":\"c256-broken-artifact\",\"ArtifactSourceUrl\":\"http://127.0.0.1:1/GameFrameX.Hotfix.dll\",\"ArtifactSha256\":\"" + new string('a', 64) + "\"}");
+            AssertInnerCode(ReadInnerJson(envelope), OnlineErrorCode.DependencyUnavailable);
+        });
     }
 
     /// <summary>
     /// 最佳努力清理本实例创建的版本目录（collectible ALC 退役宽限期内文件仍被映射，删除失败静默——目录名带 GUID 不复用）。
     /// </summary>
-    void System.IDisposable.Dispose()
+    void IDisposable.Dispose()
     {
         foreach (var version in _createdVersions)
         {
             try
             {
-                Directory.Delete(Path.Combine(System.Environment.CurrentDirectory, version), true);
+                Directory.Delete(Path.Combine(Environment.CurrentDirectory, version), true);
             }
             catch (IOException)
             {

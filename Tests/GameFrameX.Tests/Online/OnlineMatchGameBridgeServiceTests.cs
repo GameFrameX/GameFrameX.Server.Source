@@ -268,7 +268,7 @@ namespace GameFrameX.Tests.Online
             public Harness()
             {
                 Publisher = new OnlineEventRecorder();
-                Runtime = new OnlineMatchRuntime(new InMemoryOnlineMatchActorStore(), Publisher);
+                Runtime = new OnlineMatchRuntime(new InMemoryOnlineMatchActorStore(), Publisher, new OnlineMatchRuntimeOptions());
                 Game = new OnlineRockPaperScissorsGame();
                 Runtime.RegisterGame(Game);
                 Settlement = new OnlineMatchSettlementService(Runtime, new InMemoryOnlineMatchResultStore(), Publisher);

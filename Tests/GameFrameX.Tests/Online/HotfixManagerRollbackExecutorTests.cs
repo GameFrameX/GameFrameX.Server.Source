@@ -37,7 +37,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Core.Hotfix;
 using GameFrameX.Foundation.Idempotency;
-using GameFrameX.Capability.Online.Operations.Audit;
+using GameFrameX.Capability.Online.Abstractions.Audit;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Operations.HotfixRollback;
 using GameFrameX.Capability.Online.Abstractions.Idempotency;

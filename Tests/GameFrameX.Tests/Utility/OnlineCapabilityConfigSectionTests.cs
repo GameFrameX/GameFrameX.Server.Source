@@ -29,6 +29,7 @@
 
 using System;
 using System.Linq;
+using System.Text.Json;
 using GameFrameX.Foundation.Json;
 using GameFrameX.Utility.Setting;
 using Xunit;
@@ -36,9 +37,10 @@ using Xunit;
 namespace GameFrameX.Tests.Utility;
 
 /// <summary>
-/// Online 能力配置段绑定测试（C229）：角色配置 json 的嵌套 "Online" 节点经
+/// Online 能力配置段绑定测试（C229 立项，C294 键集重定）：角色配置 json 的嵌套 "Online" 节点经
 /// GlobalSettings.Load 的反序列化通道（List&lt;AppSetting&gt;）捕获为强类型 POCO；
-/// 节点缺失 = null（全装配语义）、空数组如实绑定（由组合入口归一为不过滤）。
+/// 节点缺失 = null（全装配语义）、空数组如实绑定（由组合入口归一为不过滤）；
+/// 双闸（EnableRuntime / EnableAdminApi）并入配置段，能力级参数经 Settings 原始 JSON 节点承载。
 /// </summary>
 public class OnlineCapabilityConfigSectionTests
 {
@@ -80,8 +82,7 @@ public class OnlineCapabilityConfigSectionTests
             [
               {
                 "ServerType": "Game",
-                "ServerId": 1001,
-                "IsEnableOnline": true
+                "ServerId": 1001
               }
             ]
             """;
@@ -121,21 +122,24 @@ public class OnlineCapabilityConfigSectionTests
     }
 
     /// <summary>
-    /// 既有配置面零破坏：Online 平铺开关与嵌套段并存绑定互不干扰。
+    /// 双闸并入配置段：EnableRuntime / EnableAdminApi / EnableRoles / UseGameDbStores 在 "Online" 节点内绑定，
+    /// 与平铺的作用域字段（OnlineTenantId / OnlineAppId）并存互不干扰；未配置的过滤表保持 null。
     /// </summary>
     [Fact]
-    public void Deserialize_FlatSwitchesAndNestedSection_Coexist()
+    public void Deserialize_SectionGatesAndFlatScopeFields_Coexist()
     {
         const string json = """
             [
               {
                 "ServerType": "Game",
                 "ServerId": 1001,
-                "IsEnableOnline": true,
-                "IsEnableOnlineAdmin": true,
                 "OnlineTenantId": 1,
                 "OnlineAppId": 1,
                 "Online": {
+                  "EnableRuntime": true,
+                  "EnableAdminApi": true,
+                  "EnableRoles": ["Game", "Social"],
+                  "UseGameDbStores": true,
                   "Disable": ["online-operations"]
                 }
               }
@@ -146,12 +150,88 @@ public class OnlineCapabilityConfigSectionTests
 
         Assert.NotNull(settings);
         var setting = Assert.Single(settings);
-        Assert.True(setting.IsEnableOnline);
-        Assert.True(setting.IsEnableOnlineAdmin);
         Assert.Equal(1, setting.OnlineTenantId);
         Assert.Equal(1, setting.OnlineAppId);
         Assert.NotNull(setting.Online);
+        Assert.True(setting.Online.EnableRuntime);
+        Assert.True(setting.Online.EnableAdminApi);
+        Assert.True(setting.Online.UseGameDbStores);
+        Assert.Equal(new[] { "Game", "Social" }, setting.Online.GetEffectiveEnableRoles().ToArray());
         Assert.Null(setting.Online.Capabilities);
         Assert.Equal(new[] { "online-operations" }, setting.Online.Disable.ToArray());
+    }
+
+    /// <summary>
+    /// 段内开关缺省：未写双闸 = 业务面与管理面都不装配；未写 EnableRoles = 生效角色表回落 ["Game"]。
+    /// </summary>
+    [Fact]
+    public void Deserialize_SectionWithoutGates_DefaultsToDisabledAndGameRole()
+    {
+        const string json = """
+            [
+              {
+                "ServerType": "Game",
+                "ServerId": 1001,
+                "Online": {
+                  "Capabilities": ["online-assets"]
+                }
+              }
+            ]
+            """;
+
+        var settings = JsonHelper.Deserialize<System.Collections.Generic.List<AppSetting>>(json);
+
+        Assert.NotNull(settings);
+        var section = Assert.Single(settings).Online;
+        Assert.NotNull(section);
+        Assert.False(section.EnableRuntime);
+        Assert.False(section.EnableAdminApi);
+        Assert.False(section.UseGameDbStores);
+        Assert.Null(section.EnableRoles);
+        Assert.Equal(new[] { "Game" }, section.GetEffectiveEnableRoles().ToArray());
+    }
+
+    /// <summary>
+    /// 能力级参数节点：Settings 按原始 JsonElement 绑定（键 = 能力 Id，值原样保留供装配期 Options 绑定器逐字段合并）；
+    /// 节点缺失时为默认 JsonElement（ValueKind = Undefined，机制按「无覆盖」处理）。
+    /// </summary>
+    [Fact]
+    public void Deserialize_Settings_BindsRawJsonElement_AndIsUndefinedWhenAbsent()
+    {
+        const string json = """
+            [
+              {
+                "ServerType": "Game",
+                "ServerId": 1001,
+                "Online": {
+                  "Settings": {
+                    "online-social": {
+                      "Friend": { "FriendLimit": 50 }
+                    }
+                  }
+                }
+              },
+              {
+                "ServerType": "Social",
+                "ServerId": 5531,
+                "Online": {
+                  "EnableRuntime": true
+                }
+              }
+            ]
+            """;
+
+        var settings = JsonHelper.Deserialize<System.Collections.Generic.List<AppSetting>>(json);
+
+        Assert.NotNull(settings);
+        Assert.Equal(2, settings.Count);
+
+        var configured = settings[0].Online.Settings;
+        Assert.Equal(JsonValueKind.Object, configured.ValueKind);
+        var social = configured.GetProperty("online-social");
+        Assert.Equal(JsonValueKind.Object, social.ValueKind);
+        Assert.Equal(50, social.GetProperty("Friend").GetProperty("FriendLimit").GetInt32());
+
+        Assert.Equal(JsonValueKind.Undefined, settings[1].Online.Settings.ValueKind);
     }
 }

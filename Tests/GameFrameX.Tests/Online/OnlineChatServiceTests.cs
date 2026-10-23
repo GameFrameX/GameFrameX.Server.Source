@@ -28,6 +28,7 @@
 // ==========================================================================================
 
 using System;
+using GameFrameX.Capability.Online.Abstractions;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -862,15 +863,29 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 创建被测聊天服务（并把内部件暴露给断言用）。
+        /// 以包内默认审核插件（放行）创建被测聊天服务。
         /// </summary>
         /// <param name="recorder">事件记录桩。</param>
         /// <param name="rateLimitMaxMessages">频控窗口内允许的条数（默认取上限避免干扰非频控用例）。</param>
         /// <param name="recallWindowSeconds">撤回窗口（秒）。</param>
         /// <param name="membershipProbe">频道成员资格探针（可空）。</param>
-        /// <param name="moderationHook">内容审核插件（可空）。</param>
         /// <returns>聊天服务实例（已把存储、裁决服务挂在测试夹具上）。</returns>
-        private static TestChatFixture CreateService(out OnlineEventRecorder recorder, int rateLimitMaxMessages = 1000, int recallWindowSeconds = 120, IOnlineChannelMembershipProbe membershipProbe = null, IOnlineChatModerationHook moderationHook = null)
+        private static TestChatFixture CreateService(out OnlineEventRecorder recorder, int rateLimitMaxMessages = 1000, int recallWindowSeconds = 120, IOnlineChannelMembershipProbe membershipProbe = null)
+        {
+            // 未给审核插件 = 包内默认放行实现（与 Social 声明的钩子默认一致）。
+            return CreateService(out recorder, new OnlineChatModerationAllowAllHook(), rateLimitMaxMessages, recallWindowSeconds, membershipProbe);
+        }
+
+        /// <summary>
+        /// 以指定审核插件创建被测聊天服务（并把内部件暴露给断言用）。
+        /// </summary>
+        /// <param name="recorder">事件记录桩。</param>
+        /// <param name="moderationHook">内容审核插件。</param>
+        /// <param name="rateLimitMaxMessages">频控窗口内允许的条数（默认取上限避免干扰非频控用例）。</param>
+        /// <param name="recallWindowSeconds">撤回窗口（秒）。</param>
+        /// <param name="membershipProbe">频道成员资格探针（可空）。</param>
+        /// <returns>聊天服务实例（已把存储、裁决服务挂在测试夹具上）。</returns>
+        private static TestChatFixture CreateService(out OnlineEventRecorder recorder, IOnlineChatModerationHook moderationHook, int rateLimitMaxMessages = 1000, int recallWindowSeconds = 120, IOnlineChannelMembershipProbe membershipProbe = null)
         {
             recorder = new OnlineEventRecorder();
             var store = new InMemoryOnlineChatStore();
@@ -884,7 +899,10 @@ namespace GameFrameX.Tests.Online
                 RateLimitMaxMessages = rateLimitMaxMessages,
                 HistoryRetentionSeconds = 0,
             };
-            var service = new OnlineChatService(store, recorder, decisionService, options, membershipProbe, moderationHook);
+            // C294：构造面改为探针集合 + 审核钩子提供器（逐调用读取，生产经 CapabilityHookHandle.Current 供值）；
+            // 未给探针 = 空集合（无归属域）。
+            var membershipProbes = membershipProbe == null ? new List<IOnlineChannelMembershipProbe>() : new List<IOnlineChannelMembershipProbe> { membershipProbe };
+            var service = new OnlineChatService(store, recorder, decisionService, options, membershipProbes, () => moderationHook);
             return new TestChatFixture(service, store, decisionService);
         }
 

@@ -26,4 +26,11 @@
       <ProjectReference Include="..\..\GameFrameX.Hotfix\GameFrameX.Hotfix.csproj" />
     </ItemGroup>
 
+    <!-- 桥契约测试发布面（C294）：把测试程序集复制为部署命名约定形态
+         GameFrameX.Hotfix.Tests.BridgeStubs.dll —— 测试桩能力模块经 Compose + ActivateAsync
+         用 CapabilityBridgePublisher 发布桥契约，复刻生产「模块 Activate 发布 / 宿主停机撤桥」。 -->
+    <Target Name="CopyTestAssemblyAsBridgeStubs" AfterTargets="Build">
+      <Copy SourceFiles="$(TargetPath)" DestinationFiles="$(OutDir)GameFrameX.Hotfix.Tests.BridgeStubs.dll" SkipUnchangedFiles="true" />
+    </Target>
+
 </Project>

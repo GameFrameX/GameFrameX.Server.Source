@@ -1,13 +1,38 @@
+// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the PRC and relevant international regulations.
+//   使用本项目须严格遵守相关法律法规与开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录的 LICENSE 文件。
+//   please refer to the LICENSE file at the root of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe the legal rights and interests of others as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes or liabilities arising from secondary development based on this project,
+//   本组织与贡献者概不承担任何责任。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository:  https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:   https://gitee.com/GameFrameX
+//   CNB  仓库：https://www.cnb.cool/GameFrameX
+//   CNB Repository:     https://www.cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Docs:      https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Hosting.Core;
-using GameFrameX.Capability.Online.Abstractions.Bridges;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
-using GameFrameX.Capability.Online.Abstractions.Events;
 using GameFrameX.Capability.Online.Abstractions.Scope;
 using GameFrameX.Capability.Online.Match;
 using GameFrameX.Capability.Online.Matchmaking;
@@ -16,19 +41,18 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 匹配域桥接缝测试（C246）：域契约面装配、T2 裁定 R4-R13 的域面语义（即时窗口 / 取消终态回执 /
-    /// 状态与票据映射 / 超时 / 入场到达同一对局）、holder 生命周期与模块拓扑序。
+    /// 匹配域桥接缝测试（C246 → C294 机制桥）：匹配域契约面由 online-match 在 online-matchmaking 在场时于 Activate 期经机制桥发布；
+    /// T2 裁定 R4-R13 的域面语义（即时窗口 / 取消终态回执 / 状态与票据映射 / 超时 / 入场到达同一对局）经租约访问；
+    /// 桥生命周期（启动前缺席 / 停止后撤销且旧租约显式失败）与匹配能力缺席时的披露（域桥不发布、对局桥照常发布）。
     /// </summary>
-    public class OnlineMatchDomainBridgeTests : IDisposable
+    [Collection(CapabilityRuntimeCollection.Name)]
+    public class OnlineMatchDomainBridgeTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = 1;
-
-        /// <summary>测试用区服标识。</summary>
-        private const long ServerId = 1001;
+        /// <summary>
+        /// 静默调度间隔（毫秒）：tick job 一律由用例显式驱动（如撮合 RunOnceAsync），后台循环在用例时长内不触发，
+        /// 保持「撮合 / 超时只在用例推进时刻时发生」的确定性。
+        /// </summary>
+        private const int QuietSchedulerIntervalMilliseconds = 3600000;
 
         /// <summary>玩家一。</summary>
         private const long PlayerOne = 2001;
@@ -39,106 +63,103 @@ namespace GameFrameX.Tests.Online
         /// <summary>玩家三（非成员）。</summary>
         private const long PlayerThree = 2003;
 
-        public OnlineMatchDomainBridgeTests()
-        {
-            OnlineMatchDomainBridgeHolder.Retract();
-        }
-
-        public void Dispose()
-        {
-            OnlineMatchDomainBridgeHolder.Retract();
-        }
-
         /// <summary>
-        /// 最小组合根（matchmaking + match 两运行时装配所需预置：作用域 + 事件出口 + 社交 gate 面 + 拓扑桩）。
+        /// 构造玩家作用域（三元组与族配置段一致）。
         /// </summary>
-        private static CapabilityHostBuilder MinimalRoot()
-        {
-            var builder = new CapabilityHostBuilder();
-            builder.UseService(new OnlineScope(TenantId, AppId, ServerId));
-            builder.UseService<IOnlineEventPublisher>(new OnlineEventPublisher(new GameFrameX.Foundation.Idempotency.InMemoryEventPublisher()));
-            builder.UseService<IOnlineSocialGate>(new AllowAllSocialGate());
-            builder.AddModule(new SocialStubModule());
-            builder.AddModule(new AssetsStubModule());
-            return builder;
-        }
-
-        /// <summary>
-        /// 社交 gate 放行桩（满足 online-matchmaking 对 online-social 的依赖面）。
-        /// </summary>
-        private sealed class AllowAllSocialGate : IOnlineSocialGate
-        {
-            /// <inheritdoc />
-            public Task<OnlineSocialDecision> EvaluateAsync(long tenantId, long appId, long fromPlayerId, long toPlayerId, OnlineSocialInteractionPurpose purpose, CancellationToken cancellationToken = default)
-            {
-                return Task.FromResult(OnlineSocialDecision.Allow());
-            }
-        }
-
-        /// <summary>
-        /// online-social 拓扑桩（满足 Requires）。
-        /// </summary>
-        private sealed class SocialStubModule : ICapabilityModule
-        {
-            /// <inheritdoc />
-            public CapabilityManifest Manifest { get; } = new("online-social", "1.0.0", Array.Empty<string>());
-
-            public void Register(CapabilityRegistrationContext context)
-            {
-            }
-        }
-
-        /// <summary>
-        /// online-assets 拓扑桩（满足 online-match 的 Requires）。
-        /// </summary>
-        private sealed class AssetsStubModule : ICapabilityModule
-        {
-            /// <inheritdoc />
-            public CapabilityManifest Manifest { get; } = new("online-assets", "1.0.0", Array.Empty<string>());
-
-            public void Register(CapabilityRegistrationContext context)
-            {
-            }
-        }
-
-        /// <summary>
-        /// 构造合法宿主选项。
-        /// </summary>
-        private static CapabilityHostOptions ValidOptions()
-        {
-            return new CapabilityHostOptions { TenantId = TenantId, AppId = AppId, ServerId = ServerId };
-        }
-
-        /// <summary>
-        /// 构造玩家作用域。
-        /// </summary>
+        /// <param name="playerId">玩家标识。</param>
+        /// <returns>玩家作用域。</returns>
         private static OnlineScope PlayerScope(long playerId)
         {
-            return new OnlineScope(TenantId, AppId, ServerId, playerId);
+            return new OnlineScope(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, OnlineCapabilityTestHarness.ServerId, playerId);
         }
 
         /// <summary>
-        /// 构造已装配 matchmaking + match 运行时的宿主（不自启：仅验证装配与域面行为）。
+        /// 静默后台调度（用例显式驱动 tick 语义）。
         /// </summary>
-        private static CapabilityHost BuildHost()
+        /// <param name="options">组合选项。</param>
+        private static void QuietScheduler(CapabilityCompositionOptions options)
         {
-            var builder = MinimalRoot();
-            builder.AddOnlineMatchmakingRuntime();
-            builder.AddOnlineMatchRuntime();
-            return builder.Build(ValidOptions());
+            options.HostOptions.SchedulerIntervalMilliseconds = QuietSchedulerIntervalMilliseconds;
         }
 
         /// <summary>
-        /// 模块自装配把匹配域契约面注册回共享面，且 matchmaking 先于 match 装配（拓扑序）。
+        /// 全族组合并启动，经机制桥取匹配域契约面执行用例主体（结束恒停止撤桥）。
+        /// </summary>
+        /// <param name="body">用例主体（入参：匹配域契约面、已启动的组合产物）。</param>
+        /// <returns>异步任务。</returns>
+        private static Task WithStartedMatchDomainAsync(Func<IOnlineMatchDomain, CapabilityRuntime, Task> body)
+        {
+            return OnlineCapabilityTestHarness.WithRuntimeAsync(async runtime =>
+            {
+                await runtime.Host.StartAsync();
+                Assert.True(CapabilityBridge<IOnlineMatchDomain>.TryAcquire(out var lease));
+                await body(lease.Contract, runtime);
+            }, configure: QuietScheduler);
+        }
+
+        /// <summary>
+        /// 匹配域桥发布：online-matchmaking 先于 online-match 装配（拓扑序），启动后桥契约面与共享面注册的域服务为同一实例。
         /// </summary>
         [Fact]
-        public void Module_RegistersMatchDomainFace_AfterMatchmaking()
+        public async Task Bridge_PublishesMatchDomainFace_AfterMatchmakingAssembly()
         {
-            var host = BuildHost();
+            await WithStartedMatchDomainAsync((domain, runtime) =>
+            {
+                var order = runtime.Report.EnabledIdsInOrder.ToList();
+                Assert.True(order.IndexOf("online-matchmaking") < order.IndexOf("online-match"), "online-matchmaking 必须先于 online-match 装配");
+                Assert.Same(runtime.Host.Services.GetService<IOnlineMatchDomain>(), domain);
+                return Task.CompletedTask;
+            });
+        }
 
-            Assert.NotNull(host.Services.GetService<IOnlineMatchDomain>());
-            var order = host.Report.EnabledIdsInOrder.ToList();
-            Assert.True(order.IndexOf("online-matchmaking") < order.IndexOf("online-match"), "online-matchmaking 必须先于 online-match 装配");
+        /// <summary>
+        /// 桥生命周期：装配未启动时匹配域桥缺席；宿主停止自动撤桥——再取租约失败，旧租约访问契约面显式抛
+        /// <see cref="CapabilityBridgeUnavailableException"/>。
+        /// </summary>
+        [Fact]
+        public async Task Bridge_LifecycleFollowsHostStartAndStop()
+        {
+            await OnlineCapabilityTestHarness.WithRuntimeAsync(async runtime =>
+            {
+                Assert.False(CapabilityBridge<IOnlineMatchDomain>.TryAcquire(out _));
+
+                await runtime.Host.StartAsync();
+                Assert.True(CapabilityBridge<IOnlineMatchDomain>.TryAcquire(out var lease));
+                var through = await lease.Contract.GetStatusAsync(PlayerScope(PlayerOne));
+                Assert.True(through.IsSuccess);
+
+                await runtime.StopAsync();
+
+                Assert.False(CapabilityBridge<IOnlineMatchDomain>.TryAcquire(out _));
+                Assert.Throws<CapabilityBridgeUnavailableException>(() => lease.Contract);
+            }, configure: QuietScheduler);
+        }
+
+        /// <summary>
+        /// 匹配能力缺席披露：排除 online-matchmaking 后匹配域服务不装配、匹配域桥不发布（不报错），
+        /// 对局桥照常发布；对局能力报告条目披露缺失功能。
+        /// </summary>
+        [Fact]
+        public async Task Bridge_WithoutMatchmaking_PublishesGameBridgeButNotMatchDomain()
+        {
+            await OnlineCapabilityTestHarness.WithRuntimeAsync(async runtime =>
+            {
+                await runtime.Host.StartAsync();
+
+                Assert.DoesNotContain("online-matchmaking", runtime.Report.EnabledIdsInOrder);
+                Assert.Contains("online-match", runtime.Report.EnabledIdsInOrder);
+                Assert.Null(runtime.Host.Services.GetOptionalService<IOnlineMatchDomain>());
+                Assert.False(CapabilityBridge<IOnlineMatchDomain>.TryAcquire(out _));
+                Assert.True(CapabilityBridge<IOnlineMatchGameBridge>.TryAcquire(out var gameLease));
+                Assert.NotNull(gameLease.Contract);
+
+                var matchEntry = Assert.Single(runtime.Report.Entries, candidate => candidate.Manifest.Id == "online-match");
+                Assert.NotEmpty(matchEntry.AbsentFeatures);
+            }, configure: options =>
+            {
+                QuietScheduler(options);
+                options.Filter = new CapabilityAssemblyFilter(disabledIds: new[] { "online-matchmaking" });
+            });
         }
 
         /// <summary>
@@ -147,17 +168,17 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Enqueue_SoloPlayer_QueuesWithZeroMatchId()
         {
-            var host = BuildHost();
-            var domain = host.Services.GetService<IOnlineMatchDomain>();
+            await WithStartedMatchDomainAsync(async (domain, runtime) =>
+            {
+                var enqueue = await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
 
-            var enqueue = await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
-
-            Assert.True(enqueue.IsSuccess);
-            Assert.Equal(0, enqueue.Data.MatchId);
-            var status = await domain.GetStatusAsync(PlayerScope(PlayerOne));
-            Assert.True(status.Data.Queuing);
-            Assert.False(status.Data.Matched);
-            Assert.Equal(0, status.Data.MatchId);
+                Assert.True(enqueue.IsSuccess);
+                Assert.Equal(0, enqueue.Data.MatchId);
+                var status = await domain.GetStatusAsync(PlayerScope(PlayerOne));
+                Assert.True(status.Data.Queuing);
+                Assert.False(status.Data.Matched);
+                Assert.Equal(0, status.Data.MatchId);
+            });
         }
 
         /// <summary>
@@ -166,18 +187,18 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Enqueue_SecondPlayer_InstantWindowPairsBoth()
         {
-            var host = BuildHost();
-            var domain = host.Services.GetService<IOnlineMatchDomain>();
+            await WithStartedMatchDomainAsync(async (domain, runtime) =>
+            {
+                await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
+                var second = await domain.EnqueueAsync(PlayerScope(PlayerTwo), 1, 1050);
 
-            await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
-            var second = await domain.EnqueueAsync(PlayerScope(PlayerTwo), 1, 1050);
-
-            Assert.True(second.IsSuccess);
-            Assert.NotEqual(0, second.Data.MatchId);
-            var firstStatus = await domain.GetStatusAsync(PlayerScope(PlayerOne));
-            Assert.False(firstStatus.Data.Queuing);
-            Assert.True(firstStatus.Data.Matched);
-            Assert.Equal(second.Data.MatchId, firstStatus.Data.MatchId);
+                Assert.True(second.IsSuccess);
+                Assert.NotEqual(0, second.Data.MatchId);
+                var firstStatus = await domain.GetStatusAsync(PlayerScope(PlayerOne));
+                Assert.False(firstStatus.Data.Queuing);
+                Assert.True(firstStatus.Data.Matched);
+                Assert.Equal(second.Data.MatchId, firstStatus.Data.MatchId);
+            });
         }
 
         /// <summary>
@@ -186,14 +207,14 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Enqueue_DuplicatePlayer_Rejected()
         {
-            var host = BuildHost();
-            var domain = host.Services.GetService<IOnlineMatchDomain>();
+            await WithStartedMatchDomainAsync(async (domain, runtime) =>
+            {
+                await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
+                var duplicate = await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
 
-            await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
-            var duplicate = await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
-
-            Assert.False(duplicate.IsSuccess);
-            Assert.Equal(OnlineErrorCode.DuplicateRequest, duplicate.Code);
+                Assert.False(duplicate.IsSuccess);
+                Assert.Equal(OnlineErrorCode.DuplicateRequest, duplicate.Code);
+            });
         }
 
         /// <summary>
@@ -202,15 +223,15 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Enqueue_ModePartitionsAndRatingWindow_PartitionPools()
         {
-            var host = BuildHost();
-            var domain = host.Services.GetService<IOnlineMatchDomain>();
+            await WithStartedMatchDomainAsync(async (domain, runtime) =>
+            {
+                await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
+                var otherMode = await domain.EnqueueAsync(PlayerScope(PlayerTwo), 2, 1050);
+                Assert.Equal(0, otherMode.Data.MatchId);
 
-            await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
-            var otherMode = await domain.EnqueueAsync(PlayerScope(PlayerTwo), 2, 1050);
-            Assert.Equal(0, otherMode.Data.MatchId);
-
-            var third = await domain.EnqueueAsync(PlayerScope(PlayerThree), 1, 5000);
-            Assert.Equal(0, third.Data.MatchId);
+                var third = await domain.EnqueueAsync(PlayerScope(PlayerThree), 1, 5000);
+                Assert.Equal(0, third.Data.MatchId);
+            });
         }
 
         /// <summary>
@@ -219,16 +240,16 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Enqueue_InvalidModeOrRating_Rejected()
         {
-            var host = BuildHost();
-            var domain = host.Services.GetService<IOnlineMatchDomain>();
+            await WithStartedMatchDomainAsync(async (domain, runtime) =>
+            {
+                var badMode = await domain.EnqueueAsync(PlayerScope(PlayerOne), 9, 1000);
+                Assert.False(badMode.IsSuccess);
+                Assert.Equal(OnlineErrorCode.ParameterInvalid, badMode.Code);
 
-            var badMode = await domain.EnqueueAsync(PlayerScope(PlayerOne), 9, 1000);
-            Assert.False(badMode.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ParameterInvalid, badMode.Code);
-
-            var badRating = await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 0);
-            Assert.False(badRating.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ParameterInvalid, badRating.Code);
+                var badRating = await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 0);
+                Assert.False(badRating.IsSuccess);
+                Assert.Equal(OnlineErrorCode.ParameterInvalid, badRating.Code);
+            });
         }
 
         /// <summary>
@@ -237,17 +258,17 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Cancel_WhileQueued_Succeeds_AndWithoutTicket_ComesBackNotCancelled()
         {
-            var host = BuildHost();
-            var domain = host.Services.GetService<IOnlineMatchDomain>();
+            await WithStartedMatchDomainAsync(async (domain, runtime) =>
+            {
+                await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
+                var cancelled = await domain.CancelAsync(PlayerScope(PlayerOne));
+                Assert.True(cancelled.IsSuccess);
+                Assert.True(cancelled.Data.Cancelled);
 
-            await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
-            var cancelled = await domain.CancelAsync(PlayerScope(PlayerOne));
-            Assert.True(cancelled.IsSuccess);
-            Assert.True(cancelled.Data.Cancelled);
-
-            var noTicket = await domain.CancelAsync(PlayerScope(PlayerTwo));
-            Assert.True(noTicket.IsSuccess);
-            Assert.False(noTicket.Data.Cancelled);
+                var noTicket = await domain.CancelAsync(PlayerScope(PlayerTwo));
+                Assert.True(noTicket.IsSuccess);
+                Assert.False(noTicket.Data.Cancelled);
+            });
         }
 
         /// <summary>
@@ -256,38 +277,39 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Cancel_AfterMatch_ComesBackTerminalReceipt()
         {
-            var host = BuildHost();
-            var domain = host.Services.GetService<IOnlineMatchDomain>();
+            await WithStartedMatchDomainAsync(async (domain, runtime) =>
+            {
+                await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
+                await domain.EnqueueAsync(PlayerScope(PlayerTwo), 1, 1050);
+                var lateCancel = await domain.CancelAsync(PlayerScope(PlayerOne));
 
-            await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
-            await domain.EnqueueAsync(PlayerScope(PlayerTwo), 1, 1050);
-            var lateCancel = await domain.CancelAsync(PlayerScope(PlayerOne));
-
-            Assert.True(lateCancel.IsSuccess);
-            Assert.False(lateCancel.Data.Cancelled);
+                Assert.True(lateCancel.IsSuccess);
+                Assert.False(lateCancel.Data.Cancelled);
+            });
         }
 
         /// <summary>
-        /// R10：票据 TTL 过期（注入时刻推进扫描）→ Status=(false,0)，取消回未取消回执。
+        /// R10：票据 TTL 过期（注入时刻推进撮合扫描）→ Status=(false,0)，取消回未取消回执。
         /// </summary>
         [Fact]
         public async Task Status_AfterTicketExpiry_NotQueuingZeroMatch()
         {
-            var host = BuildHost();
-            var domain = host.Services.GetService<IOnlineMatchDomain>();
-            var coordinator = host.Services.GetService<OnlineMatchmakerCoordinator>();
+            await WithStartedMatchDomainAsync(async (domain, runtime) =>
+            {
+                var coordinator = runtime.Host.Services.GetService<OnlineMatchmakerCoordinator>();
 
-            await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
-            var later = DateTimeOffset.UtcNow.AddSeconds(400).ToUnixTimeMilliseconds();
-            await coordinator.RunOnceAsync(TenantId, AppId, later);
+                await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
+                var later = DateTimeOffset.UtcNow.AddSeconds(400).ToUnixTimeMilliseconds();
+                await coordinator.RunOnceAsync(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, later);
 
-            var status = await domain.GetStatusAsync(PlayerScope(PlayerOne));
-            Assert.False(status.Data.Queuing);
-            Assert.False(status.Data.Matched);
-            Assert.Equal(0, status.Data.MatchId);
+                var status = await domain.GetStatusAsync(PlayerScope(PlayerOne));
+                Assert.False(status.Data.Queuing);
+                Assert.False(status.Data.Matched);
+                Assert.Equal(0, status.Data.MatchId);
 
-            var cancel = await domain.CancelAsync(PlayerScope(PlayerOne));
-            Assert.False(cancel.Data.Cancelled);
+                var cancel = await domain.CancelAsync(PlayerScope(PlayerOne));
+                Assert.False(cancel.Data.Cancelled);
+            });
         }
 
         /// <summary>
@@ -296,31 +318,31 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Enter_BothPlayers_ReachSameRunningMatch()
         {
-            var host = BuildHost();
-            var domain = host.Services.GetService<IOnlineMatchDomain>();
-            var runtime = host.Services.GetService<OnlineMatchRuntime>();
+            await WithStartedMatchDomainAsync(async (domain, runtime) =>
+            {
+                var matchRuntime = runtime.Host.Services.GetService<OnlineMatchRuntime>();
 
-            await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
-            var second = await domain.EnqueueAsync(PlayerScope(PlayerTwo), 1, 1050);
-            var matchId = second.Data.MatchId;
+                await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
+                var second = await domain.EnqueueAsync(PlayerScope(PlayerTwo), 1, 1050);
+                var matchId = second.Data.MatchId;
 
-            var firstEntry = await domain.EnterAsync(PlayerScope(PlayerOne), matchId);
-            var secondEntry = await domain.EnterAsync(PlayerScope(PlayerTwo), matchId);
+                var firstEntry = await domain.EnterAsync(PlayerScope(PlayerOne), matchId);
+                var secondEntry = await domain.EnterAsync(PlayerScope(PlayerTwo), matchId);
 
-            Assert.True(firstEntry.IsSuccess, firstEntry.Message);
-            Assert.True(secondEntry.IsSuccess, secondEntry.Message);
-            Assert.Equal(matchId, firstEntry.Data.MatchId);
-            Assert.Equal(matchId, secondEntry.Data.MatchId);
-            Assert.True(firstEntry.Data.Started);
-            Assert.True(secondEntry.Data.Started);
-            Assert.Contains(PlayerOne, firstEntry.Data.PlayerIds);
-            Assert.Contains(PlayerTwo, secondEntry.Data.PlayerIds);
+                Assert.True(firstEntry.IsSuccess, firstEntry.Message);
+                Assert.True(secondEntry.IsSuccess, secondEntry.Message);
+                Assert.Equal(matchId, firstEntry.Data.MatchId);
+                Assert.Equal(matchId, secondEntry.Data.MatchId);
+                Assert.True(firstEntry.Data.Started);
+                Assert.True(secondEntry.Data.Started);
+                Assert.Contains(PlayerOne, firstEntry.Data.PlayerIds);
+                Assert.Contains(PlayerTwo, secondEntry.Data.PlayerIds);
 
-            var actors = runtime.SnapshotActors();
-            var actor = Assert.Single(actors);
-            var snapshot = actor.GetSnapshot();
-            Assert.Equal(OnlineMatchState.Running, snapshot.State);
-            Assert.Equal(2, snapshot.Members.Count(member => member != null));
+                var actor = Assert.Single(matchRuntime.SnapshotActors());
+                var snapshot = actor.GetSnapshot();
+                Assert.Equal(OnlineMatchState.Running, snapshot.State);
+                Assert.Equal(2, snapshot.Members.Count(member => member != null));
+            });
         }
 
         /// <summary>
@@ -329,17 +351,18 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Enter_Repeatedly_ReusesSameMatch()
         {
-            var host = BuildHost();
-            var domain = host.Services.GetService<IOnlineMatchDomain>();
-            var runtime = host.Services.GetService<OnlineMatchRuntime>();
+            await WithStartedMatchDomainAsync(async (domain, runtime) =>
+            {
+                var matchRuntime = runtime.Host.Services.GetService<OnlineMatchRuntime>();
 
-            await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
-            var second = await domain.EnqueueAsync(PlayerScope(PlayerTwo), 1, 1050);
+                await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
+                var second = await domain.EnqueueAsync(PlayerScope(PlayerTwo), 1, 1050);
 
-            await domain.EnterAsync(PlayerScope(PlayerOne), second.Data.MatchId);
-            await domain.EnterAsync(PlayerScope(PlayerOne), second.Data.MatchId);
+                await domain.EnterAsync(PlayerScope(PlayerOne), second.Data.MatchId);
+                await domain.EnterAsync(PlayerScope(PlayerOne), second.Data.MatchId);
 
-            Assert.Single(runtime.SnapshotActors());
+                Assert.Single(matchRuntime.SnapshotActors());
+            });
         }
 
         /// <summary>
@@ -348,18 +371,18 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Enter_UnknownOrForeign_Rejected()
         {
-            var host = BuildHost();
-            var domain = host.Services.GetService<IOnlineMatchDomain>();
+            await WithStartedMatchDomainAsync(async (domain, runtime) =>
+            {
+                var unknown = await domain.EnterAsync(PlayerScope(PlayerOne), 424242);
+                Assert.False(unknown.IsSuccess);
+                Assert.Equal(OnlineErrorCode.ResourceNotFound, unknown.Code);
 
-            var unknown = await domain.EnterAsync(PlayerScope(PlayerOne), 424242);
-            Assert.False(unknown.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ResourceNotFound, unknown.Code);
-
-            await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
-            var second = await domain.EnqueueAsync(PlayerScope(PlayerTwo), 1, 1050);
-            var foreign = await domain.EnterAsync(PlayerScope(PlayerThree), second.Data.MatchId);
-            Assert.False(foreign.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ScopeDenied, foreign.Code);
+                await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
+                var second = await domain.EnqueueAsync(PlayerScope(PlayerTwo), 1, 1050);
+                var foreign = await domain.EnterAsync(PlayerScope(PlayerThree), second.Data.MatchId);
+                Assert.False(foreign.IsSuccess);
+                Assert.Equal(OnlineErrorCode.ScopeDenied, foreign.Code);
+            });
         }
 
         /// <summary>
@@ -368,24 +391,25 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task ResolveAssignment_AfterMatch_ReturnsNumericAndPlayers_Idempotently()
         {
-            var host = BuildHost();
-            var domain = host.Services.GetService<IOnlineMatchDomain>();
-            var store = host.Services.GetService<IOnlineMatchTicketStore>();
+            await WithStartedMatchDomainAsync(async (domain, runtime) =>
+            {
+                var store = runtime.Host.Services.GetService<IOnlineMatchTicketStore>();
 
-            await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
-            var second = await domain.EnqueueAsync(PlayerScope(PlayerTwo), 1, 1050);
-            var ticket = await store.FindLatestByPlayerAsync(TenantId, AppId, PlayerOne);
-            Assert.NotNull(ticket);
-            Assert.False(string.IsNullOrEmpty(ticket.AssignmentId));
+                await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
+                var second = await domain.EnqueueAsync(PlayerScope(PlayerTwo), 1, 1050);
+                var ticket = await store.FindLatestByPlayerAsync(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, PlayerOne);
+                Assert.NotNull(ticket);
+                Assert.False(string.IsNullOrEmpty(ticket.AssignmentId));
 
-            var resolved = await domain.ResolveAssignmentAsync(TenantId, AppId, ticket.AssignmentId);
-            Assert.True(resolved.IsSuccess, resolved.Message);
-            Assert.Equal(second.Data.MatchId, resolved.Data.MatchId);
-            Assert.Contains(PlayerOne, resolved.Data.PlayerIds);
-            Assert.Contains(PlayerTwo, resolved.Data.PlayerIds);
+                var resolved = await domain.ResolveAssignmentAsync(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, ticket.AssignmentId);
+                Assert.True(resolved.IsSuccess, resolved.Message);
+                Assert.Equal(second.Data.MatchId, resolved.Data.MatchId);
+                Assert.Contains(PlayerOne, resolved.Data.PlayerIds);
+                Assert.Contains(PlayerTwo, resolved.Data.PlayerIds);
 
-            var again = await domain.ResolveAssignmentAsync(TenantId, AppId, ticket.AssignmentId);
-            Assert.Equal(resolved.Data.MatchId, again.Data.MatchId);
+                var again = await domain.ResolveAssignmentAsync(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, ticket.AssignmentId);
+                Assert.Equal(resolved.Data.MatchId, again.Data.MatchId);
+            });
         }
 
         /// <summary>
@@ -394,43 +418,17 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Store_FindLatestByPlayer_ReturnsMatchedTicket()
         {
-            var host = BuildHost();
-            var domain = host.Services.GetService<IOnlineMatchDomain>();
-            var store = host.Services.GetService<IOnlineMatchTicketStore>();
+            await WithStartedMatchDomainAsync(async (domain, runtime) =>
+            {
+                var store = runtime.Host.Services.GetService<IOnlineMatchTicketStore>();
 
-            await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
-            await domain.EnqueueAsync(PlayerScope(PlayerTwo), 1, 1050);
+                await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
+                await domain.EnqueueAsync(PlayerScope(PlayerTwo), 1, 1050);
 
-            var ticket = await store.FindLatestByPlayerAsync(TenantId, AppId, PlayerTwo);
-            Assert.NotNull(ticket);
-            Assert.Equal(OnlineMatchTicketState.Matched, ticket.State);
-        }
-
-        /// <summary>
-        /// holder 生命周期：发布生成有效租约（可作状态查询）；再发布吊销旧租约；撤销后 Current 为空且旧租约显式失败。
-        /// </summary>
-        [Fact]
-        public async Task Holder_PublishReplaceRetract_LeaseLifecycle()
-        {
-            var host = BuildHost();
-            var domain = host.Services.GetService<IOnlineMatchDomain>();
-            var scope = new OnlineScope(TenantId, AppId, ServerId);
-
-            var first = OnlineMatchDomainBridgeHolder.Publish(domain, scope);
-            var through = await first.GetStatusAsync(PlayerScope(PlayerOne));
-            Assert.True(through.IsSuccess);
-
-            var second = OnlineMatchDomainBridgeHolder.Publish(domain, scope);
-            var staleFirst = await first.GetStatusAsync(PlayerScope(PlayerOne));
-            Assert.False(staleFirst.IsSuccess);
-            Assert.Equal(OnlineErrorCode.DependencyUnavailable, staleFirst.Code);
-
-            OnlineMatchDomainBridgeHolder.Retract();
-            Assert.Null(OnlineMatchDomainBridgeHolder.Current);
-            var staleSecond = await second.GetStatusAsync(PlayerScope(PlayerOne));
-            Assert.False(staleSecond.IsSuccess);
-            Assert.Equal(OnlineErrorCode.DependencyUnavailable, staleSecond.Code);
-            Assert.False(OnlineMatchDomainBridgeHolder.IsPublished);
+                var ticket = await store.FindLatestByPlayerAsync(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, PlayerTwo);
+                Assert.NotNull(ticket);
+                Assert.Equal(OnlineMatchTicketState.Matched, ticket.State);
+            });
         }
 
         /// <summary>
@@ -439,23 +437,23 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Enter_ConcurrentlyFromBothPlayers_BothSucceed()
         {
-            var host = BuildHost();
-            var domain = host.Services.GetService<IOnlineMatchDomain>();
+            await WithStartedMatchDomainAsync(async (domain, runtime) =>
+            {
+                await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
+                var second = await domain.EnqueueAsync(PlayerScope(PlayerTwo), 1, 1050);
+                var matchId = second.Data.MatchId;
 
-            await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
-            var second = await domain.EnqueueAsync(PlayerScope(PlayerTwo), 1, 1050);
-            var matchId = second.Data.MatchId;
+                var firstEnter = Task.Run(() => domain.EnterAsync(PlayerScope(PlayerOne), matchId));
+                var secondEnter = Task.Run(() => domain.EnterAsync(PlayerScope(PlayerTwo), matchId));
+                var results = await Task.WhenAll(firstEnter, secondEnter);
 
-            var firstEnter = Task.Run(() => domain.EnterAsync(PlayerScope(PlayerOne), matchId));
-            var secondEnter = Task.Run(() => domain.EnterAsync(PlayerScope(PlayerTwo), matchId));
-            var results = await Task.WhenAll(firstEnter, secondEnter);
-
-            Assert.True(results[0].IsSuccess, results[0].Message);
-            Assert.True(results[1].IsSuccess, results[1].Message);
-            Assert.True(results[0].Data.Started);
-            Assert.True(results[1].Data.Started);
-            Assert.Equal(matchId, results[0].Data.MatchId);
-            Assert.Equal(matchId, results[1].Data.MatchId);
+                Assert.True(results[0].IsSuccess, results[0].Message);
+                Assert.True(results[1].IsSuccess, results[1].Message);
+                Assert.True(results[0].Data.Started);
+                Assert.True(results[1].Data.Started);
+                Assert.Equal(matchId, results[0].Data.MatchId);
+                Assert.Equal(matchId, results[1].Data.MatchId);
+            });
         }
 
         /// <summary>
@@ -464,11 +462,13 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Enqueue_WithoutPlayerPosition_Rejected()
         {
-            var host = BuildHost();
-            var domain = host.Services.GetService<IOnlineMatchDomain>();
-            var rejected = await domain.EnqueueAsync(new OnlineScope(TenantId, AppId, ServerId), 1, 1000);
-            Assert.False(rejected.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ParameterInvalid, rejected.Code);
+            await WithStartedMatchDomainAsync(async (domain, runtime) =>
+            {
+                var scope = new OnlineScope(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, OnlineCapabilityTestHarness.ServerId);
+                var rejected = await domain.EnqueueAsync(scope, 1, 1000);
+                Assert.False(rejected.IsSuccess);
+                Assert.Equal(OnlineErrorCode.ParameterInvalid, rejected.Code);
+            });
         }
     }
 }

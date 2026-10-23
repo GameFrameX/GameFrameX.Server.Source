@@ -250,11 +250,20 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 创建一套测试夹具（内存存储 + 票据服务 + 协调器）。
+        /// 以包内默认匹配参数创建一套测试夹具。
         /// </summary>
-        /// <param name="options">匹配与限流可配置项（可空）。</param>
         /// <returns>测试夹具。</returns>
-        private static Fixture CreateFixture(OnlineMatchmakerOptions options = null)
+        private static Fixture CreateFixture()
+        {
+            return CreateFixture(new OnlineMatchmakerOptions());
+        }
+
+        /// <summary>
+        /// 以指定匹配参数创建一套测试夹具（内存存储 + 票据服务 + 协调器）。
+        /// </summary>
+        /// <param name="options">匹配与限流可配置项。</param>
+        /// <returns>测试夹具。</returns>
+        private static Fixture CreateFixture(OnlineMatchmakerOptions options)
         {
             var store = new InMemoryOnlineMatchTicketStore();
             var recorder = new OnlineEventRecorder();

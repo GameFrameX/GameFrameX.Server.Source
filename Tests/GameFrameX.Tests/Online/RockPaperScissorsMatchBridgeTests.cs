@@ -23,30 +23,32 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using GameFrameX.Capability.Online.Abstractions.Bridges;
+using GameFrameX.Capability.Hosting.Abstractions;
+using GameFrameX.Capability.Hosting.Core;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Scope;
 using GameFrameX.Hotfix.Logic.Game.RockPaperScissors;
 using GameFrameX.Proto.Proto;
-using GameFrameX.Utility.Setting;
 using Xunit;
 
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 对局样例桥 Hotfix 薄适配器测试（C245）：开关关闭不接管、lease 失效显式错误码、
-    /// 契约失败码映射、异常兜底、作用域与参数透传、视图字段级映射（出拳保密 / Wins 不外发）
-    /// 与 Room 状态映射决策矩阵。
+    /// 对局样例桥 Hotfix 薄适配器测试（C245 → C294 机制桥）：对局桥缺席 / 已撤销即不接管（能力过滤器是唯一开关）、
+    /// 桥在场而授权作用域提供者缺席显式 DependencyUnavailable、契约失败码映射、异常兜底、作用域与参数透传、
+    /// 视图字段级映射（出拳保密 / Wins 不外发）与 Room 状态映射决策矩阵。
+    /// 桥契约桩经机制测试族槽位 <see cref="MechanismScenario.First"/> 在 Activate 期发布。
     /// </summary>
-    public class RockPaperScissorsMatchBridgeTests : IDisposable
+    [Collection(CapabilityRuntimeCollection.Name)]
+    public class RockPaperScissorsMatchBridgeTests
     {
-        /// <summary>测试用租户标识。</summary>
+        /// <summary>授权作用域租户标识。</summary>
         private const long TenantId = 1;
 
-        /// <summary>测试用应用标识。</summary>
+        /// <summary>授权作用域应用标识。</summary>
         private const long AppId = 1;
 
-        /// <summary>测试用区服标识。</summary>
+        /// <summary>授权作用域区服标识。</summary>
         private const long ServerId = 1001;
 
         /// <summary>请求主体（玩家位唯一来源）。</summary>
@@ -58,26 +60,48 @@ namespace GameFrameX.Tests.Online
         /// <summary>测试用局号。</summary>
         private const int Round = 2;
 
-        public RockPaperScissorsMatchBridgeTests()
-        {
-            OnlineMatchGameBridgeHolder.Retract();
-        }
-
-        public void Dispose()
-        {
-            OnlineMatchGameBridgeHolder.Retract();
-            EnableBridge(false);
-        }
-
         /// <summary>
-        /// 设置对局桥开关（经进程设置真实写路径；进程级字段保持缺省，避免与既有设置冲突）。
+        /// 经机制测试族发布对局桥桩（及可选的授权作用域提供者桩），启动后执行用例主体；结束恒停止撤桥并复位槽位。
         /// </summary>
-        private static void EnableBridge(bool enabled)
+        /// <param name="stub">对局桥契约桩。</param>
+        /// <param name="publishScopeProvider">是否同时发布授权作用域提供者桩（三元组 1/1/1001）。</param>
+        /// <param name="body">用例主体（入参：已启动的组合产物）。</param>
+        /// <returns>异步任务。</returns>
+        private static async Task WithPublishedBridgeAsync(StubMatchBridge stub, bool publishScopeProvider, Func<CapabilityRuntime, Task> body)
         {
-            GlobalSettings.SetCurrentSetting(new AppSetting
+            try
             {
-                Online = new OnlineCapabilityOptions { EnableMatchGameBridge = enabled },
-            });
+                MechanismScenario.First.Activate = (context, cancellationToken) =>
+                {
+                    context.Bridges.Publish<IOnlineMatchGameBridge>(stub);
+                    if (publishScopeProvider)
+                    {
+                        context.Bridges.Publish<IOnlineAuthorizedScopeProvider>(new StubScopeProvider(new OnlineScope(TenantId, AppId, ServerId)));
+                    }
+
+                    return Task.CompletedTask;
+                };
+
+                var options = new CapabilityCompositionOptions(default, new CollectingCapabilityAssemblyLog())
+                {
+                    HostOptions = new CapabilityHostOptions { TenantId = 1, AppId = 1, ServerId = 1, },
+                    Filter = new CapabilityAssemblyFilter(new[] { MechanismScenario.First.DefaultId }),
+                };
+                var runtime = CapabilityComposition.Compose(new MechanismTestFamily(), options);
+                try
+                {
+                    await runtime.Host.StartAsync();
+                    await body(runtime);
+                }
+                finally
+                {
+                    await runtime.StopAsync();
+                }
+            }
+            finally
+            {
+                MechanismScenario.Reset();
+            }
         }
 
         /// <summary>
@@ -102,12 +126,12 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 开关关闭：四个 Try* 一律返回未接管（Handled=false / false），响应对象不被触碰。
+        /// 断言四个 Try* 一律返回未接管（Handled=false / false），响应对象不被触碰。
         /// </summary>
-        [Fact]
-        public async Task BridgeDisabled_AllTryMethods_ReturnNotHandledAndLeaveResponseUntouched()
+        /// <returns>异步任务。</returns>
+        private static async Task AssertAllTryMethodsNotHandledAsync()
         {
-            EnableBridge(false);
+            Assert.False(RockPaperScissorsMatchBridge.IsBridgeEnabled);
 
             var startResponse = new RespStartRoomGame();
             var startHandled = await RockPaperScissorsMatchBridge.TryStartRoomGameAsync(ActorId, RoomId, Round, new[] { ActorId, 2002L }, startResponse);
@@ -138,60 +162,65 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 开关开启而 lease 未发布：显式 -(int)DependencyUnavailable，不静默成功、不抛异常。
+        /// 对局桥缺席（online-match 未装配 = 缺省部署）：四个 Try* 一律未接管，响应对象不被触碰——旧链行为逐字节保持。
         /// </summary>
         [Fact]
-        public async Task BridgeEnabled_WithoutLease_ReturnsExplicitDependencyUnavailable()
+        public async Task BridgeAbsent_AllTryMethods_ReturnNotHandledAndLeaveResponseUntouched()
         {
-            EnableBridge(true);
+            Assert.False(CapabilityBridge<IOnlineMatchGameBridge>.TryAcquire(out _));
 
-            var startResponse = new RespStartRoomGame();
-            var startHandled = await RockPaperScissorsMatchBridge.TryStartRoomGameAsync(ActorId, RoomId, Round, new[] { ActorId, 2002L }, startResponse);
-            Assert.True(startHandled);
-            Assert.Equal(-(int)OnlineErrorCode.DependencyUnavailable, startResponse.ErrorCode);
-
-            var submitResponse = new RespSubmitRockPaperScissorsGesture();
-            var submit = await RockPaperScissorsMatchBridge.TrySubmitGestureAsync(ActorId, RoomId, Round, 1, submitResponse);
-            Assert.True(submit.Handled);
-            Assert.Null(submit.View);
-            Assert.Equal(-(int)OnlineErrorCode.DependencyUnavailable, submitResponse.ErrorCode);
-            Assert.Null(submitResponse.GameInfo);
-
-            var infoResponse = new RespRockPaperScissorsGameInfo();
-            var info = await RockPaperScissorsMatchBridge.TryGetGameInfoAsync(ActorId, RoomId, Round, infoResponse);
-            Assert.True(info.Handled);
-            Assert.Null(info.View);
-            Assert.Equal(-(int)OnlineErrorCode.DependencyUnavailable, infoResponse.ErrorCode);
-            Assert.Null(infoResponse.GameInfo);
+            await AssertAllTryMethodsNotHandledAsync();
         }
 
         /// <summary>
-        /// 开关开启且 lease 已撤销（holder 当前位清空）：同样显式 DependencyUnavailable——
-        /// 逐请求读取 holder，撤销后旧引用不存活。
+        /// 对局桥已撤销（宿主停止自动撤桥）：与缺席同语义——未接管、契约面不被触达（逐请求取租约，撤销后旧引用不存活）。
         /// </summary>
         [Fact]
-        public async Task BridgeEnabled_AfterRetract_ReturnsExplicitDependencyUnavailable()
+        public async Task BridgeRetractedByStop_AllTryMethods_ReturnNotHandledWithoutTouchingContract()
         {
-            EnableBridge(true);
             var stub = new StubMatchBridge();
-            OnlineMatchGameBridgeHolder.Publish(stub, new OnlineScope(TenantId, AppId, ServerId));
-            OnlineMatchGameBridgeHolder.Retract();
-            Assert.False(OnlineMatchGameBridgeHolder.IsPublished);
+            await WithPublishedBridgeAsync(stub, true, async runtime =>
+            {
+                Assert.True(RockPaperScissorsMatchBridge.IsBridgeEnabled);
 
-            var handled = await RockPaperScissorsMatchBridge.TryStartRoomGameAsync(ActorId, RoomId, Round, new[] { ActorId, 2002L }, new RespStartRoomGame());
-            Assert.True(handled);
-            Assert.Equal(0, stub.StartCallCount); // 未触达契约面
+                await runtime.StopAsync();
 
-            var submitResponse = new RespSubmitRockPaperScissorsGesture();
-            var submit = await RockPaperScissorsMatchBridge.TrySubmitGestureAsync(ActorId, RoomId, Round, 1, submitResponse);
-            Assert.True(submit.Handled);
-            Assert.Equal(-(int)OnlineErrorCode.DependencyUnavailable, submitResponse.ErrorCode);
-            Assert.Null(submitResponse.GameInfo);
+                await AssertAllTryMethodsNotHandledAsync();
+                Assert.Equal(0, stub.StartCallCount);
+                Assert.Equal(0, stub.SubmitCallCount);
+            });
         }
 
         /// <summary>
-        /// 契约失败码映射：ParameterInvalid / ScopeDenied / StateEnded / DuplicateRequest
-        /// 逐一映射为对应负值段（≤ -1001，与旧链 -1..-99 不重叠）。
+        /// 对局桥在场而授权作用域提供者缺席：桥路径独占且显式 -(int)DependencyUnavailable，契约面不被触达（作用域不降级为空）。
+        /// </summary>
+        [Fact]
+        public async Task BridgePresent_WithoutScopeProvider_ReturnsExplicitDependencyUnavailable()
+        {
+            var stub = new StubMatchBridge();
+            await WithPublishedBridgeAsync(stub, false, async runtime =>
+            {
+                Assert.False(CapabilityBridge<IOnlineAuthorizedScopeProvider>.TryAcquire(out _));
+
+                var startResponse = new RespStartRoomGame();
+                var startHandled = await RockPaperScissorsMatchBridge.TryStartRoomGameAsync(ActorId, RoomId, Round, new[] { ActorId, 2002L }, startResponse);
+                Assert.True(startHandled);
+                Assert.Equal(-(int)OnlineErrorCode.DependencyUnavailable, startResponse.ErrorCode);
+
+                var submitResponse = new RespSubmitRockPaperScissorsGesture();
+                var submit = await RockPaperScissorsMatchBridge.TrySubmitGestureAsync(ActorId, RoomId, Round, 1, submitResponse);
+                Assert.True(submit.Handled);
+                Assert.Null(submit.View);
+                Assert.Equal(-(int)OnlineErrorCode.DependencyUnavailable, submitResponse.ErrorCode);
+                Assert.Null(submitResponse.GameInfo);
+
+                Assert.Equal(0, stub.StartCallCount);
+                Assert.Equal(0, stub.SubmitCallCount);
+            });
+        }
+
+        /// <summary>
+        /// 契约失败码映射：ScopeDenied / StateEnded / DuplicateRequest 逐一映射为对应负值段（≤ -1001，与旧链 -1..-99 不重叠）。
         /// </summary>
         [Theory]
         [InlineData(OnlineErrorCode.ScopeDenied)]
@@ -199,17 +228,17 @@ namespace GameFrameX.Tests.Online
         [InlineData(OnlineErrorCode.DuplicateRequest)]
         public async Task ContractFailure_MapsToExplicitNegativeCode(OnlineErrorCode code)
         {
-            EnableBridge(true);
             var stub = new StubMatchBridge { SubmitResult = () => OnlineResult<OnlineMatchBridgeGameView>.Fail(code, "契约面失败") };
-            OnlineMatchGameBridgeHolder.Publish(stub, new OnlineScope(TenantId, AppId, ServerId));
-
-            var response = new RespSubmitRockPaperScissorsGesture();
-            var result = await RockPaperScissorsMatchBridge.TrySubmitGestureAsync(ActorId, RoomId, Round, 1, response);
-            Assert.True(result.Handled);
-            Assert.Null(result.View);
-            Assert.Equal(-(int)code, response.ErrorCode);
-            Assert.True(response.ErrorCode <= -1001);
-            Assert.Null(response.GameInfo);
+            await WithPublishedBridgeAsync(stub, true, async runtime =>
+            {
+                var response = new RespSubmitRockPaperScissorsGesture();
+                var result = await RockPaperScissorsMatchBridge.TrySubmitGestureAsync(ActorId, RoomId, Round, 1, response);
+                Assert.True(result.Handled);
+                Assert.Null(result.View);
+                Assert.Equal(-(int)code, response.ErrorCode);
+                Assert.True(response.ErrorCode <= -1001);
+                Assert.Null(response.GameInfo);
+            });
         }
 
         /// <summary>
@@ -218,52 +247,55 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task ContractThrows_ReturnsInternalFallbackCode()
         {
-            EnableBridge(true);
             var stub = new StubMatchBridge { SubmitResult = () => throw new InvalidOperationException("boom") };
-            OnlineMatchGameBridgeHolder.Publish(stub, new OnlineScope(TenantId, AppId, ServerId));
-
-            var response = new RespSubmitRockPaperScissorsGesture();
-            var result = await RockPaperScissorsMatchBridge.TrySubmitGestureAsync(ActorId, RoomId, Round, 1, response);
-            Assert.True(result.Handled);
-            Assert.Null(result.View);
-            Assert.Equal(-2, response.ErrorCode);
-            Assert.Null(response.GameInfo);
+            await WithPublishedBridgeAsync(stub, true, async runtime =>
+            {
+                var response = new RespSubmitRockPaperScissorsGesture();
+                var result = await RockPaperScissorsMatchBridge.TrySubmitGestureAsync(ActorId, RoomId, Round, 1, response);
+                Assert.True(result.Handled);
+                Assert.Null(result.View);
+                Assert.Equal(-2, response.ErrorCode);
+                Assert.Null(response.GameInfo);
+            });
         }
 
         /// <summary>
-        /// 可信身份与参数透传：作用域三元组只取 lease 授权值、玩家位只取请求主体 ActorId；
+        /// 可信身份与参数透传：作用域三元组只取授权作用域提供者发布值、玩家位只取请求主体 ActorId；
         /// roomId / round / gesture / playerIds 原样到达契约面。
         /// </summary>
         [Fact]
         public async Task SubmitGesture_PassesAuthorizedScopeTripleAndSessionSubject()
         {
-            EnableBridge(true);
             var stub = new StubMatchBridge();
-            OnlineMatchGameBridgeHolder.Publish(stub, new OnlineScope(TenantId, AppId, ServerId));
-            var playerIds = new[] { ActorId, 2002L };
-            var startResponse = new RespStartRoomGame();
-            var startHandled = await RockPaperScissorsMatchBridge.TryStartRoomGameAsync(ActorId, RoomId, Round, playerIds, startResponse);
-            Assert.True(startHandled);
-            Assert.Equal(0, startResponse.ErrorCode);
-            Assert.Equal(1, stub.StartCallCount);
-            Assert.Equal(TenantId, stub.LastStartScope.TenantId);
-            Assert.Equal(AppId, stub.LastStartScope.AppId);
-            Assert.Equal(ServerId, stub.LastStartScope.ServerId);
-            Assert.Equal(ActorId, stub.LastStartScope.PlayerId);
-            Assert.Equal(RoomId, stub.LastStartRoomId);
-            Assert.Equal(Round, stub.LastStartRound);
-            Assert.Equal(playerIds, stub.LastStartPlayerIds);
+            await WithPublishedBridgeAsync(stub, true, async runtime =>
+            {
+                var playerIds = new[] { ActorId, 2002L };
+                var startResponse = new RespStartRoomGame();
+                var startHandled = await RockPaperScissorsMatchBridge.TryStartRoomGameAsync(ActorId, RoomId, Round, playerIds, startResponse);
+                Assert.True(startHandled);
+                Assert.Equal(0, startResponse.ErrorCode);
+                Assert.Equal(1, stub.StartCallCount);
+                Assert.Equal(TenantId, stub.LastStartScope.TenantId);
+                Assert.Equal(AppId, stub.LastStartScope.AppId);
+                Assert.Equal(ServerId, stub.LastStartScope.ServerId);
+                Assert.Equal(ActorId, stub.LastStartScope.PlayerId);
+                Assert.Equal(RoomId, stub.LastStartRoomId);
+                Assert.Equal(Round, stub.LastStartRound);
+                Assert.Equal(playerIds, stub.LastStartPlayerIds);
 
-            var submitResponse = new RespSubmitRockPaperScissorsGesture();
-            var submit = await RockPaperScissorsMatchBridge.TrySubmitGestureAsync(ActorId, RoomId, Round, 2, submitResponse);
-            Assert.True(submit.Handled);
-            Assert.NotNull(submit.View);
-            Assert.Equal(0, submitResponse.ErrorCode);
-            Assert.NotNull(submitResponse.GameInfo);
-            Assert.Equal(ActorId, stub.LastSubmitScope.PlayerId);
-            Assert.Equal(RoomId, stub.LastSubmitRoomId);
-            Assert.Equal(Round, stub.LastSubmitRound);
-            Assert.Equal(2, stub.LastSubmitGesture);
+                var submitResponse = new RespSubmitRockPaperScissorsGesture();
+                var submit = await RockPaperScissorsMatchBridge.TrySubmitGestureAsync(ActorId, RoomId, Round, 2, submitResponse);
+                Assert.True(submit.Handled);
+                Assert.NotNull(submit.View);
+                Assert.Equal(0, submitResponse.ErrorCode);
+                Assert.NotNull(submitResponse.GameInfo);
+                Assert.Equal(ActorId, stub.LastSubmitScope.PlayerId);
+                Assert.Equal(TenantId, stub.LastSubmitScope.TenantId);
+                Assert.Equal(ServerId, stub.LastSubmitScope.ServerId);
+                Assert.Equal(RoomId, stub.LastSubmitRoomId);
+                Assert.Equal(Round, stub.LastSubmitRound);
+                Assert.Equal(2, stub.LastSubmitGesture);
+            });
         }
 
         /// <summary>
@@ -329,12 +361,39 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 授权作用域提供者桩（模拟 online-foundation 发布的组合根授权三元组）。
+        /// </summary>
+        private sealed class StubScopeProvider : IOnlineAuthorizedScopeProvider
+        {
+            /// <summary>授权作用域。</summary>
+            private readonly OnlineScope _scope;
+
+            /// <summary>
+            /// 初始化授权作用域提供者桩。
+            /// </summary>
+            /// <param name="scope">授权作用域三元组。</param>
+            public StubScopeProvider(OnlineScope scope)
+            {
+                _scope = scope;
+            }
+
+            /// <inheritdoc />
+            public OnlineScope AuthorizedScope
+            {
+                get { return _scope; }
+            }
+        }
+
+        /// <summary>
         /// 契约面桩：记录调用参数，可注入结果工厂或异常。
         /// </summary>
         private sealed class StubMatchBridge : IOnlineMatchGameBridge
         {
             /// <summary>开局调用计数。</summary>
             public int StartCallCount;
+
+            /// <summary>提交调用计数。</summary>
+            public int SubmitCallCount;
 
             /// <summary>提交结果工厂（缺省返回保密视图）。</summary>
             public Func<OnlineResult<OnlineMatchBridgeGameView>> SubmitResult = () => OnlineResult<OnlineMatchBridgeGameView>.Ok(SecretView());
@@ -377,6 +436,7 @@ namespace GameFrameX.Tests.Online
             /// <inheritdoc />
             public Task<OnlineResult<OnlineMatchBridgeGameView>> SubmitGestureAsync(OnlineScope scope, long roomId, int round, int gesture, CancellationToken cancellationToken = default)
             {
+                SubmitCallCount++;
                 LastSubmitScope = scope;
                 LastSubmitRoomId = roomId;
                 LastSubmitRound = round;
