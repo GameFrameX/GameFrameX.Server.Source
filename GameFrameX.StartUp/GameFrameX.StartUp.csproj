@@ -4,6 +4,13 @@
     <PropertyGroup>
         <Description>GameFrameX.StartUp,GameFrameX 框架的应用启动流程、生命周期与服务注册模块. Application startup flow, lifecycle, and service registration module for the GameFrameX framework. Documentation: https://gameframex.doc.alianblank.com</Description>
         <PackageTags>GameFrameX,StartUp,Lifecycle,Hosting,Services,Server,GameServer</PackageTags>
+        <!--
+          NU5104 定点压制：OpenTelemetry.Exporter.Prometheus.AspNetCore 至今（2026-10-23）上游仅发布预发布版
+          （最新 1.19.1-beta.1；NuGet 上该包全部版本均为 beta/alpha/rc，无稳定版），稳定版发布后本警告自然消失。
+          该警告只描述“打包携带预发布依赖”的包元数据语义，不是代码缺陷，故仅在本项目内定点 NoWarn。
+          解除条件：上游发布稳定版后升级版本号并移除此 NoWarn（change C291 裁决）。
+        -->
+        <NoWarn>$(NoWarn);NU5104</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>

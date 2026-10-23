@@ -591,12 +591,8 @@ public abstract partial class AppStartUpBase
         // 开发环境下配置API文档
         if (development)
         {
-            route.WithOpenApi(operation =>
-            {
-                operation.Summary = GetHttpMethodSummary(httpMethod);
-                operation.Description = GetHttpMethodDescription(httpMethod);
-                return operation;
-            });
+            route.WithSummary(GetHttpMethodSummary(httpMethod));
+            route.WithDescription(GetHttpMethodDescription(httpMethod));
         }
     }
 
