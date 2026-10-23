@@ -27,13 +27,13 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Social;
+namespace GameFrameX.Capability.Online.Abstractions;
 
 /// <summary>
 /// 内容审核裁决结果（审核扩展点的返回载体）。
 /// <para>
 /// 维护约束：本类型**不携带拒绝错误码**——审核拒绝一律映射 <c>RiskControlRejected</c>（风控段），
-/// 由 <see cref="OnlineChatService"/> 统一落定。让插件自选错误码会把错误码表的控制权交给外部实现，
+/// 由 <c>GameFrameX.Capability.Online.Social.OnlineChatService</c> 统一落定。让插件自选错误码会把错误码表的控制权交给外部实现，
 /// 消息里出现任意段位的码就再也说不清是谁定的。
 /// </para>
 /// </summary>

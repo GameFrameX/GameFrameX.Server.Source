@@ -29,38 +29,30 @@
 
 namespace GameFrameX.Capability.Online.Social;
 
+using System.Threading;
+using GameFrameX.Capability.Online.Abstractions;
+using System.Threading.Tasks;
+
 /// <summary>
-/// 玩家目录查询契约（「好友支持搜索」的可插拔输入）。
+/// 聊天内容审核钩子的默认放行策略（C294 机制钩子化：<see cref="OnlineSocialCapabilityModule"/> 经
+/// <c>DeclareHook&lt;IOnlineChatModerationHook&gt;</c> 声明本默认，热更侧未挂载审核插件时生效）。
 /// <para>
-/// 维护约束：Social 域需要「按名字找玩家」与「把玩家标识还原成展示名」两种能力，但这两项的数据归属
-/// 在身份域。本契约是**窄接口**——只暴露搜索与名称解析，不暴露账号/设备/会话等身份域字段，
-/// 使 Social 域依赖抽象而非身份域实现（依赖方向：Social → 本契约 ← 运行时装配注入身份域实现）。
-/// </para>
-/// <para>
-/// 未装配时的降级语义由调用方决定：好友搜索返回空结果、展示名回退为标识字面量，
-/// 不得因此阻断好友列表、关系变更等核心链路。
+/// 维护约束：默认策略**只放行**——审核是扩展能力不是正确性前提，未挂载即拒绝等于把「有没有接审核服务」
+/// 变成聊天能不能用的开关；真实审核实现由热更侧经 <c>CapabilityHook&lt;IOnlineChatModerationHook&gt;.Attach</c>
+/// 原子替换，本实现不感知。放行不产生 <see cref="OnlineChatEvents.ModerationFailed"/> 事件——
+/// 该事件语义是「审核插件执行失败被放行」的留痕，默认放行不是失败。
 /// </para>
 /// </summary>
-public interface IOnlinePlayerDirectory
+public sealed class OnlineChatModerationAllowAllHook : IOnlineChatModerationHook
 {
     /// <summary>
-    /// 按展示名关键字检索玩家（作用域内）。
+    /// 审核一条待发送消息（默认放行策略：恒放行，不做任何检查）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="keyword">名称关键字（前后空白由实现忽略；空关键字不返回结果）。</param>
-    /// <param name="limit">返回条数上限（调用方须传正值）。</param>
+    /// <param name="message">待发送消息。</param>
     /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>匹配的玩家目录条目（顺序由实现保证稳定）。</returns>
-    Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> SearchByNameAsync(long tenantId, long appId, string keyword, int limit, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// 按玩家标识批量解析目录条目（好友列表展示名的输入）。
-    /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="playerIds">玩家标识集合。</param>
-    /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>解析到的条目（不存在的标识不出现在结果中）。</returns>
-    Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> FindAsync(long tenantId, long appId, IReadOnlyList<long> playerIds, CancellationToken cancellationToken = default);
+    /// <returns>恒返回放行裁决。</returns>
+    public Task<OnlineChatModerationVerdict> CheckAsync(OnlineChatMessage message, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(OnlineChatModerationVerdict.Allow());
+    }
 }

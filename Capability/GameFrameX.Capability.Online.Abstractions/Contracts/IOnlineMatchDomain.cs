@@ -27,7 +27,8 @@ namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
 /// 匹配域桥契约面（C246）：旧 420 协议族（入队 / 取消 / 状态）与新增入场、分配解析的最小桥接契约，
-/// 供 Hotfix 协议面薄适配器与组合根通知推送方经 <c>OnlineMatchDomainBridgeHolder</c> 进程内消费。
+/// 供 Hotfix 协议面薄适配器（经 <c>CapabilityBridge&lt;IOnlineMatchDomain&gt;</c> 进程内消费）与
+/// online-match 模块 Activate 期通知推送订阅方使用。
 /// <para>
 /// 维护约束：
 /// ① 匹配池唯一权威 = 票据域（实现方内部经同一票据存储入队并驱动撮合），本契约不得另建队列或池副本；

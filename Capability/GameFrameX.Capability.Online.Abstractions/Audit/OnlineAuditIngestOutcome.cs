@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Operations.Audit;
+namespace GameFrameX.Capability.Online.Abstractions.Audit;
 
 /// <summary>
 /// 统一审计接入回执（幂等语义：重复接入同一 <c>EventId</c> 不报错、不重复落档、不产生副作用，

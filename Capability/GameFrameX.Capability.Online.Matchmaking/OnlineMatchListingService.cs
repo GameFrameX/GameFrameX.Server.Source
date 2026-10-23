@@ -135,7 +135,7 @@ public sealed class OnlineMatchListingService
             return OnlineResult<IReadOnlyList<OnlineMatchListing>>.Fail(OnlineErrorCode.ParameterInvalid, "缺少作用域");
         }
 
-        var filter = query ?? new OnlineMatchListingQuery();
+        var filter = query == null ? new OnlineMatchListingQuery() : query;
         var limit = filter.Limit > 0 ? filter.Limit : DefaultQueryLimit;
 
         var all = await _store.ListAsync(scope.TenantId, scope.AppId, cancellationToken);

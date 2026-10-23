@@ -32,7 +32,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace GameFrameX.Capability.Online.Operations.Audit;
+namespace GameFrameX.Capability.Online.Abstractions.Audit;
 
 /// <summary>
 /// 统一审计存储契约（统一审计链路的唯一持久化面；生产持久化实现归运行时装配）。

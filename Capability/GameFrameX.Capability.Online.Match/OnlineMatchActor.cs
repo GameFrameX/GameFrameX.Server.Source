@@ -79,8 +79,8 @@ public sealed class OnlineMatchActor
     /// <param name="game">玩法实现。</param>
     /// <param name="store">对局存储。</param>
     /// <param name="eventPublisher">事件发布器（可空，测试可传空实现）。</param>
-    /// <param name="options">运行参数（可空，取默认值）。</param>
-    public OnlineMatchActor(OnlineMatch match, IOnlineMatchGame game, IOnlineMatchActorStore store, IOnlineEventPublisher eventPublisher, OnlineMatchRuntimeOptions options = null)
+    /// <param name="options">运行参数（必填；由运行时统一传入机制合并后的 Options 终值）。</param>
+    public OnlineMatchActor(OnlineMatch match, IOnlineMatchGame game, IOnlineMatchActorStore store, IOnlineEventPublisher eventPublisher, OnlineMatchRuntimeOptions options)
     {
         if (match == null)
         {
@@ -91,7 +91,7 @@ public sealed class OnlineMatchActor
         _game = game ?? throw new ArgumentNullException(nameof(game));
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _eventPublisher = eventPublisher;
-        _options = options == null ? new OnlineMatchRuntimeOptions() : options;
+        _options = options ?? throw new ArgumentNullException(nameof(options));
     }
 
     /// <summary>

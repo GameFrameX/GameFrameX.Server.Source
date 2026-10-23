@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Social;
+namespace GameFrameX.Capability.Online.Abstractions;
 
 /// <summary>
 /// 聊天消息状态。

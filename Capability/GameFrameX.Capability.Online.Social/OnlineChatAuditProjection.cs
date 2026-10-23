@@ -25,6 +25,7 @@
 //  ==========================================================================================
 
 using System.Text.Json;
+using GameFrameX.Capability.Online.Abstractions;
 using GameFrameX.Capability.Online.Abstractions.Events;
 
 namespace GameFrameX.Capability.Online.Social;

@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Matchmaking.Party;
+namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
 /// 队伍在线事实探针（成员部分离线处理必须基于唯一在线事实源）。

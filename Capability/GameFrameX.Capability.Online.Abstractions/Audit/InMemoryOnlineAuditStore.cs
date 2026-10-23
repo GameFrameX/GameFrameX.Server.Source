@@ -33,7 +33,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace GameFrameX.Capability.Online.Operations.Audit;
+namespace GameFrameX.Capability.Online.Abstractions.Audit;
 
 /// <summary>
 /// 统一审计内存存储（单进程默认实现；生产持久化实现归运行时装配）。

@@ -30,8 +30,9 @@
 namespace GameFrameX.Capability.Online.Competition.Leaderboard;
 
 /// <summary>
-/// 排行榜投影选项（组合根预置共享服务；模块 Register 期探测命中且 <see cref="MatchSettledBoardId"/>
-/// 非空白才装配 Match.Settled 投影，空 / 缺省 = 不投影，不报错）。
+/// 排行榜投影选项（<see cref="OnlineCompetitionOptions.LeaderboardProjection"/> 的子对象；
+/// <see cref="MatchSettledBoardId"/> 非空白才装配 Match.Settled 投影与激活期榜单预建，
+/// 空白 / 缺省 = 不投影，不报错）。
 /// </summary>
 public sealed class OnlineLeaderboardProjectionOptions
 {

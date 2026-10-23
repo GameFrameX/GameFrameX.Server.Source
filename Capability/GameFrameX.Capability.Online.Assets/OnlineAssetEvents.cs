@@ -45,13 +45,13 @@ using GameFrameX.Capability.Online.Abstractions.Events;
 public static class OnlineAssetEvents
 {
     /// <summary>资产发放事实（Grant/Reissue 操作）。</summary>
-    public const string AssetGranted = "Online.Asset.Granted";
+    public const string AssetGranted = "online.asset.granted";
 
     /// <summary>资产扣除事实（Deduct/Revoke 操作）。</summary>
-    public const string AssetDeducted = "Online.Asset.Deducted";
+    public const string AssetDeducted = "online.asset.deducted";
 
     /// <summary>资产人工调整事实（Adjust 操作，含系统补偿反转）。</summary>
-    public const string AssetAdjusted = "Online.Asset.Adjusted";
+    public const string AssetAdjusted = "online.asset.adjusted";
 
     /// <summary>事件来源标识。</summary>
     public const string Source = "online-assets";

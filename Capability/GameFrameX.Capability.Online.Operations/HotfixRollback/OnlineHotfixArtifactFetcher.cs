@@ -77,11 +77,11 @@ public sealed class OnlineHotfixArtifactFetcher : IOnlineHotfixArtifactFetcher
     /// <summary>
     /// 初始化 <see cref="OnlineHotfixArtifactFetcher"/>。
     /// </summary>
-    /// <param name="options">下载参数（null = 缺省值）。</param>
+    /// <param name="options">下载参数（必填；默认值唯一来源 = <see cref="OnlineHotfixArtifactFetchOptions"/> 字段初始值）。</param>
     /// <param name="handler">HTTP 传输（null = 缺省 SocketsHttpHandler；测试注入桩）。</param>
-    public OnlineHotfixArtifactFetcher(OnlineHotfixArtifactFetchOptions options = null, HttpMessageHandler handler = null)
+    public OnlineHotfixArtifactFetcher(OnlineHotfixArtifactFetchOptions options, HttpMessageHandler handler = null)
     {
-        _options = options ?? new OnlineHotfixArtifactFetchOptions();
+        _options = options ?? throw new ArgumentNullException(nameof(options));
         _httpClient = new HttpClient(handler ?? new SocketsHttpHandler(), true);
     }
 

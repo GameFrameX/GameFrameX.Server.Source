@@ -29,6 +29,8 @@
 
 namespace GameFrameX.Capability.Online.Social;
 
+using System.Collections.Generic;
+using GameFrameX.Capability.Online.Abstractions;
 using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
@@ -75,11 +77,17 @@ public sealed class OnlineChatService
     /// <summary>发送限流器。</summary>
     private readonly OnlineChatRateLimiter _rateLimiter;
 
-    /// <summary>频道成员资格探针（可空：未装配时 Party / Group 频道一律拒绝，fail closed）。</summary>
-    private readonly IOnlineChannelMembershipProbe _membershipProbe;
+    /// <summary>
+    /// 频道成员资格探针集合（Activate 期注入归属域探针；空集合 = 未装配，Party / Group 频道一律拒绝，fail closed）。
+    /// </summary>
+    private readonly List<IOnlineChannelMembershipProbe> _membershipProbes;
 
-    /// <summary>内容审核扩展点（可空 = 全部放行）。</summary>
-    private readonly IOnlineChatModerationHook _moderationHook;
+    /// <summary>
+    /// 内容审核扩展点提供者（每次审核调用时读取当前生效实现）。
+    /// <para>维护约束：禁止在构造期或字段中缓存钩子实例——热更侧 <c>CapabilityHook.Attach</c> 原子替换后，
+    /// 缓存的旧实例既让新审核逻辑不生效，又会钉住旧热更程序集导致无法卸载。</para>
+    /// </summary>
+    private readonly Func<IOnlineChatModerationHook> _moderationHookProvider;
 
     /// <summary>
     /// 初始化 <see cref="OnlineChatService"/>。
@@ -87,24 +95,65 @@ public sealed class OnlineChatService
     /// <param name="store">聊天存储。</param>
     /// <param name="eventPublisher">事件发布出口。</param>
     /// <param name="decisionService">社交裁决入口。</param>
-    /// <param name="options">可配置项（可空 = 推荐默认值）。</param>
-    /// <param name="membershipProbe">频道成员资格探针（可空）。</param>
-    /// <param name="moderationHook">内容审核扩展点（可空 = 放行）。</param>
+    /// <param name="options">可配置项（必填；默认值唯一来源 = <see cref="OnlineChatOptions"/> 字段初始值）。</param>
+    /// <param name="membershipProbes">频道成员资格探针集合（Register 期传空集合，Activate 期经
+    /// <see cref="AttachChannelMembershipProbes"/> 注入归属域探针）。</param>
+    /// <param name="moderationHookProvider">内容审核扩展点提供者（必填；逐调用读取当前实现，未挂载插件时返回机制钩子的默认放行策略）。</param>
     public OnlineChatService(
         IOnlineChatStore store,
         IOnlineEventPublisher eventPublisher,
         OnlineSocialDecisionService decisionService,
-        OnlineChatOptions options = null,
-        IOnlineChannelMembershipProbe membershipProbe = null,
-        IOnlineChatModerationHook moderationHook = null)
+        OnlineChatOptions options,
+        IEnumerable<IOnlineChannelMembershipProbe> membershipProbes,
+        Func<IOnlineChatModerationHook> moderationHookProvider)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _eventPublisher = eventPublisher ?? throw new ArgumentNullException(nameof(eventPublisher));
         _decisionService = decisionService ?? throw new ArgumentNullException(nameof(decisionService));
-        _options = options ?? new OnlineChatOptions();
-        _rateLimiter = new OnlineChatRateLimiter(_options.RateLimitMaxMessages, _options.RateLimitWindowSeconds);
-        _membershipProbe = membershipProbe;
-        _moderationHook = moderationHook;
+        if (options == null)
+        {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        if (membershipProbes == null)
+        {
+            throw new ArgumentNullException(nameof(membershipProbes));
+        }
+
+        if (moderationHookProvider == null)
+        {
+            throw new ArgumentNullException(nameof(moderationHookProvider));
+        }
+
+        _options = options;
+        _rateLimiter = new OnlineChatRateLimiter(options.RateLimitMaxMessages, options.RateLimitWindowSeconds);
+        _membershipProbes = new List<IOnlineChannelMembershipProbe>(membershipProbes);
+        _moderationHookProvider = moderationHookProvider;
+    }
+
+    /// <summary>
+    /// 追加频道成员资格探针（Activate 期注入：社交模块枚举 <c>IOnlineChannelMembershipProbe</c> 扩展点后调用，
+    /// 群组探针（"group" 命名注册）与兄弟域探针（如 matchmaking 的 "party"）一并注入）。
+    /// <para>
+    /// 维护约束：宿主激活序在流量进入之前，注入后不再变更（无并发写）；判定语义 = 任一探针 affirm 即成员
+    ///（探针按归属域只应答自己域的频道类型，不归自己域的返回 false）。
+    /// </para>
+    /// </summary>
+    /// <param name="probes">探针集合（null 项跳过）。</param>
+    public void AttachChannelMembershipProbes(IEnumerable<IOnlineChannelMembershipProbe> probes)
+    {
+        if (probes == null)
+        {
+            return;
+        }
+
+        foreach (var probe in probes)
+        {
+            if (probe != null)
+            {
+                _membershipProbes.Add(probe);
+            }
+        }
     }
 
     /// <summary>
@@ -638,19 +687,22 @@ public sealed class OnlineChatService
             return null;
         }
 
-        if (_membershipProbe == null)
+        if (_membershipProbes.Count == 0)
         {
             // 成员资格不可验证时必须拒绝：放行等于把频道内容广播给任意知道频道标识的人。
             return OnlineResult<OnlineChatChannel>.Fail(OnlineErrorCode.StateNotReady, "频道成员资格校验未装配");
         }
 
-        var isMember = await _membershipProbe.IsChannelMemberAsync(scope.TenantId, scope.AppId, kind, boundId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
-        if (!isMember)
+        foreach (var probe in _membershipProbes)
         {
-            return OnlineResult<OnlineChatChannel>.Fail(OnlineErrorCode.ResourceNotFound, "频道不存在");
+            var isMember = await probe.IsChannelMemberAsync(scope.TenantId, scope.AppId, kind, boundId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
+            if (isMember)
+            {
+                return null;
+            }
         }
 
-        return null;
+        return OnlineResult<OnlineChatChannel>.Fail(OnlineErrorCode.ResourceNotFound, "频道不存在");
     }
 
     /// <summary>
@@ -685,15 +737,11 @@ public sealed class OnlineChatService
     /// <returns>放行返回 null，拒绝返回应回传的错误结果。</returns>
     private async Task<OnlineResult<OnlineChatMessage>> CheckModerationAsync(OnlineChatMessage draft, string correlationId, CancellationToken cancellationToken)
     {
-        if (_moderationHook == null)
-        {
-            return null;
-        }
 
         OnlineChatModerationVerdict verdict;
         try
         {
-            verdict = await _moderationHook.CheckAsync(draft, cancellationToken).ConfigureAwait(false);
+            verdict = await _moderationHookProvider().CheckAsync(draft, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception)
         {

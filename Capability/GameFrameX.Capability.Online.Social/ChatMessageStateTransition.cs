@@ -27,6 +27,8 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using GameFrameX.Capability.Online.Abstractions;
+
 namespace GameFrameX.Capability.Online.Social;
 
 /// <summary>

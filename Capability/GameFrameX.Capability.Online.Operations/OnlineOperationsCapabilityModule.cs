@@ -4,7 +4,7 @@
 //   均受中华人民共和国及相关国际法律法规保护。
 //   are protected by the laws of the PRC and relevant international regulations.
 //   使用本项目须严格遵守相关法律法规与开源许可证之规定。
-//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   Usage of this project must strictly comply with relevant laws, regulations, and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
 //   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
@@ -12,10 +12,10 @@
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
 //   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
 //   侵犯他人合法权益等法律法规所禁止的行为！
-//   or infringe upon the legitimate rights and interests of others as prohibited by laws and regulations!
+//   or infringe upon the legal rights and interests of others, as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
-//   Any legal disputes or liabilities arising from secondary development,
-//   本组织与贡献者概不承担任何责任。
+//   Any legal disputes or liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
 //   GitHub Repository: https://github.com/GameFrameX
@@ -24,75 +24,74 @@
 //   CNB  仓库：https://www.cnb.cool/GameFrameX
 //   CNB Repository: https://www.cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
-//   Official Documentation: https://gameframex.doc.alianblank.com/
+//   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Hosting.AdminApi;
 using GameFrameX.Capability.Online.Assets;
-using GameFrameX.Capability.Online.Abstractions.Events;
 using GameFrameX.Capability.Online.Foundation.Identity;
 using GameFrameX.Capability.Online.Foundation.Presence;
 using GameFrameX.Capability.Online.Foundation.Session;
+using GameFrameX.Capability.Online.Abstractions.Audit;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Events;
 using GameFrameX.Capability.Online.Abstractions.Idempotency;
 using GameFrameX.Capability.Online.Match;
 using GameFrameX.Capability.Online.Matchmaking;
+using GameFrameX.Capability.Online.Matchmaking.Party;
 using GameFrameX.Capability.Online.Operations.AdminApi;
-using GameFrameX.Capability.Online.Abstractions.Contracts;
-using GameFrameX.Capability.Online.Operations.Audit;
 using GameFrameX.Capability.Online.Operations.HotfixRollback;
 using GameFrameX.Capability.Online.Operations.Overview;
 using GameFrameX.Capability.Online.Operations.Timeline;
-using GameFrameX.Capability.Online.Matchmaking.Party;
 using GameFrameX.Capability.Online.Social;
 using GameFrameX.Foundation.Idempotency;
 
 namespace GameFrameX.Capability.Online.Operations;
 
 /// <summary>
-/// 运营聚合能力（审计 / 游戏事件 / Hotfix 回滚 / 总览 / 时间线 + C105 事件桥/审计桥）的自装配模块
-/// （C232 P5 迁入）。
+/// 运营聚合能力（审计 / 游戏事件 / Hotfix 回滚 / 总览 / 时间线 + 事件桥/审计桥）的自装配模块
+/// （C294 迁入新机制三段生命周期）。
 /// <para>
-/// 维护约束（服务共享协议）：模块无参构造（扫描可发现）；<c>Register</c> 自装配本域——审计服务经具型探测缝
-/// （组合根预置命中共享同一实例——Assets 模块的审计留痕与桥的审计写入保持同源；未命中构造 InMemory 默认并回注
-/// 具型 + <see cref="IOnlineAuditReader"/> 读面）；Hotfix 回滚依赖幂等基建（组合根预置），缺席不装配（壳时代
-/// 「下游置 null」的模块化等价）；总览 / 时间线探测叶子产物（matchmaking / party / match / assets / social），
-/// 缺席置 null（handler 不可达语义对齐壳时代）；地基三 store（presence / session / identity）经替换缝探测，
-/// 未命中构造 InMemory 默认。
+/// 维护约束（服务共享协议）：模块无参构造（扫描可发现）；<c>Register</c> 自装配本域——统一审计与幂等
+/// 为族基建（<c>OnlineCapabilityFamily</c> 预置，具型 / 读面同源），直接 GetService；Hotfix 回滚的版本切换
+/// 执行器是宿主扩展点（<see cref="CapabilityRegistrationContext.RequireHostService{TService}"/> 声明，
+/// 宿主经 Override 提供缺即装配失败），制品获取器为包内默认（Options 必填化构造）；总览 / 时间线探测
+/// 可选叶子产物（assets / social / match / matchmaking），缺席置 null（handler 不可达语义对齐壳时代）；
+/// 地基三 store（presence / session / identity）来自必选 online-foundation 的默认注册，直接 GetService。
 /// </para>
 /// <para>
-/// 事件桥 / 审计桥（C105 语义不变红线）：桥体逐语句迁移自壳 <c>OnlineRuntimeHost.StartAsync</c>——
-/// 订阅 Foundation 事件总线，信封解映射 + 去重后做聊天审计投影与统一审计转接，投影侧异常吞掉不阻断业务分发；
-/// 订阅时点从启动期提前到装配期（机制无 Start 钩子，行为等价已裁定披露）。
+/// 事件桥 / 审计桥（C105 语义不变红线）：对全部已知 Online 事件主题逐个经机制事件总线订阅
+/// （Register 期声明；单个订阅体异常由机制记日志后继续分发，业务侧不再自行吞异常），信封去重后做
+/// 聊天审计投影与统一审计转接，桥体逐语句迁移自壳 <c>OnlineRuntimeHost.StartAsync</c>。
 /// </para>
 /// </summary>
-/// <remarks>
-/// The self-assembling module of the operations capability (audit, game events, hotfix rollback, overview,
-/// timeline and the C105 event/audit bridges; migrated by C232 P5). The module has a parameterless
-/// constructor (discoverable by scanning); <c>Register</c> self-assembles the domain — the audit service
-/// resolves through a typed probe seam (sharing the composition-root instance so the Assets module's audit
-/// trail and the bridge's audit ingestion stay on the same instance, with an in-memory fallback registered
-/// back under both the concrete type and the <see cref="IOnlineAuditReader"/> read face); the hotfix
-/// rollback service depends on the idempotency infrastructure and stays unassembled when absent (the
-/// modular equivalent of the shell-era null downstream); the overview / timeline services probe leaf
-/// products and stay null when absent; the three foundation stores probe replacement seams with
-/// in-memory fallbacks. The event/audit bridges migrate statement-by-statement from the shell's
-/// <c>StartAsync</c> with the subscription point moved from start-up to assembly time (adjudicated as
-/// behavior-equivalent).
-/// </remarks>
 public sealed class OnlineOperationsCapabilityModule : ICapabilityModule, IAdminActionContributor
 {
     /// <summary>
-    /// 运营聚合能力清单（Id 冻结 = 终态包名；查询域 action 迁移自壳过渡模块，Hotfix 受控操作族为 C256 新增）。
+    /// 运营聚合能力清单（Id 冻结 = 终态包名；查询域 action 迁移自壳过渡模块，Hotfix 受控操作族为 C256 新增；
+    /// 必选 online-foundation；可选 assets / social / match / matchmaking 经
+    /// <see cref="CapabilityOptionalDependency"/> 声明，缺席时披露对应缺失功能名）。
     /// </summary>
     public static readonly CapabilityManifest ManifestInstance = new(
         "online-operations",
         "1.0.0",
         new[] { "query_online_overview", "query_player_timeline", "query_online_audit_events", "register_hotfix_manifest", "activate_hotfix_version", "check_hotfix_compatibility", "rollback_hotfix_version" },
-        new[] { "online-foundation", "online-assets", "online-social", "online-match", "online-matchmaking" });
+        new[] { "online-foundation" },
+        new[]
+        {
+            new CapabilityOptionalDependency("online-assets", Localization.Keys.Capability.Online.Operations.OptionalAssetsAbsent),
+            new CapabilityOptionalDependency("online-social", Localization.Keys.Capability.Online.Operations.OptionalSocialAbsent),
+            new CapabilityOptionalDependency("online-match", Localization.Keys.Capability.Online.Operations.OptionalMatchAbsent),
+            new CapabilityOptionalDependency("online-matchmaking", Localization.Keys.Capability.Online.Operations.OptionalMatchmakingAbsent),
+        },
+        typeof(OnlineOperationsOptions));
 
     /// <summary>
-    /// 统一审计服务（Register 期解析；admin 查询面与桥的写入面同源）。
+    /// 统一审计服务（Register 期解析族基建；admin 查询面与桥的写入面同源）。
     /// </summary>
     private OnlineAuditService _audit;
 
@@ -107,7 +106,7 @@ public sealed class OnlineOperationsCapabilityModule : ICapabilityModule, IAdmin
     private OnlinePlayerTimelineService _timeline;
 
     /// <summary>
-    /// Hotfix 回滚受控服务（Register 期构造；幂等基建缺席时不装配 = null，admin action 不可达）。
+    /// Hotfix 回滚受控服务（Register 期构造；幂等基建为族基建恒在）。
     /// </summary>
     private OnlineHotfixRollbackService _hotfixRollback;
 
@@ -120,62 +119,55 @@ public sealed class OnlineOperationsCapabilityModule : ICapabilityModule, IAdmin
     /// <inheritdoc />
     public void Register(CapabilityRegistrationContext context)
     {
+        var options = context.GetOptions<OnlineOperationsOptions>();
         var eventPublisher = context.GetService<IOnlineEventPublisher>();
 
-        // 审计（具型探测缝——探测与回注语义见 ResolveAuditService）。
-        var audit = ResolveAuditService(context);
+        // 统一审计：族基建预置（具型 + IOnlineAuditReader 读面同源单例），直接解析，无探测回退。
+        var audit = context.GetService<OnlineAuditService>();
         _audit = audit;
 
-        // Hotfix 回滚（幂等基建缺席时不装配——壳「下游置 null」的模块化等价；执行器与制品获取器为可选注入位，C248）。
-        if (context.TryGetService(out OnlineIdempotencyService idempotency))
-        {
-            var hotfixVersionStore = ResolveStore<IOnlineHotfixVersionStore>(context, static () => new InMemoryOnlineHotfixVersionStore());
-            var rollbackExecutor = context.TryGetService(out IOnlineHotfixRollbackExecutor hotfixRollbackExecutor) ? hotfixRollbackExecutor : null;
-            var artifactFetcher = context.TryGetService(out IOnlineHotfixArtifactFetcher hotfixArtifactFetcher) ? hotfixArtifactFetcher : null;
-            _hotfixRollback = new OnlineHotfixRollbackService(hotfixVersionStore, idempotency, audit, rollbackExecutor, artifactFetcher, eventPublisher);
-            context.AddService(_hotfixRollback);
-        }
+        // Hotfix 回滚：幂等为族基建恒在；版本切换执行器为宿主扩展点（缺宿主 Override = 装配期 fail-fast）；
+        // 制品获取器为包内默认（下载参数必填自 Options）；版本 store 懒默认描述符（族 / 宿主覆盖恒胜出）。
+        context.AddService<IOnlineHotfixVersionStore>(static _ => new InMemoryOnlineHotfixVersionStore());
+        var hotfixVersionStore = context.GetService<IOnlineHotfixVersionStore>();
+        var idempotency = context.GetService<OnlineIdempotencyService>();
+        context.RequireHostService<IOnlineHotfixRollbackExecutor>();
+        var rollbackExecutor = context.GetService<IOnlineHotfixRollbackExecutor>();
+        context.AddService<IOnlineHotfixArtifactFetcher>(resolver => new OnlineHotfixArtifactFetcher(options.ArtifactFetch));
+        var artifactFetcher = context.GetService<IOnlineHotfixArtifactFetcher>();
+        _hotfixRollback = new OnlineHotfixRollbackService(hotfixVersionStore, idempotency, audit, rollbackExecutor, artifactFetcher, eventPublisher);
+        context.AddService(_hotfixRollback);
 
-        // 总览 / 时间线（叶子产物探测；地基三 store 经替换缝探测，未命中构造 InMemory 默认）。
-        var hasAssetQuery = context.TryGetService(out OnlineAssetQueryService assetQuery);
-        var hasSocialGraphStore = context.TryGetService(out IOnlineSocialGraphStore socialGraphStore);
-        var hasMatchTicketStore = context.TryGetService(out IOnlineMatchTicketStore matchTicketStore);
-        var hasPartyStore = context.TryGetService(out IOnlinePartyStore partyStore);
-        var hasMatchActorStore = context.TryGetService(out IOnlineMatchActorStore matchActorStore);
-        var presenceStore = ResolveStore<IOnlinePresenceStore>(context, static () => new InMemoryOnlinePresenceStore());
-        var sessionStore = ResolveStore<IOnlineSessionStore>(context, static () => new InMemoryOnlineSessionStore());
-        var identityStore = ResolveStore<IOnlineIdentityStore>(context, static () => new InMemoryOnlineIdentityStore());
-        _overview = hasMatchTicketStore && hasPartyStore && hasMatchActorStore
+        // 总览 / 时间线（可选叶子产物经 manifest 可选声明 + GetOptionalService，缺席 = null 不装配；
+        // 地基三 store 来自必选 online-foundation 的默认注册，直接 GetService，本包不再注册默认避免同键第二默认）。
+        var assetQuery = context.GetOptionalService<OnlineAssetQueryService>();
+        var socialGraphStore = context.GetOptionalService<IOnlineSocialGraphStore>();
+        var matchTicketStore = context.GetOptionalService<IOnlineMatchTicketStore>();
+        var partyStore = context.GetOptionalService<IOnlinePartyStore>();
+        var matchActorStore = context.GetOptionalService<IOnlineMatchActorStore>();
+        var presenceStore = context.GetService<IOnlinePresenceStore>();
+        var sessionStore = context.GetService<IOnlineSessionStore>();
+        var identityStore = context.GetService<IOnlineIdentityStore>();
+        _overview = matchTicketStore != null && partyStore != null && matchActorStore != null
             ? new OnlineOverviewService(presenceStore, sessionStore, partyStore, matchTicketStore, matchActorStore)
             : null;
-        _timeline = hasAssetQuery && hasSocialGraphStore && hasMatchActorStore
+        _timeline = assetQuery != null && socialGraphStore != null && matchActorStore != null
             ? new OnlinePlayerTimelineService(identityStore, sessionStore, assetQuery, matchActorStore, socialGraphStore)
             : null;
 
-        // 事件桥 / 审计桥（C105 语义不变红线；桥体逐语句迁移自壳 StartAsync，订阅时点装配期提前已裁定披露）。
-        var eventBus = context.GetService<InMemoryEventPublisher>();
-        var chatAudit = context.TryGetService(out OnlineChatAuditProjection chatAuditProjection) ? chatAuditProjection : null;
-        var consumer = new OnlineEventConsumer(new InMemoryEventDeduplicator());
-        var sanitizer = new OnlineEventSanitizer();
-        eventBus.Subscribe(envelope =>
-        {
-            try
-            {
-                var onlineEvent = OnlineEventEnvelopeMapper.FromEnvelope(envelope);
-                if (!consumer.TryConsume(onlineEvent))
-                {
-                    return;
-                }
+        RegisterEventBridge(context);
+    }
 
-                chatAudit?.OnEvent(onlineEvent);
-                IngestAuditFromEvent(onlineEvent, sanitizer, audit);
-            }
-            catch (Exception)
-            {
-                // 审计桥异常不得阻断业务事件分发（InMemoryEventPublisher 异常策略是向上传播，
-                // 这里吞掉投影侧异常以保证宿主写链路不受投影缺陷影响；投影片段丢失由审计查询面暴露）。
-            }
-        });
+    /// <inheritdoc />
+    public Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public Task DeactivateAsync(CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
     }
 
     /// <inheritdoc />
@@ -183,6 +175,88 @@ public sealed class OnlineOperationsCapabilityModule : ICapabilityModule, IAdmin
     {
         OnlineAdminConsoleHandlers.RegisterConsoleActions(registry, _overview, _timeline, _audit);
         OnlineAdminHotfixHandlers.RegisterHotfixActions(registry, _hotfixRollback);
+    }
+
+    /// <summary>
+    /// 注册事件桥 / 审计桥（C105 语义不变红线）：对全部已知 Online 事件主题逐个经机制事件总线订阅；
+    /// 订阅体 = 信封去重（EventId）→ 聊天审计投影（可选社交产物，缺席跳过）→ 统一审计转接，
+    /// 逐语句迁移自壳 <c>StartAsync</c>；单个订阅体异常由机制记日志后继续分发（业务侧不再吞异常）。
+    /// </summary>
+    /// <param name="context">注册上下文。</param>
+    private void RegisterEventBridge(CapabilityRegistrationContext context)
+    {
+        var chatAudit = context.GetOptionalService<OnlineChatAuditProjection>();
+        var consumer = new OnlineEventConsumer(new InMemoryEventDeduplicator());
+        var sanitizer = new OnlineEventSanitizer();
+
+        void HandleBridgeEvent(OnlineEvent onlineEvent)
+        {
+            if (!consumer.TryConsume(onlineEvent))
+            {
+                return;
+            }
+
+            chatAudit?.OnEvent(onlineEvent);
+            IngestAuditFromEvent(onlineEvent, sanitizer, _audit);
+        }
+
+        // 地基（online-foundation）。
+        context.Subscribe<OnlineEvent>(OnlinePresenceEvents.PresenceChanged, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineSessionEvents.SessionCreated, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineSessionEvents.SessionAuthenticated, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineSessionEvents.SessionConnected, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineSessionEvents.SessionActive, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineSessionEvents.SessionReconnecting, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineSessionEvents.SessionClosed, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineSessionEvents.SessionKicked, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineSessionEvents.SessionExpired, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineSessionEvents.SessionTokenRefreshed, HandleBridgeEvent);
+
+        // 资产（online-assets）。
+        context.Subscribe<OnlineEvent>(OnlineAssetEvents.AssetGranted, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineAssetEvents.AssetDeducted, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineAssetEvents.AssetAdjusted, HandleBridgeEvent);
+
+        // 社交（online-social）。
+        context.Subscribe<OnlineEvent>(OnlineChatEvents.MessageSent, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineChatEvents.MessageRecalled, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineChatEvents.ReadMarkUpdated, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineChatEvents.ModerationFailed, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineNotificationEvents.NotificationChanged, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineSocialEvents.FriendshipChanged, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineSocialEvents.BlockChanged, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineSocialEvents.MuteChanged, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineSocialEvents.ReportChanged, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineSocialEvents.PunishmentChanged, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineSocialEvents.GroupChanged, HandleBridgeEvent);
+
+        // 匹配与队伍（online-matchmaking）。
+        context.Subscribe<OnlineEvent>(OnlineMatchEvents.TicketChanged, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineMatchEvents.AssignmentCreated, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlinePartyEvents.PartyChanged, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlinePartyEvents.PartyInviteChanged, HandleBridgeEvent);
+
+        // 对局（online-match）。
+        context.Subscribe<OnlineEvent>(OnlineMatchRuntimeEvents.MatchStateChanged, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineMatchRuntimeEvents.MatchSettled, HandleBridgeEvent);
+
+        // 竞技（online-competition，非依赖边——本包不引用其程序集，topic 为全族冻结命名约定字面量，
+        // 见各能力包 *Events 常量；字段变化须与其同步）。
+        context.Subscribe<OnlineEvent>("online.leaderboard.created", HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>("online.leaderboard.scoreupdated", HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>("online.season.created", HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>("online.season.started", HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>("online.season.ended", HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>("online.season.settled", HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>("online.tournament.created", HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>("online.tournament.started", HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>("online.tournament.registered", HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>("online.tournament.ended", HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>("online.tournament.settled", HandleBridgeEvent);
+
+        // Hotfix（本包）。
+        context.Subscribe<OnlineEvent>(OnlineHotfixEvents.VersionRegistered, HandleBridgeEvent);
+        context.Subscribe<OnlineEvent>(OnlineHotfixEvents.RolledBack, HandleBridgeEvent);
     }
 
     /// <summary>
@@ -211,44 +285,5 @@ public sealed class OnlineOperationsCapabilityModule : ICapabilityModule, IAdmin
             PayloadAuditFields = view.SanitizedFields,
         };
         var _ = audit.IngestAsync(entry);
-    }
-
-    /// <summary>
-    /// 解析统一审计服务（具型探测缝——组合根预置命中共享同一实例；未命中构造 InMemory 默认并回注具型 + <see cref="IOnlineAuditReader"/> 读面）。
-    /// </summary>
-    /// <param name="context">注册上下文。</param>
-    /// <returns>统一审计服务实例。</returns>
-    private static OnlineAuditService ResolveAuditService(CapabilityRegistrationContext context)
-    {
-        if (context.TryGetService(out OnlineAuditService preloadedAudit))
-        {
-            return preloadedAudit;
-        }
-
-        var auditStore = ResolveStore<IOnlineAuditStore>(context, static () => new InMemoryOnlineAuditStore());
-        var audit = new OnlineAuditService(auditStore);
-        context.AddService(audit);
-        context.AddService<IOnlineAuditReader>(audit);
-        return audit;
-    }
-
-    /// <summary>
-    /// 解析存储（替换缝探测——命中用组合根注入实例，未命中构造 InMemory 默认并注册回共享面）。
-    /// </summary>
-    /// <typeparam name="TStore">存储接口。</typeparam>
-    /// <param name="context">注册上下文。</param>
-    /// <param name="defaultFactory">默认构造。</param>
-    /// <returns>存储实例。</returns>
-    private static TStore ResolveStore<TStore>(CapabilityRegistrationContext context, Func<TStore> defaultFactory)
-        where TStore : class
-    {
-        if (context.TryGetService(out TStore store))
-        {
-            return store;
-        }
-
-        store = defaultFactory();
-        context.AddService(store);
-        return store;
     }
 }

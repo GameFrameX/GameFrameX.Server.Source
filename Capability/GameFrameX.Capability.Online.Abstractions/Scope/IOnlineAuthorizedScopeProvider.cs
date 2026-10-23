@@ -1,4 +1,4 @@
-//  ==========================================================================================
+// ==========================================================================================
 //   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
 //   GameFrameX organization and its derivative projects' copyrights, trademarks, patents and related rights
 //   均受中华人民共和国及相关国际法律法规保护。
@@ -26,30 +26,22 @@
 //   官方文档：https://gameframex.doc.alianblank.com/
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
-
-namespace GameFrameX.Capability.Online.Social;
+namespace GameFrameX.Capability.Online.Abstractions.Scope;
 
 /// <summary>
-/// 玩家目录条目（好友搜索与展示名解析的最小投影）。
+/// 宿主授权作用域发布契约（C294）：把族基建预置的 <see cref="OnlineScope"/> 三元组
+/// （Tenant / App / Server）以桥契约形态暴露给进程内消费方（主要是 Hotfix 协议薄适配器——
+/// 其程序集不引用宿主配置，无法另行读取作用域）。
 /// <para>
-/// 维护约束：本类型是 Social 域对外的**最小可见字段集**——只含玩家标识、展示名与归属区服，
-/// 不含账号、设备、登录信息等身份域字段，避免好友搜索成为身份域的旁路读取面。
+/// 维护约束：由 online-foundation 模块在 <c>ActivateAsync</c> 期经
+/// <c>CapabilityBridge&lt;IOnlineAuthorizedScopeProvider&gt;</c> 发布一次（全宿主唯一发布者）；
+/// 消费方 <c>TryAcquire</c> 失败即显式 8002，不得回落到自造默认作用域——作用域是数据隔离根边界。
 /// </para>
 /// </summary>
-public sealed class OnlinePlayerDirectoryEntry
+public interface IOnlineAuthorizedScopeProvider
 {
     /// <summary>
-    /// 获取或设置玩家标识。
+    /// 获取宿主授权作用域（族配置段三元组构造，全宿主单例语义）。
     /// </summary>
-    public long PlayerId { get; set; }
-
-    /// <summary>
-    /// 获取或设置玩家展示名。
-    /// </summary>
-    public string Name { get; set; }
-
-    /// <summary>
-    /// 获取或设置玩家归属区服标识。
-    /// </summary>
-    public long ServerId { get; set; }
+    OnlineScope AuthorizedScope { get; }
 }

@@ -36,7 +36,7 @@ using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Events;
 using GameFrameX.Capability.Online.Abstractions.Scope;
 
-namespace GameFrameX.Capability.Online.Operations.Audit;
+namespace GameFrameX.Capability.Online.Abstractions.Audit;
 
 /// <summary>
 /// 统一审计链路服务（Admin 既有支付/奖励/邮件/兑换码/远程配置/处罚审计与
@@ -81,7 +81,14 @@ public sealed class OnlineAuditService : IOnlineAuditReader
     public OnlineAuditService(IOnlineAuditStore store, OnlineEventSanitizer sanitizer = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
-        _sanitizer = sanitizer ?? new OnlineEventSanitizer();
+        if (sanitizer != null)
+        {
+            _sanitizer = sanitizer;
+        }
+        else
+        {
+            _sanitizer = new OnlineEventSanitizer();
+        }
     }
 
     /// <summary>
@@ -148,7 +155,11 @@ public sealed class OnlineAuditService : IOnlineAuditReader
             return OnlineResult<OnlineAuditPage>.Fail(OnlineErrorCode.ParameterInvalid, "统一审计检索必须锚定租户与 App（TenantId / AppId 大于 0；区服与玩家走查询条件可选过滤）");
         }
 
-        var request = query ?? new OnlineAuditQuery();
+        var request = query;
+        if (request == null)
+        {
+            request = new OnlineAuditQuery();
+        }
 
         var pageSize = request.PageSize <= 0 ? DefaultPageSize : request.PageSize;
         if (pageSize > MaxPageSize)

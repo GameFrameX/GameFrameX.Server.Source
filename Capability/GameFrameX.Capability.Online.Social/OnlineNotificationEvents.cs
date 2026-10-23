@@ -44,7 +44,7 @@ using GameFrameX.Capability.Online.Abstractions.Events;
 public static class OnlineNotificationEvents
 {
     /// <summary>通知状态变更。</summary>
-    public const string NotificationChanged = "Online.Notification.Changed";
+    public const string NotificationChanged = "online.notification.changed";
 
     /// <summary>事件来源标识。</summary>
     public const string Source = "online-notification";

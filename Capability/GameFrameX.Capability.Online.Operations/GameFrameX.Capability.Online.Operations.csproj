@@ -2,9 +2,11 @@
     <Import Project="../../Version.props" Label="版本号定义"/>
 
     <PropertyGroup>
-        <Description>GameFrameX.Capability.Online.Operations,GFX Online 运营聚合能力包:统一审计/游戏事件/Hotfix 回滚/在线总览/玩家时间线 + 事件桥与审计桥装配(InMemory 默认存储,UseOnlineOperationsStore 族替换缝)+ hosting 扩展(AddOnlineOperationsRuntime)+ admin handlers(Console 三 action). Operations aggregate capability package for the GFX Online family: unified audit, game events, hotfix rollback, overview and player timeline plus the event/audit bridge wiring with in-memory default stores, the hosting extension and admin handlers. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <Description>GameFrameX.Capability.Online.Operations,GFX Online 运营聚合能力包:统一审计/游戏事件/Hotfix 回滚/在线总览/玩家时间线 + 事件桥与审计桥装配(机制事件总线逐主题订阅)+ 自装配模块(OnlineOperationsCapabilityModule,Options=OnlineOperationsOptions)+ admin handlers(Console 三 action). Operations aggregate capability package for the GFX Online family: unified audit, game events, hotfix rollback, overview and player timeline plus the event/audit bridge wiring over the mechanism event bus, the self-assembling capability module and admin handlers. Documentation: https://gameframex.doc.alianblank.com</Description>
         <PackageTags>GameFrameX,Capability,Online,Operations,Audit,Timeline,Overview,HotfixRollback,GameEvents,GameServer</PackageTags>
-        <LangVersion>10</LangVersion>
+        <!-- 引用的传递面（Match/Social→Core→Network.HTTP）带入 AspNetCore.OpenApi 源生成器（要求 C#11 file 类型），
+             与 LangVersion 10 钉死冲突；本包语言版本随 Directory.Build.props（latest），
+             语法风格仍按仓内 C#10 惯例书写（无 switch 表达式 / record / 顶层语句）。 -->
     </PropertyGroup>
 
     <ItemGroup>

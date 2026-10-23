@@ -79,27 +79,28 @@ public sealed class OnlineFriendService
     /// </summary>
     /// <param name="store">关系存储。</param>
     /// <param name="eventPublisher">事件发布出口。</param>
-    /// <param name="directory">玩家目录（可空）。</param>
-    /// <param name="presenceProbe">在线事实探针（可空）。</param>
-    /// <param name="requestTimeToLiveSeconds">待答复请求存活时长（秒；默认 604800 即 7 天）。</param>
-    /// <param name="searchLimit">搜索返回条数上限（默认 20）。</param>
-    /// <param name="friendLimit">好友列表返回条数上限（默认 200）。</param>
+    /// <param name="options">好友域可配置项（必填；默认值唯一来源 = <see cref="OnlineFriendOptions"/> 字段初始值）。</param>
+    /// <param name="directory">玩家目录（可空：未装配时搜索返回空、展示名回退为标识字面量）。</param>
+    /// <param name="presenceProbe">在线事实探针（可空：未装配时在线状态恒为「未知」）。</param>
     public OnlineFriendService(
         IOnlineFriendStore store,
         IOnlineEventPublisher eventPublisher,
+        OnlineFriendOptions options,
         IOnlinePlayerDirectory directory = null,
-        IOnlineSocialPresenceProbe presenceProbe = null,
-        long requestTimeToLiveSeconds = 604800,
-        int searchLimit = 20,
-        int friendLimit = 200)
+        IOnlineSocialPresenceProbe presenceProbe = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _eventPublisher = eventPublisher ?? throw new ArgumentNullException(nameof(eventPublisher));
+        if (options == null)
+        {
+            throw new ArgumentNullException(nameof(options));
+        }
+
         _directory = directory;
         _presenceProbe = presenceProbe;
-        _requestTimeToLiveSeconds = requestTimeToLiveSeconds > 0 ? requestTimeToLiveSeconds : 604800;
-        _searchLimit = searchLimit > 0 ? searchLimit : 20;
-        _friendLimit = friendLimit > 0 ? friendLimit : 200;
+        _requestTimeToLiveSeconds = options.RequestTimeToLiveSeconds;
+        _searchLimit = options.SearchLimit;
+        _friendLimit = options.FriendLimit;
     }
 
     /// <summary>

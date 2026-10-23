@@ -27,37 +27,41 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using GameFrameX.Foundation.Idempotency;
-
 namespace GameFrameX.Capability.Online.Abstractions.Events;
+using GameFrameX.Capability.Hosting.Abstractions;
 
 /// <summary>
-/// Online 事件发布基座（组装 Foundation <c>IEventPublisher</c> 通用原语，
-/// Online 语义（作用域字段承载）由 <see cref="OnlineEventEnvelopeMapper"/> 完成）。
-/// <para>维护约束：发布前必须完成信封校验（Foundation 发布器保证非法信封不被分发）；业务侧只允许经本基座发布 Online 事件，
-/// 禁止绕过作用域承载直发裸信封。</para>
+/// Online 事件发布基座（C294 起委托机制事件总线 <see cref="ICapabilityEventPublisher"/>，
+/// 由族基建 <c>OnlineCapabilityFamily.RegisterInfrastructure</c> 经族上下文的事件发布口构造）。
+/// <para>
+/// 维护约束：主题 = 事件类型字符串本身（<c>&lt;族&gt;.&lt;域&gt;.&lt;事件&gt;</c> 小写形态，如
+/// <c>online.match.settled</c>，由各域事件常量类保证）；载荷类型固定为 <see cref="OnlineEvent"/>，
+/// 订阅方以相同主题 + 相同载荷类型经 Register 期 <c>Subscribe</c> 声明；宿主 Activate 开始前总线拒绝发布
+/// （Register 期发出的事件后注册订阅者收不到）；单订阅体异常由机制记日志后继续分发，
+/// 业务发布方不再感知订阅体异常。
+/// </para>
 /// </summary>
 public sealed class OnlineEventPublisher : IOnlineEventPublisher
 {
     /// <summary>
-    /// Foundation 事件发布器。
+    /// 机制事件发布口（族上下文注入；实际实现为机制 <c>CapabilityEventBus</c>）。
     /// </summary>
-    private readonly IEventPublisher _eventPublisher;
+    private readonly ICapabilityEventPublisher _eventPublisher;
 
     /// <summary>
     /// 初始化 <see cref="OnlineEventPublisher"/>。
     /// </summary>
-    /// <param name="eventPublisher">Foundation 事件发布器（传输实现由装配方决定）。</param>
-    public OnlineEventPublisher(IEventPublisher eventPublisher)
+    /// <param name="eventPublisher">机制事件发布口（不可为 null）。</param>
+    public OnlineEventPublisher(ICapabilityEventPublisher eventPublisher)
     {
         _eventPublisher = eventPublisher ?? throw new ArgumentNullException(nameof(eventPublisher));
     }
 
     /// <summary>
-    /// 发布一个 Online 事件（映射为 Foundation 信封后分发）。
+    /// 发布一个 Online 事件（载荷 = <see cref="OnlineEvent"/>，主题 = 事件类型字符串；同步分发到该主题的全部订阅者）。
     /// </summary>
     /// <param name="onlineEvent">待发布事件。</param>
-    /// <param name="cancellationToken">取消令牌。</param>
+    /// <param name="cancellationToken">取消令牌（分发为同步语义，本参数仅占位契约）。</param>
     /// <returns>完成通知。</returns>
     public Task PublishAsync(OnlineEvent onlineEvent, CancellationToken cancellationToken = default)
     {
@@ -66,7 +70,12 @@ public sealed class OnlineEventPublisher : IOnlineEventPublisher
             throw new ArgumentNullException(nameof(onlineEvent));
         }
 
-        var envelope = OnlineEventEnvelopeMapper.ToEnvelope(onlineEvent);
-        return _eventPublisher.PublishAsync(envelope, cancellationToken);
+        if (string.IsNullOrWhiteSpace(onlineEvent.EventType))
+        {
+            throw new ArgumentException("Online event type (also the bus topic) must be a non-empty string.", nameof(onlineEvent));
+        }
+
+        _eventPublisher.Publish(onlineEvent.EventType, onlineEvent);
+        return Task.CompletedTask;
     }
 }

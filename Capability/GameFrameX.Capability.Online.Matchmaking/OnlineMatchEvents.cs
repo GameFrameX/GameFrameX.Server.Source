@@ -44,10 +44,10 @@ using GameFrameX.Capability.Online.Abstractions.Events;
 public static class OnlineMatchEvents
 {
     /// <summary>票据状态变更。</summary>
-    public const string TicketChanged = "Online.Match.TicketChanged";
+    public const string TicketChanged = "online.match.ticketchanged";
 
     /// <summary>对局分配产生。</summary>
-    public const string AssignmentCreated = "Online.Match.AssignmentCreated";
+    public const string AssignmentCreated = "online.match.assignmentcreated";
 
     /// <summary>事件来源标识。</summary>
     public const string Source = "online-matchmaker";

@@ -30,7 +30,7 @@
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using System.Collections.Generic;
 
-namespace GameFrameX.Capability.Online.Operations.Audit;
+namespace GameFrameX.Capability.Online.Abstractions.Audit;
 
 /// <summary>
 /// 统一审计接入条目（Admin 既有支付/奖励/邮件/兑换码/远程配置/处罚审计

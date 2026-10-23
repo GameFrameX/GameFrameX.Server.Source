@@ -27,7 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Online.Social;
+namespace GameFrameX.Capability.Online.Abstractions;
 
 /// <summary>
 /// 聊天内容审核扩展点（插件不影响主流程）。
@@ -36,7 +36,7 @@ namespace GameFrameX.Capability.Online.Social;
 /// 未装配时若拒绝发送，等于把「有没有接审核服务」变成聊天能不能用的开关。
 /// </para>
 /// <para>
-/// 维护约束（异常语义）：实现**允许抛异常**，<see cref="OnlineChatService"/> 会捕获并放行、
+/// 维护约束（异常语义）：实现**允许抛异常**，<c>GameFrameX.Capability.Online.Social.OnlineChatService</c> 会捕获并放行、
 /// 同时发出审核失败事件留审计。即审核服务宕机不得导致聊天不可用——
 /// 这与「挂插件」的取舍一致：宁可短暂放行未经审核的内容，也不能让全服聊天停摆；
 /// 放行事件会把这段时间标记出来，便于事后回扫。**实现方不得自己吞掉异常后返回放行**，

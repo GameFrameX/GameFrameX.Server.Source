@@ -2,9 +2,11 @@
     <Import Project="../../Version.props" Label="版本号定义"/>
 
     <PropertyGroup>
-        <Description>GameFrameX.Capability.Online.Persistence,GFX Online 分级持久化适配包(C249,D3=3A):Identity/PlayerStorage/资产账本三域一级 store 的 GameDb 适配(物化复合键唯一索引 + C247 条件写原语 + 序列接管),Session/Presence 保持易失;组合根经 UseOnlineGameDbStores 预置替换缝,InMemory 默认不变. Graded-persistence adapter package for the GFX Online family (C249, D3=3A): GameDb adapters for the three level-one stores (identity, player storage and the asset ledger) built on materialized composite-key unique indexes, the C247 conditional-write primitives and sequence take-over, while sessions and presence stay volatile; composition roots pre-seed the replacement seam via UseOnlineGameDbStores and the in-memory default is unchanged. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <Description>GameFrameX.Capability.Online.Persistence,GFX Online 分级持久化适配包(C249,D3=3A):Identity/PlayerStorage/资产账本/资产交易/好友关系五域一级 store 的 GameDb 适配(物化复合键唯一索引 + C247 条件写原语 + 序列接管),Session/Presence 保持易失;宿主组合根经能力服务 Override 预置,InMemory 默认不变. Graded-persistence adapter package for the GFX Online family (C249, D3=3A): GameDb adapters for the five level-one stores (identity, player storage, the asset ledger, asset transactions and friendships) built on materialized composite-key unique indexes, the C247 conditional-write primitives and sequence take-over, while sessions and presence stay volatile; composition roots pre-seed them through capability service overrides and the in-memory default is unchanged. Documentation: https://gameframex.doc.alianblank.com</Description>
         <PackageTags>GameFrameX,Capability,Online,Persistence,GameDb,SQLite,Mongo,PostgreSql,GameServer</PackageTags>
-        <LangVersion>10</LangVersion>
+        <!-- 引用的传递面（Social→Apps→Core→Network.HTTP）带入 AspNetCore.OpenApi 源生成器（要求 C#11 file 类型），
+             与 LangVersion 10 钉死冲突；本包语言版本随 Directory.Build.props（latest），
+             语法风格仍按仓内 C#10 惯例书写（无 switch 表达式 / record / 顶层语句）。 -->
         <!-- C249 的能力域持久化行属于本包；C241 接入分析器时不套用旧 Apps 状态归属规则。
              仅关闭本工程的 GFX0001；注册/依赖规则及其它架构诊断继续生效。 -->
         <NoWarn>$(NoWarn);GFX0001</NoWarn>

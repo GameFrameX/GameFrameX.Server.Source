@@ -42,7 +42,7 @@ using GameFrameX.Capability.Online.Abstractions.Events;
 public static class OnlinePresenceEvents
 {
     /// <summary>在线状态变更。</summary>
-    public const string PresenceChanged = "Online.Presence.Changed";
+    public const string PresenceChanged = "online.presence.changed";
 
     /// <summary>事件来源标识。</summary>
     public const string Source = "online-presence";

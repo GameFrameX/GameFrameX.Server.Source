@@ -30,22 +30,36 @@
 namespace GameFrameX.Capability.Online.Social;
 
 /// <summary>
-/// 玩家在线事实探针（社交域读取在线状态的唯一入口）。
+/// 好友域可配置项（C294 自 <see cref="OnlineFriendService"/> 构造参数默认值收编：默认值唯一来源 = 本类型字段初始值）。
 /// <para>
-/// 维护约束：在线事实的唯一来源是 Presence 域，社交域**不镜像、不缓存**在线状态
-/// （形态与语义对齐 <c>IOnlinePartyPresenceProbe</c>）。未装配时调用方须降级为「未知」，
-/// 不得据此判定玩家离线并触发清理或投递失败。
+/// 维护约束：服务构造收本类型必填参数，不再携带参数默认值或非正数回退——配置错误由
+/// <see cref="OnlineSocialOptions.Validate"/> 在装配期 fail-fast 报出，而不是运行期静默回退推荐值。
 /// </para>
 /// </summary>
-public interface IOnlineSocialPresenceProbe
+public sealed class OnlineFriendOptions
 {
     /// <summary>
-    /// 查询玩家当前是否在线。
+    /// 获取或设置待答复请求存活时长（秒；默认 604800 即 7 天，超期由清扫滴答 job 收敛为过期态）。
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
-    /// <param name="playerId">玩家标识。</param>
-    /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>在线返回 <c>true</c>。</returns>
-    Task<bool> IsOnlineAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default);
+    public long RequestTimeToLiveSeconds { get; set; } = 604800;
+
+    /// <summary>
+    /// 获取或设置搜索返回条数上限（默认 20）。
+    /// </summary>
+    public int SearchLimit { get; set; } = 20;
+
+    /// <summary>
+    /// 获取或设置好友列表返回条数上限（默认 200；同时也是好友上限裁决依据）。
+    /// </summary>
+    public int FriendLimit { get; set; } = 200;
+
+    /// <summary>
+    /// 获取或设置是否在模块激活期执行旧好友数据一次性迁移（默认 false；C294 收编原族级
+    /// <c>Online.MigrateLegacyFriendData</c> 开关，配置路径 <c>Online.Settings.online-social.Friend.MigrateLegacyFriendData</c>）。
+    /// <para>
+    /// 维护约束：迁移只读单向复制旧表（域 120 FriendRelationState / 域 660 FriendState），旧数据零改动；
+    /// 幂等可重复执行；详见 <see cref="OnlineFriendLegacyMigration"/>。
+    /// </para>
+    /// </summary>
+    public bool MigrateLegacyFriendData { get; set; }
 }

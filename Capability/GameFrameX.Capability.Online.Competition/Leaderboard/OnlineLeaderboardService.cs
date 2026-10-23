@@ -73,12 +73,12 @@ public sealed class OnlineLeaderboardService
     /// 初始化 <see cref="OnlineLeaderboardService"/>。
     /// </summary>
     /// <param name="store">排行榜存储。</param>
-    /// <param name="options">组件选项（空则取默认值）。</param>
+    /// <param name="options">组件选项（必填；默认值唯一来源 = <see cref="OnlineLeaderboardOptions"/> 字段初始值）。</param>
     /// <param name="eventPublisher">事件发布器（可空；未接线时不发事件）。</param>
-    public OnlineLeaderboardService(IOnlineLeaderboardStore store, OnlineLeaderboardOptions options = null, IOnlineEventPublisher eventPublisher = null)
+    public OnlineLeaderboardService(IOnlineLeaderboardStore store, OnlineLeaderboardOptions options, IOnlineEventPublisher eventPublisher = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
-        _options = options ?? new OnlineLeaderboardOptions();
+        _options = options ?? throw new ArgumentNullException(nameof(options));
         _eventPublisher = eventPublisher;
         _rateLimiter = new OnlineLeaderboardRateLimiter(_options.RateLimitMaxSubmissions, _options.RateLimitWindowSeconds);
     }

@@ -47,10 +47,10 @@ using GameFrameX.Capability.Online.Abstractions.Events;
 public static class OnlineMatchRuntimeEvents
 {
     /// <summary>对局生命周期状态变更。</summary>
-    public const string MatchStateChanged = "Online.Match.StateChanged";
+    public const string MatchStateChanged = "online.match.statechanged";
 
     /// <summary>对局结算完成（可信结果事件）。</summary>
-    public const string MatchSettled = "Online.Match.Settled";
+    public const string MatchSettled = "online.match.settled";
 
     /// <summary>事件来源标识（与匹配域的 online-matchmaker 区分）。</summary>
     public const string Source = "online-match";

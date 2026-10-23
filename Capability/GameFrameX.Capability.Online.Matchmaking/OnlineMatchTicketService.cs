@@ -65,12 +65,12 @@ public sealed class OnlineMatchTicketService
     /// </summary>
     /// <param name="store">票据存储。</param>
     /// <param name="eventPublisher">事件发布器。</param>
-    /// <param name="options">匹配与限流可配置项（null 取默认值）。</param>
-    public OnlineMatchTicketService(IOnlineMatchTicketStore store, IOnlineEventPublisher eventPublisher, OnlineMatchmakerOptions options = null)
+    /// <param name="options">匹配与限流可配置项（必填；机制合并后的 Options 终值，不再兜底默认）。</param>
+    public OnlineMatchTicketService(IOnlineMatchTicketStore store, IOnlineEventPublisher eventPublisher, OnlineMatchmakerOptions options)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _eventPublisher = eventPublisher ?? throw new ArgumentNullException(nameof(eventPublisher));
-        _options = options == null ? new OnlineMatchmakerOptions() : options.Copy();
+        _options = (options ?? throw new ArgumentNullException(nameof(options))).Copy();
         _rateLimiter = new OnlineMatchRateLimiter(_options.RateLimitMaxOperations, _options.RateLimitWindowSeconds);
     }
 

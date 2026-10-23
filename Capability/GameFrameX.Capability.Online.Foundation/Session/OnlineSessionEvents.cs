@@ -36,7 +36,7 @@ using GameFrameX.Capability.Online.Abstractions.Events;
 /// <summary>
 /// 会话域事件工厂（Session 生命周期事件经统一事件信封供 Party/Friend/Admin 消费）。
 /// <para>
-/// 维护约束：EventType 命名 <c>Online.Session.{动作}</c>，新增事件类型必须同步 Admin 镜像侧登记；
+/// 维护约束：EventType 命名 <c>online.session.{动作}</c>（全串小写，值 == 机制总线 topic），新增事件类型必须同步 Admin 镜像侧登记；
 /// Payload 为 UTF-8 JSON（SchemaVersion=1），审计字段（SessionId/PlayerId/Reason）经
 /// <see cref="OnlineEvent.PayloadAuditFields"/> 透出——踢下线审计必须含 SessionId 与原因，
 /// 操作者（Operator）由装配层写入 Reason 承载；事件是事实不是状态，消费端不得回写会话。
@@ -45,31 +45,31 @@ using GameFrameX.Capability.Online.Abstractions.Events;
 public static class OnlineSessionEvents
 {
     /// <summary>会话创建（Created）。</summary>
-    public const string SessionCreated = "Online.Session.Created";
+    public const string SessionCreated = "online.session.created";
 
     /// <summary>会话通过鉴权（Authenticated，Token 已签发）。</summary>
-    public const string SessionAuthenticated = "Online.Session.Authenticated";
+    public const string SessionAuthenticated = "online.session.authenticated";
 
     /// <summary>会话建立连接（Connected）。</summary>
-    public const string SessionConnected = "Online.Session.Connected";
+    public const string SessionConnected = "online.session.connected";
 
     /// <summary>会话进入活跃（Active）。</summary>
-    public const string SessionActive = "Online.Session.Active";
+    public const string SessionActive = "online.session.active";
 
     /// <summary>会话断线进入重连窗口（Reconnecting）。</summary>
-    public const string SessionReconnecting = "Online.Session.Reconnecting";
+    public const string SessionReconnecting = "online.session.reconnecting";
 
     /// <summary>会话正常关闭（Closed）。</summary>
-    public const string SessionClosed = "Online.Session.Closed";
+    public const string SessionClosed = "online.session.closed";
 
     /// <summary>会话被踢下线（Kicked；审计含原因与操作者上下文）。</summary>
-    public const string SessionKicked = "Online.Session.Kicked";
+    public const string SessionKicked = "online.session.kicked";
 
     /// <summary>会话过期（Expired）。</summary>
-    public const string SessionExpired = "Online.Session.Expired";
+    public const string SessionExpired = "online.session.expired";
 
     /// <summary>Token 刷新轮换（TokenRefreshed；旧 Token 即刻失效）。</summary>
-    public const string SessionTokenRefreshed = "Online.Session.TokenRefreshed";
+    public const string SessionTokenRefreshed = "online.session.tokenrefreshed";
 
     /// <summary>事件来源标识。</summary>
     public const string Source = "online-session";

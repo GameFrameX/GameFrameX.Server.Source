@@ -72,15 +72,15 @@ public sealed class OnlineMatchmakerCoordinator
     /// <param name="store">票据存储。</param>
     /// <param name="ticketService">票据服务。</param>
     /// <param name="eventPublisher">事件发布器。</param>
-    /// <param name="options">匹配与限流可配置项（null 取默认值）。</param>
+    /// <param name="options">匹配与限流可配置项（必填；机制合并后的 Options 终值，不再兜底默认）。</param>
     /// <param name="socialGate">跨域社交裁决入口（可空；由 <c>OnlineSocialDecisionService</c> 提供）。</param>
-    public OnlineMatchmakerCoordinator(IOnlineMatchTicketStore store, OnlineMatchTicketService ticketService, IOnlineEventPublisher eventPublisher, OnlineMatchmakerOptions options = null, IOnlineSocialGate socialGate = null)
+    public OnlineMatchmakerCoordinator(IOnlineMatchTicketStore store, OnlineMatchTicketService ticketService, IOnlineEventPublisher eventPublisher, OnlineMatchmakerOptions options, IOnlineSocialGate socialGate = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _ticketService = ticketService ?? throw new ArgumentNullException(nameof(ticketService));
         _eventPublisher = eventPublisher ?? throw new ArgumentNullException(nameof(eventPublisher));
         _socialGate = socialGate;
-        _rule = new OnlineMatchRule(options == null ? new OnlineMatchmakerOptions() : options);
+        _rule = new OnlineMatchRule(options ?? throw new ArgumentNullException(nameof(options)));
     }
 
     /// <summary>
