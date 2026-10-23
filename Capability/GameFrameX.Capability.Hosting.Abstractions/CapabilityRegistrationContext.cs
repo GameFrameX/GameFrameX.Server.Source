@@ -69,11 +69,11 @@ public sealed class CapabilityRegistrationContext
     }
 
     /// <summary>
-    /// 本宿主共享的服务注册表（组合根预置与全部能力模块注册共用；装配后经 <see cref="CapabilityHost.Services"/> 取用）。
+    /// 本宿主共享的服务注册表（组合根预置与全部能力模块注册共用；装配后经 <c>GameFrameX.Capability.Hosting.Core.CapabilityHost.Services</c> 取用）。
     /// </summary>
     /// <remarks>
     /// The host-wide shared service registry (shared between composition-root pre-seeds and every capability
-    /// module registration; consumable after assembly through <see cref="CapabilityHost.Services"/>).
+    /// module registration; consumable after assembly through <c>GameFrameX.Capability.Hosting.Core.CapabilityHost.Services</c>).
     /// </remarks>
     public CapabilityServices Services { get; }
 

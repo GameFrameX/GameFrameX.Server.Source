@@ -27,9 +27,9 @@
 namespace GameFrameX.Capability.Hosting.Abstractions;
 
 /// <summary>
-/// 能力服务注册表（能力族的服务共享协议载体，C231）：组合根预置（<see cref="CapabilityHostBuilder.UseService{TService}"/>）
+/// 能力服务注册表（能力族的服务共享协议载体，C231）：组合根预置（<c>GameFrameX.Capability.Hosting.Core.CapabilityHostBuilder.UseService{TService}</c>）
 /// 与能力模块注册（<see cref="CapabilityRegistrationContext.AddService{TService}"/>）共用同一张按服务类型索引的表；
-/// 装配完成后经 <see cref="CapabilityHost.Services"/> 对组合根开放取用。
+/// 装配完成后经 <c>GameFrameX.Capability.Hosting.Core.CapabilityHost.Services</c> 对组合根开放取用。
 /// <para>
 /// 维护约束：服务键 = 调用点书写的 <c>TService</c> 类型（无接口自动映射）；同类型重复注册即装配失败（对齐
 /// manifest Id 唯一 / job 全名唯一的既有口径）；模块间解析依赖拓扑定序——先序模块注册的产物对后序模块可见，
@@ -38,9 +38,9 @@ namespace GameFrameX.Capability.Hosting.Abstractions;
 /// </summary>
 /// <remarks>
 /// The capability service registry (the capability-family service-sharing protocol, C231): composition-root
-/// pre-seeds (<see cref="CapabilityHostBuilder.UseService{TService}"/>) and capability-module registrations
+/// pre-seeds (<c>GameFrameX.Capability.Hosting.Core.CapabilityHostBuilder.UseService{TService}</c>) and capability-module registrations
 /// (<see cref="CapabilityRegistrationContext.AddService{TService}"/>) share one table indexed by service type;
-/// after assembly it is exposed to the composition root through <see cref="CapabilityHost.Services"/>.
+/// after assembly it is exposed to the composition root through <c>GameFrameX.Capability.Hosting.Core.CapabilityHost.Services</c>.
 /// The service key is the <c>TService</c> type as written at the call site (no automatic interface mapping);
 /// duplicate registration of the same type fails assembly (mirroring the manifest-id and job-name uniqueness
 /// rules); cross-module resolution relies on topological ordering — products registered by earlier modules are

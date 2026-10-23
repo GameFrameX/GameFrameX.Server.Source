@@ -33,14 +33,14 @@ namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 /// 跨域社交裁决契约（Block「在 Chat / Party / Matchmaker 三处统一生效」的接口载体）。
 /// <para>
 /// 维护约束（依赖方向，C223）：本接口**定义在脊柱契约层（Contracts）**，实现唯一落点在
-/// Social 域（<see cref="GameFrameX.Capability.Online.Social.OnlineSocialDecisionService"/>）；
+/// Social 域（<c>GameFrameX.Capability.Online.Social.OnlineSocialDecisionService</c>）；
 /// Party 与 Matchmaking **只依赖本契约**、不依赖 Social 域——叶子能力目录横向互引恒为零，
 /// 依赖箭头单向，无环。
 /// Party / Matchmaking 侧的注入是**可选**的（<c>null</c> = 不启用社会裁决，既有行为不变），
 /// 沿用 <c>IOnlinePartyPresenceProbe</c> 可空探针先例。
 /// </para>
 /// <para>
-/// 维护约束（唯一入口）：实现必须落在 <see cref="GameFrameX.Capability.Online.Social.OnlineSocialDecisionService"/>，
+/// 维护约束（唯一入口）：实现必须落在 <c>GameFrameX.Capability.Online.Social.OnlineSocialDecisionService</c>，
 /// **禁止**在 Party / Matchmaking 内自建屏蔽或处罚判定（会出现绕过与行为不一致）。
 /// 参数刻意不复用 <c>OnlineScope</c>：Party 与 Matchmaker 持有的是票据 / 邀请上的裸标识，
 /// 强行拼 Scope 会诱导调用方伪造玩家主体位，反而放大越权风险。
