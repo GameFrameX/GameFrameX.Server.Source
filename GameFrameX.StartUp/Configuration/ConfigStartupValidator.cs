@@ -77,7 +77,8 @@ public static class ConfigStartupValidator
         (nameof(AppSetting.OuterPort), new[] { nameof(AppSetting.IsEnableTcp) }, TransportTcp),
         (nameof(AppSetting.HttpPort), new[] { nameof(AppSetting.IsEnableHttp) }, TransportTcp),
         (nameof(AppSetting.HttpsPort), new[] { nameof(AppSetting.IsEnableHttp) }, TransportTcp),
-        (nameof(AppSetting.OnlineAdminPort), new[] { nameof(AppSetting.IsEnableOnlineAdmin) }, TransportTcp),
+        // Online 管理面端口不在本表：其使能开关已并入 "Online" 配置段（Online.EnableAdminApi，嵌套属性），
+        // 与平铺字段开关不同构，由 ExpandEnabledEndpoints 内专项展开。
         (nameof(AppSetting.MetricsPort), new[] { nameof(AppSetting.IsOpenTelemetry), nameof(AppSetting.IsOpenTelemetryMetrics) }, TransportTcp),
         (nameof(AppSetting.WsPort), new[] { nameof(AppSetting.IsEnableWebSocket) }, TransportTcp),
         (nameof(AppSetting.WssPort), new[] { nameof(AppSetting.IsEnableWebSocket) }, TransportTcp),
@@ -273,6 +274,18 @@ public static class ConfigStartupValidator
                     endpoints.Add((role.ServerType, portCheck.PortFieldName, portCheck.Transport, port));
                 }
             }
+        }
+
+        // Online 管理面端点专项展开：使能开关为嵌套 "Online" 配置段的 EnableAdminApi（C294 并段），
+        // 未配置段 / 未开闸的 Role 不参与端口冲突分组（禁用方不掩盖其余 Role 的冲突）。
+        foreach (var role in selectedSections)
+        {
+            if (role.Setting.Online == null || !role.Setting.Online.EnableAdminApi || role.Setting.OnlineAdminPort == 0)
+            {
+                continue;
+            }
+
+            endpoints.Add((role.ServerType, nameof(AppSetting.OnlineAdminPort), TransportTcp, role.Setting.OnlineAdminPort));
         }
 
         return endpoints;

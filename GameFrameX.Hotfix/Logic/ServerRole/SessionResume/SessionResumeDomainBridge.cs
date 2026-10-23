@@ -22,7 +22,7 @@
 
 using System.Threading.Tasks;
 using GameFrameX.Apps.Common.EventData;
-using GameFrameX.Capability.Online.Abstractions.Bridges;
+using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Scope;
 using GameFrameX.Core.Events;
@@ -67,15 +67,22 @@ internal static class SessionResumeDomainBridge
     /// <returns>Token 明文；桥不可用或签发失败返回 null（登录主流程不受影响，日志披露）。</returns>
     public static async Task<string> IssueLoginCredentialAsync(long playerId, string connectionId)
     {
-        var lease = OnlineSessionDomainBridgeHolder.Current;
-        if (lease == null || !lease.IsActive)
+        var lease = RequireSessionContract(playerId);
+        if (lease == null)
+        {
+            return null;
+        }
+
+        // 授权作用域不可得 = 依赖不可用：与会话域桥缺席同形态返回空凭据并披露，不以空作用域调用契约。
+        var issueScope = BuildScope(playerId);
+        if (issueScope == null)
         {
             // Localization: Hotfix.SessionResume.BridgeUnavailable - 会话域桥不可用（未发布或已撤销）, PlayerId: {0}, Code: {1}
             LogHelper.Error(LocalizationService.GetString(Localization.Keys.Hotfix.SessionResume.BridgeUnavailable, playerId, OnlineErrorCode.DependencyUnavailable));
             return null;
         }
 
-        var issued = await lease.IssueForLoginAsync(BuildScope(lease, playerId), connectionId);
+        var issued = await lease.IssueForLoginAsync(issueScope, connectionId);
         if (!issued.IsSuccess)
         {
             // Localization: Hotfix.SessionResume.IssueFailed - 登录签发会话恢复凭据失败, Code: {0}, PlayerId: {1}
@@ -102,16 +109,22 @@ internal static class SessionResumeDomainBridge
             return SessionResumeOutcome.Fail(OnlineErrorCode.ParameterInvalid, "连接会话标识缺失");
         }
 
-        var lease = OnlineSessionDomainBridgeHolder.Current;
-        if (lease == null || !lease.IsActive)
+        var lease = RequireSessionContract(0);
+        if (lease == null)
         {
-            // Localization: Hotfix.SessionResume.BridgeUnavailable - 会话域桥不可用（未发布或已撤销）, PlayerId: {0}, Code: {1}
-            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Hotfix.SessionResume.BridgeUnavailable, 0L, OnlineErrorCode.DependencyUnavailable));
             return SessionResumeOutcome.Fail(OnlineErrorCode.DependencyUnavailable, "会话域桥不可用（宿主未运行或已停止）");
         }
 
         // 恢复主体由 Token 解析得出（玩家位 0 = 待解析；请求体字段不可影响作用域）。
-        var resumeScope = new OnlineScope(lease.AuthorizedScope.TenantId, lease.AuthorizedScope.AppId, lease.AuthorizedScope.ServerId, 0);
+        var resumeScope = BuildScope(0);
+        if (resumeScope == null)
+        {
+            // 授权作用域不可得 = 依赖不可用：身份恢复显式失败，不以空作用域调用契约、不降级。
+            // Localization: Hotfix.SessionResume.BridgeUnavailable - 会话域桥不可用（未发布或已撤销）, PlayerId: {0}, Code: {1}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Hotfix.SessionResume.BridgeUnavailable, 0, OnlineErrorCode.DependencyUnavailable));
+            return SessionResumeOutcome.Fail(OnlineErrorCode.DependencyUnavailable, "授权作用域不可得（作用域提供者桥未发布或已撤销）");
+        }
+
         var resumed = await lease.ResumeAsync(resumeScope, token, sessionId);
         if (!resumed.IsSuccess)
         {
@@ -139,8 +152,8 @@ internal static class SessionResumeDomainBridge
         OnlineMatchDomainResume matchResume = null;
         var matchFailureCode = OnlineErrorCode.None;
         var matchFailureMessage = string.Empty;
-        var matchLease = OnlineMatchDomainBridgeHolder.Current;
-        if (matchLease == null || !matchLease.IsActive)
+        var matchContract = TryGetMatchContract();
+        if (matchContract == null)
         {
             // 匹配域桥缺席（online-match 被排除的部署形态）：身份恢复仍成立，对局恢复面缺位披露。
             matchFailureMessage = "匹配域桥不可用（宿主未运行或已停止）";
@@ -148,16 +161,27 @@ internal static class SessionResumeDomainBridge
         }
         else
         {
-            var outcome = await matchLease.TryResumeForPlayerAsync(BuildScope(matchLease, playerId), lastAcknowledgedSequence);
-            if (outcome.IsSuccess)
+            var matchScope = BuildScope(playerId);
+            if (matchScope == null)
             {
-                matchResume = outcome.Data;
+                // 授权作用域不可得 = 依赖不可用：对局恢复按失败回显（身份恢复仍成立），不以空作用域调用契约。
+                matchFailureCode = OnlineErrorCode.DependencyUnavailable;
+                matchFailureMessage = "授权作用域不可得（作用域提供者桥未发布或已撤销）";
+                LogBridgeFailed(matchFailureCode, matchFailureMessage, playerId);
             }
             else
             {
-                matchFailureCode = outcome.Code;
-                matchFailureMessage = outcome.Message;
-                LogBridgeFailed(outcome.Code, outcome.Message, playerId);
+                var outcome = await matchContract.TryResumeForPlayerAsync(matchScope, lastAcknowledgedSequence);
+                if (outcome.IsSuccess)
+                {
+                    matchResume = outcome.Data;
+                }
+                else
+                {
+                    matchFailureCode = outcome.Code;
+                    matchFailureMessage = outcome.Message;
+                    LogBridgeFailed(outcome.Code, outcome.Message, playerId);
+                }
             }
         }
 
@@ -182,21 +206,42 @@ internal static class SessionResumeDomainBridge
         }
 
         var sessionOutcome = "skipped";
-        var sessionLease = OnlineSessionDomainBridgeHolder.Current;
-        if (sessionLease != null && sessionLease.IsActive)
+        var sessionContract = TryGetSessionContract();
+        if (sessionContract != null)
         {
-            var notified = await sessionLease.NotifyPlayerDisconnectedAsync(BuildScope(sessionLease, playerId), ReconnectWindowSeconds);
-            sessionOutcome = notified.IsSuccess ? "ok" : "failed:" + notified.Code;
+            var sessionScope = BuildScope(playerId);
+            if (sessionScope == null)
+            {
+                // 授权作用域不可得 = 依赖不可用：显式记失败并跳过开窗，不以空作用域调用契约。
+                sessionOutcome = "failed:" + OnlineErrorCode.DependencyUnavailable;
+                // Localization: Hotfix.SessionResume.BridgeUnavailable - 会话域桥不可用（未发布或已撤销）, PlayerId: {0}, Code: {1}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Hotfix.SessionResume.BridgeUnavailable, playerId, OnlineErrorCode.DependencyUnavailable));
+            }
+            else
+            {
+                var notified = await sessionContract.NotifyPlayerDisconnectedAsync(sessionScope, ReconnectWindowSeconds);
+                sessionOutcome = notified.IsSuccess ? "ok" : "failed:" + notified.Code;
+            }
         }
 
         var matchOutcome = "skipped";
-        var matchLease = OnlineMatchDomainBridgeHolder.Current;
-        if (matchLease != null && matchLease.IsActive)
+        var matchContract = TryGetMatchContract();
+        if (matchContract != null)
         {
-            var notified = await matchLease.NotifyPlayerDisconnectedAsync(BuildScope(matchLease, playerId));
-            matchOutcome = notified.IsSuccess
-                ? notified.Data != null && notified.Data.Marked ? "marked:" + notified.Data.MatchId : "no-match"
-                : "failed:" + notified.Code;
+            var matchScope = BuildScope(playerId);
+            if (matchScope == null)
+            {
+                // 授权作用域不可得 = 依赖不可用：显式记失败并跳过断线标记，不以空作用域调用契约。
+                matchOutcome = "failed:" + OnlineErrorCode.DependencyUnavailable;
+                LogBridgeFailed(OnlineErrorCode.DependencyUnavailable, "授权作用域不可得（作用域提供者桥未发布或已撤销）", playerId);
+            }
+            else
+            {
+                var notified = await matchContract.NotifyPlayerDisconnectedAsync(matchScope);
+                matchOutcome = notified.IsSuccess
+                    ? notified.Data != null && notified.Data.Marked ? "marked:" + notified.Data.MatchId : "no-match"
+                    : "failed:" + notified.Code;
+            }
         }
 
         // Localization: Hotfix.SessionResume.DisconnectCoordination - 断线两层协同, PlayerId: {0}, 会话域结果: {1}, 对局域结果: {2}
@@ -219,25 +264,73 @@ internal static class SessionResumeDomainBridge
     }
 
     /// <summary>
-    /// 以租约授权三元组 + 玩家位构造作用域。
+    /// 读取会话域桥契约（不可用即显式失败记录；逐请求 <see cref="CapabilityBridge{TContract}.TryAcquire"/>，不缓存）。
     /// </summary>
-    /// <param name="lease">会话域桥租约。</param>
-    /// <param name="playerId">玩家标识。</param>
-    /// <returns>生效作用域。</returns>
-    private static OnlineScope BuildScope(OnlineSessionDomainBridgeLease lease, long playerId)
+    /// <param name="playerId">请求主体（日志披露用）。</param>
+    /// <returns>契约面；桥不可用返回 null。</returns>
+    private static IOnlineSessionReconnectContract RequireSessionContract(long playerId)
     {
-        return new OnlineScope(lease.AuthorizedScope.TenantId, lease.AuthorizedScope.AppId, lease.AuthorizedScope.ServerId, playerId);
+        var contract = TryGetSessionContract();
+        if (contract == null)
+        {
+            // Localization: Hotfix.SessionResume.BridgeUnavailable - 会话域桥不可用（未发布或已撤销）, PlayerId: {0}, Code: {1}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Hotfix.SessionResume.BridgeUnavailable, playerId, OnlineErrorCode.DependencyUnavailable));
+        }
+
+        return contract;
     }
 
     /// <summary>
-    /// 以租约授权三元组 + 玩家位构造作用域（匹配域桥形态）。
+    /// 读取会话域桥契约（缺席 / 撤销竞态返回 null，不打日志——缺席语义由调用方决定）。
     /// </summary>
-    /// <param name="lease">匹配域桥租约。</param>
-    /// <param name="playerId">玩家标识。</param>
-    /// <returns>生效作用域。</returns>
-    private static OnlineScope BuildScope(OnlineMatchDomainBridgeLease lease, long playerId)
+    /// <returns>契约面；桥不可用返回 null。</returns>
+    private static IOnlineSessionReconnectContract TryGetSessionContract()
     {
-        return new OnlineScope(lease.AuthorizedScope.TenantId, lease.AuthorizedScope.AppId, lease.AuthorizedScope.ServerId, playerId);
+        if (CapabilityBridge<IOnlineSessionReconnectContract>.TryAcquire(out var lease))
+        {
+            try
+            {
+                return lease.Contract;
+            }
+            catch (CapabilityBridgeUnavailableException)
+            {
+                // 获取与读取之间的撤销竞态：与缺席同语义，不降级。
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 读取匹配域桥契约（缺席 / 撤销竞态返回 null——online-match 为可选能力，缺席为合法部署形态）。
+    /// </summary>
+    /// <returns>契约面；桥不可用返回 null。</returns>
+    private static IOnlineMatchDomain TryGetMatchContract()
+    {
+        if (CapabilityBridge<IOnlineMatchDomain>.TryAcquire(out var lease))
+        {
+            try
+            {
+                return lease.Contract;
+            }
+            catch (CapabilityBridgeUnavailableException)
+            {
+                // 获取与读取之间的撤销竞态：与缺席同语义，不降级。
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 以授权三元组 + 玩家位构造作用域（三元组经 <see cref="OnlineAuthorizedScopeReader"/> 读取；
+    /// 提供者桥缺席 / 撤销时返回 null，调用方须按依赖不可用显式失败，不得把 null 传入契约）。
+    /// </summary>
+    /// <param name="playerId">玩家标识（恢复前为 0 = 待 Token 解析）。</param>
+    /// <returns>生效作用域；授权作用域不可得时为 null。</returns>
+    private static OnlineScope BuildScope(long playerId)
+    {
+        return OnlineAuthorizedScopeReader.BuildRequestScope(playerId);
     }
 
     /// <summary>

@@ -2,48 +2,95 @@
 //   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
 //   GameFrameX organization and its derivative projects' copyrights, trademarks, patents and related rights
 //   均受中华人民共和国及相关国际法律法规保护。
-//   are protected by the laws of the PRC and relevant international regulations.
-//   使用本项目须严格遵守相关法律法规与开源许可证之规定。
+//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   使用本项目须严格遵守相应法律法规及开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
 //   This project is licensed solely under the Apache License 2.0,
-//   完整许可证文本请参见源代码根目录的 LICENSE 文件。
-//   please refer to the LICENSE file at the root of the source code for the full license text.
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
 //   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
 //   侵犯他人合法权益等法律法规所禁止的行为！
-//   or infringe upon the legal rights and interests of others as prohibited by laws and regulations!
-//   因基于本项目二次开发所产生的一切法律纠纷与责任，
-//   Any legal disputes or liabilities arising from secondary development,
-//   本组织与贡献者概不承担任何责任。
+//   Any legal disputes and liabilities arising from secondary development based on this project
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
 //   GitHub Repository: https://github.com/GameFrameX
 //   Gitee  仓库：https://gitee.com/GameFrameX
-//   Gite Repository:  https://gitee.com/GameFrameX
-//   CNB  仓库：https://www.cnb.cool/GameFrameX
-//   CNB Repository: https://www.cnb.cool/GameFrameX
+//   Gitee Repository: https://gitee.com/cnblanblank
+//   CNB 仓库：https://cnb.cool
+//   CNB Repository: https://cnb.cool
 //   官方文档：https://gameframex.doc.alianblank.com/
-//   Official Documentation: https://gameframex.doc.alianblank.com/
+//   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+
+using System.Text.Json;
 
 namespace GameFrameX.Utility.Setting;
 
 /// <summary>
-/// Online 能力配置段（角色配置内嵌套 <c>"Online"</c> 节点的强类型绑定，C229）
-/// <para>白名单 <c>Capabilities</c> 与排除表 <c>Disable</c> 承载能力 Id 列表；null 或空 = 全装配 / 无排除（缺省全装配红线）</para>
+/// Online 能力配置段（角色配置内嵌套 <c>"Online"</c> 节点的强类型绑定，C294 键集重定）
+/// <para>族级键：双闸（<see cref="EnableRuntime"/> / <see cref="EnableAdminApi"/>）与
+/// <see cref="EnableRoles"/>（缺省 <c>["Game"]</c>，D6 Role↔Capability 声明式映射）、能力过滤器
+/// （<see cref="Capabilities"/> 白名单 / <see cref="Disable"/> 排除表，null 或空 = 全装配 / 无排除）、
+/// <see cref="UseGameDbStores"/>（store 覆盖开关）；能力级参数经 <see cref="Settings"/> 原始 JSON 节点承载
+/// （键 = 能力 Id，值 = 该能力 Options 根类型的字段覆盖源，装配期由机制 Options 绑定器逐字段合并）</para>
 /// <para>本类型为配置只读数据：装载后不得变更（多 Role 回落档可能共享同一实例引用）</para>
 /// </summary>
 /// <remarks>
-/// Strong-typed binding of the nested <c>"Online"</c> node inside a role configuration section (C229).
-/// <c>Capabilities</c> is the enable whitelist and <c>Disable</c> the exclusion list, both carrying
-/// capability ids; null or empty means "assemble everything" / "exclude nothing" (the
-/// empty-filter-assembles-all guarantee). Treat instances as read-only after loading — multiple
-/// roles on the launcher fallback path may share one instance reference.
+/// Strong-typed binding of the nested <c>"Online"</c> node inside a role configuration section (the C294
+/// key-set redefinition). Family-level keys: the two enable gates
+/// (<see cref="EnableRuntime"/> / <see cref="EnableAdminApi"/>) plus <see cref="EnableRoles"/>
+/// (default <c>["Game"]</c>, the D6 declarative role-to-capability mapping), the capability filter
+/// (<see cref="Capabilities"/> whitelist / <see cref="Disable"/> exclusion list; null or empty assembles
+/// everything / excludes nothing) and the <see cref="UseGameDbStores"/> store-override switch;
+/// capability-level parameters ride the raw JSON node <see cref="Settings"/> (key = capability id, value =
+/// the field-override source for that capability's options root, merged field-by-field at composition time
+/// by the mechanism options binder). Treat instances as read-only after loading — multiple roles on the
+/// launcher fallback path may share one instance reference.
 /// </remarks>
 public sealed class OnlineCapabilityOptions
 {
+    /// <summary>
+    /// 缺省启用角色表（<see cref="EnableRoles"/> 为 null 时等效本值）。
+    /// </summary>
+    /// <remarks>
+    /// The default enabled-role list (equivalent to this value when <see cref="EnableRoles"/> is null).
+    /// </remarks>
+    public static readonly IReadOnlyList<string> DefaultEnableRoles = new[] { "Game" };
+
+    /// <summary>
+    /// 是否装配业务运行时（并入配置段的旧双闸之一；缺省 false = 不装配）
+    /// </summary>
+    /// <remarks>
+    /// Whether to assemble the business runtime (the in-section successor of the former flat
+    /// runtime gate; default false = not assembled).
+    /// </remarks>
+    public bool EnableRuntime { get; set; }
+
+    /// <summary>
+    /// 是否装配管理面（并入配置段的旧双闸之一；缺省 false = 不装配；
+    /// 业务运行时在则全能力形态，不在则 admin-only 形态）
+    /// </summary>
+    /// <remarks>
+    /// Whether to assemble the admin plane (the in-section successor of the former flat
+    /// admin gate; default false = not assembled; full-capability shape when the
+    /// runtime is assembled, admin-only shape otherwise).
+    /// </remarks>
+    public bool EnableAdminApi { get; set; }
+
+    /// <summary>
+    /// 启用本族的 Role 名单（D6 声明式映射；null 或空 = 缺省 <c>["Game"]</c>）——
+    /// <c>--AllInOne</c> 多 Role 进程中首个名单命中的 Role 负责组合，后续 Role 复用同一进程内组合
+    /// </summary>
+    /// <remarks>
+    /// The role names that enable this family (the D6 declarative mapping; null or empty = the default
+    /// <c>["Game"]</c>) — under <c>--AllInOne</c> the first role named by the list composes and the
+    /// remaining roles reuse the same in-process composition.
+    /// </remarks>
+    public IReadOnlyList<string> EnableRoles { get; set; }
+
     /// <summary>
     /// 能力白名单（能力 Id 列表，如 online-assets）；null 或空 = 全装配
     /// </summary>
@@ -61,95 +108,43 @@ public sealed class OnlineCapabilityOptions
     public IReadOnlyList<string> Disable { get; set; }
 
     /// <summary>
-    /// 是否预置 Online 一级 store 的 GameDb 持久化实现（C249，D3 = 3A 分级混合）
-    /// <para>true = Identity / 玩家云存储 / 资产账本与交易 / 好友关系五 store 预置进共享服务面（重启数据不丢，好友为 C244 增补）；false（缺省）= InMemory 默认不变</para>
+    /// 是否预置 Online 一级 store 的 GameDb 持久化实现（C294 起语义为宿主组合根 Override 注入开关）
+    /// <para>true = 宿主经 <c>Override&lt;T&gt;</c> 预置身份 / 玩家云存储 / 资产账本与交易 / 好友关系 store
+    /// （重启数据不丢）；false（缺省）= 包内 InMemory 默认不变</para>
     /// <para>前置约束：开启前数据库必须已完成初始化（GameDb 门面 Init）；Session / Presence 保持易失（Redis 演进位）</para>
     /// </summary>
     /// <remarks>
-    /// Whether to pre-seed the GameDb persistence adapters for the Online level-one stores (C249, D3 = 3A):
-    /// true pre-seeds identity / player storage / asset ledger and transaction stores into the shared
-    /// service face (data survives restarts); false (default) keeps the in-memory defaults unchanged.
-    /// The database must be initialized (GameDb facade Init) before enabling; sessions and presence stay volatile.
+    /// Whether the host composition root pre-seeds the GameDb persistence adapters for the Online
+    /// level-one stores via <c>Override&lt;T&gt;</c> (C294 semantics): true overrides the identity /
+    /// player-storage / asset-ledger and transaction / friend stores (data survives restarts); false
+    /// (default) keeps the in-package in-memory defaults. The database must be initialized (GameDb
+    /// facade Init) before enabling; sessions and presence stay volatile.
     /// </remarks>
     public bool UseGameDbStores { get; set; }
 
     /// <summary>
-    /// 好友域桥验证种子玩家标识列表（C243 引入、C244 域接管后沿用；元素 &lt; 2 = 不种子）
-    /// <para>首元素为请求方、其余为好友：组合根在业务运行时启动后，经真实 <c>OnlineFriendService</c> 写路径
-    /// 两两建立好友（幂等收敛），验证入口（HTTP <c>mode=online-bridge-friend&amp;playerId=首元素</c>）据此读到
-    /// 预置非空好友状态——仅供部署验证，生产常开须显式知情（Warning 日志披露）</para>
-    /// <para>请求方取配置 id 而非进程 actor 派生 id：玩家型组件 actor id 为多实例逐次唯一生成，
-    /// 不存在可预置的确定性请求主体</para>
+    /// 能力级参数原始 JSON 节点（键 = 能力 Id（如 online-social），值 = 该能力 Options 根类型的字段覆盖源；
+    /// 未知能力 Id / 未知字段 / 类型不符在装配期 fail-fast）。未配置时为 <see cref="JsonElement"/> 缺省值
+    ///（<see cref="JsonValueKind.Undefined"/>，等效空对象）。
     /// </summary>
     /// <remarks>
-    /// The friend-domain bridge verification seed player ids (introduced by C243, kept by the C244
-    /// domain takeover; fewer than 2 entries = no seeding): the first entry is the requester and the
-    /// rest the friends — after the business runtime starts the composition root establishes the
-    /// friendships pairwise through the real <c>OnlineFriendService</c> write path (idempotent
-    /// convergence), so the verification entry (HTTP
-    /// <c>mode=online-bridge-friend&amp;playerId=first-id</c>) can read preset non-empty friend state.
-    /// Deployment verification only; keeping it on in production requires informed consent (a Warning
-    /// log discloses every seed). The requester comes from configuration rather than a
-    /// process-derived actor id: player-type component actor ids are per-call unique multi ids with no
-    /// deterministic request subject to preset.
+    /// The raw JSON node of capability-level parameters (key = capability id such as online-social, value =
+    /// the field-override source for that capability's options root; unknown capability ids / unknown
+    /// fields / type mismatches fail fast at composition time). Unconfigured leaves the
+    /// <see cref="JsonElement"/> default (<see cref="JsonValueKind.Undefined"/>, equivalent to an empty object).
     /// </remarks>
-    public IReadOnlyList<long> FriendBridgeSeedPlayerIds { get; set; }
+    public JsonElement Settings { get; set; }
 
     /// <summary>
-    /// 是否在业务运行时启动后执行旧好友数据一次性迁移（C244，T3；缺省 false = 不迁移）
-    /// <para>true = 组合根读取本进程 GameDb 的旧 <c>FriendRelationState</c>（域 120 旧链，Status=0）与
-    /// 旧 660 <c>FriendState</c> 档案文档（Outgoing 待答申请），经 <c>OnlineFriendService</c> 真实写路径
-    /// 幂等收敛为 Online 好友关系（已建立 / 待答）；旧数据零改动（只读单向复制，回退 = 重部署旧版即回旧链旧数据）</para>
-    /// <para>分进程旧数据在 Social 库时，须在 GameDb 指向该库的进程上执行（AllInOne 天然满足）；
-    /// 重复执行幂等（SaveIfAbsent 收敛，不产生第二条关系）</para>
+    /// 读取生效的启用角色表（<see cref="EnableRoles"/> 为 null 或空时返回缺省 <c>["Game"]</c>）。
     /// </summary>
     /// <remarks>
-    /// Whether to run the one-shot legacy friend-data migration after the business runtime starts
-    /// (C244, T3; default false = no migration): true makes the composition root read this process's
-    /// GameDb — the legacy <c>FriendRelationState</c> rows (the domain-120 chain, Status=0) and the
-    /// legacy domain-660 <c>FriendState</c> profile document (Outgoing pending requests) — and
-    /// converge them into Online friendships through the real <c>OnlineFriendService</c> write path
-    /// (established / pending). The legacy data is never modified (a read-only one-way copy;
-    /// rollback = redeploying the legacy version restores the legacy chain over the legacy data).
-    /// When split-process legacy data lives in the Social database, run the migration on a process
-    /// whose GameDb points there (AllInOne satisfies this naturally); repeated runs are idempotent
-    /// (SaveIfAbsent convergence, never a second record).
+    /// Reads the effective enabled-role list (returns the default <c>["Game"]</c> when
+    /// <see cref="EnableRoles"/> is null or empty).
     /// </remarks>
-    public bool MigrateLegacyFriendData { get; set; }
-
-    /// <summary>
-    /// 对局样例桥开关（C245，D4 RPS 垂直切片）：true = Game 进程的房间制开局 / 出拳 / 查询 / 再来一局
-    /// 协议入口经 Online 对局桥转发平台对局运行时（进程内桥读写），出拳裁决 / 结算 / 发奖 / 排行由平台编排；
-    /// false（缺省）= 旧链行为逐字节保持（Apps 本地对局执行不变）。
-    /// <para>前置约束：开启时进程必须同时开启 <c>IsEnableOnline</c> 且装配 online-match 能力（组合根启动期
-    /// fail-fast）；桥失败（宿主未启 / 已停 / 服务错误）按显式错误返回，绝不静默回落旧链；本开关只应配置在
-    /// Game 角色段</para>
-    /// </summary>
-    /// <remarks>
-    /// Whether the sample match bridge is enabled (C245, the D4 RPS vertical slice): true routes the
-    /// Game process's room-shaped start / gesture / query / restart protocol entries through the
-    /// Online match bridge into the platform match runtime (an in-process bridge), with gesture
-    /// adjudication, settlement, rewards and leaderboards orchestrated by the platform; false
-    /// (default) keeps the legacy chain byte-identical (the local Apps match execution unchanged).
-    /// Enabling requires <c>IsEnableOnline</c> and the online-match capability (composition-root
-    /// fail-fast at startup); bridge failures (host not started / stopped / service errors) answer
-    /// with explicit error codes and never fall back to the legacy chain; configure this switch on
-    /// the Game role section only.
-    /// </remarks>
-    public bool EnableMatchGameBridge { get; set; }
-
-    /// <summary>
-    /// 对局结算写榜榜单标识（C245）：非空 = 订阅 <c>Online.Match.Settled</c> 的可信结果投影目标榜单
-    ///（要求 online-competition 能力；组合根确保榜单存在）；空（缺省）= 不投影（仅结算发奖）。
-    /// <para>榜单存储当前为 InMemory（D3 现状）——进程重启后积分易失，样例能力边界</para>
-    /// </summary>
-    /// <remarks>
-    /// The leaderboard id that settled match results project onto (C245): non-empty = the target
-    /// board for trusted-result projection subscribed from <c>Online.Match.Settled</c> (requires the
-    /// online-competition capability; the composition root ensures the board exists); empty
-    /// (default) = no projection (settlement and rewards only). The board store is currently
-    /// in-memory (the D3 status quo) — scores are volatile across process restarts, a documented
-    /// sample boundary.
-    /// </remarks>
-    public string MatchBridgeLeaderboardId { get; set; }
+    /// <returns>生效的启用角色名单。</returns>
+    public IReadOnlyList<string> GetEffectiveEnableRoles()
+    {
+        return EnableRoles == null || EnableRoles.Count == 0 ? DefaultEnableRoles : EnableRoles;
+    }
 }

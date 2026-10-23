@@ -29,7 +29,7 @@
 
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using GameFrameX.Capability.Online.Abstractions.Bridges;
+using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Scope;
 using GameFrameX.Foundation.Localization.Core;
@@ -38,16 +38,16 @@ namespace GameFrameX.Hotfix.Logic.Player.Friend;
 
 /// <summary>
 /// 好友域桥薄适配器（C244，好友域 120 / 660 两族协议入口的唯一转发点）：经
-/// <see cref="OnlineFriendDomainBridgeHolder"/> 进程内租约把全部好友协议行为转发到 Online 好友域契约面，
-/// 并按 T2 裁定完成两族错误码映射。
+/// <see cref="CapabilityBridge{TContract}"/>（契约 <see cref="IOnlineFriendDomain"/>）进程内租约把
+/// 全部好友协议行为转发到 Online 好友域契约面，并按 T2 裁定完成两族错误码映射。
 /// <para>
 /// 维护约束（红线）：
 /// ① 域桥独占——桥不可用（宿主未启 / 已停止 / 租约撤销）与服务失败一律映射为
 /// <c>-(int)OnlineErrorCode</c> 段的显式错误码（≤ -1001，与旧 120 链 -1..-104 段、660 段 660001..660005 不重叠），
 /// 绝不静默回落、绝不返回成功空列表掩盖错库 / 错进程（旧 120/660 链已随本切换退役，无回落目标）；
-/// ② 可信身份：作用域三元组只取 lease 携带的组合根授权值，玩家位只取会话绑定 playerId
+/// ② 可信身份：作用域三元组只取能力侧授权作用域提供者发布的组合根授权值，玩家位只取会话绑定 playerId
 ///（<c>ServerRoleHandlerHelper.GetCurrentPlayerId</c>），请求体字段一律不可影响作用域；
-/// ③ 无缓存：逐请求读取 holder 当前租约，热更 / 宿主重启后旧引用不存活；
+/// ③ 无缓存：逐请求 <see cref="CapabilityBridge{TContract}.TryAcquire"/> 取契约租约，热更 / 宿主重启后旧引用不存活；
 /// ④ 错误码映射表——120 族保留 -100/-101/-103/-104（-102 目标不存在已废弃披露），
 /// 660 族全保留 660001..660005（660004 同时覆盖「对方已先申请」的单记录收敛，裁定 R6）；
 /// 其余（含好友上限 StateOperationForbidden）走 Online 显式段。
@@ -55,17 +55,17 @@ namespace GameFrameX.Hotfix.Logic.Player.Friend;
 /// </summary>
 /// <remarks>
 /// The friend-domain thin bridge adapter (C244, the single forwarding point for both the domain-120
-/// and domain-660 friend protocol entries): forwards every friend protocol behaviour in-process to
-/// the Online friend-domain contract face through <see cref="OnlineFriendDomainBridgeHolder"/>,
-/// mapping error codes per the T2 rulings. The bridge path is exclusive — unavailability (host not
-/// started / stopped / lease revoked) and service failures map to explicit
-/// <c>-(int)OnlineErrorCode</c> codes (≤ -1001, disjoint from the legacy -1..-104 and
+/// and domain-660 friend protocol entries): forwards every friend protocol behaviour in-process to the
+/// Online friend-domain contract face through <see cref="CapabilityBridge{TContract}"/> (contract
+/// <see cref="IOnlineFriendDomain"/>), mapping error codes per the T2 rulings. The bridge path is
+/// exclusive — unavailability (host not started / stopped / lease revoked) and service failures map to
+/// explicit <c>-(int)OnlineErrorCode</c> codes (≤ -1001, disjoint from the legacy -1..-104 and
 /// 660001..660005 bands) with no silent fallback and no successful empty lists masking a wrong
 /// store or wrong process (the legacy chains retired with this cutover — there is no fallback
-/// target). The scope triple comes only from the lease's composition-root authorized values and the
-/// player position only from the session-bound player id — request-body fields can never influence
-/// the scope; nothing is cached — each request reads the holder's current lease so no stale
-/// reference survives a hotfix swap or host restart. The mapping tables: the 120 family keeps
+/// target). The scope triple comes only from the capability-published authorized-scope provider and
+/// the player position only from the session-bound player id — request-body fields can never influence
+/// the scope; nothing is cached — each request re-acquires the contract lease so no stale reference
+/// survives a hotfix swap or host restart. The mapping tables: the 120 family keeps
 /// -100/-101/-103/-104 (-102 "target absent" is dropped and disclosed); the 660 family keeps all of
 /// 660001..660005 (660004 also covers the single-record convergence of "the other side requested
 /// first", ruling R6); everything else (including the friend-limit StateOperationForbidden) uses the
@@ -95,7 +95,7 @@ public static class FriendDomainBridge
     /// <param name="response">协议响应。</param>
     public static async Task QueryFriendListAsync(long playerId, RespFriendList response)
     {
-        var lease = RequireLease(playerId);
+        var lease = RequireLease(playerId, out var scope);
         if (lease == null)
         {
             response.Friends = new List<FriendInfo>();
@@ -105,7 +105,7 @@ public static class FriendDomainBridge
 
         try
         {
-            var result = await lease.ListFriendsAsync(BuildScope(lease, playerId));
+            var result = await lease.ListFriendsAsync(scope);
             if (!result.IsSuccess)
             {
                 response.Friends = new List<FriendInfo>();
@@ -147,7 +147,7 @@ public static class FriendDomainBridge
             return;
         }
 
-        var lease = RequireLease(playerId);
+        var lease = RequireLease(playerId, out var scope);
         if (lease == null)
         {
             response.Success = false;
@@ -157,7 +157,7 @@ public static class FriendDomainBridge
 
         try
         {
-            var result = await lease.EstablishAsync(BuildScope(lease, playerId), targetPlayerId);
+            var result = await lease.EstablishAsync(scope, targetPlayerId);
             if (!result.IsSuccess)
             {
                 response.Success = false;
@@ -200,7 +200,7 @@ public static class FriendDomainBridge
             return;
         }
 
-        var lease = RequireLease(playerId);
+        var lease = RequireLease(playerId, out var scope);
         if (lease == null)
         {
             response.Success = false;
@@ -210,7 +210,7 @@ public static class FriendDomainBridge
 
         try
         {
-            var result = await lease.RemoveAsync(BuildScope(lease, playerId), targetPlayerId);
+            var result = await lease.RemoveAsync(scope, targetPlayerId);
             if (!result.IsSuccess)
             {
                 response.Success = false;
@@ -244,7 +244,7 @@ public static class FriendDomainBridge
             return;
         }
 
-        var lease = RequireLease(playerId);
+        var lease = RequireLease(playerId, out var scope);
         if (lease == null)
         {
             response.ErrorCode = -(int)OnlineErrorCode.DependencyUnavailable;
@@ -253,7 +253,7 @@ public static class FriendDomainBridge
 
         try
         {
-            var result = await lease.RequestAsync(BuildScope(lease, playerId), toPlayerId);
+            var result = await lease.RequestAsync(scope, toPlayerId);
             if (!result.IsSuccess)
             {
                 response.ErrorCode = MapFamilyCodeFailure(result.Code);
@@ -291,7 +291,7 @@ public static class FriendDomainBridge
     /// <param name="response">协议响应。</param>
     public static async Task AcceptAsync(long playerId, long fromPlayerId, RespFriendAccept response)
     {
-        var lease = RequireLease(playerId);
+        var lease = RequireLease(playerId, out var scope);
         if (lease == null)
         {
             response.ErrorCode = -(int)OnlineErrorCode.DependencyUnavailable;
@@ -300,7 +300,7 @@ public static class FriendDomainBridge
 
         try
         {
-            var result = await lease.AcceptAsync(BuildScope(lease, playerId), fromPlayerId);
+            var result = await lease.AcceptAsync(scope, fromPlayerId);
             response.ErrorCode = result.IsSuccess ? 0 : MapFamilyCodeFailure(result.Code);
             if (!result.IsSuccess)
             {
@@ -322,7 +322,7 @@ public static class FriendDomainBridge
     /// <param name="response">协议响应。</param>
     public static async Task RejectAsync(long playerId, long fromPlayerId, RespFriendReject response)
     {
-        var lease = RequireLease(playerId);
+        var lease = RequireLease(playerId, out var scope);
         if (lease == null)
         {
             response.ErrorCode = -(int)OnlineErrorCode.DependencyUnavailable;
@@ -331,7 +331,7 @@ public static class FriendDomainBridge
 
         try
         {
-            var result = await lease.RejectAsync(BuildScope(lease, playerId), fromPlayerId);
+            var result = await lease.RejectAsync(scope, fromPlayerId);
             response.ErrorCode = result.IsSuccess ? 0 : MapFamilyCodeFailure(result.Code);
             if (!result.IsSuccess)
             {
@@ -359,7 +359,7 @@ public static class FriendDomainBridge
             return;
         }
 
-        var lease = RequireLease(playerId);
+        var lease = RequireLease(playerId, out var scope);
         if (lease == null)
         {
             response.ErrorCode = -(int)OnlineErrorCode.DependencyUnavailable;
@@ -368,7 +368,7 @@ public static class FriendDomainBridge
 
         try
         {
-            var result = await lease.RemoveAsync(BuildScope(lease, playerId), friendPlayerId);
+            var result = await lease.RemoveAsync(scope, friendPlayerId);
             response.ErrorCode = result.IsSuccess ? 0 : MapFamilyCodeFailure(result.Code);
             if (!result.IsSuccess)
             {
@@ -389,7 +389,7 @@ public static class FriendDomainBridge
     /// <param name="response">协议响应。</param>
     public static async Task ListRelationsAsync(long playerId, RespFriendRelationList response)
     {
-        var lease = RequireLease(playerId);
+        var lease = RequireLease(playerId, out var scope);
         if (lease == null)
         {
             response.ErrorCode = -(int)OnlineErrorCode.DependencyUnavailable;
@@ -398,7 +398,7 @@ public static class FriendDomainBridge
 
         try
         {
-            var result = await lease.ListRelationsAsync(BuildScope(lease, playerId));
+            var result = await lease.ListRelationsAsync(scope);
             if (!result.IsSuccess)
             {
                 response.ErrorCode = -(int)result.Code;
@@ -435,32 +435,42 @@ public static class FriendDomainBridge
     }
 
     /// <summary>
-    /// 读取当前域桥租约（不可用即显式失败记录；逐请求读取，不缓存）。
+    /// 读取当前域桥契约与生效作用域（逐请求 <see cref="CapabilityBridge{TContract}.TryAcquire"/>，不缓存；
+    /// 获取与读取之间的撤销竞态按缺席同语义显式失败）。授权作用域不可得（提供者桥缺席 / 撤销）同样视为依赖不可用：
+    /// 返回 null 走调用方既有的桥不可用失败分支，契约面不被触达，绝不以空作用域降级调用。
     /// </summary>
-    /// <param name="playerId">请求主体（日志披露用）。</param>
-    /// <returns>活跃租约；不可用返回 null。</returns>
-    private static OnlineFriendDomainBridgeLease RequireLease(long playerId)
+    /// <param name="playerId">会话绑定玩家标识（作用域玩家位唯一来源，兼作日志披露）。</param>
+    /// <param name="scope">输出：授权三元组 + 会话玩家位组成的生效作用域；返回 null 时为 null。</param>
+    /// <returns>契约面；契约桥或授权作用域任一不可得返回 null。</returns>
+    private static IOnlineFriendDomain RequireLease(long playerId, out OnlineScope scope)
     {
-        var lease = OnlineFriendDomainBridgeHolder.Current;
-        if (lease != null && lease.IsActive)
+        scope = null;
+        IOnlineFriendDomain contract = null;
+        if (CapabilityBridge<IOnlineFriendDomain>.TryAcquire(out var lease))
         {
-            return lease;
+            try
+            {
+                contract = lease.Contract;
+            }
+            catch (CapabilityBridgeUnavailableException)
+            {
+                // 获取与读取之间的撤销竞态：与缺席同语义（显式失败），不降级。
+            }
+        }
+
+        if (contract != null)
+        {
+            // 授权作用域不可得 = 依赖不可用：与契约缺席同口径显式失败，不降级。
+            scope = OnlineAuthorizedScopeReader.BuildRequestScope(playerId);
+            if (scope != null)
+            {
+                return contract;
+            }
         }
 
         // Localization: Hotfix.Friend.DomainBridgeUnavailable - 好友域桥不可用（未发布或已撤销）, PlayerId: {0}, Code: {1}
         LogHelper.Error(LocalizationService.GetString(Localization.Keys.Hotfix.Friend.DomainBridgeUnavailable, playerId, OnlineErrorCode.DependencyUnavailable));
         return null;
-    }
-
-    /// <summary>
-    /// 以租约授权三元组 + 会话玩家位构造作用域。
-    /// </summary>
-    /// <param name="lease">域桥租约。</param>
-    /// <param name="playerId">会话绑定玩家标识。</param>
-    /// <returns>生效作用域。</returns>
-    private static OnlineScope BuildScope(OnlineFriendDomainBridgeLease lease, long playerId)
-    {
-        return new OnlineScope(lease.AuthorizedScope.TenantId, lease.AuthorizedScope.AppId, lease.AuthorizedScope.ServerId, playerId);
     }
 
     /// <summary>

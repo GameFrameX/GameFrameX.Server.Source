@@ -30,7 +30,7 @@
 // ==========================================================================================
 
 using System.Threading.Tasks;
-using GameFrameX.Capability.Online.Abstractions.Bridges;
+using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Scope;
 using GameFrameX.Foundation.Localization.Core;
@@ -40,8 +40,9 @@ using GameFrameX.Utility;
 namespace GameFrameX.Hotfix.Logic.ServerRole.Match;
 
 /// <summary>
-/// 匹配域桥薄适配器（C246，420 族协议入口的唯一转发点）：经 <see cref="OnlineMatchDomainBridgeHolder"/>
-/// 进程内租约把入队 / 取消 / 状态 / 入场协议行为转发到 Online 匹配域契约面，并按 T2 裁定完成错误码映射。
+/// 匹配域桥薄适配器（C246，420 族协议入口的唯一转发点）：经 <see cref="CapabilityBridge{TContract}"/>
+///（契约 <see cref="IOnlineMatchDomain"/>）进程内租约把入队 / 取消 / 状态 / 入场协议行为转发到
+/// Online 匹配域契约面，并按 T2 裁定完成错误码映射。
 /// <para>
 /// 维护约束（红线）：
 /// ① 域桥独占——桥不可用（宿主未启 / 已停止 / 租约撤销）与服务失败一律映射为
@@ -49,7 +50,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Match;
 /// 绝不静默回落（旧 FIFO 内存池链已随本切换退役，无回落目标）；
 /// ② 可信身份：作用域三元组只取 lease 携带的组合根授权值，玩家位只取会话绑定 playerId
 ///（<c>ServerRoleHandlerHelper.GetCurrentPlayerId</c>），请求体字段一律不可影响作用域；
-/// ③ 无缓存：逐请求读取 holder 当前租约，热更 / 宿主重启后旧引用不存活；
+/// ③ 无缓存：逐请求 <see cref="CapabilityBridge{TContract}.TryAcquire"/> 取契约租约，热更 / 宿主重启后旧引用不存活；
 /// ④ 错误码映射表——本地校验保留 420004（模式非法）/ 420005（评分非法），
 /// 入队查重保留 420002（已在排队），取消终态回执保留 420003（未在排队）；
 /// 其余（含限流 RateLimitExceeded）走 Online 显式段；入场为新面，失败一律走 Online 显式段。
@@ -58,13 +59,14 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Match;
 /// <remarks>
 /// The match-domain thin bridge adapter (C246, the single forwarding point for the domain-420 protocol
 /// entries): forwards enqueue / cancel / status / enter protocol behaviours in-process to the Online
-/// match-domain contract face through <see cref="OnlineMatchDomainBridgeHolder"/>, mapping error codes
-/// per the T2 rulings. The bridge path is exclusive — unavailability and service failures map to
-/// explicit <c>-(int)OnlineErrorCode</c> codes (≤ -1001, disjoint from the legacy 420001..420005 band)
+/// match-domain contract face through <see cref="CapabilityBridge{TContract}"/> (contract
+/// <see cref="IOnlineMatchDomain"/>), mapping error codes per the T2 rulings. The bridge path is
+/// exclusive — unavailability and service failures map to explicit <c>-(int)OnlineErrorCode</c> codes
+/// (≤ -1001, disjoint from the legacy 420001..420005 band)
 /// with no silent fallback (the legacy in-memory FIFO pool chain retired with this cutover — there is
-/// no fallback target). The scope triple comes only from the lease's composition-root authorized
-/// values and the player position only from the session-bound player id — request-body fields can
-/// never influence the scope; nothing is cached — each request reads the holder's current lease so no
+/// no fallback target). The scope triple comes only from the capability-published authorized-scope
+/// provider and the player position only from the session-bound player id — request-body fields can
+/// never influence the scope; nothing is cached — each request re-acquires the contract lease so no
 /// stale reference survives a hotfix swap or host restart. The mapping tables: local validation keeps
 /// 420004 (mode invalid) / 420005 (rating invalid), enqueue duplication keeps 420002 (already
 /// queuing), the cancel terminal receipt keeps 420003 (not queuing); everything else (including the
@@ -93,7 +95,7 @@ public static class MatchDomainBridge
             return;
         }
 
-        var lease = RequireLease(playerId);
+        var lease = RequireLease(playerId, out var scope);
         if (lease == null)
         {
             response.ErrorCode = -(int)OnlineErrorCode.DependencyUnavailable;
@@ -102,7 +104,7 @@ public static class MatchDomainBridge
 
         try
         {
-            var result = await lease.EnqueueAsync(BuildScope(lease, playerId), (int)request.Mode, request.Rating);
+            var result = await lease.EnqueueAsync(scope, (int)request.Mode, request.Rating);
             if (!result.IsSuccess)
             {
                 response.ErrorCode = MapEnqueueFailure(result.Code);
@@ -128,7 +130,7 @@ public static class MatchDomainBridge
     /// <param name="response">协议响应。</param>
     public static async Task CancelAsync(long playerId, RespMatchCancel response)
     {
-        var lease = RequireLease(playerId);
+        var lease = RequireLease(playerId, out var scope);
         if (lease == null)
         {
             response.ErrorCode = -(int)OnlineErrorCode.DependencyUnavailable;
@@ -137,7 +139,7 @@ public static class MatchDomainBridge
 
         try
         {
-            var result = await lease.CancelAsync(BuildScope(lease, playerId));
+            var result = await lease.CancelAsync(scope);
             if (!result.IsSuccess)
             {
                 response.ErrorCode = -(int)result.Code;
@@ -163,7 +165,7 @@ public static class MatchDomainBridge
     /// <param name="response">协议响应。</param>
     public static async Task StatusAsync(long playerId, RespMatchStatus response)
     {
-        var lease = RequireLease(playerId);
+        var lease = RequireLease(playerId, out var scope);
         if (lease == null)
         {
             response.ErrorCode = -(int)OnlineErrorCode.DependencyUnavailable;
@@ -172,7 +174,7 @@ public static class MatchDomainBridge
 
         try
         {
-            var result = await lease.GetStatusAsync(BuildScope(lease, playerId));
+            var result = await lease.GetStatusAsync(scope);
             if (!result.IsSuccess)
             {
                 response.Queuing = false;
@@ -203,7 +205,7 @@ public static class MatchDomainBridge
     /// <param name="response">协议响应。</param>
     public static async Task EnterAsync(long playerId, ReqMatchEnter request, RespMatchEnter response)
     {
-        var lease = RequireLease(playerId);
+        var lease = RequireLease(playerId, out var scope);
         if (lease == null)
         {
             response.ErrorCode = -(int)OnlineErrorCode.DependencyUnavailable;
@@ -212,7 +214,7 @@ public static class MatchDomainBridge
 
         try
         {
-            var result = await lease.EnterAsync(BuildScope(lease, playerId), request.MatchId);
+            var result = await lease.EnterAsync(scope, request.MatchId);
             if (!result.IsSuccess)
             {
                 response.ErrorCode = -(int)result.Code;
@@ -234,32 +236,42 @@ public static class MatchDomainBridge
     }
 
     /// <summary>
-    /// 读取当前域桥租约（不可用即显式失败记录；逐请求读取，不缓存）。
+    /// 读取当前域桥契约与生效作用域（逐请求 <see cref="CapabilityBridge{TContract}.TryAcquire"/>，不缓存；
+    /// 获取与读取之间的撤销竞态按缺席同语义显式失败）。授权作用域不可得（提供者桥缺席 / 撤销）同样视为依赖不可用：
+    /// 返回 null 走调用方既有的桥不可用失败分支，契约面不被触达，绝不以空作用域降级调用。
     /// </summary>
-    /// <param name="playerId">请求主体（日志披露用）。</param>
-    /// <returns>活跃租约；不可用返回 null。</returns>
-    private static OnlineMatchDomainBridgeLease RequireLease(long playerId)
+    /// <param name="playerId">会话绑定玩家标识（作用域玩家位唯一来源，兼作日志披露）。</param>
+    /// <param name="scope">输出：授权三元组 + 会话玩家位组成的生效作用域；返回 null 时为 null。</param>
+    /// <returns>契约面；契约桥或授权作用域任一不可得返回 null。</returns>
+    private static IOnlineMatchDomain RequireLease(long playerId, out OnlineScope scope)
     {
-        var lease = OnlineMatchDomainBridgeHolder.Current;
-        if (lease != null && lease.IsActive)
+        scope = null;
+        IOnlineMatchDomain contract = null;
+        if (CapabilityBridge<IOnlineMatchDomain>.TryAcquire(out var lease))
         {
-            return lease;
+            try
+            {
+                contract = lease.Contract;
+            }
+            catch (CapabilityBridgeUnavailableException)
+            {
+                // 获取与读取之间的撤销竞态：与缺席同语义（显式失败），不降级。
+            }
+        }
+
+        if (contract != null)
+        {
+            // 授权作用域不可得 = 依赖不可用：与契约缺席同口径显式失败，不降级。
+            scope = OnlineAuthorizedScopeReader.BuildRequestScope(playerId);
+            if (scope != null)
+            {
+                return contract;
+            }
         }
 
         // Localization: Hotfix.Match.DomainBridgeUnavailable - 匹配域桥不可用（未发布或已撤销）, PlayerId: {0}, Code: {1}
         LogHelper.Error(LocalizationService.GetString(Localization.Keys.Hotfix.Match.DomainBridgeUnavailable, playerId, OnlineErrorCode.DependencyUnavailable));
         return null;
-    }
-
-    /// <summary>
-    /// 以租约授权三元组 + 会话玩家位构造作用域。
-    /// </summary>
-    /// <param name="lease">域桥租约。</param>
-    /// <param name="playerId">会话绑定玩家标识。</param>
-    /// <returns>生效作用域。</returns>
-    private static OnlineScope BuildScope(OnlineMatchDomainBridgeLease lease, long playerId)
-    {
-        return new OnlineScope(lease.AuthorizedScope.TenantId, lease.AuthorizedScope.AppId, lease.AuthorizedScope.ServerId, playerId);
     }
 
     /// <summary>
