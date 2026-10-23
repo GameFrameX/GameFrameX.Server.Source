@@ -119,7 +119,7 @@ public class ServerRoleMessageDomainTests
         var roleProtoTypes = ProtoAssemblyAnchor.Assembly.GetTypes()
             .Where(type => type.Namespace == "GameFrameX.Proto.Proto"
                            && type.GetCustomAttribute<MessageTypeHandlerAttribute>() is { } attribute
-                           && (attribute.MessageId >> 16) == domain)
+                           && MessageIdUtility.GetMainId(attribute.MessageId) == domain)
             .Select(type => type.Name)
             .OrderBy(name => name)
             .ToList();
@@ -162,8 +162,11 @@ public class ServerRoleMessageDomainTests
 
             var reqType = ProtoAssemblyAnchor.Assembly.GetType($"GameFrameX.Proto.Proto.{requestName}");
             Assert.True(reqType != null, $"缺少 {requestName} 消息");
-            var requestMessageId = reqType.GetCustomAttribute<MessageTypeHandlerAttribute>()!.MessageId;
-            Assert.True((requestMessageId >> 16) == domain, $"{requestName} 应落在 {role} 域 {domain}，实际域 {requestMessageId >> 16}");
+            var requestAttribute = reqType.GetCustomAttribute<MessageTypeHandlerAttribute>();
+            Assert.True(requestAttribute != null, $"{requestName} 缺少 MessageTypeHandlerAttribute");
+            var requestMessageId = requestAttribute.MessageId;
+            var requestDomain = MessageIdUtility.GetMainId(requestMessageId);
+            Assert.True(requestDomain == domain, $"{requestName} 应落在 {role} 域 {domain}，实际域 {requestDomain}");
 
             var handlers = HotfixAssemblyAnchor.Assembly.GetTypes()
                 .Where(type => type.GetCustomAttribute<MessageMappingAttribute>()?.MessageType == reqType)
