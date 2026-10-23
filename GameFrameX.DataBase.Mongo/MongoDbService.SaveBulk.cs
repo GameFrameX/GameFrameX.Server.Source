@@ -53,12 +53,11 @@ namespace GameFrameX.DataBase.Mongo;
 public sealed partial class MongoDbService
 {
     /// <summary>
-    /// 按批次大小分批执行批量 upsert 保存（迁移自 StateComponent.ExecuteBatchWritesAsync，C159）。
+    /// 按批次大小分批执行批量 upsert 保存。
     /// </summary>
     /// <remarks>
-    /// Bulk-upserts the given states in batches of <paramref name="batchSize"/> — migrated verbatim
-    /// from <c>StateComponent.ExecuteBatchWritesAsync</c> (C159) so the shutdown-save path keeps its
-    /// exact write mechanism: <see cref="ReplaceOneModel{BsonDocument}"/> with an <c>_id</c> equality
+    /// Bulk-upserts the given states in batches of <paramref name="batchSize"/> so the shutdown-save path
+    /// keeps its exact write mechanism: <see cref="ReplaceOneModel{BsonDocument}"/> with an <c>_id</c> equality
     /// filter and <c>IsUpsert=true</c>, unordered <see cref="MongoDbService.BulkWriteOptions"/>, and
     /// per-batch ack/exception isolation (a batch counts as acknowledged only when the batch-level counts
     /// confirm every document — partially acknowledged batches are logged and excluded, matching failed
@@ -99,7 +98,7 @@ public sealed partial class MongoDbService
         {
             var batchCount = Math.Min(batchSize, stateList.Count - index);
             var writeModels = new List<ReplaceOneModel<BsonDocument>>(batchCount);
-            // 逐状态捕获送库字节快照，ack 批次内逐状态精确提交基线（C263）：
+            // 逐状态捕获送库字节快照，ack 批次内逐状态精确提交基线：
             // 提交权从 Core 的 NotifyBatchSaved 收进 Provider，且只提交实际送库快照的 hash。
             var batchSnapshots = new List<(TState State, byte[] Data)>(batchCount);
             for (var offset = 0; offset < batchCount; offset++)

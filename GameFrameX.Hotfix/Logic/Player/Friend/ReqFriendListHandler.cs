@@ -36,9 +36,9 @@ using GameFrameX.Hotfix.Logic.ServerRole;
 namespace GameFrameX.Hotfix.Logic.Player.Friend;
 
 /// <summary>
-/// 好友列表查询处理器（120 域；C244 起经好友域桥转发 Online 契约面）。
+/// 好友列表查询处理器（120 域；经好友域桥转发 Online 契约面）。
 /// <para>
-/// 身份语义（T2 裁定 R2）：请求主体 = 会话绑定玩家 id（未登录 → 显式
+/// 身份语义：请求主体 = 会话绑定玩家 id（未登录 → 显式
 /// <see cref="OnlineErrorCode.SessionInvalid"/>，空列表）；旧链以玩家型组件 ActorId 为主体
 ///（每次调用生成新 id，恒空列表）的缺陷语义已随旧链退役。
 /// </para>

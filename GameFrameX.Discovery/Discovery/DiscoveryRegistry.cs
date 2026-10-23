@@ -38,7 +38,7 @@ namespace GameFrameX.Discovery;
 /// 通用心跳写侧（自 Mongo / PG 平行实现归一，消费 <see cref="IHeartbeatStore"/>）。
 /// </summary>
 /// <remarks>
-/// The generic heartbeat writer (C167, unified from the Mongo / PostgreSQL
+/// The generic heartbeat writer (unified from the Mongo / PostgreSQL
 /// parallel implementations; consumes <see cref="IHeartbeatStore"/> and never
 /// branches on the backend). Owns this process's row/document in the control
 /// database <c>server_heartbeat</c>: an immediate upsert on start, then a
@@ -57,10 +57,10 @@ public sealed class DiscoveryRegistry : IDisposable
 {
 
     /// <summary>
-    /// 缺省心跳间隔（5s，D11）。
+    /// 缺省心跳间隔（5s）。
     /// </summary>
     /// <remarks>
-    /// The default heartbeat interval (5 s, D11).
+    /// The default heartbeat interval (5 s).
     /// </remarks>
     public static readonly TimeSpan DefaultHeartbeatInterval = TimeSpan.FromSeconds(5);
 
@@ -68,7 +68,7 @@ public sealed class DiscoveryRegistry : IDisposable
     /// TTL 保存时长（15s；watcher 三周期阈值同值兜底）。
     /// </summary>
     /// <remarks>
-    /// The TTL expire-after window (15 s, D11; matches the watcher three-period threshold).
+    /// The TTL expire-after window (15 s; matches the watcher three-period threshold).
     /// </remarks>
     public static readonly TimeSpan HeartbeatTimeToLive = TimeSpan.FromSeconds(15);
 

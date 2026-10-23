@@ -24,7 +24,7 @@ using System.Collections.Generic;
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 匹配域入队回执（C246）：MatchId 非 0 = 即时窗口已撮合（协议数值对局标识）；0 = 已入队排队中。
+/// 匹配域入队回执：MatchId 非 0 = 即时窗口已撮合（协议数值对局标识）；0 = 已入队排队中。
 /// </summary>
 public sealed class OnlineMatchDomainEnqueue
 {

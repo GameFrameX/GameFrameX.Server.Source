@@ -37,7 +37,7 @@ using Xunit;
 namespace GameFrameX.Hotfix.Tests;
 
 /// <summary>
-/// Gm 业务纯规则测试（C197 Phase 2）。
+/// Gm 业务纯规则测试。
 /// </summary>
 /// <remarks>
 /// 覆盖处罚类型合法性、时长区间（(0, 365 天]）边界、到期时间计算与过期判定边界。

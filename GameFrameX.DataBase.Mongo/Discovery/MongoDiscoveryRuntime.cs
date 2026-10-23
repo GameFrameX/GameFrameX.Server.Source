@@ -52,7 +52,7 @@ namespace GameFrameX.DataBase.Mongo.Discovery;
 /// single-process local development), and attaches the generic player-route
 /// bootstrap. Router wiring is NOT performed here — the composition side reads
 /// <see cref="ActiveDiscoveryRuntime.RouteTableProvider"/> (bound at the end of
-/// <c>Activate</c>, C213) and calls <c>DiscoveryRoutingWire.Initialize</c> right
+/// <c>Activate</c>) and calls <c>DiscoveryRoutingWire.Initialize</c> right
 /// after. Activation is idempotent per process: the first call wins. The
 /// started registry and route-table reader are published to the process-wide
 /// <see cref="ActiveDiscoveryRuntime"/> slots so provider-agnostic startup flows
@@ -105,7 +105,6 @@ public static class MongoDiscoveryRuntime
     /// bootstrap attaches right after. Calling it more than once
     /// per process is a no-op. The control database is resolved through the
     /// unified <c>GameDb</c> entry by <see cref="DiscoveryActivationOptions.ConnectionName"/>
-    /// (the carrier direct-injection path was removed in C185).
     /// </remarks>
     /// <param name="options">激活参数（ConnectionName 必填，HostedRoleNames 必填）/ Activation options (ConnectionName and HostedRoleNames required)</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="options"/> 或 <c>HostedRoleNames</c> 为 null 时抛出 / Thrown when options or HostedRoleNames is null</exception>
@@ -148,7 +147,7 @@ public static class MongoDiscoveryRuntime
         _registry.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
         // 激活完成即登记公共槽位：宿主就绪时经 ActiveDiscoveryRuntime.MarkActiveAsync 无分派切 Active。
         ActiveDiscoveryRuntime.Bind(_registry);
-        // 读侧路由表成对登记同一槽位（C213）：组合根经 RouteTableProvider 无分派回读装配路由缝。
+        // 读侧路由表成对登记同一槽位：组合根经 RouteTableProvider 无分派回读装配路由缝。
         ActiveDiscoveryRuntime.BindRouteTable(_watcher);
         if (selfDescriptor == null)
         {

@@ -37,9 +37,9 @@ using GameFrameX.Capability.Online.Assets;
 using GameFrameX.DataBase;
 
 /// <summary>
-/// 资产账本 GameDb 持久化适配（C249 一级 store；余额/流水重启不丢的资产红线落地）。
+/// 资产账本 GameDb 持久化适配（一级 store；余额/流水重启不丢的资产红线落地）。
 /// <para>
-/// <see cref="ApplyAsync"/> 玩家分片事务语义（对齐 C95 交付面）：进程内按玩家分片信号量串行
+/// <see cref="ApplyAsync"/> 玩家分片事务语义：进程内按玩家分片信号量串行
 /// （不同玩家互不阻塞；单写者假设承接 store 契约——多进程部署由装配层按玩家归属路由，不引入
 /// 分布式协调）；分片内「先全量校验（同批次资产唯一、应用后下限 0）后统一落账，失败净效应 0」。
 /// 落账顺序 = 账本条目先行（不可变事实源）→ 快照随后（派生面）：崩溃残留在账本与快照之间时，
@@ -51,7 +51,7 @@ using GameFrameX.DataBase;
 /// 玩家键控序列分配（"tenant:app:player"；原子单调、重启不复用）。
 /// </para>
 /// <para>
-/// 列举保真（T1 裁决 2）：账本分页排序键为数值账本序（provider 原生排序，无 collation 分歧）；
+/// 列举保真：账本分页排序键为数值账本序（provider 原生排序，无 collation 分歧）；
 /// 快照列举（货币/道具字典序）为 provider culture-aware 排序与 InMemory ordinal 不同，采用
 /// 客户端 ordinal 排序逐字节对齐 InMemory 语义。
 /// </para>

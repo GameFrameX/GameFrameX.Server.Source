@@ -44,7 +44,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 好友最小消费链装配测试（C242）：OnlineFriendService 经模块自装配注册回共享面、
+    /// 好友最小消费链装配测试：OnlineFriendService 经模块自装配注册回共享面、
     /// store 替换缝与 directory / presence 通用缝生效、好友请求过期清扫滴答 job 与查询共用同一状态来源、
     /// 真实组合根（AddOnlineCapabilities）可解析、宿主启停驱动清扫、清扫失败 containment 与错误配置行为。
     /// </summary>

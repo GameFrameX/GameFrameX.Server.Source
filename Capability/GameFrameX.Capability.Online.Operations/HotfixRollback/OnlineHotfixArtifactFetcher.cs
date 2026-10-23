@@ -37,7 +37,7 @@ using System.Threading.Tasks;
 namespace GameFrameX.Capability.Online.Operations.HotfixRollback;
 
 /// <summary>
-/// 登记期制品获取器（C248 生产实现，BCL <see cref="HttpClient"/> + SHA-256，不引 Core）：
+/// 登记期制品获取器（生产实现，BCL <see cref="HttpClient"/> + SHA-256，不引 Core）：
 /// 下载 → SHA-256 校验 → 同卷原子落盘至 <c>{CWD}/{Version}/GameFrameX.Hotfix.dll</c>。
 /// <para>
 /// 维护约束（红线）：
@@ -55,7 +55,7 @@ namespace GameFrameX.Capability.Online.Operations.HotfixRollback;
 public sealed class OnlineHotfixArtifactFetcher : IOnlineHotfixArtifactFetcher
 {
     /// <summary>
-    /// 制品文件名（镜像 <c>HotfixLoadOptions.AssemblyFileName</c> 缺省值；C248 R2 裁定 v1 单文件制品不设配置面）。
+    /// 制品文件名（镜像 <c>HotfixLoadOptions.AssemblyFileName</c> 缺省值；v1 单文件制品不设配置面）。
     /// </summary>
     private const string DefaultAssemblyFileName = "GameFrameX.Hotfix.dll";
 

@@ -87,7 +87,7 @@ public sealed partial class PostgreSqlDbService
         state.UpdateTime = currentTime;
         state.UpdateCount = (state.UpdateCount ?? 0) + 1;
 
-        // 写库前捕获字节快照（bump 后），成功后按该快照精确提交基线（C263），
+        // 写库前捕获字节快照（bump 后），成功后按该快照精确提交基线，
         // 避免参数less 提交读到并发检查推进后的未落库 ToSaveHash。
         var persistedData = state.ToBytes();
 
@@ -156,7 +156,7 @@ public sealed partial class PostgreSqlDbService
         }
 
         var currentTime = GetCurrentTimestamp();
-        // 写库前逐个捕获字节快照（bump 后），成功后按快照精确提交基线（C263）
+        // 写库前逐个捕获字节快照（bump 后），成功后按快照精确提交基线
         var persistedSnapshots = new List<(TState State, byte[] Data)>(stateArray.Length);
         foreach (var state in stateArray)
         {
@@ -211,7 +211,7 @@ public sealed partial class PostgreSqlDbService
     /// state timestamps are persisted exactly as handed in (the caller owns timestamp semantics, migrated
     /// verbatim from the Mongo adapter).
     /// Acknowledgement = one affected row per staged (deduplicated) document; duplicate ids within a batch
-    /// collapse onto one staged row (last-writer-wins) and count once (C266).
+    /// collapse onto one staged row (last-writer-wins) and count once.
     /// </remarks>
     /// <param name="states">待保存的状态集合 / The states to save</param>
     /// <param name="batchSize">每批数量（&lt;= 0 抛出 ArgumentOutOfRangeException）/ Batch size (values &lt;= 0 throw)</param>
@@ -250,10 +250,10 @@ public sealed partial class PostgreSqlDbService
     /// </summary>
     /// <remarks>
     /// Executes one SaveBulk batch: stages the whole-document-replacement upsert and acknowledges when the
-    /// affected row count covers the deduplicated id set (C266: duplicate ids within a batch collapse onto one
+    /// affected row count covers the deduplicated id set (duplicate ids within a batch collapse onto one
     /// staged row). An unacknowledged or failed batch is logged here and yields an empty batch (per-batch
     /// exception isolation — the caller's loop continues with the remaining batches). Acknowledged batches
-    /// commit their pre-captured byte snapshots via <c>SaveToDbPostHandler</c> (C263) before being returned.
+    /// commit their pre-captured byte snapshots via <c>SaveToDbPostHandler</c> before being returned.
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="stateList">全部待保存状态 / All states to save</param>
@@ -265,7 +265,7 @@ public sealed partial class PostgreSqlDbService
     private async Task<TState[]> SaveBulkBatchAsync<TState>(IReadOnlyList<TState> stateList, int index, int batchCount, string stateName, int batchNumber) where TState : BaseCacheState, new()
     {
         var batch = new TState[batchCount];
-        // 写库前逐状态捕获送库字节快照，ack 批次内逐状态精确提交基线（C263）：
+        // 写库前逐状态捕获送库字节快照，ack 批次内逐状态精确提交基线：
         // 提交权从 Core 的 NotifyBatchSaved 收进 Provider，且只提交实际送库快照的 hash。
         var batchSnapshots = new (TState State, byte[] Data)[batchCount];
         for (var offset = 0; offset < batchCount; offset++)
@@ -284,10 +284,10 @@ public sealed partial class PostgreSqlDbService
                 await StageUpsertAsync(context, batch, CancellationToken.None).ConfigureAwait(false);
                 var affected = await context.SaveChangesAsync(CancellationToken.None).ConfigureAwait(false);
                 // 每个 staged（去重后）文档各计一行；受影响行数 >= 去重后 id 数即视为整批 ack
-                //（批内重复 id 已在暂存时合并为单行，按批元素数比较会把已写库的批次误判为未确认——C266）
+                //（批内重复 id 已在暂存时合并为单行，按批元素数比较会把已写库的批次误判为未确认）
                 // Each staged (deduplicated) document counts one row; affected >= the deduplicated id count means the
                 // whole batch was acknowledged (duplicate ids collapse onto one staged row — comparing against the raw
-                // element count would flag written batches as unacknowledged — C266).
+                // element count would flag written batches as unacknowledged).
                 var distinctIdCount = 0;
                 var seenIds = new HashSet<long>(batchCount);
                 for (var offset = 0; offset < batchCount; offset++)
@@ -423,8 +423,8 @@ public sealed partial class PostgreSqlDbService
     /// </summary>
     /// <remarks>
     /// Stages a whole-document-replacement upsert for a batch. Existence is probed with a non-tracking
-    /// <c>id</c>-only projection (C266: the former full-row <c>ToDictionaryAsync</c> read the whole jsonb
-    /// document batch back — an N× read amplification on the SaveBulk/shutdown path). Existing rows
+    /// <c>id</c>-only projection — a full-row <c>ToDictionaryAsync</c> would read the whole jsonb
+    /// document batch back (an N× read amplification on the SaveBulk/shutdown path). Existing rows
     /// (bypassing the soft-delete filter — upsert intentionally revives soft-deleted documents, aligned
     /// with Mongo ReplaceOne semantics) are updated via a stub entity: <c>Attach</c> + owned entry
     /// <see cref="EntityState.Modified"/> emits <c>UPDATE ... SET doc = @p WHERE id = @id</c> without

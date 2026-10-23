@@ -37,7 +37,7 @@ using Xunit;
 namespace GameFrameX.Hotfix.Tests;
 
 /// <summary>
-/// Gateway 业务纯规则测试（C197 Phase 2）。
+/// Gateway 业务纯规则测试。
 /// </summary>
 /// <remarks>
 /// 覆盖权重合法性、心跳存活边界与可用集加权随机选择（注入 roll/now，确定性）。

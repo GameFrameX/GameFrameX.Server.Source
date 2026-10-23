@@ -33,9 +33,9 @@ using GameFrameX.DataBase;
 using GameFrameX.Foundation.Orm.Attribute;
 
 /// <summary>
-/// 货币账户快照持久化行（C249 一级 store：Assets 域 → GameDb 适配的落库形态）。
+/// 货币账户快照持久化行（一级 store：Assets 域 → GameDb 适配的落库形态）。
 /// <para>
-/// 键编码约定（T1 裁决 1）：<see cref="UniqueKey"/> = 物化复合键（"tenant:app:player:货币代码"）
+/// 键编码约定：<see cref="UniqueKey"/> = 物化复合键（"tenant:app:player:货币代码"）
 /// 单列唯一索引；行 Id 由 <c>NextSequenceAsync</c> 分配。版本映射：实体 <c>Version</c> 与行
 /// <c>RowVersion</c> 一一同构（首次落账建档即 Version=1，此后每次落账 +1；适配层显式预置，
 /// AddOrUpdate 不自动递增）。快照为账本的派生面（对账事实源 = 不可变账本重算）。

@@ -156,7 +156,7 @@ internal sealed class KcpTransportProtocolAdapter : ITransportProtocolAdapter
     /// <remarks>
     /// Extracts the host and port through the authoritative <see cref="EndpointParser"/>; any
     /// structural violation (missing scheme, bare host:port, port 0, unbracketed IPv6, ...)
-    /// returns false — identical to the TCP adapter's single parsing-surface contract (C250).
+    /// returns false — identical to the TCP adapter's single parsing-surface contract.
     /// </remarks>
     /// <param name="endpoint">未解析端点 URI 字符串 / The unparsed endpoint URI string</param>
     /// <param name="host">解析出的主机 / The parsed host</param>

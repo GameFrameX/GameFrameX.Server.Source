@@ -40,7 +40,7 @@ using Microsoft.AspNetCore.Http;
 namespace GameFrameX.Tests.Network.Http;
 
 /// <summary>
-/// C202 合并特性行为测试：<see cref="HttpMessageMappingAttribute"/> 的 RequestType / ResponseType 命名属性。
+/// 合并特性行为测试：<see cref="HttpMessageMappingAttribute"/> 的 RequestType / ResponseType 命名属性。
 /// </summary>
 [Collection(GameAppRuntimeCollection.Name)]
 public class HttpMessageMappingAttributeTests

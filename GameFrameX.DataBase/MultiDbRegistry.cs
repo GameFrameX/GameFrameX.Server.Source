@@ -74,7 +74,7 @@ public static class MultiDbRegistry
     /// </summary>
     /// <remarks>
     /// The number of registered databases (maintained O(1) so the facade implicit-binding
-    /// warning can check it cheaply on every facade call, C159).
+    /// warning can check it cheaply on every facade call).
     /// </remarks>
     private static int _registeredCount;
 
@@ -117,7 +117,7 @@ public static class MultiDbRegistry
     /// </summary>
     /// <remarks>
     /// Removes the registered database service by name (used by the GameDb InitCore nomination-conflict
-    /// rollback, C267); the registered count is decremented accordingly. Internal on purpose: consumers
+    /// rollback); the registered count is decremented accordingly. Internal on purpose: consumers
     /// go through the <c>GameDb</c> facade instead of mutating the registry directly.
     /// </remarks>
     /// <param name="databaseName">注册名 / Registry name</param>

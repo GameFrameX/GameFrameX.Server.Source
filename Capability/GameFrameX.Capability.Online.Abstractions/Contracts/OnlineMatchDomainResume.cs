@@ -24,7 +24,7 @@ using System.Collections.Generic;
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 匹配域恢复回执（C204）：按「票据 → 分配登记 → 运行时对局成员表」逐级核对后的恢复产物
+/// 匹配域恢复回执：按「票据 → 分配登记 → 运行时对局成员表」逐级核对后的恢复产物
 ///（快照 + 可用增量 / 回退说明）。
 /// </summary>
 public sealed class OnlineMatchDomainResume

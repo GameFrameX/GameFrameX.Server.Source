@@ -49,11 +49,11 @@ using Xunit;
 namespace GameFrameX.Tests.Online;
 
 /// <summary>
-/// 旧好友数据一次性迁移测试（C244 T3）：域 120 旧链 FriendRelationState 与域 660 旧 FriendState
+/// 旧好友数据一次性迁移测试：域 120 旧链 FriendRelationState 与域 660 旧 FriendState
 /// 档案经真实写路径收敛为 Online 好友关系；只读单向复制（旧数据零改动）、幂等重放、软删行不迁移。
 /// </summary>
 /// <remarks>
-/// Tests for the one-shot legacy friend-data migration (C244 T3): the legacy domain-120
+/// Tests for the one-shot legacy friend-data migration: the legacy domain-120
 /// FriendRelationState rows and the legacy domain-660 FriendState profiles converge into Online
 /// friendships through the real write path; the migration is a read-only one-way copy (legacy data
 /// untouched), idempotent on replay, and skips soft-deleted rows.

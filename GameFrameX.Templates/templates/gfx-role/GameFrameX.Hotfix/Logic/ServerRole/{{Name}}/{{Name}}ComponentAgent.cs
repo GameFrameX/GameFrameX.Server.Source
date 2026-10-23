@@ -39,7 +39,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.{{Name}};
 /// </summary>
 /// <remarks>
 /// 骨架代理（gfx-role 模板生成）：回显链路样例——规则判定走 <see cref="{{Name}}Rules"/>（纯函数，可单测），
-/// 状态编排读写 <see cref="{{Name}}State"/>；真实业务按 C197 矩阵惯例替换/扩充方法。
+/// 状态编排读写 <see cref="{{Name}}State"/>；真实业务按既有惯例替换/扩充方法。
 /// </remarks>
 public class {{Name}}ComponentAgent : StateComponentAgent<{{Name}}Component, {{Name}}State>
 {

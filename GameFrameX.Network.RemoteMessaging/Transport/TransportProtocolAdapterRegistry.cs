@@ -38,7 +38,7 @@ namespace GameFrameX.Network.RemoteMessaging.Transport;
 /// endpoint's scheme; the registry contains only explicitly registered adapters, plus an
 /// optional universal adapter for the legacy single-selection factory semantics
 /// (<c>RemoteMessagingBuilder.WithTransportAdapterFactory</c>), which serves every scheme
-/// without triggering the tcp fallback (C250).
+/// without triggering the tcp fallback.
 /// </remarks>
 internal sealed class TransportProtocolAdapterRegistry
 {

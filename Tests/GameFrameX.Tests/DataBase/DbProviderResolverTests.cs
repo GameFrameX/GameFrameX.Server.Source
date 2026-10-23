@@ -37,7 +37,7 @@ using Xunit;
 namespace GameFrameX.Tests.DataBase;
 
 /// <summary>
-/// DbProviderResolver 约定不变量的守护测试（C177）。
+/// DbProviderResolver 约定不变量的守护测试。
 /// </summary>
 /// <remarks>
 /// Guard tests turning the provider naming-convention string coupling into a CI invariant: every

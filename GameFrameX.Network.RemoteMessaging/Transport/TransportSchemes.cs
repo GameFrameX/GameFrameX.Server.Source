@@ -37,7 +37,7 @@ namespace GameFrameX.Network.RemoteMessaging.Transport;
 /// supported set: tcp/kcp/ws/wss). Schemes are compared case-insensitively and normalized to
 /// lower case; a bare <c>udp</c> scheme is rejected at the parsing layer
 /// (<c>EndpointFormatException</c> — UnsupportedScheme). <see cref="PreferenceOrder"/> fixes the
-/// deterministic multi-scheme selection with tcp as the universal fallback (C250).
+/// deterministic multi-scheme selection with tcp as the universal fallback.
 /// </remarks>
 internal static class TransportSchemes
 {

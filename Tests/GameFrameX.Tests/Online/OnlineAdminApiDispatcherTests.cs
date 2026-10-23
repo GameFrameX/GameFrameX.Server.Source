@@ -38,7 +38,7 @@ namespace GameFrameX.Tests.Online
     public class OnlineAdminApiDispatcherTests
     {
         /// <summary>
-        /// 构造授权作用域为 租户 1 / 应用 1 / 区服 1001 的组合产物（C232 P6 起真扫描装配）。
+        /// 构造授权作用域为 租户 1 / 应用 1 / 区服 1001 的组合产物（真扫描装配）。
         /// </summary>
         /// <returns>组合产物。</returns>
         private static OnlineCapabilityComposition CreateComposition()
@@ -91,7 +91,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证 35 个业务 action（C256 后 = 29 + hotfix 受控操作族 4 + C245 结算 / 榜单查询 2）全部经注册反转注册，且 list_capabilities 元端点在列。
+        /// 验证 35 个业务 action（= 29 + hotfix 受控操作族 4 + 结算 / 榜单查询 2）全部经注册反转注册，且 list_capabilities 元端点在列。
         /// </summary>
         [Fact]
         public void ActionNames_ShouldRegisterAllThirtyThreeActionsPlusMeta()

@@ -44,7 +44,7 @@ public static class OnlineAdminConsoleHandlers
 {
 
     /// <summary>
-    /// 注册运维台查询域 action（C232 P5 迁入；三个服务面经模块 Register 装配后传入，语句逐字迁移）。
+    /// 注册运维台查询域 action（三个服务面经模块 Register 装配后传入）。
     /// </summary>
     /// <param name="registry">动作注册表。</param>
     /// <param name="overview">在线总览（叶子能力缺席时为 null，行为对齐壳时代）。</param>

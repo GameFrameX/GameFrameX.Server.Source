@@ -37,7 +37,7 @@ using Xunit;
 namespace GameFrameX.Tests.Discovery;
 
 /// <summary>
-/// DiscoveryRuntimeResolver 约定不变量的守护测试（C213）。
+/// DiscoveryRuntimeResolver 约定不变量的守护测试。
 /// </summary>
 /// <remarks>
 /// Guard tests turning the discovery naming-convention string coupling into a CI invariant: every
@@ -49,8 +49,8 @@ namespace GameFrameX.Tests.Discovery;
 /// (ArgumentException on ConnectionName) is the proof that the mapping resolved, the entry point
 /// matched the exact signature, and the reflective invocation reached the real runtime — all
 /// before any process-wide activation state mutates. Direct <c>*DiscoveryRuntime.Activate</c>
-/// calls remain the test escape hatch (the C177 generic <c>Init&lt;T&gt;</c> equivalent).
-/// Mirrors the C185 isolation stance: joined into the GameDbStaticStateCollection in case a
+/// calls remain the test escape hatch (the generic <c>Init&lt;T&gt;</c> equivalent).
+/// Mirrors the isolation stance: joined into the GameDbStaticStateCollection in case a
 /// future runtime change moves validation behind state mutation.
 /// </remarks>
 [Collection(nameof(GameDbStaticStateCollection))]

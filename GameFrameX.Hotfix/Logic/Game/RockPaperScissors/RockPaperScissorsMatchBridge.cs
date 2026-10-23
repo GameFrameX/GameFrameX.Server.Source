@@ -31,7 +31,7 @@ using GameFrameX.Hotfix.Logic.Game.Room;
 namespace GameFrameX.Hotfix.Logic.Game.RockPaperScissors;
 
 /// <summary>
-/// 对局样例桥薄适配器（C245，沿 C243 好友桥形态（该缝已随 C244 域桥演化））：
+/// 对局样例桥薄适配器：
 /// 显式开关开启时把石头剪刀布的房间制协议入口（开局 / 出拳 / 查询 / 再来一局）经
 /// <see cref="OnlineMatchGameBridgeHolder"/> 进程内转发到 Online 对局契约面；开关关闭（缺省）时不接管，
 /// 旧链行为逐字节保持。
@@ -46,7 +46,7 @@ namespace GameFrameX.Hotfix.Logic.Game.RockPaperScissors;
 /// </para>
 /// </summary>
 /// <remarks>
-/// The sample match thin bridge adapter (C245, following the C243 friend-bridge shape (since evolved by the C244 domain bridge)): when the
+/// The sample match thin bridge adapter: when the
 /// explicit switch is on it forwards the rock-paper-scissors room-shaped protocol entries (start /
 /// submit / query / restart) in-process to the Online match contract face through
 /// <see cref="OnlineMatchGameBridgeHolder"/>; when off (default) it does not intercept and the legacy

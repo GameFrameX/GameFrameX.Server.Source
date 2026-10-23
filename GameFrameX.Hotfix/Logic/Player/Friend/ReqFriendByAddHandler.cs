@@ -35,9 +35,9 @@ using GameFrameX.Hotfix.Logic.ServerRole;
 namespace GameFrameX.Hotfix.Logic.Player.Friend;
 
 /// <summary>
-/// 添加好友处理器（120 域；C244 起映射为域面 Establish = 申请 + 立即接受，T2 裁定 R3）。
+/// 添加好友处理器（120 域；映射为域面 Establish = 申请 + 立即接受）。
 /// <para>
-/// 身份语义（T2 裁定 R2）：请求主体 = 会话绑定玩家 id（未登录 → 显式
+/// 身份语义：请求主体 = 会话绑定玩家 id（未登录 → 显式
 /// <see cref="OnlineErrorCode.SessionInvalid"/>）。
 /// </para>
 /// </summary>

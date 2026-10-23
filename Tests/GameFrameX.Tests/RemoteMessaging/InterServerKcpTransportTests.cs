@@ -53,16 +53,16 @@ using Xunit;
 namespace GameFrameX.Tests.RemoteMessaging;
 
 /// <summary>
-/// C251 服务器间 KCP 传输真实现的端到端验证：`kcp://` 直配端点两节点真实往返（UDP loopback）、
+/// 服务器间 KCP 传输真实现的端到端验证：`kcp://` 直配端点两节点真实往返（UDP loopback）、
 /// tcp/kcp 传输矩阵与混跑迁移等价、断连失效（<c>Invalidate</c> 族）、<c>IsServiceAvailable</c> 真实口径、
 /// 单帧上限内多段帧往返 + 超限帧快速失败（内核多段吞吐病态边界守卫）。
 /// </summary>
 /// <remarks>
-/// End-to-end verification for the C251 inter-server KCP transport: real two-node round trips over
+/// End-to-end verification for the inter-server KCP transport: real two-node round trips over
 /// `kcp://` env-configured endpoints (UDP loopback), the tcp/kcp transport matrix with mixed migration
 /// equivalence, invalidation semantics (<c>Invalidate</c> family), the real <c>IsServiceAvailable</c>
 /// contract, and the fast failure of over-bound frames (the kernel multi-segment throughput pathology guard).
-/// <para>断言按数据身份（lesson 2026-10-10-test-port-assertion-identity-mismatch）：
+/// <para>断言按数据身份：
 /// 每次调用的响应字段必须等于该次请求身份字段的确定映射，不做「成功收到」级弱断言。</para>
 /// <para>服务端装配与 <c>SuperSocketKcpE2ETests</c> 同构（MultipleServerHostBuilder +
 /// AddServer&lt;IMessage, MessageObjectPipelineFilter&gt; + UseKcp），包处理器按请求身份回写响应
@@ -249,7 +249,7 @@ public sealed class InterServerKcpTransportTests : IAsyncLifetime
             Assert.True(response.Success);
         }
 
-        // 反证：KCP 会话已按 EndPoint:Conv 建立且 conv 非 0（复用 C190 E2E 断言口径）
+        // 反证：KCP 会话已按 EndPoint:Conv 建立且 conv 非 0（复用 E2E 断言口径）
         Assert.True(_observedConvs.TryPeek(out var observed) && observed != 0,
             "KCP session should have been established with a non-zero conv.");
     }
@@ -348,7 +348,7 @@ public sealed class InterServerKcpTransportTests : IAsyncLifetime
             SetEnvironmentEndpoint(serviceName, "kcp", $"kcp://127.0.0.1:{_kcpPort}");
             Assert.True(adapter.IsServiceAvailable(serviceName));
 
-            // 结构非法端点值（缺 scheme）沿 C250 契约在 resolver 解析期抛 EndpointFormatException
+            // 结构非法端点值（缺 scheme）沿既有传输契约在 resolver 解析期抛 EndpointFormatException
             //（与 TCP 适配器同口径：env 值连接期过 EndpointParser），不静默当作不可用
             SetEnvironmentEndpoint(serviceName, "kcp", "127.0.0.1:9999");
             Assert.Throws<EndpointFormatException>(() => adapter.IsServiceAvailable(serviceName));
@@ -435,8 +435,8 @@ public sealed class InterServerKcpTransportTests : IAsyncLifetime
         // 仅留档——调优依据由 verify 阶段 test.md 承载）
         Assert.Equal(rounds, kcpResult.Completed);
         Assert.Equal(rounds, tcpResult.Completed);
-        Console.WriteLine($"[C251-bench] kcp: {kcpResult.Completed} rounds, {kcpResult.ElapsedMilliseconds}ms wall, {kcpResult.CpuMilliseconds}ms cpu");
-        Console.WriteLine($"[C251-bench] tcp: {tcpResult.Completed} rounds, {tcpResult.ElapsedMilliseconds}ms wall, {tcpResult.CpuMilliseconds}ms cpu");
+        Console.WriteLine($"[bench] kcp: {kcpResult.Completed} rounds, {kcpResult.ElapsedMilliseconds}ms wall, {kcpResult.CpuMilliseconds}ms cpu");
+        Console.WriteLine($"[bench] tcp: {tcpResult.Completed} rounds, {tcpResult.ElapsedMilliseconds}ms wall, {tcpResult.CpuMilliseconds}ms cpu");
     }
 
     /// <summary>

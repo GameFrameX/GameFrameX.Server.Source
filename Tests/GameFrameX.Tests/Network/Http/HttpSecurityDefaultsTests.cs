@@ -135,7 +135,7 @@ public class HttpSecurityDefaultsTests
             setting.HttpRequireSign = true;
             setting.HttpSignSecret = "unit-test-secret";
             var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
-            // 旧方案（C271 已废除）：sign = c1 + md5("38848" + ts) + c2，c1/c2 自公开常量 88/66 累加——零秘密，任何读者可伪造。
+            // 旧方案（已废除）：sign = c1 + md5("38848" + ts) + c2，c1/c2 自公开常量 88/66 累加——零秘密，任何读者可伪造。
             // 伪造者按旧算法构造签名，新实现必须拒绝。
             var sign = ForgeLegacySignature(timestamp);
             var handlerCalled = false;
@@ -292,7 +292,7 @@ public class HttpSecurityDefaultsTests
     }
 
     /// <summary>
-    /// 按已废除的旧算法（C271 前的 md5+校验码方案）伪造签名，用于回归断言：新实现必须拒绝旧方案伪造。
+    /// 按已废除的旧算法（旧 md5+校验码方案）伪造签名，用于回归断言：新实现必须拒绝旧方案伪造。
     /// </summary>
     private static string ForgeLegacySignature(string timestamp)
     {

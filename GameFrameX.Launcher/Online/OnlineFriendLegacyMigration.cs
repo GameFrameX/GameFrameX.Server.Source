@@ -39,7 +39,7 @@ using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.Launcher.Online;
 
 /// <summary>
-/// 旧好友数据一次性迁移（C244 T3，开关 <c>Online.MigrateLegacyFriendData</c> 显式授权）：
+/// 旧好友数据一次性迁移（开关 <c>Online.MigrateLegacyFriendData</c> 显式授权）：
 /// 读取本进程 GameDb 的旧 <see cref="FriendRelationState"/>（域 120 旧链，Status=0 行 = 已建立关系）
 /// 与旧 660 <see cref="FriendState"/> 档案文档（Outgoing = 待答申请），经 Online 好友域契约面真实写路径
 /// 幂等收敛为 Online 好友关系。
@@ -53,7 +53,7 @@ namespace GameFrameX.Launcher.Online;
 /// </para>
 /// </summary>
 /// <remarks>
-/// The one-shot legacy friend-data migration (C244 T3, explicitly authorized by the
+/// The one-shot legacy friend-data migration (explicitly authorized by the
 /// <c>Online.MigrateLegacyFriendData</c> switch): reads this process's GameDb — the legacy
 /// <see cref="FriendRelationState"/> rows (the domain-120 chain; Status=0 means established) and the
 /// legacy domain-660 <see cref="FriendState"/> profile documents (Outgoing = pending requests) — and

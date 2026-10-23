@@ -22,7 +22,7 @@
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 对局桥生命周期状态（平台 <c>OnlineMatchState</c> 的桥接投影，C245）。
+/// 对局桥生命周期状态（平台 <c>OnlineMatchState</c> 的桥接投影）。
 /// <para>
 /// 维护约束：本枚举是契约面自持投影——Abstractions 不依赖 Match 包；消费方（Hotfix 薄适配器）
 /// 据此驱动房间状态映射（<see cref="Settling"/> → 房间结算中；<see cref="Completed"/> /

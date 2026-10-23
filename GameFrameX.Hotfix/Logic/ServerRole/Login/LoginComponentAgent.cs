@@ -39,7 +39,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Login;
 /// 登录令牌服务器（Login Role）业务组件代理：令牌签发、校验与撤销。
 /// </summary>
 /// <remarks>
-/// Login Role 独立业务逻辑系统（C197 垂直切片）的热更侧落点。
+/// Login Role 独立业务逻辑系统（垂直切片）的热更侧落点。
 /// 业务规则判定一律委托 <see cref="LoginRules"/>（纯函数，可单测）；
 /// 本类只做状态编排：令牌生成去重、过期惰性判定、撤销移除。
 /// 全部业务以令牌/账号ID为键，无登录语义。

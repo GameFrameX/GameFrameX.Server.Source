@@ -35,7 +35,7 @@ using Xunit;
 namespace GameFrameX.Tests.Core.Session;
 
 /// <summary>
-/// 顶号通知路径单测（C192）：重复登录时通知器收到旧会话对象本身，且通知先于 Close；
+/// 顶号通知路径单测：重复登录时通知器收到旧会话对象本身，且通知先于 Close；
 /// 无重复登录时通知器不被调用。断言按对象身份核对。
 /// </summary>
 public sealed class PlayerSessionManagerDuplicateLoginTests

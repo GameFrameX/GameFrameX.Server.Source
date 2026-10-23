@@ -53,7 +53,7 @@ public sealed class InProcessRoleRouter : IRoleRouter
     /// </summary>
     /// <remarks>
     /// The defensive snapshot of role names hosted by this process.
-    /// Uses the default ordinal comparer, matching the RoleSet snapshot semantics of C143b.
+    /// Uses the default ordinal comparer, matching the RoleSet snapshot semantics.
     /// </remarks>
     private readonly HashSet<string> _hostedRoleNames;
 
@@ -80,7 +80,7 @@ public sealed class InProcessRoleRouter : IRoleRouter
     /// Initializes the router with a defensive copy of the hosted role names
     /// and the optional delivery seams. Both seams are optional on purpose:
     /// production wiring (GameApp) installs the router before the actor-backed local
-    /// dispatcher exists (C143e) and before remote forwarding exists (C143d), so a
+    /// dispatcher and remote forwarding exist, so a
     /// premature route attempt fails with <see cref="RouteNotFoundException"/> instead
     /// of silently succeeding against a half-built pipeline.
     /// </remarks>

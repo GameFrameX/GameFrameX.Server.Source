@@ -10,7 +10,7 @@ using GameFrameX.Capability.Online.Abstractions.Tokens;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 会话恢复服务测试（C204）：登录签发（LatestWins 顶替）、新连接恢复（验证 + 连接替换 + 原子轮换）、
+    /// 会话恢复服务测试：登录签发（LatestWins 顶替）、新连接恢复（验证 + 连接替换 + 原子轮换）、
     /// 重放 / 过期 / 错主体拒绝、并发恢复互斥与断线开窗。
     /// </summary>
     public class OnlineSessionReconnectServiceTests

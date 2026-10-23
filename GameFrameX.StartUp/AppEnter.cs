@@ -229,7 +229,7 @@ internal static class AppEnter
         }
     }
     /// <summary>
-    /// 按启动顺序的逆序依次停机（低优先级先停，C143b D7）。
+    /// 按启动顺序的逆序依次停机（低优先级先停）。
     /// </summary>
     /// <remarks>
     /// Stops the hosts sequentially in reverse launch order (lower priority stops first),

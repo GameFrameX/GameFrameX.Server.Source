@@ -36,7 +36,7 @@ using Xunit;
 namespace GameFrameX.Hotfix.Tests;
 
 /// <summary>
-/// Scene 业务纯规则测试（C197 Phase 2）。
+/// Scene 业务纯规则测试。
 /// </summary>
 /// <remarks>
 /// 覆盖场景容量判定边界。

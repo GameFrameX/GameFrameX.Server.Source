@@ -32,7 +32,7 @@ using System.Threading.Tasks;
 namespace GameFrameX.Capability.Online.Operations.HotfixRollback;
 
 /// <summary>
-/// 登记期制品获取器契约（C248）：清单登记携带制品字段时，在登记落簿前把制品取到本机版本目录，
+/// 登记期制品获取器契约：清单登记携带制品字段时，在登记落簿前把制品取到本机版本目录，
 /// 保证「已登记」与「已落盘」同时成立——切换命令只消费已落盘版本，应急操作零下载。
 /// <para>
 /// 维护约束（红线）：

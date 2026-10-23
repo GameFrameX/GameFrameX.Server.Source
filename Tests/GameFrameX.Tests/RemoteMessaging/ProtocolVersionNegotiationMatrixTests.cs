@@ -22,12 +22,12 @@ using ProtoBuf;
 namespace GameFrameX.Tests.RemoteMessaging;
 
 /// <summary>
-/// C252 跨版本矩阵测试：同 major 互通 / 跨 major 拒绝 / 混布窗口（旧节点无握手响应）回落放行 /
-/// 消息级标注消费。断言按数据身份（lesson 2026-10-10-test-port-assertion-identity-mismatch）：
+/// 跨版本矩阵测试：同 major 互通 / 跨 major 拒绝 / 混布窗口（旧节点无握手响应）回落放行 /
+/// 消息级标注消费。断言按数据身份：
 /// 握手观测必须携带精确版本值，业务响应必须等于请求身份的确定映射；行为口径与部署文档逐条一致。
 /// </summary>
 /// <remarks>
-/// Cross-version matrix tests for C252: same-major interop, cross-major rejection, the mixed-window
+/// Cross-version matrix tests: same-major interop, cross-major rejection, the mixed-window
 /// fallback (a legacy node never answers the handshake), and message-level attribute consumption.
 /// Assertions follow data identity: observed handshakes must carry exact version values and business
 /// responses must equal the deterministic mapping of the request identity; the behavior matrix

@@ -37,7 +37,7 @@ namespace GameFrameX.Tests.Client;
 /// <see cref="BotRunOptions"/> 命令行解析与 <see cref="BotTransport"/> 校验的单元测试。
 /// </summary>
 /// <remarks>
-/// 覆盖 C190 T3 选项解析任务：
+/// 覆盖以下选项解析行为：
 /// - 默认 transport = tcp（与历史行为一致，零改动）。
 /// - --transport tcp / kcp 显式值大小写不敏感。
 /// - 非法 transport 值显式抛 ArgumentException（不静默回退）。

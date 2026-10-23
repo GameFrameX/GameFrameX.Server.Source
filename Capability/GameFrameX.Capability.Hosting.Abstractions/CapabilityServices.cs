@@ -27,7 +27,7 @@
 namespace GameFrameX.Capability.Hosting.Abstractions;
 
 /// <summary>
-/// 能力服务注册表（能力族的服务共享协议载体，C231）：组合根预置（<c>GameFrameX.Capability.Hosting.Core.CapabilityHostBuilder.UseService{TService}</c>）
+/// 能力服务注册表（能力族的服务共享协议载体）：组合根预置（<c>GameFrameX.Capability.Hosting.Core.CapabilityHostBuilder.UseService{TService}</c>）
 /// 与能力模块注册（<see cref="CapabilityRegistrationContext.AddService{TService}"/>）共用同一张按服务类型索引的表；
 /// 装配完成后经 <c>GameFrameX.Capability.Hosting.Core.CapabilityHost.Services</c> 对组合根开放取用。
 /// <para>
@@ -37,7 +37,7 @@ namespace GameFrameX.Capability.Hosting.Abstractions;
 /// </para>
 /// </summary>
 /// <remarks>
-/// The capability service registry (the capability-family service-sharing protocol, C231): composition-root
+/// The capability service registry (the capability-family service-sharing protocol): composition-root
 /// pre-seeds (<c>GameFrameX.Capability.Hosting.Core.CapabilityHostBuilder.UseService{TService}</c>) and capability-module registrations
 /// (<see cref="CapabilityRegistrationContext.AddService{TService}"/>) share one table indexed by service type;
 /// after assembly it is exposed to the composition root through <c>GameFrameX.Capability.Hosting.Core.CapabilityHost.Services</c>.

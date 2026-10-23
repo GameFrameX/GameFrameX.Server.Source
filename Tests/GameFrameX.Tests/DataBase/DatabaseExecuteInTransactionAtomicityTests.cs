@@ -44,10 +44,10 @@ using Xunit;
 namespace GameFrameX.Tests.DataBase;
 
 /// <summary>
-/// IDatabaseService.ExecuteInTransactionAsync 事务原子性（C262）跨 provider 测试。
+/// IDatabaseService.ExecuteInTransactionAsync 事务原子性跨 provider 测试。
 /// </summary>
 /// <remarks>
-/// Cross-provider transaction-atomicity tests for <c>ExecuteInTransactionAsync</c> (C262): every
+/// Cross-provider transaction-atomicity tests for <c>ExecuteInTransactionAsync</c>: every
 /// write path issued inside the shell must join the shell's transaction — commits persist all of
 /// them, action failures roll all of them back, and nested shells join the ambient transaction.
 /// Every fact runs the same scenario against SQLite (embedded, always on), Mongo
@@ -222,7 +222,7 @@ public sealed class DatabaseExecuteInTransactionAtomicityTests
 
 
     /// <summary>
-    /// 事务壳失败异常按 provider 契约断言：Sqlite 裸抛原始异常，Mongo、PG 包 DatabaseUnavailableException（既有契约，C262 冻结）。
+    /// 事务壳失败异常按 provider 契约断言：Sqlite 裸抛原始异常，Mongo、PG 包 DatabaseUnavailableException（既有契约）。
     /// </summary>
     private static Type ExpectedTransactionFailureException(ProviderKind kind)
     {

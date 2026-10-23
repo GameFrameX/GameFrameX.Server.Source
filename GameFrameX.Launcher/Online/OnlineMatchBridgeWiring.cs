@@ -31,7 +31,7 @@ using GameFrameX.Utility.Setting;
 namespace GameFrameX.Launcher.Online;
 
 /// <summary>
-/// 对局样例桥组合根接线（C245，D4 RPS 垂直切片；沿 C243 <see cref="OnlineFriendBridgeWiring"/> 形态）：
+/// 对局样例桥组合根接线：
 /// Game 型启动链的桥接生命周期编排——组合前 fail-fast、业务运行时启动后发布租约与确保写榜目标榜单、
 /// 进程停止路径撤销租约。
 /// <para>
@@ -42,8 +42,7 @@ namespace GameFrameX.Launcher.Online;
 /// </para>
 /// </summary>
 /// <remarks>
-/// The sample match bridge composition-root wiring (C245, the D4 RPS vertical slice; following the
-/// C243 <see cref="OnlineFriendBridgeWiring"/> shape): the bridge lifecycle orchestration for the
+/// The sample match bridge composition-root wiring: the bridge lifecycle orchestration for the
 /// Game-shape startup chain — fail-fast before assembly, lease publication plus leaderboard-board
 /// ensuring after the business runtime starts, and lease retraction on the shutdown path. Publish
 /// and retract must stay paired inside the same composition root (AppStartUpGame); unsupported

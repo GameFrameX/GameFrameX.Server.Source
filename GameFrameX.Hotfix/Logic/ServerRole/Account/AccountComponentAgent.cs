@@ -39,7 +39,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Account;
 /// 账号服务器（Account Role）业务组件代理：账号档案的注册、查询与改密。
 /// </summary>
 /// <remarks>
-/// Account Role 独立业务逻辑系统（C197 垂直切片）的热更侧落点。
+/// Account Role 独立业务逻辑系统的热更侧落点。
 /// 业务规则判定一律委托 <see cref="AccountRules"/>（纯函数，可单测）；
 /// 本类只做状态编排：账号名唯一性、档案建档、密码哈希更新。
 /// 全部业务以账号名为键，无登录语义。

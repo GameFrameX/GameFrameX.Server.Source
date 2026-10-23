@@ -72,7 +72,7 @@ public class PlayerComponentAgent : StateComponentAgent<PlayerComponent, PlayerS
             Avatar = playerState.Avatar,
         };
 
-        // C204 断线前凭据交付：登录成功即随响应下发会话恢复凭据（桥不可用 / 签发失败为 null，登录主流程不受影响）。
+        // 断线前凭据交付：登录成功即随响应下发会话恢复凭据（桥不可用 / 签发失败为 null，登录主流程不受影响）。
         response.SessionToken = await Logic.ServerRole.SessionResume.SessionResumeDomainBridge.IssueLoginCredentialAsync(playerState.Id, workChannel.GameAppSession?.SessionId);
 
         var attributeComponentAgent = await ActorManager.GetComponentAgentAsync<PlayerAttributeComponentAgent>(playerState.Id);

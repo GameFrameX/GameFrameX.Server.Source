@@ -1,7 +1,7 @@
 name: Publish Release
 
 on:
-# 2026-10-12 裁定（C220）：发布仅手动触发（workflow_dispatch），push 自动发布以注释形式退役；
+# 发布仅手动触发（workflow_dispatch），push 自动发布以注释形式退役；
 # 版本号仍由共享流水线按提交历史自动推断，发布链路不变。恢复自动发布：取消下两行注释即可。
 # push:
 #   branches: [main]

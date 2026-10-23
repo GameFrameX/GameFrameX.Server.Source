@@ -39,7 +39,7 @@ namespace GameFrameX.Network.RemoteMessaging.Routing;
 /// </summary>
 /// <remarks>
 /// The default TCP send channel for case 2/3. It dials through the process-level shared
-/// TCP connection pool (<see cref="Transport.SharedTcpConnectionPool"/>, C270) — the very
+/// TCP connection pool (<see cref="Transport.SharedTcpConnectionPool"/>) — the very
 /// pool the RPC client consumes — so the routing layer and the RPC layer share one set of
 /// outbound connections per endpoint instead of doubling them. Whole-frame atomicity on a
 /// shared connection is guaranteed by the pool's per-connection write-gated streams; frames

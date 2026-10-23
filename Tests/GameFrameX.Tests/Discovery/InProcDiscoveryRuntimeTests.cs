@@ -38,14 +38,14 @@ using GameFrameX.Tests.DataBase;
 namespace GameFrameX.Tests.Discovery;
 
 /// <summary>
-/// InProcDiscoveryRuntime 契约测试（C222 单进程拓扑：自指路由表 + no-op 心跳面）。
+/// InProcDiscoveryRuntime 契约测试（单进程拓扑：自指路由表 + no-op 心跳面）。
 /// </summary>
 /// <remarks>
-/// Contract tests for <c>InProcDiscoveryRuntime</c> (the C222 single-process topology): the
+/// Contract tests for <c>InProcDiscoveryRuntime</c> (the single-process topology): the
 /// self-referential route table resolves every hosted role to one Active self instance, activation
 /// is idempotent, validation mirrors the provider runtimes, and <c>MarkActiveAsync</c> is a no-op.
 /// Joined into the GameDbStaticStateCollection to avoid cross-class parallel races on the static
-/// discovery slots (the C185 isolation stance shared by the sibling discovery suites).
+/// discovery slots (the isolation stance shared by the sibling discovery suites).
 /// </remarks>
 [Collection(nameof(GameDbStaticStateCollection))]
 public sealed class InProcDiscoveryRuntimeTests

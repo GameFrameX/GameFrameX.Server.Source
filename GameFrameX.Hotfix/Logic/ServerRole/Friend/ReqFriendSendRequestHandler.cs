@@ -35,11 +35,11 @@ using GameFrameX.Core.BaseHandler.RPC;
 namespace GameFrameX.Hotfix.Logic.ServerRole.Friend;
 
 /// <summary>
-/// 好友关系协议族（域号 660）薄适配处理器（C244 起经好友域桥转发 Online 契约面；
+/// 好友关系协议族（域号 660）薄适配处理器（经好友域桥转发 Online 契约面；
 /// 旧 Friend Role 内存状态机随切换退役）。
 /// <para>
 /// 身份语义保持：请求主体 = 会话绑定玩家 id，未登录回 <see cref="FriendErrorCode.NotLoggedIn"/>；
-/// 错误码 660002..660005 由 <c>FriendDomainBridge</c> 按 T2 裁定 R5/R6/R7 映射。
+/// 错误码 660002..660005 由 <c>FriendDomainBridge</c> 按域内裁定完成映射。
 /// </para>
 /// </summary>
 [MessageMapping(typeof(ReqFriendSendRequest))]

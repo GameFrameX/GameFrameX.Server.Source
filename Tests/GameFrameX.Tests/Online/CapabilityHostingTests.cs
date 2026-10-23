@@ -81,7 +81,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 构造 Online 单入口组合产物（业务运行时形态；授权三元组 1/1/1001，C232 P6 起真扫描装配）。
+        /// 构造 Online 单入口组合产物（业务运行时形态；授权三元组 1/1/1001，真扫描装配）。
         /// </summary>
         /// <returns>组合产物。</returns>
         private static OnlineCapabilityComposition CreateComposition()
@@ -205,7 +205,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// Online 真扫描装配报告：7 个终态包 Id 全部启用，拓扑序满足 Requires 方向（依赖方后置；
-        /// C232 P6 起经 Launcher 单入口扫描装配，装配序 = 扫描发现序 + Requires 拓扑）。
+        /// 经 Launcher 单入口扫描装配，装配序 = 扫描发现序 + Requires 拓扑）。
         /// </summary>
         [Fact]
         public void OnlineHost_ReportEnablesAllSevenCapabilitiesInTopologicalOrder()

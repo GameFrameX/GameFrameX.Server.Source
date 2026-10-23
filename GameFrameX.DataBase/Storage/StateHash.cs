@@ -73,10 +73,10 @@ internal sealed class StateHash
     /// <remarks>
     /// Cached hash value (the hash of the byte snapshot most recently confirmed as persisted).
     /// 只能通过 <see cref="SaveToDbPostHandler(byte[])"/>（实际送库快照）或参数less 提交推进；
-    /// 推进到「从未持久化的字节」的 hash 会让后续变更被误判为未修改（静默丢数据，C263）。
+    /// 推进到「从未持久化的字节」的 hash 会让后续变更被误判为未修改（静默丢数据）。
     /// It may only advance via <see cref="SaveToDbPostHandler(byte[])"/> (the actually persisted snapshot)
     /// or the parameterless commit; advancing it to the hash of never-persisted bytes makes later
-    /// mutations read as unmodified (silent data loss, C263).
+    /// mutations read as unmodified (silent data loss).
     /// </remarks>
     private uint128 CacheHash { get; set; }
 
@@ -125,11 +125,11 @@ internal sealed class StateHash
     /// Post-save operation (exact commit: advances the baseline with the byte snapshot actually
     /// handed to the database). 检查（IsChanged）与写库之间若发生并发 IsChanged（如 Actor 反激活检查、
     /// 强制全量保存），ToSaveHash 已被推进到未落库快照；本重载不读 ToSaveHash，只提交调用方
-    /// 送库快照的 hash，保证 CacheHash 永远指向真实持久化过的字节（C263 竞态修复）。
+    /// 送库快照的 hash，保证 CacheHash 永远指向真实持久化过的字节。
     /// If a concurrent IsChanged ran between the check and the database write (e.g. an actor
     /// deactivation check or a forced full save), ToSaveHash already advanced to an unpersisted
     /// snapshot; this overload ignores ToSaveHash and commits the hash of the snapshot the caller
-    /// persisted, so CacheHash always points at bytes that were truly written (C263 race fix).
+    /// persisted, so CacheHash always points at bytes that were truly written.
     /// </remarks>
     /// <param name="persistedData">实际送库的字节快照（来自 IsChanged/IsChangedWithId 返回值或写库前捕获的 ToBytes）/ The byte snapshot actually persisted (from IsChanged/IsChangedWithId or a ToBytes capture taken right before the write)</param>
     public void SaveToDbPostHandler(byte[] persistedData)

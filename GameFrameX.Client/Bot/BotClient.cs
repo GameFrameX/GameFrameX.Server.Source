@@ -222,7 +222,7 @@ public sealed partial class BotClient
         _authStartMs = Environment.TickCount64;
         if (_awaitingSessionResume && !string.IsNullOrWhiteSpace(_sessionToken))
         {
-            // C204 match 恢复演练：断线后新连接不走完整登录，携登录凭据直接恢复身份与对局。
+            // match 恢复演练：断线后新连接不走完整登录，携登录凭据直接恢复身份与对局。
             _awaitingSessionResume = false;
             // Localization: Client.Bot.SessionResumeRequested - 机器人-{0}会话恢复请求已发送（携带登录凭据）
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.SessionResumeRequested, m_BotName));

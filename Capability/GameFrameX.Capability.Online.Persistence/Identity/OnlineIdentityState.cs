@@ -33,9 +33,9 @@ using GameFrameX.DataBase;
 using GameFrameX.Foundation.Orm.Attribute;
 
 /// <summary>
-/// 外源身份持久化行（C249 一级 store：Identity 域 → GameDb 适配的落库形态）。
+/// 外源身份持久化行（Identity 域 → GameDb 适配的落库形态）。
 /// <para>
-/// 键编码约定（T1 裁决 1）：<see cref="UniqueKey"/> = 物化复合键（无损拼接原文，与 InMemory
+/// 键编码约定：<see cref="UniqueKey"/> = 物化复合键（无损拼接原文，与 InMemory
 /// <c>BuildIdentityKey</c> 同构），单列唯一索引承接四元组 (TenantId, AppId, Kind, Identifier) 唯一性；
 /// 分隔符冒号与业务串内冒号的歧义语义与 InMemory 键逐字节同构（保真优先）。行 Id 无自然主键，
 /// 由 <c>NextSequenceAsync</c> 分配；业务字段保留为独立列供等值/归属查询。

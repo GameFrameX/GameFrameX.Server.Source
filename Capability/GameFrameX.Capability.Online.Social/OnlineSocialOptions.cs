@@ -30,18 +30,18 @@
 namespace GameFrameX.Capability.Online.Social;
 
 /// <summary>
-/// 社交能力包级装配选项（<see cref="OnlineSocialHostingExtensions.AddOnlineSocialRuntime"/> 回调承载面，C231）。
+/// 社交能力包级装配选项（<see cref="OnlineSocialHostingExtensions.AddOnlineSocialRuntime"/> 回调承载面）。
 /// <para>
-/// 维护约束（能力族全局约定，C227/C229 裁定）：编排参数一律经 <c>Action&lt;TOptions&gt;</c> 回调承载（.NET
-/// <c>AddXxx(options =&gt; ...)</c> 惯例）；P3 期无包级编排参数（存储替换走 <c>UseOnlineSocial*Store</c> 缝族，
+/// 维护约束（能力族全局约定）：编排参数一律经 <c>Action&lt;TOptions&gt;</c> 回调承载（.NET
+/// <c>AddXxx(options =&gt; ...)</c> 惯例）；当前无包级编排参数（存储替换走 <c>UseOnlineSocial*Store</c> 缝族，
 /// 配置段绑定归组合根），成员随真实需求落位；禁止回退平铺配置键。
 /// </para>
 /// </summary>
 /// <remarks>
 /// Package-level assembly options for the social capability (the callback face of
-/// <see cref="OnlineSocialHostingExtensions.AddOnlineSocialRuntime"/>, C231). Following the capability-family
-/// global convention (ruled by C227/C229), orchestration parameters ride an <c>Action&lt;TOptions&gt;</c> callback;
-/// P3 carries no package-level knobs (store replacement goes through the <c>UseOnlineSocial*Store</c> seam family
+/// <see cref="OnlineSocialHostingExtensions.AddOnlineSocialRuntime"/>). Following the capability-family
+/// global convention, orchestration parameters ride an <c>Action&lt;TOptions&gt;</c> callback;
+/// no package-level knobs exist yet (store replacement goes through the <c>UseOnlineSocial*Store</c> seam family
 /// and config-section binding belongs to composition roots); members land as real needs appear; flat
 /// configuration keys stay forbidden.
 /// </remarks>

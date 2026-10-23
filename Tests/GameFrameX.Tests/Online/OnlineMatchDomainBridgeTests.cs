@@ -16,7 +16,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 匹配域桥接缝测试（C246）：域契约面装配、T2 裁定 R4-R13 的域面语义（即时窗口 / 取消终态回执 /
+    /// 匹配域桥接缝测试：域契约面装配、域面语义（即时窗口 / 取消终态回执 /
     /// 状态与票据映射 / 超时 / 入场到达同一对局）、holder 生命周期与模块拓扑序。
     /// </summary>
     public class OnlineMatchDomainBridgeTests : IDisposable
@@ -142,7 +142,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// R5：单人入队无对手 → MatchId=0 排队；Status 反映排队中。
+        /// 单人入队无对手 → MatchId=0 排队；Status 反映排队中。
         /// </summary>
         [Fact]
         public async Task Enqueue_SoloPlayer_QueuesWithZeroMatchId()
@@ -161,7 +161,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// R5/R9：第二人入队即时窗口成组——第二人响应即刻带 MatchId，第一人随后 Status 得同一 MatchId。
+        /// 第二人入队即时窗口成组——第二人响应即刻带 MatchId，第一人随后 Status 得同一 MatchId。
         /// </summary>
         [Fact]
         public async Task Enqueue_SecondPlayer_InstantWindowPairsBoth()
@@ -181,7 +181,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// R4：排队中重复入队被拒（DuplicateRequest）。
+        /// 排队中重复入队被拒（DuplicateRequest）。
         /// </summary>
         [Fact]
         public async Task Enqueue_DuplicatePlayer_Rejected()
@@ -197,7 +197,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// R6/R7：模式为池标签（不同模式不同池）；评分差超基础窗（±100）不成组。
+        /// 模式为池标签（不同模式不同池）；评分差超基础窗（±100）不成组。
         /// </summary>
         [Fact]
         public async Task Enqueue_ModePartitionsAndRatingWindow_PartitionPools()
@@ -232,7 +232,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// R8：排队中取消成功；无票取消回「未取消」回执（协议面映射 420003）。
+        /// 排队中取消成功；无票取消回「未取消」回执（协议面映射 420003）。
         /// </summary>
         [Fact]
         public async Task Cancel_WhileQueued_Succeeds_AndWithoutTicket_ComesBackNotCancelled()
@@ -251,7 +251,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// R8：已成组后取消——终态回执不算失败，Cancelled=false（旧链 420003 可观测等价）。
+        /// 已成组后取消——终态回执不算失败，Cancelled=false（旧链 420003 可观测等价）。
         /// </summary>
         [Fact]
         public async Task Cancel_AfterMatch_ComesBackTerminalReceipt()
@@ -268,7 +268,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// R10：票据 TTL 过期（注入时刻推进扫描）→ Status=(false,0)，取消回未取消回执。
+        /// 票据 TTL 过期（注入时刻推进扫描）→ Status=(false,0)，取消回未取消回执。
         /// </summary>
         [Fact]
         public async Task Status_AfterTicketExpiry_NotQueuingZeroMatch()
@@ -291,7 +291,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// R13/T4：双方各自入场到达同一对局——同一数值 MatchId、双方成员、对局进入运行态（唯一 Actor）。
+        /// 双方各自入场到达同一对局——同一数值 MatchId、双方成员、对局进入运行态（唯一 Actor）。
         /// </summary>
         [Fact]
         public async Task Enter_BothPlayers_ReachSameRunningMatch()
@@ -324,7 +324,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// R13：入场幂等——重复入场复用同一对局（create-or-reuse）。
+        /// 入场幂等——重复入场复用同一对局（create-or-reuse）。
         /// </summary>
         [Fact]
         public async Task Enter_Repeatedly_ReusesSameMatch()
@@ -343,7 +343,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// R13：未知对局标识 → ResourceNotFound；非对局成员 → ScopeDenied。
+        /// 未知对局标识 → ResourceNotFound；非对局成员 → ScopeDenied。
         /// </summary>
         [Fact]
         public async Task Enter_UnknownOrForeign_Rejected()
@@ -363,7 +363,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// R12 支撑：通知推送方按 assignmentId 解析数值 MatchId 与成员表（撮合后可反复解析，幂等）。
+        /// 通知推送方按 assignmentId 解析数值 MatchId 与成员表（撮合后可反复解析，幂等）。
         /// </summary>
         [Fact]
         public async Task ResolveAssignment_AfterMatch_ReturnsNumericAndPlayers_Idempotently()
@@ -434,7 +434,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// R13/T4 并发回归：双端同时入场（真会话 E2E 实证过的竞态）——双方都必须成功且 Started=true。
+        /// 并发回归：双端同时入场（真会话 E2E 实证过的竞态）——双方都必须成功且 Started=true。
         /// </summary>
         [Fact]
         public async Task Enter_ConcurrentlyFromBothPlayers_BothSucceed()

@@ -32,7 +32,7 @@ using GameFrameX.Capability.Hosting.Core;
 namespace GameFrameX.Capability.Online.Foundation;
 
 /// <summary>
-/// 平台地基能力包的 hosting 扩展（C232 P6）：<see cref="AddOnlineFoundationRuntime"/> 装配入口
+/// 平台地基能力包的 hosting 扩展：<see cref="AddOnlineFoundationRuntime"/> 装配入口
 /// （回调式，注册自装配模块）。地基三 store 的替换缝经共享服务面预置（模块 Register 期探测命中，
 /// 未命中构造 InMemory 默认），不另设包级语法糖。
 /// <para>
@@ -41,7 +41,7 @@ namespace GameFrameX.Capability.Online.Foundation;
 /// </para>
 /// </summary>
 /// <remarks>
-/// Hosting extensions of the foundation capability package (C232 P6): the
+/// Hosting extensions of the foundation capability package: the
 /// <see cref="AddOnlineFoundationRuntime"/> assembly entry (callback style, registering the
 /// self-assembling module). The three foundation stores probe the shared service face at module
 /// <c>Register</c> time with in-memory fallbacks; no package-level sugar is added for those seams.

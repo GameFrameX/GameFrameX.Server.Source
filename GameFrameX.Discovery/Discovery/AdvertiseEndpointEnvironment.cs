@@ -36,7 +36,7 @@ using GameFrameX.Foundation.Logger;
 namespace GameFrameX.Discovery;
 
 /// <summary>
-/// 广播端点环境引导（驱动无关单一事实源，C166 依赖纠偏抽取）。
+/// 广播端点环境引导（驱动无关单一事实源）。
 /// </summary>
 /// <remarks>
 /// Advertise-endpoint environment bootstrap — the driver-neutral single source of truth shared by the

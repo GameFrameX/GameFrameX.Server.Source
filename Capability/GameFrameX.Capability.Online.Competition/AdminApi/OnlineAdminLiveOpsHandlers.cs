@@ -46,7 +46,7 @@ public static class OnlineAdminLiveOpsHandlers
 {
 
     /// <summary>
-    /// 注册 LiveOps 域 action（C232 P4 迁入；LiveOps 注册表经模块 Register 装配后传入，语句逐字迁移）。
+    /// 注册 LiveOps 域 action：LiveOps 注册表经模块 Register 装配后传入。
     /// </summary>
     /// <param name="registry">动作注册表。</param>
     /// <param name="liveOps">LiveOps 注册表。</param>

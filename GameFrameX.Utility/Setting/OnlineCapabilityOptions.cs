@@ -31,12 +31,12 @@
 namespace GameFrameX.Utility.Setting;
 
 /// <summary>
-/// Online 能力配置段（角色配置内嵌套 <c>"Online"</c> 节点的强类型绑定，C229）
+/// Online 能力配置段（角色配置内嵌套 <c>"Online"</c> 节点的强类型绑定）
 /// <para>白名单 <c>Capabilities</c> 与排除表 <c>Disable</c> 承载能力 Id 列表；null 或空 = 全装配 / 无排除（缺省全装配红线）</para>
 /// <para>本类型为配置只读数据：装载后不得变更（多 Role 回落档可能共享同一实例引用）</para>
 /// </summary>
 /// <remarks>
-/// Strong-typed binding of the nested <c>"Online"</c> node inside a role configuration section (C229).
+/// Strong-typed binding of the nested <c>"Online"</c> node inside a role configuration section.
 /// <c>Capabilities</c> is the enable whitelist and <c>Disable</c> the exclusion list, both carrying
 /// capability ids; null or empty means "assemble everything" / "exclude nothing" (the
 /// empty-filter-assembles-all guarantee). Treat instances as read-only after loading — multiple
@@ -61,12 +61,12 @@ public sealed class OnlineCapabilityOptions
     public IReadOnlyList<string> Disable { get; set; }
 
     /// <summary>
-    /// 是否预置 Online 一级 store 的 GameDb 持久化实现（C249，D3 = 3A 分级混合）
-    /// <para>true = Identity / 玩家云存储 / 资产账本与交易 / 好友关系五 store 预置进共享服务面（重启数据不丢，好友为 C244 增补）；false（缺省）= InMemory 默认不变</para>
+    /// 是否预置 Online 一级 store 的 GameDb 持久化实现（分级混合）
+    /// <para>true = Identity / 玩家云存储 / 资产账本与交易 / 好友关系五 store 预置进共享服务面（重启数据不丢）；false（缺省）= InMemory 默认不变</para>
     /// <para>前置约束：开启前数据库必须已完成初始化（GameDb 门面 Init）；Session / Presence 保持易失（Redis 演进位）</para>
     /// </summary>
     /// <remarks>
-    /// Whether to pre-seed the GameDb persistence adapters for the Online level-one stores (C249, D3 = 3A):
+    /// Whether to pre-seed the GameDb persistence adapters for the Online level-one stores:
     /// true pre-seeds identity / player storage / asset ledger and transaction stores into the shared
     /// service face (data survives restarts); false (default) keeps the in-memory defaults unchanged.
     /// The database must be initialized (GameDb facade Init) before enabling; sessions and presence stay volatile.
@@ -74,7 +74,7 @@ public sealed class OnlineCapabilityOptions
     public bool UseGameDbStores { get; set; }
 
     /// <summary>
-    /// 好友域桥验证种子玩家标识列表（C243 引入、C244 域接管后沿用；元素 &lt; 2 = 不种子）
+    /// 好友域桥验证种子玩家标识列表（元素 &lt; 2 = 不种子）
     /// <para>首元素为请求方、其余为好友：组合根在业务运行时启动后，经真实 <c>OnlineFriendService</c> 写路径
     /// 两两建立好友（幂等收敛），验证入口（HTTP <c>mode=online-bridge-friend&amp;playerId=首元素</c>）据此读到
     /// 预置非空好友状态——仅供部署验证，生产常开须显式知情（Warning 日志披露）</para>
@@ -82,8 +82,8 @@ public sealed class OnlineCapabilityOptions
     /// 不存在可预置的确定性请求主体</para>
     /// </summary>
     /// <remarks>
-    /// The friend-domain bridge verification seed player ids (introduced by C243, kept by the C244
-    /// domain takeover; fewer than 2 entries = no seeding): the first entry is the requester and the
+    /// The friend-domain bridge verification seed player ids (fewer than 2 entries = no seeding):
+    /// the first entry is the requester and the
     /// rest the friends — after the business runtime starts the composition root establishes the
     /// friendships pairwise through the real <c>OnlineFriendService</c> write path (idempotent
     /// convergence), so the verification entry (HTTP
@@ -96,7 +96,7 @@ public sealed class OnlineCapabilityOptions
     public IReadOnlyList<long> FriendBridgeSeedPlayerIds { get; set; }
 
     /// <summary>
-    /// 是否在业务运行时启动后执行旧好友数据一次性迁移（C244，T3；缺省 false = 不迁移）
+    /// 是否在业务运行时启动后执行旧好友数据一次性迁移（缺省 false = 不迁移）
     /// <para>true = 组合根读取本进程 GameDb 的旧 <c>FriendRelationState</c>（域 120 旧链，Status=0）与
     /// 旧 660 <c>FriendState</c> 档案文档（Outgoing 待答申请），经 <c>OnlineFriendService</c> 真实写路径
     /// 幂等收敛为 Online 好友关系（已建立 / 待答）；旧数据零改动（只读单向复制，回退 = 重部署旧版即回旧链旧数据）</para>
@@ -105,7 +105,7 @@ public sealed class OnlineCapabilityOptions
     /// </summary>
     /// <remarks>
     /// Whether to run the one-shot legacy friend-data migration after the business runtime starts
-    /// (C244, T3; default false = no migration): true makes the composition root read this process's
+    /// (default false = no migration): true makes the composition root read this process's
     /// GameDb — the legacy <c>FriendRelationState</c> rows (the domain-120 chain, Status=0) and the
     /// legacy domain-660 <c>FriendState</c> profile document (Outgoing pending requests) — and
     /// converge them into Online friendships through the real <c>OnlineFriendService</c> write path
@@ -118,7 +118,7 @@ public sealed class OnlineCapabilityOptions
     public bool MigrateLegacyFriendData { get; set; }
 
     /// <summary>
-    /// 对局样例桥开关（C245，D4 RPS 垂直切片）：true = Game 进程的房间制开局 / 出拳 / 查询 / 再来一局
+    /// 对局样例桥开关（RPS 垂直切片样例）：true = Game 进程的房间制开局 / 出拳 / 查询 / 再来一局
     /// 协议入口经 Online 对局桥转发平台对局运行时（进程内桥读写），出拳裁决 / 结算 / 发奖 / 排行由平台编排；
     /// false（缺省）= 旧链行为逐字节保持（Apps 本地对局执行不变）。
     /// <para>前置约束：开启时进程必须同时开启 <c>IsEnableOnline</c> 且装配 online-match 能力（组合根启动期
@@ -126,7 +126,7 @@ public sealed class OnlineCapabilityOptions
     /// Game 角色段</para>
     /// </summary>
     /// <remarks>
-    /// Whether the sample match bridge is enabled (C245, the D4 RPS vertical slice): true routes the
+    /// Whether the sample match bridge is enabled (the RPS vertical slice): true routes the
     /// Game process's room-shaped start / gesture / query / restart protocol entries through the
     /// Online match bridge into the platform match runtime (an in-process bridge), with gesture
     /// adjudication, settlement, rewards and leaderboards orchestrated by the platform; false
@@ -139,16 +139,16 @@ public sealed class OnlineCapabilityOptions
     public bool EnableMatchGameBridge { get; set; }
 
     /// <summary>
-    /// 对局结算写榜榜单标识（C245）：非空 = 订阅 <c>Online.Match.Settled</c> 的可信结果投影目标榜单
+    /// 对局结算写榜榜单标识：非空 = 订阅 <c>Online.Match.Settled</c> 的可信结果投影目标榜单
     ///（要求 online-competition 能力；组合根确保榜单存在）；空（缺省）= 不投影（仅结算发奖）。
-    /// <para>榜单存储当前为 InMemory（D3 现状）——进程重启后积分易失，样例能力边界</para>
+    /// <para>榜单存储当前为 InMemory——进程重启后积分易失，样例能力边界</para>
     /// </summary>
     /// <remarks>
-    /// The leaderboard id that settled match results project onto (C245): non-empty = the target
+    /// The leaderboard id that settled match results project onto: non-empty = the target
     /// board for trusted-result projection subscribed from <c>Online.Match.Settled</c> (requires the
     /// online-competition capability; the composition root ensures the board exists); empty
     /// (default) = no projection (settlement and rewards only). The board store is currently
-    /// in-memory (the D3 status quo) — scores are volatile across process restarts, a documented
+    /// in-memory — scores are volatile across process restarts, a documented
     /// sample boundary.
     /// </remarks>
     public string MatchBridgeLeaderboardId { get; set; }

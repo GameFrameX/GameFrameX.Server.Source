@@ -39,7 +39,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Chat;
 /// 聊天服务器（Chat Role）业务组件代理：频道成员关系与消息历史。
 /// </summary>
 /// <remarks>
-/// Chat Role 独立业务逻辑系统（C197 垂直切片）的热更侧落点。
+/// Chat Role 独立业务逻辑系统（垂直切片）的热更侧落点。
 /// 业务规则判定一律委托 <see cref="ChatRules"/>（纯函数，可单测）；
 /// 本类只做状态编排：频道懒创建、成员增删、消息落库与环形削顶、增量历史拉取。
 /// </remarks>

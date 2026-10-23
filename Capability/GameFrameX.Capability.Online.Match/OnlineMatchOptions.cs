@@ -30,19 +30,19 @@
 namespace GameFrameX.Capability.Online.Match;
 
 /// <summary>
-/// 对局能力包级装配选项（<see cref="OnlineMatchHostingExtensions.AddOnlineMatchRuntime"/> 回调承载面，C232 P4）。
+/// 对局能力包级装配选项（<see cref="OnlineMatchHostingExtensions.AddOnlineMatchRuntime"/> 回调承载面）。
 /// <para>
-/// 维护约束（能力族全局约定，C227/C229 裁定）：编排参数一律经 <c>Action&lt;TOptions&gt;</c> 回调承载（.NET
-/// <c>AddXxx(options =&gt; ...)</c> 惯例）；P4 期无包级编排参数（对局运行时阈值走域内
+/// 维护约束（能力族全局约定）：编排参数一律经 <c>Action&lt;TOptions&gt;</c> 回调承载（.NET
+/// <c>AddXxx(options =&gt; ...)</c> 惯例）；当前无包级编排参数（对局运行时阈值走域内
 /// <see cref="OnlineMatchRuntimeOptions"/>，存储替换走 <c>UseOnlineMatch*Store</c> 缝族，配置段绑定归组合根），
 /// 成员随真实需求落位；禁止回退平铺配置键。
 /// </para>
 /// </summary>
 /// <remarks>
 /// Package-level assembly options for the match capability (the callback face of
-/// <see cref="OnlineMatchHostingExtensions.AddOnlineMatchRuntime"/>, C232 P4). Following the
+/// <see cref="OnlineMatchHostingExtensions.AddOnlineMatchRuntime"/>). Following the
 /// capability-family global convention, orchestration parameters ride an <c>Action&lt;TOptions&gt;</c> callback;
-/// P4 carries no package-level knobs (match runtime thresholds live on the domain
+/// the package currently carries no package-level knobs (match runtime thresholds live on the domain
 /// <see cref="OnlineMatchRuntimeOptions"/>, store replacement goes through the seam family); members land
 /// as real needs appear; flat configuration keys stay forbidden.
 /// </remarks>

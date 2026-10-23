@@ -33,8 +33,7 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Matchmaking.AdminApi;
 
 /// <summary>
-/// 匹配域 admin 命令与查询（query_match_queue_overview / query_match_ticket_failures / query_match_abnormal_tickets /
-/// cancel_match_ticket；C231 P3 自壳 Match 四分迁入——manifest 归 online-matchmaking）。
+/// cancel_match_ticket）。
 /// <para>
 /// 维护约束：队列概况与票据失败 / 异常视图均只读快照 + 页内过滤；cancel_match_ticket 为受控命令（调度器层幂等包裹）；
 /// 依赖（队列观察器 / 票据存储 / 票据服务）经能力服务共享面解析后注入。

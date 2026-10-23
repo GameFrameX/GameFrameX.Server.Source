@@ -35,18 +35,18 @@ using GameFrameX.Utility;
 namespace GameFrameX.Launcher.Online;
 
 /// <summary>
-/// 匹配域桥组合根接线（C246，沿 C244 <see cref="OnlineFriendDomainBridgeWiring"/> 形态）：
+/// 匹配域桥组合根接线（沿 <see cref="OnlineFriendDomainBridgeWiring"/> 形态）：
 /// Game 型启动链的域桥生命周期编排——业务运行时启动后发布租约、订阅撮合分配事件做匹配成功通知推送，
 /// 进程停止路径撤销租约。
 /// <para>
 /// 维护约束：发布 / 撤销必须成对出现在同一组合根（AppStartUpGame）；契约面或作用域缺席
 ///（online-match / online-matchmaking 被排除 / 未装配）按 Error 披露并返回 null（不抛出——缺席态由
 /// 420 匹配消息层显式失败承载，无回落目标）；通知推送 best-effort——离线方无会话即静默跳过，
-/// 经状态轮询兜底；订阅体异常吞掉不阻断事件分发（C245 排行投影订阅先例）。
+/// 经状态轮询兜底；订阅体异常吞掉不阻断事件分发（排行投影订阅先例）。
 /// </para>
 /// </summary>
 /// <remarks>
-/// The match-domain bridge composition-root wiring (C246, following the C244 friend-domain shape):
+/// The match-domain bridge composition-root wiring (following the friend-domain shape):
 /// the bridge lifecycle orchestration for the Game-shape startup chain — lease publication after the
 /// business runtime starts, an assignment-event subscription for the match-made notification push, and
 /// lease retraction on the shutdown path. Publish and retract stay paired inside the same composition
@@ -54,7 +54,7 @@ namespace GameFrameX.Launcher.Online;
 /// discloses an Error and returns null without throwing (the absence state is carried by explicit
 /// domain-420 message failures — there is no fallback target); the notification push is best-effort —
 /// offline players without sessions are skipped silently and fall back to status polling; subscriber
-/// exceptions are swallowed so event dispatch never breaks (the C245 leaderboard-projection precedent).
+/// exceptions are swallowed so event dispatch never breaks (the leaderboard-projection precedent).
 /// </remarks>
 public static class OnlineMatchDomainBridgeWiring
 {

@@ -22,7 +22,7 @@
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 好友列表条目（桥接契约 DTO，C243）：好友查询面向 Hotfix 协议面的最小读模型。
+/// 好友列表条目（桥接契约 DTO）：好友查询面向 Hotfix 协议面的最小读模型。
 /// <para>
 /// 维护约束：字段集与域层好友摘要的最小消费集对齐（标识 / 展示名 / 归属区服 / 在线即时事实 / 建立时刻）；
 /// 展示名未装配玩家目录时回退标识字面量、在线未装配探针时恒为 <c>false</c>——两处缺席均为披露态，
@@ -30,7 +30,7 @@ namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 /// </para>
 /// </summary>
 /// <remarks>
-/// The friend-list entry (the bridge contract DTO, C243): the minimal read model of the friend query
+/// The friend-list entry (the bridge contract DTO): the minimal read model of the friend query
 /// exposed to the Hotfix protocol face. The field set mirrors the minimal consumption set of the
 /// domain friend summary (identity / display name / server / online-now fact / established-at);
 /// a missing player directory degrades names to id literals and a missing presence probe reads

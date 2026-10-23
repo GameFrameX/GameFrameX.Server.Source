@@ -40,7 +40,7 @@ namespace GameFrameX.Discovery;
 /// route-table reader here at the end of <c>Activate</c>: startup flows flip the announced
 /// status from Booting to Active through <see cref="MarkActiveAsync"/> and the composition
 /// root reads <see cref="RouteTableProvider"/> for <c>DiscoveryRoutingWire.Initialize</c>,
-/// both without branching on the database provider enum (C213). The slots hold whichever
+/// both without branching on the database provider enum. The slots hold whichever
 /// runtime actually activated (rather than what a setting claims) and stay null when the
 /// discovery layer was never activated — <see cref="MarkActiveAsync"/> is then a harmless
 /// no-op, and a null <see cref="RouteTableProvider"/> keeps the routing seam's
@@ -83,7 +83,7 @@ public static class ActiveDiscoveryRuntime
     }
 
     /// <summary>
-    /// 登记激活完成的读侧路由表（由 Provider Runtime 在 Activate 末尾与 <see cref="Bind"/> 成对调用，C213）。
+    /// 登记激活完成的读侧路由表（由 Provider Runtime 在 Activate 末尾与 <see cref="Bind"/> 成对调用）。
     /// </summary>
     /// <remarks>
     /// Publishes the route-table reader. Production activation is mutually exclusive

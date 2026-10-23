@@ -40,10 +40,10 @@ using GameFrameX.Capability.Online.Persistence.Social;
 using GameFrameX.Capability.Online.Social;
 
 /// <summary>
-/// Online 分级持久化适配包的 hosting 扩展（C249，D3 = 3A；C244 增补好友域）：
+/// Online 分级持久化适配包的 hosting 扩展（含好友域）：
 /// <see cref="UseOnlineGameDbStores"/> 一次性预置五个一级 store 的 GameDb 实现进共享服务面。
 /// <para>
-/// 装配语义（对齐 C231 替换缝族）：预置发生在能力模块 <c>Register</c> 之前——Foundation /
+/// 装配语义（对齐替换缝族约定）：预置发生在能力模块 <c>Register</c> 之前——Foundation /
 /// Assets / Social 模块探测共享面命中即采用，未命中仍构造 InMemory 默认（缺省路径零变化红线）；
 /// 预置的 store 实例无进程内状态缓存（读路径恒直达数据库，实例重建即等价进程重启）。
 /// 前置约束：调用前 <see cref="GameFrameX.DataBase.GameDb"/> 静态门面必须已完成 Init
@@ -62,9 +62,9 @@ public static class OnlinePersistenceHostingExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        // 接口键显式注册（C245 修复）：服务键 = 调用点 TService 类型（无接口自动映射）——
+        // 接口键显式注册：服务键 = 调用点 TService 类型（无接口自动映射）——
         // 此前以具体类型注册导致模块 Register 期的 IOnline*Store 接口探测永不命中，
-        // GameDb 持久化在生产组合根下静默回落 InMemory（C249 spec「探测命中即采用」声明被背离）。
+        // GameDb 持久化在生产组合根下静默回落 InMemory（背离「探测命中即采用」声明）。
         builder.UseService<IOnlineIdentityStore>(new GameDbOnlineIdentityStore());
         builder.UseService<IOnlinePlayerStorageStore>(new GameDbOnlinePlayerStorageStore());
         builder.UseService<IOnlineAssetStore>(new GameDbOnlineAssetStore());

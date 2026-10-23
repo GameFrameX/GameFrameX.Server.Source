@@ -70,7 +70,7 @@ public class GameAppLogTypeTests : IDisposable
     }
 
     /// <summary>
-    /// 二次调用（模拟同进程第二个 Role 启动）不覆盖：LogType 不漂移到最后启动的 Role（D20#4）。
+    /// 二次调用（模拟同进程第二个 Role 启动）不覆盖：LogType 不漂移到最后启动的 Role。
     /// </summary>
     [Fact]
     public void SetLogTypeOnce_SecondCall_DoesNotDrift()

@@ -37,7 +37,7 @@ using GameFrameX.Proto.Proto;
 
 namespace GameFrameX.Client.Bot;
 /// <summary>
-/// 匹配场景脚本（C246 匹配域接管真会话 E2E 载体，沿好友 / RPS 场景形态）：
+/// 匹配场景脚本（匹配域接管真会话 E2E 载体，沿好友 / RPS 场景形态）：
 /// 登录成功后入队（1v1 / 评分 1000）——即时窗口成组者响应直接带对局标识，
 /// 等待方经 <c>NotifyMatchMade</c> 服务端推送或状态轮询获知，随后双方各自入场断言同一运行态对局。
 /// </summary>
@@ -118,7 +118,7 @@ public sealed partial class BotClient
     }
 
     /// <summary>
-    /// 入场响应：断言双方到达同一运行态对局；match 场景下首次入场成功后安排断线恢复演练（C204）。
+    /// 入场响应：断言双方到达同一运行态对局；match 场景下首次入场成功后安排断线恢复演练。
     /// </summary>
     /// <param name="msg">入场响应。</param>
     private void OnMatchEnterResponse(RespMatchEnter msg)
@@ -132,7 +132,7 @@ public sealed partial class BotClient
 
         if (_resumedOnce)
         {
-            // C204 恢复后重入同一对局（幂等）——新连接上"继续同一局"的可观测业务交互证据。
+            // 恢复后重入同一对局（幂等）——新连接上"继续同一局"的可观测业务交互证据。
             // Localization: Client.Bot.MatchResumeEnterResponse - 机器人-{0}恢复后重入场响应 MatchId={1} Started={2} ErrorCode={3}
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.MatchResumeEnterResponse, m_BotName, msg.MatchId, msg.Started, msg.ErrorCode));
             return;
@@ -142,7 +142,7 @@ public sealed partial class BotClient
     }
 
     /// <summary>
-    /// 会话恢复响应（C204）：断线后新连接恢复身份与对局的断言与证据链——
+    /// 会话恢复响应：断线后新连接恢复身份与对局的断言与证据链——
     /// 首次恢复断言同玩家 / 同对局 / 凭据已轮换；随后重放旧凭据取证拒绝；再幂等重入同一局。
     /// </summary>
     /// <param name="msg">恢复响应。</param>

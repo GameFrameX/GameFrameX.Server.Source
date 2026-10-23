@@ -33,7 +33,7 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Abstractions.Bridges;
 
 /// <summary>
-/// 好友域桥发布器（C244，沿 C243/C245 holder 形态）：进程级类型化 holder——
+/// 好友域桥发布器：进程级类型化 holder——
 /// 组合根（Game 型启动）在业务运行时启动后发布 <see cref="OnlineFriendDomainBridgeLease"/>，
 /// 进程停止前撤销；消费方（Hotfix 薄适配器）逐请求读取 <see cref="Current"/>，不缓存引用。
 /// <para>
@@ -42,7 +42,7 @@ namespace GameFrameX.Capability.Online.Abstractions.Bridges;
 /// </para>
 /// </summary>
 /// <remarks>
-/// The friend-domain bridge publisher (C244, following the C243/C245 holder shape): the process-wide
+/// The friend-domain bridge publisher: the process-wide
 /// typed holder — the composition root (the Game-shape startup) publishes an
 /// <see cref="OnlineFriendDomainBridgeLease"/> after the business runtime starts and retracts it
 /// before process shutdown; consumers (the Hotfix thin adapter) read <see cref="Current"/> per

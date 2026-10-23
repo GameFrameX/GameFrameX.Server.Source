@@ -38,7 +38,7 @@ using GameFrameX.Utility.Setting;
 namespace GameFrameX.Hotfix.Logic.ServerRole.SessionResume;
 
 /// <summary>
-/// 会话恢复域桥薄适配器（C204，220-18 协议入口的唯一编排点）：Core 物理连接会话与 Online
+/// 会话恢复域桥薄适配器（220-18 协议入口的唯一编排点）：Core 物理连接会话与 Online
 /// 逻辑会话 / 对局恢复的协同转发——登录签发凭据、新连接恢复（验证 + Core 绑定 + 顶号编排 + 对局恢复）、
 /// 断线两层协同通知。
 /// <para>
@@ -60,7 +60,7 @@ internal static class SessionResumeDomainBridge
     internal const int ReconnectWindowSeconds = 30;
 
     /// <summary>
-    /// 登录签发会话恢复凭据（C204 断线前凭据交付）。
+    /// 登录签发会话恢复凭据（断线前凭据交付）。
     /// </summary>
     /// <param name="playerId">会话绑定玩家标识。</param>
     /// <param name="connectionId">当前物理连接标识（Core SessionId）。</param>
@@ -165,7 +165,7 @@ internal static class SessionResumeDomainBridge
     }
 
     /// <summary>
-    /// 断线两层协同（C204 T3）：物理断开后通知 Online 会话域开重连窗、对局域标记断线成员。
+    /// 断线两层协同：物理断开后通知 Online 会话域开重连窗、对局域标记断线成员。
     /// 旧回调迟到守卫——玩家已持新会话（恢复先于旧回调到达）时跳过，不误开窗 / 不误标记重连成员。
     /// </summary>
     /// <param name="playerId">断线玩家标识。</param>

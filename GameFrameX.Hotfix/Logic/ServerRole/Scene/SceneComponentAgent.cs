@@ -38,7 +38,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Scene;
 /// 场景在线服务器（Scene Role）业务组件代理：进入/离开/查询场景在线列表。
 /// </summary>
 /// <remarks>
-/// Scene Role 独立业务逻辑系统（C197 垂直切片）的热更侧落点。
+/// Scene Role 独立业务逻辑系统（垂直切片）的热更侧落点。
 /// 业务规则判定一律委托 <see cref="SceneRules"/>（纯函数，可单测）；
 /// 本类只做状态编排：场景懒创建、幂等进入、离开移除与在线列表回填。
 /// </remarks>

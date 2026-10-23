@@ -3,7 +3,7 @@
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <RootNamespace>{{Name}}</RootNamespace>
-        <!-- 最小组合根宿主（gfx-online 模板生成，C230）：不打包、不入 Server.slnx，独立 dotnet build。 -->
+        <!-- 最小组合根宿主（gfx-online 模板生成）：不打包、不入 Server.slnx，独立 dotnet build。 -->
         <IsPackable>false</IsPackable>
         <!-- 覆写仓根 Directory.Build.props 的共享输出（../bin/app_debug），产物隔离在本工程 bin/ 下。 -->
         <OutputPath>bin</OutputPath>

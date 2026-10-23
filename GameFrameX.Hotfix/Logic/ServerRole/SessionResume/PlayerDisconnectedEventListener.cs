@@ -34,22 +34,18 @@ using GameFrameX.Hotfix.Logic.Game.Room;
 namespace GameFrameX.Hotfix.Logic.ServerRole.SessionResume;
 
 /// <summary>
-/// 玩家物理断开业务监听器（C284 宿主→热更事件桥接承接方）：房间断线标记 + 会话恢复两层协同通知
-///（语句自原热更侧 <c>AppStartUpHotfixGame.OnDisconnected</c> 内联段搬移，语义逐字保持；
-/// 原名，C285 更名为 HotfixModuleLifecycleBridge）。
+/// 玩家物理断开业务监听器（宿主→热更事件桥接承接方）：房间断线标记 + 会话恢复两层协同通知。
 /// </summary>
 /// <remarks>
-/// The player-disconnect business listener (the C284 host-to-hotfix event-bridging sink): marks the
-/// player disconnected in the room system and notifies the session-resume two-layer coordination
-/// (statements moved verbatim from the inlined block of the former hotfix-side
-/// <c>AppStartUpHotfixGame.OnDisconnected</c>; renamed <c>HotfixModuleLifecycleBridge</c> in C285).
+/// The player-disconnect business listener (the host-to-hotfix event-bridging sink): marks the
+/// player disconnected in the room system and notifies the session-resume two-layer coordination.
 /// 全局分发（actorId = 0）下代理参数为 null，
-/// 房间代理在处理内自取（与原内联段同源 <c>ActorManager.GetComponentAgent</c> 全局重载）；
+/// 房间代理在处理内自取（<c>ActorManager.GetComponentAgent</c> 全局重载）；
 /// <see cref="SessionResumeDomainBridge.NotifyPlayerDisconnectedAsync"/> 自带旧回调迟到守卫，
 /// 恢复先于旧断开回调到达时安全跳过。
 /// Under the global dispatch (actorId = 0) the agent parameter is null; the room agent is fetched
-/// inside the handler (the same global <c>ActorManager.GetComponentAgent</c> overload as the
-/// original inlined block), and <see cref="SessionResumeDomainBridge.NotifyPlayerDisconnectedAsync"/>
+/// inside the handler (via the global <c>ActorManager.GetComponentAgent</c> overload), and
+/// <see cref="SessionResumeDomainBridge.NotifyPlayerDisconnectedAsync"/>
 /// carries its own stale-callback guard — a resume that outruns the stale disconnect callback is
 /// skipped safely.
 /// </remarks>
@@ -58,7 +54,7 @@ internal sealed class PlayerDisconnectedEventListener : EventListener<RoomCompon
 {
     /// <summary>
     /// 承接玩家物理断开业务：房间断线标记（等待重连或超时清理）+ 会话恢复两层协同通知
-    ///（C204 会话域开重连窗 + 对局域标记断线成员）。
+    ///（会话域开重连窗 + 对局域标记断线成员）。
     /// </summary>
     /// <param name="agent">全局分发下恒为 null（代理在处理内自取）/ Always null under the global dispatch (the agent is fetched inside)</param>
     /// <param name="gameEventArgs">断开事件参数 / The disconnect event args</param>
@@ -71,7 +67,7 @@ internal sealed class PlayerDisconnectedEventListener : EventListener<RoomCompon
         var roomAgent = await ActorManager.GetComponentAgentAsync<RoomComponentAgent>();
         await roomAgent.MarkPlayerDisconnectedAsync(eventArgs.PlayerId);
 
-        // C204 两层会话协同：Online 会话域开重连窗 + 对局域标记断线成员（含旧回调迟到守卫）。
+        // 两层会话协同：Online 会话域开重连窗 + 对局域标记断线成员（含旧回调迟到守卫）。
         await SessionResumeDomainBridge.NotifyPlayerDisconnectedAsync(eventArgs.PlayerId, eventArgs.SessionId);
     }
 }

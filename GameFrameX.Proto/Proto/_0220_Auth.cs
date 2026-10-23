@@ -308,10 +308,10 @@ namespace GameFrameX.Proto.Proto
 	}
 
 	/// <summary>
-	/// 会话恢复成员快照项（C204）
+	/// 会话恢复成员快照项
 	/// </summary>
 	[ProtoContract]
-	[System.ComponentModel.Description("会话恢复成员快照项（C204）")]
+	[System.ComponentModel.Description("会话恢复成员快照项")]
 	public sealed class SessionResumeMemberInfo : MessageObject
 	{
 		/// <summary>
@@ -336,10 +336,10 @@ namespace GameFrameX.Proto.Proto
 	}
 
 	/// <summary>
-	/// 请求会话恢复（C204：新物理连接携带登录时获得的会话凭据恢复身份与对局）
+	/// 请求会话恢复（新物理连接携带登录时获得的会话凭据恢复身份与对局）
 	/// </summary>
 	[ProtoContract]
-	[System.ComponentModel.Description("请求会话恢复（C204：新物理连接携带登录时获得的会话凭据恢复身份与对局）")]
+	[System.ComponentModel.Description("请求会话恢复（新物理连接携带登录时获得的会话凭据恢复身份与对局）")]
 	[MessageTypeHandler(((220) << 16) + 18)]
 	public sealed class ReqSessionResume : MessageObject, IRequestMessage
 	{
@@ -365,10 +365,10 @@ namespace GameFrameX.Proto.Proto
 	}
 
 	/// <summary>
-	/// 返回会话恢复（C204：恢复后的身份绑定、轮换新凭据与对局快照/增量）
+	/// 返回会话恢复（恢复后的身份绑定、轮换新凭据与对局快照/增量）
 	/// </summary>
 	[ProtoContract]
-	[System.ComponentModel.Description("返回会话恢复（C204：恢复后的身份绑定、轮换新凭据与对局快照/增量）")]
+	[System.ComponentModel.Description("返回会话恢复（恢复后的身份绑定、轮换新凭据与对局快照/增量）")]
 	[MessageTypeHandler(((220) << 16) + 19)]
 	public sealed class RespSessionResume : MessageObject, IResponseMessage
 	{

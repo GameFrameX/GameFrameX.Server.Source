@@ -37,7 +37,7 @@ using Xunit;
 namespace GameFrameX.Hotfix.Tests;
 
 /// <summary>
-/// Trade 业务纯规则测试（C197 Phase 2）。
+/// Trade 业务纯规则测试。
 /// </summary>
 /// <remarks>
 /// 覆盖挂单参数校验、价格优先排序（买高价优先 / 卖低价优先、同价时间优先）、

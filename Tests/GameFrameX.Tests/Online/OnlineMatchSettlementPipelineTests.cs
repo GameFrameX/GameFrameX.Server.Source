@@ -34,7 +34,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 对局结算管线测试（C245）：Tick 驱动结算 + 发奖、发奖失败待重试、可空分发器、并发串行安全。
+    /// 对局结算管线测试：Tick 驱动结算 + 发奖、发奖失败待重试、可空分发器、并发串行安全。
     /// </summary>
     public class OnlineMatchSettlementPipelineTests
     {

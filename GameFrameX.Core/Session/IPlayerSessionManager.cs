@@ -33,7 +33,7 @@ using GameFrameX.Network.Abstractions;
 namespace GameFrameX.Core.Session;
 
 /// <summary>
-/// 玩家运行时会话管理器契约。成员仅镜像 <see cref="PlayerSessionManager"/> 既有公共面（C192 接口化裁定），不补充新成员；
+/// 玩家运行时会话管理器契约。成员仅镜像 <see cref="PlayerSessionManager"/> 既有公共面，不补充新成员；
 /// 获取路径为 <c>PlayerSessionManager.Instance</c>（locator 式静态入口，仓内无 DI 容器）。
 /// </summary>
 public interface IPlayerSessionManager

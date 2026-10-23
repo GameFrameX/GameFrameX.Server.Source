@@ -28,7 +28,7 @@ using GameFrameX.Capability.Online.Abstractions.Contracts;
 namespace GameFrameX.Capability.Online.Match;
 
 /// <summary>
-/// 对局结算管线（C245）：Tick 驱动的「结算 → 发奖 → 失败重投」生产编排。
+/// 对局结算管线：Tick 驱动的「结算 → 发奖 → 失败重投」生产编排。
 /// <para>
 /// 维护约束（红线）：① Tick 互斥（并发双 Tick 串行安全）；② 不宣称「恰好一次」——结算幂等由
 /// <see cref="OnlineMatchSettlementService"/>（首结果获胜）、发奖幂等由
@@ -42,7 +42,7 @@ namespace GameFrameX.Capability.Online.Match;
 /// </para>
 /// </summary>
 /// <remarks>
-/// The settlement pipeline (C245): the tick-driven "settle → grant → retry failed grants" production
+/// The settlement pipeline: the tick-driven "settle → grant → retry failed grants" production
 /// orchestration. Ticks are mutually exclusive (concurrent ticks serialize); no exactly-once claim is
 /// made — settlement idempotency comes from the settlement service (first result wins) and grant
 /// idempotency from the dispatcher's <c>{MatchResultId}-{PlayerId}</c> keys, while this pipeline only

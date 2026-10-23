@@ -30,11 +30,11 @@
 namespace GameFrameX.Capability.Online.Competition;
 
 /// <summary>
-/// 竞技能力包级选项（C232 P4 迁入；当前无包级编排参数，占位对齐包族选项形态——
+/// 竞技能力包级选项（当前无包级编排参数，占位对齐包族选项形态——
 /// 榜单选项在 <see cref="Leaderboard.OnlineLeaderboardOptions"/> 域级定义）。
 /// </summary>
 /// <remarks>
-/// Package-level options of the competition capability (migrated by C232 P4; currently a placeholder
+/// Package-level options of the competition capability (currently a placeholder
 /// with no orchestration parameters — leaderboard options live at the domain level).
 /// </remarks>
 public sealed class OnlineCompetitionOptions

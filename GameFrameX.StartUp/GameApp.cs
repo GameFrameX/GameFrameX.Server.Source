@@ -470,7 +470,7 @@ public static class GameApp
             property.SetValue(roleSetting, property.GetValue(launcherOptions));
         }
 
-        // CLI 启动决策面的能力过滤投影：仅当别名显式提供时落嵌套强类型段（C229）；
+        // CLI 启动决策面的能力过滤投影：仅当别名显式提供时落嵌套强类型段；
         // 配置段优先链不变——有 json 配置段的 Role 不会走到本回落档。
         var onlineCapabilities = launcherOptions.GetOnlineCapabilities();
         var onlineDisable = launcherOptions.GetOnlineDisable();
@@ -503,7 +503,7 @@ public static class GameApp
             return;
         }
 
-        // Localization: StartUp.Application.DuplicateStartupPriorities - 检测到重复的启动优先级；这些角色之间的多角色启动顺序不稳定 (C143b) — {0}
+        // Localization: StartUp.Application.DuplicateStartupPriorities - 检测到重复的启动优先级；这些角色之间的多角色启动顺序不稳定 — {0}
         LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.Application.DuplicateStartupPriorities, conflictTable));
     }
 
@@ -608,7 +608,7 @@ public static class GameApp
 
         if (launcherOptions.AllInOne)
         {
-            // All-in-One：拉起全部已注册 Role（D2）；--ServerType 并存时不参与选择，提示被覆盖
+            // All-in-One：拉起全部已注册 Role；--ServerType 并存时不参与选择，提示被覆盖
             if (serverTypes.Length > 0)
             {
                 // Localization: StartUp.Application.ServerTypeOverriddenByAllInOne - --AllInOne 已生效；指定的 --ServerType 值 '{0}' 被忽略，将拉起全部已注册 Role。

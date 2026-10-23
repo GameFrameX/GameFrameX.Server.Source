@@ -30,10 +30,10 @@
 namespace GameFrameX.Capability.Online.Operations;
 
 /// <summary>
-/// 运营聚合能力包级选项（C232 P5 迁入；当前无包级编排参数，占位对齐包族选项形态）。
+/// 运营聚合能力包级选项（当前无包级编排参数，占位对齐包族选项形态）。
 /// </summary>
 /// <remarks>
-/// Package-level options of the operations capability (migrated by C232 P5; currently a placeholder
+/// Package-level options of the operations capability (currently a placeholder
 /// with no orchestration parameters).
 /// </remarks>
 public sealed class OnlineOperationsOptions

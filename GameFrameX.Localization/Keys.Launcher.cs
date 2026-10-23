@@ -156,7 +156,7 @@ public static partial class Keys
         /// </summary>
         /// <remarks>
         /// 键名: Launcher.OnlineFriendBridgePublished
-        /// 用途: 记录好友查询桥租约发布（C243 组合根接线）
+        /// 用途: 记录好友查询桥租约发布（组合根接线）
         /// 参数: {0} - 租户标识；{1} - 应用标识；{2} - 区服标识
         /// </remarks>
         public const string OnlineFriendBridgePublished = "Launcher.OnlineFriendBridgePublished";
@@ -175,7 +175,7 @@ public static partial class Keys
         /// </summary>
         /// <remarks>
         /// 键名: Launcher.OnlineFriendBridgeSeeded
-        /// 用途: 披露验证种子经真实服务写路径建立的好友关系（C243）
+        /// 用途: 披露验证种子经真实服务写路径建立的好友关系
         /// 参数: {0} - 请求主体（玩家全局 actor）标识；{1} - 建立成功的好友数
         /// </remarks>
         public const string OnlineFriendBridgeSeeded = "Launcher.OnlineFriendBridgeSeeded";
@@ -185,7 +185,7 @@ public static partial class Keys
         /// </summary>
         /// <remarks>
         /// 键名: Launcher.OnlineFriendBridgeFaceMissing
-        /// 用途: C244 好友域接管：发布期无法解析好友域契约面或授权作用域（Error 披露，不终止启动）
+        /// 用途: 好友域接管：发布期无法解析好友域契约面或授权作用域（Error 披露，不终止启动）
         /// </remarks>
         public const string OnlineFriendBridgeFaceMissing = "Launcher.OnlineFriendBridgeFaceMissing";
 
@@ -194,7 +194,7 @@ public static partial class Keys
         /// </summary>
         /// <remarks>
         /// 键名: Launcher.OnlineFriendLegacyMigrationEntryFailed
-        /// 用途: C244 旧好友数据迁移单条收敛失败时逐条披露（containment，不中断整体迁移）
+        /// 用途: 旧好友数据迁移单条收敛失败时逐条披露（containment，不中断整体迁移）
         /// 参数: {0} - 一侧玩家ID；{1} - 另一侧玩家ID；{2} - 协议错误码；{3} - 失败描述
         /// </remarks>
         public const string OnlineFriendLegacyMigrationEntryFailed = "Launcher.OnlineFriendLegacyMigrationEntryFailed";
@@ -204,7 +204,7 @@ public static partial class Keys
         /// </summary>
         /// <remarks>
         /// 键名: Launcher.OnlineFriendLegacyMigrationDone
-        /// 用途: C244 旧好友数据一次性迁移的汇总披露
+        /// 用途: 旧好友数据一次性迁移的汇总披露
         /// 参数: {0} - 已建立关系数；{1} - 待答申请数；{2} - 失败数
         /// </remarks>
         public const string OnlineFriendLegacyMigrationDone = "Launcher.OnlineFriendLegacyMigrationDone";
@@ -214,7 +214,7 @@ public static partial class Keys
         /// </summary>
         /// <remarks>
         /// 键名: Launcher.OnlineMatchBridgePublished
-        /// 用途: 记录对局桥租约发布（C245 组合根接线）
+        /// 用途: 记录对局桥租约发布（组合根接线）
         /// 参数: {0} - 租户标识；{1} - 应用标识；{2} - 区服标识
         /// </remarks>
         public const string OnlineMatchBridgePublished = "Launcher.OnlineMatchBridgePublished";
@@ -233,7 +233,7 @@ public static partial class Keys
         /// </summary>
         /// <remarks>
         /// 键名: Launcher.OnlineMatchBridgeBoardEnsured
-        /// 用途: 披露组合根经真实榜单服务确保写榜目标存在（C245）；已存在时幂等跳过
+        /// 用途: 披露组合根经真实榜单服务确保写榜目标存在；已存在时幂等跳过
         /// 参数: {0} - 榜单标识
         /// </remarks>
         public const string OnlineMatchBridgeBoardEnsured = "Launcher.OnlineMatchBridgeBoardEnsured";
@@ -243,7 +243,7 @@ public static partial class Keys
         /// </summary>
         /// <remarks>
         /// 键名: Launcher.OnlineMatchBridgeRuntimeGateMissing
-        /// 用途: C245 组合根 fail-fast：桥开关与业务运行时开关矛盾
+        /// 用途: 组合根 fail-fast：桥开关与业务运行时开关矛盾
         /// </remarks>
         public const string OnlineMatchBridgeRuntimeGateMissing = "Launcher.OnlineMatchBridgeRuntimeGateMissing";
 
@@ -252,7 +252,7 @@ public static partial class Keys
         /// </summary>
         /// <remarks>
         /// 键名: Launcher.OnlineMatchBridgeScopeMissing
-        /// 用途: C245 组合根 fail-fast：桥开关开启但授权作用域不完整
+        /// 用途: 组合根 fail-fast：桥开关开启但授权作用域不完整
         /// </remarks>
         public const string OnlineMatchBridgeScopeMissing = "Launcher.OnlineMatchBridgeScopeMissing";
 
@@ -261,7 +261,7 @@ public static partial class Keys
         /// </summary>
         /// <remarks>
         /// 键名: Launcher.OnlineMatchBridgeFaceMissing
-        /// 用途: C245 组合根 fail-fast：发布期无法解析对局桥契约面或授权作用域
+        /// 用途: 组合根 fail-fast：发布期无法解析对局桥契约面或授权作用域
         /// </remarks>
         public const string OnlineMatchBridgeFaceMissing = "Launcher.OnlineMatchBridgeFaceMissing";
 
@@ -270,7 +270,7 @@ public static partial class Keys
         /// </summary>
         /// <remarks>
         /// 键名: Launcher.OnlineMatchBridgeBoardEnsureFailed
-        /// 用途: C245 组合根：写榜目标榜单确保失败（配置矛盾或榜单服务不可用），启动终止
+        /// 用途: 组合根：写榜目标榜单确保失败（配置矛盾或榜单服务不可用），启动终止
         /// 参数: {0} - 榜单标识；{1} - 错误码；{2} - 错误消息
         /// </remarks>
         public const string OnlineMatchBridgeBoardEnsureFailed = "Launcher.OnlineMatchBridgeBoardEnsureFailed";
@@ -280,7 +280,7 @@ public static partial class Keys
         /// </summary>
         /// <remarks>
         /// 键名: Launcher.OnlineMatchDomainBridgeFaceMissing
-        /// 用途: C246 组合根：发布期无法解析匹配域契约面或授权作用域，Error 披露不抛出
+        /// 用途: 组合根：发布期无法解析匹配域契约面或授权作用域，Error 披露不抛出
         /// </remarks>
         public const string OnlineMatchDomainBridgeFaceMissing = "Launcher.OnlineMatchDomainBridgeFaceMissing";
 
@@ -289,7 +289,7 @@ public static partial class Keys
         /// </summary>
         /// <remarks>
         /// 键名: Launcher.OnlineMatchDomainBridgePublished
-        /// 用途: C246 组合根：匹配域桥租约发布确认
+        /// 用途: 组合根：匹配域桥租约发布确认
         /// 参数: {0} - 租户标识；{1} - 应用标识；{2} - 区服标识
         /// </remarks>
         public const string OnlineMatchDomainBridgePublished = "Launcher.OnlineMatchDomainBridgePublished";
@@ -299,7 +299,7 @@ public static partial class Keys
         /// </summary>
         /// <remarks>
         /// 键名: Launcher.OnlineMatchDomainBridgeNotifyMissing
-        /// 用途: C246 组合根：匹配成功通知订阅装配缺席披露
+        /// 用途: 组合根：匹配成功通知订阅装配缺席披露
         /// </remarks>
         public const string OnlineMatchDomainBridgeNotifyMissing = "Launcher.OnlineMatchDomainBridgeNotifyMissing";
 
@@ -308,7 +308,7 @@ public static partial class Keys
         /// </summary>
         /// <remarks>
         /// 键名: Launcher.OnlineMatchDomainBridgeRetracted
-        /// 用途: C246 组合根：匹配域桥租约撤销确认
+        /// 用途: 组合根：匹配域桥租约撤销确认
         /// </remarks>
         public const string OnlineMatchDomainBridgeRetracted = "Launcher.OnlineMatchDomainBridgeRetracted";
 
@@ -317,7 +317,7 @@ public static partial class Keys
         /// </summary>
         /// <remarks>
         /// 键名: Launcher.OnlineSessionDomainBridgePublished
-        /// 用途: C204 组合根：会话域桥租约发布确认
+        /// 用途: 组合根：会话域桥租约发布确认
         /// 参数: {0} - 租户标识；{1} - 应用标识；{2} - 区服标识
         /// </remarks>
         public const string OnlineSessionDomainBridgePublished = "Launcher.OnlineSessionDomainBridgePublished";
@@ -327,7 +327,7 @@ public static partial class Keys
         /// </summary>
         /// <remarks>
         /// 键名: Launcher.OnlineSessionDomainBridgeFaceMissing
-        /// 用途: C204 组合根：会话域桥契约面缺席披露（登录不下发凭据、恢复请求显式失败）
+        /// 用途: 组合根：会话域桥契约面缺席披露（登录不下发凭据、恢复请求显式失败）
         /// </remarks>
         public const string OnlineSessionDomainBridgeFaceMissing = "Launcher.OnlineSessionDomainBridgeFaceMissing";
 
@@ -336,7 +336,7 @@ public static partial class Keys
         /// </summary>
         /// <remarks>
         /// 键名: Launcher.OnlineSessionDomainBridgeRetracted
-        /// 用途: C204 组合根：会话域桥租约撤销确认
+        /// 用途: 组合根：会话域桥租约撤销确认
         /// </remarks>
         public const string OnlineSessionDomainBridgeRetracted = "Launcher.OnlineSessionDomainBridgeRetracted";
 

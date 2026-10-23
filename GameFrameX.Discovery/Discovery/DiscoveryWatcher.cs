@@ -36,8 +36,7 @@ namespace GameFrameX.Discovery;
 /// 通用心跳读侧（自 Mongo / PG 平行实现归一，消费 <see cref="IHeartbeatStore"/>）。
 /// </summary>
 /// <remarks>
-/// The generic heartbeat reader (C167, unified from the Mongo / PostgreSQL
-/// parallel implementations; consumes <see cref="IHeartbeatStore"/> and never
+/// The generic heartbeat reader (consumes <see cref="IHeartbeatStore"/> and never
 /// branches on the backend). Polls the control database <c>server_heartbeat</c>
 /// every interval (5 s default) without mutating it, judges each instance
 /// against the three-period staleness threshold (15 s by default — the primary
@@ -52,10 +51,10 @@ namespace GameFrameX.Discovery;
 public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
 {
     /// <summary>
-    /// 缺省轮询间隔（5s，D11）。
+    /// 缺省轮询间隔（5s）。
     /// </summary>
     /// <remarks>
-    /// The default poll interval (5 s, D11).
+    /// The default poll interval (5 s).
     /// </remarks>
     public static readonly TimeSpan DefaultPollInterval = TimeSpan.FromSeconds(5);
 
@@ -153,7 +152,7 @@ public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
     /// 当前双视图路由表快照（volatile 原子替换不可变快照）。
     /// </summary>
     /// <remarks>
-    /// The current dual-view snapshot (D15: volatile write of an immutable snapshot,
+    /// The current dual-view snapshot (volatile write of an immutable snapshot,
     /// so lock-free readers always observe a fully-built table).
     /// </remarks>
     private volatile RoleRouteTable _currentTable = RoleRouteTable.Empty;

@@ -35,7 +35,7 @@ using Xunit;
 namespace GameFrameX.Hotfix.Tests;
 
 /// <summary>
-/// Guild 业务纯规则测试（C197 Phase 2）。
+/// Guild 业务纯规则测试。
 /// </summary>
 /// <remarks>
 /// 覆盖公会名称校验边界与经验升级阈值换算（等级 = 1 + 经验 / 100）。

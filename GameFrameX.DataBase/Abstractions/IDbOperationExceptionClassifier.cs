@@ -31,7 +31,7 @@
 namespace GameFrameX.DataBase.Abstractions;
 
 /// <summary>
-/// Provider 异常分类器契约——语句级与事务级两级重试判定的唯一 provider 差异面（C253）。
+/// Provider 异常分类器契约——语句级与事务级两级重试判定的唯一 provider 差异面。
 /// </summary>
 /// <remarks>
 /// Provider exception classifier contract: the single provider-specific surface of the shared

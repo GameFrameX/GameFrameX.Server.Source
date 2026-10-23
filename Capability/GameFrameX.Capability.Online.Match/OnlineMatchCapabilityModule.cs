@@ -38,7 +38,7 @@ using GameFrameX.Capability.Online.Match.AdminApi;
 namespace GameFrameX.Capability.Online.Match;
 
 /// <summary>
-/// 对局能力（权威对局 Actor / 重连 / 幂等结算 / 样例玩法）的自装配模块（C232 P4 迁入）。
+/// 对局能力（权威对局 Actor / 重连 / 幂等结算 / 样例玩法）的自装配模块。
 /// <para>
 /// 维护约束（服务共享协议）：模块无参构造（扫描可发现）；<c>Register</c> 自装配本域——对局 Actor / 结果
 /// 两个 store 经 <see cref="CapabilityRegistrationContext.TryGetService{TService}"/> 探测替换缝，未命中构造
@@ -48,7 +48,7 @@ namespace GameFrameX.Capability.Online.Match;
 /// </summary>
 /// <remarks>
 /// The self-assembling module of the match capability (authoritative match actor, reconnect, idempotent
-/// settlement and the sample game; migrated by C232 P4). The module has a parameterless constructor
+/// settlement and the sample game). The module has a parameterless constructor
 /// (discoverable by scanning); <c>Register</c> self-assembles the domain — the match actor / result stores
 /// probe the replacement seams with in-memory fallbacks; the cross-domain hard dependency (the event outlet)
 /// resolves through the context; outward products (store interfaces and the match runtime) are registered
@@ -71,12 +71,12 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
     private OnlineMatchRuntime _matchRuntime;
 
     /// <summary>
-    /// 结算管线（Register 期构造；tick 驱动「结算 → 发奖 → 失败重投」，C245）。
+    /// 结算管线（Register 期构造；tick 驱动「结算 → 发奖 → 失败重投」）。
     /// </summary>
     private OnlineMatchSettlementPipeline _settlementPipeline;
 
     /// <summary>
-    /// 对局桥服务（Register 期构造；对 <c>IOnlineMatchGameBridge</c> 契约面的本域实现，C245）。
+    /// 对局桥服务（Register 期构造；对 <c>IOnlineMatchGameBridge</c> 契约面的本域实现）。
     /// </summary>
     private OnlineMatchGameBridgeService _bridgeService;
 
@@ -99,7 +99,7 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
         context.AddService(_matchRuntime);
         context.AddTickJob("match-tick", ct => _matchRuntime.TickAllAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct));
 
-        // 结算编排（C245）：settlement + 可空 dispatcher（assets 缺席仅结算）+ tick 重投；桥服务注册回共享面。
+        // 结算编排：settlement + 可空 dispatcher（assets 缺席仅结算）+ tick 重投；桥服务注册回共享面。
         var grantService = context.TryGetService(out OnlineGrantService grant) ? grant : null;
         var settlementService = new OnlineMatchSettlementService(_matchRuntime, matchResultStore, eventPublisher);
         var dispatcher = grantService == null ? null : new OnlineMatchResultDispatcher(grantService);
@@ -109,7 +109,7 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
         _bridgeService = new OnlineMatchGameBridgeService(_matchRuntime, rpsGame);
         context.AddService<IOnlineMatchGameBridge>(_bridgeService);
 
-        // 匹配域桥服务（C246）：桥接票据撮合域（入队 / 取消 / 状态 / 即时窗口）与对局运行时（入场 create-or-reuse）。
+        // 匹配域桥服务：桥接票据撮合域（入队 / 取消 / 状态 / 即时窗口）与对局运行时（入场 create-or-reuse）。
         // 票据服务 / 撮合协调器经上下文解析（manifest 依赖 online-matchmaking 保证拓扑先序在场）；
         // online-matchmaking 被过滤时不装配不报错（grant 缺席装配先例）——420 协议面经 holder 得显式失败。
         if (context.TryGetService(out OnlineMatchTicketService domainTickets)

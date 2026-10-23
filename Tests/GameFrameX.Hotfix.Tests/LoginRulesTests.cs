@@ -35,7 +35,7 @@ using Xunit;
 namespace GameFrameX.Hotfix.Tests;
 
 /// <summary>
-/// Login 业务纯规则测试（C197 Phase 2）。
+/// Login 业务纯规则测试。
 /// </summary>
 /// <remarks>
 /// 覆盖 TTL 区间边界与令牌生成格式。

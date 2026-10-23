@@ -33,10 +33,10 @@ using System.Text;
 namespace GameFrameX.Network.RemoteMessaging.Versioning;
 
 /// <summary>
-/// 节点间 RPC 鉴权（C272）——进程级共享密钥配置与握手凭据的 HMAC 计算与校验。
+/// 节点间 RPC 鉴权——进程级共享密钥配置与握手凭据的 HMAC 计算与校验。
 /// </summary>
 /// <remarks>
-/// Inter-node RPC authentication (C272): the process-wide shared-secret configuration plus HMAC
+/// Inter-node RPC authentication: the process-wide shared-secret configuration plus HMAC
 /// computation and verification for handshake credentials.
 /// 密钥经 <see cref="Configure"/> 在启动期由宿主注入（单一事实源：<c>AppSetting.InterNodeAuthSecret</c>），
 /// 服务端漏斗握手短路、服务器间 KCP 专用监听的凭据闸门与拨号端握手帧三方共用本配置。

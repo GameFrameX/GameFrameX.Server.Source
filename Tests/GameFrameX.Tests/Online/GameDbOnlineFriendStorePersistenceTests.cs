@@ -39,10 +39,10 @@ using GameFrameX.DataBase.Sqlite;
 using Xunit;
 
 /// <summary>
-/// 好友关系 GameDb 适配层测试（C244 T3）。
+/// 好友关系 GameDb 适配层测试。
 /// </summary>
 /// <remarks>
-/// Tests for the GameDb adapter of the friendship store (C244 T3). Semantics facts run against
+/// Tests for the GameDb adapter of the friendship store. Semantics facts run against
 /// the static GameDb facade over embedded SQLite (in-memory mode) and anchor the store contract:
 /// create-if-absent returning the existing record without overwriting, undirected-pair lookup in
 /// both directions, CAS state transitions, renewal rewriting state/direction/expiry together,

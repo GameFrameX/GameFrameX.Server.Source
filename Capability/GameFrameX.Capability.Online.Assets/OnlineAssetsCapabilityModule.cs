@@ -39,7 +39,7 @@ using GameFrameX.Capability.Online.Abstractions.Idempotency;
 namespace GameFrameX.Capability.Online.Assets;
 
 /// <summary>
-/// 资产能力（钱包 / 库存 / 账本 / 统一发放）的自装配模块（C231 P3，自 Runtime 壳过渡模块无参化迁入）。
+/// 资产能力（钱包 / 库存 / 账本 / 统一发放）的自装配模块。
 /// <para>
 /// 维护约束（服务共享协议）：模块无参构造（<see cref="CapabilityAssembly"/> 扫描可发现）；<c>Register</c> 自装配本域——
 /// store 经 <see cref="CapabilityRegistrationContext.TryGetService{TService}"/> 探测组合根预置 / <c>UseOnlineAssetStore</c>
@@ -48,8 +48,8 @@ namespace GameFrameX.Capability.Online.Assets;
 /// </para>
 /// </summary>
 /// <remarks>
-/// The self-assembling module of the assets capability (wallet / inventory / ledger / unified granting;
-/// C231 P3, migrated from the Runtime-shell transitional module and made parameterless). The module has a
+/// The self-assembling module of the assets capability (wallet / inventory / ledger / unified granting).
+/// The module has a
 /// parameterless constructor (discoverable by <see cref="CapabilityAssembly"/> scanning); <c>Register</c>
 /// self-assembles the domain — stores probe the composition-root pre-seed / the <c>UseOnlineAssetStore</c>
 /// replacement seam via <see cref="CapabilityRegistrationContext.TryGetService{TService}"/> and fall back to

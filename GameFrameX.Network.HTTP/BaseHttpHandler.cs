@@ -104,7 +104,6 @@ public abstract class BaseHttpHandler : IHttpHandler
     /// </summary>
     /// <remarks>
     /// Computes the request signature: Base64(HMAC-SHA256(UTF8(timestamp), UTF8(HttpSignSecret))).
-    /// C271 起取代 md5+校验码旧方案（旧方案零秘密、任何读者可伪造，已删除）。
     /// </remarks>
     /// <param name="timestamp">unix 秒时间戳字符串 / Unix-second timestamp string</param>
     /// <returns>Base64 编码的签名 / Base64-encoded signature</returns>

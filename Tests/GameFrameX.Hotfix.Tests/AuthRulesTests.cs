@@ -36,7 +36,7 @@ using Xunit;
 namespace GameFrameX.Hotfix.Tests;
 
 /// <summary>
-/// Auth 业务纯规则测试（C197 Phase 2）。
+/// Auth 业务纯规则测试。
 /// </summary>
 /// <remarks>
 /// 覆盖权限码白名单判定边界。

@@ -156,11 +156,11 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
     }
 
     /// <summary>
-    /// 经玩家反查索引定位票据标识，不校验状态直接返回其副本（最近一次匹配尝试；C246 匹配域桥状态面读）。
+    /// 经玩家反查索引定位票据标识，不校验状态直接返回其副本（最近一次匹配尝试；匹配域桥状态面读）。
     /// </summary>
     /// <remarks>
     /// Locates the ticket id through the player reverse-lookup index and returns its copy regardless of state
-    /// (the latest matching attempt; the C246 match-domain bridge status face).
+    /// (the latest matching attempt; the match-domain bridge status face).
     /// </remarks>
     /// <param name="tenantId">租户标识 / Tenant id</param>
     /// <param name="appId">App 标识 / App id</param>

@@ -38,7 +38,7 @@ using GameFrameX.Utility.Setting;
 namespace GameFrameX.DataBase;
 
 /// <summary>
-/// 数据库提供者约定的反射解析器：按 <see cref="DatabaseProviderType"/> 经显式映射表创建实现实例（C177）。
+/// 数据库提供者约定的反射解析器：按 <see cref="DatabaseProviderType"/> 经显式映射表创建实现实例。
 /// </summary>
 /// <remarks>
 /// FreeSql-style convention resolution: the core project references no provider project, and the

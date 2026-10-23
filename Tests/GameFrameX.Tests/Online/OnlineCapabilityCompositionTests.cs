@@ -41,7 +41,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online;
 
 /// <summary>
-/// Online 能力单入口组合测试（C229）：双闸组合 × 过滤器形态、空列表全装配红线、
+/// Online 能力单入口组合测试：双闸组合 × 过滤器形态、空列表全装配红线、
 /// admin-only 目录如实反映配置排除、组合期 fail-fast（未知 Id / 闭包缺口 / 无面启用 / 选项非法）。
 /// </summary>
 public class OnlineCapabilityCompositionTests
@@ -92,7 +92,7 @@ public class OnlineCapabilityCompositionTests
     }
 
     /// <summary>
-    /// 生产装配面（C248）：业务运行时组合产物内 Hotfix 切换执行器与登记期制品获取器均为生产实现非空
+    /// 生产装配面：业务运行时组合产物内 Hotfix 切换执行器与登记期制品获取器均为生产实现非空
     ///（消除「生产路径恒缺席 8002」；替换缝仍开放）。
     /// </summary>
     [Fact]

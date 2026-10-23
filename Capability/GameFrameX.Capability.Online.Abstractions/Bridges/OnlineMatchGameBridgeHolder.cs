@@ -25,7 +25,7 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Abstractions.Bridges;
 
 /// <summary>
-/// 对局样例桥发布器（C245，沿 C243/C244 好友桥 holder 形态）：进程级类型化 holder——
+/// 对局样例桥发布器：进程级类型化 holder——
 /// 组合根（Game 型启动）在业务运行时启动后发布 <see cref="OnlineMatchGameBridgeLease"/>，
 /// 进程停止前撤销；消费方（Hotfix 薄适配器）逐请求读取 <see cref="Current"/>，不缓存引用。
 /// <para>
@@ -34,8 +34,7 @@ namespace GameFrameX.Capability.Online.Abstractions.Bridges;
 /// </para>
 /// </summary>
 /// <remarks>
-/// The sample match bridge publisher (C245, following the C243/C244 friend-bridge holder
-/// shape): the process-wide typed holder — the composition root (the Game-shape startup) publishes an
+/// The sample match bridge publisher: the process-wide typed holder — the composition root (the Game-shape startup) publishes an
 /// <see cref="OnlineMatchGameBridgeLease"/> after the business runtime starts and retracts it before
 /// process shutdown; consumers (the Hotfix thin adapter) read <see cref="Current"/> per request and
 /// never cache the reference. Publishing replaces (and revokes) any previous lease so no stale

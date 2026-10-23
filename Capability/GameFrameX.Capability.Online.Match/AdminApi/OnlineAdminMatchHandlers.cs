@@ -35,15 +35,15 @@ using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.Capability.Online.Match.AdminApi;
 
 /// <summary>
-/// 对局域 admin 命令（end_abnormal_match；C232 P4 自壳迁入，语句逐字迁移）。
+/// 对局域 admin 命令（end_abnormal_match）。
 /// <para>
 /// 维护约束：end_abnormal_match 固定 5003 拒绝（对局结束属游戏进程权威，admin 面无该命令通道）——
 /// 无状态依赖，静态注册形态。
 /// </para>
 /// </summary>
 /// <remarks>
-/// Admin commands of the match domain (end_abnormal_match; migrated from the shell by C232 P4, statements
-/// carried over verbatim). end_abnormal_match always rejects with 5003 — match termination belongs to the
+/// Admin commands of the match domain (end_abnormal_match). end_abnormal_match always rejects with 5003 —
+/// match termination belongs to the
 /// game process authority and the admin plane offers no such command channel; the handler is stateless and
 /// registers statically.
 /// </remarks>

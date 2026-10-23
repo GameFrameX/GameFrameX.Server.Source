@@ -153,7 +153,7 @@ public static partial class Keys
         /// </remarks>
         public const string RegistryNotRegistered = "Database.Registry.NotRegistered";
         /// <summary>
-        /// 默认数据库已被设置为“{0}”（set-once，C159）；不允许将其更改为“{1}”。已注册名称：[{2}]
+        /// 默认数据库已被设置为“{0}”（set-once）；不允许将其更改为“{1}”。已注册名称：[{2}]
         /// </summary>
         /// <remarks>
         /// 键名: Database.Registry.DefaultAlreadySet
@@ -261,7 +261,7 @@ public static partial class Keys
         /// </summary>
         /// <remarks>
         /// 键名: Database.ConditionalWrite.StateIdMismatch
-        /// 用途: UpdateIfRowVersionAsync 的 state.Id 与入参 id 不一致时抛出（三 provider 共用，C247）
+        /// 用途: UpdateIfRowVersionAsync 的 state.Id 与入参 id 不一致时抛出（三 provider 共用）
         /// 参数: {0} - state.Id, {1} - 目标 id
         /// </remarks>
         public const string ConditionalWriteStateIdMismatch = "Database.ConditionalWrite.StateIdMismatch";
@@ -270,7 +270,7 @@ public static partial class Keys
         /// </summary>
         /// <remarks>
         /// 键名: Database.ConditionalWrite.SequenceNameRequired
-        /// 用途: NextSequenceAsync 的 sequenceName 为 null 或空白时抛出（三 provider 共用，C247）
+        /// 用途: NextSequenceAsync 的 sequenceName 为 null 或空白时抛出（三 provider 共用）
         /// </remarks>
         public const string ConditionalWriteSequenceNameRequired = "Database.ConditionalWrite.SequenceNameRequired";
         /// <summary>
@@ -581,10 +581,10 @@ public static partial class Keys
         }
 
         /// <summary>
-        /// SQLite 载体日志键（C222）。
+        /// SQLite 载体日志键。
         /// </summary>
         /// <remarks>
-        /// Carrier log keys for the SQLite adapter (C222).
+        /// Carrier log keys for the SQLite adapter.
         /// </remarks>
         public static class Sqlite
         {
@@ -622,7 +622,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Database.Sqlite.OperationTransientError
-            /// 用途: 共享弹性引擎（C253）遇 busy/locked/timeout 瞬时错误重试时的 Warning 日志
+            /// 用途: 共享弹性引擎遇 busy/locked/timeout 瞬时错误重试时的 Warning 日志
             /// 参数: {0} - 操作名称, {1} - 当前重试次数, {2} - 最大重试次数, {3} - 异常消息
             /// </remarks>
             public const string OperationTransientError = "Database.Sqlite.OperationTransientError";
@@ -632,7 +632,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Database.Sqlite.OperationRetryFailed
-            /// 用途: 共享弹性引擎（C253）全部重试耗尽后抛出的 DatabaseUnavailableException 消息
+            /// 用途: 共享弹性引擎全部重试耗尽后抛出的 DatabaseUnavailableException 消息
             /// 参数: {0} - 操作名称
             /// </remarks>
             public const string OperationRetryFailed = "Database.Sqlite.OperationRetryFailed";

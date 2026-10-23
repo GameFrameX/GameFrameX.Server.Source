@@ -34,7 +34,7 @@ using Xunit;
 namespace GameFrameX.Tests.RemoteMessaging;
 
 /// <summary>
-/// 节点间握手鉴权单元测试（C272）/ Inter-node handshake authentication unit tests (C272)
+/// 节点间握手鉴权单元测试 / Inter-node handshake authentication unit tests
 /// </summary>
 /// <remarks>
 /// 覆盖：密钥未启用时全链路旧行为等价（Verify 恒真 / 无凭据握手照常接受）、启用后凭据往返、

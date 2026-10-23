@@ -166,11 +166,11 @@ public static partial class GameDb
     }
 
     /// <summary>
-    /// 按批次大小分批执行批量 upsert 保存（转发 <see cref="IDatabaseService.SaveBulkAsync{TState}"/>，C159）。
+    /// 按批次大小分批执行批量 upsert 保存（转发 <see cref="IDatabaseService.SaveBulkAsync{TState}"/>）。
     /// </summary>
     /// <remarks>
     /// Bulk-upserts the given states in batches of <paramref name="batchSize"/> on the facade default
-    /// database (forwards to <see cref="IDatabaseService.SaveBulkAsync{TState}"/>, C159). Batches are
+    /// database (forwards to <see cref="IDatabaseService.SaveBulkAsync{TState}"/>). Batches are
     /// ack/exception-isolated independently and the returned list contains exactly the states of the
     /// acknowledged batches; state timestamps are persisted as handed in (not modified here).
     /// </remarks>

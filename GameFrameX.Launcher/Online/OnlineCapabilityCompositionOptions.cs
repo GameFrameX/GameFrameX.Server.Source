@@ -47,15 +47,13 @@ using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.Launcher.Online;
 
 /// <summary>
-/// Online 能力组合编排选项（<see cref="OnlineCapabilityComposition.AddOnlineCapabilities"/> 回调承载面，C229；
-/// C232 P6 编排随 Runtime 壳退役迁入 Launcher 组合根）。
+/// Online 能力组合编排选项（<see cref="OnlineCapabilityComposition.AddOnlineCapabilities"/> 回调承载面）。
 /// <para>作用域三元组、调度间隔、双闸（EnableRuntime / EnableAdminApi）、管理面监听与能力过滤器
 /// （Capabilities 白名单 / Disable 排除表）统一经回调写入（.NET <c>AddXxx(options =&gt; ...)</c> 惯例）。</para>
 /// </summary>
 /// <remarks>
 /// Orchestration options carried by the <see cref="OnlineCapabilityComposition.AddOnlineCapabilities"/>
-/// callback (C229; relocated into the Launcher composition root by C232 P6 along with the Runtime-shell
-/// retirement): the scope triple, scheduler interval, the two enable gates
+/// callback): the scope triple, scheduler interval, the two enable gates
 /// (<see cref="EnableRuntime"/> / <see cref="EnableAdminApi"/>), the admin listening options and the
 /// capability filter (<see cref="Capabilities"/> whitelist / <see cref="Disable"/> exclusion list) all
 /// arrive through the callback, following the .NET <c>AddXxx(options =&gt; ...)</c> convention.
@@ -138,13 +136,13 @@ public sealed class OnlineCapabilityCompositionOptions
     public IReadOnlyList<string> Disable { get; set; }
 
     /// <summary>
-    /// 是否预置 Online 一级 store 的 GameDb 持久化实现（C249，D3 = 3A 分级混合）
+    /// 是否预置 Online 一级 store 的 GameDb 持久化实现
     /// <para>true = Identity / 玩家云存储 / 资产账本与交易四 store 经 <c>UseOnlineGameDbStores</c> 预置进共享服务面（模块 Register 期探测命中）；false（缺省）= InMemory 默认不变（零依赖起跑红线）</para>
     /// <para>前置约束：数据库须先于能力装配完成初始化（GameDb 门面 Init）；Session / Presence 二级易失 store 不受本开关影响</para>
     /// </summary>
     /// <remarks>
-    /// Whether to pre-seed the GameDb persistence adapters for the Online level-one stores (C249,
-    /// D3 = 3A): true pre-seeds the identity / player-storage / asset-ledger and asset-transaction
+    /// Whether to pre-seed the GameDb persistence adapters for the Online level-one stores: true
+    /// pre-seeds the identity / player-storage / asset-ledger and asset-transaction
     /// stores through <c>UseOnlineGameDbStores</c> into the shared service face (probed at module
     /// Register time); false (default) keeps the in-memory defaults unchanged (the zero-dependency
     /// boot guarantee). The database must be initialized before capability assembly; the volatile
@@ -153,12 +151,12 @@ public sealed class OnlineCapabilityCompositionOptions
     public bool UseGameDbStores { get; set; }
 
     /// <summary>
-    /// 对局结算写榜榜单标识（C245）：非空 = 预置 <c>OnlineLeaderboardProjectionOptions</c> 共享服务，
+    /// 对局结算写榜榜单标识：非空 = 预置 <c>OnlineLeaderboardProjectionOptions</c> 共享服务，
     /// online-competition 模块据此装配 Match.Settled 可信结果投影（要求 online-match / online-competition 能力在装配面）；
     /// 空（缺省）= 不预置，投影不装配。
     /// </summary>
     /// <remarks>
-    /// The leaderboard id that settled match results project onto (C245): non-empty pre-seeds the
+    /// The leaderboard id that settled match results project onto: non-empty pre-seeds the
     /// <c>OnlineLeaderboardProjectionOptions</c> shared service from which the online-competition
     /// module assembles the Match.Settled trusted-result projection (requires the online-match /
     /// online-competition capabilities on the assembly face); empty (default) pre-seeds nothing and

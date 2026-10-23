@@ -35,8 +35,8 @@ namespace GameFrameX.Core.Session;
 /// 玩家会话被移除（顶号/踢下线/断开）事件参数。
 /// </summary>
 /// <remarks>
-/// 无业务载荷事件的空标记类，迁移自原会话移除事件（原枚举成员 SessionRemove = 1000，已随 C193 类型键控改造退役），
-/// 事件绑定键即本类型本身。C193 创建于 <c>GameFrameX.Apps.Common.EventData</c>，随 C192 会话下沉迁入 Core/Session。
+/// 无业务载荷事件的空标记类，迁移自原会话移除事件（原枚举成员 SessionRemove = 1000，已随类型键控改造退役），
+/// 事件绑定键即本类型本身。
 /// </remarks>
 public sealed class SessionRemovedEventArgs : GameEventArgs
 {

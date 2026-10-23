@@ -30,7 +30,7 @@
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 玩家视角的好友关系分类（C244 域桥契约）：把存储态 + 方向事实投影为「该玩家看到的关系种类」。
+/// 玩家视角的好友关系分类（域桥契约）：把存储态 + 方向事实投影为「该玩家看到的关系种类」。
 /// <para>
 /// 维护约束：这是契约面的最小读模型——不暴露关系标识 / 时间戳等存储细节，
 /// 协议适配层据此完成错误码映射（已是好友 / 申请等待中 / 申请不存在等）；
@@ -38,7 +38,7 @@ namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 /// </para>
 /// </summary>
 /// <remarks>
-/// The player-view friendship classification (the C244 domain-bridge contract): projects the storage
+/// The player-view friendship classification (the domain-bridge contract): projects the storage
 /// state plus the direction facts into "the kind of relation this player sees". This is the minimal
 /// read model of the contract face — storage details (friendship ids / timestamps) stay hidden, and
 /// protocol adapters map error codes from it (already friends / request pending / request absent);

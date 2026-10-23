@@ -29,14 +29,14 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Match.AdminApi;
 
 /// <summary>
-/// 对局域结算编排 admin 查询（query_match_settlement，C245）：
+/// 对局域结算编排 admin 查询（query_match_settlement）：
 /// 结算中对局清单 + 待重试发奖明细——Capability 包零 LogHelper 惯例下的可观测面。
 /// <para>
 /// 维护约束：只读 action（幂等包裹 = <c>false</c>，与 query_* 族只读先例一致）；无请求参数。
 /// </para>
 /// </summary>
 /// <remarks>
-/// The match-domain settlement orchestration admin query (query_match_settlement, C245): the settling
+/// The match-domain settlement orchestration admin query (query_match_settlement): the settling
 /// match list plus the pending grant-retry details — the observability face under the capability
 /// package's zero-LogHelper convention. Read-only action (idempotency wrap = false, consistent with
 /// the read-only query_* precedent family); no request parameters.

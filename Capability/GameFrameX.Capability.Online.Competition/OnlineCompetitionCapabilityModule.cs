@@ -46,13 +46,13 @@ using GameFrameX.Foundation.Idempotency;
 namespace GameFrameX.Capability.Online.Competition;
 
 /// <summary>
-/// 竞技能力（榜单 / 赛季 / 锦标赛 / LiveOps 承载）的自装配模块（C232 P4 迁入）。
+/// 竞技能力（榜单 / 赛季 / 锦标赛 / LiveOps 承载）的自装配模块。
 /// <para>
 /// 维护约束（服务共享协议）：模块无参构造（扫描可发现）；<c>Register</c> 自装配本域——榜单 / 赛季 /
 /// 锦标赛三个 store 经 <see cref="CapabilityRegistrationContext.TryGetService{TService}"/> 探测替换缝，未命中构造
 /// InMemory 默认；赛季 / 锦标赛对发放服务（<see cref="OnlineGrantService"/>，assets 域产物）的依赖经上下文探测，
 /// 缺席（assets 能力被过滤）时不装配两者（壳时代 Seasons / Tournaments 置 null 的模块化等价）；对外产物
-/// （榜单 / 赛季 / 锦标赛服务与 LiveOps 注册表）注册回共享面。C245 追加：组合根预置
+/// （榜单 / 赛季 / 锦标赛服务与 LiveOps 注册表）注册回共享面。组合根预置
 /// <see cref="OnlineLeaderboardProjectionOptions"/>（board id 非空白）且对局结果存储（online-match 域产物）与幂等
 /// 服务探测命中时装配 Match.Settled 排行榜投影（订阅 + 失败重投 tick），未预置 / 依赖缺席不装配不报错
 /// （与赛季 / 锦标赛缺席装配同口径的模块化等价）。
@@ -60,12 +60,12 @@ namespace GameFrameX.Capability.Online.Competition;
 /// </summary>
 /// <remarks>
 /// The self-assembling module of the competition capability (leaderboards, seasons, tournaments and the
-/// LiveOps registry; migrated by C232 P4). The module has a parameterless constructor (discoverable by
+/// LiveOps registry). The module has a parameterless constructor (discoverable by
 /// scanning); <c>Register</c> self-assembles the domain — the leaderboard / season / tournament stores
 /// probe the replacement seams with in-memory fallbacks; the season / tournament services probe the grant
 /// service (an assets-domain product) through the context and stay unassembled when absent (the modular
 /// equivalent of the shell-era null seasons / tournaments); outward products are registered back into the
-/// shared face. Since C245 a Match.Settled leaderboard projection (event-bus subscription plus a
+/// shared face. A Match.Settled leaderboard projection (event-bus subscription plus a
 /// failure-retry tick job) is assembled when the composition root pre-seeds projection options with a
 /// non-blank board id and the match result store / idempotency service are probeable; otherwise it stays
 /// unassembled without error.
@@ -124,7 +124,7 @@ public sealed class OnlineCompetitionCapabilityModule : ICapabilityModule, IAdmi
             context.AddService(new OnlineTournamentService(tournamentStore, leaderboards, grantService, eventPublisher));
         }
 
-        // Match.Settled → 排行榜投影（C245）：组合根预置 OnlineLeaderboardProjectionOptions（board id 空白 = 不投影）
+        // Match.Settled → 排行榜投影：组合根预置 OnlineLeaderboardProjectionOptions（board id 空白 = 不投影）
         // 且对局结果存储 / 幂等服务探测命中才装配；订阅事件总线同步投影（异常吞掉不阻断分发——Operations 审计桥先例），
         // 失败经 tick job leaderboard-projection-retry 重投；结果存储未命中（online-match 被过滤）→ 不装配不报错
         // （模块化等价先例 = 赛季 / 锦标赛对发放服务的缺席装配）。

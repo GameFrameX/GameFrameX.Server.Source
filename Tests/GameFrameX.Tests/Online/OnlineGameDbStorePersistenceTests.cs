@@ -49,10 +49,10 @@ using GameFrameX.Foundation.Idempotency;
 using Xunit;
 
 /// <summary>
-/// Online 一级 store 的 GameDb 适配层测试（C249：Identity / PlayerStorage / 资产账本三域）。
+/// Online 一级 store 的 GameDb 适配层测试（Identity / PlayerStorage / 资产账本三域）。
 /// </summary>
 /// <remarks>
-/// Tests for the GameDb adapters of the Online level-one stores (C249: identity, player storage
+/// Tests for the GameDb adapters of the Online level-one stores (identity, player storage
 /// and the asset ledger). Semantics facts run against the static GameDb facade over embedded
 /// SQLite; asset write paths drive the real unified entry (<see cref="OnlineGrantService"/>)
 /// because change batches are assembly-internal by contract. The restart-acceptance facts run
@@ -174,7 +174,7 @@ public sealed class OnlineGameDbStorePersistenceTests
     }
 
     /// <summary>
-    /// 玩家云存储 CAS / 软删 / 复活事实（T1 裁决 1/3 的行为锚定）。
+    /// 玩家云存储 CAS / 软删 / 复活事实。
     /// </summary>
     [Fact]
     public async Task StorageStore_CreateCasSoftDeleteRevive_ShouldMatchContract()
@@ -225,7 +225,7 @@ public sealed class OnlineGameDbStorePersistenceTests
     }
 
     /// <summary>
-    /// 玩家云存储游标分页事实（T1 裁决 2）：ordinal 字典序 + 排他游标不漏不重。
+    /// 玩家云存储游标分页事实：ordinal 字典序 + 排他游标不漏不重。
     /// </summary>
     [Fact]
     public async Task StorageStore_ListCursorPaging_ShouldBeOrdinalWithoutSkipOrDup()
@@ -562,7 +562,7 @@ public sealed class OnlineGameDbStorePersistenceTests
             scope,
             OnlineAssetChangeSource.AdminOperation,
             OnlineGrantOperation.Grant,
-            "C249 persistence test",
+            "persistence test",
             "bo-" + idempotencyKey,
             lines.Select(line => new OnlineAssetChangeLine(line.Kind, line.AssetId, line.Amount)).ToArray(),
             idempotencyKey);

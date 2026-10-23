@@ -36,7 +36,7 @@ using Xunit;
 namespace GameFrameX.Tests.Utility;
 
 /// <summary>
-/// Online 能力配置段绑定测试（C229）：角色配置 json 的嵌套 "Online" 节点经
+/// Online 能力配置段绑定测试：角色配置 json 的嵌套 "Online" 节点经
 /// GlobalSettings.Load 的反序列化通道（List&lt;AppSetting&gt;）捕获为强类型 POCO；
 /// 节点缺失 = null（全装配语义）、空数组如实绑定（由组合入口归一为不过滤）。
 /// </summary>

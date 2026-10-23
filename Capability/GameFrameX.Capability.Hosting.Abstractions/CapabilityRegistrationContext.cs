@@ -37,7 +37,7 @@ namespace GameFrameX.Capability.Hosting.Abstractions;
 /// <see cref="AddIntervalJob"/>（独立周期，到点执行）、
 /// <see cref="AddEventJob"/>（事件驱动爆发口，由宿主事件入口同步分发）；
 /// job 全名（<c>能力Id/jobId</c>）全宿主唯一，重复即装配失败。
-/// 服务共享协议（C231）：本上下文同时开放宿主共享的服务注册表面
+/// 服务共享协议：本上下文同时开放宿主共享的服务注册表面
 /// （<see cref="AddService{TService}"/> / <see cref="GetService{TService}"/> / <see cref="TryGetService{TService}"/>），
 /// 模块间跨域依赖经此解析而非组合根直连——先序模块注册的产物对后序模块可见（装配序 = Requires 拓扑序）。
 /// </para>

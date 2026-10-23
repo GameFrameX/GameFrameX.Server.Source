@@ -6,11 +6,11 @@ using GameFrameX.ProtoBuf.Net;
 namespace GameFrameX.Tests.RemoteMessaging;
 
 /// <summary>
-/// C252 协议版本协商契约测试：版本来源模型（连接级常量 + 消息级标注）、协商器 major 比较语义、
+/// 协议版本协商契约测试：版本来源模型（连接级常量 + 消息级标注）、协商器 major 比较语义、
 /// 握手消息对形状（ID 段位 / Proto 往返 / 请求响应标记）与首批标注守护。
 /// </summary>
 /// <remarks>
-/// Contract tests for the C252 protocol version negotiation: the version source model (the
+/// Contract tests for the protocol version negotiation: the version source model (the
 /// connection-level constant plus message-level attributes), the negotiator's major-comparison
 /// semantics, the handshake message pair shape (id segment, protobuf round trip, request/response
 /// markers), and the first-batch annotation guard.
@@ -89,7 +89,7 @@ public sealed class ProtocolVersionNegotiationTests
     [Fact]
     public void HandshakeMessageIds_OccupyInnerSegmentMinus130_SubIds11And12()
     {
-        // -130 内部段：子号 10 = 路由信封（既有），11/12 = 握手 Req/Resp（C252 分配）
+        // -130 内部段：子号 10 = 路由信封（既有），11/12 = 握手 Req/Resp
         Assert.Equal(unchecked((int)((-130 << 16) + 11)), ReqProtocolVersionNegotiation.ReservedMessageId);
         Assert.Equal(unchecked((int)((-130 << 16) + 12)), RespProtocolVersionNegotiation.ReservedMessageId);
         Assert.NotEqual(RoleRouteEnvelopeMessage.ReservedMessageId, ReqProtocolVersionNegotiation.ReservedMessageId);

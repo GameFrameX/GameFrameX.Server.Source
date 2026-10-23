@@ -50,8 +50,8 @@ internal sealed class AppStartUpAuction : AppStartUpGameServerBase
     /// <remarks>
     /// Creates the Auction role-level default settings.
     /// 端口公式：InnerPort = 20000 + GameServerConst.Auction.Id（7620）= 27620——Id 唯一 ⇒ 端口唯一，
-    /// 区间 [25000, 28000] 与既有 Game/Social/Http 端口零碰撞（C188 固化的端口分配约定）。
-    /// 数据库连接串优先从环境变量 GAMEFRAMEX_AUCTION_DB_URL 读取（对齐 C75 / Sonar S2068 的
+    /// 区间 [25000, 28000] 与既有 Game/Social/Http 端口零碰撞（既有端口分配约定）。
+    /// 数据库连接串优先从环境变量 GAMEFRAMEX_AUCTION_DB_URL 读取（对齐 Sonar S2068 的
     /// GAMEFRAMEX_&lt;SERVER&gt;_DB_URL 命名约定），未设置时回落不含凭证的本地占位地址；
     /// 其余缺省对齐 Social 参照形态。
     /// </remarks>

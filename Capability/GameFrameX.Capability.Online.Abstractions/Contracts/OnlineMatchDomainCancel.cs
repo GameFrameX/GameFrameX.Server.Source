@@ -24,7 +24,7 @@ using System.Collections.Generic;
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 匹配域取消回执（C246）：Cancelled=false 表示票据已处终态（已撮合 / 已过期 / 无票），非失败。
+/// 匹配域取消回执：Cancelled=false 表示票据已处终态（已撮合 / 已过期 / 无票），非失败。
 /// </summary>
 public sealed class OnlineMatchDomainCancel
 {

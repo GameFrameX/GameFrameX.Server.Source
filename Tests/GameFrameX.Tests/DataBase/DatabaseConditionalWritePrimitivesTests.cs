@@ -46,15 +46,15 @@ using Xunit;
 namespace GameFrameX.Tests.DataBase;
 
 /// <summary>
-/// IDatabaseService 条件写原语集（C247：CAS / 唯一插入 / 序列）跨 provider 语义等价与并发竞态测试。
+/// IDatabaseService 条件写原语集（CAS / 唯一插入 / 序列）跨 provider 语义等价与并发竞态测试。
 /// </summary>
 /// <remarks>
 /// Cross-provider semantic-equivalence and concurrency-race tests for the conditional-write
-/// primitives (C247: CAS / unique insert / sequence). Every fact runs the same scenario against
+/// primitives (CAS / unique insert / sequence). Every fact runs the same scenario against
 /// SQLite (embedded, always on), Mongo (<c>GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING</c>) and
 /// PostgreSQL (<c>GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING</c>) — the two real providers run
 /// only when their environment variable is set and are silently skipped otherwise (the established
-/// gating pattern). Race facts assert the C247 acceptance criteria: a CAS double-write has exactly
+/// gating pattern). Race facts assert the acceptance criteria: a CAS double-write has exactly
 /// one winner, a concurrent unique insert lands exactly one row, and a sequence hands out distinct
 /// non-regressing values.
 /// </remarks>

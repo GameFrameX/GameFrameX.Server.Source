@@ -35,9 +35,9 @@ using GameFrameX.Hotfix.Logic.ServerRole;
 namespace GameFrameX.Hotfix.Logic.Player.Friend;
 
 /// <summary>
-/// 删除好友处理器（120 域；C244 起经好友域桥转发 Online 契约面）。
+/// 删除好友处理器（120 域；经好友域桥转发 Online 契约面）。
 /// <para>
-/// 身份语义（T2 裁定 R2）：请求主体 = 会话绑定玩家 id（未登录 → 显式
+/// 身份语义：请求主体 = 会话绑定玩家 id（未登录 → 显式
 /// <see cref="OnlineErrorCode.SessionInvalid"/>）。
 /// </para>
 /// </summary>

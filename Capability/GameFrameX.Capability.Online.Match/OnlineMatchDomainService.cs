@@ -30,7 +30,7 @@ using GameFrameX.Capability.Online.Matchmaking;
 namespace GameFrameX.Capability.Online.Match;
 
 /// <summary>
-/// 匹配域服务（C246）：<see cref="IOnlineMatchDomain"/> 的本域实现——旧 420 协议族语义
+/// 匹配域服务：<see cref="IOnlineMatchDomain"/> 的本域实现——旧 420 协议族语义
 ///（入队 / 取消 / 状态 / 入场）到票据撮合域与对局运行时的桥接编排。
 /// <para>
 /// 维护约束（红线）：
@@ -39,11 +39,11 @@ namespace GameFrameX.Capability.Online.Match;
 /// ② 即时窗口兼容：入队建票后同步执行一轮撮合（对手已在池时本轮即成组，响应即刻带数值对局标识，
 /// 等价旧 FIFO 链第二人入队即配对的可观测行为）；等待方经状态轮询 / 通知获知；
 /// ③ 数值对局标识登记表（assignment → 协议数值 id 单射）是本类唯一的派生状态——InMemory、
-/// 与票据存储同生命周期（重启即失效，C245 榜单同款易失边界），计数种子取构造时刻避免跨重启撞号；
+/// 与票据存储同生命周期（重启即失效，与榜单同款易失边界），计数种子取构造时刻避免跨重启撞号；
 /// ④ 入场 = create-or-reuse：以 <c>matched-s{区服}-m{数值}</c> 确定性派生运行时对局标识，
-/// 复用 <see cref="OnlineMatchRuntime"/> 既有 Actor 生命周期（C245 房间桥同型），不发明对局玩法新面；
+/// 复用 <see cref="OnlineMatchRuntime"/> 既有 Actor 生命周期（与房间桥同型），不发明对局玩法新面；
 /// ⑤ 模式标签（1/2）只是撮合池分区键，入场绑定的玩法模式取构造注入的样例玩法
-///（与 C245 房间桥「协议形状 → 玩法模式」解耦口径一致）。
+///（与房间桥「协议形状 → 玩法模式」解耦口径一致）。
 /// </para>
 /// </summary>
 public sealed class OnlineMatchDomainService : IOnlineMatchDomain
@@ -51,7 +51,7 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
     /// <summary>评分基础窗（旧 FIFO 链 MatchRules.BaseWindowRating 同值：评分差 ±100）。</summary>
     public const int BaseRatingWindow = 100;
 
-    /// <summary>单人票据缺省区域（与 C245 房间桥 Region=1 口径一致）。</summary>
+    /// <summary>单人票据缺省区域（与房间桥 Region=1 口径一致）。</summary>
     public const int DefaultRegion = 1;
 
     /// <summary>单人票据目标规模（旧链无论 1v1/2v2 恒配 2 人——可观测行为保持；模式只是池标签）。</summary>
@@ -69,7 +69,7 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
     /// <summary>对局运行时（入场 create-or-reuse 的 Actor 属主）。</summary>
     private readonly OnlineMatchRuntime _runtime;
 
-    /// <summary>重连服务（C204 会话中介断线标记 / 恢复的唯一令牌签发与快照增量组装点）。</summary>
+    /// <summary>重连服务（会话中介断线标记 / 恢复的唯一令牌签发与快照增量组装点）。</summary>
     private readonly OnlineMatchReconnectService _reconnect;
 
     /// <summary>入场绑定的玩法实现（模式与最小人数取自玩法声明）。</summary>
@@ -479,7 +479,7 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
                 return OnlineResult<OnlineMatchActor>.Fail(created.Code, created.Message);
             }
 
-            // 并发同键创建：store 唯一约束裁决后重解析一次（幂等并发路径，C245 同型）。
+            // 并发同键创建：store 唯一约束裁决后重解析一次（幂等并发路径）。
             actor = await _runtime.ResolveActorAsync(scope.TenantId, scope.AppId, runtimeMatchId, cancellationToken).ConfigureAwait(false);
             if (actor == null)
             {
@@ -671,7 +671,7 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
     }
 
     /// <summary>
-    /// 确定性派生运行时对局标识（同数值标识恒同值；跨区服不撞，C245 房间桥同型）。
+    /// 确定性派生运行时对局标识（同数值标识恒同值；跨区服不撞，与房间桥同型）。
     /// </summary>
     /// <param name="serverId">区服标识。</param>
     /// <param name="matchId">数值对局标识。</param>

@@ -30,18 +30,18 @@
 namespace GameFrameX.Capability.Online.Assets;
 
 /// <summary>
-/// 资产能力包级装配选项（<see cref="OnlineAssetsHostingExtensions.AddOnlineAssetsRuntime"/> 回调承载面，C231）。
+/// 资产能力包级装配选项（<see cref="OnlineAssetsHostingExtensions.AddOnlineAssetsRuntime"/> 回调承载面）。
 /// <para>
-/// 维护约束（能力族全局约定，C227/C229 裁定）：编排参数一律经 <c>Action&lt;TOptions&gt;</c> 回调承载（.NET
-/// <c>AddXxx(options =&gt; ...)</c> 惯例）；P3 期无包级编排参数（存储替换走 <c>UseOnlineAssetStore</c> 缝，
+/// 维护约束（能力族全局约定）：编排参数一律经 <c>Action&lt;TOptions&gt;</c> 回调承载（.NET
+/// <c>AddXxx(options =&gt; ...)</c> 惯例）；当前无包级编排参数（存储替换走 <c>UseOnlineAssetStore</c> 缝，
 /// 配置段绑定归组合根），成员随真实需求落位；禁止回退平铺配置键。
 /// </para>
 /// </summary>
 /// <remarks>
 /// Package-level assembly options for the assets capability (the callback face of
-/// <see cref="OnlineAssetsHostingExtensions.AddOnlineAssetsRuntime"/>, C231). Following the capability-family
-/// global convention (ruled by C227/C229), orchestration parameters ride an <c>Action&lt;TOptions&gt;</c> callback
-/// (the .NET <c>AddXxx(options =&gt; ...)</c> convention); P3 carries no package-level knobs (store replacement
+/// <see cref="OnlineAssetsHostingExtensions.AddOnlineAssetsRuntime"/>). Following the capability-family
+/// global convention, orchestration parameters ride an <c>Action&lt;TOptions&gt;</c> callback
+/// (the .NET <c>AddXxx(options =&gt; ...)</c> convention); currently there are no package-level knobs (store replacement
 /// goes through the <c>UseOnlineAssetStore</c> seam and config-section binding belongs to composition roots);
 /// members land as real needs appear; flat configuration keys stay forbidden.
 /// </remarks>

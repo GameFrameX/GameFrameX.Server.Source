@@ -16,9 +16,9 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <!-- C291：维持 5.9.0。降到 SDK 编译器版本（5.3.0）会让生成器真正加载并因同名代理
+        <!-- 维持 5.9.0。降到 SDK 编译器版本（5.3.0）会让生成器真正加载并因同名代理
              （Player/Login 与 ServerRole/Login 各一个 LoginComponentAgent）hintName 冲突崩溃（CS8785），
-             且恢复生成器等于恢复 Actor 串行化，属行为变更。缺陷修复见 C292。 -->
+             且恢复生成器等于恢复 Actor 串行化，属行为变更。 -->
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0">
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>

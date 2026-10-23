@@ -38,20 +38,20 @@ using GameFrameX.Capability.Online.Social.AdminApi;
 namespace GameFrameX.Capability.Online.Social;
 
 /// <summary>
-/// 社交能力（好友 / 群组 / 聊天 / 通知 / 处罚 / 举报裁决 + 聊天审计投影）的自装配模块（C231 P4 前为 P3 T4 迁入）。
+/// 社交能力（好友 / 群组 / 聊天 / 通知 / 处罚 / 举报裁决 + 聊天审计投影）的自装配模块。
 /// <para>
 /// 维护约束（服务共享协议）：模块无参构造（扫描可发现）；<c>Register</c> 自装配本域——六个 store 经
 /// <see cref="CapabilityRegistrationContext.TryGetService{TService}"/> 探测替换缝，未命中构造 InMemory 默认；
 /// 跨域硬依赖（事件出口 / Foundation 会话面）经上下文解析；对外产物（store 接口 + 好友 / 裁决 / 处罚 / 通知服务 +
-/// <see cref="IOnlineSocialGate"/> 裁决面 + <see cref="IOnlineFriendDomain"/> 好友域桥契约面（C244 域桥缝，
+/// <see cref="IOnlineSocialGate"/> 裁决面 + <see cref="IOnlineFriendDomain"/> 好友域桥契约面（域桥缝，
 /// <see cref="OnlineFriendDomainFace"/> 薄编排实现）+ 聊天审计投影）注册回共享面；两个过期清扫滴答 job
 ///（通知 + 好友请求）经组合根授权作用域锚定租户 / App。
 /// </para>
 /// <para>
-/// 好友服务装配披露（C242）：<see cref="IOnlinePlayerDirectory"/> 玩家目录与
+/// 好友服务装配披露：<see cref="IOnlinePlayerDirectory"/> 玩家目录与
 /// <see cref="IOnlineSocialPresenceProbe"/> 在线探针当前全仓无实现，经共享面通用缝探测、缺席为披露态——
 /// 搜索降级为空结果（空 ≠ 无匹配）、展示名回退标识字面量、在线状态恒 false，均不构成可用功能；
-/// 好友存储默认 InMemory（进程重启即丢）；GameDb 持久化经 <c>UseOnlineGameDbStores</c> 预置替换（C244 起随一级 store 族）。
+/// 好友存储默认 InMemory（进程重启即丢）；GameDb 持久化经 <c>UseOnlineGameDbStores</c> 预置替换（随一级 store 族）。
 /// </para>
 /// </summary>
 /// <remarks>
@@ -66,12 +66,12 @@ namespace GameFrameX.Capability.Online.Social;
 /// the two expiry-sweep tick jobs (notifications and friend requests) anchor their tenant / app on the
 /// composition root's authorized scope.
 /// <para>
-/// Friend assembly disclosure (C242): no implementation of <see cref="IOnlinePlayerDirectory"/> or
+/// Friend assembly disclosure: no implementation of <see cref="IOnlinePlayerDirectory"/> or
 /// <see cref="IOnlineSocialPresenceProbe"/> exists in the repository today; both are probed through the shared-face
 /// generic seam and their absence is a disclosed state — search degrades to empty results (empty is not
 /// "no match"), display names fall back to id literals and presence reads as offline; none of these constitute
 /// working features. The friend store defaults to in-memory (lost on restart); the GameDb persistence
-/// adapter is preset through <c>UseOnlineGameDbStores</c> (joining the level-one store family since C244).
+/// adapter is preset through <c>UseOnlineGameDbStores</c> (joining the level-one store family).
 /// </para>
 /// </remarks>
 public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActionContributor
@@ -111,7 +111,7 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
     private OnlineChatAuditProjection _chatAudit;
 
     /// <summary>
-    /// 好友服务（好友关系生命周期的唯一写者；C242 首个消费链装配）。
+    /// 好友服务（好友关系生命周期的唯一写者）。
     /// </summary>
     private OnlineFriendService _friends;
 
@@ -144,7 +144,7 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
         _reportStore = ResolveStore<IOnlineReportStore>(context, static () => new InMemoryOnlineReportStore());
         var socialGraphStore = ResolveStore<IOnlineSocialGraphStore>(context, static () => new InMemoryOnlineSocialGraphStore());
 
-        // 好友服务（C242 首个消费链装配）：玩家目录与在线探针当前全仓无实现，经共享面通用缝
+        // 好友服务：玩家目录与在线探针当前全仓无实现，经共享面通用缝
         //（CapabilityHostBuilder.UseService&lt;T&gt;）探测，缺席为披露态——搜索降级为空结果、
         // 展示名回退标识字面量、在线状态恒 false，均不构成可用功能（注入实现即生效）。
         context.TryGetService(out IOnlinePlayerDirectory directory);

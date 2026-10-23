@@ -39,7 +39,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Mail;
 /// 邮件服务器（Mail Role，跨服投递队列，域号 650）业务组件代理。
 /// </summary>
 /// <remarks>
-/// Mail Role 独立业务逻辑系统（C197 垂直切片）的热更侧落点；与玩家邮件系统（域号 500）无关。
+/// Mail Role 独立业务逻辑系统的热更侧落点；与玩家邮件系统（域号 500）无关。
 /// 业务规则判定一律委托 <see cref="MailRules"/>（纯函数，可单测）；
 /// 本类只做状态编排：入队取号、待投递惰性过期过滤、投递成功 / 失败状态机流转。
 /// </remarks>

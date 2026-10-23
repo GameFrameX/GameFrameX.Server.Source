@@ -35,12 +35,12 @@ using GameFrameX.Capability.Online.Foundation.Identity;
 using GameFrameX.DataBase;
 
 /// <summary>
-/// 身份域 GameDb 持久化适配（C249 一级 store；D3 = 3A 分级混合的身份侧落地）。
+/// 身份域 GameDb 持久化适配（一级 store，分级混合持久化的身份侧落地）。
 /// <para>
 /// 数据生命周期语义：行物理长存——适配层零删除调用（账号注销/合并等状态迁移为字段覆盖写，
 /// 与 InMemory 全量驻留语义同构）；标识序列（账号/玩家）由 <c>NextSequenceAsync</c> 数据库序列接管
 /// （原子单调、重启不复用——替代 InMemory 进程内自增）；身份/设备唯一性由物化复合键单列唯一索引
-/// + <c>TryAddUniqueAsync</c> 承接（T1 裁决 1）。
+/// + <c>TryAddUniqueAsync</c> 承接。
 /// </para>
 /// <para>
 /// 单写者假设（继承 store 契约）：唯一插入冲突兜底 = 读回既有行按行主键覆盖写——并发窗口内恰一胜者、

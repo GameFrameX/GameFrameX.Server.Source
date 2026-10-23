@@ -41,8 +41,8 @@ namespace GameFrameX.Launcher.Online;
 /// Online 管理面组合工厂（注册反转的组合点：能力模块贡献 action → 通用管道 + Online 适配器组装；
 /// 业务与管理面可独立启停——admin-only 形态按能力目录全部「未装配」裁决）。
 /// <para>
-/// 维护约束：C229 起 Launcher 经 <c>AddOnlineCapabilities()</c> 单入口装配，本工厂由入口内部调用；
-/// C232 P6 随 Runtime 壳退役迁入 Launcher——业务形态签名改为机制 <see cref="CapabilityHost"/>（作用域 /
+/// 维护约束：Launcher 经 <c>AddOnlineCapabilities()</c> 单入口装配，本工厂由入口内部调用；
+/// 业务形态签名取机制 <see cref="CapabilityHost"/>（作用域 /
 /// 幂等经宿主共享服务面解析），admin-only 目录由 <see cref="CapabilityAssembly.DiscoverModules"/> 扫描驱动
 /// （手工 Catalog 随壳退役；manifest 与来源程序集等价）。
 /// 组合期对账 fail-fast——启用能力的 manifest 声明 action 必须全部实际注册。
@@ -52,11 +52,10 @@ namespace GameFrameX.Launcher.Online;
 /// The Online admin-plane composition factory (the registration-inversion composition point:
 /// capability modules contribute actions, the generic pipeline plus Online adapters assemble around
 /// them; business and admin planes can start and stop independently — the admin-only shape rules
-/// every catalog capability as not installed). Since C229 the Launcher assembles through the
-/// <c>AddOnlineCapabilities()</c> single entry which invokes this factory; C232 P6 relocates it into
-/// the Launcher along with the Runtime-shell retirement — the full-capability signature now takes the
-/// mechanism <see cref="CapabilityHost"/> (scope / idempotency resolve through the host's shared
-/// service face), and the admin-only catalog is driven by <see cref="CapabilityAssembly.DiscoverModules"/>
+/// every catalog capability as not installed). The Launcher assembles through the
+/// <c>AddOnlineCapabilities()</c> single entry which invokes this factory; the full-capability
+/// signature takes the mechanism <see cref="CapabilityHost"/> (scope / idempotency resolve through the
+/// host's shared service face), and the admin-only catalog is driven by <see cref="CapabilityAssembly.DiscoverModules"/>
 /// scanning (the hand-written catalog retired with the shell; manifests and source assemblies
 /// equivalent). Composition-time reconciliation fails fast — every action declared by an enabled
 /// manifest must actually be registered.
@@ -99,7 +98,7 @@ public static class OnlineAdminApiComposition
     /// 组装管理面调度器（admin-only 形态：零能力装配，action 一律按未安装裁决）。
     /// </summary>
     /// <param name="scopeOptions">授权作用域选项（必须合法，否则抛 <see cref="InvalidOperationException"/>）。</param>
-    /// <param name="filter">能力装配过滤器（null = 目录全部 NotAssembled；传入时排除/白名单外条目如实反映配置排除，其余仍为未装配，C229）。</param>
+    /// <param name="filter">能力装配过滤器（null = 目录全部 NotAssembled；传入时排除/白名单外条目如实反映配置排除，其余仍为未装配）。</param>
     /// <returns>通用管理面调度器。</returns>
     public static AdminApiDispatcher CreateAdminOnlyDispatcher(CapabilityHostOptions scopeOptions, CapabilityAssemblyFilter filter = null)
     {
@@ -144,7 +143,7 @@ public static class OnlineAdminApiComposition
     /// </summary>
     /// <param name="scopeOptions">授权作用域选项。</param>
     /// <param name="options">管理面监听选项。</param>
-    /// <param name="filter">能力装配过滤器（null = 目录全部 NotAssembled；传入时配置排除/白名单外条目如实反映，其余仍为未装配，C229）。</param>
+    /// <param name="filter">能力装配过滤器（null = 目录全部 NotAssembled；传入时配置排除/白名单外如实反映，其余仍为未装配）。</param>
     /// <returns>管理面 HTTP 服务。</returns>
     public static AdminApiServer CreateAdminOnlyServer(CapabilityHostOptions scopeOptions, AdminApiOptions options, CapabilityAssemblyFilter filter = null)
     {
@@ -167,7 +166,7 @@ public static class OnlineAdminApiComposition
 
     /// <summary>
     /// admin-only 目录状态映射：过滤器判定为排除/白名单外的条目如实反映配置排除；
-    /// 未被排除的条目仍为未装配（本进程未启动业务运行时，C229）。
+    /// 未被排除的条目仍为未装配（本进程未启动业务运行时）。
     /// </summary>
     /// <param name="filter">能力装配过滤器（可为 null）。</param>
     /// <param name="manifest">目录 manifest。</param>

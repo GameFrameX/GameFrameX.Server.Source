@@ -84,12 +84,12 @@ public sealed class RespProtocolVersionNegotiation : MessageObject, IResponseMes
     public bool Accepted { get; set; }
 
     /// <summary>
-    /// 获取或设置错误码（IResponseMessage 契约）：0 表示接受；1 表示 major 不符拒绝；2 表示节点间鉴权失败拒绝（C272：共享密钥已配置而对端凭据缺失或验签失败）。
+    /// 获取或设置错误码（IResponseMessage 契约）：0 表示接受；1 表示 major 不符拒绝；2 表示节点间鉴权失败拒绝（共享密钥已配置而对端凭据缺失或验签失败）。
     /// </summary>
     /// <remarks>
     /// Gets or sets the error code (the IResponseMessage contract): 0 means accepted;
     /// 1 means rejected due to a major mismatch; 2 means rejected due to inter-node authentication
-    /// failure (C272: the shared secret is configured but the peer's credential is missing or
+    /// failure (the shared secret is configured but the peer's credential is missing or
     /// failed verification).
     /// </remarks>
     [ProtoMember(4)]

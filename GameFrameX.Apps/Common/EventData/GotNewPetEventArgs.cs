@@ -35,7 +35,7 @@ namespace GameFrameX.Apps.Common.EventData;
 /// 解锁新宠物事件参数。
 /// </summary>
 /// <remarks>
-/// 无业务载荷事件的空标记类，迁移自原解锁新宠物事件（原枚举成员 GotNewPet = 1005，已随 C193 类型键控改造退役），
+/// 无业务载荷事件的空标记类（原枚举成员 GotNewPet = 1005 已按类型键控改造退役），
 /// 事件绑定键即本类型本身。当前无活跃派发点与监听器，留作业务扩展接入点。
 /// </remarks>
 public sealed class GotNewPetEventArgs : GameEventArgs

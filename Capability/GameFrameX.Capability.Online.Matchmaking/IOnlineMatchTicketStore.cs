@@ -84,7 +84,7 @@ public interface IOnlineMatchTicketStore
     Task<OnlineMatchTicket> FindActiveByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 查找玩家最近一张票据（任意状态；C246 匹配域桥状态面读）。
+    /// 查找玩家最近一张票据（任意状态；匹配域桥状态面读）。
     /// <para>
     /// 语义：玩家每次入队覆盖其反查位，故本方法返回「当前最近一次匹配尝试」——
     /// 排队中为 Queued 票据，已撮合为 Matched 终态票据（承载 AssignmentId），取消 / 过期为对应终态。

@@ -47,11 +47,11 @@ using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.Launcher.Online;
 
 /// <summary>
-/// Online 能力组合产物（业务运行时与管理面一次组装的双面产物，C229）。
+/// Online 能力组合产物（业务运行时与管理面一次组装的双面产物）。
 /// <para>启动 / 停止由组合根按序编排：业务先启后停、管理面后启先停；本产物只承载装配结果。</para>
 /// </summary>
 /// <remarks>
-/// The composed product of a single <see cref="AddOnlineCapabilities"/> call (C229): the business
+/// The composed product of a single <see cref="AddOnlineCapabilities"/> call: the business
 /// runtime and the admin plane are assembled together, each face remaining null when its gate is off.
 /// Start/stop orchestration stays with the composition root (business first to start and last to
 /// stop); this type only carries the assembled result.
@@ -60,11 +60,11 @@ public sealed class OnlineCapabilityComposition
 {
     /// <summary>
     /// 业务能力宿主（<see cref="OnlineCapabilityCompositionOptions.EnableRuntime"/> 为 false 时为 null；
-    /// C232 P6 起真扫描产物——模块发现经 <see cref="CapabilityAssembly"/>，启动 / 停止语义与壳时代一致）。
+    /// 真扫描产物——模块发现经 <see cref="CapabilityAssembly"/>，启动 / 停止语义与壳时代一致）。
     /// </summary>
     /// <remarks>
     /// The business capability host; null when <see cref="OnlineCapabilityCompositionOptions.EnableRuntime"/>
-    /// is false. Since C232 P6 it is the product of real scanning (module discovery via
+    /// is false. It is the product of real scanning (module discovery via
     /// <see cref="CapabilityAssembly"/>) with start/stop semantics unchanged from the shell era.
     /// </remarks>
     public CapabilityHost Runtime { get; }
@@ -91,8 +91,7 @@ public sealed class OnlineCapabilityComposition
     }
 
     /// <summary>
-    /// Online 能力单入口：一次回调编排装配业务运行时与管理面（C229；C232 P6 编排迁入 Launcher 且升级为
-    /// 真扫描生产采用）。
+    /// Online 能力单入口：一次回调编排装配业务运行时与管理面（编排位于 Launcher，真扫描生产采用）。
     /// <para>入口内部经 <see cref="BuildScannedRuntime"/> 装配：组合根基建预置（授权作用域 / 事件总线 /
     /// 事件出口 / 幂等 / 统一审计）+ <see cref="CapabilityAssembly.DiscoverModules"/> 扫描发现全部能力模块
     /// （扫描面 = 本组合根程序集引用面）+ 过滤器与拓扑闭包校验由机制 <c>Build</c> 承担。</para>
@@ -101,8 +100,8 @@ public sealed class OnlineCapabilityComposition
     /// </summary>
     /// <remarks>
     /// The single Online capability entry point: one callback orchestrates both the business runtime
-    /// and the admin plane (C229; relocated into the Launcher by C232 P6 and upgraded to real-scanning
-    /// production adoption). The entry assembles through <see cref="BuildScannedRuntime"/>: the
+    /// and the admin plane (orchestrated in the Launcher with real-scanning production
+    /// adoption). The entry assembles through <see cref="BuildScannedRuntime"/>: the
     /// composition-root infrastructure pre-seed (authorized scope / event bus / event outlet /
     /// idempotency / unified audit), module discovery via <see cref="CapabilityAssembly.DiscoverModules"/>
     /// over the composition-root assembly reference face, and filter plus topological closure validation
@@ -148,29 +147,29 @@ public sealed class OnlineCapabilityComposition
     }
 
     /// <summary>
-    /// 真扫描装配业务能力宿主（C232 P6 生产采用收口）：组合根基建预置 + 模块扫描发现 + 机制构建。
+    /// 真扫描装配业务能力宿主：组合根基建预置 + 模块扫描发现 + 机制构建。
     /// <para>基建预置与壳时代 <c>OnlineRuntimeHost</c> 构造段逐语句等价——授权作用域 / 事件总线 /
     /// 事件出口 / 幂等 / 统一审计（具型 + 读面）；地基三 store 与会话令牌下沉 Foundation 模块自装配
     /// （共享面经 <c>AddService</c> 回注，后序能力探测同源）；Hotfix 切换执行器与登记期制品获取器
-    /// 为生产装配面（C248 注入 <c>HotfixManagerRollbackExecutor</c> / <c>OnlineHotfixArtifactFetcher</c>，
+    /// 为生产装配面（注入 <c>HotfixManagerRollbackExecutor</c> / <c>OnlineHotfixArtifactFetcher</c>，
     /// Operations 模块探测即得非 null，替换缝仍开放）。</para>
     /// </summary>
     /// <remarks>
-    /// Builds the business capability host through real scanning (the C232 P6 production adoption):
+    /// Builds the business capability host through real scanning:
     /// composition-root infrastructure pre-seed, scanned module discovery, then the mechanism build.
     /// The pre-seed is statement-by-statement equivalent to the shell-era <c>OnlineRuntimeHost</c>
     /// constructor — the authorized scope, event bus, event outlet, idempotency and unified audit
     /// (concrete type plus read face); the three foundation stores and the session-token service
     /// sink into the Foundation module's self-assembly (registered back into the shared face so later
-    /// capabilities resolve the same instances); since C248 the hotfix switch executor and the
+    /// capabilities resolve the same instances); the hotfix switch executor and the
     /// registration-time artifact fetcher are production-wired (<c>HotfixManagerRollbackExecutor</c> /
     /// <c>OnlineHotfixArtifactFetcher</c>, probed non-null by the Operations module, replacement
     /// seams still open).
     /// </remarks>
     /// <param name="hostOptions">宿主选项（已通过合法性校验）。</param>
     /// <param name="filter">能力装配过滤器（null = 全装配）。</param>
-    /// <param name="useGameDbStores">是否预置一级 store 的 GameDb 持久化实现（C249；false = InMemory 默认不变）。</param>
-    /// <param name="matchBridgeLeaderboardId">对局结算写榜榜单标识（空白 = 不预置投影选项；C245）。</param>
+    /// <param name="useGameDbStores">是否预置一级 store 的 GameDb 持久化实现（false = InMemory 默认不变）。</param>
+    /// <param name="matchBridgeLeaderboardId">对局结算写榜榜单标识（空白 = 不预置投影选项）。</param>
     /// <returns>业务能力宿主。</returns>
     private static CapabilityHost BuildScannedRuntime(CapabilityHostOptions hostOptions, CapabilityAssemblyFilter filter, bool useGameDbStores, string matchBridgeLeaderboardId)
     {
@@ -189,19 +188,19 @@ public sealed class OnlineCapabilityComposition
         builder.UseService(idempotency);
         builder.UseService(audit);
         builder.UseService<IOnlineAuditReader>(audit);
-        // C248：Hotfix 版本切换执行器 + 登记期制品获取器生产装配（消除「生产路径恒缺席」）——
+        // Hotfix 版本切换执行器 + 登记期制品获取器生产装配（消除「生产路径恒缺席」）——
         // Operations 模块 Register 期探测命中，切换命令不再恒 8002；切换时刻零下载红线由执行器路径静态保证。
         builder.UseOnlineHotfixRollbackExecutor(new HotfixManagerRollbackExecutor());
         builder.UseOnlineHotfixArtifactFetcher(new OnlineHotfixArtifactFetcher());
         if (useGameDbStores)
         {
-            // C249 一级 store 持久化预置（D3 = 3A）：模块 Register 期探测共享面命中即采用；Session / Presence 保持 InMemory。
+            // 一级 store 持久化预置：模块 Register 期探测共享面命中即采用；Session / Presence 保持 InMemory。
             builder.UseOnlineGameDbStores();
         }
 
         if (!string.IsNullOrWhiteSpace(matchBridgeLeaderboardId))
         {
-            // C245 对局结算写榜投影目标预置：online-competition 模块 Register 期探测命中即装配 Match.Settled 投影订阅。
+            // 对局结算写榜投影目标预置：online-competition 模块 Register 期探测命中即装配 Match.Settled 投影订阅。
             builder.UseService(new OnlineLeaderboardProjectionOptions { MatchSettledBoardId = matchBridgeLeaderboardId });
         }
         foreach (var module in CapabilityAssembly.DiscoverModules(LoadCapabilityAssemblies()))

@@ -33,14 +33,14 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 能力包结构门禁测试（C228 P1：C223 目录矩阵的包级升维）——包间 ProjectReference 方向断言
+    /// 能力包结构门禁测试（目录矩阵的包级升维）——包间 ProjectReference 方向断言
     /// （精确引用集合 = 无多引无漏引）+ Hosting 三包对能力包引用恒零（机制开放红线）+
     /// 脊柱包零上行引用 + 工程引用图无环。
     /// </summary>
     public class CapabilityPackageStructureTests
     {
         /// <summary>
-        /// 期望的 ProjectReference 精确集合（工程 → 允许引用的工程名集合；C228 P1 终态 + C231 P3 增量：三叶子包 + 脊柱 admin 线缆契约边 + 单体/壳叶子引用）。
+        /// 期望的 ProjectReference 精确集合（工程 → 允许引用的工程名集合：三叶子包 + 脊柱 admin 线缆契约边 + 单体/壳叶子引用）。
         private static readonly Dictionary<string, string[]> ExpectedProjectReferences = new()
         {
             ["GameFrameX.Capability.Hosting.Abstractions"] = Array.Empty<string>(),
@@ -104,7 +104,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 断言组合根（Launcher）直引全部 Online 能力包（C232 P6 终态：单体与 Runtime 壳退役，
+        /// 断言组合根（Launcher）直引全部 Online 能力包（单体与 Runtime 壳退役，
         /// 编排回归 Launcher 组合根 + BuildHost 真扫描生产采用——扫描面 = Launcher 程序集引用面）。
         /// </summary>
         [Fact]
@@ -131,7 +131,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 结构性断言：Hosting 三包对全部能力包（Online 肢体/聚合、单体、World 族）的 ProjectReference = 0
-        /// （C227 §6 裁定 4 机制开放红线的门禁化——新增能力 = 新 csproj + manifest，机制零改动）。
+        /// （机制开放红线的门禁化——新增能力 = 新 csproj + manifest，机制零改动）。
         /// </summary>
         [Fact]
         public void HostingPackages_HaveZeroCapabilityProjectReferences()
@@ -152,7 +152,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 断言叶子能力包（Assets / Social / Matchmaking(+Party)）横向互引恒为零（C231 P3 终态的包级红线；
+        /// 断言叶子能力包（Assets / Social / Matchmaking(+Party)）横向互引恒为零（包级红线；
         /// 源级扫描 using 指令与限定名，包间 ProjectReference 面由 CapabilityPackageStructureTests 精确集合断言）。
         /// </summary>
         [Fact]
@@ -240,7 +240,7 @@ namespace GameFrameX.Tests.Online
         /// <summary>
         /// 断言脊柱包（Capability.Online.Abstractions）对地基/域命名空间零引用
         /// （包内方向规则：只允许脊柱内部向下；地基与肢体命名空间出现在 Abstractions 源码即违规，
-        /// 含 using 之外的限定名形态——C223 Events 零域引用断言的包级升维）。
+        /// 含 using 之外的限定名形态——零域引用断言由单包升维到包级）。
         /// </summary>
         [Fact]
         public void SpinePackage_HasNoUpwardOrDomainTypeReferences()

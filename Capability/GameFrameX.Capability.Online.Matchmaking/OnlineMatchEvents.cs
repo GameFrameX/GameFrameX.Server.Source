@@ -161,7 +161,7 @@ public static class OnlineMatchEvents
     }
 
     /// <summary>
-    /// 只读解析对局分配事件负载（C246 通知推送方消费；类型不符或载荷不可解析返回 null，不抛异常）。
+    /// 只读解析对局分配事件负载（供通知推送方消费；类型不符或载荷不可解析返回 null，不抛异常）。
     /// </summary>
     /// <param name="onlineEvent">事件。</param>
     /// <returns>分配负载视图；非分配事件或解析失败返回 null。</returns>
@@ -210,7 +210,7 @@ public static class OnlineMatchEvents
     }
 
     /// <summary>
-    /// 对局分配事件负载（SchemaVersion=1；C246 起公共化供订阅方只读解析）。
+    /// 对局分配事件负载（SchemaVersion=1；公共化供订阅方只读解析）。
     /// </summary>
     public sealed class AssignmentCreatedPayload
     {

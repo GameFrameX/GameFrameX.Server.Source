@@ -42,7 +42,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// Match.Settled → 排行榜投影生产接线测试（C245 Batch B）：
+    /// Match.Settled → 排行榜投影生产接线测试：
     /// 订阅消费（EventId 去重 + 幂等键回放双保险）、失败待重试 / 重投补齐、结果不存在终态移除、模块装配探测。
     /// </summary>
     public class OnlineMatchSettledLeaderboardProjectorTests

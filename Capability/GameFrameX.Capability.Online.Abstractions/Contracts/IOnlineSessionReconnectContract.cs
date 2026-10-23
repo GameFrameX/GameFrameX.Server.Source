@@ -22,7 +22,7 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 会话恢复契约面（C204）：Core 物理连接会话与 Online 逻辑会话协同的最小桥接契约——
+/// 会话恢复契约面：Core 物理连接会话与 Online 逻辑会话协同的最小桥接契约——
 /// 登录签发（断线前凭据交付）、新连接恢复（持有证明 + 原子轮换）、断线通知（开窗）。
 /// <para>
 /// 维护约束：

@@ -148,7 +148,7 @@ public static class HttpHandler
         {
             // Localization: Network.Http.ExceptionOccurred - {0}, 发生异常. {1} {2}
             LogHelper.Error(LocalizationService.GetString(Localization.Keys.NetworkHttp.ExceptionOccurred, logHeader, e.Message, e.StackTrace));
-            // 异常细节（消息/堆栈）只落服务端日志，客户端只回通用文案，避免内部信息泄露（C271）
+            // 异常细节（消息/堆栈）只落服务端日志，客户端只回通用文案，避免内部信息泄露
             // Localization: Network.Http.ServerError - server error
             await context.Response.WriteAsync(HttpJsonResultData<string>.FailString(LocalizationService.GetString(Localization.Keys.NetworkHttp.ServerError)));
         }

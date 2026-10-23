@@ -35,11 +35,11 @@ using GameFrameX.Localization;
 namespace GameFrameX.Discovery;
 
 /// <summary>
-/// 单进程拓扑发现层 Runtime（SQLite 拓扑边界，C222）：自指路由表替代心跳存储，无库依赖。
+/// 单进程拓扑发现层 Runtime（SQLite 拓扑边界）：自指路由表替代心跳存储，无库依赖。
 /// </summary>
 /// <remarks>
-/// The in-process discovery runtime for the SQLite single-process topology (C222). It satisfies
-/// the C213 convention shape (<c>public static void Activate(DiscoveryActivationOptions)</c>, the
+/// The in-process discovery runtime for the SQLite single-process topology. It satisfies
+/// the convention shape (<c>public static void Activate(DiscoveryActivationOptions)</c>, the
 /// paired <see cref="ActiveDiscoveryRuntime.BindRouteTable"/> registration) without any database
 /// backing: the route table is built once from <c>options.HostedRoleNames</c> plus this process's
 /// endpoint (advertise-environment endpoint when configured, a loopback marker otherwise), so
@@ -77,11 +77,11 @@ public static class InProcDiscoveryRuntime
     public static IRoleRouteTableProvider TableProvider => _tableProvider;
 
     /// <summary>
-    /// 激活单进程发现层（C213 约定形状；自指路由表 + no-op 心跳面）。
+    /// 激活单进程发现层（约定形状；自指路由表 + no-op 心跳面）。
     /// </summary>
     /// <remarks>
     /// Activates the in-process discovery layer. Validation order mirrors the provider runtimes so
-    /// the C213 guard test can drive every enum member through the resolver: null options, then
+    /// the guard test can drive every enum member through the resolver: null options, then
     /// ConnectionName (validated for contract-shape parity even though no control database is used),
     /// then HostedRoleNames. The route table registers through
     /// <see cref="ActiveDiscoveryRuntime.BindRouteTable"/>; the registry slot is intentionally left
@@ -119,8 +119,8 @@ public static class InProcDiscoveryRuntime
 
         var table = RoleRouteTable.FromInstances(descriptors);
         _tableProvider = new InProcRouteTableProvider(table);
-        // 读侧路由表登记公共槽位（C213）：组合根经 RouteTableProvider 无分派回读装配路由缝。
-        // The route-table reader is registered into the public slot (C213) so the composition root
+        // 读侧路由表登记公共槽位：组合根经 RouteTableProvider 无分派回读装配路由缝。
+        // The route-table reader is registered into the public slot so the composition root
         // wires the routing seam without branching on the provider enum.
         ActiveDiscoveryRuntime.BindRouteTable(_tableProvider);
     }

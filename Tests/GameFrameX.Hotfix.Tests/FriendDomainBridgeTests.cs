@@ -43,7 +43,7 @@ using FriendDomainBridge = GameFrameX.Hotfix.Logic.Player.Friend.FriendDomainBri
 
 namespace GameFrameX.Hotfix.Tests;
 /// <summary>
-/// 好友域桥薄适配器测试（C244）：120 / 660 两族错误码映射表（T2 裁定 R2-R7）、
+/// 好友域桥薄适配器测试：120 / 660 两族错误码映射表、
 /// 作用域玩家位来源、租约失效显式段与异常兜底。
 /// </summary>
 public sealed class FriendDomainBridgeTests : IDisposable
@@ -105,7 +105,7 @@ public sealed class FriendDomainBridgeTests : IDisposable
         var friend = Assert.Single(response.Friends);
         Assert.Equal(PlayerTwo, friend.PlayerId);
         Assert.Equal("bob", friend.PlayerName);
-        // 作用域玩家位 = 会话 playerId（R2），请求体 / lease 值均不可覆盖。
+        // 作用域玩家位 = 会话 playerId，请求体 / lease 值均不可覆盖。
         Assert.NotNull(face.LastListFriendsScope);
         Assert.Equal(PlayerOne, face.LastListFriendsScope.PlayerId);
         Assert.Equal(TenantId, face.LastListFriendsScope.TenantId);

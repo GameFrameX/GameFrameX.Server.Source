@@ -39,7 +39,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.World;
 /// 世界公告服务器（World Role）业务组件代理：公告发布、撤销与生效中列表查询。
 /// </summary>
 /// <remarks>
-/// World Role 独立业务逻辑系统（C197 垂直切片）的热更侧落点。
+/// World Role 独立业务逻辑系统的热更侧落点。
 /// 业务规则判定一律委托 <see cref="WorldRules"/>（纯函数，可单测）；
 /// 本类只做状态编排：公告落库、仅 Active 可撤销、查询时惰性置 Expired 并过滤。
 /// </remarks>

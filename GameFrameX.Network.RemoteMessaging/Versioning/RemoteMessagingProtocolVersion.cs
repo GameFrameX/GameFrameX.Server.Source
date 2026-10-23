@@ -44,11 +44,11 @@ namespace GameFrameX.Network.RemoteMessaging.Versioning;
 public static class RemoteMessagingProtocolVersion
 {
     /// <summary>
-    /// 本程序集实现的 RemoteMessaging 协议版本。C252 协商能力首版为 (1,0)。
+    /// 本程序集实现的 RemoteMessaging 协议版本。协商能力首版为 (1,0)。
     /// </summary>
     /// <remarks>
     /// The RemoteMessaging protocol version implemented by this assembly. The first negotiated
-    /// version (C252) is (1,0).
+    /// version is (1,0).
     /// </remarks>
     public static ProtocolVersion Current => new(1, 0);
 

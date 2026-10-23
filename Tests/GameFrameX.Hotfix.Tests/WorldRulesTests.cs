@@ -36,7 +36,7 @@ using Xunit;
 namespace GameFrameX.Hotfix.Tests;
 
 /// <summary>
-/// World 业务纯规则测试（C197 Phase 2）。
+/// World 业务纯规则测试。
 /// </summary>
 /// <remarks>
 /// 覆盖标题合法性边界、过期时间校验与公告过期判定。

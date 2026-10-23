@@ -36,7 +36,7 @@ using GameFrameX.Proto.Proto;
 namespace GameFrameX.Hotfix.Logic.ServerRole.Match;
 
 /// <summary>
-/// 匹配入场处理器（C246 新增：按匹配所得对局标识进入同一对局）。
+/// 匹配入场处理器（按匹配所得对局标识进入同一对局）。
 /// </summary>
 [MessageMapping(typeof(ReqMatchEnter))]
 internal sealed class ReqMatchEnterHandler : BaseRpcMessageHandler<ReqMatchEnter, RespMatchEnter>

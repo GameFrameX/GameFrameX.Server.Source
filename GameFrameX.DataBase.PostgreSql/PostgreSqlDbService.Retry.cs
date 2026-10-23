@@ -38,7 +38,7 @@ namespace GameFrameX.DataBase.PostgreSql;
 public sealed partial class PostgreSqlDbService
 {
     /// <summary>
-    /// Provider 异常分类器单例（C253：两级重试判定收敛至分类器，弹性核心环由共享引擎承载）。
+    /// Provider 异常分类器单例（两级重试判定收敛至分类器，弹性核心环由共享引擎承载）。
     /// </summary>
     /// <remarks>
     /// Provider exception classifier singleton; the retry core loop lives in the shared
@@ -108,7 +108,7 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 可用性宿主适配器：把共享引擎的降级读/写门控/成败记账转发给本服务的可用性状态机（C253）。
+    /// 可用性宿主适配器：把共享引擎的降级读/写门控/成败记账转发给本服务的可用性状态机。
     /// </summary>
     /// <remarks>
     /// Availability host adapter forwarding the shared engine's degraded-read, write-gate and

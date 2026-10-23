@@ -31,13 +31,13 @@
 namespace GameFrameX.DataBase.Abstractions;
 
 /// <summary>
-/// 数据库弹性引擎的可用性宿主契约——降级读、写门控与成败记录的 per-service 实例状态参数化（C253）。
+/// 数据库弹性引擎的可用性宿主契约——降级读、写门控与成败记录的 per-service 实例状态参数化。
 /// </summary>
 /// <remarks>
 /// Availability host contract for the shared resilience engine: the per-service instance state
 /// behind degraded reads, core-write gating and success/failure bookkeeping is parameterized
 /// through this interface. Implementations own an availability state machine (Mongo/PostgreSQL
-/// adapters) or are constant-healthy (SQLite embedded engine, C222 boundary ④).
+/// adapters) or are constant-healthy (SQLite embedded engine).
 /// 实现方负责线程安全（多请求并发进入同一引擎实例时本接口会被并发调用；
 /// Mongo/PG 的可用性状态机以内部锁守护，恒 Healthy 宿主无可变状态）。
 /// </remarks>

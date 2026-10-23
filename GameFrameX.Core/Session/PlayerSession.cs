@@ -35,7 +35,7 @@ namespace GameFrameX.Core.Session;
 
 /// <summary>
 /// 玩家运行时会话。承载单个玩家连接的会话标识、玩家绑定与网络通道
-/// （原 <c>GameFrameX.Apps.Common.Session.Session</c>，随 C192 下沉 Core 并更名 PlayerSession，避免与他系统 Session 族重名）。
+/// （命名避免与他系统 Session 族重名）。
 /// </summary>
 public sealed class PlayerSession : IPlayerSession
 {

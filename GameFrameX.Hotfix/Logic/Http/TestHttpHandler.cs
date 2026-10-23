@@ -52,25 +52,25 @@ public sealed class TestHttpHandler : BaseHttpHandler
         var paramMap = context.Parameters;
         if (TryGetMode(paramMap, out var mode) && string.Equals(mode, "cross-process-friend", StringComparison.OrdinalIgnoreCase))
         {
-            // C244 起好友查询统一经好友域桥（旧 Social Inner 转发链退役）；显式 playerId 为验证请求主体。
+            // 好友查询统一经好友域桥（旧 Social Inner 转发链退役）；显式 playerId 为验证请求主体。
             return HandleFriendDomainQuery(paramMap, "cross-process-friend");
         }
 
-        // C243 验证入口（C244 起与上一模式同路径）：好友域桥穿透复核（显式 playerId 为验证请求主体；
+        // 验证入口（与上一模式同路径）：好友域桥穿透复核（显式 playerId 为验证请求主体；
         // 作用域三元组仍由 lease 授权供给）。
         if (TryGetMode(paramMap, out var bridgeMode) && string.Equals(bridgeMode, "online-bridge-friend", StringComparison.OrdinalIgnoreCase))
         {
             return HandleFriendDomainQuery(paramMap, "online-bridge-friend");
         }
 
-        // C245 验证入口：对局桥穿透复核（显式 playerId 为验证请求主体；roomId/round/gesture 定位对局与意图；
+        // 验证入口：对局桥穿透复核（显式 playerId 为验证请求主体；roomId/round/gesture 定位对局与意图；
         // 作用域三元组仍由 lease 授权供给）。
         if (TryGetMode(paramMap, out var matchBridgeMode) && string.Equals(matchBridgeMode, "online-bridge-match", StringComparison.OrdinalIgnoreCase))
         {
             return HandleOnlineBridgeMatch(paramMap);
         }
 
-        // C246 验证入口：匹配域桥穿透复核（显式 playerId 为验证请求主体；action 定位入队/取消/状态/入场；
+        // 验证入口：匹配域桥穿透复核（显式 playerId 为验证请求主体；action 定位入队/取消/状态/入场；
         // 与 420 协议入口相同的薄适配器代码路径）。
         if (TryGetMode(paramMap, out var matchDomainMode) && string.Equals(matchDomainMode, "online-bridge-matchdomain", StringComparison.OrdinalIgnoreCase))
         {
@@ -104,7 +104,7 @@ public sealed class TestHttpHandler : BaseHttpHandler
     }
 
     /// <summary>
-    /// 好友域桥穿透验证入口（C244）：以显式 <c>playerId</c> 为验证请求主体走域桥路径
+    /// 好友域桥穿透验证入口：以显式 <c>playerId</c> 为验证请求主体走域桥路径
     ///（与协议入口 ReqFriendList 相同的薄适配器代码路径）；playerId 缺省或非法（≤0）时显式回
     /// 会话无效错误码，不伪装成功。
     /// </summary>
@@ -119,7 +119,7 @@ public sealed class TestHttpHandler : BaseHttpHandler
             long.TryParse(playerIdValue.ToString(), out playerId);
         }
 
-        // 写路径验证（C244）：action + peer 参数存在时走 660 族薄适配器代码路径（request/accept/reject/remove/relations）。
+        // 写路径验证：action + peer 参数存在时走 660 族薄适配器代码路径（request/accept/reject/remove/relations）。
         if (parameters.TryGetValue("action", out var actionValue) && actionValue != null && !string.IsNullOrWhiteSpace(actionValue.ToString()))
         {
             return HandleFriendDomainAction(parameters, modeName, playerId, actionValue.ToString());
@@ -149,7 +149,7 @@ public sealed class TestHttpHandler : BaseHttpHandler
     }
 
     /// <summary>
-    /// 好友域桥写路径验证入口（C244）：以显式 <c>playerId</c> 为验证请求主体、<c>peer</c> 为对方，
+    /// 好友域桥写路径验证入口：以显式 <c>playerId</c> 为验证请求主体、<c>peer</c> 为对方，
     /// <c>action</c> 路由 660 族薄适配器（SendRequest/Accept/Reject/Remove/ListRelations 同一映射代码路径）。
     /// </summary>
     /// <param name="parameters">请求参数。</param>
@@ -237,7 +237,7 @@ public sealed class TestHttpHandler : BaseHttpHandler
     }
 
     /// <summary>
-    /// 对局桥穿透验证入口（C245）：以显式 <c>playerId</c> 为验证请求主体、<c>roomId</c>/<c>round</c> 定位对局，
+    /// 对局桥穿透验证入口：以显式 <c>playerId</c> 为验证请求主体、<c>roomId</c>/<c>round</c> 定位对局，
     /// <c>gesture</c> 提交出拳（缺省仅查询视图）——与协议入口相同的薄适配器代码路径；
     /// 桥开关未开启时显式回 <c>BridgeEnabled=false</c>，不伪装成功。
     /// </summary>
@@ -316,7 +316,7 @@ public sealed class TestHttpHandler : BaseHttpHandler
     }
 
     /// <summary>
-    /// 匹配域桥穿透验证入口（C246）：以显式 <c>playerId</c> 为验证请求主体、<c>action</c> 定位
+    /// 匹配域桥穿透验证入口：以显式 <c>playerId</c> 为验证请求主体、<c>action</c> 定位
     /// enqueue/cancel/status/enter（enter 携 <c>matchId</c>；enqueue 携 mode/rating）——
     /// 与 420 协议入口相同的薄适配器代码路径；桥不可用时显式回错误码，不伪装成功。
     /// </summary>

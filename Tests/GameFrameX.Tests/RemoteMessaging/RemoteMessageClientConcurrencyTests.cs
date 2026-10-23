@@ -225,7 +225,7 @@ public sealed class RemoteMessageClientConcurrencyTests : IDisposable
                             return;
                         }
 
-                        // 协议版本握手帧（C252）：立即按同版本节点回包，不计入业务屏障
+                        // 协议版本握手帧：立即按同版本节点回包，不计入业务屏障
                         if (messageId == GameFrameX.Network.RemoteMessaging.Versioning.ReqProtocolVersionNegotiation.ReservedMessageId)
                         {
                             await WriteHandshakeResponseAsync(stream, uniqueId.Value);

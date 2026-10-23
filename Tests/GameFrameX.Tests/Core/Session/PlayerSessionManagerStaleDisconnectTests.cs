@@ -35,7 +35,7 @@ using Xunit;
 namespace GameFrameX.Tests.Core.Session;
 
 /// <summary>
-/// C204 断线路由守卫单测：旧连接的迟到 OnDisconnected 回调 Remove(旧会话) 不得把
+/// 断线路由守卫单测：旧连接的迟到 OnDisconnected 回调 Remove(旧会话) 不得把
 /// 仍持有新会话（B）的玩家路由打成离线；仅当玩家已无剩余会话时才允许路由下线。
 /// </summary>
 public sealed class PlayerSessionManagerStaleDisconnectTests

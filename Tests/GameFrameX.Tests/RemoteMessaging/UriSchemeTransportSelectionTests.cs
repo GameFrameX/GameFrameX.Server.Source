@@ -38,11 +38,11 @@ using GameFrameX.Network.RemoteMessaging.Transport;
 namespace GameFrameX.Tests.RemoteMessaging;
 
 /// <summary>
-/// C250 URI scheme 驱动传输选择的验证：resolver scheme 键解析、注册表拨号期分发、回落告警一次、
+/// URI scheme 驱动传输选择的验证：resolver scheme 键解析、注册表拨号期分发、回落告警一次、
 /// KCP 占位真实可用性、TCP 解析面收敛后的行为差异钉住、builder 注册语义。
 /// </summary>
 /// <remarks>
-/// Verification for the C250 URI-scheme-driven transport selection: resolver scheme-key parsing,
+/// Verification for the URI-scheme-driven transport selection: resolver scheme-key parsing,
 /// registry dispatch at dial time, one-time fallback warning, the KCP placeholder's real
 /// availability, the pinned behavior differences after the TCP parsing-surface convergence,
 /// and the builder registration semantics.
@@ -106,30 +106,30 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
     [Fact]
     public void EnvResolver_KcpKeyOnly_ShouldReturnKcpEndpoint()
     {
-        SetEnvironmentEndpoint("C250KcpOnly", "kcp", "kcp://10.0.0.4:7004");
+        SetEnvironmentEndpoint("KcpOnlySchemeValue", "kcp", "kcp://10.0.0.4:7004");
         var resolver = new EnvironmentVariableEndpointResolver();
 
-        Assert.Equal("kcp://10.0.0.4:7004", resolver.ResolveEndpoint("C250KcpOnly"));
+        Assert.Equal("kcp://10.0.0.4:7004", resolver.ResolveEndpoint("KcpOnlySchemeValue"));
     }
 
     [Fact]
     public void EnvResolver_BareHostPortValue_ShouldThrowEndpointFormatException()
     {
-        // 行为差异钉住（C250 T5）：裸 host:port 旧解析面接受（Uri 兜底），新解析面拒绝（缺 scheme）。
-        SetEnvironmentEndpoint("C250Bare", "tcp", "127.0.0.1:7777");
+        // 行为差异钉住：裸 host:port 旧解析面接受（Uri 兜底），新解析面拒绝（缺 scheme）。
+        SetEnvironmentEndpoint("BareHostPortValue", "tcp", "127.0.0.1:7777");
         var resolver = new EnvironmentVariableEndpointResolver();
 
-        Assert.Throws<EndpointFormatException>(() => resolver.ResolveEndpoint("C250Bare"));
-        Assert.Throws<EndpointFormatException>(() => resolver.ResolveEndpoint("C250Bare", "tcp"));
+        Assert.Throws<EndpointFormatException>(() => resolver.ResolveEndpoint("BareHostPortValue"));
+        Assert.Throws<EndpointFormatException>(() => resolver.ResolveEndpoint("BareHostPortValue", "tcp"));
     }
 
     [Fact]
     public void EnvResolver_ZeroPortValue_ShouldThrowEndpointFormatException()
     {
-        SetEnvironmentEndpoint("C250ZeroPort", "tcp", "tcp://10.0.0.5:0");
+        SetEnvironmentEndpoint("ZeroPortValue", "tcp", "tcp://10.0.0.5:0");
         var resolver = new EnvironmentVariableEndpointResolver();
 
-        Assert.Throws<EndpointFormatException>(() => resolver.ResolveEndpoint("C250ZeroPort"));
+        Assert.Throws<EndpointFormatException>(() => resolver.ResolveEndpoint("ZeroPortValue"));
     }
 
     [Fact]
@@ -314,7 +314,7 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  ④ KCP 真实现注册语义（C251 起占位退役；占位期「恒 false/恒抛」语义随之删除，不重钉）
+    //  ④ KCP 真实现注册语义（占位已退役；占位期「恒 false/恒抛」语义随之删除，不重钉）
     // ─────────────────────────────────────────────────────────────
 
     [Fact]

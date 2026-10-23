@@ -309,7 +309,7 @@ public sealed class OnlineRockPaperScissorsGame : IOnlineMatchGame
     }
 
     /// <summary>
-    /// 构造对局桥视图（C245 保密投影）：玩法属主自行决定对外可见性——
+    /// 构造对局桥视图（保密投影）：玩法属主自行决定对外可见性——
     /// 当前局未结算一律不回显真实出拳，已结算局回显最近一次 <c>RoundResolved</c> 事件载荷中的真实出拳；
     /// 整局胜者仅终局非 0（平局为 0）。
     /// <para>

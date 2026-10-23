@@ -37,12 +37,12 @@ using GameFrameX.Localization;
 namespace GameFrameX.DataBase.Sqlite;
 
 /// <summary>
-/// 共享弹性引擎接入分部（C253）：SQLite 全套弹性（重试核心环 + 三指标）首次生效。
+/// 共享弹性引擎接入分部：SQLite 全套弹性（重试核心环 + 三指标）首次生效。
 /// </summary>
 /// <remarks>
-/// Resilience wiring partial (C253): retry core loop and operation metrics become active for
+/// Resilience wiring partial: retry core loop and operation metrics become active for
 /// the SQLite adapter via the shared <see cref="DbResilienceExecutor"/>. Availability remains
-/// constant-healthy by the C222 boundary-④ ruling — the host is
+/// constant-healthy by the boundary-④ ruling — the host is
 /// <see cref="DbResilienceHosts.AlwaysHealthy"/>, so degraded reads and write gating never
 /// trigger in production while engine behaviour stays identical under the contract matrix.
 /// </remarks>
@@ -79,12 +79,12 @@ public sealed partial class SqliteDbService
     private static readonly int[] IdempotentWriteRetryDelaysMilliseconds = { 150, 400, 900 };
 
     /// <summary>
-    /// Provider 异常分类器单例（busy/locked/timeout 瞬时分类，C253）。
+    /// Provider 异常分类器单例（busy/locked/timeout 瞬时分类）。
     /// </summary>
     internal static readonly SqliteDbExceptionClassifier ExceptionClassifier = new();
 
     /// <summary>
-    /// 共享弹性引擎（惰性构造；宿主为恒 Healthy——C222 边界④，降级/门控生产不触发）。
+    /// 共享弹性引擎（惰性构造；宿主为恒 Healthy，降级/门控生产不触发）。
     /// </summary>
     private DbResilienceExecutor _resilienceExecutor;
 
@@ -110,7 +110,7 @@ public sealed partial class SqliteDbService
     /// 执行带有自动重试机制的读取操作（busy/locked/timeout 瞬时错误按延迟序列重试）。
     /// </summary>
     /// <remarks>
-    /// Executes a read operation with automatic retry on transient failures (C253).
+    /// Executes a read operation with automatic retry on transient failures.
     /// </remarks>
     /// <typeparam name="T">操作返回值类型 / The type of the operation result</typeparam>
     /// <param name="operation">要执行的读取操作 / The read operation to execute</param>

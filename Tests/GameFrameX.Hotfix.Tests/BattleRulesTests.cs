@@ -36,7 +36,7 @@ using Xunit;
 namespace GameFrameX.Hotfix.Tests;
 
 /// <summary>
-/// Battle 业务纯规则测试（C197 Phase 2）。
+/// Battle 业务纯规则测试。
 /// </summary>
 /// <remarks>
 /// 覆盖赛制/评分校验、回合战力 0.8x-1.2x 边界、先到 ceil(bestOf/2) 胜的模拟语义（rolls 注入固定序列）与积分上下限。
@@ -153,7 +153,7 @@ public class BattleRulesTests
 
     /// <summary>
     /// 等分战力 + 随机序列全部平局（含耗尽回落 0.5 恒平）时护栏保证终止：
-    /// bestOf=1 时尝试上限 4 次，第 5 次（奇数）护栏判攻方胜——回归 P0 死循环。
+    /// bestOf=1 时尝试上限 4 次，第 5 次（奇数）护栏判攻方胜——死循环回归。
     /// </summary>
     [Fact]
     public void Simulate_EqualRatingsAllTiedRolls_TerminatesViaGuard()

@@ -24,7 +24,7 @@ using System.Collections.Generic;
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 匹配域恢复成员项（C204）：恢复快照中的成员状态投影。
+/// 匹配域恢复成员项：恢复快照中的成员状态投影。
 /// </summary>
 public sealed class OnlineMatchDomainResumeMember
 {

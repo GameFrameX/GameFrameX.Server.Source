@@ -41,13 +41,13 @@ public sealed class MessageObjectPipelineFilter : PipelineFilterBase<IMessage>
 {
     /// <summary>
     /// 解析函数。按 4 字节大端总长切帧：
-    /// 缓冲不足时返回 null 且不消费字节（等待管线累积后续数据后重入，C251 部分帧安全化），
+    /// 缓冲不足时返回 null 且不消费字节（等待管线累积后续数据后重入，部分帧安全化），
     /// 仅在长度前缀真为 0 时跳过全部已缓冲字节（沿用历史零长丢弃行为）。
     /// </summary>
     /// <remarks>
     /// Frame parsing by the 4-byte big-endian total length: when the buffer holds fewer bytes
     /// than a full frame (or fewer than the 4 header bytes), returns null WITHOUT consuming so the
-    /// pipeline waits for more data and re-enters (partial-frame safety, C251). Skipping the whole
+    /// pipeline waits for more data and re-enters (partial-frame safety). Skipping the whole
     /// buffered sequence only happens for a genuine zero length prefix (legacy behavior).
     /// <para>此前实现对部分帧先按 totalLength 切片（越界抛
     /// <see cref="ArgumentOutOfRangeException"/>）或 AdvanceToEnd（吞掉半个帧导致后续字节错位），

@@ -35,21 +35,21 @@ using GameFrameX.Capability.Online.Foundation.Storage;
 using GameFrameX.DataBase;
 
 /// <summary>
-/// 玩家云存储 GameDb 持久化适配（C249 一级 store；CAS 乐观锁经 C247 条件写原语落地）。
+/// 玩家云存储 GameDb 持久化适配（一级 store；CAS 乐观锁经条件写原语落地）。
 /// <para>
-/// CAS 语义（T1 裁决 1 版本换算）：expectedVersion == 0 → <c>TryAddUniqueAsync</c>（五元组唯一索引互斥，
+/// CAS 语义（版本换算）：expectedVersion == 0 → <c>TryAddUniqueAsync</c>（五元组唯一索引互斥，
 /// 已存在即 false）；&gt; 0 → <c>UpdateIfRowVersionAsync(行Id, expectedVersion - 1, 新档)</c>
-/// （行缺失或存量 RowVersion 不符即 false——C247 原子单语句比较交换）。恒等式
+/// （行缺失或存量 RowVersion 不符即 false——原子单语句比较交换）。恒等式
 /// <c>实体 Version = 行 RowVersion + 1</c>（实体从 1 起、行版本从 0 起），读回按此校准。
 /// </para>
 /// <para>
-/// 软删/复活语义（T1 裁决 3）：条目行的 <c>DeletedAtTime</c> 业务字段为唯一可见性事实源——
+/// 软删/复活语义：条目行的 <c>DeletedAtTime</c> 业务字段为唯一可见性事实源——
 /// <c>ListAsync</c>/<c>CountActiveKeysAsync</c> 过滤、<c>FindAsync</c>/<c>ListAllAsync</c> 不过滤；
 /// 软删/复活/过期清理全部经 CAS 写路径（版本接管），适配层零删除调用，行物理长存。
 /// TTL Sweep 的全表扫描输入（<c>ListAllAsync</c>）为全量物化（filter 恒真），不做增量游标。
 /// </para>
 /// <para>
-/// 列举保真（T1 裁决 2）：provider 字符串排序为 culture-aware（Mongo 对齐比较器 / PG 库排序规则），
+/// 列举保真：provider 字符串排序为 culture-aware（Mongo 对齐比较器 / PG 库排序规则），
 /// 与 InMemory 的 ordinal 字典序在大小写混合/非 ASCII 键上不同——本适配对「玩家集合内列举」采用
 /// 等值条件下推 + 客户端 ordinal 过滤/排序/截取，与 InMemory 语义逐字节一致（超额拉取上界 =
 /// 单玩家单集合条目数）；游标分页不漏不重由「过滤与排序同用 ordinal」保证。

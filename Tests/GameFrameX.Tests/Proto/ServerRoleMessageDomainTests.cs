@@ -38,7 +38,7 @@ using GameFrameX.Utility.Setting;
 namespace GameFrameX.Tests.Proto;
 
 /// <summary>
-/// ServerRole 垂直切片护栏测试（C197）。
+/// ServerRole 垂直切片护栏测试。
 /// </summary>
 /// <remarks>
 /// 守护三条装配不变式：①全程序集消息 id（MessageTypeHandler）唯一——17 个 Role 域号
@@ -51,7 +51,7 @@ namespace GameFrameX.Tests.Proto;
 public class ServerRoleMessageDomainTests
 {
     /// <summary>
-    /// C197 Phase 2 消息清单（Role, 域号, 该 Role 全部请求消息名）——与 change.md 业务矩阵一致。
+    /// 消息清单（Role, 域号, 该 Role 全部请求消息名）——与 change.md 业务矩阵一致。
     /// </summary>
     private static readonly (string Role, int Domain, string[] Requests)[] RoleMessages =
     {
@@ -75,7 +75,7 @@ public class ServerRoleMessageDomainTests
     };
 
     /// <summary>
-    /// 域内单向通知消息（Req/Resp 对之外的服务端推送；C246 匹配域新增 NotifyMatchMade）。
+    /// 域内单向通知消息（Req/Resp 对之外的服务端推送；匹配域新增 NotifyMatchMade）。
     /// </summary>
     private static readonly (string Role, string[] Notifies)[] RoleNotifies =
     {
@@ -146,7 +146,7 @@ public class ServerRoleMessageDomainTests
     {
         if (role == "Friend" || role == "Match")
         {
-            // C244 好友域 / C246 匹配域接管：退役 Agent/Component 链，改由独立事实断言 plain 薄适配器形态。
+            // 好友域 / 匹配域接管：退役 Agent/Component 链，改由独立事实断言 plain 薄适配器形态。
             return;
         }
 
@@ -155,7 +155,7 @@ public class ServerRoleMessageDomainTests
         {
             if (requestName == "ReqSessionResume")
             {
-                // C204 会话恢复：退役 Agent/Component 链，plain 薄适配器形态由专项断言钉住
+                // 会话恢复：退役 Agent/Component 链，plain 薄适配器形态由专项断言钉住
                 //（SessionResumeHandler_IsPlainDomainBridgeAdapter）。
                 continue;
             }
@@ -193,7 +193,7 @@ public class ServerRoleMessageDomainTests
     }
 
     /// <summary>
-    /// 会话恢复（220-18，C204）请求消息在 Hotfix 程序集恰好装配一个 MessageMapping handler，
+    /// 会话恢复（220-18）请求消息在 Hotfix 程序集恰好装配一个 MessageMapping handler，
     /// 且为 plain <c>BaseRpcMessageHandler</c> 薄适配器（经会话域桥 / 匹配域桥转发 Online 契约面，
     /// 不挂 Role 内存状态机 Agent/Component 链——身份权威在 Online 会话域）。
     /// </summary>
@@ -216,7 +216,7 @@ public class ServerRoleMessageDomainTests
 
     /// <summary>
     /// 好友域（660）请求消息在 Hotfix 程序集恰好装配一个 MessageMapping handler，
-    /// 且为 plain <c>BaseRpcMessageHandler</c> 薄适配器（C244 好友域接管：经 FriendDomainBridge
+    /// 且为 plain <c>BaseRpcMessageHandler</c> 薄适配器（好友域接管：经 FriendDomainBridge
     /// 转发 Online 契约面，不再挂 Role 内存状态机 Agent/Component 链）。
     /// </summary>
     [Fact]
@@ -242,7 +242,7 @@ public class ServerRoleMessageDomainTests
 
     /// <summary>
     /// 匹配域（420）请求消息在 Hotfix 程序集恰好装配一个 MessageMapping handler，
-    /// 且为 plain <c>BaseRpcMessageHandler</c> 薄适配器（C246 匹配域接管：经 MatchDomainBridge
+    /// 且为 plain <c>BaseRpcMessageHandler</c> 薄适配器（匹配域接管：经 MatchDomainBridge
     /// 转发 Online 契约面，不再挂 Role 内存池 Agent/Component 链）。
     /// </summary>
     [Fact]

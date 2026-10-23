@@ -42,10 +42,10 @@ using MongoDB.Driver;
 namespace GameFrameX.DataBase.Mongo;
 
 /// <summary>
-/// MongoDB 服务的条件写原语实现（C247：CAS 乐观锁、唯一性插入、原子序列）。
+/// MongoDB 服务的条件写原语实现（CAS 乐观锁、唯一性插入、原子序列）。
 /// </summary>
 /// <remarks>
-/// Conditional write primitives for the MongoDB service (C247: CAS optimistic lock,
+/// Conditional write primitives for the MongoDB service (CAS optimistic lock,
 /// uniqueness-guarded insert and atomic sequence).
 /// </remarks>
 public sealed partial class MongoDbService
@@ -147,7 +147,7 @@ public sealed partial class MongoDbService
         state.RowVersion = expectedRowVersion;
         state.IncrementRowVersion();
 
-        // 写库前捕获字节快照（行版本递增后），成功后按该快照精确提交基线（C263）
+        // 写库前捕获字节快照（行版本递增后），成功后按该快照精确提交基线
         var persistedData = state.ToBytes();
 
         var collection = GetCollection<TState>();

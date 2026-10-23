@@ -36,7 +36,7 @@ using Xunit;
 namespace GameFrameX.Hotfix.Tests;
 
 /// <summary>
-/// Chat 业务纯规则测试（C197 Phase 2）。
+/// Chat 业务纯规则测试。
 /// </summary>
 /// <remarks>
 /// 覆盖文本合法性边界、容量判定、拉取条数归一化、环形历史削顶与增量选择语义。

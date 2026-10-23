@@ -39,15 +39,15 @@ namespace GameFrameX.Discovery;
 
 /// <summary>
 /// 发现层提供者约定的反射解析器：按 <see cref="DiscoveryActivationOptions.Provider"/> 经显式映射表激活
-/// <c>*DiscoveryRuntime</c>（C213，镜像 C177 <c>DbProviderResolver</c> 模板）。
+/// <c>*DiscoveryRuntime</c>（镜像 <c>DbProviderResolver</c> 模板）。
 /// </summary>
 /// <remarks>
-/// FreeSql-style convention resolution mirroring the C177 <c>DbProviderResolver</c> template: the
+/// FreeSql-style convention resolution mirroring the <c>DbProviderResolver</c> template: the
 /// discovery assembly references no provider project, and the enum-to-assembly-qualified-type-name
 /// table below is the single string-coupling point of the whole discovery layer. Renaming a provider
 /// project/class/namespace therefore breaks here (and in the guard test
 /// <c>DiscoveryRuntimeResolverTests</c>) instead of scattering composition-root ternaries. Unlike
-/// the C177 resolver (internal, wrapped behind the non-generic <c>GameDb.Init(DbOptions)</c>
+/// the <c>DbProviderResolver</c> (internal, wrapped behind the non-generic <c>GameDb.Init(DbOptions)</c>
 /// overload), this one is public on purpose: the host composition root calls it directly, so there
 /// is no facade to hide behind. Hosts wanting an explicit runtime keep the direct
 /// <c>*DiscoveryRuntime.Activate</c> escape hatch (which ignores <c>Provider</c>).

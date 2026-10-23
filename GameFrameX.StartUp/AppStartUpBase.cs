@@ -123,7 +123,7 @@ public abstract partial class AppStartUpBase : IAppStartUp
         ServerType = serverType;
         Setting = setting;
         AppBootstrapper.EnsureInitialized(() => LogHandler.Create(LogOptions.Default));
-        // C272 节点间鉴权：进程级共享密钥早于任何监听器/拨号端装配注入（服务端漏斗握手短路、
+        // 节点间鉴权：进程级共享密钥早于任何监听器/拨号端装配注入（服务端漏斗握手短路、
         // 服务器间 KCP 凭据闸门与 RemoteMessaging 客户端握手三方共用该静态配置）
         GameFrameX.Network.RemoteMessaging.Versioning.InterNodeAuthentication.Configure(setting.InterNodeAuthSecret);
         Init();

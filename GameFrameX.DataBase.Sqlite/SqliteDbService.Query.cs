@@ -41,11 +41,11 @@ namespace GameFrameX.DataBase.Sqlite;
 /// </summary>
 /// <remarks>
 /// Read paths: an id equality of the filter — the whole body (<c>x.Id == c</c> / <c>c == x.Id</c>)
-/// or any top-level AndAlso conjunct of it (C265) — is pushed down as <c>WHERE id = ?</c>;
+/// or any top-level AndAlso conjunct of it — is pushed down as <c>WHERE id = ?</c>;
 /// everything else evaluates client-side via <c>filter.Compile()</c> (full C# semantics, a superset
-/// of the Mongo/PG translatable set — C222; the client-side predicate stays authoritative so the
+/// of the Mongo/PG translatable set; the client-side predicate stays authoritative so the
 /// result set is unchanged). The id-IN lookup chunks at <see cref="MaxIdsPerInCommand"/> bound
-/// parameters per command (C265). Soft-delete visibility matches Mongo's
+/// parameters per command. Soft-delete visibility matches Mongo's
 /// <c>IsDeleted == null || IsDeleted == false</c> wrapper.
 /// </remarks>
 public sealed partial class SqliteDbService
@@ -189,7 +189,7 @@ public sealed partial class SqliteDbService
     /// <remarks>
     /// Finds the list of documents with the specified (distinct) IDs; an empty list returns an empty
     /// result. The id-IN pushdown runs in chunks of at most <see cref="MaxIdsPerInCommand"/> bound
-    /// parameters per command (C265), the union of the chunks being equivalent to a single IN.
+    /// parameters per command, the union of the chunks being equivalent to a single IN.
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="ids">数据ID列表 / The document IDs</param>
@@ -205,7 +205,7 @@ public sealed partial class SqliteDbService
     /// <remarks>
     /// Finds the list of documents with the specified (distinct) IDs; an empty list returns an empty
     /// result. The id-IN pushdown runs in chunks of at most <see cref="MaxIdsPerInCommand"/> bound
-    /// parameters per command (C265), the union of the chunks being equivalent to a single IN.
+    /// parameters per command, the union of the chunks being equivalent to a single IN.
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="ids">数据ID列表 / The document IDs</param>
@@ -681,7 +681,7 @@ public sealed partial class SqliteDbService
     /// </summary>
     /// <remarks>
     /// Reads the matching states: when an id equality is extractable from the whole filter body or
-    /// any of its top-level AndAlso conjuncts (C265) it is pushed down as <c>WHERE id = ?</c>;
+    /// any of its top-level AndAlso conjuncts it is pushed down as <c>WHERE id = ?</c>;
     /// otherwise the whole table is read. The client-side predicate then applies soft-delete
     /// visibility (unless <paramref name="includeDeleted"/>) plus the full filter.
     /// </remarks>
@@ -867,7 +867,7 @@ public sealed partial class SqliteDbService
     /// </summary>
     /// <remarks>
     /// Reads the rows of the given ids in chunks of at most <see cref="MaxIdsPerInCommand"/> bound
-    /// parameters per command, returning the union — equivalent to a single IN over all ids (C265).
+    /// parameters per command, returning the union — equivalent to a single IN over all ids.
     /// The caller must hold <see cref="_gate"/>.
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
@@ -910,7 +910,7 @@ public sealed partial class SqliteDbService
     /// Builds the client-side predicate: soft-delete visibility (<c>IsDeleted == null || IsDeleted == false</c>,
     /// matching Mongo's wrapper) AND the compiled contract filter. When an id equality can be extracted
     /// from the whole filter body or any of its top-level AndAlso conjuncts, its value is also returned
-    /// for SQL pushdown (the predicate still re-evaluates the full filter — authoritative, C265).
+    /// for SQL pushdown (the predicate still re-evaluates the full filter — authoritative).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="filter">契约过滤表达式 / The contract filter</param>

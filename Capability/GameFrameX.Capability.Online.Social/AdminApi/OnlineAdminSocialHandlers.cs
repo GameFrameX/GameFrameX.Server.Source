@@ -118,7 +118,7 @@ public sealed class OnlineAdminSocialHandlers
     }
 
     /// <summary>
-    /// 注册隔离域 action（对局隔离；manifest 归 online-social——实调处罚面，C228 归属表）。
+    /// 注册隔离域 action（对局隔离；manifest 归 online-social——实调处罚面）。
     /// </summary>
     /// <param name="registry">动作注册表。</param>
     public void RegisterMatchIsolation(AdminActionRegistry registry)
@@ -345,7 +345,7 @@ public sealed class OnlineAdminSocialHandlers
     }
 
     /// <summary>
-    /// query_chat_messages：聊天审计查询（事件投影 + store 正文回读；C122 决策⑧④）。
+    /// query_chat_messages：聊天审计查询（事件投影 + store 正文回读）。
     /// </summary>
     /// <param name="request">请求。</param>
     /// <param name="scope">作用域。</param>

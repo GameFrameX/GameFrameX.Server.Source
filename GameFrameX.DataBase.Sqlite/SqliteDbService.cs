@@ -38,10 +38,10 @@ using Microsoft.Data.Sqlite;
 namespace GameFrameX.DataBase.Sqlite;
 
 /// <summary>
-/// SQLite 嵌入式数据库服务（手写 ADO，无 EF；C222）。
+/// SQLite 嵌入式数据库服务（手写 ADO，无 EF）。
 /// </summary>
 /// <remarks>
-/// Embedded SQLite implementation of <see cref="IDatabaseService"/> (hand-written ADO, no EF; C222).
+/// Embedded SQLite implementation of <see cref="IDatabaseService"/> (hand-written ADO, no EF).
 /// 存储模型 = PG StateRow 平移：每状态类型一张 <c>(id INTEGER PRIMARY KEY, doc TEXT NOT NULL)</c>，
 /// 状态对象经 System.Text.Json 与 <c>doc</c> 互转；查询为「id 等值提取下推 + 剩余 filter 客户端求值」，
 /// 客户端求值下与手写 InMemory 的查询语义完全等同（C# 全语义）。
@@ -51,10 +51,10 @@ namespace GameFrameX.DataBase.Sqlite;
 /// （跨进程发现/路由不可用，发现层由 <c>InProcDiscoveryRuntime</c> 以自指路由表替代）；
 /// ④ Availability 恒报 Healthy。生产规模化使用风险由使用方自担。
 ///
-/// Degraded members (documented on purpose, C222 裁定; C253 修订):
+/// Degraded members (documented on purpose):
 /// <see cref="AvailabilityState"/> always reports <see cref="DatabaseAvailabilityState.Healthy"/> (embedded
 /// engine, no network partition semantics); data operations retry transient busy/locked/timeout failures
-/// through the shared <c>DbResilienceExecutor</c> (C253) while the transaction shell stays single-pass
+/// through the shared <c>DbResilienceExecutor</c> while the transaction shell stays single-pass
 /// (ambient joins make blind retries unsafe); there is no background recovery task (a local file
 /// either opens or fails fast during <c>Open</c>).
 /// </remarks>

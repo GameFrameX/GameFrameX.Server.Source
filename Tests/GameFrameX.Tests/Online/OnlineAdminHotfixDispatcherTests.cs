@@ -35,7 +35,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online;
 
 /// <summary>
-/// Hotfix admin 受控操作族调度器级测试（C256，复用 C248 测试形态：真执行器 + 真装载断言）：
+/// Hotfix admin 受控操作族调度器级测试（真执行器 + 真装载断言）：
 /// 四 action（register_hotfix_manifest / activate_hotfix_version / check_hotfix_compatibility /
 /// rollback_hotfix_version）经 dispatcher 可达且与直调 <see cref="OnlineHotfixRollbackService"/> 行为一致
 ///（rollback 全链断言审计 / 幂等回放 / 活跃指针 / 实际装载路径）+ 错误码面经 admin 面透传。
@@ -55,7 +55,7 @@ public sealed class OnlineAdminHotfixDispatcherTests : System.IDisposable
     private readonly System.Collections.Generic.List<string> _createdVersions = new System.Collections.Generic.List<string>();
 
     /// <summary>
-    /// 构造经注册反转组装的调度器（组合产物装配真执行器 + 真制品获取器，C248 生产接线）。
+    /// 构造经注册反转组装的调度器（组合产物装配真执行器 + 真制品获取器）。
     /// </summary>
     /// <returns>调度器。</returns>
     private static GameFrameX.Capability.Hosting.AdminApi.AdminApiDispatcher CreateDispatcher()

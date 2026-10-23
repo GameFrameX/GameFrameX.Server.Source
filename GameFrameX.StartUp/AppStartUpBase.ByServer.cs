@@ -221,7 +221,7 @@ public abstract partial class AppStartUpBase
             return;
         }
 
-        // 协议版本握手短路（C252，框架级，位于业务 handler 分发之前）：major 不符回拒绝包并关闭会话；
+        // 协议版本握手短路（框架级，位于业务 handler 分发之前）：major 不符回拒绝包并关闭会话；
         // 旧拨号端不发握手帧，此处不触发，行为与升级前等价
         if (ProtocolVersionNegotiationServer.IsHandshakeRequest(messagePackage))
         {
@@ -596,18 +596,18 @@ public abstract partial class AppStartUpBase
     }
 
     /// <summary>
-    /// 配置服务器间 KCP 监听（C251）：与 <see cref="ConfigureKcpServer"/> 同构（共用消息漏斗与管线过滤器），
+    /// 配置服务器间 KCP 监听：与 <see cref="ConfigureKcpServer"/> 同构（共用消息漏斗与管线过滤器），
     /// 差异 = 独立端口与开关（<c>IsEnableInnerKcp</c>/<c>InnerKcpPort</c>）；
-    /// C272 起 <see cref="GameFrameX.Network.RemoteMessaging.Versioning.InterNodeAuthentication"/> 共享密钥
+    /// 在 <see cref="GameFrameX.Network.RemoteMessaging.Versioning.InterNodeAuthentication"/> 共享密钥
     /// 已配置时挂会话鉴权中间件作为凭据闸门：以协议版本握手帧为鉴权完成消息，凭据经 HMAC 验签，
     /// 未完成握手前白名单外消息一律按协议违规关闭（该专用面按构造无玩家流量，fail-closed）；
     /// 密钥为空时不挂中间件（信任级对齐 Inner TCP：内网端点）、挂空闲会话清理（清理窗 300s 严格大于客户端陈旧淘汰阈 240s）。
     /// </summary>
     /// <remarks>
-    /// Configures the inter-server KCP listener (C251): structurally identical to
+    /// Configures the inter-server KCP listener: structurally identical to
     /// <see cref="ConfigureKcpServer"/> (shared message funnel and pipeline filter), differing in the
     /// dedicated port and switch (<c>IsEnableInnerKcp</c>/<c>InnerKcpPort</c>).
-    /// Since C272, when the <see cref="GameFrameX.Network.RemoteMessaging.Versioning.InterNodeAuthentication"/>
+    /// When the <see cref="GameFrameX.Network.RemoteMessaging.Versioning.InterNodeAuthentication"/>
     /// shared secret is configured, the session authentication middleware is mounted as a credential
     /// gate: the protocol version handshake frame is the authentication-completion message, its
     /// credential is verified via HMAC, and messages outside the whitelist are closed as protocol
@@ -637,7 +637,7 @@ public abstract partial class AppStartUpBase
             SessionAuthenticationMiddleware authenticationMiddleware = null;
             if (interNodeAuthenticationEnabled)
             {
-                // C272 凭据闸门：握手帧为鉴权完成消息，凭据 HMAC 验签；未完成握手前白名单外消息按协议违规关闭
+                // 凭据闸门：握手帧为鉴权完成消息，凭据 HMAC 验签；未完成握手前白名单外消息按协议违规关闭
                 var authenticationOptions = new SessionAuthenticationOptions();
                 authenticationOptions.AllowedMessageIds.Add(GameFrameX.Network.RemoteMessaging.Versioning.ReqProtocolVersionNegotiation.ReservedMessageId);
                 authenticationOptions.AuthenticatedByMessageIds.Add(GameFrameX.Network.RemoteMessaging.Versioning.ReqProtocolVersionNegotiation.ReservedMessageId);
@@ -698,11 +698,11 @@ public abstract partial class AppStartUpBase
     }
 
     /// <summary>
-    /// 服务器间凭据闸门校验器：解包协议版本握手帧并校验节点间 HMAC 凭据（C272）。
+    /// 服务器间凭据闸门校验器：解包协议版本握手帧并校验节点间 HMAC 凭据。
     /// </summary>
     /// <remarks>
     /// The inter-server credential gate validator: deserializes the protocol version handshake
-    /// frame and verifies the inter-node HMAC credential (C272).
+    /// frame and verifies the inter-node HMAC credential.
     /// 非握手消息（不应到达——闸门白名单仅放行握手帧与心跳）或验签失败返回 <c>false</c>，
     /// 由 <see cref="SessionAuthenticationMiddleware"/> 按协议违规关闭会话。
     /// </remarks>

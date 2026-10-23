@@ -32,19 +32,19 @@ using GameFrameX.Capability.Hosting.Core;
 namespace GameFrameX.Capability.Online.Assets;
 
 /// <summary>
-/// 资产能力包的 hosting 扩展（C231 P3）：<see cref="AddOnlineAssetsRuntime"/> 装配入口（回调式，注册自装配模块）
+/// 资产能力包的 hosting 扩展：<see cref="AddOnlineAssetsRuntime"/> 装配入口（回调式，注册自装配模块）
 /// 与 <see cref="UseOnlineAssetStore"/> / <see cref="UseOnlineAssetTransactionStore"/> 存储替换缝。
 /// <para>
-/// 维护约束：options 经共享服务面预置（模块无参构造，显式链式与 P4 真扫描共用同一模块类）；
+/// 维护约束：options 经共享服务面预置（模块无参构造，显式链式与程序集扫描共用同一模块类）；
 /// 替换缝在模块 <c>Register</c> 期探测命中，未命中构造 InMemory 默认。
 /// </para>
 /// </summary>
 /// <remarks>
-/// Hosting extensions of the assets capability package (C231 P3): the <see cref="AddOnlineAssetsRuntime"/>
+/// Hosting extensions of the assets capability package: the <see cref="AddOnlineAssetsRuntime"/>
 /// assembly entry (callback style, registering the self-assembling module) plus the
 /// <see cref="UseOnlineAssetStore"/> / <see cref="UseOnlineAssetTransactionStore"/> store replacement seams.
 /// Options are pre-seeded through the shared service face (the module stays parameterless, shared by explicit
-/// chaining and the P4 real scan); replacement seams are probed at module <c>Register</c> time, falling back
+/// chaining and assembly scanning); replacement seams are probed at module <c>Register</c> time, falling back
 /// to in-memory defaults.
 /// </remarks>
 public static class OnlineAssetsHostingExtensions

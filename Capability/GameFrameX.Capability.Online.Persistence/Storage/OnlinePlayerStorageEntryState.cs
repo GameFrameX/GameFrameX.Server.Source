@@ -33,9 +33,9 @@ using GameFrameX.DataBase;
 using GameFrameX.Foundation.Orm.Attribute;
 
 /// <summary>
-/// 玩家云存储条目持久化行（C249 一级 store：Storage 域 → GameDb 适配的落库形态）。
+/// 玩家云存储条目持久化行（一级 store：Storage 域 → GameDb 适配的落库形态）。
 /// <para>
-/// 键编码与版本约定（T1 裁决 1/3）：<see cref="UniqueKey"/> = 物化复合键（五元组无损拼接，
+/// 键编码与版本约定：<see cref="UniqueKey"/> = 物化复合键（五元组无损拼接，
 /// 与 InMemory <c>BuildKey</c> 同构）单列唯一索引，承接「expectedVersion == 0 仅创建」的互斥；
 /// 行 Id 由 <c>NextSequenceAsync</c> 分配。版本换算：<see cref="BaseCacheState"/> 的 RowVersion
 /// 从 0 起（插入 = 0、每次 CAS 递增），实体 <c>Version</c> 从 1 起——恒等式

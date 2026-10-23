@@ -36,7 +36,7 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Abstractions.Bridges;
 
 /// <summary>
-/// 好友域桥租约（C244，沿 C243 的 <c>OnlineFriendBridgeLease</c>（该类型已于 C244 退役，本类型为其继任形态）/ C245 对局桥形态）：
+/// 好友域桥租约：
 /// 组合根发布给进程内消费方（Hotfix 薄适配器）的吊销式访问句柄——持有域契约面与授权作用域三元组，
 /// 撤销后任何旧引用调用一律显式 <see cref="OnlineErrorCode.DependencyUnavailable"/> 失败。
 /// <para>
@@ -46,8 +46,8 @@ namespace GameFrameX.Capability.Online.Abstractions.Bridges;
 /// </para>
 /// </summary>
 /// <remarks>
-/// The friend-domain bridge lease (C244, following the C243 friend-query and C245 match-bridge lease
-/// shapes): the revocable access handle published by the composition root for in-process consumers
+/// The friend-domain bridge lease: the revocable access handle published by the composition root for
+/// in-process consumers
 /// (the Hotfix thin adapter) — it carries the domain contract face and the authorized scope triple,
 /// and once revoked every call through a stale reference fails explicitly with
 /// <see cref="OnlineErrorCode.DependencyUnavailable"/>. Revocation is a one-way idempotent gate

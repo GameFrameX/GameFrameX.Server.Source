@@ -36,7 +36,7 @@ using Xunit;
 namespace GameFrameX.Hotfix.Tests;
 
 /// <summary>
-/// Room 业务纯规则测试（C197 Phase 2）。
+/// Room 业务纯规则测试。
 /// </summary>
 /// <remarks>
 /// 覆盖容量校验边界、容量归一化与最低负载选房（同载小 id、跳过已满、无房返回 null）。

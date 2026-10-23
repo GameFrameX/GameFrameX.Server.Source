@@ -40,7 +40,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Trade;
 /// 挂单交易服务器（Trade Role）业务组件代理：订单簿挂单 / 撤单 / 盘口查询与即时撮合。
 /// </summary>
 /// <remarks>
-/// Trade Role 独立业务逻辑系统（C197 垂直切片）的热更侧落点。
+/// Trade Role 独立业务逻辑系统（垂直切片）的热更侧落点。
 /// 业务规则判定一律委托 <see cref="TradeRules"/>（纯函数，可单测）；
 /// 本类只做状态编排：订单簿懒创建、新单撮合、留量挂单入簿、撤单摘除与成交流水落库。
 /// 成交仅记录流水，不动背包/货币余额（物品系统属 Game 服，范围外）。

@@ -24,7 +24,7 @@ using System.Collections.Generic;
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 匹配分配解析视图（C246）：供通知推送方按 assignmentId 解析数值对局标识与成员表。
+/// 匹配分配解析视图：供通知推送方按 assignmentId 解析数值对局标识与成员表。
 /// </summary>
 public sealed class OnlineMatchDomainAssignment
 {

@@ -40,8 +40,8 @@ using GameFrameX.Utility;
 namespace GameFrameX.Hotfix.Logic.ServerRole.Match;
 
 /// <summary>
-/// 匹配域桥薄适配器（C246，420 族协议入口的唯一转发点）：经 <see cref="OnlineMatchDomainBridgeHolder"/>
-/// 进程内租约把入队 / 取消 / 状态 / 入场协议行为转发到 Online 匹配域契约面，并按 T2 裁定完成错误码映射。
+/// 匹配域桥薄适配器（420 族协议入口的唯一转发点）：经 <see cref="OnlineMatchDomainBridgeHolder"/>
+/// 进程内租约把入队 / 取消 / 状态 / 入场协议行为转发到 Online 匹配域契约面，并完成错误码映射。
 /// <para>
 /// 维护约束（红线）：
 /// ① 域桥独占——桥不可用（宿主未启 / 已停止 / 租约撤销）与服务失败一律映射为
@@ -56,10 +56,9 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Match;
 /// </para>
 /// </summary>
 /// <remarks>
-/// The match-domain thin bridge adapter (C246, the single forwarding point for the domain-420 protocol
+/// The match-domain thin bridge adapter (the single forwarding point for the domain-420 protocol
 /// entries): forwards enqueue / cancel / status / enter protocol behaviours in-process to the Online
-/// match-domain contract face through <see cref="OnlineMatchDomainBridgeHolder"/>, mapping error codes
-/// per the T2 rulings. The bridge path is exclusive — unavailability and service failures map to
+/// match-domain contract face through <see cref="OnlineMatchDomainBridgeHolder"/>. The bridge path is exclusive — unavailability and service failures map to
 /// explicit <c>-(int)OnlineErrorCode</c> codes (≤ -1001, disjoint from the legacy 420001..420005 band)
 /// with no silent fallback (the legacy in-memory FIFO pool chain retired with this cutover — there is
 /// no fallback target). The scope triple comes only from the lease's composition-root authorized
@@ -196,7 +195,7 @@ public static class MatchDomainBridge
     }
 
     /// <summary>
-    /// 按对局标识入场（420-16，C246 新面）：失败一律 Online 显式段。
+    /// 按对局标识入场（420-16 新面）：失败一律 Online 显式段。
     /// </summary>
     /// <param name="playerId">会话绑定玩家标识。</param>
     /// <param name="request">协议请求。</param>

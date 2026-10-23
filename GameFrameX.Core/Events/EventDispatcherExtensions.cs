@@ -33,7 +33,7 @@ using GameFrameX.Core.Abstractions.Events;
 namespace GameFrameX.Core.Events;
 
 /// <summary>
-/// 组件代理侧事件派发扩展（C193 建，C289 自 Hotfix 下沉 Core）：提供以组件代理为入口的事件派发写法。
+/// 组件代理侧事件派发扩展：提供以组件代理为入口的事件派发写法。
 /// </summary>
 public static class EventDispatcherExtensions
 {
@@ -45,7 +45,7 @@ public static class EventDispatcherExtensions
     /// <remarks>
     /// 与静态 <see cref="EventDispatcher.Dispatch(long, GameEventArgs)" /> 共用同一监听器循环（Actor 内派发路径），日志键也统一为 <c>Core.EventDispatcher.*</c>；
     /// 直接以代理所属 Actor 入队而不经 <see cref="EventDispatcher.Dispatch(long, GameEventArgs)" /> 的 ActorMap 查找——已回收出表的 Actor 经 ActorMap 会落入全局监听器分支，偏离本语义；
-    /// 不做作用域广播（C289 起服务器段广播分支退役）：需要遍历在线玩家时，以会话层 <c>PlayerSessionManager</c> 为在线事实源自行派发。
+    /// 不做作用域广播（服务器段广播分支已退役）：需要遍历在线玩家时，以会话层 <c>PlayerSessionManager</c> 为在线事实源自行派发。
     /// </remarks>
     public static void Dispatch(this IComponentAgent agent, GameEventArgs eventArgs)
     {

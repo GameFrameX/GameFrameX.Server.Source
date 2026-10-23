@@ -45,9 +45,9 @@ namespace GameFrameX.DataBase.Sqlite;
 /// Write paths: whole-document write-back with the Mongo/PG timestamp semantics (Add stamps both
 /// times and seeds UpdateCount; Update advances them; upserts replace whole documents and revive
 /// soft-deleted rows; SaveBulkAsync persists timestamps verbatim; DeleteListAsync marks its matched
-/// rows in one gated single-transaction batch — C265). Transactions run on the single
+/// rows in one gated single-transaction batch). Transactions run on the single
 /// connection — a nested transaction shell joins the ambient transaction instead of opening a
-/// second one (SQLite cannot nest); data operations retry via the shared resilience engine (C253)
+/// second one (SQLite cannot nest); data operations retry via the shared resilience engine
 /// while the transaction shell itself stays single-pass (ambient joins make blind retries unsafe).
 /// </remarks>
 public sealed partial class SqliteDbService
@@ -209,7 +209,7 @@ public sealed partial class SqliteDbService
         state.UpdateTime = currentTime;
         state.UpdateCount = (state.UpdateCount ?? 0) + 1;
 
-        // 写库前捕获字节快照（bump 后），成功后按该快照精确提交基线（C263），
+        // 写库前捕获字节快照（bump 后），成功后按该快照精确提交基线，
         // 避免参数less 提交读到并发检查推进后的未落库 ToSaveHash。
         var persistedData = state.ToBytes();
         await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
@@ -261,7 +261,7 @@ public sealed partial class SqliteDbService
         }
 
         var currentTime = GetCurrentTimestamp();
-        // 写库前逐个捕获字节快照（bump 后），成功后按快照精确提交基线（C263）
+        // 写库前逐个捕获字节快照（bump 后），成功后按快照精确提交基线
         var persistedSnapshots = new List<(TState State, byte[] Data)>(stateArray.Length);
         foreach (var state in stateArray)
         {
@@ -375,7 +375,7 @@ public sealed partial class SqliteDbService
         try
         {
             var acknowledged = 0;
-            // 写库前逐状态捕获送库字节快照，ack 批次内逐状态精确提交基线（C263）：
+            // 写库前逐状态捕获送库字节快照，ack 批次内逐状态精确提交基线：
             // 提交权从 Core 的 NotifyBatchSaved 收进 Provider，且只提交实际送库快照的 hash。
             var batchSnapshots = new (TState State, byte[] Data)[batchCount];
             var (transaction, owned) = await BeginOrJoinTransactionAsync(CancellationToken.None).ConfigureAwait(false);
@@ -484,7 +484,7 @@ public sealed partial class SqliteDbService
             }), cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
             if (updated)
             {
-                // 精确提交（C263）：以检查时快照推进基线，避免并发 IsChanged 把基线推进到未落库快照
+                // 精确提交：以检查时快照推进基线，避免并发 IsChanged 把基线推进到未落库快照
                 state.SaveToDbPostHandler(changedData);
             }
         }
@@ -498,7 +498,7 @@ public sealed partial class SqliteDbService
     /// <remarks>
     /// Saves multiple documents (returns the actually-changed count; unchanged items are skipped).
     /// All writes share one transaction; when at least one row was written, each changed state receives
-    /// the exact-snapshot <c>SaveToDbPostHandler(byte[])</c> commit (C263; aligned with the Mongo/PG flow).
+    /// the exact-snapshot <c>SaveToDbPostHandler(byte[])</c> commit (aligned with the Mongo/PG flow).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="stateList">要保存的数据列表 / The states to save</param>
@@ -514,7 +514,7 @@ public sealed partial class SqliteDbService
     /// <remarks>
     /// Saves multiple documents (returns the actually-changed count; unchanged items are skipped).
     /// All writes share one transaction; when at least one row was written, each changed state receives
-    /// the exact-snapshot <c>SaveToDbPostHandler(byte[])</c> commit (C263; aligned with the Mongo/PG flow).
+    /// the exact-snapshot <c>SaveToDbPostHandler(byte[])</c> commit (aligned with the Mongo/PG flow).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="stateList">要保存的数据列表 / The states to save</param>
@@ -583,7 +583,7 @@ public sealed partial class SqliteDbService
         {
             foreach (var (state, changedData) in changedStates)
             {
-                // 精确提交（C263）：只提交实际送库快照，未变更项不再触碰基线
+                // 精确提交：只提交实际送库快照，未变更项不再触碰基线
                 state.SaveToDbPostHandler(changedData);
             }
         }
@@ -802,7 +802,7 @@ public sealed partial class SqliteDbService
     /// 根据条件批量删除数据（软删除；先查再单闸单事务批删，对齐 Mongo/PG 流程）。
     /// </summary>
     /// <remarks>
-    /// Soft-deletes the visible documents matching the filter (find, then one gated single-transaction batch — C265).
+    /// Soft-deletes the visible documents matching the filter (find, then one gated single-transaction batch).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="filter">过滤表达式 / The filter expression</param>
@@ -816,7 +816,7 @@ public sealed partial class SqliteDbService
     /// 根据条件批量删除数据（软删除；先查再单闸单事务批删，对齐 Mongo/PG 流程）。
     /// </summary>
     /// <remarks>
-    /// Soft-deletes the visible documents matching the filter (find, then one gated single-transaction batch — C265).
+    /// Soft-deletes the visible documents matching the filter (find, then one gated single-transaction batch).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="filter">过滤表达式 / The filter expression</param>
@@ -1116,7 +1116,7 @@ public sealed partial class SqliteDbService
     /// the single commit point. A nested shell inside an active transaction simply joins it (SQLite
     /// cannot nest transactions). The shell itself runs single-pass by design — retrying a shell
     /// would replay the action; the data operations it wraps retry individually via the shared
-    /// resilience engine (C253).
+    /// resilience engine.
     /// </remarks>
     /// <param name="action">要在事务中执行的操作 / The action to execute inside the transaction</param>
     /// <returns>异步任务 / Async task</returns>
@@ -1136,7 +1136,7 @@ public sealed partial class SqliteDbService
     /// the single commit point. A nested shell inside an active transaction simply joins it (SQLite
     /// cannot nest transactions). The shell itself runs single-pass by design — retrying a shell
     /// would replay the action; the data operations it wraps retry individually via the shared
-    /// resilience engine (C253).
+    /// resilience engine.
     /// </remarks>
     /// <param name="action">要在事务中执行的操作 / The action to execute inside the transaction</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
@@ -1229,7 +1229,7 @@ public sealed partial class SqliteDbService
     /// Soft-deletes the given ids as ONE gated, single-transaction batch: the rows are re-read by id
     /// inside the gate (chunked id-IN), a same-timestamp already-deleted row counts as unchanged (0),
     /// and every other re-read row is marked and written inside one transaction — the per-row counting
-    /// semantics are identical to the single-row path (C265; N rows used to cost N transactions).
+    /// semantics are identical to the single-row path.
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="ids">去重后的ID集合 / The distinct IDs</param>

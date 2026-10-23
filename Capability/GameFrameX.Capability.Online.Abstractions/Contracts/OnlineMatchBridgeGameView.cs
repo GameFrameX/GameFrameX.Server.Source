@@ -24,7 +24,7 @@ using System.Collections.Generic;
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 对局桥游戏视图（C245）：平台对局状态在协议适配层的保密投影快照——
+/// 对局桥游戏视图：平台对局状态在协议适配层的保密投影快照——
 /// 出拳保密（未结算局不回显真实出拳）、胜负只由服务端产出。
 /// <para>
 /// 维护约束：本视图是**投影**而非权威状态——权威状态在平台对局 Actor；投影规则
@@ -33,7 +33,7 @@ namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 /// </para>
 /// </summary>
 /// <remarks>
-/// The bridge game view (C245): the secrecy-projected snapshot of a platform match for the
+/// The bridge game view: the secrecy-projected snapshot of a platform match for the
 /// protocol adaptation layer — gestures stay hidden until their round resolves, and outcomes are
 /// produced by the server only. This is a projection, never the authoritative state (which lives
 /// in the platform match actor); the projection rules are implemented by the game plugin (the

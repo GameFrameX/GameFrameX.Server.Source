@@ -553,7 +553,7 @@ public static partial class Keys
         }
 
         /// <summary>
-        /// 服务器间 KCP 传输（C251 InnerKcpPort 监听）生命周期消息。
+        /// 服务器间 KCP 传输（InnerKcpPort 监听）生命周期消息。
         /// 与客户端接入面 <see cref="Kcp"/> 键组分立：本面无会话鉴权中间件，端口与开关独立（IsEnableInnerKcp / InnerKcpPort）。
         /// </summary>
         public static class InnerKcp
@@ -845,7 +845,7 @@ public static partial class Keys
             public const string StopServerError = "StartUp.Application.StopServerError";
 
             /// <summary>
-            /// 检测到重复的启动优先级；这些角色之间的多角色启动顺序不稳定 (C143b) — {0}
+            /// 检测到重复的启动优先级；这些角色之间的多角色启动顺序不稳定 — {0}
             /// </summary>
             /// <remarks>
             /// 键名: StartUp.Application.DuplicateStartupPriorities

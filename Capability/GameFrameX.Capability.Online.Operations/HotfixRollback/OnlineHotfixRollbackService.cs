@@ -91,7 +91,7 @@ public sealed class OnlineHotfixRollbackService
     private static readonly char[] ForbiddenVersionPathChars = { '/', '\\', ':', };
 
     /// <summary>
-    /// 事件发布出口（可空 = 未接线时跳过，C103 先例）。
+    /// 事件发布出口（可空 = 未接线时跳过）。
     /// </summary>
     private readonly IOnlineEventPublisher _eventPublisher;
 
@@ -119,7 +119,7 @@ public sealed class OnlineHotfixRollbackService
     /// <para>清单携带制品字段（<see cref="OnlineHotfixProtocolManifest.ArtifactSourceUrl"/> /
     /// <see cref="OnlineHotfixProtocolManifest.ArtifactSha256"/>）时，登记落簿前先经制品获取器
     /// 把制品取到版本目录（下载 / 校验 / 原子落盘）——「已登记」与「已落盘」同时成立，
-    /// 切换命令只消费已落盘版本（切换时刻零下载红线，C248）；获取失败登记未生效、可重试。</para>
+    /// 切换命令只消费已落盘版本（切换时刻零下载红线）；获取失败登记未生效、可重试。</para>
     /// </summary>
     /// <param name="manifest">待登记清单。</param>
     /// <param name="cancellationToken">取消令牌。</param>

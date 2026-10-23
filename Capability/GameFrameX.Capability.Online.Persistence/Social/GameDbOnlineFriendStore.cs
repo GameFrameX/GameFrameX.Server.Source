@@ -33,7 +33,7 @@ using GameFrameX.Capability.Online.Social;
 using GameFrameX.DataBase;
 
 /// <summary>
-/// 好友关系 GameDb 持久化适配（C244 T3；D3 = 3A 分级混合的 Social 侧落地）。
+/// 好友关系 GameDb 持久化适配。
 /// <para>
 /// 数据生命周期语义：行物理长存——适配层零删除调用（接受 / 拒绝 / 过期 / 删除 / 重新发起均以
 /// 状态字段覆盖写表达，与 InMemory 全量驻留语义同构）；无向对唯一性由物化复合键单列唯一索引 +

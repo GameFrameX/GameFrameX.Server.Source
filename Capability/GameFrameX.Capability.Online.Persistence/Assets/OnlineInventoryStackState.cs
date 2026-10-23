@@ -33,7 +33,7 @@ using GameFrameX.DataBase;
 using GameFrameX.Foundation.Orm.Attribute;
 
 /// <summary>
-/// 道具库存堆栈快照持久化行（C249 一级 store：Assets 域 → GameDb 适配的落库形态）。
+/// 道具库存堆栈快照持久化行（一级 store：Assets 域 → GameDb 适配的落库形态）。
 /// <para>
 /// 键编码与版本约定同 <see cref="OnlineWalletAccountState"/>：物化复合键
 /// （"tenant:app:player:道具标识"）单列唯一索引；Version 与落账次数一一同构（适配层预置）；

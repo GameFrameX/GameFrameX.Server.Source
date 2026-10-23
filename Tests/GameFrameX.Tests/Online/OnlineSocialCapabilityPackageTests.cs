@@ -12,13 +12,13 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 社交能力包（C231 P3）验收测试：无参模块扫描可发现 / AddOnlineSocialRuntime 最小组合（Foundation 预置）/
+    /// 社交能力包验收测试：无参模块扫描可发现 / AddOnlineSocialRuntime 最小组合（Foundation 预置）/
     /// UseOnlineChatStore 替换缝生效 / gate 面注册回共享面。
     /// </summary>
     public class OnlineSocialCapabilityPackageTests
     {
         /// <summary>
-        /// 地基占位模块（online-foundation 清单；Social 包闭包校验要求其在场——Foundation 包 hosting 扩展归 P4）。
+        /// 地基占位模块（online-foundation 清单；Social 包闭包校验要求其在场）。
         /// </summary>
         private sealed class FoundationStubModule : ICapabilityModule
         {
@@ -60,7 +60,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 无参模块扫描可发现（P4 前置）：社交包程序集扫描产出 online-social 模块。
+        /// 无参模块扫描可发现：社交包程序集扫描产出 online-social 模块。
         /// </summary>
         [Fact]
         public void DiscoverModules_FindsSocialCapabilityModule()

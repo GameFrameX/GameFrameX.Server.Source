@@ -374,7 +374,7 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
     }
 
     /// <summary>
-    /// 测试批量条件软删除重复调用幂等：首次计满匹配行，重复调用可见集为空计 0（C265 单事务批删语义）。
+    /// 测试批量条件软删除重复调用幂等：首次计满匹配行，重复调用可见集为空计 0（单事务批删语义）。
     /// </summary>
     [Fact]
     public async Task DeleteListAsync_RepeatedCalls_ShouldBeIdempotent()
@@ -394,7 +394,7 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
     }
 
     /// <summary>
-    /// 测试按 ID 列表软删除超过 IN 分块上限（999）的集合：跨块并集全删（C265 参数上限分块）。
+    /// 测试按 ID 列表软删除超过 IN 分块上限（999）的集合：跨块并集全删（参数上限分块）。
     /// </summary>
     [Fact]
     public async Task DeleteListIdAsync_MoreIdsThanInChunkLimit_ShouldSoftDeleteAll()
@@ -572,7 +572,7 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
     }
 
     /// <summary>
-    /// 测试 FindByIds 超过 IN 分块上限（999）：跨块并集返回全部命中（C265 参数上限分块）。
+    /// 测试 FindByIds 超过 IN 分块上限（999）：跨块并集返回全部命中（参数上限分块）。
     /// </summary>
     [Fact]
     public async Task FindByIdsAsync_MoreIdsThanInChunkLimit_ShouldReturnAllMatches()
@@ -597,7 +597,7 @@ public sealed class SqliteDbServiceQueryTests : IDisposable
     }
 
     /// <summary>
-    /// 测试 AND 链过滤：id 等值作为顶层合取项（含嵌套括号与反向操作数）时语义正确（C265 合取链下推）。
+    /// 测试 AND 链过滤：id 等值作为顶层合取项（含嵌套括号与反向操作数）时语义正确（合取链下推）。
     /// </summary>
     [Fact]
     public async Task FindListAsync_AndChainIdConjunct_ShouldFilterCorrectly()

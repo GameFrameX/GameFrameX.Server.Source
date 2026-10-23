@@ -30,7 +30,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 对局桥服务测试（C245 样例垂直切片）：
+    /// 对局桥服务测试（样例垂直切片）：
     /// 确定性开局幂等 / 出拳保密投影 / 拒绝码映射 / 新局号语义。
     /// </summary>
     public class OnlineMatchGameBridgeServiceTests

@@ -50,7 +50,7 @@ namespace GameFrameX.Network;
 /// <list type="bullet">
 /// <item>会话建立（<see cref="RegisterSession"/>）登记未鉴权状态与鉴权超时 deadline；deadline 自建立起算、不因收发消息重置。</item>
 /// <item>未鉴权期间仅放行心跳与白名单消息（<see cref="ShouldAllowPackageAsync"/>）；白名单外消息按协议违规立即关闭会话，不进入业务消息处理。</item>
-/// <item>收到 <c>AuthenticatedByMessageIds</c> 内的消息即标记鉴权完成，此后所有消息正常放行；重复白名单消息幂等放行。C272 起若配置了 <see cref="SessionAuthenticationOptions.CredentialValidator"/>，标记鉴权前先过凭据校验，未通过按协议违规关闭（fail-closed）。</item>
+/// <item>收到 <c>AuthenticatedByMessageIds</c> 内的消息即标记鉴权完成，此后所有消息正常放行；重复白名单消息幂等放行。若配置了 <see cref="SessionAuthenticationOptions.CredentialValidator"/>，标记鉴权前先过凭据校验，未通过按协议违规关闭（fail-closed）。</item>
 /// <item>超时窗口内未完成鉴权的会话由周期扫描（Timer）主动关闭（<see cref="CloseReason.TimeOut"/>）。</item>
 /// </list>
 /// 与 <c>UseClearIdleSession</c> 空闲清理协同：本超时（默认 30s）是短窗主动防线，空闲清理（默认 60s）是长窗兜底。
@@ -171,7 +171,7 @@ public sealed class SessionAuthenticationMiddleware : MiddlewareBase
         var messageId = package.Header.MessageId;
         if (_options.AuthenticatedByMessageIds.Contains(messageId))
         {
-            // C272：凭据校验缝——「鉴权完成」消息命中后、标记鉴权前先过可选校验器；
+            // 凭据校验缝——「鉴权完成」消息命中后、标记鉴权前先过可选校验器；
             // null 保持既有消息号白名单语义（凭据校验由业务层承担），false = 协议违规关闭
             var validator = _options.CredentialValidator;
             if (validator != null)

@@ -22,7 +22,7 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 登录签发的会话恢复凭据（C204）：Token 明文只在签发响应出现一次，服务端仅存指纹。
+/// 登录签发的会话恢复凭据：Token 明文只在签发响应出现一次，服务端仅存指纹。
 /// </summary>
 public sealed class OnlineSessionLoginCredential
 {

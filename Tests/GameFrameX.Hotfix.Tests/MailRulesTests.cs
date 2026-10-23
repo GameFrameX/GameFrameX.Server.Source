@@ -37,7 +37,7 @@ using Xunit;
 namespace GameFrameX.Hotfix.Tests;
 
 /// <summary>
-/// Mail 业务纯规则测试（C197 Phase 2）。
+/// Mail 业务纯规则测试。
 /// </summary>
 /// <remarks>
 /// 覆盖标题合法性边界、过期判定、状态机终态流转、失败重试上限与待投递选择语义。

@@ -504,7 +504,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     }
 
     /// <summary>
-    /// 测试批内重复 Id 的 SaveBulk 批次仍整批 ack 且库内为最后写入值（C266：ack 按去重后 id 数判定）。
+    /// 测试批内重复 Id 的 SaveBulk 批次仍整批 ack 且库内为最后写入值（ack 按去重后 id 数判定）。
     /// </summary>
     /// <remarks>
     /// A batch holding duplicate ids must still be acknowledged as a whole (aligned with Mongo's
@@ -541,7 +541,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     }
 
     /// <summary>
-    /// 测试批量 upsert 对软删行的整档替换复活（C266：id 投影探测 + 桩更新路径，不回读原 jsonb）。
+    /// 测试批量 upsert 对软删行的整档替换复活（id 投影探测 + 桩更新路径，不回读原 jsonb）。
     /// </summary>
     /// <remarks>
     /// The existence probe bypasses the soft-delete filter, so a soft-deleted row is updated via the stub
@@ -569,7 +569,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     }
 
     /// <summary>
-    /// 测试并发冷启动单飞合并建表与等待方取消后缓存仍健康（C266 token 隔离）。
+    /// 测试并发冷启动单飞合并建表与等待方取消后缓存仍健康（token 隔离）。
     /// </summary>
     /// <remarks>
     /// Concurrent cold-cache first calls must merge onto one DDL single-flight and all succeed; a caller
@@ -612,7 +612,7 @@ public sealed class PostgreSqlDbServiceQueryTests
     }
 
     /// <summary>
-    /// 测试按 ID 列表软删除对重复 Id 输入按行计数一次（C266 批量软删核心）。
+    /// 测试按 ID 列表软删除对重复 Id 输入按行计数一次。
     /// </summary>
     [Fact]
     public async Task DeleteListIdAsync_WithDuplicateIds_ShouldCountEachRowOnce()

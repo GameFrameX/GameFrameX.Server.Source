@@ -296,7 +296,7 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
         switch (options.OfflineStrategy)
         {
             case PlayerOfflineStrategy.StoreOffline:
-                // TODO: 写入离线消息存储（P1 后续完善）
+                // TODO: 写入离线消息存储（后续完善）
                 return PlayerSendResult.Ok(
                     PlayerDeliverStatus.OfflineStored,
                     playerId,

@@ -33,11 +33,11 @@ using Xunit;
 namespace GameFrameX.Tests.DataBase;
 
 /// <summary>
-/// BaseCacheState/StateHash 脏检查语义回归测试（C263 / GFX-903，无数据库依赖）：
+/// BaseCacheState/StateHash 脏检查语义回归测试（无数据库依赖）：
 /// 懒基线不得吞变异、精确提交不得吃到并发检查推进后的未落库快照。
 /// </summary>
 /// <remarks>
-/// Dirty-check semantics regression tests for BaseCacheState/StateHash (C263 / GFX-903, no database
+/// Dirty-check semantics regression tests for BaseCacheState/StateHash (no database
 /// dependency): the lazy baseline must not swallow mutations, and the exact-snapshot commit must not
 /// consume an unpersisted snapshot advanced by a concurrent check.
 /// </remarks>

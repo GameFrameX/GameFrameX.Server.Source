@@ -3,18 +3,18 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// Online 事件 topic 冻结门禁测试（C223 立项，C228 升维，C232 P6 收口）：全部 Online 事件的
+    /// Online 事件 topic 冻结门禁测试：全部 Online 事件的
     /// topic 常量与来源标识逐字节冻结（零行为变更红线）。
     /// <para>
-    /// 维护约束：目录级依赖矩阵已随双工程退役终结（C232 P5 停摆、P6 删除 <c>GameFrameX.Online</c>
-    /// 残量目录后正式退役）——包级方向断言由 <see cref="CapabilityPackageStructureTests"/> 全量接管，
+    /// 维护约束：目录级依赖矩阵已随双工程退役终结（<c>GameFrameX.Online</c>
+    /// 残量目录删除后正式退役）——包级方向断言由 <see cref="CapabilityPackageStructureTests"/> 全量接管，
     /// 本测试只保留 topic 冻结面。
     /// </para>
     /// </summary>
     public class OnlineDependencyMatrixTests
     {
         /// <summary>
-        /// 断言事件 topic 常量与来源标识逐字节冻结（C223 零行为变更红线；值 = 2026-10-12 迁移前基线）。
+        /// 断言事件 topic 常量与来源标识逐字节冻结（零行为变更红线；值 = 2026-10-12 迁移前基线）。
         /// </summary>
         [Fact]
         public void EventTopicConstants_RemainByteFrozen()

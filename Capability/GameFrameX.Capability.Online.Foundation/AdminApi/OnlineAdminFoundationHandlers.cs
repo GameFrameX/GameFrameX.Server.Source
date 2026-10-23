@@ -35,19 +35,14 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Foundation.AdminApi;
 
 /// <summary>
-/// 平台地基域 admin 命令（suspend_resume_player；C232 P6 自壳 <c>OnlineAdminMatchHandlers</c> 迁入——
-/// 壳类名带历史误植的 Match 域名，本管制命令实为在线状态阻断位，随迁移正名归属地基域；
-/// 匹配域同名类已先期迁 <c>Capability.Online.Match</c>，本类更名避免同名冲突）。
+/// 平台地基域 admin 命令（suspend_resume_player）。
 /// <para>
 /// 维护约束：suspend_resume_player 为 Admin 受控命令（调度器层幂等包裹）；消费面
 /// （在线状态服务）由模块 Register 期构造后参数化传入（静态化模式对齐包族 admin handlers）。
 /// </para>
 /// </summary>
 /// <remarks>
-/// Admin commands of the foundation domain (suspend_resume_player; migrated by C232 P6 from the
-/// shell's <c>OnlineAdminMatchHandlers</c> — the shell class name carried a historically misplaced
-/// Match prefix while the command toggles the presence block bit, so it is renamed after its real
-/// domain; the Match package already hosts a same-named class). The consumed presence service is
+/// Admin commands of the foundation domain (suspend_resume_player). The consumed presence service is
 /// parameterized in by the module after <c>Register</c>, mirroring the package-family handler pattern.
 /// </remarks>
 public static class OnlineAdminFoundationHandlers

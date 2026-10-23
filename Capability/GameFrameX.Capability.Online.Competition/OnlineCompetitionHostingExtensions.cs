@@ -35,16 +35,16 @@ using GameFrameX.Capability.Online.Competition.Tournament;
 namespace GameFrameX.Capability.Online.Competition;
 
 /// <summary>
-/// 竞技能力包的 hosting 扩展（C232 P4）：<see cref="AddOnlineCompetitionRuntime"/> 装配入口（回调式，注册自装配模块）
+/// 竞技能力包的 hosting 扩展：<see cref="AddOnlineCompetitionRuntime"/> 装配入口（回调式，注册自装配模块）
 /// 与三个存储替换缝（<see cref="UseOnlineLeaderboardStore"/> / <see cref="UseOnlineSeasonStore"/> /
 /// <see cref="UseOnlineTournamentStore"/>）。
 /// <para>
-/// 维护约束：options 经共享服务面预置（模块无参构造，显式链式与 P4 真扫描共用同一模块类）；
+/// 维护约束：options 经共享服务面预置（模块无参构造，显式链式与真扫描共用同一模块类）；
 /// 替换缝在模块 <c>Register</c> 期探测命中，未命中构造 InMemory 默认。
 /// </para>
 /// </summary>
 /// <remarks>
-/// Hosting extensions of the competition capability package (C232 P4): the <see cref="AddOnlineCompetitionRuntime"/>
+/// Hosting extensions of the competition capability package: the <see cref="AddOnlineCompetitionRuntime"/>
 /// assembly entry (callback style, registering the self-assembling module) plus three store replacement seams.
 /// Options are pre-seeded through the shared service face; the replacement seams are probed at module
 /// <c>Register</c> time with in-memory fallbacks.

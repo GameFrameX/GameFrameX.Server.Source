@@ -42,7 +42,7 @@ using GameFrameX.Foundation.Idempotency;
 namespace GameFrameX.Capability.Online.Competition.Leaderboard;
 
 /// <summary>
-/// Match.Settled → 排行榜投影订阅体（C245 Batch B）：消费对局结算完成事件，经
+/// Match.Settled → 排行榜投影订阅体：消费对局结算完成事件，经
 /// <see cref="OnlineLeaderboardResultProjector"/>（可信源 result store + MatchResultId 核对 + 幂等键）
 /// 投影到预置榜单；失败进待重试表，由 tick job <c>leaderboard-projection-retry</c> 逐轮重投。
 /// <para>
@@ -354,7 +354,7 @@ public sealed class OnlineMatchSettledLeaderboardProjector
     }
 
     /// <summary>
-    /// 待重试条目（进程内易失，重启失效与 D3 边界一致）。
+    /// 待重试条目（进程内易失，重启即失效）。
     /// </summary>
     private sealed class PendingProjection
     {

@@ -34,7 +34,7 @@ using System.Diagnostics.Metrics;
 namespace GameFrameX.DataBase.Abstractions;
 
 /// <summary>
-/// 数据库共享弹性引擎（C253 单一事实源）：降级读前置检查、写门控、指数延迟 + 抖动重试核心环与三指标的统一载体。
+/// 数据库共享弹性引擎（单一事实源）：降级读前置检查、写门控、指数延迟 + 抖动重试核心环与三指标的统一载体。
 /// </summary>
 /// <remarks>
 /// Shared resilience engine for all database providers: degraded-read pre-check, core-write

@@ -53,12 +53,12 @@ namespace GameFrameX.Tests.Network.SuperSocket;
 /// SuperSocket KCP 端到端测试：<see cref="BotKcpClient"/> 与基于 <c>UseKcp</c> 的服务端真实往返。
 /// </summary>
 /// <remarks>
-/// 覆盖 C190 T4：以产品客户端程序集（<c>EasyClient&lt;IMessage&gt;</c> + <see cref="MessageObjectPipelineFilter"/> +
+/// 覆盖场景：以产品客户端程序集（<c>EasyClient&lt;IMessage&gt;</c> + <see cref="MessageObjectPipelineFilter"/> +
 /// <c>AsKcp</c>）经 UDP loopback 走完整消息收发链路（编解码 + 生命周期 + conv 路由）。
 /// <para>服务端装配与 <see cref="SuperSocketKcpListeningTests"/> 同构（MultipleServerHostBuilder +
 /// AddServer&lt;IMessage, MessageObjectPipelineFilter&gt; + UseKcp），包处理器原样回写收到的 <see cref="ReqHeartBeat"/>
-/// （含心跳白名单，规避 C134 未鉴权窗口）。</para>
-/// <para>反证推演（lesson 2026-10-10-test-port-assertion-identity-mismatch）：
+/// （含心跳白名单，规避未鉴权窗口）。</para>
+/// <para>反证推演：
 /// 断言 <see cref="ReqHeartBeat.Timestamp"/> 回填相等 + 同一会话内 conv 不变；若断言仅"成功收到消息"则放行任何回显，
 /// 不能证明"产品编解码路径"已运行。</para>
 /// </remarks>

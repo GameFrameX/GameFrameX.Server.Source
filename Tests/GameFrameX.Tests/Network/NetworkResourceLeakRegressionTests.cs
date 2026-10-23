@@ -40,7 +40,7 @@ using Xunit;
 namespace GameFrameX.Tests.Network
 {
     /// <summary>
-    /// GFX-909 网络栈资源泄漏与消息池数据残留回归测试：
+    /// 网络栈资源泄漏与消息池数据残留回归测试：
     /// ① 池归还后身份字段（MessageId / UniqueId）必须重置，消除复用串台；
     /// ② 通道 Close() 必须释放通道级 CTS 且幂等。
     /// </summary>

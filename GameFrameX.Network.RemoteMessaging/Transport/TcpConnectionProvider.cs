@@ -318,7 +318,7 @@ internal sealed class TcpConnectionProvider : IConnectionProvider
         public ConnectionEntry(TcpClient tcpClient)
         {
             _tcpClient = tcpClient;
-            // 池内连接以写门控流出池（C270）：共享池后 RPC 客户端与信封转发层可能轮询命中同一条连接，
+            // 池内连接以写门控流出池：共享池后 RPC 客户端与信封转发层可能轮询命中同一条连接，
             // 两把不同锁域的并发 WriteAsync 会在帧内交错、毁掉长度前缀帧；每条物理连接一道叶子写门
             // 保证「一次 WriteAsync = 一条完整帧」原子，上层各自的锁只能嵌套其上（锁序单向，无死锁）。
             _gatedStream = new GatedWriteStream(tcpClient.GetStream());

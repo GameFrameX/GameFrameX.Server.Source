@@ -40,11 +40,11 @@ using Xunit;
 namespace GameFrameX.Tests.StartUp;
 
 /// <summary>
-/// GameApp Grafana Loki 接线（Foundation 5.0.0 sink 组件化迁移，C224）的单元测试。
+/// GameApp Grafana Loki 接线（Foundation 5.0.0 sink 组件化迁移）的单元测试。
 /// </summary>
 /// <remarks>
 /// Unit tests for the GameApp Grafana Loki wiring after the Foundation 5.0.0
-/// sink componentization (C224): LogIsGrafanaLoki=false registers no sink
+/// sink componentization: LogIsGrafanaLoki=false registers no sink
 /// configurator, true registers exactly one, and labels are collected from
 /// GrafanaLokiLabelTagAttribute-attributed properties.
 /// </remarks>

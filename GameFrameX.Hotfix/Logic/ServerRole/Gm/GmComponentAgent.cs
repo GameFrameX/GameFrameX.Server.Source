@@ -40,7 +40,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Gm;
 /// 违规处罚服务器（Gm Role）业务组件代理：处罚新增 / 撤销 / 查询。
 /// </summary>
 /// <remarks>
-/// Gm Role 独立业务逻辑系统（C197 垂直切片）的热更侧落点。
+/// Gm Role 独立业务逻辑系统（垂直切片）的热更侧落点。
 /// 业务规则判定一律委托 <see cref="GmRules"/>（纯函数，可单测）；
 /// 本类只做状态编排：处罚建档、Active→Revoked 状态迁移与过期惰性置 Expired 后过滤。
 /// </remarks>

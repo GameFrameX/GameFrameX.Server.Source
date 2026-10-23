@@ -35,7 +35,7 @@ using Xunit;
 namespace GameFrameX.Tests.Network;
 
 /// <summary>
-/// 消息日志脱敏单元测试（C272）/ Message log redaction unit tests (C272)
+/// 消息日志脱敏单元测试 / Message log redaction unit tests
 /// </summary>
 /// <remarks>
 /// 覆盖敏感词匹配（大小写/包含变体）、嵌套对象与数组的 DOM 遮蔽、非 JSON 文本透传、

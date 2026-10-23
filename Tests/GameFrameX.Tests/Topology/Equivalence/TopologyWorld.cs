@@ -181,7 +181,7 @@ public sealed class TopologyWorld : IDisposable
     }
 
     /// <summary>
-    /// 创建三进程拓扑（设计源 §D9）：Gate 进程 / Game+Social 进程 / Match 进程。
+    /// 创建三进程拓扑：Gate 进程 / Game+Social 进程 / Match 进程。
     /// </summary>
     /// <param name="gateRoleName">Gate Role 名 / The Gate role name</param>
     /// <param name="gameRoleName">Game Role 名 / The Game role name</param>
@@ -213,7 +213,7 @@ public sealed class TopologyWorld : IDisposable
     /// </summary>
     /// <remarks>
     /// Routes one message hop from the source role's cell router — the routing decision
-    /// belongs to the sending process (D3), so the source role selects the cell.
+    /// belongs to the sending process, so the source role selects the cell.
     /// The hop timeout is applied through a cancellation token, identically in both topologies.
     /// </remarks>
     /// <param name="sourceRoleName">源 Role 名 / The source role name</param>

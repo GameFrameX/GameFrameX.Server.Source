@@ -43,7 +43,7 @@ namespace GameFrameX.Tests.Online
 {
     /// <summary>
     /// 六类事件接入测试（登录 / 匹配 / 对局 / 奖励 / 付费 / 举报）。
-    /// 覆盖六个投影入口的状态归属规则、只投影已发生事实、投影结果一律经 L0 校验落档且可查询。
+    /// 覆盖六个投影入口的状态归属规则、只投影已发生事实、投影结果一律经基础校验落档且可查询。
     /// </summary>
     public class OnlineGameEventProjectorTests
     {
@@ -176,7 +176,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证六类投影结果一律经 L0 校验落档（无一条被拒绝），并可按作用域与时间窗查询，
+        /// 验证六类投影结果一律经基础校验落档（无一条被拒绝），并可按作用域与时间窗查询，
         /// 覆盖六类中的 Server 半边可得事件。
         /// </summary>
         [Fact]

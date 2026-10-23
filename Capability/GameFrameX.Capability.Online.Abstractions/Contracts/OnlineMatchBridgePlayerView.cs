@@ -24,11 +24,11 @@ using System.Collections.Generic;
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 对局桥玩家视图（C245）：平台对局成员在协议适配层的保密投影条目。
+/// 对局桥玩家视图：平台对局成员在协议适配层的保密投影条目。
 /// </summary>
 /// <remarks>
 /// The per-player secrecy-projected view entry of a platform match member for the protocol
-/// adaptation layer (C245).
+/// adaptation layer.
 /// </remarks>
 public sealed class OnlineMatchBridgePlayerView
 {

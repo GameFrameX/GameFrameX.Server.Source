@@ -38,7 +38,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Guild;
 /// 公会服务器（Guild Role，公会管理，域号 680）业务组件代理。
 /// </summary>
 /// <remarks>
-/// Guild Role 独立业务逻辑系统（C197 垂直切片）的热更侧落点。
+/// Guild Role 独立业务逻辑系统的热更侧落点。
 /// 业务规则判定一律委托 <see cref="GuildRules"/>（纯函数，可单测）；
 /// 本类只做状态编排：公会取号创建与名称唯一索引、申请入列、会长审批（入会 + 经验 + 升级重算）、
 /// 会长权限约束（不可离会 / 踢人不含会长 / 解散）、档案查询。

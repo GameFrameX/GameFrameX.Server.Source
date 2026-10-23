@@ -12,7 +12,7 @@ using Xunit;
 namespace GameFrameX.Hotfix.Tests;
 
 /// <summary>
-/// 匹配域桥薄适配器测试（C246）：420 族错误码映射表（T2 裁定 R4/R8/R15/R16）、
+/// 匹配域桥薄适配器测试：420 族错误码映射表、
 /// 作用域玩家位来源、租约失效显式段、本地校验（模式 / 评分）与入场新面映射。
 /// </summary>
 public sealed class MatchDomainBridgeTests : IDisposable
@@ -85,7 +85,7 @@ public sealed class MatchDomainBridgeTests : IDisposable
 
         Assert.Equal(0, response.ErrorCode);
         Assert.Equal(77, response.MatchId);
-        // 作用域玩家位 = 会话 playerId（R2），lease 值不可覆盖。
+        // 作用域玩家位 = 会话 playerId，lease 值不可覆盖。
         Assert.NotNull(face.LastEnqueueScope);
         Assert.Equal(PlayerOne, face.LastEnqueueScope.PlayerId);
         Assert.Equal(TenantId, face.LastEnqueueScope.TenantId);

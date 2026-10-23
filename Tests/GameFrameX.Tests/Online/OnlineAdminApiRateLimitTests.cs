@@ -36,7 +36,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online;
 
 /// <summary>
-/// Admin API 固定窗口限流单元测试（C272）/ Admin API fixed-window rate limit unit tests (C272)
+/// Admin API 固定窗口限流单元测试 / Admin API fixed-window rate limit unit tests
 /// </summary>
 /// <remarks>
 /// 真实 Kestrel 监听：默认启用形态下同 IP 超过窗口许可数得 429（登录爆破/重放/洪泛闸门）；

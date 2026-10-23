@@ -35,7 +35,7 @@ namespace GameFrameX.Apps.Common.EventData;
 /// 玩家下线事件参数。
 /// </summary>
 /// <remarks>
-/// 无业务载荷事件的空标记类，迁移自原玩家下线事件（原枚举成员 OnRoleOffline = 1004，已随 C193 类型键控改造退役），
+/// 无业务载荷事件的空标记类，迁移自原玩家下线事件（原枚举成员 OnRoleOffline = 1004），
 /// 事件绑定键即本类型本身。
 /// </remarks>
 public sealed class OnRoleOfflineEventArgs : GameEventArgs

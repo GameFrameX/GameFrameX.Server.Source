@@ -35,10 +35,10 @@ using GameFrameX.Utility.Setting;
 namespace GameFrameX.Tests.StartUp;
 
 /// <summary>
-/// HTTPS 证书加载 fail-fast 校验测试（C271：HttpsPort>0 时 Kestrel HTTPS 真监听的前置校验）。
+/// HTTPS 证书加载 fail-fast 校验测试（HttpsPort>0 时 Kestrel HTTPS 真监听的前置校验）。
 /// </summary>
 /// <remarks>
-/// Tests for the HTTPS certificate fail-fast validation (C271: prerequisite check of the real
+/// Tests for the HTTPS certificate fail-fast validation (prerequisite check of the real
 /// Kestrel HTTPS listening when HttpsPort &gt; 0).
 /// </remarks>
 public class HttpsCertificateLoadTests : IDisposable

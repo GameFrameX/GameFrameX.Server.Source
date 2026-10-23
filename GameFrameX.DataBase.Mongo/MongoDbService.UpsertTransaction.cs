@@ -108,7 +108,7 @@ public sealed partial class MongoDbService
         state.UpdateTime = currentTime;
         state.UpdateCount = (state.UpdateCount ?? 0) + 1;
 
-        // 写库前捕获字节快照（bump 后），ack 后按该快照精确提交基线（C263），
+        // 写库前捕获字节快照（bump 后），ack 后按该快照精确提交基线，
         // 避免参数less 提交读到并发检查推进后的未落库 ToSaveHash。
         var persistedData = state.ToBytes();
 
@@ -167,7 +167,7 @@ public sealed partial class MongoDbService
         MongoSerializationRegistry.EnsureClassMapRegistered<TState>();
         var collection = CurrentDatabase.GetCollection<TState>(typeof(TState).Name);
         var writeModels = new List<WriteModel<TState>>(stateArray.Length);
-        // 写库前逐个捕获字节快照（bump 后），ack 后按快照精确提交基线（C263）
+        // 写库前逐个捕获字节快照（bump 后），ack 后按快照精确提交基线
         var persistedSnapshots = new List<(TState State, byte[] Data)>(stateArray.Length);
         foreach (var state in stateArray)
         {

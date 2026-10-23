@@ -33,9 +33,9 @@ using GameFrameX.DataBase;
 using GameFrameX.Foundation.Orm.Attribute;
 
 /// <summary>
-/// 好友关系持久化行（C244 T3：Social 域 → GameDb 适配的落库形态）。
+/// 好友关系持久化行（Social 域 → GameDb 适配的落库形态）。
 /// <para>
-/// 键编码约定（对齐 C249 物化复合键裁决）：<see cref="UniqueKey"/> =
+/// 键编码约定（物化复合键）：<see cref="UniqueKey"/> =
 /// "friend:{TenantId}:{AppId}:{LowPlayerId}:{HighPlayerId}"（作用域 + 规范化无向对，与 InMemory
 /// <c>BuildPairKey</c> 同构），单列唯一索引承接「一对玩家至多一条关系记录」的结构性不变量。
 /// 行 Id 无自然主键，由 <c>NextSequenceAsync</c> 分配；业务字段保留为独立列供等值/归属查询；

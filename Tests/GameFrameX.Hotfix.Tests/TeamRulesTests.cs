@@ -35,7 +35,7 @@ using Xunit;
 namespace GameFrameX.Hotfix.Tests;
 
 /// <summary>
-/// Team 业务纯规则测试（C197 Phase 2）。
+/// Team 业务纯规则测试。
 /// </summary>
 /// <remarks>
 /// 覆盖名称 / 容量校验边界、离队后队长转移（最早加入成员）与空队解散条件。

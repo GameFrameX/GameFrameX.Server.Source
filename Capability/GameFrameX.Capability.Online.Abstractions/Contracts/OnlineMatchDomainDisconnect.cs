@@ -24,7 +24,7 @@ using System.Collections.Generic;
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 匹配域断线通知回执（C204）：Marked=false 表示玩家无进行中对局（或对局已结束 / 成员已离局），
+/// 匹配域断线通知回执：Marked=false 表示玩家无进行中对局（或对局已结束 / 成员已离局），
 /// 非失败——断线通知是 best-effort 协同事件。
 /// </summary>
 public sealed class OnlineMatchDomainDisconnect

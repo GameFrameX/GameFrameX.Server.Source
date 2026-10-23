@@ -35,7 +35,7 @@ namespace GameFrameX.Apps.Common.EventData;
 /// 玩家上线事件参数。
 /// </summary>
 /// <remarks>
-/// 无业务载荷事件的空标记类，迁移自原玩家上线事件（原枚举成员 OnRoleOnline = 1003，已随 C193 类型键控改造退役），
+/// 无业务载荷事件的空标记类，由原玩家上线事件泛化而来（原枚举成员 OnRoleOnline = 1003 已退役），
 /// 事件绑定键即本类型本身。
 /// </remarks>
 public sealed class OnRoleOnlineEventArgs : GameEventArgs

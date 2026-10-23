@@ -95,7 +95,7 @@ public sealed class AdminApiServer
         builder.Logging.ClearProviders();
         builder.WebHost.ConfigureKestrel(kestrelOptions => { kestrelOptions.Listen(IPAddress.Any, _options.AdminPort); });
 
-        // 按 IP 固定窗口限流（C272）：登录爆破 / admin 重放 / 消息洪泛的闸门；PermitLimit <= 0 显式关闭
+        // 按 IP 固定窗口限流：登录爆破 / admin 重放 / 消息洪泛的闸门；PermitLimit <= 0 显式关闭
         var rateLimitEnabled = _options.RateLimitPermitLimit > 0;
         if (rateLimitEnabled)
         {

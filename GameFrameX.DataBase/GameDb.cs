@@ -43,14 +43,14 @@ namespace GameFrameX.DataBase;
 /// <remarks>
 /// Static utility class for game database operations, providing basic database operation encapsulation.
 /// The static facade targets the database explicitly nominated by <see cref="SetDefault"/> when present
-/// (C159), and falls back to the first registered database otherwise (D20#2 semantics preserved for
+/// and falls back to the first registered database otherwise (semantics preserved for
 /// single-database processes and legacy consumers); additional databases are registered in
 /// <see cref="MultiDbRegistry"/> and resolved by name.
 /// </remarks>
 public static partial class GameDb
 {
     /// <summary>
-    /// 数据库服务实现实例（首个注册库的门面别名，C143a D20#2 修复：二次 Init 不再静默覆盖）。
+    /// 数据库服务实现实例（首个注册库的门面别名；二次 Init 不再静默覆盖）。
     /// </summary>
     /// <remarks>
     /// Database service implementation instance (facade alias of the first registered database;
@@ -63,7 +63,7 @@ public static partial class GameDb
     /// </summary>
     /// <remarks>
     /// The registry name explicitly nominated as the facade default database; null means no explicit
-    /// nomination and the facade falls back to the first registered database (C159).
+    /// nomination and the facade falls back to the first registered database.
     /// </remarks>
     private static string _defaultDatabaseName;
 
@@ -100,11 +100,11 @@ public static partial class GameDb
 
     /// <summary>
     /// 多库注册但从未 <see cref="SetDefault"/> 时，首次门面调用打一条一次性 Warning（不 fail fast，
-    /// 避免破坏单库与既有测试场景；P1-5 收敛）。
+    /// 避免破坏单库与既有测试场景）。
     /// </summary>
     /// <remarks>
     /// Logs a one-shot Warning on the first facade call when more than one database is registered and
-    /// <see cref="SetDefault"/> was never called (P1-5: warn once instead of failing fast, so
+    /// <see cref="SetDefault"/> was never called (warn once instead of failing fast, so
     /// single-database processes and existing tests keep working unchanged).
     /// </remarks>
     private static void WarnImplicitBindingOnce()
@@ -144,7 +144,7 @@ public static partial class GameDb
     }
 
     /// <summary>
-    /// 初始化GameDb（推荐启动路径：按 <see cref="DbOptions.Provider"/> 经 <see cref="DbProviderResolver"/> 约定解析实现，C177/C183）。
+    /// 初始化GameDb（推荐启动路径：按 <see cref="DbOptions.Provider"/> 经 <see cref="DbProviderResolver"/> 约定解析实现）。
     /// </summary>
     /// <remarks>
     /// Recommended launch path: resolves the implementation from <see cref="DbOptions.Provider"/> through
@@ -167,14 +167,14 @@ public static partial class GameDb
     }
 
     /// <summary>
-    /// 两个 Init 重载的共享执行路径：参数校验→打开→注册（失败回滚关闭）→门面首绑→IsDefault 提名（C183：连接串/提名单一来源化）。
+    /// 两个 Init 重载的共享执行路径：参数校验→打开→注册（失败回滚关闭）→门面首绑→IsDefault 提名（连接串/提名单一来源化）。
     /// </summary>
     /// <remarks>
     /// Shared execution path of both Init overloads: argument validation, Open, registration with
     /// close-on-failure rollback, first-registered facade binding, and the <see cref="DbOptions.IsDefault"/>
-    /// nomination (C183: the connection string and the default nomination each have a single source —
+    /// nomination (the connection string and the default nomination each have a single source —
     /// DbOptions). A nomination conflict rolls the registration back (unregister + close) before the
-    /// exception propagates (C267), so a failed Init leaves no residue in the registry or the facade.
+    /// exception propagates, so a failed Init leaves no residue in the registry or the facade.
     /// </remarks>
     /// <param name="service">已创建的数据库实现实例（泛型重载由 new() 创建，非泛型重载由 <see cref="DbProviderResolver"/> 反射创建） / The already created database service instance (new() in the generic overload, reflection in the non-generic overload)</param>
     /// <param name="dbOptions">数据库配置选项（Name 同时作为注册名） / Database configuration options (Name doubles as the registry name)</param>
@@ -219,10 +219,10 @@ public static partial class GameDb
             }
             catch (InvalidOperationException)
             {
-                // 提名冲突（set-once 异名）：回滚本次注册并释放已打开的服务，Init 失败不在注册表/门面留残留（C267）。
+                // 提名冲突（set-once 异名）：回滚本次注册并释放已打开的服务，Init 失败不在注册表/门面留残留。
                 // 冲突路径上方门面首绑必为 no-op：提名成功必写首绑，故默认名非空 ⇒ 门面绑定非空。
                 // Nomination conflict (set-once, different name): roll back this registration and release the opened
-                // service so a failed Init leaves no residue in the registry or the facade (C267). The first-registered
+                // service so a failed Init leaves no residue in the registry or the facade. The first-registered
                 // binding above is provably a no-op on this path: every successful nomination writes the binding, so a
                 // non-null default name implies a non-null facade binding.
                 MultiDbRegistry.Unregister(dbOptions.Name);
@@ -261,11 +261,11 @@ public static partial class GameDb
     }
 
     /// <summary>
-    /// 门面默认库提名的 set-once 核心（<see cref="SetDefault"/> 与 <see cref="DbOptions.IsDefault"/> 声明式提名共用，C183 抽取）。
+    /// 门面默认库提名的 set-once 核心（<see cref="SetDefault"/> 与 <see cref="DbOptions.IsDefault"/> 声明式提名共用）。
     /// </summary>
     /// <remarks>
     /// Set-once core of the facade default nomination, shared by the public <see cref="SetDefault"/>
-    /// and the declarative <see cref="DbOptions.IsDefault"/> path inside InitCore (C183): the first
+    /// and the declarative <see cref="DbOptions.IsDefault"/> path inside InitCore: the first
     /// nomination wins; the same name is idempotently accepted; a different name throws naming both
     /// databases. The concurrent first-set race resolves via CAS — the loser re-reads the winner and
     /// applies the same same-name/different-name rule as the serial path.
@@ -323,7 +323,7 @@ public static partial class GameDb
     /// </summary>
     /// <remarks>
     /// The fixed registry name of the control database (forwards to
-    /// <see cref="MultiDbRegistry.ControlDatabaseName"/> so call sites stay on the unified entry, C159).
+    /// <see cref="MultiDbRegistry.ControlDatabaseName"/> so call sites stay on the unified entry).
     /// </remarks>
     public const string ControlDatabaseName = MultiDbRegistry.ControlDatabaseName;
 
@@ -358,13 +358,13 @@ public static partial class GameDb
     }
 
     /// <summary>
-    /// 异步关闭数据库连接并卸载门面（关闭全部已注册数据库，随后清空注册表与门面静态状态，C143a D20#2 / C267）。
+    /// 异步关闭数据库连接并卸载门面（关闭全部已注册数据库，随后清空注册表与门面静态状态）。
     /// </summary>
     /// <remarks>
     /// Asynchronously closes every registered database connection and tears the facade down: the registry and the
     /// facade static state are cleared after the close loop even when an individual close throws (the exception still
     /// propagates), so a close→Init cycle can re-register the same names instead of hitting the duplicate-name guard
-    /// on stale entries (C267). This async member is the sole close entry point — the former sync-over-async
+    /// on stale entries. This async member is the sole close entry point — the former sync-over-async
     /// <c>Close()</c> was removed.
     /// </remarks>
     /// <returns>表示异步关闭操作的任务 / Task representing the asynchronous close operation</returns>
@@ -380,8 +380,8 @@ public static partial class GameDb
         }
         finally
         {
-            // 关停即卸载：个别库 Close 抛出也完成卸载，注册表不残留已关停的库（C267）
-            // Tear down on close: uninstall even when an individual close throws, so no closed database is left registered (C267).
+            // 关停即卸载：个别库 Close 抛出也完成卸载，注册表不残留已关停的库
+            // Tear down on close: uninstall even when an individual close throws, so no closed database is left registered.
             ResetFacadeState();
         }
     }

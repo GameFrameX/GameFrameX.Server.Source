@@ -45,7 +45,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 好友域桥接缝测试（C244）：域契约面装配、域面语义（T2 裁定 R3/R5/R6/R7 的实现行为）、
+    /// 好友域桥接缝测试：域契约面装配、域面语义（申请 + 立即接受等裁定的实现行为）、
     /// lease 失效语义与 holder 生命周期、组合根接线发布 / 契约面缺席披露与验证种子。
     /// </summary>
     public class OnlineFriendDomainBridgeTests : IDisposable
@@ -150,7 +150,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// R3：无关系时直接建立 = 申请 + 立即接受（None → Friend）。
+        /// 无关系时直接建立 = 申请 + 立即接受（None → Friend）。
         /// </summary>
         [Fact]
         public async Task Face_Establish_FreshPair_ConvergesToFriend()
@@ -168,7 +168,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// R3：对方先申请时直接建立 = 本人接受对方申请（IncomingRequest → Friend）。
+        /// 对方先申请时直接建立 = 本人接受对方申请（IncomingRequest → Friend）。
         /// </summary>
         [Fact]
         public async Task Face_Establish_ReversePending_ActsAsAccept()
@@ -185,7 +185,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// R3：本方申请待答时直接建立 = 以被请求方身份补接受（OutgoingRequest → Friend）。
+        /// 本方申请待答时直接建立 = 以被请求方身份补接受（OutgoingRequest → Friend）。
         /// </summary>
         [Fact]
         public async Task Face_Establish_OwnPending_AutoAccepts()
@@ -202,7 +202,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// R3：已是好友时直接建立幂等返回（Friend → Friend，适配层据此映射「已是好友」）。
+        /// 已是好友时直接建立幂等返回（Friend → Friend，适配层据此映射「已是好友」）。
         /// </summary>
         [Fact]
         public async Task Face_Establish_AlreadyFriend_Idempotent()
@@ -219,7 +219,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// R6：请求的幂等收敛分类（新鲜 None → Outgoing；重复 Outgoing → Outgoing；对方先申请得 Incoming）。
+        /// 请求的幂等收敛分类（新鲜 None → Outgoing；重复 Outgoing → Outgoing；对方先申请得 Incoming）。
         /// </summary>
         [Fact]
         public async Task Face_Request_ConvergesAndClassifiesDirection()
@@ -247,7 +247,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// R7：无待答申请 / 重复答复 / 非被请求方答复 → 显式 ResourceNotFound。
+        /// 无待答申请 / 重复答复 / 非被请求方答复 → 显式 ResourceNotFound。
         /// </summary>
         [Fact]
         public async Task Face_Accept_WithoutAnswerablePending_ReturnsResourceNotFound()
@@ -265,7 +265,7 @@ namespace GameFrameX.Tests.Online
             Assert.False(selfAnswer.IsSuccess);
             Assert.Equal(OnlineErrorCode.ResourceNotFound, selfAnswer.Code);
 
-            // 首次接受成功，重放（Incoming 已消费）→ ResourceNotFound（R7：重复答复同旧协议「申请不存在」）。
+            // 首次接受成功，重放（Incoming 已消费）→ ResourceNotFound（重复答复同旧协议「申请不存在」）。
             var accepted = await domain.AcceptAsync(PlayerScope(PlayerTwo), PlayerOne);
             Assert.True(accepted.IsSuccess);
             Assert.Equal(OnlineFriendRelationKind.IncomingRequest, accepted.Data.Before);
@@ -276,7 +276,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// R7：拒绝清理待答（Incoming → None）；拒绝后可重新发起（方向翻转）。
+        /// 拒绝清理待答（Incoming → None）；拒绝后可重新发起（方向翻转）。
         /// </summary>
         [Fact]
         public async Task Face_Reject_ThenRenew_FlipsDirection()
@@ -297,7 +297,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// R7：非好友解除 / 重复解除 → ResourceNotFound；好友解除成功（Friend → None）。
+        /// 非好友解除 / 重复解除 → ResourceNotFound；好友解除成功（Friend → None）。
         /// </summary>
         [Fact]
         public async Task Face_Remove_RequiresEstablishedFriendship()

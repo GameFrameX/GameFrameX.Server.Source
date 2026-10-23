@@ -52,7 +52,7 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
     private static long _idSeed = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
     /// <summary>
-    /// 测试旧序列化器写入的存量 jsonb doc 经 EF owned JSON 读取字段一致（P0 回归门禁）。
+    /// 测试旧序列化器写入的存量 jsonb doc 经 EF owned JSON 读取字段一致（回归门禁）。
     /// </summary>
     /// <remarks>
     /// Verifies that a legacy stored document (PascalCase keys, explicit JSON nulls, enum-as-number)

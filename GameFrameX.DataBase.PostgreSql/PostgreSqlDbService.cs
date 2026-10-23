@@ -47,7 +47,7 @@ namespace GameFrameX.DataBase.PostgreSql;
 ///     <cref>IDatabaseService</cref>
 /// </see>
 /// interface. Storage model is one jsonb document table per
-/// <c>CacheState</c> type (C166): <c>id bigint PRIMARY KEY</c> + <c>doc jsonb NOT NULL</c>; semantics are aligned
+/// <c>CacheState</c> type: <c>id bigint PRIMARY KEY</c> + <c>doc jsonb NOT NULL</c>; semantics are aligned
 /// field-by-field with <c>MongoDbService</c> (soft delete, retry classification, availability state machine).
 /// </remarks>
 public sealed partial class PostgreSqlDbService : IDatabaseService

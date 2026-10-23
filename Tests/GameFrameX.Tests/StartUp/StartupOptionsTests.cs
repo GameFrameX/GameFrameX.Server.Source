@@ -179,7 +179,7 @@ public class StartupOptionsTests
     }
 
     /// <summary>
-    /// Online 能力过滤 CLI 别名：--OnlineCapabilities / --OnlineDisable 绑定并按逗号投影（C229）。
+    /// Online 能力过滤 CLI 别名：--OnlineCapabilities / --OnlineDisable 绑定并按逗号投影。
     /// </summary>
     [Fact]
     public void Create_OnlineCapabilityAliases_BindAndProject()
@@ -213,7 +213,7 @@ public class StartupOptionsTests
     }
 
     /// <summary>
-    /// 无配置段 Role 的回落档：CLI 别名投影进嵌套强类型段（CreateRoleDefaultSetting 路径，C229）。
+    /// 无配置段 Role 的回落档：CLI 别名投影进嵌套强类型段（CreateRoleDefaultSetting 路径）。
     /// </summary>
     [Fact]
     public void ResolveAppSetting_ProjectsOnlineAliasesIntoNestedSection()

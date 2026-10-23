@@ -31,7 +31,7 @@
 namespace GameFrameX.DataBase.Abstractions;
 
 /// <summary>
-/// 内置弹性宿主集合（C253）。
+/// 内置弹性宿主集合。
 /// </summary>
 /// <remarks>
 /// Built-in <see cref="IDbResilienceHost"/> implementations shared by providers.
@@ -39,12 +39,12 @@ namespace GameFrameX.DataBase.Abstractions;
 public static class DbResilienceHosts
 {
     /// <summary>
-    /// 恒 Healthy 宿主：无可用性状态机的 provider（SQLite 嵌入式，C222 边界④）使用——
+    /// 恒 Healthy 宿主：无可用性状态机的 provider（SQLite 嵌入式）使用——
     /// 降级读恒不触发、写门控恒放行、成败记录为 no-op；重试环与三指标照常生效。
     /// </summary>
     /// <remarks>
     /// A constant-healthy host for providers without an availability state machine (the SQLite
-    /// embedded engine, C222 boundary ④): degraded reads never trigger, the write gate always
+    /// embedded engine): degraded reads never trigger, the write gate always
     /// allows, and success/failure bookkeeping is a no-op, while retry loops and operation
     /// metrics remain fully active.
     /// </remarks>

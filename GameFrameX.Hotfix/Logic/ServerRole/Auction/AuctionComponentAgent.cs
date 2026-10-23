@@ -40,7 +40,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Auction;
 /// 拍卖服务器（Auction Role）业务组件代理：挂拍 / 出价 / 一口价 / 结算 / 批次查询。
 /// </summary>
 /// <remarks>
-/// Auction Role 独立业务逻辑系统（C197 垂直切片）的热更侧落点。
+/// Auction Role 独立业务逻辑系统的热更侧落点。
 /// 业务规则判定一律委托 <see cref="AuctionRules"/>（纯函数，可单测）；
 /// 本类只做状态编排：批次创建、出价状态迁移、到期惰性结算与挂牌列表过滤。
 /// 成交仅记录批次状态，不动背包/货币余额（物品系统属 Game 服，范围外）。

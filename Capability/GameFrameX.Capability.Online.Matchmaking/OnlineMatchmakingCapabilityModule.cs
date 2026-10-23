@@ -38,7 +38,7 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Matchmaking;
 
 /// <summary>
-/// 匹配能力（大厅 / 票据 / 撮合 / 队伍——Matchmaking+Party 同簇同包，C227 蓝图裁定）的自装配模块（C231 P3 迁入）。
+/// 匹配能力（大厅 / 票据 / 撮合 / 队伍——Matchmaking+Party 同簇同包）的自装配模块。
 /// <para>
 /// 维护约束（服务共享协议）：模块无参构造（扫描可发现）；<c>Register</c> 自装配本域——票据 / 大厅 / 队伍三个 store
 /// 经 <see cref="CapabilityRegistrationContext.TryGetService{TService}"/> 探测替换缝，未命中构造 InMemory 默认；
@@ -48,7 +48,7 @@ namespace GameFrameX.Capability.Online.Matchmaking;
 /// </summary>
 /// <remarks>
 /// The self-assembling module of the matchmaking capability (listings / tickets / the matchmaker coordinator /
-/// parties — the Matchmaking+Party same-cluster merge ruled by the C227 blueprint). The module is parameterless
+/// parties — the Matchmaking+Party same-cluster merge). The module is parameterless
 /// (discoverable by scanning); <c>Register</c> self-assembles the domain — the ticket / listing / party stores
 /// probe the replacement seams with in-memory fallbacks; cross-domain hard dependencies (the event outlet, the
 /// scope, the social adjudication gate face) resolve through the context (topological ordering guarantees the

@@ -114,9 +114,8 @@ public sealed partial class PostgreSqlDbService
     /// </summary>
     /// <remarks>
     /// Soft-deletes documents matching the filter: find matching ids, then one tracked batch
-    /// (C266: the former find-then-mark-each loop issued one SELECT + SaveChanges per document —
-    /// an order of magnitude slower than <c>DeleteListIdAsync</c>; the per-id counting semantics
-    /// are unchanged).
+    /// (an order of magnitude faster than the former find-then-mark-each loop; the per-id
+    /// counting semantics are unchanged).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="filter">过滤表达式 / The filter expression</param>
@@ -131,9 +130,8 @@ public sealed partial class PostgreSqlDbService
     /// </summary>
     /// <remarks>
     /// Soft-deletes documents matching the filter: find matching ids, then one tracked batch
-    /// (C266: the former find-then-mark-each loop issued one SELECT + SaveChanges per document —
-    /// an order of magnitude slower than <c>DeleteListIdAsync</c>; the per-id counting semantics
-    /// are unchanged).
+    /// (an order of magnitude faster than the former find-then-mark-each loop; the per-id
+    /// counting semantics are unchanged).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="filter">过滤表达式 / The filter expression</param>
@@ -155,8 +153,8 @@ public sealed partial class PostgreSqlDbService
             ids[index] = list[index].Id;
         }
 
-        // 与 DeleteListIdAsync 共用单批软删核心：一次跟踪批 + 单次 SaveChanges（C266）
-        // Shares the single-batch soft-delete core with DeleteListIdAsync: one tracked batch, one SaveChanges (C266).
+        // 与 DeleteListIdAsync 共用单批软删核心：一次跟踪批 + 单次 SaveChanges
+        // Shares the single-batch soft-delete core with DeleteListIdAsync: one tracked batch, one SaveChanges.
         return await ExecuteSoftDeleteByIdsAsync<TState>(ids, GetCurrentTimestamp(), nameof(DeleteListAsync), cancellationToken).ConfigureAwait(false);
     }
 
@@ -180,7 +178,7 @@ public sealed partial class PostgreSqlDbService
     /// </summary>
     /// <remarks>
     /// Soft-deletes documents by ID list (one tracked batch; the timestamp changes every call so repeated calls
-    /// still count rows, consistent with Mongo $set). Since C266 the batch body lives in
+    /// still count rows, consistent with Mongo $set). The batch body lives in
     /// <see cref="ExecuteSoftDeleteByIdsAsync{TState}"/>, shared with the filter-based <c>DeleteListAsync</c>.
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
@@ -344,15 +342,14 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 按 id 集合单批软删除（整档写回；同毫秒重复幂等返回 0，逐 id 计数语义与单条路径逐项等价——C266）。
+    /// 按 id 集合单批软删除（整档写回；同毫秒重复幂等返回 0，逐 id 计数语义与单条路径逐项等价）。
     /// </summary>
     /// <remarks>
     /// Soft-deletes by id set in one tracked batch (<c>IgnoreQueryFilters + id IN</c> + a single
     /// <c>SaveChangesAsync</c>, retried through the shared resilience engine). Same-millisecond repeats against
     /// already-identical documents count as unchanged rows (returning 0), matching
     /// <see cref="ExecuteSoftDeleteByIdAsync{TState}"/> per id. Shared by <c>DeleteListIdAsync</c> and the
-    /// filter-based <c>DeleteListAsync</c> (C266: the filter variant previously issued one SELECT + SaveChanges
-    /// per document).
+    /// filter-based <c>DeleteListAsync</c>.
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="distinctIds">去重后的数据ID集合 / The deduplicated document IDs</param>

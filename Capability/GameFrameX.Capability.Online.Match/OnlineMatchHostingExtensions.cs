@@ -32,15 +32,15 @@ using GameFrameX.Capability.Hosting.Core;
 namespace GameFrameX.Capability.Online.Match;
 
 /// <summary>
-/// 对局能力包的 hosting 扩展（C232 P4）：<see cref="AddOnlineMatchRuntime"/> 装配入口（回调式，注册自装配模块）
+/// 对局能力包的 hosting 扩展：<see cref="AddOnlineMatchRuntime"/> 装配入口（回调式，注册自装配模块）
 /// 与两个存储替换缝（<see cref="UseOnlineMatchActorStore"/> / <see cref="UseOnlineMatchResultStore"/>）。
 /// <para>
-/// 维护约束：options 经共享服务面预置（模块无参构造，显式链式与 P4 真扫描共用同一模块类）；
+/// 维护约束：options 经共享服务面预置（模块无参构造，显式链式与真扫描共用同一模块类）；
 /// 替换缝在模块 <c>Register</c> 期探测命中，未命中构造 InMemory 默认。
 /// </para>
 /// </summary>
 /// <remarks>
-/// Hosting extensions of the match capability package (C232 P4): the <see cref="AddOnlineMatchRuntime"/>
+/// Hosting extensions of the match capability package: the <see cref="AddOnlineMatchRuntime"/>
 /// assembly entry (callback style, registering the self-assembling module) plus two store replacement seams.
 /// Options are pre-seeded through the shared service face; the replacement seams are probed at module
 /// <c>Register</c> time with in-memory fallbacks.

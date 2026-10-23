@@ -30,11 +30,11 @@
 namespace GameFrameX.Capability.Online.Foundation;
 
 /// <summary>
-/// 平台地基能力包级选项（C232 P6 迁入；当前无包级编排参数，占位对齐包族选项形态）。
+/// 平台地基能力包级选项（当前无包级编排参数，占位对齐包族选项形态）。
 /// </summary>
 /// <remarks>
-/// Package-level options of the foundation capability (migrated by C232 P6; currently a placeholder
-/// with no orchestration parameters).
+/// Package-level options of the foundation capability (currently a placeholder with no
+/// orchestration parameters).
 /// </remarks>
 public sealed class OnlineFoundationOptions
 {

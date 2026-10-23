@@ -22,7 +22,7 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 新连接恢复产物（C204）：轮换后的新凭据与恢复的身份绑定。
+/// 新连接恢复产物：轮换后的新凭据与恢复的身份绑定。
 /// </summary>
 public sealed class OnlineSessionResumeCredential
 {

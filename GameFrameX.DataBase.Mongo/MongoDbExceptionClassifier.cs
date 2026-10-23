@@ -34,7 +34,7 @@ using MongoDB.Driver;
 namespace GameFrameX.DataBase.Mongo;
 
 /// <summary>
-/// MongoDB 异常分类器（C253）：语句级与事务级重试判定 + 失败原因标签的 provider 唯一差异面。
+/// MongoDB 异常分类器：语句级与事务级重试判定 + 失败原因标签的 provider 唯一差异面。
 /// </summary>
 /// <remarks>
 /// MongoDB exception classifier: the provider-specific surface consumed by the shared

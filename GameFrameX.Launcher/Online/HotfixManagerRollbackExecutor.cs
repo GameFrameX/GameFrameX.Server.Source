@@ -37,14 +37,14 @@ using GameFrameX.Utility.Setting;
 namespace GameFrameX.Launcher.Online;
 
 /// <summary>
-/// Hotfix 版本切换执行器（C248 生产实现，vault R-01 / D-3 拍板 = 补实现）：
+/// Hotfix 版本切换执行器（生产实现）：
 /// 组合既有公共原语完成方向无关的本进程热更版本切换，供组合根经
 /// <c>UseOnlineHotfixRollbackExecutor</c> 注入（Operations 侧服务探测即得非 null，消除恒缺席 8002）。
 /// <para>
 /// 切换时序不变量（红线）：
 /// ① <b>单次装载入口</b>——切换 = 单次 <see cref="HotfixManager.LoadHotfixModuleAsync(AppSetting, HotfixLoadOptions)"/>：
 /// 入口内部完成 同路径幂等守卫 → 目录兜底 → <c>Init(reload)</c> → 旧模块 <c>Retire</c>（10 分钟退役宽限，
-/// 宽限期内 in-flight 请求按程序集身份路由到原模块，宽限排空后由退役链 Unload + GC 验证，C216 契约）→
+/// 宽限期内 in-flight 请求按程序集身份路由到原模块，宽限排空后由退役链 Unload + GC 验证）→
 /// 当前指针同步切换 → 桥接 <c>OnLoadSuccess</c>。本执行器<b>不直接调用 <c>Unload()</c></b>——
 /// 立即卸载会剥夺退役宽限期的 in-flight 路由。
 /// ② <b>切换时刻零下载</b>——执行器路径只做在盘预检 + 装载 + 装载路径校验，静态无网络 IO；
@@ -134,7 +134,7 @@ public sealed class HotfixManagerRollbackExecutor : IOnlineHotfixRollbackExecuto
     /// <summary>
     /// 失败恢复：按切换前装载路径重载原版本（同路径时入口幂等守卫短路成功）；
     /// 无原版本（首次装载前失败）无可恢复；重载未被确认即抛（信息合并由调用方承担）。
-    /// 恢复装载与主路径同口径传 <see cref="_setting"/>（C256 统一，此前误传 null）。
+    /// 恢复装载与主路径同口径传 <see cref="_setting"/>（统一传参，不传 null）。
     /// </summary>
     /// <param name="originalAssemblyPath">切换前的实际装载程序集路径。</param>
     private async Task RecoverOriginalAsync(string originalAssemblyPath)

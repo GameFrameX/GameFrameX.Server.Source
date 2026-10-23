@@ -43,10 +43,10 @@ namespace GameFrameX.Core.Hotfix;
 /// Hotfix manager — a static forwarding facade.
 /// </summary>
 /// <remarks>
-/// 职责边界（C216 起）：装载入口与策略（同路径幂等守卫、10min 宽限常量、目录兜底）留在此处；
+/// 职责边界：装载入口与策略（同路径幂等守卫、10min 宽限常量、目录兜底）留在此处；
 /// ALC 基建与退役编排机制由 <c>GameFrameX.Utility.Hotload.CollectibleAssemblyHost&lt;TModule&gt;</c> 提供；
 /// 全部解析路由经 <see cref="Resolver"/>（<see cref="IHotfixResolver"/> 契约实例）承载，Core 子系统与测试替身均依赖该契约。
-/// Responsibility split (since C216): load entries and policies (the same-path idempotency guard, the 10-minute
+/// Responsibility split: load entries and policies (the same-path idempotency guard, the 10-minute
 /// grace constant, directory ensuring) stay here; ALC infrastructure and retirement orchestration live in
 /// <c>GameFrameX.Utility.Hotload.CollectibleAssemblyHost&lt;TModule&gt;</c>; all resolution routing goes through
 /// <see cref="Resolver"/> (an <see cref="IHotfixResolver"/> contract instance) consumed by Core subsystems and test doubles.

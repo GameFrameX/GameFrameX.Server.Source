@@ -33,11 +33,11 @@ using GameFrameX.Utility.Setting;
 namespace GameFrameX.DataBase.Abstractions;
 
 /// <summary>
-/// 数据库选项（连接串、提供者与门面默认库提名的唯一载体，C183）。
+/// 数据库选项（连接串、提供者与门面默认库提名的唯一载体）。
 /// </summary>
 /// <remarks>
 /// Database configuration options: the single source of truth for the connection string,
-/// the provider enum and the facade default-database nomination (C183).
+/// the provider enum and the facade default-database nomination.
 /// </remarks>
 public sealed record DbOptions
 {

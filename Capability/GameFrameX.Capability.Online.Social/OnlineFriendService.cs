@@ -460,7 +460,7 @@ public sealed class OnlineFriendService
     }
 
     /// <summary>
-    /// 列出玩家的全量关系记录（任意状态；C244 域桥契约 <c>ListRelations</c> 的输入）。
+    /// 列出玩家的全量关系记录（任意状态；域桥契约 <c>ListRelations</c> 的输入）。
     /// <para>
     /// 与 <see cref="ListFriendsAsync"/>（只含已建立）和 <see cref="ListPendingRequestsAsync"/>
     ///（只含本人为被请求方的待答）不同，本方法返回原始关系全集，由调用方（域面薄适配）
@@ -483,7 +483,7 @@ public sealed class OnlineFriendService
     }
 
     /// <summary>
-    /// 按玩家对查找关系记录（任意状态；C244 域桥契约「玩家对定位 → 关系标识编排」的输入）。
+    /// 按玩家对查找关系记录（任意状态；域桥契约「玩家对定位 → 关系标识编排」的输入）。
     /// <para>
     /// 只读操作：不做状态机判定、不区分方向——方向事实由调用方按
     /// <see cref="OnlineFriendship.RequesterId"/> / <see cref="OnlineFriendship.AddresseeId"/> 投影。

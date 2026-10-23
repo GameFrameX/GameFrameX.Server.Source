@@ -274,7 +274,7 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
         await NotifyRoomChangedAsync(room, RoomChangeType.Started);
     }
 
-    // C245 对局桥路径（开关开启 + RPS 房间时独占先行；其余房间走旧链）：
+    // 对局桥路径（开关开启 + RPS 房间时独占先行；其余房间走旧链）：
     // 轻量前置校验（只读 GetRoom，与旧链同判语义）→ 桥先行创建平台对局（幂等）→
     // 失败显式负值错误码返回（不推进房间）；成功回落旧链完成 Room → Playing 推进。
     // 返回 true 表示已写响应（或桥已完整处理），调用方应立即返回；false 表示走旧链。

@@ -24,7 +24,7 @@ using System.Collections.Generic;
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 匹配域入场回执（C246）：对局 create-or-reuse + 双方就绪启动后的入场事实。
+/// 匹配域入场回执：对局 create-or-reuse + 双方就绪启动后的入场事实。
 /// </summary>
 public sealed class OnlineMatchDomainEntry
 {

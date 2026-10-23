@@ -35,7 +35,7 @@ using Npgsql;
 namespace GameFrameX.DataBase.PostgreSql;
 
 /// <summary>
-/// PostgreSQL 异常分类器（C253）：语句级与事务级重试判定 + 失败原因标签的 provider 唯一差异面。
+/// PostgreSQL 异常分类器：语句级与事务级重试判定 + 失败原因标签的 provider 唯一差异面。
 /// </summary>
 /// <remarks>
 /// PostgreSQL exception classifier: the provider-specific surface consumed by the shared
@@ -77,13 +77,13 @@ internal sealed class PostgreSqlDbExceptionClassifier : IDbOperationExceptionCla
     };
 
     /// <summary>
-    /// 语句级判定：Npgsql 瞬时标志、有界瞬时 SQLSTATE 集或超时（EF 包装逐层解开，C168）。
+    /// 语句级判定：Npgsql 瞬时标志、有界瞬时 SQLSTATE 集或超时（EF 包装逐层解开）。
     /// </summary>
     /// <remarks>
     /// Determines whether the exception is retryable: Npgsql transient flag, bounded transient
     /// SQLSTATE set, or timeout (aligned with the Mongo adapter's retryable classification).
     /// EF's <see cref="DbUpdateException"/> wrapper is unwrapped so transient inner Npgsql
-    /// failures still classify (C168).
+    /// failures still classify.
     /// </remarks>
     /// <param name="exception">要检查的异常 / The exception to check</param>
     /// <returns>如果是可重试的异常则返回 <c>true</c>；否则返回 <c>false</c> / <c>true</c> if the exception is retryable; otherwise <c>false</c></returns>
@@ -141,7 +141,7 @@ internal sealed class PostgreSqlDbExceptionClassifier : IDbOperationExceptionCla
     /// <remarks>
     /// The PostgreSQL transaction retry loop does not distinguish the commit phase — a single
     /// catch applies <see cref="ShouldRetryTransaction"/> to every failure — so this predicate
-    /// delegates to it (no separate commit-retry loop exists; C253 契约完整性成员，无既有调用点).
+    /// delegates to it (no separate commit-retry loop exists; a contract-completeness member with no existing call sites).
     /// </remarks>
     /// <param name="exception">要检查的异常 / The exception to check</param>
     /// <returns>如果是可重试的事务提交异常则返回 <c>true</c>；否则返回 <c>false</c> / <c>true</c> if the commit is retryable; otherwise <c>false</c></returns>

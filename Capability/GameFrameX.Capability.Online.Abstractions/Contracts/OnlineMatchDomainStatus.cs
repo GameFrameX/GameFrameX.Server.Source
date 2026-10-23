@@ -24,7 +24,7 @@ using System.Collections.Generic;
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 匹配域状态回执（C246）：排队中 / 已撮合（含数值对局标识）/ 其余终态三态投影。
+/// 匹配域状态回执：排队中 / 已撮合（含数值对局标识）/ 其余终态三态投影。
 /// </summary>
 public sealed class OnlineMatchDomainStatus
 {

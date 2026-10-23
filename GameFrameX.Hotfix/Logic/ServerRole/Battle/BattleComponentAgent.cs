@@ -38,7 +38,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Battle;
 /// 战斗服务器（Battle Role）业务组件代理：回合战斗模拟创建与记录查询。
 /// </summary>
 /// <remarks>
-/// Battle Role 独立业务逻辑系统（C197 垂直切片）的热更侧落点。
+/// Battle Role 独立业务逻辑系统的热更侧落点。
 /// 业务规则判定一律委托 <see cref="BattleRules"/>（纯函数，可单测）；
 /// 本类只做状态编排：随机数注入模拟、战斗记录落库与双方积分结算。
 /// </remarks>

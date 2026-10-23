@@ -61,7 +61,7 @@ public class GameDbMultiDatabaseTests : IDisposable
     }
 
     /// <summary>
-    /// 按名注册后，As(name) 能取回对应实例（连接串由 DbOptions 承载，C183）。
+    /// 按名注册后，As(name) 能取回对应实例（连接串由 DbOptions 承载）。
     /// </summary>
     [Fact]
     public async Task Init_RegistersByName()
@@ -77,7 +77,7 @@ public class GameDbMultiDatabaseTests : IDisposable
     }
 
     /// <summary>
-    /// 控制库 + 业务库双注册：两个名字各自可取回，互不覆盖（D20#2 修复）。
+    /// 控制库 + 业务库双注册：两个名字各自可取回，互不覆盖。
     /// </summary>
     [Fact]
     public async Task Init_ControlAndBusinessDatabase_BothResolvable()
@@ -94,7 +94,7 @@ public class GameDbMultiDatabaseTests : IDisposable
     }
 
     /// <summary>
-    /// 二次 Init 同名库：拒绝静默覆盖，抛 InvalidOperationException（D20#2 fail fast），
+    /// 二次 Init 同名库：拒绝静默覆盖，抛 InvalidOperationException（fail fast），
     /// 且注册失败前已打开的服务会被关闭，不泄漏连接。
     /// </summary>
     [Fact]
@@ -110,7 +110,7 @@ public class GameDbMultiDatabaseTests : IDisposable
     }
 
     /// <summary>
-    /// 静态门面绑定首个注册库，后续 Init 不再覆盖（D20#2 修复：不漂移到最后一次 Init；两库均 IsDefault = false 触发回落）。
+    /// 静态门面绑定首个注册库，后续 Init 不再覆盖（不漂移到最后一次 Init；两库均 IsDefault = false 触发回落）。
     /// </summary>
     [Fact]
     public async Task Init_FacadeStaysOnFirstRegisteredDatabase()
@@ -138,7 +138,7 @@ public class GameDbMultiDatabaseTests : IDisposable
     }
 
     /// <summary>
-    /// CloseAsync 关停即卸载：关闭全部库后注册表清空，同名库可重新注册（close→reopen 循环，C267 修复注册表残留）。
+    /// CloseAsync 关停即卸载：关闭全部库后注册表清空，同名库可重新注册（close→reopen 循环）。
     /// </summary>
     [Fact]
     public async Task CloseAsync_TearsDownRegistry_AllowsReRegisterSameName()
@@ -173,7 +173,7 @@ public class GameDbMultiDatabaseTests : IDisposable
 
     /// <summary>
     /// InitCore 提名冲突回滚：第二个 IsDefault=true 异名注册抛 set-once 冲突后，注册表不残留冲突库、
-    /// 冲突服务连接被关闭、门面与默认提名仍指向原默认库（C267 修复失败不回滚）。
+    /// 冲突服务连接被关闭、门面与默认提名仍指向原默认库（修复失败不回滚）。
     /// </summary>
     [Fact]
     public async Task Init_NominationConflict_RollsBackRegistration()

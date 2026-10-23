@@ -11,7 +11,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 匹配域会话中介恢复面测试（C204）：断线通知（成员标记 + 令牌服务端留存）、
+    /// 匹配域会话中介恢复面测试：断线通知（成员标记 + 令牌服务端留存）、
     /// 窗口内恢复（快照 + 增量）、活跃成员幂等、无对局空回执、超窗 / 已结束 / 已离局显式失败。
     /// </summary>
     public class OnlineMatchDomainResumeTests

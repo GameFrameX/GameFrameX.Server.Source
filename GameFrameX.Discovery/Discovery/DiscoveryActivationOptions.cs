@@ -33,17 +33,15 @@ using GameFrameX.Utility.Setting;
 namespace GameFrameX.Discovery;
 
 /// <summary>
-/// 发现层激活参数对象（Mongo / PostgreSQL 两个 Runtime 共用的唯一形态，C185）。
+/// 发现层激活参数对象（Mongo / PostgreSQL 两个 Runtime 共用的唯一形态）。
 /// </summary>
 /// <remarks>
 /// The single activation parameter object shared by both discovery runtimes
 /// (<c>MongoDiscoveryRuntime.Activate</c> / <c>PostgreSqlDiscoveryRuntime.Activate</c>).
-/// The former provider-specific variants (with the <c>IMongoDatabase</c> /
-/// <c>NpgsqlDataSource</c> carrier members) were removed in C185: both runtimes
-/// now resolve the control database by <see cref="ConnectionName"/> through the
-/// unified <c>GameDb</c> entry, leaving no carrier direct-injection path.
-/// Since C213 the provider enum <see cref="Provider"/> rides along as dispatch
-/// metadata: <c>DiscoveryRuntimeResolver.Activate</c> resolves the runtime by
+/// Both runtimes resolve the control database by <see cref="ConnectionName"/> through the
+/// unified <c>GameDb</c> entry; there is no carrier direct-injection path. The provider
+/// enum <see cref="Provider"/> rides along as dispatch metadata:
+/// <c>DiscoveryRuntimeResolver.Activate</c> resolves the runtime by
 /// convention from it (mirroring <c>DbOptions.Provider</c>), while direct
 /// <c>*DiscoveryRuntime.Activate</c> calls ignore the member.
 /// </remarks>
@@ -51,14 +49,14 @@ public sealed class DiscoveryActivationOptions
 {
     /// <summary>
     /// 获取或设置发现层实现提供者（<c>DiscoveryRuntimeResolver.Activate</c> 的约定解析依据；直调
-    /// <c>*DiscoveryRuntime.Activate</c>（测试/自定义宿主逃生门）忽略此成员——直调目标即提供者，C213）。
+    /// <c>*DiscoveryRuntime.Activate</c>（测试/自定义宿主逃生门）忽略此成员——直调目标即提供者）。
     /// </summary>
     /// <remarks>
     /// Discovery implementation provider, resolved by convention in
     /// <c>DiscoveryRuntimeResolver.Activate(DiscoveryActivationOptions)</c>; ignored by direct
     /// <c>*DiscoveryRuntime.Activate</c> calls (the test / custom-host escape hatch) where the
     /// called runtime is itself the provider — mirroring <c>DbOptions.Provider</c> versus the
-    /// generic <c>Init&lt;T&gt;</c> (C183).
+    /// generic <c>Init&lt;T&gt;</c>.
     /// </remarks>
     /// <value>提供者枚举，缺省 <see cref="DatabaseProviderType.Mongo"/> / Provider enum, defaults to <see cref="DatabaseProviderType.Mongo"/></value>
     public DatabaseProviderType Provider { get; init; } = DatabaseProviderType.Mongo;
@@ -67,8 +65,8 @@ public sealed class DiscoveryActivationOptions
     /// 获取或设置控制库注册名（必填）。
     /// 控制库必须先经统一入口 <c>GameDb.Init(DbOptions)</c> 注册（生产启动流固定使用
     /// <c>GameDb.ControlDatabaseName</c>，即 gameframex_control），激活时由 Runtime 内部
-    /// <c>GameDb.As&lt;实现&gt;(name)</c> 按名解析载体；C185 已废除 IMongoDatabase /
-    /// NpgsqlDataSource 载体直入路径，注册名是与 C159 统一入口铁律一致的唯一激活方式。
+    /// <c>GameDb.As&lt;实现&gt;(name)</c> 按名解析载体；载体直入路径（IMongoDatabase /
+    /// NpgsqlDataSource）已废除，注册名是与统一入口铁律一致的唯一激活方式。
     /// 未设置时抛 <see cref="ArgumentException"/>；名称未注册时由 <c>GameDb.As</c> 抛
     /// <see cref="InvalidOperationException"/>（既有语义）。
     /// </summary>
@@ -76,9 +74,8 @@ public sealed class DiscoveryActivationOptions
     /// Gets or sets the control-database registry name (required). The control database must be
     /// registered through the unified <c>GameDb.Init(DbOptions)</c> entry first (production launch
     /// flows always use <c>GameDb.ControlDatabaseName</c>, i.e. gameframex_control); the runtime then
-    /// resolves the carrier via <c>GameDb.As&lt;T&gt;(name)</c>. C185 removed the carrier
-    /// direct-injection path, so the registry name is the only activation route, aligned with the
-    /// C159 unified-entry rule. Throws <see cref="ArgumentException"/> when unset, and
+    /// resolves the carrier via <c>GameDb.As&lt;T&gt;(name)</c>. The carrier direct-injection path is
+    /// gone, so the registry name is the only activation route. Throws <see cref="ArgumentException"/> when unset, and
     /// <see cref="InvalidOperationException"/> (from <c>GameDb.As</c>) when the name is not registered.
     /// </remarks>
     public string ConnectionName { get; init; }

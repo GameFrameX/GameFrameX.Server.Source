@@ -39,7 +39,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Team;
 /// 队伍服务器（Team Role，队伍管理，域号 670）业务组件代理。
 /// </summary>
 /// <remarks>
-/// Team Role 独立业务逻辑系统（C197 垂直切片）的热更侧落点。
+/// Team Role 独立业务逻辑系统的热更侧落点。
 /// 业务规则判定一律委托 <see cref="TeamRules"/>（纯函数，可单测）；
 /// 本类只做状态编排：队伍取号创建、一人一队约束、队长转移与空队解散。
 /// </remarks>

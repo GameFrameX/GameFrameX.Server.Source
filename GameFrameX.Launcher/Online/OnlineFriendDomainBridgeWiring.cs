@@ -39,7 +39,7 @@ using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.Launcher.Online;
 
 /// <summary>
-/// 好友域桥组合根接线（C244，接管 C243 查询桥并扩展为全家族）：Game 型启动链的桥接生命周期编排——
+/// 好友域桥组合根接线（全家族桥接，替代早期查询桥）：Game 型启动链的桥接生命周期编排——
 /// 发布（业务运行时启动后）/ 撤销（退出路径）/ 可选验证种子（经真实写路径预置非空好友状态）。
 /// <para>
 /// 维护约束：发布 / 撤销必须成对出现在同一组合根（AppStartUpGame）；域桥无条件于运行时启动后发布
@@ -49,10 +49,10 @@ namespace GameFrameX.Launcher.Online;
 /// </para>
 /// </summary>
 /// <remarks>
-/// The friend-domain bridge composition-root wiring (C244, taking over the C243 query bridge and
-/// extending it to the full family): the bridge lifecycle orchestration for the Game-shape startup
-/// chain — publish (after the business runtime starts) / retract (on the shutdown path) / the
-/// optional verification seed (presetting non-empty friend state through the real write path).
+/// The friend-domain bridge composition-root wiring for the whole family: the bridge lifecycle
+/// orchestration for the Game-shape startup chain — publish (after the business runtime starts) /
+/// retract (on the shutdown path) / the optional verification seed (presetting non-empty friend
+/// state through the real write path).
 /// Publish and retract must stay paired inside the same composition root (AppStartUpGame); the
 /// domain bridge is published unconditionally after the runtime starts (the legacy domain-120/660
 /// chains retired with this cutover — there is no fallback target) — a missing contract face

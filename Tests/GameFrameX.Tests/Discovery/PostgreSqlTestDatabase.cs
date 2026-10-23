@@ -74,7 +74,7 @@ internal sealed class PostgreSqlTestDatabase : IAsyncDisposable
     /// <remarks>
     /// The test-database connection string (Database pinned to the test database
     /// name), consumed by <c>DbOptions.ConnectionString</c> when a test registers
-    /// the test database through the unified <c>GameDb.Init</c> entry (C185).
+    /// the test database through the unified <c>GameDb.Init</c> entry.
     /// </remarks>
     public string ConnectionString { get; }
 

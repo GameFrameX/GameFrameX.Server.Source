@@ -170,7 +170,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Hotfix.Friend.DomainBridgeUnavailable
-            /// 用途: C244 好友域桥租约不可用（宿主未启/已停/已撤销）时记录。
+            /// 用途: 好友域桥租约不可用（宿主未启/已停/已撤销）时记录。
             /// 参数: {0} - 请求主体ID, {1} - 协议错误码
             /// </remarks>
             public const string DomainBridgeUnavailable = "Hotfix.Friend.DomainBridgeUnavailable";
@@ -180,7 +180,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Hotfix.Friend.DomainBridgeFailed
-            /// 用途: C244 好友域桥契约面返回失败结果时记录。
+            /// 用途: 好友域桥契约面返回失败结果时记录。
             /// 参数: {0} - 协议错误码, {1} - 失败描述, {2} - 请求主体ID
             /// </remarks>
             public const string DomainBridgeFailed = "Hotfix.Friend.DomainBridgeFailed";
@@ -190,7 +190,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Hotfix.Friend.DomainBridgeException
-            /// 用途: C244 好友域桥调用抛出异常时记录。
+            /// 用途: 好友域桥调用抛出异常时记录。
             /// 参数: {0} - 请求主体ID
             /// </remarks>
             public const string DomainBridgeException = "Hotfix.Friend.DomainBridgeException";
@@ -206,7 +206,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Hotfix.Match.DomainBridgeUnavailable
-            /// 用途: C246 匹配域桥租约不可用（宿主未启/已停/已撤销）时记录。
+            /// 用途: 匹配域桥租约不可用（宿主未启/已停/已撤销）时记录。
             /// 参数: {0} - 请求主体ID, {1} - 协议错误码
             /// </remarks>
             public const string DomainBridgeUnavailable = "Hotfix.Match.DomainBridgeUnavailable";
@@ -216,7 +216,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Hotfix.Match.DomainBridgeFailed
-            /// 用途: C246 匹配域桥契约面返回失败结果时记录。
+            /// 用途: 匹配域桥契约面返回失败结果时记录。
             /// 参数: {0} - 协议错误码, {1} - 失败描述, {2} - 请求主体ID
             /// </remarks>
             public const string DomainBridgeFailed = "Hotfix.Match.DomainBridgeFailed";
@@ -226,14 +226,14 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Hotfix.Match.DomainBridgeException
-            /// 用途: C246 匹配域桥调用抛出异常时记录。
+            /// 用途: 匹配域桥调用抛出异常时记录。
             /// 参数: {0} - 请求主体ID
             /// </remarks>
             public const string DomainBridgeException = "Hotfix.Match.DomainBridgeException";
         }
 
         /// <summary>
-        /// SessionResume 会话恢复模块消息键（C204）。
+        /// SessionResume 会话恢复模块消息键。
         /// </summary>
         public static class SessionResume
         {
@@ -242,7 +242,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Hotfix.SessionResume.BridgeUnavailable
-            /// 用途: C204 会话域桥租约不可用（宿主未启/已停/已撤销）时记录。
+            /// 用途: 会话域桥租约不可用（宿主未启/已停/已撤销）时记录。
             /// 参数: {0} - 请求主体ID, {1} - 协议错误码
             /// </remarks>
             public const string BridgeUnavailable = "Hotfix.SessionResume.BridgeUnavailable";
@@ -252,7 +252,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Hotfix.SessionResume.IssueFailed
-            /// 用途: C204 登录时经会话域桥签发恢复凭据返回失败时记录（登录主流程不受影响）。
+            /// 用途: 登录时经会话域桥签发恢复凭据返回失败时记录（登录主流程不受影响）。
             /// 参数: {0} - 协议错误码, {1} - 玩家ID
             /// </remarks>
             public const string IssueFailed = "Hotfix.SessionResume.IssueFailed";
@@ -262,7 +262,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Hotfix.SessionResume.ResumeRequested
-            /// 用途: C204 收到新连接会话恢复请求时记录。
+            /// 用途: 收到新连接会话恢复请求时记录。
             /// 参数: {0} - 会话ID
             /// </remarks>
             public const string ResumeRequested = "Hotfix.SessionResume.ResumeRequested";
@@ -272,7 +272,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Hotfix.SessionResume.ResumeSucceeded
-            /// 用途: C204 会话恢复（身份 + 对局）成功时记录。
+            /// 用途: 会话恢复（身份 + 对局）成功时记录。
             /// 参数: {0} - 玩家ID, {1} - 新会话ID, {2} - 是否恢复对局, {3} - 对局标识, {4} - 服务器序号
             /// </remarks>
             public const string ResumeSucceeded = "Hotfix.SessionResume.ResumeSucceeded";
@@ -282,7 +282,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Hotfix.SessionResume.ResumeFailed
-            /// 用途: C204 会话恢复显式失败（凭据无效/过期/错主体等）时记录。
+            /// 用途: 会话恢复显式失败（凭据无效/过期/错主体等）时记录。
             /// 参数: {0} - 协议错误码, {1} - 失败描述, {2} - 会话ID
             /// </remarks>
             public const string ResumeFailed = "Hotfix.SessionResume.ResumeFailed";
@@ -292,7 +292,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Hotfix.SessionResume.DisconnectCoordination
-            /// 用途: C204 物理断线后 Online 会话域 / 对局域协同通知结果时记录。
+            /// 用途: 物理断线后 Online 会话域 / 对局域协同通知结果时记录。
             /// 参数: {0} - 玩家ID, {1} - 会话域通知结果, {2} - 对局域通知结果
             /// </remarks>
             public const string DisconnectCoordination = "Hotfix.SessionResume.DisconnectCoordination";
@@ -302,7 +302,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Hotfix.SessionResume.DisconnectStaleSkipped
-            /// 用途: C204 旧连接断线回调迟到且玩家已持新会话时跳过 Online 侧开窗记录。
+            /// 用途: 旧连接断线回调迟到且玩家已持新会话时跳过 Online 侧开窗记录。
             /// 参数: {0} - 玩家ID
             /// </remarks>
             public const string DisconnectStaleSkipped = "Hotfix.SessionResume.DisconnectStaleSkipped";
@@ -318,7 +318,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Hotfix.Game.MatchBridgeUnavailable
-            /// 用途: C245 对局桥开关开启但租约不可用（宿主未启/已停/已撤销）时记录。
+            /// 用途: 对局桥开关开启但租约不可用（宿主未启/已停/已撤销）时记录。
             /// 参数: {0} - 请求主体ID, {1} - 协议错误码
             /// </remarks>
             public const string MatchBridgeUnavailable = "Hotfix.Game.MatchBridgeUnavailable";
@@ -328,7 +328,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Hotfix.Game.MatchBridgeFailed
-            /// 用途: C245 对局桥契约面返回失败结果时记录。
+            /// 用途: 对局桥契约面返回失败结果时记录。
             /// 参数: {0} - 协议错误码, {1} - 失败描述, {2} - 请求主体ID
             /// </remarks>
             public const string MatchBridgeFailed = "Hotfix.Game.MatchBridgeFailed";
@@ -338,7 +338,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Hotfix.Game.MatchBridgeException
-            /// 用途: C245 对局桥调用抛出异常时记录。
+            /// 用途: 对局桥调用抛出异常时记录。
             /// 参数: {0} - 请求主体ID
             /// </remarks>
             public const string MatchBridgeException = "Hotfix.Game.MatchBridgeException";

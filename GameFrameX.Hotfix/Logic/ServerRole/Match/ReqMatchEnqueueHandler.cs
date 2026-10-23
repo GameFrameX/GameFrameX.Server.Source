@@ -36,11 +36,11 @@ using GameFrameX.Proto.Proto;
 namespace GameFrameX.Hotfix.Logic.ServerRole.Match;
 
 /// <summary>
-/// 匹配协议族（域号 420）薄适配处理器（C246 起经匹配域桥转发 Online 契约面；
+/// 匹配协议族（域号 420）薄适配处理器（经匹配域桥转发 Online 契约面；
 /// 旧 FIFO 内存池组件链随切换退役）。
 /// <para>
 /// 身份语义保持：请求主体 = 会话绑定玩家 id，未登录回 <see cref="MatchErrorCode.NotLoggedIn"/>；
-/// 错误码映射与即时窗口 / 取消终态 / 状态 / 入场语义由 <c>MatchDomainBridge</c> 按 T2 裁定承载。
+/// 错误码映射与即时窗口 / 取消终态 / 状态 / 入场语义由 <c>MatchDomainBridge</c> 统一承载。
 /// </para>
 /// </summary>
 [MessageMapping(typeof(ReqMatchEnqueue))]

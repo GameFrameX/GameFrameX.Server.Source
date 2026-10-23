@@ -134,7 +134,7 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 验证全量成员的协议数值快照（24 个错误成员与 Admin 错误码表快照一一同构，段内顺延，禁止漂移；
-        /// 4003 CapabilityNotInstalled 为 C228 注册反转新增，既有 23 成员语义冻结不变）。
+        /// 4003 CapabilityNotInstalled 为注册反转新增，既有 23 成员语义冻结不变）。
         /// </summary>
         [Fact]
         public void OnlineErrorCode_ProtocolValues_ShouldMatchSnapshot()

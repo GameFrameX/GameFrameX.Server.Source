@@ -37,9 +37,9 @@ using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.Hotfix.Logic.Player.Friend;
 
 /// <summary>
-/// 好友域桥薄适配器（C244，好友域 120 / 660 两族协议入口的唯一转发点）：经
+/// 好友域桥薄适配器（好友域 120 / 660 两族协议入口的唯一转发点）：经
 /// <see cref="OnlineFriendDomainBridgeHolder"/> 进程内租约把全部好友协议行为转发到 Online 好友域契约面，
-/// 并按 T2 裁定完成两族错误码映射。
+/// 并完成两族错误码映射。
 /// <para>
 /// 维护约束（红线）：
 /// ① 域桥独占——桥不可用（宿主未启 / 已停止 / 租约撤销）与服务失败一律映射为
@@ -49,15 +49,15 @@ namespace GameFrameX.Hotfix.Logic.Player.Friend;
 ///（<c>ServerRoleHandlerHelper.GetCurrentPlayerId</c>），请求体字段一律不可影响作用域；
 /// ③ 无缓存：逐请求读取 holder 当前租约，热更 / 宿主重启后旧引用不存活；
 /// ④ 错误码映射表——120 族保留 -100/-101/-103/-104（-102 目标不存在已废弃披露），
-/// 660 族全保留 660001..660005（660004 同时覆盖「对方已先申请」的单记录收敛，裁定 R6）；
+/// 660 族全保留 660001..660005（660004 同时覆盖「对方已先申请」的单记录收敛）；
 /// 其余（含好友上限 StateOperationForbidden）走 Online 显式段。
 /// </para>
 /// </summary>
 /// <remarks>
-/// The friend-domain thin bridge adapter (C244, the single forwarding point for both the domain-120
+/// The friend-domain thin bridge adapter (the single forwarding point for both the domain-120
 /// and domain-660 friend protocol entries): forwards every friend protocol behaviour in-process to
 /// the Online friend-domain contract face through <see cref="OnlineFriendDomainBridgeHolder"/>,
-/// mapping error codes per the T2 rulings. The bridge path is exclusive — unavailability (host not
+/// mapping error codes across both families. The bridge path is exclusive — unavailability (host not
 /// started / stopped / lease revoked) and service failures map to explicit
 /// <c>-(int)OnlineErrorCode</c> codes (≤ -1001, disjoint from the legacy -1..-104 and
 /// 660001..660005 bands) with no silent fallback and no successful empty lists masking a wrong
@@ -68,7 +68,7 @@ namespace GameFrameX.Hotfix.Logic.Player.Friend;
 /// reference survives a hotfix swap or host restart. The mapping tables: the 120 family keeps
 /// -100/-101/-103/-104 (-102 "target absent" is dropped and disclosed); the 660 family keeps all of
 /// 660001..660005 (660004 also covers the single-record convergence of "the other side requested
-/// first", ruling R6); everything else (including the friend-limit StateOperationForbidden) uses the
+/// first"); everything else (including the friend-limit StateOperationForbidden) uses the
 /// explicit Online band.
 /// </remarks>
 public static class FriendDomainBridge
@@ -126,7 +126,7 @@ public static class FriendDomainBridge
     }
 
     /// <summary>
-    /// 直接添加好友（120 族 ReqFriendByAdd；T2 裁定 R3：映射为域面 Establish = 申请 + 立即接受）。
+    /// 直接添加好友（120 族 ReqFriendByAdd；映射为域面 Establish = 申请 + 立即接受）。
     /// </summary>
     /// <param name="playerId">会话绑定玩家标识。</param>
     /// <param name="targetPlayerId">目标玩家标识。</param>
@@ -231,7 +231,7 @@ public static class FriendDomainBridge
     }
 
     /// <summary>
-    /// 发送好友申请（660 族 ReqFriendSendRequest；错误码映射 660002/660003/660004，裁定 R5/R6）。
+    /// 发送好友申请（660 族 ReqFriendSendRequest；错误码映射 660002/660003/660004）。
     /// </summary>
     /// <param name="playerId">会话绑定玩家标识。</param>
     /// <param name="toPlayerId">目标玩家标识。</param>
@@ -268,7 +268,7 @@ public static class FriendDomainBridge
                     return;
                 case OnlineFriendRelationKind.IncomingRequest:
                 case OnlineFriendRelationKind.OutgoingRequest:
-                    // 裁定 R6：单记录模型下「对方已先申请」与「自己重复申请」同报申请等待中。
+                    // 单记录模型下「对方已先申请」与「自己重复申请」同报申请等待中。
                     response.ErrorCode = (int)FriendErrorCode.RequestPending;
                     return;
                 default:
@@ -284,7 +284,7 @@ public static class FriendDomainBridge
     }
 
     /// <summary>
-    /// 接受好友申请（660 族 ReqFriendAccept；前置不满足映射 660005，裁定 R7）。
+    /// 接受好友申请（660 族 ReqFriendAccept；前置不满足映射 660005）。
     /// </summary>
     /// <param name="playerId">会话绑定玩家标识。</param>
     /// <param name="fromPlayerId">申请来源玩家标识。</param>
@@ -346,7 +346,7 @@ public static class FriendDomainBridge
     }
 
     /// <summary>
-    /// 解除好友关系（660 族 ReqFriendRemove；非好友映射 660005，自解除映射 660002，裁定 R7）。
+    /// 解除好友关系（660 族 ReqFriendRemove；非好友映射 660005，自解除映射 660002）。
     /// </summary>
     /// <param name="playerId">会话绑定玩家标识。</param>
     /// <param name="friendPlayerId">对方玩家标识。</param>

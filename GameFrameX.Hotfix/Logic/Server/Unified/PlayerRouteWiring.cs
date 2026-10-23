@@ -31,8 +31,7 @@ namespace GameFrameX.Hotfix.Logic.Server.Unified;
 /// was activated. The selection therefore prefers the Mongo resolver (the
 /// cross-process read side finally consuming the <c>player_route</c> collection) and
 /// falls back to <see cref="DefaultPlayerRouteResolver"/> for shapes that never
-/// activated discovery — preserving pre-C152 behavior exactly (fallback branch is
-/// zero-change; the full regression run backs that claim).
+/// activated discovery — preserving the legacy behavior exactly (the fallback branch is zero-change).
 /// </remarks>
 public static class PlayerRouteWiring
 {

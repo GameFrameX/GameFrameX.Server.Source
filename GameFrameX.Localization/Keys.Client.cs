@@ -476,7 +476,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Client.Bot.MatchScenarioStarted
-            /// 用途: C246 匹配场景真会话 E2E 启动时记录
+            /// 用途: 匹配场景真会话 E2E 启动时记录
             /// 参数: {0} - 机器人名称
             /// </remarks>
             public const string MatchScenarioStarted = "Client.Bot.MatchScenarioStarted";
@@ -486,7 +486,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Client.Bot.MatchEnqueue
-            /// 用途: C246 匹配场景入队响应（即时窗口成组时 MatchId 非 0）
+            /// 用途: 匹配场景入队响应（即时窗口成组时 MatchId 非 0）
             /// 参数: {0} - 机器人名称, {1} - 对局标识, {2} - 错误码
             /// </remarks>
             public const string MatchEnqueue = "Client.Bot.MatchEnqueue";
@@ -496,7 +496,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Client.Bot.MatchPush
-            /// 用途: C246 匹配场景真会话推送实证（NotifyMatchMade 单向通知）
+            /// 用途: 匹配场景真会话推送实证（NotifyMatchMade 单向通知）
             /// 参数: {0} - 机器人名称, {1} - 对局标识, {2} - 匹配模式
             /// </remarks>
             public const string MatchPush = "Client.Bot.MatchPush";
@@ -506,7 +506,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Client.Bot.MatchStatus
-            /// 用途: C246 匹配场景状态轮询响应
+            /// 用途: 匹配场景状态轮询响应
             /// 参数: {0} - 机器人名称, {1} - 是否排队中, {2} - 对局标识, {3} - 错误码
             /// </remarks>
             public const string MatchStatus = "Client.Bot.MatchStatus";
@@ -516,7 +516,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Client.Bot.MatchEnter
-            /// 用途: C246 匹配场景入场响应（双方到达同一运行态对局断言）
+            /// 用途: 匹配场景入场响应（双方到达同一运行态对局断言）
             /// 参数: {0} - 机器人名称, {1} - 对局标识, {2} - 是否运行态, {3} - 错误码
             /// </remarks>
             public const string MatchEnter = "Client.Bot.MatchEnter";
@@ -526,7 +526,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Client.Bot.MatchPollError
-            /// 用途: C246 匹配场景状态轮询后台循环异常时记录
+            /// 用途: 匹配场景状态轮询后台循环异常时记录
             /// 参数: {0} - 机器人名称, {1} - 异常信息
             /// </remarks>
             public const string MatchPollError = "Client.Bot.MatchPollError";
@@ -536,7 +536,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Client.Bot.MatchReconnectArmed
-            /// 用途: C204 match 场景入场成功后安排断线恢复演练时记录
+            /// 用途: match 场景入场成功后安排断线恢复演练时记录
             /// 参数: {0} - 机器人名称, {1} - 延迟秒数
             /// </remarks>
             public const string MatchReconnectArmed = "Client.Bot.MatchReconnectArmed";
@@ -546,7 +546,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Client.Bot.SessionResumeRequested
-            /// 用途: C204 断线后新连接发起会话恢复时记录
+            /// 用途: 断线后新连接发起会话恢复时记录
             /// 参数: {0} - 机器人名称
             /// </remarks>
             public const string SessionResumeRequested = "Client.Bot.SessionResumeRequested";
@@ -556,7 +556,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Client.Bot.SessionResumeResponse
-            /// 用途: C204 会话恢复响应（身份与对局恢复断言证据）
+            /// 用途: 会话恢复响应（身份与对局恢复断言证据）
             /// 参数: {0} - 机器人名称, {1} - 恢复的玩家ID, {2} - 是否恢复对局, {3} - 对局标识, {4} - 错误码
             /// </remarks>
             public const string SessionResumeResponse = "Client.Bot.SessionResumeResponse";
@@ -566,7 +566,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Client.Bot.SessionResumeReplayRejected
-            /// 用途: C204 重放已轮换旧凭据被显式拒绝的证据
+            /// 用途: 重放已轮换旧凭据被显式拒绝的证据
             /// 参数: {0} - 机器人名称, {1} - 错误码
             /// </remarks>
             public const string SessionResumeReplayRejected = "Client.Bot.SessionResumeReplayRejected";
@@ -576,7 +576,7 @@ public static partial class Keys
             /// </summary>
             /// <remarks>
             /// 键名: Client.Bot.MatchResumeEnterResponse
-            /// 用途: C204 恢复后在新连接上重入同一对局（幂等）的可观测业务交互证据
+            /// 用途: 恢复后在新连接上重入同一对局（幂等）的可观测业务交互证据
             /// 参数: {0} - 机器人名称, {1} - 对局标识, {2} - 是否运行态, {3} - 错误码
             /// </remarks>
             public const string MatchResumeEnterResponse = "Client.Bot.MatchResumeEnterResponse";

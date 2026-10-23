@@ -37,7 +37,7 @@ namespace GameFrameX.Network.RemoteMessaging.Discovery;
 /// endpoint URI (<c>scheme://host:port</c>). The scheme is declared by the endpoint itself
 /// (environment variable key segment, or the advertise endpoint of a discovered instance);
 /// consumers parse it at dial time with <c>EndpointParser</c> and dispatch to the transport
-/// registered for that scheme (C250).
+/// registered for that scheme.
 /// </remarks>
 public interface IServiceEndpointResolver
 {

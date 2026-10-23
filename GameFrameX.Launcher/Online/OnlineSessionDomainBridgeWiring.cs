@@ -25,7 +25,7 @@ using GameFrameX.Foundation.Logger;
 namespace GameFrameX.Launcher.Online;
 
 /// <summary>
-/// 会话域桥组合根接线（C204，沿 C246 <see cref="OnlineMatchDomainBridgeWiring"/> 形态）：
+/// 会话域桥组合根接线（沿 <see cref="OnlineMatchDomainBridgeWiring"/> 形态）：
 /// Game 型启动链的会话域桥生命周期编排——业务运行时启动后发布租约，进程停止路径撤销租约。
 /// <para>
 /// 维护约束：发布 / 撤销必须成对出现在同一组合根（AppStartUpGame）；契约面或作用域缺席
@@ -34,7 +34,7 @@ namespace GameFrameX.Launcher.Online;
 /// </para>
 /// </summary>
 /// <remarks>
-/// The session-domain bridge composition-root wiring (C204, following the C246 match-domain shape):
+/// The session-domain bridge composition-root wiring (following the match-domain shape):
 /// lease publication after the business runtime starts and retraction on the shutdown path. Publish and
 /// retract stay paired inside the same composition root (AppStartUpGame); a missing contract face or
 /// scope (online-foundation excluded) discloses an Error and returns null without throwing — the absence

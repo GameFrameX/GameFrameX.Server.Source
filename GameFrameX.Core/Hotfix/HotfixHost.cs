@@ -118,9 +118,9 @@ internal sealed class HotfixHost : IHotfixResolver
     }
 
     /// <summary>
-    /// 注册当前模块（同步装载路径专用：保持历史行为——不退役旧模块、不回调桥接；差异观察项见 change C216 Review Notes）。
+    /// 注册当前模块（同步装载路径专用：保持历史行为——不退役旧模块、不回调桥接）。
     /// Registers the current module (for the synchronous load path only: preserves historical behavior — no
-    /// retirement, no bridge callback; the asymmetry observation lives in change C216 Review Notes).
+    /// retirement, no bridge callback).
     /// </summary>
     /// <param name="module">新装载的模块 / The newly loaded module.</param>
     internal void RegisterCurrent(HotfixModule module)

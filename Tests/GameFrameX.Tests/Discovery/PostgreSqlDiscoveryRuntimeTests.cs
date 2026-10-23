@@ -48,14 +48,14 @@ namespace GameFrameX.Tests.Discovery;
 /// Activation-ordering tests for <c>PostgreSqlDiscoveryRuntime</c> (regression:
 /// activating against a FRESH control database must not throw — unlike MongoDB, PostgreSQL does not
 /// lazily create missing relations, so the schema must be ensured before the watcher's immediate
-/// first poll). Since C185 the control database is registered through the unified
+/// first poll). The control database is registered through the unified
 /// <c>GameDb.Init(DbOptions)</c> entry and activated by <c>ConnectionName</c> (the
 /// <c>NpgsqlDataSource</c> carrier direct-injection path was removed), so these tests exercise
 /// the same path as production. Gated by GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING
 /// (silent skip when unset, same convention as the other PostgreSQL suites).
 /// </remarks>
 // 经 GameDb.Init 注册会突变 MultiDbRegistry 全局静态态，与 GameDbMultiDatabaseTests /
-// MultiDbRegistryTests 等同类测试存在 xUnit 跨类并行竞争，固定进同一禁并行 Collection（C185 隔离评估）。
+// MultiDbRegistryTests 等同类测试存在 xUnit 跨类并行竞争，固定进同一禁并行 Collection。
 [Collection(nameof(GameDbStaticStateCollection))]
 public sealed class PostgreSqlDiscoveryRuntimeTests
 {
@@ -89,7 +89,7 @@ public sealed class PostgreSqlDiscoveryRuntimeTests
         await using (var testDatabase = await PostgreSqlTestDatabase.CreateAsync(_connectionString))
         {
             // 与生产一致的真实注册路径：测试库经统一入口 GameDb.Init 注册（Provider 反射解析 +
-            // PostgreSqlDbService.Open 自建连接池），再按 ConnectionName 激活（C185）。
+            // PostgreSqlDbService.Open 自建连接池），再按 ConnectionName 激活。
             var opened = await GameDb.InitAsync(new DbOptions
             {
                 Provider = DatabaseProviderType.PostgreSql,
@@ -110,7 +110,7 @@ public sealed class PostgreSqlDiscoveryRuntimeTests
             Assert.Null(exception);
             Assert.NotNull(PostgreSqlDiscoveryRuntime.TableProvider);
 
-            // C213 成对槽位：Activate 末尾 BindRouteTable 后，公共读侧槽位非空且与 TableProvider 同一实例。
+            // 成对槽位：Activate 末尾 BindRouteTable 后，公共读侧槽位非空且与 TableProvider 同一实例。
             Assert.NotNull(ActiveDiscoveryRuntime.RouteTableProvider);
             Assert.Same(PostgreSqlDiscoveryRuntime.TableProvider, ActiveDiscoveryRuntime.RouteTableProvider);
 

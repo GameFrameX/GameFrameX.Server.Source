@@ -44,7 +44,7 @@ namespace GameFrameX.Network.RemoteMessaging.Transport;
 /// means this dial-time selection only; mid-flight cross-protocol failover belongs to the RPC
 /// layer's retry/circuit-breaker, per the 2026-10-16 decision. When no endpoint of any scheme
 /// resolves (including an unparseable endpoint), <see cref="RemoteEndpointNotFoundException"/> is
-/// thrown, preserving the pre-C250 exception contract. A registered universal adapter serves
+/// thrown, preserving the legacy exception contract. A registered universal adapter serves
 /// every scheme and bypasses the fallback entirely (legacy single-selection semantics).
 /// </remarks>
 internal sealed class SchemeDispatchTransportAdapter : ITransportProtocolAdapter

@@ -95,7 +95,7 @@ public sealed partial class PostgreSqlDbService
             }, cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
             if (updated)
             {
-                // 精确提交（C263）：以检查时快照推进基线，避免并发 IsChanged 把基线推进到未落库快照
+                // 精确提交：以检查时快照推进基线，避免并发 IsChanged 把基线推进到未落库快照
                 state.SaveToDbPostHandler(changedData);
             }
         }
@@ -110,7 +110,7 @@ public sealed partial class PostgreSqlDbService
     /// Saves multiple documents (returns the actually-changed count; unchanged items are skipped, aligned with
     /// Mongo BulkWrite semantics). All writes go through one <c>SaveChanges</c> (atomic batch); when at least
     /// one row was written, each changed state receives the exact-snapshot <c>SaveToDbPostHandler(byte[])</c>
-    /// commit (C263; unchanged items no longer touch the baseline).
+    /// commit (unchanged items no longer touch the baseline).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="stateList">要保存的数据列表 / The states to save</param>
@@ -127,7 +127,7 @@ public sealed partial class PostgreSqlDbService
     /// Saves multiple documents (returns the actually-changed count; unchanged items are skipped, aligned with
     /// Mongo BulkWrite semantics). All writes go through one <c>SaveChanges</c> (atomic batch); when at least
     /// one row was written, each changed state receives the exact-snapshot <c>SaveToDbPostHandler(byte[])</c>
-    /// commit (C263; unchanged items no longer touch the baseline).
+    /// commit (unchanged items no longer touch the baseline).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
     /// <param name="stateList">要保存的数据列表 / The states to save</param>
@@ -185,7 +185,7 @@ public sealed partial class PostgreSqlDbService
         {
             foreach (var (state, changedData) in changedStates)
             {
-                // 精确提交（C263）：只提交实际送库快照，未变更项不再触碰基线
+                // 精确提交：只提交实际送库快照，未变更项不再触碰基线
                 state.SaveToDbPostHandler(changedData);
             }
         }

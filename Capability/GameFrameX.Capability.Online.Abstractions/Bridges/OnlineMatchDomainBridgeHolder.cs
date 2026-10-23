@@ -25,7 +25,7 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Abstractions.Bridges;
 
 /// <summary>
-/// 匹配域桥发布器（C246，沿 C244 好友域桥 / C245 对局桥 holder 形态）：进程级类型化 holder——
+/// 匹配域桥发布器：进程级类型化 holder——
 /// 组合根（Game 型启动）在业务运行时启动后发布 <see cref="OnlineMatchDomainBridgeLease"/>，
 /// 进程停止前撤销；消费方（Hotfix 薄适配器）逐请求读取 <see cref="Current"/>，不缓存引用。
 /// <para>

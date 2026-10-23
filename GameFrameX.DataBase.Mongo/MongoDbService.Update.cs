@@ -95,7 +95,7 @@ public sealed partial class MongoDbService
             var result = await ExecuteWriteWithRetryAsync(token => UpdateOneWithAmbientSessionAsync(collection, filter, updateDefinition, token), cancellationToken, nameof(UpdateAsync), true).ConfigureAwait(false);
             if (result.IsAcknowledged)
             {
-                // 精确提交（C263）：以检查时快照推进基线，避免并发 IsChanged 把基线推进到未落库快照
+                // 精确提交：以检查时快照推进基线，避免并发 IsChanged 把基线推进到未落库快照
                 state.SaveToDbPostHandler(changedData);
             }
         }
@@ -138,7 +138,7 @@ public sealed partial class MongoDbService
         }
 
         var writeModels = new List<WriteModel<TState>>();
-        // 检查时快照与状态配对，ack 后逐个精确提交（C263）：只提交实际送库快照的 hash
+        // 检查时快照与状态配对，ack 后逐个精确提交：只提交实际送库快照的 hash
         var changedSnapshots = new List<(TState State, byte[] Data)>();
         var currentTime = GetCurrentTimestamp();
 

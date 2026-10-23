@@ -40,8 +40,7 @@ namespace GameFrameX.Core.Session;
 
 /// <summary>
 /// 管理玩家运行时会话：一个玩家一个，下线之后移除，顶号之后释放之前的channel，替换channel。
-/// 原 <c>GameFrameX.Apps.Common.Session.SessionManager</c>，随 C192 下沉 Core，由静态类改为单例实现 <see cref="IPlayerSessionManager"/>，
-/// 并更名 PlayerSessionManager（避免与他系统 Session 管理器族重名）。
+/// 单例实现 <see cref="IPlayerSessionManager"/>（更名 PlayerSessionManager，避免与他系统 Session 管理器族重名）。
 /// </summary>
 public sealed class PlayerSessionManager : IPlayerSessionManager
 {
@@ -193,7 +192,7 @@ public sealed class PlayerSessionManager : IPlayerSessionManager
     }
 
     /// <summary>
-    /// 判断玩家在会话表中是否仍有剩余会话（C204 断线路由守卫）：
+    /// 判断玩家在会话表中是否仍有剩余会话（断线路由守卫）：
     /// 旧连接迟到的 OnDisconnected 回调 Remove(旧会话) 时，若新会话（顶号/重连后绑定）仍在场，
     /// 则不得将玩家路由打成离线。
     /// </summary>

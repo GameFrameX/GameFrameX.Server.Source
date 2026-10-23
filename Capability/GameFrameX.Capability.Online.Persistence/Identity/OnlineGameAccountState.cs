@@ -32,7 +32,7 @@ namespace GameFrameX.Capability.Online.Persistence.Identity;
 using GameFrameX.DataBase;
 
 /// <summary>
-/// 游戏账号持久化行（C249 一级 store：Identity 域 → GameDb 适配的落库形态）。
+/// 游戏账号持久化行（Identity 域 → GameDb 适配的落库形态）。
 /// <para>
 /// 键编码约定：行 Id = 实体自然 long 主键（GameAccountId 直用），按主键全量覆盖写；
 /// 账号标识序列（<c>NextAccountIdAsync</c>）由 <c>NextSequenceAsync&lt;OnlineGameAccountState&gt;</c>

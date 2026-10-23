@@ -43,17 +43,16 @@ using Xunit;
 namespace GameFrameX.Tests.DataBase;
 
 /// <summary>
-/// MongoDbService 索引引导与索引判重回归测试（C264：异步单飞引导 / CreateIndex 精确名判重 / 冷并发唯一插入）。
+/// MongoDbService 索引引导与索引判重回归测试（异步单飞引导 / CreateIndex 精确名判重 / 冷并发唯一插入）。
 /// </summary>
 /// <remarks>
-/// Regression tests for the MongoDbService index bootstrap and index dedup fixes (C264:
-/// asynchronous single-flight bootstrap, exact-name dedup with full cursor traversal, and the
-/// cold-collection concurrent unique insert). Only the real MongoDB provider is exercised
+/// Regression tests for the MongoDbService index bootstrap and index dedup: asynchronous
+/// single-flight bootstrap, exact-name dedup with full cursor traversal, and the cold-collection
+/// concurrent unique insert. Only the real MongoDB provider is exercised
 /// (<c>GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING</c>, the established gating pattern — facts are
-/// silently skipped when the variable is unset). Each fact pins a behavior that the former
-/// implementation got wrong: a fresh collection never got its index (the inverted first-batch
-/// check), same-name calls could create duplicates, adjacent prefix names were misjudged as
-/// existing, and unnamed definitions could not be deduplicated at all.
+/// silently skipped when the variable is unset). Each fact pins one of those behaviors: a fresh
+/// collection gets its index on the first batch, same-name calls do not create duplicates,
+/// adjacent prefix names are not misjudged as existing, and unnamed definitions deduplicate.
 /// </remarks>
 [Collection(nameof(GameDbStaticStateCollection))]
 public sealed class MongoDbServiceIndexTests
@@ -175,10 +174,10 @@ public sealed class MongoDbServiceIndexTests
     /// 测试冷并发唯一插入（引导异步单飞时序钉）：全新类型无预热并发同键 TryAddUnique，恰一条入表。
     /// </summary>
     /// <remarks>
-    /// The cold-collection variant of the C247 race fact: no warm-up insert, so the first
+    /// The cold-collection variant of the concurrent-race fact: no warm-up insert, so the first
     /// concurrent touch triggers the asynchronous single-flight bootstrap. The unique index must
     /// be built before any probe-and-insert pair runs, or duplicates would slip through the
-    /// uniqueness window (exactly the guarantee the C264 refactor must preserve).
+    /// uniqueness window (exactly the guarantee the bootstrap must preserve).
     /// </remarks>
     [Fact]
     public async Task TryAddUnique_ColdCollection_ConcurrentSameKey_OnlyOneRowLands()

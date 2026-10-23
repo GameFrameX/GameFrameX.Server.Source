@@ -36,17 +36,17 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Social;
 
 /// <summary>
-/// 好友域桥契约面实现（C244）：把 <see cref="IOnlineFriendDomain"/> 桥接契约编排到
+/// 好友域桥契约面实现：把 <see cref="IOnlineFriendDomain"/> 桥接契约编排到
 /// <see cref="OnlineFriendService"/>（域语义唯一属主），由社交能力模块注册回共享服务面。
 /// <para>
 /// 维护约束：本类承载「玩家对定位 → 关系标识编排」的翻译与玩家视角分类投影
 ///（<see cref="Classify"/>），不新增存储、不缓存——作用域校验、幂等收敛、CAS、
 /// 好友上限与披露态全部由域服务保证；<see cref="EstablishAsync"/> 是旧 120 域「直接添加」
-/// 语义（T2 裁定 R3：申请 + 立即接受；对方有待答申请时等价于本人接受）的唯一实现点。
+/// 语义（申请 + 立即接受；对方有待答申请时等价于本人接受）的唯一实现点。
 /// </para>
 /// </summary>
 /// <remarks>
-/// The friend-domain bridge contract-face implementation (C244): orchestrates the
+/// The friend-domain bridge contract-face implementation: orchestrates the
 /// <see cref="IOnlineFriendDomain"/> bridge contract onto <see cref="OnlineFriendService"/> (the sole
 /// owner of the domain semantics), registered back into the shared service face by the social
 /// capability module. This class carries only the "player-pair locating → friendship-id
@@ -54,7 +54,7 @@ namespace GameFrameX.Capability.Online.Social;
 /// (<see cref="Classify"/>) — it adds no storage and caches nothing; scope validation, idempotent
 /// convergence, CAS, the friend limit and the disclosed absences all remain guaranteed by the domain
 /// service. <see cref="EstablishAsync"/> is the single implementation point of the legacy
-/// domain-120 "direct add" semantics (ruling R3: request + immediate accept; converging to
+/// domain-120 "direct add" semantics (request + immediate accept; converging to
 /// "accepting their pending request" when one exists).
 /// </remarks>
 public sealed class OnlineFriendDomainFace : IOnlineFriendDomain
@@ -239,7 +239,7 @@ public sealed class OnlineFriendDomainFace : IOnlineFriendDomain
     }
 
     /// <summary>
-    /// 直接建立好友关系（T2 裁定 R3 的唯一实现点）：按既有关系分类分派——
+    /// 直接建立好友关系（唯一实现点）：按既有关系分类分派——
     /// 已是好友 → 幂等返回；对方申请待答 → 等价于本人接受；
     /// 本方申请待答 → 以被请求方身份补接受；无关系 / 静止态 → 申请后立即以被请求方身份接受。
     /// </summary>

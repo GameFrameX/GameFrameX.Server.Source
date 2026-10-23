@@ -237,7 +237,7 @@ public sealed partial class PostgreSqlDbService
     /// (idempotent; executed once per type per process, mirroring the Mongo adapter's index-on-first-collection-access).
     /// Single-flight: concurrent cold-cache first calls publish one <see cref="Lazy{T}"/> task via
     /// <c>GetOrAdd</c> and all await it. The underlying task runs on <see cref="CancellationToken.None"/>
-    /// (C266): it must not be tied to any single caller — a first caller cancelling would otherwise
+    /// on purpose: it must not be tied to any single caller — a first caller cancelling would otherwise
     /// cancel the shared DDL for every waiter. Callers detach via <c>WaitAsync(cancellationToken)</c>;
     /// a waiter-side cancellation does NOT evict the entry, while a genuine task failure is evicted
     /// so a later call retries instead of caching the failure forever.
@@ -282,7 +282,7 @@ public sealed partial class PostgreSqlDbService
     /// bootstrap DDL (the only raw-statement category left in this adapter).
     /// </remarks>
     /// <typeparam name="TState">文档类型 / Document type</typeparam>
-    /// <param name="cancellationToken">单飞任务执行所用令牌（C266 起恒为 CancellationToken.None，不隶属任何调用者）/ The token the single-flight task runs under (always CancellationToken.None since C266, owned by no caller)</param>
+    /// <param name="cancellationToken">单飞任务执行所用令牌（恒为 CancellationToken.None，不隶属任何调用者）/ The token the single-flight task runs under (always CancellationToken.None, owned by no caller)</param>
     private async Task EnsureTableCoreAsync<TState>(CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         using (var context = CreateContext<TState>())
@@ -307,7 +307,7 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
-    /// 同步指定实体类型的 jsonb 表达式索引（同名异构时重建；cast 矩阵与 EF 翻译器生成逐字一致，C168 D4）。
+    /// 同步指定实体类型的 jsonb 表达式索引（同名异构时重建；cast 矩阵与 EF 翻译器生成逐字一致）。
     /// </summary>
     /// <remarks>
     /// Synchronizes the jsonb expression indexes for the given entity type. The cast matrix is aligned verbatim

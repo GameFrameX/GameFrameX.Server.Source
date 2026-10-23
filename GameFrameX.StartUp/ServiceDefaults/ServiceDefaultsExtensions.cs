@@ -47,7 +47,7 @@ namespace GameFrameX.StartUp.ServiceDefaults
 {
 
     /// <summary>
-    /// 服务默认配置扩展（C153 迁入本模块）：弹性、健康检查和 OpenTelemetry。
+    /// 服务默认配置扩展：弹性、健康检查和 OpenTelemetry。
     /// </summary>
     public static class ServiceDefaultsExtensions
     {
@@ -81,7 +81,7 @@ namespace GameFrameX.StartUp.ServiceDefaults
             if (isOpenTelemetry)
             {
                 // 具名传参：TBuilder 版 ConfigureOpenTelemetry 首参是 isOpenTelemetry，位置传参会把 metrics/tracing 错位到 (isOpenTelemetry, isOpenTelemetryMetrics)，
-                // 导致指标开关被静默翻转（/metrics 抓取链路断裂的隐性根因，C160 冒烟定位修复）
+                // 导致指标开关被静默翻转（/metrics 抓取链路断裂的隐性根因）
                 builder.ConfigureOpenTelemetry(isOpenTelemetryMetrics: isOpenTelemetryMetrics, isOpenTelemetryTracing: isOpenTelemetryTracing);
             }
 

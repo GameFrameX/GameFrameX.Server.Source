@@ -32,7 +32,7 @@ namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 /// <summary>
 /// 跨域社交裁决契约（Block「在 Chat / Party / Matchmaker 三处统一生效」的接口载体）。
 /// <para>
-/// 维护约束（依赖方向，C223）：本接口**定义在脊柱契约层（Contracts）**，实现唯一落点在
+/// 维护约束（依赖方向）：本接口**定义在脊柱契约层（Contracts）**，实现唯一落点在
 /// Social 域（<c>GameFrameX.Capability.Online.Social.OnlineSocialDecisionService</c>）；
 /// Party 与 Matchmaking **只依赖本契约**、不依赖 Social 域——叶子能力目录横向互引恒为零，
 /// 依赖箭头单向，无环。

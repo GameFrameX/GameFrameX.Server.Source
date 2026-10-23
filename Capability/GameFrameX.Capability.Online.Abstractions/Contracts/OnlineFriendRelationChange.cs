@@ -30,7 +30,7 @@
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 好友域操作的关系变更结果（C244 域桥契约）：操作前后的玩家视角关系分类。
+/// 好友域操作的关系变更结果（域桥契约）：操作前后的玩家视角关系分类。
 /// <para>
 /// 维护约束：<see cref="Before"/> 是适配层复刻旧协议错误码的判据
 ///（重复申请 / 已是好友 / 申请不存在），<see cref="After"/> 是操作生效后的当前事实；
@@ -38,7 +38,7 @@ namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 /// </para>
 /// </summary>
 /// <remarks>
-/// The relation-change result of a friend-domain operation (the C244 domain-bridge contract): the
+/// The relation-change result of a friend-domain operation (the domain-bridge contract): the
 /// player-view classification before and after the operation. <see cref="Before"/> is the basis for
 /// the adapter to reproduce legacy protocol error codes (duplicate request / already friends /
 /// request absent) while <see cref="After"/> carries the current fact; an idempotent hit (the

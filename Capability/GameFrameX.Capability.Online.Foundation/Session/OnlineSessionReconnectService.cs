@@ -23,7 +23,7 @@ using GameFrameX.Capability.Online.Foundation.Identity;
 namespace GameFrameX.Capability.Online.Foundation.Session;
 
 /// <summary>
-/// 会话恢复服务（C204，<see cref="IOnlineSessionReconnectContract"/> 的 Foundation 实现）：
+/// 会话恢复服务（<see cref="IOnlineSessionReconnectContract"/> 的 Foundation 实现）：
 /// Core 物理连接会话与 Online 逻辑会话的协同编排——登录签发（断线前凭据交付）、
 /// 新连接恢复（验证 + 连接替换 + 原子轮换）、断线通知（开重连窗）。
 /// <para>

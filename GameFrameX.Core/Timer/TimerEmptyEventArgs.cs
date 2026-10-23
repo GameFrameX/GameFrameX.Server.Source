@@ -35,8 +35,8 @@ namespace GameFrameX.Core.Timer;
 /// 定时器无载荷占位事件参数：定时任务未携带业务载荷时以本单例归一 JobDataMap 占位（不落 null）。
 /// </summary>
 /// <remarks>
-/// 随事件系统类型键控改造（C193）由原 <see cref="GameEventArgs" /> 域通用空占位收敛为 Timer 域专属类型：
-/// 事件派发已禁 null 且无载荷事件改用事件标记类表达，本类型只服务定时器占位职责，不作事件绑定键。
+/// 定时器域专属类型：事件派发已禁 null 且无载荷事件改用事件标记类表达，
+/// 本类型只服务定时器占位职责，不作事件绑定键。
 /// </remarks>
 public sealed class TimerEmptyEventArgs : GameEventArgs
 {

@@ -74,22 +74,22 @@ public sealed class ReqProtocolVersionNegotiation : MessageObject, IRequestMessa
     public int Minor { get; set; }
 
     /// <summary>
-    /// 获取或设置拨号端每连接随机 nonce（C272 节点间鉴权启用时必填）。
+    /// 获取或设置拨号端每连接随机 nonce（节点间鉴权启用时必填）。
     /// </summary>
     /// <remarks>
-    /// Gets or sets the dialing side's per-connection random nonce (required when the C272
+    /// Gets or sets the dialing side's per-connection random nonce (required when
     /// inter-node authentication is enabled).
     /// </remarks>
     [ProtoMember(3)]
     public string Nonce { get; set; }
 
     /// <summary>
-    /// 获取或设置节点间鉴权凭据：HMAC-SHA256(secret, nonce|Major|Minor) 十六进制小写（C272）；
+    /// 获取或设置节点间鉴权凭据：HMAC-SHA256(secret, nonce|Major|Minor) 十六进制小写；
     /// 鉴权未启用（共享密钥为空）时为空，旧节点不识别新字段按缺省反序列化为 null，线缆向后兼容。
     /// </summary>
     /// <remarks>
     /// Gets or sets the inter-node authentication credential: a lowercase-hex
-    /// HMAC-SHA256(secret, nonce|Major|Minor) (C272); empty when authentication is disabled
+    /// HMAC-SHA256(secret, nonce|Major|Minor); empty when authentication is disabled
     /// (empty shared secret). Older peers do not know the new field and deserialize it as
     /// default(null) — wire-compatible both directions.
     /// </remarks>

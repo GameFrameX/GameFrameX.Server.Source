@@ -33,9 +33,9 @@ using GameFrameX.DataBase;
 using GameFrameX.Foundation.Orm.Attribute;
 
 /// <summary>
-/// 资产交易记录持久化行（C249 一级 store：Assets 域 → GameDb 适配的落库形态）。
+/// 资产交易记录持久化行（一级 store：Assets 域 → GameDb 适配的落库形态）。
 /// <para>
-/// 键编码约定（T1 裁决 1）：<see cref="TransactionId"/> 单列唯一索引（交易幂等边界的键面）；
+/// 键编码约定：<see cref="TransactionId"/> 单列唯一索引（交易幂等边界的键面）；
 /// 行 Id 由 <c>NextSequenceAsync</c> 分配；状态迁移按统一入口全量覆盖写（终态不可再迁移由
 /// 调用方状态机保证，与 InMemory 整体覆盖语义同构）。<see cref="AppliedLedgerEntryIds"/>
 /// 为账本条目外键列表（追溯/恢复用）。

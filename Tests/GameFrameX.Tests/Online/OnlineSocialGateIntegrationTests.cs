@@ -76,7 +76,7 @@ namespace GameFrameX.Tests.Online
         private const long AdminId = 9001;
 
         /// <summary>
-        /// 验证队伍服务未装配社交裁决时邀请照常成立（null = 不启用，C97 既有行为不变）。
+        /// 验证队伍服务未装配社交裁决时邀请照常成立（null = 不启用，既有行为不变）。
         /// </summary>
         [Fact]
         public async Task InviteAsync_WhenSocialGateMissing_ShouldKeepLegacyBehavior()

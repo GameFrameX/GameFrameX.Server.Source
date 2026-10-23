@@ -119,12 +119,12 @@ public abstract class BaseCacheState : EntityBase<long>, ICacheState
     /// dirty-check baseline with the byte snapshot actually handed to the database).
     /// 检查与写库之间可能发生并发脏检查（如 Actor 反激活的 IsModify、强制全量保存），
     /// 它们会把 ToSaveHash 推进到尚未落库的快照；参数less 重载在竞态窗口内会误把基线推进到
-    /// 该未落库快照，导致后续变异被判定为未修改（静默丢数据，C263）。本重载只提交
+    /// 该未落库快照，导致后续变异被判定为未修改（静默丢数据）。本重载只提交
     /// <paramref name="persistedData"/> 的 hash，保证基线永远指向真实持久化过的字节。
     /// A concurrent dirty check between the check and the write (e.g. an actor-deactivation
     /// IsModify or a forced full save) advances ToSaveHash to a snapshot that was not persisted;
     /// within that race window the parameterless overload would wrongly baseline that unpersisted
-    /// snapshot, making later mutations read as unmodified (silent data loss, C263). This overload
+    /// snapshot, making later mutations read as unmodified (silent data loss). This overload
     /// commits only the hash of <paramref name="persistedData"/>, so the baseline always points at
     /// bytes that were truly written.
     /// </remarks>
@@ -167,12 +167,12 @@ public abstract class BaseCacheState : EntityBase<long>, ICacheState
 
         // 懒基线按「未持久化」处理（isNew=true）：绕过 Provider 查询路径（未调 LoadFromDbPostHandler）
         // 的对象在首次检查前可能已被业务修改，若以当前序列化固化基线（isNew=false），这些变异会被
-        // 静默吞掉（判定未修改 → 永不回存，C263）。按新对象处理使首次检查必报已修改，
+        // 静默吞掉（判定未修改 → 永不回存）。按新对象处理使首次检查必报已修改，
         // 强制一次幂等整档回存收敛基线——宁可多写一次，不吞变异。
         // The lazy baseline treats the state as unpersisted (isNew=true): an object that bypassed the
         // provider query paths (LoadFromDbPostHandler never called) may already carry business mutations
         // at its first check; baselining the current serialization (isNew=false) would silently swallow
-        // them (reported unmodified → never saved, C263). Treating it as new forces the first check to
+        // them (reported unmodified → never saved). Treating it as new forces the first check to
         // report modified and one idempotent whole-document save to settle the baseline — one redundant
         // write is preferred over swallowing mutations.
         LoadFromDbPostHandler(isNew: true);

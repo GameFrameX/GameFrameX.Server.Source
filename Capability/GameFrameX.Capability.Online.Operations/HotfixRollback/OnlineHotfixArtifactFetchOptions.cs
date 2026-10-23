@@ -31,7 +31,7 @@ using System;
 namespace GameFrameX.Capability.Online.Operations.HotfixRollback;
 
 /// <summary>
-/// 登记期制品获取参数（C248 定值缺省：单次尝试超时 30 秒、失败重试 2 次、下载大小上限 64 MiB）。
+/// 登记期制品获取参数（定值缺省：单次尝试超时 30 秒、失败重试 2 次、下载大小上限 64 MiB）。
 /// <para>
 /// 重试范围 = 网络异常 / HTTP 5xx / 408（瞬时失败面）；其余 4xx 与校验不符立即失败——
 /// 永久性错误重试只会放大故障窗口。

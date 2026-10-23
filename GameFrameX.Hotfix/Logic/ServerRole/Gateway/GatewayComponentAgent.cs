@@ -40,7 +40,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Gateway;
 /// 后端路由服务器（Gateway Role）业务组件代理：路由目标注册、心跳、加权解析与注销。
 /// </summary>
 /// <remarks>
-/// Gateway Role 独立业务逻辑系统（C197 垂直切片）的热更侧落点。
+/// Gateway Role 独立业务逻辑系统（垂直切片）的热更侧落点。
 /// 业务规则判定一律委托 <see cref="GatewayRules"/>（纯函数，可单测，随机数注入）；
 /// 本类只做状态编排：目标建档、心跳刷新、按角色类型过滤后的加权随机解析。
 /// 全部业务以 TargetId/RoleType 为键，无登录语义。

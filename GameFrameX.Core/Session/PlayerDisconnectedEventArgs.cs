@@ -32,23 +32,21 @@ using GameFrameX.Core.Abstractions.Events;
 namespace GameFrameX.Core.Session;
 
 /// <summary>
-/// 玩家物理连接断开事件参数（C284 宿主→热更断线业务桥接契约）。
+/// 玩家物理连接断开事件参数（宿主→热更断线业务桥接契约）。
 /// </summary>
 /// <remarks>
 /// 宿主持监听形态下，宿主会话断开钩子完成会话摘除后以本事件把「已绑定玩家的物理断开」
-/// 通知热更域——热更侧全局监听器承接房间断线标记与会话恢复通知（原内联在热更侧
-/// <c>AppStartUpHotfixGame.OnDisconnected</c> 的业务段；原名，C285 更名为 HotfixModuleLifecycleBridge）。事件绑定键即本类型本身；
-/// 分发为全局（actorId = 0）fire-and-forget，与 <see cref="SessionRemovedEventArgs"/>
-/// 登出清理同形态。携带断开的物理会话标识供热更侧旧回调迟到守卫使用。
+/// 通知热更域——热更侧全局监听器 <c>HotfixModuleLifecycleBridge</c> 承接房间断线标记与会话恢复通知。
+/// 事件绑定键即本类型本身；分发为全局（actorId = 0）fire-and-forget，与
+/// <see cref="SessionRemovedEventArgs"/> 登出清理同形态。携带断开的物理会话标识供热更侧旧回调迟到守卫使用。
 /// Under the host-owned-listener shape, the host's session-disconnected hook removes the
 /// session and then uses this event to notify the hotfix domain that a bound player's
-/// physical connection dropped — the hotfix-side global listener carries the room
-/// disconnected-marking and the session-resume notification (the business block formerly
-/// inlined in the hotfix-side <c>AppStartUpHotfixGame.OnDisconnected</c>; renamed
-/// <c>HotfixModuleLifecycleBridge</c> in C285). The event binding
-/// key is the type itself; dispatch is global (actorId = 0) and fire-and-forget, the same
-/// shape as the <see cref="SessionRemovedEventArgs"/> logout cleanup. The disconnected
-/// physical session identifier is carried for the hotfix-side stale-callback guard.
+/// physical connection dropped — the hotfix-side global listener
+/// <c>HotfixModuleLifecycleBridge</c> carries the room disconnected-marking and the
+/// session-resume notification. The event binding key is the type itself; dispatch is
+/// global (actorId = 0) and fire-and-forget, the same shape as the
+/// <see cref="SessionRemovedEventArgs"/> logout cleanup. The disconnected physical
+/// session identifier is carried for the hotfix-side stale-callback guard.
 /// </remarks>
 public sealed class PlayerDisconnectedEventArgs : GameEventArgs
 {

@@ -37,7 +37,7 @@ using Xunit;
 namespace GameFrameX.Hotfix.Tests;
 
 /// <summary>
-/// Auction 业务纯规则测试（C197 Phase 2）。
+/// Auction 业务纯规则测试。
 /// </summary>
 /// <remarks>
 /// 覆盖挂拍参数校验分支、最低有效出价（首价=保留价 / 加价 ×1.1 向上取整）、

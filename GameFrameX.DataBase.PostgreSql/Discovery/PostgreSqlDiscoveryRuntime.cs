@@ -52,7 +52,7 @@ namespace GameFrameX.DataBase.PostgreSql.Discovery;
 /// the AC-4 equivalent of the Mongo TTL index), then attaches the generic
 /// player-route bootstrap. Router wiring is NOT performed here — the
 /// composition side reads <see cref="ActiveDiscoveryRuntime.RouteTableProvider"/>
-/// (bound at the end of <c>Activate</c>, C213) and calls
+/// (bound at the end of <c>Activate</c>) and calls
 /// <c>DiscoveryRoutingWire.Initialize</c> after. Activation is idempotent per
 /// process; the hotfix wiring point later calls
 /// <c>DiscoveryRoutingWire.AttachLocalDispatcher</c> to fill the case 1
@@ -160,7 +160,7 @@ public static class PostgreSqlDiscoveryRuntime
         _registry.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
         // 激活完成即登记公共槽位：宿主就绪时经 ActiveDiscoveryRuntime.MarkActiveAsync 无分派切 Active。
         ActiveDiscoveryRuntime.Bind(_registry);
-        // 读侧路由表成对登记同一槽位（C213）：组合根经 RouteTableProvider 无分派回读装配路由缝。
+        // 读侧路由表成对登记同一槽位：组合根经 RouteTableProvider 无分派回读装配路由缝。
         ActiveDiscoveryRuntime.BindRouteTable(_watcher);
         if (selfDescriptor == null)
         {

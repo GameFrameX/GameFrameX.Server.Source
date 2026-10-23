@@ -15,7 +15,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 匹配能力包（C231 P3，含 Party 域）验收测试：无参模块扫描可发现 / AddOnlineMatchmakingRuntime 最小组合
+    /// 匹配能力包（含 Party 域）验收测试：无参模块扫描可发现 / AddOnlineMatchmakingRuntime 最小组合
     /// （social gate 面经共享面解析）/ UseOnlineMatchTicketStore 替换缝生效 / Party store 产物注册回共享面。
     /// </summary>
     public class OnlineMatchmakingCapabilityPackageTests
@@ -70,7 +70,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 无参模块扫描可发现（P4 前置）：匹配包程序集扫描产出 online-matchmaking 模块。
+        /// 无参模块扫描可发现：匹配包程序集扫描产出 online-matchmaking 模块。
         /// </summary>
         [Fact]
         public void DiscoverModules_FindsMatchmakingCapabilityModule()

@@ -87,7 +87,7 @@ public partial class StartupOptions : AppSetting
     /// <summary>
     /// Online 能力白名单（CLI 平铺别名，逗号分隔能力 Id，如 online-assets,online-social）。
     /// <para>缺省或空 = 全装配；仅对无配置段的 Role 回落档生效——配置段（含其嵌套 "Online" 节点）优先链不变</para>
-    /// <para>经 <see cref="GetOnlineCapabilities"/> 投影为强类型能力配置段（C229）</para>
+    /// <para>经 <see cref="GetOnlineCapabilities"/> 投影为强类型能力配置段</para>
     /// </summary>
     /// <value>逗号分隔的能力 Id 白名单 / The comma-separated capability id whitelist</value>
     /// <remarks>
@@ -95,7 +95,7 @@ public partial class StartupOptions : AppSetting
     /// online-assets,online-social). Default or empty assembles everything. It only takes effect on
     /// the launcher fallback path for roles without a config section — the config-section-first
     /// chain (including its nested "Online" node) is unchanged. Projected into the strong-typed
-    /// capability section via <see cref="GetOnlineCapabilities"/> (C229).
+    /// capability section via <see cref="GetOnlineCapabilities"/>.
     /// </remarks>
     [Option(nameof(OnlineCapabilities), DefaultValue = "", Description = "Online 能力白名单(逗号分隔能力 Id,如 online-assets,online-social),缺省或空=全装配;仅无配置段 Role 回落档生效")]
     public string OnlineCapabilities { get; set; }

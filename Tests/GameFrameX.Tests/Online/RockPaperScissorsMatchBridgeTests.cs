@@ -34,7 +34,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 对局样例桥 Hotfix 薄适配器测试（C245）：开关关闭不接管、lease 失效显式错误码、
+    /// 对局样例桥 Hotfix 薄适配器测试：开关关闭不接管、lease 失效显式错误码、
     /// 契约失败码映射、异常兜底、作用域与参数透传、视图字段级映射（出拳保密 / Wins 不外发）
     /// 与 Room 状态映射决策矩阵。
     /// </summary>

@@ -286,7 +286,7 @@ public sealed class OnlineSessionManager
     }
 
     /// <summary>
-    /// 会话中介恢复（C204）：新物理连接凭已验证凭据接管会话——Authenticated / Connected / Active /
+    /// 会话中介恢复：新物理连接凭已验证凭据接管会话——Authenticated / Connected / Active /
     /// Reconnecting 一律收敛到 Connected 并替换连接标识、关闭重连窗口。
     /// <para>
     /// 与 <see cref="MarkReconnectedAsync"/> 的区别：后者只接受 Reconnecting 态（窗口内重连的严格面），

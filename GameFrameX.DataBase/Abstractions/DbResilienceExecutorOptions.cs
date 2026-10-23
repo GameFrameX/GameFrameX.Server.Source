@@ -33,7 +33,7 @@ using System.Diagnostics.Metrics;
 namespace GameFrameX.DataBase.Abstractions;
 
 /// <summary>
-/// 共享弹性引擎构造参数（C253）。
+/// 共享弹性引擎构造参数。
 /// </summary>
 /// <remarks>
 /// Construction parameters for <see cref="DbResilienceExecutor"/>. Providers contribute their

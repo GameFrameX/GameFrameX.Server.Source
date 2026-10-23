@@ -75,7 +75,7 @@ public sealed class PostgreSqlDiscoveryDbContext : DbContext
     /// 配置发现层两张表的映射（列名 / 索引与既有存储模型逐字一致；xmin 乐观并发令牌承载 CAS）。
     /// </summary>
     /// <remarks>
-    /// Configures both discovery tables (column names and indexes identical to C167). The player-route
+    /// Configures both discovery tables (column names and indexes identical to the legacy store model). The player-route
     /// <c>xmin</c> system column is the concurrency token: any concurrent row change makes the guarded
     /// update match zero rows, which the store maps onto the existing
     /// <see cref="GameFrameX.Discovery.Routing.PlayerRouteCasOutcome"/> semantics.

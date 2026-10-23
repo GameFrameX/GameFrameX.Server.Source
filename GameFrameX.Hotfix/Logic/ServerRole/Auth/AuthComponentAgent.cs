@@ -39,7 +39,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Auth;
 /// 权限授予服务器（Auth Role）业务组件代理：权限的授予、撤销、查询与列举。
 /// </summary>
 /// <remarks>
-/// Auth Role 独立业务逻辑系统（C197 垂直切片）的热更侧落点。
+/// Auth Role 独立业务逻辑系统（垂直切片）的热更侧落点。
 /// 业务规则判定一律委托 <see cref="AuthRules"/>（纯函数，可单测）；
 /// 本类只做状态编排：按玩家维度的权限集合懒创建、授予记录写入与撤销移除。
 /// Grant/Revoke 需登录（操作者=请求者）；Has/List 以目标玩家ID为键，无需登录。

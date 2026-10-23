@@ -30,12 +30,12 @@
 namespace GameFrameX.Network.RemoteMessaging.Transport;
 
 /// <summary>
-/// 进程级共享 TCP 连接池（C270）。RPC 客户端（<see cref="RemoteMessagingBuilder.Build"/>）
+/// 进程级共享 TCP 连接池。RPC 客户端（<see cref="RemoteMessagingBuilder.Build"/>）
 /// 与跨 Role 信封转发层（<see cref="Routing.TcpEnvelopeForwarder"/>）历史上各建连接池，对同一目标端点
 /// 双份开满连接；本 Holder 收敛为进程单例——同端点连接只开一份，两个消费层经池内每连接写门控流安全共享。
 /// </summary>
 /// <remarks>
-/// The process-level shared TCP connection pool (C270). The RPC client
+/// The process-level shared TCP connection pool. The RPC client
 /// (<see cref="RemoteMessagingBuilder.Build"/>) and the cross-role envelope forwarder
 /// (<see cref="Routing.TcpEnvelopeForwarder"/>) used to build their own pools, opening a doubled set of
 /// connections to the same target endpoint. This holder converges them into one process-wide singleton —

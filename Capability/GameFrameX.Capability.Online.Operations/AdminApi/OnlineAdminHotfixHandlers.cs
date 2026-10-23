@@ -33,7 +33,7 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Operations.AdminApi;
 
 /// <summary>
-/// Hotfix 版本切换受控操作族 admin action（C256：register_hotfix_manifest / activate_hotfix_version /
+/// Hotfix 版本切换受控操作族 admin action（register_hotfix_manifest / activate_hotfix_version /
 /// check_hotfix_compatibility / rollback_hotfix_version）——运行期热更版本切换的唯一运维触发面
 ///（旧 <c>ReloadHttpHandler</c> HTTP 通道已退役）。
 /// <para>

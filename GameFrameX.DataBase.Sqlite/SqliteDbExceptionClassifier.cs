@@ -34,7 +34,7 @@ using Microsoft.Data.Sqlite;
 namespace GameFrameX.DataBase.Sqlite;
 
 /// <summary>
-/// SQLite 异常分类器（C253）：busy/locked 写冲突与超时的瞬时分类——provider 唯一差异面，全套弹性随共享引擎首次生效。
+/// SQLite 异常分类器：busy/locked 写冲突与超时的瞬时分类——provider 唯一差异面，全套弹性随共享引擎首次生效。
 /// </summary>
 /// <remarks>
 /// SQLite exception classifier: the provider-specific surface consumed by the shared
@@ -43,8 +43,8 @@ namespace GameFrameX.DataBase.Sqlite;
 /// connection is serialized by the gate, so self-inflicted busy is not expected).
 /// 无状态、线程安全；分类集合有界（busy/locked + 超时，对齐 PG TransientSqlStates 有界哲学）。
 /// 事务级谓词为 busy/locked 窄集（不含超时，对齐 Mongo 事务错误标签窄集 / PG 40001+40P01 窄集），
-/// 供 C247 事务内 CAS 原语消费；本 change 的 <c>ExecuteInTransactionAsync</c> 保持单次直通
-/// （嵌套壳加入环境事务，盲目重试会在外层事务内重复执行 action，C222 退化语义）。
+/// 供事务内 CAS 原语消费；<c>ExecuteInTransactionAsync</c> 保持单次直通
+/// （嵌套壳加入环境事务，盲目重试会在外层事务内重复执行 action）。
 /// </remarks>
 internal sealed class SqliteDbExceptionClassifier : IDbOperationExceptionClassifier
 {
@@ -97,8 +97,8 @@ internal sealed class SqliteDbExceptionClassifier : IDbOperationExceptionClassif
     /// </summary>
     /// <remarks>
     /// The SQLite transaction shell (BEGIN → action → COMMIT) runs single-pass with no separate
-    /// commit-retry loop, so the commit predicate shares the busy/locked narrow set (C253 契约
-    /// 完整性成员，供后续事务级重试消费方使用).
+    /// commit-retry loop, so the commit predicate shares the busy/locked narrow set (a contract
+    /// member consumed by transaction-level retry call sites).
     /// </remarks>
     /// <param name="exception">要检查的异常 / The exception to check</param>
     /// <returns>如果是可重试的事务提交异常则返回 <c>true</c>；否则返回 <c>false</c> / <c>true</c> if the commit is retryable; otherwise <c>false</c></returns>

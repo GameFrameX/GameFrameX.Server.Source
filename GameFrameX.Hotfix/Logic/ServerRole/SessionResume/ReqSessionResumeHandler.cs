@@ -29,7 +29,7 @@ using GameFrameX.Proto.Proto;
 namespace GameFrameX.Hotfix.Logic.ServerRole.SessionResume;
 
 /// <summary>
-/// 会话恢复处理器（220-18，C204）：新物理连接携带登录时下发的会话凭据，恢复身份绑定与
+/// 会话恢复处理器（220-18）：新物理连接携带登录时下发的会话凭据，恢复身份绑定与
 /// Online 对局（快照 / 增量）；失败一律 Online 显式段负值（≤ -1001），绝不静默回落。
 /// </summary>
 [MessageMapping(typeof(ReqSessionResume))]

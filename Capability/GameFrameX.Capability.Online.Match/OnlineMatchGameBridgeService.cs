@@ -31,7 +31,7 @@ using GameFrameX.Capability.Online.Matchmaking;
 namespace GameFrameX.Capability.Online.Match;
 
 /// <summary>
-/// 对局样例桥服务（C245，D4 RPS 垂直切片）：<see cref="IOnlineMatchGameBridge"/> 的对局域实现——
+/// 对局样例桥服务（RPS 垂直切片）：<see cref="IOnlineMatchGameBridge"/> 的对局域实现——
 /// 房间制协议入口（房间标识 + 局号 + 房间成员表）到平台对局运行时的 create-or-reuse 桥接。
 /// <para>
 /// 维护约束（红线）：① 对局标识确定性派生（<c>rps-s{serverId}-r{roomId}-g{round}</c>）——同房间同局号
@@ -45,7 +45,7 @@ namespace GameFrameX.Capability.Online.Match;
 /// </para>
 /// </summary>
 /// <remarks>
-/// The sample match bridge service (C245, the D4 RPS vertical slice): the match-domain implementation of
+/// The sample match bridge service (the RPS vertical slice): the match-domain implementation of
 /// <see cref="IOnlineMatchGameBridge"/> — a create-or-reuse bridging from the room-shaped protocol entries
 /// (room id + round + room member list) into the platform match runtime. The match id is derived
 /// deterministically so repeated starts of the same room/round reuse the existing match idempotently,

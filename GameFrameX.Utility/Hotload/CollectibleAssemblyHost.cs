@@ -138,12 +138,11 @@ public sealed class CollectibleAssemblyHost<TModule>
         _retiredModules.TryAdd(moduleKey, module);
         // 延迟清理退役模块：宽限参数化，常量归调用方。
         // 红线：异步体只捕获 moduleKey —— 若捕获 module，闭包会经模块字段（HotfixAssembly / 加载上下文）
-        // 保持对 ALC 的强可达，卸载验证期间弱引用恒存活，验证必然误报 failure（C216 verify 冒烟实证的 P1）。
+        // 保持对 ALC 的强可达，卸载验证期间弱引用恒存活，验证必然误报 failure。
         // Deferred cleanup of the retired module: grace is parameterized, the constant belongs to the caller.
         // Red line: the async body captures moduleKey ONLY — capturing module would keep the ALC strongly
         // reachable through module fields (HotfixAssembly / load context) for the whole verification, making the
-        // weak reference permanently alive and the verdict a guaranteed false "failure" (the P1 proven by C216's
-        // verification smoke).
+        // weak reference permanently alive and the verdict a guaranteed false "failure".
         _ = Task.Run(async () =>
         {
             await Task.Delay(gracePeriod);

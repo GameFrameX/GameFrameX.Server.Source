@@ -45,18 +45,18 @@ namespace GameFrameX.Launcher.StartUp;
 /// 游戏服务器
 /// </summary>
 /// <remarks>
-/// 组合根边界（C240 声明随 C243 交付）：本类所在启动模板序列（<see cref="AppStartUpGameServerBase"/>
+/// 组合根边界：本类所在启动模板序列（<see cref="AppStartUpGameServerBase"/>
 /// 模板钩子 + 各 Role 差异覆写）负责基础设施装配——网络监听、GameDb 数据库、发现层、热更模块装载与退出编排；
 /// 平台业务域服务（好友 / 资产 / 对局等）的唯一组合根是 <c>AddOnlineCapabilities</c> 单入口装配的
-/// <c>CapabilityHost</c>（本类持有并按启停序编排）。两层边界经 C243 好友查询桥实证：
+/// <c>CapabilityHost</c>（本类持有并按启停序编排）。两层边界经好友查询桥实证：
 /// Hotfix 协议面薄适配器经 Online 契约面进程内消费平台服务，不经本地注册表绕行。
-/// Composition-root boundary (declared by C240, delivered with C243): the startup template sequence
+/// Composition-root boundary: the startup template sequence
 /// (the <see cref="AppStartUpGameServerBase"/> template hooks plus per-role overrides) assembles the
 /// infrastructure — network listeners, the GameDb database, the discovery layer, hotfix module loading
 /// and exit orchestration — while the sole composition root for platform domain services (friends,
 /// assets, matches, ...) is the <c>CapabilityHost</c> assembled by the single
 /// <c>AddOnlineCapabilities</c> entry (held and lifecycle-orchestrated by this class). The two-layer
-/// boundary is proven by the C243 friend-query bridge: the Hotfix protocol thin adapter consumes the
+/// boundary is proven by the friend-query bridge: the Hotfix protocol thin adapter consumes the
 /// platform services in-process through the Online contract face, never through the local registry.
 /// </remarks>
 // 显式优先级修复与 Social 同为缺省 1000 的冲突——Game 为主服务先起（值越小优先级越高）
@@ -93,9 +93,9 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     /// Game-shape role services: the unified default (hotfix lifecycle activation plus the host
     /// listener startup, both via the base hook) followed by the optional Online gates — the shared
     /// wiring (control database, discovery layer, business database, components) is carried by the
-    /// template sequence. C284 起 Game 不再自拟启动序列：热更装载与监听均由缺省 hook 承载，
+    /// template sequence. Game 不再自拟启动序列：热更装载与监听均由缺省 hook 承载，
     /// 本覆写只追加 Online 面（Online 属范围外，装配必须保留）。
-    /// Since C284 Game no longer rolls its own startup sequence — hotfix loading and listener
+    /// Game no longer rolls its own startup sequence — hotfix loading and listener
     /// ownership both live in the default hook; this override only appends the Online surface
     /// (Online is out of scope and its assembly must be preserved).
     /// </remarks>
@@ -114,9 +114,9 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     /// <remarks>
     /// Game-shape exit cleanup (three reverse phases): Online bridge retraction with the admin and
     /// runtime stops, then the host stop (the guarded <c>ServiceOffline</c> dispatch plus the
-    /// network listener shutdown), then the hotfix module's business cleanup. C284 起监听所有权
+    /// network listener shutdown), then the hotfix module's business cleanup. 监听所有权
     /// 归宿主：宿主 <c>StopAsync</c> 停监听并翻转运行时状态，热更 <c>Stop</c> 只清 Actor/定时器/会话。
-    /// Since C284 listener ownership stays with the host — the host <c>StopAsync</c> stops the
+    /// Listener ownership stays with the host — the host <c>StopAsync</c> stops the
     /// listeners and flips the runtime state while the hotfix <c>Stop</c> only clears actors,
     /// timers and sessions.
     /// </remarks>
@@ -136,12 +136,9 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     /// Creates the KCP session first-message authentication options for the game server.
     /// 白名单为现有 TCP 登录流全链路（账号登录 → 角色列表/角色创建 → 角色登录）；
     /// <see cref="ReqPlayerLogin"/> 是鉴权终态——业务侧 OnPlayerLogin 处理该消息并绑定 ActorId，此后会话消息全放行。
-    /// C204 起 <see cref="ReqSessionResume"/>（会话恢复）与角色登录同为鉴权完成信号——恢复即绑定 ActorId。
-    /// C284 起监听面归宿主，本覆写自热更侧 <c>AppStartUpHotfixGame</c> 上移，语句逐字保持
-    ///（原名，C285 更名为 HotfixModuleLifecycleBridge）。
-    /// Since C284 the listener surface lives with the host; this override moved up from the
-    /// hotfix-side <c>AppStartUpHotfixGame</c> with the statements kept verbatim (renamed
-    /// <c>HotfixModuleLifecycleBridge</c> in C285).
+    /// <see cref="ReqSessionResume"/>（会话恢复）与角色登录同为鉴权完成信号——恢复即绑定 ActorId。
+    /// 监听面归宿主。
+    /// The listener surface lives with the host.
     /// </remarks>
     /// <returns>KCP 会话鉴权配置 / The KCP session authentication options</returns>
     protected override SessionAuthenticationOptions CreateKcpSessionAuthenticationOptions()
@@ -170,14 +167,11 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     }
 
     /// <summary>
-    /// Game 型会话建立钩子：达到最大在线数即拒绝并关闭，否则建立 <see cref="PlayerSession"/>
-    ///（语句自热更侧 <c>AppStartUpHotfixGame.OnConnected</c> 上移，C284；原名，C285 更名为 HotfixModuleLifecycleBridge）。
+    /// Game 型会话建立钩子：达到最大在线数即拒绝并关闭，否则建立 <see cref="PlayerSession"/>。
     /// </summary>
     /// <remarks>
     /// The Game-shape session-established hook: rejects and closes the connection once the maximum
-    /// client count is exceeded, otherwise registers the <see cref="PlayerSession"/> (moved up
-    /// verbatim from the hotfix-side <c>AppStartUpHotfixGame.OnConnected</c>, C284; renamed
-    /// <c>HotfixModuleLifecycleBridge</c> in C285).
+    /// client count is exceeded, otherwise registers the <see cref="PlayerSession"/>.
     /// </remarks>
     /// <param name="appSession">新建立的会话对象 / Newly established session object</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
@@ -201,13 +195,13 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
 
     /// <summary>
     /// Game 型会话断开钩子：摘除会话并对已绑定玩家分发 <see cref="PlayerDisconnectedEventArgs"/>
-    ///——房间断线标记与会话恢复通知由热更侧全局监听器承接（C284 事件桥接契约，
+    ///——房间断线标记与会话恢复通知由热更侧全局监听器承接（事件桥接契约，
     /// 与消息漏斗的热更注册表桥接同形态）。
     /// </summary>
     /// <remarks>
     /// The Game-shape session-disconnected hook: removes the session and, for a bound player,
     /// dispatches <see cref="PlayerDisconnectedEventArgs"/> — the hotfix-side global listener
-    /// carries the room disconnected-marking and the session-resume notification (the C284
+    /// carries the room disconnected-marking and the session-resume notification (the
     /// event-bridging contract, mirroring the hotfix-registry bridging of the message funnel).
     /// The dispatch is fire-and-forget, the same shape as the <c>SessionRemovedEventArgs</c>
     /// logout cleanup dispatched inside <c>PlayerSessionManager.Remove</c>.
@@ -222,7 +216,7 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
         var session = PlayerSessionManager.Instance.Remove(appSession.SessionId);
         if (session != null && session.PlayerId > 0)
         {
-            // 房间断线标记 + 会话恢复通知（C204 两层协同）经事件桥接由热更侧监听器承接
+            // 房间断线标记 + 会话恢复通知（两层协同）经事件桥接由热更侧监听器承接
             EventDispatcher.Dispatch(0, new PlayerDisconnectedEventArgs(session.PlayerId, appSession.SessionId));
         }
 
@@ -236,7 +230,7 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     /// "Online" 配置段过滤器）；本方法只启动业务面，管理面启动由
     /// <see cref="StartOnlineAdminIfEnabledAsync"/> 按闸独立决定。
     /// <para>
-    /// C244 好友域接管：业务运行时启动后无条件发布好友域桥租约（旧 120/660 链已退役，无回落目标），
+    /// 好友域接管：业务运行时启动后无条件发布好友域桥租约（旧 120/660 链已退役，无回落目标），
     /// 按配置执行旧好友数据一次性迁移（<c>Online.MigrateLegacyFriendData</c>）与验证种子
     ///（<c>Online.FriendBridgeSeedPlayerIds</c>）；撤销由退出路径 <see cref="ShutdownOnlineAdminAsync"/> 承担。
     /// </para>
@@ -245,7 +239,7 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     /// Composes the Online capabilities through the single entry point (composition runs when either
     /// gate is on; when both <see cref="AppSetting.IsEnableOnline"/> and
     /// <see cref="AppSetting.IsEnableOnlineAdmin"/> are off nothing is assembled and no log fires —
-    /// behaviour-equivalent to the pre-C229 shape). The runtime and the admin plane are orchestrated
+    /// behaviour-equivalent to the former shape). The runtime and the admin plane are orchestrated
     /// by one callback (scope triple / default scheduler interval / both gates / admin listening /
     /// the "Online" config-section filter); this method only starts the business plane — whether the
     /// admin plane starts is still decided independently by
@@ -260,7 +254,7 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
             return;
         }
 
-        // C243 桥接 fail-fast：开关开启而拓扑不支持（业务运行时关/作用域缺失）在装配前终止。
+        // 桥接 fail-fast：开关开启而拓扑不支持（业务运行时关/作用域缺失）在装配前终止。
         OnlineMatchBridgeWiring.EnsureMatchGameBridgeConfigured(Setting);
 
         var composition = OnlineCapabilityComposition.AddOnlineCapabilities(options =>
@@ -287,7 +281,7 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
         {
             await _onlineRuntime.StartAsync();
 
-            // C244 好友域接管：业务运行时启动后发布好友域桥租约（无回落目标），按配置执行旧数据迁移与验证种子。
+            // 好友域接管：业务运行时启动后发布好友域桥租约（无回落目标），按配置执行旧数据迁移与验证种子。
             OnlineFriendDomainBridgeWiring.PublishFriendDomainBridge(_onlineRuntime);
             if (Setting.Online?.MigrateLegacyFriendData == true)
             {
@@ -296,18 +290,18 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
 
             await OnlineFriendDomainBridgeWiring.SeedFriendDomainBridgeVerificationAsync(_onlineRuntime, Setting.Online?.FriendBridgeSeedPlayerIds);
 
-            // C245 桥接：业务运行时启动后发布对局桥租约（开关开启时），并确保写榜目标榜单存在。
+            // 桥接：业务运行时启动后发布对局桥租约（开关开启时），并确保写榜目标榜单存在。
             if (Setting.Online?.EnableMatchGameBridge == true)
             {
                 OnlineMatchBridgeWiring.PublishMatchGameBridge(_onlineRuntime);
                 await OnlineMatchBridgeWiring.EnsureMatchLeaderboardBoardAsync(_onlineRuntime, Setting.Online?.MatchBridgeLeaderboardId);
             }
 
-            // C246 匹配域接管：发布匹配域桥租约（420 族唯一转发面，无回落目标）并订阅撮合分配事件推送匹配成功通知。
+            // 匹配域接管：发布匹配域桥租约（420 族唯一转发面，无回落目标）并订阅撮合分配事件推送匹配成功通知。
             OnlineMatchDomainBridgeWiring.PublishMatchDomainBridge(_onlineRuntime);
             OnlineMatchDomainBridgeWiring.SubscribeMatchMadeNotifications(_onlineRuntime);
 
-            // C204 两层会话协同：发布会话域桥租约（登录凭据签发 / 会话恢复 / 断线开窗的唯一转发面）。
+            // 两层会话协同：发布会话域桥租约（登录凭据签发 / 会话恢复 / 断线开窗的唯一转发面）。
             OnlineSessionDomainBridgeWiring.PublishSessionDomainBridge(_onlineRuntime);
         }
     }
@@ -346,13 +340,13 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     private async Task ShutdownOnlineAdminAsync()
     {
-        // C244 好友域接管：先撤销好友域桥租约（旧引用显式失效），再停 Online admin 与 runtime 宿主。
-        // C245 桥接：先撤销对局桥租约（旧引用显式失效），顺序同上（撤桥 → 停 admin → 停 runtime）。
+        // 好友域接管：先撤销好友域桥租约（旧引用显式失效），再停 Online admin 与 runtime 宿主。
+        // 桥接：先撤销对局桥租约（旧引用显式失效），顺序同上（撤桥 → 停 admin → 停 runtime）。
         OnlineFriendDomainBridgeWiring.RetractFriendDomainBridge();
         OnlineMatchBridgeWiring.RetractMatchGameBridge();
         OnlineMatchDomainBridgeWiring.RetractMatchDomainBridge();
 
-        // C204 两层会话协同：撤销会话域桥租约（恢复请求自此显式失败，不残留旧引用）。
+        // 两层会话协同：撤销会话域桥租约（恢复请求自此显式失败，不残留旧引用）。
         OnlineSessionDomainBridgeWiring.RetractSessionDomainBridge();
 
         if (_onlineAdminApi != null)

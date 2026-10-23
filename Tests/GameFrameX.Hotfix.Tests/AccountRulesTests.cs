@@ -35,7 +35,7 @@ using Xunit;
 namespace GameFrameX.Hotfix.Tests;
 
 /// <summary>
-/// Account 业务纯规则测试（C197 Phase 2）。
+/// Account 业务纯规则测试。
 /// </summary>
 /// <remarks>
 /// 覆盖账号名/密码合法性边界、盐生成与密码哈希确定性。

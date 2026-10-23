@@ -41,8 +41,7 @@ using GameFrameX.Capability.Online.Foundation.Session;
 namespace GameFrameX.Capability.Online.Foundation;
 
 /// <summary>
-/// 平台地基能力（Identity / Session / Token / Presence 四域的服务与清扫）的自装配模块
-/// （C232 P6 迁入，自 Runtime 壳过渡模块无参化）。
+/// 平台地基能力（Identity / Session / Token / Presence 四域的服务与清扫）的自装配模块。
 /// <para>
 /// 维护约束（服务共享协议）：模块无参构造（<see cref="CapabilityAssembly"/> 扫描可发现）；
 /// <c>Register</c> 自装配本域——三 store 经替换缝探测（命中用组合根注入实例，未命中构造 InMemory
@@ -54,8 +53,7 @@ namespace GameFrameX.Capability.Online.Foundation;
 /// </summary>
 /// <remarks>
 /// The self-assembling module of the platform foundation capability (identity / session / token /
-/// presence domains and their sweeps; migrated by C232 P6 from the Runtime-shell transitional module,
-/// made parameterless). The module has a parameterless constructor (discoverable by
+/// presence domains and their sweeps). The module has a parameterless constructor (discoverable by
 /// <see cref="CapabilityAssembly"/> scanning); <c>Register</c> self-assembles the domain — the three
 /// stores probe replacement seams (falling back to in-memory defaults registered back into the shared
 /// face), the four domain services are constructed and registered back for later capabilities
@@ -78,7 +76,7 @@ public sealed class OnlineFoundationCapabilityModule : ICapabilityModule, IAdmin
     private OnlineSessionTokenService _tokens;
 
     /// <summary>
-    /// 会话生命周期管理器（Register 期构造；C204 会话中介恢复与重连窗清扫的消费面）。
+    /// 会话生命周期管理器（Register 期构造；会话中介恢复与重连窗清扫的消费面）。
     /// </summary>
     private OnlineSessionManager _sessions;
 
@@ -114,7 +112,7 @@ public sealed class OnlineFoundationCapabilityModule : ICapabilityModule, IAdmin
         _presence = new OnlinePresenceService(presenceStore, eventPublisher);
         context.AddService(_presence);
 
-        // 会话恢复服务（C204）：Core 物理连接会话与 Online 逻辑会话协同的契约面实现，注册回共享面供组合根发桥。
+        // 会话恢复服务：Core 物理连接会话与 Online 逻辑会话协同的契约面实现，注册回共享面供组合根发桥。
         context.AddService<IOnlineSessionReconnectContract>(new OnlineSessionReconnectService(_tokens, _sessions, sessionStore));
 
         // 清扫滴答 job（归属地基域；作用域三元组经组合根预置的授权作用域解析——壳时代 host.AuthorizedScope 等价）。
@@ -124,7 +122,7 @@ public sealed class OnlineFoundationCapabilityModule : ICapabilityModule, IAdmin
         });
         context.AddTickJob("session-token-expiry-sweep", ct => _tokens.SweepExpiredAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct));
 
-        // 会话重连窗清扫（C204）：Reconnecting 超窗 → Closed（ReconnectWindowExpired），无永久 Reconnecting。
+        // 会话重连窗清扫：Reconnecting 超窗 → Closed（ReconnectWindowExpired），无永久 Reconnecting。
         context.AddTickJob("session-reconnect-window-sweep", ct => _sessions.SweepAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct));
     }
 

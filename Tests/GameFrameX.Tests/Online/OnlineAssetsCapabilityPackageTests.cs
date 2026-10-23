@@ -11,7 +11,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 资产能力包（C231 P3）验收测试：无参模块扫描可发现 / AddOnlineAssetsRuntime 最小组合 /
+    /// 资产能力包验收测试：无参模块扫描可发现 / AddOnlineAssetsRuntime 最小组合 /
     /// UseOnlineAssetStore 替换缝生效 / 与壳全能力形态的装配等价锚点。
     /// </summary>
     public class OnlineAssetsCapabilityPackageTests
@@ -103,7 +103,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 无参模块扫描可发现（P4 前置）：资产包程序集扫描产出 online-assets 模块。
+        /// 无参模块扫描可发现：资产包程序集扫描产出 online-assets 模块。
         /// </summary>
         [Fact]
         public void DiscoverModules_FindsAssetsCapabilityModule()

@@ -47,7 +47,7 @@ using Xunit;
 namespace GameFrameX.Hotfix.Tests;
 
 /// <summary>
-/// 组件代理侧事件派发单测（C289 扩展下沉 Core 后的 <c>agent.Dispatch(...)</c> 链路）：
+/// 组件代理侧事件派发单测（扩展下沉 Core 后的 <c>agent.Dispatch(...)</c> 链路）：
 /// 派发只触发代理所属 actor 类型的监听器、监听器收到该 actor 的组件代理；
 /// 绑定同一事件类型但属于其他 actor 类型的监听器不触发。
 /// </summary>

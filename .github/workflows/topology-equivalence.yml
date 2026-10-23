@@ -1,11 +1,11 @@
 name: Topology Equivalence Gate
 
-# C143c D9：跨 Role 消息链路语义等价 CI 门禁。
+# 跨 Role 消息链路语义等价 CI 门禁。
 # 4 条代表性链路 × 2 拓扑（All-in-One 单进程 / 三进程）在同一套固定预期下运行，
 # 任一用例失败即阻塞合并。这是 DynamicPhase-0 核心契约（AC-2）的守护门。
-# C143d：套件扩入 Discovery（地址格式 / 双视图路由 / Mongo 心跳集成用例），
+# 套件扩入 Discovery（地址格式 / 双视图路由 / Mongo 心跳集成用例），
 # sidecar Mongo 让 GAMEFRAMEX_TEST_MONGODB_CONNECTION_STRING 门控的集成用例真跑。
-# C166：sidecar PostgreSQL 让 GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING 门控的
+# sidecar PostgreSQL 让 GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING 门控的
 # PG 契约 + 发现层平行实现用例真跑（门控模式对齐 Mongo；filter 扩 FullyQualifiedName~PostgreSql）。
 
 on:

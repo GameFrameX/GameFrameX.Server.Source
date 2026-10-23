@@ -43,11 +43,11 @@ public sealed class CapabilityHost
 {
 
     /// <summary>
-    /// 宿主共享服务注册表（组合根预置 + 能力模块注册的产物；「壳取用叶子包装配产物」的服务共享面，C231）。
+    /// 宿主共享服务注册表（组合根预置 + 能力模块注册的产物；「壳取用叶子包装配产物」的服务共享面）。
     /// </summary>
     /// <remarks>
     /// The host-wide shared service registry (composition-root pre-seeds plus capability-module products;
-    /// the service-sharing face for the shell consuming leaf-package assembly products, C231).
+    /// the service-sharing face for the shell consuming leaf-package assembly products).
     /// </remarks>
     public CapabilityServices Services { get; }
 
@@ -141,7 +141,7 @@ public sealed class CapabilityHost
         Modules = modules ?? throw new ArgumentNullException(nameof(modules));
     }
     /// <summary>
-    /// 分发一条能力事件（同步驱动事件 job；P1 机制预留爆发口）。
+    /// 分发一条能力事件（同步驱动事件 job；预留爆发口）。
     /// </summary>
     /// <param name="notification">事件通知。</param>
     public void RaiseEvent(CapabilityEventNotification notification)

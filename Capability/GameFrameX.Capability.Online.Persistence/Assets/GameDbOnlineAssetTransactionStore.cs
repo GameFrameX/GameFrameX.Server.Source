@@ -35,7 +35,7 @@ using GameFrameX.Capability.Online.Assets;
 using GameFrameX.DataBase;
 
 /// <summary>
-/// 资产交易记录 GameDb 持久化适配（C249 一级 store；交易幂等边界的持久化落库）。
+/// 资产交易记录 GameDb 持久化适配（一级 store；交易幂等边界的持久化落库）。
 /// <para>
 /// 键面语义：<see cref="OnlineAssetTransactionRowState.TransactionId"/> 单列唯一索引为整体覆盖键——
 /// <c>SaveAsync</c> 既有交易保行主键全量覆盖（状态迁移由统一入口状态机保证合法，终态不可再迁移），

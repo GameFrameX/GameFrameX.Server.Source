@@ -38,7 +38,7 @@ namespace GameFrameX.Network.RemoteMessaging.Versioning;
 /// 收到 <see cref="ReqProtocolVersionNegotiation"/> 时按本端 <see cref="RemoteMessagingProtocolVersion"/>
 /// 回 <see cref="RespProtocolVersionNegotiation"/>；major 不符回拒绝包、告警并在宽限期后关闭会话
 /// （拒绝包先送达，避免与在途发送竞争；无半开残留）。旧拨号端不发握手帧，短路不触发，行为与升级前等价。
-/// C272 起 <see cref="InterNodeAuthentication"/> 共享密钥已配置时，握手还须携带 HMAC 凭据：
+/// 若 <see cref="InterNodeAuthentication"/> 共享密钥已配置，握手还须携带 HMAC 凭据：
 /// 凭据缺失或验签失败回 ErrorCode=2 拒绝包并同样关闭会话（fail-closed）。
 /// </summary>
 /// <remarks>
@@ -63,7 +63,7 @@ public static class ProtocolVersionNegotiationServer
     private const int RejectCloseGraceMs = 250;
 
     /// <summary>
-    /// 节点间鉴权失败拒绝错误码（C272，线缆契约 <see cref="RespProtocolVersionNegotiation.ErrorCode"/>）。
+    /// 节点间鉴权失败拒绝错误码（线缆契约 <see cref="RespProtocolVersionNegotiation.ErrorCode"/>）。
     /// </summary>
     private const int AuthFailureErrorCode = 2;
 
@@ -115,7 +115,7 @@ public static class ProtocolVersionNegotiationServer
             // 拒绝路径：回包后关闭会话，避免跨 major 半开连接/未鉴权连接残留
             if (reply.ErrorCode == AuthFailureErrorCode)
             {
-                // C272 节点间鉴权：共享密钥已配置而对端凭据缺失或验签失败，按鉴权失败拒绝并关闭
+                // 节点间鉴权：共享密钥已配置而对端凭据缺失或验签失败，按鉴权失败拒绝并关闭
                 // Localization: RemoteMessaging.Versioning.ServerRejectedUnauthenticatedNode - 拒绝节点间鉴权失败的连接：对端 {0}，凭据缺失或验签失败。回包后关闭会话。
                 LogHelper.Warning(LocalizationService.GetString(
                     Localization.Keys.RemoteMessaging.Versioning.ServerRejectedUnauthenticatedNode,
@@ -131,7 +131,7 @@ public static class ProtocolVersionNegotiationServer
             }
 
             // 宽限期后再关闭：立即关闭会与在途发送竞争，可能丢弃刚写出的拒绝包。
-            // 显式 await（C270）：拒绝路径是该漏斗的终结分支（回包→关连接），等待 250ms 不影响其它会话；
+            // 显式 await：拒绝路径是该漏斗的终结分支（回包→关连接），等待 250ms 不影响其它会话；
             // 关闭期异常由此处可见（不再 fire-and-forget 吞掉）。
             await CloseAfterGraceAsync(networkChannel);
         }
@@ -143,7 +143,7 @@ public static class ProtocolVersionNegotiationServer
     /// <remarks>
     /// Builds the handshake reply: it carries the local version, the major-comparison verdict
     /// and the inter-node authentication verdict.
-    /// ErrorCode：0 = 接受；1 = major 不符拒绝；2 = 节点间鉴权失败拒绝（C272：共享密钥已配置而
+    /// ErrorCode：0 = 接受；1 = major 不符拒绝；2 = 节点间鉴权失败拒绝（共享密钥已配置而
     /// 对端凭据缺失或验签失败；major 不符时优先报 1，版本与鉴权双重不符以版本结论为准）。
     /// </remarks>
     /// <param name="request">握手请求 / The handshake request</param>
@@ -157,7 +157,7 @@ public static class ProtocolVersionNegotiationServer
         var accepted = peer.Major == localVersion.Major;
         var errorCode = accepted ? AcceptedErrorCode : MajorMismatchErrorCode;
 
-        // C272：共享密钥已配置时，major 通过后还须验签（凭据缺失/验签失败 → ErrorCode=2 拒绝）；
+        // 共享密钥已配置时，major 通过后还须验签（凭据缺失/验签失败 → ErrorCode=2 拒绝）；
         // 密钥为空（未启用）时 Verify 恒真，行为与升级前逐语义等价
         if (accepted && !InterNodeAuthentication.Verify(request.Nonce, request.Major, request.Minor, request.AuthCredential))
         {
@@ -192,7 +192,7 @@ public static class ProtocolVersionNegotiationServer
         }
         catch (Exception exception)
         {
-            // 通道可能已在对端关闭竞态中释放；拒绝结论已回包，关闭失败不影响语义——留告警可见（C270）
+            // 通道可能已在对端关闭竞态中释放；拒绝结论已回包，关闭失败不影响语义——留告警可见
             // Localization: RemoteMessaging.Versioning.ServerRejectCloseFailed - 拒绝握手后延迟关闭通道失败（对端可能已先行关闭；拒绝包已送达，语义不受影响）
             LogHelper.Warning(exception, LocalizationService.GetString(Localization.Keys.RemoteMessaging.Versioning.ServerRejectCloseFailed));
         }

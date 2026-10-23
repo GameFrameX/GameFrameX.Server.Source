@@ -48,7 +48,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online;
 
 /// <summary>
-/// Hotfix 版本切换执行器生产路径测试（C248）：真实程序集装载的真版本双目录切换
+/// Hotfix 版本切换执行器生产路径测试：真实程序集装载的真版本双目录切换
 ///（向前 + 向后，活跃版本指针与实际装载路径双断言）、切换时刻零下载（目标未落盘即拒、原版本不动）、
 /// 损坏制品失败恢复原版本、并发切换互斥、同路径幂等短路、服务全链（登记 → 切换 → 审计 → 事件）。
 /// <para>
@@ -377,7 +377,7 @@ public sealed class HotfixManagerRollbackExecutorTests : IDisposable
     }
 
     /// <summary>
-    /// 端到端（C248 全链）：携带 SourceUrl 登记 → 真实获取器下载 + SHA-256 校验 + 原子落盘 → 清单落簿 →
+    /// 端到端（全链）：携带 SourceUrl 登记 → 真实获取器下载 + SHA-256 校验 + 原子落盘 → 清单落簿 →
     /// 切换命令装载该版本（活跃指针与实际装载路径双断言）——「已登记」与「已落盘」同时成立的直接证明。
     /// </summary>
     [Fact]

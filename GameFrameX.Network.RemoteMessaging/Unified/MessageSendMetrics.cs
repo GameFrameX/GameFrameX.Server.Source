@@ -45,9 +45,7 @@ public sealed class MessageSendMetrics
     /// 记录一次消息发送结果
     /// </summary>
     /// <remarks>
-    /// Records one message-send outcome. The former seven scattered parameters
-    /// (including the unused playerId/traceId) are collapsed into
-    /// <see cref="SendMetricsRecord"/> by C154.
+    /// Records one message-send outcome.
     /// </remarks>
     /// <param name="record">指标记录（TargetType + ServiceName 构成分桶键）/ The metrics record (TargetType + ServiceName form the bucket key)</param>
     public void Record(SendMetricsRecord record)

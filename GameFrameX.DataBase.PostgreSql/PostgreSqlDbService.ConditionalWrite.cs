@@ -124,7 +124,7 @@ public sealed partial class PostgreSqlDbService
         var originalRowVersion = state.RowVersion;
         state.RowVersion = expectedRowVersion;
         state.IncrementRowVersion();
-        // 写库前捕获字节快照（行版本递增后），成功后按该快照精确提交基线（C263）
+        // 写库前捕获字节快照（行版本递增后），成功后按该快照精确提交基线
         var persistedData = state.ToBytes();
         var documentJson = JsonSerializer.Serialize(state, DocumentJsonOptions);
         var replaced = await ExecuteWriteWithRetryAsync(async token =>
@@ -320,7 +320,7 @@ public sealed partial class PostgreSqlDbService
     /// Ensures the sequence counter table exists (single-flight via <c>_schemaCache</c>, created once per
     /// process; a faulted entry is evicted so a later call can retry — same semantics as
     /// <see cref="EnsureTableAsync{TState}"/>). The single-flight task runs on
-    /// <see cref="CancellationToken.None"/> (C266) so a first caller cancelling cannot cancel the shared
+    /// <see cref="CancellationToken.None"/> so a first caller cancelling cannot cancel the shared
     /// DDL for every waiter; callers detach via <c>WaitAsync(cancellationToken)</c> and a waiter-side
     /// cancellation does not evict the entry.
     /// </remarks>

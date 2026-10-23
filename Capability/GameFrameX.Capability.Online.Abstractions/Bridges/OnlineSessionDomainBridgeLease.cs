@@ -23,7 +23,7 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Abstractions.Bridges;
 
 /// <summary>
-/// 会话域桥租约（C204，沿 C246 <see cref="OnlineMatchDomainBridgeLease"/> 形态）：组合根发布给进程内
+/// 会话域桥租约：组合根发布给进程内
 /// 消费方（Hotfix 薄适配器）的吊销式访问句柄——持有会话恢复契约面与授权作用域三元组，
 /// 撤销后任何旧引用调用一律显式 <see cref="OnlineErrorCode.DependencyUnavailable"/> 失败。
 /// <para>

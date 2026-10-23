@@ -47,7 +47,7 @@ namespace GameFrameX.DataBase.Sqlite;
 /// (or the in-memory no-persistence notice), and the boundary warning fires once per process.
 /// The file-mode WAL pragma runs asynchronously and retries transient busy/locked conflicts
 /// through the shared resilience engine; <see cref="CloseAsync"/> is fully asynchronous
-/// (<c>WaitAsync</c> + <c>DisposeAsync</c>) — C265.
+/// (<c>WaitAsync</c> + <c>DisposeAsync</c>).
 /// </remarks>
 public sealed partial class SqliteDbService
 {

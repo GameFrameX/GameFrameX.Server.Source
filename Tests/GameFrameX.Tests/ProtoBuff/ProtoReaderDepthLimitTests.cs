@@ -35,7 +35,7 @@ using Xunit;
 namespace GameFrameX.Tests.ProtoBuff;
 
 /// <summary>
-/// ProtoReader 读侧递归深度上限单元测试（C272）/ ProtoReader read-side recursion depth limit unit tests (C272)
+/// ProtoReader 读侧递归深度上限单元测试 / ProtoReader read-side recursion depth limit unit tests
 /// </summary>
 /// <remarks>
 /// 载荷手工构造（tag 0x0A = field 1 / wire type 2 逐层包裹空子消息），不依赖写侧序列化。

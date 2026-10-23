@@ -28,7 +28,7 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Abstractions.Bridges;
 
 /// <summary>
-/// 对局样例桥租约（C245，沿 C243/C244 好友桥租约形态）：组合根发布给进程内
+/// 对局样例桥租约：组合根发布给进程内
 /// 消费方（Hotfix 薄适配器）的吊销式访问句柄——持有契约面与授权作用域三元组，撤销后任何旧引用
 /// 调用一律显式 <see cref="OnlineErrorCode.DependencyUnavailable"/> 失败。
 /// <para>
@@ -38,7 +38,7 @@ namespace GameFrameX.Capability.Online.Abstractions.Bridges;
 /// </para>
 /// </summary>
 /// <remarks>
-/// The sample match bridge lease (C245, following the C243/C244 friend-bridge lease shape):
+/// The sample match bridge lease:
 /// the revocable access handle published by the composition root for in-process consumers (the Hotfix
 /// thin adapter) — it carries the contract face and the authorized scope triple, and once revoked every
 /// call through a stale reference fails explicitly with <see cref="OnlineErrorCode.DependencyUnavailable"/>.

@@ -39,7 +39,7 @@ namespace GameFrameX.Tests.Online
 {
     /// <summary>
     /// 统一 Game Event Schema 测试（脏事件拒绝且不进下游）。
-    /// 覆盖登记表自检（17 个标准事件名一一对应）、版本策略、四类 L0 拒绝、
+    /// 覆盖登记表自检（17 个标准事件名一一对应）、版本策略、四类基础校验拒绝、
     /// 「受理 ⇔ 入存储 / 拒绝 ⇔ 入死信」两条不变量、事件标识去重。
     /// </summary>
     public class OnlineGameEventSchemaTests
@@ -84,7 +84,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证四类 L0 拒绝（未登记事件名 / 版本非法 / 必需字段缺失 / 作用域非法）逐个命中，
+        /// 验证四类基础校验拒绝（未登记事件名 / 版本非法 / 必需字段缺失 / 作用域非法）逐个命中，
         /// 且**拒绝事件必进死信、绝不进事件存储**。
         /// </summary>
         [Fact]

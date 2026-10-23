@@ -32,21 +32,21 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 统一审计读面（叶子能力包消费聚合审计域的最窄契约，C223 gate 上移同款手法，C231）：
+/// 统一审计读面（叶子能力包消费聚合审计域的最窄契约）：
 /// 叶子域 admin handler 的域内审计查询（如 query_asset_audit）经本接口读统一审计面，
 /// 不引入对聚合域（Operations/Audit 实现体）的编译期依赖。
 /// <para>
 /// 维护约束：作用域只锚定 TenantId/AppId 两键（审计是跨区服检索域）；实现方 = <c>OnlineAuditService</c>
-/// （P4 归 Operations 包）；装配经能力服务共享面注入（组合根 <c>UseService&lt;IOnlineAuditReader&gt;</c>）。
+/// （归 Operations 包）；装配经能力服务共享面注入（组合根 <c>UseService&lt;IOnlineAuditReader&gt;</c>）。
 /// </para>
 /// </summary>
 /// <remarks>
 /// The unified audit read face (the narrowest contract through which leaf capability packages consume the
-/// aggregate audit domain — the same gate-lifting approach as C223, applied by C231): leaf-domain admin
+/// aggregate audit domain): leaf-domain admin
 /// handlers query domain-scoped audit trails (e.g. query_asset_audit) through this interface without a
 /// compile-time dependency on the aggregate domain (the Operations/Audit implementation). The scope anchors
 /// on TenantId/AppId only (audit is a cross-server retrieval domain); the implementor is
-/// <c>OnlineAuditService</c> (moving to the Operations package in P4); wiring goes through the capability
+/// <c>OnlineAuditService</c> (in the Operations package); wiring goes through the capability
 /// service-sharing face (composition-root <c>UseService&lt;IOnlineAuditReader&gt;</c>).
 /// </remarks>
 public interface IOnlineAuditReader

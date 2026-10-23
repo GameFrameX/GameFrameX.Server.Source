@@ -56,7 +56,7 @@ public enum DatabaseProviderType
     /// </summary>
     /// <remarks>
     /// SQLite embedded implementation (<c>SqliteDbService</c>): single-process topology,
-    /// zero external dependencies, startup boundary warning (C222). Production-scale usage
+    /// zero external dependencies, startup boundary warning. Production-scale usage
     /// is the caller's own risk; the framework gates nothing at runtime by design.
     /// </remarks>
     Sqlite = 2,

@@ -238,10 +238,10 @@ namespace GameFrameX.Proto.Proto
 	}
 
 	/// <summary>
-	/// 请求按匹配所得对局标识入场（C246 新增；双方各自到达同一对局）
+	/// 请求按匹配所得对局标识入场（双方各自到达同一对局）
 	/// </summary>
 	[ProtoContract]
-	[System.ComponentModel.Description("请求按匹配所得对局标识入场（C246 新增；双方各自到达同一对局）")]
+	[System.ComponentModel.Description("请求按匹配所得对局标识入场（双方各自到达同一对局）")]
 	[MessageTypeHandler(((420) << 16) + 16)]
 	public sealed class ReqMatchEnter : MessageObject, IRequestMessage
 	{
@@ -296,10 +296,10 @@ namespace GameFrameX.Proto.Proto
 	}
 
 	/// <summary>
-	/// 匹配成功通知（C246 新增服务端推送；best-effort，离线方经状态查询兜底）
+	/// 匹配成功通知（服务端推送；best-effort，离线方经状态查询兜底）
 	/// </summary>
 	[ProtoContract]
-	[System.ComponentModel.Description("匹配成功通知（C246 新增服务端推送；best-effort，离线方经状态查询兜底）")]
+	[System.ComponentModel.Description("匹配成功通知（服务端推送；best-effort，离线方经状态查询兜底）")]
 	[MessageTypeHandler(((420) << 16) + 18)]
 	public sealed class NotifyMatchMade : MessageObject, INotifyMessage
 	{

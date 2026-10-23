@@ -40,11 +40,11 @@ using Npgsql;
 namespace GameFrameX.Tests.DataBase;
 
 /// <summary>
-/// 共享弹性引擎契约矩阵（C253）：同一延迟序列 / 异常注入下三家 provider 行为逐项一致
+/// 共享弹性引擎契约矩阵：同一延迟序列 / 异常注入下三家 provider 行为逐项一致
 /// （注入假时钟与脚本化宿主，无外部依赖；断言按数据身份核对——重试次数、退避序列、降级读触发、写门控拒绝、三指标计数）。
 /// </summary>
 /// <remarks>
-/// Contract matrix for the shared <c>DbResilienceExecutor</c> (C253): under identical delay
+/// Contract matrix for the shared <c>DbResilienceExecutor</c>: under identical delay
 /// sequences and exception injections the three provider configurations behave identically
 /// (fake clock + scripted host, no external dependencies; assertions verify data identity —
 /// retry counts, backoff sequence, degraded-read trigger, write-gate rejection, metric counts).
@@ -345,7 +345,7 @@ public sealed class DbResilienceExecutorContractTests
 
         public Harness(IDbOperationExceptionClassifier classifier, int[] readDelays, int[] writeDelays)
         {
-            _meter = new Meter("GameFrameX.Tests.C253." + Guid.NewGuid().ToString("N"));
+            _meter = new Meter("GameFrameX.Tests." + Guid.NewGuid().ToString("N"));
             var retryTotal = _meter.CreateCounter<long>("db_operation_retry_total");
             var failTotal = _meter.CreateCounter<long>("db_operation_fail_total");
             var latency = _meter.CreateHistogram<double>("db_operation_latency_ms", unit: "ms");
@@ -399,7 +399,7 @@ public sealed class DbResilienceExecutorContractTests
     }
 
     /// <summary>
-    /// 脚本化可用性宿主：矩阵层以相同 hook 响应驱动三家引擎配置（生产上 Mongo/PG 为真状态机、Sqlite 恒 Healthy，C222 边界④）。
+    /// 脚本化可用性宿主：矩阵层以相同 hook 响应驱动三家引擎配置（生产上 Mongo/PG 为真状态机、Sqlite 恒 Healthy——边界④）。
     /// </summary>
     private sealed class ScriptedResilienceHost : IDbResilienceHost
     {

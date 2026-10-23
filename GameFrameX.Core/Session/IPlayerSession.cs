@@ -32,7 +32,7 @@ using GameFrameX.Network.Abstractions;
 namespace GameFrameX.Core.Session;
 
 /// <summary>
-/// 玩家运行时会话契约。成员仅镜像 <see cref="PlayerSession"/> 既有公共面（C192 接口化裁定），不补充新成员；
+/// 玩家运行时会话契约。成员仅镜像 <see cref="PlayerSession"/> 既有公共面（接口化裁定），不补充新成员；
 /// 命名 PlayerSession 与连接级 GameAppSession、Online 模块 OnlineSession 族区分。
 /// </summary>
 public interface IPlayerSession

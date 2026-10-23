@@ -39,7 +39,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Room;
 /// 房间分配服务器（Room Role，域 710，专属服槽位语义，非 Game 房间玩法）业务组件代理：槽位分配、释放与查询。
 /// </summary>
 /// <remarks>
-/// Room Role 独立业务逻辑系统（C197 垂直切片）的热更侧落点。
+/// Room Role 独立业务逻辑系统（垂直切片）的热更侧落点。
 /// 业务规则判定一律委托 <see cref="RoomRules"/>（纯函数，可单测）；
 /// 本类只做状态编排：幂等分配、最低负载选房、全满开新房、释放清映射。
 /// </remarks>

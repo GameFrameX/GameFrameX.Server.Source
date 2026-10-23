@@ -57,7 +57,7 @@ using GameFrameX.Capability.Online.Operations;
 //#endif
 using GameFrameX.Foundation.Idempotency;
 
-// {{Name}} —— Online 能力最小组合根宿主（gfx-online 模板生成，C230）。
+// {{Name}} —— Online 能力最小组合根宿主（gfx-online 模板生成）。
 // 引啥装配啥：只装配 csproj 实际引用的能力包（编译期保证）；未装配能力的 admin action 不可执行
 // ——未部署（未引用）→ 4002 UnknownAction；已引用被 SetFilter/Disable 排除 → 4003 CapabilityNotInstalled。
 // 增减能力 = csproj ProjectReference 与 AddOnlineXxxRuntime 成对增减。

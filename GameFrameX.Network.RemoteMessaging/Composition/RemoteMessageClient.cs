@@ -612,7 +612,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
             Minor = local.Minor,
         };
 
-        // C272 节点间鉴权：共享密钥已配置时附带每连接随机 nonce 与 HMAC 凭据；
+        // 节点间鉴权：共享密钥已配置时附带每连接随机 nonce 与 HMAC 凭据；
         // 未配置时保持无凭据字段（与旧版本节点线缆逐字节等价）
         if (GameFrameX.Network.RemoteMessaging.Versioning.InterNodeAuthentication.IsEnabled)
         {
@@ -670,7 +670,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
         {
             if (GameFrameX.Network.RemoteMessaging.Versioning.InterNodeAuthentication.IsEnabled)
             {
-                // C272：鉴权启用时超时不再回落旧版本——回落是可利用的降级面（丢弃握手响应即可绕过凭据协商），
+                // 鉴权启用时超时不再回落旧版本——回落是可利用的降级面（丢弃握手响应即可绕过凭据协商），
                 // 按连接失败处理，由外层既有异常路径失效重试
                 // Localization: RemoteMessaging.Versioning.HandshakeAuthTimeoutFailClosed - 服务 '{0}' 的协议版本握手在 {1}ms 后超时；节点间鉴权已启用，不回落旧版本，按连接失败处理。
                 throw new IOException(LocalizationService.GetString(
@@ -726,13 +726,13 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
         }
         catch (Exception exception) when (exception is InvalidDataException || exception is NotSupportedException)
         {
-            // 解码/协议失败（帧损坏、未注册压缩算法）：连接死亡处理 + 连接级可见性（C270，原裸 catch 全吞）
+            // 解码/协议失败（帧损坏、未注册压缩算法）：连接死亡处理 + 连接级可见性（不吞异常）
             // Localization: RemoteMessaging.ClientModule.ReceivePumpDecodeFailure - 连接接收泵解码失败（帧损坏或协议异常），连接已按死亡处理并快速失败挂起请求
             LogHelper.Warning(exception, LocalizationService.GetString(Localization.Keys.RemoteMessaging.ClientModule.ReceivePumpDecodeFailure));
         }
         catch (Exception exception)
         {
-            // 未分类异常（如 OOM）不吞：记录后向上抛出（C270）——泵任务 fault，可经 UnobservedTaskException/崩溃转储观测
+            // 未分类异常（如 OOM）不吞：记录后向上抛出——泵任务 fault，可经 UnobservedTaskException/崩溃转储观测
             // Localization: RemoteMessaging.ClientModule.ReceivePumpFatalError - 连接接收泵遭遇未分类异常（不吞掉，记录后向上抛出）
             LogHelper.Error(exception, LocalizationService.GetString(Localization.Keys.RemoteMessaging.ClientModule.ReceivePumpFatalError));
             throw;

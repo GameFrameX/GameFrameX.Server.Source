@@ -99,7 +99,7 @@ public static class AppBootstrapper
     public static bool IsInitialized
     {
         // 无锁 volatile 直读：EnsureInitialized 的等待方在持有 InitializationGate 期间等待在途初始化完成，
-        // 此时任何锁内读（含本属性）都会与门闩锁死锁（C205/C209 verify 期实证的三方锁序死锁根因）
+        // 此时任何锁内读（含本属性）都会与门闩锁死锁（三方锁序死锁根因）
         get { return Volatile.Read(ref _initializationState) == Initialized; }
     }
 
@@ -108,7 +108,7 @@ public static class AppBootstrapper
     /// </summary>
     /// <remarks>
     /// Explicitly initializes the shared kernel; a second call throws
-    /// <see cref="BootstrapperAlreadyInitializedException"/> instead of silently overwriting the kernel (D5).
+    /// <see cref="BootstrapperAlreadyInitializedException"/> instead of silently overwriting the kernel.
     /// The state first moves to <see cref="Initializing"/>, and <see cref="Initialized"/> is published only after
     /// the delegate completes successfully; a concurrent explicit call blocks on the gate and then throws.
     /// If the kernel initialization delegate throws, the guard state is rolled back so a retry is possible.

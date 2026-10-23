@@ -30,10 +30,10 @@
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 玩家视角的单条好友关系（C244 域桥契约）：对方标识 + 关系分类。
+/// 玩家视角的单条好友关系：对方标识 + 关系分类。
 /// </summary>
 /// <remarks>
-/// One player-view friendship relation (the C244 domain-bridge contract): the other player's id plus
+/// One player-view friendship relation: the other player's id plus
 /// the relation classification.
 /// </remarks>
 public sealed class OnlineFriendRelation

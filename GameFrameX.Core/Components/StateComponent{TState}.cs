@@ -262,8 +262,8 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
         // Localization: Core.StateComponent.StateSaveBackDetail - StateComponent.StateSaveBack 状态回存 名称:{0} 数量:{1}
         LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.StateComponent.StateSaveBackDetail, stateName, stateList.Count));
         // 批量保存统一走 GameDb.SaveBulkAsync（分批 upsert、逐批 ack/异常隔离在 DataBase 层实现）；
-        // ack 批次内逐状态按送库快照精确提交脏检查基线（C263，原 NotifyBatchSaved 参数less 提交有无锁竞态，已退役）；
-        // 门面默认库由业务库 DbOptions.IsDefault（缺省 true）在注册时声明式提名（C183），
+        // ack 批次内逐状态按送库快照精确提交脏检查基线；
+        // 门面默认库由业务库 DbOptions.IsDefault（缺省 true）在注册时声明式提名，
         // Core 不再直接依赖 MongoDB.Driver / GameFrameX.DataBase.Mongo（取代原先的按名直连方案）。
         var savedStates = await GameDb.SaveBulkAsync(stateList, GlobalSettings.CurrentSetting.SaveDataBatchCount);
 

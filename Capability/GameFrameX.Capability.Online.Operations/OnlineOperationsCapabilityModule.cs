@@ -50,8 +50,7 @@ using GameFrameX.Foundation.Idempotency;
 namespace GameFrameX.Capability.Online.Operations;
 
 /// <summary>
-/// 运营聚合能力（审计 / 游戏事件 / Hotfix 回滚 / 总览 / 时间线 + C105 事件桥/审计桥）的自装配模块
-/// （C232 P5 迁入）。
+/// 运营聚合能力（审计 / 游戏事件 / Hotfix 回滚 / 总览 / 时间线 + 事件桥/审计桥）的自装配模块。
 /// <para>
 /// 维护约束（服务共享协议）：模块无参构造（扫描可发现）；<c>Register</c> 自装配本域——审计服务经具型探测缝
 /// （组合根预置命中共享同一实例——Assets 模块的审计留痕与桥的审计写入保持同源；未命中构造 InMemory 默认并回注
@@ -61,14 +60,14 @@ namespace GameFrameX.Capability.Online.Operations;
 /// 未命中构造 InMemory 默认。
 /// </para>
 /// <para>
-/// 事件桥 / 审计桥（C105 语义不变红线）：桥体逐语句迁移自壳 <c>OnlineRuntimeHost.StartAsync</c>——
+/// 事件桥 / 审计桥（语义不变红线）：
 /// 订阅 Foundation 事件总线，信封解映射 + 去重后做聊天审计投影与统一审计转接，投影侧异常吞掉不阻断业务分发；
-/// 订阅时点从启动期提前到装配期（机制无 Start 钩子，行为等价已裁定披露）。
+/// 订阅发生在装配期（机制无 Start 钩子）。
 /// </para>
 /// </summary>
 /// <remarks>
 /// The self-assembling module of the operations capability (audit, game events, hotfix rollback, overview,
-/// timeline and the C105 event/audit bridges; migrated by C232 P5). The module has a parameterless
+/// timeline and the event/audit bridges). The module has a parameterless
 /// constructor (discoverable by scanning); <c>Register</c> self-assembles the domain — the audit service
 /// resolves through a typed probe seam (sharing the composition-root instance so the Assets module's audit
 /// trail and the bridge's audit ingestion stay on the same instance, with an in-memory fallback registered
@@ -76,14 +75,13 @@ namespace GameFrameX.Capability.Online.Operations;
 /// rollback service depends on the idempotency infrastructure and stays unassembled when absent (the
 /// modular equivalent of the shell-era null downstream); the overview / timeline services probe leaf
 /// products and stay null when absent; the three foundation stores probe replacement seams with
-/// in-memory fallbacks. The event/audit bridges migrate statement-by-statement from the shell's
-/// <c>StartAsync</c> with the subscription point moved from start-up to assembly time (adjudicated as
-/// behavior-equivalent).
+/// in-memory fallbacks. The event/audit bridges subscribe at assembly time (the mechanism has
+/// no Start hook).
 /// </remarks>
 public sealed class OnlineOperationsCapabilityModule : ICapabilityModule, IAdminActionContributor
 {
     /// <summary>
-    /// 运营聚合能力清单（Id 冻结 = 终态包名；查询域 action 迁移自壳过渡模块，Hotfix 受控操作族为 C256 新增）。
+    /// 运营聚合能力清单（Id 冻结 = 终态包名）。
     /// </summary>
     public static readonly CapabilityManifest ManifestInstance = new(
         "online-operations",
@@ -126,7 +124,7 @@ public sealed class OnlineOperationsCapabilityModule : ICapabilityModule, IAdmin
         var audit = ResolveAuditService(context);
         _audit = audit;
 
-        // Hotfix 回滚（幂等基建缺席时不装配——壳「下游置 null」的模块化等价；执行器与制品获取器为可选注入位，C248）。
+        // Hotfix 回滚（幂等基建缺席时不装配——壳「下游置 null」的模块化等价；执行器与制品获取器为可选注入位）。
         if (context.TryGetService(out OnlineIdempotencyService idempotency))
         {
             var hotfixVersionStore = ResolveStore<IOnlineHotfixVersionStore>(context, static () => new InMemoryOnlineHotfixVersionStore());
@@ -152,7 +150,7 @@ public sealed class OnlineOperationsCapabilityModule : ICapabilityModule, IAdmin
             ? new OnlinePlayerTimelineService(identityStore, sessionStore, assetQuery, matchActorStore, socialGraphStore)
             : null;
 
-        // 事件桥 / 审计桥（C105 语义不变红线；桥体逐语句迁移自壳 StartAsync，订阅时点装配期提前已裁定披露）。
+        // 事件桥 / 审计桥（语义不变红线；订阅发生在装配期）。
         var eventBus = context.GetService<InMemoryEventPublisher>();
         var chatAudit = context.TryGetService(out OnlineChatAuditProjection chatAuditProjection) ? chatAuditProjection : null;
         var consumer = new OnlineEventConsumer(new InMemoryEventDeduplicator());

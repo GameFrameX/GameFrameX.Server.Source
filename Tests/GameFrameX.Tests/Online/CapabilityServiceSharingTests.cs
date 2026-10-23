@@ -9,7 +9,7 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 能力服务共享协议机制测试（C231 P3）：注册表 CRUD 语义 / 组合根预置（UseService）/
+    /// 能力服务共享协议机制测试：注册表 CRUD 语义 / 组合根预置（UseService）/
     /// 模块间拓扑序共享解析 / 替换缝命中 / 宿主 Services 与 Modules 暴露面。
     /// </summary>
     public class CapabilityServiceSharingTests

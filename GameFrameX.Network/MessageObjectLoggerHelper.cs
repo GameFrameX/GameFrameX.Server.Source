@@ -84,7 +84,7 @@ public static class MessageObjectLoggerHelper
                     // 消息的ActorId内容
                     stringBuilder.AppendLine(actorId.ToString().CenterAlignedText(140));
                 }
-                // 消息内容（C272 脱敏：敏感字段值替换为 ***，仅作用于日志字符串）
+                // 消息内容（脱敏：敏感字段值替换为 ***，仅作用于日志字符串）
                 stringBuilder.AppendLine(MessageLogRedaction.RedactJson(messageObject.ToJsonString()));
                 stringBuilder.AppendLine($"{'\u2191'.RepeatChar(140)}");
                 stringBuilder.AppendLine();
@@ -92,7 +92,7 @@ public static class MessageObjectLoggerHelper
                 return stringBuilder.ToString();
             }
 
-            // 非控制台输出模式下，将消息序列化为JSON格式（C272 脱敏：敏感字段值替换为 ***，仅作用于日志字符串）
+            // 非控制台输出模式下，将消息序列化为JSON格式（脱敏：敏感字段值替换为 ***，仅作用于日志字符串）
             var messageObjectLogObject = new MessageObjectLogObject(messageObject.GetType().Name, messageId, uniqueId, messageObject, actorId);
             var json = MessageLogRedaction.RedactJson(JsonHelper.Serialize(messageObjectLogObject));
             return json;

@@ -33,7 +33,7 @@ using GameFrameX.DataBase;
 using GameFrameX.Foundation.Orm.Attribute;
 
 /// <summary>
-/// 不可变资产账本条目持久化行（C249 一级 store：Assets 域 → GameDb 适配的落库形态）。
+/// 不可变资产账本条目持久化行（一级 store：Assets 域 → GameDb 适配的落库形态）。
 /// <para>
 /// 资产红线：账本只追加——适配层仅经插入路径写本表（<c>SaveOneAsync</c>），结构性不提供任何
 /// 修改/删除调用；<see cref="EntryId"/> 单列唯一索引兜底条目级幂等。玩家维度账本序

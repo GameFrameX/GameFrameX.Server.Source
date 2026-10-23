@@ -231,7 +231,7 @@ public abstract partial class AppStartUpBase
 
             if (httpsCertificate != null)
             {
-                // HTTPS 真监听（C271）：证书在 Kestrel 配置回调外预加载并 fail-fast；
+                // HTTPS 真监听：证书在 Kestrel 配置回调外预加载并 fail-fast；
                 // 端口被占用时由 Kestrel bind 失败直接阻断启动，不再静默跳过（静默降级面移除）。
                 options.ListenAnyIP(Setting.HttpsPort, listenOptions => listenOptions.UseHttps(httpsCertificate));
             }
@@ -281,7 +281,7 @@ public abstract partial class AppStartUpBase
     /// </summary>
     /// <remarks>
     /// Loads the HTTPS certificate (PFX) for the <see cref="AppSetting.HttpsPort"/> listener; any configuration error
-    /// fails fast before Kestrel starts listening (C271).
+    /// fails fast before Kestrel starts listening.
     /// 调用前提：<paramref name="setting"/> 的 <c>HttpsPort</c> 大于 0。
     /// </remarks>
     /// <param name="setting">应用配置 / Application setting</param>

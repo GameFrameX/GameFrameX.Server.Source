@@ -57,7 +57,7 @@ public class SessionAuthenticationMiddlewareTests : IDisposable
 
     public SessionAuthenticationMiddlewareTests()
     {
-        // 心跳判定自 C205 退役后为类型派生（IHeartBeatMessage 标记经 MessageProtoHelper 注册）；
+        // 心跳判定为类型派生（IHeartBeatMessage 标记经 MessageProtoHelper 注册）；
         // Init 是全程序集的非线程安全静态注册，且本类每用例各建实例——进程内双检：已注册（如 KCP e2e 先 Init 过）则跳过，
         // 避免与并行测试类对注册表的并发读写
         if (MessageProtoHelper.GetMessageTypeById((10 << 16) + 10) == null)

@@ -36,10 +36,10 @@ using System.Text.Json.Nodes;
 namespace GameFrameX.Network;
 
 /// <summary>
-/// 网络消息日志脱敏（C272）——收发调试日志的敏感字段遮蔽机制。
+/// 网络消息日志脱敏——收发调试日志的敏感字段遮蔽机制。
 /// </summary>
 /// <remarks>
-/// Network message log redaction (C272): the sensitive-field masking mechanism for
+/// Network message log redaction: the sensitive-field masking mechanism for
 /// send/receive debug logs.
 /// 调试日志会把消息体全量 JSON 序列化（含 <c>Password</c> / <c>OldPassword</c> / <c>NewPassword</c> /
 /// 各类 token 等凭据字段），日志面（控制台 / 文件 / Loki 聚合）即凭据扩散面。本类按
@@ -167,7 +167,7 @@ public static class MessageLogRedaction
     }
 
     /// <summary>
-    /// 递归脱敏分派：对象与数组各交给专用遍历，字符串值命中即遮蔽（C274 拆分，行为不变）。
+    /// 递归脱敏分派：对象与数组各交给专用遍历，字符串值命中即遮蔽（行为不变）。
     /// </summary>
     /// <param name="node">当前节点 / The current node</param>
     private static void RedactNode(JsonNode node)

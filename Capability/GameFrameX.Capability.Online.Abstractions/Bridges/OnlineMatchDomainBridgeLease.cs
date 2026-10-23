@@ -28,7 +28,7 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Abstractions.Bridges;
 
 /// <summary>
-/// 匹配域桥租约（C246，沿 C244 好友域桥 / C245 对局桥形态）：组合根发布给进程内消费方
+/// 匹配域桥租约：组合根发布给进程内消费方
 /// （Hotfix 薄适配器）的吊销式访问句柄——持有域契约面与授权作用域三元组，撤销后任何旧引用调用
 /// 一律显式 <see cref="OnlineErrorCode.DependencyUnavailable"/> 失败。
 /// <para>
