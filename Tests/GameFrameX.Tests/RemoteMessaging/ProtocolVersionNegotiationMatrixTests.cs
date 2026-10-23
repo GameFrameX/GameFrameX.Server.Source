@@ -200,7 +200,7 @@ public sealed class ProtocolVersionNegotiationMatrixTests : IAsyncLifetime
     /// (null simulates a legacy node that never replies); business messages are echoed by
     /// identity and counted.
     /// </remarks>
-    private async Task<IHost> StartHostAsync(int port, string serverKey, Func<ReqProtocolVersionNegotiation, RespProtocolVersionNegotiation>? handshakeReply, ConcurrentQueue<(int Major, int Minor)> observedHandshakes)
+    private async Task<IHost> StartHostAsync(int port, string serverKey, Func<ReqProtocolVersionNegotiation, RespProtocolVersionNegotiation> handshakeReply, ConcurrentQueue<(int Major, int Minor)> observedHandshakes)
     {
         var hostBuilder = MultipleServerHostBuilder.Create();
         hostBuilder.AddServer<IMessage, MessageObjectPipelineFilter>(builder =>
@@ -247,7 +247,7 @@ public sealed class ProtocolVersionNegotiationMatrixTests : IAsyncLifetime
         IAppSession session,
         IMessage message,
         string serverKey,
-        Func<ReqProtocolVersionNegotiation, RespProtocolVersionNegotiation>? handshakeReply,
+        Func<ReqProtocolVersionNegotiation, RespProtocolVersionNegotiation> handshakeReply,
         ConcurrentQueue<(int Major, int Minor)> observedHandshakes)
     {
         if (message is not NetworkMessagePackage package || package.DeserializeMessageObject() is not MessageObject request)

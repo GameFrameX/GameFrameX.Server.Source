@@ -65,7 +65,7 @@ namespace GameFrameX.Tests.Online
         /// 验证经发布契约发布的事件以 Foundation 信封形态到达订阅方，作用域经稳定键承载。
         /// </summary>
         [Fact]
-        public void PublishAsync_ShouldDeliverEnvelopeWithScopeAttributes()
+        public async Task PublishAsync_ShouldDeliverEnvelopeWithScopeAttributes()
         {
             // Arrange
             var delivered = new List<EventEnvelope>();
@@ -77,7 +77,7 @@ namespace GameFrameX.Tests.Online
             IOnlineEventPublisher publisher = new OnlineEventPublisher(transport);
 
             // Act
-            publisher.PublishAsync(CreateSampleEvent()).GetAwaiter().GetResult();
+            await publisher.PublishAsync(CreateSampleEvent());
 
             // Assert
             var envelope = Assert.Single(delivered);

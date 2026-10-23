@@ -60,7 +60,7 @@ public class IdGeneratorTests
     /// 测试 GetNextUniqueIntId 方法在并发环境下的线程安全性
     /// </summary>
     [Fact]
-    public void GetNextUniqueIntId_ShouldBeThreadSafe()
+    public async Task GetNextUniqueIntId_ShouldBeThreadSafe()
     {
         // Arrange
         const int threadCount = 10;
@@ -87,7 +87,7 @@ public class IdGeneratorTests
             }));
         }
 
-        Task.WaitAll(tasks.ToArray());
+        await Task.WhenAll(tasks);
 
         // Assert
         Assert.Equal(threadCount * idsPerThread, allIds.Count);
@@ -118,7 +118,7 @@ public class IdGeneratorTests
     /// 测试 GetNextUniqueId 方法在并发环境下的线程安全性
     /// </summary>
     [Fact]
-    public void GetNextUniqueId_ShouldBeThreadSafe()
+    public async Task GetNextUniqueId_ShouldBeThreadSafe()
     {
         // Arrange
         const int threadCount = 10;
@@ -145,7 +145,7 @@ public class IdGeneratorTests
             }));
         }
 
-        Task.WaitAll(tasks.ToArray());
+        await Task.WhenAll(tasks);
 
         // Assert
         Assert.Equal(threadCount * idsPerThread, allIds.Count);
@@ -194,7 +194,7 @@ public class IdGeneratorTests
     /// 测试 GetUniqueIdString 方法在并发环境下的线程安全性
     /// </summary>
     [Fact]
-    public void GetUniqueIdString_ShouldBeThreadSafe()
+    public async Task GetUniqueIdString_ShouldBeThreadSafe()
     {
         // Arrange
         const int threadCount = 10;
@@ -221,7 +221,7 @@ public class IdGeneratorTests
             }));
         }
 
-        Task.WaitAll(tasks.ToArray());
+        await Task.WhenAll(tasks);
 
         // Assert
         Assert.Equal(threadCount * idsPerThread, allIds.Count);

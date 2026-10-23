@@ -181,7 +181,7 @@ public sealed class OnlineFriendLegacyMigrationTests
             Assert.Contains(relations, r => r.PlayerIdA == 33 && r.PlayerIdB == 44 && r.Status == 1);
             var profiles = await GameDb.FindListAsync<FriendState>(state => state.Id >= 0);
             var profile = Assert.Single(profiles);
-            Assert.NotNull(profile.Profiles.TryGetValue(55, out var legacy));
+            Assert.True(profile.Profiles.TryGetValue(55, out var legacy));
             Assert.Equal(new List<long> { 66 }, legacy.Outgoing);
         });
     }

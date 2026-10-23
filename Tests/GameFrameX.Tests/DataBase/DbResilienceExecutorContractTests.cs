@@ -78,17 +78,17 @@ public sealed class DbResilienceExecutorContractTests
 
     [Theory]
     [MemberData(nameof(ProviderClassifiers))]
-    public void RetryableThenSuccess_ShouldRetryOnceWithExactBackoffAndCountMetrics(IDbOperationExceptionClassifier classifier)
+    public async Task RetryableThenSuccess_ShouldRetryOnceWithExactBackoffAndCountMetrics(IDbOperationExceptionClassifier classifier)
     {
         using (var harness = CreateHarness(classifier, readDelays: new[] { 50, 60, 70 }, writeDelays: new[] { 80, 90 }))
         {
             var attempts = 0;
 
-            var result = harness.Executor.ExecuteReadWithRetryAsync(_ =>
+            var result = await harness.Executor.ExecuteReadWithRetryAsync(_ =>
             {
                 attempts++;
                 return attempts == 1 ? Task.FromException<int>(new TimeoutException("transient-1")) : Task.FromResult(42);
-            }, CancellationToken.None, ReadOperationName).GetAwaiter().GetResult();
+            }, CancellationToken.None, ReadOperationName);
 
             Assert.Equal(42, result);
             Assert.Equal(2, attempts);
@@ -179,7 +179,7 @@ public sealed class DbResilienceExecutorContractTests
 
     [Theory]
     [MemberData(nameof(ProviderClassifiers))]
-    public void DegradedRead_ShouldReturnFallbackIdentityWithoutTouchingDatabase(IDbOperationExceptionClassifier classifier)
+    public async Task DegradedRead_ShouldReturnFallbackIdentityWithoutTouchingDatabase(IDbOperationExceptionClassifier classifier)
     {
         using (var harness = CreateHarness(classifier))
         {
@@ -187,11 +187,11 @@ public sealed class DbResilienceExecutorContractTests
             var sentinel = new List<string> { "fallback" };
             var attempts = 0;
 
-            var result = harness.Executor.ExecuteReadWithRetryAsync(_ =>
+            var result = await harness.Executor.ExecuteReadWithRetryAsync(_ =>
             {
                 attempts++;
                 return Task.FromResult(new List<string> { "database" });
-            }, CancellationToken.None, ReadOperationName, () => sentinel).GetAwaiter().GetResult();
+            }, CancellationToken.None, ReadOperationName, () => sentinel);
 
             Assert.Same(sentinel, result);
             Assert.Equal(0, attempts);

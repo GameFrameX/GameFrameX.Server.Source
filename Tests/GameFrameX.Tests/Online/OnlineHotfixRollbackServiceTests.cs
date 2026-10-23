@@ -664,8 +664,8 @@ namespace GameFrameX.Tests.Online
             Assert.True(second.IsSuccess);
             Assert.False(second.Data);
             var stored = await harness.Store.FindAsync(TenantId, AppId, "1.0.0");
-            Assert.Equal(1, stored.Messages.Count);
-            Assert.Equal(1, harness.EventRecorder.Filter(OnlineHotfixEvents.VersionRegistered).Count);
+            Assert.Single(stored.Messages);
+            Assert.Single(harness.EventRecorder.Filter(OnlineHotfixEvents.VersionRegistered));
         }
 
         /// <summary>

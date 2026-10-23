@@ -173,7 +173,7 @@ public class SuperSocketKcpE2ETests : IAsyncLifetime
             var receiveTask = await Task.WhenAny(received.Task, Task.Delay(TimeSpan.FromSeconds(10), cts.Token));
             Assert.True(receiveTask == received.Task, "BotKcpClient failed to receive KCP echo within 10s.");
 
-            var echo = received.Task.Result;
+            var echo = await received.Task;
             var heartbeat = Assert.IsType<ReqHeartBeat>(echo);
             Assert.Equal(EchoTimestamp, heartbeat.Timestamp);
 

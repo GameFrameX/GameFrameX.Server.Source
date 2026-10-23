@@ -126,7 +126,7 @@ public sealed class ProtocolVersionNegotiationTests
         // 标注守护：本程序集内任何消息标注的 major 都不得超过协议当前 major（防标注跑在常量前面）
         foreach (var type in typeof(RoleRouteEnvelopeMessage).Assembly.GetTypes())
         {
-            var attribute = (ProtocolVersionAttribute?)Attribute.GetCustomAttribute(type, typeof(ProtocolVersionAttribute));
+            var attribute = (ProtocolVersionAttribute)Attribute.GetCustomAttribute(type, typeof(ProtocolVersionAttribute));
             if (attribute != null)
             {
                 Assert.True(attribute.Major <= RemoteMessagingProtocolVersion.Current.Major,
@@ -144,13 +144,13 @@ public sealed class ProtocolVersionNegotiationTests
 
     private static void AssertVersionAttribute(int messageId, int expectedMajor, int expectedMinor, Type type)
     {
-        var attribute = (ProtocolVersionAttribute?)Attribute.GetCustomAttribute(type, typeof(ProtocolVersionAttribute));
+        var attribute = (ProtocolVersionAttribute)Attribute.GetCustomAttribute(type, typeof(ProtocolVersionAttribute));
         Assert.NotNull(attribute);
         Assert.Equal(expectedMajor, attribute.Major);
         Assert.Equal(expectedMinor, attribute.Minor);
 
         // 消息 ID 与标注同时存在（[MessageTypeHandler] 负责注册表可解码性）
-        var handler = (GameFrameX.Network.Abstractions.MessageTypeHandlerAttribute?)Attribute.GetCustomAttribute(type, typeof(GameFrameX.Network.Abstractions.MessageTypeHandlerAttribute));
+        var handler = (GameFrameX.Network.Abstractions.MessageTypeHandlerAttribute)Attribute.GetCustomAttribute(type, typeof(GameFrameX.Network.Abstractions.MessageTypeHandlerAttribute));
         Assert.NotNull(handler);
         Assert.Equal(messageId, handler.MessageId);
     }

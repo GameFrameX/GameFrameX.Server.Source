@@ -164,7 +164,7 @@ namespace GameFrameX.Tests.Online
             Assert.True(page2.IsSuccess);
             Assert.False(page2.Data.Page.HasMore);
             Assert.Equal(string.Empty, page2.Data.Page.Cursor);
-            Assert.Equal(1, page2.Data.Entries.Count);
+            Assert.Single(page2.Data.Entries);
             var combined = page1.Data.Entries.Concat(page2.Data.Entries).ToList();
             Assert.Equal(5, combined.Count);
             Assert.Equal(5, combined.Select(entry => entry.SequenceNumber).Distinct().Count());

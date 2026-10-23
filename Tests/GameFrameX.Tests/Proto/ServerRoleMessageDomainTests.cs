@@ -162,6 +162,8 @@ public class ServerRoleMessageDomainTests
 
             var reqType = ProtoAssemblyAnchor.Assembly.GetType($"GameFrameX.Proto.Proto.{requestName}");
             Assert.True(reqType != null, $"缺少 {requestName} 消息");
+            var requestMessageId = reqType.GetCustomAttribute<MessageTypeHandlerAttribute>()!.MessageId;
+            Assert.True((requestMessageId >> 16) == domain, $"{requestName} 应落在 {role} 域 {domain}，实际域 {requestMessageId >> 16}");
 
             var handlers = HotfixAssemblyAnchor.Assembly.GetTypes()
                 .Where(type => type.GetCustomAttribute<MessageMappingAttribute>()?.MessageType == reqType)

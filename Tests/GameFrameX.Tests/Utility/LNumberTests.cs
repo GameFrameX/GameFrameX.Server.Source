@@ -324,7 +324,8 @@ namespace GameFrameX.Tests.Utility
             // Act & Assert
             Assert.True(a < b);
             Assert.False(b < a);
-            Assert.False(a < a);
+            var sameValue = a;
+            Assert.False(a < sameValue);
         }
 
         /// <summary>
@@ -340,7 +341,8 @@ namespace GameFrameX.Tests.Utility
             // Act & Assert
             Assert.True(a <= b);
             Assert.False(b <= a);
-            Assert.True(a <= a);
+            var sameValue = a;
+            Assert.True(a <= sameValue);
         }
 
         /// <summary>
@@ -356,7 +358,8 @@ namespace GameFrameX.Tests.Utility
             // Act & Assert
             Assert.True(a > b);
             Assert.False(b > a);
-            Assert.False(a > a);
+            var sameValue = a;
+            Assert.False(a > sameValue);
         }
 
         /// <summary>
@@ -372,7 +375,8 @@ namespace GameFrameX.Tests.Utility
             // Act & Assert
             Assert.True(a >= b);
             Assert.False(b >= a);
-            Assert.True(a >= a);
+            var sameValue = a;
+            Assert.True(a >= sameValue);
         }
 
         /// <summary>

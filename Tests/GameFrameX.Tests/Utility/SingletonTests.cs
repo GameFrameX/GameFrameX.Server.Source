@@ -116,7 +116,7 @@ public class SingletonTests
     /// 测试线程安全性 - 多线程访问应该返回相同的实例
     /// </summary>
     [Fact]
-    public void Instance_MultipleThreads_ShouldReturnSameInstance()
+    public async Task Instance_MultipleThreads_ShouldReturnSameInstance()
     {
         // Arrange
         const int threadCount = 10;
@@ -136,7 +136,7 @@ public class SingletonTests
             }));
         }
 
-        Task.WaitAll(tasks.ToArray());
+        await Task.WhenAll(tasks);
 
         // Assert
         var distinctInstances = instances.Distinct().ToList();
@@ -148,7 +148,7 @@ public class SingletonTests
     /// 测试线程安全性 - 验证只创建一个实例
     /// </summary>
     [Fact]
-    public void Instance_ConcurrentAccess_ShouldCreateOnlyOneInstance()
+    public async Task Instance_ConcurrentAccess_ShouldCreateOnlyOneInstance()
     {
         // Arrange
         const int threadCount = 50;
@@ -166,7 +166,7 @@ public class SingletonTests
             }));
         }
 
-        Task.WaitAll(tasks.ToArray());
+        await Task.WhenAll(tasks);
 
         // Assert
         var uniqueInstances = instances.Distinct().ToList();

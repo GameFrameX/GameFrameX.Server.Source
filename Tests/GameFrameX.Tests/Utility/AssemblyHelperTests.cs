@@ -338,7 +338,7 @@ public class AssemblyHelperTests
     /// 测试线程安全性 - 多线程访问应该正常工作
     /// </summary>
     [Fact]
-    public void GetTypes_MultipleThreads_ShouldWorkCorrectly()
+    public async Task GetTypes_MultipleThreads_ShouldWorkCorrectly()
     {
         // Arrange
         const int threadCount = 10;
@@ -359,7 +359,7 @@ public class AssemblyHelperTests
             }));
         }
 
-        Task.WaitAll(tasks.ToArray());
+        await Task.WhenAll(tasks);
 
         // Assert
         Assert.Equal(threadCount, results.Count);

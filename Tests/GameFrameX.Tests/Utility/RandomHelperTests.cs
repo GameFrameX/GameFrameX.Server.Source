@@ -1058,7 +1058,7 @@ public class RandomHelperTests
     /// 测试 RandomHelper 在多线程环境下的线程安全性
     /// </summary>
     [Fact]
-    public void RandomHelper_MultipleThreads_ShouldBeThreadSafe()
+    public async Task RandomHelper_MultipleThreads_ShouldBeThreadSafe()
     {
         // Arrange
         const int threadCount = 10;
@@ -1081,7 +1081,7 @@ public class RandomHelperTests
             });
         }
 
-        Task.WaitAll(tasks);
+        await Task.WhenAll(tasks);
 
         // Assert
         for (var i = 0; i < threadCount; i++)
