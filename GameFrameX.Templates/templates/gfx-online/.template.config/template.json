@@ -1,7 +1,11 @@
 {
   "$schema": "http://json.schemastore.org/template",
   "author": "GameFrameX",
-  "classifications": [ "GameFrameX", "Capability", "CompositionRoot" ],
+  "classifications": [
+    "GameFrameX",
+    "Capability",
+    "CompositionRoot"
+  ],
   "identity": "GameFrameX.OnlineMinimalComposition",
   "name": "GameFrameX Online 最小组合根宿主",
   "shortName": "gfx-online",
@@ -9,7 +13,7 @@
     "language": "C#",
     "type": "project"
   },
-  "description": "生成最小 Online 能力组合根宿主工程（C230）：按开关只引所选 Capability.Online 能力包，经各包 AddOnlineXxxRuntime 回调式显式链式装配——引啥装配啥（编译期保证）；未装配能力的 admin action 不可执行（未部署 → 4002 UnknownAction；已引用被 SetFilter/Disable 排除 → 4003 CapabilityNotInstalled）。必须在 Server.Source 仓根执行。",
+  "description": "生成最小 Online 能力组合根宿主工程（C230 骨架，C294 机制化组合）：按开关只引所选 Capability.Online 能力包，经 CapabilityComposition.Compose 按部署前缀扫描装配——引啥装配啥（编译期保证）；未装配能力的 admin action 不可执行（未部署 → 4002 UnknownAction；已引用被 Capabilities/Disable 过滤排除 → 4003 CapabilityNotInstalled）。必须在 Server.Source 仓根执行。",
   "symbols": {
     "Name": {
       "type": "parameter",
@@ -55,5 +59,17 @@
       "defaultValue": "false",
       "description": "引用并装配 online-operations 能力包（聚合审计/回滚/总览；闭包含 Foundation）"
     }
-  }
+  },
+  "sources": [
+    {
+      "modifiers": [
+        {
+          "condition": "(!Operations)",
+          "exclude": [
+            "{{Name}}/UnsupportedHotfixRollbackExecutor.cs"
+          ]
+        }
+      ]
+    }
+  ]
 }
