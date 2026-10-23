@@ -273,6 +273,9 @@ public sealed class SwaggerOperationFilter : IOperationFilter
     /// <param name="responseType">响应消息类型 / Response message type</param>
     private static void ApplySuccessResponse(OpenApiOperation operation, OperationFilterContext context, Type responseType)
     {
+        // 示例值以 Examples 承载（OpenApiSchema.Example 已弃用）：文档版本为 OpenAPI 3.0 时
+        // 序列化回落 Example ?? Examples.FirstOrDefault()，输出仍是单值 example；仅当切换到 3.1
+        // 才会写为 examples 数组。若调整 SwaggerOptions.OpenApiVersion，需同步复核此处形态。
         var successResponseSchema = new OpenApiSchema
         {
             Type = JsonSchemaType.Object,
