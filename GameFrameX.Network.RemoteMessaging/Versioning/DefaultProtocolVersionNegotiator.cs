@@ -103,8 +103,8 @@ internal sealed class DefaultProtocolVersionNegotiator : IProtocolVersionNegotia
     /// </remarks>
     /// <param name="messageType">消息类型 / The message type</param>
     /// <returns>协议版本特性 / The protocol version attribute</returns>
-    private static ProtocolVersionAttribute? GetVersionAttribute(Type messageType)
+    private static ProtocolVersionAttribute GetVersionAttribute(Type messageType)
     {
-        return (ProtocolVersionAttribute?)messageType.GetCustomAttributes(typeof(ProtocolVersionAttribute), false).FirstOrDefault();
+        return (ProtocolVersionAttribute)messageType.GetCustomAttributes(typeof(ProtocolVersionAttribute), false).FirstOrDefault();
     }
 }

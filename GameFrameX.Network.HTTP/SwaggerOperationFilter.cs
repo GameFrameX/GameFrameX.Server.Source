@@ -282,13 +282,13 @@ public sealed class SwaggerOperationFilter : IOperationFilter
                 {
                     Type = JsonSchemaType.Integer,
                     Description = "响应状态码",
-                    Example = JsonValue.Create(0),
+                    Examples = new List<JsonNode> { JsonValue.Create(0), },
                 },
                 ["message"] = new OpenApiSchema
                 {
                     Type = JsonSchemaType.String,
                     Description = "响应消息",
-                    Example = JsonValue.Create("success"),
+                    Examples = new List<JsonNode> { JsonValue.Create("success"), },
                 },
             },
         };

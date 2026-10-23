@@ -65,6 +65,8 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
     /// <param name="interceptors">远程调用拦截器数组 / Array of remote call interceptors</param>
     /// <param name="retryPolicy">重试策略（可为 null） / Retry policy (can be null)</param>
     /// <param name="circuitBreaker">熔断器 / Circuit breaker</param>
+    /// <param name="healthEvaluator">端点健康评估器：调用前按服务名取健康评分，评分 ≤ 0 时直接判定服务不可用（请求 / 单向发送 / 可用性查询均短路）；调用成功标记健康、失败标记不可用 / Endpoint health evaluator: the per-service health score is checked before each call, and a score ≤ 0 short-circuits requests, one-way sends and availability queries as unavailable; successful calls mark the endpoint healthy and failures mark it unavailable</param>
+    /// <param name="handshakeTimeoutMs">协议版本握手超时（毫秒），≤ 0 时取默认 2000ms；超时后若未启用节点间鉴权则按旧版本协议（Legacy）放行并告警，启用鉴权时按连接失败处理 / Protocol version handshake timeout in milliseconds; values ≤ 0 fall back to the 2000 ms default. On timeout the connection is admitted as the legacy protocol version with a warning when inter-node authentication is disabled, and treated as a connection failure when it is enabled</param>
     public RemoteMessageClient(
         ITransportProtocolAdapter transportProtocolAdapter,
         IMessageCodec messageCodec,
