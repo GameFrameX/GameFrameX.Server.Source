@@ -100,7 +100,7 @@ public sealed class MongoImplementationAccessAnalyzer : SingleDiagnosticSymbolAn
     /// </remarks>
     private static bool TryReportForbiddenMember(SymbolAnalysisContext context, INamedTypeSymbol type, string assemblyName, ISymbol member, ArchitectureSymbols symbols)
     {
-        ITypeSymbol? memberType = member switch
+        ITypeSymbol memberType = member switch
         {
             IFieldSymbol field => field.Type,
             IPropertySymbol property => property.Type,
@@ -147,7 +147,7 @@ public sealed class MongoImplementationAccessAnalyzer : SingleDiagnosticSymbolAn
                || assemblyName == "GameFrameX.Network.RemoteMessaging";
     }
 
-    private static bool IsForbiddenReference(ITypeSymbol? type, ArchitectureSymbols symbols, out string referenceName)
+    private static bool IsForbiddenReference(ITypeSymbol type, ArchitectureSymbols symbols, out string referenceName)
     {
         referenceName = string.Empty;
         if (type == null)

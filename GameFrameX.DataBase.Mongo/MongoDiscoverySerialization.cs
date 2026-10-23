@@ -66,6 +66,11 @@ internal static class MongoDiscoverySerialization
     /// Registers the unified rule (runs at module load, before any document
     /// serialization).
     /// </remarks>
+    // CA2255 定点压制：BSON 约定必须先于本程序集任何文档首次序列化，而心跳与玩家路由文档可经由
+    // Discovery 宿主在任意时点被序列化；本类为 internal，宿主无法显式调用注册，模块初始化器是唯一
+    // 能保证该时序的机制。注册内容被限定到这两个发现文档基类，不触碰其他文档。
+    // 解除条件：出现可证明先于首次序列化的显式宿主注册点后改为显式注册。
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2255", Justification = "BSON 约定必须先于本程序集任何文档首次序列化，而发现文档可经由宿主在任意时点被序列化；internal 类的 [ModuleInitializer] 是唯一能保证该时序的机制。")]
     [ModuleInitializer]
     internal static void Register()
     {
