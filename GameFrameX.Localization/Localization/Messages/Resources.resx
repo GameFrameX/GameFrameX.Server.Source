@@ -2365,7 +2365,7 @@
   </data>
 
   <data name="StartUp.Application.DuplicateStartupPriorities" xml:space="preserve">
-    <value>Duplicate startup priorities detected; multi-role launch order is unstable between these roles (C143b) — {0}</value>
+    <value>Duplicate startup priorities detected; multi-role launch order is unstable between these roles — {0}</value>
   </data>
 
   <data name="StartUp.Application.NoRegisteredStartupType" xml:space="preserve">

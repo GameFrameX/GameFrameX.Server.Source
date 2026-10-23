@@ -2364,7 +2364,7 @@
   </data>
 
   <data name="StartUp.Application.DuplicateStartupPriorities" xml:space="preserve">
-    <value>检测到重复的启动优先级；这些角色之间的多角色启动顺序不稳定 (C143b) — {0}</value>
+    <value>检测到重复的启动优先级；这些角色之间的多角色启动顺序不稳定 — {0}</value>
   </data>
 
   <data name="StartUp.Application.NoRegisteredStartupType" xml:space="preserve">
