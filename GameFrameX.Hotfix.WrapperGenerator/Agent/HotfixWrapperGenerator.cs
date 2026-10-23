@@ -64,6 +64,14 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     private const string HotfixNameSpaceNamePrefix = "GameFrameX.Hotfix.";
 
     /// <summary>
+    /// 生成的包装器命名空间段（拼接在热更命名空间前缀之后）。
+    /// </summary>
+    /// <remarks>
+    /// Namespace segment for generated wrappers (appended after the hotfix namespace prefix).
+    /// </remarks>
+    private const string WrapperNamespaceSegment = "Wrapper.Agent";
+
+    /// <summary>
     /// Service 属性名称常量。
     /// </summary>
     /// <remarks>
@@ -191,7 +199,7 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     private static void ProcessAgent(SourceProductionContext context, ClassDeclarationSyntax agent, Dictionary<string, int> partialClassCount)
     {
         var fullName = agent.GetFullName();
-        var info = CreateAgentInfo(agent, partialClassCount, out var outFileName);
+        var info = CreateAgentInfo(agent, fullName, partialClassCount, out var outFileName);
 
         var root = agent.SyntaxTree.GetCompilationUnitRoot();
         foreach (var element in root.Usings)
@@ -217,30 +225,57 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     /// Creates agent info from the agent class and determines the generated output filename.
     /// </remarks>
     /// <param name="agent">代理类声明语法节点 / Agent class declaration syntax node</param>
+    /// <param name="fullName">代理类完全限定名 / Fully qualified name of the agent class</param>
     /// <param name="partialClassCount">分部类输出文件名计数表 / Partial class output filename counter map</param>
     /// <param name="outFileName">生成的输出文件名 / The generated output filename</param>
     /// <returns>填充好的代理信息 / The populated agent info</returns>
-    private static AgentInfo CreateAgentInfo(ClassDeclarationSyntax agent, Dictionary<string, int> partialClassCount, out string outFileName)
+    private static AgentInfo CreateAgentInfo(ClassDeclarationSyntax agent, string fullName, Dictionary<string, int> partialClassCount, out string outFileName)
     {
         var info = new AgentInfo();
         info.Super = agent.Identifier.Text;
         info.Name = info.Super + WrapperNameSuffix;
-        info.Space = HotfixNameSpaceNamePrefix + WrapperNameSuffix + ".Agent";
+
+        // C292：生成类命名空间镜像代理源命名空间（GameFrameX.Hotfix.Wrapper.Agent + 源命名空间相对
+        // GameFrameX.Hotfix. 的段）。仓内存在同名代理（如 Player/Login 与 ServerRole/Login 各一个
+        // LoginComponentAgent），固定单一命名空间会让两个生成类同名冲突（CS0101 / CS8785）；
+        // HotfixModule 按「前缀 GameFrameX.Hotfix. + 类名后缀 ComponentAgentWrapper」识别，镜像后仍满足。
+        var sourceNamespace = Tools.GetNameSpace(fullName);
+        var relativeNamespace = sourceNamespace.StartsWith(HotfixNameSpaceNamePrefix, StringComparison.Ordinal)
+            ? sourceNamespace.Substring(HotfixNameSpaceNamePrefix.Length)
+            : sourceNamespace;
+        info.Space = HotfixNameSpaceNamePrefix + WrapperNamespaceSegment + (relativeNamespace.Length == 0 ? string.Empty : "." + relativeNamespace);
 
         var isPartialClass = agent.Modifiers.ToList().FindIndex(s => s.Text == "partial") >= 0;
         if (isPartialClass)
         {
-            info.Partial = "partial";
-            partialClassCount.TryGetValue(info.Name, out var count);
-            partialClassCount[info.Name] = count + 1;
-            outFileName = $"{info.Name}{count}.g.cs";
+            // 计数键用完全限定名：同名代理分属不同命名空间时各自独立编号，不再互相污染
+            partialClassCount.TryGetValue(fullName, out var count);
+            partialClassCount[fullName] = count + 1;
+            outFileName = BuildHintName(fullName, count);
         }
         else
         {
-            outFileName = $"{info.Name}.g.cs";
+            outFileName = BuildHintName(fullName, null);
         }
 
         return info;
+    }
+
+    /// <summary>
+    /// 由代理完全限定名构造唯一的生成文件名（hintName）。
+    /// </summary>
+    /// <remarks>
+    /// Builds the unique generated file name (hintName) from the agent's fully qualified name.
+    /// </remarks>
+    /// <param name="fullName">代理类完全限定名 / Fully qualified name of the agent class</param>
+    /// <param name="sequence">分部类序号（非分部类为 null）/ Partial class sequence number (null for non-partial)</param>
+    /// <returns>唯一的 hintName / A unique hintName</returns>
+    private static string BuildHintName(string fullName, int? sequence)
+    {
+        // 命名空间分隔符与嵌套类分隔符折叠为不同占位（. → _、+ → __），保证映射单射：
+        // NS.A.B（命名空间 NS.A 的类 B）与 NS.A+B（NS 下类 A 的嵌套类 B）净化后不再碰撞
+        var sanitized = (fullName + WrapperNameSuffix).Replace(".", "_").Replace("+", "__");
+        return sequence.HasValue ? $"{sanitized}{sequence.Value}.g.cs" : $"{sanitized}.g.cs";
     }
 
     /// <summary>

@@ -47,15 +47,6 @@ public class AgentInfo
     public string Space { get; set; }
 
     /// <summary>
-    /// 获取或设置分部类修饰符。
-    /// </summary>
-    /// <remarks>
-    /// Gets or sets the partial class modifier.
-    /// </remarks>
-    /// <value>分部类修饰符 / Partial class modifier</value>
-    public string Partial { get; set; } = "";
-
-    /// <summary>
     /// 获取或设置生成的包装器类名。
     /// </summary>
     /// <remarks>

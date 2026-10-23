@@ -16,10 +16,10 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <!-- 维持 5.9.0。降到 SDK 编译器版本（5.3.0）会让生成器真正加载并因同名代理
-             （Player/Login 与 ServerRole/Login 各一个 LoginComponentAgent）hintName 冲突崩溃（CS8785），
-             且恢复生成器等于恢复 Actor 串行化，属行为变更。 -->
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0">
+        <!-- C292：对齐 global.json 基线（10.0.100 ⇒ Roslyn 5.0.0，与 Architecture.Analyzers 同一约定）；
+             引用更新的 Roslyn 会在较老 SDK 下触发 CS9057 且生成器静默不加载（C291 期间即处于此状态，
+             代理未串行化）。生成器已按 C292 支持同名代理（命名空间镜像 + hintName 唯一）。 -->
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0">
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
     </ItemGroup>
