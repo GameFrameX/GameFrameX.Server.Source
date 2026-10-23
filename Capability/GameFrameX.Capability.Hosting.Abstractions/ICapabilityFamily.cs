@@ -30,35 +30,34 @@
 namespace GameFrameX.Capability.Hosting.Abstractions;
 
 /// <summary>
-/// 能力事件通知（事件驱动 job 的统一爆发载荷；机制层不解释内容）。
+/// 能力族契约（一族能力的组合根骨架：族标识 + 配置段名 + 部署程序集前缀 + 族基建注册面）。
+/// <para>
+/// 维护约束（机制开放红线）：族实现落在本族脊柱包（如 Online.Abstractions），机制层（Hosting 三件套）
+/// 零能力硬编码——第二个能力族只需实现本接口，无需改动机制；<see cref="RegisterInfrastructure"/> 在
+/// 模块扫描与注册之前执行，族基建（作用域 / 事件出口 / 幂等 / 审计 / store 覆盖）经
+/// <see cref="CapabilityFamilyContext"/> 以描述符形态注册。
+/// </para>
 /// </summary>
-public sealed class CapabilityEventNotification
+public interface ICapabilityFamily
 {
     /// <summary>
-    /// 初始化 <see cref="CapabilityEventNotification"/>。
+    /// 获取族标识（如 <c>online</c>；族基建与宿主覆盖的来源标记）。
     /// </summary>
-    /// <param name="type">事件类型名（能力自定义）。</param>
-    /// <param name="payloadJson">事件载荷 JSON 文本（可为 null）。</param>
-    /// <param name="occurredAtUnixMilliseconds">事件发生时刻（Unix 毫秒）。</param>
-    public CapabilityEventNotification(string type, string payloadJson, long occurredAtUnixMilliseconds)
-    {
-        Type = type;
-        PayloadJson = payloadJson;
-        OccurredAtUnixMilliseconds = occurredAtUnixMilliseconds;
-    }
+    string FamilyId { get; }
 
     /// <summary>
-    /// 获取事件类型名。
+    /// 获取配置段名（如 <c>Online</c>；诊断与错误路径前缀用，机制不解释其余族级键）。
     /// </summary>
-    public string Type { get; }
+    string ConfigurationSectionName { get; }
 
     /// <summary>
-    /// 获取事件载荷 JSON 文本。
+    /// 获取部署程序集前缀（部署目录命名约定扫描圈定 <c>{前缀}.*.dll</c>，如 <c>GameFrameX.Capability.Online</c>）。
     /// </summary>
-    public string PayloadJson { get; }
+    string DeploymentAssemblyPrefix { get; }
 
     /// <summary>
-    /// 获取事件发生时刻（Unix 毫秒）。
+    /// 注册族基建（在模块扫描与注册之前执行一次）。
     /// </summary>
-    public long OccurredAtUnixMilliseconds { get; }
+    /// <param name="context">族基建注册面（配置段 + 事件发布口 + 服务注册 / 覆盖）。</param>
+    void RegisterInfrastructure(CapabilityFamilyContext context);
 }

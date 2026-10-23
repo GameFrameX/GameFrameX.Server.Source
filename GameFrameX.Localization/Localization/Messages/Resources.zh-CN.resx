@@ -418,57 +418,6 @@
     <data name="Launcher.HotfixModuleLoadEnd" xml:space="preserve">
     <value>加载热更新模块结束...</value>
   </data>
-    <data name="Launcher.OnlineAdminStartBegin" xml:space="preserve">
-    <value>开始装配 Online 平台管理面（admin API，端口 {0}）...</value>
-  </data>
-    <data name="Launcher.OnlineAdminStartEnd" xml:space="preserve">
-    <value>Online 平台管理面装配完成（租户 {0}，应用 {1}，区服 {2}）...</value>
-  </data>
-    <data name="Launcher.OnlineFriendBridgePublished" xml:space="preserve">
-    <value>Online 好友查询桥已发布（租户 {0}，应用 {1}，区服 {2}）...</value>
-  </data>
-    <data name="Launcher.OnlineFriendBridgeRetracted" xml:space="preserve">
-    <value>Online 好友查询桥已撤销...</value>
-  </data>
-    <data name="Launcher.OnlineFriendBridgeSeeded" xml:space="preserve">
-    <value>Online 好友查询桥验证种子已建立（仅供部署验证）：请求主体 {0}，种子好友数 {1}</value>
-  </data>
-        <data name="Launcher.OnlineFriendBridgeFaceMissing" xml:space="preserve">
-    <value>好友查询桥契约面缺失（online-social 能力被排除或未装配）——不支持该拓扑，启动终止</value>
-  </data>
-    <data name="Launcher.OnlineMatchBridgePublished" xml:space="preserve">
-    <value>Online 对局桥已发布（租户 {0}，应用 {1}，区服 {2}）...</value>
-  </data>
-    <data name="Launcher.OnlineMatchBridgeRetracted" xml:space="preserve">
-    <value>Online 对局桥已撤销...</value>
-  </data>
-    <data name="Launcher.OnlineMatchBridgeBoardEnsured" xml:space="preserve">
-    <value>Online 对局桥榜单已确保存在（仅供样例验证）：{0}</value>
-  </data>
-    <data name="Launcher.OnlineMatchBridgeRuntimeGateMissing" xml:space="preserve">
-    <value>对局桥开关开启但业务运行时未启用（IsEnableOnline=false）——不支持该拓扑，启动终止</value>
-  </data>
-    <data name="Launcher.OnlineMatchBridgeScopeMissing" xml:space="preserve">
-    <value>对局桥开关开启但作用域三元组缺失（OnlineTenantId/OnlineAppId/ServerId）——启动终止</value>
-  </data>
-    <data name="Launcher.OnlineMatchBridgeFaceMissing" xml:space="preserve">
-    <value>对局桥契约面缺失（online-match 能力被排除或未装配）——不支持该拓扑，启动终止</value>
-  </data>
-    <data name="Launcher.OnlineMatchBridgeBoardEnsureFailed" xml:space="preserve">
-    <value>对局桥榜单确保失败：{0}，代码：{1}，消息：{2}</value>
-  </data>
-  <data name="Launcher.OnlineMatchDomainBridgeFaceMissing" xml:space="preserve">
-    <value>Online 匹配域桥契约面不可解析（online-match/matchmaking 未装配或被排除），420 匹配消息将显式失败</value>
-  </data>
-  <data name="Launcher.OnlineMatchDomainBridgePublished" xml:space="preserve">
-    <value>Online 匹配域桥已发布（租户 {0}，应用 {1}，区服 {2}）</value>
-  </data>
-  <data name="Launcher.OnlineMatchDomainBridgeNotifyMissing" xml:space="preserve">
-    <value>Online 匹配成功通知未装配（事件总线或契约面不可解析），等待方经状态查询兜底</value>
-  </data>
-  <data name="Launcher.OnlineMatchDomainBridgeRetracted" xml:space="preserve">
-    <value>Online 匹配域桥已撤销</value>
-  </data>
     <data name="Launcher.EnterMainLoop" xml:space="preserve">
     <value>进入游戏主循环...</value>
   </data>
@@ -1463,6 +1412,177 @@
   </data>
   <data name="Capability.Hosting.AdminApi.OptionsInvalid" xml:space="preserve">
     <value>管理面监听选项非法（端口 / 前缀）。</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.Started" xml:space="preserve">
+    <value>能力装配开始：发现 {0} 个，启用 {1} 个，排除 {2} 个</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.Excluded" xml:space="preserve">
+    <value>已排除 {0}：{1}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.ModuleNoDependency" xml:space="preserve">
+    <value>#{0} {1} {2} {3}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.ModuleWithDependency" xml:space="preserve">
+    <value>#{0} {1} {2} {3}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.DependencyRequired" xml:space="preserve">
+    <value>必选 {0}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.DependencyOptionalListed" xml:space="preserve">
+    <value>可选 {0}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.DependencyOptionalCounted" xml:space="preserve">
+    <value>可选 {0} 个已装配，{1} 个未装配</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.OptionalStateAssembled" xml:space="preserve">
+    <value>{0}(已装配)</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.OptionalStateNotAssembled" xml:space="preserve">
+    <value>{0}(未装配)</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.OptionalDependencyMissing" xml:space="preserve">
+    <value>{0} 可选依赖 {1} 未装配（{2}）：缺失功能「{3}」，不影响 {0} 其余功能运行</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.Completed" xml:space="preserve">
+    <value>能力装配完成：{0} 个能力，{1} 项功能因可选依赖缺失未装配，均不影响能力运行</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.Failed" xml:space="preserve">
+    <value>能力装配失败（{0} 项）：</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.RequiredDependencyMissing" xml:space="preserve">
+    <value>{0} 必选依赖 {1} 未装配（{2}）</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.DependencyCycle" xml:space="preserve">
+    <value>依赖成环：{0}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.ReasonExcludedByDisableList" xml:space="preserve">
+    <value>配置排除表</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.ReasonNotInEnableList" xml:space="preserve">
+    <value>白名单未收录</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.ReasonNotDiscovered" xml:space="preserve">
+    <value>部署目录未发现</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.HookNotDeclared" xml:space="preserve">
+    <value>钩子 {0} 已挂载但没有任何能力声明（对应能力未装配或未声明该钩子）</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.SettingsUnknownCapability" xml:space="preserve">
+    <value>Settings 配置段出现未发现的能力：{0}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.SettingsUnknownField" xml:space="preserve">
+    <value>Options 字段不存在或不可配置：{0}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.SettingsFieldTypeMismatch" xml:space="preserve">
+    <value>Options 字段类型不符：{0}（期望 {1}，实际 {2}）</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.OptionsValidationFailed" xml:space="preserve">
+    <value>能力 {0} Options 校验失败：{1}</value>
+  </data>
+  <data name="Capability.Online.Match.OptionalAssetsAbsent" xml:space="preserve">
+    <value>对局结算发奖（结算结果照常记录）</value>
+  </data>
+  <data name="Capability.Online.Match.OptionalMatchmakingAbsent" xml:space="preserve">
+    <value>匹配域（420 入队 / 取消 / 状态查询）</value>
+  </data>
+  <data name="Capability.Online.Competition.OptionalAssetsAbsent" xml:space="preserve">
+    <value>赛季、锦标赛</value>
+  </data>
+  <data name="Capability.Online.Competition.OptionalMatchAbsent" xml:space="preserve">
+    <value>对局结算写榜投影</value>
+  </data>
+  <data name="Capability.Online.Operations.OptionalAssetsAbsent" xml:space="preserve">
+    <value>运营总览资产分项</value>
+  </data>
+  <data name="Capability.Online.Operations.OptionalSocialAbsent" xml:space="preserve">
+    <value>运营总览社交分项</value>
+  </data>
+  <data name="Capability.Online.Operations.OptionalMatchAbsent" xml:space="preserve">
+    <value>运营总览对局分项</value>
+  </data>
+  <data name="Capability.Online.Operations.OptionalMatchmakingAbsent" xml:space="preserve">
+    <value>运营总览匹配分项</value>
+  </data>
+  <data name="Capability.Hosting.ServiceRegistrationDuplicate" xml:space="preserve">
+    <value>能力服务重复注册：{0}</value>
+  </data>
+  <data name="Capability.Hosting.ServiceOverrideDuplicate" xml:space="preserve">
+    <value>能力服务覆盖重复：{0}</value>
+  </data>
+  <data name="Capability.Hosting.ServiceNotRegistered" xml:space="preserve">
+    <value>能力服务未注册：{0}</value>
+  </data>
+  <data name="Capability.Hosting.OptionalServiceNotRegistered" xml:space="preserve">
+    <value>能力 {0} 按可选语义解析服务 {1} 未命中，但其声明的可选依赖均已装配（或未声明任何可选依赖）：能力在场却未注册该服务</value>
+  </data>
+  <data name="Capability.Hosting.ServiceResolutionCycle" xml:space="preserve">
+    <value>能力服务懒工厂循环解析：{0}</value>
+  </data>
+  <data name="Capability.Hosting.ServiceResolutionForbidden" xml:space="preserve">
+    <value>能力 {0} 解析了未声明来源的服务 {1}（来源：{2}）；Register/懒工厂期只允许解析 自己/族基建/宿主覆盖/直接声明的必选与在场可选依赖</value>
+  </data>
+  <data name="Capability.Hosting.ServicesEnumerationForbidden" xml:space="preserve">
+    <value>GetServices 只能在 Activate 期调用：{0} / {1}</value>
+  </data>
+  <data name="Capability.Hosting.HostServiceMissing" xml:space="preserve">
+    <value>能力 {0} 声明的宿主服务未提供（需宿主 Override）：{1}</value>
+  </data>
+  <data name="Capability.Hosting.BridgeDuplicatePublish" xml:space="preserve">
+    <value>能力桥契约重复发布：{0}（{1} → {2}）</value>
+  </data>
+  <data name="Capability.Hosting.BridgeUnavailable" xml:space="preserve">
+    <value>能力桥契约已撤销或被替换：{0}（消费方按 8002 处理）</value>
+  </data>
+  <data name="Capability.Hosting.EventPublishRejected" xml:space="preserve">
+    <value>Activate 开始前拒绝发布事件：{0}</value>
+  </data>
+  <data name="Capability.Hosting.EventBus.SubscriberFailed" xml:space="preserve">
+    <value>能力事件订阅处理失败：{0}（{1}）</value>
+  </data>
+  <data name="Capability.Hosting.Scheduler.RestartAfterStop" xml:space="preserve">
+    <value>调度器停止后不可重新启动。</value>
+  </data>
+  <data name="Capability.Hosting.Scheduler.TickJobFailed" xml:space="preserve">
+    <value>能力调度逐滴答 job 失败：{0}（{1}）</value>
+  </data>
+  <data name="Capability.Hosting.Scheduler.IntervalJobFailed" xml:space="preserve">
+    <value>能力调度间隔 job 失败：{0}（{1}）</value>
+  </data>
+  <data name="Capability.Hosting.ActivationFailed" xml:space="preserve">
+    <value>能力 {0} 激活失败，已逆序回滚 {1} 个已激活能力</value>
+  </data>
+  <data name="Capability.Hosting.Scheduler.StartFailed" xml:space="preserve">
+    <value>能力调度器启动失败，已逆序回滚 {0} 个已激活能力</value>
+  </data>
+  <data name="Capability.Hosting.DeactivationFailed" xml:space="preserve">
+    <value>能力 {0} 停止失败（不阻断其余能力停止）：{1}</value>
+  </data>
+  <data name="Capability.Hosting.OptionsTypeMismatch" xml:space="preserve">
+    <value>能力 {0} 声明的 Options 根类型与请求类型不符：{1} ≠ {2}</value>
+  </data>
+  <data name="Capability.Hosting.ConfigureTargetMissing" xml:space="preserve">
+    <value>代码 Configure 引用的 Options 类型未由任何已发现能力声明：{0}</value>
+  </data>
+  <data name="Capability.Hosting.HookDuplicateDeclaration" xml:space="preserve">
+    <value>能力钩子重复声明：{0}（{1} → {2}）</value>
+  </data>
+  <data name="Capability.Hosting.AdminApiPlaneFactoryMissing" xml:space="preserve">
+    <value>启用管理面需引用 GameFrameX.Capability.Hosting.AdminApi 并调用 UseAdminApi。</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ActionNameDuplicate" xml:space="preserve">
+    <value>Admin action 重复注册：{0}（能力或来源：{1}）</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ActionNotDeclared" xml:space="preserve">
+    <value>能力 {1} 注册的 action 未在其 manifest 声明：{0}</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ActionOwnerMismatch" xml:space="preserve">
+    <value>能力 {1} 声明的 action {0} 被能力 {2} 注册（跨能力冒名）</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.AdapterMissing" xml:space="preserve">
+    <value>管理面缺少必需适配器服务：{0}（族基建须注册）</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ReconcileFailed" xml:space="preserve">
+    <value>Admin action 对账失败（{0} 项）：</value>
   </data>
   <data name="Online.Identity.ScopeMissingPlayerId" xml:space="preserve">
     <value>作用域缺少玩家主体位（PlayerId &lt;= 0），不能派生玩家上下文。</value>
@@ -2497,12 +2617,6 @@
   <data name="Hotfix.Match.DomainBridgeException" xml:space="preserve">
     <value>匹配域桥调用异常, PlayerId: {0}</value>
   </data>
-  <data name="Launcher.OnlineFriendLegacyMigrationEntryFailed" xml:space="preserve">
-    <value>旧好友关系迁移单条失败：{0} &lt;-&gt; {1}, Code: {2}, Message: {3}</value>
-  </data>
-  <data name="Launcher.OnlineFriendLegacyMigrationDone" xml:space="preserve">
-    <value>旧好友数据迁移完成：已建立 {0}，待答申请 {1}，失败 {2}（旧数据零改动）</value>
-  </data>
   <data name="Hotfix.SessionResume.BridgeUnavailable" xml:space="preserve">
     <value>会话域桥不可用（未发布或已撤销）, PlayerId: {0}, Code: {1}</value>
   </data>
@@ -2523,15 +2637,6 @@
   </data>
   <data name="Hotfix.SessionResume.DisconnectStaleSkipped" xml:space="preserve">
     <value>断线跳过协同（旧回调迟到，玩家已有新会话）, PlayerId: {0}</value>
-  </data>
-  <data name="Launcher.OnlineSessionDomainBridgePublished" xml:space="preserve">
-    <value>Online 会话域桥已发布（租户 {0}，应用 {1}，区服 {2}）</value>
-  </data>
-  <data name="Launcher.OnlineSessionDomainBridgeFaceMissing" xml:space="preserve">
-    <value>Online 会话域桥契约面不可解析（online-foundation 未装配或被排除），会话恢复不可用</value>
-  </data>
-  <data name="Launcher.OnlineSessionDomainBridgeRetracted" xml:space="preserve">
-    <value>Online 会话域桥已撤销</value>
   </data>
   <data name="Client.Bot.MatchReconnectArmed" xml:space="preserve">
     <value>机器人-{0}入场完成，安排 {1} 秒后断线演练（match 恢复场景）</value>

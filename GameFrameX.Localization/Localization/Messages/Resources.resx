@@ -388,57 +388,6 @@
     <data name="Launcher.HotfixModuleLoadEnd" xml:space="preserve">
     <value>Hotfix module loading completed...</value>
   </data>
-    <data name="Launcher.OnlineAdminStartBegin" xml:space="preserve">
-    <value>Starting Online admin API assembly (port {0})...</value>
-  </data>
-    <data name="Launcher.OnlineAdminStartEnd" xml:space="preserve">
-    <value>Online admin API assembly completed (tenant {0}, app {1}, server {2})...</value>
-  </data>
-    <data name="Launcher.OnlineFriendBridgePublished" xml:space="preserve">
-    <value>Online friend-query bridge published (tenant {0}, app {1}, server {2})...</value>
-  </data>
-    <data name="Launcher.OnlineFriendBridgeRetracted" xml:space="preserve">
-    <value>Online friend-query bridge retracted...</value>
-  </data>
-    <data name="Launcher.OnlineFriendBridgeSeeded" xml:space="preserve">
-    <value>Online friend-query bridge verification seeds established (deployment verification only): requester {0}, seeded friends {1}</value>
-  </data>
-        <data name="Launcher.OnlineFriendBridgeFaceMissing" xml:space="preserve">
-    <value>The friend-query bridge contract face is missing (the online-social capability is excluded or not assembled) - unsupported topology, startup aborted</value>
-  </data>
-    <data name="Launcher.OnlineMatchBridgePublished" xml:space="preserve">
-    <value>Online match bridge published (tenant {0}, app {1}, server {2})...</value>
-  </data>
-    <data name="Launcher.OnlineMatchBridgeRetracted" xml:space="preserve">
-    <value>Online match bridge retracted...</value>
-  </data>
-    <data name="Launcher.OnlineMatchBridgeBoardEnsured" xml:space="preserve">
-    <value>Online match bridge leaderboard ensured to exist (sample verification only): {0}</value>
-  </data>
-    <data name="Launcher.OnlineMatchBridgeRuntimeGateMissing" xml:space="preserve">
-    <value>The match bridge switch is on but the business runtime gate is off (IsEnableOnline=false) - unsupported topology, startup aborted</value>
-  </data>
-    <data name="Launcher.OnlineMatchBridgeScopeMissing" xml:space="preserve">
-    <value>The match bridge switch is on but the authorized scope triple is missing (OnlineTenantId/OnlineAppId/ServerId) - startup aborted</value>
-  </data>
-    <data name="Launcher.OnlineMatchBridgeFaceMissing" xml:space="preserve">
-    <value>The match bridge contract face is missing (the online-match capability is excluded or not assembled) - unsupported topology, startup aborted</value>
-  </data>
-    <data name="Launcher.OnlineMatchBridgeBoardEnsureFailed" xml:space="preserve">
-    <value>Failed to ensure the match bridge leaderboard exists: {0}, Code: {1}, Message: {2}</value>
-  </data>
-  <data name="Launcher.OnlineMatchDomainBridgeFaceMissing" xml:space="preserve">
-    <value>The match-domain bridge contract face cannot be resolved (online-match/matchmaking not assembled or excluded); the domain-420 match messages will fail explicitly</value>
-  </data>
-  <data name="Launcher.OnlineMatchDomainBridgePublished" xml:space="preserve">
-    <value>Online match-domain bridge published (tenant {0}, app {1}, server {2})</value>
-  </data>
-  <data name="Launcher.OnlineMatchDomainBridgeNotifyMissing" xml:space="preserve">
-    <value>Online match-made notification is not wired (event bus or contract face unresolvable); waiting players fall back to status polling</value>
-  </data>
-  <data name="Launcher.OnlineMatchDomainBridgeRetracted" xml:space="preserve">
-    <value>Online match-domain bridge retracted</value>
-  </data>
     <data name="Launcher.EnterMainLoop" xml:space="preserve">
     <value>Entering game main loop...</value>
   </data>
@@ -1466,6 +1415,177 @@
   <data name="Capability.Hosting.AdminApi.OptionsInvalid" xml:space="preserve">
     <value>Admin API listening options are invalid (port / prefix).</value>
   </data>
+  <data name="Capability.Hosting.Assembly.Started" xml:space="preserve">
+    <value>Capability assembly started: {0} discovered, {1} enabled, {2} excluded.</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.Excluded" xml:space="preserve">
+    <value>Excluded {0}: {1}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.ModuleNoDependency" xml:space="preserve">
+    <value>#{0} {1} {2} {3}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.ModuleWithDependency" xml:space="preserve">
+    <value>#{0} {1} {2} {3}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.DependencyRequired" xml:space="preserve">
+    <value>required {0}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.DependencyOptionalListed" xml:space="preserve">
+    <value>optional {0}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.DependencyOptionalCounted" xml:space="preserve">
+    <value>optional: {0} assembled, {1} not assembled</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.OptionalStateAssembled" xml:space="preserve">
+    <value>{0}(assembled)</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.OptionalStateNotAssembled" xml:space="preserve">
+    <value>{0}(not assembled)</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.OptionalDependencyMissing" xml:space="preserve">
+    <value>{0} optional dependency {1} is not assembled ({2}): feature "{3}" is missing; the remaining features of {0} are unaffected.</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.Completed" xml:space="preserve">
+    <value>Capability assembly completed: {0} capabilities, {1} features skipped due to missing optional dependencies, none affecting capability operation.</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.Failed" xml:space="preserve">
+    <value>Capability assembly failed ({0} issue(s)):</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.RequiredDependencyMissing" xml:space="preserve">
+    <value>{0} requires capability {1} which is not assembled ({2}).</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.DependencyCycle" xml:space="preserve">
+    <value>Capability requirements form a cycle: {0}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.ReasonExcludedByDisableList" xml:space="preserve">
+    <value>configuration disable list</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.ReasonNotInEnableList" xml:space="preserve">
+    <value>not included in the enable list</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.ReasonNotDiscovered" xml:space="preserve">
+    <value>not discovered in the deployment directory</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.HookNotDeclared" xml:space="preserve">
+    <value>Hook {0} is attached but no capability declares it (the owning capability is not assembled or does not declare the hook)</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.SettingsUnknownCapability" xml:space="preserve">
+    <value>The Settings section references an unknown capability: {0}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.SettingsUnknownField" xml:space="preserve">
+    <value>Options field does not exist or is not configurable: {0}</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.SettingsFieldTypeMismatch" xml:space="preserve">
+    <value>Options field type mismatch: {0} (expected {1}, actual {2})</value>
+  </data>
+  <data name="Capability.Hosting.Assembly.OptionsValidationFailed" xml:space="preserve">
+    <value>Capability {0} options validation failed: {1}</value>
+  </data>
+  <data name="Capability.Online.Match.OptionalAssetsAbsent" xml:space="preserve">
+    <value>match settlement reward granting (settlement results are still recorded)</value>
+  </data>
+  <data name="Capability.Online.Match.OptionalMatchmakingAbsent" xml:space="preserve">
+    <value>matchmaking domain (420 enqueue / cancel / status query)</value>
+  </data>
+  <data name="Capability.Online.Competition.OptionalAssetsAbsent" xml:space="preserve">
+    <value>seasons and tournaments</value>
+  </data>
+  <data name="Capability.Online.Competition.OptionalMatchAbsent" xml:space="preserve">
+    <value>leaderboard projection from match settlement</value>
+  </data>
+  <data name="Capability.Online.Operations.OptionalAssetsAbsent" xml:space="preserve">
+    <value>operations overview assets section</value>
+  </data>
+  <data name="Capability.Online.Operations.OptionalSocialAbsent" xml:space="preserve">
+    <value>operations overview social section</value>
+  </data>
+  <data name="Capability.Online.Operations.OptionalMatchAbsent" xml:space="preserve">
+    <value>operations overview match section</value>
+  </data>
+  <data name="Capability.Online.Operations.OptionalMatchmakingAbsent" xml:space="preserve">
+    <value>operations overview matchmaking section</value>
+  </data>
+  <data name="Capability.Hosting.ServiceRegistrationDuplicate" xml:space="preserve">
+    <value>Duplicate capability service registration: {0}</value>
+  </data>
+  <data name="Capability.Hosting.ServiceOverrideDuplicate" xml:space="preserve">
+    <value>Duplicate capability service override: {0}</value>
+  </data>
+  <data name="Capability.Hosting.ServiceNotRegistered" xml:space="preserve">
+    <value>Capability service not registered: {0}</value>
+  </data>
+  <data name="Capability.Hosting.OptionalServiceNotRegistered" xml:space="preserve">
+    <value>Capability {0} resolved optional service {1} but it is not registered while all of its declared optional dependencies are assembled (or none are declared): a present capability did not register the service</value>
+  </data>
+  <data name="Capability.Hosting.ServiceResolutionCycle" xml:space="preserve">
+    <value>Capability service lazy factories form a resolution cycle: {0}</value>
+  </data>
+  <data name="Capability.Hosting.ServiceResolutionForbidden" xml:space="preserve">
+    <value>Capability {0} resolved service {1} from an undeclared source ({2}); during Register / lazy factories only self, family infrastructure, host overrides, and directly declared required or present optional dependencies may be resolved</value>
+  </data>
+  <data name="Capability.Hosting.ServicesEnumerationForbidden" xml:space="preserve">
+    <value>GetServices may only be called during Activate: {0} / {1}</value>
+  </data>
+  <data name="Capability.Hosting.HostServiceMissing" xml:space="preserve">
+    <value>Capability {0} declares a host service that was not provided (host Override required): {1}</value>
+  </data>
+  <data name="Capability.Hosting.BridgeDuplicatePublish" xml:space="preserve">
+    <value>Duplicate capability bridge contract publish: {0} ({1} → {2})</value>
+  </data>
+  <data name="Capability.Hosting.BridgeUnavailable" xml:space="preserve">
+    <value>Capability bridge contract retracted or replaced: {0} (consumers map it to 8002)</value>
+  </data>
+  <data name="Capability.Hosting.EventPublishRejected" xml:space="preserve">
+    <value>Event publish rejected before Activate: {0}</value>
+  </data>
+  <data name="Capability.Hosting.EventBus.SubscriberFailed" xml:space="preserve">
+    <value>Capability event subscriber failed: {0} ({1})</value>
+  </data>
+  <data name="Capability.Hosting.Scheduler.RestartAfterStop" xml:space="preserve">
+    <value>The scheduler cannot be restarted after it has stopped.</value>
+  </data>
+  <data name="Capability.Hosting.Scheduler.TickJobFailed" xml:space="preserve">
+    <value>Capability scheduler tick job failed: {0} ({1})</value>
+  </data>
+  <data name="Capability.Hosting.Scheduler.IntervalJobFailed" xml:space="preserve">
+    <value>Capability scheduler interval job failed: {0} ({1})</value>
+  </data>
+  <data name="Capability.Hosting.ActivationFailed" xml:space="preserve">
+    <value>Capability {0} activation failed; {1} activated capabilities were rolled back in reverse order</value>
+  </data>
+  <data name="Capability.Hosting.Scheduler.StartFailed" xml:space="preserve">
+    <value>Capability scheduler failed to start; {0} activated capabilities were rolled back in reverse order</value>
+  </data>
+  <data name="Capability.Hosting.DeactivationFailed" xml:space="preserve">
+    <value>Capability {0} deactivation failed (other capabilities continue stopping): {1}</value>
+  </data>
+  <data name="Capability.Hosting.OptionsTypeMismatch" xml:space="preserve">
+    <value>The options root type declared by capability {0} does not match the requested type: {1} ≠ {2}</value>
+  </data>
+  <data name="Capability.Hosting.ConfigureTargetMissing" xml:space="preserve">
+    <value>Code Configure references an options type not declared by any discovered capability: {0}</value>
+  </data>
+  <data name="Capability.Hosting.HookDuplicateDeclaration" xml:space="preserve">
+    <value>Duplicate capability hook declaration: {0} ({1} → {2})</value>
+  </data>
+  <data name="Capability.Hosting.AdminApiPlaneFactoryMissing" xml:space="preserve">
+    <value>Enabling the admin plane requires referencing GameFrameX.Capability.Hosting.AdminApi and calling UseAdminApi.</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ActionNameDuplicate" xml:space="preserve">
+    <value>Duplicate admin action registration: {0} (capability or source: {1})</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ActionNotDeclared" xml:space="preserve">
+    <value>Capability {1} registers action {0} but does not declare it in its manifest.</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ActionOwnerMismatch" xml:space="preserve">
+    <value>Capability {1} declares action {0} but it is registered by capability {2}.</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.AdapterMissing" xml:space="preserve">
+    <value>The admin plane is missing a required adapter service: {0} (family infrastructure must register it)</value>
+  </data>
+  <data name="Capability.Hosting.AdminApi.ReconcileFailed" xml:space="preserve">
+    <value>Admin action reconciliation failed ({0} issue(s)):</value>
+  </data>
   <data name="Online.Identity.ScopeMissingPlayerId" xml:space="preserve">
     <value>Scope is missing the player identity slot (PlayerId &lt;= 0); cannot derive player context.</value>
   </data>
@@ -2469,12 +2589,6 @@
   <data name="Hotfix.Match.DomainBridgeException" xml:space="preserve">
     <value>The match-domain bridge call threw an exception, PlayerId: {0}</value>
   </data>
-  <data name="Launcher.OnlineFriendLegacyMigrationEntryFailed" xml:space="preserve">
-    <value>Legacy friend-relation migration failed for one entry: {0} &lt;-&gt; {1}, Code: {2}, Message: {3}</value>
-  </data>
-  <data name="Launcher.OnlineFriendLegacyMigrationDone" xml:space="preserve">
-    <value>Legacy friend-data migration finished: established {0}, pending requests {1}, failed {2} (legacy data untouched)</value>
-  </data>
   <data name="Hotfix.SessionResume.BridgeUnavailable" xml:space="preserve">
     <value>The session-domain bridge is unavailable (not published or retracted), PlayerId: {0}, Code: {1}</value>
   </data>
@@ -2495,15 +2609,6 @@
   </data>
   <data name="Hotfix.SessionResume.DisconnectStaleSkipped" xml:space="preserve">
     <value>Stale disconnect callback skipped online coordination (player already holds a newer session), PlayerId: {0}</value>
-  </data>
-  <data name="Launcher.OnlineSessionDomainBridgePublished" xml:space="preserve">
-    <value>The Online session-domain bridge has been published (tenant {0}, app {1}, server {2})</value>
-  </data>
-  <data name="Launcher.OnlineSessionDomainBridgeFaceMissing" xml:space="preserve">
-    <value>The Online session-domain bridge contract face cannot be resolved (online-foundation not assembled or excluded); session recovery is unavailable</value>
-  </data>
-  <data name="Launcher.OnlineSessionDomainBridgeRetracted" xml:space="preserve">
-    <value>The Online session-domain bridge has been retracted</value>
   </data>
   <data name="Client.Bot.MatchReconnectArmed" xml:space="preserve">
     <value>Bot-{0} entered the match; disconnect drill scheduled in {1} seconds (match recovery scenario)</value>

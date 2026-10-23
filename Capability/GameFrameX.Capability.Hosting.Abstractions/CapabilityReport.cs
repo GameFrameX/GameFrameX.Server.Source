@@ -30,7 +30,7 @@
 namespace GameFrameX.Capability.Hosting.Abstractions;
 
 /// <summary>
-/// 启动能力报告条目（一个能力的装配结果）。
+/// 启动能力报告条目（一个能力的装配结果：清单 + 判定 + 依赖状态 + 缺失功能 + Options 字段生效值）。
 /// </summary>
 public sealed class CapabilityReportEntry
 {
@@ -40,11 +40,19 @@ public sealed class CapabilityReportEntry
     /// <param name="manifest">能力清单。</param>
     /// <param name="sourceAssemblyName">来源程序集名。</param>
     /// <param name="state">装配判定。</param>
-    public CapabilityReportEntry(CapabilityManifest manifest, string sourceAssemblyName, CapabilityFilterState state)
+    /// <param name="dependencies">依赖状态条目（无则为空集合）。</param>
+    /// <param name="absentFeatures">可选依赖缺失的功能文案集合（无则为空集合）。</param>
+    /// <param name="settingsFields">Options 字段生效值条目（无参数能力为空集合）。</param>
+    /// <param name="settingsConfiguredButNotAssembled">配置段为本能力写了 Settings 但其未被装配（忽略并在报告标注）。</param>
+    public CapabilityReportEntry(CapabilityManifest manifest, string sourceAssemblyName, CapabilityFilterState state, IReadOnlyList<CapabilityDependencyReport> dependencies = null, IReadOnlyList<string> absentFeatures = null, IReadOnlyList<CapabilitySettingsField> settingsFields = null, bool settingsConfiguredButNotAssembled = false)
     {
         Manifest = manifest;
         SourceAssemblyName = sourceAssemblyName;
         State = state;
+        Dependencies = dependencies ?? Array.Empty<CapabilityDependencyReport>();
+        AbsentFeatures = absentFeatures ?? Array.Empty<string>();
+        SettingsFields = settingsFields ?? Array.Empty<CapabilitySettingsField>();
+        SettingsConfiguredButNotAssembled = settingsConfiguredButNotAssembled;
     }
 
     /// <summary>
@@ -61,10 +69,31 @@ public sealed class CapabilityReportEntry
     /// 获取装配判定（启用才参与拓扑定序）。
     /// </summary>
     public CapabilityFilterState State { get; }
+
+    /// <summary>
+    /// 获取依赖状态条目（必选 + 可选；可选缺失含缺席原因）。
+    /// </summary>
+    public IReadOnlyList<CapabilityDependencyReport> Dependencies { get; }
+
+    /// <summary>
+    /// 获取可选依赖缺失的功能文案集合（本地化后的功能描述；运维不依赖日志也能查到少了什么）。
+    /// </summary>
+    public IReadOnlyList<string> AbsentFeatures { get; }
+
+    /// <summary>
+    /// 获取 Options 字段生效值条目（字段路径 + 生效值 + 来源）。
+    /// </summary>
+    public IReadOnlyList<CapabilitySettingsField> SettingsFields { get; }
+
+    /// <summary>
+    /// 获取是否「已配置但未装配」（配置段为本能力写了 Settings 但其被过滤器排除；该段被忽略并在此标注）。
+    /// </summary>
+    public bool SettingsConfiguredButNotAssembled { get; }
 }
 
 /// <summary>
-/// 启动能力报告（装配完成后的全量能力快照：启用清单 / 装配顺序 / 禁用项）。
+/// 启动能力报告（装配完成后的全量能力快照：启用清单 / 装配顺序 / 禁用项 / 依赖状态 / Options 生效值；
+/// 装配日志与 <c>list_capabilities</c> 共用同一份数据面，两边不会对不上）。
 /// </summary>
 public sealed class CapabilityReport
 {
