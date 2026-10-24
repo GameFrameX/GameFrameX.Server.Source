@@ -143,31 +143,63 @@ public static class AdminApiComposition
         var allDeclaredActions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var entry in report.Entries)
         {
-            if (entry.State != CapabilityFilterState.Enabled)
-            {
-                continue;
-            }
-
-            var declaredActions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            declaredActionsByCapability[entry.Manifest.Id] = declaredActions;
-            foreach (var action in entry.Manifest.Actions)
-            {
-                declaredActions.Add(action);
-                allDeclaredActions.Add(action);
-                var registration = registry.Find(action);
-                if (registration == null)
-                {
-                    // Localization: Capability.Hosting.AdminApi.ActionNotRegistered - 能力声明的 action 未注册。
-                    problems.Add(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.AdminApi.ActionNotRegistered), action, entry.Manifest.Id));
-                }
-                else if (!string.Equals(registration.OwnerCapabilityId, entry.Manifest.Id, StringComparison.Ordinal))
-                {
-                    // Localization: Capability.Hosting.AdminApi.ActionOwnerMismatch - 能力声明的 action 被其它能力注册（跨能力冒名）。
-                    problems.Add(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.AdminApi.ActionOwnerMismatch), action, entry.Manifest.Id, registration.OwnerCapabilityId));
-                }
-            }
+            CollectDeclaredActions(entry, registry, declaredActionsByCapability, allDeclaredActions, problems);
         }
 
+        ReportUndeclaredRegisteredActions(registry, declaredActionsByCapability, allDeclaredActions, problems);
+
+        if (problems.Count > 0)
+        {
+            // Localization: Capability.Hosting.AdminApi.ReconcileFailed - Admin action 对账失败。
+            var message = string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.AdminApi.ReconcileFailed), problems.Count) + Environment.NewLine + string.Join(Environment.NewLine, problems);
+            throw new InvalidOperationException(message);
+        }
+    }
+
+    /// <summary>
+    /// 声明侧对账（收集启用能力的 manifest 声明集，并校验「声明未注册 / 被其它能力注册」两类问题）。
+    /// </summary>
+    /// <param name="entry">能力报告条目。</param>
+    /// <param name="registry">action 注册表（模块贡献完毕）。</param>
+    /// <param name="declaredActionsByCapability">按能力收集的声明集（Ordinal 键）。</param>
+    /// <param name="allDeclaredActions">全宿主声明全集（OrdinalIgnoreCase）。</param>
+    /// <param name="problems">对账问题累积列表。</param>
+    private static void CollectDeclaredActions(CapabilityReportEntry entry, AdminActionRegistry registry, Dictionary<string, HashSet<string>> declaredActionsByCapability, HashSet<string> allDeclaredActions, List<string> problems)
+    {
+        if (entry.State != CapabilityFilterState.Enabled)
+        {
+            return;
+        }
+
+        var declaredActions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        declaredActionsByCapability[entry.Manifest.Id] = declaredActions;
+        foreach (var action in entry.Manifest.Actions)
+        {
+            declaredActions.Add(action);
+            allDeclaredActions.Add(action);
+            var registration = registry.Find(action);
+            if (registration == null)
+            {
+                // Localization: Capability.Hosting.AdminApi.ActionNotRegistered - 能力声明的 action 未注册。
+                problems.Add(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.AdminApi.ActionNotRegistered), action, entry.Manifest.Id));
+            }
+            else if (!string.Equals(registration.OwnerCapabilityId, entry.Manifest.Id, StringComparison.Ordinal))
+            {
+                // Localization: Capability.Hosting.AdminApi.ActionOwnerMismatch - 能力声明的 action 被其它能力注册（跨能力冒名）。
+                problems.Add(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.AdminApi.ActionOwnerMismatch), action, entry.Manifest.Id, registration.OwnerCapabilityId));
+            }
+        }
+    }
+
+    /// <summary>
+    /// 注册侧对账（校验「能力注册的 action 未在其 manifest 声明」；其它能力已声明的情形在声明侧按冒名报出，不重复报）。
+    /// </summary>
+    /// <param name="registry">action 注册表（模块贡献完毕）。</param>
+    /// <param name="declaredActionsByCapability">按能力收集的声明集（Ordinal 键）。</param>
+    /// <param name="allDeclaredActions">全宿主声明全集（OrdinalIgnoreCase）。</param>
+    /// <param name="problems">对账问题累积列表。</param>
+    private static void ReportUndeclaredRegisteredActions(AdminActionRegistry registry, Dictionary<string, HashSet<string>> declaredActionsByCapability, HashSet<string> allDeclaredActions, List<string> problems)
+    {
         foreach (var registeredAction in registry.ActionNames)
         {
             var ownerCapabilityId = registry.Find(registeredAction).OwnerCapabilityId;
@@ -184,13 +216,6 @@ public static class AdminApiComposition
 
             // Localization: Capability.Hosting.AdminApi.ActionNotDeclared - 能力注册的 action 未在其 manifest 声明。
             problems.Add(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.AdminApi.ActionNotDeclared), registeredAction, ownerCapabilityId));
-        }
-
-        if (problems.Count > 0)
-        {
-            // Localization: Capability.Hosting.AdminApi.ReconcileFailed - Admin action 对账失败。
-            var message = string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.AdminApi.ReconcileFailed), problems.Count) + Environment.NewLine + string.Join(Environment.NewLine, problems);
-            throw new InvalidOperationException(message);
         }
     }
 }
