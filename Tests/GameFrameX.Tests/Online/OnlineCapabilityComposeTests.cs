@@ -745,8 +745,8 @@ public class OnlineCapabilityComposeTests
             }
 
             Assert.Equal(2, match.AbsentFeatures.Count);
-            Assert.Contains(LocalizationService.GetString(GameFrameX.Localization.Keys.Capability.Online.Match.OptionalAssetsAbsent), match.AbsentFeatures);
-            Assert.Contains(LocalizationService.GetString(GameFrameX.Localization.Keys.Capability.Online.Match.OptionalMatchmakingAbsent), match.AbsentFeatures);
+            Assert.Contains(LocalizationService.GetString(GameFrameX.Localization.Keys.Capability.OnlineModule.Match.OptionalAssetsAbsent), match.AbsentFeatures);
+            Assert.Contains(LocalizationService.GetString(GameFrameX.Localization.Keys.Capability.OnlineModule.Match.OptionalMatchmakingAbsent), match.AbsentFeatures);
 
             Assert.Contains(runtime.Host.Modules, module => module.Manifest.Id == "online-match");
             await runtime.Host.StartAsync();
