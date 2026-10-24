@@ -56,33 +56,69 @@ internal static class CapabilityOptionsBinder
         var optionsType = manifest.OptionsType;
         if (optionsType == null)
         {
-            // 能力未声明 Options 根类型 = 该能力不接受任何配置；写了带字段的配置段必须 fail-fast（否则配置被静默吞掉）。
-            // 空对象 {} 视为未配置、允许。
-            if (settingsElement.ValueKind == JsonValueKind.Object)
-            {
-                foreach (var jsonProperty in settingsElement.EnumerateObject())
-                {
-                    // Localization: Capability.Hosting.Assembly.SettingsUnknownField - Options 字段不存在或不可配置。
-                    throw new InvalidOperationException(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.Assembly.AssemblySettingsUnknownField), errorPathPrefix + "." + jsonProperty.Name));
-                }
-            }
-            else if (settingsElement.ValueKind != JsonValueKind.Undefined)
-            {
-                // Localization: Capability.Hosting.Assembly.SettingsFieldTypeMismatch - Options 字段类型不符。
-                throw new InvalidOperationException(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.Assembly.AssemblySettingsFieldTypeMismatch), errorPathPrefix, "object", DescribeJsonKind(settingsElement)));
-            }
-
+            // 能力未声明 Options 根类型 = 该能力不接受任何配置；带字段的配置段必须 fail-fast（否则配置被静默吞掉）。
+            EnsureNoStraySettings(settingsElement, errorPathPrefix);
             return new BindingResult(null, new List<CapabilitySettingsField>());
         }
 
+        EnsureOptionsRootTypeInstantiable(optionsType);
+
+        var instance = Activator.CreateInstance(optionsType);
+        var configuredPaths = ApplySettingsSection(instance, settingsElement, errorPathPrefix);
+
+        var beforeConfigure = SnapshotLeafValues(instance, string.Empty);
+        InvokeConfigureEntries(instance, optionsType, configureEntries);
+        var afterConfigure = SnapshotLeafValues(instance, string.Empty);
+        var fields = BuildSettingsFields(beforeConfigure, afterConfigure, configuredPaths, errorPathPrefix);
+
+        Validate(manifest, instance);
+        return new BindingResult(instance, fields);
+    }
+
+    /// <summary>
+    /// 校验无 Options 根类型能力的配置段（空对象 <c>{}</c> 或缺省视为未配置、允许；其余 = fail-fast）。
+    /// </summary>
+    /// <param name="settingsElement">本能力的配置段节点。</param>
+    /// <param name="errorPathPrefix">错误信息路径前缀。</param>
+    private static void EnsureNoStraySettings(JsonElement settingsElement, string errorPathPrefix)
+    {
+        if (settingsElement.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var jsonProperty in settingsElement.EnumerateObject())
+            {
+                // Localization: Capability.Hosting.Assembly.SettingsUnknownField - Options 字段不存在或不可配置。
+                throw new InvalidOperationException(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.Assembly.AssemblySettingsUnknownField), errorPathPrefix + "." + jsonProperty.Name));
+            }
+        }
+        else if (settingsElement.ValueKind != JsonValueKind.Undefined)
+        {
+            // Localization: Capability.Hosting.Assembly.SettingsFieldTypeMismatch - Options 字段类型不符。
+            throw new InvalidOperationException(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.Assembly.AssemblySettingsFieldTypeMismatch), errorPathPrefix, "object", DescribeJsonKind(settingsElement)));
+        }
+    }
+
+    /// <summary>
+    /// 守卫 Options 根类型可实例化（非抽象类 + 公共无参构造）。
+    /// </summary>
+    /// <param name="optionsType">Options 根类型。</param>
+    private static void EnsureOptionsRootTypeInstantiable(Type optionsType)
+    {
         if (optionsType.IsAbstract || optionsType.GetConstructor(Type.EmptyTypes) == null)
         {
             throw new InvalidOperationException("Capability options root type must be a non-abstract class with a public parameterless constructor: " + optionsType.FullName);
         }
+    }
 
-        var instance = Activator.CreateInstance(optionsType);
+    /// <summary>
+    /// 应用配置段到实例（对象节点按字段覆盖；非对象节点 = fail-fast）。
+    /// </summary>
+    /// <param name="instance">目标实例。</param>
+    /// <param name="settingsElement">配置段节点。</param>
+    /// <param name="errorPathPrefix">错误信息路径前缀。</param>
+    /// <returns>被配置段触碰的字段路径集合（带错误路径前缀的完整路径）。</returns>
+    private static HashSet<string> ApplySettingsSection(object instance, JsonElement settingsElement, string errorPathPrefix)
+    {
         var configuredPaths = new HashSet<string>(StringComparer.Ordinal);
-
         if (settingsElement.ValueKind == JsonValueKind.Object)
         {
             ApplySection(instance, settingsElement, errorPathPrefix, configuredPaths);
@@ -93,7 +129,17 @@ internal static class CapabilityOptionsBinder
             throw new InvalidOperationException(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.Assembly.AssemblySettingsFieldTypeMismatch), errorPathPrefix, "object", settingsElement.ValueKind.ToString()));
         }
 
-        var beforeConfigure = SnapshotLeafValues(instance, string.Empty);
+        return configuredPaths;
+    }
+
+    /// <summary>
+    /// 执行匹配 Options 根类型的代码层 Configure 回调（注册序）。
+    /// </summary>
+    /// <param name="instance">目标实例。</param>
+    /// <param name="optionsType">Options 根类型。</param>
+    /// <param name="configureEntries">代码层 Configure 回调表。</param>
+    private static void InvokeConfigureEntries(object instance, Type optionsType, IReadOnlyList<CapabilityCompositionOptions.ConfigureEntry> configureEntries)
+    {
         for (var i = 0; i < configureEntries.Count; i++)
         {
             if (configureEntries[i].OptionsType == optionsType)
@@ -101,28 +147,50 @@ internal static class CapabilityOptionsBinder
                 configureEntries[i].Configure(instance);
             }
         }
+    }
 
-        var afterConfigure = SnapshotLeafValues(instance, string.Empty);
+    /// <summary>
+    /// 构建每字段生效值与来源表。
+    /// </summary>
+    /// <param name="beforeConfigure">Configure 回调执行前的叶子字段快照。</param>
+    /// <param name="afterConfigure">Configure 回调执行后的叶子字段快照。</param>
+    /// <param name="configuredPaths">被配置段触碰的字段路径集合。</param>
+    /// <param name="errorPathPrefix">错误信息路径前缀。</param>
+    /// <returns>每字段生效值与来源。</returns>
+    private static List<CapabilitySettingsField> BuildSettingsFields(Dictionary<string, object> beforeConfigure, Dictionary<string, object> afterConfigure, HashSet<string> configuredPaths, string errorPathPrefix)
+    {
         var fields = new List<CapabilitySettingsField>(afterConfigure.Count);
         foreach (var pair in afterConfigure)
         {
-            var source = CapabilitySettingsFieldSource.Default;
-            // configuredPaths 记录带错误路径前缀的完整路径（错误信息复用同一路径）；快照键为相对路径，比较前补齐前缀。
-            if (configuredPaths.Contains(errorPathPrefix + "." + pair.Key))
-            {
-                source = CapabilitySettingsFieldSource.ConfigurationSection;
-            }
-
-            if (beforeConfigure.TryGetValue(pair.Key, out var beforeValue) && !ValuesEqual(beforeValue, pair.Value))
-            {
-                source = CapabilitySettingsFieldSource.Code;
-            }
-
-            fields.Add(new CapabilitySettingsField(pair.Key, pair.Value, source));
+            fields.Add(new CapabilitySettingsField(pair.Key, pair.Value, ResolveFieldSource(pair, beforeConfigure, configuredPaths, errorPathPrefix)));
         }
 
-        Validate(manifest, instance);
-        return new BindingResult(instance, fields);
+        return fields;
+    }
+
+    /// <summary>
+    /// 判定单字段来源（代码 Configure 改写优先于配置段触碰，其次默认值）。
+    /// </summary>
+    /// <param name="pair">Configure 回调执行后的字段键值。</param>
+    /// <param name="beforeConfigure">Configure 回调执行前的叶子字段快照。</param>
+    /// <param name="configuredPaths">被配置段触碰的字段路径集合。</param>
+    /// <param name="errorPathPrefix">错误信息路径前缀。</param>
+    /// <returns>字段来源。</returns>
+    private static CapabilitySettingsFieldSource ResolveFieldSource(KeyValuePair<string, object> pair, Dictionary<string, object> beforeConfigure, HashSet<string> configuredPaths, string errorPathPrefix)
+    {
+        var source = CapabilitySettingsFieldSource.Default;
+        // configuredPaths 记录带错误路径前缀的完整路径（错误信息复用同一路径）；快照键为相对路径，比较前补齐前缀。
+        if (configuredPaths.Contains(errorPathPrefix + "." + pair.Key))
+        {
+            source = CapabilitySettingsFieldSource.ConfigurationSection;
+        }
+
+        if (beforeConfigure.TryGetValue(pair.Key, out var beforeValue) && !ValuesEqual(beforeValue, pair.Value))
+        {
+            source = CapabilitySettingsFieldSource.Code;
+        }
+
+        return source;
     }
 
     /// <summary>
@@ -250,49 +318,92 @@ internal static class CapabilityOptionsBinder
             throw new InvalidOperationException(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.Assembly.AssemblySettingsFieldTypeMismatch), propertyPath, targetType.FullName, "null"));
         }
 
+        object converted;
+        if (TryConvertScalar(value, targetType, out converted))
+        {
+            return converted;
+        }
+
+        // Localization: Capability.Hosting.Assembly.SettingsFieldTypeMismatch - Options 字段类型不符。
+        throw new InvalidOperationException(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.Assembly.AssemblySettingsFieldTypeMismatch), propertyPath, targetType.FullName, DescribeJsonKind(value)));
+    }
+
+    /// <summary>
+    /// 按目标类型转换非 null JSON 标量（string / bool 段；数值类型转交 <see cref="TryConvertNumericScalar"/>）。
+    /// </summary>
+    /// <param name="value">JSON 标量值。</param>
+    /// <param name="targetType">目标类型。</param>
+    /// <param name="converted">转换结果（返回 true 时有值）。</param>
+    /// <returns>类型受支持且 JSON 种类匹配返回 true；否则 false（类型不符由调用方 fail-fast）。</returns>
+    private static bool TryConvertScalar(JsonElement value, Type targetType, out object converted)
+    {
         if (targetType == typeof(string))
         {
             if (value.ValueKind == JsonValueKind.String)
             {
-                return value.GetString();
+                converted = value.GetString();
+                return true;
             }
         }
         else if (targetType == typeof(bool))
         {
             if (value.ValueKind == JsonValueKind.True)
             {
+                converted = true;
                 return true;
             }
 
             if (value.ValueKind == JsonValueKind.False)
             {
-                return false;
+                converted = false;
+                return true;
             }
         }
-        else if (targetType == typeof(int))
+        else
         {
-            if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var intValue))
+            return TryConvertNumericScalar(value, targetType, out converted);
+        }
+
+        converted = null;
+        return false;
+    }
+
+    /// <summary>
+    /// 按目标类型转换非 null 数值 JSON 标量（int / long / double 段）。
+    /// </summary>
+    /// <param name="value">JSON 标量值。</param>
+    /// <param name="targetType">目标类型。</param>
+    /// <param name="converted">转换结果（返回 true 时有值）。</param>
+    /// <returns>类型受支持且 JSON 种类匹配返回 true；否则 false（类型不符由调用方 fail-fast）。</returns>
+    private static bool TryConvertNumericScalar(JsonElement value, Type targetType, out object converted)
+    {
+        if (targetType == typeof(int))
+        {
+            if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var integerValue))
             {
-                return intValue;
+                converted = integerValue;
+                return true;
             }
         }
         else if (targetType == typeof(long))
         {
             if (value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var longValue))
             {
-                return longValue;
+                converted = longValue;
+                return true;
             }
         }
         else if (targetType == typeof(double))
         {
             if (value.ValueKind == JsonValueKind.Number && value.TryGetDouble(out var doubleValue))
             {
-                return doubleValue;
+                converted = doubleValue;
+                return true;
             }
         }
 
-        // Localization: Capability.Hosting.Assembly.SettingsFieldTypeMismatch - Options 字段类型不符。
-        throw new InvalidOperationException(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.Assembly.AssemblySettingsFieldTypeMismatch), propertyPath, targetType.FullName, DescribeJsonKind(value)));
+        converted = null;
+        return false;
     }
 
     /// <summary>
