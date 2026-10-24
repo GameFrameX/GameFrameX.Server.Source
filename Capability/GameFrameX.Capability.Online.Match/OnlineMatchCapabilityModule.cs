@@ -75,8 +75,8 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
         null,
         new[]
         {
-            new CapabilityOptionalDependency("online-assets", Keys.Capability.Online.Match.OptionalAssetsAbsent),
-            new CapabilityOptionalDependency("online-matchmaking", Keys.Capability.Online.Match.OptionalMatchmakingAbsent),
+            new CapabilityOptionalDependency("online-assets", Keys.Capability.OnlineModule.Match.OptionalAssetsAbsent),
+            new CapabilityOptionalDependency("online-matchmaking", Keys.Capability.OnlineModule.Match.OptionalMatchmakingAbsent),
         },
         typeof(OnlineMatchOptions));
 

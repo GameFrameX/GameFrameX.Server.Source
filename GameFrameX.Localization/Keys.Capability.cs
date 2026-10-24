@@ -654,7 +654,7 @@ public static partial class Keys
         /// <summary>
         /// Online 能力族相关消息
         /// </summary>
-        public static class Online
+        public static class OnlineModule
         {
             /// <summary>
             /// online-match（对局）能力相关消息

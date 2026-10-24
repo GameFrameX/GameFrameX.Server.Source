@@ -83,10 +83,10 @@ public sealed class OnlineOperationsCapabilityModule : ICapabilityModule, IAdmin
         new[] { "online-foundation" },
         new[]
         {
-            new CapabilityOptionalDependency("online-assets", Localization.Keys.Capability.Online.Operations.OptionalAssetsAbsent),
-            new CapabilityOptionalDependency("online-social", Localization.Keys.Capability.Online.Operations.OptionalSocialAbsent),
-            new CapabilityOptionalDependency("online-match", Localization.Keys.Capability.Online.Operations.OptionalMatchAbsent),
-            new CapabilityOptionalDependency("online-matchmaking", Localization.Keys.Capability.Online.Operations.OptionalMatchmakingAbsent),
+            new CapabilityOptionalDependency("online-assets", Localization.Keys.Capability.OnlineModule.Operations.OptionalAssetsAbsent),
+            new CapabilityOptionalDependency("online-social", Localization.Keys.Capability.OnlineModule.Operations.OptionalSocialAbsent),
+            new CapabilityOptionalDependency("online-match", Localization.Keys.Capability.OnlineModule.Operations.OptionalMatchAbsent),
+            new CapabilityOptionalDependency("online-matchmaking", Localization.Keys.Capability.OnlineModule.Operations.OptionalMatchmakingAbsent),
         },
         typeof(OnlineOperationsOptions));
 

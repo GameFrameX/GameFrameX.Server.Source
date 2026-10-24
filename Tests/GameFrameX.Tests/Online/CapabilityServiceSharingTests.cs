@@ -453,7 +453,7 @@ public class CapabilityServiceSharingTests
         {
             var registerResolved = new SignalService { Marker = "sentinel", };
             var activateResolved = new SignalService { Marker = "sentinel", };
-            MechanismScenario.First.Optional = new[] { new CapabilityOptionalDependency("mech-second", GameFrameX.Localization.Keys.Capability.Online.Match.OptionalAssetsAbsent), };
+            MechanismScenario.First.Optional = new[] { new CapabilityOptionalDependency("mech-second", GameFrameX.Localization.Keys.Capability.OnlineModule.Match.OptionalAssetsAbsent), };
             MechanismScenario.First.Register = context => registerResolved = context.GetOptionalService<SignalService>();
             MechanismScenario.First.Activate = (context, cancellationToken) =>
             {
@@ -488,7 +488,7 @@ public class CapabilityServiceSharingTests
         CapabilityRuntime runtime = null;
         try
         {
-            MechanismScenario.First.Optional = new[] { new CapabilityOptionalDependency("mech-second", GameFrameX.Localization.Keys.Capability.Online.Match.OptionalAssetsAbsent), };
+            MechanismScenario.First.Optional = new[] { new CapabilityOptionalDependency("mech-second", GameFrameX.Localization.Keys.Capability.OnlineModule.Match.OptionalAssetsAbsent), };
             MechanismScenario.First.Register = context => context.GetOptionalService<SignalService>();
 
             var registerError = Assert.Throws<InvalidOperationException>(() => Compose(CreateOptions("mech-first", "mech-second")));

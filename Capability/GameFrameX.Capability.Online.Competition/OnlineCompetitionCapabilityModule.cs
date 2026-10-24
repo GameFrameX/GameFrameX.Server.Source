@@ -71,8 +71,8 @@ public sealed class OnlineCompetitionCapabilityModule : ICapabilityModule, IAdmi
         null,
         new[]
         {
-            new CapabilityOptionalDependency("online-assets", Localization.Keys.Capability.Online.Competition.OptionalAssetsAbsent),
-            new CapabilityOptionalDependency("online-match", Localization.Keys.Capability.Online.Competition.OptionalMatchAbsent),
+            new CapabilityOptionalDependency("online-assets", Localization.Keys.Capability.OnlineModule.Competition.OptionalAssetsAbsent),
+            new CapabilityOptionalDependency("online-match", Localization.Keys.Capability.OnlineModule.Competition.OptionalMatchAbsent),
         },
         typeof(OnlineCompetitionOptions));
 

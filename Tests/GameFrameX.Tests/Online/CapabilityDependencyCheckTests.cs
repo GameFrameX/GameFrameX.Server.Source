@@ -183,7 +183,7 @@ public sealed class CapabilityDependencyCheckTests
         CapabilityRuntime runtime = null;
         try
         {
-            var featureKey = LocalizationKeys.Capability.Online.Match.OptionalAssetsAbsent;
+            var featureKey = LocalizationKeys.Capability.OnlineModule.Match.OptionalAssetsAbsent;
             var registerInvoked = false;
             MechanismScenario.First.Optional = new[] { new CapabilityOptionalDependency("ghost-optional", featureKey), };
             MechanismScenario.First.Register = context => registerInvoked = true;
@@ -231,7 +231,7 @@ public sealed class CapabilityDependencyCheckTests
         CapabilityRuntime runtime = null;
         try
         {
-            var featureKey = LocalizationKeys.Capability.Online.Match.OptionalAssetsAbsent;
+            var featureKey = LocalizationKeys.Capability.OnlineModule.Match.OptionalAssetsAbsent;
             MechanismScenario.First.Optional = new[]
             {
                 new CapabilityOptionalDependency("mech-second", featureKey),
