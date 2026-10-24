@@ -48,22 +48,22 @@ using GameFrameX.Capability.Online.Abstractions.Events;
 public static class OnlineSocialEvents
 {
     /// <summary>好友关系变更。</summary>
-    public const string FriendshipChanged = "Online.Social.FriendshipChanged";
+    public const string FriendshipChanged = "online.social.friendshipchanged";
 
     /// <summary>屏蔽变更。</summary>
-    public const string BlockChanged = "Online.Social.BlockChanged";
+    public const string BlockChanged = "online.social.blockchanged";
 
     /// <summary>静音变更。</summary>
-    public const string MuteChanged = "Online.Social.MuteChanged";
+    public const string MuteChanged = "online.social.mutechanged";
 
     /// <summary>举报案件变更。</summary>
-    public const string ReportChanged = "Online.Social.ReportChanged";
+    public const string ReportChanged = "online.social.reportchanged";
 
     /// <summary>处罚变更。</summary>
-    public const string PunishmentChanged = "Online.Social.PunishmentChanged";
+    public const string PunishmentChanged = "online.social.punishmentchanged";
 
     /// <summary>群组变更。</summary>
-    public const string GroupChanged = "Online.Social.GroupChanged";
+    public const string GroupChanged = "online.social.groupchanged";
 
     /// <summary>事件来源标识。</summary>
     public const string Source = "online-social";

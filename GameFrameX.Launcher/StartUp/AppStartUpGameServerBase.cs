@@ -148,7 +148,8 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
     }
 
     /// <summary>
-    /// Role 服务启动 hook（缺省 = 统一形态）：热更模块装载（激活热更业务生命周期）→ 网络监听启动。
+    /// Role 服务启动 hook（缺省 = 统一形态）：热更模块装载（激活热更业务生命周期）→
+    /// 能力族组合（<see cref="ComposeCapabilitiesAsync"/> 固定步骤）→ 网络监听启动。
     /// </summary>
     /// <remarks>
     /// The role-services hook (default = the unified shape): hotfix module loading (which activates the
@@ -169,7 +170,32 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
     protected virtual async Task StartRoleServicesAsync()
     {
         await HotfixManager.LoadHotfixModuleAsync(Setting);
+        await ComposeCapabilitiesAsync();
         await StartServerAsync<DefaultMessageDecoderHandler, DefaultMessageEncoderHandler>(new DefaultMessageCompressHandler(), new DefaultMessageDecompressHandler(), HotfixManager.GetListHttpHandler(), HotfixManager.GetHttpHandler);
+    }
+
+    /// <summary>
+    /// 能力族组合固定步骤（C294 D6）：热更装载之后、网络监听之前执行——保证监听开放时桥已发布、
+    /// 热更侧钩子挂载先于能力侧声明读取。当前承载 <c>online</c> 族（经
+    /// <see cref="GameFrameX.Launcher.Online.OnlineCapabilityCompositionRoot"/>）："Online" 配置段的
+    /// <c>EnableRoles</c>（缺省 ["Game"]）命中本 Role 时组合并启动；同族进程内单例（--AllInOne 下
+    /// 首个命中 Role 组合，后续复用），停止归本类 <see cref="StopAsync(string)"/> 停机步（见
+    /// <c>OnStoppingAsync</c> 前的组合停机调用）。
+    /// </summary>
+    /// <remarks>
+    /// The fixed capability-family composition step (C294 D6): runs after the hotfix load and before
+    /// the network listeners start — bridges are published by the time listening opens and the
+    /// hotfix-side hook mounts precede the capability-side declaration reads. It currently carries the
+    /// <c>online</c> family (through
+    /// <see cref="GameFrameX.Launcher.Online.OnlineCapabilityCompositionRoot"/>): when the "Online"
+    /// section's <c>EnableRoles</c> (default ["Game"]) names this role the family is composed and
+    /// started; one composition per process for the family (under --AllInOne the first named role
+    /// composes and the rest reuse it), with the stop owned by this class's stop step.
+    /// </remarks>
+    /// <returns>表示组合操作的异步任务 / A task representing the composition operation</returns>
+    protected virtual Task ComposeCapabilitiesAsync()
+    {
+        return GameFrameX.Launcher.Online.OnlineCapabilityCompositionRoot.ComposeIfEnabledAsync(Setting);
     }
 
     /// <summary>
@@ -219,6 +245,9 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
             return;
         }
 
+        // 能力族停机（逆序于启动：停 admin → 停调度 → 逆序 Deactivate → 自动撤桥；仅组合者 Role 执行，其余 Role 与未组合为空操作）——
+        // 先于本 Role 的停机流程与 ServiceOffline 分发，消费方自此收显式 8002，不残留旧桥。
+        await GameFrameX.Launcher.Online.OnlineCapabilityCompositionRoot.StopIfComposedAsync(Setting.ServerType);
         await OnStoppingAsync(message);
         await base.StopAsync(message);
     }
@@ -243,14 +272,14 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
     /// <summary>
     /// 退出清理 hook（缺省 = 统一形态）：自停——护栏内的 <see cref="StopAsync(string)"/>，
     /// 宿主逆序停机先到时本调用被护栏吸收，<c>ServiceOffline</c> 仍恰好一次。
-    /// Game 型覆写为「Online 撤桥停 admin → 宿主停机 → 热更模块业务清理」三段编排。
+    /// Game 型覆写为「宿主停机（护栏内含能力族停止）→ 热更模块业务清理」两段编排。
     /// </summary>
     /// <remarks>
     /// The exit-cleanup hook (default = the unified shape): self-stop through the guarded
     /// <see cref="StopAsync(string)"/> — when the host's reverse-order stop wins
     /// the race, the guard absorbs this call and <c>ServiceOffline</c> still fires exactly once.
-    /// The Game shape overrides it with the three-phase orchestration: Online bridge retraction and
-    /// admin stop, the host stop, then the hotfix module's business cleanup.
+    /// The Game shape overrides it with the two-phase orchestration: the host stop (with the
+    /// capability-family stop inside the guard) then the hotfix module's business cleanup.
     /// </remarks>
     /// <param name="exitMessage">退出原因（可能为 null——启动失败路径未获得退出消息）/ The exit reason (may be null on the startup-failure path)</param>
     /// <returns>表示 hook 操作的异步任务 / A task representing the hook operation</returns>

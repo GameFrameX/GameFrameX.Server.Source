@@ -75,12 +75,17 @@ public sealed class AdminApiDispatcher
     private readonly AdminApiClaimedScope _authorizedScope;
 
     /// <summary>
-    /// 能力报告（null = 无报告面，未安装判定不可用）。
+    /// 能力报告（null = 无报告面，未安装判定与元端点不可用）。
     /// </summary>
     private readonly CapabilityReport _report;
 
     /// <summary>
-    /// 初始化 <see cref="AdminApiDispatcher"/> 并注册 <c>list_capabilities</c> 元端点（有报告面时）。
+    /// 能力服务注册表（null = 无服务面，list_capability_services 不可用）。
+    /// </summary>
+    private readonly CapabilityServices _services;
+
+    /// <summary>
+    /// 初始化 <see cref="AdminApiDispatcher"/> 并注册元端点（有报告面 / 服务面时）。
     /// </summary>
     /// <param name="registry">action 注册表（能力侧已贡献）。</param>
     /// <param name="errorCodes">管道错误码映射。</param>
@@ -88,7 +93,8 @@ public sealed class AdminApiDispatcher
     /// <param name="authorizedScope">宿主授权作用域。</param>
     /// <param name="idempotencyAdapter">幂等适配器（可空）。</param>
     /// <param name="report">能力报告（可空）。</param>
-    public AdminApiDispatcher(AdminActionRegistry registry, AdminApiErrorCodes errorCodes, IAdminApiScopeAdapter scopeAdapter, AdminApiClaimedScope authorizedScope, IAdminApiIdempotencyAdapter idempotencyAdapter = null, CapabilityReport report = null)
+    /// <param name="services">能力服务注册表（可空）。</param>
+    public AdminApiDispatcher(AdminActionRegistry registry, AdminApiErrorCodes errorCodes, IAdminApiScopeAdapter scopeAdapter, AdminApiClaimedScope authorizedScope, IAdminApiIdempotencyAdapter idempotencyAdapter = null, CapabilityReport report = null, CapabilityServices services = null)
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _errorCodes = errorCodes ?? throw new ArgumentNullException(nameof(errorCodes));
@@ -96,10 +102,21 @@ public sealed class AdminApiDispatcher
         _authorizedScope = authorizedScope ?? throw new ArgumentNullException(nameof(authorizedScope));
         _idempotencyAdapter = idempotencyAdapter;
         _report = report;
+        _services = services;
         if (report != null)
         {
+            registry.SetCurrentOwnerCapabilityId("mechanism");
             registry.Register("list_capabilities", ListCapabilitiesAsync, false);
+            registry.Register("list_capability_settings", ListCapabilitySettingsAsync, false);
         }
+
+        if (services != null)
+        {
+            registry.SetCurrentOwnerCapabilityId("mechanism");
+            registry.Register("list_capability_services", ListCapabilityServicesAsync, false);
+        }
+
+        registry.SetCurrentOwnerCapabilityId(null);
     }
 
     /// <summary>
@@ -182,7 +199,7 @@ public sealed class AdminApiDispatcher
     }
 
     /// <summary>
-    /// <c>list_capabilities</c> 元端点处理器（能力报告面：启用清单/顺序/来源/禁用项）。
+    /// <c>list_capabilities</c> 元端点处理器（能力报告面：启用清单 / 顺序 / 依赖状态 / 缺失功能 / 禁用项）。
     /// </summary>
     /// <param name="request">请求。</param>
     /// <param name="scope">已通过守卫的作用域。</param>
@@ -193,14 +210,30 @@ public sealed class AdminApiDispatcher
         var capabilities = new List<object>(_report.Entries.Count);
         foreach (var entry in _report.Entries)
         {
+            var dependencies = new List<object>(entry.Dependencies.Count);
+            foreach (var dependency in entry.Dependencies)
+            {
+                dependencies.Add(new
+                {
+                    dependency.CapabilityId,
+                    Kind = dependency.Kind.ToString(),
+                    State = dependency.State.ToString(),
+                    AbsenceReason = dependency.AbsenceReason.ToString(),
+                });
+            }
+
             capabilities.Add(new
             {
                 entry.Manifest.Id,
                 entry.Manifest.Version,
                 entry.Manifest.Actions,
                 entry.Manifest.Requires,
+                OptionalCapabilityIds = ToOptionalCapabilityIds(entry.Manifest),
                 entry.SourceAssemblyName,
                 State = entry.State.ToString(),
+                Dependencies = dependencies,
+                entry.AbsentFeatures,
+                entry.SettingsConfiguredButNotAssembled,
             });
         }
 
@@ -210,6 +243,95 @@ public sealed class AdminApiDispatcher
             _report.EnabledIdsInOrder,
         };
         return Task.FromResult(payload);
+    }
+
+    /// <summary>
+    /// <c>list_capability_services</c> 元端点处理器（服务注册表面：类型键 / 命名键 / 来源 / 是否覆盖）。
+    /// </summary>
+    /// <param name="request">请求。</param>
+    /// <param name="scope">已通过守卫的作用域。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>服务注册表载荷。</returns>
+    private Task<object> ListCapabilityServicesAsync(AdminApiRequest request, AdminApiClaimedScope scope, CancellationToken cancellationToken)
+    {
+        var overriddenKeys = new HashSet<string>(StringComparer.Ordinal);
+        var registrations = _services.Registrations;
+        for (var i = 0; i < registrations.Count; i++)
+        {
+            if (registrations[i].IsOverride)
+            {
+                overriddenKeys.Add(registrations[i].ServiceType.FullName + "|" + registrations[i].Name);
+            }
+        }
+
+        var services = new List<object>(registrations.Count);
+        for (var i = 0; i < registrations.Count; i++)
+        {
+            var registration = registrations[i];
+            services.Add(new
+            {
+                ServiceType = registration.ServiceType.FullName,
+                registration.Name,
+                registration.OwnerCapabilityId,
+                registration.IsOverride,
+                IsOverridden = overriddenKeys.Contains(registration.ServiceType.FullName + "|" + registration.Name),
+            });
+        }
+
+        object payload = new { Services = services, };
+        return Task.FromResult(payload);
+    }
+
+    /// <summary>
+    /// <c>list_capability_settings</c> 元端点处理器（Options 字段生效值面：每个字段的生效值与来源）。
+    /// </summary>
+    /// <param name="request">请求。</param>
+    /// <param name="scope">已通过守卫的作用域。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>Options 生效值载荷。</returns>
+    private Task<object> ListCapabilitySettingsAsync(AdminApiRequest request, AdminApiClaimedScope scope, CancellationToken cancellationToken)
+    {
+        var capabilities = new List<object>(_report.Entries.Count);
+        foreach (var entry in _report.Entries)
+        {
+            var fields = new List<object>(entry.SettingsFields.Count);
+            foreach (var field in entry.SettingsFields)
+            {
+                fields.Add(new
+                {
+                    field.FieldPath,
+                    Value = field.EffectiveValue,
+                    Source = field.Source.ToString(),
+                });
+            }
+
+            capabilities.Add(new
+            {
+                entry.Manifest.Id,
+                State = entry.State.ToString(),
+                SettingsFields = fields,
+                entry.SettingsConfiguredButNotAssembled,
+            });
+        }
+
+        object payload = new { Capabilities = capabilities, };
+        return Task.FromResult(payload);
+    }
+
+    /// <summary>
+    /// 提取 manifest 可选依赖 Id 集合（载荷显示用）。
+    /// </summary>
+    /// <param name="manifest">能力清单。</param>
+    /// <returns>可选依赖 Id 数组。</returns>
+    private static string[] ToOptionalCapabilityIds(CapabilityManifest manifest)
+    {
+        var identifiers = new string[manifest.Optional.Count];
+        for (var i = 0; i < manifest.Optional.Count; i++)
+        {
+            identifiers[i] = manifest.Optional[i].CapabilityId;
+        }
+
+        return identifiers;
     }
 
     /// <summary>

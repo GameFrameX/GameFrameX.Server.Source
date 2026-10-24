@@ -29,6 +29,7 @@
 
 using System.Net;
 using System.Threading.RateLimiting;
+using GameFrameX.Capability.Hosting.Core;
 using GameFrameX.Foundation.Localization.Core;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -44,10 +45,11 @@ namespace GameFrameX.Capability.Hosting.AdminApi;
 /// <para>
 /// 维护约束：环境中立（不读 ASPNETCORE_* 环境假设，无配置文件依赖，装配选项即全部配置）；
 /// 与 Game 服主进程的协议端口互不冲突（独立端口）；停止走优雅关闭（在途请求完成后退出）；
-/// 与业务装配开关正交（管理面可独立启停，零能力形态下全部 action 返回未安装码）。
+/// 与业务装配开关正交（管理面可独立启停，零能力形态下全部 action 返回未安装码）；
+/// 实现 <see cref="ICapabilityAdminApiPlane"/> 挂进 <see cref="CapabilityRuntime"/>（管理面后启先停）。
 /// </para>
 /// </summary>
-public sealed class AdminApiServer
+public sealed class AdminApiServer : ICapabilityAdminApiPlane
 {
     /// <summary>
     /// 限流策略名（按客户端 IP 分区的固定窗口）。
@@ -83,8 +85,9 @@ public sealed class AdminApiServer
     /// <summary>
     /// 启动监听（返回即已就绪；长驻服务由宿主生命周期承载——RunAsync 会二次触发 Kestrel 启动被拒绝，禁用）。
     /// </summary>
+    /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>异步任务。</returns>
-    public async Task StartAsync()
+    public async Task StartAsync(CancellationToken cancellationToken = default)
     {
         if (_application != null)
         {
@@ -144,7 +147,7 @@ public sealed class AdminApiServer
         }
 
         _application = application;
-        await application.StartAsync().ConfigureAwait(false);
+        await application.StartAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

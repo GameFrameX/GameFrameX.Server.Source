@@ -2,14 +2,18 @@
     <Import Project="../../Version.props" Label="版本号定义"/>
 
     <PropertyGroup>
-        <Description>GameFrameX.Capability.Online.Match,GFX Online 对局能力包:权威对局 Actor/同步协议/重连/幂等结算/样例玩法(InMemory 默认存储,UseOnlineMatchStore 替换缝)+ hosting 扩展(AddOnlineMatchRuntime)+ admin handlers(end_abnormal_match). Match capability package for the GFX Online family: authoritative match actor, sync protocol, reconnect, idempotent settlement and the sample game with in-memory default stores, the hosting extension and admin handlers. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <Description>GameFrameX.Capability.Online.Match,GFX Online 对局能力包:权威对局 Actor/同步协议/重连/幂等结算/样例玩法与撮合成功通知推送(InMemory 默认存储,描述符服务面 Override 替换)+ admin handlers(end_abnormal_match). Match capability package for the GFX Online family: authoritative match actor, sync protocol, reconnect, idempotent settlement, the sample game and the match-made notification push with in-memory default stores and admin handlers. Documentation: https://gameframex.doc.alianblank.com</Description>
         <PackageTags>GameFrameX,Capability,Online,Match,Authoritative,Settlement,Reconnect,GameServer</PackageTags>
-        <LangVersion>10</LangVersion>
+        <!-- 引用的传递面（Core→Network.HTTP）带入 AspNetCore.OpenApi 源生成器（要求 C#11 file 类型），
+             与 LangVersion 10 钉死冲突；本包语言版本随 Directory.Build.props（latest），
+             语法风格仍按仓内 C#10 惯例书写（无 switch 表达式 / record / 顶层语句）。 -->
     </PropertyGroup>
 
     <ItemGroup>
         <ProjectReference Include="../GameFrameX.Capability.Online.Abstractions/GameFrameX.Capability.Online.Abstractions.csproj"/>
         <ProjectReference Include="../GameFrameX.Capability.Online.Assets/GameFrameX.Capability.Online.Assets.csproj"/>
+        <ProjectReference Include="../../GameFrameX.Core/GameFrameX.Core.csproj"/>
+        <ProjectReference Include="../../GameFrameX.Proto/GameFrameX.Proto.csproj"/>
         <ProjectReference Include="../GameFrameX.Capability.Online.Matchmaking/GameFrameX.Capability.Online.Matchmaking.csproj"/>
         <ProjectReference Include="../GameFrameX.Capability.Hosting.Core/GameFrameX.Capability.Hosting.Core.csproj"/>
     </ItemGroup>

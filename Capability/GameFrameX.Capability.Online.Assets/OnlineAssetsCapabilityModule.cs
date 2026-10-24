@@ -1,30 +1,30 @@
 // ==========================================================================================
 //   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents and other rights
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents and related rights
 //   均受中华人民共和国及相关国际法律法规保护。
 //   are protected by the laws of the People's Republic of China and other international regulations.
 //   使用本项目须严格遵守相关法律法规与开源许可证之规定。
-//   Usage of this project must strictly comply with relevant laws, regulations, and open-source licenses.
+//   Usage of this project must strictly comply with applicable laws, regulations and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
 //   This project is licensed solely under the Apache License 2.0,
-//   完整许可证文本请参见源代码根目录的 LICENSE 文件。
-//   please refer to the full license text in the LICENSE file located at the root of the source code.
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please refer to the LICENSE file located at the root of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//   It is prohibited to use this project to engage in any activity that endangers national security, disrupts social order,
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
 //   侵犯公民合法权益等法律法规所禁止的行为！
-//   or infringe upon the legal rights and interests of citizens as prohibited by laws and regulations!
+//   or infringe upon the legal rights and interests of others as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
 //   Any legal disputes or liabilities arising from secondary development,
-//   本组织不承担任何责任，开发者应自行承担。
+//   本组织与贡献者概不承担任何责任，开发者须自行承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
 //   GitHub Repository: https://github.com/GameFrameX
 //   Gitee  仓库：https://gitee.com/GameFrameX
-//   Gitee Repository: https://gitee.com/GameFrameX
+//   Gitee Repository: https://github.com/GameFrameX
 //   CNB  仓库：https://cnb.cool/GameFrameX
-//   CNB Repository: https://cnb.cool/GameFrameX
+//   CNB Repository: https://github.com/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
-//   Official documentation: https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
 using GameFrameX.Capability.Hosting.Abstractions;
@@ -39,28 +39,31 @@ using GameFrameX.Capability.Online.Abstractions.Idempotency;
 namespace GameFrameX.Capability.Online.Assets;
 
 /// <summary>
-/// 资产能力（钱包 / 库存 / 账本 / 统一发放）的自装配模块（C231 P3，自 Runtime 壳过渡模块无参化迁入）。
+/// 资产能力（钱包 / 库存 / 账本 / 统一发放）的自装配模块（C231 P3 迁入；C294 改写为三段生命周期机制模块）。
 /// <para>
-/// 维护约束（服务共享协议）：模块无参构造（<see cref="CapabilityAssembly"/> 扫描可发现）；<c>Register</c> 自装配本域——
-/// store 经 <see cref="CapabilityRegistrationContext.TryGetService{TService}"/> 探测组合根预置 / <c>UseOnlineAssetStore</c>
-/// 替换缝，未命中构造 InMemory 默认；跨域硬依赖（幂等 / 事件出口 / 审计读面）经上下文解析；
-/// 对外产物（store 接口 + 查询 / 发放服务）注册回共享面供后序能力与组合根取用。
+/// 维护约束（服务共享协议）：模块无参构造（<see cref="CapabilityAssembly"/> 扫描可发现）；<c>Register</c>
+/// 自装配本域——两 store 以懒默认注册后取用（族 / 宿主 Override 自动胜出，模块不做探测回退）；跨域硬依赖
+///（幂等 / 事件出口 / 审计读面）经上下文解析（审计读面为族基建预置的 <see cref="IOnlineAuditReader"/>）；
+/// 对外产物（查询 / 发放服务）注册回共享面供后序能力取用。本能力无 Options 根类型、无依赖声明；
+/// <c>ActivateAsync</c> 无桥与预建资源（空实现）、<c>DeactivateAsync</c> 无自持资源（空实现）。
 /// </para>
 /// </summary>
 /// <remarks>
-/// The self-assembling module of the assets capability (wallet / inventory / ledger / unified granting;
-/// C231 P3, migrated from the Runtime-shell transitional module and made parameterless). The module has a
-/// parameterless constructor (discoverable by <see cref="CapabilityAssembly"/> scanning); <c>Register</c>
-/// self-assembles the domain — stores probe the composition-root pre-seed / the <c>UseOnlineAssetStore</c>
-/// replacement seam via <see cref="CapabilityRegistrationContext.TryGetService{TService}"/> and fall back to
-/// in-memory defaults; cross-domain hard dependencies (idempotency / the event outlet / the audit read face)
-/// resolve through the context; outward products (store interfaces plus the query / grant services) are
-/// registered back into the shared face for later capabilities and the composition root.
+/// The self-assembling module of the assets capability (wallet / inventory / ledger / unified
+/// granting; C231 P3, rewritten by C294 for the three-stage lifecycle). The module has a
+/// parameterless constructor (discoverable by <see cref="CapabilityAssembly"/> scanning);
+/// <c>Register</c> self-assembles the domain — the two stores register lazy in-memory defaults and
+/// resolve through the shared face (family / host overrides win automatically, no probing
+/// fallback); cross-domain hard dependencies (idempotency / the event outlet / the audit read face)
+/// resolve through the context (the audit read face is the family-preset
+/// <see cref="IOnlineAuditReader"/>); outward products (the query / grant services) are registered
+/// back into the shared face for later capabilities. The capability declares no options root and no
+/// dependencies; <c>ActivateAsync</c> / <c>DeactivateAsync</c> hold nothing to do.
 /// </remarks>
 public sealed class OnlineAssetsCapabilityModule : ICapabilityModule, IAdminActionContributor
 {
     /// <summary>
-    /// 资产能力清单（Id 冻结 = 终态包名；action 集合与幂等包裹位逐字迁移自壳过渡模块）。
+    /// 资产能力清单（Id 冻结 = 终态包名；action 集合与幂等包裹位逐字迁移自壳过渡模块；无依赖、无 Options）。
     /// </summary>
     public static readonly CapabilityManifest ManifestInstance = new(
         "online-assets",
@@ -68,12 +71,12 @@ public sealed class OnlineAssetsCapabilityModule : ICapabilityModule, IAdminActi
         new[] { "grant_asset", "revoke_asset", "query_wallet_ledger", "query_asset_audit", "query_transaction_detail" });
 
     /// <summary>
-    /// 资产存储（钱包 / 库存 / 账本；Register 期解析或构造）。
+    /// 资产存储（钱包 / 库存 / 账本；Register 期解析）。
     /// </summary>
     private IOnlineAssetStore _assetStore;
 
     /// <summary>
-    /// 资产交易存储（Register 期解析或构造）。
+    /// 资产交易存储（Register 期解析）。
     /// </summary>
     private IOnlineAssetTransactionStore _assetTransactionStore;
 
@@ -88,7 +91,7 @@ public sealed class OnlineAssetsCapabilityModule : ICapabilityModule, IAdminActi
     private OnlineGrantService _grantService;
 
     /// <summary>
-    /// 统一审计读面（Register 期解析；组合根预置或聚合域缺席时的空读面）。
+    /// 统一审计读面（Register 期解析；族基建预置 OnlineAuditService 的读面）。
     /// </summary>
     private IOnlineAuditReader _audit;
 
@@ -101,19 +104,14 @@ public sealed class OnlineAssetsCapabilityModule : ICapabilityModule, IAdminActi
     /// <inheritdoc />
     public void Register(CapabilityRegistrationContext context)
     {
-        if (!context.TryGetService(out _assetStore))
-        {
-            _assetStore = new InMemoryOnlineAssetStore();
-            context.AddService(_assetStore);
-        }
+        // 两 store：懒默认注册后经共享面取用（族 / 宿主 GameDb Override 自动胜出）。
+        context.AddService<IOnlineAssetStore>(static _ => new InMemoryOnlineAssetStore());
+        context.AddService<IOnlineAssetTransactionStore>(static _ => new InMemoryOnlineAssetTransactionStore());
+        _assetStore = context.GetService<IOnlineAssetStore>();
+        _assetTransactionStore = context.GetService<IOnlineAssetTransactionStore>();
 
-        if (!context.TryGetService(out _assetTransactionStore))
-        {
-            _assetTransactionStore = new InMemoryOnlineAssetTransactionStore();
-            context.AddService(_assetTransactionStore);
-        }
-
-        _audit = context.TryGetService(out IOnlineAuditReader auditReader) ? auditReader : new EmptyAuditReader();
+        // 跨域硬依赖：审计读面 / 幂等 / 事件出口均为族基建预置，直接解析。
+        _audit = context.GetService<IOnlineAuditReader>();
         var idempotency = context.GetService<OnlineIdempotencyService>();
         var eventPublisher = context.GetService<IOnlineEventPublisher>();
         _assetQuery = new OnlineAssetQueryService(_assetStore, _assetTransactionStore);
@@ -123,21 +121,20 @@ public sealed class OnlineAssetsCapabilityModule : ICapabilityModule, IAdminActi
     }
 
     /// <inheritdoc />
+    public Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public Task DeactivateAsync(CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
     public void RegisterAdminActions(AdminActionRegistry registry)
     {
         new OnlineAdminAssetHandlers(_grantService, _assetQuery, _audit, _assetTransactionStore).Register(registry);
-    }
-
-    /// <summary>
-    /// 聚合审计域缺席时的空读面（最小组合根语义：审计能力未安装 = 无审计记录；全能力形态由组合根预置真实读面，
-    /// 行为与壳直连逐语句等价）。
-    /// </summary>
-    private sealed class EmptyAuditReader : IOnlineAuditReader
-    {
-        /// <inheritdoc />
-        public Task<OnlineResult<OnlineAuditPage>> QueryAsync(OnlineScope scope, OnlineAuditQuery query = null, CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(OnlineResult<OnlineAuditPage>.Ok(new OnlineAuditPage(Array.Empty<OnlineAuditRecord>(), null)));
-        }
     }
 }

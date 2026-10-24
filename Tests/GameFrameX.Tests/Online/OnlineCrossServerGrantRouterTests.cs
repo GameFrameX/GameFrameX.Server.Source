@@ -186,9 +186,9 @@ namespace GameFrameX.Tests.Online
                 return new OnlineGrantService(assetStore, new InMemoryOnlineAssetTransactionStore(), idempotencyService, new NullPublisher(), AlertSink);
             }
 
-            public OnlineCrossServerGrantRouter CreateRouter(OnlineGrantService localService, IOnlineCrossServerGrantTransport transport, OnlineGrantCompensationQueue queue = null)
+            public OnlineCrossServerGrantRouter CreateRouter(OnlineGrantService localService, IOnlineCrossServerGrantTransport transport)
             {
-                return new OnlineCrossServerGrantRouter(100, localService, transport, queue ?? new OnlineGrantCompensationQueue(transport, AlertSink));
+                return new OnlineCrossServerGrantRouter(100, localService, transport, new OnlineGrantCompensationQueue(transport, AlertSink));
             }
         }
 

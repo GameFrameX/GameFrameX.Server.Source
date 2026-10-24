@@ -79,12 +79,12 @@ public sealed class OnlineMatchRuntime
     /// </summary>
     /// <param name="store">对局存储。</param>
     /// <param name="eventPublisher">事件发布器（可空）。</param>
-    /// <param name="options">运行参数（可空，取默认值）。</param>
-    public OnlineMatchRuntime(IOnlineMatchActorStore store, IOnlineEventPublisher eventPublisher, OnlineMatchRuntimeOptions options = null)
+    /// <param name="options">运行参数（必填；机制合并后的 Options 终值，不再兜底默认）。</param>
+    public OnlineMatchRuntime(IOnlineMatchActorStore store, IOnlineEventPublisher eventPublisher, OnlineMatchRuntimeOptions options)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _eventPublisher = eventPublisher;
-        _options = options == null ? new OnlineMatchRuntimeOptions() : options;
+        _options = options ?? throw new ArgumentNullException(nameof(options));
     }
 
     /// <summary>

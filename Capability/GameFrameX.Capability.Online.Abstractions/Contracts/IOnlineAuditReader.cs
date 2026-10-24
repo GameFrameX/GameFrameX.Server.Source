@@ -37,7 +37,7 @@ namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 /// 不引入对聚合域（Operations/Audit 实现体）的编译期依赖。
 /// <para>
 /// 维护约束：作用域只锚定 TenantId/AppId 两键（审计是跨区服检索域）；实现方 = <c>OnlineAuditService</c>
-/// （P4 归 Operations 包）；装配经能力服务共享面注入（组合根 <c>UseService&lt;IOnlineAuditReader&gt;</c>）。
+///（C294 起随族基建落在 Online.Abstractions.Audit，由 <c>OnlineCapabilityFamily</c> 预置到共享服务面）。
 /// </para>
 /// </summary>
 /// <remarks>
@@ -46,8 +46,8 @@ namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 /// handlers query domain-scoped audit trails (e.g. query_asset_audit) through this interface without a
 /// compile-time dependency on the aggregate domain (the Operations/Audit implementation). The scope anchors
 /// on TenantId/AppId only (audit is a cross-server retrieval domain); the implementor is
-/// <c>OnlineAuditService</c> (moving to the Operations package in P4); wiring goes through the capability
-/// service-sharing face (composition-root <c>UseService&lt;IOnlineAuditReader&gt;</c>).
+/// <c>OnlineAuditService</c> (relocated into Online.Abstractions.Audit as family infrastructure by
+/// C294, pre-seeded onto the shared service face by <c>OnlineCapabilityFamily</c>).
 /// </remarks>
 public interface IOnlineAuditReader
 {

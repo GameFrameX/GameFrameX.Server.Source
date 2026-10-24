@@ -59,7 +59,7 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
     private readonly IOnlineEventPublisher _eventPublisher;
 
     /// <summary>在线事实探针（可空：未装配时离线清理退化为「不执行」而非误判全员离线）。</summary>
-    private readonly IOnlinePartyPresenceProbe _presenceProbe;
+    private IOnlinePartyPresenceProbe _presenceProbe;
 
     /// <summary>跨域社交裁决（可空：null = 不启用屏蔽/处罚裁决，既有行为不变）。</summary>
     private readonly IOnlineSocialGate _socialGate;
@@ -105,6 +105,19 @@ public sealed class OnlinePartyService : IOnlineChannelMembershipProbe
         _maxMembers = maxMembers;
         _inviteTimeToLiveSeconds = inviteTimeToLiveSeconds;
         _idleTimeToLiveSeconds = idleTimeToLiveSeconds;
+    }
+
+    /// <summary>
+    /// 后注入在线事实探针（Activate 期由能力模块经 <c>GetServices&lt;IOnlinePartyPresenceProbe&gt;</c> 枚举扩展点后回填）。
+    /// <para>
+    /// 维护约束：探针实现常来自非直接依赖的能力包（如 online-foundation），Register 期不可越界解析，
+    /// 故构造期可空、激活期后注入；重复注入以后一次为准（覆盖），传 null 等价于不启用离线清理。
+    /// </para>
+    /// </summary>
+    /// <param name="presenceProbe">在线事实探针（可空）。</param>
+    public void AttachPresenceProbe(IOnlinePartyPresenceProbe presenceProbe)
+    {
+        _presenceProbe = presenceProbe;
     }
 
     /// <summary>

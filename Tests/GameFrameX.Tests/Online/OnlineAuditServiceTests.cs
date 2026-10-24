@@ -30,7 +30,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using GameFrameX.Capability.Online.Operations.Audit;
+using GameFrameX.Capability.Online.Abstractions.Audit;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Events;
 using GameFrameX.Capability.Online.Abstractions.Scope;

@@ -415,10 +415,17 @@ namespace GameFrameX.Tests.Online
             public const string MatchId = "match-1";
 
             /// <summary>
-            /// 初始化测试基座。
+            /// 以包内默认运行参数初始化测试基座。
             /// </summary>
-            /// <param name="options">运行参数（可空）。</param>
-            public Harness(OnlineMatchRuntimeOptions options = null)
+            public Harness() : this(new OnlineMatchRuntimeOptions())
+            {
+            }
+
+            /// <summary>
+            /// 以指定运行参数初始化测试基座。
+            /// </summary>
+            /// <param name="options">运行参数。</param>
+            public Harness(OnlineMatchRuntimeOptions options)
             {
                 Store = new InMemoryOnlineMatchActorStore();
                 Runtime = new OnlineMatchRuntime(Store, new OnlineEventRecorder(), options);

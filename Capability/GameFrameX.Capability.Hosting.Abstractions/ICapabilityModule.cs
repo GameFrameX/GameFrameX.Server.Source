@@ -30,10 +30,17 @@
 namespace GameFrameX.Capability.Hosting.Abstractions;
 
 /// <summary>
-/// 能力模块契约（一个能力包对机制的全部贡献入口）。
+/// 能力模块契约（一个能力包对机制的全部贡献入口，三段生命周期）。
 /// <para>
 /// 维护约束（机制开放红线）：实现类不得依赖机制包以外的任何能力包；机制包（Hosting 三件套）
-/// 对能力实现零引用、零硬编码清单——新增能力 = 新 csproj + 自带 manifest + 本接口实现，机制零改动。
+/// 对能力实现零引用、零硬编码清单——新增能力 = 新增部署程序集 + 自带 manifest + 本接口实现，机制零改动。
+/// </para>
+/// <para>
+/// 生命周期约束：
+/// <see cref="Register"/> 只做注册（服务 / 调度 job / 事件订阅 / 钩子声明 / 宿主扩展点声明），不做 IO；
+/// <see cref="ActivateAsync"/> 在宿主启动期按依赖拓扑序执行（发布桥、预建资源、建立订阅），
+/// 任一模块激活失败即宿主启动失败（已激活模块逆序回滚）；
+/// <see cref="DeactivateAsync"/> 在宿主停止期按拓扑逆序执行（释放资源），失败只记日志不阻断其余模块停止。
 /// </para>
 /// </summary>
 public interface ICapabilityModule
@@ -44,8 +51,24 @@ public interface ICapabilityModule
     CapabilityManifest Manifest { get; }
 
     /// <summary>
-    /// 向机制注册本能力的贡献（调度 job / 事件 job；admin action 经管理面注册契约另行贡献）。
+    /// 装配期注册（全宿主拓扑定序后逐能力执行一次；只收集声明，不得做 IO 或启动后台资源）。
     /// </summary>
     /// <param name="context">注册上下文（仅本能力可见）。</param>
     void Register(CapabilityRegistrationContext context);
+
+    /// <summary>
+    /// 宿主启动期激活（Requires 拓扑序）：发布桥、预建资源；不得重复执行。
+    /// <para>维护约束：任一模块激活失败 = 宿主启动失败（机制对已激活模块逆序回滚后抛出）；桥的撤销由机制在停止期自动完成，模块不得自行撤销。</para>
+    /// </summary>
+    /// <param name="context">激活上下文（只读解析面 + 桥发布面）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>异步任务。</returns>
+    Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// 宿主停止期去激活（拓扑逆序）：释放资源；失败记日志，不阻断其余模块停止。
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>异步任务。</returns>
+    Task DeactivateAsync(CancellationToken cancellationToken);
 }

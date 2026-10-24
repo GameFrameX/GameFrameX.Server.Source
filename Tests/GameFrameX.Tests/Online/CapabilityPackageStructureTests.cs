@@ -33,28 +33,46 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 能力包结构门禁测试（C228 P1：C223 目录矩阵的包级升维）——包间 ProjectReference 方向断言
-    /// （精确引用集合 = 无多引无漏引）+ Hosting 三包对能力包引用恒零（机制开放红线）+
+    /// 能力包结构门禁测试（C228 P1：C223 目录矩阵的包级升维；C294 能力注入契约终态重冻）——包间 ProjectReference 方向断言
+    /// （精确引用集合 = 无多引无漏引）+ 能力包间引用 ⊆ manifest 声明依赖 + Hosting 三包对能力包引用恒零（机制开放红线）+
     /// 脊柱包零上行引用 + 工程引用图无环。
     /// </summary>
     public class CapabilityPackageStructureTests
     {
         /// <summary>
-        /// 期望的 ProjectReference 精确集合（工程 → 允许引用的工程名集合；C228 P1 终态 + C231 P3 增量：三叶子包 + 脊柱 admin 线缆契约边 + 单体/壳叶子引用）。
+        /// 期望的 ProjectReference 精确集合（工程 → 允许引用的工程名集合；C294 终态，逐条取自 Capability/*/ *.csproj：
+        /// Hosting.Abstractions → Localization；Hosting.AdminApi → Abstractions + Localization + Hosting.Core；
+        /// Online.Abstractions → Localization + Hosting.AdminApi；Social → Apps + DataBase；Match → Core + Proto）。
+        /// </summary>
         private static readonly Dictionary<string, string[]> ExpectedProjectReferences = new()
         {
-            ["GameFrameX.Capability.Hosting.Abstractions"] = Array.Empty<string>(),
+            ["GameFrameX.Capability.Hosting.Abstractions"] = new[] { "GameFrameX.Localization" },
             ["GameFrameX.Capability.Hosting.Core"] = new[] { "GameFrameX.Capability.Hosting.Abstractions", "GameFrameX.Localization" },
-            ["GameFrameX.Capability.Hosting.AdminApi"] = new[] { "GameFrameX.Capability.Hosting.Abstractions", "GameFrameX.Localization" },
+            ["GameFrameX.Capability.Hosting.AdminApi"] = new[] { "GameFrameX.Capability.Hosting.Abstractions", "GameFrameX.Localization", "GameFrameX.Capability.Hosting.Core" },
             ["GameFrameX.Capability.Online.Assets"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Hosting.Core" },
-            ["GameFrameX.Capability.Online.Social"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation", "GameFrameX.Capability.Hosting.Core" },
+            ["GameFrameX.Capability.Online.Social"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation", "GameFrameX.Capability.Hosting.Core", "GameFrameX.DataBase", "GameFrameX.Apps" },
             ["GameFrameX.Capability.Online.Matchmaking"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Hosting.Core" },
-            ["GameFrameX.Capability.Online.Match"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Online.Matchmaking", "GameFrameX.Capability.Hosting.Core" },
+            ["GameFrameX.Capability.Online.Match"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Assets", "GameFrameX.Core", "GameFrameX.Proto", "GameFrameX.Capability.Online.Matchmaking", "GameFrameX.Capability.Hosting.Core" },
             ["GameFrameX.Capability.Online.Competition"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Online.Match", "GameFrameX.Capability.Hosting.Core" },
             ["GameFrameX.Capability.Online.Operations"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Online.Social", "GameFrameX.Capability.Online.Matchmaking", "GameFrameX.Capability.Online.Match", "GameFrameX.Capability.Hosting.Core" },
             ["GameFrameX.Capability.Online.Abstractions"] = new[] { "GameFrameX.Localization", "GameFrameX.Capability.Hosting.AdminApi" },
             ["GameFrameX.Capability.Online.Foundation"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Hosting.Core" },
             ["GameFrameX.Capability.Online.Persistence"] = new[] { "GameFrameX.Capability.Online.Abstractions", "GameFrameX.Capability.Online.Foundation", "GameFrameX.Capability.Online.Assets", "GameFrameX.Capability.Online.Social", "GameFrameX.Capability.Hosting.Core", "GameFrameX.DataBase" },
+        };
+
+        /// <summary>
+        /// 七个 Online 能力包与其能力清单（包名 → 清单实例；清单依赖声明运行期取自各模块 ManifestInstance，
+        /// 只冻结能力 Id ↔ 包名映射）。Abstractions / Persistence / Hosting 不是能力包，不在此表。
+        /// </summary>
+        private static readonly (string PackageName, string CapabilityId, GameFrameX.Capability.Hosting.Abstractions.CapabilityManifest Manifest)[] CapabilityPackages =
+        {
+            ("GameFrameX.Capability.Online.Foundation", "online-foundation", GameFrameX.Capability.Online.Foundation.OnlineFoundationCapabilityModule.ManifestInstance),
+            ("GameFrameX.Capability.Online.Assets", "online-assets", GameFrameX.Capability.Online.Assets.OnlineAssetsCapabilityModule.ManifestInstance),
+            ("GameFrameX.Capability.Online.Social", "online-social", GameFrameX.Capability.Online.Social.OnlineSocialCapabilityModule.ManifestInstance),
+            ("GameFrameX.Capability.Online.Matchmaking", "online-matchmaking", GameFrameX.Capability.Online.Matchmaking.OnlineMatchmakingCapabilityModule.ManifestInstance),
+            ("GameFrameX.Capability.Online.Match", "online-match", GameFrameX.Capability.Online.Match.OnlineMatchCapabilityModule.ManifestInstance),
+            ("GameFrameX.Capability.Online.Competition", "online-competition", GameFrameX.Capability.Online.Competition.OnlineCompetitionCapabilityModule.ManifestInstance),
+            ("GameFrameX.Capability.Online.Operations", "online-operations", GameFrameX.Capability.Online.Operations.OnlineOperationsCapabilityModule.ManifestInstance),
         };
 
         /// <summary>
@@ -101,6 +119,47 @@ namespace GameFrameX.Tests.Online
             }
 
             Assert.True(violations.Count == 0, "包引用图偏离声明拓扑：" + Environment.NewLine + string.Join(Environment.NewLine, violations));
+        }
+
+        /// <summary>
+        /// 断言每个 Online 能力包对其它能力包的 ProjectReference ⊆ 其 manifest 的必选 ∪ 可选依赖
+        /// （编译期引用面不得超出装配期声明的依赖面——否则可选依赖缺席时仍有硬编译耦合，依赖检查形同虚设）。
+        /// 能力 Id ↔ 包名映射冻结；依赖集合运行期读 ManifestInstance，不保留硬编码副本。
+        /// </summary>
+        [Fact]
+        public void CapabilityPackageReferences_AreSubsetOfManifestDependencies()
+        {
+            var packageByCapabilityId = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var (packageName, capabilityId, manifest) in CapabilityPackages)
+            {
+                Assert.Equal(capabilityId, manifest.Id);
+                packageByCapabilityId.Add(manifest.Id, packageName);
+            }
+
+            var capabilityPackageNames = new HashSet<string>(packageByCapabilityId.Values, StringComparer.Ordinal);
+            var violations = new List<string>();
+            foreach (var (packageName, _, manifest) in CapabilityPackages)
+            {
+                var declaredIds = manifest.Requires.Concat(manifest.Optional.Select(dependency => dependency.CapabilityId)).ToList();
+                var unmappedIds = declaredIds.Where(id => !packageByCapabilityId.ContainsKey(id)).ToList();
+                if (unmappedIds.Count > 0)
+                {
+                    violations.Add($"{packageName} 的 manifest 声明了未映射到能力包的依赖：{string.Join(", ", unmappedIds)}");
+                }
+
+                var declaredPackages = new HashSet<string>(declaredIds.Where(packageByCapabilityId.ContainsKey).Select(id => packageByCapabilityId[id]), StringComparer.Ordinal);
+                var undeclared = ReadProjectReferences(packageName)
+                    .Where(capabilityPackageNames.Contains)
+                    .Where(reference => !declaredPackages.Contains(reference))
+                    .OrderBy(reference => reference, StringComparer.Ordinal)
+                    .ToList();
+                if (undeclared.Count > 0)
+                {
+                    violations.Add($"{packageName}（{manifest.Id}）引用了未在 requires ∪ optional 声明的能力包：{string.Join(", ", undeclared)}");
+                }
+            }
+
+            Assert.True(violations.Count == 0, "能力包编译期引用超出 manifest 依赖声明：" + Environment.NewLine + string.Join(Environment.NewLine, violations));
         }
 
         /// <summary>
@@ -238,14 +297,14 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 断言脊柱包（Capability.Online.Abstractions）对地基/域命名空间零引用
-        /// （包内方向规则：只允许脊柱内部向下；地基与肢体命名空间出现在 Abstractions 源码即违规，
-        /// 含 using 之外的限定名形态——C223 Events 零域引用断言的包级升维）。
+        /// 断言脊柱包（Capability.Online.Abstractions）对地基/能力包/持久化命名空间零引用
+        /// （包内方向规则：只允许脊柱内部向下；地基、七个能力包与持久化包的命名空间出现在 Abstractions 源码即违规，
+        /// 含 using 之外的限定名形态——C223 Events 零域引用断言的包级升维；旧 GameFrameX.Online.* 命名空间保留为退役守卫）。
         /// </summary>
         [Fact]
         public void SpinePackage_HasNoUpwardOrDomainTypeReferences()
         {
-            var upwardPattern = new Regex(@"GameFrameX\.Capability\.Online\.Foundation\.(Identity|Session|Presence|Storage)\.[A-Z]|GameFrameX\.Online\.(Assets|Audit|GameEvents|HotfixRollback|Leaderboard|Match|Matchmaking|Overview|Party|Season|Social|Timeline|Tournament)\.[A-Z]");
+            var upwardPattern = new Regex(@"GameFrameX\.Capability\.Online\.(Foundation|Assets|Social|Matchmaking|Match|Competition|Operations|Persistence)\b|GameFrameX\.Online\.[A-Z]");
             var violations = new List<string>();
             foreach (var file in EnumeratePackageSourceFiles("GameFrameX.Capability.Online.Abstractions"))
             {
@@ -261,7 +320,8 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 断言地基包（Capability.Online.Foundation）内目录依赖为簇内向下
-        /// （Session→Identity 允许；Identity/Presence/Storage 互引与对 Session 引用恒零）。
+        /// （Session→Identity 允许；Identity/Presence/Storage 互引与对 Session 引用恒零；
+        /// AdminApi 是地基 admin handler 顶层，可向下引用四个域目录，任何域目录不得反向引用 AdminApi）。
         /// </summary>
         [Fact]
         public void FoundationPackage_IntraDirectoryEdges_RemainWithinClusterRules()
@@ -274,6 +334,7 @@ namespace GameFrameX.Tests.Online
                 ["Session"] = new[] { "Identity" },
                 ["Presence"] = Array.Empty<string>(),
                 ["Storage"] = Array.Empty<string>(),
+                ["AdminApi"] = new[] { "Identity", "Session", "Presence", "Storage" },
             };
             var violations = new List<string>();
             foreach (var file in EnumeratePackageSourceFiles("GameFrameX.Capability.Online.Foundation"))

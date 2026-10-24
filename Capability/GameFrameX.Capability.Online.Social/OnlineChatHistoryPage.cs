@@ -30,6 +30,7 @@
 namespace GameFrameX.Capability.Online.Social;
 
 using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions;
 
 /// <summary>
 /// 聊天历史分页结果（游标契约）。

@@ -103,7 +103,7 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var store = new InMemoryOnlinePlayerStorageStore();
-            var service = new OnlinePlayerStorageService(store);
+            var service = new OnlinePlayerStorageService(store, new OnlinePlayerStorageOptions());
             var scope = new OnlineScope(TenantId, AppId, ServerId, PlayerId);
 
             // Act

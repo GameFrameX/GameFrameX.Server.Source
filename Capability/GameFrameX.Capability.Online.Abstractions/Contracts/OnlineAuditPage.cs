@@ -60,6 +60,10 @@ public sealed class OnlineAuditPage
     public OnlineAuditPage(IReadOnlyList<OnlineAuditRecord> records, OnlinePageCursor cursor)
     {
         Records = records ?? new List<OnlineAuditRecord>();
-        Cursor = cursor ?? new OnlinePageCursor(string.Empty, false);
+        Cursor = cursor;
+        if (cursor == null)
+        {
+            Cursor = new OnlinePageCursor(string.Empty, false);
+        }
     }
 }

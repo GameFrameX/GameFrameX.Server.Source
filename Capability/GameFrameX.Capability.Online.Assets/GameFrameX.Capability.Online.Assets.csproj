@@ -2,7 +2,7 @@
     <Import Project="../../Version.props" Label="版本号定义"/>
 
     <PropertyGroup>
-        <Description>GameFrameX.Capability.Online.Assets,GFX Online 资产能力包:钱包/库存/不可变账本/统一发放入口/跨服发放路由(InMemory 默认存储,UseOnlineAssetStore 替换缝)+ hosting 扩展(AddOnlineAssetsRuntime)+ admin handlers(grant/revoke/查询族). Assets capability package for the GFX Online family: wallet, inventory, immutable ledger, unified grant entry and cross-server grant routing with in-memory default stores, the hosting extension and admin handlers. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <Description>GameFrameX.Capability.Online.Assets,GFX Online 资产能力包:钱包/库存/不可变账本/统一发放入口/跨服发放路由(InMemory 默认存储,族/宿主 Override 可替换)+ admin handlers(grant/revoke/查询族). Assets capability package for the GFX Online family: wallet, inventory, immutable ledger, unified grant entry and cross-server grant routing with in-memory default stores overridable by family/host, plus admin handlers. Documentation: https://gameframex.doc.alianblank.com</Description>
         <PackageTags>GameFrameX,Capability,Online,Assets,Wallet,Ledger,Grant,GameServer</PackageTags>
         <LangVersion>10</LangVersion>
     </PropertyGroup>

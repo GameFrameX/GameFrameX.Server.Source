@@ -27,23 +27,38 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using GameFrameX.Capability.Hosting.Abstractions;
+
 namespace GameFrameX.Capability.Online.Matchmaking;
 
 /// <summary>
-/// 匹配能力包级装配选项（<see cref="OnlineMatchmakingHostingExtensions.AddOnlineMatchmakingRuntime"/> 回调承载面，C231）。
+/// 匹配能力 Options 根类型（机制三层合并的承载面：包内默认 → 配置段 <c>Online.Settings.online-matchmaking</c> → 代码 Configure）。
 /// <para>
-/// 维护约束（能力族全局约定，C227/C229 裁定）：编排参数一律经 <c>Action&lt;TOptions&gt;</c> 回调承载（.NET
-/// <c>AddXxx(options =&gt; ...)</c> 惯例）；P3 期无包级编排参数（存储替换走 <c>UseOnline*Store</c> 缝族，
-/// 配置段绑定归组合根），成员随真实需求落位；禁止回退平铺配置键。
+/// 维护约束：成员默认值唯一来源 = 字段初始值（子选项聚合为属性，子项默认收敛在子 Options 自身）；
+/// <see cref="Validate"/> 只做合并终值的结构校验（正数阈值），不做业务裁决；
+/// 新增编排参数一律落子 Options 属性，禁止回退平铺配置键。
 /// </para>
 /// </summary>
 /// <remarks>
-/// Package-level assembly options for the matchmaking capability (the callback face of
-/// <see cref="OnlineMatchmakingHostingExtensions.AddOnlineMatchmakingRuntime"/>, C231). Following the
-/// capability-family global convention, orchestration parameters ride an <c>Action&lt;TOptions&gt;</c> callback;
-/// P3 carries no package-level knobs (store replacement goes through the <c>UseOnline*Store</c> seam family);
-/// members land as real needs appear; flat configuration keys stay forbidden.
+/// The options root of the matchmaking capability, consumed by the three-layer mechanism merge
+/// (package defaults, the configuration section, then code Configure). Default values live only on
+/// field initializers; Validate only checks the structural positivity of the merged thresholds.
 /// </remarks>
-public sealed class OnlineMatchmakingOptions
+public sealed class OnlineMatchmakingOptions : ICapabilityOptions
 {
+    /// <summary>
+    /// 撮合参数（票据存活 / 等待扩窗 / 频控阈值；默认值唯一来源 = <see cref="OnlineMatchmakerOptions"/> 字段初始值）。
+    /// </summary>
+    public OnlineMatchmakerOptions Matchmaker { get; set; } = new OnlineMatchmakerOptions();
+
+    /// <inheritdoc />
+    public void Validate(CapabilityOptionsValidation validation)
+    {
+        validation.RequirePositive("Matchmaker.TicketTimeToLiveSeconds", Matchmaker.TicketTimeToLiveSeconds);
+        validation.RequirePositive("Matchmaker.WaitExpansionThresholdSeconds", Matchmaker.WaitExpansionThresholdSeconds);
+        validation.RequirePositive("Matchmaker.ExpansionIntervalSeconds", Matchmaker.ExpansionIntervalSeconds);
+        validation.RequirePositive("Matchmaker.SkillExpansionPerInterval", Matchmaker.SkillExpansionPerInterval);
+        validation.RequirePositive("Matchmaker.RateLimitMaxOperations", Matchmaker.RateLimitMaxOperations);
+        validation.RequirePositive("Matchmaker.RateLimitWindowSeconds", Matchmaker.RateLimitWindowSeconds);
+    }
 }

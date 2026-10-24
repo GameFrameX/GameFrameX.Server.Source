@@ -28,7 +28,7 @@ namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
 /// 对局样例桥契约面（C245，D4 RPS 垂直切片）：房间制协议入口到平台对局运行时的最小桥接契约，
-/// 供 Hotfix 协议面薄适配器经 <c>OnlineMatchGameBridgeHolder</c> 进程内消费。
+/// 供 Hotfix 协议面薄适配器经 <c>CapabilityBridge&lt;IOnlineMatchGameBridge&gt;</c> 进程内消费。
 /// <para>
 /// 维护约束：本契约首版只承载样例玩法（模式 410 石头剪刀布）——创建/入场的泛化（匹配票据、
 /// 观战、跨服）随 C246 匹配域接入另行收敛，不预先发明抽象；作用域三元组由组合根授权作用域供给，
@@ -39,7 +39,7 @@ namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 /// <remarks>
 /// The sample match bridge contract face (C245, the D4 RPS vertical slice): the minimal bridging
 /// contract from the room-shaped protocol entries to the platform match runtime, consumed in-process
-/// by the Hotfix protocol thin adapter through <c>OnlineMatchGameBridgeHolder</c>. This contract
+/// by the Hotfix protocol thin adapter through <c>CapabilityBridge&lt;IOnlineMatchGameBridge&gt;</c>. This contract
 /// carries the sample game (mode 410 rock-paper-scissors) only for the first version — generalizing
 /// creation/entry (matchmaking tickets, spectating, cross-server) converges with the C246 match
 /// domain bridge instead of being invented here. The scope triple comes from the composition root's

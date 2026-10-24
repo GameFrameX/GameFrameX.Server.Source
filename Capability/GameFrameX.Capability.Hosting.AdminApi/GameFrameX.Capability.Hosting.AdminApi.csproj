@@ -20,6 +20,7 @@
     <ItemGroup>
         <ProjectReference Include="../GameFrameX.Capability.Hosting.Abstractions/GameFrameX.Capability.Hosting.Abstractions.csproj"/>
         <ProjectReference Include="../../GameFrameX.Localization/GameFrameX.Localization.csproj"/>
+        <ProjectReference Include="../GameFrameX.Capability.Hosting.Core/GameFrameX.Capability.Hosting.Core.csproj"/>
     </ItemGroup>
 
 </Project>

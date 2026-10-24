@@ -46,10 +46,10 @@ namespace GameFrameX.Capability.Online.Competition.Leaderboard;
 public static class OnlineLeaderboardEvents
 {
     /// <summary>榜单创建。</summary>
-    public const string LeaderboardCreated = "Online.Leaderboard.Created";
+    public const string LeaderboardCreated = "online.leaderboard.created";
 
     /// <summary>榜上分数更新（可信写入）。</summary>
-    public const string ScoreUpdated = "Online.Leaderboard.ScoreUpdated";
+    public const string ScoreUpdated = "online.leaderboard.scoreupdated";
 
     /// <summary>事件来源标识。</summary>
     public const string Source = "online-leaderboard";

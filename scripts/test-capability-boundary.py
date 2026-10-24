@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""用真实 MSBuild ProjectReference / 本地 NuGet 验证 GFX0017（不修改工作区项目）。"""
+"""用真实 MSBuild ProjectReference / 本地 NuGet 验证 GFX0017 / GFX0018（不修改工作区项目）。"""
 import os
 from pathlib import Path
 import subprocess
@@ -73,27 +73,33 @@ def main():
                         f'<Analyzer Include="{escape(str(ANALYZER))}"/>')
         run(['build', legal])
         print('PASS Launcher: transitive implementation -> legal')
-        contracts = REPO / 'bin/app_debug/GameFrameX.Capability.Online.Abstractions.dll'
-        bridge_items = (f'<Reference Include="Online.Contracts"><HintPath>{escape(str(contracts))}</HintPath></Reference>'
-                        f'<Analyzer Include="{escape(str(ANALYZER))}"/>')
-        holders = ('OnlineFriendDomainBridgeHolder', 'OnlineMatchGameBridgeHolder', 'OnlineMatchDomainBridgeHolder')
-        prefix = 'GameFrameX.Capability.Online.Abstractions.Bridges.'
-        lifecycle = 'public class Wiring { public void Run() { ' + ''.join(
-            prefix + holder + '.Retract();' for holder in holders) + ' } }'
-        reads = 'public class Adapter { public void Run() { ' + ''.join(
-            '_ = ' + prefix + holder + '.Current.IsActive;' for holder in holders) + ' } }'
+        contracts = REPO / 'bin/app_debug/GameFrameX.Capability.Hosting.Abstractions.dll'
+        hosting = REPO / 'bin/app_debug/GameFrameX.Capability.Hosting.Core.dll'
+        hosting_items = (f'<Reference Include="Hosting.Abstractions"><HintPath>{escape(str(contracts))}</HintPath></Reference>'
+                         f'<Analyzer Include="{escape(str(ANALYZER))}"/>')
+        publish = ('using GameFrameX.Capability.Hosting.Abstractions; public class Wiring {'
+                   ' public void Run(CapabilityActivationContext context) { context.Bridges.Publish<object>(null); } }')
+        acquire = ('using GameFrameX.Capability.Hosting.Abstractions; public class Adapter {'
+                   ' public bool Run() { return CapabilityBridge<object>.TryAcquire(out _); } }')
         for consumer in ('GameFrameX.Apps', 'GameFrameX.Hotfix'):
-            negative = project(root / f'{consumer}-bridge-publish', consumer, bridge_items, lifecycle)
+            negative = project(root / f'{consumer}-bridge-publish', consumer, hosting_items, publish)
             output = run(['build', negative], 'GFX0018')
-            for holder in holders:
-                assert holder + '.Retract()' in output, output
-            print(f'PASS {consumer}: three bridge lifecycle calls -> GFX0018')
-            positive = project(root / f'{consumer}-bridge-current', consumer, bridge_items, reads)
+            assert 'Publish' in output, output
+            print(f'PASS {consumer}: 非模块桥发布 -> GFX0018')
+            positive = project(root / f'{consumer}-bridge-acquire', consumer, hosting_items, acquire)
             run(['build', positive])
-            print(f'PASS {consumer}: three holder.Current / lease reads -> legal')
-        wiring = project(root / 'legal-wiring', 'GameFrameX.Launcher', bridge_items, lifecycle)
-        run(['build', wiring])
-        print('PASS Launcher: three bridge lifecycle calls -> legal')
+            print(f'PASS {consumer}: CapabilityBridge<T>.TryAcquire 消费侧 -> legal')
+        composition_items = (f'<Reference Include="Hosting.Core"><HintPath>{escape(str(hosting))}</HintPath></Reference>'
+                             f'<Reference Include="Hosting.Abstractions"><HintPath>{escape(str(contracts))}</HintPath></Reference>'
+                             f'<Analyzer Include="{escape(str(ANALYZER))}"/>')
+        overrides = ('using GameFrameX.Capability.Hosting.Core; public class Entry {'
+                     ' public void Run(CapabilityCompositionOptions options) { options.Configure<object>(configured => { }); } }')
+        legal_composition = project(root / 'legal-composition', 'GameFrameX.Launcher', composition_items, overrides)
+        run(['build', legal_composition])
+        print('PASS Launcher: CapabilityCompositionOptions.Configure -> legal')
+        illegal_acquire = project(root / 'launcher-bridge-acquire', 'GameFrameX.Launcher', hosting_items, acquire)
+        run(['build', illegal_acquire], 'GFX0018')
+        print('PASS Launcher: CapabilityBridge<T>.TryAcquire 宿主侧 -> GFX0018')
         print('PASS 14/14 MSBuild boundary fixtures')
 
 

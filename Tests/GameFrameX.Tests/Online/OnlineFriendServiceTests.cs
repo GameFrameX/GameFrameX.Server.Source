@@ -651,7 +651,7 @@ namespace GameFrameX.Tests.Online
         {
             recorder = new OnlineEventRecorder();
             store = new InMemoryOnlineFriendStore();
-            return new OnlineFriendService(store, recorder, directory, presenceProbe, 604800, searchLimit, friendLimit);
+            return new OnlineFriendService(store, recorder, new OnlineFriendOptions { RequestTimeToLiveSeconds = 604800, SearchLimit = searchLimit, FriendLimit = friendLimit }, directory, presenceProbe);
         }
 
         /// <summary>

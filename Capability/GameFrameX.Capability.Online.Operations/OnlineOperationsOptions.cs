@@ -4,7 +4,7 @@
 //   均受中华人民共和国及相关国际法律法规保护。
 //   are protected by the laws of the PRC and relevant international regulations.
 //   使用本项目须严格遵守相关法律法规与开源许可证之规定。
-//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   Usage of this project must strictly comply with relevant laws, regulations, and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
 //   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
@@ -12,10 +12,10 @@
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
 //   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
 //   侵犯他人合法权益等法律法规所禁止的行为！
-//   or infringe upon the legitimate rights and interests of others as prohibited by laws and regulations!
+//   or infringe upon the legal rights and interests of others, as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
-//   Any legal disputes or liabilities arising from secondary development,
-//   本组织与贡献者概不承担任何责任。
+//   Any legal disputes or liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
 //   GitHub Repository: https://github.com/GameFrameX
@@ -24,18 +24,38 @@
 //   CNB  仓库：https://www.cnb.cool/GameFrameX
 //   CNB Repository: https://www.cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
-//   Official Documentation: https://gameframex.doc.alianblank.com/
+//   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
+
+using System;
+using GameFrameX.Capability.Hosting.Abstractions;
+using GameFrameX.Capability.Online.Operations.HotfixRollback;
 
 namespace GameFrameX.Capability.Online.Operations;
 
 /// <summary>
-/// 运营聚合能力包级选项（C232 P5 迁入；当前无包级编排参数，占位对齐包族选项形态）。
+/// 运营聚合能力包级 Options 根类型（C294：聚合 Hotfix 登记期制品获取参数；默认值唯一来源 = 字段初始值）。
 /// </summary>
-/// <remarks>
-/// Package-level options of the operations capability (migrated by C232 P5; currently a placeholder
-/// with no orchestration parameters).
-/// </remarks>
-public sealed class OnlineOperationsOptions
+public sealed class OnlineOperationsOptions : ICapabilityOptions
 {
+    /// <summary>
+    /// 获取或设置登记期制品获取参数（单次超时 / 重试次数 / 大小上限；<c>OnlineHotfixArtifactFetcher</c> 必填入参）。
+    /// </summary>
+    public OnlineHotfixArtifactFetchOptions ArtifactFetch { get; set; } = new OnlineHotfixArtifactFetchOptions();
+
+    /// <inheritdoc />
+    public void Validate(CapabilityOptionsValidation validation)
+    {
+        if (ArtifactFetch.AttemptTimeout <= TimeSpan.Zero)
+        {
+            validation.AddError("ArtifactFetch.AttemptTimeout", "must be a positive time span (actual: " + ArtifactFetch.AttemptTimeout + ")");
+        }
+
+        if (ArtifactFetch.MaxRetryCount < 0)
+        {
+            validation.AddError("ArtifactFetch.MaxRetryCount", "must not be negative (actual: " + ArtifactFetch.MaxRetryCount + ")");
+        }
+
+        validation.RequirePositive("ArtifactFetch.MaxArtifactBytes", ArtifactFetch.MaxArtifactBytes);
+    }
 }

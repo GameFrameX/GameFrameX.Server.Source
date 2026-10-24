@@ -51,19 +51,19 @@ using GameFrameX.Capability.Online.Abstractions.Events;
 public static class OnlineTournamentEvents
 {
     /// <summary>赛事创建（排期已登记）。</summary>
-    public const string TournamentCreated = "Online.Tournament.Created";
+    public const string TournamentCreated = "online.tournament.created";
 
     /// <summary>赛事开始（进入进行中，报名窗口关闭）。</summary>
-    public const string TournamentStarted = "Online.Tournament.Started";
+    public const string TournamentStarted = "online.tournament.started";
 
     /// <summary>玩家报名成功（玩家维度事件；重放报名不重发）。</summary>
-    public const string TournamentRegistered = "Online.Tournament.Registered";
+    public const string TournamentRegistered = "online.tournament.registered";
 
     /// <summary>赛事结束（成绩已从关联榜单冻结落档；**不重置榜单**）。</summary>
-    public const string TournamentEnded = "Online.Tournament.Ended";
+    public const string TournamentEnded = "online.tournament.ended";
 
     /// <summary>赛事结算（奖励已按冻结成绩名次发放完毕）。</summary>
-    public const string TournamentSettled = "Online.Tournament.Settled";
+    public const string TournamentSettled = "online.tournament.settled";
 
     /// <summary>事件来源标识。</summary>
     public const string Source = "online-tournament";

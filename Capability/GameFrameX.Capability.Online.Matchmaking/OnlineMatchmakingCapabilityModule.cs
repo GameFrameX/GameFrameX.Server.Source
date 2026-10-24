@@ -38,36 +38,43 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Matchmaking;
 
 /// <summary>
-/// 匹配能力（大厅 / 票据 / 撮合 / 队伍——Matchmaking+Party 同簇同包，C227 蓝图裁定）的自装配模块（C231 P3 迁入）。
+/// 匹配能力（大厅 / 票据 / 撮合 / 队伍——Matchmaking+Party 同簇同包，C227 蓝图裁定）的自装配模块（C231 P3 迁入，C294 改写三段生命周期）。
 /// <para>
 /// 维护约束（服务共享协议）：模块无参构造（扫描可发现）；<c>Register</c> 自装配本域——票据 / 大厅 / 队伍三个 store
-/// 经 <see cref="CapabilityRegistrationContext.TryGetService{TService}"/> 探测替换缝，未命中构造 InMemory 默认；
+/// 走「懒默认注册 + 解析」替换缝（族 / 宿主 Override 恒胜出，模块不再写探测-回退分支）；
+/// Options 经 <see cref="CapabilityRegistrationContext.GetOptions{TOptions}"/> 取机制合并终值（必填传入服务构造）；
 /// 跨域硬依赖（事件出口 / 作用域 / 社交裁决 gate 面）经上下文解析（拓扑序保证先序在场）；
-/// 对外产物（store 接口 + 票据服务 + 撮合协调器 + 队列观察器）注册回共享面。
+/// 对外产物（store 接口 + 票据服务 + 撮合协调器 + 队列观察器 + 队伍服务与命名成员资格探针）注册回共享面；
+/// 队伍在线探针是非直接依赖扩展点，Activate 期经 <c>GetServices</c> 枚举后注入。
 /// </para>
 /// </summary>
 /// <remarks>
 /// The self-assembling module of the matchmaking capability (listings / tickets / the matchmaker coordinator /
-/// parties — the Matchmaking+Party same-cluster merge ruled by the C227 blueprint). The module is parameterless
-/// (discoverable by scanning); <c>Register</c> self-assembles the domain — the ticket / listing / party stores
-/// probe the replacement seams with in-memory fallbacks; cross-domain hard dependencies (the event outlet, the
-/// scope, the social adjudication gate face) resolve through the context (topological ordering guarantees the
-/// producers ran first); outward products (store interfaces, the ticket service, the matchmaker coordinator and
-/// the queue observer) are registered back into the shared face.
+/// parties — the Matchmaking+Party same-cluster merge ruled by the C227 blueprint), rewritten for the
+/// three-phase lifecycle in C294. The module is parameterless (discoverable by scanning);
+/// <c>Register</c> self-assembles the domain — the ticket / listing / party stores ride the
+/// lazy-default-then-resolve seam (family / host overrides always win); options come from the mechanism merge;
+/// cross-domain hard dependencies (the event outlet, the scope, the social adjudication gate face) resolve
+/// through the context; outward products (store interfaces, the ticket service, the matchmaker coordinator,
+/// the queue observer, the party service and its named membership probe) are registered back into the shared
+/// face; the party presence probe is a non-direct extension point enumerated and injected during activation.
 /// </remarks>
 public sealed class OnlineMatchmakingCapabilityModule : ICapabilityModule, IAdminActionContributor
 {
     /// <summary>
-    /// 匹配能力清单（Id 冻结 = 终态包名；action 集合与幂等包裹位逐字迁移自壳过渡模块）。
+    /// 匹配能力清单（Id 冻结 = 终态包名；action 集合与幂等包裹位逐字迁移自壳过渡模块；
+    /// 必选依赖 online-social；Options 根类型 = <see cref="OnlineMatchmakingOptions"/>）。
     /// </summary>
     public static readonly CapabilityManifest ManifestInstance = new(
         "online-matchmaking",
         "1.0.0",
         new[] { "query_match_queue_overview", "query_match_ticket_failures", "query_match_abnormal_tickets", "cancel_match_ticket" },
-        new[] { "online-social" });
+        new[] { "online-social" },
+        null,
+        typeof(OnlineMatchmakingOptions));
 
     /// <summary>
-    /// 匹配票据存储（Register 期解析或构造）。
+    /// 匹配票据存储（Register 期解析）。
     /// </summary>
     private IOnlineMatchTicketStore _matchTicketStore;
 
@@ -86,6 +93,11 @@ public sealed class OnlineMatchmakingCapabilityModule : ICapabilityModule, IAdmi
     /// </summary>
     private OnlineMatchQueueObserver _matchQueueObserver;
 
+    /// <summary>
+    /// 队伍服务（Register 期构造；Activate 期回填在线探针）。
+    /// </summary>
+    private OnlinePartyService _partyService;
+
     /// <inheritdoc />
     public CapabilityManifest Manifest
     {
@@ -95,19 +107,29 @@ public sealed class OnlineMatchmakingCapabilityModule : ICapabilityModule, IAdmi
     /// <inheritdoc />
     public void Register(CapabilityRegistrationContext context)
     {
+        var options = context.GetOptions<OnlineMatchmakingOptions>();
         var eventPublisher = context.GetService<IOnlineEventPublisher>();
         var socialGate = context.GetService<IOnlineSocialGate>();
         var scope = context.GetService<OnlineScope>();
-        _matchTicketStore = ResolveStore<IOnlineMatchTicketStore>(context, static () => new InMemoryOnlineMatchTicketStore());
-        var matchListingStore = ResolveStore<IOnlineMatchListingStore>(context, static () => new InMemoryOnlineMatchListingStore());
-        var partyStore = ResolveStore<IOnlinePartyStore>(context, static () => new InMemoryOnlinePartyStore());
+        context.AddService<IOnlineMatchTicketStore>(static _ => new InMemoryOnlineMatchTicketStore());
+        _matchTicketStore = context.GetService<IOnlineMatchTicketStore>();
+        context.AddService<IOnlineMatchListingStore>(static _ => new InMemoryOnlineMatchListingStore());
+        var matchListingStore = context.GetService<IOnlineMatchListingStore>();
+        context.AddService<IOnlinePartyStore>(static _ => new InMemoryOnlinePartyStore());
+        var partyStore = context.GetService<IOnlinePartyStore>();
 
-        _matchTickets = new OnlineMatchTicketService(_matchTicketStore, eventPublisher);
-        _matchmaker = new OnlineMatchmakerCoordinator(_matchTicketStore, _matchTickets, eventPublisher, null, socialGate);
+        _matchTickets = new OnlineMatchTicketService(_matchTicketStore, eventPublisher, options.Matchmaker);
+        _matchmaker = new OnlineMatchmakerCoordinator(_matchTicketStore, _matchTickets, eventPublisher, options.Matchmaker, socialGate);
         _matchQueueObserver = new OnlineMatchQueueObserver(_matchTicketStore);
         context.AddService(_matchTickets);
         context.AddService(_matchmaker);
         context.AddService(_matchQueueObserver);
+
+        // 队伍域装配（此前壳组合根未装配）：构造期在线探针留空（Foundation 非直接依赖，Register 期不可越界解析），
+        // Activate 期经 GetServices 枚举扩展点后 AttachPresenceProbe 回填；命名 "party" 成员资格探针供聊天域队伍频道判定。
+        _partyService = new OnlinePartyService(partyStore, eventPublisher, presenceProbe: null, socialGate: socialGate);
+        context.AddService(_partyService);
+        context.AddService("party", (IOnlineChannelMembershipProbe)_partyService);
         _ = matchListingStore;
 
         context.AddTickJob("matchmaker-run", async ct =>
@@ -121,28 +143,27 @@ public sealed class OnlineMatchmakingCapabilityModule : ICapabilityModule, IAdmi
     }
 
     /// <inheritdoc />
+    public Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken)
+    {
+        // 在线事实探针扩展点注入：实现常由非直接依赖能力（online-foundation）提供，只能 Activate 期枚举。
+        var presenceProbe = context.Services.GetServices<IOnlinePartyPresenceProbe>();
+        if (presenceProbe.Count > 0)
+        {
+            _partyService.AttachPresenceProbe(presenceProbe[0]);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public Task DeactivateAsync(CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
     public void RegisterAdminActions(AdminActionRegistry registry)
     {
         new OnlineAdminMatchmakingHandlers(_matchQueueObserver, _matchTicketStore, _matchTickets).Register(registry);
-    }
-
-    /// <summary>
-    /// 解析存储（替换缝探测——命中用组合根注入实例，未命中构造 InMemory 默认并注册回共享面）。
-    /// </summary>
-    /// <typeparam name="TStore">存储接口。</typeparam>
-    /// <param name="context">注册上下文。</param>
-    /// <param name="defaultFactory">默认构造。</param>
-    /// <returns>存储实例。</returns>
-    private static TStore ResolveStore<TStore>(CapabilityRegistrationContext context, Func<TStore> defaultFactory)
-        where TStore : class
-    {
-        if (context.TryGetService(out TStore store))
-        {
-            return store;
-        }
-
-        store = defaultFactory();
-        context.AddService(store);
-        return store;
     }
 }

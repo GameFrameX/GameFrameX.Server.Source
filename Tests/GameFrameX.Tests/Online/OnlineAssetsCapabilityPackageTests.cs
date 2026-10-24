@@ -1,167 +1,121 @@
-using System;
-using System.Linq;
-using System.Reflection;
+// ==========================================================================================
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents and related rights
+//   均受中华人民共和国及相关国际法律法规保护。
+//   are protected by the laws of the PRC and relevant international regulations.
+//   使用本项目须严格遵守相关法律法规与开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   本项目采用 Apache License 2.0 单协议分发，
+//   This project is licensed solely under the Apache License 2.0,
+//   完整许可证文本请参见源代码根目录的 LICENSE 文件。
+//   please refer to the LICENSE file at the root of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe the legal rights and interests of others as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes or liabilities arising from secondary development based on this project,
+//   本组织与贡献者概不承担任何责任。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository:  https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:   https://gitee.com/GameFrameX
+//   CNB  仓库：https://www.cnb.cool/GameFrameX
+//   CNB Repository:     https://www.cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Docs:      https://gameframex.doc.alianblank.com/
+//  ==========================================================================================
+
+using System.Threading.Tasks;
 using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Hosting.Core;
-using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Assets;
-using GameFrameX.Capability.Online.Abstractions.Idempotency;
 using Xunit;
 
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 资产能力包（C231 P3）验收测试：无参模块扫描可发现 / AddOnlineAssetsRuntime 最小组合 /
-    /// UseOnlineAssetStore 替换缝生效 / 与壳全能力形态的装配等价锚点。
+    /// 资产能力包验收测试（C294 机制化）：无参模块扫描可发现 / 真实族白名单单独装配资产能力、产物经宿主共享服务面取用 /
+    /// 宿主 Override 替换缝恒胜出包内默认存储 / 资产能力不声明 Options 根类型（旧 OnlineAssetsOptions 已删除）。
     /// </summary>
+    [Collection(CapabilityRuntimeCollection.Name)]
     public class OnlineAssetsCapabilityPackageTests
     {
         /// <summary>
-        /// 替换缝替换实例（独立 InMemory 实例——断言模块取用的是组合根注入的实例而非包内默认构造）。
+        /// 白名单圈定只装配资产能力（资产能力无必选依赖，单独即构成闭包）。
         /// </summary>
-        private sealed class ProbeAssetStore : GameFrameX.Capability.Online.Assets.IOnlineAssetStore
+        /// <param name="options">组合选项。</param>
+        private static void AssetsOnly(CapabilityCompositionOptions options)
         {
-            /// <inheritdoc />
-            public Task<GameFrameX.Capability.Online.Assets.OnlineWalletAccount> FindWalletAsync(long tenantId, long appId, long playerId, string currencyId, CancellationToken cancellationToken = default)
-            {
-                return Task.FromResult<GameFrameX.Capability.Online.Assets.OnlineWalletAccount>(null);
-            }
-
-            /// <inheritdoc />
-            public Task<GameFrameX.Capability.Online.Assets.OnlineInventoryStack> FindInventoryAsync(long tenantId, long appId, long playerId, string itemId, CancellationToken cancellationToken = default)
-            {
-                return Task.FromResult<GameFrameX.Capability.Online.Assets.OnlineInventoryStack>(null);
-            }
-
-            /// <inheritdoc />
-            public Task<IReadOnlyList<GameFrameX.Capability.Online.Assets.OnlineWalletAccount>> ListWalletAccountsAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
-            {
-                return Task.FromResult<IReadOnlyList<GameFrameX.Capability.Online.Assets.OnlineWalletAccount>>(Array.Empty<GameFrameX.Capability.Online.Assets.OnlineWalletAccount>());
-            }
-
-            /// <inheritdoc />
-            public Task<IReadOnlyList<GameFrameX.Capability.Online.Assets.OnlineInventoryStack>> ListInventoryStacksAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
-            {
-                return Task.FromResult<IReadOnlyList<GameFrameX.Capability.Online.Assets.OnlineInventoryStack>>(Array.Empty<GameFrameX.Capability.Online.Assets.OnlineInventoryStack>());
-            }
-
-            /// <inheritdoc />
-            public Task<GameFrameX.Capability.Online.Assets.OnlineAssetApplyResult> ApplyAsync(GameFrameX.Capability.Online.Assets.OnlineAssetChangeBatch batch, CancellationToken cancellationToken = default)
-            {
-                var entries = new List<GameFrameX.Capability.Online.Assets.OnlineLedgerEntry>();
-                return Task.FromResult(new GameFrameX.Capability.Online.Assets.OnlineAssetApplyResult(true, GameFrameX.Capability.Online.Abstractions.Contracts.OnlineErrorCode.None, string.Empty, entries));
-            }
-
-            /// <inheritdoc />
-            public Task<IReadOnlyList<GameFrameX.Capability.Online.Assets.OnlineLedgerEntry>> ListLedgerEntriesAsync(GameFrameX.Capability.Online.Assets.OnlineLedgerPageQuery query, CancellationToken cancellationToken = default)
-            {
-                return Task.FromResult<IReadOnlyList<GameFrameX.Capability.Online.Assets.OnlineLedgerEntry>>(Array.Empty<GameFrameX.Capability.Online.Assets.OnlineLedgerEntry>());
-            }
-
-            /// <inheritdoc />
-            public Task<IReadOnlyList<GameFrameX.Capability.Online.Assets.OnlineLedgerEntry>> FindLedgerEntriesByTransactionIdAsync(string transactionId, CancellationToken cancellationToken = default)
-            {
-                return Task.FromResult<IReadOnlyList<GameFrameX.Capability.Online.Assets.OnlineLedgerEntry>>(Array.Empty<GameFrameX.Capability.Online.Assets.OnlineLedgerEntry>());
-            }
-
-            /// <inheritdoc />
-            public Task<IReadOnlyDictionary<string, long>> SumLedgerDeltasByAssetAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
-            {
-                return Task.FromResult<IReadOnlyDictionary<string, long>>(new Dictionary<string, long>());
-            }
-
-            /// <inheritdoc />
-            public Task<IReadOnlyList<long>> ListPlayerIdsAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
-            {
-                return Task.FromResult<IReadOnlyList<long>>(Array.Empty<long>());
-            }
+            options.Filter = new CapabilityAssemblyFilter(new[] { "online-assets" });
         }
 
         /// <summary>
-        /// 构造最小组合根所需的脊柱预置（作用域 + 事件出口 + 幂等）。
-        /// </summary>
-        /// <returns>装配器（已预置脊柱服务）。</returns>
-        private static CapabilityHostBuilder MinimalRoot()
-        {
-            var builder = new CapabilityHostBuilder();
-            builder.UseService(new GameFrameX.Capability.Online.Abstractions.Scope.OnlineScope(1, 1, 1));
-            builder.UseService<GameFrameX.Capability.Online.Abstractions.Events.IOnlineEventPublisher>(new GameFrameX.Capability.Online.Abstractions.Events.OnlineEventPublisher(new GameFrameX.Foundation.Idempotency.InMemoryEventPublisher()));
-            builder.UseService(new OnlineIdempotencyService(new GameFrameX.Foundation.Idempotency.IdempotencyCoordinator(
-                new GameFrameX.Foundation.Idempotency.InMemoryIdempotencyStore(),
-                GameFrameX.Foundation.Idempotency.SystemClock.Instance,
-                new GameFrameX.Foundation.Idempotency.IdempotencyOptions())));
-            return builder;
-        }
-
-        /// <summary>
-        /// 构造合法选项。
-        /// </summary>
-        /// <returns>选项。</returns>
-        private static CapabilityHostOptions ValidOptions()
-        {
-            return new CapabilityHostOptions { TenantId = 1, AppId = 1, ServerId = 1 };
-        }
-
-        /// <summary>
-        /// 无参模块扫描可发现（P4 前置）：资产包程序集扫描产出 online-assets 模块。
+        /// 无参模块扫描可发现：资产包程序集扫描产出唯一的 online-assets 模块。
         /// </summary>
         [Fact]
         public void DiscoverModules_FindsAssetsCapabilityModule()
         {
-            var modules = CapabilityAssembly.DiscoverModules(new[] { typeof(GameFrameX.Capability.Online.Assets.OnlineAssetsCapabilityModule).Assembly });
+            var modules = CapabilityAssembly.DiscoverModules(new[] { typeof(OnlineAssetsCapabilityModule).Assembly });
 
             var module = Assert.Single(modules);
             Assert.Equal("online-assets", module.Manifest.Id);
         }
 
         /// <summary>
-        /// AddOnlineAssetsRuntime 最小组合：仅脊柱预置即可装配，产物经共享面可取用（grant / query / store 接口）。
+        /// 白名单单独装配资产能力：发放 / 查询服务与两个存储接口经宿主共享服务面可取用，装配清单只含 online-assets。
         /// </summary>
         [Fact]
-        public void AddOnlineAssetsRuntime_MinimalRoot_ExposesProductsThroughSharedFace()
+        public async Task Compose_AssetsAlone_ExposesProductsThroughHostServices()
         {
-            var builder = MinimalRoot();
-            builder.AddOnlineAssetsRuntime(options => { });
-
-            var host = builder.Build(ValidOptions());
-
-            Assert.NotNull(host.Services.GetService<GameFrameX.Capability.Online.Assets.OnlineGrantService>());
-            Assert.NotNull(host.Services.GetService<GameFrameX.Capability.Online.Assets.OnlineAssetQueryService>());
-            Assert.NotNull(host.Services.GetService<GameFrameX.Capability.Online.Assets.IOnlineAssetStore>());
-            Assert.NotNull(host.Services.GetService<GameFrameX.Capability.Online.Assets.IOnlineAssetTransactionStore>());
-            Assert.Equal("online-assets", Assert.Single(host.Report.EnabledIdsInOrder));
+            await OnlineCapabilityTestHarness.WithRuntimeAsync(runtime =>
+            {
+                var services = runtime.Host.Services;
+                Assert.NotNull(services.GetService<OnlineGrantService>());
+                Assert.NotNull(services.GetService<OnlineAssetQueryService>());
+                Assert.NotNull(services.GetService<IOnlineAssetStore>());
+                Assert.NotNull(services.GetService<IOnlineAssetTransactionStore>());
+                Assert.Equal(new[] { "online-assets" }, runtime.Report.EnabledIdsInOrder);
+                return Task.CompletedTask;
+            }, configure: AssetsOnly);
         }
 
         /// <summary>
-        /// UseOnlineAssetStore 替换缝生效：模块取用组合根注入的存储实例（生产持久化替换位）。
+        /// 存储替换缝：宿主 Override 的资产存储恒胜出包内 InMemory 默认（生产持久化替换位）。
         /// </summary>
         [Fact]
-        public void UseOnlineAssetStore_PreSeedWinsOverInMemoryDefault()
+        public async Task OverrideAssetStore_WinsOverInMemoryDefault()
         {
-            var probe = new ProbeAssetStore();
-            var builder = MinimalRoot();
-            builder.UseOnlineAssetStore(probe);
-            builder.AddOnlineAssetsRuntime();
+            var replacement = new InMemoryOnlineAssetStore();
 
-            var host = builder.Build(ValidOptions());
-
-            Assert.Same(probe, host.Services.GetService<GameFrameX.Capability.Online.Assets.IOnlineAssetStore>());
+            await OnlineCapabilityTestHarness.WithRuntimeAsync(runtime =>
+            {
+                Assert.Same(replacement, runtime.Host.Services.GetService<IOnlineAssetStore>());
+                return Task.CompletedTask;
+            }, configure: options =>
+            {
+                AssetsOnly(options);
+                options.Override<IOnlineAssetStore>(replacement);
+            });
         }
 
         /// <summary>
-        /// 包级 options 经回调承载并进共享面（能力族 AddXxx(options => ...) 惯例锚点）。
+        /// 资产能力是无参数能力：清单不声明 Options 根类型，报告条目无 Options 字段生效值。
         /// </summary>
         [Fact]
-        public void AddOnlineAssetsRuntime_OptionsCarriedThroughCallback()
+        public async Task Manifest_DeclaresNoOptionsType_AndReportCarriesNoSettingsFields()
         {
-            var builder = MinimalRoot();
-            var seen = false;
-            builder.AddOnlineAssetsRuntime(options => seen = true);
+            Assert.Null(OnlineAssetsCapabilityModule.ManifestInstance.OptionsType);
 
-            var host = builder.Build(ValidOptions());
-
-            Assert.True(seen);
-            Assert.NotNull(host.Services.GetService<GameFrameX.Capability.Online.Assets.OnlineAssetsOptions>());
+            await OnlineCapabilityTestHarness.WithRuntimeAsync(runtime =>
+            {
+                var entry = Assert.Single(runtime.Report.Entries, candidate => candidate.Manifest.Id == "online-assets");
+                Assert.Equal(CapabilityFilterState.Enabled, entry.State);
+                Assert.Null(entry.Manifest.OptionsType);
+                Assert.Empty(entry.SettingsFields);
+                return Task.CompletedTask;
+            }, configure: AssetsOnly);
         }
     }
 }

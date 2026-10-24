@@ -36,7 +36,7 @@ namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
 /// 好友域桥契约面（C244，承接 C243 查询缝并扩展为全家族）：好友域全部协议行为的最小桥接契约，
-/// 供 Hotfix 协议面薄适配器经 <c>OnlineFriendDomainBridgeHolder</c> 进程内消费。
+/// 供 Hotfix 协议面薄适配器经 <c>CapabilityBridge&lt;IOnlineFriendDomain&gt;</c> 进程内消费。
 /// <para>
 /// 维护约束：
 /// ① 定位一律以「玩家对」表达（协议面没有关系标识），关系标识编排归实现方（Social 域面）；
@@ -51,7 +51,7 @@ namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 /// <remarks>
 /// The friend-domain bridge contract face (C244, extending the C243 query seam into the full family):
 /// the minimal bridging contract for every friend-domain protocol behaviour, consumed in-process by
-/// the Hotfix protocol thin adapter through <c>OnlineFriendDomainBridgeHolder</c>. Locating is always
+/// the Hotfix protocol thin adapter through <c>CapabilityBridge&lt;IOnlineFriendDomain&gt;</c>. Locating is always
 /// expressed as player pairs (the protocol face carries no friendship ids — id orchestration belongs
 /// to the implementing face); the scope triple comes from the composition root's authorized scope,
 /// the player position is filled with the requesting session identity, and client-supplied fields can

@@ -158,8 +158,9 @@ namespace GameFrameX.Tests.Online
         {
             var store = new InMemoryOnlineMatchTicketStore();
             var recorder = new OnlineEventRecorder();
-            var tickets = new OnlineMatchTicketService(store, recorder);
-            var coordinator = new OnlineMatchmakerCoordinator(store, tickets, recorder);
+            var matchmakerOptions = new OnlineMatchmakerOptions();
+            var tickets = new OnlineMatchTicketService(store, recorder, matchmakerOptions);
+            var coordinator = new OnlineMatchmakerCoordinator(store, tickets, recorder, matchmakerOptions);
             return new Fixture(new OnlineMatchQueueObserver(store), tickets, coordinator);
         }
 

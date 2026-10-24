@@ -29,9 +29,12 @@
 
 
 using GameFrameX.Core.Session;
+using GameFrameX.Capability.Online.Abstractions;
+using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Network.RemoteMessaging;
 using GameFrameX.Discovery.Routing;
 using GameFrameX.Network.RemoteMessaging.Routing;
+using GameFrameX.Hotfix.Logic.Server.Chat;
 using GameFrameX.Hotfix.Logic.Server.Unified;
 using GameFrameX.Network.RemoteMessaging.Unified;
 
@@ -57,6 +60,18 @@ namespace GameFrameX.Hotfix.Lifecycle;
 internal sealed class HotfixModuleLifecycleBridge : IHotfixBridge
 {
     /// <summary>
+    /// 当前热更版本挂载的聊天审核钩子租约（装载成功挂载、停止 / 退役释放；
+    /// 新版本重挂时 <see cref="GameFrameX.Capability.Hosting.Abstractions.CapabilityHook{TContract}.Attach"/>
+    /// 原子替换并使本租约失效，能力侧不会钉住旧程序集）。
+    /// </summary>
+    /// <remarks>
+    /// The chat-moderation hook lease mounted by the current hotfix version (attached on load success,
+    /// released on stop / retirement; a re-attach by a newer version atomically replaces and invalidates
+    /// this lease so the capability side never pins the old assembly).
+    /// </remarks>
+    private CapabilityHookLease<IOnlineChatModerationHook> _chatModerationHookLease;
+
+    /// <summary>
     /// 热更模块装载成功回调：纯业务生命周期激活（CurrentSetting 钉住 + 统一消息发送器装配 +
     /// 配置表 + 定时器 + 全局组件）。热更重载（<paramref name="reload"/> = true）只清空代理缓存，
     /// 不重复激活。
@@ -78,11 +93,16 @@ internal sealed class HotfixModuleLifecycleBridge : IHotfixBridge
     /// <returns>一个任务，表示异步操作的结果，并返回加载是否成功的布尔值 / A task that completes with whether the load succeeded</returns>
     public async Task<bool> OnLoadSuccessAsync(AppSetting setting, bool reload)
     {
+        // 聊天审核钩子挂载（每次装载成功都执行：新版本重挂原子替换旧挂载，旧租约自动失效）。
+        _chatModerationHookLease?.Dispose();
+        _chatModerationHookLease = CapabilityHook<IOnlineChatModerationHook>.Attach(new GameChatModerationHook());
+
         if (reload)
         {
             ActorManager.ClearAgent();
             return true;
         }
+
 
         // 多 Role 进程（--AllInOne）中钉住 CurrentSetting（C285 自 AppStartUpBase.Init 显式化）：
         // Launcher 的创建循环先对全部 Role 逐个 Init，SetCurrentSetting 对 Role 级字段接受最新值，
@@ -143,6 +163,9 @@ internal sealed class HotfixModuleLifecycleBridge : IHotfixBridge
     /// <returns>一个任务，表示异步操作的结果 / A task that completes when the cleanup is done</returns>
     public async Task StopAsync(string message = "")
     {
+        // 释放本版本的聊天审核钩子挂载（摘下后能力侧回默认策略；防退役宽限期内的悬置挂载）。
+        _chatModerationHookLease?.Dispose();
+        _chatModerationHookLease = null;
         // 断开所有连接
         await PlayerSessionManager.Instance.RemoveAllAsync();
         // 取消所有未执行定时器

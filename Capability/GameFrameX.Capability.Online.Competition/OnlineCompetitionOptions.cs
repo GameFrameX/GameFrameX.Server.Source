@@ -4,7 +4,7 @@
 //   均受中华人民共和国及相关国际法律法规保护。
 //   are protected by the laws of the PRC and relevant international regulations.
 //   使用本项目须严格遵守相关法律法规与开源许可证之规定。
-//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
+//   Usage of this project must strictly comply with relevant laws, regulations, and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
 //   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
@@ -12,10 +12,10 @@
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
 //   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
 //   侵犯他人合法权益等法律法规所禁止的行为！
-//   or infringe upon the legitimate rights and interests of others as prohibited by laws and regulations!
+//   or infringe upon the legal rights and interests of others, as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
-//   Any legal disputes or liabilities arising from secondary development,
-//   本组织与贡献者概不承担任何责任。
+//   Any legal disputes or liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
 //   GitHub Repository: https://github.com/GameFrameX
@@ -24,19 +24,38 @@
 //   CNB  仓库：https://www.cnb.cool/GameFrameX
 //   CNB Repository: https://www.cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
-//   Official Documentation: https://gameframex.doc.alianblank.com/
+//   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
+
+using GameFrameX.Capability.Hosting.Abstractions;
+using GameFrameX.Capability.Online.Competition.Leaderboard;
 
 namespace GameFrameX.Capability.Online.Competition;
 
 /// <summary>
-/// 竞技能力包级选项（C232 P4 迁入；当前无包级编排参数，占位对齐包族选项形态——
-/// 榜单选项在 <see cref="Leaderboard.OnlineLeaderboardOptions"/> 域级定义）。
+/// 竞技能力包级 Options 根类型（C294：聚合榜单组件参数与 Match.Settled 投影配置；
+/// 投影子对象收编族级键 <c>MatchBridgeLeaderboardId</c> → <c>Settings.online-competition.LeaderboardProjection.MatchSettledBoardId</c>，
+/// 默认值唯一来源 = 字段初始值）。
 /// </summary>
-/// <remarks>
-/// Package-level options of the competition capability (migrated by C232 P4; currently a placeholder
-/// with no orchestration parameters — leaderboard options live at the domain level).
-/// </remarks>
-public sealed class OnlineCompetitionOptions
+public sealed class OnlineCompetitionOptions : ICapabilityOptions
 {
+    /// <summary>
+    /// 获取或设置排行榜组件选项（防刷阈值 / 限流窗口 / 读缓存 / 分页上限）。
+    /// </summary>
+    public OnlineLeaderboardOptions Leaderboard { get; set; } = new OnlineLeaderboardOptions();
+
+    /// <summary>
+    /// 获取或设置 Match.Settled 写榜投影配置（<c>MatchSettledBoardId</c> 空白 = 不投影不预建）。
+    /// </summary>
+    public OnlineLeaderboardProjectionOptions LeaderboardProjection { get; set; } = new OnlineLeaderboardProjectionOptions();
+
+    /// <inheritdoc />
+    public void Validate(CapabilityOptionsValidation validation)
+    {
+        validation.RequirePositive("Leaderboard.DefaultMaxScorePerSubmission", Leaderboard.DefaultMaxScorePerSubmission);
+        validation.RequirePositive("Leaderboard.RateLimitMaxSubmissions", Leaderboard.RateLimitMaxSubmissions);
+        validation.RequirePositive("Leaderboard.RateLimitWindowSeconds", Leaderboard.RateLimitWindowSeconds);
+        validation.RequirePositive("Leaderboard.CacheTtlSeconds", Leaderboard.CacheTtlSeconds);
+        validation.RequirePositive("Leaderboard.MaxPageSize", Leaderboard.MaxPageSize);
+    }
 }

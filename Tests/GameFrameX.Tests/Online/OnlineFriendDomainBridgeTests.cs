@@ -28,37 +28,23 @@
 //  ==========================================================================================
 
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Hosting.Core;
-using GameFrameX.Capability.Online.Abstractions.Bridges;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
-using GameFrameX.Capability.Online.Abstractions.Events;
-using GameFrameX.Capability.Online.Abstractions.Idempotency;
 using GameFrameX.Capability.Online.Abstractions.Scope;
-using GameFrameX.Capability.Online.Foundation.Session;
-using GameFrameX.Capability.Online.Social;
-using GameFrameX.Launcher.Online;
 using Xunit;
 
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 好友域桥接缝测试（C244）：域契约面装配、域面语义（T2 裁定 R3/R5/R6/R7 的实现行为）、
-    /// lease 失效语义与 holder 生命周期、组合根接线发布 / 契约面缺席披露与验证种子。
+    /// 好友域桥接缝测试（C244 → C294 机制桥）：好友域契约面由 online-social 在 Activate 期经机制桥发布、
+    /// 域面语义（T2 裁定 R3/R5/R6/R7 的实现行为）经租约访问、桥生命周期（启动前缺席 / 停止后撤销且旧租约显式失败）、
+    /// 契约面缺席披露（未装配 social 即无桥）与验证种子（§4.6 测试夹具 <see cref="FriendBridgeVerificationSeed"/>）。
     /// </summary>
-    public class OnlineFriendDomainBridgeTests : IDisposable
+    [Collection(CapabilityRuntimeCollection.Name)]
+    public class OnlineFriendDomainBridgeTests
     {
-        /// <summary>测试用租户标识。</summary>
-        private const long TenantId = 1;
-
-        /// <summary>测试用应用标识。</summary>
-        private const long AppId = 1;
-
-        /// <summary>测试用区服标识。</summary>
-        private const long ServerId = 1001;
-
         /// <summary>玩家一。</summary>
         private const long PlayerOne = 1001;
 
@@ -68,85 +54,99 @@ namespace GameFrameX.Tests.Online
         /// <summary>玩家三。</summary>
         private const long PlayerThree = 1003;
 
-        public OnlineFriendDomainBridgeTests()
+        /// <summary>
+        /// 白名单圈定 foundation + social（好友域桥发布者 = online-social）。
+        /// </summary>
+        /// <param name="options">组合选项。</param>
+        private static void SocialClosure(CapabilityCompositionOptions options)
         {
-            OnlineFriendDomainBridgeHolder.Retract();
-        }
-
-        public void Dispose()
-        {
-            OnlineFriendDomainBridgeHolder.Retract();
+            options.Filter = new CapabilityAssemblyFilter(new[] { "online-foundation", "online-social" });
         }
 
         /// <summary>
-        /// 最小组合根（Social 运行时装配所需预置：作用域 + 事件出口 + 幂等 + Foundation 会话面）。
+        /// 构造玩家作用域（三元组与族配置段一致）。
         /// </summary>
-        private static CapabilityHostBuilder MinimalRoot()
-        {
-            var builder = new CapabilityHostBuilder();
-            builder.UseService(new OnlineScope(TenantId, AppId, ServerId));
-            var eventPublisher = new OnlineEventPublisher(new GameFrameX.Foundation.Idempotency.InMemoryEventPublisher());
-            builder.UseService<IOnlineEventPublisher>(eventPublisher);
-            builder.UseService(new OnlineIdempotencyService(new GameFrameX.Foundation.Idempotency.IdempotencyCoordinator(
-                new GameFrameX.Foundation.Idempotency.InMemoryIdempotencyStore(),
-                GameFrameX.Foundation.Idempotency.SystemClock.Instance,
-                new GameFrameX.Foundation.Idempotency.IdempotencyOptions())));
-            var sessionStore = new InMemoryOnlineSessionStore();
-            builder.UseService<IOnlineSessionStore>(sessionStore);
-            builder.UseService(new OnlineSessionTokenService(sessionStore, eventPublisher));
-            builder.AddModule(new FoundationStubModule());
-            return builder;
-        }
-
-        /// <summary>
-        /// Foundation 桩模块（满足 online-social 的 Requires 拓扑）。
-        /// </summary>
-        private sealed class FoundationStubModule : ICapabilityModule
-        {
-            /// <inheritdoc />
-            public CapabilityManifest Manifest { get; } = new("online-foundation", "1.0.0", Array.Empty<string>());
-
-            /// <inheritdoc />
-            public void Register(CapabilityRegistrationContext context)
-            {
-            }
-        }
-
-        /// <summary>
-        /// 构造合法宿主选项。
-        /// </summary>
-        private static CapabilityHostOptions ValidOptions()
-        {
-            return new CapabilityHostOptions { TenantId = TenantId, AppId = AppId, ServerId = ServerId };
-        }
-
-        /// <summary>
-        /// 构造玩家作用域。
-        /// </summary>
+        /// <param name="playerId">玩家标识。</param>
+        /// <returns>玩家作用域。</returns>
         private static OnlineScope PlayerScope(long playerId)
         {
-            return new OnlineScope(TenantId, AppId, ServerId, playerId);
+            return new OnlineScope(OnlineCapabilityTestHarness.TenantId, OnlineCapabilityTestHarness.AppId, OnlineCapabilityTestHarness.ServerId, playerId);
         }
 
         /// <summary>
-        /// 构造已装配 social 运行时的宿主（不自启：仅验证装配与域面行为）。
+        /// 组合 foundation + social 并启动，经机制桥取好友域契约面执行用例主体（结束恒停止撤桥）。
         /// </summary>
-        private static CapabilityHost BuildSocialHost()
+        /// <param name="body">用例主体（入参：好友域契约面、已启动的组合产物）。</param>
+        /// <returns>异步任务。</returns>
+        private static Task WithStartedFriendDomainAsync(Func<IOnlineFriendDomain, CapabilityRuntime, Task> body)
         {
-            var builder = MinimalRoot();
-            builder.AddOnlineSocialRuntime();
-            return builder.Build(ValidOptions());
+            return OnlineCapabilityTestHarness.WithRuntimeAsync(async runtime =>
+            {
+                await runtime.Host.StartAsync();
+                Assert.True(CapabilityBridge<IOnlineFriendDomain>.TryAcquire(out var lease));
+                await body(lease.Contract, runtime);
+            }, configure: SocialClosure);
         }
 
         /// <summary>
-        /// 模块自装配把好友域契约面注册回共享面。
+        /// 桥生命周期：装配未启动时好友域桥缺席；启动后 Activate 发布好友域桥，租约可取用契约面。
         /// </summary>
         [Fact]
-        public void Module_RegistersFriendDomainFace()
+        public async Task Bridge_PublishedOnlyAfterStart()
         {
-            var host = BuildSocialHost();
+            await OnlineCapabilityTestHarness.WithRuntimeAsync(async runtime =>
+            {
+                Assert.False(CapabilityBridge<IOnlineFriendDomain>.TryAcquire(out _));
 
-            Assert.NotNull(host.Services.GetService<IOnlineFriendDomain>());
+                await runtime.Host.StartAsync();
+
+                Assert.True(CapabilityBridge<IOnlineFriendDomain>.TryAcquire(out var lease));
+                Assert.NotNull(lease.Contract);
+            }, configure: SocialClosure);
+        }
+
+        /// <summary>
+        /// 桥生命周期：宿主停止自动撤桥——再取租约失败，停止前取得的旧租约访问契约面显式抛
+        /// <see cref="CapabilityBridgeUnavailableException"/>；同进程重新组合后发布新桥，旧租约仍失效、新租约可用。
+        /// </summary>
+        [Fact]
+        public async Task Bridge_AfterStop_RetractsAndOldLeaseFailsExplicitly()
+        {
+            CapabilityBridgeLease<IOnlineFriendDomain> staleLease = null;
+            await OnlineCapabilityTestHarness.WithRuntimeAsync(async runtime =>
+            {
+                await runtime.Host.StartAsync();
+                Assert.True(CapabilityBridge<IOnlineFriendDomain>.TryAcquire(out staleLease));
+                var before = await staleLease.Contract.ListFriendsAsync(PlayerScope(PlayerOne));
+                Assert.True(before.IsSuccess);
+
+                await runtime.StopAsync();
+
+                Assert.False(CapabilityBridge<IOnlineFriendDomain>.TryAcquire(out _));
+                Assert.Throws<CapabilityBridgeUnavailableException>(() => staleLease.Contract);
+            }, configure: SocialClosure);
+
+            await WithStartedFriendDomainAsync(async (domain, runtime) =>
+            {
+                Assert.Throws<CapabilityBridgeUnavailableException>(() => staleLease.Contract);
+                var fresh = await domain.ListFriendsAsync(PlayerScope(PlayerOne));
+                Assert.True(fresh.IsSuccess);
+            });
+        }
+
+        /// <summary>
+        /// 契约面缺席披露：白名单不含 online-social 时启动后好友域桥不发布（消费方按依赖不可用显式失败）。
+        /// </summary>
+        [Fact]
+        public async Task Bridge_WithoutSocial_IsNotPublished()
+        {
+            await OnlineCapabilityTestHarness.WithRuntimeAsync(async runtime =>
+            {
+                await runtime.Host.StartAsync();
+
+                Assert.DoesNotContain("online-social", runtime.Report.EnabledIdsInOrder);
+                Assert.False(CapabilityBridge<IOnlineFriendDomain>.TryAcquire(out _));
+            }, configure: options => options.Filter = new CapabilityAssemblyFilter(new[] { "online-foundation" }));
         }
 
         /// <summary>
@@ -155,16 +155,16 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Face_Establish_FreshPair_ConvergesToFriend()
         {
-            var host = BuildSocialHost();
-            var domain = host.Services.GetService<IOnlineFriendDomain>();
+            await WithStartedFriendDomainAsync(async (domain, runtime) =>
+            {
+                var result = await domain.EstablishAsync(PlayerScope(PlayerOne), PlayerTwo);
 
-            var result = await domain.EstablishAsync(PlayerScope(PlayerOne), PlayerTwo);
-
-            Assert.True(result.IsSuccess);
-            Assert.Equal(OnlineFriendRelationKind.None, result.Data.Before);
-            Assert.Equal(OnlineFriendRelationKind.Friend, result.Data.After);
-            var listed = await domain.ListFriendsAsync(PlayerScope(PlayerTwo));
-            Assert.Contains(listed.Data, entry => entry.PlayerId == PlayerOne);
+                Assert.True(result.IsSuccess);
+                Assert.Equal(OnlineFriendRelationKind.None, result.Data.Before);
+                Assert.Equal(OnlineFriendRelationKind.Friend, result.Data.After);
+                var listed = await domain.ListFriendsAsync(PlayerScope(PlayerTwo));
+                Assert.Contains(listed.Data, entry => entry.PlayerId == PlayerOne);
+            });
         }
 
         /// <summary>
@@ -173,15 +173,15 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Face_Establish_ReversePending_ActsAsAccept()
         {
-            var host = BuildSocialHost();
-            var domain = host.Services.GetService<IOnlineFriendDomain>();
+            await WithStartedFriendDomainAsync(async (domain, runtime) =>
+            {
+                await domain.RequestAsync(PlayerScope(PlayerTwo), PlayerOne);
+                var result = await domain.EstablishAsync(PlayerScope(PlayerOne), PlayerTwo);
 
-            await domain.RequestAsync(PlayerScope(PlayerTwo), PlayerOne);
-            var result = await domain.EstablishAsync(PlayerScope(PlayerOne), PlayerTwo);
-
-            Assert.True(result.IsSuccess);
-            Assert.Equal(OnlineFriendRelationKind.IncomingRequest, result.Data.Before);
-            Assert.Equal(OnlineFriendRelationKind.Friend, result.Data.After);
+                Assert.True(result.IsSuccess);
+                Assert.Equal(OnlineFriendRelationKind.IncomingRequest, result.Data.Before);
+                Assert.Equal(OnlineFriendRelationKind.Friend, result.Data.After);
+            });
         }
 
         /// <summary>
@@ -190,15 +190,15 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Face_Establish_OwnPending_AutoAccepts()
         {
-            var host = BuildSocialHost();
-            var domain = host.Services.GetService<IOnlineFriendDomain>();
+            await WithStartedFriendDomainAsync(async (domain, runtime) =>
+            {
+                await domain.RequestAsync(PlayerScope(PlayerOne), PlayerTwo);
+                var result = await domain.EstablishAsync(PlayerScope(PlayerOne), PlayerTwo);
 
-            await domain.RequestAsync(PlayerScope(PlayerOne), PlayerTwo);
-            var result = await domain.EstablishAsync(PlayerScope(PlayerOne), PlayerTwo);
-
-            Assert.True(result.IsSuccess);
-            Assert.Equal(OnlineFriendRelationKind.OutgoingRequest, result.Data.Before);
-            Assert.Equal(OnlineFriendRelationKind.Friend, result.Data.After);
+                Assert.True(result.IsSuccess);
+                Assert.Equal(OnlineFriendRelationKind.OutgoingRequest, result.Data.Before);
+                Assert.Equal(OnlineFriendRelationKind.Friend, result.Data.After);
+            });
         }
 
         /// <summary>
@@ -207,15 +207,15 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Face_Establish_AlreadyFriend_Idempotent()
         {
-            var host = BuildSocialHost();
-            var domain = host.Services.GetService<IOnlineFriendDomain>();
+            await WithStartedFriendDomainAsync(async (domain, runtime) =>
+            {
+                await domain.EstablishAsync(PlayerScope(PlayerOne), PlayerTwo);
+                var result = await domain.EstablishAsync(PlayerScope(PlayerOne), PlayerTwo);
 
-            await domain.EstablishAsync(PlayerScope(PlayerOne), PlayerTwo);
-            var result = await domain.EstablishAsync(PlayerScope(PlayerOne), PlayerTwo);
-
-            Assert.True(result.IsSuccess);
-            Assert.Equal(OnlineFriendRelationKind.Friend, result.Data.Before);
-            Assert.Equal(OnlineFriendRelationKind.Friend, result.Data.After);
+                Assert.True(result.IsSuccess);
+                Assert.Equal(OnlineFriendRelationKind.Friend, result.Data.Before);
+                Assert.Equal(OnlineFriendRelationKind.Friend, result.Data.After);
+            });
         }
 
         /// <summary>
@@ -224,26 +224,26 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Face_Request_ConvergesAndClassifiesDirection()
         {
-            var host = BuildSocialHost();
-            var domain = host.Services.GetService<IOnlineFriendDomain>();
+            await WithStartedFriendDomainAsync(async (domain, runtime) =>
+            {
+                var fresh = await domain.RequestAsync(PlayerScope(PlayerOne), PlayerTwo);
+                Assert.True(fresh.IsSuccess);
+                Assert.Equal(OnlineFriendRelationKind.None, fresh.Data.Before);
+                Assert.Equal(OnlineFriendRelationKind.OutgoingRequest, fresh.Data.After);
 
-            var fresh = await domain.RequestAsync(PlayerScope(PlayerOne), PlayerTwo);
-            Assert.True(fresh.IsSuccess);
-            Assert.Equal(OnlineFriendRelationKind.None, fresh.Data.Before);
-            Assert.Equal(OnlineFriendRelationKind.OutgoingRequest, fresh.Data.After);
+                var repeat = await domain.RequestAsync(PlayerScope(PlayerOne), PlayerTwo);
+                Assert.True(repeat.IsSuccess);
+                Assert.Equal(OnlineFriendRelationKind.OutgoingRequest, repeat.Data.Before);
 
-            var repeat = await domain.RequestAsync(PlayerScope(PlayerOne), PlayerTwo);
-            Assert.True(repeat.IsSuccess);
-            Assert.Equal(OnlineFriendRelationKind.OutgoingRequest, repeat.Data.Before);
+                var reverse = await domain.RequestAsync(PlayerScope(PlayerTwo), PlayerOne);
+                Assert.True(reverse.IsSuccess);
+                Assert.Equal(OnlineFriendRelationKind.IncomingRequest, reverse.Data.Before);
 
-            var reverse = await domain.RequestAsync(PlayerScope(PlayerTwo), PlayerOne);
-            Assert.True(reverse.IsSuccess);
-            Assert.Equal(OnlineFriendRelationKind.IncomingRequest, reverse.Data.Before);
-
-            // 玩家三的新鲜申请不受影响。
-            var third = await domain.RequestAsync(PlayerScope(PlayerThree), PlayerOne);
-            Assert.True(third.IsSuccess);
-            Assert.Equal(OnlineFriendRelationKind.None, third.Data.Before);
+                // 玩家三的新鲜申请不受影响。
+                var third = await domain.RequestAsync(PlayerScope(PlayerThree), PlayerOne);
+                Assert.True(third.IsSuccess);
+                Assert.Equal(OnlineFriendRelationKind.None, third.Data.Before);
+            });
         }
 
         /// <summary>
@@ -252,27 +252,27 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Face_Accept_WithoutAnswerablePending_ReturnsResourceNotFound()
         {
-            var host = BuildSocialHost();
-            var domain = host.Services.GetService<IOnlineFriendDomain>();
+            await WithStartedFriendDomainAsync(async (domain, runtime) =>
+            {
+                var noRecord = await domain.AcceptAsync(PlayerScope(PlayerOne), PlayerTwo);
+                Assert.False(noRecord.IsSuccess);
+                Assert.Equal(OnlineErrorCode.ResourceNotFound, noRecord.Code);
 
-            var noRecord = await domain.AcceptAsync(PlayerScope(PlayerOne), PlayerTwo);
-            Assert.False(noRecord.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ResourceNotFound, noRecord.Code);
+                // 发起方本人不是被请求方：看不到自己发出的申请。
+                await domain.RequestAsync(PlayerScope(PlayerOne), PlayerTwo);
+                var selfAnswer = await domain.AcceptAsync(PlayerScope(PlayerOne), PlayerTwo);
+                Assert.False(selfAnswer.IsSuccess);
+                Assert.Equal(OnlineErrorCode.ResourceNotFound, selfAnswer.Code);
 
-            // 发起方本人不是被请求方：看不到自己发出的申请。
-            await domain.RequestAsync(PlayerScope(PlayerOne), PlayerTwo);
-            var selfAnswer = await domain.AcceptAsync(PlayerScope(PlayerOne), PlayerTwo);
-            Assert.False(selfAnswer.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ResourceNotFound, selfAnswer.Code);
-
-            // 首次接受成功，重放（Incoming 已消费）→ ResourceNotFound（R7：重复答复同旧协议「申请不存在」）。
-            var accepted = await domain.AcceptAsync(PlayerScope(PlayerTwo), PlayerOne);
-            Assert.True(accepted.IsSuccess);
-            Assert.Equal(OnlineFriendRelationKind.IncomingRequest, accepted.Data.Before);
-            Assert.Equal(OnlineFriendRelationKind.Friend, accepted.Data.After);
-            var replay = await domain.AcceptAsync(PlayerScope(PlayerTwo), PlayerOne);
-            Assert.False(replay.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ResourceNotFound, replay.Code);
+                // 首次接受成功，重放（Incoming 已消费）→ ResourceNotFound（R7：重复答复同旧协议「申请不存在」）。
+                var accepted = await domain.AcceptAsync(PlayerScope(PlayerTwo), PlayerOne);
+                Assert.True(accepted.IsSuccess);
+                Assert.Equal(OnlineFriendRelationKind.IncomingRequest, accepted.Data.Before);
+                Assert.Equal(OnlineFriendRelationKind.Friend, accepted.Data.After);
+                var replay = await domain.AcceptAsync(PlayerScope(PlayerTwo), PlayerOne);
+                Assert.False(replay.IsSuccess);
+                Assert.Equal(OnlineErrorCode.ResourceNotFound, replay.Code);
+            });
         }
 
         /// <summary>
@@ -281,19 +281,19 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Face_Reject_ThenRenew_FlipsDirection()
         {
-            var host = BuildSocialHost();
-            var domain = host.Services.GetService<IOnlineFriendDomain>();
+            await WithStartedFriendDomainAsync(async (domain, runtime) =>
+            {
+                await domain.RequestAsync(PlayerScope(PlayerOne), PlayerTwo);
+                var rejected = await domain.RejectAsync(PlayerScope(PlayerTwo), PlayerOne);
+                Assert.True(rejected.IsSuccess);
+                Assert.Equal(OnlineFriendRelationKind.IncomingRequest, rejected.Data.Before);
+                Assert.Equal(OnlineFriendRelationKind.None, rejected.Data.After);
 
-            await domain.RequestAsync(PlayerScope(PlayerOne), PlayerTwo);
-            var rejected = await domain.RejectAsync(PlayerScope(PlayerTwo), PlayerOne);
-            Assert.True(rejected.IsSuccess);
-            Assert.Equal(OnlineFriendRelationKind.IncomingRequest, rejected.Data.Before);
-            Assert.Equal(OnlineFriendRelationKind.None, rejected.Data.After);
-
-            var renewed = await domain.RequestAsync(PlayerScope(PlayerTwo), PlayerOne);
-            Assert.True(renewed.IsSuccess);
-            Assert.Equal(OnlineFriendRelationKind.None, renewed.Data.Before);
-            Assert.Equal(OnlineFriendRelationKind.OutgoingRequest, renewed.Data.After);
+                var renewed = await domain.RequestAsync(PlayerScope(PlayerTwo), PlayerOne);
+                Assert.True(renewed.IsSuccess);
+                Assert.Equal(OnlineFriendRelationKind.None, renewed.Data.Before);
+                Assert.Equal(OnlineFriendRelationKind.OutgoingRequest, renewed.Data.After);
+            });
         }
 
         /// <summary>
@@ -302,22 +302,22 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Face_Remove_RequiresEstablishedFriendship()
         {
-            var host = BuildSocialHost();
-            var domain = host.Services.GetService<IOnlineFriendDomain>();
+            await WithStartedFriendDomainAsync(async (domain, runtime) =>
+            {
+                var notFriend = await domain.RemoveAsync(PlayerScope(PlayerOne), PlayerTwo);
+                Assert.False(notFriend.IsSuccess);
+                Assert.Equal(OnlineErrorCode.ResourceNotFound, notFriend.Code);
 
-            var notFriend = await domain.RemoveAsync(PlayerScope(PlayerOne), PlayerTwo);
-            Assert.False(notFriend.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ResourceNotFound, notFriend.Code);
+                await domain.EstablishAsync(PlayerScope(PlayerOne), PlayerTwo);
+                var removed = await domain.RemoveAsync(PlayerScope(PlayerOne), PlayerTwo);
+                Assert.True(removed.IsSuccess);
+                Assert.Equal(OnlineFriendRelationKind.Friend, removed.Data.Before);
+                Assert.Equal(OnlineFriendRelationKind.None, removed.Data.After);
 
-            await domain.EstablishAsync(PlayerScope(PlayerOne), PlayerTwo);
-            var removed = await domain.RemoveAsync(PlayerScope(PlayerOne), PlayerTwo);
-            Assert.True(removed.IsSuccess);
-            Assert.Equal(OnlineFriendRelationKind.Friend, removed.Data.Before);
-            Assert.Equal(OnlineFriendRelationKind.None, removed.Data.After);
-
-            var replay = await domain.RemoveAsync(PlayerScope(PlayerOne), PlayerTwo);
-            Assert.False(replay.IsSuccess);
-            Assert.Equal(OnlineErrorCode.ResourceNotFound, replay.Code);
+                var replay = await domain.RemoveAsync(PlayerScope(PlayerOne), PlayerTwo);
+                Assert.False(replay.IsSuccess);
+                Assert.Equal(OnlineErrorCode.ResourceNotFound, replay.Code);
+            });
         }
 
         /// <summary>
@@ -326,84 +326,76 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task Face_ListRelations_ProjectsKinds_And_ListFriends_OnlyEstablished()
         {
-            var host = BuildSocialHost();
-            var domain = host.Services.GetService<IOnlineFriendDomain>();
+            await WithStartedFriendDomainAsync(async (domain, runtime) =>
+            {
+                await domain.EstablishAsync(PlayerScope(PlayerOne), PlayerTwo);
+                await domain.RequestAsync(PlayerScope(PlayerThree), PlayerOne);
 
-            await domain.EstablishAsync(PlayerScope(PlayerOne), PlayerTwo);
-            await domain.RequestAsync(PlayerScope(PlayerThree), PlayerOne);
+                var relations = await domain.ListRelationsAsync(PlayerScope(PlayerOne));
+                Assert.True(relations.IsSuccess);
+                Assert.Contains(relations.Data, r => r.OtherPlayerId == PlayerTwo && r.Kind == OnlineFriendRelationKind.Friend);
+                Assert.Contains(relations.Data, r => r.OtherPlayerId == PlayerThree && r.Kind == OnlineFriendRelationKind.IncomingRequest);
+                Assert.Equal(2, relations.Data.Count);
 
-            var relations = await domain.ListRelationsAsync(PlayerScope(PlayerOne));
-            Assert.True(relations.IsSuccess);
-            Assert.Contains(relations.Data, r => r.OtherPlayerId == PlayerTwo && r.Kind == OnlineFriendRelationKind.Friend);
-            Assert.Contains(relations.Data, r => r.OtherPlayerId == PlayerThree && r.Kind == OnlineFriendRelationKind.IncomingRequest);
-            Assert.Equal(2, relations.Data.Count);
-
-            var friends = await domain.ListFriendsAsync(PlayerScope(PlayerOne));
-            var only = Assert.Single(friends.Data);
-            Assert.Equal(PlayerTwo, only.PlayerId);
+                var friends = await domain.ListFriendsAsync(PlayerScope(PlayerOne));
+                var only = Assert.Single(friends.Data);
+                Assert.Equal(PlayerTwo, only.PlayerId);
+            });
         }
 
         /// <summary>
-        /// 租约撤销后旧引用一律显式 DependencyUnavailable；再发布替换旧租约。
-        /// </summary>
-        [Fact]
-        public async Task Lease_RetractAndRepublish_FailExplicitly()
-        {
-            var host = BuildSocialHost();
-            var domain = host.Services.GetService<IOnlineFriendDomain>();
-
-            var first = OnlineFriendDomainBridgeHolder.Publish(domain, PlayerScope(0));
-            var before = await first.ListFriendsAsync(PlayerScope(PlayerOne));
-            Assert.True(before.IsSuccess);
-
-            var second = OnlineFriendDomainBridgeHolder.Publish(domain, PlayerScope(0));
-            var staleFirst = await first.ListFriendsAsync(PlayerScope(PlayerOne));
-            Assert.False(staleFirst.IsSuccess);
-            Assert.Equal(OnlineErrorCode.DependencyUnavailable, staleFirst.Code);
-
-            OnlineFriendDomainBridgeHolder.Retract();
-            Assert.Null(OnlineFriendDomainBridgeHolder.Current);
-            var staleSecond = await second.ListFriendsAsync(PlayerScope(PlayerOne));
-            Assert.False(staleSecond.IsSuccess);
-            Assert.Equal(OnlineErrorCode.DependencyUnavailable, staleSecond.Code);
-        }
-
-        /// <summary>
-        /// 组合根接线：完整宿主发布域桥；契约面缺席（online-social 未装配）披露 Error 且不发布、不抛出。
-        /// </summary>
-        [Fact]
-        public void Wiring_PublishesWithFullHost_And_DisclosesMissingFace()
-        {
-            var host = BuildSocialHost();
-
-            var lease = OnlineFriendDomainBridgeWiring.PublishFriendDomainBridge(host);
-            Assert.NotNull(lease);
-            Assert.Same(lease, OnlineFriendDomainBridgeHolder.Current);
-            OnlineFriendDomainBridgeWiring.RetractFriendDomainBridge();
-            Assert.False(OnlineFriendDomainBridgeHolder.IsPublished);
-
-            var bareBuilder = new CapabilityHostBuilder();
-            bareBuilder.UseService(new OnlineScope(TenantId, AppId, ServerId));
-            var bareHost = bareBuilder.Build(ValidOptions());
-            Assert.Null(OnlineFriendDomainBridgeWiring.PublishFriendDomainBridge(bareHost));
-            Assert.False(OnlineFriendDomainBridgeHolder.IsPublished);
-        }
-
-        /// <summary>
-        /// 验证种子经真实写路径建立非空好友（幂等重放不报错）。
+        /// 验证种子经真实写路径建立非空好友，请求方经好友域桥可见；幂等重放不产生第二条关系、不报错。
         /// </summary>
         [Fact]
         public async Task Seed_EstablishesFriendshipsThroughRealWritePath()
         {
-            var host = BuildSocialHost();
+            await WithStartedFriendDomainAsync(async (domain, runtime) =>
+            {
+                var established = await FriendBridgeVerificationSeed.SeedAsync(runtime.Host, new[] { PlayerOne, PlayerTwo });
+                Assert.Equal(1, established);
+                await FriendBridgeVerificationSeed.SeedAsync(runtime.Host, new[] { PlayerOne, PlayerTwo });
 
-            await OnlineFriendDomainBridgeWiring.SeedFriendDomainBridgeVerificationAsync(host, new[] { PlayerOne, PlayerTwo });
-            await OnlineFriendDomainBridgeWiring.SeedFriendDomainBridgeVerificationAsync(host, new[] { PlayerOne, PlayerTwo });
+                var friends = await domain.ListFriendsAsync(PlayerScope(PlayerOne));
+                var only = Assert.Single(friends.Data);
+                Assert.Equal(PlayerTwo, only.PlayerId);
+                var reverse = await domain.ListFriendsAsync(PlayerScope(PlayerTwo));
+                Assert.Contains(reverse.Data, entry => entry.PlayerId == PlayerOne);
+            });
+        }
 
-            var domain = host.Services.GetService<IOnlineFriendDomain>();
-            var friends = await domain.ListFriendsAsync(PlayerScope(PlayerOne));
-            var only = Assert.Single(friends.Data);
-            Assert.Equal(PlayerTwo, only.PlayerId);
+        /// <summary>
+        /// 验证种子多好友：首元素为请求方、其余逐一成友，请求方经好友域桥看到全部种子好友。
+        /// </summary>
+        [Fact]
+        public async Task Seed_MultipleFriends_AllVisibleToRequester()
+        {
+            await WithStartedFriendDomainAsync(async (domain, runtime) =>
+            {
+                var established = await FriendBridgeVerificationSeed.SeedAsync(runtime.Host, new[] { PlayerOne, PlayerTwo, PlayerThree });
+                Assert.Equal(2, established);
+
+                var friends = await domain.ListFriendsAsync(PlayerScope(PlayerOne));
+                Assert.Equal(2, friends.Data.Count);
+                Assert.Contains(friends.Data, entry => entry.PlayerId == PlayerTwo);
+                Assert.Contains(friends.Data, entry => entry.PlayerId == PlayerThree);
+            });
+        }
+
+        /// <summary>
+        /// 验证种子空列表 / 单元素列表为空操作：不建立任何关系。
+        /// </summary>
+        [Fact]
+        public async Task Seed_EmptyOrSingleList_IsNoOp()
+        {
+            await WithStartedFriendDomainAsync(async (domain, runtime) =>
+            {
+                Assert.Equal(0, await FriendBridgeVerificationSeed.SeedAsync(runtime.Host, Array.Empty<long>()));
+                Assert.Equal(0, await FriendBridgeVerificationSeed.SeedAsync(runtime.Host, new[] { PlayerOne }));
+
+                var relations = await domain.ListRelationsAsync(PlayerScope(PlayerOne));
+                Assert.True(relations.IsSuccess);
+                Assert.Empty(relations.Data);
+            });
         }
     }
 }

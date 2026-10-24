@@ -47,10 +47,10 @@ using GameFrameX.Capability.Online.Abstractions.Events;
 public static class OnlineHotfixEvents
 {
     /// <summary>版本清单已登记（发布流水线簿记事实）。</summary>
-    public const string VersionRegistered = "Online.Hotfix.VersionRegistered";
+    public const string VersionRegistered = "online.hotfix.versionregistered";
 
     /// <summary>Hotfix 已回滚（受控操作事实：切换成功 + 兼容检查摘要）。</summary>
-    public const string RolledBack = "Online.Hotfix.RolledBack";
+    public const string RolledBack = "online.hotfix.rolledback";
 
     /// <summary>事件来源标识。</summary>
     public const string Source = "online-hotfix";

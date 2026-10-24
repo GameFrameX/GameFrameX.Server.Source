@@ -236,7 +236,11 @@ public sealed class OnlineTournamentService
 
         var rank = 0;
         var score = 0L;
-        var eligibility = tournament.Eligibility ?? new OnlineTournamentEligibility();
+        var eligibility = tournament.Eligibility;
+        if (eligibility == null)
+        {
+            eligibility = new OnlineTournamentEligibility();
+        }
         if (eligibility.RequiresLeaderboardLookup())
         {
             var rankResult = await _leaderboardService.GetPlayerRankAsync(scope, tournament.LeaderboardId, playerId, nowUnixMilliseconds, cancellationToken).ConfigureAwait(false);

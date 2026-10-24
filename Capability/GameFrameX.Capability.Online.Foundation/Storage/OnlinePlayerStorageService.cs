@@ -57,11 +57,11 @@ public sealed class OnlinePlayerStorageService
     /// 初始化 <see cref="OnlinePlayerStorageService"/>。
     /// </summary>
     /// <param name="store">玩家云存储。</param>
-    /// <param name="options">限制选项（可空 = 默认限制）。</param>
-    public OnlinePlayerStorageService(IOnlinePlayerStorageStore store, OnlinePlayerStorageOptions options = null)
+    /// <param name="options">限制选项（必填；默认值唯一来源 = <see cref="OnlinePlayerStorageOptions"/> 字段初始值）。</param>
+    public OnlinePlayerStorageService(IOnlinePlayerStorageStore store, OnlinePlayerStorageOptions options)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
-        _options = options ?? new OnlinePlayerStorageOptions();
+        _options = options ?? throw new ArgumentNullException(nameof(options));
     }
 
     /// <summary>

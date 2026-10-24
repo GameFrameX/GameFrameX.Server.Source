@@ -205,7 +205,7 @@ GameFrameX 使用命令行参数 (`--Key=Value`) 进行配置，所有配置项�
 | `HttpSignSecret` | HTTP 签名密钥（HMAC-SHA256），开启签名校验后必填；为空时一律拒绝（fail-closed） | 无 | `a-strong-secret` |
 | `HttpUrl` | API 接口根路径 | `/game/api/` | `/game/api/` |
 | `HttpIsDevelopment` | HTTP 开发模式（启用 Swagger） | `false` | `true` |
-| `IsEnableOnlineAdmin` | 是否在进程内托管 Online Runtime 与管理 API | `false` | `true` |
+| `Online` | Online 能力族配置段：`EnableRuntime` / `EnableAdminApi`（缺省 `false`）、`EnableRoles`（缺省 `["Game"]`）、`Capabilities` / `Disable` 过滤、`UseGameDbStores`、按能力 Id 寻址的 `Settings` | 无 | 见 `Configs/app_config.json` |
 | `OnlineAdminPort` | Online 管理 API 监听端口 | `28090` | `28090` |
 | `OnlineAdminApiPrefix` | Online 管理 API 路由前缀 | `online/admin` | `online/admin` |
 | `OnlineTenantId` | Online Runtime 授权租户 ID（作用域三元组） | `0` | `1` |
@@ -538,9 +538,9 @@ docker compose down
 
 #### Online 平台管理 API
 
-当 `IsEnableOnlineAdmin=true` 时，Game 进程会组装 Online Runtime（进程内能力库：基于内存存储的资产 / 会话 / 匹配 / 社交 / LiveOps 服务），并在独立的 Kestrel 监听器上暴露管理 HTTP API：
+当 `Online.EnableAdminApi=true`（且当前 Role 在 `Online.EnableRoles` 内）时，进程经 `CapabilityComposition.Compose` 组合 Online 能力族（进程内能力库：缺省基于内存存储的资产 / 会话 / 匹配 / 社交 / LiveOps 服务），并在独立的 Kestrel 监听器上暴露管理 HTTP API：
 
-- 端点：`POST http://<server-host>:28090/online/admin/{action}`（全部 33 个管理动作 + `list_capabilities` 元端点，HTTP 状态码恒为 200；业务结果通过内层信封 `Code` 返回）
+- 端点：`POST http://<server-host>:28090/online/admin/{action}`（全部 35 个管理动作 + `list_capabilities` / `list_capability_services` / `list_capability_settings` 元端点，HTTP 状态码恒为 200；业务结果通过内层信封 `Code` 返回）
 - 作用域三元组：每个请求携带 `TenantId` / `AppId` / `ServerId`；与授权的 `OnlineTenantId` / `OnlineAppId` / `ServerId` 不匹配的请求分别以 3002/3003/3004 拒绝，缺失三元组则以 3005 拒绝
 - 在 GameFrameX Admin 控制台注册服务器：将大区的 `HttpManageUrl` 指向 `http://<server-host>:28090`（`online/admin` 前缀与动作名由 Admin 客户端按其通信协议自动追加）
 

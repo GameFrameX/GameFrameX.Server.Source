@@ -275,13 +275,13 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 构造被测服务。
+        /// 以包内默认限制选项构造被测服务。
         /// </summary>
-        /// <param name="options">限制选项（可空 = 默认）。</param>
         /// <returns>玩家云存储服务实例。</returns>
-        private static OnlinePlayerStorageService CreateService(OnlinePlayerStorageOptions options = null)
+        private static OnlinePlayerStorageService CreateService()
         {
-            return new OnlinePlayerStorageService(new InMemoryOnlinePlayerStorageStore(), options);
+            // C294：服务构造面 options 改为必填（包内默认由 Foundation 的 Options 绑定提供），测试显式构造包内默认实例。
+            return new OnlinePlayerStorageService(new InMemoryOnlinePlayerStorageStore(), new OnlinePlayerStorageOptions());
         }
 
         /// <summary>
