@@ -311,8 +311,30 @@ internal static class CapabilityDependencyChecker
     /// <param name="result">检查结果累积器（写入 Order）。</param>
     private static void OrderByDependencies(IReadOnlyList<ICapabilityModule> enabledModules, Dictionary<string, List<string>> edges, Result result)
     {
-        var inDegree = new Dictionary<string, int>(StringComparer.Ordinal);
-        var dependents = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        BuildDependencyGraph(edges, out var inDegree, out var dependents);
+
+        var ready = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var pair in inDegree)
+        {
+            if (pair.Value == 0)
+            {
+                ready.Add(pair.Key);
+            }
+        }
+
+        result.Order = DrainReadyQueue(ready, inDegree, dependents, enabledModules.Count);
+    }
+
+    /// <summary>
+    /// 构建入度表与反向邻接表（依赖边 → 被依赖方索引）。
+    /// </summary>
+    /// <param name="edges">定序边（依赖方 → 依赖集合）。</param>
+    /// <param name="inDegree">入度表（每个依赖方的依赖计数）。</param>
+    /// <param name="dependents">反向邻接表（被依赖方 → 依赖方列表）。</param>
+    private static void BuildDependencyGraph(Dictionary<string, List<string>> edges, out Dictionary<string, int> inDegree, out Dictionary<string, List<string>> dependents)
+    {
+        inDegree = new Dictionary<string, int>(StringComparer.Ordinal);
+        dependents = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         foreach (var pair in edges)
         {
             inDegree[pair.Key] = 0;
@@ -333,17 +355,19 @@ internal static class CapabilityDependencyChecker
                 dependents[dependency].Add(pair.Key);
             }
         }
+    }
 
-        var ready = new SortedSet<string>(StringComparer.Ordinal);
-        foreach (var pair in inDegree)
-        {
-            if (pair.Value == 0)
-            {
-                ready.Add(pair.Key);
-            }
-        }
-
-        var ordered = new List<string>(enabledModules.Count);
+    /// <summary>
+    /// Kahn 排空就绪队列（同层按能力 Id 序数取最小，产出装配顺序）。
+    /// </summary>
+    /// <param name="ready">就绪集合（入度为零的节点）。</param>
+    /// <param name="inDegree">入度表（随排空递减）。</param>
+    /// <param name="dependents">反向邻接表。</param>
+    /// <param name="capacity">结果容量预估。</param>
+    /// <returns>拓扑定序结果。</returns>
+    private static List<string> DrainReadyQueue(SortedSet<string> ready, Dictionary<string, int> inDegree, Dictionary<string, List<string>> dependents, int capacity)
+    {
+        var ordered = new List<string>(capacity);
         while (ready.Count > 0)
         {
             var id = ready.Min;
@@ -366,7 +390,7 @@ internal static class CapabilityDependencyChecker
             }
         }
 
-        result.Order = ordered;
+        return ordered;
     }
 
     /// <summary>
