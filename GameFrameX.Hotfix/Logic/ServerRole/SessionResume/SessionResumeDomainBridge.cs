@@ -205,6 +205,20 @@ internal static class SessionResumeDomainBridge
             return;
         }
 
+        var sessionOutcome = await NotifySessionDomainDisconnectedAsync(playerId);
+        var matchOutcome = await NotifyMatchDomainDisconnectedAsync(playerId);
+
+        // Localization: Hotfix.SessionResume.DisconnectCoordination - 断线两层协同, PlayerId: {0}, 会话域结果: {1}, 对局域结果: {2}
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Hotfix.SessionResume.DisconnectCoordination, playerId, sessionOutcome, matchOutcome));
+    }
+
+    /// <summary>
+    /// 断线协同会话域段：桥在位时通知 Online 会话域开重连窗，产出结果描述（skipped / ok / failed:&lt;Code&gt;）。
+    /// </summary>
+    /// <param name="playerId">断线玩家标识。</param>
+    /// <returns>会话域结果描述（桥缺席为 skipped）。</returns>
+    private static async Task<string> NotifySessionDomainDisconnectedAsync(long playerId)
+    {
         var sessionOutcome = "skipped";
         var sessionContract = TryGetSessionContract();
         if (sessionContract != null)
@@ -224,6 +238,16 @@ internal static class SessionResumeDomainBridge
             }
         }
 
+        return sessionOutcome;
+    }
+
+    /// <summary>
+    /// 断线协同对局域段：桥在位时通知对局域标记断线成员，产出结果描述（skipped / marked:&lt;MatchId&gt; / no-match / failed:&lt;Code&gt;）。
+    /// </summary>
+    /// <param name="playerId">断线玩家标识。</param>
+    /// <returns>对局域结果描述（桥缺席为 skipped）。</returns>
+    private static async Task<string> NotifyMatchDomainDisconnectedAsync(long playerId)
+    {
         var matchOutcome = "skipped";
         var matchContract = TryGetMatchContract();
         if (matchContract != null)
@@ -244,8 +268,7 @@ internal static class SessionResumeDomainBridge
             }
         }
 
-        // Localization: Hotfix.SessionResume.DisconnectCoordination - 断线两层协同, PlayerId: {0}, 会话域结果: {1}, 对局域结果: {2}
-        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Hotfix.SessionResume.DisconnectCoordination, playerId, sessionOutcome, matchOutcome));
+        return matchOutcome;
     }
 
     /// <summary>
