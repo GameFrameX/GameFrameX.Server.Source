@@ -46,13 +46,36 @@ namespace {{Name}};
 /// </summary>
 public sealed class EmptyPlayerDirectory : IOnlinePlayerDirectory
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 模板缺省实现：最小 Online 宿主没有玩家存储，任何关键字搜索都返回空列表；接入真实玩家数据时须替换本类。
+    /// </summary>
+    /// <remarks>
+    /// Template default: the minimal Online host has no player store, so every name search returns an empty list.
+    /// Replace this class when wiring real player data.
+    /// </remarks>
+    /// <param name="tenantId">租户 ID（未使用） / Tenant ID (unused)</param>
+    /// <param name="appId">应用 ID（未使用） / App ID (unused)</param>
+    /// <param name="keyword">名称关键字（未使用） / Name keyword (unused)</param>
+    /// <param name="limit">最大返回条数（未使用） / Maximum number of entries (unused)</param>
+    /// <param name="cancellationToken">取消令牌（未使用） / Cancellation token (unused)</param>
+    /// <returns>已完成的空列表任务 / Completed task with an empty list</returns>
     public Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> SearchByNameAsync(long tenantId, long appId, string keyword, int limit, CancellationToken cancellationToken = default)
     {
         return Task.FromResult<IReadOnlyList<OnlinePlayerDirectoryEntry>>(new List<OnlinePlayerDirectoryEntry>());
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 模板缺省实现：最小 Online 宿主没有玩家存储，任何 ID 查询都返回空列表；接入真实玩家数据时须替换本类。
+    /// </summary>
+    /// <remarks>
+    /// Template default: the minimal Online host has no player store, so every ID lookup returns an empty list.
+    /// Replace this class when wiring real player data.
+    /// </remarks>
+    /// <param name="tenantId">租户 ID（未使用） / Tenant ID (unused)</param>
+    /// <param name="appId">应用 ID（未使用） / App ID (unused)</param>
+    /// <param name="playerIds">玩家 ID 列表（未使用） / Player IDs (unused)</param>
+    /// <param name="cancellationToken">取消令牌（未使用） / Cancellation token (unused)</param>
+    /// <returns>已完成的空列表任务 / Completed task with an empty list</returns>
     public Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> FindAsync(long tenantId, long appId, IReadOnlyList<long> playerIds, CancellationToken cancellationToken = default)
     {
         return Task.FromResult<IReadOnlyList<OnlinePlayerDirectoryEntry>>(new List<OnlinePlayerDirectoryEntry>());

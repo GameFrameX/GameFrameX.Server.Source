@@ -76,7 +76,18 @@ public sealed class OnlineSessionReconnectService : IOnlineSessionReconnectContr
         _tokenTimeToLiveSeconds = tokenTimeToLiveSeconds;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 校验作用域与连接标识后，按最新登录胜出策略签发新会话令牌（顶替旧活跃会话），再把新会话标记为已连接到指定连接；任一步失败即返回该步失败码，成功返回令牌、会话标识与过期时间。
+    /// </summary>
+    /// <remarks>
+    /// Validates the scope and connection id, issues a session token with the latest-wins multi-device policy (kicking the
+    /// previous active session) using the configured token lifetime, then marks the new session connected on the given
+    /// connection. Any failing step returns its failure code; on success the token, session id and expiry are returned.
+    /// </remarks>
+    /// <param name="scope">登录玩家所属作用域 / Scope of the logging-in player</param>
+    /// <param name="connectionId">物理连接通道标识 / Physical connection id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>登录凭据结果，失败时携带失败码 / Login credential result carrying the failure code on failure</returns>
     public async Task<OnlineResult<OnlineSessionLoginCredential>> IssueForLoginAsync(OnlineScope scope, string connectionId, CancellationToken cancellationToken = default)
     {
         var failure = ValidateScopeAndConnection(scope, connectionId);
@@ -107,7 +118,20 @@ public sealed class OnlineSessionReconnectService : IOnlineSessionReconnectContr
         });
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 作用域为空、连接标识为空或令牌为空时返回参数非法；否则在恢复串行门内依次校验令牌、比对会话作用域、把会话切换到新连接并原子轮换令牌，任一步失败返回对应失败码，成功返回新令牌、玩家、会话标识与过期时间。
+    /// </summary>
+    /// <remarks>
+    /// Returns parameter-invalid when the scope, connection id or token is missing. Otherwise, inside the resume gate, it
+    /// validates the token, checks the session scope, moves the session to the new connection and atomically rotates the
+    /// token so the old fingerprint is invalidated; concurrent duplicate resumes therefore fail at validation. Any failing
+    /// step returns its code; on success the new token, player id, session id and expiry are returned.
+    /// </remarks>
+    /// <param name="scope">恢复请求声明的作用域 / Scope claimed by the resume request</param>
+    /// <param name="token">待恢复会话的令牌 / Token of the session to resume</param>
+    /// <param name="connectionId">新的物理连接通道标识 / New physical connection id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>恢复凭据结果，失败时携带失败码 / Resume credential result carrying the failure code on failure</returns>
     public async Task<OnlineResult<OnlineSessionResumeCredential>> ResumeAsync(OnlineScope scope, string token, string connectionId, CancellationToken cancellationToken = default)
     {
         if (scope == null)
@@ -170,7 +194,18 @@ public sealed class OnlineSessionReconnectService : IOnlineSessionReconnectContr
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 作用域为空、缺少玩家位或重连窗口非正数时返回参数非法；否则把该玩家所有活跃会话标记为断线并开启重连窗口，跳过状态未就绪或会话无效的会话，遇其它失败立即返回该结果，全部处理完返回 true。
+    /// </summary>
+    /// <remarks>
+    /// Returns parameter-invalid when the scope or player id is missing or the reconnect window is not positive. Otherwise
+    /// marks every active session of the player disconnected with the given reconnect window, skipping sessions that report
+    /// state-not-ready or session-invalid; any other failure is returned immediately, and true is returned when all are handled.
+    /// </remarks>
+    /// <param name="scope">断线玩家所属作用域，须带玩家位 / Scope of the disconnected player, must carry a player id</param>
+    /// <param name="reconnectWindowSeconds">重连窗口秒数 / Reconnect window in seconds</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>处理结果，成功为 true / Operation result, true on success</returns>
     public async Task<OnlineResult<bool>> NotifyPlayerDisconnectedAsync(OnlineScope scope, long reconnectWindowSeconds, CancellationToken cancellationToken = default)
     {
         if (scope == null || scope.PlayerId <= 0)

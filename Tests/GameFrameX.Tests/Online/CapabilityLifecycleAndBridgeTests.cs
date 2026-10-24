@@ -122,7 +122,13 @@ public sealed class CapabilityLifecycleAndBridgeTests
             Owner = owner;
         }
 
-        /// <inheritdoc cref="IRollbackFirstBridge.Owner" />
+        /// <summary>
+        /// 获取构造时传入的发布者标记，供测试断言桥解析到的是哪个发布者的实例。
+        /// </summary>
+        /// <remarks>
+        /// Gets the publisher marker passed at construction so tests can assert which publisher's instance a bridge resolved to.
+        /// </remarks>
+        /// <value>发布者标记 / Publisher marker</value>
         public string Owner { get; }
     }
 

@@ -46,7 +46,16 @@ namespace {{Name}};
 /// </summary>
 public sealed class UnsupportedHotfixRollbackExecutor : IOnlineHotfixRollbackExecutor
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 模板缺省实现：最小 Online 宿主不运行热更运行时，回滚请求一律抛出不支持异常；需要热更回滚时须替换为真实执行器。
+    /// </summary>
+    /// <remarks>
+    /// Template default: the minimal Online host runs no hotfix runtime, so every rollback request throws a not-supported exception.
+    /// Replace with a real executor when hotfix rollback is needed.
+    /// </remarks>
+    /// <param name="targetVersion">目标版本号，仅写入异常消息 / Target version, only included in the exception message</param>
+    /// <param name="cancellationToken">取消令牌（未使用） / Cancellation token (unused)</param>
+    /// <returns>不会正常返回，始终抛出 <c>NotSupportedException</c> / Never returns normally; always throws <c>NotSupportedException</c></returns>
     public Task RollbackAsync(string targetVersion, CancellationToken cancellationToken = default)
     {
         throw new NotSupportedException("This minimal Online host does not run a hotfix runtime; rollback to version '" + targetVersion + "' is not supported.");

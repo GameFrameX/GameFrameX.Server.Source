@@ -602,7 +602,15 @@ public sealed class OnlineGameDbStorePersistenceTests
     /// </summary>
     private sealed class NopEventPublisher : IOnlineEventPublisher
     {
-        /// <inheritdoc />
+        /// <summary>
+        /// 发布在线事件；本桩仅满足存储构造所需的事件出口，持久化测试不关心事件，因此直接丢弃并完成。
+        /// </summary>
+        /// <remarks>
+        /// Publishes an online event; this stub only satisfies the event sink dependency and discards the event, completing immediately.
+        /// </remarks>
+        /// <param name="onlineEvent">待发布的在线事件（被丢弃） / Online event to publish (discarded)</param>
+        /// <param name="cancellationToken">取消令牌（本桩忽略） / Cancellation token (ignored by this stub)</param>
+        /// <returns>已完成的任务 / An already completed task</returns>
         public Task PublishAsync(OnlineEvent onlineEvent, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;

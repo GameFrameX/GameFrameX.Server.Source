@@ -58,13 +58,26 @@ public sealed class FileNameMatchTypeAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Error,
         true);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 返回本分析器唯一支持的诊断 GFX0020（文件名必须与唯一顶层类型名一致，严重级别 Error）。
+    /// </summary>
+    /// <remarks>
+    /// Returns the single diagnostic supported by this analyzer: GFX0020 (file name must match the sole top-level type name, severity Error).
+    /// </remarks>
+    /// <value>仅包含 GFX0020 描述符的不可变数组 / Immutable array containing only the GFX0020 descriptor</value>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
     {
         get { return ImmutableArray.Create(SDescriptor); }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 注册分析动作：不分析生成代码，启用并发执行，并为每棵语法树注册文件名与顶层类型名比对动作。
+    /// </summary>
+    /// <remarks>
+    /// Registers analysis: generated code is skipped, concurrent execution is enabled, and a syntax tree action compares
+    /// the file name with its top-level type name. The tree action skips non-.cs files and files whose top-level type count is not exactly one.
+    /// </remarks>
+    /// <param name="context">分析上下文，用于配置并注册语法树动作 / Analysis context used to configure and register the syntax tree action</param>
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);

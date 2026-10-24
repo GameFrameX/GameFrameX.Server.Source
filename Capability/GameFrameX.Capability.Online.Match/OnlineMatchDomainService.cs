@@ -104,7 +104,20 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
         _game = game ?? throw new ArgumentNullException(nameof(game));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 为玩家创建单人匹配票据：依次校验作用域、模式（仅允许 1 或 2）与评分（须大于 0），以默认区域和评分上下窗口建票；
+    /// 建票成功后同步执行一轮撮合，再按玩家最新票据解析已撮合的数值对局标识（未撮合时为 0）。
+    /// </summary>
+    /// <remarks>
+    /// Validates scope, mode (only 1 or 2) and rating (must be positive), enqueues a solo ticket in the default region with a rating window,
+    /// runs one immediate matchmaking pass, then resolves the numeric match id from the player's latest ticket (0 when not yet matched).
+    /// Invalid mode or rating fails with <c>ParameterInvalid</c>; ticket service failures are propagated.
+    /// </remarks>
+    /// <param name="scope">玩家作用域 / Player scope</param>
+    /// <param name="mode">匹配模式，仅允许 1 或 2 / Match mode, only 1 or 2 allowed</param>
+    /// <param name="rating">玩家评分，须大于 0 / Player rating, must be positive</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>入队结果，成功时携带已撮合的对局标识（未撮合为 0） / Enqueue result carrying the matched id (0 if not matched) on success</returns>
     public async Task<OnlineResult<OnlineMatchDomainEnqueue>> EnqueueAsync(OnlineScope scope, int mode, int rating, CancellationToken cancellationToken = default)
     {
         var enqueueScopeFailure = ValidateScope(scope);
@@ -145,7 +158,17 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
         return OnlineResult<OnlineMatchDomainEnqueue>.Ok(new OnlineMatchDomainEnqueue { MatchId = matchId });
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 取消玩家当前排队中的票据：校验作用域后查找活跃票据；无活跃票据时返回成功且 <c>Cancelled = false</c>，不视为失败；
+    /// 票据服务取消失败时透传失败码，成功时仅当票据状态变为已取消才标记已取消。
+    /// </summary>
+    /// <remarks>
+    /// Validates scope and looks up the active ticket; no active ticket yields a successful receipt with <c>Cancelled = false</c>.
+    /// Ticket service failures are propagated; <c>Cancelled</c> is true only when the ticket ends in the cancelled state.
+    /// </remarks>
+    /// <param name="scope">玩家作用域 / Player scope</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>取消回执结果 / Cancel receipt result</returns>
     public async Task<OnlineResult<OnlineMatchDomainCancel>> CancelAsync(OnlineScope scope, CancellationToken cancellationToken = default)
     {
         var failureCode = ValidateScope(scope);
@@ -173,7 +196,17 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
         });
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 查询玩家匹配状态：校验作用域后读取最新票据；无票据返回未排队未撮合，票据排队中返回排队中，
+    /// 其余状态解析数值对局标识，非 0 即视为已撮合。
+    /// </summary>
+    /// <remarks>
+    /// Validates scope and reads the latest ticket: none means neither queuing nor matched, a queued ticket means queuing,
+    /// otherwise the numeric match id is resolved and a non-zero id means matched.
+    /// </remarks>
+    /// <param name="scope">玩家作用域 / Player scope</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>匹配状态结果 / Match status result</returns>
     public async Task<OnlineResult<OnlineMatchDomainStatus>> GetStatusAsync(OnlineScope scope, CancellationToken cancellationToken = default)
     {
         var failureCode = ValidateScope(scope);
@@ -202,7 +235,20 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
         });
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 玩家进入已撮合对局：校验入场请求与分配登记后，按服务器标识派生运行时对局标识并获取或创建对局 Actor；
+    /// 对局已结束返回 <c>StateEnded</c>，成员表与分配成员不一致返回 <c>ParameterInvalid</c>；
+    /// 对局处于创建、等待或就绪状态时标记成员就绪并尝试开局；最终返回是否已进入运行状态及成员列表。
+    /// </summary>
+    /// <remarks>
+    /// Validates the entry and assignment registration, derives the runtime match id from the server id and gets or creates the match actor.
+    /// Ended matches fail with <c>StateEnded</c>, member mismatches fail with <c>ParameterInvalid</c>; in created, waiting or ready states members are marked ready and the match is started when possible.
+    /// Returns whether the match is running and the member list.
+    /// </remarks>
+    /// <param name="scope">玩家作用域 / Player scope</param>
+    /// <param name="matchId">数值对局标识 / Numeric match id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>入场结果 / Entry result</returns>
     public async Task<OnlineResult<OnlineMatchDomainEntry>> EnterAsync(OnlineScope scope, long matchId, CancellationToken cancellationToken = default)
     {
         var invalidEntry = ValidateEntry(scope, matchId, out var registration);
@@ -249,7 +295,19 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
         });
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 将撮合分配标识解析为数值对局标识、模式与成员列表：分配标识为空返回 <c>ParameterInvalid</c>；
+    /// 优先使用内存登记，未登记时从票据存储读取分配并登记，分配不存在返回 <c>ResourceNotFound</c>。
+    /// </summary>
+    /// <remarks>
+    /// Resolves an assignment id to numeric match id, mode and players. Empty id fails with <c>ParameterInvalid</c>;
+    /// the in-memory registration is preferred, otherwise the assignment is loaded from the ticket store and registered; a missing assignment fails with <c>ResourceNotFound</c>.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">应用标识 / Application id</param>
+    /// <param name="assignmentId">撮合分配标识 / Matchmaking assignment id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>分配解析结果 / Assignment resolution result</returns>
     public async Task<OnlineResult<OnlineMatchDomainAssignment>> ResolveAssignmentAsync(long tenantId, long appId, string assignmentId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(assignmentId))
@@ -277,7 +335,19 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
         });
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 标记玩家在对局中掉线：校验作用域后按票据、分配登记与运行时成员表定位玩家所属对局；
+    /// 找不到对局、对局已结束或成员缺失、已离开、被踢出时返回成功且 <c>Marked = false</c>；
+    /// 否则经重连服务标记掉线（重连令牌留存在成员表、不下发），失败透传失败码。
+    /// </summary>
+    /// <remarks>
+    /// Validates scope and locates the player's match via ticket, assignment registration and runtime member table.
+    /// Returns success with <c>Marked = false</c> when no match is found, the match has ended, or the member is missing, left or kicked;
+    /// otherwise marks the disconnect via the reconnect service (the reconnect token stays server-side) and propagates its failure.
+    /// </remarks>
+    /// <param name="scope">玩家作用域 / Player scope</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>掉线标记结果 / Disconnect marking result</returns>
     public async Task<OnlineResult<OnlineMatchDomainDisconnect>> NotifyPlayerDisconnectedAsync(OnlineScope scope, CancellationToken cancellationToken = default)
     {
         var scopeFailure = ValidateScope(scope);
@@ -315,7 +385,21 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
         return OnlineResult<OnlineMatchDomainDisconnect>.Ok(new OnlineMatchDomainDisconnect { Marked = true, MatchId = numericMatchId });
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 为重新登录的玩家恢复对局：校验作用域并定位所属对局，无对局时返回成功且 <c>Resumed = false</c>；
+    /// 成员缺失、已离开或被踢出返回 <c>ScopeDenied</c>，对局已结束返回 <c>StateEnded</c>；
+    /// 掉线成员用服务端留存的重连令牌经重连服务恢复，在线成员做幂等确认直接以当前快照作为恢复结果；
+    /// 返回对局状态、服务器序号、成员状态、玩法状态以及是否有增量可用。
+    /// </summary>
+    /// <remarks>
+    /// Validates scope and locates the match; none yields success with <c>Resumed = false</c>. Missing, left or kicked members fail with <c>ScopeDenied</c>, ended matches with <c>StateEnded</c>.
+    /// Disconnected members reconnect through the reconnect service using the server-held token; online members get an idempotent confirmation based on the current snapshot.
+    /// Returns match state, server sequence, member states, game state and whether a delta is available.
+    /// </remarks>
+    /// <param name="scope">玩家作用域 / Player scope</param>
+    /// <param name="lastAcknowledgedSequence">客户端最后确认的序号 / Last sequence acknowledged by the client</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>对局恢复结果 / Match resume result</returns>
     public async Task<OnlineResult<OnlineMatchDomainResume>> TryResumeForPlayerAsync(OnlineScope scope, long lastAcknowledgedSequence, CancellationToken cancellationToken = default)
     {
         var scopeFailure = ValidateScope(scope);

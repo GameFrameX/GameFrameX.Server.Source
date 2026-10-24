@@ -53,7 +53,15 @@ namespace GameFrameX.Tests.Online
             /// <summary>已发布载荷（发布序，装箱原件）。</summary>
             public readonly List<object> Payloads = new();
 
-            /// <inheritdoc />
+            /// <summary>
+            /// 记录一次机制事件发布：按发布顺序追加主题与载荷原件，不做任何分发，供测试断言委托口径。
+            /// </summary>
+            /// <remarks>
+            /// Records a mechanism event publication by appending the topic and the original payload in publish order, without dispatching.
+            /// </remarks>
+            /// <typeparam name="TEvent">事件载荷类型 / Event payload type</typeparam>
+            /// <param name="topic">事件主题，追加到 <c>Topics</c> / Event topic, appended to <c>Topics</c></param>
+            /// <param name="eventPayload">事件载荷，装箱后追加到 <c>Payloads</c> / Event payload, boxed and appended to <c>Payloads</c></param>
             public void Publish<TEvent>(string topic, TEvent eventPayload)
             {
                 Topics.Add(topic);

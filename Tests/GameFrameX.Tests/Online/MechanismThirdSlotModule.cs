@@ -39,32 +39,65 @@ namespace GameFrameX.Tests.Online;
 /// <summary>槽位三模块。</summary>
 public sealed class MechanismThirdSlotModule : ICapabilityModule, IAdminActionContributor
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取槽位三（发现顺序按类型名 <c>MechanismThirdSlotModule</c> 排序决定，而非槽位序号）的能力清单：每次读取都由 <see cref="MechanismScenario.Third"/> 现场生成，能力标识取用例覆写值，未覆写时为缺省 <c>mech-third</c>，版本固定 <c>1.0.0</c>，并带上用例设置的动作、必需依赖、可选依赖与参数类型。
+    /// </summary>
+    /// <remarks>
+    /// Builds the manifest of slot third (discovery order follows the type name <c>MechanismThirdSlotModule</c>, not the slot number) on every read from <c>MechanismScenario.Third</c>: the capability identifier is the per-test override or the default <c>mech-third</c>, version is fixed at <c>1.0.0</c>, and actions, required and optional dependencies and options type come from the slot setup.
+    /// </remarks>
+    /// <value>槽位三当前场景对应的能力清单 / Capability manifest reflecting the current setup of slot third</value>
     public CapabilityManifest Manifest
     {
         get { return MechanismScenario.Third.ToManifest(); }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 把注册阶段转交给槽位三的 <c>Register</c> 委托，供用例在 <c>mech-third</c> 上注入服务或记录注册顺序；用例未设置委托时不做任何注册。
+    /// </summary>
+    /// <remarks>
+    /// Forwards the registration phase to the <c>Register</c> delegate of slot third so tests can inject services or record ordering for <c>mech-third</c>; registers nothing when no delegate is set.
+    /// </remarks>
+    /// <param name="context">能力注册上下文，原样传给槽位三委托 / Registration context passed unchanged to the slot third delegate</param>
     public void Register(CapabilityRegistrationContext context)
     {
         MechanismScenario.Third.Register?.Invoke(context);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 把激活阶段转交给槽位三的 <c>Activate</c> 委托并返回其任务，用于验证 <c>mech-third</c> 的激活顺序、激活失败与回滚等机制；未设置委托时直接返回已完成任务，即视为激活成功。
+    /// </summary>
+    /// <remarks>
+    /// Forwards activation to the <c>Activate</c> delegate of slot third and returns its task, letting tests drive ordering, failure and rollback for <c>mech-third</c>; returns a completed task (successful activation) when no delegate is set.
+    /// </remarks>
+    /// <param name="context">能力激活上下文，原样传给槽位三委托 / Activation context passed unchanged to the slot third delegate</param>
+    /// <param name="cancellationToken">取消令牌，原样传给委托 / Cancellation token passed to the delegate</param>
+    /// <returns>委托返回的任务；无委托时为已完成任务 / Task returned by the delegate, or a completed task when none is set</returns>
     public Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken)
     {
         return MechanismScenario.Third.Activate?.Invoke(context, cancellationToken) ?? Task.CompletedTask;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 同步调用槽位三的 <c>Deactivate</c> 委托（用例借此记录 <c>mech-third</c> 的停用顺序），随后返回已完成任务；委托为同步形式，因此没有需要等待的异步工作。
+    /// </summary>
+    /// <remarks>
+    /// Synchronously invokes the <c>Deactivate</c> delegate of slot third (used to record the deactivation order of <c>mech-third</c>) and returns a completed task, because the delegate is synchronous and nothing needs awaiting.
+    /// </remarks>
+    /// <param name="cancellationToken">取消令牌，原样传给委托 / Cancellation token passed to the delegate</param>
+    /// <returns>已完成的任务 / Completed task</returns>
     public Task DeactivateAsync(CancellationToken cancellationToken)
     {
         MechanismScenario.Third.Deactivate?.Invoke(cancellationToken);
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 把管理动作注册转交给槽位三的 <c>RegisterAdminActions</c> 委托，用于验证 <c>mech-third</c> 贡献的管理面动作；未设置委托时不注册任何动作。
+    /// </summary>
+    /// <remarks>
+    /// Forwards admin action registration to the <c>RegisterAdminActions</c> delegate of slot third to exercise admin actions contributed by <c>mech-third</c>; registers no action when no delegate is set.
+    /// </remarks>
+    /// <param name="registry">管理动作注册表，原样传给槽位三委托 / Admin action registry passed unchanged to the slot third delegate</param>
     public void RegisterAdminActions(AdminActionRegistry registry)
     {
         MechanismScenario.Third.RegisterAdminActions?.Invoke(registry);

@@ -50,7 +50,13 @@ public sealed class HotfixBridgeStubScopeProvider : IOnlineAuthorizedScopeProvid
     /// </summary>
     private readonly OnlineScope _authorizedScope = new OnlineScope(TenantId, AppId, ServerId);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取桩授权作用域，固定返回租户 1、应用 1、区服 1001 构成的单例作用域。
+    /// </summary>
+    /// <remarks>
+    /// Gets the stub authorized scope; always returns the singleton scope built from tenant 1, application 1 and server 1001.
+    /// </remarks>
+    /// <value>固定的桩授权作用域 / Fixed stub authorized scope</value>
     public OnlineScope AuthorizedScope
     {
         get { return _authorizedScope; }

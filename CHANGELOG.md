@@ -133,6 +133,10 @@
 * TcpConnectionProvider 单条 TCP 长连接改为按 endpoint 连接池（P0-A#3 / C239）：每 endpoint 独立成池（默认上限 4 条，构造参数可调），并发需求驱动懒建（顺序调用保持单连接复用，并发调用按需扩展），轮询分发；连接级故障仅精准移除该连接（`IConnectionProvider.Invalidate(Stream)`/`ITransportProtocolAdapter.Invalidate(Stream)` 增量接口），不再全量断连。顺带修复旧实现隐藏缺陷：全进程单连接槽位在多 endpoint 交替调用时每次断连重连
 * 连接死亡快速失败（P0-A#2#3 / C239）：接收泵退出时经新增 `IRequestResponseMatcher.TryFail` 立即以 IOException 失败该连接上全部挂起请求（等待方收到可重试的 ConnectionFailed 而非干等超时），连接级异常（IO/Socket）仅失效当前连接、其余异常保守全量失效；新增本地化键 `RemoteMessaging.Client.ConnectionClosed`
 * 新增 `RemoteMessageClientConcurrencyTests`（3 用例）：屏障式假服务端证明并发请求不再全局串行（旧实现必然全体超时）且扇出多连接；连接读后即断场景验证快速失败 + 池仅移除死亡连接后重建成功；双服务交替调用验证按 endpoint 连接复用（各 1 条连接，旧实现每次断连重连）
+
+### Documentation
+
+* 全仓禁用 `<inheritdoc />`（C301，GFX-1013）：55 个 `.cs` 文件 151 处 `/// <inheritdoc />`（含 2 处 `cref` 形态）替换为描述实现自身行为的完整双语 XML 文档注释（`<summary>` 中文、`<remarks>` 英文，`<param>` / `<returns>` / `<value>` / `<exception>` 用 `中文 / English`），覆盖 Capability 能力模块与 Options、Analyzers、Launcher 宿主适配、Templates 模板与测试替身；comment-hygiene 规范新增禁用条款。仅改 `///` 注释行，代码与行为零变更
 ## [1.13.7] - 2026-08-05
 
 ### Bug Fixes

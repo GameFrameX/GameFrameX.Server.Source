@@ -130,7 +130,16 @@ public static class OnlineAdminApiAdapters
     /// </summary>
     private sealed class ScopeAdapter : IAdminApiScopeAdapter
     {
-        /// <inheritdoc />
+        /// <summary>
+        /// 从请求中读取声明的租户、应用、服务器三元素作用域；三者均可读取时组装为机制管道作用域并返回 true，否则输出 null 并返回 false。
+        /// </summary>
+        /// <remarks>
+        /// Reads the claimed tenant / app / server triple from the request; when all three are readable it builds an
+        /// <see cref="AdminApiClaimedScope"/> and returns true, otherwise outputs null and returns false.
+        /// </remarks>
+        /// <param name="request">管理 API 请求 / Admin API request</param>
+        /// <param name="claimedScope">读取成功时为声明作用域，失败时为 null / Claimed scope on success, null on failure</param>
+        /// <returns>是否成功读取声明作用域 / Whether the claimed scope was read successfully</returns>
         public bool TryReadClaimedScope(AdminApiRequest request, out AdminApiClaimedScope claimedScope)
         {
             if (request.TryReadClaimedScope(out var tenantId, out var appId, out var serverId))
@@ -143,7 +152,16 @@ public static class OnlineAdminApiAdapters
             return false;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 将声明作用域与授权作用域转换为 Online 作用域后交由 <see cref="OnlineScopeGuard"/> 比对；越权时返回映射后的机制管道错误码，通过时返回 null。
+        /// </summary>
+        /// <remarks>
+        /// Converts both scopes to Online scopes and compares them via <see cref="OnlineScopeGuard"/>; returns the mapped
+        /// pipeline error code when access is denied, or null when the claimed scope is within the authorized scope.
+        /// </remarks>
+        /// <param name="claimed">请求声明的作用域 / Scope claimed by the request</param>
+        /// <param name="authorized">调用方被授权的作用域 / Scope the caller is authorized for</param>
+        /// <returns>拒绝时的错误码；通过时为 null / Error code when denied; null when allowed</returns>
         public AdminApiErrorCode ValidateClaimed(AdminApiClaimedScope claimed, AdminApiClaimedScope authorized)
         {
             var denied = OnlineScopeGuard.Validate(ToOnlineScope(claimed), ToOnlineScope(authorized));
@@ -170,7 +188,18 @@ public static class OnlineAdminApiAdapters
             _idempotency = idempotency ?? throw new ArgumentNullException(nameof(idempotency));
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 将作用域转换为 Online 作用域后委托 Online 幂等服务开始幂等登记，并把结果种类、可执行标志、错误码（无错误时为 null）与首次响应副本映射为机制管道幂等结果。
+        /// </summary>
+        /// <remarks>
+        /// Delegates to the Online idempotency service after converting the scope, then maps the outcome kind, can-execute
+        /// flag, error code (null when none) and a copy of the first response into the pipeline idempotency outcome.
+        /// </remarks>
+        /// <param name="scope">幂等记录所属作用域 / Scope owning the idempotency record</param>
+        /// <param name="idempotencyKey">幂等键 / Idempotency key</param>
+        /// <param name="canonicalRequestText">规范化请求文本，用于比对重放请求是否一致 / Canonical request text used to detect mismatched replays</param>
+        /// <param name="bindPlayer">是否将幂等记录绑定到玩家维度 / Whether the record is bound to the player dimension</param>
+        /// <returns>机制管道幂等登记结果 / Pipeline idempotency outcome</returns>
         public async Task<AdminIdempotencyOutcome> BeginAsync(AdminApiClaimedScope scope, string idempotencyKey, string canonicalRequestText, bool bindPlayer)
         {
             var outcome = await _idempotency.BeginAsync(ToOnlineScope(scope), idempotencyKey, canonicalRequestText, bindPlayer).ConfigureAwait(false);
@@ -178,13 +207,32 @@ public static class OnlineAdminApiAdapters
             return new AdminIdempotencyOutcome(kind, outcome.CanExecute, outcome.ErrorCode == OnlineErrorCode.None ? null : ToErrorCode(outcome.ErrorCode), outcome.FirstResponse.ToArray());
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 将作用域转换为 Online 作用域后委托 Online 幂等服务把幂等记录标记为完成并保存首次响应。
+        /// </summary>
+        /// <remarks>
+        /// Converts the scope and delegates to the Online idempotency service to mark the record completed and store the first response.
+        /// </remarks>
+        /// <param name="scope">幂等记录所属作用域 / Scope owning the idempotency record</param>
+        /// <param name="idempotencyKey">幂等键 / Idempotency key</param>
+        /// <param name="firstResponse">首次执行的响应内容 / Response produced by the first execution</param>
+        /// <param name="bindPlayer">是否将幂等记录绑定到玩家维度 / Whether the record is bound to the player dimension</param>
+        /// <returns>表示异步操作的任务 / Task representing the asynchronous operation</returns>
         public Task CompleteAsync(AdminApiClaimedScope scope, string idempotencyKey, byte[] firstResponse, bool bindPlayer)
         {
             return _idempotency.CompleteAsync(ToOnlineScope(scope), idempotencyKey, firstResponse, bindPlayer);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 将作用域转换为 Online 作用域后委托 Online 幂等服务把幂等记录标记为失败，以便后续请求重新执行。
+        /// </summary>
+        /// <remarks>
+        /// Converts the scope and delegates to the Online idempotency service to mark the record failed so later requests can execute again.
+        /// </remarks>
+        /// <param name="scope">幂等记录所属作用域 / Scope owning the idempotency record</param>
+        /// <param name="idempotencyKey">幂等键 / Idempotency key</param>
+        /// <param name="bindPlayer">是否将幂等记录绑定到玩家维度 / Whether the record is bound to the player dimension</param>
+        /// <returns>表示异步操作的任务 / Task representing the asynchronous operation</returns>
         public Task FailAsync(AdminApiClaimedScope scope, string idempotencyKey, bool bindPlayer)
         {
             return _idempotency.FailAsync(ToOnlineScope(scope), idempotencyKey, bindPlayer);

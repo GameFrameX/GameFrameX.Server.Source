@@ -41,7 +41,15 @@ namespace GameFrameX.Tests.Online;
 /// </summary>
 public sealed class MechanismTestScopeAdapter : IAdminApiScopeAdapter
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 从管理面请求中读取声明的租户、应用、服务器三元组；读取成功时据此构造声明作用域并返回 <c>true</c>，否则输出 <c>null</c> 并返回 <c>false</c>。
+    /// </summary>
+    /// <remarks>
+    /// Reads the claimed tenant, app and server triple from the admin API request; on success builds the claimed scope and returns <c>true</c>, otherwise outputs <c>null</c> and returns <c>false</c>.
+    /// </remarks>
+    /// <param name="request">管理面请求 / Admin API request</param>
+    /// <param name="claimedScope">读取成功时为声明作用域，失败时为 <c>null</c> / Claimed scope on success, <c>null</c> on failure</param>
+    /// <returns>请求中带有完整三元组时为 <c>true</c>，否则为 <c>false</c> / <c>true</c> when the request carries the full triple, otherwise <c>false</c></returns>
     public bool TryReadClaimedScope(AdminApiRequest request, out AdminApiClaimedScope claimedScope)
     {
         if (request.TryReadClaimedScope(out var tenantId, out var appId, out var serverId))
@@ -54,7 +62,15 @@ public sealed class MechanismTestScopeAdapter : IAdminApiScopeAdapter
         return false;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 恒放行：不比较声明作用域与授权作用域，始终返回 <c>null</c> 表示校验通过；作用域守卫的拒绝语义由 Online 侧用例单独覆盖，这里只服务机制层测试。
+    /// </summary>
+    /// <remarks>
+    /// Always allows: never compares the claimed and authorized scopes and always returns <c>null</c> (validation passed). Rejection semantics of the scope guard are covered separately by Online test cases; this adapter only serves mechanism tests.
+    /// </remarks>
+    /// <param name="claimed">请求声明的作用域（未使用） / Scope claimed by the request (unused)</param>
+    /// <param name="authorized">已授权的作用域（未使用） / Authorized scope (unused)</param>
+    /// <returns>始终为 <c>null</c>，表示无错误 / Always <c>null</c>, meaning no error</returns>
     public AdminApiErrorCode ValidateClaimed(AdminApiClaimedScope claimed, AdminApiClaimedScope authorized)
     {
         return null;

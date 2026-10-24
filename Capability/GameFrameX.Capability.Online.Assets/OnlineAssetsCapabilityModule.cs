@@ -95,13 +95,27 @@ public sealed class OnlineAssetsCapabilityModule : ICapabilityModule, IAdminActi
     /// </summary>
     private IOnlineAuditReader _audit;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取资产能力清单，固定返回静态实例 <see cref="ManifestInstance"/>。
+    /// </summary>
+    /// <remarks>
+    /// Gets the assets capability manifest; always returns the static <see cref="ManifestInstance"/>.
+    /// </remarks>
+    /// <value>资产能力清单 / Assets capability manifest</value>
     public CapabilityManifest Manifest
     {
         get { return ManifestInstance; }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 懒默认注册内存版资产存储与资产交易存储并解析实际生效实例，解析审计读面、幂等服务与事件发布器，构造资产查询服务与统一发放服务并注册回共享服务面。
+    /// </summary>
+    /// <remarks>
+    /// Registers in-memory asset and asset-transaction stores as lazy defaults (overridable by the host), resolves the
+    /// effective stores plus the audit reader, idempotency service and event publisher, then builds the
+    /// <see cref="OnlineAssetQueryService"/> and <see cref="OnlineGrantService"/> and registers them back into the shared services.
+    /// </remarks>
+    /// <param name="context">能力注册上下文 / Capability registration context</param>
     public void Register(CapabilityRegistrationContext context)
     {
         // 两 store：懒默认注册后经共享面取用（族 / 宿主 GameDb Override 自动胜出）。
@@ -120,19 +134,42 @@ public sealed class OnlineAssetsCapabilityModule : ICapabilityModule, IAdminActi
         context.AddService(_grantService);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 激活阶段无需处理：所有服务已在注册阶段构造完毕，本能力不持有需启动的后台任务或桥接，直接返回已完成任务。
+    /// </summary>
+    /// <remarks>
+    /// Nothing to do on activation: every service is built during registration and the capability owns no background work
+    /// or bridges to start, so a completed task is returned.
+    /// </remarks>
+    /// <param name="context">能力激活上下文 / Capability activation context</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>已完成的任务 / Completed task</returns>
     public Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken)
     {
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 停用阶段无需处理：激活时未启动任何资源，因此没有需要释放或撤销的内容，直接返回已完成任务。
+    /// </summary>
+    /// <remarks>
+    /// Nothing to do on deactivation: activation starts no resources, so there is nothing to release or revoke.
+    /// </remarks>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>已完成的任务 / Completed task</returns>
     public Task DeactivateAsync(CancellationToken cancellationToken)
     {
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 使用注册阶段得到的发放服务、查询服务、审计读面与交易存储构造资产管理处理器，并登记发放、撤销、钱包账本、资产审计与交易详情等管理动作。
+    /// </summary>
+    /// <remarks>
+    /// Builds <see cref="OnlineAdminAssetHandlers"/> from the grant service, query service, audit reader and transaction store
+    /// resolved during registration, and registers the grant / revoke / wallet-ledger / asset-audit / transaction-detail admin actions.
+    /// </remarks>
+    /// <param name="registry">管理动作注册表 / Admin action registry</param>
     public void RegisterAdminActions(AdminActionRegistry registry)
     {
         new OnlineAdminAssetHandlers(_grantService, _assetQuery, _audit, _assetTransactionStore).Register(registry);

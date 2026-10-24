@@ -96,13 +96,30 @@ public sealed class OnlineCompetitionCapabilityModule : ICapabilityModule, IAdmi
     /// </summary>
     private string _projectionBoardId;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取竞技能力清单，固定返回静态实例 <see cref="ManifestInstance"/>。
+    /// </summary>
+    /// <remarks>
+    /// Gets the competition capability manifest; always returns the static <see cref="ManifestInstance"/>.
+    /// </remarks>
+    /// <value>竞技能力清单 / Competition capability manifest</value>
     public CapabilityManifest Manifest
     {
         get { return ManifestInstance; }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 读取竞技能力选项，懒默认注册内存版排行榜、赛季、锦标赛存储并解析生效实例，构造并注册排行榜服务与活动运营注册表；发放服务在场时再注册赛季服务与锦标赛服务；投影榜单标识非空白且对局结果存储在场时，注册 Match.Settled 排行榜投影器、订阅对局结算事件并添加投影重试的 tick 任务。
+    /// </summary>
+    /// <remarks>
+    /// Reads <see cref="OnlineCompetitionOptions"/>, registers in-memory leaderboard / season / tournament stores as lazy
+    /// defaults and resolves the effective instances, then builds and registers the leaderboard service and the live-ops
+    /// registry. Season and tournament services are registered only when the optional grant service is present. When the
+    /// projection board id is not blank and the match result store is present, it registers the Match.Settled leaderboard
+    /// projector, subscribes it to the match-settled event and adds the <c>leaderboard-projection-retry</c> tick job;
+    /// otherwise the projection is silently skipped.
+    /// </remarks>
+    /// <param name="context">能力注册上下文 / Capability registration context</param>
     public void Register(CapabilityRegistrationContext context)
     {
         var options = context.GetOptions<OnlineCompetitionOptions>();
@@ -147,7 +164,18 @@ public sealed class OnlineCompetitionCapabilityModule : ICapabilityModule, IAdmi
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 投影榜单标识为空白时直接返回；否则以 Top 1 查询探测目标榜单，已存在则返回，返回资源不存在时按累加计分、降序排序创建该榜单。
+    /// </summary>
+    /// <remarks>
+    /// Returns immediately when the projection board id is blank. Otherwise probes the target board with a top-1 query;
+    /// if it already exists nothing else happens, and if the probe reports resource-not-found the board is created with
+    /// the sum score-update policy and descending sort order. Any other failure aborts activation so the host can roll back.
+    /// </remarks>
+    /// <param name="context">能力激活上下文，用于解析 Online 作用域 / Capability activation context used to resolve the Online scope</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>表示异步激活操作的任务 / Task representing the asynchronous activation</returns>
+    /// <exception cref="InvalidOperationException">探测返回资源不存在以外的失败码，或创建榜单失败 / The probe fails with a code other than resource-not-found, or creating the board fails</exception>
     public async Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(_projectionBoardId))
@@ -182,13 +210,28 @@ public sealed class OnlineCompetitionCapabilityModule : ICapabilityModule, IAdmi
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 停用阶段无需处理：事件订阅与 tick 任务由宿主机制在注册时托管，激活仅预建榜单而不持有运行资源，直接返回已完成任务。
+    /// </summary>
+    /// <remarks>
+    /// Nothing to do on deactivation: the event subscription and tick job are declared to the host during registration,
+    /// and activation only pre-creates the board without holding runtime resources, so a completed task is returned.
+    /// </remarks>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>已完成的任务 / Completed task</returns>
     public Task DeactivateAsync(CancellationToken cancellationToken)
     {
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 基于注册阶段构造的活动运营注册表登记活动运营管理动作，并基于排行榜服务登记排行榜查询管理动作。
+    /// </summary>
+    /// <remarks>
+    /// Registers the live-ops admin actions backed by the live-ops registry and the leaderboard query admin actions backed
+    /// by the leaderboard service, both built during registration.
+    /// </remarks>
+    /// <param name="registry">管理动作注册表 / Admin action registry</param>
     public void RegisterAdminActions(AdminActionRegistry registry)
     {
         OnlineAdminLiveOpsHandlers.RegisterLiveOps(registry, _liveOps);

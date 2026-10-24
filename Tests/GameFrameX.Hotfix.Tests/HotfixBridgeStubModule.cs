@@ -49,19 +49,39 @@ public sealed class HotfixBridgeStubModule : ICapabilityModule
     /// </summary>
     private static readonly CapabilityManifest ManifestInstance = new CapabilityManifest(CapabilityId, "1.0.0");
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取桩模块的能力清单，固定返回静态的 <c>ManifestInstance</c>。
+    /// </summary>
+    /// <remarks>
+    /// Gets the stub module capability manifest; always returns the static <c>ManifestInstance</c>.
+    /// </remarks>
+    /// <value>桩模块固定的能力清单实例 / Fixed capability manifest instance of the stub module</value>
     public CapabilityManifest Manifest
     {
         get { return ManifestInstance; }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 注册期不做任何声明：桥契约只能在激活期发布，因此桩模块无需注册服务。
+    /// </summary>
+    /// <remarks>
+    /// Declares nothing during registration, because bridge contracts may only be published at activation time; the stub module needs no service registration.
+    /// </remarks>
+    /// <param name="context">能力注册上下文（本实现不使用） / Capability registration context (unused by this implementation)</param>
     public void Register(CapabilityRegistrationContext context)
     {
         // 桩模块无注册期声明：桥契约只能在激活期发布。
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 按测试槽位发布桥：好友域与匹配域槽位非空时分别发布 <c>IOnlineFriendDomain</c> 与 <c>IOnlineMatchDomain</c>，开启作用域开关时发布授权作用域提供者桩。
+    /// </summary>
+    /// <remarks>
+    /// Publishes bridges according to the test slots: the friend and match domain bridges when their slots are non-null, and the authorized scope provider stub when the scope switch is enabled.
+    /// </remarks>
+    /// <param name="context">能力激活上下文，用于发布桥 / Capability activation context used to publish bridges</param>
+    /// <param name="cancellationToken">取消令牌（本实现不使用） / Cancellation token (unused by this implementation)</param>
+    /// <returns>发布完成后立即返回的已完成任务 / Completed task returned immediately after publishing</returns>
     public Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken)
     {
         var friendDomain = HotfixBridgeStubSlots.FriendDomain;
@@ -84,7 +104,14 @@ public sealed class HotfixBridgeStubModule : ICapabilityModule
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 停用时不做任何处理：已发布的桥由机制在停止期自动撤销，模块不得自行撤销。
+    /// </summary>
+    /// <remarks>
+    /// Does nothing on deactivation, because published bridges are retracted automatically by the mechanism during stop and the module must not retract them itself.
+    /// </remarks>
+    /// <param name="cancellationToken">取消令牌（本实现不使用） / Cancellation token (unused by this implementation)</param>
+    /// <returns>立即返回的已完成任务 / Completed task returned immediately</returns>
     public Task DeactivateAsync(CancellationToken cancellationToken)
     {
         // 桥由机制在停止期自动撤销，模块不得自行撤销。

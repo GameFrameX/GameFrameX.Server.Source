@@ -58,13 +58,26 @@ public sealed class OneTypePerFileAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Error,
         true);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 返回本分析器唯一支持的诊断 GFX0019（每个文件只允许一个顶层类型，严重级别 Error）。
+    /// </summary>
+    /// <remarks>
+    /// Returns the single diagnostic supported by this analyzer: GFX0019 (one top-level type per file, severity Error).
+    /// </remarks>
+    /// <value>仅包含 GFX0019 描述符的不可变数组 / Immutable array containing only the GFX0019 descriptor</value>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
     {
         get { return ImmutableArray.Create(SDescriptor); }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 注册分析动作：不分析生成代码，启用并发执行，并为每棵语法树注册顶层类型计数动作。
+    /// </summary>
+    /// <remarks>
+    /// Registers analysis: generated code is skipped, concurrent execution is enabled, and a syntax tree action collects top-level types.
+    /// Declarations sharing the same name and arity (partial parts) count as one type; only the first extra type is reported.
+    /// </remarks>
+    /// <param name="context">分析上下文，用于配置并注册语法树动作 / Analysis context used to configure and register the syntax tree action</param>
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);

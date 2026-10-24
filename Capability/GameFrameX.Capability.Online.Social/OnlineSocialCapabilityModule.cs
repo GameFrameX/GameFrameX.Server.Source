@@ -145,13 +145,31 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
     /// </summary>
     private OnlineScope _scope;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取在线社交能力的静态清单（单例实例）。
+    /// </summary>
+    /// <remarks>
+    /// Gets the static manifest singleton of the online social capability.
+    /// </remarks>
+    /// <value>能力清单单例 / Capability manifest singleton</value>
     public CapabilityManifest Manifest
     {
         get { return ManifestInstance; }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 注册社交能力：解析作用域、会话存储与会话令牌服务；为聊天、好友、群组、通知、举报与社交关系注册内存默认存储；
+    /// 要求宿主提供玩家目录并装配好友服务，装配社交决策、处罚、通知、聊天审计投影服务；
+    /// 以默认放行策略声明聊天审核钩子并构造聊天服务（成员资格探针激活期注入）；群组服务以命名 <c>group</c> 注册为频道成员资格探针；
+    /// 将社交决策服务注册为社交门控，并注册通知与好友请求的过期清理 tick 任务。
+    /// </summary>
+    /// <remarks>
+    /// Resolves scope, session store and session token service, registers in-memory default stores for chat, friends, groups, notifications, reports and the social graph,
+    /// requires the host player directory and builds friend, decision, punishment, notification and chat audit services, declares the chat moderation hook with an allow-all default
+    /// and builds the chat service (membership probes injected at activation), registers the group service as the named <c>group</c> membership probe,
+    /// exposes the decision service as the social gate and adds notification and friend request expiry sweep tick jobs.
+    /// </remarks>
+    /// <param name="context">能力注册上下文 / Capability registration context</param>
     public void Register(CapabilityRegistrationContext context)
     {
         _options = context.GetOptions<OnlineSocialOptions>();
@@ -215,7 +233,17 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
         });
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 激活社交能力：发布好友域桥，向聊天服务注入全部已注册的频道成员资格探针；
+    /// 仅当好友选项开启旧数据迁移时，执行一次旧好友数据迁移。
+    /// </summary>
+    /// <remarks>
+    /// Publishes the friend domain bridge, attaches all registered channel membership probes to the chat service,
+    /// and runs the legacy friend data migration only when it is enabled in the friend options.
+    /// </remarks>
+    /// <param name="context">能力激活上下文 / Capability activation context</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
     public async Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken)
     {
         // 好友域桥契约面发布（发布者身份 = 本能力；撤销由宿主停止期自动完成）。
@@ -231,13 +259,26 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 停用社交能力：本实现不做任何处理，因为好友域桥由宿主停止期自动撤销，模块不持有需要释放的资源。
+    /// </summary>
+    /// <remarks>
+    /// Performs no work, because the friend domain bridge is revoked automatically by the host on stop and the module holds no resources to release.
+    /// </remarks>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>已完成的任务 / A completed task</returns>
     public Task DeactivateAsync(CancellationToken cancellationToken)
     {
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 注册社交管理动作：构造社交管理处理器并注册常规社交动作与对局隔离动作。
+    /// </summary>
+    /// <remarks>
+    /// Builds the social admin handlers and registers the regular social actions and the match isolation actions.
+    /// </remarks>
+    /// <param name="registry">管理动作注册表 / Admin action registry</param>
     public void RegisterAdminActions(AdminActionRegistry registry)
     {
         var handlers = new OnlineAdminSocialHandlers(_sessionStore, _tokens, _punishments, _socialDecisions, _notifications, _reportStore, _chatAudit);

@@ -73,7 +73,21 @@ public sealed class OnlineMatchGameBridgeService : IOnlineMatchGameBridge
         _game = game ?? throw new ArgumentNullException(nameof(game));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 为房间的某一局开局：校验作用域、房间标识、局号与成员数（须等于玩法最小人数）以及请求者成员身份；
+    /// 按服务器标识、房间与局号派生对局标识并获取或创建对局 Actor；对局已结束返回 <c>StateEnded</c>，成员表不一致返回 <c>ParameterInvalid</c>；
+    /// 处于创建、等待或就绪状态时准备成员并开局，最后返回对局视图。
+    /// </summary>
+    /// <remarks>
+    /// Validates scope, room id, round, player count (must equal the game minimum) and requester membership, derives the match id and gets or creates the actor.
+    /// Ended matches fail with <c>StateEnded</c>, member mismatches with <c>ParameterInvalid</c>; created, waiting or ready matches get members prepared and started. Returns the game view.
+    /// </remarks>
+    /// <param name="scope">请求作用域 / Request scope</param>
+    /// <param name="roomId">房间标识 / Room id</param>
+    /// <param name="round">局号 / Round number</param>
+    /// <param name="playerIds">房间成员表 / Room player ids</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>对局视图结果 / Game view result</returns>
     public async Task<OnlineResult<OnlineMatchBridgeGameView>> StartRoomGameAsync(OnlineScope scope, long roomId, int round, IReadOnlyList<long> playerIds, CancellationToken cancellationToken = default)
 {
         var invalidRequest = ValidateStartRequest(scope, roomId, round, playerIds);
@@ -114,7 +128,20 @@ public sealed class OnlineMatchGameBridgeService : IOnlineMatchGameBridge
         return OnlineResult<OnlineMatchBridgeGameView>.Ok(BuildView(roomId, actor));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 提交石头剪刀布出拳：作用域缺失或无玩家标识返回 <c>ScopeMissing</c>，出拳越界返回 <c>ParameterInvalid</c>，对局不存在返回 <c>ResourceNotFound</c>；
+    /// 客户端序号由服务端按快照中该成员的最后序号加一派生；提交失败透传失败码，未返回确认返回 <c>InternalError</c>，被拒绝时映射拒绝原因，成功返回对局视图。
+    /// </summary>
+    /// <remarks>
+    /// Submits a rock-paper-scissors gesture. Missing scope fails with <c>ScopeMissing</c>, out-of-range gestures with <c>ParameterInvalid</c>, unknown matches with <c>ResourceNotFound</c>.
+    /// The client sequence is derived server-side from the member's last sequence plus one; submission failures are propagated, a missing ack yields <c>InternalError</c>, rejections are mapped, success returns the game view.
+    /// </remarks>
+    /// <param name="scope">请求作用域 / Request scope</param>
+    /// <param name="roomId">房间标识 / Room id</param>
+    /// <param name="round">局号 / Round number</param>
+    /// <param name="gesture">出拳值 / Gesture value</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>对局视图结果 / Game view result</returns>
     public async Task<OnlineResult<OnlineMatchBridgeGameView>> SubmitGestureAsync(OnlineScope scope, long roomId, int round, int gesture, CancellationToken cancellationToken = default)
     {
         if (scope == null || scope.PlayerId <= 0)
@@ -174,7 +201,19 @@ public sealed class OnlineMatchGameBridgeService : IOnlineMatchGameBridge
         return OnlineResult<OnlineMatchBridgeGameView>.Ok(BuildView(roomId, actor));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 查询房间某一局的对局信息：作用域缺失返回 <c>ScopeMissing</c>，对局不存在返回 <c>ResourceNotFound</c>，
+    /// 查询者不是未离开、未被踢出的成员时返回 <c>ScopeDenied</c>，否则返回对局视图。
+    /// </summary>
+    /// <remarks>
+    /// Queries the game of a room round: missing scope fails with <c>ScopeMissing</c>, unknown matches with <c>ResourceNotFound</c>,
+    /// non-members (or left/kicked members) with <c>ScopeDenied</c>; otherwise returns the game view.
+    /// </remarks>
+    /// <param name="scope">请求作用域 / Request scope</param>
+    /// <param name="roomId">房间标识 / Room id</param>
+    /// <param name="round">局号 / Round number</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>对局视图结果 / Game view result</returns>
     public async Task<OnlineResult<OnlineMatchBridgeGameView>> GetGameInfoAsync(OnlineScope scope, long roomId, int round, CancellationToken cancellationToken = default)
     {
         if (scope == null || scope.PlayerId <= 0)

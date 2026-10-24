@@ -59,13 +59,26 @@ public sealed class UsingDeclarationBanAnalyzer : DiagnosticAnalyzer
         DiagnosticSeverity.Error,
         true);
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 返回本分析器唯一支持的诊断 GFX0021（禁止 using 声明，须改用带大括号的 using 语句块，严重级别 Error）。
+    /// </summary>
+    /// <remarks>
+    /// Returns the single diagnostic supported by this analyzer: GFX0021 (using declarations are forbidden; use a braced using statement block, severity Error).
+    /// </remarks>
+    /// <value>仅包含 GFX0021 描述符的不可变数组 / Immutable array containing only the GFX0021 descriptor</value>
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
     {
         get { return ImmutableArray.Create(SDescriptor); }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 注册分析动作：不分析生成代码，启用并发执行，并针对局部声明语句节点注册检查动作，带 using 关键字即上报。
+    /// </summary>
+    /// <remarks>
+    /// Registers analysis: generated code is skipped, concurrent execution is enabled, and a syntax node action on
+    /// local declaration statements reports any declaration carrying the using keyword at that keyword's location.
+    /// </remarks>
+    /// <param name="context">分析上下文，用于配置并注册语法节点动作 / Analysis context used to configure and register the syntax node action</param>
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);

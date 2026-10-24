@@ -43,13 +43,25 @@ public sealed class HotfixBridgeAssemblyLog : ICapabilityAssemblyLog
     /// <summary>Error 级装配日志。</summary>
     public List<string> Errors { get; } = new List<string>();
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 将信息日志追加到 <c>Infos</c> 列表，供测试断言装配过程输出的信息条目。
+    /// </summary>
+    /// <remarks>
+    /// Appends the informational message to the <c>Infos</c> list so tests can assert assembly informational output.
+    /// </remarks>
+    /// <param name="message">信息日志内容 / Informational log message</param>
     public void Info(string message)
     {
         Infos.Add(message);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 将错误日志追加到 <c>Errors</c> 列表，供测试断言装配过程输出的错误条目。
+    /// </summary>
+    /// <remarks>
+    /// Appends the error message to the <c>Errors</c> list so tests can assert assembly error output.
+    /// </remarks>
+    /// <param name="message">错误日志内容 / Error log message</param>
     public void Error(string message)
     {
         Errors.Add(message);

@@ -335,7 +335,13 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
         /// </summary>
         public List<LegacyItem> Items { get; set; }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 将 <c>Id|Name|Level</c> 拼接为文本并按 UTF-8 编码为字节，作为旧格式探针状态的简易序列化结果。
+        /// </summary>
+        /// <remarks>
+        /// Joins <c>Id|Name|Level</c> into text and encodes it as UTF-8 bytes, serving as a simple serialization of the legacy probe state.
+        /// </remarks>
+        /// <returns>拼接文本的 UTF-8 字节 / UTF-8 bytes of the joined text</returns>
         public override byte[] ToBytes()
         {
             var data = $"{Id}|{Name}|{Level}";
@@ -380,7 +386,13 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
         /// </summary>
         public string Name { get; set; }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 将 <c>Id|Score</c> 拼接为文本并按 UTF-8 编码为字节，作为索引探针状态的简易序列化结果。
+        /// </summary>
+        /// <remarks>
+        /// Joins <c>Id|Score</c> into text and encodes it as UTF-8 bytes, serving as a simple serialization of the index probe state.
+        /// </remarks>
+        /// <returns>拼接文本的 UTF-8 字节 / UTF-8 bytes of the joined text</returns>
         public override byte[] ToBytes()
         {
             var data = $"{Id}|{Score}";
@@ -404,7 +416,13 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
         /// </summary>
         public string Name { get; set; }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 将 <c>Id|Score</c> 拼接为文本并按 UTF-8 编码为字节，作为索引重建探针状态的简易序列化结果。
+        /// </summary>
+        /// <remarks>
+        /// Joins <c>Id|Score</c> into text and encodes it as UTF-8 bytes, serving as a simple serialization of the index rebuild probe state.
+        /// </remarks>
+        /// <returns>拼接文本的 UTF-8 字节 / UTF-8 bytes of the joined text</returns>
         public override byte[] ToBytes()
         {
             var data = $"{Id}|{Score}";
@@ -427,7 +445,13 @@ public sealed class PostgreSqlDbServiceCompatibilityTests
         /// </summary>
         public string Name { get; set; }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 将 <c>Id|Score</c> 拼接为文本并按 UTF-8 编码为字节，作为空值排序探针状态的简易序列化结果。
+        /// </summary>
+        /// <remarks>
+        /// Joins <c>Id|Score</c> into text and encodes it as UTF-8 bytes, serving as a simple serialization of the null sorting probe state.
+        /// </remarks>
+        /// <returns>拼接文本的 UTF-8 字节 / UTF-8 bytes of the joined text</returns>
         public override byte[] ToBytes()
         {
             var data = $"{Id}|{Score}";

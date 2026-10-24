@@ -205,7 +205,15 @@ public sealed class HotfixManagerRollbackExecutorTests : IDisposable
             _payload = payload;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 递增请求计数后，对任意请求固定返回 200 响应，响应体为构造时传入的制品字节；不发起真实网络请求。
+        /// </summary>
+        /// <remarks>
+        /// Increments the request counter and returns a fixed 200 response whose body is the artifact bytes passed at construction, for any request; no real network call is made.
+        /// </remarks>
+        /// <param name="request">HTTP 请求（本实现不读取） / HTTP request (not read by this implementation)</param>
+        /// <param name="cancellationToken">取消令牌（本实现不使用） / Cancellation token (unused by this implementation)</param>
+        /// <returns>携带制品字节的 200 响应任务 / Task yielding a 200 response carrying the artifact bytes</returns>
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             CallCount++;

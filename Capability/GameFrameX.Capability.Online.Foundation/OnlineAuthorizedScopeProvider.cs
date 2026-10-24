@@ -54,7 +54,13 @@ public sealed class OnlineAuthorizedScopeProvider : IOnlineAuthorizedScopeProvid
         _authorizedScope = authorizedScope ?? throw new ArgumentNullException(nameof(authorizedScope));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取构造时注入的族基建预置授权作用域，只透出不构造。
+    /// </summary>
+    /// <remarks>
+    /// Gets the family-provisioned authorized scope injected at construction; the provider only exposes it and never builds a default.
+    /// </remarks>
+    /// <value>授权作用域，恒不为 null / Authorized scope, never null</value>
     public OnlineScope AuthorizedScope
     {
         get { return _authorizedScope; }

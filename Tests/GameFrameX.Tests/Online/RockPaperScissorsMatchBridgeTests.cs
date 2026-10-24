@@ -377,7 +377,13 @@ namespace GameFrameX.Tests.Online
                 _scope = scope;
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// 获取授权作用域；固定返回构造时注入的作用域。
+            /// </summary>
+            /// <remarks>
+            /// Gets the authorized scope; always returns the scope injected at construction.
+            /// </remarks>
+            /// <value>构造时注入的授权作用域 / Authorized scope injected at construction</value>
             public OnlineScope AuthorizedScope
             {
                 get { return _scope; }
@@ -422,7 +428,18 @@ namespace GameFrameX.Tests.Online
             /// <summary>最近一次提交出拳值。</summary>
             public int LastSubmitGesture;
 
-            /// <inheritdoc />
+            /// <summary>
+            /// 开局桩：累加 <c>StartCallCount</c> 并记录作用域、房间、局号与玩家集合，固定返回成功的保密视图。
+            /// </summary>
+            /// <remarks>
+            /// Start stub: increments <c>StartCallCount</c>, records scope, room, round and players, and always returns a successful secret view.
+            /// </remarks>
+            /// <param name="scope">授权作用域，记录到 <c>LastStartScope</c> / Authorized scope, recorded to <c>LastStartScope</c></param>
+            /// <param name="roomId">房间标识，记录到 <c>LastStartRoomId</c> / Room identifier, recorded to <c>LastStartRoomId</c></param>
+            /// <param name="round">局号，记录到 <c>LastStartRound</c> / Round number, recorded to <c>LastStartRound</c></param>
+            /// <param name="playerIds">玩家集合，记录到 <c>LastStartPlayerIds</c> / Player identifiers, recorded to <c>LastStartPlayerIds</c></param>
+            /// <param name="cancellationToken">取消令牌（本桩忽略） / Cancellation token (ignored by this stub)</param>
+            /// <returns>成功的保密对局视图 / Successful secret game view</returns>
             public Task<OnlineResult<OnlineMatchBridgeGameView>> StartRoomGameAsync(OnlineScope scope, long roomId, int round, IReadOnlyList<long> playerIds, CancellationToken cancellationToken = default)
             {
                 StartCallCount++;
@@ -433,7 +450,18 @@ namespace GameFrameX.Tests.Online
                 return Task.FromResult(OnlineResult<OnlineMatchBridgeGameView>.Ok(SecretView()));
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// 出拳提交桩：累加 <c>SubmitCallCount</c> 并记录作用域、房间、局号与出拳值，返回 <c>SubmitResult</c> 工厂的结果（可注入失败或异常）。
+            /// </summary>
+            /// <remarks>
+            /// Submit stub: increments <c>SubmitCallCount</c>, records scope, room, round and gesture, and returns the result of the <c>SubmitResult</c> factory.
+            /// </remarks>
+            /// <param name="scope">授权作用域，记录到 <c>LastSubmitScope</c> / Authorized scope, recorded to <c>LastSubmitScope</c></param>
+            /// <param name="roomId">房间标识，记录到 <c>LastSubmitRoomId</c> / Room identifier, recorded to <c>LastSubmitRoomId</c></param>
+            /// <param name="round">局号，记录到 <c>LastSubmitRound</c> / Round number, recorded to <c>LastSubmitRound</c></param>
+            /// <param name="gesture">出拳值，记录到 <c>LastSubmitGesture</c> / Gesture value, recorded to <c>LastSubmitGesture</c></param>
+            /// <param name="cancellationToken">取消令牌（本桩忽略） / Cancellation token (ignored by this stub)</param>
+            /// <returns><c>SubmitResult</c> 工厂产出的结果 / Result produced by the <c>SubmitResult</c> factory</returns>
             public Task<OnlineResult<OnlineMatchBridgeGameView>> SubmitGestureAsync(OnlineScope scope, long roomId, int round, int gesture, CancellationToken cancellationToken = default)
             {
                 SubmitCallCount++;
@@ -444,7 +472,17 @@ namespace GameFrameX.Tests.Online
                 return Task.FromResult(SubmitResult());
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// 查询对局信息桩：不记录调用，固定返回成功的保密视图。
+            /// </summary>
+            /// <remarks>
+            /// Game info stub: records nothing and always returns a successful secret view.
+            /// </remarks>
+            /// <param name="scope">授权作用域（本桩忽略） / Authorized scope (ignored by this stub)</param>
+            /// <param name="roomId">房间标识（本桩忽略） / Room identifier (ignored by this stub)</param>
+            /// <param name="round">局号（本桩忽略） / Round number (ignored by this stub)</param>
+            /// <param name="cancellationToken">取消令牌（本桩忽略） / Cancellation token (ignored by this stub)</param>
+            /// <returns>成功的保密对局视图 / Successful secret game view</returns>
             public Task<OnlineResult<OnlineMatchBridgeGameView>> GetGameInfoAsync(OnlineScope scope, long roomId, int round, CancellationToken cancellationToken = default)
             {
                 return Task.FromResult(OnlineResult<OnlineMatchBridgeGameView>.Ok(SecretView()));
