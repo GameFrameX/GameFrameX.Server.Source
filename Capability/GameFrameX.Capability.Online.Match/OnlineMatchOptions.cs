@@ -52,7 +52,13 @@ public sealed class OnlineMatchOptions : ICapabilityOptions
     /// </summary>
     public OnlineMatchRuntimeOptions Runtime { get; set; } = new OnlineMatchRuntimeOptions();
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 校验合并后的运行时阈值：等待超时、进行中超时、重连窗口、结束留存时长与单局服务端事件上限均须为正数。
+    /// </summary>
+    /// <remarks>
+    /// Requires waiting timeout, running timeout, reconnect window, ended retention and maximum server events per match to be positive.
+    /// </remarks>
+    /// <param name="validation">选项校验收集器 / Options validation collector</param>
     public void Validate(CapabilityOptionsValidation validation)
     {
         validation.RequirePositive("Runtime.WaitingTimeoutSeconds", Runtime.WaitingTimeoutSeconds);

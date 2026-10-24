@@ -114,7 +114,13 @@ public sealed class CapabilityHostServiceAndHookTests
             Name = name;
         }
 
-        /// <inheritdoc cref="IHostDirectoryService.Name" />
+        /// <summary>
+        /// 获取构造时传入的实现标记，供测试按标记断言宿主服务或钩子解析到的是哪个实例。
+        /// </summary>
+        /// <remarks>
+        /// Gets the implementation marker passed at construction so tests can assert which instance a host service or hook resolved to.
+        /// </remarks>
+        /// <value>实现标记 / Implementation marker</value>
         public string Name { get; }
     }
 

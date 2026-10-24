@@ -98,13 +98,29 @@ public sealed class OnlineFoundationCapabilityModule : ICapabilityModule, IAdmin
     /// </summary>
     private OnlinePresenceService _presence;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取平台地基能力清单，固定返回静态实例 <see cref="ManifestInstance"/>。
+    /// </summary>
+    /// <remarks>
+    /// Gets the foundation capability manifest; always returns the static <see cref="ManifestInstance"/>.
+    /// </remarks>
+    /// <value>平台地基能力清单 / Foundation capability manifest</value>
     public CapabilityManifest Manifest
     {
         get { return ManifestInstance; }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 懒默认注册内存版身份、在线状态、会话存储并解析生效实例，构造并注册身份服务、会话生命周期管理器、会话令牌服务与在线状态服务，注册会话恢复契约实现及社交、队伍两个在线探针，并添加在线超时、令牌过期、重连窗口三个清扫 tick 任务。
+    /// </summary>
+    /// <remarks>
+    /// Registers in-memory identity, presence and session stores as lazy defaults and resolves the effective instances,
+    /// builds and registers the identity service, session manager, session token service and presence service, registers
+    /// the session reconnect contract implementation plus the social and party presence probes, and adds the
+    /// <c>presence-timeout-sweep</c>, <c>session-token-expiry-sweep</c> and <c>session-reconnect-window-sweep</c> tick jobs.
+    /// The presence sweep uses the tenant and app of the family-provisioned scope resolved here.
+    /// </remarks>
+    /// <param name="context">能力注册上下文 / Capability registration context</param>
     public void Register(CapabilityRegistrationContext context)
     {
         var eventPublisher = context.GetService<IOnlineEventPublisher>();
@@ -146,7 +162,17 @@ public sealed class OnlineFoundationCapabilityModule : ICapabilityModule, IAdmin
         context.AddTickJob("session-reconnect-window-sweep", ct => _sessions.SweepAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 发布两个桥：以族基建预置的作用域构造并发布授权作用域提供器，以及发布注册阶段注册的会话恢复契约实现；随后返回已完成任务。
+    /// </summary>
+    /// <remarks>
+    /// Publishes two bridges: an <see cref="OnlineAuthorizedScopeProvider"/> wrapping the family-provisioned
+    /// <see cref="OnlineScope"/>, and the session reconnect contract implementation registered during registration.
+    /// The work is synchronous, so a completed task is returned.
+    /// </remarks>
+    /// <param name="context">能力激活上下文，提供服务解析与桥发布 / Capability activation context providing services and bridges</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>已完成的任务 / Completed task</returns>
     public Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken)
     {
         // 授权作用域桥：透出族基建预置的 OnlineScope 三元组（全宿主唯一发布者；Hotfix 侧 TryAcquire 失败即显式 8002）。
@@ -157,13 +183,27 @@ public sealed class OnlineFoundationCapabilityModule : ICapabilityModule, IAdmin
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 停用阶段无需处理：本模块不持有自有资源，清扫任务由宿主机制托管，激活时发布的桥也由机制统一管理，直接返回已完成任务。
+    /// </summary>
+    /// <remarks>
+    /// Nothing to do on deactivation: the module holds no resources of its own, the sweep tick jobs are owned by the host
+    /// and the bridges published on activation are managed by the mechanism, so a completed task is returned.
+    /// </remarks>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>已完成的任务 / Completed task</returns>
     public Task DeactivateAsync(CancellationToken cancellationToken)
     {
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 基于注册阶段构造的在线状态服务登记玩家封禁与解封管理动作。
+    /// </summary>
+    /// <remarks>
+    /// Registers the suspend / resume player admin action backed by the presence service built during registration.
+    /// </remarks>
+    /// <param name="registry">管理动作注册表 / Admin action registry</param>
     public void RegisterAdminActions(AdminActionRegistry registry)
     {
         OnlineAdminFoundationHandlers.RegisterSuspendResume(registry, _presence);

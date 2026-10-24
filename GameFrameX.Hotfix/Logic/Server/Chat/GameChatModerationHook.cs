@@ -58,7 +58,17 @@ public sealed class GameChatModerationHook : IOnlineChatModerationHook
     /// </remarks>
     public const int MaximumContentLength = 500;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 本地同步裁决聊天消息：内容为空白或超过 <see cref="MaximumContentLength"/> 即拒绝并附原因，其余一律放行；不访问外部服务。
+    /// </summary>
+    /// <remarks>
+    /// Synchronously judges a chat message locally: blank content or content longer than <see cref="MaximumContentLength"/>
+    /// is rejected with a reason; everything else is allowed. No external IO is performed and the cancellation token is not consulted.
+    /// </remarks>
+    /// <param name="message">待审核的聊天消息 / Chat message to moderate</param>
+    /// <param name="cancellationToken">取消令牌（本实现为同步裁决，未使用） / Cancellation token (unused by this synchronous verdict)</param>
+    /// <returns>已完成的裁决任务：拒绝（空白或超长）或放行 / Completed verdict task: reject (blank or too long) or allow</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="message"/> 为 null / <paramref name="message"/> is null</exception>
     public Task<OnlineChatModerationVerdict> CheckAsync(OnlineChatMessage message, CancellationToken cancellationToken = default)
     {
         if (message == null)

@@ -85,7 +85,26 @@ public sealed class OnlineHotfixArtifactFetcher : IOnlineHotfixArtifactFetcher
         _httpClient = new HttpClient(handler ?? new SocketsHttpHandler(), true);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 确保指定版本的热更制品已落盘到当前工作目录下的版本目录：先校验版本号、SHA-256 与下载地址格式；
+    /// 目标制品已存在时校验和一致即直接返回，不一致即拒绝（版本目录一经落盘不可变更）；
+    /// 未落盘且未提供下载地址时抛出文件不存在异常；否则下载到同卷的临时目录（按配置重试并限制大小），校验通过后原子移动到版本目录，
+    /// 并发移动竞态时按已落盘内容判定幂等，最终总是清理临时目录。
+    /// </summary>
+    /// <remarks>
+    /// Validates the version, SHA-256 and source URL format. An existing artifact with a matching hash returns immediately; a mismatching one is rejected because version directories are immutable.
+    /// Without an on-disk artifact and without a source URL a file-not-found exception is thrown; otherwise the artifact is downloaded into a same-volume staging directory with retries and a size limit,
+    /// verified, and atomically moved into the version directory. Concurrent move races are resolved by re-checking the existing file, and the staging directory is always cleaned up.
+    /// </remarks>
+    /// <param name="version">热更版本号，禁止包含路径分隔符、卷分隔符或双点段 / Hotfix version, must not contain path or volume separators or double-dot segments</param>
+    /// <param name="sourceUrl">制品下载地址，为空时仅校验已落盘制品 / Artifact source URL; when empty only the on-disk artifact is verified</param>
+    /// <param name="artifactSha256">制品 SHA-256 校验和（64 位十六进制） / Artifact SHA-256 checksum (64 hexadecimal characters)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
+    /// <exception cref="ArgumentException">版本号、校验和或下载地址格式非法 / The version, checksum or source URL is malformed</exception>
+    /// <exception cref="InvalidOperationException">已落盘制品或下载制品校验不一致，或制品超过大小上限 / The on-disk or downloaded artifact hash mismatches, or the artifact exceeds the size limit</exception>
+    /// <exception cref="FileNotFoundException">仅提供校验和但目标制品未落盘 / Only a checksum is provided but the artifact is not on disk</exception>
+    /// <exception cref="HttpRequestException">下载返回不可重试的失败状态，或可重试失败在重试耗尽后仍未成功 / The download returns a non-retryable failure status, or a retryable failure persists after retries are exhausted</exception>
     public async Task EnsureArtifactAsync(string version, string sourceUrl, string artifactSha256, CancellationToken cancellationToken = default)
     {
         ValidateVersion(version);

@@ -350,13 +350,29 @@ namespace GameFrameX.Tests.Online
             /// <summary>最近一轮 tick 执行的 job 数（-1 = 尚未完成任何一轮）。</summary>
             public int LastExecutedJobCount = -1;
 
-            /// <inheritdoc />
+            /// <summary>
+            /// 记录失败的调度 job：把 job 名追加到 <c>FailedJobNames</c>，供断言哪些 job 执行失败。
+            /// </summary>
+            /// <remarks>
+            /// Records a failed scheduler job by appending its name to <c>FailedJobNames</c> for assertions.
+            /// </remarks>
+            /// <param name="jobKind">job 类型（本桩忽略） / Job kind (ignored by this stub)</param>
+            /// <param name="jobName">失败的 job 名 / Name of the failed job</param>
+            /// <param name="exception">失败异常（本桩忽略） / Failure exception (ignored by this stub)</param>
             public void OnJobFailed(CapabilitySchedulerJobKind jobKind, string jobName, Exception exception)
             {
                 FailedJobNames.Add(jobName);
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// 记录一轮 tick 完成：保存本轮执行的 job 数到 <c>LastExecutedJobCount</c>，用于断言重投 job 是否已注册。
+            /// </summary>
+            /// <remarks>
+            /// Records a completed tick round by storing the executed job count in <c>LastExecutedJobCount</c>.
+            /// </remarks>
+            /// <param name="elapsed">本轮耗时（本桩忽略） / Round elapsed time (ignored by this stub)</param>
+            /// <param name="executedJobCount">本轮执行的 job 数 / Number of jobs executed in this round</param>
+            /// <param name="failedJobCount">本轮失败的 job 数（本桩忽略） / Number of failed jobs in this round (ignored by this stub)</param>
             public void OnTickRoundCompleted(TimeSpan elapsed, int executedJobCount, int failedJobCount)
             {
                 LastExecutedJobCount = executedJobCount;

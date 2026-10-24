@@ -69,7 +69,13 @@ public sealed class CapabilityDependencyCheckTests
             Name = name;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 获取构造时传入的探针名，供测试按名称区分解析到的探针实例。
+        /// </summary>
+        /// <remarks>
+        /// Gets the probe name passed at construction so tests can tell resolved probe instances apart by name.
+        /// </remarks>
+        /// <value>探针名 / Probe name</value>
         public string Name { get; }
     }
 

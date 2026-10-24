@@ -77,7 +77,20 @@ public sealed class HotfixManagerRollbackExecutor : IOnlineHotfixRollbackExecuto
         _setting = setting;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 将热更程序集切换到已落盘的目标版本：校验版本号并解析制品路径，在互斥门内经 <see cref="HotfixManager"/> 装载并确认实际装载路径；装载失败时尝试恢复切换前版本后抛出。
+    /// </summary>
+    /// <remarks>
+    /// Switches the hotfix assembly to an already-downloaded target version. The version is validated and resolved to an artifact path,
+    /// then under a single-flight gate the artifact must exist on disk (no download at switch time), is loaded via <see cref="HotfixManager"/>,
+    /// and the loaded assembly location is verified. On failure the previously loaded version is reloaded before throwing.
+    /// </remarks>
+    /// <param name="targetVersion">目标热更版本号 / Target hotfix version</param>
+    /// <param name="cancellationToken">取消令牌，仅用于等待切换互斥门 / Cancellation token, used only while waiting for the switch gate</param>
+    /// <returns>表示异步切换操作的任务 / Task representing the asynchronous switch</returns>
+    /// <exception cref="ArgumentException">版本号为空白或含非法路径段 / Version is blank or contains illegal path segments</exception>
+    /// <exception cref="FileNotFoundException">目标版本制品未落盘 / Target version artifact is not on disk</exception>
+    /// <exception cref="InvalidOperationException">目标版本装载失败（已恢复或恢复也失败） / Target load failed (original restored, or restoration also failed)</exception>
     public async Task RollbackAsync(string targetVersion, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(targetVersion))

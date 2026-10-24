@@ -43,7 +43,13 @@ public sealed class OnlineOperationsOptions : ICapabilityOptions
     /// </summary>
     public OnlineHotfixArtifactFetchOptions ArtifactFetch { get; set; } = new OnlineHotfixArtifactFetchOptions();
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 校验制品获取参数：单次尝试超时须为正时长，最大重试次数不得为负，制品大小上限须为正数。
+    /// </summary>
+    /// <remarks>
+    /// Requires a positive attempt timeout, a non-negative maximum retry count and a positive maximum artifact size.
+    /// </remarks>
+    /// <param name="validation">选项校验收集器 / Options validation collector</param>
     public void Validate(CapabilityOptionsValidation validation)
     {
         if (ArtifactFetch.AttemptTimeout <= TimeSpan.Zero)

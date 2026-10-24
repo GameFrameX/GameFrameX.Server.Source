@@ -110,13 +110,29 @@ public sealed class OnlineOperationsCapabilityModule : ICapabilityModule, IAdmin
     /// </summary>
     private OnlineHotfixRollbackService _hotfixRollback;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取运营聚合能力的静态清单（单例实例）。
+    /// </summary>
+    /// <remarks>
+    /// Gets the static manifest singleton of the online operations capability.
+    /// </remarks>
+    /// <value>能力清单单例 / Capability manifest singleton</value>
     public CapabilityManifest Manifest
     {
         get { return ManifestInstance; }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 注册运营能力：解析统一审计服务；注册内存热更版本存储，要求宿主提供版本切换执行器，按选项注册制品获取器并装配热更回滚服务；
+    /// 仅在撮合票据、队伍与对局 Actor 存储均在场时装配总览服务，仅在资产查询、社交关系存储与对局 Actor 存储均在场时装配玩家时间线服务；
+    /// 最后对全部已知在线事件主题注册事件与审计桥。
+    /// </summary>
+    /// <remarks>
+    /// Resolves the unified audit service, registers the in-memory hotfix version store, requires the host rollback executor, registers the artifact fetcher from options and builds the hotfix rollback service.
+    /// The overview service is built only when ticket, party and match actor stores exist; the player timeline only when asset query, social graph and match actor stores exist.
+    /// Finally subscribes the event and audit bridge to all known online event topics.
+    /// </remarks>
+    /// <param name="context">能力注册上下文 / Capability registration context</param>
     public void Register(CapabilityRegistrationContext context)
     {
         var options = context.GetOptions<OnlineOperationsOptions>();
@@ -158,19 +174,40 @@ public sealed class OnlineOperationsCapabilityModule : ICapabilityModule, IAdmin
         RegisterEventBridge(context);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 激活运营能力：本实现不做任何处理，因为所有服务与事件订阅已在注册期完成装配，且本能力不发布桥。
+    /// </summary>
+    /// <remarks>
+    /// Performs no work, because all services and event subscriptions are wired during registration and this capability publishes no bridges.
+    /// </remarks>
+    /// <param name="context">能力激活上下文 / Capability activation context</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>已完成的任务 / A completed task</returns>
     public Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken)
     {
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 停用运营能力：本实现不做任何处理，因为事件订阅由机制事件总线管理，模块不持有需要释放的资源。
+    /// </summary>
+    /// <remarks>
+    /// Performs no work, because event subscriptions are owned by the mechanism event bus and the module holds no resources to release.
+    /// </remarks>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>已完成的任务 / A completed task</returns>
     public Task DeactivateAsync(CancellationToken cancellationToken)
     {
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 注册运营管理动作：控制台动作（总览、时间线与审计，未装配的服务以空值传入）与热更回滚动作。
+    /// </summary>
+    /// <remarks>
+    /// Registers console actions (overview, timeline and audit; unassembled services are passed as null) and hotfix rollback actions.
+    /// </remarks>
+    /// <param name="registry">管理动作注册表 / Admin action registry</param>
     public void RegisterAdminActions(AdminActionRegistry registry)
     {
         OnlineAdminConsoleHandlers.RegisterConsoleActions(registry, _overview, _timeline, _audit);

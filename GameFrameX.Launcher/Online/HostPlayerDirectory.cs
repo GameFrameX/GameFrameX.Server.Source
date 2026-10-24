@@ -59,7 +59,20 @@ namespace GameFrameX.Launcher.Online;
 /// </remarks>
 public sealed class HostPlayerDirectory : IOnlinePlayerDirectory
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 按名称关键字搜索本服玩家：关键字去首尾空白后在 <c>GameDb</c> 中按 <c>PlayerState.Name</c> 包含匹配，按玩家 ID 升序取前 limit 条；关键字为空白或 limit 不大于 0 时直接返回空列表。
+    /// </summary>
+    /// <remarks>
+    /// Searches local players by name keyword: the trimmed keyword is matched with a contains query on <c>PlayerState.Name</c> through <c>GameDb</c>,
+    /// results are ordered by player ID and truncated to limit. A blank keyword or non-positive limit returns an empty list without querying.
+    /// Tenant and app IDs are not used for filtering because the host database holds a single server's players; ServerId comes from the current global setting (0 when absent).
+    /// </remarks>
+    /// <param name="tenantId">租户 ID（本宿主实现不参与过滤） / Tenant ID (not used for filtering by this host implementation)</param>
+    /// <param name="appId">应用 ID（本宿主实现不参与过滤） / App ID (not used for filtering by this host implementation)</param>
+    /// <param name="keyword">名称关键字 / Name keyword</param>
+    /// <param name="limit">最大返回条数 / Maximum number of entries to return</param>
+    /// <param name="cancellationToken">取消令牌，透传给数据库查询 / Cancellation token passed to the database query</param>
+    /// <returns>匹配的玩家目录条目列表，可能为空 / Matching player directory entries, possibly empty</returns>
     public async Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> SearchByNameAsync(long tenantId, long appId, string keyword, int limit, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(keyword) || limit <= 0)
@@ -80,7 +93,18 @@ public sealed class HostPlayerDirectory : IOnlinePlayerDirectory
             .ToList();
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 按玩家 ID 批量查询本服玩家：经 <c>GameDb.FindByIdsAsync</c> 读取 <c>PlayerState</c>，过滤掉名称为 null 的记录并按玩家 ID 升序返回；ID 列表为 null 或为空时直接返回空列表。
+    /// </summary>
+    /// <remarks>
+    /// Looks up local players by ID through <c>GameDb.FindByIdsAsync</c>, drops states whose name is null and orders by player ID.
+    /// A null or empty ID list returns an empty list without querying. Tenant and app IDs are not used for filtering; ServerId comes from the current global setting (0 when absent).
+    /// </remarks>
+    /// <param name="tenantId">租户 ID（本宿主实现不参与过滤） / Tenant ID (not used for filtering by this host implementation)</param>
+    /// <param name="appId">应用 ID（本宿主实现不参与过滤） / App ID (not used for filtering by this host implementation)</param>
+    /// <param name="playerIds">待查询的玩家 ID 列表 / Player IDs to look up</param>
+    /// <param name="cancellationToken">取消令牌，透传给数据库查询 / Cancellation token passed to the database query</param>
+    /// <returns>存在且有名称的玩家目录条目列表，可能为空 / Directory entries for existing named players, possibly empty</returns>
     public async Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> FindAsync(long tenantId, long appId, IReadOnlyList<long> playerIds, CancellationToken cancellationToken = default)
     {
         if (playerIds == null || playerIds.Count == 0)

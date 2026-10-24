@@ -51,7 +51,13 @@ public sealed class OnlineMatchmakingOptions : ICapabilityOptions
     /// </summary>
     public OnlineMatchmakerOptions Matchmaker { get; set; } = new OnlineMatchmakerOptions();
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 校验合并后的撮合参数：票据存活时长、等待扩窗阈值、扩窗间隔、每次扩窗评分增量、频控最大操作数与频控窗口均须为正数。
+    /// </summary>
+    /// <remarks>
+    /// Requires ticket time to live, wait expansion threshold, expansion interval, skill expansion per interval, rate limit maximum operations and rate limit window to be positive.
+    /// </remarks>
+    /// <param name="validation">选项校验收集器 / Options validation collector</param>
     public void Validate(CapabilityOptionsValidation validation)
     {
         validation.RequirePositive("Matchmaker.TicketTimeToLiveSeconds", Matchmaker.TicketTimeToLiveSeconds);

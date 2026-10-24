@@ -60,7 +60,19 @@ public sealed class OnlinePartyPresenceProbe : IOnlinePartyPresenceProbe
         _presence = presence ?? throw new ArgumentNullException(nameof(presence));
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 判定队伍成员是否在线：以租户、应用与成员玩家构造作用域（服务器位为 0）查询在线状态事实源；查询成功且状态既非离线也非封禁时返回 true，查询失败一律按离线返回 false。
+    /// </summary>
+    /// <remarks>
+    /// Builds a scope from tenant, app and player (server id 0) and reads the presence service; returns true only when the
+    /// lookup succeeds and the state is neither <see cref="OnlinePresenceState.Offline"/> nor <see cref="OnlinePresenceState.Blocked"/>.
+    /// A failed lookup is treated as offline.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">应用标识 / App id</param>
+    /// <param name="playerId">队伍成员玩家标识 / Party member player id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>成员是否在线 / Whether the member is online</returns>
     public async Task<bool> IsOnlineAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
     {
         var scope = new OnlineScope(tenantId, appId, 0, playerId);

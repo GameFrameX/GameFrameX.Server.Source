@@ -54,7 +54,14 @@ public sealed class OnlineFoundationOptions : ICapabilityOptions
     /// </summary>
     public OnlinePlayerStorageOptions PlayerStorage { get; set; } = new OnlinePlayerStorageOptions();
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 校验玩家键值存储限制参数：最大负载字节数、单集合最大键数与最大分页大小均须为正数。
+    /// </summary>
+    /// <remarks>
+    /// Validates the player key-value storage limits: maximum payload bytes, maximum keys per collection and maximum page size must
+    /// all be positive. Failures are recorded on the validation collector.
+    /// </remarks>
+    /// <param name="validation">选项校验结果收集器 / Options validation collector</param>
     public void Validate(CapabilityOptionsValidation validation)
     {
         validation.RequirePositive("PlayerStorage.MaxPayloadBytes", PlayerStorage.MaxPayloadBytes);

@@ -101,13 +101,29 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
     /// </summary>
     private IOnlineMatchDomain _matchDomain;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取在线对局能力的静态清单（单例实例），声明能力标识、依赖与可选的撮合能力。
+    /// </summary>
+    /// <remarks>
+    /// Gets the static manifest singleton of the online match capability, declaring its identity, dependencies and the optional matchmaking capability.
+    /// </remarks>
+    /// <value>能力清单单例 / Capability manifest singleton</value>
     public CapabilityManifest Manifest
     {
         get { return ManifestInstance; }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 注册对局能力：注册内存对局 Actor 存储与结果存储，构造对局运行时并注册石头剪刀布玩法与对局 tick 任务；
+    /// 装配结算服务与结算管线（资产发放服务缺席时只结算不派发）并注册结算 tick 任务；构造并注册对局桥服务；
+    /// 仅当票据服务、撮合协调器与票据存储均在场时才装配匹配域服务并订阅撮合分配事件，缺席时不装配也不报错。
+    /// </summary>
+    /// <remarks>
+    /// Registers in-memory match actor and result stores, builds the match runtime with the rock-paper-scissors game and a match tick job,
+    /// wires the settlement service and pipeline (settle-only when the grant service is absent) with a settlement tick job, registers the game bridge service,
+    /// and only when ticket service, matchmaker coordinator and ticket store are all present builds the match domain service and subscribes to assignment-created events; otherwise it silently skips.
+    /// </remarks>
+    /// <param name="context">能力注册上下文 / Capability registration context</param>
     public void Register(CapabilityRegistrationContext context)
     {
         var options = context.GetOptions<OnlineMatchOptions>();
@@ -147,7 +163,15 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 激活对局能力：始终发布对局桥；仅当匹配域服务已在注册期装配时才发布匹配域桥。
+    /// </summary>
+    /// <remarks>
+    /// Always publishes the match game bridge; publishes the match domain bridge only when the domain service was assembled during registration.
+    /// </remarks>
+    /// <param name="context">能力激活上下文 / Capability activation context</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>已完成的任务，激活过程为同步操作 / A completed task, as activation is synchronous</returns>
     public Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken)
     {
         // 桥发布迁 Activate 期（C294）：对局桥恒发布；匹配域桥仅在场发布（缺席态由桥显式失败承载）。
@@ -160,13 +184,26 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 停用对局能力：本实现不做任何处理，因为桥与 tick 任务由宿主统一管理，模块自身不持有需要释放的资源。
+    /// </summary>
+    /// <remarks>
+    /// Performs no work, because bridges and tick jobs are owned by the host and the module holds no resources to release.
+    /// </remarks>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>已完成的任务 / A completed task</returns>
     public Task DeactivateAsync(CancellationToken cancellationToken)
     {
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 注册对局相关管理动作：异常结束对局，以及基于结算管线的对局结算查询。
+    /// </summary>
+    /// <remarks>
+    /// Registers match admin actions: abnormal match termination and match settlement query backed by the settlement pipeline.
+    /// </remarks>
+    /// <param name="registry">管理动作注册表 / Admin action registry</param>
     public void RegisterAdminActions(AdminActionRegistry registry)
     {
         OnlineAdminMatchHandlers.RegisterEndAbnormalMatch(registry);

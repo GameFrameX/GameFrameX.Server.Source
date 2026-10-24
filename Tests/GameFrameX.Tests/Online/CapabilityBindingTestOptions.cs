@@ -49,7 +49,13 @@ public sealed class CapabilityBindingTestOptions : ICapabilityOptions
     /// <summary>获取或设置嵌套参数段（嵌套字段路径验证位）。</summary>
     public NestedSection Nested { get; set; } = new NestedSection();
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 校验 Alpha、Beta、Gamma 与 Nested.Depth 均为正数；嵌套段为 null 时按 0 计入，从而报告校验失败。
+    /// </summary>
+    /// <remarks>
+    /// Validates that Alpha, Beta, Gamma and Nested.Depth are all positive; a null nested section counts as 0 and is therefore reported as a validation failure.
+    /// </remarks>
+    /// <param name="validation">收集校验失败的能力选项校验器 / Capability options validation collector that records failures</param>
     public void Validate(CapabilityOptionsValidation validation)
     {
         validation.RequirePositive("Alpha", Alpha);

@@ -74,7 +74,13 @@ public class CapabilitySchedulerTests
             _utcNow = start;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 在锁内读取手动维护的虚拟时刻；时刻只随测试显式推进而变化，不读取系统时钟。
+        /// </summary>
+        /// <remarks>
+        /// Reads the manually maintained virtual time under a lock; it changes only when the test advances it explicitly and never reads the system clock.
+        /// </remarks>
+        /// <value>当前虚拟时刻 / Current virtual time</value>
         public DateTimeOffset UtcNow
         {
             get
@@ -188,7 +194,15 @@ public class CapabilitySchedulerTests
             }
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 在锁内记录一条作业失败（类型、名称、异常），供测试断言调度器上报的失败。
+        /// </summary>
+        /// <remarks>
+        /// Records a job failure (kind, name, exception) under a lock so tests can assert failures reported by the scheduler.
+        /// </remarks>
+        /// <param name="jobKind">失败作业类型 / Kind of the failed job</param>
+        /// <param name="jobName">失败作业名称 / Name of the failed job</param>
+        /// <param name="exception">作业抛出的异常 / Exception thrown by the job</param>
         public void OnJobFailed(CapabilitySchedulerJobKind jobKind, string jobName, Exception exception)
         {
             lock (_sync)
@@ -197,7 +211,15 @@ public class CapabilitySchedulerTests
             }
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 在锁内记录一轮 tick 的执行作业数与失败作业数，供测试断言调度轮次统计；耗时不记录。
+        /// </summary>
+        /// <remarks>
+        /// Records the executed and failed job counts of a tick round under a lock so tests can assert round statistics; the elapsed time is not recorded.
+        /// </remarks>
+        /// <param name="elapsed">本轮耗时（本实现不记录） / Elapsed time of the round (not recorded by this implementation)</param>
+        /// <param name="executedJobCount">本轮执行的作业数 / Number of jobs executed in the round</param>
+        /// <param name="failedJobCount">本轮失败的作业数 / Number of jobs failed in the round</param>
         public void OnTickRoundCompleted(TimeSpan elapsed, int executedJobCount, int failedJobCount)
         {
             lock (_sync)

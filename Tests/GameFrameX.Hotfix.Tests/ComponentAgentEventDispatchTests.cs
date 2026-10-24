@@ -152,7 +152,15 @@ public sealed class ComponentAgentEventDispatchTests : IDisposable
             ReceivedAgent = null;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 记录收到的玩家组件代理到静态字段，供测试断言派发命中本监听器且代理归属正确；不做其他处理。
+        /// </summary>
+        /// <remarks>
+        /// Records the received player component agent into a static field so tests can assert dispatch reached this listener with the correct agent; performs no other work.
+        /// </remarks>
+        /// <param name="agent">收到事件的玩家组件代理 / Player component agent that received the event</param>
+        /// <param name="gameEventArgs">探针事件参数（本实现不读取） / Probe event arguments (not read by this implementation)</param>
+        /// <returns>记录完成后立即返回的已完成任务 / Completed task returned immediately after recording</returns>
         protected override Task HandleEventAsync(PlayerComponentAgent agent, GameEventArgs gameEventArgs)
         {
             ReceivedAgent = agent;
@@ -175,7 +183,15 @@ public sealed class ComponentAgentEventDispatchTests : IDisposable
             Triggered = false;
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 将触发标记置为 true，供测试断言其他 actor 类型的监听器未被派发；不做其他处理。
+        /// </summary>
+        /// <remarks>
+        /// Sets the triggered flag to true so tests can assert that listeners of other actor types are not dispatched; performs no other work.
+        /// </remarks>
+        /// <param name="agent">收到事件的服务器组件代理（本实现不读取） / Server component agent that received the event (not read by this implementation)</param>
+        /// <param name="gameEventArgs">探针事件参数（本实现不读取） / Probe event arguments (not read by this implementation)</param>
+        /// <returns>置位后立即返回的已完成任务 / Completed task returned immediately after setting the flag</returns>
         protected override Task HandleEventAsync(ServerComponentAgent agent, GameEventArgs gameEventArgs)
         {
             Triggered = true;

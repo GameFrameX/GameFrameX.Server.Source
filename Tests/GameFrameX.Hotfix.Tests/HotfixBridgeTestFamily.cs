@@ -38,25 +38,49 @@ namespace GameFrameX.Hotfix.Tests;
 /// </summary>
 public sealed class HotfixBridgeTestFamily : ICapabilityFamily
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取测试能力族标识，固定返回 <c>hotfix-bridge-tests</c>。
+    /// </summary>
+    /// <remarks>
+    /// Gets the test capability family identifier; always returns <c>hotfix-bridge-tests</c>.
+    /// </remarks>
+    /// <value>固定的族标识 / Fixed family identifier</value>
     public string FamilyId
     {
         get { return "hotfix-bridge-tests"; }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取测试能力族的配置节名，固定返回 <c>HotfixBridgeTests</c>。
+    /// </summary>
+    /// <remarks>
+    /// Gets the configuration section name of the test family; always returns <c>HotfixBridgeTests</c>.
+    /// </remarks>
+    /// <value>固定的配置节名 / Fixed configuration section name</value>
     public string ConfigurationSectionName
     {
         get { return "HotfixBridgeTests"; }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取部署程序集前缀，固定返回 <c>GameFrameX.Hotfix.Tests</c>，使本测试程序集内的桩模块参与发现。
+    /// </summary>
+    /// <remarks>
+    /// Gets the deployment assembly prefix; always returns <c>GameFrameX.Hotfix.Tests</c> so stub modules in this test assembly are discovered.
+    /// </remarks>
+    /// <value>固定的部署程序集前缀 / Fixed deployment assembly prefix</value>
     public string DeploymentAssemblyPrefix
     {
         get { return "GameFrameX.Hotfix.Tests"; }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 不注册任何族基建：域桥测试的桥契约全部由桩模块在激活期发布。
+    /// </summary>
+    /// <remarks>
+    /// Registers no family infrastructure, because all bridge contracts in the domain bridge tests are published by the stub module at activation time.
+    /// </remarks>
+    /// <param name="context">能力族上下文（本实现不使用） / Capability family context (unused by this implementation)</param>
     public void RegisterInfrastructure(CapabilityFamilyContext context)
     {
         // 域桥测试不需要族基建：桥契约全部由桩模块在激活期发布。

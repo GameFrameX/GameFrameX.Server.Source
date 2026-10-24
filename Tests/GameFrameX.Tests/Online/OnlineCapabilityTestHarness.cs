@@ -176,13 +176,34 @@ public static class OnlineCapabilityTestHarness
     /// </summary>
     public sealed class EmptyPlayerDirectory : IOnlinePlayerDirectory
     {
-        /// <inheritdoc />
+        /// <summary>
+        /// 按名称搜索玩家目录；本桩不接任何目录数据，固定返回空集合，表示部署未接入玩家目录。
+        /// </summary>
+        /// <remarks>
+        /// Searches the player directory by name; this stub has no directory data and always returns an empty collection.
+        /// </remarks>
+        /// <param name="tenantId">租户标识（本桩忽略） / Tenant identifier (ignored by this stub)</param>
+        /// <param name="appId">应用标识（本桩忽略） / Application identifier (ignored by this stub)</param>
+        /// <param name="keyword">搜索关键字（本桩忽略） / Search keyword (ignored by this stub)</param>
+        /// <param name="limit">返回条数上限（本桩忽略） / Maximum number of results (ignored by this stub)</param>
+        /// <param name="cancellationToken">取消令牌（本桩忽略） / Cancellation token (ignored by this stub)</param>
+        /// <returns>固定为空的目录条目集合 / An always-empty collection of directory entries</returns>
         public Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> SearchByNameAsync(long tenantId, long appId, string keyword, int limit, CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyList<OnlinePlayerDirectoryEntry>>(Array.Empty<OnlinePlayerDirectoryEntry>());
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// 按玩家标识批量解析目录条目；本桩不接任何目录数据，固定返回空集合。
+        /// </summary>
+        /// <remarks>
+        /// Resolves directory entries by player identifiers; this stub has no directory data and always returns an empty collection.
+        /// </remarks>
+        /// <param name="tenantId">租户标识（本桩忽略） / Tenant identifier (ignored by this stub)</param>
+        /// <param name="appId">应用标识（本桩忽略） / Application identifier (ignored by this stub)</param>
+        /// <param name="playerIds">待解析的玩家标识集合（本桩忽略） / Player identifiers to resolve (ignored by this stub)</param>
+        /// <param name="cancellationToken">取消令牌（本桩忽略） / Cancellation token (ignored by this stub)</param>
+        /// <returns>固定为空的目录条目集合 / An always-empty collection of directory entries</returns>
         public Task<IReadOnlyList<OnlinePlayerDirectoryEntry>> FindAsync(long tenantId, long appId, IReadOnlyList<long> playerIds, CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyList<OnlinePlayerDirectoryEntry>>(Array.Empty<OnlinePlayerDirectoryEntry>());
@@ -194,7 +215,15 @@ public static class OnlineCapabilityTestHarness
     /// </summary>
     public sealed class NoopHotfixRollbackExecutor : IOnlineHotfixRollbackExecutor
     {
-        /// <inheritdoc />
+        /// <summary>
+        /// 执行热更回滚；本桩仅用于满足宿主服务依赖，测试不验证回滚效果，因此不做任何操作直接完成。
+        /// </summary>
+        /// <remarks>
+        /// Performs a hotfix rollback; this stub only satisfies the host service requirement and completes immediately without doing anything.
+        /// </remarks>
+        /// <param name="targetVersion">回滚目标版本（本桩忽略） / Target rollback version (ignored by this stub)</param>
+        /// <param name="cancellationToken">取消令牌（本桩忽略） / Cancellation token (ignored by this stub)</param>
+        /// <returns>已完成的任务 / An already completed task</returns>
         public Task RollbackAsync(string targetVersion, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;

@@ -236,7 +236,15 @@ namespace GameFrameX.Tests.Online
                 _reason = reason;
             }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// 审核聊天消息；本桩不看消息内容，始终以构造时给定的理由返回拒绝判定，用于验证拒绝路径。
+            /// </summary>
+            /// <remarks>
+            /// Moderates a chat message; this stub ignores the content and always returns a rejection verdict with the configured reason.
+            /// </remarks>
+            /// <param name="message">待审核的聊天消息（本桩忽略） / Chat message to moderate (ignored by this stub)</param>
+            /// <param name="cancellationToken">取消令牌（本桩忽略） / Cancellation token (ignored by this stub)</param>
+            /// <returns>携带固定拒绝理由的拒绝判定 / Rejection verdict carrying the fixed reason</returns>
             public Task<OnlineChatModerationVerdict> CheckAsync(OnlineChatMessage message, CancellationToken cancellationToken = default)
             {
                 return Task.FromResult(OnlineChatModerationVerdict.Reject(_reason));

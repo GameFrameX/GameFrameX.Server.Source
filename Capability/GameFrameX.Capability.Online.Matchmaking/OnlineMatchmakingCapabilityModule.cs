@@ -98,13 +98,29 @@ public sealed class OnlineMatchmakingCapabilityModule : ICapabilityModule, IAdmi
     /// </summary>
     private OnlinePartyService _partyService;
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 获取在线撮合能力的静态清单（单例实例）。
+    /// </summary>
+    /// <remarks>
+    /// Gets the static manifest singleton of the online matchmaking capability.
+    /// </remarks>
+    /// <value>能力清单单例 / Capability manifest singleton</value>
     public CapabilityManifest Manifest
     {
         get { return ManifestInstance; }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 注册撮合能力：注册内存票据存储、对局列表存储与队伍存储，构造并注册票据服务、撮合协调器与队列观察器；
+    /// 构造队伍服务（在线探针暂留空，激活期回填）并以命名 <c>party</c> 注册为频道成员资格探针；
+    /// 注册撮合执行与过期票据清理两个 tick 任务。
+    /// </summary>
+    /// <remarks>
+    /// Registers in-memory ticket, listing and party stores, builds and registers the ticket service, matchmaker coordinator and queue observer,
+    /// builds the party service (presence probe attached later at activation) and registers it as the named <c>party</c> channel membership probe,
+    /// and adds the matchmaker run and expired ticket sweep tick jobs.
+    /// </remarks>
+    /// <param name="context">能力注册上下文 / Capability registration context</param>
     public void Register(CapabilityRegistrationContext context)
     {
         var options = context.GetOptions<OnlineMatchmakingOptions>();
@@ -142,7 +158,15 @@ public sealed class OnlineMatchmakingCapabilityModule : ICapabilityModule, IAdmi
         });
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 激活撮合能力：枚举队伍在线探针扩展点，存在实现时将第一个回填到队伍服务；无实现则保持探针为空。
+    /// </summary>
+    /// <remarks>
+    /// Enumerates party presence probe implementations and attaches the first one to the party service; leaves it unset when none exist.
+    /// </remarks>
+    /// <param name="context">能力激活上下文 / Capability activation context</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>已完成的任务，激活过程为同步操作 / A completed task, as activation is synchronous</returns>
     public Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken)
     {
         // 在线事实探针扩展点注入：实现常由非直接依赖能力（online-foundation）提供，只能 Activate 期枚举。
@@ -155,13 +179,26 @@ public sealed class OnlineMatchmakingCapabilityModule : ICapabilityModule, IAdmi
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 停用撮合能力：本实现不做任何处理，因为存储为内存实现、tick 任务由宿主管理，模块不持有需要释放的资源。
+    /// </summary>
+    /// <remarks>
+    /// Performs no work, because stores are in-memory, tick jobs are host-managed and the module holds no resources to release.
+    /// </remarks>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>已完成的任务 / A completed task</returns>
     public Task DeactivateAsync(CancellationToken cancellationToken)
     {
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 注册撮合管理动作：基于队列观察器、票据存储与票据服务构造撮合管理处理器并注册到管理动作注册表。
+    /// </summary>
+    /// <remarks>
+    /// Registers matchmaking admin handlers built from the queue observer, ticket store and ticket service.
+    /// </remarks>
+    /// <param name="registry">管理动作注册表 / Admin action registry</param>
     public void RegisterAdminActions(AdminActionRegistry registry)
     {
         new OnlineAdminMatchmakingHandlers(_matchQueueObserver, _matchTicketStore, _matchTickets).Register(registry);

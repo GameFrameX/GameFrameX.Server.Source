@@ -44,13 +44,25 @@ namespace GameFrameX.Launcher.Online;
 /// </remarks>
 public sealed class LogHelperCapabilityAssemblyLog : ICapabilityAssemblyLog
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// 将能力装配的信息日志直接转发到宿主 <c>LogHelper.Info</c>。
+    /// </summary>
+    /// <remarks>
+    /// Forwards capability assembly informational messages directly to the host <c>LogHelper.Info</c>.
+    /// </remarks>
+    /// <param name="message">日志消息 / Log message</param>
     public void Info(string message)
     {
         LogHelper.Info(message);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 将能力装配的错误日志直接转发到宿主 <c>LogHelper.Error</c>。
+    /// </summary>
+    /// <remarks>
+    /// Forwards capability assembly error messages directly to the host <c>LogHelper.Error</c>.
+    /// </remarks>
+    /// <param name="message">日志消息 / Log message</param>
     public void Error(string message)
     {
         LogHelper.Error(message);

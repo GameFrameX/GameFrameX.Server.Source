@@ -49,7 +49,15 @@ public sealed class OnlineCompetitionOptions : ICapabilityOptions
     /// </summary>
     public OnlineLeaderboardProjectionOptions LeaderboardProjection { get; set; } = new OnlineLeaderboardProjectionOptions();
 
-    /// <inheritdoc />
+    /// <summary>
+    /// 校验排行榜组件选项：单次提交最大分数、限流最大提交次数、限流窗口秒数、缓存有效期秒数与最大分页大小均须为正数；投影配置不做校验（空白榜单标识表示不投影）。
+    /// </summary>
+    /// <remarks>
+    /// Validates the leaderboard options: default maximum score per submission, rate-limit maximum submissions, rate-limit window
+    /// seconds, cache time-to-live seconds and maximum page size must all be positive. The projection settings are not validated because
+    /// a blank board id simply disables the projection. Failures are recorded on the validation collector.
+    /// </remarks>
+    /// <param name="validation">选项校验结果收集器 / Options validation collector</param>
     public void Validate(CapabilityOptionsValidation validation)
     {
         validation.RequirePositive("Leaderboard.DefaultMaxScorePerSubmission", Leaderboard.DefaultMaxScorePerSubmission);
