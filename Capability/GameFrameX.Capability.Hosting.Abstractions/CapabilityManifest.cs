@@ -30,11 +30,12 @@
 namespace GameFrameX.Capability.Hosting.Abstractions;
 
 /// <summary>
-/// 能力静态清单（能力包对外的自描述：标识 / 版本 / 暴露的 admin action / 依赖能力）。
+/// 能力静态清单（能力包对外的自描述：标识 / 版本 / 暴露的 admin action / 依赖声明 / Options 根类型）。
 /// <para>
-/// 维护约束：Id 全宿主唯一（重复即装配失败）；<see cref="Requires"/> 只允许引用其它能力的 Id，
-/// 装配期按其做拓扑排序与闭包校验；<see cref="Actions"/> 是声明面，
-/// 实际注册的 admin action 集合必须在组合期与之对账（声明未注册 = 启动失败）。
+/// 维护约束：Id 全宿主唯一（重复即装配失败）；<see cref="Requires"/>（必选）与 <see cref="Optional"/>（可选）
+/// 只允许引用其它能力的 Id，装配期在任何模块 Register 之前统一检查（必选缺失 / 成环 = 装配失败，一次报全）；
+/// <see cref="Actions"/> 是声明面，实际注册的 admin action 集合必须在组合期与之双向对账；
+/// <see cref="OptionsType"/> 是本能力唯一的 Options 根类型（默认值唯一来源；无参数能力不声明）。
 /// </para>
 /// </summary>
 public sealed class CapabilityManifest
@@ -45,13 +46,17 @@ public sealed class CapabilityManifest
     /// <param name="id">能力标识（非空；建议小写连字符命名，如 <c>online-assets</c>）。</param>
     /// <param name="version">能力版本（非空）。</param>
     /// <param name="actions">暴露的 admin action 名集合（无则为空集合）。</param>
-    /// <param name="requires">依赖的其它能力 Id 集合（无则为空集合）。</param>
-    public CapabilityManifest(string id, string version, IReadOnlyList<string> actions = null, IReadOnlyList<string> requires = null)
+    /// <param name="requires">必选依赖的其它能力 Id 集合（缺失即装配失败）。</param>
+    /// <param name="optional">可选依赖声明集合（缺失时对应功能不装配，能力其余功能不受影响）。</param>
+    /// <param name="optionsType">Options 根类型（无参数能力传 null；须为含公共无参构造的类）。</param>
+    public CapabilityManifest(string id, string version, IReadOnlyList<string> actions = null, IReadOnlyList<string> requires = null, IReadOnlyList<CapabilityOptionalDependency> optional = null, Type optionsType = null)
     {
         Id = id;
         Version = version;
         Actions = actions ?? Array.Empty<string>();
         Requires = requires ?? Array.Empty<string>();
+        Optional = optional ?? Array.Empty<CapabilityOptionalDependency>();
+        OptionsType = optionsType;
     }
 
     /// <summary>
@@ -70,7 +75,17 @@ public sealed class CapabilityManifest
     public IReadOnlyList<string> Actions { get; }
 
     /// <summary>
-    /// 获取依赖的其它能力 Id 集合。
+    /// 获取必选依赖的其它能力 Id 集合（对方未装配 = 装配失败）。
     /// </summary>
     public IReadOnlyList<string> Requires { get; }
+
+    /// <summary>
+    /// 获取可选依赖声明集合（对方未装配 = 对应功能不装配，能力其余功能正常运行）。
+    /// </summary>
+    public IReadOnlyList<CapabilityOptionalDependency> Optional { get; }
+
+    /// <summary>
+    /// 获取 Options 根类型（本能力参数默认值的唯一来源；null = 无参数能力）。
+    /// </summary>
+    public Type OptionsType { get; }
 }

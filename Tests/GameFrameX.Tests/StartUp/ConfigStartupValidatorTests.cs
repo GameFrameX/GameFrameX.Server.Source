@@ -227,8 +227,8 @@ public class ConfigStartupValidatorTests
     {
         var sections = new List<AppSetting>
         {
-            new AppSetting { ServerType = "Game", ServerId = 1001, InnerPort = 29100, OuterPort = 29101, HttpPort = 28080, IsEnableOnlineAdmin = true, OnlineAdminPort = 28090 },
-            new AppSetting { ServerType = "Social", ServerId = 5531, InnerPort = 29400, OuterPort = 29401, HttpPort = 28081, IsEnableOnlineAdmin = true, OnlineAdminPort = 28090 },
+            new AppSetting { ServerType = "Game", ServerId = 1001, InnerPort = 29100, OuterPort = 29101, HttpPort = 28080, Online = new OnlineCapabilityOptions { EnableAdminApi = true }, OnlineAdminPort = 28090 },
+            new AppSetting { ServerType = "Social", ServerId = 5531, InnerPort = 29400, OuterPort = 29401, HttpPort = 28081, Online = new OnlineCapabilityOptions { EnableAdminApi = true }, OnlineAdminPort = 28090 },
             new AppSetting { ServerType = "Chat", ServerId = 6611, InnerPort = 29700, OuterPort = 29701, HttpPort = 28082 },
         };
 
@@ -263,15 +263,15 @@ public class ConfigStartupValidatorTests
     }
 
     /// <summary>
-    /// 使能开关开启后的同端口才构成冲突：两段 OnlineAdminPort 同值且 IsEnableOnlineAdmin=true → fail fast。
+    /// 使能开关开启后的同端口才构成冲突：两段 OnlineAdminPort 同值且 Online 配置段 EnableAdminApi=true → fail fast。
     /// </summary>
     [Fact]
     public void Validate_EnabledSameOnlineAdminPort_ThrowsPortConflict()
     {
         var sections = new List<AppSetting>
         {
-            new AppSetting { ServerType = "Game", ServerId = 1001, InnerPort = 29100, OuterPort = 29100, HttpPort = 28080, IsEnableOnlineAdmin = true, OnlineAdminPort = 28090 },
-            new AppSetting { ServerType = "Social", ServerId = 5531, InnerPort = 29400, OuterPort = 29400, HttpPort = 28081, IsEnableOnlineAdmin = true, OnlineAdminPort = 28090 },
+            new AppSetting { ServerType = "Game", ServerId = 1001, InnerPort = 29100, OuterPort = 29100, HttpPort = 28080, Online = new OnlineCapabilityOptions { EnableAdminApi = true }, OnlineAdminPort = 28090 },
+            new AppSetting { ServerType = "Social", ServerId = 5531, InnerPort = 29400, OuterPort = 29400, HttpPort = 28081, Online = new OnlineCapabilityOptions { EnableAdminApi = true }, OnlineAdminPort = 28090 },
         };
 
         var exception = Assert.Throws<ConfigConflictException>(() => ConfigStartupValidator.Validate(

@@ -43,10 +43,10 @@ using GameFrameX.Capability.Online.Abstractions.Events;
 public static class OnlinePartyEvents
 {
     /// <summary>队伍状态变更。</summary>
-    public const string PartyChanged = "Online.Party.Changed";
+    public const string PartyChanged = "online.party.changed";
 
     /// <summary>邀请状态变更。</summary>
-    public const string PartyInviteChanged = "Online.Party.InviteChanged";
+    public const string PartyInviteChanged = "online.party.invitechanged";
 
     /// <summary>事件来源标识。</summary>
     public const string Source = "online-party";

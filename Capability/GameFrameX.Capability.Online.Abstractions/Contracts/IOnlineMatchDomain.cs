@@ -26,8 +26,9 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 匹配域桥契约面：旧 420 协议族（入队 / 取消 / 状态）与新增入场、分配解析的最小桥接契约，
-/// 供 Hotfix 协议面薄适配器与组合根通知推送方经 <c>OnlineMatchDomainBridgeHolder</c> 进程内消费。
+/// 匹配域桥契约面（C246）：旧 420 协议族（入队 / 取消 / 状态）与新增入场、分配解析的最小桥接契约，
+/// 供 Hotfix 协议面薄适配器（经 <c>CapabilityBridge&lt;IOnlineMatchDomain&gt;</c> 进程内消费）与
+/// online-match 模块 Activate 期通知推送订阅方使用。
 /// <para>
 /// 维护约束：
 /// ① 匹配池唯一权威 = 票据域（实现方内部经同一票据存储入队并驱动撮合），本契约不得另建队列或池副本；
@@ -88,7 +89,7 @@ public interface IOnlineMatchDomain
     Task<OnlineResult<OnlineMatchDomainAssignment>> ResolveAssignmentAsync(long tenantId, long appId, string assignmentId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 会话中介断线通知：物理连接断开时按「票据 → 分配登记 → 运行时成员表」定位玩家当前对局，
+    /// 会话中介断线通知（C204）：物理连接断开时按「票据 → 分配登记 → 运行时成员表」定位玩家当前对局，
     /// 标记成员断线并开重连窗（rt- 令牌服务端留存，不下发客户端）。
     /// </summary>
     /// <param name="scope">生效作用域（必须含玩家主体位 = 断线成员）。</param>
@@ -97,7 +98,7 @@ public interface IOnlineMatchDomain
     Task<OnlineResult<OnlineMatchDomainDisconnect>> NotifyPlayerDisconnectedAsync(OnlineScope scope, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 会话中介恢复：身份已在更高层凭会话凭据证明，本面按成员表核对该玩家当前对局归属——
+    /// 会话中介恢复（C204）：身份已在更高层凭会话凭据证明，本面按成员表核对该玩家当前对局归属——
     /// 断线成员窗口内恢复（服务端留存令牌回灌，Actor 三重校验原样生效），活跃成员幂等确认；
     /// 不重新匹配、不另开对局、不重复结算。
     /// </summary>

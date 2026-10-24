@@ -157,7 +157,11 @@ public sealed class OnlinePlayerTimelineService
             return failure;
         }
 
-        var request = query ?? new OnlinePlayerTimelineQuery();
+        var request = query;
+        if (request == null)
+        {
+            request = new OnlinePlayerTimelineQuery();
+        }
 
         var pageSize = request.PageSize <= 0 ? DefaultPageSize : request.PageSize;
         if (pageSize > MaxPageSize)

@@ -54,10 +54,11 @@ Tests/GameFrameX.Tests/Proto/DemoMessageDomainTests.cs                 ← 域�
 
 ## 使用 gfx-online（最小组合根宿主，C230）
 
-生成一个最小宿主工程：按开关只引所选 `GameFrameX.Capability.Online.*` 能力包，经各包
-`AddOnlineXxxRuntime` 回调式显式链式装配——**引用集 = 装配集 = `list_capabilities` 输出集**
-（编译期保证）。与 `gfx-role` 正交（垂直切片 vs 组合根宿主）；不引 `GameFrameX.Launcher`
-（其直引 11 能力包全家桶，引用即全量 DLL 落盘，编译期「引啥装配啥」不成立）。
+生成一个最小宿主工程：按开关只引所选 `GameFrameX.Capability.Online.*` 能力包，经机制层唯一组合入口
+`CapabilityComposition.Compose(new OnlineCapabilityFamily(), options)` 按部署前缀扫描装配——
+**引用集 = 装配集 = `list_capabilities` 输出集**（编译期保证，C294 起无按包装配代码）。与 `gfx-role`
+正交（垂直切片 vs 组合根宿主）；不引 `GameFrameX.Launcher`（其直引 11 能力包全家桶，引用即全量 DLL
+落盘，编译期「引啥装配啥」不成立）。
 
 ```bash
 # 必须在 Server.Source 仓根执行；-N 宿主工程名（PascalCase），免 -o 直接落地 ./MyOnlineHost/
@@ -70,12 +71,12 @@ dotnet build MyOnlineHost && dotnet run --project MyOnlineHost  # 独立构建�
 
 能力开关：`--Assets`（缺省 true）/ `--Social` / `--Matchmaking` / `--Match` / `--Competition` /
 `--Operations`（缺省 false）；Foundation 为脊柱恒引、不设开关。生成物 = `<Name>.csproj` +
-`Program.cs` + `README.md` 三件；增减能力须 csproj `ProjectReference` 与 `Program.cs`
-`AddOnlineXxxRuntime` **成对**增减（闭包缺口 Build 期 fail-fast）。
+`Program.cs` + `README.md` 三件；增减能力 = 只增删 csproj `ProjectReference`（`Program.cs` 组合代码与
+能力集无关；依赖声明缺口在组合期 fail-fast 一次报全）。
 
 管理面：`POST http://127.0.0.1:28091/online/admin/{action}`（body 带作用域三元组
 `TenantId/AppId/ServerId`）；`list_capabilities` 如实输出装配集；未装配能力的 action 不可执行
-（未部署 → `4002 UnknownAction`；已引用被 `SetFilter`/`Disable` 排除 → `4003 CapabilityNotInstalled`
+（未部署 → `4002 UnknownAction`；已引用被 `Capabilities`/`Disable` 过滤排除 → `4003 CapabilityNotInstalled`
 载荷带已装清单）。
 
 ### 行为实测结论（C230 演练，2026-10-13）
@@ -111,4 +112,4 @@ dotnet build MyOnlineHost && dotnet run --project MyOnlineHost  # 独立构建�
 
 - **向既有切片追加消息对**：dotnet new 只能新建文件、不能编辑既有 `.proto`/`Req*Handler.cs`——按 C197 约定手工追加（消息对 `Req<X>`/`Resp<X>`、Resp 带 `ErrorCode`(ProtoMember 2047)、handler 三段式样板见任意 `Req*Handler.cs`）。
 - 新 ServerRole 启动入口（`AppStartUpXxx`）、Inner 负域号消息、HTTP handler 模板、配置表（Luban）：按需后补/既有流程。
-- NuGet 发布（模板包不发布，C221 约定）；Launcher 轨组合根（走 `AddOnlineCapabilities` 单入口，C229）。
+- NuGet 发布（模板包不发布，C221 约定）；Launcher 轨组合根（走 `CapabilityComposition.Compose` 单入口，C294）。

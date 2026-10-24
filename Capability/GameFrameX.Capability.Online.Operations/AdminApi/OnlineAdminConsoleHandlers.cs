@@ -26,7 +26,7 @@
 
 using GameFrameX.Capability.Hosting.AdminApi;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
-using GameFrameX.Capability.Online.Operations.Audit;
+using GameFrameX.Capability.Online.Abstractions.Audit;
 using GameFrameX.Capability.Online.Operations.Overview;
 using GameFrameX.Capability.Online.Operations.Timeline;
 using GameFrameX.Capability.Online.Abstractions.Scope;

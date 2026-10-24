@@ -24,22 +24,27 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using System;
 using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 using GameFrameX.Capability.Hosting.AdminApi;
+using GameFrameX.Capability.Hosting.Core;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
-using GameFrameX.Launcher.Online;
+using Xunit;
 
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
     /// Online admin HTTP 服务冒烟测试（真实 Kestrel 监听：路由前缀、POST 往返、双层信封与优雅停机；
     /// Admin 侧 IOnlineServerClient 寻址 <c>{HttpManageUrl}/online/admin/{action}</c>）。
+    /// C294 起管理面经 <c>UseAdminApi</c> 组合进运行时，<see cref="CapabilityRuntime.StartAsync"/> 先启业务面再开监听。
     /// <para>端口 28190 为测试专用（避开默认 28090，防本机 Game 服干扰）。</para>
     /// </summary>
-    public class OnlineAdminApiServerTests : IDisposable
+    [Collection(CapabilityRuntimeCollection.Name)]
+    public class OnlineAdminApiServerTests
     {
         /// <summary>
         /// HTTP 客户端（共享连接池）。
@@ -52,9 +57,47 @@ namespace GameFrameX.Tests.Online
         private const int TestPort = 28190;
 
         /// <summary>
-        /// 当前测试的 HTTP 服务实例。
+        /// 组合 Online 族并启用管理面（业务面 + 管理面；授权三元组 1/1/1001，监听测试端口）。
         /// </summary>
-        private AdminApiServer _server;
+        /// <returns>组合产物（未启动）。</returns>
+        private static CapabilityRuntime ComposeWithAdmin()
+        {
+            return OnlineCapabilityTestHarness.Compose(null, options => options.UseAdminApi(adminOptions =>
+            {
+                adminOptions.AdminPort = TestPort;
+                adminOptions.AdminApiPrefix = "online/admin";
+            }));
+        }
+
+        /// <summary>
+        /// 组合并启动双面运行时，执行用例主体后恒停止（停监听 → 停业务面 → 撤桥 + 释放钩子声明）。
+        /// </summary>
+        /// <param name="body">用例主体。</param>
+        /// <returns>异步任务。</returns>
+        private static async Task WithStartedAdminAsync(Func<Task> body)
+        {
+            var runtime = ComposeWithAdmin();
+            try
+            {
+                await runtime.StartAsync();
+                await body();
+            }
+            finally
+            {
+                await runtime.StopAsync();
+            }
+        }
+
+        /// <summary>
+        /// 向测试端口 POST 一个 action。
+        /// </summary>
+        /// <param name="action">action 名。</param>
+        /// <returns>HTTP 响应。</returns>
+        private static Task<HttpResponseMessage> PostAsync(string action)
+        {
+            var content = new StringContent("{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001}", Encoding.UTF8, "application/json");
+            return SharedHttpClient.PostAsync("http://127.0.0.1:" + TestPort + "/online/admin/" + action, content);
+        }
 
         /// <summary>
         /// 验证真实 HTTP 往返：POST {prefix}/{action} 返回 200 + 双层信封（外层 0 / 内层 0 / Data 非 null）。
@@ -62,22 +105,23 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task StartAsync_RealHttpPost_ShouldReturnDoubleEnvelope()
         {
-            await StartServerAsync();
-            var content = new StringContent("{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001}", Encoding.UTF8, "application/json");
-            var response = await SharedHttpClient.PostAsync("http://127.0.0.1:" + TestPort + "/online/admin/query_online_overview", content);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            var body = await response.Content.ReadAsStringAsync();
-            using (var document = JsonDocument.Parse(body))
+            await WithStartedAdminAsync(async () =>
             {
-                Assert.Equal(0, document.RootElement.GetProperty("code").GetInt32());
-                var innerJson = document.RootElement.GetProperty("data").GetString();
-                Assert.False(string.IsNullOrEmpty(innerJson));
-                using (var inner = JsonDocument.Parse(innerJson))
+                var response = await PostAsync("query_online_overview");
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                var body = await response.Content.ReadAsStringAsync();
+                using (var document = JsonDocument.Parse(body))
                 {
-                    Assert.Equal(0, inner.RootElement.GetProperty("Code").GetInt32());
-                    Assert.Equal(JsonValueKind.Object, inner.RootElement.GetProperty("Data").ValueKind);
+                    Assert.Equal(0, document.RootElement.GetProperty("code").GetInt32());
+                    var innerJson = document.RootElement.GetProperty("data").GetString();
+                    Assert.False(string.IsNullOrEmpty(innerJson));
+                    using (var inner = JsonDocument.Parse(innerJson))
+                    {
+                        Assert.Equal(0, inner.RootElement.GetProperty("Code").GetInt32());
+                        Assert.Equal(JsonValueKind.Object, inner.RootElement.GetProperty("Data").ValueKind);
+                    }
                 }
-            }
+            });
         }
 
         /// <summary>
@@ -86,86 +130,44 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task StartAsync_UnknownAction_ShouldReturnInner4002OverHttp()
         {
-            await StartServerAsync();
-            var content = new StringContent("{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001}", Encoding.UTF8, "application/json");
-            var response = await SharedHttpClient.PostAsync("http://127.0.0.1:" + TestPort + "/online/admin/no_such_action", content);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            var body = await response.Content.ReadAsStringAsync();
-            using (var document = JsonDocument.Parse(body))
+            await WithStartedAdminAsync(async () =>
             {
-                Assert.Equal(0, document.RootElement.GetProperty("code").GetInt32());
-                var innerJson = document.RootElement.GetProperty("data").GetString();
-                using (var inner = JsonDocument.Parse(innerJson))
+                var response = await PostAsync("no_such_action");
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                var body = await response.Content.ReadAsStringAsync();
+                using (var document = JsonDocument.Parse(body))
                 {
-                    Assert.Equal((int)OnlineErrorCode.ResourceNotFound, inner.RootElement.GetProperty("Code").GetInt32());
+                    Assert.Equal(0, document.RootElement.GetProperty("code").GetInt32());
+                    var innerJson = document.RootElement.GetProperty("data").GetString();
+                    using (var inner = JsonDocument.Parse(innerJson))
+                    {
+                        Assert.Equal((int)OnlineErrorCode.ResourceNotFound, inner.RootElement.GetProperty("Code").GetInt32());
+                    }
                 }
-            }
-        }
-
-        /// <summary>
-        /// 验证停机后端口释放（停机 → 再次启停同端口成功，重启后仍能服务真实 HTTP 请求）。
-        /// </summary>
-        [Fact]
-        public async Task StopAsync_ThenRestart_ShouldReleasePort()
-        {
-            var first = OnlineAdminApiComposition.CreateServer(CreateComposition().Runtime, BuildAdminOptions());
-            await first.StartAsync();
-            await first.StopAsync();
-            var second = OnlineAdminApiComposition.CreateServer(CreateComposition().Runtime, BuildAdminOptions());
-            await second.StartAsync();
-            var content = new StringContent("{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001}", Encoding.UTF8, "application/json");
-            var response = await SharedHttpClient.PostAsync("http://127.0.0.1:" + TestPort + "/online/admin/no_such_action", content);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            await second.StopAsync();
-        }
-
-        /// <summary>
-        /// 启动测试服务（懒构造，保证各用例独立实例）。
-        /// </summary>
-        /// <returns>异步任务。</returns>
-        private async Task StartServerAsync()
-        {
-            _server = OnlineAdminApiComposition.CreateServer(CreateComposition().Runtime, BuildAdminOptions());
-            await _server.StartAsync();
-        }
-
-        /// <summary>
-        /// 构造 Online 单入口组合产物（业务运行时形态；授权三元组 1/1/1001，真扫描装配）。
-        /// </summary>
-        /// <returns>组合产物。</returns>
-        private static OnlineCapabilityComposition CreateComposition()
-        {
-            return OnlineCapabilityComposition.AddOnlineCapabilities(options =>
-            {
-                options.TenantId = 1;
-                options.AppId = 1;
-                options.ServerId = 1001;
-                options.EnableRuntime = true;
             });
         }
 
         /// <summary>
-        /// 构造管理面选项（测试端口 28190）。
+        /// 验证停机后端口释放（第一次组合启停 → 第二次组合同端口启动成功，且仍能服务真实 HTTP 请求）。
         /// </summary>
-        /// <returns>管理面选项。</returns>
-        private static AdminApiOptions BuildAdminOptions()
+        [Fact]
+        public async Task StopAsync_ThenRestart_ShouldReleasePort()
         {
-            return new AdminApiOptions
+            var first = ComposeWithAdmin();
+            try
             {
-                AdminPort = TestPort,
-                AdminApiPrefix = "online/admin",
-            };
-        }
-
-        /// <summary>
-        /// 释放测试服务（优雅停机）。
-        /// </summary>
-        public void Dispose()
-        {
-            if (_server != null)
-            {
-                _server.StopAsync().GetAwaiter().GetResult();
+                await first.StartAsync();
             }
+            finally
+            {
+                await first.StopAsync();
+            }
+
+            await WithStartedAdminAsync(async () =>
+            {
+                var response = await PostAsync("no_such_action");
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            });
         }
     }
 }

@@ -277,13 +277,24 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 创建被测服务。
+        /// 以包内默认匹配参数创建被测服务。
         /// </summary>
         /// <param name="store">票据存储。</param>
         /// <param name="recorder">事件记录桩。</param>
-        /// <param name="options">匹配与限流可配置项（可空）。</param>
         /// <returns>票据服务实例。</returns>
-        private static OnlineMatchTicketService CreateService(out InMemoryOnlineMatchTicketStore store, out OnlineEventRecorder recorder, OnlineMatchmakerOptions options = null)
+        private static OnlineMatchTicketService CreateService(out InMemoryOnlineMatchTicketStore store, out OnlineEventRecorder recorder)
+        {
+            return CreateService(out store, out recorder, new OnlineMatchmakerOptions());
+        }
+
+        /// <summary>
+        /// 以指定匹配参数创建被测服务。
+        /// </summary>
+        /// <param name="store">票据存储。</param>
+        /// <param name="recorder">事件记录桩。</param>
+        /// <param name="options">匹配与限流可配置项。</param>
+        /// <returns>票据服务实例。</returns>
+        private static OnlineMatchTicketService CreateService(out InMemoryOnlineMatchTicketStore store, out OnlineEventRecorder recorder, OnlineMatchmakerOptions options)
         {
             store = new InMemoryOnlineMatchTicketStore();
             recorder = new OnlineEventRecorder();

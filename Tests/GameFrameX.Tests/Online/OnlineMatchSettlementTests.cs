@@ -236,7 +236,7 @@ namespace GameFrameX.Tests.Online
                 Publisher = new OnlineEventRecorder();
                 MatchStore = new InMemoryOnlineMatchActorStore();
                 ResultStore = new InMemoryOnlineMatchResultStore();
-                Runtime = new OnlineMatchRuntime(MatchStore, Publisher);
+                Runtime = new OnlineMatchRuntime(MatchStore, Publisher, new OnlineMatchRuntimeOptions());
                 Runtime.RegisterGame(new OnlineRockPaperScissorsGame());
 
                 var options = new IdempotencyOptions { ConcurrentWaitTimeoutMilliseconds = 1 };

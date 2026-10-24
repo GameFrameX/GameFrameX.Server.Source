@@ -27,10 +27,13 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using System;
 using System.Net;
+using System.Net.Http;
 using System.Text;
+using System.Threading.Tasks;
 using GameFrameX.Capability.Hosting.AdminApi;
-using GameFrameX.Launcher.Online;
+using GameFrameX.Capability.Hosting.Core;
 using Xunit;
 
 namespace GameFrameX.Tests.Online;
@@ -41,8 +44,10 @@ namespace GameFrameX.Tests.Online;
 /// <remarks>
 /// 真实 Kestrel 监听：默认启用形态下同 IP 超过窗口许可数得 429（登录爆破/重放/洪泛闸门）；
 /// PermitLimit <= 0 显式关闭时行为与未引入限流前等价（全部 200）。端口 28191 为测试专用。
+/// C294 起管理面经 <c>UseAdminApi</c> 组合进运行时（限流参数同一回调写入）。
 /// </remarks>
-public class OnlineAdminApiRateLimitTests : IDisposable
+[Collection(CapabilityRuntimeCollection.Name)]
+public class OnlineAdminApiRateLimitTests
 {
     /// <summary>
     /// HTTP 客户端（共享连接池）。
@@ -55,27 +60,21 @@ public class OnlineAdminApiRateLimitTests : IDisposable
     private const int TestPort = 28191;
 
     /// <summary>
-    /// 当前测试的 HTTP 服务实例。
-    /// </summary>
-    private AdminApiServer _server;
-
-    /// <summary>
     /// 默认限流形态：PermitLimit=2 时第 3 个请求（同窗口同 IP）应得 429。
     /// </summary>
     [Fact]
     public async Task StartAsync_RateLimitExceeded_ShouldReturn429()
     {
-        _server = OnlineAdminApiComposition.CreateServer(CreateComposition().Runtime, BuildAdminOptions(2, 60));
-        await _server.StartAsync();
+        await WithStartedAdminAsync(2, 60, async () =>
+        {
+            var first = await PostAsync();
+            var second = await PostAsync();
+            var third = await PostAsync();
 
-        var content = new StringContent("{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001}", Encoding.UTF8, "application/json");
-        var first = await SharedHttpClient.PostAsync(Url, content);
-        var second = await SharedHttpClient.PostAsync(Url, content);
-        var third = await SharedHttpClient.PostAsync(Url, content);
-
-        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
-        Assert.Equal(HttpStatusCode.TooManyRequests, third.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+            Assert.Equal(HttpStatusCode.TooManyRequests, third.StatusCode);
+        });
     }
 
     /// <summary>
@@ -84,15 +83,14 @@ public class OnlineAdminApiRateLimitTests : IDisposable
     [Fact]
     public async Task StartAsync_RateLimitDisabled_ShouldServeAllRequests()
     {
-        _server = OnlineAdminApiComposition.CreateServer(CreateComposition().Runtime, BuildAdminOptions(0, 10));
-        await _server.StartAsync();
-
-        for (var i = 0; i < 5; i++)
+        await WithStartedAdminAsync(0, 10, async () =>
         {
-            var content = new StringContent("{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001}", Encoding.UTF8, "application/json");
-            var response = await SharedHttpClient.PostAsync(Url, content);
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        }
+            for (var i = 0; i < 5; i++)
+            {
+                var response = await PostAsync();
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            }
+        });
     }
 
     /// <summary>
@@ -117,22 +115,44 @@ public class OnlineAdminApiRateLimitTests : IDisposable
     }
 
     /// <summary>
-    /// 构造 Online 单入口组合产物（业务运行时形态；授权三元组 1/1/1001）。
+    /// 向测试端口 POST 一次（作用域三元组合法）。
     /// </summary>
-    /// <returns>组合产物。</returns>
-    private static OnlineCapabilityComposition CreateComposition()
+    /// <returns>HTTP 响应。</returns>
+    private static Task<HttpResponseMessage> PostAsync()
     {
-        return OnlineCapabilityComposition.AddOnlineCapabilities(options =>
-        {
-            options.TenantId = 1;
-            options.AppId = 1;
-            options.ServerId = 1001;
-            options.EnableRuntime = true;
-        });
+        var content = new StringContent("{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001}", Encoding.UTF8, "application/json");
+        return SharedHttpClient.PostAsync(Url, content);
     }
 
     /// <summary>
-    /// 构造管理面选项（测试端口 28191 + 限流参数）。
+    /// 组合 Online 族并启用管理面（测试端口 28191 + 限流参数），启动后执行用例主体，结束后恒停止。
+    /// </summary>
+    /// <param name="permitLimit">窗口许可数。</param>
+    /// <param name="windowSeconds">窗口秒数。</param>
+    /// <param name="body">用例主体。</param>
+    /// <returns>异步任务。</returns>
+    private static async Task WithStartedAdminAsync(int permitLimit, int windowSeconds, Func<Task> body)
+    {
+        var runtime = OnlineCapabilityTestHarness.Compose(null, options => options.UseAdminApi(adminOptions =>
+        {
+            adminOptions.AdminPort = TestPort;
+            adminOptions.AdminApiPrefix = "online/admin";
+            adminOptions.RateLimitPermitLimit = permitLimit;
+            adminOptions.RateLimitWindowSeconds = windowSeconds;
+        }));
+        try
+        {
+            await runtime.StartAsync();
+            await body();
+        }
+        finally
+        {
+            await runtime.StopAsync();
+        }
+    }
+
+    /// <summary>
+    /// 构造管理面选项（测试端口 28191 + 限流参数；仅供选项校验用例）。
     /// </summary>
     /// <param name="permitLimit">窗口许可数。</param>
     /// <param name="windowSeconds">窗口秒数。</param>
@@ -146,16 +166,5 @@ public class OnlineAdminApiRateLimitTests : IDisposable
             RateLimitPermitLimit = permitLimit,
             RateLimitWindowSeconds = windowSeconds,
         };
-    }
-
-    /// <summary>
-    /// 释放测试服务（优雅停机）。
-    /// </summary>
-    public void Dispose()
-    {
-        if (_server != null)
-        {
-            _server.StopAsync().GetAwaiter().GetResult();
-        }
     }
 }

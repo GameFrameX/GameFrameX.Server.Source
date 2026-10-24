@@ -141,12 +141,17 @@ namespace GameFrameX.Tests.Online
         /// </summary>
         private sealed class Harness
         {
-            public Harness(OnlineMatchRuntimeOptions options = null)
+            public Harness() : this(new OnlineMatchRuntimeOptions())
+            {
+            }
+
+            public Harness(OnlineMatchRuntimeOptions options)
             {
                 Publisher = new OnlineEventRecorder();
                 TicketStore = new InMemoryOnlineMatchTicketStore();
-                Tickets = new OnlineMatchTicketService(TicketStore, Publisher);
-                Coordinator = new OnlineMatchmakerCoordinator(TicketStore, Tickets, Publisher);
+                var matchmakerOptions = new OnlineMatchmakerOptions();
+                Tickets = new OnlineMatchTicketService(TicketStore, Publisher, matchmakerOptions);
+                Coordinator = new OnlineMatchmakerCoordinator(TicketStore, Tickets, Publisher, matchmakerOptions);
                 Runtime = new OnlineMatchRuntime(new InMemoryOnlineMatchActorStore(), Publisher, options);
                 var game = new OnlineRockPaperScissorsGame();
                 Runtime.RegisterGame(game);

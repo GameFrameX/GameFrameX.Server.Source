@@ -47,16 +47,16 @@ using GameFrameX.Capability.Online.Abstractions.Events;
 public static class OnlineSeasonEvents
 {
     /// <summary>赛季创建（排期已登记）。</summary>
-    public const string SeasonCreated = "Online.Season.Created";
+    public const string SeasonCreated = "online.season.created";
 
     /// <summary>赛季开始（进入进行中）。</summary>
-    public const string SeasonStarted = "Online.Season.Started";
+    public const string SeasonStarted = "online.season.started";
 
     /// <summary>赛季结束（快照已落档、榜单已重置）。</summary>
-    public const string SeasonEnded = "Online.Season.Ended";
+    public const string SeasonEnded = "online.season.ended";
 
     /// <summary>赛季结算（奖励已按快照名次发放完毕）。</summary>
-    public const string SeasonSettled = "Online.Season.Settled";
+    public const string SeasonSettled = "online.season.settled";
 
     /// <summary>事件来源标识。</summary>
     public const string Source = "online-season";

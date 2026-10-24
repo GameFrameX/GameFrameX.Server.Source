@@ -25,6 +25,7 @@
         <ProjectReference Include="..\GameFrameX.Network.Abstractions\GameFrameX.Network.Abstractions.csproj" />
         <ProjectReference Include="..\GameFrameX.Utility\GameFrameX.Utility.csproj" />
         <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Abstractions\GameFrameX.Capability.Online.Abstractions.csproj" />
+        <ProjectReference Include="..\GameFrameX.Architecture.Analyzers\GameFrameX.Architecture.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
         <ProjectReference Include="..\GameFrameX.Hotfix.WrapperGenerator\GameFrameX.Hotfix.WrapperGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
         <ProjectReference Include="..\GameFrameX.Network.RemoteMessaging\GameFrameX.Network.RemoteMessaging.csproj" />
     </ItemGroup>

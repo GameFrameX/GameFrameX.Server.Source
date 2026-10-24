@@ -24,29 +24,30 @@
 //   CNB  仓库：https://cnb.cool/GameFrameX
 //   CNB Repository: https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
-//   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
 using System.Reflection;
 using GameFrameX.Capability.Hosting.Abstractions;
+using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Capability.Hosting.Core;
 
 /// <summary>
-/// 能力自动装配扫描器（组合根反射扫描已加载程序集发现 <see cref="ICapabilityModule"/> 实现；
-/// 机制开放红线的发现面——机制包不含任何能力硬编码清单）。
+/// 能力自动装配扫描器（机制层统一扫描约定：部署目录命名约定圈定 <c>{前缀}.*.dll</c> + 反射发现
+/// <see cref="ICapabilityModule"/> 实现——机制开放红线的发现面，机制包不含任何能力硬编码清单）。
 /// <para>
-/// 维护约束：只认非抽象、含公共无参构造的实现类型；同 Id 多实现取首个发现（按程序集名 + 类型名稳定排序），
-/// 其余忽略——扫描序不构成装配序（装配序由 Requires 拓扑 + 加入序决定）。
+/// 维护约束：只认非抽象、含公共无参构造的实现类型；同一 Id 多实现 = 装配失败（fail-fast，
+/// 不再静默取首）；.NET 懒加载下未被代码触碰的能力包程序集不在 AppDomain 已加载集——
+/// 按部署目录命名约定圈定扫描面：新增能力 = 部署产物落地即被发现，宿主零改动。
 /// </para>
 /// </summary>
 public static class CapabilityAssembly
 {
     /// <summary>
-    /// 扫描指定程序集集合（缺省 = 当前 AppDomain 全部已加载程序集）。
+    /// 扫描指定程序集集合（缺省 = 当前 AppDomain 全部已加载程序集；同 Id 多实现 fail-fast）。
     /// </summary>
     /// <param name="assemblies">程序集集合（null = 全部已加载）。</param>
-    /// <returns>发现的能力模块（按程序集名 + 类型名稳定排序）。</returns>
+    /// <returns>发现的能力模块（按程序集名 + 类型名稳定排序；同 Id 多实现抛 <see cref="InvalidOperationException"/>）。</returns>
     public static IReadOnlyList<ICapabilityModule> DiscoverModules(IEnumerable<Assembly> assemblies = null)
     {
         var targetAssemblies = assemblies ?? AppDomain.CurrentDomain.GetAssemblies();
@@ -61,39 +62,59 @@ public static class CapabilityAssembly
 
         moduleTypes.Sort((left, right) => string.Compare(LeftKey(left), LeftKey(right), StringComparison.Ordinal));
         var modules = new List<ICapabilityModule>(moduleTypes.Count);
-        var seenIds = new HashSet<string>(StringComparer.Ordinal);
+        var modulesById = new Dictionary<string, ICapabilityModule>(StringComparer.Ordinal);
         foreach (var moduleType in moduleTypes)
         {
             var module = (ICapabilityModule)Activator.CreateInstance(moduleType);
-            if (seenIds.Add(module.Manifest.Id))
+            if (modulesById.TryGetValue(module.Manifest.Id, out var existing))
             {
-                modules.Add(module);
+                // Localization: Capability.Hosting.DuplicateCapability - 能力 Id 重复注册。
+                throw new InvalidOperationException(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.DuplicateCapability), module.Manifest.Id + " (" + existing.GetType().Assembly.GetName().Name + " / " + moduleType.Assembly.GetName().Name + ")"));
             }
+
+            modulesById.Add(module.Manifest.Id, module);
+            modules.Add(module);
         }
 
         return modules;
     }
 
     /// <summary>
-    /// 扫描并装配（发现 → 过滤器 → 构建；组合根一行装配形态）。
+    /// 加载部署目录内符合能力包命名约定（<c>{前缀}.*.dll</c>）的全部程序集（扫描数据源）。
     /// </summary>
-    /// <param name="options">宿主选项。</param>
-    /// <param name="filter">装配过滤器（null = 全部启用）。</param>
-    /// <returns>能力宿主。</returns>
-    public static CapabilityHost BuildHost(CapabilityHostOptions options, CapabilityAssemblyFilter filter = null)
+    /// <param name="prefix">部署程序集前缀（如 <c>GameFrameX.Capability.Online</c>；非空）。</param>
+    /// <returns>部署目录内可加载的能力包程序集集合。</returns>
+    public static IReadOnlyList<Assembly> LoadDeploymentAssemblies(string prefix)
     {
-        var builder = new CapabilityHostBuilder();
-        foreach (var module in DiscoverModules())
+        if (string.IsNullOrWhiteSpace(prefix))
         {
-            builder.AddModule(module);
+            throw new ArgumentException("Deployment assembly prefix must be a non-empty string.", nameof(prefix));
         }
 
-        if (filter != null)
+        var assemblies = new List<Assembly>();
+        foreach (var path in Directory.GetFiles(AppContext.BaseDirectory, prefix.Trim() + ".*.dll"))
         {
-            builder.SetFilter(filter);
+            try
+            {
+                assemblies.Add(Assembly.Load(AssemblyName.GetAssemblyName(path)));
+            }
+            catch (Exception)
+            {
+                // 解析失败的文件（原生库 / 损坏产物）跳过——扫描面只关心能力包程序集。
+            }
         }
 
-        return builder.Build(options);
+        return assemblies;
+    }
+
+    /// <summary>
+    /// 从部署目录按命名约定发现能力模块（加载 + 扫描 + 同 Id fail-fast；组合器的生产数据源）。
+    /// </summary>
+    /// <param name="prefix">部署程序集前缀（非空）。</param>
+    /// <returns>发现的能力模块。</returns>
+    public static IReadOnlyList<ICapabilityModule> DiscoverFromDeploymentDirectory(string prefix)
+    {
+        return DiscoverModules(LoadDeploymentAssemblies(prefix));
     }
 
     /// <summary>

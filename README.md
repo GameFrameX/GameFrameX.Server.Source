@@ -229,7 +229,7 @@ GameFrameX uses command-line arguments (`--Key=Value`) for configuration. All co
 | `HttpSignSecret`    | HMAC-SHA256 secret for HTTP signature validation (required once signing is enabled; blank = fail-closed) | None | `a-strong-secret` |
 | `HttpUrl`           | API root path                             | `/game/api/` | `/game/api/` |
 | `HttpIsDevelopment` | HTTP development mode (enables Swagger)   | `false`      | `true`       |
-| `IsEnableOnlineAdmin` | Host the Online Runtime + admin API in-process | `false` | `true` |
+| `Online`            | Online capability family section: `EnableRuntime` / `EnableAdminApi` (default `false`), `EnableRoles` (default `["Game"]`), `Capabilities` / `Disable` filters, `UseGameDbStores`, per-capability `Settings` | None | see `Configs/app_config.json` |
 | `OnlineAdminPort`   | Online admin API listen port              | `28090`      | `28090`      |
 | `OnlineAdminApiPrefix` | Online admin API route prefix          | `online/admin` | `online/admin` |
 | `OnlineTenantId`    | Online runtime authorized tenant id (scope triple) | `0` | `1` |
@@ -565,9 +565,9 @@ Service port mapping:
 
 #### Online Platform Admin API
 
-When `IsEnableOnlineAdmin=true`, the Game process assembles the Online Runtime (in-process capability library: asset / session / match / social / LiveOps services on in-memory stores) and exposes the admin HTTP API on an independent Kestrel listener:
+When `Online.EnableAdminApi=true` (and the current Role is listed in `Online.EnableRoles`), the process composes the Online capability family via `CapabilityComposition.Compose` (in-process capability library: asset / session / match / social / LiveOps services on in-memory stores by default) and exposes the admin HTTP API on an independent Kestrel listener:
 
-- Endpoint: `POST http://<server-host>:28090/online/admin/{action}` (all 33 admin actions plus the `list_capabilities` meta endpoint, HTTP status is always 200; business results travel in the inner envelope `Code`)
+- Endpoint: `POST http://<server-host>:28090/online/admin/{action}` (all 35 admin actions plus the `list_capabilities` / `list_capability_services` / `list_capability_settings` meta endpoints, HTTP status is always 200; business results travel in the inner envelope `Code`)
 - Scope triple: each request carries `TenantId` / `AppId` / `ServerId`; requests that do not match the authorized `OnlineTenantId` / `OnlineAppId` / `ServerId` are rejected with 3002/3003/3004, missing triple with 3005
 - Registering the server in the GameFrameX Admin console: set the area's `HttpManageUrl` to `http://<server-host>:28090` (the `online/admin` prefix and the action name are appended by the Admin client, per its wire contract)
 

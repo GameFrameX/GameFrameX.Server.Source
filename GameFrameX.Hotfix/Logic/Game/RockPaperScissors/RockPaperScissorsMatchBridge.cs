@@ -22,7 +22,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using GameFrameX.Capability.Online.Abstractions.Bridges;
+using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Scope;
 using GameFrameX.Foundation.Localization.Core;
@@ -31,42 +31,46 @@ using GameFrameX.Hotfix.Logic.Game.Room;
 namespace GameFrameX.Hotfix.Logic.Game.RockPaperScissors;
 
 /// <summary>
-/// 对局样例桥薄适配器：
-/// 显式开关开启时把石头剪刀布的房间制协议入口（开局 / 出拳 / 查询 / 再来一局）经
-/// <see cref="OnlineMatchGameBridgeHolder"/> 进程内转发到 Online 对局契约面；开关关闭（缺省）时不接管，
+/// 对局样例桥薄适配器（C245，沿 C243 好友桥形态（该缝已随 C244 域桥演化））：
+/// online-match 能力启用（对局桥由能力模块发布，C294 起能力过滤器是唯一开关）时把石头剪刀布的
+/// 房间制协议入口（开局 / 出拳 / 查询 / 再来一局）经 <see cref="CapabilityBridge{TContract}"/>
+///（契约 <see cref="IOnlineMatchGameBridge"/>）进程内转发到 Online 对局契约面；能力缺席（缺省部署）时不接管，
 /// 旧链行为逐字节保持。
 /// <para>
 /// 维护约束（红线）：
-/// ① 开关开启时桥路径独占——桥不可用（宿主未启 / 已停止 / 租约撤销）与服务失败一律映射为
+/// ① 桥在场时桥路径独占——桥不可用（宿主未启 / 已停止 / 租约撤销）与服务失败一律映射为
 /// <c>-(int)OnlineErrorCode</c> 段的显式错误码（≤ -1001，与旧链 -1..-99 段不重叠），
-/// 绝不静默回落旧链；② 可信身份：作用域三元组只取 lease 携带的组合根授权值，
-/// 玩家位只取请求主体 ActorId，请求体字段一律不可影响作用域；③ 无缓存：逐请求读取 holder
-/// 当前租约，热更 / 宿主重启后旧引用不存活；④ 本适配器零玩法逻辑——只做参数转发、
+/// 绝不静默回落旧链；② 可信身份：作用域三元组只取能力侧授权作用域提供者发布的组合根授权值，
+/// 玩家位只取请求主体 ActorId，请求体字段一律不可影响作用域；③ 无缓存：逐请求
+/// <see cref="CapabilityBridge{TContract}.TryAcquire"/> 取契约租约，热更 / 宿主重启后旧引用不存活；
+/// ④ 本适配器零玩法逻辑——只做参数转发、
 /// 字段级视图映射与 Room 状态映射决策，裁决与结算全部归属平台对局运行时。
 /// </para>
 /// </summary>
 /// <remarks>
-/// The sample match thin bridge adapter: when the
-/// explicit switch is on it forwards the rock-paper-scissors room-shaped protocol entries (start /
-/// submit / query / restart) in-process to the Online match contract face through
-/// <see cref="OnlineMatchGameBridgeHolder"/>; when off (default) it does not intercept and the legacy
-/// chain stays byte-identical. With the switch on the bridge path is exclusive — unavailability and
-/// service failures map to explicit -(int)OnlineErrorCode codes (≤ -1001, disjoint from the legacy
-/// -1..-99 band), never silently falling back; the scope triple comes only from the lease's
-/// composition-root authorized values and the player position only from the requesting actor id;
-/// nothing is cached — each request reads the holder's current lease; and the adapter carries zero
-/// gameplay logic — it only forwards parameters, maps views field-by-field and decides room-state
-/// transitions, while adjudication and settlement belong to the platform match runtime.
+/// The sample match thin bridge adapter (C245, following the C243 friend-bridge shape (since evolved by the C244 domain bridge)): when the
+/// online-match capability is enabled (the bridge published by the capability module — since C294 the
+/// capability filter is the only switch) it forwards the rock-paper-scissors room-shaped protocol
+/// entries (start / submit / query / restart) in-process to the Online match contract face through
+/// <see cref="CapabilityBridge{TContract}"/> (contract <see cref="IOnlineMatchGameBridge"/>); when the
+/// capability is absent (default) it does not intercept and the legacy chain stays byte-identical.
+/// With the bridge present the path is exclusive — unavailability and service failures map to explicit
+/// -(int)OnlineErrorCode codes (≤ -1001, disjoint from the legacy -1..-99 band), never silently
+/// falling back; the scope triple comes only from the capability-published authorized-scope provider
+/// and the player position only from the requesting actor id; nothing is cached — each request
+/// re-acquires the contract lease; and the adapter carries zero gameplay logic — it only forwards
+/// parameters, maps views field-by-field and decides room-state transitions, while adjudication and
+/// settlement belong to the platform match runtime.
 /// </remarks>
 public static class RockPaperScissorsMatchBridge
 {
     /// <summary>
-    /// 获取对局桥开关是否开启（读取进程设置 <c>Online.EnableMatchGameBridge</c>；
-    /// 只应配置在 Game 角色段）。
+    /// 获取对局桥是否在场接管（C294 起能力过滤器是唯一开关：online-match 启用即发布对局桥；
+    /// 旧 <c>Online.EnableMatchGameBridge</c> 配置键已删除）。
     /// </summary>
     public static bool IsBridgeEnabled
     {
-        get { return GlobalSettings.CurrentSetting?.Online?.EnableMatchGameBridge == true; }
+        get { return TryGetContract() != null; }
     }
 
     /// <summary>
@@ -275,10 +279,19 @@ public static class RockPaperScissorsMatchBridge
     /// <param name="playerId">请求主体（玩家全局 actor）标识。</param>
     /// <param name="invoke">契约调用体（接收 lease 与组装好的作用域）。</param>
     /// <returns>(错误码, 视图)：错误码 0 = 成功（视图非空）；非 0 为显式负值段错误码（视图为 null）。</returns>
-    private static async Task<(int ErrorCode, OnlineMatchBridgeGameView View)> InvokeAsync(long playerId, Func<OnlineMatchGameBridgeLease, OnlineScope, Task<OnlineResult<OnlineMatchBridgeGameView>>> invoke)
+    private static async Task<(int ErrorCode, OnlineMatchBridgeGameView View)> InvokeAsync(long playerId, Func<IOnlineMatchGameBridge, OnlineScope, Task<OnlineResult<OnlineMatchBridgeGameView>>> invoke)
     {
-        var lease = OnlineMatchGameBridgeHolder.Current;
-        if (lease == null || !lease.IsActive)
+        var contract = TryGetContract();
+        if (contract == null)
+        {
+            // Localization: Hotfix.Game.MatchBridgeUnavailable - 对局桥不可用（未发布或已撤销）, ActorId: {0}, Code: {1}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Hotfix.Game.MatchBridgeUnavailable, playerId, OnlineErrorCode.DependencyUnavailable));
+            return (-(int)OnlineErrorCode.DependencyUnavailable, null);
+        }
+
+        // 授权作用域不可得 = 依赖不可用：与对局桥缺席同口径显式失败，不以空作用域调用契约、不降级。
+        var scope = OnlineAuthorizedScopeReader.BuildRequestScope(playerId);
+        if (scope == null)
         {
             // Localization: Hotfix.Game.MatchBridgeUnavailable - 对局桥不可用（未发布或已撤销）, ActorId: {0}, Code: {1}
             LogHelper.Error(LocalizationService.GetString(Localization.Keys.Hotfix.Game.MatchBridgeUnavailable, playerId, OnlineErrorCode.DependencyUnavailable));
@@ -287,8 +300,7 @@ public static class RockPaperScissorsMatchBridge
 
         try
         {
-            var scope = new OnlineScope(lease.AuthorizedScope.TenantId, lease.AuthorizedScope.AppId, lease.AuthorizedScope.ServerId, playerId);
-            var result = await invoke(lease, scope);
+            var result = await invoke(contract, scope);
             if (!result.IsSuccess)
             {
                 // Localization: Hotfix.Game.MatchBridgeFailed - 对局桥返回失败, Code: {0}, Message: {1}, ActorId: {2}
@@ -305,4 +317,41 @@ public static class RockPaperScissorsMatchBridge
             return (-2, null);
         }
     }
+
+    /// <summary>
+    /// 读取对局桥契约（逐请求 <see cref="CapabilityBridge{TContract}.TryAcquire"/>，不缓存；
+    /// 缺席 / 撤销竞态返回 null——缺席 = 能力未装配的合法部署形态，撤销按依赖不可用显式失败）。
+    /// </summary>
+    /// <returns>契约面；桥不可用返回 null。</returns>
+    private static IOnlineMatchGameBridge TryGetContract()
+    {
+        if (CapabilityBridge<IOnlineMatchGameBridge>.TryAcquire(out var lease))
+        {
+            try
+            {
+                return lease.Contract;
+            }
+            catch (CapabilityBridgeUnavailableException)
+            {
+                // 获取与读取之间的撤销竞态：与缺席同语义（显式失败），不降级。
+            }
+        }
+
+        return null;
+    }
+}
+
+/// <summary>
+/// 对局桥观察视图后的房间状态推进动作（notes §1.3 Room ↔ Match 映射的决策结果）。
+/// </summary>
+public enum RockPaperScissorsMatchRoomAction
+{
+    /// <summary>不推进（组合不满足映射条件）。</summary>
+    None = 0,
+
+    /// <summary>Playing → Settling（桥视图 Settling 驱动）。</summary>
+    EnterSettling = 1,
+
+    /// <summary>Playing/Settling → Settled（桥视图终态 Completed/SettlementFailed/Terminated 驱动）。</summary>
+    MarkSettled = 2,
 }

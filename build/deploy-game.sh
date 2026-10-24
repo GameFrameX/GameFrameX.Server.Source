@@ -26,7 +26,8 @@ set -euo pipefail
 #                                   --ServerType=Game --ServerId=1001 --ServerInstanceId=1
 #                                   --InnerPort=29100 --OuterPort=29100 --HttpPort=28080 --WsPort=29110
 #                                   --MetricsPort=29090 --MinModuleId=10 --MaxModuleId=9999
-#                                   --IsEnableOnline=true --IsEnableOnlineAdmin=true --OnlineTenantId=1 --OnlineAppId=1
+#                                   --OnlineTenantId=1 --OnlineAppId=1
+#                                   （Online 能力开关在配置段 Online.EnableRuntime / EnableAdminApi，C294 起无 CLI 平铺开关）
 #                                   --DataBaseUrl=<MongoDB 连接串> --DataBaseName=gameframex)
 # =============================================================================
 

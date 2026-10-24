@@ -39,7 +39,7 @@ namespace GameFrameX.Launcher.Online;
 /// <summary>
 /// Hotfix 版本切换执行器（生产实现）：
 /// 组合既有公共原语完成方向无关的本进程热更版本切换，供组合根经
-/// <c>UseOnlineHotfixRollbackExecutor</c> 注入（Operations 侧服务探测即得非 null，消除恒缺席 8002）。
+/// <c>Override&lt;IOnlineHotfixRollbackExecutor&gt;</c> 注入（Operations 侧 <c>RequireHostService</c> 即得非 null，消除恒缺席 8002）。
 /// <para>
 /// 切换时序不变量（红线）：
 /// ① <b>单次装载入口</b>——切换 = 单次 <see cref="HotfixManager.LoadHotfixModuleAsync(AppSetting, HotfixLoadOptions)"/>：

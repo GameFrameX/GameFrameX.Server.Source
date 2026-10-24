@@ -30,6 +30,33 @@
 namespace GameFrameX.Capability.Hosting.Abstractions;
 
 /// <summary>
+/// 逐滴答 job（每个调度滴算按装配序执行一次；单个 job 异常由调度壳隔离）。
+/// </summary>
+public sealed class CapabilityTickJob
+{
+    /// <summary>
+    /// 初始化 <see cref="CapabilityTickJob"/>。
+    /// </summary>
+    /// <param name="name">job 全名（<c>能力Id/jobId</c>）。</param>
+    /// <param name="run">job 委托。</param>
+    public CapabilityTickJob(string name, Func<CancellationToken, Task> run)
+    {
+        Name = name;
+        Run = run;
+    }
+
+    /// <summary>
+    /// 获取 job 全名。
+    /// </summary>
+    public string Name { get; }
+
+    /// <summary>
+    /// 获取 job 委托。
+    /// </summary>
+    public Func<CancellationToken, Task> Run { get; }
+}
+
+/// <summary>
 /// 间隔 job（独立周期到点执行）。
 /// </summary>
 public sealed class CapabilityIntervalJob

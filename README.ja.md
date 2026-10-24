@@ -202,7 +202,7 @@ GameFrameX はコマンドライン引数（`--Key=Value`）で設定を行い�
 | `HttpSignSecret` | HTTP 署名シークレット（HMAC-SHA256）、署名検証有効時は必須。空の場合はすべて拒否（fail-closed） | なし | `a-strong-secret` |
 | `HttpUrl` | API ルートパス | `/game/api/` | `/game/api/` |
 | `HttpIsDevelopment` | HTTP 開発モード（Swagger を有効化） | `false` | `true` |
-| `IsEnableOnlineAdmin` | Online Runtime + 管理 API をプロセス内でホスト | `false` | `true` |
+| `Online` | Online 機能ファミリーの設定セクション：`EnableRuntime` / `EnableAdminApi`（既定 `false`）、`EnableRoles`（既定 `["Game"]`）、`Capabilities` / `Disable` フィルター、`UseGameDbStores`、機能 Id ごとの `Settings` | なし | `Configs/app_config.json` を参照 |
 | `OnlineAdminPort` | Online 管理 API リッスンポート | `28090` | `28090` |
 | `OnlineAdminApiPrefix` | Online 管理 API ルートプレフィックス | `online/admin` | `online/admin` |
 | `OnlineTenantId` | Online Runtime 認可テナント ID（スコープトリプル） | `0` | `1` |
@@ -538,9 +538,9 @@ docker compose down
 
 #### Online プラットフォーム管理 API
 
-`IsEnableOnlineAdmin=true` の場合、Game プロセスは Online Runtime（インメモリストア上のアセット / セッション / マッチング / ソーシャル / LiveOps サービスを含むプロセス内機能ライブラリ）を組み立て、管理用 HTTP API を独立した Kestrel リスナーで公開します：
+`Online.EnableAdminApi=true`（かつ現在の Role が `Online.EnableRoles` に含まれる）の場合、プロセスは `CapabilityComposition.Compose` で Online 機能ファミリーを組み立て（既定ではインメモリストア上のアセット / セッション / マッチング / ソーシャル / LiveOps サービスを含むプロセス内機能ライブラリ）、管理用 HTTP API を独立した Kestrel リスナーで公開します：
 
-- エンドポイント: `POST http://<server-host>:28090/online/admin/{action}`（全 33 の管理アクション + `list_capabilities` メタエンドポイント。HTTP ステータスは常に 200、業務結果は内部エンベロープの `Code` で返却）
+- エンドポイント: `POST http://<server-host>:28090/online/admin/{action}`（全 35 の管理アクション + `list_capabilities` / `list_capability_services` / `list_capability_settings` メタエンドポイント。HTTP ステータスは常に 200、業務結果は内部エンベロープの `Code` で返却）
 - スコープトリプル: 各リクエストは `TenantId` / `AppId` / `ServerId` を携行し、認可された `OnlineTenantId` / `OnlineAppId` / `ServerId` と不一致の場合は 3002/3003/3004、トリプル欠落の場合は 3005 で拒否されます
 - GameFrameX Admin コンソールへのサーバー登録: エリアの `HttpManageUrl` を `http://<server-host>:28090` に設定します（`online/admin` プレフィックスとアクション名は Admin クライアント側のワイヤ契約に従って付加されます）
 

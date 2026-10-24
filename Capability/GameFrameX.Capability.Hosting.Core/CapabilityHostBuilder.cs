@@ -24,136 +24,149 @@
 //   CNB  仓库：https://cnb.cool/GameFrameX
 //   CNB Repository: https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
-//   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using System.Text.Json;
+using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Foundation.Localization.Core;
 
-using GameFrameX.Capability.Hosting.Abstractions;
 namespace GameFrameX.Capability.Hosting.Core;
 
 /// <summary>
-/// 能力装配器（显式链式装配入口；自动扫描经 <see cref="CapabilityAssembly"/> 发现模块后同样走本装配器）。
+/// 能力装配器（<see cref="CapabilityComposition"/> 的内部实现：过滤 → 依赖检查 → 拓扑定序 →
+/// 解析来源策略 → Options 合并 → 逐模块 Register → 产出宿主与报告）。
 /// <para>
-/// 维护约束（装配红线）：manifest Id 全宿主唯一；<c>Requires</c> 做闭包校验（缺依赖/成环即装配失败 fail-fast）；
-/// 启用集合按拓扑定序，同层稳定序 = 模块加入序；过滤器引用未发现的能力 Id 即装配失败；
-/// 调度 job 全名（能力Id/jobId）唯一，重复即装配失败。
+/// 维护约束（装配红线，全部 fail-fast）：过滤器引用未发现的能力 Id 即失败；依赖检查在任何模块
+/// <c>Register</c> 之前完成（必选缺失 / 成环 = 一次报全的 <see cref="CapabilityAssemblyException"/>，
+/// 不执行任何模块代码）；同层按能力 Id 序数定序；<c>Settings</c> 出现未发现的能力 Id 即失败、
+/// 被过滤能力的设置段忽略并标注；job 全名（能力Id/jobId）唯一；机制包零能力硬编码。
 /// </para>
 /// </summary>
-public sealed class CapabilityHostBuilder
+internal sealed class CapabilityHostBuilder
 {
     /// <summary>
-    /// 已加入模块（加入序）。
+    /// 宿主共享服务注册表（族基建已预置）。
     /// </summary>
-    private readonly List<ICapabilityModule> _modules = new();
+    private readonly CapabilityServices _services;
 
     /// <summary>
-    /// 装配过滤器（null = 全部启用）。
+    /// 机制事件总线。
     /// </summary>
-    private CapabilityAssemblyFilter _filter;
+    private readonly CapabilityEventBus _eventBus;
 
     /// <summary>
-    /// 宿主共享服务注册表（组合根预置与模块注册共用；装配后经 <see cref="CapabilityHost.Services"/> 取用）。
+    /// 能力族。
     /// </summary>
-    private readonly CapabilityServices _services = new();
+    private readonly ICapabilityFamily _family;
 
     /// <summary>
-    /// 加入一个能力模块。
+    /// 组合选项。
     /// </summary>
-    /// <param name="module">能力模块。</param>
-    /// <returns>本装配器（链式）。</returns>
-    public CapabilityHostBuilder AddModule(ICapabilityModule module)
+    private readonly CapabilityCompositionOptions _options;
+
+    /// <summary>
+    /// 初始化 <see cref="CapabilityHostBuilder"/>（仅 <see cref="CapabilityComposition"/> 构造）。
+    /// </summary>
+    /// <param name="services">服务注册表（族基建已预置）。</param>
+    /// <param name="eventBus">机制事件总线。</param>
+    /// <param name="family">能力族。</param>
+    /// <param name="options">组合选项。</param>
+    public CapabilityHostBuilder(CapabilityServices services, CapabilityEventBus eventBus, ICapabilityFamily family, CapabilityCompositionOptions options)
     {
-        if (module == null)
-        {
-            throw new ArgumentNullException(nameof(module));
-        }
-
-        _modules.Add(module);
-        return this;
+        _services = services ?? throw new ArgumentNullException(nameof(services));
+        _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
+        _family = family ?? throw new ArgumentNullException(nameof(family));
+        _options = options ?? throw new ArgumentNullException(nameof(options));
     }
 
     /// <summary>
-    /// 设置装配过滤器（配置排除表与能力清单段）。
+    /// 装配（过滤器校验 → 过滤 → 依赖检查 → 定序 → 来源策略 → Options 合并 → Register → 产出宿主）。
     /// </summary>
-    /// <param name="filter">过滤器（null = 全部启用）。</param>
-    /// <returns>本装配器（链式）。</returns>
-    public CapabilityHostBuilder SetFilter(CapabilityAssemblyFilter filter)
+    /// <param name="modules">全部已发现模块（发现序）。</param>
+    /// <returns>能力宿主（含报告与调度壳）。</returns>
+    public CapabilityHost Build(IReadOnlyList<ICapabilityModule> modules)
     {
-        _filter = filter;
-        return this;
-    }
-
-    /// <summary>
-    /// 预置一个服务（组合根侧的服务共享面：平台服务 / 包级 options / store 替换缝共用；
-    /// 同类型重复注册即装配失败）。
-    /// </summary>
-    /// <typeparam name="TService">服务类型（调用点书写形态，可为接口）。</typeparam>
-    /// <param name="service">服务实例（不可为 null）。</param>
-    /// <returns>本装配器（链式）。</returns>
-    public CapabilityHostBuilder UseService<TService>(TService service)
-    {
-        _services.AddService(service);
-        return this;
-    }
-
-    /// <summary>
-    /// 装配（闭包校验 → 过滤 → 拓扑定序 → 逐能力注册 → 产出宿主与能力报告）。
-    /// </summary>
-    /// <param name="options">宿主选项。</param>
-    /// <returns>能力宿主。</returns>
-    public CapabilityHost Build(CapabilityHostOptions options)
-    {
-        if (options == null)
-        {
-            throw new ArgumentNullException(nameof(options));
-        }
-
-        var filter = _filter ?? new CapabilityAssemblyFilter();
+        var filter = _options.Filter ?? new CapabilityAssemblyFilter();
         var manifestsById = new Dictionary<string, ICapabilityModule>(StringComparer.Ordinal);
-        foreach (var module in _modules)
+        for (var i = 0; i < modules.Count; i++)
         {
-            var id = module.Manifest.Id;
-            if (manifestsById.ContainsKey(id))
-            {
-                // Localization: Capability.Hosting.DuplicateCapability - 能力 Id 重复注册。
-                throw new InvalidOperationException(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.DuplicateCapability), id));
-            }
-
-            manifestsById.Add(id, module);
+            manifestsById[modules[i].Manifest.Id] = modules[i];
         }
 
         ValidateFilterTargets(filter, manifestsById);
 
-        var entries = new List<CapabilityReportEntry>();
-        var enabled = new List<ICapabilityModule>();
-        foreach (var module in _modules)
+        var enabledModules = new List<ICapabilityModule>();
+        for (var i = 0; i < modules.Count; i++)
         {
-            var state = filter.Match(module.Manifest);
-            entries.Add(new CapabilityReportEntry(module.Manifest, module.GetType().Assembly.GetName().Name, state));
-            if (state == CapabilityFilterState.Enabled)
+            if (filter.Match(modules[i].Manifest) == CapabilityFilterState.Enabled)
             {
-                enabled.Add(module);
+                enabledModules.Add(modules[i]);
             }
         }
 
-        var ordered = OrderByRequires(enabled);
-
-        var tickJobs = new List<CapabilityTickJob>();
-        var intervalJobs = new List<CapabilityIntervalJob>();
-        var eventJobs = new List<CapabilityEventJob>();
-        foreach (var module in ordered)
+        // 依赖检查在任何模块 Register 之前：检查不通过就不执行任何模块代码，不会留下装了一半的状态。
+        var dependencyResult = CapabilityDependencyChecker.Check(modules, enabledModules, filter);
+        if (dependencyResult.Problems.Count > 0)
         {
-            var context = new CapabilityRegistrationContext(module.Manifest, _services);
-            module.Register(context);
-            tickJobs.AddRange(context.TickJobs);
-            intervalJobs.AddRange(context.IntervalJobs);
-            eventJobs.AddRange(context.EventJobs);
+            throw new CapabilityAssemblyException(dependencyResult.Problems);
         }
 
-        var report = new CapabilityReport(entries, ordered.Select(m => m.Manifest.Id).ToArray());
-        var scheduler = new CapabilityScheduler(options.SchedulerIntervalMilliseconds, tickJobs, intervalJobs, eventJobs);
-        return new CapabilityHost(options, report, scheduler, _services, ordered);
+        _services.SetResolutionPolicy(dependencyResult.AllowedOwnersByConsumer, dependencyResult.UnassembledOptionalByConsumer);
+
+        var orderedModules = OrderModulesByIds(manifestsById, dependencyResult.Order);
+        var settingsSections = ExtractSettingsSections(manifestsById, enabledModules);
+        ValidateConfigureTargets(manifestsById, enabledModules);
+
+        var boundOptionsByCapability = new Dictionary<string, object>(StringComparer.Ordinal);
+        var settingsFieldsByCapability = new Dictionary<string, List<CapabilitySettingsField>>(StringComparer.Ordinal);
+        foreach (var module in orderedModules)
+        {
+            var errorPathPrefix = _family.ConfigurationSectionName + ".Settings." + module.Manifest.Id;
+            settingsSections.TryGetValue(module.Manifest.Id, out var settingsElement);
+            var binding = CapabilityOptionsBinder.Bind(module.Manifest, settingsElement, _options.ConfigureEntries, errorPathPrefix);
+            if (binding.Instance != null)
+            {
+                boundOptionsByCapability[module.Manifest.Id] = binding.Instance;
+            }
+
+            if (binding.Fields.Count > 0)
+            {
+                settingsFieldsByCapability[module.Manifest.Id] = binding.Fields;
+            }
+        }
+
+        // 钩子声明写入进程级静态槽位：装配任一步失败必须释放已声明项，否则同进程再次组合会误判重复声明。
+        var hookDeclarationReleases = new List<IDisposable>();
+        try
+        {
+            var tickJobs = new List<CapabilityTickJob>();
+            var intervalJobs = new List<CapabilityIntervalJob>();
+            foreach (var module in orderedModules)
+            {
+                boundOptionsByCapability.TryGetValue(module.Manifest.Id, out var boundOptions);
+                var context = new CapabilityRegistrationContext(module.Manifest, _services, _eventBus, boundOptions, hookDeclarationReleases);
+                module.Register(context);
+                tickJobs.AddRange(context.TickJobs);
+                intervalJobs.AddRange(context.IntervalJobs);
+            }
+
+            var hooksWithoutDeclaration = CapabilityHookSlots.GetAttachedWithoutDeclaration();
+            if (hooksWithoutDeclaration.Count > 0)
+            {
+                CapabilityAssemblyLogRenderer.RenderHooksWithoutDeclaration(hooksWithoutDeclaration, _options.AssemblyLog);
+            }
+
+            var entries = BuildReportEntries(modules, filter, dependencyResult, settingsSections, settingsFieldsByCapability);
+            var report = new CapabilityReport(entries, dependencyResult.Order);
+            var schedulerObserver = _options.SchedulerObserver ?? new CapabilitySchedulerLogObserver(_options.AssemblyLog);
+            var scheduler = new CapabilityScheduler(_options.HostOptions.SchedulerIntervalMilliseconds, tickJobs, intervalJobs, _options.SchedulerClock, schedulerObserver);
+            return new CapabilityHost(_options.HostOptions, report, scheduler, _services, orderedModules, _eventBus, _options.AssemblyLog, hookDeclarationReleases);
+        }
+        catch (Exception)
+        {
+            CapabilityHost.ReleaseInReverse(hookDeclarationReleases);
+            throw;
+        }
     }
 
     /// <summary>
@@ -186,52 +199,187 @@ public sealed class CapabilityHostBuilder
     }
 
     /// <summary>
-    /// 按 Requires 拓扑定序（Kahn 稳定版：同层保持加入序；缺依赖或成环即 fail-fast）。
+    /// 按拓扑序 Id 序列取模块实例表。
     /// </summary>
-    /// <param name="enabled">启用模块（加入序）。</param>
-    /// <returns>拓扑定序后的模块序列。</returns>
-    private static List<ICapabilityModule> OrderByRequires(List<ICapabilityModule> enabled)
+    /// <param name="manifestsById">已发现模块表。</param>
+    /// <param name="orderedIds">拓扑序 Id 序列。</param>
+    /// <returns>拓扑序模块序列。</returns>
+    private static List<ICapabilityModule> OrderModulesByIds(Dictionary<string, ICapabilityModule> manifestsById, List<string> orderedIds)
     {
-        var byId = enabled.ToDictionary(m => m.Manifest.Id, StringComparer.Ordinal);
-        var inDegree = enabled.ToDictionary(m => m.Manifest.Id, _ => 0, StringComparer.Ordinal);
-        var dependents = enabled.ToDictionary(m => m.Manifest.Id, _ => new List<string>(), StringComparer.Ordinal);
-        foreach (var module in enabled)
+        var orderedModules = new List<ICapabilityModule>(orderedIds.Count);
+        for (var i = 0; i < orderedIds.Count; i++)
         {
-            foreach (var requiredId in module.Manifest.Requires)
-            {
-                if (!byId.TryGetValue(requiredId, out var required))
-                {
-                    // Localization: Capability.Hosting.RequirementMissing - 能力依赖缺失。
-                    throw new InvalidOperationException(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.RequirementMissing), module.Manifest.Id, requiredId));
-                }
+            orderedModules.Add(manifestsById[orderedIds[i]]);
+        }
 
-                inDegree[module.Manifest.Id]++;
-                dependents[requiredId].Add(module.Manifest.Id);
+        return orderedModules;
+    }
+
+    /// <summary>
+    /// 提取 <c>Settings</c> 各能力配置段（未发现的能力 Id = fail-fast；被过滤能力不入返回表——调用方标注忽略）。
+    /// </summary>
+    /// <param name="manifestsById">已发现模块表。</param>
+    /// <param name="enabledModules">启用模块。</param>
+    /// <returns>能力 Id → 配置段节点表（仅启用能力）。</returns>
+    private Dictionary<string, JsonElement> ExtractSettingsSections(Dictionary<string, ICapabilityModule> manifestsById, List<ICapabilityModule> enabledModules)
+    {
+        var sections = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+        var section = _options.FamilyConfigurationSection;
+        if (section.ValueKind != JsonValueKind.Object)
+        {
+            return sections;
+        }
+
+        JsonElement settingsElement = default;
+        var hasSettings = false;
+        foreach (var property in section.EnumerateObject())
+        {
+            if (string.Equals(property.Name, "Settings", StringComparison.OrdinalIgnoreCase))
+            {
+                settingsElement = property.Value;
+                hasSettings = true;
+                break;
             }
         }
 
-        var ready = new Queue<string>(enabled.Where(m => inDegree[m.Manifest.Id] == 0).Select(m => m.Manifest.Id));
-        var ordered = new List<ICapabilityModule>(enabled.Count);
-        while (ready.Count > 0)
+        if (!hasSettings)
         {
-            var id = ready.Dequeue();
-            ordered.Add(byId[id]);
-            foreach (var dependentId in dependents[id])
+            return sections;
+        }
+
+        if (settingsElement.ValueKind != JsonValueKind.Object)
+        {
+            // Settings 节点必须是「能力 Id → 配置段」对象；null / 数组 / 标量按类型不符 fail-fast，带族段路径。
+            // Localization: Capability.Hosting.Assembly.SettingsFieldTypeMismatch - Options 字段类型不符。
+            throw new InvalidOperationException(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.Assembly.AssemblySettingsFieldTypeMismatch), _family.ConfigurationSectionName + ".Settings", "object", settingsElement.ValueKind.ToString()));
+        }
+
+        var enabledIds = new HashSet<string>(StringComparer.Ordinal);
+        for (var i = 0; i < enabledModules.Count; i++)
+        {
+            enabledIds.Add(enabledModules[i].Manifest.Id);
+        }
+
+
+        foreach (var property in settingsElement.EnumerateObject())
+        {
+            if (!manifestsById.ContainsKey(property.Name))
             {
-                inDegree[dependentId]--;
-                if (inDegree[dependentId] == 0)
-                {
-                    ready.Enqueue(dependentId);
-                }
+                // Localization: Capability.Hosting.Assembly.SettingsUnknownCapability - Settings 配置段出现未发现的能力。
+                throw new InvalidOperationException(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.Assembly.AssemblySettingsUnknownCapability), property.Name));
+            }
+
+            if (!enabledIds.Contains(property.Name))
+            {
+                // 被过滤器排除的能力：设置段忽略，报告标注「已配置但未装配」。
+                continue;
+            }
+
+            sections[property.Name] = property.Value;
+        }
+
+        return sections;
+    }
+
+    /// <summary>
+    /// 校验代码 Configure 目标（引用未由任何已发现能力声明的 Options 类型 = fail-fast；被过滤能力忽略）。
+    /// </summary>
+    /// <param name="manifestsById">已发现模块表。</param>
+    /// <param name="enabledModules">启用模块。</param>
+    private void ValidateConfigureTargets(Dictionary<string, ICapabilityModule> manifestsById, List<ICapabilityModule> enabledModules)
+    {
+        var declaredOptionsTypes = new HashSet<Type>();
+        for (var i = 0; i < enabledModules.Count; i++)
+        {
+            var optionsType = enabledModules[i].Manifest.OptionsType;
+            if (optionsType != null)
+            {
+                declaredOptionsTypes.Add(optionsType);
             }
         }
 
-        if (ordered.Count != enabled.Count)
+        var configureEntries = _options.ConfigureEntries;
+        for (var i = 0; i < configureEntries.Count; i++)
         {
-            // Localization: Capability.Hosting.RequirementCycle - 能力依赖成环。
-            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Capability.Hosting.RequirementCycle));
+            if (declaredOptionsTypes.Contains(configureEntries[i].OptionsType))
+            {
+                continue;
+            }
+
+            var declaredByAnyDiscovered = false;
+            foreach (var pair in manifestsById)
+            {
+                if (pair.Value.Manifest.OptionsType == configureEntries[i].OptionsType)
+                {
+                    declaredByAnyDiscovered = true;
+                    break;
+                }
+            }
+
+            if (!declaredByAnyDiscovered)
+            {
+                // Localization: Capability.Hosting.ConfigureTargetMissing - 代码 Configure 引用的 Options 类型未声明。
+                throw new InvalidOperationException(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.ConfigureTargetMissing), configureEntries[i].OptionsType.FullName));
+            }
+
+            // 声明该 Options 的能力被过滤器排除：Configure 回调忽略（与 Settings 段忽略规则一致）。
+        }
+    }
+
+    /// <summary>
+    /// 构造报告条目（发现序；启用条目带依赖状态 / 缺失功能 / Options 字段；被过滤且配置了 Settings 的条目标注）。
+    /// </summary>
+    /// <param name="modules">全部已发现模块。</param>
+    /// <param name="filter">过滤器。</param>
+    /// <param name="dependencyResult">依赖检查结果。</param>
+    /// <param name="settingsSections">启用能力的配置段表。</param>
+    /// <param name="settingsFieldsByCapability">Options 字段生效值表。</param>
+    /// <returns>报告条目集合。</returns>
+    private List<CapabilityReportEntry> BuildReportEntries(IReadOnlyList<ICapabilityModule> modules, CapabilityAssemblyFilter filter, CapabilityDependencyChecker.Result dependencyResult, Dictionary<string, JsonElement> settingsSections, Dictionary<string, List<CapabilitySettingsField>> settingsFieldsByCapability)
+    {
+        var entries = new List<CapabilityReportEntry>(modules.Count);
+        var settingsConfiguredIds = CollectSettingsConfiguredIds();
+        for (var i = 0; i < modules.Count; i++)
+        {
+            var module = modules[i];
+            var manifest = module.Manifest;
+            var state = filter.Match(manifest);
+            dependencyResult.DependenciesByCapability.TryGetValue(manifest.Id, out var dependencies);
+            dependencyResult.AbsentFeaturesByCapability.TryGetValue(manifest.Id, out var absentFeatures);
+            settingsFieldsByCapability.TryGetValue(manifest.Id, out var settingsFields);
+            var settingsConfiguredButNotAssembled = state != CapabilityFilterState.Enabled && settingsConfiguredIds.Contains(manifest.Id);
+            entries.Add(new CapabilityReportEntry(manifest, module.GetType().Assembly.GetName().Name, state, dependencies, absentFeatures, settingsFields, settingsConfiguredButNotAssembled));
         }
 
-        return ordered;
+        return entries;
+    }
+
+    /// <summary>
+    /// 收集配置段写了 Settings 的全部能力 Id（含被过滤的——标注「已配置但未装配」用）。
+    /// </summary>
+    /// <returns>能力 Id 集合。</returns>
+    private HashSet<string> CollectSettingsConfiguredIds()
+    {
+        var identifiers = new HashSet<string>(StringComparer.Ordinal);
+        var section = _options.FamilyConfigurationSection;
+        if (section.ValueKind != JsonValueKind.Object)
+        {
+            return identifiers;
+        }
+
+        foreach (var property in section.EnumerateObject())
+        {
+            if (string.Equals(property.Name, "Settings", StringComparison.OrdinalIgnoreCase) && property.Value.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var settingsProperty in property.Value.EnumerateObject())
+                {
+                    identifiers.Add(settingsProperty.Name);
+                }
+
+                break;
+            }
+        }
+
+        return identifiers;
     }
 }

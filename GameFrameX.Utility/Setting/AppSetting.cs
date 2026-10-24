@@ -426,7 +426,7 @@ public class AppSetting
     public int KcpPort { get; set; } = 0;
 
     /// <summary>
-    /// 是否启用服务器间 KCP 传输（InnerKcpPort 监听面；与客户端接入面的 IsEnableKcp 互不影响）
+    /// 是否启用服务器间 KCP 传输（C251 InnerKcpPort 监听面；与客户端接入面的 IsEnableKcp 互不影响）
     /// </summary>
     /// <remarks>
     /// Whether to enable the inter-server KCP transport (the InnerKcpPort listener face;
@@ -645,12 +645,12 @@ public class AppSetting
     public string HttpCorsAllowedOrigins { get; set; }
 
     /// <summary>
-    /// 节点间 RPC 鉴权共享密钥。
+    /// 节点间 RPC 鉴权共享密钥（C272）。
     /// <para>非空时启用节点间鉴权：RemoteMessaging 协议版本握手帧携带 HMAC-SHA256(secret, nonce|major|minor) 凭据，服务端验签失败回拒绝包并关闭连接；握手超时不再回落旧版本（fail-closed）；服务器间 KCP 专用监听面同时挂凭据闸门。集群内所有节点必须配置同一密钥。</para>
     /// <para>为空（默认）表示不启用，节点间链路行为与未引入鉴权前等价。</para>
     /// </summary>
     /// <remarks>
-    /// Shared secret for inter-node RPC authentication.
+    /// Shared secret for inter-node RPC authentication (C272).
     /// When non-empty, inter-node authentication is enabled: the RemoteMessaging protocol version
     /// handshake frame carries an HMAC-SHA256(secret, nonce|major|minor) credential; the server
     /// rejects and closes connections failing verification; handshake timeouts no longer fall back
@@ -663,43 +663,12 @@ public class AppSetting
     public string InterNodeAuthSecret { get; set; } = "";
 
     /// <summary>
-    /// 是否启用 Online 平台业务运行时
-    /// <para>开启后 Game 服进程在本进程内装配 Online Runtime（InMemory 存储 + 各域服务 + 事件桥 + 幂等 + 后台调度）</para>
-    /// <para>与管理面开关 IsEnableOnlineAdmin 正交（业务与管理面可独立启停）；默认值为 false</para>
-    /// </summary>
-    /// <remarks>
-    /// Whether to enable the Online business runtime.
-    /// When enabled, the Game process hosts the Online Runtime in-process (in-memory stores, domain
-    /// services, event bridge, idempotency and the background scheduler).
-    /// Orthogonal to the admin-plane switch <c>IsEnableOnlineAdmin</c> (business and
-    /// admin planes can be toggled independently). Default value is false.
-    /// </remarks>
-    [Option(nameof(IsEnableOnline), DefaultValue = false, Description = "是否启用 Online 平台业务运行时,默认值为 false;与管理面开关 IsEnableOnlineAdmin 正交")]
-    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
-    public bool IsEnableOnline { get; set; }
-
-    /// <summary>
-    /// 是否启用 Online 平台管理面（admin API）
-    /// <para>开启后按 OnlineAdminPort 暴露 Admin 管理端点；业务运行时未启时以 admin-only 形态监听（全部能力 action 按未安装裁决）</para>
-    /// <para>默认值为 false，存量部署零影响</para>
-    /// </summary>
-    /// <remarks>
-    /// Whether to enable the Online platform admin API.
-    /// When enabled, admin endpoints are exposed on OnlineAdminPort; without the business runtime
-    /// it listens in admin-only shape (every capability action is answered as not installed).
-    /// Default value is false.
-    /// </remarks>
-    [Option(nameof(IsEnableOnlineAdmin), DefaultValue = false, Description = "是否启用 Online 平台管理面(admin API),默认值为 false")]
-    [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
-    public bool IsEnableOnlineAdmin { get; set; }
-
-    /// <summary>
     /// Online admin API 监听端口
     /// </summary>
     /// <remarks>
     /// Online admin API listening port.
     /// </remarks>
-    [Option(nameof(OnlineAdminPort), DefaultValue = 28090, Description = "Online admin API 监听端口,默认值为 28090,只有 IsEnableOnlineAdmin 为 true 时才生效")]
+    [Option(nameof(OnlineAdminPort), DefaultValue = 28090, Description = "Online admin API 监听端口,默认值为 28090,只有 Online 配置段 EnableAdminApi 为 true 时才生效")]
     [SettingFieldLevel(SettingFieldLevel.RoleLevel)]
     public ushort OnlineAdminPort { get; set; } = 28090;
 
@@ -734,15 +703,19 @@ public class AppSetting
     public long OnlineAppId { get; set; }
 
     /// <summary>
-    /// Online 能力配置段（角色配置内嵌套 "Online" 节点的强类型绑定）
-    /// <para>Capabilities 白名单 / Disable 排除表；null 或空 = 全装配（缺省全装配红线）；白名单未含依赖时组合期闭包校验 fail-fast</para>
+    /// Online 能力配置段（角色配置内嵌套 "Online" 节点的强类型绑定，C294 键集重定）
+    /// <para>双闸 EnableRuntime / EnableAdminApi、EnableRoles 名单、Capabilities 白名单 / Disable 排除表、
+    /// UseGameDbStores 覆盖开关与 Settings 能力级参数节点；EnableRoles 命中的 Role 在进程内组合一次
+    ///（缺省名单 ["Game"]）；null 或空过滤器 = 全装配（缺省全装配红线）</para>
     /// <para>CLI 侧经 StartupOptions.OnlineCapabilities / OnlineDisable 平铺别名投影（仅无配置段 Role 的回落档生效，配置段优先链不变）</para>
     /// </summary>
     /// <remarks>
-    /// Strong-typed binding of the nested "Online" node inside this role's configuration section:
-    /// Capabilities is the enable whitelist and Disable the exclusion list; null or empty assembles
-    /// everything (the empty-filter-assembles-all guarantee), and a whitelist that omits a required
-    /// dependency fails fast at composition time. The CLI surface is the flat alias pair
+    /// Strong-typed binding of the nested "Online" node inside this role's configuration section (the C294
+    /// key-set redefinition): the EnableRuntime / EnableAdminApi gates, the EnableRoles list, the
+    /// Capabilities whitelist / Disable exclusion list, the UseGameDbStores override switch and the
+    /// Settings capability-parameter node. The first role named by EnableRoles composes the family once
+    /// per process (default list ["Game"]); null or empty filters assemble everything (the
+    /// empty-filter-assembles-all guarantee). The CLI surface is the flat alias pair
     /// StartupOptions.OnlineCapabilities / OnlineDisable, projected only on the launcher fallback
     /// path for roles without a config section (the config-section-first chain is unchanged).
     /// </remarks>

@@ -537,9 +537,9 @@ docker compose down
 
 #### Online 플랫폼 관리 API
 
-`IsEnableOnlineAdmin=true`이면 Game 프로세스가 Online Runtime(인메모리 저장소 기반의 에셋 / 세션 / 매치메이킹 / 소셜 / LiveOps 서비스를 갖춘 인프로세스 역량 라이브러리)을 구성하고, 관리 HTTP API를 독립된 Kestrel 리스너에서 노출합니다:
+`Online.EnableAdminApi=true`(그리고 현재 역할이 `Online.EnableRoles`에 포함)이면 프로세스가 `CapabilityComposition.Compose`로 Online 역량 패밀리를 구성하고(기본값은 인메모리 저장소 기반의 에셋 / 세션 / 매치메이킹 / 소셜 / LiveOps 서비스를 갖춘 인프로세스 역량 라이브러리), 관리 HTTP API를 독립된 Kestrel 리스너에서 노출합니다:
 
-- 엔드포인트: `POST http://<server-host>:28090/online/admin/{action}`(관리 액션 33개 전체 + `list_capabilities` 메타 엔드포인트, HTTP 상태는 항상 200. 비즈니스 결과는 내부 엔벨로프 `Code`로 전달)
+- 엔드포인트: `POST http://<server-host>:28090/online/admin/{action}`(관리 액션 35개 전체 + `list_capabilities` / `list_capability_services` / `list_capability_settings` 메타 엔드포인트, HTTP 상태는 항상 200. 비즈니스 결과는 내부 엔벨로프 `Code`로 전달)
 - 스코프 삼중항: 각 요청은 `TenantId` / `AppId` / `ServerId`를 전달하며, 인가된 `OnlineTenantId` / `OnlineAppId` / `ServerId`와 불일치하면 3002/3003/3004, 삼중항 누락 시 3005로 거부
 - GameFrameX Admin 콘솔 서버 등록: 대상 영역의 `HttpManageUrl`을 `http://<server-host>:28090`로 설정(`online/admin` 접두사와 액션 이름은 Admin 클라이언트가 와이어 계약에 따라 추가)
 

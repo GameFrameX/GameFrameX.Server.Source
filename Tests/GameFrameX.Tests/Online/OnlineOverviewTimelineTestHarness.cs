@@ -273,7 +273,7 @@ namespace GameFrameX.Tests.Online
                 CustomProperties = new Dictionary<string, string>(),
             };
 
-            var outcome = await new OnlineMatchTicketService(TicketStore, Recorder).EnqueueAsync(CreateScope(serverId, playerId), request);
+            var outcome = await new OnlineMatchTicketService(TicketStore, Recorder, new OnlineMatchmakerOptions()).EnqueueAsync(CreateScope(serverId, playerId), request);
             Assert.True(outcome.IsSuccess);
             return outcome.Data;
         }
@@ -285,8 +285,9 @@ namespace GameFrameX.Tests.Online
         /// <returns>异步任务。</returns>
         internal async Task RunMatchmakerAsync(long serverId)
         {
-            var tickets = new OnlineMatchTicketService(TicketStore, Recorder);
-            var coordinator = new OnlineMatchmakerCoordinator(TicketStore, tickets, Recorder);
+            var matchmakerOptions = new OnlineMatchmakerOptions();
+            var tickets = new OnlineMatchTicketService(TicketStore, Recorder, matchmakerOptions);
+            var coordinator = new OnlineMatchmakerCoordinator(TicketStore, tickets, Recorder, matchmakerOptions);
             var outcome = await coordinator.RunOnceAsync(TenantId, AppId);
             Assert.True(outcome.IsSuccess);
         }

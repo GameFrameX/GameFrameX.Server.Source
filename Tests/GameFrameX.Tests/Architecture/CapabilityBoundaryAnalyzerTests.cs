@@ -31,7 +31,7 @@ using System.Collections.Immutable;
 using GameFrameX.Architecture.Analyzers;
 using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Hosting.Core;
-using GameFrameX.Capability.Online.Abstractions.Bridges;
+using GameFrameX.Capability.Online.Abstractions.Scope;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -47,16 +47,15 @@ public sealed class CapabilityBoundaryAnalyzerTests
 
     private static readonly MetadataReference[] ContractReferences =
     {
-        MetadataReference.CreateFromFile(typeof(OnlineFriendDomainBridgeHolder).Assembly.Location),
+        MetadataReference.CreateFromFile(typeof(OnlineScope).Assembly.Location),
         MetadataReference.CreateFromFile(typeof(CapabilityRegistrationContext).Assembly.Location),
-        MetadataReference.CreateFromFile(typeof(CapabilityHostBuilder).Assembly.Location)
+        MetadataReference.CreateFromFile(typeof(CapabilityCompositionOptions).Assembly.Location)
     };
 
     [Theory]
     [InlineData("GameFrameX.Apps", "GameFrameX.Capability.Online.Social")]
     [InlineData("GameFrameX.Hotfix", "GameFrameX.Capability.Online.Match")]
     [InlineData("GameFrameX.Hotfix", "GameFrameX.Capability.Online.Matchmaking")]
-    [InlineData("GameFrameX.Hotfix", "GameFrameX.Capability.Hosting.Core")]
     [InlineData("GameFrameX.Apps", "GameFrameX.Capability.Other.Abstractions")]
     public async Task Unused_direct_implementation_reference_is_rejected(string consumer, string implementation)
     {
@@ -100,10 +99,13 @@ public sealed class CapabilityBoundaryAnalyzerTests
     [InlineData("GameFrameX.Hotfix")]
     public async Task Actual_online_contract_closure_is_allowed(string consumer)
     {
+        // C294：Online.Abstractions → Hosting.AdminApi → Hosting.Core 传递可达；Hosting 三包均为机制定义方（非能力实现），
+        // 与 CapabilityBoundaryFacts.IsImplementation / IsMechanism 同一集合，契约闭包含全部三包即合法。
         var references = new[]
         {
-            MetadataReference.CreateFromFile(typeof(OnlineFriendDomainBridgeHolder).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(OnlineScope).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(CapabilityRegistrationContext).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(CapabilityCompositionOptions).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(GameFrameX.Capability.Hosting.AdminApi.AdminActionRegistry).Assembly.Location)
         };
         Assert.Empty(await Analyze(Compile(consumer, "public class Consumer { }", references), new CapabilityImplementationReferenceAnalyzer()));
@@ -129,159 +131,269 @@ public sealed class CapabilityBoundaryAnalyzerTests
     }
 
     [Theory]
-    [InlineData("OnlineFriendDomainBridgeHolder")]
-    [InlineData("OnlineMatchGameBridgeHolder")]
-    [InlineData("OnlineMatchDomainBridgeHolder")]
-    public async Task Actual_three_families_block_hotfix_publish_retract_and_delegate(string holder)
+    [InlineData("GameFrameX.Hotfix")]
+    [InlineData("GameFrameX.Apps")]
+    [InlineData("GameFrameX.Launcher")]
+    [InlineData("GameFrameX.Capability.Online.Social")]
+    [InlineData("ThirdParty.Tool")]
+    public async Task Bridge_publish_outside_module_activation_is_rejected(string consumer)
     {
-        var source = $$"""
+        var source = """
             using System;
-            using Bridge = GameFrameX.Capability.Online.Abstractions.Bridges.{{holder}};
-            namespace GameFrameX.Launcher.Online
+            using GameFrameX.Capability.Hosting.Abstractions;
+            public class Wiring
             {
-                public class PretendWiring
+                public void Run(CapabilityActivationContext context)
                 {
-                    public void Run()
-                    {
-                        Bridge.Publish(null, null);
-                        Bridge.Retract();
-                        Action later = Bridge.Retract;
-                    }
+                    context.Bridges.Publish<IFixtureContract>(null);
+                    Action publish = () => context.Bridges.Publish<IFixtureContract>(null);
                 }
             }
+            public interface IFixtureContract { }
             """;
-        var diagnostics = await Analyze(Compile("GameFrameX.Hotfix", source, ContractReferences), new CapabilityAssemblyBoundaryAnalyzer());
-        Assert.Equal(3, diagnostics.Length);
+        var diagnostics = await Analyze(Compile(consumer, source, ContractReferences), new CapabilityAssemblyBoundaryAnalyzer());
+        Assert.Equal(2, diagnostics.Length);
         Assert.All(diagnostics, diagnostic =>
         {
             Assert.Equal("GFX0018", diagnostic.Id);
-            Assert.Contains("Launcher", diagnostic.GetMessage());
-            Assert.Contains("holder.Current", diagnostic.GetMessage());
+            Assert.Contains("ActivateAsync", diagnostic.GetMessage());
             var text = diagnostic.Location.SourceTree.GetText().ToString(diagnostic.Location.SourceSpan);
-            Assert.StartsWith("Bridge.", text);
+            Assert.StartsWith("context.Bridges.Publish", text);
         });
-    }
-
-    [Theory]
-    [InlineData("GameFrameX.Launcher")]
-    [InlineData("GameFrameX.Tests")]
-    [InlineData("GameFrameX.Hotfix.Tests")]
-    public async Task Actual_three_family_lifecycle_wiring_is_allowed(string consumer)
-    {
-        var source = """
-            using GameFrameX.Capability.Online.Abstractions.Bridges;
-            public class Wiring
-            {
-                public void Run()
-                {
-                    OnlineFriendDomainBridgeHolder.Publish(null, null);
-                    OnlineFriendDomainBridgeHolder.Retract();
-                    OnlineMatchGameBridgeHolder.Publish(null, null);
-                    OnlineMatchGameBridgeHolder.Retract();
-                    OnlineMatchDomainBridgeHolder.Publish(null, null);
-                    OnlineMatchDomainBridgeHolder.Retract();
-                }
-            }
-            """;
-        Assert.Empty(await Analyze(Compile(consumer, source, ContractReferences), new CapabilityAssemblyBoundaryAnalyzer()));
-    }
-
-    [Theory]
-    [InlineData("GameFrameX.Apps")]
-    [InlineData("GameFrameX.Hotfix")]
-    public async Task Actual_hotfix_current_and_lease_domain_calls_are_allowed(string consumer)
-    {
-        var source = """
-            using GameFrameX.Capability.Online.Abstractions.Bridges;
-            public class Adapter
-            {
-                public void Run()
-                {
-                    var friend = OnlineFriendDomainBridgeHolder.Current;
-                    var game = OnlineMatchGameBridgeHolder.Current;
-                    var match = OnlineMatchDomainBridgeHolder.Current;
-                    _ = friend.IsActive;
-                    _ = friend.ListFriendsAsync(null);
-                    _ = game.GetGameInfoAsync(null, 1, 1);
-                    _ = match.GetStatusAsync(null);
-                }
-            }
-            """;
-        Assert.Empty(await Analyze(Compile(consumer, source, ContractReferences), new CapabilityAssemblyBoundaryAnalyzer()));
-    }
-
-    [Theory]
-    [InlineData("GameFrameX.Hotfix")]
-    [InlineData("GameFrameX.Apps")]
-    [InlineData("GameFrameX.Hotfix.Tests.Evil")]
-    [InlineData("ThirdParty.Tool")]
-    public async Task Registration_and_builder_operations_require_authorized_location(string consumer)
-    {
-        var compilation = Compile(consumer, RegistrationSource, ContractReferences);
-        var diagnostics = await Analyze(compilation, new CapabilityAssemblyBoundaryAnalyzer());
-        Assert.Equal(8, diagnostics.Length);
-        Assert.All(diagnostics, diagnostic =>
-        {
-            Assert.Contains("注册", diagnostic.GetMessage());
-            Assert.True(diagnostic.Location.IsInSource);
-        });
-    }
-
-    private const string RegistrationSource = """
-        using System;
-        using GameFrameX.Capability.Hosting.Abstractions;
-        using GameFrameX.Capability.Hosting.Core;
-        public class Wiring
-        {
-            public void Run(CapabilityRegistrationContext context, CapabilityServices services, CapabilityHostBuilder builder)
-            {
-                context.AddService(new object());
-                services.AddService(new object());
-                context.AddTickJob("tick", null);
-                context.AddIntervalJob("interval", TimeSpan.FromMilliseconds(10), null);
-                context.AddEventJob("event", null);
-                builder.UseService(new object());
-                builder.AddModule(null);
-                builder.Build(null);
-            }
-        }
-        """;
-
-    [Theory]
-    [InlineData("GameFrameX.Launcher")]
-    [InlineData("GameFrameX.Tests")]
-    [InlineData("GameFrameX.Hotfix.Tests")]
-    public async Task Composition_registration_is_allowed(string consumer)
-    {
-        Assert.Empty(await Analyze(Compile(consumer, RegistrationSource, ContractReferences), new CapabilityAssemblyBoundaryAnalyzer()));
     }
 
     [Theory]
     [InlineData("GameFrameX.Capability.Online.Social")]
     [InlineData("GameFrameX.Capability.Online.Match")]
     [InlineData("GameFrameX.Capability.Online.Matchmaking")]
-    public async Task Module_owned_register_helper_and_local_function_are_allowed(string implementation)
+    public async Task Bridge_publish_inside_module_activation_is_allowed(string implementation)
     {
         var source = """
+            using System;
+            using System.Threading;
+            using System.Threading.Tasks;
             using GameFrameX.Capability.Hosting.Abstractions;
             public sealed class Module : ICapabilityModule
             {
                 public CapabilityManifest Manifest => null;
-                public void Register(CapabilityRegistrationContext context) => ResolveStore(context);
-                private static void ResolveStore(CapabilityRegistrationContext context)
+                public Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken)
+                {
+                    context.Bridges.Publish<IFixtureContract>(null);
+                    void Local() => context.Bridges.Publish<IFixtureContract>(null);
+                    Local();
+                    PublishLater(context.Bridges);
+                    return Task.CompletedTask;
+                }
+                public void Register(CapabilityRegistrationContext context) { }
+                public Task DeactivateAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+                private static void PublishLater(CapabilityBridgePublisher publisher) => publisher.Publish<IFixtureContract>(null);
+            }
+            public interface IFixtureContract { }
+            """;
+        Assert.Empty(await Analyze(Compile(implementation, source, ContractReferences), new CapabilityAssemblyBoundaryAnalyzer()));
+    }
+
+    [Fact]
+    public async Task Bridge_publish_after_cached_activation_context_is_rejected()
+    {
+        var source = """
+            using System.Threading;
+            using System.Threading.Tasks;
+            using GameFrameX.Capability.Hosting.Abstractions;
+            public sealed class Module : ICapabilityModule
+            {
+                private CapabilityActivationContext _cached;
+                public CapabilityManifest Manifest => null;
+                public Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken)
+                {
+                    _cached = context;
+                    return Task.CompletedTask;
+                }
+                public void Register(CapabilityRegistrationContext context) { }
+                public Task DeactivateAsync(CancellationToken cancellationToken)
+                {
+                    _cached.Bridges.Publish<IFixtureContract>(null);
+                    PublishWithoutParameter();
+                    return Task.CompletedTask;
+                }
+                private void PublishWithoutParameter() => _cached.Bridges.Publish<IFixtureContract>(null);
+            }
+            public interface IFixtureContract { }
+            """;
+        var diagnostics = await Analyze(Compile("GameFrameX.Capability.Online.Social", source, ContractReferences), new CapabilityAssemblyBoundaryAnalyzer());
+        Assert.Equal(2, diagnostics.Length);
+        Assert.All(diagnostics, diagnostic => Assert.Contains("ActivateAsync", diagnostic.GetMessage()));
+    }
+
+    [Theory]
+    [InlineData("GameFrameX.Apps", 0)]
+    [InlineData("GameFrameX.Hotfix", 0)]
+    [InlineData("GameFrameX.Launcher", 1)]
+    [InlineData("GameFrameX.Capability.Online.Social", 1)]
+    [InlineData("GameFrameX.Hotfix.Tests.Evil", 1)]
+    [InlineData("ThirdParty.Tool", 1)]
+    public async Task Bridge_acquire_is_consumer_side_only(string consumer, int diagnosticCount)
+    {
+        var source = """
+            using GameFrameX.Capability.Hosting.Abstractions;
+            public class Adapter
+            {
+                public string Run()
+                {
+                    return CapabilityBridge<IFixtureContract>.TryAcquire(out var lease) ? lease.Contract.Name : "absent";
+                }
+            }
+            public interface IFixtureContract { string Name { get; } }
+            """;
+        var diagnostics = await Analyze(Compile(consumer, source, ContractReferences), new CapabilityAssemblyBoundaryAnalyzer());
+        Assert.Equal(diagnosticCount, diagnostics.Length);
+        Assert.All(diagnostics, diagnostic => Assert.Contains("Hotfix / Apps", diagnostic.GetMessage()));
+    }
+
+    [Theory]
+    [InlineData("GameFrameX.Hotfix", 0)]
+    [InlineData("GameFrameX.Apps", 1)]
+    [InlineData("GameFrameX.Launcher", 1)]
+    [InlineData("GameFrameX.Capability.Online.Social", 1)]
+    public async Task Hook_attach_is_hotfix_only(string consumer, int diagnosticCount)
+    {
+        var source = """
+            using GameFrameX.Capability.Hosting.Abstractions;
+            public class HotfixLoad
+            {
+                public void Run()
+                {
+                    var lease = CapabilityHook<IFixtureHook>.Attach(new FixtureHook());
+                    lease.Dispose();
+                }
+            }
+            public interface IFixtureHook { }
+            public sealed class FixtureHook : IFixtureHook { }
+            """;
+        var diagnostics = await Analyze(Compile(consumer, source, ContractReferences), new CapabilityAssemblyBoundaryAnalyzer());
+        Assert.Equal(diagnosticCount, diagnostics.Length);
+        Assert.All(diagnostics, diagnostic => Assert.Contains("Hotfix", diagnostic.GetMessage()));
+    }
+
+    [Theory]
+    [InlineData("GameFrameX.Launcher", 0)]
+    [InlineData("GameFrameX.Hotfix", 3)]
+    [InlineData("GameFrameX.Apps", 3)]
+    [InlineData("GameFrameX.Capability.Online.Social", 3)]
+    [InlineData("ThirdParty.Tool", 3)]
+    public async Task Host_composition_overrides_are_launcher_only(string consumer, int diagnosticCount)
+    {
+        var source = """
+            using GameFrameX.Capability.Hosting.Core;
+            public class CompositionEntry
+            {
+                public void Run(CapabilityCompositionOptions options)
+                {
+                    options.Configure<FixtureOptions>(configured => { });
+                    options.Override<IFixtureContract>(resolver => null);
+                    options.SetAdminApiPlaneFactory(null);
+                }
+            }
+            public interface IFixtureContract { }
+            public sealed class FixtureOptions { }
+            """;
+        var diagnostics = await Analyze(Compile(consumer, source, ContractReferences), new CapabilityAssemblyBoundaryAnalyzer());
+        Assert.Equal(diagnosticCount, diagnostics.Length);
+        Assert.All(diagnostics, diagnostic => Assert.Contains("Launcher", diagnostic.GetMessage()));
+    }
+
+    [Theory]
+    [InlineData("GameFrameX.Hotfix")]
+    [InlineData("GameFrameX.Apps")]
+    [InlineData("GameFrameX.Launcher")]
+    [InlineData("GameFrameX.Hotfix.Tests.Evil")]
+    [InlineData("ThirdParty.Tool")]
+    public async Task Registration_surface_requires_module_register_phase(string consumer)
+    {
+        var compilation = Compile(consumer, RegistrationSource, ContractReferences);
+        var diagnostics = await Analyze(compilation, new CapabilityAssemblyBoundaryAnalyzer());
+        Assert.Equal(12, diagnostics.Length);
+        Assert.All(diagnostics, diagnostic =>
+        {
+            Assert.Contains("Register", diagnostic.GetMessage());
+            Assert.True(diagnostic.Location.IsInSource);
+        });
+    }
+
+    private const string RegistrationSource = """
+        using System;
+        using System.Threading;
+        using System.Threading.Tasks;
+        using GameFrameX.Capability.Hosting.Abstractions;
+        public class Wiring
+        {
+            public void Run(CapabilityRegistrationContext context)
+            {
+                context.AddService(new object());
+                context.AddService<object>(resolver => new object());
+                context.AddService("name", new object());
+                var service = context.GetService<object>();
+                var optional = context.GetOptionalService<object>();
+                var all = context.GetServices<object>();
+                var options = context.GetOptions<FixtureOptions>();
+                var handle = context.DeclareHook<IFixtureHook>(new FixtureHook());
+                context.RequireHostService<IFixtureHostService>();
+                context.Subscribe<FixtureEvent>("topic", received => { });
+                context.AddTickJob("tick", cancellationToken => Task.CompletedTask);
+                context.AddIntervalJob("interval", TimeSpan.FromMilliseconds(10), cancellationToken => Task.CompletedTask);
+            }
+        }
+        public interface IFixtureHook { }
+        public interface IFixtureHostService { }
+        public sealed class FixtureHook : IFixtureHook { }
+        public sealed class FixtureOptions { }
+        public sealed class FixtureEvent { }
+        """;
+
+    [Theory]
+    [InlineData("GameFrameX.Capability.Online.Social")]
+    [InlineData("GameFrameX.Capability.Online.Match")]
+    [InlineData("GameFrameX.Capability.Online.Matchmaking")]
+    public async Task Module_register_surface_with_helpers_is_allowed(string implementation)
+    {
+        var source = """
+            using System;
+            using System.Threading;
+            using System.Threading.Tasks;
+            using GameFrameX.Capability.Hosting.Abstractions;
+            public sealed class Module : ICapabilityModule
+            {
+                public CapabilityManifest Manifest => null;
+                public void Register(CapabilityRegistrationContext context)
                 {
                     context.AddService(new object());
-                    void Local() => context.AddEventJob("test", null);
+                    var service = context.GetService<object>();
+                    var optional = context.GetOptionalService<object>();
+                    var options = context.GetOptions<FixtureOptions>();
+                    var handle = context.DeclareHook<IFixtureHook>(new FixtureHook());
+                    context.RequireHostService<IFixtureHostService>();
+                    context.Subscribe<FixtureEvent>("topic", received => { });
+                    context.AddTickJob("tick", cancellationToken => Task.CompletedTask);
+                    ResolveStore(context);
+                    void Local() => context.AddService(new object());
                     Local();
                 }
+                public Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken) => Task.CompletedTask;
+                public Task DeactivateAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+                private static void ResolveStore(CapabilityRegistrationContext context) => context.AddService("nested", new object());
                 private sealed class NestedHelper
                 {
                     public void Seed(CapabilityRegistrationContext context) => context.AddService(new object());
                 }
             }
+            public interface IFixtureHook { }
+            public interface IFixtureHostService { }
+            public sealed class FixtureHook : IFixtureHook { }
+            public sealed class FixtureOptions { }
+            public sealed class FixtureEvent { }
             """;
         Assert.Empty(await Analyze(Compile(implementation, source, ContractReferences), new CapabilityAssemblyBoundaryAnalyzer()));
-        // 仅伪装 Register 方法或命名空间不足以获得模块权限。
+        // 仅实现 ICapabilityModule 的类型获得 Register 期权限；伪装 Register 方法或命名空间不足以获得。
         var ordinary = """
             using GameFrameX.Capability.Hosting.Abstractions;
             namespace GameFrameX.Launcher
@@ -299,62 +411,91 @@ public sealed class CapabilityBoundaryAnalyzerTests
     public async Task Module_interface_does_not_allow_hotfix_to_self_assemble()
     {
         var source = """
+            using System.Threading;
+            using System.Threading.Tasks;
             using GameFrameX.Capability.Hosting.Abstractions;
             public class Module : ICapabilityModule
             {
                 public CapabilityManifest Manifest => null;
                 public void Register(CapabilityRegistrationContext context) => context.AddService(new object());
+                public Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken) => Task.CompletedTask;
+                public Task DeactivateAsync(CancellationToken cancellationToken) => Task.CompletedTask;
             }
             """;
         Assert.Single(await Analyze(Compile("GameFrameX.Hotfix", source, ContractReferences), new CapabilityAssemblyBoundaryAnalyzer()));
     }
 
     [Fact]
-    public async Task Actual_capability_hosting_extension_can_preseed_builder()
+    public async Task Register_api_after_cached_context_is_rejected()
     {
         var source = """
-            using GameFrameX.Capability.Hosting.Core;
-            public static class StoreExtensions
+            using System.Threading;
+            using System.Threading.Tasks;
+            using GameFrameX.Capability.Hosting.Abstractions;
+            public sealed class Module : ICapabilityModule
             {
-                public static CapabilityHostBuilder UseStores(this CapabilityHostBuilder builder)
+                private CapabilityRegistrationContext _cached;
+                public CapabilityManifest Manifest => null;
+                public void Register(CapabilityRegistrationContext context)
                 {
-                    builder.UseService(new object());
-                    void Local() => builder.UseService("options");
-                    Local();
-                    return builder;
+                    _cached = context;
+                    RegisterLater();
                 }
+                public Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken) => Task.CompletedTask;
+                public Task DeactivateAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+                private void RegisterLater() => _cached.AddService(new object());
             }
             """;
-        Assert.Empty(await Analyze(Compile("GameFrameX.Capability.Online.Persistence", source, ContractReferences), new CapabilityAssemblyBoundaryAnalyzer()));
-        Assert.Equal(2, (await Analyze(Compile("GameFrameX.Hotfix", source, ContractReferences), new CapabilityAssemblyBoundaryAnalyzer())).Length);
+        Assert.Single(await Analyze(Compile("GameFrameX.Capability.Online.Social", source, ContractReferences), new CapabilityAssemblyBoundaryAnalyzer()));
     }
 
     [Theory]
-    [InlineData("CapabilityAssembly", 0)]
-    [InlineData("ArbitraryHelper", 2)]
-    public async Task Hosting_assembly_scan_entry_can_delegate_to_builder(string type, int diagnosticCount)
+    [InlineData("GameFrameX.Capability.Hosting.Core")]
+    [InlineData("GameFrameX.Capability.Hosting.AdminApi")]
+    public async Task Mechanism_assemblies_own_their_api_surface(string mechanism)
     {
-        var source = $$"""
-            namespace GameFrameX.Capability.Hosting.Core
-            {
-                public class CapabilityHostBuilder
-                {
-                    public void AddModule(object value) { }
-                    public void Build(object value) { }
-                }
-                public class {{type}}
-                {
-                    public void Run(CapabilityHostBuilder builder)
-                    {
-                        builder.AddModule(null);
-                        builder.Build(null);
-                    }
-                }
-            }
-            """;
-        Assert.Equal(diagnosticCount, (await Analyze(Compile("GameFrameX.Capability.Hosting.Core", source),
-            new CapabilityAssemblyBoundaryAnalyzer())).Length);
+        var compilation = Compile(mechanism, RegistrationSource + BridgeConsumerSource, HostingAbstractionsReference);
+        Assert.Empty(await Analyze(compilation, new CapabilityAssemblyBoundaryAnalyzer()));
     }
+
+    [Theory]
+    [InlineData("GameFrameX.Tests")]
+    [InlineData("GameFrameX.Hotfix.Tests")]
+    public async Task Test_fixtures_may_exercise_every_phase(string consumer)
+    {
+        var compilation = Compile(consumer, RegistrationSource + BridgeConsumerSource + HostCompositionSource, ContractReferences);
+        Assert.Empty(await Analyze(compilation, new CapabilityAssemblyBoundaryAnalyzer()));
+    }
+
+    private const string BridgeConsumerSource = """
+        public class BridgeAdapter
+        {
+            public void Run(GameFrameX.Capability.Hosting.Abstractions.CapabilityActivationContext context)
+            {
+                context.Bridges.Publish<IFixtureContract>(null);
+                GameFrameX.Capability.Hosting.Abstractions.CapabilityBridge<IFixtureContract>.TryAcquire(out var lease);
+                GameFrameX.Capability.Hosting.Abstractions.CapabilityHook<IFixtureHook>.Attach(new FixtureHook());
+            }
+        }
+        public interface IFixtureContract { }
+        """;
+
+    private const string HostCompositionSource = """
+        public class CompositionEntry
+        {
+            public void Run(GameFrameX.Capability.Hosting.Core.CapabilityCompositionOptions options)
+            {
+                options.Configure<FixtureOptions>(configured => { });
+                options.Override<IFixtureContract>(resolver => null);
+                options.SetAdminApiPlaneFactory(null);
+            }
+        }
+        """;
+
+    private static readonly MetadataReference[] HostingAbstractionsReference =
+    {
+        MetadataReference.CreateFromFile(typeof(CapabilityRegistrationContext).Assembly.Location)
+    };
 
     [Fact]
     public async Task Generic_registration_delegate_is_also_checked()
@@ -364,11 +505,11 @@ public sealed class CapabilityBoundaryAnalyzerTests
             using GameFrameX.Capability.Hosting.Abstractions;
             public class Wiring
             {
-                public Action<object> Capture(CapabilityRegistrationContext context) => context.AddService<object>;
+                public Func<object> Capture(CapabilityRegistrationContext context) => context.GetService<object>;
             }
             """;
         var diagnostic = Assert.Single(await Analyze(Compile("GameFrameX.Hotfix", source, ContractReferences), new CapabilityAssemblyBoundaryAnalyzer()));
-        Assert.Equal("context.AddService<object>", diagnostic.Location.SourceTree.GetText().ToString(diagnostic.Location.SourceSpan));
+        Assert.Equal("context.GetService<object>", diagnostic.Location.SourceTree.GetText().ToString(diagnostic.Location.SourceSpan));
     }
 
     [Fact]
@@ -378,34 +519,45 @@ public sealed class CapabilityBoundaryAnalyzerTests
             // <auto-generated/>
             public class GeneratedAdapter
             {
-                public void Run() => GameFrameX.Capability.Online.Abstractions.Bridges.OnlineMatchDomainBridgeHolder.Retract();
+                public void Run() => GameFrameX.Capability.Hosting.Abstractions.CapabilityBridge<IFixtureContract>.TryAcquire(out _);
             }
+            public interface IFixtureContract { }
             """;
-        Assert.Single(await Analyze(Compile("GameFrameX.Hotfix", source, ContractReferences), new CapabilityAssemblyBoundaryAnalyzer()));
+        Assert.Single(await Analyze(Compile("GameFrameX.Launcher", source, ContractReferences), new CapabilityAssemblyBoundaryAnalyzer()));
     }
 
     [Fact]
     public async Task Same_named_methods_and_fake_framework_types_are_not_matched()
     {
         var source = """
-            namespace GameFrameX.Capability.Online.Abstractions.Bridges
-            {
-                public static class OnlineFriendDomainBridgeHolder
-                {
-                    public static void Publish() { }
-                    public static void Retract() { }
-                }
-            }
             namespace GameFrameX.Capability.Hosting.Abstractions
             {
                 public class CapabilityRegistrationContext { public void AddService<T>(T value) { } }
+                public sealed class CapabilityBridgePublisher { public void Publish<TContract>(TContract contract) { } }
+                public class CapabilityActivationContext { public CapabilityBridgePublisher Bridges { get; } }
+                public static class CapabilityBridge<TContract> { public static bool TryAcquire(out object lease) { lease = null; return false; } }
+                public static class CapabilityHook<TContract> { public static object Attach(TContract implementation) => null; }
+            }
+            namespace GameFrameX.Capability.Hosting.Core
+            {
+                public sealed class CapabilityCompositionOptions
+                {
+                    public void Configure<TOptions>(System.Action<TOptions> configure) { }
+                    public void Override<TService>(TService instance) { }
+                }
             }
             public class Normal
             {
-                public void Run()
+                public void Run(GameFrameX.Capability.Hosting.Abstractions.CapabilityActivationContext context)
                 {
-                    GameFrameX.Capability.Online.Abstractions.Bridges.OnlineFriendDomainBridgeHolder.Publish();
-                    new GameFrameX.Capability.Hosting.Abstractions.CapabilityRegistrationContext().AddService(1);
+                    context.Bridges.Publish<object>(null);
+                    GameFrameX.Capability.Hosting.Abstractions.CapabilityRegistrationContext capture = null;
+                    capture.AddService(1);
+                    GameFrameX.Capability.Hosting.Abstractions.CapabilityBridge<object>.TryAcquire(out _);
+                    GameFrameX.Capability.Hosting.Abstractions.CapabilityHook<object>.Attach(null);
+                    GameFrameX.Capability.Hosting.Core.CapabilityCompositionOptions options = null;
+                    options.Configure<object>(configured => { });
+                    options.Override(new object());
                 }
             }
             """;

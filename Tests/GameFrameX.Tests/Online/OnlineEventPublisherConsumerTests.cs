@@ -27,7 +27,9 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using System;
 using System.Collections.Generic;
+using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Foundation.Idempotency;
 using GameFrameX.Capability.Online.Abstractions.Events;
 using Xunit;
@@ -35,11 +37,30 @@ using Xunit;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// OnlineEventPublisher / OnlineEventConsumer 事件发布与消费去重基座测试（Foundation InMemory 传输；
-    /// 同一 EventId 投递两次只处理一次）。
+    /// OnlineEventPublisher / OnlineEventConsumer 事件发布与消费去重基座测试（C294：发布基座委托机制事件发布口
+    /// <see cref="ICapabilityEventPublisher"/>，主题 = EventType、载荷 = OnlineEvent 原件；同一 EventId 投递两次只处理一次）。
     /// </summary>
     public class OnlineEventPublisherConsumerTests
     {
+        /// <summary>
+        /// 机制事件发布口记录桩（按发布序记录主题与载荷，供断言委托口径；不做分发）。
+        /// </summary>
+        private sealed class RecordingCapabilityEventPublisher : ICapabilityEventPublisher
+        {
+            /// <summary>已发布主题（发布序）。</summary>
+            public readonly List<string> Topics = new();
+
+            /// <summary>已发布载荷（发布序，装箱原件）。</summary>
+            public readonly List<object> Payloads = new();
+
+            /// <inheritdoc />
+            public void Publish<TEvent>(string topic, TEvent eventPayload)
+            {
+                Topics.Add(topic);
+                Payloads.Add(eventPayload);
+            }
+        }
+
         /// <summary>
         /// 构造完整 Online 事件样本。
         /// </summary>
@@ -62,31 +83,63 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证经发布契约发布的事件以 Foundation 信封形态到达订阅方，作用域经稳定键承载。
+        /// 验证经发布契约发布的事件原样委托机制发布口：主题 = 事件类型字符串，载荷 = 同一 OnlineEvent 实例（作用域字段随载荷承载）。
         /// </summary>
         [Fact]
-        public async Task PublishAsync_ShouldDeliverEnvelopeWithScopeAttributes()
+        public void PublishAsync_ShouldDelegateToCapabilityPublisherWithEventTypeAsTopic()
         {
             // Arrange
-            var delivered = new List<EventEnvelope>();
-            var transport = new InMemoryEventPublisher();
-            transport.Subscribe(delegate (EventEnvelope envelope)
-            {
-                delivered.Add(envelope);
-            });
+            var transport = new RecordingCapabilityEventPublisher();
             IOnlineEventPublisher publisher = new OnlineEventPublisher(transport);
+            var onlineEvent = CreateSampleEvent();
 
             // Act
-            await publisher.PublishAsync(CreateSampleEvent());
+            publisher.PublishAsync(onlineEvent).GetAwaiter().GetResult();
 
             // Assert
-            var envelope = Assert.Single(delivered);
-            Assert.Equal("evt-0004", envelope.EventId);
-            Assert.Equal("req-0004", envelope.CorrelationId);
-            Assert.Equal("1", envelope.Attributes[OnlineEventEnvelopeMapper.TenantAttributeKey]);
-            Assert.Equal("10", envelope.Attributes[OnlineEventEnvelopeMapper.AppAttributeKey]);
-            Assert.Equal("100", envelope.Attributes[OnlineEventEnvelopeMapper.ServerAttributeKey]);
-            Assert.Equal("10001", envelope.Attributes[OnlineEventEnvelopeMapper.PlayerAttributeKey]);
+            var topic = Assert.Single(transport.Topics);
+            Assert.Equal("online.session.kicked", topic);
+            Assert.Equal(onlineEvent.EventType, topic);
+            var payload = Assert.IsType<OnlineEvent>(Assert.Single(transport.Payloads));
+            Assert.Same(onlineEvent, payload);
+            Assert.Equal("evt-0004", payload.EventId);
+            Assert.Equal("req-0004", payload.CorrelationId);
+            Assert.Equal(1, payload.TenantId);
+            Assert.Equal(10, payload.AppId);
+            Assert.Equal(100, payload.ServerId);
+            Assert.Equal(10001, payload.PlayerId);
+        }
+
+        /// <summary>
+        /// 验证事件类型（即总线主题）为空时拒绝发布且不触达机制发布口（主题是订阅匹配键，空主题无法投递）。
+        /// </summary>
+        [Fact]
+        public void PublishAsync_WithEmptyEventType_ShouldThrowWithoutPublishing()
+        {
+            // Arrange
+            var transport = new RecordingCapabilityEventPublisher();
+            IOnlineEventPublisher publisher = new OnlineEventPublisher(transport);
+            var onlineEvent = CreateSampleEvent();
+            onlineEvent.EventType = " ";
+
+            // Act / Assert
+            Assert.Throws<ArgumentException>(() => publisher.PublishAsync(onlineEvent).GetAwaiter().GetResult());
+            Assert.Empty(transport.Topics);
+        }
+
+        /// <summary>
+        /// 验证空事件拒绝发布（业务方漏传事件属编程错误，显式失败）。
+        /// </summary>
+        [Fact]
+        public void PublishAsync_WithNullEvent_ShouldThrow()
+        {
+            // Arrange
+            var transport = new RecordingCapabilityEventPublisher();
+            IOnlineEventPublisher publisher = new OnlineEventPublisher(transport);
+
+            // Act / Assert
+            Assert.Throws<ArgumentNullException>(() => publisher.PublishAsync(null).GetAwaiter().GetResult());
+            Assert.Empty(transport.Topics);
         }
 
         /// <summary>

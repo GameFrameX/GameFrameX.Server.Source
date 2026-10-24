@@ -48,16 +48,16 @@ using GameFrameX.Capability.Online.Abstractions.Events;
 public static class OnlineChatEvents
 {
     /// <summary>消息发送。</summary>
-    public const string MessageSent = "Online.Chat.MessageSent";
+    public const string MessageSent = "online.chat.messagesent";
 
     /// <summary>消息撤回。</summary>
-    public const string MessageRecalled = "Online.Chat.MessageRecalled";
+    public const string MessageRecalled = "online.chat.messagerecalled";
 
     /// <summary>已读位点更新。</summary>
-    public const string ReadMarkUpdated = "Online.Chat.ReadMarkUpdated";
+    public const string ReadMarkUpdated = "online.chat.readmarkupdated";
 
     /// <summary>内容审核插件执行失败（放行留痕）。</summary>
-    public const string ModerationFailed = "Online.Chat.ModerationFailed";
+    public const string ModerationFailed = "online.chat.moderationfailed";
 
     /// <summary>事件来源标识。</summary>
     public const string Source = "online-chat";

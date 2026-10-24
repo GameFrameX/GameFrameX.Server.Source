@@ -71,4 +71,11 @@
       <ProjectReference Include="..\..\GameFrameX.Client\GameFrameX.Client.csproj" />
     </ItemGroup>
 
+    <!-- 机制层测试族发现面（C294）：把测试程序集复制为部署命名约定形态
+         GameFrameX.Tests.CapabilityStubs.dll —— 机制按 {前缀}.*.dll 圈定扫描面后按程序集标识
+         解析回本测试程序集，使测试桩能力模块可经 Compose 真实装配路径被发现。 -->
+    <Target Name="CopyTestAssemblyAsCapabilityStubs" AfterTargets="Build">
+      <Copy SourceFiles="$(TargetPath)" DestinationFiles="$(OutDir)GameFrameX.Tests.CapabilityStubs.dll" SkipUnchangedFiles="true" />
+    </Target>
+
 </Project>

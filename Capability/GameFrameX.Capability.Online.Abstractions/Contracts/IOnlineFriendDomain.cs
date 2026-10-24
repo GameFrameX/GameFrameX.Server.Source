@@ -35,28 +35,29 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 好友域桥契约面：好友域全部协议行为的最小桥接契约，
-/// 供 Hotfix 协议面薄适配器经 <c>OnlineFriendDomainBridgeHolder</c> 进程内消费。
+/// 好友域桥契约面（C244，承接 C243 查询缝并扩展为全家族）：好友域全部协议行为的最小桥接契约，
+/// 供 Hotfix 协议面薄适配器经 <c>CapabilityBridge&lt;IOnlineFriendDomain&gt;</c> 进程内消费。
 /// <para>
 /// 维护约束：
 /// ① 定位一律以「玩家对」表达（协议面没有关系标识），关系标识编排归实现方（Social 域面）；
 /// ② 作用域三元组由组合根授权作用域供给，玩家位由请求主体（会话绑定身份）填充，
 /// 客户端字段一律不可覆盖；
 /// ③ <see cref="EstablishAsync"/> 承载旧 120 域「直接添加」语义的兼容适配
-///（申请 + 立即接受，含「对方有待答申请时等价于本人接受」的收敛）；
+///（申请 + 立即接受，含「对方有待答申请时等价于本人接受」的收敛），是 T2 裁定 R3 的唯一实现点；
 /// ④ 答复 / 解除的前置判定（无待答申请 / 非好友）由本契约以
 /// <see cref="OnlineErrorCode.ResourceNotFound"/> 显式失败表达，适配层据此映射旧错误码。
 /// </para>
 /// </summary>
 /// <remarks>
-/// The friend-domain bridge contract face:
-/// the Hotfix protocol thin adapter through <c>OnlineFriendDomainBridgeHolder</c>. Locating is always
+/// The friend-domain bridge contract face (C244, extending the C243 query seam into the full family):
+/// the minimal bridging contract for every friend-domain protocol behaviour, consumed in-process by
+/// the Hotfix protocol thin adapter through <c>CapabilityBridge&lt;IOnlineFriendDomain&gt;</c>. Locating is always
 /// expressed as player pairs (the protocol face carries no friendship ids — id orchestration belongs
 /// to the implementing face); the scope triple comes from the composition root's authorized scope,
 /// the player position is filled with the requesting session identity, and client-supplied fields can
 /// never override either. <see cref="EstablishAsync"/> carries the compatible adaptation of the
 /// legacy domain-120 "direct add" semantics (request + immediate accept, converging to "accepting
-/// their pending request" when one exists); the
+/// their pending request" when one exists) as the single implementation point of ruling R3; the
 /// answer/remove preconditions (no answerable request / not friends) surface as explicit
 /// <see cref="OnlineErrorCode.ResourceNotFound"/> failures for the adapter to map legacy codes from.
 /// </remarks>

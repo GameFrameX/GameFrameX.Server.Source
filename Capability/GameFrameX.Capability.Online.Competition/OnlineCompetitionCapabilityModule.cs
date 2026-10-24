@@ -14,7 +14,6 @@
 //   侵犯他人合法权益等法律法规所禁止的行为！
 //   or infringe upon the legal rights and interests of others, as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
-//   Any legal disputes or liabilities arising from secondary development based on this project
 //   本项目组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
@@ -28,6 +27,7 @@
 //  ==========================================================================================
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Hosting.AdminApi;
@@ -40,47 +40,41 @@ using GameFrameX.Capability.Online.Competition.Tournament;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Events;
 using GameFrameX.Capability.Online.Abstractions.Idempotency;
+using GameFrameX.Capability.Online.Abstractions.Scope;
 using GameFrameX.Capability.Online.Match;
-using GameFrameX.Foundation.Idempotency;
 
 namespace GameFrameX.Capability.Online.Competition;
 
 /// <summary>
-/// 竞技能力（榜单 / 赛季 / 锦标赛 / LiveOps 承载）的自装配模块。
+/// 竞技能力（榜单 / 赛季 / 锦标赛 / LiveOps 承载）的自装配模块（C294 迁入新机制三段生命周期）。
 /// <para>
 /// 维护约束（服务共享协议）：模块无参构造（扫描可发现）；<c>Register</c> 自装配本域——榜单 / 赛季 /
-/// 锦标赛三个 store 经 <see cref="CapabilityRegistrationContext.TryGetService{TService}"/> 探测替换缝，未命中构造
-/// InMemory 默认；赛季 / 锦标赛对发放服务（<see cref="OnlineGrantService"/>，assets 域产物）的依赖经上下文探测，
-/// 缺席（assets 能力被过滤）时不装配两者（壳时代 Seasons / Tournaments 置 null 的模块化等价）；对外产物
-/// （榜单 / 赛季 / 锦标赛服务与 LiveOps 注册表）注册回共享面。组合根预置
-/// <see cref="OnlineLeaderboardProjectionOptions"/>（board id 非空白）且对局结果存储（online-match 域产物）与幂等
-/// 服务探测命中时装配 Match.Settled 排行榜投影（订阅 + 失败重投 tick），未预置 / 依赖缺席不装配不报错
-/// （与赛季 / 锦标赛缺席装配同口径的模块化等价）。
+/// 锦标赛三个 store 以懒默认描述符注册（族 / 宿主覆盖恒胜出，模块不感知）；赛季 / 锦标赛对发放服务
+/// （<see cref="OnlineGrantService"/>，assets 域产物）的依赖经 manifest 可选声明 + GetOptionalService，
+/// 缺席（assets 能力被过滤）时不装配两者；对外产物（榜单 / 赛季 / 锦标赛服务与 LiveOps 注册表）注册回
+/// 共享面。<see cref="OnlineCompetitionOptions"/> 为唯一参数面（含榜单组件参数与 Match.Settled 投影配置，
+/// 后者收编族级键 <c>MatchBridgeLeaderboardId</c>）：投影榜 id 非空白且对局结果存储（online-match 可选产物）
+/// 在场时装配 Match.Settled 排行榜投影（机制总线订阅 + 失败重投 tick）；
+/// <c>ActivateAsync</c> 在投影榜 id 非空白时经榜单服务预建目标榜（查询-创建，见方法注释）。
 /// </para>
 /// </summary>
-/// <remarks>
-/// The self-assembling module of the competition capability (leaderboards, seasons, tournaments and the
-/// LiveOps registry). The module has a parameterless constructor (discoverable by
-/// scanning); <c>Register</c> self-assembles the domain — the leaderboard / season / tournament stores
-/// probe the replacement seams with in-memory fallbacks; the season / tournament services probe the grant
-/// service (an assets-domain product) through the context and stay unassembled when absent (the modular
-/// equivalent of the shell-era null seasons / tournaments); outward products are registered back into the
-/// shared face. A Match.Settled leaderboard projection (event-bus subscription plus a
-/// failure-retry tick job) is assembled when the composition root pre-seeds projection options with a
-/// non-blank board id and the match result store / idempotency service are probeable; otherwise it stays
-/// unassembled without error.
-/// </remarks>
 public sealed class OnlineCompetitionCapabilityModule : ICapabilityModule, IAdminActionContributor
 {
     /// <summary>
-    /// 竞技能力清单（Id 冻结 = 终态包名；action 集合与幂等包裹位逐字迁移自壳过渡模块；
-    /// 依赖追加 online-match——Match.Settled 投影真实依赖对局结果存储，Match 不引用 Competition，拓扑无环）。
+    /// 竞技能力清单（Id 冻结 = 终态包名；action 集合逐字迁移自壳过渡模块；可选依赖 online-assets / online-match
+    /// 经 <see cref="CapabilityOptionalDependency"/> 声明，缺席时披露对应缺失功能名）。
     /// </summary>
     public static readonly CapabilityManifest ManifestInstance = new(
         "online-competition",
         "1.0.0",
-        new[] { "publishRemoteConfig", "syncDeviceGroup", "syncScheduledTask", "pushAnnouncement", "syncPlayerSegment", "publishConfigRollout", "rollbackConfigRollout" },
-        new[] { "online-assets", "online-match" });
+        new[] { "publishRemoteConfig", "syncDeviceGroup", "syncScheduledTask", "pushAnnouncement", "syncPlayerSegment", "publishConfigRollout", "rollbackConfigRollout", "query_leaderboard" },
+        null,
+        new[]
+        {
+            new CapabilityOptionalDependency("online-assets", Localization.Keys.Capability.Online.Competition.OptionalAssetsAbsent),
+            new CapabilityOptionalDependency("online-match", Localization.Keys.Capability.Online.Competition.OptionalMatchAbsent),
+        },
+        typeof(OnlineCompetitionOptions));
 
     /// <summary>
     /// LiveOps 注册表（Register 期构造；admin 面 handler 取用）。
@@ -88,14 +82,19 @@ public sealed class OnlineCompetitionCapabilityModule : ICapabilityModule, IAdmi
     private OnlineLiveOpsRegistry _liveOps;
 
     /// <summary>
-    /// 排行榜服务（Register 期构造；admin 面 handler 与投影链取用）。
+    /// 排行榜服务（Register 期构造；admin 面 handler、投影链与激活期榜单预建取用）。
     /// </summary>
     private OnlineLeaderboardService _leaderboards;
 
     /// <summary>
-    /// Match.Settled 排行榜投影器（Register 期探测装配；未预置投影选项或依赖缺席时为 null）。
+    /// Match.Settled 排行榜投影器（Register 期装配；投影配置空白或 online-match 缺席时为 null）。
     /// </summary>
     private OnlineMatchSettledLeaderboardProjector _projectionProjector;
+
+    /// <summary>
+    /// Match.Settled 投影目标榜单标识（Register 期从 Options 读出；空白 = 不投影不预建；ActivateAsync 预建判据）。
+    /// </summary>
+    private string _projectionBoardId;
 
     /// <inheritdoc />
     public CapabilityManifest Manifest
@@ -106,55 +105,87 @@ public sealed class OnlineCompetitionCapabilityModule : ICapabilityModule, IAdmi
     /// <inheritdoc />
     public void Register(CapabilityRegistrationContext context)
     {
+        var options = context.GetOptions<OnlineCompetitionOptions>();
         var eventPublisher = context.GetService<IOnlineEventPublisher>();
-        var leaderboardStore = ResolveStore<IOnlineLeaderboardStore>(context, static () => new InMemoryOnlineLeaderboardStore());
-        var seasonStore = ResolveStore<IOnlineSeasonStore>(context, static () => new InMemoryOnlineSeasonStore());
-        var tournamentStore = ResolveStore<IOnlineTournamentStore>(context, static () => new InMemoryOnlineTournamentStore());
 
-        var leaderboards = new OnlineLeaderboardService(leaderboardStore, null, eventPublisher);
+        // 三 store 懒默认描述符（族 / 宿主覆盖恒胜出；GetService 命中覆盖或本默认）。
+        context.AddService<IOnlineLeaderboardStore>(static _ => new InMemoryOnlineLeaderboardStore());
+        var leaderboardStore = context.GetService<IOnlineLeaderboardStore>();
+        context.AddService<IOnlineSeasonStore>(static _ => new InMemoryOnlineSeasonStore());
+        var seasonStore = context.GetService<IOnlineSeasonStore>();
+        context.AddService<IOnlineTournamentStore>(static _ => new InMemoryOnlineTournamentStore());
+        var tournamentStore = context.GetService<IOnlineTournamentStore>();
+
+        var leaderboards = new OnlineLeaderboardService(leaderboardStore, options.Leaderboard, eventPublisher);
         _leaderboards = leaderboards;
         context.AddService(leaderboards);
 
         _liveOps = new OnlineLiveOpsRegistry();
         context.AddService(_liveOps);
 
-        if (context.TryGetService(out OnlineGrantService grantService))
+        // 发放服务（assets 域可选产物）：在场才装配赛季 / 锦标赛（壳时代 Seasons / Tournaments 置 null 的模块化等价）。
+        var grantService = context.GetOptionalService<OnlineGrantService>();
+        if (grantService != null)
         {
             context.AddService(new OnlineSeasonService(seasonStore, leaderboards, grantService, eventPublisher));
             context.AddService(new OnlineTournamentService(tournamentStore, leaderboards, grantService, eventPublisher));
         }
 
-        // Match.Settled → 排行榜投影：组合根预置 OnlineLeaderboardProjectionOptions（board id 空白 = 不投影）
-        // 且对局结果存储 / 幂等服务探测命中才装配；订阅事件总线同步投影（异常吞掉不阻断分发——Operations 审计桥先例），
-        // 失败经 tick job leaderboard-projection-retry 重投；结果存储未命中（online-match 被过滤）→ 不装配不报错
-        // （模块化等价先例 = 赛季 / 锦标赛对发放服务的缺席装配）。
-        var projectionOptions = context.TryGetService(out OnlineLeaderboardProjectionOptions projectionOptionsValue) ? projectionOptionsValue : null;
-        if (projectionOptions != null
-            && !string.IsNullOrWhiteSpace(projectionOptions.MatchSettledBoardId)
-            && context.TryGetService(out IOnlineMatchResultStore projectionResultStore)
-            && context.TryGetService(out OnlineIdempotencyService projectionIdempotency))
+        // Match.Settled → 排行榜投影：Options 投影榜 id 非空白（空白 = 不投影）且对局结果存储在场
+        // （online-match 被过滤 → 不装配不报错）才装配；订阅走机制事件总线（Register 期声明，
+        // 单个订阅体异常由机制记日志后继续分发，业务侧不再自行吞异常），失败经 tick job 重投。
+        _projectionBoardId = options.LeaderboardProjection.MatchSettledBoardId;
+        var projectionResultStore = context.GetOptionalService<IOnlineMatchResultStore>();
+        if (!string.IsNullOrWhiteSpace(_projectionBoardId) && projectionResultStore != null)
         {
-            _projectionProjector = new OnlineMatchSettledLeaderboardProjector(projectionResultStore, leaderboards, projectionIdempotency, projectionOptions.MatchSettledBoardId);
-            context.AddService(_projectionProjector);
-            var projectionEventBus = context.GetService<InMemoryEventPublisher>();
-            projectionEventBus.Subscribe(envelope =>
-            {
-                try
-                {
-                    var onlineEvent = OnlineEventEnvelopeMapper.FromEnvelope(envelope);
-                    if (onlineEvent.EventType == OnlineMatchRuntimeEvents.MatchSettled)
-                    {
-                        _projectionProjector.HandleEventAsync(onlineEvent).GetAwaiter().GetResult();
-                    }
-                }
-                catch (Exception)
-                {
-                    // 投影订阅体异常不得阻断业务事件分发（InMemoryEventPublisher 异常策略是向上传播，
-                    // 此处吞掉；失败已由投影器记待重试，经 QueryStatus / admin 查询面可观测）。
-                }
-            });
-            context.AddTickJob("leaderboard-projection-retry", ct => _projectionProjector.RetryPendingAsync(ct));
+            var projectionIdempotency = context.GetService<OnlineIdempotencyService>();
+            var projector = new OnlineMatchSettledLeaderboardProjector(projectionResultStore, leaderboards, projectionIdempotency, _projectionBoardId);
+            _projectionProjector = projector;
+            context.AddService(projector);
+            context.Subscribe<OnlineEvent>(OnlineMatchRuntimeEvents.MatchSettled, onlineEvent => _projectionProjector.HandleEventAsync(onlineEvent).GetAwaiter().GetResult());
+            context.AddTickJob("leaderboard-projection-retry", cancellationToken => _projectionProjector.RetryPendingAsync(cancellationToken));
         }
+    }
+
+    /// <inheritdoc />
+    public async Task ActivateAsync(CapabilityActivationContext context, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(_projectionBoardId))
+        {
+            return;
+        }
+
+        // 榜单预建（迁自 Launcher OnlineMatchBridgeWiring.EnsureMatchLeaderboardBoardAsync）：投影目标榜
+        // 查询-创建——GetTop 探针命中即已存在；ResourceNotFound 视作首建，按 Sum / Descending 创建；
+        // 其余失败码或创建失败 = 激活失败（抛 InvalidOperationException 由机制逆序回滚）。
+        var scope = context.Services.GetService<OnlineScope>();
+        var probe = await _leaderboards.GetTopAsync(scope, new OnlineLeaderboardTopQuery { LeaderboardId = _projectionBoardId, Count = 1, }, cancellationToken).ConfigureAwait(false);
+        if (probe.IsSuccess)
+        {
+            return;
+        }
+
+        if (probe.Code != OnlineErrorCode.ResourceNotFound)
+        {
+            throw new InvalidOperationException("Leaderboard pre-build probe failed for board '" + _projectionBoardId + "' (code: " + probe.Code + ").");
+        }
+
+        var created = await _leaderboards.CreateAsync(scope, new OnlineLeaderboardCreateRequest
+        {
+            LeaderboardId = _projectionBoardId,
+            SortOrder = OnlineLeaderboardSortOrder.Descending,
+            ScoreUpdatePolicy = OnlineLeaderboardScoreUpdatePolicy.Sum,
+        }, 0, cancellationToken).ConfigureAwait(false);
+        if (!created.IsSuccess)
+        {
+            throw new InvalidOperationException("Leaderboard pre-build create failed for board '" + _projectionBoardId + "' (code: " + created.Code + ").");
+        }
+    }
+
+    /// <inheritdoc />
+    public Task DeactivateAsync(CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
     }
 
     /// <inheritdoc />
@@ -162,25 +193,5 @@ public sealed class OnlineCompetitionCapabilityModule : ICapabilityModule, IAdmi
     {
         OnlineAdminLiveOpsHandlers.RegisterLiveOps(registry, _liveOps);
         OnlineAdminLeaderboardHandlers.RegisterLeaderboardQuery(registry, _leaderboards);
-    }
-
-    /// <summary>
-    /// 解析存储（替换缝探测——命中用组合根注入实例，未命中构造 InMemory 默认并注册回共享面）。
-    /// </summary>
-    /// <typeparam name="TStore">存储接口。</typeparam>
-    /// <param name="context">注册上下文。</param>
-    /// <param name="defaultFactory">默认构造。</param>
-    /// <returns>存储实例。</returns>
-    private static TStore ResolveStore<TStore>(CapabilityRegistrationContext context, Func<TStore> defaultFactory)
-        where TStore : class
-    {
-        if (context.TryGetService(out TStore store))
-        {
-            return store;
-        }
-
-        store = defaultFactory();
-        context.AddService(store);
-        return store;
     }
 }

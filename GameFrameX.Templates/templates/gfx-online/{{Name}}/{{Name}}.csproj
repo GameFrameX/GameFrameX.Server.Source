@@ -10,9 +10,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <!-- 引啥装配啥（编译期保证）：本工程只引用所选能力包；机制面（Hosting 三件 / Online.Abstractions /
-             Foundation.Idempotency NuGet）经 Online.Foundation 传递获得。增减能力 = 增减 ProjectReference
-             并在 Program.cs 同步增减 AddOnlineXxxRuntime 装配语句（两者必须成对）。 -->
+        <!-- 引啥装配啥（编译期保证）：Compose 按部署前缀扫描能力包，本工程只引用所选能力包，引用集即装配集
+             （机制面 Hosting 三件 / Online.Abstractions 经 Online.Foundation 传递获得）。增减能力 = 只增删
+             ProjectReference，Program.cs 无按包装配代码。 -->
         <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Foundation\GameFrameX.Capability.Online.Foundation.csproj"/>
         <!--#if (Assets)-->
         <ProjectReference Include="..\Capability\GameFrameX.Capability.Online.Assets\GameFrameX.Capability.Online.Assets.csproj"/>

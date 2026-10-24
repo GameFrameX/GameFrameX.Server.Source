@@ -421,7 +421,7 @@ namespace GameFrameX.Tests.Online
             public async Task PlayToSettlingAsync()
             {
                 var matchStore = new InMemoryOnlineMatchActorStore();
-                var runtime = new OnlineMatchRuntime(matchStore, Recorder);
+                var runtime = new OnlineMatchRuntime(matchStore, Recorder, new OnlineMatchRuntimeOptions());
                 runtime.RegisterGame(new OnlineRockPaperScissorsGame());
                 Settlement = new OnlineMatchSettlementService(runtime, ResultStore, Recorder);
 

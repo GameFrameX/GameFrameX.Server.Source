@@ -534,9 +534,9 @@ docker compose down
 
 #### Online 平台管理 API
 
-當 `IsEnableOnlineAdmin=true` 時，Game 程序會組裝 Online Runtime（程序內能力庫：基於記憶體儲存的資產 / 工作階段 / 配對 / 社交 / LiveOps 服務），並在獨立的 Kestrel 監聽器上暴露管理 HTTP API：
+當 `Online.EnableAdminApi=true`（且目前 Role 在 `Online.EnableRoles` 內）時，程序經 `CapabilityComposition.Compose` 組合 Online 能力族（程序內能力庫：預設基於記憶體儲存的資產 / 工作階段 / 配對 / 社交 / LiveOps 服務），並在獨立的 Kestrel 監聽器上暴露管理 HTTP API：
 
-- 端點：`POST http://<server-host>:28090/online/admin/{action}`（全部 33 個管理動作 + `list_capabilities` 元端點，HTTP 狀態碼恆為 200；業務結果透過內層封套 `Code` 傳回）
+- 端點：`POST http://<server-host>:28090/online/admin/{action}`（全部 35 個管理動作 + `list_capabilities` / `list_capability_services` / `list_capability_settings` 元端點，HTTP 狀態碼恆為 200；業務結果透過內層封套 `Code` 傳回）
 - 作用域三元組：每個請求攜帶 `TenantId` / `AppId` / `ServerId`；與授權的 `OnlineTenantId` / `OnlineAppId` / `ServerId` 不匹配的請求分別以 3002/3003/3004 拒絕，缺少三元組則以 3005 拒絕
 - 在 GameFrameX Admin 控制檯註冊伺服器：將區服的 `HttpManageUrl` 指向 `http://<server-host>:28090`（`online/admin` 前綴與動作名由 Admin 客戶端依其線路約定附加）
 

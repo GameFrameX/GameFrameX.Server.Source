@@ -33,85 +33,38 @@ using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Hosting.Core;
-using GameFrameX.Capability.Online.Abstractions.Events;
-using GameFrameX.Capability.Online.Abstractions.Idempotency;
+using GameFrameX.Capability.Online.Abstractions;
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Scope;
-using GameFrameX.Capability.Online.Foundation.Session;
+using GameFrameX.Capability.Online.Operations.HotfixRollback;
 using GameFrameX.Capability.Online.Social;
-using GameFrameX.Launcher.Online;
 using Xunit;
 
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 好友最小消费链装配测试：OnlineFriendService 经模块自装配注册回共享面、
-    /// store 替换缝与 directory / presence 通用缝生效、好友请求过期清扫滴答 job 与查询共用同一状态来源、
-    /// 真实组合根（AddOnlineCapabilities）可解析、宿主启停驱动清扫、清扫失败 containment 与错误配置行为。
+    /// 好友最小消费链装配测试（C242，C294 改写为真实族组合）：OnlineFriendService 经 Social 模块自装配注册回共享面、
+    /// store 替换缝（宿主 Override）与 directory / presence 扩展点生效、好友请求过期清扫滴答 job 与查询共用同一状态来源、
+    /// 宿主启停驱动清扫、清扫失败 containment 与白名单排除 Social 的缺席行为。
+    /// <para>好友请求 / 接受 / 过期均发布事件——事件总线 Activate 前拒绝发布，故涉及写路径的用例先启动业务面。</para>
     /// </summary>
+    [Collection(CapabilityRuntimeCollection.Name)]
     public class OnlineFriendConsumptionChainAssemblyTests
     {
-        /// <summary>测试用租户标识（与组合根授权作用域一致）。</summary>
-        private const long TenantId = 1;
+        /// <summary>测试用租户标识（与族配置段授权作用域一致）。</summary>
+        private const long TenantId = OnlineCapabilityTestHarness.TenantId;
 
         /// <summary>测试用应用标识。</summary>
-        private const long AppId = 1;
+        private const long AppId = OnlineCapabilityTestHarness.AppId;
 
-        /// <summary>测试用区服标识（与组合根授权作用域一致）。</summary>
-        private const long ServerId = 1001;
+        /// <summary>测试用区服标识（与族配置段授权作用域一致）。</summary>
+        private const long ServerId = OnlineCapabilityTestHarness.ServerId;
 
         /// <summary>测试用玩家一标识（请求发起方）。</summary>
         private const long PlayerOne = 1001;
 
         /// <summary>测试用玩家二标识（被请求方）。</summary>
         private const long PlayerTwo = 1002;
-
-        /// <summary>
-        /// 最小组合根（AddOnlineSocialRuntime 装配路径所需的预置：作用域 + 事件出口 + 幂等 + Foundation 会话面）。
-        /// </summary>
-        /// <returns>装配器。</returns>
-        private static CapabilityHostBuilder MinimalRoot()
-        {
-            var builder = new CapabilityHostBuilder();
-            builder.UseService(new OnlineScope(TenantId, AppId, ServerId));
-            var eventPublisher = new OnlineEventPublisher(new GameFrameX.Foundation.Idempotency.InMemoryEventPublisher());
-            builder.UseService<IOnlineEventPublisher>(eventPublisher);
-            builder.UseService(new OnlineIdempotencyService(new GameFrameX.Foundation.Idempotency.IdempotencyCoordinator(
-                new GameFrameX.Foundation.Idempotency.InMemoryIdempotencyStore(),
-                GameFrameX.Foundation.Idempotency.SystemClock.Instance,
-                new GameFrameX.Foundation.Idempotency.IdempotencyOptions())));
-            var sessionStore = new InMemoryOnlineSessionStore();
-            builder.UseService<IOnlineSessionStore>(sessionStore);
-            builder.UseService(new OnlineSessionTokenService(sessionStore, eventPublisher));
-            builder.AddModule(new FoundationStubModule());
-            return builder;
-        }
-
-        /// <summary>
-        /// 构造合法宿主选项（作用域与测试常量一致）。
-        /// </summary>
-        /// <param name="schedulerIntervalMilliseconds">调度滴答间隔。</param>
-        /// <returns>宿主选项。</returns>
-        private static CapabilityHostOptions ValidOptions(int schedulerIntervalMilliseconds = 1000)
-        {
-            return new CapabilityHostOptions { TenantId = TenantId, AppId = AppId, ServerId = ServerId, SchedulerIntervalMilliseconds = schedulerIntervalMilliseconds };
-        }
-
-        /// <summary>
-        /// 构造真实组合根编排回调（业务闸单开；间隔与过滤器由用例覆写）。
-        /// </summary>
-        /// <param name="configure">用例追加的编排动作。</param>
-        /// <returns>组合回调。</returns>
-        private static Action<OnlineCapabilityCompositionOptions> Compose(Action<OnlineCapabilityCompositionOptions> configure = null)
-        {
-            return options =>
-            {
-                options.TenantId = TenantId;
-                options.AppId = AppId;
-                options.ServerId = ServerId;
-                options.EnableRuntime = true;
-                configure?.Invoke(options);
-            };
-        }
 
         /// <summary>
         /// 构造玩家作用域（作用域三元组与测试常量一致）。
@@ -121,6 +74,23 @@ namespace GameFrameX.Tests.Online
         private static OnlineScope CreatePlayerScope(long playerId)
         {
             return new OnlineScope(TenantId, AppId, ServerId, playerId);
+        }
+
+        /// <summary>
+        /// 构造自定义玩家目录的组合选项（不经挂具 CreateOptions——同键第二个 Override 即装配失败；
+        /// 热更回滚执行器仍以空操作桩满足 Operations 的宿主扩展点）。
+        /// </summary>
+        /// <param name="directory">玩家目录宿主实现。</param>
+        /// <returns>组合选项。</returns>
+        private static CapabilityCompositionOptions CreateOptionsWithDirectory(IOnlinePlayerDirectory directory)
+        {
+            var options = new CapabilityCompositionOptions(OnlineCapabilityTestHarness.FamilySection(), new CollectingCapabilityAssemblyLog())
+            {
+                HostOptions = new CapabilityHostOptions { TenantId = TenantId, AppId = AppId, ServerId = ServerId, },
+            };
+            options.Override<IOnlinePlayerDirectory>(directory);
+            options.Override<IOnlineHotfixRollbackExecutor>(new OnlineCapabilityTestHarness.NoopHotfixRollbackExecutor());
+            return options;
         }
 
         /// <summary>
@@ -176,178 +146,171 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 模块自装配把 OnlineFriendService 注册回共享面，且与共享面的好友存储同源
-        ///（服务写入的关系经共享面存储可见 = 查询与清扫同一状态来源）。
+        /// 真实族组合：共享面可解析 OnlineFriendService，服务写入与过期清扫共用同一存储实例
+        ///（服务写入 → 共享面存储可见 → 单轮 TickAsync 终结超期请求、未超期请求保持待答复）。
         /// </summary>
         [Fact]
-        public async Task MinimalRoot_RegistersFriendServiceIntoSharedFaceSharingStore()
+        public async Task Compose_ExposesFriendServiceWithSweepOnSameStore()
         {
-            var builder = MinimalRoot();
-            builder.AddOnlineSocialRuntime();
-            var host = builder.Build(ValidOptions());
+            await OnlineCapabilityTestHarness.WithRuntimeAsync(async runtime =>
+            {
+                var service = runtime.Host.Services.GetService<OnlineFriendService>();
+                var store = runtime.Host.Services.GetService<IOnlineFriendStore>();
+                Assert.NotNull(service);
+                Assert.IsType<InMemoryOnlineFriendStore>(store);
+                await runtime.Host.StartAsync();
 
-            var service = host.Services.GetService<OnlineFriendService>();
-            var store = host.Services.GetService<IOnlineFriendStore>();
-            Assert.NotNull(service);
-            Assert.NotNull(store);
+                var request = await service.RequestAsync(CreatePlayerScope(PlayerOne), PlayerTwo, "corr-2");
+                Assert.True(request.IsSuccess);
+                Assert.NotNull(await store.FindAsync(TenantId, AppId, PlayerOne, PlayerTwo));
 
-            var request = await service.RequestAsync(CreatePlayerScope(PlayerOne), PlayerTwo, "corr-1");
-            Assert.True(request.IsSuccess);
-            Assert.NotNull(await store.FindAsync(TenantId, AppId, PlayerOne, PlayerTwo));
+                await SeedExpiredRequestAsync(store, TenantId, AppId, PlayerTwo, PlayerOne + 10);
+                await runtime.Host.Scheduler.TickAsync();
+
+                var expired = await store.FindAsync(TenantId, AppId, PlayerTwo, PlayerOne + 10);
+                Assert.Equal(OnlineFriendshipState.Expired, expired.State);
+                var live = await store.FindAsync(TenantId, AppId, PlayerOne, PlayerTwo);
+                Assert.Equal(OnlineFriendshipState.Requested, live.State);
+            });
         }
 
         /// <summary>
-        /// UseOnlineFriendStore 替换缝：组合根预置实例被模块采用（共享面同实例），
+        /// 好友存储替换缝（宿主 Override）：预置实例胜出 Social 包内默认（共享面同实例），
         /// 过期清扫滴答 job 与服务使用同一条预置存储（单轮 TickAsync 即终结超期请求）。
         /// </summary>
         [Fact]
-        public async Task UseOnlineFriendStore_PreSeed_DrivesServiceAndSweepOnSameStateSource()
+        public async Task OverrideFriendStore_PreSeed_DrivesServiceAndSweepOnSameStateSource()
         {
             var preSeeded = new InMemoryOnlineFriendStore();
             await SeedExpiredRequestAsync(preSeeded, TenantId, AppId, PlayerOne, PlayerTwo);
 
-            var builder = MinimalRoot();
-            builder.UseOnlineFriendStore(preSeeded);
-            builder.AddOnlineSocialRuntime();
-            var host = builder.Build(ValidOptions());
+            await OnlineCapabilityTestHarness.WithRuntimeAsync(async runtime =>
+            {
+                Assert.Same(preSeeded, runtime.Host.Services.GetService<IOnlineFriendStore>());
+                await runtime.Host.StartAsync();
 
-            Assert.Same(preSeeded, host.Services.GetService<IOnlineFriendStore>());
+                var service = runtime.Host.Services.GetService<OnlineFriendService>();
+                var request = await service.RequestAsync(CreatePlayerScope(PlayerTwo), PlayerOne + 10);
+                Assert.True(request.IsSuccess);
+                Assert.NotNull(await preSeeded.FindAsync(TenantId, AppId, PlayerTwo, PlayerOne + 10));
 
-            var service = host.Services.GetService<OnlineFriendService>();
-            var request = await service.RequestAsync(CreatePlayerScope(PlayerTwo), PlayerOne + 10);
-            Assert.True(request.IsSuccess);
+                await runtime.Host.Scheduler.TickAsync();
 
-            await host.Scheduler.TickAsync();
-
-            var expired = await preSeeded.FindAsync(TenantId, AppId, PlayerOne, PlayerTwo);
-            Assert.Equal(OnlineFriendshipState.Expired, expired.State);
+                var expired = await preSeeded.FindAsync(TenantId, AppId, PlayerOne, PlayerTwo);
+                Assert.Equal(OnlineFriendshipState.Expired, expired.State);
+            }, null, options => options.Override<IOnlineFriendStore>(preSeeded));
         }
 
         /// <summary>
-        /// 未预置玩家目录（当前全仓无实现）：好友搜索降级为空结果——这是装配披露的边界
+        /// 空玩家目录（宿主扩展点以空实现满足）：好友搜索降级为空结果——这是装配披露的边界
         ///（空结果 ≠ 无匹配玩家，搜索能力缺席），不是可用的搜索功能。
         /// </summary>
         [Fact]
-        public async Task MinimalRoot_WithoutDirectory_SearchDegradesToEmpty()
+        public async Task EmptyDirectory_SearchDegradesToEmpty()
         {
-            var builder = MinimalRoot();
-            builder.AddOnlineSocialRuntime();
-            var host = builder.Build(ValidOptions());
+            await OnlineCapabilityTestHarness.WithRuntimeAsync(async runtime =>
+            {
+                var service = runtime.Host.Services.GetService<OnlineFriendService>();
+                var outcome = await service.SearchAsync(CreatePlayerScope(PlayerOne), "alice");
 
-            var service = host.Services.GetService<OnlineFriendService>();
-            var outcome = await service.SearchAsync(CreatePlayerScope(PlayerOne), "alice");
-
-            Assert.True(outcome.IsSuccess);
-            Assert.Empty(outcome.Data);
+                Assert.True(outcome.IsSuccess);
+                Assert.Empty(outcome.Data);
+            });
         }
 
         /// <summary>
-        /// 玩家目录与在线探针经既有 UseService 通用缝预置即被模块采用：
+        /// 玩家目录（宿主 Override）与在线探针（宿主 Override 胜出 Foundation 默认探针）被 Social 采用：
         /// 搜索返回目录条目、好友列表带展示名与在线事实——证明缺席是可注入的披露态而非隐藏失败。
         /// </summary>
         [Fact]
-        public async Task PreSeededDirectoryAndPresenceProbe_FeedFriendService()
+        public async Task OverriddenDirectoryAndPresenceProbe_FeedFriendService()
         {
             var directory = new StubPlayerDirectory();
             directory.Add(PlayerTwo, "alice");
             var probe = new StubPresenceProbe();
             probe.SetOnline(PlayerTwo);
+            var options = CreateOptionsWithDirectory(directory);
+            options.Override<IOnlineSocialPresenceProbe>(probe);
 
-            var builder = MinimalRoot();
-            builder.UseService<IOnlinePlayerDirectory>(directory);
-            builder.UseService<IOnlineSocialPresenceProbe>(probe);
-            builder.AddOnlineSocialRuntime();
-            var host = builder.Build(ValidOptions());
+            var runtime = CapabilityComposition.Compose(new OnlineCapabilityFamily(), options);
+            try
+            {
+                Assert.Same(probe, runtime.Host.Services.GetService<IOnlineSocialPresenceProbe>());
+                Assert.Same(directory, runtime.Host.Services.GetService<IOnlinePlayerDirectory>());
+                await runtime.Host.StartAsync();
 
-            var service = host.Services.GetService<OnlineFriendService>();
-            var search = await service.SearchAsync(CreatePlayerScope(PlayerOne), "ali");
-            Assert.True(search.IsSuccess);
-            var entry = Assert.Single(search.Data);
-            Assert.Equal(PlayerTwo, entry.PlayerId);
+                var service = runtime.Host.Services.GetService<OnlineFriendService>();
+                var search = await service.SearchAsync(CreatePlayerScope(PlayerOne), "ali");
+                Assert.True(search.IsSuccess);
+                var entry = Assert.Single(search.Data);
+                Assert.Equal(PlayerTwo, entry.PlayerId);
 
-            var request = await service.RequestAsync(CreatePlayerScope(PlayerOne), PlayerTwo);
-            Assert.True(request.IsSuccess);
-            var accepted = await service.AcceptAsync(CreatePlayerScope(PlayerTwo), request.Data.FriendshipId);
-            Assert.True(accepted.IsSuccess);
+                var request = await service.RequestAsync(CreatePlayerScope(PlayerOne), PlayerTwo);
+                Assert.True(request.IsSuccess);
+                var accepted = await service.AcceptAsync(CreatePlayerScope(PlayerTwo), request.Data.FriendshipId);
+                Assert.True(accepted.IsSuccess);
 
-            var friends = await service.ListFriendsAsync(CreatePlayerScope(PlayerOne));
-            Assert.True(friends.IsSuccess);
-            var summary = Assert.Single(friends.Data);
-            Assert.Equal("alice", summary.Name);
-            Assert.True(summary.Online);
+                var friends = await service.ListFriendsAsync(CreatePlayerScope(PlayerOne));
+                Assert.True(friends.IsSuccess);
+                var summary = Assert.Single(friends.Data);
+                Assert.Equal("alice", summary.Name);
+                Assert.True(summary.Online);
+            }
+            finally
+            {
+                await runtime.StopAsync();
+            }
         }
 
         /// <summary>
-        /// 清扫存储输入持续抛异常：当轮滴答失败被调度壳吞掉、循环继续，
+        /// 清扫存储输入持续抛异常：当轮滴答失败被调度壳逐 job 吞掉、循环继续，
         /// 宿主停机干净、服务查询面仍可用——异常 containment 的行为级可观测契约。
         /// </summary>
         [Fact]
         public async Task ThrowingFriendStore_SweepFailureContained_HostStaysRunnable()
         {
             var throwing = new ThrowingSweepFriendStore();
-            var builder = MinimalRoot();
-            builder.UseOnlineFriendStore(throwing);
-            builder.AddOnlineSocialRuntime();
-            var host = builder.Build(ValidOptions(100));
+            await OnlineCapabilityTestHarness.WithRuntimeAsync(async runtime =>
+            {
+                await runtime.Host.StartAsync();
+                var observedThrow = await UntilAsync(() => Task.FromResult(throwing.SweepInputFailures > 1), 5000);
+                await runtime.Host.StopAsync();
 
-            await host.StartAsync();
-            var observedThrow = await UntilAsync(() => Task.FromResult(throwing.SweepInputFailures > 0), 5000);
-            await host.StopAsync();
+                Assert.True(observedThrow);
+                Assert.True(throwing.SweepInputFailures >= 2);
 
-            Assert.True(observedThrow);
-            Assert.True(throwing.SweepInputFailures >= 1);
-
-            var service = host.Services.GetService<OnlineFriendService>();
-            var friends = await service.ListFriendsAsync(CreatePlayerScope(PlayerOne));
-            Assert.True(friends.IsSuccess);
-            Assert.Empty(friends.Data);
+                var service = runtime.Host.Services.GetService<OnlineFriendService>();
+                var friends = await service.ListFriendsAsync(CreatePlayerScope(PlayerOne));
+                Assert.True(friends.IsSuccess);
+                Assert.Empty(friends.Data);
+            }, null, options =>
+            {
+                options.HostOptions.SchedulerIntervalMilliseconds = 100;
+                options.Override<IOnlineFriendStore>(throwing);
+            });
         }
 
         /// <summary>
-        /// 真实组合根（AddOnlineCapabilities 业务闸）：Runtime 共享面可解析 OnlineFriendService，
-        /// 服务查询与过期清扫共用同一存储实例（服务写入 → 共享面存储可见 → 单轮 TickAsync 终结超期请求）。
-        /// </summary>
-        [Fact]
-        public async Task RealCompositionRoot_ExposesFriendServiceWithSweepOnSameStore()
-        {
-            var composition = OnlineCapabilityComposition.AddOnlineCapabilities(Compose());
-
-            var service = composition.Runtime.Services.GetService<OnlineFriendService>();
-            var store = composition.Runtime.Services.GetService<IOnlineFriendStore>();
-            Assert.NotNull(service);
-            Assert.NotNull(store);
-
-            var request = await service.RequestAsync(CreatePlayerScope(PlayerOne), PlayerTwo, "corr-2");
-            Assert.True(request.IsSuccess);
-            Assert.NotNull(await store.FindAsync(TenantId, AppId, PlayerOne, PlayerTwo));
-
-            await SeedExpiredRequestAsync(store, TenantId, AppId, PlayerTwo, PlayerOne + 10);
-            await composition.Runtime.Scheduler.TickAsync();
-
-            var expired = await store.FindAsync(TenantId, AppId, PlayerTwo, PlayerOne + 10);
-            Assert.Equal(OnlineFriendshipState.Expired, expired.State);
-            var live = await store.FindAsync(TenantId, AppId, PlayerOne, PlayerTwo);
-            Assert.Equal(OnlineFriendshipState.Requested, live.State);
-        }
-
-        /// <summary>
-        /// 清扫的作用域隔离：滴答 job 经组合根授权作用域锚定租户 / App——
+        /// 清扫的作用域隔离：滴答 job 经族基建授权作用域锚定租户 / App——
         /// 其余租户或 App 的超期请求不被本宿主触碰。
         /// </summary>
         [Fact]
-        public async Task RealCompositionRoot_SweepScopedToAuthorizedTenantAndApp()
+        public async Task Sweep_ScopedToAuthorizedTenantAndApp()
         {
-            var composition = OnlineCapabilityComposition.AddOnlineCapabilities(Compose());
-            var store = composition.Runtime.Services.GetService<IOnlineFriendStore>();
-            await SeedExpiredRequestAsync(store, TenantId, AppId, PlayerOne, PlayerTwo);
-            await SeedExpiredRequestAsync(store, TenantId + 1, AppId, PlayerOne, PlayerTwo);
-            await SeedExpiredRequestAsync(store, TenantId, AppId + 1, PlayerOne, PlayerTwo);
+            await OnlineCapabilityTestHarness.WithRuntimeAsync(async runtime =>
+            {
+                var store = runtime.Host.Services.GetService<IOnlineFriendStore>();
+                await SeedExpiredRequestAsync(store, TenantId, AppId, PlayerOne, PlayerTwo);
+                await SeedExpiredRequestAsync(store, TenantId + 1, AppId, PlayerOne, PlayerTwo);
+                await SeedExpiredRequestAsync(store, TenantId, AppId + 1, PlayerOne, PlayerTwo);
+                await runtime.Host.StartAsync();
 
-            await composition.Runtime.Scheduler.TickAsync();
+                await runtime.Host.Scheduler.TickAsync();
 
-            Assert.Equal(OnlineFriendshipState.Expired, (await store.FindAsync(TenantId, AppId, PlayerOne, PlayerTwo)).State);
-            Assert.Equal(OnlineFriendshipState.Requested, (await store.FindAsync(TenantId + 1, AppId, PlayerOne, PlayerTwo)).State);
-            Assert.Equal(OnlineFriendshipState.Requested, (await store.FindAsync(TenantId, AppId + 1, PlayerOne, PlayerTwo)).State);
+                Assert.Equal(OnlineFriendshipState.Expired, (await store.FindAsync(TenantId, AppId, PlayerOne, PlayerTwo)).State);
+                Assert.Equal(OnlineFriendshipState.Requested, (await store.FindAsync(TenantId + 1, AppId, PlayerOne, PlayerTwo)).State);
+                Assert.Equal(OnlineFriendshipState.Requested, (await store.FindAsync(TenantId, AppId + 1, PlayerOne, PlayerTwo)).State);
+            });
         }
 
         /// <summary>
@@ -355,52 +318,42 @@ namespace GameFrameX.Tests.Online
         /// StopAsync 后循环退出，新落的超期请求不再被终结。
         /// </summary>
         [Fact]
-        public async Task RealCompositionRoot_HostStartDrivesSweepAndStopHaltsIt()
+        public async Task HostStartDrivesSweepAndStopHaltsIt()
         {
-            var composition = OnlineCapabilityComposition.AddOnlineCapabilities(Compose(options => options.SchedulerIntervalMilliseconds = 100));
-            var store = composition.Runtime.Services.GetService<IOnlineFriendStore>();
-            var host = composition.Runtime;
+            await OnlineCapabilityTestHarness.WithRuntimeAsync(async runtime =>
+            {
+                var store = runtime.Host.Services.GetService<IOnlineFriendStore>();
 
-            await host.StartAsync();
-            await SeedExpiredRequestAsync(store, TenantId, AppId, PlayerOne, PlayerTwo);
-            var swept = await UntilAsync(async () => (await store.FindAsync(TenantId, AppId, PlayerOne, PlayerTwo))?.State == OnlineFriendshipState.Expired, 5000);
-            Assert.True(swept);
+                await runtime.Host.StartAsync();
+                await SeedExpiredRequestAsync(store, TenantId, AppId, PlayerOne, PlayerTwo);
+                var swept = await UntilAsync(async () => (await store.FindAsync(TenantId, AppId, PlayerOne, PlayerTwo))?.State == OnlineFriendshipState.Expired, 5000);
+                Assert.True(swept);
 
-            await host.StopAsync();
-            await SeedExpiredRequestAsync(store, TenantId, AppId, PlayerTwo, PlayerOne + 10);
-            await Task.Delay(600);
-            Assert.Equal(OnlineFriendshipState.Requested, (await store.FindAsync(TenantId, AppId, PlayerTwo, PlayerOne + 10)).State);
+                await runtime.Host.StopAsync();
+                await SeedExpiredRequestAsync(store, TenantId, AppId, PlayerTwo, PlayerOne + 10);
+                await Task.Delay(600);
+                Assert.Equal(OnlineFriendshipState.Requested, (await store.FindAsync(TenantId, AppId, PlayerTwo, PlayerOne + 10)).State);
+            }, null, options => options.HostOptions.SchedulerIntervalMilliseconds = 100);
         }
 
         /// <summary>
-        /// 错误配置行为：白名单未含 online-social（闭包完整，合法装配）时社交能力整体缺席，
-        /// 好友服务在共享面不可解析（GetService fail-fast / TryGetService miss），不返回伪实例。
+        /// 白名单仅含 online-foundation（闭包完整，合法装配）：社交能力整体缺席，
+        /// 好友服务在共享面不可解析（GetOptionalService 返回 null / GetService fail-fast），不返回伪实例。
         /// </summary>
         [Fact]
-        public void WhitelistExcludingSocial_FriendServiceAbsentFromSharedFace()
+        public async Task WhitelistExcludingSocial_FriendServiceAbsentFromSharedFace()
         {
-            var composition = OnlineCapabilityComposition.AddOnlineCapabilities(Compose(options => options.Capabilities = new[] { "online-foundation" }));
-
-            Assert.False(composition.Runtime.Services.TryGetService(out OnlineFriendService _));
-            Assert.Throws<InvalidOperationException>(() => composition.Runtime.Services.GetService<OnlineFriendService>());
-        }
-
-        /// <summary>
-        /// 地基占位模块（online-foundation 清单；Social 包闭包校验要求其在场）。
-        /// </summary>
-        private sealed class FoundationStubModule : ICapabilityModule
-        {
-            /// <inheritdoc />
-            public CapabilityManifest Manifest { get; } = new("online-foundation", "1.0.0", Array.Empty<string>());
-
-            /// <inheritdoc />
-            public void Register(CapabilityRegistrationContext context)
+            await OnlineCapabilityTestHarness.WithRuntimeAsync(runtime =>
             {
-            }
+                Assert.Equal(new[] { "online-foundation" }, runtime.Report.EnabledIdsInOrder);
+                Assert.Null(runtime.Host.Services.GetOptionalService<OnlineFriendService>());
+                Assert.Throws<InvalidOperationException>(() => runtime.Host.Services.GetService<OnlineFriendService>());
+                return Task.CompletedTask;
+            }, null, options => options.Filter = new CapabilityAssemblyFilter(new[] { "online-foundation" }));
         }
 
         /// <summary>
-        /// 玩家目录桩：按名称子串匹配。
+        /// 玩家目录桩：按名称子串匹配（宿主扩展点 <see cref="IOnlinePlayerDirectory"/> 的测试实现）。
         /// </summary>
         private sealed class StubPlayerDirectory : IOnlinePlayerDirectory
         {
@@ -465,7 +418,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 在线事实探针桩：白名单内玩家在线。
+        /// 在线事实探针桩：白名单内玩家在线（宿主 Override 胜出 Foundation 默认探针）。
         /// </summary>
         private sealed class StubPresenceProbe : IOnlineSocialPresenceProbe
         {
@@ -495,17 +448,23 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>
         /// 清扫输入持续抛异常的好友存储（其余面委托内层 InMemory）：
-        /// 驱动好友过期清扫失败路径的 containment 断言。
+        /// 驱动好友过期清扫失败路径的 containment 断言（失败计数跨调度线程可见）。
         /// </summary>
         private sealed class ThrowingSweepFriendStore : IOnlineFriendStore
         {
             /// <summary>内层正常存储。</summary>
             private readonly InMemoryOnlineFriendStore _inner = new InMemoryOnlineFriendStore();
 
+            /// <summary>清扫输入失败次数（调度线程写、用例线程读）。</summary>
+            private int _sweepInputFailures;
+
             /// <summary>
             /// 获取清扫输入（ListByStateAsync）失败次数。
             /// </summary>
-            public int SweepInputFailures { get; private set; }
+            public int SweepInputFailures
+            {
+                get { return Volatile.Read(ref _sweepInputFailures); }
+            }
 
             /// <summary>委托内层。</summary>
             /// <param name="friendship">待创建的关系。</param>
@@ -569,7 +528,7 @@ namespace GameFrameX.Tests.Online
             /// <returns>不返回（恒抛）。</returns>
             public Task<IReadOnlyList<OnlineFriendship>> ListByStateAsync(long tenantId, long appId, OnlineFriendshipState state, CancellationToken cancellationToken = default)
             {
-                SweepInputFailures++;
+                Interlocked.Increment(ref _sweepInputFailures);
                 throw new InvalidOperationException("friend sweep input failure (test)");
             }
         }

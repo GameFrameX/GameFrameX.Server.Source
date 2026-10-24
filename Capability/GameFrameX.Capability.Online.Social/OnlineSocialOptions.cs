@@ -1,21 +1,21 @@
-// ==========================================================================================
+//  ==========================================================================================
 //   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents and other rights
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents and related rights
 //   均受中华人民共和国及相关国际法律法规保护。
-//   are protected by the laws of the People's Republic of China and other international regulations.
-//   使用本项目须严格遵守相关法律法规与开源许可证之规定。
-//   Usage of this project must strictly comply with relevant laws, regulations, and open-source licenses.
+//   are protected by the laws of the People's Republic of China and related international regulations.
+//   使用本项目须严格遵守相应法律法规与开源许可证之规定。
+//   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
 //   This project is licensed solely under the Apache License 2.0,
-//   完整许可证文本请参见源代码根目录的 LICENSE 文件。
-//   please refer to the full license text in the LICENSE file located at the root of the source code.
+//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
+//   please see the LICENSE file in the root directory of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//   It is prohibited to use this project to engage in any activity that endangers national security, disrupts social order,
-//   侵犯公民合法权益等法律法规所禁止的行为！
-//   or infringe upon the legal rights and interests of citizens as prohibited by laws and regulations!
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legitimate rights and interests of others, as prohibited by laws and regulations!
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
-//   Any legal disputes or liabilities arising from secondary development,
-//   本组织不承担任何责任，开发者应自行承担。
+//   Any legal disputes or liabilities arising from secondary development based on this project
+//   本项目组织与贡献者概不承担。
 //   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
 //   GitHub Repository: https://github.com/GameFrameX
@@ -29,22 +29,61 @@
 
 namespace GameFrameX.Capability.Online.Social;
 
+using GameFrameX.Capability.Hosting.Abstractions;
+
 /// <summary>
-/// 社交能力包级装配选项（<see cref="OnlineSocialHostingExtensions.AddOnlineSocialRuntime"/> 回调承载面）。
+/// 社交能力包级 Options 根类型（C294 机制化：manifest 声明，合并序 = 包内默认 → 配置段
+/// <c>Online.Social</c> → 代码 Configure → <see cref="Validate"/>，此后无写入入口）。
 /// <para>
-/// 维护约束（能力族全局约定）：编排参数一律经 <c>Action&lt;TOptions&gt;</c> 回调承载（.NET
-/// <c>AddXxx(options =&gt; ...)</c> 惯例）；当前无包级编排参数（存储替换走 <c>UseOnlineSocial*Store</c> 缝族，
-/// 配置段绑定归组合根），成员随真实需求落位；禁止回退平铺配置键。
+/// 维护约束：子域 Options 聚合为属性（<see cref="Chat"/> / <see cref="Friend"/>），默认值唯一来源 =
+/// 各字段初始值；服务构造收 Options 必填参数，不再自带参数默认值或 <c>?? new</c> 兜底——
+/// 配置错误由 <see cref="Validate"/> 在装配期一次报全。
 /// </para>
 /// </summary>
-/// <remarks>
-/// Package-level assembly options for the social capability (the callback face of
-/// <see cref="OnlineSocialHostingExtensions.AddOnlineSocialRuntime"/>). Following the capability-family
-/// global convention, orchestration parameters ride an <c>Action&lt;TOptions&gt;</c> callback;
-/// no package-level knobs exist yet (store replacement goes through the <c>UseOnlineSocial*Store</c> seam family
-/// and config-section binding belongs to composition roots); members land as real needs appear; flat
-/// configuration keys stay forbidden.
-/// </remarks>
-public sealed class OnlineSocialOptions
+public sealed class OnlineSocialOptions : ICapabilityOptions
 {
+    /// <summary>
+    /// 获取或设置聊天域可配置项（长度 / 频率 / 每页条数 / 撤回窗口）。
+    /// </summary>
+    public OnlineChatOptions Chat { get; set; } = new OnlineChatOptions();
+
+    /// <summary>
+    /// 获取或设置好友域可配置项（请求存活时长 / 搜索与好友上限 / 旧数据迁移开关）。
+    /// </summary>
+    public OnlineFriendOptions Friend { get; set; } = new OnlineFriendOptions();
+
+    /// <summary>
+    /// 校验合并后的最终值（聊天域各阈值与好友域各上限须为正数；历史保留时长允许 0 = 不设上限）。
+    /// </summary>
+    /// <param name="validation">校验问题收集器。</param>
+    public void Validate(CapabilityOptionsValidation validation)
+    {
+        if (Chat != null)
+        {
+            validation.RequirePositive("Chat.MaxContentLength", Chat.MaxContentLength);
+            validation.RequirePositive("Chat.MaxMessagesPerPage", Chat.MaxMessagesPerPage);
+            validation.RequirePositive("Chat.RecallWindowSeconds", Chat.RecallWindowSeconds);
+            validation.RequirePositive("Chat.RateLimitWindowSeconds", Chat.RateLimitWindowSeconds);
+            validation.RequirePositive("Chat.RateLimitMaxMessages", Chat.RateLimitMaxMessages);
+            if (Chat.HistoryRetentionSeconds < 0)
+            {
+                validation.AddError("Chat.HistoryRetentionSeconds", "must not be negative (actual: " + Chat.HistoryRetentionSeconds + ")");
+            }
+        }
+        else
+        {
+            validation.AddError("Chat", "must not be null");
+        }
+
+        if (Friend != null)
+        {
+            validation.RequirePositive("Friend.RequestTimeToLiveSeconds", Friend.RequestTimeToLiveSeconds);
+            validation.RequirePositive("Friend.SearchLimit", Friend.SearchLimit);
+            validation.RequirePositive("Friend.FriendLimit", Friend.FriendLimit);
+        }
+        else
+        {
+            validation.AddError("Friend", "must not be null");
+        }
+    }
 }

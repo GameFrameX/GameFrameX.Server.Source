@@ -409,8 +409,9 @@ namespace GameFrameX.Tests.Online
             var graph = new InMemoryOnlineSocialGraphStore();
             var decision = new OnlineSocialDecisionService(graph, new InMemoryOnlineReportStore(), recorder);
             var punishments = new OnlinePunishmentService(graph, recorder);
-            var tickets = new OnlineMatchTicketService(store, recorder);
-            var coordinator = new OnlineMatchmakerCoordinator(store, tickets, recorder, null, withGate ? decision : null);
+            var matchmakerOptions = new OnlineMatchmakerOptions();
+            var tickets = new OnlineMatchTicketService(store, recorder, matchmakerOptions);
+            var coordinator = new OnlineMatchmakerCoordinator(store, tickets, recorder, matchmakerOptions, withGate ? decision : null);
             return new MatchFixture(store, tickets, coordinator, decision, punishments);
         }
 

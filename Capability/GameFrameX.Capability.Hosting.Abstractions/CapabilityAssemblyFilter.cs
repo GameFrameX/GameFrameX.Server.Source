@@ -35,6 +35,8 @@ namespace GameFrameX.Capability.Hosting.Abstractions;
 /// <para>
 /// 维护约束：<see cref="EnabledIds"/> 缺省（null）= 装配全部已发现能力；
 /// <see cref="DisabledIds"/> 恒为排除语义且优先于清单段；过滤器引用未发现的能力 Id 时装配 fail-fast。
+/// 构造期规整（Trim、丢弃空白条目）：规整后为空的清单段视为 null、排除表视为空——保证「空过滤器 = 全装配」红线
+/// 在机制层成立，配置写成 <c>"Capabilities": []</c> 或含空白条目时不会静默装配零能力，也不会把空白条目误报为未发现能力。
 /// </para>
 /// </summary>
 public sealed class CapabilityAssemblyFilter
@@ -42,12 +44,28 @@ public sealed class CapabilityAssemblyFilter
     /// <summary>
     /// 初始化 <see cref="CapabilityAssemblyFilter"/>。
     /// </summary>
-    /// <param name="enabledIds">能力清单段（null = 全部）。</param>
-    /// <param name="disabledIds">配置排除表。</param>
+    /// <param name="enabledIds">能力清单段（null、空或仅含空白条目 = 全部）。</param>
+    /// <param name="disabledIds">配置排除表（null、空或仅含空白条目 = 无排除）。</param>
     public CapabilityAssemblyFilter(IReadOnlyList<string> enabledIds = null, IReadOnlyList<string> disabledIds = null)
     {
-        EnabledIds = enabledIds;
-        DisabledIds = disabledIds ?? Array.Empty<string>();
+        EnabledIds = NormalizeIds(enabledIds);
+        DisabledIds = NormalizeIds(disabledIds) ?? Array.Empty<string>();
+    }
+
+    /// <summary>
+    /// 规整能力 Id 列表（Trim、丢弃空白条目）；无有效条目时返回 null（该维度不过滤）。
+    /// </summary>
+    /// <param name="source">原始列表（可为 null）。</param>
+    /// <returns>规整后的数组；无有效条目时为 null。</returns>
+    private static string[] NormalizeIds(IReadOnlyList<string> source)
+    {
+        if (source == null)
+        {
+            return null;
+        }
+
+        var ids = source.Where(id => !string.IsNullOrWhiteSpace(id)).Select(id => id.Trim()).ToArray();
+        return ids.Length == 0 ? null : ids;
     }
 
     /// <summary>

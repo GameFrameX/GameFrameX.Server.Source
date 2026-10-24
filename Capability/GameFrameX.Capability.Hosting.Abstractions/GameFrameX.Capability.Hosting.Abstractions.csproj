@@ -2,9 +2,17 @@
     <Import Project="../../Version.props" Label="版本号定义"/>
 
     <PropertyGroup>
-        <Description>GameFrameX.Capability.Hosting.Abstractions,GFX 能力组件机制契约:能力 manifest/模块注册契约/三类调度 job 契约/装配过滤器/能力报告类型. Capability hosting mechanism contracts for the GFX capability packages: manifests, module registration, three scheduler job kinds, assembly filter and capability report types. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <Description>GameFrameX.Capability.Hosting.Abstractions,GFX 能力组件机制契约:能力 manifest(必选/可选依赖/Options 根类型)/三段生命周期模块契约/桥与钩子槽位/服务注册描述符/能力族契约/事件总线契约/装配过滤器/能力报告. Capability hosting mechanism contracts for the GFX capability packages: manifests with required/optional dependencies and options root types, three-phase module lifecycle, bridge and hook slots, service registration descriptors, capability family contracts, event bus contracts, assembly filter and capability report types. Documentation: https://gameframex.doc.alianblank.com</Description>
         <PackageTags>GameFrameX,Capability,Hosting,Abstractions,Manifest,Scheduler,GameServer</PackageTags>
         <LangVersion>10</LangVersion>
     </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../GameFrameX.Localization/GameFrameX.Localization.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="GameFrameX.Capability.Hosting.Core, PublicKey=0024000004800000140100000602000000240000525341310008000001000100dbdd8ce8567465b0c7a56029b2f252989170cd00f15cd79b53c1cb8ecea09065a7fec9bfd5e241999707748cd59c25b4d8a721a1fe741495720642bae68ee134ba578cb153bd380d440e1908191e5a27ae79534f7dbd8c70c6fc18f26c1afaafe76d0b95d366b1bc81bffcf317673f37c839533a14f8939274c75fc8588134edad6d08f783a29916954fa5df678ed4dc9395c9618000d05be87d9caf15005987b48b224bdfcb07ea467ecc8be679620662a75b6a5b6748154664c8aa831c65428af7e5a955aa4eef974c0351a7865b9868d1c81a599eeda487bc5b46d0cbfd67729ae7d8e4c81b651bbbcc33e493f8d978b45350c7191e92989585ab7bf693bf"/>
+    </ItemGroup>
 
 </Project>

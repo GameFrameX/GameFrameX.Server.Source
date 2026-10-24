@@ -2,9 +2,11 @@
     <Import Project="../../Version.props" Label="版本号定义"/>
 
     <PropertyGroup>
-        <Description>GameFrameX.Capability.Online.Competition,GFX Online 竞技能力包:排行榜/赛季/锦标赛/LiveOps 承载(InMemory 默认存储,UseOnlineCompetitionStore 族替换缝)+ hosting 扩展(AddOnlineCompetitionRuntime)+ admin handlers(LiveOps 七 action). Competition capability package for the GFX Online family: leaderboards, seasons, tournaments and the LiveOps registry with in-memory default stores, the hosting extension and admin handlers. Documentation: https://gameframex.doc.alianblank.com</Description>
+        <Description>GameFrameX.Capability.Online.Competition,GFX Online 竞技能力包:排行榜/赛季/锦标赛/LiveOps 承载(InMemory 默认存储,懒默认描述符,族/宿主覆盖恒胜出)+ 自装配模块(OnlineCompetitionCapabilityModule,Options=OnlineCompetitionOptions)+ admin handlers(LiveOps 七 action). Competition capability package for the GFX Online family: leaderboards, seasons, tournaments and the LiveOps registry with in-memory default stores, the self-assembling capability module and admin handlers. Documentation: https://gameframex.doc.alianblank.com</Description>
         <PackageTags>GameFrameX,Capability,Online,Competition,Leaderboard,Season,Tournament,LiveOps,GameServer</PackageTags>
-        <LangVersion>10</LangVersion>
+        <!-- 引用的传递面（Match→Core→Network.HTTP）带入 AspNetCore.OpenApi 源生成器（要求 C#11 file 类型），
+             与 LangVersion 10 钉死冲突；本包语言版本随 Directory.Build.props（latest），
+             语法风格仍按仓内 C#10 惯例书写（无 switch 表达式 / record / 顶层语句）。 -->
     </PropertyGroup>
 
     <ItemGroup>
