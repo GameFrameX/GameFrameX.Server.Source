@@ -87,7 +87,7 @@ public sealed class AdminApiServer : ICapabilityAdminApiPlane
     /// </summary>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>异步任务。</returns>
-    public async Task StartAsync(CancellationToken cancellationToken = default)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
         if (_application != null)
         {
