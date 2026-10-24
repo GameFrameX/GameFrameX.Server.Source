@@ -30,23 +30,6 @@ using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Capability.Hosting.AdminApi;
 
-/// <summary>
-/// admin action 处理器委托（返回业务数据载荷；作用域已通过守卫）。
-/// </summary>
-/// <param name="request">请求包装。</param>
-/// <param name="scope">已通过守卫的作用域（客户端声称 = 宿主授权）。</param>
-/// <param name="cancellationToken">取消令牌。</param>
-/// <returns>业务数据载荷（成功响应的 Data，必须非 null）。</returns>
-public delegate Task<object> AdminActionHandler(AdminApiRequest request, AdminApiClaimedScope scope, CancellationToken cancellationToken);
-
-/// <summary>
-/// admin action 注册表（能力侧向管理面贡献 action 的唯一入口；大小写不敏感）。
-/// <para>
-/// 维护约束（同名 fail-fast 红线）：action 名跨能力全宿主唯一——同名重复注册即装配失败
-///（后者覆盖前者曾是装配缺陷，现直接拒绝）；组合期对账双向（manifest 声明 ⊆ 实注册 且
-/// 实注册 ⊆ manifest 声明）。
-/// </para>
-/// </summary>
 public sealed class AdminActionRegistry
 {
     /// <summary>
@@ -113,50 +96,4 @@ public sealed class AdminActionRegistry
     {
         _currentOwnerCapabilityId = ownerCapabilityId;
     }
-}
-
-/// <summary>
-/// admin action 注册项。
-/// </summary>
-public sealed class AdminActionRegistration
-{
-    /// <summary>
-    /// 初始化 <see cref="AdminActionRegistration"/>。
-    /// </summary>
-    /// <param name="handler">处理器。</param>
-    /// <param name="wrapIdempotency">是否幂等包裹。</param>
-    /// <param name="ownerCapabilityId">贡献者能力 Id（审计用；元端点为机制标记）。</param>
-    public AdminActionRegistration(AdminActionHandler handler, bool wrapIdempotency, string ownerCapabilityId)
-    {
-        Handler = handler;
-        WrapIdempotency = wrapIdempotency;
-        OwnerCapabilityId = ownerCapabilityId ?? string.Empty;
-    }
-
-    /// <summary>
-    /// 获取处理器。
-    /// </summary>
-    public AdminActionHandler Handler { get; }
-
-    /// <summary>
-    /// 获取是否经调度器层幂等包裹。
-    /// </summary>
-    public bool WrapIdempotency { get; }
-
-    /// <summary>
-    /// 获取贡献者能力 Id（同名冲突诊断与审计用）。
-    /// </summary>
-    public string OwnerCapabilityId { get; }
-}
-
-/// <summary>
-/// admin action 贡献者契约（能力模块实现本接口向管理面注册 action；与 ICapabilityModule 搭配使用）。
-/// </summary>
-public interface IAdminActionContributor
-{
-    /// <summary>
-    /// 向注册表贡献本能力的 admin action。
-    /// </summary>
-    /// <param name="registry">action 注册表。</param>
-    void RegisterAdminActions(AdminActionRegistry registry);
 }

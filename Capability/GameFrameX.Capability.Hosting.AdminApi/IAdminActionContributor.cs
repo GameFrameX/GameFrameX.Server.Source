@@ -24,12 +24,12 @@
 //   CNB  仓库：https://cnb.cool/GameFrameX
 //   CNB Repository: https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
-//   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
 using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Capability.Hosting.AdminApi;
+
 
 /// <summary>
 /// admin action 贡献者契约（能力模块实现本接口向管理面注册 action；与 ICapabilityModule 搭配使用）。

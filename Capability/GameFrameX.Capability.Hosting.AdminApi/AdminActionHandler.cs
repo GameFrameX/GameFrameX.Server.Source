@@ -24,12 +24,12 @@
 //   CNB  仓库：https://cnb.cool/GameFrameX
 //   CNB Repository: https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
-//   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
 using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Capability.Hosting.AdminApi;
+
 
 /// <summary>
 /// admin action 处理器委托（返回业务数据载荷；作用域已通过守卫）。
@@ -39,3 +39,12 @@ namespace GameFrameX.Capability.Hosting.AdminApi;
 /// <param name="cancellationToken">取消令牌。</param>
 /// <returns>业务数据载荷（成功响应的 Data，必须非 null）。</returns>
 public delegate Task<object> AdminActionHandler(AdminApiRequest request, AdminApiClaimedScope scope, CancellationToken cancellationToken);
+
+/// <summary>
+/// admin action 注册表（能力侧向管理面贡献 action 的唯一入口；大小写不敏感）。
+/// <para>
+/// 维护约束（同名 fail-fast 红线）：action 名跨能力全宿主唯一——同名重复注册即装配失败
+///（后者覆盖前者曾是装配缺陷，现直接拒绝）；组合期对账双向（manifest 声明 ⊆ 实注册 且
+/// 实注册 ⊆ manifest 声明）。
+/// </para>
+/// </summary>

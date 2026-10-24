@@ -41,16 +41,27 @@ internal static class CapabilityBoundaryFacts
     internal const string OnlineAbstractions = "GameFrameX.Capability.Online.Abstractions";
     internal const string Launcher = "GameFrameX.Launcher";
 
+    /// <summary>
+    /// 判定程序集是否为 Capability 实现包（GFX0017 拦截 Apps / Hotfix 经引用闭包触达的对象）。
+    /// <para>维护约束：Hosting 三包为机制定义方（C294 族组合骨架后 Online.Abstractions 传递可达 Hosting.Core），
+    /// 不属于能力实现；白名单与 <see cref="IsMechanism"/> 保持同一集合，新增机制包须两处同步。</para>
+    /// </summary>
     internal static bool IsImplementation(string name)
     {
         return name.StartsWith("GameFrameX.Capability.", StringComparison.Ordinal)
                && name != OnlineAbstractions
-               && name != HostingAbstractions
-               && name != "GameFrameX.Capability.Hosting.AdminApi";
+               && !IsMechanism(name);
     }
 
-    internal static bool IsCompositionOrTest(string name)
+    /// <summary>测试工程（精确程序集名）：可构造任意生命周期阶段的夹具，不受 GFX0018 阶段边界约束。</summary>
+    internal static bool IsTest(string name)
     {
-        return name == Launcher || name == "GameFrameX.Tests" || name == "GameFrameX.Hotfix.Tests";
+        return name == "GameFrameX.Tests" || name == "GameFrameX.Hotfix.Tests";
+    }
+
+    /// <summary>Hosting 机制三包：机制 API 的定义方，内部转交不受 GFX0018 约束（且不得引用能力包，见 GFX0017 边界）。</summary>
+    internal static bool IsMechanism(string name)
+    {
+        return name == HostingAbstractions || name == HostingCore || name == "GameFrameX.Capability.Hosting.AdminApi";
     }
 }

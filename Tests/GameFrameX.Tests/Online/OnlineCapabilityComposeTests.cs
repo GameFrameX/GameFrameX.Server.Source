@@ -332,13 +332,15 @@ public class OnlineCapabilityComposeTests
         {
             var dispatcher = OnlineCapabilityTestHarness.CreateDispatcher(runtime.Host);
             var envelope = await dispatcher.DispatchAsync("query_online_overview", "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001,\"RequestId\":\"r1\"}");
-            using var inner = ParseInner(envelope);
+            using (var inner = ParseInner(envelope))
+            {
             Assert.Equal((int)OnlineErrorCode.CapabilityNotInstalled, inner.RootElement.GetProperty("Code").GetInt32());
             var payload = inner.RootElement.GetProperty("Data");
             Assert.Equal("online-operations", payload.GetProperty("NotInstalledCapability").GetString());
             var installed = ReadStrings(payload.GetProperty("InstalledCapabilities"));
             Assert.Equal(6, installed.Length);
             Assert.DoesNotContain("online-operations", installed);
+            }
         }, null, options => options.Filter = new CapabilityAssemblyFilter(null, new[] { "online-operations" }));
     }
 
@@ -593,7 +595,8 @@ public class OnlineCapabilityComposeTests
         await OnlineCapabilityTestHarness.WithRuntimeAsync(async runtime =>
         {
             var dispatcher = OnlineCapabilityTestHarness.CreateDispatcher(runtime.Host);
-            using var inner = ParseInner(await dispatcher.DispatchAsync("list_capabilities", ScopeBody));
+            using (var inner = ParseInner(await dispatcher.DispatchAsync("list_capabilities", ScopeBody)))
+            {
             Assert.Equal(0, inner.RootElement.GetProperty("Code").GetInt32());
             var data = inner.RootElement.GetProperty("Data");
             Assert.Equal(ExpectedTopologicalOrder, ReadStrings(data.GetProperty("EnabledIdsInOrder")));
@@ -614,6 +617,7 @@ public class OnlineCapabilityComposeTests
             var socialDependencies = IndexBy(social.GetProperty("Dependencies"), "CapabilityId");
             Assert.Equal("Required", socialDependencies["online-foundation"].GetProperty("Kind").GetString());
             Assert.Equal("Assembled", socialDependencies["online-foundation"].GetProperty("State").GetString());
+            }
         });
     }
 
@@ -626,7 +630,8 @@ public class OnlineCapabilityComposeTests
         await OnlineCapabilityTestHarness.WithRuntimeAsync(async runtime =>
         {
             var dispatcher = OnlineCapabilityTestHarness.CreateDispatcher(runtime.Host);
-            using var inner = ParseInner(await dispatcher.DispatchAsync("list_capability_services", ScopeBody));
+            using (var inner = ParseInner(await dispatcher.DispatchAsync("list_capability_services", ScopeBody)))
+            {
             Assert.Equal(0, inner.RootElement.GetProperty("Code").GetInt32());
             var services = inner.RootElement.GetProperty("Data").GetProperty("Services").EnumerateArray().ToList();
 
@@ -638,6 +643,7 @@ public class OnlineCapabilityComposeTests
             Assert.Equal("online-social", friendStore.GetProperty("OwnerCapabilityId").GetString());
             Assert.False(friendStore.GetProperty("IsOverride").GetBoolean());
             Assert.False(friendStore.GetProperty("IsOverridden").GetBoolean());
+            }
         });
     }
 
@@ -653,7 +659,8 @@ public class OnlineCapabilityComposeTests
         {
             Assert.Same(overrideStore, runtime.Host.Services.GetService<IOnlineFriendStore>());
             var dispatcher = OnlineCapabilityTestHarness.CreateDispatcher(runtime.Host);
-            using var inner = ParseInner(await dispatcher.DispatchAsync("list_capability_services", ScopeBody));
+            using (var inner = ParseInner(await dispatcher.DispatchAsync("list_capability_services", ScopeBody)))
+            {
             var friendStores = inner.RootElement.GetProperty("Data").GetProperty("Services").EnumerateArray()
                 .Where(service => service.GetProperty("ServiceType").GetString() == typeof(IOnlineFriendStore).FullName)
                 .ToList();
@@ -664,6 +671,7 @@ public class OnlineCapabilityComposeTests
             Assert.True(moduleDefault.GetProperty("IsOverridden").GetBoolean());
             var hostOverride = friendStores.Single(service => service.GetProperty("IsOverride").GetBoolean());
             Assert.Equal("online", hostOverride.GetProperty("OwnerCapabilityId").GetString());
+            }
         }, null, options => options.Override<IOnlineFriendStore>(overrideStore));
     }
 
@@ -685,7 +693,8 @@ public class OnlineCapabilityComposeTests
             Assert.Equal(CapabilitySettingsFieldSource.Default, friendLimit.Source);
 
             var dispatcher = OnlineCapabilityTestHarness.CreateDispatcher(runtime.Host);
-            using var inner = ParseInner(await dispatcher.DispatchAsync("list_capability_settings", ScopeBody));
+            using (var inner = ParseInner(await dispatcher.DispatchAsync("list_capability_settings", ScopeBody)))
+            {
             Assert.Equal(0, inner.RootElement.GetProperty("Code").GetInt32());
             var socialEntry = IndexBy(inner.RootElement.GetProperty("Data").GetProperty("Capabilities"), "Id")["online-social"];
             var fields = IndexBy(socialEntry.GetProperty("SettingsFields"), "FieldPath");
@@ -693,6 +702,7 @@ public class OnlineCapabilityComposeTests
             Assert.Equal("ConfigurationSection", fields["Friend.SearchLimit"].GetProperty("Source").GetString());
             Assert.Equal(DefaultFriendLimit, fields["Friend.FriendLimit"].GetProperty("Value").GetInt32());
             Assert.Equal("Default", fields["Friend.FriendLimit"].GetProperty("Source").GetString());
+            }
         }, "{\"online-social\":{\"Friend\":{\"SearchLimit\":5}}}");
     }
 
@@ -752,8 +762,10 @@ public class OnlineCapabilityComposeTests
         await OnlineCapabilityTestHarness.WithRuntimeAsync(async runtime =>
         {
             var dispatcher = OnlineCapabilityTestHarness.CreateDispatcher(runtime.Host);
-            using var inner = ParseInner(await dispatcher.DispatchAsync("definitely_not_an_action", ScopeBody));
+            using (var inner = ParseInner(await dispatcher.DispatchAsync("definitely_not_an_action", ScopeBody)))
+            {
             Assert.Equal((int)OnlineErrorCode.ResourceNotFound, inner.RootElement.GetProperty("Code").GetInt32());
+            }
         });
     }
 }

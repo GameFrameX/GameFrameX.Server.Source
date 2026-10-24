@@ -28,9 +28,8 @@
 //  ==========================================================================================
 
 namespace GameFrameX.Capability.Hosting.Abstractions;
-
 /// <summary>
-/// 逐滴答 job（每个调度滴算按装配序执行一次）。
+/// 逐滴答 job（每个调度滴算按装配序执行一次；单个 job 异常由调度壳隔离）。
 /// </summary>
 public sealed class CapabilityTickJob
 {

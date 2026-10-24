@@ -24,12 +24,12 @@
 //   CNB  仓库：https://cnb.cool/GameFrameX
 //   CNB Repository: https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
-//   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
 using GameFrameX.Foundation.Localization.Core;
 
 namespace GameFrameX.Capability.Hosting.AdminApi;
+
 
 /// <summary>
 /// admin action 注册项。
@@ -41,10 +41,12 @@ public sealed class AdminActionRegistration
     /// </summary>
     /// <param name="handler">处理器。</param>
     /// <param name="wrapIdempotency">是否幂等包裹。</param>
-    public AdminActionRegistration(AdminActionHandler handler, bool wrapIdempotency)
+    /// <param name="ownerCapabilityId">贡献者能力 Id（审计用；元端点为机制标记）。</param>
+    public AdminActionRegistration(AdminActionHandler handler, bool wrapIdempotency, string ownerCapabilityId)
     {
         Handler = handler;
         WrapIdempotency = wrapIdempotency;
+        OwnerCapabilityId = ownerCapabilityId ?? string.Empty;
     }
 
     /// <summary>
@@ -56,4 +58,13 @@ public sealed class AdminActionRegistration
     /// 获取是否经调度器层幂等包裹。
     /// </summary>
     public bool WrapIdempotency { get; }
+
+    /// <summary>
+    /// 获取贡献者能力 Id（同名冲突诊断与审计用）。
+    /// </summary>
+    public string OwnerCapabilityId { get; }
 }
+
+/// <summary>
+/// admin action 贡献者契约（能力模块实现本接口向管理面注册 action；与 ICapabilityModule 搭配使用）。
+/// </summary>

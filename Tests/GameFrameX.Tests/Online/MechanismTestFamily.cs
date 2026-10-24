@@ -24,34 +24,56 @@
 //   CNB  仓库：https://cnb.cool/GameFrameX
 //   CNB Repository: https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
-//   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-namespace GameFrameX.Capability.Hosting.Abstractions;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using GameFrameX.Capability.Hosting.Abstractions;
+using GameFrameX.Capability.Hosting.AdminApi;
+using GameFrameX.Capability.Hosting.Core;
+
+namespace GameFrameX.Tests.Online;
+
 
 /// <summary>
-/// 事件驱动 job（宿主事件入口同步分发）。
+/// 机制层测试族（发现面 = 测试程序集的部署命名约定副本 <c>GameFrameX.Tests.CapabilityStubs.dll</c>；
+/// 族基建只预置管理面测试适配器——<see cref="AdminApiComposition.CreateAdminApiPlane"/> 的解析面）。
 /// </summary>
-public sealed class CapabilityEventJob
+public sealed class MechanismTestFamily : ICapabilityFamily
 {
-    /// <summary>
-    /// 初始化 <see cref="CapabilityEventJob"/>。
-    /// </summary>
-    /// <param name="name">job 全名（<c>能力Id/jobId</c>）。</param>
-    /// <param name="run">job 委托。</param>
-    public CapabilityEventJob(string name, Action<CapabilityEventNotification> run)
+    /// <inheritdoc />
+    public string FamilyId
     {
-        Name = name;
-        Run = run;
+        get { return "mechanism-tests"; }
     }
 
-    /// <summary>
-    /// 获取 job 全名。
-    /// </summary>
-    public string Name { get; }
+    /// <inheritdoc />
+    public string ConfigurationSectionName
+    {
+        get { return "MechanismTests"; }
+    }
 
-    /// <summary>
-    /// 获取 job 委托。
-    /// </summary>
-    public Action<CapabilityEventNotification> Run { get; }
+    /// <inheritdoc />
+    public string DeploymentAssemblyPrefix
+    {
+        get { return "GameFrameX.Tests"; }
+    }
+
+    /// <summary>最近一次组合的事件发布口捕获（事件总线行为用例经它发布）。</summary>
+    public static ICapabilityEventPublisher LastEventPublisher;
+
+    /// <inheritdoc />
+    public void RegisterInfrastructure(CapabilityFamilyContext context)
+    {
+        // 管理面测试适配器：五个机制用错误码位 + 恒放行作用域（机制口径，不绑 Online 语义）。
+        var code = new AdminApiErrorCode(0, "mechanism.test");
+        context.AddService(new AdminApiErrorCodes(code, code, code, code, code));
+        context.AddService<IAdminApiScopeAdapter>(new MechanismTestScopeAdapter());
+        LastEventPublisher = context.EventPublisher;
+    }
 }
+
+/// <summary>
+/// 机制测试作用域适配器（从请求体读三元组 + 恒放行——作用域守卫语义另有 Online 侧用例锚定）。
+/// </summary>
