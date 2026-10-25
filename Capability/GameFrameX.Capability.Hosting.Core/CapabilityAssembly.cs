@@ -157,7 +157,7 @@ public static class CapabilityAssembly
                 }
             }
 
-            throw new CapabilityAssemblyException(problems);
+            throw new CapabilityAssemblyException(problems, exception);
         }
 
         foreach (var type in types)

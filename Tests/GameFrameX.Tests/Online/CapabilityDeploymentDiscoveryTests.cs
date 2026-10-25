@@ -105,6 +105,7 @@ public sealed class CapabilityDeploymentDiscoveryTests
             Assert.Contains("CapabilityDeploymentScanProbe.Broken", exception.Problems[0]);
             Assert.True(exception.Problems.Count > 1);
             Assert.Contains(exception.Problems.Skip(1), problem => problem.Contains("CapabilityDeploymentScanProbe.Missing"));
+            Assert.IsType<ReflectionTypeLoadException>(exception.InnerException);
         }
         finally
         {
