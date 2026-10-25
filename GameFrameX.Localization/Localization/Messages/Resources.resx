@@ -1484,6 +1484,9 @@
   <data name="Capability.Online.Match.OptionalAssetsAbsent" xml:space="preserve">
     <value>match settlement reward granting (settlement results are still recorded)</value>
   </data>
+  <data name="Capability.Online.UseGameDbStoresUndeclared" xml:space="preserve">
+    <value>Role {0} enables the Online capability family but never declares Online.UseGameDbStores: level-one stores will use the in-process in-memory implementations and data is lost on restart; declare true (persisted) or false (explicitly volatile) in configuration for production.</value>
+  </data>
   <data name="Capability.Online.Match.OptionalMatchmakingAbsent" xml:space="preserve">
     <value>matchmaking domain (420 enqueue / cancel / status query)</value>
   </data>

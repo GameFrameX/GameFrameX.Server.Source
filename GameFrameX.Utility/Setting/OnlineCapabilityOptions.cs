@@ -108,19 +108,23 @@ public sealed class OnlineCapabilityOptions
     public IReadOnlyList<string> Disable { get; set; }
 
     /// <summary>
-    /// 是否预置 Online 一级 store 的 GameDb 持久化实现（C294 起语义为宿主组合根 Override 注入开关）
-    /// <para>true = 宿主经 <c>Override&lt;T&gt;</c> 预置身份 / 玩家云存储 / 资产账本与交易 / 好友关系 store
-    /// （重启数据不丢）；false（缺省）= 包内 InMemory 默认不变</para>
+    /// 是否预置 Online 一级 store 的 GameDb 持久化实现（C294 起语义为宿主组合根 Override 注入开关；C302 起为三态）
+    /// <para><see langword="true"/> = 宿主经 <c>Override&lt;T&gt;</c> 预置身份 / 玩家云存储 / 资产账本与交易 / 好友关系 store
+    /// （重启数据不丢）；<see langword="false"/> = 显式选择包内 InMemory 默认；<see langword="null"/>（缺省）= 配置未声明——
+    /// 组合根对此形态发出启动期告警（无声降级防护，见 C302）后按 InMemory 处理</para>
     /// <para>前置约束：开启前数据库必须已完成初始化（GameDb 门面 Init）；Session / Presence 保持易失（Redis 演进位）</para>
     /// </summary>
     /// <remarks>
-    /// Whether the host composition root pre-seeds the GameDb persistence adapters for the Online
-    /// level-one stores via <c>Override&lt;T&gt;</c> (C294 semantics): true overrides the identity /
-    /// player-storage / asset-ledger and transaction / friend stores (data survives restarts); false
-    /// (default) keeps the in-package in-memory defaults. The database must be initialized (GameDb
+    /// The tri-state host composition-root switch for the GameDb persistence adapters of the Online
+    /// level-one stores (C294 semantics; tri-state since C302): <see langword="true"/> overrides the
+    /// identity / player-storage / asset-ledger and transaction / friend stores via
+    /// <c>Override&lt;T&gt;</c> (data survives restarts); <see langword="false"/> explicitly keeps the
+    /// in-package in-memory defaults; <see langword="null"/> (default) means the configuration never
+    /// declared the storage mode — the composition root warns at startup (the silent-degradation guard,
+    /// C302) and then falls back to the in-memory defaults. The database must be initialized (GameDb
     /// facade Init) before enabling; sessions and presence stay volatile.
     /// </remarks>
-    public bool UseGameDbStores { get; set; }
+    public bool? UseGameDbStores { get; set; }
 
     /// <summary>
     /// 能力级参数原始 JSON 节点（键 = 能力 Id（如 online-social），值 = 该能力 Options 根类型的字段覆盖源；

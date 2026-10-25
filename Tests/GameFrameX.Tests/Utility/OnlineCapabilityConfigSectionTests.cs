@@ -155,7 +155,7 @@ public class OnlineCapabilityConfigSectionTests
         Assert.NotNull(setting.Online);
         Assert.True(setting.Online.EnableRuntime);
         Assert.True(setting.Online.EnableAdminApi);
-        Assert.True(setting.Online.UseGameDbStores);
+        Assert.True(setting.Online.UseGameDbStores.Value);
         Assert.Equal(new[] { "Game", "Social" }, setting.Online.GetEffectiveEnableRoles().ToArray());
         Assert.Null(setting.Online.Capabilities);
         Assert.Equal(new[] { "online-operations" }, setting.Online.Disable.ToArray());
@@ -186,9 +186,58 @@ public class OnlineCapabilityConfigSectionTests
         Assert.NotNull(section);
         Assert.False(section.EnableRuntime);
         Assert.False(section.EnableAdminApi);
-        Assert.False(section.UseGameDbStores);
+        Assert.Null(section.UseGameDbStores);
         Assert.Null(section.EnableRoles);
         Assert.Equal(new[] { "Game" }, section.GetEffectiveEnableRoles().ToArray());
+    }
+
+    /// <summary>
+    /// 存储模式三态绑定（C302）：UseGameDbStores 缺省 = null（配置未声明，触发组合根告警）；
+    /// 显式 false 如实绑定（有意选择 InMemory，不告警）。
+    /// </summary>
+    [Fact]
+    public void Deserialize_UseGameDbStores_TriStateDefaultNullAndExplicitFalse()
+    {
+        const string json = """
+            [
+              {
+                "ServerType": "Game",
+                "ServerId": 1001,
+                "Online": {
+                  "EnableRuntime": true,
+                  "EnableAdminApi": true,
+                  "UseGameDbStores": false
+                }
+              }
+            ]
+            """;
+
+        var settings = JsonHelper.Deserialize<System.Collections.Generic.List<AppSetting>>(json);
+
+        Assert.NotNull(settings);
+        var section = Assert.Single(settings).Online;
+        Assert.NotNull(section);
+        Assert.False(section.UseGameDbStores.Value);
+
+        const string jsonWithoutKey = """
+            [
+              {
+                "ServerType": "Game",
+                "ServerId": 1001,
+                "Online": {
+                  "EnableRuntime": true,
+                  "EnableAdminApi": true
+                }
+              }
+            ]
+            """;
+
+        var settingsWithoutKey = JsonHelper.Deserialize<System.Collections.Generic.List<AppSetting>>(jsonWithoutKey);
+
+        Assert.NotNull(settingsWithoutKey);
+        var sectionWithoutKey = Assert.Single(settingsWithoutKey).Online;
+        Assert.NotNull(sectionWithoutKey);
+        Assert.Null(sectionWithoutKey.UseGameDbStores);
     }
 
     /// <summary>

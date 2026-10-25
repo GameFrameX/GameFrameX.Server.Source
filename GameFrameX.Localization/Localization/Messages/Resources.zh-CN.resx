@@ -1482,6 +1482,9 @@
   <data name="Capability.Online.Match.OptionalAssetsAbsent" xml:space="preserve">
     <value>对局结算发奖（结算结果照常记录）</value>
   </data>
+  <data name="Capability.Online.UseGameDbStoresUndeclared" xml:space="preserve">
+    <value>角色 {0} 已启用 Online 能力族但未声明 Online.UseGameDbStores：一级 store 将使用进程内 InMemory 实现，重启即失数据；生产环境请在配置中显式声明 true（落库）或 false（明确选择易失）。</value>
+  </data>
   <data name="Capability.Online.Match.OptionalMatchmakingAbsent" xml:space="preserve">
     <value>匹配域（420 入队 / 取消 / 状态查询）</value>
   </data>

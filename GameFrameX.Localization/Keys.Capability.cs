@@ -656,6 +656,17 @@ public static partial class Keys
         /// </summary>
         public static class OnlineModule
         {
+
+            /// <summary>
+            /// Online 存储模式未声明告警
+            /// </summary>
+            /// <remarks>
+            /// 键名: Capability.Online.UseGameDbStoresUndeclared
+            /// 用途: 启用 Online 能力族（双闸任一开）但未显式声明 UseGameDbStores 时组合根发出的启动期告警（C302 无声降级防护）
+            /// 参数: {0} - 组合 Role 的 ServerType
+            /// </remarks>
+            public const string UseGameDbStoresUndeclared = "Capability.Online.UseGameDbStoresUndeclared";
+
             /// <summary>
             /// online-match（对局）能力相关消息
             /// </summary>
