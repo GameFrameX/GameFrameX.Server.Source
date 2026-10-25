@@ -47,7 +47,8 @@ public static class CapabilityAssembly
     /// 扫描指定程序集集合（缺省 = 当前 AppDomain 全部已加载程序集；同 Id 多实现 fail-fast）。
     /// </summary>
     /// <param name="assemblies">程序集集合（null = 全部已加载）。</param>
-    /// <returns>发现的能力模块（按程序集名 + 类型名稳定排序；同 Id 多实现抛 <see cref="InvalidOperationException"/>）。</returns>
+    /// <returns>发现的能力模块（按程序集名 + 类型名稳定排序；同 Id 多实现抛 <see cref="InvalidOperationException"/>；
+    /// 程序集类型无法完整加载抛 <see cref="CapabilityAssemblyException"/>）。</returns>
     public static IReadOnlyList<ICapabilityModule> DiscoverModules(IEnumerable<Assembly> assemblies = null)
     {
         var targetAssemblies = assemblies ?? AppDomain.CurrentDomain.GetAssemblies();
@@ -144,7 +145,19 @@ public static class CapabilityAssembly
         catch (ReflectionTypeLoadException exception)
         {
             // 命中命名约定的能力包类型无法完整加载（如依赖缺失）= 部署残缺——带定位信息 fail-fast，不再静默跳过。
-            throw new InvalidOperationException(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.ModuleTypeScanFailed), assembly.GetName().Name, exception.LoaderExceptions == null ? 0 : exception.LoaderExceptions.Length));
+            // 抛 CapabilityAssemblyException：组合入口统一经 RenderFailures 逐条打 Error，首条为程序集定位，其后逐条保留底层加载原因。
+            var loaderExceptions = exception.LoaderExceptions ?? Array.Empty<Exception>();
+            var problems = new List<string>(loaderExceptions.Length + 1);
+            problems.Add(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.ModuleTypeScanFailed), assembly.GetName().Name, loaderExceptions.Length));
+            foreach (var loaderException in loaderExceptions)
+            {
+                if (loaderException != null)
+                {
+                    problems.Add(loaderException.Message);
+                }
+            }
+
+            throw new CapabilityAssemblyException(problems, exception);
         }
 
         foreach (var type in types)

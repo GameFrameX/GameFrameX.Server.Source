@@ -51,6 +51,17 @@ public sealed class CapabilityAssemblyException : Exception
     }
 
     /// <summary>
+    /// 初始化 <see cref="CapabilityAssemblyException"/>（保留触发问题的原始异常，供诊断堆栈与底层异常对象）。
+    /// </summary>
+    /// <param name="problems">全部问题条目（已本地化；至少一条）。</param>
+    /// <param name="innerException">触发问题的原始异常。</param>
+    public CapabilityAssemblyException(IReadOnlyList<string> problems, Exception innerException)
+        : base(BuildMessage(problems), innerException)
+    {
+        Problems = problems;
+    }
+
+    /// <summary>
     /// 获取全部问题条目（已本地化）。
     /// </summary>
     public IReadOnlyList<string> Problems { get; }
