@@ -81,6 +81,11 @@ public static class CapabilityAssembly
 
     /// <summary>
     /// 加载部署目录内符合能力包命名约定（<c>{前缀}.*.dll</c>）的全部程序集（扫描数据源）。
+    /// <para>
+    /// 维护约束：按磁盘路径 <c>Assembly.LoadFrom</c> 加载——部署产物落地即被发现（identity 不在
+    /// deps.json 的裸部署包同样命中）；任一文件加载失败不再静默跳过，逐条计入问题清单后汇总抛
+    /// <see cref="CapabilityAssemblyException"/>（fail-fast，一次报全）。
+    /// </para>
     /// </summary>
     /// <param name="prefix">部署程序集前缀（如 <c>GameFrameX.Capability.Online</c>；非空）。</param>
     /// <returns>部署目录内可加载的能力包程序集集合。</returns>
@@ -92,16 +97,23 @@ public static class CapabilityAssembly
         }
 
         var assemblies = new List<Assembly>();
+        var problems = new List<string>();
         foreach (var path in Directory.GetFiles(AppContext.BaseDirectory, prefix.Trim() + ".*.dll"))
         {
             try
             {
-                assemblies.Add(Assembly.Load(AssemblyName.GetAssemblyName(path)));
+                assemblies.Add(Assembly.LoadFrom(path));
             }
-            catch (Exception)
+            catch (Exception exception)
             {
-                // 解析失败的文件（原生库 / 损坏产物）跳过——扫描面只关心能力包程序集。
+                // 命中命名约定的产物加载失败 = 部署残缺，静默跳过会造成能力缺席零告警——计入问题一次报全。
+                problems.Add(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.DeploymentAssemblyLoadFailed), path, exception.Message));
             }
+        }
+
+        if (problems.Count > 0)
+        {
+            throw new CapabilityAssemblyException(problems);
         }
 
         return assemblies;
@@ -129,10 +141,10 @@ public static class CapabilityAssembly
         {
             types = assembly.GetTypes();
         }
-        catch (ReflectionTypeLoadException)
+        catch (ReflectionTypeLoadException exception)
         {
-            // 无法完整加载类型的程序集跳过（如仅资源程序集或依赖缺失的动态引用）。
-            return;
+            // 命中命名约定的能力包类型无法完整加载（如依赖缺失）= 部署残缺——带定位信息 fail-fast，不再静默跳过。
+            throw new InvalidOperationException(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.ModuleTypeScanFailed), assembly.GetName().Name, exception.LoaderExceptions == null ? 0 : exception.LoaderExceptions.Length));
         }
 
         foreach (var type in types)

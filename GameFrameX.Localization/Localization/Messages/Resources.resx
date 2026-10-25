@@ -1388,6 +1388,12 @@
   <data name="Capability.Hosting.DuplicateCapability" xml:space="preserve">
     <value>Duplicate capability registration for id: {0}</value>
   </data>
+  <data name="Capability.Hosting.DeploymentAssemblyLoadFailed" xml:space="preserve">
+    <value>Failed to load a deployment capability assembly matched by the naming convention: {0} ({1})</value>
+  </data>
+  <data name="Capability.Hosting.ModuleTypeScanFailed" xml:space="preserve">
+    <value>Failed to scan capability assembly types: {0} ({1} type load failures)</value>
+  </data>
   <data name="Capability.Hosting.FilterTargetMissing" xml:space="preserve">
     <value>Assembly filter references an unknown capability id: {0}</value>
   </data>

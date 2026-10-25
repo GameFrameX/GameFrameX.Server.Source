@@ -92,16 +92,16 @@ public static class CapabilityComposition
             services.AddOverride(new CapabilityServiceRegistration(entry.ServiceType, string.Empty, entry.Factory, family.FamilyId, true));
         }
 
-        var modules = CapabilityAssembly.DiscoverFromDeploymentDirectory(family.DeploymentAssemblyPrefix);
-
         var builder = new CapabilityHostBuilder(services, eventBus, family, options);
         CapabilityHost host;
         try
         {
+            var modules = CapabilityAssembly.DiscoverFromDeploymentDirectory(family.DeploymentAssemblyPrefix);
             host = builder.Build(modules);
         }
         catch (CapabilityAssemblyException exception)
         {
+            // 部署目录发现期与装配期的汇总问题统一走这里：抛出前逐条打 Error（一次报全）。
             CapabilityAssemblyLogRenderer.RenderFailures(exception.Problems, options.AssemblyLog);
             throw;
         }

@@ -64,6 +64,26 @@ public static partial class Keys
             public const string DuplicateCapability = "Capability.Hosting.DuplicateCapability";
 
             /// <summary>
+            /// 部署目录能力程序集加载失败：{0}（{1}）
+            /// </summary>
+            /// <remarks>
+            /// 键名: Capability.Hosting.DeploymentAssemblyLoadFailed
+            /// 用途: 部署目录扫描按磁盘路径加载命中命名约定的产物失败（损坏 / 残缺 / 非托管）
+            /// 参数: {0} - 文件路径；{1} - 底层异常消息
+            /// </remarks>
+            public const string DeploymentAssemblyLoadFailed = "Capability.Hosting.DeploymentAssemblyLoadFailed";
+
+            /// <summary>
+            /// 能力程序集类型扫描失败：{0}（{1} 个类型加载错误）
+            /// </summary>
+            /// <remarks>
+            /// 键名: Capability.Hosting.ModuleTypeScanFailed
+            /// 用途: 能力包程序集 GetTypes 抛 ReflectionTypeLoadException（如依赖缺失）
+            /// 参数: {0} - 程序集名；{1} - 加载失败类型数
+            /// </remarks>
+            public const string ModuleTypeScanFailed = "Capability.Hosting.ModuleTypeScanFailed";
+
+            /// <summary>
             /// 装配过滤器引用了未发现的能力：{0}
             /// </summary>
             /// <remarks>
