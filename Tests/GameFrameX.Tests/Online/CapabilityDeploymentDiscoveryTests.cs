@@ -89,7 +89,8 @@ public sealed class CapabilityDeploymentDiscoveryTests
     }
 
     /// <summary>
-    /// 类型无法完整加载的能力包（依赖缺失）不再静默跳过：带程序集名定位信息 fail-fast。
+    /// 类型无法完整加载的能力包（依赖缺失）不再静默跳过：抛 <see cref="CapabilityAssemblyException"/>，
+    /// 首条问题带程序集名定位，其后逐条保留底层类型加载原因（组合入口据此经 RenderFailures 一次报全）。
     /// </summary>
     [Fact]
     public void DiscoverModules_UnloadableTypes_FailsFastWithAssemblyName()
@@ -100,8 +101,10 @@ public sealed class CapabilityDeploymentDiscoveryTests
         {
             var assembly = Assembly.LoadFrom(path);
 
-            var exception = Assert.Throws<InvalidOperationException>(() => CapabilityAssembly.DiscoverModules(new[] { assembly, }));
-            Assert.Contains("CapabilityDeploymentScanProbe.Broken", exception.Message);
+            var exception = Assert.Throws<CapabilityAssemblyException>(() => CapabilityAssembly.DiscoverModules(new[] { assembly, }));
+            Assert.Contains("CapabilityDeploymentScanProbe.Broken", exception.Problems[0]);
+            Assert.True(exception.Problems.Count > 1);
+            Assert.Contains(exception.Problems.Skip(1), problem => problem.Contains("CapabilityDeploymentScanProbe.Missing"));
         }
         finally
         {
