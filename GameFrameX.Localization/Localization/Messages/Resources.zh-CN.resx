@@ -1386,6 +1386,12 @@
   <data name="Capability.Hosting.DuplicateCapability" xml:space="preserve">
     <value>能力 Id 重复注册：{0}</value>
   </data>
+  <data name="Capability.Hosting.DeploymentAssemblyLoadFailed" xml:space="preserve">
+    <value>部署目录能力程序集加载失败：{0}（{1}）</value>
+  </data>
+  <data name="Capability.Hosting.ModuleTypeScanFailed" xml:space="preserve">
+    <value>能力程序集类型扫描失败：{0}（{1} 个类型加载错误）</value>
+  </data>
   <data name="Capability.Hosting.FilterTargetMissing" xml:space="preserve">
     <value>装配过滤器引用了未发现的能力：{0}</value>
   </data>
