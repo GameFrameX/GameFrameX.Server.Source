@@ -17,6 +17,7 @@
 ### Added
 
 * Capability 架构护栏（C241）：GFX0017 禁止 Apps/Hotfix 的直接及传递编译引用依赖实现包（保留 Online.Abstractions 及其合法 Hosting 契约闭包）；GFX0018 以符号检查能力注册、builder 装配与三族桥 Publish/Retract 的所属边界，保留模块辅助注册、Launcher Wiring 与独立测试夹具。Capability 工程统一接入分析器；架构分析器 Roslyn 引用对齐 .NET 10 SDK 基线，防止 CS9057 跳过规则；Online.Persistence 针对 C249 域属行状态仅本工程豁免旧 GFX0001。静态检查不证明反射、动态加载、跨请求缓存或启停时序。
+* Online 存储模式无声降级防护（C302，GFX-1015）：`Configs/app_config.json` Game Role 的 Online 段补 `UseGameDbStores: true`（原先缺省走 InMemory，重启丢玩家身份/好友/资产/存储数据）；启用 Online 能力族（双闸任一开）但未显式声明存储模式时组合根发出启动期 Warning（新本地化键 `Capability.Online.UseGameDbStoresUndeclared`，判定收敛为纯谓词 `OnlineCapabilityCompositionRoot.ShouldWarnStoreModeUndeclared` 供单测断言）；不 fail-fast，保护既有无键部署。
 * 两层会话协同与真实断线恢复（C204）：Core 物理连接 / Online 逻辑会话 / Online 对局成员三层职责与标识映射冻结——身份恢复凭据 = Online 会话 Token（`RespPlayerLogin` 新增 `SessionToken` 字段断线前交付；桥不可用为空、登录主流程不挂），新连接携凭据经新增 220-18/19 `ReqSessionResume`/`RespSessionResume`（Auth 族）恢复：验证（指纹/终态/到期/作用域）→ 连接替换（`OnlineSessionManager.MarkResumedAsync` 新面，不放松既有状态机）→ 原子轮换（旧凭据即刻失效，重放显式 TokenRevoked）→ Core 绑定（`UpdateSession` 顶号编排复用）→ 在线簿记还原 → 对局恢复（`IOnlineMatchDomain` 增 `NotifyPlayerDisconnectedAsync`/`TryResumeForPlayerAsync`——按票据→分配登记→运行时成员表逐级核对，服务端留存 rt- 令牌回灌 `ResumeAsync` 三重校验原样生效，快照+增量/回退，不重新匹配、不另开对局、不重复结算；无对局 = 空回执、超窗 NetworkTimeout、已结束 StateEnded、已离局 ScopeDenied）。`Capability.Online.Abstractions` 新增 `IOnlineSessionReconnectContract` + `OnlineSessionDomainBridgeHolder/Lease`（C246 匹配域桥同型）；Foundation `OnlineSessionReconnectService` 实现（不另建第二凭据权威——Token 签发/校验/轮换全部委托既有 Token 服务）+ `session-reconnect-window-sweep` 清扫 tick；`PlayerSessionManager.Remove` 带路由下线守卫（旧断连回调迟到不清新路由）；`OnDisconnected` 接入两层协同（会话域开窗 + 对局域标记断线成员，旧回调迟到守卫跳过）；KCP 首消息白名单补 `ReqSessionResume`（与角色登录同为鉴权完成信号）；Bot `--scenario=match` 扩展断线恢复演练（断线→携凭据恢复同身份同对局→旧凭据重放被拒→幂等重入同一局证据链）。宿主重启 = InMemory 会话/票据/对局失忆，恢复承诺终止于进程存活期（不宣称跨重启无损恢复）。
 
 
@@ -68,6 +69,7 @@
 
 ### Breaking
 
+* `OnlineCapabilityOptions.UseGameDbStores` 由 `bool` 改三态 `bool?`（C302）：null = 配置未声明（触发启动期告警后按 InMemory 处理）、true = 落库、false = 显式选择易失；消费方需按可空布尔判读（仓内调用点已同批迁移）。
 * Capability 能力注入机制重设计（C294，GFX-998，破坏性一次性切换，能力未上线无兼容层）：
   - 模块契约改为三段生命周期：`ICapabilityModule` 新增 `ActivateAsync(CapabilityActivationContext, CancellationToken)` / `DeactivateAsync(CancellationToken)`；激活按拓扑序执行、中途失败逆序回滚，停止为停调度 → 逆序 Deactivate → 机制自动撤销全部桥。四桥发布、榜单预建、撮合通知订阅、旧好友数据迁移迁入所属能力模块。
   - 桥机制化：泛型 `CapabilityBridge<T>.TryAcquire` / `CapabilityBridgeLease<T>`（撤销 / 替换后抛 `CapabilityBridgeUnavailableException`，族层映射 8002），发布只经 `CapabilityActivationContext.Bridges.Publish<T>`，同契约重复发布 fail-fast；删除 `Online.Abstractions/Bridges/` 四对 holder/lease 与 Launcher 四个 `*BridgeWiring`。

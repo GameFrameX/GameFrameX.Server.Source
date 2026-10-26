@@ -42,7 +42,9 @@ using GameFrameX.Capability.Online.Persistence.Identity;
 using GameFrameX.Capability.Online.Persistence.Social;
 using GameFrameX.Capability.Online.Persistence.Storage;
 using GameFrameX.Capability.Online.Social;
+using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
+using GameFrameX.Localization;
 using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Launcher.Online;
@@ -182,14 +184,19 @@ public static class OnlineCapabilityCompositionRoot
             options.Override<IOnlineHotfixRollbackExecutor>(new HotfixManagerRollbackExecutor(setting));
             options.Override<IOnlinePlayerDirectory>(new HostPlayerDirectory());
 
-            // GameDb 一级 store 覆盖（Online.UseGameDbStores=true 时预置五个持久化适配器；业务库已就绪由模板顺序保证）。
-            if (online.UseGameDbStores)
+            // GameDb 一级 store 覆盖（Online.UseGameDbStores 三态，C302）：true 预置五个持久化适配器（业务库已就绪由模板顺序保证）；
+            // 未声明（null）= 无声降级防护位——启用族但未声明存储模式时告警（不 fail-fast，保护既有无键部署），随后保持 InMemory 默认。
+            if (online.UseGameDbStores == true)
             {
                 options.Override<IOnlineIdentityStore>(new GameDbOnlineIdentityStore());
                 options.Override<IOnlinePlayerStorageStore>(new GameDbOnlinePlayerStorageStore());
                 options.Override<IOnlineAssetStore>(new GameDbOnlineAssetStore());
                 options.Override<IOnlineAssetTransactionStore>(new GameDbOnlineAssetTransactionStore());
                 options.Override<IOnlineFriendStore>(new GameDbOnlineFriendStore());
+            }
+            else if (ShouldWarnStoreModeUndeclared(online))
+            {
+                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Capability.OnlineModule.UseGameDbStoresUndeclared, setting.ServerType));
             }
 
             _runtime = CapabilityComposition.Compose(new OnlineCapabilityFamily(), options);
@@ -204,6 +211,31 @@ public static class OnlineCapabilityCompositionRoot
             System.Threading.Volatile.Write(ref _composed, 0);
             throw;
         }
+    }
+
+    /// <summary>
+    /// 判定是否需要发出「存储模式未声明」启动期告警（C302 无声降级防护）：
+    /// 族被启用（双闸任一开）但 <c>Online.UseGameDbStores</c> 未在配置中显式声明（null）时为 true。
+    /// <para>为什么不直接在组合点内联判定：三态口径（未声明 / 显式 true / 显式 false）是配置契约本身，
+    /// 收敛为纯谓词供单测直接断言，避免只能靠日志输出验证信号。</para>
+    /// <para>显式 false（有意选择 InMemory，如本地无库开发）与双闸全关（族未启用，零装配零日志）均不告警。</para>
+    /// </summary>
+    /// <remarks>
+    /// Determines whether the "storage mode undeclared" startup warning must fire (the C302
+    /// silent-degradation guard): true when the family is enabled (either gate on) yet
+    /// <c>Online.UseGameDbStores</c> was never explicitly declared in configuration (null). The
+    /// tri-state contract (undeclared / explicit true / explicit false) is collapsed into this pure
+    /// predicate so unit tests can assert it directly instead of scraping log output; an explicit
+    /// false (a deliberate in-memory choice, e.g. database-less local development) and both gates off
+    /// (family disabled: nothing assembled, nothing logged) never warn.
+    /// </remarks>
+    /// <param name="online">当前 Role 的 Online 配置段。</param>
+    /// <returns>未声明存储模式且族已启用时为 true；否则为 false。</returns>
+    public static bool ShouldWarnStoreModeUndeclared(OnlineCapabilityOptions online)
+    {
+        return online != null
+            && (online.EnableRuntime || online.EnableAdminApi)
+            && online.UseGameDbStores == null;
     }
 
     /// <summary>

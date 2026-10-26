@@ -17,6 +17,7 @@
       "EnableRuntime": true,
       "EnableAdminApi": true,
       "EnableRoles": ["Game"],
+      "UseGameDbStores": true,
       "Settings": {}
     },
     "MinModuleId": 10,
