@@ -65,7 +65,7 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 OUTPUT_PATH = REPO_ROOT / "docker-compose.multi.yml"
 CONFIG_OUTPUT_DIR = REPO_ROOT / "Configs" / "multi"
 
-HEADER = """\\
+HEADER = """\
 # 本文件由 scripts/multi/generate-docker-compose-multi.py 生成（拓扑环境变量生成器）。
 # 修改拓扑请编辑该脚本的 ROLES 定义后重新生成，不要手改本文件。
 """
