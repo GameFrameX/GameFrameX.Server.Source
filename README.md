@@ -594,17 +594,7 @@ Cluster topology:
 | Social    | 2         | Social servers (social-1, social-2) |
 | Game      | 10        | Game servers (game-1 ~ game-10)     |
 
-All instances use environment variables for static-bootstrap service discovery (`services__{Role}__tcp__0`):
-
-```yaml
-environment:
-  services__Social_2001__tcp__0: "tcp://social-1:29400"
-  services__Social_2002__tcp__0: "tcp://social-2:29401"
-  services__Game_1001__tcp__0: "tcp://game-1:29100"
-  # ...
-```
-
-Endpoint values are `scheme://host:port` URIs. The scheme segment of the key (`tcp` / `kcp` / `ws` / `wss`) declares the transport: at dial time the remote-messaging client parses the endpoint and dispatches to the adapter registered for that scheme. A service may publish both a tcp and a kcp endpoint (`services__{Role}__kcp__0`) — the kcp endpoint is preferred, and callers without a registered KCP adapter fall back to the tcp endpoint with a one-time warning.
+All instances self-register in the heartbeat registry (`server_heartbeat`) through the advertise trio (`GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId`, injected per instance by the compose generator). Inter-server endpoints resolve exclusively from the discovery route table (`IRoleRouteTableProvider`): the RPC client, the unified sender, and the envelope router all dial from the heartbeat registry — the static bootstrap environment-variable map is retired. With `IsEnableInnerKcp=true` (and `InnerKcpPort`), an instance whose inter-server KCP listener assembled successfully broadcasts a kcp additional endpoint in its heartbeat; callers with a registered KCP adapter dial kcp, the others fall back to tcp with a one-time warning. Rolling-upgrade constraint: before enabling KCP broadcasting, every node in the cluster must run this version or newer.
 
 **Inter-server KCP transport (C251).** The `kcp` scheme is a real transport since C251: register the adapter with `UseKcpTransportAdapter()` on `RemoteMessagingBuilder` and point a service at `kcp://host:port`. The receiving side is a dedicated inter-server KCP listener (`IsEnableInnerKcp` + `InnerKcpPort`, independent of the client-access `IsEnableKcp`/`KcpPort` face; since C272, when `InterNodeAuthSecret` is configured this dedicated listener mounts a credential gate — the protocol version handshake frame must carry a valid HMAC credential and everything else is closed as a protocol violation until then; with an empty secret no authentication middleware is mounted and the inner-endpoint trust level matches the inner TCP listener). Sizing contract: KCP targets latency-critical small RPC frames — a single frame is bounded at 8 KCP segments (11,008 bytes at Mtu 1400); larger frames are rejected fast with an explicit connection-level error and should declare a tcp endpoint instead (the receiving funnel caps single frames at ~64KB on both transports anyway). Loopback baseline (200 serial round trips, C251 benchmark): kcp ≈ 27ms/round + 4.7ms CPU/round vs tcp ≈ 0.34ms/round + 0.5ms CPU/round — KCP pays for its reliability machinery and is the choice for lossy/cross-DC links, not for loopback-style low-latency LANs where TCP dominates.
 
@@ -806,7 +796,7 @@ GameFrameX.Server.Source/
 ├── GameFrameX.Network.Abstractions/  # Network interfaces (IMessage, IMessageHandler, message mapping)
 ├── GameFrameX.Network.HTTP/          # HTTP server (Swagger, Kestrel, BaseHttpHandler)
 ├── GameFrameX.Network.RemoteMessaging/ # Cross-process remote messaging (circuit breaker, retry, consistent hashing)
-├── GameFrameX.Discovery/             # Environment variable static-bootstrap service discovery (services__{Role}__tcp__0 bootstrap map)
+├── GameFrameX.Discovery/             # Heartbeat-registry service discovery (server_heartbeat dual-view route table; advertise-trio bootstrap)
 ├── GameFrameX.DataBase/              # Database abstraction layer (multi-provider registry, GameDb query/update/delete)
 ├── GameFrameX.DataBase.Mongo/        # MongoDB provider (health monitoring, retry, batch operations)
 ├── GameFrameX.DataBase.PostgreSql/   # PostgreSQL provider (Npgsql, same resilience as the MongoDB provider)
@@ -860,8 +850,7 @@ launcher defaults).
 | File | Purpose |
 |:--|:--|
 | `docker-compose.development.yml` | Local development: a single MongoDB service (host port `127.0.0.1:37017`, matching the example `app_config.json`) |
-| `docker-compose.multi.yml` | Multi-instance topology form, **generated** by `scripts/multi/generate-docker-compose-multi.py`; each instance is injected with `GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId` plus the `services__{Role}__tcp__0` static bootstrap map, and mounts its own `Configs/multi/{service}.json` section (values identical to the `command` arguments) at `/app/Configs/app_config.json` |
-| `docker-compose.multi.legacy.yml` | The previous static form, kept for transition |
+| `docker-compose.multi.yml` | Multi-instance topology form, **generated** by `scripts/multi/generate-docker-compose-multi.py`; each instance is injected with `GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId` (inter-server endpoints resolve from the heartbeat registry), and mounts its own `Configs/multi/{service}.json` section (values identical to the `command` arguments) at `/app/Configs/app_config.json` |
 
 Change the topology by editing the `ROLES` definition in the generator and re-running
 `python3 scripts/multi/generate-docker-compose-multi.py` (idempotent; `--check` verifies the committed

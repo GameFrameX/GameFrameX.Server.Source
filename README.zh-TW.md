@@ -563,17 +563,7 @@ docker compose -f docker-compose.multi.yml down
 | Social | 2 | 社交伺服器（social-1, social-2） |
 | Game | 10 | 遊戲伺服器（game-1 ~ game-10） |
 
-所有實例透過環境變數靜態引導進行服務發現（`services__{Role}__tcp__0`）：
-
-```yaml
-environment:
-  services__Social_2001__tcp__0: "tcp://social-1:29400"
-  services__Social_2002__tcp__0: "tcp://social-2:29401"
-  services__Game_1001__tcp__0: "tcp://game-1:29100"
-  # ...
-```
-
-端點取值為 `scheme://host:port` URI。鍵的 scheme 段（`tcp` / `kcp` / `ws` / `wss`）宣告傳輸方式：撥號期遠端訊息客戶端解析端點並按 scheme 分發至對應已註冊介接器。同一服務可同時發布 tcp 與 kcp 端點（`services__{Role}__kcp__0`）——kcp 端點優先，未註冊 KCP 介接器的呼叫方回落 tcp 端點並僅告警一次。
+所有實例透過 Advertise 三件套（`GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId`，由 compose 產生器逐實例注入）在心跳註冊表（`server_heartbeat`）中自註冊。伺服器間端點一律經發現層路由表（`IRoleRouteTableProvider`）解析：RPC 直連、統一發送端、信封路由三條鏈路均從心跳註冊表撥號——靜態引導環境變數映射已退役。`IsEnableInnerKcp=true`（且組態 `InnerKcpPort`）時，伺服器間 KCP 監聽器裝配成功的實例會在心跳中廣播 kcp 附加端點；註冊了 KCP 撥號介接器的呼叫方走 kcp，其餘回落 tcp 並僅告警一次。滾動升級約束：開啟 KCP 廣播前，叢集所有節點須執行本版本或更新版本。
 
 #### 自訂建置
 
@@ -771,7 +761,7 @@ GameFrameX.Server.Source/
 ├── GameFrameX.Network.Abstractions/  # 網路介面（IMessage、IMessageHandler、訊息映射）
 ├── GameFrameX.Network.HTTP/          # HTTP 伺服器（Swagger、Kestrel、BaseHttpHandler）
 ├── GameFrameX.Network.RemoteMessaging/ # 跨程序遠端訊息（斷路器、重試、一致性雜湊）
-├── GameFrameX.Discovery/             # 環境變數靜態引導服務發現（services__{Role}__tcp__0 引導映射）
+├── GameFrameX.Discovery/             # 心跳註冊表服務發現（server_heartbeat 雙視圖路由表；Advertise 三件套引導）
 ├── GameFrameX.DataBase/              # 資料庫抽象層（多 Provider 註冊表、GameDb 查詢/更新/刪除）
 ├── GameFrameX.DataBase.Mongo/        # MongoDB Provider（健康監控、重試、批次操作）
 ├── GameFrameX.DataBase.PostgreSql/   # PostgreSQL Provider（Npgsql，具備與 MongoDB Provider 同等的韌性）
@@ -819,8 +809,7 @@ GameFrameX.Server.Source/
 | 檔案 | 用途 |
 |:--|:--|
 | `docker-compose.development.yml` | 本地開發：單一 MongoDB 服務（宿主埠 `127.0.0.1:37017`，與範例 `app_config.json` 一致） |
-| `docker-compose.multi.yml` | 多實例拓撲形式，由 `scripts/multi/generate-docker-compose-multi.py` **生成**；每個實例注入 `GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId` 以及 `services__{Role}__tcp__0` 靜態引導映射，並掛載各自的 `Configs/multi/{service}.json` 配置節（數值與 `command` 參數一致）至 `/app/Configs/app_config.json` |
-| `docker-compose.multi.legacy.yml` | 先前的靜態形式，作為過渡保留 |
+| `docker-compose.multi.yml` | 多實例拓撲形式，由 `scripts/multi/generate-docker-compose-multi.py` **生成**；每個實例注入 `GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId`（伺服器間端點由心跳註冊表解析），並掛載各自的 `Configs/multi/{service}.json` 配置節（數值與 `command` 參數一致）至 `/app/Configs/app_config.json` |
 
 修改拓撲的方式：編輯產生器中的 `ROLES` 定義並重新執行
 `python3 scripts/multi/generate-docker-compose-multi.py`（冪等；`--check` 可驗證已提交的
