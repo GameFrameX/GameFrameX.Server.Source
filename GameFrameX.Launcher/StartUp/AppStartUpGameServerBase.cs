@@ -108,6 +108,21 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
             LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.ComponentRegisterEnd));
 
             await StartRoleServicesAsync();
+
+            // KCP 附加端点发布：在 Role 服务（含 KCP 监听器装配）完成后、就绪屏障与心跳 Active 之前执行。
+            // 屏障前发布是刻意的——Role 按就绪屏障串行启动，屏障之后本 Role 的实例级闸门读数可能被同进程
+            // 后续 Role 的装配污染；Booting 实例不进任何路由视图，广播前置不会提前暴露端点。
+            // Publish the kcp additional endpoint after role services (including the KCP listener
+            // assembly) complete, before the startup-ready barrier and the Active heartbeat.
+            // Publishing before the barrier is deliberate — roles start sequentially behind the
+            // barrier, and after it this role's instance-level gate reading could be polluted by a
+            // later role's assembly in the same process; a Booting instance never enters any route
+            // view, so publishing early never exposes the endpoint prematurely.
+            if (Setting.IsEnableInnerKcp && IsInnerKcpListenerConfigured)
+            {
+                GameFrameX.Discovery.ActiveDiscoveryRuntime.PublishActiveAdvertiseEndpoints(Setting.ServerType, new[] { KeyValuePair.Create("kcp", Setting.InnerKcpPort) });
+            }
+
             await OnStartupCompletedAsync();
 
             LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.EnterMainLoop));
@@ -381,6 +396,14 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
 
         // 玩家路由 SyncTarget 与 Provider 无关（ResolverBootstrap 单例），激活后统一装配。
         GameFrameX.Core.Session.PlayerSessionManager.Instance.PlayerRouteSyncTarget = GameFrameX.Discovery.Routing.PlayerRouteResolverBootstrap.SyncTarget;
+
+        // 本服发现层实例 Id 注入（与心跳自描述符同源）：PlayerSessionManager 的路由同步写真实实例 Id，
+        // 跨服推送按 player_route.InstanceId 实例直达。仅观察形态（未配置广播端口）为 null——路由同步跳过。
+        // Inject the local discovery instance id (same source as the heartbeat self descriptor):
+        // the session manager's route sync then writes the real instance id and cross-server pushes
+        // dial the exact instance recorded in player_route. Null for observe-only processes (no
+        // advertise port) — the route sync is skipped there.
+        GameFrameX.Core.Session.PlayerSessionManager.Instance.LocalDiscoveryInstanceId = GameFrameX.Discovery.Routing.PlayerRouteResolverBootstrap.LocalInstanceId;
         // 路由胶水装配自 Runtime 拆至组合侧 DiscoveryRoutingWire（发现层 Runtime 不再引用消息胶水程序集）；
         // 路由表经公共槽位无分派回读，未激活时 null 触发 Initialize 的 ArgumentNullException fail-fast（既有语义）。
         GameFrameX.Network.RemoteMessaging.Routing.DiscoveryRoutingWire.Initialize(RoleSet.Current, ActiveDiscoveryRuntime.RouteTableProvider);

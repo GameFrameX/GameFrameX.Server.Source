@@ -56,13 +56,26 @@ public sealed class RemoteCallContext
     public const int DefaultMaxRetryCount = 2;
 
     /// <summary>
-    /// 目标服务名
+    /// 目标服务名（承载的服务进程类型名，与心跳注册表中的 Role 同一概念）
     /// </summary>
     /// <remarks>
-    /// Target service name.
+    /// Target service name (the hosted server process type name, the same concept as the role
+    /// in the heartbeat registry).
     /// </remarks>
     /// <value>目标服务名 / The target service name</value>
     public string ServiceName { get; init; }
+
+    /// <summary>
+    /// 目标实例唯一标识（可空 = ServerType 级确定性选择）。
+    /// </summary>
+    /// <remarks>
+    /// The target instance id (null = a deterministic ServerType-level selection). When set,
+    /// endpoint resolution goes straight to that instance (the Instance view includes Draining,
+    /// so in-flight deliveries to a draining instance stay valid), and the circuit-breaker /
+    /// health-scoring key splits to the instance dimension (<c>ServerType/InstanceId</c>).
+    /// </remarks>
+    /// <value>目标实例唯一标识或 null / The target instance id, or null</value>
+    public string TargetInstanceId { get; init; }
 
     /// <summary>
     /// 超时毫秒数
@@ -232,6 +245,7 @@ public sealed class RemoteCallContext
         return new RemoteCallContext
         {
             ServiceName = ServiceName,
+            TargetInstanceId = TargetInstanceId,
             TimeoutMs = TimeoutMs,
             CancellationToken = CancellationToken,
             AllowRetry = AllowRetry,

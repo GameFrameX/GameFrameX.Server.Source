@@ -32,7 +32,7 @@ using GameFrameX.Network.RemoteMessaging.Contracts;
 using GameFrameX.Network.Abstractions;
 using GameFrameX.Network.RemoteMessaging;
 using GameFrameX.Network.Messages;
-using System.Collections;
+using GameFrameX.Tests.RemoteMessaging;
 using GameFrameX.Utility.Setting;
 using Xunit;
 
@@ -49,8 +49,9 @@ public class UnifiedMessageSenderMetricsIntegrationTests
             new FakePlayerRouteResolver(PlayerRouteInfo.Offline()),
             new FakePlayerLocalSender(isOnline: true, sendResult: true),
             new ConsistentHashServerInstanceSelector(),
+            RouteTableTestHelper.EmptyProvider(),
             GameServerConst.Game.Name,
-            GameServerConst.Game.Id,
+            "2001",
             metrics);
 
         var result = await sender.SendToPlayerAsync(1001, new ReqSendToPlayerInner());
@@ -71,8 +72,9 @@ public class UnifiedMessageSenderMetricsIntegrationTests
             new FakePlayerRouteResolver(PlayerRouteInfo.Offline()),
             new FakePlayerLocalSender(isOnline: false, sendResult: false),
             new ConsistentHashServerInstanceSelector(),
+            RouteTableTestHelper.EmptyProvider(),
             GameServerConst.Game.Name,
-            GameServerConst.Game.Id,
+            "2001",
             metrics);
 
         var result = await sender.SendToServerAsync<RespSendToPlayerInner>("social-service", new ReqSendToPlayerInner());
@@ -137,6 +139,11 @@ public class UnifiedMessageSenderMetricsIntegrationTests
         }
 
         public Task SendOneWayAsync(string serviceName, MessageObject requestMessage, int timeoutMs = RemoteCallContext.DefaultTimeoutMs, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task SendOneWayAsync(RemoteCallContext context, MessageObject requestMessage)
         {
             return Task.CompletedTask;
         }

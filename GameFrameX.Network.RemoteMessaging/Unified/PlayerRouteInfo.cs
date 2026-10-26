@@ -56,6 +56,18 @@ public sealed class PlayerRouteInfo
     public int ServerId { get; init; }
 
     /// <summary>
+    /// 玩家所在实例的唯一标识（在线时为发现层心跳实例 Id，离线为空）。
+    /// </summary>
+    /// <remarks>
+    /// The discovery instance id hosting the player (online only; empty when offline).
+    /// Cross-server pushes dial this exact instance (<c>RemoteCallContext.TargetInstanceId</c>,
+    /// instance view including Draining); legacy rows written with a placeholder id never
+    /// resolve and fall into the offline branch until the player re-logs in.
+    /// </remarks>
+    /// <value>实例唯一标识或 null / The instance id, or null</value>
+    public string InstanceId { get; init; }
+
+    /// <summary>
     /// 玩家是否在线
     /// </summary>
     /// <remarks>
@@ -81,14 +93,16 @@ public sealed class PlayerRouteInfo
     /// </remarks>
     /// <param name="serverType">服务器类型 / Server type</param>
     /// <param name="serverId">服务器ID / Server ID</param>
+    /// <param name="instanceId">实例唯一标识 / The instance id</param>
     /// <param name="version">路由版本号 / Route version</param>
     /// <returns>在线路由信息 / Online route information</returns>
-    public static PlayerRouteInfo Online(string serverType, int serverId, long version = 0)
+    public static PlayerRouteInfo Online(string serverType, int serverId, string instanceId, long version = 0)
     {
         return new PlayerRouteInfo
         {
             ServerType = serverType,
             ServerId = serverId,
+            InstanceId = instanceId,
             IsOnline = true,
             Version = version,
         };

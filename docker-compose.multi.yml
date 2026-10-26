@@ -1,24 +1,8 @@
 # 本文件由 scripts/multi/generate-docker-compose-multi.py 生成（拓扑环境变量生成器）。
 # 修改拓扑请编辑该脚本的 ROLES 定义后重新生成，不要手改本文件。
-# 现有静态形态保留在 docker-compose.multi.legacy.yml（过渡期兼容）。
 
 name: gfx-multi
 
-x-launcher-discovery-env: &launcher-discovery-env
-  services__Social_2001__tcp__0: "tcp://social-1:29400"
-  services__Social_2002__tcp__0: "tcp://social-2:29401"
-  services__Social__tcp__0: "tcp://social-1:29400"
-  services__Game_1001__tcp__0: "tcp://game-1:29100"
-  services__Game_1002__tcp__0: "tcp://game-2:29101"
-  services__Game_1003__tcp__0: "tcp://game-3:29102"
-  services__Game_1004__tcp__0: "tcp://game-4:29103"
-  services__Game_1005__tcp__0: "tcp://game-5:29104"
-  services__Game_1006__tcp__0: "tcp://game-6:29105"
-  services__Game_1007__tcp__0: "tcp://game-7:29106"
-  services__Game_1008__tcp__0: "tcp://game-8:29107"
-  services__Game_1009__tcp__0: "tcp://game-9:29108"
-  services__Game_1010__tcp__0: "tcp://game-10:29109"
-  services__Game__tcp__0: "tcp://game-1:29100"
 
 services:
   mongo:
@@ -55,7 +39,6 @@ services:
       - "--DataBaseUrl=mongodb://mongo:27017/?authSource=admin"
       - "--DataBaseName=gameframex_multi"
     environment:
-      <<: *launcher-discovery-env
       GameFrameX__AdvertiseHost: social-1
       GameFrameX__AdvertisePort: "29400"
       GameFrameX__RoleInstanceId: "2001"
@@ -87,7 +70,6 @@ services:
       - "--DataBaseUrl=mongodb://mongo:27017/?authSource=admin"
       - "--DataBaseName=gameframex_multi"
     environment:
-      <<: *launcher-discovery-env
       GameFrameX__AdvertiseHost: social-2
       GameFrameX__AdvertisePort: "29401"
       GameFrameX__RoleInstanceId: "2002"
@@ -123,7 +105,6 @@ services:
       - "--DataBaseUrl=mongodb://mongo:27017/?authSource=admin"
       - "--DataBaseName=gameframex_multi"
     environment:
-      <<: *launcher-discovery-env
       GameFrameX__AdvertiseHost: game-1
       GameFrameX__AdvertisePort: "29100"
       GameFrameX__RoleInstanceId: "1001"
@@ -159,7 +140,6 @@ services:
       - "--DataBaseUrl=mongodb://mongo:27017/?authSource=admin"
       - "--DataBaseName=gameframex_multi"
     environment:
-      <<: *launcher-discovery-env
       GameFrameX__AdvertiseHost: game-2
       GameFrameX__AdvertisePort: "29101"
       GameFrameX__RoleInstanceId: "1002"
@@ -195,7 +175,6 @@ services:
       - "--DataBaseUrl=mongodb://mongo:27017/?authSource=admin"
       - "--DataBaseName=gameframex_multi"
     environment:
-      <<: *launcher-discovery-env
       GameFrameX__AdvertiseHost: game-3
       GameFrameX__AdvertisePort: "29102"
       GameFrameX__RoleInstanceId: "1003"
@@ -231,7 +210,6 @@ services:
       - "--DataBaseUrl=mongodb://mongo:27017/?authSource=admin"
       - "--DataBaseName=gameframex_multi"
     environment:
-      <<: *launcher-discovery-env
       GameFrameX__AdvertiseHost: game-4
       GameFrameX__AdvertisePort: "29103"
       GameFrameX__RoleInstanceId: "1004"
@@ -267,7 +245,6 @@ services:
       - "--DataBaseUrl=mongodb://mongo:27017/?authSource=admin"
       - "--DataBaseName=gameframex_multi"
     environment:
-      <<: *launcher-discovery-env
       GameFrameX__AdvertiseHost: game-5
       GameFrameX__AdvertisePort: "29104"
       GameFrameX__RoleInstanceId: "1005"
@@ -303,7 +280,6 @@ services:
       - "--DataBaseUrl=mongodb://mongo:27017/?authSource=admin"
       - "--DataBaseName=gameframex_multi"
     environment:
-      <<: *launcher-discovery-env
       GameFrameX__AdvertiseHost: game-6
       GameFrameX__AdvertisePort: "29105"
       GameFrameX__RoleInstanceId: "1006"
@@ -339,7 +315,6 @@ services:
       - "--DataBaseUrl=mongodb://mongo:27017/?authSource=admin"
       - "--DataBaseName=gameframex_multi"
     environment:
-      <<: *launcher-discovery-env
       GameFrameX__AdvertiseHost: game-7
       GameFrameX__AdvertisePort: "29106"
       GameFrameX__RoleInstanceId: "1007"
@@ -375,7 +350,6 @@ services:
       - "--DataBaseUrl=mongodb://mongo:27017/?authSource=admin"
       - "--DataBaseName=gameframex_multi"
     environment:
-      <<: *launcher-discovery-env
       GameFrameX__AdvertiseHost: game-8
       GameFrameX__AdvertisePort: "29107"
       GameFrameX__RoleInstanceId: "1008"
@@ -411,7 +385,6 @@ services:
       - "--DataBaseUrl=mongodb://mongo:27017/?authSource=admin"
       - "--DataBaseName=gameframex_multi"
     environment:
-      <<: *launcher-discovery-env
       GameFrameX__AdvertiseHost: game-9
       GameFrameX__AdvertisePort: "29108"
       GameFrameX__RoleInstanceId: "1009"
@@ -447,7 +420,6 @@ services:
       - "--DataBaseUrl=mongodb://mongo:27017/?authSource=admin"
       - "--DataBaseName=gameframex_multi"
     environment:
-      <<: *launcher-discovery-env
       GameFrameX__AdvertiseHost: game-10
       GameFrameX__AdvertisePort: "29109"
       GameFrameX__RoleInstanceId: "1010"

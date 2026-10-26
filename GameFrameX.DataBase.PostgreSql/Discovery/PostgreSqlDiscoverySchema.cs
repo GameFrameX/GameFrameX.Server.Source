@@ -81,6 +81,35 @@ internal static class PostgreSqlDiscoverySchema
     }
 
     /// <summary>
+    /// 幂等补列 server_heartbeat.additional_advertise_endpoints（text[]，可空）。
+    /// </summary>
+    /// <remarks>
+    /// Idempotently adds the heartbeat table's <c>additional_advertise_endpoints</c> column
+    /// (a nullable <c>text[]</c>). The EF create script covers fresh databases; this upgrade
+    /// statement covers control databases created before the additional-endpoint field
+    /// existed. Table and column names are derived through
+    /// <see cref="DiscoveryStorageNaming"/> (the zero-name-literal convention);
+    /// <c>ADD COLUMN IF NOT EXISTS</c> is itself idempotent.
+    /// </remarks>
+    /// <param name="context">发现层 EF 上下文 / The discovery EF context</param>
+    /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
+    /// <returns>异步任务 / Async task</returns>
+    public static async Task EnsureHeartbeatAdditionalEndpointsColumnAsync(PostgreSqlDiscoveryDbContext context, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        var tableName = DiscoveryStorageNaming.TableName<ServerHeartbeatEntity>();
+        var columnName = DiscoveryStorageNaming.SnakeCase(nameof(ServerHeartbeatEntity.AdditionalAdvertiseEndpoints));
+        // 标识符不能参数化（EF 参数化仅适用值字面量）；表 / 列名均经 DiscoveryStorageNaming 从类型 / 属性名推导
+        //（编译期常量、零用户输入），字符串拼接无注入面。
+        // Identifiers cannot be parameterized (EF parameterization is for value literals); both
+        // names derive from type / property names through DiscoveryStorageNaming (compile-time
+        // constants, zero user input), so plain concatenation has no injection surface.
+        var upgradeStatement = "ALTER TABLE " + tableName + " ADD COLUMN IF NOT EXISTS " + columnName + " text[]";
+        await context.Database.ExecuteSqlRawAsync(upgradeStatement, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// 按分号拆分脚本为非空语句（EF 生成的 DDL 不含数据行 / 字符串字面量中的分号）。
     /// </summary>
     /// <remarks>

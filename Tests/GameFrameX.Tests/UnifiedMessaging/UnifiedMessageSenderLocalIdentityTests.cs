@@ -32,7 +32,7 @@ using GameFrameX.Network.RemoteMessaging.Contracts;
 using GameFrameX.Network.Abstractions;
 using GameFrameX.Network.RemoteMessaging;
 using GameFrameX.Network.Messages;
-using System.Collections;
+using GameFrameX.Tests.RemoteMessaging;
 using GameFrameX.Utility.Setting;
 using Xunit;
 
@@ -43,15 +43,16 @@ public class UnifiedMessageSenderLocalIdentityTests
     [Fact]
     public async Task SendToPlayerAsync_RouteOnlineDiffersOnlyByCase_TreatedAsLocalServerWithoutRemoteCall()
     {
-        // 注入 ("Social", 77)、路由 ("social", 77)：ServerType 仅大小写不同 → 本服；本服投递失败 → 离线，不跨服转发。
+        // 注入 ("Social", "2001")、路由 ("social", "2001")：ServerType 仅大小写不同且实例 Id 相同 → 本服；本服投递失败 → 离线，不跨服转发。
         var remoteClient = new CountingRemoteMessageClient();
         var sender = new UnifiedMessageSender(
             remoteClient,
-            new FakePlayerRouteResolver(PlayerRouteInfo.Online("social", 77)),
+            new FakePlayerRouteResolver(PlayerRouteInfo.Online("social", 77, "2001")),
             new FakePlayerLocalSender(isOnline: true, sendResult: false),
             new ConsistentHashServerInstanceSelector(),
+            RouteTableTestHelper.EmptyProvider(),
             "Social",
-            77);
+            "2001");
 
         var result = await sender.SendToPlayerAsync(2001, new ReqSendToPlayerInner());
 
@@ -63,16 +64,16 @@ public class UnifiedMessageSenderLocalIdentityTests
     [Fact]
     public async Task SendToPlayerAsync_ExactIdentityMatch_TreatedAsLocalServerWithoutRemoteCall()
     {
-        // 注入 ("Social", 77) 且路由 ("Social", 77)：构造期读 CurrentSetting 的旧实现（测试内为 null，
-        // 回落 Game/1000）会误判为他服并跨服转发；构造注入后判定为本服。
+        // 注入 ("Social", "2001") 且路由 ("Social", "2001")：身份完全一致 → 本服。
         var remoteClient = new CountingRemoteMessageClient();
         var sender = new UnifiedMessageSender(
             remoteClient,
-            new FakePlayerRouteResolver(PlayerRouteInfo.Online("Social", 77)),
+            new FakePlayerRouteResolver(PlayerRouteInfo.Online("Social", 77, "2001")),
             new FakePlayerLocalSender(isOnline: true, sendResult: false),
             new ConsistentHashServerInstanceSelector(),
+            RouteTableTestHelper.EmptyProvider(),
             "Social",
-            77);
+            "2001");
 
         var result = await sender.SendToPlayerAsync(2002, new ReqSendToPlayerInner());
 
@@ -84,15 +85,16 @@ public class UnifiedMessageSenderLocalIdentityTests
     [Fact]
     public async Task SendToPlayerAsync_SameServerTypeDifferentServerId_ForwardsToRemoteServer()
     {
-        // 注入 ("Social", 77)、路由 ("Social", 78)：ServerId 不同 → 非本服 → 跨服转发。
+        // 注入 ("Social", "2001")、路由 ("Social", "2002")：实例 Id 不同 → 非本服 → 跨服转发。
         var remoteClient = new CountingRemoteMessageClient();
         var sender = new UnifiedMessageSender(
             remoteClient,
-            new FakePlayerRouteResolver(PlayerRouteInfo.Online("Social", 78)),
+            new FakePlayerRouteResolver(PlayerRouteInfo.Online("Social", 78, "2002")),
             new FakePlayerLocalSender(isOnline: false, sendResult: false),
             new ConsistentHashServerInstanceSelector(),
+            RouteTableTestHelper.EmptyProvider(),
             "Social",
-            77);
+            "2001");
 
         var result = await sender.SendToPlayerAsync(2003, new ReqSendToPlayerInner());
 
@@ -104,15 +106,16 @@ public class UnifiedMessageSenderLocalIdentityTests
     [Fact]
     public async Task SendToPlayerAsync_SameServerIdDifferentServerType_ForwardsToRemoteServer()
     {
-        // 注入 ("Social", 77)、路由 ("GateWay", 77)：ServerType 不同 → 非本服 → 跨服转发。
+        // 注入 ("Social", "2001")、路由 ("GateWay", "2001")：ServerType 不同 → 非本服 → 跨服转发。
         var remoteClient = new CountingRemoteMessageClient();
         var sender = new UnifiedMessageSender(
             remoteClient,
-            new FakePlayerRouteResolver(PlayerRouteInfo.Online("GateWay", 77)),
+            new FakePlayerRouteResolver(PlayerRouteInfo.Online("GateWay", 77, "2001")),
             new FakePlayerLocalSender(isOnline: false, sendResult: false),
             new ConsistentHashServerInstanceSelector(),
+            RouteTableTestHelper.EmptyProvider(),
             "Social",
-            77);
+            "2001");
 
         var result = await sender.SendToPlayerAsync(2004, new ReqSendToPlayerInner());
 
@@ -131,8 +134,9 @@ public class UnifiedMessageSenderLocalIdentityTests
             new FakePlayerRouteResolver(PlayerRouteInfo.Offline()),
             new FakePlayerLocalSender(isOnline: true, sendResult: true),
             new ConsistentHashServerInstanceSelector(),
+            RouteTableTestHelper.EmptyProvider(),
             "Social",
-            77,
+            "2001",
             metrics);
 
         var result = await sender.SendToPlayerAsync(2005, new ReqSendToPlayerInner());
@@ -154,8 +158,9 @@ public class UnifiedMessageSenderLocalIdentityTests
             new FakePlayerRouteResolver(PlayerRouteInfo.Offline()),
             new FakePlayerLocalSender(isOnline: true, sendResult: true),
             new ConsistentHashServerInstanceSelector(),
+            RouteTableTestHelper.EmptyProvider(),
             localServerType,
-            77));
+            "2001"));
     }
 
     /// <summary>
@@ -230,6 +235,11 @@ public class UnifiedMessageSenderLocalIdentityTests
         }
 
         public Task SendOneWayAsync(string serviceName, MessageObject requestMessage, int timeoutMs = RemoteCallContext.DefaultTimeoutMs, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task SendOneWayAsync(RemoteCallContext context, MessageObject requestMessage)
         {
             throw new NotImplementedException();
         }

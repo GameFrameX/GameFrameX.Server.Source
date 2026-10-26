@@ -52,7 +52,7 @@ public sealed class RemoteMessageClientConcurrencyTests : IDisposable
         MessageProtoHelper.Init(typeof(ReqAccountQuery).Assembly, typeof(GameFrameX.Network.RemoteMessaging.Routing.RoleRouteEnvelopeMessage).Assembly);
     }
 
-    private readonly List<string> _environmentKeys = new();
+    private readonly MutableRouteTableProvider _routeTable = new();
     private readonly List<FakeRemoteServer> _servers = new();
 
     [Fact]
@@ -63,7 +63,7 @@ public sealed class RemoteMessageClientConcurrencyTests : IDisposable
         const int requestCount = 6;
         using (var server = StartServer($"RMTestBarrier", requestCount, respondAfterCount: requestCount))
         {
-            var client = new RemoteMessagingBuilder().Build();
+            var client = new RemoteMessagingBuilder().WithRouteTable(_routeTable).Build();
             var calls = Enumerable.Range(0, requestCount)
                 .Select(_ => client.CallWithResultAsync<RespAccountQuery>(
                     "RMTestBarrier",
@@ -88,7 +88,7 @@ public sealed class RemoteMessageClientConcurrencyTests : IDisposable
         // 首个连接收到一个请求后立即断开；后续连接正常响应。
         using (var server = StartServer("RMTestClose", 2, respondAfterCount: 1, closeFirstConnection: true))
         {
-            var client = new RemoteMessagingBuilder().Build();
+            var client = new RemoteMessagingBuilder().WithRouteTable(_routeTable).Build();
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
             var first = await client.CallWithResultAsync<RespAccountQuery>(
@@ -115,7 +115,7 @@ public sealed class RemoteMessageClientConcurrencyTests : IDisposable
         {
             using (var serverB = StartServer("RMTestAltB", 16, respondAfterCount: 1))
             {
-                var client = new RemoteMessagingBuilder().Build();
+                var client = new RemoteMessagingBuilder().WithRouteTable(_routeTable).Build();
                 for (var i = 0; i < 8; i++)
                 {
                     var serviceName = i % 2 == 0 ? "RMTestAltA" : "RMTestAltB";
@@ -137,10 +137,6 @@ public sealed class RemoteMessageClientConcurrencyTests : IDisposable
             server.Dispose();
         }
 
-        foreach (var key in _environmentKeys)
-        {
-            Environment.SetEnvironmentVariable(key, null);
-        }
     }
 
     private FakeRemoteServer StartServer(string serviceName, int acceptLimit, int respondAfterCount, bool closeFirstConnection = false)
@@ -148,9 +144,8 @@ public sealed class RemoteMessageClientConcurrencyTests : IDisposable
         var server = new FakeRemoteServer(acceptLimit, respondAfterCount, closeFirstConnection);
         server.Start();
         _servers.Add(server);
-        var key = $"services__{serviceName}__tcp__0";
-        Environment.SetEnvironmentVariable(key, $"tcp://127.0.0.1:{server.Port}");
-        _environmentKeys.Add(key);
+        _routeTable.RemoveService(serviceName);
+        _routeTable.SetServiceEndpoint(serviceName, $"tcp://127.0.0.1:{server.Port}");
         return server;
     }
 

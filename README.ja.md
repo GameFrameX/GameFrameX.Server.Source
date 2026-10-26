@@ -567,17 +567,7 @@ docker compose -f docker-compose.multi.yml down
 | Social | 2 | ソーシャルサーバー（social-1, social-2） |
 | Game | 10 | ゲームサーバー（game-1 ~ game-10） |
 
-全インスタンスは環境変数による静的ブートストラップでサービスディスカバリを行います（`services__{Role}__tcp__0`）：
-
-```yaml
-environment:
-  services__Social_2001__tcp__0: "tcp://social-1:29400"
-  services__Social_2002__tcp__0: "tcp://social-2:29401"
-  services__Game_1001__tcp__0: "tcp://game-1:29100"
-  # ...
-```
-
-エンドポイント値は `scheme://host:port` URI です。キーの scheme セグメント（`tcp` / `kcp` / `ws` / `wss`）がトランスポートを宣言し、ダイヤル時にリモートメッセージングクライアントがエンドポイントを解析してその scheme に登録済みのアダプターへディスパッチします。同一サービスは tcp と kcp のエンドポイント（`services__{Role}__kcp__0`）を同時に発行でき、kcp を優先し、KCP アダプター未登録の呼び出し元は tcp エンドポイントへ一度だけ警告付きでフォールバックします。
+すべてのインスタンスは、Advertise トリオ（`GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId`、compose ジェネレーターがインスタンスごとに注入）を通じてハートビートレジストリ（`server_heartbeat`）に自己登録します。サーバー間エンドポイントは検出層ルートテーブル（`IRoleRouteTableProvider`）のみから解決されます。RPC クライアント、統一送信側、エンベロープルーターの 3 経路すべてがハートビートレジストリからダイヤルします——静的ブートストラップの環境変数マップは廃止されました。`IsEnableInnerKcp=true`（かつ `InnerKcpPort` を設定）でサーバー間 KCP リスナーの組み立てに成功したインスタンスは、ハートビートで kcp 追加エンドポイントをブロードキャストします。KCP アダプターを登録済みの呼び出し元は kcp でダイヤルし、それ以外は tcp へ一度だけ警告付きでフォールバックします。ローリングアップグレードの制約：KCP ブロードキャストを有効にする前に、クラスタ内の全ノードが本バージョン以降でなければなりません。
 
 #### カスタムビルド
 
@@ -776,7 +766,7 @@ GameFrameX.Server.Source/
 ├── GameFrameX.Network.Abstractions/  # ネットワークインターフェース（IMessage、IMessageHandler、メッセージマッピング）
 ├── GameFrameX.Network.HTTP/          # HTTP サーバー（Swagger、Kestrel、BaseHttpHandler）
 ├── GameFrameX.Network.RemoteMessaging/ # クロスプロセスリモートメッセージ（サーキットブレーカー、リトライ、コンシステントハッシング）
-├── GameFrameX.Discovery/             # 環境変数による静的ブートストラップのサービスディスカバリー（services__{Role}__tcp__0 ブートストラップマップ）
+├── GameFrameX.Discovery/             # ハートビートレジストリによるサービスディスカバリ（server_heartbeat デュアルビュー・ルートテーブル、Advertise トリオによるブートストラップ）
 ├── GameFrameX.DataBase/              # データベース抽象レイヤー（マルチ Provider レジストリ、GameDb クエリ/更新/削除）
 ├── GameFrameX.DataBase.Mongo/        # MongoDB Provider（ヘルスモニタリング、リトライ、バッチ操作）
 ├── GameFrameX.DataBase.PostgreSql/   # PostgreSQL Provider（Npgsql、MongoDB Provider と同等の耐障害性）
@@ -819,8 +809,7 @@ GameFrameX.Server.Source/
 | ファイル | 用途 |
 |:--|:--|
 | `docker-compose.development.yml` | ローカル開発用: MongoDB サービス 1 つ（ホストポート `127.0.0.1:37017`、サンプルの `app_config.json` と一致） |
-| `docker-compose.multi.yml` | マルチインスタンストポロジ形式。`scripts/multi/generate-docker-compose-multi.py` により**生成**されます。各インスタンスには `GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId` と `services__{Role}__tcp__0` 静的ブートストラップマップが注入され、独自の `Configs/multi/{service}.json` セクション（`command` 引数と同一値）を `/app/Configs/app_config.json` としてマウント |
-| `docker-compose.multi.legacy.yml` | 従来の静的形式。移行期間中は保持 |
+| `docker-compose.multi.yml` | マルチインスタンストポロジ形式。`scripts/multi/generate-docker-compose-multi.py` により**生成**されます。各インスタンスには `GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId`（サーバー間エンドポイントはハートビートレジストリから解決）が注入され、独自の `Configs/multi/{service}.json` セクション（`command` 引数と同一値）を `/app/Configs/app_config.json` としてマウント |
 
 トポロジを変更するには、ジェネレーターの `ROLES` 定義を編集し、`python3 scripts/multi/generate-docker-compose-multi.py` を再実行してください（冪等。`--check` はコミット済み compose ファイルとインスタンス別設定がジェネレーター出力と一致するか検証します）。認証なしの MongoDB サービスは `127.0.0.1` のみで公開されます。他ホストに公開する前に MongoDB 認証を有効化してください。
 

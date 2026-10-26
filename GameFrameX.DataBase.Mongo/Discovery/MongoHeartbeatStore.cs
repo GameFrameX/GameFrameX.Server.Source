@@ -117,7 +117,10 @@ public sealed class MongoHeartbeatStore : IHeartbeatStore
             instance.Load,
             instance.AddressKind.ToString(),
             instance.Incarnation,
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            // 空集合持久化为 null：默认配置（不广播附加端点）写出的文档与旧版本逐字节同形（member map SetIgnoreIfNull 只对 null 省略元素）
+            // An empty collection persists as null: the default-configuration document stays byte-identical to the old version (SetIgnoreIfNull omits the element only for null).
+            instance.AdditionalAdvertiseEndpoints.Count == 0 ? null : instance.AdditionalAdvertiseEndpoints.ToList());
         return _collection.ReplaceOneAsync(
             Builders<ServerHeartbeatDocument>.Filter.Eq(candidate => candidate.InstanceId, instance.InstanceId),
             document,
@@ -190,6 +193,6 @@ public sealed class MongoHeartbeatStore : IHeartbeatStore
             return null;
         }
 
-        return new InstanceDescriptor(document.Role, document.InstanceId, document.AdvertiseEndpoint, status, document.Load, addressKind, document.Incarnation, document.LastHeartbeat);
+        return new InstanceDescriptor(document.Role, document.InstanceId, document.AdvertiseEndpoint, status, document.Load, addressKind, document.Incarnation, document.LastHeartbeat, (IReadOnlyList<string>)document.AdditionalAdvertiseEndpoints ?? Array.Empty<string>());
     }
 }

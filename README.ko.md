@@ -566,17 +566,7 @@ docker compose -f docker-compose.multi.yml down
 | Social | 2 | 소셜 서버(social-1, social-2) |
 | Game | 10 | 게임 서버(game-1 ~ game-10) |
 
-모든 인스턴스는 환경 변수 정적 부트스트랩으로 서비스 디스커버리를 수행합니다(`services__{Role}__tcp__0`):
-
-```yaml
-environment:
-  services__Social_2001__tcp__0: "tcp://social-1:29400"
-  services__Social_2002__tcp__0: "tcp://social-2:29401"
-  services__Game_1001__tcp__0: "tcp://game-1:29100"
-  # ...
-```
-
-엔드포인트 값은 `scheme://host:port` URI입니다. 키의 scheme 세그먼트(`tcp` / `kcp` / `ws` / `wss`)가 전송 방식을 선언하며, 다이얼 시점에 원격 메시징 클라이언트가 엔드포인트를 파싱해 해당 scheme에 등록된 어댑터로 디스패치합니다. 동일 서비스는 tcp와 kcp 엔드포인트(`services__{Role}__kcp__0`)를 동시에 게시할 수 있으며 kcp가 우선하고, KCP 어댑터가 등록되지 않은 호출자는 tcp 엔드포인트로 일회성 경고와 함께 폴백합니다.
+모든 인스턴스는 Advertise 트리오(`GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId`, compose 제너레이터가 인스턴스별로 주입)를 통해 하트비트 레지스트리(`server_heartbeat`)에 자가 등록합니다. 서버 간 엔드포인트는 디스커버리 라우트 테이블(`IRoleRouteTableProvider`)에서만 해석됩니다. RPC 클라이언트, 통합 발신 측, 엔벨로프 라우터 세 경로 모두 하트비트 레지스트리에서 다이얼합니다 — 정적 부트스트랩 환경 변수 맵은 폐기되었습니다. `IsEnableInnerKcp=true`(및 `InnerKcpPort`)일 때 서버 간 KCP 리스너 조립에 성공한 인스턴스는 하트비트에 kcp 추가 엔드포인트를 브로드캐스트합니다. KCP 어댑터가 등록된 호출자는 kcp로 다이얼하고 나머지는 일회성 경고와 함께 tcp로 폴백합니다. 롤링 업그레이드 제약: KCP 브로드캐스트를 활성화하기 전에 클러스터의 모든 노드가 이 버전 이상이어야 합니다.
 
 #### 커스텀 빌드
 
@@ -775,7 +765,7 @@ GameFrameX.Server.Source/
 ├── GameFrameX.Network.Abstractions/  # 네트워크 인터페이스(IMessage, IMessageHandler, 메시지 매핑)
 ├── GameFrameX.Network.HTTP/          # HTTP 서버(Swagger, Kestrel, BaseHttpHandler)
 ├── GameFrameX.Network.RemoteMessaging/ # 크로스 프로세스 원격 메시지(서킷 브레이커, 재시도, 일관 해싱)
-├── GameFrameX.Discovery/             # 환경 변수 정적 부트스트랩 서비스 디스커버리(services__{Role}__tcp__0 부트스트랩 맵)
+├── GameFrameX.Discovery/             # 하트비트 레지스트리 서비스 디스커버리(server_heartbeat 듀얼 뷰 라우트 테이블; Advertise 트리오 부트스트랩)
 ├── GameFrameX.DataBase/              # 데이터베이스 추상 레이어(멀티 Provider 레지스트리, GameDb 쿼리/업데이트/삭제)
 ├── GameFrameX.DataBase.Mongo/        # MongoDB Provider(헬스 모니터링, 재시도, 배치 작업)
 ├── GameFrameX.DataBase.PostgreSql/   # PostgreSQL Provider(Npgsql, MongoDB Provider와 동일한 복원력)
@@ -820,8 +810,7 @@ GameFrameX.Server.Source/
 | 파일 | 용도 |
 |:--|:--|
 | `docker-compose.development.yml` | 로컬 개발용: 단일 MongoDB 서비스(호스트 포트 `127.0.0.1:37017`, 예시 `app_config.json`과 일치) |
-| `docker-compose.multi.yml` | 멀티 인스턴스 토폴로지 형태. `scripts/multi/generate-docker-compose-multi.py`가 **생성**. 각 인스턴스에 `GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId`와 `services__{Role}__tcp__0` 정적 부트스트랩 맵이 주입되며, 자체 `Configs/multi/{service}.json` 섹션(`command` 인자와 동일한 값)을 `/app/Configs/app_config.json`으로 마운트 |
-| `docker-compose.multi.legacy.yml` | 이전 정적 형태. 전환 기간 동안 유지 |
+| `docker-compose.multi.yml` | 멀티 인스턴스 토폴로지 형태. `scripts/multi/generate-docker-compose-multi.py`가 **생성**. 각 인스턴스에 `GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId`(서버 간 엔드포인트는 하트비트 레지스트리에서 해석)가 주입되며, 자체 `Configs/multi/{service}.json` 섹션(`command` 인자와 동일한 값)을 `/app/Configs/app_config.json`으로 마운트 |
 
 제너레이터의 `ROLES` 정의를 수정하고 `python3 scripts/multi/generate-docker-compose-multi.py`를 다시 실행하여 토폴로지를 변경합니다(멱등. `--check`는 커밋된 compose 파일과 인스턴스별 설정이 제너레이터 출력과 일치하는지 검증). 인증 없는 MongoDB 서비스는 `127.0.0.1`에만 게시되며, 다른 호스트에 노출하기 전에 MongoDB 인증을 활성화하세요.
 

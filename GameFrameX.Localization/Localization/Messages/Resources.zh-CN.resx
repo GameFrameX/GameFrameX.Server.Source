@@ -1223,7 +1223,7 @@
     <value>{0} KCP 服务启动失败（{1}:{2}），端口不可用或越界。</value>
   </data>
   <data name="StartUp.InnerKcp.ServerDisabled" xml:space="preserve">
-    <value>{0} 服务器间 KCP 服务未启用（{1}:{2}），跳过监听器装配（需 IsEnableInnerKcp 显式开启）。</value>
+    <value>{0} 服务器间 KCP 服务未启用（{1}:{2}），跳过监听器装配（需 IsEnableInnerKcp 显式开启）；本次不广播 kcp 附加端点。</value>
   </data>
 
   <data name="StartUp.InnerKcp.StartingServer" xml:space="preserve">
@@ -1235,7 +1235,15 @@
   </data>
 
   <data name="StartUp.InnerKcp.StartupFailed" xml:space="preserve">
-    <value>{0} 服务器间 KCP 服务启动失败（{1}:{2}），端口不可用或越界。</value>
+    <value>{0} 服务器间 KCP 服务启动失败（{1}:{2}），端口不可用或越界；本次不广播 kcp 附加端点。</value>
+  </data>
+
+  <data name="Discovery.Registry.NonPrimaryServerTypeNotAdvertised" xml:space="preserve">
+    <value>附加广播端点未被发布：服务进程类型 '{0}' 不是本进程心跳承载的首选类型 '{1}'（心跳文档单 Role 模型，非首选类型不跨进程可达）。</value>
+  </data>
+
+  <data name="Database.Discovery.NonPrimaryRolesNotAdvertised" xml:space="preserve">
+    <value>[Discovery] 多 ServerType 进程只广播首选 ServerType '{0}'；以下 ServerType 不写心跳、不跨进程可达：{1}</value>
   </data>
 
 

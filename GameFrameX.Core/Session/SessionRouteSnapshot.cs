@@ -50,6 +50,11 @@ public sealed class SessionRouteSnapshot
     public int ServerId { get; init; }
 
     /// <summary>
+    /// 本进程发现层实例 Id（路由同步与实例直达的寻址基准）。
+    /// </summary>
+    public string InstanceId { get; init; }
+
+    /// <summary>
     /// 在线状态。
     /// </summary>
     public bool IsOnline { get; init; }
@@ -65,15 +70,17 @@ public sealed class SessionRouteSnapshot
     /// <param name="playerId">玩家ID。</param>
     /// <param name="serverType">服务类型。</param>
     /// <param name="serverId">服务ID。</param>
+    /// <param name="instanceId">本进程发现层实例 Id。</param>
     /// <param name="version">版本号。</param>
     /// <returns>在线态路由快照。</returns>
-    public static SessionRouteSnapshot Online(long playerId, string serverType, int serverId, long version)
+    public static SessionRouteSnapshot Online(long playerId, string serverType, int serverId, string instanceId, long version)
     {
         return new SessionRouteSnapshot
         {
             PlayerId = playerId,
             ServerType = serverType,
             ServerId = serverId,
+            InstanceId = instanceId,
             IsOnline = true,
             Version = version,
         };

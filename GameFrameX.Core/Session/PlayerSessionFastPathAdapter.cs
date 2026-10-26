@@ -45,7 +45,7 @@ public sealed class PlayerSessionFastPathAdapter : IPlayerRouteFastPath
     {
         if (playerId > 0 && PlayerSessionManager.Instance.TryGetPlayerRoute(playerId, out var snapshot) && snapshot.IsOnline)
         {
-            info = PlayerRouteInfo.Online(snapshot.ServerType, snapshot.ServerId, snapshot.Version);
+            info = PlayerRouteInfo.Online(snapshot.ServerType, snapshot.ServerId, snapshot.InstanceId, snapshot.Version);
             return true;
         }
 

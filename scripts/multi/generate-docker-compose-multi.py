@@ -3,16 +3,15 @@
 
 按拓扑定义（Role 名 / 实例数 / 端口基址）展开每个实例，并注入：
 
-- ``services__{Role}__tcp__0`` / ``services__{Role}_{InstanceId}__tcp__0``：
-  EnvironmentVariableEndpointResolver 静态引导契约（全实例共享同一张映射）。
 - ``GameFrameX__AdvertiseHost`` / ``GameFrameX__AdvertisePort`` / ``GameFrameX__RoleInstanceId``：
-  MongoEndpointRegistry 地址自报引导变量（逐实例注入，D12）。
+  广播自报三件套（逐实例注入，D12）。服务器间端点唯一事实源是心跳注册表——实例启动后写心跳，
+  调用方经发现层路由表解析端点（旧的静态引导环境变量映射已退役）。
 
 每个实例同时生成一份与其 command 参数值完全一致的独立配置段
 （``Configs/multi/{service}.json``），并挂载到容器内 ``/app/Configs/app_config.json``：
 文件层与 CLI 层单源一致，ConfigStartupValidator 的冲突校验保持启用且必然放行。
 
-端口编号方案与退役前的静态形态（现保留为 docker-compose.multi.legacy.yml）逐实例一致，
+端口编号方案与退役前的静态形态逐实例一致，
 生成结果直接写入 docker-compose.multi.yml 与 Configs/multi/；重复执行输出幂等。
 未认证的 MongoDB 仅绑定 127.0.0.1，避免向外部接口暴露可读写的数据面。
 
@@ -69,7 +68,6 @@ CONFIG_OUTPUT_DIR = REPO_ROOT / "Configs" / "multi"
 HEADER = """\
 # 本文件由 scripts/multi/generate-docker-compose-multi.py 生成（拓扑环境变量生成器）。
 # 修改拓扑请编辑该脚本的 ROLES 定义后重新生成，不要手改本文件。
-# 现有静态形态保留在 docker-compose.multi.legacy.yml（过渡期兼容）。
 """
 
 
@@ -91,28 +89,6 @@ def build_instances(role: dict) -> list[dict]:
             }
         )
     return instances
-
-
-def build_discovery_env(all_instances: list[dict]) -> list[str]:
-    """构建 services__* 静态引导映射（Role 级指向首实例，实例级逐实例展开）。
-
-    输出顺序固定（Role 内按 instance_id 升序，Role 级键排在同名实例键之后），
-    保证重复生成的文件字节级幂等。
-    """
-    lines = []
-    role_order = []
-    for instance in all_instances:
-        if instance["role"] not in role_order:
-            role_order.append(instance["role"])
-    for role in role_order:
-        role_instances = [i for i in all_instances if i["role"] == role]
-        for instance in role_instances:
-            lines.append(
-                f"  services__{role}_{instance['instance_id']}__tcp__0: \"tcp://{instance['service']}:{instance['inner_port']}\""
-            )
-        first = role_instances[0]
-        lines.append(f"  services__{role}__tcp__0: \"tcp://{first['service']}:{first['inner_port']}\"")
-    return lines
 
 
 def render_instance_config(instance: dict) -> str:
@@ -217,7 +193,6 @@ def render_instance_service_body(instance: dict, role_name: str, social_services
         f"      - \"--DataBaseUrl={DATABASE_URL}\"",
         f"      - \"--DataBaseName={DATABASE_NAME}\"",
         "    environment:",
-        "      <<: *launcher-discovery-env",
         f"      GameFrameX__AdvertiseHost: {instance['service']}",
         f"      GameFrameX__AdvertisePort: \"{instance['inner_port']}\"",
         f"      GameFrameX__RoleInstanceId: \"{instance['instance_id']}\"",
@@ -299,8 +274,7 @@ def main() -> int:
 
     all_instances, role_instances = expand_role_instances()
 
-    out = [HEADER, "name: gfx-multi", "", "x-launcher-discovery-env: &launcher-discovery-env"]
-    out += build_discovery_env(all_instances)
+    out = [HEADER, "name: gfx-multi", ""]
     out += render_mongo_service()
     out += render_launcher_services(role_instances)
     out += [

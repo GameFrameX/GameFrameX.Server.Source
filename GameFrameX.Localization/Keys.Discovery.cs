@@ -234,6 +234,16 @@ public static partial class Keys
             /// 用途: 过期清理循环单轮执行异常时的错误日志
             /// </remarks>
             public const string TtlCleanupFailed = "Discovery.Registry.TtlCleanupFailed";
+
+            /// <summary>
+            /// 附加广播端点未被发布：服务进程类型 '{0}' 不是本进程心跳承载的首选类型 '{1}'（心跳文档单 Role 模型，非首选类型不跨进程可达）
+            /// </summary>
+            /// <remarks>
+            /// 键名: Discovery.Registry.NonPrimaryServerTypeNotAdvertised
+            /// 用途: 多 ServerType 进程中非首选 ServerType 尝试发布附加广播端点时的告警日志
+            /// 参数: {0} - 尝试发布的服务进程类型名; {1} - 本进程心跳承载的首选类型名
+            /// </remarks>
+            public const string NonPrimaryServerTypeNotAdvertised = "Discovery.Registry.NonPrimaryServerTypeNotAdvertised";
         }
     }
 }

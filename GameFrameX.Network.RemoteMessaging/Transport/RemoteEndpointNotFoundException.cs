@@ -43,23 +43,23 @@ public sealed class RemoteEndpointNotFoundException : Exception
     /// <remarks>
     /// Initializes a new exception instance.
     /// </remarks>
-    /// <param name="serviceName">服务名 / Service name</param>
+    /// <param name="target">结构化端点目标 / The structured endpoint target</param>
     /// <param name="endpoint">端点原始值 / Raw endpoint value</param>
-    public RemoteEndpointNotFoundException(string serviceName, string endpoint)
-        : base($"Endpoint not found for service '{serviceName}', raw endpoint: '{endpoint}'.")
+    public RemoteEndpointNotFoundException(RemoteServiceTarget target, string endpoint)
+        : base($"Endpoint not found for target '{target}', raw endpoint: '{endpoint}'.")
     {
-        ServiceName = serviceName;
+        Target = target;
         Endpoint = endpoint;
     }
 
     /// <summary>
-    /// 服务名。
+    /// 结构化端点目标。
     /// </summary>
     /// <remarks>
-    /// Service name.
+    /// The structured endpoint target.
     /// </remarks>
-    /// <value>目标服务名 / The target service name</value>
-    public string ServiceName { get; }
+    /// <value>目标服务（ServerType + 可选 InstanceId）/ The target service (ServerType + optional InstanceId)</value>
+    public RemoteServiceTarget Target { get; }
 
     /// <summary>
     /// 原始端点字符串。

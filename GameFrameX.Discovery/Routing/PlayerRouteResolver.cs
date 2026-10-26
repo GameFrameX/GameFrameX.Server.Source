@@ -162,42 +162,18 @@ public sealed class PlayerRouteResolver : IPlayerRouteResolver
         else
         {
             var serverType = string.IsNullOrEmpty(record.Role) ? GlobalSettings.CurrentSetting?.ServerType ?? GameServerConst.Game.Name : record.Role;
-            info = PlayerRouteInfo.Online(serverType, ExtractServerId(record.InstanceId), record.Version);
+            // ServerId 传 0：player_route 记录不含 ServerId，且投递与本服判定均已改为 InstanceId 寻址（占位值时代
+            // 的 ExtractServerId / Game.Id 回落已删除——它曾把 Social 玩家恒判给 Game 首实例）。
+            // ServerId is 0 here: the player_route record carries no server id, and both delivery and the
+            // local-server check now address by instance id (the placeholder-era ExtractServerId / Game.Id
+            // fallback is gone — it used to pin every Social player to the Game first instance).
+            info = PlayerRouteInfo.Online(serverType, 0, record.InstanceId, record.Version);
         }
 
         _controlCache[playerId] = new ControlCacheEntry(now, info);
         return info;
     }
 
-    /// <summary>
-    /// 从 instanceId 尾段提取数字部分作为 ServerId（不可解析时退回 Game.Id）。
-    /// </summary>
-    /// <remarks>
-    /// Extracts the trailing integer suffix from an instance id
-    /// (<c>role-...</c> in the instance id format has no integer; the
-    /// fallback keeps the resolver non-throwing for legacy instance ids).
-    /// </remarks>
-    /// <param name="instanceId">实例 ID / The instance id</param>
-    /// <returns>ServerId / The server id</returns>
-    private static int ExtractServerId(string instanceId)
-    {
-        if (string.IsNullOrEmpty(instanceId))
-        {
-            return GameServerConst.Game.Id;
-        }
-
-        var separatorIndex = instanceId.LastIndexOf('-');
-        var candidate = separatorIndex >= 0 && separatorIndex + 1 < instanceId.Length
-                            ? instanceId.Substring(separatorIndex + 1)
-                            : instanceId;
-
-        if (int.TryParse(candidate, out var parsed))
-        {
-            return parsed;
-        }
-
-        return GameServerConst.Game.Id;
-    }
 
     /// <summary>
     /// Tier 2 缓存条目（快照时间 + 路由信息）。

@@ -44,6 +44,8 @@ public sealed class PlayerSessionManagerRouteSyncSafetyTests
     public void SetPlayerRouteOnline_UpsertHookThrowsSynchronously_ShouldNotPropagate()
     {
         var manager = PlayerSessionManager.Instance;
+        // C304：路由同步 upsert 在空白实例 Id 时跳过——注入发现身份使钩子真实走到
+        manager.LocalDiscoveryInstanceId = "2001";
         using (var scope = SyncTargetScope.Use(new FailingRouteSyncTarget(failSynchronously: true)))
         {
             manager.SetPlayerRouteOnline(921001, "Game");
@@ -57,6 +59,7 @@ public sealed class PlayerSessionManagerRouteSyncSafetyTests
     public void SetPlayerRouteOffline_DeleteHookThrowsSynchronously_ShouldNotPropagate()
     {
         var manager = PlayerSessionManager.Instance;
+        manager.LocalDiscoveryInstanceId = "2001";
         manager.SetPlayerRouteOnline(921002, "Game");
         using (var scope = SyncTargetScope.Use(new FailingRouteSyncTarget(failSynchronously: true)))
         {
@@ -83,6 +86,7 @@ public sealed class PlayerSessionManagerRouteSyncSafetyTests
         try
         {
             var manager = PlayerSessionManager.Instance;
+            manager.LocalDiscoveryInstanceId = "2001";
             using (var scope = SyncTargetScope.Use(new FailingRouteSyncTarget(failSynchronously: false)))
             {
                 manager.SetPlayerRouteOnline(921003, "Game");
@@ -125,6 +129,7 @@ public sealed class PlayerSessionManagerRouteSyncSafetyTests
         try
         {
             var manager = PlayerSessionManager.Instance;
+            manager.LocalDiscoveryInstanceId = "2001";
             manager.SetPlayerRouteOnline(921004, "Game");
             using (var scope = SyncTargetScope.Use(new FailingRouteSyncTarget(failSynchronously: false)))
             {

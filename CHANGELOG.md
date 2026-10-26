@@ -15,6 +15,8 @@
 ## [Unreleased]
 
 ### Added
+* 服务器间 RPC 端点改由心跳注册表解析并退役静态引导（C304，GitHub #643）：`RemoteServiceTarget`（ServerType + 可选 InstanceId）结构化拨号取代 `{Role}_{InstanceId}` 字符串拼接；`DiscoveryServiceEndpointResolver` 成为唯一端点解析器（指定实例走 Instance 视图含 Draining 并校验 Role 一致，ServerType 级取 Active 中 InstanceId 序数最小者，端点集合 = TCP 主端点 + 附加端点，偏好 kcp > ws > wss > tcp）；`RemoteMessagingBuilder.WithRouteTable(IRoleRouteTableProvider)` 绑定路由表、生产注册 KCP 拨号适配器（`IsEnableInnerKcp` 时，服务器间 KCP 首次生产可用）；心跳新增附加广播端点（`InstanceDescriptor.AdditionalAdvertiseEndpoints`，监听器装配成功的实例级闸门后才广播，多 ServerType 进程非首选类型披露 Warning）；`UnifiedMessageSender` 实例列表改读路由表 Active 视图且仅 InstanceId 集合变化才重建哈希环；玩家路由实例直达——`player_route.InstanceId` 写真实发现层实例 Id（`PlayerRouteResolverBootstrap` 同源注入），`ForwardToRemoteServerAsync` 按 `TargetInstanceId` 投递（Instance 视图含 Draining）、`IsCurrentServer` 改 InstanceId 比较；Mongo 心跳 class map 显式忽略未知字段（含继承传递）、写路径空集合归一化为 null（默认配置文档与旧版本逐字节同形）；PostgreSQL 幂等补列 `additional_advertise_endpoints text[]`（命名经 `DiscoveryStorageNaming` 推导）；删除 `services__*` 环境变量契约、`EnvironmentVariableEndpointResolver`、`EnvironmentServiceInstanceDiscovery`、`docker-compose.multi.legacy.yml` 与生成器静态引导映射。
+
 
 * Capability 架构护栏（C241）：GFX0017 禁止 Apps/Hotfix 的直接及传递编译引用依赖实现包（保留 Online.Abstractions 及其合法 Hosting 契约闭包）；GFX0018 以符号检查能力注册、builder 装配与三族桥 Publish/Retract 的所属边界，保留模块辅助注册、Launcher Wiring 与独立测试夹具。Capability 工程统一接入分析器；架构分析器 Roslyn 引用对齐 .NET 10 SDK 基线，防止 CS9057 跳过规则；Online.Persistence 针对 C249 域属行状态仅本工程豁免旧 GFX0001。静态检查不证明反射、动态加载、跨请求缓存或启停时序。
 * Online 存储模式无声降级防护（C302，GFX-1015）：`Configs/app_config.json` Game Role 的 Online 段补 `UseGameDbStores: true`（原先缺省走 InMemory，重启丢玩家身份/好友/资产/存储数据）；启用 Online 能力族（双闸任一开）但未显式声明存储模式时组合根发出启动期 Warning（新本地化键 `Capability.Online.UseGameDbStoresUndeclared`，判定收敛为纯谓词 `OnlineCapabilityCompositionRoot.ShouldWarnStoreModeUndeclared` 供单测断言）；不 fail-fast，保护既有无键部署。
@@ -68,6 +70,14 @@
   P4 终态 admin 面 = 29 业务 action + list_capabilities 元端点（分布 5/8/4/1/7/3+foundation1；C256 起 hotfix 受控族 +4）；组合根双轨 = Launcher 真扫描（`AddOnlineCapabilities` 直引 9 Online 包 + Hosting 三件）与 dotnet new `gfx-online` 模板最小装配；门禁 = `CapabilityPackageStructureTests` 12 包精确引用表 + Hosting=0 红线 + 事件 topic 字节冻结（`OnlineDependencyMatrixTests` 目录矩阵已随双工程退役）。
 
 ### Breaking
+* 服务器间端点静态引导退役的破坏面（C304，GitHub #643）：
+  - 公开 API 签名：`IServiceEndpointResolver.ResolveEndpoint` / `ITransportProtocolAdapter.GetOrCreateStreamAsync` / `IsServiceAvailable` 的目标参数由 string 改为 `RemoteServiceTarget`；`IRemoteMessageClient` 新增 `SendOneWayAsync(RemoteCallContext, MessageObject)`（string 形态保留，语义 = ServerType 级确定性选择）；`RemoteCallContext` 新增 `TargetInstanceId`；`UnifiedMessageSender` / `UnifiedMessageSenderHolder.InitializeWithDefaults` 构造参数变更（新增必填 `routeTable`，本服身份改 `localServerType` + `localInstanceId`）；`RemoteEndpointNotFoundException` 携带 `Target`（原 `ServiceName` 删除）。
+  - 删除类型：`EnvironmentVariableEndpointResolver`、`EnvironmentServiceInstanceDiscovery`、`RemoteMessagingBuilder.BuildDefault()` 与无参 `BuildFromEnvironment()` 静态工厂（生产走实例链 `new RemoteMessagingBuilder().LoadFromEnvironment().WithRouteTable(...).UseKcpTransportAdapter().Build()`）；未调用 `WithRouteTable` 时 `Build()` 在运行时抛 `InvalidOperationException`（fail-fast，无回落）。
+  - `services__{Role}__{scheme}__{index}` / `services__{Role}_{InstanceId}__tcp__0` 环境变量契约失效；SQLite 拓扑只支持单进程（跨进程 RPC 不再可用）；`docker-compose.multi.legacy.yml` 删除。
+  - `EndpointNotFound` 归入不可重试且不计入熔断与健康评分（冷启动窗口内的调用直接失败而非拉黑 Role；需重试的调用方改为上层重试）。`ServerSendOptions.AllowRetry` 默认 false，影响面限于显式开启重试的调用方。
+  - `player_route.InstanceId` 语义变更：从占位值改为权威发现层实例 Id（`PlayerSessionManager.LocalDiscoveryInstanceId` 装配缝注入，仅观察形态跳过写入）；滚动升级窗口内旧版本写入的占位行按 offline 处理，玩家重新登录后自愈；`PlayerRouteResolver.ExtractServerId` 与 `Game.Id` 回落删除。
+  - 混布约束：开启 KCP 广播（`IsEnableInnerKcp`）之前，集群所有节点必须升级到本版本或更高（旧版本 Mongo 读取方对未知字段抛 `FormatException`，watcher 保留旧快照、新节点不可见）。
+
 
 * `OnlineCapabilityOptions.UseGameDbStores` 由 `bool` 改三态 `bool?`（C302）：null = 配置未声明（触发启动期告警后按 InMemory 处理）、true = 落库、false = 显式选择易失；消费方需按可空布尔判读（仓内调用点已同批迁移）。
 * Capability 能力注入机制重设计（C294，GFX-998，破坏性一次性切换，能力未上线无兼容层）：

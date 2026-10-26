@@ -54,13 +54,14 @@ public sealed class InstanceDescriptor
     /// </remarks>
     /// <param name="role">承载的 Role 名（服务器类型名）/ The hosted role (server type name)</param>
     /// <param name="instanceId">实例唯一标识 / The unique instance id</param>
-    /// <param name="advertiseEndpoint">对外可达端点（未解析的 scheme://host:port）/ The reachable endpoint (unparsed scheme://host:port)</param>
+    /// <param name="advertiseEndpoint">对外可达端点（未解析的 scheme://host:port，TCP 主端点、必填）/ The reachable endpoint (unparsed scheme://host:port, the required tcp primary endpoint)</param>
     /// <param name="status">实例状态 / The instance status</param>
     /// <param name="load">负载值（0–100）/ The load value (0-100)</param>
     /// <param name="addressKind">地址形态 / The address kind</param>
     /// <param name="incarnation">代数（实例身份的重启纪元；重启后变化）/ The incarnation (restart epoch of the instance identity; changes on restart)</param>
     /// <param name="lastHeartbeatUtc">最后一次心跳时间（UTC）/ The last heartbeat time (UTC)</param>
-    public InstanceDescriptor(string role, string instanceId, string advertiseEndpoint, InstanceStatus status, int load, EndpointAddressKind addressKind, long incarnation, DateTime lastHeartbeatUtc)
+    /// <param name="additionalAdvertiseEndpoints">附加广播端点（只承载非 tcp scheme，如 kcp；null 或空集合归一化为空集合；结构非法或 tcp scheme 的条目被跳过，同 scheme 首条胜出）/ Additional advertise endpoints (non-tcp schemes only, e.g. kcp; null or an empty collection normalizes to an empty collection; structurally invalid or tcp-scheme entries are skipped, first entry per scheme wins)</param>
+    public InstanceDescriptor(string role, string instanceId, string advertiseEndpoint, InstanceStatus status, int load, EndpointAddressKind addressKind, long incarnation, DateTime lastHeartbeatUtc, IReadOnlyList<string> additionalAdvertiseEndpoints = null)
     {
         Role = role;
         InstanceId = instanceId;
@@ -70,6 +71,7 @@ public sealed class InstanceDescriptor
         AddressKind = addressKind;
         Incarnation = incarnation;
         LastHeartbeatUtc = lastHeartbeatUtc;
+        AdditionalAdvertiseEndpoints = NormalizeAdditionalAdvertiseEndpoints(additionalAdvertiseEndpoints);
     }
 
     /// <summary>
@@ -145,4 +147,66 @@ public sealed class InstanceDescriptor
     /// </remarks>
     /// <value>最后心跳时间 / The last heartbeat time</value>
     public DateTime LastHeartbeatUtc { get; }
+
+    /// <summary>
+    /// 获取附加广播端点集合（永不为 null；只含非 tcp scheme，每种 scheme 至多一条）。
+    /// </summary>
+    /// <remarks>
+    /// Gets the additional advertise endpoints (never null; non-tcp schemes only, at most one
+    /// entry per scheme). <see cref="AdvertiseEndpoint"/> stays the tcp primary endpoint consumed
+    /// by the envelope forwarding path; the additional endpoints extend the dial-time scheme
+    /// selection of the RPC resolver (kcp today).
+    /// </remarks>
+    /// <value>附加广播端点只读集合 / The read-only additional advertise endpoints</value>
+    public IReadOnlyList<string> AdditionalAdvertiseEndpoints { get; }
+
+    /// <summary>
+    /// 归一化附加广播端点集合：跳过结构非法与 tcp scheme 条目，同 scheme 首条胜出，产出永不为 null 的只读集合。
+    /// </summary>
+    /// <remarks>
+    /// Normalizes the additional advertise endpoints: structurally invalid and tcp-scheme
+    /// entries are skipped (defensive against another version's writes), the first entry per
+    /// scheme wins, and the result is never null.
+    /// </remarks>
+    /// <param name="additionalAdvertiseEndpoints">原始附加端点集合（可为 null）/ The raw additional endpoints (may be null)</param>
+    /// <returns>归一化后的只读集合 / The normalized read-only collection</returns>
+    private static IReadOnlyList<string> NormalizeAdditionalAdvertiseEndpoints(IReadOnlyList<string> additionalAdvertiseEndpoints)
+    {
+        if (additionalAdvertiseEndpoints == null || additionalAdvertiseEndpoints.Count == 0)
+        {
+            return Array.Empty<string>();
+        }
+
+        List<string> normalized = null;
+        var seenSchemes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var endpoint in additionalAdvertiseEndpoints)
+        {
+            if (string.IsNullOrWhiteSpace(endpoint))
+            {
+                continue;
+            }
+
+            string scheme;
+            try
+            {
+                scheme = EndpointParser.Parse(endpoint).Scheme;
+            }
+            catch (EndpointFormatException)
+            {
+                // 防御性解析：另一个版本写入的结构非法端点不进入端点集合（与 watcher 的防御解析同口径）。
+                // Defensive parsing: a structurally invalid endpoint written by another version never enters the collection (same stance as the watcher's defensive parsing).
+                continue;
+            }
+
+            if (string.Equals(scheme, "tcp", StringComparison.OrdinalIgnoreCase) || !seenSchemes.Add(scheme))
+            {
+                continue;
+            }
+
+            normalized ??= new List<string>();
+            normalized.Add(endpoint);
+        }
+
+        return (IReadOnlyList<string>)normalized ?? Array.Empty<string>();
+    }
 }

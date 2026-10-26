@@ -254,6 +254,21 @@ public interface IRemoteMessageClient
         int timeoutMs = RemoteCallContext.DefaultTimeoutMs,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// 单向发送消息，不等待响应（完整上下文版本，可携带 <see cref="RemoteCallContext.TargetInstanceId"/> 直达指定实例）。
+    /// </summary>
+    /// <remarks>
+    /// Sends a message one-way without waiting for a response (the full-context version, which can
+    /// carry <see cref="RemoteCallContext.TargetInstanceId"/> to reach a specific instance — the
+    /// instance view includes Draining, so in-flight deliveries to a draining instance stay valid).
+    /// </remarks>
+    /// <param name="context">调用上下文（含目标实例、超时、取消令牌）/ The call context (target instance, timeout, cancellation token)</param>
+    /// <param name="requestMessage">请求消息对象 / The request message object</param>
+    /// <returns>异步任务 / An asynchronous task</returns>
+    Task SendOneWayAsync(
+        RemoteCallContext context,
+        MessageObject requestMessage);
+
     // ─────────────────────────────────────────────────────────────
     //  IsServiceAvailableAsync — 服务可用性检查
     // ─────────────────────────────────────────────────────────────

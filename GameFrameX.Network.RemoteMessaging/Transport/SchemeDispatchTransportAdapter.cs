@@ -93,14 +93,14 @@ internal sealed class SchemeDispatchTransportAdapter : ITransportProtocolAdapter
     /// scheme). No usable endpoint of any scheme throws
     /// <see cref="RemoteEndpointNotFoundException"/>.
     /// </remarks>
-    /// <param name="serviceName">目标服务名 / Target service name</param>
+    /// <param name="target">结构化端点目标 / The structured endpoint target</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>可用流 / Usable stream</returns>
     /// <exception cref="RemoteEndpointNotFoundException">无任何可用端点时抛出 / Thrown when no usable endpoint of any scheme exists</exception>
-    public async Task<Stream> GetOrCreateStreamAsync(string serviceName, CancellationToken cancellationToken = default)
+    public async Task<Stream> GetOrCreateStreamAsync(RemoteServiceTarget target, CancellationToken cancellationToken = default)
     {
-        var adapter = ResolveAdapter(serviceName);
-        return await adapter.GetOrCreateStreamAsync(serviceName, cancellationToken);
+        var adapter = ResolveAdapter(target);
+        return await adapter.GetOrCreateStreamAsync(target, cancellationToken);
     }
 
     /// <summary>
@@ -111,14 +111,14 @@ internal sealed class SchemeDispatchTransportAdapter : ITransportProtocolAdapter
     /// the endpoint's scheme; unresolvable endpoints or exhausted fallbacks return false
     /// (never throws).
     /// </remarks>
-    /// <param name="serviceName">目标服务名 / Target service name</param>
+    /// <param name="target">结构化端点目标 / The structured endpoint target</param>
     /// <returns>命中适配器判定服务可用时返回 true / true when the matched adapter considers the service available</returns>
-    public bool IsServiceAvailable(string serviceName)
+    public bool IsServiceAvailable(RemoteServiceTarget target)
     {
         try
         {
-            var adapter = ResolveAdapter(serviceName);
-            return adapter.IsServiceAvailable(serviceName);
+            var adapter = ResolveAdapter(target);
+            return adapter.IsServiceAvailable(target);
         }
         catch (RemoteEndpointNotFoundException)
         {
@@ -197,13 +197,13 @@ internal sealed class SchemeDispatchTransportAdapter : ITransportProtocolAdapter
     /// invalid values) throws <see cref="RemoteEndpointNotFoundException"/>, as does an
     /// exhausted fallback.
     /// </remarks>
-    /// <param name="serviceName">目标服务名 / Target service name</param>
+    /// <param name="target">结构化端点目标 / The structured endpoint target</param>
     /// <returns>命中或回落选中的适配器 / The matched or fallback adapter</returns>
     /// <exception cref="RemoteEndpointNotFoundException">无任何可用端点或端点不可解析时抛出 / Thrown when no usable endpoint exists or the endpoint is unparseable</exception>
-    private ITransportProtocolAdapter ResolveAdapter(string serviceName)
+    private ITransportProtocolAdapter ResolveAdapter(RemoteServiceTarget target)
     {
-        var endpoint = ResolvePreferredEndpoint(serviceName);
-        var scheme = ParseEndpointScheme(serviceName, endpoint);
+        var endpoint = ResolvePreferredEndpoint(target);
+        var scheme = ParseEndpointScheme(target, endpoint);
 
         if (_registry.TryGet(scheme, out var adapter))
         {
@@ -213,15 +213,15 @@ internal sealed class SchemeDispatchTransportAdapter : ITransportProtocolAdapter
         // tcp 端点本身无适配器即无可回落目标，直接维持端点未找到异常契约。
         if (string.Equals(scheme, TransportSchemes.Tcp, StringComparison.OrdinalIgnoreCase))
         {
-            throw new RemoteEndpointNotFoundException(serviceName, endpoint);
+            throw new RemoteEndpointNotFoundException(target, endpoint);
         }
 
-        WarnSchemeFallbackOnce(serviceName, scheme);
+        WarnSchemeFallbackOnce(target, scheme);
 
-        var tcpEndpoint = ResolveTcpFallbackEndpoint(serviceName);
+        var tcpEndpoint = ResolveTcpFallbackEndpoint(target);
         if (tcpEndpoint.Length == 0 || !_registry.TryGet(TransportSchemes.Tcp, out adapter))
         {
-            throw new RemoteEndpointNotFoundException(serviceName, endpoint);
+            throw new RemoteEndpointNotFoundException(target, endpoint);
         }
 
         return adapter;
@@ -234,24 +234,24 @@ internal sealed class SchemeDispatchTransportAdapter : ITransportProtocolAdapter
     /// Resolves the preferred endpoint; the resolver's fail-fast exception on structurally
     /// invalid values is translated into the endpoint-not-found contract.
     /// </remarks>
-    /// <param name="serviceName">目标服务名 / Target service name</param>
+    /// <param name="target">结构化端点目标 / The structured endpoint target</param>
     /// <returns>未解析端点 URI 字符串 / The unparsed endpoint URI string</returns>
     /// <exception cref="RemoteEndpointNotFoundException">未找到端点或端点不可解析时抛出 / Thrown when the endpoint is not found or unparseable</exception>
-    private string ResolvePreferredEndpoint(string serviceName)
+    private string ResolvePreferredEndpoint(RemoteServiceTarget target)
     {
         try
         {
-            var endpoint = _endpointResolver.ResolveEndpoint(serviceName);
+            var endpoint = _endpointResolver.ResolveEndpoint(target);
             if (endpoint.Length == 0)
             {
-                throw new RemoteEndpointNotFoundException(serviceName, endpoint);
+                throw new RemoteEndpointNotFoundException(target, endpoint);
             }
 
             return endpoint;
         }
         catch (EndpointFormatException exception)
         {
-            throw new RemoteEndpointNotFoundException(serviceName, exception.Message);
+            throw new RemoteEndpointNotFoundException(target, exception.Message);
         }
     }
 
@@ -263,17 +263,17 @@ internal sealed class SchemeDispatchTransportAdapter : ITransportProtocolAdapter
     /// declared, and structurally invalid values are translated into the endpoint-not-found
     /// contract as well.
     /// </remarks>
-    /// <param name="serviceName">目标服务名 / Target service name</param>
+    /// <param name="target">结构化端点目标 / The structured endpoint target</param>
     /// <returns>TCP 端点字符串；未声明时为空串 / The TCP endpoint string; empty when not declared</returns>
-    private string ResolveTcpFallbackEndpoint(string serviceName)
+    private string ResolveTcpFallbackEndpoint(RemoteServiceTarget target)
     {
         try
         {
-            return _endpointResolver.ResolveEndpoint(serviceName, TransportSchemes.Tcp);
+            return _endpointResolver.ResolveEndpoint(target, TransportSchemes.Tcp);
         }
         catch (EndpointFormatException exception)
         {
-            throw new RemoteEndpointNotFoundException(serviceName, exception.Message);
+            throw new RemoteEndpointNotFoundException(target, exception.Message);
         }
     }
 
@@ -284,10 +284,10 @@ internal sealed class SchemeDispatchTransportAdapter : ITransportProtocolAdapter
     /// Parses the endpoint scheme (normalized to lower case by <see cref="EndpointParser"/>);
     /// a structurally invalid endpoint is an unusable endpoint.
     /// </remarks>
-    /// <param name="serviceName">目标服务名（用于异常消息）/ The target service name (used in the exception message)</param>
+    /// <param name="target">结构化端点目标（用于异常消息）/ The structured endpoint target (used in the exception message)</param>
     /// <param name="endpoint">未解析端点 URI 字符串 / The unparsed endpoint URI string</param>
     /// <returns>小写归一后的 scheme / The lower-cased scheme</returns>
-    private static string ParseEndpointScheme(string serviceName, string endpoint)
+    private static string ParseEndpointScheme(RemoteServiceTarget target, string endpoint)
     {
         try
         {
@@ -295,7 +295,7 @@ internal sealed class SchemeDispatchTransportAdapter : ITransportProtocolAdapter
         }
         catch (EndpointFormatException exception)
         {
-            throw new RemoteEndpointNotFoundException(serviceName, exception.Message);
+            throw new RemoteEndpointNotFoundException(target, exception.Message);
         }
     }
 
@@ -305,14 +305,15 @@ internal sealed class SchemeDispatchTransportAdapter : ITransportProtocolAdapter
     /// <remarks>
     /// Emits the fallback warning once per distinct (service, scheme) pair.
     /// </remarks>
-    /// <param name="serviceName">目标服务名 / Target service name</param>
+    /// <param name="target">结构化端点目标 / The structured endpoint target</param>
     /// <param name="scheme">未注册适配器的端点 scheme / The endpoint scheme without a registered adapter</param>
-    private void WarnSchemeFallbackOnce(string serviceName, string scheme)
+    private void WarnSchemeFallbackOnce(RemoteServiceTarget target, string scheme)
     {
-        if (_schemeFallbackWarned.TryAdd($"{scheme}|{serviceName}", 0))
+        var targetKey = target.ToString();
+        if (_schemeFallbackWarned.TryAdd($"{scheme}|{targetKey}", 0))
         {
             // Localization: RemoteMessaging.Transport.SchemeFallbackToTcp - 端点 scheme '{0}' 未注册传输适配器，服务 '{1}' 回落使用 TCP 端点
-            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Transport.SchemeFallbackToTcp, scheme, serviceName));
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Transport.SchemeFallbackToTcp, scheme, targetKey));
         }
     }
 }

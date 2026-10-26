@@ -62,7 +62,8 @@ internal sealed class ServerHeartbeatDocument : ServerHeartbeatEntity
     /// <param name="addressKind">地址形态名 / The address kind name</param>
     /// <param name="incarnation">代数（重启纪元）/ The incarnation</param>
     /// <param name="lastHeartbeatUtc">本次心跳时间（UTC）/ This heartbeat time (UTC)</param>
-    public ServerHeartbeatDocument(string instanceId, string role, string advertiseEndpoint, string status, int load, string addressKind, long incarnation, DateTime lastHeartbeatUtc)
+    /// <param name="additionalAdvertiseEndpoints">附加广播端点（写路径已归一化：空集合传 null，默认配置文档与旧版本逐字节同形）/ The additional advertise endpoints (write-path normalized: an empty collection is passed as null so the default-configuration document stays byte-identical to the old version)</param>
+    public ServerHeartbeatDocument(string instanceId, string role, string advertiseEndpoint, string status, int load, string addressKind, long incarnation, DateTime lastHeartbeatUtc, List<string> additionalAdvertiseEndpoints = null)
     {
         InstanceId = instanceId;
         Role = role;
@@ -72,5 +73,6 @@ internal sealed class ServerHeartbeatDocument : ServerHeartbeatEntity
         AddressKind = addressKind;
         Incarnation = incarnation;
         LastHeartbeat = lastHeartbeatUtc;
+        AdditionalAdvertiseEndpoints = additionalAdvertiseEndpoints;
     }
 }

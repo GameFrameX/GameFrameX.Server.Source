@@ -62,7 +62,7 @@ public sealed class DefaultPlayerRouteResolver : IPlayerRouteResolver
             var serverType = GlobalSettings.CurrentSetting?.ServerType ?? GameServerConst.Game.Name;
             var serverId = GlobalSettings.CurrentSetting?.ServerId ?? GameServerConst.Game.Id;
 
-            return Task.FromResult(PlayerRouteInfo.Online(serverType, serverId));
+            return Task.FromResult(PlayerRouteInfo.Online(serverType, serverId, PlayerSessionManager.Instance.LocalDiscoveryInstanceId));
         }
 
         // 回退到 PlayerSessionManager 内存路由（仅内存，不依赖外部存储）
@@ -70,7 +70,7 @@ public sealed class DefaultPlayerRouteResolver : IPlayerRouteResolver
         {
             if (snapshot.IsOnline)
             {
-                return Task.FromResult(PlayerRouteInfo.Online(snapshot.ServerType, snapshot.ServerId, snapshot.Version));
+                return Task.FromResult(PlayerRouteInfo.Online(snapshot.ServerType, snapshot.ServerId, snapshot.InstanceId, snapshot.Version));
             }
 
             return Task.FromResult(PlayerRouteInfo.Offline());

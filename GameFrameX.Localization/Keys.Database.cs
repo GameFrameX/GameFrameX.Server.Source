@@ -291,6 +291,15 @@ public static partial class Keys
         /// </remarks>
         public const string DiscoveryProviderNotSupported = "Database.Discovery.ProviderNotSupported";
         /// <summary>
+        /// [Discovery] 多 ServerType 进程只广播首选 ServerType '{0}'；以下 ServerType 不写心跳、不跨进程可达：{1}
+        /// </summary>
+        /// <remarks>
+        /// 键名: Database.Discovery.NonPrimaryRolesNotAdvertised
+        /// 用途: 多 ServerType 进程激活发现层（配置了广播端口）时的告警日志（Mongo / PostgreSQL 共用）
+        /// 参数: {0} - 首选 ServerType 名, {1} - 不广播的 ServerType 列表
+        /// </remarks>
+        public const string NonPrimaryRolesNotAdvertised = "Database.Discovery.NonPrimaryRolesNotAdvertised";
+        /// <summary>
         /// 无法定位发现层提供者“{0}”的激活入口“{1}”：宿主进程可能未引用对应的 Provider 工程，或该类型不再暴露 public static void Activate(DiscoveryActivationOptions)。请添加工程引用，或改为直调 *DiscoveryRuntime.Activate(...) 显式激活（AOT/裁剪场景逃生门）。
         /// </summary>
         /// <remarks>

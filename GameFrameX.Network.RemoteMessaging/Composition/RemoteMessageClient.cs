@@ -341,23 +341,27 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
     private RemoteCallResult<TResponse> CheckPreconditions<TResponse>(RemoteCallContext context, Stopwatch stopwatch)
         where TResponse : class, IResponseMessage
     {
+        // 熔断 / 健康统计键 = RemoteServiceTarget.ToString()：ServerType 级为 "Social"，实例级为 "Social/2001"
+        //（实例级失败只隔离该实例；指标 / 日志拦截器仍按 context.ServiceName 聚合，该差异是有意的）。
+        var targetKey = ToTarget(context).ToString();
+
         // 熔断检查
-        if (!_circuitBreaker.IsAllowed(context.ServiceName))
+        if (!_circuitBreaker.IsAllowed(targetKey))
         {
             return RemoteCallResult<TResponse>.Fail(
                 RemoteStatusCode.CircuitOpen,
-                $"Circuit breaker is open for service: {context.ServiceName}",
+                $"Circuit breaker is open for service: {targetKey}",
                 stopwatch.ElapsedMilliseconds,
                 context.TraceId);
         }
 
         // 健康探测检查
-        var healthScore = _healthEvaluator.GetHealthScore(context.ServiceName);
+        var healthScore = _healthEvaluator.GetHealthScore(targetKey);
         if (healthScore <= 0)
         {
             return RemoteCallResult<TResponse>.Fail(
                 RemoteStatusCode.ServiceUnavailable,
-                $"Service health score is {healthScore}, considered unavailable: {context.ServiceName}",
+                $"Service health score is {healthScore}, considered unavailable: {targetKey}",
                 stopwatch.ElapsedMilliseconds,
                 context.TraceId);
         }
@@ -382,15 +386,18 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
         where TResponse : class, IResponseMessage
     {
         Stream stream = null;
+        var target = ToTarget(context);
+        var targetKey = target.ToString();
+
         try
         {
             await RunBeforeInterceptorsAsync(context, requestMessage);
 
 
-            stream = await _transportProtocolAdapter.GetOrCreateStreamAsync(context.ServiceName, context.CancellationToken);
+            stream = await _transportProtocolAdapter.GetOrCreateStreamAsync(target, context.CancellationToken);
             if (stream == null)
             {
-                RecordFailures(context.ServiceName, "Failed to create connection");
+                RecordFailures(targetKey, "Failed to create connection");
                 return (
                            RemoteCallResult<TResponse>.Fail(
                                RemoteStatusCode.ConnectionFailed,
@@ -403,8 +410,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
             var connection = GetOrCreateConnection(stream);
 
             // 连接级协议版本握手（每连接单飞一次）：拒绝抛 ProtocolVersionMismatchException，混布超时回落旧版本
-            await EnsureHandshakeAsync(connection, context.ServiceName);
-
+            await EnsureHandshakeAsync(connection, targetKey);
             if (_protocolVersionNegotiator != null && !_protocolVersionNegotiator.IsMessageCompatible(requestMessage.GetType(), connection.NegotiatedRemoteVersion))
             {
                 return (
@@ -430,7 +436,8 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
         catch (RemoteEndpointNotFoundException endpointNotFoundException)
         {
             stopwatch.Stop();
-            RecordFailures(context.ServiceName, endpointNotFoundException.Message);
+            // EndpointNotFound 表示「本次未解析到端点」（冷启动窗口 / 实例下线），请求未离开发送进程，
+            // 不是端点健康信号：不计入熔断与健康评分（避免冷启动把健康中的 ServerType 拉黑），维持不可重试。
             await RunExceptionInterceptorsAsync(context, requestMessage, endpointNotFoundException, stopwatch.ElapsedMilliseconds);
             return (
                        RemoteCallResult<TResponse>.Fail(
@@ -445,7 +452,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
             stopwatch.Stop();
             var cancellation = ToCancellationOutcome(context);
 
-            RecordFailures(context.ServiceName, cancellation.errorMessage);
+            RecordFailures(targetKey, cancellation.errorMessage);
             await RunExceptionInterceptorsAsync(context, requestMessage, new TimeoutException(cancellation.errorMessage), stopwatch.ElapsedMilliseconds);
 
             return (
@@ -463,7 +470,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
                 _transportProtocolAdapter.Invalidate(stream);
             }
 
-            RecordFailures(context.ServiceName, versionMismatch.Message);
+            RecordFailures(targetKey, versionMismatch.Message);
             await RunExceptionInterceptorsAsync(context, requestMessage, versionMismatch, stopwatch.ElapsedMilliseconds);
             return (
                        RemoteCallResult<TResponse>.Fail(
@@ -488,7 +495,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
             }
 
 
-            RecordFailures(context.ServiceName, ex.Message);
+            RecordFailures(targetKey, ex.Message);
             await RunExceptionInterceptorsAsync(context, requestMessage, ex, stopwatch.ElapsedMilliseconds);
 
             var statusCode = IsConnectionException(ex) ? RemoteStatusCode.ConnectionFailed : RemoteStatusCode.UnknownError;
@@ -518,6 +525,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
         ConnectionContext connection, int requestUniqueId, RemoteCallContext context, MessageObject requestMessage, Stopwatch stopwatch, int attemptCount)
         where TResponse : class, IResponseMessage
     {
+        var targetKey = ToTarget(context).ToString();
         connection.TrackPending(requestUniqueId);
         try
         {
@@ -532,7 +540,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
             if (responseMessage == null)
             {
                 // 挂起条目丢失（连接死亡竞态）：按连接关闭处理
-                RecordFailures(context.ServiceName, "Connection closed during response");
+                RecordFailures(targetKey, "Connection closed during response");
                 return RemoteCallResult<TResponse>.Fail(
                     RemoteStatusCode.ConnectionClosed,
                     "Connection closed during response",
@@ -549,7 +557,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
                     context.TraceId);
             }
 
-            RecordSuccess(context.ServiceName);
+            RecordSuccess(targetKey);
             await RunAfterInterceptorsAsync(context, requestMessage, responseMessage, stopwatch.ElapsedMilliseconds);
             return RemoteCallResult<TResponse>.Ok(typedResponse, stopwatch.ElapsedMilliseconds, context.TraceId, attemptCount - 1);
         }
@@ -889,47 +897,65 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
     }
 
     /// <summary>
-    /// 单向发送消息，不等待响应。
+    /// 单向发送消息，不等待响应（ServerType 级确定性选择）。
     /// </summary>
     /// <remarks>
-    /// Sends a message one-way without waiting for a response.
+    /// Sends a message one-way without waiting for a response (a deterministic
+    /// ServerType-level selection).
     /// </remarks>
     /// <param name="serviceName">目标服务名 / The target service name</param>
     /// <param name="requestMessage">请求消息对象 / The request message object</param>
     /// <param name="timeoutMs">发送超时毫秒数 / The send timeout duration in milliseconds</param>
     /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
-    public async Task SendOneWayAsync(
+    public Task SendOneWayAsync(
         string serviceName,
         MessageObject requestMessage,
         int timeoutMs = RemoteCallContext.DefaultTimeoutMs,
         CancellationToken cancellationToken = default)
     {
-        if (!_circuitBreaker.IsAllowed(serviceName))
+        return SendOneWayAsync(RemoteCallContext.Create(serviceName, timeoutMs, cancellationToken), requestMessage);
+    }
+
+    /// <summary>
+    /// 单向发送消息，不等待响应（完整上下文版本，可携带 <see cref="RemoteCallContext.TargetInstanceId"/> 直达实例）。
+    /// </summary>
+    /// <remarks>
+    /// Sends a message one-way without waiting for a response (the full-context version, which
+    /// can carry <see cref="RemoteCallContext.TargetInstanceId"/> to reach a specific instance).
+    /// </remarks>
+    /// <param name="context">调用上下文 / The call context</param>
+    /// <param name="requestMessage">请求消息对象 / The request message object</param>
+    public async Task SendOneWayAsync(RemoteCallContext context, MessageObject requestMessage)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        var target = ToTarget(context);
+        var targetKey = target.ToString();
+
+        if (!_circuitBreaker.IsAllowed(targetKey))
         {
             // Localization: RemoteMessaging.Client.SendOneWayCircuitBreakerOpen - SendOneWayAsync: 熔断器已打开, Service: {0}
-            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.RemoteMessaging.ClientModule.SendOneWayCircuitBreakerOpen, serviceName));
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.RemoteMessaging.ClientModule.SendOneWayCircuitBreakerOpen, targetKey));
             return;
         }
 
-        var healthScore = _healthEvaluator.GetHealthScore(serviceName);
+        var healthScore = _healthEvaluator.GetHealthScore(targetKey);
         if (healthScore <= 0)
         {
             // Localization: RemoteMessaging.Client.SendOneWayHealthScoreLow - SendOneWayAsync: 服务健康评分过低, Service: {0}, Score: {1}
-            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.RemoteMessaging.ClientModule.SendOneWayHealthScoreLow, serviceName, healthScore));
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.RemoteMessaging.ClientModule.SendOneWayHealthScoreLow, targetKey, healthScore));
             return;
         }
-
-        var context = RemoteCallContext.Create(serviceName, timeoutMs, cancellationToken);
 
         try
         {
             await RunBeforeInterceptorsAsync(context, requestMessage);
 
 
-            var stream = await _transportProtocolAdapter.GetOrCreateStreamAsync(serviceName, cancellationToken);
+            var stream = await _transportProtocolAdapter.GetOrCreateStreamAsync(target, context.CancellationToken);
             if (stream == null)
             {
-                RecordFailures(serviceName, "SendOneWayAsync: Failed to create connection");
+                RecordFailures(targetKey, "SendOneWayAsync: Failed to create connection");
                 return;
             }
 
@@ -938,12 +964,12 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
             // 连接级协议版本握手（与 RPC 路径同一单飞门）；拒绝时按单向发送口径记告警并放弃本次发送
             try
             {
-                await EnsureHandshakeAsync(connection, serviceName);
+                await EnsureHandshakeAsync(connection, targetKey);
             }
             catch (GameFrameX.Network.RemoteMessaging.Versioning.ProtocolVersionMismatchException versionMismatch)
             {
                 _transportProtocolAdapter.Invalidate(stream);
-                RecordFailures(serviceName, versionMismatch.Message);
+                RecordFailures(targetKey, versionMismatch.Message);
                 // Localization: RemoteMessaging.Versioning.HandshakeRejected - 协议版本握手被拒绝：本端 {0}，远端 {1}。连接已关闭（跨 major 混布禁止）。
                 LogHelper.Warning(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Versioning.HandshakeRejected, versionMismatch.Local, versionMismatch.Remote));
                 return;
@@ -955,30 +981,31 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
                 LogHelper.Warning(LocalizationService.GetString(Localization.Keys.RemoteMessaging.ClientModule.SendOneWayProtocolVersionIncompatible, requestMessage.GetType().Name));
                 return;
             }
-            var requestUniqueId = _requestResponseMatcher.RegisterPendingRequest(timeoutMs);
+            var requestUniqueId = _requestResponseMatcher.RegisterPendingRequest(context.TimeoutMs);
             PrepareRequestMessage(requestMessage, requestUniqueId);
 
             using (var requestBuffer = _messageCodec.Encode(requestMessage))
             {
-                await connection.WriteAsync(requestBuffer.Memory, cancellationToken);
+                await connection.WriteAsync(requestBuffer.Memory, context.CancellationToken);
 
-                RecordSuccess(serviceName);
+                RecordSuccess(targetKey);
                 await RunAfterInterceptorsAsync(context, requestMessage, null, 0);
             }
         }
         catch (OperationCanceledException)
         {
-            RecordFailures(serviceName, cancellationToken.IsCancellationRequested ? "SendOneWayAsync cancelled" : "SendOneWayAsync timed out");
+            RecordFailures(targetKey, context.CancellationToken.IsCancellationRequested ? "SendOneWayAsync cancelled" : "SendOneWayAsync timed out");
         }
-        catch (RemoteEndpointNotFoundException endpointNotFoundException)
+        catch (RemoteEndpointNotFoundException)
         {
-            RecordFailures(serviceName, $"SendOneWayAsync endpoint not found: {endpointNotFoundException.Message}");
+            // EndpointNotFound 不计入熔断与健康评分（与 CallWithResultAsync 路径同一定案：本次未解析到端点不是端点健康信号）。
+            // EndpointNotFound never counts toward the circuit breaker or health score (same ruling as the CallWithResultAsync path).
         }
         catch (Exception ex)
         {
             // 单向发送无等待方与流引用，写失败保守全量失效（与旧行为一致）
             _transportProtocolAdapter.Invalidate();
-            RecordFailures(serviceName, $"SendOneWayAsync error: {ex.Message}");
+            RecordFailures(targetKey, $"SendOneWayAsync error: {ex.Message}");
         }
     }
 
@@ -1003,7 +1030,21 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
             return Task.FromResult(false);
         }
 
-        return Task.FromResult(_transportProtocolAdapter.IsServiceAvailable(serviceName));
+        return Task.FromResult(_transportProtocolAdapter.IsServiceAvailable(new RemoteServiceTarget(serviceName)));
+    }
+
+    /// <summary>
+    /// 由调用上下文构建结构化端点目标（ServerType = ServiceName，InstanceId = TargetInstanceId）。
+    /// </summary>
+    /// <remarks>
+    /// Builds the structured endpoint target from the call context (ServerType = ServiceName,
+    /// InstanceId = TargetInstanceId).
+    /// </remarks>
+    /// <param name="context">调用上下文 / The call context</param>
+    /// <returns>结构化端点目标 / The structured endpoint target</returns>
+    private static RemoteServiceTarget ToTarget(RemoteCallContext context)
+    {
+        return new RemoteServiceTarget(context.ServiceName, context.TargetInstanceId);
     }
 
     private void RecordSuccess(string serviceName)

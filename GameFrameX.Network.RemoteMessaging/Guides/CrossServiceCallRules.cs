@@ -61,7 +61,10 @@
 //             AllowRetry = true,  // 幂等查询允许重试
 //         };
 //
-//         var remoteClient = RemoteMessagingBuilder.BuildFromEnvironment();
+//         var remoteClient = new RemoteMessagingBuilder()
+//             .LoadFromEnvironment()
+//             .WithRouteTable(GameFrameX.Discovery.ActiveDiscoveryRuntime.RouteTableProvider)
+//             .Build();
 //         var result = await remoteClient.CallWithResultAsync<RespInnerQuery>(context, req);
 //
 //         if (result.IsSuccess && result.Response != null)
@@ -103,7 +106,10 @@
 //             AllowRetry = false,  // 非幂等操作禁止重试
 //         };
 //
-//         var remoteClient = RemoteMessagingBuilder.BuildFromEnvironment();
+//         var remoteClient = new RemoteMessagingBuilder()
+//             .LoadFromEnvironment()
+//             .WithRouteTable(GameFrameX.Discovery.ActiveDiscoveryRuntime.RouteTableProvider)
+//             .Build();
 //         var result = await remoteClient.CallWithResultAsync<RespInnerWrite>(context, req);
 //
 //         if (result.IsSuccess && result.Response != null)

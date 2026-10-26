@@ -567,17 +567,7 @@ docker compose -f docker-compose.multi.yml down
 | Social | 2 | 社交服务器（social-1, social-2） |
 | Game | 10 | 游戏服务器（game-1 ~ game-10） |
 
-所有实例通过环境变量静态引导进行服务发现（`services__{Role}__tcp__0`）：
-
-```yaml
-environment:
-  services__Social_2001__tcp__0: "tcp://social-1:29400"
-  services__Social_2002__tcp__0: "tcp://social-2:29401"
-  services__Game_1001__tcp__0: "tcp://game-1:29100"
-  # ...
-```
-
-端点取值为 `scheme://host:port` URI。键的 scheme 段（`tcp` / `kcp` / `ws` / `wss`）声明传输方式：拨号期远程消息客户端解析端点并按 scheme 分发到对应已注册适配器。同一服务可同时发布 tcp 与 kcp 端点（`services__{Role}__kcp__0`）——kcp 端点优先，未注册 KCP 适配器的调用方回落 tcp 端点并仅告警一次。
+所有实例通过 Advertise 三件套（`GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId`，由 compose 生成器逐实例注入）在心跳注册表（`server_heartbeat`）中自注册。服务器间端点统一经发现层路由表（`IRoleRouteTableProvider`）解析：RPC 直连、统一发送端、信封路由三条链路均从心跳注册表拨号——静态引导环境变量映射已退役。`IsEnableInnerKcp=true`（且配置 `InnerKcpPort`）时，服务器间 KCP 监听器装配成功的实例会在心跳中广播 kcp 附加端点；注册了 KCP 拨号适配器的调用方走 kcp，其余回落 tcp 并仅告警一次。滚动升级约束：开启 KCP 广播前，集群所有节点须运行本版本或更高版本。
 
 #### 自定义构建
 
@@ -776,7 +766,7 @@ GameFrameX.Server.Source/
 ├── GameFrameX.Network.Abstractions/  # 网络接口（IMessage、IMessageHandler、消息映射）
 ├── GameFrameX.Network.HTTP/          # HTTP 服务器（Swagger、Kestrel、BaseHttpHandler）
 ├── GameFrameX.Network.RemoteMessaging/ # 跨进程远程消息（断路器、重试、一致性哈希）
-├── GameFrameX.Discovery/             # 环境变量静态引导服务发现（services__{Role}__tcp__0 引导映射）
+├── GameFrameX.Discovery/             # 心跳注册表服务发现（server_heartbeat 双视图路由表；Advertise 三件套引导）
 ├── GameFrameX.DataBase/              # 数据库抽象层（多 Provider 注册表、GameDb 查询/更新/删除）
 ├── GameFrameX.DataBase.Mongo/        # MongoDB Provider（健康监控、重试、批量操作）
 ├── GameFrameX.DataBase.PostgreSql/   # PostgreSQL Provider（Npgsql，与 MongoDB Provider 同等容错能力）
@@ -827,8 +817,7 @@ All-in-One 进程运行，而无需修改 Role 代码。
 | 文件 | 用途 |
 |:--|:--|
 | `docker-compose.development.yml` | 本地开发：仅一个 MongoDB 服务（宿主机端口 `127.0.0.1:37017`，与示例 `app_config.json` 匹配） |
-| `docker-compose.multi.yml` | 多实例拓扑形态，由 `scripts/multi/generate-docker-compose-multi.py` **生成**；每个实例注入 `GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId` 及 `services__{Role}__tcp__0` 静态引导映射，并将各自的 `Configs/multi/{service}.json` 配置节（取值与 `command` 参数一致）挂载为 `/app/Configs/app_config.json` |
-| `docker-compose.multi.legacy.yml` | 先前的静态形态，作为过渡保留 |
+| `docker-compose.multi.yml` | 多实例拓扑形态，由 `scripts/multi/generate-docker-compose-multi.py` **生成**；每个实例注入 `GameFrameX__AdvertiseHost` / `GameFrameX__AdvertisePort` / `GameFrameX__RoleInstanceId`（服务器间端点由心跳注册表解析），并将各自的 `Configs/multi/{service}.json` 配置节（取值与 `command` 参数一致）挂载为 `/app/Configs/app_config.json` |
 
 修改生成器中的 `ROLES` 定义并重新运行 `python3 scripts/multi/generate-docker-compose-multi.py`
 即可变更拓扑（幂等；`--check` 用于校验已提交的 compose 文件与各实例配置是否与生成器输出一致）。

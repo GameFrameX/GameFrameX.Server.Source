@@ -77,7 +77,7 @@ public sealed class InterServerKcpTransportTests : IAsyncLifetime
     private IHost _tcpHost;
     private int _kcpPort;
     private int _tcpPort;
-    private readonly List<string> _environmentKeys = new();
+    private readonly MutableRouteTableProvider _routeTable = new();
     private readonly ConcurrentQueue<uint> _observedConvs = new();
 
     public async Task InitializeAsync()
@@ -147,11 +147,6 @@ public sealed class InterServerKcpTransportTests : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        foreach (var key in _environmentKeys)
-        {
-            Environment.SetEnvironmentVariable(key, null);
-        }
-
         if (_kcpHost != null)
         {
             await _kcpHost.StopAsync();
@@ -234,6 +229,7 @@ public sealed class InterServerKcpTransportTests : IAsyncLifetime
         SetEnvironmentEndpoint(serviceName, "kcp", $"kcp://127.0.0.1:{_kcpPort}");
 
         var client = new RemoteMessagingBuilder()
+            .WithRouteTable(_routeTable)
             .UseKcpTransportAdapter()
             .WithTimeoutMs(15000)
             .Build();
@@ -267,7 +263,7 @@ public sealed class InterServerKcpTransportTests : IAsyncLifetime
 
         // 腿一：仅配 tcp 键（现状部署形态）
         SetEnvironmentEndpoint(serviceName, "tcp", $"tcp://127.0.0.1:{_tcpPort}");
-        var tcpClient = new RemoteMessagingBuilder().WithTimeoutMs(15000).Build();
+        var tcpClient = new RemoteMessagingBuilder().WithRouteTable(_routeTable).WithTimeoutMs(15000).Build();
         foreach (var identity in identities)
         {
             var request = new ReqInnerFriendByAdd { PlayerId = IdentityBase + identity, SourcePlayerId = identity };
@@ -279,6 +275,7 @@ public sealed class InterServerKcpTransportTests : IAsyncLifetime
         // 腿二：混跑迁移——同服务重指向 kcp 键（旧 tcp 键撤除），新客户端实例按 scheme 重新分发
         SetEnvironmentEndpoint(serviceName, "kcp", $"kcp://127.0.0.1:{_kcpPort}");
         var kcpClient = new RemoteMessagingBuilder()
+            .WithRouteTable(_routeTable)
             .UseKcpTransportAdapter()
             .WithTimeoutMs(15000)
             .Build();
@@ -305,23 +302,23 @@ public sealed class InterServerKcpTransportTests : IAsyncLifetime
         SetEnvironmentEndpoint(serviceName, "kcp", $"kcp://127.0.0.1:{_kcpPort}");
 
         var adapter = new KcpTransportProtocolAdapter(
-            new EnvironmentVariableEndpointResolver(),
+            new DiscoveryServiceEndpointResolver(_routeTable),
             new KcpConnectionProvider());
         try
         {
             // 存活会话按池语义复用（同一 Stream 实例，与 TCP 池行为对齐）
-            var first = await adapter.GetOrCreateStreamAsync(serviceName);
-            var pooled = await adapter.GetOrCreateStreamAsync(serviceName);
+            var first = await adapter.GetOrCreateStreamAsync(new RemoteServiceTarget(serviceName));
+            var pooled = await adapter.GetOrCreateStreamAsync(new RemoteServiceTarget(serviceName));
             Assert.Same(first, pooled);
 
             // 流级失效：仅丢弃该会话，下次调用重建（新 Stream 实例）
             adapter.Invalidate(first);
-            var recreated = await adapter.GetOrCreateStreamAsync(serviceName);
+            var recreated = await adapter.GetOrCreateStreamAsync(new RemoteServiceTarget(serviceName));
             Assert.NotSame(first, recreated);
 
             // 全量失效：丢弃全部会话
             adapter.Invalidate();
-            var afterAll = await adapter.GetOrCreateStreamAsync(serviceName);
+            var afterAll = await adapter.GetOrCreateStreamAsync(new RemoteServiceTarget(serviceName));
             Assert.NotSame(recreated, afterAll);
         }
         finally
@@ -339,19 +336,19 @@ public sealed class InterServerKcpTransportTests : IAsyncLifetime
     {
         const string serviceName = "C251Availability";
         var adapter = new KcpTransportProtocolAdapter(
-            new EnvironmentVariableEndpointResolver(),
+            new DiscoveryServiceEndpointResolver(_routeTable),
             new KcpConnectionProvider());
         try
         {
-            Assert.False(adapter.IsServiceAvailable(serviceName));
+            Assert.False(adapter.IsServiceAvailable(new RemoteServiceTarget(serviceName)));
 
             SetEnvironmentEndpoint(serviceName, "kcp", $"kcp://127.0.0.1:{_kcpPort}");
-            Assert.True(adapter.IsServiceAvailable(serviceName));
+            Assert.True(adapter.IsServiceAvailable(new RemoteServiceTarget(serviceName)));
 
-            // 结构非法端点值（缺 scheme）沿既有传输契约在 resolver 解析期抛 EndpointFormatException
-            //（与 TCP 适配器同口径：env 值连接期过 EndpointParser），不静默当作不可用
+            // C304：结构非法附加端点（缺 scheme）在描述符归一化期被跳过（不再有 env 值直连解析期抛
+            // EndpointFormatException 的路径），该实例只剩 tcp 主端点 → kcp 不可达即 false
             SetEnvironmentEndpoint(serviceName, "kcp", "127.0.0.1:9999");
-            Assert.Throws<EndpointFormatException>(() => adapter.IsServiceAvailable(serviceName));
+            Assert.False(adapter.IsServiceAvailable(new RemoteServiceTarget(serviceName)));
         }
         finally
         {
@@ -381,6 +378,7 @@ public sealed class InterServerKcpTransportTests : IAsyncLifetime
         };
 
         var client = new RemoteMessagingBuilder()
+            .WithRouteTable(_routeTable)
             .UseKcpTransportAdapter()
             .WithCompression(0)
             .Build();
@@ -401,6 +399,7 @@ public sealed class InterServerKcpTransportTests : IAsyncLifetime
             InnerMessageBytes = new byte[60 * 1024],
         };
         var strictClient = new RemoteMessagingBuilder()
+            .WithRouteTable(_routeTable)
             .UseKcpTransportAdapter()
             .WithCompression(0)
             .WithRetry(0)
@@ -442,9 +441,10 @@ public sealed class InterServerKcpTransportTests : IAsyncLifetime
     /// <summary>
     /// 串行往返测量：逐次请求-响应按数据身份校验完成数，同时采样壁钟与进程 CPU 时间。
     /// </summary>
-    private static async Task<(int Completed, long ElapsedMilliseconds, long CpuMilliseconds)> MeasureSerialRoundTripsAsync(string serviceName, int rounds)
+    private async Task<(int Completed, long ElapsedMilliseconds, long CpuMilliseconds)> MeasureSerialRoundTripsAsync(string serviceName, int rounds)
     {
         var client = new RemoteMessagingBuilder()
+            .WithRouteTable(_routeTable)
             .UseKcpTransportAdapter()
             .WithCompression(0)
             .Build();
@@ -469,9 +469,11 @@ public sealed class InterServerKcpTransportTests : IAsyncLifetime
 
     private void SetEnvironmentEndpoint(string serviceName, string scheme, string value)
     {
-        var key = $"services__{serviceName}__{scheme}__0";
-        Environment.SetEnvironmentVariable(key, value);
-        _environmentKeys.Add(key);
+        // C304：端点事实源 = 心跳注册表路由表（kcp 经附加端点承载，tcp 主端点必填）
+        _routeTable.RemoveService(serviceName);
+        var additional = scheme == "kcp" ? new[] { value } : null;
+        var tcpPrimary = scheme == "tcp" ? value : $"tcp://127.0.0.1:{_tcpPort}";
+        _routeTable.SetServiceEndpoint(serviceName, tcpPrimary, additionalEndpoints: additional);
     }
 
     private static int GetAvailableUdpPort()

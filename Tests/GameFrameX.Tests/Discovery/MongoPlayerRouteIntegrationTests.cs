@@ -254,7 +254,7 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
 
         Assert.True(resolved.IsOnline);
         Assert.Equal("Game", resolved.ServerType);
-        Assert.Equal(7, resolved.ServerId);
+        Assert.Equal("7", resolved.InstanceId);
     }
 
     [Fact]
@@ -301,7 +301,7 @@ public sealed class MongoPlayerRouteIntegrationTests : IDisposable
             Calls++;
             if (playerId == PlayerId)
             {
-                info = PlayerRouteInfo.Online(ServerType, ServerId, Version);
+                info = PlayerRouteInfo.Online(ServerType, ServerId, "2001", Version);
                 return true;
             }
 
