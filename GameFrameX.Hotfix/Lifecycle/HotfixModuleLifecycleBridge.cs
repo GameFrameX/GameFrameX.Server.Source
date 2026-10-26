@@ -112,9 +112,8 @@ internal sealed class HotfixModuleLifecycleBridge : IHotfixBridge
         // 单 Role 形态无差异；直接删除会让调用期读取方的服务器身份漂移。
 
         GlobalSettings.SetCurrentSetting(setting);
-        // 初始化统一消息发送器：resolver 按发现层可用性选择——
-        // 启动流程先 Activate 发现层（含 player_route 读侧），后加载 Hotfix，故此处
-        // Bootstrap.Resolver 必然已就绪；未激活发现层的形态回落 DefaultPlayerRouteResolver。
+        // 初始化统一消息发送器：路由表必须来自已激活的发现层（ActiveDiscoveryRuntime.RouteTableProvider）。
+        // 未激活时 WithRouteTable 收到 null 会先抛出 ArgumentNullException，不会执行后续 resolver 选择。
         // localSender 单实例同时供 UnifiedMessageSenderHolder 与 LocalEnvelopeDispatcher，保证一条本地复投语义。
         // 发送端本服身份（C286）构造注入自本回调收到的 setting，不依赖 CurrentSetting 的钉住时序
         // （钉住仍服务 PlayerSessionManager 等调用期读取方）。

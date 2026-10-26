@@ -291,7 +291,7 @@ public sealed class PostgreSqlPlayerRouteIntegrationTests : IDisposable
 
         Assert.True(resolved.IsOnline);
         Assert.Equal("Game", resolved.ServerType);
-        Assert.Equal(7, resolved.ServerId);
+        Assert.Equal("7", resolved.InstanceId);
     }
 
     [Fact]

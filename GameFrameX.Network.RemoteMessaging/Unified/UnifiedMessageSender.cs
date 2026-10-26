@@ -52,6 +52,7 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
     private readonly MessageSendMetrics _metrics;
     private readonly IRoleRouteTableProvider _routeTable;
     private readonly ConcurrentDictionary<string, string[]> _lastInstanceIdsByService = new(StringComparer.OrdinalIgnoreCase);
+    private readonly object _refreshLock = new object();
     private readonly string _currentServerType;
     private readonly string _currentInstanceId;
 
@@ -237,6 +238,14 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
     {
         try
         {
+            // 路由缺失实例 Id（null/空白）视为无效路由，按离线处理：
+            // 放行会触发 ServerType 级实例选择，可能把消息送到错误实例。
+            if (string.IsNullOrWhiteSpace(routeInfo.InstanceId))
+            {
+                sw.Stop();
+                return HandleOffline(playerId, options, sw.ElapsedMilliseconds, traceId);
+            }
+
             var context = new RemoteCallContext
             {
                 ServiceName = routeInfo.ServerType,
@@ -533,23 +542,26 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
             return;
         }
 
-        var activeInstances = _routeTable.Current.GetActiveInstances(serviceName);
-        var instanceIds = new string[activeInstances.Count];
-        for (var index = 0; index < activeInstances.Count; index++)
+        lock (_refreshLock)
         {
-            instanceIds[index] = activeInstances[index].InstanceId;
+            var activeInstances = _routeTable.Current.GetActiveInstances(serviceName);
+            var instanceIds = new string[activeInstances.Count];
+            for (var index = 0; index < activeInstances.Count; index++)
+            {
+                instanceIds[index] = activeInstances[index].InstanceId;
+            }
+
+            Array.Sort(instanceIds, StringComparer.Ordinal);
+
+            var lastInstanceIds = _lastInstanceIdsByService.GetOrAdd(serviceName, _ => Array.Empty<string>());
+            if (InstanceIdsEqual(lastInstanceIds, instanceIds))
+            {
+                return;
+            }
+
+            _lastInstanceIdsByService[serviceName] = instanceIds;
+            _instanceSelector.RefreshInstances(serviceName, instanceIds);
         }
-
-        Array.Sort(instanceIds, StringComparer.Ordinal);
-
-        var lastInstanceIds = _lastInstanceIdsByService.GetOrAdd(serviceName, _ => Array.Empty<string>());
-        if (InstanceIdsEqual(lastInstanceIds, instanceIds))
-        {
-            return;
-        }
-
-        _lastInstanceIdsByService[serviceName] = instanceIds;
-        _instanceSelector.RefreshInstances(serviceName, instanceIds);
     }
 
     /// <summary>
