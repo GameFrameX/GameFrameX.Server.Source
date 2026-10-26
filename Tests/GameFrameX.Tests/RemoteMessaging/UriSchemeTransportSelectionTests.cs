@@ -1,22 +1,22 @@
 // ==========================================================================================
 //   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
-//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents and related rights
 //   均受中华人民共和国及相关国际法律法规保护。
-//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   are protected by the laws of the People's Republic of China and related international regulations.
 //   使用本项目须严格遵守相应法律法规与开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
 //   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//   please refer to the LICENSE file in the root directory of the source code for the full license text.
+//   please refer to the LICENSE file in the root of the source code for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   It is prohibited to use this project to engage in activities that endanger national security, disrupt social order,
 //   侵犯他人合法权益等法律法规所禁止的行为！
-//   or to violate the legal rights and interests of others, as prohibited by laws and regulations!
+//   or to infringe upon the legal rights, interests of others as prohibited by laws and regulations.
 //   因基于本项目二次开发所产生的一切法律纠纷与责任，
 //   Any legal disputes or liabilities arising from secondary development based on this project
 //   本组织与贡献者概不承担。
-//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   shall be borne by the developer; the project organization and contributors assume no responsibility.
 //   GitHub 仓库：https://github.com/GameFrameX
 //   GitHub Repository: https://github.com/GameFrameX
 //   Gitee  仓库：https://gitee.com/GameFrameX
@@ -24,7 +24,7 @@
 //   CNB  仓库：https://cnb.cool/GameFrameX
 //   CNB Repository: https://cnb.cool/GameFrameX
 //   官方文档：https://gameframex.doc.alianblank.com/
-//   Official Documentation: https://gameframex.doc.alianblank.com/
+//   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
 using System.Collections.Concurrent;
@@ -38,121 +38,21 @@ using GameFrameX.Network.RemoteMessaging.Transport;
 namespace GameFrameX.Tests.RemoteMessaging;
 
 /// <summary>
-/// URI scheme 驱动传输选择的验证：resolver scheme 键解析、注册表拨号期分发、回落告警一次、
-/// KCP 占位真实可用性、TCP 解析面收敛后的行为差异钉住、builder 注册语义。
+/// URI scheme 驱动传输选择的验证：路由表端点解析、注册表拨号期分发、回落告警一次、
+/// TCP 解析面收敛后的行为差异钉住、builder 注册语义（C304：端点事实源迁至心跳注册表路由表，
+/// 环境变量解析器已删除，相关 env 键语义不再钉住）。
 /// </summary>
 /// <remarks>
-/// Verification for the URI-scheme-driven transport selection: resolver scheme-key parsing,
-/// registry dispatch at dial time, one-time fallback warning, the KCP placeholder's real
-/// availability, the pinned behavior differences after the TCP parsing-surface convergence,
-/// and the builder registration semantics.
+/// Verification for the URI-scheme-driven transport selection: route-table endpoint resolution,
+/// registry dispatch at dial time, one-time fallback warning, the pinned behavior differences
+/// after the TCP parsing-surface convergence, and the builder registration semantics (C304: the
+/// endpoint source of truth moved to the heartbeat-registry route table; the environment-variable
+/// resolver is gone and its env-key semantics are no longer pinned).
 /// </remarks>
-public sealed class UriSchemeTransportSelectionTests : IDisposable
+public sealed class UriSchemeTransportSelectionTests
 {
-    private readonly List<string> _environmentKeys = new();
-
-    public void Dispose()
-    {
-        foreach (var key in _environmentKeys)
-        {
-            Environment.SetEnvironmentVariable(key, null);
-        }
-    }
-
-    private void SetEnvironmentEndpoint(string serviceName, string scheme, string value)
-    {
-        var key = $"services__{serviceName}__{scheme}__0";
-        Environment.SetEnvironmentVariable(key, value);
-        _environmentKeys.Add(key);
-    }
-
     // ─────────────────────────────────────────────────────────────
-    //  ① 环境变量解析器：scheme 键
-    // ─────────────────────────────────────────────────────────────
-
-    [Fact]
-    public void EnvResolver_TcpKeyOnly_ShouldReturnValueForBothOverloads()
-    {
-        SetEnvironmentEndpoint("C250TcpOnly", "tcp", "tcp://10.0.0.1:7001");
-        var resolver = new EnvironmentVariableEndpointResolver();
-
-        Assert.Equal("tcp://10.0.0.1:7001", resolver.ResolveEndpoint("C250TcpOnly"));
-        Assert.Equal("tcp://10.0.0.1:7001", resolver.ResolveEndpoint("C250TcpOnly", "tcp"));
-        Assert.Equal("tcp://10.0.0.1:7001", resolver.ResolveEndpoint("C250TcpOnly", "TCP"));
-        Assert.Equal(string.Empty, resolver.ResolveEndpoint("C250TcpOnly", "kcp"));
-    }
-
-    [Fact]
-    public void EnvResolver_KcpAndTcpKeys_KcpPreferredDeterministically()
-    {
-        SetEnvironmentEndpoint("C250Both", "tcp", "tcp://10.0.0.1:7001");
-        SetEnvironmentEndpoint("C250Both", "kcp", "kcp://10.0.0.2:7002");
-        var resolver = new EnvironmentVariableEndpointResolver();
-
-        Assert.Equal("kcp://10.0.0.2:7002", resolver.ResolveEndpoint("C250Both"));
-        Assert.Equal("tcp://10.0.0.1:7001", resolver.ResolveEndpoint("C250Both", "tcp"));
-        Assert.Equal("kcp://10.0.0.2:7002", resolver.ResolveEndpoint("C250Both", "kcp"));
-    }
-
-    [Fact]
-    public void EnvResolver_KeySchemeSegment_IsCaseInsensitive()
-    {
-        SetEnvironmentEndpoint("C250UpperKey", "KCP", "kcp://10.0.0.3:7003");
-        var resolver = new EnvironmentVariableEndpointResolver();
-
-        Assert.Equal("kcp://10.0.0.3:7003", resolver.ResolveEndpoint("C250UpperKey"));
-    }
-
-    [Fact]
-    public void EnvResolver_KcpKeyOnly_ShouldReturnKcpEndpoint()
-    {
-        SetEnvironmentEndpoint("KcpOnlySchemeValue", "kcp", "kcp://10.0.0.4:7004");
-        var resolver = new EnvironmentVariableEndpointResolver();
-
-        Assert.Equal("kcp://10.0.0.4:7004", resolver.ResolveEndpoint("KcpOnlySchemeValue"));
-    }
-
-    [Fact]
-    public void EnvResolver_BareHostPortValue_ShouldThrowEndpointFormatException()
-    {
-        // 行为差异钉住：裸 host:port 旧解析面接受（Uri 兜底），新解析面拒绝（缺 scheme）。
-        SetEnvironmentEndpoint("BareHostPortValue", "tcp", "127.0.0.1:7777");
-        var resolver = new EnvironmentVariableEndpointResolver();
-
-        Assert.Throws<EndpointFormatException>(() => resolver.ResolveEndpoint("BareHostPortValue"));
-        Assert.Throws<EndpointFormatException>(() => resolver.ResolveEndpoint("BareHostPortValue", "tcp"));
-    }
-
-    [Fact]
-    public void EnvResolver_ZeroPortValue_ShouldThrowEndpointFormatException()
-    {
-        SetEnvironmentEndpoint("ZeroPortValue", "tcp", "tcp://10.0.0.5:0");
-        var resolver = new EnvironmentVariableEndpointResolver();
-
-        Assert.Throws<EndpointFormatException>(() => resolver.ResolveEndpoint("ZeroPortValue"));
-    }
-
-    [Fact]
-    public void EnvResolver_UnsupportedKeyScheme_ShouldBeIgnored()
-    {
-        SetEnvironmentEndpoint("C250Udp", "udp", "udp://10.0.0.6:7006");
-        var resolver = new EnvironmentVariableEndpointResolver();
-
-        Assert.Equal(string.Empty, resolver.ResolveEndpoint("C250Udp"));
-        Assert.Equal(string.Empty, resolver.ResolveEndpoint("C250Udp", "udp"));
-    }
-
-    [Fact]
-    public void EnvResolver_UndefinedService_ShouldReturnEmptyString()
-    {
-        var resolver = new EnvironmentVariableEndpointResolver();
-
-        Assert.Equal(string.Empty, resolver.ResolveEndpoint("C250Undefined_12345"));
-        Assert.Equal(string.Empty, resolver.ResolveEndpoint("C250Undefined_12345", "tcp"));
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    //  ①（续）动态发现解析器：advertiseEndpoint 原样透传 + scheme 过滤
+    //  ① 动态发现解析器：advertiseEndpoint 原样透传 + scheme 过滤
     // ─────────────────────────────────────────────────────────────
 
     [Fact]
@@ -160,14 +60,14 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
     {
         var table = RoleRouteTable.FromInstances(new List<InstanceDescriptor>
         {
-            new InstanceDescriptor("Game", "game-1", "kcp://10.0.1.1:7101", InstanceStatus.Active, 10, EndpointAddressKind.IPv4, 201, DateTime.UtcNow),
+            RouteTableTestHelper.Descriptor("Game", "game-1", "kcp://10.0.1.1:7101"),
         });
-        var resolver = new DiscoveryServiceEndpointResolver(new FixedTableProvider(table));
+        var resolver = new DiscoveryServiceEndpointResolver(new FixedRouteTableProvider(table));
 
-        Assert.Equal("kcp://10.0.1.1:7101", resolver.ResolveEndpoint("Game"));
-        Assert.Equal("kcp://10.0.1.1:7101", resolver.ResolveEndpoint("Game", "kcp"));
-        Assert.Equal(string.Empty, resolver.ResolveEndpoint("Game", "tcp"));
-        Assert.Equal(string.Empty, resolver.ResolveEndpoint("Nobody", "kcp"));
+        Assert.Equal("kcp://10.0.1.1:7101", resolver.ResolveEndpoint(new RemoteServiceTarget("Game")));
+        Assert.Equal("kcp://10.0.1.1:7101", resolver.ResolveEndpoint(new RemoteServiceTarget("Game"), "kcp"));
+        Assert.Equal(string.Empty, resolver.ResolveEndpoint(new RemoteServiceTarget("Game"), "tcp"));
+        Assert.Equal(string.Empty, resolver.ResolveEndpoint(new RemoteServiceTarget("Nobody"), "kcp"));
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -185,11 +85,11 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
         registry.Register(TransportSchemes.Kcp, kcpAdapter);
         var dispatcher = new SchemeDispatchTransportAdapter(resolver, registry);
 
-        var stream = await dispatcher.GetOrCreateStreamAsync("C250Svc");
+        var stream = await dispatcher.GetOrCreateStreamAsync(new RemoteServiceTarget("C250Svc"));
 
         Assert.Same(kcpAdapter.ReturnedStream, stream);
-        Assert.Equal("C250Svc", Assert.Single(kcpAdapter.RequestedServices));
-        Assert.Empty(tcpAdapter.RequestedServices);
+        Assert.Equal("C250Svc", Assert.Single(kcpAdapter.RequestedTargets).ServerType);
+        Assert.Empty(tcpAdapter.RequestedTargets);
         Assert.Equal(0, dispatcher.SchemeFallbackWarningCount);
     }
 
@@ -204,12 +104,12 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
         registry.Register(TransportSchemes.Tcp, tcpAdapter);
         var dispatcher = new SchemeDispatchTransportAdapter(resolver, registry);
 
-        var firstStream = await dispatcher.GetOrCreateStreamAsync("C250Svc");
-        var secondStream = await dispatcher.GetOrCreateStreamAsync("C250Svc");
+        var firstStream = await dispatcher.GetOrCreateStreamAsync(new RemoteServiceTarget("C250Svc"));
+        var secondStream = await dispatcher.GetOrCreateStreamAsync(new RemoteServiceTarget("C250Svc"));
 
         Assert.Same(tcpAdapter.ReturnedStream, firstStream);
         Assert.Same(tcpAdapter.ReturnedStream, secondStream);
-        Assert.Equal(2, tcpAdapter.RequestedServices.Count);
+        Assert.Equal(2, tcpAdapter.RequestedTargets.Count);
         Assert.Equal(1, dispatcher.SchemeFallbackWarningCount);
     }
 
@@ -224,10 +124,10 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
         registry.Register(TransportSchemes.Tcp, new RecordingTransportAdapter("TCP-FAKE"));
         var dispatcher = new SchemeDispatchTransportAdapter(resolver, registry);
 
-        await dispatcher.GetOrCreateStreamAsync("C250SvcA");
-        await dispatcher.GetOrCreateStreamAsync("C250SvcA");
-        await dispatcher.GetOrCreateStreamAsync("C250SvcB");
-        await dispatcher.GetOrCreateStreamAsync("C250WsSvc");
+        await dispatcher.GetOrCreateStreamAsync(new RemoteServiceTarget("C250SvcA"));
+        await dispatcher.GetOrCreateStreamAsync(new RemoteServiceTarget("C250SvcA"));
+        await dispatcher.GetOrCreateStreamAsync(new RemoteServiceTarget("C250SvcB"));
+        await dispatcher.GetOrCreateStreamAsync(new RemoteServiceTarget("C250WsSvc"));
 
         Assert.Equal(3, dispatcher.SchemeFallbackWarningCount);
     }
@@ -240,7 +140,7 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
         registry.Register(TransportSchemes.Tcp, new RecordingTransportAdapter("TCP-FAKE"));
         var dispatcher = new SchemeDispatchTransportAdapter(resolver, registry);
 
-        await Assert.ThrowsAsync<RemoteEndpointNotFoundException>(() => dispatcher.GetOrCreateStreamAsync("C250Svc"));
+        await Assert.ThrowsAsync<RemoteEndpointNotFoundException>(() => dispatcher.GetOrCreateStreamAsync(new RemoteServiceTarget("C250Svc")));
     }
 
     [Fact]
@@ -251,7 +151,7 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
         registry.Register(TransportSchemes.Kcp, new RecordingTransportAdapter("KCP-FAKE"));
         var dispatcher = new SchemeDispatchTransportAdapter(resolver, registry);
 
-        await Assert.ThrowsAsync<RemoteEndpointNotFoundException>(() => dispatcher.GetOrCreateStreamAsync("C250Svc"));
+        await Assert.ThrowsAsync<RemoteEndpointNotFoundException>(() => dispatcher.GetOrCreateStreamAsync(new RemoteServiceTarget("C250Svc")));
         Assert.Equal(0, dispatcher.SchemeFallbackWarningCount);
     }
 
@@ -263,8 +163,8 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
         registry.Register(TransportSchemes.Tcp, new RecordingTransportAdapter("TCP-FAKE"));
         var dispatcher = new SchemeDispatchTransportAdapter(resolver, registry);
 
-        await Assert.ThrowsAsync<RemoteEndpointNotFoundException>(() => dispatcher.GetOrCreateStreamAsync("C250Nobody"));
-        Assert.False(dispatcher.IsServiceAvailable("C250Nobody"));
+        await Assert.ThrowsAsync<RemoteEndpointNotFoundException>(() => dispatcher.GetOrCreateStreamAsync(new RemoteServiceTarget("C250Nobody")));
+        Assert.False(dispatcher.IsServiceAvailable(new RemoteServiceTarget("C250Nobody")));
     }
 
     [Fact]
@@ -275,7 +175,7 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
         registry.Register(TransportSchemes.Tcp, new RecordingTransportAdapter("TCP-FAKE"));
         var dispatcher = new SchemeDispatchTransportAdapter(resolver, registry);
 
-        Assert.False(dispatcher.IsServiceAvailable("C250Svc"));
+        Assert.False(dispatcher.IsServiceAvailable(new RemoteServiceTarget("C250Svc")));
     }
 
     [Fact]
@@ -287,7 +187,7 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
         registry.RegisterUniversal(universal);
         var dispatcher = new SchemeDispatchTransportAdapter(resolver, registry);
 
-        var stream = await dispatcher.GetOrCreateStreamAsync("C250Svc");
+        var stream = await dispatcher.GetOrCreateStreamAsync(new RemoteServiceTarget("C250Svc"));
 
         Assert.Same(universal.ReturnedStream, stream);
         Assert.Equal(0, dispatcher.SchemeFallbackWarningCount);
@@ -314,24 +214,25 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  ④ KCP 真实现注册语义（占位已退役；占位期「恒 false/恒抛」语义随之删除，不重钉）
+    //  ④ KCP 真实现注册语义（builder 级，端点来自路由表附加端点）
     // ─────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Builder_KcpKeyOnly_UseKcpTransportAdapter_AvailableThroughKcpAdapter()
+    public async Task Builder_KcpEndpointOnly_UseKcpTransportAdapter_AvailableThroughKcpAdapter()
     {
-        // 注册真 kcp 适配器后 kcp 端点由其服务（对照：未注册时同键不可用，见 Builder_KcpKeyOnly_DefaultBuild_UnresolvableThroughFallback）
-        SetEnvironmentEndpoint("C250BuilderKcpReal", "kcp", "kcp://10.0.0.2:7002");
-        var client = new RemoteMessagingBuilder().UseKcpTransportAdapter().Build();
+        // 注册真 kcp 适配器后 kcp 附加端点由其服务（对照：未注册时同实例不可用，见 Builder_KcpEndpointOnly_DefaultBuild_UnresolvableThroughFallback）
+        var provider = new MutableRouteTableProvider().SetServiceEndpoint(
+            "C250BuilderKcpReal", "tcp://10.0.0.1:7001", "2001", new[] { "kcp://10.0.0.2:7002" });
+        var client = new RemoteMessagingBuilder().WithRouteTable(provider).UseKcpTransportAdapter().Build();
 
         Assert.True(await client.IsServiceAvailableAsync("C250BuilderKcpReal"));
     }
 
     [Fact]
-    public async Task Builder_TcpKeyOnly_UseKcpTransportAdapter_TcpPathUnaffected()
+    public async Task Builder_TcpEndpointOnly_UseKcpTransportAdapter_TcpPathUnaffected()
     {
-        SetEnvironmentEndpoint("C250BuilderTcpReal", "tcp", "tcp://10.0.0.1:7001");
-        var client = new RemoteMessagingBuilder().UseKcpTransportAdapter().Build();
+        var provider = new MutableRouteTableProvider().SetServiceEndpoint("C250BuilderTcpReal", "tcp://10.0.0.1:7001", "2001");
+        var client = new RemoteMessagingBuilder().WithRouteTable(provider).UseKcpTransportAdapter().Build();
 
         Assert.True(await client.IsServiceAvailableAsync("C250BuilderTcpReal"));
     }
@@ -346,7 +247,7 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
         var adapter = new TcpTransportProtocolAdapter(
             new FakeEndpointResolver().With("tcp", "tcp://127.0.0.1:17777"), new FakeConnectionProvider());
 
-        Assert.True(adapter.IsServiceAvailable("C250Svc"));
+        Assert.True(adapter.IsServiceAvailable(new RemoteServiceTarget("C250Svc")));
     }
 
     [Fact]
@@ -355,7 +256,7 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
         var adapter = new TcpTransportProtocolAdapter(
             new FakeEndpointResolver().With("tcp", "tcp://[::1]:17777"), new FakeConnectionProvider());
 
-        Assert.True(adapter.IsServiceAvailable("C250Svc"));
+        Assert.True(adapter.IsServiceAvailable(new RemoteServiceTarget("C250Svc")));
     }
 
     [Fact]
@@ -365,7 +266,7 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
         var adapter = new TcpTransportProtocolAdapter(
             new FakeEndpointResolver().With("tcp", "127.0.0.1:17777"), new FakeConnectionProvider());
 
-        Assert.False(adapter.IsServiceAvailable("C250Svc"));
+        Assert.False(adapter.IsServiceAvailable(new RemoteServiceTarget("C250Svc")));
     }
 
     [Fact]
@@ -374,7 +275,7 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
         var adapter = new TcpTransportProtocolAdapter(
             new FakeEndpointResolver().With("tcp", "tcp://127.0.0.1:0"), new FakeConnectionProvider());
 
-        Assert.False(adapter.IsServiceAvailable("C250Svc"));
+        Assert.False(adapter.IsServiceAvailable(new RemoteServiceTarget("C250Svc")));
     }
 
     [Fact]
@@ -384,7 +285,7 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
         var adapter = new TcpTransportProtocolAdapter(
             new FakeEndpointResolver().With("tcp", "ws://127.0.0.1"), new FakeConnectionProvider());
 
-        Assert.False(adapter.IsServiceAvailable("C250Svc"));
+        Assert.False(adapter.IsServiceAvailable(new RemoteServiceTarget("C250Svc")));
     }
 
     [Fact]
@@ -393,7 +294,7 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
         var adapter = new TcpTransportProtocolAdapter(
             new FakeEndpointResolver().With("tcp", "tcp://127.0.0.1:0"), new FakeConnectionProvider());
 
-        await Assert.ThrowsAsync<RemoteEndpointNotFoundException>(() => adapter.GetOrCreateStreamAsync("C250Svc"));
+        await Assert.ThrowsAsync<RemoteEndpointNotFoundException>(() => adapter.GetOrCreateStreamAsync(new RemoteServiceTarget("C250Svc")));
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -401,53 +302,46 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
     // ─────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Builder_TcpAndKcpKeys_DefaultBuild_FallsBackToTcp()
+    public async Task Builder_TcpAndKcpEndpoints_DefaultBuild_FallsBackToTcp()
     {
-        SetEnvironmentEndpoint("C250BuilderBoth", "tcp", "tcp://10.0.0.1:7001");
-        SetEnvironmentEndpoint("C250BuilderBoth", "kcp", "kcp://10.0.0.2:7002");
-        var client = new RemoteMessagingBuilder().Build();
+        var provider = new MutableRouteTableProvider().SetServiceEndpoint(
+            "C250BuilderBoth", "tcp://10.0.0.1:7001", "2001", new[] { "kcp://10.0.0.2:7002" });
+        var client = new RemoteMessagingBuilder().WithRouteTable(provider).Build();
 
         Assert.True(await client.IsServiceAvailableAsync("C250BuilderBoth"));
     }
 
     [Fact]
-    public async Task Builder_KcpKeyOnly_DefaultBuild_UnresolvableThroughFallback()
+    public void Builder_KcpEndpointOnly_DefaultBuild_UnresolvableThroughFallback()
     {
-        SetEnvironmentEndpoint("C250BuilderKcp", "kcp", "kcp://10.0.0.2:7002");
-        var client = new RemoteMessagingBuilder().Build();
+        // 只有 kcp 端点（解析面无任何 tcp 端点）时，默认构建只注册 tcp 适配器 → 不可达。
+        // 路由表形态下 tcp 主端点必填，故经 FakeEndpointResolver 在分发层钉住等价语义。
+        var resolverOnlyKcp = new FakeEndpointResolver().With("kcp", "kcp://10.0.0.2:7002");
+        var registry = new TransportProtocolAdapterRegistry();
+        registry.Register(TransportSchemes.Tcp, new RecordingTransportAdapter("TCP-FAKE"));
+        var dispatcher = new SchemeDispatchTransportAdapter(resolverOnlyKcp, registry);
 
-        Assert.False(await client.IsServiceAvailableAsync("C250BuilderKcp"));
+        Assert.False(dispatcher.IsServiceAvailable(new RemoteServiceTarget("C250BuilderKcp")));
     }
 
 
     [Fact]
     public async Task Builder_WithTransportAdapterFactory_UniversalAdapterServesKcpEndpoint()
     {
-        SetEnvironmentEndpoint("C250BuilderFactory", "kcp", "kcp://10.0.0.2:7002");
+        var provider = new MutableRouteTableProvider().SetServiceEndpoint(
+            "C250BuilderFactory", "tcp://10.0.0.1:7001", "2001", new[] { "kcp://10.0.0.2:7002" });
         var universal = new RecordingTransportAdapter("UNIVERSAL-FAKE") { Available = true };
         var client = new RemoteMessagingBuilder()
+            .WithRouteTable(provider)
             .WithTransportAdapterFactory((_, _) => universal)
             .Build();
 
         Assert.True(await client.IsServiceAvailableAsync("C250BuilderFactory"));
-        Assert.Equal("C250BuilderFactory", Assert.Single(universal.AvailabilityChecks));
+        Assert.Equal("C250BuilderFactory", Assert.Single(universal.AvailabilityChecks).ServerType);
     }
 
     /// <summary>
-    /// 固定路由表提供者（测试替身）。
-    /// </summary>
-    private sealed class FixedTableProvider : IRoleRouteTableProvider
-    {
-        public FixedTableProvider(RoleRouteTable table)
-        {
-            Current = table;
-        }
-
-        public RoleRouteTable Current { get; }
-    }
-
-    /// <summary>
-    /// 固定端点解析器（测试替身）：按 scheme 返回预置端点。
+    /// 固定端点解析器（测试替身）：按 scheme 返回预置端点（忽略 target 分量）。
     /// </summary>
     private sealed class FakeEndpointResolver : IServiceEndpointResolver
     {
@@ -459,7 +353,7 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
             return this;
         }
 
-        public string ResolveEndpoint(string serviceName)
+        public string ResolveEndpoint(RemoteServiceTarget target)
         {
             foreach (var scheme in TransportSchemes.PreferenceOrder)
             {
@@ -472,17 +366,13 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
             return string.Empty;
         }
 
-        public string ResolveEndpoint(string serviceName, string scheme)
+        public string ResolveEndpoint(RemoteServiceTarget target, string scheme)
         {
             ArgumentException.ThrowIfNullOrEmpty(scheme);
 
             return _endpointsByScheme.TryGetValue(scheme, out var endpoint) ? endpoint : string.Empty;
         }
     }
-
-    /// <summary>
-    /// 记录型传输适配器（测试替身）：记录请求、返回固定流、统计失效与释放。
-    /// </summary>
     private sealed class RecordingTransportAdapter : ITransportProtocolAdapter
     {
         private readonly MemoryStream _stream = new();
@@ -494,30 +384,30 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
 
         public string ProtocolName { get; }
 
-        public List<string> RequestedServices { get; } = new();
+        public List<RemoteServiceTarget> RequestedTargets { get; } = new();
 
-        public List<string> AvailabilityChecks { get; } = new();
+        public List<RemoteServiceTarget> AvailabilityChecks { get; } = new();
 
         public int InvalidateAllCount { get; private set; }
 
         public bool IsDisposed { get; private set; }
 
-        public bool Available { get; set; } = true;
+        public bool Available { get; set; }
 
         public Stream ReturnedStream
         {
             get { return _stream; }
         }
 
-        public Task<Stream> GetOrCreateStreamAsync(string serviceName, CancellationToken cancellationToken = default)
+        public Task<Stream> GetOrCreateStreamAsync(RemoteServiceTarget target, CancellationToken cancellationToken = default)
         {
-            RequestedServices.Add(serviceName);
+            RequestedTargets.Add(target);
             return Task.FromResult<Stream>(_stream);
         }
 
-        public bool IsServiceAvailable(string serviceName)
+        public bool IsServiceAvailable(RemoteServiceTarget target)
         {
-            AvailabilityChecks.Add(serviceName);
+            AvailabilityChecks.Add(target);
             return Available;
         }
 
@@ -543,7 +433,7 @@ public sealed class UriSchemeTransportSelectionTests : IDisposable
     {
         public Task<Stream> GetOrCreateStreamAsync(string host, int port, CancellationToken cancellationToken = default)
         {
-            throw new NotSupportedException("FakeConnectionProvider is not expected to dial in these tests.");
+            throw new NotSupportedException();
         }
 
         public void Invalidate()

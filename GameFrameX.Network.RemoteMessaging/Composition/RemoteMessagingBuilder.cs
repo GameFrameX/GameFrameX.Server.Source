@@ -30,20 +30,28 @@
 namespace GameFrameX.Network.RemoteMessaging;
 
 /// <summary>
-/// 远程消息通信 SDK 构建器。业务侧只需调用 <c>RemoteMessagingBuilder.Build()</c> 即可获得完整功能的客户端。
+/// 远程消息通信 SDK 构建器。业务侧通过实例链装配：<c>new RemoteMessagingBuilder().LoadFromEnvironment().WithRouteTable(...).UseXxxTransportAdapter().Build()</c>。
 /// </summary>
 /// <remarks>
-/// Remote messaging SDK builder. Business code only needs to call <c>RemoteMessagingBuilder.Build()</c> to obtain a fully functional client.
+/// Remote messaging SDK builder. Business code assembles the client through the instance
+/// chain: <c>new RemoteMessagingBuilder().LoadFromEnvironment().WithRouteTable(...).UseXxxTransportAdapter().Build()</c>.
+/// The route table (the heartbeat registry's dual-view reader) is the single endpoint source;
+/// <see cref="Build"/> fails fast when it was never provided.
 /// </remarks>
 /// <example>
 ///     <code>
-/// // 最简用法
-/// var client = RemoteMessagingBuilder.Build();
+/// // 标准装配（端点唯一来源 = 心跳注册表路由表）
+/// var client = new RemoteMessagingBuilder()
+///     .LoadFromEnvironment()
+///     .WithRouteTable(ActiveDiscoveryRuntime.RouteTableProvider)
+///     .UseKcpTransportAdapter()
+///     .Build();
 ///
 /// // 自定义配置
 /// var client = new RemoteMessagingBuilder()
 ///     .WithTimeoutMs(10000)
 ///     .WithRetry(maxRetryCount: 3)
+///     .WithRouteTable(routeTableProvider)
 ///     .Build();
 /// </code>
 /// </example>
@@ -52,6 +60,7 @@ public sealed class RemoteMessagingBuilder
     private RemoteMessagingOptions _options = new();
     private readonly Dictionary<string, Func<IServiceEndpointResolver, IConnectionProvider, ITransportProtocolAdapter>> _transportAdapters = new(StringComparer.OrdinalIgnoreCase);
     private Func<IServiceEndpointResolver, IConnectionProvider, ITransportProtocolAdapter> _transportAdapterFactory;
+    private IRoleRouteTableProvider _routeTableProvider;
 
     /// <summary>
     /// 设置默认超时时间。
@@ -227,15 +236,40 @@ public sealed class RemoteMessagingBuilder
     }
 
     /// <summary>
-    /// 构建并返回配置好的远程消息客户端。
+    /// 绑定发现层路由表（服务器间端点的唯一事实源：心跳注册表双视图读侧）。
     /// </summary>
     /// <remarks>
-    /// Builds and returns a configured remote message client.
+    /// Binds the discovery-layer route table (the single source of truth for inter-server
+    /// endpoints: the heartbeat registry's dual-view reader). Required — <see cref="Build"/>
+    /// throws <see cref="InvalidOperationException"/> when no route table was provided (fail
+    /// fast; there is no environment-variable fallback anymore).
+    /// </remarks>
+    /// <param name="routeTableProvider">双视图路由表提供者 / The dual-view route table provider</param>
+    /// <returns>构建器实例 / The builder instance</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="routeTableProvider"/> 为 null 时抛出 / Thrown when routeTableProvider is null</exception>
+    public RemoteMessagingBuilder WithRouteTable(IRoleRouteTableProvider routeTableProvider)
+    {
+        _routeTableProvider = routeTableProvider ?? throw new ArgumentNullException(nameof(routeTableProvider));
+        return this;
+    }
+
+    /// <summary>
+    /// 构建并返回配置好的远程消息客户端（未绑定路由表时抛 <see cref="InvalidOperationException"/>，fail-fast、无回落）。
+    /// </summary>
+    /// <remarks>
+    /// Builds and returns a configured remote message client. Throws
+    /// <see cref="InvalidOperationException"/> when <see cref="WithRouteTable"/> was never
+    /// called — the route table is the single endpoint source and there is no fallback.
     /// </remarks>
     /// <returns>远程消息客户端实例 / The configured remote message client instance</returns>
     public IRemoteMessageClient Build()
     {
-        var endpointResolver = new EnvironmentVariableEndpointResolver();
+        if (_routeTableProvider == null)
+        {
+            throw new InvalidOperationException("RemoteMessagingBuilder requires a route table: call WithRouteTable(IRoleRouteTableProvider) before Build().");
+        }
+
+        var endpointResolver = new DiscoveryServiceEndpointResolver(_routeTableProvider);
         // TCP 连接池进程级单例（RPC 客户端与信封转发层共享同一出站连接面；多 Build 共享一池）
         var connectionProvider = SharedTcpConnectionPool.Provider;
         var transportRegistry = new TransportProtocolAdapterRegistry();
@@ -313,27 +347,4 @@ public sealed class RemoteMessagingBuilder
             _options.HandshakeTimeoutMs);
     }
 
-    /// <summary>
-    /// 快捷方法：使用默认配置构建客户端。
-    /// </summary>
-    /// <remarks>
-    /// Convenience method: builds a client using default configuration.
-    /// </remarks>
-    /// <returns>远程消息客户端实例 / The remote message client instance</returns>
-    public static IRemoteMessageClient BuildDefault()
-    {
-        return new RemoteMessagingBuilder().Build();
-    }
-
-    /// <summary>
-    /// 快捷方法：从环境变量加载配置并构建客户端。
-    /// </summary>
-    /// <remarks>
-    /// Convenience method: loads configuration from environment variables and builds a client.
-    /// </remarks>
-    /// <returns>远程消息客户端实例 / The remote message client instance</returns>
-    public static IRemoteMessageClient BuildFromEnvironment()
-    {
-        return new RemoteMessagingBuilder().LoadFromEnvironment().Build();
-    }
 }

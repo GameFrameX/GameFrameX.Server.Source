@@ -43,11 +43,12 @@ public class PlayerRouteInfoTests
     [Fact]
     public void Online_ReturnsOnlineRoute()
     {
-        var route = PlayerRouteInfo.Online("Game", 1000, 1);
+        var route = PlayerRouteInfo.Online("Game", 1000, "2001", 1);
         Assert.True(route.IsOnline);
         Assert.Equal("Game", route.ServerType);
         Assert.Equal(1000, route.ServerId);
         Assert.Equal(1, route.Version);
+        Assert.Equal("2001", route.InstanceId);
     }
 
     [Fact]

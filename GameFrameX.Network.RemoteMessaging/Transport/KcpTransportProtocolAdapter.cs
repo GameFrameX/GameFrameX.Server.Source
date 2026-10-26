@@ -72,45 +72,45 @@ internal sealed class KcpTransportProtocolAdapter : ITransportProtocolAdapter
     }
 
     /// <summary>
-    /// 获取或创建目标服务对应的可用 KCP 会话流：解析服务的 KCP 端点 URI 并提取主机与端口，
+    /// 获取或创建目标服务对应的可用 KCP 会话流：解析目标的 KCP 端点 URI 并提取主机与端口，
     /// 端点非法时抛出 <see cref="RemoteEndpointNotFoundException"/>，否则委托连接提供器获取或建立会话流。
     /// </summary>
     /// <remarks>
     /// Gets an existing or creates a new usable KCP session stream for the target service: it resolves
-    /// the service's KCP endpoint URI (<c>services__{ServiceName}__kcp__*</c> key or the advertise
-    /// endpoint) and extracts the host and port through the authoritative <c>EndpointParser</c>,
+    /// the target's KCP endpoint URI (the instance's kcp additional advertise endpoint from the
+    /// heartbeat registry) and extracts the host and port through the authoritative <c>EndpointParser</c>,
     /// throws <see cref="RemoteEndpointNotFoundException"/> when the endpoint is invalid, and
     /// otherwise delegates to the connection provider.
     /// </remarks>
-    /// <param name="serviceName">目标服务名 / Target service name</param>
+    /// <param name="target">结构化端点目标 / The structured endpoint target</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>可用的会话流 / A usable session stream</returns>
     /// <exception cref="RemoteEndpointNotFoundException">服务端点无法解析为合法主机与端口时抛出 / Thrown when the service endpoint cannot be parsed into a valid host and port</exception>
-    public async Task<Stream> GetOrCreateStreamAsync(string serviceName, CancellationToken cancellationToken = default)
+    public async Task<Stream> GetOrCreateStreamAsync(RemoteServiceTarget target, CancellationToken cancellationToken = default)
     {
-        var endpoint = _endpointResolver.ResolveEndpoint(serviceName, TransportSchemes.Kcp);
+        var endpoint = _endpointResolver.ResolveEndpoint(target, TransportSchemes.Kcp);
         if (!TryParseEndpoint(endpoint, out var host, out var port))
         {
-            throw new RemoteEndpointNotFoundException(serviceName, endpoint);
+            throw new RemoteEndpointNotFoundException(target, endpoint);
         }
 
         return await _connectionProvider.GetOrCreateStreamAsync(host, port, cancellationToken);
     }
 
     /// <summary>
-    /// 检查目标服务是否可用：解析服务的 KCP 端点 URI 并尝试提取主机与端口，解析成功即视为可用
+    /// 检查目标服务是否可用：解析目标的 KCP 端点 URI 并尝试提取主机与端口，解析成功即视为可用
     /// （与 TCP 适配器同口径：可达性判定 = 端点可解析，不预拨号）。
     /// </summary>
     /// <remarks>
-    /// Checks whether the target service is available: it resolves the service's KCP endpoint URI
+    /// Checks whether the target service is available: it resolves the target's KCP endpoint URI
     /// and tries to extract the host and port; a successful parse means the service is available
     /// (same contract as the TCP adapter: availability = endpoint resolvable, no eager dialing).
     /// </remarks>
-    /// <param name="serviceName">目标服务名 / Target service name</param>
+    /// <param name="target">结构化端点目标 / The structured endpoint target</param>
     /// <returns>端点可解析为合法主机与端口时返回 true / Returns true when the endpoint parses into a valid host and port</returns>
-    public bool IsServiceAvailable(string serviceName)
+    public bool IsServiceAvailable(RemoteServiceTarget target)
     {
-        var endpoint = _endpointResolver.ResolveEndpoint(serviceName, TransportSchemes.Kcp);
+        var endpoint = _endpointResolver.ResolveEndpoint(target, TransportSchemes.Kcp);
         return TryParseEndpoint(endpoint, out _, out _);
     }
 

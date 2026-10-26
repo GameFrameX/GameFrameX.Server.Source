@@ -45,56 +45,63 @@ namespace GameFrameX.Network.RemoteMessaging.Unified;
 /// </remarks>
 public sealed class UnifiedMessageSender : IUnifiedMessageSender
 {
-    private const int InstanceRefreshIntervalMs = 5000;
-
     private readonly IRemoteMessageClient _remoteClient;
     private readonly IPlayerRouteResolver _routeResolver;
     private readonly IPlayerLocalSender _localSender;
     private readonly IServerInstanceSelector _instanceSelector;
     private readonly MessageSendMetrics _metrics;
-    private readonly ConcurrentDictionary<string, long> _lastInstanceRefreshTicks = new(StringComparer.OrdinalIgnoreCase);
+    private readonly IRoleRouteTableProvider _routeTable;
+    private readonly ConcurrentDictionary<string, string[]> _lastInstanceIdsByService = new(StringComparer.OrdinalIgnoreCase);
     private readonly string _currentServerType;
-    private readonly int _currentServerId;
+    private readonly string _currentInstanceId;
 
     /// <summary>
     /// 初始化统一消息发送器。本服身份（本服判定与指标服务名兜底的基准）由调用方在构造时显式注入，
-    /// 不读取全局配置——多 Role 进程中应传入触发装配的 Role 的 <c>ServerType</c> / <c>ServerId</c>。
+    /// 不读取全局配置——多 Role 进程中应传入触发装配的 Role 的 <c>ServerType</c> 与本进程发现层实例 Id。
     /// </summary>
     /// <remarks>
     /// Initializes the unified message sender. The local-server identity (the basis for the
-    /// local-server check and the metrics service-name fallback) is explicitly injected by the caller
-    /// at construction time instead of reading global settings — in a multi-role process, pass the
-    /// <c>ServerType</c> / <c>ServerId</c> of the role that triggers the wiring.
+    /// local-server check and the metrics service-name fallback) is explicitly injected by the
+    /// caller at construction time instead of reading global settings — in a multi-role
+    /// process, pass the <c>ServerType</c> of the role that triggers the wiring and this
+    /// process's discovery instance id. Instance selection reads the heartbeat registry's
+    /// dual-view route table (<paramref name="routeTable"/>) — the single source of truth for
+    /// inter-server endpoints; the hash ring is rebuilt only when the Active instance set
+    /// actually changes.
     /// </remarks>
     /// <param name="remoteClient">远程消息客户端 / Remote message client</param>
     /// <param name="routeResolver">玩家路由解析器 / Player route resolver</param>
     /// <param name="localSender">本服玩家发送器 / Local player sender</param>
     /// <param name="instanceSelector">服务实例选择器 / Server instance selector</param>
+    /// <param name="routeTable">双视图路由表提供者（实例列表唯一来源）/ The dual-view route table provider (the single source of the instance list)</param>
     /// <param name="localServerType">本服服务器类型（本服判定基准，忽略大小写） / Local server type (basis of the local-server check, case-insensitive)</param>
-    /// <param name="localServerId">本服服务器编号（本服判定基准） / Local server id (basis of the local-server check)</param>
+    /// <param name="localInstanceId">本进程发现层实例 Id（本服判定基准） / This process's discovery instance id (basis of the local-server check)</param>
     /// <param name="metrics">发送指标聚合器；为空时自动创建 / Metrics recorder; auto-created when null</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="remoteClient"/> 为 null 时抛出 / Thrown when <paramref name="remoteClient"/> is null</exception>
     /// <exception cref="ArgumentNullException">当 <paramref name="routeResolver"/> 为 null 时抛出 / Thrown when <paramref name="routeResolver"/> is null</exception>
     /// <exception cref="ArgumentNullException">当 <paramref name="localSender"/> 为 null 时抛出 / Thrown when <paramref name="localSender"/> is null</exception>
     /// <exception cref="ArgumentNullException">当 <paramref name="instanceSelector"/> 为 null 时抛出 / Thrown when <paramref name="instanceSelector"/> is null</exception>
+    /// <exception cref="ArgumentNullException">当 <paramref name="routeTable"/> 为 null 时抛出 / Thrown when <paramref name="routeTable"/> is null</exception>
     /// <exception cref="ArgumentException">当 <paramref name="localServerType"/> 为 null、空串或空白时抛出 / Thrown when <paramref name="localServerType"/> is null, empty, or whitespace</exception>
     public UnifiedMessageSender(
         IRemoteMessageClient remoteClient,
         IPlayerRouteResolver routeResolver,
         IPlayerLocalSender localSender,
         IServerInstanceSelector instanceSelector,
+        IRoleRouteTableProvider routeTable,
         string localServerType,
-        int localServerId,
+        string localInstanceId,
         MessageSendMetrics metrics = null)
     {
         _remoteClient = remoteClient ?? throw new ArgumentNullException(nameof(remoteClient));
         _routeResolver = routeResolver ?? throw new ArgumentNullException(nameof(routeResolver));
         _localSender = localSender ?? throw new ArgumentNullException(nameof(localSender));
         _instanceSelector = instanceSelector ?? throw new ArgumentNullException(nameof(instanceSelector));
+        _routeTable = routeTable ?? throw new ArgumentNullException(nameof(routeTable));
         ArgumentException.ThrowIfNullOrWhiteSpace(localServerType, nameof(localServerType));
         _metrics = metrics ?? new MessageSendMetrics();
         _currentServerType = localServerType;
-        _currentServerId = localServerId;
+        _currentInstanceId = localInstanceId;
     }
 
     /// <summary>
@@ -233,9 +240,13 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
             var context = new RemoteCallContext
             {
                 ServiceName = routeInfo.ServerType,
+                // 实例直达：按 player_route 记录的实例 Id 投递（Instance 视图含 Draining，下线中实例仍可送达；
+                // 实例已消失时解析侧返回 EndpointNotFound → offline 分支）
+                TargetInstanceId = routeInfo.InstanceId,
                 TimeoutMs = options.TimeoutMs,
                 AllowRetry = options.AllowRetry,
                 MaxRetryCount = options.MaxRetryCount,
+                CancellationToken = ct,
                 TraceId = traceId,
                 Metadata = new Dictionary<string, string>
                 {
@@ -262,6 +273,16 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
                     traceId,
                     routeInfo.ServerType,
                     result.RetryCount);
+            }
+
+            // 目标实例不在路由表内（TTL 过期 / 逻辑服下线 / 旧版占位行）：请求未离开发送进程，
+            // 按既有 offline 分支处理（Draining 实例仍在 Instance 视图内可送达，不进这里）。
+            // The target instance is absent from the route table (TTL expiry / server decommission /
+            // legacy placeholder row): the request never left this process, so it goes through the
+            // existing offline branch (draining instances stay resolvable and never land here).
+            if (result.StatusCode == RemoteStatusCode.EndpointNotFound)
+            {
+                return HandleOffline(playerId, options, sw.ElapsedMilliseconds, traceId, result.RetryCount);
             }
 
             // 跨服转发失败，检查目标服返回的状态
@@ -325,14 +346,17 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
     }
 
     /// <summary>
-    /// 判定路由是否指向本服：路由 <c>ServerType</c>（忽略大小写）与 <c>ServerId</c> 同时等于
+    /// 判定路由是否指向本服：路由 <c>ServerType</c>（忽略大小写）与 <c>InstanceId</c>（序数比较）同时等于
     /// 构造时注入的本服身份。多 Role 进程中「本服」为单一身份（触发装配的 Role）。
+    /// 旧版本占位 InstanceId 永不匹配本进程真实实例 Id，按远端处理（投递侧解析不到实例再落 offline 分支）。
     /// </summary>
     /// <remarks>
     /// Determines whether the route points to the local server: both the route's
-    /// <c>ServerType</c> (case-insensitive) and <c>ServerId</c> equal the identity injected at
-    /// construction. In a multi-role process the "local server" is a single identity
-    /// (the role that triggered the wiring).
+    /// <c>ServerType</c> (case-insensitive) and <c>InstanceId</c> (ordinal) equal the identity
+    /// injected at construction. In a multi-role process the "local server" is a single identity
+    /// (the role that triggered the wiring). A legacy placeholder instance id never matches this
+    /// process's real discovery instance id, so such routes are treated as remote (and fall into
+    /// the offline branch when the dial cannot resolve the instance).
     /// </remarks>
     private bool IsCurrentServer(PlayerRouteInfo routeInfo)
     {
@@ -346,7 +370,7 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
             return false;
         }
 
-        return routeInfo.ServerId == _currentServerId;
+        return routeInfo.InstanceId != null && string.Equals(routeInfo.InstanceId, _currentInstanceId, StringComparison.Ordinal);
     }
 
     #endregion
@@ -394,31 +418,22 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
 
         RefreshInstancesIfNeeded(serviceName);
 
-        // 实例选择
+        // 实例选择（实例列表唯一来源 = 心跳注册表路由表 Active 视图）
         var selection = _instanceSelector.Select(serviceName, options.RouteKey);
-        var targetService = selection.HasInstance ? $"{serviceName}_{selection.InstanceId}" : serviceName;
+
+        var context = new RemoteCallContext
+        {
+            ServiceName = serviceName,
+            TargetInstanceId = selection.HasInstance ? selection.InstanceId : null,
+            TimeoutMs = options.TimeoutMs,
+            AllowRetry = options.AllowRetry,
+            MaxRetryCount = options.MaxRetryCount,
+            CancellationToken = ct,
+        };
 
         try
         {
-            RemoteCallResult<TResp> result;
-
-            if (options.AllowRetry)
-            {
-                result = await _remoteClient.CallWithRetryAsync<TResp>(
-                             targetService,
-                             message,
-                             options.TimeoutMs,
-                             options.MaxRetryCount,
-                             ct);
-            }
-            else
-            {
-                result = await _remoteClient.CallWithoutRetryAsync<TResp>(
-                             targetService,
-                             message,
-                             options.TimeoutMs,
-                             ct);
-            }
+            var result = await _remoteClient.CallWithResultAsync<TResp>(context, message);
 
             return RecordServerResult(
                 serviceName,
@@ -476,11 +491,20 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
         RefreshInstancesIfNeeded(serviceName);
 
         var selection = _instanceSelector.Select(serviceName, options.RouteKey);
-        var targetService = selection.HasInstance ? $"{serviceName}_{selection.InstanceId}" : serviceName;
+
+        var context = new RemoteCallContext
+        {
+            ServiceName = serviceName,
+            TargetInstanceId = selection.HasInstance ? selection.InstanceId : null,
+            TimeoutMs = options.TimeoutMs,
+            AllowRetry = options.AllowRetry,
+            MaxRetryCount = options.MaxRetryCount,
+            CancellationToken = ct,
+        };
 
         try
         {
-            await _remoteClient.SendOneWayAsync(targetService, message, options.TimeoutMs, ct);
+            await _remoteClient.SendOneWayAsync(context, message);
             return RecordServerOneWayResult(serviceName, ServerSendResult.Ok(selection.InstanceId));
         }
         catch (Exception ex)
@@ -491,6 +515,17 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
 
     #endregion
 
+    /// <summary>
+    /// 按需同步实例列表到实例选择器：仅当 Active 实例集合（InstanceId 集合）实际变化时才重建哈希环。
+    /// </summary>
+    /// <remarks>
+    /// Feeds the Active instance set from the route table into the instance selector: the hash
+    /// ring is rebuilt only when the instance-id set actually changes. The watcher replaces the
+    /// snapshot object roughly every poll (about 5 s), but the instance set usually stays the
+    /// same — comparing the id set (not the snapshot reference, not descriptor references)
+    /// keeps ring rebuilds proportional to real topology changes.
+    /// </remarks>
+    /// <param name="serviceName">目标服务名 / The target service name</param>
     private void RefreshInstancesIfNeeded(string serviceName)
     {
         if (string.IsNullOrWhiteSpace(serviceName))
@@ -498,16 +533,51 @@ public sealed class UnifiedMessageSender : IUnifiedMessageSender
             return;
         }
 
-        var now = Environment.TickCount64;
-        var last = _lastInstanceRefreshTicks.GetOrAdd(serviceName, 0);
-        if (now - last < InstanceRefreshIntervalMs)
+        var activeInstances = _routeTable.Current.GetActiveInstances(serviceName);
+        var instanceIds = new string[activeInstances.Count];
+        for (var index = 0; index < activeInstances.Count; index++)
+        {
+            instanceIds[index] = activeInstances[index].InstanceId;
+        }
+
+        Array.Sort(instanceIds, StringComparer.Ordinal);
+
+        var lastInstanceIds = _lastInstanceIdsByService.GetOrAdd(serviceName, _ => Array.Empty<string>());
+        if (InstanceIdsEqual(lastInstanceIds, instanceIds))
         {
             return;
         }
 
-        _lastInstanceRefreshTicks[serviceName] = now;
-        var instanceIds = EnvironmentServiceInstanceDiscovery.DiscoverInstanceIds(serviceName);
+        _lastInstanceIdsByService[serviceName] = instanceIds;
         _instanceSelector.RefreshInstances(serviceName, instanceIds);
+    }
+
+    /// <summary>
+    /// 逐元素序数比较两组实例 Id（数组已排序，长度不同即不相等）。
+    /// </summary>
+    /// <remarks>
+    /// Compares two instance-id arrays element-wise with ordinal semantics (both sorted;
+    /// different lengths mean different sets).
+    /// </remarks>
+    /// <param name="left">左侧实例 Id 数组 / The left array</param>
+    /// <param name="right">右侧实例 Id 数组 / The right array</param>
+    /// <returns>集合相同返回 true / true when the sets are equal</returns>
+    private static bool InstanceIdsEqual(string[] left, string[] right)
+    {
+        if (left.Length != right.Length)
+        {
+            return false;
+        }
+
+        for (var index = 0; index < left.Length; index++)
+        {
+            if (!string.Equals(left[index], right[index], StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private PlayerSendResult RecordPlayerResult(PlayerSendResult result)

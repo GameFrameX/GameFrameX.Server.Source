@@ -143,6 +143,7 @@ public static class MongoDiscoveryRuntime
         // 再扩展为每 Role 一份心跳文档。
         var primaryRoleName = hostedRoles.Count > 0 ? hostedRoles.First() : "unknown";
         var selfDescriptor = DiscoveryRegistry.CreateSelfDescriptorFromEnvironment(primaryRoleName);
+        WarnNonPrimaryRolesNotAdvertised(hostedRoles, primaryRoleName, selfDescriptor);
         _registry = new DiscoveryRegistry(heartbeatStore, playerRouteStore, selfDescriptor, null, options.TtlCleanupInterval);
         _registry.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
         // 激活完成即登记公共槽位：宿主就绪时经 ActiveDiscoveryRuntime.MarkActiveAsync 无分派切 Active。
@@ -156,6 +157,34 @@ public static class MongoDiscoveryRuntime
         }
 
         // 玩家路由层装配（建索引 + 装 SyncTarget），通用 Bootstrap 单例。
-        PlayerRouteResolverBootstrap.AttachAsync(playerRouteStore, options.PlayerRouteFastPath).GetAwaiter().GetResult();
+        // 本服实例 Id 同源注入（心跳自描述符的 InstanceId）：PlayerSessionManager 的路由同步写真实发现层实例 Id。
+        PlayerRouteResolverBootstrap.AttachAsync(playerRouteStore, options.PlayerRouteFastPath, selfDescriptor?.InstanceId).GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// 多 ServerType 进程的广播覆盖披露：非首选 ServerType 不写心跳、不跨进程可达（心跳单 Role 模型）。
+    /// </summary>
+    /// <remarks>
+    /// Discloses the advertisement coverage of a multi-server-type process: non-primary server
+    /// types never write a heartbeat and are unreachable cross-process (the heartbeat document
+    /// is single-role). Formerly only a code comment; with the environment-variable bootstrap
+    /// retired this is a hard reachability limit operators must see.
+    /// </remarks>
+    /// <param name="hostedRoles">本进程承载的 ServerType 集合 / The hosted server types</param>
+    /// <param name="primaryRoleName">首选 ServerType / The primary server type</param>
+    /// <param name="selfDescriptor">本进程心跳身份（null = 未配置广播端口，本进程仅观察拓扑）/ The self descriptor (null = observe-only)</param>
+    private static void WarnNonPrimaryRolesNotAdvertised(IReadOnlyCollection<string> hostedRoles, string primaryRoleName, InstanceDescriptor selfDescriptor)
+    {
+        if (selfDescriptor == null || hostedRoles.Count <= 1)
+        {
+            return;
+        }
+
+        var nonPrimaryRoles = string.Join(", ", hostedRoles.Where(role => !string.Equals(role, primaryRoleName, StringComparison.Ordinal)));
+        if (nonPrimaryRoles.Length > 0)
+        {
+            // Localization: Database.Discovery.NonPrimaryRolesNotAdvertised - [Discovery] 多 ServerType 进程只广播首选 ServerType '{0}'；以下 ServerType 不写心跳、不跨进程可达：{1}
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.NonPrimaryRolesNotAdvertised, primaryRoleName, nonPrimaryRoles));
+        }
     }
 }

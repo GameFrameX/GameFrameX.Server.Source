@@ -109,4 +109,18 @@ public abstract class ServerHeartbeatEntity
     /// window's cutoff field).
     /// </remarks>
     public DateTime LastHeartbeat { get; set; }
+
+    /// <summary>
+    /// 获取或设置附加广播端点（非 tcp scheme 的额外可达端点，如 kcp）。
+    /// </summary>
+    /// <remarks>
+    /// Gets or sets the additional advertise endpoints (extra reachable endpoints of non-tcp
+    /// schemes, e.g. kcp). <see cref="AdvertiseEndpoint"/> stays the tcp primary endpoint.
+    /// <para>
+    /// 写路径约定：空集合持久化为 null——默认配置（不广播附加端点）写出的心跳文档 / 行与旧版本
+    /// 逐字节同形，旧读取方零影响（Mongo member map 的 <c>SetIgnoreIfNull</c> 只在值为 null 时省略
+    /// 元素，空列表会被序列化为空数组元素，因此必须在 store 写路径显式归一化）。
+    /// </para>
+    /// </remarks>
+    public List<string> AdditionalAdvertiseEndpoints { get; set; }
 }

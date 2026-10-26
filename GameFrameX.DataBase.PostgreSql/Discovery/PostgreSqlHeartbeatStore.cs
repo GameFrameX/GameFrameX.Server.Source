@@ -93,6 +93,7 @@ public sealed class PostgreSqlHeartbeatStore : IHeartbeatStore
         {
             var createScript = context.Database.GenerateCreateScript();
             await PostgreSqlDiscoverySchema.ExecuteIdempotentCreateAsync(context, createScript, cancellationToken).ConfigureAwait(false);
+            await PostgreSqlDiscoverySchema.EnsureHeartbeatAdditionalEndpointsColumnAsync(context, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -218,6 +219,9 @@ public sealed class PostgreSqlHeartbeatStore : IHeartbeatStore
             AddressKind = instance.AddressKind.ToString(),
             Incarnation = instance.Incarnation,
             LastHeartbeat = DateTime.UtcNow,
+            // 空集合持久化为 null：默认配置（不广播附加端点）写出的行与旧版本同形（列为可空 text[]）
+            // An empty collection persists as null: default-configuration rows keep the old shape (the column is a nullable text[]).
+            AdditionalAdvertiseEndpoints = instance.AdditionalAdvertiseEndpoints.Count == 0 ? null : instance.AdditionalAdvertiseEndpoints.ToList(),
         };
     }
 
@@ -238,6 +242,7 @@ public sealed class PostgreSqlHeartbeatStore : IHeartbeatStore
         row.AddressKind = instance.AddressKind.ToString();
         row.Incarnation = instance.Incarnation;
         row.LastHeartbeat = DateTime.UtcNow;
+        row.AdditionalAdvertiseEndpoints = instance.AdditionalAdvertiseEndpoints.Count == 0 ? null : instance.AdditionalAdvertiseEndpoints.ToList();
     }
 
     /// <summary>
@@ -260,6 +265,6 @@ public sealed class PostgreSqlHeartbeatStore : IHeartbeatStore
             return null;
         }
 
-        return new InstanceDescriptor(row.Role, row.InstanceId, row.AdvertiseEndpoint, status, row.Load, addressKind, row.Incarnation, row.LastHeartbeat.ToUniversalTime());
+        return new InstanceDescriptor(row.Role, row.InstanceId, row.AdvertiseEndpoint, status, row.Load, addressKind, row.Incarnation, row.LastHeartbeat.ToUniversalTime(), (IReadOnlyList<string>)row.AdditionalAdvertiseEndpoints ?? Array.Empty<string>());
     }
 }

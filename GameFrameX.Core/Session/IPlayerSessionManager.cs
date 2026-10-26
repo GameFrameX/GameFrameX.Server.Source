@@ -153,4 +153,14 @@ public interface IPlayerSessionManager
     /// </summary>
     /// <param name="playerId">玩家ID。</param>
     void SetPlayerRouteOffline(long playerId);
+
+    /// <summary>
+    /// 本进程发现层实例 Id（路由同步写入 player_route.InstanceId 的权威值；与心跳自描述符同源注入）。
+    /// </summary>
+    /// <remarks>
+    /// This process's discovery instance id — the authoritative value written into
+    /// <c>player_route.InstanceId</c> by the route-sync hook. Blank for observe-only
+    /// processes; the upsert hook is skipped then.
+    /// </remarks>
+    string LocalDiscoveryInstanceId { get; set; }
 }

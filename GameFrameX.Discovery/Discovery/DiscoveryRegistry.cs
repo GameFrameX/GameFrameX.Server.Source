@@ -167,6 +167,18 @@ public sealed class DiscoveryRegistry : IDisposable
     private volatile int _currentStatus = (int)InstanceStatus.Booting;
 
     /// <summary>
+    /// 附加广播端点槽位（volatile 引用；由 <see cref="PublishActiveAdvertiseEndpoints"/> 写入，心跳循环只读）。
+    /// </summary>
+    /// <remarks>
+    /// The additional-advertise-endpoint slot (a volatile reference written by
+    /// <see cref="PublishActiveAdvertiseEndpoints"/> and only read by the heartbeat loop).
+    /// The slot exists separately from <see cref="_selfDescriptor"/> on purpose: mutating the
+    /// descriptor in place would race the heartbeat loop's read; a reference assignment here
+    /// is lock-free safe, and repeated publishes idempotently overwrite the slot.
+    /// </remarks>
+    private volatile IReadOnlyList<string> _additionalAdvertiseEndpoints = Array.Empty<string>();
+
+    /// <summary>
     /// 初始化通用心跳写侧。
     /// </summary>
     /// <remarks>
@@ -258,6 +270,61 @@ public sealed class DiscoveryRegistry : IDisposable
 
         _currentStatus = (int)InstanceStatus.Active;
         return UpsertHeartbeatAsync(InstanceStatus.Active, cancellationToken);
+    }
+
+    /// <summary>
+    /// 发布附加广播端点（scheme → 监听端口），下一次心跳起随心跳文档 / 行一起写出。
+    /// </summary>
+    /// <remarks>
+    /// Publishes additional advertise endpoints (scheme → listening port); they are written
+    /// with every subsequent heartbeat. Call this only after the corresponding listeners are
+    /// bound (the launcher publishes between role-service startup and the startup-ready
+    /// barrier, before <see cref="MarkActiveAsync"/> — a Booting instance stays outside both
+    /// route-table views, so publishing early never exposes an endpoint prematurely, and by
+    /// the time the instance becomes Active the endpoint has a live listener behind it).
+    /// <para>
+    /// The host is reused from the advertise endpoint's parse result (IPv6 authority brackets
+    /// are re-applied by the endpoint's canonical form). A <paramref name="serverType"/> that
+    /// does not match the self descriptor's role is a no-op with a warning: the heartbeat
+    /// document is single-role (the primary role only), so non-primary roles of a multi-role
+    /// process are never advertised — the warning makes the cross-process unreachability
+    /// visible to operators. Ports outside 1–65535 are skipped. The slot write is a reference
+    /// assignment, race-free against the heartbeat loop, and repeated calls overwrite
+    /// idempotently.
+    /// </para>
+    /// </remarks>
+    /// <param name="serverType">承载的服务进程类型名 / The hosted server process type name</param>
+    /// <param name="schemePorts">scheme → 监听端口映射（如 kcp → 5533）/ The scheme-to-listening-port pairs (e.g. kcp → 5533)</param>
+    public void PublishActiveAdvertiseEndpoints(string serverType, IReadOnlyList<KeyValuePair<string, int>> schemePorts)
+    {
+        if (_selfDescriptor == null)
+        {
+            return;
+        }
+
+        if (!string.Equals(serverType, _selfDescriptor.Role, StringComparison.Ordinal))
+        {
+            // Localization: Discovery.Registry.NonPrimaryServerTypeNotAdvertised - 附加广播端点未被发布：服务进程类型 '{0}' 不是本进程心跳承载的首选类型 '{1}'（心跳文档单 Role 模型，非首选类型不跨进程可达）。
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Discovery.Registry.NonPrimaryServerTypeNotAdvertised, serverType, _selfDescriptor.Role));
+            return;
+        }
+
+        var advertiseEndpoint = EndpointParser.Parse(_selfDescriptor.AdvertiseEndpoint);
+        var endpoints = new List<string>();
+        if (schemePorts != null)
+        {
+            foreach (var schemePort in schemePorts)
+            {
+                if (string.IsNullOrWhiteSpace(schemePort.Key) || schemePort.Value is < 1 or > ushort.MaxValue)
+                {
+                    continue;
+                }
+
+                endpoints.Add(new ParsedEndpoint(schemePort.Key.Trim().ToLowerInvariant(), advertiseEndpoint.Host, schemePort.Value, advertiseEndpoint.AddressKind).ToString());
+            }
+        }
+
+        _additionalAdvertiseEndpoints = endpoints;
     }
 
     /// <summary>
@@ -460,7 +527,8 @@ public sealed class DiscoveryRegistry : IDisposable
             0, // 负载自报：固定 0，接真实指标源属后续 change（ponytail：升级路径 = 注入负载采样回调）。
             _selfDescriptor.AddressKind,
             _selfDescriptor.Incarnation,
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            _additionalAdvertiseEndpoints);
         return _heartbeatStore.UpsertAsync(descriptor, cancellationToken);
     }
 }

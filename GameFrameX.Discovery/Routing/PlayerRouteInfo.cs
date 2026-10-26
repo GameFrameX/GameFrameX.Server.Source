@@ -46,6 +46,17 @@ public sealed class PlayerRouteInfo
     public int ServerId { get; set; }
 
     /// <summary>
+    /// 实例唯一标识（在线时为发现层心跳实例 Id；离线为空）。
+    /// </summary>
+    /// <remarks>
+    /// The discovery instance id hosting the player (online only; empty when offline).
+    /// Cross-server pushes dial this exact instance; a legacy placeholder value written by an
+    /// old version never resolves and the delivery falls into the offline branch until the
+    /// player re-logs in.
+    /// </remarks>
+    public string InstanceId { get; set; }
+
+    /// <summary>
     /// 路由版本（在线时用最新版本号；离线时用 1）。
     /// </summary>
     /// <remarks>
@@ -59,15 +70,17 @@ public sealed class PlayerRouteInfo
     /// </summary>
     /// <param name="serverType">服务类型。</param>
     /// <param name="serverId">服务 ID。</param>
+    /// <param name="instanceId">实例唯一标识。</param>
     /// <param name="version">版本号。</param>
     /// <returns>在线态路由信息。</returns>
-    public static PlayerRouteInfo Online(string serverType, int serverId, long version)
+    public static PlayerRouteInfo Online(string serverType, int serverId, string instanceId, long version)
     {
         return new PlayerRouteInfo
         {
             IsOnline = true,
             ServerType = serverType,
             ServerId = serverId,
+            InstanceId = instanceId,
             Version = version,
         };
     }
@@ -83,6 +96,7 @@ public sealed class PlayerRouteInfo
             IsOnline = false,
             ServerType = null,
             ServerId = 0,
+            InstanceId = null,
             Version = 1,
         };
     }

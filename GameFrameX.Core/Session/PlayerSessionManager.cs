@@ -81,6 +81,18 @@ public sealed class PlayerSessionManager : IPlayerSessionManager
     private IPlayerRouteSyncTarget _playerRouteSyncTarget = NullPlayerRouteSyncTarget.Instance;
 
     /// <summary>
+    /// 本进程发现层实例 Id（路由同步写入 player_route.InstanceId 的权威值；与心跳自描述符同源注入）。
+    /// </summary>
+    /// <remarks>
+    /// This process's discovery instance id — the authoritative value written into
+    /// <c>player_route.InstanceId</c> by the route-sync hook (injected from the same source as
+    /// the heartbeat self descriptor through the player-route bootstrap wiring). Blank for
+    /// observe-only processes (no advertise identity): the upsert hook is then skipped — such
+    /// rows would be unroutable cross-process anyway (the process writes no heartbeat either).
+    /// </remarks>
+    public string LocalDiscoveryInstanceId { get; set; }
+
+    /// <summary>
     /// 获取当前在线玩家的数量。
     /// </summary>
     /// <returns>当前在线玩家的数量。</returns>
@@ -321,8 +333,8 @@ public sealed class PlayerSessionManager : IPlayerSessionManager
 
         var snapshot = PlayerRouteMap.AddOrUpdate(
             playerId,
-            _ => SessionRouteSnapshot.Online(playerId, resolvedServerType, resolvedServerId, 1),
-            (_, old) => SessionRouteSnapshot.Online(playerId, resolvedServerType, resolvedServerId, old.Version + 1));
+            _ => SessionRouteSnapshot.Online(playerId, resolvedServerType, resolvedServerId, LocalDiscoveryInstanceId, 1),
+            (_, old) => SessionRouteSnapshot.Online(playerId, resolvedServerType, resolvedServerId, LocalDiscoveryInstanceId, old.Version + 1));
 
         // 内存态落定后再调控制库钩子；失败 swallow（warning），主链路不挂。
         FireSyncUpsert(playerId, resolvedServerType, snapshot);
@@ -356,8 +368,14 @@ public sealed class PlayerSessionManager : IPlayerSessionManager
             return;
         }
 
-        // 钩子实例 ID：进程未注册发现层时退化为主机名 + 时间戳（与 MongoEndpointRegistry.CreateSelfDescriptorFromEnvironment 同形态）。
-        var instanceId = ResolveSyncInstanceId(resolvedServerType);
+        // 实例 Id 直取本进程发现层身份（装配缝注入，与心跳自描述符同源）；仅观察形态（无发现身份）跳过
+        // upsert 钩子——该进程不写心跳，行对外天然不可达，写入只会制造按 offline 处理的悬空行。
+        var instanceId = LocalDiscoveryInstanceId;
+        if (string.IsNullOrWhiteSpace(instanceId))
+        {
+            return;
+        }
+
         // 丢弃的是完全自愈的 SafeAsync 任务：异步失败也被观测（catch + warning），不进 UnobservedTaskException
         _ = SyncUpsertSafeAsync(syncTarget, playerId, instanceId, resolvedServerType, snapshot);
     }
@@ -420,14 +438,5 @@ public sealed class PlayerSessionManager : IPlayerSessionManager
         {
             LogHelper.Warning(exception, "[PlayerSessionManager] player_route delete hook failed for player {playerId}", playerId);
         }
-    }
-    /// <summary>
-    /// 解析路由同步钩子的实例标识：当前恒为「服务类型-十六进制时间戳」的进程内退化形态
-    /// （跨进程重启后变化，用于路由记录的归属展示，不参与路由判定）。
-    /// </summary>
-    private string ResolveSyncInstanceId(string resolvedServerType)
-    {
-        // 退化形态：不尝试读取发现层实例 ID（该信息对路由判定无意义，见方法注释）
-        return $"{resolvedServerType}-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds():x}";
     }
 }

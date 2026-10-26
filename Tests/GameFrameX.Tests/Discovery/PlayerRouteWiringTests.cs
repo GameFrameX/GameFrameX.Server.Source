@@ -94,7 +94,7 @@ public class PlayerRouteWiringTests
     [Fact]
     public async Task SelectRouteResolver_WithDiscoveredResolver_WrapsItAndMapsOnlineRoute()
     {
-        var discovered = new StubRoutingResolver(GameFrameX.Discovery.Routing.PlayerRouteInfo.Online("Social", 7, 42));
+        var discovered = new StubRoutingResolver(GameFrameX.Discovery.Routing.PlayerRouteInfo.Online("Social", 7, "2001", 42));
 
         var resolver = PlayerRouteWiring.SelectRouteResolver(discovered);
 
@@ -103,6 +103,7 @@ public class PlayerRouteWiringTests
         Assert.Equal("Social", route.ServerType);
         Assert.Equal(7, route.ServerId);
         Assert.Equal(42, route.Version);
+        Assert.Equal("2001", route.InstanceId);
     }
 
     [Fact]

@@ -30,42 +30,44 @@
 namespace GameFrameX.Network.RemoteMessaging.Discovery;
 
 /// <summary>
-/// 服务端点解析器。统一把目标服务名解析为未解析的端点 URI（<c>scheme://host:port</c>）。
+/// 服务端点解析器。统一把结构化端点目标解析为未解析的端点 URI（<c>scheme://host:port</c>）。
 /// </summary>
 /// <remarks>
-/// Service endpoint resolver. Uniformly resolves a target service name into an unparsed
-/// endpoint URI (<c>scheme://host:port</c>). The scheme is declared by the endpoint itself
-/// (environment variable key segment, or the advertise endpoint of a discovered instance);
+/// Service endpoint resolver. Uniformly resolves a structured <see cref="RemoteServiceTarget"/>
+/// into an unparsed endpoint URI (<c>scheme://host:port</c>). Endpoints come exclusively from the
+/// heartbeat registry route table (the discovery layer); the scheme is declared by each endpoint
+/// itself (the instance's tcp advertise endpoint plus its additional advertise endpoints), and
 /// consumers parse it at dial time with <c>EndpointParser</c> and dispatch to the transport
 /// registered for that scheme.
 /// </remarks>
 public interface IServiceEndpointResolver
 {
     /// <summary>
-    /// 解析指定服务的端点 URI（确定性偏好序：kcp &gt; ws &gt; wss &gt; tcp）。
+    /// 解析指定目标的端点 URI（确定性偏好序：kcp &gt; ws &gt; wss &gt; tcp）。
     /// </summary>
     /// <remarks>
-    /// Resolves the endpoint URI for the specified service with the deterministic preference
-    /// order kcp &gt; ws &gt; wss &gt; tcp: when the service declares endpoints of several
-    /// schemes at once, the non-tcp scheme wins and tcp stays the universal fallback
-    /// (gradual-migration semantics). Deployments that only configure a tcp endpoint resolve
-    /// exactly that endpoint, byte for byte identical to the previous tcp-only behavior.
+    /// Resolves the endpoint URI for the specified target with the deterministic preference
+    /// order kcp &gt; ws &gt; wss &gt; tcp: the instance's endpoint collection is its tcp primary
+    /// advertise endpoint plus its additional advertise endpoints, so when the instance declares
+    /// endpoints of several schemes at once the non-tcp scheme wins and tcp stays the universal
+    /// fallback (gradual-migration semantics). Deployments that advertise only a tcp endpoint
+    /// resolve exactly that endpoint, byte for byte identical to the previous tcp-only behavior.
     /// </remarks>
-    /// <param name="serviceName">目标服务名 / The target service name</param>
+    /// <param name="target">结构化端点目标 / The structured endpoint target</param>
     /// <returns>未解析端点 URI 字符串（如 "tcp://host:port"）；未找到时返回空字符串 / The unparsed endpoint URI string (e.g. "tcp://host:port"); returns an empty string when not found</returns>
-    string ResolveEndpoint(string serviceName);
+    string ResolveEndpoint(RemoteServiceTarget target);
 
     /// <summary>
-    /// 解析指定服务在指定 scheme（tcp/kcp/ws/wss）下的端点 URI。
+    /// 解析指定目标在指定 scheme（tcp/kcp/ws/wss）下的端点 URI。
     /// </summary>
     /// <remarks>
-    /// Resolves the endpoint URI of the specified service for the given scheme
+    /// Resolves the endpoint URI of the specified target for the given scheme
     /// (tcp/kcp/ws/wss, compared case-insensitively). Used by scheme-specific transports and
-    /// by the tcp fallback path; returns an empty string when the service declares no
+    /// by the tcp fallback path; returns an empty string when the instance declares no
     /// endpoint of that scheme.
     /// </remarks>
-    /// <param name="serviceName">目标服务名 / The target service name</param>
+    /// <param name="target">结构化端点目标 / The structured endpoint target</param>
     /// <param name="scheme">端点 scheme（小写或大小写不敏感）/ The endpoint scheme (case-insensitive)</param>
     /// <returns>未解析端点 URI 字符串；该 scheme 未声明时返回空字符串 / The unparsed endpoint URI string; returns an empty string when no endpoint of that scheme is declared</returns>
-    string ResolveEndpoint(string serviceName, string scheme);
+    string ResolveEndpoint(RemoteServiceTarget target, string scheme);
 }

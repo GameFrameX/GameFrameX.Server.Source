@@ -37,7 +37,7 @@ public sealed class ProtocolVersionNegotiationMatrixTests : IAsyncLifetime
 {
     private const long IdentityBase = 88_000_000L;
 
-    private readonly List<string> _environmentKeys = new();
+    private readonly MutableRouteTableProvider _routeTable = new();
     private readonly List<IHost> _hosts = new();
 
     private int _v1Port;
@@ -68,11 +68,6 @@ public sealed class ProtocolVersionNegotiationMatrixTests : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        foreach (var key in _environmentKeys)
-        {
-            Environment.SetEnvironmentVariable(key, null);
-        }
-
         foreach (var host in _hosts)
         {
             await host.StopAsync();
@@ -91,6 +86,7 @@ public sealed class ProtocolVersionNegotiationMatrixTests : IAsyncLifetime
         SetEnvironmentEndpoint(serviceName, $"tcp://127.0.0.1:{_v1Port}");
 
         var client = new RemoteMessagingBuilder()
+            .WithRouteTable(_routeTable)
             .WithTimeoutMs(15000)
             .Build();
 
@@ -121,6 +117,7 @@ public sealed class ProtocolVersionNegotiationMatrixTests : IAsyncLifetime
         SetEnvironmentEndpoint(serviceName, $"tcp://127.0.0.1:{_v2Port}");
 
         var client = new RemoteMessagingBuilder()
+            .WithRouteTable(_routeTable)
             .WithTimeoutMs(15000)
             .Build();
 
@@ -152,6 +149,7 @@ public sealed class ProtocolVersionNegotiationMatrixTests : IAsyncLifetime
         SetEnvironmentEndpoint(serviceName, $"tcp://127.0.0.1:{_legacyPort}");
 
         var client = new RemoteMessagingBuilder()
+            .WithRouteTable(_routeTable)
             .WithTimeoutMs(15000)
             .WithHandshakeTimeoutMs(300)
             .Build();
@@ -180,6 +178,7 @@ public sealed class ProtocolVersionNegotiationMatrixTests : IAsyncLifetime
         SetEnvironmentEndpoint(serviceName, $"tcp://127.0.0.1:{_v1Port}");
 
         var client = new RemoteMessagingBuilder()
+            .WithRouteTable(_routeTable)
             .WithTimeoutMs(15000)
             .Build();
 
@@ -326,9 +325,9 @@ public sealed class ProtocolVersionNegotiationMatrixTests : IAsyncLifetime
 
     private void SetEnvironmentEndpoint(string serviceName, string value)
     {
-        var key = $"services__{serviceName}__tcp__0";
-        Environment.SetEnvironmentVariable(key, value);
-        _environmentKeys.Add(key);
+        // C304：端点事实源 = 心跳注册表路由表（tcp 主端点形态）
+        _routeTable.RemoveService(serviceName);
+        _routeTable.SetServiceEndpoint(serviceName, value, "2001");
     }
 
     private static int GetAvailableTcpPort()

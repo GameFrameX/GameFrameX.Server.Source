@@ -132,25 +132,33 @@ public static class UnifiedMessageSenderHolder
     /// <param name="routeResolver">玩家路由解析器 / Player route resolver</param>
     /// <param name="localSender">本服玩家发送器 / Local player sender</param>
     /// <param name="remoteClient">远程消息客户端 / Remote message client</param>
+    /// <param name="routeTable">双视图路由表提供者（实例列表唯一来源，透传给发送器）/ The dual-view route table provider forwarded to the sender as the single source of the instance list</param>
     /// <param name="localServerType">本服服务器类型（透传给发送器的本服判定基准） / Local server type forwarded to the sender as the local-server identity</param>
-    /// <param name="localServerId">本服服务器编号（透传给发送器的本服判定基准） / Local server id forwarded to the sender as the local-server identity</param>
+    /// <param name="localInstanceId">本进程发现层实例 Id（透传给发送器的本服判定基准） / This process's discovery instance id forwarded to the sender as the local-server identity</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="remoteClient"/> 为 null 时抛出 / Thrown when <paramref name="remoteClient"/> is null</exception>
+    /// <exception cref="ArgumentNullException">当 <paramref name="routeTable"/> 为 null 时抛出 / Thrown when <paramref name="routeTable"/> is null</exception>
     /// <exception cref="ArgumentException">当 <paramref name="localServerType"/> 为 null、空串或空白时抛出（发送器构造器校验） / Thrown when <paramref name="localServerType"/> is null, empty, or whitespace (validated by the sender constructor)</exception>
     public static void InitializeWithDefaults(
         IPlayerRouteResolver routeResolver,
         IPlayerLocalSender localSender,
         IRemoteMessageClient remoteClient,
+        IRoleRouteTableProvider routeTable,
         string localServerType,
-        int localServerId)
+        string localInstanceId)
     {
         if (remoteClient == null)
         {
             throw new ArgumentNullException(nameof(remoteClient));
         }
 
+        if (routeTable == null)
+        {
+            throw new ArgumentNullException(nameof(routeTable));
+        }
+
         var instanceSelector = new ConsistentHashServerInstanceSelector();
         var metrics = new MessageSendMetrics();
-        var sender = new UnifiedMessageSender(remoteClient, routeResolver, localSender, instanceSelector, localServerType, localServerId, metrics);
+        var sender = new UnifiedMessageSender(remoteClient, routeResolver, localSender, instanceSelector, routeTable, localServerType, localInstanceId, metrics);
         Initialize(sender);
     }
 }

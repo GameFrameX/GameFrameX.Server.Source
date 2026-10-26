@@ -55,7 +55,7 @@ public sealed class MongoPlayerRouteResolverTests
             Calls++;
             if (playerId == PlayerId && IsOnline)
             {
-                info = PlayerRouteInfo.Online(ServerType, ServerId, Version);
+                info = PlayerRouteInfo.Online(ServerType, ServerId, "2001", Version);
                 return true;
             }
 
@@ -134,10 +134,11 @@ public sealed class MongoPlayerRouteResolverTests
     [Fact]
     public void PlayerRouteInfo_Online_RoundTripsFields()
     {
-        var info = PlayerRouteInfo.Online("Game", 42, 9);
+        var info = PlayerRouteInfo.Online("Game", 42, "2001", 9);
         Assert.True(info.IsOnline);
         Assert.Equal("Game", info.ServerType);
         Assert.Equal(42, info.ServerId);
         Assert.Equal(9, info.Version);
+        Assert.Equal("2001", info.InstanceId);
     }
 }

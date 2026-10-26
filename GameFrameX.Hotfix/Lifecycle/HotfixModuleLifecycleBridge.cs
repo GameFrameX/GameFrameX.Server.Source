@@ -120,7 +120,18 @@ internal sealed class HotfixModuleLifecycleBridge : IHotfixBridge
         // （钉住仍服务 PlayerSessionManager 等调用期读取方）。
         if (!UnifiedMessageSenderHolder.IsInitialized)
         {
-            var remoteClient = RemoteMessagingBuilder.BuildFromEnvironment();
+            var remoteMessagingBuilder = new RemoteMessagingBuilder()
+                .LoadFromEnvironment()
+                .WithRouteTable(GameFrameX.Discovery.ActiveDiscoveryRuntime.RouteTableProvider);
+            if (setting.IsEnableInnerKcp)
+            {
+                // 生产注册 KCP 拨号适配器（此前从未在生产链路注册，env 声明 kcp 键也只会回落 tcp）
+                // Register the KCP dialing adapter in production (never registered before — a kcp
+                // endpoint in the environment used to silently fall back to tcp).
+                remoteMessagingBuilder.UseKcpTransportAdapter();
+            }
+
+            var remoteClient = remoteMessagingBuilder.Build();
             var localSender = new DefaultPlayerLocalSender();
             // 发现层存储适配归一——Resolver/SyncTarget 单例由通用 Bootstrap 提供（不再按 Provider 分立）。
             GameFrameX.Discovery.Routing.IPlayerRouteResolver discoveredResolver = PlayerRouteResolverBootstrap.Resolver;
@@ -129,8 +140,9 @@ internal sealed class HotfixModuleLifecycleBridge : IHotfixBridge
                 routeResolver,
                 localSender,
                 remoteClient,
+                GameFrameX.Discovery.ActiveDiscoveryRuntime.RouteTableProvider,
                 setting.ServerType,
-                setting.ServerId);
+                PlayerRouteResolverBootstrap.LocalInstanceId);
 
             // holder 初始化后补装路由缝 case 1 的本地投递槽（幂等；时序前提见 AttachLocalDispatcher 注释）。
             // 本地投递槽装配统一走组合侧 DiscoveryRoutingWire（两 Provider 共用，不再按实现分支）。

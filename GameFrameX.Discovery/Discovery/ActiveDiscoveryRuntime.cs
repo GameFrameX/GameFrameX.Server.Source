@@ -129,4 +129,22 @@ public static class ActiveDiscoveryRuntime
     {
         return _registry?.MarkActiveAsync(cancellationToken) ?? Task.CompletedTask;
     }
+
+    /// <summary>
+    /// 发布本进程的附加广播端点（scheme → 监听端口），由宿主在监听器装配完成后、就绪屏障与 <see cref="MarkActiveAsync"/> 之前调用。
+    /// </summary>
+    /// <remarks>
+    /// Publishes this process's additional advertise endpoints (scheme → listening port);
+    /// the host calls this after its listeners are bound, before the startup-ready barrier and
+    /// <see cref="MarkActiveAsync"/>. The KCP gate reads the per-role launcher slot so a
+    /// listener that failed to assemble never gets its endpoint broadcast. No-op when the
+    /// discovery layer was not activated or the write side was skipped (no advertise identity);
+    /// a non-primary role of a multi-role process warns and stays unpublished.
+    /// </remarks>
+    /// <param name="serverType">承载的服务进程类型名 / The hosted server process type name</param>
+    /// <param name="schemePorts">scheme → 监听端口映射 / The scheme-to-listening-port pairs</param>
+    public static void PublishActiveAdvertiseEndpoints(string serverType, IReadOnlyList<KeyValuePair<string, int>> schemePorts)
+    {
+        _registry?.PublishActiveAdvertiseEndpoints(serverType, schemePorts);
+    }
 }

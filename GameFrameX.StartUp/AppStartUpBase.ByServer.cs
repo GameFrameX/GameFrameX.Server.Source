@@ -686,6 +686,12 @@ public abstract partial class AppStartUpBase
                     });
                 });
             });
+            // 实例级闸门置位：本 Role 的 KCP 监听器装配完成（Host.StartAsync 前完成配置，绑定失败会终止启动），
+            // 后续 PublishActiveAdvertiseEndpoints 以此为广播前提。
+            // The instance-level gate flips on: this role's KCP listener assembly is complete (the
+            // configuration finishes before Host.StartAsync; a bind failure aborts startup), and the
+            // later advertise-endpoint publish is gated on this reading.
+            IsInnerKcpListenerConfigured = true;
             // Localization: StartUp.InnerKcp.StartupComplete - {0} 服务器间 KCP 服务已成功启动，监听 {1}:{2}。
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.InnerKcp.StartupComplete, ServerType, Setting.InnerHost, Setting.InnerKcpPort));
         }

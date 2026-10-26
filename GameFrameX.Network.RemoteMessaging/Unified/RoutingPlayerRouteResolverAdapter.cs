@@ -69,7 +69,7 @@ public sealed class RoutingPlayerRouteResolverAdapter : IPlayerRouteResolver
 
         if (route.IsOnline)
         {
-            return PlayerRouteInfo.Online(route.ServerType, route.ServerId, route.Version);
+            return PlayerRouteInfo.Online(route.ServerType, route.ServerId, route.InstanceId, route.Version);
         }
 
         return PlayerRouteInfo.Offline();

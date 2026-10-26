@@ -417,7 +417,7 @@ public sealed class PostgreSqlPlayerRouteIntegrationTests : IDisposable
             Calls++;
             if (playerId == PlayerId)
             {
-                info = PlayerRouteInfo.Online(ServerType, ServerId, Version);
+                info = PlayerRouteInfo.Online(ServerType, ServerId, "2001", Version);
                 return true;
             }
 

@@ -81,6 +81,18 @@ public static class PlayerRouteResolverBootstrap
     public static PlayerRouteSyncTarget SyncTarget { get; private set; }
 
     /// <summary>
+    /// 已装配的本服发现层实例 Id（Attach 之前或仅观察形态为 null）。
+    /// </summary>
+    /// <remarks>
+    /// The wired local discovery instance id (null before <see cref="AttachAsync"/> or for
+    /// observe-only processes). Same source as the heartbeat self descriptor's instance id
+    /// (<c>GameFrameX__RoleInstanceId</c> or the auto-generated identity); the session
+    /// manager's route-sync writes it into <c>player_route</c> so cross-server pushes can
+    /// dial the exact instance.
+    /// </remarks>
+    public static string LocalInstanceId { get; private set; }
+
+    /// <summary>
     /// 激活玩家路由层：建 schema / 索引 + 构造 Resolver 与 SyncTarget 单例。
     /// </summary>
     /// <remarks>
@@ -90,9 +102,10 @@ public static class PlayerRouteResolverBootstrap
     /// into <c>UnifiedMessageSenderHolder</c>.
     /// </remarks>
     /// <param name="store">玩家路由存储适配 / The player-route storage seam</param>
-    /// <param name="fastPath">Tier 1 快路径提供方（null 跳过 Tier 1）/ Tier 1 fast path (null skips Tier 1)</param>
-    /// <returns>是否为本进程首次装配（false 表示已激活，本次调用为 no-op） / true on first attach, false on subsequent calls</returns>
-    public static async Task<bool> AttachAsync(IPlayerRouteStore store, IPlayerRouteFastPath fastPath = null)
+    /// <param name="fastPath">Tier 1 快路径提供方（null 跳过 Tier 1）/ Tier 1 fast path (null skips tier 1)</param>
+    /// <param name="localInstanceId">本服发现层实例 Id（心跳自描述符同源；null = 仅观察形态，路由同步跳过）/ The local discovery instance id (same source as the heartbeat self descriptor; null = observe-only, route sync skipped)</param>
+    /// <returns>是否为本进程首次装配（false 表示已激活，本次调用为 no-op）/ true on first attach, false on subsequent calls</returns>
+    public static async Task<bool> AttachAsync(IPlayerRouteStore store, IPlayerRouteFastPath fastPath = null, string localInstanceId = null)
     {
         ArgumentNullException.ThrowIfNull(store);
 
@@ -105,6 +118,7 @@ public static class PlayerRouteResolverBootstrap
 
         Resolver = new PlayerRouteResolver(store, fastPath);
         SyncTarget = new PlayerRouteSyncTarget(store);
+        LocalInstanceId = localInstanceId;
 
         return true;
     }
@@ -120,5 +134,6 @@ public static class PlayerRouteResolverBootstrap
         _attached = 0;
         Resolver = null;
         SyncTarget = null;
+        LocalInstanceId = null;
     }
 }

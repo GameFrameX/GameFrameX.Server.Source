@@ -105,6 +105,23 @@ public abstract partial class AppStartUpBase : IAppStartUp
     }
 
     /// <summary>
+    /// 获取服务器间 KCP 监听器是否已在本 Role 装配成功（实例级闸门：附加端点只有在该闸门开启后才可广播）。
+    /// </summary>
+    /// <remarks>
+    /// Whether the inter-server KCP listener was successfully assembled for this role
+    /// (an instance-level gate: the kcp additional advertise endpoint may only be broadcast
+    /// once this gate is on). Deliberately an instance property, not a process-wide static:
+    /// every role owns its own <see cref="AppStartUpBase"/> instance with its own
+    /// <c>Setting.InnerKcpPort</c>, and the roles of a multi-role process start sequentially —
+    /// a process-wide slot would let a later role's assembly pollute an earlier role's reading.
+    /// Set to true only by the enabling branch of the listener assembly (port available and
+    /// in range); the disabled branch and the warning branch keep it false (this role then
+    /// never broadcasts a kcp endpoint).
+    /// </remarks>
+    /// <value>监听器装配成功为 <c>true</c> / <c>true</c> when the listener was assembled</value>
+    public bool IsInnerKcpListenerConfigured { get; protected set; }
+
+    /// <summary>
     /// 初始化应用程序启动。
     /// </summary>
     /// <remarks>

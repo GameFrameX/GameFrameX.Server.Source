@@ -152,9 +152,11 @@ public static class PostgreSqlDiscoveryRuntime
         // 清理循环始终运行（写侧跳过时由 Bootstrap 先行建表，避免首轮 DELETE 缺表回滚）。
         var primaryRoleName = hostedRoles.Count > 0 ? hostedRoles.First() : "unknown";
         var selfDescriptor = DiscoveryRegistry.CreateSelfDescriptorFromEnvironment(primaryRoleName);
+        WarnNonPrimaryRolesNotAdvertised(hostedRoles, primaryRoleName, selfDescriptor);
 
         // 玩家路由层装配（建表 / 建索引 + 装 SyncTarget）先于 Registry 启动：清理循环首轮要求 player_route 已建。
-        PlayerRouteResolverBootstrap.AttachAsync(playerRouteStore, options.PlayerRouteFastPath).GetAwaiter().GetResult();
+        // 本服实例 Id 同源注入（心跳自描述符的 InstanceId）：PlayerSessionManager 的路由同步写真实发现层实例 Id。
+        PlayerRouteResolverBootstrap.AttachAsync(playerRouteStore, options.PlayerRouteFastPath, selfDescriptor?.InstanceId).GetAwaiter().GetResult();
 
         _registry = new DiscoveryRegistry(heartbeatStore, playerRouteStore, selfDescriptor, null, options.TtlCleanupInterval);
         _registry.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
@@ -166,6 +168,33 @@ public static class PostgreSqlDiscoveryRuntime
         {
             // Localization: Database.PostgreSql.DiscoveryNoAdvertisePort - [PostgreSqlDiscoveryRuntime] 未配置广播端口（{0}）；心跳写入侧被跳过，本进程仅观察拓扑
             LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.PostgreSql.DiscoveryNoAdvertisePort, AdvertiseEndpointEnvironment.AdvertisePortEnvironmentVariable));
+        }
+    }
+
+    /// <summary>
+    /// 多 ServerType 进程的广播覆盖披露：非首选 ServerType 不写心跳、不跨进程可达（心跳单 Role 模型）。
+    /// </summary>
+    /// <remarks>
+    /// Discloses the advertisement coverage of a multi-server-type process: non-primary server
+    /// types never write a heartbeat and are unreachable cross-process (the heartbeat document
+    /// is single-role). Formerly only a code comment; with the environment-variable bootstrap
+    /// retired this is a hard reachability limit operators must see.
+    /// </remarks>
+    /// <param name="hostedRoles">本进程承载的 ServerType 集合 / The hosted server types</param>
+    /// <param name="primaryRoleName">首选 ServerType / The primary server type</param>
+    /// <param name="selfDescriptor">本进程心跳身份（null = 未配置广播端口，本进程仅观察拓扑）/ The self descriptor (null = observe-only)</param>
+    private static void WarnNonPrimaryRolesNotAdvertised(IReadOnlyCollection<string> hostedRoles, string primaryRoleName, InstanceDescriptor selfDescriptor)
+    {
+        if (selfDescriptor == null || hostedRoles.Count <= 1)
+        {
+            return;
+        }
+
+        var nonPrimaryRoles = string.Join(", ", hostedRoles.Where(role => !string.Equals(role, primaryRoleName, StringComparison.Ordinal)));
+        if (nonPrimaryRoles.Length > 0)
+        {
+            // Localization: Database.Discovery.NonPrimaryRolesNotAdvertised - [Discovery] 多 ServerType 进程只广播首选 ServerType '{0}'；以下 ServerType 不写心跳、不跨进程可达：{1}
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.NonPrimaryRolesNotAdvertised, primaryRoleName, nonPrimaryRoles));
         }
     }
 

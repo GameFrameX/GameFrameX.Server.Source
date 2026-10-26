@@ -42,8 +42,8 @@ namespace GameFrameX.Discovery;
 /// The single unified endpoint parser.
 /// Every endpoint in the topology is stored as an unparsed <c>scheme://host:port</c>
 /// string and parsed only at connect time by this class, so heartbeat documents,
-/// <c>services__*</c> environment variables, and advertise addresses all share one
-/// validation surface. Supported host shapes: domain names, container names,
+/// advertise endpoints (primary and additional) all share one validation surface.
+/// Supported host shapes: domain names, container names,
 /// Kubernetes Service names, IPv4 literals, and bracketed IPv6 literals
 /// (<c>[::1]</c>). <see cref="System.Uri"/> is intentionally not used: it fills
 /// scheme default ports for ws/wss, which would silently mask a missing port

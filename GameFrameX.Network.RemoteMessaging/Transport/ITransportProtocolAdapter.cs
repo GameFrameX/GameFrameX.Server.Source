@@ -47,17 +47,16 @@ public interface ITransportProtocolAdapter : IDisposable
     /// </remarks>
     /// <value>协议名称（如 TCP/KCP/QUIC） / The protocol name (e.g., TCP/KCP/QUIC)</value>
     string ProtocolName { get; }
-
     /// <summary>
     /// 获取或创建目标服务对应的可用流。
     /// </summary>
     /// <remarks>
     /// Gets an existing or creates a new usable stream for the target service.
     /// </remarks>
-    /// <param name="serviceName">目标服务名 / Target service name</param>
+    /// <param name="target">结构化端点目标 / The structured endpoint target</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>可用流 / Usable stream</returns>
-    Task<Stream> GetOrCreateStreamAsync(string serviceName, CancellationToken cancellationToken = default);
+    Task<Stream> GetOrCreateStreamAsync(RemoteServiceTarget target, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 检查目标服务在当前协议下是否可用（至少可解析到合法端点）。
@@ -65,9 +64,9 @@ public interface ITransportProtocolAdapter : IDisposable
     /// <remarks>
     /// Checks whether the target service is available under current protocol (at least resolves to a valid endpoint).
     /// </remarks>
-    /// <param name="serviceName">目标服务名 / Target service name</param>
+    /// <param name="target">结构化端点目标 / The structured endpoint target</param>
     /// <returns>服务是否可用 / Whether service is available</returns>
-    bool IsServiceAvailable(string serviceName);
+    bool IsServiceAvailable(RemoteServiceTarget target);
 
     /// <summary>
     /// 标记连接失效，促使下次请求重建连接。

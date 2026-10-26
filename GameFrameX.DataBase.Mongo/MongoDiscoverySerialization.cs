@@ -82,6 +82,33 @@ internal static class MongoDiscoverySerialization
             classMap.AutoMap();
             classMap.MapIdMember(entity => entity.InstanceId);
             classMap.GetMemberMap(entity => entity.LastHeartbeat).SetSerializer(new DateTimeSerializer(BsonType.DateTime));
+            classMap.GetMemberMap(entity => entity.AdditionalAdvertiseEndpoints).SetIgnoreIfNull(true);
+        });
+
+        // 具体文档类型（实际被序列化 / 反序列化的派生类型，未声明任何自有成员）必须显式注册：
+        // 其驱动自动创建的 class map 不经过 MongoSerializationRegistry 的 EnsureClassMapRegistered，
+        // 默认 IgnoreExtraElements=false——携带未知字段的文档（混布窗口内新版本节点写入
+        // additionalAdvertiseEndpoints）会被旧读取方反序列化为 FormatException（本机实验证实）。
+        // 两个 setters 必须在 AutoMap() 之后调用：AutoMap() 会重放驱动的
+        // IgnoreExtraElementsConvention(false)，顺序错了等于没设（参照 MongoSerializationRegistry）。
+        // 继承成员（_id 映射、DateTime 序列化器与 SetIgnoreIfNull）全部由上面的基类 map 承载
+        //（派生 map 不接受基类声明的成员，EnsureMemberInfoIsForThisClass 拒绝），派生 map 不重复配置。
+        // The concrete document type (the derived type actually serialized / deserialized; it declares
+        // no members of its own) must be registered explicitly: its driver-auto-created class map never
+        // passes through MongoSerializationRegistry.EnsureClassMapRegistered and defaults to
+        // IgnoreExtraElements=false — documents carrying unknown fields (a new-version node writing
+        // additionalAdvertiseEndpoints inside a mixed-version window) would fail deserialization with a
+        // FormatException on old readers (verified by a local experiment). Both setters must run after
+        // AutoMap(): AutoMap() replays the driver's IgnoreExtraElementsConvention(false), so the reverse
+        // order is a no-op (see MongoSerializationRegistry). The inherited members (the _id mapping, the
+        // DateTime serializer, and SetIgnoreIfNull) are all carried by the base map above (the derived
+        // map rejects base-declared members — EnsureMemberInfoIsForThisClass), so the derived map adds
+        // nothing else.
+        BsonClassMap.RegisterClassMap<Discovery.ServerHeartbeatDocument>(classMap =>
+        {
+            classMap.AutoMap();
+            classMap.SetIgnoreExtraElements(true);
+            classMap.SetIgnoreExtraElementsIsInherited(true);
         });
     }
 }
