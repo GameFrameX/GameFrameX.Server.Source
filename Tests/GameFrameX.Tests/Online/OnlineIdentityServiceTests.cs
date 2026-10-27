@@ -141,6 +141,54 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 验证已解绑身份重新登录走复活路径：重绑回原账号，不新建账号（资产不成孤儿）。
+        /// </summary>
+        [Fact]
+        public async Task ResolveLoginAsync_UnboundIdentity_ShouldReviveOriginalAccount()
+        {
+            // Arrange：账号绑定两个身份后解绑主身份（保留辅身份满足解绑前提）。
+            var store = new InMemoryOnlineIdentityStore();
+            var service = new OnlineIdentityService(store);
+            var first = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "grace" });
+            var originalAccountId = first.Data.GameAccount.Id;
+            Assert.True((await service.BindIdentityAsync(TenantId, AppId, originalAccountId, OnlineIdentityKind.Email, "grace@example.com")).IsSuccess);
+            Assert.True((await service.UnbindIdentityAsync(TenantId, AppId, OnlineIdentityKind.UserName, "grace")).IsSuccess);
+
+            // Act
+            var reviveLogin = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "grace" });
+
+            // Assert：复用原账号与原玩家，未产生新账号。
+            Assert.True(reviveLogin.IsSuccess);
+            Assert.Equal(originalAccountId, reviveLogin.Data.GameAccount.Id);
+            Assert.Equal(first.Data.Player.Id, reviveLogin.Data.Player.Id);
+            var revivedIdentity = await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.UserName, "grace", CancellationToken.None);
+            Assert.Equal(0, revivedIdentity.UnboundAtTime);
+            Assert.Equal(originalAccountId, revivedIdentity.GameAccountId);
+        }
+
+        /// <summary>
+        /// 验证已解绑身份的原账号注销保留期内：复活路径拒绝登录，不静默新建账号。
+        /// </summary>
+        [Fact]
+        public async Task ResolveLoginAsync_UnboundIdentity_DeactivatedAccount_ShouldBeRejected()
+        {
+            // Arrange
+            var service = new OnlineIdentityService(new InMemoryOnlineIdentityStore());
+            var first = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "heidi" });
+            Assert.True((await service.BindIdentityAsync(TenantId, AppId, first.Data.GameAccount.Id, OnlineIdentityKind.Email, "heidi@example.com")).IsSuccess);
+            Assert.True((await service.UnbindIdentityAsync(TenantId, AppId, OnlineIdentityKind.UserName, "heidi")).IsSuccess);
+            Assert.True((await service.DeactivateAccountAsync(first.Data.GameAccount.Id, 0)).IsSuccess);
+
+            // Act
+            var login = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "heidi" });
+
+            // Assert
+            Assert.False(login.IsSuccess);
+            Assert.Equal(OnlineErrorCode.StateOperationForbidden, login.Code);
+        }
+
+
+        /// <summary>
         /// 验证账号合并：身份与玩家迁移到目标账号，源身份登录跟随目标（单跳）。
         /// </summary>
         [Fact]

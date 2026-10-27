@@ -85,10 +85,23 @@ public sealed class OnlineIdentityService
         OnlineGameAccount account;
         OnlinePlayerProfile player;
 
-        if (identity == null || identity.UnboundAtTime > 0)
+        if (identity == null)
         {
             // 新身份自动注册：账号 + 身份 + 首个玩家一次性建立（服务端生成，客户端不得拼接）。
             (identity, account, player) = await RegisterIdentityAsync(tenantId, appId, serverId, kind, identifier, playerName, now, cancellationToken);
+        }
+        else if (identity.UnboundAtTime > 0)
+        {
+            // 已解绑身份复活路径：不新建账号（否则原账号资产成孤儿），解析原账号后重绑恢复登录。
+            var accountResult = await ResolveAccountAsync(identity, cancellationToken);
+            if (!accountResult.IsSuccess)
+            {
+                return OnlineResult<OnlineLoginResolution>.Fail(accountResult.Code, accountResult.Message);
+            }
+
+            account = accountResult.Data;
+            identity = await ReviveUnboundIdentityAsync(identity, account, now, cancellationToken);
+            player = await ResolvePlayerAsync(account, tenantId, appId, serverId, playerName, now, cancellationToken);
         }
         else
         {
@@ -210,6 +223,24 @@ public sealed class OnlineIdentityService
         }
 
         return OnlineResult<OnlineGameAccount>.Ok(account);
+    }
+
+    /// <summary>
+    /// 已解绑身份复活（红线）：不新建账号，重绑回解析出的活跃原账号，防止原账号资产成孤儿。
+    /// <para>归属证明 = 该身份凭据已通过本次登录链校验；原账号已合并时跟随单跳指向合并目标。</para>
+    /// </summary>
+    /// <param name="identity">已解绑的身份。</param>
+    /// <param name="account">身份原指向且经状态校验的可登录账号。</param>
+    /// <param name="now">当前 Unix 毫秒时间。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>重绑后的身份（已写入存储）。</returns>
+    private async Task<OnlineIdentity> ReviveUnboundIdentityAsync(OnlineIdentity identity, OnlineGameAccount account, long now, CancellationToken cancellationToken)
+    {
+        identity.GameAccountId = account.Id;
+        identity.UnboundAtTime = 0;
+        identity.UpdatedAtTime = now;
+        await _store.AddOrUpdateIdentityAsync(identity, cancellationToken);
+        return identity;
     }
 
     /// <summary>
