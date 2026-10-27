@@ -64,4 +64,9 @@ public enum OnlineAssetAlertKind
     /// 补偿队列 SLO 超时（跨服补偿滞留超过时限仍未投递成功；超时转人工）。
     /// </summary>
     CompensationSloExceeded = 5,
+
+    /// <summary>
+    /// 非交易主体条目观察（中断裁决反查到 Tenant/App/Player 与交易主体不一致的账本条目；数据完整性异常留痕，条目不计入完成判定）。
+    /// </summary>
+    ForeignLedgerEntryObserved = 6,
 }

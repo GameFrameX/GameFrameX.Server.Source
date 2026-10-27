@@ -692,5 +692,180 @@ namespace GameFrameX.Tests.Online
             Assert.Single(failed);
             Assert.Equal("tx-orphan-1", failed[0].TransactionId);
         }
+
+        /// <summary>
+        /// 验证条目数达标但资产集合不齐（重复资产 + 缺失变更行）→ 不判成功，走补偿净效应归零（GFX-1086）。
+        /// </summary>
+        [Fact]
+        public async Task RecoverAsync_DuplicateAssetEntriesCountMatches_CompensatesInsteadOfSucceeding()
+        {
+            // Arrange：期望 2 行（gold + item），账本反查得到 2 条但均为 gold（重复条目、item 缺失）。
+            var harness = new Harness();
+            var orphan = BuildExecutingTransaction("tx-orphan-dup", "key-orphan-dup", "bo-orphan-dup", expectedChangeCount: 2);
+            await harness.TransactionStore.SaveAsync(orphan);
+            var fabricatedStore = new FabricatedLedgerAssetStore(harness.AssetStore, orphan.TransactionId, () =>
+            {
+                var first = BuildFabricatedEntry(orphan.TransactionId, "led-dup-1", OnlineAssetKind.Currency, "gold", orphan.PlayerId);
+                var second = BuildFabricatedEntry(orphan.TransactionId, "led-dup-2", OnlineAssetKind.Currency, "gold", orphan.PlayerId);
+                return new[] { first, second };
+            });
+            var service = harness.CreateService(fabricatedStore);
+
+            // Act
+            var recovered = await service.RecoverAsync();
+
+            // Assert：去重后资产数 1 != 期望 2，按部分应用补偿；不得 Succeeded（防漏发）。
+            Assert.Equal(1, recovered);
+            var succeeded = await harness.TransactionStore.ListByStateAsync(OnlineAssetTransactionState.Succeeded);
+            Assert.DoesNotContain(succeeded, transaction => transaction.TransactionId == orphan.TransactionId);
+            var compensated = await harness.TransactionStore.ListByStateAsync(OnlineAssetTransactionState.Compensated);
+            Assert.Single(compensated);
+            Assert.Equal(orphan.TransactionId, compensated[0].TransactionId);
+        }
+
+        /// <summary>
+        /// 验证账本反查混入非交易主体玩家条目 → 归属校验剔除后零有效条目判 Failed，并告警留痕（GFX-1086）。
+        /// </summary>
+        [Fact]
+        public async Task RecoverAsync_ForeignPlayerEntryOnly_MarksFailedAndAlerts()
+        {
+            // Arrange：期望 1 行，账本反查仅 1 条但归属其他玩家。
+            var harness = new Harness();
+            var orphan = BuildExecutingTransaction("tx-orphan-foreign", "key-orphan-foreign", "bo-orphan-foreign", expectedChangeCount: 1);
+            await harness.TransactionStore.SaveAsync(orphan);
+            var fabricatedStore = new FabricatedLedgerAssetStore(harness.AssetStore, orphan.TransactionId, () =>
+            {
+                var foreign = BuildFabricatedEntry(orphan.TransactionId, "led-foreign-1", OnlineAssetKind.Currency, "gold", playerId: orphan.PlayerId + 1);
+                return new[] { foreign };
+            });
+            var service = harness.CreateService(fabricatedStore);
+
+            // Act
+            var recovered = await service.RecoverAsync();
+
+            // Assert：异主体条目不计入完成判定，零有效条目判 Failed；数据完整性异常告警留痕。
+            Assert.Equal(1, recovered);
+            var failed = await harness.TransactionStore.ListByStateAsync(OnlineAssetTransactionState.Failed);
+            Assert.Single(failed);
+            Assert.Equal(orphan.TransactionId, failed[0].TransactionId);
+            Assert.Contains(harness.AlertSink.Records, record => record.Kind == OnlineAssetAlertKind.ForeignLedgerEntryObserved);
+        }
+
+        /// <summary>
+        /// 构造执行中交易残留（模拟崩溃现场；仅测试内使用）。
+        /// </summary>
+        private static OnlineAssetTransaction BuildExecutingTransaction(string transactionId, string idempotencyKey, string businessOrderId, int expectedChangeCount)
+        {
+            return new OnlineAssetTransaction
+            {
+                TransactionId = transactionId,
+                IdempotencyKey = idempotencyKey,
+                RequestDigest = string.Empty,
+                TenantId = 1,
+                AppId = 10,
+                PlayerId = 10001,
+                HomeServerId = 100,
+                InitiatingServerId = 100,
+                Source = OnlineAssetChangeSource.MatchReward,
+                Operation = OnlineGrantOperation.Grant,
+                Reason = "崩溃残留",
+                BusinessOrderId = businessOrderId,
+                OperatorId = string.Empty,
+                ExpectedChangeCount = expectedChangeCount,
+                State = OnlineAssetTransactionState.Executing,
+                AppliedLedgerEntryIds = Array.Empty<string>(),
+                CreatedTime = 1760000000000,
+                SettledTime = 0,
+                FailureMessage = string.Empty,
+            };
+        }
+
+        /// <summary>
+        /// 构造伪造账本条目（Delta=0 保证补偿反转批次可应用；仅测试内使用）。
+        /// </summary>
+        private static OnlineLedgerEntry BuildFabricatedEntry(string transactionId, string entryId, OnlineAssetKind assetKind, string assetId, long playerId)
+        {
+            var header = new OnlineLedgerHeader
+            {
+                TenantId = 1,
+                AppId = 10,
+                PlayerId = playerId,
+                HomeServerId = 100,
+                InitiatingServerId = 100,
+                Source = OnlineAssetChangeSource.MatchReward,
+                Operation = OnlineGrantOperation.Grant,
+                Reason = "伪造条目",
+                BusinessOrderId = "bo-fabricated",
+                OperatorId = string.Empty,
+            };
+            return new OnlineLedgerEntry(entryId, transactionId, header, assetKind, assetId, 0, 0, 0, string.Empty, 1, 1760000000000);
+        }
+
+        /// <summary>
+        /// 资产存储装饰器：指定交易的账本反查返回伪造结果（模拟条目重复/归属异常的数据完整性场景）。
+        /// </summary>
+        private sealed class FabricatedLedgerAssetStore : IOnlineAssetStore
+        {
+            private readonly IOnlineAssetStore _inner;
+            private readonly string _transactionId;
+            private readonly Func<IReadOnlyList<OnlineLedgerEntry>> _fabricate;
+
+            public FabricatedLedgerAssetStore(IOnlineAssetStore inner, string transactionId, Func<IReadOnlyList<OnlineLedgerEntry>> fabricate)
+            {
+                _inner = inner;
+                _transactionId = transactionId;
+                _fabricate = fabricate;
+            }
+
+            public Task<OnlineWalletAccount> FindWalletAsync(long tenantId, long appId, long playerId, string currencyId, CancellationToken cancellationToken = default)
+            {
+                return _inner.FindWalletAsync(tenantId, appId, playerId, currencyId, cancellationToken);
+            }
+
+            public Task<OnlineInventoryStack> FindInventoryAsync(long tenantId, long appId, long playerId, string itemId, CancellationToken cancellationToken = default)
+            {
+                return _inner.FindInventoryAsync(tenantId, appId, playerId, itemId, cancellationToken);
+            }
+
+            public Task<IReadOnlyList<OnlineWalletAccount>> ListWalletAccountsAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+            {
+                return _inner.ListWalletAccountsAsync(tenantId, appId, playerId, cancellationToken);
+            }
+
+            public Task<IReadOnlyList<OnlineInventoryStack>> ListInventoryStacksAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+            {
+                return _inner.ListInventoryStacksAsync(tenantId, appId, playerId, cancellationToken);
+            }
+
+            public Task<OnlineAssetApplyResult> ApplyAsync(OnlineAssetChangeBatch batch, CancellationToken cancellationToken = default)
+            {
+                return _inner.ApplyAsync(batch, cancellationToken);
+            }
+
+            public Task<IReadOnlyList<OnlineLedgerEntry>> ListLedgerEntriesAsync(OnlineLedgerPageQuery query, CancellationToken cancellationToken = default)
+            {
+                return _inner.ListLedgerEntriesAsync(query, cancellationToken);
+            }
+
+            public Task<IReadOnlyList<OnlineLedgerEntry>> FindLedgerEntriesByTransactionIdAsync(string transactionId, CancellationToken cancellationToken = default)
+            {
+                if (transactionId == _transactionId)
+                {
+                    return Task.FromResult(_fabricate());
+                }
+
+                return _inner.FindLedgerEntriesByTransactionIdAsync(transactionId, cancellationToken);
+            }
+
+            public Task<IReadOnlyDictionary<string, long>> SumLedgerDeltasByAssetAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+            {
+                return _inner.SumLedgerDeltasByAssetAsync(tenantId, appId, playerId, cancellationToken);
+            }
+
+            public Task<IReadOnlyList<long>> ListPlayerIdsAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+            {
+                return _inner.ListPlayerIdsAsync(tenantId, appId, cancellationToken);
+            }
+        }
     }
 }

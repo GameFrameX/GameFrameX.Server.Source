@@ -107,7 +107,7 @@ public sealed class OnlineAssetTransaction
 
     /// <summary>
     /// 获取或设置期望变更行数（创建时按请求变更行数固化；恢复任务以
-    /// 「已落账条目数 == 期望行数」区分完整落账后中断与部分应用的判定依据）。
+    /// 「归属有效的去重资产条目数 == 期望行数」区分完整落账后中断与部分应用的判定依据）。
     /// </summary>
     public int ExpectedChangeCount { get; set; }
 
