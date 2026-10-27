@@ -127,6 +127,16 @@ public sealed class OnlineNotification
     /// 获取或设置玩家已读时刻（UTC 毫秒；未读为 0）。
     /// </summary>
     public long ReadAtTime { get; set; }
+    /// <summary>
+    /// 获取或设置推送租约失效时刻（UTC 毫秒；0 = 无租约）。
+    /// <para>
+    /// 在途保护字段：随「落 <see cref="OnlineNotificationState.Queued"/>」的 CAS 一并写入，
+    /// 随落定（Delivered / Retrying / Failed）的 CAS 一并清零；过期清扫与推送入口的过期兜底
+    /// 不得终结租约未失效的记录（推送可能正在落定），租约耗尽的死在途记录仍由清扫按 TTL 回收。
+    /// </para>
+    /// </summary>
+    public long DispatchLeaseUntilTime { get; set; }
+
 
     /// <summary>
     /// 生成防御性深拷贝（存储实现按「持久化行」语义返回副本，调用方改动不回写存储）。
@@ -155,6 +165,7 @@ public sealed class OnlineNotification
             UpdatedAtTime = UpdatedAtTime,
             DeliveredAtTime = DeliveredAtTime,
             ReadAtTime = ReadAtTime,
+            DispatchLeaseUntilTime = DispatchLeaseUntilTime,
         };
     }
 }
