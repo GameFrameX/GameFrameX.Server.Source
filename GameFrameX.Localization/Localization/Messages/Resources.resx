@@ -1584,6 +1584,9 @@
   <data name="Capability.Hosting.Scheduler.IntervalJobFailed" xml:space="preserve">
     <value>Capability scheduler interval job failed: {0} ({1})</value>
   </data>
+  <data name="Capability.Hosting.Scheduler.LoopRoundFaulted" xml:space="preserve">
+    <value>Capability scheduler loop round faulted (loop continues): {0} ({1})</value>
+  </data>
   <data name="Capability.Hosting.ActivationFailed" xml:space="preserve">
     <value>Capability {0} activation failed; {1} activated capabilities were rolled back in reverse order</value>
   </data>
