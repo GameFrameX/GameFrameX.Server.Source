@@ -100,6 +100,19 @@ public sealed partial class SqliteDbService : IDatabaseService
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     /// <summary>
+    /// 连接闸等待超时（闸被事务壳持有时，action 内 await 同实例不经环境事务放行的方法会不可重入死锁；限时转明确异常。测试缝可注入短值）。
+    /// </summary>
+    /// <remarks>
+    /// How long any gate acquisition waits before failing with a descriptive
+    /// <see cref="TimeoutException"/>: while a transaction shell holds the gate, awaiting a
+    /// same-instance method that bypasses the ambient transaction (e.g. OpenAsync/CloseAsync)
+    /// deadlocks on the non-reentrant semaphore — the timeout converts that hang into a locating
+    /// error (default 30 seconds; instance-level internal seam so tests can inject a shorter value
+    /// without leaking into other service instances).
+    /// </remarks>
+    internal TimeSpan GateWaitTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>
     /// 环境事务持有槽（事务壳持有 Holder：壳内嵌套操作/嵌套事务壳直接加入当前事务，不再重复拿闸/开事务；Holder 内字段 null = 无环境事务）。
     /// </summary>
     /// <remarks>

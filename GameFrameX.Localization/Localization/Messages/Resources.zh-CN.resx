@@ -1330,6 +1330,9 @@
   <data name="Database.Sqlite.ServiceUnavailable" xml:space="preserve">
     <value>SqliteDbService 尚未打开（请先调用 Open）。</value>
   </data>
+  <data name="Database.Sqlite.TransactionGateWaitTimeout" xml:space="preserve">
+    <value>等待 SQLite 连接闸超时（{0} 秒）。最常见根因：在 ExecuteInTransactionAsync 的 action 内 await 同一 SqliteDbService 实例不经环境事务放行的方法（如 OpenAsync/CloseAsync）——SemaphoreSlim 不可重入，会造成死锁。</value>
+  </data>
   <data name="Database.Sqlite.OperationTransientError" xml:space="preserve">
     <value>SqliteDbService.{0} 瞬时错误，重试 {1}/{2}。error={3}</value>
   </data>
