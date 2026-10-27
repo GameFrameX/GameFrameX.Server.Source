@@ -102,8 +102,13 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
 
         if (State.IsNotNull())
         {
-            StateDic.TryRemove(State.Id, out _);
-            StateDic.TryAdd(State.Id, State);
+            // 状态登记与 Actor 生命周期对齐：统一以 ActorId 为键（而非 State.Id），
+            // InactiveAsync 的移除与 CollectActorWritesAsync 的 owner 查找才能可靠命中；
+            // indexer 原子替换同 Actor 重复读取的旧登记（含 State.Id 变化的换键场景），不留残留条目。
+            // State registration aligns with the actor lifecycle: keyed by ActorId (not State.Id) so that
+            // removal in InactiveAsync and owner lookup in CollectActorWritesAsync reliably hit;
+            // the indexer atomically replaces stale registrations on repeated reads (including key changes), leaving no orphan entries.
+            StateDic[ActorId] = State;
         }
     }
 
@@ -215,14 +220,19 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
     {
         var tasks = new List<Task>();
 
-        foreach (var state in StateDic.Values)
+        foreach (var pair in StateDic)
         {
-            var actor = ActorManager.GetActor(state.Id);
+            // 字典键即登记时的 ActorId：按 owner actor 查找派发回存，
+            // 不以 state.Id 反查（State.Id != ActorId 的状态将找不到 owner 而被永久跳过）。
+            // The dictionary key is the ActorId captured at registration: dispatch persistence by owner actor,
+            // never reverse-lookup by state.Id (states whose State.Id differs from ActorId would never find their owner).
+            var actor = ActorManager.GetActor(pair.Key);
             if (actor == null)
             {
                 continue;
             }
 
+            var state = pair.Value;
             tasks.Add(actor.SendAsync(() =>
             {
                 if (!force && !state.IsModify())
