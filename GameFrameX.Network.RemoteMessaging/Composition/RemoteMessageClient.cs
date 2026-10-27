@@ -39,7 +39,7 @@ namespace GameFrameX.Network.RemoteMessaging.Composition;
 /// <remarks>
 /// Unified remote message call client. Orchestrates service resolution, connection management, encoding/decoding, request-response matching, interceptors, retry, circuit breaking, and health probing.
 /// </remarks>
-internal sealed class RemoteMessageClient : IRemoteMessageClient
+internal sealed class RemoteMessageClient : IRemoteMessageClient, IDisposable
 {
     private readonly ConcurrentDictionary<Stream, ConnectionContext> _connections = new();
     private readonly ICircuitBreaker _circuitBreaker;
@@ -51,6 +51,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
     private readonly IRetryPolicy _retryPolicy;
     private readonly ITransportProtocolAdapter _transportProtocolAdapter;
     private readonly int _handshakeTimeoutMs;
+    private int _closed;
 
     /// <summary>
     /// 初始化统一远程消息调用客户端。
@@ -581,7 +582,13 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
         return _connections.GetOrAdd(stream, addedStream =>
         {
             var connection = new ConnectionContext(addedStream, _requestResponseMatcher);
-            _ = RunReceivePumpAsync(connection);
+            var receivePumpTask = RunReceivePumpAsync(connection);
+            connection.AttachReceivePumpTask(receivePumpTask);
+            // faulted 泵的异常在 continuation 中被观察（含读取 Exception），消除 UnobservedTaskException；
+            // 泵内 generic catch 不再记 Error（见 RunReceivePumpAsync），避免双份错误日志
+            receivePumpTask.ContinueWith(
+                faulted => LogHelper.Error(faulted.Exception, LocalizationService.GetString(Localization.Keys.RemoteMessaging.ClientModule.ReceivePumpFaulted)),
+                TaskContinuationOptions.OnlyOnFaulted);
             return connection;
         });
     }
@@ -738,11 +745,11 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
             // Localization: RemoteMessaging.ClientModule.ReceivePumpDecodeFailure - 连接接收泵解码失败（帧损坏或协议异常），连接已按死亡处理并快速失败挂起请求
             LogHelper.Warning(exception, LocalizationService.GetString(Localization.Keys.RemoteMessaging.ClientModule.ReceivePumpDecodeFailure));
         }
-        catch (Exception exception)
+        catch (Exception)
         {
-            // 未分类异常（如 OOM）不吞：记录后向上抛出——泵任务 fault，可经 UnobservedTaskException/崩溃转储观测
-            // Localization: RemoteMessaging.ClientModule.ReceivePumpFatalError - 连接接收泵遭遇未分类异常（不吞掉，记录后向上抛出）
-            LogHelper.Error(exception, LocalizationService.GetString(Localization.Keys.RemoteMessaging.ClientModule.ReceivePumpFatalError));
+            // 未分类异常（如 OOM）不吞：向上抛出——泵任务 fault，由 GetOrCreateConnection 挂的
+            // OnlyOnFaulted continuation 记录（RemoteMessaging.Client.ReceivePumpFaulted）并观察异常，
+            // 不再落入 TaskScheduler.UnobservedTaskException
             throw;
         }
         finally
@@ -764,6 +771,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
     {
         private readonly SemaphoreSlim _writeGate = new(1, 1);
         private readonly object _handshakeLock = new();
+        private Task _receivePumpTask = Task.CompletedTask;
         private Task _handshakeTask;
         private readonly IRequestResponseMatcher _matcher;
         private readonly ConcurrentDictionary<int, byte> _pendingUniqueIds = new();
@@ -814,6 +822,30 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
                 _handshakeTask ??= starter();
                 return _handshakeTask;
             }
+        }
+        /// <summary>
+        /// 保存该连接的接收泵任务（在 GetOrAdd 工厂内、连接对外可见前调用，无竞态），供关闭收口等待泵退出。
+        /// </summary>
+        /// <remarks>
+        /// Stores this connection's receive pump task (called inside the GetOrAdd factory before the
+        /// connection becomes visible, so there is no race) so shutdown can await the pump's exit.
+        /// </remarks>
+        /// <param name="receivePumpTask">接收泵任务 / The receive pump task</param>
+        public void AttachReceivePumpTask(Task receivePumpTask)
+        {
+            _receivePumpTask = receivePumpTask;
+        }
+
+        /// <summary>
+        /// 获取该连接的接收泵任务（未启动泵的占位连接为已完成任务）。
+        /// </summary>
+        /// <remarks>
+        /// Gets this connection's receive pump task (a completed task for placeholder connections
+        /// whose pump has not started).
+        /// </remarks>
+        public Task ReceivePumpTask
+        {
+            get { return _receivePumpTask; }
         }
 
         /// <summary>
@@ -1111,5 +1143,70 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
     {
         MessageProtoHelper.SetMessageId(message);
         message.SetUniqueId(uniqueId);
+    }
+
+    /// <summary>
+    /// 关闭客户端：对全部连接快速失败挂起请求、失效传输层，并在超时内等待接收泵退出。
+    /// 幂等（首次调用生效，后续调用直接返回）。
+    /// </summary>
+    /// <remarks>
+    /// Closes the client: fails all pending requests fast across every connection, invalidates the
+    /// transport layer, and awaits receive pump exit within a timeout. Idempotent (the first call
+    /// wins; subsequent calls return immediately).
+    /// </remarks>
+    public async Task CloseAsync()
+    {
+        if (Interlocked.Exchange(ref _closed, 1) != 0)
+        {
+            return;
+        }
+
+        var pumpTasks = new List<Task>();
+        foreach (var connection in _connections.Values)
+        {
+            connection.MarkDead();
+            // FailAllPending 与泵 finally 的调用可重入（TryRemove 语义）：等待方立即收到可重试的连接级错误
+            connection.FailAllPending(new IOException(LocalizationService.GetString(Localization.Keys.RemoteMessaging.ClientModule.ConnectionClosed)));
+            pumpTasks.Add(connection.ReceivePumpTask);
+        }
+
+        _connections.Clear();
+        _transportProtocolAdapter.Invalidate();
+
+        // 等泵退出（泵 finally 会做同样的失效与快速失败，超时吞掉不阻塞关闭方）
+        var allPumps = Task.WhenAll(pumpTasks);
+        var timeout = Task.Delay(500);
+        var completed = await Task.WhenAny(allPumps, timeout).ConfigureAwait(false);
+        if (completed == allPumps)
+        {
+            // 泵任务可能 faulted（未分类异常）：在此观察一次，避免本次等待本身引入未观察异常
+            try
+            {
+                await allPumps.ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // 已由 OnlyOnFaulted continuation 记录，此处仅观察
+            }
+        }
+    }
+
+    /// <summary>
+    /// 同步关闭客户端（委托 <see cref="CloseAsync"/>，最多等待 500ms，超时不再阻塞调用方）。
+    /// </summary>
+    /// <remarks>
+    /// Synchronously closes the client (delegates to <see cref="CloseAsync"/> with a 500 ms cap;
+    /// a timeout no longer blocks the caller).
+    /// </remarks>
+    public void Dispose()
+    {
+        try
+        {
+            CloseAsync().Wait(500);
+        }
+        catch (Exception)
+        {
+            // 关闭路径异常不向 Dispose 调用方抛出（挂起请求已快速失败，残余连接由泵 finally 收口）
+        }
     }
 }

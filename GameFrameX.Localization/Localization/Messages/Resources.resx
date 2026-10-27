@@ -2424,6 +2424,9 @@
   <data name="RemoteMessaging.Client.ReceivePumpDecodeFailure" xml:space="preserve">
     <value>Connection receive pump failed to decode a frame (corrupt frame or protocol error); the connection is treated as dead and all its pending requests fail fast.</value>
   </data>
+  <data name="RemoteMessaging.Client.ReceivePumpFaulted" xml:space="preserve">
+    <value>Connection receive pump task faulted with an unclassified exception; observed and logged by the faulted continuation.</value>
+  </data>
 
   <data name="RemoteMessaging.Client.ReceivePumpFatalError" xml:space="preserve">
     <value>Connection receive pump hit an unclassified exception (not swallowed; logged and rethrown).</value>

@@ -2423,6 +2423,9 @@
   <data name="RemoteMessaging.Client.ReceivePumpDecodeFailure" xml:space="preserve">
     <value>连接接收泵解码失败（帧损坏或协议异常），连接已按死亡处理并快速失败挂起请求。</value>
   </data>
+  <data name="RemoteMessaging.Client.ReceivePumpFaulted" xml:space="preserve">
+    <value>连接接收泵任务因未分类异常而故障；异常已由故障续体观察并记录。</value>
+  </data>
 
   <data name="RemoteMessaging.Client.ReceivePumpFatalError" xml:space="preserve">
     <value>连接接收泵遭遇未分类异常（不吞掉，记录后向上抛出）。</value>

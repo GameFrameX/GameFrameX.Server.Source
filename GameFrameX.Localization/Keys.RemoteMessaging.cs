@@ -305,6 +305,15 @@ public static partial class Keys
             public const string ReceivePumpDecodeFailure = "RemoteMessaging.Client.ReceivePumpDecodeFailure";
 
             /// <summary>
+            /// 连接接收泵任务已故障（未分类异常），异常经 OnlyOnFaulted continuation 观察并记录
+            /// </summary>
+            /// <remarks>
+            /// 键名: RemoteMessaging.Client.ReceivePumpFaulted
+            /// 用途: 接收泵 Task fault 后由 OnlyOnFaulted continuation 记录的错误日志（观察异常，消除 UnobservedTaskException）
+            /// </remarks>
+            public const string ReceivePumpFaulted = "RemoteMessaging.Client.ReceivePumpFaulted";
+
+            /// <summary>
             /// 连接接收泵遭遇未分类异常（不吞掉，记录后向上抛出）
             /// </summary>
             /// <remarks>
