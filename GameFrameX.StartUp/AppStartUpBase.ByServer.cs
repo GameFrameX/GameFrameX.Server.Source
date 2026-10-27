@@ -362,16 +362,13 @@ public abstract partial class AppStartUpBase
     {
         try
         {
-            await Task.Run(async () =>
+            var initSuccess = await handler.InitAsync(message, networkChannel);
+            if (!initSuccess)
             {
-                var initSuccess = await handler.InitAsync(message, networkChannel);
-                if (!initSuccess)
-                {
-                    return;
-                }
+                return;
+            }
 
-                await handler.InnerActionAsync(timeout, cancellationToken);
-            }, cancellationToken);
+            await handler.InnerActionAsync(timeout, cancellationToken);
         }
         catch (Exception ex)
         {
