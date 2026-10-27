@@ -608,6 +608,10 @@
     <value>Idle Actor recycle completed time:{0}</value>
   </data>
 
+    <data name="Core.Timer.LoopIterationError" xml:space="preserve">
+    <value>GlobalTimer.LoopAsync iteration failed, skipping this iteration\n{0}</value>
+  </data>
+
     <data name="Core.Timer.GlobalTimerStopStart" xml:space="preserve">
     <value>Stopping global timer...</value>
   </data>

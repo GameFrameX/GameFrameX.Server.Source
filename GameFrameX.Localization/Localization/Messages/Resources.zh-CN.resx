@@ -638,6 +638,10 @@
     <value>结束回收空闲Actor 时间:{0}</value>
   </data>
 
+    <data name="Core.Timer.LoopIterationError" xml:space="preserve">
+    <value>全局定时器本轮执行异常，跳过本轮\n{0}</value>
+  </data>
+
     <data name="Core.Timer.GlobalTimerStopStart" xml:space="preserve">
     <value>停止全局定时开始...</value>
   </data>

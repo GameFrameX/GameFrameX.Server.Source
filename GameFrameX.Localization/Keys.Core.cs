@@ -242,6 +242,16 @@ public static partial class Keys
             public const string ActorRecycleEnd = "Core.Timer.ActorRecycleEnd";
 
             /// <summary>
+            /// 全局定时器本轮执行异常，跳过本轮\n{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.Timer.LoopIterationError
+            /// 用途: 全局定时循环单轮执行异常时记录，异常被捕获后循环继续
+            /// 参数: {0} - 异常信息
+            /// </remarks>
+            public const string LoopIterationError = "Core.Timer.LoopIterationError";
+
+            /// <summary>
             /// 停止全局定时开始...
             /// </summary>
             /// <remarks>

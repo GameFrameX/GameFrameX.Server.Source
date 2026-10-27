@@ -77,38 +77,50 @@ public static class GlobalTimer
 
         while (IsWorking)
         {
-            // Localization: Core.Timer.NextSaveTime - 下次定时回存时间 {0}
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.NextSaveTime, TimerHelper.TimestampSecondsToDateTime(nextSaveTime).ToString("yyyy-MM-dd HH:mm:ss.fff K")));
-            var currentTime = TimerHelper.UnixTimeMilliseconds();
-            while (currentTime < nextSaveTime && IsWorking)
+            try
             {
-                await Task.Delay(onceDelay);
+                // Localization: Core.Timer.NextSaveTime - 下次定时回存时间 {0}
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.NextSaveTime, TimerHelper.TimestampMillisecondsToDateTime(nextSaveTime).ToString("yyyy-MM-dd HH:mm:ss.fff K")));
+                var currentTime = TimerHelper.UnixTimeMilliseconds();
+                while (currentTime < nextSaveTime && IsWorking)
+                {
+                    await Task.Delay(onceDelay);
+                    currentTime = TimerHelper.UnixTimeMilliseconds();
+                }
+
+                if (!IsWorking)
+                {
+                    break;
+                }
+
+                var startTime = TimerHelper.UnixTimeMilliseconds();
+                // Localization: Core.Timer.SaveStart - 开始定时回存 时间:{0}
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.SaveStart, TimerHelper.CurrentDateTimeWithTimeZoneFormat()));
+                await StateComponent.TimerSaveAsync();
+                var endTime = TimerHelper.UnixTimeMilliseconds();
+                var cost = endTime - startTime;
+                // Localization: Core.Timer.SaveEnd - 结束定时回存 时间:{0} 耗时: {1}ms
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.SaveEnd, TimerHelper.CurrentDateTimeWithTimeZoneFormat(), cost));
+                // Localization: Core.Timer.ActorRecycleStart - 开始回收空闲Actor 时间:{0}
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.ActorRecycleStart, TimerHelper.CurrentDateTimeWithTimeZoneFormat()));
+                await ActorManager.CheckIdleAsync();
                 currentTime = TimerHelper.UnixTimeMilliseconds();
+                // Localization: Core.Timer.ActorRecycleEnd - 结束回收空闲Actor 时间:{0}
+                LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.ActorRecycleEnd, TimerHelper.CurrentDateTimeWithTimeZoneFormat()));
+                do
+                {
+                    nextSaveTime = NextSaveTime();
+                } while (currentTime > nextSaveTime);
             }
-
-            if (!IsWorking)
+            catch (Exception e)
             {
-                break;
-            }
-
-            var startTime = TimerHelper.UnixTimeMilliseconds();
-            // Localization: Core.Timer.SaveStart - 开始定时回存 时间:{0}
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.SaveStart, TimerHelper.CurrentDateTimeWithTimeZoneFormat()));
-            await StateComponent.TimerSaveAsync();
-            var endTime = TimerHelper.UnixTimeMilliseconds();
-            var cost = endTime - startTime;
-            // Localization: Core.Timer.SaveEnd - 结束定时回存 时间:{0} 耗时: {1}ms
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.SaveEnd, TimerHelper.CurrentDateTimeWithTimeZoneFormat(), cost));
-            // Localization: Core.Timer.ActorRecycleStart - 开始回收空闲Actor 时间:{0}
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.ActorRecycleStart, TimerHelper.CurrentDateTimeWithTimeZoneFormat()));
-            await ActorManager.CheckIdleAsync();
-            currentTime = TimerHelper.UnixTimeMilliseconds();
-            // Localization: Core.Timer.ActorRecycleEnd - 结束回收空闲Actor 时间:{0}
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.ActorRecycleEnd, TimerHelper.CurrentDateTimeWithTimeZoneFormat()));
-            do
-            {
+                // 单轮失败只跳过本轮，循环继续；不重新抛出，否则循环退出后定时回存与空闲 Actor 回收永久停止
+                // Localization: Core.Timer.LoopIterationError - 全局定时器本轮执行异常，跳过本轮\n{0}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.Timer.LoopIterationError, e));
+                // 推进下一轮回存时间，让循环进入延迟等待后重试，避免异常后零延迟紧密重试刷爆日志；
+                // 若推进自身失败（如配置读取永态损坏）则异常逃出循环，行为与历史版本一致
                 nextSaveTime = NextSaveTime();
-            } while (currentTime > nextSaveTime);
+            }
         }
     }
 
