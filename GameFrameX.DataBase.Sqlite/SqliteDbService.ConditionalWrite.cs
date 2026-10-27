@@ -30,10 +30,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Foundation.Orm.Attribute;
 using GameFrameX.Foundation.Orm.Entity;
 using GameFrameX.Localization;
 using Microsoft.Data.Sqlite;
@@ -47,7 +49,10 @@ namespace GameFrameX.DataBase.Sqlite;
 /// SQLite conditional-write primitives: CAS optimistic-lock whole-document write, unique-filter
 /// insert, and named sequence allocation. All paths reuse the shared single-connection gate and
 /// the shared resilience engine; SQL text builders keep the invariant that table names
-/// are compile-time-closed, quote-escaped type names (never runtime input).
+/// are compile-time-closed, quote-escaped type names (never runtime input). The unique insert
+/// prefers the engine path — a single <c>INSERT … ON CONFLICT DO NOTHING</c> statement backed by the
+/// declared unique expression index (see <c>SqliteDbService.Write.cs</c>) — and falls back to the
+/// legacy table scan when the predicate cannot be reduced to a declared unique member.
 /// </remarks>
 public sealed partial class SqliteDbService
 {
@@ -237,16 +242,23 @@ public sealed partial class SqliteDbService
     /// 唯一性插入：仅当无既有文档满足唯一性条件时插入（冲突返回 false 而非异常）。
     /// </summary>
     /// <remarks>
-    /// Unique insert: reads the full table (soft-deleted documents included — uniqueness ignores
-    /// <c>IsDeleted</c>) inside a <c>BEGIN</c> transaction, rolls back and returns <c>false</c> when
-    /// any stored document matches <paramref name="uniqueFilter"/> or already occupies
-    /// <paramref name="state"/>'s Id, and otherwise inserts and commits. A SQLite unique-constraint
-    /// violation (error codes 19 / 2067) is translated to <c>false</c> instead of propagating. The
-    /// whole "gate + transaction + check + insert" core runs through
-    /// <c>ExecuteWriteWithRetryAsync</c> with <c>isIdempotent: false</c> — inserts are not blindly
-    /// replayed, and if the engine does retry after a transient failure the attempt restarts the
-    /// complete transaction, whose pre-check then observes the committed row and returns <c>false</c>,
-    /// so the semantics stay safe either way. See
+    /// Unique insert: two paths, one contract. Fast path — when the uniqueness predicate reduces to
+    /// <c>x.Member == value</c> over a property carrying a declared unique index
+    /// (<c>[EntityIndex(Unique = true)]</c>, materialized as a <c>json_extract</c> expression unique index
+    /// when the table is created), the insert runs as a single <c>INSERT … ON CONFLICT DO NOTHING</c>
+    /// statement: no table scan is executed, the statement is atomic by itself (so the uniqueness check
+    /// holds across processes) and a uniqueness or Id conflict surfaces as zero affected rows translated
+    /// to <c>false</c> instead of an exception. Fallback path — every other predicate shape (composite
+    /// predicates, undeclared members, a predicate comparing against another value, a null member value)
+    /// keeps the previous behavior: the full table is read inside a <c>BEGIN</c> transaction
+    /// (soft-deleted documents included — uniqueness ignores <c>IsDeleted</c>), rolled back and returning
+    /// <c>false</c> when any stored document matches <paramref name="uniqueFilter"/> or already occupies
+    /// <paramref name="state"/>'s Id, and otherwise inserted and committed; a SQLite unique-constraint
+    /// violation (error codes 19 / 2067) is translated to <c>false</c> instead of propagating. Both paths
+    /// run through <c>ExecuteWriteWithRetryAsync</c> with <c>isIdempotent: false</c> — inserts are not
+    /// blindly replayed, and if the engine does retry after a transient failure the fallback attempt
+    /// restarts the complete transaction, whose pre-check then observes the committed row and returns
+    /// <c>false</c>, so the semantics stay safe either way. See
     /// <see cref="IDatabaseService.TryAddUniqueAsync{TState}(TState, Expression{Func{TState, bool}})"/>
     /// for the full contract.
     /// </remarks>
@@ -263,16 +275,23 @@ public sealed partial class SqliteDbService
     /// 唯一性插入：仅当无既有文档满足唯一性条件时插入（冲突返回 false 而非异常）。
     /// </summary>
     /// <remarks>
-    /// Unique insert: reads the full table (soft-deleted documents included — uniqueness ignores
-    /// <c>IsDeleted</c>) inside a <c>BEGIN</c> transaction, rolls back and returns <c>false</c> when
-    /// any stored document matches <paramref name="uniqueFilter"/> or already occupies
-    /// <paramref name="state"/>'s Id, and otherwise inserts and commits. A SQLite unique-constraint
-    /// violation (error codes 19 / 2067) is translated to <c>false</c> instead of propagating. The
-    /// whole "gate + transaction + check + insert" core runs through
-    /// <c>ExecuteWriteWithRetryAsync</c> with <c>isIdempotent: false</c> — inserts are not blindly
-    /// replayed, and if the engine does retry after a transient failure the attempt restarts the
-    /// complete transaction, whose pre-check then observes the committed row and returns <c>false</c>,
-    /// so the semantics stay safe either way. See
+    /// Unique insert: two paths, one contract. Fast path — when the uniqueness predicate reduces to
+    /// <c>x.Member == value</c> over a property carrying a declared unique index
+    /// (<c>[EntityIndex(Unique = true)]</c>, materialized as a <c>json_extract</c> expression unique index
+    /// when the table is created), the insert runs as a single <c>INSERT … ON CONFLICT DO NOTHING</c>
+    /// statement: no table scan is executed, the statement is atomic by itself (so the uniqueness check
+    /// holds across processes) and a uniqueness or Id conflict surfaces as zero affected rows translated
+    /// to <c>false</c> instead of an exception. Fallback path — every other predicate shape (composite
+    /// predicates, undeclared members, a predicate comparing against another value, a null member value)
+    /// keeps the previous behavior: the full table is read inside a <c>BEGIN</c> transaction
+    /// (soft-deleted documents included — uniqueness ignores <c>IsDeleted</c>), rolled back and returning
+    /// <c>false</c> when any stored document matches <paramref name="uniqueFilter"/> or already occupies
+    /// <paramref name="state"/>'s Id, and otherwise inserted and committed; a SQLite unique-constraint
+    /// violation (error codes 19 / 2067) is translated to <c>false</c> instead of propagating. Both paths
+    /// run through <c>ExecuteWriteWithRetryAsync</c> with <c>isIdempotent: false</c> — inserts are not
+    /// blindly replayed, and if the engine does retry after a transient failure the fallback attempt
+    /// restarts the complete transaction, whose pre-check then observes the committed row and returns
+    /// <c>false</c>, so the semantics stay safe either way. See
     /// <see cref="IDatabaseService.TryAddUniqueAsync{TState}(TState, Expression{Func{TState, bool}})"/>
     /// for the full contract.
     /// </remarks>
@@ -292,26 +311,34 @@ public sealed partial class SqliteDbService
         state.UpdateTime = currentTime;
         state.UpdateCount ??= 0;
         var predicate = uniqueFilter.Compile();
-        return await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(() => ExecuteTryAddUniqueCoreAsync<TState>(state, predicate, cancellationToken)), cancellationToken, nameof(TryAddUniqueAsync), false).ConfigureAwait(false);
+        // 快路径判定（谓词归约 + 声明式唯一索引 + 自身值等价守卫）：命中走单语句插入，未命中回落全表扫描。
+        // Fast-path decision (predicate reduction + declared unique index + self-value equivalence guard):
+        // a hit takes the single-statement insert; a miss falls back to the full-table scan.
+        var fastPathProperty = ResolveUniqueInsertFastPathProperty(uniqueFilter, state, predicate);
+        return await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(() => fastPathProperty != null
+            ? ExecuteTryAddUniqueIndexInsertAsync<TState>(state, cancellationToken)
+            : ExecuteTryAddUniqueScanCoreAsync<TState>(state, predicate, cancellationToken)), cancellationToken, nameof(TryAddUniqueAsync), false).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// TryAddUniqueAsync 事务核心（读全表冲突扫描 → 命中回滚返 false → 插入提交；唯一约束冲突 19/2067 转译 false）。
+    /// TryAddUniqueAsync 扫描回落核心（读全表冲突扫描 → 命中回滚返 false → 插入提交；唯一约束冲突 19/2067 转译 false）。
     /// </summary>
     /// <remarks>
-    /// The gated transaction core of TryAddUniqueAsync: scans the full table (soft-deleted documents
+    /// The gated transaction fallback core of TryAddUniqueAsync: scans the full table (soft-deleted documents
     /// included) for an Id occupant or uniqueness-predicate match and rolls back to <c>false</c> on a
     /// hit; otherwise inserts and commits. A SQLite unique-constraint violation (error codes 19 / 2067)
     /// is translated to <c>false</c> instead of propagating. The caller must hold <see cref="_gate"/>
     /// (via <c>ExecuteGatedAsync</c>) and run under <c>ExecuteWriteWithRetryAsync</c> with
     /// <c>isIdempotent: false</c> — the pre-check-then-insert core restarts as a whole on retry.
+    /// This path is taken when the uniqueness predicate cannot be reduced to a declared unique member
+    /// (see <see cref="ResolveUniqueInsertFastPathProperty{TState}"/>).
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="state">待插入的新档 / The new state to insert</param>
     /// <param name="predicate">已编译的唯一性判定 / The compiled uniqueness predicate</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>插入成功返回 <c>true</c>；唯一键冲突或 Id 已占用返回 <c>false</c> / <c>true</c> when inserted; <c>false</c> on a unique-key or Id conflict</returns>
-    private async Task<bool> ExecuteTryAddUniqueCoreAsync<TState>(TState state, Func<TState, bool> predicate, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    private async Task<bool> ExecuteTryAddUniqueScanCoreAsync<TState>(TState state, Func<TState, bool> predicate, CancellationToken cancellationToken) where TState : BaseCacheState, new()
     {
         await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
         var (transaction, owned) = await BeginOrJoinTransactionAsync(cancellationToken).ConfigureAwait(false);
@@ -356,6 +383,55 @@ public sealed partial class SqliteDbService
                 await transaction.DisposeAsync().ConfigureAwait(false);
             }
         }
+    }
+
+    /// <summary>
+    /// TryAddUniqueAsync 引擎快路径核心（单语句 <c>INSERT … ON CONFLICT DO NOTHING</c>，零全表读，语句级原子）。
+    /// </summary>
+    /// <remarks>
+    /// The gated fast-path core of TryAddUniqueAsync: a single <c>INSERT … ON CONFLICT DO NOTHING</c>
+    /// statement whose uniqueness is enforced by the declared unique expression index (bootstrapped by
+    /// <c>CreateTableAsync</c>). No table scan is executed, the statement is atomic by itself (SQLite
+    /// autocommit semantics) and therefore safe across processes, and a uniqueness or primary-key
+    /// conflict surfaces as zero affected rows (translated to <c>false</c>) instead of an exception.
+    /// Inside an ambient transaction the statement joins it (the transaction shell owns the commit).
+    /// The caller must hold <see cref="_gate"/> and run under <c>ExecuteWriteWithRetryAsync</c>.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="state">待插入的新档 / The new state to insert</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>插入成功返回 <c>true</c>；唯一键冲突或 Id 已占用返回 <c>false</c> / <c>true</c> when inserted; <c>false</c> on a unique-key or Id conflict</returns>
+    private async Task<bool> ExecuteTryAddUniqueIndexInsertAsync<TState>(TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+        using (var insertCommand = BuildInsertOnConflictDoNothingCommand<TState>(state))
+        {
+            // 环境事务存在时加入之（提交权归事务壳）；无环境事务时语句自提交（单语句即原子单元）。
+            // Join the ambient transaction when present (the shell owns the commit); without one the
+            // statement commits on its own (a single statement is its own atomic unit).
+            insertCommand.Transaction = AmbientTransaction.Value?.Transaction;
+            return await insertCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) == 1;
+        }
+    }
+
+    /// <summary>
+    /// 构建唯一插入快路径命令（<c>ON CONFLICT DO NOTHING</c>；id/doc 均经绑定参数传递）。
+    /// </summary>
+    /// <remarks>
+    /// Builds the unique-insert fast-path command. The table name is the quote-escaped
+    /// <c>typeof(TState).Name</c> — a compile-time-closed identifier, never runtime input (Sonar S2077);
+    /// the id and doc values are bound as parameters.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="state">待插入的状态 / The state to insert</param>
+    /// <returns>插入命令 / The insert command</returns>
+    private SqliteCommand BuildInsertOnConflictDoNothingCommand<TState>(TState state) where TState : BaseCacheState, new()
+    {
+        var command = _connection.CreateCommand();
+        command.CommandText = BuildInsertOnConflictDoNothingCommandText<TState>();
+        command.Parameters.AddWithValue("$id", state.Id);
+        command.Parameters.AddWithValue("$doc", SerializeDocument(state));
+        return command;
     }
 
     /// <summary>
@@ -455,6 +531,183 @@ public sealed partial class SqliteDbService
     private static string BuildRowVersionIsNullUpdateCommandText<TState>() where TState : BaseCacheState, new()
     {
         return "UPDATE " + QuoteTableName<TState>() + " SET doc = $doc WHERE id = $id AND json_extract(doc, '$.RowVersion') IS NULL;";
+    }
+
+    /// <summary>
+    /// 构建唯一插入快路径 SQL 文本（<c>ON CONFLICT DO NOTHING</c>；表名 = 编译期封闭类型名的双引号转义，非运行期输入）。
+    /// </summary>
+    /// <remarks>
+    /// Builds the unique-insert fast-path SQL text. The table name is the quote-escaped
+    /// <c>typeof(TState).Name</c> — a compile-time-closed identifier, never runtime input; SQL identifiers
+    /// cannot be bound parameters, so the composition is centralized in this dedicated builder with that
+    /// invariant stated (Sonar S2077). The <c>ON CONFLICT DO NOTHING</c> clause (without a conflict target)
+    /// swallows every uniqueness violation — the declared unique expression index and the primary key — and
+    /// reports it as zero affected rows instead of an exception.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <returns>SQL 文本 / The SQL text</returns>
+    private static string BuildInsertOnConflictDoNothingCommandText<TState>() where TState : BaseCacheState, new()
+    {
+        return "INSERT INTO " + QuoteTableName<TState>() + " (id, doc) VALUES ($id, $doc) ON CONFLICT DO NOTHING;";
+    }
+
+    /// <summary>
+    /// 判定唯一性谓词能否走引擎唯一索引快路径：归约为「参数成员 == 参数无关常量」+ 成员已声明唯一索引 + 自身值等价守卫。
+    /// </summary>
+    /// <remarks>
+    /// Decides whether the uniqueness predicate can take the engine-index fast path. The predicate must
+    /// reduce to <c>x.Member == value</c> (either orientation) where <c>value</c> does not depend on the
+    /// predicate parameter, <c>Member</c> must be a public instance property carrying a declared unique
+    /// index (<c>[EntityIndex(Unique = true)]</c> with an indexable type), and the equivalence guard must
+    /// hold: the predicate must be true for <paramref name="state"/> itself (so <c>state.Member == value</c>)
+    /// and <c>state.Member</c> must be non-null (a NULL key never matches the index). Under those
+    /// conditions, "the index rejects the insert because an existing row carries the same
+    /// <c>state.Member</c> value" is semantically identical to "the predicate matches an existing row",
+    /// so the engine check replaces the table scan. Anything else (composite predicates, nested members,
+    /// two member operands, an undeclared member, a predicate comparing against another value, a null
+    /// member value, a custom <c>operator ==</c>) returns <c>null</c> and the caller falls back to the
+    /// scan path.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="uniqueFilter">唯一性判定表达式 / The uniqueness predicate expression</param>
+    /// <param name="state">待插入的新档 / The new state to insert</param>
+    /// <param name="predicate">已编译的唯一性判定 / The compiled uniqueness predicate</param>
+    /// <returns>可走快路径时返回承载唯一索引的属性；否则返回 <c>null</c> / The unique-indexed property when the fast path applies; otherwise <c>null</c></returns>
+    internal static PropertyInfo ResolveUniqueInsertFastPathProperty<TState>(Expression<Func<TState, bool>> uniqueFilter, TState state, Func<TState, bool> predicate) where TState : BaseCacheState, new()
+    {
+        var body = uniqueFilter.Body as BinaryExpression;
+        if (body == null || body.NodeType != ExpressionType.Equal)
+        {
+            return null;
+        }
+
+        // 自定义 operator== 的等值语义无法与 json_extract 索引口径互推（仅接受内建等值与字符串等值）。
+        // A custom operator== cannot be reasoned about against the json_extract index domain
+        // (only built-in and string equality are accepted).
+        if (body.Method != null && body.Method.DeclaringType != typeof(string))
+        {
+            return null;
+        }
+
+        var left = StripConvertNodes(body.Left);
+        var right = StripConvertNodes(body.Right);
+        var memberExpression = left as MemberExpression ?? right as MemberExpression;
+        if (memberExpression == null || memberExpression.Expression != uniqueFilter.Parameters[0])
+        {
+            // 成员侧不是直接挂在谓词参数上的属性（嵌套成员 / 两侧皆非常量成员）→ 不走快路径。
+            // The member side is not a property directly rooted at the predicate parameter
+            // (nested member / neither side a member) — no fast path.
+            return null;
+        }
+
+        var valueExpression = ReferenceEquals(memberExpression, left) ? right : left;
+        if (!IsParameterIndependentValue(valueExpression))
+        {
+            return null;
+        }
+
+        if (memberExpression.Member is not PropertyInfo property || property.GetMethod == null || !property.GetMethod.IsPublic || property.GetMethod.IsStatic)
+        {
+            return null;
+        }
+
+        string jsonName = null;
+        foreach (var declaration in ResolveUniqueIndexDeclarations<TState>())
+        {
+            if (declaration.Property.Name == property.Name)
+            {
+                jsonName = declaration.JsonName;
+                break;
+            }
+        }
+
+        if (jsonName == null)
+        {
+            // 该属性未声明唯一索引（或声明被跳过：类型不可索引 / JsonIgnore / 名称不可转义）→ 不走快路径。
+            // The property carries no usable unique index declaration — no fast path.
+            return null;
+        }
+
+        // 等价守卫：谓词须对 state 自身为真（state.Member == value）且自身值非 null。
+        // Equivalence guard: the predicate must hold for the state itself (state.Member == value)
+        // and the member value must be non-null.
+        if (property.GetValue(state) == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            if (!predicate(state))
+            {
+                return null;
+            }
+        }
+        catch
+        {
+            // 谓词对自身求值抛错（扫描路径从不对新档求值）→ 保守回落，不改变既有行为。
+            // The predicate throws for the state itself (the scan path never evaluates it against the new
+            // state) — fall back conservatively and keep the previous behavior.
+            return null;
+        }
+
+        return property;
+    }
+
+    /// <summary>
+    /// 剥离表达式上的类型转换节点（<c>Convert</c> / <c>ConvertChecked</c>），保留可归约的原始成员与常量。
+    /// </summary>
+    /// <remarks>
+    /// Strips the type-conversion nodes (<c>Convert</c> / <c>ConvertChecked</c>) from an expression, keeping
+    /// the underlying member or constant reducible.
+    /// </remarks>
+    /// <param name="expression">待剥离的表达式 / The expression to strip</param>
+    /// <returns>剥离转换后的表达式 / The expression without conversion nodes</returns>
+    private static Expression StripConvertNodes(Expression expression)
+    {
+        while (expression is UnaryExpression unary && (unary.NodeType == ExpressionType.Convert || unary.NodeType == ExpressionType.ConvertChecked))
+        {
+            expression = unary.Operand;
+        }
+
+        return expression;
+    }
+
+    /// <summary>
+    /// 判定表达式是否为「与谓词参数无关的值」（常量 / 闭包捕获 / 静态成员链）。
+    /// </summary>
+    /// <remarks>
+    /// Decides whether an expression is a value independent of the predicate parameter (a constant, a
+    /// closure capture or a static member chain).
+    /// </remarks>
+    /// <param name="expression">待判定表达式 / The expression to inspect</param>
+    /// <returns>与参数无关返回 <c>true</c>；否则返回 <c>false</c> / <c>true</c> when independent of the parameter; otherwise <c>false</c></returns>
+    private static bool IsParameterIndependentValue(Expression expression)
+    {
+        if (expression is ConstantExpression)
+        {
+            return true;
+        }
+
+        if (expression is MemberExpression member)
+        {
+            // 闭包捕获或静态成员：成员链的根须为常量（静态成员的 Expression 为 null）。
+            // Closure capture or static member: the member chain must be rooted at a constant
+            // (a static member has a null Expression).
+            var current = (Expression)member;
+            while (current is MemberExpression currentMember)
+            {
+                current = currentMember.Expression;
+                if (current == null)
+                {
+                    return true;
+                }
+            }
+
+            return current is ConstantExpression;
+        }
+
+        return false;
     }
 
     /// <summary>

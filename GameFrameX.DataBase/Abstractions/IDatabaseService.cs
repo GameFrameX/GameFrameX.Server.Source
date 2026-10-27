@@ -878,11 +878,17 @@ public interface IDatabaseService
     /// Uniqueness ignores soft-delete visibility (the physical unique-index scope — soft-deleted rows still occupy the key)</description></item>
     /// <item><description>唯一键命中或 <c>Id</c> 已占用返回 <c>false</c>；时间戳补齐对齐 <see cref="AddAsync{TState}(TState)"/> /
     /// A unique-key hit or an already-occupied <c>Id</c> returns <c>false</c>; timestamps are filled like <see cref="AddAsync{TState}(TState)"/></description></item>
-    /// <item><description>Mongo/PostgreSQL 的完全竞态安全依赖 <c>EntityIndexAttribute(Unique = true)</c> 声明的
-    /// provider 唯一索引（先查后插仅兜底顺序冲突）；SQLite 写事务内查插，天然串行安全 /
-    /// Full race safety on Mongo/PostgreSQL relies on the provider unique index declared via
-    /// <c>EntityIndexAttribute(Unique = true)</c> (the pre-check only covers sequential conflicts);
-    /// SQLite checks and inserts inside its write transaction and is serialized by construction</description></item>
+    /// <item><description>完全竞态安全依赖 <c>EntityIndexAttribute(Unique = true)</c> 声明的 provider 唯一索引：
+    /// Mongo/PostgreSQL 先查后插、由引擎唯一索引兜底并发窗口（预查仅覆盖顺序冲突）；SQLite 在建表时把声明
+    /// 物化为 <c>json_extract</c> 表达式唯一索引，谓词可归约时以单语句 <c>INSERT … ON CONFLICT DO NOTHING</c> 落库
+    /// （零全表读、语句级原子、跨进程安全），不可归约时回落先查后插（仅兜底顺序冲突）/
+    /// Full race safety relies on the provider unique index declared via
+    /// <c>EntityIndexAttribute(Unique = true)</c>: Mongo/PostgreSQL probe and insert, with the engine index
+    /// backstopping the concurrent window (the pre-check only covers sequential conflicts); SQLite materializes
+    /// the declaration as a <c>json_extract</c> expression unique index when the table is created and, for a
+    /// reducible predicate, writes through a single <c>INSERT … ON CONFLICT DO NOTHING</c> statement (no table
+    /// scan, statement-atomic, cross-process safe), falling back to probe-and-insert (sequential conflicts only)
+    /// when the predicate cannot be reduced</description></item>
     /// </list>
     /// </remarks>
     /// <param name="state">要插入的数据对象 / The state to insert</param>

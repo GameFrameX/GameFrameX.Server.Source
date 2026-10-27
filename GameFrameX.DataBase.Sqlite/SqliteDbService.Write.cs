@@ -29,10 +29,13 @@
 
 
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
+using GameFrameX.Foundation.Orm.Attribute;
 using GameFrameX.Localization;
 using Microsoft.Data.Sqlite;
 
@@ -1172,11 +1175,13 @@ public sealed partial class SqliteDbService
             {
                 var holder = new AmbientTransactionHolder { Transaction = transaction, };
                 AmbientTransaction.Value = holder;
+                var committed = false;
                 try
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     await action().ConfigureAwait(false);
                     await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                    committed = true;
                 }
                 finally
                 {
@@ -1185,6 +1190,18 @@ public sealed partial class SqliteDbService
                     // observe null immediately), then clear this flow's AsyncLocal slot.
                     holder.Transaction = null;
                     AmbientTransaction.Value = null;
+                    if (!committed)
+                    {
+                        // 未提交即回滚：壳内首建的表与唯一索引 DDL 随之撤销，就绪缓存须整体失效——否则后续操作
+                        // 撞「no such table」，或唯一索引缺失而快路径静默放行重复键。DDL 均 IF NOT EXISTS，重建幂等；
+                        // 壳全程持有 _gate，清理无竞态。
+                        // Not committed means rolled back: DDL first issued inside the shell (tables and unique
+                        // indexes) is undone with it, so the readiness cache must be invalidated — otherwise later
+                        // operations hit "no such table", or a missing unique index lets the fast path silently
+                        // admit duplicate keys. Every DDL is IF NOT EXISTS (idempotent rebuild); the shell holds
+                        // _gate throughout, so the clear is race-free.
+                        _tableReady.Clear();
+                    }
                 }
             }
         }
@@ -1462,10 +1479,16 @@ public sealed partial class SqliteDbService
     }
 
     /// <summary>
-    /// 建表 DDL 执行（调用方须持有 <see cref="_gate"/>；CREATE TABLE IF NOT EXISTS 幂等）。
+    /// 建表 DDL 执行（调用方须持有 <see cref="_gate"/>；CREATE TABLE IF NOT EXISTS 幂等），并引导声明式唯一索引。
     /// </summary>
     /// <remarks>
-    /// Runs the CREATE TABLE IF NOT EXISTS DDL (the caller must hold <see cref="_gate"/>).
+    /// Runs the CREATE TABLE IF NOT EXISTS DDL (the caller must hold <see cref="_gate"/>), then bootstraps the
+    /// declared unique expression indexes: each public instance property carrying
+    /// <c>[EntityIndex(Unique = true)]</c> is materialized as a
+    /// <c>json_extract(doc, '$.「JSON属性名」')</c> UNIQUE index, mirroring Mongo's
+    /// <c>CreateIndexesAsync</c> and PG's <c>EnsureIndexesAsync</c> so uniqueness is enforced by the engine
+    /// at the index layer (see C326). A bootstrap failure (e.g. pre-existing duplicate values) faults the
+    /// single-flight task so the next access retries; the raw <see cref="SqliteException"/> propagates.
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <returns>异步任务 / Async task</returns>
@@ -1476,6 +1499,216 @@ public sealed partial class SqliteDbService
             command.CommandText = BuildCreateTableCommandText<TState>();
             await command.ExecuteNonQueryAsync().ConfigureAwait(false);
         }
+
+        foreach (var declaration in ResolveUniqueIndexDeclarations<TState>())
+        {
+            string storedDefinition;
+            using (var probeCommand = _connection.CreateCommand())
+            {
+                probeCommand.CommandText = "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = $name;";
+                probeCommand.Parameters.AddWithValue("$name", declaration.IndexName);
+                storedDefinition = await probeCommand.ExecuteScalarAsync().ConfigureAwait(false) as string;
+            }
+
+            if (storedDefinition != null && IsUniqueIndexDefinitionCurrent(storedDefinition, declaration.JsonName))
+            {
+                continue;
+            }
+
+            if (storedDefinition != null)
+            {
+                // 同名异构（属性改名 / JsonPropertyName 变更 / 唯一性变化）：IF NOT EXISTS 对同名索引为 no-op，旧索引会
+                // 原样残留在旧 JSON 路径上——新文档该路径为 NULL，唯一约束形同虚设、快路径静默放行重复键。先删后建对齐声明
+                // （同 PG 适配器同名异构重建语义）。
+                // Same name, drifted shape (renamed property / changed JsonPropertyName / uniqueness change): IF NOT
+                // EXISTS is a no-op for a same-name index, so the stale index would stay on the old JSON path — new
+                // documents carry NULL there, voiding the constraint and letting the fast path silently admit
+                // duplicates. Drop and recreate to match the declaration (same as the PG adapter's drift rebuild).
+                using (var dropCommand = _connection.CreateCommand())
+                {
+                    dropCommand.CommandText = "DROP INDEX IF EXISTS " + QuoteIdentifier(declaration.IndexName) + ";";
+                    await dropCommand.ExecuteNonQueryAsync().ConfigureAwait(false);
+                }
+            }
+
+            using (var indexCommand = _connection.CreateCommand())
+            {
+                indexCommand.CommandText = BuildUniqueIndexCommandText<TState>(declaration.IndexName, declaration.JsonName);
+                await indexCommand.ExecuteNonQueryAsync().ConfigureAwait(false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 判定已存储的索引定义是否与当前唯一索引声明一致（唯一 + 同一 JSON 路径表达式）。
+    /// </summary>
+    /// <remarks>
+    /// Decides whether a stored index definition (the <c>sqlite_master.sql</c> text, which SQLite keeps
+    /// verbatim minus the <c>IF NOT EXISTS</c> clause) still matches the current unique-index declaration:
+    /// it must be a UNIQUE index over exactly the expected <c>json_extract</c> expression.
+    /// </remarks>
+    /// <param name="storedDefinition">已存储的索引定义 / The stored index definition</param>
+    /// <param name="jsonPropertyName">JSON 属性名 / The JSON property name</param>
+    /// <returns>一致返回 <c>true</c>；否则返回 <c>false</c> / <c>true</c> when current; otherwise <c>false</c></returns>
+    private static bool IsUniqueIndexDefinitionCurrent(string storedDefinition, string jsonPropertyName)
+    {
+        return storedDefinition.StartsWith("CREATE UNIQUE INDEX ", StringComparison.OrdinalIgnoreCase)
+               && storedDefinition.EndsWith("(" + BuildUniqueIndexExpression(jsonPropertyName) + ")", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// 构建唯一索引的 <c>json_extract</c> 表达式片段（JSON 名内单引号按 SQL 字面量规则双写）。
+    /// </summary>
+    /// <remarks>
+    /// Builds the <c>json_extract</c> expression fragment of a unique index (single quotes inside the JSON
+    /// name are doubled per SQL string-literal rules). Shared by the DDL builder and the drift check so both
+    /// always agree on the exact text.
+    /// </remarks>
+    /// <param name="jsonPropertyName">JSON 属性名 / The JSON property name</param>
+    /// <returns>表达式片段 / The expression fragment</returns>
+    private static string BuildUniqueIndexExpression(string jsonPropertyName)
+    {
+        return "json_extract(doc, '$.\"" + jsonPropertyName.Replace("'", "''", StringComparison.Ordinal) + "\"')";
+    }
+
+    /// <summary>
+    /// 解析状态类型的声明式唯一索引集（公共实例属性上的 <c>[EntityIndex(Unique = true)]</c> → 索引名 / JSON 属性名）。
+    /// </summary>
+    /// <remarks>
+    /// Resolves the declared unique-index set of a state type: public instance properties annotated with
+    /// <c>[EntityIndex(Unique = true)]</c> map to (property, index name, JSON property name) triplets.
+    /// The index name is composed as <c>{状态类型名}_{声明名}</c> — SQLite index names are schema-global, so the
+    /// type prefix makes cross-table name collisions structurally impossible. Declarations are skipped (not
+    /// indexed, fast path disabled — preserving the pre-change scan semantics) when: the declared name is blank
+    /// (same tolerance as the PG adapter), the property type is not in the indexable set (ulong's full range
+    /// exceeds SQLite's INTEGER and degrades to REAL under <c>json_extract</c>; float/double/decimal/DateTime/Guid
+    /// equality semantics cannot be reasoned about against the json_extract value domain), the property carries
+    /// <c>[JsonIgnore]</c> (never written into <c>doc</c> — the expression would be permanently NULL and UNIQUE
+    /// admits NULLs, silently voiding the constraint), or the JSON name contains a double quote / backslash
+    /// (unescapable inside a SQLite JSON path quoted label).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <returns>唯一索引声明三元组 / The unique-index declaration triplets</returns>
+    private static (PropertyInfo Property, string IndexName, string JsonName)[] ResolveUniqueIndexDeclarations<TState>() where TState : BaseCacheState, new()
+    {
+        // 每状态类型反射一次：快路径判定在每次 TryAddUniqueAsync 上执行，不得重复反射。
+        // Reflect once per state type: the fast-path decision runs on every TryAddUniqueAsync call.
+        return UniqueIndexDeclarationCache.GetOrAdd(typeof(TState), static _ => ReflectUniqueIndexDeclarations<TState>());
+    }
+
+    /// <summary>
+    /// 反射构建状态类型的唯一索引声明集（结果由 <see cref="UniqueIndexDeclarationCache"/> 按类型缓存）。
+    /// </summary>
+    /// <remarks>
+    /// Reflects the unique-index declaration set of a state type; the result is cached per type by
+    /// <see cref="UniqueIndexDeclarationCache"/> (see <see cref="ResolveUniqueIndexDeclarations{TState}"/>
+    /// for the skip rules).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <returns>唯一索引声明三元组 / The unique-index declaration triplets</returns>
+    private static (PropertyInfo Property, string IndexName, string JsonName)[] ReflectUniqueIndexDeclarations<TState>() where TState : BaseCacheState, new()
+    {
+        var properties = typeof(TState).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+        var declarations = new List<(PropertyInfo, string, string)>();
+        foreach (var property in properties)
+        {
+            var indexAttribute = property.GetCustomAttribute<EntityIndexAttribute>();
+            if (indexAttribute == null || !indexAttribute.Unique || string.IsNullOrWhiteSpace(indexAttribute.Name))
+            {
+                continue;
+            }
+
+            if (!IsIndexableUniquePropertyType(property.PropertyType))
+            {
+                continue;
+            }
+
+            if (property.GetCustomAttribute<JsonIgnoreAttribute>() != null)
+            {
+                continue;
+            }
+
+            var jsonName = property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name;
+            if (string.IsNullOrEmpty(jsonName))
+            {
+                jsonName = property.Name;
+            }
+
+            if (jsonName.Contains('\"') || jsonName.Contains('\\'))
+            {
+                continue;
+            }
+
+            declarations.Add((property, typeof(TState).Name + "_" + indexAttribute.Name, jsonName));
+        }
+
+        return declarations.ToArray();
+    }
+
+    /// <summary>
+    /// 判定唯一索引属性类型是否可物化为 <c>json_extract</c> 表达式索引（CLR 等值语义与引擎值域无漂移面）。
+    /// </summary>
+    /// <remarks>
+    /// Decides whether a unique-index property type can be materialized as a <c>json_extract</c> expression
+    /// index without a semantic drift gap between CLR equality and the engine value domain: strings (ordinal
+    /// equality ≡ SQLite BINARY collation), <c>bool</c> and the signed/unsigned integral family except
+    /// <c>ulong</c> (JSON integer → SQLite INTEGER, exact), and enums (serialized as their underlying integer).
+    /// Excluded: <c>ulong</c> (values beyond int64 degrade to lossy REAL), <c>char</c>, floating point and
+    /// <c>decimal</c> (text/precision drift), <c>DateTime</c>/<c>DateTimeOffset</c> (Kind/offset representation
+    /// drift), <c>Guid</c> and any other shape — such declarations keep the legacy scan semantics.
+    /// </remarks>
+    /// <param name="propertyType">属性 CLR 类型 / The property CLR type</param>
+    /// <returns>可索引返回 <c>true</c>；否则返回 <c>false</c> / <c>true</c> when indexable; otherwise <c>false</c></returns>
+    private static bool IsIndexableUniquePropertyType(Type propertyType)
+    {
+        var effectiveType = Nullable.GetUnderlyingType(propertyType) ?? propertyType;
+        if (effectiveType.IsEnum)
+        {
+            return true;
+        }
+
+        return effectiveType == typeof(string)
+               || effectiveType == typeof(bool)
+               || effectiveType == typeof(int)
+               || effectiveType == typeof(uint)
+               || effectiveType == typeof(long)
+               || effectiveType == typeof(short)
+               || effectiveType == typeof(ushort)
+               || effectiveType == typeof(byte)
+               || effectiveType == typeof(sbyte);
+    }
+
+    /// <summary>
+    /// 引用任意标识符（双引号转义，同 <see cref="QuoteTableName{TState}"/> 的不变量）。
+    /// </summary>
+    /// <remarks>
+    /// Quotes an arbitrary identifier as a SQLite identifier (same invariant as
+    /// <see cref="QuoteTableName{TState}"/>).
+    /// </remarks>
+    /// <param name="identifier">标识符 / The identifier</param>
+    /// <returns>转义后的标识符 / The quoted identifier</returns>
+    private static string QuoteIdentifier(string identifier)
+    {
+        return "\"" + identifier.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
+    }
+
+    /// <summary>
+    /// 构建声明式唯一索引 DDL 文本（索引名 = 编译期封闭的类型名 + 声明名，JSON 属性名 = 属性名或 <c>[JsonPropertyName]</c>，均非运行期输入）。
+    /// </summary>
+    /// <remarks>
+    /// Builds the CREATE UNIQUE INDEX IF NOT EXISTS text. The index name composes the compile-time closed
+    /// type name and the declared attribute name; the JSON property name is the property name or its
+    /// <c>[JsonPropertyName]</c> override — neither is runtime input; SQLite identifiers and JSON path labels
+    /// cannot be bound as parameters, so the composition is centralized in this builder with the invariant
+    /// stated (Sonar S2077). Embedded single quotes in the JSON name are doubled for the SQL string literal.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="indexName">索引名（已含类型前缀）/ The index name (type-prefixed)</param>
+    /// <param name="jsonPropertyName">JSON 属性名 / The JSON property name</param>
+    /// <returns>DDL 文本 / The DDL text</returns>
+    private static string BuildUniqueIndexCommandText<TState>(string indexName, string jsonPropertyName) where TState : BaseCacheState, new()
+    {
+        return "CREATE UNIQUE INDEX IF NOT EXISTS " + QuoteIdentifier(indexName) + " ON " + QuoteTableName<TState>() + " (" + BuildUniqueIndexExpression(jsonPropertyName) + ");";
     }
 
     /// <summary>
