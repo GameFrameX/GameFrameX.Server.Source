@@ -484,16 +484,12 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
         {
             stopwatch.Stop();
 
-            // 连接级异常仅失效当前连接（池内其余连接与其它 endpoint 不受影响）；其余异常保守全量失效
+            // 连接级异常仅失效当前连接（池内其余连接与其它 endpoint 不受影响）；
+            // 非连接类异常（编码失败、协议协商等）交由熔断/健康评分/重试处理，不破坏共享连接面
             if (stream != null && IsConnectionException(ex))
             {
                 _transportProtocolAdapter.Invalidate(stream);
             }
-            else
-            {
-                _transportProtocolAdapter.Invalidate();
-            }
-
 
             RecordFailures(targetKey, ex.Message);
             await RunExceptionInterceptorsAsync(context, requestMessage, ex, stopwatch.ElapsedMilliseconds);
@@ -947,17 +943,19 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
             return;
         }
 
+        Stream stream = null;
         try
         {
             await RunBeforeInterceptorsAsync(context, requestMessage);
 
 
-            var stream = await _transportProtocolAdapter.GetOrCreateStreamAsync(target, context.CancellationToken);
+            stream = await _transportProtocolAdapter.GetOrCreateStreamAsync(target, context.CancellationToken);
             if (stream == null)
             {
                 RecordFailures(targetKey, "SendOneWayAsync: Failed to create connection");
                 return;
             }
+
 
             var connection = GetOrCreateConnection(stream);
 
@@ -1003,8 +1001,11 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
         }
         catch (Exception ex)
         {
-            // 单向发送无等待方与流引用，写失败保守全量失效（与旧行为一致）
-            _transportProtocolAdapter.Invalidate();
+            // 与 RPC 路径同一定案：连接级异常仅失效当前连接，非连接类异常交由熔断/健康评分处理，不清共享连接池
+            if (stream != null && IsConnectionException(ex))
+            {
+                _transportProtocolAdapter.Invalidate(stream);
+            }
             RecordFailures(targetKey, $"SendOneWayAsync error: {ex.Message}");
         }
     }
@@ -1066,7 +1067,7 @@ internal sealed class RemoteMessageClient : IRemoteMessageClient
 
     private static bool IsConnectionException(Exception ex)
     {
-        return ex is IOException || ex is SocketException;
+        return ex is IOException || ex is SocketException || ex is ObjectDisposedException;
     }
 
     private async Task RunBeforeInterceptorsAsync(RemoteCallContext context, MessageObject request)
