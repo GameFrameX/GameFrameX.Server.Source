@@ -48,11 +48,23 @@ public static class ActorIdGenerator
     private const int GlobalActorIdMultiplier = 1000;
     private const int MultiActorTypeBitMask = 0x7F;
 
-    private static long _genSecond;
-    private static long _incrNum;
+    /// <summary>
+    /// 可容忍的最大时钟回拨秒数：回拨量不超过该值时在锁外等待时钟追上，超过时拒绝生成 ID 并抛出异常。
+    /// </summary>
+    /// <remarks>
+    /// Maximum tolerated clock rollback in seconds: wait for the clock to catch up within it, refuse to generate IDs beyond it.
+    /// </remarks>
+    internal const long MaxClockBackwardsToleranceSeconds = 5;
 
+    /// <summary>
+    /// 多 Actor 布局（14 位服务器 + 7 位类型）专属的秒级序号状态，与唯一 ID 布局互不挤占容量。
+    /// </summary>
+    private static readonly ActorIdSequence MultiActorIdSequence = new ActorIdSequence(GlobalConst.MaxActorIncrease, () => DateTime.UtcNow, Thread.Sleep);
 
-    private static readonly object LockObj = new();
+    /// <summary>
+    /// 唯一 ID 布局（14 位模块）专属的秒级序号状态。
+    /// </summary>
+    private static readonly ActorIdSequence UniqueIdSequence = new ActorIdSequence(GlobalConst.MaxUniqueIncrease, () => DateTime.UtcNow, Thread.Sleep);
 
     /// <summary>
     /// 根据ActorId获取服务器ID。
@@ -114,6 +126,7 @@ public static class ActorIdGenerator
     /// <param name="serverId">服务器ID，默认为0时使用当前服务器ID / The server ID, defaults to 0 which uses current server ID</param>
     /// <returns>生成的ActorId / The generated ActorId</returns>
     /// <exception cref="ArgumentException">当类型或服务器ID无效时抛出 / Thrown when type or serverId is invalid</exception>
+    /// <exception cref="InvalidOperationException">当时钟回拨超过容忍上限时抛出 / Thrown when the clock rolls back beyond the tolerance limit</exception>
     public static long GetActorId(ushort type, int serverId = 0)
     {
         if (type == GlobalConst.ActorTypeSeparator)
@@ -164,31 +177,16 @@ public static class ActorIdGenerator
         return serverId * GlobalActorIdMultiplier + actorType;
     }
 
+    /// <summary>
+    /// 取多 Actor 布局的下一个 (秒, 自增)：序号推进与读取在序列内部同一临界区完成，锁外拿到的是本线程私有值。
+    /// </summary>
     private static long GetMultiActorId(ushort type, int serverId)
     {
-        var second = (long)(DateTime.UtcNow - IdGenerator.UtcTimeStart).TotalSeconds;
-        lock (LockObj)
-        {
-            if (second > _genSecond)
-            {
-                _genSecond = second;
-                _incrNum = 0L;
-            }
-            else if (_incrNum >= GlobalConst.MaxActorIncrease)
-            {
-                ++_genSecond;
-                _incrNum = 0L;
-            }
-            else
-            {
-                ++_incrNum;
-            }
-        }
-
+        MultiActorIdSequence.Next(out var second, out var increase);
         var actorId = (long)serverId << GlobalConst.ServerIdOrModuleIdMask; // serverId-14位, 支持1000~9999
         actorId |= (long)type << GlobalConst.ActorTypeMask; // 多actor类型-7位, 支持0~127
-        actorId |= _genSecond << GlobalConst.TimestampMask; // 时间戳-30位, 支持34年
-        actorId |= _incrNum; // 自增-12位, 每秒4096个
+        actorId |= second << GlobalConst.TimestampMask; // 时间戳-30位, 支持34年
+        actorId |= increase; // 自增-12位, 每秒4096个
         return actorId;
     }
 
@@ -200,6 +198,7 @@ public static class ActorIdGenerator
     /// </remarks>
     /// <param name="module">模块ID，默认为最大值 / The module ID, defaults to maximum value</param>
     /// <returns>生成的唯一ID / The generated unique ID</returns>
+    /// <exception cref="InvalidOperationException">当时钟回拨超过容忍上限时抛出 / Thrown when the clock rolls back beyond the tolerance limit</exception>
     public static long GetUniqueId(ushort module = GlobalConst.IdModuleMax)
     {
         return GetUniqueIdByModule(module);
@@ -211,10 +210,13 @@ public static class ActorIdGenerator
     /// <remarks>
     /// Gets a unique ID based on the module. Maximum module value is 999.
     /// ID structure: 14 bits (module) + 30 bits (timestamp) + 19 bits (auto-increment).
+    /// The sequence waits for the next second when the per-second capacity is exhausted,
+    /// and waits for the clock to catch up on small rollback (refuses with an exception beyond the tolerance).
     /// </remarks>
     /// <param name="module">模块ID，默认为999，最大值不能超过999 / The module ID, defaults to 999, maximum is 999</param>
     /// <returns>生成的唯一ID / The generated unique ID</returns>
     /// <exception cref="ArgumentOutOfRangeException">当模块值超过999时抛出 / Thrown when module exceeds 999</exception>
+    /// <exception cref="InvalidOperationException">当时钟回拨超过容忍上限时抛出 / Thrown when the clock rolls back beyond the tolerance limit</exception>
     public static long GetUniqueIdByModule(ushort module = 999)
     {
         if (module > 999)
@@ -222,32 +224,118 @@ public static class ActorIdGenerator
             throw new ArgumentOutOfRangeException(nameof(module), LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ModuleInvalid));
         }
 
-        var second = (long)(DateTime.UtcNow - IdGenerator.UtcTimeStart).TotalSeconds;
-        lock (LockObj)
-        {
-            if (second > _genSecond)
-            {
-                _genSecond = second;
-                _incrNum = 0L;
-            }
-            else if (_incrNum >= GlobalConst.MaxUniqueIncrease)
-            {
-                ++_genSecond;
-                _incrNum = 0L;
-            }
-            else
-            {
-                ++_incrNum;
-            }
-        }
-
+        UniqueIdSequence.Next(out var second, out var increase);
         var id = (long)module << GlobalConst.ServerIdOrModuleIdMask; // 模块id 14位 支持 0~9999
-        lock (LockObj)
+        id |= second << GlobalConst.ModuleIdTimestampMask; // 时间戳 30位
+        id |= increase; // 自增-19位, 每秒524288个
+        return id;
+    }
+
+    /// <summary>
+    /// 单一 ID 布局的 (秒, 自增) 序号状态：推进与读取在同一临界区内完成，调用方在锁外只使用自己的局部值。
+    /// </summary>
+    /// <remarks>
+    /// The (second, increase) sequence state of one ID layout: advancing and reading happen in the same critical section,
+    /// callers only use their own local values outside the lock.
+    /// 时间源与等待动作由构造注入：生产环境使用 DateTime.UtcNow 与 Thread.Sleep，测试注入假时钟与假等待。
+    /// 序号耗尽时在锁外等待下一秒（不借用未来的秒）；时钟回拨不超过容忍上限时在锁外等待时钟追上，超过时抛出异常。
+    /// </remarks>
+    internal sealed class ActorIdSequence
+    {
+        private readonly object _lockObject = new object();
+        private readonly long _maximumIncrease;
+        private readonly Func<DateTime> _utcNowProvider;
+        private readonly Action<int> _waitAction;
+        private long _lastSecond;
+        private long _lastIncrease;
+
+        /// <summary>
+        /// 以指定的每秒序号上限、时间源与等待动作创建序列。
+        /// </summary>
+        /// <param name="maximumIncrease">每秒允许的最大自增值 / The maximum auto-increase value per second</param>
+        /// <param name="utcNowProvider">当前 UTC 时间提供者 / The current UTC time provider</param>
+        /// <param name="waitAction">锁外等待动作，参数为等待毫秒数 / The wait action invoked outside the lock, in milliseconds</param>
+        internal ActorIdSequence(long maximumIncrease, Func<DateTime> utcNowProvider, Action<int> waitAction)
         {
-            id |= _genSecond << GlobalConst.ModuleIdTimestampMask; // 时间戳 30位
+            _maximumIncrease = maximumIncrease;
+            _utcNowProvider = utcNowProvider;
+            _waitAction = waitAction;
         }
 
-        id |= _incrNum; // 自增 19位
-        return id;
+        /// <summary>
+        /// 取下一个 (秒, 自增)：同一秒内自增，跨秒归零；序号耗尽或短时钟回拨时在锁外等待后重试。
+        /// </summary>
+        /// <remarks>
+        /// Gets the next (second, increase): increases within the same second, resets on a new second;
+        /// retries after waiting outside the lock on sequence exhaustion or small clock rollback.
+        /// </remarks>
+        /// <param name="second">取出的秒值 / The second value handed out</param>
+        /// <param name="increase">取出的自增值 / The increase value handed out</param>
+        /// <exception cref="InvalidOperationException">当时钟回拨超过容忍上限时抛出 / Thrown when the clock rolls back beyond the tolerance limit</exception>
+        internal void Next(out long second, out long increase)
+        {
+            while (true)
+            {
+                int waitMilliseconds;
+                lock (_lockObject)
+                {
+                    var currentSecond = GetCurrentSecond(_utcNowProvider());
+                    if (currentSecond > _lastSecond)
+                    {
+                        _lastSecond = currentSecond;
+                        _lastIncrease = 0L;
+                        second = _lastSecond;
+                        increase = _lastIncrease;
+                        return;
+                    }
+
+                    if (currentSecond == _lastSecond)
+                    {
+                        if (_lastIncrease < _maximumIncrease)
+                        {
+                            ++_lastIncrease;
+                            second = _lastSecond;
+                            increase = _lastIncrease;
+                            return;
+                        }
+
+                        // 本秒序号已耗尽：等待到下一秒，不借用未来的秒，保证逻辑时钟不超前墙上时钟
+                        waitMilliseconds = GetWaitMillisecondsUntilSecond(_lastSecond + 1, _utcNowProvider());
+                    }
+                    else
+                    {
+                        var backwardsSeconds = _lastSecond - currentSecond;
+                        if (backwardsSeconds > MaxClockBackwardsToleranceSeconds)
+                        {
+                            // Localization: Utility.Exceptions.ActorIdClockMovedBackwards - 系统时钟回拨 {0} 秒，超过容忍上限 {1} 秒，拒绝生成ID
+                            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ActorIdClockMovedBackwards, backwardsSeconds, MaxClockBackwardsToleranceSeconds));
+                        }
+
+                        // 短回拨：等待时钟追上上次使用的秒，随后在该秒内继续自增，不产生历史重复 ID
+                        waitMilliseconds = GetWaitMillisecondsUntilSecond(_lastSecond, _utcNowProvider());
+                    }
+                }
+
+                // 在锁外等待，避免持锁阻塞其他线程
+                _waitAction(waitMilliseconds);
+            }
+        }
+
+        /// <summary>
+        /// 计算当前时间在纪元起点之后经过的整秒数。
+        /// </summary>
+        private static long GetCurrentSecond(DateTime utcNow)
+        {
+            return (long)(utcNow - IdGenerator.UtcTimeStart).TotalSeconds;
+        }
+
+        /// <summary>
+        /// 计算距离目标秒起点还需等待的毫秒数（向上取整，至少 1 毫秒）。
+        /// </summary>
+        private static int GetWaitMillisecondsUntilSecond(long targetSecond, DateTime utcNow)
+        {
+            var remainingMilliseconds = (IdGenerator.UtcTimeStart.AddSeconds(targetSecond) - utcNow).TotalMilliseconds;
+            return (int)System.Math.Ceiling(System.Math.Max(remainingMilliseconds, 1d));
+        }
     }
 }
