@@ -607,8 +607,10 @@ public static class ActorManager
     /// Iterates over all Actors and executes the specified callback action.
     /// </remarks>
     /// <param name="action">对每个Actor执行的回调操作 / Callback action to execute for each Actor</param>
-    public static void ActorForEach(Action<IActor> action)
+    /// <returns>回调抛出异常的Actor数量，0表示全部成功 / Number of Actors whose callback threw an exception, 0 means all succeeded</returns>
+    public static int ActorForEach(Action<IActor> action)
     {
+        var failureCount = 0;
         foreach (var actor in ActorMap.Values)
         {
             try
@@ -617,25 +619,30 @@ public static class ActorManager
             }
             catch (Exception exception)
             {
+                failureCount++;
                 // Localization: Core.ActorManager.ActorForEachError - ActorManager.ActorForEach 错误 actorId:{0} actorType:{1} 异常: {2}
                 LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.ActorManager.ActorForEachError, actor.Id, actor.Type, exception));
             }
         }
+
+        return failureCount;
     }
 
     /// <summary>
-    /// 遍历所有匹配指定组件代理类型的Actor，并执行异步回调操作。
+    /// 遍历所有匹配指定组件代理类型的Actor，在各自的消息队列中执行异步回调，并等待全部完成。
     /// </summary>
     /// <remarks>
-    /// Iterates over all Actors matching the specified component agent type and executes the async callback.
+    /// Iterates over all Actors matching the specified component agent type, executes the async callback on each Actor's message queue, and awaits all of them.
     /// </remarks>
     /// <param name="func">对每个匹配Actor执行的异步回调操作 / Async callback to execute for each matching Actor</param>
     /// <typeparam name="T">组件代理类型 / Component agent type</typeparam>
-    public static void ActorForEach<T>(Func<T, Task> func) where T : IComponentAgent
+    /// <returns>回调抛出异常的Actor数量，0表示全部成功 / Number of Actors whose callback threw an exception, 0 means all succeeded</returns>
+    public static async Task<int> ActorForEachAsync<T>(Func<T, Task> func) where T : IComponentAgent
     {
         var agentType = typeof(T);
         var compType = HotfixManager.Resolver.GetComponentType(agentType);
         var actorType = ComponentRegister.GetActorType(compType);
+        var pendingWorkList = new List<(Actor TargetActor, Task WorkTask)>();
         foreach (var actor in ActorMap.Values)
         {
             if (actor.Type != actorType)
@@ -645,40 +652,80 @@ public static class ActorManager
 
             async Task Work()
             {
-                var comp = await actor.GetComponentAgentAsync<T>();
-                await func(comp);
+                var component = await actor.GetComponentAgentAsync<T>();
+                await func(component);
             }
 
-            actor.Tell(Work);
+            // 显式转换为 Func<Task>，避免与 SendAsync<T>(Func<T>) 重载歧义
+            pendingWorkList.Add((actor, actor.SendAsync((Func<Task>)Work, checkLock: true)));
         }
+
+        var failureCount = 0;
+        foreach (var (targetActor, workTask) in pendingWorkList)
+        {
+            try
+            {
+                await workTask;
+            }
+            catch (Exception exception)
+            {
+                failureCount++;
+                // Localization: Core.ActorManager.ActorForEachError - ActorManager.ActorForEach 错误 actorId:{0} actorType:{1} 异常: {2}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.ActorManager.ActorForEachError, targetActor.Id, targetActor.Type, exception));
+            }
+        }
+
+        return failureCount;
     }
 
     /// <summary>
-    /// 遍历所有匹配指定组件代理类型的Actor，并执行同步回调操作。
+    /// 遍历所有匹配指定组件代理类型的Actor，在各自的消息队列中执行同步回调，并等待全部完成。
     /// </summary>
     /// <remarks>
-    /// Iterates over all Actors matching the specified component agent type and executes the synchronous callback.
+    /// Iterates over all Actors matching the specified component agent type, executes the synchronous callback on each Actor's message queue, and awaits all of them.
     /// </remarks>
     /// <param name="action">对每个匹配Actor执行的同步回调操作 / Synchronous callback to execute for each matching Actor</param>
     /// <typeparam name="T">组件代理类型 / Component agent type</typeparam>
-    public static void ActorForEach<T>(Action<T> action) where T : IComponentAgent
+    /// <returns>回调抛出异常的Actor数量，0表示全部成功 / Number of Actors whose callback threw an exception, 0 means all succeeded</returns>
+    public static async Task<int> ActorForEachAsync<T>(Action<T> action) where T : IComponentAgent
     {
         var agentType = typeof(T);
         var compType = HotfixManager.Resolver.GetComponentType(agentType);
         var actorType = ComponentRegister.GetActorType(compType);
+        var pendingWorkList = new List<(Actor TargetActor, Task WorkTask)>();
         foreach (var actor in ActorMap.Values)
         {
-            if (actor.Type == actorType)
+            if (actor.Type != actorType)
             {
-                async Task Work()
-                {
-                    var comp = await actor.GetComponentAgentAsync<T>();
-                    action(comp);
-                }
+                continue;
+            }
 
-                actor.Tell(Work);
+            async Task Work()
+            {
+                var component = await actor.GetComponentAgentAsync<T>();
+                action(component);
+            }
+
+            // 显式转换为 Func<Task>，避免与 SendAsync<T>(Func<T>) 重载歧义
+            pendingWorkList.Add((actor, actor.SendAsync((Func<Task>)Work, checkLock: true)));
+        }
+
+        var failureCount = 0;
+        foreach (var (targetActor, workTask) in pendingWorkList)
+        {
+            try
+            {
+                await workTask;
+            }
+            catch (Exception exception)
+            {
+                failureCount++;
+                // Localization: Core.ActorManager.ActorForEachError - ActorManager.ActorForEach 错误 actorId:{0} actorType:{1} 异常: {2}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.ActorManager.ActorForEachError, targetActor.Id, targetActor.Type, exception));
             }
         }
+
+        return failureCount;
     }
 
     /// <summary>
