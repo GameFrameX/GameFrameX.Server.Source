@@ -68,6 +68,7 @@
       <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Operations\GameFrameX.Capability.Online.Operations.csproj" />
       <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Online.Persistence\GameFrameX.Capability.Online.Persistence.csproj" />
       <ProjectReference Include="..\..\GameFrameX.Architecture.Analyzers\GameFrameX.Architecture.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
+      <ProjectReference Include="..\..\GameFrameX.Hotfix.WrapperGenerator\GameFrameX.Hotfix.WrapperGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
       <ProjectReference Include="..\..\GameFrameX.Client\GameFrameX.Client.csproj" />
     </ItemGroup>
 

@@ -61,16 +61,4 @@ public static class Tools
         return fullName.Substring(0, i);
     }
 
-    /// <summary>
-    /// 移除字符串中的所有空白字符。
-    /// </summary>
-    /// <remarks>
-    /// Removes all whitespace characters from the string.
-    /// </remarks>
-    /// <param name="str">要处理的字符串 / String to process</param>
-    /// <returns>移除空白后的字符串 / String with all whitespace removed</returns>
-    public static string RemoveWhitespace(this string str)
-    {
-        return string.Join("", str.Split(default(string[]), StringSplitOptions.RemoveEmptyEntries));
-    }
 }

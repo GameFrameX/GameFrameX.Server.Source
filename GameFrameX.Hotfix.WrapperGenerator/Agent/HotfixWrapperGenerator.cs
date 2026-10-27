@@ -358,51 +358,72 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    /// 解析单个属性列表，按 Service/Discard/TimeOut/ThreadSafe 分类填充到方法元数据中。
+    /// 解析单个属性列表中的全部特性，逐个按名称精确匹配 Service/Discard/TimeOut/ThreadSafe 并填充到方法元数据中。
     /// </summary>
     /// <remarks>
-    /// Parses a single attribute list, classifying it as Service/Discard/TimeOut/ThreadSafe and populating the method metadata.
+    /// Parses every attribute in a single attribute list, exactly matching Service/Discard/TimeOut/ThreadSafe by name and populating the method metadata.
     /// </remarks>
     /// <param name="attributeListSyntax">属性列表语法节点 / Attribute list syntax node</param>
     /// <param name="mth">待填充的方法元数据 / Method metadata to populate</param>
     private static void ApplyAttribute(AttributeListSyntax attributeListSyntax, MethodInfoData mth)
     {
-        var attrName = attributeListSyntax.ToString().RemoveWhitespace() + "Attribute";
-        if (attrName.IndexOf(ServiceAttributeName, StringComparison.OrdinalIgnoreCase) >= 0)
+        foreach (var attribute in attributeListSyntax.Attributes)
         {
-            mth.IsApi = true;
-        }
-        else if (attrName.IndexOf(DiscardAttributeName, StringComparison.OrdinalIgnoreCase) >= 0)
-        {
-            mth.Discard = true;
-            if (mth.IsAsync)
+            // 精确匹配而非子串搜索：同块多特性（如 [Service, Discard]）逐个识别，
+            // 且 [FooService] 等仅含子串的相似名特性不再误命中。
+            var name = StripAttributeSuffix(attribute.Name.ToString());
+            if (string.Equals(name, StripAttributeSuffix(ServiceAttributeName), StringComparison.OrdinalIgnoreCase))
             {
-                mth.Modify = mth.Modify.Replace("async ", "");
-                mth.IsAsync = false;
+                mth.IsApi = true;
             }
-        }
-        else if (attrName.IndexOf(TimeOutAttributeName, StringComparison.OrdinalIgnoreCase) >= 0)
-        {
-            mth.HasTimeout = true;
-            mth.TimeOut = ParseTimeout(attributeListSyntax);
-        }
-        else if (attrName.IndexOf(ThreadSafeAttributeName, StringComparison.OrdinalIgnoreCase) >= 0)
-        {
-            mth.IsThreadSafe = true;
+            else if (string.Equals(name, StripAttributeSuffix(DiscardAttributeName), StringComparison.OrdinalIgnoreCase))
+            {
+                mth.Discard = true;
+                if (mth.IsAsync)
+                {
+                    mth.Modify = mth.Modify.Replace("async ", "");
+                    mth.IsAsync = false;
+                }
+            }
+            else if (string.Equals(name, StripAttributeSuffix(TimeOutAttributeName), StringComparison.OrdinalIgnoreCase))
+            {
+                mth.HasTimeout = true;
+                mth.TimeOut = ParseTimeout(attribute);
+            }
+            else if (string.Equals(name, StripAttributeSuffix(ThreadSafeAttributeName), StringComparison.OrdinalIgnoreCase))
+            {
+                mth.IsThreadSafe = true;
+            }
         }
     }
 
     /// <summary>
-    /// 从 TimeOut 属性的参数中解析超时时间（毫秒）。
+    /// 剥离特性名尾部的 Attribute 后缀（[Service] 与 [ServiceAttribute] 书写等价）。
     /// </summary>
     /// <remarks>
-    /// Parses the timeout duration (in milliseconds) from the TimeOut attribute argument.
+    /// Strips the trailing Attribute suffix from an attribute name ([Service] and [ServiceAttribute] are equivalent spellings).
     /// </remarks>
-    /// <param name="attributeListSyntax">属性列表语法节点 / Attribute list syntax node</param>
-    /// <returns>超时时间（毫秒）/ Timeout duration in milliseconds</returns>
-    private static int ParseTimeout(AttributeListSyntax attributeListSyntax)
+    /// <param name="name">特性名字符串 / Attribute name string</param>
+    /// <returns>剥离后缀后的特性名 / The attribute name without the suffix</returns>
+    private static string StripAttributeSuffix(string name)
     {
-        var argStr = attributeListSyntax.Attributes[0].ArgumentList.Arguments[0].ToString();
+        const string attributeSuffix = "Attribute";
+        return name.EndsWith(attributeSuffix, StringComparison.Ordinal)
+            ? name.Substring(0, name.Length - attributeSuffix.Length)
+            : name;
+    }
+
+    /// <summary>
+    /// 从命中的 TimeOut 特性自身的参数中解析超时时间（毫秒）。
+    /// </summary>
+    /// <remarks>
+    /// Parses the timeout duration (in milliseconds) from the matched TimeOut attribute's own argument.
+    /// </remarks>
+    /// <param name="attribute">命中的 TimeOut 特性语法节点 / The matched TimeOut attribute syntax node</param>
+    /// <returns>超时时间（毫秒）/ Timeout duration (in milliseconds)</returns>
+    private static int ParseTimeout(AttributeSyntax attribute)
+    {
+        var argStr = attribute.ArgumentList.Arguments[0].ToString();
         if (argStr.IndexOf(":", StringComparison.OrdinalIgnoreCase) >= 0)
         {
             return int.Parse(argStr.Split(':')[1].Trim());
