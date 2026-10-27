@@ -141,6 +141,8 @@
 
 ### Performance
 
+
+* 入站消息处理移除每消息一次的 Task.Run 包装（C366 / GFX-1074 / GitHub #702）：`AppStartUpBase.InvokeMessageHandlerAsync` 将 `InitAsync`+`InnerActionAsync` 整体包进 `await Task.Run(...)`，唯一调用点 `PackageHandlerAsync` 本就 await 串行等待，包装只增加一次线程池排队跳数（高并发下加剧线程池压力）而无任何并行隔离收益；改为直接 await 两段调用（Init 失败早退与 `MessageHandlerError` 错误日志契约不变，`cancellationToken` 收敛为直接贯通 `InnerActionAsync`）。
 * RemoteMessageClient 移除全局串行信号量，服务器间 RPC 全面并发化（P0-A#2 / C239）：原 `SemaphoreSlim(1,1)` 使 `CallAsync`/`SendOneWayAsync` 全进程串行（连接获取+响应等待全程持锁，多进程拓扑下所有服务器间 RPC 吞吐被锁死且无死锁保护）。新模型：每条连接一个专属接收泵（`DecodeAsync` 循环 → 请求-响应匹配器 `TryComplete` 路由）+ 每连接写入门控（同连接帧写入串行化、跨连接完全并行）；等待方经既有 `WaitResponseAsync`（此前为死代码）按 UniqueId 收响应，同一连接可承载任意多并发在途请求
 * TcpConnectionProvider 单条 TCP 长连接改为按 endpoint 连接池（P0-A#3 / C239）：每 endpoint 独立成池（默认上限 4 条，构造参数可调），并发需求驱动懒建（顺序调用保持单连接复用，并发调用按需扩展），轮询分发；连接级故障仅精准移除该连接（`IConnectionProvider.Invalidate(Stream)`/`ITransportProtocolAdapter.Invalidate(Stream)` 增量接口），不再全量断连。顺带修复旧实现隐藏缺陷：全进程单连接槽位在多 endpoint 交替调用时每次断连重连
 * 连接死亡快速失败（P0-A#2#3 / C239）：接收泵退出时经新增 `IRequestResponseMatcher.TryFail` 立即以 IOException 失败该连接上全部挂起请求（等待方收到可重试的 ConnectionFailed 而非干等超时），连接级异常（IO/Socket）仅失效当前连接、其余异常保守全量失效；新增本地化键 `RemoteMessaging.Client.ConnectionClosed`
