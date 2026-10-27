@@ -69,6 +69,11 @@ internal sealed class HotfixModule : ICollectibleAssemblyModule
     private readonly Dictionary<Type, Type> _compAgentMap = new Dictionary<Type, Type>(512);
 
     /// <summary>
+    /// 组件类型到代理实例工厂的映射（已按 _useAgentWrapper 选好包装类型或代理类型，注册期构建）。
+    /// </summary>
+    private readonly Dictionary<Type, Func<IComponentAgent>> _agentFactoryMap = new Dictionary<Type, Func<IComponentAgent>>(512);
+
+    /// <summary>
     /// DLL路径。
     /// </summary>
     private readonly string _dllPath;
@@ -266,14 +271,69 @@ internal sealed class HotfixModule : ICollectibleAssemblyModule
             {
                 if (HotfixBridge.IsNull() && type.GetInterface(fullName) != null)
                 {
-                    var bridge = (IHotfixBridge)Activator.CreateInstance(type);
-
-                    HotfixBridge = bridge;
+                    HotfixBridge = CreateFactory<IHotfixBridge>(type)();
                 }
             }
 
             AddRpcHandler(type);
         }
+
+        BuildAgentFactories();
+    }
+
+    /// <summary>
+    /// 为每个已注册组件构建代理实例工厂（启用包装且存在对应包装类型时优先包装类型），注册期即校验实现类型的可实例化条件。
+    /// </summary>
+    /// <remarks>
+    /// 工厂必须在类型枚举循环结束后统一构建：类型枚举顺序不确定，登记某个代理类型时其包装类型可能尚未被扫描登记。
+    /// </remarks>
+    private void BuildAgentFactories()
+    {
+        foreach (var (componentType, agentType) in _compAgentMap)
+        {
+            var implementationType = agentType;
+            if (_useAgentWrapper && _agentAgentWrapperMap.TryGetValue(agentType, out var wrapperType))
+            {
+                implementationType = wrapperType;
+            }
+
+            _agentFactoryMap[componentType] = CreateFactory<IComponentAgent>(implementationType);
+        }
+    }
+
+    /// <summary>
+    /// 注册期创建并缓存实例工厂：校验实现类型是否为可实例化的封闭类型、是否实现 <typeparamref name="TService"/>、是否具有公共无参构造函数。
+    /// </summary>
+    /// <param name="implementationType">实现类型。</param>
+    /// <typeparam name="TService">服务接口或基类类型。</typeparam>
+    /// <returns>创建 <typeparamref name="TService"/> 实例的强类型工厂委托。</returns>
+    /// <exception cref="InvalidOperationException">实现类型不满足上述条件。</exception>
+    private static Func<TService> CreateFactory<TService>(Type implementationType) where TService : class
+    {
+        if (implementationType.IsAbstract
+            || implementationType.ContainsGenericParameters
+            || !typeof(TService).IsAssignableFrom(implementationType)
+            || implementationType.GetConstructor(Type.EmptyTypes) == null)
+        {
+            // Localization: CoreExceptions.Hotfix.MissingParameterlessConstructor - {0} 必须是实现 {1} 的非抽象封闭类型，且具有公共无参构造函数
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.MissingParameterlessConstructor, implementationType.FullName, typeof(TService).FullName));
+        }
+
+        var createInstanceMethod = typeof(HotfixModule)
+                                   .GetMethod(nameof(CreateInstance), BindingFlags.NonPublic | BindingFlags.Static)
+                                   .MakeGenericMethod(typeof(TService), implementationType);
+        return createInstanceMethod.CreateDelegate<Func<TService>>();
+    }
+
+    /// <summary>
+    /// 泛型实例化目标方法：经 <see cref="CreateFactory{TService}" /> 的泛型方法实例化转为强类型工厂委托，运行时直接调用无参构造，避免每次调用走反射激活。
+    /// </summary>
+    /// <typeparam name="TService">服务接口或基类类型。</typeparam>
+    /// <typeparam name="TImplementation">实现类型（受 new() 约束，实例化时由运行时直接调用其无参构造）。</typeparam>
+    /// <returns>新创建的实现实例。</returns>
+    private static TService CreateInstance<TService, TImplementation>() where TImplementation : TService, new()
+    {
+        return new TImplementation();
     }
 
     /// <summary>
@@ -330,7 +390,7 @@ internal sealed class HotfixModule : ICollectibleAssemblyModule
             return true;
         }
 
-        var handler = (BaseHttpHandler)Activator.CreateInstance(type);
+        var handler = CreateFactory<BaseHttpHandler>(type)();
         // 注册原始命令
         if (!_httpHandlerMap.TryAdd(attr.OriginalCmd, handler))
         {
@@ -503,7 +563,7 @@ internal sealed class HotfixModule : ICollectibleAssemblyModule
         }
 
         var listeners = evtListenersDic.GetOrAddValue(eventArgsType);
-        listeners.Add((IEventListener)Activator.CreateInstance(type));
+        listeners.Add(CreateFactory<IEventListener>(type)());
 
         return true;
     }
@@ -613,27 +673,9 @@ internal sealed class HotfixModule : ICollectibleAssemblyModule
     internal T GetAgent<T>(BaseComponent component) where T : class, IComponentAgent
     {
         var type = component.GetType();
-        if (_compAgentMap.TryGetValue(type, out var agentType))
+        if (_agentFactoryMap.TryGetValue(type, out var agentFactory))
         {
-            T agent = null;
-            if (_useAgentWrapper)
-            {
-                if (_agentAgentWrapperMap.TryGetValue(agentType, out var warpType))
-                {
-                    agent = (T)Activator.CreateInstance(warpType);
-                }
-            }
-
-            if (agent.IsNull())
-            {
-                agent = (T)Activator.CreateInstance(agentType);
-            }
-
-            if (agent.IsNull())
-            {
-                throw new ArgumentNullException(nameof(agent));
-            }
-
+            var agent = (T)agentFactory();
             agent.SetOwner(component);
             return agent;
         }
