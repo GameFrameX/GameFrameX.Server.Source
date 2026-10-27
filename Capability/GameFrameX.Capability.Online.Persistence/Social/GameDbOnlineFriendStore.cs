@@ -47,8 +47,10 @@ using GameFrameX.DataBase;
 /// </para>
 /// <para>
 /// CAS 语义（继承 store 契约）：<see cref="UpdateStateAsync"/> / <see cref="RenewRequestAsync"/>
-/// 按「读行 → 校验 → 覆盖写」执行，期望状态不匹配即整体失败返回 null，绝不部分应用；
-/// 多实例并发收敛依赖数据库唯一索引与行级主键覆盖写（先到临界区者生效）。
+/// 按「读行 → 校验 → 行版本条件写（<c>UpdateIfRowVersionAsync</c>）」执行，期望状态不匹配即整体失败
+/// 返回 null，绝不部分应用；并发写者推进行版本时重读重校验（最多 <c>3</c> 次），用尽仍冲突返回 null
+/// 交上层收敛。存量行 <c>RowVersion</c> 为 null 的旧数据经「仅当仍为 null」的条件写惰性补全为 0
+///（DB 层「null 恒不匹配 CAS」不变量保持）。
 /// </para>
 /// </summary>
 public sealed class GameDbOnlineFriendStore : IOnlineFriendStore
@@ -57,6 +59,11 @@ public sealed class GameDbOnlineFriendStore : IOnlineFriendStore
     /// 好友关系行的行 Id 分配序列名（无自然主键实体；键控 = 状态类型名 + 序列名）。
     /// </summary>
     private const string FriendshipRowIdSequence = "row-id";
+
+    /// <summary>
+    /// CAS 迁移的最大尝试次数（首次 + 冲突重试；用尽仍冲突按 CAS 失败返回 null）。
+    /// </summary>
+    private const int MaxTransitionAttemptCount = 3;
 
     /// <summary>
     /// 以无向对物化复合键做「不存在则创建」：键已存在时返回既有行的副本且**不写入**（store 契约红线，
@@ -136,32 +143,24 @@ public sealed class GameDbOnlineFriendStore : IOnlineFriendStore
     {
         ArgumentNullException.ThrowIfNull(transition);
 
-        var current = await FindRowByIdAsync(transition.FriendshipId ?? string.Empty, cancellationToken).ConfigureAwait(false);
-        if (current == null)
+        return await TransitionRowAsync(tenantId, appId, transition.FriendshipId ?? string.Empty, current =>
         {
-            return null;
-        }
+            if ((OnlineFriendshipState)current.State != transition.ExpectedState)
+            {
+                // CAS 失败：不留任何写入痕迹，调用方据 null 判定「状态已被并发改写」。
+                return false;
+            }
 
-        if (current.TenantId != tenantId || current.AppId != appId)
+            return true;
+        }, current =>
         {
-            return null;
-        }
-
-        if ((OnlineFriendshipState)current.State != transition.ExpectedState)
-        {
-            // CAS 失败：不留任何写入痕迹，调用方据 null 判定「状态已被并发改写」。
-            return null;
-        }
-
-        current.State = (int)transition.NewState;
-        current.UpdatedAtTime = transition.NowUnixMilliseconds;
-        if (transition.Responded)
-        {
-            current.RespondedAtTime = transition.NowUnixMilliseconds;
-        }
-
-        await GameDb.AddOrUpdateAsync(current, cancellationToken).ConfigureAwait(false);
-        return ToEntity(current);
+            current.State = (int)transition.NewState;
+            current.UpdatedAtTime = transition.NowUnixMilliseconds;
+            if (transition.Responded)
+            {
+                current.RespondedAtTime = transition.NowUnixMilliseconds;
+            }
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -256,25 +255,15 @@ public sealed class GameDbOnlineFriendStore : IOnlineFriendStore
     {
         ArgumentNullException.ThrowIfNull(renewal);
 
-        var current = await FindRowByIdAsync(renewal.FriendshipId ?? string.Empty, cancellationToken).ConfigureAwait(false);
-        if (current == null)
+        return await TransitionRowAsync(tenantId, appId, renewal.FriendshipId ?? string.Empty, current => (OnlineFriendshipState)current.State == renewal.ExpectedState, current =>
         {
-            return null;
-        }
-
-        if (current.TenantId != tenantId || current.AppId != appId || (OnlineFriendshipState)current.State != renewal.ExpectedState)
-        {
-            return null;
-        }
-
-        // 三项同临界区落定：状态 + 方向 + 有效期（拆开写会让权限判据读到半成品）。
-        current.State = (int)OnlineFriendshipState.Requested;
-        current.RequesterId = renewal.RequesterId;
-        current.AddresseeId = renewal.AddresseeId;
-        current.UpdatedAtTime = renewal.NowUnixMilliseconds;
-        current.ExpiresAtTime = renewal.ExpiresAtTime;
-        await GameDb.AddOrUpdateAsync(current, cancellationToken).ConfigureAwait(false);
-        return ToEntity(current);
+            // 三项同临界区落定：状态 + 方向 + 有效期（拆开写会让权限判据读到半成品）。
+            current.State = (int)OnlineFriendshipState.Requested;
+            current.RequesterId = renewal.RequesterId;
+            current.AddresseeId = renewal.AddresseeId;
+            current.UpdatedAtTime = renewal.NowUnixMilliseconds;
+            current.ExpiresAtTime = renewal.ExpiresAtTime;
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -336,6 +325,90 @@ public sealed class GameDbOnlineFriendStore : IOnlineFriendStore
     private static Task<OnlineFriendshipRowState> FindRowByIdAsync(string friendshipId, CancellationToken cancellationToken)
     {
         return GameDb.FindAsync<OnlineFriendshipRowState>(state => state.FriendshipId == friendshipId, isCreateIfNotExists: false, cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
+    /// CAS 迁移回路：读行（带 RowVersion）→ 作用域与前置校验 → 行版本条件写；冲突时重读重校验，最多 3 次。
+    /// </summary>
+    /// <remarks>
+    /// The CAS transition loop: read the row (with its <c>RowVersion</c>) → validate scope and the
+    /// caller's precondition → conditional write via <c>UpdateIfRowVersionAsync</c>. A <c>false</c> return
+    /// means a concurrent writer advanced the row version; the loop re-reads and re-validates up to
+    /// <see cref="MaxTransitionAttemptCount"/> times. Preconditions failing on the freshly-read row
+    /// (scope mismatch, expected-state mismatch, missing row) return <c>null</c> immediately — the
+    /// store-contract CAS failure. Exhausted retries also return <c>null</c> (the caller re-reads the
+    /// current fact and converges); no partial writes ever land.
+    /// </remarks>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="friendshipId">关系标识。</param>
+    /// <param name="precondition">对刚读出的行做期望校验（false = CAS 失败，返回 null，不写入）。</param>
+    /// <param name="apply">把目标态写进行对象（在条件写之前应用于本行）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>更新后的关系副本；CAS 失败或记录不存在返回 null。</returns>
+    private static async Task<OnlineFriendship> TransitionRowAsync(long tenantId, long appId, string friendshipId, Func<OnlineFriendshipRowState, bool> precondition, Action<OnlineFriendshipRowState> apply, CancellationToken cancellationToken)
+    {
+        for (var attempt = 0; attempt < MaxTransitionAttemptCount; attempt++)
+        {
+            var current = await FindRowByIdAsync(friendshipId, cancellationToken).ConfigureAwait(false);
+            if (current == null)
+            {
+                return null;
+            }
+
+            if (current.TenantId != tenantId || current.AppId != appId || !precondition(current))
+            {
+                return null;
+            }
+
+            current = await EnsureRowVersionAsync(current, cancellationToken).ConfigureAwait(false);
+            if (current == null)
+            {
+                return null;
+            }
+
+            apply(current);
+            if (await GameDb.UpdateIfRowVersionAsync(current.Id, current.RowVersion ?? 0, current, cancellationToken).ConfigureAwait(false))
+            {
+                return ToEntity(current);
+            }
+
+            // 行版本条件写失败 = 并发写者已推进该行：重读后再比对（本轮不写库，无部分写入）。
+        }
+
+        // 重试用尽仍冲突：按 CAS 失败语义返回 null，上层重读当前事实收敛。
+        return null;
+    }
+
+    /// <summary>
+    /// 存量行 RowVersion 为 null（旧数据）时的惰性补全：按「仅当存量仍为 null」条件写回填为 0。
+    /// </summary>
+    /// <remarks>
+    /// Lazy backfill for legacy rows whose <c>RowVersion</c> is null: writes the row back with
+    /// <c>RowVersion = 0</c> through <c>UpdateIfRowVersionIsNullAsync</c> (the "only when still null"
+    /// conditional write; the DB-level "null never matches CAS" invariant stays intact — the backfill
+    /// judgement lives outside the CAS primitive). When a concurrent writer wins the backfill the row is
+    /// re-read and the normal CAS path proceeds on the winner's version.
+    /// </remarks>
+    /// <param name="current">刚读出的关系行（RowVersion 可能为 null）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>RowVersion 非 null 的关系行（补全后的入参或重读结果）；行消失返回 null。</returns>
+    private static async Task<OnlineFriendshipRowState> EnsureRowVersionAsync(OnlineFriendshipRowState current, CancellationToken cancellationToken)
+    {
+        if (current.RowVersion != null)
+        {
+            return current;
+        }
+
+        if (await GameDb.UpdateIfRowVersionIsNullAsync(current.Id, current, cancellationToken).ConfigureAwait(false))
+        {
+            // 补全成功：本行内容不变，仅 RowVersion 落为 0（后续 CAS 从版本 0 起步）。
+            current.RowVersion = 0;
+            return current;
+        }
+
+        // 回填被并发抢先（或行已消失）：重读走胜者版本；行消失交上层按「记录不存在」处理。
+        return await FindRowByIdAsync(current.FriendshipId, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
