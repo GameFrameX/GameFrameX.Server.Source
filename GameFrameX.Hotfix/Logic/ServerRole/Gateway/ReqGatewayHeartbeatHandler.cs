@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Gateway;
 [MessageMapping(typeof(ReqGatewayHeartbeat))]
 internal sealed class ReqGatewayHeartbeatHandler : GlobalRpcComponentHandler<GatewayComponentAgent, ReqGatewayHeartbeat, RespGatewayHeartbeat>
 {
-    protected override async Task ActionAsync(ReqGatewayHeartbeat request, RespGatewayHeartbeat response)
+    protected override async Task ActionAsync(ReqGatewayHeartbeat request, RespGatewayHeartbeat response, CancellationToken cancellationToken)
     {
         try
         {

@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Auction;
 [MessageMapping(typeof(ReqAuctionSettle))]
 internal sealed class ReqAuctionSettleHandler : GlobalRpcComponentHandler<AuctionComponentAgent, ReqAuctionSettle, RespAuctionSettle>
 {
-    protected override async Task ActionAsync(ReqAuctionSettle request, RespAuctionSettle response)
+    protected override async Task ActionAsync(ReqAuctionSettle request, RespAuctionSettle response, CancellationToken cancellationToken)
     {
         try
         {

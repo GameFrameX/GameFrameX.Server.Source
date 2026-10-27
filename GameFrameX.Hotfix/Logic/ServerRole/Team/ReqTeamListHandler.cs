@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Team;
 [MessageMapping(typeof(ReqTeamList))]
 internal sealed class ReqTeamListHandler : GlobalRpcComponentHandler<TeamComponentAgent, ReqTeamList, RespTeamList>
 {
-    protected override async Task ActionAsync(ReqTeamList request, RespTeamList response)
+    protected override async Task ActionAsync(ReqTeamList request, RespTeamList response, CancellationToken cancellationToken)
     {
         try
         {

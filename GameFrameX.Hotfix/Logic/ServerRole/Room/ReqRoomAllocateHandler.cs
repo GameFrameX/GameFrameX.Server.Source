@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Room;
 [MessageMapping(typeof(ReqRoomAllocate))]
 internal sealed class ReqRoomAllocateHandler : GlobalRpcComponentHandler<RoomComponentAgent, ReqRoomAllocate, RespRoomAllocate>
 {
-    protected override async Task ActionAsync(ReqRoomAllocate request, RespRoomAllocate response)
+    protected override async Task ActionAsync(ReqRoomAllocate request, RespRoomAllocate response, CancellationToken cancellationToken)
     {
         try
         {

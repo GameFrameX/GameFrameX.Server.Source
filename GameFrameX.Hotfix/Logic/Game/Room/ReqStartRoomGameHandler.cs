@@ -33,7 +33,7 @@ namespace GameFrameX.Hotfix.Logic.Game.Room;
 [MessageMapping(typeof(ReqStartRoomGame))]
 internal sealed class ReqStartRoomGameHandler : GlobalRpcComponentHandler<RoomComponentAgent, ReqStartRoomGame, RespStartRoomGame>
 {
-    protected override async Task ActionAsync(ReqStartRoomGame request, RespStartRoomGame response)
+    protected override async Task ActionAsync(ReqStartRoomGame request, RespStartRoomGame response, CancellationToken cancellationToken)
     {
         try
         {

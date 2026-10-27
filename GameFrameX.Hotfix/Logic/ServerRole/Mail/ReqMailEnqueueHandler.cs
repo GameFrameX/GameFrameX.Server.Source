@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Mail;
 [MessageMapping(typeof(ReqMailEnqueue))]
 internal sealed class ReqMailEnqueueHandler : GlobalRpcComponentHandler<MailComponentAgent, ReqMailEnqueue, RespMailEnqueue>
 {
-    protected override async Task ActionAsync(ReqMailEnqueue request, RespMailEnqueue response)
+    protected override async Task ActionAsync(ReqMailEnqueue request, RespMailEnqueue response, CancellationToken cancellationToken)
     {
         try
         {

@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.{{Name}};
 [MessageMapping(typeof(Req{{Name}}Echo))]
 internal sealed class Req{{Name}}EchoHandler : GlobalRpcComponentHandler<{{Name}}ComponentAgent, Req{{Name}}Echo, Resp{{Name}}Echo>
 {
-    protected override async Task ActionAsync(Req{{Name}}Echo request, Resp{{Name}}Echo response)
+    protected override async Task ActionAsync(Req{{Name}}Echo request, Resp{{Name}}Echo response, CancellationToken cancellationToken)
     {
         try
         {

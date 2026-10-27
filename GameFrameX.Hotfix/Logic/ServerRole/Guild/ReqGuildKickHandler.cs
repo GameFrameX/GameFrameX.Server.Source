@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Guild;
 [MessageMapping(typeof(ReqGuildKick))]
 internal sealed class ReqGuildKickHandler : GlobalRpcComponentHandler<GuildComponentAgent, ReqGuildKick, RespGuildKick>
 {
-    protected override async Task ActionAsync(ReqGuildKick request, RespGuildKick response)
+    protected override async Task ActionAsync(ReqGuildKick request, RespGuildKick response, CancellationToken cancellationToken)
     {
         try
         {

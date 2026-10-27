@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.World;
 [MessageMapping(typeof(ReqWorldRevoke))]
 internal sealed class ReqWorldRevokeHandler : GlobalRpcComponentHandler<WorldComponentAgent, ReqWorldRevoke, RespWorldRevoke>
 {
-    protected override async Task ActionAsync(ReqWorldRevoke request, RespWorldRevoke response)
+    protected override async Task ActionAsync(ReqWorldRevoke request, RespWorldRevoke response, CancellationToken cancellationToken)
     {
         try
         {

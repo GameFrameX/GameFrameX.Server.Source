@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Auction;
 [MessageMapping(typeof(ReqAuctionBuyout))]
 internal sealed class ReqAuctionBuyoutHandler : GlobalRpcComponentHandler<AuctionComponentAgent, ReqAuctionBuyout, RespAuctionBuyout>
 {
-    protected override async Task ActionAsync(ReqAuctionBuyout request, RespAuctionBuyout response)
+    protected override async Task ActionAsync(ReqAuctionBuyout request, RespAuctionBuyout response, CancellationToken cancellationToken)
     {
         try
         {

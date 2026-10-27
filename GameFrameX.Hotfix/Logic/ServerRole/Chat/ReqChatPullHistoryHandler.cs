@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Chat;
 [MessageMapping(typeof(ReqChatPullHistory))]
 internal sealed class ReqChatPullHistoryHandler : GlobalRpcComponentHandler<ChatComponentAgent, ReqChatPullHistory, RespChatPullHistory>
 {
-    protected override async Task ActionAsync(ReqChatPullHistory request, RespChatPullHistory response)
+    protected override async Task ActionAsync(ReqChatPullHistory request, RespChatPullHistory response, CancellationToken cancellationToken)
     {
         try
         {

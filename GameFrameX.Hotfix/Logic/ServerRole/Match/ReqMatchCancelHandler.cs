@@ -41,7 +41,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Match;
 [MessageMapping(typeof(ReqMatchCancel))]
 internal sealed class ReqMatchCancelHandler : BaseRpcMessageHandler<ReqMatchCancel, RespMatchCancel>
 {
-    protected override async Task ActionAsync(ReqMatchCancel request, RespMatchCancel response)
+    protected override async Task ActionAsync(ReqMatchCancel request, RespMatchCancel response, CancellationToken cancellationToken)
     {
         var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
         if (playerId == 0)

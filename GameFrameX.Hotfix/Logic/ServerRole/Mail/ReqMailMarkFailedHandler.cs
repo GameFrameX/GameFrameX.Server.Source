@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Mail;
 [MessageMapping(typeof(ReqMailMarkFailed))]
 internal sealed class ReqMailMarkFailedHandler : GlobalRpcComponentHandler<MailComponentAgent, ReqMailMarkFailed, RespMailMarkFailed>
 {
-    protected override async Task ActionAsync(ReqMailMarkFailed request, RespMailMarkFailed response)
+    protected override async Task ActionAsync(ReqMailMarkFailed request, RespMailMarkFailed response, CancellationToken cancellationToken)
     {
         try
         {

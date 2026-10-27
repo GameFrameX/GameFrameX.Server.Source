@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Login;
 [MessageMapping(typeof(ReqLoginRevokeToken))]
 internal sealed class ReqLoginRevokeTokenHandler : GlobalRpcComponentHandler<LoginComponentAgent, ReqLoginRevokeToken, RespLoginRevokeToken>
 {
-    protected override async Task ActionAsync(ReqLoginRevokeToken request, RespLoginRevokeToken response)
+    protected override async Task ActionAsync(ReqLoginRevokeToken request, RespLoginRevokeToken response, CancellationToken cancellationToken)
     {
         try
         {

@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Team;
 [MessageMapping(typeof(ReqTeamDisband))]
 internal sealed class ReqTeamDisbandHandler : GlobalRpcComponentHandler<TeamComponentAgent, ReqTeamDisband, RespTeamDisband>
 {
-    protected override async Task ActionAsync(ReqTeamDisband request, RespTeamDisband response)
+    protected override async Task ActionAsync(ReqTeamDisband request, RespTeamDisband response, CancellationToken cancellationToken)
     {
         try
         {

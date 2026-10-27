@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Account;
 [MessageMapping(typeof(ReqAccountChangePassword))]
 internal sealed class ReqAccountChangePasswordHandler : GlobalRpcComponentHandler<AccountComponentAgent, ReqAccountChangePassword, RespAccountChangePassword>
 {
-    protected override async Task ActionAsync(ReqAccountChangePassword request, RespAccountChangePassword response)
+    protected override async Task ActionAsync(ReqAccountChangePassword request, RespAccountChangePassword response, CancellationToken cancellationToken)
     {
         try
         {

@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Account;
 [MessageMapping(typeof(ReqAccountQuery))]
 internal sealed class ReqAccountQueryHandler : GlobalRpcComponentHandler<AccountComponentAgent, ReqAccountQuery, RespAccountQuery>
 {
-    protected override async Task ActionAsync(ReqAccountQuery request, RespAccountQuery response)
+    protected override async Task ActionAsync(ReqAccountQuery request, RespAccountQuery response, CancellationToken cancellationToken)
     {
         try
         {

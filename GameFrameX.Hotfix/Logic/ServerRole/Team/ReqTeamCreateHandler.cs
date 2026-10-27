@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Team;
 [MessageMapping(typeof(ReqTeamCreate))]
 internal sealed class ReqTeamCreateHandler : GlobalRpcComponentHandler<TeamComponentAgent, ReqTeamCreate, RespTeamCreate>
 {
-    protected override async Task ActionAsync(ReqTeamCreate request, RespTeamCreate response)
+    protected override async Task ActionAsync(ReqTeamCreate request, RespTeamCreate response, CancellationToken cancellationToken)
     {
         try
         {

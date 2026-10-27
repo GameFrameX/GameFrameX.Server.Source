@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Trade;
 [MessageMapping(typeof(ReqTradePlace))]
 internal sealed class ReqTradePlaceHandler : GlobalRpcComponentHandler<TradeComponentAgent, ReqTradePlace, RespTradePlace>
 {
-    protected override async Task ActionAsync(ReqTradePlace request, RespTradePlace response)
+    protected override async Task ActionAsync(ReqTradePlace request, RespTradePlace response, CancellationToken cancellationToken)
     {
         try
         {

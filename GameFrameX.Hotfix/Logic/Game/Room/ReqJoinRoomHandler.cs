@@ -33,7 +33,7 @@ namespace GameFrameX.Hotfix.Logic.Game.Room;
 [MessageMapping(typeof(ReqJoinRoom))]
 internal sealed class ReqJoinRoomHandler : GlobalRpcComponentHandler<RoomComponentAgent, ReqJoinRoom, RespJoinRoom>
 {
-    protected override async Task ActionAsync(ReqJoinRoom request, RespJoinRoom response)
+    protected override async Task ActionAsync(ReqJoinRoom request, RespJoinRoom response, CancellationToken cancellationToken)
     {
         try
         {

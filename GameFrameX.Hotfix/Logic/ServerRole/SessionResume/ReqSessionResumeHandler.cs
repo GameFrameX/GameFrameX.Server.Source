@@ -35,7 +35,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.SessionResume;
 [MessageMapping(typeof(ReqSessionResume))]
 internal sealed class ReqSessionResumeHandler : BaseRpcMessageHandler<ReqSessionResume, RespSessionResume>
 {
-    protected override async Task ActionAsync(ReqSessionResume request, RespSessionResume response)
+    protected override async Task ActionAsync(ReqSessionResume request, RespSessionResume response, CancellationToken cancellationToken)
     {
         // Localization: Hotfix.SessionResume.ResumeRequested - 会话恢复请求, 会话ID: {0}
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.Hotfix.SessionResume.ResumeRequested, NetworkChannel.GameAppSession?.SessionId));

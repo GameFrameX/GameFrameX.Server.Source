@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Gm;
 [MessageMapping(typeof(ReqGmAddPenalty))]
 internal sealed class ReqGmAddPenaltyHandler : GlobalRpcComponentHandler<GmComponentAgent, ReqGmAddPenalty, RespGmAddPenalty>
 {
-    protected override async Task ActionAsync(ReqGmAddPenalty request, RespGmAddPenalty response)
+    protected override async Task ActionAsync(ReqGmAddPenalty request, RespGmAddPenalty response, CancellationToken cancellationToken)
     {
         try
         {

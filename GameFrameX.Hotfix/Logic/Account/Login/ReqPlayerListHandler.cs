@@ -34,7 +34,7 @@ using PlayerLoginComponentAgent = GameFrameX.Hotfix.Logic.Player.Login.LoginComp
 [MessageMapping(typeof(ReqPlayerList))]
 internal sealed class ReqPlayerListHandler : GlobalRpcComponentHandler<PlayerLoginComponentAgent, ReqPlayerList, RespPlayerList>
 {
-    protected override async Task ActionAsync(ReqPlayerList request, RespPlayerList response)
+    protected override async Task ActionAsync(ReqPlayerList request, RespPlayerList response, CancellationToken cancellationToken)
     {
         await ComponentAgent.OnGetPlayerListAsync(request, response);
     }

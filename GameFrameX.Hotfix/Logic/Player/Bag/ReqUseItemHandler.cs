@@ -36,7 +36,7 @@ namespace GameFrameX.Hotfix.Logic.Player.Bag;
 [MessageMapping(typeof(ReqUseItem))]
 internal sealed class ReqUseItemHandler : PlayerRpcComponentHandler<BagComponentAgent, ReqUseItem, RespUseItem>
 {
-    protected override async Task ActionAsync(ReqUseItem request, RespUseItem response)
+    protected override async Task ActionAsync(ReqUseItem request, RespUseItem response, CancellationToken cancellationToken)
     {
         try
         {

@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Guild;
 [MessageMapping(typeof(ReqGuildDisband))]
 internal sealed class ReqGuildDisbandHandler : GlobalRpcComponentHandler<GuildComponentAgent, ReqGuildDisband, RespGuildDisband>
 {
-    protected override async Task ActionAsync(ReqGuildDisband request, RespGuildDisband response)
+    protected override async Task ActionAsync(ReqGuildDisband request, RespGuildDisband response, CancellationToken cancellationToken)
     {
         try
         {

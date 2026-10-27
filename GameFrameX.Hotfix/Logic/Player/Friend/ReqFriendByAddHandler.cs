@@ -44,7 +44,7 @@ namespace GameFrameX.Hotfix.Logic.Player.Friend;
 [MessageMapping(typeof(ReqFriendByAdd))]
 internal sealed class ReqFriendByAddHandler : BaseRpcMessageHandler<ReqFriendByAdd, RespFriendByAdd>
 {
-    protected override async Task ActionAsync(ReqFriendByAdd request, RespFriendByAdd response)
+    protected override async Task ActionAsync(ReqFriendByAdd request, RespFriendByAdd response, CancellationToken cancellationToken)
     {
         var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
         if (playerId == 0)

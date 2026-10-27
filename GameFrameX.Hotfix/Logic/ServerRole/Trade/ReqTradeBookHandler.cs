@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Trade;
 [MessageMapping(typeof(ReqTradeBook))]
 internal sealed class ReqTradeBookHandler : GlobalRpcComponentHandler<TradeComponentAgent, ReqTradeBook, RespTradeBook>
 {
-    protected override async Task ActionAsync(ReqTradeBook request, RespTradeBook response)
+    protected override async Task ActionAsync(ReqTradeBook request, RespTradeBook response, CancellationToken cancellationToken)
     {
         try
         {
