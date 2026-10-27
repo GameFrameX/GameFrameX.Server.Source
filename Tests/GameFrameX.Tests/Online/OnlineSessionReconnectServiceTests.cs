@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Events;
@@ -10,8 +12,8 @@ using GameFrameX.Capability.Online.Abstractions.Tokens;
 namespace GameFrameX.Tests.Online
 {
     /// <summary>
-    /// 会话恢复服务测试：登录签发（LatestWins 顶替）、新连接恢复（验证 + 连接替换 + 原子轮换）、
-    /// 重放 / 过期 / 错主体拒绝、并发恢复互斥与断线开窗。
+    /// 会话恢复服务测试：登录签发（LatestWins 顶替）、新连接恢复（验证 + 原子轮换 + 连接替换）、
+    /// 重放 / 过期 / 错主体拒绝、并发恢复互斥、恢复失败不产生半恢复态与断线开窗。
     /// </summary>
     public class OnlineSessionReconnectServiceTests
     {
@@ -141,6 +143,56 @@ namespace GameFrameX.Tests.Online
         }
 
         [Fact]
+        public async Task Resume_RotationFailure_ShouldNotAdvanceSessionState()
+        {
+            var harness = new Harness();
+            var issued = await harness.IssueLoginAsync("conn-1");
+            var marked = await harness.Service.NotifyPlayerDisconnectedAsync(harness.PlayerScope(), 30);
+            Assert.True(marked.IsSuccess);
+            var before = await harness.Store.FindAsync(issued.SessionId);
+
+            // 故障注入：恢复流程内第 2 次按指纹查找（= 轮换内部再验证）返回 null，模拟指纹被并发轮换 / 吊销；
+            // 令牌 / 会话 / 恢复三服务统一构建在包装存储之上，注入才能命中轮换与连接替换两条内部路径。
+            var injected = new FaultInjectingOnlineSessionStore(harness.Store) { SkipTokenHashLookupNumber = 2 };
+            var armedHarness = new Harness(sessionStore: injected);
+            var resumed = await armedHarness.Service.ResumeAsync(harness.ScopeWithPlayer(0), issued.Token, "conn-2");
+            Assert.False(resumed.IsSuccess);
+            Assert.Equal(OnlineErrorCode.TokenRevoked, resumed.Code);
+
+            // 半恢复态禁止：状态 / 连接绑定 / 重连窗与恢复前完全一致（GFX-1076 M54）。
+            var after = await harness.Store.FindAsync(issued.SessionId);
+            Assert.Equal(OnlineSessionState.Reconnecting, after.State);
+            Assert.Equal(before.ConnectionId, after.ConnectionId);
+            Assert.Equal(before.ReconnectDeadlineAtTime, after.ReconnectDeadlineAtTime);
+        }
+
+        [Fact]
+        public async Task Resume_ConnectionReplaceFailureAfterRotation_ShouldFailClosedWithoutHalfResume()
+        {
+            var harness = new Harness();
+            var issued = await harness.IssueLoginAsync("conn-1");
+            var marked = await harness.Service.NotifyPlayerDisconnectedAsync(harness.PlayerScope(), 30);
+            Assert.True(marked.IsSuccess);
+
+            // 故障注入：按会话标识查找一律 miss（= 连接替换步的会话定位），模拟推进时会话已不可寻址；
+            // 令牌 / 会话 / 恢复三服务统一构建在包装存储之上，注入才能命中轮换与连接替换两条内部路径。
+            var injected = new FaultInjectingOnlineSessionStore(harness.Store) { SkipAllFindById = true };
+            var armedHarness = new Harness(sessionStore: injected);
+            var resumed = await armedHarness.Service.ResumeAsync(harness.ScopeWithPlayer(0), issued.Token, "conn-2");
+            Assert.False(resumed.IsSuccess);
+            Assert.Equal(OnlineErrorCode.ResourceNotFound, resumed.Code);
+
+            // fail-closed：会话仍 Reconnecting（未被推进为 Connected），无连接错绑；
+            // 旧 Token 已随轮换一次性消费，客户端重试判 TokenRevoked 须重新登录。
+            var after = await harness.Store.FindAsync(issued.SessionId);
+            Assert.Equal(OnlineSessionState.Reconnecting, after.State);
+
+            var replay = await harness.Tokens.ValidateTokenAsync(issued.Token);
+            Assert.False(replay.IsSuccess);
+            Assert.Equal(OnlineErrorCode.TokenRevoked, replay.Code);
+        }
+
+        [Fact]
         public async Task NotifyPlayerDisconnected_NoActiveSession_ShouldSucceedSilently()
         {
             var harness = new Harness();
@@ -153,13 +205,14 @@ namespace GameFrameX.Tests.Online
         /// </summary>
         private sealed class Harness
         {
-            public Harness(int tokenTimeToLiveSeconds = OnlineSessionReconnectService.DefaultTokenTimeToLiveSeconds)
+            public Harness(int tokenTimeToLiveSeconds = OnlineSessionReconnectService.DefaultTokenTimeToLiveSeconds, IOnlineSessionStore sessionStore = null)
             {
                 Recorder = new OnlineEventRecorder();
                 Store = new InMemoryOnlineSessionStore();
-                Tokens = new OnlineSessionTokenService(Store, Recorder);
-                Sessions = new OnlineSessionManager(Store, Recorder);
-                Service = new OnlineSessionReconnectService(Tokens, Sessions, Store, tokenTimeToLiveSeconds);
+                var effectiveStore = sessionStore ?? Store;
+                Tokens = new OnlineSessionTokenService(effectiveStore, Recorder);
+                Sessions = new OnlineSessionManager(effectiveStore, Recorder);
+                Service = new OnlineSessionReconnectService(Tokens, Sessions, effectiveStore, tokenTimeToLiveSeconds);
             }
 
             public OnlineEventRecorder Recorder { get; }
@@ -187,6 +240,63 @@ namespace GameFrameX.Tests.Online
             public OnlineScope ScopeWithPlayer(long playerId)
             {
                 return new OnlineScope(TenantId, AppId, ServerId, playerId);
+            }
+        }
+
+        /// <summary>
+        /// 故障注入存储包装：在委托内存存储之上按调用序号制造「指纹不可寻址 / 会话不可寻址」故障，
+        /// 供恢复路径失败语义做确定性回归（只拦截读，不改动共享实体，底层事实保持原样）。
+        /// </summary>
+        private sealed class FaultInjectingOnlineSessionStore : IOnlineSessionStore
+        {
+            private readonly IOnlineSessionStore _innerStore;
+            private int _tokenHashLookupCount;
+
+            public FaultInjectingOnlineSessionStore(IOnlineSessionStore innerStore)
+            {
+                _innerStore = innerStore;
+            }
+
+            /// <summary>第 N 次（1 起）按指纹查找返回 null（0 = 不注入）；模拟指纹被并发轮换 / 吊销。</summary>
+            public int SkipTokenHashLookupNumber { get; set; }
+
+            /// <summary>所有按会话标识查找返回 null；模拟会话不可寻址（连接替换步失败）。</summary>
+            public bool SkipAllFindById { get; set; }
+
+            public Task<OnlineSession> FindAsync(string sessionId, CancellationToken cancellationToken = default)
+            {
+                return SkipAllFindById ? Task.FromResult<OnlineSession>(null) : _innerStore.FindAsync(sessionId, cancellationToken);
+            }
+
+            public Task<OnlineSession> FindByTokenHashAsync(string tokenHash, CancellationToken cancellationToken = default)
+            {
+                var lookupNumber = Interlocked.Increment(ref _tokenHashLookupCount);
+                if (lookupNumber == SkipTokenHashLookupNumber)
+                {
+                    return Task.FromResult<OnlineSession>(null);
+                }
+
+                return _innerStore.FindByTokenHashAsync(tokenHash, cancellationToken);
+            }
+
+            public Task AddOrUpdateAsync(OnlineSession session, CancellationToken cancellationToken = default)
+            {
+                return _innerStore.AddOrUpdateAsync(session, cancellationToken);
+            }
+
+            public Task<IReadOnlyList<OnlineSession>> ListActiveByPlayerAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken = default)
+            {
+                return _innerStore.ListActiveByPlayerAsync(tenantId, appId, playerId, cancellationToken);
+            }
+
+            public Task<IReadOnlyList<OnlineSession>> ListNonTerminalAsync(CancellationToken cancellationToken = default)
+            {
+                return _innerStore.ListNonTerminalAsync(cancellationToken);
+            }
+
+            public Task RemoveAsync(string sessionId, CancellationToken cancellationToken = default)
+            {
+                return _innerStore.RemoveAsync(sessionId, cancellationToken);
             }
         }
     }

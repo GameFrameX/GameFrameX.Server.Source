@@ -25,13 +25,13 @@ namespace GameFrameX.Capability.Online.Foundation.Session;
 /// <summary>
 /// 会话恢复服务（<see cref="IOnlineSessionReconnectContract"/> 的 Foundation 实现）：
 /// Core 物理连接会话与 Online 逻辑会话的协同编排——登录签发（断线前凭据交付）、
-/// 新连接恢复（验证 + 连接替换 + 原子轮换）、断线通知（开重连窗）。
+/// 新连接恢复（验证 + 原子轮换 + 连接替换）、断线通知（开重连窗）。
 /// <para>
 /// 维护约束（红线）：不另建第二凭据权威——Token 签发 / 校验 / 轮换全部委托
 /// <see cref="OnlineSessionTokenService"/>（服务端仅存 SHA-256 指纹），会话状态推进全部经
 /// <see cref="OnlineSessionManager"/>（单写者纪律）；恢复路径在自有串行门内完成
-/// 「验证 → 连接替换 → 轮换」三步，使并发重复恢复在后到的验证步显式失败（旧指纹已失效），
-/// 不产生半恢复态。
+/// 「验证 → 轮换 → 连接替换」三步（先轮换后推进：任一步失败时会话状态 / 连接绑定 / 重连窗
+/// 原样保留，不产生半恢复态），使并发重复恢复在后到的验证步显式失败（旧指纹已失效）。
 /// </para>
 /// </summary>
 public sealed class OnlineSessionReconnectService : IOnlineSessionReconnectContract
@@ -52,7 +52,7 @@ public sealed class OnlineSessionReconnectService : IOnlineSessionReconnectContr
     private readonly int _tokenTimeToLiveSeconds;
 
     /// <summary>
-    /// 恢复串行门：同一时刻只允许一个「验证 → 连接替换 → 轮换」序列推进（并发重复恢复显式分出先后）。
+    /// 恢复串行门：同一时刻只允许一个「验证 → 轮换 → 连接替换」序列推进（并发重复恢复显式分出先后）。
     /// </summary>
     private readonly SemaphoreSlim _resumeGate = new(1, 1);
 
@@ -119,13 +119,14 @@ public sealed class OnlineSessionReconnectService : IOnlineSessionReconnectContr
     }
 
     /// <summary>
-    /// 作用域为空、连接标识为空或令牌为空时返回参数非法；否则在恢复串行门内依次校验令牌、比对会话作用域、把会话切换到新连接并原子轮换令牌，任一步失败返回对应失败码，成功返回新令牌、玩家、会话标识与过期时间。
+    /// 作用域为空、连接标识为空或令牌为空时返回参数非法；否则在恢复串行门内依次校验令牌、比对会话作用域、原子轮换令牌、再把会话切换到新连接；任一步失败返回对应失败码且会话状态不被推进（无半恢复态），成功返回新令牌、玩家、会话标识与过期时间。
     /// </summary>
     /// <remarks>
     /// Returns parameter-invalid when the scope, connection id or token is missing. Otherwise, inside the resume gate, it
-    /// validates the token, checks the session scope, moves the session to the new connection and atomically rotates the
-    /// token so the old fingerprint is invalidated; concurrent duplicate resumes therefore fail at validation. Any failing
-    /// step returns its code; on success the new token, player id, session id and expiry are returned.
+    /// validates the token, checks the session scope, atomically rotates the token (old fingerprint invalidated first) and
+    /// then moves the session to the new connection; concurrent duplicate resumes therefore fail at validation, and any
+    /// failing step returns its code without advancing the session state. On success the new token, player id, session id
+    /// and expiry are returned.
     /// </remarks>
     /// <param name="scope">恢复请求声明的作用域 / Scope claimed by the resume request</param>
     /// <param name="token">待恢复会话的令牌 / Token of the session to resume</param>
@@ -166,18 +167,21 @@ public sealed class OnlineSessionReconnectService : IOnlineSessionReconnectContr
                 return OnlineResult<OnlineSessionResumeCredential>.Fail(scopeFailure.Value.Code, scopeFailure.Value.Message);
             }
 
-            // 连接替换：Authenticated / Connected / Active / Reconnecting → Connected + 新连接标识 + 清窗。
-            var resumed = await _sessions.MarkResumedAsync(session.Id, connectionId, cancellationToken).ConfigureAwait(false);
-            if (!resumed.IsSuccess)
-            {
-                return OnlineResult<OnlineSessionResumeCredential>.Fail(resumed.Code, resumed.Message);
-            }
-
-            // 原子轮换（一次性消费与更新）：旧指纹即刻失效，重放判 TokenRevoked。
+            // 原子轮换（一次性消费与更新）先行：旧指纹即刻失效，重放判 TokenRevoked；
+            // 轮换失败时会话仍处断线语义（Reconnecting / 旧绑定 / 重连窗原样），状态不被推进（GFX-1076）。
             var rotated = await _tokens.RefreshSessionTokenAsync(scope, token, null, cancellationToken).ConfigureAwait(false);
             if (!rotated.IsSuccess)
             {
                 return OnlineResult<OnlineSessionResumeCredential>.Fail(rotated.Code, rotated.Message);
+            }
+
+            // 连接替换收尾：Authenticated / Connected / Active / Reconnecting → Connected + 新连接标识 + 清窗；
+            // 若此步失败，旧指纹已随轮换失效（fail-closed，客户端持旧 Token 重试判 TokenRevoked 须重登），
+            // 但会话状态未被推进——无「已 Connected 而凭据未换 / 凭据已换而错绑连接」的半恢复态。
+            var resumed = await _sessions.MarkResumedAsync(session.Id, connectionId, cancellationToken).ConfigureAwait(false);
+            if (!resumed.IsSuccess)
+            {
+                return OnlineResult<OnlineSessionResumeCredential>.Fail(resumed.Code, resumed.Message);
             }
 
             return OnlineResult<OnlineSessionResumeCredential>.Ok(new OnlineSessionResumeCredential
