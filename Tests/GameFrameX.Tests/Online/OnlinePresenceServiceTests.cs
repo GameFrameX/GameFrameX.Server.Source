@@ -203,6 +203,61 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 验证到期候选超过单轮上限时被截断，剩余由下一次清扫继续（批量游标式）。
+        /// </summary>
+        [Fact]
+        public async Task SweepTimeoutsAsync_MoreThanSweepLimit_ShouldCapAndContinueNextSweep()
+        {
+            // Arrange：5 名到期玩家，单轮上限 3、批大小 2。
+            var recorder = new OnlineEventRecorder();
+            var service = new OnlinePresenceService(new InMemoryOnlinePresenceStore(), recorder, idleTimeoutSeconds: 300, sweepBatchSize: 2, maxRecordsPerSweep: 3);
+            var playerIdentifiers = new long[] { 2001, 2002, 2003, 2004, 2005 };
+            foreach (var playerId in playerIdentifiers)
+            {
+                await service.SetOnlineAsync(CreatePlayerScope(playerId), "sess-" + playerId);
+            }
+
+            // Act：心跳全部推到 301 秒前。
+            var futureNow = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 301_000;
+            var firstSweep = await service.SweepTimeoutsAsync(TenantId, AppId, futureNow);
+            var secondSweep = await service.SweepTimeoutsAsync(TenantId, AppId, futureNow);
+            var idleCount = 0;
+            foreach (var playerId in playerIdentifiers)
+            {
+                var state = await service.GetAsync(CreatePlayerScope(playerId));
+                if (state.Data == OnlinePresenceState.Idle)
+                {
+                    idleCount++;
+                }
+            }
+
+            // Assert：首轮截断到上限，次轮清完剩余。
+            Assert.Equal(3, firstSweep);
+            Assert.Equal(2, secondSweep);
+            Assert.Equal(5, idleCount);
+        }
+
+        /// <summary>
+        /// 验证候选索引不误伤未到期记录：心跳未超阈值的玩家不被清扫。
+        /// </summary>
+        [Fact]
+        public async Task SweepTimeoutsAsync_WithinIdleThreshold_ShouldNotBeSwept()
+        {
+            // Arrange：阈值 300 秒，仅推进 100 秒。
+            var service = CreateService(out var recorder);
+            var scope = CreatePlayerScope(PlayerOne);
+            await service.SetOnlineAsync(scope, "sess-a");
+
+            var futureNow = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 100_000;
+            var swept = await service.SweepTimeoutsAsync(TenantId, AppId, futureNow);
+            var state = await service.GetAsync(scope);
+
+            // Assert
+            Assert.Equal(0, swept);
+            Assert.Equal(OnlinePresenceState.Online, state.Data);
+        }
+
+        /// <summary>
         /// 验证风控 Blocked 生命周期：受限中拒绝上线与关闭，解除后回 Offline。
         /// </summary>
         [Fact]

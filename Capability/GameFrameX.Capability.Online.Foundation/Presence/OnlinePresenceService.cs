@@ -56,17 +56,27 @@ public sealed class OnlinePresenceService
     /// <summary>空闲判定阈值（秒；Online 态超过该时长无心跳转 Idle）。</summary>
     private readonly long _idleTimeoutSeconds;
 
+    /// <summary>清扫批大小（每批处理的候选条数；批间让出调度）。</summary>
+    private readonly int _sweepBatchSize;
+
+    /// <summary>单轮清扫处理条数上限（超出部分由下一次 Tick 续扫）。</summary>
+    private readonly int _maxRecordsPerSweep;
+
     /// <summary>
     /// 初始化 <see cref="OnlinePresenceService"/>。
     /// </summary>
     /// <param name="store">在线状态存储。</param>
     /// <param name="eventPublisher">事件发布出口。</param>
     /// <param name="idleTimeoutSeconds">空闲判定阈值（秒；默认 300）。</param>
-    public OnlinePresenceService(IOnlinePresenceStore store, IOnlineEventPublisher eventPublisher, long idleTimeoutSeconds = 300)
+    /// <param name="sweepBatchSize">清扫批大小（默认 200；建议 100–500）。</param>
+    /// <param name="maxRecordsPerSweep">单轮清扫处理条数上限（默认 1000）。</param>
+    public OnlinePresenceService(IOnlinePresenceStore store, IOnlineEventPublisher eventPublisher, long idleTimeoutSeconds = 300, int sweepBatchSize = 200, int maxRecordsPerSweep = 1000)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _eventPublisher = eventPublisher ?? throw new ArgumentNullException(nameof(eventPublisher));
         _idleTimeoutSeconds = idleTimeoutSeconds;
+        _sweepBatchSize = sweepBatchSize > 0 ? sweepBatchSize : 200;
+        _maxRecordsPerSweep = maxRecordsPerSweep > 0 ? maxRecordsPerSweep : 1000;
     }
 
     /// <summary>
@@ -350,6 +360,10 @@ public sealed class OnlinePresenceService
 
     /// <summary>
     /// 清理超时（Reconnecting 超窗转 Offline 且不留永久 Reconnecting；Online 超过空闲阈值转 Idle）。
+    /// <para>
+    /// 批量游标式：存储层按到期时间索引取头部候选，按批处理并在批次间让出调度；
+    /// 单轮处理不超过 maxRecordsPerSweep 条，剩余候选由下一次清扫继续。
+    /// </para>
     /// </summary>
     /// <param name="tenantId">租户标识。</param>
     /// <param name="appId">应用标识。</param>
@@ -360,25 +374,42 @@ public sealed class OnlinePresenceService
     {
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : Now();
         var swept = 0;
-        var records = await _store.ListByAppAsync(tenantId, appId, cancellationToken);
-        foreach (var record in records)
+        while (swept < _maxRecordsPerSweep)
         {
-            if (record.State == OnlinePresenceState.Reconnecting && record.ReconnectDeadlineAtTime > 0 && now > record.ReconnectDeadlineAtTime)
+            var remaining = _maxRecordsPerSweep - swept;
+            var batchCount = remaining < _sweepBatchSize ? remaining : _sweepBatchSize;
+            var candidates = await _store.ListSweepCandidatesAsync(tenantId, appId, now, _idleTimeoutSeconds * 1000L, batchCount, cancellationToken);
+            if (candidates.Count == 0)
             {
-                await _store.RemoveAsync(record.TenantId, record.AppId, record.PlayerId, cancellationToken);
-                await PublishChangeAsync(record, record.State, OnlinePresenceState.Offline, OnlinePresenceChangeReason.ReconnectWindowExpired, null, cancellationToken);
-                swept++;
-                continue;
+                break;
             }
 
-            if (record.State == OnlinePresenceState.Online && now - record.LastHeartbeatAtTime > _idleTimeoutSeconds * 1000L)
+            foreach (var record in candidates)
             {
-                var outcome = await TransitionAsync(record, OnlinePresenceState.Idle, OnlinePresenceChangeReason.IdleTimeout, null, cancellationToken);
-                if (outcome.IsSuccess)
+                if (record.State == OnlinePresenceState.Reconnecting && record.ReconnectDeadlineAtTime > 0 && now > record.ReconnectDeadlineAtTime)
                 {
+                    await _store.RemoveAsync(record.TenantId, record.AppId, record.PlayerId, cancellationToken);
+                    await PublishChangeAsync(record, record.State, OnlinePresenceState.Offline, OnlinePresenceChangeReason.ReconnectWindowExpired, null, cancellationToken);
                     swept++;
+                    continue;
+                }
+
+                if (record.State == OnlinePresenceState.Online && now - record.LastHeartbeatAtTime > _idleTimeoutSeconds * 1000L)
+                {
+                    var outcome = await TransitionAsync(record, OnlinePresenceState.Idle, OnlinePresenceChangeReason.IdleTimeout, null, cancellationToken);
+                    if (outcome.IsSuccess)
+                    {
+                        swept++;
+                    }
                 }
             }
+
+            if (candidates.Count < batchCount || swept >= _maxRecordsPerSweep)
+            {
+                break;
+            }
+
+            await Task.Yield();
         }
 
         return swept;
