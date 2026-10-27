@@ -29,8 +29,9 @@
 
 namespace GameFrameX.Capability.Online.Matchmaking;
 
+using System;
+using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Events;
 
@@ -66,6 +67,9 @@ public sealed class OnlineMatchmakerCoordinator
     /// <summary>跨域社交裁决（可空：null = 不启用屏蔽/处罚裁决，既有行为不变）。</summary>
     private readonly IOnlineSocialGate _socialGate;
 
+    /// <summary>匹配事件发件箱（可空：null = 无补偿直发，既有行为不变；C374）。</summary>
+    private readonly IOnlineMatchEventOutbox _eventOutbox;
+
     /// <summary>
     /// 初始化 <see cref="OnlineMatchmakerCoordinator"/>。
     /// </summary>
@@ -74,12 +78,13 @@ public sealed class OnlineMatchmakerCoordinator
     /// <param name="eventPublisher">事件发布器。</param>
     /// <param name="options">匹配与限流可配置项（必填；机制合并后的 Options 终值，不再兜底默认）。</param>
     /// <param name="socialGate">跨域社交裁决入口（可空；由 <c>OnlineSocialDecisionService</c> 提供）。</param>
-    public OnlineMatchmakerCoordinator(IOnlineMatchTicketStore store, OnlineMatchTicketService ticketService, IOnlineEventPublisher eventPublisher, OnlineMatchmakerOptions options, IOnlineSocialGate socialGate = null)
+    public OnlineMatchmakerCoordinator(IOnlineMatchTicketStore store, OnlineMatchTicketService ticketService, IOnlineEventPublisher eventPublisher, OnlineMatchmakerOptions options, IOnlineSocialGate socialGate = null, IOnlineMatchEventOutbox eventOutbox = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _ticketService = ticketService ?? throw new ArgumentNullException(nameof(ticketService));
         _eventPublisher = eventPublisher ?? throw new ArgumentNullException(nameof(eventPublisher));
         _socialGate = socialGate;
+        _eventOutbox = eventOutbox;
         _rule = new OnlineMatchRule(options ?? throw new ArgumentNullException(nameof(options)));
     }
 
@@ -94,6 +99,12 @@ public sealed class OnlineMatchmakerCoordinator
     public async Task<OnlineResult<OnlineMatchmakingRunResult>> RunOnceAsync(long tenantId, long appId, long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
     {
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        // C374 补偿：本轮撮合前先重投上一轮发布失败的待投递事件（至少一次投递；无发件箱时跳过）。
+        if (_eventOutbox != null)
+        {
+            await DeliverPendingEventsAsync(tenantId, appId, cancellationToken).ConfigureAwait(false);
+        }
 
         var sweep = await _ticketService.SweepExpiredAsync(tenantId, appId, now, cancellationToken).ConfigureAwait(false);
         var result = new OnlineMatchmakingRunResult
@@ -177,9 +188,7 @@ public sealed class OnlineMatchmakerCoordinator
             return null;
         }
 
-        await PublishAssignmentCreatedAsync(committed, cancellationToken).ConfigureAwait(false);
-
-        await PublishMatchedTicketEventsAsync(committed, ticketIds, cancellationToken).ConfigureAwait(false);
+        await PublishCommittedEventsAsync(committed, ticketIds, cancellationToken).ConfigureAwait(false);
 
         return committed;
     }
@@ -203,31 +212,84 @@ public sealed class OnlineMatchmakerCoordinator
     }
 
     /// <summary>
-    /// 发布对局分配创建事件（先于逐票据事件；空安全实参与既有口径逐字一致）。
-    /// </summary>
-    /// <param name="committed">已落档的分配。</param>
-    /// <param name="cancellationToken">取消令牌。</param>
-    private async Task PublishAssignmentCreatedAsync(OnlineMatchAssignment committed, CancellationToken cancellationToken)
-    {
-        await _eventPublisher.PublishAsync(OnlineMatchEvents.CreateAssignmentCreated(committed.TenantId, committed.AppId, committed.ServerId, committed.AssignmentId, committed.MatchId, committed.Mode, committed.Region, committed.PlayerIds == null ? 0 : committed.PlayerIds.Count, committed.PlayerIds != null && committed.PlayerIds.Count > 0 ? committed.PlayerIds[0] : 0, committed.TicketIds), cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// 逐票据补发匹配态变更事件（按提交票据序 <see cref="IOnlineMatchTicketStore.FindAsync"/>，查得才发；
-    /// 竞态下票据缺失则静默跳过该张，与提交后重查口径一致）。
+    /// 为已落档的分配构建事件序列（assignment-created 先行；逐票据匹配态变更按提交票据序
+    /// <see cref="IOnlineMatchTicketStore.FindAsync"/> 查得才建，竞态下票据缺失静默跳过该张；
+    /// 空安全实参与既有直发口径逐字一致）。
     /// </summary>
     /// <param name="committed">已落档的分配。</param>
     /// <param name="ticketIds">本组票据标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
-    private async Task PublishMatchedTicketEventsAsync(OnlineMatchAssignment committed, List<string> ticketIds, CancellationToken cancellationToken)
+    /// <returns>按投递顺序排列的事件列表。</returns>
+    private async Task<List<OnlineEvent>> BuildMatchEventsAsync(OnlineMatchAssignment committed, List<string> ticketIds, CancellationToken cancellationToken)
     {
+        var events = new List<OnlineEvent>
+        {
+            OnlineMatchEvents.CreateAssignmentCreated(committed.TenantId, committed.AppId, committed.ServerId, committed.AssignmentId, committed.MatchId, committed.Mode, committed.Region, committed.PlayerIds == null ? 0 : committed.PlayerIds.Count, committed.PlayerIds != null && committed.PlayerIds.Count > 0 ? committed.PlayerIds[0] : 0, committed.TicketIds),
+        };
+
         foreach (var ticketId in ticketIds)
         {
             var matched = await _store.FindAsync(committed.TenantId, committed.AppId, ticketId, cancellationToken).ConfigureAwait(false);
             if (matched != null)
             {
-                await _eventPublisher.PublishAsync(OnlineMatchEvents.CreateTicketChanged(matched.TenantId, matched.AppId, matched.ServerId, matched.TicketId, matched.PartyId, matched.FailureReason.ToString(), matched.AssignmentId, matched.PlayerIds == null ? 0 : matched.PlayerIds.Count, matched.PlayerIds != null && matched.PlayerIds.Count > 0 ? matched.PlayerIds[0] : 0, OnlineMatchTicketState.Queued.ToString(), OnlineMatchTicketState.Matched.ToString()), cancellationToken).ConfigureAwait(false);
+                events.Add(OnlineMatchEvents.CreateTicketChanged(matched.TenantId, matched.AppId, matched.ServerId, matched.TicketId, matched.PartyId, matched.FailureReason.ToString(), matched.AssignmentId, matched.PlayerIds == null ? 0 : matched.PlayerIds.Count, matched.PlayerIds != null && matched.PlayerIds.Count > 0 ? matched.PlayerIds[0] : 0, OnlineMatchTicketState.Queued.ToString(), OnlineMatchTicketState.Matched.ToString()));
             }
+        }
+
+        return events;
+    }
+
+    /// <summary>
+    /// 发布已落档分配的事件（C374 补偿：发件箱在场时先整批写入、再逐条尽力投递，
+    /// 发布失败条目保留待投递、由下一轮 <see cref="RunOnceAsync"/> 起点重投，形成至少一次投递——
+    /// 落档结果不受发布失败影响；发件箱缺席时保持既有直发行为，失败即抛出）。
+    /// </summary>
+    /// <param name="committed">已落档的分配。</param>
+    /// <param name="ticketIds">本组票据标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>完成通知。</returns>
+    private async Task PublishCommittedEventsAsync(OnlineMatchAssignment committed, List<string> ticketIds, CancellationToken cancellationToken)
+    {
+        var events = await BuildMatchEventsAsync(committed, ticketIds, cancellationToken).ConfigureAwait(false);
+
+        if (_eventOutbox == null)
+        {
+            foreach (var onlineEvent in events)
+            {
+                await _eventPublisher.PublishAsync(onlineEvent, cancellationToken).ConfigureAwait(false);
+            }
+
+            return;
+        }
+
+        await _eventOutbox.AppendAsync(events, cancellationToken).ConfigureAwait(false);
+        await DeliverPendingEventsAsync(committed.TenantId, committed.AppId, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 重投作用域内全部待投递事件：逐条发布、成功即标记已投递；单条失败吞没异常并保留条目，
+    /// 交由后续轮次继续重投（异常不外溢——撮合与重投互不拖垮）。
+    /// </summary>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>完成通知。</returns>
+    private async Task DeliverPendingEventsAsync(long tenantId, long appId, CancellationToken cancellationToken)
+    {
+        var pending = await _eventOutbox.ListPendingAsync(tenantId, appId, cancellationToken).ConfigureAwait(false);
+
+        foreach (var entry in pending)
+        {
+            try
+            {
+                await _eventPublisher.PublishAsync(entry.Event, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                continue;
+            }
+
+            await _eventOutbox.MarkDeliveredAsync(tenantId, appId, entry.EventId, cancellationToken).ConfigureAwait(false);
         }
     }
 

@@ -127,6 +127,8 @@ public sealed class OnlineMatchmakingCapabilityModule : ICapabilityModule, IAdmi
         var eventPublisher = context.GetService<IOnlineEventPublisher>();
         var socialGate = context.GetService<IOnlineSocialGate>();
         var scope = context.GetService<OnlineScope>();
+        context.AddService<IOnlineMatchEventOutbox>(static _ => new InMemoryOnlineMatchEventOutbox());
+        var matchEventOutbox = context.GetService<IOnlineMatchEventOutbox>();
         context.AddService<IOnlineMatchTicketStore>(static _ => new InMemoryOnlineMatchTicketStore());
         _matchTicketStore = context.GetService<IOnlineMatchTicketStore>();
         context.AddService<IOnlineMatchListingStore>(static _ => new InMemoryOnlineMatchListingStore());
@@ -135,7 +137,7 @@ public sealed class OnlineMatchmakingCapabilityModule : ICapabilityModule, IAdmi
         var partyStore = context.GetService<IOnlinePartyStore>();
 
         _matchTickets = new OnlineMatchTicketService(_matchTicketStore, eventPublisher, options.Matchmaker);
-        _matchmaker = new OnlineMatchmakerCoordinator(_matchTicketStore, _matchTickets, eventPublisher, options.Matchmaker, socialGate);
+        _matchmaker = new OnlineMatchmakerCoordinator(_matchTicketStore, _matchTickets, eventPublisher, options.Matchmaker, socialGate, matchEventOutbox);
         _matchQueueObserver = new OnlineMatchQueueObserver(_matchTicketStore);
         context.AddService(_matchTickets);
         context.AddService(_matchmaker);
