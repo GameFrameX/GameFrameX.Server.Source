@@ -71,6 +71,15 @@ public static partial class Keys
             /// 用途: 加载配置表流程结束时输出调试日志
             /// </remarks>
             public const string LoadConfigEnd = "Config.Table.LoadConfigEnd";
+
+            /// <summary>
+            /// 配置表 {0} 未注册或未加载
+            /// </summary>
+            /// <remarks>
+            /// 键名: Config.Table.ConfigNotFound
+            /// 用途: ConfigComponent.GetConfig&lt;T&gt; 找不到配置表时抛出 InvalidOperationException
+            /// </remarks>
+            public const string ConfigNotFound = "Config.Table.ConfigNotFound";
         }
     }
 }
