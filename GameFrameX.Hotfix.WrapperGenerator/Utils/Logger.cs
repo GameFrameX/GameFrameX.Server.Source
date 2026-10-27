@@ -57,4 +57,23 @@ public static class Logger
                                                          true);
         context.ReportDiagnostic(Diagnostic.Create(invalidXmlWarning, Location.None, msg));
     }
+
+    /// <summary>
+    /// 向源代码生成上下文报告警告诊断信息。
+    /// </summary>
+    /// <remarks>
+    /// Reports a warning diagnostic to the source production context.
+    /// </remarks>
+    /// <param name="context">源代码生成上下文 / Source production context</param>
+    /// <param name="msg">警告消息 / Warning message</param>
+    public static void LogWarning(this SourceProductionContext context, string msg)
+    {
+        var warning = new DiagnosticDescriptor("Warning",
+                                                "Code Generator Warning",
+                                                "{0}",
+                                                "CodeGenerator",
+                                                DiagnosticSeverity.Warning,
+                                                true);
+        context.ReportDiagnostic(Diagnostic.Create(warning, Location.None, msg));
+    }
 }

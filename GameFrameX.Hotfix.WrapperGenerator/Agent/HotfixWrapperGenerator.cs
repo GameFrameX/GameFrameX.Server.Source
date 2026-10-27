@@ -477,6 +477,11 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
             context.LogError($"{fullName}.{method.Identifier.Text}无法为标记【{ThreadSafeAttributeName}】的函数指定超时时间");
         }
 
+        if (mth.IsThreadSafe && !mth.Discard)
+        {
+            context.LogWarning($"{fullName}.{method.Identifier.Text}【{ThreadSafeAttributeName}】注解需配合【{DiscardAttributeName}】使用，单独使用时不会生成包装器，方法将被跳过");
+        }
+
         if (!mth.IsApi && !mth.Discard && mth.HasTimeout)
         {
             context.LogError($"{fullName}.{method.Identifier.Text}【{TimeOutAttributeName}】注解只能配合【Api】或【{DiscardAttributeName}】使用");
