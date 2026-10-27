@@ -144,6 +144,32 @@ public sealed class InMemoryOnlinePartyStore : IOnlinePartyStore
         }
     }
 
+    /// <summary>
+    /// 统计作用域 (TenantId, AppId, ServerId) 内非终态队伍的按状态分组计数（表内扫描不产出实体副本；键按状态枚举值升序）。
+    /// </summary>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="serverId">区服标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>状态 → 队伍数（只含非终态状态；无非终态队伍时为空表）。</returns>
+    public Task<IReadOnlyDictionary<OnlinePartyState, int>> CountNonTerminalByScopeAsync(long tenantId, long appId, long serverId, CancellationToken cancellationToken = default)
+    {
+        lock (_syncRoot)
+        {
+            var counts = new SortedDictionary<OnlinePartyState, int>();
+            foreach (var party in _parties.Values)
+            {
+                if (party.TenantId == tenantId && party.AppId == appId && party.ServerId == serverId && !OnlinePartyStateMachine.IsTerminal(party.State))
+                {
+                    counts.TryGetValue(party.State, out var current);
+                    counts[party.State] = current + 1;
+                }
+            }
+
+            return Task.FromResult<IReadOnlyDictionary<OnlinePartyState, int>>(counts);
+        }
+    }
+
     /// <summary>保存邀请（深拷贝入库）。</summary>
     /// <param name="invite">邀请条目。</param>
     /// <param name="cancellationToken">取消令牌。</param>

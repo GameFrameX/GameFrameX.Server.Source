@@ -406,6 +406,92 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
     }
 
     /// <summary>
+    /// 在全局锁内聚合作用域内排队态票据，按 (Mode, Region) 槽位产出队列深度与等待时长合计（表内扫描不产出实体副本）。
+    /// </summary>
+    /// <remarks>
+    /// Aggregates queued tickets by (Mode, Region) slot under the global lock, without producing entity copies.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="serverId">区服标识 / Server id</param>
+    /// <param name="nowUnixMilliseconds">观测时刻（UTC 毫秒）/ Observation time (unix milliseconds)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>槽位聚合列表 / The list of slot aggregates</returns>
+    public Task<IReadOnlyList<OnlineMatchQueueSlotAggregate>> AggregateQueuedBySlotAsync(long tenantId, long appId, long serverId, long nowUnixMilliseconds, CancellationToken cancellationToken = default)
+    {
+        var accumulator = new Dictionary<string, OnlineMatchQueueSlotAggregate>();
+        lock (_syncRoot)
+        {
+            foreach (var ticket in _tickets.Values)
+            {
+                if (ticket.TenantId != tenantId || ticket.AppId != appId || ticket.ServerId != serverId || ticket.State != OnlineMatchTicketState.Queued)
+                {
+                    continue;
+                }
+
+                var entry = ResolveSlot(accumulator, ticket.Mode, ticket.Region);
+                entry.TicketCount++;
+                entry.TotalWaitSeconds += OnlineMatchRule.WaitSeconds(ticket, nowUnixMilliseconds);
+            }
+        }
+
+        return Task.FromResult<IReadOnlyList<OnlineMatchQueueSlotAggregate>>(new List<OnlineMatchQueueSlotAggregate>(accumulator.Values));
+    }
+
+    /// <summary>
+    /// 在全局锁内统计时间窗 (start, end] 内落档的匹配分配所消费的票据数，按 (Mode, Region) 槽位聚合（表内扫描不产出实体副本）。
+    /// </summary>
+    /// <remarks>
+    /// Counts tickets consumed by assignments archived within the (start, end] window, grouped by (Mode, Region) slot under the global lock.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="serverId">区服标识 / Server id</param>
+    /// <param name="windowStartExclusiveUnixMilliseconds">窗口起点（UTC 毫秒；不含）/ Window start (unix milliseconds, exclusive)</param>
+    /// <param name="windowEndInclusiveUnixMilliseconds">窗口终点（UTC 毫秒；含）/ Window end (unix milliseconds, inclusive)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>槽位聚合列表（TotalWaitSeconds 恒为 0）/ The list of slot aggregates (TotalWaitSeconds always 0)</returns>
+    public Task<IReadOnlyList<OnlineMatchQueueSlotAggregate>> CountAssignmentTicketsBySlotAsync(long tenantId, long appId, long serverId, long windowStartExclusiveUnixMilliseconds, long windowEndInclusiveUnixMilliseconds, CancellationToken cancellationToken = default)
+    {
+        var accumulator = new Dictionary<string, OnlineMatchQueueSlotAggregate>();
+        lock (_syncRoot)
+        {
+            foreach (var assignment in _assignments.Values)
+            {
+                if (assignment.TenantId != tenantId || assignment.AppId != appId || assignment.ServerId != serverId
+                    || assignment.CreatedAtTime <= windowStartExclusiveUnixMilliseconds || assignment.CreatedAtTime > windowEndInclusiveUnixMilliseconds)
+                {
+                    continue;
+                }
+
+                var entry = ResolveSlot(accumulator, assignment.Mode, assignment.Region);
+                entry.TicketCount += assignment.TicketIds == null ? 0 : assignment.TicketIds.Count;
+            }
+        }
+
+        return Task.FromResult<IReadOnlyList<OnlineMatchQueueSlotAggregate>>(new List<OnlineMatchQueueSlotAggregate>(accumulator.Values));
+    }
+
+    /// <summary>
+    /// 按 (Mode, Region) 取或建聚合槽位（调用方必须已持有 <see cref="_syncRoot"/>）。
+    /// </summary>
+    /// <param name="accumulator">聚合表。</param>
+    /// <param name="mode">玩法模式。</param>
+    /// <param name="region">区域。</param>
+    /// <returns>该分组的聚合槽位。</returns>
+    private static OnlineMatchQueueSlotAggregate ResolveSlot(Dictionary<string, OnlineMatchQueueSlotAggregate> accumulator, int mode, int region)
+    {
+        var key = mode + ":" + region;
+        if (!accumulator.TryGetValue(key, out var entry))
+        {
+            entry = new OnlineMatchQueueSlotAggregate { Mode = mode, Region = region, };
+            accumulator[key] = entry;
+        }
+
+        return entry;
+    }
+
+    /// <summary>
     /// 按标识读取票据副本（调用方必须已持有 <see cref="_syncRoot"/>）。
     /// </summary>
     /// <param name="tenantId">租户标识。</param>

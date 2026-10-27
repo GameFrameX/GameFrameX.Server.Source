@@ -155,4 +155,29 @@ public interface IOnlineMatchTicketStore
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>分配副本列表。</returns>
     Task<IReadOnlyList<OnlineMatchAssignment>> ListAssignmentsAsync(long tenantId, long appId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 聚合作用域 (TenantId, AppId, ServerId) 内排队态票据，按 (Mode, Region) 槽位产出队列深度与等待时长合计
+    /// （聚合谓词下推：排队态判定与等待秒来源 <see cref="OnlineMatchRule.WaitSeconds"/> 均与在线总览口径一致）。
+    /// </summary>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="serverId">区服标识。</param>
+    /// <param name="nowUnixMilliseconds">观测时刻（UTC 毫秒；等待时长按该时刻计算）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>槽位聚合列表（无排队票据时为空表）。</returns>
+    Task<IReadOnlyList<OnlineMatchQueueSlotAggregate>> AggregateQueuedBySlotAsync(long tenantId, long appId, long serverId, long nowUnixMilliseconds, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 统计时间窗 <c>(windowStartExclusiveUnixMilliseconds, windowEndInclusiveUnixMilliseconds]</c> 内落档的匹配分配所消费的票据数，
+    /// 按 (Mode, Region) 槽位聚合（聚合谓词下推：窗口左开右闭边界与在线总览吞吐口径一致）。
+    /// </summary>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="serverId">区服标识。</param>
+    /// <param name="windowStartExclusiveUnixMilliseconds">窗口起点（UTC 毫秒；不含）。</param>
+    /// <param name="windowEndInclusiveUnixMilliseconds">窗口终点（UTC 毫秒；含）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>槽位聚合列表（TotalWaitSeconds 恒为 0；窗口内无分配时为空表）。</returns>
+    Task<IReadOnlyList<OnlineMatchQueueSlotAggregate>> CountAssignmentTicketsBySlotAsync(long tenantId, long appId, long serverId, long windowStartExclusiveUnixMilliseconds, long windowEndInclusiveUnixMilliseconds, CancellationToken cancellationToken = default);
 }

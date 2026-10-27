@@ -64,4 +64,12 @@ public interface IOnlinePresenceStore
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>在线状态记录列表。</returns>
     Task<IReadOnlyList<OnlinePresenceRecord>> ListByAppAsync(long tenantId, long appId, CancellationToken cancellationToken = default);
+
+    /// <summary>统计作用域 (TenantId, AppId, ServerId) 内的在线玩家数（聚合谓词下推：State 为 Blocked 的记录不计入，与在线总览口径一致）。</summary>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">应用标识。</param>
+    /// <param name="serverId">区服标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>在线玩家数。</returns>
+    Task<int> CountOnlineByServerAsync(long tenantId, long appId, long serverId, CancellationToken cancellationToken = default);
 }

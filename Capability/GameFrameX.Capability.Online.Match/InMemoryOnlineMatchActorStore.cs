@@ -202,6 +202,36 @@ public sealed class InMemoryOnlineMatchActorStore : IOnlineMatchActorStore
     }
 
     /// <summary>
+    /// 在全局锁内统计作用域 (TenantId, AppId, ServerId) 内存活对局的按状态分组计数（Closed 不计入；表内扫描不产出实体副本；键按状态枚举值升序）。
+    /// </summary>
+    /// <remarks>
+    /// Counts live matches grouped by state under the global lock (excluding Closed), without producing entity copies.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / The tenant id</param>
+    /// <param name="appId">App 标识 / The app id</param>
+    /// <param name="serverId">区服标识 / The server id</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>状态 → 对局数（不含 Closed）/ State to match count (Closed excluded)</returns>
+    public Task<IReadOnlyDictionary<OnlineMatchState, int>> CountActiveByScopeAsync(long tenantId, long appId, long serverId, CancellationToken cancellationToken = default)
+    {
+        var counts = new SortedDictionary<OnlineMatchState, int>();
+        lock (_syncRoot)
+        {
+            foreach (var pair in _matches)
+            {
+                var match = pair.Value;
+                if (match.TenantId == tenantId && match.AppId == appId && match.ServerId == serverId && match.State != OnlineMatchState.Closed)
+                {
+                    counts.TryGetValue(match.State, out var current);
+                    counts[match.State] = current + 1;
+                }
+            }
+        }
+
+        return Task.FromResult<IReadOnlyDictionary<OnlineMatchState, int>>(counts);
+    }
+
+    /// <summary>
     /// 按标识查找并返回副本（须在锁内调用）。
     /// </summary>
     /// <param name="tenantId">租户标识。</param>

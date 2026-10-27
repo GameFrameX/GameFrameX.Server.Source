@@ -91,4 +91,14 @@ public interface IOnlineMatchActorStore
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>对局副本列表。</returns>
     Task<IReadOnlyList<OnlineMatch>> ListAsync(long tenantId, long appId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 统计作用域 (TenantId, AppId, ServerId) 内存活对局的按状态分组计数（聚合谓词下推：<see cref="OnlineMatchState.Closed"/> 即已释放、不计入，与在线总览口径一致；键按状态枚举值升序）。
+    /// </summary>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="serverId">区服标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>状态 → 对局数（不含 Closed；无存活对局时为空表）。</returns>
+    Task<IReadOnlyDictionary<OnlineMatchState, int>> CountActiveByScopeAsync(long tenantId, long appId, long serverId, CancellationToken cancellationToken = default);
 }

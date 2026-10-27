@@ -88,6 +88,16 @@ public interface IOnlinePartyStore
     Task<IReadOnlyList<OnlineParty>> ListPartiesAsync(long tenantId, long appId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 统计作用域 (TenantId, AppId, ServerId) 内非终态队伍的按状态分组计数（聚合谓词下推：终态判定同 <see cref="OnlinePartyStateMachine.IsTerminal"/>，与在线总览口径一致；键按状态枚举值升序）。
+    /// </summary>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="serverId">区服标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>状态 → 队伍数（只含非终态状态；无非终态队伍时为空表）。</returns>
+    Task<IReadOnlyDictionary<OnlinePartyState, int>> CountNonTerminalByScopeAsync(long tenantId, long appId, long serverId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 保存邀请。
     /// </summary>
     /// <param name="invite">邀请条目。</param>
