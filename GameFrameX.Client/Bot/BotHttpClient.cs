@@ -59,7 +59,8 @@ public sealed class BotHttpClient
         if (webBufferResult.IsSuccessStatusCode)
         {
             var messageObjectHttp = ProtoBufSerializerHelper.Deserialize<MessageHttpObject>(await webBufferResult.Content.ReadAsByteArrayAsync());
-            if (messageObjectHttp != null && messageObjectHttp.Id != default)
+            // Deserialize 失败直接抛 InvalidOperationException（含类型名），不再依赖 null 判定（C356）。
+            if (messageObjectHttp.Id != default)
             {
                 var messageType = MessageProtoHelper.GetMessageTypeById(messageObjectHttp.Id);
                 if (messageType != typeof(T))
