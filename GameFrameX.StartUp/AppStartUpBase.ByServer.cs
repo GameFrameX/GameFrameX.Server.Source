@@ -143,7 +143,10 @@ public abstract partial class AppStartUpBase
     /// </summary>
     /// <remarks>
     /// Handler when client disconnects.
-    /// Handles the situation when a client disconnects, recording relevant information.
+    /// Handles the situation when a client disconnects, recording relevant information and
+    /// closing the session-scoped network channel created by the package funnel so its
+    /// resources (the channel-level cancellation source) are released deterministically
+    /// instead of waiting for garbage collection.
     /// </remarks>
     /// <param name="appSession">断开连接的会话对象 / Session object that disconnected</param>
     /// <param name="disconnectEventArgs">断开连接的相关参数 / Parameters related to disconnection</param>
@@ -152,6 +155,7 @@ public abstract partial class AppStartUpBase
     {
         // Localization: StartUp.Server.ClientDisconnected - 客户端断开连接 - 会话ID: {0}, 远程终端: {1}, 断开原因: {2}
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.Server.ClientDisconnected, appSession.SessionId, appSession.RemoteEndPoint, disconnectEventArgs.Reason));
+        CloseSessionNetworkChannel(appSession);
         return ValueTask.CompletedTask;
     }
 
@@ -305,13 +309,16 @@ public abstract partial class AppStartUpBase
     }
 
     /// <summary>
-    /// 会话级网络通道缓存：每会话恰一个通道，随会话对象回收而释放。
+    /// 会话级网络通道缓存：每会话恰一个通道，断线时经 <see cref="CloseSessionNetworkChannel"/>
+    /// 显式关闭并摘除，未及断线回调的残余条目随会话对象回收而释放。
     /// </summary>
     /// <remarks>
-    /// The session-scoped channel cache: exactly one channel per session, released when the
-    /// session object is collected. Channel user data (e.g. the actor binding written at login)
-    /// survives across the messages of the same session — the per-message channel of the
-    /// previous shape dropped it on every package.
+    /// The session-scoped channel cache: exactly one channel per session, explicitly closed
+    /// and removed on disconnect via <see cref="CloseSessionNetworkChannel"/>; entries whose
+    /// disconnect callback never arrives are released when the session object is collected.
+    /// Channel user data (e.g. the actor binding written at login) survives across the
+    /// messages of the same session — the per-message channel of the previous shape dropped
+    /// it on every package.
     /// </remarks>
     private readonly ConditionalWeakTable<IAppSession, INetworkChannel> _sessionNetworkChannels = new();
 
@@ -326,7 +333,7 @@ public abstract partial class AppStartUpBase
     /// <returns>该会话的网络通道 / The session's network channel</returns>
     private INetworkChannel GetSessionNetworkChannel(IAppSession session)
     {
-        // 通道用户数据（如登录时的 ActorId 绑定）跨消息存活；会话回收时通道随之释放，无需显式清理
+        // 通道用户数据（如登录时的 ActorId 绑定）跨消息存活；断线时经 CloseSessionNetworkChannel 关闭并摘除
         return _sessionNetworkChannels.GetValue(session, CreateSessionNetworkChannel);
     }
 
@@ -343,6 +350,26 @@ public abstract partial class AppStartUpBase
     protected virtual INetworkChannel CreateSessionNetworkChannel(IAppSession session)
     {
         return new DefaultNetworkChannel(session, Setting);
+    }
+
+    /// <summary>
+    /// 关闭并摘除会话级网络通道缓存中的通道（断线路径资源释放）。
+    /// </summary>
+    /// <remarks>
+    /// Closes and removes the session-scoped channel from the cache — the disconnect-path
+    /// resource release so the channel-level cancellation source is disposed deterministically
+    /// instead of waiting for garbage collection. No-op when the session never had a channel
+    /// (e.g. disconnected before any package arrived); <see cref="INetworkChannel.Close"/> is
+    /// idempotent, so an already-closed channel is harmless.
+    /// </remarks>
+    /// <param name="session">断开连接的会话对象 / The session that disconnected</param>
+    protected void CloseSessionNetworkChannel(IAppSession session)
+    {
+        if (_sessionNetworkChannels.TryGetValue(session, out var channel))
+        {
+            channel.Close();
+            _sessionNetworkChannels.Remove(session);
+        }
     }
 
     /// <summary>

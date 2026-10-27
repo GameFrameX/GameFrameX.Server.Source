@@ -36,8 +36,13 @@ namespace GameFrameX.Network.Abstractions;
 /// </summary>
 /// <remarks>
 /// Network channel interface for managing network communication.
+/// 继承 <see cref="IDisposable"/>：通道持有非托管资源（通道级关闭源），调用方可经
+/// <c>using</c> / 显式 <c>Dispose</c> 管理生命周期；<c>Dispose</c> 语义与 <c>Close</c> 一致且幂等。
+/// Inherits <see cref="IDisposable"/>: the channel owns unmanaged resources (the channel-level
+/// cancellation source), so callers may manage its lifetime via <c>using</c> or an explicit
+/// <c>Dispose</c>; <c>Dispose</c> is semantically identical to <c>Close</c> and idempotent.
 /// </remarks>
-public interface INetworkChannel
+public interface INetworkChannel : IDisposable
 {
     /// <summary>
     /// 获取发送字节长度。记录通过此通道发送的总字节数。
@@ -111,7 +116,8 @@ public interface INetworkChannel
     /// 关闭网络通道。
     /// </summary>
     /// <remarks>
-    /// Closes the network channel.
+    /// Closes the network channel. Idempotent: repeated calls on a closed channel are no-ops.
+    /// 关闭是通道终态钩子，幂等；与 <see cref="IDisposable.Dispose"/> 语义一致。
     /// </remarks>
     void Close();
 

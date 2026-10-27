@@ -157,7 +157,11 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     /// <summary>
     /// Game 型会话断开钩子：摘除会话并对已绑定玩家分发 <see cref="PlayerDisconnectedEventArgs"/>
     ///——房间断线标记与会话恢复通知由热更侧全局监听器承接（C284 事件桥接契约，
-    /// 与消息漏斗的热更注册表桥接同形态）。
+    /// 与消息漏斗的热更注册表桥接同形态）。事件派发之后关闭该会话的全部通道实例：
+    /// <see cref="IPlayerSession.WorkChannel"/>（连接钩子创建的工作通道，置于 if 块外——
+    /// 未绑定玩家的会话同样释放）与消息漏斗的会话级缓存通道（经
+    /// <see cref="AppStartUpBase.CloseSessionNetworkChannel"/>），正常断线不再依赖 GC 终结器
+    /// 释放通道级关闭源（C350）。
     /// </summary>
     /// <remarks>
     /// The Game-shape session-disconnected hook: removes the session and, for a bound player,
@@ -165,8 +169,13 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
     /// carries the room disconnected-marking and the session-resume notification (the C284
     /// event-bridging contract, mirroring the hotfix-registry bridging of the message funnel).
     /// The dispatch is fire-and-forget, the same shape as the <c>SessionRemovedEventArgs</c>
-    /// logout cleanup dispatched inside <c>PlayerSessionManager.Remove</c>.
-    /// </summary>
+    /// logout cleanup dispatched inside <c>PlayerSessionManager.Remove</c>. After the dispatch,
+    /// every channel instance of the session is closed: the <see cref="IPlayerSession.WorkChannel"/>
+    /// created by the connect hook (outside the <c>if</c>, so sessions of unbound players are
+    /// released too) and the funnel's session-scoped cache channel via
+    /// <see cref="AppStartUpBase.CloseSessionNetworkChannel"/> — a normal disconnect no longer
+    /// relies on the garbage collector to release the channel-level cancellation source (C350).
+    /// </remarks>
     /// <param name="appSession">断开连接的会话对象 / Session object that disconnected</param>
     /// <param name="disconnectEventArgs">断开连接的相关参数 / Parameters related to disconnection</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
@@ -181,6 +190,9 @@ internal sealed class AppStartUpGame : AppStartUpGameServerBase
             EventDispatcher.Dispatch(0, new PlayerDisconnectedEventArgs(session.PlayerId, appSession.SessionId));
         }
 
+        // 先派发再关闭（监听器可能读取通道内会话数据）；置于 if 外确保未绑定玩家的会话通道同样释放
+        session?.WorkChannel?.Close();
+        CloseSessionNetworkChannel(appSession);
         return ValueTask.CompletedTask;
     }
 

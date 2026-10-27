@@ -116,6 +116,14 @@ public sealed class PlayerSessionManagerStaleDisconnectTests
             _closed = true;
         }
 
+        /// <summary>
+        /// 释放假件资源：委托 <see cref="Close"/>，对齐 BaseNetworkChannel.Dispose 的真实契约（Dispose 即幂等 Close）。
+        /// </summary>
+        public void Dispose()
+        {
+            Close();
+        }
+
         public T GetData<T>(string key)
         {
             return _data.TryGetValue(key, out var value) ? (T)value : default;
