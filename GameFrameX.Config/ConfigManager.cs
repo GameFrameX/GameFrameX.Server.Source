@@ -67,20 +67,17 @@ internal sealed partial class ConfigManager : IConfigManager
 
 
     /// <summary>
-    /// 增加指定全局配置项。
+    /// 增加指定全局配置项；同名键已存在时以新值原子替换（upsert，支持配置热重载发布）。
     /// </summary>
-    /// <param name="configName">要增加全局配置项的名称。</param>
-    /// <param name="configValue">全局配置项的值。</param>
-    /// <returns>是否增加全局配置项成功。</returns>
+    /// <remarks>
+    /// Adds the specified global configuration item; atomically replaces the value when a key
+    /// with the same name already exists (upsert, supporting hot-reload publishing).
+    /// </remarks>
+    /// <param name="configName">要增加全局配置项的名称 / The name of the global configuration item to add</param>
+    /// <param name="configValue">全局配置项的值 / The value of the global configuration item</param>
     public void AddConfig(string configName, IDataTable configValue)
     {
-        var isExist = m_ConfigDatas.TryGetValue(configName, out var value);
-        if (isExist)
-        {
-            return;
-        }
-
-        m_ConfigDatas.TryAdd(configName, configValue);
+        m_ConfigDatas[configName] = configValue;
     }
 
     /// <summary>

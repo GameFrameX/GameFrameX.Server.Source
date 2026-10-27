@@ -20,52 +20,57 @@ namespace GameFrameX.Config
         internal Local.TbLocalization TbLocalization { private set; get; }
         private ConfigComponent m_ConfigComponent;
 
+        /// <summary>
+        /// 加载发布版本号：0 表示尚未加载完成，每次成功发布后递增（支持热重载）
+        /// </summary>
+        private volatile int m_LoadedVersion;
+
         public void Init(ConfigComponent configComponent)
         {
             m_ConfigComponent = configComponent;
-            configComponent.RemoveAllConfigs();
         }
 
         /// <summary>
-        /// 是否加载完成
+        /// 是否加载完成（由加载发布版本号派生，热重载成功后保持为 true）
         /// </summary>
-        public bool IsLoaded { get; private set; }
+        public bool IsLoaded
+        {
+            get { return m_LoadedVersion > 0; }
+        }
 
         /// <summary>
-        /// 异步加载配置文件
+        /// 异步加载配置文件（支持重复调用实现热重载）
         /// </summary>
         /// <param name="loader">加载器</param>
         public async System.Threading.Tasks.Task LoadAsync(System.Func<string, bool, System.Threading.Tasks.Task<ByteBuf>> loader)
         {
-            if (IsLoaded)
-            {
-                return;
-            }
-            IsLoaded = false;
-            m_ConfigComponent.RemoveAllConfigs();
-            var loadTasks = new System.Collections.Generic.List<System.Threading.Tasks.Task>();
+            // 第一阶段：在局部变量中构建并加载全部新表；任何表加载失败都会直接抛出，已发布数据不受影响
+            var newTbAchievementConfig = new Tables.TbAchievementConfig(() => loader("tables_tbachievementconfig", true));
+            var newTbSoundsConfig = new Tables.TbSoundsConfig(() => loader("tables_tbsoundsconfig", true));
+            var newTbItemConfig = new Tables.TbItemConfig(() => loader("tables_tbitemconfig", true));
+            var newTbLocalization = new Local.TbLocalization(() => loader("local_tblocalization", true));
 
-            TbAchievementConfig = new Tables.TbAchievementConfig(() => loader("tables_tbachievementconfig", true));
-            loadTasks.Add(TbAchievementConfig.LoadAsync());
-            m_ConfigComponent.Add(nameof(Tables.TbAchievementConfig), TbAchievementConfig);
+            await System.Threading.Tasks.Task.WhenAll(
+                newTbAchievementConfig.LoadAsync(),
+                newTbSoundsConfig.LoadAsync(),
+                newTbItemConfig.LoadAsync(),
+                newTbLocalization.LoadAsync());
 
-            TbSoundsConfig = new Tables.TbSoundsConfig(() => loader("tables_tbsoundsconfig", true));
-            loadTasks.Add(TbSoundsConfig.LoadAsync());
-            m_ConfigComponent.Add(nameof(Tables.TbSoundsConfig), TbSoundsConfig);
-
-            TbItemConfig = new Tables.TbItemConfig(() => loader("tables_tbitemconfig", true));
-            loadTasks.Add(TbItemConfig.LoadAsync());
-            m_ConfigComponent.Add(nameof(Tables.TbItemConfig), TbItemConfig);
-
-            TbLocalization = new Local.TbLocalization(() => loader("local_tblocalization", true));
-            loadTasks.Add(TbLocalization.LoadAsync());
-            m_ConfigComponent.Add(nameof(Local.TbLocalization), TbLocalization);
-
-
-            await System.Threading.Tasks.Task.WhenAll(loadTasks);
+            // 第二阶段：全部加载成功后原子发布——先切换引用并解析，再逐键替换映射，发布前读者始终看到上一版完整数据
+            TbAchievementConfig = newTbAchievementConfig;
+            TbSoundsConfig = newTbSoundsConfig;
+            TbItemConfig = newTbItemConfig;
+            TbLocalization = newTbLocalization;
 
             Refresh();
-            IsLoaded = true;
+
+            // AddConfig 为同键原子替换（upsert）语义，不先清空映射
+            m_ConfigComponent.Add(nameof(Tables.TbAchievementConfig), TbAchievementConfig);
+            m_ConfigComponent.Add(nameof(Tables.TbSoundsConfig), TbSoundsConfig);
+            m_ConfigComponent.Add(nameof(Tables.TbItemConfig), TbItemConfig);
+            m_ConfigComponent.Add(nameof(Local.TbLocalization), TbLocalization);
+
+            System.Threading.Interlocked.Increment(ref m_LoadedVersion);
         }
 
         /// <summary>
