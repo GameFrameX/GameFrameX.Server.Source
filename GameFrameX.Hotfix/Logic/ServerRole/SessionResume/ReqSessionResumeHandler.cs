@@ -77,9 +77,10 @@ internal sealed class ReqSessionResumeHandler : BaseRpcMessageHandler<ReqSession
         }
         else if (outcome.MatchFailureCode != GameFrameX.Capability.Online.Abstractions.Contracts.OnlineErrorCode.None)
         {
-            // 身份恢复成功、对局恢复显式失败（超窗 / 已结束 / 已离局等）：会话绑定保持，回显对局错误码。
+            // 身份恢复成功、对局恢复显式失败（超窗 / 已结束 / 已离局等）：会话绑定保持，
+            // 对局失败码经 MatchResultCode 回显——ErrorCode 保持 0，客户端始终能读到新凭据（GFX-1077）。
             response.Recovered = false;
-            response.ErrorCode = -(int)outcome.MatchFailureCode;
+            response.MatchResultCode = -(int)outcome.MatchFailureCode;
         }
 
         // Localization: Hotfix.SessionResume.ResumeSucceeded - 会话恢复成功, PlayerId: {0}, 新会话ID: {1}, 对局恢复: {2}, MatchId: {3}, ServerSequence: {4}
