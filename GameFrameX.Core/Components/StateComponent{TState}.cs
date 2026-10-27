@@ -48,7 +48,7 @@ public abstract class StateComponent<TState> : BaseComponent where TState : Base
 
     static StateComponent()
     {
-        StateComponent.AddShutdownSaveFunc(SaveAllAsync);
+        StateComponent.AddShutdownSaveFunc(typeof(TState), SaveAllAsync);
     }
 
     /// <summary>

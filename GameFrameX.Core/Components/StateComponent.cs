@@ -43,15 +43,39 @@ namespace GameFrameX.Core.Components;
 /// </summary>
 public sealed class StateComponent
 {
-    private static readonly ConcurrentBag<Func<bool, bool, Task>> SaveFuncMap = new();
+    /// <summary>
+    /// 回存委托注册表：以状态类型（<c>typeof(TState)</c>）为键，同键至多一个委托。
+    /// 注册即替换（upsert）——热重载后同一状态类型的静态构造再次注册时替换旧委托而非追加，
+    /// 关服/定时回存不会对同一批状态叠加执行，注册表不随热更次数无界增长。
+    /// Shutdown-save registry keyed by the state type (<c>typeof(TState)</c>), holding at most one
+    /// delegate per key: registration replaces in place (upsert), so a hot reload re-registering the
+    /// same state type swaps the old delegate instead of appending, keeping saves from stacking up
+    /// and the registry from growing unboundedly with each reload.
+    /// </summary>
+    private static readonly ConcurrentDictionary<Type, Func<bool, bool, Task>> SaveFuncMap = new();
 
     /// <summary>
-    /// 注册回存
+    /// <see cref="SaveAllAsync"/> 整体等待上限：超时后放弃等待、由既有异常日志记录，防止单个悬挂的
+    /// 回存委托无限阻塞关服流程。internal static 供测试注入缩短超时，生产恒为 120 秒。
+    /// Overall wait cap for <see cref="SaveAllAsync"/>: on timeout the wait is abandoned and logged
+    /// by the existing error handler, so one hanging save delegate can no longer block shutdown forever.
+    /// internal static lets tests inject a shorter timeout; production value is always 120 seconds.
     /// </summary>
-    /// <param name="shutdown"></param>
-    public static void AddShutdownSaveFunc(Func<bool, bool, Task> shutdown)
+    internal static TimeSpan ShutdownSaveTimeout = TimeSpan.FromSeconds(120);
+
+    /// <summary>
+    /// 注册回存。以 <paramref name="stateType"/> 为键替换既有注册：同一状态类型重复注册（含热重载后
+    /// 静态构造再次注册）时旧委托被替换，不会叠加执行；不同状态类型互不影响。
+    /// Register a shutdown save func, replacing any existing registration for the same
+    /// <paramref name="stateType"/>: re-registering a state type (including the static constructor
+    /// firing again after a hot reload) swaps the old delegate instead of stacking executions;
+    /// distinct state types stay independent.
+    /// </summary>
+    /// <param name="stateType">状态类型（typeof(TState)），幂等注册的键 / The state type (typeof(TState)), the idempotent registration key.</param>
+    /// <param name="shutdown">回存委托 / The save delegate.</param>
+    public static void AddShutdownSaveFunc(Type stateType, Func<bool, bool, Task> shutdown)
     {
-        SaveFuncMap.Add(shutdown);
+        SaveFuncMap[stateType] = shutdown;
     }
 
     /// <summary>
@@ -66,12 +90,13 @@ public sealed class StateComponent
         {
             var begin = DateTime.Now;
             var tasks = new List<Task>();
-            foreach (var saveFunc in SaveFuncMap)
+            foreach (var saveFunc in SaveFuncMap.Values)
             {
                 tasks.Add(saveFunc(true, force));
             }
 
-            await Task.WhenAll(tasks);
+            // 整体超时兜底：任一回存委托悬挂时放弃等待，关服流程继续推进（超时异常进入下方 catch 记日志）。
+            await Task.WhenAll(tasks).WaitAsync(ShutdownSaveTimeout);
             // Localization: Core.StateComponent.SaveAllStateTimeLog - StateComponent.SaveAllAsync 保存所有状态，耗时: {0}毫秒
             LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.StateComponent.SaveAllStateTimeLog, (DateTime.Now - begin).TotalMilliseconds));
         }
@@ -89,7 +114,7 @@ public sealed class StateComponent
     {
         try
         {
-            foreach (var func in SaveFuncMap)
+            foreach (var func in SaveFuncMap.Values)
             {
                 await func(false, false);
                 if (!GlobalTimer.IsWorking)
