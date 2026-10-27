@@ -79,14 +79,36 @@ public static class GameApp
     private static Task _launchTask;
 
     /// <summary>
+    /// 命令行参数解析失败时的进程退出码。
+    /// </summary>
+    /// <remarks>
+    /// The process exit code used when launcher argument parsing fails.
+    /// A non-zero code allows systemd / Docker / Kubernetes restart policies to detect the failure and raise alerts.
+    /// </remarks>
+    internal const int InvalidLauncherArgumentsExitCode = 1;
+
+    /// <summary>
+    /// 进程中止动作（<see cref="Environment.Exit(int)"/> 的可替换退出缝）。
+    /// </summary>
+    /// <remarks>
+    /// The process abort action (a replaceable seam over <see cref="Environment.Exit(int)"/>).
+    /// The production default terminates the process; tests substitute this delegate to capture the exit code
+    /// instead of killing the test host. Registered in the module's global static state ledger (startup spec D20).
+    /// </remarks>
+    internal static Action<int> AbortProcess = static exitCode => Environment.Exit(exitCode);
+
+    /// <summary>
     /// 解析启动器选项。
     /// </summary>
     /// <remarks>
     /// Parse launcher options.
+    /// 解析失败时不再静默回落全缺省实例（C211 fail-soft 语义已随 C363 退役）：错误信息写标准错误流并以非零退出码终止进程，
+    /// 供守护进程重启策略捕获告警 / Parse failures abort the process with a non-zero exit code after writing the
+    /// error to standard error (no silent fallback to an all-defaults instance).
     /// </remarks>
     /// <param name="args">命令行参数 / Command line arguments</param>
-    /// <returns>解析后的启动器选项；解析失败时回落全缺省实例（启动决策 = 缺省档） / The parsed launcher options, or an all-defaults instance when parsing fails (launch decision falls back to the default tier)</returns>
-    private static StartupOptions ParseLauncherOptions(string[] args)
+    /// <returns>解析后的启动器选项 / The parsed launcher options</returns>
+    internal static StartupOptions ParseLauncherOptions(string[] args)
     {
         try
         {
@@ -94,11 +116,32 @@ public static class GameApp
         }
         catch (Exception e)
         {
-            LogHelper.Error(e.Message);
+            AbortStartupForInvalidArguments(e);
 
-            // 解析失败回落全缺省实例：启动决策等价"无多 Role 参数"的缺省档，不再向下游透传 null
+            // 中止动作生产实现为 Environment.Exit，本行不可达；仅保持方法返回流完整
             return OptionsBuilder.CreateDefault<StartupOptions>();
         }
+    }
+
+    /// <summary>
+    /// 命令行参数解析失败的中止处理：错误写标准错误流与日志，再以非零退出码终止进程。
+    /// </summary>
+    /// <remarks>
+    /// Abort handling for launcher argument parsing failures: writes the localized error (carrying the underlying
+    /// parse exception message) to standard error and the log system, then terminates the process with
+    /// <see cref="InvalidLauncherArgumentsExitCode"/>. Standard error is the operations channel: at this point the
+    /// logging system is not configured yet, while container logs / journald capture stderr immediately; the non-zero
+    /// exit code lets systemd / Docker / Kubernetes restart policies detect the misconfiguration instead of the
+    /// server silently running under default configuration.
+    /// </remarks>
+    /// <param name="exception">解析异常 / The parse exception</param>
+    internal static void AbortStartupForInvalidArguments(Exception exception)
+    {
+        // Localization: StartUp.InvalidLauncherArguments - 启动参数解析失败，拒绝以默认配置启动（退出码 {1}）。错误：{0}
+        var message = LocalizationService.GetString(Keys.StartUp.InvalidLauncherArguments, exception.Message, InvalidLauncherArgumentsExitCode);
+        Console.Error.WriteLine(message);
+        LogHelper.Error(message);
+        AbortProcess(InvalidLauncherArgumentsExitCode);
     }
 
     /// <summary>

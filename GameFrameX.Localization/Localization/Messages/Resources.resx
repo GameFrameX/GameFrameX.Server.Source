@@ -1053,6 +1053,9 @@
   <data name="StartUp.GrafanaLokiLabelExists" xml:space="preserve">
     <value>Grafana Loki label already exists. Label: {0}.</value>
   </data>
+  <data name="StartUp.InvalidLauncherArguments" xml:space="preserve">
+    <value>Startup argument parsing failed; refusing to start with default configuration (exit code {1}). Error: {0}</value>
+  </data>
 
   <data name="StartUp.HealthCheck.ApplicationWorkingFine" xml:space="preserve">
     <value>Application is working fine.</value>

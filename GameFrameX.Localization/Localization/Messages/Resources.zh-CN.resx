@@ -1155,6 +1155,9 @@
   <data name="StartUp.GrafanaLokiLabelExists" xml:space="preserve">
     <value>Grafana Loki标签已存在。标签：{0}。</value>
   </data>
+  <data name="StartUp.InvalidLauncherArguments" xml:space="preserve">
+    <value>启动参数解析失败，拒绝以默认配置启动（退出码 {1}）。错误：{0}</value>
+  </data>
 
   <data name="StartUp.HttpExceptions.AddressMustEndWithSlash" xml:space="preserve">
     <value>地址必须以斜杠结尾。地址：{0}。</value>

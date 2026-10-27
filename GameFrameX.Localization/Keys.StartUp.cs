@@ -71,6 +71,16 @@ public static partial class Keys
         public const string GrafanaLokiLabelExists = "StartUp.GrafanaLokiLabelExists";
 
         /// <summary>
+        /// 启动参数解析失败，拒绝以默认配置启动（退出码 {1}）。错误：{0}
+        /// </summary>
+        /// <remarks>
+        /// 键名: StartUp.InvalidLauncherArguments
+        /// 用途: 当命令行启动参数解析失败时写标准错误流并中止进程（不再静默回落默认配置）
+        /// 参数: {0} - 底层解析异常消息, {1} - 进程退出码
+        /// </remarks>
+        public const string InvalidLauncherArguments = "StartUp.InvalidLauncherArguments";
+
+        /// <summary>
         /// Finding the boot configuration for the corresponding server type in the configuration file will be configured to boot=>{0}
         /// </summary>
         /// <remarks>
