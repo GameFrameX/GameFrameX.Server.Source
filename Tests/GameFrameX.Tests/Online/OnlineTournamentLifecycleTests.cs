@@ -224,6 +224,28 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 验证资格条件名次上限校验（榜单名次从 1 开始，0 无业务含义：0 与负值均拒绝，1 为合法下界）。
+        /// </summary>
+        [Fact]
+        public async Task CreateAsync_EligibilityRankBelowOne_ShouldRejectWithRankOneValid()
+        {
+            var harness = new OnlineTournamentTestHarness();
+            await harness.CreateBoardAsync("board-rank");
+
+            var zeroRank = await harness.CreateTournamentAsync("t-zero", "board-rank", OnlineTournamentTestHarness.Eligibility(0), OnlineTournamentTestHarness.Rule(1, 1, 100));
+            Assert.False(zeroRank.IsSuccess);
+            Assert.Equal(OnlineErrorCode.ParameterInvalid, zeroRank.Code);
+
+            var negativeRank = await harness.CreateTournamentAsync("t-negative", "board-rank", OnlineTournamentTestHarness.Eligibility(-1), OnlineTournamentTestHarness.Rule(1, 1, 100));
+            Assert.False(negativeRank.IsSuccess);
+            Assert.Equal(OnlineErrorCode.ParameterInvalid, negativeRank.Code);
+
+            var firstRankOnly = await harness.CreateTournamentAsync("t-first", "board-rank", OnlineTournamentTestHarness.Eligibility(1), OnlineTournamentTestHarness.Rule(1, 1, 100));
+            Assert.True(firstRankOnly.IsSuccess, firstRankOnly.Message);
+            Assert.Equal(OnlineTournamentState.Scheduled, await harness.TournamentStateAsync("t-first"));
+        }
+
+        /// <summary>
         /// 验证结束事件只陈述计数与时刻（事件是事实不是状态），报名登记可回溯到判定输入。
         /// </summary>
         [Fact]
@@ -265,7 +287,7 @@ namespace GameFrameX.Tests.Online
         {
             var harness = new OnlineTournamentTestHarness();
             await harness.CreateBoardAsync("board-open");
-            await harness.CreateTournamentAsync("t1", "board-open", OnlineTournamentTestHarness.Eligibility(), OnlineTournamentTestHarness.Rule(1, 1, 1000));
+            await harness.CreateTournamentAsync("t1", "board-open", null, OnlineTournamentTestHarness.Rule(1, 1, 1000));
 
             var registered = await harness.RegisterAsync("t1", OnlineTournamentTestHarness.PlayerTwo);
 

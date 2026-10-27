@@ -364,12 +364,12 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 构造报名资格条件（名次上限；0 表示不限制，分数下限为 null 表示不限制）。
+        /// 构造报名资格条件（名次上限不得小于 1——创建校验拒绝 0 与负值；分数下限为 null 表示不限制）。
         /// </summary>
-        /// <param name="minLeaderboardRank">名次上限（0 表示不限制）。</param>
+        /// <param name="minLeaderboardRank">名次上限（从 1 开始；不限名次时向 <see cref="CreateTournamentAsync"/> 传 null 资格条件）。</param>
         /// <param name="minLeaderboardScore">分数下限（null 表示不限制）。</param>
         /// <returns>资格条件。</returns>
-        public static OnlineTournamentEligibility Eligibility(int minLeaderboardRank = 0, long? minLeaderboardScore = null)
+        public static OnlineTournamentEligibility Eligibility(int minLeaderboardRank, long? minLeaderboardScore = null)
         {
             return new OnlineTournamentEligibility
             {

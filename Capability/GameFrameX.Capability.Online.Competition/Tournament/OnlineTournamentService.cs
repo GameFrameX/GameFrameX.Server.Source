@@ -682,7 +682,7 @@ public sealed class OnlineTournamentService
     }
 
     /// <summary>
-    /// 校验报名资格条件（名次上限非负、分数下限不得为负）。
+    /// 校验报名资格条件（名次上限不得小于 1——榜单名次从 1 开始，0 无业务含义；分数下限不得为负）。
     /// </summary>
     /// <param name="eligibility">待校验资格条件（可空，表示无门槛）。</param>
     /// <param name="message">校验失败原因。</param>
@@ -695,9 +695,9 @@ public sealed class OnlineTournamentService
             return true;
         }
 
-        if (eligibility.MinLeaderboardRank < 0)
+        if (eligibility.MinLeaderboardRank <= 0)
         {
-            message = "赛事资格条件的名次上限不得为负";
+            message = "赛事资格条件的名次上限不得小于 1";
             return false;
         }
 
