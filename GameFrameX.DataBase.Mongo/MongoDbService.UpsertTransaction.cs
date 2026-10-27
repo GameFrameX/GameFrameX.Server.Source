@@ -237,6 +237,12 @@ public sealed partial class MongoDbService
     /// collection operation issued by the action joins the transaction, and the shell owns the single
     /// commit. On a standalone (non-replica-set) server the shell degrades to a single non-transactional
     /// pass (the ambient session is cleared first, so the action never executes twice).
+    /// <b>action 必须幂等 / The action must be idempotent</b>：TransientTransactionError 时整个事务
+    /// （含 <paramref name="action"/> 委托）会被驱动重试重放；任何非幂等的内存副作用（集合追加、计数器自增等）
+    /// 必须移到本方法成功返回之后执行。
+    /// On a TransientTransactionError the whole transaction — including the <paramref name="action"/>
+    /// delegate — is retried and replayed; any non-idempotent in-memory side effect (list appends,
+    /// counter increments, and similar) must be moved after this method returns successfully.
     /// </remarks>
     /// <param name="action">事务内执行逻辑 / Action to execute within transaction</param>
     /// <returns>表示异步操作的任务 / Task representing asynchronous operation</returns>
@@ -253,6 +259,12 @@ public sealed partial class MongoDbService
     /// collection operation issued by the action joins the transaction, and the shell owns the single
     /// commit. On a standalone (non-replica-set) server the shell degrades to a single non-transactional
     /// pass (the ambient session is cleared first, so the action never executes twice).
+    /// <b>action 必须幂等 / The action must be idempotent</b>：TransientTransactionError 时整个事务
+    /// （含 <paramref name="action"/> 委托）会被驱动重试重放；任何非幂等的内存副作用（集合追加、计数器自增等）
+    /// 必须移到本方法成功返回之后执行。
+    /// On a TransientTransactionError the whole transaction — including the <paramref name="action"/>
+    /// delegate — is retried and replayed; any non-idempotent in-memory side effect (list appends,
+    /// counter increments, and similar) must be moved after this method returns successfully.
     /// </remarks>
     /// <param name="action">事务内执行逻辑 / Action to execute within transaction</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
