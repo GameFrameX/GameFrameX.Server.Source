@@ -29,9 +29,10 @@ namespace GameFrameX.Capability.Online.Foundation.Session;
 /// <para>
 /// 维护约束（红线）：不另建第二凭据权威——Token 签发 / 校验 / 轮换全部委托
 /// <see cref="OnlineSessionTokenService"/>（服务端仅存 SHA-256 指纹），会话状态推进全部经
-/// <see cref="OnlineSessionManager"/>（单写者纪律）；恢复路径在自有串行门内完成
+/// <see cref="OnlineSessionManager"/>（单写者纪律）；恢复路径在按 Token 指纹分片的串行门内完成
 /// 「验证 → 轮换 → 连接替换」三步（先轮换后推进：任一步失败时会话状态 / 连接绑定 / 重连窗
-/// 原样保留，不产生半恢复态），使并发重复恢复在后到的验证步显式失败（旧指纹已失效）。
+/// 原样保留，不产生半恢复态）——同一 Token 互斥（并发重复恢复在后到的验证步显式失败，旧指纹已失效），
+/// 不同 Token 并行（断网潮不串行排队，GFX-1078）。
 /// </para>
 /// </summary>
 public sealed class OnlineSessionReconnectService : IOnlineSessionReconnectContract
@@ -52,9 +53,16 @@ public sealed class OnlineSessionReconnectService : IOnlineSessionReconnectContr
     private readonly int _tokenTimeToLiveSeconds;
 
     /// <summary>
-    /// 恢复串行门：同一时刻只允许一个「验证 → 轮换 → 连接替换」序列推进（并发重复恢复显式分出先后）。
+    /// 恢复分片串行门（64 片，按 Token 指纹选片）：同一 Token 的「验证 → 轮换 → 连接替换」序列仍互斥
+    /// （并发重复恢复显式分出先后），不同 Token 并行——断网潮下不再全局串行排队（GFX-1078 M56）。
+    /// <para>
+    /// ponytail: 单进程信号量分片——多进程部署时依赖装配层按会话归属单写者路由，跨进程原子性由持久化存储的 CAS 实现。
+    /// </para>
     /// </summary>
-    private readonly SemaphoreSlim _resumeGate = new(1, 1);
+    private readonly SemaphoreSlim[] _resumeGates = CreateResumeGates();
+
+    /// <summary>恢复分片门数量（2 的幂，便于指纹取模分布）。</summary>
+    private const int ResumeGateShardCount = 64;
 
     /// <summary>
     /// 初始化 <see cref="OnlineSessionReconnectService"/>。
@@ -119,13 +127,14 @@ public sealed class OnlineSessionReconnectService : IOnlineSessionReconnectContr
     }
 
     /// <summary>
-    /// 作用域为空、连接标识为空或令牌为空时返回参数非法；否则在恢复串行门内依次校验令牌、比对会话作用域、原子轮换令牌、再把会话切换到新连接；任一步失败返回对应失败码且会话状态不被推进（无半恢复态），成功返回新令牌、玩家、会话标识与过期时间。
+    /// 作用域为空、连接标识为空或令牌为空时返回参数非法；否则在与该令牌同片的恢复分片串行门内依次校验令牌、比对会话作用域、原子轮换令牌（旧指纹先行失效）、再把会话切换到新连接（同一令牌互斥，不同令牌并行）；任一步失败返回对应失败码且会话状态不被推进（无半恢复态），成功返回新令牌、玩家、会话标识与过期时间。
     /// </summary>
     /// <remarks>
-    /// Returns parameter-invalid when the scope, connection id or token is missing. Otherwise, inside the resume gate, it
-    /// validates the token, checks the session scope, atomically rotates the token (old fingerprint invalidated first) and
-    /// then moves the session to the new connection; concurrent duplicate resumes therefore fail at validation, and any
-    /// failing step returns its code without advancing the session state. On success the new token, player id, session id
+    /// Returns parameter-invalid when the scope, connection id or token is missing. Otherwise, inside the per-token resume
+    /// gate shard, it validates the token, checks the session scope, atomically rotates the token (old fingerprint
+    /// invalidated first) and then moves the session to the new connection without advancing the session state on failure;
+    /// concurrent duplicate resumes of the same token therefore fail at validation while resumes of different tokens
+    /// proceed in parallel. Any failing step returns its code; on success the new token, player id, session id
     /// and expiry are returned.
     /// </remarks>
     /// <param name="scope">恢复请求声明的作用域 / Scope claimed by the resume request</param>
@@ -150,7 +159,8 @@ public sealed class OnlineSessionReconnectService : IOnlineSessionReconnectContr
             return OnlineResult<OnlineSessionResumeCredential>.Fail(OnlineErrorCode.ParameterInvalid, "会话凭据不得为空");
         }
 
-        await _resumeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        var resumeGate = _resumeGates[GetResumeGateShardIndex(token)];
+        await resumeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             // 持有证明：指纹 / 终态 / 到期三重校验（失败码 TokenRevoked / SessionInvalid / TokenExpired）。
@@ -194,7 +204,7 @@ public sealed class OnlineSessionReconnectService : IOnlineSessionReconnectContr
         }
         finally
         {
-            _resumeGate.Release();
+            resumeGate.Release();
         }
     }
 
@@ -291,5 +301,31 @@ public sealed class OnlineSessionReconnectService : IOnlineSessionReconnectContr
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// 构造恢复分片门数组（每片独立 1 许可信号量）。
+    /// </summary>
+    /// <returns>分片门数组。</returns>
+    private static SemaphoreSlim[] CreateResumeGates()
+    {
+        var gates = new SemaphoreSlim[ResumeGateShardCount];
+        for (var index = 0; index < gates.Length; index++)
+        {
+            gates[index] = new SemaphoreSlim(1, 1);
+        }
+
+        return gates;
+    }
+
+    /// <summary>
+    /// 按 Token 指纹选取恢复分片门下标（uint 取模规避 <c>Math.Abs(int.MinValue)</c> 抛异常）。
+    /// 同一 Token 恒定同片——并发重复恢复互斥；不同 Token 均匀散列到各片。
+    /// </summary>
+    /// <param name="token">会话令牌明文。</param>
+    /// <returns>分片下标（[0, 分片数)）。</returns>
+    private static int GetResumeGateShardIndex(string token)
+    {
+        return (int)((uint)token.GetHashCode() % (uint)ResumeGateShardCount);
     }
 }
