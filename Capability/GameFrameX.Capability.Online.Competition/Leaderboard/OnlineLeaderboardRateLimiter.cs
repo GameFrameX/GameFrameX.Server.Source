@@ -49,6 +49,9 @@ public sealed class OnlineLeaderboardRateLimiter
     /// <summary>窗口计数桶：键 = (TenantId, AppId, PlayerId)。</summary>
     private readonly Dictionary<string, Window> _windows = new();
 
+    /// <summary>上一次全量清扫时刻（UTC 毫秒）。</summary>
+    private long _lastSweepAtTime;
+
     /// <summary>窗口内允许的提交次数。</summary>
     private readonly int _maxSubmissions;
 
@@ -65,6 +68,11 @@ public sealed class OnlineLeaderboardRateLimiter
         _maxSubmissions = maxSubmissions > 0 ? maxSubmissions : 1;
         _windowMilliseconds = (windowSeconds > 0 ? windowSeconds : 1) * 1000L;
     }
+
+    /// <summary>
+    /// 清扫间隔（毫秒）：取窗口时长与 60 秒的较大值，保证任何流量都会周期性推进过期桶回收。
+    /// </summary>
+    private long SweepIntervalMilliseconds => _windowMilliseconds > 60000L ? _windowMilliseconds : 60000L;
 
     /// <summary>
     /// 尝试为玩家获取一次提交配额（滑动窗口限流）。
@@ -84,6 +92,11 @@ public sealed class OnlineLeaderboardRateLimiter
 
         lock (_syncRoot)
         {
+            if (now - _lastSweepAtTime >= SweepIntervalMilliseconds)
+            {
+                SweepExpiredCore(now);
+            }
+
             if (!_windows.TryGetValue(key, out var window) || now - window.StartedAtTime >= _windowMilliseconds)
             {
                 _windows[key] = new Window
@@ -102,6 +115,51 @@ public sealed class OnlineLeaderboardRateLimiter
             window.Count++;
             return true;
         }
+    }
+
+    /// <summary>
+    /// 删除全部已过期的窗口桶（运维/测试可显式触发；TryAcquire 亦按清扫间隔自动触发）。
+    /// </summary>
+    /// <param name="nowUnixMilliseconds">当前 Unix 毫秒时间戳（0 表示取当前时间）/ The current Unix time in milliseconds (0 for now)</param>
+    /// <returns>本次删除的桶数量 / The number of expired buckets removed</returns>
+    public int SweepExpired(long nowUnixMilliseconds = 0)
+    {
+        var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        lock (_syncRoot)
+        {
+            return SweepExpiredCore(now);
+        }
+    }
+
+    /// <summary>
+    /// 锁内全量清扫过期桶（调用方必须已持有 <see cref="_syncRoot"/>）。
+    /// </summary>
+    /// <param name="now">当前时刻（UTC 毫秒）。</param>
+    /// <returns>本次删除的桶数量。</returns>
+    private int SweepExpiredCore(long now)
+    {
+        _lastSweepAtTime = now;
+        List<string> expiredKeys = null;
+        foreach (var pair in _windows)
+        {
+            if (now - pair.Value.StartedAtTime >= _windowMilliseconds)
+            {
+                (expiredKeys ?? (expiredKeys = new List<string>())).Add(pair.Key);
+            }
+        }
+
+        if (expiredKeys == null)
+        {
+            return 0;
+        }
+
+        for (var index = 0; index < expiredKeys.Count; index++)
+        {
+            _windows.Remove(expiredKeys[index]);
+        }
+
+        return expiredKeys.Count;
     }
 
     /// <summary>
