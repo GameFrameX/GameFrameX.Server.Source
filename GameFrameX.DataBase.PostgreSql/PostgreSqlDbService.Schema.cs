@@ -62,14 +62,47 @@ public sealed partial class PostgreSqlDbService
     private readonly ConcurrentDictionary<Type, object> _contextOptionsCache = new();
 
     /// <summary>
-    /// 环境事务（<c>ExecuteInTransactionAsync</c> 事务壳持有；操作上下文/裸命令经 UseTransaction/借用连接加入，null = 无环境事务）。
+    /// 环境事务持有槽（<c>ExecuteInTransactionAsync</c> 事务壳持有 Holder；操作上下文/裸命令经 UseTransaction/借用连接加入，Holder 内字段 null = 无环境事务）。
     /// </summary>
     /// <remarks>
-    /// Ambient transaction held by the <c>ExecuteInTransactionAsync</c> shell; per-operation contexts
-    /// enlist via <c>UseTransaction</c> and raw-command paths borrow its connection. Instance-level
-    /// so concurrent service instances never cross-pollinate each other's shells.
+    /// Ambient-transaction slot held by the <c>ExecuteInTransactionAsync</c> shell. The slot stores a
+    /// mutable holder (one per shell) instead of the raw transaction: derived async flows capture the
+    /// holder by reference, so clearing its field on shell exit is observed by every flow — a raw
+    /// <c>AsyncLocal</c> value would leave derived flows holding a disposed transaction.
+    /// Instance-level so concurrent service instances never cross-pollinate each other's shells.
     /// </remarks>
-    private readonly AsyncLocal<System.Data.Common.DbTransaction> _ambientTransaction = new();
+    private readonly AsyncLocal<AmbientTransactionHolder> _ambientTransaction = new();
+
+    /// <summary>
+    /// 环境事务持有对象（引用语义载体：事务壳清空内部字段后，所有派生异步流同步看到 null）。
+    /// </summary>
+    /// <remarks>
+    /// Reference-semantics holder for the ambient transaction: the transaction shell clears the
+    /// <see cref="Transaction"/> field on exit, so every derived async flow sharing this holder
+    /// instance observes null immediately instead of retaining a disposed transaction snapshot in
+    /// its captured execution context.
+    /// </remarks>
+    private sealed class AmbientTransactionHolder
+    {
+        /// <summary>
+        /// 当前环境事务（壳 finally 置 null，派生流据此判定无事务）。
+        /// </summary>
+        /// <remarks>
+        /// The current ambient transaction (nulled by the shell's finally block; derived flows treat
+        /// null as "no ambient transaction").
+        /// </remarks>
+        public System.Data.Common.DbTransaction Transaction;
+    }
+
+    /// <summary>
+    /// 环境事务访问器（事务壳内非空，壳外恒 null——以持有对象内部字段为准，派生流在壳结束后同样读到 null）。
+    /// </summary>
+    /// <remarks>
+    /// The ambient transaction accessor (non-null inside the transaction shell, always null outside).
+    /// Reads the holder's inner field rather than the <c>AsyncLocal</c> slot itself, so derived async
+    /// flows observe null as soon as the shell clears the holder.
+    /// </remarks>
+    private System.Data.Common.DbTransaction AmbientTransaction => _ambientTransaction.Value?.Transaction;
 
     /// <summary>
     /// 获取当前时间戳（毫秒）。
@@ -171,7 +204,7 @@ public sealed partial class PostgreSqlDbService
     /// <param name="context">要加入环境事务的上下文 / The context to enlist</param>
     private void JoinAmbientTransaction(DbContext context)
     {
-        var ambient = _ambientTransaction.Value;
+        var ambient = AmbientTransaction;
         if (ambient == null)
         {
             return;
@@ -193,7 +226,7 @@ public sealed partial class PostgreSqlDbService
     /// <returns>连接、其上活跃事务（环境事务或 null）与是否调用方持有连接 / The connection, its active transaction (ambient or null), and whether the caller owns the connection</returns>
     private async Task<(NpgsqlConnection Connection, NpgsqlTransaction Transaction, bool Owned)> OpenConnectionForWriteAsync(CancellationToken cancellationToken)
     {
-        if (_ambientTransaction.Value is NpgsqlTransaction ambientTransaction)
+        if (AmbientTransaction is NpgsqlTransaction ambientTransaction)
         {
             return (ambientTransaction.Connection!, ambientTransaction, false);
         }

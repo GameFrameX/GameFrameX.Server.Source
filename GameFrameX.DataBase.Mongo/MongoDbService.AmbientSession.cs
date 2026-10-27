@@ -45,12 +45,36 @@ namespace GameFrameX.DataBase.Mongo;
 public sealed partial class MongoDbService
 {
     /// <summary>
-    /// 环境会话访问器（事务壳内非空，壳外恒 null）。
+    /// 环境会话持有对象（引用语义载体：事务壳清空内部字段后，所有派生异步流同步看到 null）。
+    /// </summary>
+    /// <remarks>
+    /// Reference-semantics holder for the ambient session: the transaction shell clears the
+    /// <see cref="Session"/> field on exit, so every derived async flow sharing this holder instance
+    /// observes null immediately instead of retaining a disposed session snapshot in its captured
+    /// execution context.
+    /// </remarks>
+    private sealed class AmbientSessionHolder
+    {
+        /// <summary>
+        /// 当前环境会话（壳 finally 置 null，派生流据此判定无事务）。
+        /// </summary>
+        /// <remarks>
+        /// The current ambient session (nulled by the shell's finally block; derived flows treat
+        /// null as "no ambient session").
+        /// </remarks>
+        public IClientSessionHandle Session;
+    }
+
+    /// <summary>
+    /// 环境会话访问器（事务壳内非空，壳外恒 null——以持有对象内部字段为准，派生流在壳结束后同样读到 null）。
     /// </summary>
     /// <remarks>
     /// The ambient session accessor (non-null inside the transaction shell, always null outside).
+    /// Reads the holder's inner field rather than the <c>AsyncLocal</c> slot itself, so derived async
+    /// flows observe null as soon as the shell clears the holder — even though their captured
+    /// execution contexts still reference the holder.
     /// </remarks>
-    private IClientSessionHandle AmbientSession => _ambientSession.Value;
+    private IClientSessionHandle AmbientSession => _ambientSession.Value?.Session;
 
     /// <summary>
     /// 插入单个文档（环境会话存在时加入事务）。

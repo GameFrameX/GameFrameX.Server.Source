@@ -222,6 +222,130 @@ public sealed class DatabaseExecuteInTransactionAtomicityTests
 
 
     /// <summary>
+    /// 派生异步流（提交路径）：壳 action 内启动的异步流在壳结束后再开事务壳，必须观察到环境事务已清空、开成全新独立事务并正常提交。
+    /// </summary>
+    /// <remarks>
+    /// Derived async flows (e.g. <c>Task.Run</c> launched inside the shell's action) capture the
+    /// ambient slot's value in their execution contexts. After the shell completes they must observe
+    /// a cleared ambient: opening a transaction shell then starts a fresh, independent transaction
+    /// that commits normally. The regression shape is a stale disposed session/transaction snapshot
+    /// keeping the derived flow "inside" a finished transaction — its writes fault on the real
+    /// providers or silently skip their own transaction and commit.
+    /// </remarks>
+    [Fact]
+    public async Task ExecuteInTransaction_DerivedAsyncFlowAfterShellCompletes_ShouldCommitIndependentTransaction()
+    {
+        await ForEachProviderAsync(async (service, _, _) =>
+        {
+            var outer = CreateState("tx-derived-outer", group: 81, score: 1);
+            var derived = CreateState("tx-derived-committed", group: 81, score: 2);
+            var shellCompleted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var derivedLaunched = 0;
+            var derivedWrite = Task.CompletedTask;
+            await service.ExecuteInTransactionAsync(async () =>
+            {
+                await service.AddAsync(outer);
+                if (Interlocked.Exchange(ref derivedLaunched, 1) == 0)
+                {
+                    // 派生流在此捕获含环境事务的执行上下文快照，等外壳结束后才动。
+                    // The derived flow captures an execution-context snapshot (ambient set) here,
+                    // but only proceeds after the outer shell has fully completed.
+                    derivedWrite = Task.Run(async () =>
+                    {
+                        await shellCompleted.Task.ConfigureAwait(false);
+                        await service.ExecuteInTransactionAsync(() => service.AddAsync(derived)).ConfigureAwait(false);
+                    });
+                }
+            });
+            shellCompleted.TrySetResult();
+            await derivedWrite;
+            Assert.NotNull(await service.FindAsync<TransactionAtomicityTestState>(outer.Id, isCreateIfNotExists: false));
+            Assert.NotNull(await service.FindAsync<TransactionAtomicityTestState>(derived.Id, isCreateIfNotExists: false));
+        });
+    }
+
+    /// <summary>
+    /// 派生异步流（回滚路径）：壳结束后派生流再开的事务壳必须持有真实自有事务——写后抛异常时写入被回滚丢弃。
+    /// </summary>
+    /// <remarks>
+    /// The derived flow's post-shell transaction must be real: a write followed by a throw must be
+    /// rolled back. This is the discriminator for a stale ambient snapshot — an old derived flow
+    /// "joining" the finished transaction skips its own BEGIN/COMMIT, so on SQLite the write lands
+    /// in autocommit and survives the throw (on Mongo / PostgreSQL the disposed handle faults the
+    /// write outright). standalone mongod is excluded (no multi-document transactions — the shell
+    /// degrades to a single non-transactional pass where rollback assertions do not apply).
+    /// </remarks>
+    [Fact]
+    public async Task ExecuteInTransaction_DerivedAsyncFlowAfterShellCompletes_ShouldRollbackIndependentTransaction()
+    {
+        await ForEachProviderAsync(async (service, kind, supportsTransactions) =>
+        {
+            if (!supportsTransactions)
+            {
+                return;
+            }
+
+            var outer = CreateState("tx-derived-rollback-outer", group: 82, score: 1);
+            var rolled = CreateState("tx-derived-rolled", group: 82, score: 2);
+            var shellCompleted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var derivedLaunched = 0;
+            var derivedWrite = Task.CompletedTask;
+            await service.ExecuteInTransactionAsync(async () =>
+            {
+                await service.AddAsync(outer);
+                if (Interlocked.Exchange(ref derivedLaunched, 1) == 0)
+                {
+                    derivedWrite = Task.Run(async () =>
+                    {
+                        await shellCompleted.Task.ConfigureAwait(false);
+                        await service.ExecuteInTransactionAsync(async () =>
+                        {
+                            await service.AddAsync(rolled);
+                            throw new InvalidOperationException("tx-derived-rollback-boom");
+                        }).ConfigureAwait(false);
+                    });
+                }
+            });
+            shellCompleted.TrySetResult();
+            await Assert.ThrowsAsync(ExpectedTransactionFailureException(kind), () => derivedWrite);
+            Assert.NotNull(await service.FindAsync<TransactionAtomicityTestState>(outer.Id, isCreateIfNotExists: false));
+            Assert.Null(await service.FindAsync<TransactionAtomicityTestState>(rolled.Id, isCreateIfNotExists: false));
+        });
+    }
+
+    /// <summary>
+    /// 并发独立壳：非派生流并发开两个事务壳，各自独立提交、互不串事务、数据均可见。
+    /// </summary>
+    /// <remarks>
+    /// Two concurrent shells started from non-derived flows (no shared captured ambient) must stay
+    /// independent: each commits its own writes and both rows are visible afterwards. SQLite
+    /// serializes the shells on its single-connection gate; Mongo and PostgreSQL run them as parallel
+    /// transactions on the real-server paths.
+    /// </remarks>
+    [Fact]
+    public async Task ExecuteInTransaction_ConcurrentShellsFromNonDerivedFlows_ShouldCommitIndependently()
+    {
+        await ForEachProviderAsync(async (service, _, _) =>
+        {
+            var first = CreateState("tx-concurrent-first", group: 91, score: 1);
+            var second = CreateState("tx-concurrent-second", group: 91, score: 2);
+            await Task.WhenAll(
+                service.ExecuteInTransactionAsync(async () =>
+                {
+                    await Task.Delay(1);
+                    await service.AddAsync(first);
+                }),
+                service.ExecuteInTransactionAsync(async () =>
+                {
+                    await Task.Delay(1);
+                    await service.AddAsync(second);
+                }));
+            Assert.NotNull(await service.FindAsync<TransactionAtomicityTestState>(first.Id, isCreateIfNotExists: false));
+            Assert.NotNull(await service.FindAsync<TransactionAtomicityTestState>(second.Id, isCreateIfNotExists: false));
+        });
+    }
+
+    /// <summary>
     /// 事务壳失败异常按 provider 契约断言：Sqlite 裸抛原始异常，Mongo、PG 包 DatabaseUnavailableException（既有契约）。
     /// </summary>
     private static Type ExpectedTransactionFailureException(ProviderKind kind)
