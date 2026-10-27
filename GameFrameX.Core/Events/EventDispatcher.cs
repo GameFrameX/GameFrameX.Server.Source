@@ -30,10 +30,13 @@
 using GameFrameX.Core.Abstractions.Events;
 using GameFrameX.Core.Abstractions;
 using GameFrameX.Core.Actors;
+using GameFrameX.Core.Components;
 using GameFrameX.Core.Hotfix;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Utility;
+using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Core.Events;
 
@@ -58,12 +61,11 @@ public static class EventDispatcher
         {
             // 将工作任务提交到Actor的消息队列中
             actor.Tell(() => DispatchToActorAsync(actor, actorId, eventArgs));
+            return;
         }
-        else
-        {
-            // 在新的线程中执行全局事件处理
-            Task.Run(() => DispatchGlobalAsync(actorId, eventArgs));
-        }
+
+        // 目标Actor不在内存中：按监听器所属Actor分别投递串行执行，不在线程池上执行监听器
+        DispatchGlobal(actorId, eventArgs);
     }
 
     /// <summary>
@@ -88,32 +90,20 @@ public static class EventDispatcher
         // 遍历所有监听器并执行事件处理
         foreach (var listener in listeners)
         {
-            // 获取监听器对应的组件代理
-            var componentAgent = await actor.GetComponentAgentAsync(listener.AgentType, false);
-            try
-            {
-                // 调用监听器的事件处理方法
-                await listener.HandleEventAsync(componentAgent, eventArgs);
-            }
-            catch (Exception exception)
-            {
-                // 捕获并记录事件处理过程中的异常
-                // Localization: Core.EventDispatcher.DispatchError - EventDispatcher.Dispatch Actor {0} {1} 异常: {2}
-                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.EventDispatcher.DispatchError, actorId, eventArgs.GetType().Name, exception));
-            }
+            await DispatchListenerInActorAsync(actor, listener, actorId, eventArgs);
         }
     }
 
     /// <summary>
-    /// 在全局上下文分发事件：取出全局注册的监听器并逐个调用其事件处理方法。
+    /// 全局分发：目标 Actor 不在内存中时，把每个监听器投递到其所属全局 Actor 的消息队列中串行执行；
+    /// 监听器属于单个玩家 Actor 类型（或所属全局 Actor 尚未创建）时记 Warning 后跳过，绝不以空代理调用监听器。
     /// </summary>
-    /// <param name="actorId">目标Actor的唯一标识符</param>
+    /// <param name="actorId">原始目标Actor的唯一标识符（仅用于日志定位）</param>
     /// <param name="eventArgs">事件携带的参数数据，不为null</param>
-    /// <returns>异步任务</returns>
-    private static async Task DispatchGlobalAsync(long actorId, GameEventArgs eventArgs)
+    private static void DispatchGlobal(long actorId, GameEventArgs eventArgs)
     {
         // 事件需要在本actor内执行，不可多线程执行，所以不能使用Task.WhenAll来处理
-        // 获取全局注册的事件监听器
+        // 获取全局注册的事件监听器（聚合全部Actor类型）
         var listeners = HotfixManager.Resolver.FindListeners(eventArgs.GetType());
         if (listeners.IsNullOrEmpty())
         {
@@ -122,20 +112,59 @@ public static class EventDispatcher
             return;
         }
 
-        // 遍历所有监听器并执行事件处理
+        // 遍历所有监听器：按所属Actor类型分别投递（同一Actor上的监听器按投递顺序FIFO串行）
         foreach (var listener in listeners)
         {
-            try
+            var componentType = HotfixManager.Resolver.GetComponentType(listener.AgentType);
+            if (componentType == null)
             {
-                // 调用监听器的事件处理方法
-                await listener.HandleEventAsync(eventArgs);
+                // Localization: Core.EventDispatcher.DispatchOwnerActorNotLoaded - EventDispatcher.Dispatch Actor {0} 事件类型：{1} 监听器 {2} 所属 Actor 不在内存中，已跳过
+                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.EventDispatcher.DispatchOwnerActorNotLoaded, actorId, eventArgs.GetType().Name, listener.GetType().FullName));
+                continue;
             }
-            catch (Exception exception)
+
+            var ownerActorType = ComponentRegister.GetActorType(componentType);
+            Actor ownerActor = null;
+            if (ownerActorType > GlobalConst.ActorTypeSeparator)
             {
-                // 捕获并记录事件处理过程中的异常
-                // Localization: Core.EventDispatcher.DispatchError - EventDispatcher.Dispatch Actor {0} {1} 异常: {2}
-                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.EventDispatcher.DispatchError, actorId, eventArgs.GetType().Name, exception));
+                // 全局Actor在启动期以默认服务器ID创建，这里用同一ID反查
+                ownerActor = ActorManager.GetActor(ActorIdGenerator.GetActorId(ownerActorType));
             }
+
+            if (ownerActor == null)
+            {
+                // 监听器属于单个玩家Actor类型（目标Actor已回收）或全局Actor尚未创建：跳过，不再以空代理执行
+                // Localization: Core.EventDispatcher.DispatchOwnerActorNotLoaded - EventDispatcher.Dispatch Actor {0} 事件类型：{1} 监听器 {2} 所属 Actor 不在内存中，已跳过
+                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.EventDispatcher.DispatchOwnerActorNotLoaded, actorId, eventArgs.GetType().Name, listener.GetType().FullName));
+                continue;
+            }
+
+            ownerActor.Tell(() => DispatchListenerInActorAsync(ownerActor, listener, actorId, eventArgs));
+        }
+    }
+
+    /// <summary>
+    /// 在 Actor 上下文内执行单个监听器：取出该监听器代理类型的组件代理并调用其事件处理方法，异常就地记录。
+    /// </summary>
+    /// <param name="actor">监听器所属 Actor</param>
+    /// <param name="listener">事件监听器</param>
+    /// <param name="actorId">原始目标Actor的唯一标识符（仅用于日志定位）</param>
+    /// <param name="eventArgs">事件携带的参数数据，不为null</param>
+    /// <returns>异步任务</returns>
+    private static async Task DispatchListenerInActorAsync(IActor actor, IEventListener listener, long actorId, GameEventArgs eventArgs)
+    {
+        // 获取监听器对应的组件代理
+        var componentAgent = await actor.GetComponentAgentAsync(listener.AgentType, false);
+        try
+        {
+            // 调用监听器的事件处理方法
+            await listener.HandleEventAsync(componentAgent, eventArgs);
+        }
+        catch (Exception exception)
+        {
+            // 捕获并记录事件处理过程中的异常
+            // Localization: Core.EventDispatcher.DispatchError - EventDispatcher.Dispatch Actor {0} {1} 异常: {2}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.EventDispatcher.DispatchError, actorId, eventArgs.GetType().Name, exception));
         }
     }
 }

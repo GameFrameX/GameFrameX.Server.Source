@@ -2108,6 +2108,10 @@
     <value>EventDispatcher.Dispatch Actor {0} {1} 事件类型：{2} 没有找到任何监听者</value>
   </data>
 
+  <data name="Core.EventDispatcher.DispatchOwnerActorNotLoaded" xml:space="preserve">
+    <value>EventDispatcher.Dispatch Actor {0} 事件类型：{1} 监听器 {2} 所属 Actor 不在内存中，已跳过</value>
+  </data>
+
   <data name="Core.MessageHandler.GetComponentAgentCacheComponentNull" xml:space="preserve">
     <value>BaseComponentHandler.GetComponentAgentAsync 缓存组件为空，消息类型:{0}</value>
   </data>

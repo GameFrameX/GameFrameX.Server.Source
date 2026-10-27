@@ -805,6 +805,16 @@ public static partial class Keys
             /// 参数: {0} - Actor ID, {1} - 事件参数类型, {2} - 异常信息
             /// </remarks>
             public const string DispatchError = "Core.EventDispatcher.DispatchError";
+
+            /// <summary>
+            /// EventDispatcher.Dispatch Actor {0} 事件类型：{1} 监听器 {2} 所属 Actor 不在内存中，已跳过
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.EventDispatcher.DispatchOwnerActorNotLoaded
+            /// 用途: 全局分发时监听器所属 Actor 不在内存中（玩家段类型或全局 Actor 未创建）跳过记录
+            /// 参数: {0} - Actor ID, {1} - 事件参数类型, {2} - 监听器类型全名
+            /// </remarks>
+            public const string DispatchOwnerActorNotLoaded = "Core.EventDispatcher.DispatchOwnerActorNotLoaded";
         }
     }
 

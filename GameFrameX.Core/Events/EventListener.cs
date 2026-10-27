@@ -53,19 +53,6 @@ public abstract class EventListener<T> : IEventListener where T : class, ICompon
     }
 
     /// <summary>
-    /// 无代理对象的事件处理函数重载
-    /// </summary>
-    /// <param name="gameEventArgs">需要处理的事件对象</param>
-    /// <returns>异步任务，表示事件处理的完成状态</returns>
-    /// <remarks>
-    /// 该方法会以null作为agent参数调用另一个HandleEvent重载
-    /// </remarks>
-    public Task HandleEventAsync(GameEventArgs gameEventArgs)
-    {
-        return HandleEventAsync(null, gameEventArgs);
-    }
-
-    /// <summary>
     /// 获取事件代理类型属性
     /// </summary>
     /// <remarks>
