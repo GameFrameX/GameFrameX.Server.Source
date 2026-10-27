@@ -60,6 +60,7 @@ public sealed class RemoteMessagingBuilder
     private RemoteMessagingOptions _options = new();
     private readonly Dictionary<string, Func<IServiceEndpointResolver, IConnectionProvider, ITransportProtocolAdapter>> _transportAdapters = new(StringComparer.OrdinalIgnoreCase);
     private Func<IServiceEndpointResolver, IConnectionProvider, ITransportProtocolAdapter> _transportAdapterFactory;
+    private Func<IConnectionProvider> _connectionProviderFactory;
     private IRoleRouteTableProvider _routeTableProvider;
 
     /// <summary>
@@ -188,6 +189,23 @@ public sealed class RemoteMessagingBuilder
     }
 
     /// <summary>
+    /// 配置连接提供器工厂（测试注入点）：替代缺省的进程级共享 TCP 连接池。
+    /// 生产路径不调用本方法时，<see cref="Build"/> 沿用 <c>SharedTcpConnectionPool.Provider</c>，行为零变化。
+    /// </summary>
+    /// <remarks>
+    /// Configures the connection provider factory (a test injection point) that replaces the
+    /// default process-wide shared TCP connection pool. When this method is never called,
+    /// <see cref="Build"/> keeps using <c>SharedTcpConnectionPool.Provider</c> with zero behavior change.
+    /// </remarks>
+    /// <param name="factory">连接提供器工厂 / The connection provider factory</param>
+    /// <returns>构建器实例 / The builder instance</returns>
+    public RemoteMessagingBuilder WithConnectionProvider(Func<IConnectionProvider> factory)
+    {
+        _connectionProviderFactory = factory;
+        return this;
+    }
+
+    /// <summary>
     /// 注册默认 TCP 适配器（可与其他 <c>UseXxx</c> 叠加注册；TCP 同时也是回落传输）。
     /// </summary>
     /// <remarks>
@@ -270,8 +288,11 @@ public sealed class RemoteMessagingBuilder
         }
 
         var endpointResolver = new DiscoveryServiceEndpointResolver(_routeTableProvider);
-        // TCP 连接池进程级单例（RPC 客户端与信封转发层共享同一出站连接面；多 Build 共享一池）
-        var connectionProvider = SharedTcpConnectionPool.Provider;
+        // TCP 连接池进程级单例（RPC 客户端与信封转发层共享同一出站连接面；多 Build 共享一池）；
+        // 测试可经 WithConnectionProvider 注入替身工厂
+        var connectionProvider = _connectionProviderFactory != null
+            ? _connectionProviderFactory()
+            : SharedTcpConnectionPool.Provider;
         var transportRegistry = new TransportProtocolAdapterRegistry();
         if (_transportAdapterFactory != null)
         {

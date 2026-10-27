@@ -48,6 +48,7 @@ internal sealed class TcpConnectionProvider : IConnectionProvider
     private const int DefaultPoolSizePerEndpoint = 4;
 
     private readonly int _maxConnectionsPerEndpoint;
+    private readonly TimeSpan _connectionCreationDelay;
     private readonly ConcurrentDictionary<string, EndpointPool> _endpointPools = new();
     private bool _disposed;
 
@@ -58,7 +59,8 @@ internal sealed class TcpConnectionProvider : IConnectionProvider
     /// Initializes the TCP connection provider.
     /// </remarks>
     /// <param name="maxConnectionsPerEndpoint">每个 endpoint 的最大连接数 / Maximum connections per endpoint</param>
-    public TcpConnectionProvider(int maxConnectionsPerEndpoint = DefaultPoolSizePerEndpoint)
+    /// <param name="connectionCreationDelay">每次新建连接前的人为延迟（测试注入用，放大建连耗时以稳定复现并发排队）/ Artificial delay before each new connection setup (test injection; widens the setup window to make concurrent queuing deterministic)</param>
+    internal TcpConnectionProvider(int maxConnectionsPerEndpoint = DefaultPoolSizePerEndpoint, TimeSpan connectionCreationDelay = default)
     {
         if (maxConnectionsPerEndpoint < 1)
         {
@@ -66,6 +68,7 @@ internal sealed class TcpConnectionProvider : IConnectionProvider
         }
 
         _maxConnectionsPerEndpoint = maxConnectionsPerEndpoint;
+        _connectionCreationDelay = connectionCreationDelay;
     }
 
     /// <summary>
@@ -84,7 +87,7 @@ internal sealed class TcpConnectionProvider : IConnectionProvider
     /// <returns>可用的网络流 / An available network stream</returns>
     public async Task<Stream> GetOrCreateStreamAsync(string host, int port, CancellationToken cancellationToken = default)
     {
-        var pool = _endpointPools.GetOrAdd($"{host}:{port}", _ => new EndpointPool());
+        var pool = _endpointPools.GetOrAdd($"{host}:{port}", _ => new EndpointPool(_connectionCreationDelay));
         return await pool.GetOrCreateStreamAsync(host, port, _maxConnectionsPerEndpoint, cancellationToken);
     }
 
@@ -150,13 +153,21 @@ internal sealed class TcpConnectionProvider : IConnectionProvider
         private readonly SemaphoreSlim _gate = new(1, 1);
         private readonly List<ConnectionEntry> _entries = new();
         private int _roundRobinIndex;
-        private int _inFlight;
+        private int _pendingAcquisitions;
+
+        private readonly TimeSpan _connectionCreationDelay;
+
+        public EndpointPool(TimeSpan connectionCreationDelay)
+        {
+            _connectionCreationDelay = connectionCreationDelay;
+        }
 
         public async Task<Stream> GetOrCreateStreamAsync(string host, int port, int maxConnections, CancellationToken cancellationToken)
         {
-            // 并发需求驱动池增长：仅当存活连接数低于「池上限与当前并发获取数的较小值」时新建。
-            // 顺序调用保持单连接复用；并发调用按需扩展连接数。
-            Interlocked.Increment(ref _inFlight);
+            // 排队需求驱动池增长：扩容信号是「gate 等待队列深度」而非获取动作的时间重叠——
+            // 本机 loopback 建连近零耗时下，先后到达的并发获取在旧 _inFlight 判据下互不可见，池退化为单连接。
+            // 顺序调用无排队 → 永不扩容（守住单连接复用）；并发获取必有 gate 排队 → 确定性扩容，与建连快慢无关。
+            Interlocked.Increment(ref _pendingAcquisitions);
             try
             {
                 // gate 串行化连接建立（创建期间不持任何 lock，await 不可入 lock）；
@@ -166,8 +177,10 @@ internal sealed class TcpConnectionProvider : IConnectionProvider
                 {
                     RemoveDeadEntries();
 
-                    // 池未满足当前并发需求则新建连接（懒建：随并发调用逐步扩到池上限）
-                    if (CountEntries() < Math.Min(maxConnections, Volatile.Read(ref _inFlight)))
+                    var aliveCount = CountEntries();
+                    // 等待数排除当前持 gate 者自身；gate 串行化建连，同一时刻只有一个持 gate 者判断扩容
+                    var waitingCount = Volatile.Read(ref _pendingAcquisitions) - 1;
+                    if (aliveCount == 0 || (aliveCount < maxConnections && waitingCount > 0))
                     {
                         var created = await CreateConnectionAsync(host, port, cancellationToken);
                         lock (_entries)
@@ -212,7 +225,7 @@ internal sealed class TcpConnectionProvider : IConnectionProvider
             }
             finally
             {
-                Interlocked.Decrement(ref _inFlight);
+                Interlocked.Decrement(ref _pendingAcquisitions);
             }
         }
 
@@ -282,7 +295,7 @@ internal sealed class TcpConnectionProvider : IConnectionProvider
             _gate.Dispose();
         }
 
-        private static async Task<ConnectionEntry> CreateConnectionAsync(string host, int port, CancellationToken cancellationToken)
+        private async Task<ConnectionEntry> CreateConnectionAsync(string host, int port, CancellationToken cancellationToken)
         {
             var client = new TcpClient
             {
@@ -290,6 +303,11 @@ internal sealed class TcpConnectionProvider : IConnectionProvider
                 ReceiveTimeout = DefaultTimeoutMs,
                 SendTimeout = DefaultTimeoutMs,
             };
+
+            if (_connectionCreationDelay > TimeSpan.Zero)
+            {
+                await Task.Delay(_connectionCreationDelay, cancellationToken);
+            }
 
             try
             {

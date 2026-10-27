@@ -60,10 +60,15 @@ public sealed class RemoteMessageClientConcurrencyTests : IDisposable
     {
         // 服务端屏障：收到全部 6 个请求后才统一响应。
         // 旧实现（全局信号量 + 内联读）下第一个请求独占收发，屏障永远凑不齐 → 全体超时失败。
+        // 注入 50ms 延迟建连工厂：放大建连窗口，6 个获取确定性地在 gate 排队 → 排队深度判据必扩容（多连接），
+        // 消除旧 _inFlight 判据下「本机 loopback 建连近零耗时、池退化为单连接」的时序依赖。
         const int requestCount = 6;
+        const int connectDelayMs = 50;
         using (var server = StartServer($"RMTestBarrier", requestCount, respondAfterCount: requestCount))
+        using (var provider = new DelayedConnectConnectionProvider(TimeSpan.FromMilliseconds(connectDelayMs)))
         {
-            var client = new RemoteMessagingBuilder().WithRouteTable(_routeTable).Build();
+            var client = new RemoteMessagingBuilder().WithRouteTable(_routeTable).WithConnectionProvider(() => provider).Build();
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             var calls = Enumerable.Range(0, requestCount)
                 .Select(_ => client.CallWithResultAsync<RespAccountQuery>(
                     "RMTestBarrier",
@@ -72,6 +77,7 @@ public sealed class RemoteMessageClientConcurrencyTests : IDisposable
                 .ToArray();
 
             var results = await Task.WhenAll(calls);
+            stopwatch.Stop();
 
             Assert.All(results, result =>
             {
@@ -79,6 +85,10 @@ public sealed class RemoteMessageClientConcurrencyTests : IDisposable
                 Assert.NotNull(result.Response);
             });
             Assert.True(server.ConnectionCount >= 2, $"并发调用应扇出多条连接，实际 {server.ConnectionCount}");
+            Assert.True(provider.CreatedConnectionCount >= 2, $"并发获取应触发多次建连，实际 {provider.CreatedConnectionCount}");
+            // 池上限 4：建连串行 4×50ms 封顶，远小于 6 次串行建连的 6×50ms + 冗余
+            Assert.True(stopwatch.ElapsedMilliseconds < requestCount * connectDelayMs + 3000,
+                $"并发应摊薄建连耗时，实际 {stopwatch.ElapsedMilliseconds}ms");
         }
     }
 
@@ -130,6 +140,24 @@ public sealed class RemoteMessageClientConcurrencyTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task SequentialCalls_ShouldKeepSingleConnection()
+    {
+        // 排队深度判据回归锚：顺序调用无 gate 排队 → 池永不扩容，守住单连接复用。
+        using (var server = StartServer("RMTestSequential", 16, respondAfterCount: 1))
+        {
+            var client = new RemoteMessagingBuilder().WithRouteTable(_routeTable).Build();
+            for (var i = 0; i < 8; i++)
+            {
+                var result = await client.CallWithResultAsync<RespAccountQuery>(
+                    "RMTestSequential", new ReqAccountQuery { AccountName = $"s{i}" }, timeoutMs: 15000);
+                Assert.True(result.IsSuccess, $"第 {i} 次调用失败: {result.StatusCode} {result.ErrorMessage}");
+            }
+
+            Assert.Equal(1, server.ConnectionCount);
+        }
+    }
+
     public void Dispose()
     {
         foreach (var server in _servers)
@@ -147,6 +175,53 @@ public sealed class RemoteMessageClientConcurrencyTests : IDisposable
         _routeTable.RemoveService(serviceName);
         _routeTable.SetServiceEndpoint(serviceName, $"tcp://127.0.0.1:{server.Port}");
         return server;
+    }
+
+    /// <summary>
+    /// 延迟建连的连接提供器测试替身：包一个注入建连延迟的内部 TCP 连接池，
+    /// 通过追踪新出现的流实例统计实际建连次数。
+    /// </summary>
+    private sealed class DelayedConnectConnectionProvider : IConnectionProvider
+    {
+        private readonly TcpConnectionProvider _inner;
+        private readonly HashSet<Stream> _knownStreams = new();
+
+        public DelayedConnectConnectionProvider(TimeSpan connectionCreationDelay)
+        {
+            _inner = new TcpConnectionProvider(connectionCreationDelay: connectionCreationDelay);
+        }
+
+        /// <summary>池内出现过的不同流实例数（每次建连产生一个新流）。</summary>
+        public int CreatedConnectionCount
+        {
+            get { lock (_knownStreams) { return _knownStreams.Count; } }
+        }
+
+        public async Task<Stream> GetOrCreateStreamAsync(string host, int port, CancellationToken cancellationToken = default)
+        {
+            var stream = await _inner.GetOrCreateStreamAsync(host, port, cancellationToken);
+            lock (_knownStreams)
+            {
+                _knownStreams.Add(stream);
+            }
+
+            return stream;
+        }
+
+        public void Invalidate()
+        {
+            _inner.Invalidate();
+        }
+
+        public void Invalidate(Stream stream)
+        {
+            _inner.Invalidate(stream);
+        }
+
+        public void Dispose()
+        {
+            _inner.Dispose();
+        }
     }
 
     /// <summary>
