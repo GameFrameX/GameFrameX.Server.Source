@@ -180,9 +180,9 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
         if (CacheComponent == null)
         {
             // Localization: Core.MessageHandler.RpcGetComponentAgentCacheComponentNull - BaseRpcComponentHandler.GetComponentAgentAsync 缓存组件为空，消息类型:{0}
-            LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcGetComponentAgentCacheComponentNull, RequestMessage.GetType().FullName));
+            var errorMessage = LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcGetComponentAgentCacheComponentNull, RequestMessage.GetType().FullName);
             NetworkChannel.Close();
-            return default;
+            throw new InvalidOperationException(errorMessage);
         }
 
         return CacheComponent.GetComponentAgentAsync<TOtherAgent>();
