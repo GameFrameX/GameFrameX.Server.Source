@@ -39,8 +39,8 @@ namespace GameFrameX.Capability.Online.Social;
 /// 频道内序号与发送时刻各用一张按频道的字典维护，避免每次追加都去扫描全部消息。
 /// </para>
 /// <para>
-/// 天花板（ponytail）：全局单锁 + 按频道线性扫描（历史分页与未读统计都是频道内线性，随单频道消息量增长）。
-/// 单频道消息上万后需换按频道的二级索引与分段存储；当前量级下正确性优先。
+/// 天花板（ponytail）：全局单锁 + 单频道内存索引（消息不删除，索引只插不删；未读统计是频道内尾段线性，随游标之后的尾段长度增长）。
+/// 单频道消息上万且未读尾段极长时需换分段存储；当前量级下正确性优先。
 /// 消息不做清理（<see cref="OnlineChatOptions.HistoryRetentionSeconds"/> 由运行时装配的调度消费）。
 /// </para>
 /// </summary>
@@ -54,6 +54,10 @@ public sealed class InMemoryOnlineChatStore : IOnlineChatStore
 
     /// <summary>消息表（键 = 作用域 + 频道标识 + 消息标识）。</summary>
     private readonly Dictionary<string, OnlineChatMessage> _messagesById = new(StringComparer.Ordinal);
+
+    /// <summary>按频道的消息有序索引（键 = 作用域 + 频道标识；值按稳定排序键 (SentAtTime, Sequence) 升序）。
+    /// 与 <see cref="_messagesById"/> 同临界区写入（只插不删：消息从不物理删除，撤回是原位状态改写，同一引用对索引可见）。</summary>
+    private readonly Dictionary<string, SortedList<ChatSortKey, OnlineChatMessage>> _messagesByChannel = new(StringComparer.Ordinal);
 
     /// <summary>去重索引（键 = 作用域 + 频道标识 + 去重键 → 消息标识）。</summary>
     private readonly Dictionary<string, string> _messageIdByDedupeKey = new(StringComparer.Ordinal);
@@ -183,6 +187,13 @@ public sealed class InMemoryOnlineChatStore : IOnlineChatStore
             // 防御性深拷贝：存档存副本而非调用方实例（序号与发送时刻已回填到副本上）。
             var stored = message.Copy();
             _messagesById[messageKey] = stored;
+            if (!_messagesByChannel.TryGetValue(channelKey, out var channelIndex))
+            {
+                channelIndex = new SortedList<ChatSortKey, OnlineChatMessage>();
+                _messagesByChannel[channelKey] = channelIndex;
+            }
+
+            channelIndex[new ChatSortKey(stored.SentAtTime, stored.Sequence)] = stored;
             if (!string.IsNullOrEmpty(message.DedupeKey))
             {
                 _messageIdByDedupeKey[channelKey + ":d:" + message.DedupeKey] = message.MessageId ?? string.Empty;
@@ -297,10 +308,10 @@ public sealed class InMemoryOnlineChatStore : IOnlineChatStore
     }
 
     /// <summary>
-    /// 临界区内全表扫描收集频道内严格位于游标之后的消息，按 (SentAtTime, Sequence) 升序排序后取前 limit 条。
+    /// 临界区内经频道有序索引二分定位游标之后的第一条，顺序取前 limit 条（升序，严格位于游标之后）。
     /// </summary>
     /// <remarks>
-    /// Scans the whole table inside the critical section to collect channel messages strictly after the cursor, sorts them ascending by (SentAtTime, Sequence) and takes the first limit items.
+    /// Locates the first entry strictly after the cursor via binary search on the per-channel ordered index inside the critical section, then takes the first limit items in ascending order.
     /// </remarks>
     /// <param name="tenantId">租户标识 / Tenant id</param>
     /// <param name="appId">App 标识 / App id</param>
@@ -315,45 +326,30 @@ public sealed class InMemoryOnlineChatStore : IOnlineChatStore
         var limit = cursor.Limit;
         var channelKey = BuildChannelKey(tenantId, appId, channelId);
         var pageSize = limit > 0 ? limit : 1;
-        var matched = new List<OnlineChatMessage>();
+        var result = new List<OnlineChatMessage>();
         lock (_syncRoot)
         {
-            foreach (var pair in _messagesById)
+            SortedList<ChatSortKey, OnlineChatMessage> channelIndex;
+            if (!_messagesByChannel.TryGetValue(channelKey, out channelIndex))
             {
-                var message = pair.Value;
-                if (message.TenantId != tenantId || message.AppId != appId || !string.Equals(message.ChannelId, channelId, StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                if (IsAfterCursor(message, afterSentAtTime, afterSequence))
-                {
-                    matched.Add(message.Copy());
-                }
-            }
-        }
-
-        matched.Sort(CompareBySortKey);
-
-        var result = new List<OnlineChatMessage>();
-        foreach (var message in matched)
-        {
-            if (result.Count >= pageSize)
-            {
-                break;
+                return Task.FromResult<IReadOnlyList<OnlineChatMessage>>(result);
             }
 
-            result.Add(message);
+            var startIndex = FindFirstIndexAfter(channelIndex.Keys, afterSentAtTime, afterSequence);
+            for (var index = startIndex; index < channelIndex.Count && result.Count < pageSize; index++)
+            {
+                result.Add(channelIndex.Values[index].Copy());
+            }
         }
 
         return Task.FromResult<IReadOnlyList<OnlineChatMessage>>(result);
     }
 
     /// <summary>
-    /// 临界区内全表线性扫描统计游标之后的未读条数：排除读取者本人发送的与已撤回（非 Normal）的消息。
+    /// 临界区内经频道有序索引二分定位游标之后顺序统计未读条数：排除读取者本人发送的与已撤回（非 Normal）的消息。
     /// </summary>
     /// <remarks>
-    /// Counts unread messages after the cursor via a full-table linear scan inside the critical section, excluding those sent by the reader and recalled (non-Normal) ones.
+    /// Counts unread messages after the cursor by binary-searching the per-channel ordered index inside the critical section, excluding those sent by the reader and recalled (non-Normal) ones.
     /// </remarks>
     /// <param name="tenantId">租户标识 / Tenant id</param>
     /// <param name="appId">App 标识 / App id</param>
@@ -366,17 +362,20 @@ public sealed class InMemoryOnlineChatStore : IOnlineChatStore
         var channelId = cursor.ChannelId;
         var afterSentAtTime = cursor.AfterSentAtTime;
         var afterSequence = cursor.AfterSequence;
+        var channelKey = BuildChannelKey(tenantId, appId, channelId);
         var count = 0;
         lock (_syncRoot)
         {
-            foreach (var pair in _messagesById)
+            SortedList<ChatSortKey, OnlineChatMessage> channelIndex;
+            if (!_messagesByChannel.TryGetValue(channelKey, out channelIndex))
             {
-                var message = pair.Value;
-                if (message.TenantId != tenantId || message.AppId != appId || !string.Equals(message.ChannelId, channelId, StringComparison.Ordinal))
-                {
-                    continue;
-                }
+                return Task.FromResult(count);
+            }
 
+            var startIndex = FindFirstIndexAfter(channelIndex.Keys, afterSentAtTime, afterSequence);
+            for (var index = startIndex; index < channelIndex.Count; index++)
+            {
+                var message = channelIndex.Values[index];
                 if (message.SenderId == readerPlayerId)
                 {
                     continue;
@@ -388,10 +387,7 @@ public sealed class InMemoryOnlineChatStore : IOnlineChatStore
                     continue;
                 }
 
-                if (IsAfterCursor(message, afterSentAtTime, afterSequence))
-                {
-                    count++;
-                }
+                count++;
             }
         }
 
@@ -459,46 +455,70 @@ public sealed class InMemoryOnlineChatStore : IOnlineChatStore
     }
 
     /// <summary>
-    /// 判定消息是否严格位于游标之后（稳定排序键 <c>(SentAtTime, Sequence)</c> 的字典序比较）。
+    /// 稳定排序键 <c>(SentAtTime, Sequence)</c>（频道内 Sequence 严格递增，键天然无重复；实现 <see cref="IComparable{T}"/> 供有序索引使用）。
     /// </summary>
-    /// <param name="message">消息。</param>
-    /// <param name="afterSentAtTime">游标位置的发送时刻。</param>
-    /// <param name="afterSequence">游标位置的频道内序号。</param>
-    /// <returns>位于游标之后返回 <c>true</c>。</returns>
-    private static bool IsAfterCursor(OnlineChatMessage message, long afterSentAtTime, long afterSequence)
+    private readonly struct ChatSortKey : IComparable<ChatSortKey>
     {
-        if (message.SentAtTime > afterSentAtTime)
+        /// <summary>发送时刻。</summary>
+        public readonly long SentAtTime;
+
+        /// <summary>频道内序号。</summary>
+        public readonly long Sequence;
+
+        /// <summary>构造排序键。</summary>
+        /// <param name="sentAtTime">发送时刻。</param>
+        /// <param name="sequence">频道内序号。</param>
+        public ChatSortKey(long sentAtTime, long sequence)
         {
-            return true;
+            SentAtTime = sentAtTime;
+            Sequence = sequence;
         }
 
-        if (message.SentAtTime < afterSentAtTime)
+        /// <summary>按 (SentAtTime, Sequence) 字典序升序比较。</summary>
+        /// <param name="other">另一键。</param>
+        /// <returns>比较结果。</returns>
+        public int CompareTo(ChatSortKey other)
         {
-            return false;
-        }
+            if (SentAtTime != other.SentAtTime)
+            {
+                return SentAtTime < other.SentAtTime ? -1 : 1;
+            }
 
-        return message.Sequence > afterSequence;
+            if (Sequence != other.Sequence)
+            {
+                return Sequence < other.Sequence ? -1 : 1;
+            }
+
+            return 0;
+        }
     }
 
     /// <summary>
-    /// 按稳定排序键比较两条消息（升序）。
+    /// 二分定位有序键列表中第一条严格位于游标之后的下标（lower-bound：首个排序键大于游标键的位置）。
     /// </summary>
-    /// <param name="left">左侧消息。</param>
-    /// <param name="right">右侧消息。</param>
-    /// <returns>比较结果。</returns>
-    private static int CompareBySortKey(OnlineChatMessage left, OnlineChatMessage right)
+    /// <param name="keys">升序键列表。</param>
+    /// <param name="afterSentAtTime">游标位置的发送时刻。</param>
+    /// <param name="afterSequence">游标位置的频道内序号。</param>
+    /// <returns>起始下标（等于列表长度表示游标之后无消息）。</returns>
+    private static int FindFirstIndexAfter(IList<ChatSortKey> keys, long afterSentAtTime, long afterSequence)
     {
-        if (left.SentAtTime != right.SentAtTime)
+        int low = 0;
+        int high = keys.Count;
+        var cursorKey = new ChatSortKey(afterSentAtTime, afterSequence);
+        while (low < high)
         {
-            return left.SentAtTime < right.SentAtTime ? -1 : 1;
+            var middle = low + ((high - low) >> 1);
+            if (keys[middle].CompareTo(cursorKey) <= 0)
+            {
+                low = middle + 1;
+            }
+            else
+            {
+                high = middle;
+            }
         }
 
-        if (left.Sequence != right.Sequence)
-        {
-            return left.Sequence < right.Sequence ? -1 : 1;
-        }
-
-        return 0;
+        return low;
     }
 
     /// <summary>

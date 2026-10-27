@@ -474,6 +474,24 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 验证每页条数超过上限时被参数拒绝而非静默截断（超大分页请求必须显式失败，不得悄悄缩水）。
+        /// </summary>
+        [Fact]
+        public async Task GetHistoryAsync_WhenPageSizeOverLimit_ShouldDenyAsInvalid()
+        {
+            // Arrange
+            var service = CreateService(out _);
+            var channel = await OpenDirectAsync(service, PlayerOne, PlayerTwo);
+
+            // Act
+            var outcome = await service.GetHistoryAsync(CreatePlayerScope(PlayerOne), channel.ChannelId, null, 51);
+
+            // Assert
+            Assert.False(outcome.IsSuccess);
+            Assert.Equal(OnlineErrorCode.ParameterInvalid, outcome.Code);
+        }
+
+        /// <summary>
         /// 验证连发后翻页**不重复、不漏项**，且顺序为 <c>(SentAtTime, Sequence)</c> 升序。
         /// </summary>
         [Fact]

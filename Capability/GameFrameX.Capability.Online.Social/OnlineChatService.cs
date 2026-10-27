@@ -359,7 +359,7 @@ public sealed class OnlineChatService
     /// <param name="scope">生效作用域（必须含玩家主体位）。</param>
     /// <param name="channelId">频道标识。</param>
     /// <param name="cursor">上一页返回的游标（首页传 null 或空）。</param>
-    /// <param name="pageSize">每页条数（<c>0</c> 取配置上限；超过上限按上限截断）。</param>
+    /// <param name="pageSize">每页条数（<c>0</c> 取配置默认；超过 <c>MaxMessagesPerPage</c> 上限拒绝 ParameterInvalid）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>历史分页结果（升序；已撤回消息保留占位但内容清空）。</returns>
     public async Task<OnlineResult<OnlineChatHistoryPage>> GetHistoryAsync(OnlineScope scope, string channelId, string cursor = null, int pageSize = 0, CancellationToken cancellationToken = default)
@@ -370,11 +370,13 @@ public sealed class OnlineChatService
             return OnlineResult<OnlineChatHistoryPage>.Fail(authorized.Code, authorized.Message);
         }
 
-        var effectivePageSize = pageSize > 0 ? pageSize : _options.MaxMessagesPerPage;
-        if (effectivePageSize > _options.MaxMessagesPerPage)
+        if (pageSize > _options.MaxMessagesPerPage)
         {
-            effectivePageSize = _options.MaxMessagesPerPage;
+            // 超上限显式拒绝而非静默截断：调用方需感知自己的分页参数非法，静默截断会掩盖客户端分页逻辑错误。
+            return OnlineResult<OnlineChatHistoryPage>.Fail(OnlineErrorCode.ParameterInvalid, "每页条数超过上限 " + _options.MaxMessagesPerPage.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
+
+        var effectivePageSize = pageSize > 0 ? pageSize : _options.MaxMessagesPerPage;
 
         long afterSentAtTime;
         long afterSequence;
