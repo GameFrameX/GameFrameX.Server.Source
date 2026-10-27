@@ -58,6 +58,16 @@ public sealed class PlayerSessionManager : IPlayerSessionManager
     private readonly ConcurrentDictionary<long, SessionRouteSnapshot> PlayerRouteMap = new();
 
     /// <summary>
+    /// 顶号串行锁表：playerId → in-flight 登录的互斥信号量（C306）。
+    /// </summary>
+    /// <remarks>
+    /// Per-player login serialization semaphores. The dictionary only holds entries for
+    /// in-flight logins — <see cref="ReleaseLoginLock"/> reclaims the entry while still
+    /// holding the semaphore, so the map never grows with the historical player count.
+    /// </remarks>
+    private readonly ConcurrentDictionary<long, SemaphoreSlim> PlayerLoginLocks = new();
+
+    /// <summary>
     /// 玩家路由外发同步目标（控制库写入钩子）。
     /// </summary>
     /// <remarks>
@@ -266,6 +276,8 @@ public sealed class PlayerSessionManager : IPlayerSessionManager
     /// <summary>
     /// 更新会话，处理玩家ID和签名的更新。
     /// 如果玩家ID已在其他设备上登录，则会通知旧会话并关闭其连接。
+    /// 同一玩家的并发登录按 <paramref name="playerId" /> 串行化：后进入者把先完成者判为旧会话（顶号），
+    /// 任一时刻至多一个绑定生效（C306）。
     /// </summary>
     /// <param name="sessionId">会话ID，用于标识当前会话</param>
     /// <param name="playerId">玩家ID，表示当前会话所关联的玩家</param>
@@ -277,29 +289,91 @@ public sealed class PlayerSessionManager : IPlayerSessionManager
     /// </param>
     public async Task UpdateSessionAsync(string sessionId, long playerId, string sign, Func<IPlayerSession, Task> duplicateLoginNotifier)
     {
-        // 获取与玩家ID关联的旧会话
-        var oldSession = GetByPlayerId(playerId);
-        if (oldSession != null)
+        // 顶号关键段按 playerId 互斥串行（C306）：读旧会话→通知→关闭→移除→绑定→路由上线必须作为整体执行，
+        // 否则并发登录可双活绑定 / 互踢 / 路由版本重复递增（GFX-1018）。
+        var loginLock = await AcquireLoginLockAsync(playerId);
+        try
         {
-            // 内联 await 顶号通知（须先于 Close，理由见参数注释）
-            await duplicateLoginNotifier(oldSession);
-            // 清除旧会话的连接数据并关闭连接
-            oldSession.WorkChannel.ClearData();
-            oldSession.WorkChannel.Close();
-            // 这里先移除，等待Disconnected回调断开在移除的话有延迟
-            Remove(oldSession.SessionId);
-        }
+            // 获取与玩家ID关联的旧会话；同一会话重登（同 sessionId）不触发顶号，幂等重绑
+            var oldSession = GetByPlayerId(playerId);
+            if (oldSession != null && oldSession.SessionId != sessionId)
+            {
+                // 内联 await 顶号通知（须先于 Close，理由见参数注释）
+                await duplicateLoginNotifier(oldSession);
+                // 清除旧会话的连接数据并关闭连接
+                oldSession.WorkChannel.ClearData();
+                oldSession.WorkChannel.Close();
+                // 这里先移除，等待Disconnected回调断开在移除的话有延迟
+                Remove(oldSession.SessionId);
+            }
 
-        // 获取当前会话并更新玩家ID和签名
-        var session = Get(sessionId);
-        if (session.IsNull())
+            // 获取当前会话并更新玩家ID和签名
+            var session = Get(sessionId);
+            if (session.IsNull())
+            {
+                return;
+            }
+
+            session.SetPlayerId(playerId);
+            session.SetSign(sign);
+            SetPlayerRouteOnline(playerId);
+        }
+        finally
         {
-            return;
+            ReleaseLoginLock(playerId, loginLock);
         }
+    }
 
-        session.SetPlayerId(playerId);
-        session.SetSign(sign);
-        SetPlayerRouteOnline(playerId);
+    /// <summary>
+    /// 获取指定玩家的登录串行锁：等待信号量后复核字典映射仍为本实例，否则让位重取。
+    /// </summary>
+    /// <param name="playerId">玩家ID。</param>
+    /// <returns>已持有的、且当前仍被 <see cref="PlayerLoginLocks" /> 映射的信号量。</returns>
+    /// <remarks>
+    /// Mutual-exclusion invariant: a holder that passes the mapping re-check can never be
+    /// concurrent with another validated holder of a different instance, because the mapping
+    /// for a key can only be removed by a thread that holds the mapped instance (removal
+    /// happens inside the critical section, before <c>Release</c>), and a new instance is
+    /// only inserted while the key is absent. A waiter whose instance got retired mid-wait
+    /// fails the re-check, releases, and retries with the current mapping — a brief liveness
+    /// cost with no exclusivity loss.
+    /// </remarks>
+    private async Task<SemaphoreSlim> AcquireLoginLockAsync(long playerId)
+    {
+        while (true)
+        {
+            var semaphore = PlayerLoginLocks.GetOrAdd(playerId, _ => new SemaphoreSlim(1, 1));
+            await semaphore.WaitAsync();
+
+            // 复核：等待期间本条目可能已被持锁者回收并替换，此实例不再代表该玩家的互斥权
+            if (PlayerLoginLocks.TryGetValue(playerId, out var mapped) && ReferenceEquals(mapped, semaphore))
+            {
+                return semaphore;
+            }
+
+            semaphore.Release();
+        }
+    }
+
+    /// <summary>
+    /// 释放指定玩家的登录串行锁：先在持锁状态下回收字典条目，再释放信号量。
+    /// </summary>
+    /// <param name="playerId">玩家ID。</param>
+    /// <param name="semaphore">由 <see cref="AcquireLoginLockAsync" /> 返回的信号量。</param>
+    /// <remarks>
+    /// Reclaim-while-held: removing the entry before <c>Release</c> guarantees every removal
+    /// happens under the semaphore, which is exactly the invariant
+    /// <see cref="AcquireLoginLockAsync" /> relies on. The lock map therefore stays bounded to
+    /// in-flight logins without idle-detection heuristics — count/waiting-probe reclamation has
+    /// an inherent check-then-remove race that can let two different semaphore instances be
+    /// treated as authoritative concurrently.
+    /// </remarks>
+    private void ReleaseLoginLock(long playerId, SemaphoreSlim semaphore)
+    {
+        // 持锁期间映射不可能被他人改写（移除只发生在持锁者手里、插入要求键缺席，见 AcquireLoginLockAsync
+        // 不变式），故按键移除即精确回收本实例；随后释放信号量，唤醒的等待方经映射复核让位重取
+        PlayerLoginLocks.TryRemove(playerId, out _);
+        semaphore.Release();
     }
 
     /// <summary>
