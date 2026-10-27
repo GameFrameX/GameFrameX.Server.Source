@@ -46,7 +46,10 @@ namespace GameFrameX.Discovery;
 /// <see cref="IRoleInstanceEvents"/> subscribers: Online / Draining / Offline /
 /// Evicted / Recovered, with the incarnation rule — the same instance id
 /// coming back with a different incarnation emits Offline+Online, never
-/// Recovered. During a database outage the previous table is served unchanged.
+/// Recovered. The incarnation graveyard is remembered per instance id for a bounded
+/// window (10 minutes by default) and pruned every poll round, so a long-running
+/// watcher never accumulates unbounded memory. During a database outage the previous
+/// table is served unchanged.
 /// </remarks>
 public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
 {
@@ -65,6 +68,15 @@ public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
     /// The default staleness threshold in heartbeat periods (3).
     /// </remarks>
     public const int DefaultStalenessPeriods = 3;
+
+    /// <summary>
+    /// graveyard 缺省保留窗口（10 分钟）。
+    /// </summary>
+    /// <remarks>
+    /// The default graveyard retention window (10 minutes): the last incarnation of an
+    /// instance id is remembered for this long after its last observation, then pruned.
+    /// </remarks>
+    public static readonly TimeSpan DefaultGraveyardRetention = TimeSpan.FromMinutes(10);
 
     /// <summary>
     /// 心跳存储适配。
@@ -89,6 +101,15 @@ public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
     /// The staleness threshold: a lastHeartbeat older than this marks the instance stale.
     /// </remarks>
     private readonly TimeSpan _stalenessThreshold;
+
+    /// <summary>
+    /// graveyard 保留窗口（最后目击超过此时长的条目在轮询轮内被清理）。
+    /// </summary>
+    /// <remarks>
+    /// The graveyard retention: sightings whose last write is older than this are
+    /// pruned by the poll loop.
+    /// </remarks>
+    private readonly TimeSpan _graveyardRetention;
 
     /// <summary>
     /// 事件订阅者列表（启动后只读快照，订阅在 Start 前完成）。
@@ -116,13 +137,16 @@ public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
     private readonly Dictionary<string, KnownInstance> _knownInstances = new Dictionary<string, KnownInstance>(StringComparer.Ordinal);
 
     /// <summary>
-    /// 曾观测过的最后代数（instanceId → incarnation；Evicted 后仍保留，供重启判定）。
+    /// 曾观测过的最后代数（instanceId → incarnation 目击记录；Evicted 后仍保留供重启判定，最后目击超过保留窗口后过期清除）。
     /// </summary>
     /// <remarks>
-    /// The last incarnation ever observed per instance id (kept after eviction so a restart
-    /// under the same id can be distinguished from a recovery).
+    /// The graveyard: the last incarnation ever observed per instance id (kept after
+    /// eviction so a restart under the same id can be distinguished from a recovery).
+    /// Each sighting carries its write timestamp and is refreshed every poll while the
+    /// instance stays observable; sightings older than the graveyard retention are
+    /// pruned by the poll loop so the dictionary stays bounded.
     /// </remarks>
-    private readonly Dictionary<string, long> _lastSeenIncarnations = new Dictionary<string, long>(StringComparer.Ordinal);
+    private readonly Dictionary<string, IncarnationSighting> _lastSeenIncarnations = new Dictionary<string, IncarnationSighting>(StringComparer.Ordinal);
 
     /// <summary>
     /// 轮询循环取消令牌源。
@@ -163,12 +187,17 @@ public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
     /// <remarks>
     /// Initializes the watcher. Call <see cref="StartAsync"/> to begin polling.
     /// </remarks>
-    /// <param name="heartbeatStore">心跳存储适配 / The heartbeat storage seam</param>
-    /// <param name="pollInterval">轮询间隔；缺省 5s / The poll interval; defaults to 5 s</param>
     /// <param name="stalenessThreshold">判活阈值；缺省 3 × 轮询间隔（15s）/ The staleness threshold; defaults to 3 × the poll interval (15 s)</param>
-    public DiscoveryWatcher(IHeartbeatStore heartbeatStore, TimeSpan? pollInterval = null, TimeSpan? stalenessThreshold = null)
+    /// <param name="graveyardRetention">graveyard 保留窗口；缺省 10 分钟 / The graveyard retention; defaults to 10 minutes</param>
+    public DiscoveryWatcher(IHeartbeatStore heartbeatStore, TimeSpan? pollInterval = null, TimeSpan? stalenessThreshold = null, TimeSpan? graveyardRetention = null)
     {
         ArgumentNullException.ThrowIfNull(heartbeatStore);
+
+        _graveyardRetention = graveyardRetention ?? DefaultGraveyardRetention;
+        if (_graveyardRetention <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(graveyardRetention), graveyardRetention, null);
+        }
 
         _heartbeatStore = heartbeatStore;
         _pollInterval = pollInterval ?? DefaultPollInterval;
@@ -187,6 +216,24 @@ public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
         get
         {
             return _currentTable;
+        }
+    }
+
+    /// <summary>
+    /// 获取 graveyard 当前条目数（测试缝）。
+    /// </summary>
+    /// <remarks>
+    /// The current graveyard entry count (a test seam for the retention pruning).
+    /// </remarks>
+    /// <value>条目数 / The entry count</value>
+    internal int GraveyardEntryCount
+    {
+        get
+        {
+            lock (_stateLock)
+            {
+                return _lastSeenIncarnations.Count;
+            }
         }
     }
 
@@ -342,12 +389,12 @@ public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
         foreach (var descriptor in observations)
         {
             var isStale = nowUtc - descriptor.LastHeartbeatUtc > _stalenessThreshold;
-            _lastSeenIncarnations.TryGetValue(descriptor.InstanceId, out var lastIncarnation);
+            var lastIncarnation = _lastSeenIncarnations.TryGetValue(descriptor.InstanceId, out var sighting) ? sighting.Incarnation : default;
             _knownInstances.TryGetValue(descriptor.InstanceId, out var known);
 
             RecordTransition(known, lastIncarnation, descriptor, isStale, pendingEvents);
             _knownInstances[descriptor.InstanceId] = new KnownInstance(descriptor, isStale);
-            _lastSeenIncarnations[descriptor.InstanceId] = descriptor.Incarnation;
+            _lastSeenIncarnations[descriptor.InstanceId] = new IncarnationSighting(descriptor.Incarnation, nowUtc);
 
             if (IsRoutable(descriptor, isStale))
             {
@@ -356,6 +403,7 @@ public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
         }
 
         EvictMissingInstances(observations, pendingEvents);
+        PruneExpiredGraveyardEntries(nowUtc);
         return liveInstances;
     }
 
@@ -484,6 +532,33 @@ public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
     }
 
     /// <summary>
+    /// 清理 graveyard 中最后目击超过保留窗口的条目（闭合无限增长）。
+    /// </summary>
+    /// <remarks>
+    /// Prunes graveyard sightings whose last write is older than the retention window,
+    /// bounding the dictionary. Entries of instances observed this round were just
+    /// refreshed and never expire; an instance re-appearing after its memory expired
+    /// is treated as a first observation (plain Online) instead of a restart.
+    /// </remarks>
+    /// <param name="nowUtc">判定基准时间（UTC）/ The judgement reference time (UTC)</param>
+    private void PruneExpiredGraveyardEntries(DateTime nowUtc)
+    {
+        var expiredInstanceIds = new List<string>();
+        foreach (var pair in _lastSeenIncarnations)
+        {
+            if (nowUtc - pair.Value.RecordedUtc > _graveyardRetention)
+            {
+                expiredInstanceIds.Add(pair.Key);
+            }
+        }
+
+        foreach (var expiredInstanceId in expiredInstanceIds)
+        {
+            _lastSeenIncarnations.Remove(expiredInstanceId);
+        }
+    }
+
+    /// <summary>
     /// 收集本轮可解析观测的实例 id（用于 Evicted 判定）。
     /// </summary>
     /// <remarks>
@@ -555,6 +630,36 @@ public sealed class DiscoveryWatcher : IRoleRouteTableProvider, IDisposable
     private static bool IsActiveOrDraining(InstanceStatus status)
     {
         return status == InstanceStatus.Active || status == InstanceStatus.Draining;
+    }
+
+    /// <summary>
+    /// graveyard 目击记录（最后代数 + 写入时间戳）。
+    /// </summary>
+    /// <remarks>
+    /// A graveyard sighting: the last incarnation observed for an instance id plus
+    /// the UTC timestamp of that observation (refreshed every poll while observable).
+    /// </remarks>
+    private sealed class IncarnationSighting
+    {
+        /// <summary>
+        /// 初始化目击记录。
+        /// </summary>
+        /// <remarks>
+        /// Initializes the sighting.
+        /// </remarks>
+        /// <param name="incarnation">最后观测代数 / The last observed incarnation</param>
+        /// <param name="recordedUtc">写入时间戳（UTC）/ The write timestamp (UTC)</param>
+        public IncarnationSighting(long incarnation, DateTime recordedUtc)
+        {
+            Incarnation = incarnation;
+            RecordedUtc = recordedUtc;
+        }
+
+        /// <summary>最后观测代数 / The last observed incarnation</summary>
+        public long Incarnation { get; }
+
+        /// <summary>写入时间戳（UTC）/ The write timestamp (UTC)</summary>
+        public DateTime RecordedUtc { get; }
     }
 
     /// <summary>
