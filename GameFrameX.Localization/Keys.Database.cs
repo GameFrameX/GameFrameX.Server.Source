@@ -300,7 +300,7 @@ public static partial class Keys
         /// </remarks>
         public const string NonPrimaryRolesNotAdvertised = "Database.Discovery.NonPrimaryRolesNotAdvertised";
         /// <summary>
-        /// 无法定位发现层提供者“{0}”的激活入口“{1}”：宿主进程可能未引用对应的 Provider 工程，或该类型不再暴露 public static void Activate(DiscoveryActivationOptions)。请添加工程引用，或改为直调 *DiscoveryRuntime.Activate(...) 显式激活（AOT/裁剪场景逃生门）。
+        /// 无法定位发现层提供者“{0}”的激活入口“{1}”：宿主进程可能未引用对应的 Provider 工程，或该类型不再暴露 public static Task ActivateAsync(DiscoveryActivationOptions, CancellationToken)。请添加工程引用，或改为直调 *DiscoveryRuntime.ActivateAsync(...) 显式激活（AOT/裁剪场景逃生门）。
         /// </summary>
         /// <remarks>
         /// 键名: Database.Discovery.ProviderNotInstalled

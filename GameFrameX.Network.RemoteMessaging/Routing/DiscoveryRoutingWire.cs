@@ -39,7 +39,7 @@ namespace GameFrameX.Network.RemoteMessaging.Routing;
 /// Composition-side wiring for the discovery routing fabric, extracted from the
 /// database-implementation <c>*DiscoveryRuntime</c> so that neither the database
 /// implementation assemblies nor RemoteMessaging reference each other. The launch flow calls
-/// <see cref="Initialize"/> right after the provider runtime's <c>Activate</c> (passing its exposed
+/// <see cref="Initialize"/> right after the provider runtime's <c>ActivateAsync</c> (passing its exposed
 /// <c>IRoleRouteTableProvider</c>); the Hotfix wiring point later calls
 /// <see cref="AttachLocalDispatcher"/> to fill the case-1 local slot (semantics preserved verbatim:
 /// pre-Initialize call throws, idempotent per process, remote chain untouched).
@@ -57,7 +57,7 @@ public static class DiscoveryRoutingWire
     /// <remarks>
     /// Initializes the routing seam with the discovery route table (the real case 2/3 forwarder in place
     /// of the placeholder). Single activation per process — a second call is a no-op (mirroring the
-    /// provider runtime's <c>Activate</c> guard semantics for multi-role re-entry). The one-shot flag is
+    /// provider runtime's <c>ActivateAsync</c> guard semantics for multi-role re-entry). The one-shot flag is
     /// published only after the router is fully constructed and wired: if construction throws, the flag
     /// and the half-written fields are rolled back so a later call can retry initialization cleanly.
     /// </remarks>

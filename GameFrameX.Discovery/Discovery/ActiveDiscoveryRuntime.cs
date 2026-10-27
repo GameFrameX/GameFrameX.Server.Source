@@ -37,7 +37,7 @@ namespace GameFrameX.Discovery;
 /// <remarks>
 /// The process-wide slots for the activated discovery layer. Provider runtimes
 /// (Mongo / PostgreSQL) publish their started <see cref="DiscoveryRegistry"/> and their
-/// route-table reader here at the end of <c>Activate</c>: startup flows flip the announced
+/// route-table reader here at the end of <c>ActivateAsync</c>: startup flows flip the announced
 /// status from Booting to Active through <see cref="MarkActiveAsync"/> and the composition
 /// root reads <see cref="RouteTableProvider"/> for <c>DiscoveryRoutingWire.Initialize</c>,
 /// both without branching on the database provider enum. The slots hold whichever
@@ -107,8 +107,8 @@ public static class ActiveDiscoveryRuntime
     /// The route-table reader of the activated discovery layer, or null when the layer was never
     /// activated. The composition root passes this to <c>DiscoveryRoutingWire.Initialize</c>,
     /// whose null-check fail-fast semantics stay identical to the former provider ternary.
-    /// Volatile-backed: the provider runtime writes it before <c>Activate</c> returns and the
-    /// composition root reads it right after, on the same thread.
+    /// Volatile-backed: the provider runtime writes it before the activation task completes and
+    /// the composition root reads it right after awaiting that task.
     /// </remarks>
     public static IRoleRouteTableProvider RouteTableProvider => _routeTableProvider;
 

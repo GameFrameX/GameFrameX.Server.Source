@@ -37,24 +37,24 @@ namespace GameFrameX.Discovery;
 /// </summary>
 /// <remarks>
 /// The single activation parameter object shared by both discovery runtimes
-/// (<c>MongoDiscoveryRuntime.Activate</c> / <c>PostgreSqlDiscoveryRuntime.Activate</c>).
+/// (<c>MongoDiscoveryRuntime.ActivateAsync</c> / <c>PostgreSqlDiscoveryRuntime.ActivateAsync</c>).
 /// Both runtimes resolve the control database by <see cref="ConnectionName"/> through the
 /// unified <c>GameDb</c> entry; there is no carrier direct-injection path. The provider
 /// enum <see cref="Provider"/> rides along as dispatch metadata:
-/// <c>DiscoveryRuntimeResolver.Activate</c> resolves the runtime by
+/// <c>DiscoveryRuntimeResolver.ActivateAsync</c> resolves the runtime by
 /// convention from it (mirroring <c>DbOptions.Provider</c>), while direct
-/// <c>*DiscoveryRuntime.Activate</c> calls ignore the member.
+/// <c>*DiscoveryRuntime.ActivateAsync</c> calls ignore the member.
 /// </remarks>
 public sealed class DiscoveryActivationOptions
 {
     /// <summary>
-    /// 获取或设置发现层实现提供者（<c>DiscoveryRuntimeResolver.Activate</c> 的约定解析依据；直调
-    /// <c>*DiscoveryRuntime.Activate</c>（测试/自定义宿主逃生门）忽略此成员——直调目标即提供者）。
+    /// 获取或设置发现层实现提供者（<c>DiscoveryRuntimeResolver.ActivateAsync</c> 的约定解析依据；直调
+    /// <c>*DiscoveryRuntime.ActivateAsync</c>（测试/自定义宿主逃生门）忽略此成员——直调目标即提供者）。
     /// </summary>
     /// <remarks>
     /// Discovery implementation provider, resolved by convention in
-    /// <c>DiscoveryRuntimeResolver.Activate(DiscoveryActivationOptions)</c>; ignored by direct
-    /// <c>*DiscoveryRuntime.Activate</c> calls (the test / custom-host escape hatch) where the
+    /// <c>DiscoveryRuntimeResolver.ActivateAsync(DiscoveryActivationOptions, CancellationToken)</c>; ignored by direct
+    /// <c>*DiscoveryRuntime.ActivateAsync</c> calls (the test / custom-host escape hatch) where the
     /// called runtime is itself the provider — mirroring <c>DbOptions.Provider</c> versus the
     /// generic <c>Init&lt;T&gt;</c>.
     /// </remarks>

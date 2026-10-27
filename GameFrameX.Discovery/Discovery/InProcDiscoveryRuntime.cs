@@ -39,7 +39,7 @@ namespace GameFrameX.Discovery;
 /// </summary>
 /// <remarks>
 /// The in-process discovery runtime for the SQLite single-process topology. It satisfies
-/// the convention shape (<c>public static void Activate(DiscoveryActivationOptions)</c>, the
+/// the convention shape (<c>public static Task ActivateAsync(DiscoveryActivationOptions, CancellationToken)</c>, the
 /// paired <see cref="ActiveDiscoveryRuntime.BindRouteTable"/> registration) without any database
 /// backing: the route table is built once from <c>options.HostedRoleNames</c> plus this process's
 /// endpoint (advertise-environment endpoint when configured, a loopback marker otherwise), so
@@ -77,7 +77,7 @@ public static class InProcDiscoveryRuntime
     public static IRoleRouteTableProvider TableProvider => _tableProvider;
 
     /// <summary>
-    /// 激活单进程发现层（约定形状；自指路由表 + no-op 心跳面）。
+    /// 激活单进程发现层（约定形状；自指路由表 + no-op 心跳面）——无异步工作，同步完成后返回已完成任务。
     /// </summary>
     /// <remarks>
     /// Activates the in-process discovery layer. Validation order mirrors the provider runtimes so
@@ -86,12 +86,16 @@ public static class InProcDiscoveryRuntime
     /// then HostedRoleNames. The route table registers through
     /// <see cref="ActiveDiscoveryRuntime.BindRouteTable"/>; the registry slot is intentionally left
     /// null (no heartbeat write side — see the class remarks). Calling more than once per process
-    /// is a no-op.
+    /// is a no-op. There is no asynchronous work here, so the implementation runs synchronously and
+    /// returns a completed task — parameter validation therefore throws synchronously to the
+    /// caller (awaiting callers observe it identically, matching the provider runtimes whose
+    /// validation faults surface on the awaited task).
     /// </remarks>
     /// <param name="options">激活参数（HostedRoleNames 必填；ConnectionName 仅做契约形态校验）/ Activation options (HostedRoleNames required; ConnectionName validated for contract-shape parity only)</param>
+    /// <param name="cancellationToken">取消令牌（契约形态对齐；本实现无异步工作，仅在装配前检查）/ Cancellation token (contract-shape parity; checked before wiring — no async work exists here)</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="options"/> 或 <c>HostedRoleNames</c> 为 null 时抛出 / Thrown when options or HostedRoleNames is null</exception>
     /// <exception cref="ArgumentException">当 <c>ConnectionName</c> 未设置时抛出 / Thrown when ConnectionName is not set</exception>
-    public static void Activate(DiscoveryActivationOptions options)
+    public static Task ActivateAsync(DiscoveryActivationOptions options, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(options);
 
@@ -104,9 +108,11 @@ public static class InProcDiscoveryRuntime
         var hostedRoleNames = options.HostedRoleNames;
         ArgumentNullException.ThrowIfNull(hostedRoleNames, nameof(options.HostedRoleNames));
 
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (Interlocked.CompareExchange(ref _activated, 1, 0) != 0)
         {
-            return;
+            return Task.CompletedTask;
         }
 
         var hostedRoles = (hostedRoleNames as IReadOnlyCollection<string> ?? hostedRoleNames.ToList()).Where(role => !string.IsNullOrWhiteSpace(role)).Distinct(StringComparer.Ordinal).ToList();
@@ -123,6 +129,7 @@ public static class InProcDiscoveryRuntime
         // The route-table reader is registered into the public slot so the composition root
         // wires the routing seam without branching on the provider enum.
         ActiveDiscoveryRuntime.BindRouteTable(_tableProvider);
+        return Task.CompletedTask;
     }
 
     /// <summary>

@@ -41,7 +41,7 @@ namespace GameFrameX.DataBase.PostgreSql.Discovery;
 /// </summary>
 /// <remarks>
 /// The process-level wiring point for the PostgreSQL discovery layer. The
-/// launch flow calls <see cref="Activate"/> once the control database is
+/// launch flow calls <see cref="ActivateAsync"/> once the control database is
 /// registered: it first ensures the heartbeat schema (PostgreSQL, unlike
 /// MongoDB, never creates missing relations lazily, and the watcher's
 /// immediate first poll would otherwise throw 42P01), constructs the
@@ -52,7 +52,7 @@ namespace GameFrameX.DataBase.PostgreSql.Discovery;
 /// the AC-4 equivalent of the Mongo TTL index), then attaches the generic
 /// player-route bootstrap. Router wiring is NOT performed here — the
 /// composition side reads <see cref="ActiveDiscoveryRuntime.RouteTableProvider"/>
-/// (bound at the end of <c>Activate</c>) and calls
+/// (bound at the end of <c>ActivateAsync</c>) and calls
 /// <c>DiscoveryRoutingWire.Initialize</c> after. Activation is idempotent per
 /// process; the hotfix wiring point later calls
 /// <c>DiscoveryRoutingWire.AttachLocalDispatcher</c> to fill the case 1
@@ -100,24 +100,30 @@ public static class PostgreSqlDiscoveryRuntime
     }
 
     /// <summary>
-    /// 激活 PostgreSQL 发现层（schema 保障 + 读写侧通用组件 + 玩家路由层装配）。
+    /// 激活 PostgreSQL 发现层（schema 保障 + 读写侧通用组件 + 玩家路由层装配）——全链路异步，装配期不做同步阻塞等待。
     /// </summary>
     /// <remarks>
     /// Activates the discovery layer. The heartbeat schema is ensured before
     /// the one-shot activation guard (a failed create can then be fully
-    /// retried by a process restart instead of locking Activate into a
+    /// retried by a process restart instead of locking activation into a
     /// permanent no-op). The watcher always starts; the registry starts with
     /// its write side only when an advertise identity exists (its cleanup
     /// loop always runs); the player-route bootstrap attaches before the
     /// cleanup loop's first pass can touch player_route (the schema is
     /// ensured inside the bootstrap). Calling it more than once per process
-    /// is a no-op.
+    /// is a no-op. The activation path contains no sync-over-async waits, so
+    /// hosts with a <c>SynchronizationContext</c> (UI main threads, legacy
+    /// ASP.NET) can await it without deadlock and keep their context thread
+    /// responsive during the activation I/O. Parameter validation throws
+    /// synchronously before the async work; failures raised inside the async
+    /// flow surface on the returned task when awaited.
     /// </remarks>
     /// <param name="options">激活参数（ConnectionName 必填，HostedRoleNames 必填）/ Activation options (ConnectionName and HostedRoleNames required)</param>
+    /// <param name="cancellationToken">取消令牌（透传给建 schema 与接受令牌的启动调用）/ Cancellation token forwarded to the schema-ensuring and start calls</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="options"/> 或 <c>HostedRoleNames</c> 为 null 时抛出 / Thrown when options or HostedRoleNames is null</exception>
     /// <exception cref="ArgumentException">当 <c>ConnectionName</c> 未设置时抛出 / Thrown when ConnectionName is not set</exception>
     /// <exception cref="InvalidOperationException">当注册名未注册时抛出（由 MultiDbRegistry 经 GameDb.As 抛出）/ Thrown when the connection name is not registered (raised by MultiDbRegistry via GameDb.As)</exception>
-    public static void Activate(DiscoveryActivationOptions options)
+    public static async Task ActivateAsync(DiscoveryActivationOptions options, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(options);
 
@@ -133,9 +139,9 @@ public static class PostgreSqlDiscoveryRuntime
         ArgumentNullException.ThrowIfNull(hostedRoleNames, nameof(options.HostedRoleNames));
 
         // server_heartbeat 必须先于读侧立即轮询存在（且先于一次性激活守卫——
-        // 建表失败时进程重启可完整重试，不会把 Activate 永久锁成 no-op）。
+        // 建表失败时进程重启可完整重试，不会把激活永久锁成 no-op）。
         var heartbeatStore = new PostgreSqlHeartbeatStore(dataSource);
-        heartbeatStore.EnsureSchemaAsync(CancellationToken.None).GetAwaiter().GetResult();
+        await heartbeatStore.EnsureSchemaAsync(cancellationToken).ConfigureAwait(false);
 
         if (Interlocked.CompareExchange(ref _activated, 1, 0) != 0)
         {
@@ -146,7 +152,7 @@ public static class PostgreSqlDiscoveryRuntime
 
         var hostedRoles = hostedRoleNames as IReadOnlyCollection<string> ?? hostedRoleNames.ToList();
         _watcher = new DiscoveryWatcher(heartbeatStore);
-        _watcher.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
+        await _watcher.StartAsync(cancellationToken).ConfigureAwait(false);
 
         // 写侧需要唯一的广播身份：未配置广播端口（单进程本地开发等）时跳过注册，仅观察拓扑；
         // 清理循环始终运行（写侧跳过时由 Bootstrap 先行建表，避免首轮 DELETE 缺表回滚）。
@@ -156,10 +162,10 @@ public static class PostgreSqlDiscoveryRuntime
 
         // 玩家路由层装配（建表 / 建索引 + 装 SyncTarget）先于 Registry 启动：清理循环首轮要求 player_route 已建。
         // 本服实例 Id 同源注入（心跳自描述符的 InstanceId）：PlayerSessionManager 的路由同步写真实发现层实例 Id。
-        PlayerRouteResolverBootstrap.AttachAsync(playerRouteStore, options.PlayerRouteFastPath, selfDescriptor?.InstanceId).GetAwaiter().GetResult();
+        await PlayerRouteResolverBootstrap.AttachAsync(playerRouteStore, options.PlayerRouteFastPath, selfDescriptor?.InstanceId).ConfigureAwait(false);
 
         _registry = new DiscoveryRegistry(heartbeatStore, playerRouteStore, selfDescriptor, null, options.TtlCleanupInterval);
-        _registry.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
+        await _registry.StartAsync(cancellationToken).ConfigureAwait(false);
         // 激活完成即登记公共槽位：宿主就绪时经 ActiveDiscoveryRuntime.MarkActiveAsync 无分派切 Active。
         ActiveDiscoveryRuntime.Bind(_registry);
         // 读侧路由表成对登记同一槽位：组合根经 RouteTableProvider 无分派回读装配路由缝。
@@ -208,11 +214,11 @@ public static class PostgreSqlDiscoveryRuntime
     {
         _activated = 0;
 
-        // 与 Activate 相反顺序停机：读侧 → 写侧（尽力写 Stopped 终态）。
+        // 与 ActivateAsync 相反顺序停机：读侧 → 写侧（尽力写 Stopped 终态）。
         _watcher?.Dispose();
         _watcher = null;
         _registry?.Dispose();
         _registry = null;
-        // 公共槽位保留最近一次激活的写侧，重激活时由 Activate 末尾的 Bind 覆盖刷新。
+        // 公共槽位保留最近一次激活的写侧，重激活时由 ActivateAsync 末尾的 Bind 覆盖刷新。
     }
 }

@@ -99,7 +99,7 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
 
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartBegin));
             await InitializeControlDatabaseAsync();
-            ActivateDiscoveryLayer();
+            await ActivateDiscoveryLayerAsync();
             await InitializeBusinessDatabaseAsync();
             LogHelper.DebugConsole(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartEnd));
 
@@ -366,7 +366,8 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
     /// 再激活玩家路由层（建 player_route 索引 + 装 SyncTarget），Tier 1 fast-path 注入 SessionManager 适配器。
     /// 控制库句柄解析下沉到发现层内部，收敛为激活参数对象。
     /// Provider 装配经 DiscoveryRuntimeResolver 约定解析——按 DiscoveryActivationOptions.Provider
-    /// 反射定位并激活目标 Runtime，组合根零分支。
+    /// 反射定位并激活目标 Runtime，组合根零分支；激活入口为异步方法，本方法全程 await，
+    /// 带 SynchronizationContext 的宿主上启动线程不被装配期数据库 I/O 阻塞。
     /// 路由胶水装配自 Runtime 拆至组合侧 DiscoveryRoutingWire（发现层 Runtime 不再引用消息胶水程序集），
     /// 路由表经 ActiveDiscoveryRuntime.RouteTableProvider 槽位无分派回读。
     /// </summary>
@@ -379,14 +380,16 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
     /// fast-path adapter into the session manager. The provider dispatch lives in the
     /// <c>DiscoveryRuntimeResolver</c> convention (reflecting the target runtime from
     /// <c>DiscoveryActivationOptions.Provider</c>) so this composition root holds no
-    /// provider branch; the routing glue assembly lives in the composition-side
-    /// <c>DiscoveryRoutingWire</c>, its route table read back branch-free through the
+    /// provider branch; the activation entry point is asynchronous and this method awaits it
+    /// end to end, so hosts with a <c>SynchronizationContext</c> never block their calling
+    /// thread on the activation database I/O. The routing glue assembly lives in the
+    /// composition-side <c>DiscoveryRoutingWire</c>, its route table read back branch-free through the
     /// <c>ActiveDiscoveryRuntime.RouteTableProvider</c> slot.
     /// </remarks>
-    protected virtual void ActivateDiscoveryLayer()
+    protected virtual async Task ActivateDiscoveryLayerAsync()
     {
         // 约定激活：Provider 元数据随 options 走，目标 Runtime 由 DiscoveryRuntimeResolver 反射定位（镜像 GameDb.Init 的 DbOptions.Provider）。
-        DiscoveryRuntimeResolver.Activate(new DiscoveryActivationOptions
+        await DiscoveryRuntimeResolver.ActivateAsync(new DiscoveryActivationOptions
         {
             Provider = Setting.DatabaseProvider,
             ConnectionName = GameDb.ControlDatabaseName,

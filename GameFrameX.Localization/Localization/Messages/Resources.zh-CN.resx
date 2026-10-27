@@ -1358,7 +1358,7 @@
     <value>发现层提供者枚举值“{0}”未配置解析映射。已支持：[{1}]。新增 DatabaseProviderType 成员时必须同步在 DiscoveryRuntimeResolver 映射表登记 *DiscoveryRuntime。</value>
   </data>
   <data name="Database.Discovery.ProviderNotInstalled" xml:space="preserve">
-    <value>无法定位发现层提供者“{0}”的激活入口“{1}”：宿主进程可能未引用对应的 Provider 工程，或该类型不再暴露 public static void Activate(DiscoveryActivationOptions)。请添加工程引用，或改为直调 *DiscoveryRuntime.Activate(...) 显式激活（AOT/裁剪场景逃生门）。</value>
+    <value>无法定位发现层提供者“{0}”的激活入口“{1}”：宿主进程可能未引用对应的 Provider 工程，或该类型不再暴露 public static Task ActivateAsync(DiscoveryActivationOptions, CancellationToken)。请添加工程引用，或改为直调 *DiscoveryRuntime.ActivateAsync(...) 显式激活（AOT/裁剪场景逃生门）。</value>
   </data>
   <data name="Database.Ef.DocumentDictionaryPropertyNotSupported" xml:space="preserve">
     <value>PostgreSqlDbContext：文档类型“{0}”声明了字典属性“{1}”（{2}）。EF owned JSON 列无法以兼容形状映射字典；请将其重构为 owned entries 集合或标量载荷。</value>

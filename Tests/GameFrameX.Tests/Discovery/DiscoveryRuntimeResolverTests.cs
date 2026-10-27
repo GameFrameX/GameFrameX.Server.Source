@@ -42,13 +42,13 @@ namespace GameFrameX.Tests.Discovery;
 /// <remarks>
 /// Guard tests turning the discovery naming-convention string coupling into a CI invariant: every
 /// <see cref="DatabaseProviderType"/> member must resolve to a runtime type exposing
-/// <c>public static void Activate(DiscoveryActivationOptions)</c> (the test project references
+/// <c>public static Task ActivateAsync(DiscoveryActivationOptions, CancellationToken)</c> (the test project references
 /// both provider projects, so any provider project/class/namespace rename turns these red), and
 /// both failure branches must carry their self-diagnosing localized messages. The enum walk drives
 /// the resolver with a ConnectionName-less options: the runtime's own first validation
 /// (ArgumentException on ConnectionName) is the proof that the mapping resolved, the entry point
 /// matched the exact signature, and the reflective invocation reached the real runtime — all
-/// before any process-wide activation state mutates. Direct <c>*DiscoveryRuntime.Activate</c>
+/// before any process-wide activation state mutates. Direct <c>*DiscoveryRuntime.ActivateAsync</c>
 /// calls remain the test escape hatch (the generic <c>Init&lt;T&gt;</c> equivalent).
 /// Mirrors the isolation stance: joined into the GameDbStaticStateCollection in case a
 /// future runtime change moves validation behind state mutation.
@@ -66,7 +66,7 @@ public sealed class DiscoveryRuntimeResolverTests
     /// anything for real.
     /// </remarks>
     [Fact]
-    public void Activate_AllEnumMembers_ReachRuntimeActivationEntry()
+    public async Task ActivateAsync_AllEnumMembers_ReachRuntimeActivationEntry()
     {
         foreach (var provider in Enum.GetValues<DatabaseProviderType>())
         {
@@ -76,8 +76,8 @@ public sealed class DiscoveryRuntimeResolverTests
                 HostedRoleNames = new[] { "Game" },
             };
 
-            // 反射解包后应原样上抛运行时自身的 ConnectionName 校验异常（ParamName = options）。
-            var exception = Assert.Throws<ArgumentException>(() => DiscoveryRuntimeResolver.Activate(options));
+            // 反射解包 + 任务等待后应原样上抛运行时自身的 ConnectionName 校验异常（ParamName = options）。
+            var exception = await Assert.ThrowsAsync<ArgumentException>(() => DiscoveryRuntimeResolver.ActivateAsync(options));
 
             Assert.Equal("options", exception.ParamName);
         }
@@ -87,11 +87,11 @@ public sealed class DiscoveryRuntimeResolverTests
     /// 未配映射的枚举值（越界转型）触发 NotSupported：消息含枚举值名与已支持列表。
     /// </summary>
     [Fact]
-    public void Activate_UnmappedEnumValue_ThrowsNotSupportedWithDiagnosis()
+    public async Task ActivateAsync_UnmappedEnumValue_ThrowsNotSupportedWithDiagnosis()
     {
         var unmapped = (DatabaseProviderType)99;
 
-        var exception = Assert.Throws<InvalidOperationException>(() => DiscoveryRuntimeResolver.Activate(new DiscoveryActivationOptions { Provider = unmapped }));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => DiscoveryRuntimeResolver.ActivateAsync(new DiscoveryActivationOptions { Provider = unmapped }));
 
         Assert.Contains("99", exception.Message);
         Assert.Contains(nameof(DatabaseProviderType.Mongo), exception.Message);
@@ -102,13 +102,13 @@ public sealed class DiscoveryRuntimeResolverTests
     /// 坏类型名注入触发 NotInstalled：消息含期望的程序集限定类型名与直调逃生门指引。
     /// </summary>
     [Fact]
-    public void ActivateFromTypeName_UnresolvableTypeName_ThrowsNotInstalledWithDiagnosis()
+    public async Task ActivateFromTypeNameAsync_UnresolvableTypeName_ThrowsNotInstalledWithDiagnosis()
     {
         const string badTypeName = "GameFrameX.DataBase.Mongo.Discovery.NoSuchRuntime, GameFrameX.DataBase.Mongo";
 
-        var exception = Assert.Throws<InvalidOperationException>(() => DiscoveryRuntimeResolver.ActivateFromTypeName(badTypeName, new DiscoveryActivationOptions()));
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => DiscoveryRuntimeResolver.ActivateFromTypeNameAsync(badTypeName, new DiscoveryActivationOptions()));
 
         Assert.Contains(badTypeName, exception.Message);
-        Assert.Contains("DiscoveryRuntime.Activate", exception.Message);
+        Assert.Contains("DiscoveryRuntime.ActivateAsync", exception.Message);
     }
 }
