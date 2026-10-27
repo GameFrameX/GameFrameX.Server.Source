@@ -569,6 +569,16 @@ public static partial class Keys
             public const string ExecuteInTransactionTransientError = "Database.Mongo.ExecuteInTransactionTransientError";
 
             /// <summary>
+            /// MongoDbService.CommitTransactionAsync 提交失败后中止事务失败，事务将由服务端超时回滚。error={0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.Mongo.AbortTransactionAfterCommitFailed
+            /// 用途: 提交最终失败后 AbortTransactionAsync 尽力而为失败时的 Warning 日志
+            /// 参数: {0} - 异常消息
+            /// </remarks>
+            public const string AbortTransactionAfterCommitFailed = "Database.Mongo.AbortTransactionAfterCommitFailed";
+
+            /// <summary>
             /// MongoDbService.{0} 瞬时错误，重试 {1}/{2}。error={3}
             /// </summary>
             /// <remarks>

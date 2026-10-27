@@ -2178,6 +2178,10 @@
     <value>MongoDbService.ExecuteInTransactionAsync transient error, retry {0}/{1}. error={2}</value>
   </data>
 
+  <data name="Database.Mongo.AbortTransactionAfterCommitFailed" xml:space="preserve">
+    <value>MongoDbService.CommitTransactionAsync abort after commit failure failed; the transaction will be rolled back by the server on timeout. error={0}</value>
+  </data>
+
   <data name="Database.Mongo.OpenExceptionError" xml:space="preserve">
     <value>MongoDbService.Open Exception {0} {1} {2}</value>
   </data>

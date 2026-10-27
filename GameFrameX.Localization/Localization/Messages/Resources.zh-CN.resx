@@ -2169,6 +2169,10 @@
     <value>MongoDbService.ExecuteInTransactionAsync 瞬时错误，重试 {0}/{1}。error={2}</value>
   </data>
 
+  <data name="Database.Mongo.AbortTransactionAfterCommitFailed" xml:space="preserve">
+    <value>MongoDbService.CommitTransactionAsync 提交失败后中止事务失败，事务将由服务端超时回滚。error={0}</value>
+  </data>
+
   <data name="Database.Mongo.OpenExceptionError" xml:space="preserve">
     <value>MongoDbService.Open 异常 {0} {1} {2}</value>
   </data>
