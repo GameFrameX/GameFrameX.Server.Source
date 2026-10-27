@@ -47,7 +47,7 @@ public class PlayerComponentAgent : StateComponentAgent<PlayerComponent, PlayerS
         EventDispatcher.Dispatch(ActorId, new OnRoleOfflineEventArgs());
         //下线后会被自动回收
         SetAutoRecycle(true);
-        QuartzTimer.Remove(ScheduleIdSet);
+        await QuartzTimer.RemoveAsync(ScheduleIdSet);
     }
 
     /// <summary>
