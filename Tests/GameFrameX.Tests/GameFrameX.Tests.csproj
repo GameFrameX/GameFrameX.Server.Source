@@ -53,6 +53,7 @@
       <ProjectReference Include="..\..\GameFrameX.StartUp\GameFrameX.StartUp.csproj" />
       <ProjectReference Include="..\..\GameFrameX.Utility\GameFrameX.Utility.csproj" />
       <ProjectReference Include="..\..\GameFrameX.Hotfix\GameFrameX.Hotfix.csproj" />
+      <ProjectReference Include="..\..\GameFrameX.Hotfix.WrapperGenerator\GameFrameX.Hotfix.WrapperGenerator.csproj" />
       <ProjectReference Include="..\..\GameFrameX.Network\GameFrameX.Network.csproj" />
       <ProjectReference Include="..\..\GameFrameX.Launcher\GameFrameX.Launcher.csproj" />
       <ProjectReference Include="..\..\Capability\GameFrameX.Capability.Hosting.Abstractions\GameFrameX.Capability.Hosting.Abstractions.csproj" />
