@@ -337,6 +337,42 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 验证无技能区间的满员单票（TeamSize=1）可整票成组，快照以 0/0 记录「全组无技能区间」
+        /// （GFX-1083：BuildSnapshot 兜底分支可达，钉住语义防止被误判为死代码删除）。
+        /// </summary>
+        [Fact]
+        public async Task RunOnceAsync_WithSoloTicketWithoutSkillRange_ShouldSnapshotZeroSkillRange()
+        {
+            // Arrange
+            var fixture = CreateFixture();
+            var request = new OnlineMatchTicketEnqueueRequest
+            {
+                PartyId = string.Empty,
+                PlayerIds = new List<long> { PlayerOne },
+                Mode = 1,
+                Region = 1,
+                SkillRange = null,
+                TeamSize = 1,
+                LatencyRequirement = 0,
+                CustomProperties = new Dictionary<string, string>(),
+            };
+            var outcome = await fixture.Tickets.EnqueueAsync(CreatePlayerScope(PlayerOne), request);
+            Assert.True(outcome.IsSuccess);
+
+            // Act
+            var run = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+
+            // Assert
+            Assert.True(run.IsSuccess);
+            Assert.Single(run.Data.AssignmentIds);
+            var assignment = await fixture.Store.FindAssignmentAsync(TenantId, AppId, run.Data.AssignmentIds[0]);
+            Assert.NotNull(assignment);
+            Assert.Equal(0, assignment.RuleSnapshot.SkillMin);
+            Assert.Equal(0, assignment.RuleSnapshot.SkillMax);
+            Assert.False(assignment.RuleSnapshot.SkillRangeExpanded);
+        }
+
+        /// <summary>
         /// 以包内默认匹配参数创建一套测试夹具。
         /// </summary>
         /// <returns>测试夹具。</returns>
