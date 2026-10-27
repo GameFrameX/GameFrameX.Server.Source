@@ -479,6 +479,26 @@ public static partial class Keys
             /// 参数: {0} - Actor类型, {1} - Actor类型
             /// </remarks>
             public const string GetNotBelongComponent = "Core.ComponentRegister.GetNotBelongComponent";
+
+            /// <summary>
+            /// ComponentRegister.ActiveComponents Actor类型:{0} , 组件类型:{1} 未实现Agent，已跳过激活
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.ComponentRegister.ComponentAgentNotImplemented
+            /// 用途: 激活组件时发现组件未实现Agent，跳过激活并告警
+            /// 参数: {0} - Actor类型, {1} - 组件类型
+            /// </remarks>
+            public const string ComponentAgentNotImplemented = "Core.ComponentRegister.ComponentAgentNotImplemented";
+
+            /// <summary>
+            /// ComponentRegister.ActiveComponents Actor类型:{0} , 激活失败组件数:{1} , 组件清单:[{2}]
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.ComponentRegister.ActivateComponentsFailedSummary
+            /// 用途: 组件激活循环结束后汇总输出失败清单
+            /// 参数: {0} - Actor类型, {1} - 失败组件数, {2} - 失败组件全名清单
+            /// </remarks>
+            public const string ActivateComponentsFailedSummary = "Core.ComponentRegister.ActivateComponentsFailedSummary";
         }
 
         /// <summary>

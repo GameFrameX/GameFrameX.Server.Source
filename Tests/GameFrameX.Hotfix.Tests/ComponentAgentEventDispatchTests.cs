@@ -58,6 +58,8 @@ public sealed class ComponentAgentEventDispatchTests : IDisposable
     private static HotfixModule _module;
     private static bool _componentsRegistered;
 
+    private readonly bool _originalIsDebug;
+
     public ComponentAgentEventDispatchTests()
     {
         // actor 队列路径（SendAsync / ActorLimit）依赖进程级设置；沿 WorkerActorTests 先例做缺省初始化。
@@ -65,6 +67,11 @@ public sealed class ComponentAgentEventDispatchTests : IDisposable
         {
             GlobalSettings.SetCurrentSetting(new AppSetting { ServerId = 1 });
         }
+
+        // 本类考察事件派发语义，不做数据库装配：PlayerComponent 状态加载在无 DB 环境必然失败，
+        // 关闭调试开关以保持 C341 前的激活容错口径（调试抛出语义由 ComponentActivationFailureVisibilityTests 覆盖）。
+        _originalIsDebug = GlobalSettings.CurrentSetting.IsDebug;
+        GlobalSettings.CurrentSetting.IsDebug = false;
 
         lock (ModuleLock)
         {
@@ -88,6 +95,7 @@ public sealed class ComponentAgentEventDispatchTests : IDisposable
 
     public void Dispose()
     {
+        GlobalSettings.CurrentSetting.IsDebug = _originalIsDebug;
         HotfixManager.SetResolverForTesting(null);
     }
 

@@ -204,30 +204,61 @@ public static class ComponentRegister
     {
         var compTypes = GetComponents(actor.Type);
 
-        if (compTypes != null)
-        {
-            foreach (var compType in compTypes)
-            {
-                if (predict == null || predict(compType))
-                {
-                    var agentType = HotfixManager.Resolver.GetAgentType(compType);
-                    try
-                    {
-                        await actor.GetComponentAgentAsync(agentType);
-                    }
-                    catch (Exception exception)
-                    {
-                        // Localization: Core.ComponentRegister.ActivateComponentFailed - ComponentRegister.ActiveComponents Actor类型:{0} , 组件类型:{1} , 异常: {2}
-                        LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.ActivateComponentFailed, actor.Type, compType, exception));
-                        // throw;
-                    }
-                }
-            }
-        }
-        else
+        if (compTypes == null)
         {
             // Localization: Core.ComponentRegister.GetNotBelongComponent - ComponentRegister.ActiveComponents Actor类型:{0} , 消息: 获取了一个不属于此Actor的Actor: [{1}] 组件
             LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.GetNotBelongComponent, actor.Type, actor.Type));
+            return;
+        }
+
+        List<Type> failedComponentTypes = null;
+        List<Exception> failedExceptions = null;
+        foreach (var compType in compTypes)
+        {
+            if (predict != null && !predict(compType))
+            {
+                continue;
+            }
+
+            var agentType = HotfixManager.Resolver.GetAgentType(compType);
+            if (agentType == null)
+            {
+                // Localization: Core.ComponentRegister.ComponentAgentNotImplemented - ComponentRegister.ActiveComponents Actor类型:{0} , 组件类型:{1} 未实现Agent，已跳过激活
+                LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.ComponentAgentNotImplemented, actor.Type, compType));
+                continue;
+            }
+
+            try
+            {
+                await actor.GetComponentAgentAsync(agentType);
+            }
+            catch (Exception exception)
+            {
+                // Localization: Core.ComponentRegister.ActivateComponentFailed - ComponentRegister.ActiveComponents Actor类型:{0} , 组件类型:{1} , 异常: {2}
+                LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.ActivateComponentFailed, actor.Type, compType, exception));
+                if (failedComponentTypes == null)
+                {
+                    failedComponentTypes = new List<Type>();
+                    failedExceptions = new List<Exception>();
+                }
+
+                failedComponentTypes.Add(compType);
+                failedExceptions.Add(exception);
+            }
+        }
+
+        if (failedComponentTypes == null)
+        {
+            return;
+        }
+
+        var failedComponentNames = string.Join(", ", failedComponentTypes.Select(componentType => componentType.FullName));
+        // Localization: Core.ComponentRegister.ActivateComponentsFailedSummary - ComponentRegister.ActiveComponents Actor类型:{0} , 激活失败组件数:{1} , 组件清单:[{2}]
+        var summary = LocalizationService.GetString(Localization.Keys.Core.ComponentRegister.ActivateComponentsFailedSummary, actor.Type, failedComponentTypes.Count, failedComponentNames);
+        LogHelper.Fatal(summary);
+        if (GlobalSettings.CurrentSetting.IsDebug)
+        {
+            throw new AggregateException(summary, failedExceptions);
         }
     }
 
