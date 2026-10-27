@@ -250,6 +250,15 @@ public static partial class Keys
             public const string ConfigKindInvalid = "Online.AdminApi.ConfigKindInvalid";
 
             /// <summary>
+            /// Percent 必须是 [0,100] 范围内的灰度百分比。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Online.AdminApi.RolloutPercentInvalid
+            /// 用途: ReadRolloutPercent 读取灰度百分比时非法
+            /// </remarks>
+            public const string RolloutPercentInvalid = "Online.AdminApi.RolloutPercentInvalid";
+
+            /// <summary>
             /// AbnormalKind 必须是 [1,3] 范围内的数字（LongWaiting/RepeatedCancel/Orphan）。
             /// </summary>
             /// <remarks>
