@@ -454,4 +454,19 @@ public abstract class BaseDataTable<T> : IDataTable<T> where T : class
         _countCache = count;
         _countCacheInitialized = true;
     }
+
+    /// <summary>
+    /// 使派生缓存（首/尾/数量）失效，下次访问时重新计算。
+    /// </summary>
+    /// <remarks>
+    /// Invalidates derived caches (first/last/count) so they are recomputed on next access.
+    /// </remarks>
+    protected void InvalidateCaches()
+    {
+        _cacheInitialized = false;
+        _firstOrDefaultCache = null;
+        _lastOrDefaultCache = null;
+        _countCacheInitialized = false;
+        _countCache = 0;
+    }
 }
