@@ -163,7 +163,7 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
             _stopwatch.Restart();
             await ActionAsync(request, response);
             _stopwatch.Stop();
-            if (_stopwatch.Elapsed.Seconds >= GlobalSettings.CurrentSetting.MonitorMessageTimeOutSeconds)
+            if (_stopwatch.Elapsed.TotalSeconds >= GlobalSettings.CurrentSetting.MonitorMessageTimeOutSeconds)
             {
                 var fullName = GetType().FullName;
                 // Localization: Core.MessageHandler.RpcExecutionTimeWarning - BaseRpcMessageHandler.InnerActionCoreAsync 处理器:{0} 请求消息:{1} 消息: 消息处理器：{2},UniqueId：{3} 执行耗时：{4} ms
