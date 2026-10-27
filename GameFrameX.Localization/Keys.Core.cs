@@ -1048,6 +1048,16 @@ public static partial class Keys
             /// 参数: {0} - 组件类型
             /// </remarks>
             public const string MultipleAgents = "CoreExceptions.Hotfix.MultipleAgents";
+
+            /// <summary>
+            /// {0} must be a non-abstract closed type implementing {1} with a public parameterless constructor
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.Hotfix.MissingParameterlessConstructor
+            /// 用途: 热更注册类型缺少公共无参构造函数或不满足可实例化条件时抛出异常
+            /// 参数: {0} - 实现类型全名, {1} - 服务类型全名
+            /// </remarks>
+            public const string MissingParameterlessConstructor = "CoreExceptions.Hotfix.MissingParameterlessConstructor";
         }
 
         /// <summary>

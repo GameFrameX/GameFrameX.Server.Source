@@ -755,6 +755,10 @@
     <value>component:[{0}] there are multiple agents</value>
   </data>
 
+    <data name="CoreExceptions.Hotfix.MissingParameterlessConstructor" xml:space="preserve">
+    <value>{0} must be a non-abstract closed type implementing {1} with a public parameterless constructor</value>
+  </data>
+
     <!-- Attribute related exceptions -->
     <data name="CoreExceptions.Attribute.InvalidComponentType" xml:space="preserve">
     <value>Invalid component type {0}, value should be greater than {1} and less than {2} and not equal to {3}</value>

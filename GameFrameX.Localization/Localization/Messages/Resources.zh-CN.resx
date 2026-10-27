@@ -788,6 +788,10 @@
     <value>组件:[{0}] 存在多个代理</value>
   </data>
 
+    <data name="CoreExceptions.Hotfix.MissingParameterlessConstructor" xml:space="preserve">
+    <value>{0} 必须是实现 {1} 的非抽象封闭类型，且具有公共无参构造函数</value>
+  </data>
+
     <!-- 属性相关异常 -->
     <data name="CoreExceptions.Attribute.InvalidComponentType" xml:space="preserve">
     <value>无效的组件类型 {0},值应大于{1}且小于{2}和不为{3}</value>
