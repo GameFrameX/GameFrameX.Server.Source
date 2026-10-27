@@ -57,27 +57,29 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
     /// <summary>事件发布出口。</summary>
     private readonly IOnlineEventPublisher _eventPublisher;
 
-    /// <summary>
-    /// 变更分片串行门（64 片，按 (TenantId, AppId, PlayerId) 选片）：同一玩家的签发 / 刷新 / 吊销 / 踢下线 / 清理
-    /// 互斥不变（防并发双写产生即刻失效的新 Token、保多端裁决原子），跨玩家并行——断网潮恢复不再全局串行（GFX-1078 M56）。
-    /// <para>
-    /// ponytail: 单进程信号量——多进程部署时依赖装配层按会话归属单写者路由，跨进程原子性由持久化存储的 CAS 实现。
-    /// </para>
-    /// </summary>
-    private readonly SemaphoreSlim[] _mutationGates = CreateMutationGates();
+    /// <summary>会话生命周期管理器（State 终态化的唯一写入方——本服务吊销/踢下线/顶替/过期清扫经其间接执行）。</summary>
+    private readonly OnlineSessionManager _sessions;
 
-    /// <summary>变更分片门数量（2 的幂，便于散列取模分布）。</summary>
-    private const int MutationGateShardCount = 64;
+    /// <summary>
+    /// 会话写入共享串行门（与 <see cref="OnlineSessionManager"/> 共用同一实例：签发/刷新/吊销/踢下线/清理
+    /// 与生命周期推进互斥排队，防止两个写入方的读—改—全量写并发互相覆盖——GFX-1091）。
+    /// ponytail: 单进程信号量——多进程部署时依赖装配层按会话归属单写者路由，跨进程原子性由持久化存储的 CAS 实现。
+    /// </summary>
+    private readonly OnlineSessionWriteGate _writeGate;
 
     /// <summary>
     /// 初始化 <see cref="OnlineSessionTokenService"/>。
     /// </summary>
     /// <param name="store">会话存储。</param>
     /// <param name="eventPublisher">事件发布出口（生命周期与轮换审计事件）。</param>
-    public OnlineSessionTokenService(IOnlineSessionStore store, IOnlineEventPublisher eventPublisher)
+    /// <param name="sessions">会话生命周期管理器（State 终态化单写者）。</param>
+    /// <param name="writeGate">会话写入共享串行门（须与 <paramref name="sessions"/> 共用同一实例）。</param>
+    public OnlineSessionTokenService(IOnlineSessionStore store, IOnlineEventPublisher eventPublisher, OnlineSessionManager sessions, OnlineSessionWriteGate writeGate)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _eventPublisher = eventPublisher ?? throw new ArgumentNullException(nameof(eventPublisher));
+        _sessions = sessions ?? throw new ArgumentNullException(nameof(sessions));
+        _writeGate = writeGate ?? throw new ArgumentNullException(nameof(writeGate));
     }
 
     /// <summary>
@@ -142,18 +144,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
             throw new ArgumentNullException(nameof(request));
         }
 
-        // 只读预解析会话取分片键（会话 Id 为一次性 GUID 派生标识不存在复生，解析为 null 直接幂等返回）。
-        var preResolved = await _store.FindAsync(request.SessionId, cancellationToken);
-        if (preResolved == null)
-        {
-            return new OnlineTokenRevokeResult
-            {
-                Revoked = false,
-            };
-        }
-
-        var mutationGate = _mutationGates[GetMutationGateShardIndex(preResolved.TenantId, preResolved.AppId, preResolved.PlayerId)];
-        await mutationGate.WaitAsync(cancellationToken);
+        await _writeGate.WaitAsync(cancellationToken);
         try
         {
             var session = await FindLiveBySessionIdAsync(request.SessionId, request.Scope, false, cancellationToken);
@@ -165,7 +156,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
                 };
             }
 
-            await CloseSessionAsync(session, OnlineSessionState.Closed, OnlineSessionCloseReason.Revoked, OnlineSessionEvents.SessionClosed, request.Reason, null, cancellationToken);
+            await _sessions.CloseGateHeldAsync(session.Id, OnlineSessionCloseReason.Revoked, request.Reason, null, cancellationToken);
             return new OnlineTokenRevokeResult
             {
                 Revoked = true,
@@ -173,7 +164,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
         }
         finally
         {
-            mutationGate.Release();
+            _writeGate.Release();
         }
     }
 
@@ -190,18 +181,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
             throw new ArgumentNullException(nameof(request));
         }
 
-        // 只读预解析会话取分片键（会话 Id 为一次性 GUID 派生标识不存在复生，解析为 null 直接幂等返回）。
-        var preResolved = await _store.FindAsync(request.SessionId, cancellationToken);
-        if (preResolved == null)
-        {
-            return new OnlineTokenKickResult
-            {
-                Kicked = false,
-            };
-        }
-
-        var mutationGate = _mutationGates[GetMutationGateShardIndex(preResolved.TenantId, preResolved.AppId, preResolved.PlayerId)];
-        await mutationGate.WaitAsync(cancellationToken);
+        await _writeGate.WaitAsync(cancellationToken);
         try
         {
             var session = await FindLiveBySessionIdAsync(request.SessionId, request.Scope, false, cancellationToken);
@@ -213,7 +193,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
                 };
             }
 
-            await CloseSessionAsync(session, OnlineSessionState.Kicked, OnlineSessionCloseReason.KickedByOperator, OnlineSessionEvents.SessionKicked, request.Reason, null, cancellationToken);
+            await _sessions.CloseGateHeldAsync(session.Id, OnlineSessionCloseReason.KickedByOperator, request.Reason, null, cancellationToken);
             return new OnlineTokenKickResult
             {
                 Kicked = true,
@@ -221,7 +201,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
         }
         finally
         {
-            mutationGate.Release();
+            _writeGate.Release();
         }
     }
 
@@ -257,8 +237,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
             return OnlineResult<OnlineSessionStartResult>.Fail(OnlineErrorCode.ParameterInvalid, "Token 有效期必须为正数（秒）");
         }
 
-        var mutationGate = _mutationGates[GetMutationGateShardIndex(scope.TenantId, scope.AppId, scope.PlayerId)];
-        await mutationGate.WaitAsync(cancellationToken);
+        await _writeGate.WaitAsync(cancellationToken);
         try
         {
             var replacedSessionIds = new List<string>();
@@ -276,7 +255,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
                         {
                             foreach (var activeSession in activeSessions)
                             {
-                                await CloseSessionAsync(activeSession, OnlineSessionState.Kicked, OnlineSessionCloseReason.ReplacedByNewSession, OnlineSessionEvents.SessionKicked, "replaced by new session", correlationId, cancellationToken);
+                                await _sessions.CloseGateHeldAsync(activeSession.Id, OnlineSessionCloseReason.ReplacedByNewSession, "replaced by new session", correlationId, cancellationToken);
                                 replacedSessionIds.Add(activeSession.Id);
                             }
 
@@ -329,7 +308,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
         }
         finally
         {
-            mutationGate.Release();
+            _writeGate.Release();
         }
     }
 
@@ -348,17 +327,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
             throw new ArgumentNullException(nameof(scope));
         }
 
-        if (string.IsNullOrEmpty(token))
-        {
-            return OnlineResult<OnlineTokenRefreshResult>.Fail(OnlineErrorCode.ParameterInvalid, "Token 不得为空");
-        }
-
-        // 只读预解析 Token 所属会话取分片键；解析不出的失效 Token 落指纹兜底片，门内验证仍为唯一裁决。
-        var tokenOwner = await _store.FindByTokenHashAsync(HashToken(token), cancellationToken);
-        var mutationGate = tokenOwner == null
-            ? _mutationGates[GetMutationGateFallbackShardIndex(token)]
-            : _mutationGates[GetMutationGateShardIndex(tokenOwner.TenantId, tokenOwner.AppId, tokenOwner.PlayerId)];
-        await mutationGate.WaitAsync(cancellationToken);
+        await _writeGate.WaitAsync(cancellationToken);
         try
         {
             var validation = await ValidateTokenAsync(token, cancellationToken);
@@ -390,7 +359,7 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
         }
         finally
         {
-            mutationGate.Release();
+            _writeGate.Release();
         }
     }
 
@@ -435,34 +404,27 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
     /// <returns>本次清理的会话数。</returns>
     public async Task<int> SweepExpiredAsync(long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
     {
-        var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : Now();
-        var swept = 0;
-        var nonTerminal = await _store.ListNonTerminalAsync(cancellationToken);
-        foreach (var session in nonTerminal)
+        await _writeGate.WaitAsync(cancellationToken);
+        try
         {
-            if (session == null || now <= session.TokenExpiresAtTime)
-            {
-                continue;
-            }
-
-            // 逐会话取玩家分片门并在片内复检到期：并发轮换可能已把到期时刻推后（快照与取片之间的窗口）。
-            var mutationGate = _mutationGates[GetMutationGateShardIndex(session.TenantId, session.AppId, session.PlayerId)];
-            await mutationGate.WaitAsync(cancellationToken);
-            try
+            var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : Now();
+            var swept = 0;
+            var nonTerminal = await _store.ListNonTerminalAsync(cancellationToken);
+            foreach (var session in nonTerminal)
             {
                 if (now > session.TokenExpiresAtTime)
                 {
-                    await CloseSessionAsync(session, OnlineSessionState.Expired, OnlineSessionCloseReason.Expired, OnlineSessionEvents.SessionExpired, "token expired", null, cancellationToken);
+                    await _sessions.CloseGateHeldAsync(session.Id, OnlineSessionCloseReason.Expired, "token expired", null, cancellationToken);
                     swept++;
                 }
             }
-            finally
-            {
-                mutationGate.Release();
-            }
-        }
 
-        return swept;
+            return swept;
+        }
+        finally
+        {
+            _writeGate.Release();
+        }
     }
 
     /// <summary>
@@ -494,27 +456,6 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
         }
 
         return session;
-    }
-
-    /// <summary>
-    /// 关闭会话（终态落库 + 指纹清空 + 终态事件发布）。
-    /// </summary>
-    /// <param name="session">目标会话。</param>
-    /// <param name="targetState">目标终态。</param>
-    /// <param name="closeReason">终态原因码。</param>
-    /// <param name="eventType">终态事件类型。</param>
-    /// <param name="reasonText">原因描述（审计承载）。</param>
-    /// <param name="correlationId">关联标识（可空）。</param>
-    /// <param name="cancellationToken">取消令牌。</param>
-    private async Task CloseSessionAsync(OnlineSession session, OnlineSessionState targetState, OnlineSessionCloseReason closeReason, string eventType, string reasonText, string correlationId, CancellationToken cancellationToken)
-    {
-        session.State = targetState;
-        session.CloseReason = closeReason;
-        session.ClosedAtTime = Now();
-        session.CurrentTokenHash = string.Empty;
-        session.ConnectionId = string.Empty;
-        await _store.AddOrUpdateAsync(session, cancellationToken);
-        await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(eventType, session.Id, session.TenantId, session.AppId, session.ServerId, session.PlayerId, (int)session.State, (int)session.CloseReason, session.TokenGeneration, reasonText, correlationId), cancellationToken);
     }
 
     /// <summary>
@@ -576,49 +517,5 @@ public sealed class OnlineSessionTokenService : IOnlineSessionTokenContract
     private static long Now()
     {
         return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-    }
-
-    /// <summary>
-    /// 构造变更分片门数组（每片独立 1 许可信号量）。
-    /// </summary>
-    /// <returns>分片门数组。</returns>
-    private static SemaphoreSlim[] CreateMutationGates()
-    {
-        var gates = new SemaphoreSlim[MutationGateShardCount];
-        for (var index = 0; index < gates.Length; index++)
-        {
-            gates[index] = new SemaphoreSlim(1, 1);
-        }
-
-        return gates;
-    }
-
-    /// <summary>
-    /// 按玩家作用域三元组选取变更分片门下标（Fibonacci 乘法散列：确定性、零分配，仅作均匀分片，非安全用途）。
-    /// 同一玩家的签发 / 轮换 / 吊销 / 踢线 / 清理恒定同片——互斥不变；跨玩家散列到各片并行。
-    /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">应用标识。</param>
-    /// <param name="playerId">玩家标识。</param>
-    /// <returns>分片下标（[0, 分片数)）。</returns>
-    private static int GetMutationGateShardIndex(long tenantId, long appId, long playerId)
-    {
-        unchecked
-        {
-            var combined = ((ulong)(uint)tenantId << 32) | (uint)appId;
-            combined = (combined ^ ((ulong)(uint)playerId * 0x9E3779B97F4A7C15UL)) * 0x9E3779B97F4A7C15UL;
-            return (int)(combined % (ulong)MutationGateShardCount);
-        }
-    }
-
-    /// <summary>
-    /// 预解析不出的失效 Token 的兜底分片下标（uint 取模规避 <c>Math.Abs(int.MinValue)</c> 抛异常）；
-    /// 兜底片内仍以门内验证为唯一裁决，不影响任何失败码语义。
-    /// </summary>
-    /// <param name="token">令牌明文。</param>
-    /// <returns>分片下标（[0, 分片数)）。</returns>
-    private static int GetMutationGateFallbackShardIndex(string token)
-    {
-        return (int)((uint)token.GetHashCode() % (uint)MutationGateShardCount);
     }
 }

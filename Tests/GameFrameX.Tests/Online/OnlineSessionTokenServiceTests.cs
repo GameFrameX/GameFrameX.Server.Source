@@ -374,7 +374,8 @@ namespace GameFrameX.Tests.Online
         {
             recorder = new OnlineEventRecorder();
             store = new InMemoryOnlineSessionStore();
-            return new OnlineSessionTokenService(store, recorder);
+            var writeGate = new OnlineSessionWriteGate();
+            return new OnlineSessionTokenService(store, recorder, new OnlineSessionManager(store, recorder, writeGate), writeGate);
         }
 
         /// <summary>

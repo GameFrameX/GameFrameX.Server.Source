@@ -138,9 +138,11 @@ public sealed class OnlineFoundationCapabilityModule : ICapabilityModule, IAdmin
         // 四域服务构造并注册回共享面（与壳时代集中 new 逐语句等价）。
         // 身份服务注入族预置统一审计链路（跨账号改绑留痕面，C400）。
         context.AddService(new OnlineIdentityService(identityStore, context.GetService<OnlineAuditService>()));
-        _sessions = new OnlineSessionManager(sessionStore, eventPublisher);
+        // 会话写入共享串行门：SessionManager 与 TokenService 共用同一实例（GFX-1091 单写者 + 防并发覆盖）。
+        var sessionWriteGate = new OnlineSessionWriteGate();
+        _sessions = new OnlineSessionManager(sessionStore, eventPublisher, sessionWriteGate);
         context.AddService(_sessions);
-        _tokens = new OnlineSessionTokenService(sessionStore, eventPublisher);
+        _tokens = new OnlineSessionTokenService(sessionStore, eventPublisher, _sessions, sessionWriteGate);
         context.AddService(_tokens);
         _presence = new OnlinePresenceService(presenceStore, eventPublisher);
         context.AddService(_presence);
