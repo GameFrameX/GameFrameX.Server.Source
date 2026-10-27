@@ -75,6 +75,12 @@ public sealed class MethodInfoData
             sb.Append(Name);
             sb.Append(Typeparams);
             sb.Append(ParamDeclare);
+            if (!string.IsNullOrEmpty(Constraint))
+            {
+                sb.Append(" ");
+                sb.Append(Constraint);
+            }
+
             return sb.ToString();
         }
     }
