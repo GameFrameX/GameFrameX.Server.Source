@@ -55,8 +55,8 @@ internal static class AppExitHandler
     /// <remarks>
     /// Exit callback action.
     /// </remarks>
-    /// <value>应用程序退出时要调用的动作 / The action to be called when application exits</value>
-    private static Action<string> _exitCallBack;
+    /// <value>应用程序退出时要调用的动作（返回停机任务，供退出路径有界等待）/ The action to be called when application exits (returns the shutdown task so exit paths can await it with a bound)</value>
+    private static Func<string, Task> _exitCallBack;
 
     /// <summary>
     /// 应用程序设置。
@@ -86,6 +86,18 @@ internal static class AppExitHandler
     private static volatile bool _isKill;
 
     /// <summary>
+    /// 等待异步停机任务完成的总超时时间。
+    /// </summary>
+    /// <remarks>
+    /// The total timeout for waiting on the asynchronous shutdown task to complete.
+    /// 进程退出钩子（<see cref="AppDomain.ProcessExit"/>）与入口收尾（<c>EntryAsync</c> finally）
+    /// 等待停机任务的上限：超时记录错误日志后放行进程退出，防止退出路径无限阻塞；
+    /// 与优雅停机序列内部总超时（C361 <c>GracefulShutdownTotalTimeout</c>）同值 30 秒、语义正交
+    ///（内层防停机挂死 / 外层防等待无界），后合入方统一为单一事实源。
+    /// </remarks>
+    internal static readonly TimeSpan ShutdownWaitTimeout = TimeSpan.FromSeconds(30);
+
+    /// <summary>
     /// 致命异常退出处理器列表。
     /// </summary>
     /// <remarks>
@@ -101,9 +113,9 @@ internal static class AppExitHandler
     /// Initialize the exit handler.
     /// Sets up various exit signal listeners and exception handlers to ensure the application can respond to various exit conditions.
     /// </remarks>
-    /// <param name="exitCallBack">退出回调动作 / Exit callback action</param>
+    /// <param name="exitCallBack">退出回调动作（返回停机任务供退出路径有界等待）/ Exit callback action (returns the shutdown task for exit paths to await with a bound)</param>
     /// <param name="setting">应用程序设置 / Application settings</param>
-    public static void Init(Action<string> exitCallBack, AppSetting setting)
+    public static void Init(Func<string, Task> exitCallBack, AppSetting setting)
     {
         _isKill = false;
         _setting = setting;
@@ -117,7 +129,12 @@ internal static class AppExitHandler
 
         _exitSignalRegistration = PosixSignalRegistration.Create(PosixSignal.SIGTERM, ExitSignalRegistrationHandler);
         //退出监听
-        AppDomain.CurrentDomain.ProcessExit += (s, e) => { _exitCallBack?.Invoke("process exit"); };
+        AppDomain.CurrentDomain.ProcessExit += (s, e) =>
+        {
+            var exitTask = _exitCallBack?.Invoke("process exit");
+            // ProcessExit 之后不再有其它等待者：同步有界等待停机任务，防止停机流程（含日志刷盘）被进程退出截断
+            WaitForExitTaskCompletion(exitTask);
+        };
         //卸载监听
         AssemblyLoadContext.Default.Unloading += DefaultOnUnloading;
         //Fatal异常监听
@@ -149,6 +166,53 @@ internal static class AppExitHandler
         //收到退出信号后应用进入退出流程，释放信号注册以避免重复触发并归还底层资源
         _exitSignalRegistration?.Dispose();
         _exitSignalRegistration = null;
+    }
+
+    /// <summary>
+    /// 有界等待异步停机任务完成（可测核心）。
+    /// </summary>
+    /// <remarks>
+    /// Waits for the asynchronous shutdown task to complete within the given bound.
+    /// 任务为空或已完成时立即返回；超时记录错误日志后放行，防止进程退出路径无限阻塞；
+    /// 停机任务自身的异常已在 <c>HandleExitAsync</c> 内部记录或由入口观测，此处不重抛，
+    /// 保证钩子与入口收尾有界返回。
+    /// </remarks>
+    /// <param name="exitTask">停机任务 / The shutdown task</param>
+    /// <param name="timeout">等待上限 / The wait bound</param>
+    internal static async Task WaitForExitTaskCompletionAsync(Task exitTask, TimeSpan timeout)
+    {
+        if (exitTask == null || exitTask.IsCompleted)
+        {
+            return;
+        }
+
+        try
+        {
+            await exitTask.WaitAsync(timeout);
+        }
+        catch (TimeoutException)
+        {
+            // Localization: StartUp.Application.ShutdownWaitTimeout - 等待停机任务完成超时（{0} 秒），进程将在停机流程完成前退出
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.Application.ShutdownWaitTimeout, timeout.TotalSeconds));
+        }
+        catch (Exception)
+        {
+            // 停机任务异常已在其内部记录（逆序停机失败聚合 / 日志冲刷均在 HandleExitAsync 内处理），等待方不重抛
+        }
+    }
+
+    /// <summary>
+    /// 以缺省 <see cref="ShutdownWaitTimeout"/> 为上限同步等待异步停机任务完成。
+    /// </summary>
+    /// <remarks>
+    /// Synchronously waits for the asynchronous shutdown task to complete under the default
+    /// <see cref="ShutdownWaitTimeout"/> bound. Used by the <see cref="AppDomain.ProcessExit"/>
+    /// hook, which runs on the runtime's exit thread after no other waiter remains.
+    /// </remarks>
+    /// <param name="exitTask">停机任务 / The shutdown task</param>
+    internal static void WaitForExitTaskCompletion(Task exitTask)
+    {
+        WaitForExitTaskCompletionAsync(exitTask, ShutdownWaitTimeout).GetAwaiter().GetResult();
     }
 
     /// <summary>

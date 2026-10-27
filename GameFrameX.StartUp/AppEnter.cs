@@ -89,6 +89,8 @@ internal static class AppEnter
     /// the current role's startup-ready signal before starting the next one, so a lower-priority role never
     /// initializes while a higher-priority role is still bringing up shared infrastructure (databases, components).
     /// All run-until-exit loops are then awaited together; exit stops the hosts in reverse order (lower priority first).
+    /// Before returning (normal or failed startup), any already-triggered shutdown task is awaited with a bound
+    /// so the process does not exit mid-shutdown and truncate in-flight writes or the log flush.
     /// </remarks>
     /// <param name="appStartUps">应用程序启动实例集合（启动优先级序）/ Application startup instances (launch priority order)</param>
     /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
@@ -111,10 +113,6 @@ internal static class AppEnter
 
             _gameLoopTask = startUpTasks.Count == 1 ? startUpTasks[0] : Task.WhenAll(startUpTasks);
             await _gameLoopTask;
-            if (_exitTask != null)
-            {
-                await _exitTask;
-            }
         }
         catch (Exception e)
         {
@@ -129,6 +127,12 @@ internal static class AppEnter
             }
 
             LogHelper.Error(error);
+        }
+        finally
+        {
+            // 无论正常退出还是启动异常退栈，都在返回前有界等待已触发的停机任务，
+            // 防止进程在停机流程（含日志刷盘）完成前退出截断写操作（GFX-1073）
+            await AppExitHandler.WaitForExitTaskCompletionAsync(_exitTask, AppExitHandler.ShutdownWaitTimeout);
         }
     }
 
@@ -171,16 +175,20 @@ internal static class AppEnter
     /// <remarks>
     /// Handles application exit.
     /// Ensures the application only exits once and performs necessary cleanup operations.
+    /// Returns the shutdown task (a repeated invocation returns the already-running one) so exit
+    /// hooks and the entry point can await graceful shutdown with a bound instead of fire-and-forget.
     /// </remarks>
     /// <param name="message">退出消息 / Exit message</param>
-    private static void HandleExit(string message)
+    /// <returns>停机任务（重复触发时返回既有任务）/ The shutdown task (the existing one on repeated triggers)</returns>
+    private static Task HandleExit(string message)
     {
         if (Interlocked.Exchange(ref _exitCalled, 1) == 1)
         {
-            return;
+            return _exitTask;
         }
 
         _exitTask = Task.Run(() => HandleExitAsync(message));
+        return _exitTask;
     }
 
     /// <summary>
