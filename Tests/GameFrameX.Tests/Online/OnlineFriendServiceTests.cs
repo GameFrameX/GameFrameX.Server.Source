@@ -424,9 +424,11 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var service = CreateService(out _, out var store, friendLimit: 2);
+
+            // 待答申请必须先于满员存在：发起侧前置检查会让满员后的新申请直接失败（见 RequestAsync 用例）。
+            var third = await RequestAsync(service, PlayerOne, PlayerFour);
             await EstablishFriendshipAsync(service, PlayerOne, PlayerTwo);
             await EstablishFriendshipAsync(service, PlayerOne, PlayerThree);
-            var third = await RequestAsync(service, PlayerOne, PlayerFour);
 
             // Act
             var outcome = await service.AcceptAsync(CreatePlayerScope(PlayerFour), third.FriendshipId);
@@ -470,6 +472,104 @@ namespace GameFrameX.Tests.Online
             Assert.True(replay.IsSuccess);
             Assert.Equal(OnlineFriendshipState.Accepted, replay.Data.State);
             Assert.Equal(established.FriendshipId, replay.Data.FriendshipId);
+        }
+
+        /// <summary>
+        /// 验证并发接受不越上限：三个待答请求同时接受、上限为 2 时，恰好两条 Established、
+        /// 一条被上限拒绝且保持待答——上限判定与写入在同一临界区（GFX-1079 TOCTOU 回归）。
+        /// </summary>
+        [Fact]
+        public async Task AcceptAsync_ConcurrentAccepts_ShouldNotExceedFriendLimit()
+        {
+            // Arrange：答复方 PlayerOne 同时收到三条待答请求，上限 2。
+            var service = CreateService(out _, out var store, friendLimit: 2);
+            var first = await RequestAsync(service, PlayerTwo, PlayerOne);
+            var second = await RequestAsync(service, PlayerThree, PlayerOne);
+            var third = await RequestAsync(service, PlayerFour, PlayerOne);
+
+            // Act
+            var accepts = await Task.WhenAll(
+                service.AcceptAsync(CreatePlayerScope(PlayerOne), first.FriendshipId),
+                service.AcceptAsync(CreatePlayerScope(PlayerOne), second.FriendshipId),
+                service.AcceptAsync(CreatePlayerScope(PlayerOne), third.FriendshipId));
+
+            // Assert：恰好两条成功、一条撞上限；落库事实与之一致。
+            Assert.Equal(2, accepts.Count(outcome => outcome.IsSuccess));
+            var rejected = Assert.Single(accepts, outcome => !outcome.IsSuccess);
+            Assert.Equal(OnlineErrorCode.StateOperationForbidden, rejected.Code);
+
+            var rows = await store.ListByPlayerAsync(TenantId, AppId, PlayerOne);
+            Assert.Equal(2, rows.Count(row => row.State == OnlineFriendshipState.Accepted));
+            var stillPending = Assert.Single(rows, row => row.State == OnlineFriendshipState.Requested);
+            Assert.Contains(stillPending.FriendshipId, new[] { first.FriendshipId, second.FriendshipId, third.FriendshipId });
+        }
+
+        /// <summary>
+        /// 验证发起方满员时发起申请被明确拒绝且零落库（不再堆积待答申请）。
+        /// </summary>
+        [Fact]
+        public async Task RequestAsync_WhenRequesterFriendLimitReached_ShouldRejectWithoutPersisting()
+        {
+            // Arrange
+            var service = CreateService(out _, out var store, friendLimit: 2);
+            await EstablishFriendshipAsync(service, PlayerOne, PlayerTwo);
+            await EstablishFriendshipAsync(service, PlayerOne, PlayerThree);
+
+            // Act
+            var outcome = await service.RequestAsync(CreatePlayerScope(PlayerOne), PlayerFour);
+
+            // Assert
+            Assert.False(outcome.IsSuccess);
+            Assert.Equal(OnlineErrorCode.StateOperationForbidden, outcome.Code);
+            Assert.Empty(await store.ListByPlayerAsync(TenantId, AppId, PlayerFour));
+        }
+
+        /// <summary>
+        /// 验证目标方满员时发起申请同样被拒绝（双向判据：目标侧名额也必须有空）。
+        /// </summary>
+        [Fact]
+        public async Task RequestAsync_WhenTargetFriendLimitReached_ShouldRejectWithoutPersisting()
+        {
+            // Arrange：目标方 PlayerOne 已满员（上限 2）。
+            var service = CreateService(out _, out var store, friendLimit: 2);
+            await EstablishFriendshipAsync(service, PlayerOne, PlayerThree);
+            await EstablishFriendshipAsync(service, PlayerOne, PlayerFour);
+
+            // Act：未满员的 PlayerTwo 向满员的 PlayerOne 发起。
+            var outcome = await service.RequestAsync(CreatePlayerScope(PlayerTwo), PlayerOne);
+
+            // Assert
+            Assert.False(outcome.IsSuccess);
+            Assert.Equal(OnlineErrorCode.StateOperationForbidden, outcome.Code);
+            Assert.Empty(await store.ListByPlayerAsync(TenantId, AppId, PlayerTwo));
+        }
+
+        /// <summary>
+        /// 验证静止态（Removed）重新发起同样受两侧上限约束：目标方满员时重发被拒绝，
+        /// 关系保持 Removed，不回到待答态。
+        /// </summary>
+        [Fact]
+        public async Task RequestAsync_AfterRemoval_WhenTargetFriendLimitReached_ShouldRejectRenewal()
+        {
+            // Arrange：上限 3；PlayerTwo 先满员，再把既有对 P1-P2 删成静止态。
+            const long PlayerFive = 1005;
+            var service = CreateService(out _, out var store, friendLimit: 3);
+            await EstablishFriendshipAsync(service, PlayerOne, PlayerTwo);
+            await EstablishFriendshipAsync(service, PlayerTwo, PlayerThree);
+            await EstablishFriendshipAsync(service, PlayerTwo, PlayerFour);
+            var removed = await service.RemoveAsync(CreatePlayerScope(PlayerOne), PlayerTwo);
+            Assert.True(removed.IsSuccess);
+            await EstablishFriendshipAsync(service, PlayerTwo, PlayerFive);
+
+            // Act：PlayerOne 重新发起（走静止态 Renewal 分支）。
+            var outcome = await service.RequestAsync(CreatePlayerScope(PlayerOne), PlayerTwo);
+
+            // Assert
+            Assert.False(outcome.IsSuccess);
+            Assert.Equal(OnlineErrorCode.StateOperationForbidden, outcome.Code);
+            var rows = await store.ListByPlayerAsync(TenantId, AppId, PlayerOne);
+            var pair = Assert.Single(rows, row => row.OtherOf(PlayerOne) == PlayerTwo);
+            Assert.Equal(OnlineFriendshipState.Removed, pair.State);
         }
 
         /// <summary>

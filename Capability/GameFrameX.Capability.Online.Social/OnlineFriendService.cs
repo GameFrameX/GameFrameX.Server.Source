@@ -152,7 +152,8 @@ public sealed class OnlineFriendService
     /// ① 无记录 → 创建待答复请求（并发连发时只有第一条创建成功，其余拿到同一条）；
     /// ② 已有待答复请求 → 直接返回该请求（无论方向，避免「同一对玩家两条待答复」）；
     /// ③ 已是好友 → 返回既有关系（幂等，不降级为待答复）；
-    /// ④ 处于静止态（拒绝 / 过期 / 已删除）→ CAS 重新发起，方向翻转为本次发起人。
+    /// ④ 处于静止态（拒绝 / 过期 / 已删除）→ CAS 重新发起，方向翻转为本次发起人；
+    /// ⑤ 任一侧好友数已达上限时明确拒绝（StateOperationForbidden），不再产生新的待答申请；既有对仍走幂等收敛。
     /// </para>
     /// </summary>
     /// <param name="scope">生效作用域（必须含玩家主体位）。</param>
@@ -183,6 +184,13 @@ public sealed class OnlineFriendService
         if (existing != null)
         {
             return await ConvergeExistingAsync(existing, scope, correlationId, now, cancellationToken).ConfigureAwait(false);
+        }
+
+        // 发起侧前置检查：满员玩家（任一侧）不再产生新的待答申请——写侧明确拒绝，不静默堆积。
+        // 已存在的对（既有待答 / 已是好友）走上面的幂等收敛，不受此检查影响。
+        if (await IsFriendLimitReachedAsync(scope, scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false))
+        {
+            return OnlineResult<OnlineFriendship>.Fail(OnlineErrorCode.StateOperationForbidden, "好友数量已达上限");
         }
 
         long low;
@@ -547,11 +555,12 @@ public sealed class OnlineFriendService
     }
 
     /// <summary>
-    /// 判断本条关系若被接受，是否会使**任一方**的好友数越过上限。
+    /// 判断若在给定双方之间建立好友关系，是否会使**任一方**的好友数越过上限。
     /// <para>
     /// 维护约束（双向判据）：好友关系对双方各占一个名额，因此必须两侧都判——
-    /// 只判接受方的话，一个已经加满好友的发起人可以持续向「名额还有空」的人堆积关系，
-    /// 把自己的列表顶到无界。
+    /// 只判一侧的话，一个已经加满好友的玩家可以持续向「名额还有空」的人堆积申请，
+    /// 把对方的待答列表顶到无界。接受路径的**原子**判定已下沉到存储层
+    /// （<see cref="IOnlineFriendStore.UpdateStateWithFriendLimitAsync"/>），本方法仅服务发起路径的前置检查。
     /// </para>
     /// <para>
     /// 天花板（ponytail）：这里对两侧各做一次全量列表扫描再本地计数，是 O(该玩家关系数)；
@@ -559,19 +568,20 @@ public sealed class OnlineFriendService
     /// </para>
     /// </summary>
     /// <param name="scope">生效作用域。</param>
-    /// <param name="friendship">待答复的关系。</param>
+    /// <param name="firstPlayerId">一方玩家标识。</param>
+    /// <param name="secondPlayerId">另一方玩家标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>任一方已达上限返回 <c>true</c>。</returns>
-    private async Task<bool> IsFriendLimitReachedAsync(OnlineScope scope, OnlineFriendship friendship, CancellationToken cancellationToken)
+    private async Task<bool> IsFriendLimitReachedAsync(OnlineScope scope, long firstPlayerId, long secondPlayerId, CancellationToken cancellationToken)
     {
-        var requesterCount = await CountEstablishedAsync(scope, friendship.RequesterId, cancellationToken).ConfigureAwait(false);
-        if (requesterCount >= _friendLimit)
+        var firstPlayerCount = await CountEstablishedAsync(scope, firstPlayerId, cancellationToken).ConfigureAwait(false);
+        if (firstPlayerCount >= _friendLimit)
         {
             return true;
         }
 
-        var addresseeCount = await CountEstablishedAsync(scope, friendship.AddresseeId, cancellationToken).ConfigureAwait(false);
-        return addresseeCount >= _friendLimit;
+        var secondPlayerCount = await CountEstablishedAsync(scope, secondPlayerId, cancellationToken).ConfigureAwait(false);
+        return secondPlayerCount >= _friendLimit;
     }
 
     /// <summary>
@@ -639,20 +649,32 @@ public sealed class OnlineFriendService
             return OnlineResult<OnlineFriendship>.Ok(friendship);
         }
 
-        if (accept && await IsFriendLimitReachedAsync(scope, friendship, cancellationToken).ConfigureAwait(false))
+        var now = Now();
+        OnlineFriendship updated;
+        if (accept)
         {
-            // 上限在**写侧**（关系建立的那一刻）拒绝，而不是在读取侧静默截断。
-            // 静默截断是错的两个方向：被截掉的好友在列表里凭空消失（玩家视角就是好友丢了，
-            // 且没有任何错误信号可用于申诉），而写入侧不设防又让关系数无界增长
-            // （每多一个好友就多一路 Presence 扇出与关系变更通知）。
-            // 计数与随后的写入不在同一临界区（跨记录无 CAS）：两个代办请求并发接受时可能各读到
-            // 上限 -1，从而双双落库超限一格。ponytail：单机内存实现按「上限是软约束、写入侧强于读取侧」收口，
-            // 需要硬约束时把计数与写入收进存储层同一临界区（届时换成带计数的 CAS）。
-            return OnlineResult<OnlineFriendship>.Fail(OnlineErrorCode.StateOperationForbidden, "好友数量已达上限");
+            // 上限判定与写入收进存储层同一临界区（UpdateStateWithFriendLimitAsync）：服务层
+            // 「先读计数再写」的两步检查存在 TOCTOU 窗口——两个待答请求并发接受时可各读到
+            // 「上限-1」而双双落库超限。拒绝仍落在**写侧**（关系建立的那一刻），而不是读取侧静默截断
+            // （静默截断的危害见下：被截掉的好友在列表里凭空消失且无错误信号可申诉）。
+            var outcome = await _store.UpdateStateWithFriendLimitAsync(
+                              scope.TenantId,
+                              scope.AppId,
+                              new FriendshipStateTransition { FriendshipId = friendshipId, ExpectedState = friendship.State, NewState = target, NowUnixMilliseconds = now, Responded = true, },
+                              _friendLimit,
+                              cancellationToken).ConfigureAwait(false);
+            if (outcome.FriendLimitReached)
+            {
+                return OnlineResult<OnlineFriendship>.Fail(OnlineErrorCode.StateOperationForbidden, "好友数量已达上限");
+            }
+
+            updated = outcome.Friendship;
+        }
+        else
+        {
+            updated = await _store.UpdateStateAsync(scope.TenantId, scope.AppId, new FriendshipStateTransition { FriendshipId = friendshipId, ExpectedState = friendship.State, NewState = target, NowUnixMilliseconds = now, Responded = true, }, cancellationToken).ConfigureAwait(false);
         }
 
-        var now = Now();
-        var updated = await _store.UpdateStateAsync(scope.TenantId, scope.AppId, new FriendshipStateTransition { FriendshipId = friendshipId, ExpectedState = friendship.State, NewState = target, NowUnixMilliseconds = now, Responded = true, }, cancellationToken).ConfigureAwait(false);
         if (updated == null)
         {
             // CAS 失败 = 已被并发答复 / 超期扫描抢先；重读后按当前事实返回。
@@ -722,6 +744,12 @@ public sealed class OnlineFriendService
         if (!OnlineFriendshipStateMachine.TryTransition(existing.State, OnlineFriendshipState.Requested))
         {
             return OnlineResult<OnlineFriendship>.Fail(OnlineErrorCode.StateOperationForbidden, "当前关系状态不允许发起请求：" + existing.State);
+        }
+
+        // 静止态重新发起同样受两侧上限约束（与新建路径同解）。
+        if (await IsFriendLimitReachedAsync(scope, scope.PlayerId, targetPlayerId, cancellationToken).ConfigureAwait(false))
+        {
+            return OnlineResult<OnlineFriendship>.Fail(OnlineErrorCode.StateOperationForbidden, "好友数量已达上限");
         }
 
         var renewed = await _store.RenewRequestAsync(

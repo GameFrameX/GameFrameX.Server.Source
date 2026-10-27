@@ -79,6 +79,26 @@ public interface IOnlineFriendStore
     Task<OnlineFriendship> UpdateStateAsync(long tenantId, long appId, FriendshipStateTransition transition, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 以 CAS 语义改写关系状态，并在**同一临界区内**执行好友上限判定（接受路径的原子收口点）。
+    /// <para>
+    /// 维护约束：目标状态为 <see cref="OnlineFriendshipState.Accepted"/> 且
+    /// <paramref name="establishedFriendLimit"/> &gt; 0 时，先在同一临界区内统计
+    /// <see cref="OnlineFriendship.RequesterId"/> 与 <see cref="OnlineFriendship.AddresseeId"/>
+    /// 两侧的已建立（Accepted）关系数，任一侧已达上限即**零写入**并返回
+    /// <see cref="OnlineFriendStateTransitionOutcome.FriendLimitReached"/> = <c>true</c>——
+    /// 「读计数 → 判满 → 写入」不得拆出临界区，否则并发接受会各读到「上限-1」而双双落库超限。
+    /// 其余情形的 CAS 语义与 <see cref="UpdateStateAsync"/> 完全一致。
+    /// </para>
+    /// </summary>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="transition">状态迁移载荷（关系定位 + 期望/目标状态 + 变更时刻与答复标记）。</param>
+    /// <param name="establishedFriendLimit">已建立好友数上限（&lt;= 0 表示不启用上限判定）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>迁移结果：成功携带更新后的副本；上限拒绝置 <c>FriendLimitReached</c>；CAS 失败两者皆空。</returns>
+    Task<OnlineFriendStateTransitionOutcome> UpdateStateWithFriendLimitAsync(long tenantId, long appId, FriendshipStateTransition transition, int establishedFriendLimit, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 以 CAS 语义把静止态关系重新发起为待答复请求（「删除后可重新添加」）。
     /// <para>
     /// 为什么需要独立入口：重新发起同时改写**状态、方向与有效期**三项——方向必须跟随本次发起人翻转
