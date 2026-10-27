@@ -885,6 +885,16 @@ public static partial class Keys
             public const string NoRegisteredStartupType = "StartUp.Application.NoRegisteredStartupType";
 
             /// <summary>
+            /// 指定的服务器类型 '{0}' 未注册任何启动类型，拒绝启动（退出码 1）。
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Application.RequestedServerTypeNotRegistered
+            /// 用途: 显式指定的 --ServerType 未命中任何已注册启动类型时记录错误并拒启
+            /// 参数: {0} - 请求的服务器类型名称（逗号连接）
+            /// </remarks>
+            public const string RequestedServerTypeNotRegistered = "StartUp.Application.RequestedServerTypeNotRegistered";
+
+            /// <summary>
             /// --AllInOne 已生效；指定的 --ServerType 值 '{0}' 被忽略，将拉起全部已注册 Role。
             /// </summary>
             /// <remarks>
