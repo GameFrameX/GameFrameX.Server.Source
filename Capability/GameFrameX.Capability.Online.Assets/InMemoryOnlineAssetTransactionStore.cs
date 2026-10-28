@@ -100,6 +100,28 @@ public sealed class InMemoryOnlineAssetTransactionStore : IOnlineAssetTransactio
         }
     }
 
+    /// <summary>列举指向指定原交易的补偿交易记录（补偿落账前查重输入）。</summary>
+    /// <param name="compensatesTransactionId">被补偿的原交易标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>指向该原交易的补偿交易记录列表。</returns>
+    public Task<IReadOnlyList<OnlineAssetTransaction>> ListByCompensatesTransactionIdAsync(string compensatesTransactionId, CancellationToken cancellationToken = default)
+    {
+        lock (_syncRoot)
+        {
+            var matches = new List<OnlineAssetTransaction>();
+            foreach (var pair in _transactions)
+            {
+                if (pair.Value.CompensatesTransactionId == compensatesTransactionId)
+                {
+                    matches.Add(pair.Value);
+                }
+            }
+
+            matches.Sort((left, right) => left.CreatedTime.CompareTo(right.CreatedTime));
+            return Task.FromResult<IReadOnlyList<OnlineAssetTransaction>>(matches.Select(Clone).ToList());
+        }
+    }
+
     /// <summary>
     /// 深拷贝交易记录（防御性快照：保存与读取隔离引用，模拟持久化行语义——
     /// 保存失败/中断时调用方对实例的后续突变不得污染已存状态）。
@@ -129,6 +151,7 @@ public sealed class InMemoryOnlineAssetTransactionStore : IOnlineAssetTransactio
             CreatedTime = source.CreatedTime,
             SettledTime = source.SettledTime,
             FailureMessage = source.FailureMessage,
+            CompensatesTransactionId = source.CompensatesTransactionId,
         };
     }
 }

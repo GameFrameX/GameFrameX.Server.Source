@@ -155,7 +155,7 @@ namespace GameFrameX.Tests.Online
                 Runtime = new OnlineMatchRuntime(new InMemoryOnlineMatchActorStore(), Publisher, options);
                 var game = new OnlineRockPaperScissorsGame();
                 Runtime.RegisterGame(game);
-                Domain = new OnlineMatchDomainService(TicketStore, Tickets, Coordinator, Runtime, game, new OnlineMatchRegistryOptions());
+                Domain = new OnlineMatchDomainService(TicketStore, Tickets, Runtime, game, new OnlineMatchRegistryOptions());
             }
 
             public OnlineEventRecorder Publisher { get; }
@@ -194,15 +194,42 @@ namespace GameFrameX.Tests.Online
             {
                 var harness = new Harness(new OnlineMatchRuntimeOptions { RunningTimeoutSeconds = 1, ReconnectWindowSeconds = 30 });
 
-                // 双人入队 → 即时窗口撮合 → 双方入场同一运行态对局。
                 var first = await harness.Domain.EnqueueAsync(harness.ScopeOf(PlayerOne), 1, 1000);
                 Assert.True(first.IsSuccess, first.Message);
                 Assert.Equal(0, first.Data.MatchId);
 
                 var second = await harness.Domain.EnqueueAsync(harness.ScopeOf(PlayerTwo), 1, 1000);
                 Assert.True(second.IsSuccess, second.Message);
-                Assert.NotEqual(0, second.Data.MatchId);
-                harness.NumericMatchId = second.Data.MatchId;
+                Assert.Equal(0, second.Data.MatchId);
+
+                foreach (var playerId in new[] { PlayerOne, PlayerTwo })
+                {
+                    var queuedStatus = await harness.Domain.GetStatusAsync(harness.ScopeOf(playerId));
+                    Assert.True(queuedStatus.IsSuccess, queuedStatus.Message);
+                    Assert.True(queuedStatus.Data.Queuing);
+                    Assert.False(queuedStatus.Data.Matched);
+                    Assert.Equal(0, queuedStatus.Data.MatchId);
+                    var ticket = await harness.TicketStore.FindLatestByPlayerAsync(TenantId, AppId, playerId);
+                    Assert.NotNull(ticket);
+                    Assert.Equal(OnlineMatchTicketState.Queued, ticket.State);
+                    Assert.True(string.IsNullOrEmpty(ticket.AssignmentId));
+                }
+
+                var matched = await harness.Coordinator.RunOnceAsync(TenantId, AppId);
+                Assert.True(matched.IsSuccess, matched.Message);
+                Assert.Single(matched.Data.AssignmentIds);
+
+                var firstStatus = await harness.Domain.GetStatusAsync(harness.ScopeOf(PlayerOne));
+                var secondStatus = await harness.Domain.GetStatusAsync(harness.ScopeOf(PlayerTwo));
+                Assert.True(firstStatus.IsSuccess, firstStatus.Message);
+                Assert.True(secondStatus.IsSuccess, secondStatus.Message);
+                Assert.False(firstStatus.Data.Queuing);
+                Assert.False(secondStatus.Data.Queuing);
+                Assert.True(firstStatus.Data.Matched);
+                Assert.True(secondStatus.Data.Matched);
+                Assert.NotEqual(0, firstStatus.Data.MatchId);
+                Assert.Equal(firstStatus.Data.MatchId, secondStatus.Data.MatchId);
+                harness.NumericMatchId = firstStatus.Data.MatchId;
 
                 // GFX-1099：首入场者只置本人就绪，末位入场者补齐全员就绪后开局。
                 foreach (var playerId in new[] { PlayerOne, PlayerTwo })

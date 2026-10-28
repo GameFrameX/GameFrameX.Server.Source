@@ -76,11 +76,14 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Match;
 public static class MatchDomainBridge
 {
     /// <summary>
-    /// 加入匹配（420-10）：本地校验（模式 / 评分）后转发域面；即时窗口成组时响应即刻带对局标识。
+    /// 加入匹配（420-10）：本地校验（模式 / 评分）后转发域面；成功回执的 MatchId 为 0，撮合结果由通知或状态查询提供。
     /// </summary>
-    /// <param name="playerId">会话绑定玩家标识（作用域玩家位唯一来源）。</param>
-    /// <param name="request">协议请求。</param>
-    /// <param name="response">协议响应。</param>
+    /// <remarks>
+    /// Validates mode and rating before forwarding enqueue; success returns MatchId 0, with assignment supplied by notification or status query.
+    /// </remarks>
+    /// <param name="playerId">会话绑定玩家标识（作用域玩家位唯一来源） / Session-bound player ID, the sole source of the scope player identity.</param>
+    /// <param name="request">协议请求 / Protocol request.</param>
+    /// <param name="response">协议响应 / Protocol response.</param>
     public static async Task EnqueueAsync(long playerId, ReqMatchEnqueue request, RespMatchEnqueue response)
     {
         if (request.Mode != MatchMode.OneVsOne && request.Mode != MatchMode.TwoVsTwo)

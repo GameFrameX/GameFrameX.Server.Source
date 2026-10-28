@@ -26,14 +26,14 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 匹配域桥契约面（C246）：旧 420 协议族（入队 / 取消 / 状态）与新增入场、分配解析的最小桥接契约，
+/// 匹配域桥契约面：420 协议族（入队 / 取消 / 状态）与入场、分配解析的最小桥接契约，
 /// 供 Hotfix 协议面薄适配器（经 <c>CapabilityBridge&lt;IOnlineMatchDomain&gt;</c> 进程内消费）与
 /// online-match 模块 Activate 期通知推送订阅方使用。
 /// <para>
 /// 维护约束：
-/// ① 匹配池唯一权威 = 票据域（实现方内部经同一票据存储入队并驱动撮合），本契约不得另建队列或池副本；
-/// ② <see cref="EnqueueAsync"/> 在建票后同步执行一轮撮合（即时窗口兼容：对手已在池时响应即刻带
-/// 数值对局标识，等价旧 FIFO 链第二人入队即配对的可观测行为）；
+/// ① 匹配池唯一权威 = 票据域（实现方经同一票据存储入队，宿主定时任务批量撮合），本契约不得另建队列或池副本；
+/// ② <see cref="EnqueueAsync"/> 只建票并返回 <c>MatchId=0</c>，不触发撮合；客户端经通知或
+/// <see cref="GetStatusAsync"/> 获取后续批次产生的数值对局标识；
 /// ③ 作用域三元组由组合根授权作用域供给，玩家位由请求主体（会话绑定身份）填充，客户端字段一律不可覆盖；
 /// ④ 数值对局标识由实现方登记表从匹配分配派生（assignment → 协议数值 id 单射），重启即失效
 ///（与票据存储当前易失性一致），不得由调用方指定；
@@ -44,13 +44,14 @@ namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 public interface IOnlineMatchDomain
 {
     /// <summary>
-    /// 入队（单人票据；即时窗口：对手已在池时本轮即撮合）。
+    /// 入队（单人票据；成功建票后等待定时批次撮合）。
     /// </summary>
+    /// <remarks>Enqueues a solo ticket without running matchmaking; scheduled batches expose the result through notifications or status queries.</remarks>
     /// <param name="scope">生效作用域（必须含玩家主体位）。</param>
     /// <param name="mode">匹配模式（协议标签，同时是撮合池分区键）。</param>
     /// <param name="rating">玩家评分（大于 0；映射 ± 基础窗的技能区间）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>入队回执（MatchId 非 0 = 即时撮合）。</returns>
+    /// <returns>入队回执（成功时 MatchId=0；撮合结果由后续通知或状态查询提供） / Receipt with MatchId=0 on success; obtain the match through notifications or status queries</returns>
     Task<OnlineResult<OnlineMatchDomainEnqueue>> EnqueueAsync(OnlineScope scope, int mode, int rating, CancellationToken cancellationToken = default);
 
     /// <summary>

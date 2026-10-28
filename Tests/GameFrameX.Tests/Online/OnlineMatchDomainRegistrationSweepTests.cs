@@ -88,20 +88,27 @@ namespace GameFrameX.Tests.Online
             Assert.True(first.IsSuccess, first.Message);
             var second = await harness.Domain.EnqueueAsync(harness.ScopeOf(PlayerTwo), 1, 1000);
             Assert.True(second.IsSuccess, second.Message);
-            var matchId = second.Data.MatchId;
+
+            // 定时批次撮合（GFX-1104）：入队只建票，撮合由协调器批量驱动；数值对局标识经状态解析惰性登记。
+            var matched = await harness.Coordinator.RunOnceAsync(TenantId, AppId);
+            Assert.True(matched.IsSuccess, matched.Message);
+            var statusOne = await harness.Domain.GetStatusAsync(harness.ScopeOf(PlayerOne));
+            Assert.True(statusOne.IsSuccess, statusOne.Message);
+            Assert.True(statusOne.Data.Matched);
+            var matchId = statusOne.Data.MatchId;
             Assert.True(matchId > 0);
 
             for (var round = 0; round < 3; round++)
             {
-                var statusOne = await harness.Domain.GetStatusAsync(harness.ScopeOf(PlayerOne));
-                Assert.True(statusOne.IsSuccess, statusOne.Message);
-                var statusTwo = await harness.Domain.GetStatusAsync(harness.ScopeOf(PlayerTwo));
-                Assert.True(statusTwo.IsSuccess, statusTwo.Message);
+                var roundStatusOne = await harness.Domain.GetStatusAsync(harness.ScopeOf(PlayerOne));
+                Assert.True(roundStatusOne.IsSuccess, roundStatusOne.Message);
+                var roundStatusTwo = await harness.Domain.GetStatusAsync(harness.ScopeOf(PlayerTwo));
+                Assert.True(roundStatusTwo.IsSuccess, roundStatusTwo.Message);
 
-                Assert.True(statusOne.Data.Matched);
-                Assert.True(statusTwo.Data.Matched);
-                Assert.Equal(matchId, statusOne.Data.MatchId);
-                Assert.Equal(matchId, statusTwo.Data.MatchId);
+                Assert.True(roundStatusOne.Data.Matched);
+                Assert.True(roundStatusTwo.Data.Matched);
+                Assert.Equal(matchId, roundStatusOne.Data.MatchId);
+                Assert.Equal(matchId, roundStatusTwo.Data.MatchId);
             }
 
             Assert.Equal(1, harness.Domain.RegistrationCount);
@@ -140,7 +147,7 @@ namespace GameFrameX.Tests.Online
                 Runtime = new OnlineMatchRuntime(new InMemoryOnlineMatchActorStore(), Publisher, new OnlineMatchRuntimeOptions());
                 var game = new OnlineRockPaperScissorsGame();
                 Runtime.RegisterGame(game);
-                Domain = new OnlineMatchDomainService(TicketStore, Tickets, Coordinator, Runtime, game, registryOptions);
+                Domain = new OnlineMatchDomainService(TicketStore, Tickets, Runtime, game, registryOptions);
             }
 
             public OnlineEventRecorder Publisher { get; }

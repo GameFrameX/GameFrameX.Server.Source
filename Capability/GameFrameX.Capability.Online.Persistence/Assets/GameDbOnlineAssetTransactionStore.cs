@@ -106,6 +106,16 @@ public sealed class GameDbOnlineAssetTransactionStore : IOnlineAssetTransactionS
         return states.OrderBy(candidate => candidate.CreatedTime).ThenBy(candidate => candidate.TransactionId, StringComparer.Ordinal).Select(ToEntity).ToList();
     }
 
+    /// <summary>列举指向指定原交易的补偿交易记录（补偿落账前查重输入）。</summary>
+    /// <param name="compensatesTransactionId">被补偿的原交易标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>指向该原交易的补偿交易记录列表。</returns>
+    public async Task<IReadOnlyList<OnlineAssetTransaction>> ListByCompensatesTransactionIdAsync(string compensatesTransactionId, CancellationToken cancellationToken = default)
+    {
+        var states = await GameDb.FindListAsync<OnlineAssetTransactionRowState>(candidate => candidate.CompensatesTransactionId == compensatesTransactionId, cancellationToken).ConfigureAwait(false);
+        return states.OrderBy(candidate => candidate.CreatedTime).ThenBy(candidate => candidate.TransactionId, StringComparer.Ordinal).Select(ToEntity).ToList();
+    }
+
     /// <summary>按交易标识查找交易行。</summary>
     /// <param name="transactionId">交易标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -139,6 +149,7 @@ public sealed class GameDbOnlineAssetTransactionStore : IOnlineAssetTransactionS
             CreatedTime = transaction.CreatedTime,
             SettledTime = transaction.SettledTime,
             FailureMessage = transaction.FailureMessage,
+            CompensatesTransactionId = transaction.CompensatesTransactionId,
         };
     }
 
@@ -166,6 +177,7 @@ public sealed class GameDbOnlineAssetTransactionStore : IOnlineAssetTransactionS
             CreatedTime = state.CreatedTime,
             SettledTime = state.SettledTime,
             FailureMessage = state.FailureMessage,
+            CompensatesTransactionId = state.CompensatesTransactionId,
         };
     }
 }

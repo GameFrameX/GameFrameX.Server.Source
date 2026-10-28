@@ -325,7 +325,7 @@ public sealed class OnlineGrantService
         {
             TransactionId = "tx-" + Guid.NewGuid().ToString("N"),
             IdempotencyKey = "compensate-" + transaction.TransactionId,
-            RequestDigest = string.Empty,
+            CompensatesTransactionId = transaction.TransactionId,
             TenantId = transaction.TenantId,
             AppId = transaction.AppId,
             PlayerId = transaction.PlayerId,
