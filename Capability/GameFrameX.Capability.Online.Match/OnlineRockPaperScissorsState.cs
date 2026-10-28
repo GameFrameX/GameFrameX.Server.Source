@@ -80,5 +80,11 @@ public sealed class OnlineRockPaperScissorsState
         /// 获取或设置本局出拳（<see cref="OnlineRockPaperScissorsMove.None"/> = 未出拳）。
         /// </summary>
         public OnlineRockPaperScissorsMove Gesture { get; set; }
+
+        /// <summary>
+        /// 获取或设置累计有效出拳次数（跨局累计；参与奖资格判定依据——任意玩家为 0 时结算抑制全部参与奖）。
+        /// <para>唯一写入点是 <see cref="OnlineRockPaperScissorsGame.ApplyInput"/> 接受合法出拳；每局结算不清零。</para>
+        /// </summary>
+        public int ValidGestureCount { get; set; }
     }
 }

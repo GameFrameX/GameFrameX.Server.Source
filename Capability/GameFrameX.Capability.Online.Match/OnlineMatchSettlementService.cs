@@ -133,6 +133,11 @@ public sealed class OnlineMatchSettlementService
                 ? null
                 : committed.Entries.Where(entry => entry != null).Select(entry => (entry.PlayerId, entry.Rank, entry.IsWinner, entry.Score, entry.Rewards == null ? 0 : entry.Rewards.Count)).ToList();
             await PublishAsync(OnlineMatchRuntimeEvents.CreateMatchSettled(committed.TenantId, committed.AppId, committed.ServerId, committed.MatchResultId, committed.MatchId, committed.Mode, committed.Region, committed.Outcome.ToString(), committed.SettledTime, entries), cancellationToken).ConfigureAwait(false);
+            if (committed.ParticipationRewardsSuppressed)
+            {
+                // 挂机刷奖可疑信号：存在零有效出拳玩家的结算，外发风控事件（发布失败不改变已落定的结算事实）。
+                await PublishAsync(OnlineMatchRuntimeEvents.CreateMatchParticipationRewardsSuppressed(committed.TenantId, committed.AppId, committed.ServerId, committed.MatchResultId, committed.MatchId, committed.Mode, committed.Region, committed.Outcome.ToString(), committed.SettledTime, entries), cancellationToken).ConfigureAwait(false);
+            }
         }
 
         return OnlineResult<OnlineMatchSettlementOutcome>.Ok(new OnlineMatchSettlementOutcome

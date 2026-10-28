@@ -97,6 +97,8 @@ namespace GameFrameX.Tests.Online
 
             // 可信结果事件必须已发布（下游排行/通知只消费它）。
             Assert.NotEmpty(harness.Publisher.Filter(OnlineMatchRuntimeEvents.MatchSettled));
+            // 正常对局（双方均有有效出拳）不得发布挂机可疑事件。
+            Assert.Empty(harness.Publisher.Filter(OnlineMatchRuntimeEvents.MatchParticipationRewardsSuppressed));
 
             var dispatched = await harness.Dispatcher.DispatchAsync(result);
 
@@ -116,6 +118,37 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(2, replayed.Data.ReplayCount);
             Assert.Equal(OnlineRockPaperScissorsGame.WinnerRewardAmount, (await harness.AssetStore.FindWalletAsync(TenantId, AppId, PlayerOne, OnlineRockPaperScissorsGame.RewardAssetId)).Balance);
             Assert.Equal(OnlineRockPaperScissorsGame.ParticipantRewardAmount, (await harness.AssetStore.FindWalletAsync(TenantId, AppId, PlayerTwo, OnlineRockPaperScissorsGame.RewardAssetId)).Balance);
+        }
+
+        /// <summary>
+        /// 验证双方全程挂机（零有效出拳）的结算：参与奖被抑制、双方零发奖，并发布可疑结算事件供风控消费。
+        /// </summary>
+        [Fact]
+        public async Task SettleAsync_AllIdle_ShouldSuppressRewardsAndPublishSuspiciousEvent()
+        {
+            var harness = new Harness();
+            await harness.StartRunningAsync();
+            await harness.RunIdleToSettlingAsync();
+
+            var settled = await harness.Settlement.SettleAsync(TenantId, AppId, MatchId, Now + 200000);
+
+            Assert.True(settled.IsSuccess, settled.Message);
+            Assert.False(settled.Data.IsReplay);
+            var result = settled.Data.Result;
+            Assert.True(result.ParticipationRewardsSuppressed);
+            Assert.Equal(2, result.Entries.Count);
+            Assert.All(result.Entries, item => Assert.Empty(item.Rewards));
+
+            Assert.NotEmpty(harness.Publisher.Filter(OnlineMatchRuntimeEvents.MatchSettled));
+            Assert.NotEmpty(harness.Publisher.Filter(OnlineMatchRuntimeEvents.MatchParticipationRewardsSuppressed));
+
+            var dispatched = await harness.Dispatcher.DispatchAsync(result);
+
+            Assert.True(dispatched.IsSuccess, dispatched.Message);
+            Assert.Equal(0, dispatched.Data.SucceededCount);
+            Assert.Empty(dispatched.Data.FailedPlayerIds);
+            Assert.Null(await harness.AssetStore.FindWalletAsync(TenantId, AppId, PlayerOne, OnlineRockPaperScissorsGame.RewardAssetId));
+            Assert.Null(await harness.AssetStore.FindWalletAsync(TenantId, AppId, PlayerTwo, OnlineRockPaperScissorsGame.RewardAssetId));
         }
 
         /// <summary>
@@ -366,6 +399,23 @@ namespace GameFrameX.Tests.Online
                 Assert.True(ack.IsSuccess, ack.Message);
                 Assert.True(ack.Data.Accepted, ack.Data.Message);
             }
+
+        /// <summary>
+        /// 双方均不出拳，靠 tick 超时作废三局推进到结算阶段（全程挂机路径）。
+        /// </summary>
+        /// <returns>完成通知。</returns>
+        public async Task RunIdleToSettlingAsync()
+        {
+            var now = Now + 1000;
+            for (var round = 0; round < OnlineRockPaperScissorsGame.MaxRounds; round++)
+            {
+                await Actor.TickAsync(now); // 布防本局时钟
+                now += OnlineRockPaperScissorsGame.RoundTimeoutMilliseconds + 1;
+                await Actor.TickAsync(now); // 超时结算本局（双方未出拳 → 作废）
+            }
+
+            Assert.Equal(OnlineMatchState.Settling, Actor.State);
+        }
 
             /// <summary>
             /// 构造玩家级作用域。

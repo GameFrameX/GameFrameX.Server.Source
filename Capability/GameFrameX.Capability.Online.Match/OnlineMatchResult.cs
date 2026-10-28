@@ -97,6 +97,12 @@ public sealed class OnlineMatchResult
     public long SettledTime { get; set; }
 
     /// <summary>
+    /// 获取或设置参与奖被抑制（存在零有效出拳玩家——挂机刷奖可疑对局标记，供风控消费）。
+    /// <para>由玩法在结算产出时判定：任意一方累计有效出拳数为 0 时为 <c>true</c>，此时非胜方条目不携带任何奖励。</para>
+    /// </summary>
+    public bool ParticipationRewardsSuppressed { get; set; }
+
+    /// <summary>
     /// 复制结果（条目逐项深拷贝）。
     /// </summary>
     /// <returns>结果副本。</returns>
@@ -121,6 +127,7 @@ public sealed class OnlineMatchResult
             Mode = Mode,
             Region = Region,
             Outcome = Outcome,
+            ParticipationRewardsSuppressed = ParticipationRewardsSuppressed,
             Entries = entries,
             SettledTime = SettledTime,
         };
