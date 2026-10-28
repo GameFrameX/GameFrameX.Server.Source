@@ -89,13 +89,15 @@ public static class GameApp
 
     /// <summary>
     /// 进程中止动作（<see cref="Environment.Exit(int)"/> 的可替换退出缝）。
+    /// internal static 属性形态（S2223 收口）：保持属性，勿回退为可见可变静态字段。
     /// </summary>
     /// <remarks>
     /// The process abort action (a replaceable seam over <see cref="Environment.Exit(int)"/>).
     /// The production default terminates the process; tests substitute this delegate to capture the exit code
-    /// instead of killing the test host. Registered in the module's global static state ledger (startup spec D20).
+    /// instead of killing the test host. Kept as an internal static property for S2223 (do not regress to a
+    /// visible mutable static field); registered in the startup spec static-state red line (C420).
     /// </remarks>
-    internal static Action<int> AbortProcess = static exitCode => Environment.Exit(exitCode);
+    internal static Action<int> AbortProcess { get; set; } = static exitCode => Environment.Exit(exitCode);
 
     /// <summary>
     /// 解析启动器选项。
