@@ -83,7 +83,7 @@ public sealed class ComponentAgentEventDispatchTests : IDisposable
         }
 
         // 接管解析契约：扩展派发链路经 HotfixManager.Resolver 查监听器与组件代理类型（Dispose 复原生产宿主）。
-        HotfixManager.SetResolverForTesting(new ModuleResolverAdapter(_module));
+        HotfixManager.SetResolverForTesting(new HotfixModuleResolverAdapter(_module));
     }
 
     public void Dispose()
@@ -196,80 +196,6 @@ public sealed class ComponentAgentEventDispatchTests : IDisposable
         {
             Triggered = true;
             return Task.CompletedTask;
-        }
-    }
-
-    /// <summary>
-    /// 测试用解析契约适配器：把真实 <see cref="HotfixModule" /> 的解析结果接入
-    /// <see cref="HotfixManager.SetResolverForTesting" />（HotfixModule 自身不实现 IHotfixResolver）。
-    /// </summary>
-    private sealed class ModuleResolverAdapter : IHotfixResolver
-    {
-        private readonly HotfixModule _module;
-
-        public ModuleResolverAdapter(HotfixModule module)
-        {
-            _module = module;
-        }
-
-        public Assembly HotfixAssembly
-        {
-            get { return _module.HotfixAssembly; }
-        }
-
-        public bool InTransition
-        {
-            get { return false; }
-        }
-
-        public Type GetAgentType(Type componentType)
-        {
-            return _module.GetAgentType(componentType);
-        }
-
-        public Type GetComponentType(Type agentType)
-        {
-            return _module.GetComponentType(agentType);
-        }
-
-        public T GetAgent<T>(BaseComponent component, Type refAssemblyType) where T : class, IComponentAgent
-        {
-            return _module.GetAgent<T>(component);
-        }
-
-        public IMessageHandler GetRpcHandler(Type requestType)
-        {
-            return _module.GetRpcHandler(requestType);
-        }
-
-        public IMessageHandler GetMessageHandler(int messageId)
-        {
-            return _module.GetMessageHandler(messageId);
-        }
-
-        public BaseHttpHandler GetHttpHandler(string command)
-        {
-            return _module.GetHttpHandler(command);
-        }
-
-        public List<BaseHttpHandler> GetListHttpHandler()
-        {
-            return _module.GetListHttpHandler();
-        }
-
-        public List<IEventListener> FindListeners(ushort actorType, Type eventArgsType)
-        {
-            return _module.FindListeners(actorType, eventArgsType);
-        }
-
-        public List<IEventListener> FindListeners(Type eventArgsType)
-        {
-            return _module.FindListeners(eventArgsType);
-        }
-
-        public T GetInstance<T>(string typeName, Type refAssemblyType = null)
-        {
-            return _module.GetInstance<T>(typeName);
         }
     }
 }

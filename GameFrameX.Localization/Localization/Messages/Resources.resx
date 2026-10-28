@@ -2117,6 +2117,10 @@
     <value>EventDispatcher.Dispatch Actor {0} {1} No listeners found for event type: {2}</value>
   </data>
 
+  <data name="Core.EventDispatcher.DispatchOwnerActorNotLoaded" xml:space="preserve">
+    <value>EventDispatcher.Dispatch Actor {0} event type: {1} listener {2} owner actor is not in memory, skipped</value>
+  </data>
+
   <data name="Core.MessageHandler.GetComponentAgentCacheComponentNull" xml:space="preserve">
     <value>BaseComponentHandler.GetComponentAgentAsync, CacheComponent is null, message type: {0}</value>
   </data>

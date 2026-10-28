@@ -43,8 +43,8 @@ public static class EventDispatcherExtensions
     /// <param name="agent">代理对象</param>
     /// <param name="eventArgs">事件参数，绑定键取自其具体类型；无载荷事件须使用空标记类，禁止传null</param>
     /// <remarks>
-    /// 与静态 <see cref="EventDispatcher.Dispatch(long, GameEventArgs)" /> 共用同一监听器循环（Actor 内派发路径），日志键也统一为 <c>Core.EventDispatcher.*</c>；
-    /// 直接以代理所属 Actor 入队而不经 <see cref="EventDispatcher.Dispatch(long, GameEventArgs)" /> 的 ActorMap 查找——已回收出表的 Actor 经 ActorMap 会落入全局监听器分支，偏离本语义；
+    /// 与静态 <see cref="EventDispatcher.Dispatch(long, GameEventArgs)" /> 共用同一监听器调用路径（Actor 内派发），日志键也统一为 <c>Core.EventDispatcher.*</c>；
+    /// 直接以代理所属 Actor 入队而不经 <see cref="EventDispatcher.Dispatch(long, GameEventArgs)" /> 的 ActorMap 查找——已回收出表的 Actor 经 ActorMap 会落入全局分发分支（按监听器所属全局 Actor 投递、玩家段监听器跳过），偏离本语义；
     /// 不做作用域广播（服务器段广播分支已退役）：需要遍历在线玩家时，以会话层 <c>PlayerSessionManager</c> 为在线事实源自行派发。
     /// </remarks>
     public static void Dispatch(this IComponentAgent agent, GameEventArgs eventArgs)
