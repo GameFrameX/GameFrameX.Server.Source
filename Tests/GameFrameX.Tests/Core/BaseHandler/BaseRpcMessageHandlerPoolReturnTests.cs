@@ -114,12 +114,31 @@ public sealed class BaseRpcMessageHandlerPoolReturnTests
         var snapshot = Assert.Single(channel.WrittenResponseSnapshots);
         Assert.Equal(OperationErrorCode.TimeOut, snapshot.ErrorCode);
         Assert.Equal(RequestUniqueId, snapshot.UniqueId);
-        Assert.Same(handler.ReceivedResponse, written);
 
         // 孤儿任务仍持有该实例：不得归还对象池，下一次借用必须是不同实例
         var nextBorrowed = MessageObjectPoolHelper.Get<PoolReturnTestResponse>();
         Assert.NotSame(handler.ReceivedResponse, nextBorrowed);
         MessageObjectPoolHelper.Return(nextBorrowed);
+    }
+
+    [Fact]
+    public async Task Timeout_LateBusinessWrite_ShouldNotChangeSentResponse()
+    {
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var channel = new CapturingNetworkChannel();
+        var handler = await CreateInitializedHandlerAsync(channel, (request, response, cancellationToken) => completion.Task);
+        try
+        {
+            await handler.InnerActionAsync(20).WaitAsync(TimeSpan.FromSeconds(10));
+            var sent = Assert.IsType<PoolReturnTestResponse>(Assert.Single(channel.WrittenMessages));
+            handler.ReceivedResponse.ErrorCode = 12345;
+            Assert.NotEqual(12345, sent.ErrorCode);
+            Assert.Equal(OperationErrorCode.TimeOut, Assert.Single(channel.WrittenResponseSnapshots).ErrorCode);
+        }
+        finally
+        {
+            completion.TrySetResult(true);
+        }
     }
 
     [Fact]

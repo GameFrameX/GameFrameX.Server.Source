@@ -137,10 +137,18 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
                 // Localization: Core.MessageHandler.RpcExecutionTimeout - BaseRpcMessageHandler.InnerActionAsync 请求消息:{0} 消息: 执行超时:{1}
                 LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcExecutionTimeout, RequestMessage, timeoutException.Message));
 
-                // 设置超时错误码并发送错误响应给客户端 / Set timeout error code and send error response to client
-                response.ErrorCode = OperationErrorCode.TimeOut;
-                response.SetUniqueId(requestId);
-                await NetworkChannel.WriteAsync(response);
+                // 超时响应使用独立实例，业务任务可能忽略取消并继续写入原响应。
+                var timeoutResponse = MessageObjectPoolHelper.Get<TResponse>();
+                try
+                {
+                    timeoutResponse.ErrorCode = OperationErrorCode.TimeOut;
+                    timeoutResponse.SetUniqueId(requestId);
+                    await NetworkChannel.WriteAsync(timeoutResponse);
+                }
+                finally
+                {
+                    MessageObjectPoolHelper.Return(timeoutResponse);
+                }
             }
         }
         catch (Exception e)
@@ -162,14 +170,18 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
             }
             else
             {
-                // 业务任务仍在运行（超时/外部取消后的孤儿任务）：
-                // 1) response 不归还对象池——孤儿任务可能仍在写入，归还会让下一个借用者读到脏数据（数据串台）；对象由 GC 回收，对象池 Get 取不到时按策略新建，不会耗尽
-                // 2) 联动取消源不释放——孤儿任务可能仍用该令牌注册回调，提前释放会触发 ObjectDisposedException；该取消源无定时器资源
-                // 3) 观察孤儿任务异常，避免未观察任务异常噪音
-                _ = coreTask.ContinueWith(static completedTask =>
+                // 业务尚未结束时保留其响应与取消源；终态后再释放，避免提前复用和外部令牌注册泄漏。
+                _ = coreTask.ContinueWith((completedTask, state) =>
                 {
+                    var cleanup = (Tuple<CancellationTokenSource, TResponse>)state;
                     _ = completedTask.Exception;
-                }, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
+                    cleanup.Item1.Dispose();
+                    if (cleanup.Item2 != null)
+                    {
+                        MessageObjectPoolHelper.Return(cleanup.Item2);
+                    }
+                }, Tuple.Create(linkedCancellationTokenSource, response), CancellationToken.None,
+                    TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
             }
         }
     }
