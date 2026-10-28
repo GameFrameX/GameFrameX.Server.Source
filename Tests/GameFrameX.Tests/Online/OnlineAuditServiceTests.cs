@@ -407,6 +407,83 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 分页边界：命中数恰为页大小整数倍时末页为整页且 HasMore=false + 空游标
+        /// （下推后 HasMore 由存储层「第 PageSize+1 条命中」探测——页界 off-by-one 判别）。
+        /// </summary>
+        [Fact]
+        public async Task Query_Pagination_ExactFullLastPage_HasMoreFalse()
+        {
+            var service = CreateService();
+            await service.IngestAsync(CreateEntry("full-page-a", OnlineAuditDomain.Payment, 1_700_000_000_400L));
+            await service.IngestAsync(CreateEntry("full-page-b", OnlineAuditDomain.Payment, 1_700_000_000_300L));
+            await service.IngestAsync(CreateEntry("full-page-c", OnlineAuditDomain.Reward, 1_700_000_000_200L));
+            await service.IngestAsync(CreateEntry("full-page-d", OnlineAuditDomain.Reward, 1_700_000_000_100L));
+
+            var scope = new OnlineScope(TenantId, AppId, ServerId);
+            var seen = new List<string>();
+            string cursor = null;
+            while (true)
+            {
+                var page = await service.QueryAsync(scope, new OnlineAuditQuery { Cursor = cursor, PageSize = 2 });
+                Assert.True(page.IsSuccess);
+                seen.AddRange(page.Data.Records.Select(r => r.EventId));
+                if (!page.Data.Cursor.HasMore)
+                {
+                    // 末页恰为整页 2 行：不得因「页满」误报 HasMore=true。
+                    Assert.Equal(2, page.Data.Records.Count);
+                    Assert.Equal(string.Empty, page.Data.Cursor.Cursor);
+                    break;
+                }
+
+                cursor = page.Data.Cursor.Cursor;
+            }
+
+            Assert.Equal(new[] { "full-page-a", "full-page-b", "full-page-c", "full-page-d" }, seen);
+        }
+
+        /// <summary>
+        /// 过滤与游标正交组合：域过滤下按游标翻页，命中集不重不漏、未选域零行
+        /// （过滤在存储层与 keyset 游标同时生效的判别）。
+        /// </summary>
+        [Fact]
+        public async Task Query_Pagination_WithDomainFilter_NoOverlapNoMiss()
+        {
+            var service = CreateService();
+            // 交错落档：Payment 与 Mail 同毫秒混排，域过滤后须按全序恰好串起 Payment 行。
+            await service.IngestAsync(CreateEntry("mix-a", OnlineAuditDomain.Payment, 1_700_000_000_400L));
+            await service.IngestAsync(CreateEntry("mix-b", OnlineAuditDomain.Mail, 1_700_000_000_400L));
+            await service.IngestAsync(CreateEntry("mix-c", OnlineAuditDomain.Payment, 1_700_000_000_300L));
+            await service.IngestAsync(CreateEntry("mix-d", OnlineAuditDomain.Mail, 1_700_000_000_300L));
+            await service.IngestAsync(CreateEntry("mix-e", OnlineAuditDomain.Payment, 1_700_000_000_200L));
+            await service.IngestAsync(CreateEntry("mix-f", OnlineAuditDomain.Mail, 1_700_000_000_200L));
+
+            var scope = new OnlineScope(TenantId, AppId, ServerId);
+            var seen = new List<string>();
+            string cursor = null;
+            while (true)
+            {
+                var page = await service.QueryAsync(scope, new OnlineAuditQuery
+                {
+                    Domains = new List<string> { OnlineAuditDomain.Payment },
+                    Cursor = cursor,
+                    PageSize = 2,
+                });
+                Assert.True(page.IsSuccess);
+                Assert.All(page.Data.Records, r => Assert.Equal(OnlineAuditDomain.Payment, r.Domain));
+                seen.AddRange(page.Data.Records.Select(r => r.EventId));
+                if (!page.Data.Cursor.HasMore)
+                {
+                    break;
+                }
+
+                cursor = page.Data.Cursor.Cursor;
+            }
+
+            Assert.Equal(new[] { "mix-a", "mix-c", "mix-e" }, seen);
+            Assert.Equal(3, seen.Distinct().Count());
+        }
+
+        /// <summary>
         /// 反预言（作用域越界）：跨租户/跨 App 检索与「无数据」（空存储同作用域）在页形状上逐项一致
         /// （空行集 + HasMore=false + 空游标），不泄露其它作用域审计的存在性。
         /// </summary>

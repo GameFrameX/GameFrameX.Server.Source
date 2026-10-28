@@ -27,6 +27,7 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using System;
 using System.Collections.Generic;
@@ -39,14 +40,20 @@ namespace GameFrameX.Capability.Online.Abstractions.Audit;
 /// 统一审计内存存储（单进程默认实现；生产持久化实现归运行时装配）。
 /// <para>
 /// 维护约束：「EventId 判重 + 落档」在 <see cref="_gate"/> 锁内**同一临界区**完成（幂等半边的
-/// 结构性保证）；作用域索引键为 (TenantId, AppId) 两键——审计是跨区服检索域，区服过滤由服务层承担；
-/// 出入参防御性拷贝（持久化行语义，调用方引用不得别名存储内部状态）。
+/// 结构性保证）；作用域索引键为 (TenantId, AppId) 两键——审计是跨区服检索域，区服过滤随查询载荷下推；
+/// 每作用域维护按跨域检索全序（OccurredTime 倒序, EventId 序数升序）排列的有序索引，
+/// <see cref="AppendAsync"/> 在同一临界区内同步插入（只插不删——记录只追加不淘汰，
+/// EventId 全局唯一保证键无重复）；出入参防御性拷贝（持久化行语义，调用方引用不得别名存储内部状态）。
 /// </para>
 /// <para>
-/// 天花板（ponytail）：单锁串行化全部写入 + <see cref="ListAsync"/> 返回作用域级全量快照，
-/// 审计量到十万级后写入争用与快照成本会显著退化；升级路径 = 存储层按 (作用域, 时间) 索引 +
-/// 游标下推查询（届时 <c>OnlineAuditService</c> 的全序过滤逻辑迁移到存储实现内），分片/持久化归运行时装配。
+/// 检索路径（C393 下推）：<see cref="QueryAsync"/> 在索引上二分定位起点（游标严格之后；
+/// 无游标则全序头部）后有界顺序扫描——命中即收、页满后再探一行定 <c>HasMore</c> 即停，
+/// OccurredTime 低于时间窗起点即提前终止（全序倒序保证其后更旧）；防御性拷贝只发生在返回页行上。
+/// </para>
+/// <para>
+/// 天花板（ponytail）：单锁串行化全部写入，审计量到十万级后写入争用会显著退化；
 /// 审计记录只追加不淘汰，内存无上限增长——持久化实现必须在运行时装配处提供容量与归档策略。
+/// 分片/持久化归运行时装配。
 /// </para>
 /// </summary>
 public sealed class InMemoryOnlineAuditStore : IOnlineAuditStore
@@ -62,16 +69,17 @@ public sealed class InMemoryOnlineAuditStore : IOnlineAuditStore
     private readonly HashSet<string> _knownEventIds = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// 作用域级记录索引（键 = "TenantId|AppId"；值为该作用域内的落档序列）。
+    /// 作用域级有序索引（键 = "TenantId|AppId"；值 = 按跨域检索全序排列的落档记录，
+    /// 正序枚举即 (OccurredTime 倒序, EventId 序数升序)——检索与游标定位的唯一排序事实来源）。
     /// </summary>
-    private readonly Dictionary<string, List<OnlineAuditRecord>> _recordsByScope = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, SortedList<OnlineAuditSortKey, OnlineAuditRecord>> _recordsByScope = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// 追加一条审计记录（锁内判重 + 落档同一临界区）。
+    /// 追加一条审计记录（锁内判重 + 落档 + 有序索引插入同一临界区）。
     /// </summary>
     /// <param name="record">待落档记录。</param>
     /// <param name="cancellationToken">取消令牌（内存实现无异步等待，令牌仅契约对齐）。</param>
-    /// <returns>新落档返回 <c>true</c>；EventId 已存在返回 <c>false</c>（不落档、无副作用）。</returns>
+    /// <returns>新落档返回 <see langword="true"/>；EventId 已存在返回 <see langword="false"/>（不落档、无副作用）。</returns>
     public Task<bool> AppendAsync(OnlineAuditRecord record, CancellationToken cancellationToken = default)
     {
         if (record == null)
@@ -86,43 +94,178 @@ public sealed class InMemoryOnlineAuditStore : IOnlineAuditStore
                 return Task.FromResult(false);
             }
 
-            var scopeKey = record.TenantId.ToString(System.Globalization.CultureInfo.InvariantCulture) + "|" + record.AppId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var scopeKey = BuildScopeKey(record.TenantId, record.AppId);
             if (!_recordsByScope.TryGetValue(scopeKey, out var bucket))
             {
-                bucket = new List<OnlineAuditRecord>();
+                bucket = new SortedList<OnlineAuditSortKey, OnlineAuditRecord>(OnlineAuditSortKeyComparer.Instance);
                 _recordsByScope[scopeKey] = bucket;
             }
 
-            bucket.Add(CloneRecord(record));
+            bucket.Add(new OnlineAuditSortKey(record.OccurredTime, record.EventId), CloneRecord(record));
             return Task.FromResult(true);
         }
     }
 
     /// <summary>
-    /// 列出作用域内全部审计记录（快照拷贝，调用方修改不影响存储内部状态）。
+    /// 按查询载荷检索审计页：索引上二分定位起点后有界扫描，过滤 + keyset 游标 + 全序 + 页大小全部在本实现内完成。
+    /// </summary>
+    /// <param name="query">存储层查询载荷（作用域 / 过滤维度 / 已解码游标 / 页大小已由调用方校验）。</param>
+    /// <param name="cancellationToken">取消令牌（内存实现无异步等待，令牌仅契约对齐）。</param>
+    /// <returns>按全序排列、至多 PageSize 行的结果页（行集为防御性拷贝）；作用域外结构性不可见。</returns>
+    public Task<OnlineAuditStorePage> QueryAsync(OnlineAuditStoreQuery query, CancellationToken cancellationToken = default)
+    {
+        if (query == null)
+        {
+            throw new ArgumentNullException(nameof(query));
+        }
+
+        var pageSize = query.PageSize > 0 ? query.PageSize : 1;
+        var records = new List<OnlineAuditRecord>(Math.Min(pageSize, 64));
+        var hasMore = false;
+        lock (_gate)
+        {
+            if (_recordsByScope.TryGetValue(BuildScopeKey(query.TenantId, query.AppId), out var bucket))
+            {
+                var startIndex = query.HasCursor
+                    ? FindFirstAfterCursor(bucket, query.CursorOccurredTime, query.CursorEventId)
+                    : 0;
+                for (var index = startIndex; index < bucket.Count; index++)
+                {
+                    var record = bucket.Values[index];
+
+                    // 全序为发生时刻倒序：一旦低于时间窗起点，其后记录只会更旧，可提前终止。
+                    if (query.StartTime.HasValue && record.OccurredTime < query.StartTime.Value)
+                    {
+                        break;
+                    }
+
+                    if (!MatchesFilter(record, query))
+                    {
+                        continue;
+                    }
+
+                    if (records.Count >= pageSize)
+                    {
+                        hasMore = true;
+                        break;
+                    }
+
+                    records.Add(CloneRecord(record));
+                }
+            }
+        }
+
+        return Task.FromResult(new OnlineAuditStorePage(records, hasMore));
+    }
+
+    /// <summary>
+    /// 构造作用域索引键（"TenantId|AppId"；审计是跨区服检索域，区服维度不进作用域键）。
     /// </summary>
     /// <param name="tenantId">租户标识。</param>
     /// <param name="appId">App 标识。</param>
-    /// <param name="cancellationToken">取消令牌（内存实现无异步等待，令牌仅契约对齐）。</param>
-    /// <returns>该作用域内的记录快照；无数据返回空列表。</returns>
-    public Task<IReadOnlyList<OnlineAuditRecord>> ListAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+    /// <returns>作用域索引键。</returns>
+    private static string BuildScopeKey(long tenantId, long appId)
     {
-        var scopeKey = tenantId.ToString(System.Globalization.CultureInfo.InvariantCulture) + "|" + appId.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        lock (_gate)
+        return tenantId.ToString(System.Globalization.CultureInfo.InvariantCulture) + "|" + appId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// 二分定位「严格位于游标位之后」的首个索引下标（keyset 语义；游标行自身若仍在档则被跳过）。
+    /// </summary>
+    /// <param name="bucket">作用域有序索引（全序正序排列）。</param>
+    /// <param name="cursorOccurredTime">游标行的发生时刻（UTC 毫秒）。</param>
+    /// <param name="cursorEventId">游标行的审计标识。</param>
+    /// <returns>首个严格位于游标之后的下标；游标位于全序末尾之后时为 <see cref="SortedList{TKey,TValue}.Count"/>（空扫描）。</returns>
+    private static int FindFirstAfterCursor(SortedList<OnlineAuditSortKey, OnlineAuditRecord> bucket, long cursorOccurredTime, string cursorEventId)
+    {
+        var cursorKey = new OnlineAuditSortKey(cursorOccurredTime, cursorEventId);
+        var keys = bucket.Keys;
+        var low = 0;
+        var high = keys.Count;
+        while (low < high)
         {
-            if (!_recordsByScope.TryGetValue(scopeKey, out var bucket))
+            var middle = low + ((high - low) >> 1);
+            if (OnlineAuditSortKeyComparer.Instance.Compare(keys[middle], cursorKey) <= 0)
             {
-                return Task.FromResult<IReadOnlyList<OnlineAuditRecord>>(new List<OnlineAuditRecord>());
+                low = middle + 1;
             }
-
-            var snapshot = new List<OnlineAuditRecord>(bucket.Count);
-            foreach (var record in bucket)
+            else
             {
-                snapshot.Add(CloneRecord(record));
+                high = middle;
             }
-
-            return Task.FromResult<IReadOnlyList<OnlineAuditRecord>>(snapshot);
         }
+
+        return low;
+    }
+
+    /// <summary>
+    /// 判断记录是否落在全部可选过滤内（合取；域集合为析取——跨域联查语义；时间窗为闭区间）。
+    /// </summary>
+    /// <param name="record">待判定记录。</param>
+    /// <param name="query">查询条件。</param>
+    /// <returns>命中过滤返回 <c>true</c>。</returns>
+    private static bool MatchesFilter(OnlineAuditRecord record, OnlineAuditStoreQuery query)
+    {
+        if (!MatchesDomainFilter(record, query.Domains))
+        {
+            return false;
+        }
+
+        if (query.PlayerId.HasValue && record.PlayerId != query.PlayerId.Value)
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrEmpty(query.OperatorId) && !string.Equals(record.OperatorId, query.OperatorId, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrEmpty(query.EventType) && !string.Equals(record.EventType, query.EventType, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrEmpty(query.CorrelationId) && !string.Equals(record.CorrelationId, query.CorrelationId, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (query.ServerId.HasValue && record.ServerId != query.ServerId.Value)
+        {
+            return false;
+        }
+
+        if (query.EndTime.HasValue && record.OccurredTime > query.EndTime.Value)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 判定域集合过滤是否命中（析取——跨域联查语义；集合为空即不限域）。
+    /// </summary>
+    /// <param name="record">待判定记录。</param>
+    /// <param name="domains">域过滤集合。</param>
+    /// <returns>命中返回 <c>true</c>。</returns>
+    private static bool MatchesDomainFilter(OnlineAuditRecord record, IReadOnlyList<string> domains)
+    {
+        if (domains == null || domains.Count == 0)
+        {
+            return true;
+        }
+
+        foreach (var domain in domains)
+        {
+            if (string.Equals(record.Domain, domain, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -163,5 +306,71 @@ public sealed class InMemoryOnlineAuditStore : IOnlineAuditStore
             CorrelationId = record.CorrelationId,
             SanitizedFields = sanitized,
         };
+    }
+
+    /// <summary>
+    /// 审计全序排序键（(OccurredTime, EventId) 二元组；EventId 全局唯一保证键无重复）。
+    /// </summary>
+    private readonly struct OnlineAuditSortKey
+    {
+        /// <summary>发生时刻（UTC 毫秒；全序第一键）。</summary>
+        private readonly long _occurredTime;
+
+        /// <summary>审计标识（同毫秒内打破平局的第二键）。</summary>
+        private readonly string _eventId;
+
+        /// <summary>
+        /// 构造排序键。
+        /// </summary>
+        /// <param name="occurredTime">发生时刻（UTC 毫秒）。</param>
+        /// <param name="eventId">审计标识。</param>
+        public OnlineAuditSortKey(long occurredTime, string eventId)
+        {
+            _occurredTime = occurredTime;
+            _eventId = eventId;
+        }
+
+        /// <summary>
+        /// 暴露发生时刻供比较器读取。
+        /// </summary>
+        public long OccurredTime => _occurredTime;
+
+        /// <summary>
+        /// 暴露审计标识供比较器读取。
+        /// </summary>
+        public string EventId => _eventId;
+    }
+
+    /// <summary>
+    /// 审计全序比较器（跨域检索全序的唯一事实来源：OccurredTime **倒序**，同一毫秒内 EventId 序数**升序**——
+    /// 正序枚举即分页顺序；换序 = 换全部查询口径，须先经设计评审）。
+    /// </summary>
+    private sealed class OnlineAuditSortKeyComparer : IComparer<OnlineAuditSortKey>
+    {
+        /// <summary>无状态单例。</summary>
+        public static readonly OnlineAuditSortKeyComparer Instance = new OnlineAuditSortKeyComparer();
+
+        /// <summary>
+        /// 防止外部构造。
+        /// </summary>
+        private OnlineAuditSortKeyComparer()
+        {
+        }
+
+        /// <summary>
+        /// 比较两个排序键：发生时刻倒序，同一毫秒内按审计标识序数升序。
+        /// </summary>
+        /// <param name="left">左键。</param>
+        /// <param name="right">右键。</param>
+        /// <returns>比较结果。</returns>
+        public int Compare(OnlineAuditSortKey left, OnlineAuditSortKey right)
+        {
+            if (left.OccurredTime != right.OccurredTime)
+            {
+                return right.OccurredTime.CompareTo(left.OccurredTime);
+            }
+
+            return string.CompareOrdinal(left.EventId, right.EventId);
+        }
     }
 }
