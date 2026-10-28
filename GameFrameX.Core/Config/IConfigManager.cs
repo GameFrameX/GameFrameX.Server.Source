@@ -57,12 +57,13 @@ public interface IConfigManager
     bool HasConfig(string configName);
 
     /// <summary>
-    /// 增加指定全局配置项。
+    /// 增加指定全局配置项；同名键已存在时以新值原子替换（upsert，支持配置热重载发布）。
     /// </summary>
     /// <remarks>
-    /// Adds the specified global configuration item.
+    /// Adds the specified global configuration item; atomically replaces the value when a key
+    /// with the same name already exists (upsert, supporting hot-reload publishing).
     /// </remarks>
-    /// <param name="configName">要增加的全局配置项的名称 / The name of the global configuration item to add</param>
+    /// <param name="configName">要增加全局配置项的名称 / The name of the global configuration item to add</param>
     /// <param name="configValue">全局配置项的值 / The value of the global configuration item</param>
     void AddConfig(string configName, IDataTable configValue);
 

@@ -53,7 +53,6 @@ public class ConfigComponent
         Tables.Init(Instance);
         // Localization: Config.Table.LoadConfigStart - 开始加载配置表...
         LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Config.Table.LoadConfigStart));
-        Instance.RemoveAllConfigs();
         await Tables.LoadAsync(LoaderAsync);
         // Localization: Config.Table.LoadConfigEnd - 配置表加载完成...
         LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Config.Table.LoadConfigEnd));
