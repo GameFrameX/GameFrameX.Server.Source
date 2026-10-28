@@ -391,7 +391,7 @@ namespace GameFrameX.Tests.Online
         {
             var recorder = new OnlineEventRecorder();
             var graph = new InMemoryOnlineSocialGraphStore();
-            var decision = new OnlineSocialDecisionService(graph, new InMemoryOnlineReportStore(), recorder);
+            var decision = new OnlineSocialDecisionService(graph, new InMemoryOnlineReportStore(), recorder, new OnlineReportOptions());
             var punishments = new OnlinePunishmentService(graph, recorder);
             var party = new OnlinePartyService(new InMemoryOnlinePartyStore(), recorder, 2, 8, 120, 1800, null, withGate ? decision : null);
             return new PartyFixture(party, decision, punishments);
@@ -407,7 +407,7 @@ namespace GameFrameX.Tests.Online
             var store = new InMemoryOnlineMatchTicketStore();
             var recorder = new OnlineEventRecorder();
             var graph = new InMemoryOnlineSocialGraphStore();
-            var decision = new OnlineSocialDecisionService(graph, new InMemoryOnlineReportStore(), recorder);
+            var decision = new OnlineSocialDecisionService(graph, new InMemoryOnlineReportStore(), recorder, new OnlineReportOptions());
             var punishments = new OnlinePunishmentService(graph, recorder);
             var matchmakerOptions = new OnlineMatchmakerOptions();
             var tickets = new OnlineMatchTicketService(store, recorder, matchmakerOptions);

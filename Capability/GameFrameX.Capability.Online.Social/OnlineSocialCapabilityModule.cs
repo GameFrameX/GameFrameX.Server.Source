@@ -198,7 +198,7 @@ public sealed class OnlineSocialCapabilityModule : ICapabilityModule, IAdminActi
         var presenceProbe = context.GetService<IOnlineSocialPresenceProbe>();
         _friends = new OnlineFriendService(friendStore, eventPublisher, _options.Friend, directory, presenceProbe);
 
-        _socialDecisions = new OnlineSocialDecisionService(socialGraphStore, _reportStore, eventPublisher);
+        _socialDecisions = new OnlineSocialDecisionService(socialGraphStore, _reportStore, eventPublisher, _options.Report);
         _punishments = new OnlinePunishmentService(socialGraphStore, eventPublisher);
         _notifications = new OnlineNotificationService(notificationStore, eventPublisher);
         _chatAudit = new OnlineChatAuditProjection(chatStore);

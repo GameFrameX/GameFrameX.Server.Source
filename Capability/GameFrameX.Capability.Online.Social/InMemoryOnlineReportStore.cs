@@ -48,8 +48,12 @@ public sealed class InMemoryOnlineReportStore : IOnlineReportStore
     /// <summary>案件表（键 = 作用域 + 案件标识）。</summary>
     private readonly Dictionary<string, OnlineReportCase> _casesById = new(StringComparer.Ordinal);
 
+    /// <summary>未结案组合索引（键 = 作用域 + 举报人 + 被举报人 + 场景；值 = 活跃案件标识）。</summary>
+    private readonly Dictionary<string, string> _activeCaseIdByCombination = new(StringComparer.Ordinal);
+
     /// <summary>
-    /// 以案件标识为唯一键在内存表内「不存在则创建」：键已存在时返回既有案件副本且不写入，否则存入入参的防御性副本。
+    /// 两层唯一「不存在则创建」：先按案件标识重放收敛重试，再按未结案组合键（举报人 + 被举报人 + 场景）
+    /// 返回既有活跃案件；两层都未命中才落新案件并登记组合索引。
     /// </summary>
     /// <remarks>
     /// Creates the report case in the in-memory table if the key (scope + case id) is absent;
@@ -70,15 +74,30 @@ public sealed class InMemoryOnlineReportStore : IOnlineReportStore
         var key = BuildKey(reportCase.TenantId, reportCase.AppId, reportCase.ReportId);
         lock (_syncRoot)
         {
+            // 第一层：按案件标识重放（客户端带服务端已返回标识的重试收敛到同一条）。
             OnlineReportCase existing;
             if (_casesById.TryGetValue(key, out existing))
             {
                 return Task.FromResult(existing.Copy());
             }
 
+            // 第二层：未结案组合唯一性——同一举报人对同一被举报人在同一场景下的
+            // Submitted/Reviewing 案件只能有一条；重复提交返回既有案件，不落新案。
+            var combinationKey = BuildActiveCombinationKey(reportCase.TenantId, reportCase.AppId, reportCase.ReporterId, reportCase.ReportedPlayerId, reportCase.Scene);
+            string activeCaseId;
+            if (_activeCaseIdByCombination.TryGetValue(combinationKey, out activeCaseId))
+            {
+                OnlineReportCase active;
+                if (_casesById.TryGetValue(BuildKey(reportCase.TenantId, reportCase.AppId, activeCaseId), out active))
+                {
+                    return Task.FromResult(active.Copy());
+                }
+            }
+
             // 存档存副本而非调用方实例（调用方复用该实例不会回写库内记录）。
             var stored = reportCase.Copy();
             _casesById[key] = stored;
+            _activeCaseIdByCombination[combinationKey] = stored.ReportId;
             return Task.FromResult(stored.Copy());
         }
     }
@@ -143,9 +162,28 @@ public sealed class InMemoryOnlineReportStore : IOnlineReportStore
                 return Task.FromResult<OnlineReportCase>(null);
             }
 
+            // 身份不可变：举报人 / 被举报人 / 场景构成组合唯一键，改写即破坏索引一致性。
+            if (current.ReporterId != reportCase.ReporterId || current.ReportedPlayerId != reportCase.ReportedPlayerId || current.Scene != reportCase.Scene)
+            {
+                return Task.FromResult<OnlineReportCase>(null);
+            }
+
             // 存档存副本而非调用方实例（调用方复用该实例不会回写库内记录）。
             var stored = reportCase.Copy();
             _casesById[key] = stored;
+
+            // 组合索引与 CAS 同一临界区维护：进入终态释放占位（终态后可就同一组合新建案件）；
+            // 仅当该索引仍指向本案件时才允许改写——旧终态更新不得释放已归属后续新案的占位。
+            var combinationKey = BuildActiveCombinationKey(stored.TenantId, stored.AppId, stored.ReporterId, stored.ReportedPlayerId, stored.Scene);
+            string indexedCaseId;
+            if (_activeCaseIdByCombination.TryGetValue(combinationKey, out indexedCaseId) && string.Equals(indexedCaseId, stored.ReportId, StringComparison.Ordinal))
+            {
+                if (IsTerminalState(stored.State))
+                {
+                    _activeCaseIdByCombination.Remove(combinationKey);
+                }
+            }
+
             return Task.FromResult(stored.Copy());
         }
     }
@@ -218,5 +256,29 @@ public sealed class InMemoryOnlineReportStore : IOnlineReportStore
     private static string BuildKey(long tenantId, long appId, string reportId)
     {
         return "rpt:" + tenantId + ":" + appId + ":" + (reportId ?? string.Empty);
+    }
+
+    /// <summary>
+    /// 构造未结案组合唯一键（作用域 + 举报人 + 被举报人 + 场景）。
+    /// </summary>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="reporterId">举报人。</param>
+    /// <param name="reportedPlayerId">被举报人。</param>
+    /// <param name="scene">举报场景。</param>
+    /// <returns>组合唯一键。</returns>
+    private static string BuildActiveCombinationKey(long tenantId, long appId, long reporterId, long reportedPlayerId, OnlineReportScene scene)
+    {
+        return "rpt-active:" + tenantId + ":" + appId + ":" + reporterId + ":" + reportedPlayerId + ":" + (int)scene;
+    }
+
+    /// <summary>
+    /// 判定案件状态是否为终态（终态不占未结案组合位，终态后可就同一组合新建案件）。
+    /// </summary>
+    /// <param name="state">案件状态。</param>
+    /// <returns>终态返回 <c>true</c>。</returns>
+    private static bool IsTerminalState(OnlineReportState state)
+    {
+        return state == OnlineReportState.Actioned || state == OnlineReportState.Rejected || state == OnlineReportState.Withdrawn;
     }
 }
