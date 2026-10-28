@@ -114,6 +114,29 @@ public sealed class InMemoryOnlinePresenceStore : IOnlinePresenceStore
         }
     }
 
+    /// <summary>统计作用域 (TenantId, AppId, ServerId) 内的在线玩家数（Blocked 不计入；表内扫描不产出实体副本）。</summary>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">应用标识。</param>
+    /// <param name="serverId">区服标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>在线玩家数。</returns>
+    public Task<int> CountOnlineByServerAsync(long tenantId, long appId, long serverId, CancellationToken cancellationToken = default)
+    {
+        lock (_syncRoot)
+        {
+            var count = 0;
+            foreach (var record in _records.Values)
+            {
+                if (record.TenantId == tenantId && record.AppId == appId && record.ServerId == serverId && record.State != OnlinePresenceState.Blocked)
+                {
+                    count++;
+                }
+            }
+
+            return Task.FromResult(count);
+        }
+    }
+
     /// <summary>构造在线状态记录键。</summary>
     /// <param name="tenantId">租户标识。</param>
     /// <param name="appId">应用标识。</param>

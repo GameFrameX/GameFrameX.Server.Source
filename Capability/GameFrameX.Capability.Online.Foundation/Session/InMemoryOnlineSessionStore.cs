@@ -157,6 +157,30 @@ public sealed class InMemoryOnlineSessionStore : IOnlineSessionStore
         }
     }
 
+    /// <summary>统计作用域 (TenantId, AppId, ServerId) 内非终态会话的按状态分组计数（表内扫描不产出实体副本；键按状态枚举值升序）。</summary>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">应用标识。</param>
+    /// <param name="serverId">区服标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>状态 → 会话数（只含非终态状态；无非终态会话时为空表）。</returns>
+    public Task<IReadOnlyDictionary<OnlineSessionState, int>> CountNonTerminalByScopeAsync(long tenantId, long appId, long serverId, CancellationToken cancellationToken = default)
+    {
+        lock (_syncRoot)
+        {
+            var counts = new SortedDictionary<OnlineSessionState, int>();
+            foreach (var session in _sessions.Values)
+            {
+                if (session.TenantId == tenantId && session.AppId == appId && session.ServerId == serverId && !session.State.IsTerminal())
+                {
+                    counts.TryGetValue(session.State, out var current);
+                    counts[session.State] = current + 1;
+                }
+            }
+
+            return Task.FromResult<IReadOnlyDictionary<OnlineSessionState, int>>(counts);
+        }
+    }
+
     /// <summary>移除会话（同步清理指纹索引与记账）。</summary>
     /// <param name="sessionId">会话标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>

@@ -32,11 +32,11 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
+using GameFrameX.Capability.Online.Abstractions.Scope;
 using GameFrameX.Capability.Online.Match;
 using GameFrameX.Capability.Online.Matchmaking;
 using GameFrameX.Capability.Online.Matchmaking.Party;
 using GameFrameX.Capability.Online.Foundation.Presence;
-using GameFrameX.Capability.Online.Abstractions.Scope;
 using GameFrameX.Capability.Online.Foundation.Session;
 
 namespace GameFrameX.Capability.Online.Operations.Overview;
@@ -51,7 +51,8 @@ namespace GameFrameX.Capability.Online.Operations.Overview;
 /// ③ 所有计数按作用域三键 (TenantId, AppId, ServerId) 过滤，跨作用域读数与不存在同构（反预言）。
 /// </para>
 /// <para>
-/// 统计口径（集中定义，禁止在别处重复定义）：
+/// 统计口径（集中定义，禁止在别处重复定义；**谓词经存储聚合方法下推执行**——各存储接口的聚合读方法以本口径为契约语义，
+/// 存储实现负责在存储层完成过滤与聚合，不向本服务返回全量行）：
 /// <list type="bullet">
 /// <item><description>在线玩家数：作用域内 Presence 记录数，<see cref="OnlinePresenceState.Blocked"/> 不计入（沿用 <c>OnlinePresenceService.CountOnlineAsync</c> 的既有 Admin 查询口径）。</description></item>
 /// <item><description>会话数：作用域内**非终态**会话数（终态 = 已关闭/被踢/过期，见 <see cref="OnlineSessionStateExtensions.IsTerminal"/>）。</description></item>
@@ -59,13 +60,13 @@ namespace GameFrameX.Capability.Online.Operations.Overview;
 /// <item><description>队伍数：作用域内**非终态**队伍数（终态判定复用 <see cref="OnlinePartyStateMachine.IsTerminal"/>）。</description></item>
 /// <item><description>对局数：作用域内**非 <see cref="OnlineMatchState.Closed"/>** 对局数（Closed = 已释放，按运行时口径随即删档；读取面仍显式排除，使该计数不依赖写入侧时序）。</description></item>
 /// <item><description>队列深度：作用域内排队态票据数。**匹配池为 App 级**，本快照报告该池在当前 Server 上的分区——各 Server 深度之和等于 App 级排队总数，不得把本值当作跨服共享的池大小。</description></item>
-/// <item><description>平均等待：排队态票据等待时长的算术平均（等待时长复用 <see cref="OnlineMatchRule.WaitSeconds"/>，与匹配域同源）；无排队票据时为 0。</description></item>
+/// <item><description>平均等待：排队态票据等待时长的算术平均（等待时长复用 <see cref="OnlineMatchRule.WaitSeconds"/>，与匹配域同源；无排队票据时为 0）。</description></item>
 /// <item><description>吞吐：最近 60 秒内（<c>(观测时刻 - 60000, 观测时刻]</c>，左开右闭——恰好落在窗口起点的分配不计入，避免把「上一轮窗口的边界」重复计入相邻两次查询）落档的匹配分配所消费的票据数——口径是「每分钟达成匹配的票据数」，不是对局数（一张票据可携带多人）。</description></item>
 /// </list>
 /// </para>
 /// <para>
-/// 天花板（ponytail）：单次查询全量拉取各域作用域内数据后现场聚合，规模到十万级应改为各域增量计数；
-/// 当前实现保证口径简单可核对（分布与总数同源同一次读取）。
+/// 性能形态：六路存储聚合读（5 域计数 + 吞吐窗口聚合）经 <c>Task.WhenAll</c> 并发执行，总延迟取最大者而非求和；
+/// 各路只返回计数/聚合行，不返回实体行，内存占用与在线规模解耦。
 /// </para>
 /// </summary>
 public sealed class OnlineOverviewService
@@ -111,7 +112,7 @@ public sealed class OnlineOverviewService
     }
 
     /// <summary>
-    /// 观测指定作用域的在线总览快照。
+    /// 观测指定作用域的在线总览快照（六路存储聚合读并发执行）。
     /// </summary>
     /// <param name="scope">生效作用域（取 TenantId / AppId / ServerId 三键过滤；不含玩家主体位）。</param>
     /// <param name="nowUnixMilliseconds">观测时刻（UTC 毫秒；传 0 取系统时钟，测试可注入）。</param>
@@ -126,6 +127,16 @@ public sealed class OnlineOverviewService
         }
 
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var windowStart = now - ThroughputWindowMilliseconds;
+
+        var presenceCountTask = _presenceStore.CountOnlineByServerAsync(scope.TenantId, scope.AppId, scope.ServerId, cancellationToken);
+        var sessionCountsTask = _sessionStore.CountNonTerminalByScopeAsync(scope.TenantId, scope.AppId, scope.ServerId, cancellationToken);
+        var partyCountsTask = _partyStore.CountNonTerminalByScopeAsync(scope.TenantId, scope.AppId, scope.ServerId, cancellationToken);
+        var matchCountsTask = _matchStore.CountActiveByScopeAsync(scope.TenantId, scope.AppId, scope.ServerId, cancellationToken);
+        var queueDepthTask = _ticketStore.AggregateQueuedBySlotAsync(scope.TenantId, scope.AppId, scope.ServerId, now, cancellationToken);
+        var throughputTask = _ticketStore.CountAssignmentTicketsBySlotAsync(scope.TenantId, scope.AppId, scope.ServerId, windowStart, now, cancellationToken);
+
+        await Task.WhenAll(presenceCountTask, sessionCountsTask, partyCountsTask, matchCountsTask, queueDepthTask, throughputTask).ConfigureAwait(false);
 
         var snapshot = new OnlineOverviewSnapshot
         {
@@ -133,269 +144,117 @@ public sealed class OnlineOverviewService
             AppId = scope.AppId,
             ServerId = scope.ServerId,
             ObservedTime = now,
+            OnlinePlayerCount = presenceCountTask.Result,
+            SessionStateCounts = sessionCountsTask.Result,
+            PartyCount = SumStateCounts(partyCountsTask.Result),
+            PartyStateCounts = partyCountsTask.Result,
+            MatchCount = SumStateCounts(matchCountsTask.Result),
+            MatchStateCounts = matchCountsTask.Result,
         };
 
-        await FillPresenceAsync(snapshot, scope, cancellationToken).ConfigureAwait(false);
-        await FillSessionAsync(snapshot, scope, cancellationToken).ConfigureAwait(false);
-        await FillPartyAsync(snapshot, scope, cancellationToken).ConfigureAwait(false);
-        await FillMatchAsync(snapshot, scope, cancellationToken).ConfigureAwait(false);
-        await FillQueueAsync(snapshot, scope, now, cancellationToken).ConfigureAwait(false);
+        FillSessionDerivedCounts(snapshot, sessionCountsTask.Result);
+        snapshot.QueueSummaries = MergeQueueSummaries(queueDepthTask.Result, throughputTask.Result);
 
         return OnlineResult<OnlineOverviewSnapshot>.Ok(snapshot);
     }
 
     /// <summary>
-    /// 填充在线玩家数（Presence 记录数，Blocked 不计入）。
+    /// 汇总状态分布计数为总数。
     /// </summary>
-    /// <param name="snapshot">目标快照。</param>
-    /// <param name="scope">生效作用域。</param>
-    /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>异步任务。</returns>
-    private async Task FillPresenceAsync(OnlineOverviewSnapshot snapshot, OnlineScope scope, CancellationToken cancellationToken)
+    /// <typeparam name="TState">状态类型。</typeparam>
+    /// <param name="stateCounts">状态分布（存储聚合结果）。</param>
+    /// <returns>各状态计数之和。</returns>
+    private static int SumStateCounts<TState>(IReadOnlyDictionary<TState, int> stateCounts)
     {
-        var records = await _presenceStore.ListByAppAsync(scope.TenantId, scope.AppId, cancellationToken).ConfigureAwait(false);
-        var count = 0;
-        if (records != null)
+        var total = 0;
+        if (stateCounts != null)
         {
-            foreach (var record in records)
+            foreach (var pair in stateCounts)
             {
-                if (record == null || record.ServerId != scope.ServerId || record.State == OnlinePresenceState.Blocked)
-                {
-                    continue;
-                }
-
-                count++;
+                total += pair.Value;
             }
         }
 
-        snapshot.OnlinePlayerCount = count;
+        return total;
     }
 
     /// <summary>
-    /// 填充会话数与状态分布，并据此推导重连率。
+    /// 由会话状态分布推导会话数与重连率。
     /// </summary>
     /// <param name="snapshot">目标快照。</param>
-    /// <param name="scope">生效作用域。</param>
-    /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>异步任务。</returns>
-    private async Task FillSessionAsync(OnlineOverviewSnapshot snapshot, OnlineScope scope, CancellationToken cancellationToken)
+    /// <param name="sessionStateCounts">会话状态分布（存储聚合结果）。</param>
+    private static void FillSessionDerivedCounts(OnlineOverviewSnapshot snapshot, IReadOnlyDictionary<OnlineSessionState, int> sessionStateCounts)
     {
-        var sessions = await _sessionStore.ListNonTerminalAsync(cancellationToken).ConfigureAwait(false);
-        var counts = new SortedDictionary<OnlineSessionState, int>();
         var total = 0;
-        var reconnecting = 0;
-
-        if (sessions != null)
+        sessionStateCounts.TryGetValue(OnlineSessionState.Reconnecting, out var reconnecting);
+        foreach (var pair in sessionStateCounts)
         {
-            foreach (var session in sessions)
-            {
-                if (session == null || !IsInScope(session.TenantId, session.AppId, session.ServerId, scope))
-                {
-                    continue;
-                }
-
-                total++;
-                Increment(counts, session.State);
-                if (session.State == OnlineSessionState.Reconnecting)
-                {
-                    reconnecting++;
-                }
-            }
+            total += pair.Value;
         }
 
         snapshot.SessionCount = total;
-        snapshot.SessionStateCounts = counts;
         snapshot.ReconnectRate = total == 0 ? 0d : (double)reconnecting / total;
     }
 
     /// <summary>
-    /// 填充非终态队伍数与状态分布。
+    /// 合并队列深度聚合与吞吐聚合，产出排序后的队列概况。
     /// </summary>
-    /// <param name="snapshot">目标快照。</param>
-    /// <param name="scope">生效作用域。</param>
-    /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>异步任务。</returns>
-    private async Task FillPartyAsync(OnlineOverviewSnapshot snapshot, OnlineScope scope, CancellationToken cancellationToken)
+    /// <param name="queueDepthSlots">排队态票据槽位聚合（深度 + 等待秒合计）。</param>
+    /// <param name="throughputSlots">吞吐窗口槽位聚合（消费票据数）。</param>
+    /// <returns>按 Mode 升序、同 Mode 按 Region 升序的队列概况列表。</returns>
+    private static List<OnlineOverviewQueueSummary> MergeQueueSummaries(IReadOnlyList<OnlineMatchQueueSlotAggregate> queueDepthSlots, IReadOnlyList<OnlineMatchQueueSlotAggregate> throughputSlots)
     {
-        var parties = await _partyStore.ListPartiesAsync(scope.TenantId, scope.AppId, cancellationToken).ConfigureAwait(false);
-        var counts = new SortedDictionary<OnlinePartyState, int>();
-        var total = 0;
-
-        if (parties != null)
+        var merged = new Dictionary<string, OnlineOverviewQueueSummary>();
+        if (queueDepthSlots != null)
         {
-            foreach (var party in parties)
+            foreach (var slot in queueDepthSlots)
             {
-                if (party == null || party.ServerId != scope.ServerId || OnlinePartyStateMachine.IsTerminal(party.State))
+                if (slot == null)
                 {
                     continue;
                 }
 
-                total++;
-                Increment(counts, party.State);
+                var summary = ResolveSummary(merged, slot.Mode, slot.Region);
+                summary.QueueDepth = slot.TicketCount;
+                summary.AverageWaitSeconds = slot.TicketCount == 0 ? 0 : slot.TotalWaitSeconds / slot.TicketCount;
             }
         }
 
-        snapshot.PartyCount = total;
-        snapshot.PartyStateCounts = counts;
-    }
-
-    /// <summary>
-    /// 填充存活对局数与状态分布（<see cref="OnlineMatchState.Closed"/> 即已释放，不计入）。
-    /// </summary>
-    /// <param name="snapshot">目标快照。</param>
-    /// <param name="scope">生效作用域。</param>
-    /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>异步任务。</returns>
-    private async Task FillMatchAsync(OnlineOverviewSnapshot snapshot, OnlineScope scope, CancellationToken cancellationToken)
-    {
-        var matches = await _matchStore.ListAsync(scope.TenantId, scope.AppId, cancellationToken).ConfigureAwait(false);
-        var counts = new SortedDictionary<OnlineMatchState, int>();
-        var total = 0;
-
-        if (matches != null)
+        if (throughputSlots != null)
         {
-            foreach (var match in matches)
+            foreach (var slot in throughputSlots)
             {
-                if (match == null || match.ServerId != scope.ServerId || match.State == OnlineMatchState.Closed)
+                if (slot == null)
                 {
                     continue;
                 }
 
-                total++;
-                Increment(counts, match.State);
+                ResolveSummary(merged, slot.Mode, slot.Region).ThroughputPerMinute = slot.TicketCount;
             }
         }
 
-        snapshot.MatchCount = total;
-        snapshot.MatchStateCounts = counts;
-    }
-
-    /// <summary>
-    /// 填充按「玩法模式 + 区域」聚合的队列概况。
-    /// </summary>
-    /// <param name="snapshot">目标快照。</param>
-    /// <param name="scope">生效作用域。</param>
-    /// <param name="now">观测时刻（UTC 毫秒）。</param>
-    /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>异步任务。</returns>
-    private async Task FillQueueAsync(OnlineOverviewSnapshot snapshot, OnlineScope scope, long now, CancellationToken cancellationToken)
-    {
-        var tickets = await _ticketStore.ListAllAsync(scope.TenantId, scope.AppId, cancellationToken).ConfigureAwait(false);
-        var accumulator = new Dictionary<string, QueueAccumulator>();
-        AccumulateQueueDepth(tickets, scope, accumulator, now);
-
-        var assignments = await _ticketStore.ListAssignmentsAsync(scope.TenantId, scope.AppId, cancellationToken).ConfigureAwait(false);
-        AccumulateThroughput(assignments, scope, accumulator, now);
-
-        var summaries = new List<OnlineOverviewQueueSummary>(accumulator.Count);
-        foreach (var pair in accumulator.Values)
-        {
-            summaries.Add(new OnlineOverviewQueueSummary
-            {
-                Mode = pair.Mode,
-                Region = pair.Region,
-                QueueDepth = pair.Depth,
-                AverageWaitSeconds = pair.Depth == 0 ? 0 : pair.TotalWaitSeconds / pair.Depth,
-                ThroughputPerMinute = pair.Throughput,
-            });
-        }
-
+        var summaries = new List<OnlineOverviewQueueSummary>(merged.Values);
         summaries.Sort(CompareQueueSummaries);
-        snapshot.QueueSummaries = summaries;
+        return summaries;
     }
 
     /// <summary>
-    /// 累加队列深度与等待时长（排队态票据按 (Mode, Region) 槽位聚合）。
+    /// 按 (Mode, Region) 取或建队列概况槽位。
     /// </summary>
-    /// <param name="tickets">全量票据列表（可为 <see langword="null"/>，此时不累加）。</param>
-    /// <param name="scope">生效作用域。</param>
-    /// <param name="accumulator">聚合表（按 (Mode, Region) 取或建槽位）。</param>
-    /// <param name="now">观测时刻（UTC 毫秒）。</param>
-    private static void AccumulateQueueDepth(IReadOnlyList<OnlineMatchTicket> tickets, OnlineScope scope, Dictionary<string, QueueAccumulator> accumulator, long now)
-    {
-        if (tickets != null)
-        {
-            foreach (var ticket in tickets)
-            {
-                if (ticket == null || ticket.ServerId != scope.ServerId || ticket.State != OnlineMatchTicketState.Queued)
-                {
-                    continue;
-                }
-
-                var entry = Resolve(accumulator, ticket.Mode, ticket.Region);
-                entry.Depth++;
-                entry.TotalWaitSeconds += OnlineMatchRule.WaitSeconds(ticket, now);
-            }
-        }
-    }
-
-    /// <summary>
-    /// 累加吞吐（最近一分钟窗口 <c>(now - 60000, now]</c> 内落档的匹配分配所消费的票据数，按 (Mode, Region) 槽位聚合）。
-    /// </summary>
-    /// <param name="assignments">全量分配列表（可为 <see langword="null"/>，此时不累加）。</param>
-    /// <param name="scope">生效作用域。</param>
-    /// <param name="accumulator">聚合表（按 (Mode, Region) 取或建槽位）。</param>
-    /// <param name="now">观测时刻（UTC 毫秒）。</param>
-    private static void AccumulateThroughput(IReadOnlyList<OnlineMatchAssignment> assignments, OnlineScope scope, Dictionary<string, QueueAccumulator> accumulator, long now)
-    {
-        var windowStart = now - ThroughputWindowMilliseconds;
-        if (assignments != null)
-        {
-            foreach (var assignment in assignments)
-            {
-                if (assignment == null || assignment.ServerId != scope.ServerId || assignment.CreatedAtTime <= windowStart || assignment.CreatedAtTime > now)
-                {
-                    continue;
-                }
-
-                var entry = Resolve(accumulator, assignment.Mode, assignment.Region);
-                entry.Throughput += assignment.TicketIds == null ? 0 : assignment.TicketIds.Count;
-            }
-        }
-    }
-
-    /// <summary>
-    /// 判断实体作用域是否落在观测作用域内。
-    /// </summary>
-    /// <param name="tenantId">实体租户标识。</param>
-    /// <param name="appId">实体 App 标识。</param>
-    /// <param name="serverId">实体区服标识。</param>
-    /// <param name="scope">观测作用域。</param>
-    /// <returns>在作用域内返回 <c>true</c>。</returns>
-    private static bool IsInScope(long tenantId, long appId, long serverId, OnlineScope scope)
-    {
-        return tenantId == scope.TenantId && appId == scope.AppId && serverId == scope.ServerId;
-    }
-
-    /// <summary>
-    /// 按 (Mode, Region) 取或建聚合槽位。
-    /// </summary>
-    /// <param name="accumulator">聚合表。</param>
+    /// <param name="merged">合并表。</param>
     /// <param name="mode">玩法模式。</param>
     /// <param name="region">区域。</param>
-    /// <returns>该分组的聚合槽位。</returns>
-    private static QueueAccumulator Resolve(Dictionary<string, QueueAccumulator> accumulator, int mode, int region)
+    /// <returns>该分组的队列概况。</returns>
+    private static OnlineOverviewQueueSummary ResolveSummary(Dictionary<string, OnlineOverviewQueueSummary> merged, int mode, int region)
     {
         var key = mode + ":" + region;
-        if (!accumulator.TryGetValue(key, out var entry))
+        if (!merged.TryGetValue(key, out var summary))
         {
-            entry = new QueueAccumulator { Mode = mode, Region = region, };
-            accumulator[key] = entry;
+            summary = new OnlineOverviewQueueSummary { Mode = mode, Region = region, };
+            merged[key] = summary;
         }
 
-        return entry;
-    }
-
-    /// <summary>
-    /// 累加状态分布计数。
-    /// </summary>
-    /// <typeparam name="TState">状态类型。</typeparam>
-    /// <param name="counts">分布表。</param>
-    /// <param name="state">状态。</param>
-    private static void Increment<TState>(SortedDictionary<TState, int> counts, TState state)
-    {
-        counts.TryGetValue(state, out var current);
-        counts[state] = current + 1;
+        return summary;
     }
 
     /// <summary>
@@ -429,26 +288,5 @@ public sealed class OnlineOverviewService
         }
 
         return null;
-    }
-
-    /// <summary>
-    /// 队列聚合槽位（按 Mode+Region 一组的累加器）。
-    /// </summary>
-    private sealed class QueueAccumulator
-    {
-        /// <summary>获取或设置玩法模式。</summary>
-        public int Mode { get; set; }
-
-        /// <summary>获取或设置区域。</summary>
-        public int Region { get; set; }
-
-        /// <summary>获取或设置排队态票据数。</summary>
-        public int Depth { get; set; }
-
-        /// <summary>获取或设置排队态票据等待时长合计（秒）。</summary>
-        public int TotalWaitSeconds { get; set; }
-
-        /// <summary>获取或设置最近一分钟达成匹配的票据数。</summary>
-        public int Throughput { get; set; }
     }
 }
