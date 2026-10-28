@@ -42,10 +42,12 @@ using GameFrameX.DataBase;
 /// <see cref="ApplyAsync"/> 玩家分片事务语义：进程内按玩家分片信号量串行
 /// （不同玩家互不阻塞；单写者假设承接 store 契约——多进程部署由装配层按玩家归属路由，不引入
 /// 分布式协调）；分片内「先全量校验（同批次资产唯一、应用后下限 0）后统一落账，失败净效应 0」。
-/// 落账顺序 = 账本条目先行（不可变事实源）→ 快照随后（派生面）：崩溃残留在账本与快照之间时，
-/// 以账本重算的对账服务（既有交付面）收敛，余额/流水不丢。
+/// 落账整批（全部账本行 + 全部快照行）包在单个数据库事务内：中途异常 / 取消 / 崩溃时整批回滚，
+/// 账本与快照不会出现单侧落库或批次部分落库；快照写入为 RowVersion 条件写（CAS），冲突映射
+/// <see cref="OnlineErrorCode.VersionConflict"/> 并由 <see cref="ApplyAsync"/> 重新预演重试。
 /// </para>
 /// <para>
+///
 /// 不可变红线：账本行只经插入路径写入（<c>SaveOneAsync</c>），本适配零账本修改/删除调用；
 /// 纠正只能追加反转条目（契约面既有约定）。玩家维度账本序由 <c>NextSequenceAsync</c>
 /// 玩家键控序列分配（"tenant:app:player"；原子单调、重启不复用）。
@@ -58,6 +60,11 @@ using GameFrameX.DataBase;
 /// </summary>
 public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
 {
+    /// <summary>
+    /// 快照条件写冲突时的最大落账尝试次数（1 次初始 + 2 次重试）。
+    /// </summary>
+    private const int MaxApplyAttempts = 3;
+
     /// <summary>
     /// 快照行与账本行的行 Id 分配序列名。
     /// </summary>
@@ -125,6 +132,10 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
 
     /// <summary>
     /// 原子应用变更批次（玩家分片信号量内先全量校验后统一落账；失败净效应为 0）。
+    /// <para>
+    /// 落账整批包在单个数据库事务内；快照 RowVersion 条件写冲突（<see cref="OnlineErrorCode.VersionConflict"/>）
+    /// 时重新预演后重试，最多 <see cref="MaxApplyAttempts"/> 次，用尽返回 <c>VersionConflict</c> 失败结果。
+    /// </para>
     /// </summary>
     /// <param name="batch">变更批次。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -144,17 +155,33 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
                 return duplicate;
             }
 
-            // 校验 2：全量预演——应用后下限 0（先算后写，任何一行不满足则整批拒绝，净效应为 0）。
-            var occurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            var (rejection, planned) = await PlanEntriesAsync(batch, occurredTime, cancellationToken).ConfigureAwait(false);
-            if (rejection != null)
+            for (var attempt = 1; attempt <= MaxApplyAttempts; attempt++)
             {
-                return rejection;
+                // 校验 2：全量预演——应用后下限 0（先算后写，任何一行不满足则整批拒绝，净效应为 0）。
+                var occurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                var (rejection, planned) = await PlanEntriesAsync(batch, occurredTime, cancellationToken).ConfigureAwait(false);
+                if (rejection != null)
+                {
+                    return rejection;
+                }
+
+                try
+                {
+                    // 落账：整批单事务（账本条目 + 快照）；快照条件写冲突抛 VersionConflict 令事务回滚。
+                    await GameDb.ExecuteInTransactionAsync(() => CommitEntriesAsync(planned, occurredTime, cancellationToken), cancellationToken).ConfigureAwait(false);
+                    return new OnlineAssetApplyResult(true, OnlineErrorCode.None, string.Empty, planned);
+                }
+                catch (OnlineServiceException exception) when (exception.Code == OnlineErrorCode.VersionConflict)
+                {
+                    // 快照被并发修改：整批已回滚，重新预演（读到最新快照）后重试；重试用尽返回 VersionConflict。
+                    if (attempt == MaxApplyAttempts)
+                    {
+                        return new OnlineAssetApplyResult(false, OnlineErrorCode.VersionConflict, "资产快照并发修改，重试用尽：" + batch.TransactionId, Array.Empty<OnlineLedgerEntry>());
+                    }
+                }
             }
 
-            // 落账：账本条目先行（不可变事实源）→ 快照随后（派生面）；玩家分片信号量内串行，中途对外不可见。
-            await CommitEntriesAsync(planned, occurredTime, cancellationToken).ConfigureAwait(false);
-            return new OnlineAssetApplyResult(true, OnlineErrorCode.None, string.Empty, planned);
+            return new OnlineAssetApplyResult(false, OnlineErrorCode.VersionConflict, "资产快照并发修改，重试用尽：" + batch.TransactionId, Array.Empty<OnlineLedgerEntry>());
         }
         finally
         {
@@ -320,15 +347,18 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
     }
 
     /// <summary>
-    /// 落账：账本条目先行（事实源）→ 快照随后（派生面；玩家分片信号量内调用）。
+    /// 落账（须在数据库事务内调用）：账本条目先行（事实源）→ 快照随后（派生面，RowVersion 条件写）；
+    /// 任一行失败由事务整体回滚，净效应 0。方法体无内存副作用——TransientTransactionError 重试会整段重跑。
     /// </summary>
     /// <param name="planned">预演构造的账本条目。</param>
+
     /// <param name="occurredTime">落账时刻。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     private static async Task CommitEntriesAsync(List<OnlineLedgerEntry> planned, long occurredTime, CancellationToken cancellationToken)
     {
         foreach (var entry in planned)
         {
+
             var state = ToState(entry);
             state.Id = await GameDb.NextSequenceAsync<OnlineLedgerEntryState>(RowIdSequence, cancellationToken).ConfigureAwait(false);
             await GameDb.SaveOneAsync(state, cancellationToken).ConfigureAwait(false);
@@ -343,7 +373,7 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
         }
     }
 
-    /// <summary>同步货币账户快照（既有行保行主键覆盖，新行唯一插入建档；分片信号量内调用）。</summary>
+    /// <summary>同步货币账户快照（既有行 RowVersion 条件写，新行唯一插入建档；冲突抛 VersionConflict 由事务整体回滚；分片信号量内调用）。</summary>
     /// <param name="entry">账本条目。</param>
     /// <param name="occurredTime">落账时刻。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -351,7 +381,6 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
     {
         var uniqueKey = BuildWalletKey(entry.TenantId, entry.AppId, entry.PlayerId, entry.AssetId);
         var existing = await FindWalletStateAsync(uniqueKey, cancellationToken).ConfigureAwait(false);
-        var version = (existing?.Version ?? 0) + 1;
         if (existing != null)
         {
             var updated = new OnlineWalletAccountState
@@ -363,10 +392,14 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
                 PlayerId = entry.PlayerId,
                 CurrencyId = entry.AssetId,
                 Balance = entry.AmountAfter,
-                Version = version,
+                Version = existing.Version + 1,
                 UpdatedTime = occurredTime,
             };
-            await GameDb.AddOrUpdateAsync(updated, cancellationToken).ConfigureAwait(false);
+            if (!await GameDb.UpdateIfRowVersionAsync(existing.Id, existing.RowVersion ?? 0, updated, cancellationToken).ConfigureAwait(false))
+            {
+                throw new OnlineServiceException(OnlineErrorCode.VersionConflict, "钱包快照并发修改（条件写未命中）：" + uniqueKey);
+            }
+
             return;
         }
 
@@ -380,24 +413,17 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
             PlayerId = entry.PlayerId,
             CurrencyId = entry.AssetId,
             Balance = entry.AmountAfter,
-            Version = version,
+            Version = 1,
             UpdatedTime = occurredTime,
         };
         if (!await GameDb.TryAddUniqueAsync(created, state => state.UniqueKey == uniqueKey, cancellationToken).ConfigureAwait(false))
         {
-            // 唯一建档冲突（并发窗口落者）：读回胜者行按行主键覆盖（单写者假设下的防御路径）。
-            var winner = await FindWalletStateAsync(uniqueKey, cancellationToken).ConfigureAwait(false);
-            if (winner == null)
-            {
-                throw new InvalidOperationException("唯一插入冲突后未能读回既有钱包行：" + uniqueKey);
-            }
-
-            created.Id = winner.Id;
-            await GameDb.AddOrUpdateAsync(created, cancellationToken).ConfigureAwait(false);
+            // 唯一建档冲突（并发窗口落者）：不再覆盖胜者行——整体回滚由 ApplyAsync 重新预演后走既有行条件写路径。
+            throw new OnlineServiceException(OnlineErrorCode.VersionConflict, "钱包快照并发建档冲突：" + uniqueKey);
         }
     }
 
-    /// <summary>同步道具库存快照（既有行保行主键覆盖，新行唯一插入建档；分片信号量内调用）。</summary>
+    /// <summary>同步道具库存快照（既有行 RowVersion 条件写，新行唯一插入建档；冲突抛 VersionConflict 由事务整体回滚；分片信号量内调用）。</summary>
     /// <param name="entry">账本条目。</param>
     /// <param name="occurredTime">落账时刻。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -405,36 +431,44 @@ public sealed class GameDbOnlineAssetStore : IOnlineAssetStore
     {
         var uniqueKey = BuildInventoryKey(entry.TenantId, entry.AppId, entry.PlayerId, entry.AssetId);
         var existing = await FindInventoryStateAsync(uniqueKey, cancellationToken).ConfigureAwait(false);
-        var version = (existing?.Version ?? 0) + 1;
-        var stack = new OnlineInventoryStackState
+        if (existing != null)
         {
+            var updated = new OnlineInventoryStackState
+            {
+                Id = existing.Id,
+                UniqueKey = uniqueKey,
+                TenantId = entry.TenantId,
+                AppId = entry.AppId,
+                PlayerId = entry.PlayerId,
+                ItemId = entry.AssetId,
+                Quantity = entry.AmountAfter,
+                Version = existing.Version + 1,
+                UpdatedTime = occurredTime,
+            };
+            if (!await GameDb.UpdateIfRowVersionAsync(existing.Id, existing.RowVersion ?? 0, updated, cancellationToken).ConfigureAwait(false))
+            {
+                throw new OnlineServiceException(OnlineErrorCode.VersionConflict, "库存快照并发修改（条件写未命中）：" + uniqueKey);
+            }
+
+            return;
+        }
+
+        var rowId = await GameDb.NextSequenceAsync<OnlineInventoryStackState>(RowIdSequence, cancellationToken).ConfigureAwait(false);
+        var created = new OnlineInventoryStackState
+        {
+            Id = rowId,
             UniqueKey = uniqueKey,
             TenantId = entry.TenantId,
             AppId = entry.AppId,
             PlayerId = entry.PlayerId,
             ItemId = entry.AssetId,
             Quantity = entry.AmountAfter,
-            Version = version,
+            Version = 1,
             UpdatedTime = occurredTime,
         };
-        if (existing != null)
+        if (!await GameDb.TryAddUniqueAsync(created, state => state.UniqueKey == uniqueKey, cancellationToken).ConfigureAwait(false))
         {
-            stack.Id = existing.Id;
-            await GameDb.AddOrUpdateAsync(stack, cancellationToken).ConfigureAwait(false);
-            return;
-        }
-
-        stack.Id = await GameDb.NextSequenceAsync<OnlineInventoryStackState>(RowIdSequence, cancellationToken).ConfigureAwait(false);
-        if (!await GameDb.TryAddUniqueAsync(stack, state => state.UniqueKey == uniqueKey, cancellationToken).ConfigureAwait(false))
-        {
-            var winner = await FindInventoryStateAsync(uniqueKey, cancellationToken).ConfigureAwait(false);
-            if (winner == null)
-            {
-                throw new InvalidOperationException("唯一插入冲突后未能读回既有库存行：" + uniqueKey);
-            }
-
-            stack.Id = winner.Id;
-            await GameDb.AddOrUpdateAsync(stack, cancellationToken).ConfigureAwait(false);
+            throw new OnlineServiceException(OnlineErrorCode.VersionConflict, "库存快照并发建档冲突：" + uniqueKey);
         }
     }
 
