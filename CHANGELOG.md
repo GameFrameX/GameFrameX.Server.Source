@@ -14,6 +14,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+* 入队与定时撮合解耦（C406，GFX-1104）：删除每次入队的全量撮合及最新票据扫描，复用 `matchmaker-run` 按宿主调度节奏批量处理队列（默认 1000ms）。单轮撮合算法保持不变；桥测试覆盖四名玩家单批次形成两组及批次前取消不参与分配。
+
 ### Added
 * 服务器间 RPC 端点改由心跳注册表解析并退役静态引导（C304，GitHub #643）：`RemoteServiceTarget`（ServerType + 可选 InstanceId）结构化拨号取代 `{Role}_{InstanceId}` 字符串拼接；`DiscoveryServiceEndpointResolver` 成为唯一端点解析器（指定实例走 Instance 视图含 Draining 并校验 Role 一致，ServerType 级取 Active 中 InstanceId 序数最小者，端点集合 = TCP 主端点 + 附加端点，偏好 kcp > ws > wss > tcp）；`RemoteMessagingBuilder.WithRouteTable(IRoleRouteTableProvider)` 绑定路由表、生产注册 KCP 拨号适配器（`IsEnableInnerKcp` 时，服务器间 KCP 首次生产可用）；心跳新增附加广播端点（`InstanceDescriptor.AdditionalAdvertiseEndpoints`，监听器装配成功的实例级闸门后才广播，多 ServerType 进程非首选类型披露 Warning）；`UnifiedMessageSender` 实例列表改读路由表 Active 视图且仅 InstanceId 集合变化才重建哈希环；玩家路由实例直达——`player_route.InstanceId` 写真实发现层实例 Id（`PlayerRouteResolverBootstrap` 同源注入），`ForwardToRemoteServerAsync` 按 `TargetInstanceId` 投递（Instance 视图含 Draining）、`IsCurrentServer` 改 InstanceId 比较；Mongo 心跳 class map 显式忽略未知字段（含继承传递）、写路径空集合归一化为 null（默认配置文档与旧版本逐字节同形）；PostgreSQL 幂等补列 `additional_advertise_endpoints text[]`（命名经 `DiscoveryStorageNaming` 推导）；删除 `services__*` 环境变量契约、`EnvironmentVariableEndpointResolver`、`EnvironmentServiceInstanceDiscovery`、`docker-compose.multi.legacy.yml` 与生成器静态引导映射。
 
@@ -70,6 +74,7 @@
   P4 终态 admin 面 = 29 业务 action + list_capabilities 元端点（分布 5/8/4/1/7/3+foundation1；C256 起 hotfix 受控族 +4）；组合根双轨 = Launcher 真扫描（`AddOnlineCapabilities` 直引 9 Online 包 + Hosting 三件）与 dotnet new `gfx-online` 模板最小装配；门禁 = `CapabilityPackageStructureTests` 12 包精确引用表 + Hosting=0 红线 + 事件 topic 字节冻结（`OnlineDependencyMatrixTests` 目录矩阵已随双工程退役）。
 
 ### Breaking
+* 匹配入队改为异步结果（C406，GFX-1104）：成功入队固定返回 `MatchId=0`，不再保证第二名玩家入队立即成组；客户端通过 `NotifyMatchMade` 或状态查询获取对局标识后入场。`OnlineMatchDomainService` 构造函数删除 `coordinator` 参数，手工构造该 NuGet 类型的消费方须同步删除参数。仓内 Bot、装配与测试已迁移。
 * 服务器间端点静态引导退役的破坏面（C304，GitHub #643）：
   - 公开 API 签名：`IServiceEndpointResolver.ResolveEndpoint` / `ITransportProtocolAdapter.GetOrCreateStreamAsync` / `IsServiceAvailable` 的目标参数由 string 改为 `RemoteServiceTarget`；`IRemoteMessageClient` 新增 `SendOneWayAsync(RemoteCallContext, MessageObject)`（string 形态保留，语义 = ServerType 级确定性选择）；`RemoteCallContext` 新增 `TargetInstanceId`；`UnifiedMessageSender` / `UnifiedMessageSenderHolder.InitializeWithDefaults` 构造参数变更（新增必填 `routeTable`，本服身份改 `localServerType` + `localInstanceId`）；`RemoteEndpointNotFoundException` 携带 `Target`（原 `ServiceName` 删除）。
   - 删除类型：`EnvironmentVariableEndpointResolver`、`EnvironmentServiceInstanceDiscovery`、`RemoteMessagingBuilder.BuildDefault()` 与无参 `BuildFromEnvironment()` 静态工厂（生产走实例链 `new RemoteMessagingBuilder().LoadFromEnvironment().WithRouteTable(...).UseKcpTransportAdapter().Build()`）；未调用 `WithRouteTable` 时 `Build()` 在运行时抛 `InvalidOperationException`（fail-fast，无回落）。

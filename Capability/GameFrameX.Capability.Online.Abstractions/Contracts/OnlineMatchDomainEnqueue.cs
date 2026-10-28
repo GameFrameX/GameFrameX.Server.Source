@@ -24,10 +24,12 @@ using System.Collections.Generic;
 namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 
 /// <summary>
-/// 匹配域入队回执：MatchId 非 0 = 即时窗口已撮合（协议数值对局标识）；0 = 已入队排队中。
+/// 匹配域入队回执：成功建票时 MatchId=0，定时批次撮合结果由通知或状态查询提供。
 /// </summary>
+/// <remarks>Successful enqueue receipts carry MatchId=0; scheduled matchmaking results arrive through notifications or status queries.</remarks>
 public sealed class OnlineMatchDomainEnqueue
 {
-    /// <summary>协议数值对局标识（0 = 排队中，尚未撮合）。</summary>
+    /// <summary>入队确认占位值，成功建票时固定为 0；实际对局标识从通知或状态查询获取。</summary>
+    /// <remarks>Always 0 when a ticket is successfully enqueued; obtain the actual match identifier through notifications or status queries.</remarks>
     public long MatchId { get; set; }
 }

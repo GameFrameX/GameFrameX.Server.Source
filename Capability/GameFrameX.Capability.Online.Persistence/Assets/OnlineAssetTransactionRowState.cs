@@ -60,6 +60,11 @@ public sealed class OnlineAssetTransactionRowState : BaseCacheState
     public string RequestDigest { get; set; }
 
     /// <summary>
+    /// 获取或设置被补偿的原交易标识（补偿交易行指向原交易；非补偿交易为空）。
+    /// </summary>
+    public string CompensatesTransactionId { get; set; }
+
+    /// <summary>
     /// 获取或设置租户标识。
     /// </summary>
     public long TenantId { get; set; }

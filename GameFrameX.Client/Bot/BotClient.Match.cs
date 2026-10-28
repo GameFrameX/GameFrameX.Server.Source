@@ -38,9 +38,12 @@ using GameFrameX.Proto.Proto;
 namespace GameFrameX.Client.Bot;
 /// <summary>
 /// 匹配场景脚本（匹配域接管真会话 E2E 载体，沿好友 / RPS 场景形态）：
-/// 登录成功后入队（1v1 / 评分 1000）——即时窗口成组者响应直接带对局标识，
-/// 等待方经 <c>NotifyMatchMade</c> 服务端推送或状态轮询获知，随后双方各自入场断言同一运行态对局。
+/// 登录成功后入队（1v1 / 评分 1000），成功回执仅确认入队已受理；
+/// 经 <c>NotifyMatchMade</c> 服务端推送或状态轮询获知对局标识，随后双方各自入场断言同一运行态对局。
 /// </summary>
+/// <remarks>
+/// Enqueues after login, then waits for a match notification or status response before entering the match.
+/// </remarks>
 public sealed partial class BotClient
 {
     /// <summary>匹配状态轮询上限（等待方兜底；推送先到则不再轮询）。</summary>
@@ -48,6 +51,8 @@ public sealed partial class BotClient
 
     /// <summary>匹配状态轮询间隔（毫秒）。</summary>
     private const int MatchStatusPollIntervalMs = 500;
+
+    private int _matchStatusPollingStarted;
 
     /// <summary>match 场景断线恢复演练延迟（秒；入场成功后到主动断开的间隔，须显著小于 30 秒重连窗）。</summary>
     private const int MatchReconnectDrillDelaySeconds = 3;
@@ -63,9 +68,12 @@ public sealed partial class BotClient
     }
 
     /// <summary>
-    /// 入队响应：即时窗口成组（MatchId≠0）直接入场；排队中转入推送等待 + 有界状态轮询。
+    /// 入队响应：成功后等待推送，并启动有界状态轮询；对局标识由后续结果提供。
     /// </summary>
-    /// <param name="msg">入队响应。</param>
+    /// <remarks>
+    /// Starts bounded status polling after enqueue succeeds; notifications or status responses supply the match ID.
+    /// </remarks>
+    /// <param name="msg">入队响应 / Enqueue response.</param>
     private void OnMatchEnqueueResponse(RespMatchEnqueue msg)
     {
         // Localization: Client.Bot.MatchEnqueue - 机器人-{0}入队响应 MatchId={1} ErrorCode={2}
@@ -75,13 +83,6 @@ public sealed partial class BotClient
             return;
         }
 
-        if (msg.MatchId != 0)
-        {
-            SendMatchEnter(msg.MatchId);
-            return;
-        }
-
-        _matchStatusPollAttempts = 0;
         ScheduleMatchStatusPoll();
     }
 
@@ -97,24 +98,25 @@ public sealed partial class BotClient
     }
 
     /// <summary>
-    /// 状态轮询响应：已撮合（MatchId≠0）入场；仍在排队则继续有界轮询。
+    /// 状态轮询响应：已撮合（MatchId≠0）入场；排队期间由既有轮询循环继续查询。
     /// </summary>
-    /// <param name="msg">状态响应。</param>
+    /// <remarks>
+    /// Enters an assigned match; the existing bounded polling loop continues querying while waiting.
+    /// </remarks>
+    /// <param name="msg">状态响应 / Status response.</param>
     private void OnMatchStatusResponse(RespMatchStatus msg)
     {
         // Localization: Client.Bot.MatchStatus - 机器人-{0}状态查询 Queuing={1} MatchId={2} ErrorCode={3}
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.Client.Bot.MatchStatus, m_BotName, msg.Queuing, msg.MatchId, msg.ErrorCode));
-        if (msg.ErrorCode != 0 || msg.MatchId != 0)
+        if (msg.ErrorCode != 0)
         {
-            if (msg.MatchId != 0)
-            {
-                SendMatchEnter(msg.MatchId);
-            }
-
             return;
         }
 
-        ScheduleMatchStatusPoll();
+        if (msg.MatchId != 0)
+        {
+            SendMatchEnter(msg.MatchId);
+        }
     }
 
     /// <summary>
@@ -214,27 +216,33 @@ public sealed partial class BotClient
     }
 
     /// <summary>
-    /// 发送入场请求（幂等守卫：推送与轮询双路径先到者生效）。
+    /// 发送入场请求（原子守卫：推送与轮询双路径先到者生效）。
     /// </summary>
-    /// <param name="matchId">对局标识。</param>
+    /// <remarks>
+    /// Atomically sends one entry request regardless of notification and status response ordering.
+    /// </remarks>
+    /// <param name="matchId">对局标识 / Match ID.</param>
     private void SendMatchEnter(long matchId)
     {
-        if (_matchEntered || matchId <= 0)
+        if (matchId <= 0 || Interlocked.CompareExchange(ref _currentMatchId, matchId, 0) != 0)
         {
             return;
         }
 
-        _matchEntered = true;
-        _currentMatchId = matchId;
+        Volatile.Write(ref _matchEntered, true);
         SendToTransport(new ReqMatchEnter { MatchId = matchId });
     }
 
     /// <summary>
-    /// 调度下一轮状态轮询（有界后台循环，RPS 轮询同型；到达上限自然退出——真会话 E2E 由 run-seconds 收口）。
+    /// 调度单个有界状态轮询循环，推送先到或达到轮询上限后退出。
     /// </summary>
+    /// <remarks>
+    /// Starts a single bounded polling loop, stopping after entry is requested or the polling limit is reached.
+    /// </remarks>
     private void ScheduleMatchStatusPoll()
     {
-        if (_matchEntered)
+        // 推送可能早于入队回执；已获对局时不再轮询，重复回执也不能启动第二个循环。
+        if (Volatile.Read(ref _matchEntered) || Interlocked.CompareExchange(ref _matchStatusPollingStarted, 1, 0) != 0)
         {
             return;
         }
@@ -243,10 +251,10 @@ public sealed partial class BotClient
         {
             try
             {
-                while (!_matchEntered && _matchStatusPollAttempts < MaxMatchStatusPolls)
+                while (!Volatile.Read(ref _matchEntered) && _matchStatusPollAttempts < MaxMatchStatusPolls)
                 {
                     await Task.Delay(MatchStatusPollIntervalMs);
-                    if (_matchEntered)
+                    if (Volatile.Read(ref _matchEntered))
                     {
                         return;
                     }

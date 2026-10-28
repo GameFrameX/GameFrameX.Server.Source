@@ -288,6 +288,11 @@ namespace GameFrameX.Tests.Online
                 return _inner.FindAsync(transactionId, cancellationToken);
             }
 
+            public Task<IReadOnlyList<OnlineAssetTransaction>> ListByCompensatesTransactionIdAsync(string compensatesTransactionId, CancellationToken cancellationToken = default)
+            {
+                return _inner.ListByCompensatesTransactionIdAsync(compensatesTransactionId, cancellationToken);
+            }
+
             public Task SaveAsync(OnlineAssetTransaction transaction, CancellationToken cancellationToken = default)
             {
                 SaveCalls++;

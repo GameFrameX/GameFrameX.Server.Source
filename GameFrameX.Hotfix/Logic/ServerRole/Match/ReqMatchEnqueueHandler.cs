@@ -40,9 +40,12 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Match;
 /// 旧 FIFO 内存池组件链随切换退役）。
 /// <para>
 /// 身份语义保持：请求主体 = 会话绑定玩家 id，未登录回 <see cref="MatchErrorCode.NotLoggedIn"/>；
-/// 错误码映射与即时窗口 / 取消终态 / 状态 / 入场语义由 <c>MatchDomainBridge</c> 统一承载。
+/// 入队成功回执的 MatchId 为 0；客户端等待匹配通知或状态查询结果后入场，错误码映射由 <c>MatchDomainBridge</c> 统一承载。
 /// </para>
 /// </summary>
+/// <remarks>
+/// Enqueue success returns MatchId 0; clients wait for a match notification or status result before entering.
+/// </remarks>
 [MessageMapping(typeof(ReqMatchEnqueue))]
 internal sealed class ReqMatchEnqueueHandler : BaseRpcMessageHandler<ReqMatchEnqueue, RespMatchEnqueue>
 {

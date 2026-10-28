@@ -46,7 +46,7 @@ namespace GameFrameX.Capability.Online.Match;
 /// 维护约束（服务共享协议）：模块无参构造（扫描可发现）；<c>Register</c> 自装配本域——对局 Actor / 结果
 /// 两个 store 走「懒默认注册 + 解析」替换缝（族 / 宿主 Override 恒胜出）；Options 经
 /// <see cref="CapabilityRegistrationContext.GetOptions{TOptions}"/> 取机制合并终值（必填传入运行时构造）；
-/// 可选依赖（online-assets 的发奖、online-matchmaking 的撮合三件套）经 <c>GetOptionalService</c> 消费——
+/// 可选依赖（online-assets 的发奖、online-matchmaking 的票据服务与存储）经 <c>GetOptionalService</c> 消费——
 /// 缺席 = 不装配对应链路且不报错（manifest 已声明可选缺席为合法态）；对局桥 / 匹配域桥迁 Activate 期发布；
 /// 撮合成功通知订阅迁 Register 期机制事件总线（域服务在场才订阅；订阅体异常由机制记日志继续，不再自吞）。
 /// </para>
@@ -56,7 +56,7 @@ namespace GameFrameX.Capability.Online.Match;
 /// settlement and the sample game; migrated by C232 P4, rewritten for the three-phase lifecycle in C294).
 /// The module has a parameterless constructor (discoverable by scanning); <c>Register</c> self-assembles the
 /// domain — the match actor / result stores ride the lazy-default-then-resolve seam; options come from the
-/// mechanism merge; optional dependencies (the assets grant and the matchmaking trio) are consumed via
+/// mechanism merge; optional dependencies (the assets grant and the matchmaking ticket service and store) are consumed via
 /// <c>GetOptionalService</c> — absence means the corresponding chain is simply not assembled; the game and
 /// match-domain bridges publish during activation; the match-made notification subscription moved onto the
 /// mechanism event bus during Register (only when the domain service is assembled).
@@ -116,12 +116,12 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
     /// <summary>
     /// 注册对局能力：注册内存对局 Actor 存储与结果存储，构造对局运行时并注册石头剪刀布玩法与对局 tick 任务；
     /// 装配结算服务与结算管线（资产发放服务缺席时只结算不派发）并注册结算 tick 任务；构造并注册对局桥服务；
-    /// 仅当票据服务、撮合协调器与票据存储均在场时才装配匹配域服务并订阅撮合分配事件，缺席时不装配也不报错。
+    /// 仅当票据服务与票据存储均在场时才装配匹配域服务并订阅撮合分配事件，缺席时不装配也不报错。
     /// </summary>
     /// <remarks>
     /// Registers in-memory match actor and result stores, builds the match runtime with the rock-paper-scissors game and a match tick job,
     /// wires the settlement service and pipeline (settle-only when the grant service is absent) with a settlement tick job, registers the game bridge service,
-    /// and only when ticket service, matchmaker coordinator and ticket store are all present builds the match domain service and subscribes to assignment-created events; otherwise it silently skips.
+    /// and only when ticket service and ticket store are present builds the match domain service and subscribes to assignment-created events; otherwise it silently skips.
     /// </remarks>
     /// <param name="context">能力注册上下文 / Capability registration context</param>
     public void Register(CapabilityRegistrationContext context)
@@ -149,15 +149,14 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
         _bridgeService = new OnlineMatchGameBridgeService(_matchRuntime, rpsGame);
         context.AddService<IOnlineMatchGameBridge>(_bridgeService);
 
-        // 匹配域桥服务（C246）：桥接票据撮合域（入队 / 取消 / 状态 / 即时窗口）与对局运行时（入场 create-or-reuse）。
-        // 票据服务 / 撮合协调器 / 票据存储按可选依赖语义解析（manifest 已声明 online-matchmaking 可选）；
+        // 匹配域桥接票据入队 / 取消 / 状态与对局入场；撮合由匹配能力的定时任务统一驱动。
+        // 票据服务与票据存储按可选依赖语义解析（manifest 已声明 online-matchmaking 可选）；
         // 在场才装配域服务并订阅撮合分配通知；缺席 = 不装配不报错——420 协议面经桥得显式失败。
         var domainTickets = context.GetOptionalService<OnlineMatchTicketService>();
-        var domainCoordinator = context.GetOptionalService<OnlineMatchmakerCoordinator>();
         var domainTicketStore = context.GetOptionalService<IOnlineMatchTicketStore>();
-        if (domainTickets != null && domainCoordinator != null && domainTicketStore != null)
+        if (domainTickets != null && domainTicketStore != null)
         {
-            _matchDomain = new OnlineMatchDomainService(domainTicketStore, domainTickets, domainCoordinator, _matchRuntime, rpsGame, options.Registry);
+            _matchDomain = new OnlineMatchDomainService(domainTicketStore, domainTickets, _matchRuntime, rpsGame, options.Registry);
             context.AddService<IOnlineMatchDomain>(_matchDomain);
             context.Subscribe<OnlineEvent>(OnlineMatchEvents.AssignmentCreated, onlineEvent => HandleMatchAssignmentEvent(onlineEvent, _matchDomain));
         }

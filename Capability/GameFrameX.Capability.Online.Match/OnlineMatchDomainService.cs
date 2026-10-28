@@ -34,10 +34,9 @@ namespace GameFrameX.Capability.Online.Match;
 ///（入队 / 取消 / 状态 / 入场）到票据撮合域与对局运行时的桥接编排。
 /// <para>
 /// 维护约束（红线）：
-/// ① 匹配池唯一权威 = 票据域——入队经 <see cref="OnlineMatchTicketService"/>、撮合经
-/// <see cref="OnlineMatchmakerCoordinator"/>（同一票据存储），本类不持有任何队列或池副本；
-/// ② 即时窗口兼容：入队建票后同步执行一轮撮合（对手已在池时本轮即成组，响应即刻带数值对局标识，
-/// 等价旧 FIFO 链第二人入队即配对的可观测行为）；等待方经状态轮询 / 通知获知；
+/// ① 匹配池唯一权威 = 票据域——入队经 <see cref="OnlineMatchTicketService"/>、撮合由宿主定时任务经
+/// <see cref="OnlineMatchmakerCoordinator"/> 批量执行（同一票据存储），本类不持有任何队列或池副本；
+/// ② 入队只建票并返回排队回执，不触发撮合或扫描匹配池；双方经状态轮询 / 通知获取撮合结果；
 /// ③ 数值对局标识登记表（assignment → 协议数值 id 单射）是本类唯一的派生状态——InMemory、
 /// 重启即失效（与榜单同款易失边界）；对局终态后按 <see cref="OnlineMatchRegistryOptions"/> 的生命周期
 /// 过期清扫（登记表访问时惰性触发，不设独立定时器），过期项移除后懒登记重建将分配新数值标识
@@ -64,9 +63,6 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
 
     /// <summary>票据服务（入队 / 取消的唯一裁决入口）。</summary>
     private readonly OnlineMatchTicketService _tickets;
-
-    /// <summary>撮合协调器（即时窗口一轮撮合的执行者）。</summary>
-    private readonly OnlineMatchmakerCoordinator _coordinator;
 
     /// <summary>对局运行时（入场 create-or-reuse 的 Actor 属主）。</summary>
     private readonly OnlineMatchRuntime _runtime;
@@ -99,15 +95,13 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
     /// </summary>
     /// <param name="store">票据存储。</param>
     /// <param name="tickets">票据服务。</param>
-    /// <param name="coordinator">撮合协调器。</param>
     /// <param name="runtime">对局运行时。</param>
     /// <param name="game">入场绑定的玩法实现。</param>
     /// <param name="registry">登记表清扫参数（空引用时取默认；生命周期非正值回退默认，节流间隔负值回退默认、零表示禁用节流）。</param>
-    public OnlineMatchDomainService(IOnlineMatchTicketStore store, OnlineMatchTicketService tickets, OnlineMatchmakerCoordinator coordinator, OnlineMatchRuntime runtime, IOnlineMatchGame game, OnlineMatchRegistryOptions registry)
+    public OnlineMatchDomainService(IOnlineMatchTicketStore store, OnlineMatchTicketService tickets, OnlineMatchRuntime runtime, IOnlineMatchGame game, OnlineMatchRegistryOptions registry)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _tickets = tickets ?? throw new ArgumentNullException(nameof(tickets));
-        _coordinator = coordinator ?? throw new ArgumentNullException(nameof(coordinator));
         _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
         _reconnect = new OnlineMatchReconnectService(runtime);
         _game = game ?? throw new ArgumentNullException(nameof(game));
@@ -144,18 +138,18 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
 
     /// <summary>
     /// 为玩家创建单人匹配票据：依次校验作用域、模式（仅允许 1 或 2）与评分（须大于 0），以默认区域和评分上下窗口建票；
-    /// 建票成功后同步执行一轮撮合，再按玩家最新票据解析已撮合的数值对局标识（未撮合时为 0）。
+    /// 建票成功后返回 <c>MatchId=0</c>；定时批次撮合后，玩家经通知或状态查询获取数值对局标识。
     /// </summary>
     /// <remarks>
     /// Validates scope, mode (only 1 or 2) and rating (must be positive), enqueues a solo ticket in the default region with a rating window,
-    /// runs one immediate matchmaking pass, then resolves the numeric match id from the player's latest ticket (0 when not yet matched).
+    /// returns MatchId=0 after enqueueing; a scheduled batch matches tickets and exposes the numeric match id through notifications or status queries.
     /// Invalid mode or rating fails with <c>ParameterInvalid</c>; ticket service failures are propagated.
     /// </remarks>
     /// <param name="scope">玩家作用域 / Player scope</param>
     /// <param name="mode">匹配模式，仅允许 1 或 2 / Match mode, only 1 or 2 allowed</param>
     /// <param name="rating">玩家评分，须大于 0 / Player rating, must be positive</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
-    /// <returns>入队结果，成功时携带已撮合的对局标识（未撮合为 0） / Enqueue result carrying the matched id (0 if not matched) on success</returns>
+    /// <returns>入队结果，成功时 MatchId 为 0，撮合结果由后续通知或状态查询提供 / Enqueue receipt with MatchId=0; obtain the match through notifications or status queries</returns>
     public async Task<OnlineResult<OnlineMatchDomainEnqueue>> EnqueueAsync(OnlineScope scope, int mode, int rating, CancellationToken cancellationToken = default)
     {
         var enqueueScopeFailure = ValidateScope(scope);
@@ -188,12 +182,7 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
             return OnlineResult<OnlineMatchDomainEnqueue>.Fail(enqueued.Code, enqueued.Message);
         }
 
-        // 即时窗口：建票后同步跑一轮撮合（同一票据存储 = 同一池权威；tick 任务与本轮互为冗余兜底）。
-        await _coordinator.RunOnceAsync(scope.TenantId, scope.AppId, 0, cancellationToken).ConfigureAwait(false);
-
-        var latest = await _store.FindLatestByPlayerAsync(scope.TenantId, scope.AppId, scope.PlayerId, cancellationToken).ConfigureAwait(false);
-        var matchId = await ResolveMatchedNumericAsync(latest, cancellationToken).ConfigureAwait(false);
-        return OnlineResult<OnlineMatchDomainEnqueue>.Ok(new OnlineMatchDomainEnqueue { MatchId = matchId });
+        return OnlineResult<OnlineMatchDomainEnqueue>.Ok(new OnlineMatchDomainEnqueue { MatchId = 0 });
     }
 
     /// <summary>

@@ -59,4 +59,10 @@ public interface IOnlineAssetTransactionStore
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>匹配状态的交易记录列表。</returns>
     Task<IReadOnlyList<OnlineAssetTransaction>> ListByStateAsync(OnlineAssetTransactionState state, CancellationToken cancellationToken = default);
+
+    /// <summary>列举指向指定原交易的补偿交易记录（补偿落账前查重输入）。</summary>
+    /// <param name="compensatesTransactionId">被补偿的原交易标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>指向该原交易的补偿交易记录列表。</returns>
+    Task<IReadOnlyList<OnlineAssetTransaction>> ListByCompensatesTransactionIdAsync(string compensatesTransactionId, CancellationToken cancellationToken = default);
 }
