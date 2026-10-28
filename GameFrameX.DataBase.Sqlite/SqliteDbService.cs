@@ -157,6 +157,15 @@ public sealed partial class SqliteDbService : IDatabaseService
     private readonly ConcurrentDictionary<string, Lazy<Task>> _tableReady = new();
 
     /// <summary>
+    /// 状态类型 → 声明式唯一索引集缓存（进程级；反射结果只与类型相关，与连接/实例无关）。
+    /// </summary>
+    /// <remarks>
+    /// Process-wide cache of state type to declared unique-index set. The reflected result depends only on
+    /// the type (never on the connection or the service instance), so one static cache serves every instance.
+    /// </remarks>
+    private static readonly ConcurrentDictionary<Type, (System.Reflection.PropertyInfo Property, string IndexName, string JsonName)[]> UniqueIndexDeclarationCache = new();
+
+    /// <summary>
     /// 当前数据库配置选项（Open 成功后可用）。
     /// </summary>
     /// <remarks>
