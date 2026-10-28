@@ -547,6 +547,9 @@
     <data name="StartUp.Application.SigtermSignalReceived" xml:space="preserve">
     <value>SIGTERM signal received and exit handler registered</value>
   </data>
+  <data name="StartUp.Application.ShutdownWaitTimeout" xml:space="preserve">
+    <value>Timed out after {0} seconds waiting for the shutdown task to complete; the process will exit before graceful shutdown finishes</value>
+  </data>
 
     <!-- Core module log messages -->
     <!-- Actor related messages -->

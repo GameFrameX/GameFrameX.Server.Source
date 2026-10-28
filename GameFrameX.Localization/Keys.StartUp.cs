@@ -807,6 +807,16 @@ public static partial class Keys
             public const string SigtermSignalReceived = "StartUp.Application.SigtermSignalReceived";
 
             /// <summary>
+            /// 等待停机任务完成超时（{0} 秒），进程将在停机流程完成前退出
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.Application.ShutdownWaitTimeout
+            /// 用途: 进程退出路径有界等待停机任务超时时记录错误
+            /// 参数: {0} - 超时秒数
+            /// </remarks>
+            public const string ShutdownWaitTimeout = "StartUp.Application.ShutdownWaitTimeout";
+
+            /// <summary>
             /// 至少需要一个冲突项
             /// </summary>
             /// <remarks>

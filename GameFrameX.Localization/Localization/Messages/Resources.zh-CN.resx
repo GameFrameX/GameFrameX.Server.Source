@@ -577,6 +577,9 @@
     <data name="StartUp.Application.SigtermSignalReceived" xml:space="preserve">
     <value>接收到SIGTERM信号并注册退出处理程序</value>
   </data>
+  <data name="StartUp.Application.ShutdownWaitTimeout" xml:space="preserve">
+    <value>等待停机任务完成超时（{0} 秒），进程将在停机流程完成前退出</value>
+  </data>
 
     <!-- Core 模块日志消息 -->
     <!-- Actor 相关消息 -->
