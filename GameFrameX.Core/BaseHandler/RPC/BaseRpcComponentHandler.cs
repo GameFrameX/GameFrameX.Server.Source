@@ -131,53 +131,57 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
             return Task.CompletedTask;
         }
 
-        async Task Work()
+        CacheComponent.Tell(() => ExecuteWorkAsync(cancellationToken), timeout, cancellationToken);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 在组件代理上执行内部处理并回写响应（由 <see cref="InnerActionAsync"/> 调度）
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    private async Task ExecuteWorkAsync(CancellationToken cancellationToken)
+    {
+        var response = MessageObjectPoolHelper.Get<TResponse>();
+        var requestId = RequestMessage.UniqueId;
+        try
         {
-            var response = MessageObjectPoolHelper.Get<TResponse>();
-            var requestId = RequestMessage.UniqueId;
             try
             {
-                try
-                {
-                    await InnerActionCoreAsync(RequestMessage, response, cancellationToken);
-                    response?.SetUniqueId(requestId);
-                }
-                catch (RpcException e)
-                {
-                    if (response != null)
-                    {
-                        response.ErrorCode = e.ErrorCode;
-                    }
-                }
-                catch (Exception e)
-                {
-                    // Localization: Core.MessageHandler.InnerActionError - 内部操作错误: {0} {1}
-                    LogHelper.Error(e, LocalizationService.GetString(Localization.Keys.Core.MessageHandler.InnerActionError, RequestMessage.GetType().FullName, RequestMessage));
-                    if (response != null && response.ErrorCode == 0)
-                    {
-                        response.ErrorCode = OperationErrorCode.InternalServerError;
-                    }
-                }
-
-                if (NetworkChannel == null || NetworkChannel.IsClosed() || response == null)
-                {
-                    return;
-                }
-
-                await NetworkChannel.WriteAsync(response);
+                await InnerActionCoreAsync(RequestMessage, response, cancellationToken);
+                response?.SetUniqueId(requestId);
             }
-            finally
+            catch (RpcException e)
             {
-                // 任意路径（含通道关闭早退、写通道异常）均归还响应对象，避免对象池耗尽
                 if (response != null)
                 {
-                    MessageObjectPoolHelper.Return(response);
+                    response.ErrorCode = e.ErrorCode;
                 }
             }
-        }
+            catch (Exception e)
+            {
+                // Localization: Core.MessageHandler.InnerActionError - 内部操作错误: {0} {1}
+                LogHelper.Error(e, LocalizationService.GetString(Localization.Keys.Core.MessageHandler.InnerActionError, RequestMessage.GetType().FullName, RequestMessage));
+                if (response != null && response.ErrorCode == 0)
+                {
+                    response.ErrorCode = OperationErrorCode.InternalServerError;
+                }
+            }
 
-        CacheComponent.Tell(Work, timeout, cancellationToken);
-        return Task.CompletedTask;
+            if (NetworkChannel == null || NetworkChannel.IsClosed() || response == null)
+            {
+                return;
+            }
+
+            await NetworkChannel.WriteAsync(response);
+        }
+        finally
+        {
+            // 任意路径（含通道关闭早退、写通道异常）均归还响应对象，避免对象池耗尽
+            if (response != null)
+            {
+                MessageObjectPoolHelper.Return(response);
+            }
+        }
     }
 
     /// <summary>
