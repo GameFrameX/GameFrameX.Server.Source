@@ -2564,6 +2564,10 @@
     <value>No registered startup type found for server type '{0}' (multi-role selection); skipped it.</value>
   </data>
 
+  <data name="StartUp.Application.RequestedServerTypeNotRegistered" xml:space="preserve">
+    <value>The requested server type '{0}' matches no registered startup type; refusing to start (exit code 1).</value>
+  </data>
+
   <data name="StartUp.Application.ServerTypeCommaNotAllowed" xml:space="preserve">
     <value>Server type '{0}' contains a comma and was not registered; role names are identifiers and must not contain commas (the --ServerType list separator).</value>
   </data>

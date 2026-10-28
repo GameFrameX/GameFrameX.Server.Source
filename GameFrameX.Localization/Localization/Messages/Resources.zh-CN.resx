@@ -2563,6 +2563,10 @@
     <value>未找到服务器类型 '{0}' 的已注册启动类型（多角色选择）；已跳过。</value>
   </data>
 
+  <data name="StartUp.Application.RequestedServerTypeNotRegistered" xml:space="preserve">
+    <value>指定的服务器类型 '{0}' 未注册任何启动类型，拒绝启动（退出码 1）。</value>
+  </data>
+
   <data name="StartUp.Application.ServerTypeCommaNotAllowed" xml:space="preserve">
     <value>服务器类型 '{0}' 含逗号，已拒绝注册；Role 名为标识符，不得包含逗号（--ServerType 列表分隔符）。</value>
   </data>

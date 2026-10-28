@@ -612,6 +612,13 @@ public static class GameApp
         var appSettings = GlobalSettings.GetSettings();
         var selectedStartUpTypes = SelectStartUpTypes(launcherOptions, sortedStartUpTypes);
 
+        // 显式指定了 --ServerType（非 AllInOne 覆盖）却未命中任何已注册 Role：以非零退出码拒启，
+        // 避免零监听器静默退出码 0 被守护系统视为正常退出（C364）
+        if (selectedStartUpTypes.Count == 0 && ShouldAbortForUnresolvedServerTypes(launcherOptions))
+        {
+            AbortStartupForUnresolvedServerTypes(launcherOptions);
+        }
+
         // Role 实例化前的唯一收口点做启动期校验（选中集合 + 文件段 + CLI 选项 + 原始参数齐备），
         // 冲突 fail fast 抛 ConfigConflictException，先于任何 Role 拉起
         ConfigStartupValidator.Validate(
@@ -627,6 +634,59 @@ public static class GameApp
     }
 
     /// <summary>
+    /// 指定 ServerType 未命中拒启的进程退出码（守护系统按失败处理触发重启/告警）。
+    /// </summary>
+    /// <remarks>
+    /// The process exit code used when an explicitly requested server type matches no registered role,
+    /// so supervisor systems (systemd / Docker / Kubernetes) treat the stop as a failure and restart/alert.
+    /// </remarks>
+    internal const int UnresolvedServerTypeExitCode = 1;
+
+    /// <summary>
+    /// 进程退出缝：缺省 <see cref="Environment.Exit(int)"/>，测试可替换捕获退出码（D20 台账测试缝）。
+    /// </summary>
+    /// <remarks>
+    /// Process exit seam: defaults to <see cref="Environment.Exit(int)"/>; tests may replace it to capture the exit code
+    /// (registered in the startup spec global-state ledger D20).
+    /// </remarks>
+    internal static Action<int> AbortProcess = static exitCode => Environment.Exit(exitCode);
+
+    /// <summary>
+    /// 判定是否应对「显式指定的 ServerType 未命中任何已注册 Role」执行拒启中止。
+    /// </summary>
+    /// <remarks>
+    /// Decides whether an empty selection should abort startup: only when server types were explicitly
+    /// requested on the command line (plural or single) and <c>--AllInOne</c> is not overriding the selection.
+    /// The default tier (no <c>--ServerType</c>) keeps the silent current behaviour.
+    /// </remarks>
+    /// <param name="launcherOptions">单一 OptionsBuilder 解析产物 / The single OptionsBuilder parse result</param>
+    /// <returns>显式点名且非 AllInOne 覆盖时为 true（调用方在选中集合为空时据此中止）/ True when server types were explicitly requested and --AllInOne is not overriding the selection</returns>
+    internal static bool ShouldAbortForUnresolvedServerTypes(StartupOptions launcherOptions)
+    {
+        ArgumentNullException.ThrowIfNull(launcherOptions);
+
+        return !launcherOptions.AllInOne && launcherOptions.GetServerTypes().Length > 0;
+    }
+
+    /// <summary>
+    /// 显式指定的 ServerType 未命中任何已注册 Role：记 Error 后以非零退出码拒绝启动。
+    /// </summary>
+    /// <remarks>
+    /// Refuses to start when the explicitly requested server types match no registered role:
+    /// logs an error and terminates through <see cref="AbortProcess"/> with
+    /// <see cref="UnresolvedServerTypeExitCode"/> so the supervisor system restarts/alerts instead of
+    /// treating a zero-listener start as a normal exit.
+    /// </remarks>
+    /// <param name="launcherOptions">单一 OptionsBuilder 解析产物 / The single OptionsBuilder parse result</param>
+    internal static void AbortStartupForUnresolvedServerTypes(StartupOptions launcherOptions)
+    {
+        // Localization: StartUp.Application.RequestedServerTypeNotRegistered - 指定的服务器类型 '{0}' 未注册任何启动类型，拒绝启动（退出码 1）。
+        LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.Application.RequestedServerTypeNotRegistered, string.Join(",", launcherOptions.GetServerTypes())));
+        AbortProcess(UnresolvedServerTypeExitCode);
+    }
+
+
+    /// <summary>
     /// 按 All-in-One 选项选定要拉起的 Role 集合（结果保持优先级序）。
     /// </summary>
     /// <remarks>
@@ -635,7 +695,7 @@ public static class GameApp
     /// <list type="bullet">
     /// <item><c>--AllInOne</c> → every registered role.</item>
     /// <item>plural <c>--ServerType</c> (more than one name) → the registered matches, unregistered names are skipped with a warning.</item>
-    /// <item>single <c>--ServerType</c> → the single match, or nothing when unregistered (current behaviour: silent skip).</item>
+    /// <item>single <c>--ServerType</c> → the single match; when unregistered the caller aborts startup with a non-zero exit code (C364) instead of silently skipping.</item>
     /// <item>no value → the first available role in priority order (current behaviour).</item>
     /// </list>
     /// </remarks>
