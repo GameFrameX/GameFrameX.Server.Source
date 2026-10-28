@@ -462,6 +462,136 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 验证推送在途（租约有效）期间 TTL 到期，过期清扫**不得击落**在途记录（GFX-1081 主场景）。
+        /// <para>
+        /// 场景：推送出口已发出、回执未回，记录停在 <see cref="OnlineNotificationState.Queued"/> 且带在途租约；
+        /// TTL 恰在此窗口内到期，清扫轮照常运转。若清扫直接把记录 CAS 成
+        /// <see cref="OnlineNotificationState.Expired"/>，推送落定的 CAS 就会失败并收敛成过期——
+        /// 推送明明可能成功，玩家却拿不到通知。租约期内清扫必须跳过，等持有方落定。
+        /// </para>
+        /// </summary>
+        [Fact]
+        public async Task SweepExpiredAsync_WhenDispatchLeaseActive_ShouldNotExpireInFlightNotification()
+        {
+            // Arrange：TTL 200ms，推送停在出口内部（在途 + 默认 30s 租约）。
+            var dispatcher = new StubNotificationDispatcher
+            {
+                Mode = DispatchMode.GatedDeliver,
+            };
+            var service = CreateService(out _, dispatcher);
+            var scope = CreateReceiverScope(ReceiverId);
+            var expiresAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 200;
+
+            // Act：推送在途，TTL 到期后跑一轮清扫。
+            var inFlight = service.EnqueueAsync(scope, OnlineNotificationKind.Mail, DedupeKey, PayloadBody, expiresAt);
+            await dispatcher.Entered;
+            await Task.Delay(450);
+
+            var sweep = await service.SweepExpiredAsync(TenantId, AppId);
+
+            // Assert：租约保护生效，本轮零终结，记录仍在途。
+            Assert.True(sweep.IsSuccess);
+            Assert.Equal(0, sweep.Data);
+            var stillQueued = await service.ListAsync(scope, true);
+            Assert.True(stillQueued.IsSuccess);
+            Assert.Equal(OnlineNotificationState.Queued, Assert.Single(stillQueued.Data).State);
+
+            // 放行推送：落定 CAS 成功落 Delivered，租约随之清零。
+            dispatcher.Release();
+            var first = await inFlight;
+            Assert.True(first.IsSuccess);
+            Assert.Equal(OnlineNotificationState.Delivered, first.Data.State);
+            Assert.Equal(0, first.Data.DispatchLeaseUntilTime);
+            Assert.Equal(1, dispatcher.DispatchCount);
+        }
+
+        /// <summary>
+        /// 验证租约耗尽后的死在途记录仍被清扫按 TTL 回收（死在途回收路径保留，不泄漏）。
+        /// <para>
+        /// 场景：推送出口挂起不回（进程消失的等价物），租约（此处压到 1 秒）耗尽且 TTL 到期；
+        /// 清扫应终结它。此后迟到的推送落定 CAS 失败，收敛返回 Expired——「宁可漏推、不可重复消费」。
+        /// </para>
+        /// </summary>
+        [Fact]
+        public async Task SweepExpiredAsync_WhenDispatchLeaseLapsed_ShouldExpireAbandonedQueuedNotification()
+        {
+            // Arrange：1 秒租约 + TTL 200ms，推送停在出口内部且不放行。
+            var dispatcher = new StubNotificationDispatcher
+            {
+                Mode = DispatchMode.GatedDeliver,
+            };
+            var service = CreateService(out _, dispatcher, dispatchLeaseSeconds: 1);
+            var scope = CreateReceiverScope(ReceiverId);
+            var expiresAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 200;
+
+            // Act：租约与 TTL 都耗尽后跑一轮清扫。
+            var inFlight = service.EnqueueAsync(scope, OnlineNotificationKind.Mail, DedupeKey, PayloadBody, expiresAt);
+            await dispatcher.Entered;
+            await Task.Delay(1_400);
+
+            var sweep = await service.SweepExpiredAsync(TenantId, AppId);
+
+            // Assert：死在途被终结。
+            Assert.True(sweep.IsSuccess);
+            Assert.Equal(1, sweep.Data);
+            var history = await service.ListAsync(scope, true);
+            Assert.True(history.IsSuccess);
+            Assert.Equal(OnlineNotificationState.Expired, Assert.Single(history.Data).State);
+
+            // 迟到的推送落定：CAS 失败 → 收敛返回 Expired，不复活、不重推。
+            dispatcher.Release();
+            var first = await inFlight;
+            Assert.True(first.IsSuccess);
+            Assert.Equal(OnlineNotificationState.Expired, first.Data.State);
+            Assert.Equal(1, dispatcher.DispatchCount);
+        }
+
+        /// <summary>
+        /// 验证推送在途（租约有效）且 TTL 已到期时，并发第二次推送的过期兜底**不得击落**在途记录
+        /// （GFX-1081 第二入口：终结权不只清扫有，推送入口自己的过期兜底同样拿得到 CAS）。
+        /// <para>
+        /// 第二次推送应被「已在途」照常拒绝（状态机自环），而非把记录就地终结成 Expired。
+        /// </para>
+        /// </summary>
+        [Fact]
+        public async Task TryDispatchAsync_WhenDispatchInFlightAndExpired_ShouldNotTerminateLeasedNotification()
+        {
+            // Arrange：TTL 200ms，第一次推送停在出口内部（在途 + 默认 30s 租约）。
+            var dispatcher = new StubNotificationDispatcher
+            {
+                Mode = DispatchMode.GatedDeliver,
+            };
+            var service = CreateService(out _, dispatcher);
+            var scope = CreateReceiverScope(ReceiverId);
+            var expiresAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 200;
+
+            // Act：推送在途，TTL 到期后并发第二次推送。
+            var inFlight = service.EnqueueAsync(scope, OnlineNotificationKind.Mail, DedupeKey, PayloadBody, expiresAt);
+            await dispatcher.Entered;
+            await Task.Delay(450);
+
+            var listed = await service.ListAsync(scope, true);
+            Assert.True(listed.IsSuccess);
+            var notificationId = Assert.Single(listed.Data).NotificationId;
+            var repeated = await service.TryDispatchAsync(TenantId, AppId, ReceiverId, notificationId);
+
+            // Assert：第二次被「已在途」拦下（而非就地终结成 Expired），记录原样在途。
+            Assert.False(repeated.IsSuccess);
+            Assert.Equal(OnlineErrorCode.StateOperationForbidden, repeated.Code);
+            var stillQueued = await service.ListAsync(scope, true);
+            Assert.True(stillQueued.IsSuccess);
+            Assert.Equal(OnlineNotificationState.Queued, Assert.Single(stillQueued.Data).State);
+
+            // 放行推送：首次推送正常落 Delivered。
+            dispatcher.Release();
+            var first = await inFlight;
+            Assert.True(first.IsSuccess);
+            Assert.Equal(OnlineNotificationState.Delivered, first.Data.State);
+            Assert.Equal(1, dispatcher.DispatchCount);
+        }
+
+
+        /// <summary>
         /// 验证入队时已超期的通知**不推送给玩家**、直接终结为 Expired（过期丢弃、不误导玩家）。
         /// <para>
         /// 这条用例锁的是推送入口的过期兜底：扫描轮是周期性的，扫描间隔内到期的记录扫不到，
@@ -604,11 +734,12 @@ namespace GameFrameX.Tests.Online
         /// <param name="recorder">事件记录桩。</param>
         /// <param name="dispatcher">推送出口桩（可为空，表示未装配推送出口）。</param>
         /// <param name="maxAttempts">最大推送尝试次数（含首次）。</param>
+        /// <param name="dispatchLeaseSeconds">推送租约时长（秒；死在途回收用例压短用）。</param>
         /// <returns>通知服务实例。</returns>
-        private static OnlineNotificationService CreateService(out OnlineEventRecorder recorder, IOnlineNotificationDispatcher dispatcher, int maxAttempts = 5)
+        private static OnlineNotificationService CreateService(out OnlineEventRecorder recorder, IOnlineNotificationDispatcher dispatcher, int maxAttempts = 5, int dispatchLeaseSeconds = 30)
         {
             recorder = new OnlineEventRecorder();
-            return new OnlineNotificationService(new InMemoryOnlineNotificationStore(), recorder, dispatcher, maxAttempts);
+            return new OnlineNotificationService(new InMemoryOnlineNotificationStore(), recorder, dispatcher, maxAttempts, 604800, dispatchLeaseSeconds);
         }
 
         /// <summary>

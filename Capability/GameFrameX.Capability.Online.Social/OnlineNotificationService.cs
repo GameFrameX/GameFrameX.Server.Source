@@ -47,7 +47,11 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 /// 既不报错也不覆盖并发结果（收敛语义对齐 <see cref="OnlineFriendService"/>）；
 /// ④ 推送出口未装配（<c>dispatcher == null</c>）等价于「推送失败且可重试」——通知留在队列里等
 /// <see cref="BackfillAsync"/> / <see cref="RetryPendingAsync"/>，不得据此判定玩家离线或丢弃通知；
-/// ⑤ 重复入队**不重发**：去重命中即返回，是否再推由补发与重试路径决定（否则去重形同虚设）。
+/// ⑤ 重复入队**不重发**：去重命中即返回，是否再推由补发与重试路径决定（否则去重形同虚设）；
+/// ⑥ **在途记录受推送租约保护**——落 Queued 的 CAS 内写入
+/// <see cref="OnlineNotification.DispatchLeaseUntilTime"/>，落定的 CAS 内原子清零；
+/// 过期清扫与推送入口的过期兜底都不得终结租约未失效的记录（推送可能正在落定，
+/// 击落即「玩家未收到、记录已过期」），租约耗尽的死在途记录仍由清扫按 TTL 回收。
 /// </para>
 /// </summary>
 public sealed class OnlineNotificationService
@@ -77,6 +81,9 @@ public sealed class OnlineNotificationService
     /// <summary>默认有效期（秒；&lt;= 0 表示默认不设有效期）。</summary>
     private readonly long _defaultTimeToLiveSeconds;
 
+    /// <summary>推送租约时长（毫秒；在途记录免被过期清扫击落的保护窗）。</summary>
+    private readonly int _dispatchLeaseMilliseconds;
+
     /// <summary>
     /// 初始化 <see cref="OnlineNotificationService"/>。
     /// </summary>
@@ -85,18 +92,22 @@ public sealed class OnlineNotificationService
     /// <param name="dispatcher">推送出口（可空）。</param>
     /// <param name="maxAttempts">最大推送尝试次数（默认 5；&lt;= 0 时回退默认值）。</param>
     /// <param name="defaultTimeToLiveSeconds">默认有效期（秒；默认 604800 即 7 天；&lt;= 0 表示不设有效期）。</param>
+    /// <param name="dispatchLeaseSeconds">推送租约时长（秒；默认 30。在途记录在租约期内不被过期清扫终结；
+    /// &lt;= 0 时回退默认值。过短会回退成「TTL 到期即击落」，过长会延迟死在途回收）。</param>
     public OnlineNotificationService(
         IOnlineNotificationStore store,
         IOnlineEventPublisher eventPublisher,
         IOnlineNotificationDispatcher dispatcher = null,
         int maxAttempts = 5,
-        long defaultTimeToLiveSeconds = 604800)
+        long defaultTimeToLiveSeconds = 604800,
+        int dispatchLeaseSeconds = 30)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _eventPublisher = eventPublisher ?? throw new ArgumentNullException(nameof(eventPublisher));
         _dispatcher = dispatcher;
         _maxAttempts = maxAttempts > 0 ? maxAttempts : 5;
         _defaultTimeToLiveSeconds = defaultTimeToLiveSeconds;
+        _dispatchLeaseMilliseconds = (dispatchLeaseSeconds > 0 ? dispatchLeaseSeconds : 30) * 1000;
     }
 
     /// <summary>
@@ -142,6 +153,7 @@ public sealed class OnlineNotificationService
             State = OnlineNotificationState.Created,
             AttemptCount = 0,
             LastError = string.Empty,
+            DispatchLeaseUntilTime = 0,
             CreatedAtTime = now,
             UpdatedAtTime = now,
         };
@@ -182,8 +194,13 @@ public sealed class OnlineNotificationService
     /// <para>
     /// 「不重复推送」的判定落在<b>状态机</b>上而非调用方自觉：已在途（<see cref="OnlineNotificationState.Queued"/>）
     /// 的记录同样被拒（自环非合法边）。在途意味着另一个调用方正停在推送出口内，放行就是玩家收到两条同样的推送。
-    /// 代价（天花板）：若推送出口在回执前随进程一起消失，这条在途记录无人敢再投，只能等 TTL 到期被扫描轮终结——
-    /// 用「宁可漏推、不可重复消费」换的确定性；跨进程的在途回收（带超时的租约）归运行时的持久化存储层。
+    /// </para>
+    /// <para>
+    /// **推送租约**：落 Queued 的 CAS 同时写入 <see cref="OnlineNotification.DispatchLeaseUntilTime"/>
+    /// （now + 租约时长），落定的 CAS 同时清零——清扫与过期兜底在租约期内都不得终结这条记录，
+    /// 否则就会出现「推送出口已成功、记录却被并发置 Expired」的漏推（GFX-1081）。
+    /// 代价（天花板）：推送耗时超过租约后记录重新可被清扫终结；推送出口随进程消失留下的死在途记录，
+    /// 同样等租约耗尽后被扫描轮按 TTL 回收——用「宁可漏推、不可重复消费」换的确定性。
     /// </para>
     /// <para>
     /// 过期兜底：<see cref="SweepExpiredAsync"/> 是**周期性**扫描，扫描间隔内到期的通知不会被它拦住；
@@ -235,7 +252,9 @@ public sealed class OnlineNotificationService
         attempt.State = OnlineNotificationState.Queued;
         attempt.AttemptCount = current.AttemptCount + 1;
         attempt.UpdatedAtTime = now;
+        attempt.DispatchLeaseUntilTime = now + _dispatchLeaseMilliseconds;
         // 期望值含尝试次数：并发第二次推送读到的是同一份旧快照，此处必然 CAS 失败，不会重复调用推送出口。
+        // 租约与在途标记同一次 CAS 落定：不存在「已 Queued 却无租约」的可击落窗口。
         var queued = await _store.ReplaceAsync(attempt, current.State, current.AttemptCount, cancellationToken).ConfigureAwait(false);
         if (queued == null)
         {
@@ -402,8 +421,10 @@ public sealed class OnlineNotificationService
     /// <summary>
     /// 扫描并终结超期通知（置 <see cref="OnlineNotificationState.Expired"/>）。
     /// <para>
-    /// 只处理「非终态 + 设了有效期 + 已到期」的记录；<see cref="OnlineNotification.ExpiresAtTime"/> 为 0 的
-    /// 记录永不失效，不参与扫描。终态记录不可再迁移，扫描时直接跳过。
+    /// 只处理「非终态 + 设了有效期 + 已到期 + **无在途租约**」的记录；<see cref="OnlineNotification.ExpiresAtTime"/>
+    /// 为 0 的记录永不失效，不参与扫描。终态记录不可再迁移，扫描时直接跳过。
+    /// 租约未失效的在途（Queued）记录跳过——推送可能正在落定，击落即漏推（GFX-1081）；
+    /// 租约已耗尽的在途记录（推送出口随进程消失的死在途）照常终结，这是死在途回收的唯一路径。
     /// </para>
     /// </summary>
     /// <param name="tenantId">租户标识。</param>
@@ -425,9 +446,17 @@ public sealed class OnlineNotificationService
                     continue;
                 }
 
+                if (notification.DispatchLeaseUntilTime > now)
+                {
+                    // 在途租约未失效：推送出口可能正带着这条记录在飞，终结它就是「玩家未收到、记录已过期」；
+                    // 留给持有方落定，或等租约耗尽后由后续轮次回收。
+                    continue;
+                }
+
                 var expired = notification.Copy();
                 expired.State = OnlineNotificationState.Expired;
                 expired.UpdatedAtTime = now;
+                expired.DispatchLeaseUntilTime = 0;
                 var updated = await _store.ReplaceAsync(expired, state, notification.AttemptCount, cancellationToken).ConfigureAwait(false);
                 if (updated == null)
                 {
@@ -494,10 +523,18 @@ public sealed class OnlineNotificationService
             return null;
         }
 
+        if (current.DispatchLeaseUntilTime > nowUnixMilliseconds)
+        {
+            // 已到期但在途租约未失效：另一持有方正推着这条记录，就地终结同样会击落它（GFX-1081 第二入口）；
+            // 交回主流程——Queued 会被状态机自环拒绝，其余状态（理论不携带租约）按原流程处理。
+            return null;
+        }
+
         // 扫描轮还没跑到：到期即终结，不推给玩家。
         var expired = current.Copy();
         expired.State = OnlineNotificationState.Expired;
         expired.UpdatedAtTime = nowUnixMilliseconds;
+        expired.DispatchLeaseUntilTime = 0;
         var terminated = await _store.ReplaceAsync(expired, current.State, current.AttemptCount, cancellationToken).ConfigureAwait(false);
         if (terminated == null)
         {
@@ -520,6 +557,8 @@ public sealed class OnlineNotificationService
     {
         var settled = queued.Copy();
         settled.UpdatedAtTime = Now();
+        // 落定即原子释放租约：随本快照的 CAS 一并清零，Delivered / Retrying / Failed 一律不带残留租约。
+        settled.DispatchLeaseUntilTime = 0;
         if (outcome.Delivered)
         {
             settled.State = OnlineNotificationState.Delivered;
