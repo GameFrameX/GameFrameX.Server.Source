@@ -36,6 +36,7 @@ using GameFrameX.Core.Hotfix;
 using GameFrameX.Foundation.Extensions;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Foundation.Utility;
 using GameFrameX.Utility;
 using GameFrameX.Utility.Setting;
 

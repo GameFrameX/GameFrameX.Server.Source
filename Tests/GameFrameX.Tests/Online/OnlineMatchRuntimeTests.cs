@@ -478,6 +478,12 @@ namespace GameFrameX.Tests.Online
             /// <summary>FindAsync 到达计数。</summary>
             private int _findArrivalCount;
 
+            /// <summary>并发计数委托内存实现。</summary>
+            public Task<IReadOnlyDictionary<OnlineMatchState, int>> CountActiveByScopeAsync(long tenantId, long appId, long serverId, CancellationToken cancellationToken = default)
+            {
+                return _inner.CountActiveByScopeAsync(tenantId, appId, serverId, cancellationToken);
+            }
+
             /// <summary>
             /// 以编排开关初始化存储桩。
             /// </summary>

@@ -336,40 +336,6 @@ internal sealed class HotfixModule : ICollectibleAssemblyModule
         return new TImplementation();
     }
 
-    /// <summary>
-    /// 注册期创建并缓存实例工厂：校验实现类型是否为可实例化的封闭类型、是否实现 <typeparamref name="TService"/>、是否具有公共无参构造函数。
-    /// </summary>
-    /// <param name="implementationType">实现类型。</param>
-    /// <typeparam name="TService">服务接口或基类类型。</typeparam>
-    /// <returns>创建 <typeparamref name="TService"/> 实例的强类型工厂委托。</returns>
-    /// <exception cref="InvalidOperationException">实现类型不满足上述条件。</exception>
-    private static Func<TService> CreateFactory<TService>(Type implementationType) where TService : class
-    {
-        if (implementationType.IsAbstract
-            || implementationType.ContainsGenericParameters
-            || !typeof(TService).IsAssignableFrom(implementationType)
-            || implementationType.GetConstructor(Type.EmptyTypes) == null)
-        {
-            // Localization: CoreExceptions.Hotfix.MissingParameterlessConstructor - {0} 必须是实现 {1} 的非抽象封闭类型，且具有公共无参构造函数
-            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.MissingParameterlessConstructor, implementationType.FullName, typeof(TService).FullName));
-        }
-
-        var createInstanceMethod = typeof(HotfixModule)
-                                   .GetMethod(nameof(CreateInstance), BindingFlags.NonPublic | BindingFlags.Static)
-                                   .MakeGenericMethod(typeof(TService), implementationType);
-        return createInstanceMethod.CreateDelegate<Func<TService>>();
-    }
-
-    /// <summary>
-    /// 泛型实例化目标方法：经 <see cref="CreateFactory{TService}" /> 的泛型方法实例化转为强类型工厂委托，运行时直接调用无参构造，避免每次调用走反射激活。
-    /// </summary>
-    /// <typeparam name="TService">服务接口或基类类型。</typeparam>
-    /// <typeparam name="TImplementation">实现类型（受 new() 约束，实例化时由运行时直接调用其无参构造）。</typeparam>
-    /// <returns>新创建的实现实例。</returns>
-    private static TService CreateInstance<TService, TImplementation>() where TImplementation : TService, new()
-    {
-        return new TImplementation();
-    }
 
     /// <summary>
     /// 添加HTTP处理器。

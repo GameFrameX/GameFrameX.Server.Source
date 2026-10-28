@@ -252,6 +252,12 @@ namespace GameFrameX.Tests.Online
             private readonly IOnlineSessionStore _innerStore;
             private int _tokenHashLookupCount;
 
+            /// <summary>并发计数委托底层存储。</summary>
+            public Task<IReadOnlyDictionary<OnlineSessionState, int>> CountNonTerminalByScopeAsync(long tenantId, long appId, long serverId, CancellationToken cancellationToken = default)
+            {
+                return _innerStore.CountNonTerminalByScopeAsync(tenantId, appId, serverId, cancellationToken);
+            }
+
             public FaultInjectingOnlineSessionStore(IOnlineSessionStore innerStore)
             {
                 _innerStore = innerStore;

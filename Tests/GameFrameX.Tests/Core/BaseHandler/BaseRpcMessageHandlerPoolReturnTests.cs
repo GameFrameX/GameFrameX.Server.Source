@@ -229,6 +229,11 @@ public sealed class BaseRpcMessageHandlerPoolReturnTests
         private readonly System.Collections.Generic.Dictionary<string, object> _data = new();
         private bool _closed;
 
+        public void Dispose()
+        {
+            _closed = true;
+        }
+
         public System.Collections.Generic.List<INetworkMessage> WrittenMessages { get; } = new();
         public System.Collections.Generic.List<(int UniqueId, int ErrorCode)> WrittenResponseSnapshots { get; } = new();
 

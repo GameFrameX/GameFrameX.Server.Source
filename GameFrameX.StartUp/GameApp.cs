@@ -643,15 +643,6 @@ public static class GameApp
     internal const int UnresolvedServerTypeExitCode = 1;
 
     /// <summary>
-    /// 进程退出缝：缺省 <see cref="Environment.Exit(int)"/>，测试可替换捕获退出码（D20 台账测试缝）。
-    /// </summary>
-    /// <remarks>
-    /// Process exit seam: defaults to <see cref="Environment.Exit(int)"/>; tests may replace it to capture the exit code
-    /// (registered in the startup spec global-state ledger D20).
-    /// </remarks>
-    internal static Action<int> AbortProcess = static exitCode => Environment.Exit(exitCode);
-
-    /// <summary>
     /// 判定是否应对「显式指定的 ServerType 未命中任何已注册 Role」执行拒启中止。
     /// </summary>
     /// <remarks>

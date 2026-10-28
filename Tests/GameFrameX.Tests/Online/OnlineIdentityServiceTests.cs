@@ -159,7 +159,7 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange：账号绑定两个身份后解绑主身份（保留辅身份满足解绑前提）。
             var store = new InMemoryOnlineIdentityStore();
-            var service = new OnlineIdentityService(store);
+            var service = new OnlineIdentityService(store, new OnlineAuditService(new InMemoryOnlineAuditStore()));
             var first = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "grace" });
             var originalAccountId = first.Data.GameAccount.Id;
             Assert.True((await service.BindIdentityAsync(TenantId, AppId, originalAccountId, OnlineIdentityKind.Email, "grace@example.com")).IsSuccess);
@@ -184,7 +184,7 @@ namespace GameFrameX.Tests.Online
         public async Task ResolveLoginAsync_UnboundIdentity_DeactivatedAccount_ShouldBeRejected()
         {
             // Arrange
-            var service = new OnlineIdentityService(new InMemoryOnlineIdentityStore());
+            var service = new OnlineIdentityService(new InMemoryOnlineIdentityStore(), new OnlineAuditService(new InMemoryOnlineAuditStore()));
             var first = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "heidi" });
             Assert.True((await service.BindIdentityAsync(TenantId, AppId, first.Data.GameAccount.Id, OnlineIdentityKind.Email, "heidi@example.com")).IsSuccess);
             Assert.True((await service.UnbindIdentityAsync(TenantId, AppId, OnlineIdentityKind.UserName, "heidi")).IsSuccess);
@@ -273,7 +273,7 @@ namespace GameFrameX.Tests.Online
             var rebound = await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "alice@example.com");
             Assert.Equal(accountB.Data.GameAccount.Id, rebound.GameAccountId);
             Assert.Equal(0, rebound.UnboundAtTime);
-            var auditRecords = await auditStore.ListAsync(TenantId, AppId);
+            var auditRecords = (await auditStore.QueryAsync(new OnlineAuditStoreQuery { TenantId = TenantId, AppId = AppId })).Records;
             var auditRecord = auditRecords.Single(record => record.EventType == "online.identity.rebound");
             Assert.NotNull(auditRecord);
             Assert.Equal(OnlineAuditDomain.Operation, auditRecord.Domain);
