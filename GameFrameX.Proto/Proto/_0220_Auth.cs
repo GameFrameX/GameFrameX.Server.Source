@@ -443,6 +443,15 @@ namespace GameFrameX.Proto.Proto
 		public string Instruction { get; set; }
 
 		/// <summary>
+		/// 对局业务结果码（0 = 无对局失败；非 0 为 Online 显式段负值，如超窗 / 已结束 / 已离局）。
+		/// 与 RPC 层 ErrorCode 解耦：恢复流程成功时 ErrorCode = 0，对局结果仅经本字段传达，
+		/// 客户端始终能读取 NewSessionToken。
+		/// </summary>
+		[ProtoMember(11)]
+		[System.ComponentModel.Description("对局业务结果码（0 = 无对局失败；非 0 为 Online 显式段负值）。与 RPC 层 ErrorCode 解耦，恢复流程成功时 ErrorCode = 0 且 NewSessionToken 必达")]
+		public int MatchResultCode { get; set; }
+
+		/// <summary>
 		/// 返回的错误码
 		/// </summary>
 		[ProtoMember(2047)]
@@ -460,8 +469,9 @@ namespace GameFrameX.Proto.Proto
 			DeltaAvailable = default;
 			Members.Clear();
 			GameState = default;
-			Instruction = default;
-			ErrorCode = default;
+		Instruction = default;
+		MatchResultCode = default;
+		ErrorCode = default;
 		}
 	}
 
