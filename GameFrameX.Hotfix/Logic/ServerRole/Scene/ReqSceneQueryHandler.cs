@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Scene;
 [MessageMapping(typeof(ReqSceneQuery))]
 internal sealed class ReqSceneQueryHandler : GlobalRpcComponentHandler<SceneComponentAgent, ReqSceneQuery, RespSceneQuery>
 {
-    protected override async Task ActionAsync(ReqSceneQuery request, RespSceneQuery response)
+    protected override async Task ActionAsync(ReqSceneQuery request, RespSceneQuery response, CancellationToken cancellationToken)
     {
         try
         {

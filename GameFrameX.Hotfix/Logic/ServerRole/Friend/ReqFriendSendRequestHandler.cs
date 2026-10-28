@@ -45,7 +45,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Friend;
 [MessageMapping(typeof(ReqFriendSendRequest))]
 internal sealed class ReqFriendSendRequestHandler : BaseRpcMessageHandler<ReqFriendSendRequest, RespFriendSendRequest>
 {
-    protected override async Task ActionAsync(ReqFriendSendRequest request, RespFriendSendRequest response)
+    protected override async Task ActionAsync(ReqFriendSendRequest request, RespFriendSendRequest response, CancellationToken cancellationToken)
     {
         var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
         if (playerId == 0)

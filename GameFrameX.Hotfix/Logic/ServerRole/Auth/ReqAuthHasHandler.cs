@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Auth;
 [MessageMapping(typeof(ReqAuthHas))]
 internal sealed class ReqAuthHasHandler : GlobalRpcComponentHandler<AuthComponentAgent, ReqAuthHas, RespAuthHas>
 {
-    protected override async Task ActionAsync(ReqAuthHas request, RespAuthHas response)
+    protected override async Task ActionAsync(ReqAuthHas request, RespAuthHas response, CancellationToken cancellationToken)
     {
         try
         {

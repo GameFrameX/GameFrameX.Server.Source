@@ -48,7 +48,7 @@ namespace GameFrameX.Hotfix.Logic.Server.Unified;
 [MessageMapping(typeof(ReqSendToPlayerInner))]
 internal sealed class SendToPlayerInnerHandler : PlayerRpcComponentHandler<ServerComponentAgent, ReqSendToPlayerInner, RespSendToPlayerInner>
 {
-    protected override async Task ActionAsync(ReqSendToPlayerInner request, RespSendToPlayerInner response)
+    protected override async Task ActionAsync(ReqSendToPlayerInner request, RespSendToPlayerInner response, CancellationToken cancellationToken)
     {
         if (request.TargetPlayerId <= 0)
         {

@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Scene;
 [MessageMapping(typeof(ReqSceneEnter))]
 internal sealed class ReqSceneEnterHandler : GlobalRpcComponentHandler<SceneComponentAgent, ReqSceneEnter, RespSceneEnter>
 {
-    protected override async Task ActionAsync(ReqSceneEnter request, RespSceneEnter response)
+    protected override async Task ActionAsync(ReqSceneEnter request, RespSceneEnter response, CancellationToken cancellationToken)
     {
         try
         {

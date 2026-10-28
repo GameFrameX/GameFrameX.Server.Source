@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Battle;
 [MessageMapping(typeof(ReqBattleQuery))]
 internal sealed class ReqBattleQueryHandler : GlobalRpcComponentHandler<BattleComponentAgent, ReqBattleQuery, RespBattleQuery>
 {
-    protected override async Task ActionAsync(ReqBattleQuery request, RespBattleQuery response)
+    protected override async Task ActionAsync(ReqBattleQuery request, RespBattleQuery response, CancellationToken cancellationToken)
     {
         try
         {

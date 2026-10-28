@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Gateway;
 [MessageMapping(typeof(ReqGatewayRegisterTarget))]
 internal sealed class ReqGatewayRegisterTargetHandler : GlobalRpcComponentHandler<GatewayComponentAgent, ReqGatewayRegisterTarget, RespGatewayRegisterTarget>
 {
-    protected override async Task ActionAsync(ReqGatewayRegisterTarget request, RespGatewayRegisterTarget response)
+    protected override async Task ActionAsync(ReqGatewayRegisterTarget request, RespGatewayRegisterTarget response, CancellationToken cancellationToken)
     {
         try
         {

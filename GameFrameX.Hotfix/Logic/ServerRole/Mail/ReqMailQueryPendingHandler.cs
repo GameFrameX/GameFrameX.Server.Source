@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Mail;
 [MessageMapping(typeof(ReqMailQueryPending))]
 internal sealed class ReqMailQueryPendingHandler : GlobalRpcComponentHandler<MailComponentAgent, ReqMailQueryPending, RespMailQueryPending>
 {
-    protected override async Task ActionAsync(ReqMailQueryPending request, RespMailQueryPending response)
+    protected override async Task ActionAsync(ReqMailQueryPending request, RespMailQueryPending response, CancellationToken cancellationToken)
     {
         try
         {

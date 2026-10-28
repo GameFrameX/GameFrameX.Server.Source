@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Chat;
 [MessageMapping(typeof(ReqChatSpeak))]
 internal sealed class ReqChatSpeakHandler : GlobalRpcComponentHandler<ChatComponentAgent, ReqChatSpeak, RespChatSpeak>
 {
-    protected override async Task ActionAsync(ReqChatSpeak request, RespChatSpeak response)
+    protected override async Task ActionAsync(ReqChatSpeak request, RespChatSpeak response, CancellationToken cancellationToken)
     {
         try
         {

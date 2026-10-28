@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Scene;
 [MessageMapping(typeof(ReqSceneLeave))]
 internal sealed class ReqSceneLeaveHandler : GlobalRpcComponentHandler<SceneComponentAgent, ReqSceneLeave, RespSceneLeave>
 {
-    protected override async Task ActionAsync(ReqSceneLeave request, RespSceneLeave response)
+    protected override async Task ActionAsync(ReqSceneLeave request, RespSceneLeave response, CancellationToken cancellationToken)
     {
         try
         {

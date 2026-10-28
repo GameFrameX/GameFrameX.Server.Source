@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.World;
 [MessageMapping(typeof(ReqWorldQuery))]
 internal sealed class ReqWorldQueryHandler : GlobalRpcComponentHandler<WorldComponentAgent, ReqWorldQuery, RespWorldQuery>
 {
-    protected override async Task ActionAsync(ReqWorldQuery request, RespWorldQuery response)
+    protected override async Task ActionAsync(ReqWorldQuery request, RespWorldQuery response, CancellationToken cancellationToken)
     {
         try
         {

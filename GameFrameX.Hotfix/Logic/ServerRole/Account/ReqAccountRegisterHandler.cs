@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Account;
 [MessageMapping(typeof(ReqAccountRegister))]
 internal sealed class ReqAccountRegisterHandler : GlobalRpcComponentHandler<AccountComponentAgent, ReqAccountRegister, RespAccountRegister>
 {
-    protected override async Task ActionAsync(ReqAccountRegister request, RespAccountRegister response)
+    protected override async Task ActionAsync(ReqAccountRegister request, RespAccountRegister response, CancellationToken cancellationToken)
     {
         try
         {

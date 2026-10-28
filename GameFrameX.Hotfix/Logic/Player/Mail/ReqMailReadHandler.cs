@@ -33,7 +33,7 @@ namespace GameFrameX.Hotfix.Logic.Player.Mail;
 [MessageMapping(typeof(ReqMailRead))]
 internal sealed class ReqMailReadHandler : PlayerRpcComponentHandler<MailComponentAgent, ReqMailRead, RespMailRead>
 {
-    protected override async Task ActionAsync(ReqMailRead request, RespMailRead response)
+    protected override async Task ActionAsync(ReqMailRead request, RespMailRead response, CancellationToken cancellationToken)
     {
         try
         {

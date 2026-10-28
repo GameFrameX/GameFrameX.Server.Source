@@ -36,7 +36,7 @@ namespace GameFrameX.Hotfix.Logic.Player.Bag;
 [MessageMapping(typeof(ReqRemoveItem))]
 internal sealed class ReqRemoveItemHandler : PlayerRpcComponentHandler<BagComponentAgent, ReqRemoveItem, RespRemoveItem>
 {
-    protected override async Task ActionAsync(ReqRemoveItem request, RespRemoveItem rsponse)
+    protected override async Task ActionAsync(ReqRemoveItem request, RespRemoveItem rsponse, CancellationToken cancellationToken)
     {
         try
         {

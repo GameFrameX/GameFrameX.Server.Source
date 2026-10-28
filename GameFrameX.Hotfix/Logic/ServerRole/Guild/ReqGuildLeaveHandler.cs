@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Guild;
 [MessageMapping(typeof(ReqGuildLeave))]
 internal sealed class ReqGuildLeaveHandler : GlobalRpcComponentHandler<GuildComponentAgent, ReqGuildLeave, RespGuildLeave>
 {
-    protected override async Task ActionAsync(ReqGuildLeave request, RespGuildLeave response)
+    protected override async Task ActionAsync(ReqGuildLeave request, RespGuildLeave response, CancellationToken cancellationToken)
     {
         try
         {

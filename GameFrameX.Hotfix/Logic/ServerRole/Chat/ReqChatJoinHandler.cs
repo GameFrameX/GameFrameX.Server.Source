@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Chat;
 [MessageMapping(typeof(ReqChatJoin))]
 internal sealed class ReqChatJoinHandler : GlobalRpcComponentHandler<ChatComponentAgent, ReqChatJoin, RespChatJoin>
 {
-    protected override async Task ActionAsync(ReqChatJoin request, RespChatJoin response)
+    protected override async Task ActionAsync(ReqChatJoin request, RespChatJoin response, CancellationToken cancellationToken)
     {
         try
         {

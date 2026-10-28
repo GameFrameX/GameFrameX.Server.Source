@@ -137,33 +137,43 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
             var requestId = RequestMessage.UniqueId;
             try
             {
-                await InnerActionCoreAsync(RequestMessage, response);
-                response?.SetUniqueId(requestId);
+                try
+                {
+                    await InnerActionCoreAsync(RequestMessage, response, cancellationToken);
+                    response?.SetUniqueId(requestId);
+                }
+                catch (RpcException e)
+                {
+                    if (response != null)
+                    {
+                        response.ErrorCode = e.ErrorCode;
+                    }
+                }
+                catch (Exception e)
+                {
+                    // Localization: Core.MessageHandler.InnerActionError - 内部操作错误: {0} {1}
+                    LogHelper.Error(e, LocalizationService.GetString(Localization.Keys.Core.MessageHandler.InnerActionError, RequestMessage.GetType().FullName, RequestMessage));
+                    if (response != null && response.ErrorCode == 0)
+                    {
+                        response.ErrorCode = OperationErrorCode.InternalServerError;
+                    }
+                }
+
+                if (NetworkChannel == null || NetworkChannel.IsClosed() || response == null)
+                {
+                    return;
+                }
+
+                await NetworkChannel.WriteAsync(response);
             }
-            catch (RpcException e)
+            finally
             {
+                // 任意路径（含通道关闭早退、写通道异常）均归还响应对象，避免对象池耗尽
                 if (response != null)
                 {
-                    response.ErrorCode = e.ErrorCode;
+                    MessageObjectPoolHelper.Return(response);
                 }
             }
-            catch (Exception e)
-            {
-                // Localization: Core.MessageHandler.InnerActionError - 内部操作错误: {0} {1}
-                LogHelper.Error(e, LocalizationService.GetString(Localization.Keys.Core.MessageHandler.InnerActionError, RequestMessage.GetType().FullName, RequestMessage));
-                if (response != null && response.ErrorCode == 0)
-                {
-                    response.ErrorCode = OperationErrorCode.InternalServerError;
-                }
-            }
-
-            if (NetworkChannel == null || NetworkChannel.IsClosed() || response == null)
-            {
-                return;
-            }
-
-            await NetworkChannel.WriteAsync(response);
-            MessageObjectPoolHelper.Return(response);
         }
 
         CacheComponent.Tell(Work, timeout, cancellationToken);

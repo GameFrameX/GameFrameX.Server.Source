@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Guild;
 [MessageMapping(typeof(ReqGuildCreate))]
 internal sealed class ReqGuildCreateHandler : GlobalRpcComponentHandler<GuildComponentAgent, ReqGuildCreate, RespGuildCreate>
 {
-    protected override async Task ActionAsync(ReqGuildCreate request, RespGuildCreate response)
+    protected override async Task ActionAsync(ReqGuildCreate request, RespGuildCreate response, CancellationToken cancellationToken)
     {
         try
         {

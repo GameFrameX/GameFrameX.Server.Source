@@ -33,7 +33,7 @@ namespace GameFrameX.Hotfix.Logic.Game.RockPaperScissors;
 [MessageMapping(typeof(ReqRockPaperScissorsGameInfo))]
 internal sealed class ReqRockPaperScissorsGameInfoHandler : GlobalRpcComponentHandler<RockPaperScissorsGameComponentAgent, ReqRockPaperScissorsGameInfo, RespRockPaperScissorsGameInfo>
 {
-    protected override async Task ActionAsync(ReqRockPaperScissorsGameInfo request, RespRockPaperScissorsGameInfo response)
+    protected override async Task ActionAsync(ReqRockPaperScissorsGameInfo request, RespRockPaperScissorsGameInfo response, CancellationToken cancellationToken)
     {
         try
         {

@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Auth;
 [MessageMapping(typeof(ReqAuthListPermissions))]
 internal sealed class ReqAuthListPermissionsHandler : GlobalRpcComponentHandler<AuthComponentAgent, ReqAuthListPermissions, RespAuthListPermissions>
 {
-    protected override async Task ActionAsync(ReqAuthListPermissions request, RespAuthListPermissions response)
+    protected override async Task ActionAsync(ReqAuthListPermissions request, RespAuthListPermissions response, CancellationToken cancellationToken)
     {
         try
         {

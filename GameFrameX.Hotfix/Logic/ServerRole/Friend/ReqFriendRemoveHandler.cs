@@ -40,7 +40,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Friend;
 [MessageMapping(typeof(ReqFriendRemove))]
 internal sealed class ReqFriendRemoveHandler : BaseRpcMessageHandler<ReqFriendRemove, RespFriendRemove>
 {
-    protected override async Task ActionAsync(ReqFriendRemove request, RespFriendRemove response)
+    protected override async Task ActionAsync(ReqFriendRemove request, RespFriendRemove response, CancellationToken cancellationToken)
     {
         var playerId = ServerRoleHandlerHelper.GetCurrentPlayerId(NetworkChannel);
         if (playerId == 0)

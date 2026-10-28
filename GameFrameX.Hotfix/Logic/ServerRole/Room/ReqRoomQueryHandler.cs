@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Room;
 [MessageMapping(typeof(ReqRoomQuery))]
 internal sealed class ReqRoomQueryHandler : GlobalRpcComponentHandler<RoomComponentAgent, ReqRoomQuery, RespRoomQuery>
 {
-    protected override async Task ActionAsync(ReqRoomQuery request, RespRoomQuery response)
+    protected override async Task ActionAsync(ReqRoomQuery request, RespRoomQuery response, CancellationToken cancellationToken)
     {
         try
         {

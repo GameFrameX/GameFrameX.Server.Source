@@ -33,7 +33,7 @@ namespace GameFrameX.Hotfix.Logic.Player.Mail;
 [MessageMapping(typeof(ReqMailClaimAttachment))]
 internal sealed class ReqMailClaimAttachmentHandler : PlayerRpcComponentHandler<MailComponentAgent, ReqMailClaimAttachment, RespMailClaimAttachment>
 {
-    protected override async Task ActionAsync(ReqMailClaimAttachment request, RespMailClaimAttachment response)
+    protected override async Task ActionAsync(ReqMailClaimAttachment request, RespMailClaimAttachment response, CancellationToken cancellationToken)
     {
         try
         {

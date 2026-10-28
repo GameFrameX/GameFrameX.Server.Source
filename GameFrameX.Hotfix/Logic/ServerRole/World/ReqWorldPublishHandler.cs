@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.World;
 [MessageMapping(typeof(ReqWorldPublish))]
 internal sealed class ReqWorldPublishHandler : GlobalRpcComponentHandler<WorldComponentAgent, ReqWorldPublish, RespWorldPublish>
 {
-    protected override async Task ActionAsync(ReqWorldPublish request, RespWorldPublish response)
+    protected override async Task ActionAsync(ReqWorldPublish request, RespWorldPublish response, CancellationToken cancellationToken)
     {
         try
         {

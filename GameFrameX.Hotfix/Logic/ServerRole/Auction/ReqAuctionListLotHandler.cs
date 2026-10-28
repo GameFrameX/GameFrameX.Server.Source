@@ -37,7 +37,7 @@ namespace GameFrameX.Hotfix.Logic.ServerRole.Auction;
 [MessageMapping(typeof(ReqAuctionListLot))]
 internal sealed class ReqAuctionListLotHandler : GlobalRpcComponentHandler<AuctionComponentAgent, ReqAuctionListLot, RespAuctionListLot>
 {
-    protected override async Task ActionAsync(ReqAuctionListLot request, RespAuctionListLot response)
+    protected override async Task ActionAsync(ReqAuctionListLot request, RespAuctionListLot response, CancellationToken cancellationToken)
     {
         try
         {
