@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 
+using System.Globalization;
 using System.Linq.Expressions;
 using System.Text.Json;
 using GameFrameX.DataBase.Abstractions;
@@ -37,16 +38,19 @@ using Microsoft.Data.Sqlite;
 namespace GameFrameX.DataBase.Sqlite;
 
 /// <summary>
-/// SQLite 读路径（id 等值提取下推 + 剩余 filter 客户端求值 + 软删可见性对齐）。
+/// SQLite 读路径（json_extract 谓词下推 + 剩余 filter 客户端求值 + 软删可见性对齐）。
 /// </summary>
 /// <remarks>
-/// Read paths: an id equality of the filter — the whole body (<c>x.Id == c</c> / <c>c == x.Id</c>)
-/// or any top-level AndAlso conjunct of it — is pushed down as <c>WHERE id = ?</c>;
+/// Read paths: the filter's top-level AndAlso conjuncts — soft-delete visibility, id comparisons
+/// (as the <c>id</c> column) and whitelisted member-vs-constant comparisons (string equality,
+/// bool, integral and numeric-backed enums) — are pushed down as exact
+/// <c>json_extract(doc, '$."Name")</c> SQL conjuncts (see <c>SqliteDbService.Query.JsonExtract.cs</c>);
 /// everything else evaluates client-side via <c>filter.Compile()</c> (full C# semantics, a superset
-/// of the Mongo/PG translatable set; the client-side predicate stays authoritative so the
-/// result set is unchanged). The id-IN lookup chunks at <see cref="MaxIdsPerInCommand"/> bound
-/// parameters per command. Soft-delete visibility matches Mongo's
-/// <c>IsDeleted == null || IsDeleted == false</c> wrapper.
+/// of the Mongo/PG translatable set; the client-side predicate stays authoritative so the result
+/// set is unchanged). A fully-exact translation additionally powers the zero-deserialization
+/// COUNT / EXISTS / paged-SELECT fast paths. The id-IN lookup chunks at
+/// <see cref="MaxIdsPerInCommand"/> bound parameters per command. Soft-delete visibility matches
+/// Mongo's <c>IsDeleted == null || IsDeleted == false</c> wrapper.
 /// </remarks>
 public sealed partial class SqliteDbService
 {
@@ -91,7 +95,7 @@ public sealed partial class SqliteDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
-        var predicate = BuildPredicate(filter, includeDeleted: false, out _);
+        var predicate = BuildPredicate(filter, includeDeleted: false);
         var states = await ReadRowsAsync<TState>(id, cancellationToken, nameof(FindAsync)).ConfigureAwait(false);
         TState state = null;
         foreach (var candidate in states)
@@ -221,7 +225,7 @@ public sealed partial class SqliteDbService
             return new List<TState>();
         }
 
-        var visible = BuildPredicate<TState>(null, includeDeleted: false, out _);
+        var visible = BuildPredicate<TState>(null, includeDeleted: false);
         var result = new List<TState>(idArray.Length);
         await ExecuteReadWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
@@ -280,6 +284,29 @@ public sealed partial class SqliteDbService
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
         NormalizePaging(ref pageIndex, ref pageSize);
+
+        // 全谓词精确可译且排序键可回推：SQL 层 WHERE + ORDER BY json_extract + LIMIT/OFFSET + 独立 COUNT，
+        // 仅反序列化单页行；否则回退裁剪读 + 内存排序分页（语义与修复前一致）。
+        // Fully-exact filter plus a translatable sort key: SQL-level WHERE + ORDER BY json_extract +
+        // LIMIT/OFFSET and a separate COUNT deserialize only the page rows; otherwise fall back to the
+        // pruned read + in-memory sort/paging (semantics unchanged from before).
+        var translation = TranslateFilterToWhere<TState>(filter, includeDeleted: false);
+        if (translation.IsFilterExact && TryTranslateSortMember(sortExpression, descending, out var orderBySql))
+        {
+            var totalCount = await ExecuteReadScalarLongAsync<TState>(BuildCountCommandText<TState>(translation.WhereSql), translation, cancellationToken, nameof(FindPageAsync)).ConfigureAwait(false);
+            var pageItems = await ExecuteReadWithRetryAsync(async _ => await ExecuteGatedAsync<List<TState>>(async () =>
+            {
+                await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+                return await ReadRowsRawAsync<TState>(BuildPagedSelectCommand<TState>(translation, orderBySql, pageIndex, pageSize), cancellationToken).ConfigureAwait(false);
+            }), cancellationToken, nameof(FindPageAsync)).ConfigureAwait(false);
+            foreach (var state in pageItems)
+            {
+                state?.LoadFromDbPostHandler();
+            }
+
+            return (pageItems, totalCount);
+        }
+
         var matched = await ReadMatchingAsync(filter, includeDeleted: false, cancellationToken, nameof(FindPageAsync)).ConfigureAwait(false);
         var total = matched.Count;
         var items = ApplySort(matched, sortExpression, descending).Skip(pageIndex * pageSize).Take(pageSize).ToList();
@@ -556,6 +583,17 @@ public sealed partial class SqliteDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
+
+        // 全谓词精确可译：SQL EXISTS 单标量查询，零反序列化；否则回退裁剪读 + 客户端谓词。
+        // Fully-exact filter: a single SQL EXISTS scalar with zero deserialization; otherwise fall
+        // back to the pruned read + client-side predicate.
+        var translation = TranslateFilterToWhere<TState>(filter, includeDeleted: false);
+        if (translation.IsFilterExact)
+        {
+            var exists = await ExecuteReadScalarLongAsync<TState>(BuildExistsCommandText<TState>(translation.WhereSql), translation, cancellationToken, nameof(AnyAsync)).ConfigureAwait(false);
+            return exists != 0;
+        }
+
         var states = await ReadMatchingAsync(filter, includeDeleted: false, cancellationToken, nameof(AnyAsync)).ConfigureAwait(false);
         return states.Count > 0;
     }
@@ -588,7 +626,7 @@ public sealed partial class SqliteDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
-        var visible = BuildPredicate<TState>(null, includeDeleted: false, out _);
+        var visible = BuildPredicate<TState>(null, includeDeleted: false);
         var found = false;
         await ExecuteReadWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
         {
@@ -622,6 +660,22 @@ public sealed partial class SqliteDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
+
+        // 全谓词精确可译且排序键可回推：WHERE + ORDER BY + LIMIT 1 仅反序列化一行。
+        // Fully-exact filter plus a translatable sort key: WHERE + ORDER BY + LIMIT 1 deserializes a single row.
+        var translation = TranslateFilterToWhere<TState>(filter, includeDeleted: false);
+        if (translation.IsFilterExact && TryTranslateSortMember(sortExpression, descending, out var orderBySql))
+        {
+            var items = await ExecuteReadWithRetryAsync(async _ => await ExecuteGatedAsync<List<TState>>(async () =>
+            {
+                await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+                return await ReadRowsRawAsync<TState>(BuildFirstMatchSelectCommand<TState>(translation, orderBySql), cancellationToken).ConfigureAwait(false);
+            }), cancellationToken, operationName).ConfigureAwait(false);
+            var firstState = items.Count > 0 ? items[0] : null;
+            firstState?.LoadFromDbPostHandler();
+            return firstState;
+        }
+
         var matched = await ReadMatchingAsync(filter, includeDeleted: false, cancellationToken, operationName).ConfigureAwait(false);
         var state = ApplySort(matched, sortExpression, descending).FirstOrDefault();
         state?.LoadFromDbPostHandler();
@@ -647,6 +701,26 @@ public sealed partial class SqliteDbService
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
         NormalizePaging(ref pageIndex, ref pageSize);
+
+        // 与 FindPageAsync 同型：全谓词精确可译且排序键可回推时 SQL 层分页，仅反序列化单页行。
+        // Same shape as FindPageAsync: a fully-exact filter plus a translatable sort key pages in SQL,
+        // deserializing only the page rows.
+        var translation = TranslateFilterToWhere<TState>(filter, includeDeleted: false);
+        if (translation.IsFilterExact && TryTranslateSortMember(sortExpression, descending, out var orderBySql))
+        {
+            var items = await ExecuteReadWithRetryAsync(async _ => await ExecuteGatedAsync<List<TState>>(async () =>
+            {
+                await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+                return await ReadRowsRawAsync<TState>(BuildPagedSelectCommand<TState>(translation, orderBySql, pageIndex, pageSize), cancellationToken).ConfigureAwait(false);
+            }), cancellationToken, operationName).ConfigureAwait(false);
+            foreach (var state in items)
+            {
+                state?.LoadFromDbPostHandler();
+            }
+
+            return items;
+        }
+
         var matched = await ReadMatchingAsync(filter, includeDeleted: false, cancellationToken, operationName).ConfigureAwait(false);
         var result = ApplySort(matched, sortExpression, descending).Skip(pageIndex * pageSize).Take(pageSize).ToList();
         foreach (var state in result)
@@ -672,18 +746,29 @@ public sealed partial class SqliteDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
+
+        // 全谓词精确可译：SELECT COUNT(*) 标量查询，零反序列化；否则回退裁剪读 + 客户端谓词计数。
+        // Fully-exact filter: a SELECT COUNT(*) scalar with zero deserialization; otherwise fall back
+        // to counting the pruned read through the client-side predicate.
+        var translation = TranslateFilterToWhere<TState>(filter, includeDeleted);
+        if (translation.IsFilterExact)
+        {
+            return await ExecuteReadScalarLongAsync<TState>(BuildCountCommandText<TState>(translation.WhereSql), translation, cancellationToken, operationName).ConfigureAwait(false);
+        }
+
         var states = await ReadMatchingAsync(filter, includeDeleted, cancellationToken, operationName).ConfigureAwait(false);
         return states.Count;
     }
 
     /// <summary>
-    /// 读取匹配行（id 等值可从整体或顶层合取链提取时下推 WHERE id = ?，否则整表读；随后客户端求值软删可见性 + filter）。
+    /// 读取匹配行（可翻译合取项——软删可见性、id 比较与白名单成员-常量比较——下推为 WHERE json_extract 谓词并按 id 序返回，无可下推项时整表读；客户端谓词权威重估软删可见性 + filter）。
     /// </summary>
     /// <remarks>
-    /// Reads the matching states: when an id equality is extractable from the whole filter body or
-    /// any of its top-level AndAlso conjuncts it is pushed down as <c>WHERE id = ?</c>;
-    /// otherwise the whole table is read. The client-side predicate then applies soft-delete
-    /// visibility (unless <paramref name="includeDeleted"/>) plus the full filter.
+    /// Reads the matching states: the translatable conjuncts — soft-delete visibility, id comparisons
+    /// (as the id column) and whitelisted member-vs-constant comparisons — are pushed down as exact
+    /// <c>json_extract</c> WHERE conjuncts ordered by id; with nothing translatable the whole table
+    /// is read. The client-side predicate then re-evaluates soft-delete visibility (unless
+    /// <paramref name="includeDeleted"/>) plus the full filter, so the result set is unchanged.
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="filter">契约过滤表达式 / The contract filter</param>
@@ -692,24 +777,15 @@ public sealed partial class SqliteDbService
     /// <param name="operationName">操作名称（指标与日志）/ Operation name for metrics and logging</param>
     private async Task<List<TState>> ReadMatchingAsync<TState>(Expression<Func<TState, bool>> filter, bool includeDeleted, CancellationToken cancellationToken, string operationName) where TState : BaseCacheState, new()
     {
-        var predicate = BuildPredicate(filter, includeDeleted, out var pushedDownId);
-        List<TState> rows;
-        if (pushedDownId.HasValue)
+        var predicate = BuildPredicate(filter, includeDeleted);
+        var translation = TranslateFilterToWhere<TState>(filter, includeDeleted);
+        var rows = await ExecuteReadWithRetryAsync(async _ => await ExecuteGatedAsync<List<TState>>(async () =>
         {
-            rows = await ExecuteReadWithRetryAsync(async _ => await ExecuteGatedAsync<List<TState>>(async () =>
-            {
-                await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
-                return await ReadRowsRawAsync<TState>(BuildIdEqualsCommand<TState>(pushedDownId.Value), cancellationToken).ConfigureAwait(false);
-            }), cancellationToken, operationName).ConfigureAwait(false);
-        }
-        else
-        {
-            rows = await ExecuteReadWithRetryAsync(async _ => await ExecuteGatedAsync<List<TState>>(async () =>
-            {
-                await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
-                return await ReadRowsRawAsync<TState>(BuildSelectAllCommand<TState>(), cancellationToken).ConfigureAwait(false);
-            }), cancellationToken, operationName).ConfigureAwait(false);
-        }
+            await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+            return translation.HasConjuncts
+                ? await ReadRowsRawAsync<TState>(BuildFilteredSelectCommand<TState>(translation), cancellationToken).ConfigureAwait(false)
+                : await ReadRowsRawAsync<TState>(BuildSelectAllCommand<TState>(), cancellationToken).ConfigureAwait(false);
+        }), cancellationToken, operationName).ConfigureAwait(false);
 
         var result = new List<TState>(rows.Count);
         foreach (var state in rows)
@@ -721,6 +797,34 @@ public sealed partial class SqliteDbService
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// 执行标量长整型查询（COUNT / EXISTS；建表 + 闸内执行 + 重试包装，命令须在闸内创建以挂接环境事务）。
+    /// </summary>
+    /// <remarks>
+    /// Executes a long scalar query (COUNT / EXISTS; table ensured, executed under the gate with the
+    /// read-retry wrapper — the command is created inside the gate so ambient transactions attach).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="commandText">标量查询 SQL 文本 / The scalar query SQL text</param>
+    /// <param name="translation">翻译结果（参数绑定）/ The translation (parameter binding)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <param name="operationName">操作名称（指标与日志）/ Operation name for metrics and logging</param>
+    /// <returns>标量结果 / The scalar result</returns>
+    private async Task<long> ExecuteReadScalarLongAsync<TState>(string commandText, JsonExtractWhereTranslation translation, CancellationToken cancellationToken, string operationName) where TState : BaseCacheState, new()
+    {
+        return await ExecuteReadWithRetryAsync(async _ => await ExecuteGatedAsync<long>(async () =>
+        {
+            await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+            using (var command = _connection.CreateCommand())
+            {
+                command.CommandText = commandText;
+                BindJsonExtractParameters(command, translation);
+                var scalar = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+                return scalar is long scalarValue ? scalarValue : Convert.ToInt64(scalar, CultureInfo.InvariantCulture);
+            }
+        }), cancellationToken, operationName).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -904,22 +1008,19 @@ public sealed partial class SqliteDbService
     }
 
     /// <summary>
-    /// 构建客户端谓词（软删可见性 + filter.Compile()；id 等值可从合取链提取时顺带返回下推值）。
+    /// 构建客户端谓词（软删可见性 + filter.Compile()，权威重估；SQL 下推仅作行裁剪）。
     /// </summary>
     /// <remarks>
     /// Builds the client-side predicate: soft-delete visibility (<c>IsDeleted == null || IsDeleted == false</c>,
-    /// matching Mongo's wrapper) AND the compiled contract filter. When an id equality can be extracted
-    /// from the whole filter body or any of its top-level AndAlso conjuncts, its value is also returned
-    /// for SQL pushdown (the predicate still re-evaluates the full filter — authoritative).
+    /// matching Mongo's wrapper) AND the compiled contract filter. The predicate stays authoritative —
+    /// SQL pushdown only prunes rows that cannot satisfy the pushed conjuncts.
     /// </remarks>
     /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
     /// <param name="filter">契约过滤表达式 / The contract filter</param>
     /// <param name="includeDeleted">是否包含软删数据（true 时不加可见性谓词）/ Whether to include soft-deleted documents</param>
-    /// <param name="pushedDownId">id 等值可提取时的下推值 / The pushdown value when an id equality is extractable</param>
     /// <returns>客户端谓词 / The client-side predicate</returns>
-    private static Func<TState, bool> BuildPredicate<TState>(Expression<Func<TState, bool>> filter, bool includeDeleted, out long? pushedDownId) where TState : BaseCacheState, new()
+    private static Func<TState, bool> BuildPredicate<TState>(Expression<Func<TState, bool>> filter, bool includeDeleted) where TState : BaseCacheState, new()
     {
-        pushedDownId = TryExtractIdEquality(filter, out var extractedId) ? extractedId : null;
         var compiled = filter?.Compile();
         return state =>
         {
@@ -930,124 +1031,6 @@ public sealed partial class SqliteDbService
 
             return compiled == null || compiled(state);
         };
-    }
-
-    /// <summary>
-    /// 提取 filter 顶层合取链中的 id 等值（整体或任一 AndAlso 合取项；x.Id == c / c == x.Id，闭包成员/常量/Convert 均可求值；提不出返回 false）。
-    /// </summary>
-    /// <remarks>
-    /// Attempts to extract an id equality from the WHOLE filter body or any top-level AndAlso conjunct
-    /// of it (nested parentheses included; either operand order; constants, Convert nodes and
-    /// closure-captured members are evaluated). Pushing the extracted equality down only prunes rows
-    /// that cannot satisfy that conjunct — the client-side predicate re-evaluates the full filter, so
-    /// the result set is unchanged. Anything else returns false — the caller then falls back to a
-    /// full table read.
-    /// </remarks>
-    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
-    /// <param name="filter">契约过滤表达式 / The contract filter</param>
-    /// <param name="id">提取出的ID / The extracted id</param>
-    /// <returns>是否提取到 id 等值 / Whether an id equality was extracted</returns>
-    private static bool TryExtractIdEquality<TState>(Expression<Func<TState, bool>> filter, out long id) where TState : BaseCacheState, new()
-    {
-        id = 0;
-        return filter != null && TryExtractIdEqualityFromConjunct(filter.Body, filter.Parameters[0], out id);
-    }
-
-    /// <summary>
-    /// 在顶层合取项（含嵌套 AndAlso）中递归提取 id 等值（首个命中即返回）。
-    /// </summary>
-    /// <remarks>
-    /// Recursively extracts an id equality from a top-level conjunct: the body itself, or either
-    /// operand of an AndAlso chain (nested parentheses included); the first hit wins.
-    /// </remarks>
-    /// <param name="body">当前合取项表达式 / The current conjunct expression</param>
-    /// <param name="parameter">lambda 参数 / The lambda parameter</param>
-    /// <param name="id">提取出的ID / The extracted id</param>
-    /// <returns>是否提取到 id 等值 / Whether an id equality was extracted</returns>
-    private static bool TryExtractIdEqualityFromConjunct(Expression body, ParameterExpression parameter, out long id)
-    {
-        if (body is BinaryExpression { NodeType: ExpressionType.AndAlso } andAlso)
-        {
-            return TryExtractIdEqualityFromConjunct(andAlso.Left, parameter, out id)
-                || TryExtractIdEqualityFromConjunct(andAlso.Right, parameter, out id);
-        }
-
-        id = 0;
-        if (body is not BinaryExpression { NodeType: ExpressionType.Equal } binary)
-        {
-            return false;
-        }
-
-        var leftIsId = IsParameterIdMember(binary.Left, parameter);
-        var rightIsId = IsParameterIdMember(binary.Right, parameter);
-        if (leftIsId == rightIsId)
-        {
-            return false;
-        }
-
-        return TryEvaluateLongConstant(leftIsId ? binary.Right : binary.Left, out id);
-    }
-
-    /// <summary>
-    /// 判断表达式是否为参数的 Id 成员访问。
-    /// </summary>
-    /// <remarks>
-    /// Determines whether the expression is a member access of Id on the lambda parameter.
-    /// </remarks>
-    /// <param name="expression">待检表达式 / The expression to inspect</param>
-    /// <param name="parameter">lambda 参数 / The lambda parameter</param>
-    /// <returns>是否为 x.Id / Whether it is x.Id</returns>
-    private static bool IsParameterIdMember(Expression expression, ParameterExpression parameter)
-    {
-        if (expression is UnaryExpression { NodeType: ExpressionType.Convert } convert)
-        {
-            expression = convert.Operand;
-        }
-
-        return expression is MemberExpression member && member.Member.Name == nameof(BaseCacheState.Id) && member.Expression == parameter;
-    }
-
-    /// <summary>
-    /// 求值常量表达式为 long（常量 / Convert / 闭包捕获成员）。
-    /// </summary>
-    /// <remarks>
-    /// Evaluates a constant-shaped expression to a long (constants, Convert wrappers and
-    /// closure-captured members). Returns false for anything not statically evaluable.
-    /// </remarks>
-    /// <param name="expression">待求值表达式 / The expression to evaluate</param>
-    /// <param name="value">求值结果 / The evaluated value</param>
-    /// <returns>是否可求值 / Whether it was evaluable</returns>
-    private static bool TryEvaluateLongConstant(Expression expression, out long value)
-    {
-        value = 0;
-        try
-        {
-            if (expression is UnaryExpression { NodeType: ExpressionType.Convert } convert)
-            {
-                expression = convert.Operand;
-            }
-
-            object constant = expression switch
-            {
-                ConstantExpression constantExpression => constantExpression.Value,
-                MemberExpression { Expression: ConstantExpression closure } member => member.Member is System.Reflection.FieldInfo field
-                    ? field.GetValue(closure.Value)
-                    : (member.Member as System.Reflection.PropertyInfo)?.GetValue(closure.Value),
-                _ => null,
-            };
-
-            if (constant is null or not IConvertible)
-            {
-                return false;
-            }
-
-            value = Convert.ToInt64(constant, System.Globalization.CultureInfo.InvariantCulture);
-            return true;
-        }
-        catch (Exception exception) when (exception is InvalidCastException or FormatException or OverflowException or InvalidOperationException)
-        {
-            return false;
-        }
     }
 
     /// <summary>

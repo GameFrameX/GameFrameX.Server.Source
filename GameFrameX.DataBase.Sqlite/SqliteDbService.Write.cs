@@ -951,7 +951,7 @@ public sealed partial class SqliteDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
-        var predicate = BuildPredicate(filter, includeDeleted: true, out _);
+        var predicate = BuildPredicate(filter, includeDeleted: true);
         return await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(() => ExecuteHardDeleteCoreAsync<TState>(predicate, cancellationToken)), cancellationToken, nameof(HardDeleteAsync), true).ConfigureAwait(false);
     }
 
