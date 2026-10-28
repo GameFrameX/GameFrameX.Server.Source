@@ -30,6 +30,7 @@
 using GameFrameX.Capability.Hosting.Abstractions;
 using GameFrameX.Capability.Hosting.Core;
 using GameFrameX.Capability.Hosting.AdminApi;
+using GameFrameX.Capability.Online.Abstractions.Audit;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Events;
 using GameFrameX.Capability.Online.Foundation.AdminApi;
@@ -135,7 +136,8 @@ public sealed class OnlineFoundationCapabilityModule : ICapabilityModule, IAdmin
         var sessionStore = context.GetService<IOnlineSessionStore>();
 
         // 四域服务构造并注册回共享面（与壳时代集中 new 逐语句等价）。
-        context.AddService(new OnlineIdentityService(identityStore));
+        // 身份服务注入族预置统一审计链路（跨账号改绑留痕面，C400）。
+        context.AddService(new OnlineIdentityService(identityStore, context.GetService<OnlineAuditService>()));
         _sessions = new OnlineSessionManager(sessionStore, eventPublisher);
         context.AddService(_sessions);
         _tokens = new OnlineSessionTokenService(sessionStore, eventPublisher);

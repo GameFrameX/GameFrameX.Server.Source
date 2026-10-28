@@ -49,10 +49,36 @@ public interface IOnlineIdentityStore
     /// <returns>身份实体；不存在返回 null。</returns>
     Task<OnlineIdentity> FindIdentityAsync(long tenantId, long appId, OnlineIdentityKind kind, string identifier, CancellationToken cancellationToken = default);
 
-    /// <summary>写入或覆盖身份（按 Id 全量写）。</summary>
+    /// <summary>写入或覆盖身份（按 Id 全量写；盲写面：既有行保留存量行版本号，新键建档为 1）。
+    /// <para>行版本推进仅经条件写面（<see cref="TryAddIdentityAsync"/> / <see cref="TryUpdateIdentityIfRowVersionAsync"/>）；
+    /// 盲写不改版本，调用方不得以盲写绕过 CAS 判定。</para></summary>
     /// <param name="identity">身份实体。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     Task AddOrUpdateIdentityAsync(OnlineIdentity identity, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 唯一插入身份（按唯一键 (TenantId, AppId, Kind, Identifier)；键已存在返回 false 且零写入）。
+    /// <para>
+    /// 并发同键插入恰一胜者：败者返回 false，不产生覆盖写；成功建档行版本为 1。
+    /// </para>
+    /// </summary>
+    /// <param name="identity">身份实体（新身份，RowVersion 由存储赋值）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>插入成功返回 true；唯一键已存在返回 false。</returns>
+    Task<bool> TryAddIdentityAsync(OnlineIdentity identity, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 条件更新身份（CAS / 乐观锁：存量行版本号等于期望值才整档写入，写入后版本 = 期望值 + 1）。
+    /// <para>
+    /// 维护约束：行缺失或版本不符返回 false 且零写入——授权判定与写入针对同一版本，
+    /// 并发改绑/重绑双写恰一胜者。遗留无版本行（版本 0）按一次性领养语义处理（首个实现注释）。
+    /// </para>
+    /// </summary>
+    /// <param name="identity">身份实体（唯一键须与存量行一致，承载整档覆盖值）。</param>
+    /// <param name="expectedRowVersion">期望的存量行版本号（取自读取时的 <see cref="OnlineIdentity.RowVersion"/>）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>版本匹配并写入返回 true；行缺失或版本不符返回 false。</returns>
+    Task<bool> TryUpdateIdentityIfRowVersionAsync(OnlineIdentity identity, long expectedRowVersion, CancellationToken cancellationToken = default);
 
     /// <summary>列出账号下全部身份（含已解绑，调用方按 UnboundAtTime 过滤）。</summary>
     /// <param name="gameAccountId">游戏账号标识。</param>

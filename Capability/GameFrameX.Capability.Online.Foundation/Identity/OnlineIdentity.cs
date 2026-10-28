@@ -83,4 +83,13 @@ public sealed class OnlineIdentity
     /// 获取或设置解绑时间（Unix 毫秒；0 = 绑定中）。
     /// </summary>
     public long UnboundAtTime { get; set; }
+
+    /// <summary>
+    /// 获取或设置行版本号（乐观锁；0 = 未落档或遗留无版本行，条件写以读取值为期望版本）。
+    /// <para>
+    /// 版本只由存储条件写面（唯一插入 / CAS 更新）推进：成功写入一次 +1；
+    /// 盲写全量覆盖保留既有行的版本号。调用方不得自行构造版本值参与 CAS 判定。
+    /// </para>
+    /// </summary>
+    public long RowVersion { get; set; }
 }

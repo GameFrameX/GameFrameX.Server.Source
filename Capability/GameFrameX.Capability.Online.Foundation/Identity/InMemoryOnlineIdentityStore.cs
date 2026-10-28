@@ -76,7 +76,7 @@ public sealed class InMemoryOnlineIdentityStore : IOnlineIdentityStore
         }
     }
 
-    /// <summary>写入或覆盖身份（按 Id 全量写）。</summary>
+    /// <summary>写入或覆盖身份（按 Id 全量写；盲写面——既有行保留存量行版本号，新键建档为 1）。</summary>
     /// <param name="identity">身份实体。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     public Task AddOrUpdateIdentityAsync(OnlineIdentity identity, CancellationToken cancellationToken = default)
@@ -88,10 +88,72 @@ public sealed class InMemoryOnlineIdentityStore : IOnlineIdentityStore
 
         lock (_syncRoot)
         {
-            _identities[BuildIdentityKey(identity.TenantId, identity.AppId, identity.Kind, identity.Identifier)] = identity;
+            var key = BuildIdentityKey(identity.TenantId, identity.AppId, identity.Kind, identity.Identifier);
+            if (_identities.TryGetValue(key, out var existing))
+            {
+                // 盲写不改版本（版本推进仅经条件写面）：保留存量版本号，防盲写绕过 CAS 判定。
+                identity.RowVersion = existing.RowVersion;
+            }
+            else
+            {
+                identity.RowVersion = 1;
+            }
+
+            _identities[key] = identity;
         }
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>唯一插入身份（键已存在返回 false 且零写入；成功建档行版本为 1）。</summary>
+    /// <param name="identity">身份实体。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>插入成功返回 true；唯一键已存在返回 false。</returns>
+    public Task<bool> TryAddIdentityAsync(OnlineIdentity identity, CancellationToken cancellationToken = default)
+    {
+        if (identity == null)
+        {
+            throw new ArgumentNullException(nameof(identity));
+        }
+
+        lock (_syncRoot)
+        {
+            var key = BuildIdentityKey(identity.TenantId, identity.AppId, identity.Kind, identity.Identifier);
+            if (_identities.ContainsKey(key))
+            {
+                return Task.FromResult(false);
+            }
+
+            identity.RowVersion = 1;
+            _identities[key] = identity;
+            return Task.FromResult(true);
+        }
+    }
+
+    /// <summary>条件更新身份（CAS：存量版本 == 期望版本才整档写入，写入后版本 = 期望版本 + 1）。</summary>
+    /// <param name="identity">身份实体。</param>
+    /// <param name="expectedRowVersion">期望的存量行版本号。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>版本匹配并写入返回 true；行缺失或版本不符返回 false。</returns>
+    public Task<bool> TryUpdateIdentityIfRowVersionAsync(OnlineIdentity identity, long expectedRowVersion, CancellationToken cancellationToken = default)
+    {
+        if (identity == null)
+        {
+            throw new ArgumentNullException(nameof(identity));
+        }
+
+        lock (_syncRoot)
+        {
+            var key = BuildIdentityKey(identity.TenantId, identity.AppId, identity.Kind, identity.Identifier);
+            if (!_identities.TryGetValue(key, out var existing) || existing.RowVersion != expectedRowVersion)
+            {
+                return Task.FromResult(false);
+            }
+
+            identity.RowVersion = expectedRowVersion + 1;
+            _identities[key] = identity;
+            return Task.FromResult(true);
+        }
     }
 
     /// <summary>列出账号下全部身份（含已解绑）。</summary>

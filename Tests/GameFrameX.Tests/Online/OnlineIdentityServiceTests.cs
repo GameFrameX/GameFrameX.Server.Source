@@ -27,7 +27,9 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 // ==========================================================================================
 
+using System.Linq;
 using System.Threading.Tasks;
+using GameFrameX.Capability.Online.Abstractions.Audit;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Foundation.Identity;
 using GameFrameX.Capability.Online.Abstractions.Scope;
@@ -50,13 +52,22 @@ namespace GameFrameX.Tests.Online
         private const long ServerId = 100;
 
         /// <summary>
+        /// 构造带内存审计链路的身份服务（常规用例不感知审计面）。
+        /// </summary>
+        /// <returns>身份服务实例。</returns>
+        private static OnlineIdentityService CreateService()
+        {
+            return new OnlineIdentityService(new InMemoryOnlineIdentityStore(), new OnlineAuditService(new InMemoryOnlineAuditStore()));
+        }
+
+        /// <summary>
         /// 验证新身份自动注册并解析出完整三件套，可组装 PlayerContext。
         /// </summary>
         [Fact]
         public async Task ResolveLoginAsync_NewIdentity_ShouldAutoRegisterAndYieldContext()
         {
             // Arrange
-            var service = new OnlineIdentityService(new InMemoryOnlineIdentityStore());
+            var service = CreateService();
 
             // Act
             var first = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "alice" });
@@ -85,7 +96,7 @@ namespace GameFrameX.Tests.Online
         public async Task ResolveLoginAsync_NewServer_ShouldReuseAccountAndCreateServerPlayer()
         {
             // Arrange
-            var service = new OnlineIdentityService(new InMemoryOnlineIdentityStore());
+            var service = CreateService();
             var first = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "bob" });
 
             // Act
@@ -105,7 +116,7 @@ namespace GameFrameX.Tests.Online
         public async Task RebindDeviceAsync_OldDevice_ShouldBeRejectedOnNextLogin()
         {
             // Arrange
-            var service = new OnlineIdentityService(new InMemoryOnlineIdentityStore());
+            var service = CreateService();
             var first = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "carol", DeviceIdentifier = "device-old", DevicePlatform = "iOS" });
 
             // Act
@@ -127,7 +138,7 @@ namespace GameFrameX.Tests.Online
         public async Task DeactivateAccountAsync_SubsequentLogin_ShouldBeRejected()
         {
             // Arrange
-            var service = new OnlineIdentityService(new InMemoryOnlineIdentityStore());
+            var service = CreateService();
             var first = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "dave" });
 
             // Act
@@ -147,7 +158,7 @@ namespace GameFrameX.Tests.Online
         public async Task MergeAccountsAsync_SourceIdentities_ShouldFollowTargetAccount()
         {
             // Arrange
-            var service = new OnlineIdentityService(new InMemoryOnlineIdentityStore());
+            var service = CreateService();
             var source = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "erin" });
             var target = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "frank" });
 
@@ -171,7 +182,7 @@ namespace GameFrameX.Tests.Online
         public async Task ResolveLoginAsync_InvalidArguments_ShouldBeRejected()
         {
             // Arrange
-            var service = new OnlineIdentityService(new InMemoryOnlineIdentityStore());
+            var service = CreateService();
 
             // Act
             var badKind = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = (OnlineIdentityKind)99, Identifier = "alice" });
@@ -182,6 +193,236 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(OnlineErrorCode.ParameterInvalid, badKind.Code);
             Assert.False(emptyIdentifier.IsSuccess);
             Assert.Equal(OnlineErrorCode.ParameterInvalid, emptyIdentifier.Code);
+        }
+
+        /// <summary>
+        /// 验证已解绑身份跨账号改绑的完整授权链：无票据拒绝、有效票据成功且审计在档、同票据二次使用拒绝。
+        /// </summary>
+        [Fact]
+        public async Task BindIdentityAsync_CrossAccountUnboundIdentity_TicketLifecycle_ShouldEnforceAuthorization()
+        {
+            // Arrange：账号 A（alice + 备用邮箱身份）、账号 B；邮箱身份解绑后归属仍为 A。
+            var store = new InMemoryOnlineIdentityStore();
+            var auditStore = new InMemoryOnlineAuditStore();
+            var service = new OnlineIdentityService(store, new OnlineAuditService(auditStore));
+            var accountA = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "alice" });
+            var accountB = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "bobby" });
+            var accountC = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "carol" });
+            Assert.True((await service.BindIdentityAsync(TenantId, AppId, accountA.Data.GameAccount.Id, OnlineIdentityKind.Email, "alice@example.com")).IsSuccess);
+            Assert.True((await service.UnbindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "alice@example.com")).IsSuccess);
+
+            // Act / Assert ①：无票据 → StateOperationForbidden，身份仍指向 A。
+            var withoutTicket = await service.BindIdentityAsync(TenantId, AppId, accountB.Data.GameAccount.Id, OnlineIdentityKind.Email, "alice@example.com");
+            Assert.False(withoutTicket.IsSuccess);
+            Assert.Equal(OnlineErrorCode.StateOperationForbidden, withoutTicket.Code);
+            Assert.Equal(accountA.Data.GameAccount.Id, (await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "alice@example.com")).GameAccountId);
+
+            // Act / Assert ②：A 签发票据 → B 携票据改绑成功，身份指向 B，审计条目在档。
+            var authorization = await service.IssueIdentityRebindAuthorizationAsync(TenantId, AppId, accountA.Data.GameAccount.Id, OnlineIdentityKind.Email, "alice@example.com");
+            Assert.True(authorization.IsSuccess);
+            var withTicket = await service.BindIdentityAsync(TenantId, AppId, accountB.Data.GameAccount.Id, OnlineIdentityKind.Email, "alice@example.com", authorization.Data.Code);
+            Assert.True(withTicket.IsSuccess);
+            var rebound = await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "alice@example.com");
+            Assert.Equal(accountB.Data.GameAccount.Id, rebound.GameAccountId);
+            Assert.Equal(0, rebound.UnboundAtTime);
+            var auditRecords = await auditStore.ListAsync(TenantId, AppId);
+            var auditRecord = auditRecords.Single(record => record.EventType == "online.identity.rebound");
+            Assert.NotNull(auditRecord);
+            Assert.Equal(OnlineAuditDomain.Operation, auditRecord.Domain);
+            Assert.Equal(authorization.Data.TicketId, auditRecord.CorrelationId);
+            Assert.Equal("game-account-" + accountA.Data.GameAccount.Id, auditRecord.OperatorId);
+            Assert.Contains(auditRecord.SanitizedFields, pair => pair.Key == "originalGameAccountId" && pair.Value == accountA.Data.GameAccount.Id.ToString());
+            Assert.Contains(auditRecord.SanitizedFields, pair => pair.Key == "newGameAccountId" && pair.Value == accountB.Data.GameAccount.Id.ToString());
+
+            // Act / Assert ③：同一票据第二次使用被拒——B 解绑后第三方（carol）携已消费票据改绑 → 拒绝，身份仍归 B。
+            Assert.True((await service.UnbindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "alice@example.com")).IsSuccess);
+            var reusedTicket = await service.BindIdentityAsync(TenantId, AppId, accountC.Data.GameAccount.Id, OnlineIdentityKind.Email, "alice@example.com", authorization.Data.Code);
+            Assert.False(reusedTicket.IsSuccess);
+            Assert.Equal(OnlineErrorCode.StateOperationForbidden, reusedTicket.Code);
+            Assert.Equal(accountB.Data.GameAccount.Id, (await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "alice@example.com")).GameAccountId);
+        }
+
+        /// <summary>
+        /// 验证原账号重绑自己解绑过的身份无需票据即可成功。
+        /// </summary>
+        [Fact]
+        public async Task BindIdentityAsync_OwnerRebindOwnUnboundIdentity_ShouldSucceedWithoutTicket()
+        {
+            // Arrange
+            var store = new InMemoryOnlineIdentityStore();
+            var service = new OnlineIdentityService(store, new OnlineAuditService(new InMemoryOnlineAuditStore()));
+            var accountA = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "alice" });
+            Assert.True((await service.BindIdentityAsync(TenantId, AppId, accountA.Data.GameAccount.Id, OnlineIdentityKind.Email, "alice@example.com")).IsSuccess);
+            Assert.True((await service.UnbindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "alice@example.com")).IsSuccess);
+
+            // Act
+            var rebound = await service.BindIdentityAsync(TenantId, AppId, accountA.Data.GameAccount.Id, OnlineIdentityKind.Email, "alice@example.com");
+
+            // Assert
+            Assert.True(rebound.IsSuccess);
+            var identity = await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "alice@example.com");
+            Assert.Equal(accountA.Data.GameAccount.Id, identity.GameAccountId);
+            Assert.Equal(0, identity.UnboundAtTime);
+        }
+
+        /// <summary>
+        /// 验证两个账号并发绑定同一全新身份恰一胜者（败者 VersionConflict 零覆写）。
+        /// </summary>
+        [Fact]
+        public async Task BindIdentityAsync_ConcurrentSameNewIdentity_ExactlyOneWinner()
+        {
+            // Arrange
+            var store = new InMemoryOnlineIdentityStore();
+            var service = new OnlineIdentityService(store, new OnlineAuditService(new InMemoryOnlineAuditStore()));
+            var accountA = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "alice" });
+            var accountB = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "bobby" });
+
+            // Act：真并发双绑定（InMemory 全锁原子，恰一胜者确定性成立）。
+            var results = await Task.WhenAll(
+                service.BindIdentityAsync(TenantId, AppId, accountA.Data.GameAccount.Id, OnlineIdentityKind.Email, "race@example.com"),
+                service.BindIdentityAsync(TenantId, AppId, accountB.Data.GameAccount.Id, OnlineIdentityKind.Email, "race@example.com"));
+
+            // Assert：恰一成功；败者拒绝码取决于交错时序——双查皆 miss 后唯一插入冲突为 VersionConflict，
+            // 后查者见到已绑定行则按归属拒绝为 StateOperationForbidden，两者都是诚实的败者回执。
+            Assert.Equal(1, results.Count(result => result.IsSuccess));
+            var loser = results.Single(result => !result.IsSuccess);
+            Assert.Contains(loser.Code, new[] { OnlineErrorCode.VersionConflict, OnlineErrorCode.StateOperationForbidden });
+            var identity = await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "race@example.com");
+            Assert.Contains(identity.GameAccountId, new[] { accountA.Data.GameAccount.Id, accountB.Data.GameAccount.Id });
+        }
+
+        /// <summary>
+        /// 验证过期票据被拒绝（有效期 0 = 签发即过期）。
+        /// </summary>
+        [Fact]
+        public async Task BindIdentityAsync_ExpiredTicket_ShouldBeRejected()
+        {
+            // Arrange
+            var store = new InMemoryOnlineIdentityStore();
+            var service = new OnlineIdentityService(store, new OnlineAuditService(new InMemoryOnlineAuditStore()), 0);
+            var accountA = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "alice" });
+            var accountB = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "bobby" });
+            Assert.True((await service.BindIdentityAsync(TenantId, AppId, accountA.Data.GameAccount.Id, OnlineIdentityKind.Email, "alice@example.com")).IsSuccess);
+            Assert.True((await service.UnbindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "alice@example.com")).IsSuccess);
+            var authorization = await service.IssueIdentityRebindAuthorizationAsync(TenantId, AppId, accountA.Data.GameAccount.Id, OnlineIdentityKind.Email, "alice@example.com");
+            Assert.True(authorization.IsSuccess);
+
+            // Act
+            var expired = await service.BindIdentityAsync(TenantId, AppId, accountB.Data.GameAccount.Id, OnlineIdentityKind.Email, "alice@example.com", authorization.Data.Code);
+
+            // Assert
+            Assert.False(expired.IsSuccess);
+            Assert.Equal(OnlineErrorCode.StateOperationForbidden, expired.Code);
+            Assert.Equal(accountA.Data.GameAccount.Id, (await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "alice@example.com")).GameAccountId);
+        }
+
+        /// <summary>
+        /// 验证原账号注销后跨账号改绑被拒（票据已签发也不例外——走客服/管理后台）。
+        /// </summary>
+        [Fact]
+        public async Task BindIdentityAsync_OriginalAccountDeactivated_ShouldBeRejected()
+        {
+            // Arrange
+            var store = new InMemoryOnlineIdentityStore();
+            var service = new OnlineIdentityService(store, new OnlineAuditService(new InMemoryOnlineAuditStore()));
+            var accountA = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "alice" });
+            var accountB = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "bobby" });
+            Assert.True((await service.BindIdentityAsync(TenantId, AppId, accountA.Data.GameAccount.Id, OnlineIdentityKind.Email, "alice@example.com")).IsSuccess);
+            Assert.True((await service.UnbindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "alice@example.com")).IsSuccess);
+            var authorization = await service.IssueIdentityRebindAuthorizationAsync(TenantId, AppId, accountA.Data.GameAccount.Id, OnlineIdentityKind.Email, "alice@example.com");
+            Assert.True(authorization.IsSuccess);
+            Assert.True((await service.DeactivateAccountAsync(accountA.Data.GameAccount.Id, 0)).IsSuccess);
+
+            // Act
+            var withTicket = await service.BindIdentityAsync(TenantId, AppId, accountB.Data.GameAccount.Id, OnlineIdentityKind.Email, "alice@example.com", authorization.Data.Code);
+            var withoutTicket = await service.BindIdentityAsync(TenantId, AppId, accountB.Data.GameAccount.Id, OnlineIdentityKind.Email, "alice@example.com");
+
+            // Assert
+            Assert.False(withTicket.IsSuccess);
+            Assert.Equal(OnlineErrorCode.StateOperationForbidden, withTicket.Code);
+            Assert.False(withoutTicket.IsSuccess);
+            Assert.Equal(OnlineErrorCode.StateOperationForbidden, withoutTicket.Code);
+            Assert.Equal(accountA.Data.GameAccount.Id, (await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "alice@example.com")).GameAccountId);
+        }
+
+        /// <summary>
+        /// 验证票据签发的归属校验：非身份归属账号签发被拒、身份不存在被拒、票据作用域不匹配的改绑被拒。
+        /// </summary>
+        [Fact]
+        public async Task IssueIdentityRebindAuthorizationAsync_OwnershipAndScope_ShouldBeEnforced()
+        {
+            // Arrange
+            var store = new InMemoryOnlineIdentityStore();
+            var service = new OnlineIdentityService(store, new OnlineAuditService(new InMemoryOnlineAuditStore()));
+            var accountA = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "alice" });
+            var accountB = await service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "bobby" });
+            Assert.True((await service.BindIdentityAsync(TenantId, AppId, accountA.Data.GameAccount.Id, OnlineIdentityKind.Email, "alice@example.com")).IsSuccess);
+            Assert.True((await service.BindIdentityAsync(TenantId, AppId, accountA.Data.GameAccount.Id, OnlineIdentityKind.Email, "alice-alt@example.com")).IsSuccess);
+            Assert.True((await service.UnbindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "alice@example.com")).IsSuccess);
+            Assert.True((await service.UnbindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "alice-alt@example.com")).IsSuccess);
+
+            // Act / Assert ①：非归属账号（B）签发 → 拒绝。
+            var nonOwner = await service.IssueIdentityRebindAuthorizationAsync(TenantId, AppId, accountB.Data.GameAccount.Id, OnlineIdentityKind.Email, "alice@example.com");
+            Assert.False(nonOwner.IsSuccess);
+            Assert.Equal(OnlineErrorCode.StateOperationForbidden, nonOwner.Code);
+
+            // Act / Assert ②：身份不存在 → 拒绝。
+            var unknownIdentity = await service.IssueIdentityRebindAuthorizationAsync(TenantId, AppId, accountA.Data.GameAccount.Id, OnlineIdentityKind.Email, "nobody@example.com");
+            Assert.False(unknownIdentity.IsSuccess);
+            Assert.Equal(OnlineErrorCode.ResourceNotFound, unknownIdentity.Code);
+
+            // Act / Assert ③：A 为 alice@example.com 签发票据，B 拿它改绑另一个身份 → 作用域不匹配拒绝。
+            var authorization = await service.IssueIdentityRebindAuthorizationAsync(TenantId, AppId, accountA.Data.GameAccount.Id, OnlineIdentityKind.Email, "alice@example.com");
+            Assert.True(authorization.IsSuccess);
+            var mismatched = await service.BindIdentityAsync(TenantId, AppId, accountB.Data.GameAccount.Id, OnlineIdentityKind.Email, "alice-alt@example.com", authorization.Data.Code);
+            Assert.False(mismatched.IsSuccess);
+            Assert.Equal(OnlineErrorCode.StateOperationForbidden, mismatched.Code);
+        }
+
+        /// <summary>
+        /// 验证 InMemory 身份存储条件写原语：唯一插入冲突零覆写；CAS 匹配写入并推进版本、过期版本拒绝零写入。
+        /// </summary>
+        [Fact]
+        public async Task InMemoryStore_IdentityConditionalWrites_ShouldMatchContract()
+        {
+            // Arrange
+            var store = new InMemoryOnlineIdentityStore();
+            var identity = new OnlineIdentity
+            {
+                Id = "ident-1",
+                TenantId = TenantId,
+                AppId = AppId,
+                Kind = OnlineIdentityKind.Email,
+                Identifier = "primitive@example.com",
+                GameAccountId = 101,
+                CreatedAtTime = 1000,
+                UpdatedAtTime = 1000,
+            };
+
+            // Act / Assert ①：唯一插入成功建档版本 1；同键再插 false 且零覆写。
+            Assert.True(await store.TryAddIdentityAsync(identity));
+            var winner = await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "primitive@example.com");
+            Assert.Equal(1, winner.RowVersion);
+            var contender = new OnlineIdentity { Id = "ident-2", TenantId = TenantId, AppId = AppId, Kind = OnlineIdentityKind.Email, Identifier = "primitive@example.com", GameAccountId = 202 };
+            Assert.False(await store.TryAddIdentityAsync(contender));
+            Assert.Equal(101, (await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "primitive@example.com")).GameAccountId);
+
+            // Act / Assert ②：CAS 匹配版本写入并 +1；过期版本拒绝零写入。
+            var rebound = new OnlineIdentity { Id = "ident-1", TenantId = TenantId, AppId = AppId, Kind = OnlineIdentityKind.Email, Identifier = "primitive@example.com", GameAccountId = 202 };
+            Assert.True(await store.TryUpdateIdentityIfRowVersionAsync(rebound, winner.RowVersion));
+            var updated = await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "primitive@example.com");
+            Assert.Equal(202, updated.GameAccountId);
+            Assert.Equal(2, updated.RowVersion);
+            var staleAttempt = new OnlineIdentity { Id = "ident-1", TenantId = TenantId, AppId = AppId, Kind = OnlineIdentityKind.Email, Identifier = "primitive@example.com", GameAccountId = 303 };
+            Assert.False(await store.TryUpdateIdentityIfRowVersionAsync(staleAttempt, 1));
+            Assert.Equal(202, (await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "primitive@example.com")).GameAccountId);
+
+            // Act / Assert ③：盲写保留存量版本号（不推进，不回退）。
+            var blind = new OnlineIdentity { Id = "ident-1", TenantId = TenantId, AppId = AppId, Kind = OnlineIdentityKind.Email, Identifier = "primitive@example.com", GameAccountId = 404 };
+            await store.AddOrUpdateIdentityAsync(blind);
+            var afterBlindWrite = await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "primitive@example.com");
+            Assert.Equal(404, afterBlindWrite.GameAccountId);
+            Assert.Equal(2, afterBlindWrite.RowVersion);
         }
     }
 }

@@ -174,6 +174,98 @@ public sealed class OnlineGameDbStorePersistenceTests
     }
 
     /// <summary>
+    /// 身份条件写事实：唯一插入冲突零覆写；CAS 匹配写入推进行版本、过期版本拒绝；盲写保留版本。
+    /// </summary>
+    [Fact]
+    public async Task IdentityStore_ConditionalWrites_ShouldMatchContract()
+    {
+        await WithSqliteFacadeAsync(async () =>
+        {
+            var store = new GameDbOnlineIdentityStore();
+            var identity = new OnlineIdentity
+            {
+                Id = "idn-cas-1",
+                TenantId = TenantId,
+                AppId = AppId,
+                Kind = OnlineIdentityKind.Email,
+                Identifier = "cas@example.com",
+                GameAccountId = 101,
+                CreatedAtTime = 1000,
+                UpdatedAtTime = 1000,
+                UnboundAtTime = 0,
+            };
+
+            // 唯一插入：首插成功建档版本 1；同键冲突 false 且零覆写。
+            Assert.True(await store.TryAddIdentityAsync(identity));
+            var winner = await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "cas@example.com");
+            Assert.Equal(1, winner.RowVersion);
+            var contender = new OnlineIdentity { Id = "idn-cas-2", TenantId = TenantId, AppId = AppId, Kind = OnlineIdentityKind.Email, Identifier = "cas@example.com", GameAccountId = 202, CreatedAtTime = 1000, UpdatedAtTime = 1000, };
+            Assert.False(await store.TryAddIdentityAsync(contender));
+            Assert.Equal(101, (await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "cas@example.com")).GameAccountId);
+
+            // CAS：匹配版本写入并推进到 2；过期版本拒绝零写入。
+            var rebound = new OnlineIdentity { Id = "idn-cas-1", TenantId = TenantId, AppId = AppId, Kind = OnlineIdentityKind.Email, Identifier = "cas@example.com", GameAccountId = 202, CreatedAtTime = 1000, UpdatedAtTime = 2000, UnboundAtTime = 0, };
+            Assert.True(await store.TryUpdateIdentityIfRowVersionAsync(rebound, winner.RowVersion));
+            var updated = await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "cas@example.com");
+            Assert.Equal(202, updated.GameAccountId);
+            Assert.Equal(2, updated.RowVersion);
+            var stale = new OnlineIdentity { Id = "idn-cas-1", TenantId = TenantId, AppId = AppId, Kind = OnlineIdentityKind.Email, Identifier = "cas@example.com", GameAccountId = 303, CreatedAtTime = 1000, UpdatedAtTime = 3000, UnboundAtTime = 0, };
+            Assert.False(await store.TryUpdateIdentityIfRowVersionAsync(stale, 1));
+            Assert.Equal(202, (await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "cas@example.com")).GameAccountId);
+
+            // 盲写：覆盖账号但保留存量行版本（不推进、不抹空）。
+            var blind = new OnlineIdentity { Id = "idn-cas-1", TenantId = TenantId, AppId = AppId, Kind = OnlineIdentityKind.Email, Identifier = "cas@example.com", GameAccountId = 404, CreatedAtTime = 1000, UpdatedAtTime = 4000, UnboundAtTime = 0, };
+            await store.AddOrUpdateIdentityAsync(blind);
+            var afterBlindWrite = await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "cas@example.com");
+            Assert.Equal(404, afterBlindWrite.GameAccountId);
+            Assert.Equal(2, afterBlindWrite.RowVersion);
+        });
+    }
+
+    /// <summary>
+    /// 身份遗留无版本行领养事实：历史盲写行（RowVersion 为 null）以期望版本 0 一次性领养进入版本化 regime。
+    /// </summary>
+    [Fact]
+    public async Task IdentityStore_LegacyRowWithoutVersion_AdoptionThenCas_ShouldConverge()
+    {
+        await WithSqliteFacadeAsync(async () =>
+        {
+            var store = new GameDbOnlineIdentityStore();
+
+            // 直接落一行无版本的遗留行（绕过适配层，模拟历史盲写产物）。
+            var rowId = await GameDb.NextSequenceAsync<OnlineIdentityState>("row-id");
+            var legacyState = new OnlineIdentityState
+            {
+                Id = rowId,
+                UniqueKey = TenantId + ":" + AppId + ":" + (int)OnlineIdentityKind.Email + ":" + "legacy@example.com",
+                EntityId = "idn-legacy-1",
+                TenantId = TenantId,
+                AppId = AppId,
+                Kind = (int)OnlineIdentityKind.Email,
+                Identifier = "legacy@example.com",
+                GameAccountId = 101,
+                CreatedAtTime = 1000,
+                UpdatedAtTime = 1000,
+                UnboundAtTime = 500,
+            };
+            await GameDb.AddOrUpdateAsync(legacyState);
+
+            // 读回映射为版本 0；以期望 0 CAS（领养）成功并播种版本 1；此后正常 CAS 生效。
+            var legacy = await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "legacy@example.com");
+            Assert.NotNull(legacy);
+            Assert.Equal(0, legacy.RowVersion);
+            var adopted = new OnlineIdentity { Id = legacy.Id, TenantId = TenantId, AppId = AppId, Kind = OnlineIdentityKind.Email, Identifier = "legacy@example.com", GameAccountId = 202, CreatedAtTime = legacy.CreatedAtTime, UpdatedAtTime = 2000, UnboundAtTime = 0, };
+            Assert.True(await store.TryUpdateIdentityIfRowVersionAsync(adopted, 0));
+            var afterAdoption = await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "legacy@example.com");
+            Assert.Equal(202, afterAdoption.GameAccountId);
+            Assert.Equal(1, afterAdoption.RowVersion);
+            var nextWrite = new OnlineIdentity { Id = legacy.Id, TenantId = TenantId, AppId = AppId, Kind = OnlineIdentityKind.Email, Identifier = "legacy@example.com", GameAccountId = 303, CreatedAtTime = legacy.CreatedAtTime, UpdatedAtTime = 3000, UnboundAtTime = 0, };
+            Assert.True(await store.TryUpdateIdentityIfRowVersionAsync(nextWrite, 1));
+            Assert.Equal(303, (await store.FindIdentityAsync(TenantId, AppId, OnlineIdentityKind.Email, "legacy@example.com")).GameAccountId);
+        });
+    }
+
+    /// <summary>
     /// 玩家云存储 CAS / 软删 / 复活事实。
     /// </summary>
     [Fact]
