@@ -45,7 +45,15 @@ public static class AgentTemplate
     /// <remarks>
     /// String builder for assembling generated code.
     /// </remarks>
-    private static readonly StringBuilder TemplateStringBuilder = new();
+    /// <summary>
+    /// 每次构建局部的 StringBuilder（并发驱动运行互不共享状态，产出各自完整一致）。
+    /// </summary>
+    /// <remarks>
+    /// A local StringBuilder per run: concurrent driver executions share no state and each produces complete, consistent output.
+    /// </remarks>
+    [ThreadStatic]
+    private static StringBuilder TemplateStringBuilder;
+
 
     /// <summary>
     /// 根据代理信息生成包装器分部类的源代码。
@@ -57,7 +65,8 @@ public static class AgentTemplate
     /// <returns>生成的 C# 源代码字符串 / Generated C# source code string</returns>
     public static string Run(AgentInfo info)
     {
-        TemplateStringBuilder.Clear();
+        TemplateStringBuilder = new StringBuilder();
+
 
         foreach (var value in info.UsingSpaces)
         {
@@ -122,7 +131,7 @@ public static class AgentTemplate
         else
         {
             TemplateStringBuilder.AppendLine("\t\t\tlong callChainId = GameFrameX.Core.Actors.Impl.WorkerActor.NextChainId();");
-            TemplateStringBuilder.AppendLine($"\t\t\t_ = base.Actor.WorkerActor.EnqueueAsync(()=>base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), callChainId, true, {infoMethod.TimeOut});");
+            TemplateStringBuilder.AppendLine($"\t\t\t_ = base.Actor.WorkerActor.EnqueueAsync(()=>base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), callChainId, true{BuildTimeoutArgument(infoMethod)});");
         }
 
         TemplateStringBuilder.AppendLine($"\t\t\treturn {infoMethod.ReturnType}.CompletedTask;");
@@ -143,6 +152,20 @@ public static class AgentTemplate
         TemplateStringBuilder.AppendLine("\t\t\t{");
         TemplateStringBuilder.AppendLine($"\t\t\t\treturn {(needAwait ? "await " : string.Empty)} base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString});");
         TemplateStringBuilder.AppendLine("\t\t\t}");
-        TemplateStringBuilder.AppendLine($"\t\t\treturn {(needAwait ? "await " : string.Empty)} base.Actor.WorkerActor.EnqueueAsync(()=>base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), chainId, {(infoMethod.Discard ? "true" : "false")}, {infoMethod.TimeOut});");
+        TemplateStringBuilder.AppendLine($"\t\t\treturn {(needAwait ? "await " : string.Empty)} base.Actor.WorkerActor.EnqueueAsync(()=>base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), chainId, {(infoMethod.Discard ? "true" : "false")}{BuildTimeoutArgument(infoMethod)});");
+    }
+
+    /// <summary>
+    /// 构建超时实参片段：显式配置 [TimeOut] 时发射「, 超时值」，未配置时省略实参走 EnqueueAsync 框架默认值。
+    /// </summary>
+    /// <remarks>
+    /// Builds the timeout argument fragment: emits ", <ms>" only when [TimeOut] was explicitly configured;
+    /// otherwise the argument is omitted so EnqueueAsync's framework default applies.
+    /// </remarks>
+    /// <param name="infoMethod">方法元数据 / Method metadata</param>
+    /// <returns>超时实参片段（含前导逗号）或空串 / The timeout argument fragment (with leading comma) or an empty string</returns>
+    private static string BuildTimeoutArgument(MethodInfoData infoMethod)
+    {
+        return infoMethod.HasTimeout ? ", " + infoMethod.TimeOut : string.Empty;
     }
 }

@@ -91,12 +91,14 @@ namespace GameFrameX.Hotfix.Player
     // 正例：非泛型基类（IdentifierNameSyntax）
     public class SimpleAgent : FuncComponentAgent
     {
+        [Service]
         public virtual System.Threading.Tasks.Task<int> GetSimpleValueAsync() { return null; }
     }
 
     // 正例：限定名基类（QualifiedNameSyntax 兜底分支）
     public class QualifiedAgent : GameFrameX.Agents.QueryComponentAgent
     {
+        [Service]
         public virtual System.Threading.Tasks.Task<int> GetQualifiedValueAsync() { return null; }
     }
 }

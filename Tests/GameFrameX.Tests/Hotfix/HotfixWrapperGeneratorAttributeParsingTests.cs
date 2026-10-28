@@ -81,7 +81,7 @@ public sealed class HotfixWrapperGeneratorAttributeParsingTests
         Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
         // Discard 分支执行：async 修饰符被剥除、生成丢弃体（true 入队 + CompletedTask），而非等待调用体
         Assert.Contains("public override Task FlushAsync()", generatedText);
-        Assert.Contains("EnqueueAsync(()=>base.FlushAsync(), callChainId, true, 2147483647)", generatedText);
+        Assert.Contains("EnqueueAsync(()=>base.FlushAsync(), callChainId, true)", generatedText);
         Assert.Contains("return Task.CompletedTask;", generatedText);
     }
 
@@ -112,7 +112,7 @@ public sealed class HotfixWrapperGeneratorAttributeParsingTests
 
         Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Severity == DiagnosticSeverity.Error);
         // [ServiceAttribute] 显式尾缀书写与 [Service] 等价，仍识别为 Api（false 入队等待调用体）
-        Assert.Contains("EnqueueAsync(()=>base.QueryAsync(), chainId, false, 2147483647)", generatedText);
+        Assert.Contains("EnqueueAsync(()=>base.QueryAsync(), chainId, false)", generatedText);
     }
 
     /// <summary>

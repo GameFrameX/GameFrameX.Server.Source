@@ -122,7 +122,7 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(new[] { "PaymentConfirm", "RedeemCode", "MailAttachment", "MatchReward", "AdminOperation", "ActivityTask", "SystemCompensation" }, Enum.GetNames(typeof(OnlineAssetChangeSource)));
             Assert.Equal(7, Enum.GetValues(typeof(OnlineAssetChangeSource)).Cast<int>().Distinct().Count());
             Assert.Equal(new[] { "Grant", "Deduct", "Revoke", "Reissue", "Adjust" }, Enum.GetNames(typeof(OnlineGrantOperation)));
-            Assert.Equal(new[] { "NegativeBalanceAttempt", "DuplicateRequestObserved", "CompensatedAfterApplyFailure", "CompensationFailed", "CompensationSloExceeded", "ForeignLedgerEntryObserved" }, Enum.GetNames(typeof(OnlineAssetAlertKind)));
+            Assert.Equal(new[] { "NegativeBalanceAttempt", "DuplicateRequestObserved", "CompensatedAfterApplyFailure", "CompensationFailed", "CompensationSloExceeded", "ForeignLedgerEntryObserved", "CompensationManualReviewDiscarded" }, Enum.GetNames(typeof(OnlineAssetAlertKind)));
         }
 
         /// <summary>

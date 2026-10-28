@@ -69,4 +69,9 @@ public enum OnlineAssetAlertKind
     /// 非交易主体条目观察（中断裁决反查到 Tenant/App/Player 与交易主体不一致的账本条目；数据完整性异常留痕，条目不计入完成判定）。
     /// </summary>
     ForeignLedgerEntryObserved = 6,
+
+    /// <summary>
+    /// 补偿队列转人工条目被 Discard（人工裁决放弃续投；幂等键与原因入告警文本留痕）。
+    /// </summary>
+    CompensationManualReviewDiscarded = 7,
 }
