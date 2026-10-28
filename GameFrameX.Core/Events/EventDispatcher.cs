@@ -30,6 +30,7 @@
 using GameFrameX.Core.Abstractions.Events;
 using GameFrameX.Core.Abstractions;
 using GameFrameX.Core.Actors;
+using GameFrameX.Core.Actors.Impl;
 using GameFrameX.Core.Components;
 using GameFrameX.Core.Hotfix;
 using GameFrameX.Foundation.Extensions;
@@ -46,6 +47,11 @@ namespace GameFrameX.Core.Events;
 public static class EventDispatcher
 {
     /// <summary>
+    /// 在飞派发计数：Dispatch 触发后、派发任务（Actor 路径与全局路径）完成前递增，
+    /// 任务完成时递减；停机排空（<see cref="WaitAllDispatchedAsync"/>）以归零为完成判据。
+    /// </summary>
+    private static int _inFlightDispatchCount;
+    /// <summary>
     /// 分发事件到指定的Actor或全局监听器
     /// </summary>
     /// <param name="actorId">目标Actor的唯一标识符，如果为无效值则分发到全局监听器</param>
@@ -59,13 +65,66 @@ public static class EventDispatcher
         var actor = ActorManager.GetActor(actorId);
         if (actor != null)
         {
-            // 将工作任务提交到Actor的消息队列中
-            actor.Tell(() => DispatchToActorAsync(actor, actorId, eventArgs));
+            // 派发完成信号：工作单元执行完、或入队被拒（Actor 已隔离 / 邮箱已停）时只计一次。
+            // Dispatch completion signal: counted exactly once, whether the work unit ran or the enqueue was rejected.
+            var dispatchCompleted = 0;
+            void CompleteDispatch()
+            {
+                if (Interlocked.Exchange(ref dispatchCompleted, 1) == 0)
+                {
+                    Interlocked.Decrement(ref _inFlightDispatchCount);
+                }
+            }
+
+            // 用入队（而非 Tell）取得完成信号：Tell 在隔离/邮箱停止时静默丢弃工作单元，
+            // 在飞计数将永久滞留，停机排空每次都空等满超时；EnqueueAsync 仍经 Actor 邮箱 FIFO 串行执行。
+            // Enqueue (instead of Tell) provides the completion signal: Tell silently drops the work unit
+            // when the actor is quarantined or its mailbox stopped, leaking the in-flight counter; EnqueueAsync
+            // still runs the work unit serially through the actor mailbox in FIFO order.
+            Interlocked.Increment(ref _inFlightDispatchCount);
+            var dispatchTask = actor.WorkerActor.EnqueueAsync(async () =>
+            {
+                try
+                {
+                    await DispatchToActorAsync(actor, actorId, eventArgs);
+                }
+                finally
+                {
+                    CompleteDispatch();
+                }
+            }, callChainId: WorkerActor.NextChainId(), discard: true, timeOut: GlobalSettings.CurrentSetting.ActorTimeOut);
+
+            _ = dispatchTask.ContinueWith(_ => CompleteDispatch(), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
             return;
         }
 
         // 目标Actor不在内存中：按监听器所属Actor分别投递串行执行，不在线程池上执行监听器
         DispatchGlobal(actorId, eventArgs);
+    }
+
+    /// <summary>
+    /// 等待所有在飞事件派发完成（停机排空用，C367）。
+    /// </summary>
+    /// <remarks>
+    /// Polls the in-flight dispatch counter until it reaches zero or the timeout elapses.
+    /// 返回 false 表示超时仍有派发未完成，不抛异常——调用方记日志后放行停机。
+    /// </remarks>
+    /// <param name="timeout">最长等待时限。</param>
+    /// <returns>时限内全部派发完成返回 true；超时仍有在飞派发返回 false。</returns>
+    public static async Task<bool> WaitAllDispatchedAsync(TimeSpan timeout)
+    {
+        var deadlineUtcMilliseconds = TimerHelper.UnixTimeMilliseconds() + (long)timeout.TotalMilliseconds;
+        while (Interlocked.CompareExchange(ref _inFlightDispatchCount, 0, 0) > 0)
+        {
+            if (TimerHelper.UnixTimeMilliseconds() >= deadlineUtcMilliseconds)
+            {
+                return false;
+            }
+
+            await Task.Delay(20);
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -139,7 +198,14 @@ public static class EventDispatcher
                 continue;
             }
 
-            ownerActor.Tell(() => DispatchListenerInActorAsync(ownerActor, listener, actorId, eventArgs));
+            // 每个监听器投递计入在飞计数：仍经所属 Actor 邮箱 FIFO 串行执行，但用 EnqueueAsync 取得完成信号，
+            // 停机排空可等待；入队被拒（隔离/邮箱停止）由任务终态统一回落计数。
+            // Each listener dispatch counts as in-flight: still serialized through the owner actor's mailbox
+            // in FIFO order, but EnqueueAsync provides the completion signal for shutdown drain; a rejected
+            // enqueue (quarantined/stopped mailbox) settles the counter via the task's final state.
+            Interlocked.Increment(ref _inFlightDispatchCount);
+            var listenerDispatchTask = ownerActor.WorkerActor.EnqueueAsync(() => DispatchListenerInActorAsync(ownerActor, listener, actorId, eventArgs), callChainId: WorkerActor.NextChainId(), discard: true, timeOut: GlobalSettings.CurrentSetting.ActorTimeOut);
+            _ = listenerDispatchTask.ContinueWith(_ => Interlocked.Decrement(ref _inFlightDispatchCount), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
     }
 
