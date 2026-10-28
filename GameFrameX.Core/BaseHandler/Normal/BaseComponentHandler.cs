@@ -139,9 +139,9 @@ public abstract class BaseComponentHandler<TRequest> : BaseMessageHandler<TReque
         if (CacheComponent == null)
         {
             // Localization: Core.MessageHandler.GetComponentAgentCacheComponentNull - BaseComponentHandler.GetComponentAgentAsync 缓存组件为空，消息类型:{0}
-            LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.GetComponentAgentCacheComponentNull, Message.GetType().FullName));
+            var errorMessage = LocalizationService.GetString(Localization.Keys.Core.MessageHandler.GetComponentAgentCacheComponentNull, Message.GetType().FullName);
             NetworkChannel.Close();
-            return default;
+            throw new InvalidOperationException(errorMessage);
         }
 
         return CacheComponent.GetComponentAgentAsync<TOtherAgent>();
