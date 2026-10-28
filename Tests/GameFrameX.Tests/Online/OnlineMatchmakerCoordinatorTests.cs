@@ -250,6 +250,93 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 验证发件箱补偿（C374）：Commit 成功后 assignment-created 发布失败不外溢、不丢事件，
+        /// 下一轮 RunOnce 起点重投送达，且不产生第二个 assignment。
+        /// </summary>
+        [Fact]
+        public async Task RunOnceAsync_WhenAssignmentEventPublishFails_ShouldRedeliverOnNextRun()
+        {
+            // Arrange
+            var fixture = CreateFixture(new OnlineMatchmakerOptions(), new FlakyOnlineEventPublisher());
+            await EnqueueAsync(fixture, PlayerOne);
+            await EnqueueAsync(fixture, PlayerTwo);
+
+            // Act：第一轮——assignment-created 发布抛异常，落档与逐票据事件不受影响。
+            var firstOutcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+
+            // Assert：撮合结果完整，失败事件保留在发件箱待投递。
+            Assert.True(firstOutcome.IsSuccess);
+            Assert.Single(firstOutcome.Data.AssignmentIds);
+            Assert.Empty(fixture.Recorder.Filter(OnlineMatchEvents.AssignmentCreated));
+            Assert.Equal(2, fixture.Recorder.Filter(OnlineMatchEvents.TicketChanged).Count);
+            var pendingAfterFirstRun = await fixture.Outbox.ListPendingAsync(TenantId, AppId);
+            Assert.Single(pendingAfterFirstRun);
+            Assert.Equal(OnlineMatchEvents.AssignmentCreated, pendingAfterFirstRun[0].Event.EventType);
+
+            // Act：第二轮——无新票据，故障桩已恢复，仅重投待投递事件。
+            var secondOutcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+
+            // Assert：事件补投送达且不重复，assignment 仍唯一，发件箱清空。
+            Assert.True(secondOutcome.IsSuccess);
+            Assert.Empty(secondOutcome.Data.AssignmentIds);
+            Assert.Single(fixture.Recorder.Filter(OnlineMatchEvents.AssignmentCreated));
+            Assert.Equal(2, fixture.Recorder.Filter(OnlineMatchEvents.TicketChanged).Count);
+            var assignments = await fixture.Store.ListAssignmentsAsync(TenantId, AppId);
+            Assert.Single(assignments);
+            Assert.Empty(await fixture.Outbox.ListPendingAsync(TenantId, AppId));
+        }
+
+        /// <summary>
+        /// 验证发件箱补偿（C374）：发布持续失败时事件保留待投递，多轮重试无副作用
+        /// （assignment 不重复、事件不重复入箱），撮合结果不受影响。
+        /// </summary>
+        [Fact]
+        public async Task RunOnceAsync_WhenPublishKeepsFailing_ShouldRetainPendingWithoutSideEffects()
+        {
+            // Arrange
+            var publisher = new FlakyOnlineEventPublisher { FailAssignmentCreatedForever = true, };
+            var fixture = CreateFixture(new OnlineMatchmakerOptions(), publisher);
+            await EnqueueAsync(fixture, PlayerOne);
+            await EnqueueAsync(fixture, PlayerTwo);
+
+            // Act
+            var firstOutcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+            var secondOutcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+
+            // Assert：两轮撮合结果正确，assignment 唯一；失败事件保留且不重复。
+            Assert.True(firstOutcome.IsSuccess);
+            Assert.Single(firstOutcome.Data.AssignmentIds);
+            Assert.True(secondOutcome.IsSuccess);
+            Assert.Empty(secondOutcome.Data.AssignmentIds);
+            var assignments = await fixture.Store.ListAssignmentsAsync(TenantId, AppId);
+            Assert.Single(assignments);
+            var pending = await fixture.Outbox.ListPendingAsync(TenantId, AppId);
+            Assert.Single(pending);
+            Assert.Equal(OnlineMatchEvents.AssignmentCreated, pending[0].Event.EventType);
+        }
+
+        /// <summary>
+        /// 验证发件箱在场时成功路径的事件顺序：assignment-created 先于逐票据 ticket-changed。
+        /// </summary>
+        [Fact]
+        public async Task RunOnceAsync_WithOutbox_ShouldPreserveEventOrder()
+        {
+            // Arrange
+            var fixture = CreateFixture(new OnlineMatchmakerOptions(), null);
+            await EnqueueAsync(fixture, PlayerOne);
+            await EnqueueAsync(fixture, PlayerTwo);
+
+            // Act
+            var outcome = await fixture.Coordinator.RunOnceAsync(TenantId, AppId);
+
+            // Assert
+            Assert.True(outcome.IsSuccess);
+            var events = fixture.Recorder.Events;
+            Assert.Equal(OnlineMatchEvents.AssignmentCreated, events[0].EventType);
+            Assert.Equal(2, fixture.Recorder.Filter(OnlineMatchEvents.TicketChanged).Count);
+        }
+
+        /// <summary>
         /// 以包内默认匹配参数创建一套测试夹具。
         /// </summary>
         /// <returns>测试夹具。</returns>
@@ -259,7 +346,25 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 以指定匹配参数创建一套测试夹具（内存存储 + 票据服务 + 协调器）。
+        /// 以指定匹配参数与可注入事件发布器创建一套测试夹具（内存存储 + 票据服务 + 协调器 + 发件箱；
+        /// 故障注入时记录桩挂在故障桩内侧，成功投递仍可被断言）。
+        /// </summary>
+        /// <param name="options">匹配与限流可配置项。</param>
+        /// <param name="eventPublisher">事件发布器（null = 直连记录桩）。</param>
+        /// <returns>测试夹具。</returns>
+        private static Fixture CreateFixture(OnlineMatchmakerOptions options, FlakyOnlineEventPublisher eventPublisher)
+        {
+            var store = new InMemoryOnlineMatchTicketStore();
+            var recorder = eventPublisher == null ? new OnlineEventRecorder() : eventPublisher.InnerRecorder;
+            var outbox = new InMemoryOnlineMatchEventOutbox();
+            var tickets = new OnlineMatchTicketService(store, recorder, options);
+            var publisher = eventPublisher == null ? (IOnlineEventPublisher)recorder : eventPublisher;
+            var coordinator = new OnlineMatchmakerCoordinator(store, tickets, publisher, options, null, outbox);
+            return new Fixture(store, recorder, tickets, coordinator, outbox);
+        }
+
+        /// <summary>
+        /// 以指定匹配参数创建一套测试夹具（内存存储 + 票据服务 + 协调器；无发件箱，既有直发路径）。
         /// </summary>
         /// <param name="options">匹配与限流可配置项。</param>
         /// <returns>测试夹具。</returns>
@@ -269,7 +374,7 @@ namespace GameFrameX.Tests.Online
             var recorder = new OnlineEventRecorder();
             var tickets = new OnlineMatchTicketService(store, recorder, options);
             var coordinator = new OnlineMatchmakerCoordinator(store, tickets, recorder, options);
-            return new Fixture(store, recorder, tickets, coordinator);
+            return new Fixture(store, recorder, tickets, coordinator, null);
         }
 
         /// <summary>
@@ -323,13 +428,22 @@ namespace GameFrameX.Tests.Online
             /// <param name="store">票据存储。</param>
             /// <param name="recorder">事件记录桩。</param>
             /// <param name="tickets">票据服务。</param>
-            /// <param name="coordinator">匹配协调器。</param>
-            public Fixture(InMemoryOnlineMatchTicketStore store, OnlineEventRecorder recorder, OnlineMatchTicketService tickets, OnlineMatchmakerCoordinator coordinator)
+            /// <param name="outbox">匹配事件发件箱（无补偿直发夹具为 null）。</param>
+            public Fixture(InMemoryOnlineMatchTicketStore store, OnlineEventRecorder recorder, OnlineMatchTicketService tickets, OnlineMatchmakerCoordinator coordinator, InMemoryOnlineMatchEventOutbox outbox)
             {
                 Store = store;
                 Recorder = recorder;
                 Tickets = tickets;
                 Coordinator = coordinator;
+                Outbox = outbox;
+            }
+
+            /// <summary>
+            /// 获取匹配事件发件箱（无补偿直发夹具为 null）。
+            /// </summary>
+            public InMemoryOnlineMatchEventOutbox Outbox
+            {
+                get;
             }
 
             /// <summary>
@@ -362,6 +476,60 @@ namespace GameFrameX.Tests.Online
             public OnlineMatchmakerCoordinator Coordinator
             {
                 get;
+            }
+        }
+
+        /// <summary>
+        /// 故障注入事件发布桩（C374）：内侧挂记录桩，成功路径照常入册；
+        /// assignment-created 事件按配置注入失败（首轮一次或持续），其余事件恒成功。
+        /// </summary>
+        private sealed class FlakyOnlineEventPublisher : IOnlineEventPublisher
+        {
+            /// <summary>
+            /// 初始化 <see cref="FlakyOnlineEventPublisher"/>。
+            /// </summary>
+            public FlakyOnlineEventPublisher()
+            {
+                InnerRecorder = new OnlineEventRecorder();
+            }
+
+            /// <summary>
+            /// 获取内侧事件记录桩（成功投递的断言面）。
+            /// </summary>
+            public OnlineEventRecorder InnerRecorder
+            {
+                get;
+            }
+
+            /// <summary>
+            /// 获取或设置 assignment-created 事件是否持续发布失败。
+            /// </summary>
+            public bool FailAssignmentCreatedForever
+            {
+                get;
+                set;
+            }
+
+            /// <summary>
+            /// 是否已对 assignment-created 注入过一次失败（一次性故障模式）。
+            /// </summary>
+            private bool _failedOnce;
+
+            /// <summary>
+            /// 发布事件：assignment-created 事件按故障配置抛 <see cref="InvalidOperationException"/>，其余转内侧记录桩。
+            /// </summary>
+            /// <param name="onlineEvent">待发布事件。</param>
+            /// <param name="cancellationToken">取消令牌。</param>
+            /// <returns>完成通知。</returns>
+            public Task PublishAsync(OnlineEvent onlineEvent, CancellationToken cancellationToken = default)
+            {
+                if (onlineEvent.EventType == OnlineMatchEvents.AssignmentCreated && (FailAssignmentCreatedForever || !_failedOnce))
+                {
+                    _failedOnce = true;
+                    throw new InvalidOperationException("simulated assignment event publish failure");
+                }
+
+                return InnerRecorder.PublishAsync(onlineEvent, cancellationToken);
             }
         }
     }
