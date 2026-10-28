@@ -63,6 +63,9 @@ public sealed class OnlineAuditService : IOnlineAuditReader
     /// <summary>页大小上限；超过即拒绝，防止消费方一次拉走全量审计。</summary>
     private const int MaxPageSize = 200;
 
+    /// <summary>审计标识（EventId）长度上限；超出即拒绝，防止超长标识打满审计存储（DoS 面）。</summary>
+    public const int MaxEventIdLength = 128;
+
     /// <summary>游标内部的字段分隔符（游标对消费方不透明，此分隔符属实现细节）。</summary>
     private const char CursorSeparator = '|';
 
@@ -219,6 +222,16 @@ public sealed class OnlineAuditService : IOnlineAuditReader
             return OnlineResult<OnlineAuditIngestOutcome>.Fail(OnlineErrorCode.ParameterInvalid, "审计标识（EventId）必填——它是幂等去重键，缺失无法保证重复接入不重复落档");
         }
 
+        if (entry.EventId.Length > MaxEventIdLength)
+        {
+            return OnlineResult<OnlineAuditIngestOutcome>.Fail(OnlineErrorCode.ParameterInvalid, "审计标识（EventId）长度超过上限 " + MaxEventIdLength.ToString(CultureInfo.InvariantCulture) + "——超长标识拒绝接入（防审计存储 DoS）");
+        }
+
+        if (!HasValidEventIdCharacters(entry.EventId))
+        {
+            return OnlineResult<OnlineAuditIngestOutcome>.Fail(OnlineErrorCode.ParameterInvalid, "审计标识（EventId）只允许字母、数字、连字符与下划线——含换行/控制字符等非法字符拒绝接入（防日志注入）");
+        }
+
         if (string.IsNullOrEmpty(entry.EventType))
         {
             return OnlineResult<OnlineAuditIngestOutcome>.Fail(OnlineErrorCode.ParameterInvalid, "事件/操作类型（EventType）必填");
@@ -245,6 +258,28 @@ public sealed class OnlineAuditService : IOnlineAuditReader
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// 判定审计标识字符集是否合法（白名单：字母 / 数字 / 连字符 / 下划线；
+    /// 换行、控制字符与其它符号一律拒绝——防日志注入与不可见字符攻击）。
+    /// </summary>
+    /// <param name="eventId">审计标识（已保证非空且长度合规）。</param>
+    /// <returns>全部字符落在白名单内返回 <c>true</c>。</returns>
+    private static bool HasValidEventIdCharacters(string eventId)
+    {
+        foreach (var character in eventId)
+        {
+            var isLetterOrDigit = (character >= 'a' && character <= 'z')
+                || (character >= 'A' && character <= 'Z')
+                || (character >= '0' && character <= '9');
+            if (!isLetterOrDigit && character != '-' && character != '_')
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>

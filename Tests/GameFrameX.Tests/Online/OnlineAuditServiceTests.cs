@@ -216,6 +216,45 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 审计半边：EventId 超过长度上限被拒绝（防超长标识打满审计存储）；
+        /// 恰好等于上限的合法标识可正常接入（边界通过）。
+        /// </summary>
+        [Fact]
+        public async Task Ingest_EventIdLengthOverLimit_Rejected()
+        {
+            var service = CreateService();
+
+            var overLimit = CreateEntry(new string('a', OnlineAuditService.MaxEventIdLength + 1), OnlineAuditDomain.Operation, 1_700_000_000_000L);
+            var overLimitResult = await service.IngestAsync(overLimit);
+            Assert.False(overLimitResult.IsSuccess);
+            Assert.Equal(OnlineErrorCode.ParameterInvalid, overLimitResult.Code);
+
+            var atLimit = CreateEntry("evt-" + new string('b', OnlineAuditService.MaxEventIdLength - 4), OnlineAuditDomain.Operation, 1_700_000_001_000L);
+            var atLimitResult = await service.IngestAsync(atLimit);
+            Assert.True(atLimitResult.IsSuccess);
+            Assert.False(atLimitResult.Data.IsDuplicate);
+        }
+
+        /// <summary>
+        /// 审计半边：EventId 含换行 / 空格等白名单外字符被拒绝（防日志注入与不可见字符攻击）。
+        /// </summary>
+        /// <param name="eventId">非法审计标识。</param>
+        [Theory]
+        [InlineData("evt\ninjected")]
+        [InlineData("evt\rinjected")]
+        [InlineData("evt injected")]
+        [InlineData("evt\x1binjected")]
+        [InlineData("evt.id")]
+        public async Task Ingest_EventIdIllegalCharacters_Rejected(string eventId)
+        {
+            var service = CreateService();
+
+            var result = await service.IngestAsync(CreateEntry(eventId, OnlineAuditDomain.Operation, 1_700_000_000_000L));
+            Assert.False(result.IsSuccess);
+            Assert.Equal(OnlineErrorCode.ParameterInvalid, result.Code);
+        }
+
+        /// <summary>
         /// 审计半边：同一 EventId 重复接入幂等——第二次回执 IsDuplicate=true（同构成功），
         /// 存储仍只有一条、检索不重复、无副作用。
         /// </summary>
