@@ -54,11 +54,11 @@ public sealed class InProcDiscoveryRuntimeTests
     /// 测试激活后自指路由表：每个 HostedRole 的 Role 视图解析到唯一 Active 自指实例。
     /// </summary>
     [Fact]
-    public void Activate_MultipleRoles_ShouldResolveEachRoleToSingleActiveSelfInstance()
+    public async Task ActivateAsync_MultipleRoles_ShouldResolveEachRoleToSingleActiveSelfInstance()
     {
-        ResetAndRun(() =>
+        await ResetAndRunAsync(async () =>
         {
-            InProcDiscoveryRuntime.Activate(CreateOptions("Game", "Gateway"));
+            await InProcDiscoveryRuntime.ActivateAsync(CreateOptions("Game", "Gateway"));
 
             var provider = InProcDiscoveryRuntime.TableProvider;
             Assert.NotNull(provider);
@@ -80,18 +80,18 @@ public sealed class InProcDiscoveryRuntimeTests
     }
 
     /// <summary>
-    /// 测试激活幂等：二次 Activate no-op（路由表提供者引用不变）。
+    /// 测试激活幂等：二次 ActivateAsync no-op（路由表提供者引用不变）。
     /// </summary>
     [Fact]
-    public void Activate_Twice_ShouldBeIdempotentNoOp()
+    public async Task ActivateAsync_Twice_ShouldBeIdempotentNoOp()
     {
-        ResetAndRun(() =>
+        await ResetAndRunAsync(async () =>
         {
-            InProcDiscoveryRuntime.Activate(CreateOptions("Game"));
+            await InProcDiscoveryRuntime.ActivateAsync(CreateOptions("Game"));
             var firstProvider = InProcDiscoveryRuntime.TableProvider;
             Assert.NotNull(firstProvider);
 
-            InProcDiscoveryRuntime.Activate(CreateOptions("Other"));
+            await InProcDiscoveryRuntime.ActivateAsync(CreateOptions("Other"));
 
             Assert.Same(firstProvider, InProcDiscoveryRuntime.TableProvider);
             Assert.Single(InProcDiscoveryRuntime.TableProvider.Current.GetActiveInstances("Game"));
@@ -100,23 +100,23 @@ public sealed class InProcDiscoveryRuntimeTests
     }
 
     /// <summary>
-    /// 测试校验异常：null options / 缺 ConnectionName / null HostedRoleNames。
+    /// 测试校验异常：null options / 缺 ConnectionName / null HostedRoleNames（同步抛出，await 调用方观察一致）。
     /// </summary>
     [Fact]
-    public void Activate_WithInvalidOptions_ShouldThrow()
+    public async Task ActivateAsync_WithInvalidOptions_ShouldThrow()
     {
-        ResetAndRun(() =>
+        await ResetAndRunAsync(async () =>
         {
-            Assert.Throws<ArgumentNullException>(() => InProcDiscoveryRuntime.Activate(null));
+            await Assert.ThrowsAsync<ArgumentNullException>(() => InProcDiscoveryRuntime.ActivateAsync(null));
 
-            var missingConnectionName = Assert.Throws<ArgumentException>(() => InProcDiscoveryRuntime.Activate(new DiscoveryActivationOptions
+            var missingConnectionName = await Assert.ThrowsAsync<ArgumentException>(() => InProcDiscoveryRuntime.ActivateAsync(new DiscoveryActivationOptions
             {
                 ConnectionName = string.Empty,
                 HostedRoleNames = new[] { "Game" },
             }));
             Assert.Equal("options", missingConnectionName.ParamName);
 
-            Assert.Throws<ArgumentNullException>(() => InProcDiscoveryRuntime.Activate(new DiscoveryActivationOptions
+            await Assert.ThrowsAsync<ArgumentNullException>(() => InProcDiscoveryRuntime.ActivateAsync(new DiscoveryActivationOptions
             {
                 ConnectionName = "game",
                 HostedRoleNames = null,
@@ -128,11 +128,11 @@ public sealed class InProcDiscoveryRuntimeTests
     /// 测试 MarkActiveAsync：registry 槽为 null 时 no-op 完成（不抛异常）。
     /// </summary>
     [Fact]
-    public async Task MarkActiveAsync_AfterActivate_ShouldCompleteAsNoOp()
+    public async Task MarkActiveAsync_AfterActivateAsync_ShouldCompleteAsNoOp()
     {
-        ResetAndRun(async () =>
+        await ResetAndRunAsync(async () =>
         {
-            InProcDiscoveryRuntime.Activate(CreateOptions("Game"));
+            await InProcDiscoveryRuntime.ActivateAsync(CreateOptions("Game"));
 
             // registry 槽保持 null（单进程拓扑无心跳写侧）→ no-op 完成
             var exception = await Record.ExceptionAsync(() => ActiveDiscoveryRuntime.MarkActiveAsync());
@@ -153,14 +153,14 @@ public sealed class InProcDiscoveryRuntimeTests
     }
 
     /// <summary>
-    /// 测试 harness：前置重置静态装配态，结束后复位（隔离）。
+    /// 测试 harness：前置重置静态装配态，结束后复位（隔离）——异步载荷真正等待完成后才复位。
     /// </summary>
-    private static void ResetAndRun(Action action)
+    private static async Task ResetAndRunAsync(Func<Task> action)
     {
         InProcDiscoveryRuntime.ResetForTest();
         try
         {
-            action();
+            await action();
         }
         finally
         {

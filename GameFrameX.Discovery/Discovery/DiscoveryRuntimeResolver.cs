@@ -81,23 +81,28 @@ public static class DiscoveryRuntimeResolver
     private static readonly ConcurrentDictionary<DatabaseProviderType, MethodInfo> ResolvedActivators = new();
 
     /// <summary>
-    /// 按约定激活发现层 Runtime（读 <paramref name="options"/> 的 Provider 成员分派，组合根唯一激活入口）。
+    /// 按约定激活发现层 Runtime（读 <paramref name="options"/> 的 Provider 成员分派，组合根唯一激活入口）——异步等待目标 Runtime 的激活任务，不阻塞调用线程。
     /// </summary>
     /// <remarks>
-    /// Activates the discovery runtime selected by <c>Provider</c> through the mapping table.
-    /// Three failure branches: enum member without a mapping (Database.Discovery.ProviderNotSupported,
-    /// lists the supported members), host process not referencing the provider project or the runtime
-    /// no longer exposing <c>public static void Activate(DiscoveryActivationOptions)</c>
+    /// Activates the discovery runtime selected by <c>Provider</c> through the mapping table and
+    /// awaits its activation task (never blocking the calling thread — SynchronizationContext
+    /// hosts stay responsive). Three failure branches: enum member without a mapping
+    /// (Database.Discovery.ProviderNotSupported, lists the supported members), host process not
+    /// referencing the provider project or the runtime no longer exposing
+    /// <c>public static Task ActivateAsync(DiscoveryActivationOptions, CancellationToken)</c>
     /// (Database.Discovery.ProviderNotInstalled, FreeSql-style self-diagnosis naming the expected
-    /// assembly-qualified type and the direct <c>*DiscoveryRuntime.Activate</c> escape hatch).
+    /// assembly-qualified type and the direct <c>*DiscoveryRuntime.ActivateAsync</c> escape hatch).
     /// Exceptions thrown by the runtime itself (e.g. the localized ConnectionName validation or
-    /// GameDb resolution failures) propagate unchanged, unwrapped from the reflection layer.
+    /// GameDb resolution failures) propagate unchanged, unwrapped from the reflection layer —
+    /// async runtimes surface them on the awaited task; synchronous validation throws from
+    /// non-async implementations are unwrapped from <see cref="TargetInvocationException"/>.
     /// </remarks>
     /// <param name="options">激活参数（Provider 决定目标 Runtime，其余成员原样透传）/ Activation options (Provider selects the target runtime; the rest pass through verbatim)</param>
+    /// <param name="cancellationToken">取消令牌（透传给目标 Runtime）/ Cancellation token forwarded to the target runtime</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="options"/> 为 null 时抛出 / Thrown when <paramref name="options"/> is null</exception>
     /// <exception cref="InvalidOperationException">枚举未配映射、宿主缺 Provider 工程引用或激活入口签名不符时抛出 / Thrown when the enum is unmapped, the provider assembly is not referenced by the host, or the activation entry-point signature does not match</exception>
-    [RequiresUnreferencedCode("按命名约定反射激活发现层；AOT/裁剪场景请直调 *DiscoveryRuntime.Activate 显式激活")]
-    public static void Activate(DiscoveryActivationOptions options)
+    [RequiresUnreferencedCode("按命名约定反射激活发现层；AOT/裁剪场景请直调 *DiscoveryRuntime.ActivateAsync 显式激活")]
+    public static async Task ActivateAsync(DiscoveryActivationOptions options, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(options);
 
@@ -115,7 +120,7 @@ public static class DiscoveryRuntimeResolver
             throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Database.DiscoveryProviderNotInstalled, provider.ToString(), typeName));
         }
 
-        InvokeActivator(activator, options);
+        await InvokeActivatorAsync(activator, options, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -124,12 +129,13 @@ public static class DiscoveryRuntimeResolver
     /// <remarks>
     /// Test hook resolving an arbitrary assembly-qualified type name so the guard test can drive the
     /// Database.Discovery.ProviderNotInstalled branch with an injected bad string without touching the
-    /// real mapping table. Non-test callers use <see cref="Activate(DiscoveryActivationOptions)"/>.
+    /// real mapping table. Non-test callers use <see cref="ActivateAsync(DiscoveryActivationOptions, CancellationToken)"/>.
     /// </remarks>
     /// <param name="typeName">程序集限定类型名 / Assembly-qualified type name</param>
     /// <param name="options">激活参数（原样透传给解析到的 Runtime）/ Activation options passed through to the resolved runtime</param>
+    /// <param name="cancellationToken">取消令牌（原样透传给解析到的 Runtime）/ Cancellation token passed through to the resolved runtime</param>
     /// <exception cref="InvalidOperationException">激活入口不可定位时抛出 / Thrown when the activation entry point cannot be located</exception>
-    internal static void ActivateFromTypeName(string typeName, DiscoveryActivationOptions options)
+    internal static async Task ActivateFromTypeNameAsync(string typeName, DiscoveryActivationOptions options, CancellationToken cancellationToken = default)
     {
         var activator = ResolveActivate(typeName);
         if (activator == null)
@@ -138,16 +144,17 @@ public static class DiscoveryRuntimeResolver
             throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Database.DiscoveryProviderNotInstalled, "<test-injected>", typeName));
         }
 
-        InvokeActivator(activator, options);
+        await InvokeActivatorAsync(activator, options, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// 解析类型的 <c>public static void Activate(DiscoveryActivationOptions)</c> 激活入口（类型或入口缺失返回 null，由调用方 fail-fast）。
+    /// 解析类型的 <c>public static Task ActivateAsync(DiscoveryActivationOptions, CancellationToken)</c> 激活入口（类型、入口或返回类型缺失返回 null，由调用方 fail-fast）。
     /// </summary>
     /// <remarks>
-    /// Resolves the <c>Activate</c> entry point with the exact expected signature. A null return
-    /// means either the assembly-qualified type did not load or the type no longer exposes the
-    /// entry point — both surface as the localized NotInstalled self-diagnosis carrying the type name.
+    /// Resolves the <c>ActivateAsync</c> entry point with the exact expected signature (return
+    /// type checked as <see cref="Task"/>). A null return means either the assembly-qualified
+    /// type did not load or the type no longer exposes the entry point — both surface as the
+    /// localized NotInstalled self-diagnosis carrying the type name.
     /// </remarks>
     /// <param name="typeName">程序集限定类型名 / Assembly-qualified type name</param>
     /// <returns>激活方法信息；不可定位时 null / The activation method info, or null when unresolvable</returns>
@@ -159,30 +166,38 @@ public static class DiscoveryRuntimeResolver
             return null;
         }
 
-        return type.GetMethod("Activate", BindingFlags.Public | BindingFlags.Static, binder: null, new[] { typeof(DiscoveryActivationOptions) }, modifiers: null);
+        var method = type.GetMethod("ActivateAsync", BindingFlags.Public | BindingFlags.Static, binder: null, new[] { typeof(DiscoveryActivationOptions), typeof(CancellationToken) }, modifiers: null);
+        return method != null && method.ReturnType == typeof(Task) ? method : null;
     }
 
     /// <summary>
-    /// 反射调用激活入口（<see cref="TargetInvocationException"/> 解包为内层异常上抛——运行时自身的本地化校验异常按直调语义原样传播）。
+    /// 反射调用激活入口并等待其返回的激活任务（<see cref="TargetInvocationException"/> 解包为内层异常上抛——运行时自身的本地化校验异常按直调语义原样传播）。
     /// </summary>
     /// <remarks>
-    /// Invokes the resolved entry point. Reflection wraps callee exceptions in
-    /// <see cref="TargetInvocationException"/>; unwrapping preserves the direct-call semantics so
-    /// the runtimes' own localized failures (ConnectionName validation, GameDb resolution) reach
-    /// the composition root with their original types and messages.
+    /// Invokes the resolved entry point and awaits the returned activation task. Reflection
+    /// wraps callee exceptions thrown synchronously (non-async implementations validating
+    /// arguments before returning a task) in <see cref="TargetInvocationException"/>;
+    /// unwrapping preserves the direct-call semantics so the runtimes' own localized failures
+    /// (ConnectionName validation, GameDb resolution) reach the composition root with their
+    /// original types and messages — for async runtimes the same failures surface on the
+    /// awaited task, already unwrapped.
     /// </remarks>
     /// <param name="activator">已解析的激活方法 / The resolved activation method</param>
     /// <param name="options">激活参数 / Activation options</param>
-    private static void InvokeActivator(MethodInfo activator, DiscoveryActivationOptions options)
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    private static async Task InvokeActivatorAsync(MethodInfo activator, DiscoveryActivationOptions options, CancellationToken cancellationToken)
     {
+        Task activationTask;
         try
         {
-            activator.Invoke(null, new object[] { options });
+            activationTask = (Task)activator.Invoke(null, new object[] { options, cancellationToken });
         }
         catch (TargetInvocationException exception) when (exception.InnerException != null)
         {
-            // 解包反射包装层：直调 *DiscoveryRuntime.Activate 时异常原样上抛，约定激活路径保持同形。
+            // 解包反射包装层：直调 *DiscoveryRuntime.ActivateAsync 时异常原样上抛，约定激活路径保持同形。
             throw exception.InnerException;
         }
+
+        await activationTask.ConfigureAwait(false);
     }
 }

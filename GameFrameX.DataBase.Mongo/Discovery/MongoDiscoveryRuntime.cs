@@ -42,7 +42,7 @@ namespace GameFrameX.DataBase.Mongo.Discovery;
 /// </summary>
 /// <remarks>
 /// The process-level wiring point for the Mongo discovery layer. The launch
-/// flow calls <c>Activate(DiscoveryActivationOptions)</c> once the control
+/// flow calls <c>ActivateAsync(DiscoveryActivationOptions, CancellationToken)</c> once the control
 /// database (gameframex_control) is registered in MultiDbRegistry: it
 /// constructs the Mongo stores (<see cref="MongoHeartbeatStore"/> /
 /// <see cref="MongoPlayerRouteStore"/>), starts the generic
@@ -52,7 +52,7 @@ namespace GameFrameX.DataBase.Mongo.Discovery;
 /// single-process local development), and attaches the generic player-route
 /// bootstrap. Router wiring is NOT performed here — the composition side reads
 /// <see cref="ActiveDiscoveryRuntime.RouteTableProvider"/> (bound at the end of
-/// <c>Activate</c>) and calls <c>DiscoveryRoutingWire.Initialize</c> right
+/// <c>ActivateAsync</c>) and calls <c>DiscoveryRoutingWire.Initialize</c> right
 /// after. Activation is idempotent per process: the first call wins. The
 /// started registry and route-table reader are published to the process-wide
 /// <see cref="ActiveDiscoveryRuntime"/> slots so provider-agnostic startup flows
@@ -96,7 +96,7 @@ public static class MongoDiscoveryRuntime
     public static IRoleRouteTableProvider TableProvider => _watcher;
 
     /// <summary>
-    /// 激活 Mongo 发现层（读侧 watcher + 写侧心跳 + 玩家路由层装配）。
+    /// 激活 Mongo 发现层（读侧 watcher + 写侧心跳 + 玩家路由层装配）——全链路异步，装配期不做同步阻塞等待。
     /// </summary>
     /// <remarks>
     /// Activates the discovery layer. The watcher always starts (every process
@@ -104,13 +104,20 @@ public static class MongoDiscoveryRuntime
     /// advertise identity exists (advertise port configured); the player-route
     /// bootstrap attaches right after. Calling it more than once
     /// per process is a no-op. The control database is resolved through the
-    /// unified <c>GameDb</c> entry by <see cref="DiscoveryActivationOptions.ConnectionName"/>
+    /// unified <c>GameDb</c> entry by <see cref="DiscoveryActivationOptions.ConnectionName"/>.
+    /// The activation path contains no sync-over-async waits, so hosts with a
+    /// <c>SynchronizationContext</c> (UI main threads, legacy ASP.NET) can await
+    /// it without deadlock and keep their context thread responsive during the
+    /// activation I/O. Parameter validation throws synchronously before the
+    /// async work; failures raised inside the async flow surface on the
+    /// returned task when awaited.
     /// </remarks>
     /// <param name="options">激活参数（ConnectionName 必填，HostedRoleNames 必填）/ Activation options (ConnectionName and HostedRoleNames required)</param>
+    /// <param name="cancellationToken">取消令牌（透传给接受令牌的启动调用）/ Cancellation token forwarded to the start calls that accept one</param>
     /// <exception cref="ArgumentNullException">当 <paramref name="options"/> 或 <c>HostedRoleNames</c> 为 null 时抛出 / Thrown when options or HostedRoleNames is null</exception>
     /// <exception cref="ArgumentException">当 <c>ConnectionName</c> 未设置时抛出 / Thrown when ConnectionName is not set</exception>
     /// <exception cref="InvalidOperationException">当注册名未注册时抛出（由 MultiDbRegistry 经 GameDb.As 抛出）/ Thrown when the connection name is not registered (raised by MultiDbRegistry via GameDb.As)</exception>
-    public static void Activate(DiscoveryActivationOptions options)
+    public static async Task ActivateAsync(DiscoveryActivationOptions options, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(options);
 
@@ -135,7 +142,7 @@ public static class MongoDiscoveryRuntime
 
         var hostedRoles = hostedRoleNames as IReadOnlyCollection<string> ?? hostedRoleNames.ToList();
         _watcher = new DiscoveryWatcher(heartbeatStore);
-        _watcher.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
+        await _watcher.StartAsync(cancellationToken).ConfigureAwait(false);
 
         // 写侧需要唯一的广播身份：未配置广播端口（单进程本地开发等）时跳过注册，仅观察拓扑。
         // ponytail: 心跳文档是单 Role 模型，多 Role 进程只广播首选 Role——目标形态（compose 单 Role 服务）下
@@ -145,7 +152,7 @@ public static class MongoDiscoveryRuntime
         var selfDescriptor = DiscoveryRegistry.CreateSelfDescriptorFromEnvironment(primaryRoleName);
         WarnNonPrimaryRolesNotAdvertised(hostedRoles, primaryRoleName, selfDescriptor);
         _registry = new DiscoveryRegistry(heartbeatStore, playerRouteStore, selfDescriptor, null, options.TtlCleanupInterval);
-        _registry.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
+        await _registry.StartAsync(cancellationToken).ConfigureAwait(false);
         // 激活完成即登记公共槽位：宿主就绪时经 ActiveDiscoveryRuntime.MarkActiveAsync 无分派切 Active。
         ActiveDiscoveryRuntime.Bind(_registry);
         // 读侧路由表成对登记同一槽位：组合根经 RouteTableProvider 无分派回读装配路由缝。
@@ -158,7 +165,7 @@ public static class MongoDiscoveryRuntime
 
         // 玩家路由层装配（建索引 + 装 SyncTarget），通用 Bootstrap 单例。
         // 本服实例 Id 同源注入（心跳自描述符的 InstanceId）：PlayerSessionManager 的路由同步写真实发现层实例 Id。
-        PlayerRouteResolverBootstrap.AttachAsync(playerRouteStore, options.PlayerRouteFastPath, selfDescriptor?.InstanceId).GetAwaiter().GetResult();
+        await PlayerRouteResolverBootstrap.AttachAsync(playerRouteStore, options.PlayerRouteFastPath, selfDescriptor?.InstanceId).ConfigureAwait(false);
     }
 
     /// <summary>

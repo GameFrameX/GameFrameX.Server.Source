@@ -28,7 +28,9 @@
 
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.DataBase;
 using GameFrameX.DataBase.Abstractions;
@@ -42,7 +44,7 @@ using Xunit;
 namespace GameFrameX.Tests.Discovery;
 
 /// <summary>
-/// PostgreSqlDiscoveryRuntime 激活时序测试（回归：空库 Activate 不得因缺表抛错）。
+/// PostgreSqlDiscoveryRuntime 激活时序测试（回归：空库 ActivateAsync 不得因缺表抛错）。
 /// </summary>
 /// <remarks>
 /// Activation-ordering tests for <c>PostgreSqlDiscoveryRuntime</c> (regression:
@@ -70,14 +72,14 @@ public sealed class PostgreSqlDiscoveryRuntimeTests
     private bool ShouldSkip => string.IsNullOrWhiteSpace(_connectionString);
 
     /// <summary>
-    /// 全新控制库上 Activate：建表先于读侧立即轮询 / TTL 清理，不得抛 42P01。
+    /// 全新控制库上 ActivateAsync：建表先于读侧立即轮询 / TTL 清理，不得抛 42P01。
     /// </summary>
     /// <remarks>
-    /// Activate on a brand-new control database: schema creation must precede the read side's
+    /// ActivateAsync on a brand-new control database: schema creation must precede the read side's
     /// immediate first poll and the TTL cleanup job, so no 42P01 (undefined_table) may escape.
     /// </remarks>
     [Fact]
-    public async Task Activate_OnFreshDatabase_ShouldNotThrow()
+    public async Task ActivateAsync_OnFreshDatabase_ShouldNotThrow()
     {
         if (ShouldSkip)
         {
@@ -105,16 +107,16 @@ public sealed class PostgreSqlDiscoveryRuntimeTests
                 HostedRoleNames = new List<string> { "Game" },
             };
 
-            var exception = await Record.ExceptionAsync(() => Task.Run(() => PostgreSqlDiscoveryRuntime.Activate(options)));
+            var exception = await Record.ExceptionAsync(() => PostgreSqlDiscoveryRuntime.ActivateAsync(options));
 
             Assert.Null(exception);
             Assert.NotNull(PostgreSqlDiscoveryRuntime.TableProvider);
 
-            // 成对槽位：Activate 末尾 BindRouteTable 后，公共读侧槽位非空且与 TableProvider 同一实例。
+            // 成对槽位：ActivateAsync 末尾 BindRouteTable 后，公共读侧槽位非空且与 TableProvider 同一实例。
             Assert.NotNull(ActiveDiscoveryRuntime.RouteTableProvider);
             Assert.Same(PostgreSqlDiscoveryRuntime.TableProvider, ActiveDiscoveryRuntime.RouteTableProvider);
 
-            // player_route 由 Bootstrap.Attach 在 Activate 内建好（TTL 清理 job 启动前）。
+            // player_route 由 Bootstrap.Attach 在 ActivateAsync 内建好（TTL 清理 job 启动前）。
             await using (var connection = await testDatabase.DataSource.OpenConnectionAsync())
             {
                 await using (var command = new NpgsqlCommand("SELECT to_regclass('public.player_route')::text", connection))
@@ -180,15 +182,15 @@ public sealed class PostgreSqlDiscoveryRuntimeTests
     }
 
     /// <summary>
-    /// 重复调用 Activate：第二次为 no-op——守卫短路，不重建 watcher/registry（TableProvider 引用不变）。
+    /// 重复调用 ActivateAsync：第二次为 no-op——守卫短路，不重建 watcher/registry（TableProvider 引用不变）。
     /// </summary>
     /// <remarks>
-    /// Repeated Activate calls: the second is a no-op — the one-shot guard short-circuits and does not
+    /// Repeated ActivateAsync calls: the second is a no-op — the one-shot guard short-circuits and does not
     /// rebuild the watcher/registry (TableProvider keeps the SAME instance). Reference equality is the
     /// discriminator: a full re-execution would reassign _watcher and expose a new provider instance.
     /// </remarks>
     [Fact]
-    public async Task Activate_Twice_SecondCallIsNoOp()
+    public async Task ActivateAsync_Twice_SecondCallIsNoOp()
     {
         if (ShouldSkip)
         {
@@ -214,11 +216,11 @@ public sealed class PostgreSqlDiscoveryRuntimeTests
                 HostedRoleNames = new List<string> { "Game" },
             };
 
-            PostgreSqlDiscoveryRuntime.Activate(options);
+            await PostgreSqlDiscoveryRuntime.ActivateAsync(options);
             var providerAfterFirst = PostgreSqlDiscoveryRuntime.TableProvider;
             Assert.NotNull(providerAfterFirst);
 
-            PostgreSqlDiscoveryRuntime.Activate(options);
+            await PostgreSqlDiscoveryRuntime.ActivateAsync(options);
 
             Assert.Same(providerAfterFirst, PostgreSqlDiscoveryRuntime.TableProvider);
 
@@ -228,16 +230,16 @@ public sealed class PostgreSqlDiscoveryRuntimeTests
     }
 
     /// <summary>
-    /// Activate 后经公共槽位 MarkActive：本实例 server_heartbeat 行由 Booting 翻转为 Active（宿主无分派就绪路径回归）。
+    /// ActivateAsync 后经公共槽位 MarkActive：本实例 server_heartbeat 行由 Booting 翻转为 Active（宿主无分派就绪路径回归）。
     /// </summary>
     /// <remarks>
-    /// After Activate, flipping through the shared <c>ActiveDiscoveryRuntime</c> slot — the
+    /// After ActivateAsync, flipping through the shared <c>ActiveDiscoveryRuntime</c> slot — the
     /// exact call the hosts make at their readiness point — must turn this instance's
     /// heartbeat row from Booting to Active: the <c>Bind</c> performed at the end of
-    /// Activate is what lets the provider-agnostic call reach the real registry.
+    /// ActivateAsync is what lets the provider-agnostic call reach the real registry.
     /// </remarks>
     [Fact]
-    public async Task Activate_ThenMarkActiveThroughSharedSlot_FlipsHeartbeatToActive()
+    public async Task ActivateAsync_ThenMarkActiveThroughSharedSlot_FlipsHeartbeatToActive()
     {
         if (ShouldSkip)
         {
@@ -265,7 +267,7 @@ public sealed class PostgreSqlDiscoveryRuntimeTests
                 });
                 Assert.True(opened);
 
-                PostgreSqlDiscoveryRuntime.Activate(new DiscoveryActivationOptions
+                await PostgreSqlDiscoveryRuntime.ActivateAsync(new DiscoveryActivationOptions
                 {
                     ConnectionName = GameDb.ControlDatabaseName,
                     HostedRoleNames = new List<string> { "Game" },
@@ -302,6 +304,135 @@ public sealed class PostgreSqlDiscoveryRuntimeTests
         {
             Environment.SetEnvironmentVariable(AdvertiseEndpointEnvironment.AdvertisePortEnvironmentVariable, previousPort);
             Environment.SetEnvironmentVariable(AdvertiseEndpointEnvironment.RoleInstanceIdEnvironmentVariable, previousInstanceId);
+        }
+    }
+
+    /// <summary>
+    /// 单线程 SynchronizationContext 宿主（Unity / WPF 主线程形态）下 ActivateAsync：装配 I/O 挂起期间上下文线程保持可用，释放阻塞后装配完成且槽位绑定。
+    /// </summary>
+    /// <remarks>
+    /// Regression for the sync-over-async activation hazard. Activation is started on a dedicated
+    /// single-threaded pumped context while an external transaction holds an ACCESS EXCLUSIVE lock
+    /// on <c>server_heartbeat</c>, so the activation necessarily suspends on database I/O (the
+    /// schema-ensuring ALTER blocks on the lock). While activation is pending, the context thread
+    /// must stay free to run posted work — the former blocking implementation monopolized the
+    /// context thread for the whole activation, so no posted item could ever run (and with a
+    /// context-capturing continuation this is exactly the deadlock shape). After the lock is
+    /// released the activation completes and the table provider slot is bound.
+    /// </remarks>
+    [Fact]
+    public async Task ActivateAsync_OnSingleThreadSynchronizationContext_KeepsContextThreadResponsiveDuringActivationIo()
+    {
+        if (ShouldSkip)
+        {
+            return;
+        }
+
+        PostgreSqlDiscoveryRuntime.ResetForTest();
+        GameDb.ResetForTesting();
+        await using (var testDatabase = await PostgreSqlTestDatabase.CreateAsync(_connectionString))
+        {
+            var opened = await GameDb.InitAsync(new DbOptions
+            {
+                Provider = DatabaseProviderType.PostgreSql,
+                ConnectionString = testDatabase.ConnectionString,
+                Name = GameDb.ControlDatabaseName,
+                IsDefault = false,
+            });
+            Assert.True(opened);
+
+            // 前置建表：锁目标 server_heartbeat 必须已存在，激活的幂等补列 ALTER 才会确定阻塞在锁上。
+            var heartbeatStore = new PostgreSqlHeartbeatStore(testDatabase.DataSource);
+            await heartbeatStore.EnsureSchemaAsync();
+
+            var activationStarted = new TaskCompletionSource<Task>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var contextWorkItemObservedPendingActivation = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var options = new DiscoveryActivationOptions
+            {
+                ConnectionName = GameDb.ControlDatabaseName,
+                HostedRoleNames = new List<string> { "Game" },
+            };
+
+            await using (var lockConnection = await testDatabase.DataSource.OpenConnectionAsync())
+            {
+                await using (var lockTransaction = await lockConnection.BeginTransactionAsync())
+                await using (var lockCommand = lockConnection.CreateCommand())
+                {
+                    lockCommand.Transaction = (NpgsqlTransaction)lockTransaction;
+                    lockCommand.CommandText = "LOCK TABLE server_heartbeat IN ACCESS EXCLUSIVE MODE";
+                    await lockCommand.ExecuteNonQueryAsync();
+
+                    using (var context = new SingleThreadedPumpSynchronizationContext())
+                    {
+                        // 先投递激活：在泵线程（上下文当前）发起，任务在首个真实异步点返还调用方。
+                        context.Post(_ => activationStarted.TrySetResult(PostgreSqlDiscoveryRuntime.ActivateAsync(options)), null);
+                        // 再投递观测项：FIFO 保证它排在激活之后执行——此时激活必须仍挂起在锁等待上，
+                        // 而上下文线程已空闲可执行它（旧同步入口独占上下文线程，本工作项永不执行）。
+                        context.Post(_ => contextWorkItemObservedPendingActivation.TrySetResult(!activationStarted.Task.Result.IsCompleted), null);
+
+                        var observed = await contextWorkItemObservedPendingActivation.Task.WaitAsync(TimeSpan.FromSeconds(30));
+                        Assert.True(observed, "装配 I/O 挂起期间上下文线程应能执行投递工作项（同步阻塞入口会独占上下文线程直至死锁）");
+                    }
+
+                    // 释放锁（回滚持锁事务）后装配应完成且读侧槽位绑定。
+                    await lockTransaction.RollbackAsync();
+                }
+            }
+
+            var activationTask = await activationStarted.Task;
+            await activationTask.WaitAsync(TimeSpan.FromSeconds(30));
+            Assert.NotNull(PostgreSqlDiscoveryRuntime.TableProvider);
+            Assert.Same(PostgreSqlDiscoveryRuntime.TableProvider, ActiveDiscoveryRuntime.RouteTableProvider);
+
+            PostgreSqlDiscoveryRuntime.ResetForTest();
+            GameDb.ResetForTesting();
+        }
+    }
+
+    /// <summary>
+    /// 单线程队列泵同步上下文（模拟 Unity / WPF 主线程：同一线程按投递顺序串行执行工作项）。
+    /// </summary>
+    /// <remarks>
+    /// A minimal single-threaded pumped context mirroring UI main threads: posted work items run
+    /// sequentially on one dedicated thread with this context current, so any continuation that
+    /// captures the context must wait for that thread to pump — the deadlock precondition the
+    /// activation path must never rely on.
+    /// </remarks>
+    private sealed class SingleThreadedPumpSynchronizationContext : SynchronizationContext, IDisposable
+    {
+        private readonly BlockingCollection<KeyValuePair<SendOrPostCallback, object>> _queue = new();
+        private readonly Thread _pumpThread;
+
+        public SingleThreadedPumpSynchronizationContext()
+        {
+            _pumpThread = new Thread(PumpLoop) { IsBackground = true, Name = "discovery-activation-sync-context" };
+            _pumpThread.Start();
+        }
+
+        public override void Post(SendOrPostCallback callback, object state)
+        {
+            _queue.Add(new KeyValuePair<SendOrPostCallback, object>(callback, state));
+        }
+
+        public void Dispose()
+        {
+            _queue.CompleteAdding();
+            // 失败路径（如回归判别超时）泵线程可能仍阻塞在旧式同步等待上：限时 Join 后弃管，
+            // 由持锁释放后的完成链自行收尾，避免测试清理阶段二次挂起。
+            if (!_pumpThread.Join(TimeSpan.FromSeconds(10)))
+            {
+                return;
+            }
+            _queue.Dispose();
+        }
+
+        private void PumpLoop()
+        {
+            SynchronizationContext.SetSynchronizationContext(this);
+            foreach (var workItem in _queue.GetConsumingEnumerable())
+            {
+                workItem.Key(workItem.Value);
+            }
         }
     }
 }
