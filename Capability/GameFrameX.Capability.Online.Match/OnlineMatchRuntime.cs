@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
@@ -46,14 +47,19 @@ namespace GameFrameX.Capability.Online.Match;
 /// 且单个 Actor 的失败不会让其他对局状态不一致。
 /// </para>
 /// <para>
+/// 登记表单实例约束（红线）：同一 (TenantId, AppId, MatchId) 至多一个 Actor 实例——
+/// 注册一律 GetOrAdd 收敛（并发装载/建局冲突时后到者复用在册实例），
+/// 保证同一对局的所有请求方与 Tick 快照共享同一引用，杜绝双实例写入冲突。
+/// </para>
+/// <para>
 /// 清理策略：<see cref="OnlineMatchState.Closed"/> 是可被释放的唯一终态，
-/// <see cref="TickAllAsync"/> 发现终态即从登记处摘除并删除落库记录——
+/// <see cref="TickAllAsync"/> 发现终态即从登记表摘除并删除落库记录——
 /// 这是「僵尸 Match 数量 = 0」的实现路径。
 /// </para>
 /// </summary>
 public sealed class OnlineMatchRuntime
 {
-    /// <summary>登记处同步锁（仅保护字典本身，不保护对局状态）。</summary>
+    /// <summary>玩法注册表同步锁（仅保护 <see cref="_games"/>；Actor 登记表自身并发安全）。</summary>
     private readonly object _syncRoot = new();
 
     /// <summary>对局存储。</summary>
@@ -68,8 +74,16 @@ public sealed class OnlineMatchRuntime
     /// <summary>玩法注册表：键 = 模式标识。</summary>
     private readonly Dictionary<int, IOnlineMatchGame> _games = new();
 
-    /// <summary>Actor 登记表：键 = (TenantId, AppId, MatchId)。</summary>
-    private readonly Dictionary<string, OnlineMatchActor> _actors = new();
+    /// <summary>
+    /// Actor 登记表：键 = (TenantId, AppId, MatchId)。
+    /// <para>
+    /// 单实例不变量（红线）：同一键至多一个 Actor 实例。注册一律走 GetOrAdd——
+    /// 并发装载/建局冲突时先到者胜出，后到者放弃本次构造的实例并复用在册实例；
+    /// 严禁盲写覆盖（会产生孤儿 Actor：与在册实例各自维护独立内存状态，
+    /// 对同一落库记录互相 CAS 冲突，Tick 无法推进，对局卡死）。
+    /// </para>
+    /// </summary>
+    private readonly ConcurrentDictionary<string, OnlineMatchActor> _actors = new();
 
     /// <summary>已释放 Actor 计数（可观测性对账用）。</summary>
     private int _releasedActorCount;
@@ -94,10 +108,7 @@ public sealed class OnlineMatchRuntime
     {
         get
         {
-            lock (_syncRoot)
-            {
-                return _actors.Count;
-            }
+            return _actors.Count;
         }
     }
 
@@ -108,23 +119,17 @@ public sealed class OnlineMatchRuntime
     {
         get
         {
-            lock (_syncRoot)
-            {
-                return _releasedActorCount;
-            }
+            return Volatile.Read(ref _releasedActorCount);
         }
     }
 
     /// <summary>
-    /// 取登记表快照（锁内拷贝；结算 tick 等巡检方据此枚举，不持锁访问）。
+    /// 取登记表快照（并发字典线程安全枚举后拷贝；结算 tick 等巡检方据此枚举，不持锁访问）。
     /// </summary>
     /// <returns>在册 Actor 列表副本（引用有效；各 Actor 自身的串行化由其门保证）。</returns>
     public IReadOnlyList<OnlineMatchActor> SnapshotActors()
     {
-        lock (_syncRoot)
-        {
-            return new List<OnlineMatchActor>(_actors.Values);
-        }
+        return new List<OnlineMatchActor>(_actors.Values);
     }
 
     /// <summary>
@@ -218,12 +223,11 @@ public sealed class OnlineMatchRuntime
         }
 
         var actor = new OnlineMatchActor(persisted, game, _store, _eventPublisher, _options);
-        lock (_syncRoot)
-        {
-            _actors[BuildKey(persisted.TenantId, persisted.AppId, persisted.MatchId)] = actor;
-        }
+        // GetOrAdd 单实例收敛：并发解析可能已装载同键 Actor（本方落库后、注册前），
+        // 此时放弃本次构造的实例、回执走复用路径，严禁盲写覆盖产生孤儿。
+        var registered = _actors.GetOrAdd(BuildKey(persisted.TenantId, persisted.AppId, persisted.MatchId), actor);
 
-        return OnlineResult<OnlineMatchSnapshot>.Ok(actor.GetSnapshot());
+        return OnlineResult<OnlineMatchSnapshot>.Ok(registered.GetSnapshot());
     }
 
     /// <summary>
@@ -242,12 +246,9 @@ public sealed class OnlineMatchRuntime
         }
 
         var key = BuildKey(tenantId, appId, matchId);
-        lock (_syncRoot)
+        if (_actors.TryGetValue(key, out var cached))
         {
-            if (_actors.TryGetValue(key, out var cached))
-            {
-                return cached;
-            }
+            return cached;
         }
 
         var match = await _store.FindAsync(tenantId, appId, matchId, cancellationToken).ConfigureAwait(false);
@@ -266,12 +267,10 @@ public sealed class OnlineMatchRuntime
         }
 
         var actor = new OnlineMatchActor(match, game, _store, _eventPublisher, _options);
-        lock (_syncRoot)
-        {
-            _actors[key] = actor;
-        }
 
-        return actor;
+        // GetOrAdd 单实例收敛：并发装载同键时先到者胜出，后到者放弃本次构造的实例、
+        // 复用在册实例返回（比重新加载更强——直接共享同一引用，无再装载窗口）。
+        return _actors.GetOrAdd(key, actor);
     }
 
     /// <summary>
@@ -282,11 +281,7 @@ public sealed class OnlineMatchRuntime
     /// <returns>各对局的 Tick 结果。</returns>
     public async Task<IReadOnlyList<OnlineMatchTickResult>> TickAllAsync(long nowUnixMilliseconds, CancellationToken cancellationToken = default)
     {
-        List<OnlineMatchActor> snapshot;
-        lock (_syncRoot)
-        {
-            snapshot = new List<OnlineMatchActor>(_actors.Values);
-        }
+        var snapshot = new List<OnlineMatchActor>(_actors.Values);
 
         var results = new List<OnlineMatchTickResult>();
         foreach (var actor in snapshot)
@@ -300,13 +295,11 @@ public sealed class OnlineMatchRuntime
             }
 
             var key = BuildKey(actor.TenantId, actor.AppId, actor.MatchId);
-            lock (_syncRoot)
+
+            // 原子条件移除：仅当在册实例仍是本快照实例时摘除（并发 Tick / 重装载竞争下不误删他人）。
+            if (_actors.TryRemove(new KeyValuePair<string, OnlineMatchActor>(key, actor)))
             {
-                if (_actors.TryGetValue(key, out var current) && ReferenceEquals(current, actor))
-                {
-                    _actors.Remove(key);
-                    _releasedActorCount++;
-                }
+                Interlocked.Increment(ref _releasedActorCount);
             }
 
             await _store.DeleteAsync(actor.TenantId, actor.AppId, actor.MatchId, cancellationToken).ConfigureAwait(false);

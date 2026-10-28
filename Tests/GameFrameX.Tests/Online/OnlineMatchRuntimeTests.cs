@@ -27,7 +27,9 @@
 //   Official documentation: https://gameframex.doc.alianblank.com/
 // ==========================================================================================
 
+using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Events;
@@ -64,6 +66,9 @@ namespace GameFrameX.Tests.Online
 
         /// <summary>对局标识。</summary>
         private const string MatchId = "match-1";
+
+        /// <summary>编排等待上限（防测试悬挂）。</summary>
+        private static readonly TimeSpan OrchestrationTimeout = TimeSpan.FromSeconds(30);
 
         /// <summary>
         /// 验证分配建局后成员已就位并进入等待阶段。
@@ -220,6 +225,86 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 验证并发解析收敛：两个请求都越过缓存 miss（FindAsync 栅栏对齐）后并发注册，
+        /// 必须收敛为同一 Actor 实例——旧盲写注册下后写覆盖先写、先到方持有孤儿实例（行为红）。
+        /// </summary>
+        [Fact]
+        public async Task ResolveActorAsync_ConcurrentMiss_ShouldConvergeToSingleActor()
+        {
+            var store = new OrchestratedMatchActorStore(alignConcurrentFinds: true);
+            await store.SeedAsync(BuildSeededMatch());
+            var runtime = new OnlineMatchRuntime(store, new OnlineEventRecorder(), new OnlineMatchRuntimeOptions());
+            runtime.RegisterGame(new OnlineRockPaperScissorsGame());
+
+            var first = Task.Run(() => runtime.ResolveActorAsync(TenantId, AppId, MatchId));
+            var second = Task.Run(() => runtime.ResolveActorAsync(TenantId, AppId, MatchId));
+            var actors = await Task.WhenAll(first, second);
+
+            Assert.NotNull(actors[0]);
+            Assert.NotNull(actors[1]);
+            Assert.Same(actors[0], actors[1]);
+            Assert.Equal(1, runtime.ActiveActorCount);
+        }
+
+        /// <summary>
+        /// 验证建局与解析并发收敛：建局落库后、注册前被解析方抢先注册时，
+        /// 建局方必须复用在册实例而非盲写覆盖（旧实现下后续解析返回被覆盖实例，行为红）。
+        /// </summary>
+        [Fact]
+        public async Task CreateFromAssignmentAsync_ConcurrentResolve_ShouldReuseRegisteredActor()
+        {
+            var store = new OrchestratedMatchActorStore(alignConcurrentFinds: false);
+            var runtime = new OnlineMatchRuntime(store, new OnlineEventRecorder(), new OnlineMatchRuntimeOptions());
+            runtime.RegisterGame(new OnlineRockPaperScissorsGame());
+
+            var createTask = Task.Run(() => runtime.CreateFromAssignmentAsync(BuildAssignment(PlayerOne, PlayerTwo), Now));
+            await store.CreatePersisted.Task.WaitAsync(OrchestrationTimeout);
+
+            var resolverActor = await runtime.ResolveActorAsync(TenantId, AppId, MatchId);
+            Assert.NotNull(resolverActor);
+            store.ResolverRegistered.TrySetResult();
+
+            var created = await createTask;
+            Assert.True(created.IsSuccess, created.Message);
+
+            var afterCreate = await runtime.ResolveActorAsync(TenantId, AppId, MatchId);
+            Assert.Same(resolverActor, afterCreate);
+            Assert.Equal(1, runtime.ActiveActorCount);
+        }
+
+        /// <summary>
+        /// 验证并发解析压力不变量：空登记表运行时上多任务并发装载同一对局，
+        /// 每轮全部调用方拿到同一实例且登记表计数恒 1。
+        /// </summary>
+        [Fact]
+        public async Task ResolveActorAsync_ParallelStress_ShouldHoldSingleInstanceInvariant()
+        {
+            var harness = new Harness();
+            await harness.CreateAsync();
+
+            for (var round = 0; round < 10; round++)
+            {
+                var runtime = new OnlineMatchRuntime(harness.Store, new OnlineEventRecorder(), new OnlineMatchRuntimeOptions());
+                runtime.RegisterGame(new OnlineRockPaperScissorsGame());
+
+                var resolves = new Task<OnlineMatchActor>[8];
+                for (var index = 0; index < resolves.Length; index++)
+                {
+                    resolves[index] = Task.Run(() => runtime.ResolveActorAsync(TenantId, AppId, MatchId));
+                }
+
+                var actors = await Task.WhenAll(resolves);
+                foreach (var actor in actors)
+                {
+                    Assert.NotNull(actor);
+                    Assert.Same(actors[0], actor);
+                }
+
+                Assert.Equal(1, runtime.ActiveActorCount);
+            }
+        }
+
+        /// <summary>
         /// 构造只含指定玩家的匹配分配。
         /// </summary>
         /// <param name="playerIds">玩家集合。</param>
@@ -346,6 +431,179 @@ namespace GameFrameX.Tests.Online
             public OnlineScope ScopeOf(long playerId)
             {
                 return new OnlineScope(TenantId, AppId, ServerId, playerId);
+            }
+        }
+
+        /// <summary>
+        /// 构造已落库的种子对局（并发装载用例不经建局编排直接预置）。
+        /// </summary>
+        /// <returns>种子对局。</returns>
+        private static OnlineMatch BuildSeededMatch()
+        {
+            return new OnlineMatch
+            {
+                TenantId = TenantId,
+                AppId = AppId,
+                ServerId = ServerId,
+                MatchId = MatchId,
+                Mode = OnlineRockPaperScissorsGame.MatchMode,
+                State = OnlineMatchState.Waiting,
+                Members = new List<OnlineMatchMember>
+                {
+                    new OnlineMatchMember
+                    {
+                        PlayerId = PlayerOne,
+                        State = OnlineMatchMemberState.Joined,
+                        JoinedTime = Now,
+                        StateChangedTime = Now,
+                    },
+                },
+                CreatedTime = Now,
+                StateChangedTime = Now,
+            };
+        }
+
+        /// <summary>
+        /// 可编排时序的对局存储桩：委托内存实现，并在 FindAsync / CreateAsync 注入栅栏，
+        /// 用于确定性复现「并发 miss 同时装载」与「建局落库后注册前被解析抢先」两个竞争窗口。
+        /// </summary>
+        private sealed class OrchestratedMatchActorStore : IOnlineMatchActorStore
+        {
+            /// <summary>内存实现（委托目标）。</summary>
+            private readonly InMemoryOnlineMatchActorStore _inner = new();
+
+            /// <summary>是否对齐并发 FindAsync（true = 前两次解析彼此等待后同时返回）。</summary>
+            private readonly bool _alignConcurrentFinds;
+
+            /// <summary>FindAsync 到达计数。</summary>
+            private int _findArrivalCount;
+
+            /// <summary>
+            /// 以编排开关初始化存储桩。
+            /// </summary>
+            /// <param name="alignConcurrentFinds">是否对齐并发 FindAsync。</param>
+            public OrchestratedMatchActorStore(bool alignConcurrentFinds)
+            {
+                _alignConcurrentFinds = alignConcurrentFinds;
+            }
+
+            /// <summary>首个 FindAsync 已到达。</summary>
+            public TaskCompletionSource FirstFindArrived
+            {
+                get;
+            } = CreateSource();
+
+            /// <summary>第二个 FindAsync 已到达。</summary>
+            public TaskCompletionSource SecondFindArrived
+            {
+                get;
+            } = CreateSource();
+
+            /// <summary>建局已落库（建局方注册前）。</summary>
+            public TaskCompletionSource CreatePersisted
+            {
+                get;
+            } = CreateSource();
+
+            /// <summary>解析方已完成注册（放行建局方注册）。</summary>
+            public TaskCompletionSource ResolverRegistered
+            {
+                get;
+            } = CreateSource();
+
+            /// <summary>
+            /// 落库后（成功时）阻塞至解析方注册完成再返回——复现建局方注册前的竞争窗口。
+            /// </summary>
+            /// <param name="match">对局。</param>
+            /// <param name="cancellationToken">取消令牌。</param>
+            /// <returns>落库结果。</returns>
+            public async Task<OnlineMatch> CreateAsync(OnlineMatch match, CancellationToken cancellationToken = default)
+            {
+                var persisted = await _inner.CreateAsync(match, cancellationToken).ConfigureAwait(false);
+                if (persisted != null)
+                {
+                    CreatePersisted.TrySetResult();
+                    await ResolverRegistered.Task.WaitAsync(OrchestrationTimeout).ConfigureAwait(false);
+                }
+
+                return persisted;
+            }
+
+            /// <summary>
+            /// 对齐模式下前两次查找彼此等待后同时返回，确保两方都越过缓存 miss 各自构造后并发注册。
+            /// </summary>
+            /// <param name="tenantId">租户标识。</param>
+            /// <param name="appId">App 标识。</param>
+            /// <param name="matchId">对局标识。</param>
+            /// <param name="cancellationToken">取消令牌。</param>
+            /// <returns>对局副本；不存在返回 null。</returns>
+            public async Task<OnlineMatch> FindAsync(long tenantId, long appId, string matchId, CancellationToken cancellationToken = default)
+            {
+                if (_alignConcurrentFinds)
+                {
+                    var arrival = Interlocked.Increment(ref _findArrivalCount);
+                    if (arrival == 1)
+                    {
+                        FirstFindArrived.TrySetResult();
+                        await SecondFindArrived.Task.WaitAsync(OrchestrationTimeout).ConfigureAwait(false);
+                    }
+                    else if (arrival == 2)
+                    {
+                        SecondFindArrived.TrySetResult();
+                        await FirstFindArrived.Task.WaitAsync(OrchestrationTimeout).ConfigureAwait(false);
+                    }
+                }
+
+                return await _inner.FindAsync(tenantId, appId, matchId, cancellationToken).ConfigureAwait(false);
+            }
+
+            /// <summary>委托内存实现。</summary>
+            /// <param name="match">对局。</param>
+            /// <param name="cancellationToken">取消令牌。</param>
+            /// <returns>更新结果。</returns>
+            public Task<OnlineMatch> UpdateAsync(OnlineMatch match, CancellationToken cancellationToken = default)
+            {
+                return _inner.UpdateAsync(match, cancellationToken);
+            }
+
+            /// <summary>委托内存实现。</summary>
+            /// <param name="tenantId">租户标识。</param>
+            /// <param name="appId">App 标识。</param>
+            /// <param name="matchId">对局标识。</param>
+            /// <param name="cancellationToken">取消令牌。</param>
+            /// <returns>删除结果。</returns>
+            public Task<bool> DeleteAsync(long tenantId, long appId, string matchId, CancellationToken cancellationToken = default)
+            {
+                return _inner.DeleteAsync(tenantId, appId, matchId, cancellationToken);
+            }
+
+            /// <summary>委托内存实现。</summary>
+            /// <param name="tenantId">租户标识。</param>
+            /// <param name="appId">App 标识。</param>
+            /// <param name="cancellationToken">取消令牌。</param>
+            /// <returns>对局副本列表。</returns>
+            public Task<IReadOnlyList<OnlineMatch>> ListAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+            {
+                return _inner.ListAsync(tenantId, appId, cancellationToken);
+            }
+
+            /// <summary>
+            /// 预置已落库对局（不经建局编排）。
+            /// </summary>
+            /// <param name="match">对局。</param>
+            /// <returns>落库结果。</returns>
+            public Task<OnlineMatch> SeedAsync(OnlineMatch match)
+            {
+                return _inner.CreateAsync(match);
+            }
+
+            /// <summary>
+            /// 构造延续异步执行的完成源（避免内联延续阻塞设置方线程）。
+            /// </summary>
+            /// <returns>完成源。</returns>
+            private static TaskCompletionSource CreateSource()
+            {
+                return new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             }
         }
     }
