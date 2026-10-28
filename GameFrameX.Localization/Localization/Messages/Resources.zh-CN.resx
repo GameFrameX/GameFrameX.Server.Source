@@ -1642,6 +1642,12 @@
   <data name="Online.Assets.ReconciliationRequiresPlayerScope" xml:space="preserve">
     <value>对账必须绑定玩家主体位</value>
   </data>
+  <data name="Online.Assets.LedgerAmountOverflow" xml:space="preserve">
+    <value>账本条目数额溢出：AmountBefore（{0}）+ Delta（{1}）超出 long 范围</value>
+  </data>
+  <data name="Online.Assets.LedgerAmountInconsistent" xml:space="preserve">
+    <value>账本条目不一致：AmountBefore（{0}）+ Delta（{1}）!= AmountAfter（{2}）</value>
+  </data>
   <data name="Online.Session.SessionTerminal" xml:space="preserve">
     <value>会话已进入终态</value>
   </data>

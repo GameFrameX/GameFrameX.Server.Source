@@ -27,7 +27,10 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using GameFrameX.Foundation.Localization.Core;
+
 namespace GameFrameX.Capability.Online.Assets;
+
 
 /// <summary>
 /// 不可变资产账本条目（只追加、不修改、不删除；余额可由账本重算校验）。
@@ -37,7 +40,7 @@ namespace GameFrameX.Capability.Online.Assets;
 /// <see cref="CompensatesTransactionId"/> 指向原交易）纠正；每条必须携带完整追溯字段——
 /// 作用域（Player/App/Server 双侧）、来源、原因、业务单号、操作者、前后值与所属交易
 /// （反查依据）；<see cref="AmountBefore"/> + <see cref="Delta"/> == <see cref="AmountAfter"/>
-/// 由存储层在追加时原子校验；<see cref="SequenceNumber"/> 为玩家维度单调递增账本序
+/// 由构造函数强制校验（checked 防溢出回绕，违反抛 ArgumentException；存量脏数据读取即暴露）；<see cref="SequenceNumber"/> 为玩家维度单调递增账本序
 /// （对账与游标分页的稳定排序键）。
 /// </para>
 /// </summary>
@@ -159,6 +162,21 @@ public sealed class OnlineLedgerEntry
     /// <param name="occurredTime">落账时刻（UTC 毫秒）。</param>
     public OnlineLedgerEntry(string entryId, string transactionId, OnlineLedgerHeader header, OnlineAssetKind assetKind, string assetId, long amountBefore, long delta, long amountAfter, string compensatesTransactionId, long sequenceNumber, long occurredTime)
     {
+        long expectedAmountAfter;
+        try
+        {
+            expectedAmountAfter = checked(amountBefore + delta);
+        }
+        catch (System.OverflowException exception)
+        {
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Online.Assets.LedgerAmountOverflow, amountBefore.ToString(), delta.ToString()), nameof(delta), exception);
+        }
+
+        if (expectedAmountAfter != amountAfter)
+        {
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Online.Assets.LedgerAmountInconsistent, amountBefore.ToString(), delta.ToString(), amountAfter.ToString()), nameof(amountAfter));
+        }
+
         EntryId = entryId;
         TransactionId = transactionId;
         TenantId = header.TenantId;

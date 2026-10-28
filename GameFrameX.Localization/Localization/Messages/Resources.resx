@@ -1644,6 +1644,12 @@
   <data name="Online.Assets.ReconciliationRequiresPlayerScope" xml:space="preserve">
     <value>Reconciliation must be bound to a player identity slot.</value>
   </data>
+  <data name="Online.Assets.LedgerAmountOverflow" xml:space="preserve">
+    <value>Ledger entry amount overflow: AmountBefore ({0}) + Delta ({1}) exceeds the long range.</value>
+  </data>
+  <data name="Online.Assets.LedgerAmountInconsistent" xml:space="preserve">
+    <value>Ledger entry inconsistent: AmountBefore ({0}) + Delta ({1}) != AmountAfter ({2}).</value>
+  </data>
   <data name="Online.Session.SessionTerminal" xml:space="preserve">
     <value>The session has already reached a terminal state.</value>
   </data>
