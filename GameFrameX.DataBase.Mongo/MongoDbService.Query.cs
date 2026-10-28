@@ -659,7 +659,7 @@ public sealed partial class MongoDbService
         EnsureInitialized();
         var collection = _mongoDbContext.GetCollection<TState>();
         filter = GetDefaultFindExpression(filter);
-        var result = await ExecuteReadWithRetryAsync(token => collection.AsQueryable().AnyAsync(filter, token), cancellationToken, nameof(AnyAsync), () => false).ConfigureAwait(false);
+        var result = await ExecuteReadWithRetryAsync(token => AsQueryableWithAmbientSession(collection).AnyAsync(filter, token), cancellationToken, nameof(AnyAsync), () => false).ConfigureAwait(false);
         return result;
     }
 
@@ -693,6 +693,6 @@ public sealed partial class MongoDbService
         EnsureInitialized();
         var collection = _mongoDbContext.GetCollection<TState>();
         var filter = Builders<TState>.Filter.Eq(m => m.Id, id) & Builders<TState>.Filter.Where(GetDefaultFindExpression<TState>(null));
-        return await ExecuteReadWithRetryAsync(token => collection.Find(filter).Limit(1).AnyAsync(token), cancellationToken, nameof(ExistsByIdAsync), () => false).ConfigureAwait(false);
+        return await ExecuteReadWithRetryAsync(token => FindWithAmbientSession(collection, filter).Limit(1).AnyAsync(token), cancellationToken, nameof(ExistsByIdAsync), () => false).ConfigureAwait(false);
     }
 }
