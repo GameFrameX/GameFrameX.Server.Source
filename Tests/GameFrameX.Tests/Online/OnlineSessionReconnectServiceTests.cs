@@ -132,14 +132,46 @@ namespace GameFrameX.Tests.Online
             var harness = new Harness();
             var issued = await harness.IssueLoginAsync("conn-1");
 
-            var first = await harness.Service.ResumeAsync(harness.ScopeWithPlayer(0), issued.Token, "conn-a");
-            var second = await harness.Service.ResumeAsync(harness.ScopeWithPlayer(0), issued.Token, "conn-b");
+            // 真并发重复恢复：同一 Token 恒定同分片互斥——后到者在验证步见旧指纹已轮换，恰一成功，不产生双活凭据。
+            var results = await Task.WhenAll(
+                harness.Service.ResumeAsync(harness.ScopeWithPlayer(0), issued.Token, "conn-a"),
+                harness.Service.ResumeAsync(harness.ScopeWithPlayer(0), issued.Token, "conn-b"),
+                harness.Service.ResumeAsync(harness.ScopeWithPlayer(0), issued.Token, "conn-c"));
 
-            // 并发恢复显式分出先后：恰好一个成功（旧指纹已轮换），另一个 TokenRevoked，不产生双活凭据。
-            var successes = new[] { first, second }.Count(result => result.IsSuccess);
+            var successes = results.Count(result => result.IsSuccess);
             Assert.Equal(1, successes);
-            var failure = first.IsSuccess ? second : first;
-            Assert.Equal(OnlineErrorCode.TokenRevoked, failure.Code);
+            Assert.All(results.Where(result => !result.IsSuccess), result => Assert.Equal(OnlineErrorCode.TokenRevoked, result.Code));
+        }
+
+        [Fact]
+        public async Task Resume_FromDifferentPlayers_ShouldRunInParallelWithoutGlobalQueueing()
+        {
+            var store = new BlockingOnlineSessionStore();
+            var harness = new Harness(store);
+            var first = await harness.IssueLoginAsync("conn-1");
+            var second = await harness.IssueLoginAsync(OtherPlayerId, "conn-2");
+            var firstMarked = await harness.Service.NotifyPlayerDisconnectedAsync(harness.PlayerScope(), 30);
+            Assert.True(firstMarked.IsSuccess, firstMarked.Message);
+            var secondMarked = await harness.Service.NotifyPlayerDisconnectedAsync(harness.ScopeWithPlayer(OtherPlayerId), 30);
+            Assert.True(secondMarked.IsSuccess, secondMarked.Message);
+
+            // 布防：玩家 A 的会话写悬挂（恢复卡在分片门内的存储写上），玩家 B 的恢复不得排队等 A——
+            // 全局单门时代 B 会等到超时（GFX-1078 M56 回归锚点，旧码红 / 新码绿）。
+            store.BlockSessionWrites(first.SessionId);
+            var suspendedResume = harness.Service.ResumeAsync(harness.ScopeWithPlayer(0), first.Token, "conn-a");
+            await store.WaitUntilBlockedAsync();
+
+            var otherResume = harness.Service.ResumeAsync(harness.ScopeWithPlayer(OtherPlayerId), second.Token, "conn-b");
+            var finished = await Task.WhenAny(otherResume, Task.Delay(TimeSpan.FromSeconds(5)));
+            Assert.Same(otherResume, finished);
+            var otherOutcome = await otherResume;
+            Assert.True(otherOutcome.IsSuccess, otherOutcome.Message);
+
+            store.ReleaseBlockedWrites();
+            var firstOutcome = await suspendedResume;
+            Assert.True(firstOutcome.IsSuccess, firstOutcome.Message);
+            Assert.Equal(PlayerId, firstOutcome.Data.PlayerId);
+            Assert.Equal(OtherPlayerId, otherOutcome.Data.PlayerId);
         }
 
         [Fact]
@@ -201,23 +233,22 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 测试基座：内存存储 + 令牌 / 会话 / 恢复三服务。
+        /// 测试基座：可注入存储（缺省内存实现）+ 令牌 / 会话 / 恢复三服务。
         /// </summary>
         private sealed class Harness
         {
-            public Harness(int tokenTimeToLiveSeconds = OnlineSessionReconnectService.DefaultTokenTimeToLiveSeconds, IOnlineSessionStore sessionStore = null)
+            public Harness(IOnlineSessionStore sessionStore = null, int tokenTimeToLiveSeconds = OnlineSessionReconnectService.DefaultTokenTimeToLiveSeconds)
             {
                 Recorder = new OnlineEventRecorder();
-                Store = new InMemoryOnlineSessionStore();
-                var effectiveStore = sessionStore ?? Store;
-                Tokens = new OnlineSessionTokenService(effectiveStore, Recorder);
-                Sessions = new OnlineSessionManager(effectiveStore, Recorder);
-                Service = new OnlineSessionReconnectService(Tokens, Sessions, effectiveStore, tokenTimeToLiveSeconds);
+                Store = sessionStore ?? new InMemoryOnlineSessionStore();
+                Tokens = new OnlineSessionTokenService(Store, Recorder);
+                Sessions = new OnlineSessionManager(Store, Recorder);
+                Service = new OnlineSessionReconnectService(Tokens, Sessions, Store, tokenTimeToLiveSeconds);
             }
 
             public OnlineEventRecorder Recorder { get; }
 
-            public InMemoryOnlineSessionStore Store { get; }
+            public IOnlineSessionStore Store { get; }
 
             public OnlineSessionTokenService Tokens { get; }
 
@@ -228,6 +259,13 @@ namespace GameFrameX.Tests.Online
             public async Task<OnlineSessionLoginCredential> IssueLoginAsync(string connectionId)
             {
                 var issued = await Service.IssueForLoginAsync(PlayerScope(), connectionId);
+                Assert.True(issued.IsSuccess, issued.Message);
+                return issued.Data;
+            }
+
+            public async Task<OnlineSessionLoginCredential> IssueLoginAsync(long playerId, string connectionId)
+            {
+                var issued = await Service.IssueForLoginAsync(ScopeWithPlayer(playerId), connectionId);
                 Assert.True(issued.IsSuccess, issued.Message);
                 return issued.Data;
             }
