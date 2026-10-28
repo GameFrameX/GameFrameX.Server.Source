@@ -95,10 +95,10 @@ public sealed class OnlineGameEventProjector
         var events = new List<OnlineEvent>();
         var fields = new Dictionary<string, string>
         {
-            { "SessionId", session.Id ?? string.Empty },
-            { "PlayerId", FormatId(session.PlayerId) },
-            { "DeviceId", session.DeviceId ?? string.Empty },
-            { "State", session.State.ToString() },
+            { OnlineGameEventFieldName.SessionId, session.Id ?? string.Empty },
+            { OnlineGameEventFieldName.PlayerId, FormatId(session.PlayerId) },
+            { OnlineGameEventFieldName.DeviceId, session.DeviceId ?? string.Empty },
+            { OnlineGameEventFieldName.State, session.State.ToString() },
         };
 
         switch (session.State)
@@ -114,7 +114,7 @@ public sealed class OnlineGameEventProjector
             case OnlineSessionState.Closed:
             case OnlineSessionState.Kicked:
             case OnlineSessionState.Expired:
-                fields["EndReason"] = session.State.ToString();
+                fields[OnlineGameEventFieldName.EndReason] = session.State.ToString();
                 events.Add(Build(OnlineGameEventName.SessionEnd, session.TenantId, session.AppId, session.ServerId, session.PlayerId, Fallback(session.DisconnectAtTime, session.CreatedAtTime), session.Id, fields));
                 break;
         }
@@ -136,11 +136,11 @@ public sealed class OnlineGameEventProjector
 
         var fields = new Dictionary<string, string>
         {
-            { "TicketId", ticket.TicketId ?? string.Empty },
-            { "Mode", FormatId(ticket.Mode) },
-            { "Region", FormatId(ticket.Region) },
-            { "PlayerCount", FormatId(ticket.PlayerIds == null ? 0 : ticket.PlayerIds.Count) },
-            { "State", ticket.State.ToString() },
+            { OnlineGameEventFieldName.TicketId, ticket.TicketId ?? string.Empty },
+            { OnlineGameEventFieldName.Mode, FormatId(ticket.Mode) },
+            { OnlineGameEventFieldName.Region, FormatId(ticket.Region) },
+            { OnlineGameEventFieldName.PlayerCount, FormatId(ticket.PlayerIds == null ? 0 : ticket.PlayerIds.Count) },
+            { OnlineGameEventFieldName.State, ticket.State.ToString() },
         };
 
         var events = new List<OnlineEvent>
@@ -171,10 +171,10 @@ public sealed class OnlineGameEventProjector
 
         var fields = new Dictionary<string, string>
         {
-            { "MatchId", match.MatchId ?? string.Empty },
-            { "Mode", FormatId(match.Mode) },
-            { "Region", FormatId(match.Region) },
-            { "State", match.State.ToString() },
+            { OnlineGameEventFieldName.MatchId, match.MatchId ?? string.Empty },
+            { OnlineGameEventFieldName.Mode, FormatId(match.Mode) },
+            { OnlineGameEventFieldName.Region, FormatId(match.Region) },
+            { OnlineGameEventFieldName.State, match.State.ToString() },
         };
 
         events.Add(Build(OnlineGameEventName.MatchStart, match.TenantId, match.AppId, match.ServerId, 0, Fallback(match.StateChangedTime, match.CreatedTime), match.MatchId, fields));
@@ -200,10 +200,10 @@ public sealed class OnlineGameEventProjector
         var occurredTime = Fallback(result.SettledTime, 0);
         var matchFields = new Dictionary<string, string>
         {
-            { "MatchId", result.MatchId ?? string.Empty },
-            { "MatchResultId", result.MatchResultId ?? string.Empty },
-            { "Outcome", result.Outcome.ToString() },
-            { "EntryCount", FormatId(result.Entries == null ? 0 : result.Entries.Count) },
+            { OnlineGameEventFieldName.MatchId, result.MatchId ?? string.Empty },
+            { OnlineGameEventFieldName.MatchResultId, result.MatchResultId ?? string.Empty },
+            { OnlineGameEventFieldName.Outcome, result.Outcome.ToString() },
+            { OnlineGameEventFieldName.EntryCount, FormatId(result.Entries == null ? 0 : result.Entries.Count) },
         };
 
         var events = new List<OnlineEvent>
@@ -227,11 +227,11 @@ public sealed class OnlineGameEventProjector
             var name = aborted ? OnlineGameEventName.Abandon : entry.IsWinner ? OnlineGameEventName.Win : OnlineGameEventName.Lose;
             var playerFields = new Dictionary<string, string>
             {
-                { "MatchId", result.MatchId ?? string.Empty },
-                { "MatchResultId", result.MatchResultId ?? string.Empty },
-                { "PlayerId", FormatId(entry.PlayerId) },
-                { "Rank", FormatId(entry.Rank) },
-                { "Score", FormatId(entry.Score) },
+                { OnlineGameEventFieldName.MatchId, result.MatchId ?? string.Empty },
+                { OnlineGameEventFieldName.MatchResultId, result.MatchResultId ?? string.Empty },
+                { OnlineGameEventFieldName.PlayerId, FormatId(entry.PlayerId) },
+                { OnlineGameEventFieldName.Rank, FormatId(entry.Rank) },
+                { OnlineGameEventFieldName.Score, FormatId(entry.Score) },
             };
 
             events.Add(Build(name, result.TenantId, result.AppId, result.ServerId, entry.PlayerId, occurredTime, result.MatchResultId, playerFields));
@@ -282,12 +282,12 @@ public sealed class OnlineGameEventProjector
 
         var fields = new Dictionary<string, string>
         {
-            { "TransactionId", transaction.TransactionId ?? string.Empty },
-            { "PlayerId", FormatId(transaction.PlayerId) },
-            { "ChangeSource", transaction.Source.ToString() },
-            { "Operation", transaction.Operation.ToString() },
-            { "BusinessOrderId", transaction.BusinessOrderId ?? string.Empty },
-            { "ChangeCount", FormatId(transaction.ExpectedChangeCount) },
+            { OnlineGameEventFieldName.TransactionId, transaction.TransactionId ?? string.Empty },
+            { OnlineGameEventFieldName.PlayerId, FormatId(transaction.PlayerId) },
+            { OnlineGameEventFieldName.ChangeSource, transaction.Source.ToString() },
+            { OnlineGameEventFieldName.Operation, transaction.Operation.ToString() },
+            { OnlineGameEventFieldName.BusinessOrderId, transaction.BusinessOrderId ?? string.Empty },
+            { OnlineGameEventFieldName.ChangeCount, FormatId(transaction.ExpectedChangeCount) },
         };
 
         events.Add(Build(name, transaction.TenantId, transaction.AppId, transaction.HomeServerId, transaction.PlayerId, Fallback(transaction.SettledTime, transaction.CreatedTime), transaction.TransactionId, fields));
@@ -315,14 +315,14 @@ public sealed class OnlineGameEventProjector
 
         var fields = new Dictionary<string, string>
         {
-            { "ReportId", reportCase.ReportId ?? string.Empty },
-            { "ReporterId", FormatId(reportCase.ReporterId) },
-            { "ReportedPlayerId", FormatId(reportCase.ReportedPlayerId) },
-            { "Scene", reportCase.Scene.ToString() },
-            { "Reason", reportCase.Reason.ToString() },
-            { "State", reportCase.State.ToString() },
-            { "MatchId", reportCase.MatchId ?? string.Empty },
-            { "ChatMessageId", reportCase.ChatMessageId ?? string.Empty },
+            { OnlineGameEventFieldName.ReportId, reportCase.ReportId ?? string.Empty },
+            { OnlineGameEventFieldName.ReporterId, FormatId(reportCase.ReporterId) },
+            { OnlineGameEventFieldName.ReportedPlayerId, FormatId(reportCase.ReportedPlayerId) },
+            { OnlineGameEventFieldName.Scene, reportCase.Scene.ToString() },
+            { OnlineGameEventFieldName.Reason, reportCase.Reason.ToString() },
+            { OnlineGameEventFieldName.State, reportCase.State.ToString() },
+            { OnlineGameEventFieldName.MatchId, reportCase.MatchId ?? string.Empty },
+            { OnlineGameEventFieldName.ChatMessageId, reportCase.ChatMessageId ?? string.Empty },
         };
 
         events.Add(Build(OnlineGameEventName.ChatReport, reportCase.TenantId, reportCase.AppId, 0, reportCase.ReporterId, Fallback(reportCase.CreatedAtTime, reportCase.UpdatedAtTime), reportCase.ReportId, fields));
@@ -349,12 +349,12 @@ public sealed class OnlineGameEventProjector
 
         var fields = new Dictionary<string, string>
         {
-            { "PunishmentId", punishment.PunishmentId ?? string.Empty },
-            { "PlayerId", FormatId(punishment.PlayerId) },
-            { "Kind", punishment.Kind.ToString() },
-            { "Reason", punishment.Reason ?? string.Empty },
-            { "EffectiveAtTime", FormatId(punishment.EffectiveAtTime) },
-            { "ExpiresAtTime", FormatId(punishment.ExpiresAtTime) },
+            { OnlineGameEventFieldName.PunishmentId, punishment.PunishmentId ?? string.Empty },
+            { OnlineGameEventFieldName.PlayerId, FormatId(punishment.PlayerId) },
+            { OnlineGameEventFieldName.Kind, punishment.Kind.ToString() },
+            { OnlineGameEventFieldName.Reason, punishment.Reason ?? string.Empty },
+            { OnlineGameEventFieldName.EffectiveAtTime, FormatId(punishment.EffectiveAtTime) },
+            { OnlineGameEventFieldName.ExpiresAtTime, FormatId(punishment.ExpiresAtTime) },
         };
 
         events.Add(Build(OnlineGameEventName.Penalty, punishment.TenantId, punishment.AppId, 0, punishment.PlayerId, Fallback(punishment.EffectiveAtTime, punishment.CreatedAtTime), punishment.PunishmentId, fields));

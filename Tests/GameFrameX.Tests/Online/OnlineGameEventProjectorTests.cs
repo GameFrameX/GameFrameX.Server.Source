@@ -217,6 +217,63 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 验证投影覆盖不变量（GFX-1096）：Server 半边全部 14 个投影事件名的实际载荷键覆盖登记表声明的
+        /// 全部必需字段且值非空——登记表声明了投影器不写的必填字段时，事件必然投递即拒；
+        /// 两侧共享 <see cref="OnlineGameEventFieldName"/> 常量源后，漂移在编译期与编译期断言双重拦截。
+        /// </summary>
+        [Fact]
+        public void ProjectedEvents_ShouldCoverAllRequiredFieldsDeclaredBySchema()
+        {
+            var harness = new OnlineGameEventTestHarness();
+            var events = new List<OnlineEvent>();
+            events.AddRange(harness.Projector.ProjectSessionEvents(OnlineGameEventTestHarness.Session(OnlineSessionState.Authenticated)));
+            events.AddRange(harness.Projector.ProjectSessionEvents(OnlineGameEventTestHarness.Session(OnlineSessionState.Connected)));
+            events.AddRange(harness.Projector.ProjectSessionEvents(OnlineGameEventTestHarness.Session(OnlineSessionState.Expired)));
+            events.AddRange(harness.Projector.ProjectMatchQueueEvents(OnlineGameEventTestHarness.Ticket()));
+            events.AddRange(harness.Projector.ProjectMatchEvents(OnlineGameEventTestHarness.Match(OnlineMatchState.Running)));
+            events.AddRange(harness.Projector.ProjectMatchResultEvents(OnlineGameEventTestHarness.MatchResult(OnlineMatchState.Completed, (OnlineGameEventTestHarness.PlayerOne, true), (OnlineGameEventTestHarness.PlayerTwo, false))));
+            events.AddRange(harness.Projector.ProjectMatchResultEvents(OnlineGameEventTestHarness.MatchResult(OnlineMatchState.Aborted, (OnlineGameEventTestHarness.PlayerOne, false))));
+            events.AddRange(harness.Projector.ProjectAssetTransactionEvents(OnlineGameEventTestHarness.Transaction(OnlineAssetChangeSource.MatchReward, OnlineGrantOperation.Grant)));
+            events.AddRange(harness.Projector.ProjectAssetTransactionEvents(OnlineGameEventTestHarness.Transaction(OnlineAssetChangeSource.AdminOperation, OnlineGrantOperation.Deduct)));
+            events.AddRange(harness.Projector.ProjectAssetTransactionEvents(OnlineGameEventTestHarness.Transaction(OnlineAssetChangeSource.PaymentConfirm, OnlineGrantOperation.Grant)));
+            events.AddRange(harness.Projector.ProjectReportCaseEvents(OnlineGameEventTestHarness.ReportCase(OnlineReportScene.Chat)));
+            events.AddRange(harness.Projector.ProjectPunishmentEvents(OnlineGameEventTestHarness.Punishment()));
+
+            // Server 半边可投影的 14 个事件名全覆盖（Install / Register / MailOpen 由客户端 SDK 与邮件域投递）。
+            Assert.Equal(
+                new SortedSet<string>
+                {
+                    OnlineGameEventName.Login,
+                    OnlineGameEventName.SessionStart,
+                    OnlineGameEventName.SessionEnd,
+                    OnlineGameEventName.MatchQueue,
+                    OnlineGameEventName.MatchStart,
+                    OnlineGameEventName.MatchEnd,
+                    OnlineGameEventName.Win,
+                    OnlineGameEventName.Lose,
+                    OnlineGameEventName.Abandon,
+                    OnlineGameEventName.RewardGrant,
+                    OnlineGameEventName.CurrencySpend,
+                    OnlineGameEventName.Purchase,
+                    OnlineGameEventName.ChatReport,
+                    OnlineGameEventName.Penalty,
+                },
+                new SortedSet<string>(events.Select(item => item.EventType)));
+
+            foreach (var onlineEvent in events)
+            {
+                var descriptor = OnlineGameEventSchema.Find(onlineEvent.EventType);
+                Assert.NotNull(descriptor);
+                foreach (var requiredField in descriptor.RequiredFields)
+                {
+                    Assert.True(
+                        onlineEvent.PayloadAuditFields.TryGetValue(requiredField, out var value) && !string.IsNullOrEmpty(value),
+                        onlineEvent.EventType + " 必需字段缺失或为空：" + requiredField);
+                }
+            }
+        }
+
+        /// <summary>
         /// 从单元素投影结果中取事件名（顺带断言长度，避免投影静默多发）。
         /// </summary>
         /// <param name="events">投影结果。</param>
