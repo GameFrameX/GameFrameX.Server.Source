@@ -76,7 +76,7 @@ public sealed class OnlineMatchSettlementPipeline
     /// <summary>发奖投递尝试上限（含首发；非正值回退默认）。</summary>
     private readonly int _maxGrantAttempts;
 
-    /// <summary>待重试发奖表：键 = MatchResultId（去重更新）。</summary>
+    /// <summary>待重试发奖表：键 = MatchResultId（去重更新）。任何路径读写本表及其条目可变状态必须持 <c>lock (_retries)</c>。</summary>
     private readonly Dictionary<string, RetryRecord> _retries = new();
 
     /// <summary>
@@ -123,13 +123,18 @@ public sealed class OnlineMatchSettlementPipeline
                 await DispatchAndTrackAsync(settled.Data.Result, cancellationToken).ConfigureAwait(false);
             }
 
-            if (_dispatcher == null || _retries.Count == 0)
+            List<RetryRecord> pending;
+            lock (_retries)
             {
-                return;
+                if (_retries.Count == 0)
+                {
+                    return;
+                }
+
+                // 快照后遍历：分发在锁外 await，成功项在锁内移除。
+                pending = new List<RetryRecord>(_retries.Values);
             }
 
-            // 快照后遍历：成功项在门内移除；ManualReview 项不再自动重投（人工裁决面接管）。
-            var pending = new List<RetryRecord>(_retries.Values);
             foreach (var record in pending)
             {
                 if (record.Entry.State != OnlineMatchSettlementRetryState.Pending)
@@ -140,17 +145,20 @@ public sealed class OnlineMatchSettlementPipeline
                 // 只重投失败玩家条目（GFX-1101/M79）：已成功玩家零重投——整份重投在幂等 TTL 过期后会重复发奖。
                 record.Result = NarrowToFailedPlayers(record.Result, record.Entry.FailedPlayerIds);
                 var dispatched = await _dispatcher.DispatchAsync(record.Result, cancellationToken).ConfigureAwait(false);
-                record.Attempts++;
-                if (dispatched.IsSuccess && dispatched.Data != null && dispatched.Data.FailedPlayerIds.Count == 0)
+                lock (_retries)
                 {
-                    _retries.Remove(record.Entry.MatchResultId);
-                    continue;
-                }
+                    record.Attempts++;
+                    if (dispatched.IsSuccess && dispatched.Data != null && dispatched.Data.FailedPlayerIds.Count == 0)
+                    {
+                        _retries.Remove(record.Entry.MatchResultId);
+                        continue;
+                    }
 
-                UpdateFailedPlayers(record, dispatched);
-                if (record.Attempts >= _maxGrantAttempts)
-                {
-                    record.Entry.State = OnlineMatchSettlementRetryState.ManualReview;
+                    UpdateFailedPlayers(record, dispatched);
+                    if (record.Attempts >= _maxGrantAttempts)
+                    {
+                        record.Entry.State = OnlineMatchSettlementRetryState.ManualReview;
+                    }
                 }
             }
         }
