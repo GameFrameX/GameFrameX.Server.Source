@@ -296,25 +296,7 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
             var store = new GameDbOnlineFriendStore();
 
             // 模拟存量旧行：直接落库一行 RowVersion = null 的关系（绕开 store 的创建路径）。
-            var legacy = new OnlineFriendshipRowState
-            {
-                Id = 9001,
-                UniqueKey = "friend:" + TenantId + ":" + AppId + ":11:22",
-                FriendshipId = "fs-legacy",
-                TenantId = TenantId,
-                AppId = AppId,
-                ServerId = 5,
-                LowPlayerId = 11,
-                HighPlayerId = 22,
-                RequesterId = 11,
-                AddresseeId = 22,
-                State = (int)OnlineFriendshipState.Requested,
-                CreatedAtTime = 1000,
-                UpdatedAtTime = 1001,
-                ExpiresAtTime = 9000,
-                RespondedAtTime = 0,
-                RowVersion = null,
-            };
+            var legacy = CreateFriendshipRow(9001, "fs-legacy", (int)OnlineFriendshipState.Requested, null, 1001);
             await GameDb.AddOrUpdateAsync(legacy);
 
             var updated = await store.UpdateStateAsync(TenantId, AppId, new FriendshipStateTransition { FriendshipId = "fs-legacy", ExpectedState = OnlineFriendshipState.Requested, NewState = OnlineFriendshipState.Accepted, NowUnixMilliseconds = 5000, Responded = true, });
@@ -491,5 +473,37 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
         {
             File.Delete(dataFile);
         }
+    }
+
+    /// <summary>
+    /// 构造好友关系行（玩家对 11/22、租户 / App / 区服固定；行标识、状态、版本与更新时刻可变）。
+    /// </summary>
+    /// <param name="id">行 Id。</param>
+    /// <param name="friendshipId">关系标识。</param>
+    /// <param name="state">关系状态。</param>
+    /// <param name="rowVersion">行版本（null = 存量旧行）。</param>
+    /// <param name="updatedAtTime">更新时刻。</param>
+    /// <returns>关系行。</returns>
+    internal static OnlineFriendshipRowState CreateFriendshipRow(long id, string friendshipId, int state, long? rowVersion, long updatedAtTime)
+    {
+        return new OnlineFriendshipRowState
+        {
+            Id = id,
+            UniqueKey = "friend:" + TenantId + ":" + AppId + ":11:22",
+            FriendshipId = friendshipId,
+            TenantId = TenantId,
+            AppId = AppId,
+            ServerId = 5,
+            LowPlayerId = 11,
+            HighPlayerId = 22,
+            RequesterId = 11,
+            AddresseeId = 22,
+            State = state,
+            CreatedAtTime = 1000,
+            UpdatedAtTime = updatedAtTime,
+            ExpiresAtTime = 9000,
+            RespondedAtTime = 0,
+            RowVersion = rowVersion,
+        };
     }
 }

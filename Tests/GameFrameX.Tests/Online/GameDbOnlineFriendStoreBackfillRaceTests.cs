@@ -77,10 +77,10 @@ public sealed class GameDbOnlineFriendStoreBackfillRaceTests : IDisposable
     public async Task UpdateState_BackfillLostToConcurrentWriter_ShouldNotApplyIllegalTransition()
     {
         // 存量旧行（RowVersion = null，状态 Requested）：首次读出的形态。
-        var legacyRow = CreateRaceRow((int)OnlineFriendshipState.Requested, null, 1001);
+        var legacyRow = GameDbOnlineFriendStorePersistenceTests.CreateFriendshipRow(9101, "fs-legacy-race", (int)OnlineFriendshipState.Requested, null, 1001);
 
         // 并发写者已把该行推进到 Rejected（行版本 7）：补全 CAS 失败后重读到的就是这行。
-        var winnerRow = CreateRaceRow((int)OnlineFriendshipState.Rejected, 7, 7000);
+        var winnerRow = GameDbOnlineFriendStorePersistenceTests.CreateFriendshipRow(9101, "fs-legacy-race", (int)OnlineFriendshipState.Rejected, 7, 7000);
 
         var database = new ScriptedFriendDatabase(legacyRow, winnerRow);
         MultiDbRegistry.Register("friend_race_db", database.Service);
@@ -98,36 +98,6 @@ public sealed class GameDbOnlineFriendStoreBackfillRaceTests : IDisposable
 
         Assert.Null(updated);
         Assert.Empty(database.ConditionalWrites);
-    }
-
-    /// <summary>
-    /// 构造竞态测试用关系行（同一行标识，仅状态 / 行版本 / 更新时刻不同）。
-    /// </summary>
-    /// <param name="state">关系状态。</param>
-    /// <param name="rowVersion">行版本（null = 存量旧行）。</param>
-    /// <param name="updatedAtTime">更新时刻。</param>
-    /// <returns>关系行。</returns>
-    private static OnlineFriendshipRowState CreateRaceRow(int state, long? rowVersion, long updatedAtTime)
-    {
-        return new OnlineFriendshipRowState
-        {
-            Id = 9101,
-            UniqueKey = "friend:1:10:11:22",
-            FriendshipId = "fs-legacy-race",
-            TenantId = TenantId,
-            AppId = AppId,
-            ServerId = 5,
-            LowPlayerId = 11,
-            HighPlayerId = 22,
-            RequesterId = 11,
-            AddresseeId = 22,
-            State = state,
-            CreatedAtTime = 1000,
-            UpdatedAtTime = updatedAtTime,
-            ExpiresAtTime = 9000,
-            RespondedAtTime = 0,
-            RowVersion = rowVersion,
-        };
     }
 
     /// <summary>
