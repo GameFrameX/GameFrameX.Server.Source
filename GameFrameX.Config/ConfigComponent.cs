@@ -73,23 +73,38 @@ public class ConfigComponent
     }
 
     /// <summary>
-    /// 获取指定全局配置项。
+    /// 获取指定全局配置表；未注册或未加载时抛出异常。
     /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <returns></returns>
+    /// <typeparam name="T">配置表类型。</typeparam>
+    /// <returns>指定的全局配置表。</returns>
+    /// <exception cref="InvalidOperationException">配置表未注册或未加载。</exception>
     public T GetConfig<T>() where T : IDataTable
     {
-        if (HasConfig<T>())
+        if (TryGetConfig<T>(out var config))
         {
-            var configName = typeof(T).Name;
-            var config = _configManager.GetConfig(configName);
-            if (config != null)
-            {
-                return (T)config;
-            }
+            return config;
         }
 
-        return default;
+        // Localization: Config.Table.ConfigNotFound - 配置表 {0} 未注册或未加载
+        throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.Config.Table.ConfigNotFound, typeof(T).Name));
+    }
+
+    /// <summary>
+    /// 尝试获取指定全局配置表。
+    /// </summary>
+    /// <typeparam name="T">配置表类型。</typeparam>
+    /// <param name="config">获取到的全局配置表；不存在时为 null。</param>
+    /// <returns>指定的全局配置表是否存在。</returns>
+    public bool TryGetConfig<T>(out T config) where T : IDataTable
+    {
+        if (_configManager.GetConfig(typeof(T).Name) is T dataTable)
+        {
+            config = dataTable;
+            return true;
+        }
+
+        config = default;
+        return false;
     }
 
     /// <summary>

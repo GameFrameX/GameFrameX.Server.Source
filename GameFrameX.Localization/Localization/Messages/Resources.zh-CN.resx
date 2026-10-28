@@ -1986,6 +1986,10 @@
     <value>机器人选项: 机器人数量={0}, tcp={1}:{2}, 场景={3}, 断开循环={4}, 登录后断开秒数={5}, 运行秒数={6}</value>
   </data>
 
+  <data name="Config.Table.ConfigNotFound" xml:space="preserve">
+    <value>配置表 {0} 未注册或未加载</value>
+  </data>
+
   <data name="Config.Table.LoadConfigEnd" xml:space="preserve">
     <value>配置表加载完成...</value>
   </data>

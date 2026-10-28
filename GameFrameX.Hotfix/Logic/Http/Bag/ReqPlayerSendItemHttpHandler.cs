@@ -52,17 +52,14 @@ public sealed class ReqPlayerSendItemHttpHandler : BaseHttpHandler
         Dictionary<int, long> itemDic = new Dictionary<int, long>();
 
         var tbItemConfig = ConfigComponent.Instance.GetConfig<TbItemConfig>();
-        if (tbItemConfig != null)
+        foreach (var item in sendItemRequest.Items)
         {
-            foreach (var item in sendItemRequest.Items)
+            if (!tbItemConfig.TryGet(item.Key, out _))
             {
-                if (!tbItemConfig.TryGet(item.Key, out var tbItemConfigItem))
-                {
-                    continue;
-                }
-
-                itemDic[item.Key] = item.Value;
+                continue;
             }
+
+            itemDic[item.Key] = item.Value;
         }
 
         // 发送道具事件

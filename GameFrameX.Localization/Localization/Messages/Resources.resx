@@ -1995,6 +1995,10 @@
     <value>Bot options: bot-count={0}, tcp={1}:{2}, scenario={3}, disconnect-loop={4}, disconnect-after-login-seconds={5}, run-seconds={6}</value>
   </data>
 
+  <data name="Config.Table.ConfigNotFound" xml:space="preserve">
+    <value>Config table {0} is not registered or not loaded</value>
+  </data>
+
   <data name="Config.Table.LoadConfigEnd" xml:space="preserve">
     <value>Load Config End...</value>
   </data>
