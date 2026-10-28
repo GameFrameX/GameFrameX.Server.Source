@@ -501,6 +501,18 @@ namespace GameFrameX.Tests.Online
             /// <summary>委托内层。</summary>
             /// <param name="tenantId">租户标识。</param>
             /// <param name="appId">App 标识。</param>
+            /// <param name="transition">状态迁移载荷。</param>
+            /// <param name="establishedFriendLimit">已建立好友数上限（<= 0 表示不启用上限判定）。</param>
+            /// <param name="cancellationToken">取消令牌。</param>
+            /// <returns>迁移结果：成功携带更新后的副本；上限拒绝置 FriendLimitReached；CAS 失败两者皆空。</returns>
+            public Task<OnlineFriendStateTransitionOutcome> UpdateStateWithFriendLimitAsync(long tenantId, long appId, FriendshipStateTransition transition, int establishedFriendLimit, CancellationToken cancellationToken = default)
+            {
+                return _inner.UpdateStateWithFriendLimitAsync(tenantId, appId, transition, establishedFriendLimit, cancellationToken);
+            }
+
+            /// <summary>委托内层。</summary>
+            /// <param name="tenantId">租户标识。</param>
+            /// <param name="appId">App 标识。</param>
             /// <param name="renewal">重新发起载荷。</param>
             /// <param name="cancellationToken">取消令牌。</param>
             /// <returns>更新后的关系副本；CAS 失败或记录不存在返回 null。</returns>

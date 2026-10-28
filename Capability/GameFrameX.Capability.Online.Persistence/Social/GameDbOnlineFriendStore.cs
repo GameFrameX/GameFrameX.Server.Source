@@ -165,6 +165,82 @@ public sealed class GameDbOnlineFriendStore : IOnlineFriendStore
     }
 
     /// <summary>
+    /// 以 CAS 语义改写关系状态，并在同一方法内执行好友上限判定：目标态为 Accepted 且上限 &gt; 0 时，
+    /// 先统计两侧已建立（Accepted）关系数，任一侧已达上限即零写入并返回上限拒绝结果。
+    /// </summary>
+    /// <remarks>
+    /// Rewrites the friendship state with CAS semantics and enforces the friend limit inside the same method: when the target state is Accepted with a positive limit, counts both sides' established (Accepted) relations first and rejects with zero writes once either side has reached the limit.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="transition">状态迁移载荷（关系定位 + 期望/目标状态 + 变更时刻与答复标记） / State transition payload (friendship locator + expected/target states + change time and responded flag)</param>
+    /// <param name="establishedFriendLimit">已建立好友数上限（&lt;= 0 表示不启用上限判定） / Established friend limit (&lt;= 0 disables the limit check)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>迁移结果：成功携带更新后的副本；上限拒绝置 <c>FriendLimitReached</c>；CAS 失败两者皆空 / Transition outcome: updated copy on success; FriendLimitReached on limit rejection; both empty on CAS failure</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="transition"/> 为 null 时抛出 / Thrown when <paramref name="transition"/> is null</exception>
+    public async Task<OnlineFriendStateTransitionOutcome> UpdateStateWithFriendLimitAsync(long tenantId, long appId, FriendshipStateTransition transition, int establishedFriendLimit, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(transition);
+
+        var current = await FindRowByIdAsync(transition.FriendshipId ?? string.Empty, cancellationToken).ConfigureAwait(false);
+        if (current == null)
+        {
+            return OnlineFriendStateTransitionOutcome.FromCasConflict();
+        }
+
+        if (current.TenantId != tenantId || current.AppId != appId)
+        {
+            return OnlineFriendStateTransitionOutcome.FromCasConflict();
+        }
+
+        if ((OnlineFriendshipState)current.State != transition.ExpectedState)
+        {
+            return OnlineFriendStateTransitionOutcome.FromCasConflict();
+        }
+
+        if (transition.NewState == OnlineFriendshipState.Accepted && establishedFriendLimit > 0)
+        {
+            // 计数与写入收在同一方法内：本行此刻尚处 Requested（未计入），两侧任一满员即整体拒绝、零写入。
+            // ponytail：跨行「计数 + 覆盖写」依赖 GameDb 行级写收敛；多实例并发下残余窗口以单写者语义收口，
+            // 需要硬约束时下沉为数据库内计数事务。
+            if (await CountEstablishedAsync(tenantId, appId, current.RequesterId, cancellationToken).ConfigureAwait(false) >= establishedFriendLimit
+                || await CountEstablishedAsync(tenantId, appId, current.AddresseeId, cancellationToken).ConfigureAwait(false) >= establishedFriendLimit)
+            {
+                return OnlineFriendStateTransitionOutcome.FromFriendLimitReached();
+            }
+        }
+
+        current.State = (int)transition.NewState;
+        current.UpdatedAtTime = transition.NowUnixMilliseconds;
+        if (transition.Responded)
+        {
+            current.RespondedAtTime = transition.NowUnixMilliseconds;
+        }
+
+        await GameDb.AddOrUpdateAsync(current, cancellationToken).ConfigureAwait(false);
+        return OnlineFriendStateTransitionOutcome.FromUpdated(ToEntity(current));
+    }
+
+    /// <summary>
+    /// 统计某玩家在作用域内已建立（Accepted）的好友关系数。
+    /// </summary>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="playerId">玩家标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>已建立的好友关系数。</returns>
+    private static async Task<int> CountEstablishedAsync(long tenantId, long appId, long playerId, CancellationToken cancellationToken)
+    {
+        var acceptedState = (int)OnlineFriendshipState.Accepted;
+        var states = await GameDb.FindListAsync<OnlineFriendshipRowState>(
+            state => state.TenantId == tenantId && state.AppId == appId
+                     && state.State == acceptedState
+                     && (state.LowPlayerId == playerId || state.HighPlayerId == playerId),
+            cancellationToken).ConfigureAwait(false);
+        return states.Count;
+    }
+
+    /// <summary>
     /// 以 CAS 语义把静止态关系重新发起为待答复请求：状态、方向与有效期三项一并落到同一行。
     /// </summary>
     /// <remarks>

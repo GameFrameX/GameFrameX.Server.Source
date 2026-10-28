@@ -171,6 +171,70 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
     }
 
     /// <summary>
+    /// 在同一临界区内完成「读两侧已建立计数 → 判满 → 写入」：任一侧已达上限即零写入并返回上限拒绝结果，
+    /// 杜绝并发接受各读到「上限-1」而双双落库超限的 TOCTOU 窗口。
+    /// </summary>
+    /// <remarks>
+    /// Performs "read both sides' established counts → judge the limit → write" within one critical section: rejects with zero writes when either side has reached the limit, eliminating the TOCTOU window where concurrent accepts each read limit-1 and both land over the limit.
+    /// </remarks>
+    /// <param name="tenantId">租户标识 / Tenant id</param>
+    /// <param name="appId">App 标识 / App id</param>
+    /// <param name="transition">状态迁移载荷（关系定位 + 期望/目标状态 + 变更时刻与答复标记） / State transition payload (friendship locator + expected/target states + change time and responded flag)</param>
+    /// <param name="establishedFriendLimit">已建立好友数上限（&lt;= 0 表示不启用上限判定） / Established friend limit (&lt;= 0 disables the limit check)</param>
+    /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
+    /// <returns>迁移结果：成功携带更新后的副本；上限拒绝置 <c>FriendLimitReached</c>；CAS 失败两者皆空 / Transition outcome: updated copy on success; FriendLimitReached on limit rejection; both empty on CAS failure</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="transition"/> 为 null 时抛出 / Thrown when <paramref name="transition"/> is null</exception>
+    public Task<OnlineFriendStateTransitionOutcome> UpdateStateWithFriendLimitAsync(long tenantId, long appId, FriendshipStateTransition transition, int establishedFriendLimit, CancellationToken cancellationToken = default)
+    {
+        if (transition == null)
+        {
+            throw new ArgumentNullException(nameof(transition));
+        }
+
+        var expectedState = transition.ExpectedState;
+        var newState = transition.NewState;
+        var lookupKey = transition.FriendshipId ?? string.Empty;
+        lock (_syncRoot)
+        {
+            string pairKey;
+            if (!_pairKeyByFriendshipId.TryGetValue(lookupKey, out pairKey))
+            {
+                return Task.FromResult(OnlineFriendStateTransitionOutcome.FromCasConflict());
+            }
+
+            OnlineFriendship current;
+            if (!_friendshipsByPair.TryGetValue(pairKey, out current))
+            {
+                return Task.FromResult(OnlineFriendStateTransitionOutcome.FromCasConflict());
+            }
+
+            if (current.TenantId != tenantId || current.AppId != appId || current.State != expectedState)
+            {
+                return Task.FromResult(OnlineFriendStateTransitionOutcome.FromCasConflict());
+            }
+
+            if (newState == OnlineFriendshipState.Accepted && establishedFriendLimit > 0)
+            {
+                // 计数与写入同一临界区：本条此刻尚处 Requested（未计入），两侧任一满员即整体拒绝、零写入。
+                if (CountEstablishedInLock(tenantId, appId, current.RequesterId) >= establishedFriendLimit
+                    || CountEstablishedInLock(tenantId, appId, current.AddresseeId) >= establishedFriendLimit)
+                {
+                    return Task.FromResult(OnlineFriendStateTransitionOutcome.FromFriendLimitReached());
+                }
+            }
+
+            current.State = newState;
+            current.UpdatedAtTime = transition.NowUnixMilliseconds;
+            if (transition.Responded)
+            {
+                current.RespondedAtTime = transition.NowUnixMilliseconds;
+            }
+
+            return Task.FromResult(OnlineFriendStateTransitionOutcome.FromUpdated(current.Copy()));
+        }
+    }
+
+    /// <summary>
     /// 以 CAS 语义在同一临界区内把静止态关系重新发起为待答复请求：状态、方向与有效期三项一并落到同一条记录。
     /// </summary>
     /// <remarks>
@@ -217,6 +281,29 @@ public sealed class InMemoryOnlineFriendStore : IOnlineFriendStore
             current.ExpiresAtTime = expiresAtTime;
             return Task.FromResult(current.Copy());
         }
+    }
+    /// <summary>
+    /// 在已持有 <see cref="_syncRoot"/> 临界区的前提下，全表扫描统计某玩家已建立（Accepted）的关系数。
+    /// </summary>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="playerId">玩家标识。</param>
+    /// <returns>已建立的关系数。</returns>
+    private int CountEstablishedInLock(long tenantId, long appId, long playerId)
+    {
+        var count = 0;
+        foreach (var pair in _friendshipsByPair)
+        {
+            var friendship = pair.Value;
+            if (friendship.TenantId == tenantId && friendship.AppId == appId
+                && friendship.State == OnlineFriendshipState.Accepted
+                && friendship.Contains(playerId))
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     /// <summary>
