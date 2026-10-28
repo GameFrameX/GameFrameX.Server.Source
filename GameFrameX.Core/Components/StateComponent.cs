@@ -44,15 +44,15 @@ namespace GameFrameX.Core.Components;
 public sealed class StateComponent
 {
     /// <summary>
-    /// 回存委托注册表：以状态类型（<c>typeof(TState)</c>）为键，同键至多一个委托。
+    /// 回存委托注册表：以程序集简单名称与状态类型全名为键，同键至多一个委托，跨装载代次保持稳定。
     /// 注册即替换（upsert）——热重载后同一状态类型的静态构造再次注册时替换旧委托而非追加，
     /// 关服/定时回存不会对同一批状态叠加执行，注册表不随热更次数无界增长。
-    /// Shutdown-save registry keyed by the state type (<c>typeof(TState)</c>), holding at most one
+    /// Shutdown-save registry keyed by assembly simple name and full type name, holding at most one
     /// delegate per key: registration replaces in place (upsert), so a hot reload re-registering the
     /// same state type swaps the old delegate instead of appending, keeping saves from stacking up
     /// and the registry from growing unboundedly with each reload.
     /// </summary>
-    private static readonly ConcurrentDictionary<Type, Func<bool, bool, Task>> SaveFuncMap = new();
+    private static readonly ConcurrentDictionary<string, Func<bool, bool, Task>> SaveFuncMap = new ConcurrentDictionary<string, Func<bool, bool, Task>>(StringComparer.Ordinal);
 
     /// <summary>
     /// <see cref="SaveAllAsync"/> 整体等待上限：超时后放弃等待、由既有异常日志记录，防止单个悬挂的
@@ -64,7 +64,7 @@ public sealed class StateComponent
     internal static TimeSpan ShutdownSaveTimeout = TimeSpan.FromSeconds(120);
 
     /// <summary>
-    /// 注册回存。以 <paramref name="stateType"/> 为键替换既有注册：同一状态类型重复注册（含热重载后
+    /// 注册回存。以 <paramref name="stateType"/> 的稳定名称替换既有注册：同一状态类型重复注册（含热重载后
     /// 静态构造再次注册）时旧委托被替换，不会叠加执行；不同状态类型互不影响。
     /// Register a shutdown save func, replacing any existing registration for the same
     /// <paramref name="stateType"/>: re-registering a state type (including the static constructor
@@ -75,7 +75,7 @@ public sealed class StateComponent
     /// <param name="shutdown">回存委托 / The save delegate.</param>
     public static void AddShutdownSaveFunc(Type stateType, Func<bool, bool, Task> shutdown)
     {
-        SaveFuncMap[stateType] = shutdown;
+        SaveFuncMap[stateType.Assembly.GetName().Name + ":" + stateType.FullName] = shutdown;
     }
 
     /// <summary>

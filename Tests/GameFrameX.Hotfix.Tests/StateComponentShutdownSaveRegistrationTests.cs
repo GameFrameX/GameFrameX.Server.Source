@@ -146,6 +146,31 @@ public sealed class StateComponentShutdownSaveRegistrationTests
         }
     }
 
+    [Fact]
+    public async Task Registration_FromReloadedAssembly_ReplacesPreviousGeneration()
+    {
+        var assemblyName = new AssemblyName("ReloadedStateAssembly");
+        var firstAssembly = System.Reflection.Emit.AssemblyBuilder.DefineDynamicAssembly(assemblyName, System.Reflection.Emit.AssemblyBuilderAccess.RunAndCollect);
+        var secondAssembly = System.Reflection.Emit.AssemblyBuilder.DefineDynamicAssembly(assemblyName, System.Reflection.Emit.AssemblyBuilderAccess.RunAndCollect);
+        var firstType = firstAssembly.DefineDynamicModule("State").DefineType("Reloaded.PlayerState").CreateType();
+        var secondType = secondAssembly.DefineDynamicModule("State").DefineType("Reloaded.PlayerState").CreateType();
+        var previousCalls = 0;
+        var currentCalls = 0;
+        try
+        {
+            StateComponent.AddShutdownSaveFunc(firstType, (shutdown, force) => { previousCalls++; return Task.CompletedTask; });
+            StateComponent.AddShutdownSaveFunc(secondType, (shutdown, force) => { currentCalls++; return Task.CompletedTask; });
+            await StateComponent.SaveAllAsync();
+            Assert.Equal(0, previousCalls);
+            Assert.Equal(1, currentCalls);
+        }
+        finally
+        {
+            RemoveRegistration(firstType);
+            RemoveRegistration(secondType);
+        }
+    }
+
     /// <summary>
     /// 反射清理本测试注入的注册条目（注册表无公开注销 API，沿用静态字典反射清理先例）。
     /// Reflectively remove registrations injected by these tests (the registry exposes no public
@@ -156,6 +181,6 @@ public sealed class StateComponentShutdownSaveRegistrationTests
         var saveFuncMapField = typeof(StateComponent).GetField("SaveFuncMap", BindingFlags.NonPublic | BindingFlags.Static);
         Assert.NotNull(saveFuncMapField);
         var saveFuncMap = Assert.IsAssignableFrom<IDictionary>(saveFuncMapField.GetValue(null));
-        saveFuncMap.Remove(stateType);
+        saveFuncMap.Remove(stateType.Assembly.GetName().Name + ":" + stateType.FullName);
     }
 }
