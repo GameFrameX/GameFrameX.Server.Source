@@ -34,7 +34,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Foundation.Orm.Entity;
 using GameFrameX.Localization;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -132,49 +131,24 @@ public sealed partial class MongoDbService
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
 
-        if (state.Id != id)
+        return await RowVersionCasWriteHelper.WriteAsync(id, expectedRowVersion, state, async () =>
         {
-            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Database.ConditionalWriteStateIdMismatch, state.Id, id), nameof(state));
-        }
+            var collection = GetCollection<TState>();
 
-        // 版本准备：先对齐到期望版本，再吃 checked 递增语义；失败（false）路径回滚内存版本——写前递增若不回滚
-        // 会污染调用方 state.RowVersion，后续 CAS 持续 Stale；异常路径不回滚（写结果未知，回滚可能反向脱节）。
-        // Version preparation: align to the expected version first, then take the checked increment. The
-        // pre-write increment is rolled back on the false path — leaving it in place would pollute the caller's
-        // state.RowVersion and starve every later CAS; it is NOT rolled back on exceptions (the write outcome
-        // is unknown, and rolling back could desync the other way).
-        var originalRowVersion = state.RowVersion;
-        state.RowVersion = expectedRowVersion;
-        state.IncrementRowVersion();
-
-        // 写库前捕获字节快照（行版本递增后），成功后按该快照精确提交基线
-        var persistedData = state.ToBytes();
-
-        var collection = GetCollection<TState>();
-
-        // 属性索引引导（异步单飞）：沿用原类型化入口的引导语义，先于本次条件写完成。
-        // Attribute-index bootstrap (asynchronous single flight): keeps the former typed-entry
-        // bootstrap semantics and completes before this conditional write.
-        await CreateIndexesAsync(collection, cancellationToken).ConfigureAwait(false);
-        var filter = Builders<TState>.Filter.And(
-            Builders<TState>.Filter.Eq(m => m.Id, id),
-            Builders<TState>.Filter.Eq(m => m.RowVersion, (long?)expectedRowVersion));
-        var replaced = await ExecuteWriteWithRetryAsync(async token =>
-        {
-            var options = new FindOneAndReplaceOptions<TState> { ReturnDocument = ReturnDocument.Before };
-            return await FindOneAndReplaceWithAmbientSessionAsync(collection, filter, state, options, token).ConfigureAwait(false);
-        }, cancellationToken, nameof(UpdateIfRowVersionAsync), false).ConfigureAwait(false);
-
-        if (replaced == null)
-        {
-            // 版本不符或行缺失：未写库，回滚写前递增的内存版本。
-            // Version mismatch or missing row: nothing was written — roll back the pre-write in-memory increment.
-            state.RowVersion = originalRowVersion;
-            return false;
-        }
-
-        state.SaveToDbPostHandler(persistedData);
-        return true;
+            // 属性索引引导（异步单飞）：沿用原类型化入口的引导语义，先于本次条件写完成。
+            // Attribute-index bootstrap (asynchronous single flight): keeps the former typed-entry
+            // bootstrap semantics and completes before this conditional write.
+            await CreateIndexesAsync(collection, cancellationToken).ConfigureAwait(false);
+            var filter = Builders<TState>.Filter.And(
+                Builders<TState>.Filter.Eq(m => m.Id, id),
+                Builders<TState>.Filter.Eq(m => m.RowVersion, (long?)expectedRowVersion));
+            var replaced = await ExecuteWriteWithRetryAsync(async token =>
+            {
+                var options = new FindOneAndReplaceOptions<TState> { ReturnDocument = ReturnDocument.Before };
+                return await FindOneAndReplaceWithAmbientSessionAsync(collection, filter, state, options, token).ConfigureAwait(false);
+            }, cancellationToken, nameof(UpdateIfRowVersionAsync), false).ConfigureAwait(false);
+            return replaced != null;
+        }).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -226,53 +200,28 @@ public sealed partial class MongoDbService
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
 
-        if (state.Id != id)
+        return await RowVersionBackfillWriteHelper.WriteAsync(id, state, async () =>
         {
-            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Database.ConditionalWriteStateIdMismatch, state.Id, id), nameof(state));
-        }
+            var collection = GetCollection<TState>();
 
-        // 版本准备：null 补全基点 -1 对齐后吃 checked 递增（恒为 0，回填后行与新建行基线一致）。失败（false）
-        // 路径回滚内存版本——写前递增若不回滚会污染调用方 state.RowVersion；异常路径不回滚（写结果未知，回滚可能反向脱节）。
-        // Version preparation: align to the null backfill baseline -1, then take the checked increment
-        // (always 0). The pre-write increment is rolled back on the false path; it is NOT rolled back on
-        // exceptions.
-        var originalRowVersion = state.RowVersion;
-        state.RowVersion = -1;
-        state.IncrementRowVersion();
+            // 属性索引引导（异步单飞）：沿用 CAS 入口的引导语义，先于本次条件写完成。
+            // Attribute-index bootstrap (asynchronous single flight): keeps the CAS entry's bootstrap
+            // semantics and completes before this conditional write.
+            await CreateIndexesAsync(collection, cancellationToken).ConfigureAwait(false);
 
-        // 写库前捕获字节快照（行版本递增后），成功后按该快照精确提交基线
-        var persistedData = state.ToBytes();
-
-        var collection = GetCollection<TState>();
-
-        // 属性索引引导（异步单飞）：沿用 CAS 入口的引导语义，先于本次条件写完成。
-        // Attribute-index bootstrap (asynchronous single flight): keeps the CAS entry's bootstrap
-        // semantics and completes before this conditional write.
-        await CreateIndexesAsync(collection, cancellationToken).ConfigureAwait(false);
-
-        // 空值等值谓词：MongoDB 的 == null 同时命中「存 null」与「字段缺位」——恰好是缺失行版本的存量文档。
-        // Null-equality predicate: MongoDB's == null matches both a stored null and an absent field —
-        // exactly the missing-version legacy documents.
-        var filter = Builders<TState>.Filter.And(
-            Builders<TState>.Filter.Eq(m => m.Id, id),
-            Builders<TState>.Filter.Eq(m => m.RowVersion, (long?)null));
-        var replaced = await ExecuteWriteWithRetryAsync(async token =>
-        {
-            var options = new FindOneAndReplaceOptions<TState> { ReturnDocument = ReturnDocument.Before };
-            return await FindOneAndReplaceWithAmbientSessionAsync(collection, filter, state, options, token).ConfigureAwait(false);
-        }, cancellationToken, nameof(UpdateIfRowVersionIsNullAsync), false).ConfigureAwait(false);
-
-        if (replaced == null)
-        {
-            // 存量 RowVersion 非 null 或行缺失：未写库，回滚写前递增的内存版本。
-            // Non-null stored version or missing document: nothing was written — roll back the
-            // pre-write in-memory increment.
-            state.RowVersion = originalRowVersion;
-            return false;
-        }
-
-        state.SaveToDbPostHandler(persistedData);
-        return true;
+            // 空值等值谓词：MongoDB 的 == null 同时命中「存 null」与「字段缺位」——恰好是缺失行版本的存量文档。
+            // Null-equality predicate: MongoDB's == null matches both a stored null and an absent field —
+            // exactly the missing-version legacy documents.
+            var filter = Builders<TState>.Filter.And(
+                Builders<TState>.Filter.Eq(m => m.Id, id),
+                Builders<TState>.Filter.Eq(m => m.RowVersion, (long?)null));
+            var replaced = await ExecuteWriteWithRetryAsync(async token =>
+            {
+                var options = new FindOneAndReplaceOptions<TState> { ReturnDocument = ReturnDocument.Before };
+                return await FindOneAndReplaceWithAmbientSessionAsync(collection, filter, state, options, token).ConfigureAwait(false);
+            }, cancellationToken, nameof(UpdateIfRowVersionIsNullAsync), false).ConfigureAwait(false);
+            return replaced != null;
+        }).ConfigureAwait(false);
     }
 
     /// <summary>
