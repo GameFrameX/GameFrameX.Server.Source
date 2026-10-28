@@ -99,6 +99,9 @@
     <data name="Utility.Exceptions.ModuleInvalid" xml:space="preserve">
     <value>module is invalid</value>
   </data>
+    <data name="Utility.Exceptions.ActorIdClockMovedBackwards" xml:space="preserve">
+        <value>The system clock moved backwards by {0} seconds, exceeding the tolerance limit of {1} seconds; refusing to generate an ID.</value>
+    </data>
     <data name="Utility.Exceptions.RadixOutOfRange" xml:space="preserve">
     <value>Radix must be between 2 and 36</value>
   </data>

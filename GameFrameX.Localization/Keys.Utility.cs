@@ -124,6 +124,16 @@ public static partial class Keys
             public const string ModuleInvalid = "Utility.Exceptions.ModuleInvalid";
 
             /// <summary>
+            /// ActorIdGenerator 序列时钟回拨超过容忍上限的错误消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.Exceptions.ActorIdClockMovedBackwards
+            /// 用途: 当 ActorIdGenerator 序列检测到的系统时钟回拨量超过可容忍上限时使用
+            /// 参数: {0} - 回拨秒数, {1} - 可容忍的最大回拨秒数
+            /// </remarks>
+            public const string ActorIdClockMovedBackwards = "Utility.Exceptions.ActorIdClockMovedBackwards";
+
+            /// <summary>
             /// 基数超出范围的错误消息
             /// </summary>
             /// <remarks>

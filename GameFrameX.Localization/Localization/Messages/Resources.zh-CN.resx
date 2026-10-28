@@ -102,6 +102,9 @@
     <data name="Utility.Exceptions.ModuleInvalid" xml:space="preserve">
     <value>模块无效</value>
   </data>
+    <data name="Utility.Exceptions.ActorIdClockMovedBackwards" xml:space="preserve">
+        <value>系统时钟回拨 {0} 秒，超过容忍上限 {1} 秒，拒绝生成ID。</value>
+    </data>
     <data name="Utility.Exceptions.RadixOutOfRange" xml:space="preserve">
     <value>基数必须在2-36范围内</value>
   </data>
