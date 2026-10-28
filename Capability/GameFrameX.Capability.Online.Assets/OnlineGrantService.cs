@@ -225,8 +225,10 @@ public sealed class OnlineGrantService
     }
 
     /// <summary>
-    /// 中断裁决（应用阶段异常或恢复期 Executing 交易）：按已落账条目数判定——
-    /// 零条目判 Failed；达到期望行数（原子落账后中断）按成功落定；不足期望行数（部分应用）走补偿净效应归零。
+    /// 中断裁决（应用阶段异常或恢复期 Executing 交易）：逐条校验已落账条目——
+    /// 每条归属须与交易主体一致（Tenant/App/Player），且去重后的资产集合
+    /// （AssetKind + AssetId，入口校验保证同一交易内资产不重复）恰覆盖全部期望变更行才按成功落定；
+    /// 零有效条目判 Failed；任一条目未匹配（条目数达标但资产不齐/归属不符）走补偿净效应归零。
     /// </summary>
     /// <param name="transaction">交易记录。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -235,7 +237,21 @@ public sealed class OnlineGrantService
     {
         var appliedEntries = await _assetStore.FindLedgerEntriesByTransactionIdAsync(transaction.TransactionId, cancellationToken);
         var scope = new OnlineScope(transaction.TenantId, transaction.AppId, transaction.InitiatingServerId, transaction.PlayerId);
-        if (appliedEntries.Count == 0)
+
+        // 归属校验：仅统计 Tenant/App/Player 与交易主体一致的条目；异主体条目属数据完整性异常，告警留痕。
+        var ownedEntries = new List<OnlineLedgerEntry>();
+        foreach (var entry in appliedEntries)
+        {
+            if (entry.TenantId == transaction.TenantId && entry.AppId == transaction.AppId && entry.PlayerId == transaction.PlayerId)
+            {
+                ownedEntries.Add(entry);
+                continue;
+            }
+
+            await AlertAsync(OnlineAssetAlertKind.ForeignLedgerEntryObserved, transaction.TransactionId, scope.ToScopeKey(true), entry.AssetId, "中断裁决发现非交易主体条目：" + entry.EntryId, cancellationToken);
+        }
+
+        if (ownedEntries.Count == 0)
         {
             transaction.State = OnlineAssetTransactionState.Failed;
             transaction.SettledTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -244,13 +260,15 @@ public sealed class OnlineGrantService
             return OnlineResult<OnlineGrantResult>.Fail(OnlineErrorCode.InternalError, "交易执行中断（零落账，判失败；可换新幂等键重试）");
         }
 
-        if (appliedEntries.Count >= transaction.ExpectedChangeCount)
+        // 覆盖校验：按资产去重后须恰等于期望变更行数——条目总数达标但存在重复资产/缺失变更行时不判成功（防漏发）。
+        var distinctAssetEntries = ownedEntries.GroupBy(entry => (entry.AssetKind, entry.AssetId)).Select(group => group.First()).ToList();
+        if (distinctAssetEntries.Count == transaction.ExpectedChangeCount)
         {
-            // 原子落账完成后中断：条目齐全，按成功落定（幂等完成承载回放令牌，重试回放而非重复执行）。
-            return await SettleSucceededAsync(transaction, appliedEntries, cancellationToken);
+            // 原子落账完成后中断：期望变更行均有对应成功条目，按成功落定（幂等完成承载回放令牌，重试回放而非重复执行）。
+            return await SettleSucceededAsync(transaction, distinctAssetEntries, cancellationToken);
         }
 
-        // 部分应用：追加反转条目净效应归零（账本不可变，纠正只追加）。
+        // 部分应用（含条目数达标但资产不齐/归属不符）：追加反转条目净效应归零（账本不可变，纠正只追加）。
         transaction.State = OnlineAssetTransactionState.CompensationPending;
         await _transactionStore.SaveAsync(transaction, cancellationToken);
         if (await CompensateAsync(transaction, cancellationToken))
