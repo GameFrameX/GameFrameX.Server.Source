@@ -41,6 +41,7 @@ namespace GameFrameX.Capability.Online.Match;
 /// 每局双方各提交一次出拳，服务端判定胜负；单局无人出拳则本局作废。
 /// 单局超时（<see cref="RoundTimeoutMilliseconds"/>）由服务端按规则推进：已出拳方判该局胜，双方均未出拳则本局作废——
 /// 这使「玩家不做操作」也收敛到确定结果，而非永久挂起。
+/// 参与奖资格红线：任意一方全程零有效出拳（挂机）时，结算抑制全部非胜方参与奖（胜方奖励不受影响）。
 /// </para>
 /// <para>
 /// 维护约束（红线）：本类不做任何鉴权与身份判定（由 Actor 负责），也不产出 <c>MatchResultId</c>
@@ -67,7 +68,7 @@ public sealed class OnlineRockPaperScissorsGame : IOnlineMatchGame
     /// <summary>胜方奖励数量。</summary>
     public const long WinnerRewardAmount = 100L;
 
-    /// <summary>参与奖数量（负方与平局同样发放，用于覆盖逐玩家独立发奖路径）。</summary>
+    /// <summary>参与奖数量（负方与平局发放；前提是双方均有有效出拳——任意一方零出拳时整场抑制，防挂机刷奖）。</summary>
     public const long ParticipantRewardAmount = 10L;
 
     /// <summary>出拳提交事件。</summary>
@@ -129,6 +130,7 @@ public sealed class OnlineRockPaperScissorsGame : IOnlineMatchGame
                     PlayerId = member.PlayerId,
                     Wins = 0,
                     Gesture = OnlineRockPaperScissorsMove.None,
+                    ValidGestureCount = 0,
                 });
             }
         }
@@ -168,6 +170,7 @@ public sealed class OnlineRockPaperScissorsGame : IOnlineMatchGame
         }
 
         me.Gesture = (OnlineRockPaperScissorsMove)input.ActionId;
+        me.ValidGestureCount += 1;
 
         var submittedCount = 0;
         foreach (var player in state.Players)
@@ -266,7 +269,12 @@ public sealed class OnlineRockPaperScissorsGame : IOnlineMatchGame
     }
 
     /// <summary>
-    /// 产出结算结果：名次按胜局数，胜方得胜方奖励、负方与平局得参与奖。
+    /// 产出结算结果：名次按胜局数，胜方得胜方奖励、负方与平局在双方均有有效出拳时得参与奖。
+    /// <para>
+    /// 反刷奖规则（红线）：任意一方累计有效出拳数为 0（全程挂机）时，抑制全部非胜方参与奖——
+    /// 胜方奖励不受影响（胜局只能由已出拳方取得，零出拳者不可能成为胜方）；
+    /// 结果置 <see cref="OnlineMatchResult.ParticipationRewardsSuppressed"/> 供风控消费。
+    /// </para>
     /// </summary>
     /// <param name="match">对局。</param>
     /// <returns>结算结果；状态缺失返回 null。</returns>
@@ -279,29 +287,35 @@ public sealed class OnlineRockPaperScissorsGame : IOnlineMatchGame
         }
 
         var winnerPlayerId = FindWinner(state);
+        var participationRewardSuppressed = HasPlayerWithoutValidGesture(state);
         var result = new OnlineMatchResult
         {
             Mode = match.Mode,
             Region = match.Region,
+            ParticipationRewardsSuppressed = participationRewardSuppressed,
             Entries = new List<OnlineMatchResultEntry>(),
         };
 
         foreach (var player in state.Players)
         {
             var isWinner = winnerPlayerId != 0 && player.PlayerId == winnerPlayerId;
+            var rewards = new List<OnlineAssetChangeLine>();
+            if (isWinner)
+            {
+                rewards.Add(new OnlineAssetChangeLine(OnlineAssetKind.Currency, RewardAssetId, WinnerRewardAmount));
+            }
+            else if (!participationRewardSuppressed)
+            {
+                rewards.Add(new OnlineAssetChangeLine(OnlineAssetKind.Currency, RewardAssetId, ParticipantRewardAmount));
+            }
+
             result.Entries.Add(new OnlineMatchResultEntry
             {
                 PlayerId = player.PlayerId,
                 Rank = winnerPlayerId == 0 || isWinner ? 1 : 2,
                 IsWinner = isWinner,
                 Score = player.Wins,
-                Rewards = new List<OnlineAssetChangeLine>
-                {
-                    new(
-                        OnlineAssetKind.Currency,
-                        RewardAssetId,
-                        isWinner ? WinnerRewardAmount : ParticipantRewardAmount),
-                },
+                Rewards = rewards,
             });
         }
 
@@ -582,6 +596,24 @@ public sealed class OnlineRockPaperScissorsGame : IOnlineMatchGame
             Plays = plays,
             Scores = scores,
         };
+    }
+
+    /// <summary>
+    /// 判定是否存在零有效出拳玩家（全程挂机——参与奖抑制条件）。
+    /// </summary>
+    /// <param name="state">玩法状态。</param>
+    /// <returns>存在零出拳玩家返回 <c>true</c>。</returns>
+    private static bool HasPlayerWithoutValidGesture(OnlineRockPaperScissorsState state)
+    {
+        foreach (var player in state.Players)
+        {
+            if (player == null || player.ValidGestureCount == 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

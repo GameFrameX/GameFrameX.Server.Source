@@ -52,6 +52,9 @@ public static class OnlineMatchRuntimeEvents
     /// <summary>对局结算完成（可信结果事件）。</summary>
     public const string MatchSettled = "online.match.settled";
 
+    /// <summary>参与奖被抑制的可疑结算事件（存在零有效出拳玩家——挂机刷奖信号，供风控订阅）。</summary>
+    public const string MatchParticipationRewardsSuppressed = "online.match.participationrewardssuppressed";
+
     /// <summary>事件来源标识（与匹配域的 online-matchmaker 区分）。</summary>
     public const string Source = "online-match";
 
@@ -176,6 +179,78 @@ public static class OnlineMatchRuntimeEvents
             PlayerId = 0,
             Source = Source,
             CorrelationId = correlationId ?? string.Empty,
+            Payload = JsonSerializer.SerializeToUtf8Bytes(payload),
+            PayloadAuditFields = auditFields,
+        };
+    }
+
+    /// <summary>
+    /// 构造参与奖被抑制的可疑结算事件（载荷形态对齐 <see cref="CreateMatchSettled"/>）。
+    /// <para>
+    /// 维护约束（红线）：本事件只陈述「本场结算存在零有效出拳玩家、参与奖已被抑制」这一服务端裁决事实；
+    /// 消费端（风控）据此告警或画像，不得回写对局。
+    /// </para>
+    /// </summary>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="serverId">区服标识。</param>
+    /// <param name="matchResultId">结果标识（可空；载荷落空字符串）。</param>
+    /// <param name="matchId">对局标识（可空；载荷落空字符串）。</param>
+    /// <param name="mode">玩法模式。</param>
+    /// <param name="region">区域。</param>
+    /// <param name="outcome">结束方式名。</param>
+    /// <param name="settledTime">结算时刻（UTC 毫秒）。</param>
+    /// <param name="entries">玩家条目集合（标识 / 名次 / 是否胜方 / 得分 / 奖励条目数；空元素被跳过）。</param>
+    /// <returns>事件信封实例。</returns>
+    public static OnlineEvent CreateMatchParticipationRewardsSuppressed(long tenantId, long appId, long serverId, string matchResultId, string matchId, int mode, int region, string outcome, long settledTime, IReadOnlyList<(long PlayerId, int Rank, bool IsWinner, long Score, int RewardCount)> entries)
+    {
+        var entryPayloads = new List<MatchSettledEntryPayload>();
+        if (entries != null)
+        {
+            foreach (var entry in entries)
+            {
+                entryPayloads.Add(new MatchSettledEntryPayload
+                {
+                    PlayerId = entry.PlayerId,
+                    Rank = entry.Rank,
+                    IsWinner = entry.IsWinner,
+                    Score = entry.Score,
+                    RewardCount = entry.RewardCount,
+                });
+            }
+        }
+
+        var payload = new MatchSettledPayload
+        {
+            MatchResultId = matchResultId ?? string.Empty,
+            MatchId = matchId ?? string.Empty,
+            Mode = mode,
+            Region = region,
+            Outcome = outcome,
+            SettledTime = settledTime,
+            Entries = entryPayloads,
+        };
+        var auditFields = new Dictionary<string, string>
+        {
+            { "MatchResultId", matchResultId ?? string.Empty },
+            { "MatchId", matchId ?? string.Empty },
+            { "Mode", mode.ToString(CultureInfo.InvariantCulture) },
+            { "Region", region.ToString(CultureInfo.InvariantCulture) },
+            { "Outcome", outcome },
+            { "EntryCount", entryPayloads.Count.ToString(CultureInfo.InvariantCulture) },
+        };
+        return new OnlineEvent
+        {
+            EventId = "evt-" + Guid.NewGuid().ToString("N"),
+            EventType = MatchParticipationRewardsSuppressed,
+            OccurredTime = settledTime > 0 ? settledTime : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            SchemaVersion = 1,
+            TenantId = tenantId,
+            AppId = appId,
+            ServerId = serverId,
+            PlayerId = 0,
+            Source = Source,
+            CorrelationId = matchResultId ?? string.Empty,
             Payload = JsonSerializer.SerializeToUtf8Bytes(payload),
             PayloadAuditFields = auditFields,
         };

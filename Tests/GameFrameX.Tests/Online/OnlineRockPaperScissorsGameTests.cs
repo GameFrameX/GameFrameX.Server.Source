@@ -91,6 +91,8 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(1, state.Players.Find(item => item.PlayerId == PlayerOne).Wins);
             Assert.Equal(0, state.Players.Find(item => item.PlayerId == PlayerTwo).Wins);
             Assert.All(state.Players, item => Assert.Equal(OnlineRockPaperScissorsMove.None, item.Gesture));
+            // 有效出拳计数跨局累计（参与奖资格判定依据，每局结算不清零）。
+            Assert.All(state.Players, item => Assert.Equal(1, item.ValidGestureCount));
             Assert.Contains(secondStep.ServerEvents, item => item.EventType == "RoundResolved");
         }
 
@@ -155,10 +157,11 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证双方均不出拳时对局仍收敛到确定结果（局数耗尽 → 平局），不永久挂起。
+        /// 验证双方均不出拳（全程挂机）时对局仍收敛到确定结果（局数耗尽 → 平局），不永久挂起；
+        /// 且参与奖被抑制——双方零奖励，两个小号互相挂机刷不动参与奖。
         /// </summary>
         [Fact]
-        public void Advance_NoSubmission_ShouldConvergeToDraw()
+        public void Advance_NoSubmission_ShouldConvergeToDrawWithoutParticipationReward()
         {
             var game = new OnlineRockPaperScissorsGame();
             var match = BuildMatch();
@@ -180,7 +183,8 @@ namespace GameFrameX.Tests.Online
             Assert.Equal(2, result.Entries.Count);
             Assert.All(result.Entries, item => Assert.False(item.IsWinner));
             Assert.All(result.Entries, item => Assert.Equal(1, item.Rank));
-            Assert.All(result.Entries, item => Assert.Equal(OnlineRockPaperScissorsGame.ParticipantRewardAmount, item.Rewards[0].Amount));
+            Assert.True(result.ParticipationRewardsSuppressed);
+            Assert.All(result.Entries, item => Assert.Empty(item.Rewards));
         }
 
         /// <summary>
@@ -197,6 +201,8 @@ namespace GameFrameX.Tests.Online
             Assert.True(game.IsCompleted(match));
 
             var result = game.BuildResult(match);
+            // 双方均有有效出拳：参与奖不受抑制。
+            Assert.False(result.ParticipationRewardsSuppressed);
             var winner = result.Entries.Find(item => item.PlayerId == PlayerOne);
             var loser = result.Entries.Find(item => item.PlayerId == PlayerTwo);
 
@@ -209,6 +215,43 @@ namespace GameFrameX.Tests.Online
             Assert.False(loser.IsWinner);
             Assert.Equal(2, loser.Rank);
             Assert.Equal(OnlineRockPaperScissorsGame.ParticipantRewardAmount, loser.Rewards[0].Amount);
+        }
+
+        /// <summary>
+        /// 验证单侧全程挂机（零有效出拳）时：出拳方按超时规则取胜并保留胜方奖励，挂机方零奖励。
+        /// </summary>
+        [Fact]
+        public void BuildResult_OneSideIdle_ShouldSuppressParticipationRewardButKeepWinnerReward()
+        {
+            var game = new OnlineRockPaperScissorsGame();
+            var match = BuildMatch();
+
+            // 玩家一仅第 1 局出拳；此后双方均不再出拳，超时推进三局（玩家二零有效出拳）。
+            var step = game.ApplyInput(match, BuildMember(PlayerOne), BuildInput(PlayerOne, OnlineRockPaperScissorsMove.Rock));
+            Assert.True(step.Accepted, step.Message);
+            match.GameState = step.GameState;
+
+            var now = Now;
+            for (var round = 0; round < OnlineRockPaperScissorsGame.MaxRounds; round++)
+            {
+                var emitted = new List<OnlineMatchServerEvent>();
+                Assert.True(game.Advance(match, now, emitted));
+
+                now += OnlineRockPaperScissorsGame.RoundTimeoutMilliseconds + 1;
+                Assert.True(game.Advance(match, now, emitted));
+            }
+
+            Assert.True(game.IsCompleted(match));
+
+            var result = game.BuildResult(match);
+            var winner = result.Entries.Find(item => item.PlayerId == PlayerOne);
+            var idle = result.Entries.Find(item => item.PlayerId == PlayerTwo);
+
+            Assert.True(result.ParticipationRewardsSuppressed);
+            Assert.True(winner.IsWinner);
+            Assert.Equal(OnlineRockPaperScissorsGame.WinnerRewardAmount, winner.Rewards[0].Amount);
+            Assert.False(idle.IsWinner);
+            Assert.Empty(idle.Rewards);
         }
 
         /// <summary>
