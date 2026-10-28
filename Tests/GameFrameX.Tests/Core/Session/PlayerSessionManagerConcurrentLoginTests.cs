@@ -187,6 +187,11 @@ public sealed class PlayerSessionManagerConcurrentLoginTests
         private readonly Dictionary<string, object> _data = new();
         private bool _closed;
 
+        public void Dispose()
+        {
+            _closed = true;
+        }
+
         public ulong SendBytesLength => 0;
 
         public ulong SendPacketLength => 0;
