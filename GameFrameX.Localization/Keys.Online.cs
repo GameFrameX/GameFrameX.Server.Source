@@ -180,6 +180,22 @@ public static partial class Keys
             /// 用途: ReconcilePlayerAsync 对账时作用域缺少玩家主体位
             /// </remarks>
             public const string ReconciliationRequiresPlayerScope = "Online.Assets.ReconciliationRequiresPlayerScope";
+            /// <summary>
+            /// 账本条目数额溢出（AmountBefore + Delta 超出 long 范围）
+            /// </summary>
+            /// <remarks>
+            /// 键名: Online.Assets.LedgerAmountOverflow
+            /// 用途: OnlineLedgerEntry 构造校验 AmountBefore + Delta 溢出回绕
+            /// </remarks>
+            public const string LedgerAmountOverflow = "Online.Assets.LedgerAmountOverflow";
+            /// <summary>
+            /// 账本条目前后值不一致（AmountBefore + Delta != AmountAfter）
+            /// </summary>
+            /// <remarks>
+            /// 键名: Online.Assets.LedgerAmountInconsistent
+            /// 用途: OnlineLedgerEntry 构造校验变更前后数额链断裂
+            /// </remarks>
+            public const string LedgerAmountInconsistent = "Online.Assets.LedgerAmountInconsistent";
         }
 
         /// <summary>
