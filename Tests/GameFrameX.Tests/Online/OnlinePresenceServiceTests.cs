@@ -370,6 +370,41 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 验证满批候选零进度时清扫必须收敛：心跳恰好落在空闲阈值边界（now - heartbeat == 阈值）的记录
+        /// 每轮都会被索引命中却不被清扫，若无零进度护栏则批量游标循环永不退出（清扫挂起）。
+        /// </summary>
+        [Fact]
+        public async Task SweepTimeoutsAsync_BoundaryEqualFullBatch_ShouldTerminate()
+        {
+            // Arrange：两名 Online 玩家心跳恰好在阈值边界，批大小 2（首轮即满批）。
+            var store = new InMemoryOnlinePresenceStore();
+            var service = new OnlinePresenceService(store, new OnlineEventRecorder(), idleTimeoutSeconds: 300, sweepBatchSize: 2, maxRecordsPerSweep: 100);
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            foreach (var playerId in new long[] { PlayerOne, PlayerTwo })
+            {
+                await store.SetAsync(new OnlinePresenceRecord
+                {
+                    TenantId = TenantId,
+                    AppId = AppId,
+                    ServerId = ServerId,
+                    PlayerId = playerId,
+                    SessionId = "sess-" + playerId,
+                    State = OnlinePresenceState.Online,
+                    LastHeartbeatAtTime = now - 300_000L,
+                });
+            }
+
+            // Act：清扫不得挂起。
+            var sweepTask = service.SweepTimeoutsAsync(TenantId, AppId, now);
+            var completed = await Task.WhenAny(sweepTask, Task.Delay(5000));
+
+            // Assert：边界记录本轮不计入清扫量，但时钟推进后应被清扫。
+            Assert.Same(sweepTask, completed);
+            Assert.Equal(0, await sweepTask);
+            Assert.Equal(2, await service.SweepTimeoutsAsync(TenantId, AppId, now + 1));
+        }
+
+        /// <summary>
         /// 构造玩家作用域。
         /// </summary>
         /// <param name="playerId">玩家标识。</param>

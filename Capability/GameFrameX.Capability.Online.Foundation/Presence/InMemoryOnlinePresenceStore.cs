@@ -162,7 +162,12 @@ public sealed class InMemoryOnlinePresenceStore : IOnlinePresenceStore
         var result = new List<OnlinePresenceRecord>(maxCount);
         lock (_syncRoot)
         {
-            foreach (var entry in _reconnectDeadlines.GetViewBetween(new PresenceSweepIndexEntry(long.MinValue, string.Empty), new PresenceSweepIndexEntry(nowUnixMilliseconds, PresenceSweepIndexEntry.MaximumRecordKey)))
+            // 上界排他：与服务层严格比较对齐（Reconnecting 需 now > 截止、Online 需 now - 心跳 > 阈值），
+            // 边界相等的记录本轮不算到期，避免成为永远不被消费的常驻候选。
+            // The upper bound is exclusive, aligned with the service's strict comparisons
+            // (Reconnecting needs now > deadline, Online needs now - heartbeat > threshold): a
+            // boundary-equal record is not due yet and must not become a permanent candidate.
+            foreach (var entry in _reconnectDeadlines.GetViewBetween(new PresenceSweepIndexEntry(long.MinValue, string.Empty), new PresenceSweepIndexEntry(nowUnixMilliseconds - 1, PresenceSweepIndexEntry.MaximumRecordKey)))
             {
                 if (result.Count >= maxCount)
                 {
@@ -173,7 +178,7 @@ public sealed class InMemoryOnlinePresenceStore : IOnlinePresenceStore
             }
 
             var heartbeatDeadline = nowUnixMilliseconds - idleTimeoutMilliseconds;
-            foreach (var entry in _onlineHeartbeats.GetViewBetween(new PresenceSweepIndexEntry(long.MinValue, string.Empty), new PresenceSweepIndexEntry(heartbeatDeadline, PresenceSweepIndexEntry.MaximumRecordKey)))
+            foreach (var entry in _onlineHeartbeats.GetViewBetween(new PresenceSweepIndexEntry(long.MinValue, string.Empty), new PresenceSweepIndexEntry(heartbeatDeadline - 1, PresenceSweepIndexEntry.MaximumRecordKey)))
             {
                 if (result.Count >= maxCount)
                 {

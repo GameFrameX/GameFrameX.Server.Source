@@ -384,6 +384,7 @@ public sealed class OnlinePresenceService
                 break;
             }
 
+            var sweptBeforeBatch = swept;
             foreach (var record in candidates)
             {
                 if (record.State == OnlinePresenceState.Reconnecting && record.ReconnectDeadlineAtTime > 0 && now > record.ReconnectDeadlineAtTime)
@@ -405,6 +406,15 @@ public sealed class OnlinePresenceService
             }
 
             if (candidates.Count < batchCount || swept >= _maxRecordsPerSweep)
+            {
+                break;
+            }
+
+            // 零进度护栏：本批候选未被消费（边界相等、状态迁移失败等）时本轮收工，
+            // 留待下一次清扫；否则满批零进度会让批量游标循环永不退出。
+            // Zero-progress guard: when a full batch consumed nothing (boundary-equal records,
+            // a failed state transition, ...), stop this round instead of looping forever.
+            if (swept == sweptBeforeBatch)
             {
                 break;
             }
