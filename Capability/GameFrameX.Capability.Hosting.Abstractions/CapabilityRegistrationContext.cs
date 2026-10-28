@@ -268,9 +268,10 @@ public sealed class CapabilityRegistrationContext
     /// <typeparam name="TEvent">事件载荷类型。</typeparam>
     /// <param name="topic">主题（命名约定 <c>&lt;族&gt;.&lt;域&gt;.&lt;事件&gt;</c>，非空）。</param>
     /// <param name="handler">同步订阅体（单个订阅体异常由机制记日志后继续分发）。</param>
-    public void Subscribe<TEvent>(string topic, Action<TEvent> handler)
+    /// <returns>退订句柄：模块须在停用收口时释放（幂等，重复释放安全）；已在发布快照内进入分发的回调允许当轮完成。</returns>
+    public IDisposable Subscribe<TEvent>(string topic, Action<TEvent> handler)
     {
-        _eventBus.Subscribe(topic, handler);
+        return _eventBus.Subscribe(topic, handler);
     }
 
     /// <summary>
