@@ -44,6 +44,15 @@ public sealed class InMemoryOnlinePresenceStore : IOnlinePresenceStore
     /// <summary>在线状态表：键 = (TenantId, AppId, PlayerId)。</summary>
     private readonly Dictionary<string, OnlinePresenceRecord> _records = new();
 
+    /// <summary>清扫索引：Reconnecting 记录按重连截止时刻有序（索引项含记录键保证唯一）。</summary>
+    private readonly SortedSet<PresenceSweepIndexEntry> _reconnectDeadlines = new();
+
+    /// <summary>清扫索引：Online 记录按最近心跳时刻有序（索引项含记录键保证唯一）。</summary>
+    private readonly SortedSet<PresenceSweepIndexEntry> _onlineHeartbeats = new();
+
+    /// <summary>记录键 → 当前所在清扫索引项（无索引项则不存在；SetAsync/RemoveAsync 同步维护）。</summary>
+    private readonly Dictionary<string, PresenceSweepIndexEntry> _sweepEntryByRecordKey = new();
+
     /// <summary>写入或覆盖在线状态记录。</summary>
     /// <param name="record">在线状态记录。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -56,7 +65,9 @@ public sealed class InMemoryOnlinePresenceStore : IOnlinePresenceStore
 
         lock (_syncRoot)
         {
-            _records[BuildKey(record.TenantId, record.AppId, record.PlayerId)] = record;
+            var recordKey = BuildKey(record.TenantId, record.AppId, record.PlayerId);
+            _records[recordKey] = record;
+            RebuildSweepIndexEntry(recordKey, record);
         }
 
         return Task.CompletedTask;
@@ -86,9 +97,10 @@ public sealed class InMemoryOnlinePresenceStore : IOnlinePresenceStore
     {
         lock (_syncRoot)
         {
-            _records.Remove(BuildKey(tenantId, appId, playerId));
+            var recordKey = BuildKey(tenantId, appId, playerId);
+            _records.Remove(recordKey);
+            RemoveSweepIndexEntry(recordKey);
         }
-
         return Task.CompletedTask;
     }
 
@@ -134,6 +146,98 @@ public sealed class InMemoryOnlinePresenceStore : IOnlinePresenceStore
             }
 
             return Task.FromResult(count);
+        }
+    }
+
+    /// <summary>列出已到期的清扫候选，按到期时间升序取头部（两类到期合并快照返回）。</summary>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">应用标识。</param>
+    /// <param name="nowUnixMilliseconds">判定基准时刻（Unix 毫秒）。</param>
+    /// <param name="idleTimeoutMilliseconds">空闲判定阈值（毫秒）。</param>
+    /// <param name="maxCount">最多返回条数。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>到期候选记录快照；无候选返回空列表。</returns>
+    public Task<IReadOnlyList<OnlinePresenceRecord>> ListSweepCandidatesAsync(long tenantId, long appId, long nowUnixMilliseconds, long idleTimeoutMilliseconds, int maxCount, CancellationToken cancellationToken = default)
+    {
+        var result = new List<OnlinePresenceRecord>(maxCount);
+        lock (_syncRoot)
+        {
+            // 上界排他：与服务层严格比较对齐（Reconnecting 需 now > 截止、Online 需 now - 心跳 > 阈值），
+            // 边界相等的记录本轮不算到期，避免成为永远不被消费的常驻候选。
+            // The upper bound is exclusive, aligned with the service's strict comparisons
+            // (Reconnecting needs now > deadline, Online needs now - heartbeat > threshold): a
+            // boundary-equal record is not due yet and must not become a permanent candidate.
+            foreach (var entry in _reconnectDeadlines.GetViewBetween(new PresenceSweepIndexEntry(long.MinValue, string.Empty), new PresenceSweepIndexEntry(nowUnixMilliseconds - 1, PresenceSweepIndexEntry.MaximumRecordKey)))
+            {
+                if (result.Count >= maxCount)
+                {
+                    break;
+                }
+
+                AppendSweepCandidate(result, tenantId, appId, entry.RecordKey);
+            }
+
+            var heartbeatDeadline = nowUnixMilliseconds - idleTimeoutMilliseconds;
+            foreach (var entry in _onlineHeartbeats.GetViewBetween(new PresenceSweepIndexEntry(long.MinValue, string.Empty), new PresenceSweepIndexEntry(heartbeatDeadline - 1, PresenceSweepIndexEntry.MaximumRecordKey)))
+            {
+                if (result.Count >= maxCount)
+                {
+                    break;
+                }
+
+                AppendSweepCandidate(result, tenantId, appId, entry.RecordKey);
+            }
+        }
+
+        return Task.FromResult<IReadOnlyList<OnlinePresenceRecord>>(result);
+    }
+
+    /// <summary>向候选列表追加索引项对应的记录（记录不存在或租户/应用不匹配则跳过）。</summary>
+    /// <param name="result">候选输出列表。</param>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">应用标识。</param>
+    /// <param name="recordKey">记录键。</param>
+    private void AppendSweepCandidate(List<OnlinePresenceRecord> result, long tenantId, long appId, string recordKey)
+    {
+        OnlinePresenceRecord record;
+        if (!_records.TryGetValue(recordKey, out record) || record.TenantId != tenantId || record.AppId != appId)
+        {
+            return;
+        }
+
+        result.Add(record);
+    }
+
+    /// <summary>按记录当前状态重建清扫索引项（Reconnecting 入截止索引、Online 入心跳索引、其余无索引）。</summary>
+    /// <param name="recordKey">记录键。</param>
+    /// <param name="record">记录。</param>
+    private void RebuildSweepIndexEntry(string recordKey, OnlinePresenceRecord record)
+    {
+        RemoveSweepIndexEntry(recordKey);
+
+        if (record.State == OnlinePresenceState.Reconnecting && record.ReconnectDeadlineAtTime > 0)
+        {
+            var entry = new PresenceSweepIndexEntry(record.ReconnectDeadlineAtTime, recordKey);
+            _reconnectDeadlines.Add(entry);
+            _sweepEntryByRecordKey[recordKey] = entry;
+        }
+        else if (record.State == OnlinePresenceState.Online)
+        {
+            var entry = new PresenceSweepIndexEntry(record.LastHeartbeatAtTime, recordKey);
+            _onlineHeartbeats.Add(entry);
+            _sweepEntryByRecordKey[recordKey] = entry;
+        }
+    }
+
+    /// <summary>移除记录当前的清扫索引项（若有）。</summary>
+    /// <param name="recordKey">记录键。</param>
+    private void RemoveSweepIndexEntry(string recordKey)
+    {
+        if (_sweepEntryByRecordKey.TryGetValue(recordKey, out var entry))
+        {
+            _reconnectDeadlines.Remove(entry);
+            _onlineHeartbeats.Remove(entry);
+            _sweepEntryByRecordKey.Remove(recordKey);
         }
     }
 

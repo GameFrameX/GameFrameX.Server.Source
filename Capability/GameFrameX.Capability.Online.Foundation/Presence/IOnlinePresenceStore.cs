@@ -72,4 +72,14 @@ public interface IOnlinePresenceStore
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>在线玩家数。</returns>
     Task<int> CountOnlineByServerAsync(long tenantId, long appId, long serverId, CancellationToken cancellationToken = default);
+
+    /// <summary>列出已到期的清扫候选（Reconnecting 超重连窗 / Online 超空闲阈值），按到期时间升序取头部。</summary>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">应用标识。</param>
+    /// <param name="nowUnixMilliseconds">判定基准时刻（Unix 毫秒）。</param>
+    /// <param name="idleTimeoutMilliseconds">空闲判定阈值（毫秒；Online 态心跳早于该阈值即到期）。</param>
+    /// <param name="maxCount">最多返回条数（批量清扫的批次大小）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>到期候选记录快照（服务层仍须逐条复核状态与到期条件）；无候选返回空列表。</returns>
+    Task<IReadOnlyList<OnlinePresenceRecord>> ListSweepCandidatesAsync(long tenantId, long appId, long nowUnixMilliseconds, long idleTimeoutMilliseconds, int maxCount, CancellationToken cancellationToken = default);
 }
