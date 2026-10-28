@@ -195,7 +195,7 @@ public static class OnlineAdminLiveOpsHandlers
         var configKey = OnlineAdminApiContract.RequireString(request, "ConfigKey");
         var configVersion = RequireVersion(request, "ConfigVersion");
         var segmentId = request.ReadNullableInt64("SegmentId") ?? 0;
-        var percent = request.ReadNullableInt32("Percent") ?? 100;
+        var percent = ReadRolloutPercent(request);
         var reason = OnlineAdminApiContract.RequireString(request, "Reason");
         var payload = JsonHelper.Serialize(new RolloutPayload
         {
@@ -293,6 +293,23 @@ public static class OnlineAdminLiveOpsHandlers
 
         // Localization: Online.AdminApi.ConfigKindInvalid - ConfigKind 必须是 [1,4] 范围内的数字（RemoteConfig/Announcement/DeviceGroup/ScheduledTask）。
         throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, LocalizationService.GetString(Localization.Keys.Online.AdminApi.ConfigKindInvalid));
+    }
+
+    /// <summary>
+    /// 读取灰度百分比（0～100，缺省 100）。
+    /// </summary>
+    /// <param name="request">请求。</param>
+    /// <returns>灰度百分比。</returns>
+    private static int ReadRolloutPercent(AdminApiRequest request)
+    {
+        var value = request.ReadNullableInt32("Percent") ?? 100;
+        if (value >= 0 && value <= 100)
+        {
+            return value;
+        }
+
+        // Localization: Online.AdminApi.RolloutPercentInvalid - Percent 必须是 [0,100] 范围内的灰度百分比。
+        throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, LocalizationService.GetString(Localization.Keys.Online.AdminApi.RolloutPercentInvalid));
     }
 
     /// <summary>

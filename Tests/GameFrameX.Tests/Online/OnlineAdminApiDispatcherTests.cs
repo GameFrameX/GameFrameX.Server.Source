@@ -364,6 +364,46 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 验证 publishConfigRollout 灰度百分比超界（101 / -1）返回内层 4001（边界校验拒绝非法值）。
+        /// </summary>
+        [Fact]
+        public async Task Dispatch_PublishConfigRollout_PercentOutOfRange_ShouldReturnInner4001()
+        {
+            await WithDispatcherAsync(async dispatcher =>
+            {
+                var envelope = await dispatcher.DispatchAsync("publishConfigRollout",
+                    "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001,\"ConfigKind\":1,\"ConfigKey\":\"remote-config-key\",\"ConfigVersion\":3,\"Percent\":101,\"Reason\":\"admin-test\"}");
+                AssertInnerCode(ReadInnerJson(envelope), OnlineErrorCode.ParameterInvalid);
+
+                envelope = await dispatcher.DispatchAsync("publishConfigRollout",
+                    "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001,\"ConfigKind\":1,\"ConfigKey\":\"remote-config-key\",\"ConfigVersion\":3,\"Percent\":-1,\"Reason\":\"admin-test\"}");
+                AssertInnerCode(ReadInnerJson(envelope), OnlineErrorCode.ParameterInvalid);
+            });
+        }
+
+        /// <summary>
+        /// 验证 publishConfigRollout 灰度百分比合法边界（0 / 100 / 缺省）成功返回确认版本。
+        /// </summary>
+        [Fact]
+        public async Task Dispatch_PublishConfigRollout_PercentBoundary_ShouldReturnConfirmVersion()
+        {
+            await WithDispatcherAsync(async dispatcher =>
+            {
+                foreach (var percent in new[] { "\"Percent\":0,", "\"Percent\":100,", "" })
+                {
+                    var envelope = await dispatcher.DispatchAsync("publishConfigRollout",
+                        "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001,\"ConfigKind\":1,\"ConfigKey\":\"remote-config-key\",\"ConfigVersion\":3," + percent + "\"Reason\":\"admin-test\"}");
+                    using (var document = JsonDocument.Parse(ReadInnerJson(envelope)))
+                    {
+                        var root = document.RootElement;
+                        Assert.Equal(0, root.GetProperty("Code").GetInt32());
+                        Assert.False(string.IsNullOrEmpty(root.GetProperty("Data").GetProperty("ConfirmVersion").GetString()));
+                    }
+                }
+            });
+        }
+
+        /// <summary>
         /// 验证 suspend_resume_player 缺 Direction 返回内层 4001（受控双向命令必填）。
         /// </summary>
         [Fact]
