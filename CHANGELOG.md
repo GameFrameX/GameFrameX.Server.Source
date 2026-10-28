@@ -18,6 +18,8 @@
 
 * 入队与定时撮合解耦（C406，GFX-1104）：删除每次入队的全量撮合及最新票据扫描，复用 `matchmaker-run` 按宿主调度节奏批量处理队列（默认 1000ms）。单轮撮合算法保持不变；桥测试覆盖四名玩家单批次形成两组及批次前取消不参与分配。
 
+* 举报入口频控与未结案去重（C405，GFX-1115）：举报提交接入双固定窗口限流（`OnlineSocialOptions.Report.MaximumSubmissionsPerMinute=5` / `MaximumSubmissionsPerDay=50`，键=租户/App/举报人，超限 7001 且不落案件不发事件，分钟窗惰性清扫仅删双窗均过期的桶）；`IOnlineReportStore.SaveIfAbsentAsync` 升级为两层原子唯一（案件标识重放 + 未结案组合键「举报人+被举报人+场景」，Submitted/Reviewing 占位、终态释放），重复举报返回原案件原证据且仅首建发 `ReportChanged`；`ReplaceAsync` 身份三要素不可改、终态释放与新占位归属在 CAS 同锁维护；`OnlineSocialDecisionService` 构造新增必填 `OnlineReportOptions`，宿主自定义举报存储必须遵循同一原子唯一性语义
+
 ### Added
 * 服务器间 RPC 端点改由心跳注册表解析并退役静态引导（C304，GitHub #643）：`RemoteServiceTarget`（ServerType + 可选 InstanceId）结构化拨号取代 `{Role}_{InstanceId}` 字符串拼接；`DiscoveryServiceEndpointResolver` 成为唯一端点解析器（指定实例走 Instance 视图含 Draining 并校验 Role 一致，ServerType 级取 Active 中 InstanceId 序数最小者，端点集合 = TCP 主端点 + 附加端点，偏好 kcp > ws > wss > tcp）；`RemoteMessagingBuilder.WithRouteTable(IRoleRouteTableProvider)` 绑定路由表、生产注册 KCP 拨号适配器（`IsEnableInnerKcp` 时，服务器间 KCP 首次生产可用）；心跳新增附加广播端点（`InstanceDescriptor.AdditionalAdvertiseEndpoints`，监听器装配成功的实例级闸门后才广播，多 ServerType 进程非首选类型披露 Warning）；`UnifiedMessageSender` 实例列表改读路由表 Active 视图且仅 InstanceId 集合变化才重建哈希环；玩家路由实例直达——`player_route.InstanceId` 写真实发现层实例 Id（`PlayerRouteResolverBootstrap` 同源注入），`ForwardToRemoteServerAsync` 按 `TargetInstanceId` 投递（Instance 视图含 Draining）、`IsCurrentServer` 改 InstanceId 比较；Mongo 心跳 class map 显式忽略未知字段（含继承传递）、写路径空集合归一化为 null（默认配置文档与旧版本逐字节同形）；PostgreSQL 幂等补列 `additional_advertise_endpoints text[]`（命名经 `DiscoveryStorageNaming` 推导）；删除 `services__*` 环境变量契约、`EnvironmentVariableEndpointResolver`、`EnvironmentServiceInstanceDiscovery`、`docker-compose.multi.legacy.yml` 与生成器静态引导映射。
 
