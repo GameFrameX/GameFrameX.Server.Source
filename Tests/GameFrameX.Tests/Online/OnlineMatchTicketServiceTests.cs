@@ -277,6 +277,126 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 验证同一玩家并发入队只产生一张排队中票据，另一次被拒且反查索引指向留下的那张（入队查重与写入原子化）。
+        /// </summary>
+        [Fact]
+        public async Task EnqueueAsync_WhenSamePlayerEnqueuesConcurrently_ShouldYieldSingleTicket()
+        {
+            // Arrange
+            var service = CreateService(out var store, out _);
+            var scope = CreatePlayerScope(PlayerOne);
+
+            // Act
+            var outcomes = await Task.WhenAll(
+                service.EnqueueAsync(scope, CreateEnqueueRequest(PlayerOne)),
+                service.EnqueueAsync(scope, CreateEnqueueRequest(PlayerOne)));
+
+            // Assert
+            var successCount = 0;
+            OnlineResult<OnlineMatchTicket> rejected = null;
+            foreach (var outcome in outcomes)
+            {
+                if (outcome.IsSuccess)
+                {
+                    successCount++;
+                }
+                else
+                {
+                    rejected = outcome;
+                }
+            }
+
+            Assert.Equal(1, successCount);
+            Assert.NotNull(rejected);
+            Assert.Equal(OnlineErrorCode.DuplicateRequest, rejected.Code);
+            var queued = await store.ListQueuedAsync(TenantId, AppId);
+            var ticket = Assert.Single(queued);
+            var active = await service.GetActiveAsync(scope);
+            Assert.NotNull(active.Data);
+            Assert.Equal(ticket.TicketId, active.Data.TicketId);
+        }
+
+        /// <summary>
+        /// 验证两个共用同一成员的队伍并发入队只有一张成功，共享成员的反查索引指向成功那张（成员维度原子查重）。
+        /// </summary>
+        [Fact]
+        public async Task EnqueueAsync_WhenPartiesShareMemberConcurrently_ShouldYieldSingleTicket()
+        {
+            // Arrange
+            const long sharedMember = 3001;
+            var service = CreateService(out var store, out _);
+            var firstRequest = CreateEnqueueRequest(PlayerOne);
+            firstRequest.PartyId = "pty-a";
+            firstRequest.PlayerIds = new List<long> { PlayerOne, sharedMember };
+            var secondRequest = CreateEnqueueRequest(PlayerTwo);
+            secondRequest.PartyId = "pty-b";
+            secondRequest.PlayerIds = new List<long> { PlayerTwo, sharedMember };
+
+            // Act
+            var outcomes = await Task.WhenAll(
+                service.EnqueueAsync(CreatePlayerScope(PlayerOne), firstRequest),
+                service.EnqueueAsync(CreatePlayerScope(PlayerTwo), secondRequest));
+
+            // Assert
+            var successCount = 0;
+            OnlineResult<OnlineMatchTicket> rejected = null;
+            foreach (var outcome in outcomes)
+            {
+                if (outcome.IsSuccess)
+                {
+                    successCount++;
+                }
+                else
+                {
+                    rejected = outcome;
+                }
+            }
+
+            Assert.Equal(1, successCount);
+            Assert.NotNull(rejected);
+            Assert.Equal(OnlineErrorCode.DuplicateRequest, rejected.Code);
+            var queued = await store.ListQueuedAsync(TenantId, AppId);
+            var ticket = Assert.Single(queued);
+            var sharedActive = await service.GetActiveAsync(CreatePlayerScope(sharedMember));
+            Assert.NotNull(sharedActive.Data);
+            Assert.Equal(ticket.TicketId, sharedActive.Data.TicketId);
+        }
+
+        /// <summary>
+        /// 验证原子入队在成员冲突时不写入：第二张票据被既有活跃票据顶回，票据总数与反查索引均不变（零写入痕迹）。
+        /// </summary>
+        [Fact]
+        public async Task TryEnqueueIfAbsentAsync_WhenPlayerAlreadyIndexed_ShouldReturnExistingWithoutWrite()
+        {
+            // Arrange
+            var service = CreateService(out var store, out _);
+            var enqueued = await service.EnqueueAsync(CreatePlayerScope(PlayerOne), CreateEnqueueRequest(PlayerOne));
+            var conflicting = new OnlineMatchTicket
+            {
+                TicketId = "tkt-conflict",
+                PartyId = string.Empty,
+                PlayerIds = new List<long> { PlayerOne },
+                TenantId = TenantId,
+                AppId = AppId,
+                ServerId = ServerId,
+                State = OnlineMatchTicketState.Queued,
+                CreatedAtTime = 1,
+                ExpiresAtTime = 2,
+            };
+
+            // Act
+            var outcome = await store.TryEnqueueIfAbsentAsync(conflicting);
+
+            // Assert
+            Assert.NotEqual(conflicting.TicketId, outcome.TicketId);
+            Assert.Equal(enqueued.Data.TicketId, outcome.TicketId);
+            var all = await store.ListAllAsync(TenantId, AppId);
+            Assert.Single(all);
+            var active = await store.FindActiveByPlayerAsync(TenantId, AppId, PlayerOne);
+            Assert.Equal(enqueued.Data.TicketId, active.TicketId);
+        }
+
+        /// <summary>
         /// 以包内默认匹配参数创建被测服务。
         /// </summary>
         /// <param name="store">票据存储。</param>

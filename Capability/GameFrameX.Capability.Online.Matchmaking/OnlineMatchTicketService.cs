@@ -38,8 +38,8 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 /// <summary>
 /// 匹配票据服务（入队、取消、查询；票据状态的**唯一裁决入口**）。
 /// <para>
-/// 维护约束（红线）：
-/// ① 所有状态改写都经 <see cref="IOnlineMatchTicketStore"/> 的 CAS 入口，本类不做「先读后写」的两段式判断；
+/// ① 所有状态改写都经 <see cref="IOnlineMatchTicketStore"/> 的 CAS 入口，本类不做「先读后写」的两段式判断
+/// （入队查重同样由存储层 <see cref="IOnlineMatchTicketStore.TryEnqueueIfAbsentAsync"/> 在同一临界区内原子裁决）；
 /// ② 取消已进入终态的票据不是失败——返回该票据的终态回执（匹配已成立时取消不产生任何回滚），
 /// 调用方以回执的 <see cref="OnlineMatchTicket.State"/> 为准，而不是以「取消接口是否报错」为准；
 /// ③ 队伍票据的成员集合整队进整队出，本类不提供按单个成员退出票据的入口——
@@ -120,23 +120,6 @@ public sealed class OnlineMatchTicketService
         }
 
         var partyId = request.PartyId ?? string.Empty;
-        if (partyId.Length > 0)
-        {
-            var existing = await _store.FindActiveByPartyAsync(scope.TenantId, scope.AppId, partyId, cancellationToken).ConfigureAwait(false);
-            if (existing != null)
-            {
-                return OnlineResult<OnlineMatchTicket>.Fail(OnlineErrorCode.DuplicateRequest, "该队伍已在匹配队列中");
-            }
-        }
-
-        foreach (var playerId in members)
-        {
-            var existing = await _store.FindActiveByPlayerAsync(scope.TenantId, scope.AppId, playerId, cancellationToken).ConfigureAwait(false);
-            if (existing != null)
-            {
-                return OnlineResult<OnlineMatchTicket>.Fail(OnlineErrorCode.DuplicateRequest, "玩家已在匹配队列中");
-            }
-        }
 
         var now = Now();
         var ticket = new OnlineMatchTicket
@@ -160,9 +143,15 @@ public sealed class OnlineMatchTicketService
             AssignmentId = string.Empty,
         };
 
-        await _store.SaveAsync(ticket, cancellationToken).ConfigureAwait(false);
+        var stored = await _store.TryEnqueueIfAbsentAsync(ticket, cancellationToken).ConfigureAwait(false);
+        if (stored.TicketId != ticket.TicketId)
+        {
+            // 冲突票据由存储层在同一临界区内返回：按其 PartyId 区分队伍维度与玩家维度的拒绝文案。
+            var partyConflict = partyId.Length > 0 && stored.PartyId == partyId;
+            return OnlineResult<OnlineMatchTicket>.Fail(OnlineErrorCode.DuplicateRequest, partyConflict ? "该队伍已在匹配队列中" : "玩家已在匹配队列中");
+        }
 
-        return OnlineResult<OnlineMatchTicket>.Ok(ticket);
+        return OnlineResult<OnlineMatchTicket>.Ok(stored);
     }
 
     /// <summary>
