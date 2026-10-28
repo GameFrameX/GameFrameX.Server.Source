@@ -581,6 +581,48 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 验证补偿已落账但原交易状态未回写（崩溃窗口）时，重启恢复不得再落第二条反转批次：
+        /// 二次反转会让玩家资金被二次扣减（其它来源资金存在时不会被余额下限拦下）。
+        /// </summary>
+        [Fact]
+        public async Task RecoverAsync_OriginalAlreadyCompensated_ShouldNotAppendSecondReversal()
+        {
+            // Arrange：部分应用 → 补偿落账（原交易 Compensated）
+            var harness = new Harness();
+            var faultStore = new FaultInjectionAssetStore(harness.AssetStore)
+            {
+                Mode = InjectionMode.ThrowAfterPartialApply,
+                FailOnApplyCall = 1,
+            };
+            var service = harness.CreateService(faultStore);
+            var request = BuildRequest(10001, OnlineAssetChangeSource.MatchReward, "key-partial-recover", new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 100), new OnlineAssetChangeLine(OnlineAssetKind.Item, "sword", 1));
+            var interrupted = await service.ExecuteAsync(request);
+            Assert.False(interrupted.IsSuccess);
+
+            // 崩溃窗口：补偿已落账，但原交易状态未回写（仍 CompensationPending）
+            var compensated = await harness.TransactionStore.ListByStateAsync(OnlineAssetTransactionState.Compensated);
+            var original = Assert.Single(compensated);
+            original.State = OnlineAssetTransactionState.CompensationPending;
+            await harness.TransactionStore.SaveAsync(original);
+
+            // 其它来源资金：让二次反转不会被余额下限拦下（否则缺陷被下限掩盖）
+            var topUp = await service.ExecuteAsync(BuildRequest(10001, OnlineAssetChangeSource.PaymentConfirm, "key-topup", new OnlineAssetChangeLine(OnlineAssetKind.Currency, "gold", 100)));
+            Assert.True(topUp.IsSuccess);
+
+            var entriesBefore = await harness.AssetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = 1, AppId = 10, PlayerId = 10001, AfterSequenceNumber = 0, MaxCount = 100 });
+
+            // Act：重启恢复
+            var recovered = await service.RecoverAsync();
+
+            // Assert：不得追加第二条反转（账本条目数与余额都不变）
+            var entriesAfter = await harness.AssetStore.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = 1, AppId = 10, PlayerId = 10001, AfterSequenceNumber = 0, MaxCount = 100 });
+            Assert.Equal(entriesBefore.Count, entriesAfter.Count);
+            var wallet = await harness.AssetStore.FindWalletAsync(1, 10, 10001, "gold");
+            Assert.Equal(100, wallet.Balance);
+            Assert.Equal(1, recovered);
+        }
+
+        /// <summary>
         /// 验证零落账中断判 Failed（可换新幂等键重试成功），快照无任何变更。
         /// </summary>
         [Fact]

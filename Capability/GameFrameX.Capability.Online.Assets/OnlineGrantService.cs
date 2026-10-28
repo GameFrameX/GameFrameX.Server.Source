@@ -287,6 +287,25 @@ public sealed class OnlineGrantService
     /// <returns>补偿成功返回 true；失败滞留 CompensationPending 并告警。</returns>
     private async Task<bool> CompensateAsync(OnlineAssetTransaction transaction, CancellationToken cancellationToken)
     {
+        // 补偿前查重：原交易若已有非 Failed 的补偿行（上次补偿已落账、只是原交易状态未及回写），
+        // 直接接管既有补偿结果——不得再落一次反转批次（资金二次反向）。
+        // Pre-compensation duplicate check: if the original transaction already has a non-Failed
+        // compensation row (the previous compensation landed but the original state was not written
+        // back), adopt the existing compensation instead of appending a second reversal batch.
+        var existingCompensations = await _transactionStore.ListByCompensatesTransactionIdAsync(transaction.TransactionId, cancellationToken).ConfigureAwait(false);
+        foreach (var existing in existingCompensations)
+        {
+            if (existing.State != OnlineAssetTransactionState.Failed)
+            {
+                transaction.State = OnlineAssetTransactionState.Compensated;
+                transaction.SettledTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                await _transactionStore.SaveAsync(transaction, cancellationToken).ConfigureAwait(false);
+                var existingScope = new OnlineScope(transaction.TenantId, transaction.AppId, transaction.InitiatingServerId, transaction.PlayerId);
+                await FailIdempotencyAsync(existingScope, transaction.IdempotencyKey, cancellationToken).ConfigureAwait(false);
+                return true;
+            }
+        }
+
         var appliedEntries = await _assetStore.FindLedgerEntriesByTransactionIdAsync(transaction.TransactionId, cancellationToken);
         if (appliedEntries.Count == 0)
         {
