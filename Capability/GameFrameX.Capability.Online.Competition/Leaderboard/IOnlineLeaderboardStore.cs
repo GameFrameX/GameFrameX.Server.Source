@@ -77,10 +77,15 @@ public interface IOnlineLeaderboardStore
     /// <summary>
     /// 应用一笔分数提交（原子：累计策略裁决 + 条目落档在同一临界区）。
     /// </summary>
+    /// <para>
+    /// 红线：Sum 策略累加溢出（checked）时拒绝本笔写入并返回 <c>null</c>——条目零状态变更，
+    /// 不做饱和截断（不把异常数据悄悄写成 long.MaxValue）。未来持久化排行榜存储落地时，
+    /// 同样的溢出判断必须放进存储层的原子更新里。
+    /// </para>
     /// <param name="leaderboard">目标榜单定义（调用方先经 <see cref="FindAsync"/> 取得）。</param>
     /// <param name="submission">分数提交。</param>
     /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>写入结果（聚合后条目 + 临界区内事实的前值）。</returns>
+    /// <returns>写入结果（聚合后条目 + 临界区内事实的前值）；Sum 累加溢出拒绝时为 <c>null</c>。</returns>
     Task<OnlineLeaderboardApplyResult> ApplySubmissionAsync(OnlineLeaderboard leaderboard, OnlineLeaderboardScoreSubmission submission, CancellationToken cancellationToken = default);
 
     /// <summary>

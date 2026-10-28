@@ -142,11 +142,15 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
     /// </summary>
     /// <remarks>
     /// Resolves the score by the accumulation policy and archives the entry within the same critical section under the global lock, creating the entry when absent.
+    /// <para>
+    /// Sum 策略累加溢出（checked）时拒绝本笔写入并返回 <c>null</c>：条目零状态变更——
+    /// 已有条目保持原分数与提交计数；本次新建的条目会被回滚移除，不留半截档。
+    /// </para>
     /// </remarks>
     /// <param name="leaderboard">目标榜单定义（调用方先经 <see cref="FindAsync"/> 取得）/ The target leaderboard definition (obtained by the caller via <see cref="FindAsync"/> first)</param>
     /// <param name="submission">分数提交 / The score submission</param>
-    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
-    /// <returns>写入结果（聚合后条目副本与临界区内事实的前值）/ The apply result (the merged entry copy and the pre-update facts observed inside the critical section)</returns>
+    /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
+    /// <returns>写入结果（聚合后条目副本与临界区内事实的前值）；Sum 累加溢出拒绝时为 <c>null</c> / The apply result (the merged entry copy and the pre-update facts observed inside the critical section); <c>null</c> when the Sum accumulation overflows and the write is refused</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="leaderboard"/> 或 <paramref name="submission"/> 为 null 时抛出 / Thrown when <paramref name="leaderboard"/> or <paramref name="submission"/> is null</exception>
     /// <exception cref="InvalidOperationException">当目标榜单未创建或已失效（未经 <see cref="FindAsync"/> 解析）时抛出 / Thrown when the target leaderboard is not created or has expired (not resolved via <see cref="FindAsync"/>)</exception>
     public Task<OnlineLeaderboardApplyResult> ApplySubmissionAsync(OnlineLeaderboard leaderboard, OnlineLeaderboardScoreSubmission submission, CancellationToken cancellationToken = default)
@@ -176,9 +180,20 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
                 boardEntries[submission.PlayerId] = entry;
             }
 
+            if (!TryResolveScore(leaderboard, entry, submission.IncomingScore, out var resolvedScore))
+            {
+                // Sum 累加溢出：拒绝本笔写入，零状态变更（新建条目回滚移除，不递增提交计数）。
+                if (entry.SubmissionCount == 0)
+                {
+                    boardEntries.Remove(submission.PlayerId);
+                }
+
+                return Task.FromResult<OnlineLeaderboardApplyResult>(null);
+            }
+
             var oldScore = entry.Score;
             var isNewEntry = entry.SubmissionCount == 0;
-            entry.Score = ResolveScore(leaderboard, entry, submission.IncomingScore);
+            entry.Score = resolvedScore;
             entry.SourceKind = submission.SourceKind;
             entry.SourceMatchResultId = submission.SourceMatchResultId;
             entry.LastUpdateTime = submission.SubmittedTime;
@@ -343,28 +358,41 @@ public sealed class InMemoryOnlineLeaderboardStore : IOnlineLeaderboardStore
     }
 
     /// <summary>
-    /// 在临界区内按累计策略裁决新分数（首笔直接生效；Best 以榜向判优，Sum 累加，Latest 覆盖）。
+    /// 在临界区内按累计策略裁决新分数（首笔直接生效；Best 以榜向判优，Sum 累加（checked，溢出拒绝），Latest 覆盖）。
     /// </summary>
     /// <param name="leaderboard">榜单定义。</param>
     /// <param name="entry">临界区内当前条目。</param>
     /// <param name="incomingScore">本笔分数。</param>
-    /// <returns>裁决后的分数。</returns>
-    private static long ResolveScore(OnlineLeaderboard leaderboard, OnlineLeaderboardEntry entry, long incomingScore)
+    /// <param name="resolvedScore">裁决后的分数（失败时为条目原分数，不落档）。</param>
+    /// <returns>裁决成功返回 true；Sum 累加溢出返回 false（本笔写入被拒绝，不做饱和截断）。</returns>
+    private static bool TryResolveScore(OnlineLeaderboard leaderboard, OnlineLeaderboardEntry entry, long incomingScore, out long resolvedScore)
     {
         if (entry.SubmissionCount == 0)
         {
-            return incomingScore;
+            resolvedScore = incomingScore;
+            return true;
         }
 
         switch (leaderboard.ScoreUpdatePolicy)
         {
             case OnlineLeaderboardScoreUpdatePolicy.Sum:
-                return entry.Score + incomingScore;
+                try
+                {
+                    resolvedScore = checked(entry.Score + incomingScore);
+                    return true;
+                }
+                catch (OverflowException)
+                {
+                    resolvedScore = entry.Score;
+                    return false;
+                }
             case OnlineLeaderboardScoreUpdatePolicy.Latest:
-                return incomingScore;
+                resolvedScore = incomingScore;
+                return true;
             case OnlineLeaderboardScoreUpdatePolicy.Best:
             default:
-                return OnlineLeaderboardOrdering.IsBetter(leaderboard.SortOrder, incomingScore, entry.Score) ? incomingScore : entry.Score;
+                resolvedScore = OnlineLeaderboardOrdering.IsBetter(leaderboard.SortOrder, incomingScore, entry.Score) ? incomingScore : entry.Score;
+                return true;
         }
     }
 
