@@ -35,8 +35,9 @@ namespace GameFrameX.Capability.Online.Competition.Tournament;
 /// 维护约束（红线）：
 /// (1) 判定数据源是**关联榜单的实时名次与分数**——赛事开始前榜单即为报名依据，判定发生在报名时刻并当场冻结
 /// 判定输入（名次 / 分数随报名登记留存），因此事后榜单变化不会让已通过的报名变得「本不该通过」；
-/// (2) 两项条件均为**可选**：取零（<see cref="MinLeaderboardRank"/>）或 null（<see cref="MinLeaderboardScore"/>）
-/// 表示该项不限；两项都不限即「无门槛赛事」，此时不读取榜单、任何玩家都可报名；
+/// (2) 名次条件为**必填有效名次**（<see cref="MinLeaderboardRank"/> 从 1 开始，创建校验拒绝小于 1 的取值——
+/// 榜单名次从 1 开始，0 无业务含义，允许 0 会产生 off-by-one）；分数条件**可选**（null（<see cref="MinLeaderboardScore"/>）
+/// 表示不限）；「不限名次 / 无门槛赛事」的唯一表达是**不携带资格条件**（null 资格条件由服务端归一化为不读榜单的默认实例）；
 /// (3) 判定顺序固定为「先名次后分数」——未上榜时无从谈分数，先报 <see cref="OnlineTournamentRegistrationRejection.NotRanked"/>
 /// 比报「分数不足」更贴近事实，也避免用一个恒假条件掩盖真正的拒绝原因。
 /// </para>
@@ -44,7 +45,8 @@ namespace GameFrameX.Capability.Online.Competition.Tournament;
 public sealed class OnlineTournamentEligibility
 {
     /// <summary>
-    /// 获取或设置名次上限（必须进入关联榜单前 N；0 表示不限）。
+    /// 获取或设置名次上限（必须进入关联榜单前 N；从 1 开始，创建校验拒绝小于 1 的取值；
+    /// 0 仅作为 null 资格条件归一化后默认实例的内部哨兵，表示不限名次）。
     /// </summary>
     public int MinLeaderboardRank { get; set; }
 
