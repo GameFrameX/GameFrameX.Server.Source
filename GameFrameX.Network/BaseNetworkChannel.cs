@@ -48,6 +48,18 @@ public abstract class BaseNetworkChannel : INetworkChannel
     private readonly INetworkSender _sender;
 
     /// <summary>
+    /// 关闭标志（0 = 开启，1 = 已关闭）。以 <see cref="Interlocked"/> 原子互换承载幂等关闭，
+    /// 消除「先检查后取消」的并发竞态（后到者在关闭源已释放后再 Cancel 会抛 <see cref="ObjectDisposedException"/>）。
+    /// </summary>
+    /// <remarks>
+    /// The closed flag (0 = open, 1 = closed). Carries the idempotent close via atomic
+    /// <see cref="Interlocked"/> exchange, removing the check-then-cancel race where a late
+    /// closer would call <see cref="CancellationTokenSource.Cancel()"/> after the source was
+    /// already disposed and throw <see cref="ObjectDisposedException"/>.
+    /// </remarks>
+    private int _closedFlag;
+
+    /// <summary>
     /// 关闭源。
     /// </summary>
     /// <remarks>
@@ -248,12 +260,17 @@ public abstract class BaseNetworkChannel : INetworkChannel
     /// </summary>
     /// <remarks>
     /// Closes the network channel and releases associated resources.
-    /// 幂等：首次关闭取消并释放通道级关闭源；已关闭的通道重复调用不再触碰已释放资源。
+    /// 幂等：以原子标志保证仅首个调用者执行「取消并释放通道级关闭源」；已关闭的通道重复调用
+    ///（含经 <see cref="Dispose"/> 的调用）不再触碰已释放资源。与 <see cref="IsClosed"/> 的关系：
+    /// 标志一旦置位恒为已关闭（关闭源只在此处取消，Cancel 先于 Dispose）。
+    /// Idempotent: an atomic flag guarantees only the first caller cancels and disposes the
+    /// channel-level cancellation source; repeated calls on a closed channel (including via
+    /// <see cref="Dispose"/>) never touch the released source again.
     /// </remarks>
     public virtual void Close()
     {
         ClearData();
-        if (CancellationTokenSource.IsCancellationRequested)
+        if (Interlocked.Exchange(ref _closedFlag, 1) != 0)
         {
             // 已关闭：关闭源已取消并释放，重复关闭直接返回
             return;
@@ -264,15 +281,32 @@ public abstract class BaseNetworkChannel : INetworkChannel
     }
 
     /// <summary>
+    /// 释放通道资源，语义与 <see cref="Close"/> 一致且幂等。
+    /// </summary>
+    /// <remarks>
+    /// Releases the channel resources. Delegates to <see cref="Close"/> (idempotent) so the
+    /// standard <c>using</c> / explicit-dispose lifetime and the channel terminal hook share
+    /// one code path; the finalizer is suppressed as the class declares none.
+    /// </remarks>
+    public void Dispose()
+    {
+        Close();
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
     /// 检查通道是否已关闭。
     /// </summary>
     /// <remarks>
-    /// Checks whether the channel has been closed.
+    /// Checks whether the channel has been closed. Reads the atomic closed flag instead of
+    /// the disposed cancellation source — the source is only ever cancelled by
+    /// <see cref="Close"/>, so the two readings are equivalent, and the flag keeps this
+    /// member safely callable after disposal.
     /// </remarks>
     /// <returns>如果已关闭则为 <c>true</c>；否则为 <c>false</c> / <c>true</c> if closed; otherwise <c>false</c></returns>
     public virtual bool IsClosed()
     {
-        return CancellationTokenSource.IsCancellationRequested;
+        return Volatile.Read(ref _closedFlag) == 1;
     }
 
     #region Data

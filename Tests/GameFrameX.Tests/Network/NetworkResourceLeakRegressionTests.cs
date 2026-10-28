@@ -42,7 +42,8 @@ namespace GameFrameX.Tests.Network
     /// <summary>
     /// 网络栈资源泄漏与消息池数据残留回归测试：
     /// ① 池归还后身份字段（MessageId / UniqueId）必须重置，消除复用串台；
-    /// ② 通道 Close() 必须释放通道级 CTS 且幂等。
+    /// ② 通道 Close()/Dispose() 必须释放通道级 CTS 且幂等（Dispose 与 Close 同一原子幂等路径）；
+    /// ③ 并发 Close/Dispose 不得抛出（原子标志消除 check-then-act 竞态）。
     /// </summary>
     public class NetworkResourceLeakRegressionTests
     {
@@ -139,6 +140,51 @@ namespace GameFrameX.Tests.Network
 
             // 二次 Close 幂等：不得触碰已释放的 CTS
             channel.Close();
+            Assert.True(channel.IsClosed());
+        }
+
+        /// <summary>
+        /// Dispose() 与 Close() 同一释放路径：Dispose 后对通道级 CTS 再 Cancel 抛 ObjectDisposedException
+        ///（证明已释放）；Close() 与 Dispose() 混合重复调用均不抛（幂等），IsClosed() 恒为 true。
+        /// </summary>
+        [Fact]
+        public void BaseNetworkChannel_DisposeReleasesCancellationTokenSourceAndIsIdempotent()
+        {
+            var channel = new TestNetworkChannel();
+            var ctsField = typeof(BaseNetworkChannel).GetField("CancellationTokenSource", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            Assert.NotNull(ctsField);
+            var cts = (CancellationTokenSource)ctsField.GetValue(channel);
+
+            channel.Dispose();
+
+            Assert.True(channel.IsClosed());
+            Assert.Throws<ObjectDisposedException>(() => cts.Cancel());
+
+            // Close 与 Dispose 混合重复调用幂等：不得触碰已释放的 CTS
+            channel.Close();
+            channel.Dispose();
+            channel.Close();
+            Assert.True(channel.IsClosed());
+        }
+
+        /// <summary>
+        /// 100 并发混合 Close()/Dispose()：原子关闭标志下零异常（旧 check-then-act 实现中，
+        /// 后到者会在 CTS 已释放后再 Cancel 抛 ObjectDisposedException），终态 IsClosed() 恒为 true。
+        /// </summary>
+        [Fact]
+        public async Task BaseNetworkChannel_ConcurrentCloseDoesNotThrow()
+        {
+            var channel = new TestNetworkChannel();
+            var tasks = new Task[100];
+            for (var index = 0; index < tasks.Length; index++)
+            {
+                var closeInsteadOfDispose = index % 2 == 0;
+                tasks[index] = Task.Run(closeInsteadOfDispose ? (Action)channel.Close : channel.Dispose);
+            }
+
+            // 任一并发调用抛出即 WhenAll 聚合传播，测试失败
+            await Task.WhenAll(tasks);
+
             Assert.True(channel.IsClosed());
         }
     }
