@@ -383,16 +383,9 @@ public sealed partial class SqliteDbService
 
         // 裸非可空 bool 成员真值：x.Flag 等价 x.Flag == true（可空形态必须显式比较）。
         // A bare non-nullable bool member is truthiness — equivalent to x.Flag == true (nullable forms must compare explicitly).
-        if (node is MemberExpression bareMember && TryGetParameterMember(bareMember, parameter, out var bareResolved))
+        if (TryTranslateBareBoolMemberConjunct(node, parameter, conjuncts))
         {
-            var bareMetadata = ResolveJsonMemberTranslation(bareResolved.Member as PropertyInfo);
-            if (bareMetadata != null && bareMetadata.Kind == JsonExtractMemberKind.Bool && !bareMetadata.IsNullable)
-            {
-                conjuncts.Add("COALESCE(" + bareMetadata.ExtractExpression + ", 0) = 1");
-                return true;
-            }
-
-            return false;
+            return true;
         }
 
         if (node is not BinaryExpression binary)
@@ -400,35 +393,7 @@ public sealed partial class SqliteDbService
             return false;
         }
 
-        var operatorType = binary.NodeType;
-        if (operatorType is not (ExpressionType.Equal or ExpressionType.NotEqual
-            or ExpressionType.GreaterThan or ExpressionType.GreaterThanOrEqual
-            or ExpressionType.LessThan or ExpressionType.LessThanOrEqual))
-        {
-            return false;
-        }
-
-        // 字符串 ==/!= 使用 String.op_Equality（序数）；其余自定义运算符重载不翻译。
-        // String ==/!= uses String.op_Equality (ordinal); any other operator overload is untranslatable.
-        if (binary.Method != null && binary.Method.DeclaringType != typeof(string))
-        {
-            return false;
-        }
-
-        MemberExpression memberSide;
-        Expression constantSide;
-        if (TryGetParameterMember(binary.Left, parameter, out var leftMember) && !ContainsParameter(binary.Right, parameter))
-        {
-            memberSide = leftMember;
-            constantSide = binary.Right;
-        }
-        else if (TryGetParameterMember(binary.Right, parameter, out var rightMember) && !ContainsParameter(binary.Left, parameter))
-        {
-            memberSide = rightMember;
-            constantSide = binary.Left;
-            operatorType = MirrorComparisonOperator(operatorType);
-        }
-        else
+        if (!TryResolveComparisonOperands(binary, parameter, out var memberSide, out var constantSide, out var operatorType))
         {
             return false;
         }
@@ -450,6 +415,105 @@ public sealed partial class SqliteDbService
             return false;
         }
 
+        return TryTranslateMemberConstantComparison(metadata, operatorType, constantValue, translation, conjuncts);
+    }
+
+    /// <summary>
+    /// 翻译裸非可空 bool 成员真值合取项；非该形态或不可翻译返回 false。
+    /// </summary>
+    /// <remarks>
+    /// Translates a bare non-nullable bool member truthiness conjunct (x.Flag ≡ x.Flag == true);
+    /// returns false for any other shape or an untranslatable member.
+    /// </remarks>
+    /// <param name="node">合取项表达式 / The conjunct</param>
+    /// <param name="parameter">lambda 参数 / The lambda parameter</param>
+    /// <param name="conjuncts">已翻译合取项集合 / The translated conjuncts</param>
+    /// <returns>是否精确翻译 / Whether the conjunct translated exactly</returns>
+    private static bool TryTranslateBareBoolMemberConjunct(Expression node, ParameterExpression parameter, List<string> conjuncts)
+    {
+        if (node is not MemberExpression bareMember || !TryGetParameterMember(bareMember, parameter, out var bareResolved))
+        {
+            return false;
+        }
+
+        var bareMetadata = ResolveJsonMemberTranslation(bareResolved.Member as PropertyInfo);
+        if (bareMetadata == null || bareMetadata.Kind != JsonExtractMemberKind.Bool || bareMetadata.IsNullable)
+        {
+            return false;
+        }
+
+        conjuncts.Add("COALESCE(" + bareMetadata.ExtractExpression + ", 0) = 1");
+        return true;
+    }
+
+    /// <summary>
+    /// 解析二元比较的成员/常量侧：六运算符白名单、运算符重载排除（字符串除外）、双向定位与镜像归一。
+    /// </summary>
+    /// <remarks>
+    /// Resolves the member/constant sides of a binary comparison: the six-operator whitelist, the
+    /// operator-overload exclusion (strings excepted), and bidirectional side location with the
+    /// operator mirrored to the member-on-the-left normalized form.
+    /// </remarks>
+    /// <param name="binary">二元比较表达式 / The binary comparison</param>
+    /// <param name="parameter">lambda 参数 / The lambda parameter</param>
+    /// <param name="memberSide">参数成员侧 / The parameter-member side</param>
+    /// <param name="constantSide">常量侧 / The constant side</param>
+    /// <param name="operatorType">比较运算符（成员在左的归一形态）/ The comparison operator (normalized, member on the left)</param>
+    /// <returns>是否解析成功 / Whether the sides resolved</returns>
+    private static bool TryResolveComparisonOperands(BinaryExpression binary, ParameterExpression parameter, out MemberExpression memberSide, out Expression constantSide, out ExpressionType operatorType)
+    {
+        memberSide = null;
+        constantSide = null;
+        operatorType = binary.NodeType;
+        if (operatorType is not (ExpressionType.Equal or ExpressionType.NotEqual
+            or ExpressionType.GreaterThan or ExpressionType.GreaterThanOrEqual
+            or ExpressionType.LessThan or ExpressionType.LessThanOrEqual))
+        {
+            return false;
+        }
+
+        // 字符串 ==/!= 使用 String.op_Equality（序数）；其余自定义运算符重载不翻译。
+        // String ==/!= uses String.op_Equality (ordinal); any other operator overload is untranslatable.
+        if (binary.Method != null && binary.Method.DeclaringType != typeof(string))
+        {
+            return false;
+        }
+
+        if (TryGetParameterMember(binary.Left, parameter, out var leftMember) && !ContainsParameter(binary.Right, parameter))
+        {
+            memberSide = leftMember;
+            constantSide = binary.Right;
+        }
+        else if (TryGetParameterMember(binary.Right, parameter, out var rightMember) && !ContainsParameter(binary.Left, parameter))
+        {
+            memberSide = rightMember;
+            constantSide = binary.Left;
+            operatorType = MirrorComparisonOperator(operatorType);
+        }
+        else
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 翻译成员-常量比较合取项：Id 列直传、null 比较 IS [NOT] NULL / 常量真值、其余常量归一后构建。
+    /// </summary>
+    /// <remarks>
+    /// Translates a member-vs-constant comparison conjunct: the Id column passes the operator
+    /// through, null comparisons become IS [NOT] NULL (or constant truth values on non-nullable
+    /// members), and everything else normalizes the constant and builds the conjunct.
+    /// </remarks>
+    /// <param name="metadata">成员翻译元数据 / The member metadata</param>
+    /// <param name="operatorType">比较运算符（成员在左的归一形态）/ The comparison operator (normalized, member on the left)</param>
+    /// <param name="constantValue">已求值常量 / The evaluated constant</param>
+    /// <param name="translation">翻译结果承载 / The translation being built</param>
+    /// <param name="conjuncts">已翻译合取项集合 / The translated conjuncts</param>
+    /// <returns>是否精确翻译 / Whether the conjunct translated exactly</returns>
+    private static bool TryTranslateMemberConstantComparison(JsonExtractMemberTranslation metadata, ExpressionType operatorType, object constantValue, JsonExtractWhereTranslation translation, List<string> conjuncts)
+    {
         // Id 成员走 id 列（与 doc 内 Id 键同步，比较运算符直传）。
         // The Id member maps to the id column (kept in sync with the doc's Id key); operators pass through.
         if (metadata.Kind == JsonExtractMemberKind.IdColumn)
@@ -740,14 +804,42 @@ public sealed partial class SqliteDbService
 
         // C# 隐式整型加宽表（checked 下无损；uint→long 覆盖、ulong 目标排除在成员白名单外）。
         // The C# implicit integral widening table (lossless under checked semantics; uint→long covered, ulong targets are excluded by the member whitelist).
-        return source == typeof(sbyte) && (target == typeof(short) || target == typeof(int) || target == typeof(long))
-               || source == typeof(byte) && (target == typeof(short) || target == typeof(ushort) || target == typeof(int) || target == typeof(uint) || target == typeof(long) || target == typeof(ulong))
-               || source == typeof(short) && (target == typeof(int) || target == typeof(long))
-               || source == typeof(ushort) && (target == typeof(int) || target == typeof(uint) || target == typeof(long) || target == typeof(ulong))
-               || source == typeof(int) && (target == typeof(long))
-               || source == typeof(uint) && (target == typeof(long) || target == typeof(ulong))
-               || source == typeof(char) && (target == typeof(ushort) || target == typeof(int) || target == typeof(uint) || target == typeof(long) || target == typeof(ulong));
+        return ImplicitIntegralWideningConversions.Contains((source, target));
     }
+
+    /// <summary>
+    /// C# 隐式整型加宽表二元组集合（checked 下无损；与语言规范隐式数值转换表的整型部分逐一对应）。
+    /// </summary>
+    /// <remarks>
+    /// The C# implicit integral widening pairs (lossless under checked semantics; mirrors the
+    /// integral portion of the language specification's implicit numeric conversion table).
+    /// </remarks>
+    private static readonly HashSet<(Type From, Type To)> ImplicitIntegralWideningConversions = new HashSet<(Type From, Type To)>
+    {
+        (typeof(sbyte), typeof(short)),
+        (typeof(sbyte), typeof(int)),
+        (typeof(sbyte), typeof(long)),
+        (typeof(byte), typeof(short)),
+        (typeof(byte), typeof(ushort)),
+        (typeof(byte), typeof(int)),
+        (typeof(byte), typeof(uint)),
+        (typeof(byte), typeof(long)),
+        (typeof(byte), typeof(ulong)),
+        (typeof(short), typeof(int)),
+        (typeof(short), typeof(long)),
+        (typeof(ushort), typeof(int)),
+        (typeof(ushort), typeof(uint)),
+        (typeof(ushort), typeof(long)),
+        (typeof(ushort), typeof(ulong)),
+        (typeof(int), typeof(long)),
+        (typeof(uint), typeof(long)),
+        (typeof(uint), typeof(ulong)),
+        (typeof(char), typeof(ushort)),
+        (typeof(char), typeof(int)),
+        (typeof(char), typeof(uint)),
+        (typeof(char), typeof(long)),
+        (typeof(char), typeof(ulong)),
+    };
 
     /// <summary>
     /// 解析属性翻译元数据（进程级缓存；public 读写、无序列化排除特性、JSON 名标识符安全、类型白名单）。
