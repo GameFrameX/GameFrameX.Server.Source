@@ -202,7 +202,8 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// 验证软删后读取与列举不可见，重复删除报不存在，软删键复活按创建语义重新计时。
+        /// 验证软删后读取与列举不可见，重复删除报不存在；复活版本 = 软删末版 + 1（单调不重置），
+        /// 以返回版本续写成功、以旧版本续写冲突（C404：复活不把版本倒退回 1）。
         /// </summary>
         [Fact]
         public async Task DeleteAsync_ShouldHideEntryAndAllowResurrect()
@@ -219,17 +220,25 @@ namespace GameFrameX.Tests.Online
             var listed = await service.ListAsync(scope, "archive", null, 10);
             var resurrected = await service.WriteAsync(scope, "archive", "k1", Encode("v2"), 0, "sess-2");
             var readAfterResurrect = await service.ReadAsync(scope, "archive", "k1");
+            var continueWrite = await service.WriteAsync(scope, "archive", "k1", Encode("v3"), resurrected.IsSuccess ? resurrected.Data.Version : 0, "sess-2");
+            var staleWrite = await service.WriteAsync(scope, "archive", "k1", Encode("v4"), 1, "sess-2");
 
-            // Assert
+            // Assert：创建 v1 → 软删 v2 → 复活 v3（软删末版 + 1）。
             Assert.True(deleted.IsSuccess);
             Assert.False(readAfterDelete.IsSuccess);
             Assert.Equal(OnlineErrorCode.ResourceNotFound, readAfterDelete.Code);
             Assert.False(deleteAgain.IsSuccess);
             Assert.Empty(listed.Data.Entries);
             Assert.True(resurrected.IsSuccess);
-            Assert.Equal(1, resurrected.Data.Version);
+            Assert.Equal(3, resurrected.Data.Version);
+            Assert.Equal("sess-2", resurrected.Data.CreatedBy);
             Assert.True(readAfterResurrect.IsSuccess);
             Assert.Equal("v2", Decode(readAfterResurrect.Data.Payload));
+            Assert.Equal(resurrected.Data.Version, readAfterResurrect.Data.Version);
+            Assert.True(continueWrite.IsSuccess);
+            Assert.Equal(resurrected.Data.Version + 1, continueWrite.Data.Version);
+            Assert.False(staleWrite.IsSuccess);
+            Assert.Equal(OnlineErrorCode.VersionConflict, staleWrite.Code);
         }
 
         /// <summary>
