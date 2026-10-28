@@ -565,10 +565,12 @@ public static class ActorManager
     }
 
     /// <summary>
-    /// 删除所有Actor并使其进入非激活状态。
+    /// 删除所有Actor并使其进入非激活状态，随后执行各自的一次性回收回调。
     /// </summary>
     /// <remarks>
-    /// Removes all Actors and deactivates them.
+    /// Removes all Actors, deactivates them, and then runs their once recycle callbacks.
+    /// 每个 Actor 按 Inactive → OnRecycle 固定顺序执行（与 <see cref="RecycleIdleActorAsync"/> 一致），
+    /// 确保注册在 <c>_onceRecycleCallbacks</c> 中的清理回调（如 Quartz 调度任务移除）必然执行。
     /// </remarks>
     /// <returns>表示删除操作的异步任务 / Async task representing the removal operation</returns>
     public static async Task RemoveAllAsync()
@@ -576,17 +578,20 @@ public static class ActorManager
         var tasks = new List<Task>();
         foreach (var actor in ActorMap.Values)
         {
-            tasks.Add(actor.InactiveAsync());
+            tasks.Add(DeactivateAndRecycleActorAsync(actor));
         }
 
         await Task.WhenAll(tasks);
     }
 
     /// <summary>
-    /// 删除指定Actor并使其进入非激活状态。
+    /// 删除指定Actor并使其进入非激活状态，随后执行其一次性回收回调。
     /// </summary>
     /// <remarks>
-    /// Removes the specified Actor and deactivates it.
+    /// Removes the specified Actor, deactivates it, and then runs its once recycle callbacks.
+    /// 两步在目标Actor自身的Worker队列内串行执行（Inactive → OnRecycle 固定顺序，与
+    /// <see cref="RecycleIdleActorAsync"/> 一致），确保注册在 <c>_onceRecycleCallbacks</c>
+    /// 中的清理回调（如 Quartz 调度任务移除）在Actor移除时必然执行。
     /// </remarks>
     /// <param name="actorId">Actor唯一标识 / Actor unique identifier</param>
     /// <returns>表示删除操作的异步任务 / Async task representing the removal operation</returns>
@@ -594,10 +599,32 @@ public static class ActorManager
     {
         if (ActorMap.Remove(actorId, out var actor))
         {
-            actor.Tell(actor.InactiveAsync);
+            actor.Tell(() => DeactivateAndRecycleActorAsync(actor));
         }
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 使单个Actor依次执行反激活与一次性回收回调。
+    /// </summary>
+    /// <remarks>
+    /// Deactivates the Actor and then runs its once recycle callbacks, in that fixed order.
+    /// 该顺序是所有Actor移除/回收路径（<see cref="RemoveAsync"/>、<see cref="RemoveAllAsync"/>、
+    /// <see cref="RecycleIdleActorAsync"/>）的共同契约，禁止任何移除路径只做 Inactive 而漏执行回收回调。
+    /// </remarks>
+    /// <param name="actor">待下线的Actor / The Actor to deactivate and recycle</param>
+    /// <returns>表示两步操作的异步任务 / Async task representing both steps</returns>
+    private static async Task DeactivateAndRecycleActorAsync(Actor actor)
+    {
+        try
+        {
+            await actor.InactiveAsync();
+        }
+        finally
+        {
+            await actor.OnRecycleAsync();
+        }
     }
 
     /// <summary>
