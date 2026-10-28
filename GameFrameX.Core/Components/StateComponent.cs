@@ -56,12 +56,12 @@ public sealed class StateComponent
 
     /// <summary>
     /// <see cref="SaveAllAsync"/> 整体等待上限：超时后放弃等待、由既有异常日志记录，防止单个悬挂的
-    /// 回存委托无限阻塞关服流程。internal static 供测试注入缩短超时，生产恒为 120 秒。
+    /// 回存委托无限阻塞关服流程。internal static 属性供测试注入缩短超时，生产恒为 120 秒（S2223 收口：保持属性形态，勿回退为可见可变静态字段）。
     /// Overall wait cap for <see cref="SaveAllAsync"/>: on timeout the wait is abandoned and logged
     /// by the existing error handler, so one hanging save delegate can no longer block shutdown forever.
-    /// internal static lets tests inject a shorter timeout; production value is always 120 seconds.
+    /// internal static property lets tests inject a shorter timeout; production value is always 120 seconds.
     /// </summary>
-    internal static TimeSpan ShutdownSaveTimeout = TimeSpan.FromSeconds(120);
+    internal static TimeSpan ShutdownSaveTimeout { get; set; } = TimeSpan.FromSeconds(120);
 
     /// <summary>
     /// 注册回存。以 <paramref name="stateType"/> 的稳定名称替换既有注册：同一状态类型重复注册（含热重载后
