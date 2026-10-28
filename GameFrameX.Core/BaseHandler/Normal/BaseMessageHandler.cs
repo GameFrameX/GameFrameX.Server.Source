@@ -144,7 +144,7 @@ public abstract class BaseMessageHandler<TRequest> : IMessageHandler where TRequ
             _stopwatch.Restart();
             await ActionAsync(message);
             _stopwatch.Stop();
-            if (_stopwatch.Elapsed.Seconds >= GlobalSettings.CurrentSetting.MonitorMessageTimeOutSeconds)
+            if (_stopwatch.Elapsed.TotalSeconds >= GlobalSettings.CurrentSetting.MonitorMessageTimeOutSeconds)
             {
                 // Localization: Core.MessageHandler.ExecutionTimeWarning - 消息处理器：{0},UniqueId：{1} 执行耗时：{2} ms
                 LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.ExecutionTimeWarning, GetType().Name, Message.UniqueId, _stopwatch.ElapsedMilliseconds));
