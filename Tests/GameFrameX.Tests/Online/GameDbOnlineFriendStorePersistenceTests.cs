@@ -246,6 +246,70 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
     }
 
     /// <summary>
+    /// 并发迁移原子性事实：同一关系的两个并发 Requested→Accepted 迁移恰一成功——RowVersion 条件写拦下
+    /// 另一个（重读后期望态已变，按 CAS 失败返回 null），终态只推进一次、时刻只落一个写者的值。
+    /// </summary>
+    [Fact]
+    public async Task UpdateState_ConcurrentSameTransition_ExactlyOneWinner()
+    {
+        await WithSqliteFacadeAsync(async () =>
+        {
+            var store = new GameDbOnlineFriendStore();
+            var created = await store.SaveIfAbsentAsync(BuildFriendship(11, 22, OnlineFriendshipState.Requested, "fs-race"));
+
+            var first = store.UpdateStateAsync(TenantId, AppId, new FriendshipStateTransition { FriendshipId = created.FriendshipId, ExpectedState = OnlineFriendshipState.Requested, NewState = OnlineFriendshipState.Accepted, NowUnixMilliseconds = 5000, Responded = true, });
+            var second = store.UpdateStateAsync(TenantId, AppId, new FriendshipStateTransition { FriendshipId = created.FriendshipId, ExpectedState = OnlineFriendshipState.Requested, NewState = OnlineFriendshipState.Accepted, NowUnixMilliseconds = 6000, Responded = true, });
+            var results = await Task.WhenAll(first, second);
+
+            var winners = 0;
+            foreach (var result in results)
+            {
+                if (result != null)
+                {
+                    winners++;
+                    Assert.Equal(OnlineFriendshipState.Accepted, result.State);
+                }
+            }
+
+            Assert.Equal(1, winners);
+
+            var final = await store.FindAsync(TenantId, AppId, 11, 22);
+            Assert.NotNull(final);
+            Assert.Equal(OnlineFriendshipState.Accepted, final.State);
+
+            // 版本事实：胜者的条件写把行版本从 0 推进到 1（旧「覆盖写」实现下版本恒为 0）。
+            var row = await GameDb.FindAsync<OnlineFriendshipRowState>(state => state.FriendshipId == created.FriendshipId, isCreateIfNotExists: false);
+            Assert.NotNull(row);
+            Assert.Equal(1L, row.RowVersion);
+        });
+    }
+
+    /// <summary>
+    /// 存量行补全事实：RowVersion 为 null 的旧数据行首次迁移自动补全（null → 0）并成功走 CAS 落库，
+    /// 补全后版本单调递增（0 → 1）。
+    /// </summary>
+    [Fact]
+    public async Task UpdateState_LegacyNullRowVersion_ShouldBackfillAndSucceed()
+    {
+        await WithSqliteFacadeAsync(async () =>
+        {
+            var store = new GameDbOnlineFriendStore();
+
+            // 模拟存量旧行：直接落库一行 RowVersion = null 的关系（绕开 store 的创建路径）。
+            var legacy = CreateFriendshipRow(9001, "fs-legacy", (int)OnlineFriendshipState.Requested, null, 1001);
+            await GameDb.AddOrUpdateAsync(legacy);
+
+            var updated = await store.UpdateStateAsync(TenantId, AppId, new FriendshipStateTransition { FriendshipId = "fs-legacy", ExpectedState = OnlineFriendshipState.Requested, NewState = OnlineFriendshipState.Accepted, NowUnixMilliseconds = 5000, Responded = true, });
+            Assert.NotNull(updated);
+            Assert.Equal(OnlineFriendshipState.Accepted, updated.State);
+
+            var row = await GameDb.FindAsync<OnlineFriendshipRowState>(state => state.FriendshipId == "fs-legacy", isCreateIfNotExists: false);
+            Assert.NotNull(row);
+            Assert.Equal(1L, row.RowVersion);
+        });
+    }
+
+    /// <summary>
     /// 重新发起事实：状态 + 方向 + 有效期三项同临界区落定（方向跟随本次发起人翻转）。
     /// </summary>
     [Fact]
@@ -409,5 +473,37 @@ public sealed class GameDbOnlineFriendStorePersistenceTests
         {
             File.Delete(dataFile);
         }
+    }
+
+    /// <summary>
+    /// 构造好友关系行（玩家对 11/22、租户 / App / 区服固定；行标识、状态、版本与更新时刻可变）。
+    /// </summary>
+    /// <param name="id">行 Id。</param>
+    /// <param name="friendshipId">关系标识。</param>
+    /// <param name="state">关系状态。</param>
+    /// <param name="rowVersion">行版本（null = 存量旧行）。</param>
+    /// <param name="updatedAtTime">更新时刻。</param>
+    /// <returns>关系行。</returns>
+    internal static OnlineFriendshipRowState CreateFriendshipRow(long id, string friendshipId, int state, long? rowVersion, long updatedAtTime)
+    {
+        return new OnlineFriendshipRowState
+        {
+            Id = id,
+            UniqueKey = "friend:" + TenantId + ":" + AppId + ":11:22",
+            FriendshipId = friendshipId,
+            TenantId = TenantId,
+            AppId = AppId,
+            ServerId = 5,
+            LowPlayerId = 11,
+            HighPlayerId = 22,
+            RequesterId = 11,
+            AddresseeId = 22,
+            State = state,
+            CreatedAtTime = 1000,
+            UpdatedAtTime = updatedAtTime,
+            ExpiresAtTime = 9000,
+            RespondedAtTime = 0,
+            RowVersion = rowVersion,
+        };
     }
 }
