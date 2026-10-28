@@ -145,6 +145,7 @@
 * Actor 工作单元执行期协作取消（P0-A#1 / C238）：新增 `RuntimeContext.CurrentCancellationToken`（AsyncLocal，随异步流流转，默认 CancellationToken.None）——WorkerActor 执行期为每个工作单元创建联动取消源（调用方令牌 + 超时 CancelAfter 合并），业务代码与 IO 层读取该令牌即可在超时或调用方取消时快速收尾，缩短孤儿任务占用邮箱的窗口；`Enqueue/SendAsync/Tell` 的 `cancellationToken` 参数由此同时具备「取消排队」与「取消执行」两层语义
 
 ### Performance
+* 消息处理器注册期工厂化（C347，GFX-1056）：`HotfixModule.GetMessageHandler` 原先每条消息都 `Activator.CreateInstance` 反射创建处理器并做 `is IMessageHandler` 运行期类型判断（类型缺陷推迟到首条消息才爆出）；现 `_messageHandlerMap` 改存注册期构建的强类型工厂委托 `Func<IMessageHandler>`（复用 C338 的 `CreateFactory` / `CreateInstance` 与本地化键 `CoreExceptions.Hotfix.MissingParameterlessConstructor`），装载期即校验带 `[MessageMapping]` 的类型实现 `IMessageHandler` 且具有公共无参构造（违例抛 `InvalidOperationException` 带实现/服务双类型定位），`GetMessageHandler` 收敛为查表 + 委托调用且每次调用产出新实例（处理器有状态，不做单例/池化）；未命中消息号返回 null 行为不变。行为变化：不实现 `IMessageHandler` 或缺公共无参构造的 `[MessageMapping]` 类型由「首条消息时抛 `WrongMessageHandlerType`」改为「热更加载即失败」
 
 * RemoteMessageClient 移除全局串行信号量，服务器间 RPC 全面并发化（P0-A#2 / C239）：原 `SemaphoreSlim(1,1)` 使 `CallAsync`/`SendOneWayAsync` 全进程串行（连接获取+响应等待全程持锁，多进程拓扑下所有服务器间 RPC 吞吐被锁死且无死锁保护）。新模型：每条连接一个专属接收泵（`DecodeAsync` 循环 → 请求-响应匹配器 `TryComplete` 路由）+ 每连接写入门控（同连接帧写入串行化、跨连接完全并行）；等待方经既有 `WaitResponseAsync`（此前为死代码）按 UniqueId 收响应，同一连接可承载任意多并发在途请求
 * TcpConnectionProvider 单条 TCP 长连接改为按 endpoint 连接池（P0-A#3 / C239）：每 endpoint 独立成池（默认上限 4 条，构造参数可调），并发需求驱动懒建（顺序调用保持单连接复用，并发调用按需扩展），轮询分发；连接级故障仅精准移除该连接（`IConnectionProvider.Invalidate(Stream)`/`ITransportProtocolAdapter.Invalidate(Stream)` 增量接口），不再全量断连。顺带修复旧实现隐藏缺陷：全进程单连接槽位在多 endpoint 交替调用时每次断连重连

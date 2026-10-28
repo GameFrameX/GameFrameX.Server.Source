@@ -84,9 +84,9 @@ internal sealed class HotfixModule : ICollectibleAssemblyModule
     private readonly ConcurrentDictionary<Type, Type> _rpcHandlerMap = new ConcurrentDictionary<Type, Type>();
 
     /// <summary>
-    /// 消息ID到处理器类型的映射。
+    /// 消息ID到处理器实例工厂的映射（注册期构建；处理器有状态，工厂每次调用创建新实例）。
     /// </summary>
-    private readonly ConcurrentDictionary<int, Type> _messageHandlerMap = new ConcurrentDictionary<int, Type>();
+    private readonly ConcurrentDictionary<int, Func<IMessageHandler>> _messageHandlerMap = new ConcurrentDictionary<int, Func<IMessageHandler>>();
 
     /// <summary>
     /// 消息处理类型列表
@@ -277,6 +277,41 @@ internal sealed class HotfixModule : ICollectibleAssemblyModule
     }
 
     /// <summary>
+    /// 注册期创建并缓存实例工厂：校验实现类型是否为可实例化的封闭类型、是否实现 <typeparamref name="TService"/>、是否具有公共无参构造函数。
+    /// </summary>
+    /// <param name="implementationType">实现类型。</param>
+    /// <typeparam name="TService">服务接口或基类类型。</typeparam>
+    /// <returns>创建 <typeparamref name="TService"/> 实例的强类型工厂委托。</returns>
+    /// <exception cref="InvalidOperationException">实现类型不满足上述条件。</exception>
+    private static Func<TService> CreateFactory<TService>(Type implementationType) where TService : class
+    {
+        if (implementationType.IsAbstract
+            || implementationType.ContainsGenericParameters
+            || !typeof(TService).IsAssignableFrom(implementationType)
+            || implementationType.GetConstructor(Type.EmptyTypes) == null)
+        {
+            // Localization: CoreExceptions.Hotfix.MissingParameterlessConstructor - {0} 必须是实现 {1} 的非抽象封闭类型，且具有公共无参构造函数
+            throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.MissingParameterlessConstructor, implementationType.FullName, typeof(TService).FullName));
+        }
+
+        var createInstanceMethod = typeof(HotfixModule)
+                                   .GetMethod(nameof(CreateInstance), BindingFlags.NonPublic | BindingFlags.Static)
+                                   .MakeGenericMethod(typeof(TService), implementationType);
+        return createInstanceMethod.CreateDelegate<Func<TService>>();
+    }
+
+    /// <summary>
+    /// 泛型实例化目标方法：经 <see cref="CreateFactory{TService}" /> 的泛型方法实例化转为强类型工厂委托，运行时直接调用无参构造，避免每次调用走反射激活。
+    /// </summary>
+    /// <typeparam name="TService">服务接口或基类类型。</typeparam>
+    /// <typeparam name="TImplementation">实现类型（受 new() 约束，实例化时由运行时直接调用其无参构造）。</typeparam>
+    /// <returns>新创建的实现实例。</returns>
+    private static TService CreateInstance<TService, TImplementation>() where TImplementation : TService, new()
+    {
+        return new TImplementation();
+    }
+
+    /// <summary>
     /// 添加HTTP处理器。
     /// </summary>
     /// <param name="type">处理器类型。</param>
@@ -407,7 +442,8 @@ internal sealed class HotfixModule : ICollectibleAssemblyModule
         }
 
         var msgId = msgIdField.MessageId;
-        if (!_messageHandlerMap.TryAdd(msgId, type))
+        var messageHandlerFactory = CreateFactory<IMessageHandler>(type);
+        if (!_messageHandlerMap.TryAdd(msgId, messageHandlerFactory))
         {
             // Localization: CoreExceptions.Hotfix.WrongMessageHandlerType - 错误的消息处理器类型:{0}
             LogHelper.Error(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.WrongMessageHandlerType, type));
@@ -523,21 +559,12 @@ internal sealed class HotfixModule : ICollectibleAssemblyModule
     /// <returns>消息处理器实例。</returns>
     internal IMessageHandler GetMessageHandler(int msgId)
     {
-        if (!_messageHandlerMap.TryGetValue(msgId, out var handlerType))
+        if (!_messageHandlerMap.TryGetValue(msgId, out var messageHandlerFactory))
         {
             return default;
         }
 
-        var instance = Activator.CreateInstance(handlerType);
-        if (instance is IMessageHandler handler)
-        {
-            return handler;
-        }
-
-        // Localization: CoreExceptions.Hotfix.WrongMessageHandlerType - 错误的消息处理器类型:{0}
-        throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.WrongMessageHandlerType, instance.GetType().FullName));
-
-        //throw new HandlerNotFoundException($"消息ID：{msgId}");
+        return messageHandlerFactory();
     }
 
     /// <summary>
