@@ -236,6 +236,23 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 派生审计标识必须放得下：受控操作按「前缀 + 幂等键」派生 EventId，
+        /// 幂等键最长 128 字符（如 "hotfix-rollback-" 前缀合计 144 字符），不得被长度上限拒掉。
+        /// </summary>
+        [Fact]
+        public async Task Ingest_DerivedEventIdWithMaximumIdempotencyKey_ShouldBeAccepted()
+        {
+            var service = CreateService();
+            const string prefix = "hotfix-rollback-";
+            var derivedEventId = prefix + new string('k', OnlineRequestContextValidator.MaximumIdempotencyKeyLength);
+
+            var result = await service.IngestAsync(CreateEntry(derivedEventId, OnlineAuditDomain.Operation, 1_700_000_002_000L));
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(derivedEventId, result.Data.EventId);
+        }
+
+        /// <summary>
         /// 审计半边：EventId 含换行 / 空格等白名单外字符被拒绝（防日志注入与不可见字符攻击）。
         /// </summary>
         /// <param name="eventId">非法审计标识。</param>

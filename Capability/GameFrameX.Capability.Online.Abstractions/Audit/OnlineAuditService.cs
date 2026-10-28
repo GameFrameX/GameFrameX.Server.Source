@@ -63,8 +63,12 @@ public sealed class OnlineAuditService : IOnlineAuditReader
     /// <summary>页大小上限；超过即拒绝，防止消费方一次拉走全量审计。</summary>
     private const int MaxPageSize = 200;
 
-    /// <summary>审计标识（EventId）长度上限；超出即拒绝，防止超长标识打满审计存储（DoS 面）。</summary>
-    public const int MaxEventIdLength = 128;
+    /// <summary>
+    /// 审计标识（EventId）长度上限；超出即拒绝，防止超长标识打满审计存储（DoS 面）。
+    /// 取值须覆盖最长的派生标识：受控操作按「前缀 + 幂等键」派生（幂等键本身最长 128 字符，
+    /// 如 "hotfix-rollback-" 前缀合计 144 字符），否则合法的请求键会让审计接入被拒、命令整体失败。
+    /// </summary>
+    public const int MaxEventIdLength = 256;
 
     /// <summary>游标内部的字段分隔符（游标对消费方不透明，此分隔符属实现细节）。</summary>
     private const char CursorSeparator = '|';
