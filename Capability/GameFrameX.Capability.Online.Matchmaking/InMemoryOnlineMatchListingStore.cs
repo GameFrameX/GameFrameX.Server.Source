@@ -61,6 +61,33 @@ public sealed class InMemoryOnlineMatchListingStore : IOnlineMatchListingStore
         return Task.CompletedTask;
     }
 
+    /// <summary>条件写入列表项（比较与写入同临界区，版本不符拒写）。</summary>
+    /// <param name="listing">待写入的列表项。</param>
+    /// <param name="expectedRowVersion">期望的存量行版本。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>写入成功返回 <c>true</c>；版本不符或记录不存在返回 <c>false</c>。</returns>
+    public Task<bool> UpdateIfRowVersionAsync(OnlineMatchListing listing, long expectedRowVersion, CancellationToken cancellationToken = default)
+    {
+        if (listing == null)
+        {
+            throw new ArgumentNullException(nameof(listing));
+        }
+
+        lock (_syncRoot)
+        {
+            var key = BuildKey(listing.TenantId, listing.AppId, listing.ListingId);
+            if (!_listings.TryGetValue(key, out var existing) || existing.RowVersion != expectedRowVersion)
+            {
+                return Task.FromResult(false);
+            }
+
+            var stored = listing.Copy();
+            stored.RowVersion = expectedRowVersion + 1;
+            _listings[key] = stored;
+            return Task.FromResult(true);
+        }
+    }
+
     /// <summary>按标识查找列表项。</summary>
     /// <param name="tenantId">租户标识。</param>
     /// <param name="appId">App 标识。</param>

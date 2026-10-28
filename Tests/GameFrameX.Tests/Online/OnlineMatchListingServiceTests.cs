@@ -28,6 +28,7 @@
 // ==========================================================================================
 
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Matchmaking;
@@ -260,6 +261,183 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 验证条件写原语：版本匹配时写入成功且行版本 +1（存储强制，不信任调用方字段）。
+        /// </summary>
+        [Fact]
+        public async Task UpdateIfRowVersionAsync_WithMatchingVersion_ShouldWriteAndForceVersionBump()
+        {
+            // Arrange
+            var store = new InMemoryOnlineMatchListingStore();
+            var listing = await PublishAsync(new OnlineMatchListingService(store), OnlineJoinPolicy.Public, "cas-room", null, null, 4);
+            var mutated = listing.Copy();
+            mutated.JoinedCount = 2;
+            mutated.RowVersion = 999; // 调用方携带的版本字段不可信，存储必须强制 expected + 1。
+
+            // Act
+            var outcome = await store.UpdateIfRowVersionAsync(mutated, expectedRowVersion: 0);
+
+            // Assert
+            Assert.True(outcome);
+            var stored = await store.FindAsync(TenantId, AppId, listing.ListingId);
+            Assert.Equal(2, stored.JoinedCount);
+            Assert.Equal(1, stored.RowVersion);
+        }
+
+        /// <summary>
+        /// 验证条件写原语：期望版本过期（已被并发写）时拒写且存量保持不变。
+        /// </summary>
+        [Fact]
+        public async Task UpdateIfRowVersionAsync_WithStaleVersion_ShouldRejectAndKeepStored()
+        {
+            // Arrange
+            var store = new InMemoryOnlineMatchListingStore();
+            var listing = await PublishAsync(new OnlineMatchListingService(store), OnlineJoinPolicy.Public, "cas-room", null, null, 4);
+            var firstWrite = listing.Copy();
+            firstWrite.JoinedCount = 1;
+            Assert.True(await store.UpdateIfRowVersionAsync(firstWrite, expectedRowVersion: 0));
+
+            // Act：仍按过期版本 0 发起第二次条件写。
+            var staleWrite = listing.Copy();
+            staleWrite.JoinedCount = 3;
+            var outcome = await store.UpdateIfRowVersionAsync(staleWrite, expectedRowVersion: 0);
+
+            // Assert
+            Assert.False(outcome);
+            var stored = await store.FindAsync(TenantId, AppId, listing.ListingId);
+            Assert.Equal(1, stored.JoinedCount);
+            Assert.Equal(1, stored.RowVersion);
+        }
+
+        /// <summary>
+        /// 验证条件写原语：记录不存在时返回 false。
+        /// </summary>
+        [Fact]
+        public async Task UpdateIfRowVersionAsync_WithMissingListing_ShouldReturnFalse()
+        {
+            // Arrange
+            var store = new InMemoryOnlineMatchListingStore();
+            var ghost = new OnlineMatchListing
+            {
+                ListingId = "lst-missing",
+                TenantId = TenantId,
+                AppId = AppId,
+                Capacity = 4,
+                State = OnlineMatchListingState.Open,
+            };
+
+            // Act + Assert
+            Assert.False(await store.UpdateIfRowVersionAsync(ghost, expectedRowVersion: 0));
+            Assert.Null(await store.FindAsync(TenantId, AppId, "lst-missing"));
+        }
+
+        /// <summary>
+        /// 验证容量 1 的列表项并发两个 Join 恰一成功（TOCTOU 回归：写前栅栏确保双方读完同一快照后才放行写入，
+        /// 旧覆盖写实现下两路均成功，确定性红）。
+        /// </summary>
+        [Fact]
+        public async Task JoinAsync_ConcurrentJoinOnCapacityOne_ShouldAllowExactlyOneWinner()
+        {
+            // Arrange
+            var innerStore = new InMemoryOnlineMatchListingStore();
+            var gateStore = new FirstWriteGateListingStore(innerStore);
+            var service = new OnlineMatchListingService(gateStore);
+            var listing = await PublishAsync(service, OnlineJoinPolicy.Public, "tiny-room", null, null, 1);
+
+            // Act
+            var timeout = TimeSpan.FromSeconds(30);
+            var firstJoin = Task.Run(() => service.JoinAsync(CreatePlayerScope(PlayerTwo), listing.ListingId, CreateJoinRequest(PlayerTwo, null, null)));
+            var secondJoin = Task.Run(() => service.JoinAsync(CreatePlayerScope(PlayerThree), listing.ListingId, CreateJoinRequest(PlayerThree, null, null)));
+            var outcomes = await Task.WhenAll(firstJoin.WaitAsync(timeout), secondJoin.WaitAsync(timeout));
+
+            // Assert
+            var winners = 0;
+            foreach (var outcome in outcomes)
+            {
+                if (outcome.IsSuccess)
+                {
+                    winners++;
+                }
+                else
+                {
+                    Assert.Equal(OnlineErrorCode.StateNotReady, outcome.Code);
+                }
+            }
+
+            Assert.Equal(1, winners);
+            var stored = await innerStore.FindAsync(TenantId, AppId, listing.ListingId);
+            Assert.Equal(1, stored.JoinedCount);
+            Assert.Equal(OnlineMatchListingState.Full, stored.State);
+            Assert.Equal(1, stored.RowVersion);
+        }
+
+        /// <summary>
+        /// 验证 Join 与 Close 并发时终态恒为 Closed（TOCTOU 回归：旧覆盖写实现下 Join 的写入可把
+        /// Closed 复活为 Open，确定性红）；Close 本身恒成功。
+        /// </summary>
+        [Fact]
+        public async Task JoinAsync_RacingWithClose_FinalStateShouldStayClosed()
+        {
+            // Arrange
+            var innerStore = new InMemoryOnlineMatchListingStore();
+            var gateStore = new FirstWriteGateListingStore(innerStore);
+            var service = new OnlineMatchListingService(gateStore);
+            var listing = await PublishAsync(service, OnlineJoinPolicy.Public, "race-room", null, null, 4);
+
+            // Act：Join 先到写点驻留，Close 到达后放行双方，形成同版本竞态。
+            var timeout = TimeSpan.FromSeconds(30);
+            var joinTask = Task.Run(() => service.JoinAsync(CreatePlayerScope(PlayerTwo), listing.ListingId, CreateJoinRequest(PlayerTwo, null, null)));
+            var closeTask = Task.Run(() => service.CloseAsync(CreatePlayerScope(PlayerOne), listing.ListingId));
+            var raceOutcomes = await Task.WhenAll(joinTask.WaitAsync(timeout), closeTask.WaitAsync(timeout));
+
+            // Assert
+            Assert.True(raceOutcomes[1].IsSuccess);
+            var stored = await innerStore.FindAsync(TenantId, AppId, listing.ListingId);
+            Assert.Equal(OnlineMatchListingState.Closed, stored.State);
+        }
+
+        /// <summary>
+        /// 验证 Close 成功后 Join 必拒（关闭终态不被加入路径复活）。
+        /// </summary>
+        [Fact]
+        public async Task JoinAsync_AfterClose_ShouldBeRejected()
+        {
+            // Arrange
+            var service = CreateService();
+            var listing = await PublishAsync(service, OnlineJoinPolicy.Public, "shut-room", null, null, 4);
+
+            // Act
+            var closed = await service.CloseAsync(CreatePlayerScope(PlayerOne), listing.ListingId);
+            var joined = await service.JoinAsync(CreatePlayerScope(PlayerTwo), listing.ListingId, CreateJoinRequest(PlayerTwo, null, null));
+
+            // Assert
+            Assert.True(closed.IsSuccess);
+            Assert.False(joined.IsSuccess);
+            Assert.Equal(OnlineErrorCode.StateEnded, joined.Code);
+        }
+
+        /// <summary>
+        /// 验证条件写持续冲突时重试耗尽返回 VersionConflict（重试上限恰为 3 轮，存储不被污染）。
+        /// </summary>
+        [Fact]
+        public async Task JoinAsync_WhenConditionalWriteAlwaysConflicts_ShouldReturnVersionConflictAfterRetries()
+        {
+            // Arrange
+            var conflictStore = new AlwaysConflictListingStore(new InMemoryOnlineMatchListingStore());
+            var service = new OnlineMatchListingService(conflictStore);
+            var listing = await PublishAsync(service, OnlineJoinPolicy.Public, "busy-room", null, null, 4);
+
+            // Act
+            var outcome = await service.JoinAsync(CreatePlayerScope(PlayerTwo), listing.ListingId, CreateJoinRequest(PlayerTwo, null, null));
+
+            // Assert
+            Assert.False(outcome.IsSuccess);
+            Assert.Equal(OnlineErrorCode.VersionConflict, outcome.Code);
+            Assert.Equal(3, conflictStore.ConditionalWriteAttempts);
+            var stored = await conflictStore.FindAsync(TenantId, AppId, listing.ListingId);
+            Assert.Equal(0, stored.JoinedCount);
+        }
+
+        /// <summary>
         /// 创建被测服务（内存存储）。
         /// </summary>
         /// <returns>列表项服务实例。</returns>
@@ -324,6 +502,119 @@ namespace GameFrameX.Tests.Online
         private static OnlineScope CreatePlayerScope(long playerId)
         {
             return new OnlineScope(TenantId, AppId, ServerId, playerId);
+        }
+
+        /// <summary>
+        /// 写前栅栏装饰存储：前两次条件写调用互相等待，
+        /// 构造「双方都读完同一快照后才开始写」的确定性竞态窗口（GFX-1106 回归专用；
+        /// 新建覆盖 SaveAsync 直接转发，栅栏不得拦截发布路径）。
+        /// </summary>
+        private sealed class FirstWriteGateListingStore : IOnlineMatchListingStore
+        {
+            /// <summary>被装饰的底层存储。</summary>
+            private readonly IOnlineMatchListingStore _innerStore;
+
+            /// <summary>写前栅栏：两个写者都到达后放行。</summary>
+            private readonly TaskCompletionSource<bool> _writeGate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            /// <summary>已到达写点的写者计数。</summary>
+            private int _arrivedWriters;
+
+            /// <summary>
+            /// 初始化 <see cref="FirstWriteGateListingStore"/>。
+            /// </summary>
+            /// <param name="innerStore">底层存储。</param>
+            public FirstWriteGateListingStore(IOnlineMatchListingStore innerStore)
+            {
+                _innerStore = innerStore;
+            }
+
+            /// <summary>保存列表项（发布新建专用，直接转发不过栅栏）。</summary>
+            public Task SaveAsync(OnlineMatchListing listing, CancellationToken cancellationToken = default)
+            {
+                return _innerStore.SaveAsync(listing, cancellationToken);
+            }
+
+            /// <summary>条件写入列表项（过栅栏后转发）。</summary>
+            public async Task<bool> UpdateIfRowVersionAsync(OnlineMatchListing listing, long expectedRowVersion, CancellationToken cancellationToken = default)
+            {
+                await WaitForWriteGateOnce();
+                return await _innerStore.UpdateIfRowVersionAsync(listing, expectedRowVersion, cancellationToken);
+            }
+
+            /// <summary>按标识查找列表项（直接转发）。</summary>
+            public Task<OnlineMatchListing> FindAsync(long tenantId, long appId, string listingId, CancellationToken cancellationToken = default)
+            {
+                return _innerStore.FindAsync(tenantId, appId, listingId, cancellationToken);
+            }
+
+            /// <summary>列出作用域内全部列表项（直接转发）。</summary>
+            public Task<IReadOnlyList<OnlineMatchListing>> ListAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+            {
+                return _innerStore.ListAsync(tenantId, appId, cancellationToken);
+            }
+
+            /// <summary>
+            /// 第一个写者驻留等待；第二个写者到达后放行双方，此后所有写调用直接通过。
+            /// </summary>
+            /// <returns>放行完成通知。</returns>
+            private Task WaitForWriteGateOnce()
+            {
+                if (Interlocked.Increment(ref _arrivedWriters) == 2)
+                {
+                    _writeGate.TrySetResult(true);
+                    return Task.CompletedTask;
+                }
+
+                return _writeGate.Task;
+            }
+        }
+
+        /// <summary>
+        /// 恒冲突装饰存储：条件写恒返回 false 且不落盘（驱动服务层 CAS 重试耗尽路径），
+        /// 新建覆盖与读路径直接转发。
+        /// </summary>
+        private sealed class AlwaysConflictListingStore : IOnlineMatchListingStore
+        {
+            /// <summary>被装饰的底层存储。</summary>
+            private readonly IOnlineMatchListingStore _innerStore;
+
+            /// <summary>条件写调用次数（断言重试上限用）。</summary>
+            public int ConditionalWriteAttempts { get; private set; }
+
+            /// <summary>
+            /// 初始化 <see cref="AlwaysConflictListingStore"/>。
+            /// </summary>
+            /// <param name="innerStore">底层存储。</param>
+            public AlwaysConflictListingStore(IOnlineMatchListingStore innerStore)
+            {
+                _innerStore = innerStore;
+            }
+
+            /// <summary>保存列表项（直接转发）。</summary>
+            public Task SaveAsync(OnlineMatchListing listing, CancellationToken cancellationToken = default)
+            {
+                return _innerStore.SaveAsync(listing, cancellationToken);
+            }
+
+            /// <summary>条件写入列表项（恒冲突，不落盘）。</summary>
+            public Task<bool> UpdateIfRowVersionAsync(OnlineMatchListing listing, long expectedRowVersion, CancellationToken cancellationToken = default)
+            {
+                ConditionalWriteAttempts++;
+                return Task.FromResult(false);
+            }
+
+            /// <summary>按标识查找列表项（直接转发）。</summary>
+            public Task<OnlineMatchListing> FindAsync(long tenantId, long appId, string listingId, CancellationToken cancellationToken = default)
+            {
+                return _innerStore.FindAsync(tenantId, appId, listingId, cancellationToken);
+            }
+
+            /// <summary>列出作用域内全部列表项（直接转发）。</summary>
+            public Task<IReadOnlyList<OnlineMatchListing>> ListAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+            {
+                return _innerStore.ListAsync(tenantId, appId, cancellationToken);
+            }
         }
     }
 }

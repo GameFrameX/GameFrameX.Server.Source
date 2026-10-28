@@ -121,6 +121,13 @@ public sealed class OnlineMatchListing
     public OnlineMatchListingState State { get; set; }
 
     /// <summary>
+    /// 获取或设置行版本（乐观锁）。新建为 0，存储层每次条件写入成功后 +1；
+    /// 更新一律走 <see cref="IOnlineMatchListingStore.UpdateIfRowVersionAsync"/>，
+    /// 版本不符即并发冲突，拒绝写入。
+    /// </summary>
+    public long RowVersion { get; set; }
+
+    /// <summary>
     /// 获取或设置创建时刻（UTC 毫秒）。
     /// </summary>
     public long CreatedAtTime { get; set; }
@@ -161,6 +168,7 @@ public sealed class OnlineMatchListing
             Capacity = Capacity,
             JoinedCount = JoinedCount,
             State = State,
+            RowVersion = RowVersion,
             CreatedAtTime = CreatedAtTime,
         };
     }

@@ -39,12 +39,32 @@ namespace GameFrameX.Capability.Online.Matchmaking;
 public interface IOnlineMatchListingStore
 {
     /// <summary>
-    /// 保存列表项（新增或覆盖）。
+    /// 保存列表项（发布新建专用：按键覆盖写，不校验版本）。
+    /// <para>
+    /// 更新一律走 <see cref="UpdateIfRowVersionAsync"/> 条件写；服务层更新路径
+    /// 禁止调用本方法（覆盖写会丢失并发更新，见 GFX-1106）。
+    /// </para>
     /// </summary>
     /// <param name="listing">列表项。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>完成通知。</returns>
     Task SaveAsync(OnlineMatchListing listing, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 条件写入列表项（乐观锁 CAS）：仅当存量行存在且其 <see cref="OnlineMatchListing.RowVersion"/>
+    /// 等于 <paramref name="expectedRowVersion"/> 时写入；写入行的版本强制置为
+    /// <c>expectedRowVersion + 1</c>（不信任调用方携带的版本字段）。
+    /// <para>
+    /// 版本不符（已被并发修改）或记录不存在返回 <c>false</c>，调用方应重读后重试。
+    /// 未来接入 GameDb 持久化时，行模型继承 BaseCacheState 并直接映射
+    /// DB 层 <c>UpdateIfRowVersionAsync</c>（与 GameDbOnlinePlayerStorageStore 约定一致）。
+    /// </para>
+    /// </summary>
+    /// <param name="listing">待写入的列表项（版本字段以本方法写入的为准）。</param>
+    /// <param name="expectedRowVersion">期望的存量行版本（来自本次读取）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>写入成功返回 <c>true</c>；版本不符或记录不存在返回 <c>false</c>。</returns>
+    Task<bool> UpdateIfRowVersionAsync(OnlineMatchListing listing, long expectedRowVersion, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 按标识查找列表项。

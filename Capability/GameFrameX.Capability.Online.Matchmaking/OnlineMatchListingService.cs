@@ -43,12 +43,19 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 /// ② 对外输出（查询结果、事件、审计）不携带 <see cref="OnlineMatchListing.Password"/> 与
 /// <see cref="OnlineMatchListing.InvitedPlayerIds"/>——两者只参与判定（脱敏红线）。
 /// ③ 容量是唯一事实源：<see cref="OnlineMatchListingState.Full"/> 由容量推导，不接受调用方手工置位。
+/// ④ 更新一律走存储层 CAS（<see cref="OnlineMatchListing.RowVersion"/> 乐观锁）：Join/Close 为
+/// 「读 → 校验 → 条件写 → 冲突重读重试」回路，重试上限 <see cref="MaxWriteAttempts"/>，用尽返回
+/// <see cref="OnlineErrorCode.VersionConflict"/>；<see cref="IOnlineMatchListingStore.SaveAsync"/>
+/// 仅限发布新建，服务层更新路径禁止覆盖写（GFX-1106 TOCTOU 红线）。
 /// </para>
 /// </summary>
 public sealed class OnlineMatchListingService
 {
     /// <summary>默认返回条数上限。</summary>
     private const int DefaultQueryLimit = 50;
+
+    /// <summary>并发写重试上限（CAS 版本冲突时重读重试的轮数，用尽返回版本冲突）。</summary>
+    private const int MaxWriteAttempts = 3;
 
     /// <summary>列表项存储。</summary>
     private readonly IOnlineMatchListingStore _store;
@@ -233,33 +240,44 @@ public sealed class OnlineMatchListingService
             return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.ParameterInvalid, "请求方标识与作用域主体位不一致");
         }
 
-        var listing = await _store.FindAsync(scope.TenantId, scope.AppId, listingId, cancellationToken);
-        if (listing == null)
-        {
-            return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.ResourceNotFound, "列表项不存在");
-        }
-
-        if (listing.State == OnlineMatchListingState.Closed)
-        {
-            return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.StateEnded, "列表项已关闭");
-        }
-
         var members = ResolveMembers(request);
-        var policyFailure = ResolveJoinPolicy(listing, members, request.Password);
-        if (policyFailure != null)
+        for (var attempt = 0; attempt < MaxWriteAttempts; attempt++)
         {
-            return policyFailure;
+            var listing = await _store.FindAsync(scope.TenantId, scope.AppId, listingId, cancellationToken);
+            if (listing == null)
+            {
+                return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.ResourceNotFound, "列表项不存在");
+            }
+
+            if (listing.State == OnlineMatchListingState.Closed)
+            {
+                return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.StateEnded, "列表项已关闭");
+            }
+
+            var policyFailure = ResolveJoinPolicy(listing, members, request.Password);
+            if (policyFailure != null)
+            {
+                return policyFailure;
+            }
+
+            if (listing.JoinedCount + members.Count > listing.Capacity)
+            {
+                return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.StateNotReady, "剩余容量不足");
+            }
+
+            var expectedRowVersion = listing.RowVersion;
+            listing.JoinedCount += members.Count;
+            listing.State = listing.JoinedCount >= listing.Capacity ? OnlineMatchListingState.Full : OnlineMatchListingState.Open;
+            if (await _store.UpdateIfRowVersionAsync(listing, expectedRowVersion, cancellationToken))
+            {
+                listing.RowVersion = expectedRowVersion + 1;
+                return OnlineResult<OnlineMatchListing>.Ok(Sanitize(listing));
+            }
+
+            // CAS 失败：列表项已被并发修改，重读最新状态后整轮重校验（关闭/策略/容量均可能已变化）。
         }
 
-        if (listing.JoinedCount + members.Count > listing.Capacity)
-        {
-            return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.StateNotReady, "剩余容量不足");
-        }
-
-        listing.JoinedCount += members.Count;
-        listing.State = listing.JoinedCount >= listing.Capacity ? OnlineMatchListingState.Full : OnlineMatchListingState.Open;
-        await _store.SaveAsync(listing, cancellationToken);
-        return OnlineResult<OnlineMatchListing>.Ok(Sanitize(listing));
+        return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.VersionConflict, "列表项被并发修改，请重试");
     }
 
     /// <summary>
@@ -277,19 +295,31 @@ public sealed class OnlineMatchListingService
             return failure;
         }
 
-        var listing = await _store.FindAsync(scope.TenantId, scope.AppId, listingId, cancellationToken);
-        if (listing == null || listing.OwnerPlayerId != scope.PlayerId)
+        for (var attempt = 0; attempt < MaxWriteAttempts; attempt++)
         {
-            return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.ResourceNotFound, "列表项不存在");
-        }
+            var listing = await _store.FindAsync(scope.TenantId, scope.AppId, listingId, cancellationToken);
+            if (listing == null || listing.OwnerPlayerId != scope.PlayerId)
+            {
+                return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.ResourceNotFound, "列表项不存在");
+            }
 
-        if (listing.State != OnlineMatchListingState.Closed)
-        {
+            if (listing.State == OnlineMatchListingState.Closed)
+            {
+                return OnlineResult<OnlineMatchListing>.Ok(Sanitize(listing));
+            }
+
+            var expectedRowVersion = listing.RowVersion;
             listing.State = OnlineMatchListingState.Closed;
-            await _store.SaveAsync(listing, cancellationToken);
+            if (await _store.UpdateIfRowVersionAsync(listing, expectedRowVersion, cancellationToken))
+            {
+                listing.RowVersion = expectedRowVersion + 1;
+                return OnlineResult<OnlineMatchListing>.Ok(Sanitize(listing));
+            }
+
+            // CAS 失败：列表项已被并发修改，重读后重试；若已被并发关闭，下一轮直接返回既有终态。
         }
 
-        return OnlineResult<OnlineMatchListing>.Ok(Sanitize(listing));
+        return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.VersionConflict, "列表项被并发修改，请重试");
     }
 
     /// <summary>
