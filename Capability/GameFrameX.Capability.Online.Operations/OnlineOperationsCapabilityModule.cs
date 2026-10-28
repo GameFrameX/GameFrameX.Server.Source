@@ -123,12 +123,14 @@ public sealed class OnlineOperationsCapabilityModule : ICapabilityModule, IAdmin
     }
 
     /// <summary>
-    /// 注册运营能力：解析统一审计服务；注册内存热更版本存储，要求宿主提供版本切换执行器，按选项注册制品获取器并装配热更回滚服务；
+    /// 注册运营能力：解析统一审计服务；注册内存热更版本存储，要求宿主提供版本切换执行器，按选项注册制品获取器，
+    /// 注册回滚状态轨迹日志的空实现缺省（宿主覆盖恒胜出）并装配热更回滚服务；
     /// 仅在撮合票据、队伍与对局 Actor 存储均在场时装配总览服务，仅在资产查询、社交关系存储与对局 Actor 存储均在场时装配玩家时间线服务；
     /// 最后对全部已知在线事件主题注册事件与审计桥。
     /// </summary>
     /// <remarks>
-    /// Resolves the unified audit service, registers the in-memory hotfix version store, requires the host rollback executor, registers the artifact fetcher from options and builds the hotfix rollback service.
+    /// Resolves the unified audit service, registers the in-memory hotfix version store, requires the host rollback executor, registers the artifact fetcher from options,
+    /// registers the silent default of the rollback trace log (host overrides always win) and builds the hotfix rollback service.
     /// The overview service is built only when ticket, party and match actor stores exist; the player timeline only when asset query, social graph and match actor stores exist.
     /// Finally subscribes the event and audit bridge to all known online event topics.
     /// </remarks>
@@ -149,9 +151,11 @@ public sealed class OnlineOperationsCapabilityModule : ICapabilityModule, IAdmin
         var idempotency = context.GetService<OnlineIdempotencyService>();
         context.RequireHostService<IOnlineHotfixRollbackExecutor>();
         var rollbackExecutor = context.GetService<IOnlineHotfixRollbackExecutor>();
+        context.AddService<IOnlineHotfixRollbackLog>(static _ => new NullOnlineHotfixRollbackLog());
+        var rollbackLog = context.GetService<IOnlineHotfixRollbackLog>();
         context.AddService<IOnlineHotfixArtifactFetcher>(resolver => new OnlineHotfixArtifactFetcher(options.ArtifactFetch));
         var artifactFetcher = context.GetService<IOnlineHotfixArtifactFetcher>();
-        _hotfixRollback = new OnlineHotfixRollbackService(hotfixVersionStore, idempotency, audit, rollbackExecutor, artifactFetcher, eventPublisher);
+        _hotfixRollback = new OnlineHotfixRollbackService(hotfixVersionStore, idempotency, audit, rollbackExecutor, artifactFetcher, eventPublisher, rollbackLog);
         context.AddService(_hotfixRollback);
 
         // 总览 / 时间线（可选叶子产物经 manifest 可选声明 + GetOptionalService，缺席 = null 不装配；

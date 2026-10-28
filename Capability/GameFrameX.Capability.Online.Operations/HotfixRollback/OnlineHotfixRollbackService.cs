@@ -48,7 +48,7 @@ namespace GameFrameX.Capability.Online.Operations.HotfixRollback;
 /// ① <b>回滚命令顺序固定</b>——参数校验（4001 宁拒毋缺）→ 幂等先行（重放透传首次结果）→
 /// 读清单（目标未登记 4002 / 无活跃版本 5001 / 目标 = 当前 5003）→ 协议兼容检查（不兼容 6002 拒绝）→
 /// <b>审计先行</b>（统一审计，Domain = Operation，审计失败 1001 拒绝且切换未发生——「无审计不执行」）→
-/// 执行器回滚（未装配 / 失败 8002）→ 切活跃版本 → 事件发布 → 幂等落定；
+/// 执行器回滚（未装配 / 失败 8002）→ 切活跃版本（失败按指数退避重试，耗尽即反切执行器回旧版本并告警）→ 事件发布 → 幂等落定；
 /// ② <b>登记 / 激活不落审计</b>——登记是发布流水线簿记、激活是装配面初始化入口，回滚是唯一受控操作
 /// （操作者显式命令 + 审计）；回滚审计标识从命令幂等键确定性派生（<c>hotfix-rollback-{幂等键}</c>，
 /// 重复执行同一命令命中同一条审计）；
@@ -56,6 +56,10 @@ namespace GameFrameX.Capability.Online.Operations.HotfixRollback;
 /// ServerId = 0（对齐审计口径）；多实例逐实例回滚编排归运维，本服务单进程语义；
 /// ④ <b>依赖方向</b>——实际 DLL 加载切换经 <see cref="IOnlineHotfixRollbackExecutor"/> 承载（装配面），
 /// 本模块不引用 Core。
+/// ⑤ <b>状态收敛与轨迹</b>——执行器切换成功后，活跃指针写入失败自动重试（指数退避，至多
+/// <see cref="ActivePointerWriteMaxRetryCount"/> 次），重试耗尽即反切执行器回守卫期旧版本（补偿不受命令
+/// 取消影响），绝不裸露「执行器已切换、活跃指针未更新」的不一致状态；执行链全程状态变迁经
+/// <see cref="IOnlineHotfixRollbackLog"/> 落轨迹，任意失败点可从日志还原终态；
 /// </para>
 /// </summary>
 public sealed class OnlineHotfixRollbackService
@@ -96,6 +100,27 @@ public sealed class OnlineHotfixRollbackService
     private readonly IOnlineEventPublisher _eventPublisher;
 
     /// <summary>
+    /// 活跃指针写入失败重试次数上限（总尝试数 = 1 + 本值；指数退避）。
+    /// </summary>
+    private const int ActivePointerWriteMaxRetryCount = 3;
+
+    /// <summary>
+    /// 活跃指针写入重试的指数退避基准延迟缺省值（200ms，逐次翻倍：200 / 400 / 800）。
+    /// </summary>
+    private static readonly TimeSpan DefaultActivePointerWriteRetryBaseDelay = TimeSpan.FromMilliseconds(200);
+
+    /// <summary>
+    /// 回滚状态变迁日志出口（可空 = 未接线时跳过轨迹日志；回滚结果不依赖日志出口）。
+    /// </summary>
+    private readonly IOnlineHotfixRollbackLog _rollbackLog;
+
+    /// <summary>
+    /// 活跃指针写入重试的指数退避基准延迟（测试注入零延迟避免时序抖动）。
+    /// </summary>
+    private readonly TimeSpan _activePointerWriteRetryBaseDelay;
+
+
+    /// <summary>
     /// 初始化 <see cref="OnlineHotfixRollbackService"/>。
     /// </summary>
     /// <param name="store">版本清单存储。</param>
@@ -104,7 +129,9 @@ public sealed class OnlineHotfixRollbackService
     /// <param name="executor">回滚执行器（运行时装配注入；未装配时回滚命令拒绝）。</param>
     /// <param name="artifactFetcher">登记期制品获取器（运行时装配注入；清单携带制品字段时必须装配，否则登记拒绝）。</param>
     /// <param name="eventPublisher">事件发布出口（未接线时跳过事件发布）。</param>
-    public OnlineHotfixRollbackService(IOnlineHotfixVersionStore store, OnlineIdempotencyService idempotencyService, OnlineAuditService auditService, IOnlineHotfixRollbackExecutor executor = null, IOnlineHotfixArtifactFetcher artifactFetcher = null, IOnlineEventPublisher eventPublisher = null)
+    /// <param name="rollbackLog">回滚状态变迁日志出口（未接线时跳过轨迹日志）。</param>
+    /// <param name="activePointerWriteRetryBaseDelay">活跃指针写入重试的指数退避基准延迟（null = 200ms 缺省；测试可注入 <see cref="TimeSpan.Zero"/>）。</param>
+    public OnlineHotfixRollbackService(IOnlineHotfixVersionStore store, OnlineIdempotencyService idempotencyService, OnlineAuditService auditService, IOnlineHotfixRollbackExecutor executor = null, IOnlineHotfixArtifactFetcher artifactFetcher = null, IOnlineEventPublisher eventPublisher = null, IOnlineHotfixRollbackLog rollbackLog = null, TimeSpan? activePointerWriteRetryBaseDelay = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _idempotencyService = idempotencyService ?? throw new ArgumentNullException(nameof(idempotencyService));
@@ -112,6 +139,8 @@ public sealed class OnlineHotfixRollbackService
         _executor = executor;
         _artifactFetcher = artifactFetcher;
         _eventPublisher = eventPublisher;
+        _rollbackLog = rollbackLog;
+        _activePointerWriteRetryBaseDelay = activePointerWriteRetryBaseDelay ?? DefaultActivePointerWriteRetryBaseDelay;
     }
 
     /// <summary>
@@ -214,7 +243,8 @@ public sealed class OnlineHotfixRollbackService
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>回滚回执（重复命令幂等回放首次结果，<c>IsReplay = true</c>）；
     /// 参数缺失 4001 / 目标未登记 4002 / 无活跃版本 5001 / 目标=当前 5003 /
-    /// 协议不兼容 6002 / 审计失败 1001 / 执行器未装配或失败 8002。</returns>
+    /// 协议不兼容 6002 / 审计失败 1001 / 执行器未装配或失败 8002 /
+    /// 活跃指针切换重试耗尽（已反切回旧版本、状态一致可重试）或反切失败（状态不一致须对账）5000。</returns>
     public async Task<OnlineResult<OnlineHotfixRollbackResult>> RollbackAsync(OnlineHotfixRollbackRequest request, CancellationToken cancellationToken = default)
     {
         var validation = ValidateRollbackRequest(request);
@@ -274,7 +304,8 @@ public sealed class OnlineHotfixRollbackService
     }
 
     /// <summary>
-    /// 回滚执行链（审计先行 → 执行器 → 切活跃 → 事件 → 幂等落定）。
+    /// 回滚执行链（审计先行 → 执行器 → 切活跃（失败指数退避重试，耗尽反切）→ 事件 → 幂等落定；
+    /// 全程状态变迁经 <see cref="IOnlineHotfixRollbackLog"/> 落轨迹）。
     /// </summary>
     /// <param name="anchor">两键锚定作用域。</param>
     /// <param name="request">回滚命令请求。</param>
@@ -296,27 +327,35 @@ public sealed class OnlineHotfixRollbackService
             return OnlineResult<OnlineHotfixRollbackResult>.Fail(OnlineErrorCode.DependencyUnavailable, "回滚执行器未装配（运行时装配 X4 须注入 IOnlineHotfixRollbackExecutor）");
         }
 
+        // 状态轨迹：审计已落、守卫已过——执行链正式启动（此前任何失败点状态零变迁，结果码即终态）。
+        WriteLog(RollbackLogLevel.Info, BuildTraceMessage(anchor, request, "chain-started", "previous=" + preparation.Current.Version + "|target=" + request.TargetVersion));
+
         try
         {
             await _executor.RollbackAsync(request.TargetVersion, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
+            // 状态轨迹：执行器未切换成功，系统仍在旧版本（状态一致）——失败结果码即终态，无须补偿。
+            WriteLog(RollbackLogLevel.Warn, BuildTraceMessage(anchor, request, "executor-switch-failed", "target=" + request.TargetVersion + "|error=" + ex.Message));
             await FailIdempotencyAsync(anchor, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
             return OnlineResult<OnlineHotfixRollbackResult>.Fail(OnlineErrorCode.DependencyUnavailable, "回滚执行器执行失败（回滚未生效）：" + ex.Message);
         }
 
-        string previousVersion;
-        try
+        // 状态轨迹：执行器已切到目标版本——此后到活跃指针落定之间是两处状态可能分叉的窗口。
+        WriteLog(RollbackLogLevel.Info, BuildTraceMessage(anchor, request, "executor-switched", "target=" + request.TargetVersion));
+
+        var switchOutcome = await SwitchActiveVersionWithRetryAsync(anchor, request, preparation, cancellationToken).ConfigureAwait(false);
+        if (!switchOutcome.IsSuccess)
         {
-            previousVersion = await _store.SetActiveAsync(anchor.TenantId, anchor.AppId, request.TargetVersion, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            // 执行器已切换但活跃指针未落——已登记残留风险（review.md）：装配层启动对账收敛；审计已先行留痕。
             await FailIdempotencyAsync(anchor, request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
-            return OnlineResult<OnlineHotfixRollbackResult>.Fail(OnlineErrorCode.InternalError, "活跃版本切换失败（状态不一致，须对账）：" + ex.Message);
+            return OnlineResult<OnlineHotfixRollbackResult>.Fail(switchOutcome.Code, switchOutcome.Message);
         }
+
+        var previousVersion = switchOutcome.Data;
+
+        // 状态轨迹：活跃指针已切换——执行器与指针同指目标版本，状态回到一致。
+        WriteLog(RollbackLogLevel.Info, BuildTraceMessage(anchor, request, "pointer-switched", "previous=" + previousVersion + "|target=" + request.TargetVersion));
 
         var summary = BuildCompatibilitySummary(preparation.Report);
         if (_eventPublisher != null)
@@ -332,7 +371,155 @@ public sealed class OnlineHotfixRollbackService
             CompatibilitySummary = summary,
         };
         await _idempotencyService.CompleteAsync(anchor, request.IdempotencyKey, EncodeReplayToken(previousVersion, request.TargetVersion, summary), false, cancellationToken).ConfigureAwait(false);
+
+        // 状态轨迹：事件已发、幂等已落定——回滚完成（终态 = 执行器与活跃指针同指目标版本）。
+        WriteLog(RollbackLogLevel.Info, BuildTraceMessage(anchor, request, "rollback-completed", "previous=" + previousVersion + "|target=" + request.TargetVersion));
         return OnlineResult<OnlineHotfixRollbackResult>.Ok(result);
+    }
+
+    /// <summary>
+    /// 带指数退避重试的活跃指针切换（总尝试数 = 1 + <see cref="ActivePointerWriteMaxRetryCount"/>；
+    /// 第 n 次失败后延迟 基准 × 2^(n-1)；重试耗尽进入反切补偿——执行器已切换而指针未落时，
+    /// 不再裸露不一致状态，逐次尝试与耗尽均落状态轨迹）。
+    /// </summary>
+    /// <param name="anchor">两键锚定作用域。</param>
+    /// <param name="request">回滚命令请求。</param>
+    /// <param name="preparation">守卫链产物（Current = 反切锚定的旧版本）。</param>
+    /// <param name="cancellationToken">取消令牌（取消视同本次尝试失败，照常进入补偿链）。</param>
+    /// <returns>成功返回切换前活跃版本号；重试耗尽返回反切结果（已反切 = 状态一致 5000 可重试 / 反切失败 = 须对账 5000）。</returns>
+    private async Task<OnlineResult<string>> SwitchActiveVersionWithRetryAsync(OnlineScope anchor, OnlineHotfixRollbackRequest request, RollbackPreparation preparation, CancellationToken cancellationToken)
+    {
+        var totalAttempts = 1 + ActivePointerWriteMaxRetryCount;
+        Exception lastFailure = null;
+        for (var attempt = 1; attempt <= totalAttempts; attempt++)
+        {
+            try
+            {
+                var previousVersion = await _store.SetActiveAsync(anchor.TenantId, anchor.AppId, request.TargetVersion, cancellationToken).ConfigureAwait(false);
+                return OnlineResult<string>.Ok(previousVersion);
+            }
+            catch (Exception ex)
+            {
+                lastFailure = ex;
+                if (attempt >= totalAttempts)
+                {
+                    break;
+                }
+
+                var retryDelayMilliseconds = GetExponentialBackoffMilliseconds(attempt);
+
+                // 状态轨迹：指针写入单次失败——记录第几次 / 共几次与退避间隔，失败点可还原。
+                WriteLog(RollbackLogLevel.Warn, BuildTraceMessage(anchor, request, "pointer-write-failed", "attempt=" + attempt + "/" + totalAttempts + "|retryInMilliseconds=" + retryDelayMilliseconds.ToString(System.Globalization.CultureInfo.InvariantCulture) + "|error=" + ex.Message));
+                try
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(retryDelayMilliseconds), cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // 命令取消视同本次尝试失败：执行器已切换，状态收敛优先于命令生命周期，直接进入耗尽补偿。
+                    break;
+                }
+            }
+        }
+
+        var lastFailureMessage = lastFailure == null ? string.Empty : lastFailure.Message;
+
+        // 状态轨迹：重试耗尽——进入反切补偿（此行之后执行器与指针可能短暂分叉，以反切结果行收束）。
+        WriteLog(RollbackLogLevel.Error, BuildTraceMessage(anchor, request, "pointer-write-exhausted", "attempts=" + totalAttempts.ToString(System.Globalization.CultureInfo.InvariantCulture) + "|error=" + lastFailureMessage));
+        return await RevertExecutorAfterPointerFailureAsync(anchor, request, preparation, lastFailureMessage).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 反切补偿：把执行器切回守卫期旧版本（活跃指针仍指旧版本——反切成功即两处状态一致、
+    /// 回滚未生效、命令可重试；反切失败为真正须对账的不一致终态并落 Error 轨迹）。
+    /// </summary>
+    /// <param name="anchor">两键锚定作用域。</param>
+    /// <param name="request">回滚命令请求。</param>
+    /// <param name="preparation">守卫链产物（Current.Version = 反切目标）。</param>
+    /// <param name="pointerFailureMessage">指针写入重试耗尽时的最后错误消息。</param>
+    /// <returns>反切成功或失败对应的 5000 错误结果（回滚未生效）。</returns>
+    private async Task<OnlineResult<string>> RevertExecutorAfterPointerFailureAsync(OnlineScope anchor, OnlineHotfixRollbackRequest request, RollbackPreparation preparation, string pointerFailureMessage)
+    {
+        var previousVersion = preparation.Current.Version;
+        try
+        {
+            // 反切用独立取消令牌：命令取消不得跳过补偿——执行器已切到目标版本，状态收敛优先于命令生命周期。
+            await _executor.RollbackAsync(previousVersion, CancellationToken.None).ConfigureAwait(false);
+
+            // 状态轨迹：反切成功——终态 = 执行器与活跃指针一致停留在旧版本，回滚未生效，命令可重试。
+            WriteLog(RollbackLogLevel.Warn, BuildTraceMessage(anchor, request, "executor-reverted", "previous=" + previousVersion + "|target=" + request.TargetVersion + "|detail=回滚未生效，执行器与活跃指针一致停留在旧版本，命令可重试"));
+            return OnlineResult<string>.Fail(OnlineErrorCode.InternalError, "活跃版本切换重试耗尽，已反切执行器回旧版本（回滚未生效，状态一致，可重试）：" + previousVersion + "；指针写入最后错误：" + pointerFailureMessage);
+        }
+        catch (Exception revertFailure)
+        {
+            var revertFailureMessage = revertFailure == null ? string.Empty : revertFailure.Message;
+
+            // 状态轨迹：反切失败——终态 = 执行器停目标版本、活跃指针停旧版本（不一致，须对账）。
+            WriteLog(RollbackLogLevel.Error, BuildTraceMessage(anchor, request, "executor-revert-failed", "executor=" + request.TargetVersion + "|activePointer=" + previousVersion + "|detail=状态不一致，须对账|error=" + revertFailureMessage));
+            return OnlineResult<string>.Fail(OnlineErrorCode.InternalError, "活跃版本切换重试耗尽且反切旧版本失败（执行器已切到 " + request.TargetVersion + " 但活跃指针仍为 " + previousVersion + "，状态不一致，须对账）；指针写入错误：" + pointerFailureMessage + "；反切错误：" + revertFailureMessage);
+        }
+    }
+
+    /// <summary>
+    /// 计算第 <paramref name="failedAttempt"/> 次失败后的指数退避延迟（基准 × 2^(failedAttempt-1)，毫秒）。
+    /// </summary>
+    /// <param name="failedAttempt">刚失败的尝试序号（从 1 起）。</param>
+    /// <returns>退避延迟毫秒数。</returns>
+    private long GetExponentialBackoffMilliseconds(int failedAttempt)
+    {
+        // 负延迟注入属构造误用，钳到 0 防护 Task.Delay 抛出参数异常（补偿路径不得被观测参数击穿）。
+        var baseDelayMilliseconds = Math.Max(0L, (long)_activePointerWriteRetryBaseDelay.TotalMilliseconds);
+        return baseDelayMilliseconds << (failedAttempt - 1);
+    }
+
+    /// <summary>
+    /// 写一条回滚状态轨迹日志（未接线跳过；出口异常静默吞并——日志失败不得影响回滚链路）。
+    /// </summary>
+    /// <param name="level">日志级别。</param>
+    /// <param name="message">轨迹行内容。</param>
+    private void WriteLog(RollbackLogLevel level, string message)
+    {
+        if (_rollbackLog == null)
+        {
+            return;
+        }
+
+        try
+        {
+            switch (level)
+            {
+                case RollbackLogLevel.Warn:
+                    _rollbackLog.Warn(message);
+                    break;
+                case RollbackLogLevel.Error:
+                    _rollbackLog.Error(message);
+                    break;
+                default:
+                    _rollbackLog.Info(message);
+                    break;
+            }
+        }
+        catch (Exception)
+        {
+            // 端口红线外的最后防线：观测面异常绝不改变回滚结果。
+        }
+    }
+
+    /// <summary>
+    /// 组装回滚状态轨迹行（固定前缀 + 作用域 + 幂等键 + 变迁名 + 事实字段，单行可独立归因与还原）。
+    /// </summary>
+    /// <param name="anchor">两键锚定作用域。</param>
+    /// <param name="request">回滚命令请求。</param>
+    /// <param name="transition">变迁名（chain-started / executor-switched / pointer-write-failed 等）。</param>
+    /// <param name="facts">事实字段（竖线分隔的 key=value）。</param>
+    /// <returns>轨迹行文本。</returns>
+    private static string BuildTraceMessage(OnlineScope anchor, OnlineHotfixRollbackRequest request, string transition, string facts)
+    {
+        return "hotfix-rollback|tenant=" + anchor.TenantId.ToString(System.Globalization.CultureInfo.InvariantCulture)
+               + "|app=" + anchor.AppId.ToString(System.Globalization.CultureInfo.InvariantCulture)
+               + "|key=" + request.IdempotencyKey
+               + "|transition=" + transition
+               + (string.IsNullOrEmpty(facts) ? string.Empty : "|" + facts);
     }
 
     /// <summary>
@@ -766,6 +953,21 @@ public sealed class OnlineHotfixRollbackService
     private static ReadOnlyMemory<byte> EncodeReplayToken(string previousVersion, string targetVersion, string summary)
     {
         return Encoding.UTF8.GetBytes(previousVersion + "|" + targetVersion + "|" + summary);
+    }
+
+    /// <summary>
+    /// 回滚状态轨迹日志级别（对齐 <see cref="IOnlineHotfixRollbackLog"/> 三级出口）。
+    /// </summary>
+    private enum RollbackLogLevel
+    {
+        /// <summary>状态变迁记录（启动 / 切换成功 / 完成）。</summary>
+        Info,
+
+        /// <summary>需运维关注的非致命变迁（重试 / 已反切）。</summary>
+        Warn,
+
+        /// <summary>须对账的致命变迁（重试耗尽 / 反切失败）。</summary>
+        Error,
     }
 
     /// <summary>

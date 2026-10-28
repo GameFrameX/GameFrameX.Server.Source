@@ -48,6 +48,8 @@ namespace GameFrameX.Tests.Online
     /// （Removed/Changed 不兼容拒绝、Added 兼容入报告）、回滚成功全链路（版本切换 + 审计 Domain=Operation + 事件）、
     /// 幂等重放同构（IsReplay、不重复执行、审计不重复落档）、目标未登记 4002 / 无活跃版本 5001 /
     /// 目标=当前 5003 / 协议不兼容 6002 且版本未切换 / 执行器失败 8002 且幂等键落 Fail 可重试 /
+    /// 活跃指针写入失败指数退避重试（瞬时失败重试成功不反切）/ 重试耗尽反切执行器回旧版本且状态一致可重试 /
+    /// 反切失败须对账告警 /
     /// 审计失败 1001 无审计不执行 / 参数缺失逐维 4001 / 只读预检无副作用 / 作用域隔离与登记簿记幂等）。
     /// </summary>
     public class OnlineHotfixRollbackServiceTests
@@ -101,11 +103,18 @@ namespace GameFrameX.Tests.Online
                 set;
             }
 
+            /// <summary>从第几次调用起注入失败（0 = 全部按 FailMessage 口径；用于「正切成功、反切失败」注入）。</summary>
+            public int FailFromCallIndex
+            {
+                get;
+                set;
+            }
+
             public Task RollbackAsync(string targetVersion, CancellationToken cancellationToken = default)
             {
                 CallCount++;
                 TargetVersions.Add(targetVersion);
-                if (!string.IsNullOrEmpty(FailMessage))
+                if (!string.IsNullOrEmpty(FailMessage) && (FailFromCallIndex <= 0 || CallCount >= FailFromCallIndex))
                 {
                     throw new InvalidOperationException(FailMessage);
                 }
@@ -166,6 +175,102 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 可注入活跃指针写失败的版本存储装饰器（委托内存实现，仅前 N 次 SetActiveAsync 抛异常）。
+        /// </summary>
+        private sealed class FlakySetActiveVersionStore : IOnlineHotfixVersionStore
+        {
+            private readonly InMemoryOnlineHotfixVersionStore _inner = new InMemoryOnlineHotfixVersionStore();
+
+            /// <summary>SetActiveAsync 累计调用次数。</summary>
+            public int SetActiveCallCount
+            {
+                get;
+                private set;
+            }
+
+            /// <summary>剩余失败次数（每次 SetActiveAsync 失败消耗一次；0 = 从不失败——setup 激活后再注值，只作用于回滚命令的指针写入）。</summary>
+            public int RemainingSetActiveFailures
+            {
+                get;
+                set;
+            }
+
+            /// <summary>失败注入消息。</summary>
+            public string FailMessage
+            {
+                get;
+                set;
+            } = "pointer store down";
+
+            public Task<bool> RegisterAsync(OnlineHotfixProtocolManifest manifest, CancellationToken cancellationToken = default)
+            {
+                return _inner.RegisterAsync(manifest, cancellationToken);
+            }
+
+            public Task<OnlineHotfixProtocolManifest> FindAsync(long tenantId, long appId, string version, CancellationToken cancellationToken = default)
+            {
+                return _inner.FindAsync(tenantId, appId, version, cancellationToken);
+            }
+
+            public Task<OnlineHotfixProtocolManifest> FindActiveAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+            {
+                return _inner.FindActiveAsync(tenantId, appId, cancellationToken);
+            }
+
+            public async Task<string> SetActiveAsync(long tenantId, long appId, string version, CancellationToken cancellationToken = default)
+            {
+                SetActiveCallCount++;
+                if (RemainingSetActiveFailures > 0)
+                {
+                    RemainingSetActiveFailures--;
+                    throw new InvalidOperationException(FailMessage);
+                }
+
+                return await _inner.SetActiveAsync(tenantId, appId, version, cancellationToken);
+            }
+        }
+
+        /// <summary>
+        /// 记录型回滚状态日志（按级别收集轨迹行，供断言状态变迁轨迹）。
+        /// </summary>
+        private sealed class RecordingRollbackLog : IOnlineHotfixRollbackLog
+        {
+            /// <summary>Info 轨迹行。</summary>
+            public List<string> InfoLines
+            {
+                get;
+            } = new List<string>();
+
+            /// <summary>Warn 轨迹行。</summary>
+            public List<string> WarnLines
+            {
+                get;
+            } = new List<string>();
+
+            /// <summary>Error 轨迹行。</summary>
+            public List<string> ErrorLines
+            {
+                get;
+            } = new List<string>();
+
+            public void Info(string message)
+            {
+                InfoLines.Add(message);
+            }
+
+            public void Warn(string message)
+            {
+                WarnLines.Add(message);
+            }
+
+            public void Error(string message)
+            {
+                ErrorLines.Add(message);
+            }
+        }
+
+
+        /// <summary>
         /// 被测组件集合（服务 + 各记录桩引用，供断言副作用）。
         /// </summary>
         private sealed class Harness
@@ -175,10 +280,10 @@ namespace GameFrameX.Tests.Online
                 get;
             }
 
-            public InMemoryOnlineHotfixVersionStore Store
+            public IOnlineHotfixVersionStore Store
             {
                 get;
-            } = new InMemoryOnlineHotfixVersionStore();
+            }
 
             public OnlineAuditService AuditService
             {
@@ -195,9 +300,10 @@ namespace GameFrameX.Tests.Online
                 get;
             } = new OnlineEventRecorder();
 
-            public Harness(OnlineAuditService auditService, bool withoutExecutor = false, IOnlineHotfixArtifactFetcher fetcher = null)
+            public Harness(OnlineAuditService auditService, bool withoutExecutor = false, IOnlineHotfixArtifactFetcher fetcher = null, IOnlineHotfixVersionStore storeOverride = null, RecordingRollbackLog rollbackLog = null)
             {
                 AuditService = auditService;
+                Store = storeOverride ?? new InMemoryOnlineHotfixVersionStore();
                 var options = new IdempotencyOptions
                 {
                     ConcurrentWaitTimeoutMilliseconds = 1,
@@ -206,7 +312,8 @@ namespace GameFrameX.Tests.Online
                 };
                 var coordinator = new IdempotencyCoordinator(new InMemoryIdempotencyStore(), new StepClock(), options);
                 var idempotencyService = new OnlineIdempotencyService(coordinator, null);
-                Service = new OnlineHotfixRollbackService(Store, idempotencyService, auditService, withoutExecutor ? null : Executor, fetcher, EventRecorder);
+                // 指针重试退避注入零延迟：重试路径不引入真实等待，消除时序抖动。
+                Service = new OnlineHotfixRollbackService(Store, idempotencyService, auditService, withoutExecutor ? null : Executor, fetcher, EventRecorder, rollbackLog, TimeSpan.Zero);
             }
         }
 
@@ -848,6 +955,97 @@ namespace GameFrameX.Tests.Online
             Assert.False(result.IsSuccess);
             Assert.Equal(OnlineErrorCode.DependencyUnavailable, result.Code);
             Assert.Null(await harness.Store.FindAsync(TenantId, AppId, "3.0.0"));
+        }
+
+        // ==================== 活跃指针写入失败：重试与反切补偿 ====================
+
+        /// <summary>
+        /// 指针写第 1 次失败第 2 次成功 → 重试吸收瞬时失败，回滚整体成功且不反切（执行器单次调用）。
+        /// </summary>
+        [Fact]
+        public async Task RollbackAsync_ActivePointerWriteTransientFailure_RetriedAndSucceedsWithoutRevert()
+        {
+            var store = new FlakySetActiveVersionStore();
+            var rollbackLog = new RecordingRollbackLog();
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()), storeOverride: store, rollbackLog: rollbackLog);
+            await SetupActiveV2Async(harness);
+            store.RemainingSetActiveFailures = 1;
+
+            var result = await harness.Service.RollbackAsync(CreateRollbackRequest("1.0.0", "rb-key-101"));
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal("1.0.0", result.Data.TargetVersion);
+            Assert.Equal(4, store.SetActiveCallCount); // setup 激活 2 次 + 命令第 1 次失败 + 第 2 次成功
+            Assert.Equal(1, harness.Executor.CallCount);
+            Assert.Equal(new[] { "1.0.0", }, harness.Executor.TargetVersions);
+            Assert.Equal("1.0.0", (await harness.Store.FindActiveAsync(TenantId, AppId)).Version);
+            Assert.Equal(1, await CountAuditRecordsAsync(harness));
+            var warnLine = Assert.Single(rollbackLog.WarnLines);
+            Assert.Contains("transition=pointer-write-failed", warnLine);
+            Assert.Contains("attempt=1/4", warnLine);
+            Assert.DoesNotContain(rollbackLog.WarnLines, line => line.Contains("transition=executor-reverted"));
+            Assert.Empty(rollbackLog.ErrorLines);
+            Assert.Contains(rollbackLog.InfoLines, line => line.Contains("transition=rollback-completed"));
+        }
+
+        /// <summary>
+        /// 指针写重试耗尽且反切成功 → 5000 且消息声明已反切；执行器调用序列 = [目标, 旧版本]，
+        /// 活跃指针停旧版本（状态一致）；同幂等键在存储恢复后可重新执行成功；轨迹含耗尽与反切告警。
+        /// </summary>
+        [Fact]
+        public async Task RollbackAsync_ActivePointerWriteExhausted_RevertsExecutorToPreviousVersion()
+        {
+            var store = new FlakySetActiveVersionStore();
+            var rollbackLog = new RecordingRollbackLog();
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()), storeOverride: store, rollbackLog: rollbackLog);
+            await SetupActiveV2Async(harness);
+            store.RemainingSetActiveFailures = 10;
+
+            var failed = await harness.Service.RollbackAsync(CreateRollbackRequest("1.0.0", "rb-key-102"));
+
+            Assert.False(failed.IsSuccess);
+            Assert.Equal(OnlineErrorCode.InternalError, failed.Code);
+            Assert.Equal(6, store.SetActiveCallCount); // setup 激活 2 次 + 命令 4 次尝试全部失败
+            Assert.Equal(new[] { "1.0.0", "1.1.0", }, harness.Executor.TargetVersions);
+            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync(TenantId, AppId)).Version);
+            Assert.Contains(rollbackLog.ErrorLines, line => line.Contains("transition=pointer-write-exhausted"));
+            Assert.Contains(rollbackLog.WarnLines, line => line.Contains("transition=executor-reverted"));
+            Assert.Equal(3, rollbackLog.WarnLines.Count(line => line.Contains("transition=pointer-write-failed")));
+
+            store.RemainingSetActiveFailures = 0;
+            var retried = await harness.Service.RollbackAsync(CreateRollbackRequest("1.0.0", "rb-key-102"));
+            Assert.True(retried.IsSuccess);
+            Assert.Equal("1.0.0", (await harness.Store.FindActiveAsync(TenantId, AppId)).Version);
+        }
+
+        /// <summary>
+        /// 指针写重试耗尽且反切执行器亦失败 → 5000 且消息声明状态不一致须对账；
+        /// 执行器双调用、活跃指针停旧版本；轨迹含耗尽与反切失败（终态 = 执行器目标版本 / 指针旧版本）。
+        /// </summary>
+        [Fact]
+        public async Task RollbackAsync_ActivePointerWriteExhaustedAndRevertFails_ReportsInconsistentState()
+        {
+            var store = new FlakySetActiveVersionStore();
+            var rollbackLog = new RecordingRollbackLog();
+            var harness = new Harness(new OnlineAuditService(new InMemoryOnlineAuditStore()), storeOverride: store, rollbackLog: rollbackLog);
+            await SetupActiveV2Async(harness);
+            store.RemainingSetActiveFailures = 10;
+            harness.Executor.FailMessage = "revert load failure";
+            harness.Executor.FailFromCallIndex = 2;
+
+            var failed = await harness.Service.RollbackAsync(CreateRollbackRequest("1.0.0", "rb-key-103"));
+
+            Assert.False(failed.IsSuccess);
+            Assert.Equal(OnlineErrorCode.InternalError, failed.Code);
+            Assert.Contains("须对账", failed.Message);
+            Assert.Equal(6, store.SetActiveCallCount); // setup 激活 2 次 + 命令 4 次尝试全部失败
+            Assert.Equal(new[] { "1.0.0", "1.1.0", }, harness.Executor.TargetVersions);
+            Assert.Equal("1.1.0", (await harness.Store.FindActiveAsync(TenantId, AppId)).Version);
+            var exhaustedLine = Assert.Single(rollbackLog.ErrorLines, line => line.Contains("transition=pointer-write-exhausted"));
+            Assert.Contains("attempts=4", exhaustedLine);
+            var revertFailedLine = Assert.Single(rollbackLog.ErrorLines, line => line.Contains("transition=executor-revert-failed"));
+            Assert.Contains("executor=1.0.0", revertFailedLine);
+            Assert.Contains("activePointer=1.1.0", revertFailedLine);
         }
     }
 }

@@ -179,10 +179,11 @@ public static class OnlineCapabilityCompositionRoot
                 });
             }
 
-            // 宿主扩展点（Override 注入，来源 = 宿主组合根）：Hotfix 版本切换执行器与玩家目录。
+            // 宿主扩展点（Override 注入，来源 = 宿主组合根）：Hotfix 版本切换执行器、玩家目录与回滚状态日志。
             // 类型实参必须显式写成契约接口：描述符表按类型键索引，省略时推断为具型，模块的 RequireHostService<契约> 找不到覆盖。
             options.Override<IOnlineHotfixRollbackExecutor>(new HotfixManagerRollbackExecutor(setting));
             options.Override<IOnlinePlayerDirectory>(new HostPlayerDirectory());
+            options.Override<IOnlineHotfixRollbackLog>(new LogHelperHotfixRollbackLog());
 
             // GameDb 一级 store 覆盖（Online.UseGameDbStores 三态，C302）：true 预置五个持久化适配器（业务库已就绪由模板顺序保证）；
             // 未声明（null）= 无声降级防护位——启用族但未声明存储模式时告警（不 fail-fast，保护既有无键部署），随后保持 InMemory 默认。
