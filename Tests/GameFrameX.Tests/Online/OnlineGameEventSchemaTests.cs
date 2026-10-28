@@ -84,6 +84,39 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 验证载荷字段名常量自洽与登记表引用闭合（GFX-1096）：
+        /// 常量成员名 == 常量值（<c>nameof</c> 自引用不被改成漂移字面量），
+        /// 且登记表全部必需字段值都落在常量值集合内（未来新增登记项写字面量即在此暴露，
+        /// 与投影器的载荷键共享同一常量源，拼错在编译期报错）。
+        /// </summary>
+        [Fact]
+        public void FieldNameConstants_ShouldMatchValuesAndCoverRequiredFields()
+        {
+            var constants = typeof(OnlineGameEventFieldName)
+                .GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)
+                .Where(field => field.IsLiteral && !field.IsInitOnly && field.FieldType == typeof(string))
+                .ToDictionary(field => field.Name, field => (string)field.GetRawConstantValue());
+
+            Assert.NotEmpty(constants);
+
+            // nameof 自引用红线：成员名即字段值——改成不匹配的字面量在此暴露。
+            foreach (var item in constants)
+            {
+                Assert.Equal(item.Key, item.Value);
+            }
+
+            // 登记表必需字段一律引用常量（值集合闭合）：绕过常量写字面量在此暴露。
+            var constantValues = new HashSet<string>(constants.Values);
+            foreach (var descriptor in OnlineGameEventSchema.All)
+            {
+                foreach (var requiredField in descriptor.RequiredFields)
+                {
+                    Assert.Contains(requiredField, constantValues);
+                }
+            }
+        }
+
+        /// <summary>
         /// 验证四类基础校验拒绝（未登记事件名 / 版本非法 / 必需字段缺失 / 作用域非法）逐个命中，
         /// 且**拒绝事件必进死信、绝不进事件存储**。
         /// </summary>
