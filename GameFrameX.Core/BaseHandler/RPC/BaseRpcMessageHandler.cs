@@ -32,6 +32,7 @@ using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Network;
 using GameFrameX.Network.Abstractions;
+using GameFrameX.Core.Abstractions;
 using GameFrameX.Utility.Setting;
 
 namespace GameFrameX.Core.BaseHandler.RPC;
@@ -88,6 +89,25 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
     }
 
     /// <summary>
+    /// 当前执行取消令牌（超时/外部取消联动源写入；未执行时回落 <see cref="RuntimeContext.CurrentCancellationToken"/>）。
+    /// </summary>
+    protected CancellationToken ExecutionCancellationToken
+    {
+        get
+        {
+            if (_executionCancellationToken.CanBeCanceled)
+            {
+                return _executionCancellationToken;
+            }
+
+            return RuntimeContext.CurrentCancellationToken;
+        }
+    }
+
+    /// <summary>当前执行的联动取消令牌（无执行进行时为 None）。</summary>
+    private CancellationToken _executionCancellationToken;
+
+    /// <summary>
     /// 执行
     /// </summary>
     /// <remarks>
@@ -109,6 +129,7 @@ public abstract class BaseRpcMessageHandler<TRequest, TResponse> : IMessageHandl
         Task coreTask = null;
         // 与外部取消令牌联动的取消源：超时或外部取消时取消业务任务，阻止孤儿任务继续写入 response
         var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _executionCancellationToken = linkedCancellationTokenSource.Token;
         try
         {
             response = MessageObjectPoolHelper.Get<TResponse>();

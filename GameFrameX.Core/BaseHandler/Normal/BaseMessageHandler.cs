@@ -28,6 +28,7 @@
 //  ==========================================================================================
 
 using System.Diagnostics;
+using GameFrameX.Core.Abstractions;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Network.Abstractions;
@@ -55,6 +56,39 @@ public abstract class BaseMessageHandler<TRequest> : IMessageHandler where TRequ
     /// 网络频道
     /// </summary>
     public INetworkChannel NetworkChannel { get; private set; }
+
+    /// <summary>
+    /// 本次消息执行期的取消令牌字段。仅非组件处理器路径由 <see cref="InnerActionAsync"/> 赋值；
+    /// 存令牌（值类型）而非取消源，使孤儿任务在取消源释放后仍可安全读取。
+    /// </summary>
+    /// <remarks>
+    /// The cancellation token field for the current message execution. Only assigned by <see cref="InnerActionAsync"/> on the non-component handler path;
+    /// stores the token (a value type) instead of the source so orphan tasks can still read it safely after the source is disposed.
+    /// </remarks>
+    private CancellationToken _executionCancellationToken;
+
+    /// <summary>
+    /// 本次消息执行期的取消令牌。超时或调用方取消时触发，业务代码应在耗时操作处传入或检查。
+    /// 组件处理器在 actor 内执行且不经基类 <see cref="InnerActionAsync"/> 赋值，此时返回
+    /// <see cref="RuntimeContext.CurrentCancellationToken"/>（即 WorkWrapper 写入的执行期令牌）。
+    /// </summary>
+    /// <remarks>
+    /// The cancellation token for the current message execution. It fires on timeout or caller cancellation; business code should pass it into or check it at long-running operations.
+    /// Component handlers execute inside an actor without assigning via the base <see cref="InnerActionAsync"/>, in which case this falls back to
+    /// <see cref="RuntimeContext.CurrentCancellationToken"/> (the execution token written by WorkWrapper).
+    /// </remarks>
+    protected CancellationToken ExecutionCancellationToken
+    {
+        get
+        {
+            if (_executionCancellationToken.CanBeCanceled)
+            {
+                return _executionCancellationToken;
+            }
+
+            return RuntimeContext.CurrentCancellationToken;
+        }
+    }
 
     /// <summary>
     /// 消息对象
@@ -99,18 +133,22 @@ public abstract class BaseMessageHandler<TRequest> : IMessageHandler where TRequ
             throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Message.HandlerNotInitialized));
         }
 
+        var executionCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _executionCancellationToken = executionCancellationTokenSource.Token;
+        Task task = null;
         try
         {
-            var task = InnerActionCoreAsync(Message);
+            task = InnerActionCoreAsync(Message);
             try
             {
                 await task.WaitAsync(TimeSpan.FromMilliseconds(timeout), cancellationToken);
             }
             catch (TimeoutException timeoutException)
             {
+                // 协作式取消：通知仍在运行的业务代码尽快收尾。先于日志执行，防日志通道异常跳过取消
+                executionCancellationTokenSource.Cancel();
                 // Localization: Core.MessageHandler.InnerActionTimeout - BaseMessageHandler.InnerActionAsync 执行超时，消息类型:{0}，超时:{1}，异常:{2}
                 LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.InnerActionTimeout, Message.GetType().FullName, timeout, timeoutException));
-                //强制设状态-取消该操作
             }
             catch (Exception exception)
             {
@@ -121,6 +159,14 @@ public abstract class BaseMessageHandler<TRequest> : IMessageHandler where TRequ
         catch (Exception e)
         {
             LogHelper.Fatal(e);
+        }
+        finally
+        {
+            // 与 WorkWrapper.EndExecution 同口径：孤儿任务未结束时可能仍持有令牌注册，不释放取消源
+            if (task == null || task.IsCompleted)
+            {
+                executionCancellationTokenSource.Dispose();
+            }
         }
     }
 
