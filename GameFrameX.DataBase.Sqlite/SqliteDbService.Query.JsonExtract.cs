@@ -197,10 +197,10 @@ public sealed partial class SqliteDbService
     }
 
     /// <summary>
-    /// 成员元数据进程级缓存（PropertyInfo 键；值null哨兵 = 不可翻译，类型可卸载不受强引用）。
+    /// 成员元数据进程级缓存（PropertyInfo 键；哨兵值 = 不可翻译，类型可卸载不受强引用）。
     /// </summary>
     /// <remarks>
-    /// The process-wide member metadata cache (keyed by PropertyInfo; a null sentinel value marks
+    /// The process-wide member metadata cache (keyed by PropertyInfo; a sentinel value marks
     /// untranslatable members, and ConditionalWeakTable keeps collectible types unloadable).
     /// </remarks>
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<PropertyInfo, JsonExtractMemberTranslation> MemberTranslationCache = new();
@@ -765,11 +765,18 @@ public sealed partial class SqliteDbService
             return null;
         }
 
-        return MemberTranslationCache.GetValue(property, static member =>
+        var cached = MemberTranslationCache.GetValue(property, static member =>
         {
             var resolved = TryResolveJsonMember(member, out var metadata) ? metadata : UntranslatableMember;
             return resolved;
         });
+
+        // 缓存哨兵只用于承载「不可翻译」（ConditionalWeakTable 不接受 null 值）；对外一律暴露 null，
+        // 否则调用方会把不可翻译成员当作字符串成员下推，拼出非法 SQL 或恒假合取项。
+        // The cache sentinel only carries "untranslatable" (ConditionalWeakTable rejects null values);
+        // null is exposed to callers, otherwise an untranslatable member would be pushed down as a string
+        // member, producing invalid SQL or a constant-false conjunct.
+        return ReferenceEquals(cached, UntranslatableMember) ? null : cached;
     }
 
     /// <summary>

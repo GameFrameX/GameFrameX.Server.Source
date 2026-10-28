@@ -32,6 +32,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.DataBase;
@@ -429,6 +430,39 @@ public sealed class SqlitePredicatePushdownTests : IDisposable
     }
 
     /// <summary>
+    /// 不可下推的字符串成员（JsonIgnore）比较常量：回退整表读并由客户端谓词判定，不产生非法 SQL。
+    /// </summary>
+    /// <remarks>
+    /// A comparison against a constant on an untranslatable string member (JsonIgnore) falls back to the
+    /// authoritative client-side predicate without emitting invalid SQL.
+    /// </remarks>
+    [Fact]
+    public async Task CountAsync_WithUntranslatableStringMember_ShouldFallBackToClientPredicate()
+    {
+        await ExecuteWithSeededServiceAsync(async service =>
+        {
+            var count = await service.CountAsync<SqlitePushdownTestState>(state => state.IgnoredName == "player-a");
+            Assert.Equal(0, count);
+        });
+    }
+
+    /// <summary>
+    /// 不可下推的字符串成员与 null 比较：不得被折成恒假合取项而丢行。
+    /// </summary>
+    /// <remarks>
+    /// Comparing an untranslatable string member with null must not collapse into a constant-false conjunct and drop rows.
+    /// </remarks>
+    [Fact]
+    public async Task CountAsync_WithUntranslatableStringMemberNullComparison_ShouldNotDropRows()
+    {
+        await ExecuteWithSeededServiceAsync(async service =>
+        {
+            var count = await service.CountAsync<SqlitePushdownTestState>(state => state.IgnoredName == null);
+            Assert.Equal(5, count);
+        });
+    }
+
+    /// <summary>
     /// 以原生连接预置旧档缺键文档（表结构与惰性建表 DDL 同形）。
     /// </summary>
     private static void SeedRawDocuments(string databaseFile)
@@ -556,6 +590,15 @@ public sealed class SqlitePredicatePushdownTests : IDisposable
         /// 创建时间（DateTime 白名单外，回退路径用）。
         /// </summary>
         public DateTime CreatedAt { get; set; }
+
+        /// <summary>
+        /// 被排除序列化的名称（字符串类型但不可下推：JsonIgnore 不进入 JSON 路径）。
+        /// </summary>
+        /// <remarks>
+        /// A name excluded from serialization (a string member that cannot be pushed down: JsonIgnore keeps it out of the JSON path).
+        /// </remarks>
+        [JsonIgnore]
+        public string IgnoredName { get; set; }
     }
 
     /// <summary>
