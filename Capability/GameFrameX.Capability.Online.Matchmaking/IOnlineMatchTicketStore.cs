@@ -31,13 +31,13 @@ namespace GameFrameX.Capability.Online.Matchmaking;
 
 /// <summary>
 /// 匹配票据存储契约（票据状态 CAS 与成组原子提交的持久化契约）。
-/// <para>
 /// 维护约束（红线）：<see cref="CommitMatchAsync"/> 与
 /// <see cref="UpdateStateAsync"/> 是**唯一**允许改写票据状态的入口，且必须提供
 /// 「期望状态」参数——状态裁决采用 CAS 语义：期望状态不匹配即整体失败并返回 null，
 /// 绝不部分应用。取消与匹配成功的竞态由此收敛到同一临界区：
 /// 谁先改到终态，谁的结果生效，另一方的 CAS 必然失败。
-/// </para>
+/// 入队的「查重 + 写入」唯一性同样收敛在存储层——<see cref="TryEnqueueIfAbsentAsync"/>
+/// 在同一临界区内裁决，调用方不得以「先查后存」的两段式绕过。
 /// <para>
 /// 存储实现负责防御性深拷贝，且**不得**在 CAS 失败时留下任何写入痕迹
 /// （包括玩家反查索引）。
@@ -46,12 +46,26 @@ namespace GameFrameX.Capability.Online.Matchmaking;
 public interface IOnlineMatchTicketStore
 {
     /// <summary>
-    /// 保存票据（新增或覆盖；仅用于入队时的首次落库）。
+    /// 保存票据（新增或覆盖；保留给状态迁移与持久化装载，**不再作为入队入口**——
+    /// 入队唯一性由 <see cref="TryEnqueueIfAbsentAsync"/> 在同一临界区内保证）。
     /// </summary>
     /// <param name="ticket">票据。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>完成通知。</returns>
     Task SaveAsync(OnlineMatchTicket ticket, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 原子入队：在同一临界区内检查队伍和每个成员是否已有排队中票据；
+    /// 没有冲突就写入票据和反查索引并返回入参副本，有冲突就不写入，返回已存在的活跃票据。
+    /// <para>
+    /// 未来接持久化存储时，以（租户、应用、玩家、活跃）唯一索引承接同一约束；
+    /// 冲突路径不得留下任何写入痕迹（包括玩家反查索引）。
+    /// </para>
+    /// </summary>
+    /// <param name="ticket">待入队票据（Queued 态，作用域与成员已由调用方规整）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>生效票据副本：无冲突为刚写入的入参副本，有冲突为已存在的活跃票据副本。</returns>
+    Task<OnlineMatchTicket> TryEnqueueIfAbsentAsync(OnlineMatchTicket ticket, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 按标识查找票据（含终态历史）。

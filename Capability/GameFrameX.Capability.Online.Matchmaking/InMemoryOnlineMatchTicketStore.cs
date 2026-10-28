@@ -86,6 +86,62 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
     }
 
     /// <summary>
+    /// 在同一临界区内完成「查重 + 写入」的原子入队：先按队伍标识、再按每个成员的玩家反查索引检查是否已有排队中票据；
+    /// 全部无冲突才写入票据表并登记玩家反查索引，返回刚写入的入参副本；任一冲突即不写入（零写入痕迹），返回已存在的活跃票据副本。
+    /// </summary>
+    /// <remarks>
+    /// Atomic enqueue within a single critical section: checks the party key first, then every member's player reverse-lookup index;
+    /// writes the ticket and the player index only when no conflict exists and returns a copy of the stored input; on any conflict nothing is written (zero write trace) and a copy of the existing active ticket is returned.
+    /// </remarks>
+    /// <param name="ticket">待入队票据（Queued 态） / The ticket to enqueue (queued state)</param>
+    /// <param name="cancellationToken">取消令牌（同步内存实现，忽略此参数） / Cancellation token (ignored by this synchronous in-memory implementation)</param>
+    /// <returns>生效票据副本：无冲突为刚写入的入参副本，有冲突为已存在的活跃票据副本 / Copy of the effective ticket (the just-stored input on success, or the existing active one on conflict)</returns>
+    /// <exception cref="ArgumentNullException">当 <paramref name="ticket"/> 为 null 时抛出 / Thrown when <paramref name="ticket"/> is null</exception>
+    public Task<OnlineMatchTicket> TryEnqueueIfAbsentAsync(OnlineMatchTicket ticket, CancellationToken cancellationToken = default)
+    {
+        if (ticket == null)
+        {
+            throw new ArgumentNullException(nameof(ticket));
+        }
+
+        lock (_syncRoot)
+        {
+            // 队伍维度先查：同一队伍至多一张活跃票据，命中即整体拒绝。
+            if (!string.IsNullOrEmpty(ticket.PartyId))
+            {
+                var conflictingParty = FindActiveByPartyInternal(ticket.TenantId, ticket.AppId, ticket.PartyId);
+                if (conflictingParty != null)
+                {
+                    return Task.FromResult(conflictingParty);
+                }
+            }
+
+            // 成员维度逐个查反查索引：任一成员已在队列即整体拒绝（队伍整队进整队不进）。
+            if (ticket.PlayerIds != null)
+            {
+                foreach (var playerId in ticket.PlayerIds)
+                {
+                    var conflictingPlayer = FindActiveByPlayerInternal(ticket.TenantId, ticket.AppId, playerId);
+                    if (conflictingPlayer != null)
+                    {
+                        return Task.FromResult(conflictingPlayer);
+                    }
+                }
+            }
+
+            // 存档存副本而非调用方实例（调用方复用该实例不会回写库内记录）。
+            var stored = ticket.Copy();
+            _tickets[BuildKey(stored.TenantId, stored.AppId, stored.TicketId)] = stored;
+            if (stored.State == OnlineMatchTicketState.Queued)
+            {
+                IndexPlayers(stored);
+            }
+
+            return Task.FromResult(stored.Copy());
+        }
+    }
+
+    /// <summary>
     /// 按作用域与票据标识从内存票据表读取票据副本（含终态历史）。
     /// </summary>
     /// <remarks>
@@ -124,15 +180,7 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
 
         lock (_syncRoot)
         {
-            foreach (var ticket in _tickets.Values)
-            {
-                if (ticket.TenantId == tenantId && ticket.AppId == appId && ticket.State == OnlineMatchTicketState.Queued && ticket.PartyId == partyId)
-                {
-                    return Task.FromResult(ticket.Copy());
-                }
-            }
-
-            return Task.FromResult<OnlineMatchTicket>(null);
+            return Task.FromResult(FindActiveByPartyInternal(tenantId, appId, partyId));
         }
     }
 
@@ -422,6 +470,31 @@ public sealed class InMemoryOnlineMatchTicketStore : IOnlineMatchTicketStore
         if (_tickets.TryGetValue(BuildKey(tenantId, appId, ticketId), out var ticket))
         {
             return ticket.Copy();
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 按队伍标识读取其排队中票据副本（调用方必须已持有 <see cref="_syncRoot"/>；<paramref name="partyId"/> 为空返回 null）。
+    /// </summary>
+    /// <param name="tenantId">租户标识。</param>
+    /// <param name="appId">App 标识。</param>
+    /// <param name="partyId">队伍标识。</param>
+    /// <returns>票据副本；无则返回 null。</returns>
+    private OnlineMatchTicket FindActiveByPartyInternal(long tenantId, long appId, string partyId)
+    {
+        if (string.IsNullOrEmpty(partyId))
+        {
+            return null;
+        }
+
+        foreach (var ticket in _tickets.Values)
+        {
+            if (ticket.TenantId == tenantId && ticket.AppId == appId && ticket.State == OnlineMatchTicketState.Queued && ticket.PartyId == partyId)
+            {
+                return ticket.Copy();
+            }
         }
 
         return null;
