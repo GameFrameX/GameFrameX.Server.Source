@@ -294,12 +294,23 @@ public sealed class PlayerSessionManager : IPlayerSessionManager
         var loginLock = await AcquireLoginLockAsync(playerId);
         try
         {
+            var session = Get(sessionId);
+            if (session.IsNull())
+            {
+                return;
+            }
+
             // 获取与玩家ID关联的旧会话；同一会话重登（同 sessionId）不触发顶号，幂等重绑
             var oldSession = GetByPlayerId(playerId);
             if (oldSession != null && oldSession.SessionId != sessionId)
             {
                 // 内联 await 顶号通知（须先于 Close，理由见参数注释）
                 await duplicateLoginNotifier(oldSession);
+                if (!ReferenceEquals(Get(sessionId), session))
+                {
+                    return;
+                }
+
                 // 清除旧会话的连接数据并关闭连接
                 oldSession.WorkChannel.ClearData();
                 oldSession.WorkChannel.Close();
@@ -308,7 +319,7 @@ public sealed class PlayerSessionManager : IPlayerSessionManager
             }
 
             // 获取当前会话并更新玩家ID和签名
-            var session = Get(sessionId);
+            session = Get(sessionId);
             if (session.IsNull())
             {
                 return;

@@ -71,7 +71,12 @@ public sealed class PlayerSessionManagerConcurrentLoginTests
             notifierEntered.SetResult(true);
             await releaseGate.Task;
         });
-        await notifierEntered.Task;
+        var synchronization = await Task.WhenAny(notifierEntered.Task, secondLogin).WaitAsync(TimeSpan.FromSeconds(10));
+        if (synchronization == secondLogin)
+        {
+            await secondLogin;
+        }
+        await notifierEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
         // 第三登录并发进入：串行化下必须阻塞在锁上（通知器不可能先于放行触发）；
         // 无锁旧代码会立即以第一会话为旧会话完成顶号（探测到即继续，最终断言会暴露双活绑定）
@@ -108,6 +113,42 @@ public sealed class PlayerSessionManagerConcurrentLoginTests
         // 底座第一会话被第二登录顶掉：通知后关闭并移除
         Assert.True(firstChannel.IsClosed());
         Assert.Null(manager.Get("c306-first"));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UpdateSession_DisconnectedReplacement_ShouldPreserveExistingSession(bool disconnectDuringNotification)
+    {
+        var manager = PlayerSessionManager.Instance;
+        var playerId = disconnectDuringNotification ? 930004L : 930003L;
+        var existingIdentifier = "existing-" + playerId;
+        var replacementIdentifier = "replacement-" + playerId;
+        var existingChannel = new FakeNetworkChannel();
+        var replacementChannel = new FakeNetworkChannel();
+        manager.Add(new PlayerSession(existingIdentifier, existingChannel));
+        await manager.UpdateSessionAsync(existingIdentifier, playerId, "original", session => Task.CompletedTask);
+        manager.Add(new PlayerSession(replacementIdentifier, replacementChannel));
+        if (!disconnectDuringNotification)
+        {
+            manager.Remove(replacementIdentifier);
+        }
+        try
+        {
+            await manager.UpdateSessionAsync(replacementIdentifier, playerId, "replacement", session =>
+            {
+                manager.Remove(replacementIdentifier);
+                return Task.CompletedTask;
+            }).WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.False(existingChannel.IsClosed());
+            Assert.Equal(existingIdentifier, manager.GetByPlayerId(playerId).SessionId);
+            Assert.Equal("original", manager.Get(existingIdentifier).Sign);
+        }
+        finally
+        {
+            manager.Remove(existingIdentifier);
+            manager.Remove(replacementIdentifier);
+        }
     }
 
     [Fact]
