@@ -155,8 +155,18 @@ public static class HotfixManager
             return false;
         }
 
-        // 同步路径保持历史行为：仅切换当前模块，不执行退役编排与桥接回调
-        // Synchronous path keeps historical behavior: swap the current module only — no retirement, no bridge callback
+        if (reload)
+        {
+            // 补退役：与 LoadHotfixModuleAsync 路径对齐——旧模块进入退役链（宽限排空 + 卸载 GC 验证由模块链承担），
+            // 否则旧可收集 ALC 永不卸载，每次同步重载泄漏一份完整热更程序集内存
+            // Retire the old module to align with the LoadHotfixModuleAsync path — it joins the retirement chain
+            // (grace drain plus unload GC verification belong to the module chain); without this the old collectible
+            // ALC is never unloaded, leaking a full hotfix assembly per synchronous reload
+            Host.Retire(HotfixHost.RetirementGracePeriod);
+        }
+
+        // 同步路径保持历史行为：仅切换当前模块指针与注册，不回调桥接
+        // Synchronous path keeps historical behavior: swap and register the current module only — no bridge callback
         Host.RegisterCurrent(hotfixModule);
         return true;
     }

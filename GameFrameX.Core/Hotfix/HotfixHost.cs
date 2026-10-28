@@ -118,15 +118,28 @@ internal sealed class HotfixHost : IHotfixResolver
     }
 
     /// <summary>
-    /// 注册当前模块（同步装载路径专用：保持历史行为——不退役旧模块、不回调桥接）。
-    /// Registers the current module (for the synchronous load path only: preserves historical behavior — no
-    /// retirement, no bridge callback).
+    /// 注册当前模块（同步装载路径专用：切换当前模块指针并注册，退役由调用方经 <see cref="Retire"/> 显式触发）。
+    /// Registers the current module (for the synchronous load path: swaps the current module pointer and registers;
+    /// retirement is triggered explicitly by the caller via <see cref="Retire"/>).
     /// </summary>
     /// <param name="module">新装载的模块 / The newly loaded module.</param>
     internal void RegisterCurrent(HotfixModule module)
     {
         CurrentModule = module;
         _moduleChain.Register(module);
+    }
+
+    /// <summary>
+    /// 退役当前模块（同步装载路径专用：与 <see cref="LoadAsync"/> 内联退役段等价的单点封装——旧模块进入退役链，
+    /// 宽限排空 + 卸载 GC 验证由模块链承担；不执行异步桥接回调）。
+    /// Retires the current module (for the synchronous load path: a single-point wrapper equivalent to the inline
+    /// retirement segment of <see cref="LoadAsync"/> — the old module joins the retirement chain, and the module
+    /// chain owns grace drain plus unload GC verification; no asynchronous bridge callback runs).
+    /// </summary>
+    /// <param name="gracePeriod">退役宽限期 / The retirement grace period.</param>
+    internal void Retire(TimeSpan gracePeriod)
+    {
+        _moduleChain.Retire(CurrentModule, gracePeriod);
     }
 
     /// <summary>
