@@ -291,6 +291,7 @@ namespace GameFrameX.Tests.Utility
         #endregion
 
         #region IsNetworkReachable 方法测试
+#pragma warning disable CS0618 // 同步 Ping 为警告级废弃，回归用例钉住其既有契约
 
         /// <summary>
         /// 测试网络连通性检查（本地回环）
@@ -384,6 +385,25 @@ namespace GameFrameX.Tests.Utility
         }
 
         /// <summary>
+        /// 测试异步网络连通性检查取消路径（预取消令牌不抛出、返回 false）
+        /// </summary>
+        [Fact]
+        public async Task IsNetworkReachableAsync_WithExternalCancelledToken_ShouldReturnFalse()
+        {
+            // Arrange
+            using (var cancelled = new CancellationTokenSource())
+            {
+                await cancelled.CancelAsync();
+
+                // Act
+                var isReachable = await NetHelper.IsNetworkReachableAsync("127.0.0.1", 1000, cancelled.Token);
+
+                // Assert
+                Assert.False(isReachable);
+            }
+        }
+
+        /// <summary>
         /// 测试异步端点解析（IP 直入与回环主机名解析）
         /// </summary>
         [Fact]
@@ -441,7 +461,37 @@ namespace GameFrameX.Tests.Utility
             }
         }
 
+        /// <summary>
+        /// 测试异步域名解析超时约束（不可解析域名的保留 TLD 在内建超时上限内完成，不无限悬挂）
+        /// </summary>
+        [Fact]
+        public async Task GetHostIPv4Async_WithUnresolvableHost_ShouldNotHang()
+        {
+            // Arrange：.invalid 为 RFC 2606 保留 TLD，必然解析失败；上限取内建超时加余量
+            using (var overallLimit = new CancellationTokenSource(TimeSpan.FromSeconds(15)))
+            {
+                // Act & Assert：内建超时触发抛 OperationCanceledException（或解析快速失败抛 SocketException），均在时限内
+                await Assert.ThrowsAnyAsync<Exception>(() => NetHelper.GetHostIPv4Async("nonexistent.invalid", overallLimit.Token));
+            }
+        }
+
+        /// <summary>
+        /// 回归：同步 ParseEndPoint 仍可用（Obsolete 仅警告级，不破坏编译与行为）
+        /// </summary>
+        [Fact]
+        public void ParseEndPoint_WithLoopbackIp_ShouldResolve()
+        {
+            // Act
+            var endPoint = NetHelper.ParseEndPoint("127.0.0.1", 8080);
+
+            // Assert
+            var ipEndpoint = Assert.IsType<IPEndPoint>(endPoint);
+            Assert.Equal(IPAddress.Loopback, ipEndpoint.Address);
+            Assert.Equal(8080, ipEndpoint.Port);
+        }
+
         #endregion
+#pragma warning restore CS0618
 
         #region GetMacAddresses 方法测试
 

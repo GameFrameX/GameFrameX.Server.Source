@@ -55,6 +55,11 @@ namespace GameFrameX.Utility;
 public static class NetHelper
 {
     /// <summary>
+    /// 异步 DNS 解析内建默认超时（毫秒），约束解析端黑洞不无限悬挂调用方。
+    /// </summary>
+    private const int DefaultDnsTimeoutMilliseconds = 5000;
+
+    /// <summary>
     /// 获取指定端口的占用进程信息（仅监听中的 TCP）。
     /// </summary>
     /// <param name="port">端口号</param>
@@ -267,6 +272,7 @@ public static class NetHelper
         }
         else
         {
+#pragma warning disable CS0618 // 同步 DNS 解析仅为同步调用方保留，内部互调不触发废弃提示
             var ipHost = GetHostIPv4(host);
             if (IPAddress.TryParse(ipHost, out ipAddress))
             {
@@ -280,6 +286,7 @@ public static class NetHelper
                     connectEndPoint = new IPEndPoint(ipAddress, port);
                 }
             }
+#pragma warning restore CS0618
         }
 
         return connectEndPoint;
@@ -304,7 +311,7 @@ public static class NetHelper
             return new IPEndPoint(ipAddress, port);
         }
 
-        var addressList = await Dns.GetHostAddressesAsync(host, cancellationToken);
+        var addressList = await ResolveHostAddressesAsync(host, cancellationToken);
         foreach (var address in addressList)
         {
             if (address.AddressFamily == AddressFamily.InterNetwork)
@@ -505,6 +512,7 @@ public static class NetHelper
     /// <returns>如果网络连通，返回true；否则返回false</returns>
     /// <exception cref="ArgumentException">当host为null或空字符串时抛出此异常</exception>
     /// <exception cref="ArgumentOutOfRangeException">当timeout小于0时抛出此异常</exception>
+    [Obsolete("同步 Ping 会无限期阻塞调用线程，请改用 IsNetworkReachableAsync。Sync Ping blocks the calling thread indefinitely; use IsNetworkReachableAsync instead.", false)]
     public static bool IsNetworkReachable(string host, int timeout = 5000)
     {
         ArgumentException.ThrowIfNullOrEmpty(host);
@@ -525,29 +533,40 @@ public static class NetHelper
     }
 
     /// <summary>
-    /// 异步检测网络连通性（ICMP 等待由 <paramref name="timeout"/> 自身约束，不阻塞线程池线程）。
+    /// 异步检测网络连通性（ICMP 等待由 <paramref name="timeout"/> 与取消令牌共同约束，不阻塞线程池线程）。
     /// </summary>
     /// <param name="host">目标主机地址</param>
     /// <param name="timeout">超时时间（毫秒），默认5000毫秒</param>
-    /// <returns>如果网络连通，返回true；否则false</returns>
+    /// <param name="cancellationToken">取消令牌（与超时联动约束等待上限）</param>
+    /// <returns>如果网络连通，返回true；否则返回false</returns>
     /// <exception cref="ArgumentException">当host为null或空字符串时抛出此异常</exception>
     /// <exception cref="ArgumentOutOfRangeException">当timeout小于0时抛出此异常</exception>
-    public static async Task<bool> IsNetworkReachableAsync(string host, int timeout = 5000)
+    public static async Task<bool> IsNetworkReachableAsync(string host, int timeout = 5000, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(host);
         ArgumentOutOfRangeException.ThrowIfNegative(timeout);
-
-        try
-        {
-            using (var ping = new Ping())
-            {
-                var reply = await ping.SendPingAsync(host, timeout);
-                return reply.Status == IPStatus.Success;
-            }
-        }
-        catch
+        if (cancellationToken.IsCancellationRequested)
         {
             return false;
+        }
+
+        using (var ping = new Ping())
+        using (var timeoutCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+        {
+            timeoutCancellationTokenSource.CancelAfter(timeout);
+            try
+            {
+                var reply = await ping.SendPingAsync(host, timeout).WaitAsync(timeoutCancellationTokenSource.Token);
+                return reply.Status == IPStatus.Success;
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 
@@ -665,10 +684,11 @@ public static class NetHelper
     /// 获取本机的公网IP地址
     /// </summary>
     /// <param name="timeout">超时时间（毫秒），默认10000毫秒</param>
+    /// <param name="cancellationToken">取消令牌（与 HttpClient 超时联动约束每次请求）</param>
     /// <returns>公网IP地址字符串，获取失败返回null</returns>
     /// <exception cref="ArgumentOutOfRangeException">当timeout小于0时抛出此异常</exception>
 #nullable enable
-    public static async Task<string?> GetPublicIpAddressAsync(int timeout = 10000)
+    public static async Task<string?> GetPublicIpAddressAsync(int timeout = 10000, CancellationToken cancellationToken = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(timeout);
 
@@ -686,7 +706,7 @@ public static class NetHelper
             {
                 try
                 {
-                    var response = await httpClient.GetStringAsync(service);
+                    var response = await httpClient.GetStringAsync(service, cancellationToken);
                     var ip = response.Trim();
                     if (IsValidIpAddress(ip, out _))
                     {
@@ -709,6 +729,7 @@ public static class NetHelper
     /// </summary>
     /// <param name="domainName">域名</param>
     /// <returns>IPv4地址字符串，获取失败返回空字符串</returns>
+    [Obsolete("同步 DNS 解析会无限期阻塞调用线程，请改用 GetHostIPv4Async。Sync DNS resolution blocks the calling thread indefinitely; use GetHostIPv4Async instead.", false)]
     public static string GetHostIPv4(string domainName)
     {
         var iPHostEntry = Dns.GetHostEntry(domainName);
@@ -724,14 +745,14 @@ public static class NetHelper
     }
 
     /// <summary>
-    /// 异步获取指定域名的IPv4地址（DNS 解析可取消，不阻塞线程池线程）。
+    /// 异步获取指定域名的IPv4地址（DNS 解析受内建超时与取消令牌共同约束，不阻塞线程池线程）。
     /// </summary>
     /// <param name="domainName">域名</param>
-    /// <param name="cancellationToken">取消令牌（约束 DNS 解析等待上限）</param>
+    /// <param name="cancellationToken">取消令牌（与内建超时联动约束 DNS 解析等待上限）</param>
     /// <returns>IPv4地址字符串，获取失败返回空字符串</returns>
     public static async Task<string> GetHostIPv4Async(string domainName, CancellationToken cancellationToken = default)
     {
-        var addressList = await Dns.GetHostAddressesAsync(domainName, cancellationToken);
+        var addressList = await ResolveHostAddressesAsync(domainName, cancellationToken);
         foreach (var address in addressList)
         {
             if (address.AddressFamily == AddressFamily.InterNetwork)
@@ -748,6 +769,7 @@ public static class NetHelper
     /// </summary>
     /// <param name="domainName">域名</param>
     /// <returns>IPv6地址字符串，获取失败返回空字符串</returns>
+    [Obsolete("同步 DNS 解析会无限期阻塞调用线程，请改用 GetHostIPv6Async。Sync DNS resolution blocks the calling thread indefinitely; use GetHostIPv6Async instead.", false)]
     public static string GetHostIPv6(string domainName)
     {
         var iPHostEntry = Dns.GetHostEntry(domainName);
@@ -763,14 +785,14 @@ public static class NetHelper
     }
 
     /// <summary>
-    /// 异步获取指定域名的IPv6地址（DNS 解析可取消，不阻塞线程池线程）。
+    /// 异步获取指定域名的IPv6地址（DNS 解析受内建超时与取消令牌共同约束，不阻塞线程池线程）。
     /// </summary>
     /// <param name="domainName">域名</param>
-    /// <param name="cancellationToken">取消令牌（约束 DNS 解析等待上限）</param>
+    /// <param name="cancellationToken">取消令牌（与内建超时联动约束 DNS 解析等待上限）</param>
     /// <returns>IPv6地址字符串，获取失败返回空字符串</returns>
     public static async Task<string> GetHostIPv6Async(string domainName, CancellationToken cancellationToken = default)
     {
-        var addressList = await Dns.GetHostAddressesAsync(domainName, cancellationToken);
+        var addressList = await ResolveHostAddressesAsync(domainName, cancellationToken);
         foreach (var address in addressList)
         {
             if (address.AddressFamily == AddressFamily.InterNetworkV6)
@@ -780,6 +802,21 @@ public static class NetHelper
         }
 
         return string.Empty;
+    }
+
+    /// <summary>
+    /// 以内建默认超时约束的异步 DNS 解析（外部取消令牌与超时联动，解析端黑洞不会无限悬挂调用方）。
+    /// </summary>
+    /// <param name="host">主机名</param>
+    /// <param name="cancellationToken">外部取消令牌</param>
+    /// <returns>解析到的地址列表</returns>
+    private static async Task<IPAddress[]> ResolveHostAddressesAsync(string host, CancellationToken cancellationToken)
+    {
+        using (var timeoutCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+        {
+            timeoutCancellationTokenSource.CancelAfter(DefaultDnsTimeoutMilliseconds);
+            return await Dns.GetHostAddressesAsync(host, timeoutCancellationTokenSource.Token);
+        }
     }
 
     /// <summary>
