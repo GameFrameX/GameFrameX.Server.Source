@@ -357,13 +357,16 @@ public sealed partial class MongoDbService
     /// </summary>
     /// <remarks>
     /// Commits a transaction with automatic retry mechanism on transient failures.
-    /// Uses exponential backoff with jitter for retry delays.
+    /// Uses exponential backoff with jitter for retry delays. When the commit is finally given
+    /// up (non-retryable error or exhausted retries), the transaction is explicitly aborted
+    /// best-effort instead of relying on the implicit rollback of session disposal.
+    /// 提交最终失败（不可重试错误或重试预算耗尽）时显式尽力而为中止事务，不依赖会话释放时的隐式回滚。
     /// </remarks>
     /// <param name="session">MongoDB 客户端会话句柄 / MongoDB client session handle</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>表示异步操作的任务 / Task representing asynchronous operation</returns>
     /// <exception cref="DatabaseUnavailableException">当所有重试都失败后抛出 / Thrown when all retry attempts fail</exception>
-    private async Task CommitTransactionWithRetryAsync(IClientSessionHandle session, CancellationToken cancellationToken)
+    internal async Task CommitTransactionWithRetryAsync(IClientSessionHandle session, CancellationToken cancellationToken)
     {
         Exception lastException = null;
         for (var attempt = 0; attempt <= _transactionRetryDelaysMilliseconds.Length; attempt++)
@@ -387,7 +390,42 @@ public sealed partial class MongoDbService
             }
         }
 
+        // 提交已放弃：显式中止事务，不依赖会话释放时的隐式回滚。
+        // The commit was given up: abort the transaction explicitly instead of relying on the
+        // implicit rollback performed during session disposal.
+        await AbortTransactionAfterCommitFailureAsync(session).ConfigureAwait(false);
+
         // Localization: Database.MongoDb.CommitTransactionFailed - CommitTransaction重试失败，未知异常
         throw new DatabaseUnavailableException(LocalizationService.GetString(Keys.Database.MongoDbCommitTransactionFailed), lastException ?? new InvalidOperationException(LocalizationService.GetString(Keys.Database.MongoDbCommitTransactionFailed)));
+    }
+
+    /// <summary>
+    /// 提交最终失败后尽力而为显式中止事务。
+    /// </summary>
+    /// <remarks>
+    /// Best-effort explicit abort after the commit was given up: the shell must not rely on
+    /// session disposal to roll back, because the driver does not guarantee that the disposal
+    /// itself succeeds. The abort deliberately uses <c>CancellationToken.None</c> — commit
+    /// failures are often caused by an already cancelled caller token, and the cleanup
+    /// round-trip deserves a real chance to reach the server. An abort failure is only logged
+    /// (the server eventually rolls the transaction back on timeout); the original commit
+    /// failure remains the exception that propagates.
+    /// </remarks>
+    /// <param name="session">MongoDB 客户端会话句柄 / MongoDB client session handle</param>
+    /// <returns>表示异步操作的任务 / Task representing asynchronous operation</returns>
+    private static async Task AbortTransactionAfterCommitFailureAsync(IClientSessionHandle session)
+    {
+        try
+        {
+            // 尽力而为的清理不随业务令牌取消（提交失败常因令牌已取消），让中止真正送达服务端。
+            // Best-effort cleanup must not ride the caller's (often already cancelled) token:
+            // the abort round-trip deserves a real chance to reach the server.
+            await session.AbortTransactionAsync(CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            // Localization: Database.Mongo.AbortTransactionAfterCommitFailed - MongoDbService.CommitTransactionAsync 提交失败后中止事务失败，事务将由服务端超时回滚。error={0}
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Database.Mongo.AbortTransactionAfterCommitFailed, exception.Message));
+        }
     }
 }
