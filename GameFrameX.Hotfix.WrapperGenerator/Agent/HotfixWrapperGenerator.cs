@@ -538,6 +538,20 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     }
 
     /// <summary>
+    /// 组件代理基类名集合（StateComponentAgent、FuncComponentAgent、QueryComponentAgent、BaseComponentAgent）。
+    /// </summary>
+    /// <remarks>
+    /// Set of component agent base class names (StateComponentAgent, FuncComponentAgent, QueryComponentAgent, BaseComponentAgent).
+    /// </remarks>
+    private static readonly HashSet<string> ComponentAgentBaseNames = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "StateComponentAgent",
+        "FuncComponentAgent",
+        "QueryComponentAgent",
+        "BaseComponentAgent",
+    };
+
+    /// <summary>
     /// 判断类声明是否为组件代理类（继承自 StateComponentAgent、FuncComponentAgent、QueryComponentAgent 或 BaseComponentAgent）。
     /// </summary>
     /// <remarks>
@@ -552,15 +566,28 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
             return false;
         }
 
-        var baseTypes = source.BaseList.Types.Select(baseType => baseType);
-        var res = baseTypes.Any(baseType =>
+        return source.BaseList.Types.Any(baseTypeSyntax =>
         {
-            var baseName = baseType.ToString();
-            return baseName.Contains("StateComponentAgent")
-                   || baseName.Contains("FuncComponentAgent")
-                   || baseName.Contains("QueryComponentAgent")
-                   || baseName.Contains("BaseComponentAgent");
+            string identifier;
+            if (baseTypeSyntax.Type is GenericNameSyntax genericName)
+            {
+                identifier = genericName.Identifier.Text;
+            }
+            else if (baseTypeSyntax.Type is IdentifierNameSyntax identifierName)
+            {
+                identifier = identifierName.Identifier.Text;
+            }
+            else
+            {
+                // QualifiedNameSyntax 等场景：取最右段标识符，并去掉泛型参数后缀
+                var raw = baseTypeSyntax.Type.ToString();
+                var dot = raw.LastIndexOf('.');
+                var rightPart = dot >= 0 ? raw.Substring(dot + 1) : raw;
+                var angleBracket = rightPart.IndexOf('<');
+                identifier = angleBracket >= 0 ? rightPart.Substring(0, angleBracket) : rightPart;
+            }
+
+            return ComponentAgentBaseNames.Contains(identifier);
         });
-        return res;
     }
 }
