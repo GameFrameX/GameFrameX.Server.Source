@@ -45,6 +45,7 @@ public sealed class AgentWrapperAssemblyGuardTests
         Assert.NotEmpty(map);
 
         var mirroredNamespaces = new HashSet<string>();
+        var mappedAgentNamespaces = new HashSet<string>();
         foreach (System.Collections.DictionaryEntry entry in map)
         {
             var wrapperType = Assert.IsAssignableFrom<Type>(entry.Value);
@@ -55,13 +56,25 @@ public sealed class AgentWrapperAssemblyGuardTests
             // 键必须是 wrapper 的直接基类（代理类型），防止错误登记
             var agentType = Assert.IsAssignableFrom<Type>(entry.Key);
             Assert.Equal(agentType, wrapperType.BaseType);
+            mappedAgentNamespaces.Add(agentType.Namespace ?? string.Empty);
 
+            // 镜像契约逐项校验：wrapper 命名空间段 = 代理源命名空间相对 GameFrameX.Hotfix. 的段（C292）
             var wrapperNamespace = wrapperFullName.Substring(0, wrapperFullName.LastIndexOf('.'));
             mirroredNamespaces.Add(wrapperNamespace);
+            var agentNamespace = agentType.Namespace ?? string.Empty;
+            var relativeAgentNamespace = agentNamespace.StartsWith("GameFrameX.Hotfix.", System.StringComparison.Ordinal)
+                ? agentNamespace.Substring("GameFrameX.Hotfix.".Length)
+                : agentNamespace;
+            var relativeWrapperNamespace = wrapperNamespace.Substring("GameFrameX.Hotfix.Wrapper.Agent.".Length);
+            Assert.Equal(relativeAgentNamespace, relativeWrapperNamespace);
         }
 
-        // 同名代理（Login/Mail/Room × Player/ServerRole）必须分落不同镜像命名空间
-        Assert.Contains("GameFrameX.Hotfix.Wrapper.Agent.Logic.Player.Login", mirroredNamespaces);
-        Assert.Contains("GameFrameX.Hotfix.Wrapper.Agent.Logic.ServerRole.Login", mirroredNamespaces);
+        // C357：空 wrapper 不再生成注册——无可包装方法的代理不得出现在 wrapper 映射中
+        // （Player/ServerRole 的 LoginComponentAgent 与 ServerRole 的 MailComponentAgent 均无标记方法；
+        // Player 的 MailComponentAgent 有标记方法，仍应注册——按命名空间区分同名代理）
+        Assert.DoesNotContain(mappedAgentNamespaces, agentNamespace => agentNamespace.EndsWith(".Login"));
+        Assert.DoesNotContain(mappedAgentNamespaces, agentNamespace => agentNamespace == "GameFrameX.Hotfix.Logic.ServerRole.Mail");
+        // 有标记方法的代理仍正常产出镜像 wrapper
+        Assert.Contains(mirroredNamespaces, namespaceName => namespaceName.EndsWith(".Player.Mail"));
     }
 }
