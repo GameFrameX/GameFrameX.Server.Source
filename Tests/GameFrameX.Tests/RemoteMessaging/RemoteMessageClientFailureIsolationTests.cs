@@ -249,4 +249,276 @@ public sealed class RemoteMessageClientFailureIsolationTests
             return 1;
         }
     }
+
+    /// <summary>
+    /// 写入按注入异常失败、读取永久阻塞的传输流：驱动客户端异常路径且不让接收泵副作用污染失效计数。
+    /// </summary>
+    private sealed class FailingWriteStream : Stream
+    {
+        private static readonly Task<int> NeverCompleted = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously).Task;
+
+        private readonly Exception _writeException;
+
+        public FailingWriteStream(Exception writeException)
+        {
+            _writeException = writeException;
+        }
+
+        public int WriteAsyncCount
+        {
+            get;
+            private set;
+        }
+
+        public override bool CanRead
+        {
+            get { return true; }
+        }
+
+        public override bool CanSeek
+        {
+            get { return false; }
+        }
+
+        public override bool CanWrite
+        {
+            get { return true; }
+        }
+
+        public override long Length
+        {
+            get { throw new NotSupportedException(); }
+        }
+
+        public override long Position
+        {
+            get { throw new NotSupportedException(); }
+            set { throw new NotSupportedException(); }
+        }
+
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            WriteAsyncCount++;
+            if (_writeException != null)
+            {
+                throw _writeException;
+            }
+
+            return default;
+        }
+
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            WriteAsyncCount++;
+            if (_writeException != null)
+            {
+                throw _writeException;
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            if (_writeException != null)
+            {
+                throw _writeException;
+            }
+        }
+
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            return NeverCompleted;
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            return 0;
+        }
+
+        public override void Flush()
+        {
+        }
+
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override void SetLength(long value)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    /// <summary>
+    /// 记录失效调用的池替身：按目标返回预置流，统计全量/流粒度失效次数。
+    /// </summary>
+    private sealed class RecordingPooledAdapter : ITransportProtocolAdapter
+    {
+        private readonly Func<RemoteServiceTarget, Stream> _streamFactory;
+
+        public RecordingPooledAdapter(Func<RemoteServiceTarget, Stream> streamFactory)
+        {
+            _streamFactory = streamFactory;
+        }
+
+        public int InvalidateAllCount
+        {
+            get;
+            private set;
+        }
+
+        public System.Collections.Concurrent.ConcurrentDictionary<Stream, int> InvalidatedStreams { get; } = new System.Collections.Concurrent.ConcurrentDictionary<Stream, int>();
+
+        public string ProtocolName
+        {
+            get { return "RecordingPooled"; }
+        }
+
+        public Task<Stream> GetOrCreateStreamAsync(RemoteServiceTarget target, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(_streamFactory(target));
+        }
+
+        public bool IsServiceAvailable(RemoteServiceTarget target)
+        {
+            return true;
+        }
+
+        public void Invalidate()
+        {
+            InvalidateAllCount++;
+        }
+
+        public void Invalidate(Stream stream)
+        {
+            InvalidatedStreams.AddOrUpdate(stream, 1, static (_, count) => count + 1);
+        }
+
+        public void Dispose()
+        {
+        }
+    }
+
+    /// <summary>
+    /// 验收 1：非连接类异常（如协议/编码层 InvalidOperationException）不清共享连接池——全量与流粒度失效均不触发。
+    /// </summary>
+    [Fact]
+    public async Task RpcPath_NonConnectionException_DoesNotInvalidatePool()
+    {
+        var stream = new FailingWriteStream(new InvalidOperationException("encode failure"));
+        var adapter = new RecordingPooledAdapter(_ => stream);
+        var (client, _, health, _) = CreateClient(adapter);
+
+        var result = await client.CallWithResultAsync<TestResponseMessage>(
+            RemoteCallContext.Create("Social", 500), new TestMessageObject());
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(RemoteStatusCode.UnknownError, result.StatusCode);
+        Assert.Equal(0, adapter.InvalidateAllCount);
+        Assert.Empty(adapter.InvalidatedStreams);
+        Assert.Equal(1, health.UnavailableCounts["Social"]);
+    }
+
+    /// <summary>
+    /// 验收 2：RPC 路径连接类异常（IOException）仅按流失效，全量清池零调用。
+    /// </summary>
+    [Fact]
+    public async Task RpcPath_IOException_InvalidatesOnlyFailingStream()
+    {
+        var stream = new FailingWriteStream(new IOException("connection reset"));
+        var adapter = new RecordingPooledAdapter(_ => stream);
+        var (client, _, _, _) = CreateClient(adapter);
+
+        var result = await client.CallWithResultAsync<TestResponseMessage>(
+            RemoteCallContext.Create("Social", 500), new TestMessageObject());
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(RemoteStatusCode.ConnectionFailed, result.StatusCode);
+        Assert.Equal(0, adapter.InvalidateAllCount);
+        Assert.Equal(1, adapter.InvalidatedStreams[stream]);
+    }
+
+    /// <summary>
+    /// 验收 3：ObjectDisposedException（写入已被移除连接的流）同样按流失效。
+    /// </summary>
+    [Fact]
+    public async Task RpcPath_ObjectDisposedException_InvalidatesOnlyFailingStream()
+    {
+        var stream = new FailingWriteStream(new ObjectDisposedException("stream"));
+        var adapter = new RecordingPooledAdapter(_ => stream);
+        var (client, _, _, _) = CreateClient(adapter);
+
+        var result = await client.CallWithResultAsync<TestResponseMessage>(
+            RemoteCallContext.Create("Social", 500), new TestMessageObject());
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(RemoteStatusCode.ConnectionFailed, result.StatusCode);
+        Assert.Equal(0, adapter.InvalidateAllCount);
+        Assert.Equal(1, adapter.InvalidatedStreams[stream]);
+    }
+
+    /// <summary>
+    /// 验收 2（单向路径）：SendOneWayAsync 写失败 IOException 仅按流失效。
+    /// </summary>
+    [Fact]
+    public async Task OneWayPath_IOException_InvalidatesOnlyFailingStream()
+    {
+        var stream = new FailingWriteStream(new IOException("connection reset"));
+        var adapter = new RecordingPooledAdapter(_ => stream);
+        var (client, circuit, _, _) = CreateClient(adapter);
+
+        await client.SendOneWayAsync(RemoteCallContext.Create("Social", 500), new TestMessageObject());
+
+        Assert.Equal(0, adapter.InvalidateAllCount);
+        Assert.Equal(1, adapter.InvalidatedStreams[stream]);
+        Assert.Equal(1, circuit.FailureCounts["Social"]);
+    }
+
+    /// <summary>
+    /// 验收 1（单向路径）：非连接类异常不清池（旧行为为无条件全量失效）。
+    /// </summary>
+    [Fact]
+    public async Task OneWayPath_NonConnectionException_DoesNotInvalidatePool()
+    {
+        var stream = new FailingWriteStream(new InvalidOperationException("encode failure"));
+        var adapter = new RecordingPooledAdapter(_ => stream);
+        var (client, _, health, _) = CreateClient(adapter);
+
+        await client.SendOneWayAsync(RemoteCallContext.Create("Social", 500), new TestMessageObject());
+
+        Assert.Equal(0, adapter.InvalidateAllCount);
+        Assert.Empty(adapter.InvalidatedStreams);
+        Assert.Equal(1, health.UnavailableCounts["Social"]);
+    }
+
+    /// <summary>
+    /// 验收 4：一条连接写失败（IOException）后，同池另一条连接（其它实例目标）不受牵连——
+    /// 失效集合仅含坏连接，全量清池零调用，好连接后续发送不触发任何失效。
+    /// </summary>
+    [Fact]
+    public async Task PoolSiblingConnection_SurvivesFailingConnectionInvalidation()
+    {
+        var badStream = new FailingWriteStream(new IOException("connection reset"));
+        var goodStream = new FailingWriteStream(null);
+        var streams = new System.Collections.Concurrent.ConcurrentDictionary<string, Stream>(StringComparer.Ordinal);
+        streams["Social/2001"] = badStream;
+        streams["Social/2002"] = goodStream;
+        var adapter = new RecordingPooledAdapter(target => streams[target.ToString()]);
+        var (client, _, health, _) = CreateClient(adapter);
+
+        await client.SendOneWayAsync(
+            new RemoteCallContext { ServiceName = "Social", TargetInstanceId = "2001", TimeoutMs = 500 }, new TestMessageObject());
+        await client.SendOneWayAsync(
+            new RemoteCallContext { ServiceName = "Social", TargetInstanceId = "2002", TimeoutMs = 5000 }, new TestMessageObject());
+
+        Assert.Equal(0, adapter.InvalidateAllCount);
+        Assert.Equal(1, adapter.InvalidatedStreams[badStream]);
+        Assert.False(adapter.InvalidatedStreams.ContainsKey(goodStream)); // 好连接未被误杀
+        Assert.True(goodStream.WriteAsyncCount >= 1); // 好连接确实被复用发送（握手超时回落后写入成功）
+        Assert.Equal(1, health.UnavailableCounts["Social/2001"]);
+        Assert.False(health.UnavailableCounts.ContainsKey("Social/2002"));
+    }
 }
