@@ -34,11 +34,13 @@ using GameFrameX.Capability.Online.Abstractions.Scope;
 namespace GameFrameX.Capability.Online.Assets.AdminApi;
 
 /// <summary>
-/// 资产域 admin 命令与查询（grant_asset / revoke_asset / query_wallet_ledger / query_asset_audit / query_transaction_detail）。
+/// 资产域 admin 命令与查询（grant_asset / revoke_asset / query_wallet_ledger / query_asset_audit / query_transaction_detail
+/// / query_compensation_queue / resolve_compensation_manual_review）。
 /// <para>
 /// 维护约束：发放与撤销统一走 <see cref="OnlineGrantService"/>（内建幂等，Admin 线缆 IdempotencyKey = BusinessOrderNumber
 /// 或 Admin 生成的前缀键，直接透传）；撤销按既有交易明细反向建变更行（无独立撤销 API）；资产审计查询映射统一审计面后
-/// 按 <c>Online.Asset.*</c> 事件前缀过滤（页内过滤，时间过滤由审计面承接）。
+/// 按 <c>Online.Asset.*</c> 事件前缀过滤（页内过滤，时间过滤由审计面承接）；补偿队列观测与裁决面向
+/// <see cref="OnlineGrantCompensationQueue"/>（宿主未装配时查询降级空表、裁决拒绝——补偿条目只经投递成功或人工 Discard 离队）。
 /// </para>
 /// </summary>
 public sealed class OnlineAdminAssetHandlers
@@ -64,18 +66,25 @@ public sealed class OnlineAdminAssetHandlers
     private readonly IOnlineAssetTransactionStore _assetTransactionStore;
 
     /// <summary>
+    /// 跨服补偿队列（可空 = 宿主未装配：查询降级 QueueConfigured=false，裁决拒绝）。
+    /// </summary>
+    private readonly OnlineGrantCompensationQueue _compensationQueue;
+
+    /// <summary>
     /// 初始化 <see cref="OnlineAdminAssetHandlers"/>（各依赖经能力服务共享面解析后注入）。
     /// </summary>
     /// <param name="grantService">统一发放入口。</param>
     /// <param name="assetQuery">资产查询。</param>
     /// <param name="audit">统一审计读面。</param>
     /// <param name="assetTransactionStore">资产交易存储。</param>
-    public OnlineAdminAssetHandlers(OnlineGrantService grantService, OnlineAssetQueryService assetQuery, IOnlineAuditReader audit, IOnlineAssetTransactionStore assetTransactionStore)
+    /// <param name="compensationQueue">跨服补偿队列（可空 = 宿主未装配）。</param>
+    public OnlineAdminAssetHandlers(OnlineGrantService grantService, OnlineAssetQueryService assetQuery, IOnlineAuditReader audit, IOnlineAssetTransactionStore assetTransactionStore, OnlineGrantCompensationQueue compensationQueue = null)
     {
         _grantService = grantService ?? throw new ArgumentNullException(nameof(grantService));
         _assetQuery = assetQuery ?? throw new ArgumentNullException(nameof(assetQuery));
         _audit = audit ?? throw new ArgumentNullException(nameof(audit));
         _assetTransactionStore = assetTransactionStore ?? throw new ArgumentNullException(nameof(assetTransactionStore));
+        _compensationQueue = compensationQueue;
     }
 
     /// <summary>
@@ -86,6 +95,8 @@ public sealed class OnlineAdminAssetHandlers
     {
         registry.Register("grant_asset", OnlineAdminApiAdapters.Wrap(GrantAssetAsync), false);
         registry.Register("revoke_asset", OnlineAdminApiAdapters.Wrap(RevokeAssetAsync), false);
+        registry.Register("query_compensation_queue", OnlineAdminApiAdapters.Wrap(QueryCompensationQueueAsync), false);
+        registry.Register("resolve_compensation_manual_review", OnlineAdminApiAdapters.Wrap(ResolveCompensationManualReviewAsync), false);
         registry.Register("query_wallet_ledger", OnlineAdminApiAdapters.Wrap(QueryWalletLedgerAsync), false);
         registry.Register("query_asset_audit", OnlineAdminApiAdapters.Wrap(QueryAssetAuditAsync), false);
         registry.Register("query_transaction_detail", OnlineAdminApiAdapters.Wrap(QueryTransactionDetailAsync), false);
@@ -325,6 +336,134 @@ public sealed class OnlineAdminAssetHandlers
             PlayerId = transaction.PlayerId.ToString(System.Globalization.CultureInfo.InvariantCulture),
             OccurredAt = transaction.CreatedTime,
             GrantItems = grantItems,
+        };
+    }
+
+    /// <summary>
+    /// query_compensation_queue：跨服补偿队列快照（滞留与转人工条目 + 计数；宿主未装配队列时 QueueConfigured=false 空表）。
+    /// </summary>
+    /// <param name="request">请求。</param>
+    /// <param name="scope">作用域。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>补偿队列快照。</returns>
+    public Task<object> QueryCompensationQueueAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    {
+        if (_compensationQueue == null)
+        {
+            return Task.FromResult<object>(new CompensationQueueResponse
+            {
+                QueueConfigured = false,
+                PendingCount = 0,
+                ManualReviewCount = 0,
+                Items = new List<CompensationQueueEntryResponse>(),
+            });
+        }
+
+        var pendingItems = _compensationQueue.ListPending();
+        var items = new List<CompensationQueueEntryResponse>();
+        var pendingCount = 0;
+        var manualReviewCount = 0;
+        foreach (var item in pendingItems)
+        {
+            if (item.State == OnlineGrantCompensationItemState.ManualReview)
+            {
+                manualReviewCount++;
+            }
+            else
+            {
+                pendingCount++;
+            }
+
+            items.Add(new CompensationQueueEntryResponse
+            {
+                IdempotencyKey = item.Request.IdempotencyKey,
+                BusinessOrderNumber = item.Request.BusinessOrderId ?? string.Empty,
+                HomeServerId = item.Request.HomeServerId > 0 ? item.Request.HomeServerId : item.Request.Scope.ServerId,
+                PlayerId = item.Request.Scope.PlayerId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                Source = item.Request.Source.ToString(),
+                Reason = item.Request.Reason ?? string.Empty,
+                State = item.State.ToString(),
+                EnqueuedAt = item.EnqueuedTime,
+                DeadlineAt = item.DeadlineTime,
+                SloAlerted = item.SloAlerted,
+                ManualReviewAt = item.ManualReviewTime,
+                ManualReviewErrorCode = item.ManualReviewErrorCode.ToString(),
+                ManualReviewMessage = item.ManualReviewMessage ?? string.Empty,
+            });
+        }
+
+        return Task.FromResult<object>(new CompensationQueueResponse
+        {
+            QueueConfigured = true,
+            PendingCount = pendingCount,
+            ManualReviewCount = manualReviewCount,
+            Items = items,
+        });
+    }
+
+    /// <summary>
+    /// resolve_compensation_manual_review：裁决转人工条目（Action=Retry 重置回待续投 / Discard 移除并留痕告警；Reason 必填）。
+    /// </summary>
+    /// <param name="request">请求。</param>
+    /// <param name="scope">作用域。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>裁决回执。</returns>
+    public async Task<object> ResolveCompensationManualReviewAsync(AdminApiRequest request, OnlineScope scope, CancellationToken cancellationToken)
+    {
+        if (_compensationQueue == null)
+        {
+            // Localization: Online.AdminApi.CompensationQueueNotConfigured - 补偿队列未装配（宿主未注册跨服补偿队列）。
+            throw new OnlineServiceException(OnlineErrorCode.StateOperationForbidden, LocalizationService.GetString(Localization.Keys.Online.AdminApi.CompensationQueueNotConfigured));
+        }
+
+        var idempotencyKey = OnlineAdminApiContract.RequireString(request, "IdempotencyKey");
+        var action = OnlineAdminApiContract.RequireString(request, "Action");
+        var reason = OnlineAdminApiContract.RequireString(request, "Reason");
+        var isRetry = string.Equals(action, "Retry", StringComparison.OrdinalIgnoreCase);
+        var isDiscard = string.Equals(action, "Discard", StringComparison.OrdinalIgnoreCase);
+        if (!isRetry && !isDiscard)
+        {
+            // Localization: Online.AdminApi.CompensationResolveActionInvalid - 补偿裁决 Action 仅支持 Retry 或 Discard：{0}
+            throw new OnlineServiceException(OnlineErrorCode.ParameterInvalid, LocalizationService.GetString(Localization.Keys.Online.AdminApi.CompensationResolveActionInvalid, action));
+        }
+
+        var entry = _compensationQueue.ListManualReview().FirstOrDefault(item => item.Request.IdempotencyKey == idempotencyKey);
+        if (entry == null)
+        {
+            // Localization: Online.AdminApi.CompensationEntryNotFound - 补偿条目不存在或不在转人工状态：{0}
+            throw new OnlineServiceException(OnlineErrorCode.ResourceNotFound, LocalizationService.GetString(Localization.Keys.Online.AdminApi.CompensationEntryNotFound, idempotencyKey));
+        }
+
+
+        string resolvedState;
+        if (isRetry)
+        {
+            if (!_compensationQueue.RetryManualReview(entry))
+            {
+                // Localization: Online.AdminApi.CompensationEntryNotFound - 补偿条目不存在或不在转人工状态：{0}
+                throw new OnlineServiceException(OnlineErrorCode.ResourceNotFound, LocalizationService.GetString(Localization.Keys.Online.AdminApi.CompensationEntryNotFound, idempotencyKey));
+            }
+
+            resolvedState = OnlineGrantCompensationItemState.Pending.ToString();
+        }
+        else
+        {
+            if (!await _compensationQueue.DiscardManualReviewAsync(entry, reason, "admin", cancellationToken).ConfigureAwait(false))
+            {
+                // Localization: Online.AdminApi.CompensationEntryNotFound - 补偿条目不存在或不在转人工状态：{0}
+                throw new OnlineServiceException(OnlineErrorCode.ResourceNotFound, LocalizationService.GetString(Localization.Keys.Online.AdminApi.CompensationEntryNotFound, idempotencyKey));
+            }
+
+            resolvedState = "Discarded";
+        }
+
+        return new CompensationResolveResponse
+        {
+            IdempotencyKey = idempotencyKey,
+            Action = action,
+            State = resolvedState,
+            Reason = reason,
+            OccurredAt = OnlineAdminApiContract.NowSeconds() * 1000,
         };
     }
 
@@ -585,5 +724,89 @@ public sealed class OnlineAdminAssetHandlers
 
         /// <summary>获取或设置变更行列表。</summary>
         public List<TransactionGrantItemResponse> GrantItems { get; set; }
+    }
+
+    /// <summary>
+    /// 补偿队列条目（幂等键 / 归属服 / 状态 / 转人工事实；对齐 Admin 观测面）。
+    /// </summary>
+    public sealed class CompensationQueueEntryResponse
+    {
+        /// <summary>获取或设置幂等键。</summary>
+        public string IdempotencyKey { get; set; }
+
+        /// <summary>获取或设置业务单号。</summary>
+        public string BusinessOrderNumber { get; set; }
+
+        /// <summary>获取或设置归属服标识。</summary>
+        public long HomeServerId { get; set; }
+
+        /// <summary>获取或设置玩家标识（字符串形态）。</summary>
+        public string PlayerId { get; set; }
+
+        /// <summary>获取或设置变更来源名。</summary>
+        public string Source { get; set; }
+
+        /// <summary>获取或设置变更原因。</summary>
+        public string Reason { get; set; }
+
+        /// <summary>获取或设置条目状态名（Pending / ManualReview）。</summary>
+        public string State { get; set; }
+
+        /// <summary>获取或设置入队时刻（UTC 毫秒）。</summary>
+        public long EnqueuedAt { get; set; }
+
+        /// <summary>获取或设置 SLO 截止时刻（UTC 毫秒）。</summary>
+        public long DeadlineAt { get; set; }
+
+        /// <summary>获取或设置是否已发过 SLO 超时告警。</summary>
+        public bool SloAlerted { get; set; }
+
+        /// <summary>获取或设置转人工时刻（UTC 毫秒；0 = 未转人工）。</summary>
+        public long ManualReviewAt { get; set; }
+
+        /// <summary>获取或设置转人工错误码名（未转人工 = None）。</summary>
+        public string ManualReviewErrorCode { get; set; }
+
+        /// <summary>获取或设置转人工失败描述。</summary>
+        public string ManualReviewMessage { get; set; }
+    }
+
+    /// <summary>
+    /// 补偿队列快照（滞留 / 转人工计数 + 条目列表）。
+    /// </summary>
+    public sealed class CompensationQueueResponse
+    {
+        /// <summary>获取或设置宿主是否装配补偿队列（false = 空表快照）。</summary>
+        public bool QueueConfigured { get; set; }
+
+        /// <summary>获取或设置待自动续投条数。</summary>
+        public int PendingCount { get; set; }
+
+        /// <summary>获取或设置业务性失败转人工条数。</summary>
+        public int ManualReviewCount { get; set; }
+
+        /// <summary>获取或设置条目列表。</summary>
+        public List<CompensationQueueEntryResponse> Items { get; set; }
+    }
+
+    /// <summary>
+    /// 补偿条目裁决回执（Retry / Discard 结果）。
+    /// </summary>
+    public sealed class CompensationResolveResponse
+    {
+        /// <summary>获取或设置幂等键回显。</summary>
+        public string IdempotencyKey { get; set; }
+
+        /// <summary>获取或设置裁决动作（Retry / Discard）。</summary>
+        public string Action { get; set; }
+
+        /// <summary>获取或设置裁决后状态名（Pending / Discarded）。</summary>
+        public string State { get; set; }
+
+        /// <summary>获取或设置裁决原因回显。</summary>
+        public string Reason { get; set; }
+
+        /// <summary>获取或设置裁决时刻（UTC 毫秒）。</summary>
+        public long OccurredAt { get; set; }
     }
 }

@@ -1705,6 +1705,15 @@
   <data name="Online.AdminApi.GrantItemInvalid" xml:space="preserve">
     <value>GrantItems 条目要求 ItemOrCurrencyType（字符串）且 Quantity（正数）。</value>
   </data>
+  <data name="Online.AdminApi.CompensationQueueNotConfigured" xml:space="preserve">
+    <value>补偿队列未装配（宿主未注册跨服补偿队列，无法查看或裁决转人工条目）。</value>
+  </data>
+  <data name="Online.AdminApi.CompensationEntryNotFound" xml:space="preserve">
+    <value>补偿条目不存在或不在转人工状态：{0}</value>
+  </data>
+  <data name="Online.AdminApi.CompensationResolveActionInvalid" xml:space="preserve">
+    <value>补偿裁决 Action 仅支持 Retry 或 Discard：{0}</value>
+  </data>
   <data name="RemoteMessaging.Codec.CompressionThresholdInvalid" xml:space="preserve">
     <value>压缩阈值必须大于等于 0。</value>
   </data>

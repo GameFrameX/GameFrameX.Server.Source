@@ -42,8 +42,9 @@ namespace GameFrameX.Capability.Online.Assets;
 /// 资产能力（钱包 / 库存 / 账本 / 统一发放）的自装配模块（C231 P3 迁入；C294 改写为三段生命周期机制模块）。
 /// <para>
 /// 维护约束（服务共享协议）：模块无参构造（<see cref="CapabilityAssembly"/> 扫描可发现）；<c>Register</c>
-/// 自装配本域——两 store 以懒默认注册后取用（族 / 宿主 Override 自动胜出，模块不做探测回退）；跨域硬依赖
-///（幂等 / 事件出口 / 审计读面）经上下文解析（审计读面为族基建预置的 <see cref="IOnlineAuditReader"/>）；
+/// 自装配本域——两 store 与跨服补偿队列以默认注册后取用（族 / 宿主 Override 自动胜出，模块不做探测回退；
+/// 补偿队列默认为惰性形态——无传输即无自动续投，宿主装配真实传输后以 Override 注册同型队列）；
+/// 跨域硬依赖（幂等 / 事件出口 / 审计读面）经上下文解析（审计读面为族基建预置的 <see cref="IOnlineAuditReader"/>）；
 /// 对外产物（查询 / 发放服务）注册回共享面供后序能力取用。本能力无 Options 根类型、无依赖声明；
 /// <c>ActivateAsync</c> 无桥与预建资源（空实现）、<c>DeactivateAsync</c> 无自持资源（空实现）。
 /// </para>
@@ -68,7 +69,16 @@ public sealed class OnlineAssetsCapabilityModule : ICapabilityModule, IAdminActi
     public static readonly CapabilityManifest ManifestInstance = new(
         "online-assets",
         "1.0.0",
-        new[] { "grant_asset", "revoke_asset", "query_wallet_ledger", "query_asset_audit", "query_transaction_detail" });
+        new[]
+        {
+            "grant_asset",
+            "revoke_asset",
+            "query_wallet_ledger",
+            "query_asset_audit",
+            "query_transaction_detail",
+            "query_compensation_queue",
+            "resolve_compensation_manual_review",
+        });
 
     /// <summary>
     /// 资产存储（钱包 / 库存 / 账本；Register 期解析）。
@@ -89,6 +99,11 @@ public sealed class OnlineAssetsCapabilityModule : ICapabilityModule, IAdminActi
     /// 统一发放入口（Register 期构造）。
     /// </summary>
     private OnlineGrantService _grantService;
+
+    /// <summary>
+    /// 跨服补偿队列（Register 期懒默认注册后取用，宿主/族 Override 胜出；Admin 观测/裁决承载）。
+    /// </summary>
+    private OnlineGrantCompensationQueue _compensationQueue;
 
     /// <summary>
     /// 统一审计读面（Register 期解析；族基建预置 OnlineAuditService 的读面）。
@@ -132,6 +147,11 @@ public sealed class OnlineAssetsCapabilityModule : ICapabilityModule, IAdminActi
         _grantService = new OnlineGrantService(_assetStore, _assetTransactionStore, idempotency, eventPublisher);
         context.AddService(_assetQuery);
         context.AddService(_grantService);
+
+        // 跨服补偿队列：惰性默认（无传输 = 仅承载观测/裁决，续投显式报错）；宿主装配真实传输与告警出口后
+        // 以 Override 注册同型队列胜出（Override 解析优先与注册先后无关），Admin 观测/裁决始终可用。
+        context.AddService<OnlineGrantCompensationQueue>(new OnlineGrantCompensationQueue(null, null));
+        _compensationQueue = context.GetService<OnlineGrantCompensationQueue>();
     }
 
     /// <summary>
@@ -163,15 +183,17 @@ public sealed class OnlineAssetsCapabilityModule : ICapabilityModule, IAdminActi
     }
 
     /// <summary>
-    /// 使用注册阶段得到的发放服务、查询服务、审计读面与交易存储构造资产管理处理器，并登记发放、撤销、钱包账本、资产审计与交易详情等管理动作。
+    /// 使用注册阶段得到的发放服务、查询服务、审计读面、交易存储与可选跨服补偿队列构造资产管理处理器，
+    /// 并登记发放、撤销、钱包账本、资产审计、交易详情与补偿队列观测/裁决等管理动作。
     /// </summary>
     /// <remarks>
-    /// Builds <see cref="OnlineAdminAssetHandlers"/> from the grant service, query service, audit reader and transaction store
-    /// resolved during registration, and registers the grant / revoke / wallet-ledger / asset-audit / transaction-detail admin actions.
+    /// Builds <see cref="OnlineAdminAssetHandlers"/> from the grant service, query service, audit reader, transaction store
+    /// and optional compensation queue resolved during registration, and registers the grant / revoke / wallet-ledger /
+    /// asset-audit / transaction-detail / compensation-queue admin actions.
     /// </remarks>
     /// <param name="registry">管理动作注册表 / Admin action registry</param>
     public void RegisterAdminActions(AdminActionRegistry registry)
     {
-        new OnlineAdminAssetHandlers(_grantService, _assetQuery, _audit, _assetTransactionStore).Register(registry);
+        new OnlineAdminAssetHandlers(_grantService, _assetQuery, _audit, _assetTransactionStore, _compensationQueue).Register(registry);
     }
 }

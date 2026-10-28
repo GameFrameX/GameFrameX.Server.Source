@@ -90,13 +90,14 @@ namespace GameFrameX.Tests.Online
         /// 验证注册表 = 七能力 manifest 声明的全部业务 action + 三个机制元端点（双向对账后两边严格相等）。
         /// </summary>
         [Fact]
-        public async Task ActionNames_ShouldRegisterAllThirtyFiveDeclaredActionsPlusThreeMetaEndpoints()
+        public async Task ActionNames_ShouldRegisterAllThirtySevenDeclaredActionsPlusThreeMetaEndpoints()
         {
             await OnlineCapabilityTestHarness.WithRuntimeAsync(runtime =>
             {
                 var dispatcher = OnlineCapabilityTestHarness.CreateDispatcher(runtime.Host);
 
-                // 业务 action 35 = assets 5（grant_asset / revoke_asset / query_wallet_ledger / query_asset_audit / query_transaction_detail）
+                // 业务 action 37 = assets 7（grant_asset / revoke_asset / query_wallet_ledger / query_asset_audit / query_transaction_detail
+                //     / query_compensation_queue / resolve_compensation_manual_review）
                 //   + foundation 1（suspend_resume_player）
                 //   + social 8（kick_player / revoke_token / mute_player / query_report_cases / update_report_case /
                 //     send_admin_notification / query_chat_messages / match_isolation）
@@ -106,9 +107,9 @@ namespace GameFrameX.Tests.Online
                 //   + operations 7（query_online_overview / query_player_timeline / query_online_audit_events + hotfix 受控操作族 4）；
                 // 机制元端点 3：list_capabilities + list_capability_settings（调度器持有报告）+ list_capability_services（调度器持有服务面）。
                 var declaredActions = runtime.Report.Entries.SelectMany(entry => entry.Manifest.Actions).ToList();
-                Assert.Equal(35, declaredActions.Count);
+                Assert.Equal(37, declaredActions.Count);
                 Assert.Equal(declaredActions.Count + 3, dispatcher.ActionNames.Count);
-                Assert.Equal(38, dispatcher.ActionNames.Count);
+                Assert.Equal(40, dispatcher.ActionNames.Count);
                 foreach (var action in declaredActions)
                 {
                     Assert.Contains(action, dispatcher.ActionNames);
@@ -122,6 +123,31 @@ namespace GameFrameX.Tests.Online
                 Assert.Contains("rollbackConfigRollout", dispatcher.ActionNames);
                 Assert.Contains("rollback_hotfix_version", dispatcher.ActionNames);
                 return Task.CompletedTask;
+            });
+        }
+
+        /// <summary>
+        /// 验证 query_compensation_queue 经完整能力装配接线（默认惰性队列 → 内层 0 + QueueConfigured=true 空快照）。
+        /// </summary>
+        [Fact]
+        public async Task Dispatch_QueryCompensationQueue_DefaultInertQueue_ReturnsConfiguredEmptySnapshot()
+        {
+            await OnlineCapabilityTestHarness.WithRuntimeAsync(async runtime =>
+            {
+                var dispatcher = OnlineCapabilityTestHarness.CreateDispatcher(runtime.Host);
+
+                var envelopeJson = await dispatcher.DispatchAsync("query_compensation_queue", "{\"TenantId\":1,\"AppId\":1,\"ServerId\":1001}");
+                var innerJson = ReadInnerJson(envelopeJson);
+                using (var document = JsonDocument.Parse(innerJson))
+                {
+                    var root = document.RootElement;
+                    Assert.Equal(0, root.GetProperty("Code").GetInt32());
+                    var data = root.GetProperty("Data");
+                    Assert.True(data.GetProperty("QueueConfigured").GetBoolean());
+                    Assert.Equal(0, data.GetProperty("PendingCount").GetInt32());
+                    Assert.Equal(0, data.GetProperty("ManualReviewCount").GetInt32());
+                    Assert.Equal(JsonValueKind.Array, data.GetProperty("Items").ValueKind);
+                }
             });
         }
 

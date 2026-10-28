@@ -347,6 +347,35 @@ public static partial class Keys
             /// 用途: 解析单条 GrantItems 变更行时字段非法
             /// </remarks>
             public const string GrantItemInvalid = "Online.AdminApi.GrantItemInvalid";
+
+            /// <summary>
+            /// 补偿队列未装配（宿主未注册跨服补偿队列，无法查看或裁决转人工条目）。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Online.AdminApi.CompensationQueueNotConfigured
+            /// 用途: 补偿队列管理动作在宿主未装配队列时拒绝
+            /// </remarks>
+            public const string CompensationQueueNotConfigured = "Online.AdminApi.CompensationQueueNotConfigured";
+
+            /// <summary>
+            /// 补偿条目不存在或不在转人工状态：{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Online.AdminApi.CompensationEntryNotFound
+            /// 用途: 裁决补偿条目时按幂等键找不到转人工条目
+            /// 参数: {0} - 幂等键
+            /// </remarks>
+            public const string CompensationEntryNotFound = "Online.AdminApi.CompensationEntryNotFound";
+
+            /// <summary>
+            /// 补偿裁决 Action 仅支持 Retry 或 Discard：{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Online.AdminApi.CompensationResolveActionInvalid
+            /// 用途: 裁决补偿条目时 Action 参数非法
+            /// 参数: {0} - 实际传入值
+            /// </remarks>
+            public const string CompensationResolveActionInvalid = "Online.AdminApi.CompensationResolveActionInvalid";
         }
     }
 }
