@@ -51,4 +51,9 @@ public sealed class OnlineMatchSettlementRetryEntry
     /// 获取或设置累计投递尝试次数。
     /// </summary>
     public int Attempts { get; set; }
+
+    /// <summary>
+    /// 获取或设置重试状态（Pending = 自动重试中；ManualReview = 尝试达上限转人工复核，停止自动重投）。
+    /// </summary>
+    public OnlineMatchSettlementRetryState State { get; set; } = OnlineMatchSettlementRetryState.Pending;
 }

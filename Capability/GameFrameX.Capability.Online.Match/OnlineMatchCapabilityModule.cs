@@ -143,7 +143,7 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
         var grantService = context.GetOptionalService<OnlineGrantService>();
         var settlementService = new OnlineMatchSettlementService(_matchRuntime, matchResultStore, eventPublisher);
         var dispatcher = grantService == null ? null : new OnlineMatchResultDispatcher(grantService);
-        _settlementPipeline = new OnlineMatchSettlementPipeline(_matchRuntime, settlementService, dispatcher);
+        _settlementPipeline = new OnlineMatchSettlementPipeline(_matchRuntime, settlementService, dispatcher, options.Settlement);
         context.AddTickJob("match-settlement-tick", ct => _settlementPipeline.TickAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct));
 
         _bridgeService = new OnlineMatchGameBridgeService(_matchRuntime, rpsGame);

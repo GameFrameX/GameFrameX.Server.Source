@@ -56,6 +56,9 @@ namespace GameFrameX.Tests.Online
         /// <summary>基准时刻（UTC 毫秒）。</summary>
         private const long Now = 1000000L;
 
+        /// <summary>幂等记录默认保留时长（24 小时，对齐生产装配）。</summary>
+        private const long DefaultIdempotencyRetentionMilliseconds = 86_400_000L;
+
         /// <summary>对局标识。</summary>
         private const string MatchId = "match-1";
 
@@ -129,6 +132,82 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 验证部分失败时只重投失败玩家（M79 回归）：已成功玩家的幂等记录过期后也不被再次发奖，
+        /// 失败玩家集合不收窄波及成功玩家，且尝试达上限（默认 5 次，含首发）转人工复核。
+        /// </summary>
+        [Fact]
+        public async Task TickAsync_PartialFailure_ShouldRedispatchFailedPlayersOnly_NoDoubleGrantAfterIdempotencyExpiry()
+        {
+            var harness = new Harness(idempotencyRetentionMilliseconds: 100);
+            harness.AssetStore.FailingPlayerIds.Add(PlayerTwo);
+            await harness.PlayToSettlingAsync();
+
+            await harness.Pipeline.TickAsync(Now + 100);
+
+            // 玩家一首发成功、玩家二失败：重试表只登记失败玩家（首发 + 同 Tick 重投各计一次）。
+            Assert.Equal(OnlineRockPaperScissorsGame.WinnerRewardAmount, await harness.BalanceOfAsync(PlayerOne));
+            var (_, retries) = harness.Pipeline.QueryStatus();
+            Assert.Single(retries);
+            Assert.Equal(new List<long> { PlayerTwo }, retries[0].FailedPlayerIds);
+            Assert.Equal(2, retries[0].Attempts);
+            Assert.Equal(OnlineMatchSettlementRetryState.Pending, retries[0].State);
+
+            // 越过幂等保留时长：玩家一的完成记录已过期——旧实现整份重投会在此后对其重复发奖。
+            harness.Clock.Advance(1000);
+            await harness.Pipeline.TickAsync(Now + 200);
+            await harness.Pipeline.TickAsync(Now + 300);
+            await harness.Pipeline.TickAsync(Now + 400);
+
+            var (_, exhausted) = harness.Pipeline.QueryStatus();
+            Assert.Single(exhausted);
+            Assert.Equal(5, exhausted[0].Attempts);
+            Assert.Equal(OnlineMatchSettlementRetryState.ManualReview, exhausted[0].State);
+            Assert.Equal(new List<long> { PlayerTwo }, exhausted[0].FailedPlayerIds);
+
+            // 玩家一恰好一份（幂等 TTL 已过期，任何重复投递都会翻倍）；玩家二未发。
+            Assert.Equal(OnlineRockPaperScissorsGame.WinnerRewardAmount, await harness.BalanceOfAsync(PlayerOne));
+            Assert.Equal(0L, await harness.BalanceOfAsync(PlayerTwo));
+
+            // 人工复核冻结：后续 tick 不再自动重投。
+            await harness.Pipeline.TickAsync(Now + 500);
+            var (_, frozen) = harness.Pipeline.QueryStatus();
+            Assert.Single(frozen);
+            Assert.Equal(5, frozen[0].Attempts);
+            Assert.Equal(OnlineMatchSettlementRetryState.ManualReview, frozen[0].State);
+        }
+
+        /// <summary>
+        /// 验证全量失败达尝试上限后冻结为人工复核：修复资产存储也不再自动重投（人工裁决面语义）。
+        /// </summary>
+        [Fact]
+        public async Task TickAsync_RetryExhausted_ShouldFreezeAtManualReview_AndStopAutoRedispatch()
+        {
+            var harness = new Harness(withFailingStore: true);
+            await harness.PlayToSettlingAsync();
+
+            await harness.Pipeline.TickAsync(Now + 100);
+            await harness.Pipeline.TickAsync(Now + 200);
+            await harness.Pipeline.TickAsync(Now + 300);
+            await harness.Pipeline.TickAsync(Now + 400);
+
+            var (_, retries) = harness.Pipeline.QueryStatus();
+            Assert.Single(retries);
+            Assert.Equal(5, retries[0].Attempts);
+            Assert.Equal(OnlineMatchSettlementRetryState.ManualReview, retries[0].State);
+
+            // 修复资产存储后仍不自动重投：人工复核条目脱离自动重试。
+            harness.AssetStore.FailureEnabled = false;
+            await harness.Pipeline.TickAsync(Now + 500);
+
+            var (_, frozen) = harness.Pipeline.QueryStatus();
+            Assert.Single(frozen);
+            Assert.Equal(5, frozen[0].Attempts);
+            Assert.Equal(OnlineMatchSettlementRetryState.ManualReview, frozen[0].State);
+            Assert.Equal(0L, await harness.BalanceOfAsync(PlayerOne));
+            Assert.Equal(0L, await harness.BalanceOfAsync(PlayerTwo));
+        }
+
+        /// <summary>
         /// 验证分发器缺席（assets 能力被过滤）时仅结算、不发奖、不记重试。
         /// </summary>
         [Fact]
@@ -173,7 +252,8 @@ namespace GameFrameX.Tests.Online
             /// </summary>
             /// <param name="withFailingStore">是否装配可切换失败的资产存储。</param>
             /// <param name="withDispatcher">是否装配发奖分发器（false = 模拟 assets 能力缺席）。</param>
-            public Harness(bool withFailingStore = false, bool withDispatcher = true)
+            /// <param name="idempotencyRetentionMilliseconds">幂等记录保留时长毫秒（默认 24 小时；缩短可模拟 TTL 过期）。</param>
+            public Harness(bool withFailingStore = false, bool withDispatcher = true, long idempotencyRetentionMilliseconds = DefaultIdempotencyRetentionMilliseconds)
             {
                 AssetStore = new FailingAssetStore(new InMemoryOnlineAssetStore()) { FailureEnabled = withFailingStore };
                 TransactionStore = new InMemoryOnlineAssetTransactionStore();
@@ -188,8 +268,9 @@ namespace GameFrameX.Tests.Online
                 if (withDispatcher)
                 {
                     // 重试补齐依赖宿主把失败重放策略装配为 ReExecute（赛季/锦标赛结算重试测试同一装配项先例）。
-                    var options = new IdempotencyOptions { ConcurrentWaitTimeoutMilliseconds = 1, FailedReplayPolicy = FailedReplayPolicy.ReExecute };
-                    var coordinator = new IdempotencyCoordinator(new InMemoryIdempotencyStore(), new StepClock(), options);
+                    var options = new IdempotencyOptions { ConcurrentWaitTimeoutMilliseconds = 1, FailedReplayPolicy = FailedReplayPolicy.ReExecute, RetentionMilliseconds = idempotencyRetentionMilliseconds };
+                    Clock = new StepClock();
+                    var coordinator = new IdempotencyCoordinator(new InMemoryIdempotencyStore(), Clock, options);
                     grantService = new OnlineGrantService(AssetStore, TransactionStore, new OnlineIdempotencyService(coordinator, null), Publisher);
                 }
 
@@ -197,8 +278,14 @@ namespace GameFrameX.Tests.Online
                 Pipeline = new OnlineMatchSettlementPipeline(Runtime, Settlement, Dispatcher);
             }
 
-            /// <summary>获取资产存储（可切换失败）。</summary>
+            /// <summary>获取资产存储（可切换失败 / 可按玩家注入失败）。</summary>
             public FailingAssetStore AssetStore
+            {
+                get;
+            }
+
+            /// <summary>获取幂等时钟（可外部跳变，用于模拟幂等记录过期）。</summary>
+            public StepClock Clock
             {
                 get;
             }
@@ -368,6 +455,11 @@ namespace GameFrameX.Tests.Online
             }
 
             /// <summary>
+            /// 获取按玩家注入失败的玩家集合（命中的玩家应用直接失败，不受 <see cref="FailureEnabled"/> 影响）。
+            /// </summary>
+            public HashSet<long> FailingPlayerIds { get; } = new HashSet<long>();
+
+            /// <summary>
             /// 查询钱包账户；原样委托给内部真实存储，不受失败注入影响。
             /// </summary>
             /// <remarks>
@@ -434,17 +526,20 @@ namespace GameFrameX.Tests.Online
             }
 
             /// <summary>
-            /// 应用资产变更批次；开启 <c>FailureEnabled</c> 时不触达内部存储，直接返回 <c>InternalError</c> 失败结果（无流水），否则委托给内部真实存储。
+            /// 应用资产变更批次；开启 <c>FailureEnabled</c> 或批次归属玩家命中 <c>FailingPlayerIds</c> 时
+            /// 不触达内部存储，直接返回 <c>InternalError</c> 失败结果（无流水），否则委托给内部真实存储。
             /// </summary>
             /// <remarks>
-            /// Applies an asset change batch; when <c>FailureEnabled</c> is set it returns an injected <c>InternalError</c> failure with no ledger entries, otherwise delegates to the inner store.
+            /// Applies an asset change batch; when <c>FailureEnabled</c> is set or the batch owner hits
+            /// <c>FailingPlayerIds</c> it returns an injected <c>InternalError</c> failure with no ledger entries,
+            /// otherwise delegates to the inner store.
             /// </remarks>
             /// <param name="batch">资产变更批次 / Asset change batch</param>
             /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
             /// <returns>注入的失败结果或内部存储的应用结果 / Injected failure result or the inner store's apply result</returns>
             public Task<OnlineAssetApplyResult> ApplyAsync(OnlineAssetChangeBatch batch, CancellationToken cancellationToken = default)
             {
-                if (FailureEnabled)
+                if (FailureEnabled || FailingPlayerIds.Contains(batch.PlayerId))
                 {
                     return Task.FromResult(new OnlineAssetApplyResult(false, OnlineErrorCode.InternalError, "注入的发奖失败", new List<OnlineLedgerEntry>()));
                 }
@@ -519,6 +614,15 @@ namespace GameFrameX.Tests.Online
         {
             /// <summary>当前时刻。</summary>
             private long _nowMilliseconds;
+
+            /// <summary>
+            /// 一次性推进时钟（模拟时间流逝，如幂等记录过期）。
+            /// </summary>
+            /// <param name="deltaMilliseconds">推进毫秒数。</param>
+            public void Advance(long deltaMilliseconds)
+            {
+                _nowMilliseconds += deltaMilliseconds;
+            }
 
             /// <summary>
             /// 获取当前时刻（每次读取推进 10ms）。
