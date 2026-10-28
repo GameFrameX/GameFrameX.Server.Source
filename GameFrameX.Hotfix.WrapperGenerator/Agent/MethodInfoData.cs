@@ -75,7 +75,8 @@ public sealed class MethodInfoData
             sb.Append(Name);
             sb.Append(Typeparams);
             sb.Append(ParamDeclare);
-            if (!string.IsNullOrEmpty(Constraint))
+            // override 自动继承约束，重复输出 new() 或接口约束会导致 CS0460。
+            if (!string.IsNullOrEmpty(Constraint) && (Modify == null || Modify.IndexOf("override ", System.StringComparison.Ordinal) < 0))
             {
                 sb.Append(" ");
                 sb.Append(Constraint);

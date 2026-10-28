@@ -27,7 +27,6 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-using System.Text.RegularExpressions;
 using GameFrameX.Hotfix.WrapperGenerator.Agent;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -42,41 +41,33 @@ namespace GameFrameX.Tests.Hotfix;
 /// </remarks>
 public sealed class HotfixWrapperGeneratorConstraintTests
 {
-    private const string AgentSource = """
-        namespace GameFrameX.Hotfix.Player
-        {
-            public class ConstraintComponentAgent : BaseComponentAgent
-            {
-                [Service]
-                public virtual System.Threading.Tasks.Task<T> GetAsync<T>(string key) where T : class
-                {
-                    return null;
-                }
-
-                [Service]
-                public virtual System.Threading.Tasks.Task<int> GetPlainAsync(string key)
-                {
-                    return null;
-                }
-            }
-        }
-        """;
-
-    [Fact]
-    public void Declare_includes_generic_constraint_clause_for_wrapped_methods()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void GeneratedDeclaration_PreservesEffectiveConstraints_AndCompiles(bool overridesBase)
     {
+        var method = new MethodInfoData
+        {
+            Name = "Create",
+            ReturnType = "T",
+            Typeparams = "<T>",
+            ParamDeclare = "()",
+            Constraint = "where T : class, new()",
+            Modify = overridesBase ? "public override " : "public new ",
+            IsVirtual = overridesBase
+        };
+        var source = "public class Parent { public " + (overridesBase ? "virtual " : "")
+            + "T Create<T>() where T : class, new() { return new T(); } } public class Child : Parent { "
+            + method.Declare + " { return new T(); } }";
         var compilation = CSharpCompilation.Create(
-            "GeneratorTest",
-            new[] { CSharpSyntaxTree.ParseText(AgentSource) },
-            new[] { MetadataReference.CreateFromFile(typeof(object).Assembly.Location) });
-
-        var driver = CSharpGeneratorDriver.Create(new HotfixWrapperGenerator());
-        driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
-
-        Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
-
-        var generatedText = string.Join("\n", outputCompilation.SyntaxTrees.Skip(1).Select(t => t.ToString()));
-        Assert.Contains("where T : class", generatedText);
-        Assert.Matches(new Regex(@"GetPlainAsync\(string key\)\s*(\r?\n|\{)"), generatedText);
+            "GeneratedConstraintProbe",
+            new[] { CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(LanguageVersion.CSharp7_3)) },
+            new[] { MetadataReference.CreateFromFile(typeof(object).Assembly.Location) },
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        using (var output = new System.IO.MemoryStream())
+        {
+            var result = compilation.Emit(output);
+            Assert.True(result.Success, string.Join("\n", result.Diagnostics));
+        }
     }
 }
