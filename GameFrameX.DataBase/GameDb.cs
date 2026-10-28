@@ -373,9 +373,28 @@ public static partial class GameDb
         ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
         try
         {
+            List<Exception> closeFailures = null;
             foreach (var databaseService in MultiDbRegistry.GetRegisteredDatabaseServices())
             {
-                await databaseService.CloseAsync();
+                try
+                {
+                    await databaseService.CloseAsync();
+                }
+                catch (Exception closeException)
+                {
+                    // 单库关停失败不阻断其余库：先记录，全部库尝试完毕后再统一上抛
+                    if (closeFailures == null)
+                    {
+                        closeFailures = new List<Exception>();
+                    }
+
+                    closeFailures.Add(closeException);
+                }
+            }
+
+            if (closeFailures != null)
+            {
+                throw closeFailures.Count == 1 ? closeFailures[0] : new AggregateException(closeFailures);
             }
         }
         finally
