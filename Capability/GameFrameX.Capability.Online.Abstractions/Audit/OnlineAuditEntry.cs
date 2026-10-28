@@ -57,6 +57,11 @@ public sealed class OnlineAuditEntry
     /// 获取或设置全局唯一审计标识（幂等去重键）。受控操作审计应从操作幂等键**确定性派生**
     /// （如 <c>audit-{操作幂等键}</c>，对齐幂等键派生先例）——重复执行同一命令命中同一条审计，
     /// 与接入侧幂等共同构成幂等半边；随机派生的标识会让重复执行产生多条审计记录。
+    /// <para>
+    /// 红线约束：长度 ≤ <see cref="OnlineAuditService.MaxEventIdLength"/>（128），字符集仅限
+    /// 字母 / 数字 / 连字符 / 下划线；超长或含换行、控制字符等非法字符在
+    /// <c>OnlineAuditService.IngestAsync</c> 校验处拒绝（防审计存储 DoS 与日志注入）。
+    /// </para>
     /// </summary>
     public string EventId { get; set; }
 
