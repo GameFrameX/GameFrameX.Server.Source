@@ -2109,6 +2109,14 @@
     <value>ComponentRegister.ActiveGlobalComponents Message: Activate the global component and detect if the components all contain the agent implementation failed , Exception: {0}</value>
   </data>
 
+  <data name="Core.ComponentRegister.ComponentAgentNotImplemented" xml:space="preserve">
+    <value>ComponentRegister.ActiveComponents ActorType: {0} , ComponentType: {1} Agent not implemented, activation skipped</value>
+  </data>
+
+  <data name="Core.ComponentRegister.ActivateComponentsFailedSummary" xml:space="preserve">
+    <value>ComponentRegister.ActiveComponents ActorType: {0} , Failed component activation count: {1} , Component list: [{2}]</value>
+  </data>
+
   <data name="Core.EventDispatcher.DispatchError" xml:space="preserve">
     <value>EventDispatcher.Dispatch Actor {0} {1} {2}</value>
   </data>

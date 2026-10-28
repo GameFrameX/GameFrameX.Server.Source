@@ -190,6 +190,10 @@ public sealed class Actor : IActor, IDisposable
         {
             // Localization: Core.Actor.ActiveComponentFailed - Actor激活组件失败 actorId:{0} 组件类型:{1} 异常：\n{2}
             LogHelper.Fatal(e, LocalizationService.GetString(Localization.Keys.Core.Actor.ActiveComponentFailed, Id, compType.FullName, e));
+            if (GlobalSettings.CurrentSetting.IsDebug)
+            {
+                throw;
+            }
         }
 
         try
@@ -202,6 +206,10 @@ public sealed class Actor : IActor, IDisposable
         {
             // Localization: Core.Actor.ActiveComponentFailed - Actor激活组件失败 actorId:{0} 组件类型:{1} 异常：\n{2}
             LogHelper.Fatal(e, LocalizationService.GetString(Localization.Keys.Core.Actor.ActiveComponentFailed, Id, compType.FullName, e));
+            if (GlobalSettings.CurrentSetting.IsDebug)
+            {
+                throw;
+            }
         }
     }
 
