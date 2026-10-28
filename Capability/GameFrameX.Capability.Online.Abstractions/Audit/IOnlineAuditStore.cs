@@ -41,7 +41,11 @@ namespace GameFrameX.Capability.Online.Abstractions.Audit;
 /// ① 「EventId 判重 + 落档」必须在实现内**同一临界区**完成（<see cref="AppendAsync"/> 的原子语义，
 /// 幂等半边的结构性保证——服务层先查后写的两步竞态会漏重复）；
 /// ② 记录**只追加、不修改、不淘汰**（审计不可丢）；
-/// ③ 出入参必须防御性拷贝（持久化行语义，对齐交易存储先例——调用方持有的引用不得别名到存储内部状态）。
+/// ③ 出入参必须防御性拷贝（持久化行语义，对齐交易存储先例——调用方持有的引用不得别名到存储内部状态）；
+/// ④ <see cref="QueryAsync"/> 的过滤与分页**下推到实现内完成**（不得回退为全量行集交由调用方过滤）：
+/// 全序固定为 (OccurredTime 倒序, EventId 序数升序)，过滤为合取（<see cref="OnlineAuditStoreQuery.Domains"/>
+/// 域集合内析取），时间窗为闭区间，游标为全序上「严格之后」的 keyset 语义——
+/// 行集至多 <see cref="OnlineAuditStoreQuery.PageSize"/> 行且按全序排列。
 /// </para>
 /// </summary>
 public interface IOnlineAuditStore
@@ -55,11 +59,16 @@ public interface IOnlineAuditStore
     Task<bool> AppendAsync(OnlineAuditRecord record, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 列出租户 + App 作用域内的全部审计记录（区服/玩家/域等过滤由服务层承担——审计是跨区服检索域）。
+    /// 按查询载荷检索审计页：作用域两键锚定 + 可选维度过滤 + keyset 游标 + 全序排序 + 页大小，
+    /// 全部在实现内完成（SQL 实现对应 WHERE + ORDER BY + LIMIT；调用方不再消费全量行集）。
+    /// <para>
+    /// 维护约束：作用域外记录结构性不可见（跨作用域查询与「无数据」同构——空行集 + <see langword="false"/>，
+    /// 反预言由作用域索引保证）；<paramref name="query"/> 的作用域 / 页大小 / 游标合法性由调用方
+    /// （<c>OnlineAuditService.QueryAsync</c>）先行校验，实现只需防御性下限钳制。
+    /// </para>
     /// </summary>
-    /// <param name="tenantId">租户标识。</param>
-    /// <param name="appId">App 标识。</param>
+    /// <param name="query">存储层查询载荷（过滤维度 + 已解码游标 + 页大小）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
-    /// <returns>该作用域内的记录快照（无数据返回空列表而非 <see langword="null"/>）。</returns>
-    Task<IReadOnlyList<OnlineAuditRecord>> ListAsync(long tenantId, long appId, CancellationToken cancellationToken = default);
+    /// <returns>按全序排列、至多 PageSize 行的结果页（行集为防御性拷贝）。</returns>
+    Task<OnlineAuditStorePage> QueryAsync(OnlineAuditStoreQuery query, CancellationToken cancellationToken = default);
 }

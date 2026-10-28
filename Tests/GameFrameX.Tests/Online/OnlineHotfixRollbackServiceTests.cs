@@ -159,7 +159,7 @@ namespace GameFrameX.Tests.Online
                 throw new InvalidOperationException("audit store down");
             }
 
-            public Task<IReadOnlyList<OnlineAuditRecord>> ListAsync(long tenantId, long appId, CancellationToken cancellationToken = default)
+            public Task<OnlineAuditStorePage> QueryAsync(OnlineAuditStoreQuery query, CancellationToken cancellationToken = default)
             {
                 throw new InvalidOperationException("audit store down");
             }
