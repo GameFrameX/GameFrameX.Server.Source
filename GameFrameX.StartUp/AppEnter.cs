@@ -80,6 +80,16 @@ internal static class AppEnter
     private static volatile IReadOnlyList<IAppStartUp> _appStartUps;
 
     /// <summary>
+    /// 优雅停机总超时时间。
+    /// </summary>
+    /// <remarks>
+    /// The total timeout for graceful shutdown.
+    /// 兜底防止某个 Role 的 StopAsync 挂起导致进程永久卡在关闭流程（容器平台强杀前自主退出）；
+    /// 建议保持略小于容器平台的 terminationGracePeriodSeconds。
+    /// </remarks>
+    internal static readonly TimeSpan GracefulShutdownTotalTimeout = TimeSpan.FromSeconds(30);
+
+    /// <summary>
     /// 应用程序启动入口点。
     /// </summary>
     /// <remarks>
@@ -188,9 +198,12 @@ internal static class AppEnter
     /// </summary>
     /// <remarks>
     /// Handles application exit asynchronously.
-    /// Stops every hosted role in reverse launch order (lower priority first);
-    /// a role-level stop failure is recorded and the remaining roles are still stopped,
-    /// so the exit procedure (kill and log flush) always runs to completion.
+    /// Stops every hosted role in reverse launch order (lower priority first) under a total
+    /// graceful-shutdown timeout; a role-level stop failure is recorded and the remaining roles
+    /// are still stopped, so the exit procedure (kill and log flush) always runs to completion.
+    /// If the stop sequence does not finish within <see cref="GracefulShutdownTotalTimeout"/>,
+    /// logs the error, flushes the logs, and forces process exit before the container platform
+    /// would hard-kill the process.
     /// </remarks>
     /// <param name="message">退出消息 / Exit message</param>
     private static async Task HandleExitAsync(string message)
@@ -200,11 +213,12 @@ internal static class AppEnter
         try
         {
             GameAppRuntime.MarkStopping();
+            var gracefulShutdownCompleted = true;
             if (_appStartUps != null)
             {
                 try
                 {
-                    await StopHostsInReverseOrderAsync(_appStartUps, message);
+                    gracefulShutdownCompleted = await StopHostsInReverseOrderWithTimeoutAsync(_appStartUps, message, GracefulShutdownTotalTimeout);
                 }
                 catch (Exception e)
                 {
@@ -213,6 +227,13 @@ internal static class AppEnter
                     // Localization: StartUp.Application.AbnormalServerStop - 服务器异常停止:{0}
                     LogHelper.Error(LocalizationService.GetString(Localization.Keys.StartUp.Application.AbnormalServerStop, e));
                 }
+            }
+
+            if (!gracefulShutdownCompleted)
+            {
+                LogHelper.Error($"[AppEnter] graceful shutdown timed out after {GracefulShutdownTotalTimeout.TotalSeconds} seconds, forcing exit");
+                LogHelper.FlushAndSave();
+                Environment.Exit(1);
             }
 
             AppExitHandler.Kill();
@@ -227,6 +248,32 @@ internal static class AppEnter
         {
             LogHelper.FlushAndSave();
         }
+    }
+
+    /// <summary>
+    /// 带总超时执行逆序停机：超时返回 false，交由调用方记录、刷盘并强制退出。
+    /// </summary>
+    /// <remarks>
+    /// Runs the reverse-order stop sequence under a total timeout: returns <c>false</c> when the
+    /// sequence does not complete within <paramref name="timeout"/> (e.g. a hanging StopAsync),
+    /// so the caller can log, flush, and force-exit instead of blocking forever. On success the
+    /// stop task is awaited to surface its failures.
+    /// </remarks>
+    /// <param name="appStartUps">启动实例集合（启动优先级序）/ Application startup instances (launch priority order)</param>
+    /// <param name="message">退出消息 / Exit message</param>
+    /// <param name="timeout">总超时时间 / Total timeout</param>
+    /// <returns>停机序列是否在超时内完成 / Whether the stop sequence completed within the timeout</returns>
+    internal static async Task<bool> StopHostsInReverseOrderWithTimeoutAsync(IReadOnlyList<IAppStartUp> appStartUps, string message, TimeSpan timeout)
+    {
+        var stopTask = StopHostsInReverseOrderAsync(appStartUps, message);
+        var timeoutTask = Task.Delay(timeout);
+        if (await Task.WhenAny(stopTask, timeoutTask) == timeoutTask)
+        {
+            return false;
+        }
+
+        await stopTask;
+        return true;
     }
     /// <summary>
     /// 按启动顺序的逆序依次停机（低优先级先停）。

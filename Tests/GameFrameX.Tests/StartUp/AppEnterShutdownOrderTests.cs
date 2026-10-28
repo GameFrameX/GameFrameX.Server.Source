@@ -114,6 +114,47 @@ public class AppEnterShutdownOrderTests
     }
 
     /// <summary>
+    /// 宿主 StopAsync 永不完成时，总超时竞速在超时窗口内返回 false，不无限等待。
+    /// </summary>
+    [Fact]
+    public async Task StopHostsInReverseOrderWithTimeoutAsync_HangingHost_ReturnsFalseAfterTimeout()
+    {
+        var stopOrder = new List<string>();
+        var hosts = new List<IAppStartUp>
+        {
+            new RecordingStartUp("Alpha", stopOrder),
+            new HangingStopStartUp("Beta"),
+        };
+
+        var stopWithTimeoutTask = AppEnter.StopHostsInReverseOrderWithTimeoutAsync(hosts, "unit-test", TimeSpan.FromMilliseconds(200));
+
+        // 挂起宿主不得使停机调用永久阻塞：超时窗口内必须返回 false
+        var completed = await stopWithTimeoutTask.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.False(completed);
+        // 挂起宿主之后的更高优先级宿主未被停机（逆序停到 Beta 即卡住）
+        Assert.Empty(stopOrder);
+    }
+
+    /// <summary>
+    /// 停机在超时窗口内完成时返回 true，且全部宿主按逆序停机。
+    /// </summary>
+    [Fact]
+    public async Task StopHostsInReverseOrderWithTimeoutAsync_CompletesWithinTimeout_ReturnsTrueAndStopsAll()
+    {
+        var stopOrder = new List<string>();
+        var hosts = new List<IAppStartUp>
+        {
+            new RecordingStartUp("Alpha", stopOrder),
+            new RecordingStartUp("Beta", stopOrder),
+        };
+
+        var completed = await AppEnter.StopHostsInReverseOrderWithTimeoutAsync(hosts, "unit-test", AppEnter.GracefulShutdownTotalTimeout);
+
+        Assert.True(completed);
+        Assert.Equal(new[] { "Beta", "Alpha" }, stopOrder);
+    }
+
+    /// <summary>
     /// 启动就绪屏障：下一个 Role 在前一个 Role 报告启动就绪前不得启动。
     /// </summary>
     [Fact]
@@ -306,6 +347,45 @@ public class AppEnterShutdownOrderTests
         public async Task WaitStartedAsync()
         {
             await _started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+    }
+
+    /// <summary>
+    /// StopAsync 永不完成的假宿主（模拟挂起的停机组件）。
+    /// </summary>
+    private sealed class HangingStopStartUp : IAppStartUp
+    {
+        private readonly TaskCompletionSource _neverCompletes = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public HangingStopStartUp(string serverType)
+        {
+            ServerType = serverType;
+        }
+
+        public Task<string> AppExitToken
+        {
+            get { return Task.FromResult<string>(null); }
+        }
+
+        public string ServerType { get; }
+
+        public AppSetting Setting { get; } = new AppSetting();
+
+        public Task StartUpReadyTask { get; } = Task.CompletedTask;
+
+        public bool Init(string serverType, AppSetting setting, string[] args = null)
+        {
+            return true;
+        }
+
+        public Task StartAsync()
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync(string message = "")
+        {
+            return _neverCompletes.Task;
         }
     }
 }
