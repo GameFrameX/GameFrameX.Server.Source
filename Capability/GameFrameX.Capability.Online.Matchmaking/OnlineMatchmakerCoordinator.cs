@@ -434,11 +434,13 @@ public sealed class OnlineMatchmakerCoordinator
             SkillRangeExpanded = false,
         };
 
+        var hasSkillRange = false;
         foreach (var ticket in group)
         {
             var effective = _rule.EffectiveSkillRange(ticket, nowUnixMilliseconds);
             if (effective != null)
             {
+                hasSkillRange = true;
                 snapshot.SkillMin = Math.Min(snapshot.SkillMin, effective.Min);
                 snapshot.SkillMax = Math.Max(snapshot.SkillMax, effective.Max);
                 if (ticket.SkillRange == null || effective.Min < ticket.SkillRange.Min || effective.Max > ticket.SkillRange.Max)
@@ -450,7 +452,11 @@ public sealed class OnlineMatchmakerCoordinator
             snapshot.WaitSeconds = Math.Max(snapshot.WaitSeconds, OnlineMatchRule.WaitSeconds(ticket, nowUnixMilliseconds));
         }
 
-        if (snapshot.SkillMin == int.MaxValue)
+        // 可达分支（非死代码）：SkillRange 允许为空入队（无技能约束匹配），且满员基准票据
+        // （如 TeamSize=1 单人票或满员队伍票）在 SelectGroupAsync 中直接整票成组、不经过
+        // CanGroup 的区间非空门——此时组内所有 EffectiveSkillRange 均为 null，
+        // 快照以 0/0 记录「全组无技能区间」的合法语义。
+        if (!hasSkillRange)
         {
             snapshot.SkillMin = 0;
             snapshot.SkillMax = 0;
