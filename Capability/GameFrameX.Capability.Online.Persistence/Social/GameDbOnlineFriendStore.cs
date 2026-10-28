@@ -356,13 +356,24 @@ public sealed class GameDbOnlineFriendStore : IOnlineFriendStore
                 return null;
             }
 
-            if (current.TenantId != tenantId || current.AppId != appId || !precondition(current))
+            // 作用域校验先于任何写入（含存量补全写）。
+            if (current.TenantId != tenantId || current.AppId != appId)
             {
                 return null;
             }
 
             current = await EnsureRowVersionAsync(current, cancellationToken).ConfigureAwait(false);
             if (current == null)
+            {
+                return null;
+            }
+
+            // 补全/重读之后必须复检作用域与前置条件：存量行补全被并发抢先时，
+            // 重读到的可能是并发写者已推进过的行（状态已变），不复检会把非法迁移写进库。
+            // The scope and the precondition must be re-checked after the backfill/re-read: when a
+            // concurrent writer wins the legacy backfill, the re-read row may already have moved on,
+            // and skipping the re-check would persist an illegal transition.
+            if (current.TenantId != tenantId || current.AppId != appId || !precondition(current))
             {
                 return null;
             }
