@@ -83,7 +83,7 @@ public sealed class GameDbOnlineIdentityStore : IOnlineIdentityStore
         return state == null ? null : ToEntity(state);
     }
 
-    /// <summary>写入或覆盖身份（按唯一键全量写；既有行保行主键覆盖，新行序列分配 + 唯一插入）。</summary>
+    /// <summary>写入或覆盖身份（按唯一键全量写；盲写面——既有行保留存量行版本号，新键建档为 1）。</summary>
     /// <param name="identity">身份实体。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     public async Task AddOrUpdateIdentityAsync(OnlineIdentity identity, CancellationToken cancellationToken = default)
@@ -94,16 +94,72 @@ public sealed class GameDbOnlineIdentityStore : IOnlineIdentityStore
         var existing = await FindIdentityStateAsync(uniqueKey, cancellationToken).ConfigureAwait(false);
         if (existing != null)
         {
-            await GameDb.AddOrUpdateAsync(ToState(identity, uniqueKey, existing.Id), cancellationToken).ConfigureAwait(false);
+            var state = ToState(identity, uniqueKey, existing.Id);
+
+            // 盲写保留存量行版本号（null 遗留行保持 null，由条件写领养路径收敛），防 ReplaceOne 把版本抹空。
+            state.RowVersion = existing.RowVersion;
+            await GameDb.AddOrUpdateAsync(state, cancellationToken).ConfigureAwait(false);
             return;
         }
 
         await AddUniqueRowAsync(
             uniqueKey,
-            rowId => ToState(identity, uniqueKey, rowId),
+            rowId =>
+            {
+                var state = ToState(identity, uniqueKey, rowId);
+                state.RowVersion = 1;
+                return state;
+            },
             static key => state => state.UniqueKey == key,
             IdentityRowIdSequence,
             cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>唯一插入身份（键已存在返回 false 且零写入；成功建档行版本为 1，无覆盖兜底）。</summary>
+    /// <param name="identity">身份实体。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>插入成功返回 true；唯一键已存在返回 false。</returns>
+    public async Task<bool> TryAddIdentityAsync(OnlineIdentity identity, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(identity);
+
+        var uniqueKey = BuildIdentityKey(identity.TenantId, identity.AppId, identity.Kind, identity.Identifier);
+        var rowId = await GameDb.NextSequenceAsync<OnlineIdentityState>(IdentityRowIdSequence, cancellationToken).ConfigureAwait(false);
+        var state = ToState(identity, uniqueKey, rowId);
+        state.RowVersion = 1;
+
+        // 唯一插入原语直返：并发同键恰一胜者，败者 false 零写入——不走 AddUniqueRowAsync 的读回覆盖兜底
+        //（该兜底是盲写面的幂等防御，会吞掉并发插入冲突信号）。
+        return await GameDb.TryAddUniqueAsync(state, state => state.UniqueKey == uniqueKey, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>条件更新身份（CAS：存量行版本号等于期望值才整档写入；遗留无版本行按一次性领养收敛）。</summary>
+    /// <param name="identity">身份实体。</param>
+    /// <param name="expectedRowVersion">期望的存量行版本号。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>版本匹配并写入返回 true；行缺失或版本不符返回 false。</returns>
+    public async Task<bool> TryUpdateIdentityIfRowVersionAsync(OnlineIdentity identity, long expectedRowVersion, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(identity);
+
+        var uniqueKey = BuildIdentityKey(identity.TenantId, identity.AppId, identity.Kind, identity.Identifier);
+        var existing = await FindIdentityStateAsync(uniqueKey, cancellationToken).ConfigureAwait(false);
+        if (existing == null)
+        {
+            return false;
+        }
+
+        var state = ToState(identity, uniqueKey, existing.Id);
+        if (existing.RowVersion == null && expectedRowVersion == 0)
+        {
+            // 遗留无版本行一次性领养：历史盲写行 RowVersion 为 null，CAS 原语对 null 恒不匹配——
+            // 以单写者假设（store 契约既有口径）整档写并播种版本 1，此后该行进入版本化 regime。
+            state.RowVersion = 1;
+            await GameDb.AddOrUpdateAsync(state, cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+
+        return await GameDb.UpdateIfRowVersionAsync(existing.Id, expectedRowVersion, state, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>列出账号下全部身份（含已解绑，调用方按 UnboundAtTime 过滤）。</summary>
@@ -255,6 +311,9 @@ public sealed class GameDbOnlineIdentityStore : IOnlineIdentityStore
         }
 
         state.Id = winner.Id;
+
+        // 冲突兜底覆盖保留胜者行版本号（identity 行版本只经条件写面推进；设备行无版本语义，回填无害）。
+        state.RowVersion = winner.RowVersion;
         await GameDb.AddOrUpdateAsync(state, cancellationToken).ConfigureAwait(false);
     }
 
@@ -296,7 +355,7 @@ public sealed class GameDbOnlineIdentityStore : IOnlineIdentityStore
         return gameAccountId + ":" + deviceIdentifier;
     }
 
-    /// <summary>身份实体 → 行（指定行 Id）。</summary>
+    /// <summary>身份实体 → 行（指定行 Id；RowVersion 由写入路径管理——条件写原语递增 / 盲写回填存量，不作实体映射输入）。</summary>
     private static OnlineIdentityState ToState(OnlineIdentity identity, string uniqueKey, long rowId)
     {
         return new OnlineIdentityState
@@ -315,7 +374,7 @@ public sealed class GameDbOnlineIdentityStore : IOnlineIdentityStore
         };
     }
 
-    /// <summary>身份行 → 实体。</summary>
+    /// <summary>身份行 → 实体（版本校准：遗留无版本行（null）映射为 0，供条件写领养路径识别）。</summary>
     private static OnlineIdentity ToEntity(OnlineIdentityState state)
     {
         return new OnlineIdentity
@@ -329,6 +388,7 @@ public sealed class GameDbOnlineIdentityStore : IOnlineIdentityStore
             CreatedAtTime = state.CreatedAtTime,
             UpdatedAtTime = state.UpdatedAtTime,
             UnboundAtTime = state.UnboundAtTime,
+            RowVersion = state.RowVersion ?? 0,
         };
     }
 

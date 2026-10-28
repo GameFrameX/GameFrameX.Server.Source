@@ -32,6 +32,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.Foundation.Idempotency;
+using GameFrameX.Capability.Online.Abstractions.Audit;
 using GameFrameX.Capability.Online.Assets;
 using GameFrameX.Capability.Online.Foundation.Identity;
 using GameFrameX.Capability.Online.Abstractions.Idempotency;
@@ -171,7 +172,7 @@ namespace GameFrameX.Tests.Online
         /// <returns>登录解析结果（身份 / 账号 / 玩家档案三件套）。</returns>
         internal async Task<OnlineLoginResolution> RegisterPlayerAsync(long serverId, string userName)
         {
-            var outcome = await new OnlineIdentityService(IdentityStore).ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = serverId, Kind = OnlineIdentityKind.UserName, Identifier = userName });
+            var outcome = await new OnlineIdentityService(IdentityStore, new OnlineAuditService(new InMemoryOnlineAuditStore())).ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = serverId, Kind = OnlineIdentityKind.UserName, Identifier = userName });
             Assert.True(outcome.IsSuccess);
             return outcome.Data;
         }

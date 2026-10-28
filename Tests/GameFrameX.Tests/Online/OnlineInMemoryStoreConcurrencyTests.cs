@@ -31,6 +31,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using GameFrameX.Capability.Online.Abstractions.Audit;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Foundation.Identity;
 using GameFrameX.Capability.Online.Abstractions.Scope;
@@ -136,7 +137,7 @@ namespace GameFrameX.Tests.Online
         public async Task ConcurrentResolveSameIdentity_ShouldYieldSingleAccount()
         {
             // Arrange
-            var service = new OnlineIdentityService(new InMemoryOnlineIdentityStore());
+            var service = new OnlineIdentityService(new InMemoryOnlineIdentityStore(), new OnlineAuditService(new InMemoryOnlineAuditStore()));
 
             // Act
             var outcomes = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => service.ResolveLoginAsync(new OnlineLoginRequest { TenantId = TenantId, AppId = AppId, ServerId = ServerId, Kind = OnlineIdentityKind.UserName, Identifier = "concurrent-user" })));
