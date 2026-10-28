@@ -100,15 +100,39 @@ public sealed partial class SqliteDbService : IDatabaseService
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     /// <summary>
-    /// 环境事务（事务壳内嵌套操作/嵌套事务壳直接加入当前事务，不再重复拿闸/开事务；null = 无环境事务）。
+    /// 环境事务持有槽（事务壳持有 Holder：壳内嵌套操作/嵌套事务壳直接加入当前事务，不再重复拿闸/开事务；Holder 内字段 null = 无环境事务）。
     /// </summary>
     /// <remarks>
-    /// Ambient transaction: nested operations and nested transaction shells inside an active shell
-    /// join it instead of acquiring the gate / starting a second transaction (SQLite cannot nest
-    /// transactions on a single connection). Instance-level so concurrent service instances never
-    /// cross-pollinate each other's shells.
+    /// Ambient-transaction slot held by the transaction shell: nested operations and nested
+    /// transaction shells inside an active shell join it instead of acquiring the gate / starting a
+    /// second transaction (SQLite cannot nest transactions on a single connection). The slot stores a
+    /// mutable holder (one per shell) instead of the raw transaction: derived async flows capture the
+    /// holder by reference, so clearing its field on shell exit is observed by every flow — a raw
+    /// <c>AsyncLocal</c> value would leave derived flows holding a disposed transaction.
+    /// Instance-level so concurrent service instances never cross-pollinate each other's shells.
     /// </remarks>
-    private readonly AsyncLocal<SqliteTransaction> AmbientTransaction = new();
+    private readonly AsyncLocal<AmbientTransactionHolder> AmbientTransaction = new();
+
+    /// <summary>
+    /// 环境事务持有对象（引用语义载体：事务壳清空内部字段后，所有派生异步流同步看到 null）。
+    /// </summary>
+    /// <remarks>
+    /// Reference-semantics holder for the ambient transaction: the transaction shell clears the
+    /// <see cref="Transaction"/> field on exit, so every derived async flow sharing this holder
+    /// instance observes null immediately instead of retaining a disposed transaction snapshot in
+    /// its captured execution context.
+    /// </remarks>
+    private sealed class AmbientTransactionHolder
+    {
+        /// <summary>
+        /// 当前环境事务（壳 finally 置 null，派生流据此判定无事务）。
+        /// </summary>
+        /// <remarks>
+        /// The current ambient transaction (nulled by the shell's finally block; derived flows treat
+        /// null as "no ambient transaction").
+        /// </remarks>
+        public SqliteTransaction Transaction;
+    }
 
     /// <summary>
     /// 表结构就绪缓存（表名 → 单飞建表任务；失败任务驱逐以便重试，对齐 PG 适配器语义）。

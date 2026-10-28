@@ -274,7 +274,7 @@ public sealed partial class MongoDbService
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
         ArgumentNullException.ThrowIfNull(action);
-        if (_ambientSession.Value != null)
+        if (AmbientSession != null)
         {
             // 嵌套事务壳：加入环境会话事务（提交权归最外层壳）。
             // Nested shell: join the ambient session's transaction (the outermost shell owns the commit).
@@ -291,7 +291,8 @@ public sealed partial class MongoDbService
                 using (var session = await _mongoClient.StartSessionAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
                 {
                     session.StartTransaction();
-                    _ambientSession.Value = session;
+                    var holder = new AmbientSessionHolder { Session = session, };
+                    _ambientSession.Value = holder;
                     try
                     {
                         cancellationToken.ThrowIfCancellationRequested();
@@ -300,6 +301,10 @@ public sealed partial class MongoDbService
                     }
                     finally
                     {
+                        // 先清持有对象内部字段（派生异步流共享同一引用，同步看到 null），再清当前流的 AsyncLocal 槽。
+                        // Clear the holder's field first (derived async flows share the same reference and
+                        // observe null immediately), then clear this flow's AsyncLocal slot.
+                        holder.Session = null;
                         _ambientSession.Value = null;
                     }
 

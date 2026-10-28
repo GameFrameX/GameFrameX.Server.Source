@@ -1147,7 +1147,7 @@ public sealed partial class SqliteDbService
         cancellationToken.ThrowIfCancellationRequested();
         EnsureOpen();
         ArgumentNullException.ThrowIfNull(action);
-        if (AmbientTransaction.Value != null)
+        if (AmbientTransaction.Value?.Transaction != null)
         {
             // 嵌套事务壳：加入环境事务（操作已绑同一事务，提交权归最外层壳）。
             // Nested shell: join the ambient transaction (the outermost shell owns the commit).
@@ -1160,7 +1160,8 @@ public sealed partial class SqliteDbService
         {
             await using (var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false))
             {
-                AmbientTransaction.Value = transaction;
+                var holder = new AmbientTransactionHolder { Transaction = transaction, };
+                AmbientTransaction.Value = holder;
                 try
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -1169,6 +1170,10 @@ public sealed partial class SqliteDbService
                 }
                 finally
                 {
+                    // 先清持有对象内部字段（派生异步流共享同一引用，同步看到 null），再清当前流的 AsyncLocal 槽。
+                    // Clear the holder's field first (derived async flows share the same reference and
+                    // observe null immediately), then clear this flow's AsyncLocal slot.
+                    holder.Transaction = null;
                     AmbientTransaction.Value = null;
                 }
             }
@@ -1332,7 +1337,7 @@ public sealed partial class SqliteDbService
     /// <returns>异步任务 / Async task</returns>
     private async Task ExecuteGatedAsync(Func<Task> operation)
     {
-        if (AmbientTransaction.Value != null)
+        if (AmbientTransaction.Value?.Transaction != null)
         {
             await operation().ConfigureAwait(false);
             return;
@@ -1361,7 +1366,7 @@ public sealed partial class SqliteDbService
     /// <returns>操作结果 / The result</returns>
     private async Task<T> ExecuteGatedAsync<T>(Func<Task<T>> operation)
     {
-        if (AmbientTransaction.Value != null)
+        if (AmbientTransaction.Value?.Transaction != null)
         {
             return await operation().ConfigureAwait(false);
         }
@@ -1389,7 +1394,7 @@ public sealed partial class SqliteDbService
     /// <returns>事务与是否自持（自持时调用方负责 Commit 与 Dispose）/ The transaction and whether the caller owns it</returns>
     private async Task<(SqliteTransaction Transaction, bool Owned)> BeginOrJoinTransactionAsync(CancellationToken cancellationToken)
     {
-        var ambient = AmbientTransaction.Value;
+        var ambient = AmbientTransaction.Value?.Transaction;
         if (ambient != null)
         {
             return (ambient, false);

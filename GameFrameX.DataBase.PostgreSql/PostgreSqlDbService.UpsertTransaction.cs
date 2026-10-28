@@ -365,7 +365,7 @@ public sealed partial class PostgreSqlDbService
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
         ArgumentNullException.ThrowIfNull(action);
-        if (_ambientTransaction.Value != null)
+        if (AmbientTransaction != null)
         {
             // 嵌套事务壳：加入环境事务（操作上下文已绑同一事务，提交权归最外层壳）。
             // Nested shell: join the ambient transaction (the outermost shell owns the commit).
@@ -383,7 +383,8 @@ public sealed partial class PostgreSqlDbService
                 {
                     await using (var transaction = await context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false))
                     {
-                        _ambientTransaction.Value = transaction.GetDbTransaction();
+                        var holder = new AmbientTransactionHolder { Transaction = transaction.GetDbTransaction(), };
+                        _ambientTransaction.Value = holder;
                         try
                         {
                             cancellationToken.ThrowIfCancellationRequested();
@@ -392,6 +393,10 @@ public sealed partial class PostgreSqlDbService
                         }
                         finally
                         {
+                            // 先清持有对象内部字段（派生异步流共享同一引用，同步看到 null），再清当前流的 AsyncLocal 槽。
+                            // Clear the holder's field first (derived async flows share the same reference and
+                            // observe null immediately), then clear this flow's AsyncLocal slot.
+                            holder.Transaction = null;
                             _ambientTransaction.Value = null;
                         }
 
