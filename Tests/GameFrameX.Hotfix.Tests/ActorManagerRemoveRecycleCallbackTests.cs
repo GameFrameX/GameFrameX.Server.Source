@@ -102,4 +102,33 @@ public sealed class ActorManagerRemoveRecycleCallbackTests
 
         await callbackFired.Task.WaitAsync(TimeSpan.FromSeconds(5));
     }
+    [Fact]
+    public async Task RemoveAllAsync_WhenDeactivationFails_StillRunsCleanup()
+    {
+        var actorId = ActorIdGenerator.GetActorId(ProbeActorType, ProbeServerIdStart + 2);
+        var actor = await ActorManager.GetOrNewAsync(actorId);
+        var field = typeof(Actor).GetField("_componentsMap", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var components = (System.Collections.Concurrent.ConcurrentDictionary<Type, GameFrameX.Core.Components.BaseComponent>)field.GetValue(actor);
+        components[typeof(FailingDeactivationComponent)] = new FailingDeactivationComponent();
+        var cleaned = false;
+        actor.AddOnceRecycleCallback(() => cleaned = true);
+        try
+        {
+            await Assert.ThrowsAsync<InvalidOperationException>(() => ActorManager.RemoveAllAsync());
+            Assert.True(cleaned);
+        }
+        finally
+        {
+            components.Clear();
+            await ActorManager.RemoveAsync(actorId);
+        }
+    }
+
+    private sealed class FailingDeactivationComponent : GameFrameX.Core.Components.BaseComponent
+    {
+        public override Task InactiveAsync()
+        {
+            return Task.FromException(new InvalidOperationException("deactivation failed"));
+        }
+    }
 }

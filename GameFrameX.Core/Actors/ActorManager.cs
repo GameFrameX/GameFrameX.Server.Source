@@ -617,8 +617,14 @@ public static class ActorManager
     /// <returns>表示两步操作的异步任务 / Async task representing both steps</returns>
     private static async Task DeactivateAndRecycleActorAsync(Actor actor)
     {
-        await actor.InactiveAsync();
-        await actor.OnRecycleAsync();
+        try
+        {
+            await actor.InactiveAsync();
+        }
+        finally
+        {
+            await actor.OnRecycleAsync();
+        }
     }
 
     /// <summary>
