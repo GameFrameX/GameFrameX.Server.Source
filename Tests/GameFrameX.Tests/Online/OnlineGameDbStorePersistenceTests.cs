@@ -447,6 +447,152 @@ public sealed class OnlineGameDbStorePersistenceTests
     }
 
     /// <summary>
+    /// 并发验收（GFX-1109 场景 1）：两个独立 store 实例（不共享分片信号量、共享同一 GameDb）
+    /// 同时给同一钱包各 +10——最终余额 = 初始 + 20，账本链连续（每条 AmountBefore 等于上一条 AmountAfter）。
+    /// </summary>
+    /// <remarks>
+    /// Two independent store instances (separate shard semaphores over one shared GameDb facade) apply
+    /// +10 concurrently to the same wallet: the final balance must be initial + 20 and the per-asset
+    /// ledger chain must stay contiguous — the loser of a snapshot conditional write rolls the whole
+    /// attempt back and re-plans from the winner's snapshot instead of overwriting it.
+    /// </remarks>
+    [Fact]
+    public async Task AssetStore_TwoInstancesConcurrentApply_ShouldNotLoseUpdates()
+    {
+        await WithSqliteFacadeAsync(async () =>
+        {
+            // 预置初始余额 100（经 store A 的统一入口，正常建档 rv=0）。
+            var storeOne = new GameDbOnlineAssetStore();
+            var (serviceOne, scopeOne) = BuildGrantService(storeOne, new GameDbOnlineAssetTransactionStore(), playerId: 31);
+            var seed = await serviceOne.ExecuteAsync(Request(scopeOne, "g1109-seed", new[] { (OnlineAssetKind.Currency, "gold", 100L) }));
+            Assert.True(seed.IsSuccess);
+            Assert.Equal(100, (await storeOne.FindWalletAsync(TenantId, AppId, 31, "gold")).Balance);
+
+            // 两实例并发各 +10：分片信号量各自独立，唯一串行化点是数据库事务。
+            var storeTwo = new GameDbOnlineAssetStore();
+            var (serviceTwo, scopeTwo) = BuildGrantService(storeTwo, new GameDbOnlineAssetTransactionStore(), playerId: 31);
+            var results = await Task.WhenAll(
+                Task.Run(() => serviceOne.ExecuteAsync(Request(scopeOne, "g1109-a", new[] { (OnlineAssetKind.Currency, "gold", 10L) }))),
+                Task.Run(() => serviceTwo.ExecuteAsync(Request(scopeTwo, "g1109-b", new[] { (OnlineAssetKind.Currency, "gold", 10L) }))));
+            Assert.All(results, result => Assert.True(result.IsSuccess));
+
+            var wallet = await storeOne.FindWalletAsync(TenantId, AppId, 31, "gold");
+            Assert.Equal(120, wallet.Balance);
+
+            // 账本链连续：预置 1 条 + 并发 2 条，按序每条 AmountBefore = 上一条 AmountAfter（无孤儿/断链）。
+            var ledger = (await storeOne.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = TenantId, AppId = AppId, PlayerId = 31, AfterSequenceNumber = 0, MaxCount = 100, })).OrderBy(entry => entry.SequenceNumber).ToArray();
+            Assert.Equal(3, ledger.Length);
+            Assert.Equal(0L, ledger[0].AmountBefore);
+            for (var i = 1; i < ledger.Length; i++)
+            {
+                Assert.Equal(ledger[i - 1].AmountAfter, ledger[i].AmountBefore);
+            }
+
+            Assert.Equal(120, ledger[ledger.Length - 1].AmountAfter);
+        });
+    }
+
+    /// <summary>
+    /// 并发验收（GFX-1109 场景 2）：两实例同时对不存在的钱包首次建档——只生成一行快照，两笔都入账且链连续。
+    /// </summary>
+    /// <remarks>
+    /// First-create race: two instances concurrently create the same missing wallet — exactly one
+    /// snapshot row lands and both changes are accounted (the TryAddUnique loser rolls back, re-plans
+    /// from the winner's row, and lands as a regular conditional write).
+    /// </remarks>
+    [Fact]
+    public async Task AssetStore_TwoInstancesConcurrentFirstCreate_ShouldLandSingleRowWithBothEntries()
+    {
+        await WithSqliteFacadeAsync(async () =>
+        {
+            var storeOne = new GameDbOnlineAssetStore();
+            var storeTwo = new GameDbOnlineAssetStore();
+            var (serviceOne, scopeOne) = BuildGrantService(storeOne, new GameDbOnlineAssetTransactionStore(), playerId: 32);
+            var (serviceTwo, scopeTwo) = BuildGrantService(storeTwo, new GameDbOnlineAssetTransactionStore(), playerId: 32);
+
+            var results = await Task.WhenAll(
+                Task.Run(() => serviceOne.ExecuteAsync(Request(scopeOne, "g1109-create-a", new[] { (OnlineAssetKind.Currency, "gem", 10L) }))),
+                Task.Run(() => serviceTwo.ExecuteAsync(Request(scopeTwo, "g1109-create-b", new[] { (OnlineAssetKind.Currency, "gem", 10L) }))));
+            Assert.All(results, result => Assert.True(result.IsSuccess));
+
+            // 只生成一行快照，两笔都入账。
+            var wallets = await storeOne.ListWalletAccountsAsync(TenantId, AppId, 32);
+            var row = Assert.Single(wallets);
+            Assert.Equal("gem", row.CurrencyId);
+            Assert.Equal(20, row.Balance);
+
+            var ledger = (await storeOne.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = TenantId, AppId = AppId, PlayerId = 32, AfterSequenceNumber = 0, MaxCount = 100, })).OrderBy(entry => entry.SequenceNumber).ToArray();
+            Assert.Equal(2, ledger.Length);
+            Assert.Equal(0L, ledger[0].AmountBefore);
+            Assert.Equal(ledger[0].AmountAfter, ledger[1].AmountBefore);
+            Assert.Equal(20, ledger[1].AmountAfter);
+        });
+    }
+
+    /// <summary>
+    /// 存量行验收（GFX-1109 场景 3）：RowVersion = null 的旧数据行首次落账自动回填并入账正确，此后版本单调递增。
+    /// </summary>
+    /// <remarks>
+    /// Legacy row backfill: a wallet row persisted with a null row version (pre-migration data shape)
+    /// is backfilled on its first apply — the conditional write lands RowVersion = 1 with the correct
+    /// balance, and subsequent applies continue on the regular CAS chain with strictly increasing
+    /// versions (no permanent VersionConflict as a plain expected-0 CAS would produce).
+    /// </remarks>
+    [Fact]
+    public async Task AssetStore_LegacyNullRowVersion_ShouldBackfillOnFirstApplyAndKeepVersionsMonotonic()
+    {
+        await WithSqliteFacadeAsync(async () =>
+        {
+            // 构造行版本缺位的存量行（模拟旧数据；显式 null 持久化为 JSON null）。
+            var uniqueKey = TenantId + ":" + AppId + ":33:oldcoin";
+            await GameDb.SaveOneAsync(new OnlineWalletAccountState
+            {
+                Id = 987001,
+                UniqueKey = uniqueKey,
+                TenantId = TenantId,
+                AppId = AppId,
+                PlayerId = 33,
+                CurrencyId = "oldcoin",
+                Balance = 100,
+                UpdatedTime = 1,
+                RowVersion = null,
+            });
+
+            var store = new GameDbOnlineAssetStore();
+            var (service, scope) = BuildGrantService(store, new GameDbOnlineAssetTransactionStore(), playerId: 33);
+
+            // 首次落账：回填原语补全 + 首写（余额 100 + 50）落行版本 0（与新建行基线一致），实体 Version = 0 + 1 = 1。
+            var first = await service.ExecuteAsync(Request(scope, "g1109-legacy-first", new[] { (OnlineAssetKind.Currency, "oldcoin", 50L) }));
+            Assert.True(first.IsSuccess);
+            var wallet = await store.FindWalletAsync(TenantId, AppId, 33, "oldcoin");
+            Assert.Equal(150, wallet.Balance);
+            Assert.Equal(1, wallet.Version);
+
+            // 第二次落账：转正常 CAS（期望行版本 0），版本单调递增。
+            var second = await service.ExecuteAsync(Request(scope, "g1109-legacy-second", new[] { (OnlineAssetKind.Currency, "oldcoin", 30L) }));
+            Assert.True(second.IsSuccess);
+            wallet = await store.FindWalletAsync(TenantId, AppId, 33, "oldcoin");
+            Assert.Equal(180, wallet.Balance);
+            Assert.Equal(2, wallet.Version);
+
+            // 行侧事实：null →（回填 0）→ CAS 1，不再是 null。
+            var row = await GameDb.FindAsync<OnlineWalletAccountState>(state => state.UniqueKey == uniqueKey, isCreateIfNotExists: false);
+            Assert.NotNull(row);
+            Assert.Equal(1L, row.RowVersion);
+            Assert.Equal(180, row.Balance);
+
+            // 账本链自存量余额续写。
+            var ledger = (await store.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = TenantId, AppId = AppId, PlayerId = 33, AfterSequenceNumber = 0, MaxCount = 100, })).OrderBy(entry => entry.SequenceNumber).ToArray();
+            Assert.Equal(2, ledger.Length);
+            Assert.Equal(100L, ledger[0].AmountBefore);
+            Assert.Equal(150L, ledger[0].AmountAfter);
+            Assert.Equal(150L, ledger[1].AmountBefore);
+            Assert.Equal(180L, ledger[1].AmountAfter);
+        });
+    }
+
+
+    /// <summary>
     /// 重启验收（SQLite 文件模式）：身份域写 → 关库重开 + 新适配实例 → 全字段读回一致 + 序列不复用。
     /// </summary>
     [Fact]

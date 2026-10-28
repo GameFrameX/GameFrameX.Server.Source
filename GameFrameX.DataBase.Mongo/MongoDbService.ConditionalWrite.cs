@@ -178,6 +178,104 @@ public sealed partial class MongoDbService
     }
 
     /// <summary>
+    /// 条件写：仅当存量文档缺失行版本号（字段缺位或值为 null）时整档写入（存量迁移回填原语）。
+    /// </summary>
+    /// <remarks>
+    /// Conditional write: replaces the whole document only when the stored <c>RowVersion</c> is
+    /// missing or null (legacy-row migration / backfill primitive). MongoDB's equality-to-null
+    /// matches both a stored <c>null</c> and an absent field, so exactly the missing-version legacy
+    /// documents match; on success the stored version becomes 0 (the checked increment from the
+    /// null backfill baseline -1 — the backfilled row shares the fresh-row baseline). A non-null
+    /// stored version or a missing document returns <c>false</c>
+    /// without throwing. See
+    /// <see cref="IDatabaseService.UpdateIfRowVersionIsNullAsync{TState}(long, TState)"/> for the
+    /// full contract.
+    /// </remarks>
+    /// <typeparam name="TState">文档的类型，必须继承自 BaseCacheState / Document type, must inherit from BaseCacheState</typeparam>
+    /// <param name="id">数据 ID（须与 <paramref name="state"/> 的 Id 一致）/ The document ID (must equal <paramref name="state"/>'s Id)</param>
+    /// <param name="state">要写入的数据对象 / The data object to write</param>
+    /// <returns>存量缺失行版本且写入成功返回 true；存量 <c>RowVersion</c> 非 null 或行缺失返回 false / True when the stored version was missing and the document was written; false on a non-null stored version or a missing document</returns>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="state"/> 的 Id 与 <paramref name="id"/> 不一致时抛出。
+    /// Thrown when <paramref name="state"/>'s Id differs from <paramref name="id"/>.
+    /// </exception>
+    public Task<bool> UpdateIfRowVersionIsNullAsync<TState>(long id, TState state) where TState : BaseCacheState, new()
+    {
+        return UpdateIfRowVersionIsNullAsync(id, state, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// 条件写：仅当存量文档缺失行版本号（字段缺位或值为 null）时整档写入（存量迁移回填原语）。
+    /// </summary>
+    /// <remarks>
+    /// Conditional write: replaces the whole document only when the stored <c>RowVersion</c> is
+    /// missing or null (legacy-row migration / backfill primitive). See the cancellation-free
+    /// overload for the full concurrency contract.
+    /// </remarks>
+    /// <typeparam name="TState">文档的类型，必须继承自 BaseCacheState / Document type, must inherit from BaseCacheState</typeparam>
+    /// <param name="id">数据 ID（须与 <paramref name="state"/> 的 Id 一致）/ The document ID (must equal <paramref name="state"/>'s Id)</param>
+    /// <param name="state">要写入的数据对象 / The data object to write</param>
+    /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
+    /// <returns>存量缺失行版本且写入成功返回 true；存量 <c>RowVersion</c> 非 null 或行缺失返回 false / True when the stored version was missing and the document was written; false on a non-null stored version or a missing document</returns>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="state"/> 的 Id 与 <paramref name="id"/> 不一致时抛出。
+    /// Thrown when <paramref name="state"/>'s Id differs from <paramref name="id"/>.
+    /// </exception>
+    public async Task<bool> UpdateIfRowVersionIsNullAsync<TState>(long id, TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureInitialized();
+
+        if (state.Id != id)
+        {
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Database.ConditionalWriteStateIdMismatch, state.Id, id), nameof(state));
+        }
+
+        // 版本准备：null 补全基点 -1 对齐后吃 checked 递增（恒为 0，回填后行与新建行基线一致）。失败（false）
+        // 路径回滚内存版本——写前递增若不回滚会污染调用方 state.RowVersion；异常路径不回滚（写结果未知，回滚可能反向脱节）。
+        // Version preparation: align to the null backfill baseline -1, then take the checked increment
+        // (always 0). The pre-write increment is rolled back on the false path; it is NOT rolled back on
+        // exceptions.
+        var originalRowVersion = state.RowVersion;
+        state.RowVersion = -1;
+        state.IncrementRowVersion();
+
+        // 写库前捕获字节快照（行版本递增后），成功后按该快照精确提交基线
+        var persistedData = state.ToBytes();
+
+        var collection = GetCollection<TState>();
+
+        // 属性索引引导（异步单飞）：沿用 CAS 入口的引导语义，先于本次条件写完成。
+        // Attribute-index bootstrap (asynchronous single flight): keeps the CAS entry's bootstrap
+        // semantics and completes before this conditional write.
+        await CreateIndexesAsync(collection, cancellationToken).ConfigureAwait(false);
+
+        // 空值等值谓词：MongoDB 的 == null 同时命中「存 null」与「字段缺位」——恰好是缺失行版本的存量文档。
+        // Null-equality predicate: MongoDB's == null matches both a stored null and an absent field —
+        // exactly the missing-version legacy documents.
+        var filter = Builders<TState>.Filter.And(
+            Builders<TState>.Filter.Eq(m => m.Id, id),
+            Builders<TState>.Filter.Eq(m => m.RowVersion, (long?)null));
+        var replaced = await ExecuteWriteWithRetryAsync(async token =>
+        {
+            var options = new FindOneAndReplaceOptions<TState> { ReturnDocument = ReturnDocument.Before };
+            return await FindOneAndReplaceWithAmbientSessionAsync(collection, filter, state, options, token).ConfigureAwait(false);
+        }, cancellationToken, nameof(UpdateIfRowVersionIsNullAsync), false).ConfigureAwait(false);
+
+        if (replaced == null)
+        {
+            // 存量 RowVersion 非 null 或行缺失：未写库，回滚写前递增的内存版本。
+            // Non-null stored version or missing document: nothing was written — roll back the
+            // pre-write in-memory increment.
+            state.RowVersion = originalRowVersion;
+            return false;
+        }
+
+        state.SaveToDbPostHandler(persistedData);
+        return true;
+    }
+
+    /// <summary>
     /// 唯一性插入：仅当无既有文档满足唯一性条件时插入（冲突返回 false 而非异常）。
     /// </summary>
     /// <remarks>

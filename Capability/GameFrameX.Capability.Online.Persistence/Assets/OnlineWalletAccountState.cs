@@ -36,9 +36,11 @@ using GameFrameX.Foundation.Orm.Attribute;
 /// 货币账户快照持久化行（一级 store：Assets 域 → GameDb 适配的落库形态）。
 /// <para>
 /// 键编码约定：<see cref="UniqueKey"/> = 物化复合键（"tenant:app:player:货币代码"）
-/// 单列唯一索引；行 Id 由 <c>NextSequenceAsync</c> 分配。版本映射：实体 <c>Version</c> 与行
-/// <c>RowVersion</c> 一一同构（首次落账建档即 Version=1，此后每次落账 +1；适配层显式预置，
-/// AddOrUpdate 不自动递增）。快照为账本的派生面（对账事实源 = 不可变账本重算）。
+/// 单列唯一索引；行 Id 由 <c>NextSequenceAsync</c> 分配。行版本唯一事实源 = 基类
+/// <c>RowVersion</c>（乐观锁专用字段，只承载并发控制语义、不承载业务含义）；
+/// 实体 <c>Version</c> 为派生视图（恒等式：实体 Version = 行 RowVersion + 1，首次落账建档即 1）。
+/// 存量行 <c>RowVersion</c> 为 null 时由适配层首次落账经 <c>UpdateIfRowVersionIsNullAsync</c>
+/// 惰性回填（免停服迁移）。快照为账本的派生面（对账事实源 = 不可变账本重算）。
 /// </para>
 /// </summary>
 public sealed class OnlineWalletAccountState : BaseCacheState
@@ -73,11 +75,6 @@ public sealed class OnlineWalletAccountState : BaseCacheState
     /// 获取或设置余额快照（账本派生面）。
     /// </summary>
     public long Balance { get; set; }
-
-    /// <summary>
-    /// 获取或设置版本（落账次数；适配层预置）。
-    /// </summary>
-    public long Version { get; set; }
 
     /// <summary>
     /// 获取或设置最近落账时间（Unix 毫秒）。

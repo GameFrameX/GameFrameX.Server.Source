@@ -35,9 +35,10 @@ using GameFrameX.Foundation.Orm.Attribute;
 /// <summary>
 /// 道具库存堆栈快照持久化行（一级 store：Assets 域 → GameDb 适配的落库形态）。
 /// <para>
-/// 键编码与版本约定同 <see cref="OnlineWalletAccountState"/>：物化复合键
-/// （"tenant:app:player:道具标识"）单列唯一索引；Version 与落账次数一一同构（适配层预置）；
-/// 快照为账本派生面。
+/// 键编码与行版本约定同 <see cref="OnlineWalletAccountState"/>：物化复合键
+/// （"tenant:app:player:道具标识"）单列唯一索引；行版本唯一事实源 = 基类 <c>RowVersion</c>
+/// （乐观锁专用，不承载业务含义），实体 <c>Version</c> 为派生视图（实体 Version = 行
+/// RowVersion + 1）；存量行 null 行版本由适配层惰性回填。快照为账本派生面。
 /// </para>
 /// </summary>
 public sealed class OnlineInventoryStackState : BaseCacheState
@@ -72,11 +73,6 @@ public sealed class OnlineInventoryStackState : BaseCacheState
     /// 获取或设置数量快照（账本派生面）。
     /// </summary>
     public long Quantity { get; set; }
-
-    /// <summary>
-    /// 获取或设置版本（落账次数；适配层预置）。
-    /// </summary>
-    public long Version { get; set; }
 
     /// <summary>
     /// 获取或设置最近落账时间（Unix 毫秒）。
