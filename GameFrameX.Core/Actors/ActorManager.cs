@@ -308,14 +308,15 @@ public static class ActorManager
     /// </summary>
     /// <remarks>
     /// Re-checks the recycle window on the Actor's own worker; if overdue, dispatches the
-    /// actual recycle work to the life-actor (mutex) worker. 提取自 <see cref="CheckIdleAsync"/>
-    /// 外层闭包，条件表达式与原实现逐字保留，仅把闭包提升为带 <paramref name="actor"/> 参数的方法以降低嵌套层级。
+    /// actual recycle work to the life-actor (mutex) worker. Actors without a registered
+    /// active time (e.g. global actors) are skipped silently instead of throwing
+    /// <see cref="System.Collections.Generic.KeyNotFoundException"/>.
     /// </remarks>
     /// <param name="actor">待检查的Actor / The Actor to check</param>
     /// <returns>表示检查与回收投递完成的异步任务 / Async task representing the check and recycle dispatch</returns>
     private static async Task CheckIdleActorAsync(Actor actor)
     {
-        if (actor.AutoRecycle && (TimerHelper.GetNowWithUtc() - ActiveTimeDic[actor.Id]).TotalMinutes > GlobalSettings.CurrentSetting.ActorRecycleTime)
+        if (actor.AutoRecycle && ActiveTimeDic.TryGetValue(actor.Id, out var activeTime) && (TimerHelper.GetNowWithUtc() - activeTime).TotalMinutes > GlobalSettings.CurrentSetting.ActorRecycleTime)
         {
             await GetLifeActor(actor.Id).SendAsync(() => RecycleIdleActorAsync(actor));
         }
@@ -325,15 +326,16 @@ public static class ActorManager
     /// 在 life-actor worker 上执行空闲Actor的实际回收。
     /// </summary>
     /// <remarks>
-    /// 提取自 <see cref="CheckIdleActorAsync"/> 内层闭包：再次确认回收窗口，命中后按
-    /// <see cref="Actor.ReadyToDeActive"/> 决定执行 Inactive→OnRecycle→移除 或 推迟再判。
-    /// 条件表达式与原实现逐字保留。
+    /// Dispatched from <see cref="CheckIdleActorAsync"/>: re-confirms the recycle window with the
+    /// active time fetched via <c>TryGetValue</c> (no indexer re-read), then follows
+    /// <see cref="Actor.ReadyToDeActive"/> to either run Inactive→OnRecycle→remove (also removing
+    /// the <c>ActiveTimeDic</c> entry to stop unbounded growth) or postpone the decision.
     /// </remarks>
     /// <param name="actor">待回收的Actor / The Actor to recycle</param>
     /// <returns>固定返回 <c>true</c> 以适配 <c>SendAsync&lt;T&gt;</c> 投递签名 / Always <c>true</c> to fit the dispatch signature</returns>
     private static async Task<bool> RecycleIdleActorAsync(Actor actor)
     {
-        if (ActiveTimeDic.TryGetValue(actor.Id, out var activeTime) && (TimerHelper.GetNowWithUtc() - ActiveTimeDic[actor.Id]).TotalMinutes > GlobalSettings.CurrentSetting.ActorRecycleTime)
+        if (ActiveTimeDic.TryGetValue(actor.Id, out var activeTime) && (TimerHelper.GetNowWithUtc() - activeTime).TotalMinutes > GlobalSettings.CurrentSetting.ActorRecycleTime)
         {
             // 防止定时回存失败时State被直接移除
             if (actor.ReadyToDeActive)
@@ -341,6 +343,7 @@ public static class ActorManager
                 await actor.InactiveAsync();
                 await actor.OnRecycleAsync();
                 ActorMap.TryRemove(actor.Id, out _);
+                ActiveTimeDic.TryRemove(actor.Id, out _);
                 // Localization: Core.ActorManager.CheckIdleRecycled - ActorManager.CheckIdleAsync Actor已回收 actorId:{0} actorType:{1} , 消息: actor回收 id:{2} type:{3}
                 LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Core.ActorManager.CheckIdleRecycled, actor.Id, actor.Type, actor.Id, actor.Type));
             }
