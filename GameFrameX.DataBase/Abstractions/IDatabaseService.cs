@@ -814,6 +814,59 @@ public interface IDatabaseService
     Task<bool> UpdateIfRowVersionAsync<TState>(long id, long expectedRowVersion, TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new();
 
     /// <summary>
+    /// 条件写：仅当存量文档缺失行版本号（字段缺位或值为 null）时整档写入（存量迁移回填原语）。
+    /// </summary>
+    /// <remarks>
+    /// Conditional write: replaces the whole document only when the stored <c>RowVersion</c> is
+    /// missing or null (legacy-row migration / backfill primitive).
+    /// Concurrency semantics (business-rule level, enforced by all providers):
+    /// <list type="bullet">
+    /// <item><description>成功时写入的文档携带 <c>RowVersion = 0</c>（null ≡ 版本 -1 的补全基点，checked
+    /// 递增；回填后行与「新建行首次落账」基线一致——实体 Version = 行 RowVersion + 1 恒等式从 1 起）/
+    /// On success the stored document carries <c>RowVersion = 0</c> (null ≡ version -1 as the
+    /// backfill baseline, checked increment; after backfill the row shares the baseline of a freshly
+    /// inserted row — the entity Version = RowVersion + 1 identity starts at 1)</description></item>
+    /// <item><description>失败（<c>false</c>）路径不污染调用方对象：写前的临时版本递增在返回前回滚，
+    /// <paramref name="state"/> 的 <c>RowVersion</c> 保持调用前的值；异常路径不回滚（写结果未知）/
+    /// The <c>false</c> path does not pollute the caller's object: the temporary pre-write increment is
+    /// rolled back before returning; exceptions do not roll back (the write outcome is unknown)</description></item>
+    /// <item><description>存量 <c>RowVersion</c> 非 null 或行缺失返回 <c>false</c>，不抛异常（并发补全恰一胜者；
+    /// 被「抢先补全 / 正常写入」占用时由调用方重读后转正常 CAS）/ A non-null stored
+    /// <c>RowVersion</c> or a missing row returns <c>false</c> without throwing (exactly one of
+    /// concurrent backfillers wins; the loser re-reads and continues on the regular CAS path)</description></item>
+    /// <item><description>与 CAS 原语谓词不相交：本原语只匹配 null / 缺位，<c>UpdateIfRowVersionAsync</c>
+    /// 「存量 null 恒不匹配」的安全不变量保持不变 / Disjoint from the CAS predicate: this primitive
+    /// matches null/missing only — the CAS primitive's "a stored null never matches" safety invariant
+    /// is left untouched</description></item>
+    /// <item><description>本原语按原样持久化传入状态（不触碰 <c>UpdateTime</c>/<c>UpdateCount</c>，调用方自管审计字段）/
+    /// The state is persisted exactly as handed in (<c>UpdateTime</c>/<c>UpdateCount</c> are NOT touched;
+    /// the caller owns the audit fields)</description></item>
+    /// </list>
+    /// </remarks>
+    /// <param name="id">数据ID（须与 <paramref name="state"/> 的 Id 一致）/ The document ID (must equal <paramref name="state"/>'s Id)</param>
+    /// <param name="state">要写入的新状态对象（<c>RowVersion</c> 由本原语管理）/ The new state to write (its <c>RowVersion</c> is managed by this primitive)</param>
+    /// <typeparam name="TState">实现ICacheState接口的类型 / Type implementing ICacheState interface</typeparam>
+    /// <returns>存量缺失行版本且写入成功返回 <c>true</c>；存量 <c>RowVersion</c> 非 null 或行缺失返回 <c>false</c> / <c>true</c> when the stored version was missing and the document was written; <c>false</c> on a non-null stored version or a missing row</returns>
+    /// <exception cref="ArgumentException">当 <paramref name="state"/> 的 Id 与 <paramref name="id"/> 不一致时抛出 / Thrown when <paramref name="state"/>'s Id differs from <paramref name="id"/></exception>
+    Task<bool> UpdateIfRowVersionIsNullAsync<TState>(long id, TState state) where TState : BaseCacheState, new();
+
+    /// <summary>
+    /// 条件写：仅当存量文档缺失行版本号（字段缺位或值为 null）时整档写入（存量迁移回填原语）。
+    /// </summary>
+    /// <remarks>
+    /// Conditional write: replaces the whole document only when the stored <c>RowVersion</c> is
+    /// missing or null (legacy-row migration / backfill primitive). See the cancellation-free
+    /// overload for the full concurrency contract.
+    /// </remarks>
+    /// <param name="id">数据ID（须与 <paramref name="state"/> 的 Id 一致）/ The document ID (must equal <paramref name="state"/>'s Id)</param>
+    /// <param name="state">要写入的新状态对象（<c>RowVersion</c> 由本原语管理）/ The new state to write (its <c>RowVersion</c> is managed by this primitive)</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <typeparam name="TState">实现ICacheState接口的类型 / Type implementing ICacheState interface</typeparam>
+    /// <returns>存量缺失行版本且写入成功返回 <c>true</c>；存量 <c>RowVersion</c> 非 null 或行缺失返回 <c>false</c> / <c>true</c> when the stored version was missing and the document was written; <c>false</c> on a non-null stored version or a missing row</returns>
+    /// <exception cref="ArgumentException">当 <paramref name="state"/> 的 Id 与 <paramref name="id"/> 不一致时抛出 / Thrown when <paramref name="state"/>'s Id differs from <paramref name="id"/></exception>
+    Task<bool> UpdateIfRowVersionIsNullAsync<TState>(long id, TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new();
+
+    /// <summary>
     /// 唯一性插入：仅当无既有文档满足唯一性条件时插入（冲突返回 false 而非异常）。
     /// </summary>
     /// <remarks>

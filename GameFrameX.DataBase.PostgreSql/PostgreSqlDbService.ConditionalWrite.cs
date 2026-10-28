@@ -169,6 +169,105 @@ public sealed partial class PostgreSqlDbService
     }
 
     /// <summary>
+    /// 条件整档替换：仅当存量档 <c>RowVersion</c> 缺失（字段缺位或 JSON null）时写入（存量迁移回填原语；成功档版本 = 0）。
+    /// </summary>
+    /// <remarks>
+    /// Conditionally replaces the whole document only when the stored <c>RowVersion</c> is missing
+    /// or null (legacy-row migration / backfill primitive); on success the stored version becomes 0
+    /// (the checked increment from the null backfill baseline -1 — the backfilled row shares the
+    /// fresh-row baseline). The version predicate is
+    /// <c>(doc->>'RowVersion') IS NULL</c> — the jsonb text projection is SQL NULL both for an absent
+    /// key and for a stored JSON null, so exactly the missing-version legacy rows match; a non-null
+    /// stored version or a missing row returns <c>false</c> without throwing. 不触碰
+    /// UpdateTime/UpdateCount（按 state 原样持久化，调用方自管审计字段）；成功后回调
+    /// <c>SaveToDbPostHandler</c>。失败（false）路径回滚写前的内存版本递增；异常路径不回滚。
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
+    /// <param name="id">目标文档 Id / The target document id</param>
+    /// <param name="state">要写入的整档状态 / The whole state to write</param>
+    /// <returns>存量缺失行版本且写入成功返回 true；存量 <c>RowVersion</c> 非 null 或行缺失返回 false（不抛异常）/ True when the stored version was missing and the row was written; false on a non-null stored version or a missing row (no exception)</returns>
+    /// <exception cref="ArgumentException">当 <paramref name="state"/> 的 Id 与 <paramref name="id"/> 不一致时抛出（写库前检查）/ Thrown when the state's Id differs from <paramref name="id"/> (checked before any write)</exception>
+    public async Task<bool> UpdateIfRowVersionIsNullAsync<TState>(long id, TState state) where TState : BaseCacheState, new()
+    {
+        return await UpdateIfRowVersionIsNullAsync(id, state, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 条件整档替换：仅当存量档 <c>RowVersion</c> 缺失（字段缺位或 JSON null）时写入（存量迁移回填原语；成功档版本 = 0）。
+    /// </summary>
+    /// <remarks>
+    /// Conditionally replaces the whole document only when the stored <c>RowVersion</c> is missing
+    /// or null (legacy-row migration / backfill primitive); on success the stored version becomes 0
+    /// (the checked increment from the null backfill baseline -1). See the cancellation-free overload for
+    /// the full concurrency contract.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The cache state type</typeparam>
+    /// <param name="id">目标文档 Id / The target document id</param>
+    /// <param name="state">要写入的整档状态 / The whole state to write</param>
+    /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
+    /// <returns>存量缺失行版本且写入成功返回 true；存量 <c>RowVersion</c> 非 null 或行缺失返回 false（不抛异常）/ True when the stored version was missing and the row was written; false on a non-null stored version or a missing row (no exception)</returns>
+    /// <exception cref="ArgumentException">当 <paramref name="state"/> 的 Id 与 <paramref name="id"/> 不一致时抛出（写库前检查）/ Thrown when the state's Id differs from <paramref name="id"/> (checked before any write)</exception>
+    public async Task<bool> UpdateIfRowVersionIsNullAsync<TState>(long id, TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureInitialized();
+        if (state.Id != id)
+        {
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Database.ConditionalWriteStateIdMismatch, state.Id, id), nameof(state));
+        }
+
+        // 版本准备：null 补全基点 -1 对齐后吃 checked 递增（恒为 0，回填后行与新建行基线一致）。失败（false）
+        // 路径回滚内存版本——写前递增若不回滚会污染调用方 state.RowVersion；异常路径不回滚（写结果未知，回滚可能反向脱节）。
+        // Version preparation: align to the null backfill baseline -1, then take the checked increment
+        // (always 0). The pre-write increment is rolled back on the false path; it is NOT rolled back on
+        // exceptions.
+        var originalRowVersion = state.RowVersion;
+        state.RowVersion = -1;
+        state.IncrementRowVersion();
+        // 写库前捕获字节快照（行版本递增后），成功后按该快照精确提交基线
+        var persistedData = state.ToBytes();
+        var documentJson = JsonSerializer.Serialize(state, DocumentJsonOptions);
+        var replaced = await ExecuteWriteWithRetryAsync(async token =>
+        {
+            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+            var (connection, ambientTransaction, ownedConnection) = await OpenConnectionForWriteAsync(token).ConfigureAwait(false);
+            try
+            {
+                // 版本谓词用 IS NULL：doc->>'RowVersion' 对字段缺位与 JSON null 均投影 SQL NULL，
+                // 恰好命中「缺失行版本」的存量行；非 null 版本恒不匹配。
+                // The version predicate is IS NULL: doc->>'RowVersion' projects SQL NULL both for an
+                // absent key and for a stored JSON null — exactly the missing-version legacy rows;
+                // a non-null stored version never matches.
+                await using (var command = new NpgsqlCommand($"UPDATE {GetTableName<TState>()} SET doc = @doc::jsonb WHERE id = @id AND (doc->>'RowVersion') IS NULL", connection))
+                {
+                    command.Transaction = ambientTransaction;
+                    command.Parameters.Add(new NpgsqlParameter("doc", NpgsqlDbType.Jsonb) { Value = documentJson, });
+                    command.Parameters.AddWithValue("id", id);
+                    var affectedRows = await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
+                    return affectedRows == 1;
+                }
+            }
+            finally
+            {
+                if (ownedConnection)
+                {
+                    await connection.DisposeAsync().ConfigureAwait(false);
+                }
+            }
+        }, cancellationToken, nameof(UpdateIfRowVersionIsNullAsync), false).ConfigureAwait(false);
+        if (replaced)
+        {
+            state.SaveToDbPostHandler(persistedData);
+            return true;
+        }
+
+        // 存量 RowVersion 非 null 或行缺失：未写库，回滚写前递增的内存版本。
+        // Non-null stored version or missing row: nothing was written — roll back the pre-write in-memory increment.
+        state.RowVersion = originalRowVersion;
+        return false;
+    }
+
+    /// <summary>
     /// 唯一键条件插入：唯一性判定无视软删可见性，键命中或 Id 已占用返回 false。
     /// </summary>
     /// <remarks>

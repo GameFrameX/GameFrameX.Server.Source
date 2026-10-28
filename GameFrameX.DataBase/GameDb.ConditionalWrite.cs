@@ -88,6 +88,45 @@ public static partial class GameDb
     }
 
     /// <summary>
+    /// 条件写:仅当存量文档缺失行版本号（字段缺位或值为 null）时整档写入（存量迁移回填原语）。
+    /// </summary>
+    /// <remarks>
+    /// Conditional write: replaces the whole document only when the stored <c>RowVersion</c> is
+    /// missing or null (legacy-row migration / backfill primitive). See
+    /// <see cref="IDatabaseService.UpdateIfRowVersionIsNullAsync{TState}(long, TState)"/> for the
+    /// full concurrency contract.
+    /// </remarks>
+    /// <typeparam name="TState">文档的类型,必须继承自BaseCacheState / Document type, must inherit from BaseCacheState</typeparam>
+    /// <param name="id">数据ID（须与 <paramref name="state"/> 的 Id 一致）/ The document ID (must equal <paramref name="state"/>'s Id)</param>
+    /// <param name="state">要写入的新状态对象 / The new state to write</param>
+    /// <returns>存量缺失行版本且写入成功返回 <c>true</c>；存量 <c>RowVersion</c> 非 null 或行缺失返回 <c>false</c> / <c>true</c> when the stored version was missing and the document was written; <c>false</c> on a non-null stored version or a missing row</returns>
+    public static Task<bool> UpdateIfRowVersionIsNullAsync<TState>(long id, TState state) where TState : BaseCacheState, new()
+    {
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.UpdateIfRowVersionIsNullAsync(id, state);
+    }
+
+    /// <summary>
+    /// 条件写:仅当存量文档缺失行版本号（字段缺位或值为 null）时整档写入（存量迁移回填原语）。
+    /// </summary>
+    /// <remarks>
+    /// Conditional write: replaces the whole document only when the stored <c>RowVersion</c> is
+    /// missing or null (legacy-row migration / backfill primitive). See
+    /// <see cref="IDatabaseService.UpdateIfRowVersionIsNullAsync{TState}(long, TState, CancellationToken)"/> for the
+    /// full concurrency contract.
+    /// </remarks>
+    /// <typeparam name="TState">文档的类型,必须继承自BaseCacheState / Document type, must inherit from BaseCacheState</typeparam>
+    /// <param name="id">数据ID（须与 <paramref name="state"/> 的 Id 一致）/ The document ID (must equal <paramref name="state"/>'s Id)</param>
+    /// <param name="state">要写入的新状态对象 / The new state to write</param>
+    /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
+    /// <returns>存量缺失行版本且写入成功返回 <c>true</c>；存量 <c>RowVersion</c> 非 null 或行缺失返回 <c>false</c> / <c>true</c> when the stored version was missing and the document was written; <c>false</c> on a non-null stored version or a missing row</returns>
+    public static Task<bool> UpdateIfRowVersionIsNullAsync<TState>(long id, TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        ArgumentNullException.ThrowIfNull(_dbServiceImplementation);
+        return FacadeService.UpdateIfRowVersionIsNullAsync(id, state, cancellationToken);
+    }
+
+    /// <summary>
     /// 唯一性插入:仅当无既有文档满足唯一性条件时插入（冲突返回 false 而非异常）。
     /// </summary>
     /// <remarks>

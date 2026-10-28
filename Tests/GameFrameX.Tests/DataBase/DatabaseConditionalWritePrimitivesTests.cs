@@ -240,6 +240,86 @@ public sealed class DatabaseConditionalWritePrimitivesTests
     }
 
     /// <summary>
+    /// 测试回填原语命中路径：存量行版本缺失（显式 null）时整档写入并落 RowVersion = 0（null ≡ 版本 -1 的补全基点）。
+    /// </summary>
+    [Fact]
+    public async Task UpdateIfRowVersionIsNull_NullVersion_ShouldWriteAndStampRowVersionZero()
+    {
+        await ForEachProviderAsync(async service =>
+        {
+            // 模拟行版本缺位的存量行：显式 null 覆盖实体默认值，AddAsync 原样持久化。
+            var state = new ConditionalWriteTestState { Id = NextId(), Identifier = "legacy-null", Level = 1, RowVersion = null };
+            await service.AddAsync(state);
+
+            var modified = new ConditionalWriteTestState { Id = state.Id, Identifier = "legacy-null", Level = 2 };
+            Assert.True(await service.UpdateIfRowVersionIsNullAsync(state.Id, modified));
+
+            var loaded = await service.FindAsync<ConditionalWriteTestState>(state.Id, isCreateIfNotExists: false);
+            Assert.NotNull(loaded);
+            Assert.Equal(2, loaded.Level);
+            Assert.Equal(0L, loaded.RowVersion);
+
+            // 回填后转入正常 CAS 链路：期望 0 命中并推进到 1（与新建行基线一致）。
+            var followUp = new ConditionalWriteTestState { Id = state.Id, Identifier = "legacy-null", Level = 3 };
+            Assert.True(await service.UpdateIfRowVersionAsync(state.Id, 0L, followUp));
+            Assert.Equal(1L, (await service.FindAsync<ConditionalWriteTestState>(state.Id, isCreateIfNotExists: false)).RowVersion);
+        });
+    }
+
+    /// <summary>
+    /// 测试回填原语失败可见性：存量行版本非 null 或行缺失返回 false、存量档不变、不污染调用方对象。
+    /// </summary>
+    [Fact]
+    public async Task UpdateIfRowVersionIsNull_NonNullVersionOrMissingRow_ShouldReturnFalseAndKeepDocument()
+    {
+        await ForEachProviderAsync(async service =>
+        {
+            var state = new ConditionalWriteTestState { Id = NextId(), Identifier = "versioned", Level = 10 };
+            await service.AddAsync(state);
+
+            var writer = new ConditionalWriteTestState { Id = state.Id, Identifier = "versioned", Level = 99, RowVersion = 7L };
+            Assert.False(await service.UpdateIfRowVersionIsNullAsync(state.Id, writer));
+            Assert.Equal(7L, writer.RowVersion);
+
+            var missingWriter = new ConditionalWriteTestState { Id = NextId(), Identifier = "missing", Level = 1, RowVersion = 5L };
+            Assert.False(await service.UpdateIfRowVersionIsNullAsync(missingWriter.Id, missingWriter));
+            Assert.Equal(5L, missingWriter.RowVersion);
+
+            var loaded = await service.FindAsync<ConditionalWriteTestState>(state.Id, isCreateIfNotExists: false);
+            Assert.NotNull(loaded);
+            Assert.Equal(10, loaded.Level);
+            Assert.Equal(0L, loaded.RowVersion);
+        });
+    }
+
+    /// <summary>
+    /// 测试回填原语并发竞态：同 id 的 null 行并发回填恰一胜者（败者 false 后重读转正常 CAS）。
+    /// </summary>
+    [Fact]
+    public async Task UpdateIfRowVersionIsNull_ConcurrentBackfill_OnlyOneWinner()
+    {
+        await ForEachProviderAsync(async service =>
+        {
+            var state = new ConditionalWriteTestState { Id = NextId(), Identifier = "legacy-race", Level = 0, RowVersion = null };
+            await service.AddAsync(state);
+
+            var tasks = Enumerable.Range(0, RacerCount).Select(i => Task.Run(async () =>
+            {
+                var racer = new ConditionalWriteTestState { Id = state.Id, Identifier = $"backfill-{i}", Level = i };
+                return await service.UpdateIfRowVersionIsNullAsync(state.Id, racer);
+            }));
+            var results = await Task.WhenAll(tasks);
+
+            Assert.Equal(1, results.Count(won => won));
+            var after = await service.FindAsync<ConditionalWriteTestState>(state.Id, isCreateIfNotExists: false);
+            Assert.NotNull(after);
+            Assert.Equal(0L, after.RowVersion);
+            Assert.StartsWith("backfill-", after.Identifier, StringComparison.Ordinal);
+        });
+    }
+
+
+    /// <summary>
     /// 测试唯一插入顺序路径：新键插入成功并补齐 AddAsync 口径时间戳。
     /// </summary>
     [Fact]

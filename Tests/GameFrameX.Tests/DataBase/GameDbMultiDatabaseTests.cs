@@ -635,6 +635,16 @@ public class GameDbMultiDatabaseTests : IDisposable
             throw new NotSupportedException($"NoConnectionDatabaseService does not implement UpdateIfRowVersionAsync.");
         }
 
+        public Task<bool> UpdateIfRowVersionIsNullAsync<TState>(long id, TState state) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement UpdateIfRowVersionIsNullAsync.");
+        }
+
+        public Task<bool> UpdateIfRowVersionIsNullAsync<TState>(long id, TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+        {
+            throw new NotSupportedException($"NoConnectionDatabaseService does not implement UpdateIfRowVersionIsNullAsync.");
+        }
+
         public Task<bool> TryAddUniqueAsync<TState>(TState state, Expression<Func<TState, bool>> uniqueFilter) where TState : BaseCacheState, new()
         {
             throw new NotSupportedException($"NoConnectionDatabaseService does not implement TryAddUniqueAsync.");

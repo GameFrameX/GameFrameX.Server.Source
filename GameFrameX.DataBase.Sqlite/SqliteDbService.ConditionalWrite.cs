@@ -150,6 +150,90 @@ public sealed partial class SqliteDbService
     }
 
     /// <summary>
+    /// 条件写：仅当存量文档缺失行版本号（字段缺位或值为 null）时整档写入（存量迁移回填原语）。
+    /// </summary>
+    /// <remarks>
+    /// Conditional write: replaces the whole document only when the stored <c>RowVersion</c> is
+    /// missing or null. Implemented as a single-statement SQLite
+    /// <c>UPDATE ... WHERE json_extract(doc, '$.RowVersion') IS NULL</c> — <c>json_extract</c> yields
+    /// SQL NULL both for an absent path and for a stored JSON null, so the compare and the swap are
+    /// atomic under the single-connection gate; the incoming state's version is bumped from the
+    /// null backfill baseline -1 to 0 before persisting (rows with a non-null version never match). See
+    /// <see cref="IDatabaseService.UpdateIfRowVersionIsNullAsync{TState}(long, TState)"/> for the
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="id">数据ID / The document ID</param>
+    /// <param name="state">待写入的新档 / The new state to persist</param>
+    /// <returns>存量缺失行版本且写入成功返回 <c>true</c>；存量 <c>RowVersion</c> 非 null 或行缺失返回 <c>false</c> / <c>true</c> when the stored version was missing and the row was written; <c>false</c> on a non-null stored version or a missing row</returns>
+    /// <exception cref="System.ArgumentException">当 <paramref name="state"/> 的 Id 与 <paramref name="id"/> 不一致时抛出（写库前检查）/ Thrown when <paramref name="state"/>'s Id differs from <paramref name="id"/> (checked before touching the store)</exception>
+    public Task<bool> UpdateIfRowVersionIsNullAsync<TState>(long id, TState state) where TState : BaseCacheState, new()
+    {
+        return UpdateIfRowVersionIsNullAsync(id, state, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// 条件写：仅当存量文档缺失行版本号（字段缺位或值为 null）时整档写入（存量迁移回填原语）。
+    /// </summary>
+    /// <remarks>
+    /// Conditional write: replaces the whole document only when the stored <c>RowVersion</c> is
+    /// missing or null. Implemented as a single-statement SQLite
+    /// <c>UPDATE ... WHERE json_extract(doc, '$.RowVersion') IS NULL</c> so the compare and the swap
+    /// are atomic under the single-connection gate; the incoming state's version is bumped from the
+    /// null backfill baseline -1 to 0 before persisting. See
+    /// <see cref="IDatabaseService.UpdateIfRowVersionIsNullAsync{TState}(long, TState, CancellationToken)"/> for the
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="id">数据ID / The document ID</param>
+    /// <param name="state">待写入的新档 / The new state to persist</param>
+    /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
+    /// <returns>存量缺失行版本且写入成功返回 <c>true</c>；存量 <c>RowVersion</c> 非 null 或行缺失返回 <c>false</c> / <c>true</c> when the stored version was missing and the row was written; <c>false</c> on a non-null stored version or a missing row</returns>
+    /// <exception cref="System.ArgumentException">当 <paramref name="state"/> 的 Id 与 <paramref name="id"/> 不一致时抛出（写库前检查）/ Thrown when <paramref name="state"/>'s Id differs from <paramref name="id"/> (checked before touching the store)</exception>
+    public async Task<bool> UpdateIfRowVersionIsNullAsync<TState>(long id, TState state, CancellationToken cancellationToken) where TState : BaseCacheState, new()
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureOpen();
+        if (state.Id != id)
+        {
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Database.ConditionalWriteStateIdMismatch, state.Id, id), nameof(state));
+        }
+
+        // 版本准备：null 补全基点 -1 对齐后吃 checked 递增（恒为 0，回填后行与新建行基线一致）；失败（false）
+        // 路径回滚内存版本——写前递增若不回滚会污染调用方 state.RowVersion；异常路径不回滚（写结果未知，回滚可能反向脱节）。
+        // Version preparation: align to the null backfill baseline -1, then take the checked increment
+        // (always 0 — the backfilled row shares the fresh-row baseline). The pre-write increment is
+        // rolled back on the false path; it is NOT rolled back on exceptions (the write outcome is
+        // unknown, and rolling back could desync the other way).
+        var originalRowVersion = state.RowVersion;
+        state.RowVersion = -1;
+        VersionedEntityHelper.IncrementRowVersion(state);
+        // 写库前捕获字节快照（行版本递增后），成功后按该快照精确提交基线
+        var persistedData = state.ToBytes();
+        var doc = SerializeDocument(state);
+        var updated = await ExecuteWriteWithRetryAsync(async _ => await ExecuteGatedAsync(async () =>
+        {
+            await EnsureTableAsync<TState>(cancellationToken).ConfigureAwait(false);
+            using (var command = _connection.CreateCommand())
+            {
+                command.CommandText = BuildRowVersionIsNullUpdateCommandText<TState>();
+                command.Parameters.AddWithValue("$doc", doc);
+                command.Parameters.AddWithValue("$id", id);
+                return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) == 1;
+            }
+        }), cancellationToken, nameof(UpdateIfRowVersionIsNullAsync), false).ConfigureAwait(false);
+        if (updated)
+        {
+            state.SaveToDbPostHandler(persistedData);
+            return updated;
+        }
+
+        // 存量 RowVersion 非 null 或行缺失：未写库，回滚写前递增的内存版本。
+        // Non-null stored version or missing row: nothing was written — roll back the pre-write in-memory increment.
+        state.RowVersion = originalRowVersion;
+        return false;
+    }
+
+    /// <summary>
     /// 唯一性插入：仅当无既有文档满足唯一性条件时插入（冲突返回 false 而非异常）。
     /// </summary>
     /// <remarks>
@@ -348,6 +432,25 @@ public sealed partial class SqliteDbService
     private static string BuildCasUpdateCommandText<TState>() where TState : BaseCacheState, new()
     {
         return "UPDATE " + QuoteTableName<TState>() + " SET doc = $doc WHERE id = $id AND json_extract(doc, '$.RowVersion') = $expected;";
+    }
+
+    /// <summary>
+    /// 构建行版本缺失回填更新 SQL 文本（表名 = 编译期封闭类型名的双引号转义，非运行期输入）。
+    /// </summary>
+    /// <remarks>
+    /// Builds the row-version-null backfill update SQL text. The table name is the quote-escaped
+    /// <c>typeof(TState).Name</c> — a compile-time-closed identifier, never runtime input; SQL
+    /// identifiers cannot be bound parameters, so the composition is centralized in this dedicated
+    /// builder with that invariant stated (Sonar S2077). <c>json_extract</c> yields SQL NULL both for
+    /// an absent <c>RowVersion</c> path and for a stored JSON null, so <c>IS NULL</c> matches exactly
+    /// the missing-version legacy rows; the compare-and-swap happens entirely inside the single
+    /// statement (rows with a non-null version never match).
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <returns>SQL 文本 / The SQL text</returns>
+    private static string BuildRowVersionIsNullUpdateCommandText<TState>() where TState : BaseCacheState, new()
+    {
+        return "UPDATE " + QuoteTableName<TState>() + " SET doc = $doc WHERE id = $id AND json_extract(doc, '$.RowVersion') IS NULL;";
     }
 
     /// <summary>
