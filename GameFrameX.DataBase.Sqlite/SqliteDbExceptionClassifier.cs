@@ -59,16 +59,23 @@ internal sealed class SqliteDbExceptionClassifier : IDbOperationExceptionClassif
     private const int SqliteLockedResultCode = 6;
 
     /// <summary>
-    /// 语句级判定：超时或 SQLite busy/locked 写冲突结果码视为可重试瞬时错误。
+    /// 语句级判定：超时或 SQLite busy/locked 写冲突结果码视为可重试瞬时错误（连接闸等待超时除外——多为不可重入死锁，重试只会成倍延长挂起）。
     /// </summary>
     /// <remarks>
     /// Determines whether the exception is a retryable transient error: timeout, or a SQLite
-    /// busy/locked write conflict (the bounded transient set for the embedded engine).
+    /// busy/locked write conflict (the bounded transient set for the embedded engine). A
+    /// <see cref="SqliteGateWaitTimeoutException"/> is excluded: a gate timeout almost always means a
+    /// non-reentrant deadlock inside a transaction-shell action, and retrying would multiply the hang.
     /// </remarks>
     /// <param name="exception">要检查的异常 / The exception to check</param>
     /// <returns>如果是可重试的异常则返回 <c>true</c>；否则返回 <c>false</c> / <c>true</c> if the exception is retryable; otherwise <c>false</c></returns>
     public bool IsRetryable(Exception exception)
     {
+        if (exception is SqliteGateWaitTimeoutException)
+        {
+            return false;
+        }
+
         if (exception is TimeoutException)
         {
             return true;

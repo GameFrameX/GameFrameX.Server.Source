@@ -637,6 +637,16 @@ public static partial class Keys
             public const string ServiceUnavailable = "Database.Sqlite.ServiceUnavailable";
 
             /// <summary>
+            /// SqliteDbService 连接闸等待超时（{0} 秒）。最常见根因：在 ExecuteInTransactionAsync 的 action 内 await 同一实例不经环境事务放行的方法（如 Open/Close），SemaphoreSlim 不可重入导致死锁。
+            /// </summary>
+            /// <remarks>
+            /// 键名: Database.Sqlite.TransactionGateWaitTimeout
+            /// 用途: 任意闸获取点等待超时（默认 30 秒）抛出的 TimeoutException 消息
+            /// 参数: {0} - 超时秒数
+            /// </remarks>
+            public const string TransactionGateWaitTimeout = "Database.Sqlite.TransactionGateWaitTimeout";
+
+            /// <summary>
             /// SqliteDbService.{0} 瞬时错误，重试 {1}/{2}。error={3}
             /// </summary>
             /// <remarks>

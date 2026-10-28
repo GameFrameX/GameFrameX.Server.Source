@@ -1107,7 +1107,7 @@ public sealed partial class SqliteDbService
     }
 
     /// <summary>
-    /// 在事务中执行操作（单连接事务壳 BEGIN → action → COMMIT；action 内全部数据操作经环境事务加入本事务，壳唯一负责提交；嵌套事务壳加入环境事务）。
+    /// 在事务中执行操作（单连接事务壳 BEGIN → action → COMMIT；action 内全部数据操作经环境事务加入本事务，壳唯一负责提交；嵌套事务壳加入环境事务）。限制：action 内禁止 await 同一实例不经环境事务放行的方法（如 OpenAsync / CloseAsync）——连接闸不可重入会死锁，等待超时后抛 TimeoutException。
     /// </summary>
     /// <remarks>
     /// Executes the action inside a transaction on the single connection (BEGIN → action → COMMIT).
@@ -1117,17 +1117,22 @@ public sealed partial class SqliteDbService
     /// cannot nest transactions). The shell itself runs single-pass by design — retrying a shell
     /// would replay the action; the data operations it wraps retry individually via the shared
     /// resilience engine.
+    /// Restriction: never await a method of the same <see cref="SqliteDbService"/> instance that
+    /// bypasses the ambient transaction (e.g. <see cref="OpenAsync"/>/<see cref="CloseAsync"/>) inside
+    /// the action — the gate semaphore is not reentrant and this deadlocks (it fails with a
+    /// <see cref="TimeoutException"/> after <see cref="GateWaitTimeout"/> instead of hanging).
     /// </remarks>
     /// <param name="action">要在事务中执行的操作 / The action to execute inside the transaction</param>
     /// <returns>异步任务 / Async task</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="action"/> 为 null 时抛出 / Thrown when action is null</exception>
+    /// <exception cref="TimeoutException">当连接闸在 <see cref="GateWaitTimeout"/> 内不可得时抛出 / Thrown when the connection gate is not acquired within <see cref="GateWaitTimeout"/></exception>
     public async Task ExecuteInTransactionAsync(Func<Task> action)
     {
         await ExecuteInTransactionAsync(action, CancellationToken.None).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// 在事务中执行操作（单连接事务壳 BEGIN → action → COMMIT；action 内全部数据操作经环境事务加入本事务，壳唯一负责提交；嵌套事务壳加入环境事务）。
+    /// 在事务中执行操作（单连接事务壳 BEGIN → action → COMMIT；action 内全部数据操作经环境事务加入本事务，壳唯一负责提交；嵌套事务壳加入环境事务）。限制：action 内禁止 await 同一实例不经环境事务放行的方法（如 OpenAsync / CloseAsync）——连接闸不可重入会死锁，等待超时后抛 TimeoutException。
     /// </summary>
     /// <remarks>
     /// Executes the action inside a transaction on the single connection (BEGIN → action → COMMIT).
@@ -1137,11 +1142,16 @@ public sealed partial class SqliteDbService
     /// cannot nest transactions). The shell itself runs single-pass by design — retrying a shell
     /// would replay the action; the data operations it wraps retry individually via the shared
     /// resilience engine.
+    /// Restriction: never await a method of the same <see cref="SqliteDbService"/> instance that
+    /// bypasses the ambient transaction (e.g. <see cref="OpenAsync"/>/<see cref="CloseAsync"/>) inside
+    /// the action — the gate semaphore is not reentrant and this deadlocks (it fails with a
+    /// <see cref="TimeoutException"/> after <see cref="GateWaitTimeout"/> instead of hanging).
     /// </remarks>
     /// <param name="action">要在事务中执行的操作 / The action to execute inside the transaction</param>
     /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
     /// <returns>异步任务 / Async task</returns>
     /// <exception cref="ArgumentNullException">当 <paramref name="action"/> 为 null 时抛出 / Thrown when action is null</exception>
+    /// <exception cref="TimeoutException">当连接闸在 <see cref="GateWaitTimeout"/> 内不可得时抛出 / Thrown when the connection gate is not acquired within <see cref="GateWaitTimeout"/></exception>
     public async Task ExecuteInTransactionAsync(Func<Task> action, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -1155,7 +1165,7 @@ public sealed partial class SqliteDbService
             return;
         }
 
-        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await WaitGateAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             await using (var transaction = (SqliteTransaction)await _connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false))
@@ -1327,6 +1337,28 @@ public sealed partial class SqliteDbService
     }
 
     /// <summary>
+    /// 获取连接闸（带 <see cref="GateWaitTimeout"/> 超时；超时抛带定位提示的 TimeoutException——事务壳持闸期间 action 内 await 同实例不经环境事务放行的方法会不可重入死锁，限时失败而非永久挂起）。
+    /// </summary>
+    /// <remarks>
+    /// Acquires the connection gate with the <see cref="GateWaitTimeout"/> timeout; a timeout throws
+    /// a <see cref="TimeoutException"/> carrying a locating hint — while a transaction shell holds
+    /// the gate, awaiting a same-instance method that bypasses the ambient transaction (e.g.
+    /// OpenAsync/CloseAsync) deadlocks on the non-reentrant semaphore, so the acquisition fails
+    /// within the timeout instead of hanging forever.
+    /// </remarks>
+    /// <param name="cancellationToken">取消令牌 / The cancellation token</param>
+    /// <exception cref="TimeoutException">当闸在 <see cref="GateWaitTimeout"/> 内不可得时抛出 / Thrown when the gate is not acquired within <see cref="GateWaitTimeout"/></exception>
+    /// <returns>异步任务 / Async task</returns>
+    private async Task WaitGateAsync(CancellationToken cancellationToken)
+    {
+        var acquired = await _gate.WaitAsync(GateWaitTimeout, cancellationToken).ConfigureAwait(false);
+        if (!acquired)
+        {
+            throw new SqliteGateWaitTimeoutException(LocalizationService.GetString(Keys.Database.Sqlite.TransactionGateWaitTimeout, GateWaitTimeout.TotalSeconds));
+        }
+    }
+
+    /// <summary>
     /// 在串行闸下执行操作（环境事务内直接放行——事务壳已持有闸）。
     /// </summary>
     /// <remarks>
@@ -1343,7 +1375,7 @@ public sealed partial class SqliteDbService
             return;
         }
 
-        await _gate.WaitAsync().ConfigureAwait(false);
+        await WaitGateAsync(CancellationToken.None).ConfigureAwait(false);
         try
         {
             await operation().ConfigureAwait(false);
@@ -1371,7 +1403,7 @@ public sealed partial class SqliteDbService
             return await operation().ConfigureAwait(false);
         }
 
-        await _gate.WaitAsync().ConfigureAwait(false);
+        await WaitGateAsync(CancellationToken.None).ConfigureAwait(false);
         try
         {
             return await operation().ConfigureAwait(false);

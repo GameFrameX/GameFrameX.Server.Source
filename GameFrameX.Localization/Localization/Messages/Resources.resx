@@ -1332,6 +1332,9 @@
   <data name="Database.Sqlite.ServiceUnavailable" xml:space="preserve">
     <value>SqliteDbService is not open yet (call Open first).</value>
   </data>
+  <data name="Database.Sqlite.TransactionGateWaitTimeout" xml:space="preserve">
+    <value>Timed out ({0} seconds) waiting for the SQLite connection gate. Most common cause: awaiting a method of the same SqliteDbService instance that bypasses the ambient transaction (e.g. OpenAsync/CloseAsync) inside an ExecuteInTransactionAsync action — the SemaphoreSlim gate is not reentrant and this deadlocks.</value>
+  </data>
   <data name="Database.Sqlite.OperationTransientError" xml:space="preserve">
     <value>SqliteDbService.{0} transient error, retry {1}/{2}. error={3}</value>
   </data>

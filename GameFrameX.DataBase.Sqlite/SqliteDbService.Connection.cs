@@ -80,7 +80,7 @@ public sealed partial class SqliteDbService
         ArgumentNullException.ThrowIfNull(dbOptions.ConnectionString);
         ArgumentNullException.ThrowIfNull(dbOptions.Name);
 
-        await _gate.WaitAsync().ConfigureAwait(false);
+        await WaitGateAsync(CancellationToken.None).ConfigureAwait(false);
         try
         {
             var dataSource = ResolveDataSourceOrThrow(dbOptions.ConnectionString);
@@ -150,7 +150,7 @@ public sealed partial class SqliteDbService
     /// <returns>异步任务 / Async task</returns>
     public async Task CloseAsync()
     {
-        await _gate.WaitAsync().ConfigureAwait(false);
+        await WaitGateAsync(CancellationToken.None).ConfigureAwait(false);
         try
         {
             await CloseCoreAsync().ConfigureAwait(false);
