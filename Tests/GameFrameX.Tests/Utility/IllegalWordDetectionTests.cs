@@ -489,5 +489,63 @@ namespace GameFrameX.Tests.Utility
         }
 
         #endregion
+
+        #region 线程安全与缓冲区测试
+
+        /// <summary>
+        /// 测试在未执行初始化的线程上检测：ThreadStatic 检测缓冲区必须按需懒分配，不抛 NullReferenceException。
+        /// </summary>
+        [Fact]
+        public void HasBlockWords_OnThreadWithoutInitializedBuffer_ShouldNotThrowAndReturnTrue()
+        {
+            // Arrange：主线程同步初始化，新建工作线程的检测缓冲区为 null
+            IllegalWordDetection.Init(new[] { "跨线程检测词" }, false);
+            Exception capturedException = null;
+            var hasIllegalWords = false;
+            var workerThread = new System.Threading.Thread(() =>
+            {
+                try
+                {
+                    hasIllegalWords = IllegalWordDetection.HasBlockWords("前缀跨线程检测词后缀");
+                }
+                catch (Exception exception)
+                {
+                    capturedException = exception;
+                }
+            });
+
+            // Act
+            workerThread.Start();
+            workerThread.Join();
+
+            // Assert：非初始化线程首次检测不抛异常且能命中敏感词
+            Assert.Null(capturedException);
+            Assert.True(hasIllegalWords);
+        }
+
+        /// <summary>
+        /// 测试文本长度超过最长敏感词两倍以上且敏感词位于末尾：缓冲区按文本长度取足，不抛 IndexOutOfRangeException 且能命中。
+        /// </summary>
+        [Fact]
+        public void DetectIllegalWords_WithTextLongerThanTwiceMaxWordLength_ShouldHitWordAtEnd()
+        {
+            // Arrange：本次初始化最长敏感词 10 字符；用敏感词首字符 + 词尾字符填充，保证向前扫描持续写入缓冲区
+            var badWord = "abcdefghij";
+            IllegalWordDetection.Init(new[] { badWord }, false);
+            var text = "a" + new string('j', 100) + badWord;
+
+            // Act
+            Dictionary<int, int> findResult = null;
+            var exception = Record.Exception(() => IllegalWordDetection.DetectIllegalWords(text, false, out findResult));
+
+            // Assert：不越界，且命中位于文本末尾的敏感词（起始位置 = 文本长度 - 词长，值 = 词长）
+            Assert.Null(exception);
+            Assert.NotNull(findResult);
+            Assert.Single(findResult);
+            Assert.Equal(text.Length - badWord.Length, findResult.Keys.Single());
+            Assert.Equal(badWord.Length, findResult.Values.Single());
+        }
+
+        #endregion
     }
 }
