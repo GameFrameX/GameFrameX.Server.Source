@@ -367,6 +367,12 @@ public sealed class OnlineLeaderboardService
         }
 
         var applied = await _store.ApplySubmissionAsync(leaderboard, submission, cancellationToken).ConfigureAwait(false);
+        if (applied == null)
+        {
+            // Sum 累加溢出被存储层拒绝：条目保持原值，不发事件、不失效缓存（消息承载榜单/玩家/本笔分数供观测定位；原分数以榜上条目为准）。
+            return Failed(OnlineErrorCode.ParameterInvalid, string.Format(CultureInfo.InvariantCulture, "累计分数超出范围，已拒绝写入：leaderboardId={0}, playerId={1}, incomingScore={2}", leaderboard.LeaderboardId, submission.PlayerId, submission.IncomingScore));
+        }
+
         InvalidateCache(leaderboard);
         await PublishAsync(OnlineLeaderboardEvents.CreateScoreUpdated(leaderboard.TenantId, leaderboard.AppId, leaderboard.LeaderboardId, submission.PlayerId, applied.OldScore, applied.Entry.Score, submission.SourceMatchResultId, applied.Entry.LastUpdateTime), cancellationToken).ConfigureAwait(false);
 
