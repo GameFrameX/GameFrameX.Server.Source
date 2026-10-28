@@ -35,8 +35,8 @@ using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Events;
 
 /// <summary>
-/// 会话生命周期管理器（Session 状态推进的单写者——本类之外不得直改
-/// <see cref="OnlineSession.State"/>（Token 签发/轮换/终态化归 <see cref="OnlineSessionTokenService"/>））。
+/// 会话生命周期管理器（Session 状态的唯一写入方——本类之外不得直改 <see cref="OnlineSession.State"/>；
+/// <see cref="OnlineSessionTokenService"/> 的吊销/踢下线/顶替/过期清扫经本类间接终态化，仅保留 Token 指纹字段写入）。
 /// <para>
 /// 维护约束：状态推进严格按 Created → Authenticated → Connected → Active 主线，断线入
 /// <see cref="OnlineSessionState.Reconnecting"/>（带重连窗口），超窗/登出/服务端关闭转终态——
@@ -52,17 +52,21 @@ public sealed class OnlineSessionManager
     /// <summary>事件发布出口。</summary>
     private readonly IOnlineEventPublisher _eventPublisher;
 
+    /// <summary>会话写入共享串行门（全部变更面排队，防跨服务并发覆盖）。</summary>
+    private readonly OnlineSessionWriteGate _writeGate;
+
     /// <summary>
     /// 初始化 <see cref="OnlineSessionManager"/>。
     /// </summary>
     /// <param name="store">会话存储。</param>
     /// <param name="eventPublisher">事件发布出口（生命周期审计事件）。</param>
-    public OnlineSessionManager(IOnlineSessionStore store, IOnlineEventPublisher eventPublisher)
+    /// <param name="writeGate">会话写入共享串行门（须与 <see cref="OnlineSessionTokenService"/> 共用同一实例）。</param>
+    public OnlineSessionManager(IOnlineSessionStore store, IOnlineEventPublisher eventPublisher, OnlineSessionWriteGate writeGate)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _eventPublisher = eventPublisher ?? throw new ArgumentNullException(nameof(eventPublisher));
+        _writeGate = writeGate ?? throw new ArgumentNullException(nameof(writeGate));
     }
-
     /// <summary>
     /// 标记会话已建立连接（Authenticated → Connected；绑定连接通道标识）。
     /// </summary>
@@ -70,7 +74,13 @@ public sealed class OnlineSessionManager
     /// <param name="connectionId">连接通道标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>操作结果。</returns>
-    public async Task<OnlineResult<bool>> MarkConnectedAsync(string sessionId, string connectionId, CancellationToken cancellationToken = default)
+    public Task<OnlineResult<bool>> MarkConnectedAsync(string sessionId, string connectionId, CancellationToken cancellationToken = default)
+    {
+        return _writeGate.ExecuteAsync(() => MarkConnectedCoreAsync(sessionId, connectionId, cancellationToken), cancellationToken);
+    }
+
+    /// <summary>门内核心：<see cref="MarkConnectedAsync"/>。</summary>
+    private async Task<OnlineResult<bool>> MarkConnectedCoreAsync(string sessionId, string connectionId, CancellationToken cancellationToken)
     {
         var failure = ValidateSessionId(sessionId);
         if (failure != null)
@@ -118,7 +128,13 @@ public sealed class OnlineSessionManager
     /// <param name="sessionId">会话标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>操作结果。</returns>
-    public async Task<OnlineResult<bool>> MarkActiveAsync(string sessionId, CancellationToken cancellationToken = default)
+    public Task<OnlineResult<bool>> MarkActiveAsync(string sessionId, CancellationToken cancellationToken = default)
+    {
+        return _writeGate.ExecuteAsync(() => MarkActiveCoreAsync(sessionId, cancellationToken), cancellationToken);
+    }
+
+    /// <summary>门内核心：<see cref="MarkActiveAsync"/>。</summary>
+    private async Task<OnlineResult<bool>> MarkActiveCoreAsync(string sessionId, CancellationToken cancellationToken)
     {
         var failure = ValidateSessionId(sessionId);
         if (failure != null)
@@ -159,7 +175,13 @@ public sealed class OnlineSessionManager
     /// <param name="sessionId">会话标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>操作结果。</returns>
-    public async Task<OnlineResult<bool>> HeartbeatAsync(string sessionId, CancellationToken cancellationToken = default)
+    public Task<OnlineResult<bool>> HeartbeatAsync(string sessionId, CancellationToken cancellationToken = default)
+    {
+        return _writeGate.ExecuteAsync(() => HeartbeatCoreAsync(sessionId, cancellationToken), cancellationToken);
+    }
+
+    /// <summary>门内核心：<see cref="HeartbeatAsync"/>。</summary>
+    private async Task<OnlineResult<bool>> HeartbeatCoreAsync(string sessionId, CancellationToken cancellationToken)
     {
         var failure = ValidateSessionId(sessionId);
         if (failure != null)
@@ -195,7 +217,13 @@ public sealed class OnlineSessionManager
     /// <param name="reconnectWindowSeconds">重连窗口（秒）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>操作结果。</returns>
-    public async Task<OnlineResult<bool>> MarkDisconnectedAsync(string sessionId, long reconnectWindowSeconds, CancellationToken cancellationToken = default)
+    public Task<OnlineResult<bool>> MarkDisconnectedAsync(string sessionId, long reconnectWindowSeconds, CancellationToken cancellationToken = default)
+    {
+        return _writeGate.ExecuteAsync(() => MarkDisconnectedCoreAsync(sessionId, reconnectWindowSeconds, cancellationToken), cancellationToken);
+    }
+
+    /// <summary>门内核心：<see cref="MarkDisconnectedAsync"/>。</summary>
+    private async Task<OnlineResult<bool>> MarkDisconnectedCoreAsync(string sessionId, long reconnectWindowSeconds, CancellationToken cancellationToken)
     {
         var failure = ValidateSessionId(sessionId);
         if (failure != null)
@@ -248,7 +276,13 @@ public sealed class OnlineSessionManager
     /// <param name="connectionId">新的连接通道标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>操作结果。</returns>
-    public async Task<OnlineResult<bool>> MarkReconnectedAsync(string sessionId, string connectionId, CancellationToken cancellationToken = default)
+    public Task<OnlineResult<bool>> MarkReconnectedAsync(string sessionId, string connectionId, CancellationToken cancellationToken = default)
+    {
+        return _writeGate.ExecuteAsync(() => MarkReconnectedCoreAsync(sessionId, connectionId, cancellationToken), cancellationToken);
+    }
+
+    /// <summary>门内核心：<see cref="MarkReconnectedAsync"/>。</summary>
+    private async Task<OnlineResult<bool>> MarkReconnectedCoreAsync(string sessionId, string connectionId, CancellationToken cancellationToken)
     {
         var failure = ValidateSessionId(sessionId);
         if (failure != null)
@@ -299,7 +333,13 @@ public sealed class OnlineSessionManager
     /// <param name="connectionId">新连接通道标识。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>操作结果。</returns>
-    public async Task<OnlineResult<bool>> MarkResumedAsync(string sessionId, string connectionId, CancellationToken cancellationToken = default)
+    public Task<OnlineResult<bool>> MarkResumedAsync(string sessionId, string connectionId, CancellationToken cancellationToken = default)
+    {
+        return _writeGate.ExecuteAsync(() => MarkResumedCoreAsync(sessionId, connectionId, cancellationToken), cancellationToken);
+    }
+
+    /// <summary>门内核心：<see cref="MarkResumedAsync"/>。</summary>
+    private async Task<OnlineResult<bool>> MarkResumedCoreAsync(string sessionId, string connectionId, CancellationToken cancellationToken)
     {
         var failure = ValidateSessionId(sessionId);
         if (failure != null)
@@ -347,9 +387,26 @@ public sealed class OnlineSessionManager
     /// <param name="sessionId">会话标识。</param>
     /// <param name="closeReason">终态原因码。</param>
     /// <param name="reason">原因描述（审计承载）。</param>
+    /// <param name="correlationId">关联标识（可空；审计事件透传）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>操作结果。</returns>
-    public async Task<OnlineResult<bool>> CloseAsync(string sessionId, OnlineSessionCloseReason closeReason, string reason, CancellationToken cancellationToken = default)
+    public Task<OnlineResult<bool>> CloseAsync(string sessionId, OnlineSessionCloseReason closeReason, string reason, string correlationId = null, CancellationToken cancellationToken = default)
+    {
+        return _writeGate.ExecuteAsync(() => CloseGateHeldAsync(sessionId, closeReason, reason, correlationId, cancellationToken), cancellationToken);
+    }
+
+    /// <summary>
+    /// 关闭会话（门内核心：调用方必须已持有 <see cref="OnlineSessionWriteGate"/>——
+    /// <see cref="SweepAsync"/> 内部循环与 <see cref="OnlineSessionTokenService"/> 的间接终态化走本面，
+    /// 避免经公开 <see cref="CloseAsync"/> 二次取门死锁）。
+    /// </summary>
+    /// <param name="sessionId">会话标识。</param>
+    /// <param name="closeReason">终态原因码。</param>
+    /// <param name="reason">原因描述（审计承载）。</param>
+    /// <param name="correlationId">关联标识（可空；审计事件透传）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>操作结果。</returns>
+    internal async Task<OnlineResult<bool>> CloseGateHeldAsync(string sessionId, OnlineSessionCloseReason closeReason, string reason, string correlationId, CancellationToken cancellationToken)
     {
         var failure = ValidateSessionId(sessionId);
         if (failure != null)
@@ -392,7 +449,7 @@ public sealed class OnlineSessionManager
         session.CurrentTokenHash = string.Empty;
         session.ConnectionId = string.Empty;
         await _store.AddOrUpdateAsync(session, cancellationToken);
-        await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(eventType, session.Id, session.TenantId, session.AppId, session.ServerId, session.PlayerId, (int)session.State, (int)session.CloseReason, session.TokenGeneration, reason ?? string.Empty), cancellationToken);
+        await _eventPublisher.PublishAsync(OnlineSessionEvents.Create(eventType, session.Id, session.TenantId, session.AppId, session.ServerId, session.PlayerId, (int)session.State, (int)session.CloseReason, session.TokenGeneration, reason ?? string.Empty, correlationId), cancellationToken);
         return OnlineResult<bool>.Ok(true);
     }
 
@@ -403,7 +460,13 @@ public sealed class OnlineSessionManager
     /// <param name="nowUnixMilliseconds">判定基准时刻（Unix 毫秒；0 = 当前时刻，测试可注入）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>本次清理的会话数。</returns>
-    public async Task<int> SweepAsync(long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
+    public Task<int> SweepAsync(long nowUnixMilliseconds = 0, CancellationToken cancellationToken = default)
+    {
+        return _writeGate.ExecuteAsync(() => SweepCoreAsync(nowUnixMilliseconds, cancellationToken), cancellationToken);
+    }
+
+    /// <summary>门内核心：<see cref="SweepAsync"/>。</summary>
+    private async Task<int> SweepCoreAsync(long nowUnixMilliseconds, CancellationToken cancellationToken)
     {
         var now = nowUnixMilliseconds > 0 ? nowUnixMilliseconds : Now();
         var swept = 0;
@@ -412,7 +475,7 @@ public sealed class OnlineSessionManager
         {
             if (session.State == OnlineSessionState.Reconnecting && session.ReconnectDeadlineAtTime > 0 && now > session.ReconnectDeadlineAtTime)
             {
-                var outcome = await CloseAsync(session.Id, OnlineSessionCloseReason.ReconnectWindowExpired, "reconnect window expired", cancellationToken);
+                var outcome = await CloseGateHeldAsync(session.Id, OnlineSessionCloseReason.ReconnectWindowExpired, "reconnect window expired", null, cancellationToken);
                 if (outcome.IsSuccess)
                 {
                     swept++;

@@ -186,11 +186,12 @@ namespace GameFrameX.Tests.Online
         /// <returns>会话记录。</returns>
         internal async Task<OnlineSession> OpenSessionAsync(long serverId, long playerId, bool reconnecting = false)
         {
-            var issued = await new OnlineSessionTokenService(SessionStore, Recorder).IssueSessionAsync(CreateScope(serverId, playerId), 3600, OnlineMultiDevicePolicy.LatestWins, "dev-" + playerId);
+            var writeGate = new OnlineSessionWriteGate();
+            var issued = await new OnlineSessionTokenService(SessionStore, Recorder, new OnlineSessionManager(SessionStore, Recorder, writeGate), writeGate).IssueSessionAsync(CreateScope(serverId, playerId), 3600, OnlineMultiDevicePolicy.LatestWins, "dev-" + playerId);
             Assert.True(issued.IsSuccess);
 
             var sessionId = issued.Data.Session.Id;
-            var manager = new OnlineSessionManager(SessionStore, Recorder);
+            var manager = new OnlineSessionManager(SessionStore, Recorder, writeGate);
             Assert.True((await manager.MarkConnectedAsync(sessionId, "conn-" + playerId)).IsSuccess);
             Assert.True((await manager.MarkActiveAsync(sessionId)).IsSuccess);
             if (reconnecting)

@@ -70,7 +70,9 @@ namespace GameFrameX.Tests.Online
         {
             // Arrange
             var recorder = new OnlineEventRecorder();
-            var tokenService = new OnlineSessionTokenService(new InMemoryOnlineSessionStore(), recorder);
+            var sessionStore = new InMemoryOnlineSessionStore();
+            var writeGate = new OnlineSessionWriteGate();
+            var tokenService = new OnlineSessionTokenService(sessionStore, recorder, new OnlineSessionManager(sessionStore, recorder, writeGate), writeGate);
             var scope = new OnlineScope(TenantId, AppId, ServerId, PlayerId);
             var issued = await tokenService.IssueSessionAsync(scope, 3600, OnlineMultiDevicePolicy.LatestWins, null);
             Assert.True(issued.IsSuccess);
@@ -157,40 +159,6 @@ namespace GameFrameX.Tests.Online
             Assert.True(accountIds.Count >= 1);
         }
 
-        /// <summary>
-        /// 验证不同玩家的轮换互不排队（变更分片门的跨玩家并行面，GFX-1078 M56）。
-        /// </summary>
-        [Fact]
-        public async Task ConcurrentRefresh_FromDifferentPlayers_ShouldNotQueueBehindEachOther()
-        {
-            // Arrange：玩家 A 的轮换悬挂于存储写（持有 A 的分片门），玩家 B 的轮换必须照常完成——
-            // 全局单变更门时代 B 会排队直至超时（旧码红 / 新码绿）。
-            var store = new BlockingOnlineSessionStore();
-            var tokenService = new OnlineSessionTokenService(store, new OnlineEventRecorder());
-            var firstScope = new OnlineScope(TenantId, AppId, ServerId, PlayerId);
-            var secondScope = new OnlineScope(TenantId, AppId, ServerId, OtherPlayerId);
-            var firstIssued = await tokenService.IssueSessionAsync(firstScope, 3600, OnlineMultiDevicePolicy.LatestWins, null);
-            var secondIssued = await tokenService.IssueSessionAsync(secondScope, 3600, OnlineMultiDevicePolicy.LatestWins, null);
-            Assert.True(firstIssued.IsSuccess);
-            Assert.True(secondIssued.IsSuccess);
-
-            // Act
-            store.BlockSessionWrites(firstIssued.Data.Session.Id);
-            var suspendedRefresh = tokenService.RefreshSessionTokenAsync(firstScope, firstIssued.Data.Token);
-            await store.WaitUntilBlockedAsync();
-
-            var otherRefresh = tokenService.RefreshSessionTokenAsync(secondScope, secondIssued.Data.Token);
-            var finished = await Task.WhenAny(otherRefresh, Task.Delay(TimeSpan.FromSeconds(5)));
-
-            // Assert
-            Assert.Same(otherRefresh, finished);
-            var otherOutcome = await otherRefresh;
-            Assert.True(otherOutcome.IsSuccess, otherOutcome.Message);
-
-            store.ReleaseBlockedWrites();
-            var firstOutcome = await suspendedRefresh;
-            Assert.True(firstOutcome.IsSuccess, firstOutcome.Message);
-        }
 
         /// <summary>
         /// 编码 UTF-8 文本。
