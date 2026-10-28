@@ -52,17 +52,24 @@ public sealed class OnlineMatchOptions : ICapabilityOptions
     /// </summary>
     public OnlineMatchRuntimeOptions Runtime { get; set; } = new OnlineMatchRuntimeOptions();
 
-    /// <summary>
     /// 结算编排阈值（发奖重投尝试上限；默认值唯一来源 =
     /// <see cref="OnlineMatchSettlementOptions"/> 字段初始值）。
     /// </summary>
     public OnlineMatchSettlementOptions Settlement { get; set; } = new OnlineMatchSettlementOptions();
 
     /// <summary>
-    /// 校验合并后的运行时与结算阈值：等待超时、进行中超时、重连窗口、结束留存时长、单局服务端事件上限与发奖投递尝试上限均须为正数。
+    /// 匹配域登记表清扫参数（分配登记生命周期与清扫节流间隔；默认值唯一来源 =
+    /// <see cref="OnlineMatchRegistryOptions"/> 字段初始值）。
+    /// </summary>
+    public OnlineMatchRegistryOptions Registry { get; set; } = new OnlineMatchRegistryOptions();
+
+    /// <summary>
+    /// 校验合并后的运行时与结算阈值与登记表清扫参数：等待超时、进行中超时、重连窗口、结束留存时长、单局服务端事件上限、
+    /// 发奖投递尝试上限、分配登记生命周期与清扫节流间隔均须为正数。
     /// </summary>
     /// <remarks>
-    /// Requires waiting timeout, running timeout, reconnect window, ended retention, maximum server events per match and the maximum grant attempts to be positive.
+    /// Requires waiting timeout, running timeout, reconnect window, ended retention, maximum server events per match,
+    /// maximum grant attempts, assignment registration lifetime and registration sweep interval to be positive.
     /// </remarks>
     /// <param name="validation">选项校验收集器 / Options validation collector</param>
     public void Validate(CapabilityOptionsValidation validation)
@@ -71,6 +78,9 @@ public sealed class OnlineMatchOptions : ICapabilityOptions
         validation.RequirePositive("Runtime.RunningTimeoutSeconds", Runtime.RunningTimeoutSeconds);
         validation.RequirePositive("Runtime.ReconnectWindowSeconds", Runtime.ReconnectWindowSeconds);
         validation.RequirePositive("Runtime.EndedRetentionSeconds", Runtime.EndedRetentionSeconds);
+        validation.RequirePositive("Runtime.MaxServerEventsPerMatch", Runtime.MaxServerEventsPerMatch);
         validation.RequirePositive("Settlement.MaxGrantAttempts", Settlement.MaxGrantAttempts);
+        validation.RequirePositive("Registry.AssignmentRegistrationLifetimeSeconds", Registry.AssignmentRegistrationLifetimeSeconds);
+        validation.RequirePositive("Registry.RegistrationSweepIntervalSeconds", Registry.RegistrationSweepIntervalSeconds);
     }
 }
