@@ -37,6 +37,7 @@ namespace GameFrameX.Capability.Hosting.Core;
 /// <para>
 /// 维护约束（硬化红线）：单循环顺序驱动（不做多任务并发——单进程默认实现下并发 job 对同一存储集合操作会放大竞态）；
 /// per-job 隔离——单个 job 异常记结构化日志（job 全名 + 异常）后继续当轮剩余 job，间隔 job 异常只影响自身本轮；
+/// 壳级兜底——单轮逃逸异常经观测出口（<see cref="ICapabilitySchedulerObserver.OnLoopFaulted"/>）上报后循环继续；
 /// 每轮耗时 / job 执行数 / 失败数经观测出口上报；时钟可注入（<see cref="ISchedulerClock"/>，缺省系统时钟）；
 /// 一次性生命周期——停止（<see cref="StopAsync"/> / <see cref="Dispose"/>）后再 <see cref="Start"/> 抛
 /// <see cref="InvalidOperationException"/>。
@@ -207,9 +208,10 @@ public sealed class CapabilityScheduler : IDisposable
                 {
                     break;
                 }
-                catch (Exception)
+                catch (Exception exception)
                 {
                     // 单轮失败不终止循环（调度壳自身异常兜底；job 异常已在 per-job 隔离内消化）。
+                    ReportLoopFaulted(exception);
                 }
             }
         }
@@ -312,6 +314,22 @@ public sealed class CapabilityScheduler : IDisposable
         try
         {
             _observer?.OnTickRoundCompleted(elapsed, executedJobCount, failedJobCount);
+        }
+        catch (Exception)
+        {
+            // 观测出口自身异常不影响调度。
+        }
+    }
+
+    /// <summary>
+    /// 上报调度壳单轮兜底异常（观测出口异常吞掉——观测不得阻断调度循环；循环继续不变量保持）。
+    /// </summary>
+    /// <param name="exception">逃逸出单轮调度的壳级异常。</param>
+    private void ReportLoopFaulted(Exception exception)
+    {
+        try
+        {
+            _observer?.OnLoopFaulted(exception);
         }
         catch (Exception)
         {

@@ -106,6 +106,36 @@ public class CapabilitySchedulerTests
     }
 
     /// <summary>
+    /// 第二次读取起抛异常的调度时钟（测试注入：UtcNow 在 TickDueIntervalJobsAsync 内读取，其异常逃逸 per-job 隔离，
+    /// 由 RunAsync 兜底 catch 承接——壳级故障的确定性注入缝）。
+    /// </summary>
+    private sealed class ThrowingSchedulerClock : ISchedulerClock
+    {
+        /// <summary>读取计数。</summary>
+        private int _readCount;
+
+        /// <summary>
+        /// 首次调用（构造期 IntervalWatch 记账）返回固定时刻；其后每次调用抛 <see cref="InvalidOperationException"/>。
+        /// </summary>
+        /// <remarks>
+        /// Returns a fixed instant on the first call (IntervalWatch bookkeeping during construction); every later call throws <see cref="InvalidOperationException"/>.
+        /// </remarks>
+        public DateTimeOffset UtcNow
+        {
+            get
+            {
+                var readCount = Interlocked.Increment(ref _readCount);
+                if (readCount > 1)
+                {
+                    throw new InvalidOperationException("clock boom");
+                }
+
+                return StartInstant;
+            }
+        }
+    }
+
+    /// <summary>
     /// job 失败观测记录（种类 + 全名 + 异常）。
     /// </summary>
     private sealed class JobFailureRecord
@@ -170,6 +200,9 @@ public class CapabilitySchedulerTests
         /// <summary>每轮记录。</summary>
         private readonly List<TickRoundRecord> _tickRounds = new();
 
+        /// <summary>壳级兜底异常记录。</summary>
+        private readonly List<Exception> _loopFaults = new();
+
         /// <summary>获取失败记录快照。</summary>
         public JobFailureRecord[] Failures
         {
@@ -194,6 +227,18 @@ public class CapabilitySchedulerTests
             }
         }
 
+        /// <summary>获取壳级兜底异常快照。</summary>
+        public Exception[] LoopFaults
+        {
+            get
+            {
+                lock (_sync)
+                {
+                    return _loopFaults.ToArray();
+                }
+            }
+        }
+
         /// <summary>
         /// 在锁内记录一条作业失败（类型、名称、异常），供测试断言调度器上报的失败。
         /// </summary>
@@ -208,6 +253,21 @@ public class CapabilitySchedulerTests
             lock (_sync)
             {
                 _failures.Add(new JobFailureRecord(jobKind, jobName, exception));
+            }
+        }
+
+        /// <summary>
+        /// 在锁内记录一条调度壳单轮兜底异常，供测试断言壳级故障经观测出口披露。
+        /// </summary>
+        /// <remarks>
+        /// Records a scheduler shell fault under a lock so tests can assert that shell-level faults are surfaced through the observer.
+        /// </remarks>
+        /// <param name="exception">逃逸出单轮调度的壳级异常 / Shell-level exception that escaped one scheduling round</param>
+        public void OnLoopFaulted(Exception exception)
+        {
+            lock (_sync)
+            {
+                _loopFaults.Add(exception);
             }
         }
 
@@ -463,6 +523,42 @@ public class CapabilitySchedulerTests
         finally
         {
             await scheduler.StopAsync();
+        }
+    }
+
+    /// <summary>
+    /// 壳级兜底可观测（C358）：逃逸出单轮调度的异常（注入时钟第二次读取起抛）上报观测出口 OnLoopFaulted，
+    /// 不终止循环（tick job 计数持续增长）、不阻断停机（StopAsync 干净返回）。
+    /// </summary>
+    [Fact]
+    public async Task RunAsync_ShellLevelFault_IsReportedAndLoopContinues()
+    {
+        var observer = new RecordingSchedulerObserver();
+        var tickRuns = new InvocationCounter();
+        var scheduler = new CapabilityScheduler(LoopIntervalMilliseconds, new[]
+        {
+            new CapabilityTickJob("a/count", _ =>
+            {
+                tickRuns.Increment();
+                return Task.CompletedTask;
+            }),
+        }, Array.Empty<CapabilityIntervalJob>(), new ThrowingSchedulerClock(), observer);
+        try
+        {
+            scheduler.Start();
+
+            // 至少两轮壳级故障 + 两轮 tick 执行：证明每轮兜底上报后循环继续。
+            Assert.True(await WaitUntilAsync(() => observer.LoopFaults.Length >= 2 && tickRuns.Count >= 2, PollTimeout));
+            Assert.All(observer.LoopFaults, fault =>
+            {
+                Assert.IsType<InvalidOperationException>(fault);
+                Assert.Equal("clock boom", fault.Message);
+            });
+        }
+        finally
+        {
+            await scheduler.StopAsync();
+            scheduler.Dispose();
         }
     }
 

@@ -602,6 +602,16 @@ public static partial class Keys
             public const string SchedulerIntervalJobFailed = "Capability.Hosting.Scheduler.IntervalJobFailed";
 
             /// <summary>
+            /// 能力调度壳单轮兜底异常（循环继续）：{0}（{1}）
+            /// </summary>
+            /// <remarks>
+            /// 键名: Capability.Hosting.Scheduler.LoopRoundFaulted
+            /// 用途: 调度循环单轮逃逸异常经观测出口披露（缺省日志观察器记 Error），循环继续不变量保持
+            /// 参数: {0} - 异常类型全名；{1} - 异常描述
+            /// </remarks>
+            public const string SchedulerLoopRoundFaulted = "Capability.Hosting.Scheduler.LoopRoundFaulted";
+
+            /// <summary>
             /// 能力 {0} 激活失败，已逆序回滚 {1} 个已激活能力
             /// </summary>
             /// <remarks>

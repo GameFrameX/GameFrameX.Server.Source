@@ -1582,6 +1582,9 @@
   <data name="Capability.Hosting.Scheduler.IntervalJobFailed" xml:space="preserve">
     <value>能力调度间隔 job 失败：{0}（{1}）</value>
   </data>
+  <data name="Capability.Hosting.Scheduler.LoopRoundFaulted" xml:space="preserve">
+    <value>能力调度壳单轮兜底异常（循环继续）：{0}（{1}）</value>
+  </data>
   <data name="Capability.Hosting.ActivationFailed" xml:space="preserve">
     <value>能力 {0} 激活失败，已逆序回滚 {1} 个已激活能力</value>
   </data>

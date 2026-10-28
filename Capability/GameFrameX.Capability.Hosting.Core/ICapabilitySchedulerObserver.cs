@@ -30,7 +30,7 @@
 namespace GameFrameX.Capability.Hosting.Core;
 
 /// <summary>
-/// 调度观测出口（job 失败与每轮 tick 指标的上报面；宿主经组合选项注入，缺省为日志观察器）。
+/// 调度观测出口（job 失败、每轮 tick 指标与调度壳兜底异常的上报面；宿主经组合选项注入，缺省为日志观察器）。
 /// <para>
 /// 维护约束：观测回调不得抛出异常阻断调度（实现方自行兜底）；指标口径对齐既有三指标
 ///（每轮耗时 / job 执行数 / 失败数）。
@@ -53,4 +53,15 @@ public interface ICapabilitySchedulerObserver
     /// <param name="executedJobCount">执行 job 数。</param>
     /// <param name="failedJobCount">失败 job 数。</param>
     void OnTickRoundCompleted(TimeSpan elapsed, int executedJobCount, int failedJobCount);
+
+    /// <summary>
+    /// 上报一次调度壳单轮兜底异常（逃逸出单轮调度的壳级异常披露后循环继续；job 异常走 <see cref="OnJobFailed"/>）。
+    /// <para>
+    /// 维护约束：默认空实现保证既有实现方非破坏接入；观测回调不得抛出异常阻断调度（实现方自行兜底）。
+    /// </para>
+    /// </summary>
+    /// <param name="exception">逃逸出单轮调度的壳级异常（非取消）。</param>
+    void OnLoopFaulted(Exception exception)
+    {
+    }
 }

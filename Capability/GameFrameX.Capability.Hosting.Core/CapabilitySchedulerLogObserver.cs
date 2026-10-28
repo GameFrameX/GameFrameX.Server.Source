@@ -32,7 +32,7 @@ using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.Capability.Hosting.Core;
 
 /// <summary>
-/// 调度日志观察器（缺省观测出口：job 失败按结构化文案写装配日志出口；宿主注入真实指标管道时被替换）。
+/// 调度日志观察器（缺省观测出口：job 失败与调度壳兜底异常按结构化文案写装配日志出口；宿主注入真实指标管道时被替换）。
 /// <para>
 /// 维护约束：每轮指标（耗时 / 执行数 / 失败数）不落日志（归指标管道），本实现只承载失败行；
 /// 观测回调自身异常吞掉（不得阻断调度循环）。
@@ -72,6 +72,18 @@ internal sealed class CapabilitySchedulerLogObserver : ICapabilitySchedulerObser
 
         // Localization: Capability.Hosting.Scheduler.TickJobFailed - 能力调度逐滴答 job 失败。
         _assemblyLog.Error(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.SchedulerTickJobFailed), jobName, message));
+    }
+
+    /// <summary>
+    /// 上报一次调度壳单轮兜底异常（按结构化文案记 Error）。
+    /// </summary>
+    /// <param name="exception">逃逸出单轮调度的壳级异常。</param>
+    public void OnLoopFaulted(Exception exception)
+    {
+        var typeName = exception == null ? string.Empty : exception.GetType().FullName;
+        var message = exception == null ? string.Empty : exception.Message;
+        // Localization: Capability.Hosting.Scheduler.LoopRoundFaulted - 能力调度壳单轮兜底异常，循环继续。
+        _assemblyLog.Error(string.Format(LocalizationService.GetString(Localization.Keys.Capability.Hosting.SchedulerLoopRoundFaulted), typeName, message));
     }
 
     /// <summary>
