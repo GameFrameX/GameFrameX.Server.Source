@@ -44,6 +44,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi;
 using Serilog;
@@ -59,6 +60,18 @@ namespace GameFrameX.StartUp;
 /// </remarks>
 public abstract partial class AppStartUpBase
 {
+    /// <summary>
+    /// 当前 HTTP 服务器宿主实例（启动路径保存引用，供停机路径停止与释放；<see langword="null"/> 表示未启动或已停止）。
+    /// </summary>
+    /// <remarks>
+    /// The current HTTP server host instance (kept by the startup path so the shutdown path can stop and dispose it;
+    /// <see langword="null"/> when the HTTP server was never started or has already stopped).
+    /// Mirrors the socket host field <c>_gameServer</c>: assigned right after build and before start, cleared by
+    /// <see cref="StopHttpServerAsync"/> so repeated shutdown calls stay idempotent. Instance-level (not static) on
+    /// purpose — every role owns its own <c>AppStartUpBase</c> instance in a multi-role process.
+    /// </remarks>
+    private WebApplication _webApplication;
+
     /// <summary>
     /// 启动 HTTP 服务器。
     /// </summary>
@@ -175,6 +188,8 @@ public abstract partial class AppStartUpBase
         ConfigureHttpBuilder(builder, baseHandler, development, openApiInfo, corsAllowedOrigins, minimumLevelLogLevel);
 
         var app = builder.Build();
+        // 宿主引用落字段（构建后、启动前，对齐 socket 宿主 _gameServer 模式）：停机路径 StopHttpServerAsync 依赖它执行 StopAsync/DisposeAsync
+        _webApplication = app;
         app.MapDefaultEndpoints();
 
         ConfigureHttpApplication(app, development, openApiInfo, corsAllowedOrigins, baseHandler, httpFactory, aopHandlerTypes);
@@ -182,6 +197,31 @@ public abstract partial class AppStartUpBase
         await app.StartAsync();
         // Localization: StartUp.HttpServer.StartupComplete - HTTP服务器启动完成 - 端口: {0}
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.StartupComplete, Setting.HttpPort));
+    }
+
+    /// <summary>
+    /// 停止并释放 HTTP 服务器宿主（停机时 Kestrel 端口等系统资源的确定性释放）。
+    /// </summary>
+    /// <remarks>
+    /// Stops and disposes the HTTP server host so Kestrel listeners and other system resources are
+    /// deterministically released during shutdown. Null-guarded no-op when the HTTP server was never
+    /// started (disabled or skipped) — those processes keep byte-identical stop behavior. Called by
+    /// <c>StopServerAsync</c> after the socket host (<c>_gameServer</c>) has stopped, i.e. after the
+    /// role's actor and business services have already shut down (the Launcher role template stops the
+    /// capability family before delegating to the base stop flow), so no new shutdown race is introduced.
+    /// The stop has a hard 5-second budget; the reference is cleared afterwards so repeated shutdown
+    /// calls stay idempotent.
+    /// </remarks>
+    private async Task StopHttpServerAsync()
+    {
+        if (_webApplication == null)
+        {
+            return;
+        }
+
+        await _webApplication.StopAsync(TimeSpan.FromSeconds(5));
+        await _webApplication.DisposeAsync();
+        _webApplication = null;
     }
 
     /// <summary>

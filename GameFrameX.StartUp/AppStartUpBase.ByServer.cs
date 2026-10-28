@@ -121,6 +121,9 @@ public abstract partial class AppStartUpBase
             await _gameServer.StopAsync();
             _gameServer = null;
         }
+
+        // HTTP 宿主最后停：此刻同 Role 的能力族（Actor/业务服务）与 socket 宿主均已停止，满足「HTTP 停机晚于其它服务」的顺序约束
+        await StopHttpServerAsync();
     }
 
     /// <summary>
