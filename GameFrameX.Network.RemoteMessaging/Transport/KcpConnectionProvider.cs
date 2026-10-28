@@ -161,13 +161,14 @@ internal sealed class KcpConnectionProvider : IConnectionProvider
         private readonly SemaphoreSlim _gate = new(1, 1);
         private readonly List<KcpClientSession> _sessions = new();
         private int _roundRobinIndex;
-        private int _inFlight;
+        private int _pendingAcquisitions;
 
         public async Task<Stream> GetOrCreateStreamAsync(string host, int port, int maxSessions, CancellationToken cancellationToken)
         {
-            // 并发需求驱动池增长：仅当存活会话数低于「池上限与当前并发获取数的较小值」时新建。
-            // 顺序调用保持单会话复用；并发调用按需扩展会话数。
-            Interlocked.Increment(ref _inFlight);
+            // 排队需求驱动池增长：扩容信号是「gate 等待队列深度」而非获取动作的时间重叠——
+            // 先后到达的并发获取在旧 _inFlight 判据下互不可见时池退化为单会话。
+            // 顺序调用无排队 → 永不扩容（守住单会话复用）；并发获取必有 gate 排队 → 确定性扩容，与建连快慢无关。
+            Interlocked.Increment(ref _pendingAcquisitions);
             try
             {
                 // gate 串行化会话建立（创建期间不持任何 lock，await 不可入 lock）；
@@ -177,8 +178,10 @@ internal sealed class KcpConnectionProvider : IConnectionProvider
                 {
                     RemoveDeadEntries();
 
-                    // 池未满足当前并发需求则新建会话（懒建：随并发调用逐步扩到池上限）
-                    if (CountSessions() < Math.Min(maxSessions, Volatile.Read(ref _inFlight)))
+                    var aliveCount = CountSessions();
+                    // 等待数排除当前持 gate 者自身；gate 串行化建连，同一时刻只有一个持 gate 者判断扩容
+                    var waitingCount = Volatile.Read(ref _pendingAcquisitions) - 1;
+                    if (aliveCount == 0 || (aliveCount < maxSessions && waitingCount > 0))
                     {
                         var created = await CreateSessionAsync(host, port, cancellationToken);
                         lock (_sessions)
@@ -223,7 +226,7 @@ internal sealed class KcpConnectionProvider : IConnectionProvider
             }
             finally
             {
-                Interlocked.Decrement(ref _inFlight);
+                Interlocked.Decrement(ref _pendingAcquisitions);
             }
         }
 
