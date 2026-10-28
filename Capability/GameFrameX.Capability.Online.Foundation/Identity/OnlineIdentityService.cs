@@ -414,6 +414,14 @@ public sealed class OnlineIdentityService
             return OnlineResult<bool>.Ok(true);
         }
 
+        return await BindUnboundIdentityCrossAccountAsync(existing, gameAccountId, tenantId, appId, kind, identifier, rebindAuthorizationTicket, now, cancellationToken);
+    }
+
+    /// <summary>
+    /// 已解绑身份的跨账号改绑尾段：原账号须仍为 Active，且携带其签发的一次性授权票据；CAS 成功后写改绑审计。
+    /// </summary>
+    private async Task<OnlineResult<bool>> BindUnboundIdentityCrossAccountAsync(OnlineIdentity existing, long gameAccountId, long tenantId, long appId, OnlineIdentityKind kind, string identifier, string rebindAuthorizationTicket, long now, CancellationToken cancellationToken)
+    {
         // 跨账号改绑已解绑身份：原账号须仍为 Active（注销/封禁/合并等走客服或管理后台，不开放自助改绑）。
         var originalAccount = await _store.FindAccountAsync(existing.GameAccountId, cancellationToken);
         if (originalAccount == null || originalAccount.Status != OnlineGameAccountStatus.Active)
