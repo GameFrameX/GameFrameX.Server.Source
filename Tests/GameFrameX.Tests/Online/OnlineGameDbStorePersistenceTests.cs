@@ -31,6 +31,7 @@ namespace GameFrameX.Tests.Online;
 
 using System.Threading;
 using System.Threading.Tasks;
+using System.Reflection;
 using GameFrameX.Capability.Online.Abstractions.Contracts;
 using GameFrameX.Capability.Online.Abstractions.Idempotency;
 using GameFrameX.Capability.Online.Abstractions.Scope;
@@ -353,6 +354,69 @@ public sealed class OnlineGameDbStorePersistenceTests
             Assert.Equal(OnlineAssetTransactionState.CompensationPending, (await transactionStore.FindAsync(firstTransactionId)).State);
         });
     }
+    /// <summary>
+    /// 落账原子性（GFX-1108）：账本首行写成功后第二行注入失败 → 事务整体回滚，账本 / 快照零残留。
+    /// </summary>
+    [Fact]
+    public async Task AssetStore_Apply_MidBatchFailure_ShouldRollBackWholeBatch()
+    {
+        await WithFaultInjectingSqliteFacadeAsync(new DatabaseFaultPlan { FailAfterLedgerAddCount = 1, }, async () =>
+        {
+            var store = new GameDbOnlineAssetStore();
+            var (grantService, scope) = BuildGrantService(store, new GameDbOnlineAssetTransactionStore(), playerId: 31);
+
+            // 预置一笔成功落账（gold +50）：同时把账本 / 快照表建好（Sqlite 惰性建表只在写路径触发）。
+            Assert.True((await grantService.ExecuteAsync(Request(scope, "c398-midbatch-first", new (OnlineAssetKind, string, long)[]
+            {
+                (OnlineAssetKind.Currency, "gold", 50),
+            }))).IsSuccess);
+
+            // 两行批次：第一笔账本 AddAsync（gold）成功、第二笔（gem）注入失败 → 事务整体回滚。
+            var outcome = await grantService.ExecuteAsync(Request(scope, "c398-midbatch", new (OnlineAssetKind, string, long)[]
+            {
+                (OnlineAssetKind.Currency, "gold", 10),
+                (OnlineAssetKind.Currency, "gem", 5),
+            }));
+
+            // 整批净效应 0：账本仍只有预置 1 行、gold 余额不变、gem 未建档（旧无事务实现下 gold 第二行已落库）。
+            Assert.False(outcome.IsSuccess);
+            Assert.Equal(1, (await store.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = TenantId, AppId = AppId, PlayerId = 31, AfterSequenceNumber = 0, MaxCount = 100, })).Count);
+            Assert.Equal(50, (await store.FindWalletAsync(TenantId, AppId, 31, "gold")).Balance);
+            Assert.Null(await store.FindWalletAsync(TenantId, AppId, 31, "gem"));
+        }, "c398-fault-midbatch");
+    }
+
+    /// <summary>
+    /// 快照条件写冲突（GFX-1108）：CAS 恒失败 → ApplyAsync 重试 3 次用尽返回 VersionConflict，零残留。
+    /// </summary>
+    [Fact]
+    public async Task AssetStore_Apply_RowVersionCasConflictExhausted_ShouldReturnVersionConflict()
+    {
+        await WithFaultInjectingSqliteFacadeAsync(new DatabaseFaultPlan { FailAllRowVersionCas = true, }, async () =>
+        {
+            var (grantService, scope) = BuildGrantService(new GameDbOnlineAssetStore(), new GameDbOnlineAssetTransactionStore(), playerId: 32);
+
+            // 首批新行建档不走 CAS：成功落账（gold=100 / Version=1）。
+            var first = await grantService.ExecuteAsync(Request(scope, "c398-cas-first", new (OnlineAssetKind, string, long)[]
+            {
+                (OnlineAssetKind.Currency, "gold", 100),
+            }));
+            Assert.True(first.IsSuccess);
+
+            // 第二批走既有行 CAS：恒失败 → 3 次重试用尽返回 VersionConflict，账本 / 快照保持首批状态。
+            var second = await grantService.ExecuteAsync(Request(scope, "c398-cas-conflict", new (OnlineAssetKind, string, long)[]
+            {
+                (OnlineAssetKind.Currency, "gold", -30),
+            }));
+            Assert.False(second.IsSuccess);
+            Assert.Equal(OnlineErrorCode.VersionConflict, second.Code);
+            var store = new GameDbOnlineAssetStore();
+            Assert.Equal(1, (await store.ListLedgerEntriesAsync(new OnlineLedgerPageQuery { TenantId = TenantId, AppId = AppId, PlayerId = 32, AfterSequenceNumber = 0, MaxCount = 100, })).Count);
+            var gold = await store.FindWalletAsync(TenantId, AppId, 32, "gold");
+            Assert.Equal(100, gold.Balance);
+            Assert.Equal(1, gold.Version);
+        }, "c398-fault-cas");
+    }
 
     /// <summary>
     /// 重启验收（SQLite 文件模式）：身份域写 → 关库重开 + 新适配实例 → 全字段读回一致 + 序列不复用。
@@ -540,6 +604,103 @@ public sealed class OnlineGameDbStorePersistenceTests
         {
             await GameDb.CloseAsync();
             GameDb.ResetForTesting();
+        }
+    }
+
+    /// <summary>
+    /// 故障注入 SQLite 门面：以 DispatchProxy 包装 SqliteDbService 直挂多库注册表（门面首绑），
+    /// 按计划拦截指定调用（确定性触发落账中断 / CAS 冲突），其余原样转发。
+    /// </summary>
+    private static async Task WithFaultInjectingSqliteFacadeAsync(DatabaseFaultPlan plan, Func<Task> action, string name)
+    {
+        var sqlite = new SqliteDbService();
+        Assert.True(await sqlite.OpenAsync(new DbOptions { ConnectionString = "Data Source=:memory:", Name = name, }));
+        var proxied = DatabaseFaultInjectionProxy.Create(sqlite, plan);
+        MultiDbRegistry.Register(name, proxied);
+        GameDb.SetDefault(name);
+        try
+        {
+            await action();
+        }
+        finally
+        {
+            await GameDb.CloseAsync();
+            GameDb.ResetForTesting();
+        }
+    }
+
+    /// <summary>
+    /// 数据库故障注入计划（确定性：第 N 笔账本 AddAsync 后失败 / 全部 RowVersion CAS 返回 false）。
+    /// </summary>
+    private sealed class DatabaseFaultPlan
+    {
+        /// <summary>第 N 笔账本行 AddAsync 成功后，后续账本 AddAsync 返回失败任务（0 = 不启用）。</summary>
+        public int FailAfterLedgerAddCount { get; init; }
+
+        /// <summary>全部 UpdateIfRowVersionAsync 调用返回 false（CAS 恒冲突）。</summary>
+        public bool FailAllRowVersionCas { get; init; }
+
+        private int ledgerAdds;
+
+        /// <summary>命中拦截返回 true 并给出替代结果；否则透传原调用。</summary>
+        public bool TryIntercept(MethodInfo method, object[] args, out object result)
+        {
+            result = null;
+            if (FailAllRowVersionCas && method.Name == "UpdateIfRowVersionAsync")
+            {
+                result = Task.FromResult(false);
+                return true;
+            }
+
+            if (FailAfterLedgerAddCount > 0 && method.Name == "AddAsync" && args.Length > 0 && args[0] is OnlineLedgerEntryState)
+            {
+                ledgerAdds++;
+                if (ledgerAdds > FailAfterLedgerAddCount)
+                {
+                    result = Task.FromException(new InvalidOperationException("c398-ledger-add-boom"));
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// IDatabaseService 的 DispatchProxy 故障注入包装：未命中计划的调用按原签名转发内层实现。
+    /// </summary>
+    private class DatabaseFaultInjectionProxy : DispatchProxy
+    {
+        private IDatabaseService target;
+        private DatabaseFaultPlan plan;
+
+        /// <summary>创建包装指定实现与注入计划的代理。</summary>
+        public static IDatabaseService Create(IDatabaseService targetService, DatabaseFaultPlan faultPlan)
+        {
+            var proxy = Create<IDatabaseService, DatabaseFaultInjectionProxy>();
+            var typed = (DatabaseFaultInjectionProxy)(object)proxy;
+            typed.target = targetService;
+            typed.plan = faultPlan;
+            return proxy;
+        }
+
+        /// <summary>拦截入口：命中注入计划返回替代结果，否则反射转发（泛型方法按实参实例化）。</summary>
+        protected override object Invoke(MethodInfo targetMethod, object[] args)
+        {
+            if (plan != null && plan.TryIntercept(targetMethod, args, out var result))
+            {
+                return result;
+            }
+
+            var method = targetMethod.IsGenericMethodDefinition ? targetMethod.MakeGenericMethod(targetMethod.GetGenericArguments()) : targetMethod;
+            try
+            {
+                return method.Invoke(target, args);
+            }
+            catch (TargetInvocationException invocationException)
+            {
+                throw invocationException.InnerException;
+            }
         }
     }
 
