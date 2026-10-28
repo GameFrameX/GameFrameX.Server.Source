@@ -23,7 +23,7 @@ namespace GameFrameX.Config
         /// <summary>
         /// 加载发布版本号：0 表示尚未加载完成，每次成功发布后递增（支持热重载）
         /// </summary>
-        private volatile int m_LoadedVersion;
+        private int m_LoadedVersion;
 
         public void Init(ConfigComponent configComponent)
         {
@@ -35,7 +35,7 @@ namespace GameFrameX.Config
         /// </summary>
         public bool IsLoaded
         {
-            get { return m_LoadedVersion > 0; }
+            get { return System.Threading.Volatile.Read(ref m_LoadedVersion) > 0; }
         }
 
         /// <summary>
@@ -56,7 +56,7 @@ namespace GameFrameX.Config
                 newTbItemConfig.LoadAsync(),
                 newTbLocalization.LoadAsync());
 
-            // 第二阶段：全部加载成功后原子发布——先切换引用并解析，再逐键替换映射，发布前读者始终看到上一版完整数据
+            // 全部加载成功后发布；各映射键独立替换，不保证跨表读取属于同一版本。
             TbAchievementConfig = newTbAchievementConfig;
             TbSoundsConfig = newTbSoundsConfig;
             TbItemConfig = newTbItemConfig;

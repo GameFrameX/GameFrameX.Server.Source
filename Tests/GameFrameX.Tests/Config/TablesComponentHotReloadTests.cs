@@ -37,14 +37,14 @@ using Xunit;
 namespace GameFrameX.Tests.Config;
 
 /// <summary>
-/// TablesComponent 配置表热重载与两阶段原子发布回归测试（GFX-1025 / C314）：
-/// 重复 LoadAsync 发布新实例、发布前读者始终看到上一版完整数据、加载失败旧数据零损伤。
+/// TablesComponent 配置表热重载与逐表发布回归测试：
+/// 重复 LoadAsync 发布新实例、加载期间保留上一版数据、加载失败不修改已发布映射。
 /// 共享 ConfigComponent.Instance 单例，全部用例收敛在本测试类内串行执行。
 /// </summary>
 /// <remarks>
-/// Regression tests for TablesComponent hot reload and two-phase atomic publishing
-/// (GFX-1025 / C314): repeated LoadAsync publishes new instances, readers keep seeing the
-/// previously published data until the switch, and a failed reload leaves old data intact.
+/// Regression tests for TablesComponent hot reload and per-table publishing:
+/// repeated LoadAsync publishes new instances, loading preserves published mappings,
+/// and a failed load leaves those mappings intact; cross-table snapshot isolation is not provided.
 /// Shares the ConfigComponent.Instance singleton; all cases are kept in this class for
 /// serialized execution.
 /// </remarks>
