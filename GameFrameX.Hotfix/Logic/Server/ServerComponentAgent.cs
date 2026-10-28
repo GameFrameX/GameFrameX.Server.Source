@@ -55,8 +55,8 @@ public class ServerComponentAgent : StateComponentAgent<ServerComponent, ServerS
         if (isContinue)
         {
             // 跨天定时器
-            WithCronExpression<CrossDayTimeHandler>("0 0 0 * * ? *");
-            Schedule<ServiceTopologyWatcherHandler>(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+            await WithCronExpressionAsync<CrossDayTimeHandler>("0 0 0 * * ? *");
+            await ScheduleAsync<ServiceTopologyWatcherHandler>(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
             if (State.FirstStartTime == default)
             {
                 State.FirstStartTime = TimerHelper.UnixTimeSeconds();

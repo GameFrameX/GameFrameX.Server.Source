@@ -50,25 +50,28 @@ public static class QuartzTimer
     /// 删除指定的定时任务
     /// </summary>
     /// <param name="id">要删除的定时任务ID</param>
-    public static void Remove(long id)
+    /// <returns>任务存在且已删除时返回 true；任务不存在（例如一次性任务已触发并被 Quartz 自动清理）时返回 false</returns>
+    public static async Task<bool> RemoveAsync(long id)
     {
         if (id <= 0)
         {
-            return;
+            return false;
         }
 
-        Scheduler.DeleteJob(new JobKey(id.ToString()));
+        return await Scheduler.DeleteJob(new JobKey(id.ToString()));
     }
 
     /// <summary>
     /// 批量删除定时任务
     /// </summary>
     /// <param name="set">要删除的定时任务ID集合</param>
-    public static void Remove(IEnumerable<long> set)
+    public static async Task RemoveAsync(IEnumerable<long> set)
     {
-        foreach (var id in set)
+        // 先拷贝快照，避免 await 期间原集合（如 ScheduleIdSet）被修改
+        var idList = new List<long>(set);
+        foreach (var id in idList)
         {
-            Remove(id);
+            await RemoveAsync(id);
         }
     }
 
@@ -76,25 +79,28 @@ public static class QuartzTimer
     /// 暂停指定的定时任务
     /// </summary>
     /// <param name="id">要暂停的定时任务ID</param>
-    public static void Pause(long id)
+    /// <returns>任务存在且已暂停时返回 true；任务不存在时返回 false</returns>
+    public static async Task<bool> PauseAsync(long id)
     {
         if (id <= 0)
         {
-            return;
+            return false;
         }
 
-        Scheduler.PauseJob(new JobKey(id.ToString()));
+        return await Scheduler.PauseJob(new JobKey(id.ToString()));
     }
 
     /// <summary>
     /// 批量暂停定时任务
     /// </summary>
     /// <param name="set">要暂停的定时任务ID集合</param>
-    public static void Pause(IEnumerable<long> set)
+    public static async Task PauseAsync(IEnumerable<long> set)
     {
-        foreach (var id in set)
+        // 先拷贝快照，避免 await 期间原集合（如 ScheduleIdSet）被修改
+        var idList = new List<long>(set);
+        foreach (var id in idList)
         {
-            Pause(id);
+            await PauseAsync(id);
         }
     }
 
@@ -102,25 +108,28 @@ public static class QuartzTimer
     /// 恢复指定的定时任务
     /// </summary>
     /// <param name="id">要恢复的定时任务ID</param>
-    public static void Resume(long id)
+    /// <returns>任务存在且已恢复时返回 true；任务不存在时返回 false</returns>
+    public static async Task<bool> ResumeAsync(long id)
     {
         if (id <= 0)
         {
-            return;
+            return false;
         }
 
-        Scheduler.ResumeJob(new JobKey(id.ToString()));
+        return await Scheduler.ResumeJob(new JobKey(id.ToString()));
     }
 
     /// <summary>
     /// 批量恢复定时任务
     /// </summary>
     /// <param name="set">要恢复的定时任务ID集合</param>
-    public static void Resume(IEnumerable<long> set)
+    public static async Task ResumeAsync(IEnumerable<long> set)
     {
-        foreach (var id in set)
+        // 先拷贝快照，避免 await 期间原集合（如 ScheduleIdSet）被修改
+        var idList = new List<long>(set);
+        foreach (var id in idList)
         {
-            Resume(id);
+            await ResumeAsync(id);
         }
     }
 
@@ -136,8 +145,8 @@ public static class QuartzTimer
     /// <param name="eventArgs">传递给定时器处理器的自定义参数</param>
     /// <param name="repeatCount">循环次数,设置为-1表示无限循环执行</param>
     /// <param name="isMissFire">是否允许错过执行</param>
-    /// <returns>生成的定时任务ID,可用于后续管理该任务</returns>
-    public static long Schedule<T>(long actorId, TimeSpan delay, TimeSpan interval, GameEventArgs eventArgs = null, int repeatCount = -1, bool isMissFire = true) where T : ITimerHandler
+    /// <returns>调度成功后生成的定时任务ID,可用于后续管理该任务;调度失败时异常直接抛出</returns>
+    public static async Task<long> ScheduleAsync<T>(long actorId, TimeSpan delay, TimeSpan interval, GameEventArgs eventArgs = null, int repeatCount = -1, bool isMissFire = true) where T : ITimerHandler
     {
         var nextId = NextId();
         var firstTimeOffset = DateTimeOffset.Now.Add(delay);
@@ -159,7 +168,7 @@ public static class QuartzTimer
         }
 
         var trigger = TriggerBuilder.Create(TimeProvider.System).StartAt(firstTimeOffset).WithSchedule(schedule).Build();
-        Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
+        await Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
         return nextId;
     }
 
@@ -170,13 +179,13 @@ public static class QuartzTimer
     /// <param name="actorId">Actor的唯一标识,用于定位执行任务的Actor</param>
     /// <param name="delay">延迟执行的时间</param>
     /// <param name="eventArgs">传递给定时器处理器的自定义参数</param>
-    /// <returns>生成的定时任务ID,可用于后续管理该任务</returns>
-    public static long Delay<T>(long actorId, TimeSpan delay, GameEventArgs eventArgs = null) where T : ITimerHandler
+    /// <returns>调度成功后生成的定时任务ID,可用于后续管理该任务;调度失败时异常直接抛出</returns>
+    public static async Task<long> DelayAsync<T>(long actorId, TimeSpan delay, GameEventArgs eventArgs = null) where T : ITimerHandler
     {
         var nextId = NextId();
         var firstTimeOffset = DateTimeOffset.Now.Add(delay);
         var trigger = TriggerBuilder.Create(TimeProvider.System).StartAt(firstTimeOffset).WithSchedule(SimpleScheduleBuilder.Create().WithMisfireInstruction(SimpleTriggerMisfireInstruction.NextWithRemainingCount)).Build();
-        Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
+        await Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
         return nextId;
     }
 
@@ -187,12 +196,12 @@ public static class QuartzTimer
     /// <param name="actorId">Actor的唯一标识,用于定位执行任务的Actor</param>
     /// <param name="cronExpression">标准的Cron表达式,用于配置复杂的执行时间规则</param>
     /// <param name="eventArgs">传递给定时器处理器的自定义参数</param>
-    /// <returns>生成的定时任务ID,可用于后续管理该任务</returns>
-    public static long WithCronExpression<T>(long actorId, string cronExpression, GameEventArgs eventArgs = null) where T : ITimerHandler
+    /// <returns>调度成功后生成的定时任务ID,可用于后续管理该任务;调度失败时异常直接抛出</returns>
+    public static async Task<long> WithCronExpressionAsync<T>(long actorId, string cronExpression, GameEventArgs eventArgs = null) where T : ITimerHandler
     {
         var nextId = NextId();
         var trigger = TriggerBuilder.Create(TimeProvider.System).StartNow().WithSchedule(CronScheduleBuilder.Create(cronExpression)).Build();
-        Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
+        await Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
         return nextId;
     }
 
@@ -204,9 +213,8 @@ public static class QuartzTimer
     /// <param name="hour">指定执行的小时(0-23)</param>
     /// <param name="minute">指定执行的分钟(0-59)</param>
     /// <param name="eventArgs">传递给定时器处理器的自定义参数</param>
-    /// <returns>生成的定时任务ID,可用于后续管理该任务</returns>
-    /// <exception cref="ArgumentOutOfRangeException">当hour或minute参数超出有效范围时抛出</exception>
-    public static long Daily<T>(long actorId, int hour, int minute, GameEventArgs eventArgs = null) where T : ITimerHandler
+    /// <returns>调度成功后生成的定时任务ID,可用于后续管理该任务;调度失败时异常直接抛出</returns>
+    public static async Task<long> DailyAsync<T>(long actorId, int hour, int minute, GameEventArgs eventArgs = null) where T : ITimerHandler
     {
         if (hour < 0 || hour >= 24 || minute < 0 || minute >= 60)
         {
@@ -216,7 +224,7 @@ public static class QuartzTimer
 
         var nextId = NextId();
         var trigger = TriggerBuilder.Create(TimeProvider.System).StartNow().WithSchedule(CronScheduleBuilder.Create($"0 {minute} {hour} * * ?")).Build();
-        Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
+        await Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, eventArgs), trigger);
         return nextId;
     }
 
@@ -229,9 +237,8 @@ public static class QuartzTimer
     /// <param name="minute">指定执行的分钟(0-59)</param>
     /// <param name="gameEventArgs">传递给定时器处理器的自定义参数</param>
     /// <param name="dayOfWeeks">指定要执行的星期几,可以指定多个</param>
-    /// <returns>生成的定时任务ID,可用于后续管理该任务</returns>
-    /// <exception cref="ArgumentNullException">当dayOfWeeks参数为空或长度为0时抛出</exception>
-    public static long WithDayOfWeeks<T>(long actorId, int hour, int minute, GameEventArgs gameEventArgs, params DayOfWeek[] dayOfWeeks) where T : ITimerHandler
+    /// <returns>调度成功后生成的定时任务ID,可用于后续管理该任务;调度失败时异常直接抛出</returns>
+    public static async Task<long> WithDayOfWeeksAsync<T>(long actorId, int hour, int minute, GameEventArgs gameEventArgs, params DayOfWeek[] dayOfWeeks) where T : ITimerHandler
     {
         if (dayOfWeeks == null || dayOfWeeks.Length <= 0)
         {
@@ -242,7 +249,7 @@ public static class QuartzTimer
         var nextId = NextId();
         var daysOfWeek = string.Join(",", dayOfWeeks.Select(ToCronDayOfWeek));
         var trigger = TriggerBuilder.Create(TimeProvider.System).StartNow().WithSchedule(CronScheduleBuilder.Create($"0 {minute} {hour} ? * {daysOfWeek}")).Build();
-        Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, gameEventArgs), trigger);
+        await Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, gameEventArgs), trigger);
         return nextId;
     }
 
@@ -255,12 +262,12 @@ public static class QuartzTimer
     /// <param name="hour">指定执行的小时(0-23)</param>
     /// <param name="minute">指定执行的分钟(0-59)</param>
     /// <param name="gameEventArgs">传递给定时器处理器的自定义参数</param>
-    /// <returns>生成的定时任务ID,可用于后续管理该任务</returns>
-    public static long Weekly<T>(long actorId, DayOfWeek dayOfWeek, int hour, int minute, GameEventArgs gameEventArgs = null) where T : ITimerHandler
+    /// <returns>调度成功后生成的定时任务ID,可用于后续管理该任务;调度失败时异常直接抛出</returns>
+    public static async Task<long> WeeklyAsync<T>(long actorId, DayOfWeek dayOfWeek, int hour, int minute, GameEventArgs gameEventArgs = null) where T : ITimerHandler
     {
         var nextId = NextId();
         var trigger = TriggerBuilder.Create(TimeProvider.System).StartNow().WithSchedule(CronScheduleBuilder.Create($"0 {minute} {hour} ? * {ToCronDayOfWeek(dayOfWeek)}")).Build();
-        Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, gameEventArgs), trigger);
+        await Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, gameEventArgs), trigger);
         return nextId;
     }
 
@@ -273,9 +280,8 @@ public static class QuartzTimer
     /// <param name="hour">指定执行的小时(0-23)</param>
     /// <param name="minute">指定执行的分钟(0-59)</param>
     /// <param name="gameEventArgs">传递给定时器处理器的自定义参数</param>
-    /// <returns>生成的定时任务ID,可用于后续管理该任务</returns>
-    /// <exception cref="ArgumentException">当dayOfMonth参数超出有效范围时抛出</exception>
-    public static long Monthly<T>(long actorId, int dayOfMonth, int hour, int minute, GameEventArgs gameEventArgs = null) where T : ITimerHandler
+    /// <returns>调度成功后生成的定时任务ID,可用于后续管理该任务;调度失败时异常直接抛出</returns>
+    public static async Task<long> MonthlyAsync<T>(long actorId, int dayOfMonth, int hour, int minute, GameEventArgs gameEventArgs = null) where T : ITimerHandler
     {
         if (dayOfMonth is < 0 or > 31)
         {
@@ -285,7 +291,7 @@ public static class QuartzTimer
 
         var nextId = NextId();
         var trigger = TriggerBuilder.Create(TimeProvider.System).StartNow().WithSchedule(CronScheduleBuilder.Create($"0 {minute} {hour} {dayOfMonth} * ?")).Build();
-        Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, gameEventArgs), trigger);
+        await Scheduler.ScheduleJob(GetJobDetail<T>(nextId, actorId, gameEventArgs), trigger);
         return nextId;
     }
 

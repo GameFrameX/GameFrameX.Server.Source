@@ -62,7 +62,7 @@ public class RoomComponentAgent : StateComponentAgent<RoomComponent, RoomListSta
         var isContinue = await base.ActiveAsync();
         if (isContinue)
         {
-            WithCronExpression<RoomMaintenanceTimer>(RoomMaintenanceCronExpression);
+            await WithCronExpressionAsync<RoomMaintenanceTimer>(RoomMaintenanceCronExpression);
         }
 
         return isContinue;
