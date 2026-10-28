@@ -238,11 +238,11 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
     /// <summary>
     /// 玩家进入已撮合对局：校验入场请求与分配登记后，按服务器标识派生运行时对局标识并获取或创建对局 Actor；
     /// 对局已结束返回 <c>StateEnded</c>，成员表与分配成员不一致返回 <c>ParameterInvalid</c>；
-    /// 对局处于创建、等待或就绪状态时标记成员就绪并尝试开局；最终返回是否已进入运行状态及成员列表。
+    /// 对局处于创建、等待或就绪状态时将入场玩家本人置为就绪，全员就绪时才开局；最终返回是否已进入运行状态及成员列表。
     /// </summary>
     /// <remarks>
     /// Validates the entry and assignment registration, derives the runtime match id from the server id and gets or creates the match actor.
-    /// Ended matches fail with <c>StateEnded</c>, member mismatches fail with <c>ParameterInvalid</c>; in created, waiting or ready states members are marked ready and the match is started when possible.
+    /// Ended matches fail with <c>StateEnded</c>, member mismatches fail with <c>ParameterInvalid</c>; in created, waiting or ready states only the entering player is marked ready and the match starts once every seat is ready.
     /// Returns whether the match is running and the member list.
     /// </remarks>
     /// <param name="scope">玩家作用域 / Player scope</param>
@@ -575,11 +575,11 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
     }
 
     /// <summary>
-    /// 未开局对局逐活跃成员就绪并启动（活跃成员 = 非 null 且非 Left/Kicked）。
+    /// 只将入场玩家本人置为就绪；全员就绪（对局进入 <c>Ready</c> 态）时才尝试开局，未全员就绪直接交回调用方以最终快照收口。
     /// </summary>
     /// <param name="scope">请求作用域。</param>
     /// <param name="actor">对局 Actor。</param>
-    /// <param name="snapshot">对局快照（就绪遍历的成员表来源）。</param>
+    /// <param name="snapshot">对局快照（前置状态判断来源）。</param>
     /// <param name="registration">分配登记项。</param>
     /// <param name="matchId">数值对局标识。</param>
     /// <param name="now">当前毫秒时间戳。</param>
@@ -587,14 +587,14 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
     /// <returns>定论结果（并发竞态幂等成功或启动失败）；启动成功返回 <c>null</c>，由调用方以最终快照收口。</returns>
     private static async Task<OnlineResult<OnlineMatchDomainEntry>> MarkMembersReadyAndStartAsync(OnlineScope scope, OnlineMatchActor actor, OnlineMatchSnapshot snapshot, AssignmentRegistration registration, long matchId, long now, CancellationToken cancellationToken)
     {
-        foreach (var member in snapshot.Members)
-        {
-            if (member == null || member.State == OnlineMatchMemberState.Left || member.State == OnlineMatchMemberState.Kicked)
-            {
-                continue;
-            }
+        // 仅置入场玩家本人就绪（GFX-1099）：不得替未到场的对手置 Ready，否则首入场者会单方面触发开局。
+        await actor.SetReadyAsync(scope, true, now, cancellationToken).ConfigureAwait(false);
 
-            await actor.SetReadyAsync(WithPlayer(scope, member.PlayerId), true, now, cancellationToken).ConfigureAwait(false);
+        var afterReady = actor.GetSnapshot();
+        if (afterReady.State != OnlineMatchState.Ready)
+        {
+            // 尚有座位未就绪（对手未入场或未确认）：不开局，等待后续入场或超时弃权。
+            return null;
         }
 
         var started = await actor.StartAsync(WithPlayer(scope, registration.PlayerIds[0]), now, cancellationToken).ConfigureAwait(false);

@@ -38,7 +38,7 @@ namespace GameFrameX.Capability.Online.Abstractions.Contracts;
 /// ④ 数值对局标识由实现方登记表从匹配分配派生（assignment → 协议数值 id 单射），重启即失效
 ///（与票据存储当前易失性一致），不得由调用方指定；
 /// ⑤ <see cref="EnterAsync"/> 是「等价最小入场夹具」：按数值标识 create-or-reuse 平台对局运行时
-/// Actor、双方就绪并启动——不发明对局玩法新面，玩法裁决 / 结算仍归平台编排。
+/// Actor、入场者各只置本人就绪、全员就绪后才启动——不发明对局玩法新面，玩法裁决 / 结算仍归平台编排。
 /// </para>
 /// </summary>
 public interface IOnlineMatchDomain
@@ -70,7 +70,7 @@ public interface IOnlineMatchDomain
     Task<OnlineResult<OnlineMatchDomainStatus>> GetStatusAsync(OnlineScope scope, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 按数值对局标识入场（create-or-reuse + 双方就绪 + 启动；幂等，双方各自到达同一对局）。
+    /// 按数值对局标识入场（create-or-reuse + 仅置本人就绪 + 全员就绪后启动；幂等，双方各自到达同一对局）。
     /// </summary>
     /// <param name="scope">生效作用域（必须含玩家主体位 = 入场成员）。</param>
     /// <param name="matchId">协议数值对局标识（来自入队回执 / 状态 / 通知）。</param>

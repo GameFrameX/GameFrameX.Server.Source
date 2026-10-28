@@ -204,11 +204,11 @@ namespace GameFrameX.Tests.Online
                 Assert.NotEqual(0, second.Data.MatchId);
                 harness.NumericMatchId = second.Data.MatchId;
 
+                // GFX-1099：首入场者只置本人就绪，末位入场者补齐全员就绪后开局。
                 foreach (var playerId in new[] { PlayerOne, PlayerTwo })
                 {
                     var entered = await harness.Domain.EnterAsync(harness.ScopeOf(playerId), harness.NumericMatchId);
                     Assert.True(entered.IsSuccess, entered.Message);
-                    Assert.True(entered.Data.Started);
                 }
 
                 harness.Actor = await harness.Runtime.ResolveActorAsync(TenantId, AppId, DeriveRuntimeMatchId(harness.NumericMatchId));

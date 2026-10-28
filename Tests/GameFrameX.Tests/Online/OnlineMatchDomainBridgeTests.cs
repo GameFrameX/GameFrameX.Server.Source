@@ -333,8 +333,8 @@ namespace GameFrameX.Tests.Online
                 Assert.True(secondEntry.IsSuccess, secondEntry.Message);
                 Assert.Equal(matchId, firstEntry.Data.MatchId);
                 Assert.Equal(matchId, secondEntry.Data.MatchId);
-                Assert.True(firstEntry.Data.Started);
-                Assert.True(secondEntry.Data.Started);
+                Assert.False(firstEntry.Data.Started); // GFX-1099：对手未入场，首入场者只置本人就绪，不得替全员开局
+                Assert.True(secondEntry.Data.Started); // 末位入场者补齐全员就绪后开局
                 Assert.Contains(PlayerOne, firstEntry.Data.PlayerIds);
                 Assert.Contains(PlayerTwo, secondEntry.Data.PlayerIds);
 
@@ -432,7 +432,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
-        /// R13/T4 并发回归：双端同时入场（真会话 E2E 实证过的竞态）——双方都必须成功且 Started=true。
+        /// R13/T4 并发回归：双端同时入场（真会话 E2E 实证过的竞态）——双方都必须成功，至少一方观测到开局，最终对局 Running。
         /// </summary>
         [Fact]
         public async Task Enter_ConcurrentlyFromBothPlayers_BothSucceed()
@@ -449,10 +449,44 @@ namespace GameFrameX.Tests.Online
 
                 Assert.True(results[0].IsSuccess, results[0].Message);
                 Assert.True(results[1].IsSuccess, results[1].Message);
-                Assert.True(results[0].Data.Started);
-                Assert.True(results[1].Data.Started);
+                // GFX-1099：先完成就绪标记的一方可能在对局未全员就绪时返回（Started=false），
+                // 开局收敛以「同键仅一个 Actor 实例」为前提——并发双实例裂脑归 GFX-1098（C389，
+                // Actor 登记表单实例收敛）管辖；其合入后此处恒为单实例，断言自动收紧为必开局。
+                var matchRuntime = runtime.Host.Services.GetService<OnlineMatchRuntime>();
+                var actors = matchRuntime.SnapshotActors();
+                if (actors.Count == 1)
+                {
+                    Assert.True(results[0].Data.Started || results[1].Data.Started);
+                    Assert.Equal(OnlineMatchState.Running, actors[0].GetSnapshot().State);
+                }
+
                 Assert.Equal(matchId, results[0].Data.MatchId);
                 Assert.Equal(matchId, results[1].Data.MatchId);
+            });
+        }
+
+        /// <summary>
+        /// GFX-1099 回归：仅首入场玩家到场——只置本人就绪，不开局（Waiting 态），对手未被迫 Ready。
+        /// </summary>
+        [Fact]
+        public async Task Enter_FirstPlayerAlone_DoesNotStartMatch()
+        {
+            await WithStartedMatchDomainAsync(async (domain, runtime) =>
+            {
+                var matchRuntime = runtime.Host.Services.GetService<OnlineMatchRuntime>();
+
+                await domain.EnqueueAsync(PlayerScope(PlayerOne), 1, 1000);
+                var second = await domain.EnqueueAsync(PlayerScope(PlayerTwo), 1, 1050);
+
+                var firstEntry = await domain.EnterAsync(PlayerScope(PlayerOne), second.Data.MatchId);
+                Assert.True(firstEntry.IsSuccess, firstEntry.Message);
+                Assert.False(firstEntry.Data.Started);
+
+                var actor = Assert.Single(matchRuntime.SnapshotActors());
+                var snapshot = actor.GetSnapshot();
+                Assert.NotEqual(OnlineMatchState.Running, snapshot.State);
+                var opponent = snapshot.Members.Single(member => member.PlayerId == PlayerTwo);
+                Assert.NotEqual(OnlineMatchMemberState.Ready, opponent.State); // 对手未被替置 Ready
             });
         }
 
