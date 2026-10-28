@@ -33,6 +33,7 @@ namespace GameFrameX.Config.Local
                 DataList.Add(_v);
                 StringDataMaps.Add(_v.Key.ToString(), _v);
             }
+            InvalidateCaches();
             PostInit();
         }
 

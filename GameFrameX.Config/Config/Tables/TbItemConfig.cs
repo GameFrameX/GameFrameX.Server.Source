@@ -34,6 +34,7 @@ namespace GameFrameX.Config.Tables
                 LongDataMaps.Add(_v.Id, _v);
                 StringDataMaps.Add(_v.Id.ToString(), _v);
             }
+            InvalidateCaches();
             PostInit();
         }
 
