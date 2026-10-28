@@ -155,7 +155,7 @@ namespace GameFrameX.Tests.Online
                 Runtime = new OnlineMatchRuntime(new InMemoryOnlineMatchActorStore(), Publisher, options);
                 var game = new OnlineRockPaperScissorsGame();
                 Runtime.RegisterGame(game);
-                Domain = new OnlineMatchDomainService(TicketStore, Tickets, Coordinator, Runtime, game);
+                Domain = new OnlineMatchDomainService(TicketStore, Tickets, Coordinator, Runtime, game, new OnlineMatchRegistryOptions());
             }
 
             public OnlineEventRecorder Publisher { get; }

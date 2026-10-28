@@ -157,7 +157,7 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
         var domainTicketStore = context.GetOptionalService<IOnlineMatchTicketStore>();
         if (domainTickets != null && domainCoordinator != null && domainTicketStore != null)
         {
-            _matchDomain = new OnlineMatchDomainService(domainTicketStore, domainTickets, domainCoordinator, _matchRuntime, rpsGame);
+            _matchDomain = new OnlineMatchDomainService(domainTicketStore, domainTickets, domainCoordinator, _matchRuntime, rpsGame, options.Registry);
             context.AddService<IOnlineMatchDomain>(_matchDomain);
             context.Subscribe<OnlineEvent>(OnlineMatchEvents.AssignmentCreated, onlineEvent => HandleMatchAssignmentEvent(onlineEvent, _matchDomain));
         }

@@ -39,7 +39,9 @@ namespace GameFrameX.Capability.Online.Match;
 /// ② 即时窗口兼容：入队建票后同步执行一轮撮合（对手已在池时本轮即成组，响应即刻带数值对局标识，
 /// 等价旧 FIFO 链第二人入队即配对的可观测行为）；等待方经状态轮询 / 通知获知；
 /// ③ 数值对局标识登记表（assignment → 协议数值 id 单射）是本类唯一的派生状态——InMemory、
-/// 与票据存储同生命周期（重启即失效，与榜单同款易失边界），计数种子取构造时刻避免跨重启撞号；
+/// 重启即失效（与榜单同款易失边界）；对局终态后按 <see cref="OnlineMatchRegistryOptions"/> 的生命周期
+/// 过期清扫（登记表访问时惰性触发，不设独立定时器），过期项移除后懒登记重建将分配新数值标识
+///（与重启后语义一致）；计数种子取构造时刻避免跨重启撞号；
 /// ④ 入场 = create-or-reuse：以 <c>matched-s{区服}-m{数值}</c> 确定性派生运行时对局标识，
 /// 复用 <see cref="OnlineMatchRuntime"/> 既有 Actor 生命周期（与房间桥同型），不发明对局玩法新面；
 /// ⑤ 模式标签（1/2）只是撮合池分区键，入场绑定的玩法模式取构造注入的样例玩法
@@ -86,6 +88,12 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
     /// <summary>数值分配计数器（种子取构造时刻秒级时间戳，跨重启不回卷撞号）。</summary>
     private long _nextNumeric = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
+    /// <summary>登记表清扫参数（生命周期与节流间隔；构造时归一——非正值回退默认）。</summary>
+    private readonly OnlineMatchRegistryOptions _registry;
+
+    /// <summary>上次清扫时刻（UTC 毫秒；锁内读写，与登记表同临界区）。</summary>
+    private long _lastSweepTimeUnixMilliseconds;
+
     /// <summary>
     /// 初始化 <see cref="OnlineMatchDomainService"/>。
     /// </summary>
@@ -94,7 +102,8 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
     /// <param name="coordinator">撮合协调器。</param>
     /// <param name="runtime">对局运行时。</param>
     /// <param name="game">入场绑定的玩法实现。</param>
-    public OnlineMatchDomainService(IOnlineMatchTicketStore store, OnlineMatchTicketService tickets, OnlineMatchmakerCoordinator coordinator, OnlineMatchRuntime runtime, IOnlineMatchGame game)
+    /// <param name="registry">登记表清扫参数（空引用时取默认；生命周期非正值回退默认，节流间隔负值回退默认、零表示禁用节流）。</param>
+    public OnlineMatchDomainService(IOnlineMatchTicketStore store, OnlineMatchTicketService tickets, OnlineMatchmakerCoordinator coordinator, OnlineMatchRuntime runtime, IOnlineMatchGame game, OnlineMatchRegistryOptions registry)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _tickets = tickets ?? throw new ArgumentNullException(nameof(tickets));
@@ -102,6 +111,35 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
         _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
         _reconnect = new OnlineMatchReconnectService(runtime);
         _game = game ?? throw new ArgumentNullException(nameof(game));
+
+        var effectiveRegistry = registry ?? new OnlineMatchRegistryOptions();
+        _registry = new OnlineMatchRegistryOptions
+        {
+            AssignmentRegistrationLifetimeSeconds = effectiveRegistry.AssignmentRegistrationLifetimeSeconds > 0
+                ? effectiveRegistry.AssignmentRegistrationLifetimeSeconds
+                : OnlineMatchRegistryOptions.DefaultAssignmentRegistrationLifetimeSeconds,
+            RegistrationSweepIntervalSeconds = effectiveRegistry.RegistrationSweepIntervalSeconds >= 0
+                ? effectiveRegistry.RegistrationSweepIntervalSeconds
+                : OnlineMatchRegistryOptions.DefaultRegistrationSweepIntervalSeconds,
+        };
+    }
+
+    /// <summary>
+    /// 获取当前登记表条目数（锁内读；登记表驻留有界性的对账观测面）。
+    /// </summary>
+    /// <remarks>
+    /// Gets the current number of assignment registrations (read under the registry lock),
+    /// as the reconciliation surface for the bounded residency of the registry.
+    /// </remarks>
+    public int RegistrationCount
+    {
+        get
+        {
+            lock (_registryLock)
+            {
+                return _byAssignment.Count;
+            }
+        }
     }
 
     /// <summary>
@@ -704,6 +742,7 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
     /// <returns>登记项。</returns>
     private AssignmentRegistration FindRegistration(string assignmentId)
     {
+        SweepExpiredRegistrations();
         lock (_registryLock)
         {
             return _byAssignment.TryGetValue(assignmentId, out var registration) ? registration : null;
@@ -717,6 +756,7 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
     /// <returns>登记项。</returns>
     private AssignmentRegistration FindRegistration(long matchId)
     {
+        SweepExpiredRegistrations();
         lock (_registryLock)
         {
             return _byNumeric.TryGetValue(matchId, out var registration) ? registration : null;
@@ -730,6 +770,7 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
     /// <returns>登记项。</returns>
     private AssignmentRegistration RegisterAssignment(OnlineMatchAssignment assignment)
     {
+        SweepExpiredRegistrations();
         lock (_registryLock)
         {
             if (_byAssignment.TryGetValue(assignment.AssignmentId, out var existing))
@@ -751,6 +792,56 @@ public sealed class OnlineMatchDomainService : IOnlineMatchDomain
             _byAssignment[registration.AssignmentId] = registration;
             _byNumeric[registration.NumericMatchId] = registration;
             return registration;
+        }
+    }
+
+    /// <summary>
+    /// 惰性清扫过期登记项（登记表访问路径触发；节流间隔内跳过）：
+    /// 分配时刻距今超过生命周期的登记项从双向索引移除——此时对局必然早已终态释放
+    ///（生命周期必须大于单局全生命周期上界，见 <see cref="OnlineMatchRegistryOptions"/> 类约束）。
+    /// <para>
+    /// 过期项移除后，票据仍处已匹配态的玩家再查询会经懒登记重建并分配新数值标识——与进程重启后语义一致。
+    /// 全程持 <see cref="_registryLock"/>，与查找 / 登记同临界区，无新增竞态面。
+    /// </para>
+    /// </summary>
+    private void SweepExpiredRegistrations()
+    {
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        lock (_registryLock)
+        {
+            if (now - _lastSweepTimeUnixMilliseconds < _registry.RegistrationSweepIntervalSeconds * 1000L)
+            {
+                return;
+            }
+
+            _lastSweepTimeUnixMilliseconds = now;
+            var lifetimeMilliseconds = _registry.AssignmentRegistrationLifetimeSeconds * 1000L;
+            List<string> expiredAssignmentIds = null;
+            foreach (var pair in _byAssignment)
+            {
+                if (now - pair.Value.CreatedAtTime > lifetimeMilliseconds)
+                {
+                    if (expiredAssignmentIds == null)
+                    {
+                        expiredAssignmentIds = new List<string>();
+                    }
+
+                    expiredAssignmentIds.Add(pair.Key);
+                }
+            }
+
+            if (expiredAssignmentIds == null)
+            {
+                return;
+            }
+
+            foreach (var assignmentId in expiredAssignmentIds)
+            {
+                if (_byAssignment.Remove(assignmentId, out var registration))
+                {
+                    _byNumeric.Remove(registration.NumericMatchId);
+                }
+            }
         }
     }
 
