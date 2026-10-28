@@ -68,7 +68,7 @@ public sealed class OnlineGrantCompensationQueue
     /// <param name="sloMilliseconds">SLO 时长（毫秒；默认 10 分钟）。</param>
     public OnlineGrantCompensationQueue(IOnlineCrossServerGrantTransport transport, IOnlineAssetAlertSink alertSink = null, long sloMilliseconds = 600000)
     {
-        _transport = transport ?? throw new ArgumentNullException(nameof(transport));
+        _transport = transport;
         _alertSink = alertSink;
         _sloMilliseconds = sloMilliseconds;
     }
@@ -107,6 +107,12 @@ public sealed class OnlineGrantCompensationQueue
 
         foreach (var item in snapshot)
         {
+            if (_transport == null)
+            {
+                // 惰性默认队列（无传输）：仅承载观测/裁决，续投显式跳过，条目保留。
+                continue;
+            }
+
             var homeServerId = item.Request.HomeServerId > 0 ? item.Request.HomeServerId : item.Request.Scope.ServerId;
             try
             {
@@ -114,10 +120,14 @@ public sealed class OnlineGrantCompensationQueue
                 if (result.IsSuccess)
                 {
                     delivered++;
+
+                    // 成功 = 确定完成：移除条目，不重试。
+                    Remove(item);
+                    continue;
                 }
 
-                // 非异常返回 = 已获得确定答复（成功或业务性失败）：均移除，不重试。
-                Remove(item);
+                // 业务性失败 = 确定答复但不可自动重试：转人工裁决（保留事实供后台观测与 Retry / Discard）。
+                MarkManualReview(item, result.Code, result.Message);
                 continue;
             }
             catch (Exception)
@@ -146,6 +156,96 @@ public sealed class OnlineGrantCompensationQueue
         lock (_syncRoot)
         {
             return _items.ToList();
+        }
+    }
+
+    /// <summary>
+    /// 列举转人工条目（后台观测与裁决入口；返回快照）。
+    /// </summary>
+    /// <returns>转人工条目快照。</returns>
+    public IReadOnlyList<OnlineGrantCompensationItem> ListManualReview()
+    {
+        lock (_syncRoot)
+        {
+            return _items.Where(item => item.State == OnlineGrantCompensationItemState.ManualReview).ToList();
+        }
+    }
+
+    /// <summary>
+    /// 裁决 Retry：转人工条目重置回待续投（清空转人工事实，恢复后自动续投）。
+    /// </summary>
+    /// <param name="item">条目（须处于转人工态）。</param>
+    /// <returns>重置成功返回 true；条目不在队或非转人工态返回 false。</returns>
+    public bool RetryManualReview(OnlineGrantCompensationItem item)
+    {
+        lock (_syncRoot)
+        {
+            if (item == null || !_items.Contains(item) || item.State != OnlineGrantCompensationItemState.ManualReview)
+            {
+                return false;
+            }
+
+            item.State = OnlineGrantCompensationItemState.Pending;
+            item.ManualReviewTime = 0;
+            item.ManualReviewErrorCode = null;
+            item.ManualReviewMessage = null;
+            item.SloAlerted = false;
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// 裁决 Discard：移除转人工条目并留 CompensationManualReviewDiscarded 告警（原因与操作者入文）。
+    /// </summary>
+    /// <param name="item">条目（须处于转人工态）。</param>
+    /// <param name="reason">人工裁决原因。</param>
+    /// <param name="operatorId">操作者标识。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>移除成功返回 true；条目不在队或非转人工态返回 false。</returns>
+    public async Task<bool> DiscardManualReviewAsync(OnlineGrantCompensationItem item, string reason, string operatorId, CancellationToken cancellationToken = default)
+    {
+        lock (_syncRoot)
+        {
+            if (item == null || !_items.Contains(item) || item.State != OnlineGrantCompensationItemState.ManualReview)
+            {
+                return false;
+            }
+
+            _items.Remove(item);
+        }
+
+        if (_alertSink != null)
+        {
+            var homeServerId = item.Request.HomeServerId > 0 ? item.Request.HomeServerId : item.Request.Scope.ServerId;
+            var record = new OnlineAssetAlertRecord
+            {
+                Kind = OnlineAssetAlertKind.CompensationManualReviewDiscarded,
+                TransactionId = string.Empty,
+                ScopeKey = item.Request.Scope.ToScopeKey(true),
+                AssetId = string.Empty,
+                Detail = "补偿队列转人工条目被 Discard（幂等键 " + item.Request.IdempotencyKey + "，归属服 " + homeServerId + "，原因 " + (reason ?? string.Empty) + "，操作者 " + (operatorId ?? string.Empty) + "）",
+                OccurredTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            };
+            await _alertSink.AlertAsync(record, cancellationToken);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 标记条目转人工（记录失败事实）。
+    /// </summary>
+    /// <param name="item">条目。</param>
+    /// <param name="errorCode">确定性失败码。</param>
+    /// <param name="message">失败描述。</param>
+    private void MarkManualReview(OnlineGrantCompensationItem item, OnlineErrorCode errorCode, string message)
+    {
+        lock (_syncRoot)
+        {
+            item.State = OnlineGrantCompensationItemState.ManualReview;
+            item.ManualReviewTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            item.ManualReviewErrorCode = errorCode;
+            item.ManualReviewMessage = message;
         }
     }
 

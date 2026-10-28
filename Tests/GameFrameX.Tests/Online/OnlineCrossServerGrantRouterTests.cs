@@ -308,11 +308,12 @@ namespace GameFrameX.Tests.Online
             // Act
             var drain = await queue.DrainAsync();
 
-            // Assert
+            // Assert：业务性失败获得确定答复但不自动重试——条目转人工（保留事实待 Retry / Discard），不入重试循环。
             Assert.Equal(0, drain.DeliveredCount);
-            Assert.Equal(0, drain.RemainingCount);
+            Assert.Equal(1, drain.RemainingCount);
             Assert.Single(transport.Calls);
-            Assert.Empty(queue.ListPending());
+            Assert.Single(queue.ListPending().Where(item => item.State == OnlineGrantCompensationItemState.ManualReview));
+            Assert.Single(queue.ListManualReview());
         }
 
         /// <summary>

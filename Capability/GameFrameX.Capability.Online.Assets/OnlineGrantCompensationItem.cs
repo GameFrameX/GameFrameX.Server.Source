@@ -27,7 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
-
+using GameFrameX.Capability.Online.Abstractions.Contracts;
 namespace GameFrameX.Capability.Online.Assets;
 
 /// <summary>
@@ -58,6 +58,26 @@ public sealed class OnlineGrantCompensationItem
     /// 获取或设置是否已发过 SLO 超时告警（去重标记）。
     /// </summary>
     public bool SloAlerted { get; set; }
+
+    /// <summary>
+    /// 获取或设置条目当前状态（Pending = 待续投；ManualReview = 业务性失败转人工裁决）。
+    /// </summary>
+    public OnlineGrantCompensationItemState State { get; set; } = OnlineGrantCompensationItemState.Pending;
+
+    /// <summary>
+    /// 获取或设置转人工时刻（UTC 毫秒；未转人工为 0）。
+    /// </summary>
+    public long ManualReviewTime { get; set; }
+
+    /// <summary>
+    /// 获取或设置转人工时的确定性失败码（未转人工为 null）。
+    /// </summary>
+    public OnlineErrorCode? ManualReviewErrorCode { get; set; }
+
+    /// <summary>
+    /// 获取或设置转人工时的失败描述（未转人工为 null）。
+    /// </summary>
+    public string ManualReviewMessage { get; set; }
 
     /// <summary>
     /// 构造补偿队列条目。

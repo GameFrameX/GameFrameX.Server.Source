@@ -213,6 +213,11 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
         {
             AddAgentMethod(context, info, fullName, member);
         }
+        if (info.Methods.Count == 0)
+        {
+            // 无可包装方法的代理：不产出任何 wrapper 分部类（空壳无行为，只污染生成面）。
+            return;
+        }
 
         var source = AgentTemplate.Run(info);
         context.AddSource(outFileName, source);
