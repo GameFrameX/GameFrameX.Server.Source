@@ -98,15 +98,25 @@ internal static class PostgreSqlDiscoverySchema
     {
         ArgumentNullException.ThrowIfNull(context);
 
+        await context.Database.ExecuteSqlRawAsync(BuildAdditionalEndpointsUpgradeStatement(), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 构建心跳表补列 SQL 文本（表 / 列名 = 编译期封闭类型 / 属性名经 DiscoveryStorageNaming 推导，非运行期输入）。
+    /// </summary>
+    /// <remarks>
+    /// Builds the heartbeat additional-endpoint upgrade SQL text. The table and column names derive
+    /// from the compile-time-closed entity / property names through <see cref="DiscoveryStorageNaming"/>
+    /// (the zero-name-literal convention) — never runtime input; SQL identifiers cannot be bound
+    /// parameters, so the composition is centralized in this dedicated builder with that invariant
+    /// stated (Sonar S2077).
+    /// </remarks>
+    /// <returns>升级 SQL 文本 / The upgrade SQL text</returns>
+    private static string BuildAdditionalEndpointsUpgradeStatement()
+    {
         var tableName = DiscoveryStorageNaming.TableName<ServerHeartbeatEntity>();
         var columnName = DiscoveryStorageNaming.SnakeCase(nameof(ServerHeartbeatEntity.AdditionalAdvertiseEndpoints));
-        // 标识符不能参数化（EF 参数化仅适用值字面量）；表 / 列名均经 DiscoveryStorageNaming 从类型 / 属性名推导
-        //（编译期常量、零用户输入），字符串拼接无注入面。
-        // Identifiers cannot be parameterized (EF parameterization is for value literals); both
-        // names derive from type / property names through DiscoveryStorageNaming (compile-time
-        // constants, zero user input), so plain concatenation has no injection surface.
-        var upgradeStatement = "ALTER TABLE " + tableName + " ADD COLUMN IF NOT EXISTS " + columnName + " text[]";
-        await context.Database.ExecuteSqlRawAsync(upgradeStatement, cancellationToken).ConfigureAwait(false);
+        return "ALTER TABLE " + tableName + " ADD COLUMN IF NOT EXISTS " + columnName + " text[]";
     }
 
     /// <summary>
