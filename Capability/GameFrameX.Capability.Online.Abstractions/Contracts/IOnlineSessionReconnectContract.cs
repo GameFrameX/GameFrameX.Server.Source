@@ -46,8 +46,9 @@ public interface IOnlineSessionReconnectContract
     Task<OnlineResult<OnlineSessionLoginCredential>> IssueForLoginAsync(OnlineScope scope, string connectionId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 新连接恢复：验证 Token（指纹 / 终态 / 到期 / 作用域）→ 会话转 Connected 并替换连接标识 →
-    /// 原子轮换（旧 Token 即刻失效）。恢复请求到达时新连接尚未绑定玩家——作用域玩家位可为 0
+    /// 新连接恢复：验证 Token（指纹 / 终态 / 到期 / 作用域）→ 原子轮换（旧 Token 即刻失效）→
+    /// 会话转 Connected 并替换连接标识；任一步失败时 会话状态 / 连接绑定 / 重连窗 保持原样（不产生半恢复态）。
+    /// 恢复请求到达时新连接尚未绑定玩家——作用域玩家位可为 0
     ///（恢复主体由 Token 解析得出；>0 时须与 Token 所属会话一致，否则判
     /// <see cref="OnlineErrorCode.ScopeDenied"/>）。
     /// </summary>
