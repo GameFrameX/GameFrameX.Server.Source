@@ -225,6 +225,44 @@ public sealed class OnlineGameDbStorePersistenceTests
     }
 
     /// <summary>
+    /// 玩家云存储服务级复活事实（GameDb 适配实景）：复活返回版本 = 软删末版 + 1 且与读回一致（恒等式自洽），
+    /// 以返回版本续写成功、以旧版本续写冲突（C404：复活不重置版本，杜绝返回 1 / 读回 N 的分裂与版本倒退 ABA）。
+    /// </summary>
+    [Fact]
+    public async Task StorageService_ResurrectThroughGameDb_ShouldContinueVersionMonotonically()
+    {
+        await WithSqliteFacadeAsync(async () =>
+        {
+            var service = new OnlinePlayerStorageService(new GameDbOnlinePlayerStorageStore(), new OnlinePlayerStorageOptions());
+            var scope = new OnlineScope(TenantId, AppId, 5, 21);
+
+            // 创建 v1 → 软删 v2（DeleteAsync 版本推进）。
+            var created = await service.WriteAsync(scope, "settings", "theme", new byte[] { 1 }, 0, "sess-1");
+            Assert.True(created.IsSuccess);
+            Assert.Equal(1, created.Data.Version);
+            Assert.True((await service.DeleteAsync(scope, "settings", "theme")).IsSuccess);
+
+            // 复活：返回版本 = 软删末版 + 1，且与读回版本一致（旧缺陷：返回 1、读回 3）。
+            var resurrected = await service.WriteAsync(scope, "settings", "theme", new byte[] { 2 }, 0, "sess-2");
+            var readBack = await service.ReadAsync(scope, "settings", "theme");
+            Assert.True(resurrected.IsSuccess);
+            Assert.Equal(3, resurrected.Data.Version);
+            Assert.True(readBack.IsSuccess);
+            Assert.Equal(resurrected.Data.Version, readBack.Data.Version);
+            Assert.Equal(new byte[] { 2 }, readBack.Data.Payload);
+
+            // 以返回版本续写成功（→ v4）；持旧版本 1 续写被拒（无 ABA 窗口）。
+            var continueWrite = await service.WriteAsync(scope, "settings", "theme", new byte[] { 3 }, resurrected.Data.Version, "sess-2");
+            var staleWrite = await service.WriteAsync(scope, "settings", "theme", new byte[] { 9 }, 1, "sess-3");
+            Assert.True(continueWrite.IsSuccess);
+            Assert.Equal(resurrected.Data.Version + 1, continueWrite.Data.Version);
+            Assert.False(staleWrite.IsSuccess);
+            Assert.Equal(OnlineErrorCode.VersionConflict, staleWrite.Code);
+        });
+    }
+
+
+    /// <summary>
     /// 玩家云存储游标分页事实：ordinal 字典序 + 排他游标不漏不重。
     /// </summary>
     [Fact]

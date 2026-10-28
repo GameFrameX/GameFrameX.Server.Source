@@ -91,12 +91,16 @@ public sealed class OnlinePlayerStorageService
 
     /// <summary>
     /// 写入条目（expectedVersion=0 创建 / &gt;0 版本匹配更新；冲突映射 VersionConflict）。
+    /// <para>
+    /// expectedVersion=0 命中软删条目 = 复活：CAS 按软删末版接管，返回版本 = 软删末版 + 1
+    /// （版本跨软删/复活单调递增，不会重置为 1）；复活仅重置创建信息（CreatedAtTime/CreatedBy）。
+    /// </para>
     /// </summary>
     /// <param name="scope">生效作用域（必须含玩家主体位）。</param>
     /// <param name="collection">集合名。</param>
     /// <param name="key">条目键。</param>
     /// <param name="payload">负载数据。</param>
-    /// <param name="expectedVersion">期望版本（0 = 创建；&gt;0 = 须匹配当前版本）。</param>
+    /// <param name="expectedVersion">期望版本（0 = 创建或复活软删条目；&gt;0 = 须匹配当前版本）。</param>
     /// <param name="operatorId">操作者（会话标识；审计留痕）。</param>
     /// <param name="expiresAtTime">过期时刻（Unix 毫秒；0 = 永不过期）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -125,7 +129,7 @@ public sealed class OnlinePlayerStorageService
         var isResurrecting = false;
         if (existing != null && existing.DeletedAtTime > 0 && expectedVersion == 0)
         {
-            // 软删条目复活：CAS 按其末版接管，条目版本按创建语义重新从 1 计。
+            // 软删条目复活：CAS 按其末版接管，条目版本接着软删末版继续递增（不重置为 1），仅重置创建信息。
             casVersion = existing.Version;
             isResurrecting = true;
         }
@@ -152,7 +156,7 @@ public sealed class OnlinePlayerStorageService
             Collection = collection,
             Key = key,
             Payload = payload,
-            Version = expectedVersion + 1,
+            Version = casVersion + 1,
             CreatedAtTime = keepCreated ? existing.CreatedAtTime : now,
             CreatedBy = keepCreated ? existing.CreatedBy : operatorId ?? string.Empty,
             UpdatedAtTime = now,
