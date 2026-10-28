@@ -243,6 +243,44 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>
+        /// 验证重投进行中并发 QueryStatus 无集合并发修改异常且条目投影自洽（GFX-1102：_retries 锁策略统一）。
+        /// </summary>
+        [Fact]
+        public async Task TickAsync_WithPendingRetries_ConcurrentQueryStatus_ShouldNotThrow()
+        {
+            var harness = new Harness(withFailingStore: true, maxGrantAttempts: 64);
+            await harness.PlayToSettlingAsync();
+            await harness.Pipeline.TickAsync(Now + 100);
+            var (_, seeded) = harness.Pipeline.QueryStatus();
+            Assert.Single(seeded);
+
+            // 多轮并发：重投 Tick 与 admin 查询同时读写 _retries。
+            for (var round = 0; round < 10; round++)
+            {
+                var queries = new List<Task>(8);
+                for (var i = 0; i < 8; i++)
+                {
+                    queries.Add(Task.Run(() =>
+                    {
+                        var (_, retries) = harness.Pipeline.QueryStatus();
+                        foreach (var entry in retries)
+                        {
+                            Assert.False(string.IsNullOrEmpty(entry.MatchResultId));
+                            Assert.NotNull(entry.FailedPlayerIds);
+                            Assert.True(entry.Attempts >= 1);
+                        }
+                    }));
+                }
+
+                await Task.WhenAll(harness.Pipeline.TickAsync(Now + 200 + round), Task.WhenAll(queries));
+            }
+
+            var (_, finalRetries) = harness.Pipeline.QueryStatus();
+            Assert.Single(finalRetries);
+            Assert.Equal(2 + 10, finalRetries[0].Attempts);
+        }
+
+        /// <summary>
         /// 测试基座：真实资产域（可注入失败的存储装饰器）+ 对局域全栈。
         /// </summary>
         private sealed class Harness
@@ -253,7 +291,7 @@ namespace GameFrameX.Tests.Online
             /// <param name="withFailingStore">是否装配可切换失败的资产存储。</param>
             /// <param name="withDispatcher">是否装配发奖分发器（false = 模拟 assets 能力缺席）。</param>
             /// <param name="idempotencyRetentionMilliseconds">幂等记录保留时长毫秒（默认 24 小时；缩短可模拟 TTL 过期）。</param>
-            public Harness(bool withFailingStore = false, bool withDispatcher = true, long idempotencyRetentionMilliseconds = DefaultIdempotencyRetentionMilliseconds)
+            public Harness(bool withFailingStore = false, bool withDispatcher = true, long idempotencyRetentionMilliseconds = DefaultIdempotencyRetentionMilliseconds, int? maxGrantAttempts = null)
             {
                 AssetStore = new FailingAssetStore(new InMemoryOnlineAssetStore()) { FailureEnabled = withFailingStore };
                 TransactionStore = new InMemoryOnlineAssetTransactionStore();
@@ -275,7 +313,7 @@ namespace GameFrameX.Tests.Online
                 }
 
                 Dispatcher = grantService == null ? null : new OnlineMatchResultDispatcher(grantService);
-                Pipeline = new OnlineMatchSettlementPipeline(Runtime, Settlement, Dispatcher);
+                Pipeline = new OnlineMatchSettlementPipeline(Runtime, Settlement, Dispatcher, maxGrantAttempts.HasValue ? new OnlineMatchSettlementOptions { MaxGrantAttempts = maxGrantAttempts.Value } : null);
             }
 
             /// <summary>获取资产存储（可切换失败 / 可按玩家注入失败）。</summary>
