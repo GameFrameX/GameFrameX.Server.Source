@@ -366,7 +366,9 @@ public sealed partial class SqliteDbService
     /// <c>__sequences</c> table and is advanced by a single-statement
     /// <c>INSERT ... ON CONFLICT DO UPDATE SET value = value + 1 RETURNING value</c>, so the
     /// read-modify-write is atomic and monotonically increasing (first value is 1; retries may
-    /// leave holes but never repeat or regress a value). See
+    /// leave holes but never repeat or regress a value). Transient busy/locked/timeout failures are
+    /// retried through the shared resilience engine with <c>isIdempotent: true</c> — replaying the
+    /// single atomic statement can at most leave a hole, never a duplicate. See
     /// <see cref="IDatabaseService.NextSequenceAsync{TState}(string)"/> for the full contract.
     /// </remarks>
     /// <typeparam name="TState">序列归属的缓存状态类型 / The owning state type</typeparam>
@@ -386,7 +388,9 @@ public sealed partial class SqliteDbService
     /// <c>__sequences</c> table and is advanced by a single-statement
     /// <c>INSERT ... ON CONFLICT DO UPDATE SET value = value + 1 RETURNING value</c>, so the
     /// read-modify-write is atomic and monotonically increasing (first value is 1; retries may
-    /// leave holes but never repeat or regress a value). See
+    /// leave holes but never repeat or regress a value). Transient busy/locked/timeout failures are
+    /// retried through the shared resilience engine with <c>isIdempotent: true</c> — replaying the
+    /// single atomic statement can at most leave a hole, never a duplicate. See
     /// <see cref="IDatabaseService.NextSequenceAsync{TState}(string)"/> for the full contract.
     /// </remarks>
     /// <typeparam name="TState">序列归属的缓存状态类型 / The owning state type</typeparam>
@@ -414,7 +418,7 @@ public sealed partial class SqliteDbService
                 var result = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
                 return (long)result;
             }
-        }), cancellationToken, nameof(NextSequenceAsync), false).ConfigureAwait(false);
+        }), cancellationToken, nameof(NextSequenceAsync), true).ConfigureAwait(false);
     }
 
     /// <summary>
