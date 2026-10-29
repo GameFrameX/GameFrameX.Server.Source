@@ -414,6 +414,14 @@ public sealed class OnlineIdentityService
             return OnlineResult<bool>.Ok(true);
         }
 
+        return await BindUnboundIdentityCrossAccountAsync(existing, gameAccountId, rebindAuthorizationTicket, now, cancellationToken);
+    }
+
+    /// <summary>
+    /// 已解绑身份的跨账号改绑尾段：原账号须仍为 Active，且携带其签发的一次性授权票据；CAS 成功后写改绑审计。
+    /// </summary>
+    private async Task<OnlineResult<bool>> BindUnboundIdentityCrossAccountAsync(OnlineIdentity existing, long gameAccountId, string rebindAuthorizationTicket, long now, CancellationToken cancellationToken)
+    {
         // 跨账号改绑已解绑身份：原账号须仍为 Active（注销/封禁/合并等走客服或管理后台，不开放自助改绑）。
         var originalAccount = await _store.FindAccountAsync(existing.GameAccountId, cancellationToken);
         if (originalAccount == null || originalAccount.Status != OnlineGameAccountStatus.Active)
@@ -421,7 +429,7 @@ public sealed class OnlineIdentityService
             return OnlineResult<bool>.Fail(OnlineErrorCode.StateOperationForbidden, "原账号不可用，跨账号改绑须走客服或管理后台流程。");
         }
 
-        var authorizationResult = TryConsumeRebindAuthorization(rebindAuthorizationTicket, tenantId, appId, kind, identifier, existing.GameAccountId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+        var authorizationResult = TryConsumeRebindAuthorization(rebindAuthorizationTicket, existing.TenantId, existing.AppId, existing.Kind, existing.Identifier, existing.GameAccountId, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
         if (!authorizationResult.IsSuccess)
         {
             return OnlineResult<bool>.Fail(authorizationResult.Code, authorizationResult.Message);
