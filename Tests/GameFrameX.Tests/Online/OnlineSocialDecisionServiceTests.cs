@@ -740,7 +740,7 @@ namespace GameFrameX.Tests.Online
         {
             recorder = new OnlineEventRecorder();
             graphStore = new InMemoryOnlineSocialGraphStore();
-            return new OnlineSocialDecisionService(graphStore, new InMemoryOnlineReportStore(), recorder);
+            return new OnlineSocialDecisionService(graphStore, new InMemoryOnlineReportStore(), recorder, new OnlineReportOptions());
         }
 
         /// <summary>

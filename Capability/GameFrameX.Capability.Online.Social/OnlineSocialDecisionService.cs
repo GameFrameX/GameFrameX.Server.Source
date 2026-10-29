@@ -70,17 +70,27 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
     /// <summary>事件发布出口。</summary>
     private readonly IOnlineEventPublisher _eventPublisher;
 
+    /// <summary>举报提交限流器（双固定窗口：分钟 + 日）。</summary>
+    private readonly OnlineReportRateLimiter _reportRateLimiter;
+
     /// <summary>
     /// 初始化 <see cref="OnlineSocialDecisionService"/>。
     /// </summary>
     /// <param name="graphStore">社交关系图谱存储。</param>
     /// <param name="reportStore">举报案件存储。</param>
     /// <param name="eventPublisher">事件发布出口。</param>
-    public OnlineSocialDecisionService(IOnlineSocialGraphStore graphStore, IOnlineReportStore reportStore, IOnlineEventPublisher eventPublisher)
+    /// <param name="reportOptions">举报域可配置项（提交频控双窗口阈值；不允许 null，装配期校验）。</param>
+    public OnlineSocialDecisionService(IOnlineSocialGraphStore graphStore, IOnlineReportStore reportStore, IOnlineEventPublisher eventPublisher, OnlineReportOptions reportOptions)
     {
         _graphStore = graphStore ?? throw new ArgumentNullException(nameof(graphStore));
         _reportStore = reportStore ?? throw new ArgumentNullException(nameof(reportStore));
         _eventPublisher = eventPublisher ?? throw new ArgumentNullException(nameof(eventPublisher));
+        if (reportOptions == null)
+        {
+            throw new ArgumentNullException(nameof(reportOptions));
+        }
+
+        _reportRateLimiter = new OnlineReportRateLimiter(reportOptions.MaximumSubmissionsPerMinute, reportOptions.MaximumSubmissionsPerDay);
     }
 
     /// <summary>
@@ -427,7 +437,15 @@ public sealed class OnlineSocialDecisionService : IOnlineSocialGate
             return OnlineResult<OnlineReportCase>.Fail(OnlineErrorCode.ParameterInvalid, "举报原因为「其他」时必须填写补充说明");
         }
 
+
         var now = Now();
+        // 频控先于新案件标识生成：超限不落案件、不发事件；合法提交尝试（含重复举报）都计数，
+        // 防止脚本刷重复提交探测存储或绕过频控。
+        if (!_reportRateLimiter.TryAcquire(scope.TenantId, scope.AppId, scope.PlayerId, now))
+        {
+            return OnlineResult<OnlineReportCase>.Fail(OnlineErrorCode.RateLimitExceeded, "举报提交过于频繁，请稍后再试");
+        }
+
         var prototype = new OnlineReportCase
         {
             ReportId = "rpt-" + Guid.NewGuid().ToString("N"),

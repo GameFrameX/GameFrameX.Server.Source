@@ -35,7 +35,7 @@ using GameFrameX.Capability.Hosting.Abstractions;
 /// 社交能力包级 Options 根类型（C294 机制化：manifest 声明，合并序 = 包内默认 → 配置段
 /// <c>Online.Social</c> → 代码 Configure → <see cref="Validate"/>，此后无写入入口）。
 /// <para>
-/// 维护约束：子域 Options 聚合为属性（<see cref="Chat"/> / <see cref="Friend"/>），默认值唯一来源 =
+/// 维护约束：子域 Options 聚合为属性（<see cref="Chat"/> / <see cref="Friend"/> / <see cref="Report"/>），默认值唯一来源 =
 /// 各字段初始值；服务构造收 Options 必填参数，不再自带参数默认值或 <c>?? new</c> 兜底——
 /// 配置错误由 <see cref="Validate"/> 在装配期一次报全。
 /// </para>
@@ -53,7 +53,12 @@ public sealed class OnlineSocialOptions : ICapabilityOptions
     public OnlineFriendOptions Friend { get; set; } = new OnlineFriendOptions();
 
     /// <summary>
-    /// 校验合并后的最终值（聊天域各阈值与好友域各上限须为正数；历史保留时长允许 0 = 不设上限）。
+    /// 获取或设置举报域可配置项（提交频控双窗口阈值）。
+    /// </summary>
+    public OnlineReportOptions Report { get; set; } = new OnlineReportOptions();
+
+    /// <summary>
+    /// 校验合并后的最终值（聊天 / 好友 / 举报各阈值须为正数；聊天历史保留时长允许 0 = 不设上限）。
     /// </summary>
     /// <param name="validation">校验问题收集器。</param>
     public void Validate(CapabilityOptionsValidation validation)
@@ -84,6 +89,16 @@ public sealed class OnlineSocialOptions : ICapabilityOptions
         else
         {
             validation.AddError("Friend", "must not be null");
+        }
+
+        if (Report != null)
+        {
+            validation.RequirePositive("Report.MaximumSubmissionsPerMinute", Report.MaximumSubmissionsPerMinute);
+            validation.RequirePositive("Report.MaximumSubmissionsPerDay", Report.MaximumSubmissionsPerDay);
+        }
+        else
+        {
+            validation.AddError("Report", "must not be null");
         }
     }
 }

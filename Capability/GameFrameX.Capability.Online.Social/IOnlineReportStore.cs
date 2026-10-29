@@ -40,19 +40,22 @@ namespace GameFrameX.Capability.Online.Social;
 public interface IOnlineReportStore
 {
     /// <summary>
-    /// 以案件标识为唯一键「不存在则创建」：键已存在时返回既有记录且不写入。
+    /// 两层唯一约束下的「不存在则创建」，判定与写入必须原子完成。
     /// <para>
-    /// 适用范围（避免误当成「重复举报去重」）：唯一键是**案件标识**，而
-    /// <see cref="OnlineSocialDecisionService.SubmitReportAsync"/> 每次调用都新铸一个标识，
-    /// 因此本方法**不提供跨调用的提交去重**——同一次双击会落两条案件。它守的是「同一标识的重复写入」：
-    /// 按标识重放的写入（客户端重试带着服务端已返回的标识回来、或未来的持久化实现做 upsert）收敛到同一条，
-    /// 不会凭空多出一条。
+    /// 第一层（案件标识重放）：键已存在时返回既有记录且不写入——按标识重放的写入
+    /// （客户端重试带着服务端已返回的标识回来、或持久化实现做 upsert）收敛到同一条。
     /// </para>
     /// <para>
-    /// 为什么不用「举报人 + 被举报人 + 证据」这类内容签名当去重键：撤回后重新举报、以及 Admin 驳回后
-    /// 补充新证据再次举报（证据链要求）都是**合法**流程，内容去重会把它们一并吞掉，
-    /// 玩家视角就是「我明明举报了却查不到」。提交去重只能由调用方显式给出的请求键承担，
-    /// 而本契约范围未定义该键（Admin 命令面归后续变更）。
+    /// 第二层（未结案组合唯一性）：同一作用域内「举报人 + 被举报人 + 场景」组合存在
+    /// <see cref="OnlineReportState.Submitted"/> 或 <see cref="OnlineReportState.Reviewing"/>
+    /// 案件时，新的提交返回该既有活跃案件且不落新案——重复举报不产生第二条待办。
+    /// 案件进入终态（<see cref="OnlineReportState.Actioned"/> / <see cref="OnlineReportState.Rejected"/> /
+    /// <see cref="OnlineReportState.Withdrawn"/>）后组合位释放，撤回后重新举报与驳回后
+    /// 补充新证据再次举报均为合法新建路径。
+    /// </para>
+    /// <para>
+    /// 维护约束：本组合去重不吞证据——重复提交返回的是**既有**案件与原证据，
+    /// 新证据以结案后新建案件的方式进入证据链。宿主自定义存储实现必须遵循同一原子唯一性语义。
     /// </para>
     /// </summary>
     /// <param name="reportCase">待创建的案件（作用域已由调用方落定）。</param>
@@ -71,7 +74,11 @@ public interface IOnlineReportStore
     Task<OnlineReportCase> FindAsync(long tenantId, long appId, string reportId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 以 CAS 语义改写案件状态与处置结果。
+    /// 以 CAS 语义改写案件状态与处置结果；未结案组合索引的维护必须与状态判定在同一临界区完成。
+    /// <para>
+    /// 维护约束：举报人 / 被举报人 / 场景构成组合唯一键，改写不得变更这三项身份；
+    /// 案件进入终态时释放其组合占位（仅释放仍归属本案件的占位），冲突即整体失败零变更。
+    /// </para>
     /// </summary>
     /// <param name="reportCase">改写后的案件（其标识与作用域须与既有记录一致）。</param>
     /// <param name="expectedState">期望的当前状态；不匹配即失败。</param>

@@ -907,7 +907,7 @@ namespace GameFrameX.Tests.Online
         {
             recorder = new OnlineEventRecorder();
             var store = new InMemoryOnlineChatStore();
-            var decisionService = new OnlineSocialDecisionService(new InMemoryOnlineSocialGraphStore(), new InMemoryOnlineReportStore(), recorder);
+            var decisionService = new OnlineSocialDecisionService(new InMemoryOnlineSocialGraphStore(), new InMemoryOnlineReportStore(), recorder, new OnlineReportOptions());
             var options = new OnlineChatOptions
             {
                 MaxContentLength = 10,
