@@ -30,10 +30,11 @@
 namespace GameFrameX.Capability.Hosting.Abstractions;
 
 /// <summary>
-/// 机制事件总线契约（订阅声明 + 发布口；机制层唯一事件语义，替代原「事件 job 爆发口 + InMemory 发布器」双通道）。
+/// 机制事件总线契约（订阅声明 + 退订句柄 + 发布口；机制层唯一事件语义，替代原「事件 job 爆发口 + InMemory 发布器」双通道）。
 /// <para>
 /// 维护约束：订阅只能在 Register 期声明（模块经 <see cref="CapabilityRegistrationContext"/>）；
-/// Activate 开始前拒绝发布；分发同步、按订阅注册序；单个订阅体异常记日志后继续分发。
+/// Activate 开始前拒绝发布；分发同步、按订阅注册序；单个订阅体异常记日志后继续分发；
+/// 订阅经 <see cref="Subscribe{TEvent}"/> 返回的句柄退订（幂等释放；停用 / 热更收口用）。
 /// </para>
 /// </summary>
 public interface ICapabilityEventBus
@@ -44,7 +45,8 @@ public interface ICapabilityEventBus
     /// <typeparam name="TEvent">事件载荷类型。</typeparam>
     /// <param name="topic">主题（命名约定 <c>&lt;族&gt;.&lt;域&gt;.&lt;事件&gt;</c>，非空）。</param>
     /// <param name="handler">同步订阅体。</param>
-    void Subscribe<TEvent>(string topic, Action<TEvent> handler);
+    /// <returns>退订句柄：释放从订阅表移除本订阅（幂等，重复释放安全）；已在发布快照内进入分发的回调允许当轮完成，此后不再投递。</returns>
+    IDisposable Subscribe<TEvent>(string topic, Action<TEvent> handler);
 
     /// <summary>
     /// 发布一条事件（Activate 开始前拒绝）。

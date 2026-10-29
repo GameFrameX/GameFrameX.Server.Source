@@ -17,6 +17,7 @@
 ### Fixed
 
 * 入队与定时撮合解耦（C406，GFX-1104）：删除每次入队的全量撮合及最新票据扫描，复用 `matchmaker-run` 按宿主调度节奏批量处理队列（默认 1000ms）。单轮撮合算法保持不变；桥测试覆盖四名玩家单批次形成两组及批次前取消不参与分配。
+* 撮合通知异步执行与停用退订（C407，GFX-1105，GitHub #733）：`ICapabilityEventBus.Subscribe` 返回幂等 `IDisposable` 退订句柄（void → IDisposable 为二进制破坏性变更——包族消费方需重新编译；源码侧忽略返回值的既有调用不受影响）；online-match 模块撮合分配事件回调改为纯入队（移除同步总线回调内 `ResolveAssignmentAsync` / `session.WriteAsync` 两处 `GetAwaiter().GetResult()` 死锁面），新增 `match-assignment-notification-tick` 每轮有限批次（64）异步解析并推送（条目级失败不阻断同批其余条目，异常交调度器既有日志路径）；`DeactivateAsync` 停用收口——关闭入队、退订、清空待处理并等待在途批次完成，热更/停机后旧模块零通知。回归 13 例：总线退订契约 5 + 模块生命周期 8（含对旧同步实现确定性红的发布不同步解析 / 停用退订 / 停用清空 / 容错批次）。
 
 * 举报入口频控与未结案去重（C405，GFX-1115）：举报提交接入双固定窗口限流（`OnlineSocialOptions.Report.MaximumSubmissionsPerMinute=5` / `MaximumSubmissionsPerDay=50`，键=租户/App/举报人，超限 7001 且不落案件不发事件，分钟窗惰性清扫仅删双窗均过期的桶）；`IOnlineReportStore.SaveIfAbsentAsync` 升级为两层原子唯一（案件标识重放 + 未结案组合键「举报人+被举报人+场景」，Submitted/Reviewing 占位、终态释放），重复举报返回原案件原证据且仅首建发 `ReportChanged`；`ReplaceAsync` 身份三要素不可改、终态释放与新占位归属在 CAS 同锁维护；`OnlineSocialDecisionService` 构造新增必填 `OnlineReportOptions`，宿主自定义举报存储必须遵循同一原子唯一性语义
 

@@ -33,13 +33,14 @@ using GameFrameX.Foundation.Localization.Core;
 namespace GameFrameX.Capability.Hosting.Core;
 
 /// <summary>
-/// 机制事件总线（机制层唯一事件语义：Register 期订阅声明、同步注册序分发、单订阅异常记日志继续）。
+/// 机制事件总线（机制层唯一事件语义：Register 期订阅声明、同步注册序分发、单订阅异常记日志继续、句柄幂等退订）。
 /// <para>
 /// 维护约束：订阅只在 Register 期经注册上下文声明；<see cref="Publish{TEvent}"/> 在宿主 Activate 开始前
 /// 拒绝（Register 期发出的事件后注册订阅者收不到）；主题命名约定 <c>&lt;族&gt;.&lt;域&gt;.&lt;事件&gt;</c>
-///（内容机制不解释）；载荷类型按订阅时的泛型参数精确匹配，同主题不同载荷类型互不投递。
+///（内容机制不解释）；载荷类型按订阅时的泛型参数精确匹配，同主题不同载荷类型互不投递；
+/// 退订经 <see cref="Subscribe{TEvent}"/> 返回的句柄——从订阅表移除后不再进入后续发布快照，
+/// 已在快照内的当轮回调允许完成（Dispose 不等待回调）。
 /// </para>
-/// </summary>
 public sealed class CapabilityEventBus : ICapabilityEventBus, ICapabilityEventPublisher
 {
     /// <summary>
@@ -77,7 +78,8 @@ public sealed class CapabilityEventBus : ICapabilityEventBus, ICapabilityEventPu
     /// <typeparam name="TEvent">事件载荷类型。</typeparam>
     /// <param name="topic">主题（非空）。</param>
     /// <param name="handler">同步订阅体（不可为 null）。</param>
-    public void Subscribe<TEvent>(string topic, Action<TEvent> handler)
+    /// <returns>退订句柄（幂等释放；从订阅表移除本订阅）。</returns>
+    public IDisposable Subscribe<TEvent>(string topic, Action<TEvent> handler)
     {
         if (string.IsNullOrWhiteSpace(topic))
         {
@@ -90,9 +92,24 @@ public sealed class CapabilityEventBus : ICapabilityEventBus, ICapabilityEventPu
         }
 
         Action<object> typedHandler = payload => handler((TEvent)payload);
+        var subscription = new Subscription(topic, typeof(TEvent), typedHandler);
         lock (_sync)
         {
-            _subscriptions.Add(new Subscription(topic, typeof(TEvent), typedHandler));
+            _subscriptions.Add(subscription);
+        }
+
+        return new SubscriptionRelease(this, subscription);
+    }
+
+    /// <summary>
+    /// 移除一个订阅（仅经退订句柄进入；不在订阅表中的条目为无操作）。
+    /// </summary>
+    /// <param name="subscription">订阅条目。</param>
+    private void RemoveSubscription(Subscription subscription)
+    {
+        lock (_sync)
+        {
+            _subscriptions.Remove(subscription);
         }
     }
 
@@ -197,6 +214,50 @@ public sealed class CapabilityEventBus : ICapabilityEventBus, ICapabilityEventPu
             Topic = topic;
             PayloadType = payloadType;
             Handler = handler;
+        }
+    }
+
+    /// <summary>
+    /// 订阅退订句柄（幂等释放：首个 <see cref="Dispose"/> 从总线订阅表移除订阅，此后释放为无操作；
+    /// 不等待已在发布快照内进入分发的回调——其当轮完成后订阅不再投递）。
+    /// </summary>
+    private sealed class SubscriptionRelease : IDisposable
+    {
+        /// <summary>
+        /// 所属总线。
+        /// </summary>
+        private readonly CapabilityEventBus _owner;
+
+        /// <summary>
+        /// 目标订阅条目。
+        /// </summary>
+        private readonly Subscription _subscription;
+
+        /// <summary>
+        /// 释放标记（0 = 未释放；幂等性的唯一事实源）。
+        /// </summary>
+        private int _disposed;
+
+        /// <summary>
+        /// 初始化 <see cref="SubscriptionRelease"/>。
+        /// </summary>
+        /// <param name="owner">所属总线。</param>
+        /// <param name="subscription">目标订阅条目。</param>
+        public SubscriptionRelease(CapabilityEventBus owner, Subscription subscription)
+        {
+            _owner = owner;
+            _subscription = subscription;
+        }
+
+        /// <summary>
+        /// 退订（幂等）：首个调用移除订阅；并发释放恰有一次生效。
+        /// </summary>
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) == 0)
+            {
+                _owner.RemoveSubscription(_subscription);
+            }
         }
     }
 }
