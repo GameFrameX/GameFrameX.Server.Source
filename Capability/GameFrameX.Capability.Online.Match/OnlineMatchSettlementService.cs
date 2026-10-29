@@ -128,16 +128,7 @@ public sealed class OnlineMatchSettlementService
         var isReplay = !string.Equals(committed.MatchResultId, built.Data.MatchResultId, StringComparison.Ordinal);
         if (!isReplay)
         {
-            await actor.CompleteSettlementAsync(committed, nowUnixMilliseconds, cancellationToken).ConfigureAwait(false);
-            var entries = committed.Entries == null
-                ? null
-                : committed.Entries.Where(entry => entry != null).Select(entry => (entry.PlayerId, entry.Rank, entry.IsWinner, entry.Score, entry.Rewards == null ? 0 : entry.Rewards.Count)).ToList();
-            await PublishAsync(OnlineMatchRuntimeEvents.CreateMatchSettled(committed.TenantId, committed.AppId, committed.ServerId, committed.MatchResultId, committed.MatchId, committed.Mode, committed.Region, committed.Outcome.ToString(), committed.SettledTime, entries), cancellationToken).ConfigureAwait(false);
-            if (committed.ParticipationRewardsSuppressed)
-            {
-                // 挂机刷奖可疑信号：存在零有效出拳玩家的结算，外发风控事件（发布失败不改变已落定的结算事实）。
-                await PublishAsync(OnlineMatchRuntimeEvents.CreateMatchParticipationRewardsSuppressed(committed.TenantId, committed.AppId, committed.ServerId, committed.MatchResultId, committed.MatchId, committed.Mode, committed.Region, committed.Outcome.ToString(), committed.SettledTime, entries), cancellationToken).ConfigureAwait(false);
-            }
+            await CompleteAndPublishAsync(actor, committed, nowUnixMilliseconds, cancellationToken).ConfigureAwait(false);
         }
 
         return OnlineResult<OnlineMatchSettlementOutcome>.Ok(new OnlineMatchSettlementOutcome
@@ -146,6 +137,28 @@ public sealed class OnlineMatchSettlementService
             IsReplay = isReplay,
             State = OnlineMatchState.Completed,
         });
+    }
+
+    /// <summary>
+    /// 首次落定后的收尾（Actor 完成结算 + 结算事件与抑制参与奖风控事件发布）。
+    /// </summary>
+    /// <param name="actor">对局 Actor。</param>
+    /// <param name="committed">已落定的结算结果。</param>
+    /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>完成通知。</returns>
+    private async Task CompleteAndPublishAsync(OnlineMatchActor actor, OnlineMatchResult committed, long nowUnixMilliseconds, CancellationToken cancellationToken)
+    {
+        await actor.CompleteSettlementAsync(committed, nowUnixMilliseconds, cancellationToken).ConfigureAwait(false);
+        var entries = committed.Entries == null
+            ? null
+            : committed.Entries.Where(entry => entry != null).Select(entry => (entry.PlayerId, entry.Rank, entry.IsWinner, entry.Score, entry.Rewards == null ? 0 : entry.Rewards.Count)).ToList();
+        await PublishAsync(OnlineMatchRuntimeEvents.CreateMatchSettled(committed.TenantId, committed.AppId, committed.ServerId, committed.MatchResultId, committed.MatchId, committed.Mode, committed.Region, committed.Outcome.ToString(), committed.SettledTime, entries), cancellationToken).ConfigureAwait(false);
+        if (committed.ParticipationRewardsSuppressed)
+        {
+            // 挂机刷奖可疑信号：存在零有效出拳玩家的结算，外发风控事件（发布失败不改变已落定的结算事实）。
+            await PublishAsync(OnlineMatchRuntimeEvents.CreateMatchParticipationRewardsSuppressed(committed.TenantId, committed.AppId, committed.ServerId, committed.MatchResultId, committed.MatchId, committed.Mode, committed.Region, committed.Outcome.ToString(), committed.SettledTime, entries), cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
