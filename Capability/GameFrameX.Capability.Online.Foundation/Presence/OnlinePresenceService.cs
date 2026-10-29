@@ -384,26 +384,8 @@ public sealed class OnlinePresenceService
                 break;
             }
 
-            var sweptBeforeBatch = swept;
-            foreach (var record in candidates)
-            {
-                if (record.State == OnlinePresenceState.Reconnecting && record.ReconnectDeadlineAtTime > 0 && now > record.ReconnectDeadlineAtTime)
-                {
-                    await _store.RemoveAsync(record.TenantId, record.AppId, record.PlayerId, cancellationToken);
-                    await PublishChangeAsync(record, record.State, OnlinePresenceState.Offline, OnlinePresenceChangeReason.ReconnectWindowExpired, null, cancellationToken);
-                    swept++;
-                    continue;
-                }
-
-                if (record.State == OnlinePresenceState.Online && now - record.LastHeartbeatAtTime > _idleTimeoutSeconds * 1000L)
-                {
-                    var outcome = await TransitionAsync(record, OnlinePresenceState.Idle, OnlinePresenceChangeReason.IdleTimeout, null, cancellationToken);
-                    if (outcome.IsSuccess)
-                    {
-                        swept++;
-                    }
-                }
-            }
+            var sweptInBatch = await SweepBatchAsync(candidates, now, cancellationToken);
+            swept += sweptInBatch;
 
             if (candidates.Count < batchCount || swept >= _maxRecordsPerSweep)
             {
@@ -414,7 +396,7 @@ public sealed class OnlinePresenceService
             // 留待下一次清扫；否则满批零进度会让批量游标循环永不退出。
             // Zero-progress guard: when a full batch consumed nothing (boundary-equal records,
             // a failed state transition, ...), stop this round instead of looping forever.
-            if (swept == sweptBeforeBatch)
+            if (sweptInBatch == 0)
             {
                 break;
             }
@@ -520,6 +502,52 @@ public sealed class OnlinePresenceService
         await _store.SetAsync(record, cancellationToken);
         await PublishChangeAsync(record, fromState, targetState, reason, correlationId, cancellationToken);
         return OnlineResult<OnlinePresenceState>.Ok(targetState);
+    }
+
+    /// <summary>
+    /// 清扫一批候选记录（逐条判定并累计消费数；批次内不提前截断——批大小已按剩余额度约束）。
+    /// </summary>
+    /// <param name="candidates">本批清扫候选。</param>
+    /// <param name="now">判定基准时刻（Unix 毫秒）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>本批被消费（移除或迁移）的记录数。</returns>
+    private async Task<int> SweepBatchAsync(IReadOnlyList<OnlinePresenceRecord> candidates, long now, CancellationToken cancellationToken)
+    {
+        var sweptInBatch = 0;
+        foreach (var record in candidates)
+        {
+            if (await TrySweepRecordAsync(record, now, cancellationToken))
+            {
+                sweptInBatch++;
+            }
+        }
+
+        return sweptInBatch;
+    }
+
+    /// <summary>
+    /// 清扫单条候选（Reconnecting 超窗移除记录即 Offline；Online 超过空闲阈值转 Idle）。
+    /// </summary>
+    /// <param name="record">候选记录。</param>
+    /// <param name="now">判定基准时刻（Unix 毫秒）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>本条是否被消费（计入清扫数）。</returns>
+    private async Task<bool> TrySweepRecordAsync(OnlinePresenceRecord record, long now, CancellationToken cancellationToken)
+    {
+        if (record.State == OnlinePresenceState.Reconnecting && record.ReconnectDeadlineAtTime > 0 && now > record.ReconnectDeadlineAtTime)
+        {
+            await _store.RemoveAsync(record.TenantId, record.AppId, record.PlayerId, cancellationToken);
+            await PublishChangeAsync(record, record.State, OnlinePresenceState.Offline, OnlinePresenceChangeReason.ReconnectWindowExpired, null, cancellationToken);
+            return true;
+        }
+
+        if (record.State == OnlinePresenceState.Online && now - record.LastHeartbeatAtTime > _idleTimeoutSeconds * 1000L)
+        {
+            var outcome = await TransitionAsync(record, OnlinePresenceState.Idle, OnlinePresenceChangeReason.IdleTimeout, null, cancellationToken);
+            return outcome.IsSuccess;
+        }
+
+        return false;
     }
 
     /// <summary>
