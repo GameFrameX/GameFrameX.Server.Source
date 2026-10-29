@@ -1526,7 +1526,7 @@ public sealed partial class SqliteDbService
                 // duplicates. Drop and recreate to match the declaration (same as the PG adapter's drift rebuild).
                 using (var dropCommand = _connection.CreateCommand())
                 {
-                    dropCommand.CommandText = "DROP INDEX IF EXISTS " + QuoteIdentifier(declaration.IndexName) + ";";
+                    dropCommand.CommandText = BuildDropIndexCommandText(declaration.IndexName);
                     await dropCommand.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }
             }
@@ -1676,6 +1676,23 @@ public sealed partial class SqliteDbService
                || effectiveType == typeof(ushort)
                || effectiveType == typeof(byte)
                || effectiveType == typeof(sbyte);
+    }
+
+    /// <summary>
+    /// 构建漂移重建用的 <c>DROP INDEX IF EXISTS</c> 语句文本（索引名经 <see cref="QuoteIdentifier"/> 引用）。
+    /// </summary>
+    /// <remarks>
+    /// Builds the <c>DROP INDEX IF EXISTS</c> statement text for the drift rebuild. The index name is a
+    /// compile-time-closed identifier composed from <c>typeof(TState)</c> reflection metadata — never runtime
+    /// input — and is quoted via <see cref="QuoteIdentifier"/> (double-quote doubling). SQLite DDL identifiers
+    /// cannot be bound as parameters, so the composition is centralized in this dedicated builder with that
+    /// invariant stated (Sonar S2077).
+    /// </remarks>
+    /// <param name="indexName">声明式唯一索引名 / The declared unique-index name</param>
+    /// <returns>DDL 语句文本 / The DDL statement text</returns>
+    private static string BuildDropIndexCommandText(string indexName)
+    {
+        return "DROP INDEX IF EXISTS " + QuoteIdentifier(indexName) + ";";
     }
 
     /// <summary>
