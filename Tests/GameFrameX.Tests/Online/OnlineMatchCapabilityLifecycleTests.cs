@@ -179,7 +179,9 @@ public sealed class OnlineMatchCapabilityLifecycleTests
     }
 
     /// <summary>
-    /// 停用幂等：连续两次停用均正常完成（句柄已释放 / 队列已清空为无操作），不抛异常。
+    /// 停用幂等：连续两次停用均正常完成（句柄已释放 / 队列已清空为无操作），不抛异常；
+    /// 且首次停用后晚到的分配事件回调被入队闸丢弃，二次停用未重开闸门——
+    /// 后续 tick 不再产生任何分配登记（对「重复停用意外重开入队闸」确定性红）。
     /// </summary>
     [Fact]
     public async Task DeactivateAsync_RepeatedCalls_AreIdempotent()
@@ -187,10 +189,16 @@ public sealed class OnlineMatchCapabilityLifecycleTests
         await OnlineCapabilityTestHarness.WithRuntimeAsync(async runtime =>
         {
             await runtime.Host.StartAsync();
+            var domain = DomainService(runtime);
             var module = MatchModule(runtime);
+            var assignment = await CommitAssignmentAsync(runtime, PlayerOne, PlayerTwo);
 
             await module.DeactivateAsync(CancellationToken.None);
+            PublishAssignmentCreated(runtime, assignment);
             await module.DeactivateAsync(CancellationToken.None);
+            await runtime.Host.Scheduler.TickAsync();
+
+            Assert.Equal(0, domain.RegistrationCount);
         }, configure: QuietScheduler);
     }
 
