@@ -37,7 +37,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using GameFrameX.DataBase.Abstractions;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Foundation.Orm.Entity;
 using GameFrameX.Localization;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -109,63 +108,41 @@ public sealed partial class PostgreSqlDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
-        if (state.Id != id)
-        {
-            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Database.ConditionalWriteStateIdMismatch, state.Id, id), nameof(state));
-        }
 
-        // 版本准备：先对齐到期望版本，再吃 checked 递增语义（MaxValue 溢出在写库前抛出）。
-        // 失败（false）路径回滚内存版本——写前递增若不回滚会污染调用方 state.RowVersion，后续 CAS 持续 Stale；
-        // 异常路径不回滚（写结果未知，回滚可能反向脱节）。
-        // Version preparation: align to the expected version first, then take the checked increment (MaxValue
-        // overflows before any write). The pre-write increment is rolled back on the false path — leaving it in
-        // place would pollute the caller's state.RowVersion and starve every later CAS; it is NOT rolled back on
-        // exceptions (the write outcome is unknown, and rolling back could desync the other way).
-        var originalRowVersion = state.RowVersion;
-        state.RowVersion = expectedRowVersion;
-        state.IncrementRowVersion();
-        // 写库前捕获字节快照（行版本递增后），成功后按该快照精确提交基线
-        var persistedData = state.ToBytes();
-        var documentJson = JsonSerializer.Serialize(state, DocumentJsonOptions);
-        var replaced = await ExecuteWriteWithRetryAsync(async token =>
+        return await RowVersionCasWriteHelper.WriteAsync(id, expectedRowVersion, state, async () =>
         {
-            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            var (connection, ambientTransaction, ownedConnection) = await OpenConnectionForWriteAsync(token).ConfigureAwait(false);
-            try
+            var documentJson = JsonSerializer.Serialize(state, DocumentJsonOptions);
+            var replaced = await ExecuteWriteWithRetryAsync(async token =>
             {
-                // 版本谓词用数值比较：doc->>'RowVersion' 是 jsonb 文本投影，text=text 等值对非规范表示（如前导零）误判；
-                // ::bigint 两侧数值化后与 @expected（bigint）严格等值。
-                // The version predicate compares numerically: doc->>'RowVersion' is the jsonb text projection, and a
-                // text=text equality misjudges non-canonical representations (leading zeros and the like); ::bigint
-                // coerces both sides to numbers compared strictly against @expected (bigint).
-                await using (var command = new NpgsqlCommand($"UPDATE {GetTableName<TState>()} SET doc = @doc::jsonb WHERE id = @id AND (doc->>'RowVersion')::bigint = @expected", connection))
+                await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+                var (connection, ambientTransaction, ownedConnection) = await OpenConnectionForWriteAsync(token).ConfigureAwait(false);
+                try
                 {
-                    command.Transaction = ambientTransaction;
-                    command.Parameters.Add(new NpgsqlParameter("doc", NpgsqlDbType.Jsonb) { Value = documentJson, });
-                    command.Parameters.AddWithValue("id", id);
-                    command.Parameters.AddWithValue("expected", expectedRowVersion);
-                    var affectedRows = await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
-                    return affectedRows == 1;
+                    // 版本谓词用数值比较：doc->>'RowVersion' 是 jsonb 文本投影，text=text 等值对非规范表示（如前导零）误判；
+                    // ::bigint 两侧数值化后与 @expected（bigint）严格等值。
+                    // The version predicate compares numerically: doc->>'RowVersion' is the jsonb text projection, and a
+                    // text=text equality misjudges non-canonical representations (leading zeros and the like); ::bigint
+                    // coerces both sides to numbers compared strictly against @expected (bigint).
+                    await using (var command = new NpgsqlCommand($"UPDATE {GetTableName<TState>()} SET doc = @doc::jsonb WHERE id = @id AND (doc->>'RowVersion')::bigint = @expected", connection))
+                    {
+                        command.Transaction = ambientTransaction;
+                        command.Parameters.Add(new NpgsqlParameter("doc", NpgsqlDbType.Jsonb) { Value = documentJson, });
+                        command.Parameters.AddWithValue("id", id);
+                        command.Parameters.AddWithValue("expected", expectedRowVersion);
+                        var affectedRows = await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
+                        return affectedRows == 1;
+                    }
                 }
-            }
-            finally
-            {
-                if (ownedConnection)
+                finally
                 {
-                    await connection.DisposeAsync().ConfigureAwait(false);
+                    if (ownedConnection)
+                    {
+                        await connection.DisposeAsync().ConfigureAwait(false);
+                    }
                 }
-            }
-        }, cancellationToken, nameof(UpdateIfRowVersionAsync), false).ConfigureAwait(false);
-        if (replaced)
-        {
-            state.SaveToDbPostHandler(persistedData);
-            return true;
-        }
-
-        // 版本不符或行缺失：未写库，回滚写前递增的内存版本。
-        // Version mismatch or missing row: nothing was written — roll back the pre-write in-memory increment.
-        state.RowVersion = originalRowVersion;
-        return false;
+            }, cancellationToken, nameof(UpdateIfRowVersionAsync), false).ConfigureAwait(false);
+            return replaced;
+        }).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -211,60 +188,40 @@ public sealed partial class PostgreSqlDbService
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
-        if (state.Id != id)
-        {
-            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Database.ConditionalWriteStateIdMismatch, state.Id, id), nameof(state));
-        }
 
-        // 版本准备：null 补全基点 -1 对齐后吃 checked 递增（恒为 0，回填后行与新建行基线一致）。失败（false）
-        // 路径回滚内存版本——写前递增若不回滚会污染调用方 state.RowVersion；异常路径不回滚（写结果未知，回滚可能反向脱节）。
-        // Version preparation: align to the null backfill baseline -1, then take the checked increment
-        // (always 0). The pre-write increment is rolled back on the false path; it is NOT rolled back on
-        // exceptions.
-        var originalRowVersion = state.RowVersion;
-        state.RowVersion = -1;
-        state.IncrementRowVersion();
-        // 写库前捕获字节快照（行版本递增后），成功后按该快照精确提交基线
-        var persistedData = state.ToBytes();
-        var documentJson = JsonSerializer.Serialize(state, DocumentJsonOptions);
-        var replaced = await ExecuteWriteWithRetryAsync(async token =>
+        return await RowVersionBackfillWriteHelper.WriteAsync(id, state, async () =>
         {
-            await EnsureTableAsync<TState>(token).ConfigureAwait(false);
-            var (connection, ambientTransaction, ownedConnection) = await OpenConnectionForWriteAsync(token).ConfigureAwait(false);
-            try
+            var documentJson = JsonSerializer.Serialize(state, DocumentJsonOptions);
+            var replaced = await ExecuteWriteWithRetryAsync(async token =>
             {
-                // 版本谓词用 IS NULL：doc->>'RowVersion' 对字段缺位与 JSON null 均投影 SQL NULL，
-                // 恰好命中「缺失行版本」的存量行；非 null 版本恒不匹配。
-                // The version predicate is IS NULL: doc->>'RowVersion' projects SQL NULL both for an
-                // absent key and for a stored JSON null — exactly the missing-version legacy rows;
-                // a non-null stored version never matches.
-                await using (var command = new NpgsqlCommand($"UPDATE {GetTableName<TState>()} SET doc = @doc::jsonb WHERE id = @id AND (doc->>'RowVersion') IS NULL", connection))
+                await EnsureTableAsync<TState>(token).ConfigureAwait(false);
+                var (connection, ambientTransaction, ownedConnection) = await OpenConnectionForWriteAsync(token).ConfigureAwait(false);
+                try
                 {
-                    command.Transaction = ambientTransaction;
-                    command.Parameters.Add(new NpgsqlParameter("doc", NpgsqlDbType.Jsonb) { Value = documentJson, });
-                    command.Parameters.AddWithValue("id", id);
-                    var affectedRows = await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
-                    return affectedRows == 1;
+                    // 版本谓词用 IS NULL：doc->>'RowVersion' 对字段缺位与 JSON null 均投影 SQL NULL，
+                    // 恰好命中「缺失行版本」的存量行；非 null 版本恒不匹配。
+                    // The version predicate is IS NULL: doc->>'RowVersion' projects SQL NULL both for an
+                    // absent key and for a stored JSON null — exactly the missing-version legacy rows;
+                    // a non-null stored version never matches.
+                    await using (var command = new NpgsqlCommand($"UPDATE {GetTableName<TState>()} SET doc = @doc::jsonb WHERE id = @id AND (doc->>'RowVersion') IS NULL", connection))
+                    {
+                        command.Transaction = ambientTransaction;
+                        command.Parameters.Add(new NpgsqlParameter("doc", NpgsqlDbType.Jsonb) { Value = documentJson, });
+                        command.Parameters.AddWithValue("id", id);
+                        var affectedRows = await command.ExecuteNonQueryAsync(token).ConfigureAwait(false);
+                        return affectedRows == 1;
+                    }
                 }
-            }
-            finally
-            {
-                if (ownedConnection)
+                finally
                 {
-                    await connection.DisposeAsync().ConfigureAwait(false);
+                    if (ownedConnection)
+                    {
+                        await connection.DisposeAsync().ConfigureAwait(false);
+                    }
                 }
-            }
-        }, cancellationToken, nameof(UpdateIfRowVersionIsNullAsync), false).ConfigureAwait(false);
-        if (replaced)
-        {
-            state.SaveToDbPostHandler(persistedData);
-            return true;
-        }
-
-        // 存量 RowVersion 非 null 或行缺失：未写库，回滚写前递增的内存版本。
-        // Non-null stored version or missing row: nothing was written — roll back the pre-write in-memory increment.
-        state.RowVersion = originalRowVersion;
-        return false;
+            }, cancellationToken, nameof(UpdateIfRowVersionIsNullAsync), false).ConfigureAwait(false);
+            return replaced;
+        }).ConfigureAwait(false);
     }
 
     /// <summary>
