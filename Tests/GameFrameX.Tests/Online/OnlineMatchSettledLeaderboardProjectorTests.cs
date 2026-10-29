@@ -391,7 +391,7 @@ namespace GameFrameX.Tests.Online
             {
                 LeaderboardStore = new InMemoryOnlineLeaderboardStore();
                 Service = new OnlineLeaderboardService(LeaderboardStore, new OnlineLeaderboardOptions { CacheEnabled = false }, null);
-                ResultStore = new InMemoryOnlineMatchResultStore();
+                ResultStore = new InMemoryOnlineMatchSettlementStore();
                 var coordinator = new IdempotencyCoordinator(new InMemoryIdempotencyStore(), new StepClock(), new IdempotencyOptions { ConcurrentWaitTimeoutMilliseconds = 1 });
                 IdempotencyService = new OnlineIdempotencyService(coordinator, null);
                 Projector = new OnlineMatchSettledLeaderboardProjector(ResultStore, Service, IdempotencyService, BoardId);
@@ -410,7 +410,7 @@ namespace GameFrameX.Tests.Online
             }
 
             /// <summary>获取对局结算结果存储（可信事实来源）。</summary>
-            public InMemoryOnlineMatchResultStore ResultStore
+            public InMemoryOnlineMatchSettlementStore ResultStore
             {
                 get;
             }

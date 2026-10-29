@@ -271,7 +271,7 @@ namespace GameFrameX.Tests.Online
                 Runtime = new OnlineMatchRuntime(new InMemoryOnlineMatchActorStore(), Publisher, new OnlineMatchRuntimeOptions());
                 Game = new OnlineRockPaperScissorsGame();
                 Runtime.RegisterGame(Game);
-                Settlement = new OnlineMatchSettlementService(Runtime, new InMemoryOnlineMatchResultStore(), Publisher);
+                Settlement = new OnlineMatchSettlementService(Runtime, new InMemoryOnlineMatchSettlementStore(), Publisher);
                 Bridge = new OnlineMatchGameBridgeService(Runtime, Game);
                 Players = new List<long> { PlayerOne, PlayerTwo };
             }

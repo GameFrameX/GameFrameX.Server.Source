@@ -41,6 +41,8 @@ using GameFrameX.Capability.Online.Persistence.Assets;
 using GameFrameX.Capability.Online.Persistence.Identity;
 using GameFrameX.Capability.Online.Persistence.Social;
 using GameFrameX.Capability.Online.Persistence.Storage;
+using GameFrameX.Capability.Online.Match;
+using GameFrameX.Capability.Online.Persistence.Match;
 using GameFrameX.Capability.Online.Social;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Logger;
@@ -194,6 +196,9 @@ public static class OnlineCapabilityCompositionRoot
                 options.Override<IOnlineAssetStore>(new GameDbOnlineAssetStore());
                 options.Override<IOnlineAssetTransactionStore>(new GameDbOnlineAssetTransactionStore());
                 options.Override<IOnlineFriendStore>(new GameDbOnlineFriendStore());
+                var matchSettlementStore = new GameDbOnlineMatchSettlementStore();
+                options.Override<IOnlineMatchResultStore>(matchSettlementStore);
+                options.Override<IOnlineMatchSettlementStore>(matchSettlementStore);
             }
             else if (ShouldWarnStoreModeUndeclared(online))
             {

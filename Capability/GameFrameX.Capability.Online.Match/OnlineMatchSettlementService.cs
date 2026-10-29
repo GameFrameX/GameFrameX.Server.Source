@@ -55,23 +55,28 @@ public sealed class OnlineMatchSettlementService
     /// <summary>对局运行时。</summary>
     private readonly OnlineMatchRuntime _runtime;
 
-    /// <summary>结算结果存储（幂等边界）。</summary>
-    private readonly IOnlineMatchResultStore _resultStore;
+    /// <summary>结算存储（结果幂等边界 + 待发奖 outbox 原子落库面）。</summary>
+    private readonly IOnlineMatchSettlementStore _settlementStore;
 
     /// <summary>事件发布器（可空）。</summary>
     private readonly IOnlineEventPublisher _eventPublisher;
+
+    /// <summary>是否随结算落库待发奖记录（false = assets 能力缺席，仅结算不发奖）。</summary>
+    private readonly bool _rewardGrantEnabled;
 
     /// <summary>
     /// 初始化结算服务。
     /// </summary>
     /// <param name="runtime">对局运行时。</param>
-    /// <param name="resultStore">结算结果存储。</param>
+    /// <param name="settlementStore">结算存储（结果 + 待发奖 outbox）。</param>
     /// <param name="eventPublisher">事件发布器（可空）。</param>
-    public OnlineMatchSettlementService(OnlineMatchRuntime runtime, IOnlineMatchResultStore resultStore, IOnlineEventPublisher eventPublisher = null)
+    /// <param name="rewardGrantEnabled">是否随结算原子落库待发奖记录（发奖能力缺席时为 false，不建 outbox）。</param>
+    public OnlineMatchSettlementService(OnlineMatchRuntime runtime, IOnlineMatchSettlementStore settlementStore, IOnlineEventPublisher eventPublisher = null, bool rewardGrantEnabled = true)
     {
         _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
-        _resultStore = resultStore ?? throw new ArgumentNullException(nameof(resultStore));
+        _settlementStore = settlementStore ?? throw new ArgumentNullException(nameof(settlementStore));
         _eventPublisher = eventPublisher;
+        _rewardGrantEnabled = rewardGrantEnabled;
     }
 
     /// <summary>
@@ -90,7 +95,7 @@ public sealed class OnlineMatchSettlementService
             return OnlineResult<OnlineMatchSettlementOutcome>.Fail(OnlineErrorCode.ParameterInvalid, "对局标识不能为空");
         }
 
-        var existing = await _resultStore.FindByMatchAsync(tenantId, appId, matchId, cancellationToken).ConfigureAwait(false);
+        var existing = await _settlementStore.FindByMatchAsync(tenantId, appId, matchId, cancellationToken).ConfigureAwait(false);
         if (existing != null)
         {
             return OnlineResult<OnlineMatchSettlementOutcome>.Ok(new OnlineMatchSettlementOutcome
@@ -119,7 +124,9 @@ public sealed class OnlineMatchSettlementService
             return OnlineResult<OnlineMatchSettlementOutcome>.Fail(built.Code, built.Message);
         }
 
-        var committed = await _resultStore.CommitAsync(built.Data, cancellationToken).ConfigureAwait(false);
+        var committed = _rewardGrantEnabled
+            ? await _settlementStore.CommitWithOutboxAsync(built.Data, cancellationToken).ConfigureAwait(false)
+            : await _settlementStore.CommitAsync(built.Data, cancellationToken).ConfigureAwait(false);
         if (committed == null)
         {
             return OnlineResult<OnlineMatchSettlementOutcome>.Fail(OnlineErrorCode.ServiceBusy, "结算结果写入失败");
