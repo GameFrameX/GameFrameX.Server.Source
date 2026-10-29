@@ -126,36 +126,52 @@ public sealed class InMemoryOnlineAuditStore : IOnlineAuditStore
         {
             if (_recordsByScope.TryGetValue(BuildScopeKey(query.TenantId, query.AppId), out var bucket))
             {
-                var startIndex = query.HasCursor
-                    ? FindFirstAfterCursor(bucket, query.CursorOccurredTime, query.CursorEventId)
-                    : 0;
-                for (var index = startIndex; index < bucket.Count; index++)
-                {
-                    var record = bucket.Values[index];
-
-                    // 全序为发生时刻倒序：一旦低于时间窗起点，其后记录只会更旧，可提前终止。
-                    if (query.StartTime.HasValue && record.OccurredTime < query.StartTime.Value)
-                    {
-                        break;
-                    }
-
-                    if (!MatchesFilter(record, query))
-                    {
-                        continue;
-                    }
-
-                    if (records.Count >= pageSize)
-                    {
-                        hasMore = true;
-                        break;
-                    }
-
-                    records.Add(CloneRecord(record));
-                }
+                hasMore = CollectPageFromBucket(bucket, query, pageSize, records);
             }
         }
 
         return Task.FromResult(new OnlineAuditStorePage(records, hasMore));
+    }
+
+    /// <summary>
+    /// 在作用域索引上有界顺序扫描一页：游标起点定位后命中过滤即收，页满后再探到一行命中即判
+    /// HasMore 并停止；OccurredTime 低于时间窗起点即提前终止（全序倒序保证其后更旧，其后无更多行）。
+    /// 须在 <see cref="_gate"/> 临界区内调用（与追加共用同一索引快照）；收入页行的均为防御性拷贝。
+    /// </summary>
+    /// <param name="bucket">作用域有序索引（全序正序排列）。</param>
+    /// <param name="query">存储层查询载荷（过滤维度 / 已解码游标 / 时间窗）。</param>
+    /// <param name="pageSize">规范化后的页大小（≥1，由调用方保证）。</param>
+    /// <param name="records">接收页行的目标列表（由调用方按页大小预分配）。</param>
+    /// <returns>存在被页大小截断的更多候选行返回 <see langword="true"/>（HasMore）；扫描耗尽或时间窗提前终止返回 <see langword="false"/>。</returns>
+    private static bool CollectPageFromBucket(SortedList<OnlineAuditSortKey, OnlineAuditRecord> bucket, OnlineAuditStoreQuery query, int pageSize, List<OnlineAuditRecord> records)
+    {
+        var startIndex = query.HasCursor
+            ? FindFirstAfterCursor(bucket, query.CursorOccurredTime, query.CursorEventId)
+            : 0;
+        for (var index = startIndex; index < bucket.Count; index++)
+        {
+            var record = bucket.Values[index];
+
+            // 全序为发生时刻倒序：一旦低于时间窗起点，其后记录只会更旧，可提前终止。
+            if (query.StartTime.HasValue && record.OccurredTime < query.StartTime.Value)
+            {
+                return false;
+            }
+
+            if (!MatchesFilter(record, query))
+            {
+                continue;
+            }
+
+            if (records.Count >= pageSize)
+            {
+                return true;
+            }
+
+            records.Add(CloneRecord(record));
+        }
+
+        return false;
     }
 
     /// <summary>
