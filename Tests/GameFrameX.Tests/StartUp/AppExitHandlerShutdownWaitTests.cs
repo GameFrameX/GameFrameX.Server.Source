@@ -29,6 +29,7 @@
 
 
 using System.Reflection;
+using System.Diagnostics;
 using GameFrameX.StartUp;
 using GameFrameX.StartUp.Abstractions;
 using GameFrameX.Tests.Utility;
@@ -90,10 +91,20 @@ public sealed class AppExitHandlerShutdownWaitTests
     public async Task WaitForExitTaskCompletionAsync_HangingTask_ReturnsWithinBound()
     {
         var neverCompletes = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var timeout = TimeSpan.FromMilliseconds(200);
+        var stopwatch = Stopwatch.StartNew();
 
-        var waitTask = AppExitHandler.WaitForExitTaskCompletionAsync(neverCompletes.Task, TimeSpan.FromMilliseconds(200));
+        var waitTask = AppExitHandler.WaitForExitTaskCompletionAsync(neverCompletes.Task, timeout);
 
         await waitTask.WaitAsync(TimeSpan.FromSeconds(5));
+        stopwatch.Stop();
+
+        // 有界返回：源任务始终挂起，等待核心按超时正常完成（TimeoutException 被吞，不重抛）
+        Assert.False(neverCompletes.Task.IsCompleted);
+        Assert.Equal(TaskStatus.RanToCompletion, waitTask.Status);
+        Assert.True(stopwatch.Elapsed >= timeout.Subtract(TimeSpan.FromMilliseconds(50)),
+            $"等待核心提前返回：{stopwatch.Elapsed.TotalMilliseconds:F1}ms < 超时上限 {timeout.TotalMilliseconds}ms");
+        Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(5), "等待核心超出外层安全上限");
     }
 
     /// <summary>
@@ -102,11 +113,24 @@ public sealed class AppExitHandlerShutdownWaitTests
     [Fact]
     public async Task WaitForExitTaskCompletionAsync_CompletedTask_ReturnsWithoutWaiting()
     {
-        await AppExitHandler.WaitForExitTaskCompletionAsync(null, TimeSpan.FromSeconds(30));
-        await AppExitHandler.WaitForExitTaskCompletionAsync(Task.CompletedTask, TimeSpan.FromSeconds(30));
+        var bound = TimeSpan.FromSeconds(30);
+        var stopwatch = Stopwatch.StartNew();
+
+        var nullWait = AppExitHandler.WaitForExitTaskCompletionAsync(null, bound);
+        var completedWait = AppExitHandler.WaitForExitTaskCompletionAsync(Task.CompletedTask, bound);
 
         var faulted = Task.FromException(new InvalidOperationException("shutdown failure already observed"));
-        await AppExitHandler.WaitForExitTaskCompletionAsync(faulted, TimeSpan.FromSeconds(30));
+        var faultedWait = AppExitHandler.WaitForExitTaskCompletionAsync(faulted, bound);
+
+        // 三路（null / 已完成 / 已失败）均立即有界返回：任务正常完成、不重抛、远未触及等待上限
+        await Task.WhenAll(nullWait, completedWait, faultedWait).WaitAsync(TimeSpan.FromSeconds(5));
+        stopwatch.Stop();
+
+        Assert.Equal(TaskStatus.RanToCompletion, nullWait.Status);
+        Assert.Equal(TaskStatus.RanToCompletion, completedWait.Status);
+        Assert.Equal(TaskStatus.RanToCompletion, faultedWait.Status);
+        Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(1),
+            $"已完成任务不应耗时等待：{stopwatch.Elapsed.TotalMilliseconds:F1}ms");
     }
 
     /// <summary>
