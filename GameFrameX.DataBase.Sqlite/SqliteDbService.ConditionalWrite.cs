@@ -532,6 +532,62 @@ public sealed partial class SqliteDbService
     /// <returns>可走快路径时返回承载唯一索引的属性；否则返回 <c>null</c> / The unique-indexed property when the fast path applies; otherwise <c>null</c></returns>
     internal static PropertyInfo ResolveUniqueInsertFastPathProperty<TState>(Expression<Func<TState, bool>> uniqueFilter, TState state, Func<TState, bool> predicate) where TState : BaseCacheState, new()
     {
+        var property = TryResolveUniquePredicateMemberProperty(uniqueFilter);
+        if (property == null)
+        {
+            return null;
+        }
+
+        if (!HasDeclaredUniqueIndex<TState>(property))
+        {
+            // 该属性未声明唯一索引（或声明被跳过：类型不可索引 / JsonIgnore / 名称不可转义）→ 不走快路径。
+            // The property carries no usable unique index declaration — no fast path.
+            return null;
+        }
+
+        // 等价守卫：谓词须对 state 自身为真（state.Member == value）且自身值非 null。
+        // Equivalence guard: the predicate must hold for the state itself (state.Member == value)
+        // and the member value must be non-null.
+        if (property.GetValue(state) == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            if (!predicate(state))
+            {
+                return null;
+            }
+        }
+        catch
+        {
+            // 谓词对自身求值抛错（扫描路径从不对新档求值）→ 保守回落，不改变既有行为。
+            // The predicate throws for the state itself (the scan path never evaluates it against the new
+            // state) — fall back conservatively and keep the previous behavior.
+            return null;
+        }
+
+        return property;
+    }
+
+    /// <summary>
+    /// 把唯一性谓词归约为「谓词参数直接成员 == 参数无关值」形态并返回该成员属性（公共实例属性才可承载唯一索引）。
+    /// </summary>
+    /// <remarks>
+    /// Reduces the uniqueness predicate to the <c>parameter.Member == value</c> shape (either orientation)
+    /// and returns that member property. <c>value</c> must not depend on the predicate parameter (see
+    /// <see cref="IsParameterIndependentValue(Expression)"/>); a custom <c>operator ==</c> cannot be reasoned
+    /// about against the json_extract index domain (only built-in and string equality are accepted); the
+    /// member must be a public instance property directly rooted at the predicate parameter with a public
+    /// getter. Anything else (composite predicates, nested members, two member operands, a field, a static
+    /// or non-public property) returns <c>null</c> and the caller falls back to the scan path.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="uniqueFilter">唯一性判定表达式 / The uniqueness predicate expression</param>
+    /// <returns>归约成立时返回成员属性；否则返回 <c>null</c> / The member property when the reduction holds; otherwise <c>null</c></returns>
+    private static PropertyInfo TryResolveUniquePredicateMemberProperty<TState>(Expression<Func<TState, bool>> uniqueFilter) where TState : BaseCacheState, new()
+    {
         var body = uniqueFilter.Body as BinaryExpression;
         if (body == null || body.NodeType != ExpressionType.Equal)
         {
@@ -568,47 +624,33 @@ public sealed partial class SqliteDbService
             return null;
         }
 
-        string jsonName = null;
+        return property;
+    }
+
+    /// <summary>
+    /// 判定属性在状态类型的声明式唯一索引集中有名字命中（命中即存在已物化的可用唯一索引）。
+    /// </summary>
+    /// <remarks>
+    /// Decides whether the property has a name hit in the state type's declared unique-index set. Skipped
+    /// declarations never enter the set (see <see cref="ResolveUniqueIndexDeclarations{TState}"/>: blank
+    /// declaration names, non-indexable types, <c>[JsonIgnore]</c>, unescapable JSON names), and every
+    /// entry's JSON name is non-null (it falls back to the property name), so a name hit implies a usable
+    /// materialized unique index.
+    /// </remarks>
+    /// <typeparam name="TState">缓存状态类型 / The state type</typeparam>
+    /// <param name="property">待判定的属性 / The property to look up</param>
+    /// <returns>命中返回 <c>true</c>；未声明或声明被跳过返回 <c>false</c> / <c>true</c> on a hit; <c>false</c> when undeclared or skipped</returns>
+    private static bool HasDeclaredUniqueIndex<TState>(PropertyInfo property) where TState : BaseCacheState, new()
+    {
         foreach (var declaration in ResolveUniqueIndexDeclarations<TState>())
         {
             if (declaration.Property.Name == property.Name)
             {
-                jsonName = declaration.JsonName;
-                break;
+                return true;
             }
         }
 
-        if (jsonName == null)
-        {
-            // 该属性未声明唯一索引（或声明被跳过：类型不可索引 / JsonIgnore / 名称不可转义）→ 不走快路径。
-            // The property carries no usable unique index declaration — no fast path.
-            return null;
-        }
-
-        // 等价守卫：谓词须对 state 自身为真（state.Member == value）且自身值非 null。
-        // Equivalence guard: the predicate must hold for the state itself (state.Member == value)
-        // and the member value must be non-null.
-        if (property.GetValue(state) == null)
-        {
-            return null;
-        }
-
-        try
-        {
-            if (!predicate(state))
-            {
-                return null;
-            }
-        }
-        catch
-        {
-            // 谓词对自身求值抛错（扫描路径从不对新档求值）→ 保守回落，不改变既有行为。
-            // The predicate throws for the state itself (the scan path never evaluates it against the new
-            // state) — fall back conservatively and keep the previous behavior.
-            return null;
-        }
-
-        return property;
+        return false;
     }
 
     /// <summary>
