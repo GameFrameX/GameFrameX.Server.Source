@@ -80,6 +80,11 @@ public sealed class MessageHandlerExecutionCancellationTests
 
             await handler.Cancelled.Task.WaitAsync(TimeSpan.FromSeconds(5));
             await running.WaitAsync(TimeSpan.FromSeconds(5));
+
+            // 调用方令牌取消应传播到执行期令牌：业务体捕获的 ExecutionCancellationToken 已置取消，且执行正常收尾
+            Assert.True(handler.ObservedToken.CanBeCanceled);
+            Assert.True(handler.ObservedToken.IsCancellationRequested);
+            Assert.Equal(TaskStatus.RanToCompletion, running.Status);
         }
     }
 
