@@ -243,41 +243,61 @@ public sealed class OnlineMatchListingService
         var members = ResolveMembers(request);
         for (var attempt = 0; attempt < MaxWriteAttempts; attempt++)
         {
-            var listing = await _store.FindAsync(scope.TenantId, scope.AppId, listingId, cancellationToken);
-            if (listing == null)
+            var result = await TryJoinOnceAsync(scope, listingId, members, request.Password, cancellationToken);
+            if (result != null)
             {
-                return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.ResourceNotFound, "列表项不存在");
-            }
-
-            if (listing.State == OnlineMatchListingState.Closed)
-            {
-                return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.StateEnded, "列表项已关闭");
-            }
-
-            var policyFailure = ResolveJoinPolicy(listing, members, request.Password);
-            if (policyFailure != null)
-            {
-                return policyFailure;
-            }
-
-            if (listing.JoinedCount + members.Count > listing.Capacity)
-            {
-                return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.StateNotReady, "剩余容量不足");
-            }
-
-            var expectedRowVersion = listing.RowVersion;
-            listing.JoinedCount += members.Count;
-            listing.State = listing.JoinedCount >= listing.Capacity ? OnlineMatchListingState.Full : OnlineMatchListingState.Open;
-            if (await _store.UpdateIfRowVersionAsync(listing, expectedRowVersion, cancellationToken))
-            {
-                listing.RowVersion = expectedRowVersion + 1;
-                return OnlineResult<OnlineMatchListing>.Ok(Sanitize(listing));
+                return result;
             }
 
             // CAS 失败：列表项已被并发修改，重读最新状态后整轮重校验（关闭/策略/容量均可能已变化）。
         }
 
         return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.VersionConflict, "列表项被并发修改，请重试");
+    }
+
+    /// <summary>
+    /// 执行单轮加入尝试（读取 → 终态/策略/容量校验 → CAS 条件写）。
+    /// </summary>
+    /// <param name="scope">生效作用域。</param>
+    /// <param name="listingId">列表项标识。</param>
+    /// <param name="members">本次加入的成员集合。</param>
+    /// <param name="password">加入口令（仅参与 JoinPolicy 判定）。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>终态结果；返回 null 表示 CAS 版本冲突，调用方应重读重试。</returns>
+    private async Task<OnlineResult<OnlineMatchListing>> TryJoinOnceAsync(OnlineScope scope, string listingId, List<long> members, string password, CancellationToken cancellationToken)
+    {
+        var listing = await _store.FindAsync(scope.TenantId, scope.AppId, listingId, cancellationToken);
+        if (listing == null)
+        {
+            return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.ResourceNotFound, "列表项不存在");
+        }
+
+        if (listing.State == OnlineMatchListingState.Closed)
+        {
+            return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.StateEnded, "列表项已关闭");
+        }
+
+        var policyFailure = ResolveJoinPolicy(listing, members, password);
+        if (policyFailure != null)
+        {
+            return policyFailure;
+        }
+
+        if (listing.JoinedCount + members.Count > listing.Capacity)
+        {
+            return OnlineResult<OnlineMatchListing>.Fail(OnlineErrorCode.StateNotReady, "剩余容量不足");
+        }
+
+        var expectedRowVersion = listing.RowVersion;
+        listing.JoinedCount += members.Count;
+        listing.State = listing.JoinedCount >= listing.Capacity ? OnlineMatchListingState.Full : OnlineMatchListingState.Open;
+        if (await _store.UpdateIfRowVersionAsync(listing, expectedRowVersion, cancellationToken))
+        {
+            listing.RowVersion = expectedRowVersion + 1;
+            return OnlineResult<OnlineMatchListing>.Ok(Sanitize(listing));
+        }
+
+        return null;
     }
 
     /// <summary>
