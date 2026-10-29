@@ -59,14 +59,14 @@ public static class OnlineAdminMatchSettlementHandlers
     /// <param name="pipeline">结算管线。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>查询响应。</returns>
-    private static Task<object> QueryMatchSettlementAsync(OnlineMatchSettlementPipeline pipeline, CancellationToken cancellationToken)
+    private static async Task<object> QueryMatchSettlementAsync(OnlineMatchSettlementPipeline pipeline, CancellationToken cancellationToken)
     {
         if (pipeline == null)
         {
-            return Task.FromResult<object>(new MatchSettlementQueryResponse());
+            return new MatchSettlementQueryResponse();
         }
 
-        var (settlingMatchIds, retries) = pipeline.QueryStatus();
+        var (settlingMatchIds, retries, settlementFailureCount, dispatchFailureCount) = await pipeline.QueryStatusAsync(cancellationToken).ConfigureAwait(false);
         var items = new List<MatchSettlementRetryResponse>();
         foreach (var retry in retries)
         {
@@ -80,12 +80,14 @@ public static class OnlineAdminMatchSettlementHandlers
             });
         }
 
-        return Task.FromResult<object>(new MatchSettlementQueryResponse
+        return new MatchSettlementQueryResponse
         {
             SettlingMatchIds = settlingMatchIds == null ? new List<string>() : new List<string>(settlingMatchIds),
             RetryCount = items.Count,
             Retries = items,
-        });
+            SettlementFailureCount = settlementFailureCount,
+            DispatchFailureCount = dispatchFailureCount,
+        };
     }
 
     /// <summary>
@@ -107,6 +109,16 @@ public static class OnlineAdminMatchSettlementHandlers
         /// 获取或设置待重试发奖明细。
         /// </summary>
         public List<MatchSettlementRetryResponse> Retries { get; set; } = new List<MatchSettlementRetryResponse>();
+
+        /// <summary>
+        /// 获取或设置被异常隔离的结算轮次累计（逐对局隔离不中断同轮；对局由下一轮重试）。
+        /// </summary>
+        public long SettlementFailureCount { get; set; }
+
+        /// <summary>
+        /// 获取或设置被异常隔离的发奖投递轮次累计（逐记录隔离不中断同轮；记录由租约到期恢复）。
+        /// </summary>
+        public long DispatchFailureCount { get; set; }
     }
 
     /// <summary>

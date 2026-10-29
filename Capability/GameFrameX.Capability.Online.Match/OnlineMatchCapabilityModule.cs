@@ -167,8 +167,9 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
         var eventPublisher = context.GetService<IOnlineEventPublisher>();
         context.AddService<IOnlineMatchActorStore>(static _ => new InMemoryOnlineMatchActorStore());
         var matchActorStore = context.GetService<IOnlineMatchActorStore>();
-        context.AddService<IOnlineMatchResultStore>(static _ => new InMemoryOnlineMatchResultStore());
-        var matchResultStore = context.GetService<IOnlineMatchResultStore>();
+        context.AddService<IOnlineMatchResultStore>(static _ => new InMemoryOnlineMatchSettlementStore());
+        context.AddService<IOnlineMatchSettlementStore>(static _ => new InMemoryOnlineMatchSettlementStore());
+        var matchSettlementStore = context.GetService<IOnlineMatchSettlementStore>();
 
         var rpsGame = new OnlineRockPaperScissorsGame();
         _matchRuntime = new OnlineMatchRuntime(matchActorStore, eventPublisher, options.Runtime);
@@ -176,11 +177,11 @@ public sealed class OnlineMatchCapabilityModule : ICapabilityModule, IAdminActio
         context.AddService(_matchRuntime);
         context.AddTickJob("match-tick", ct => _matchRuntime.TickAllAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct));
 
-        // 结算编排（C245）：settlement + 可空 dispatcher（assets 缺席仅结算）+ tick 重投；桥服务注册回共享面。
+        // 结算编排：settlement + 可空 dispatcher（assets 缺席仅结算、不建待发奖记录）+ outbox tick 投递；桥服务注册回共享面。
         var grantService = context.GetOptionalService<OnlineGrantService>();
-        var settlementService = new OnlineMatchSettlementService(_matchRuntime, matchResultStore, eventPublisher);
+        var settlementService = new OnlineMatchSettlementService(_matchRuntime, matchSettlementStore, eventPublisher, grantService != null);
         var dispatcher = grantService == null ? null : new OnlineMatchResultDispatcher(grantService);
-        _settlementPipeline = new OnlineMatchSettlementPipeline(_matchRuntime, settlementService, dispatcher, options.Settlement);
+        _settlementPipeline = new OnlineMatchSettlementPipeline(_matchRuntime, settlementService, matchSettlementStore, dispatcher, options.Settlement);
         context.AddTickJob("match-settlement-tick", ct => _settlementPipeline.TickAsync(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), ct));
 
         _bridgeService = new OnlineMatchGameBridgeService(_matchRuntime, rpsGame);

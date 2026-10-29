@@ -192,7 +192,7 @@ namespace GameFrameX.Tests.Online
         [Fact]
         public async Task ResultStore_ConcurrentCommit_ShouldKeepFirstResult()
         {
-            var store = new InMemoryOnlineMatchResultStore();
+            var store = new InMemoryOnlineMatchSettlementStore();
             var first = new OnlineMatchResult { MatchResultId = "mrs-first", MatchId = MatchId, TenantId = TenantId, AppId = AppId, Entries = new List<OnlineMatchResultEntry>() };
             var second = new OnlineMatchResult { MatchResultId = "mrs-second", MatchId = MatchId, TenantId = TenantId, AppId = AppId, Entries = new List<OnlineMatchResultEntry>() };
 
@@ -268,7 +268,7 @@ namespace GameFrameX.Tests.Online
                 IdempotencyStore = new InMemoryIdempotencyStore();
                 Publisher = new OnlineEventRecorder();
                 MatchStore = new InMemoryOnlineMatchActorStore();
-                ResultStore = new InMemoryOnlineMatchResultStore();
+                ResultStore = new InMemoryOnlineMatchSettlementStore();
                 Runtime = new OnlineMatchRuntime(MatchStore, Publisher, new OnlineMatchRuntimeOptions());
                 Runtime.RegisterGame(new OnlineRockPaperScissorsGame());
 
@@ -310,7 +310,7 @@ namespace GameFrameX.Tests.Online
             }
 
             /// <summary>获取结算结果存储。</summary>
-            public InMemoryOnlineMatchResultStore ResultStore
+            public InMemoryOnlineMatchSettlementStore ResultStore
             {
                 get;
             }

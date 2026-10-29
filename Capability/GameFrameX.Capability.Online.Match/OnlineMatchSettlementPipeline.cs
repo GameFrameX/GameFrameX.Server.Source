@@ -4,19 +4,13 @@
 //   均受中华人民共和国及相关国际法律法规保护。
 //   are protected by the laws of the PRC and applicable international regulations.
 //   使用本项目须严格遵守相应法律法规与开源许可证之规定。
-//   Usage of this project must strictly comply with relevant laws, regulations and open-source licenses.
+//   Usage of this project must strictly comply with applicable laws, regulations and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
 //   This project is licensed solely under the Apache License 2.0,
-//   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//   please refer to the LICENSE file at the source code root for the full license text.
+//   完整许可证文本请参见源代码根目录的 LICENSE 文件。
+//   please see the LICENSE file at the source code root for the full license text.
 //   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
-//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
-//   侵犯他人合法权益等法律法规所禁止的行为！
-//   or infringe upon the legal rights and interests of others as prohibited by laws and regulations!
-//   因基于本项目二次开发所产生的一切纠纷与责任，
-//   Any disputes or liabilities arising from secondary development based on this project
-//   本组织不承担任何责任，开发者应自行承担。
-//   The organization and contributors shall not be responsible; developers shall bear the responsibility themselves.
+//   侵犯其他个人或组织合法权益等法律法规禁止的行为！
 // ==========================================================================================
 
 using System;
@@ -28,47 +22,52 @@ using GameFrameX.Capability.Online.Abstractions.Contracts;
 namespace GameFrameX.Capability.Online.Match;
 
 /// <summary>
-/// 对局结算管线：Tick 驱动的「结算 → 发奖 → 失败重投」生产编排。
+/// 对局结算管线：Tick 驱动的「结算 → 待发奖 outbox 扫描 → 领取投递 → CAS 写回」生产编排。
 /// <para>
 /// 维护约束（红线）：① Tick 互斥（并发双 Tick 串行安全）；② 不宣称「恰好一次」——结算幂等由
-/// <see cref="OnlineMatchSettlementService"/>（首结果获胜）、发奖幂等由
-/// <see cref="OnlineMatchResultDispatcher"/> 的 <c>{MatchResultId}-{PlayerId}</c> 键保证，
-/// 管线只做编排与重投，各阶段独立失败可观测（<see cref="QueryStatus"/>）可恢复；
-/// ③ 结算回放（<c>IsReplay</c>）不重复发奖路径；④ 重投作用域 = 当前失败玩家集合
-/// （已成功玩家零重投——整份重投在幂等 TTL 过期后会重复发奖）；⑤ 投递尝试含首发受
-/// <see cref="OnlineMatchSettlementOptions.MaxGrantAttempts"/> 上限约束，达上限转
-/// <see cref="OnlineMatchSettlementRetryState.ManualReview"/> 停止自动重投（重投永不发散，
-/// 最长重试周期 ≤ 上限 × tick 间隔，须保持远小于发奖幂等键保留时长）。
+/// <see cref="OnlineMatchSettlementService"/>（首次结果获胜）、发奖幂等由
+/// <see cref="OnlineMatchResultDispatcher"/> 的 <c>{MatchResultId}-{PlayerId}</c> 键保证；
+/// 管线只做 outbox 编排，崩溃恢复依赖持久化待发奖记录（租约到期接管 + 幂等键兜底）；
+/// ③ 结算回放（<c>IsReplay</c>）不重复走结算路径，但 outbox 扫描与回放解耦——
+/// 已落库未投完的记录由扫描继续驱动，不再因回放被跳过（GFX-1116 缺陷根因之一）；
+/// ④ 投递作用域 = 当前 Pending/Failed 玩家集合（已成功玩家零重投）；⑤ 投递轮次受
+/// <see cref="OnlineMatchSettlementOptions.MaxGrantAttempts"/> 上限约束，达上限未成功玩家转
+/// <see cref="OnlineMatchRewardDeliveryState.ManualReview"/> 冻结自动重投（经
+/// <see cref="QueryStatusAsync"/> 暴露为人工裁决面）；⑥ 每对局 / 每记录独立异常隔离：
+/// 单条异常记入结果但不得中断同轮其他对局或记录的处理。
 /// </para>
 /// <para>
 /// 分发器可空：assets 能力被过滤（模块未装配 <c>OnlineGrantService</c>）时仅结算、不发奖、
-/// 不记重试——与 Competition 域 season/tournament 的可空发放依赖同一模块化等价口径。
+/// 不建待发奖记录——与 Competition 域 season/tournament 的可空发放依赖同一模块化等价口径。
 /// </para>
 /// </summary>
 /// <remarks>
-/// The settlement pipeline: the tick-driven "settle → grant → retry failed grants" production
-/// orchestration. Ticks are mutually exclusive (concurrent ticks serialize); no exactly-once claim is
-/// made — settlement idempotency comes from the settlement service (first result wins) and grant
-/// idempotency from the dispatcher's <c>{MatchResultId}-{PlayerId}</c> keys, while this pipeline only
-/// orchestrates and re-dispatches, keeping per-stage failures observable (<see cref="QueryStatus"/>)
-/// and recoverable. The re-dispatch scope is the current failed-player set only (already-granted
-/// players are never re-dispatched — re-delivering the full result after the idempotency TTL lapses
-/// would double-grant), and the attempt count (first dispatch included) is capped by
-/// <see cref="OnlineMatchSettlementOptions.MaxGrantAttempts"/>: at the cap the entry transitions to
-/// <see cref="OnlineMatchSettlementRetryState.ManualReview"/> and automatic retries stop. A null
-/// dispatcher means the assets capability was filtered out: settle only, no grants, no retries — the
-/// same modular-equivalence precedent as the Competition domain's nullable grant dependency.
+/// The settlement pipeline: the tick-driven "settle → scan the reward outbox → claim &amp; dispatch →
+/// CAS write-back" production orchestration. Ticks are mutually exclusive; no exactly-once claim is made —
+/// settlement idempotency comes from the settlement service (first result wins) and grant idempotency from
+/// the dispatcher's <c>{MatchResultId}-{PlayerId}</c> keys, while crash recovery relies on the durable
+/// reward-outbox records (lease expiry take-over plus the idempotency-key backstop). Settlement replays do
+/// not re-enter the settle path, yet outbox scanning is decoupled from replays: committed-but-undelivered
+/// records keep being driven by the scan instead of being skipped on replay (one of the GFX-1116 root causes).
+/// The dispatch scope is the current Pending/Failed player set only (already-granted players are never
+/// re-dispatched); the attempt count is capped, at which point undelivered players freeze into ManualReview
+/// (exposed via <see cref="QueryStatusAsync"/> as the manual-adjudication face). Per-match and per-record
+/// failures are isolated: one failure never aborts the rest of the round. A null dispatcher means the assets
+/// capability was filtered out: settle only, no grants, no outbox records.
 /// </remarks>
 public sealed class OnlineMatchSettlementPipeline
 {
     /// <summary>对局运行时（结算 tick 的枚举源）。</summary>
     private readonly OnlineMatchRuntime _runtime;
 
-    /// <summary>结算服务（幂等）。</summary>
+    /// <summary>结算服务（幂等；结果与待发奖记录原子提交）。</summary>
     private readonly OnlineMatchSettlementService _settlementService;
 
     /// <summary>结果分发器（可空 = assets 能力缺席，仅结算不发奖）。</summary>
     private readonly OnlineMatchResultDispatcher _dispatcher;
+
+    /// <summary>结算存储（待发奖 outbox 的扫描 / 领取 / 写回 / 观测面）。</summary>
+    private readonly IOnlineMatchSettlementStore _settlementStore;
 
     /// <summary>Tick 互斥门（并发双 Tick 串行安全）。</summary>
     private readonly SemaphoreSlim _tickGate = new(1, 1);
@@ -76,28 +75,41 @@ public sealed class OnlineMatchSettlementPipeline
     /// <summary>发奖投递尝试上限（含首发；非正值回退默认）。</summary>
     private readonly int _maxGrantAttempts;
 
-    /// <summary>待重试发奖表：键 = MatchResultId（去重更新）。任何路径读写本表及其条目可变状态必须持 <c>lock (_retries)</c>。</summary>
-    private readonly Dictionary<string, RetryRecord> _retries = new();
+    /// <summary>发奖投递租约时长毫秒（非正值回退默认）。</summary>
+    private readonly int _claimLeaseMilliseconds;
+
+    /// <summary>单轮待发奖扫描批量上限（非正值回退默认）。</summary>
+    private readonly int _outboxScanBatchSize;
 
     /// <summary>
     /// 初始化结算管线。
     /// </summary>
     /// <param name="runtime">对局运行时。</param>
     /// <param name="settlementService">结算服务。</param>
-    /// <param name="dispatcher">结果分发器（可空：assets 能力缺席时仅结算不发奖不记重试）。</param>
-    /// <param name="options">结算编排选项（可空 = 默认值；投递尝试上限见 <see cref="OnlineMatchSettlementOptions"/>）。</param>
-    public OnlineMatchSettlementPipeline(OnlineMatchRuntime runtime, OnlineMatchSettlementService settlementService, OnlineMatchResultDispatcher dispatcher = null, OnlineMatchSettlementOptions options = null)
+    /// <param name="settlementStore">结算存储（结果 + 待发奖 outbox）。</param>
+    /// <param name="dispatcher">结果分发器（可空：assets 能力缺席时仅结算不发奖不建待发奖记录）。</param>
+    /// <param name="options">结算编排选项（可空 = 默认值）。</param>
+    public OnlineMatchSettlementPipeline(OnlineMatchRuntime runtime, OnlineMatchSettlementService settlementService, IOnlineMatchSettlementStore settlementStore, OnlineMatchResultDispatcher dispatcher = null, OnlineMatchSettlementOptions options = null)
     {
         _runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
         _settlementService = settlementService ?? throw new ArgumentNullException(nameof(settlementService));
+        _settlementStore = settlementStore ?? throw new ArgumentNullException(nameof(settlementStore));
         _dispatcher = dispatcher;
         var settlementOptions = options ?? new OnlineMatchSettlementOptions();
         _maxGrantAttempts = settlementOptions.MaxGrantAttempts > 0 ? settlementOptions.MaxGrantAttempts : OnlineMatchSettlementOptions.DefaultMaxGrantAttempts;
+        _claimLeaseMilliseconds = settlementOptions.GrantClaimLeaseMilliseconds > 0 ? settlementOptions.GrantClaimLeaseMilliseconds : OnlineMatchSettlementOptions.DefaultGrantClaimLeaseMilliseconds;
+        _outboxScanBatchSize = settlementOptions.OutboxScanBatchSize > 0 ? settlementOptions.OutboxScanBatchSize : OnlineMatchSettlementOptions.DefaultOutboxScanBatchSize;
     }
 
+    /// <summary>被异常隔离的结算轮次累计（可观测面；对局保持 Settling 由下一轮重试）。</summary>
+    private long _settlementFailureCount;
+
+    /// <summary>被异常隔离的发奖投递轮次累计（可观测面；记录由租约到期恢复重投）。</summary>
+    private long _dispatchFailureCount;
+
     /// <summary>
-    /// 推进一轮结算编排：结算全部 <see cref="OnlineMatchState.Settling"/> 对局 → 非回放结果发奖 →
-    /// 失败进入待重试表 → 重投全部待自动重试项（仅失败玩家条目；幂等键保证不双发）。
+    /// 推进一轮结算编排：结算全部 <see cref="OnlineMatchState.Settling"/> 对局（结果与待发奖记录原子落库）→
+    /// 扫描到期待发奖记录 → 逐记录领取（CAS）→ 投递 Pending/Failed 玩家 → 按回执写回（CAS）。
     /// </summary>
     /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
@@ -114,51 +126,42 @@ public sealed class OnlineMatchSettlementPipeline
                     continue;
                 }
 
-                var settled = await _settlementService.SettleAsync(actor.TenantId, actor.AppId, actor.MatchId, nowUnixMilliseconds, cancellationToken).ConfigureAwait(false);
-                if (!settled.IsSuccess || settled.Data.IsReplay || _dispatcher == null)
+                // 逐对局异常隔离（GFX-1116）：单对局结算异常不得中断同轮其他对局。
+                try
                 {
-                    continue;
+                    await _settlementService.SettleAsync(actor.TenantId, actor.AppId, actor.MatchId, nowUnixMilliseconds, cancellationToken).ConfigureAwait(false);
                 }
-
-                await DispatchAndTrackAsync(settled.Data.Result, cancellationToken).ConfigureAwait(false);
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception)
+                {
+                    OnSettlementFailed(actor.MatchId);
+                }
             }
 
-            List<RetryRecord> pending;
-            lock (_retries)
+            if (_dispatcher == null)
             {
-                if (_retries.Count == 0)
-                {
-                    return;
-                }
-
-                // 快照后遍历：分发在锁外 await，成功项在锁内移除。
-                pending = new List<RetryRecord>(_retries.Values);
+                return;
             }
 
-            foreach (var record in pending)
+            // outbox 扫描驱动全部投递（含结算回放遗留与崩溃恢复；租约保证多实例不双投）。
+            var dueRecords = await _settlementStore.FindDueAsync(nowUnixMilliseconds, _outboxScanBatchSize, cancellationToken).ConfigureAwait(false);
+            foreach (var dueRecord in dueRecords)
             {
-                if (record.Entry.State != OnlineMatchSettlementRetryState.Pending)
+                // 逐记录异常隔离：坏记录不得中断同轮其他记录的投递。
+                try
                 {
-                    continue;
+                    await DispatchOutboxRecordAsync(dueRecord, nowUnixMilliseconds, cancellationToken).ConfigureAwait(false);
                 }
-
-                // 只重投失败玩家条目（GFX-1101/M79）：已成功玩家零重投——整份重投在幂等 TTL 过期后会重复发奖。
-                record.Result = NarrowToFailedPlayers(record.Result, record.Entry.FailedPlayerIds);
-                var dispatched = await _dispatcher.DispatchAsync(record.Result, cancellationToken).ConfigureAwait(false);
-                lock (_retries)
+                catch (OperationCanceledException)
                 {
-                    record.Attempts++;
-                    if (dispatched.IsSuccess && dispatched.Data != null && dispatched.Data.FailedPlayerIds.Count == 0)
-                    {
-                        _retries.Remove(record.Entry.MatchResultId);
-                        continue;
-                    }
-
-                    UpdateFailedPlayers(record, dispatched);
-                    if (record.Attempts >= _maxGrantAttempts)
-                    {
-                        record.Entry.State = OnlineMatchSettlementRetryState.ManualReview;
-                    }
+                    throw;
+                }
+                catch (Exception dispatchException)
+                {
+                    OnDispatchFailed(dueRecord.MatchId, dueRecord.MatchResultId);
                 }
             }
         }
@@ -169,10 +172,11 @@ public sealed class OnlineMatchSettlementPipeline
     }
 
     /// <summary>
-    /// 查询编排状态（admin 可观测面）。
+    /// 查询编排状态（admin 可观测面：结算中对局清单 + 未完成待发奖条目投影）。
     /// </summary>
+    /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>结算中对局标识清单 + 待重试发奖条目副本。</returns>
-    public (IReadOnlyList<string> SettlingMatchIds, IReadOnlyList<OnlineMatchSettlementRetryEntry> Retries) QueryStatus()
+    public async Task<(IReadOnlyList<string> SettlingMatchIds, IReadOnlyList<OnlineMatchSettlementRetryEntry> Retries, long SettlementFailureCount, long DispatchFailureCount)> QueryStatusAsync(CancellationToken cancellationToken = default)
     {
         var settling = new List<string>();
         foreach (var actor in _runtime.SnapshotActors())
@@ -183,91 +187,70 @@ public sealed class OnlineMatchSettlementPipeline
             }
         }
 
-        var retries = new List<OnlineMatchSettlementRetryEntry>();
-        lock (_retries)
-        {
-            foreach (var record in _retries.Values)
-            {
-                retries.Add(new OnlineMatchSettlementRetryEntry
-                {
-                    MatchResultId = record.Entry.MatchResultId,
-                    MatchId = record.Entry.MatchId,
-                    FailedPlayerIds = new List<long>(record.Entry.FailedPlayerIds),
-                    Attempts = record.Entry.Attempts,
-                    State = record.Entry.State,
-                });
-            }
-        }
-
-        return (settling, retries);
+        var retries = await _settlementStore.ListUndeliveredAsync(cancellationToken).ConfigureAwait(false);
+        return (settling, retries, Interlocked.Read(ref _settlementFailureCount), Interlocked.Read(ref _dispatchFailureCount));
     }
 
     /// <summary>
-    /// 发奖并登记结果（成功且无失败玩家移除既有重试项，否则按 MatchResultId 去重更新待重试表）。
+    /// 投递一条到期待发奖记录：CAS 领取 → 按 Pending/Failed 玩家收窄投递 → 按回执更新玩家状态 →
+    /// 达上限玩家转 ManualReview → CAS 写回（版本冲突 = 他人已推进，放弃本次结果）。
     /// </summary>
-    /// <param name="result">已落定的结算结果。</param>
+    /// <param name="dueRecord">扫描到的到期记录副本。</param>
+    /// <param name="nowUnixMilliseconds">当前时刻（UTC 毫秒）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     /// <returns>完成通知。</returns>
-    private async Task DispatchAndTrackAsync(OnlineMatchResult result, CancellationToken cancellationToken)
+    private async Task DispatchOutboxRecordAsync(OnlineMatchRewardOutboxRecord dueRecord, long nowUnixMilliseconds, CancellationToken cancellationToken)
     {
-        var dispatched = await _dispatcher.DispatchAsync(result, cancellationToken).ConfigureAwait(false);
-        if (dispatched.IsSuccess && dispatched.Data != null && dispatched.Data.FailedPlayerIds.Count == 0)
+        var claimed = await _settlementStore.TryClaimAsync(dueRecord.MatchResultId, dueRecord.RowVersion, nowUnixMilliseconds, _claimLeaseMilliseconds, cancellationToken).ConfigureAwait(false);
+        if (!claimed)
         {
-            lock (_retries)
-            {
-                _retries.Remove(result.MatchResultId);
-            }
-
+            // 版本不符或租约被持：他人已接管或已推进，本实例放弃。
             return;
         }
 
-        lock (_retries)
+        var working = dueRecord.Copy();
+        working.RowVersion = dueRecord.RowVersion + 1;
+        working.Attempts++;
+
+        var dispatched = await _dispatcher.DispatchAsync(NarrowToUndeliveredPlayers(working), cancellationToken).ConfigureAwait(false);
+        ApplyDispatchOutcome(working, dispatched);
+        if (working.Attempts >= _maxGrantAttempts)
         {
-            if (!_retries.TryGetValue(result.MatchResultId, out var record))
-            {
-                record = new RetryRecord
-                {
-                    Result = result,
-                    Entry = new OnlineMatchSettlementRetryEntry
-                    {
-                        MatchResultId = result.MatchResultId,
-                        MatchId = result.MatchId,
-                        FailedPlayerIds = new List<long>(),
-                        Attempts = 0,
-                        State = OnlineMatchSettlementRetryState.Pending,
-                    },
-                };
-
-                _retries[result.MatchResultId] = record;
-            }
-
-            record.Result = result;
-            record.Attempts++;
-            UpdateFailedPlayers(record, dispatched);
-            if (record.Attempts >= _maxGrantAttempts)
-            {
-                record.Entry.State = OnlineMatchSettlementRetryState.ManualReview;
-            }
+            FreezeRemainingPlayers(working);
         }
+
+        // 写回释放租约（ClaimExpires 归零）；CAS 失败 = 他人在租约过期后接管推进，放弃本次结果
+        //（重投安全性由发奖幂等键保证：接管者重投同一玩家不会重复入账）。
+        working.ClaimExpiresAtUnixMilliseconds = 0;
+        working.NextAttemptTimeUnixMilliseconds = nowUnixMilliseconds;
+        await _settlementStore.TryWriteBackAsync(working, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// 将待重试结果收窄为仅含失败玩家条目的副本（重投作用域 = 当前失败集合，已成功玩家零重投）。
+    /// 将待发奖结果快照收窄为仅含未完成玩家（Pending/Failed/ManualReview 之外无条目）条目的副本；
+    /// 已成功玩家零重投——整份重投在幂等 TTL 过期后会重复发奖。
     /// </summary>
-    /// <param name="result">待重试的结算结果。</param>
-    /// <param name="failedPlayerIds">失败玩家集合。</param>
-    /// <returns>仅含失败玩家条目的结果副本；失败集合为空或结果无可投条目时原样返回。</returns>
-    private static OnlineMatchResult NarrowToFailedPlayers(OnlineMatchResult result, List<long> failedPlayerIds)
+    /// <param name="record">待投递的待发奖记录。</param>
+    /// <returns>仅含未完成玩家条目的结果副本；无未完成条目时返回 null。</returns>
+    private static OnlineMatchResult NarrowToUndeliveredPlayers(OnlineMatchRewardOutboxRecord record)
     {
-        if (result == null || result.Entries == null || result.Entries.Count == 0 || failedPlayerIds == null || failedPlayerIds.Count == 0)
+        var targetPlayerIds = new HashSet<long>();
+        foreach (var entry in record.PlayerEntries)
         {
-            return result;
+            if (entry != null && entry.State != OnlineMatchRewardDeliveryState.Succeeded)
+            {
+                targetPlayerIds.Add(entry.PlayerId);
+            }
         }
 
-        var targetPlayerIds = new HashSet<long>(failedPlayerIds);
-        var narrowed = result.Copy();
+        if (record.Result == null || record.Result.Entries == null || targetPlayerIds.Count == 0)
+        {
+            return null;
+        }
+
+        var narrowed = record.Result.Copy();
         narrowed.Entries = new List<OnlineMatchResultEntry>();
-        foreach (var entry in result.Entries)
+        foreach (var entry in record.Result.Entries)
         {
             if (entry != null && targetPlayerIds.Contains(entry.PlayerId))
             {
@@ -275,54 +258,72 @@ public sealed class OnlineMatchSettlementPipeline
             }
         }
 
-        return narrowed;
+        return narrowed.Entries.Count == 0 ? null : narrowed;
     }
 
     /// <summary>
-    /// 按分发回执刷新失败玩家列表（分发整体失败时按本次投递作用域全量登记——
-    /// <paramref name="record"/> 的 Result 已收窄为失败玩家条目，不再波及已成功玩家）。
+    /// 按分发回执刷新逐玩家投递状态：回执成功玩家置 Succeeded、失败玩家置 Failed；
+    /// 分发整体失败（异常由调用方隔离；此处为返回失败结果）时本次投递作用域全部置 Failed——
+    /// 作用域已收窄为未完成玩家，不波及已成功玩家。
     /// </summary>
-    /// <param name="record">待重试记录。</param>
-    /// <param name="dispatched">分发回执。</param>
-    private static void UpdateFailedPlayers(RetryRecord record, OnlineResult<OnlineMatchDispatchOutcome> dispatched)
+    /// <param name="working">领取后的工作副本（原地更新玩家状态）。</param>
+    /// <param name="dispatched">分发回执（可为整体失败）。</param>
+    private static void ApplyDispatchOutcome(OnlineMatchRewardOutboxRecord working, OnlineResult<OnlineMatchDispatchOutcome> dispatched)
     {
-        record.Entry.FailedPlayerIds.Clear();
-        if (dispatched.IsSuccess && dispatched.Data != null)
-        {
-            record.Entry.FailedPlayerIds.AddRange(dispatched.Data.FailedPlayerIds);
-            return;
-        }
+        var failedPlayerIds = dispatched != null && dispatched.IsSuccess && dispatched.Data != null
+            ? new HashSet<long>(dispatched.Data.FailedPlayerIds ?? new List<long>())
+            : null;
 
-        if (record.Result.Entries == null)
+        foreach (var entry in working.PlayerEntries)
         {
-            return;
-        }
-
-        foreach (var entry in record.Result.Entries)
-        {
-            if (entry != null)
+            if (entry == null || entry.State == OnlineMatchRewardDeliveryState.Succeeded || entry.State == OnlineMatchRewardDeliveryState.ManualReview)
             {
-                record.Entry.FailedPlayerIds.Add(entry.PlayerId);
+                continue;
+            }
+
+            // 整体失败（failedPlayerIds == null）= 本次作用域全部失败；否则按回执失败集合判定。
+            var succeeded = failedPlayerIds != null && !failedPlayerIds.Contains(entry.PlayerId);
+            entry.State = succeeded ? OnlineMatchRewardDeliveryState.Succeeded : OnlineMatchRewardDeliveryState.Failed;
+        }
+    }
+
+    /// <summary>
+    /// 尝试轮次达上限：仍处于 Pending/Failed 的玩家冻结为 ManualReview（停止自动重投的人工裁决面）。
+    /// </summary>
+    /// <param name="working">领取后的工作副本（原地更新玩家状态）。</param>
+    private static void FreezeRemainingPlayers(OnlineMatchRewardOutboxRecord working)
+    {
+        foreach (var entry in working.PlayerEntries)
+        {
+            if (entry != null
+                && (entry.State == OnlineMatchRewardDeliveryState.Pending || entry.State == OnlineMatchRewardDeliveryState.Failed))
+            {
+                entry.State = OnlineMatchRewardDeliveryState.ManualReview;
             }
         }
     }
 
     /// <summary>
-    /// 待重试记录（内部形态：保留结果对象供重投，对外只暴露 <see cref="OnlineMatchSettlementRetryEntry"/> 投影）。
+    /// 结算异常观测点（Capability 包零 LogHelper 惯例：异常被隔离不中断同轮处理，
+    /// 对局仍在 Settling 态，下一轮 Tick 重试结算；可观测面 = admin 查询 + 宿主异常计数）。
     /// </summary>
-    private sealed class RetryRecord
+    /// <param name="matchId">对局标识。</param>
+    private void OnSettlementFailed(string matchId)
     {
-        /// <summary>待重投的结算结果（幂等键派生源；重投前按失败玩家收窄）。</summary>
-        public OnlineMatchResult Result { get; set; }
+        _ = matchId;
+        Interlocked.Increment(ref _settlementFailureCount);
+    }
 
-        /// <summary>对外只读投影。</summary>
-        public OnlineMatchSettlementRetryEntry Entry { get; set; }
-
-        /// <summary>累计投递尝试次数（含首发）。</summary>
-        public int Attempts
-        {
-            get { return Entry.Attempts; }
-            set { Entry.Attempts = value; }
-        }
+    /// <summary>
+    /// 投递异常观测点：异常被隔离不中断同轮处理；记录租约到期后自动恢复重投，
+    /// 可观测面 = <see cref="QueryStatusAsync"/> 的失败计数与未完成条目投影。
+    /// </summary>
+    /// <param name="matchId">对局标识。</param>
+    /// <param name="matchResultId">结算结果标识。</param>
+    private void OnDispatchFailed(string matchId, string matchResultId)
+    {
+        _ = matchId;
+        _ = matchResultId;
+        Interlocked.Increment(ref _dispatchFailureCount);
     }
 }

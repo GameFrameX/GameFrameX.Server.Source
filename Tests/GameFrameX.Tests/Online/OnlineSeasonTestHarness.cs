@@ -101,7 +101,7 @@ namespace GameFrameX.Tests.Online
             LeaderboardStore = leaderboardStoreDecorator == null ? (IOnlineLeaderboardStore)RawLeaderboardStore : leaderboardStoreDecorator(RawLeaderboardStore);
             LeaderboardService = new OnlineLeaderboardService(LeaderboardStore, Options, Recorder);
 
-            ResultStore = new InMemoryOnlineMatchResultStore();
+            ResultStore = new InMemoryOnlineMatchSettlementStore();
             Projector = new OnlineLeaderboardResultProjector(ResultStore, LeaderboardService, IdempotencyService);
 
             RawAssetStore = new InMemoryOnlineAssetStore();
@@ -156,7 +156,7 @@ namespace GameFrameX.Tests.Online
         }
 
         /// <summary>获取对局结算结果存储（可信事实来源）。</summary>
-        public InMemoryOnlineMatchResultStore ResultStore
+        public InMemoryOnlineMatchSettlementStore ResultStore
         {
             get;
         }

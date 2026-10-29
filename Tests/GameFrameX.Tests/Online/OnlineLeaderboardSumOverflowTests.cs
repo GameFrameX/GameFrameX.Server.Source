@@ -172,7 +172,7 @@ namespace GameFrameX.Tests.Online
                 IdempotencyService = new OnlineIdempotencyService(coordinator, null);
                 LeaderboardStore = new InMemoryOnlineLeaderboardStore();
                 Service = new OnlineLeaderboardService(LeaderboardStore, Options, Recorder);
-                ResultStore = new InMemoryOnlineMatchResultStore();
+                ResultStore = new InMemoryOnlineMatchSettlementStore();
                 Projector = new OnlineLeaderboardResultProjector(ResultStore, Service, IdempotencyService);
             }
 
@@ -207,7 +207,7 @@ namespace GameFrameX.Tests.Online
             }
 
             /// <summary>获取对局结算结果存储（可信事实来源）。</summary>
-            public InMemoryOnlineMatchResultStore ResultStore
+            public InMemoryOnlineMatchSettlementStore ResultStore
             {
                 get;
             }
