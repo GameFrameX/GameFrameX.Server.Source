@@ -2,7 +2,7 @@
 <root>
     <!-- Utility module exception keys -->
     <data name="Utility.Exceptions.ActorIdLessThanMinServerId" xml:space="preserve">
-    <value>actorId is less than min server id</value>
+    <value>actorId is less than min server id, min server id: {0}</value>
   </data>
     <data name="Utility.Exceptions.ActorIdLessThanMinServerIdDetail" xml:space="preserve">
     <value>actorId: {0} is less than min server id: {1}</value>
@@ -717,19 +717,19 @@
   </data>
 
   <data name="StartUp.HttpServer.ApiContactName" xml:space="preserve">
-    <value>API contact name: {0}.</value>
+    <value>Blank</value>
   </data>
 
   <data name="StartUp.HttpServer.ApiDescription" xml:space="preserve">
-    <value>API description: {0}.</value>
+    <value>GameFrameX HTTP API Documentation</value>
   </data>
 
   <data name="StartUp.HttpServer.ApiLicenseName" xml:space="preserve">
-    <value>API license name: {0}.</value>
+    <value>GameFrameX</value>
   </data>
 
   <data name="StartUp.HttpServer.ApiTitle" xml:space="preserve">
-    <value>API title: {0}.</value>
+    <value>GameFrameX API</value>
   </data>
 
   <data name="StartUp.HttpServer.PortOccupied" xml:space="preserve">
@@ -745,7 +745,7 @@
   </data>
 
   <data name="StartUp.HttpServer.SwaggerRoutePrefix" xml:space="preserve">
-    <value>Swagger route prefix: {0}.</value>
+    <value>swagger</value>
   </data>
 
   <data name="StartUp.LaunchServerType" xml:space="preserve">
@@ -753,11 +753,11 @@
   </data>
 
   <data name="StartUp.NoConfigurationUseDefault" xml:space="preserve">
-    <value>No configuration found, using default values.</value>
+    <value>No configuration found for server type '{0}', using default values.</value>
   </data>
 
   <data name="StartUp.PrometheusMetricsEndpointEnabledInline" xml:space="preserve">
-    <value>Prometheus metrics endpoint enabled inline.</value>
+    <value>Prometheus metrics endpoint enabled inline: http://{0}:{1}/metrics.</value>
   </data>
 
   <data name="StartUp.StartingServerWithConfiguration" xml:space="preserve">
@@ -785,7 +785,7 @@
   </data>
 
   <data name="Utility.Exceptions.ValueOutOfRange" xml:space="preserve">
-    <value>Value out of range. Value: {0}, min: {1}, max: {2}.</value>
+    <value>Value must be between -FP.One and FP.One.</value>
   </data>
 
   <data name="Utility.GlobalSettings.LoadGlobalSettings" xml:space="preserve">

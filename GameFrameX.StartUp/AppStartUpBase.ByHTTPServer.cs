@@ -132,12 +132,14 @@ public abstract partial class AppStartUpBase
         // 验证HTTP URL格式
         if (!Setting.HttpUrl.StartsWith('/'))
         {
-            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.StartUp.HttpExceptions.AddressMustStartWithSlash), nameof(Setting.HttpUrl));
+            // Localization: StartUp.HttpExceptions.AddressMustStartWithSlash - 地址必须以斜杠开头。地址：{0}。
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.StartUp.HttpExceptions.AddressMustStartWithSlash, Setting.HttpUrl), nameof(Setting.HttpUrl));
         }
 
         if (!Setting.HttpUrl.EndsWith('/'))
         {
-            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.StartUp.HttpExceptions.AddressMustEndWithSlash), nameof(Setting.HttpUrl));
+            // Localization: StartUp.HttpExceptions.AddressMustEndWithSlash - 地址必须以斜杠结尾。地址：{0}。
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.StartUp.HttpExceptions.AddressMustEndWithSlash, Setting.HttpUrl), nameof(Setting.HttpUrl));
         }
 
         return true;

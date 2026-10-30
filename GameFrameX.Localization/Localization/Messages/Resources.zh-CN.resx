@@ -146,7 +146,7 @@
 
     <!-- 设置模块日志和错误键名 -->
 <data name="Utility.Settings.LoadConfigurationFailed" xml:space="preserve">
-    <value>加载配置文件失败</value>
+    <value>加载配置文件失败。配置文件: {0}。</value>
   </data>
 
     <!-- Network.Message模块日志和错误键名 -->
@@ -694,7 +694,7 @@
 <!-- Utility.ExceptionLogs 相关消息 -->
 <!-- StartUp.HealthCheck 相关消息 -->
     <data name="StartUp.HealthCheck.EndpointEnabled" xml:space="preserve">
-    <value>健康检查端点已启用:</value>
+    <value>健康检查端点已启用: {0}。</value>
   </data>
 
     <data name="StartUp.HealthCheck.Ok" xml:space="preserve">
@@ -778,11 +778,11 @@
   </data>
 
   <data name="StartUp.NoConfigurationUseDefault" xml:space="preserve">
-    <value>未找到配置，使用默认值。</value>
+    <value>未找到服务器类型 '{0}' 的配置，使用默认值。</value>
   </data>
 
   <data name="StartUp.PrometheusMetricsEndpointEnabledInline" xml:space="preserve">
-    <value>Prometheus指标端点已内联启用。</value>
+    <value>内联 Prometheus 指标端点已启用: http://{0}:{1}/metrics。</value>
   </data>
 
   <data name="StartUp.StartingServerWithConfiguration" xml:space="preserve">
