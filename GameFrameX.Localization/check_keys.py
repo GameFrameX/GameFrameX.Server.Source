@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-检查 Keys 类中定义的所有 key 是否在 resx 资源文件中存在
-如果不存在则自动补充
+检查 Keys 类中定义的所有 key 与 resx 资源文件的键一致性。
+
+默认为校验模式：缺失或多余的 key 均视为失败并以非零退出码结束（防止键集合漂移）。
+使用 --fix 进入修复模式：自动补齐缺失的 key 到 resx（占位值），并对多余的 key 仅打印放行。
 """
 
-import os
+import argparse
+import re
+import sys
+
 import re
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
@@ -161,8 +166,15 @@ def print_key_list(keys, limit=10):
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="检查 Keys 常量与 resx 资源文件的键一致性；默认校验模式，缺失/多余均非零退出")
+    parser.add_argument(
+        "--fix", action="store_true",
+        help="修复模式：自动补齐缺失的 key 到 resx（占位值），并对多余的 key 仅打印放行")
+    args = parser.parse_args()
+
     print("=" * 60)
-    print("Keys 检查脚本 - 检查 resx 资源文件中缺失的 key")
+    print("Keys 检查脚本 - 检查 resx 资源文件与 Keys 常量的键一致性")
     print("=" * 60)
     print()
 
@@ -170,6 +182,9 @@ def main():
     print("1. 从 Keys.*.cs 文件中提取 key...")
     cs_keys = extract_keys_from_cs_files()
     print(f"   找到 {len(cs_keys)} 个 key 定义")
+
+    exit_code = 0
+    waived_extra_count = 0
 
     # 2. 检查每个 resx 文件
     for lang, resx_path in RESX_FILES.items():
@@ -185,24 +200,41 @@ def main():
         extra_keys = resx_keys - cs_keys
 
         if missing_keys:
-            print(f"   缺失 {len(missing_keys)} 个 key:")
-            print_key_list(missing_keys)
+            if args.fix:
+                print(f"   缺失 {len(missing_keys)} 个 key:")
+                print_key_list(missing_keys)
 
-            # 添加缺失的 key
-            is_chinese = lang == "zh-CN"
-            added = add_keys_to_resx(resx_path, missing_keys, is_chinese)
-            print(f"   已添加 {added} 个缺失的 key 到 {resx_path.name}")
+                # 添加缺失的 key
+                is_chinese = lang == "zh-CN"
+                added = add_keys_to_resx(resx_path, missing_keys, is_chinese)
+                print(f"   已添加 {added} 个缺失的 key 到 {resx_path.name}")
+            else:
+                print(f"   [FAIL] 缺失 {len(missing_keys)} 个 key（常量已定义但 resx 未落键；用 --fix 自动补齐）:")
+                print_key_list(missing_keys)
+                exit_code = 1
         else:
             print(f"   所有 key 都存在，无需补充")
 
         if extra_keys:
-            print(f"   资源文件中有 {len(extra_keys)} 个多余的 key (在 C# 中未定义)")
-            print_key_list(extra_keys)
+            if args.fix:
+                print(f"   [WARN] 资源文件中有 {len(extra_keys)} 个多余的 key (在 C# 中未定义，--fix 模式放行):")
+                print_key_list(extra_keys)
+                waived_extra_count += len(extra_keys)
+            else:
+                print(f"   [FAIL] 资源文件中有 {len(extra_keys)} 个多余的 key (在 C# 中未定义，键集合漂移):")
+                print_key_list(extra_keys)
+                exit_code = 1
 
     print()
     print("=" * 60)
-    print("检查完成!")
+    if exit_code == 0 and waived_extra_count == 0:
+        print("检查完成! 常量与两个 resx 键集合一致。")
+    elif exit_code == 0:
+        print(f"修复完成! 缺失的 key 已补齐；仍有 {waived_extra_count} 个多余的 key 待人工清理（--fix 模式放行，键集合不一致）。")
+    else:
+        print("检查失败! 存在缺失或多余的 key，退出码 1。")
     print("=" * 60)
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":
