@@ -239,7 +239,7 @@
     <value>AppRunning已经被设置为退出，不能再次开启...</value>
   </data>
 <data name="Utility.Settings.LoadConfigurationFailed" xml:space="preserve">
-    <value>加载配置文件失败</value>
+    <value>加载配置文件失败。配置文件: {0}。</value>
   </data>
 
     <!-- Network.Message模块日志和错误键名 -->
@@ -908,7 +908,7 @@
 <!-- Utility.ExceptionLogs 相关消息 -->
 <!-- StartUp.HealthCheck 相关消息 -->
     <data name="StartUp.HealthCheck.EndpointEnabled" xml:space="preserve">
-    <value>健康检查端点已启用:</value>
+    <value>健康检查端点已启用: {0}。</value>
   </data>
 
     <data name="StartUp.HealthCheck.DetailedEndpointUrl" xml:space="preserve">
@@ -932,7 +932,7 @@
   </data>
 
     <data name="StartUp.HealthCheck.OpenTelemetryConfiguredNormally" xml:space="preserve">
-    <value>OpenTelemetry已正常配置</value>
+    <value>OpenTelemetry 已正常配置。端点: {0}。</value>
   </data>
 
     <data name="StartUp.HealthCheck.Ok" xml:space="preserve">
@@ -1189,11 +1189,11 @@
   </data>
 
   <data name="StartUp.NoConfigurationUseDefault" xml:space="preserve">
-    <value>未找到配置，使用默认值。</value>
+    <value>未找到服务器类型 '{0}' 的配置，使用默认值。</value>
   </data>
 
   <data name="StartUp.PrometheusMetricsEndpointEnabledInline" xml:space="preserve">
-    <value>Prometheus指标端点已内联启用。</value>
+    <value>内联 Prometheus 指标端点已启用: http://{0}:{1}/metrics。</value>
   </data>
 
   <data name="StartUp.StartingServerWithConfiguration" xml:space="preserve">
@@ -1213,15 +1213,15 @@
   </data>
 
   <data name="Logs.UnifiedMessaging.Initialized" xml:space="preserve">
-    <value>[待翻译] Logs.UnifiedMessaging.Initialized</value>
+    <value>统一消息发送器初始化完成。</value>
   </data>
 
   <data name="Logs.UnifiedMessaging.PlayerSendResult" xml:space="preserve">
-    <value>[待翻译] Logs.UnifiedMessaging.PlayerSendResult</value>
+    <value>统一消息发送器玩家消息投递结果: targetType:{0} playerId:{1} status:{2} elapsedMs:{3} traceId:{4}</value>
   </data>
 
   <data name="Logs.UnifiedMessaging.ServerSendResult" xml:space="preserve">
-    <value>[待翻译] Logs.UnifiedMessaging.ServerSendResult</value>
+    <value>统一消息发送器系统消息发送结果: serviceName:{0} statusCode:{1} elapsedMs:{2} traceId:{3} instance:{4}</value>
   </data>
 
   <data name="StartUp.Kcp.ServerDisabled" xml:space="preserve">
@@ -2646,42 +2646,6 @@
 
   <data name="Utility.LNumber.MultiplicationOverflowLog" xml:space="preserve">
     <value>LNumber.MultiplicationOverflow LNumber乘法已越界 &gt; {0}</value>
-  </data>
-
-  <data name="CoreExceptions.HotfixModule.ClassMustBeSealed" xml:space="preserve">
-    <value>[待翻译] CoreExceptions.HotfixModule.ClassMustBeSealed</value>
-  </data>
-
-  <data name="CoreExceptions.HotfixModule.ComponentAgentWrongSuffix" xml:space="preserve">
-    <value>[待翻译] CoreExceptions.HotfixModule.ComponentAgentWrongSuffix</value>
-  </data>
-
-  <data name="CoreExceptions.HotfixModule.EventArgsTypeInvalid" xml:space="preserve">
-    <value>[待翻译] CoreExceptions.HotfixModule.EventArgsTypeInvalid</value>
-  </data>
-
-  <data name="CoreExceptions.HotfixModule.EventHandlerWrongSuffix" xml:space="preserve">
-    <value>[待翻译] CoreExceptions.HotfixModule.EventHandlerWrongSuffix</value>
-  </data>
-
-  <data name="CoreExceptions.HotfixModule.HttpProcessorRepeatedlyRegistered" xml:space="preserve">
-    <value>[待翻译] CoreExceptions.HotfixModule.HttpProcessorRepeatedlyRegistered</value>
-  </data>
-
-  <data name="CoreExceptions.HotfixModule.MessageProcessorWrongSuffix" xml:space="preserve">
-    <value>[待翻译] CoreExceptions.HotfixModule.MessageProcessorWrongSuffix</value>
-  </data>
-
-  <data name="CoreExceptions.HotfixModule.MultipleAgents" xml:space="preserve">
-    <value>[待翻译] CoreExceptions.HotfixModule.MultipleAgents</value>
-  </data>
-
-  <data name="CoreExceptions.HotfixModule.NoEventsToListen" xml:space="preserve">
-    <value>[待翻译] CoreExceptions.HotfixModule.NoEventsToListen</value>
-  </data>
-
-  <data name="CoreExceptions.HotfixModule.WrongMessageHandlerType" xml:space="preserve">
-    <value>[待翻译] CoreExceptions.HotfixModule.WrongMessageHandlerType</value>
   </data>
 
   <data name="Hotfix.Friend.DomainBridgeUnavailable" xml:space="preserve">

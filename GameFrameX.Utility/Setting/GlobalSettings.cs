@@ -94,7 +94,9 @@ public static class GlobalSettings
         LogHelper.ShowOption(LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.LoadGlobalSettings), fullPath);
         if (!File.Exists(path))
         {
-            LogHelper.ShowOption(LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.LoadGlobalSettingsFailed), LocalizationService.GetString(Localization.Keys.Utility.Settings.LoadConfigurationFailed));
+            // Localization: Utility.GlobalSettings.LoadGlobalSettingsFailed - 加载全局设置失败。错误：{0}。
+            // Localization: Utility.Settings.LoadConfigurationFailed - 加载配置文件失败。配置文件：{0}。
+            LogHelper.ShowOption(LocalizationService.GetString(Localization.Keys.Utility.GlobalSettings.LoadGlobalSettingsFailed, path), LocalizationService.GetString(Localization.Keys.Utility.Settings.LoadConfigurationFailed, path));
             return;
         }
 

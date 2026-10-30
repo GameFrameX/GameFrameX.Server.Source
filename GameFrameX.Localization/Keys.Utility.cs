@@ -575,6 +575,7 @@ public static partial class Keys
             /// <remarks>
             /// 键名: Utility.GlobalSettings.LoadGlobalSettingsFailed
             /// 用途: 当加载全局设置配置失败时显示错误标题
+            /// 参数: {0} - 配置文件路径
             /// </remarks>
             public const string LoadGlobalSettingsFailed = "Utility.GlobalSettings.LoadGlobalSettingsFailed";
 
@@ -720,6 +721,7 @@ public static partial class Keys
             /// <remarks>
             /// 键名: Utility.Settings.LoadConfigurationFailed
             /// 用途: 当配置文件加载失败时记录日志
+            /// 参数: {0} - 配置文件路径
             /// </remarks>
             public const string LoadConfigurationFailed = "Utility.Settings.LoadConfigurationFailed";
         }

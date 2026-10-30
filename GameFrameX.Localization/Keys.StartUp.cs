@@ -91,7 +91,7 @@ public static partial class Keys
         public const string FindingConfigurationForServerType = "StartUp.FindingConfigurationForServerType";
 
         /// <summary>
-        /// If no startup configuration is found for the server type, it will start with the default configuration=>{0}
+        /// No configuration found for server type '{0}', using default values.
         /// </summary>
         /// <remarks>
         /// 键名: StartUp.NoConfigurationUseDefault
@@ -149,7 +149,7 @@ public static partial class Keys
         public const string PrometheusMetricsEndpointEnabled = "StartUp.PrometheusMetricsEndpointEnabled";
 
         /// <summary>
-        /// Prometheus metrics endpoint is enabled: http://{0}:{1}/metrics
+        /// Prometheus metrics endpoint enabled inline: http://{0}:{1}/metrics.
         /// </summary>
         /// <remarks>
         /// 键名: StartUp.PrometheusMetricsEndpointEnabledInline
@@ -678,7 +678,7 @@ public static partial class Keys
             public const string EndpointEnabled = "StartUp.HealthCheck.EndpointEnabled";
 
             /// <summary>
-            /// - detailed health checks: http://{0}:{1}{2}
+            /// Detailed health check endpoint: http://{0}:{1}{2}.
             /// </summary>
             /// <remarks>
             /// 键名: StartUp.HealthCheck.DetailedEndpointUrl
@@ -688,7 +688,7 @@ public static partial class Keys
             public const string DetailedEndpointUrl = "StartUp.HealthCheck.DetailedEndpointUrl";
 
             /// <summary>
-            /// - simple health check: http://{0}:{1}{2}
+            /// Simple health check endpoint: http://{0}:{1}{2}.
             /// </summary>
             /// <remarks>
             /// 键名: StartUp.HealthCheck.SimpleEndpointUrl
@@ -698,7 +698,7 @@ public static partial class Keys
             public const string SimpleEndpointUrl = "StartUp.HealthCheck.SimpleEndpointUrl";
 
             /// <summary>
-            /// - OpenTelemetry check: http://{0}:{1}{2}
+            /// OpenTelemetry endpoint URL: http://{0}:{1}{2}.
             /// </summary>
             /// <remarks>
             /// 键名: StartUp.HealthCheck.OpenTelemetryEndpointUrl

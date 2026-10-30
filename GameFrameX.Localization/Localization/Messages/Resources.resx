@@ -79,7 +79,7 @@
 
     <!-- Utility module exception keys -->
     <data name="Utility.Exceptions.ActorIdLessThanMinServerId" xml:space="preserve">
-    <value>actorId is less than min server id</value>
+    <value>actorId is less than min server id, min server id: {0}</value>
   </data>
     <data name="Utility.Exceptions.ActorIdLessThanMinServerIdDetail" xml:space="preserve">
     <value>actorId: {0} is less than min server id: {1}</value>
@@ -1034,11 +1034,11 @@
   </data>
 
   <data name="StartUp.ApplicationSettings.ConfigFilePath" xml:space="preserve">
-    <value>Configuration file path: {0}.</value>
+    <value>Configs/app_config.json</value>
   </data>
 
   <data name="StartUp.ApplicationSettings.LogTypeSeparator" xml:space="preserve">
-    <value>Log type separator: {0}.</value>
+    <value>_</value>
   </data>
 
   <data name="StartUp.ApplicationSettings.WarningMessage" xml:space="preserve">
@@ -1062,7 +1062,7 @@
   </data>
 
   <data name="StartUp.HealthCheck.DetailedEndpointUrl" xml:space="preserve">
-    <value>Detailed health check endpoint: {0}.</value>
+    <value>Detailed health check endpoint: http://{0}:{1}{2}.</value>
   </data>
 
   <data name="StartUp.HealthCheck.EndpointEnabled" xml:space="preserve">
@@ -1082,11 +1082,11 @@
   </data>
 
   <data name="StartUp.HealthCheck.OpenTelemetryEndpointUrl" xml:space="preserve">
-    <value>OpenTelemetry endpoint URL: {0}.</value>
+    <value>OpenTelemetry endpoint URL: http://{0}:{1}{2}.</value>
   </data>
 
   <data name="StartUp.HealthCheck.SimpleEndpointUrl" xml:space="preserve">
-    <value>Simple health check endpoint: {0}.</value>
+    <value>Simple health check endpoint: http://{0}:{1}{2}.</value>
   </data>
 
   <data name="StartUp.HttpExceptions.AddressMustEndWithSlash" xml:space="preserve">
@@ -1111,23 +1111,23 @@
   </data>
 
   <data name="StartUp.HttpServer.ApiContactName" xml:space="preserve">
-    <value>API contact name: {0}.</value>
+    <value>Blank</value>
   </data>
 
   <data name="StartUp.HttpServer.ApiDescription" xml:space="preserve">
-    <value>API description: {0}.</value>
+    <value>GameFrameX HTTP API Documentation</value>
   </data>
 
   <data name="StartUp.HttpServer.ApiLicenseName" xml:space="preserve">
-    <value>API license name: {0}.</value>
+    <value>GameFrameX</value>
   </data>
 
   <data name="StartUp.HttpServer.ApiTitle" xml:space="preserve">
-    <value>API title: {0}.</value>
+    <value>GameFrameX API</value>
   </data>
 
   <data name="StartUp.HttpServer.OpenTelemetryServiceType" xml:space="preserve">
-    <value>OpenTelemetry service type: {0}.</value>
+    <value>HTTP</value>
   </data>
 
   <data name="StartUp.HttpServer.PortOccupied" xml:space="preserve">
@@ -1143,7 +1143,7 @@
   </data>
 
   <data name="StartUp.HttpServer.SwaggerRoutePrefix" xml:space="preserve">
-    <value>Swagger route prefix: {0}.</value>
+    <value>swagger</value>
   </data>
 
   <data name="StartUp.LaunchServerType" xml:space="preserve">
@@ -1151,11 +1151,11 @@
   </data>
 
   <data name="StartUp.NoConfigurationUseDefault" xml:space="preserve">
-    <value>No configuration found, using default values.</value>
+    <value>No configuration found for server type '{0}', using default values.</value>
   </data>
 
   <data name="StartUp.PrometheusMetricsEndpointEnabledInline" xml:space="preserve">
-    <value>Prometheus metrics endpoint enabled inline.</value>
+    <value>Prometheus metrics endpoint enabled inline: http://{0}:{1}/metrics.</value>
   </data>
 
   <data name="StartUp.StartingServerWithConfiguration" xml:space="preserve">
@@ -1179,7 +1179,7 @@
   </data>
 
   <data name="Utility.Exceptions.InputIsGlobalId" xml:space="preserve">
-    <value>Input is a global ID, cannot extract server ID.</value>
+    <value>Input is a global ID: {0}, cannot extract server ID.</value>
   </data>
 
   <data name="Utility.Exceptions.LnValueNonPositive" xml:space="preserve">
@@ -1195,7 +1195,7 @@
   </data>
 
   <data name="Utility.Exceptions.ValueOutOfRange" xml:space="preserve">
-    <value>Value out of range. Value: {0}, min: {1}, max: {2}.</value>
+    <value>Value must be between -FP.One and FP.One.</value>
   </data>
 
   <data name="Utility.Exceptions.WorkerIdOutOfRange" xml:space="preserve">
@@ -1215,15 +1215,15 @@
   </data>
 
   <data name="Logs.UnifiedMessaging.Initialized" xml:space="preserve">
-    <value>[TODO] Logs.UnifiedMessaging.Initialized</value>
+    <value>Unified messaging sender initialized.</value>
   </data>
 
   <data name="Logs.UnifiedMessaging.PlayerSendResult" xml:space="preserve">
-    <value>[TODO] Logs.UnifiedMessaging.PlayerSendResult</value>
+    <value>Unified messaging player message delivery result: targetType:{0} playerId:{1} status:{2} elapsedMs:{3} traceId:{4}</value>
   </data>
 
   <data name="Logs.UnifiedMessaging.ServerSendResult" xml:space="preserve">
-    <value>[TODO] Logs.UnifiedMessaging.ServerSendResult</value>
+    <value>Unified messaging server message send result: serviceName:{0} statusCode:{1} elapsedMs:{2} traceId:{3} instance:{4}</value>
   </data>
 
   <data name="StartUp.Kcp.ServerDisabled" xml:space="preserve">
