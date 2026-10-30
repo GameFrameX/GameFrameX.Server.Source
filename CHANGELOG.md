@@ -13,6 +13,13 @@
 * GameFrameX.Foundation.Logger ≥ 4.1.1 的 nuspec 无条件声明 MongoDB.Driver 与 Serilog.Sinks.MongoDB（运行时 IsWriteToMongoDb 默认关闭）。已解除——Foundation 5.0.0 将 Mongo/Loki sink 拆为可选组件包，随 C224 全量升级后传递依赖归零，验证 feed 补丁包不再需要
 
 ## [Unreleased]
+### Security(仓库与部署面修复)
+
+* 默认编排与 CI 供应链收紧:docker-compose.yml 的 Mongo 端口绑定 127.0.0.1;docker-compose.multi.yml 12 个实例的 TCP/HTTP 端口改由生成器统一绑定 127.0.0.1;GitHub Actions 升级至当前最新 major(actions/checkout v7、actions/setup-dotnet v6、peaceiris/actions-gh-pages v4),docs-publish / topology-equivalence / sync 显式声明最小 permissions,sonar-issues 改显式传 SONAR_TOKEN(release / sync 因上游 public-github-actions 未声明 on.workflow_call.secrets 暂保留 secrets: inherit,已在文件内注释说明);.gitignore 补 .env / .env.* 排除;.dockerignore 排除仓库根 Configs/ 与 IDE 用户设置;deploy-game.sh 含凭据请求体改用 mktemp 私有临时文件并 trap 退出清理(不再落可预测的 /tmp/deploy-body.json)
+
+### Changed
+
+* Dockerfile 构建层优化:restore 前先分层 COPY 全部工程与属性文件(仅项目结构/版本清单变化才重新 restore,源码变更实测 restore 层命中 CACHED);删除 final 阶段重复的 publish COPY;热更 DLL 同步移除 `|| true` 吞错(glob 未匹配或复制失败改为构建期 fail fast);scripts/acceptance.sh 仓库根改为按脚本自身位置推导并修正解决方案为 Server.slnx(原硬编码个人绝对路径且引用已不存在的 Server.sln)
 
 ### Fixed
 * HTTP 请求管线正确性与响应一致性（C458，GFX-1180，GitHub #926）：ProtoBuf 成功响应写出前更正 Content-Type 为 `application/x-protobuf`（原恒为 JSON，按媒体类型分派的客户端/网关解析二进制体失败）；参数字典改 OrdinalIgnoreCase 并同步把 Query 提取改 TryAdd——大小写差异同名键（Query↔Body、Query↔Query）一律显式 `ParamErr` 拒绝，消除「被校验/被签名的 Query 值被 Body 静默覆盖」窗口；非 JSON 对象 Body（null 字面量/数组/标量/空体）以参数错误拒绝（新键 `Network.Http.RequestBodyNotJsonObject`），不再落入顶层 catch 记服务器错误日志；非 GET 缺 Content-Type 改统一 JSON envelope；DataAnnotations 校验失败业务码由字面量 400 统一为 `GameHttpStatusCode.ParamErr`；Swagger 路由匹配改末段精确比较（互为后缀命令不再错配文档，驼峰路由可匹配）且 GET 参数必填性跟随 `RequiredAttribute`；AOP 拒绝且未自行写响应时管线回写校验失败 envelope（契约写入 `IHttpAopHandler.Run`）；`CheckSign` 缺 sign/timestamp 改本地化消息。对外破坏性：依赖 `code == 400` 判定校验失败的客户端改判 `code == 13`；`HttpStatusMessage.Success`/`NotFoundCommand`/`CheckFailedCommand` 及孤儿键 `Network.Http.NotFoundCommand`/`CheckFailedCommand` 删除（公共 API，下游如有引用需迁移）。
