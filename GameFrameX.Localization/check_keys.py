@@ -57,6 +57,33 @@ class StructureFailure(Exception):
         self.exit_code = 2
 
 
+def _parse_keys_cs_file(cs_file, keys, key_paths):
+    """逐行解析单个 Keys.*.cs：收集常量键值，并记录 类嵌套全路径 → 键值（供调用点扫描解析用）。"""
+    stack = []
+    for line in cs_file.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        m = CONST_PATTERN.search(stripped)
+        if m and stack:
+            raw = m.group(2)
+            value = raw.encode().decode("unicode_escape") if "\\" in raw else raw
+            keys.add(value)
+            key_paths.append((".".join(stack + [m.group(1)]), value))
+            continue
+        m = CLASS_PATTERN.search(stripped)
+        if m:
+            stack.append(m.group(1))
+            continue
+        if stripped == "}" and stack:
+            stack.pop()
+
+
+def _validate_key_names(keys):
+    """键名合法性：任何含 XML 特殊字符/空白的键名直接结构失败（--fix 也不得写入）。"""
+    for key in sorted(keys):
+        if not KEY_NAME_PATTERN.fullmatch(key):
+            raise StructureFailure(f"非法资源键名（含 XML 特殊字符或空白）: {key!r}，请修正 Keys.*.cs 中的常量值")
+
+
 def extract_keys_from_cs_files(keys_dir):
     """从所有 Keys.*.cs 文件中提取 key 定义；同时返回 类嵌套全路径 → 键值 映射（供调用点扫描解析用）。"""
     keys = set()
@@ -68,28 +95,9 @@ def extract_keys_from_cs_files(keys_dir):
         cs_files.append(keys_cs)
 
     for cs_file in cs_files:
-        stack = []
-        for line in cs_file.read_text(encoding="utf-8").splitlines():
-            stripped = line.strip()
-            m = CONST_PATTERN.search(stripped)
-            if m and stack:
-                value = m.group(2).encode().decode("unicode_escape") if "\\" in m.group(2) else m.group(2)
-                keys.add(value)
-                key_paths.append((".".join(stack + [m.group(1)]), value))
-                continue
-            m = CLASS_PATTERN.search(stripped)
-            if m:
-                stack.append(m.group(1))
-                continue
-            if stripped == "}":
-                if stack:
-                    stack.pop()
+        _parse_keys_cs_file(cs_file, keys, key_paths)
 
-    # 键名合法性：任何含 XML 特殊字符/空白的键名直接结构失败（--fix 也不得写入）
-    for key in sorted(keys):
-        if not KEY_NAME_PATTERN.fullmatch(key):
-            raise StructureFailure(f"非法资源键名（含 XML 特殊字符或空白）: {key!r}，请修正 Keys.*.cs 中的常量值")
-
+    _validate_key_names(keys)
     return keys, key_paths
 
 
@@ -225,6 +233,39 @@ def _skip_string_literal(text, i):
     return i
 
 
+def _skip_char_literal(text, i):
+    """i 位于单引号开头，跳过字符字面量，返回结束后下标。"""
+    j = i + 1
+    n = len(text)
+    while j < n:
+        if text[j] == "\\":
+            j += 2
+            continue
+        if text[j] == "'":
+            break
+        j += 1
+    return j + 1
+
+
+def _blank_span(out, start, end):
+    """把 [start, end) 抹成空格（保留换行以维持行号）。"""
+    for k in range(start, end):
+        if out[k] != "\n":
+            out[k] = " "
+
+
+def _skip_comment_at(text, i):
+    """text[i] 位于 '/'：若为注释开头返回跳过后下标，否则返回 None。"""
+    nxt = text[i + 1] if i + 1 < len(text) else ""
+    if nxt == "/":
+        j = text.find("\n", i)
+        return len(text) if j == -1 else j
+    if nxt == "*":
+        j = text.find("*/", i)
+        return len(text) if j == -1 else j + 2
+    return None
+
+
 def _strip_comments(text):
     """字符串感知地抹掉注释内容（保持长度与行号不变）。"""
     out = list(text)
@@ -235,32 +276,14 @@ def _strip_comments(text):
             i = _skip_string_literal(text, i)
             continue
         if c == "'":
-            j = i + 1
-            while j < n:
-                if text[j] == "\\":
-                    j += 2
-                    continue
-                if text[j] == "'":
-                    break
-                j += 1
-            i = j + 1
+            i = _skip_char_literal(text, i)
             continue
-        if c == "/" and i + 1 < n and text[i + 1] == "/":
-            j = text.find("\n", i)
-            j = n if j == -1 else j
-            for k in range(i, j):
-                if out[k] != "\n":
-                    out[k] = " "
-            i = j
-            continue
-        if c == "/" and i + 1 < n and text[i + 1] == "*":
-            j = text.find("*/", i)
-            j = n if j == -1 else j + 2
-            for k in range(i, j):
-                if out[k] != "\n":
-                    out[k] = " "
-            i = j
-            continue
+        if c == "/":
+            j = _skip_comment_at(text, i)
+            if j is not None:
+                _blank_span(out, i, j)
+                i = j
+                continue
         i += 1
     return "".join(out)
 
@@ -275,14 +298,11 @@ def _read_balanced(text, start):
         if c in "\"'":
             i = _skip_string_literal(text, i)
             continue
-        if c == "/" and i + 1 < len(text) and text[i + 1] == "/":
-            j = text.find("\n", i)
-            i = len(text) if j == -1 else j
-            continue
-        if c == "/" and i + 1 < len(text) and text[i + 1] == "*":
-            j = text.find("*/", i)
-            i = len(text) if j == -1 else j + 2
-            continue
+        if c == "/":
+            j = _skip_comment_at(text, i)
+            if j is not None:
+                i = j
+                continue
         if c == "(":
             depth += 1
         elif c == ")":
@@ -368,70 +388,118 @@ class CallsiteScanner:
             return fuzzy.pop()
         return None
 
-    def scan(self):
-        """返回 (违规列表, 未解析表达式列表)。"""
-        violations = []
-        unresolved = []
-        files = [
+    def _iter_callsite_files(self):
+        """仓库内待扫描 .cs 文件（排除 obj/bin 与本地化目录自身）。"""
+        return [
             p for p in self.repo_root.rglob("*.cs")
             if "/obj/" not in str(p) and "/bin/" not in str(p)
             and not p.parent.resolve().is_relative_to(self.localization_dir)
         ]
+
+    def _format_wrapped_arg_count(self, text, m):
+        """string.Format 包裹判定：回溯本次调用自身的限定符链后若位于某调用的首参位置，
+        且外层 callee 为 string.Format，则返回 有效实参 = string.Format 总实参 - 1（格式串本身）；否则 None。"""
+        p = m.start() - 1
+        while p >= 0 and text[p] in " \t\r\n":
+            p -= 1
+        while p >= 0 and (text[p].isalnum() or text[p] in "._<>"):
+            p -= 1
+        if p < 0 or text[p] != "(":
+            return None
+        q = p - 1
+        while q >= 0 and (text[q].isalnum() or text[q] in "._<>"):
+            q -= 1
+        callee = text[q + 1:p]
+        if not (callee.endswith("string.Format") or callee == "Format"):
+            return None
+        format_inner, _ = _read_balanced(text, p)
+        return len(_split_top_level(format_inner)) - 1
+
+    def _is_template_variable(self, text, m):
+        """豁免：赋值给局部变量后由 string.Format(var, ...) 消费（模板变量模式）。"""
+        stmt_prefix = text[max(0, m.start() - 200):m.start()]
+        var_match = re.search(r"(?:var|let)\s+(\w+)\s*=\s*$", stmt_prefix)
+        return bool(var_match and re.search(
+            r"string\.Format\s*\(\s*" + re.escape(var_match.group(1)) + r"\s*,", text
+        ))
+
+    def _check_callsite(self, text, m, path, violations, unresolved):
+        """处理单个 LocalizationService.GetString 调用点。"""
+        inner, _ = _read_balanced(text, m.end() - 1)
+        args = _split_top_level(inner)
+        if not args:
+            return
+        key = self.resolve_key(args[0])
+        if key is None:
+            unresolved.append((str(path.relative_to(self.repo_root)), args[0][:120]))
+            return
+        if key not in self.en_values or key not in self.zh_values:
+            return
+        en_args = placeholder_arg_count(self.en_values[key])
+        zh_args = placeholder_arg_count(self.zh_values[key])
+        arg_count = self._format_wrapped_arg_count(text, m)
+        if arg_count is None:
+            arg_count = len(args) - 1
+        if arg_count in (en_args, zh_args):
+            return
+        if self._is_template_variable(text, m):
+            return
+        line = text.count("\n", 0, m.start()) + 1
+        violations.append(
+            f"     - {path.relative_to(self.repo_root)}:{line}  {key}  "
+            f"实参={arg_count}  default 占位参数={en_args}  zh-CN 占位参数={zh_args}"
+        )
+
+    def scan(self):
+        """返回 (违规列表, 未解析表达式列表)。"""
+        violations = []
+        unresolved = []
         total = 0
-        for path in sorted(files):
+        for path in sorted(self._iter_callsite_files()):
             raw = path.read_text(encoding="utf-8", errors="replace")
             text = _strip_comments(raw)
             for m in re.finditer(r"LocalizationService\.GetString\s*\(", text):
                 total += 1
-                inner, _ = _read_balanced(text, m.end() - 1)
-                args = _split_top_level(inner)
-                if not args:
-                    continue
-                key = self.resolve_key(args[0])
-                if key is None:
-                    unresolved.append((str(path.relative_to(self.repo_root)), args[0][:120]))
-                    continue
-                if key not in self.en_values or key not in self.zh_values:
-                    continue
-                en_args = placeholder_arg_count(self.en_values[key])
-                zh_args = placeholder_arg_count(self.zh_values[key])
-                arg_count = len(args) - 1
-
-                # string.Format 包裹：回溯本次调用自身的限定符链后若位于某调用的首参位置，
-                # 且外层 callee 为 string.Format，则有效实参 = string.Format 总实参 - 1（格式串本身）。
-                p = m.start() - 1
-                while p >= 0 and text[p] in " \t\r\n":
-                    p -= 1
-                while p >= 0 and (text[p].isalnum() or text[p] in "._<>"):
-                    p -= 1
-                if p >= 0 and text[p] == "(":
-                    q = p - 1
-                    while q >= 0 and (text[q].isalnum() or text[q] in "._<>"):
-                        q -= 1
-                    callee = text[q + 1:p]
-                    if callee.endswith("string.Format") or callee == "Format":
-                        format_inner, _ = _read_balanced(text, p)
-                        arg_count = len(_split_top_level(format_inner)) - 1
-
-                if arg_count in (en_args, zh_args):
-                    continue
-
-                # 豁免：赋值给局部变量后由 string.Format(var, ...) 消费（模板变量模式）
-                stmt_prefix = text[max(0, m.start() - 200):m.start()]
-                var_match = re.search(r"(?:var|let)\s+(\w+)\s*=\s*$", stmt_prefix)
-                if var_match and re.search(
-                    r"string\.Format\s*\(\s*" + re.escape(var_match.group(1)) + r"\s*,", text
-                ):
-                    continue
-
-                line = text.count("\n", 0, m.start()) + 1
-                violations.append(
-                    f"     - {path.relative_to(self.repo_root)}:{line}  {key}  "
-                    f"实参={arg_count}  default 占位参数={en_args}  zh-CN 占位参数={zh_args}"
-                )
+                self._check_callsite(text, m, path, violations, unresolved)
         print(f"   调用点扫描: {total} 处 LocalizationService.GetString，"
               f"解析 {total - len(unresolved)}，无法静态解析 {len(unresolved)}（仅告警）")
         return violations, unresolved
+
+
+def _check_language(lang, resx_path, cs_keys, fix):
+    """检查单语言 resx：返回 (values, failure_messages)；--fix 时补写后重解析。"""
+    messages = []
+    print()
+    print(f"2. 检查 {lang} 资源文件: {resx_path.name}")
+    values = parse_resx(resx_path)
+    print(f"   资源文件中有 {len(values)} 个 key")
+
+    missing_keys = cs_keys - set(values)
+    extra_keys = set(values) - cs_keys
+
+    if missing_keys:
+        print(f"   缺失 {len(missing_keys)} 个 key:")
+        print_key_list(missing_keys)
+        if fix:
+            added = add_keys_to_resx(resx_path, missing_keys, lang == "zh-CN")
+            print(f"   已补写 {added} 个缺失的 key 到 {resx_path.name}（占位值，需翻译）")
+            values = parse_resx(resx_path)
+        else:
+            messages.append(f"{lang} 缺失 {len(missing_keys)} 个 key（--fix 显式补写）")
+    else:
+        print("   所有 key 都存在，无需补充")
+
+    if extra_keys:
+        print(f"   资源文件中有 {len(extra_keys)} 个多余的 key (在 C# 中未定义，仅提示)")
+        print_key_list(extra_keys)
+
+    todo_keys = [k for k, v in values.items() if any(marker in v for marker in TODO_MARKERS)]
+    if todo_keys:
+        print(f"   存在 {len(todo_keys)} 个待翻译占位值 ([TODO]/[待翻译]):")
+        print_key_list(todo_keys)
+        messages.append(f"{lang} 存在 {len(todo_keys)} 个待翻译占位值（运行 auto_translate.py 或人工翻译）")
+
+    return values, messages
 
 
 def main():
@@ -469,41 +537,13 @@ def main():
 
     resx_values = {}
     for lang, resx_path in resx_files.items():
-        print()
-        print(f"2. 检查 {lang} 资源文件: {resx_path.name}")
         try:
-            values = parse_resx(resx_path)
+            values, messages = _check_language(lang, resx_path, cs_keys, args.fix)
         except StructureFailure as e:
             print(f"[结构错误] {e}", file=sys.stderr)
             sys.exit(2)
         resx_values[lang] = values
-        print(f"   资源文件中有 {len(values)} 个 key")
-
-        missing_keys = cs_keys - set(values)
-        extra_keys = set(values) - cs_keys
-
-        if missing_keys:
-            print(f"   缺失 {len(missing_keys)} 个 key:")
-            print_key_list(missing_keys)
-            if args.fix:
-                is_chinese = lang == "zh-CN"
-                added = add_keys_to_resx(resx_path, missing_keys, is_chinese)
-                print(f"   已补写 {added} 个缺失的 key 到 {resx_path.name}（占位值，需翻译）")
-                resx_values[lang] = values = parse_resx(resx_path)
-            else:
-                failure_messages.append(f"{lang} 缺失 {len(missing_keys)} 个 key（--fix 显式补写）")
-        else:
-            print("   所有 key 都存在，无需补充")
-
-        if extra_keys:
-            print(f"   资源文件中有 {len(extra_keys)} 个多余的 key (在 C# 中未定义，仅提示)")
-            print_key_list(extra_keys)
-
-        todo_keys = [k for k, v in values.items() if any(marker in v for marker in TODO_MARKERS)]
-        if todo_keys:
-            print(f"   存在 {len(todo_keys)} 个待翻译占位值 ([TODO]/[待翻译]):")
-            print_key_list(todo_keys)
-            failure_messages.append(f"{lang} 存在 {len(todo_keys)} 个待翻译占位值（运行 auto_translate.py 或人工翻译）")
+        failure_messages.extend(messages)
 
     print()
     print("3. EN/zh-CN 占位符与键集合一致性...")
