@@ -22,3 +22,7 @@
 **/secrets.dev.yaml
 **/values.dev.yaml
 LICENSE
+
+# 仓库根本地配置与 IDE 用户状态不进入构建上下文（镜像配置来自 GameFrameX.Config/json 与运行时挂载）
+Configs/
+Server.sln.DotSettings.user
