@@ -114,25 +114,6 @@ public static partial class Keys
         public const string ComponentRegisterEnd = "Launcher.ComponentRegisterEnd";
 
         /// <summary>
-        /// 开始加载热更新模块...
-        /// </summary>
-        /// <remarks>
-        /// 键名: Launcher.HotfixModuleLoadBegin
-        /// 用途: 记录开始加载热更新模块的日志
-        /// </remarks>
-        public const string HotfixModuleLoadBegin = "Launcher.HotfixModuleLoadBegin";
-
-        /// <summary>
-        /// 加载热更新模块结束...
-        /// </summary>
-        /// <remarks>
-        /// 键名: Launcher.HotfixModuleLoadEnd
-        /// 用途: 记录热更新模块加载结束的日志
-        /// </remarks>
-        public const string HotfixModuleLoadEnd = "Launcher.HotfixModuleLoadEnd";
-
-
-        /// <summary>
         /// 进入游戏主循环...
         /// </summary>
         /// <remarks>
@@ -198,106 +179,6 @@ public static partial class Keys
         /// 参数: {0} - 发送方服务器类型, {1} - 接收方服务器类型, {2} - 消息内容
         /// </remarks>
         public const string ReceiveMessage = "Launcher.ReceiveMessage";
-
-        /// <summary>
-        /// 注册玩家成功：{0}  {1}
-        /// </summary>
-        /// <remarks>
-        /// 键名: Launcher.PlayerRegisterSuccess
-        /// 用途: 记录玩家注册成功的日志
-        /// 参数: {0} - 玩家ID, {1} - 玩家信息
-        /// </remarks>
-        public const string PlayerRegisterSuccess = "Launcher.PlayerRegisterSuccess";
-
-        /// <summary>
-        /// 注销玩家成功：{0}  {1}
-        /// </summary>
-        /// <remarks>
-        /// 键名: Launcher.PlayerUnregisterSuccess
-        /// 用途: 记录玩家注销成功的日志
-        /// 参数: {0} - 玩家ID, {1} - 玩家信息
-        /// </remarks>
-        public const string PlayerUnregisterSuccess = "Launcher.PlayerUnregisterSuccess";
-
-        /// <summary>
-        /// 注册服务成功：{0}  {1}  {2}
-        /// </summary>
-        /// <remarks>
-        /// 键名: Launcher.ServiceRegisterSuccess
-        /// 用途: 记录服务注册成功的日志
-        /// 参数: {0} - 服务器类型, {1} - 服务器名称, {2} - 注册信息
-        /// </remarks>
-        public const string ServiceRegisterSuccess = "Launcher.ServiceRegisterSuccess";
-
-        /// <summary>
-        /// 注销服务成功：{0}  {1}
-        /// </summary>
-        /// <remarks>
-        /// 键名: Launcher.ServiceUnregisterSuccess
-        /// 用途: 记录服务注销成功的日志
-        /// 参数: {0} - 服务器ID, {1} - 服务器实例ID
-        /// </remarks>
-        public const string ServiceUnregisterSuccess = "Launcher.ServiceUnregisterSuccess";
-
-        /// <summary>
-        /// 有外部服务连接到中心服务器成功。链接信息：SessionID:{0} RemoteEndPoint:{1}
-        /// </summary>
-        /// <remarks>
-        /// 键名: Launcher.ExternalServiceConnected
-        /// 用途: 记录外部服务连接到中心服务器成功的日志
-        /// 参数: {0} - SessionID, {1} - RemoteEndPoint
-        /// </remarks>
-        public const string ExternalServiceConnected = "Launcher.ExternalServiceConnected";
-
-        /// <summary>
-        /// 有外部服务从中心服务器断开。链接信息：断开原因:{0}
-        /// </summary>
-        /// <remarks>
-        /// 键名: Launcher.ExternalServiceDisconnected
-        /// 用途: 记录外部服务从中心服务器断开的日志
-        /// 参数: {0} - 断开原因
-        /// </remarks>
-        public const string ExternalServiceDisconnected = "Launcher.ExternalServiceDisconnected";
-
-        /// <summary>
-        /// 玩家下线回调，通知其他服务器: {0} / Player offline callback, notify other servers: {0}
-        /// </summary>
-        /// <remarks>
-        /// 键名: Launcher.PlayerOfflineCallback
-        /// 用途: 记录玩家下线时的调试信息
-        /// 参数: {0} - 玩家信息的JSON序列化结果
-        /// </remarks>
-        public const string PlayerOfflineCallback = "Launcher.PlayerOfflineCallback";
-
-        /// <summary>
-        /// 玩家上线回调，通知其他服务器: {0} / Player online callback, notify other servers: {0}
-        /// </summary>
-        /// <remarks>
-        /// 键名: Launcher.PlayerOnlineCallback
-        /// 用途: 记录玩家上线时的调试信息
-        /// 参数: {0} - 玩家信息的JSON序列化结果
-        /// </remarks>
-        public const string PlayerOnlineCallback = "Launcher.PlayerOnlineCallback";
-
-        /// <summary>
-        /// 服务下线回调，通知其他服务器: {0} / Service offline callback, notify other servers: {0}
-        /// </summary>
-        /// <remarks>
-        /// 键名: Launcher.ServiceOfflineCallback
-        /// 用途: 记录服务下线时的调试信息
-        /// 参数: {0} - 服务信息
-        /// </remarks>
-        public const string ServiceOfflineCallback = "Launcher.ServiceOfflineCallback";
-
-        /// <summary>
-        /// 服务上线回调，通知其他服务器: {0} / Service online callback, notify other servers: {0}
-        /// </summary>
-        /// <remarks>
-        /// 键名: Launcher.ServiceOnlineCallback
-        /// 用途: 记录服务上线时的调试信息
-        /// 参数: {0} - 服务信息
-        /// </remarks>
-        public const string ServiceOnlineCallback = "Launcher.ServiceOnlineCallback";
 
     }
 }

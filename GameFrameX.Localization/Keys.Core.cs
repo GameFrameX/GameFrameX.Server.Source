@@ -412,16 +412,6 @@ public static partial class Keys
             public const string InitializationComplete = "Core.ComponentRegister.InitializationComplete";
 
             /// <summary>
-            /// 激活全局组件：{0} {1}
-            /// </summary>
-            /// <remarks>
-            /// 键名: Core.ComponentRegister.ActivateGlobalComponent
-            /// 用途: 激活全局组件时记录
-            /// 参数: {0} - Actor类型, {1} - 组件类型
-            /// </remarks>
-            public const string ActivateGlobalComponent = "Core.ComponentRegister.ActivateGlobalComponent";
-
-            /// <summary>
             /// ComponentRegister.ActiveGlobalComponents Actor类型:{0} , 消息: {1}未实现Agent,请检查业务代码是否正确
             /// </summary>
             /// <remarks>
@@ -516,16 +506,6 @@ public static partial class Keys
             /// 参数: {0} - 状态名称, {1} - 数量
             /// </remarks>
             public const string StateSaveBack = "Core.StateComponent.StateSaveBack";
-
-            /// <summary>
-            /// 保存数据异常，类型:{0}，{1}
-            /// </summary>
-            /// <remarks>
-            /// 键名: Core.StateComponent.SaveDataException
-            /// 用途: 保存数据异常时记录
-            /// 参数: {0} - 数据类型, {1} - 异常信息
-            /// </remarks>
-            public const string SaveDataException = "Core.StateComponent.SaveDataException";
 
             /// <summary>
             /// StateComponent.SaveAllAsync 保存所有状态，耗时: {0}毫秒
@@ -623,15 +603,6 @@ public static partial class Keys
             /// 参数: {0} - 消息类型
             /// </remarks>
             public const string ActorIdIsZero = "Core.MessageHandler.ActorIdIsZero";
-
-            /// <summary>
-            /// CacheComponent is null, can not get component, close channel
-            /// </summary>
-            /// <remarks>
-            /// 键名: Core.MessageHandler.CacheComponentIsNull
-            /// 用途: 当缓存组件为空时记录
-            /// </remarks>
-            public const string CacheComponentIsNull = "Core.MessageHandler.CacheComponentIsNull";
 
             /// <summary>
             /// InnerAction error: {0} {1}

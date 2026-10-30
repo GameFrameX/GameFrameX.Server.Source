@@ -105,197 +105,21 @@ def generate_translation(key, context, info):
             'BigInteger constructor byte overflow.',
             'BigInteger构造函数字节溢出。'
         ),
-        'Exceptions.BigInteger.ConstructorOverflow': (
-            'BigInteger constructor overflow. Value: {0}.',
-            'BigInteger构造函数溢出。值：{0}。'
-        ),
-        'Exceptions.BigInteger.ConstructorUnderflow': (
-            'BigInteger constructor underflow. Value: {0}.',
-            'BigInteger构造函数下溢。值：{0}。'
-        ),
-        'Exceptions.BigInteger.InvalidString': (
-            'BigInteger invalid string. String: {0}.',
-            'BigInteger无效字符串。字符串：{0}。'
-        ),
-
         # ===== Exceptions.Database =====
-        'Exceptions.Database.StartFailed': (
-            'Database start failed. Database type: {0}, error: {1}.',
-            '数据库启动失败。数据库类型：{0}，错误：{1}。'
-        ),
-
         # ===== Exceptions.Handler =====
-        'Exceptions.Handler.NotInitialized': (
-            'Handler not initialized. Handler type: {0}.',
-            '处理器未初始化。处理器类型：{0}。'
-        ),
-
         # ===== Exceptions.Network =====
-        'Exceptions.Network.InvalidIpFormat': (
-            'Invalid IP address format. IP: {0}.',
-            '无效的IP地址格式。IP：{0}。'
-        ),
-
         # ===== Exceptions.Timer =====
-        'Exceptions.Timer.CodeInHotfix': (
-            'Timer code cannot be used in hotfix assembly.',
-            '计时器代码不能在热更新程序集中使用。'
-        ),
         'Exceptions.Timer.InvalidParameters': (
             'Timer invalid parameters. Parameter: {0}, value: {1}.',
             '计时器参数无效。参数：{0}，值：{1}。'
         ),
-        'Exceptions.Timer.Weekly.EmptyDays': (
-            'Weekly timer execution days cannot be empty.',
-            '每周计时器执行日期不能为空。'
-        ),
-
         # ===== Logs.Client =====
-        'Logs.Client.Connected.Success': (
-            'Client connected successfully. Server: {0}.',
-            '客户端连接成功。服务器：{0}。'
-        ),
-        'Logs.Client.Connecting': (
-            'Connecting to server. Server: {0}.',
-            '正在连接服务器。服务器：{0}。'
-        ),
-        'Logs.Client.Disconnected': (
-            'Client disconnected. Server: {0}.',
-            '客户端已断开连接。服务器：{0}。'
-        ),
-        'Logs.Client.ErrorOccurred': (
-            'Client error occurred. Error: {0}.',
-            '客户端发生错误。错误：{0}。'
-        ),
-        'Logs.Client.MaxRetryReached': (
-            'Maximum retry count reached. Max retries: {0}.',
-            '已达到最大重试次数。最大重试次数：{0}。'
-        ),
-        'Logs.Client.RetryConnect': (
-            'Retrying connection. Attempt: {0}, max: {1}.',
-            '正在重试连接。尝试次数：{0}，最大：{1}。'
-        ),
-
         # ===== Logs.Database =====
-        'Logs.Database.Init.Success': (
-            'Database initialized successfully. Connection string: {0}, database name: {1}.',
-            '数据库初始化成功。连接字符串：{0}，数据库名称：{1}。'
-        ),
-
         # ===== Logs.Discovery =====
-        'Logs.Discovery.ExternalService.Connect': (
-            'External service connected. Service: {0}.',
-            '外部服务已连接。服务：{0}。'
-        ),
-        'Logs.Discovery.ExternalService.Disconnect': (
-            'External service disconnected. Service: {0}.',
-            '外部服务已断开连接。服务：{0}。'
-        ),
-        'Logs.Discovery.Player.Register.Success': (
-            'Player registered successfully. Player ID: {0}.',
-            '玩家注册成功。玩家ID：{0}。'
-        ),
-        'Logs.Discovery.Player.Unregister.Success': (
-            'Player unregistered successfully. Player ID: {0}.',
-            '玩家注销成功。玩家ID：{0}。'
-        ),
-        'Logs.Discovery.Server.Exception': (
-            'Discovery server exception. Error: {0}.',
-            '发现服务器异常。错误：{0}。'
-        ),
-        'Logs.Discovery.Service.Register.Success': (
-            'Service registered successfully. Service: {0}.',
-            '服务注册成功。服务：{0}。'
-        ),
-        'Logs.Discovery.Service.Unregister.Success': (
-            'Service unregistered successfully. Service: {0}.',
-            '服务注销成功。服务：{0}。'
-        ),
-
         # ===== Logs.Game.Server =====
-        'Logs.Game.Server.ConfigActor.End': (
-            'Game server config actor initialization completed.',
-            '游戏服务器配置Actor初始化完成。'
-        ),
-        'Logs.Game.Server.Database.End': (
-            'Game server database initialization completed.',
-            '游戏服务器数据库初始化完成。'
-        ),
-        'Logs.Game.Server.Exit.Start': (
-            'Game server starting shutdown process.',
-            '游戏服务器开始关闭流程。'
-        ),
-        'Logs.Game.Server.Exit.Success': (
-            'Game server shutdown completed.',
-            '游戏服务器关闭完成。'
-        ),
-        'Logs.Game.Server.Hotfix.End': (
-            'Game server hotfix initialization completed.',
-            '游戏服务器热更新初始化完成。'
-        ),
-        'Logs.Game.Server.MainLoop': (
-            'Game server main loop started.',
-            '游戏服务器主循环已启动。'
-        ),
-        'Logs.Game.Server.RegisterComponents.Start': (
-            'Game server starting component registration.',
-            '游戏服务器开始注册组件。'
-        ),
-        'Logs.Game.Server.Start': (
-            'Game server starting. Server ID: {0}.',
-            '游戏服务器启动中。服务器ID：{0}。'
-        ),
-        'Logs.Game.Server.Start.Complete': (
-            'Game server startup completed. Server ID: {0}.',
-            '游戏服务器启动完成。服务器ID：{0}。'
-        ),
-
         # ===== Logs.Network =====
-        'Logs.Network.Client.Connect': (
-            'Network client connected. Remote endpoint: {0}.',
-            '网络客户端已连接。远程端点：{0}。'
-        ),
-        'Logs.Network.Client.Disconnect': (
-            'Network client disconnected. Remote endpoint: {0}.',
-            '网络客户端已断开连接。远程端点：{0}。'
-        ),
-
         # ===== Logs.Server =====
-        'Logs.Server.Start.DefaultConfig': (
-            'Using default configuration for server startup.',
-            '使用默认配置启动服务器。'
-        ),
-        'Logs.Server.Start.FindConfig': (
-            'Finding configuration for server type: {0}.',
-            '正在查找服务器类型配置：{0}。'
-        ),
-        'Logs.Server.Starting': (
-            'Server starting. Server type: {0}.',
-            '服务器启动中。服务器类型：{0}。'
-        ),
-        'Logs.Server.Stopped.NoTasks': (
-            'Server stopped. No running tasks.',
-            '服务器已停止。没有运行中的任务。'
-        ),
-        'Logs.Warning.ConsoleMessage': (
-            'Warning: {0}.',
-            '警告：{0}。'
-        ),
-
         # ===== StartUp.ApplicationSettings =====
-        'StartUp.ApplicationSettings.ConfigFilePath': (
-            'Configuration file path: {0}.',
-            '配置文件路径：{0}。'
-        ),
-        'StartUp.ApplicationSettings.LogTypeSeparator': (
-            'Log type separator: {0}.',
-            '日志类型分隔符：{0}。'
-        ),
-        'StartUp.ApplicationSettings.WarningMessage': (
-            'Warning: {0}.',
-            '警告：{0}。'
-        ),
-
         # ===== StartUp.DiscoveryCenter =====
         'StartUp.DiscoveryCenter.HostNotConfigured': (
             'Discovery center host not configured.',
@@ -311,21 +135,9 @@ def generate_translation(key, context, info):
         ),
 
         # ===== StartUp =====
-        'StartUp.FindingConfigurationForServerType': (
-            'Finding configuration for server type: {0}.',
-            '正在查找服务器类型配置：{0}。'
-        ),
         'StartUp.GrafanaLokiLabelExists': (
             'Grafana Loki label already exists. Label: {0}.',
             'Grafana Loki标签已存在。标签：{0}。'
-        ),
-        'StartUp.HealthCheck.ApplicationWorkingFine': (
-            'Application is working fine.',
-            '应用程序运行正常。'
-        ),
-        'StartUp.HealthCheck.DetailedEndpointUrl': (
-            'Detailed health check endpoint: {0}.',
-            '详细健康检查端点：{0}。'
         ),
         'StartUp.HealthCheck.EndpointEnabled': (
             'Health check endpoint enabled at: {0}.',
@@ -335,23 +147,6 @@ def generate_translation(key, context, info):
             'OK',
             '正常'
         ),
-        'StartUp.HealthCheck.OpenTelemetryConfigurationNormal': (
-            'OpenTelemetry configuration is normal.',
-            'OpenTelemetry配置正常。'
-        ),
-        'StartUp.HealthCheck.OpenTelemetryConfiguredNormally': (
-            'OpenTelemetry configured normally. Endpoint: {0}.',
-            'OpenTelemetry配置正常。端点：{0}。'
-        ),
-        'StartUp.HealthCheck.OpenTelemetryEndpointUrl': (
-            'OpenTelemetry endpoint URL: {0}.',
-            'OpenTelemetry端点URL：{0}。'
-        ),
-        'StartUp.HealthCheck.SimpleEndpointUrl': (
-            'Simple health check endpoint: {0}.',
-            '简单健康检查端点：{0}。'
-        ),
-
         # ===== StartUp.HttpExceptions =====
         'StartUp.HttpExceptions.AddressMustEndWithSlash': (
             'Address must end with slash. Address: {0}.',
@@ -382,10 +177,6 @@ def generate_translation(key, context, info):
         'StartUp.HttpServer.ApiTitle': (
             'API title: {0}.',
             'API标题：{0}。'
-        ),
-        'StartUp.HttpServer.OpenTelemetryServiceType': (
-            'OpenTelemetry service type: {0}.',
-            'OpenTelemetry服务类型：{0}。'
         ),
         'StartUp.HttpServer.PortOccupied': (
             'HTTP server port is occupied. Port: {0}.',
@@ -441,14 +232,6 @@ def generate_translation(key, context, info):
             'BigInteger constructor byte overflow.',
             'BigInteger构造函数字节溢出。'
         ),
-        'Utility.Exceptions.DatacenterIdOutOfRange': (
-            'Datacenter ID out of range. Must be between 0 and {0}.',
-            '数据中心ID超出范围。必须在0到{0}之间。'
-        ),
-        'Utility.Exceptions.InputIsGlobalId': (
-            'Input is a global ID, cannot extract server ID.',
-            '输入的是全局ID，无法提取服务器ID。'
-        ),
         'Utility.Exceptions.LnValueNonPositive': (
             'Cannot calculate natural logarithm of non-positive value.',
             '无法计算非正值的自然对数。'
@@ -457,19 +240,10 @@ def generate_translation(key, context, info):
             'Cannot calculate square root of negative value.',
             '无法计算负值的平方根。'
         ),
-        'Utility.Exceptions.TimestampOutOfRange': (
-            'Timestamp out of range. Cannot generate ID.',
-            '时间戳超出范围。无法生成ID。'
-        ),
         'Utility.Exceptions.ValueOutOfRange': (
             'Value out of range. Value: {0}, min: {1}, max: {2}.',
             '值超出范围。值：{0}，最小：{1}，最大：{2}。'
         ),
-        'Utility.Exceptions.WorkerIdOutOfRange': (
-            'Worker ID out of range. Must be between 0 and {0}.',
-            '工作器ID超出范围。必须在0到{0}之间。'
-        ),
-
         # ===== Utility.GlobalSettings =====
         'Utility.GlobalSettings.LoadGlobalSettings': (
             'Loading global settings from configuration.',

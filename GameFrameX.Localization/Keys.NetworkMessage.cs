@@ -51,25 +51,6 @@ public static partial class Keys
         public const string MessageDecodeFatalError = "Network.Message.MessageDecodeFatalError";
 
         /// <summary>
-        /// 消息编码异常的错误消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Network.Message.MessageEncodeError
-        /// 用途: 当消息对象编码异常时记录错误信息
-        /// </remarks>
-        public const string MessageEncodeError = "Network.Message.MessageEncodeError";
-
-        /// <summary>
-        /// 消息编码异常详情的错误消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Network.Message.MessageEncodeException
-        /// 用途: 当消息编码过程中发生异常时记录详细信息
-        /// 参数: {0} - 异常信息
-        /// </remarks>
-        public const string MessageEncodeException = "Network.Message.MessageEncodeException";
-
-        /// <summary>
         /// 消息对象为空的错误消息
         /// </summary>
         /// <remarks>

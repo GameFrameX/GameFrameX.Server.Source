@@ -94,25 +94,6 @@ public static partial class Keys
             public const string FilterTargetMissing = "Capability.Hosting.FilterTargetMissing";
 
             /// <summary>
-            /// 能力 {0} 依赖的能力未装配：{1}
-            /// </summary>
-            /// <remarks>
-            /// 键名: Capability.Hosting.RequirementMissing
-            /// 用途: 闭包校验发现 Requires 指向未装配能力
-            /// 参数: {0} - 依赖方能力 Id；{1} - 被依赖能力 Id
-            /// </remarks>
-            public const string RequirementMissing = "Capability.Hosting.RequirementMissing";
-
-            /// <summary>
-            /// 能力依赖成环，无法完成拓扑定序。
-            /// </summary>
-            /// <remarks>
-            /// 键名: Capability.Hosting.RequirementCycle
-            /// 用途: Requires 拓扑定序存在环
-            /// </remarks>
-            public const string RequirementCycle = "Capability.Hosting.RequirementCycle";
-
-            /// <summary>
             /// 管理面 HTTP 管道相关消息
             /// </summary>
             public static class AdminApi
@@ -671,14 +652,6 @@ public static partial class Keys
             /// </remarks>
             public const string HookDuplicateDeclaration = "Capability.Hosting.HookDuplicateDeclaration";
 
-            /// <summary>
-            /// 启用管理面需引用 GameFrameX.Capability.Hosting.AdminApi 并调用 UseAdminApi。
-            /// </summary>
-            /// <remarks>
-            /// 键名: Capability.Hosting.AdminApiPlaneFactoryMissing
-            /// 用途: EnableAdminApi 开启但管理面工厂程序集未被引用/注册（fail-fast）
-            /// </remarks>
-            public const string AdminApiPlaneFactoryMissing = "Capability.Hosting.AdminApiPlaneFactoryMissing";
         }
 
         /// <summary>

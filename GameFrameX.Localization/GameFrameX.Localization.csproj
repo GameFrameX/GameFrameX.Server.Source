@@ -6,17 +6,6 @@
         <PackageTags>GameFrameX,Localization,I18N,Resources,Messages,Server,GameServer</PackageTags>
     </PropertyGroup>
 
-    <ItemGroup>
-        <Compile Update="Resources\Resources.Designer.cs">
-            <DesignTime>True</DesignTime>
-            <AutoGen>True</AutoGen>
-            <DependentUpon>Resources.resx</DependentUpon>
-        </Compile>
-    </ItemGroup>
-
-    <ItemGroup>
-        <Folder Include="Localization\"/>
-    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="GameFrameX.Foundation.Localization" Version="5.0.0"/>

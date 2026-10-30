@@ -86,26 +86,6 @@ public static partial class Keys
             public const string ClientDisconnected = "Hotfix.StartUp.ClientDisconnected";
 
             /// <summary>
-            /// 数据包接收心跳: {0}
-            /// </summary>
-            /// <remarks>
-            /// 键名: Hotfix.StartUp.DataPackageReceiveHeartBeat
-            /// 用途: 调试开关开启时记录收到的心跳消息内容。
-            /// 参数: {0} - 心跳消息格式化内容
-            /// </remarks>
-            public const string DataPackageReceiveHeartBeat = "Hotfix.StartUp.DataPackageReceiveHeartBeat";
-
-            /// <summary>
-            /// 数据包接收: {0}
-            /// </summary>
-            /// <remarks>
-            /// 键名: Hotfix.StartUp.DataPackageReceive
-            /// 用途: 调试开关开启时记录收到的网络消息内容。
-            /// 参数: {0} - 消息格式化内容
-            /// </remarks>
-            public const string DataPackageReceive = "Hotfix.StartUp.DataPackageReceive";
-
-            /// <summary>
             /// 数据包接收: 找不到消息处理器, 消息ID: {0}, 消息类型: {1}
             /// </summary>
             /// <remarks>
@@ -115,15 +95,6 @@ public static partial class Keys
             /// </remarks>
             public const string MessageHandlerNotFound = "Hotfix.StartUp.MessageHandlerNotFound";
 
-            /// <summary>
-            /// 数据包接收: 调用消息处理器出错, 消息ID: {0}, 消息类型: {1}, 异常: {2}
-            /// </summary>
-            /// <remarks>
-            /// 键名: Hotfix.StartUp.MessageHandlerInvokeError
-            /// 用途: 消息处理器调用抛出异常时记录。
-            /// 参数: {0} - 消息ID, {1} - 消息类型, {2} - 异常信息
-            /// </remarks>
-            public const string MessageHandlerInvokeError = "Hotfix.StartUp.MessageHandlerInvokeError";
         }
 
         /// <summary>
@@ -343,7 +314,6 @@ public static partial class Keys
             /// </remarks>
             public const string MatchBridgeException = "Hotfix.Game.MatchBridgeException";
         }
-
 
         /// <summary>
         /// Player 玩家模块消息键。
