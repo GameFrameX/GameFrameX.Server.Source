@@ -2,9 +2,9 @@
 
 set -u
 
-ROOT_DIR="/Users/blank/Documents/GithubWorks/GameFrameX/Server"
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TEST_PROJECT="Tests/GameFrameX.Tests/GameFrameX.Tests.csproj"
-SOLUTION="Server.sln"
+SOLUTION="Server.slnx"
 REMOTE_FILTER="FullyQualifiedName~RemoteMessaging"
 
 MODE="fast"

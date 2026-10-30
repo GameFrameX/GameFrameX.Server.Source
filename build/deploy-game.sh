@@ -81,6 +81,11 @@ DEPLOY_GAME_PORTS=$(echo "${DEPLOY_GAME_PORTS}" | jq -c .)
 DEPLOY_GAME_VOLUMES=$(echo "${DEPLOY_GAME_VOLUMES}" | jq -c .)
 DEPLOY_GAME_ENVIRONMENTS=$(echo "${DEPLOY_GAME_ENVIRONMENTS}" | jq -c .)
 
+# 请求体含明文仓库凭据：用 mktemp 私有临时文件（0600），退出时无条件清理
+DEPLOY_BODY_FILE=$(mktemp "${TMPDIR:-/tmp}/deploy-game-body.XXXXXX")
+DEPLOY_RESP_FILE=$(mktemp "${TMPDIR:-/tmp}/deploy-game-resp.XXXXXX")
+trap 'rm -f "${DEPLOY_BODY_FILE}" "${DEPLOY_RESP_FILE}"' EXIT
+
 jq -n \
   --arg image_name "${IMAGE_NAME}" \
   --arg tag "${TAG}" \
@@ -117,21 +122,21 @@ jq -n \
   ports: $ports,
   volumes: $volumes,
   environments: $environments
-}' > /tmp/deploy-body.json
+}' > "${DEPLOY_BODY_FILE}"
 
 echo "[DEPLOY] 部署 Game 服务器"
 echo "[DEPLOY] 请求地址: ${DEPLOY_API_URL}"
 echo "[DEPLOY] 请求参数:"
-jq '.Auth.Password = "****"' /tmp/deploy-body.json
+jq '.Auth.Password = "****"' "${DEPLOY_BODY_FILE}"
 echo ""
 
-HTTP_CODE=$(curl -s --max-time 180 -o /tmp/deploy-resp.txt -w "%{http_code}" -X POST "${DEPLOY_API_URL}" \
+HTTP_CODE=$(curl -s --max-time 180 -o "${DEPLOY_RESP_FILE}" -w "%{http_code}" -X POST "${DEPLOY_API_URL}" \
   -H "Content-Type: application/json; charset=UTF-8" \
-  -d @/tmp/deploy-body.json)
+  -d @"${DEPLOY_BODY_FILE}")
 
 echo "[DEPLOY] HTTP ${HTTP_CODE}"
 echo "[DEPLOY] 响应内容:"
-cat /tmp/deploy-resp.txt
+cat "${DEPLOY_RESP_FILE}"
 echo ""
 
 if [ "${HTTP_CODE}" -ge 200 ] && [ "${HTTP_CODE}" -lt 300 ]; then
