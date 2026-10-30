@@ -17,6 +17,8 @@ on:
 jobs:
   topology-equivalence:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     services:
       mongo:
         image: mongo:7
@@ -44,10 +46,10 @@ jobs:
       GAMEFRAMEX_TEST_POSTGRESQL_CONNECTION_STRING: 'Host=localhost;Port=5432;Username=postgres;Password=postgres;Database=postgres'
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 

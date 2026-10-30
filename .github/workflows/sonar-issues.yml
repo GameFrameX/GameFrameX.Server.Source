@@ -23,4 +23,5 @@ jobs:
       sonar_organization: ${{ vars.SONAR_ORGANIZATION || 'gameframex' }}
       sonar_branch: main
       github_repository: ${{ github.repository }}
-    secrets: inherit
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
