@@ -1,0 +1,24 @@
+name: Localization Gate
+
+# 本地化资源一致性门禁（GFX-1156 / C426）。
+# 校验：键名合法性与重复 <data>、缺键与 [TODO]/[待翻译] 占位、EN/zh-CN 键集合与占位符集合一致、
+# 调用点实参个数与模板占位符匹配。任一不合规即阻塞合并。
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  localization-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Run localization consistency gate
+        run: python3 GameFrameX.Localization/check_keys.py
+
+      - name: Run gate self-tests
+        run: python3 GameFrameX.Localization/check_keys_test.py
