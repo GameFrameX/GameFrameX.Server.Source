@@ -502,7 +502,8 @@ def _check_language(lang, resx_path, cs_keys, fix):
     return values, messages
 
 
-def main():
+def _parse_arguments():
+    """构造 CLI 参数：--fix / --localization-dir / --repo-root / --skip-callsite-scan。"""
     parser = argparse.ArgumentParser(description="本地化资源一致性门禁")
     parser.add_argument("--fix", action="store_true", help="显式放行缺失键补写（[TODO]/[待翻译] 占位）")
     parser.add_argument("--localization-dir", type=Path, default=SCRIPT_DIR,
@@ -510,7 +511,57 @@ def main():
     parser.add_argument("--repo-root", type=Path, default=None,
                         help="调用点扫描的仓库根（默认：localization-dir 的上级）")
     parser.add_argument("--skip-callsite-scan", action="store_true", help="跳过调用点静态扫描")
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def _report_placeholder_stage(resx_values, failure_messages):
+    """阶段 3：EN/zh-CN 占位符与键集合一致性检查与汇报。"""
+    print()
+    print("3. EN/zh-CN 占位符与键集合一致性...")
+    placeholder_problems = check_placeholder_consistency(resx_values["default"], resx_values["zh-CN"])
+    if placeholder_problems:
+        for problem in placeholder_problems:
+            print(f"   [不一致] {problem}")
+        failure_messages.extend(placeholder_problems)
+    else:
+        print("   交集键占位符一致，键集合一致")
+
+
+def _report_callsite_stage(args, key_paths, resx_values, repo_root, localization_dir, failure_messages):
+    """阶段 4：调用点静态扫描（实参个数 vs 模板占位符）与汇报。"""
+    if args.skip_callsite_scan:
+        return
+    print()
+    print("4. 调用点静态扫描（实参个数 vs 模板占位符）...")
+    scanner = CallsiteScanner(key_paths, resx_values["default"], resx_values["zh-CN"], repo_root, localization_dir)
+    violations, unresolved = scanner.scan()
+    for item in unresolved:
+        print(f"   [告警] 无法静态解析键表达式: {item[0]}  {item[1]}")
+    if violations:
+        print(f"   调用点违规 {len(violations)} 处:")
+        print("\n".join(violations))
+        failure_messages.append(f"调用点实参与模板占位符不匹配 {len(violations)} 处")
+    else:
+        print("   调用点实参全部匹配")
+
+
+def _exit_with_summary(failure_messages):
+    """汇总输出并按是否存在失败项决定退出码（0 通过 / 1 违规）。"""
+    print()
+    print("=" * 60)
+    if failure_messages:
+        print("检查失败!")
+        for message in failure_messages:
+            print(f" - {message}")
+        print("=" * 60)
+        sys.exit(1)
+    print("检查完成，全部通过!")
+    print("=" * 60)
+    sys.exit(0)
+
+
+def main():
+    args = _parse_arguments()
 
     localization_dir = args.localization_dir
     repo_root = args.repo_root if args.repo_root else localization_dir.parent
@@ -545,41 +596,9 @@ def main():
         resx_values[lang] = values
         failure_messages.extend(messages)
 
-    print()
-    print("3. EN/zh-CN 占位符与键集合一致性...")
-    placeholder_problems = check_placeholder_consistency(resx_values["default"], resx_values["zh-CN"])
-    if placeholder_problems:
-        for problem in placeholder_problems:
-            print(f"   [不一致] {problem}")
-        failure_messages.extend(placeholder_problems)
-    else:
-        print("   交集键占位符一致，键集合一致")
-
-    if not args.skip_callsite_scan:
-        print()
-        print("4. 调用点静态扫描（实参个数 vs 模板占位符）...")
-        scanner = CallsiteScanner(key_paths, resx_values["default"], resx_values["zh-CN"], repo_root, localization_dir)
-        violations, unresolved = scanner.scan()
-        for item in unresolved:
-            print(f"   [告警] 无法静态解析键表达式: {item[0]}  {item[1]}")
-        if violations:
-            print(f"   调用点违规 {len(violations)} 处:")
-            print("\n".join(violations))
-            failure_messages.append(f"调用点实参与模板占位符不匹配 {len(violations)} 处")
-        else:
-            print("   调用点实参全部匹配")
-
-    print()
-    print("=" * 60)
-    if failure_messages:
-        print("检查失败!")
-        for message in failure_messages:
-            print(f" - {message}")
-        print("=" * 60)
-        sys.exit(1)
-    print("检查完成，全部通过!")
-    print("=" * 60)
-    sys.exit(0)
+    _report_placeholder_stage(resx_values, failure_messages)
+    _report_callsite_stage(args, key_paths, resx_values, repo_root, localization_dir, failure_messages)
+    _exit_with_summary(failure_messages)
 
 
 if __name__ == "__main__":
