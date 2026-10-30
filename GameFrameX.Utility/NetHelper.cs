@@ -654,21 +654,23 @@ public static class NetHelper
         }
 
         using (var ping = new Ping())
-        using (var timeoutCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
         {
-            timeoutCancellationTokenSource.CancelAfter(timeout);
-            try
+            using (var timeoutCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
             {
-                var reply = await ping.SendPingAsync(host, timeout).WaitAsync(timeoutCancellationTokenSource.Token);
-                return reply.Status == IPStatus.Success;
-            }
-            catch (OperationCanceledException)
-            {
-                return false;
-            }
-            catch
-            {
-                return false;
+                timeoutCancellationTokenSource.CancelAfter(timeout);
+                try
+                {
+                    var reply = await ping.SendPingAsync(host, timeout).WaitAsync(timeoutCancellationTokenSource.Token);
+                    return reply.Status == IPStatus.Success;
+                }
+                catch (OperationCanceledException)
+                {
+                    return false;
+                }
+                catch
+                {
+                    return false;
+                }
             }
         }
     }
