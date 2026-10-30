@@ -43,8 +43,8 @@ services:
       GameFrameX__AdvertisePort: "29400"
       GameFrameX__RoleInstanceId: "2001"
     ports:
-      - "49400:29400"
-      - "48081:28081"
+      - "127.0.0.1:49400:29400"
+      - "127.0.0.1:48081:28081"
     volumes:
       - "./running-multi/social-1/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
@@ -74,8 +74,8 @@ services:
       GameFrameX__AdvertisePort: "29401"
       GameFrameX__RoleInstanceId: "2002"
     ports:
-      - "49401:29401"
-      - "48083:28083"
+      - "127.0.0.1:49401:29401"
+      - "127.0.0.1:48083:28083"
     volumes:
       - "./running-multi/social-2/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
@@ -109,8 +109,8 @@ services:
       GameFrameX__AdvertisePort: "29100"
       GameFrameX__RoleInstanceId: "1001"
     ports:
-      - "49100:29100"
-      - "48080:28080"
+      - "127.0.0.1:49100:29100"
+      - "127.0.0.1:48080:28080"
     volumes:
       - "./running-multi/game-1/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
@@ -144,8 +144,8 @@ services:
       GameFrameX__AdvertisePort: "29101"
       GameFrameX__RoleInstanceId: "1002"
     ports:
-      - "49101:29101"
-      - "48082:28082"
+      - "127.0.0.1:49101:29101"
+      - "127.0.0.1:48082:28082"
     volumes:
       - "./running-multi/game-2/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
@@ -179,8 +179,8 @@ services:
       GameFrameX__AdvertisePort: "29102"
       GameFrameX__RoleInstanceId: "1003"
     ports:
-      - "49102:29102"
-      - "48084:28084"
+      - "127.0.0.1:49102:29102"
+      - "127.0.0.1:48084:28084"
     volumes:
       - "./running-multi/game-3/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
@@ -214,8 +214,8 @@ services:
       GameFrameX__AdvertisePort: "29103"
       GameFrameX__RoleInstanceId: "1004"
     ports:
-      - "49103:29103"
-      - "48086:28086"
+      - "127.0.0.1:49103:29103"
+      - "127.0.0.1:48086:28086"
     volumes:
       - "./running-multi/game-4/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
@@ -249,8 +249,8 @@ services:
       GameFrameX__AdvertisePort: "29104"
       GameFrameX__RoleInstanceId: "1005"
     ports:
-      - "49104:29104"
-      - "48088:28088"
+      - "127.0.0.1:49104:29104"
+      - "127.0.0.1:48088:28088"
     volumes:
       - "./running-multi/game-5/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
@@ -284,8 +284,8 @@ services:
       GameFrameX__AdvertisePort: "29105"
       GameFrameX__RoleInstanceId: "1006"
     ports:
-      - "49105:29105"
-      - "48090:28090"
+      - "127.0.0.1:49105:29105"
+      - "127.0.0.1:48090:28090"
     volumes:
       - "./running-multi/game-6/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
@@ -319,8 +319,8 @@ services:
       GameFrameX__AdvertisePort: "29106"
       GameFrameX__RoleInstanceId: "1007"
     ports:
-      - "49106:29106"
-      - "48092:28092"
+      - "127.0.0.1:49106:29106"
+      - "127.0.0.1:48092:28092"
     volumes:
       - "./running-multi/game-7/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
@@ -354,8 +354,8 @@ services:
       GameFrameX__AdvertisePort: "29107"
       GameFrameX__RoleInstanceId: "1008"
     ports:
-      - "49107:29107"
-      - "48094:28094"
+      - "127.0.0.1:49107:29107"
+      - "127.0.0.1:48094:28094"
     volumes:
       - "./running-multi/game-8/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
@@ -389,8 +389,8 @@ services:
       GameFrameX__AdvertisePort: "29108"
       GameFrameX__RoleInstanceId: "1009"
     ports:
-      - "49108:29108"
-      - "48096:28096"
+      - "127.0.0.1:49108:29108"
+      - "127.0.0.1:48096:28096"
     volumes:
       - "./running-multi/game-9/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
@@ -424,8 +424,8 @@ services:
       GameFrameX__AdvertisePort: "29109"
       GameFrameX__RoleInstanceId: "1010"
     ports:
-      - "49109:29109"
-      - "48098:28098"
+      - "127.0.0.1:49109:29109"
+      - "127.0.0.1:48098:28098"
     volumes:
       - "./running-multi/game-10/logs:/app/data/logs"
       - "./GameFrameX.Config/json:/app/Configs:ro"
