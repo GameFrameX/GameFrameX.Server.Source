@@ -117,15 +117,6 @@ public static partial class Keys
         public const string PostgreSqlExecuteInTransactionFailed = "Database.PostgreSql.ExecuteInTransactionFailed";
 
         /// <summary>
-        /// PostgreSqlDbService 事务提交所有重试均失败，异常未知。
-        /// </summary>
-        /// <remarks>
-        /// 键名: Database.PostgreSql.CommitTransactionFailed
-        /// 用途: 事务提交重试全部失败后抛出
-        /// </remarks>
-        public const string PostgreSqlCommitTransactionFailed = "Database.PostgreSql.CommitTransactionFailed";
-
-        /// <summary>
         /// PostgreSqlDbService.{0} 所有重试均失败，异常未知。
         /// </summary>
         /// <remarks>

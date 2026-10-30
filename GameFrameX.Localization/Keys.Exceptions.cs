@@ -40,25 +40,6 @@ public static partial class Keys
     /// </summary>
     public static class Exceptions
     {
-        /// <summary>
-        /// 数据库启动失败的错误消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Exceptions.Database.StartFailed
-        /// 用途: 数据库服务启动失败时抛出此异常
-        /// 参数: {0} - 数据库类型, {1} - 详细错误信息
-        /// </remarks>
-        public const string Database_Start_Failed = "Exceptions.Database.StartFailed";
-
-        /// <summary>
-        /// 处理器未初始化的错误消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Exceptions.Handler.NotInitialized
-        /// 用途: 当尝试使用未初始化的处理器时抛出此异常
-        /// 参数: {0} - 处理器类型名称
-        /// </remarks>
-        public const string Handler_Not_Initialized = "Exceptions.Handler.NotInitialized";
 
         /// <summary>
         /// 计时器参数无效的错误消息
@@ -71,24 +52,6 @@ public static partial class Keys
         public const string Timer_Invalid_Parameters = "Exceptions.Timer.InvalidParameters";
 
         /// <summary>
-        /// 每周计时器日期为空的错误消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Exceptions.Timer.Weekly.EmptyDays
-        /// 用途: 当创建每周计时器时未指定任何执行日期时抛出此异常
-        /// </remarks>
-        public const string Timer_Weekly_Empty_Days = "Exceptions.Timer.Weekly.EmptyDays";
-
-        /// <summary>
-        /// 计时器代码在热更新中的错误消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Exceptions.Timer.CodeInHotfix
-        /// 用途: 当尝试在热更新中使用不支持的计时器功能时抛出此异常
-        /// </remarks>
-        public const string Timer_Code_In_Hotfix = "Exceptions.Timer.CodeInHotfix";
-
-        /// <summary>
         /// 组件代理映射中未找到对应条目的错误消息
         /// </summary>
         /// <remarks>
@@ -97,55 +60,6 @@ public static partial class Keys
         /// 参数: {0} - 映射字段名称, {1} - 组件类型全名
         /// </remarks>
         public const string Component_Agent_Map_Not_Found = "Exceptions.Hotfix.ComponentAgentMapNotFound";
-
-        /// <summary>
-        /// IP地址格式无效的错误消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Exceptions.Network.InvalidIpFormat
-        /// 用途: 当传入的IP地址格式不正确时抛出此异常
-        /// 参数: {0} - 无效的IP地址字符串
-        /// </remarks>
-        public const string Invalid_Ip_Format = "Exceptions.Network.InvalidIpFormat";
-
-        /// <summary>
-        /// BigInteger构造函数溢出的错误消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Exceptions.BigInteger.ConstructorOverflow
-        /// 用途: 当创建BigInteger时数值溢出时抛出此异常
-        /// 参数: {0} - 溢出的数值
-        /// </remarks>
-        public const string Biginteger_Constructor_Overflow = "Exceptions.BigInteger.ConstructorOverflow";
-
-        /// <summary>
-        /// BigInteger构造函数下溢的错误消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Exceptions.BigInteger.ConstructorUnderflow
-        /// 用途: 当创建BigInteger时数值下溢时抛出此异常
-        /// 参数: {0} - 下溢的数值
-        /// </remarks>
-        public const string Biginteger_Constructor_Underflow = "Exceptions.BigInteger.ConstructorUnderflow";
-
-        /// <summary>
-        /// BigInteger无效字符串的错误消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Exceptions.BigInteger.InvalidString
-        /// 用途: 当使用无效字符串创建BigInteger时抛出此异常
-        /// 参数: {0} - 无效的字符串
-        /// </remarks>
-        public const string Biginteger_Invalid_String = "Exceptions.BigInteger.InvalidString";
-
-        /// <summary>
-        /// BigInteger构造函数字节溢出的错误消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Exceptions.BigInteger.ConstructorByteOverflow
-        /// 用途: 当使用字节数组构造BigInteger时发生溢出时使用
-        /// </remarks>
-        public const string Biginteger_Constructor_Byte_Overflow = "Exceptions.BigInteger.ConstructorByteOverflow";
 
         /// <summary>
         /// BigInteger异常消息资源键

@@ -67,16 +67,6 @@ public static partial class Keys
             public const string ActorIdLessThanMinServerIdDetail = "Utility.Exceptions.ActorIdLessThanMinServerIdDetail";
 
             /// <summary>
-            /// 输入为全局ID的错误消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.Exceptions.InputIsGlobalId
-            /// 用途: 当尝试对全局ID执行不允许的操作时使用
-            /// 参数: {0} - 全局ID值
-            /// </remarks>
-            public const string InputIsGlobalId = "Utility.Exceptions.InputIsGlobalId";
-
-            /// <summary>
             /// Actor类型错误的错误消息
             /// </summary>
             /// <remarks>
@@ -260,15 +250,6 @@ public static partial class Keys
             public const string ConstructorInvalidString = "Utility.Exceptions.ConstructorInvalidString";
 
             /// <summary>
-            /// 时间戳超出范围的错误消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.Exceptions.TimestampOutOfRange
-            /// 用途: 当传入的时间戳无法转换为有效的DateTime时使用
-            /// </remarks>
-            public const string TimestampOutOfRange = "Utility.Exceptions.TimestampOutOfRange";
-
-            /// <summary>
             /// 系统时钟回退的错误消息
             /// </summary>
             /// <remarks>
@@ -277,26 +258,6 @@ public static partial class Keys
             /// 参数: {0} - 回退的毫秒数
             /// </remarks>
             public const string ClockMovedBackwards = "Utility.Exceptions.ClockMovedBackwards";
-
-            /// <summary>
-            /// Worker ID 超出范围的错误消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.Exceptions.WorkerIdOutOfRange
-            /// 用途: 当创建IdWorker时传入的WorkerId超出有效范围时使用
-            /// 参数: {0} - 最大允许的WorkerId值
-            /// </remarks>
-            public const string WorkerIdOutOfRange = "Utility.Exceptions.WorkerIdOutOfRange";
-
-            /// <summary>
-            /// Datacenter ID 超出范围的错误消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.Exceptions.DatacenterIdOutOfRange
-            /// 用途: 当创建IdWorker时传入的DatacenterId超出有效范围时使用
-            /// 参数: {0} - 最大允许的DatacenterId值
-            /// </remarks>
-            public const string DatacenterIdOutOfRange = "Utility.Exceptions.DatacenterIdOutOfRange";
 
             /// <summary>
             /// 传递给 Ln 的值为非正数的错误消息
@@ -398,21 +359,6 @@ public static partial class Keys
             public const string CantRepeatRandomArgError = "Utility.RandomHelper.CantRepeatRandomArgError";
         }
 
-        /// <summary>
-        /// ActorId生成器相关错误消息资源键
-        /// </summary>
-        public static class ActorIdGenerator
-        {
-            /// <summary>
-            /// 输入为全局ID的错误消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.ActorIdGenerator.InputIsGlobalId
-            /// 用途: 当尝试对全局ID执行不允许的操作时使用
-            /// 参数: {0} - 全局ID值
-            /// </remarks>
-            public const string InputIsGlobalId = "Utility.ActorIdGenerator.InputIsGlobalId";
-        }
 
         /// <summary>
         /// BigInteger调试相关日志消息资源键
@@ -540,20 +486,6 @@ public static partial class Keys
             public const string DataLength = "Utility.BigIntegerDebug.DataLength";
         }
 
-        /// <summary>
-        /// 应用设置相关消息资源键
-        /// </summary>
-        public static class AppSettings
-        {
-            /// <summary>
-            /// 设置应用程序运行状态为false的消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.AppSettings.SetAppRunningFalse
-            /// 用途: 当应用程序运行状态设置为false时记录日志
-            /// </remarks>
-            public const string SetAppRunningFalse = "Utility.AppSettings.SetAppRunningFalse";
-        }
 
         /// <summary>
         /// 全局设置相关消息资源键
@@ -577,15 +509,6 @@ public static partial class Keys
             /// 用途: 当加载全局设置配置失败时显示错误标题
             /// </remarks>
             public const string LoadGlobalSettingsFailed = "Utility.GlobalSettings.LoadGlobalSettingsFailed";
-
-            /// <summary>
-            /// 设置已存在无法重复设置的警告消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.GlobalSettings.SettingAlreadyExists
-            /// 用途: 当尝试重复设置已存在的配置时记录警告
-            /// </remarks>
-            public const string SettingAlreadyExists = "Utility.GlobalSettings.SettingAlreadyExists";
 
             /// <summary>
             /// 设置SaveDataInterval过小的完整警告日志
@@ -705,14 +628,6 @@ public static partial class Keys
         /// </summary>
         public static class Settings
         {
-            /// <summary>
-            /// 应用程序已退出，不能再次开启的错误消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.Settings.AppAlreadyExited
-            /// 用途: 当尝试开启已经退出的应用程序时记录
-            /// </remarks>
-            public const string AppAlreadyExited = "Utility.Settings.AppAlreadyExited";
 
             /// <summary>
             /// 加载配置文件失败的错误消息

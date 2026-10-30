@@ -197,60 +197,6 @@ public static partial class Keys
         public const string DataVerificationFailed = "Network.Http.DataVerificationFailed";
 
         /// <summary>
-        /// 请求参数
-        /// </summary>
-        /// <remarks>
-        /// 键名: Network.Http.SwaggerRequestParameters
-        /// 用途: Swagger文档中的请求参数描述
-        /// </remarks>
-        public const string SwaggerRequestParameters = "Network.Http.SwaggerRequestParameters";
-
-        /// <summary>
-        /// 响应状态码
-        /// </summary>
-        /// <remarks>
-        /// 键名: Network.Http.SwaggerResponseStatusCode
-        /// 用途: Swagger文档中的响应状态码描述
-        /// </remarks>
-        public const string SwaggerResponseStatusCode = "Network.Http.SwaggerResponseStatusCode";
-
-        /// <summary>
-        /// 响应消息
-        /// </summary>
-        /// <remarks>
-        /// 键名: Network.Http.SwaggerResponseMessage
-        /// 用途: Swagger文档中的响应消息描述
-        /// </remarks>
-        public const string SwaggerResponseMessage = "Network.Http.SwaggerResponseMessage";
-
-        /// <summary>
-        /// 成功响应
-        /// </summary>
-        /// <remarks>
-        /// 键名: Network.Http.SwaggerSuccessResponse
-        /// 用途: Swagger文档中的成功响应描述
-        /// </remarks>
-        public const string SwaggerSuccessResponse = "Network.Http.SwaggerSuccessResponse";
-
-        /// <summary>
-        /// application/json
-        /// </summary>
-        /// <remarks>
-        /// 键名: Network.Http.ApplicationJsonContentType
-        /// 用途: application/json内容类型
-        /// </remarks>
-        public const string ApplicationJsonContentType = "Network.Http.ApplicationJsonContentType";
-
-        /// <summary>
-        /// application/x-protobuf
-        /// </summary>
-        /// <remarks>
-        /// 键名: Network.Http.ApplicationProtoBufContentType
-        /// 用途: application/x-protobuf内容类型
-        /// </remarks>
-        public const string ApplicationProtoBufContentType = "Network.Http.ApplicationProtoBufContentType";
-
-        /// <summary>
         /// http命令未包含验证参数{0} 和 {1}
         /// </summary>
         /// <remarks>

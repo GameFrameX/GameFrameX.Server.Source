@@ -81,16 +81,6 @@ public static partial class Keys
         public const string InvalidLauncherArguments = "StartUp.InvalidLauncherArguments";
 
         /// <summary>
-        /// Finding the boot configuration for the corresponding server type in the configuration file will be configured to boot=>{0}
-        /// </summary>
-        /// <remarks>
-        /// 键名: StartUp.FindingConfigurationForServerType
-        /// 用途: 当在配置文件中找到对应服务器类型的启动配置时记录
-        /// 参数: {0} - 服务器类型
-        /// </remarks>
-        public const string FindingConfigurationForServerType = "StartUp.FindingConfigurationForServerType";
-
-        /// <summary>
         /// If no startup configuration is found for the server type, it will start with the default configuration=>{0}
         /// </summary>
         /// <remarks>
@@ -329,15 +319,6 @@ public static partial class Keys
             public const string ApiContactName = "StartUp.HttpServer.ApiContactName";
 
             /// <summary>
-            /// HTTP
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.HttpServer.OpenTelemetryServiceType
-            /// 用途: OpenTelemetry服务类型
-            /// </remarks>
-            public const string OpenTelemetryServiceType = "StartUp.HttpServer.OpenTelemetryServiceType";
-
-            /// <summary>
             /// HTTP服务器启动完成 - 端口: {0}
             /// </summary>
             /// <remarks>
@@ -388,39 +369,6 @@ public static partial class Keys
             public const string HttpRequestError = "StartUp.HttpServer.HttpRequestError";
         }
 
-        /// <summary>
-        /// 应用程序配置相关消息
-        /// </summary>
-        public static class ApplicationSettings
-        {
-            /// <summary>
-            /// Configs/app_config.json
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.ApplicationSettings.ConfigFilePath
-            /// 用途: 应用程序配置文件路径
-            /// </remarks>
-            public const string ConfigFilePath = "StartUp.ApplicationSettings.ConfigFilePath";
-
-            /// <summary>
-            /// _
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.ApplicationSettings.LogTypeSeparator
-            /// 用途: 日志类型分隔符
-            /// </remarks>
-            public const string LogTypeSeparator = "StartUp.ApplicationSettings.LogTypeSeparator";
-
-            /// <summary>
-            /// [Warning] {0}
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.ApplicationSettings.WarningMessage
-            /// 用途: 警告消息格式
-            /// 参数: {0} - 警告消息内容
-            /// </remarks>
-            public const string WarningMessage = "StartUp.ApplicationSettings.WarningMessage";
-        }
 
         /// <summary>
         /// TCP服务器相关消息
@@ -676,63 +624,6 @@ public static partial class Keys
             /// 用途: 当健康检查端点启用时记录信息
             /// </remarks>
             public const string EndpointEnabled = "StartUp.HealthCheck.EndpointEnabled";
-
-            /// <summary>
-            /// - detailed health checks: http://{0}:{1}{2}
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.HealthCheck.DetailedEndpointUrl
-            /// 用途: 显示详细健康检查端点URL时记录
-            /// 参数: {0} - IP地址, {1} - 端口号, {2} - 路径
-            /// </remarks>
-            public const string DetailedEndpointUrl = "StartUp.HealthCheck.DetailedEndpointUrl";
-
-            /// <summary>
-            /// - simple health check: http://{0}:{1}{2}
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.HealthCheck.SimpleEndpointUrl
-            /// 用途: 显示简单健康检查端点URL时记录
-            /// 参数: {0} - IP地址, {1} - 端口号, {2} - 路径
-            /// </remarks>
-            public const string SimpleEndpointUrl = "StartUp.HealthCheck.SimpleEndpointUrl";
-
-            /// <summary>
-            /// - OpenTelemetry check: http://{0}:{1}{2}
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.HealthCheck.OpenTelemetryEndpointUrl
-            /// 用途: 显示OpenTelemetry检查端点URL时记录
-            /// 参数: {0} - IP地址, {1} - 端口号, {2} - 路径
-            /// </remarks>
-            public const string OpenTelemetryEndpointUrl = "StartUp.HealthCheck.OpenTelemetryEndpointUrl";
-
-            /// <summary>
-            /// 应用程序运行正常
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.HealthCheck.ApplicationWorkingFine
-            /// 用途: 健康检查返回成功状态时的消息
-            /// </remarks>
-            public const string ApplicationWorkingFine = "StartUp.HealthCheck.ApplicationWorkingFine";
-
-            /// <summary>
-            /// OpenTelemetry the configuration is normal
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.HealthCheck.OpenTelemetryConfigurationNormal
-            /// 用途: OpenTelemetry健康检查返回成功状态时的消息
-            /// </remarks>
-            public const string OpenTelemetryConfigurationNormal = "StartUp.HealthCheck.OpenTelemetryConfigurationNormal";
-
-            /// <summary>
-            /// OpenTelemetry is configured normally
-            /// </summary>
-            /// <remarks>
-            /// 键名: StartUp.HealthCheck.OpenTelemetryConfiguredNormally
-            /// 用途: OpenTelemetry健康检查端点返回的配置正常消息
-            /// </remarks>
-            public const string OpenTelemetryConfiguredNormally = "StartUp.HealthCheck.OpenTelemetryConfiguredNormally";
 
             /// <summary>
             /// OK

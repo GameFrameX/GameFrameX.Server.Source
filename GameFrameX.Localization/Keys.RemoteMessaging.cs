@@ -313,14 +313,6 @@ public static partial class Keys
             /// </remarks>
             public const string ReceivePumpFaulted = "RemoteMessaging.Client.ReceivePumpFaulted";
 
-            /// <summary>
-            /// 连接接收泵遭遇未分类异常（不吞掉，记录后向上抛出）
-            /// </summary>
-            /// <remarks>
-            /// 键名: RemoteMessaging.Client.ReceivePumpFatalError
-            /// 用途: 连接接收泵遭遇连接级/解码级之外的异常（如 OOM）时记录后重抛的错误日志
-            /// </remarks>
-            public const string ReceivePumpFatalError = "RemoteMessaging.Client.ReceivePumpFatalError";
         }
 
         /// <summary>
@@ -481,15 +473,6 @@ public static partial class Keys
             /// 参数: {0} - 目标角色
             /// </remarks>
             public const string RoleNoActiveInstance = "RemoteMessaging.Routing.RoleNoActiveInstance";
-
-            /// <summary>
-            /// 时间窗必须为正数
-            /// </summary>
-            /// <remarks>
-            /// 键名: RemoteMessaging.Routing.WindowMustBePositive
-            /// 用途: 当单飞去重时间窗不为正数时抛出
-            /// </remarks>
-            public const string WindowMustBePositive = "RemoteMessaging.Routing.WindowMustBePositive";
 
             /// <summary>
             /// RoleRouterHolder 尚未初始化；请在路由前于启动阶段调用 RoleRouterHolder.Initialize
