@@ -142,8 +142,8 @@ public static class EventDispatcher
         var listeners = HotfixManager.Resolver.FindListeners(actor.Type, eventArgs.GetType());
         if (listeners.IsNullOrEmpty())
         {
-            // Localization: Core.EventDispatcher.DispatchNoListeners - EventDispatcher.Dispatch Actor {0} {1} 事件类型：{2} 没有找到任何监听者
-            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.EventDispatcher.DispatchNoListeners, actorId, eventArgs.GetType().Name, eventArgs.GetType().Name));
+            // Localization: Core.EventDispatcher.DispatchNoListeners - EventDispatcher.Dispatch Actor {0} 类型：{1} 事件类型：{2} 没有找到任何监听者
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.EventDispatcher.DispatchNoListeners, actorId, actor.Type, eventArgs.GetType().Name));
             return;
         }
 
@@ -167,8 +167,8 @@ public static class EventDispatcher
         var listeners = HotfixManager.Resolver.FindListeners(eventArgs.GetType());
         if (listeners.IsNullOrEmpty())
         {
-            // Localization: Core.EventDispatcher.DispatchNoListeners - EventDispatcher.Dispatch Actor {0} {1} 事件类型：{2} 没有找到任何监听者
-            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.EventDispatcher.DispatchNoListeners, actorId, eventArgs.GetType().Name, eventArgs.GetType().Name));
+            // Localization: Core.EventDispatcher.DispatchNoListeners - EventDispatcher.Dispatch Actor {0} 类型：{1} 事件类型：{2} 没有找到任何监听者
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.EventDispatcher.DispatchNoListeners, actorId, ActorIdGenerator.GetActorType(actorId), eventArgs.GetType().Name));
             return;
         }
 
@@ -222,6 +222,14 @@ public static class EventDispatcher
     {
         // 获取监听器对应的组件代理
         var componentAgent = await actor.GetComponentAgentAsync(listener.AgentType, false);
+
+        if (componentAgent == null)
+        {
+            // 组件未注册到该 Actor（isNew:false 未命中）：显式跳过并告警，绝不以 null 代理调用监听器
+            // Localization: Core.EventDispatcher.DispatchOwnerActorNotLoaded - EventDispatcher.Dispatch Actor {0} 事件类型：{1} 监听器 {2} 所属 Actor 不在内存中，已跳过
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.EventDispatcher.DispatchOwnerActorNotLoaded, actorId, eventArgs.GetType().Name, listener.GetType().FullName));
+            return;
+        }
         try
         {
             // 调用监听器的事件处理方法

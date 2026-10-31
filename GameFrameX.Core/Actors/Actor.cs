@@ -323,13 +323,13 @@ public sealed class Actor : IActor, IDisposable
     {
         try
         {
-            while (_onceRecycleCallbacks.First != null)
+            // ConcurrentQueue 排空：注册（AddOnceRecycleCallback）可在任意线程并发进行，
+            // 取出即执行，避免 LinkedList 并发读写的未定义行为
+            while (_onceRecycleCallbacks.TryDequeue(out var callback))
             {
-                var first = _onceRecycleCallbacks.First;
-                _onceRecycleCallbacks.RemoveFirst();
                 try
                 {
-                    first.Value?.Invoke();
+                    callback?.Invoke();
                 }
                 catch (Exception ex)
                 {
@@ -345,15 +345,11 @@ public sealed class Actor : IActor, IDisposable
             // Localization: Core.Actor.RecycleFailed - Actor回收过程异常 actorId:{0} actorType:{1} 异常：\n{2}
             LogHelper.Error(ex, LocalizationService.GetString(Localization.Keys.Core.Actor.RecycleFailed, Id, Type, ex));
         }
-        finally
-        {
-            _onceRecycleCallbacks.Clear();
-        }
 
         return Task.CompletedTask;
     }
 
-    private readonly LinkedList<Action> _onceRecycleCallbacks = new LinkedList<Action>();
+    private readonly ConcurrentQueue<Action> _onceRecycleCallbacks = new ConcurrentQueue<Action>();
 
     /// <summary>
     /// 添加一个在Actor回收时执行一次的回调事件
@@ -368,7 +364,7 @@ public sealed class Actor : IActor, IDisposable
     /// </remarks>
     public void AddOnceRecycleCallback(Action action)
     {
-        _onceRecycleCallbacks.AddLast(action);
+        _onceRecycleCallbacks.Enqueue(action);
     }
 
     /// <summary>
