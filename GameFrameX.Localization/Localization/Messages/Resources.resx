@@ -620,6 +620,26 @@
     <value>Cannot repeat random argument error, requested count: {0} is greater than ID count: {1}</value>
   </data>
 
+    <data name="Utility.RandomHelper.NegativeWeight" xml:space="preserve">
+    <value>Weight must not be negative, actual weight: {0}</value>
+  </data>
+
+    <data name="Utility.RandomHelper.ZeroTotalWeight" xml:space="preserve">
+    <value>Total weight must be greater than zero</value>
+  </data>
+
+    <data name="Utility.RandomHelper.WeightSumOverflow" xml:space="preserve">
+    <value>Total weight {0} exceeds the supported 32-bit range</value>
+  </data>
+
+    <data name="Utility.RandomHelper.WeightIndexOutOfRange" xml:space="preserve">
+    <value>Weight index {0} is out of range for an entry with {1} element(s)</value>
+  </data>
+
+    <data name="Utility.RandomHelper.InsufficientPositiveWeights" xml:space="preserve">
+    <value>Cannot pick {0} distinct weighted items, only {1} item(s) have a positive weight</value>
+  </data>
+
     <!-- Utility.BigIntegerDebug related log messages -->
     <data name="Utility.BigIntegerDebug.DebugA" xml:space="preserve">
     <value>a = {0}</value>

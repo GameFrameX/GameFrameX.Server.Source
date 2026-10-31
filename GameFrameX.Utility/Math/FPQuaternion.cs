@@ -791,6 +791,13 @@ public struct FPQuaternion
     /// <returns>当前四元数的哈希代码。</returns>
     public override int GetHashCode()
     {
-        return x.GetHashCode() ^ y.GetHashCode() ^ z.GetHashCode() ^ w.GetHashCode();
+        unchecked
+        {
+            var hash = x.RawValue.GetHashCode();
+            hash = (hash * 397) ^ y.RawValue.GetHashCode();
+            hash = (hash * 397) ^ z.RawValue.GetHashCode();
+            hash = (hash * 397) ^ w.RawValue.GetHashCode();
+            return hash;
+        }
     }
 }

@@ -917,7 +917,7 @@ public partial struct FP : IEquatable<FP>, IComparable<FP>
         {
             // 我们无法像 Single 和 Double 一样表示无穷大，且 Sqrt 在 x < 0 时
             // 数学上是未定义的。因此我们抛出异常。
-            throw new ArgumentOutOfRangeException(LocalizationService.GetString(Keys.Utility.ExceptionMessages.SqrtValueNegative), "x");
+            throw new ArgumentOutOfRangeException(nameof(x), LocalizationService.GetString(Keys.Utility.ExceptionMessages.SqrtValueNegative));
         }
 
         var num = (ulong)xl;
@@ -1002,10 +1002,20 @@ public partial struct FP : IEquatable<FP>, IComparable<FP>
         // 这就是该函数在 x86 上性能下降的原因 - x64 是可以的
         var rawIndex = FastMul(clamped, LutInterval);
         var roundedIndex = Round(rawIndex);
-        var indexError = 0;
+        // 与 Tan 同构：indexError ∈ [-0.5, 0.5]（量化前），用于线性插值。
+        // SinLut 长度 == LUT_SIZE；ClampSinValue 保证 clamped ≤ PI_OVER_2 - 1，
+        // 故 rawIndex ≤ LUT_SIZE - 1 - ε，顶格时 indexError 必为负。
+        // 第二个下标仍显式夹取，避免未来改 LUT_SIZE / Round / LutInterval 后越界。
+        var indexError = FastSub(rawIndex, roundedIndex);
 
-        var nearestValue = new FP(SinLut[flipHorizontal ? SinLut.Length - 1 - (int)roundedIndex : (int)roundedIndex]);
-        var secondNearestValue = new FP(SinLut[flipHorizontal ? SinLut.Length - 1 - (int)roundedIndex - Sign(indexError) : (int)roundedIndex + Sign(indexError)]);
+        var nearestIndex = System.Math.Clamp(flipHorizontal ? SinLut.Length - 1 - (int)roundedIndex : (int)roundedIndex, 0, SinLut.Length - 1);
+        var secondNearestIndex = flipHorizontal
+            ? SinLut.Length - 1 - (int)roundedIndex - Sign(indexError)
+            : (int)roundedIndex + Sign(indexError);
+        secondNearestIndex = System.Math.Clamp(secondNearestIndex, 0, SinLut.Length - 1);
+
+        var nearestValue = new FP(SinLut[nearestIndex]);
+        var secondNearestValue = new FP(SinLut[secondNearestIndex]);
 
         var delta = FastMul(indexError, FastAbs(FastSub(nearestValue, secondNearestValue)))._serializedValue;
         var interpolatedValue = nearestValue._serializedValue + (flipHorizontal ? -delta : delta);
@@ -1277,7 +1287,7 @@ public partial struct FP : IEquatable<FP>, IComparable<FP>
     {
         if (x < -One || x > One)
         {
-            throw new ArgumentOutOfRangeException(LocalizationService.GetString(Keys.Utility.ExceptionMessages.ValueOutOfRange), "x");
+            throw new ArgumentOutOfRangeException(nameof(x), LocalizationService.GetString(Keys.Utility.ExceptionMessages.ValueOutOfRange));
         }
 
         if (x.RawValue == 0)

@@ -37,10 +37,12 @@ using GameFrameX.Foundation.Utility.DistributedSystem.Snowflake;
 namespace GameFrameX.Utility.Setting;
 
 /// <summary>
-/// 全局设置
+/// 全局设置（<see cref="AppSetting"/> 的进程级仓储）。
 /// </summary>
 /// <remarks>
-/// Global settings class that manages application configuration.
+/// 职责边界（CR-L04）：本类是配置「装载 / 当前实例 / 进程级字段同步」的唯一入口，
+/// 不承载常量（归 <see cref="GlobalConst"/> / <see cref="GameServerConst"/>），
+/// 也不承载业务状态。改名为 <c>AppSettingStore</c> 属破坏性变更，留待主版本统一处理。
 /// </remarks>
 public static class GlobalSettings
 {

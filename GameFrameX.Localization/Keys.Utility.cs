@@ -357,6 +357,56 @@ public static partial class Keys
             /// 参数: {0} - 需求的数量, {1} - 数组长度
             /// </remarks>
             public const string CantRepeatRandomArgError = "Utility.RandomHelper.CantRepeatRandomArgError";
+
+            /// <summary>
+            /// 权重为负数
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.RandomHelper.NegativeWeight
+            /// 用途: 权重随机入参包含负权重时抛出异常
+            /// 参数: {0} - 非法权重值
+            /// </remarks>
+            public const string NegativeWeight = "Utility.RandomHelper.NegativeWeight";
+
+            /// <summary>
+            /// 全部权重为 0
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.RandomHelper.ZeroTotalWeight
+            /// 用途: 参与随机的权重总和为 0（无可选目标）时抛出异常
+            /// 参数: 无
+            /// </remarks>
+            public const string ZeroTotalWeight = "Utility.RandomHelper.ZeroTotalWeight";
+
+            /// <summary>
+            /// 权重总和超出 int 上限
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.RandomHelper.WeightSumOverflow
+            /// 用途: 权重求和超出随机源可表达的 32 位范围时抛出异常
+            /// 参数: {0} - 实际总权重
+            /// </remarks>
+            public const string WeightSumOverflow = "Utility.RandomHelper.WeightSumOverflow";
+
+            /// <summary>
+            /// 权重索引越界
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.RandomHelper.WeightIndexOutOfRange
+            /// 用途: weightIndex 超出权重条目长度时抛出异常
+            /// 参数: {0} - 权重索引, {1} - 条目长度
+            /// </remarks>
+            public const string WeightIndexOutOfRange = "Utility.RandomHelper.WeightIndexOutOfRange";
+
+            /// <summary>
+            /// 不可重复抽样时正权重条目不足
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.RandomHelper.InsufficientPositiveWeights
+            /// 用途: 不可重复抽取的目标数大于权重为正的条目数时抛出异常
+            /// 参数: {0} - 需求数量, {1} - 正权重条目数
+            /// </remarks>
+            public const string InsufficientPositiveWeights = "Utility.RandomHelper.InsufficientPositiveWeights";
         }
 
 

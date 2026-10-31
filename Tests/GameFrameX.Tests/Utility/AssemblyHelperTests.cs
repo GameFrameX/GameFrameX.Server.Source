@@ -400,4 +400,27 @@ public class AssemblyHelperTests
         Assert.True(stopwatch.ElapsedMilliseconds < 1000,
                     $"Performance test failed: {stopwatch.ElapsedMilliseconds}ms for {iterations} iterations");
     }
+
+    /// <summary>
+    /// 测试 GetType 方法 - 未命中结果不得进入缓存（热更程序集后续加载后仍可解析）
+    /// </summary>
+    [Fact]
+    public void GetType_WithUnknownName_DoesNotCacheMiss()
+    {
+        // Arrange
+        const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Static;
+        var cacheField = typeof(AssemblyHelper).GetField("CachedTypes", flags);
+        Assert.NotNull(cacheField);
+        var cache = (System.Collections.Concurrent.ConcurrentDictionary<string, Type>)cacheField.GetValue(null);
+        var typeName = "GameFrameX.Tests.NoSuchType_" + Guid.NewGuid().ToString("N");
+
+        // Act
+        var firstLookup = AssemblyHelper.GetType(typeName);
+        var secondLookup = AssemblyHelper.GetType(typeName);
+
+        // Assert
+        Assert.Null(firstLookup);
+        Assert.Null(secondLookup);
+        Assert.False(cache.ContainsKey(typeName), "未命中的类型名不应被缓存");
+    }
 }

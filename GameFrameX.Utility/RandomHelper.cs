@@ -91,9 +91,9 @@ public static class RandomHelper
     /// <returns>一个大于等于零且小于 UInt32.MaxValue 的 32 位无符号整数。</returns>
     public static uint NextUInt32()
     {
-        var bytes = new byte[4];
+        Span<byte> bytes = stackalloc byte[4];
         RandomShared.NextBytes(bytes);
-        return BitConverter.ToUInt32(bytes, 0);
+        return BitConverter.ToUInt32(bytes);
     }
 
     /// <summary>
@@ -170,9 +170,9 @@ public static class RandomHelper
     /// <returns>一个大于等于零且小于 UInt64.MaxValue 的 64 位无符号整数。</returns>
     public static ulong NextUInt64()
     {
-        var bytes = new byte[8];
+        Span<byte> bytes = stackalloc byte[8];
         RandomShared.NextBytes(bytes);
-        return BitConverter.ToUInt64(bytes, 0);
+        return BitConverter.ToUInt64(bytes);
     }
 
     /// <summary>
@@ -503,28 +503,29 @@ public static class RandomHelper
         ArgumentOutOfRangeException.ThrowIfNegative(n);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(m, n);
 
-        if (m == 0)
+        // 经典迭代抽样（Floyd 算法）：从 n-m 递增到 n-1，每次在 [0, i] 取候选，
+        // 命中已选项则改取 i。与旧递归实现同分布，但无 m 层递归（大 m 不再栈溢出）。
+        var selected = new HashSet<int>(m);
+        for (var i = n - m; i < n; i++)
         {
-            return new HashSet<int>();
+            var candidate = ConcurrentCryptoRandom.Next(0, i + 1);
+            selected.Add(selected.Contains(candidate) ? i : candidate);
         }
 
-        var s = RandomSelect(m - 1, n - 1);
-        var i = ConcurrentCryptoRandom.Next(0, n);
-        s.Add(s.Contains(i) ? n - 1 : i);
-        return s;
+        return selected;
     }
 
     /// <summary>
     /// 根据权重随机选取，如果需求数量超过权重和（除以权重最大公约数后的），那么按照权重比例加入id，剩余数量再进行随机
     /// 不可重复随机num一定小于等于id数量
     /// </summary>
-    /// <param name="weightStr">权重字符串，格式为"id1+weight1;id2+weight2;..."</param>
+    /// <param name="weightStr">权重字符串；行内字段数以 weightIndex 为准（Ids 为 id+weight，Items 为 id+中间字段+weight）</param>
     /// <param name="num">需要选取的数量</param>
     /// <param name="weightIndex">权重索引</param>
     /// <param name="canRepeat">是否允许重复选取</param>
     /// <returns>包含随机选取的结果数组列表</returns>
     /// <exception cref="ArgumentNullException">当weightStr为null时抛出此异常</exception>
-    /// <exception cref="ArgumentException">当weightStr为空或格式错误，或不可重复选取且需求数量大于id数量时抛出此异常</exception>
+    /// <exception cref="ArgumentException">当weightStr为空或格式错误、权重非法，或不可重复抽取的正权重条目不足时抛出此异常</exception>
     /// <exception cref="ArgumentOutOfRangeException">当num或weightIndex小于0时抛出此异常</exception>
     private static List<int[]> RandomSelect(string weightStr, int num, int weightIndex, bool canRepeat = true)
     {
@@ -546,7 +547,7 @@ public static class RandomHelper
     /// <param name="canRepeat">是否允许重复选取</param>
     /// <returns>包含随机选取的结果数组列表</returns>
     /// <exception cref="ArgumentNullException">当array为null时抛出此异常</exception>
-    /// <exception cref="ArgumentException">当array为空数组，或不可重复选取且需求数量大于id数量时抛出此异常</exception>
+    /// <exception cref="ArgumentException">当array为空数组、权重非法，或不可重复选取且需求数量大于正权重条目数时抛出此异常</exception>
     /// <exception cref="ArgumentOutOfRangeException">当num或weightIndex小于0时抛出此异常</exception>
     private static List<int[]> RandomSelect(IReadOnlyList<int[]> array, int num, int weightIndex, bool canRepeat = true)
     {
@@ -571,14 +572,130 @@ public static class RandomHelper
     }
 
     /// <summary>
+    /// 读取并校验条目中的权重值。
+    /// </summary>
+    /// <param name="entry">权重条目。</param>
+    /// <param name="weightIndex">权重索引。</param>
+    /// <returns>校验通过的权重值。</returns>
+    /// <exception cref="ArgumentException">当条目为空、索引越界或权重为负数时抛出。</exception>
+    private static int ReadWeight(int[] entry, int weightIndex)
+    {
+        if (entry == null || weightIndex >= entry.Length)
+        {
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.RandomHelper.WeightIndexOutOfRange, weightIndex, entry == null ? 0 : entry.Length));
+        }
+
+        var weight = entry[weightIndex];
+        if (weight < 0)
+        {
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.RandomHelper.NegativeWeight, weight));
+        }
+
+        return weight;
+    }
+
+    /// <summary>
+    /// 校验权重数组并返回总和（拒绝负权重、全 0、超大总和与越界索引）。
+    /// </summary>
+    /// <param name="array">权重数组，每个元素为[id, weight]。</param>
+    /// <param name="weightIndex">权重索引。</param>
+    /// <returns>校验通过的总权重。</returns>
+    /// <exception cref="ArgumentException">权重非法时抛出。</exception>
+    private static int ValidateAndSumWeights(IReadOnlyList<int[]> array, int weightIndex)
+    {
+        long totalWeight = 0;
+        foreach (var entry in array)
+        {
+            totalWeight += ReadWeight(entry, weightIndex);
+        }
+
+        return EnsureTotalWeight(totalWeight);
+    }
+
+    /// <summary>
+    /// 校验纯权重数组并返回总和。
+    /// </summary>
+    /// <param name="weights">权重数组。</param>
+    /// <returns>校验通过的总权重。</returns>
+    /// <exception cref="ArgumentException">权重非法时抛出。</exception>
+    private static int ValidateAndSumWeightValues(int[] weights)
+    {
+        long totalWeight = 0;
+        foreach (var weight in weights)
+        {
+            if (weight < 0)
+            {
+                throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.RandomHelper.NegativeWeight, weight));
+            }
+
+            totalWeight += weight;
+        }
+
+        return EnsureTotalWeight(totalWeight);
+    }
+
+    /// <summary>
+    /// 校验总权重：不能为 0，且必须落在 int 随机域内。
+    /// </summary>
+    /// <param name="totalWeight">累加后的总权重。</param>
+    /// <returns>int 范围内的总权重。</returns>
+    /// <exception cref="ArgumentException">总权重为 0 或超过 int 上限时抛出。</exception>
+    private static int EnsureTotalWeight(long totalWeight)
+    {
+        if (totalWeight == 0)
+        {
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.RandomHelper.ZeroTotalWeight));
+        }
+
+        if (totalWeight > int.MaxValue)
+        {
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.RandomHelper.WeightSumOverflow, totalWeight));
+        }
+
+        return (int)totalWeight;
+    }
+
+    /// <summary>
+    /// 统计权重为正的条目数量（不可重复抽样最多能选出这么多个目标）。
+    /// </summary>
+    /// <param name="array">权重数组，每个元素为[id, weight]。</param>
+    /// <param name="weightIndex">权重索引。</param>
+    /// <returns>正权重条目数。</returns>
+    private static int CountPositiveWeights(IReadOnlyList<int[]> array, int weightIndex)
+    {
+        var count = 0;
+        foreach (var entry in array)
+        {
+            if (ReadWeight(entry, weightIndex) > 0)
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    /// <summary>
     /// 不可重复随机选取
     /// </summary>
     /// <param name="num">需要选取的数量</param>
     /// <param name="weightIndex">权重索引</param>
     /// <param name="array">权重数组，每个元素为[id, weight]</param>
     /// <returns>包含随机选取的结果数组列表</returns>
+    /// <exception cref="ArgumentException">权重非法，或正权重条目数少于 num 时抛出。</exception>
     private static List<int[]> NoRepeatRandom(int num, int weightIndex, IReadOnlyList<int[]> array)
     {
+        // 先整表校验，避免非法权重在逐次抽样中被隐式放大成晦涩的库异常。
+        ValidateAndSumWeights(array, weightIndex);
+
+        // 0 权重条目永不被选中：不可重复抽样要求目标数不超过正权重条目数，
+        // 否则后续轮次的子集权重和会耗尽（旧实现会返回重复项，属静默错误）。
+        var positiveWeightCount = CountPositiveWeights(array, weightIndex);
+        if (num > positiveWeightCount)
+        {
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.RandomHelper.InsufficientPositiveWeights, num, positiveWeightCount));
+        }
+
         var results = new List<int[]>();
         var idxSet = new HashSet<int>();
         for (var i = 0; i < num; i++)
@@ -592,6 +709,7 @@ public static class RandomHelper
                 }
             }
 
+            // positiveWeightCount 预检保证每一轮仍有正权重可选，子集和恒 > 0。
             var r = ConcurrentCryptoRandom.Next(totalWeight);
             var temp = 0;
             var idx = 0;
@@ -624,11 +742,7 @@ public static class RandomHelper
     /// <returns>包含随机选取的结果数组列表</returns>
     private static List<int[]> CanRepeatRandom(IReadOnlyList<int[]> array, int num, int weightIndex)
     {
-        var totalWeight = 0;
-        foreach (var arr in array)
-        {
-            totalWeight += arr[weightIndex];
-        }
+        var totalWeight = ValidateAndSumWeights(array, weightIndex);
 
         var results = new List<int[]>(num);
         for (var i = 0; i < num; i++)
@@ -665,7 +779,7 @@ public static class RandomHelper
         var temp = 0;
         foreach (var arr in array)
         {
-            temp += arr[weightIndex];
+            temp += ReadWeight(arr, weightIndex);
             if (temp > r)
             {
                 return arr;
@@ -681,13 +795,13 @@ public static class RandomHelper
     /// <param name="weights">权重数组</param>
     /// <returns>随机选取的id索引</returns>
     /// <exception cref="ArgumentNullException">当weights为null时抛出此异常</exception>
-    /// <exception cref="ArgumentException">当weights为空数组时抛出此异常</exception>
+    /// <exception cref="ArgumentException">当weights为空数组、含负权重或权重和非法时抛出此异常</exception>
     public static int Idx(int[] weights)
     {
         ArgumentNullException.ThrowIfNull(weights);
         ArgumentOutOfRangeException.ThrowIfZero(weights.Length, nameof(weights));
 
-        var totalWight = weights.Sum();
+        var totalWight = ValidateAndSumWeightValues(weights);
         var r = ConcurrentCryptoRandom.Next(totalWight);
         var temp = 0;
         for (var i = 0; i < weights.Length; i++)
@@ -709,7 +823,7 @@ public static class RandomHelper
     /// <param name="weightIndex">权重索引</param>
     /// <returns>随机选取的id索引</returns>
     /// <exception cref="ArgumentNullException">当array为null时抛出此异常</exception>
-    /// <exception cref="ArgumentException">当array为空数组时抛出此异常</exception>
+    /// <exception cref="ArgumentException">当array为空数组、权重非法或 weightIndex 越界时抛出此异常</exception>
     /// <exception cref="ArgumentOutOfRangeException">当weightIndex小于0时抛出此异常</exception>
     public static int Idx(IReadOnlyList<int[]> array, int weightIndex = 1)
     {
@@ -717,18 +831,14 @@ public static class RandomHelper
         ArgumentOutOfRangeException.ThrowIfZero(array.Count, nameof(array));
         ArgumentOutOfRangeException.ThrowIfNegative(weightIndex);
 
-        var totalWeight = 0;
-        foreach (var arr in array)
-        {
-            totalWeight += arr[weightIndex];
-        }
+        var totalWeight = ValidateAndSumWeights(array, weightIndex);
 
         var r = ConcurrentCryptoRandom.Next(totalWeight);
         var temp = 0;
         for (var i = 0; i < array.Count; i++)
         {
             var arr = array[i];
-            temp += arr[weightIndex];
+            temp += ReadWeight(arr, weightIndex);
             if (temp > r)
             {
                 return i;
@@ -746,7 +856,7 @@ public static class RandomHelper
     /// <param name="isCanRepeat">是否允许重复选取</param>
     /// <returns>包含随机选取的id列表</returns>
     /// <exception cref="ArgumentNullException">当array为null时抛出此异常</exception>
-    /// <exception cref="ArgumentException">当array为空数组时抛出此异常</exception>
+    /// <exception cref="ArgumentException">当array为空数组、权重非法（负权重/全 0/总和溢出/索引越界），或不可重复抽取的正权重条目不足时抛出此异常</exception>
     /// <exception cref="ArgumentOutOfRangeException">当num小于0时抛出此异常</exception>
     public static List<int> Ids(IReadOnlyList<int[]> array, int num, bool isCanRepeat = true)
     {
@@ -765,7 +875,7 @@ public static class RandomHelper
     /// <param name="isCanRepeat">是否允许重复选取</param>
     /// <returns>包含随机选取的id列表</returns>
     /// <exception cref="ArgumentNullException">当str为null时抛出此异常</exception>
-    /// <exception cref="ArgumentException">当str为空或格式错误时抛出此异常</exception>
+    /// <exception cref="ArgumentException">当str为空或格式错误、权重非法（负权重/全 0/总和溢出），或不可重复抽取的正权重条目不足时抛出此异常</exception>
     /// <exception cref="ArgumentOutOfRangeException">当num小于0时抛出此异常</exception>
     public static List<int> Ids(string str, int num, bool isCanRepeat = true)
     {
@@ -778,12 +888,12 @@ public static class RandomHelper
     /// <summary>
     /// 随机获取指定数量的项目
     /// </summary>
-    /// <param name="str">权重字符串，格式为"id1+weight1;id2+weight2;..."</param>
+    /// <param name="str">权重字符串，Items 格式为"id1+中间字段1+weight1;id2+中间字段2+weight2;..."</param>
     /// <param name="num">需要选取的数量</param>
     /// <param name="isCanRepeat">是否允许重复选取</param>
     /// <returns>包含随机选取的项目列表</returns>
     /// <exception cref="ArgumentNullException">当str为null时抛出此异常</exception>
-    /// <exception cref="ArgumentException">当str为空或格式错误时抛出此异常</exception>
+    /// <exception cref="ArgumentException">当str为空或格式错误、权重非法（负权重/全 0/总和溢出），或不可重复抽取的正权重条目不足时抛出此异常</exception>
     /// <exception cref="ArgumentOutOfRangeException">当num小于0时抛出此异常</exception>
     public static List<int[]> Items(string str, int num, bool isCanRepeat = true)
     {
@@ -796,12 +906,12 @@ public static class RandomHelper
     /// <summary>
     /// 随机获取指定数量的项目
     /// </summary>
-    /// <param name="array">数据列表，每个元素为[id, weight]</param>
+    /// <param name="array">数据列表，每个元素为[id, 中间字段, weight]（权重取索引 2）</param>
     /// <param name="num">需要选取的数量</param>
     /// <param name="isCanRepeat">是否允许重复选取</param>
     /// <returns>包含随机选取的项目列表</returns>
     /// <exception cref="ArgumentNullException">当array为null时抛出此异常</exception>
-    /// <exception cref="ArgumentException">当array为空数组时抛出此异常</exception>
+    /// <exception cref="ArgumentException">当array为空数组、权重非法（负权重/全 0/总和溢出/索引越界），或不可重复抽取的正权重条目不足时抛出此异常</exception>
     /// <exception cref="ArgumentOutOfRangeException">当num小于0时抛出此异常</exception>
     public static List<int[]> Items(IReadOnlyList<int[]> array, int num, bool isCanRepeat = true)
     {
