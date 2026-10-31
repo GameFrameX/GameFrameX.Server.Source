@@ -57,12 +57,17 @@ public interface IMessageCompressionAlgorithm
     byte[] Compress(byte[] input);
 
     /// <summary>
-    /// 解压数据。
+    /// 解压数据（带输出上限）。
     /// </summary>
     /// <remarks>
-    /// Decompresses data.
+    /// Decompresses data with a bounded output length. Implementations must abort the inflation
+    /// as soon as the accumulated output exceeds <paramref name="maxOutputLength"/> (defence against
+    /// decompression bombs); a post-hoc length check after full inflation is not a valid substitute.
+    /// Callers that know their protocol-level maximum message size should always pass it explicitly.
     /// </remarks>
     /// <param name="input">待解压的压缩字节数组 / The compressed byte array to decompress</param>
+    /// <param name="maxOutputLength">允许的最大解压输出字节数 / Maximum allowed decompressed output length in bytes</param>
     /// <returns>解压后的原始字节数组 / The decompressed byte array</returns>
-    byte[] Decompress(byte[] input);
+    /// <exception cref="System.IO.InvalidDataException">压缩数据非法、损坏、截断或解压输出超过上限时抛出 / Thrown when the data is invalid, corrupted, truncated, or exceeds the output limit</exception>
+    byte[] Decompress(byte[] input, long maxOutputLength = CompressionHelper.DefaultMaxDecompressedOutputLength);
 }
