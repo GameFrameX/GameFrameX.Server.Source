@@ -27,6 +27,14 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+//  警告：本文件是浮点版 FP 实现，整文件由 #if !FP 包裹，且已在 GameFrameX.Utility.csproj 中
+//       通过 <Compile Remove="Math/FP.Float.cs"/> 显式排除——本仓（Debug/Release 均定义 FP）
+//       永不编译本文件，在此处的修改不会进入 GameFrameX.Utility 程序集。
+//       该实现供客户端共享工程（不定义 FP）使用；修改必须同步客户端仓并接受客户端编译验证。
+//  WARNING: Float-based FP implementation. Wrapped in #if !FP and excluded from
+//           GameFrameX.Utility.csproj; never compiled in this repository. Shared with
+//           client-side projects that do not define FP - keep changes in sync there.
+
 #if !FP
 using System;
 using System.IO;
