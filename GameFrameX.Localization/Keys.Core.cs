@@ -96,6 +96,16 @@ public static partial class Keys
             public const string ActiveComponentFailed = "Core.Actor.ActiveComponentFailed";
 
             /// <summary>
+            /// Actor反激活组件失败 actorId:{0} 组件类型:{1} 异常：\n{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.Actor.InactiveComponentFailed
+            /// 用途: Actor反激活时单个组件抛异常（记录后继续反激活其余组件）
+            /// 参数: {0} - Actor ID, {1} - 组件类型, {2} - 异常信息
+            /// </remarks>
+            public const string InactiveComponentFailed = "Core.Actor.InactiveComponentFailed";
+
+            /// <summary>
             /// WorkerActor工作单元相关消息
             /// </summary>
             public static class WorkerActor
@@ -280,6 +290,16 @@ public static partial class Keys
             public const string InvalidHandlerType = "Core.Timer.InvalidHandlerType";
 
             /// <summary>
+            /// 定时任务目标Actor不在内存中，已删除该任务 jobKey:{0} actorId:{1} handler:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.Timer.TargetActorNotFoundJobRemoved
+            /// 用途: 定时任务触发时目标Actor已回收，不重建Actor并删除该任务
+            /// 参数: {0} - 任务键, {1} - Actor ID, {2} - 处理器类型
+            /// </remarks>
+            public const string TargetActorNotFoundJobRemoved = "Core.Timer.TargetActorNotFoundJobRemoved";
+
+            /// <summary>
             /// {0}\n{1}
             /// </summary>
             /// <remarks>
@@ -395,6 +415,16 @@ public static partial class Keys
             /// 参数: {0} - Actor ID, {1} - Actor类型, {2} - 异常信息
             /// </remarks>
             public const string ActorForEachError = "Core.ActorManager.ActorForEachError";
+
+            /// <summary>
+            /// 显式移除Actor前回存失败 actorId:{0} actorType:{1} 异常：\n{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.ActorManager.RemoveSaveStateFailed
+            /// 用途: RemoveAsync/RemoveAllAsync 在反激活前强制回存失败时记录（移除继续执行）
+            /// 参数: {0} - Actor ID, {1} - Actor类型, {2} - 异常信息
+            /// </remarks>
+            public const string RemoveSaveStateFailed = "Core.ActorManager.RemoveSaveStateFailed";
         }
 
         /// <summary>

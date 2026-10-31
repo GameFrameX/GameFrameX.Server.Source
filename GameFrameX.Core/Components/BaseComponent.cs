@@ -114,18 +114,29 @@ public abstract class BaseComponent : IComponent, IState
     /// <summary>
     /// 反激活组件
     /// </summary>
+    /// <remarks>
+    /// 代理反激活钩子抛异常时 <see cref="IsActive"/> 仍落为 false（异常继续上抛供调用方记录）：
+    /// 否则组件永远卡在激活态，Actor 的空闲回收判定一直不成立，Actor 永驻内存。
+    /// <see cref="IsActive"/> is always reset to false even when an agent hook throws (the exception
+    /// still propagates); otherwise the actor could never be recycled.
+    /// </remarks>
     /// <returns>反激活任务</returns>
     public virtual async Task InactiveAsync()
     {
-        var agent = GetAgent();
-        if (agent != null)
+        try
         {
-            await agent.BeforeInActivationAsync();
-            await agent.InactiveAsync();
-            await agent.AfterInActivationAsync();
+            var agent = GetAgent();
+            if (agent != null)
+            {
+                await agent.BeforeInActivationAsync();
+                await agent.InactiveAsync();
+                await agent.AfterInActivationAsync();
+            }
         }
-
-        IsActive = false;
+        finally
+        {
+            IsActive = false;
+        }
     }
 
     /// <summary>

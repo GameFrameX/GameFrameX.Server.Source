@@ -346,6 +346,24 @@ public static class QuartzTimer
     }
 
     /// <summary>
+    /// 调度器是否已启动且未关闭。
+    /// </summary>
+    /// <remarks>
+    /// Actor 回收清理名下定时任务前据此判定：调度器未启动时不存在任何任务，已关闭时任务随调度器一并失效，
+    /// 两种情况都无需（也无法）逐个删除，直接访问 <see cref="Scheduler"/> 会抛出。
+    /// Whether the scheduler has been started and not shut down. Actor recycling checks this before
+    /// deleting its jobs: none exist before start, and all are gone after shutdown.
+    /// </remarks>
+    internal static bool IsSchedulerRunning
+    {
+        get
+        {
+            var scheduler = _scheduler;
+            return scheduler != null && scheduler.Status is not (SchedulerStatus.Shutdown or SchedulerStatus.ShuttingDown);
+        }
+    }
+
+    /// <summary>
     /// 初始化定时任务调度器
     /// </summary>
     /// <remarks>
@@ -430,6 +448,13 @@ public static class QuartzTimer
         /// <summary>
         /// 执行定时任务
         /// </summary>
+        /// <remarks>
+        /// 只向内存中的 Actor 投递：反查组件代理固定 <c>isNew: false</c>，绝不因定时器触发而重建已回收的 Actor
+        /// （否则周期任务会反复拉起 Actor 并重新读库，形成复活循环）。目标 Actor 不在内存时记 Warning 并删除
+        /// 当前作业自愈——正常情况下 Actor 回收时已删除其名下任务，走到这里说明任务泄漏。
+        /// Only dispatches to in-memory actors: the agent lookup uses <c>isNew: false</c>, so a timer firing
+        /// never recreates a recycled actor. When the target actor is gone, the job deletes itself.
+        /// </remarks>
         /// <param name="context">任务执行上下文 / Job execution context</param>
         /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
         /// <returns>表示异步操作的任务 / A task representing the asynchronous operation</returns>
@@ -449,13 +474,18 @@ public static class QuartzTimer
                         if (baseType != null && baseType.GenericTypeArguments.Length > 0)
                         {
                             var agentType = baseType.GenericTypeArguments[0];
-                            var componentAgent = await ActorManager.GetComponentAgentAsync(actorId, agentType);
+                            var componentAgent = await ActorManager.GetComponentAgentAsync(actorId, agentType, isNew: false);
                             if (componentAgent != null)
                             {
                                 GameEventArgs eventArgs = param as GameEventArgs;
                                 componentAgent.Tell(() => handler.InnerHandleTimerAsync(componentAgent, eventArgs));
                                 return;
                             }
+
+                            // Localization: Core.Timer.TargetActorNotFoundJobRemoved - 定时任务目标Actor不在内存中，已删除该任务 jobKey:{0} actorId:{1} handler:{2}
+                            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Core.Timer.TargetActorNotFoundJobRemoved, context.JobDetail.Key, actorId, handlerType));
+                            await context.Scheduler.DeleteJob(context.JobDetail.Key, cancellationToken);
+                            return;
                         }
                     }
                 }

@@ -16,6 +16,7 @@
 
 ### Fixed
 
+* Core 回收链路数据与稳定性修复（C436，GFX-1176，GitHub #922）：`Actor.OnRecycleAsync` 在回收回调后删除 `ScheduleIdSet` 中剩余的 Quartz 任务并清空集合，三条回收路径（空闲回收 / `RemoveAsync` / `RemoveAllAsync`）均覆盖；定时任务触发改为 `isNew: false` 反查，目标 Actor 不在内存时不再重建 Actor（消除周期任务复活已回收 Actor 的循环），记 Warning 并删除该任务。`BaseComponent.InactiveAsync` 以 try/finally 保证 `IsActive` 落为 false，`Actor.InactiveAsync` 逐组件隔离异常（Fatal 日志后继续），单个组件反激活失败不再让 Actor 永驻内存，也不再打断 `RemoveAllAsync` 关服流程。显式移除前对有未落库修改的 Actor 强制回存（失败记 Fatal 不阻断移除）。`StateComponent.TimerSaveAsync` 单个状态类型回存失败不再中断整轮，日志级别 Info → Error。`ActorManager.RemoveAsync` 返回真实完成任务（await 返回即回存 / 反激活 / 回收回调均已执行，隔离 Actor 返回异常任务）并同步删除 `ActiveTimeDic` 条目。行为变化：依赖「定时器唤醒离线 Actor」的业务需在触发前自行加载 Actor；组件反激活异常不再向 `RemoveAllAsync` 调用方抛出。回归 11 例（A/B：还原生产改动后 11/11 必败）。
 * 入队与定时撮合解耦（C406，GFX-1104）：删除每次入队的全量撮合及最新票据扫描，复用 `matchmaker-run` 按宿主调度节奏批量处理队列（默认 1000ms）。单轮撮合算法保持不变；桥测试覆盖四名玩家单批次形成两组及批次前取消不参与分配。
 * 撮合通知异步执行与停用退订（C407，GFX-1105，GitHub #733）：`ICapabilityEventBus.Subscribe` 返回幂等 `IDisposable` 退订句柄（void → IDisposable 为二进制破坏性变更——包族消费方需重新编译；源码侧忽略返回值的既有调用不受影响）；online-match 模块撮合分配事件回调改为纯入队（移除同步总线回调内 `ResolveAssignmentAsync` / `session.WriteAsync` 两处 `GetAwaiter().GetResult()` 死锁面），新增 `match-assignment-notification-tick` 每轮有限批次（64）异步解析并推送（条目级失败不阻断同批其余条目，异常交调度器既有日志路径）；`DeactivateAsync` 停用收口——关闭入队、退订、清空待处理并等待在途批次完成，热更/停机后旧模块零通知。回归 13 例：总线退订契约 5 + 模块生命周期 8（含对旧同步实现确定性红的发布不同步解析 / 停用退订 / 停用清空 / 容错批次）。
 

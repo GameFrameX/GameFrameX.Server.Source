@@ -493,6 +493,9 @@
     <data name="Core.Timer.InvalidHandlerType" xml:space="preserve">
     <value>错误的ITimerHandler类型，回调失败 type:{0}</value>
   </data>
+  <data name="Core.Timer.TargetActorNotFoundJobRemoved" xml:space="preserve">
+    <value>定时任务目标Actor不在内存中，已删除该任务 jobKey:{0} actorId:{1} handler:{2}</value>
+  </data>
 
     <!-- Actor 管理器相关消息 -->
 <!-- 组件注册相关消息 -->
@@ -1601,6 +1604,10 @@
     <value>Actor激活组件失败 actorId:{0} 组件类型:{1} 异常：\n{2}</value>
   </data>
 
+  <data name="Core.Actor.InactiveComponentFailed" xml:space="preserve">
+    <value>Actor反激活组件失败 actorId:{0} 组件类型:{1} 异常：\n{2}</value>
+  </data>
+
   <data name="Core.Actor.WorkerActor.Timeout" xml:space="preserve">
     <value>工作单元执行超时 trace:{0}</value>
   </data>
@@ -1619,6 +1626,10 @@
 
   <data name="Core.ActorManager.ActorForEachError" xml:space="preserve">
     <value>ActorManager.ActorForEach 错误 actorId:{0} actorType:{1} 异常: {2}</value>
+  </data>
+
+  <data name="Core.ActorManager.RemoveSaveStateFailed" xml:space="preserve">
+    <value>显式移除Actor前回存失败 actorId:{0} actorType:{1} 异常：\n{2}</value>
   </data>
 
   <data name="Core.ActorManager.CheckIdleRecycled" xml:space="preserve">
