@@ -53,4 +53,7 @@ internal static class ArchitectureAnalyzerConstants
 
     /// <summary>逻辑层程序集名称。Handler、Agent、Listener 等业务类型必须定义在此程序集中。</summary>
     public const string HotfixAssembly = "GameFrameX.Hotfix";
+
+    /// <summary>WrapperGenerator 源生成器标识：生成类上 GeneratedCodeAttribute 的 tool 名，分析器按此精确匹配豁免生成产物。</summary>
+    public const string WrapperGeneratorToolName = "GameFrameX.Hotfix.WrapperGenerator";
 }

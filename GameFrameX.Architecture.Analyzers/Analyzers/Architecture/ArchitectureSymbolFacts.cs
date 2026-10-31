@@ -150,12 +150,90 @@ internal static class ArchitectureSymbolFacts
     /// 判断类型是否为源生成器自动生成的 ComponentAgentWrapper。
     /// </summary>
     /// <remarks>
-    /// 源生成器会为每个 ComponentAgent 生成一个 Wrapper 类，名称以 "ComponentAgentWrapper" 结尾。
-    /// 这些生成类不应被分析器检查，因为它们是自动产物而非手写代码。
+    /// 三段判定（按可信度顺序）：
+    ///   1. 类型带 System.CodeDom.Compiler.GeneratedCodeAttribute 且 tool 名精确等于
+    ///      WrapperGenerator 标识（<see cref="ArchitectureAnalyzerConstants.WrapperGeneratorToolName"/>）——
+    ///      伪造 tool 名属显式声明生成代码（主动退出架构分析），与命名意外冒充不同源；
+    ///   2. 任一声明位置位于 ".g.cs" 源文件——源生成器产物按 Roslyn 约定的文件后缀落地；
+    ///   3. 过渡期兜底：所属程序集为 GameFrameX.Hotfix 且名称以 "ComponentAgentWrapper" 结尾——
+    ///      覆盖标记与文件后缀信号引入前的存量生成形态。兜底只对 Hotfix 程序集生效：
+    ///      Hotfix 之外手写同名后缀类不豁免，GFX0005/GFX0014 无条件生效。
+    /// 引擎边界：分析器以 GeneratedCodeAnalysisFlags.None 初始化时，Roslyn 对带任意 GeneratedCodeAttribute
+    /// 或位于生成文件（.g.cs 等）的符号在进入符号回调前即抑制——前两段在当前引擎配置下为纵深防御
+    /// （引擎/宿主行为变化时仍正确），可观测豁免主要来自引擎抑制与第三段。
+    /// The exemption applies only to genuine generator output; a hand-written class with the
+    /// wrapper name suffix outside the Hotfix assembly is not exempt.
     /// </remarks>
     public static bool IsGeneratedComponentAgentWrapper(INamedTypeSymbol type)
     {
-        return type.Name.EndsWith("ComponentAgentWrapper", StringComparison.Ordinal);
+        if (HasWrapperGeneratorMarker(type))
+        {
+            return true;
+        }
+
+        if (IsDeclaredInGeneratedCodeFile(type))
+        {
+            return true;
+        }
+
+        return type.ContainingAssembly.Identity.Name == ArchitectureAnalyzerConstants.HotfixAssembly
+               && type.Name.EndsWith("ComponentAgentWrapper", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// 判断类型是否标注了 WrapperGenerator 的 GeneratedCodeAttribute 标记（tool 名精确匹配）。
+    /// </summary>
+    /// <remarks>
+    /// Checks whether the type carries the wrapper generator's GeneratedCodeAttribute marker with an
+    /// exact tool-name match; GeneratedCodeAttribute from other tools does not exempt the type.
+    /// </remarks>
+    private static bool HasWrapperGeneratorMarker(INamedTypeSymbol type)
+    {
+        foreach (var attribute in type.GetAttributes())
+        {
+            var attributeClass = attribute.AttributeClass;
+            if (attributeClass == null
+                || attributeClass.MetadataName != "GeneratedCodeAttribute"
+                || attributeClass.ContainingNamespace == null
+                || attributeClass.ContainingNamespace.ToDisplayString() != "System.CodeDom.Compiler")
+            {
+                continue;
+            }
+
+            if (attribute.ConstructorArguments.Length > 0
+                && attribute.ConstructorArguments[0].Value is string toolName
+                && toolName == ArchitectureAnalyzerConstants.WrapperGeneratorToolName)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 判断类型的任一声明位置是否位于 ".g.cs" 生成源文件。
+    /// </summary>
+    /// <remarks>
+    /// Checks whether any declaration location of the type lies in a generated ".g.cs" source file.
+    /// </remarks>
+    private static bool IsDeclaredInGeneratedCodeFile(INamedTypeSymbol type)
+    {
+        foreach (var location in type.Locations)
+        {
+            if (location.IsInMetadata)
+            {
+                continue;
+            }
+
+            var filePath = location.SourceTree?.FilePath ?? string.Empty;
+            if (filePath.EndsWith(".g.cs", StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

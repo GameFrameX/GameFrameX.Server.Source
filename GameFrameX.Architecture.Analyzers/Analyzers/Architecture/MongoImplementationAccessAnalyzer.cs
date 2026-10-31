@@ -27,6 +27,7 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
@@ -45,9 +46,13 @@ namespace GameFrameX.Architecture.Analyzers;
 /// <para>豁免（声明面天然不可见，故不误报）：Launcher 组合根 GameDb.Init&lt;MongoDbService&gt; /
 /// GameDb.Init&lt;PostgreSqlDbService&gt; 注册泛型实参与方法体内的 GameDb.As&lt;…&gt;(name) 调用
 /// 属于装配而非数据访问；GlobalUsings 的命名空间 using 不产生符号引用。</para>
+/// <para>候选覆盖 class / struct / interface / record / delegate 等全部命名类型种类
+///（仅排除 Error 种类与编译器隐式生成类型）——接口与结构体的声明面同样会外泄实现类型、
+/// 绕开 GameDb 门面默认库语义，故本分析器不走 <see cref="SingleDiagnosticSymbolAnalyzer"/>
+/// 基座（其候选过滤只保留 Class），自行注册 NamedType 符号分析。</para>
 /// </remarks>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class MongoImplementationAccessAnalyzer : SingleDiagnosticSymbolAnalyzer
+public sealed class MongoImplementationAccessAnalyzer : DiagnosticAnalyzer
 {
     private static readonly DiagnosticDescriptor SDescriptor = new DiagnosticDescriptor(
         "GFX0016",
@@ -57,12 +62,43 @@ public sealed class MongoImplementationAccessAnalyzer : SingleDiagnosticSymbolAn
         DiagnosticSeverity.Error,
         true);
 
-    protected override DiagnosticDescriptor Descriptor
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
     {
-        get { return SDescriptor; }
+        get { return ImmutableArray.Create(SDescriptor); }
     }
 
-    protected override void AnalyzeNamedType(SymbolAnalysisContext context, ArchitectureSymbols symbols, INamedTypeSymbol type)
+    /// <summary>
+    /// 注册覆盖全部命名类型种类的符号分析。
+    /// </summary>
+    /// <remarks>
+    /// 不走 <see cref="SingleDiagnosticSymbolAnalyzer"/> 基座：基座候选过滤只保留 Class，
+    /// 会漏掉 interface / struct / record / delegate 声明面上的实现层类型引用（CR-M01）。
+    /// 此处仅排除 Error 种类、编译器隐式生成类型与 ShouldIgnoreAssembly 白名单程序集，
+    /// 实现层豁免由 <see cref="AnalyzeNamedType"/> 内的 IsMongoImplementationLayer 承担。
+    /// Registers symbol analysis covering every named type kind.
+    /// </remarks>
+    public override void Initialize(AnalysisContext context)
+    {
+        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
+        context.EnableConcurrentExecution();
+        context.RegisterCompilationStartAction(compilationContext =>
+        {
+            var symbols = ArchitectureSymbols.Create(compilationContext.Compilation);
+            compilationContext.RegisterSymbolAction(symbolContext =>
+            {
+                var type = (INamedTypeSymbol)symbolContext.Symbol;
+                if (type.TypeKind == TypeKind.Error || type.IsImplicitlyDeclared
+                    || ArchitectureSymbolFacts.ShouldIgnoreAssembly(type.ContainingAssembly.Identity.Name))
+                {
+                    return;
+                }
+
+                AnalyzeNamedType(symbolContext, symbols, type);
+            }, SymbolKind.NamedType);
+        });
+    }
+
+    private static void AnalyzeNamedType(SymbolAnalysisContext context, ArchitectureSymbols symbols, INamedTypeSymbol type)
     {
         if (symbols.MongoDbService == null && symbols.PostgreSqlDbService == null && symbols.MultiDbRegistry == null)
         {
