@@ -96,6 +96,26 @@ public static partial class Keys
             public const string ServerIdLessThanOrEqualZero = "Utility.Exceptions.ServerIdLessThanOrEqualZero";
 
             /// <summary>
+            /// 服务器ID超出最大值的错误消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.Exceptions.ServerIdExceedsMax
+            /// 用途: 当服务器ID超出最大服务器ID时使用
+            /// 参数: {0} - 超界的serverId值, {1} - 最大服务器ID值
+            /// </remarks>
+            public const string ServerIdExceedsMax = "Utility.Exceptions.ServerIdExceedsMax";
+
+            /// <summary>
+            /// ActorId解析出的服务器ID不在合法域内的错误消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.Exceptions.ActorIdServerIdInvalidLayout
+            /// 用途: 当GetServerId/GetActorType解析出的服务器ID不在[MinServerId, MaxServerId]内时使用，表明位布局可能已损坏
+            /// 参数: {0} - 解析出的serverId值, {1} - 最小服务器ID值, {2} - 最大服务器ID值
+            /// </remarks>
+            public const string ActorIdServerIdInvalidLayout = "Utility.Exceptions.ActorIdServerIdInvalidLayout";
+
+            /// <summary>
             /// Actor类型无效的错误消息
             /// </summary>
             /// <remarks>
@@ -341,6 +361,15 @@ public static partial class Keys
             /// 参数: {0} - 计算结果
             /// </remarks>
             public const string DivisionOverflowLog = "Utility.LNumber.DivisionOverflowLog";
+
+            /// <summary>
+            /// LNumber除数为零的错误消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.LNumber.DivisionByZero
+            /// 用途: 当LNumber除法运算的除数为零时抛出
+            /// </remarks>
+            public const string DivisionByZero = "Utility.LNumber.DivisionByZero";
         }
 
         /// <summary>
@@ -595,6 +624,41 @@ public static partial class Keys
             /// 参数: {0} - 异常详情
             /// </remarks>
             public const string InitException = "Utility.IllegalWordDetection.InitException";
+
+            /// <summary>
+            /// 敏感词检测器初始化已在进行中的日志消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.IllegalWordDetection.InitAlreadyInProgress
+            /// 用途: 当新的Init与正在进行的注册并发时拒绝后者并记录
+            /// </remarks>
+            public const string InitAlreadyInProgress = "Utility.IllegalWordDetection.InitAlreadyInProgress";
+
+            /// <summary>
+            /// 敏感词表数据损坏的错误消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.IllegalWordDetection.BadWordTableCorrupted
+            /// 用途: 当敏感词配置表解析出非法字段长度（负数或越过表末尾）时抛出
+            /// 参数: {0} - 非法长度, {1} - 当前偏移, {2} - 数据总长度
+            /// </remarks>
+            public const string BadWordTableCorrupted = "Utility.IllegalWordDetection.BadWordTableCorrupted";
+        }
+
+        /// <summary>
+        /// 热更模块宿主相关日志消息资源键
+        /// </summary>
+        public static class Hotload
+        {
+            /// <summary>
+            /// 退役模块清理失败的错误日志消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.Hotload.RetireModuleFailed
+            /// 用途: 当退役链清理（宽限等待/卸载/释放验证）抛出异常时记录
+            /// 参数: {0} - 异常详情
+            /// </remarks>
+            public const string RetireModuleFailed = "Utility.Hotload.RetireModuleFailed";
         }
 
         /// <summary>
