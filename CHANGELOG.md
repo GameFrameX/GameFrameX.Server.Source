@@ -16,6 +16,7 @@
 
 ### Fixed
 
+* 架构分析器守卫三项收口（C429/C430，GFX-1170，GitHub #916）：GFX0016 候选集从仅 Class 放宽为全部命名类型种类——struct/interface/record 声明面引用 `MongoDbService`/`PostgreSqlDbService`/`MultiDbRegistry` 不再漏报（自行注册 NamedType 符号分析，实现层白名单与豁免不变）；GFX0001 补抽象类豁免（与 GFX0005/0008/0009 一致，非 Apps 程序集的抽象中间状态类不再被误拦）；生成 Wrapper 豁免改为「`GeneratedCodeAttribute` 标记（tool 名精确匹配）+ `.g.cs` 文件路径 + 仅 Hotfix 内名称后缀兜底」三段判定，Hotfix 之外手写 `ComponentAgentWrapper` 后缀类不再同时逃过 GFX0005/GFX0014；WrapperGenerator 生成类头追加 `GeneratedCodeAttribute` 标记（与分析器 `WrapperGeneratorToolName` 同值契约）。
 * 入队与定时撮合解耦（C406，GFX-1104）：删除每次入队的全量撮合及最新票据扫描，复用 `matchmaker-run` 按宿主调度节奏批量处理队列（默认 1000ms）。单轮撮合算法保持不变；桥测试覆盖四名玩家单批次形成两组及批次前取消不参与分配。
 * 撮合通知异步执行与停用退订（C407，GFX-1105，GitHub #733）：`ICapabilityEventBus.Subscribe` 返回幂等 `IDisposable` 退订句柄（void → IDisposable 为二进制破坏性变更——包族消费方需重新编译；源码侧忽略返回值的既有调用不受影响）；online-match 模块撮合分配事件回调改为纯入队（移除同步总线回调内 `ResolveAssignmentAsync` / `session.WriteAsync` 两处 `GetAwaiter().GetResult()` 死锁面），新增 `match-assignment-notification-tick` 每轮有限批次（64）异步解析并推送（条目级失败不阻断同批其余条目，异常交调度器既有日志路径）；`DeactivateAsync` 停用收口——关闭入队、退订、清空待处理并等待在途批次完成，热更/停机后旧模块零通知。回归 13 例：总线退订契约 5 + 模块生命周期 8（含对旧同步实现确定性红的发布不同步解析 / 停用退订 / 停用清空 / 容错批次）。
 
