@@ -81,4 +81,14 @@ public class AgentInfo
     /// </remarks>
     /// <value>命名空间列表 / Namespace list</value>
     public List<string> UsingSpaces { get; set; } = new();
+
+    /// <summary>
+    /// 获取或设置本分部产物是否发射 GeneratedCodeAttribute 标记。
+    /// </summary>
+    /// <remarks>
+    /// Gets or sets whether this emitted piece carries the GeneratedCodeAttribute marker.
+    /// The attribute's AllowMultiple is false, so for a wrapper split across multiple emitted
+    /// partial pieces only the first emitted piece may carry it (duplicate attributes fail with CS0579).
+    /// </remarks>
+    public bool EmitGeneratedCodeMarker { get; set; }
 }
