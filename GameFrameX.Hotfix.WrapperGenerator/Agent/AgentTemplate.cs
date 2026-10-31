@@ -131,7 +131,7 @@ public static class AgentTemplate
         else
         {
             TemplateStringBuilder.AppendLine("\t\t\tlong callChainId = GameFrameX.Core.Actors.Impl.WorkerActor.NextChainId();");
-            TemplateStringBuilder.AppendLine($"\t\t\t_ = base.Actor.WorkerActor.EnqueueAsync(()=>base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), callChainId, true{BuildTimeoutArgument(infoMethod)});");
+            TemplateStringBuilder.AppendLine($"\t\t\t_ = base.Actor.WorkerActor.EnqueueAsync(async ()=> await base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), callChainId, true{BuildTimeoutArgument(infoMethod)});");
         }
 
         TemplateStringBuilder.AppendLine($"\t\t\treturn {infoMethod.ReturnType}.CompletedTask;");
@@ -146,7 +146,8 @@ public static class AgentTemplate
     /// <param name="infoMethod">方法元数据 / Method metadata</param>
     private static void AppendInvocationBody(MethodInfoData infoMethod)
     {
-        var needAwait = infoMethod.IsAsync && infoMethod.ReturnType.Contains("<");
+        // async 方法转发底层任务必须 await（非泛型 Task/ValueTask 同样如此）；是否泛型与该判定无关
+        var needAwait = infoMethod.IsAsync;
         TemplateStringBuilder.AppendLine("\t\t\t(bool needEnqueue, long chainId)= base.Actor.WorkerActor.IsNeedEnqueue();");
         TemplateStringBuilder.AppendLine("\t\t\tif (!needEnqueue)");
         TemplateStringBuilder.AppendLine("\t\t\t{");
