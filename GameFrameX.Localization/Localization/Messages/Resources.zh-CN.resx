@@ -566,6 +566,18 @@
     <value>trace不可用：{0}</value>
   </data>
 
+    <data name="CoreExceptions.WorkerActor.QueueRejected" xml:space="preserve">
+    <value>WorkerActor 队列拒绝了工作单元。actorId:{0} trace:{1}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.QueueCancelled" xml:space="preserve">
+    <value>WorkerActor 队列投递被取消。actorId:{0} trace:{1}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.QueueFailed" xml:space="preserve">
+    <value>WorkerActor 队列投递失败。actorId:{0} trace:{1}</value>
+  </data>
+
     <!-- 组件相关异常 -->
     <data name="CoreExceptions.Component.ActorTypeNotBound" xml:space="preserve">
     <value>组件:[{0}] Actor类型未绑定</value>
@@ -622,6 +634,14 @@
 
     <data name="CoreExceptions.Hotfix.MissingParameterlessConstructor" xml:space="preserve">
     <value>{0} 必须是实现 {1} 的非抽象封闭类型，且具有公共无参构造函数</value>
+  </data>
+
+    <data name="CoreExceptions.Hotfix.InvalidVersionChars" xml:space="preserve">
+    <value>Version 含非法路径字符：{0}</value>
+  </data>
+
+    <data name="CoreExceptions.Hotfix.TypeNotFound" xml:space="preserve">
+    <value>未找到类型：{0}</value>
   </data>
 
     <!-- 属性相关异常 -->
@@ -1690,7 +1710,15 @@
   </data>
 
   <data name="Core.EventDispatcher.DispatchNoListeners" xml:space="preserve">
-    <value>EventDispatcher.Dispatch Actor {0} {1} 事件类型：{2} 没有找到任何监听者</value>
+    <value>EventDispatcher.Dispatch Actor {0} 类型：{1} 事件类型：{2} 没有找到任何监听者</value>
+  </data>
+
+  <data name="Core.Session.RouteSyncUpsertFailed" xml:space="preserve">
+    <value>[PlayerSessionManager] 玩家路由 upsert 同步钩子失败，玩家：{0}；本地 PlayerRouteMap 仍为事实源，下次 SetOnline 会重新收敛</value>
+  </data>
+
+  <data name="Core.Session.RouteSyncDeleteFailed" xml:space="preserve">
+    <value>[PlayerSessionManager] 玩家路由 delete 同步钩子失败，玩家：{0}</value>
   </data>
 
   <data name="Core.EventDispatcher.DispatchOwnerActorNotLoaded" xml:space="preserve">
