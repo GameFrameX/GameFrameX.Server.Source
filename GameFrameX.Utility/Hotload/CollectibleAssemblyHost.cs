@@ -75,10 +75,26 @@ public sealed class CollectibleAssemblyHost<TModule>
     where TModule : class, ICollectibleAssemblyModule
 {
     /// <summary>
-    /// 退役模块表（键为模块实例哈希，仅作身份去重；宽限到期即移除）。
-    /// Retired-module table (keyed by instance hash for identity dedup only; entries leave when grace expires).
+    /// 退役模块表（键为每次 Retire 发出的唯一票据；宽限到期即移除）。
+    /// Retired-module table (keyed by a unique ticket issued per Retire; entries leave when grace expires).
     /// </summary>
-    private readonly ConcurrentDictionary<int, TModule> _retiredModules = new();
+    private readonly ConcurrentDictionary<long, TModule> _retiredModules = new();
+
+    /// <summary>
+    /// 退役票据发号器：每次 Retire 递增，保证退役表键唯一（替代 GetHashCode，杜绝哈希碰撞导致模块永不卸载）。
+    /// Retirement ticket source: incremented per Retire so retirement keys are unique (replaces GetHashCode,
+    /// eliminating hash-collision modules that would never unload).
+    /// </summary>
+    private long _retireTicketSource;
+
+    /// <summary>
+    /// 串行化「入链 + 置过渡标志」与「出链 + 清过渡标志」的锁：保证 InTransition 严格等于退役链非空，
+    /// 消除 Retire 与清理任务之间的 TOCTOU 竞态。锁只覆盖字典与标志操作，宽限等待与卸载验证在锁外。
+    /// Serializes "join chain + set flag" against "leave chain + clear flag": InTransition stays strictly equal
+    /// to "chain non-empty", removing the Retire-vs-cleanup TOCTOU race. The lock covers dictionary and flag
+    /// operations only; grace waits and unload verification stay outside.
+    /// </summary>
+    private readonly object _transitionLock = new();
 
     /// <summary>
     /// 热更过渡标志：语义见类备注的时序不变量。
@@ -133,43 +149,76 @@ public sealed class CollectibleAssemblyHost<TModule>
     public void Retire(TModule module, TimeSpan gracePeriod)
     {
         ArgumentNullException.ThrowIfNull(module);
-        var moduleKey = module.GetHashCode();
-        _inTransition = true;
-        _retiredModules.TryAdd(moduleKey, module);
-        // 延迟清理退役模块：宽限参数化，常量归调用方。
+        long moduleKey;
+        lock (_transitionLock)
+        {
+            moduleKey = Interlocked.Increment(ref _retireTicketSource);
+            _retiredModules[moduleKey] = module;
+            _inTransition = true;
+        }
+
+        // 延迟清理退役模块：宽限参数化，常量归调用方；清理异常必须可见（Error 日志），不再 fire-and-forget 吞掉。
         // 红线：异步体只捕获 moduleKey —— 若捕获 module，闭包会经模块字段（HotfixAssembly / 加载上下文）
         // 保持对 ALC 的强可达，卸载验证期间弱引用恒存活，验证必然误报 failure。
-        // Deferred cleanup of the retired module: grace is parameterized, the constant belongs to the caller.
+        // Deferred cleanup of the retired module: grace is parameterized, the constant belongs to the caller;
+        // cleanup failures must be visible (Error log) instead of being lost fire-and-forget.
         // Red line: the async body captures moduleKey ONLY — capturing module would keep the ALC strongly
         // reachable through module fields (HotfixAssembly / load context) for the whole verification, making the
         // weak reference permanently alive and the verdict a guaranteed false "failure".
-        _ = Task.Run(async () =>
+        _ = RetireAsync(moduleKey, gracePeriod);
+    }
+
+    /// <summary>
+    /// 退役链清理：宽限期到后在过渡锁内「出链 + 重算过渡标志」，再卸载并按需做 GC 释放验证；
+    /// 任何异常记 Error 日志，不再无人观察。
+    /// Retirement-chain cleanup: after the grace period, leaves the chain and recomputes the transition flag
+    /// inside the transition lock, then unloads and optionally verifies GC release; all exceptions are logged
+    /// as Error instead of going unobserved.
+    /// </summary>
+    /// <param name="moduleKey">退役票据键 / The retirement ticket key.</param>
+    /// <param name="gracePeriod">排空宽限期 / The drain grace period.</param>
+    private async Task RetireAsync(long moduleKey, TimeSpan gracePeriod)
+    {
+        try
         {
             await Task.Delay(gracePeriod);
             var weakReference = RemoveAndUnload(moduleKey);
-            _inTransition = !_retiredModules.IsEmpty;
             if (weakReference != null && GlobalSettings.CurrentSetting != null && GlobalSettings.CurrentSetting.IsDebug)
             {
                 await VerifyUnloadAsync(weakReference);
             }
-        });
+        }
+        catch (Exception e)
+        {
+            // Localization: Utility.Hotload.RetireModuleFailed - CollectibleAssemblyHost 退役模块清理失败：{0}
+            LogHelper.Error(LocalizationService.GetString(Localization.Keys.Utility.Hotload.RetireModuleFailed, e.ToString()));
+        }
     }
 
     /// <summary>
-    /// 取出并卸载退役模块（独立同步方法：模块引用随返回消亡，验证期无人可达模块，ALC 方可被回收——见 <see cref="Retire"/> 红线）。
-    /// Removes and unloads a retired module (a separate synchronous helper: the module reference dies on return so
-    /// nothing can reach the module during verification and the ALC becomes collectible — see the red line in <see cref="Retire"/>).
+    /// 取出并卸载退役模块（独立同步方法：过渡锁内「出链 + 清过渡标志」保证 InTransition 恒等于退役链非空；
+    /// 模块引用随返回消亡，验证期无人可达模块，ALC 方可被回收——见 <see cref="Retire"/> 红线）。
+    /// Removes and unloads a retired module (a separate synchronous helper: leaving the chain and clearing the
+    /// transition flag happen under the transition lock so InTransition always equals "chain non-empty";
+    /// the module reference dies on return so nothing can reach the module during verification and the ALC
+    /// becomes collectible — see the red line in <see cref="Retire"/>).
     /// </summary>
-    /// <param name="moduleKey">退役模块键 / The retired module key.</param>
+    /// <param name="moduleKey">退役票据键 / The retirement ticket key.</param>
     /// <returns>模块卸载返回的弱引用；键不存在（已清理）为 <c>null</c> / The weak reference from the module's unload; <c>null</c> when the key is gone.</returns>
-    private WeakReference RemoveAndUnload(int moduleKey)
+    private WeakReference RemoveAndUnload(long moduleKey)
     {
-        if (_retiredModules.TryRemove(moduleKey, out var module))
+        lock (_transitionLock)
         {
-            return module.Unload();
-        }
+            if (_retiredModules.TryRemove(moduleKey, out var module))
+            {
+                var weakReference = module.Unload();
+                _inTransition = !_retiredModules.IsEmpty;
+                return weakReference;
+            }
 
-        return null;
+            _inTransition = !_retiredModules.IsEmpty;
+            return null;
+        }
     }
 
     /// <summary>

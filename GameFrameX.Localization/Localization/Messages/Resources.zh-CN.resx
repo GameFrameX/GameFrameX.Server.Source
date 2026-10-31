@@ -16,6 +16,12 @@
     <data name="Utility.Exceptions.ServerIdLessThanOrEqualZero" xml:space="preserve">
     <value>服务器ID小于等于0</value>
   </data>
+    <data name="Utility.Exceptions.ServerIdExceedsMax" xml:space="preserve">
+    <value>服务器ID {0} 超出最大服务器ID {1}</value>
+  </data>
+    <data name="Utility.Exceptions.ActorIdServerIdInvalidLayout" xml:space="preserve">
+    <value>从ActorId解析出的服务器ID {0} 不在 [{1}, {2}] 内，ActorId位布局可能已损坏</value>
+  </data>
     <data name="Utility.Exceptions.ActorTypeInvalid" xml:space="preserve">
     <value>Actor类型无效</value>
   </data>
@@ -2184,6 +2190,22 @@
 
   <data name="Utility.IllegalWordDetection.InitException" xml:space="preserve">
     <value>IllegalWordDetection.Init 异常详情：{0}</value>
+  </data>
+
+  <data name="Utility.IllegalWordDetection.InitAlreadyInProgress" xml:space="preserve">
+    <value>IllegalWordDetection.Init 已在进行中，拒绝新的初始化请求</value>
+  </data>
+
+  <data name="Utility.IllegalWordDetection.BadWordTableCorrupted" xml:space="preserve">
+    <value>IllegalWordDetection 敏感词表数据损坏：偏移 {1} 处字段长度非法 {0}，数据总长度 {2}</value>
+  </data>
+
+  <data name="Utility.LNumber.DivisionByZero" xml:space="preserve">
+    <value>LNumber 除数为零</value>
+  </data>
+
+  <data name="Utility.Hotload.RetireModuleFailed" xml:space="preserve">
+    <value>CollectibleAssemblyHost 退役模块清理失败：{0}</value>
   </data>
 
   <data name="Utility.LNumber.DivisionOverflowLog" xml:space="preserve">

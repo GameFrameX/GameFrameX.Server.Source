@@ -16,6 +16,12 @@
     <data name="Utility.Exceptions.ServerIdLessThanOrEqualZero" xml:space="preserve">
     <value>serverId is less than or equal to 0</value>
   </data>
+    <data name="Utility.Exceptions.ServerIdExceedsMax" xml:space="preserve">
+    <value>serverId {0} exceeds the maximum server id {1}</value>
+  </data>
+    <data name="Utility.Exceptions.ActorIdServerIdInvalidLayout" xml:space="preserve">
+    <value>serverId {0} parsed from ActorId is outside [{1}, {2}]; the ActorId bit layout may be corrupted</value>
+  </data>
     <data name="Utility.Exceptions.ActorTypeInvalid" xml:space="preserve">
     <value>actor type is invalid</value>
   </data>
@@ -2182,6 +2188,21 @@
 
   <data name="Utility.IllegalWordDetection.InitException" xml:space="preserve">
     <value>IllegalWordDetection.Init Exception details: {0}</value>
+  </data>
+
+  <data name="Utility.IllegalWordDetection.InitAlreadyInProgress" xml:space="preserve">
+    <value>IllegalWordDetection.Init is already in progress; the new init request is rejected</value>
+  </data>
+
+  <data name="Utility.IllegalWordDetection.BadWordTableCorrupted" xml:space="preserve">
+    <value>IllegalWordDetection bad-word table corrupted: invalid field length {0} at offset {1}, data length {2}</value>
+  </data>
+  <data name="Utility.Hotload.RetireModuleFailed" xml:space="preserve">
+    <value>CollectibleAssemblyHost retire cleanup failed: {0}</value>
+  </data>
+
+  <data name="Utility.LNumber.DivisionByZero" xml:space="preserve">
+    <value>LNumber division by zero</value>
   </data>
 
   <data name="Utility.LNumber.DivisionOverflowLog" xml:space="preserve">
