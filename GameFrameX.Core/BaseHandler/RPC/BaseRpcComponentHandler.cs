@@ -150,13 +150,6 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
                 await InnerActionCoreAsync(RequestMessage, response, cancellationToken);
                 response?.SetUniqueId(requestId);
             }
-            catch (RpcException e)
-            {
-                if (response != null)
-                {
-                    response.ErrorCode = e.ErrorCode;
-                }
-            }
             catch (Exception e)
             {
                 // Localization: Core.MessageHandler.InnerActionError - 内部操作错误: {0} {1}

@@ -548,6 +548,18 @@
     <value>trace unavailable: {0}</value>
   </data>
 
+    <data name="CoreExceptions.WorkerActor.QueueRejected" xml:space="preserve">
+    <value>WorkerActor queue rejected work. actorId:{0} trace:{1}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.QueueCancelled" xml:space="preserve">
+    <value>WorkerActor queue post was cancelled. actorId:{0} trace:{1}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.QueueFailed" xml:space="preserve">
+    <value>WorkerActor queue post failed. actorId:{0} trace:{1}</value>
+  </data>
+
     <!-- Component related exceptions -->
     <data name="CoreExceptions.Component.ActorTypeNotBound" xml:space="preserve">
     <value>component:[{0}] the actor type is not bound</value>
@@ -601,6 +613,14 @@
 
     <data name="CoreExceptions.Hotfix.MissingParameterlessConstructor" xml:space="preserve">
     <value>{0} must be a non-abstract closed type implementing {1} with a public parameterless constructor</value>
+  </data>
+
+    <data name="CoreExceptions.Hotfix.InvalidVersionChars" xml:space="preserve">
+    <value>Version contains forbidden path characters: {0}</value>
+  </data>
+
+    <data name="CoreExceptions.Hotfix.TypeNotFound" xml:space="preserve">
+    <value>Type not found: {0}</value>
   </data>
 
     <!-- Attribute related exceptions -->
@@ -1696,7 +1716,15 @@
   </data>
 
   <data name="Core.EventDispatcher.DispatchNoListeners" xml:space="preserve">
-    <value>EventDispatcher.Dispatch Actor {0} {1} No listeners found for event type: {2}</value>
+    <value>EventDispatcher.Dispatch Actor {0} type: {1} no listeners found for event type: {2}</value>
+  </data>
+
+  <data name="Core.Session.RouteSyncUpsertFailed" xml:space="preserve">
+    <value>[PlayerSessionManager] player_route upsert hook failed for player {0}; the local PlayerRouteMap stays authoritative and the next SetOnline converges</value>
+  </data>
+
+  <data name="Core.Session.RouteSyncDeleteFailed" xml:space="preserve">
+    <value>[PlayerSessionManager] player_route delete hook failed for player {0}</value>
   </data>
 
   <data name="Core.EventDispatcher.DispatchOwnerActorNotLoaded" xml:space="preserve">

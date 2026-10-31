@@ -138,7 +138,9 @@ public static class GlobalTimer
     /// </summary>
     public static async Task StopAsync()
     {
-        Console.WriteLine(LocalizationService.GetString(Localization.Keys.Core.Timer.GlobalTimerStopStart));
+        // Localization: Core.Timer.GlobalTimerStopStart - 全局定时器开始停止
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.GlobalTimerStopStart));
+
         IsWorking = false;
         if (_loopTask != null)
         {
@@ -147,6 +149,7 @@ public static class GlobalTimer
 
         await StateComponent.SaveAllAsync(true);
         await GameDb.CloseAsync();
-        Console.WriteLine(LocalizationService.GetString(Localization.Keys.Core.Timer.GlobalTimerStopComplete));
+        // Localization: Core.Timer.GlobalTimerStopComplete - 全局定时器停止完成
+        LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.Timer.GlobalTimerStopComplete));
     }
 }

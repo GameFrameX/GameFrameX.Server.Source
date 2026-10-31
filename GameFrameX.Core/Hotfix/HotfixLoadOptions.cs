@@ -27,6 +27,8 @@
 //   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
+using GameFrameX.Foundation.Localization.Core;
+
 namespace GameFrameX.Core.Hotfix;
 
 /// <summary>
@@ -103,7 +105,8 @@ public sealed class HotfixLoadOptions
             // The version flows in from HTTP rollback traffic: reject separators and ".." so the load path cannot be escaped
             if (Version.IndexOfAny(ForbiddenVersionChars) >= 0 || Version.Contains("..", StringComparison.Ordinal))
             {
-                throw new ArgumentException($"Version 含非法路径字符: {Version} / Version contains forbidden path characters: {Version}", nameof(Version));
+                // Localization: CoreExceptions.Hotfix.InvalidVersionChars - Version 含非法路径字符：{0}
+                throw new ArgumentException(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.InvalidVersionChars, Version), nameof(Version));
             }
 
             directory = Version;

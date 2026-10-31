@@ -40,10 +40,10 @@ namespace GameFrameX.Core.Config;
 public static class StringUtil
 {
     /// <summary>
-    /// 将对象转换为字符串表示形式。
+    /// 将对象转换为字符串表示形式。调试辅助方法：反射遍历全部字段与属性，避免用于热路径。
     /// </summary>
     /// <remarks>
-    /// Converts an object to its string representation.
+    /// Converts an object to its string representation. Debug helper: reflects over all fields and properties; avoid hot paths.
     /// </remarks>
     /// <param name="o">要转换的对象 / The object to convert</param>
     /// <returns>对象的字符串表示形式 / The string representation of the object</returns>
@@ -53,10 +53,12 @@ public static class StringUtil
     }
 
     /// <summary>
-    /// 将对象转换为字符串表示形式，并使用提供的StringBuilder进行构建。
+    /// 将对象转换为字符串表示形式，并使用提供的StringBuilder进行构建。调试辅助方法：反射遍历全部字段与属性，避免用于热路径。
     /// </summary>
     /// <remarks>
-    /// Converts an object to its string representation using the provided StringBuilder.
+    /// Converts an object to its string representation using the provided StringBuilder. Debug helper: reflects over all fields and properties; avoid hot paths.
+    /// 无 getter 或带参数的索引器属性会被跳过，不抛异常。
+    /// Properties without a getter or indexer properties are skipped instead of throwing.
     /// </remarks>
     /// <param name="o">要转换的对象 / The object to convert</param>
     /// <param name="sb">用于构建字符串的StringBuilder / The StringBuilder used to build the string</param>
@@ -70,6 +72,12 @@ public static class StringUtil
 
         foreach (var p in o.GetType().GetProperties())
         {
+            // 无 getter 或索引器属性不可无参取值，跳过而非抛异常
+            if (!p.CanRead || p.GetIndexParameters().Length > 0)
+            {
+                continue;
+            }
+
             sb.Append($"{p.Name} = {p.GetValue(o)},");
         }
 

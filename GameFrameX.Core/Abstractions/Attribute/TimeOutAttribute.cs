@@ -45,10 +45,10 @@ public sealed class TimeOutAttribute : System.Attribute
     }
 
     /// <summary>
-    /// 超时时间
+    /// 超时时间（取 TimeSpan 的总毫秒数，而非 0-999 的毫秒分量）
     /// </summary>
     /// <param name="timeOut"></param>
-    public TimeOutAttribute(TimeSpan timeOut) : this(timeOut.Milliseconds)
+    public TimeOutAttribute(TimeSpan timeOut) : this((int)timeOut.TotalMilliseconds)
     {
     }
 
