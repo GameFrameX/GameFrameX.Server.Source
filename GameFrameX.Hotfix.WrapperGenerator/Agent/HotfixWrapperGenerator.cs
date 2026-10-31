@@ -142,10 +142,11 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     {
         var agents = CollectAgents(allClasses);
         var partialClassCount = new Dictionary<string, int>();
+        var emittedWrapperCount = new Dictionary<string, int>();
 
         foreach (var agent in agents)
         {
-            ProcessAgent(context, agent, partialClassCount);
+            ProcessAgent(context, agent, partialClassCount, emittedWrapperCount);
         }
     }
 
@@ -196,7 +197,8 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     /// <param name="context">源代码生成上下文 / Source production context</param>
     /// <param name="agent">代理类声明语法节点 / Agent class declaration syntax node</param>
     /// <param name="partialClassCount">分部类输出文件名计数表 / Partial class output filename counter map</param>
-    private static void ProcessAgent(SourceProductionContext context, ClassDeclarationSyntax agent, Dictionary<string, int> partialClassCount)
+    /// <param name="emittedWrapperCount">每个代理已落盘的 Wrapper 分部数计数表 / Emitted wrapper piece counter map per agent</param>
+    private static void ProcessAgent(SourceProductionContext context, ClassDeclarationSyntax agent, Dictionary<string, int> partialClassCount, Dictionary<string, int> emittedWrapperCount)
     {
         var fullName = agent.GetFullName();
         var info = CreateAgentInfo(agent, fullName, partialClassCount, out var outFileName);
@@ -218,6 +220,13 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
             // 无可包装方法的代理：不产出任何 wrapper 分部类（空壳无行为，只污染生成面）。
             return;
         }
+
+        // GeneratedCodeAttribute 的 AllowMultiple 为 false：同一 Wrapper 的多个落盘分部中只有首个可携带标记，
+        // 否则分部代理会因重复特性编译失败（CS0579）。无可包装方法的分部不落盘，
+        // 故按「实际落盘分部」计数而非声明序号——标记始终随首个落盘分部发射。
+        emittedWrapperCount.TryGetValue(fullName, out var emittedCount);
+        info.EmitGeneratedCodeMarker = emittedCount == 0;
+        emittedWrapperCount[fullName] = emittedCount + 1;
 
         var source = AgentTemplate.Run(info);
         context.AddSource(outFileName, source);
