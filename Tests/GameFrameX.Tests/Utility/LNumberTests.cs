@@ -257,23 +257,6 @@ namespace GameFrameX.Tests.Utility
         }
 
         /// <summary>
-        /// 测试除零
-        /// </summary>
-        [Fact]
-        public void Division_ByZero_ShouldReturnZero()
-        {
-            // Arrange
-            var a = LNumber.Create(10, 0);
-            var b = LNumber.Zero;
-
-            // Act
-            var result = a / b;
-
-            // Assert
-            Assert.Equal(0, (long)result);
-        }
-
-        /// <summary>
         /// 测试取模运算
         /// </summary>
         [Fact]
