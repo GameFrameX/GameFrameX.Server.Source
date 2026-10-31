@@ -40,22 +40,6 @@ namespace GameFrameX.Hotfix.WrapperGenerator.Agent;
 public static class AgentTemplate
 {
     /// <summary>
-    /// 用于拼接生成代码的字符串构建器。
-    /// </summary>
-    /// <remarks>
-    /// String builder for assembling generated code.
-    /// </remarks>
-    /// <summary>
-    /// 每次构建局部的 StringBuilder（并发驱动运行互不共享状态，产出各自完整一致）。
-    /// </summary>
-    /// <remarks>
-    /// A local StringBuilder per run: concurrent driver executions share no state and each produces complete, consistent output.
-    /// </remarks>
-    [ThreadStatic]
-    private static StringBuilder TemplateStringBuilder;
-
-
-    /// <summary>
     /// 根据代理信息生成包装器分部类的源代码。
     /// </summary>
     /// <remarks>
@@ -65,29 +49,30 @@ public static class AgentTemplate
     /// <returns>生成的 C# 源代码字符串 / Generated C# source code string</returns>
     public static string Run(AgentInfo info)
     {
-        TemplateStringBuilder = new StringBuilder();
-
+        // C432：局部 StringBuilder 逐级传参——模板无任何跨调用静态状态（并发驱动运行互不共享，
+        // 产出各自完整一致）；替代历史 [ThreadStatic] 静态字段形态。
+        var templateStringBuilder = new StringBuilder();
 
         foreach (var value in info.UsingSpaces)
         {
-            TemplateStringBuilder.AppendLine("using " + value + ";");
+            templateStringBuilder.AppendLine("using " + value + ";");
         }
 
-        TemplateStringBuilder.AppendLine();
+        templateStringBuilder.AppendLine();
 
-        TemplateStringBuilder.AppendLine("namespace " + info.Space);
-        TemplateStringBuilder.AppendLine("{");
-        TemplateStringBuilder.AppendLine("\tpublic partial class " + info.Name + " : " + info.Super);
-        TemplateStringBuilder.AppendLine("\t{");
+        templateStringBuilder.AppendLine("namespace " + info.Space);
+        templateStringBuilder.AppendLine("{");
+        templateStringBuilder.AppendLine("\tpublic partial class " + info.Name + " : " + info.Super);
+        templateStringBuilder.AppendLine("\t{");
         foreach (var infoMethod in info.Methods)
         {
-            AppendMethod(infoMethod);
+            AppendMethod(templateStringBuilder, infoMethod);
         }
 
-        TemplateStringBuilder.AppendLine("\t}");
-        TemplateStringBuilder.AppendLine("}");
+        templateStringBuilder.AppendLine("\t}");
+        templateStringBuilder.AppendLine("}");
 
-        return TemplateStringBuilder.ToString();
+        return templateStringBuilder.ToString();
     }
 
     /// <summary>
@@ -96,23 +81,24 @@ public static class AgentTemplate
     /// <remarks>
     /// Appends the method declaration and body for a single method.
     /// </remarks>
+    /// <param name="templateStringBuilder">生成代码的字符串构建器 / String builder for the generated code</param>
     /// <param name="infoMethod">方法元数据 / Method metadata</param>
-    private static void AppendMethod(MethodInfoData infoMethod)
+    private static void AppendMethod(StringBuilder templateStringBuilder, MethodInfoData infoMethod)
     {
-        TemplateStringBuilder.AppendLine("\t\t" + infoMethod.Declare);
-        TemplateStringBuilder.AppendLine("\t\t{");
+        templateStringBuilder.AppendLine("\t\t" + infoMethod.Declare);
+        templateStringBuilder.AppendLine("\t\t{");
 
         if (infoMethod.Discard)
         {
-            AppendDiscardBody(infoMethod);
+            AppendDiscardBody(templateStringBuilder, infoMethod);
         }
         else
         {
-            AppendInvocationBody(infoMethod);
+            AppendInvocationBody(templateStringBuilder, infoMethod);
         }
 
-        TemplateStringBuilder.AppendLine("\t\t}");
-        TemplateStringBuilder.AppendLine();
+        templateStringBuilder.AppendLine("\t\t}");
+        templateStringBuilder.AppendLine();
     }
 
     /// <summary>
@@ -121,20 +107,21 @@ public static class AgentTemplate
     /// <remarks>
     /// Appends the method body for discard (fire-and-forget) invocations.
     /// </remarks>
+    /// <param name="templateStringBuilder">生成代码的字符串构建器 / String builder for the generated code</param>
     /// <param name="infoMethod">方法元数据 / Method metadata</param>
-    private static void AppendDiscardBody(MethodInfoData infoMethod)
+    private static void AppendDiscardBody(StringBuilder templateStringBuilder, MethodInfoData infoMethod)
     {
         if (infoMethod.IsThreadSafe)
         {
-            TemplateStringBuilder.AppendLine($"\t\t\t_ = base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString});");
+            templateStringBuilder.AppendLine($"\t\t\t_ = base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString});");
         }
         else
         {
-            TemplateStringBuilder.AppendLine("\t\t\tlong callChainId = GameFrameX.Core.Actors.Impl.WorkerActor.NextChainId();");
-            TemplateStringBuilder.AppendLine($"\t\t\t_ = base.Actor.WorkerActor.EnqueueAsync(()=>base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), callChainId, true{BuildTimeoutArgument(infoMethod)});");
+            templateStringBuilder.AppendLine("\t\t\tlong callChainId = GameFrameX.Core.Actors.Impl.WorkerActor.NextChainId();");
+            templateStringBuilder.AppendLine($"\t\t\t_ = base.Actor.WorkerActor.EnqueueAsync(()=>base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), callChainId, true{BuildTimeoutArgument(infoMethod)});");
         }
 
-        TemplateStringBuilder.AppendLine($"\t\t\treturn {infoMethod.ReturnType}.CompletedTask;");
+        templateStringBuilder.AppendLine($"\t\t\treturn {infoMethod.ReturnType}.CompletedTask;");
     }
 
     /// <summary>
@@ -143,23 +130,24 @@ public static class AgentTemplate
     /// <remarks>
     /// Appends the method body for invocations that await a result.
     /// </remarks>
+    /// <param name="templateStringBuilder">生成代码的字符串构建器 / String builder for the generated code</param>
     /// <param name="infoMethod">方法元数据 / Method metadata</param>
-    private static void AppendInvocationBody(MethodInfoData infoMethod)
+    private static void AppendInvocationBody(StringBuilder templateStringBuilder, MethodInfoData infoMethod)
     {
         var needAwait = infoMethod.IsAsync && infoMethod.ReturnType.Contains("<");
-        TemplateStringBuilder.AppendLine("\t\t\t(bool needEnqueue, long chainId)= base.Actor.WorkerActor.IsNeedEnqueue();");
-        TemplateStringBuilder.AppendLine("\t\t\tif (!needEnqueue)");
-        TemplateStringBuilder.AppendLine("\t\t\t{");
-        TemplateStringBuilder.AppendLine($"\t\t\t\treturn {(needAwait ? "await " : string.Empty)} base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString});");
-        TemplateStringBuilder.AppendLine("\t\t\t}");
-        TemplateStringBuilder.AppendLine($"\t\t\treturn {(needAwait ? "await " : string.Empty)} base.Actor.WorkerActor.EnqueueAsync(()=>base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), chainId, {(infoMethod.Discard ? "true" : "false")}{BuildTimeoutArgument(infoMethod)});");
+        templateStringBuilder.AppendLine("\t\t\t(bool needEnqueue, long chainId)= base.Actor.WorkerActor.IsNeedEnqueue();");
+        templateStringBuilder.AppendLine("\t\t\tif (!needEnqueue)");
+        templateStringBuilder.AppendLine("\t\t\t{");
+        templateStringBuilder.AppendLine($"\t\t\t\treturn {(needAwait ? "await " : string.Empty)} base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString});");
+        templateStringBuilder.AppendLine("\t\t\t}");
+        templateStringBuilder.AppendLine($"\t\t\treturn {(needAwait ? "await " : string.Empty)} base.Actor.WorkerActor.EnqueueAsync(()=>base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), chainId, {(infoMethod.Discard ? "true" : "false")}{BuildTimeoutArgument(infoMethod)});");
     }
 
     /// <summary>
     /// 构建超时实参片段：显式配置 [TimeOut] 时发射「, 超时值」，未配置时省略实参走 EnqueueAsync 框架默认值。
     /// </summary>
     /// <remarks>
-    /// Builds the timeout argument fragment: emits ", <ms>" only when [TimeOut] was explicitly configured;
+    /// Builds the timeout argument fragment: emits ", &lt;ms&gt;" only when [TimeOut] was explicitly configured;
     /// otherwise the argument is omitted so EnqueueAsync's framework default applies.
     /// </remarks>
     /// <param name="infoMethod">方法元数据 / Method metadata</param>

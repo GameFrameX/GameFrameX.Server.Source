@@ -29,6 +29,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using GameFrameX.Hotfix.WrapperGenerator.Utils;
@@ -104,102 +105,67 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     private const string TimeOutAttributeName = "TimeOut";
 
     /// <summary>
-    /// 初始化增量生成器，注册语法提供者和源代码输出。
+    /// 增量管线输出步骤的跟踪名：测试与诊断经 <c>TrackedSteps[该名]</c> 断言逐声明的缓存/重算行为。
     /// </summary>
     /// <remarks>
-    /// Initializes the incremental generator, registering syntax providers and source output.
+    /// Tracking name of the incremental pipeline's output step: tests and diagnostics assert per-declaration
+    /// cached/recomputed behavior via <c>TrackedSteps[this name]</c>.
+    /// </remarks>
+    private const string WrapperOutputTrackingName = "HotfixWrapperOutput";
+
+    /// <summary>
+    /// 初始化增量生成器：按「代理类声明 → 输出」粒度注册管道与输出。
+    /// </summary>
+    /// <remarks>
+    /// Initializes the incremental generator, registering the pipeline and outputs at the granularity of
+    /// one agent class declaration per output.
     /// </remarks>
     /// <param name="context">增量生成器初始化上下文 / Incremental generator initialization context</param>
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var candidates = context.SyntaxProvider
-                                .CreateSyntaxProvider(
-                                    static (node, _) =>
-                                    {
-                                        var c = node as ClassDeclarationSyntax;
-                                        if (c == null)
-                                        {
-                                            return false;
-                                        }
+        // C432：逐声明输出注册替代 Collect() 全量折叠——单个代理类声明的编辑只重算该声明的 wrapper，
+        // 未变更声明经 WithComparer 文本等值命中缓存（下游输出回调不重跑），IDE 增量行为与内存分配
+        // 不再随工程规模线性恶化。谓词含 BaseList 先导门：partial 但无基类列表的类不进入生成面
+        // （C# 允许 partial 各部件重复相同基类列表，需要拆分的代理应让每个部件自带基类列表）。
+        var wrappers = context.SyntaxProvider
+                              .CreateSyntaxProvider(
+                                  static (node, _) =>
+                                  {
+                                      var declaration = node as ClassDeclarationSyntax;
+                                      return declaration != null && declaration.BaseList != null && IsCompAgent(declaration);
+                                  },
+                                  static (syntaxContext, _) => GenerateWrapper((ClassDeclarationSyntax)syntaxContext.Node))
+                              .WithComparer(WrapperResultComparer.Instance)
+                              .WithTrackingName(WrapperOutputTrackingName);
 
-                                        return c.BaseList != null || c.Modifiers.Any(m => m.Text == "partial");
-                                    },
-                                    static (ctx, _) => (ClassDeclarationSyntax)ctx.Node)
-                                .Collect();
+        context.RegisterSourceOutput(wrappers, static (productionContext, result) =>
+        {
+            foreach (var diagnostic in result.Diagnostics)
+            {
+                productionContext.ReportDiagnostic(diagnostic);
+            }
 
-        context.RegisterSourceOutput(candidates, static (productionContext, classes) => { Execute(productionContext, classes); });
+            if (!string.IsNullOrEmpty(result.Source))
+            {
+                productionContext.AddSource(result.HintName, result.Source);
+            }
+        });
     }
 
     /// <summary>
-    /// 执行代码生成，遍历所有候选类并为符合条件的代理类生成包装器代码。
+    /// 为单个代理类声明生成包装器结果：构建代理信息、收集方法元数据与诊断，产出源代码文本。
     /// </summary>
     /// <remarks>
-    /// Executes code generation, iterating all candidate classes and generating wrapper code for qualifying agent classes.
+    /// Generates the wrapper result for a single agent class declaration: builds agent info, collects
+    /// method metadata and diagnostics, and produces the source text.
     /// </remarks>
-    /// <param name="context">源代码生成上下文 / Source production context</param>
-    /// <param name="allClasses">所有候选类声明语法节点列表 / List of all candidate class declaration syntax nodes</param>
-    private static void Execute(SourceProductionContext context, IReadOnlyList<ClassDeclarationSyntax> allClasses)
-    {
-        var agents = CollectAgents(allClasses);
-        var partialClassCount = new Dictionary<string, int>();
-
-        foreach (var agent in agents)
-        {
-            ProcessAgent(context, agent, partialClassCount);
-        }
-    }
-
-    /// <summary>
-    /// 从候选类中收集组件代理类，并把与代理类同名的分部类合并进结果列表。
-    /// </summary>
-    /// <remarks>
-    /// Collects component agent classes from the candidates and merges same-named partial classes into the result list.
-    /// </remarks>
-    /// <param name="allClasses">所有候选类声明语法节点列表 / List of all candidate class declaration syntax nodes</param>
-    /// <returns>合并分部类后的代理类列表 / The list of agent classes after merging partial classes</returns>
-    private static List<ClassDeclarationSyntax> CollectAgents(IReadOnlyList<ClassDeclarationSyntax> allClasses)
-    {
-        var agentNames = new HashSet<string>();
-        var agents = new List<ClassDeclarationSyntax>();
-        var partials = new List<ClassDeclarationSyntax>();
-
-        foreach (var c in allClasses)
-        {
-            if (IsCompAgent(c))
-            {
-                agents.Add(c);
-                agentNames.Add(c.Identifier.Text);
-            }
-            else if (c.Modifiers.Any(m => m.Text == "partial"))
-            {
-                partials.Add(c);
-            }
-        }
-
-        foreach (var p in partials)
-        {
-            if (agentNames.Contains(p.Identifier.Text))
-            {
-                agents.Add(p);
-            }
-        }
-
-        return agents;
-    }
-
-    /// <summary>
-    /// 处理单个代理类：构建代理信息、收集方法元数据并生成包装器源代码。
-    /// </summary>
-    /// <remarks>
-    /// Processes a single agent class: builds agent info, collects method metadata, and emits the wrapper source code.
-    /// </remarks>
-    /// <param name="context">源代码生成上下文 / Source production context</param>
     /// <param name="agent">代理类声明语法节点 / Agent class declaration syntax node</param>
-    /// <param name="partialClassCount">分部类输出文件名计数表 / Partial class output filename counter map</param>
-    private static void ProcessAgent(SourceProductionContext context, ClassDeclarationSyntax agent, Dictionary<string, int> partialClassCount)
+    /// <returns>该声明的生成结果（无可包装方法时 Source 为 null，仅携带诊断）/ The result for this declaration (Source is null and only diagnostics travel when there is no wrappable method)</returns>
+    private static WrapperResult GenerateWrapper(ClassDeclarationSyntax agent)
     {
         var fullName = agent.GetFullName();
-        var info = CreateAgentInfo(agent, fullName, partialClassCount, out var outFileName);
+        var info = CreateAgentInfo(agent, fullName, out var outFileName);
+        var diagnostics = new List<Diagnostic>();
 
         var root = agent.SyntaxTree.GetCompilationUnitRoot();
         foreach (var element in root.Usings)
@@ -211,16 +177,15 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
 
         foreach (var member in agent.Members)
         {
-            AddAgentMethod(context, info, fullName, member);
+            AddAgentMethod(diagnostics, info, fullName, member);
         }
         if (info.Methods.Count == 0)
         {
             // 无可包装方法的代理：不产出任何 wrapper 分部类（空壳无行为，只污染生成面）。
-            return;
+            return new WrapperResult(outFileName, null, diagnostics.ToArray());
         }
 
-        var source = AgentTemplate.Run(info);
-        context.AddSource(outFileName, source);
+        return new WrapperResult(outFileName, AgentTemplate.Run(info), diagnostics.ToArray());
     }
 
     /// <summary>
@@ -231,10 +196,9 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     /// </remarks>
     /// <param name="agent">代理类声明语法节点 / Agent class declaration syntax node</param>
     /// <param name="fullName">代理类完全限定名 / Fully qualified name of the agent class</param>
-    /// <param name="partialClassCount">分部类输出文件名计数表 / Partial class output filename counter map</param>
     /// <param name="outFileName">生成的输出文件名 / The generated output filename</param>
     /// <returns>填充好的代理信息 / The populated agent info</returns>
-    private static AgentInfo CreateAgentInfo(ClassDeclarationSyntax agent, string fullName, Dictionary<string, int> partialClassCount, out string outFileName)
+    private static AgentInfo CreateAgentInfo(ClassDeclarationSyntax agent, string fullName, out string outFileName)
     {
         var info = new AgentInfo();
         info.Super = agent.Identifier.Text;
@@ -250,18 +214,12 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
             : sourceNamespace;
         info.Space = HotfixNameSpaceNamePrefix + WrapperNamespaceSegment + (relativeNamespace.Length == 0 ? string.Empty : "." + relativeNamespace);
 
+        // C432：partial 声明的 hintName 序号由声明位置稳定键派生（替代历史全局计数——计数依赖跨类
+        // 处理顺序，与逐声明独立缓存互斥）；非 partial 声明无后缀，与既有输出文件名逐字节一致。
         var isPartialClass = agent.Modifiers.ToList().FindIndex(s => s.Text == "partial") >= 0;
-        if (isPartialClass)
-        {
-            // 计数键用完全限定名：同名代理分属不同命名空间时各自独立编号，不再互相污染
-            partialClassCount.TryGetValue(fullName, out var count);
-            partialClassCount[fullName] = count + 1;
-            outFileName = BuildHintName(fullName, count);
-        }
-        else
-        {
-            outFileName = BuildHintName(fullName, null);
-        }
+        outFileName = isPartialClass
+            ? BuildHintName(fullName, BuildDeclarationPositionKey(agent))
+            : BuildHintName(fullName, null);
 
         return info;
     }
@@ -273,14 +231,53 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     /// Builds the unique generated file name (hintName) from the agent's fully qualified name.
     /// </remarks>
     /// <param name="fullName">代理类完全限定名 / Fully qualified name of the agent class</param>
-    /// <param name="sequence">分部类序号（非分部类为 null）/ Partial class sequence number (null for non-partial)</param>
+    /// <param name="declarationPositionKey">分部类声明的位置稳定键（非分部类为 null）/ Position-stable key of the partial declaration (null for non-partial)</param>
     /// <returns>唯一的 hintName / A unique hintName</returns>
-    private static string BuildHintName(string fullName, int? sequence)
+    private static string BuildHintName(string fullName, string declarationPositionKey)
     {
         // 命名空间分隔符与嵌套类分隔符折叠为不同占位（. → _、+ → __），保证映射单射：
         // NS.A.B（命名空间 NS.A 的类 B）与 NS.A+B（NS 下类 A 的嵌套类 B）净化后不再碰撞
         var sanitized = (fullName + WrapperNameSuffix).Replace(".", "_").Replace("+", "__");
-        return sequence.HasValue ? $"{sanitized}{sequence.Value}.g.cs" : $"{sanitized}.g.cs";
+        return string.IsNullOrEmpty(declarationPositionKey)
+            ? sanitized + ".g.cs"
+            : sanitized + declarationPositionKey + ".g.cs";
+    }
+
+    /// <summary>
+    /// 由声明位置（语法树文件路径 + 声明起始偏移）派生跨进程稳定的十六进制键，用作分部类 hintName 后缀。
+    /// </summary>
+    /// <remarks>
+    /// Derives a process-stable hexadecimal key from the declaration position (syntax tree file path plus
+    /// declaration start offset), used as the partial-class hintName suffix.
+    /// </remarks>
+    /// <param name="declaration">分部类声明语法节点 / Partial class declaration syntax node</param>
+    /// <returns>16 位十六进制稳定键 / A 16-digit hexadecimal stable key</returns>
+    private static string BuildDeclarationPositionKey(ClassDeclarationSyntax declaration)
+    {
+        // FNV-1a 64 位：与运行进程无关的确定性哈希。禁止 string.GetHashCode——其随机化种子使 hintName
+        // 跨进程/跨运行漂移，会破坏生成文件名的稳定性。同一 partial 类两部件的声明位置必不相同，
+        // 64 位键碰撞概率可忽略；路径与偏移之间插入 ':' 分隔，避免「路径A+偏移12」与「路径A1+偏移2」一类拼接歧义。
+        const ulong offsetBasis = 14695981039346656037;
+        const ulong prime = 1099511628211;
+        var hash = offsetBasis;
+        foreach (var character in declaration.SyntaxTree.FilePath ?? string.Empty)
+        {
+            hash ^= character;
+            hash *= prime;
+        }
+
+        hash ^= ':';
+        hash *= prime;
+
+        var spanStart = (ulong)declaration.SpanStart;
+        while (spanStart > 0)
+        {
+            hash ^= spanStart & 0xFF;
+            hash *= prime;
+            spanStart >>= 8;
+        }
+
+        return hash.ToString("X16", CultureInfo.InvariantCulture);
     }
 
     /// <summary>
@@ -289,11 +286,11 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     /// <remarks>
     /// Processes a single member of the agent class: if it is a method to wrap, reads its metadata and collects it into the agent info.
     /// </remarks>
-    /// <param name="context">源代码生成上下文 / Source production context</param>
+    /// <param name="diagnostics">诊断缓冲（收集期间产生的违规诊断）/ Diagnostics buffer (violations found during collection)</param>
     /// <param name="info">代理信息 / Agent info</param>
     /// <param name="fullName">代理类完全限定名 / Fully qualified name of the agent class</param>
     /// <param name="member">成员声明语法节点 / Member declaration syntax node</param>
-    private static void AddAgentMethod(SourceProductionContext context, AgentInfo info, string fullName, MemberDeclarationSyntax member)
+    private static void AddAgentMethod(List<Diagnostic> diagnostics, AgentInfo info, string fullName, MemberDeclarationSyntax member)
     {
         if (!(member is MethodDeclarationSyntax method))
         {
@@ -320,7 +317,7 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
             ApplyAttribute(attributeListSyntax, mth);
         }
 
-        CollectMethod(context, info, fullName, method, mth);
+        CollectMethod(diagnostics, info, fullName, method, mth);
     }
 
     /// <summary>
@@ -443,61 +440,61 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     /// <remarks>
     /// Validates attribute combinations, applies skip rules and contract checks for a method whose metadata has been read, and collects it as a wrapped method when eligible.
     /// </remarks>
-    /// <param name="context">源代码生成上下文 / Source production context</param>
+    /// <param name="diagnostics">诊断缓冲 / Diagnostics buffer</param>
     /// <param name="info">代理信息 / Agent info</param>
     /// <param name="fullName">代理类完全限定名 / Fully qualified name of the agent class</param>
     /// <param name="method">方法声明语法节点 / Method declaration syntax node</param>
     /// <param name="mth">方法元数据 / Method metadata</param>
-    private static void CollectMethod(SourceProductionContext context, AgentInfo info, string fullName, MethodDeclarationSyntax method, MethodInfoData mth)
+    private static void CollectMethod(List<Diagnostic> diagnostics, AgentInfo info, string fullName, MethodDeclarationSyntax method, MethodInfoData mth)
     {
-        ReportAttributeViolations(context, fullName, method, mth);
+        ReportAttributeViolations(diagnostics, fullName, method, mth);
 
         if (!ShouldWrapMethod(mth))
         {
             return;
         }
 
-        ReportContractViolations(context, fullName, method, mth);
+        ReportContractViolations(diagnostics, fullName, method, mth);
 
         if (mth.IsVirtual)
         {
-            AddWrappedMethod(info, context, fullName, method, mth);
+            AddWrappedMethod(info, diagnostics, fullName, method, mth);
         }
     }
 
     /// <summary>
-    /// 报告属性组合相关的诊断错误（ThreadSafe 与 TimeOut 冲突、非 Api/Discard 却带 TimeOut）。
+    /// 报告属性组合相关的诊断错误（ThreadSafe 与 TimeOut 冲突、非 Service/Discard 却带 TimeOut）。
     /// </summary>
     /// <remarks>
-    /// Reports diagnostics for attribute-combination violations (ThreadSafe conflicting with TimeOut, and TimeOut used without Api/Discard).
+    /// Reports diagnostics for attribute-combination violations (ThreadSafe conflicting with TimeOut, and TimeOut used without Service/Discard).
     /// </remarks>
-    /// <param name="context">源代码生成上下文 / Source production context</param>
+    /// <param name="diagnostics">诊断缓冲 / Diagnostics buffer</param>
     /// <param name="fullName">代理类完全限定名 / Fully qualified name of the agent class</param>
     /// <param name="method">方法声明语法节点 / Method declaration syntax node</param>
     /// <param name="mth">方法元数据 / Method metadata</param>
-    private static void ReportAttributeViolations(SourceProductionContext context, string fullName, MethodDeclarationSyntax method, MethodInfoData mth)
+    private static void ReportAttributeViolations(List<Diagnostic> diagnostics, string fullName, MethodDeclarationSyntax method, MethodInfoData mth)
     {
         if (mth.IsThreadSafe && mth.HasTimeout)
         {
-            context.LogError($"{fullName}.{method.Identifier.Text}无法为标记【{ThreadSafeAttributeName}】的函数指定超时时间");
+            diagnostics.Add(Logger.Error($"{fullName}.{method.Identifier.Text}无法为标记【{ThreadSafeAttributeName}】的函数指定超时时间", method.GetLocation()));
         }
 
         if (mth.IsThreadSafe && !mth.Discard)
         {
-            context.LogWarning($"{fullName}.{method.Identifier.Text}【{ThreadSafeAttributeName}】注解需配合【{DiscardAttributeName}】使用，单独使用时不会生成包装器，方法将被跳过");
+            diagnostics.Add(Logger.Warning($"{fullName}.{method.Identifier.Text}【{ThreadSafeAttributeName}】注解需配合【{DiscardAttributeName}】使用，单独使用时不会生成包装器，方法将被跳过", method.GetLocation()));
         }
 
         if (!mth.IsApi && !mth.Discard && mth.HasTimeout)
         {
-            context.LogError($"{fullName}.{method.Identifier.Text}【{TimeOutAttributeName}】注解只能配合【Api】或【{DiscardAttributeName}】使用");
+            diagnostics.Add(Logger.Error($"{fullName}.{method.Identifier.Text}【{TimeOutAttributeName}】注解只能配合【{ServiceAttributeName}】或【{DiscardAttributeName}】使用", method.GetLocation()));
         }
     }
 
     /// <summary>
-    /// 判断方法是否需要生成包装器（排除无 Api/Discard/ThreadSafe 标记，以及 ThreadSafe 但非 Discard 的方法）。
+    /// 判断方法是否需要生成包装器（排除无 Service/Discard/ThreadSafe 标记，以及 ThreadSafe 但非 Discard 的方法）。
     /// </summary>
     /// <remarks>
-    /// Determines whether the method needs a generated wrapper (excluding methods without Api/Discard/ThreadSafe, and ThreadSafe-but-not-Discard methods).
+    /// Determines whether the method needs a generated wrapper (excluding methods without Service/Discard/ThreadSafe, and ThreadSafe-but-not-Discard methods).
     /// </remarks>
     /// <param name="mth">方法元数据 / Method metadata</param>
     /// <returns>如果需要生成包装器则为 <c>true</c>；否则为 <c>false</c> / <c>true</c> if a wrapper should be generated; otherwise <c>false</c></returns>
@@ -517,25 +514,25 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    /// 报告契约相关的诊断错误（非 ThreadSafe 的 Api 必须为异步、标记 Api/ThreadSafe/Discard 必须申明为 virtual）。
+    /// 报告契约相关的诊断错误（非 ThreadSafe 的 Service 返回类型必须是 Task/ValueTask、标记 Service/ThreadSafe/Discard 必须申明为 virtual）。
     /// </summary>
     /// <remarks>
-    /// Reports diagnostics for contract violations (non-ThreadSafe Api must be async; Api/ThreadSafe/Discard must be declared virtual).
+    /// Reports diagnostics for contract violations (non-ThreadSafe Service methods must return Task/ValueTask; Service/ThreadSafe/Discard methods must be declared virtual).
     /// </remarks>
-    /// <param name="context">源代码生成上下文 / Source production context</param>
+    /// <param name="diagnostics">诊断缓冲 / Diagnostics buffer</param>
     /// <param name="fullName">代理类完全限定名 / Fully qualified name of the agent class</param>
     /// <param name="method">方法声明语法节点 / Method declaration syntax node</param>
     /// <param name="mth">方法元数据 / Method metadata</param>
-    private static void ReportContractViolations(SourceProductionContext context, string fullName, MethodDeclarationSyntax method, MethodInfoData mth)
+    private static void ReportContractViolations(List<Diagnostic> diagnostics, string fullName, MethodDeclarationSyntax method, MethodInfoData mth)
     {
         if (mth.IsApi && !mth.IsThreadSafe && !mth.ReturnType.Contains("Task"))
         {
-            context.LogError($"{fullName}.{method.Identifier.Text}, 非【{ThreadSafeAttributeName}】的【Api】接口只能是异步函数");
+            diagnostics.Add(Logger.Error($"{fullName}.{method.Identifier.Text}, 非【{ThreadSafeAttributeName}】的【{ServiceAttributeName}】接口返回类型必须是 Task 或 ValueTask", method.GetLocation()));
         }
 
         if ((mth.IsApi || mth.Discard || mth.IsThreadSafe) && !mth.IsVirtual)
         {
-            context.LogError($"{fullName}.{method.Identifier.Text}标记了【AsyncApi】【{ThreadSafeAttributeName}】【{DiscardAttributeName}】注解的函数必须申明为virtual");
+            diagnostics.Add(Logger.Error($"{fullName}.{method.Identifier.Text}标记了【{ServiceAttributeName}】【{ThreadSafeAttributeName}】【{DiscardAttributeName}】注解的函数必须申明为virtual", method.GetLocation()));
         }
     }
 
@@ -546,18 +543,18 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     /// Collects a virtual method as a wrapped method: adds it to the agent info's method list and populates signature and parameter metadata.
     /// </remarks>
     /// <param name="info">代理信息 / Agent info</param>
-    /// <param name="context">源代码生成上下文 / Source production context</param>
+    /// <param name="diagnostics">诊断缓冲 / Diagnostics buffer</param>
     /// <param name="fullName">代理类完全限定名 / Fully qualified name of the agent class</param>
     /// <param name="method">方法声明语法节点 / Method declaration syntax node</param>
     /// <param name="mth">方法元数据 / Method metadata</param>
-    private static void AddWrappedMethod(AgentInfo info, SourceProductionContext context, string fullName, MethodDeclarationSyntax method, MethodInfoData mth)
+    private static void AddWrappedMethod(AgentInfo info, List<Diagnostic> diagnostics, string fullName, MethodDeclarationSyntax method, MethodInfoData mth)
     {
         info.Methods.Add(mth);
         mth.Name = method.Identifier.Text;
         mth.ParamDeclare = method.ParameterList.ToString();
         if (mth.Discard && !mth.ReturnType.Equals(nameof(Task)) && !mth.ReturnType.Equals(nameof(ValueTask)))
         {
-            context.LogError($"{fullName}.{method.Identifier.Text}只有返回值为Task类型或ValueTask类型才能添加【Discard】注解");
+            diagnostics.Add(Logger.Error($"{fullName}.{method.Identifier.Text}只有返回值为Task类型或ValueTask类型才能添加【{DiscardAttributeName}】注解", method.GetLocation()));
         }
 
         mth.Constraint = method.ConstraintClauses.ToString();
@@ -569,24 +566,24 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    /// 组件代理基类名集合（StateComponentAgent、FuncComponentAgent、QueryComponentAgent、BaseComponentAgent）。
+    /// 组件代理基类名集合（StateComponentAgent、FuncComponentAgent、BaseComponentAgent，与 Core 实际类型一一对应）。
     /// </summary>
     /// <remarks>
-    /// Set of component agent base class names (StateComponentAgent, FuncComponentAgent, QueryComponentAgent, BaseComponentAgent).
+    /// Set of component agent base class names (StateComponentAgent, FuncComponentAgent, BaseComponentAgent, matching the actual Core types).
     /// </remarks>
     private static readonly HashSet<string> ComponentAgentBaseNames = new HashSet<string>(StringComparer.Ordinal)
     {
+        // C432：移除全仓不存在的 QueryComponentAgent 死条目；Core 实际只有三类组件代理基类，未来引入再登记。
         "StateComponentAgent",
         "FuncComponentAgent",
-        "QueryComponentAgent",
         "BaseComponentAgent",
     };
 
     /// <summary>
-    /// 判断类声明是否为组件代理类（继承自 StateComponentAgent、FuncComponentAgent、QueryComponentAgent 或 BaseComponentAgent）。
+    /// 判断类声明是否为组件代理类（继承自 StateComponentAgent、FuncComponentAgent 或 BaseComponentAgent）。
     /// </summary>
     /// <remarks>
-    /// Determines whether the class declaration is a component agent (inheriting from StateComponentAgent, FuncComponentAgent, QueryComponentAgent, or BaseComponentAgent).
+    /// Determines whether the class declaration is a component agent (inheriting from StateComponentAgent, FuncComponentAgent, or BaseComponentAgent).
     /// </remarks>
     /// <param name="source">要检查的类声明语法节点 / Class declaration syntax node to check</param>
     /// <returns>如果是组件代理类则为 <c>true</c>；否则为 <c>false</c> / <c>true</c> if it is a component agent; otherwise <c>false</c></returns>
