@@ -475,6 +475,9 @@
     <data name="Core.Timer.InvalidHandlerType" xml:space="preserve">
     <value>Invalid ITimerHandler type, callback failed type:{0}</value>
   </data>
+  <data name="Core.Timer.TargetActorNotFoundJobRemoved" xml:space="preserve">
+    <value>Timer job target actor is not in memory, job removed jobKey:{0} actorId:{1} handler:{2}</value>
+  </data>
 
     <!-- Actor manager related messages -->
 <!-- Component registration related messages -->
@@ -1607,6 +1610,10 @@
     <value>Actor active component failed actorId:{0} componentType:{1} exception:\n{2}</value>
   </data>
 
+  <data name="Core.Actor.InactiveComponentFailed" xml:space="preserve">
+    <value>Actor inactive component failed actorId:{0} componentType:{1} exception:\n{2}</value>
+  </data>
+
   <data name="Core.Actor.WorkerActor.Timeout" xml:space="preserve">
     <value>work unit execution timed out trace:{0}</value>
   </data>
@@ -1625,6 +1632,10 @@
 
   <data name="Core.ActorManager.ActorForEachError" xml:space="preserve">
     <value>ActorManager.ActorForEach, error, actorId: {0}, actorType: {1}, exception: {2}</value>
+  </data>
+
+  <data name="Core.ActorManager.RemoveSaveStateFailed" xml:space="preserve">
+    <value>ActorManager.RemoveAsync, save state before removal failed, actorId: {0}, actorType: {1}, exception:\n{2}</value>
   </data>
 
   <data name="Core.ActorManager.CheckIdleRecycled" xml:space="preserve">

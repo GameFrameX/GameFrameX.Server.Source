@@ -572,8 +572,9 @@ public static class ActorManager
     /// </summary>
     /// <remarks>
     /// Removes all Actors, deactivates them, and then runs their once recycle callbacks.
-    /// 每个 Actor 按 Inactive → OnRecycle 固定顺序执行（与 <see cref="RecycleIdleActorAsync"/> 一致），
-    /// 确保注册在 <c>_onceRecycleCallbacks</c> 中的清理回调（如 Quartz 调度任务移除）必然执行。
+    /// 每个 Actor 经 <see cref="DeactivateAndRecycleActorAsync"/> 执行：有未落库修改时先强制回存，
+    /// 再 Inactive → OnRecycle（与 <see cref="RecycleIdleActorAsync"/> 一致），确保一次性回收回调与
+    /// 名下 Quartz 调度任务清理必然执行；单个组件反激活失败只记日志，不中断其余 Actor。
     /// </remarks>
     /// <returns>表示删除操作的异步任务 / Async task representing the removal operation</returns>
     public static async Task RemoveAllAsync()
@@ -592,34 +593,55 @@ public static class ActorManager
     /// </summary>
     /// <remarks>
     /// Removes the specified Actor, deactivates it, and then runs its once recycle callbacks.
-    /// 两步在目标Actor自身的Worker队列内串行执行（Inactive → OnRecycle 固定顺序，与
-    /// <see cref="RecycleIdleActorAsync"/> 一致），确保注册在 <c>_onceRecycleCallbacks</c>
-    /// 中的清理回调（如 Quartz 调度任务移除）在Actor移除时必然执行。
+    /// 先同步移出 <c>ActorMap</c> 与 <c>ActiveTimeDic</c>，再在目标Actor自身的Worker队列内执行
+    /// <see cref="DeactivateAndRecycleActorAsync"/>（有未落库修改时先强制回存 → Inactive → OnRecycle）。
+    /// 返回的任务完成即表示三步均已执行；Actor 已被隔离时返回异常任务，调用方可感知回收未执行。
+    /// Actor 不存在时返回已完成任务。
+    /// The returned task completes only after the save / deactivate / recycle steps have run; it
+    /// faults when the actor is quarantined.
     /// </remarks>
     /// <param name="actorId">Actor唯一标识 / Actor unique identifier</param>
     /// <returns>表示删除操作的异步任务 / Async task representing the removal operation</returns>
     public static Task RemoveAsync(long actorId)
     {
-        if (ActorMap.Remove(actorId, out var actor))
+        if (!ActorMap.Remove(actorId, out var actor))
         {
-            actor.Tell(() => DeactivateAndRecycleActorAsync(actor));
+            return Task.CompletedTask;
         }
 
-        return Task.CompletedTask;
+        ActiveTimeDic.TryRemove(actorId, out _);
+        return actor.SendAsyncWithoutCheck(() => DeactivateAndRecycleActorAsync(actor));
     }
 
     /// <summary>
-    /// 使单个Actor依次执行反激活与一次性回收回调。
+    /// 使单个Actor依次执行强制回存、反激活与一次性回收回调。
     /// </summary>
     /// <remarks>
-    /// Deactivates the Actor and then runs its once recycle callbacks, in that fixed order.
-    /// 该顺序是所有Actor移除/回收路径（<see cref="RemoveAsync"/>、<see cref="RemoveAllAsync"/>、
-    /// <see cref="RecycleIdleActorAsync"/>）的共同契约，禁止任何移除路径只做 Inactive 而漏执行回收回调。
+    /// 固定顺序：Actor 存在未落库修改（<see cref="Actor.ReadyToDeActive"/> 为 false）时先
+    /// <c>SaveAllStateAsync</c>，再 Inactive，最后 OnRecycle。显式移除不像空闲回收那样等待状态落库，
+    /// 反激活第一步就会把状态移出回存登记表，不先回存则未落库修改直接丢失。回存失败记 Fatal 后继续移除
+    /// （与关服语义一致：不能因单个 Actor 写库失败卡住下线）；反激活自身已逐组件隔离异常，回收回调必然执行。
+    /// 该顺序是所有显式移除路径（<see cref="RemoveAsync"/>、<see cref="RemoveAllAsync"/>）的共同契约。
+    /// Saves unsaved state first (when <see cref="Actor.ReadyToDeActive"/> is false), then deactivates,
+    /// then runs the recycle callbacks. A failed save is logged as Fatal and removal continues.
     /// </remarks>
     /// <param name="actor">待下线的Actor / The Actor to deactivate and recycle</param>
-    /// <returns>表示两步操作的异步任务 / Async task representing both steps</returns>
+    /// <returns>表示三步操作的异步任务 / Async task representing all steps</returns>
     private static async Task DeactivateAndRecycleActorAsync(Actor actor)
     {
+        if (!actor.ReadyToDeActive)
+        {
+            try
+            {
+                await actor.SaveAllStateAsync();
+            }
+            catch (Exception exception)
+            {
+                // Localization: Core.ActorManager.RemoveSaveStateFailed - 显式移除Actor前回存失败 actorId:{0} actorType:{1} 异常：\n{2}
+                LogHelper.Fatal(exception, LocalizationService.GetString(Localization.Keys.Core.ActorManager.RemoveSaveStateFailed, actor.Id, actor.Type, exception));
+            }
+        }
+
         try
         {
             await actor.InactiveAsync();
