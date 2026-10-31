@@ -35,15 +35,42 @@ namespace GameFrameX.Network.Message;
 /// <summary>
 /// 默认消息解压器
 /// </summary>
+/// <remarks>
+/// 解压输出受 <see cref="_maxOutputLength"/> 约束：膨胀过程一旦超过上限立即中止并抛出
+/// <see cref="System.IO.InvalidDataException"/>，用于防御高压缩比小帧的解压炸弹（DoS）。
+/// Default message decompressor with a bounded output length to guard against decompression bombs.
+/// </remarks>
 public sealed class DefaultMessageDecompressHandler : IMessageDecompressHandler
 {
     /// <summary>
+    /// 允许的最大解压输出字节数
+    /// </summary>
+    private readonly long _maxOutputLength;
+
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    /// <remarks>
+    /// Constructor with an explicit decompressed output limit; when omitted, the conservative
+    /// <see cref="CompressionHelper.DefaultMaxDecompressedOutputLength"/> (64MB) applies.
+    /// </remarks>
+    /// <param name="maxOutputLength">允许的最大解压输出字节数，缺省取 <see cref="CompressionHelper.DefaultMaxDecompressedOutputLength"/> / Maximum allowed decompressed output length in bytes</param>
+    public DefaultMessageDecompressHandler(long maxOutputLength = CompressionHelper.DefaultMaxDecompressedOutputLength)
+    {
+        _maxOutputLength = maxOutputLength;
+    }
+
+    /// <summary>
     /// 解压处理
     /// </summary>
-    /// <param name="message">消息压缩内容</param>
-    /// <returns></returns>
+    /// <remarks>
+    /// Decompresses the message data with the configured output limit.
+    /// </remarks>
+    /// <param name="message">消息压缩内容 / Compressed message content</param>
+    /// <returns>解压后的字节数组 / The decompressed byte array</returns>
+    /// <exception cref="System.IO.InvalidDataException">压缩数据非法、损坏、截断或解压输出超过上限时抛出 / Thrown when the compressed data is invalid, corrupted, truncated, or exceeds the output limit</exception>
     public byte[] Handler(byte[] message)
     {
-        return CompressionHelper.Decompress(message);
+        return CompressionHelper.Decompress(message, _maxOutputLength);
     }
 }

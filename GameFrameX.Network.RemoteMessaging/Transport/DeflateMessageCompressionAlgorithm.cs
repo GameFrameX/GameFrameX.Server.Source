@@ -71,15 +71,18 @@ public sealed class DeflateMessageCompressionAlgorithm : IMessageCompressionAlgo
     }
 
     /// <summary>
-    /// 使用 Deflate 算法解压数据。
+    /// 使用 Deflate 算法解压数据（解压过程受输出上限约束，超限立即中止）。
     /// </summary>
     /// <remarks>
-    /// Decompresses data using the Deflate algorithm.
+    /// Decompresses data using the Deflate algorithm; the inflation aborts as soon as the
+    /// accumulated output exceeds the given limit.
     /// </remarks>
     /// <param name="input">待解压的压缩字节数组 / The compressed byte array to decompress</param>
+    /// <param name="maxOutputLength">允许的最大解压输出字节数 / Maximum allowed decompressed output length in bytes</param>
     /// <returns>解压后的原始字节数组 / The decompressed byte array</returns>
-    public byte[] Decompress(byte[] input)
+    /// <exception cref="System.IO.InvalidDataException">压缩数据非法、损坏、截断或解压输出超过上限时抛出 / Thrown when the data is invalid, corrupted, truncated, or exceeds the output limit</exception>
+    public byte[] Decompress(byte[] input, long maxOutputLength)
     {
-        return CompressionHelper.Decompress(input);
+        return CompressionHelper.Decompress(input, maxOutputLength);
     }
 }

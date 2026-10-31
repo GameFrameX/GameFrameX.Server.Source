@@ -30,6 +30,7 @@
 using System.Buffers.Binary;
 using System.IO;
 using GameFrameX.Network.RemoteMessaging.Transport;
+using GameFrameX.Utility;
 
 namespace GameFrameX.Tests.RemoteMessaging;
 
@@ -63,6 +64,23 @@ public class DefaultMessageCodecTests
         registry.Register(new ExpandingCompressionAlgorithm(algorithmId, new byte[9]));
         var codec = CreateCodec(registry, maxPacketSize: 64, maxDecompressedSize: 8);
         await using (var stream = CreatePacketStream(algorithmId, new byte[] { 1 }))
+        {
+            await Assert.ThrowsAsync<InvalidDataException>(() => codec.DecodeAsync(stream, CancellationToken.None));
+        }
+    }
+
+    [Fact]
+    public async Task DecodeAsync_WithRealDeflateBomb_ShouldThrowInvalidDataException_WithoutFullInflation()
+    {
+        // 解压炸弹回归：64KB 全零载荷经 Deflate 压缩后仅数百字节（高压缩比），
+        // codec 声明 maxDecompressedSize = 4KB——真实 Deflate 算法必须在膨胀过程内中止，
+        // 而不是先完整膨胀成 64KB 再做事后长度检查。
+        const byte algorithmId = 1;
+        var registry = new DefaultMessageCompressionRegistry();
+        registry.Register(new DeflateMessageCompressionAlgorithm());
+        var codec = CreateCodec(registry, maxPacketSize: 1024 * 1024, maxDecompressedSize: 4 * 1024);
+        var bombPayload = CompressionHelper.Compress(new byte[64 * 1024]);
+        await using (var stream = CreatePacketStream(algorithmId, bombPayload))
         {
             await Assert.ThrowsAsync<InvalidDataException>(() => codec.DecodeAsync(stream, CancellationToken.None));
         }
@@ -126,8 +144,15 @@ public class DefaultMessageCodecTests
             return input;
         }
 
-        public byte[] Decompress(byte[] input)
+        public byte[] Decompress(byte[] input, long maxOutputLength)
         {
+            // 语义对齐真实算法：输出一旦超过调用方声明的上限立即中止抛出（膨胀过程内），
+            // 由 codec 的 ValidateDecodedPayloadLength 兜底——两条防线与生产链路一致。
+            if (_decompressedBytes.Length > maxOutputLength)
+            {
+                throw new InvalidDataException($"Simulated decompressed output {_decompressedBytes.Length} exceeds limit {maxOutputLength}.");
+            }
+
             return _decompressedBytes;
         }
     }
