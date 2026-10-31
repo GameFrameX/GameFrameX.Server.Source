@@ -104,14 +104,22 @@ public sealed class SettingFieldConflict
 
     /// <summary>
     /// 判断字段是否为敏感字段（其值不得出现在异常消息中）。
+    /// 判定为凭据类命名：字段名含 "Password"、"Secret" 或 "Token" 子串（不区分大小写）——
+    /// 例如 <see cref="AppSetting.DataBasePassword"/>、<see cref="AppSetting.HttpSignSecret"/>、
+    /// <see cref="AppSetting.InterNodeAuthSecret"/>；值详情保留在冲突对象自身属性上。
     /// </summary>
     /// <remarks>
     /// Determines whether the field is sensitive (its value must not appear in exception messages).
-    /// Matches credential-like names such as <see cref="AppSetting.DataBasePassword"/>; value details are preserved on the conflict object itself.
+    /// Credential-like names match: field names containing "Password", "Secret" or "Token" (case-insensitive) —
+    /// e.g. <see cref="AppSetting.DataBasePassword"/>, <see cref="AppSetting.HttpSignSecret"/>,
+    /// <see cref="AppSetting.InterNodeAuthSecret"/>; value details are preserved on the conflict object itself.
     /// </remarks>
     private static bool IsSensitiveFieldName(string fieldName)
     {
-        return fieldName != null && fieldName.IndexOf("Password", StringComparison.OrdinalIgnoreCase) >= 0;
+        return fieldName != null &&
+               (fieldName.IndexOf("Password", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                fieldName.IndexOf("Secret", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                fieldName.IndexOf("Token", StringComparison.OrdinalIgnoreCase) >= 0);
     }
 
     /// <summary>

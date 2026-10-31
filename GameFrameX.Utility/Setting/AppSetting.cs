@@ -93,27 +93,75 @@ public class AppSetting
     }
 
     /// <summary>
-    /// 将对象序列化为JSON字符串
+    /// 将对象序列化为JSON字符串；凭据字段（数据库密码、HTTP 签名密钥、节点间鉴权密钥、HTTPS 证书密码）已脱敏，
+    /// 输出可安全进入日志。
     /// </summary>
     /// <remarks>
-    /// Serializes the object to a JSON string.
+    /// Serializes the object to a JSON string with credential fields (database password, HTTP signature secret,
+    /// inter-node auth secret, HTTPS certificate password) masked; the output is safe for logging.
     /// </remarks>
-    /// <returns>JSON字符串 / JSON string</returns>
+    /// <returns>JSON字符串（凭据已脱敏）/ JSON string (credentials masked)</returns>
     public override string ToString()
     {
-        return JsonHelper.Serialize(this);
+        return JsonHelper.Serialize(CreateMaskedCloneForSerialization());
     }
 
     /// <summary>
-    /// 将对象序列化为格式化的JSON字符串
+    /// 将对象序列化为格式化的JSON字符串；凭据字段（数据库密码、HTTP 签名密钥、节点间鉴权密钥、HTTPS 证书密码）已脱敏，
+    /// 输出可安全进入日志。
     /// </summary>
     /// <remarks>
-    /// Serializes the object to a formatted JSON string.
+    /// Serializes the object to a formatted JSON string with credential fields (database password, HTTP signature secret,
+    /// inter-node auth secret, HTTPS certificate password) masked; the output is safe for logging.
     /// </remarks>
-    /// <returns>格式化的JSON字符串 / Formatted JSON string</returns>
+    /// <returns>格式化的JSON字符串（凭据已脱敏）/ Formatted JSON string (credentials masked)</returns>
     public string ToFormatString()
     {
-        return JsonHelper.SerializeFormat(this);
+        return JsonHelper.SerializeFormat(CreateMaskedCloneForSerialization());
+    }
+
+    /// <summary>
+    /// 凭据字段的序列化掩码：非空值输出该掩码，保留"已配置/未配置"的运维可见性，同时保证明文永不离开进程。
+    /// </summary>
+    private const string SensitiveValueMask = "***";
+
+    /// <summary>
+    /// 创建用于序列化输出的脱敏浅拷贝：<see cref="DataBasePassword"/>、<see cref="HttpSignSecret"/>、
+    /// <see cref="InterNodeAuthSecret"/>、<see cref="HttpsCertPassword"/> 四个凭据字段的非空值替换为
+    /// <see cref="SensitiveValueMask"/>（null 与空串原样保留，用于区分"未配置"）。
+    /// <para>安全约定：后续在 <see cref="AppSetting"/> 新增凭据类字段时，必须同步加入本方法的掩码清单，
+    /// 否则其明文将随启动/停止日志输出。</para>
+    /// </summary>
+    /// <remarks>
+    /// Creates a masked shallow copy for serialization output: non-empty values of the four credential fields
+    /// (<see cref="DataBasePassword"/>, <see cref="HttpSignSecret"/>, <see cref="InterNodeAuthSecret"/>,
+    /// <see cref="HttpsCertPassword"/>) are replaced with <see cref="SensitiveValueMask"/> (null and empty strings
+    /// are kept as-is to distinguish "not configured").
+    /// Convention: any new credential-like field added to <see cref="AppSetting"/> must be added to this mask list,
+    /// otherwise its plaintext would leak through startup/shutdown logs.
+    /// </remarks>
+    /// <returns>凭据字段已掩码的浅拷贝 / A shallow copy with credential fields masked</returns>
+    private AppSetting CreateMaskedCloneForSerialization()
+    {
+        var maskedClone = (AppSetting)MemberwiseClone();
+        maskedClone.DataBasePassword = MaskSensitiveValue(DataBasePassword);
+        maskedClone.HttpSignSecret = MaskSensitiveValue(HttpSignSecret);
+        maskedClone.InterNodeAuthSecret = MaskSensitiveValue(InterNodeAuthSecret);
+        maskedClone.HttpsCertPassword = MaskSensitiveValue(HttpsCertPassword);
+        return maskedClone;
+    }
+
+    /// <summary>
+    /// 凭据值脱敏：null/空串原样返回（表示未配置），非空值返回掩码。
+    /// </summary>
+    /// <remarks>
+    /// Masks a credential value: null/empty strings are returned as-is ("not configured"), non-empty values return the mask.
+    /// </remarks>
+    /// <param name="value">原始凭据值 / The original credential value</param>
+    /// <returns>脱敏后的值 / The masked value</returns>
+    private static string MaskSensitiveValue(string value)
+    {
+        return string.IsNullOrEmpty(value) ? value : SensitiveValueMask;
     }
 
     #region 从配置文件读取的属性
