@@ -719,9 +719,11 @@ public class FPTests
     {
         // Arrange
         FP negativeFp = -1;
-        
-        // Act & Assert
-        Assert.Throws<ArgumentOutOfRangeException>(() => FP.Sqrt(negativeFp));
+
+        // Act & Assert：本地化消息必须进 Message，参数名 "x" 必须进 ParamName（修复前两实参绑定颠倒）
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() => FP.Sqrt(negativeFp));
+        Assert.Equal("x", exception.ParamName);
+        Assert.NotEqual("x", exception.Message);
     }
 
     /// <summary>
@@ -848,9 +850,11 @@ public class FPTests
     {
         // Arrange
         FP fp = value;
-        
-        // Act & Assert
-        Assert.Throws<ArgumentOutOfRangeException>(() => FP.Acos(fp));
+
+        // Act & Assert：本地化消息必须进 Message，参数名 "x" 必须进 ParamName（修复前两实参绑定颠倒）
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() => FP.Acos(fp));
+        Assert.Equal("x", exception.ParamName);
+        Assert.NotEqual("x", exception.Message);
     }
 
     /// <summary>

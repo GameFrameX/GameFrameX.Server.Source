@@ -45,9 +45,13 @@ namespace GameFrameX.Utility;
 /// 
 /// 核心特性：
 /// - 线程安全：使用 Random.Shared 确保多线程环境下的安全性
+/// - 非加密安全：基础接口（Next/NextDouble/NextUInt32/NextUInt64/RandomSelect/Items 等）基于 Random.Shared，
+///   是可预测的伪随机数生成器（PRNG），不得用于任何安全敏感场景
 /// - 高性能：避免重复创建 Random 实例
 /// - 类型安全：支持泛型方法，编译时类型检查
 /// - 参数验证：使用 .NET 静态方法进行参数检查
+/// - 双随机源分级：权重系列方法（Idx/Ids/Items 权重重载、RandomSelect(int,int) 等）内部使用
+///   ConcurrentCryptoRandom（加密安全随机），与基础接口的 PRNG 强度不同，见下方注意事项
 /// 
 /// 应用场景：
 /// - 游戏开发中的随机事件生成
@@ -69,6 +73,10 @@ namespace GameFrameX.Utility;
 /// </code>
 /// 
 /// 注意事项：
+/// - 【安全警示】基础接口基于 Random.Shared（可预测 PRNG），通过少量输出即可还原内部状态：
+///   严禁用于令牌、验证码、防作弊抽奖、掉落预测防护等安全场景，攻击者可据此定向刷取稀有掉落
+/// - 安全场景请使用权重系列方法（内部为 ConcurrentCryptoRandom 加密安全随机）
+///   或 System.Security.Cryptography.RandomNumberGenerator
 /// - 所有方法都进行了严格的参数验证
 /// - 空集合或数组会抛出 ArgumentOutOfRangeException
 /// - 负数参数会抛出相应的异常
