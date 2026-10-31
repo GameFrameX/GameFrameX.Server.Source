@@ -87,7 +87,13 @@ public static class ActorIdGenerator
             return (int)(actorId / GlobalActorIdMultiplier);
         }
 
-        return (int)(actorId >> GlobalConst.ServerIdOrModuleIdMask);
+        var multiServerId = (int)(actorId >> GlobalConst.ServerIdOrModuleIdMask);
+        if (multiServerId < GlobalConst.MinServerId || multiServerId > GlobalConst.MaxServerId)
+        {
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ActorIdServerIdInvalidLayout, multiServerId, GlobalConst.MinServerId, GlobalConst.MaxServerId), nameof(actorId));
+        }
+
+        return multiServerId;
     }
 
     /// <summary>
@@ -112,6 +118,12 @@ public static class ActorIdGenerator
             return (ushort)(actorId % GlobalActorIdMultiplier);
         }
 
+        var multiServerId = (int)(actorId >> GlobalConst.ServerIdOrModuleIdMask);
+        if (multiServerId < GlobalConst.MinServerId || multiServerId > GlobalConst.MaxServerId)
+        {
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ActorIdServerIdInvalidLayout, multiServerId, GlobalConst.MinServerId, GlobalConst.MaxServerId), nameof(actorId));
+        }
+
         return (ushort)((actorId >> GlobalConst.ActorTypeMask) & MultiActorTypeBitMask);
     }
 
@@ -134,9 +146,19 @@ public static class ActorIdGenerator
             throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ActorTypeError, type));
         }
 
+        if (type == GlobalConst.ActorTypeNone)
+        {
+            throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ActorTypeInvalid));
+        }
+
         if (serverId < 0)
         {
             throw new ArgumentException(LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ServerIdNegative, serverId));
+        }
+
+        if (serverId > GlobalConst.MaxServerId)
+        {
+            throw new ArgumentOutOfRangeException(nameof(serverId), LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ServerIdExceedsMax, serverId, GlobalConst.MaxServerId));
         }
 
         if (serverId == 0)
@@ -172,6 +194,11 @@ public static class ActorIdGenerator
         if (actorType >= GlobalConst.ActorTypeMax || actorType == GlobalConst.ActorTypeSeparator || actorType == GlobalConst.ActorTypeNone)
         {
             throw new ArgumentOutOfRangeException(nameof(actorType), LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ActorTypeInvalid));
+        }
+
+        if (serverId > GlobalConst.MaxServerId)
+        {
+            throw new ArgumentOutOfRangeException(nameof(serverId), LocalizationService.GetString(Localization.Keys.Utility.ExceptionMessages.ServerIdExceedsMax, serverId, GlobalConst.MaxServerId));
         }
 
         return serverId * GlobalActorIdMultiplier + actorType;
