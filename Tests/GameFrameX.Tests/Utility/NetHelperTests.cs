@@ -804,5 +804,61 @@ namespace GameFrameX.Tests.Utility
         }
 
         #endregion
+
+        #region MAC 地址格式化与端口 bind 探测
+
+        /// <summary>
+        /// 偶数长度的物理地址按字节分组。
+        /// </summary>
+        [Fact]
+        public void FormatMacAddress_WithEvenLength_GroupsByByte()
+        {
+            Assert.Equal("A1:B2:C3:D4:E5:F6", NetHelper.FormatMacAddress("A1B2C3D4E5F6"));
+        }
+
+        /// <summary>
+        /// 奇数长度的物理地址左补 0，最后一位不得静默丢失。
+        /// </summary>
+        [Fact]
+        public void FormatMacAddress_WithOddLength_PreservesAllNibbles()
+        {
+            var formatted = NetHelper.FormatMacAddress("A1B2C3D4E");
+
+            Assert.Equal("0A:1B:2C:3D:4E", formatted);
+            Assert.Equal("0A1B2C3D4E", formatted.Replace(":", string.Empty));
+        }
+
+        /// <summary>
+        /// 已被监听占用的端口必须判定为不可用。
+        /// </summary>
+        [Fact]
+        public void PortIsAvailable_WithBoundPort_ReturnsFalse()
+        {
+            using (var listener = new TcpListener(IPAddress.Any, 0))
+            {
+                listener.Start();
+                var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
+                Assert.False(NetHelper.PortIsAvailable(port));
+            }
+        }
+
+        /// <summary>
+        /// 已释放的端口必须判定为可用。
+        /// </summary>
+        [Fact]
+        public void PortIsAvailable_WithReleasedPort_ReturnsTrue()
+        {
+            int port;
+            using (var listener = new TcpListener(IPAddress.Any, 0))
+            {
+                listener.Start();
+                port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            }
+
+            Assert.True(NetHelper.PortIsAvailable(port));
+        }
+
+        #endregion
     }
 }

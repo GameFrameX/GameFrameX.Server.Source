@@ -81,11 +81,18 @@ namespace GameFrameX.Utility;
 public static class AssemblyHelper
 {
     /// <summary>
+    /// 类型缓存的最大条目数；达到上限后只返回解析结果、不再写入缓存。
+    /// </summary>
+    private const int MaxCachedTypeCount = 1024;
+
+    /// <summary>
     /// Type cache dictionary using type full name as key, thread-safe
-    /// Uses StringComparer.Ordinal for optimal string comparison performance
+    /// Only successful resolutions are cached: a miss is never cached so that types
+    /// from assemblies loaded later (hotfix) can still be found.
     /// </summary>
     /// <remarks>
     /// 类型缓存字典，使用类型全名作为键，线程安全
+    /// 仅缓存命中结果：未命中不缓存，热更程序集后续加载后仍可解析
     /// 使用 StringComparer.Ordinal 提供最佳性能的字符串比较
     /// </remarks>
     private static readonly ConcurrentDictionary<string, Type> CachedTypes = new(StringComparer.Ordinal);
@@ -219,6 +226,9 @@ public static class AssemblyHelper
     /// <remarks>
     /// 获取已加载的程序集中的指定类型
     /// 支持完全限定名和简单类型名，使用缓存机制提高查找性能
+    /// 仅缓存命中结果，未命中（miss）不缓存，热更程序集后续加载后仍可解析。
+    /// 安全约束：类型名必须是受信任的配置/代码常量；含逗号的程序集限定名会触发程序集加载，
+    /// 不得直接使用外部/玩家输入。
     /// </remarks>
     /// <param name="typeName">Type name to get, supports fully qualified names (e.g., "System.String") / 要获取的类型名，支持完全限定名（如 "System.String"）</param>
     /// <returns>Specified type from loaded assemblies, returns null if not found / 已加载的程序集中的指定类型，如果未找到则返回 null</returns>
@@ -227,40 +237,65 @@ public static class AssemblyHelper
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(typeName);
 
-        return CachedTypes.GetOrAdd(typeName, name =>
+        if (CachedTypes.TryGetValue(typeName, out var cachedType))
         {
-            // 首先尝试直接获取类型（适用于系统类型和当前程序集中的类型）
-            var type = Type.GetType(name);
-            if (type != null)
-            {
-                return type;
-            }
+            return cachedType;
+        }
 
-            // 如果直接获取失败，遍历所有程序集查找类型
-            // 这种方式适用于跨程序集的类型查找
-            var assemblies = GetCurrentAssemblies();
-            foreach (var assembly in assemblies)
-            {
-                try
-                {
-                    // 使用程序集限定名称查找类型
-                    type = Type.GetType($"{name}, {assembly.FullName}");
-                    if (type != null)
-                    {
-                        return type;
-                    }
-                }
-                catch (Exception)
-                {
-                    // 忽略异常（如类型不存在、安全异常等）
-                    // 继续查找下一个程序集
-                    continue;
-                }
-            }
-
-            // 如果在所有程序集中都找不到该类型，返回 null
+        var resolvedType = ResolveType(typeName);
+        if (resolvedType == null)
+        {
+            // 未命中不入缓存：热更程序集可能在后续运行期加载，miss 缓存会给出永久错误答案。
             return null;
-        });
+        }
+
+        if (CachedTypes.Count < MaxCachedTypeCount)
+        {
+            CachedTypes.TryAdd(typeName, resolvedType);
+        }
+
+        return resolvedType;
+    }
+
+    /// <summary>
+    /// Resolve a type by name from the loaded assemblies without touching the cache.
+    /// </summary>
+    /// <remarks>
+    /// 不经过缓存解析类型：先按直接名称，再遍历已加载程序集。
+    /// </remarks>
+    /// <param name="typeName">Type name to resolve / 要解析的类型名</param>
+    /// <returns>Resolved type, or null if not found / 解析到的类型，未找到返回 null</returns>
+    private static Type ResolveType(string typeName)
+    {
+        // 首先尝试直接获取类型（适用于系统类型和当前程序集中的类型）
+        var type = Type.GetType(typeName);
+        if (type != null)
+        {
+            return type;
+        }
+
+        // 如果直接获取失败，遍历所有程序集查找类型
+        // 这种方式适用于跨程序集的类型查找
+        var assemblies = GetCurrentAssemblies();
+        foreach (var assembly in assemblies)
+        {
+            try
+            {
+                // 使用程序集限定名称查找类型
+                type = Type.GetType($"{typeName}, {assembly.FullName}");
+                if (type != null)
+                {
+                    return type;
+                }
+            }
+            catch (Exception)
+            {
+                // 忽略异常（如类型不存在、安全异常等）
+                // 继续查找下一个程序集
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

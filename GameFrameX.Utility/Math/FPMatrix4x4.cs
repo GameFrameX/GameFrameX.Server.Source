@@ -830,22 +830,26 @@ public struct FPMatrix4x4
     /// <returns>当前矩阵的哈希代码。</returns>
     public override int GetHashCode()
     {
-        return M11.GetHashCode() ^
-               M12.GetHashCode() ^
-               M13.GetHashCode() ^
-               M14.GetHashCode() ^
-               M21.GetHashCode() ^
-               M22.GetHashCode() ^
-               M23.GetHashCode() ^
-               M24.GetHashCode() ^
-               M31.GetHashCode() ^
-               M32.GetHashCode() ^
-               M33.GetHashCode() ^
-               M34.GetHashCode() ^
-               M41.GetHashCode() ^
-               M42.GetHashCode() ^
-               M43.GetHashCode() ^
-               M44.GetHashCode();
+        unchecked
+        {
+            var hash = M11.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M12.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M13.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M14.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M21.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M22.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M23.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M24.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M31.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M32.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M33.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M34.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M41.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M42.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M43.RawValue.GetHashCode();
+            hash = (hash * 397) ^ M44.RawValue.GetHashCode();
+            return hash;
+        }
     }
 
     /// <summary>

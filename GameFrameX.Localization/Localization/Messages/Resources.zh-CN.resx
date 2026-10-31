@@ -641,6 +641,26 @@
     <value>不能重复随机参数错误，需求数量：{0} 大于ID数量：{1}</value>
   </data>
 
+    <data name="Utility.RandomHelper.NegativeWeight" xml:space="preserve">
+    <value>权重不能为负数，实际权重：{0}</value>
+  </data>
+
+    <data name="Utility.RandomHelper.ZeroTotalWeight" xml:space="preserve">
+    <value>权重总和必须大于 0</value>
+  </data>
+
+    <data name="Utility.RandomHelper.WeightSumOverflow" xml:space="preserve">
+    <value>权重总和 {0} 超出支持的 32 位范围</value>
+  </data>
+
+    <data name="Utility.RandomHelper.WeightIndexOutOfRange" xml:space="preserve">
+    <value>权重索引 {0} 超出条目长度 {1}</value>
+  </data>
+
+    <data name="Utility.RandomHelper.InsufficientPositiveWeights" xml:space="preserve">
+    <value>无法不重复抽取 {0} 个权重目标，只有 {1} 个条目的权重为正</value>
+  </data>
+
     <!-- Utility.BigIntegerDebug 相关日志消息 -->
     <data name="Utility.BigIntegerDebug.DebugA" xml:space="preserve">
     <value>a = {0}</value>
