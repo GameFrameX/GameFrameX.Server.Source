@@ -97,7 +97,9 @@ public sealed class EventDispatcherDrainTests : IDisposable
         }
         finally
         {
-            await ActorManager.RemoveAsync(actorId);
+            // 邮箱已被本用例关闭：RemoveAsync 把 Actor 移出表后返回"队列拒绝工作"的异常任务（C436：不再静默丢弃），
+            // 清理只需出表，忽略该预期异常。
+            await Record.ExceptionAsync(() => ActorManager.RemoveAsync(actorId));
         }
     }
 

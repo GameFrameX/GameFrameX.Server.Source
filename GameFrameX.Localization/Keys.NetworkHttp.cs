@@ -197,6 +197,15 @@ public static partial class Keys
         public const string DataVerificationFailed = "Network.Http.DataVerificationFailed";
 
         /// <summary>
+        /// 请求体必须是 JSON 对象
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.RequestBodyNotJsonObject
+        /// 用途: 当JSON请求体不是对象（null字面量/数组/标量/空体）时返回参数错误
+        /// </remarks>
+        public const string RequestBodyNotJsonObject = "Network.Http.RequestBodyNotJsonObject";
+
+        /// <summary>
         /// http命令未包含验证参数{0} 和 {1}
         /// </summary>
         /// <remarks>
@@ -214,24 +223,6 @@ public static partial class Keys
         /// 用途: 使用未定义命令时的错误消息
         /// </remarks>
         public const string UndefinedCommand = "Network.Http.UndefinedCommand";
-
-        /// <summary>
-        /// not found command
-        /// </summary>
-        /// <remarks>
-        /// 键名: Network.Http.NotFoundCommand
-        /// 用途: 命令未找到时的错误消息
-        /// </remarks>
-        public const string NotFoundCommand = "Network.Http.NotFoundCommand";
-
-        /// <summary>
-        /// check failed command
-        /// </summary>
-        /// <remarks>
-        /// 键名: Network.Http.CheckFailedCommand
-        /// 用途: 命令验证失败时的错误消息
-        /// </remarks>
-        public const string CheckFailedCommand = "Network.Http.CheckFailedCommand";
 
         /// <summary>
         /// server error
@@ -270,5 +261,33 @@ public static partial class Keys
         /// 用途: 开启签名校验但签名密钥为空时记录错误（fail-closed，绝不放行）
         /// </remarks>
         public const string SignSecretMissing = "Network.Http.SignSecretMissing";
+
+        /// <summary>
+        /// HttpSignSecret 长度不足 {0} 字符，存在被离线爆破风险，请更换为高强度随机密钥
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.SignSecretTooWeak
+        /// 用途: 签名密钥过短时的一次性告警（不阻断请求）
+        /// 参数: {0} - 最小建议长度
+        /// </remarks>
+        public const string SignSecretTooWeak = "Network.Http.SignSecretTooWeak";
+
+        /// <summary>
+        /// HTTP 签名 nonce 缺失或已在时间窗内使用（疑似重放），请求已拒绝
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.SignNonceInvalid
+        /// 用途: v2 签名口径下 nonce 缺失/重放时记录告警
+        /// </remarks>
+        public const string SignNonceInvalid = "Network.Http.SignNonceInvalid";
+
+        /// <summary>
+        /// HTTP 签名仍使用 v1（仅时间戳）旧口径，不防篡改与重放，建议尽快迁移到 HttpSignVersion=2
+        /// </summary>
+        /// <remarks>
+        /// 键名: Network.Http.SignVersionOneDeprecated
+        /// 用途: v1 口径首次使用时的一次性弃用告警
+        /// </remarks>
+        public const string SignVersionOneDeprecated = "Network.Http.SignVersionOneDeprecated";
     }
 }

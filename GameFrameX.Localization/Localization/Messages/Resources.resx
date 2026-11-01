@@ -16,6 +16,12 @@
     <data name="Utility.Exceptions.ServerIdLessThanOrEqualZero" xml:space="preserve">
     <value>serverId is less than or equal to 0</value>
   </data>
+    <data name="Utility.Exceptions.ServerIdExceedsMax" xml:space="preserve">
+    <value>serverId {0} exceeds the maximum server id {1}</value>
+  </data>
+    <data name="Utility.Exceptions.ActorIdServerIdInvalidLayout" xml:space="preserve">
+    <value>serverId {0} parsed from ActorId is outside [{1}, {2}]; the ActorId bit layout may be corrupted</value>
+  </data>
     <data name="Utility.Exceptions.ActorTypeInvalid" xml:space="preserve">
     <value>actor type is invalid</value>
   </data>
@@ -194,17 +200,14 @@
     <data name="Network.Http.DataVerificationFailed" xml:space="preserve">
     <value>data verification failed</value>
   </data>
+    <data name="Network.Http.RequestBodyNotJsonObject" xml:space="preserve">
+    <value>request body must be a JSON object</value>
+  </data>
     <data name="Network.Http.HttpCommandMissingValidationParameters" xml:space="preserve">
     <value>http command missing validation parameters {0} and {1}</value>
   </data>
     <data name="Network.Http.UndefinedCommand" xml:space="preserve">
     <value>undefined command</value>
-  </data>
-    <data name="Network.Http.NotFoundCommand" xml:space="preserve">
-    <value>not found command</value>
-  </data>
-    <data name="Network.Http.CheckFailedCommand" xml:space="preserve">
-    <value>check failed command</value>
   </data>
     <data name="Network.Http.ServerError" xml:space="preserve">
     <value>server error</value>
@@ -475,6 +478,9 @@
     <data name="Core.Timer.InvalidHandlerType" xml:space="preserve">
     <value>Invalid ITimerHandler type, callback failed type:{0}</value>
   </data>
+  <data name="Core.Timer.TargetActorNotFoundJobRemoved" xml:space="preserve">
+    <value>Timer job target actor is not in memory, job removed jobKey:{0} actorId:{1} handler:{2}</value>
+  </data>
 
     <!-- Actor manager related messages -->
 <!-- Component registration related messages -->
@@ -551,6 +557,17 @@
       <data name="CoreExceptions.WorkerActor.CallRejectedByLimitRule" xml:space="preserve">
       <value>WorkerActor work call rejected by limit rule, caller actorId:{0} target actorId:{1}</value>
       </data>
+    <data name="CoreExceptions.WorkerActor.QueueRejected" xml:space="preserve">
+    <value>WorkerActor queue rejected work. actorId:{0} trace:{1}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.QueueCancelled" xml:space="preserve">
+    <value>WorkerActor queue post was cancelled. actorId:{0} trace:{1}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.QueueFailed" xml:space="preserve">
+    <value>WorkerActor queue post failed. actorId:{0} trace:{1}</value>
+  </data>
     <!-- Component related exceptions -->
     <data name="CoreExceptions.Component.ActorTypeNotBound" xml:space="preserve">
     <value>component:[{0}] the actor type is not bound</value>
@@ -618,6 +635,13 @@
       <data name="CoreExceptions.HotfixModule.AssemblyHashMismatch" xml:space="preserve">
       <value>Hotfix assembly hash mismatch, path:{0} expected SHA-256:{1} actual SHA-256:{2}</value>
       </data>
+    <data name="CoreExceptions.Hotfix.InvalidVersionChars" xml:space="preserve">
+    <value>Version contains forbidden path characters: {0}</value>
+  </data>
+
+    <data name="CoreExceptions.Hotfix.TypeNotFound" xml:space="preserve">
+    <value>Type not found: {0}</value>
+  </data>
     <!-- Attribute related exceptions -->
     <data name="CoreExceptions.Attribute.InvalidComponentType" xml:space="preserve">
     <value>Invalid component type {0}, value should be greater than {1} and less than {2} and not equal to {3}</value>
@@ -633,6 +657,26 @@
     <!-- Utility.RandomHelper related error messages -->
     <data name="Utility.RandomHelper.CantRepeatRandomArgError" xml:space="preserve">
     <value>Cannot repeat random argument error, requested count: {0} is greater than ID count: {1}</value>
+  </data>
+
+    <data name="Utility.RandomHelper.NegativeWeight" xml:space="preserve">
+    <value>Weight must not be negative, actual weight: {0}</value>
+  </data>
+
+    <data name="Utility.RandomHelper.ZeroTotalWeight" xml:space="preserve">
+    <value>Total weight must be greater than zero</value>
+  </data>
+
+    <data name="Utility.RandomHelper.WeightSumOverflow" xml:space="preserve">
+    <value>Total weight {0} exceeds the supported 32-bit range</value>
+  </data>
+
+    <data name="Utility.RandomHelper.WeightIndexOutOfRange" xml:space="preserve">
+    <value>Weight index {0} is out of range for an entry with {1} element(s)</value>
+  </data>
+
+    <data name="Utility.RandomHelper.InsufficientPositiveWeights" xml:space="preserve">
+    <value>Cannot pick {0} distinct weighted items, only {1} item(s) have a positive weight</value>
   </data>
 
     <!-- Utility.BigIntegerDebug related log messages -->
@@ -729,6 +773,22 @@
   </data>
   <data name="Network.Http.SignSecretMissing" xml:space="preserve">
     <value>HTTP signature validation is enabled but HttpSignSecret is not configured; every request is rejected (fail-closed).</value>
+  </data>
+
+  <data name="Network.Http.SignSecretTooWeak" xml:space="preserve">
+    <value>HttpSignSecret is shorter than {0} characters and can be brute-forced offline; replace it with a strong random secret.</value>
+  </data>
+
+  <data name="Network.Http.SignNonceInvalid" xml:space="preserve">
+    <value>HTTP signature nonce is missing or already used within the validity window (possible replay); the request was rejected.</value>
+  </data>
+
+  <data name="Network.Http.SignVersionOneDeprecated" xml:space="preserve">
+    <value>HTTP signature still uses the legacy v1 (timestamp-only) scheme, which does not protect against tampering or replay; migrate to HttpSignVersion=2.</value>
+  </data>
+
+  <data name="StartUp.HttpServer.SignDisabledWarning" xml:space="preserve">
+    <value>HTTP server started with HttpRequireSign=false: signature validation is disabled, exposing publicly deployed endpoints to captured-request replay; enable signature validation with a strong secret in production.</value>
   </data>
 
   <data name="StartUp.HttpServer.ApiContactName" xml:space="preserve">
@@ -1622,6 +1682,10 @@
     <value>Actor active component failed actorId:{0} componentType:{1} exception:\n{2}</value>
   </data>
 
+  <data name="Core.Actor.InactiveComponentFailed" xml:space="preserve">
+    <value>Actor inactive component failed actorId:{0} componentType:{1} exception:\n{2}</value>
+  </data>
+
   <data name="Core.Actor.WorkerActor.Timeout" xml:space="preserve">
     <value>work unit execution timed out trace:{0}</value>
   </data>
@@ -1640,6 +1704,10 @@
 
   <data name="Core.ActorManager.ActorForEachError" xml:space="preserve">
     <value>ActorManager.ActorForEach, error, actorId: {0}, actorType: {1}, exception: {2}</value>
+  </data>
+
+  <data name="Core.ActorManager.RemoveSaveStateFailed" xml:space="preserve">
+    <value>ActorManager.RemoveAsync, save state before removal failed, actorId: {0}, actorType: {1}, exception:\n{2}</value>
   </data>
 
   <data name="Core.ActorManager.CheckIdleRecycled" xml:space="preserve">
@@ -1711,7 +1779,15 @@
   </data>
 
   <data name="Core.EventDispatcher.DispatchNoListeners" xml:space="preserve">
-    <value>EventDispatcher.Dispatch Actor {0} {1} No listeners found for event type: {2}</value>
+    <value>EventDispatcher.Dispatch Actor {0} type: {1} no listeners found for event type: {2}</value>
+  </data>
+
+  <data name="Core.Session.RouteSyncUpsertFailed" xml:space="preserve">
+    <value>[PlayerSessionManager] player_route upsert hook failed for player {0}; the local PlayerRouteMap stays authoritative and the next SetOnline converges</value>
+  </data>
+
+  <data name="Core.Session.RouteSyncDeleteFailed" xml:space="preserve">
+    <value>[PlayerSessionManager] player_route delete hook failed for player {0}</value>
   </data>
 
   <data name="Core.EventDispatcher.DispatchOwnerActorNotLoaded" xml:space="preserve">
@@ -2174,12 +2250,16 @@
     <value>{0} port [{1}] occupation details: {2}</value>
   </data>
 
-  <data name="Utility.CompressionHelper.CompressFailed" xml:space="preserve">
-    <value>CompressionHelper.Compress Compression helper exception. Error: {0}.</value>
+  <data name="Utility.CompressionHelper.DecompressFailed" xml:space="preserve">
+    <value>CompressionHelper.Decompress decompression failed. Error: {0}.</value>
   </data>
 
-  <data name="Utility.CompressionHelper.DecompressFailed" xml:space="preserve">
-    <value>CompressionHelper.Decompress Compression helper exception. Error: {0}.</value>
+  <data name="Utility.CompressionHelper.DecompressInputTruncated" xml:space="preserve">
+    <value>CompressionHelper.Decompress input data is truncated; decompression cannot complete.</value>
+  </data>
+
+  <data name="Utility.CompressionHelper.DecompressedSizeExceedsLimit" xml:space="preserve">
+    <value>CompressionHelper.Decompress decompressed output exceeds the maximum allowed length: {0}.</value>
   </data>
 
   <data name="Utility.GlobalSettings.ActorRecycleTimeTooShortLog" xml:space="preserve">
@@ -2200,6 +2280,21 @@
 
   <data name="Utility.IllegalWordDetection.InitException" xml:space="preserve">
     <value>IllegalWordDetection.Init Exception details: {0}</value>
+  </data>
+
+  <data name="Utility.IllegalWordDetection.InitAlreadyInProgress" xml:space="preserve">
+    <value>IllegalWordDetection.Init is already in progress; the new init request is rejected</value>
+  </data>
+
+  <data name="Utility.IllegalWordDetection.BadWordTableCorrupted" xml:space="preserve">
+    <value>IllegalWordDetection bad-word table corrupted: invalid field length {0} at offset {1}, data length {2}</value>
+  </data>
+  <data name="Utility.Hotload.RetireModuleFailed" xml:space="preserve">
+    <value>CollectibleAssemblyHost retire cleanup failed: {0}</value>
+  </data>
+
+  <data name="Utility.LNumber.DivisionByZero" xml:space="preserve">
+    <value>LNumber division by zero</value>
   </data>
 
   <data name="Utility.LNumber.DivisionOverflowLog" xml:space="preserve">

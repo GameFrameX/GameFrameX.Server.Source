@@ -168,6 +168,17 @@ public sealed class MethodInfoData
     public bool Discard { get; set; }
 
     /// <summary>
+    /// 获取或设置方法是否存在阻断违规（ref/out/in 参数、Discard 返回类型契约不满足）。
+    /// </summary>
+    /// <remarks>
+    /// Gets or sets whether the method has a blocking violation (ref/out/in parameters, or a Discard return-type contract failure).
+    /// 置位的方法已输出 Error 诊断，不得进入生成面（收集前判定）。
+    /// A flagged method has already produced an Error diagnostic and must never enter the generation surface (decided before collection).
+    /// </remarks>
+    /// <value>存在阻断违规则为 <c>true</c>；否则为 <c>false</c> / <c>true</c> if a blocking violation exists; otherwise <c>false</c></value>
+    public bool HasBlockingViolation { get; set; }
+
+    /// <summary>
     /// 获取或设置方法是否设置了超时时间。
     /// </summary>
     /// <remarks>

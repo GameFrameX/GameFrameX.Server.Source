@@ -96,6 +96,16 @@ public static partial class Keys
             public const string ActiveComponentFailed = "Core.Actor.ActiveComponentFailed";
 
             /// <summary>
+            /// Actor反激活组件失败 actorId:{0} 组件类型:{1} 异常：\n{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.Actor.InactiveComponentFailed
+            /// 用途: Actor反激活时单个组件抛异常（记录后继续反激活其余组件）
+            /// 参数: {0} - Actor ID, {1} - 组件类型, {2} - 异常信息
+            /// </remarks>
+            public const string InactiveComponentFailed = "Core.Actor.InactiveComponentFailed";
+
+            /// <summary>
             /// WorkerActor工作单元相关消息
             /// </summary>
             public static class WorkerActor
@@ -280,6 +290,16 @@ public static partial class Keys
             public const string InvalidHandlerType = "Core.Timer.InvalidHandlerType";
 
             /// <summary>
+            /// 定时任务目标Actor不在内存中，已删除该任务 jobKey:{0} actorId:{1} handler:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.Timer.TargetActorNotFoundJobRemoved
+            /// 用途: 定时任务触发时目标Actor已回收，不重建Actor并删除该任务
+            /// 参数: {0} - 任务键, {1} - Actor ID, {2} - 处理器类型
+            /// </remarks>
+            public const string TargetActorNotFoundJobRemoved = "Core.Timer.TargetActorNotFoundJobRemoved";
+
+            /// <summary>
             /// {0}\n{1}
             /// </summary>
             /// <remarks>
@@ -395,6 +415,16 @@ public static partial class Keys
             /// 参数: {0} - Actor ID, {1} - Actor类型, {2} - 异常信息
             /// </remarks>
             public const string ActorForEachError = "Core.ActorManager.ActorForEachError";
+
+            /// <summary>
+            /// 显式移除Actor前回存失败 actorId:{0} actorType:{1} 异常：\n{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.ActorManager.RemoveSaveStateFailed
+            /// 用途: RemoveAsync/RemoveAllAsync 在反激活前强制回存失败时记录（移除继续执行）
+            /// 参数: {0} - Actor ID, {1} - Actor类型, {2} - 异常信息
+            /// </remarks>
+            public const string RemoveSaveStateFailed = "Core.ActorManager.RemoveSaveStateFailed";
         }
 
         /// <summary>
@@ -788,12 +818,12 @@ public static partial class Keys
         public static class EventDispatcher
         {
             /// <summary>
-            /// EventDispatcher.Dispatch Actor {0} {1} 事件类型：{2} 没有找到任何监听者
+            /// EventDispatcher.Dispatch Actor {0} 类型：{1} 事件类型：{2} 没有找到任何监听者
             /// </summary>
             /// <remarks>
             /// 键名: Core.EventDispatcher.DispatchNoListeners
             /// 用途: 事件分发未找到监听者时记录
-            /// 参数: {0} - Actor ID, {1} - 事件参数类型, {2} - 事件参数类型
+            /// 参数: {0} - Actor ID, {1} - Actor 类型, {2} - 事件参数类型
             /// </remarks>
             public const string DispatchNoListeners = "Core.EventDispatcher.DispatchNoListeners";
 
@@ -816,6 +846,32 @@ public static partial class Keys
             /// 参数: {0} - Actor ID, {1} - 事件参数类型, {2} - 监听器类型全名
             /// </remarks>
             public const string DispatchOwnerActorNotLoaded = "Core.EventDispatcher.DispatchOwnerActorNotLoaded";
+        }
+
+        /// <summary>
+        /// 会话管理相关资源键
+        /// </summary>
+        public static class Session
+        {
+            /// <summary>
+            /// [PlayerSessionManager] 玩家路由 upsert 同步钩子失败，玩家：{0}；本地 PlayerRouteMap 仍为事实源，下次 SetOnline 会重新收敛
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.Session.RouteSyncUpsertFailed
+            /// 用途: 会话路由同步 upsert 钩子（控制库）失败时记录
+            /// 参数: {0} - 玩家 ID
+            /// </remarks>
+            public const string RouteSyncUpsertFailed = "Core.Session.RouteSyncUpsertFailed";
+
+            /// <summary>
+            /// [PlayerSessionManager] 玩家路由 delete 同步钩子失败，玩家：{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.Session.RouteSyncDeleteFailed
+            /// 用途: 会话路由同步 delete 钩子（控制库）失败时记录
+            /// 参数: {0} - 玩家 ID
+            /// </remarks>
+            public const string RouteSyncDeleteFailed = "Core.Session.RouteSyncDeleteFailed";
         }
     }
 
@@ -879,6 +935,34 @@ public static partial class Keys
             /// 参数: {0} - 调用方Actor ID, {1} - 目标Actor ID
             /// </remarks>
             public const string CallRejectedByLimitRule = "CoreExceptions.WorkerActor.CallRejectedByLimitRule";
+            /// WorkerActor 队列拒绝了工作单元。actorId:{0} trace:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.WorkerActor.QueueRejected
+            /// 用途: 队列拒绝工作单元（邮箱满/停止）时作为异常消息与告警日志
+            /// 参数: {0} - Actor ID, {1} - 调用链追踪信息
+            /// </remarks>
+            public const string QueueRejected = "CoreExceptions.WorkerActor.QueueRejected";
+
+            /// <summary>
+            /// WorkerActor 队列投递被取消。actorId:{0} trace:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.WorkerActor.QueueCancelled
+            /// 用途: 队列投递工作单元被取消时记录
+            /// 参数: {0} - Actor ID, {1} - 调用链追踪信息
+            /// </remarks>
+            public const string QueueCancelled = "CoreExceptions.WorkerActor.QueueCancelled";
+
+            /// <summary>
+            /// WorkerActor 队列投递失败。actorId:{0} trace:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.WorkerActor.QueueFailed
+            /// 用途: 队列投递工作单元抛出异常时作为后备异常消息与告警日志
+            /// 参数: {0} - Actor ID, {1} - 调用链追踪信息
+            /// </remarks>
+            public const string QueueFailed = "CoreExceptions.WorkerActor.QueueFailed";
         }
         /// <summary>
         /// 定时器相关异常
@@ -1129,6 +1213,24 @@ public static partial class Keys
             /// 参数: {0} - 程序集路径, {1} - 期望SHA-256, {2} - 实际SHA-256
             /// </remarks>
             public const string AssemblyHashMismatch = "CoreExceptions.HotfixModule.AssemblyHashMismatch";
+            /// Version 含非法路径字符：{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.Hotfix.InvalidVersionChars
+            /// 用途: 热更版本号含路径分隔符或「..」段被拒绝装载时抛出异常
+            /// 参数: {0} - 被拒绝的版本号
+            /// </remarks>
+            public const string InvalidVersionChars = "CoreExceptions.Hotfix.InvalidVersionChars";
+
+            /// <summary>
+            /// 未找到类型：{0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.Hotfix.TypeNotFound
+            /// 用途: 按类型全名在热更程序集创建实例未命中时抛出异常
+            /// 参数: {0} - 类型全名
+            /// </remarks>
+            public const string TypeNotFound = "CoreExceptions.Hotfix.TypeNotFound";
         }
 
         /// <summary>

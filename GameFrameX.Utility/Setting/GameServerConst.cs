@@ -33,7 +33,10 @@ namespace GameFrameX.Utility.Setting;
 /// 游戏服务器常量定义（名称 + 服务器ID）。
 /// </summary>
 /// <remarks>
-/// Centralized service constants binding Name and Id together.
+/// 职责边界（CR-L04）：本类只登记「服务角色」的 <c>Name</c> / <c>Id</c> 成对常量（按 ID 段分组），
+/// 不承载 ID 位布局、键名或运行期配置——前者归 <see cref="GlobalConst"/>，
+/// 后者归 <see cref="AppSetting"/> / <see cref="GlobalSettings"/>。
+/// 新增服务角色时按既有 ID 段归组，禁止把业务常量塞进本类。
 /// </remarks>
 public static class GameServerConst
 {

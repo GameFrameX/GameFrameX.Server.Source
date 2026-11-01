@@ -92,10 +92,18 @@ public static class HttpHandler
 
         try
         {
-            var paramMap = new Dictionary<string, object>();
-            var queryStringParamCount = ExtractQueryParameters(context, paramMap);
+            // 参数字典不区分大小写：与 JsonHelper 绑定（PropertyNameCaseInsensitive）口径一致，
+            // Query 与 Body 的大小写差异同名键一律视为重复参数显式拒绝，杜绝 Body 静默覆盖 Query
+            var paramMap = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
             context.Response.Headers.ContentType = JsonContentType;
+            var queryExtraction = await ExtractQueryParametersAsync(context, paramMap);
+            if (queryExtraction.ShouldAbort)
+            {
+                return;
+            }
+
+            var queryStringParamCount = queryExtraction.Count;
             var isGetRequest = HttpMethods.IsGet(context.Request.Method);
 
             var parseResult = await TryParseRequestBodyAsync(context, paramMap, isGetRequest);
@@ -154,17 +162,24 @@ public static class HttpHandler
         }
     }
 
-    // 从查询字符串中提取参数并返回参数个数 / Extract parameters from the query string and return the count.
-    private static int ExtractQueryParameters(HttpContext context, Dictionary<string, object> paramMap)
+    // 从查询字符串中提取参数并返回参数个数；键不区分大小写重复（如 ?a=1&A=2）时写出参数重复错误响应并返回 ShouldAbort=true。
+    // Extract parameters from the query string and return the count; a case-insensitive duplicate key (e.g. ?a=1&A=2) writes the duplicate-parameter error response and returns ShouldAbort=true.
+    private static async Task<(bool ShouldAbort, int Count)> ExtractQueryParametersAsync(HttpContext context, Dictionary<string, object> paramMap)
     {
         var queryStringParamCount = 0;
         foreach (var keyValuePair in context.Request.Query)
         {
-            paramMap.Add(keyValuePair.Key, keyValuePair.Value.ToString());
+            if (!paramMap.TryAdd(keyValuePair.Key, keyValuePair.Value.ToString()))
+            {
+                // 参数Key发生重复（不区分大小写）
+                await context.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(GameHttpStatusCode.ParamErr, LocalizationService.GetString(Localization.Keys.NetworkHttp.ParameterDuplicate, keyValuePair.Key)));
+                return (true, queryStringParamCount);
+            }
+
             queryStringParamCount++;
         }
 
-        return queryStringParamCount;
+        return (false, queryStringParamCount);
     }
 
     // 解析请求体：GET 跳过 Body；ProtoBuf 反序列化；JSON 合并参数。返回解析结果，ShouldAbort=true 表示已写出错误响应、调用方应直接 return。
@@ -176,7 +191,7 @@ public static class HttpHandler
         // GET 请求允许没有 ContentType
         if (contentType.IsNullOrWhiteSpace() && !isGetRequest)
         {
-            await context.Response.WriteAsync(LocalizationService.GetString(Localization.Keys.NetworkHttp.HttpHeaderContentTypeNull));
+            await context.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(GameHttpStatusCode.ParamErr, LocalizationService.GetString(Localization.Keys.NetworkHttp.HttpHeaderContentTypeNull)));
             return (true, null, null, false);
         }
 
@@ -220,7 +235,31 @@ public static class HttpHandler
         }
 
         var jsonBody = Encoding.UTF8.GetString(jsonReadResult.Buffer);
-        var jsonKv = JsonHelper.Deserialize<Dictionary<string, object>>(jsonBody);
+        Dictionary<string, object> jsonKv;
+        try
+        {
+            jsonKv = JsonHelper.Deserialize<Dictionary<string, object>>(jsonBody);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // 数组/标量/畸形 JSON：客户端格式错误按参数错误拒绝，不落入顶层 catch 记服务器错误日志
+            await WriteRequestBodyNotJsonObjectAsync(context);
+            return (true, null, null, false);
+        }
+        catch (ArgumentException)
+        {
+            // 空/空白请求体：JsonHelper 对空串先抛 ArgumentException
+            await WriteRequestBodyNotJsonObjectAsync(context);
+            return (true, null, null, false);
+        }
+
+        if (jsonKv == null)
+        {
+            // body 为 null 字面量时反序列化返回 null
+            await WriteRequestBodyNotJsonObjectAsync(context);
+            return (true, null, null, false);
+        }
+
         foreach (var keyValuePair in jsonKv)
         {
             if (!paramMap.TryAdd(keyValuePair.Key, keyValuePair.Value))
@@ -273,6 +312,12 @@ public static class HttpHandler
         // 执行AOP处理器
         if (!RunAopHandlers(httpContext, context, aopHandlerTypes))
         {
+            // AOP 拒绝且未自行写出响应时，回写统一校验失败信封，避免客户端收到空 200
+            if (!httpContext.Response.HasStarted)
+            {
+                await httpContext.Response.WriteAsync(HttpJsonResultData<string>.ValidationErrorString());
+            }
+
             return (false, null);
         }
 
@@ -288,8 +333,8 @@ public static class HttpHandler
             return (false, null);
         }
 
-        // 验证签名
-        var isChecked = handler.CheckSign(context.Parameters, out var error);
+        // 验证签名（v2 口径下 command 参与签名，防止签名跨接口重用）
+        var isChecked = handler.CheckSign(command, context.Parameters, out var error);
         if (isChecked == false)
         {
             httpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -326,6 +371,8 @@ public static class HttpHandler
                 ReadOnlyMemory<byte> body = ProtoBufSerializerHelper.Serialize(result);
                 var messageHttpObject = new MessageHttpObject { Id = MessageProtoHelper.GetMessageIdByType(result), UniqueId = context.MessageObject.UniqueId, Body = body.ToArray(), };
                 var resultResponse = ProtoBufSerializerHelper.Serialize(messageHttpObject);
+                // ProtoBuf 成功响应是二进制负载，写出前更正 Content-Type（入口处统一预设的是 JSON）
+                httpContext.Response.ContentType = ProtoBufContentType;
                 httpContext.Response.ContentLength = resultResponse.Length;
                 await httpContext.Response.BodyWriter.WriteAsync(resultResponse);
             }
@@ -380,11 +427,11 @@ public static class HttpHandler
         {
             if (validationResults.Count > 0)
             {
-                await httpContext.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(400, validationResults[0].ErrorMessage));
+                await httpContext.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(GameHttpStatusCode.ParamErr, validationResults[0].ErrorMessage));
             }
             else
             {
-                await httpContext.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(400, LocalizationService.GetString(Localization.Keys.NetworkHttp.DataVerificationFailed)));
+                await httpContext.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(GameHttpStatusCode.ParamErr, LocalizationService.GetString(Localization.Keys.NetworkHttp.DataVerificationFailed)));
             }
         }
     }
@@ -459,5 +506,12 @@ public static class HttpHandler
     {
         context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
         return context.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(StatusCodes.Status413PayloadTooLarge, $"HTTP request body is too large. Max allowed bytes: {maxBodyBytes}."));
+    }
+
+    // 写出"请求体必须是 JSON 对象"的参数错误响应 / Writes the "request body must be a JSON object" parameter-error response.
+    private static Task WriteRequestBodyNotJsonObjectAsync(HttpContext context)
+    {
+        // Localization: Network.Http.RequestBodyNotJsonObject - 请求体必须是 JSON 对象
+        return context.Response.WriteAsync(HttpJsonResultData<string>.ErrorString(GameHttpStatusCode.ParamErr, LocalizationService.GetString(Localization.Keys.NetworkHttp.RequestBodyNotJsonObject)));
     }
 }

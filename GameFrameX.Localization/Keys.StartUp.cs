@@ -244,6 +244,15 @@ public static partial class Keys
             public const string StartingServer = "StartUp.HttpServer.StartingServer";
 
             /// <summary>
+            /// HTTP 服务器已启动，但 HttpRequireSign=false，签名校验默认关闭：对外暴露部署存在请求被截获重放的风险，建议生产环境开启签名校验并配置强密钥
+            /// </summary>
+            /// <remarks>
+            /// 键名: StartUp.HttpServer.SignDisabledWarning
+            /// 用途: HTTP 服务器启动且全局签名开关关闭时记录警告
+            /// </remarks>
+            public const string SignDisabledWarning = "StartUp.HttpServer.SignDisabledWarning";
+
+            /// <summary>
             /// 启动 [HTTP] 服务器端口 [{0}] 超出范围 [{1}-{2}]，HTTP服务无法启动，启动已忽略
             /// </summary>
             /// <remarks>

@@ -30,6 +30,7 @@
 
 using System.Collections.Concurrent;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using System.Text.Json.Nodes;
 using Microsoft.OpenApi;
@@ -131,17 +132,19 @@ public sealed class SwaggerOperationFilter : IOperationFilter
     /// 根据路由模板查找匹配的 HTTP 处理器。
     /// </summary>
     /// <remarks>
-    /// Finds the HTTP handler whose cached <see cref="HttpMessageMappingAttribute"/> standard command matches the end of the route template.
+    /// Finds the HTTP handler whose cached <see cref="HttpMessageMappingAttribute"/> command exactly matches the last segment of the route template (original or snake-case form, case-insensitive). Suffix containment (e.g. <c>login</c> vs <c>req_login</c>) must not match.
     /// </remarks>
     /// <param name="routeTemplate">路由模板 / Route template</param>
     /// <returns>匹配的处理器，未找到时返回 null / The matching handler, or null when none matches</returns>
     private BaseHttpHandler FindHandler(string routeTemplate)
     {
+        // 取路由最后一段命令精确匹配；EndsWith 会把互为后缀的命令（如 login/req_login）错配到错误处理器
+        var command = routeTemplate.Substring(routeTemplate.LastIndexOf('/') + 1);
         return _handlers.FirstOrDefault(h =>
         {
             var handlerType = h.GetType();
             var mappingAttr = MappingAttributeCache.GetOrAdd(handlerType, t => t.GetCustomAttribute<HttpMessageMappingAttribute>());
-            return routeTemplate.EndsWith(mappingAttr?.StandardCmd ?? "", StringComparison.OrdinalIgnoreCase);
+            return string.Equals(command, mappingAttr?.OriginalCmd, StringComparison.OrdinalIgnoreCase) || string.Equals(command, mappingAttr?.StandardCmd, StringComparison.OrdinalIgnoreCase);
         });
     }
 
@@ -198,7 +201,7 @@ public sealed class SwaggerOperationFilter : IOperationFilter
             {
                 Name = property.Name,
                 In = ParameterLocation.Query,
-                Required = false, // 可根据 RequiredAttribute 判断
+                Required = property.GetCustomAttribute<RequiredAttribute>() != null, // 必填性与 DataAnnotations 校验行为一致
                 Description = propDescriptionAttr?.Description ?? property.Name,
                 Schema = GetSchemaForType(property.PropertyType),
             });

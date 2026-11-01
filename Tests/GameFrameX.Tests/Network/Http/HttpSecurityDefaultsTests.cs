@@ -291,6 +291,247 @@ public class HttpSecurityDefaultsTests
         }
     }
 
+    [Fact]
+    public async Task HandleRequest_ShouldReturnUnauthorized_WhenTimestampIsInFuture()
+    {
+        EnsureSettings();
+        var setting = GlobalSettings.CurrentSetting;
+        var originalRequireSign = setting.HttpRequireSign;
+        var originalSecret = setting.HttpSignSecret;
+        try
+        {
+            setting.HttpRequireSign = true;
+            setting.HttpSignSecret = "unit-test-secret";
+            var timestamp = DateTimeOffset.UtcNow.AddMinutes(10).ToUnixTimeSeconds().ToString();
+            var sign = HmacSha256Helper.Hash(timestamp, setting.HttpSignSecret);
+            var handlerCalled = false;
+            var context = CreateJsonContext("{}");
+            context.Request.QueryString = new QueryString($"?sign={Uri.EscapeDataString(sign)}&timestamp={timestamp}");
+
+            await HttpHandler.HandleRequestAsync(context, _ => new SignedTestHttpHandler(() => handlerCalled = true));
+
+            Assert.False(handlerCalled);
+            Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
+        }
+        finally
+        {
+            setting.HttpRequireSign = originalRequireSign;
+            setting.HttpSignSecret = originalSecret;
+        }
+    }
+
+    [Fact]
+    public async Task HandleRequest_ShouldExecuteHandler_WhenVersionTwoSignatureIsValid()
+    {
+        await ExecuteVersionTwoSignedRequestAsync(
+            (handler, paramMap) => handler.GetStringSign("test", (string)paramMap[GlobalConst.HttpTimestampKey], (string)paramMap[GlobalConst.HttpNonceKey], paramMap),
+            assertResult: (called, statusCode) =>
+            {
+                Assert.True(called);
+                Assert.Equal(StatusCodes.Status200OK, statusCode);
+            });
+    }
+
+    [Fact]
+    public async Task HandleRequest_ShouldReturnUnauthorized_WhenVersionTwoParameterModifiedAfterSigning()
+    {
+        await ExecuteVersionTwoSignedRequestAsync(
+            (handler, paramMap) => handler.GetStringSign("test", (string)paramMap[GlobalConst.HttpTimestampKey], (string)paramMap[GlobalConst.HttpNonceKey], paramMap),
+            mutateQuery: "?userId=2",
+            assertResult: (called, statusCode) =>
+            {
+                Assert.False(called);
+                Assert.Equal(StatusCodes.Status401Unauthorized, statusCode);
+            });
+    }
+
+    [Fact]
+    public async Task HandleRequest_ShouldReturnUnauthorized_WhenVersionTwoSignComputedForOtherCommand()
+    {
+        await ExecuteVersionTwoSignedRequestAsync(
+            (handler, paramMap) => handler.GetStringSign("other", (string)paramMap[GlobalConst.HttpTimestampKey], (string)paramMap[GlobalConst.HttpNonceKey], paramMap),
+            assertResult: (called, statusCode) =>
+            {
+                Assert.False(called);
+                Assert.Equal(StatusCodes.Status401Unauthorized, statusCode);
+            });
+    }
+
+    [Fact]
+    public async Task HandleRequest_ShouldReturnUnauthorized_WhenVersionTwoNonceIsMissing()
+    {
+        EnsureSettings();
+        var setting = GlobalSettings.CurrentSetting;
+        var originalRequireSign = setting.HttpRequireSign;
+        var originalSecret = setting.HttpSignSecret;
+        var originalVersion = setting.HttpSignVersion;
+        try
+        {
+            setting.HttpRequireSign = true;
+            setting.HttpSignSecret = "unit-test-secret";
+            setting.HttpSignVersion = 2;
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+            var handler = new SignedTestHttpHandler();
+            var paramMap = new Dictionary<string, object>
+            {
+                { GlobalConst.HttpTimestampKey, timestamp },
+            };
+            var sign = handler.GetStringSign("test", timestamp, string.Empty, paramMap);
+            var handlerCalled = false;
+            var context = CreateJsonContext("{}");
+            context.Request.QueryString = new QueryString($"?sign={Uri.EscapeDataString(sign)}&timestamp={timestamp}");
+
+            await HttpHandler.HandleRequestAsync(context, _ => new SignedTestHttpHandler(() => handlerCalled = true));
+
+            Assert.False(handlerCalled);
+            Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
+        }
+        finally
+        {
+            setting.HttpRequireSign = originalRequireSign;
+            setting.HttpSignSecret = originalSecret;
+            setting.HttpSignVersion = originalVersion;
+        }
+    }
+
+    [Fact]
+    public async Task HandleRequest_ShouldReturnUnauthorized_WhenVersionTwoNonceIsReused()
+    {
+        EnsureSettings();
+        var setting = GlobalSettings.CurrentSetting;
+        var originalRequireSign = setting.HttpRequireSign;
+        var originalSecret = setting.HttpSignSecret;
+        var originalVersion = setting.HttpSignVersion;
+        try
+        {
+            setting.HttpRequireSign = true;
+            setting.HttpSignSecret = "unit-test-secret";
+            setting.HttpSignVersion = 2;
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+            var nonce = "nonce-reuse-" + Guid.NewGuid().ToString("N");
+            var handler = new SignedTestHttpHandler();
+            var paramMap = new Dictionary<string, object>
+            {
+                { GlobalConst.HttpTimestampKey, timestamp },
+                { GlobalConst.HttpNonceKey, nonce },
+                { "userId", "1" },
+            };
+            var sign = handler.GetStringSign("test", timestamp, nonce, paramMap);
+            var queryString = $"?sign={Uri.EscapeDataString(sign)}&timestamp={timestamp}&nonce={nonce}&userId=1";
+
+            var firstCalled = false;
+            var firstContext = CreateJsonContext("{}");
+            firstContext.Request.QueryString = new QueryString(queryString);
+            await HttpHandler.HandleRequestAsync(firstContext, _ => new SignedTestHttpHandler(() => firstCalled = true));
+
+            var secondCalled = false;
+            var secondContext = CreateJsonContext("{}");
+            secondContext.Request.QueryString = new QueryString(queryString);
+            await HttpHandler.HandleRequestAsync(secondContext, _ => new SignedTestHttpHandler(() => secondCalled = true));
+
+            Assert.True(firstCalled);
+            Assert.Equal(StatusCodes.Status200OK, firstContext.Response.StatusCode);
+            Assert.False(secondCalled);
+            Assert.Equal(StatusCodes.Status401Unauthorized, secondContext.Response.StatusCode);
+        }
+        finally
+        {
+            setting.HttpRequireSign = originalRequireSign;
+            setting.HttpSignSecret = originalSecret;
+            setting.HttpSignVersion = originalVersion;
+        }
+    }
+
+    [Fact]
+    public async Task HandleRequest_ShouldReturnUnauthorized_WhenVersionTwoTimestampIsMilliseconds()
+    {
+        EnsureSettings();
+        var setting = GlobalSettings.CurrentSetting;
+        var originalRequireSign = setting.HttpRequireSign;
+        var originalSecret = setting.HttpSignSecret;
+        var originalVersion = setting.HttpSignVersion;
+        try
+        {
+            setting.HttpRequireSign = true;
+            setting.HttpSignSecret = "unit-test-secret";
+            setting.HttpSignVersion = 2;
+            // 毫秒时间戳对“按秒解析”的服务端是远未来时间，双向窗口必须拒绝
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+            var nonce = "nonce-millis-" + Guid.NewGuid().ToString("N");
+            var handler = new SignedTestHttpHandler();
+            var paramMap = new Dictionary<string, object>
+            {
+                { GlobalConst.HttpTimestampKey, timestamp },
+                { GlobalConst.HttpNonceKey, nonce },
+            };
+            var sign = handler.GetStringSign("test", timestamp, nonce, paramMap);
+            var handlerCalled = false;
+            var context = CreateJsonContext("{}");
+            context.Request.QueryString = new QueryString($"?sign={Uri.EscapeDataString(sign)}&timestamp={timestamp}&nonce={nonce}");
+
+            await HttpHandler.HandleRequestAsync(context, _ => new SignedTestHttpHandler(() => handlerCalled = true));
+
+            Assert.False(handlerCalled);
+            Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
+        }
+        finally
+        {
+            setting.HttpRequireSign = originalRequireSign;
+            setting.HttpSignSecret = originalSecret;
+            setting.HttpSignVersion = originalVersion;
+        }
+    }
+
+    /// <summary>
+    /// 以 HttpSignVersion=2 执行一次带签名的请求，便于各防重放断言复用。
+    /// </summary>
+    private static async Task ExecuteVersionTwoSignedRequestAsync(
+        Func<SignedTestHttpHandler, Dictionary<string, object>, string> computeSign,
+        string mutateQuery = null,
+        Action<bool, int> assertResult = null)
+    {
+        EnsureSettings();
+        var setting = GlobalSettings.CurrentSetting;
+        var originalRequireSign = setting.HttpRequireSign;
+        var originalSecret = setting.HttpSignSecret;
+        var originalVersion = setting.HttpSignVersion;
+        try
+        {
+            setting.HttpRequireSign = true;
+            setting.HttpSignSecret = "unit-test-secret";
+            setting.HttpSignVersion = 2;
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+            var nonce = "nonce-" + Guid.NewGuid().ToString("N");
+            var handler = new SignedTestHttpHandler();
+            var paramMap = new Dictionary<string, object>
+            {
+                { GlobalConst.HttpTimestampKey, timestamp },
+                { GlobalConst.HttpNonceKey, nonce },
+                { "userId", "1" },
+            };
+            var sign = computeSign(handler, paramMap);
+            var query = $"?sign={Uri.EscapeDataString(sign)}&timestamp={timestamp}&nonce={nonce}&userId=1";
+            if (mutateQuery != null)
+            {
+                query = mutateQuery + $"&sign={Uri.EscapeDataString(sign)}&timestamp={timestamp}&nonce={nonce}";
+            }
+
+            var handlerCalled = false;
+            var context = CreateJsonContext("{}");
+            context.Request.QueryString = new QueryString(query);
+
+            await HttpHandler.HandleRequestAsync(context, _ => new SignedTestHttpHandler(() => handlerCalled = true));
+
+            assertResult?.Invoke(handlerCalled, context.Response.StatusCode);
+        }
+        finally
+        {
+            setting.HttpRequireSign = originalRequireSign;
+            setting.HttpSignSecret = originalSecret;
+            setting.HttpSignVersion = originalVersion;
+        }
+    }
+
     /// <summary>
     /// 按已废除的旧算法（旧 md5+校验码方案）伪造签名，用于回归断言：新实现必须拒绝旧方案伪造。
     /// </summary>

@@ -37,6 +37,8 @@ namespace GameFrameX.Architecture.Analyzers;
 /// </summary>
 /// <remarks>
 /// <para>规则：所有继承自 BaseCacheState 的非抽象类必须位于 GameFrameX.Apps 程序集。</para>
+/// <para>抽象类豁免（与 GFX0005/0008/0009 一致）：抽象中间基类自身不落库、不被实例化，
+/// 允许在任意程序集声明（如共享状态契约库），仅可实例化的具体状态类受程序集约束。</para>
 /// <para>原因：状态对象代表持久化的缓存状态数据，属于状态层。若误放到 Hotfix 等逻辑层程序集，
 /// 热重载时状态数据会丢失，导致玩家数据不一致。</para>
 /// <para>目的：通过编译期强制隔离，确保状态数据与可热更新的业务逻辑物理分离，保障热更新安全。</para>
@@ -60,7 +62,8 @@ public sealed class CacheStateAssemblyAnalyzer : SingleDiagnosticSymbolAnalyzer
     protected override void AnalyzeNamedType(SymbolAnalysisContext context, ArchitectureSymbols symbols, INamedTypeSymbol type)
     {
         var assemblyName = type.ContainingAssembly.Identity.Name;
-        if (!ArchitectureSymbolFacts.InheritsFrom(type, symbols.BaseCacheState)
+        if (type.IsAbstract
+            || !ArchitectureSymbolFacts.InheritsFrom(type, symbols.BaseCacheState)
             || assemblyName == ArchitectureAnalyzerConstants.AppsAssembly)
         {
             return;
