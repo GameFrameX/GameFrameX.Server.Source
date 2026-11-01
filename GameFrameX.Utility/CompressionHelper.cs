@@ -29,7 +29,7 @@
 
 using System.Buffers;
 using GameFrameX.Foundation.Localization.Core;
-using GameFrameX.Foundation.Logger;
+using ICSharpCode.SharpZipLib;
 using ICSharpCode.SharpZipLib.Zip.Compression;
 
 namespace GameFrameX.Utility;
@@ -51,13 +51,26 @@ public static class CompressionHelper
     private const int BufferSize = 8192;
 
     /// <summary>
-    /// Compresses data. Uses the Deflate algorithm to compress the original byte array into a smaller byte array.
+    /// Default maximum decompressed output length: 64 MB. Used when the legacy <see cref="Decompress(byte[])"/> overload
+    /// is invoked without an explicit caller-declared limit; guards against decompression bombs (a small highly-compressed
+    /// frame otherwise inflates into gigabytes of managed memory before any post-hoc length check runs).
     /// </summary>
     /// <remarks>
-    /// 压缩数据。使用Deflate算法将原始字节数组压缩成更小的字节数组。
+    /// 默认解压输出上限：64MB。供旧重载 <see cref="Decompress(byte[])"/> 在调用方未显式声明上限时使用；
+    /// 用于防御解压炸弹（高压缩比小帧若不设上限，会在任何事后长度检查之前膨胀为数 GB 托管内存）。
+    /// 调用方已知协议级最大消息体时应显式传入更贴身的上限。
+    /// </remarks>
+    public const long DefaultMaxDecompressedOutputLength = 64 * 1024 * 1024;
+
+    /// <summary>
+    /// Compresses data. Uses the Deflate algorithm to compress the original byte array into a smaller byte array.
+    /// Failures propagate the original exception (no silent fallback returning the input).
+    /// </summary>
+    /// <remarks>
+    /// 压缩数据。使用Deflate算法将原始字节数组压缩成更小的字节数组。失败时异常原样抛出，不静默回退返回原始字节。
     /// </remarks>
     /// <param name="bytes">The original byte array to be compressed. Cannot be null. / 要压缩的原始字节数组。不能为null。</param>
-    /// <returns>The compressed byte array. If the input is an empty array, returns the empty array directly. If an exception occurs during compression, returns the original array. / 压缩后的字节数组。如果输入为空数组，则直接返回该空数组。如果压缩过程中发生异常，则返回原始数组。</returns>
+    /// <returns>The compressed byte array. If the input is an empty array, returns the empty array directly. / 压缩后的字节数组。如果输入为空数组，则直接返回该空数组。</returns>
     /// <exception cref="ArgumentNullException">Thrown when the input parameter bytes is null. / 当输入参数bytes为null时抛出。</exception>
     public static byte[] Compress(byte[] bytes)
     {
@@ -86,33 +99,49 @@ public static class CompressionHelper
 
                 return compressorMemoryStream.ToArray();
             }
-            catch (Exception e)
-            {
-                // Localization: Utility.CompressionHelper.CompressFailed - CompressionHelper.Compress 压缩辅助类异常。错误：{0}。
-                LogHelper.Fatal(e, LocalizationService.GetString(Localization.Keys.Utility.CompressionHelper.CompressFailed, e.ToString()));
-            }
             finally
             {
                 ArrayPool<byte>.Shared.Return(buffer);
             }
-
-            return bytes;
         }
     }
 
     /// <summary>
-    /// Decompresses data. Uses the Inflate algorithm to restore the compressed byte array to the original byte array.
+    /// Decompresses data. Uses the Inflate algorithm to restore the compressed byte array to the original byte array,
+    /// with the default output limit <see cref="DefaultMaxDecompressedOutputLength"/>.
     /// </summary>
     /// <remarks>
-    /// 解压数据。使用Inflate算法将压缩的字节数组还原成原始字节数组。
+    /// 解压数据。使用Inflate算法将压缩的字节数组还原成原始字节数组，输出上限取默认值 <see cref="DefaultMaxDecompressedOutputLength"/>。
     /// </remarks>
     /// <param name="bytes">The compressed byte array to be decompressed. Cannot be null. / 要解压的压缩字节数组。不能为null。</param>
-    /// <returns>The decompressed original byte array. If the input is an empty array, returns the empty array directly. If an exception occurs during decompression, returns the original array. / 解压后的原始字节数组。如果输入为空数组，则直接返回该空数组。如果解压过程中发生异常，则返回原始数组。</returns>
+    /// <returns>The decompressed original byte array. If the input is an empty array, returns the empty array directly. / 解压后的原始字节数组。如果输入为空数组，则直接返回该空数组。</returns>
     /// <exception cref="ArgumentNullException">Thrown when the input parameter bytes is null. / 当输入参数bytes为null时抛出。</exception>
-    /// <exception cref="InvalidDataException">Thrown when the compressed data format is invalid or corrupted. / 当压缩数据格式无效或已损坏时抛出。</exception>
+    /// <exception cref="InvalidDataException">Thrown when the compressed data format is invalid, corrupted or truncated, or when the decompressed output exceeds the default limit. / 当压缩数据格式无效、已损坏或被截断，或解压输出超过默认上限时抛出。</exception>
     public static byte[] Decompress(byte[] bytes)
     {
+        return Decompress(bytes, DefaultMaxDecompressedOutputLength);
+    }
+
+    /// <summary>
+    /// Decompresses data with an explicit output limit. Uses the Inflate algorithm to restore the compressed byte array
+    /// to the original byte array; the loop aborts as soon as the accumulated output exceeds
+    /// <paramref name="maxOutputLength"/>, so the inflation itself is bounded instead of being checked only after completion.
+    /// </summary>
+    /// <remarks>
+    /// 解压数据（显式输出上限）。使用Inflate算法将压缩的字节数组还原成原始字节数组；
+    /// 累积输出一旦超过 <paramref name="maxOutputLength"/> 立即中止并抛出异常——上限约束作用于膨胀过程本身，
+    /// 而不是在解压完成后才检查。调用方（网络消息解压入口）应传入各自协议的最大消息体上限。
+    /// </remarks>
+    /// <param name="bytes">The compressed byte array to be decompressed. Cannot be null. / 要解压的压缩字节数组。不能为null。</param>
+    /// <param name="maxOutputLength">Maximum allowed decompressed output length in bytes; must not be negative. / 允许的最大解压输出字节数，不得为负。</param>
+    /// <returns>The decompressed original byte array. If the input is an empty array, returns the empty array directly. / 解压后的原始字节数组。如果输入为空数组，则直接返回该空数组。</returns>
+    /// <exception cref="ArgumentNullException">Thrown when the input parameter bytes is null. / 当输入参数bytes为null时抛出。</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when maxOutputLength is negative. / 当maxOutputLength为负数时抛出。</exception>
+    /// <exception cref="InvalidDataException">Thrown when the compressed data format is invalid, corrupted or truncated, or when the decompressed output exceeds maxOutputLength. / 当压缩数据格式无效、已损坏或被截断，或解压输出超过maxOutputLength时抛出。</exception>
+    public static byte[] Decompress(byte[] bytes, long maxOutputLength)
+    {
         ArgumentNullException.ThrowIfNull(bytes);
+        ArgumentOutOfRangeException.ThrowIfNegative(maxOutputLength);
         if (bytes.Length == 0)
         {
             return bytes;
@@ -128,22 +157,33 @@ public static class CompressionHelper
                 while (!decompressor.IsFinished)
                 {
                     var count = decompressor.Inflate(buffer);
+                    if (count == 0 && (decompressor.IsNeedingInput || decompressor.IsNeedingDictionary))
+                    {
+                        // SharpZipLib 对截断流 Inflate 恒返回 0 且 IsFinished 恒 false，必须主动判定，否则死循环。
+                        // Localization: Utility.CompressionHelper.DecompressInputTruncated - 压缩数据已被截断，无法完成解压。
+                        throw new InvalidDataException(LocalizationService.GetString(Localization.Keys.Utility.CompressionHelper.DecompressInputTruncated));
+                    }
+
                     decompressMemoryStream.Write(buffer, 0, count);
+                    if (decompressMemoryStream.Length > maxOutputLength)
+                    {
+                        // 解压炸弹防线：上限检查必须在膨胀过程内，事后检查等于没有检查。
+                        // Localization: Utility.CompressionHelper.DecompressedSizeExceedsLimit - 解压输出超过允许的最大长度：{0}。
+                        throw new InvalidDataException(LocalizationService.GetString(Localization.Keys.Utility.CompressionHelper.DecompressedSizeExceedsLimit, maxOutputLength));
+                    }
                 }
 
                 return decompressMemoryStream.ToArray();
             }
-            catch (Exception e)
+            catch (SharpZipBaseException e)
             {
                 // Localization: Utility.CompressionHelper.DecompressFailed - CompressionHelper.Decompress 压缩辅助类异常。错误：{0}。
-                LogHelper.Fatal(e, LocalizationService.GetString(Localization.Keys.Utility.CompressionHelper.DecompressFailed, e.ToString()));
+                throw new InvalidDataException(LocalizationService.GetString(Localization.Keys.Utility.CompressionHelper.DecompressFailed, e.ToString()), e);
             }
             finally
             {
                 ArrayPool<byte>.Shared.Return(buffer, true);
             }
-
-            return bytes;
         }
     }
 }

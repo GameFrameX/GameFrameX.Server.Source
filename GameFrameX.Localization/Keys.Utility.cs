@@ -604,24 +604,33 @@ public static partial class Keys
         {
 
             /// <summary>
-            /// 数据压缩失败的完整日志消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.CompressionHelper.CompressFailed
-            /// 用途: 当数据压缩发生异常时记录完整日志
-            /// 参数: {0} - 异常详情
-            /// </remarks>
-            public const string CompressFailed = "Utility.CompressionHelper.CompressFailed";
-
-            /// <summary>
-            /// 数据解压失败的完整日志消息
+            /// 数据解压失败的异常消息
             /// </summary>
             /// <remarks>
             /// 键名: Utility.CompressionHelper.DecompressFailed
-            /// 用途: 当数据解压发生异常时记录完整日志
+            /// 用途: 解压失败（SharpZipLib 异常包装为 InvalidDataException）时的异常消息
             /// 参数: {0} - 异常详情
             /// </remarks>
             public const string DecompressFailed = "Utility.CompressionHelper.DecompressFailed";
+
+            /// <summary>
+            /// 压缩数据被截断的异常消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.CompressionHelper.DecompressInputTruncated
+            /// 用途: 解压时检测到输入数据被截断（Inflate 返回 0 且需要更多输入），主动抛出防止 SharpZipLib 空转死循环
+            /// </remarks>
+            public const string DecompressInputTruncated = "Utility.CompressionHelper.DecompressInputTruncated";
+
+            /// <summary>
+            /// 解压输出超过上限的异常消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.CompressionHelper.DecompressedSizeExceedsLimit
+            /// 用途: 解压累积输出超过调用方声明的上限（解压炸弹防线），膨胀过程立即中止并抛出
+            /// 参数: {0} - 允许的最大解压输出字节数
+            /// </remarks>
+            public const string DecompressedSizeExceedsLimit = "Utility.CompressionHelper.DecompressedSizeExceedsLimit";
         }
 
         /// <summary>

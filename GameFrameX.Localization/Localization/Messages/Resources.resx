@@ -2156,12 +2156,16 @@
     <value>{0} port [{1}] occupation details: {2}</value>
   </data>
 
-  <data name="Utility.CompressionHelper.CompressFailed" xml:space="preserve">
-    <value>CompressionHelper.Compress Compression helper exception. Error: {0}.</value>
+  <data name="Utility.CompressionHelper.DecompressFailed" xml:space="preserve">
+    <value>CompressionHelper.Decompress decompression failed. Error: {0}.</value>
   </data>
 
-  <data name="Utility.CompressionHelper.DecompressFailed" xml:space="preserve">
-    <value>CompressionHelper.Decompress Compression helper exception. Error: {0}.</value>
+  <data name="Utility.CompressionHelper.DecompressInputTruncated" xml:space="preserve">
+    <value>CompressionHelper.Decompress input data is truncated; decompression cannot complete.</value>
+  </data>
+
+  <data name="Utility.CompressionHelper.DecompressedSizeExceedsLimit" xml:space="preserve">
+    <value>CompressionHelper.Decompress decompressed output exceeds the maximum allowed length: {0}.</value>
   </data>
 
   <data name="Utility.GlobalSettings.ActorRecycleTimeTooShortLog" xml:space="preserve">

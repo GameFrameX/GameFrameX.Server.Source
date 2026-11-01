@@ -2158,12 +2158,16 @@
     <value>{0}端口[{1}]占用详情: {2}</value>
   </data>
 
-  <data name="Utility.CompressionHelper.CompressFailed" xml:space="preserve">
-    <value>CompressionHelper.Compress 压缩辅助类异常。错误：{0}。</value>
+  <data name="Utility.CompressionHelper.DecompressFailed" xml:space="preserve">
+    <value>CompressionHelper.Decompress 解压失败。错误：{0}。</value>
   </data>
 
-  <data name="Utility.CompressionHelper.DecompressFailed" xml:space="preserve">
-    <value>CompressionHelper.Decompress 压缩辅助类异常。错误：{0}。</value>
+  <data name="Utility.CompressionHelper.DecompressInputTruncated" xml:space="preserve">
+    <value>CompressionHelper.Decompress 输入数据已被截断，无法完成解压。</value>
+  </data>
+
+  <data name="Utility.CompressionHelper.DecompressedSizeExceedsLimit" xml:space="preserve">
+    <value>CompressionHelper.Decompress 解压输出超过允许的最大长度：{0}。</value>
   </data>
 
   <data name="Utility.GlobalSettings.ActorRecycleTimeTooShortLog" xml:space="preserve">
