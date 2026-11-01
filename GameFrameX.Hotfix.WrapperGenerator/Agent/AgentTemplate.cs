@@ -54,6 +54,24 @@ public static class AgentTemplate
     [ThreadStatic]
     private static StringBuilder TemplateStringBuilder;
 
+    /// <summary>
+    /// 生成器标识：写入生成类 GeneratedCodeAttribute 的 tool 名。
+    /// </summary>
+    /// <remarks>
+    /// 架构分析器按此值精确匹配豁免生成产物（与 Architecture.Analyzers 侧
+    /// ArchitectureAnalyzerConstants.WrapperGeneratorToolName 为同值契约，改名须双侧同步）。
+    /// The tool name written into the GeneratedCodeAttribute on generated wrapper classes.
+    /// </remarks>
+    private const string GeneratedCodeToolName = "GameFrameX.Hotfix.WrapperGenerator";
+
+    /// <summary>
+    /// 生成器版本：写入生成类 GeneratedCodeAttribute 的 version 参数。
+    /// </summary>
+    /// <remarks>
+    /// The version argument written into the GeneratedCodeAttribute on generated wrapper classes.
+    /// </remarks>
+    private const string GeneratedCodeVersion = "1.0";
+
 
     /// <summary>
     /// 根据代理信息生成包装器分部类的源代码。
@@ -77,6 +95,10 @@ public static class AgentTemplate
 
         TemplateStringBuilder.AppendLine("namespace " + info.Space);
         TemplateStringBuilder.AppendLine("{");
+        if (info.EmitGeneratedCodeMarker)
+        {
+            TemplateStringBuilder.AppendLine("\t[global::System.CodeDom.Compiler.GeneratedCodeAttribute(\"" + GeneratedCodeToolName + "\", \"" + GeneratedCodeVersion + "\")]");
+        }
         TemplateStringBuilder.AppendLine("\tpublic partial class " + info.Name + " : " + info.Super);
         TemplateStringBuilder.AppendLine("\t{");
         foreach (var infoMethod in info.Methods)

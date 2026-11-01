@@ -227,6 +227,46 @@ namespace GameFrameX.Apps.Player.Component
         Assert.Empty(diagnostics);
     }
 
+    [Fact]
+    public async Task Struct_WithMultiDbRegistryField_ReportsGFX0016()
+    {
+        var compilation = CreateCompilation(StubSource + """
+namespace GameFrameX.Hotfix.Logic.Sample
+{
+    public struct SampleStruct
+    {
+        public readonly GameFrameX.DataBase.MultiDbRegistry Registry;
+    }
+}
+""", "GameFrameX.Hotfix");
+
+        var diagnostics = await GetDiagnosticsAsync(compilation, new MongoImplementationAccessAnalyzer());
+
+        // 候选集覆盖 struct：字段声明面引用 MultiDbRegistry 必须拦截（修复前被 Class 过滤漏报）
+        var diagnostic = Assert.Single(diagnostics, item => item.Id == "GFX0016");
+        Assert.Contains("SampleStruct", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public async Task Interface_WithMongoDbServiceProperty_ReportsGFX0016()
+    {
+        var compilation = CreateCompilation(StubSource + """
+namespace GameFrameX.Hotfix.Logic.Sample
+{
+    public interface ISampleInterface
+    {
+        GameFrameX.DataBase.Mongo.MongoDbService Service { get; }
+    }
+}
+""", "GameFrameX.Hotfix");
+
+        var diagnostics = await GetDiagnosticsAsync(compilation, new MongoImplementationAccessAnalyzer());
+
+        // 候选集覆盖 interface：属性声明面引用 MongoDbService 必须拦截（修复前被 Class 过滤漏报）
+        var diagnostic = Assert.Single(diagnostics, item => item.Id == "GFX0016");
+        Assert.Contains("ISampleInterface", diagnostic.GetMessage());
+    }
+
     private static async Task<ImmutableArray<Diagnostic>> GetDiagnosticsAsync(Compilation compilation, DiagnosticAnalyzer analyzer)
     {
         var compilationWithAnalyzers = compilation.WithAnalyzers(ImmutableArray.Create(analyzer));
