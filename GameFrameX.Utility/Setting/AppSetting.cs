@@ -635,6 +635,21 @@ public class AppSetting
     public string HttpSignSecret { get; set; } = string.Empty;
 
     /// <summary>
+    /// HTTP 签名口径版本。
+    /// <para>1（默认）= 仅时间戳旧口径：sign = Base64(HMAC-SHA256(UTF8(timestamp), secret))，兼容存量客户端，过渡期保留并打弃用告警。</para>
+    /// <para>2 = 全要素口径：sign = Base64(HMAC-SHA256(UTF8(canonicalString), secret))，
+    /// canonicalString = command + "\n" + timestamp + "\n" + nonce + "\n" + 按 key 排序（排除 sign/timestamp/nonce）的 "k=v" 串；nonce 在时间窗内一次性有效，防篡改、防重放。</para>
+    /// </summary>
+    /// <remarks>
+    /// HTTP signature scheme version.
+    /// Version 1 (default) keeps the legacy timestamp-only scheme for existing clients, with a one-time deprecation warning.
+    /// Version 2 signs the full request (command, timestamp, nonce, sorted parameters) and enforces one-time nonce usage.
+    /// </remarks>
+    [Option(nameof(HttpSignVersion), DefaultValue = 1, Description = "HTTP签名口径版本:1=仅时间戳(兼容旧客户端),2=全要素+nonce防重放(推荐)")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
+    public int HttpSignVersion { get; set; } = 1;
+
+    /// <summary>
     /// HTTP CORS 允许的 Origin 白名单，多个值用逗号或分号分隔。
     /// </summary>
     /// <remarks>
