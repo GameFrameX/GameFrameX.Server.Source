@@ -105,14 +105,14 @@ public static class ActorLimit
     /// <param name="target">目标Actor ID</param>
     public static void EndCall(long self, long target)
     {
-        _rule?.EndCall(self, target);
+        _rule?.EndInFlightCall(self, target);
     }
 
     private interface IRule
     {
         bool CanCall(long target);
 
-        void EndCall(long self, long target);
+        void EndInFlightCall(long self, long target);
     }
 
 
@@ -172,7 +172,7 @@ public static class ActorLimit
         /// </summary>
         /// <param name="self">调用方Actor ID</param>
         /// <param name="target">目标Actor ID</param>
-        void IRule.EndCall(long self, long target)
+        void IRule.EndInFlightCall(long self, long target)
         {
             // IO 上下文与自调用未登记，无需移除
             if (self == 0 || self == target)
