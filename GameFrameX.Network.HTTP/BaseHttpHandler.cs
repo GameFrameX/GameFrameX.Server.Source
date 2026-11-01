@@ -248,12 +248,7 @@ public abstract class BaseHttpHandler : IHttpHandler
         }
 
         // 弱密钥一次性告警（不阻断请求，fail-closed 只防“空”，告警提示“弱”）
-        if (secret.Length < SignSecretMinimumLength && !_weakSecretWarningLogged)
-        {
-            _weakSecretWarningLogged = true;
-            // Localization: Network.Http.SignSecretTooWeak - HttpSignSecret 长度不足 {0} 字符，存在被离线爆破风险，请更换为高强度随机密钥
-            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.NetworkHttp.SignSecretTooWeak, SignSecretMinimumLength));
-        }
+        WarnWeakSecretOnce(secret);
 
         var sign = paramMap[GlobalConst.HttpSignKey].ToString();
         var time = paramMap[GlobalConst.HttpTimestampKey].ToString();
@@ -280,12 +275,7 @@ public abstract class BaseHttpHandler : IHttpHandler
             return CheckSignVersionTwo(command, paramMap, secret, sign, time, out error);
         }
 
-        if (!_signVersionOneDeprecatedWarningLogged)
-        {
-            _signVersionOneDeprecatedWarningLogged = true;
-            // Localization: Network.Http.SignVersionOneDeprecated - HTTP 签名仍使用 v1（仅时间戳）旧口径，不防篡改与重放，建议尽快迁移到 HttpSignVersion=2
-            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.NetworkHttp.SignVersionOneDeprecated));
-        }
+        WarnSignVersionOneDeprecatedOnce();
 
         if (HmacSha256Helper.Verify(time, secret, sign))
         {
@@ -357,6 +347,39 @@ public abstract class BaseHttpHandler : IHttpHandler
             {
                 NonceCache.TryRemove(pair.Key, out _);
             }
+        }
+    }
+
+    /// <summary>
+    /// 弱密钥一次性告警（静态方法内写静态标记，满足 S2696；并发下最多多打一条告警，无害）。
+    /// </summary>
+    /// <remarks>
+    /// Logs the weak-secret warning once; the static flag is only set inside this static method.
+    /// </remarks>
+    /// <param name="secret">当前签名密钥 / The current signing secret</param>
+    private static void WarnWeakSecretOnce(string secret)
+    {
+        if (secret.Length < SignSecretMinimumLength && !_weakSecretWarningLogged)
+        {
+            _weakSecretWarningLogged = true;
+            // Localization: Network.Http.SignSecretTooWeak - HttpSignSecret 长度不足 {0} 字符，存在被离线爆破风险，请更换为高强度随机密钥
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.NetworkHttp.SignSecretTooWeak, SignSecretMinimumLength));
+        }
+    }
+
+    /// <summary>
+    /// v1 签名口径弃用一次性告警（静态方法内写静态标记，满足 S2696）。
+    /// </summary>
+    /// <remarks>
+    /// Logs the deprecated-signature-v1 warning once; the static flag is only set inside this static method.
+    /// </remarks>
+    private static void WarnSignVersionOneDeprecatedOnce()
+    {
+        if (!_signVersionOneDeprecatedWarningLogged)
+        {
+            _signVersionOneDeprecatedWarningLogged = true;
+            // Localization: Network.Http.SignVersionOneDeprecated - HTTP 签名仍使用 v1（仅时间戳）旧口径，不防篡改与重放，建议尽快迁移到 HttpSignVersion=2
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.NetworkHttp.SignVersionOneDeprecated));
         }
     }
 }
