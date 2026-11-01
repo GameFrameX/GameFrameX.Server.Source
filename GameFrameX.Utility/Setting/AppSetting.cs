@@ -436,6 +436,34 @@ public class AppSetting
     public int ActorQueueTimeOut { get; set; } = 30_000;
 
     /// <summary>
+    /// 是否启用热更程序集装载哈希校验（灰度开关），默认 false 不校验。
+    /// 开启且装载参数配置了期望 SHA-256 时，热更装载前校验文件内容完整性，不匹配拒绝装载。
+    /// 校验边界：仅覆盖主程序集单文件；依赖程序集不在校验范围（完整覆盖需运维侧哈希清单）。
+    /// </summary>
+    /// <remarks>
+    /// Whether to enable hotfix assembly load hash verification (gray switch). Default false (no verification).
+    /// When enabled and the load options carry an expected SHA-256, the assembly file content is verified
+    /// before loading; a mismatch rejects the load. Boundary: only the main assembly file is covered;
+    /// dependency assemblies are out of scope (full coverage needs the operations-side hash manifest).
+    /// </remarks>
+    [Option(nameof(HotfixVerifyEnabled), DefaultValue = false, Description = "是否启用热更程序集装载哈希校验，默认值为 false（仅覆盖主程序集）")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
+    public bool HotfixVerifyEnabled { get; set; } = false;
+
+    /// <summary>
+    /// Actor 调用限制规则名（ActorLimit.RuleType 的字符串形式），默认 "None" 不检查。
+    /// 规则一经配置即生效（生产可用），解析失败记录错误并回落 None。
+    /// </summary>
+    /// <remarks>
+    /// The Actor call limit rule name (string form of ActorLimit.RuleType). Default "None" (no checking).
+    /// A configured rule takes effect immediately (production usable); parse failures log an error and fall back to None.
+    /// </remarks>
+    [Option(nameof(ActorLimitRule), DefaultValue = "None", Description = "Actor 调用限制规则名（None/NoBidirectionCall），默认值为 None")]
+    [SettingFieldLevel(SettingFieldLevel.ProcessLevel)]
+    public string ActorLimitRule { get; set; } = "None";
+
+
+    /// <summary>
     /// 是否启用TCP
     /// </summary>
     /// <remarks>

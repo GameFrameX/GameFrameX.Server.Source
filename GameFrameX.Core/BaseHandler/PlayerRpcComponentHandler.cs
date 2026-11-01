@@ -30,6 +30,9 @@
 using GameFrameX.Core.Abstractions.Agent;
 using GameFrameX.Core.BaseHandler.RPC;
 using GameFrameX.Network.Abstractions;
+using GameFrameX.Foundation.Localization.Core;
+using GameFrameX.Foundation.Logger;
+
 using GameFrameX.Utility;
 using GameFrameX.Utility.Setting;
 
@@ -61,7 +64,11 @@ public abstract class PlayerRpcComponentHandler<TRequest, TResponse> : BaseRpcCo
 
         if (ActorId <= 0)
         {
-            ActorId = ActorIdGenerator.GetActorId(GlobalConst.ActorTypePlayer);
+            // Localization: Core.MessageHandler.ActorIdIsZero - ActorId为0，无法获取组件，{0}，关闭通道
+            // 未绑定玩家身份的连接不再触发随机 ActorId 回退：每次请求制造新 Actor 且默认状态落库会形成垃圾玩家记录
+            LogHelper.Fatal(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.ActorIdIsZero, RequestMessage?.GetType().FullName));
+            NetworkChannel.Close();
+            return Task.FromResult(false);
         }
 
         return Task.FromResult(true);

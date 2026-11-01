@@ -32,6 +32,8 @@ using GameFrameX.Core.Components;
 using GameFrameX.Core.Timer;
 using GameFrameX.Core.Timer.Handler;
 
+using GameFrameX.Foundation.Utility;
+
 namespace GameFrameX.Core.Hotfix.Agent;
 
 /// <summary>
@@ -86,9 +88,9 @@ public abstract partial class BaseComponentAgent<TComponent> where TComponent : 
     }
 
     /// <summary>
-    /// 延迟执行定时任务，将时间戳转换为DateTime后在指定时间点执行一次任务
+    /// 延迟执行定时任务，将 Unix 毫秒时间戳转换为DateTime后在指定时间点执行一次任务
     /// </summary>
-    /// <param name="time">Unix时间戳，将被转换为DateTime类型的执行时间点</param>
+    /// <param name="time">Unix 毫秒时间戳（经 TimestampMillisecondsToDateTime 转换为执行时间点，不是 Ticks）</param>
     /// <param name="eventArgs">传递给定时任务处理器的自定义参数对象</param>
     /// <param name="unScheduleId">需要取消的已存在的定时任务ID，如果大于0则会先取消该任务</param>
     /// <typeparam name="T">实现了ITimerHandler接口的定时任务处理器类型</typeparam>
@@ -96,7 +98,7 @@ public abstract partial class BaseComponentAgent<TComponent> where TComponent : 
     public async Task<long> DelayAsync<T>(long time, GameEventArgs eventArgs = null, long unScheduleId = 0) where T : ITimerHandler
     {
         await UnscheduledAsync(unScheduleId);
-        var scheduleId = await QuartzTimer.DelayAsync<T>(ActorId, new DateTime(time) - DateTime.Now, eventArgs);
+        var scheduleId = await QuartzTimer.DelayAsync<T>(ActorId, TimerHelper.TimestampMillisecondsToDateTime(time, utc: true) - DateTime.UtcNow, eventArgs);
         ScheduleIdSet.Add(scheduleId);
         return scheduleId;
     }

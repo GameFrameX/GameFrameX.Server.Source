@@ -128,6 +128,28 @@ public class WorkerActor : IWorkerActor
     }
 
     /// <summary>
+    /// 构建限流规则拒绝异常：拒绝不得伪装成功，等待方必须感知工作单元未执行。
+    /// </summary>
+    private InvalidOperationException CreateCallRejectedException()
+    {
+        // Localization: CoreExceptions.WorkerActor.CallRejectedByLimitRule - WorkerActor工作调用被限流规则拒绝，调用方ActorId:{0} 目标ActorId:{1}
+        return new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.WorkerActor.CallRejectedByLimitRule, RuntimeContext.CurrentActor, Id));
+    }
+
+
+    /// <summary>
+    /// 释放本工作单元持有的 ActorLimit 在飞登记：仅入队时实际登记过的单元递减计数，
+    /// 未登记路径（discard/checkLock 跳过、Tell）不移除他人登记。
+    /// </summary>
+    private static void ReleaseLimitRegistration(WorkWrapper wrapper)
+    {
+        if (wrapper.LimitRegistered)
+        {
+            ActorLimit.EndCall(wrapper.CallerActorId, wrapper.Owner?.Id ?? 0);
+        }
+    }
+
+    /// <summary>
     /// Actor的唯一标识
     /// </summary>
     internal long Id { get; init; }
@@ -165,6 +187,8 @@ public class WorkerActor : IWorkerActor
     {
         if (IsQuarantined)
         {
+            // 工作单元终态：移除本单元持有的 ActorLimit 在飞登记（隔离分支在 try/finally 之外，须自行移除）
+            ReleaseLimitRegistration(wrapper);
             wrapper.TrySetException(CreateQuarantinedException(wrapper));
             return;
         }
@@ -211,6 +235,8 @@ public class WorkerActor : IWorkerActor
         }
         finally
         {
+            // 工作单元终态：移除本单元持有的 ActorLimit 在飞登记（含超时孤儿与隔离放弃路径）
+            ReleaseLimitRegistration(wrapper);
             // 孤儿被放弃跟踪时不得释放其执行期取消源（可能仍被持有注册）
             wrapper.EndExecution(!abandoned);
         }
@@ -299,6 +325,11 @@ public class WorkerActor : IWorkerActor
 
     private static void CompleteRejectedPost(WorkWrapper wrapper, bool completeOnFailure)
     {
+        // 入队失败即工作单元终态：仅本单元登记过的在飞计数才可移除（未登记路径不得递减他人计数）
+        if (wrapper.LimitRegistered)
+        {
+            ActorLimit.EndCall(wrapper.CallerActorId, wrapper.Owner?.Id ?? 0);
+        }
         var exception = CreateQueueRejectedException(wrapper);
         if (completeOnFailure)
         {
@@ -313,6 +344,11 @@ public class WorkerActor : IWorkerActor
 
     private static void CompleteCanceledPost(WorkWrapper wrapper, CancellationToken cancellationToken, bool completeOnFailure)
     {
+        // 入队失败即工作单元终态：仅本单元登记过的在飞计数才可移除（未登记路径不得递减他人计数）
+        if (wrapper.LimitRegistered)
+        {
+            ActorLimit.EndCall(wrapper.CallerActorId, wrapper.Owner?.Id ?? 0);
+        }
         if (completeOnFailure)
         {
             wrapper.TrySetCanceled(cancellationToken);
@@ -326,6 +362,11 @@ public class WorkerActor : IWorkerActor
 
     private static void CompleteFailedPost(WorkWrapper wrapper, Exception exception, bool completeOnFailure)
     {
+        // 入队失败即工作单元终态：仅本单元登记过的在飞计数才可移除（未登记路径不得递减他人计数）
+        if (wrapper.LimitRegistered)
+        {
+            ActorLimit.EndCall(wrapper.CallerActorId, wrapper.Owner?.Id ?? 0);
+        }
         if (completeOnFailure)
         {
             wrapper.TrySetException(exception);
@@ -359,7 +400,7 @@ public class WorkerActor : IWorkerActor
     /// </summary>
     /// <param name="work">要执行的同步Action工作单元</param>
     /// <param name="callChainId">用于追踪任务调用链的唯一标识符</param>
-    /// <param name="discard">是否忽略调试模式下的调用限制检查，true表示强制执行</param>
+    /// <param name="discard">是否跳过调用限制检查，true表示跳过</param>
     /// <param name="timeOut">任务执行的超时时间(毫秒),默认为-1,将采用配置时间ActorQueueTimeOut</param>
     /// <param name="cancellationToken">用于取消任务的令牌</param>
     /// <returns>返回一个Task对象，表示异步操作的完成状态</returns>
@@ -370,9 +411,9 @@ public class WorkerActor : IWorkerActor
             return Task.FromException(CreateQuarantinedException());
         }
 
-        if (!discard && GlobalSettings.CurrentSetting.IsDebug && !ActorLimit.AllowCall(Id))
+        if (!discard && !ActorLimit.AllowCall(Id))
         {
-            return Task.CompletedTask;
+            return Task.FromException(CreateCallRejectedException());
         }
 
         if (timeOut <= 0)
@@ -385,6 +426,8 @@ public class WorkerActor : IWorkerActor
             Owner = this,
             TimeOut = timeOut,
             CallChainId = callChainId,
+            CallerActorId = RuntimeContext.CurrentActor,
+            LimitRegistered = RuntimeContext.CurrentActor != 0 && RuntimeContext.CurrentActor != Id,
         };
         SendToActionBlock(at, cancellationToken, true);
         return at.Tcs.Task;
@@ -396,7 +439,7 @@ public class WorkerActor : IWorkerActor
     /// <typeparam name="T">函数返回值的类型</typeparam>
     /// <param name="work">要执行的同步Func工作单元</param>
     /// <param name="callChainId">用于追踪任务调用链的唯一标识符</param>
-    /// <param name="discard">是否忽略调试模式下的调用限制检查，true表示强制执行</param>
+    /// <param name="discard">是否跳过调用限制检查，true表示跳过</param>
     /// <param name="timeOut">任务执行的超时时间(毫秒),默认为-1,将采用配置时间ActorQueueTimeOut</param>
     /// <param name="cancellationToken">用于取消任务的令牌</param>
     /// <returns>返回一个Task<T/>对象，表示异步操作的完成状态和结果</returns>
@@ -407,9 +450,9 @@ public class WorkerActor : IWorkerActor
             return Task.FromException<T>(CreateQuarantinedException());
         }
 
-        if (!discard && GlobalSettings.CurrentSetting.IsDebug && !ActorLimit.AllowCall(Id))
+        if (!discard && !ActorLimit.AllowCall(Id))
         {
-            return Task.FromResult(default(T));
+            return Task.FromException<T>(CreateCallRejectedException());
         }
 
         if (timeOut <= 0)
@@ -422,6 +465,8 @@ public class WorkerActor : IWorkerActor
             Owner = this,
             TimeOut = timeOut,
             CallChainId = callChainId,
+            CallerActorId = RuntimeContext.CurrentActor,
+            LimitRegistered = RuntimeContext.CurrentActor != 0 && RuntimeContext.CurrentActor != Id,
         };
         SendToActionBlock(at, cancellationToken, true);
         return at.Tcs.Task;
@@ -432,7 +477,7 @@ public class WorkerActor : IWorkerActor
     /// </summary>
     /// <param name="work">要执行的异步Task工作单元</param>
     /// <param name="callChainId">用于追踪任务调用链的唯一标识符</param>
-    /// <param name="discard">是否忽略调试模式下的调用限制检查，true表示强制执行</param>
+    /// <param name="discard">是否跳过调用限制检查，true表示跳过</param>
     /// <param name="timeOut">任务执行的超时时间(毫秒),默认为-1,将采用配置时间ActorQueueTimeOut</param>
     /// <param name="cancellationToken">用于取消任务的令牌</param>
     /// <returns>返回一个Task对象，表示异步操作的完成状态</returns>
@@ -443,9 +488,9 @@ public class WorkerActor : IWorkerActor
             return Task.FromException(CreateQuarantinedException());
         }
 
-        if (!discard && GlobalSettings.CurrentSetting.IsDebug && !ActorLimit.AllowCall(Id))
+        if (!discard && !ActorLimit.AllowCall(Id))
         {
-            return Task.CompletedTask;
+            return Task.FromException(CreateCallRejectedException());
         }
 
         if (timeOut <= 0)
@@ -458,6 +503,8 @@ public class WorkerActor : IWorkerActor
             Owner = this,
             TimeOut = timeOut,
             CallChainId = callChainId,
+            CallerActorId = RuntimeContext.CurrentActor,
+            LimitRegistered = RuntimeContext.CurrentActor != 0 && RuntimeContext.CurrentActor != Id,
         };
         SendToActionBlock(at, cancellationToken, true);
         return at.Tcs.Task;
@@ -469,7 +516,7 @@ public class WorkerActor : IWorkerActor
     /// <typeparam name="T">异步任务返回值的类型</typeparam>
     /// <param name="work">要执行的异步Task工作单元</param>
     /// <param name="callChainId">用于追踪任务调用链的唯一标识符</param>
-    /// <param name="discard">是否忽略调试模式下的调用限制检查，true表示强制执行</param>
+    /// <param name="discard">是否跳过调用限制检查，true表示跳过</param>
     /// <param name="timeOut">任务执行的超时时间(毫秒),默认为-1,将采用配置时间ActorQueueTimeOut</param>
     /// <param name="cancellationToken">用于取消任务的令牌</param>
     /// <returns>返回一个Task<T/>对象，表示异步操作的完成状态和结果</returns>
@@ -480,9 +527,9 @@ public class WorkerActor : IWorkerActor
             return Task.FromException<T>(CreateQuarantinedException());
         }
 
-        if (!discard && GlobalSettings.CurrentSetting.IsDebug && !ActorLimit.AllowCall(Id))
+        if (!discard && !ActorLimit.AllowCall(Id))
         {
-            return Task.FromResult(default(T));
+            return Task.FromException<T>(CreateCallRejectedException());
         }
 
         if (timeOut <= 0)
@@ -495,6 +542,8 @@ public class WorkerActor : IWorkerActor
             Owner = this,
             TimeOut = timeOut,
             CallChainId = callChainId,
+            CallerActorId = RuntimeContext.CurrentActor,
+            LimitRegistered = RuntimeContext.CurrentActor != 0 && RuntimeContext.CurrentActor != Id,
         };
         SendToActionBlock(at, cancellationToken, true);
         return at.Tcs.Task;
@@ -580,9 +629,9 @@ public class WorkerActor : IWorkerActor
         var (needEnqueue, chainId) = IsNeedEnqueue();
         if (needEnqueue)
         {
-            if (GlobalSettings.CurrentSetting.IsDebug && !ActorLimit.AllowCall(Id))
+            if (!ActorLimit.AllowCall(Id))
             {
-                return Task.CompletedTask;
+                return Task.FromException(CreateCallRejectedException());
             }
 
             if (timeOut <= 0)
@@ -595,6 +644,8 @@ public class WorkerActor : IWorkerActor
                 Owner = this,
                 TimeOut = timeOut,
                 CallChainId = chainId,
+                CallerActorId = RuntimeContext.CurrentActor,
+                LimitRegistered = RuntimeContext.CurrentActor != 0 && RuntimeContext.CurrentActor != Id,
             };
             SendToActionBlock(at, cancellationToken, true);
             return at.Tcs.Task;
@@ -622,9 +673,9 @@ public class WorkerActor : IWorkerActor
         var (needEnqueue, chainId) = IsNeedEnqueue();
         if (needEnqueue)
         {
-            if (GlobalSettings.CurrentSetting.IsDebug && !ActorLimit.AllowCall(Id))
+            if (!ActorLimit.AllowCall(Id))
             {
-                return Task.FromResult(default(T));
+                return Task.FromException<T>(CreateCallRejectedException());
             }
 
             if (timeOut <= 0)
@@ -637,6 +688,8 @@ public class WorkerActor : IWorkerActor
                 Owner = this,
                 TimeOut = timeOut,
                 CallChainId = chainId,
+                CallerActorId = RuntimeContext.CurrentActor,
+                LimitRegistered = RuntimeContext.CurrentActor != 0 && RuntimeContext.CurrentActor != Id,
             };
             SendToActionBlock(at, cancellationToken, true);
             return at.Tcs.Task;
@@ -680,9 +733,9 @@ public class WorkerActor : IWorkerActor
         var (needEnqueue, chainId) = IsNeedEnqueue();
         if (needEnqueue)
         {
-            if (checkLock && GlobalSettings.CurrentSetting.IsDebug && !ActorLimit.AllowCall(Id))
+            if (checkLock && !ActorLimit.AllowCall(Id))
             {
-                return Task.CompletedTask;
+                return Task.FromException(CreateCallRejectedException());
             }
 
             if (timeOut <= 0)
@@ -695,6 +748,8 @@ public class WorkerActor : IWorkerActor
                 Owner = this,
                 TimeOut = timeOut,
                 CallChainId = chainId,
+                CallerActorId = RuntimeContext.CurrentActor,
+                LimitRegistered = RuntimeContext.CurrentActor != 0 && RuntimeContext.CurrentActor != Id,
             };
             SendToActionBlock(wrapper, cancellationToken, true);
             return wrapper.Tcs.Task;
@@ -721,9 +776,9 @@ public class WorkerActor : IWorkerActor
         var (needEnqueue, chainId) = IsNeedEnqueue();
         if (needEnqueue)
         {
-            if (GlobalSettings.CurrentSetting.IsDebug && !ActorLimit.AllowCall(Id))
+            if (!ActorLimit.AllowCall(Id))
             {
-                return Task.FromResult(default(T));
+                return Task.FromException<T>(CreateCallRejectedException());
             }
 
             if (timeOut <= 0)
@@ -736,6 +791,8 @@ public class WorkerActor : IWorkerActor
                 Owner = this,
                 TimeOut = timeOut,
                 CallChainId = chainId,
+                CallerActorId = RuntimeContext.CurrentActor,
+                LimitRegistered = RuntimeContext.CurrentActor != 0 && RuntimeContext.CurrentActor != Id,
             };
             SendToActionBlock(wrapper, cancellationToken, true);
             return wrapper.Tcs.Task;

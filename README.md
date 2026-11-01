@@ -251,6 +251,8 @@ GameFrameX uses command-line arguments (`--Key=Value`) for configuration. All co
 | `ActorTimeOut`         | Actor task execution timeout (ms) | `30000` | `60000` |
 | `ActorQueueTimeOut`    | Actor queue timeout (ms)          | `30000` | `60000` |
 | `ActorRecycleTime`     | Actor idle recycle time (minutes) | `15`    | `30`    |
+| `ActorLimitRule` | Actor call limit rule (None/NoBidirectionCall) | `None` | `NoBidirectionCall` |
+| `HotfixVerifyEnabled` | Hotfix assembly load SHA-256 verification | `false` | `true` |
 | `SaveDataInterval`     | Data save interval (ms)           | `30000` | `60000` |
 | `SaveDataBatchCount`   | Batch save count                  | `500`   | `1000`  |
 | `SaveDataBatchTimeOut` | Batch save timeout (ms)           | `30000` | `60000` |

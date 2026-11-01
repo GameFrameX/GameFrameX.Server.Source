@@ -53,6 +53,18 @@ public abstract class WorkWrapper
     public long CallChainId { get; set; }
 
     /// <summary>
+    /// 调用方Actor ID（入队时捕获 RuntimeContext.CurrentActor）。
+    /// ActorLimit 在飞登记移除用：工作单元终态时以其定位「caller → target」登记项。
+    /// </summary>
+    public long CallerActorId { get; set; }
+
+
+    /// <summary>
+    /// 本工作单元是否持有 ActorLimit 在飞登记（入队时经 AllowCall 放行且实际登记为 true）。
+    /// 未登记路径（discard/checkLock 跳过、Tell）不得在终态移除他人登记。
+    /// </summary>
+    public bool LimitRegistered { get; set; }
+    /// <summary>
     /// 调用方传入的取消令牌。
     /// 入队阶段用于取消排队；执行阶段与超时合并为执行期取消源（见 <see cref="BeginExecution"/>）。
     /// </summary>

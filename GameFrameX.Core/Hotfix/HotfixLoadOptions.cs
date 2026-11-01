@@ -80,6 +80,19 @@ public sealed class HotfixLoadOptions
     public string AssemblyFileName { get; init; } = "GameFrameX.Hotfix.dll";
 
     /// <summary>
+    /// 期望的热更程序集 SHA-256（十六进制，默认空 = 不校验）。
+    /// The expected SHA-256 of the hotfix assembly (hexadecimal; empty by default = no verification).
+    /// </summary>
+    /// <remarks>
+    /// 仅当 <c>AppSetting.HotfixVerifyEnabled</c> 灰度开关开启且本值非空时，<c>HotfixModule.Init</c>
+    /// 才在创建可收集上下文与装载前流式校验文件内容，不匹配即拒绝装载。
+    /// Only when the <c>AppSetting.HotfixVerifyEnabled</c> gray switch is on and this value is non-empty
+    /// does <c>HotfixModule.Init</c> stream-verify the file content before creating the collectible
+    /// context and loading; a mismatch rejects the load.
+    /// </remarks>
+    public string ExpectedSha256 { get; init; } = string.Empty;
+
+    /// <summary>
     /// 版本值禁止出现的路径相关字符（分隔符与卷分隔符）。
     /// Path-relevant characters (separators and the volume separator) forbidden in version values.
     /// </summary>

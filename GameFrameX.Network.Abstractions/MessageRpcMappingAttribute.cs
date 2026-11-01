@@ -33,42 +33,44 @@ namespace GameFrameX.Network.Abstractions;
 /// RPC 消息属性标记。
 /// </summary>
 /// <remarks>
-/// RPC message attribute marker.
+/// RPC message attribute marker. Carries the request/response message <b>types</b>; the handler
+/// type itself is validated at registration time to implement <c>IMessageHandler</c> with a public
+/// parameterless constructor.
 /// </remarks>
 [AttributeUsage(AttributeTargets.Class)]
 public class MessageRpcMappingAttribute : Attribute
 {
     /// <summary>
-    /// 构建 RPC 消息。
+    /// 构建 RPC 消息映射。
     /// </summary>
     /// <remarks>
     /// Constructs the RPC message mapping attribute.
     /// </remarks>
-    /// <param name="requestMessage">请求消息类型 / Request message type</param>
-    /// <param name="responseMessage">返回消息类型 / Response message type</param>
-    public MessageRpcMappingAttribute(IRequestMessage requestMessage, IResponseMessage responseMessage)
+    /// <param name="requestMessageType">请求消息类型 / Request message type</param>
+    /// <param name="responseMessageType">返回消息类型 / Response message type</param>
+    public MessageRpcMappingAttribute(Type requestMessageType, Type responseMessageType)
     {
-        ArgumentNullException.ThrowIfNull(requestMessage);
-        ArgumentNullException.ThrowIfNull(responseMessage);
-        RequestMessage = requestMessage;
-        ResponseMessage = responseMessage;
+        ArgumentNullException.ThrowIfNull(requestMessageType);
+        ArgumentNullException.ThrowIfNull(responseMessageType);
+        RequestMessageType = requestMessageType;
+        ResponseMessageType = responseMessageType;
     }
 
     /// <summary>
-    /// 获取请求消息。
+    /// 获取请求消息类型。
     /// </summary>
     /// <remarks>
-    /// Gets the request message.
+    /// Gets the request message type.
     /// </remarks>
-    /// <value>请求消息 / Request message</value>
-    public IRequestMessage RequestMessage { get; }
+    /// <value>请求消息类型 / Request message type</value>
+    public Type RequestMessageType { get; }
 
     /// <summary>
-    /// 获取响应消息。
+    /// 获取响应消息类型。
     /// </summary>
     /// <remarks>
-    /// Gets the response message.
+    /// Gets the response message type.
     /// </remarks>
-    /// <value>响应消息 / Response message</value>
-    public IResponseMessage ResponseMessage { get; }
+    /// <value>响应消息类型 / Response message type</value>
+    public Type ResponseMessageType { get; }
 }

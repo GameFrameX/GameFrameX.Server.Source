@@ -11,6 +11,7 @@
   <Folder Name="/Tests/">
     <Project Path="Tests/GameFrameX.Tests/GameFrameX.Tests.csproj" />
     <Project Path="Tests/GameFrameX.Hotfix.Tests/GameFrameX.Hotfix.Tests.csproj" />
+    <Project Path="Tests/GameFrameX.Hotfix.Tests.Probes/GameFrameX.Hotfix.Tests.Probes.csproj" />
   </Folder>
   <Folder Name="/Capability/">
     <Project Path="Capability/GameFrameX.Capability.Hosting.Abstractions/GameFrameX.Capability.Hosting.Abstractions.csproj" />

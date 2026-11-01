@@ -532,6 +532,9 @@ public static class ActorManager
         var globalCost = (DateTime.Now - begin).TotalMilliseconds;
         // Localization: Core.ActorManager.GlobalCompCrossDayCompleteLog - ActorManager.CrossDayAsync 全局comp跨天完成 , 耗时: {0}ms , 消息: 全局comp跨天完成 耗时：{1}ms
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.ActorManager.GlobalCompCrossDayCompleteLog, globalCost, globalCost));
+
+        // 第二段（非玩家段）投递前重置等待基准：跨天预算按段独立计量，不复用第一段已消耗的 begin
+        begin = DateTime.Now;
         a = 0;
         b = 0;
         foreach (var actor in ActorMap.Values)
@@ -562,7 +565,7 @@ public static class ActorManager
             await Task.Delay(TimeSpan.FromMilliseconds(10));
         }
 
-        var otherCost = (DateTime.Now - begin).TotalMilliseconds - globalCost;
+        var otherCost = (DateTime.Now - begin).TotalMilliseconds;
         // Localization: Core.ActorManager.NonPlayerCompCrossDayCompleteLog - ActorManager.CrossDayAsync 非玩家comp跨天完成 , 耗时: {0}ms , 消息: 非玩家comp跨天完成 耗时：{1}ms
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.ActorManager.NonPlayerCompCrossDayCompleteLog, otherCost, otherCost));
     }

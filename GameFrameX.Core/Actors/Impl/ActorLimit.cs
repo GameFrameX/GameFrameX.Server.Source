@@ -58,7 +58,6 @@ public static class ActorLimit
 
 
     private static IRule _rule;
-    private static readonly Dictionary<ushort, int> LevelDic = new(128);
 
     /// <summary>
     /// 初始化
@@ -68,30 +67,13 @@ public static class ActorLimit
     {
         switch (type)
         {
-            /*case RuleType.ByLevel:
-            {
-                _rule = new ByLevelRule();
-                try
-                {
-                    foreach (ActorTypeLevel foo in Enum.GetValues(typeof(ActorTypeLevel)))
-                    {
-                        var actorType = (ushort)foo;
-                        LevelDic.Add(actorType, (int)foo);
-                    }
-                }
-                catch (Exception exception)
-                {
-                    LogHelper.Fatal(exception);
-                    throw;
-                }
-            }
-                break;*/
             case RuleType.NoBidirectionCall:
                 {
                     _rule = new NoBidirectionCallRule();
                 }
                 break;
             case RuleType.None:
+                _rule = null;
                 break;
             default:
                 // Localization: Core.ActorLimit.UnsupportedRuleType - 不支持的rule类型:{0}
@@ -101,75 +83,54 @@ public static class ActorLimit
     }
 
     /// <summary>
-    /// 是否允许调用
+    /// 是否允许调用：规则激活时检查并在放行时登记「self → target」在飞调用。
     /// </summary>
     /// <param name="target">目标</param>
     /// <returns>返回是否调用</returns>
     public static bool AllowCall(long target)
     {
-        if (_rule != null)
+        var rule = _rule;
+        if (rule != null)
         {
-            return _rule.CanCall(target);
+            return rule.CanCall(target);
         }
 
         return true;
     }
 
+    /// <summary>
+    /// 结束一次在飞调用：工作单元终态（执行完毕/入队失败/取消/超时放弃）时移除登记，内存天然有界。
+    /// </summary>
+    /// <param name="self">调用方Actor ID</param>
+    /// <param name="target">目标Actor ID</param>
+    public static void EndCall(long self, long target)
+    {
+        _rule?.EndCall(self, target);
+    }
+
     private interface IRule
     {
         bool CanCall(long target);
+
+        void EndCall(long self, long target);
     }
-
-
-    #region ByLevelRule
-
-    private class ByLevelRule : IRule
-    {
-        /// <summary>
-        /// 判断是否允许调用
-        /// </summary>
-        /// <param name="target">目标</param>
-        /// <returns></returns>
-        bool IRule.CanCall(long target)
-        {
-            var actorId = RuntimeContext.CurrentActor;
-            // 从其他线程抛到actor，不涉及入队行为
-            if (actorId == 0)
-            {
-                return true;
-            }
-
-            var currentType = ActorIdGenerator.GetActorType(actorId);
-            var targetType = ActorIdGenerator.GetActorType(target);
-            if (LevelDic.TryGetValue(targetType, out var targetValue) && LevelDic.TryGetValue(currentType, out var currentValue))
-            {
-                //等级高的不能【等待】调用等级低的
-                if (currentValue > targetValue)
-                {
-                    // Localization: Core.ActorLimit.InvalidCallPath - 不合法的调用路径:{0}==&gt;{1}
-                    LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.ActorLimit.InvalidCallPath, currentType, targetType));
-                    return false;
-                }
-            }
-
-            return true;
-        }
-    }
-
-    #endregion
 
 
     #region NoBidirectionCallRule
 
     private class NoBidirectionCallRule : IRule
     {
-        private readonly ConcurrentDictionary<long, ConcurrentDictionary<long, bool>> _crossDic = new();
+        /// <summary>
+        /// 并发在飞调用计数登记：self → { target → 在飞计数 }。
+        /// 同一 caller→target 的并发调用按次数累加、按终态递减，全部结束后回收边与外壳键，内存天然有界。
+        /// </summary>
+        private readonly ConcurrentDictionary<long, ConcurrentDictionary<long, InFlightCounter>> _crossDic = new();
 
         /// <summary>
         /// 是否允许调用
         /// </summary>
         /// <param name="target">目标</param>
-        /// <returns>返回是否调用</returns>
+        /// <returns></returns>
         bool IRule.CanCall(long target)
         {
             var actorId = RuntimeContext.CurrentActor;
@@ -198,10 +159,50 @@ public static class ActorLimit
                 return false;
             }
 
-            var selfSet = _crossDic.GetOrAdd(self, k => new ConcurrentDictionary<long, bool>());
-            selfSet.TryAdd(target, false);
+            var selfSet = _crossDic.GetOrAdd(self, k => new ConcurrentDictionary<long, InFlightCounter>());
+            var counter = selfSet.GetOrAdd(target, k => new InFlightCounter());
+            Interlocked.Increment(ref counter.Count);
 
             return true;
+        }
+
+        /// <summary>
+        /// 终态递减在飞计数：计数归零时回收边，边集合清空后原子回收外层键。
+        /// 调用方以工作单元携带的登记所有权标志守卫——未登记路径（discard/checkLock 跳过、Tell）不得递减他人计数。
+        /// </summary>
+        /// <param name="self">调用方Actor ID</param>
+        /// <param name="target">目标Actor ID</param>
+        void IRule.EndCall(long self, long target)
+        {
+            // IO 上下文与自调用未登记，无需移除
+            if (self == 0 || self == target)
+            {
+                return;
+            }
+
+            if (_crossDic.TryGetValue(self, out var set) && set.TryGetValue(target, out var counter))
+            {
+                if (Interlocked.Decrement(ref counter.Count) <= 0)
+                {
+                    // 仅当仍为当前计数实例时移除边（原子引用比较）：并发重入者会命中同实例并使计数大于零，
+                    // 不会进入本分支；被并发替换的实例残留由其自身路径的终态递减清理
+                    set.TryRemove(new KeyValuePair<long, InFlightCounter>(target, counter));
+
+                    if (set.IsEmpty)
+                    {
+                        _crossDic.TryRemove(new KeyValuePair<long, ConcurrentDictionary<long, InFlightCounter>>(self, set));
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 在飞调用计数器（同 caller→target 并发调用按次数累加，首个终态不再清边）。
+        /// </summary>
+        private sealed class InFlightCounter
+        {
+            /// <summary>当前在飞计数。</summary>
+            public int Count;
         }
     }
 

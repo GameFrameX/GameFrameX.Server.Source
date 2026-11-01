@@ -94,7 +94,15 @@ internal abstract class AppStartUpGameServerBase : AppStartUpBase
             await PrepareAsync();
 
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Launcher.ActorLimitConfigBegin));
-            ActorLimit.Init(ActorLimit.RuleType.None);
+            // 规则改由配置驱动：一经配置即生效（生产可用），默认 None 行为与历史等价
+            if (!Enum.TryParse<ActorLimit.RuleType>(Setting.ActorLimitRule, true, out var actorLimitRule))
+            {
+                // Localization: Core.ActorLimit.UnsupportedRuleType - 不支持的rule类型:{0}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.ActorLimit.UnsupportedRuleType, Setting.ActorLimitRule));
+                actorLimitRule = ActorLimit.RuleType.None;
+            }
+
+            ActorLimit.Init(actorLimitRule);
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Launcher.ActorLimitConfigEnd));
 
             LogHelper.Debug(LocalizationService.GetString(Localization.Keys.Launcher.DatabaseServiceStartBegin));

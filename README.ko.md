@@ -222,6 +222,8 @@ GameFrameX는 명령줄 인수(`--Key=Value`)로 설정합니다. 모든 설정 
 | `ActorTimeOut` | Actor 작업 실행 타임아웃(밀리초) | `30000` | `60000` |
 | `ActorQueueTimeOut` | Actor 큐 타임아웃(밀리초) | `30000` | `60000` |
 | `ActorRecycleTime` | Actor 유휴 리사이클 시간(분) | `15` | `30` |
+| `ActorLimitRule` | Actor 호출 제한 규칙(None/NoBidirectionCall) | `None` | `NoBidirectionCall` |
+| `HotfixVerifyEnabled` | 핫픽스 어셈블리 로드 SHA-256 검증 | `false` | `true` |
 | `SaveDataInterval` | 데이터 저장 간격(밀리초) | `30000` | `60000` |
 | `SaveDataBatchCount` | 배치 저장 수 | `500` | `1000` |
 | `SaveDataBatchTimeOut` | 배치 저장 타임아웃(밀리초) | `30000` | `60000` |

@@ -131,24 +131,60 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
             return Task.CompletedTask;
         }
 
-        CacheComponent.Tell(() => ExecuteWorkAsync(cancellationToken), timeout, cancellationToken);
+        CacheComponent.Tell(() => ExecuteWorkAsync(timeout, cancellationToken), timeout, cancellationToken);
         return Task.CompletedTask;
     }
 
     /// <summary>
-    /// 在组件代理上执行内部处理并回写响应（由 <see cref="InnerActionAsync"/> 调度）
+    /// 在组件代理上执行内部处理并回写响应（由 <see cref="InnerActionAsync"/> 调度）。
+    /// 业务核心以 <see cref="Task.WaitAsync(TimeSpan, CancellationToken)"/> 包装：超时时向客户端回写独立的
+    /// <see cref="OperationErrorCode.TimeOut"/> 响应（含 requestId），不再让客户端只能等自身超时。
     /// </summary>
+    /// <param name="timeout">执行超时时间，单位毫秒</param>
     /// <param name="cancellationToken">取消令牌</param>
-    private async Task ExecuteWorkAsync(CancellationToken cancellationToken)
+    private async Task ExecuteWorkAsync(int timeout, CancellationToken cancellationToken)
     {
         var response = MessageObjectPoolHelper.Get<TResponse>();
         var requestId = RequestMessage.UniqueId;
+        Task coreTask = null;
         try
         {
             try
             {
-                await InnerActionCoreAsync(RequestMessage, response, cancellationToken);
+                coreTask = InnerActionCoreAsync(RequestMessage, response, cancellationToken);
+                await coreTask.WaitAsync(TimeSpan.FromMilliseconds(timeout), cancellationToken);
                 response?.SetUniqueId(requestId);
+            }
+            catch (TimeoutException)
+            {
+                // Localization: Core.MessageHandler.RpcComponentExecutionTimeout - BaseRpcComponentHandler组件RPC执行超时，消息类型:{0} 超时:{1}ms
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.MessageHandler.RpcComponentExecutionTimeout, RequestMessage.GetType().FullName, timeout));
+
+                // 超时响应使用独立池化实例：孤儿业务任务仍持有原响应，其写入不得污染已回写的超时响应
+                var timeoutResponse = MessageObjectPoolHelper.Get<TResponse>();
+                try
+                {
+                    timeoutResponse.ErrorCode = OperationErrorCode.TimeOut;
+                    timeoutResponse.SetUniqueId(requestId);
+                    if (NetworkChannel != null && !NetworkChannel.IsClosed())
+                    {
+                        await NetworkChannel.WriteAsync(timeoutResponse);
+                    }
+                }
+                finally
+                {
+                    MessageObjectPoolHelper.Return(timeoutResponse);
+                }
+
+                // 原响应经终态延续归还，此处不再写回
+                return;
+            }
+            catch (RpcException e)
+            {
+                if (response != null)
+                {
+                    response.ErrorCode = e.ErrorCode;
+                }
             }
             catch (Exception e)
             {
@@ -160,6 +196,13 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
                 }
             }
 
+            // 取消等路径下业务核心仍在运行（孤儿持有 response 引用）：写共享实例会被并发改写撕裂，
+            // 该响应无人等待时不写回（超时路径已用独立实例回写过 TimeOut）
+            if (coreTask != null && !coreTask.IsCompleted)
+            {
+                return;
+            }
+
             if (NetworkChannel == null || NetworkChannel.IsClosed() || response == null)
             {
                 return;
@@ -169,10 +212,27 @@ public abstract class BaseRpcComponentHandler<TRequest, TResponse> : BaseRpcMess
         }
         finally
         {
-            // 任意路径（含通道关闭早退、写通道异常）均归还响应对象，避免对象池耗尽
-            if (response != null)
+            // 任意路径（含通道关闭早退、写通道异常）均归还响应对象，避免对象池耗尽；
+            // 超时孤儿业务任务未到终态时，经终态延续归还（对齐 BaseRpcMessageHandler 模式）
+            if (coreTask == null || coreTask.IsCompleted)
             {
-                MessageObjectPoolHelper.Return(response);
+                if (response != null)
+                {
+                    MessageObjectPoolHelper.Return(response);
+                }
+            }
+            else
+            {
+                _ = coreTask.ContinueWith((completedTask, state) =>
+                {
+                    _ = completedTask.Exception;
+                    var orphanResponse = (TResponse)state;
+                    if (orphanResponse != null)
+                    {
+                        MessageObjectPoolHelper.Return(orphanResponse);
+                    }
+                }, response, CancellationToken.None,
+                    TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
             }
         }
     }

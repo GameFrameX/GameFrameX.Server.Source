@@ -24,6 +24,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\GameFrameX.Hotfix\GameFrameX.Hotfix.csproj" />
+      <ProjectReference Include="..\GameFrameX.Hotfix.Tests.Probes\GameFrameX.Hotfix.Tests.Probes.csproj" />
     </ItemGroup>
 
     <!-- 桥契约测试发布面（C294）：把测试程序集复制为部署命名约定形态
