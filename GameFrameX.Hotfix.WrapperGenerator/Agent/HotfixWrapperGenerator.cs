@@ -433,26 +433,42 @@ public class HotfixWrapperGenerator : IIncrementalGenerator
             }
             else if (string.Equals(name, StripAttributeSuffix(TimeOutAttributeName), StringComparison.OrdinalIgnoreCase))
             {
-                mth.TimeOut = ParseTimeout(attribute, out var parsed);
-                if (parsed)
-                {
-                    mth.HasTimeout = true;
-                }
-                else
-                {
-                    // 解析失败降级为未配置超时（走 EnqueueAsync 框架默认值），并以诊断指明写法约束
-                    mth.HasTimeout = false;
-                    var rawArgument = attribute.ArgumentList != null && attribute.ArgumentList.Arguments.Count > 0
-                        ? attribute.ArgumentList.Arguments[0].ToString()
-                        : string.Empty;
-                    diagnostics.Add(Logger.Error($"{fullName}.{method.Identifier.Text}【{TimeOutAttributeName}】参数必须是整数字面量（毫秒），当前无法解析：{rawArgument}", method.GetLocation()));
-                }
+                ApplyTimeoutAttribute(diagnostics, fullName, method, attribute, mth);
             }
             else if (string.Equals(name, StripAttributeSuffix(ThreadSafeAttributeName), StringComparison.OrdinalIgnoreCase))
             {
                 mth.IsThreadSafe = true;
             }
         }
+    }
+
+    /// <summary>
+    /// 应用命中的 TimeOut 特性：解析成功置超时标记，失败降级为未配置并以 Error 诊断指明写法约束。
+    /// </summary>
+    /// <remarks>
+    /// Applies the matched TimeOut attribute: a successfully parsed literal sets the timeout flag;
+    /// otherwise it degrades to "not configured" and emits an Error diagnostic stating the expected literal form.
+    /// </remarks>
+    /// <param name="diagnostics">诊断缓冲 / Diagnostics buffer</param>
+    /// <param name="fullName">代理类完全限定名 / Fully qualified name of the agent class</param>
+    /// <param name="method">方法声明语法节点 / Method declaration syntax node</param>
+    /// <param name="attribute">命中的 TimeOut 特性语法节点 / The matched TimeOut attribute syntax node</param>
+    /// <param name="mth">待填充的方法元数据 / Method metadata to populate</param>
+    private static void ApplyTimeoutAttribute(List<Diagnostic> diagnostics, string fullName, MethodDeclarationSyntax method, AttributeSyntax attribute, MethodInfoData mth)
+    {
+        mth.TimeOut = ParseTimeout(attribute, out var parsed);
+        if (parsed)
+        {
+            mth.HasTimeout = true;
+            return;
+        }
+
+        // 解析失败降级为未配置超时（走 EnqueueAsync 框架默认值），并以诊断指明写法约束
+        mth.HasTimeout = false;
+        var rawArgument = attribute.ArgumentList != null && attribute.ArgumentList.Arguments.Count > 0
+            ? attribute.ArgumentList.Arguments[0].ToString()
+            : string.Empty;
+        diagnostics.Add(Logger.Error($"{fullName}.{method.Identifier.Text}【{TimeOutAttributeName}】参数必须是整数字面量（毫秒），当前无法解析：{rawArgument}", method.GetLocation()));
     }
 
     /// <summary>
