@@ -152,19 +152,78 @@ namespace GameFrameX.Tests.Utility
         }
 
         /// <summary>
-        /// 测试解压缩无效数据应返回原始数据
+        /// 测试解压缩无效数据应抛出 InvalidDataException（不再静默返回原始字节）
         /// </summary>
         [Fact]
-        public void Decompress_WithInvalidData_ShouldReturnOriginalData()
+        public void Decompress_WithInvalidData_ShouldThrowInvalidDataException()
         {
             // Arrange
             var invalidData = new byte[] { 1, 2, 3, 4, 5 }; // 无效的压缩数据
 
+            // Act & Assert
+            var exception = Assert.Throws<InvalidDataException>(() => CompressionHelper.Decompress(invalidData));
+            Assert.NotNull(exception.InnerException);
+        }
+
+        /// <summary>
+        /// 测试解压缩被截断的数据应快速抛出 InvalidDataException（防 SharpZipLib 空转死循环）
+        /// </summary>
+        [Fact]
+        public void Decompress_WithTruncatedData_ShouldThrowInvalidDataException()
+        {
+            // Arrange：合法压缩流砍掉尾部（Deflate 结束标记与 Adler32 校验缺失）
+            var original = new byte[2048];
+            new Random(42).NextBytes(original);
+            var compressed = CompressionHelper.Compress(original);
+            var truncated = new byte[compressed.Length / 2];
+            Array.Copy(compressed, truncated, truncated.Length);
+
+            // Act & Assert
+            Assert.Throws<InvalidDataException>(() => CompressionHelper.Decompress(truncated));
+        }
+
+        /// <summary>
+        /// 测试解压输出超过显式上限应抛出 InvalidDataException（解压炸弹防线：膨胀过程内中止）
+        /// </summary>
+        [Fact]
+        public void Decompress_ExceedingOutputLimit_ShouldThrowInvalidDataException()
+        {
+            // Arrange：256KB 全零载荷高压缩比压缩，上限 1KB——修复前会完整膨胀 256KB 后才可能被事后检查发现
+            var compressed = CompressionHelper.Compress(new byte[256 * 1024]);
+
+            // Act & Assert
+            Assert.Throws<InvalidDataException>(() => CompressionHelper.Decompress(compressed, 1024));
+        }
+
+        /// <summary>
+        /// 测试显式上限内的正常解压应完成往返
+        /// </summary>
+        [Fact]
+        public void Decompress_WithinOutputLimit_ShouldRestoreOriginalData()
+        {
+            // Arrange
+            var original = new byte[4096];
+            new Random(7).NextBytes(original);
+            var compressed = CompressionHelper.Compress(original);
+
             // Act
-            var result = CompressionHelper.Decompress(invalidData);
+            var result = CompressionHelper.Decompress(compressed, original.Length);
 
             // Assert
-            Assert.Equal(invalidData, result);
+            Assert.Equal(original, result);
+        }
+
+        /// <summary>
+        /// 测试负上限参数应抛出 ArgumentOutOfRangeException
+        /// </summary>
+        [Fact]
+        public void Decompress_WithNegativeLimit_ShouldThrowArgumentOutOfRangeException()
+        {
+            // Arrange
+            var compressed = CompressionHelper.Compress(new byte[] { 1, 2, 3 });
+
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() => CompressionHelper.Decompress(compressed, -1));
         }
 
         #endregion

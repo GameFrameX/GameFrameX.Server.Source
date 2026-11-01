@@ -110,23 +110,31 @@ public sealed class StateComponent
     /// <summary>
     /// 定时回存所有数据
     /// </summary>
+    /// <remarks>
+    /// 每个状态类型的回存委托单独隔离：某一类型回存抛异常时以 Error 级记录后继续回存其余类型，
+    /// 避免一个持续失败的状态类型让其后注册的所有类型长期不落库。关服（<see cref="GlobalTimer.IsWorking"/> 为 false）
+    /// 时在当前委托完成后停止，剩余数据由关服回存兜底。
+    /// Each state type's save delegate is isolated: a failure is logged as Error and the remaining
+    /// types are still saved. Stops after the current delegate once shutdown has begun.
+    /// </remarks>
     public static async Task TimerSaveAsync()
     {
-        try
+        foreach (var func in SaveFuncMap.Values)
         {
-            foreach (var func in SaveFuncMap.Values)
+            try
             {
                 await func(false, false);
-                if (!GlobalTimer.IsWorking)
-                {
-                    return;
-                }
             }
-        }
-        catch (Exception e)
-        {
-            // Localization: Core.StateComponent.TimerSaveStateErrorLog - StateComponent.TimerSaveAsync 定时保存状态错误，异常:{0}
-            LogHelper.Info(LocalizationService.GetString(Localization.Keys.Core.StateComponent.TimerSaveStateErrorLog, e));
+            catch (Exception e)
+            {
+                // Localization: Core.StateComponent.TimerSaveStateErrorLog - StateComponent.TimerSaveAsync 定时保存状态错误，异常:{0}
+                LogHelper.Error(LocalizationService.GetString(Localization.Keys.Core.StateComponent.TimerSaveStateErrorLog, e));
+            }
+
+            if (!GlobalTimer.IsWorking)
+            {
+                return;
+            }
         }
     }
 }

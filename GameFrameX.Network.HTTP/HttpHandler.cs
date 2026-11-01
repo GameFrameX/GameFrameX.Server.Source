@@ -333,8 +333,8 @@ public static class HttpHandler
             return (false, null);
         }
 
-        // 验证签名
-        var isChecked = handler.CheckSign(context.Parameters, out var error);
+        // 验证签名（v2 口径下 command 参与签名，防止签名跨接口重用）
+        var isChecked = handler.CheckSign(command, context.Parameters, out var error);
         if (isChecked == false)
         {
             httpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;

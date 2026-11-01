@@ -11,6 +11,11 @@ dotnet_diagnostic.GFX0019.severity = error
 dotnet_diagnostic.GFX0020.severity = error
 dotnet_diagnostic.GFX0021.severity = error
 
+# Hotfix Wrapper 源码生成器诊断（GameFrameX.Hotfix.WrapperGenerator/Utils/Logger.cs 分配）：
+# GFW 前缀与分析器 GFX0001-0021 错开；GFW0001=契约违规(Error)、GFW0002=契约警示(Warning)，可按 ID 抑制或升级
+dotnet_diagnostic.GFW0001.severity = error
+dotnet_diagnostic.GFW0002.severity = warning
+
 # PB 库（vendored 生态移植，不按本仓风格改造，整目录排除）
 [GameFrameX.ProtoBuf.Net/**.cs]
 csharp_prefer_braces = true:none

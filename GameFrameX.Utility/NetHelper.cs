@@ -60,6 +60,16 @@ public static class NetHelper
     private const int DefaultDnsTimeoutMilliseconds = 5000;
 
     /// <summary>
+    /// 端口诊断子进程（lsof / netstat）的退出等待上限（毫秒）。
+    /// </summary>
+    private const int PortDiagnosticProcessTimeoutMilliseconds = 1500;
+
+    /// <summary>
+    /// 强制结束诊断子进程后，等待 stdout/stderr 读取完成的有界预算（毫秒）。
+    /// </summary>
+    private const int ProcessKillDrainTimeoutMilliseconds = 500;
+
+    /// <summary>
     /// 获取指定端口的占用进程信息（仅监听中的 TCP）。
     /// </summary>
     /// <param name="port">端口号</param>
@@ -86,6 +96,75 @@ public static class NetHelper
     }
 
     /// <summary>
+    /// 启动外部进程并读取其标准输出，超时后强制结束进程。
+    /// </summary>
+    /// <remarks>
+    /// stdout 与 stderr 必须并发读取：先同步 <c>ReadToEnd()</c> 再 <c>WaitForExit</c>，
+    /// 在 RedirectStandardError 为 true 且子进程写满 stderr 管道（4-64KB）时，
+    /// 子进程阻塞在写 stderr、父进程阻塞在读 stdout，双方互等形成死锁。
+    /// </remarks>
+    /// <param name="startInfo">进程启动参数，必须重定向 stdout 与 stderr</param>
+    /// <param name="timeoutMilliseconds">等待进程退出的上限（毫秒）</param>
+    /// <returns>标准输出文本；进程无法启动时返回空串</returns>
+    private static string ReadProcessStandardOutput(ProcessStartInfo startInfo, int timeoutMilliseconds)
+    {
+        using (var process = Process.Start(startInfo))
+        {
+            if (process == null)
+            {
+                return string.Empty;
+            }
+
+            var outputTask = process.StandardOutput.ReadToEndAsync();
+            var errorTask = process.StandardError.ReadToEndAsync();
+
+            if (process.WaitForExit(timeoutMilliseconds))
+            {
+                Task.WhenAll(outputTask, errorTask).GetAwaiter().GetResult();
+                return outputTask.Result;
+            }
+
+            try
+            {
+                process.Kill(true);
+            }
+            catch (Exception)
+            {
+                // 进程已退出或无权结束：仍需按有界预算读取，绝不让调用线程无限阻塞。
+            }
+
+            // 强制结束后再给管道读取一个有界预算；kill 被权限/策略拒绝且管道未关闭时，
+            // 超时即返回（最多丢失诊断输出），保证 timeoutMilliseconds 的契约成立。
+            try
+            {
+                if (Task.WaitAll(new Task[] { outputTask, errorTask }, ProcessKillDrainTimeoutMilliseconds))
+                {
+                    return outputTask.Result;
+                }
+            }
+            catch (Exception)
+            {
+                // 强制结束导致读取任务失败：退化为返回已成功读取的部分。
+            }
+
+            // 超时返回后 using 会释放 process，仍在进行的读取任务可能抛异常；
+            // 挂 OnlyOnFaulted 续体观察，避免 UnobservedTaskException 噪声。
+            ObserveFault(outputTask);
+            ObserveFault(errorTask);
+            return outputTask.IsCompletedSuccessfully ? outputTask.Result : string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// 观察后台任务的异常，避免被回收时产生 <see cref="TaskScheduler.UnobservedTaskException"/>。
+    /// </summary>
+    /// <param name="task">待观察任务</param>
+    private static void ObserveFault(Task task)
+    {
+        task.ContinueWith(static completed => _ = completed.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+    }
+
+    /// <summary>
     /// 在 macOS/Linux 下通过 lsof 获取端口占用进程信息。
     /// </summary>
     /// <param name="port">端口号</param>
@@ -107,27 +186,18 @@ public static class NetHelper
                 CreateNoWindow = true,
             };
 
-            using (var process = Process.Start(startInfo))
+            var output = ReadProcessStandardOutput(startInfo, PortDiagnosticProcessTimeoutMilliseconds);
+
+            if (string.IsNullOrWhiteSpace(output))
             {
-                if (process == null)
-                {
-                    return new List<string>();
-                }
-
-                var output = process.StandardOutput.ReadToEnd();
-                process.WaitForExit(1500);
-
-                if (string.IsNullOrWhiteSpace(output))
-                {
-                    return new List<string>();
-                }
-
-                return output
-                       .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                       .Where(line => !line.StartsWith("COMMAND", StringComparison.OrdinalIgnoreCase))
-                       .Take(maxCount)
-                       .ToList();
+                return new List<string>();
             }
+
+            return output
+                   .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                   .Where(line => !line.StartsWith("COMMAND", StringComparison.OrdinalIgnoreCase))
+                   .Take(maxCount)
+                   .ToList();
         }
         catch
         {
@@ -155,45 +225,36 @@ public static class NetHelper
                 CreateNoWindow = true,
             };
 
-            using (var process = Process.Start(startInfo))
+            var output = ReadProcessStandardOutput(startInfo, PortDiagnosticProcessTimeoutMilliseconds);
+            if (string.IsNullOrWhiteSpace(output))
             {
-                if (process == null)
-                {
-                    return new List<string>();
-                }
-
-                var output = process.StandardOutput.ReadToEnd();
-                process.WaitForExit(1500);
-                if (string.IsNullOrWhiteSpace(output))
-                {
-                    return new List<string>();
-                }
-
-                var result = new List<string>();
-                var deDuplicate = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                foreach (var line in lines)
-                {
-                    var item = TryBuildNetstatPortItem(line, port);
-                    if (item == null)
-                    {
-                        continue;
-                    }
-
-                    if (!deDuplicate.Add(item))
-                    {
-                        continue;
-                    }
-
-                    result.Add(item);
-                    if (result.Count >= maxCount)
-                    {
-                        break;
-                    }
-                }
-
-                return result;
+                return new List<string>();
             }
+
+            var result = new List<string>();
+            var deDuplicate = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            foreach (var line in lines)
+            {
+                var item = TryBuildNetstatPortItem(line, port);
+                if (item == null)
+                {
+                    continue;
+                }
+
+                if (!deDuplicate.Add(item))
+                {
+                    continue;
+                }
+
+                result.Add(item);
+                if (result.Count >= maxCount)
+                {
+                    break;
+                }
+            }
+
+            return result;
         }
         catch
         {
@@ -364,6 +425,11 @@ public static class NetHelper
     /// <summary>
     /// 获取第一个可用的端口号
     /// </summary>
+    /// <remarks>
+    /// 一次性取本机连接快照（<see cref="PortIsUsed"/>）后逐候选做真实 bind 探测，
+    /// 避免对每个端口重复枚举全表。快照在循环期间可能过期；返回端口到调用方实际 bind
+    /// 之间仍存在竞态，调用方必须处理 bind 失败。
+    /// </remarks>
     /// <param name="startPort">起始端口号，默认为667</param>
     /// <param name="maxPort">结束端口号，默认为65535</param>
     /// <returns>第一个可用的端口号，如果没有可用端口号则返回-1</returns>
@@ -378,9 +444,16 @@ public static class NetHelper
         ArgumentOutOfRangeException.ThrowIfGreaterThan(maxPort, 65535);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(startPort, maxPort);
 
+        // 一次性快照 + 逐候选真实 bind：避免对每个端口都重新枚举本机连接表。
+        var usedPorts = PortIsUsed().ToHashSet();
         for (var i = startPort; i < maxPort; i++)
         {
-            if (PortIsAvailable(i))
+            if (usedPorts.Contains(i))
+            {
+                continue;
+            }
+
+            if (!IsPortBindConflict(i))
             {
                 return i;
             }
@@ -429,6 +502,15 @@ public static class NetHelper
     /// <summary>
     /// 检查指定端口是否可用
     /// </summary>
+    /// <remarks>
+    /// 双重判定：先查本机 TCP/UDP 监听与活动连接快照，未命中再用 TcpListener
+    /// 对目标端口做真实 bind 试探（覆盖「其他进程正在 bind 但尚未出现在快照」的窗口）。
+    /// bind 探测为 TCP/IPv4 通配（<see cref="IPAddress.Any"/>）：UDP 与仅 IPv6 的占用
+    /// 由快照兜底。无权限（如 Unix 上 1024 以下端口）等无法判定的 bind 失败视为可用，
+    /// 由调用方实际 bind 时决定。因此返回 true 只表示「未检测到冲突」，
+    /// 不保证随后的 bind 一定成功；快照与 bind 之间仍存在 TOCTOU，真正可靠的占用判定
+    /// 是直接 bind。
+    /// </remarks>
     /// <param name="port">要检查的端口号</param>
     /// <returns>如果端口未被使用，返回true；否则返回false</returns>
     /// <exception cref="ArgumentOutOfRangeException">当port小于1或大于65535时抛出此异常</exception>
@@ -437,22 +519,43 @@ public static class NetHelper
         ArgumentOutOfRangeException.ThrowIfLessThan(port, 1);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(port, 65535);
 
-        var isAvailable = true;
-
-        var portUsed = PortIsUsed();
-
-        foreach (var p in portUsed)
+        if (PortIsUsed().Contains(port))
         {
-            if (p != port)
-            {
-                continue;
-            }
-
-            isAvailable = false;
-            break;
+            return false;
         }
 
-        return isAvailable;
+        return !IsPortBindConflict(port);
+    }
+
+    /// <summary>
+    /// 用真实 bind 试探目标端口是否被其他进程占用。
+    /// </summary>
+    /// <remarks>
+    /// 仅把 AddressAlreadyInUse 视为占用；无权限、地址族不可用等其他 SocketException
+    /// 无法证明占用，返回 false（可用），避免把「本进程无权 bind」误报成「端口被占」。
+    /// </remarks>
+    /// <param name="port">目标端口号</param>
+    /// <returns>真实 bind 命中占用时返回 true</returns>
+    private static bool IsPortBindConflict(int port)
+    {
+        try
+        {
+            using (var listener = new TcpListener(IPAddress.Any, port))
+            {
+                listener.Start();
+                listener.Stop();
+            }
+
+            return false;
+        }
+        catch (SocketException e) when (e.SocketErrorCode == SocketError.AddressAlreadyInUse)
+        {
+            return true;
+        }
+        catch (SocketException)
+        {
+            return false;
+        }
     }
 
     /// <summary>
@@ -593,10 +696,7 @@ public static class NetHelper
                 if (!string.IsNullOrEmpty(macAddress))
                 {
                     // 格式化MAC地址为标准格式 (XX:XX:XX:XX:XX:XX)
-                    var formattedMac = string.Join(":",
-                                                   Enumerable.Range(0, macAddress.Length / 2)
-                                                             .Select(i => macAddress.Substring(i * 2, 2)));
-                    macAddresses.Add(formattedMac);
+                    macAddresses.Add(FormatMacAddress(macAddress));
                 }
             }
         }
@@ -606,6 +706,29 @@ public static class NetHelper
         }
 
         return macAddresses;
+    }
+
+    /// <summary>
+    /// 将物理地址字符串格式化为 XX:XX:XX:XX:XX:XX 形式。
+    /// </summary>
+    /// <remarks>
+    /// 奇数长度（部分虚拟/蓝牙网卡返回 5.5 字节形态）左侧补一个 0，
+    /// 保证最后一个字节不被静默丢弃。
+    /// </remarks>
+    /// <param name="macAddress">物理地址原始十六进制字符串</param>
+    /// <returns>以冒号分隔的字节序列</returns>
+    internal static string FormatMacAddress(string macAddress)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(macAddress);
+
+        var paddedMacAddress = macAddress.Length % 2 == 0 ? macAddress : "0" + macAddress;
+        var groups = new string[paddedMacAddress.Length / 2];
+        for (var i = 0; i < groups.Length; i++)
+        {
+            groups[i] = paddedMacAddress.Substring(i * 2, 2);
+        }
+
+        return string.Join(":", groups);
     }
 
     /// <summary>

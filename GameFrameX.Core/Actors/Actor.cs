@@ -33,6 +33,7 @@ using GameFrameX.Core.Abstractions.Agent;
 using GameFrameX.Core.Abstractions.Timer;
 using GameFrameX.Core.Actors.Impl;
 using GameFrameX.Core.Components;
+using GameFrameX.Core.Timer;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Utility.Setting;
@@ -310,26 +311,26 @@ public sealed class Actor : IActor, IDisposable
     /// Actor 回收时的处理方法
     /// </summary>
     /// <remarks>
-    /// 当 Actor 被系统回收时调用此方法。
-    /// 用于执行必要的清理工作，如:
-    /// - 释放占用的资源
-    /// - 清理组件状态
-    /// - 保存需要持久化的数据
-    /// - 取消订阅的事件
-    /// - 断开网络连接等
+    /// 当 Actor 被系统回收时调用此方法，固定两步：
+    /// 1. 依次执行一次性回收回调（单个回调异常记日志后继续）；
+    /// 2. 删除 <see cref="ScheduleIdSet"/> 中仍登记的全部 Quartz 定时任务并清空集合。
+    /// 第 2 步保证"Actor 出表 ⇒ 名下定时任务全部删除"：遗留任务触发时找不到 Actor，不会再把已回收的 Actor
+    /// 拉起。调度器未启动或已关闭时任务已不存在，只清空集合；删除异常记日志，不向回收流程外泄。
+    /// Runs the once recycle callbacks, then deletes every Quartz job still registered in
+    /// <see cref="ScheduleIdSet"/> and clears the set, so no timer outlives its actor.
     /// </remarks>
     /// <returns>表示异步操作的任务</returns>
-    public Task OnRecycleAsync()
+    public async Task OnRecycleAsync()
     {
         try
         {
-            while (_onceRecycleCallbacks.First != null)
+            // ConcurrentQueue 排空：注册（AddOnceRecycleCallback）可在任意线程并发进行，
+            // 取出即执行，避免 LinkedList 并发读写的未定义行为
+            while (_onceRecycleCallbacks.TryDequeue(out var callback))
             {
-                var first = _onceRecycleCallbacks.First;
-                _onceRecycleCallbacks.RemoveFirst();
                 try
                 {
-                    first.Value?.Invoke();
+                    callback?.Invoke();
                 }
                 catch (Exception ex)
                 {
@@ -345,15 +346,42 @@ public sealed class Actor : IActor, IDisposable
             // Localization: Core.Actor.RecycleFailed - Actor回收过程异常 actorId:{0} actorType:{1} 异常：\n{2}
             LogHelper.Error(ex, LocalizationService.GetString(Localization.Keys.Core.Actor.RecycleFailed, Id, Type, ex));
         }
-        finally
-        {
-            _onceRecycleCallbacks.Clear();
-        }
 
-        return Task.CompletedTask;
+        await RemoveScheduledJobsAsync();
     }
 
-    private readonly LinkedList<Action> _onceRecycleCallbacks = new LinkedList<Action>();
+    /// <summary>
+    /// 删除本 Actor 名下仍登记的全部定时任务并清空 <see cref="ScheduleIdSet"/>。
+    /// </summary>
+    /// <remarks>
+    /// Deletes every job still registered in <see cref="ScheduleIdSet"/> and clears the set.
+    /// </remarks>
+    private async Task RemoveScheduledJobsAsync()
+    {
+        if (ScheduleIdSet.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            if (QuartzTimer.IsSchedulerRunning)
+            {
+                await QuartzTimer.RemoveAsync(ScheduleIdSet);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Localization: Core.Actor.RecycleFailed - Actor回收过程异常 actorId:{0} actorType:{1} 异常：\n{2}
+            LogHelper.Error(ex, LocalizationService.GetString(Localization.Keys.Core.Actor.RecycleFailed, Id, Type, ex));
+        }
+        finally
+        {
+            ScheduleIdSet.Clear();
+        }
+    }
+
+    private readonly ConcurrentQueue<Action> _onceRecycleCallbacks = new ConcurrentQueue<Action>();
 
     /// <summary>
     /// 添加一个在Actor回收时执行一次的回调事件
@@ -368,17 +396,32 @@ public sealed class Actor : IActor, IDisposable
     /// </remarks>
     public void AddOnceRecycleCallback(Action action)
     {
-        _onceRecycleCallbacks.AddLast(action);
+        _onceRecycleCallbacks.Enqueue(action);
     }
 
     /// <summary>
     /// 反激活所有组件,使其进入非活动状态
     /// </summary>
+    /// <remarks>
+    /// 每个组件单独隔离：某个组件反激活抛异常时记 Fatal 后继续反激活其余组件，本方法不向外抛出。
+    /// 组件自身保证失败时 <see cref="BaseComponent.IsActive"/> 仍落为 false，因此单个组件故障不会让
+    /// Actor 永远无法被空闲回收，也不会让后续组件的状态登记残留。
+    /// Each component is isolated: a failing component is logged as Fatal and the rest still
+    /// deactivate; this method never throws.
+    /// </remarks>
     public async Task InactiveAsync()
     {
         foreach (var item in _componentsMap.Values)
         {
-            await item.InactiveAsync();
+            try
+            {
+                await item.InactiveAsync();
+            }
+            catch (Exception e)
+            {
+                // Localization: Core.Actor.InactiveComponentFailed - Actor反激活组件失败 actorId:{0} 组件类型:{1} 异常：\n{2}
+                LogHelper.Fatal(e, LocalizationService.GetString(Localization.Keys.Core.Actor.InactiveComponentFailed, Id, item.GetType().FullName, e));
+            }
         }
     }
 

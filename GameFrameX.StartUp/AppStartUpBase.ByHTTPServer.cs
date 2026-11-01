@@ -96,6 +96,12 @@ public abstract partial class AppStartUpBase
 
         // Localization: StartUp.HttpServer.StartingServer - 启动 [HTTP] 服务器...
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.StartingServer));
+
+        if (!Setting.HttpRequireSign)
+        {
+            // Localization: StartUp.HttpServer.SignDisabledWarning - HTTP 服务器已启动，但 HttpRequireSign=false，签名校验默认关闭：对外暴露部署存在请求被截获重放的风险，建议生产环境开启签名校验并配置强密钥
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.StartUp.HttpServer.SignDisabledWarning));
+        }
         if (!Setting.HttpPort.IsRange(5000, ushort.MaxValue - 1))
         {
             // Localization: StartUp.HttpServer.PortOutOfRange - 启动 [HTTP] 服务器端口 [{0}] 超出范围 [{1}-{2}]，HTTP服务无法启动，启动已忽略

@@ -96,6 +96,26 @@ public static partial class Keys
             public const string ServerIdLessThanOrEqualZero = "Utility.Exceptions.ServerIdLessThanOrEqualZero";
 
             /// <summary>
+            /// 服务器ID超出最大值的错误消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.Exceptions.ServerIdExceedsMax
+            /// 用途: 当服务器ID超出最大服务器ID时使用
+            /// 参数: {0} - 超界的serverId值, {1} - 最大服务器ID值
+            /// </remarks>
+            public const string ServerIdExceedsMax = "Utility.Exceptions.ServerIdExceedsMax";
+
+            /// <summary>
+            /// ActorId解析出的服务器ID不在合法域内的错误消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.Exceptions.ActorIdServerIdInvalidLayout
+            /// 用途: 当GetServerId/GetActorType解析出的服务器ID不在[MinServerId, MaxServerId]内时使用，表明位布局可能已损坏
+            /// 参数: {0} - 解析出的serverId值, {1} - 最小服务器ID值, {2} - 最大服务器ID值
+            /// </remarks>
+            public const string ActorIdServerIdInvalidLayout = "Utility.Exceptions.ActorIdServerIdInvalidLayout";
+
+            /// <summary>
             /// Actor类型无效的错误消息
             /// </summary>
             /// <remarks>
@@ -341,6 +361,15 @@ public static partial class Keys
             /// 参数: {0} - 计算结果
             /// </remarks>
             public const string DivisionOverflowLog = "Utility.LNumber.DivisionOverflowLog";
+
+            /// <summary>
+            /// LNumber除数为零的错误消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.LNumber.DivisionByZero
+            /// 用途: 当LNumber除法运算的除数为零时抛出
+            /// </remarks>
+            public const string DivisionByZero = "Utility.LNumber.DivisionByZero";
         }
 
         /// <summary>
@@ -357,6 +386,56 @@ public static partial class Keys
             /// 参数: {0} - 需求的数量, {1} - 数组长度
             /// </remarks>
             public const string CantRepeatRandomArgError = "Utility.RandomHelper.CantRepeatRandomArgError";
+
+            /// <summary>
+            /// 权重为负数
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.RandomHelper.NegativeWeight
+            /// 用途: 权重随机入参包含负权重时抛出异常
+            /// 参数: {0} - 非法权重值
+            /// </remarks>
+            public const string NegativeWeight = "Utility.RandomHelper.NegativeWeight";
+
+            /// <summary>
+            /// 全部权重为 0
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.RandomHelper.ZeroTotalWeight
+            /// 用途: 参与随机的权重总和为 0（无可选目标）时抛出异常
+            /// 参数: 无
+            /// </remarks>
+            public const string ZeroTotalWeight = "Utility.RandomHelper.ZeroTotalWeight";
+
+            /// <summary>
+            /// 权重总和超出 int 上限
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.RandomHelper.WeightSumOverflow
+            /// 用途: 权重求和超出随机源可表达的 32 位范围时抛出异常
+            /// 参数: {0} - 实际总权重
+            /// </remarks>
+            public const string WeightSumOverflow = "Utility.RandomHelper.WeightSumOverflow";
+
+            /// <summary>
+            /// 权重索引越界
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.RandomHelper.WeightIndexOutOfRange
+            /// 用途: weightIndex 超出权重条目长度时抛出异常
+            /// 参数: {0} - 权重索引, {1} - 条目长度
+            /// </remarks>
+            public const string WeightIndexOutOfRange = "Utility.RandomHelper.WeightIndexOutOfRange";
+
+            /// <summary>
+            /// 不可重复抽样时正权重条目不足
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.RandomHelper.InsufficientPositiveWeights
+            /// 用途: 不可重复抽取的目标数大于权重为正的条目数时抛出异常
+            /// 参数: {0} - 需求数量, {1} - 正权重条目数
+            /// </remarks>
+            public const string InsufficientPositiveWeights = "Utility.RandomHelper.InsufficientPositiveWeights";
         }
 
 
@@ -595,6 +674,41 @@ public static partial class Keys
             /// 参数: {0} - 异常详情
             /// </remarks>
             public const string InitException = "Utility.IllegalWordDetection.InitException";
+
+            /// <summary>
+            /// 敏感词检测器初始化已在进行中的日志消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.IllegalWordDetection.InitAlreadyInProgress
+            /// 用途: 当新的Init与正在进行的注册并发时拒绝后者并记录
+            /// </remarks>
+            public const string InitAlreadyInProgress = "Utility.IllegalWordDetection.InitAlreadyInProgress";
+
+            /// <summary>
+            /// 敏感词表数据损坏的错误消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.IllegalWordDetection.BadWordTableCorrupted
+            /// 用途: 当敏感词配置表解析出非法字段长度（负数或越过表末尾）时抛出
+            /// 参数: {0} - 非法长度, {1} - 当前偏移, {2} - 数据总长度
+            /// </remarks>
+            public const string BadWordTableCorrupted = "Utility.IllegalWordDetection.BadWordTableCorrupted";
+        }
+
+        /// <summary>
+        /// 热更模块宿主相关日志消息资源键
+        /// </summary>
+        public static class Hotload
+        {
+            /// <summary>
+            /// 退役模块清理失败的错误日志消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.Hotload.RetireModuleFailed
+            /// 用途: 当退役链清理（宽限等待/卸载/释放验证）抛出异常时记录
+            /// 参数: {0} - 异常详情
+            /// </remarks>
+            public const string RetireModuleFailed = "Utility.Hotload.RetireModuleFailed";
         }
 
         /// <summary>
@@ -604,24 +718,33 @@ public static partial class Keys
         {
 
             /// <summary>
-            /// 数据压缩失败的完整日志消息
-            /// </summary>
-            /// <remarks>
-            /// 键名: Utility.CompressionHelper.CompressFailed
-            /// 用途: 当数据压缩发生异常时记录完整日志
-            /// 参数: {0} - 异常详情
-            /// </remarks>
-            public const string CompressFailed = "Utility.CompressionHelper.CompressFailed";
-
-            /// <summary>
-            /// 数据解压失败的完整日志消息
+            /// 数据解压失败的异常消息
             /// </summary>
             /// <remarks>
             /// 键名: Utility.CompressionHelper.DecompressFailed
-            /// 用途: 当数据解压发生异常时记录完整日志
+            /// 用途: 解压失败（SharpZipLib 异常包装为 InvalidDataException）时的异常消息
             /// 参数: {0} - 异常详情
             /// </remarks>
             public const string DecompressFailed = "Utility.CompressionHelper.DecompressFailed";
+
+            /// <summary>
+            /// 压缩数据被截断的异常消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.CompressionHelper.DecompressInputTruncated
+            /// 用途: 解压时检测到输入数据被截断（Inflate 返回 0 且需要更多输入），主动抛出防止 SharpZipLib 空转死循环
+            /// </remarks>
+            public const string DecompressInputTruncated = "Utility.CompressionHelper.DecompressInputTruncated";
+
+            /// <summary>
+            /// 解压输出超过上限的异常消息
+            /// </summary>
+            /// <remarks>
+            /// 键名: Utility.CompressionHelper.DecompressedSizeExceedsLimit
+            /// 用途: 解压累积输出超过调用方声明的上限（解压炸弹防线），膨胀过程立即中止并抛出
+            /// 参数: {0} - 允许的最大解压输出字节数
+            /// </remarks>
+            public const string DecompressedSizeExceedsLimit = "Utility.CompressionHelper.DecompressedSizeExceedsLimit";
         }
 
         /// <summary>

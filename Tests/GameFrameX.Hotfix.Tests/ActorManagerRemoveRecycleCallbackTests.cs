@@ -69,20 +69,21 @@ public sealed class ActorManagerRemoveRecycleCallbackTests
     }
 
     /// <summary>
-    /// RemoveAsync 必须执行一次性回收回调并把Actor移出ActorMap（回归：旧实现只 InactiveAsync，回调永不执行）。
+    /// RemoveAsync 返回的任务完成时一次性回收回调已执行、Actor 已移出 ActorMap（C436：改前为 Tell 发后不管，
+    /// await 返回时回调可能尚未执行）。
     /// </summary>
     [Fact]
-    public async Task RemoveAsync_RunsOnceRecycleCallbacks_AndRemovesActor()
+    public async Task RemoveAsync_AwaitCompletes_AfterRecycleCallback()
     {
         var actorId = ActorIdGenerator.GetActorId(ProbeActorType, ProbeServerIdStart);
         var actor = await ActorManager.GetOrNewAsync(actorId);
         Assert.NotNull(actor);
-        var callbackFired = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        actor.AddOnceRecycleCallback(() => callbackFired.TrySetResult());
+        var callbackFired = false;
+        actor.AddOnceRecycleCallback(() => callbackFired = true);
 
         await ActorManager.RemoveAsync(actorId);
 
-        await callbackFired.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.True(callbackFired);
         Assert.False(ActorManager.HasActor(actorId));
     }
 
@@ -95,26 +96,31 @@ public sealed class ActorManagerRemoveRecycleCallbackTests
         var actorId = ActorIdGenerator.GetActorId(ProbeActorType, ProbeServerIdStart + 1);
         var actor = await ActorManager.GetOrNewAsync(actorId);
         Assert.NotNull(actor);
-        var callbackFired = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        actor.AddOnceRecycleCallback(() => callbackFired.TrySetResult());
+        var callbackFired = false;
+        actor.AddOnceRecycleCallback(() => callbackFired = true);
 
         await ActorManager.RemoveAllAsync();
 
-        await callbackFired.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.True(callbackFired);
+        await ActorManager.RemoveAsync(actorId);
     }
+
+    /// <summary>
+    /// 组件反激活失败：RemoveAllAsync 不再被单个组件异常打断（C436），回收回调仍执行。
+    /// </summary>
     [Fact]
-    public async Task RemoveAllAsync_WhenDeactivationFails_StillRunsCleanup()
+    public async Task RemoveAllAsync_WhenDeactivationFails_DoesNotThrowAndStillRunsCleanup()
     {
         var actorId = ActorIdGenerator.GetActorId(ProbeActorType, ProbeServerIdStart + 2);
         var actor = await ActorManager.GetOrNewAsync(actorId);
-        var field = typeof(Actor).GetField("_componentsMap", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-        var components = (System.Collections.Concurrent.ConcurrentDictionary<Type, GameFrameX.Core.Components.BaseComponent>)field.GetValue(actor);
+        var components = GetComponentsMap(actor);
         components[typeof(FailingDeactivationComponent)] = new FailingDeactivationComponent();
         var cleaned = false;
         actor.AddOnceRecycleCallback(() => cleaned = true);
         try
         {
-            await Assert.ThrowsAsync<InvalidOperationException>(() => ActorManager.RemoveAllAsync());
+            var exception = await Record.ExceptionAsync(() => ActorManager.RemoveAllAsync());
+            Assert.Null(exception);
             Assert.True(cleaned);
         }
         finally
@@ -124,11 +130,128 @@ public sealed class ActorManagerRemoveRecycleCallbackTests
         }
     }
 
+    /// <summary>
+    /// 有未落库修改的 Actor 经 RemoveAsync 移除：先回存再反激活（C436 CR-M12：改前直接反激活，修改丢失）。
+    /// </summary>
+    [Fact]
+    public async Task RemoveAsync_ModifiedState_SavedBeforeDeactivation()
+    {
+        var actorId = ActorIdGenerator.GetActorId(ProbeActorType, ProbeServerIdStart + 3);
+        var actor = await ActorManager.GetOrNewAsync(actorId);
+        var component = new RecordingStateComponent(isModified: true, throwOnSave: false);
+        GetComponentsMap(actor)[typeof(RecordingStateComponent)] = component;
+
+        await ActorManager.RemoveAsync(actorId);
+
+        Assert.Equal(new[] { "save", "inactive" }, component.Calls);
+        Assert.False(ActorManager.HasActor(actorId));
+    }
+
+    /// <summary>
+    /// 无未落库修改时不额外回存，只反激活。
+    /// </summary>
+    [Fact]
+    public async Task RemoveAsync_UnmodifiedState_SkipsSave()
+    {
+        var actorId = ActorIdGenerator.GetActorId(ProbeActorType, ProbeServerIdStart + 4);
+        var actor = await ActorManager.GetOrNewAsync(actorId);
+        var component = new RecordingStateComponent(isModified: false, throwOnSave: false);
+        GetComponentsMap(actor)[typeof(RecordingStateComponent)] = component;
+
+        await ActorManager.RemoveAsync(actorId);
+
+        Assert.Equal(new[] { "inactive" }, component.Calls);
+    }
+
+    /// <summary>
+    /// 回存抛异常：记 Fatal 后仍完成反激活、回收回调与出表，RemoveAsync 不抛出。
+    /// </summary>
+    [Fact]
+    public async Task RemoveAsync_SaveThrows_StillRecyclesAndRemoves()
+    {
+        var actorId = ActorIdGenerator.GetActorId(ProbeActorType, ProbeServerIdStart + 5);
+        var actor = await ActorManager.GetOrNewAsync(actorId);
+        var component = new RecordingStateComponent(isModified: true, throwOnSave: true);
+        GetComponentsMap(actor)[typeof(RecordingStateComponent)] = component;
+        var callbackFired = false;
+        actor.AddOnceRecycleCallback(() => callbackFired = true);
+
+        var exception = await Record.ExceptionAsync(() => ActorManager.RemoveAsync(actorId));
+
+        Assert.Null(exception);
+        Assert.Equal(new[] { "save", "inactive" }, component.Calls);
+        Assert.True(callbackFired);
+        Assert.False(ActorManager.HasActor(actorId));
+    }
+
+    /// <summary>
+    /// 被隔离的 Actor：RemoveAsync 返回异常任务，调用方可感知回收未执行（改前 Tell 静默丢弃）。
+    /// </summary>
+    [Fact]
+    public async Task RemoveAsync_QuarantinedActor_ReturnsFaultedTask()
+    {
+        var actorId = ActorIdGenerator.GetActorId(ProbeActorType, ProbeServerIdStart + 6);
+        var actor = await ActorManager.GetOrNewAsync(actorId);
+        var quarantinedField = actor.WorkerActor.GetType().GetField("_quarantined", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        Assert.NotNull(quarantinedField);
+        quarantinedField.SetValue(actor.WorkerActor, 1);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => ActorManager.RemoveAsync(actorId));
+        Assert.False(ActorManager.HasActor(actorId));
+    }
+
+    private static System.Collections.Concurrent.ConcurrentDictionary<Type, GameFrameX.Core.Components.BaseComponent> GetComponentsMap(Actor actor)
+    {
+        var field = typeof(Actor).GetField("_componentsMap", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        Assert.NotNull(field);
+        return (System.Collections.Concurrent.ConcurrentDictionary<Type, GameFrameX.Core.Components.BaseComponent>)field.GetValue(actor);
+    }
+
     private sealed class FailingDeactivationComponent : GameFrameX.Core.Components.BaseComponent
     {
         public override Task InactiveAsync()
         {
             return Task.FromException(new InvalidOperationException("deactivation failed"));
+        }
+    }
+
+    /// <summary>
+    /// 记录回存与反激活调用顺序的探针组件：<c>isModified</c> 决定 ReadyToInactive，<c>throwOnSave</c> 令回存抛异常。
+    /// </summary>
+    private sealed class RecordingStateComponent : GameFrameX.Core.Components.BaseComponent
+    {
+        private readonly bool _throwOnSave;
+        private bool _isModified;
+
+        public RecordingStateComponent(bool isModified, bool throwOnSave)
+        {
+            _isModified = isModified;
+            _throwOnSave = throwOnSave;
+        }
+
+        public List<string> Calls { get; } = new List<string>();
+
+        internal override bool ReadyToInactive
+        {
+            get { return !_isModified; }
+        }
+
+        public override Task WriteStateAsync()
+        {
+            Calls.Add("save");
+            if (_throwOnSave)
+            {
+                return Task.FromException(new InvalidOperationException("save failed"));
+            }
+
+            _isModified = false;
+            return Task.CompletedTask;
+        }
+
+        public override Task InactiveAsync()
+        {
+            Calls.Add("inactive");
+            return Task.CompletedTask;
         }
     }
 }

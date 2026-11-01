@@ -172,6 +172,46 @@ public sealed class StateComponentShutdownSaveRegistrationTests
     }
 
     /// <summary>
+    /// 定时回存故障隔离（C436 / CR-M04）：每个委托都抛异常时仍全部被调用一次（改前首个异常即中断整轮，
+    /// 仅调用 1 个）。注册表遍历顺序不等于注册顺序，故全部探针委托都抛异常，使断言与顺序无关。
+    /// </summary>
+    [Fact]
+    public async Task TimerSaveAsync_DelegatesThrow_EveryDelegateStillRuns()
+    {
+        var invocationCount = 0;
+        Func<bool, bool, Task> throwingSaveFunc = (_, _) =>
+        {
+            Interlocked.Increment(ref invocationCount);
+            return Task.FromException(new InvalidOperationException("timer save failed"));
+        };
+        var originalIsWorking = GameFrameX.Core.Timer.GlobalTimer.IsWorking;
+
+        try
+        {
+            StateComponent.AddShutdownSaveFunc(typeof(ReplaceableRegistrationState), throwingSaveFunc);
+            StateComponent.AddShutdownSaveFunc(typeof(IndependentRegistrationState), throwingSaveFunc);
+            StateComponent.AddShutdownSaveFunc(typeof(TimerSaveIsolationState), throwingSaveFunc);
+            GameFrameX.Core.Timer.GlobalTimer.IsWorking = true;
+
+            await StateComponent.TimerSaveAsync();
+
+            Assert.Equal(3, invocationCount);
+        }
+        finally
+        {
+            GameFrameX.Core.Timer.GlobalTimer.IsWorking = originalIsWorking;
+            RemoveRegistration(typeof(ReplaceableRegistrationState));
+            RemoveRegistration(typeof(IndependentRegistrationState));
+            RemoveRegistration(typeof(TimerSaveIsolationState));
+        }
+    }
+
+    /// <summary>定时回存隔离用例的第三个注册键状态类型。/ Third marker state type for the timer-save isolation case.</summary>
+    private sealed class TimerSaveIsolationState
+    {
+    }
+
+    /// <summary>
     /// 反射清理本测试注入的注册条目（注册表无公开注销 API，沿用静态字典反射清理先例）。
     /// Reflectively remove registrations injected by these tests (the registry exposes no public
     /// unregister API; follows the established static-dictionary reflection cleanup pattern).
