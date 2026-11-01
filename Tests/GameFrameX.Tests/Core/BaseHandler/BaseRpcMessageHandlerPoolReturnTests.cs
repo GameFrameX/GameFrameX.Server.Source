@@ -80,10 +80,30 @@ public sealed class BaseRpcMessageHandlerPoolReturnTests
         Assert.Equal(0, snapshot.ErrorCode);
         Assert.Equal(RequestUniqueId, snapshot.UniqueId);
 
-        // 成功路径任务终态后归还：下一次借用应复得同一实例（DefaultObjectPool 后进先出）
-        var nextBorrowed = MessageObjectPoolHelper.Get<PoolReturnTestResponse>();
-        Assert.Same(handler.ReceivedResponse, nextBorrowed);
-        MessageObjectPoolHelper.Return(nextBorrowed);
+        // 成功路径任务终态后归还：归还实例必须可重新借得。DefaultObjectPool 为「单快槽+有界队列」，
+        // Get/Return 乒乓会让快槽恒被占、队列排不到目标实例——采用持有式排空：借出的非目标实例
+        // 持有不还，逐个推进快槽与队列，目标实例必然在有限次借出内出现（本类型仅本测试类流通，
+        // 队列深度受类内实例数约束）。未归还回归时借出恒为新实例 → 红（捕获意图不变）。
+        var returnedResponse = handler.ReceivedResponse;
+        var heldResponses = new List<PoolReturnTestResponse>();
+        var reborrowedWithinDrain = false;
+        for (var borrowIndex = 0; borrowIndex < 32; borrowIndex++)
+        {
+            var borrowed = MessageObjectPoolHelper.Get<PoolReturnTestResponse>();
+            heldResponses.Add(borrowed);
+            if (ReferenceEquals(borrowed, returnedResponse))
+            {
+                reborrowedWithinDrain = true;
+                break;
+            }
+        }
+
+        foreach (var heldResponse in heldResponses)
+        {
+            MessageObjectPoolHelper.Return(heldResponse);
+        }
+
+        Assert.True(reborrowedWithinDrain);
     }
 
     [Fact]

@@ -1,13 +1,30 @@
 // ==========================================================================================
-//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他权利
+//   GameFrameX 组织及其衍生项目的版权、商标、专利及其他相关权利
+//   GameFrameX organization and its derivative projects' copyrights, trademarks, patents, and related rights
 //   均受中华人民共和国及相关国际法律法规保护。
-//   are protected by the laws of the People's Republic of China and relevant international regulations.
+//   are protected by the laws of the People's Republic of China and related international regulations.
 //   使用本项目须严格遵守相应法律法规与开源许可证之规定。
 //   Usage of this project must strictly comply with applicable laws, regulations, and open-source licenses.
 //   本项目采用 Apache License 2.0 单协议分发，
 //   This project is licensed solely under the Apache License 2.0,
 //   完整许可证文本请参见源代码根目录下的 LICENSE 文件。
-//   please refer to the LICENSE file at the root of the source code for the full license text.
+//   please see the LICENSE file in the root directory of the source code for the full license text.
+//   禁止利用本项目实施任何危害国家安全、破坏社会秩序、
+//   It is prohibited to use this project to engage in any activities that endanger national security, disrupt social order,
+//   侵犯他人合法权益等法律法规所禁止的行为！
+//   or infringe upon the legal rights and interests of others, as prohibited by laws and regulations!
+//   因基于本项目二次开发所产生的一切法律纠纷与责任，
+//   Any legal disputes or liabilities arising from secondary development based on this project
+//   本组织与贡献者概不承担。
+//   shall be borne solely by the developer; the project organization and contributors assume no responsibility.
+//   GitHub 仓库：https://github.com/GameFrameX
+//   GitHub Repository:  https://github.com/GameFrameX
+//   Gitee  仓库：https://gitee.com/GameFrameX
+//   Gitee Repository:   https://gitee.com/GameFrameX
+//   CNB  仓库：https://cnb.cool/GameFrameX
+//   CNB Repository:     https://cnb.cool/GameFrameX
+//   官方文档：https://gameframex.doc.alianblank.com/
+//   Official Documentation: https://gameframex.doc.alianblank.com/
 //  ==========================================================================================
 
 using System.Collections;
@@ -17,8 +34,7 @@ using GameFrameX.Core.Components;
 using GameFrameX.Core.Hotfix;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Foundation.Localization.Providers;
-using GameFrameX.Hotfix.Logic.Player.Login;
-using GameFrameX.Network.Abstractions;
+using GameFrameX.Hotfix.Tests.Probes;
 using GameFrameX.Utility.Setting;
 using Xunit;
 
@@ -31,46 +47,38 @@ namespace GameFrameX.Hotfix.Tests;
 /// 带 <c>[MessageMapping]</c> 的处理器类型必须在热更程序集装载期完成可实例化校验（实现 <c>IMessageHandler</c>
 /// 且具有公共无参构造函数），而不是推迟到首条消息到达才以类型异常爆出；消息处理器映射表保存注册期构建的
 /// 强类型工厂委托，<c>GetMessageHandler</c> 每次调用产出新实例（处理器有状态，禁止单例或池化）。
+/// 探针类型集中于独立探针程序集，注册入口经反射直驱，不依赖类型枚举顺序（确定性）。
 /// </remarks>
 public sealed class HotfixModuleMessageHandlerFactoryTests
 {
-    /// <summary>
-    /// 测试专用消息号一（不参与任何真实协议派发，仅保证两个探针映射到不同消息类型）。
-    /// </summary>
-    private const int FirstProbeMessageId = 990_001;
-
-    /// <summary>
-    /// 测试专用消息号二。
-    /// </summary>
-    private const int SecondProbeMessageId = 990_002;
-
     [Fact]
     public async Task HotfixModule_Construction_ThrowsFast_WhenMessageHandlerTypeViolatesInstantiationContract()
     {
         await InitializeEnvironmentAsync();
 
-        // 测试程序集内只有本测试的两个探针携带 [MessageMapping]（已核对无其他来源），
-        // 类型枚举顺序不确定，两个探针违例形态不同但装载即抛同一契约异常
-        var exception = Assert.Throws<InvalidOperationException>(() => new HotfixModule(typeof(NotMessageHandlerProbeHandler).Assembly));
+        // 干净程序集模块 + 反射直驱注册入口：探针处理器带 [MessageMapping] 但不实现 IMessageHandler，
+        // 注册期即抛契约异常（语义等价整程序集装载 fail-fast，且顺序无关、确定性）
+        var module = CreateCleanAssemblyModule();
+        var probeType = typeof(HotfixRegistrationProbes.NotMessageHandlerProbeHandler);
+
+        var invocationException = Assert.Throws<TargetInvocationException>(() => InvokeRegistration(module, "AddMessageHandler", probeType));
 
         // 异常必须携带服务类型定位，装载日志可直接定位问题注册项
-        Assert.Contains(nameof(IMessageHandler), exception.Message);
-        Assert.True(
-            exception.Message.Contains(typeof(NotMessageHandlerProbeHandler).FullName!)
-            || exception.Message.Contains(typeof(MissingParameterlessConstructorMessageHandler).FullName!),
-            $"装载异常应指向其中一个探针类型，实际: {exception.Message}");
+        var exception = Assert.IsType<InvalidOperationException>(invocationException.InnerException);
+        Assert.Contains(probeType.FullName, exception.Message);
+        Assert.Contains(nameof(GameFrameX.Network.Abstractions.IMessageHandler), exception.Message);
     }
 
     [Fact]
     public async Task CreateFactory_RejectsMessageHandlerTypeNotImplementingIMessageHandler()
     {
-        await RunCreateFactoryRejectsProbeAsync(typeof(NotMessageHandlerProbeHandler));
+        await RunCreateFactoryRejectsProbeAsync(typeof(HotfixRegistrationProbes.NotMessageHandlerProbeHandler));
     }
 
     [Fact]
     public async Task CreateFactory_RejectsMessageHandlerWithoutPublicParameterlessConstructor()
     {
-        await RunCreateFactoryRejectsProbeAsync(typeof(MissingParameterlessConstructorMessageHandler));
+        await RunCreateFactoryRejectsProbeAsync(typeof(HotfixRegistrationProbes.MissingParameterlessConstructorMessageHandler));
     }
 
     [Fact]
@@ -78,7 +86,7 @@ public sealed class HotfixModuleMessageHandlerFactoryTests
     {
         await InitializeEnvironmentAsync();
 
-        var module = new HotfixModule(typeof(LoginComponentAgent).Assembly);
+        var module = new HotfixModule(typeof(Hotfix.Logic.Player.Login.LoginComponentAgent).Assembly);
         var handlerMap = ReadPrivateDictionary(module, "_messageHandlerMap");
         Assert.NotEmpty(handlerMap);
 
@@ -86,7 +94,7 @@ public sealed class HotfixModuleMessageHandlerFactoryTests
         foreach (DictionaryEntry entry in handlerMap)
         {
             // 注册期构建的必须是强类型工厂委托，而非处理器 Type（旧实现存 Type，此断言即 A/B 判别点）
-            var messageHandlerFactory = Assert.IsAssignableFrom<Func<IMessageHandler>>(entry.Value);
+            var messageHandlerFactory = Assert.IsAssignableFrom<Func<GameFrameX.Network.Abstractions.IMessageHandler>>(entry.Value);
             var messageHandler = messageHandlerFactory();
             Assert.NotNull(messageHandler);
 
@@ -115,12 +123,12 @@ public sealed class HotfixModuleMessageHandlerFactoryTests
 
         var createFactoryMethod = typeof(HotfixModule).GetMethod(CreateFactoryMethodName, BindingFlags.NonPublic | BindingFlags.Static)
                                   ?? throw new InvalidOperationException($"未找到 HotfixModule.{CreateFactoryMethodName}");
-        var closedMethod = createFactoryMethod.MakeGenericMethod(typeof(IMessageHandler));
+        var closedMethod = createFactoryMethod.MakeGenericMethod(typeof(GameFrameX.Network.Abstractions.IMessageHandler));
         var invocationException = Assert.Throws<TargetInvocationException>(() => closedMethod.Invoke(null, new object[] { probeType }));
 
         var exception = Assert.IsType<InvalidOperationException>(invocationException.InnerException);
         Assert.Contains(probeType.FullName, exception.Message);
-        Assert.Contains(nameof(IMessageHandler), exception.Message);
+        Assert.Contains(nameof(GameFrameX.Network.Abstractions.IMessageHandler), exception.Message);
     }
 
     /// <summary>
@@ -128,6 +136,24 @@ public sealed class HotfixModuleMessageHandlerFactoryTests
     /// The production factory method name (located via reflection, single source of truth with the production method name).
     /// </summary>
     private const string CreateFactoryMethodName = "CreateFactory";
+
+    /// <summary>
+    /// 构造无任何注册类型的干净程序集模块（本地化程序集仅含资源键，无代理/监听器/处理器）。
+    /// </summary>
+    private static HotfixModule CreateCleanAssemblyModule()
+    {
+        return new HotfixModule(typeof(GameFrameX.Localization.Keys.CoreExceptions.HotfixModule).Assembly);
+    }
+
+    /// <summary>
+    /// 反射直驱私有注册入口（探针类型不进入任何整集扫描面）。
+    /// </summary>
+    private static object InvokeRegistration(HotfixModule module, string methodName, params object[] arguments)
+    {
+        var method = typeof(HotfixModule).GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.NotNull(method);
+        return method.Invoke(module, arguments);
+    }
 
     /// <summary>
     /// 初始化组件注册表与进程级设置（沿用装配护栏测试先例的缺省初始化）。
@@ -154,88 +180,5 @@ public sealed class HotfixModuleMessageHandlerFactoryTests
         var field = typeof(HotfixModule).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.NotNull(field);
         return Assert.IsAssignableFrom<IDictionary>(field.GetValue(module));
-    }
-
-    /// <summary>
-    /// 探针消息类型一：携带消息号特性供映射注册读取。
-    /// </summary>
-    [MessageTypeHandler(FirstProbeMessageId)]
-    public sealed class FirstFactoryProbeMessage
-    {
-    }
-
-    /// <summary>
-    /// 探针消息类型二。
-    /// </summary>
-    [MessageTypeHandler(SecondProbeMessageId)]
-    public sealed class SecondFactoryProbeMessage
-    {
-    }
-
-    /// <summary>
-    /// 注册期校验探针一：带 [MessageMapping] 但不实现 IMessageHandler（旧实现推迟到首条消息才抛 WrongMessageHandlerType）。
-    /// </summary>
-    [MessageMapping(typeof(FirstFactoryProbeMessage))]
-    internal sealed class NotMessageHandlerProbeHandler
-    {
-    }
-
-    /// <summary>
-    /// 注册期校验探针二：实现 IMessageHandler 但仅提供带参构造，故意不提供公共无参构造函数。
-    /// </summary>
-    [MessageMapping(typeof(SecondFactoryProbeMessage))]
-    internal sealed class MissingParameterlessConstructorMessageHandler : IMessageHandler
-    {
-        /// <summary>
-        /// 唯一带参构造：使本类型在注册期构造校验中失败（无公共无参构造函数）。
-        /// </summary>
-        /// <param name="constructorValue">占位构造参数（无实际用途）。</param>
-        public MissingParameterlessConstructorMessageHandler(int constructorValue)
-        {
-        }
-
-        /// <summary>
-        /// 初始化探针：固定返回成功，不承载业务。
-        /// Initializes the probe: always returns success, carries no business logic.
-        /// </summary>
-        /// <param name="message">消息对象 / Message object</param>
-        /// <param name="networkChannel">网络渠道 / Network channel</param>
-        /// <returns>固定返回 <c>true</c> / Always returns <c>true</c></returns>
-        public Task<bool> InitAsync(INetworkMessage message, INetworkChannel networkChannel)
-        {
-            return Task.FromResult(true);
-        }
-
-        /// <summary>
-        /// 内部执行探针：立即完成，不承载业务。
-        /// Internal execution probe: completes immediately, carries no business logic.
-        /// </summary>
-        /// <param name="timeout">执行超时时间，单位毫秒 / Execution timeout in milliseconds</param>
-        /// <param name="cancellationToken">取消令牌 / Cancellation token</param>
-        /// <returns>已完成的任务 / A completed task</returns>
-        public Task InnerActionAsync(int timeout = 30000, CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
-
-        /// <summary>
-        /// 获取探针处理的消息类型。
-        /// Gets the probe message type handled by this handler.
-        /// </summary>
-        /// <returns>探针消息类型 / The probe message type</returns>
-        public Type GetMessageType()
-        {
-            return typeof(SecondFactoryProbeMessage);
-        }
-
-        /// <summary>
-        /// 获取探针响应类型（与消息类型一致，无真实协议语义）。
-        /// Gets the probe response type (identical to the message type, no real protocol semantics).
-        /// </summary>
-        /// <returns>探针消息类型 / The probe message type</returns>
-        public Type GetResponseType()
-        {
-            return typeof(SecondFactoryProbeMessage);
-        }
     }
 }
