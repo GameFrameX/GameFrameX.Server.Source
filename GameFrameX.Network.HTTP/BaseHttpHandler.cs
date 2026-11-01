@@ -137,7 +137,7 @@ public abstract class BaseHttpHandler : IHttpHandler
         // 内部验证
         if (!paramMap.ContainsKey(GlobalConst.HttpSignKey) || !paramMap.ContainsKey(GlobalConst.HttpTimestampKey))
         {
-            error = HttpJsonResultData<string>.ValidationErrorString();
+            error = HttpJsonResultData<string>.ValidationErrorString(HttpStatusMessage.ParamErrorMessage);
             return false;
         }
 

@@ -40,14 +40,6 @@ namespace GameFrameX.Network.HTTP;
 /// </remarks>
 public static class HttpStatusMessage
 {
-    /// <summary>
-    /// 成功状态消息常量。
-    /// </summary>
-    /// <remarks>
-    /// Success status message constant.
-    /// </remarks>
-    /// <value>成功消息字符串 / Success message string</value>
-    public const string Success = "ok";
 
     /// <summary>
     /// 获取未定义命令的错误消息。
@@ -59,30 +51,6 @@ public static class HttpStatusMessage
     public static string UndefinedCommand
     {
         get { return LocalizationService.GetString(Localization.Keys.NetworkHttp.UndefinedCommand); }
-    }
-
-    /// <summary>
-    /// 获取未找到命令的错误消息。
-    /// </summary>
-    /// <remarks>
-    /// Gets the error message for not found commands.
-    /// </remarks>
-    /// <value>未找到命令的本地化错误消息 / Localized error message for not found commands</value>
-    public static string NotFoundCommand
-    {
-        get { return LocalizationService.GetString(Localization.Keys.NetworkHttp.NotFoundCommand); }
-    }
-
-    /// <summary>
-    /// 获取验证失败的错误消息。
-    /// </summary>
-    /// <remarks>
-    /// Gets the error message for validation failures.
-    /// </remarks>
-    /// <value>验证失败的本地化错误消息 / Localized error message for validation failures</value>
-    public static string CheckFailedCommand
-    {
-        get { return LocalizationService.GetString(Localization.Keys.NetworkHttp.CheckFailedCommand); }
     }
 
     /// <summary>

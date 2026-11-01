@@ -15,6 +15,7 @@
 ## [Unreleased]
 
 ### Fixed
+* HTTP 请求管线正确性与响应一致性（C458，GFX-1180，GitHub #926）：ProtoBuf 成功响应写出前更正 Content-Type 为 `application/x-protobuf`（原恒为 JSON，按媒体类型分派的客户端/网关解析二进制体失败）；参数字典改 OrdinalIgnoreCase 并同步把 Query 提取改 TryAdd——大小写差异同名键（Query↔Body、Query↔Query）一律显式 `ParamErr` 拒绝，消除「被校验/被签名的 Query 值被 Body 静默覆盖」窗口；非 JSON 对象 Body（null 字面量/数组/标量/空体）以参数错误拒绝（新键 `Network.Http.RequestBodyNotJsonObject`），不再落入顶层 catch 记服务器错误日志；非 GET 缺 Content-Type 改统一 JSON envelope；DataAnnotations 校验失败业务码由字面量 400 统一为 `GameHttpStatusCode.ParamErr`；Swagger 路由匹配改末段精确比较（互为后缀命令不再错配文档，驼峰路由可匹配）且 GET 参数必填性跟随 `RequiredAttribute`；AOP 拒绝且未自行写响应时管线回写校验失败 envelope（契约写入 `IHttpAopHandler.Run`）；`CheckSign` 缺 sign/timestamp 改本地化消息。对外破坏性：依赖 `code == 400` 判定校验失败的客户端改判 `code == 13`；`HttpStatusMessage.Success`/`NotFoundCommand`/`CheckFailedCommand` 及孤儿键 `Network.Http.NotFoundCommand`/`CheckFailedCommand` 删除（公共 API，下游如有引用需迁移）。
 
 * 入队与定时撮合解耦（C406，GFX-1104）：删除每次入队的全量撮合及最新票据扫描，复用 `matchmaker-run` 按宿主调度节奏批量处理队列（默认 1000ms）。单轮撮合算法保持不变；桥测试覆盖四名玩家单批次形成两组及批次前取消不参与分配。
 * 撮合通知异步执行与停用退订（C407，GFX-1105，GitHub #733）：`ICapabilityEventBus.Subscribe` 返回幂等 `IDisposable` 退订句柄（void → IDisposable 为二进制破坏性变更——包族消费方需重新编译；源码侧忽略返回值的既有调用不受影响）；online-match 模块撮合分配事件回调改为纯入队（移除同步总线回调内 `ResolveAssignmentAsync` / `session.WriteAsync` 两处 `GetAwaiter().GetResult()` 死锁面），新增 `match-assignment-notification-tick` 每轮有限批次（64）异步解析并推送（条目级失败不阻断同批其余条目，异常交调度器既有日志路径）；`DeactivateAsync` 停用收口——关闭入队、退订、清空待处理并等待在途批次完成，热更/停机后旧模块零通知。回归 13 例：总线退订契约 5 + 模块生命周期 8（含对旧同步实现确定性红的发布不同步解析 / 停用退订 / 停用清空 / 容错批次）。

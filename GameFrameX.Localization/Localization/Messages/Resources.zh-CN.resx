@@ -212,17 +212,14 @@
     <data name="Network.Http.DataVerificationFailed" xml:space="preserve">
     <value>数据验证失败</value>
   </data>
+    <data name="Network.Http.RequestBodyNotJsonObject" xml:space="preserve">
+    <value>请求体必须是 JSON 对象</value>
+  </data>
     <data name="Network.Http.HttpCommandMissingValidationParameters" xml:space="preserve">
     <value>http命令未包含验证参数{0} 和 {1}</value>
   </data>
     <data name="Network.Http.UndefinedCommand" xml:space="preserve">
     <value>未定义的命令</value>
-  </data>
-    <data name="Network.Http.NotFoundCommand" xml:space="preserve">
-    <value>未找到的命令</value>
-  </data>
-    <data name="Network.Http.CheckFailedCommand" xml:space="preserve">
-    <value>验证失败的命令</value>
   </data>
     <data name="Network.Http.ServerError" xml:space="preserve">
     <value>服务器错误</value>

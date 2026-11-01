@@ -69,7 +69,7 @@ public class HttpMessageMappingAttributeTests
         Assert.Equal(18, request.Age);
     }
 
-    // (a) [Required] 字段缺失 → 校验错误响应（非 code 0），handler 不执行
+    // (a) [Required] 字段缺失 → 参数错误响应（C458 起业务码统一为 GameHttpStatusCode.ParamErr，不再用 HTTP 语义字面量 400），handler 不执行
     [Fact]
     public async Task HandleRequest_ShouldReturnValidationError_WhenRequiredFieldIsMissing()
     {
@@ -86,7 +86,7 @@ public class HttpMessageMappingAttributeTests
         Assert.False(handlerCalled);
         var code = GetResponseCode(context);
         Assert.NotEqual(0, code);
-        Assert.Equal(400, code);
+        Assert.Equal(GameHttpStatusCode.ParamErr, code);
     }
 
     // (b) GET + RequestType → Query 参数绑定到强类型请求并执行
