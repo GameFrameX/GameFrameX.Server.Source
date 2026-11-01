@@ -167,12 +167,32 @@ public sealed class Actor : IActor, IDisposable
         }
 
         var agent = component.GetAgent(agentType);
-        if (!component.IsActive)
+        // 快速路径：只有整个激活流程结束才放行——IsActive 在激活一开始即置位，
+        // 激活进行中（读库/代理三段回调未完）时外部调用者必须排队等待，不能提前拿到 agent。
+        if (!component.IsActivationCompleted)
         {
-            await SendAsyncWithoutCheck(() => ActivateComponentAsync(component, agent, compType));
+            await SendAsyncWithoutCheck(() => ActivateComponentIfNeededAsync(component, agent, compType));
         }
 
         return agent;
+    }
+
+    /// <summary>
+    /// 在 actor 上下文内复检后再激活：排在前面的激活工作单元已完成（或当前是激活过程中的内联嵌套调用，
+    /// IsActive 已为 true）时直接返回，不重复执行激活逻辑。
+    /// </summary>
+    /// <param name="component">要激活的组件实例</param>
+    /// <param name="agent">组件对应的代理实例</param>
+    /// <param name="compType">组件类型,用于日志记录</param>
+    /// <returns>表示异步操作的任务</returns>
+    private Task ActivateComponentIfNeededAsync(BaseComponent component, IComponentAgent agent, Type compType)
+    {
+        if (component.IsActive)
+        {
+            return Task.CompletedTask;
+        }
+
+        return ActivateComponentAsync(component, agent, compType);
     }
 
     /// <summary>
@@ -213,6 +233,8 @@ public sealed class Actor : IActor, IDisposable
                 throw;
             }
         }
+        // 与既有行为一致：激活失败也视为流程结束（不重试），等待方不再被阻塞。
+        component.IsActivationCompleted = true;
     }
 
     /// <summary>

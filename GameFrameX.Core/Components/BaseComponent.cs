@@ -55,6 +55,27 @@ public abstract class BaseComponent : IComponent, IState
     public bool IsActive { get; private set; }
 
     /// <summary>
+    /// 激活流程（组件激活 + 代理三段激活回调）是否已全部完成。
+    /// </summary>
+    /// <remarks>
+    /// 由 actor 上下文写入，可能被 actor 外部线程读取，因此使用 volatile；
+    /// 与 <see cref="IsActive"/>（激活开始即置位）区分，供快速路径判断是否可以放行。
+    /// Whether the whole activation flow (component activation plus the agent's three-phase
+    /// activation callbacks) has completed; written on the actor context and read from outside,
+    /// hence volatile. Distinct from <see cref="IsActive"/> (set at activation start).
+    /// </remarks>
+    private volatile bool _isActivationCompleted;
+
+    /// <summary>
+    /// 激活流程是否已全部完成
+    /// </summary>
+    internal bool IsActivationCompleted
+    {
+        get { return _isActivationCompleted; }
+        set { _isActivationCompleted = value; }
+    }
+
+    /// <summary>
     /// 是否准备完毕
     /// </summary>
     /// <returns>是否准备完毕</returns>
@@ -136,6 +157,7 @@ public abstract class BaseComponent : IComponent, IState
         finally
         {
             IsActive = false;
+            _isActivationCompleted = false;
         }
     }
 
