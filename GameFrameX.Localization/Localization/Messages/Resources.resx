@@ -1984,6 +1984,10 @@
     <value>[AdvertiseEndpointEnvironment] egress address detection failed; falling back to the machine name {0} as the advertise host. Set {1} explicitly when cross-process routing is required.</value>
   </data>
 
+
+  <data name="Discovery.Registry.TerminalHeartbeatFailed" xml:space="preserve">
+    <value>[DiscoveryRegistry] terminal heartbeat write failed (not completed within the 2s timeout); leaving it to TTL cleanup</value>
+  </data>
   <data name="Discovery.Registry.HeartbeatUpsertFailed" xml:space="preserve">
     <value>[DiscoveryRegistry] heartbeat upsert failed for instance {0}; will retry next interval</value>
   </data>

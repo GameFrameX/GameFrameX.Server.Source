@@ -1978,6 +1978,10 @@
     <value>[AdvertiseEndpointEnvironment] 出口地址探测失败；回退使用机器名 {0} 作为广播主机。需要跨进程路由时请显式设置 {1}</value>
   </data>
 
+
+  <data name="Discovery.Registry.TerminalHeartbeatFailed" xml:space="preserve">
+    <value>[DiscoveryRegistry] 终态心跳写入失败（超时 2s 内未完成），交给 TTL 兜底清除</value>
+  </data>
   <data name="Discovery.Registry.HeartbeatUpsertFailed" xml:space="preserve">
     <value>[DiscoveryRegistry] 实例 {0} 心跳写入失败；将在下个间隔重试</value>
   </data>

@@ -355,11 +355,7 @@ public sealed class DiscoveryRegistry : IDisposable
         try
         {
             _loopCancellation.Cancel();
-            WriteStoppedAsync().GetAwaiter().GetResult();
-        }
-        catch (Exception)
-        {
-            // 尽力而为：进程退出路径上数据库不可达时无法补写终态，交给 TTL 兜底清除。
+            WriteTerminalHeartbeatSafely();
         }
         finally
         {
@@ -470,13 +466,32 @@ public sealed class DiscoveryRegistry : IDisposable
     /// <param name="eventArguments">事件参数 / The event arguments</param>
     private void OnProcessExit(object sender, EventArgs eventArguments)
     {
-        try
+        WriteTerminalHeartbeatSafely();
+    }
+
+    /// <summary>
+    /// 终态心跳的同步尽力写入：2 秒超时 + Task.Run 脱离可能的 SynchronizationContext，
+    /// 避免存在同步上下文时死锁；失败/超时记日志不阻塞退出（TTL 兜底清除）。
+    /// </summary>
+    /// <remarks>
+    /// Best-effort synchronous write of the terminal heartbeat: a 2-second timeout and
+    /// Task.Run to escape any SynchronizationContext (deadlock guard); failures and
+    /// timeouts are logged without blocking exit (TTL cleanup is the fallback).
+    /// </remarks>
+    private void WriteTerminalHeartbeatSafely()
+    {
+        using (var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2)))
         {
-            WriteStoppedAsync().GetAwaiter().GetResult();
-        }
-        catch (Exception)
-        {
-            // 进程退出路径上数据库不可达时无法补写终态，交给 TTL 兜底清除。
+            try
+            {
+                Task.Run(() => WriteStoppedAsync(), cancellation.Token).GetAwaiter().GetResult();
+            }
+            catch (Exception exception)
+            {
+                // 尽力而为：进程退出路径上数据库不可达/超时时无法补写终态，交给 TTL 兜底清除。
+                // Localization: Discovery.Registry.TerminalHeartbeatFailed - [DiscoveryRegistry] 终态心跳写入失败（超时 2s 内未完成），交给 TTL 兜底清除
+                LogHelper.Error(exception, LocalizationService.GetString(Localization.Keys.Discovery.Registry.TerminalHeartbeatFailed));
+            }
         }
     }
 
