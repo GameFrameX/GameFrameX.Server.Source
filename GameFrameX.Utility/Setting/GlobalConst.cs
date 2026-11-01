@@ -274,6 +274,14 @@ public static class GlobalConst
     /// </remarks>
     public const string HttpTimestampKey = "timestamp";
 
+    /// <summary>
+    /// HTTP 请求的随机数（nonce）字段名称，用于签名防重放
+    /// </summary>
+    /// <remarks>
+    /// HTTP request nonce field name, used for signature replay protection.
+    /// </remarks>
+    public const string HttpNonceKey = "nonce";
+
     #endregion
 
 
