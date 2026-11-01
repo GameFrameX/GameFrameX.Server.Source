@@ -759,6 +759,14 @@ public struct FPVector3
     public static void Normalize(ref FPVector3 value, out FPVector3 result)
     {
         var num2 = value.x * value.x + value.y * value.y + value.z * value.z;
+        if (num2 == FP.Zero)
+        {
+            // 零向量归一化保持零向量：避免 1/0 的 MaxValue 哨兵随运算（含 ClampMagnitude）扩散
+            // Normalizing a zero vector stays zero: prevents the MaxValue sentinel from 1/0 spreading through later math (ClampMagnitude included).
+            result = zero;
+            return;
+        }
+
         var num = FP.One / FP.Sqrt(num2);
         result.x = value.x * num;
         result.y = value.y * num;

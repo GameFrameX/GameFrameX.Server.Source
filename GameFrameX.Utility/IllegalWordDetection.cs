@@ -111,6 +111,15 @@ public sealed class IllegalWordDetection
     private static readonly BitArray EndCache = new(char.MaxValue);
 
     /// <summary>
+    /// 注册状态门：0 = 就绪可用，1 = 注册进行中。
+    /// 注册期间 <see cref="DetectIllegalWords"/> 直接放行返回 false，杜绝后台 Init 与玩家消息并发读写非线程安全结构；同一时刻只允许一个注册过程。
+    /// Registration state gate: 0 = ready, 1 = registration in progress.
+    /// During registration <see cref="DetectIllegalWords"/> passes through returning false, preventing concurrent
+    /// reads/writes of the non-thread-safe structures; only one registration may run at a time.
+    /// </summary>
+    private static int _registrationState;
+
+    /// <summary>
     /// 通过配置表数据初始化敏感词检测器。
     /// </summary>
     /// <remarks>
@@ -196,7 +205,7 @@ public sealed class IllegalWordDetection
             return;
         }
 
-        var startTime = DateTime.Now;
+        var startTime = DateTime.UtcNow;
         var offset = 0;
         var fieldNum = data.ReadIntBigEndianValue(ref offset);
         var typeList = new List<byte>();
@@ -211,23 +220,39 @@ public sealed class IllegalWordDetection
             nameList.Add(data.ReadStringBigEndianValue(ref offset));
         }
 
-        var activeNum = 0;
-        while (data.Length > offset)
+        if (Interlocked.Exchange(ref _registrationState, 1) != 0)
         {
-            var word = ReadBadWordFromRecord(data, ref offset, typeList, badIdx);
-            if (string.IsNullOrEmpty(word))
-            {
-                continue;
-            }
-
-            if (RegisterBadWord(word))
-            {
-                activeNum++;
-            }
+            // Localization: Utility.IllegalWordDetection.InitAlreadyInProgress - IllegalWordDetection.Init 已在进行中，拒绝新的初始化请求
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Utility.IllegalWordDetection.InitAlreadyInProgress));
+            return;
         }
 
-        // 记录应该跳过的不予检测的词
-        InitSkipBitArray();
+        var activeNum = 0;
+
+        try
+        {
+            ResetRegistrationState();
+            while (data.Length > offset)
+            {
+                var word = ReadBadWordFromRecord(data, ref offset, typeList, badIdx);
+                if (string.IsNullOrEmpty(word))
+                {
+                    continue;
+                }
+
+                if (RegisterBadWord(word))
+                {
+                    activeNum++;
+                }
+            }
+
+            // 记录应该跳过的不予检测的词
+            InitSkipBitArray();
+        }
+        finally
+        {
+            Volatile.Write(ref _registrationState, 0);
+        }
 
         // Localization: Utility.IllegalWordDetection.InitializationComplete - 敏感词初始化耗时:{0}ms, 有效数量:{1}
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.Utility.IllegalWordDetection.InitializationComplete, (DateTime.UtcNow - startTime).TotalMilliseconds, activeNum));
@@ -258,6 +283,12 @@ public sealed class IllegalWordDetection
                     else
                     {
                         var len = data.ReadShortBigEndianValue(ref offset);
+                        if (len < 0 || offset + len > data.Length)
+                        {
+                            // Localization: Utility.IllegalWordDetection.BadWordTableCorrupted - IllegalWordDetection 敏感词表数据损坏：偏移 {1} 处字段长度非法 {0}，数据总长度 {2}
+                            throw new InvalidDataException(LocalizationService.GetString(Localization.Keys.Utility.IllegalWordDetection.BadWordTableCorrupted, len, offset, data.Length));
+                        }
+
                         offset += len;
                     }
 
@@ -324,28 +355,55 @@ public sealed class IllegalWordDetection
         }
 
         var startTime = DateTime.UtcNow;
-        var activeNum = 0;
-        for (int stringIndex = 0, len = badWords.Length; stringIndex < len; ++stringIndex)
-        {
-            if (string.IsNullOrEmpty(badWords[stringIndex]))
-            {
-                continue;
-            }
 
-            if (RegisterBadWord(badWords[stringIndex]))
-            {
-                activeNum++;
-            }
+        if (Interlocked.Exchange(ref _registrationState, 1) != 0)
+        {
+            // Localization: Utility.IllegalWordDetection.InitAlreadyInProgress - IllegalWordDetection.Init 已在进行中，拒绝新的初始化请求
+            LogHelper.Warning(LocalizationService.GetString(Localization.Keys.Utility.IllegalWordDetection.InitAlreadyInProgress));
+            return;
         }
 
-        // 记录应该跳过的不予检测的词
-        foreach (var c in SkipList)
+        int activeNum;
+        try
         {
-            SkipBitArray[c] = true;
+            ResetRegistrationState();
+            activeNum = 0;
+            for (int stringIndex = 0, len = badWords.Length; stringIndex < len; ++stringIndex)
+            {
+                if (string.IsNullOrEmpty(badWords[stringIndex]))
+                {
+                    continue;
+                }
+
+                if (RegisterBadWord(badWords[stringIndex]))
+                {
+                    activeNum++;
+                }
+            }
+
+            // 记录应该跳过的不予检测的词
+            InitSkipBitArray();
+        }
+        finally
+        {
+            Volatile.Write(ref _registrationState, 0);
         }
 
         // Localization: Utility.IllegalWordDetection.InitializationComplete - 敏感词初始化耗时:{0}ms, 有效数量:{1}
         LogHelper.Info(LocalizationService.GetString(Localization.Keys.Utility.IllegalWordDetection.InitializationComplete, (DateTime.UtcNow - startTime).TotalMilliseconds, activeNum));
+    }
+
+    /// <summary>
+    /// 清空全部注册结构，保证 Init 可重入：删词热更重载后旧词立即失效。
+    /// Clears every registration structure so Init is re-entrant: removed words stop matching immediately after a hot reload.
+    /// </summary>
+    private static void ResetRegistrationState()
+    {
+        Array.Clear(FastCheck, 0, FastCheck.Length);
+        Array.Clear(FastLength, 0, FastLength.Length);
+        Array.Clear(StartCache, 0, StartCache.Length);
+        EndCache.SetAll(false);
+        WordsSet.Clear();
     }
 
     private static string OriginalToLower(string text)
@@ -365,20 +423,6 @@ public sealed class IllegalWordDetection
         return new string(chars);
     }
 
-    private static bool EnsuranceLower(string text)
-    {
-        for (int i = 0; i < text.Length; i++)
-        {
-            var c = text[i];
-
-            if (c >= 'A' && c <= 'Z')
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
 
     /// <summary>
     /// 过滤字符串，默认遇到敏感词汇就以'*'代替。
@@ -538,10 +582,19 @@ public sealed class IllegalWordDetection
             return false;
         }
 
-        if (EnsuranceLower(text))
+        // 注册进行中：静态结构正被并发写入，直接放行返回未命中，杜绝与后台 Init 的数据竞争
+        // Registration in progress: the static structures are being written concurrently; pass through as no-match
+        // to avoid the data race with the background Init.
+        if (Volatile.Read(ref _registrationState) != 0)
         {
-            text = text.ToLower();
+            return false;
         }
+
+        // 与词典注册侧（RegisterBadWord → OriginalToLower）使用同一 ASCII 折叠，避免区域敏感 ToLower 在
+        // tr-TR 等文化下把 'I' 折成 'ı' 导致含 I 的英文敏感词全部漏检
+        // Use the same ASCII folding as registration (RegisterBadWord → OriginalToLower); a culture-sensitive
+        // ToLower would fold 'I' into 'ı' under tr-TR-like cultures and miss every English word containing I.
+        text = OriginalToLower(text);
 
         var textLength = text.Length;
         var detectedBuffer = GetDetectedBuffer(textLength);

@@ -348,12 +348,12 @@ public struct LNumber : IComparable<LNumber>, IEquatable<LNumber>
 
         if ((rhs.Raw + factor) >> 1 == 0)
         {
-            //Debug.LogError("除0了");
-            return 0;
+            // Localization: Utility.LNumber.DivisionByZero - LNumber 除数为零
+            throw new DivideByZeroException(LocalizationService.GetString(Localization.Keys.Utility.LNumber.DivisionByZero));
         }
 
         LNumber r;
-        if (lhs.Raw > 1L << (62 - FRACTION_BITS))
+        if (lhs.Raw > 1L << (62 - FRACTION_BITS) || lhs.Raw < -(1L << (62 - FRACTION_BITS)))
         {
             //可能越界了
             BigInteger a = lhs.Raw;
