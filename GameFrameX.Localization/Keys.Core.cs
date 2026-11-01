@@ -635,6 +635,16 @@ public static partial class Keys
             public const string RpcGetComponentFailed = "Core.MessageHandler.RpcGetComponentFailed";
 
             /// <summary>
+            /// BaseRpcComponentHandler 组件RPC处理器执行超时，消息类型:{0} 超时:{1}ms
+            /// </summary>
+            /// <remarks>
+            /// 键名: Core.MessageHandler.RpcComponentExecutionTimeout
+            /// 用途: 组件RPC处理器业务核心超时时记录并回写超时响应
+            /// 参数: {0} - 请求消息类型, {1} - 超时时间(毫秒)
+            /// </remarks>
+            public const string RpcComponentExecutionTimeout = "Core.MessageHandler.RpcComponentExecutionTimeout";
+
+            /// <summary>
             /// BaseComponentHandler.InnerActionAsync 缓存组件为空，消息类型:{0}
             /// </summary>
             /// <remarks>
@@ -859,6 +869,16 @@ public static partial class Keys
             /// 参数: {0} - 获取追踪信息时发生的异常消息
             /// </remarks>
             public const string TraceUnavailable = "CoreExceptions.WorkerActor.TraceUnavailable";
+
+            /// <summary>
+            /// WorkerActor work call rejected by limit rule, caller actorId:{0} target actorId:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.WorkerActor.CallRejectedByLimitRule
+            /// 用途: 工作单元被Actor调用限制规则拒绝时以异常返回给等待方
+            /// 参数: {0} - 调用方Actor ID, {1} - 目标Actor ID
+            /// </remarks>
+            public const string CallRejectedByLimitRule = "CoreExceptions.WorkerActor.CallRejectedByLimitRule";
         }
         /// <summary>
         /// 定时器相关异常
@@ -1069,6 +1089,46 @@ public static partial class Keys
             /// 参数: {0} - 实现类型全名, {1} - 服务类型全名
             /// </remarks>
             public const string MissingParameterlessConstructor = "CoreExceptions.Hotfix.MissingParameterlessConstructor";
+
+            /// <summary>
+            /// Component agent base type is invalid, can not resolve the component type: {0}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.HotfixModule.AgentBaseTypeInvalid
+            /// 用途: 从代理/监听器类型反推组件类型时基类为空/非泛型/无泛型参数抛出异常
+            /// 参数: {0} - 代理类型全名
+            /// </remarks>
+            public const string AgentBaseTypeInvalid = "CoreExceptions.HotfixModule.AgentBaseTypeInvalid";
+
+            /// <summary>
+            /// RPC handler repeatedly registers, request message type:{0} handler type:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.HotfixModule.RpcHandlerRepeatedlyRegistered
+            /// 用途: 同一请求消息类型重复注册RPC处理器时抛出异常
+            /// 参数: {0} - 请求消息类型全名, {1} - 处理器类型全名
+            /// </remarks>
+            public const string RpcHandlerRepeatedlyRegistered = "CoreExceptions.HotfixModule.RpcHandlerRepeatedlyRegistered";
+
+            /// <summary>
+            /// Message id repeatedly registers, message id:{0} handler type:{1}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.HotfixModule.MessageIdRepeatedlyRegistered
+            /// 用途: 同一消息号重复注册消息处理器时抛出异常
+            /// 参数: {0} - 消息号, {1} - 处理器类型全名
+            /// </remarks>
+            public const string MessageIdRepeatedlyRegistered = "CoreExceptions.HotfixModule.MessageIdRepeatedlyRegistered";
+
+            /// <summary>
+            /// Hotfix assembly hash mismatch, path:{0} expected SHA-256:{1} actual SHA-256:{2}
+            /// </summary>
+            /// <remarks>
+            /// 键名: CoreExceptions.HotfixModule.AssemblyHashMismatch
+            /// 用途: 热更程序集装载前SHA-256哈希校验失败时抛出异常
+            /// 参数: {0} - 程序集路径, {1} - 期望SHA-256, {2} - 实际SHA-256
+            /// </remarks>
+            public const string AssemblyHashMismatch = "CoreExceptions.HotfixModule.AssemblyHashMismatch";
         }
 
         /// <summary>

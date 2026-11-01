@@ -29,6 +29,7 @@
 
 using GameFrameX.Core.Abstractions.Agent;
 using GameFrameX.Core.BaseHandler.RPC;
+using GameFrameX.Core.Hotfix;
 using GameFrameX.Core.Components;
 using GameFrameX.Network.Abstractions;
 using GameFrameX.Utility;
@@ -56,7 +57,7 @@ public abstract class GlobalRpcComponentHandler<TRequest, TResponse> : BaseRpcCo
     {
         if (ActorId <= 0)
         {
-            var compType = ComponentAgentType.BaseType.GetGenericArguments()[0];
+            var compType = HotfixModule.GetComponentTypeFromAgent(ComponentAgentType);
             var actorType = ComponentRegister.GetActorType(compType);
             ActorId = ActorIdGenerator.GetActorId(actorType);
         }

@@ -33,6 +33,7 @@ using GameFrameX.Core.Abstractions.Agent;
 using GameFrameX.Core.Abstractions.Timer;
 using GameFrameX.Core.Actors.Impl;
 using GameFrameX.Core.Components;
+using GameFrameX.Core.Hotfix;
 using GameFrameX.Foundation.Logger;
 using GameFrameX.Foundation.Localization.Core;
 using GameFrameX.Utility.Setting;
@@ -153,7 +154,7 @@ public sealed class Actor : IActor, IDisposable
     /// <returns>返回指定类型的组件代理实例</returns>
     public async Task<IComponentAgent> GetComponentAgentAsync(Type agentType, bool isNew = true)
     {
-        var compType = agentType.BaseType.GetGenericArguments()[0];
+        var compType = HotfixModule.GetComponentTypeFromAgent(agentType);
         BaseComponent component;
         if (isNew)
         {

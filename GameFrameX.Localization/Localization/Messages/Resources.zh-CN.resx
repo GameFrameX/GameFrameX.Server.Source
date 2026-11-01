@@ -566,6 +566,9 @@
     <value>trace不可用：{0}</value>
   </data>
 
+      <data name="CoreExceptions.WorkerActor.CallRejectedByLimitRule" xml:space="preserve">
+      <value>WorkerActor工作调用被限流规则拒绝，调用方ActorId:{0} 目标ActorId:{1}</value>
+      </data>
     <!-- 组件相关异常 -->
     <data name="CoreExceptions.Component.ActorTypeNotBound" xml:space="preserve">
     <value>组件:[{0}] Actor类型未绑定</value>
@@ -624,6 +627,18 @@
     <value>{0} 必须是实现 {1} 的非抽象封闭类型，且具有公共无参构造函数</value>
   </data>
 
+      <data name="CoreExceptions.HotfixModule.AgentBaseTypeInvalid" xml:space="preserve">
+      <value>组件代理基类型无效，无法推导组件类型: {0}</value>
+      </data>
+      <data name="CoreExceptions.HotfixModule.RpcHandlerRepeatedlyRegistered" xml:space="preserve">
+      <value>RPC处理器重复注册，请求消息类型:{0} 处理器类型:{1}</value>
+      </data>
+      <data name="CoreExceptions.HotfixModule.MessageIdRepeatedlyRegistered" xml:space="preserve">
+      <value>消息号重复注册，消息号:{0} 处理器类型:{1}</value>
+      </data>
+      <data name="CoreExceptions.HotfixModule.AssemblyHashMismatch" xml:space="preserve">
+      <value>热更程序集哈希校验失败，路径:{0} 期望SHA-256:{1} 实际SHA-256:{2}</value>
+      </data>
     <!-- 属性相关异常 -->
     <data name="CoreExceptions.Attribute.InvalidComponentType" xml:space="preserve">
     <value>无效的组件类型 {0},值应大于{1}且小于{2}和不为{3}</value>
@@ -1737,6 +1752,9 @@
     <value>BaseRpcComponentHandler.InitAsync 获取组件失败，关闭通道，actorId:{0}，组件代理类型:{1}，异常：\n{2}</value>
   </data>
 
+      <data name="Core.MessageHandler.RpcComponentExecutionTimeout" xml:space="preserve">
+      <value>BaseRpcComponentHandler组件RPC执行超时，消息类型:{0} 超时:{1}ms</value>
+      </data>
   <data name="Core.MessageHandler.RpcInnerActionCacheComponentNull" xml:space="preserve">
     <value>BaseRpcComponentHandler.InnerActionAsync 缓存组件为空，消息类型:{0}</value>
   </data>

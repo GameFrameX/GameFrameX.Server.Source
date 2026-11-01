@@ -146,7 +146,7 @@ public static class HotfixManager
 
         // 装载前幂等确保目录存在（历史由调用方各自兜底创建，收敛为装载入口自身的前置条件）
         EnsureHotfixDirectory(path);
-        var hotfixModule = new HotfixModule(path);
+        var hotfixModule = new HotfixModule(path, loadOptions);
         var reload = Host.CurrentModule != null;
         // 起服时失败会有异常抛出
         var success = hotfixModule.Init(reload);
@@ -196,7 +196,7 @@ public static class HotfixManager
 
         // 装载前幂等确保目录存在（历史由调用方各自兜底创建，收敛为装载入口自身的前置条件）
         EnsureHotfixDirectory(path);
-        var hotfixModule = new HotfixModule(path);
+        var hotfixModule = new HotfixModule(path, loadOptions);
         var reload = Host.CurrentModule != null;
         // 起服时失败会有异常抛出
         var success = hotfixModule.Init(reload);

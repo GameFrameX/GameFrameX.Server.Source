@@ -67,6 +67,13 @@ public static class ComponentRegister
     private static readonly Dictionary<Type, short> ComponentFuncDic = new();
 
     /// <summary>
+    /// 初始化锁：全表扫描与静态字典写入的串行化点。
+    /// 多测试类/多入口并行初始化时保护静态字典不被并发写损坏（注册语义不变）。
+    /// </summary>
+    private static readonly object InitLock = new();
+
+
+    /// <summary>
     /// 根据 CompType 获取对应的 ActorType 类型
     /// </summary>
     /// <param name="componentType">组件类型</param>
@@ -104,35 +111,39 @@ public static class ComponentRegister
         ArgumentNullException.ThrowIfNull(assembly);
         var baseCompName = typeof(BaseComponent);
         var types = assembly.GetTypes();
-        foreach (var type in types)
+        // 全表扫描与四个静态字典的写入收敛进单一锁：并行初始化（多测试类/多入口）不再损坏字典
+        lock (InitLock)
         {
-            if (type.IsAbstract || !type.IsSubclassOf(baseCompName))
+            foreach (var type in types)
             {
-                continue;
-            }
-
-            if (type.GetCustomAttribute(typeof(ComponentTypeAttribute)) is ComponentTypeAttribute compAttr)
-            {
-                var actorType = compAttr.Type;
-                var compTypes = ActorComponentDic.GetOrAddValue(actorType);
-                compTypes.Add(type);
-
-                ComponentActorDic[type] = actorType;
-
-                if (actorType < GlobalConst.ActorTypeSeparator)
+                if (type.IsAbstract || !type.IsSubclassOf(baseCompName))
                 {
-                    if (type.GetCustomAttribute(typeof(FuncAttribute)) is FuncAttribute funcAttr)
+                    continue;
+                }
+
+                if (type.GetCustomAttribute(typeof(ComponentTypeAttribute)) is ComponentTypeAttribute compAttr)
+                {
+                    var actorType = compAttr.Type;
+                    var compTypes = ActorComponentDic.GetOrAddValue(actorType);
+                    compTypes.Add(type);
+
+                    ComponentActorDic[type] = actorType;
+
+                    if (actorType < GlobalConst.ActorTypeSeparator)
                     {
-                        var set = FuncComponentDic.GetOrAddValue(funcAttr.Func);
-                        set.Add(type);
-                        ComponentFuncDic[type] = funcAttr.Func;
+                        if (type.GetCustomAttribute(typeof(FuncAttribute)) is FuncAttribute funcAttr)
+                        {
+                            var set = FuncComponentDic.GetOrAddValue(funcAttr.Func);
+                            set.Add(type);
+                            ComponentFuncDic[type] = funcAttr.Func;
+                        }
                     }
                 }
-            }
-            else
-            {
-                // Localization: CoreExceptions.Component.ActorTypeNotBound - 组件:[{0}] Actor类型未绑定
-                throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Component.ActorTypeNotBound, type.FullName));
+                else
+                {
+                    // Localization: CoreExceptions.Component.ActorTypeNotBound - 组件:[{0}] Actor类型未绑定
+                    throw new Exception(LocalizationService.GetString(Localization.Keys.CoreExceptions.Component.ActorTypeNotBound, type.FullName));
+                }
             }
         }
 
