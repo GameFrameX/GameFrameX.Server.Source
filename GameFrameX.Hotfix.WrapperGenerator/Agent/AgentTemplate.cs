@@ -40,6 +40,23 @@ namespace GameFrameX.Hotfix.WrapperGenerator.Agent;
 public static class AgentTemplate
 {
     /// <summary>
+    /// 生成器标识：写入生成类 GeneratedCodeAttribute 的 tool 名。
+    /// </summary>
+    /// <remarks>
+    /// 架构分析器按此值精确匹配豁免生成产物（与 Architecture.Analyzers 侧
+    /// ArchitectureAnalyzerConstants.WrapperGeneratorToolName 为同值契约，改名须双侧同步）。
+    /// The tool name written into the GeneratedCodeAttribute on generated wrapper classes.
+    /// </remarks>
+    private const string GeneratedCodeToolName = "GameFrameX.Hotfix.WrapperGenerator";
+
+    /// <summary>
+    /// 生成器版本：写入生成类 GeneratedCodeAttribute 的 version 参数。
+    /// </summary>
+    /// <remarks>
+    /// The version argument written into the GeneratedCodeAttribute on generated wrapper classes.
+    /// </remarks>
+    private const string GeneratedCodeVersion = "1.0";
+    /// <summary>
     /// 根据代理信息生成包装器分部类的源代码。
     /// </summary>
     /// <remarks>
@@ -62,6 +79,10 @@ public static class AgentTemplate
 
         templateStringBuilder.AppendLine("namespace " + info.Space);
         templateStringBuilder.AppendLine("{");
+        if (info.EmitGeneratedCodeMarker)
+        {
+            templateStringBuilder.AppendLine("\t[global::System.CodeDom.Compiler.GeneratedCodeAttribute(\"" + GeneratedCodeToolName + "\", \"" + GeneratedCodeVersion + "\")]");
+        }
         templateStringBuilder.AppendLine("\tpublic partial class " + info.Name + " : " + info.Super);
         templateStringBuilder.AppendLine("\t{");
         foreach (var infoMethod in info.Methods)
@@ -118,7 +139,7 @@ public static class AgentTemplate
         else
         {
             templateStringBuilder.AppendLine("\t\t\tlong callChainId = GameFrameX.Core.Actors.Impl.WorkerActor.NextChainId();");
-            templateStringBuilder.AppendLine($"\t\t\t_ = base.Actor.WorkerActor.EnqueueAsync(()=>base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), callChainId, true{BuildTimeoutArgument(infoMethod)});");
+            templateStringBuilder.AppendLine($"\t\t\t_ = base.Actor.WorkerActor.EnqueueAsync(async ()=> await base.{infoMethod.Name}{infoMethod.Typeparams}({infoMethod.ParamString}), callChainId, true{BuildTimeoutArgument(infoMethod)});");
         }
 
         templateStringBuilder.AppendLine($"\t\t\treturn {infoMethod.ReturnType}.CompletedTask;");
@@ -134,7 +155,8 @@ public static class AgentTemplate
     /// <param name="infoMethod">方法元数据 / Method metadata</param>
     private static void AppendInvocationBody(StringBuilder templateStringBuilder, MethodInfoData infoMethod)
     {
-        var needAwait = infoMethod.IsAsync && infoMethod.ReturnType.Contains("<");
+        // async 方法转发底层任务必须 await（非泛型 Task/ValueTask 同样如此）；是否泛型与该判定无关
+        var needAwait = infoMethod.IsAsync;
         templateStringBuilder.AppendLine("\t\t\t(bool needEnqueue, long chainId)= base.Actor.WorkerActor.IsNeedEnqueue();");
         templateStringBuilder.AppendLine("\t\t\tif (!needEnqueue)");
         templateStringBuilder.AppendLine("\t\t\t{");
