@@ -81,7 +81,7 @@ public sealed class DeflateMessageCompressionAlgorithm : IMessageCompressionAlgo
     /// <param name="maxOutputLength">允许的最大解压输出字节数 / Maximum allowed decompressed output length in bytes</param>
     /// <returns>解压后的原始字节数组 / The decompressed byte array</returns>
     /// <exception cref="System.IO.InvalidDataException">压缩数据非法、损坏、截断或解压输出超过上限时抛出 / Thrown when the data is invalid, corrupted, truncated, or exceeds the output limit</exception>
-    public byte[] Decompress(byte[] input, long maxOutputLength)
+    public byte[] Decompress(byte[] input, long maxOutputLength = CompressionHelper.DefaultMaxDecompressedOutputLength)
     {
         return CompressionHelper.Decompress(input, maxOutputLength);
     }

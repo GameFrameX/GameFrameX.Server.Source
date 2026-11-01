@@ -13,7 +13,7 @@
 
 端口编号方案与退役前的静态形态逐实例一致，
 生成结果直接写入 docker-compose.multi.yml 与 Configs/multi/；重复执行输出幂等。
-未认证的 MongoDB 仅绑定 127.0.0.1，避免向外部接口暴露可读写的数据面。
+未认证的 MongoDB 与各实例服务端口（TCP/HTTP）均仅绑定宿主 127.0.0.1，避免向外部网卡暴露可读写的数据面与管理接口。
 
 用法::
 
@@ -197,8 +197,8 @@ def render_instance_service_body(instance: dict, role_name: str, social_services
         f"      GameFrameX__AdvertisePort: \"{instance['inner_port']}\"",
         f"      GameFrameX__RoleInstanceId: \"{instance['instance_id']}\"",
         "    ports:",
-        f"      - \"{instance['host_inner_port']}:{instance['inner_port']}\"",
-        f"      - \"{instance['host_http_port']}:{instance['http_port']}\"",
+        f"      - \"127.0.0.1:{instance['host_inner_port']}:{instance['inner_port']}\"",
+        f"      - \"127.0.0.1:{instance['host_http_port']}:{instance['http_port']}\"",
         "    volumes:",
         f"      - \"./running-multi/{instance['service']}/logs:/app/data/logs\"",
         "      - \"./GameFrameX.Config/json:/app/Configs:ro\"",
