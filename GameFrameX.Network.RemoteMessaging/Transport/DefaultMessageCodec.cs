@@ -205,7 +205,9 @@ internal sealed class DefaultMessageCodec : IMessageCodec
                         throw new NotSupportedException(LocalizationService.GetString(Localization.Keys.RemoteMessaging.Codec.CompressionAlgorithmNotRegistered, algorithmId));
                     }
 
-                    messageData = compressionAlgorithm.Decompress(messageData);
+                    // 解压上限前置到膨胀过程内（_maxDecompressedSize），下方的长度校验降级为兜底防线——
+                    // 高压缩比小帧（解压炸弹）在膨胀超过上限的瞬间即被中止，而非膨胀完成后才检查。
+                    messageData = compressionAlgorithm.Decompress(messageData, _maxDecompressedSize);
                     ValidateDecodedPayloadLength(messageData.Length);
                 }
 

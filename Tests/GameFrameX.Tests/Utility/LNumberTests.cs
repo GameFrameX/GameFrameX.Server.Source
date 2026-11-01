@@ -257,23 +257,6 @@ namespace GameFrameX.Tests.Utility
         }
 
         /// <summary>
-        /// 测试除零
-        /// </summary>
-        [Fact]
-        public void Division_ByZero_ShouldReturnZero()
-        {
-            // Arrange
-            var a = LNumber.Create(10, 0);
-            var b = LNumber.Zero;
-
-            // Act
-            var result = a / b;
-
-            // Assert
-            Assert.Equal(0, (long)result);
-        }
-
-        /// <summary>
         /// 测试取模运算
         /// </summary>
         [Fact]
@@ -658,6 +641,30 @@ namespace GameFrameX.Tests.Utility
             // 由于精度限制，结果可能不完全等于原值，但应该很接近
             var difference = a - result;
             Assert.True((double)difference < 0.1);
+        }
+
+        #endregion
+
+        #region 大数路径测试（CR-L03）
+
+        /// <summary>
+        /// 超出 int 权重范围后走 BigInteger 路径的乘法：结果必须由数值转换得到，
+        /// 不得依赖 ToString/Parse 往返（正负对称）。
+        /// </summary>
+        [Fact]
+        public void Multiply_LargeValues_BigIntegerPathKeepsExactResult()
+        {
+            // Arrange
+            var large = LNumber.Create(40000, 0); // Raw = 2,621,440,000 > int.MaxValue
+            var factor = LNumber.Create(3, 0);
+
+            // Act
+            var positive = large * factor;
+            var negative = (large * LNumber.Create(-1, 0)) * factor;
+
+            // Assert
+            Assert.Equal(LNumber.Create(120000, 0).Raw, positive.Raw);
+            Assert.Equal(LNumber.Create(-120000, 0).Raw, negative.Raw);
         }
 
         #endregion

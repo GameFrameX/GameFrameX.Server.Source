@@ -497,7 +497,11 @@ public struct FPVector2 : IEquatable<FPVector2>
     /// <returns>当前 FPVector2 实例的哈希代码。</returns>
     public override int GetHashCode()
     {
-        return (int)(x + y);
+        unchecked
+        {
+            // 分量和相同（如 (1,2)/(2,1)/(3,0)）不再同桶：乘 397 顺序混合。
+            return (x.RawValue.GetHashCode() * 397) ^ y.RawValue.GetHashCode();
+        }
     }
 
     /// <summary>
@@ -796,6 +800,14 @@ public struct FPVector2 : IEquatable<FPVector2>
     public static void Normalize(ref FPVector2 value, out FPVector2 result)
     {
         DistanceSquared(ref value, ref zeroVector, out var factor);
+        if (factor == FP.Zero)
+        {
+            // 零向量归一化保持零向量：避免 1/0 的 MaxValue 哨兵随运算（含 ClampMagnitude）扩散
+            // Normalizing a zero vector stays zero: prevents the MaxValue sentinel from 1/0 spreading through later math (ClampMagnitude included).
+            result = zeroVector;
+            return;
+        }
+
         factor = FP.One / FP.Sqrt(factor);
         result.x = value.x * factor;
         result.y = value.y * factor;

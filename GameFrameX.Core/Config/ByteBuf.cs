@@ -1877,6 +1877,15 @@ public sealed class ByteBuf : ICloneable, IEquatable<ByteBuf>
         {
             EnsureRead(1);
             segmentSize = ((h & 0x3f) << 8) | Bytes[ReaderIndex];
+
+            // 段长来自数据本身：先校验可读范围再搬运尾部字节（long 算术防 int 溢出出负），
+            // 损坏数据统一抛 SerializationException 而非越界异常
+            // Localization: CoreConfig.ByteBuf.SegmentDataNotEnough - 段数据不足
+            if ((long)ReaderIndex + segmentSize + 1 > WriterIndex)
+            {
+                throw new SerializationException(LocalizationService.GetString(Localization.Keys.CoreConfig.SegmentDataNotEnough));
+            }
+
             var endPos = ReaderIndex + segmentSize;
             Bytes[ReaderIndex] = Bytes[endPos];
             ReaderIndex += segmentSize + 1;
@@ -1885,6 +1894,15 @@ public sealed class ByteBuf : ICloneable, IEquatable<ByteBuf>
         {
             EnsureRead(2);
             segmentSize = ((h & 0x1f) << 16) | ((int)Bytes[ReaderIndex] << 8) | Bytes[ReaderIndex + 1];
+
+            // 段长来自数据本身：先校验可读范围再搬运尾部字节（long 算术防 int 溢出出负），
+            // 损坏数据统一抛 SerializationException 而非越界异常
+            // Localization: CoreConfig.ByteBuf.SegmentDataNotEnough - 段数据不足
+            if ((long)ReaderIndex + segmentSize + 2 > WriterIndex)
+            {
+                throw new SerializationException(LocalizationService.GetString(Localization.Keys.CoreConfig.SegmentDataNotEnough));
+            }
+
             var endPos = ReaderIndex + segmentSize;
             Bytes[ReaderIndex] = Bytes[endPos];
             Bytes[ReaderIndex + 1] = Bytes[endPos + 1];
@@ -1894,6 +1912,15 @@ public sealed class ByteBuf : ICloneable, IEquatable<ByteBuf>
         {
             EnsureRead(3);
             segmentSize = ((h & 0x0f) << 24) | ((int)Bytes[ReaderIndex] << 16) | ((int)Bytes[ReaderIndex + 1] << 8) | Bytes[ReaderIndex + 2];
+
+            // 段长来自数据本身：先校验可读范围再搬运尾部字节（long 算术防 int 溢出出负），
+            // 损坏数据统一抛 SerializationException 而非越界异常
+            // Localization: CoreConfig.ByteBuf.SegmentDataNotEnough - 段数据不足
+            if ((long)ReaderIndex + segmentSize + 3 > WriterIndex)
+            {
+                throw new SerializationException(LocalizationService.GetString(Localization.Keys.CoreConfig.SegmentDataNotEnough));
+            }
+
             var endPos = ReaderIndex + segmentSize;
             Bytes[ReaderIndex] = Bytes[endPos];
             Bytes[ReaderIndex + 1] = Bytes[endPos + 1];
@@ -1906,6 +1933,7 @@ public sealed class ByteBuf : ICloneable, IEquatable<ByteBuf>
             throw new SerializationException(LocalizationService.GetString(Localization.Keys.CoreConfig.ExceedMaxSize));
         }
 
+        // 前置校验后此断言理论上不再触发，保留兜底（单字节段分支仍依赖它）
         if (ReaderIndex > WriterIndex)
         {
 // Localization: CoreConfig.ByteBuf.SegmentDataNotEnough - 段数据不足

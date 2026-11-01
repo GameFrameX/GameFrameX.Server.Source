@@ -42,23 +42,35 @@ public static class Tools
     /// </summary>
     /// <remarks>
     /// Extracts the namespace portion from a fully qualified type name.
+    /// 完全限定名形态为 <c>Namespace.OuterType+InnerType</c>：命名空间与最外层类型之间是「.」，
+    /// 类型之间是「+」。真命名空间 = 首个「+」之前的最后一个「.」之前的部分；不含「+」时退化为最后一个「.」之前的部分；
+    /// 两者皆无（无命名空间的顶层或嵌套类型）返回空串，调用方据此跳过 using 发射。
+    /// The fully qualified name has the shape <c>Namespace.OuterType+InnerType</c>: a "." separates the
+    /// namespace from the outermost type while "+" separates nested types. The namespace is the portion
+    /// before the last "." that precedes the first "+" (or before the last "." when no "+" exists);
+    /// when neither delimiter exists the type has no namespace and an empty string is returned.
     /// </remarks>
     /// <param name="fullName">类型的完全限定名 / Fully qualified type name</param>
-    /// <returns>命名空间字符串；如果输入不包含点号或为空，则返回原始字符串 / Namespace string; returns the original string if input contains no dots or is empty</returns>
+    /// <returns>命名空间字符串；无命名空间时返回空串 / Namespace string; an empty string when the type has no namespace</returns>
     public static string GetNameSpace(string fullName)
     {
         if (string.IsNullOrEmpty(fullName))
         {
-            return fullName;
+            return string.Empty;
         }
 
-        var i = fullName.LastIndexOf('.');
-        if (i < 0)
+        // 嵌套类型链起点：首个「+」之前只可能是「命名空间.最外层类型」
+        var nestedTypeStart = fullName.IndexOf('+');
+        var searchEnd = nestedTypeStart < 0 ? fullName.Length : nestedTypeStart;
+        for (var i = searchEnd - 1; i >= 0; i--)
         {
-            return fullName;
+            if (fullName[i] == '.')
+            {
+                return fullName.Substring(0, i);
+            }
         }
 
-        return fullName.Substring(0, i);
+        return string.Empty;
     }
 
 }

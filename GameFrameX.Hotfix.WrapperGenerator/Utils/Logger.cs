@@ -32,48 +32,97 @@ using Microsoft.CodeAnalysis;
 namespace GameFrameX.Hotfix.WrapperGenerator.Utils;
 
 /// <summary>
-/// 提供源代码生成器的日志记录扩展方法。
+/// 提供源代码生成器的诊断工厂：以稳定 ID 创建携带源位置的错误/警告诊断。
 /// </summary>
 /// <remarks>
-/// Provides logging extension methods for source code generators.
+/// Provides the diagnostic factory for source generators: creates error/warning diagnostics
+/// with stable identifiers and source locations.
 /// </remarks>
 public static class Logger
 {
     /// <summary>
-    /// 向源代码生成上下文报告错误诊断信息。
+    /// 契约违规（Error）诊断 ID。GFW 前缀与架构分析器 GFX0001-0021 错开，
+    /// 可经 <c>dotnet_diagnostic_GFW0001.severity</c>（.editorconfig）按 ID 抑制或升级。
     /// </summary>
     /// <remarks>
-    /// Reports an error diagnostic to the source production context.
+    /// Diagnostic identifier for contract violations (Error). The GFW prefix avoids collisions
+    /// with analyzer IDs GFX0001-0021, enabling per-ID suppression via
+    /// <c>dotnet_diagnostic_GFW0001.severity</c> (.editorconfig).
     /// </remarks>
-    /// <param name="context">源代码生成上下文 / Source production context</param>
-    /// <param name="msg">错误消息 / Error message</param>
-    public static void LogError(this SourceProductionContext context, string msg)
+    public const string ErrorDiagnosticIdentifier = "GFW0001";
+
+    /// <summary>
+    /// 契约警示（Warning）诊断 ID。GFW 前缀与分析器 GFX 系列错开，可按 ID 配置严重级别。
+    /// </summary>
+    /// <remarks>
+    /// Diagnostic identifier for contract warnings (Warning). The GFW prefix avoids collisions
+    /// with the analyzer GFX series so the severity can be configured per ID.
+    /// </remarks>
+    public const string WarningDiagnosticIdentifier = "GFW0002";
+
+    /// <summary>
+    /// 诊断类别（与分析器 GFX 系列的类别命名约定一致，取生成器自身全名）。
+    /// </summary>
+    /// <remarks>
+    /// Diagnostic category (the generator's own full name, following the GFX analyzer category convention).
+    /// </remarks>
+    public const string DiagnosticCategory = "GameFrameX.Hotfix.WrapperGenerator";
+
+    /// <summary>
+    /// 契约违规（Error）的静态描述符：全部 Error 诊断共用，避免每次调用分配新实例。
+    /// </summary>
+    /// <remarks>
+    /// Static descriptor for contract violations (Error): shared by all Error diagnostics to avoid per-call allocations.
+    /// </remarks>
+    internal static readonly DiagnosticDescriptor ErrorDescriptor = new DiagnosticDescriptor(
+        ErrorDiagnosticIdentifier,
+        "Hotfix wrapper generator contract violation",
+        "{0}",
+        DiagnosticCategory,
+        DiagnosticSeverity.Error,
+        true);
+
+    /// <summary>
+    /// 契约警示（Warning）的静态描述符：全部 Warning 诊断共用，避免每次调用分配新实例。
+    /// </summary>
+    /// <remarks>
+    /// Static descriptor for contract warnings (Warning): shared by all Warning diagnostics to avoid per-call allocations.
+    /// </remarks>
+    internal static readonly DiagnosticDescriptor WarningDescriptor = new DiagnosticDescriptor(
+        WarningDiagnosticIdentifier,
+        "Hotfix wrapper generator contract warning",
+        "{0}",
+        DiagnosticCategory,
+        DiagnosticSeverity.Warning,
+        true);
+
+    /// <summary>
+    /// 创建携带源位置的错误诊断。诊断在增量管线缓存阶段构造、随结果模型传递，输出阶段统一上报。
+    /// </summary>
+    /// <remarks>
+    /// Creates an error diagnostic carrying a source location. Diagnostics are constructed in the
+    /// incremental pipeline caching stage, travel with the result model, and are reported in the output stage.
+    /// </remarks>
+    /// <param name="message">错误消息 / Error message</param>
+    /// <param name="location">违规成员的源位置（通常为方法声明位置）/ Source location of the violating member (usually the method declaration)</param>
+    /// <returns>错误诊断 / The error diagnostic</returns>
+    public static Diagnostic Error(string message, Location location)
     {
-        var invalidXmlWarning = new DiagnosticDescriptor("Error",
-                                                         "Code Generator Error",
-                                                         "{0}",
-                                                         "CodeGenerator",
-                                                         DiagnosticSeverity.Error,
-                                                         true);
-        context.ReportDiagnostic(Diagnostic.Create(invalidXmlWarning, Location.None, msg));
+        return Diagnostic.Create(ErrorDescriptor, location ?? Location.None, message);
     }
 
     /// <summary>
-    /// 向源代码生成上下文报告警告诊断信息。
+    /// 创建携带源位置的警告诊断。诊断在增量管线缓存阶段构造、随结果模型传递，输出阶段统一上报。
     /// </summary>
     /// <remarks>
-    /// Reports a warning diagnostic to the source production context.
+    /// Creates a warning diagnostic carrying a source location. Diagnostics are constructed in the
+    /// incremental pipeline caching stage, travel with the result model, and are reported in the output stage.
     /// </remarks>
-    /// <param name="context">源代码生成上下文 / Source production context</param>
-    /// <param name="msg">警告消息 / Warning message</param>
-    public static void LogWarning(this SourceProductionContext context, string msg)
+    /// <param name="message">警告消息 / Warning message</param>
+    /// <param name="location">违规成员的源位置（通常为方法声明位置）/ Source location of the violating member (usually the method declaration)</param>
+    /// <returns>警告诊断 / The warning diagnostic</returns>
+    public static Diagnostic Warning(string message, Location location)
     {
-        var warning = new DiagnosticDescriptor("Warning",
-                                                "Code Generator Warning",
-                                                "{0}",
-                                                "CodeGenerator",
-                                                DiagnosticSeverity.Warning,
-                                                true);
-        context.ReportDiagnostic(Diagnostic.Create(warning, Location.None, msg));
+        return Diagnostic.Create(WarningDescriptor, location ?? Location.None, message);
     }
 }

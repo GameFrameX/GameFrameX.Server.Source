@@ -616,15 +616,15 @@ internal sealed class HotfixModule : ICollectibleAssemblyModule
     internal List<BaseHttpHandler> GetListHttpHandler()
     {
         var values = _httpHandlerMap.Values;
+        var seenHandlers = new HashSet<BaseHttpHandler>();
         var list = new List<BaseHttpHandler>(values.Count / 2);
         foreach (var handler in values)
         {
-            if (list.Contains(handler))
+            // 同一处理器实例可注册多个 cmd，引用去重线性完成
+            if (seenHandlers.Add(handler))
             {
-                continue;
+                list.Add(handler);
             }
-
-            list.Add(handler);
         }
 
         return list;
@@ -693,7 +693,21 @@ internal sealed class HotfixModule : ICollectibleAssemblyModule
     /// <returns>实例对象。</returns>
     internal T GetInstance<T>(string typeName)
     {
-        return (T)_typeCacheMap.GetOrAdd(typeName, k => HotfixAssembly.CreateInstance(k));
+        if (!_typeCacheMap.TryGetValue(typeName, out var value))
+        {
+            value = HotfixAssembly.CreateInstance(typeName);
+            if (value == null)
+            {
+                // ConcurrentDictionary 不接受 null 值，工厂返回 null 会抛脱离语境的 ArgumentNullException；
+                // 此处显式抛带类型名的契约异常
+                // Localization: CoreExceptions.Hotfix.TypeNotFound - 未找到类型：{0}
+                throw new InvalidOperationException(LocalizationService.GetString(Localization.Keys.CoreExceptions.HotfixModule.TypeNotFound, typeName));
+            }
+
+            _typeCacheMap[typeName] = value;
+        }
+
+        return (T)value;
     }
 
     /// <summary>

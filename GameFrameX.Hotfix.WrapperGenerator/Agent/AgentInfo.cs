@@ -56,12 +56,13 @@ public class AgentInfo
     public string Name { get; set; }
 
     /// <summary>
-    /// 获取或设置父类（被包装的代理类）名称。
+    /// 获取或设置父类（被包装的代理类）引用名：剥离命名空间后的容器限定名，嵌套代理为 <c>Outer.Inner</c> 形态。
     /// </summary>
     /// <remarks>
-    /// Gets or sets the parent (wrapped agent) class name.
+    /// Gets or sets the parent (wrapped agent) class reference: the container-qualified name with the
+    /// namespace stripped; nested agents use the <c>Outer.Inner</c> form. Top-level agents equal the simple name.
     /// </remarks>
-    /// <value>父类名称 / Parent class name</value>
+    /// <value>父类引用名 / Parent class reference name</value>
     public string Super { get; set; }
 
     /// <summary>
@@ -81,4 +82,14 @@ public class AgentInfo
     /// </remarks>
     /// <value>命名空间列表 / Namespace list</value>
     public List<string> UsingSpaces { get; set; } = new();
+
+    /// <summary>
+    /// 获取或设置本分部产物是否发射 GeneratedCodeAttribute 标记。
+    /// </summary>
+    /// <remarks>
+    /// Gets or sets whether this emitted piece carries the GeneratedCodeAttribute marker.
+    /// The attribute's AllowMultiple is false, so for a wrapper split across multiple emitted
+    /// partial pieces only the first emitted piece may carry it (duplicate attributes fail with CS0579).
+    /// </remarks>
+    public bool EmitGeneratedCodeMarker { get; set; }
 }

@@ -285,4 +285,72 @@ public class AppSettingTests
         // Assert
         Assert.Equal(instanceId, appSetting.ServerInstanceId);
     }
+
+    /// <summary>
+    /// ToString/ToFormatString 必须对四个凭据字段脱敏：非空值输出掩码，明文绝不进入序列化输出（SEC-H01）。
+    /// </summary>
+    [Fact]
+    public void ToString_WithCredentialFields_ShouldMaskSensitiveValues()
+    {
+        // Arrange
+        var appSetting = new AppSetting();
+        appSetting.DataBasePassword = "db-password-plain";
+        appSetting.HttpSignSecret = "http-sign-secret-plain";
+        appSetting.InterNodeAuthSecret = "inter-node-auth-secret-plain";
+        appSetting.HttpsCertPassword = "https-cert-password-plain";
+
+        // Act
+        var json = appSetting.ToString();
+        var formattedJson = appSetting.ToFormatString();
+
+        // Assert：两条序列化路径均不含任何明文凭据
+        Assert.DoesNotContain("db-password-plain", json);
+        Assert.DoesNotContain("http-sign-secret-plain", json);
+        Assert.DoesNotContain("inter-node-auth-secret-plain", json);
+        Assert.DoesNotContain("https-cert-password-plain", json);
+        Assert.DoesNotContain("db-password-plain", formattedJson);
+        Assert.DoesNotContain("http-sign-secret-plain", formattedJson);
+        Assert.DoesNotContain("inter-node-auth-secret-plain", formattedJson);
+        Assert.DoesNotContain("https-cert-password-plain", formattedJson);
+
+        // 已配置的字段以掩码出现，保留"已配置"的运维可见性
+        Assert.Contains("\"***\"", json);
+        Assert.Contains("***", formattedJson);
+    }
+
+    /// <summary>
+    /// 未配置（空串）的凭据字段保持空输出，不误报为已配置。
+    /// </summary>
+    [Fact]
+    public void ToString_WithUnsetCredentialFields_ShouldKeepEmptyValues()
+    {
+        // Arrange：默认构造——DataBasePassword 为 null（JsonHelper 跳过 null 属性），
+        // InterNodeAuthSecret/HttpSignSecret/HttpsCertPassword 为空串（保留输出空值）
+        var appSetting = new AppSetting();
+
+        // Act
+        var json = appSetting.ToString();
+
+        // Assert：空串凭据字段保留空值输出（紧凑 JSON 无空格分隔），未配置不误报为已配置（不出现掩码）
+        Assert.Contains($"\"{nameof(AppSetting.InterNodeAuthSecret)}\":\"\"", json);
+        Assert.DoesNotContain("***", json);
+    }
+
+    /// <summary>
+    /// 脱敏不得影响配置对象自身的字段值（掩码只作用于序列化拷贝）。
+    /// </summary>
+    [Fact]
+    public void ToString_AfterMasking_ShouldNotMutateOriginalSetting()
+    {
+        // Arrange
+        var appSetting = new AppSetting();
+        appSetting.DataBasePassword = "db-password-plain";
+
+        // Act
+        appSetting.ToString();
+        appSetting.ToFormatString();
+
+        // Assert
+        Assert.Equal("db-password-plain", appSetting.DataBasePassword);
+    }
 }

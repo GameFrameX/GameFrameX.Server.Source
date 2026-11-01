@@ -16,6 +16,12 @@
     <data name="Utility.Exceptions.ServerIdLessThanOrEqualZero" xml:space="preserve">
     <value>服务器ID小于等于0</value>
   </data>
+    <data name="Utility.Exceptions.ServerIdExceedsMax" xml:space="preserve">
+    <value>服务器ID {0} 超出最大服务器ID {1}</value>
+  </data>
+    <data name="Utility.Exceptions.ActorIdServerIdInvalidLayout" xml:space="preserve">
+    <value>从ActorId解析出的服务器ID {0} 不在 [{1}, {2}] 内，ActorId位布局可能已损坏</value>
+  </data>
     <data name="Utility.Exceptions.ActorTypeInvalid" xml:space="preserve">
     <value>Actor类型无效</value>
   </data>
@@ -569,6 +575,18 @@
     <value>trace不可用：{0}</value>
   </data>
 
+    <data name="CoreExceptions.WorkerActor.QueueRejected" xml:space="preserve">
+    <value>WorkerActor 队列拒绝了工作单元。actorId:{0} trace:{1}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.QueueCancelled" xml:space="preserve">
+    <value>WorkerActor 队列投递被取消。actorId:{0} trace:{1}</value>
+  </data>
+
+    <data name="CoreExceptions.WorkerActor.QueueFailed" xml:space="preserve">
+    <value>WorkerActor 队列投递失败。actorId:{0} trace:{1}</value>
+  </data>
+
     <!-- 组件相关异常 -->
     <data name="CoreExceptions.Component.ActorTypeNotBound" xml:space="preserve">
     <value>组件:[{0}] Actor类型未绑定</value>
@@ -627,6 +645,14 @@
     <value>{0} 必须是实现 {1} 的非抽象封闭类型，且具有公共无参构造函数</value>
   </data>
 
+    <data name="CoreExceptions.Hotfix.InvalidVersionChars" xml:space="preserve">
+    <value>Version 含非法路径字符：{0}</value>
+  </data>
+
+    <data name="CoreExceptions.Hotfix.TypeNotFound" xml:space="preserve">
+    <value>未找到类型：{0}</value>
+  </data>
+
     <!-- 属性相关异常 -->
     <data name="CoreExceptions.Attribute.InvalidComponentType" xml:space="preserve">
     <value>无效的组件类型 {0},值应大于{1}且小于{2}和不为{3}</value>
@@ -642,6 +668,26 @@
     <!-- Utility.RandomHelper 相关错误消息 -->
     <data name="Utility.RandomHelper.CantRepeatRandomArgError" xml:space="preserve">
     <value>不能重复随机参数错误，需求数量：{0} 大于ID数量：{1}</value>
+  </data>
+
+    <data name="Utility.RandomHelper.NegativeWeight" xml:space="preserve">
+    <value>权重不能为负数，实际权重：{0}</value>
+  </data>
+
+    <data name="Utility.RandomHelper.ZeroTotalWeight" xml:space="preserve">
+    <value>权重总和必须大于 0</value>
+  </data>
+
+    <data name="Utility.RandomHelper.WeightSumOverflow" xml:space="preserve">
+    <value>权重总和 {0} 超出支持的 32 位范围</value>
+  </data>
+
+    <data name="Utility.RandomHelper.WeightIndexOutOfRange" xml:space="preserve">
+    <value>权重索引 {0} 超出条目长度 {1}</value>
+  </data>
+
+    <data name="Utility.RandomHelper.InsufficientPositiveWeights" xml:space="preserve">
+    <value>无法不重复抽取 {0} 个权重目标，只有 {1} 个条目的权重为正</value>
   </data>
 
     <!-- Utility.BigIntegerDebug 相关日志消息 -->
@@ -1701,7 +1747,15 @@
   </data>
 
   <data name="Core.EventDispatcher.DispatchNoListeners" xml:space="preserve">
-    <value>EventDispatcher.Dispatch Actor {0} {1} 事件类型：{2} 没有找到任何监听者</value>
+    <value>EventDispatcher.Dispatch Actor {0} 类型：{1} 事件类型：{2} 没有找到任何监听者</value>
+  </data>
+
+  <data name="Core.Session.RouteSyncUpsertFailed" xml:space="preserve">
+    <value>[PlayerSessionManager] 玩家路由 upsert 同步钩子失败，玩家：{0}；本地 PlayerRouteMap 仍为事实源，下次 SetOnline 会重新收敛</value>
+  </data>
+
+  <data name="Core.Session.RouteSyncDeleteFailed" xml:space="preserve">
+    <value>[PlayerSessionManager] 玩家路由 delete 同步钩子失败，玩家：{0}</value>
   </data>
 
   <data name="Core.EventDispatcher.DispatchOwnerActorNotLoaded" xml:space="preserve">
@@ -2169,12 +2223,16 @@
     <value>{0}端口[{1}]占用详情: {2}</value>
   </data>
 
-  <data name="Utility.CompressionHelper.CompressFailed" xml:space="preserve">
-    <value>CompressionHelper.Compress 压缩辅助类异常。错误：{0}。</value>
+  <data name="Utility.CompressionHelper.DecompressFailed" xml:space="preserve">
+    <value>CompressionHelper.Decompress 解压失败。错误：{0}。</value>
   </data>
 
-  <data name="Utility.CompressionHelper.DecompressFailed" xml:space="preserve">
-    <value>CompressionHelper.Decompress 压缩辅助类异常。错误：{0}。</value>
+  <data name="Utility.CompressionHelper.DecompressInputTruncated" xml:space="preserve">
+    <value>CompressionHelper.Decompress 输入数据已被截断，无法完成解压。</value>
+  </data>
+
+  <data name="Utility.CompressionHelper.DecompressedSizeExceedsLimit" xml:space="preserve">
+    <value>CompressionHelper.Decompress 解压输出超过允许的最大长度：{0}。</value>
   </data>
 
   <data name="Utility.GlobalSettings.ActorRecycleTimeTooShortLog" xml:space="preserve">
@@ -2195,6 +2253,22 @@
 
   <data name="Utility.IllegalWordDetection.InitException" xml:space="preserve">
     <value>IllegalWordDetection.Init 异常详情：{0}</value>
+  </data>
+
+  <data name="Utility.IllegalWordDetection.InitAlreadyInProgress" xml:space="preserve">
+    <value>IllegalWordDetection.Init 已在进行中，拒绝新的初始化请求</value>
+  </data>
+
+  <data name="Utility.IllegalWordDetection.BadWordTableCorrupted" xml:space="preserve">
+    <value>IllegalWordDetection 敏感词表数据损坏：偏移 {1} 处字段长度非法 {0}，数据总长度 {2}</value>
+  </data>
+
+  <data name="Utility.LNumber.DivisionByZero" xml:space="preserve">
+    <value>LNumber 除数为零</value>
+  </data>
+
+  <data name="Utility.Hotload.RetireModuleFailed" xml:space="preserve">
+    <value>CollectibleAssemblyHost 退役模块清理失败：{0}</value>
   </data>
 
   <data name="Utility.LNumber.DivisionOverflowLog" xml:space="preserve">
